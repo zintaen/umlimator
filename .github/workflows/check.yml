@@ -1,0 +1,41 @@
+name: check
+
+on:
+  push:
+  pull_request:
+  schedule:
+    - cron: "0 6 * * 1"  # weekly: a logo source that changed shows up here, not in someone's picture
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: The patches still apply to super-board's template
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/EricTechPro/super-board/d0b7d5a/skills/visual/assets/template.html \
+            -o engine/assets/template.html
+          python3 -I patches/apply.py
+          git diff --exit-code engine/assets/template.html
+
+      - name: Every brand logo still downloads and matches its pinned sha256
+        run: |
+          python3 -I - <<'PY'
+          import importlib.util, json, sys
+          spec = importlib.util.spec_from_file_location("u", "umlimator.py"); u = importlib.util.module_from_spec(spec); spec.loader.exec_module(u)
+          man = json.load(open("icons/manifest.json"))
+          bad = [k for k, e in man.items() if e["source"] != "lucide" and u.icon_bytes(e) is None]
+          print(f"{sum(1 for e in man.values() if e['source'] != 'lucide') - len(bad)} logos ok; failed: {bad}")
+          sys.exit(1 if bad else 0)
+          PY
+
+      - name: The example renders and its layout check is clean
+        run: |
+          python3 umlimator.py render examples/bookshop.json --out /tmp/bookshop.html --no-check
+          python3 umlimator.py check /tmp/bookshop.html | tee /tmp/check.json
+          python3 -I -c "import json; s = open('/tmp/check.json').read(); d = json.loads(s[s.find('{'):]); assert not d['problems'], d['problems']"
