@@ -1,5 +1,7 @@
 # umlimator
 
+[![check](https://github.com/zintaen/umlimator/actions/workflows/check.yml/badge.svg)](https://github.com/zintaen/umlimator/actions/workflows/check.yml)
+
 Layered, animated architecture maps you can click through, plus still pictures of each layer for documents that
 cannot run a web page (a wiki such as Confluence, a slide deck). One JSON model in, one self-contained HTML page out.
 
