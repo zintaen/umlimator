@@ -1,0 +1,529 @@
+{
+  "github": {
+    "source": "svgl",
+    "url": "https://svgl.app/library/github_light.svg",
+    "file": "github.svg",
+    "bytes": 997,
+    "dark_file": "github_dark.svg",
+    "sha256": "64568845c83d5e840e6a1fb7af1939fed14709636427ce9be2fbcdc14ac5e021"
+  },
+  "git": {
+    "source": "svgl",
+    "url": "https://svgl.app/library/git.svg",
+    "file": "git.svg",
+    "bytes": 484,
+    "sha256": "cc43d5b0c4fae45b6e0857c17d602c0efb8526241ca9623a29863867a8f59f3a"
+  },
+  "postgresql": {
+    "source": "svgl",
+    "url": "https://svgl.app/library/postgresql.svg",
+    "file": "postgresql.svg",
+    "bytes": 3944,
+    "sha256": "dc6bb4376a5cf235b19a8871f3219c2b98d97e4469309c8bbecb86ff1811f506"
+  },
+  "claude": {
+    "source": "svgl",
+    "url": "https://svgl.app/library/claude-ai-icon.svg",
+    "file": "claude.svg",
+    "bytes": 1999,
+    "sha256": "0df6dad23995f5a76c6db8cc2a4e646ff45bd7a0626ef98662a7025646e5eea1"
+  },
+  "anthropic": {
+    "source": "svgl",
+    "url": "https://svgl.app/library/anthropic_black.svg",
+    "file": "anthropic.svg",
+    "bytes": 347,
+    "dark_file": "anthropic_dark.svg",
+    "sha256": "51635844d2ae983077bb8c81f46b10d142542da4c23a06e9c2faf9154cc20af4"
+  },
+  "docker": {
+    "source": "svgl",
+    "url": "https://svgl.app/library/docker.svg",
+    "file": "docker.svg",
+    "bytes": 1488,
+    "sha256": "29e91bf0593f02cf32efc849f2e9707dfddd4684b4d72b2a2b6a89da9626c60d"
+  },
+  "python": {
+    "source": "svgl",
+    "url": "https://svgl.app/library/python.svg",
+    "file": "python.svg",
+    "bytes": 1126,
+    "sha256": "e4d80b4ca9418d1ebb4ff880eb7cbe6896d60d61d9f44ead6723db29a4ed962e"
+  },
+  "react": {
+    "source": "svgl",
+    "url": "https://svgl.app/library/react_light.svg",
+    "file": "react.svg",
+    "bytes": 6534,
+    "dark_file": "react_dark.svg",
+    "sha256": "0e3b3b606248d4868b5f0c63c30f27929e94724591e28cbd6852ccb649857998"
+  },
+  "typescript": {
+    "source": "svgl",
+    "url": "https://svgl.app/library/typescript.svg",
+    "file": "typescript.svg",
+    "bytes": 1744,
+    "sha256": "a72e88ebd02b5e28708e7dfb3ca09c5bc524482f3d0b6a3df3053ed5d51a5f6b"
+  },
+  "vite": {
+    "source": "svgl",
+    "url": "https://svgl.app/library/vite.svg",
+    "file": "vite.svg",
+    "bytes": 10132,
+    "sha256": "1d85800a1f7e07cc92cdb5938a52dff050849e9a96de3cf4c3cd31662dde5d2c"
+  },
+  "fastapi": {
+    "source": "svgl",
+    "url": "https://svgl.app/library/fastapi.svg",
+    "file": "fastapi.svg",
+    "bytes": 280,
+    "sha256": "f8c2f8fdb66a407792269909ca1be804cdd5823584fb304e4be97d431ae0cfcb"
+  },
+  "sqlalchemy": {
+    "source": "devicon",
+    "url": "https://raw.githubusercontent.com/devicons/devicon/master/icons/sqlalchemy/sqlalchemy-original.svg",
+    "file": "sqlalchemy.svg",
+    "bytes": 2767,
+    "sha256": "f7cd6f77f031d112250e3fff789a616d5fdd9a7be95856cf3adf1c9d7e30882a"
+  },
+  "playwright": {
+    "source": "svgl",
+    "url": "https://svgl.app/library/playwright.svg",
+    "file": "playwright.svg",
+    "bytes": 5032,
+    "sha256": "12d4dc0107deb4e8b9ab5f6e2b0d30034a887bd90ae2e34f342e74a25dd9f0d4"
+  },
+  "huggingface": {
+    "source": "svgl",
+    "url": "https://svgl.app/library/hugging_face.svg",
+    "file": "huggingface.svg",
+    "bytes": 13499,
+    "sha256": "b5d3cd5fd73e72a38784cc834f153aa1c985b4071f32154ba506862fce18a0ee"
+  },
+  "pydantic": {
+    "source": "gilbarbara",
+    "url": "https://cdn.jsdelivr.net/gh/gilbarbara/logos/logos/pydantic-icon.svg",
+    "file": "pydantic.svg",
+    "bytes": 1762,
+    "sha256": "1596c78ea06ba4b11f0c7403ec94ff4a622dd448b70ed4c87554fd8bb2b85278"
+  },
+  "jira": {
+    "source": "devicon",
+    "url": "https://raw.githubusercontent.com/devicons/devicon/master/icons/jira/jira-original.svg",
+    "file": "jira.svg",
+    "bytes": 1092,
+    "sha256": "e5010dd0056d130e32fa3d0dc589aa1288370b525b4123658ea6eb90f53ca1db"
+  },
+  "confluence": {
+    "source": "devicon",
+    "url": "https://raw.githubusercontent.com/devicons/devicon/master/icons/confluence/confluence-original.svg",
+    "file": "confluence.svg",
+    "bytes": 1483,
+    "sha256": "0eb010ed1897a90b29aa1d383e8e4a5c5aaa92bbc4814e1fd7466ea7353756f8"
+  },
+  "openai": {
+    "source": "svgl",
+    "url": "https://svgl.app/library/openai.svg",
+    "file": "openai.svg",
+    "bytes": 2430,
+    "dark_file": "openai_dark.svg",
+    "sha256": "71eba8e11d265af0e3375ad610db95b4a5fedf9f07c40e5252e73942b8c5982e"
+  },
+  "teams": {
+    "source": "svgl",
+    "url": "https://svgl.app/library/microsoft-teams.svg",
+    "file": "teams.svg",
+    "bytes": 4240,
+    "sha256": "4062cb6a318a51966278983171dae4a207d42ea9454c1fc5df75ff3bfb6cb4db"
+  },
+  "mcp": {
+    "source": "svgl",
+    "url": "https://svgl.app/library/model-context-protocol-light.svg",
+    "file": "mcp.svg",
+    "bytes": 973,
+    "dark_file": "mcp_dark.svg",
+    "sha256": "7b1a39135aff77616de792f253e38e2d0c308fb09e81586a2ce0454156f9ae4f"
+  },
+  "linux": {
+    "source": "svgl",
+    "url": "https://svgl.app/library/linux.svg",
+    "file": "linux.svg",
+    "bytes": 11498,
+    "sha256": "ee7e85d245e8cac3de69ad0e5ad131ccf5cead034f407fcdec410fcf24710185"
+  },
+  "azure": {
+    "source": "devicon",
+    "url": "https://raw.githubusercontent.com/devicons/devicon/master/icons/azure/azure-original.svg",
+    "file": "azure.svg",
+    "bytes": 1713,
+    "sha256": "7923db83e3f9755bd412241a683fa996fb7a9d0259b5084de449e6be92f7ca20"
+  },
+  "tanstack": {
+    "source": "svgl",
+    "url": "https://svgl.app/library/tanstack_light.svg",
+    "file": "tanstack.svg",
+    "bytes": 1660,
+    "dark_file": "tanstack_dark.svg",
+    "sha256": "628d270c6ce84a773113fa4e8098d0ba194de7edddf07384dffe336098160868"
+  },
+  "azuredevops": {
+    "file": "azuredevops.svg",
+    "source": "azure",
+    "url": "https://arch-center.azureedge.net/icons/Azure_Public_Service_Icons_V24.zip#10261-icon-service-Azure-DevOps.svg",
+    "sha256": "15b5068ceeb28f0f3cf566aa8cf99619f99d47059d7a91fda0ef47091a71a041"
+  },
+  "foundry": {
+    "file": "foundry.svg",
+    "source": "azure",
+    "url": "https://arch-center.azureedge.net/icons/Azure_Public_Service_Icons_V24.zip#035746832-icon-service-AI-Foundry.svg",
+    "sha256": "fab039a771f72780ae34e59065d61c66a02d3c347d50923ef2956f34912ea02c"
+  },
+  "containerapps": {
+    "file": "containerapps.svg",
+    "source": "azure",
+    "url": "https://arch-center.azureedge.net/icons/Azure_Public_Service_Icons_V24.zip#02989-icon-service-Container-Apps-Environments.svg",
+    "sha256": "3cf4ba9242e31496f778a27e92c9c2b2a09664f105c58325d5e2dcb142d3c3b9"
+  },
+  "user": {
+    "source": "lucide",
+    "url": "https://cdn.jsdelivr.net/npm/lucide-static/icons/user.svg",
+    "file": "user.svg",
+    "bytes": 371
+  },
+  "users": {
+    "source": "lucide",
+    "url": "https://cdn.jsdelivr.net/npm/lucide-static/icons/users.svg",
+    "file": "users.svg",
+    "bytes": 456
+  },
+  "server": {
+    "source": "lucide",
+    "url": "https://cdn.jsdelivr.net/npm/lucide-static/icons/server.svg",
+    "file": "server.svg",
+    "bytes": 487
+  },
+  "network": {
+    "source": "lucide",
+    "url": "https://cdn.jsdelivr.net/npm/lucide-static/icons/network.svg",
+    "file": "network.svg",
+    "bytes": 520
+  },
+  "database": {
+    "source": "lucide",
+    "url": "https://cdn.jsdelivr.net/npm/lucide-static/icons/database.svg",
+    "file": "database.svg",
+    "bytes": 405
+  },
+  "archive": {
+    "source": "lucide",
+    "url": "https://cdn.jsdelivr.net/npm/lucide-static/icons/archive.svg",
+    "file": "archive.svg",
+    "bytes": 415
+  },
+  "logs": {
+    "source": "lucide",
+    "url": "https://cdn.jsdelivr.net/npm/lucide-static/icons/scroll-text.svg",
+    "file": "logs.svg",
+    "bytes": 498
+  },
+  "doc": {
+    "source": "lucide",
+    "url": "https://cdn.jsdelivr.net/npm/lucide-static/icons/file-text.svg",
+    "file": "doc.svg",
+    "bytes": 521
+  },
+  "queue": {
+    "source": "lucide",
+    "url": "https://cdn.jsdelivr.net/npm/lucide-static/icons/list-todo.svg",
+    "file": "queue.svg",
+    "bytes": 436
+  },
+  "bot": {
+    "source": "lucide",
+    "url": "https://cdn.jsdelivr.net/npm/lucide-static/icons/bot.svg",
+    "file": "bot.svg",
+    "bytes": 451
+  },
+  "key": {
+    "source": "lucide",
+    "url": "https://cdn.jsdelivr.net/npm/lucide-static/icons/key-round.svg",
+    "file": "key.svg",
+    "bytes": 530
+  },
+  "webhook": {
+    "source": "lucide",
+    "url": "https://cdn.jsdelivr.net/npm/lucide-static/icons/webhook.svg",
+    "file": "webhook.svg",
+    "bytes": 514
+  },
+  "flag": {
+    "source": "lucide",
+    "url": "https://cdn.jsdelivr.net/npm/lucide-static/icons/flag.svg",
+    "file": "flag.svg",
+    "bytes": 442
+  },
+  "calendar": {
+    "source": "lucide",
+    "url": "https://cdn.jsdelivr.net/npm/lucide-static/icons/calendar-clock.svg",
+    "file": "calendar.svg",
+    "bytes": 504
+  },
+  "monitor": {
+    "source": "lucide",
+    "url": "https://cdn.jsdelivr.net/npm/lucide-static/icons/activity.svg",
+    "file": "monitor.svg",
+    "bytes": 422
+  },
+  "package": {
+    "source": "lucide",
+    "url": "https://cdn.jsdelivr.net/npm/lucide-static/icons/package.svg",
+    "file": "package.svg",
+    "bytes": 521
+  },
+  "terminal": {
+    "source": "lucide",
+    "url": "https://cdn.jsdelivr.net/npm/lucide-static/icons/terminal.svg",
+    "file": "terminal.svg",
+    "bytes": 337
+  },
+  "alert": {
+    "source": "lucide",
+    "url": "https://cdn.jsdelivr.net/npm/lucide-static/icons/bell.svg",
+    "file": "alert.svg",
+    "bytes": 465
+  },
+  "pr": {
+    "source": "lucide",
+    "url": "https://cdn.jsdelivr.net/npm/lucide-static/icons/git-pull-request.svg",
+    "file": "pr.svg",
+    "bytes": 439
+  },
+  "branch": {
+    "source": "lucide",
+    "url": "https://cdn.jsdelivr.net/npm/lucide-static/icons/git-branch.svg",
+    "file": "branch.svg",
+    "bytes": 391
+  },
+  "folder": {
+    "source": "lucide",
+    "url": "https://cdn.jsdelivr.net/npm/lucide-static/icons/folder-code.svg",
+    "file": "folder.svg",
+    "bytes": 492
+  },
+  "clock": {
+    "source": "lucide",
+    "url": "https://cdn.jsdelivr.net/npm/lucide-static/icons/clock.svg",
+    "file": "clock.svg",
+    "bytes": 344
+  },
+  "undo": {
+    "source": "lucide",
+    "url": "https://cdn.jsdelivr.net/npm/lucide-static/icons/undo-2.svg",
+    "file": "undo.svg",
+    "bytes": 383
+  },
+  "pause": {
+    "source": "lucide",
+    "url": "https://cdn.jsdelivr.net/npm/lucide-static/icons/octagon-pause.svg",
+    "file": "pause.svg",
+    "bytes": 587
+  },
+  "gauge": {
+    "source": "lucide",
+    "url": "https://cdn.jsdelivr.net/npm/lucide-static/icons/gauge.svg",
+    "file": "gauge.svg",
+    "bytes": 351
+  },
+  "chain": {
+    "source": "lucide",
+    "url": "https://cdn.jsdelivr.net/npm/lucide-static/icons/link.svg",
+    "file": "chain.svg",
+    "bytes": 431
+  },
+  "scan": {
+    "source": "lucide",
+    "url": "https://cdn.jsdelivr.net/npm/lucide-static/icons/scan-search.svg",
+    "file": "scan.svg",
+    "bytes": 510
+  },
+  "gate": {
+    "source": "lucide",
+    "url": "https://cdn.jsdelivr.net/npm/lucide-static/icons/door-open.svg",
+    "file": "gate.svg",
+    "bytes": 492
+  },
+  "window": {
+    "source": "lucide",
+    "url": "https://cdn.jsdelivr.net/npm/lucide-static/icons/app-window.svg",
+    "file": "window.svg",
+    "bytes": 407
+  },
+  "health": {
+    "source": "lucide",
+    "url": "https://cdn.jsdelivr.net/npm/lucide-static/icons/heart-pulse.svg",
+    "file": "health.svg",
+    "bytes": 508
+  },
+  "idcard": {
+    "source": "lucide",
+    "url": "https://cdn.jsdelivr.net/npm/lucide-static/icons/id-card.svg",
+    "file": "idcard.svg",
+    "bytes": 453
+  },
+  "entra": {
+    "file": "entra.svg",
+    "source": "microsoft",
+    "url": "https://download.microsoft.com/download/3/1/a/31a56038-856a-4489-88e4-ee5a1c4352be/Microsoft%20Entra%20architecture%20icons%20-%20Oct%202023.zip#Microsoft Entra ID color icon.svg",
+    "sha256": "efd9f54562bfb78bf3c77aecdd5fc31b61fce8a1cec78c4370b41fc470e54eda"
+  },
+  "caddy": {
+    "file": "caddy.png",
+    "source": "caddyserver/website",
+    "url": "https://raw.githubusercontent.com/caddyserver/website/master/src/resources/images/icon-transparent.png",
+    "sha256": "16d9b4bbb96f34238e4f116a646bcb940f21a2b0f008d969617c84eeb62483e3"
+  },
+  "outsystems": {
+    "file": "outsystems.png",
+    "source": "outsystems.com",
+    "url": "https://www.outsystems.com/apple-touch-icon.png",
+    "sha256": "19e2034c061ab8123d098a89e3a7e26f0a00daa689552d391fe7d456b23f7bfd"
+  },
+  "prometheus": {
+    "source": "devicon",
+    "url": "https://raw.githubusercontent.com/devicons/devicon/master/icons/prometheus/prometheus-original.svg",
+    "file": "prometheus.svg",
+    "bytes": 1223,
+    "sha256": "cae70cfcf9a8b88de32ab1035819d0c7c9a2b278048112f8c9f99dae42b5b657"
+  },
+  "grafana": {
+    "source": "svgl",
+    "url": "https://svgl.app/library/grafana.svg",
+    "file": "grafana.svg",
+    "bytes": 5850,
+    "sha256": "0b7f85edd76a69eee78c7781a037d982c6168cb2c2238d13683c7f7ddfd07b0f"
+  },
+  "opentelemetry": {
+    "source": "devicon",
+    "url": "https://raw.githubusercontent.com/devicons/devicon/master/icons/opentelemetry/opentelemetry-original.svg",
+    "file": "opentelemetry.svg",
+    "bytes": 1223,
+    "sha256": "4a610f674b648395f6460d3648d995e114cf34ad58004c01b9380c1deb7a19cd"
+  },
+  "jenkins": {
+    "source": "devicon",
+    "url": "https://raw.githubusercontent.com/devicons/devicon/master/icons/jenkins/jenkins-original.svg",
+    "file": "jenkins.svg",
+    "bytes": 15407,
+    "sha256": "917c7525a9d6c544f4b5d1d4318778e2dee5ef2d47be075ee494613cb10d2a4e"
+  },
+  "gitlab": {
+    "source": "svgl",
+    "url": "https://svgl.app/library/gitlab.svg",
+    "file": "gitlab.svg",
+    "bytes": 863,
+    "sha256": "f113a0879aae4d458ac1de8f6ff3c8c6f9793299069fa1e422350ca24128a1fa"
+  },
+  "kubernetes": {
+    "source": "svgl",
+    "url": "https://svgl.app/library/kubernetes.svg",
+    "file": "kubernetes.svg",
+    "bytes": 2429,
+    "sha256": "6daec9288a3c914035040dbc19a277e59917ec3a9ddae47d97822d2b37949800"
+  },
+  "flask": {
+    "source": "lucide",
+    "url": "https://cdn.jsdelivr.net/npm/lucide-static/icons/flask-conical.svg",
+    "file": "flask.svg",
+    "bytes": 464
+  },
+  "checks": {
+    "source": "lucide",
+    "url": "https://cdn.jsdelivr.net/npm/lucide-static/icons/list-checks.svg",
+    "file": "checks.svg",
+    "bytes": 415
+  },
+  "eyeoff": {
+    "source": "lucide",
+    "url": "https://cdn.jsdelivr.net/npm/lucide-static/icons/eye-off.svg",
+    "file": "eyeoff.svg",
+    "bytes": 579
+  },
+  "trash": {
+    "source": "lucide",
+    "url": "https://cdn.jsdelivr.net/npm/lucide-static/icons/trash-2.svg",
+    "file": "trash.svg",
+    "bytes": 464
+  },
+  "usercheck": {
+    "source": "lucide",
+    "url": "https://cdn.jsdelivr.net/npm/lucide-static/icons/user-check.svg",
+    "file": "usercheck.svg",
+    "bytes": 406
+  },
+  "state": {
+    "source": "lucide",
+    "url": "https://cdn.jsdelivr.net/npm/lucide-static/icons/circle-dot.svg",
+    "file": "state.svg",
+    "bytes": 357
+  },
+  "box": {
+    "source": "lucide",
+    "url": "https://cdn.jsdelivr.net/npm/lucide-static/icons/box.svg",
+    "file": "box.svg",
+    "bytes": 472
+  },
+  "layers": {
+    "source": "lucide",
+    "url": "https://cdn.jsdelivr.net/npm/lucide-static/icons/layers.svg",
+    "file": "layers.svg",
+    "bytes": 584
+  },
+  "sparkles": {
+    "source": "lucide",
+    "url": "https://cdn.jsdelivr.net/npm/lucide-static/icons/sparkles.svg",
+    "file": "sparkles.svg",
+    "bytes": 643
+  },
+  "book": {
+    "source": "lucide",
+    "url": "https://cdn.jsdelivr.net/npm/lucide-static/icons/book-open.svg",
+    "file": "book.svg",
+    "bytes": 464
+  },
+  "lock": {
+    "source": "lucide",
+    "url": "https://cdn.jsdelivr.net/npm/lucide-static/icons/lock.svg",
+    "file": "lock.svg",
+    "bytes": 381
+  },
+  "retry": {
+    "source": "lucide",
+    "url": "https://cdn.jsdelivr.net/npm/lucide-static/icons/refresh-cw.svg",
+    "file": "retry.svg",
+    "bytes": 470
+  },
+  "settings": {
+    "source": "lucide",
+    "url": "https://cdn.jsdelivr.net/npm/lucide-static/icons/settings.svg",
+    "file": "settings.svg",
+    "bytes": 662
+  },
+  "chart": {
+    "source": "lucide",
+    "url": "https://cdn.jsdelivr.net/npm/lucide-static/icons/chart-column.svg",
+    "file": "chart.svg",
+    "bytes": 400
+  },
+  "building": {
+    "source": "lucide",
+    "url": "https://cdn.jsdelivr.net/npm/lucide-static/icons/building-2.svg",
+    "file": "building.svg",
+    "bytes": 519
+  },
+  "wrench": {
+    "source": "lucide",
+    "url": "https://cdn.jsdelivr.net/npm/lucide-static/icons/wrench.svg",
+    "file": "wrench.svg",
+    "bytes": 491
+  }
+}
