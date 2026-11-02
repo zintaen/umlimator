@@ -1,0 +1,7 @@
+.DS_Store
+__pycache__/
+*.pyc
+# check screenshots written by render
+.*-check/
+# temporary model copy written by render
+.*.icons.json
