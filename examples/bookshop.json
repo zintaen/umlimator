@@ -2,51 +2,269 @@
  "title": "Bookshop, an example",
  "root": "overview",
  "nodes": [
-  {"id": "shoppers", "label": "Shoppers", "kind": "frontend", "icon": "users", "sublabel": "browse, buy, track orders",
-   "what": "People who buy books on the site.", "when": "Every visit.", "how": "They use the storefront in a browser."},
-  {"id": "storefront", "label": "Storefront", "kind": "frontend", "icon": "react", "sublabel": "React single-page app",
-   "what": "The shop's web app.", "when": "Whenever a shopper browses or checks out.", "how": "A static build served by the edge proxy; it calls the Shop API."},
-  {"id": "edge", "label": "Edge proxy", "kind": "backend", "icon": "caddy", "sublabel": "Caddy, TLS",
-   "what": "Terminates TLS and routes requests.", "when": "Every request.", "how": "Serves the storefront and forwards /api to the Shop API."},
-  {"id": "api", "label": "Shop API", "kind": "backend", "icon": "fastapi", "sublabel": "FastAPI",
-   "what": "Catalogue, basket, checkout.", "when": "Every page that shows data.", "how": "Reads and writes the database; puts paid orders on the order queue."},
-  {"id": "accounts", "label": "Accounts and sign-in", "kind": "security", "icon": "key", "sublabel": "passwords hashed, sessions",
-   "what": "Who a shopper is.", "when": "Sign-in and checkout.", "how": "Part of the Shop API; keeps hashed passwords and session tokens."},
-  {"id": "db", "label": "Database", "kind": "database", "icon": "postgresql", "sublabel": "PostgreSQL",
-   "what": "Books, baskets, orders, accounts.", "when": "Always.", "how": "One schema; nightly backups."},
-  {"id": "queue", "label": "Order queue", "kind": "queue", "icon": "queue", "sublabel": "paid orders, in order",
-   "what": "Orders waiting to be fulfilled.", "when": "After a payment succeeds.", "how": "A table the worker claims from."},
-  {"id": "worker", "label": "Order worker", "kind": "backend", "icon": "box", "sublabel": "same image as the API",
-   "what": "Fulfils orders.", "when": "Each paid order.", "how": "Claims an order, books the delivery and sends the confirmation."},
-  {"id": "payments", "label": "Payment provider", "kind": "external", "icon": "building", "sublabel": "cards, refunds",
-   "what": "Takes the money.", "when": "Checkout and refunds.", "how": "The Shop API redirects to it and reads the result."},
-  {"id": "mail", "label": "Email service", "kind": "external", "icon": "alert", "sublabel": "order confirmations",
-   "what": "Sends emails.", "when": "Each fulfilled order.", "how": "The worker calls its API."},
-  {"id": "hosts", "label": "Hosts", "kind": "cloud", "icon": "docker", "sublabel": "Docker Compose, two servers",
-   "what": "Where it all runs.", "when": "Always.", "how": "One server for the web tier, one for the database."},
-  {"id": "github", "label": "GitHub", "kind": "external", "icon": "github", "sublabel": "code, CI, deploys",
-   "what": "Source and pipelines.", "when": "Every merge.", "how": "A merge to main builds the image and deploys it to the hosts."},
-  {"id": "grafana", "label": "Dashboards", "kind": "cloud", "icon": "grafana", "sublabel": "Grafana", "badge": "PROPOSED",
-   "what": "Metrics and logs in one place.", "when": "Not yet built.", "how": "Would read the API's and worker's metrics."}
+  {
+   "id": "shoppers",
+   "label": "Shoppers",
+   "kind": "frontend",
+   "icon": "users",
+   "sublabel": "browse, buy, track orders",
+   "what": "People who buy books on the site.",
+   "when": "Every visit.",
+   "how": "They use the storefront in a browser."
+  },
+  {
+   "id": "storefront",
+   "label": "Storefront",
+   "kind": "frontend",
+   "icon": "react",
+   "sublabel": "React single-page app",
+   "what": "The shop's web app.",
+   "when": "Whenever a shopper browses or checks out.",
+   "how": "A static build served by the edge proxy; it calls the Shop API."
+  },
+  {
+   "id": "edge",
+   "label": "Edge proxy",
+   "kind": "backend",
+   "icon": "caddy",
+   "sublabel": "Caddy, TLS",
+   "what": "Terminates TLS and routes requests.",
+   "when": "Every request.",
+   "how": "Serves the storefront and forwards /api to the Shop API."
+  },
+  {
+   "id": "api",
+   "label": "Shop API",
+   "kind": "backend",
+   "icon": "fastapi",
+   "sublabel": "FastAPI",
+   "what": "Catalogue, basket, checkout.",
+   "when": "Every page that shows data.",
+   "how": "Reads and writes the database; puts paid orders on the order queue."
+  },
+  {
+   "id": "accounts",
+   "label": "Accounts and sign-in",
+   "kind": "security",
+   "icon": "key",
+   "sublabel": "passwords hashed, sessions",
+   "what": "Who a shopper is.",
+   "when": "Sign-in and checkout.",
+   "how": "Part of the Shop API; keeps hashed passwords and session tokens."
+  },
+  {
+   "id": "db",
+   "label": "Database",
+   "kind": "database",
+   "icon": "postgresql",
+   "sublabel": "PostgreSQL",
+   "what": "Books, baskets, orders, accounts.",
+   "when": "Always.",
+   "how": "One schema; nightly backups."
+  },
+  {
+   "id": "queue",
+   "label": "Order queue",
+   "kind": "queue",
+   "icon": "queue",
+   "sublabel": "paid orders, in order",
+   "what": "Orders waiting to be fulfilled.",
+   "when": "After a payment succeeds.",
+   "how": "A table the worker claims from."
+  },
+  {
+   "id": "worker",
+   "label": "Order worker",
+   "kind": "backend",
+   "icon": "box",
+   "sublabel": "same image as the API",
+   "what": "Fulfils orders.",
+   "when": "Each paid order.",
+   "how": "Claims an order, books the delivery and sends the confirmation."
+  },
+  {
+   "id": "payments",
+   "label": "Payment provider",
+   "kind": "external",
+   "icon": "building",
+   "sublabel": "cards, refunds",
+   "what": "Takes the money.",
+   "when": "Checkout and refunds.",
+   "how": "The Shop API redirects to it and reads the result."
+  },
+  {
+   "id": "mail",
+   "label": "Email service",
+   "kind": "external",
+   "icon": "alert",
+   "sublabel": "order confirmations",
+   "what": "Sends emails.",
+   "when": "Each fulfilled order.",
+   "how": "The worker calls its API."
+  },
+  {
+   "id": "hosts",
+   "label": "Hosts",
+   "kind": "cloud",
+   "icon": "docker",
+   "sublabel": "Docker Compose, two servers",
+   "what": "Where it all runs.",
+   "when": "Always.",
+   "how": "One server for the web tier, one for the database."
+  },
+  {
+   "id": "github",
+   "label": "GitHub",
+   "kind": "external",
+   "icon": "github",
+   "sublabel": "code, CI, deploys",
+   "what": "Source and pipelines.",
+   "when": "Every merge.",
+   "how": "A merge to main builds the image and deploys it to the hosts."
+  },
+  {
+   "id": "grafana",
+   "label": "Dashboards",
+   "kind": "cloud",
+   "icon": "grafana",
+   "sublabel": "Grafana",
+   "badge": "PROPOSED",
+   "what": "Metrics and logs in one place.",
+   "when": "Not yet built.",
+   "how": "Would read the API's and worker's metrics."
+  }
  ],
  "edges": [
-  {"id": "e1", "from": "shoppers", "to": "edge", "label": "HTTPS"},
-  {"id": "e2", "from": "edge", "to": "storefront", "label": "serves"},
-  {"id": "e3", "from": "edge", "to": "api", "label": "/api"},
-  {"id": "e4", "from": "api", "to": "accounts", "label": "checks sessions"},
-  {"id": "e5", "from": "api", "to": "db", "label": "SQL"},
-  {"id": "e6", "from": "api", "to": "payments", "label": "checkout"},
-  {"id": "e7", "from": "api", "to": "queue", "label": "paid order"},
-  {"id": "e8", "from": "worker", "to": "queue", "label": "claims"},
-  {"id": "e9", "from": "worker", "to": "mail", "label": "confirmation"},
-  {"id": "e10", "from": "github", "to": "hosts", "label": "deploys", "style": "dashed"},
-  {"id": "e11", "from": "grafana", "to": "api", "label": "reads metrics", "style": "dashed"}
+  {
+   "id": "e1",
+   "from": "shoppers",
+   "to": "edge",
+   "label": "HTTPS"
+  },
+  {
+   "id": "e2",
+   "from": "edge",
+   "to": "storefront",
+   "label": "serves"
+  },
+  {
+   "id": "e3",
+   "from": "edge",
+   "to": "api",
+   "label": "/api"
+  },
+  {
+   "id": "e4",
+   "from": "api",
+   "to": "accounts",
+   "label": "checks sessions"
+  },
+  {
+   "id": "e5",
+   "from": "api",
+   "to": "db",
+   "label": "SQL"
+  },
+  {
+   "id": "e6",
+   "from": "api",
+   "to": "payments",
+   "label": "checkout"
+  },
+  {
+   "id": "e7",
+   "from": "api",
+   "to": "queue",
+   "label": "paid order"
+  },
+  {
+   "id": "e8",
+   "from": "worker",
+   "to": "queue",
+   "label": "claims"
+  },
+  {
+   "id": "e9",
+   "from": "worker",
+   "to": "mail",
+   "label": "confirmation"
+  },
+  {
+   "id": "e10",
+   "from": "github",
+   "to": "hosts",
+   "label": "deploys",
+   "style": "dashed"
+  },
+  {
+   "id": "e11",
+   "from": "grafana",
+   "to": "api",
+   "label": "reads metrics",
+   "style": "dashed"
+  }
  ],
  "views": [
-  {"id": "overview", "parent": null, "title": "Bookshop", "caption": "Everything that runs, with its technology. Double-click Shop API for the order flow.",
-   "nodeIds": ["shoppers", "edge", "storefront", "api", "accounts", "db", "queue", "worker", "payments", "mail", "hosts", "github", "grafana"]},
-  {"id": "api", "parent": "overview", "title": "An order, step by step", "caption": "From checkout to the confirmation email.",
-   "render": "sequence", "lanes": false, "nodeIds": ["shoppers", "api", "payments", "queue", "worker", "mail"],
-   "edges": [{"id": "s1", "from": "shoppers", "to": "api", "label": "checks out"}, "e6", "e7", "e8", "e9"]}
+  {
+   "id": "overview",
+   "parent": null,
+   "title": "Bookshop",
+   "caption": "Everything that runs, with its technology. Double-click Shop API for the order flow.",
+   "nodeIds": [
+    "shoppers",
+    "edge",
+    "storefront",
+    "api",
+    "accounts",
+    "db",
+    "queue",
+    "worker",
+    "payments",
+    "mail",
+    "hosts",
+    "github",
+    "grafana"
+   ]
+  },
+  {
+   "id": "api",
+   "parent": "overview",
+   "title": "An order, step by step",
+   "caption": "From checkout to the confirmation email.",
+   "render": "sequence",
+   "lanes": false,
+   "nodeIds": [
+    "shoppers",
+    "api",
+    "payments",
+    "queue",
+    "worker",
+    "mail"
+   ],
+   "edges": [
+    {
+     "id": "s1",
+     "from": "shoppers",
+     "to": "api",
+     "label": "checks out"
+    },
+    "e6",
+    "e7",
+    {
+     "id": "s2",
+     "from": "queue",
+     "to": "worker",
+     "label": "claimed by"
+    },
+    "e9"
+   ],
+   "tour": [
+    "shoppers",
+    "api",
+    "queue",
+    "worker",
+    "mail"
+   ]
+  }
  ]
 }

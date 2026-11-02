@@ -786,8 +786,8 @@
   const mapNodeW = n => {
     const px = n.emphasis ? 15 : 13;
     const sub = n.sub || n.sublabel || '';
-    return Math.min(n.emphasis ? 205 : 340, Math.max(n.emphasis ? 146 : 138,
-      Math.ceil(textW(n.label, px) + 72), n.badge ? Math.ceil(String(n.badge).length * 6.4 + 130) : 0, Math.min(340, Math.ceil(textW(sub, 10) + 24))));
+    return Math.min(n.emphasis ? 205 : 386, Math.max(n.emphasis ? 146 : 138,
+      Math.ceil(textW(n.label, px) + 70), n.badge ? Math.ceil(String(n.badge).length * 6.4 + 130) : 0, Math.min(386, Math.ceil(textW(sub, 10) + 70))));
   };
   /* Geometry: node boxes, ports, orthogonal routes, label slots. */
   function layoutGraph(dg, map) {
@@ -1194,10 +1194,11 @@
       const subject = opts.subject === n.id;
       const verbs = map && (n.verbs || []).length ? n.verbs : null;
       const subTxt = n.noSub ? '' : n.sub || (map && n.origin ? n.origin : '') || (map ? (n.what ? n.what.replace(/[`*]/g, '').split(/(?<=\.)\s/)[0] : KIND[n.k][1]) : '');
-      const sub2 = map && subTxt && !verbs && textW(subTxt, 10) > n.w - 24 && textW(n.label, n.emphasis ? 15 : 13) <= n.w - 30 ? wrap2(subTxt, 10, n.w - 24) : null;
-      const sub = subTxt && !verbs ? (sub2 ? sub2.join(' ') : clauseFit(subTxt, 10, n.w - 24)) : '';
+      const sw = map ? n.w - 70 : n.w - 24;  // map cards: text runs from 54 px in (after the mark) to 16 px from the right
+      const sub2 = map && subTxt && !verbs && textW(subTxt, 10) > sw && textW(n.label, n.emphasis ? 15 : 13) <= sw ? wrap2(subTxt, 10, sw) : null;
+      const sub = subTxt && !verbs ? (sub2 ? sub2.join(' ') : clauseFit(subTxt, 10, sw)) : '';
       const labelPx = n.emphasis ? 15 : 13;
-      const lw = n.w - 72;  // the mark (sigil, icon or logo tile) reaches 27 px in; the name keeps 36 px each side
+      const lw = map ? n.w - 70 : n.w - 72;  // the mark (sigil, icon or logo tile) reaches 27 px in; the name keeps 36 px each side
       const two = map && textW(n.label, labelPx) > lw ? wrap2(n.label, labelPx, lw) : null;
       const lpx = two ? labelPx : textW(n.label, labelPx) > lw ? Math.max(11, lw / (String(n.label).length * 0.6)) : labelPx;
       const ly = n.y + n.h / 2 + (sub || verbs ? -3 : 4) - (two ? 8 : 0) - (sub2 ? 6 : 0);
@@ -1210,12 +1211,12 @@
       else s += `<rect x="${n.x}" y="${n.y}" width="${n.w}" height="${n.h}" rx="${rx}" class="n-mask"/>
         <rect x="${n.x}" y="${n.y}" width="${n.w}" height="${n.h}" rx="${rx}" class="n-body" fill="${f}" stroke="${c}" ${removed || ext || planned ? 'stroke-dasharray="6 4"' : ''} ${removed ? 'opacity=".6"' : ''}/>`;
       s += `
-${(() => { const I = (D.icons || {})[n.icon], x = n.x + (verb ? 14 : hook ? 17 : 9), y = n.y + (priv ? 8 : 11);  // one 16 px box for every mark
-  return I && I.src ? `<rect x="${x - 2}" y="${y - 2}" width="20" height="20" rx="4" class="n-logo${I.dark ? ' dark' : ''}"/><image href="${I.src}" x="${x}" y="${y}" width="16" height="16"/>`
-    : I && I.g ? `<g transform="translate(${x} ${y}) scale(.6667)" class="n-sigil" fill="none" stroke="${c}" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round">${I.g}</g>`
-    : `<g transform="translate(${x} ${y})" class="n-sigil" fill="none" stroke="${c}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${SIGIL[n.k]}</g>`; })()}
-        <text x="${n.x + n.w / 2}" y="${ly}" text-anchor="middle" class="n-label" data-o="${esc(n.id)}" data-t="nl" style="font-size:${lpx.toFixed(1)}px" ${removed ? 'text-decoration="line-through"' : ''}>${two ? `<tspan x="${n.x + n.w / 2}">${esc(two[0])}</tspan><tspan x="${n.x + n.w / 2}" dy="15">${esc(two[1])}</tspan>` : esc(fit(n.label, lpx, lw))}</text>`;
-      if (sub) s += `<text x="${n.x + n.w / 2}" y="${ly + 16 + (two ? 15 : 0)}" text-anchor="middle" class="n-sub depth-read" data-o="${esc(n.id)}" data-t="ns">${sub2 ? `<tspan x="${n.x + n.w / 2}">${esc(sub2[0])}</tspan><tspan x="${n.x + n.w / 2}" dy="12">${esc(sub2[1])}</tspan>` : esc(sub)}</text>`;
+${(() => { const I = (D.icons || {})[n.icon], x = map ? n.x + 14 : n.x + (verb ? 14 : hook ? 17 : 9), y = map ? n.y + n.h / 2 - 14 : n.y + (priv ? 8 : 11), M = map ? 28 : 16;  // map: one 28 px mark, left, centred
+  return I && I.src ? `<rect x="${x - M * 3 / 28}" y="${y - M * 3 / 28}" width="${M * 34 / 28}" height="${M * 34 / 28}" rx="${M / 4}" class="n-logo${I.dark ? ' dark' : ''}"/><image href="${I.src}" x="${x}" y="${y}" width="${M}" height="${M}"/>`
+    : I && I.g ? `<g transform="translate(${x} ${y}) scale(${M / 24})" class="n-sigil" fill="none" stroke="${c}" stroke-width="${1.75 * 24 / M}" stroke-linecap="round" stroke-linejoin="round">${I.g}</g>`
+    : `<g transform="translate(${x} ${y}) scale(${M / 16})" class="n-sigil" fill="none" stroke="${c}" stroke-width="${1.75 * 16 / M}" stroke-linecap="round" stroke-linejoin="round">${SIGIL[n.k]}</g>`; })()}
+        <text x="${map ? n.x + 54 : n.x + n.w / 2}" y="${ly}" text-anchor="${map ? 'start' : 'middle'}" class="n-label" data-o="${esc(n.id)}" data-t="nl" style="font-size:${lpx.toFixed(1)}px" ${removed ? 'text-decoration="line-through"' : ''}>${two ? `<tspan x="${map ? n.x + 54 : n.x + n.w / 2}">${esc(two[0])}</tspan><tspan x="${map ? n.x + 54 : n.x + n.w / 2}" dy="15">${esc(two[1])}</tspan>` : esc(fit(n.label, lpx, lw))}</text>`;
+      if (sub) s += `<text x="${map ? n.x + 54 : n.x + n.w / 2}" y="${ly + 16 + (two ? 15 : 0)}" text-anchor="${map ? 'start' : 'middle'}" class="n-sub depth-read" data-o="${esc(n.id)}" data-t="ns">${sub2 ? `<tspan x="${map ? n.x + 54 : n.x + n.w / 2}">${esc(sub2[0])}</tspan><tspan x="${map ? n.x + 54 : n.x + n.w / 2}" dy="12">${esc(sub2[1])}</tspan>` : esc(sub)}</text>`;
       if (verbs) { // verb chips: the node's public surface, at a glance
         let vx = 0; const chips = [], maxW = n.w - 24;
         for (let i = 0; i < verbs.length; i++) {
@@ -1496,7 +1497,7 @@ ${(() => { const I = (D.icons || {})[n.icon], x = n.x + (verb ? 14 : hook ? 17 :
       } else {
         const own = geo.byId[a.o];
         if (own && (a.b.x < own.x + 1 || a.b.x + a.b.w > own.x + own.w - 1)) issues.push(`${where}: text "${a.txt}" overflows node "${own.label}"`);
-        if (own && geo.map && (a.t === 'nl' || a.t === 'ns') && hit(a.b, { x: own.x + 7, y: own.y + 9, w: 20, h: 20 }, 2)) issues.push(`${where}: text "${a.txt}" touches the mark on node "${own.label}"`);
+        if (own && geo.map && (a.t === 'nl' || a.t === 'ns') && hit(a.b, { x: own.x + 11, y: own.y + own.h / 2 - 17, w: 34, h: 34 }, 2)) issues.push(`${where}: text "${a.txt}" touches the mark on node "${own.label}"`);
         nodes.forEach(n => { if (n !== own && hit(a.b, R(n), -1)) issues.push(`${where}: text "${a.txt}" overlaps node "${n.label}"`); });
       }
     });

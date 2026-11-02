@@ -22,7 +22,9 @@ official brand marks on cards, and the script that fetches them, come from
 - A details panel per card: When to use, What it is, How it works and Behind the scenes, technology chips, and a
   badge (PROPOSED, TARGET, OFF ...) coloured by the status it names.
 - Icons on cards: a product's official logo on a white tile, or a line icon for what the card is (a person, a
-  server, a key), in one 16 px box where the kind sigil sits.
+  server, a key): one 28 px mark on the left of the card, with the name and sub-line beside it.
+- Tours: a view's `tour` (card ids in order, each pair joined by a line) sends a dot along the path every 8 s and
+  lights each card as it arrives.
 - A layout check: crossings, shared lines, labels on lines or box borders, text overflow, and names that touch a
   card's mark, per view.
 - Stills: every view as SVG and PNG, light by default, for documents and slides.
@@ -39,7 +41,7 @@ python3 umlimator.py check page.html --ignore right-to-left           # leave a 
 
 `model.json` follows `engine/references/schema.md` (§ Map model): shared `nodes` and `edges`, and `views` that each
 show a subset, with optional `containers` (zone boxes), `layout` ([col, row] per node), `render: "sequence"` for
-numbered run-order views, and inline view-local edges. `examples/bookshop.json` uses most of it.
+numbered run-order views, `tour` for a dot that rides a path, and inline view-local edges. `examples/bookshop.json` uses most of it.
 
 Kinds for architecture maps: `frontend` (client / UI), `backend` (service / API), `ai` (agent / model), `database`,
 `queue`, `security` (checks, secrets, identity), `cloud` (hosts, observability), `external` (outside the system),
@@ -77,7 +79,7 @@ python3 umlimator.py pin-icons                                # records each new
 
 The upstream files are copied unmodified, then `patches/apply.py` edits `engine/assets/template.html` at exact anchors
 (it stops if an anchor is missing, so an upstream change is never patched blind). The comments in `patches/apply.py`
-give the reason for each of its 31 patches; the main ones:
+give the reason for each of its 32 patches; the main ones:
 
 1. `external` keeps its architecture meaning in map mode; upstream it became "External skill" with an author tag.
 2. Architecture kinds get legend wording and appear in the legend.
@@ -90,8 +92,8 @@ give the reason for each of its 31 patches; the main ones:
 8. A view's `gap` and `rgap` set the space between columns and rows; `keepPairs` draws A→B and B→A as two lines; an
    edge's `fromSide` / `toSide` picks the sides its line uses.
 9. `#check=1&views=a,pic-*` checks only those views, so a large model's chosen pictures check in seconds.
-10. A node's `icon` draws a logo or a line icon in one 16 px box; every card keeps its name 36 px clear of the mark,
-    and the check reports a name that touches it.
+10. A node's `icon` draws a logo or a line icon as one 28 px mark on the left, centred vertically, with the name and
+    sub-line left-aligned beside it; the check reports a name that touches the mark.
 
 `render` skips upstream's layout search when every view already has a layout, and fails when the check did not
 complete instead of reporting no problems.
