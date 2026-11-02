@@ -2541,7 +2541,7 @@ ${(() => { const I = (D.icons || {})[n.icon], x = map ? n.x + 14 : n.x + (verb ?
     }
     if (Q.get('still')) { const sv = Q.get('still'), sc = +(Q.get('scale') || 2);
       const tick = async () => { if (!geo || !V[sv]) return setTimeout(tick, 100); if (cur !== sv) { await go(sv, {}); return setTimeout(tick, 200); }
-        const out = standalone(sc), b = geo.bounds; document.documentElement.setAttribute('data-still', JSON.stringify({ view: sv, w: Math.ceil(b.w * sc), h: Math.ceil(b.h * sc) }));
+        document.querySelectorAll('.flowline').forEach(e => e.remove()); const out = standalone(sc), b = geo.bounds; document.documentElement.setAttribute('data-still', JSON.stringify({ view: sv, w: Math.ceil(b.w * sc), h: Math.ceil(b.h * sc) }));
         document.body.innerHTML = '<div id="still">' + out + '</div>'; document.body.style.margin = '0'; };
       setTimeout(tick, 300); }
     function download(name, blob) { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500); }
