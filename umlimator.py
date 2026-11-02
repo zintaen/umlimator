@@ -158,7 +158,7 @@ def cmd_check(a):
     rep = json.loads(html.unescape(m.group(1)))
     ov = rep.get("overlaps", [])
     kinds = {"crossings": " cross", "labelOnLine": " lies on edge ", "rightToLeft": "right-to-left", "detours": "detour",
-             "nearNode": "passes within", "onMark": "touches the mark"}
+             "nearNode": "passes within", "onMark": "touches the mark", "shortLine": "leaves its line"}
     counts = {k: sum(t in o for o in ov) for k, t in kinds.items()}
     counts["other"] = len(ov) - sum(counts.values())
     # --ignore drops whole kinds from the report (pictures that keep a source drawing's own direction run lines right to left)
@@ -170,11 +170,35 @@ def cmd_check(a):
         sys.exit("check reported errors")
 
 
+DATA = re.compile(r'<script id="visual-data" type="application/json">(.*?)</script>', re.S)
+
+
 def views_of(page):
-    t = Path(page).read_text(encoding="utf-8")
-    m = re.search(r'<script id="visual-data" type="application/json">(.*?)</script>', t, re.S)
-    data = json.loads(m.group(1))
+    data = json.loads(DATA.search(Path(page).read_text(encoding="utf-8")).group(1))
     return [v["id"] for v in (data.get("views") or data.get("map", {}).get("views") or [])]
+
+
+def still_keys(page, opts):
+    """A key per view over everything its still is drawn from: the view, its cards, every line between them, the icons
+    they use, the size of each card's inner view (the ⤢ pill), the engine code and the export options. A view whose
+    key is unchanged since its last export draws the same still."""
+    t = Path(page).read_text(encoding="utf-8")
+    m = DATA.search(t)
+    data = json.loads(m.group(1))
+    engine = hashlib.sha256((t[:m.start()] + t[m.end():]).encode()).hexdigest()
+    views = data.get("views") or []
+    V, N = {v["id"]: v for v in views}, {n["id"]: n for n in data.get("nodes", [])}
+    icons = data.get("icons") or {}
+    keys = {}
+    for v in views:
+        ids = set(v.get("nodeIds") or [])
+        nodes = [N.get(i) for i in sorted(ids)]
+        lines = [e for e in data.get("edges", []) if e.get("from") in ids and e.get("to") in ids]
+        kids = {i: len((V.get((N.get(i) or {}).get("opensView") or i) or {}).get("nodeIds") or []) for i in sorted(ids)}
+        used = ({n.get("icon") for n in nodes if n} | {o.get("icon") for o in (v.get("nodeOverrides") or {}).values()}) - {None}
+        blob = json.dumps([v, nodes, lines, kids, {k: icons[k] for k in sorted(used) if k in icons}, engine, opts], sort_keys=True)
+        keys[v["id"]] = hashlib.sha256(blob.encode()).hexdigest()
+    return keys
 
 
 def cmd_stills(a):
@@ -182,8 +206,13 @@ def cmd_stills(a):
     page = Path(a.page).resolve()
     out = Path(a.out); out.mkdir(parents=True, exist_ok=True)
     views = a.views.split(",") if a.views else views_of(page)
-    done = []
+    keys = still_keys(page, [a.scale, a.theme, a.reader])
+    record = out / ".stills.json"  # each view's key at its last export
+    seen = json.loads(record.read_text()) if record.is_file() and not a.all else {}
+    done, skipped = [], []
     for v in views:
+        if seen.get(v) == keys.get(v) and (out / f"{v}.png").is_file() and (out / f"{v}.svg").is_file():
+            skipped.append(v); continue
         dom = headless(b, "--virtual-time-budget=20000", "--dump-dom", f"{page.as_uri()}#still={v}&scale={a.scale}&theme={a.theme}" + ("&reader=1" if a.reader else ""))
         meta = re.search(r'data-still="([^"]+)"', dom)
         svg = re.search(r'<div id="still">(<svg.*?</svg>)</div>', dom, re.S)
@@ -197,7 +226,10 @@ def cmd_stills(a):
         headless(b, f"--window-size={info['w']},{info['h']}", f"--screenshot={png}", Path(f.name).as_uri())
         Path(f.name).unlink()
         done.append({"view": v, "w": info["w"], "h": info["h"], "png": str(png)})
+        seen[v] = keys.get(v)
+        record.write_text(json.dumps(seen, indent=1, sort_keys=True))
     print(json.dumps(done, indent=1))
+    print(f"{len(done)} still(s) exported, {len(skipped)} unchanged and skipped (--all exports every view)", file=sys.stderr)
 
 
 def main():
@@ -206,13 +238,14 @@ def main():
     r = sub.add_parser("render"); r.add_argument("model"); r.add_argument("--out", required=True)
     r.add_argument("--no-check", action="store_true"); r.set_defaults(f=cmd_render)
     s = sub.add_parser("stills"); s.add_argument("page"); s.add_argument("--out", required=True)
-    s.add_argument("--views"); s.add_argument("--scale", type=int, default=2); s.add_argument("--theme", default="light", choices=["light", "dark"])
+    s.add_argument("--views"); s.add_argument("--scale", type=float, default=2); s.add_argument("--theme", default="light", choices=["light", "dark"])
     s.add_argument("--reader", action="store_true", help="reader copy: no CHECK tab, no drill-down pill (as stillsv.js)")
+    s.add_argument("--all", action="store_true", help="export every view, even one whose inputs are unchanged since its last export")
     s.set_defaults(f=cmd_stills)
     i = sub.add_parser("pin-icons", help="record each new brand mark's sha256 and move it out of icons/ into the cache"); i.set_defaults(f=cmd_pin_icons)
     c = sub.add_parser("check"); c.add_argument("page"); c.add_argument("--views", help="a,b,pic-* (a trailing * is a prefix)")
     c.add_argument("--timeout", type=int, default=600)
-    c.add_argument("--ignore", help="kinds left out of the report: right-to-left, crossings, labelOnLine, detours, nearNode, onMark (comma list)")
+    c.add_argument("--ignore", help="kinds left out of the report: right-to-left, crossings, labelOnLine, detours, nearNode, onMark, shortLine (comma list)")
     c.set_defaults(f=cmd_check)
     a = p.parse_args(); a.f(a)
 
