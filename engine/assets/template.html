@@ -1153,7 +1153,7 @@
         <text x="${g.x + 12}" y="${g.y + 16}" class="g-label" fill="${col(g.k)}">${esc(fit(g.label, 10, g.x2 - g.x - 24))}</text></g>`;
     });
     // tour (map): one ticket dot rides the view's loop; each stop pulses and each wire glows as it passes
-    const TOUR = 8, f2 = v => +Math.min(1, Math.max(0, v)).toFixed(4), tour = map && (geo.tour || []).length > 1 ? (() => {
+    const TOUR = 8, f2 = v => +Math.min(1, Math.max(0, v)).toFixed(4), tour = map && !Q.get('still') && (geo.tour || []).length > 1 ? (() => {
       const pts = [], legs = {}, at = {}, ends = [];
       for (let i = 0; i + 1 < geo.tour.length; i++) {
         const a = geo.tour[i], b = geo.tour[i + 1], k = edges.findIndex(e => (e.from === a && e.to === b) || (e.both && e.from === b && e.to === a));
@@ -2085,7 +2085,7 @@ ${(() => { const I = (D.icons || {})[n.icon], x = map ? n.x + 14 : n.x + (verb ?
         e.fixed = pts; e.lbl = text ? { x: c.ax - 26 - w, y: yc - 10, w, h: 20, text, step: null, tag: !!tag } : null;
         comb.push(e);
       });
-      return layoutGraph({ nodeH: NH, abs: true, nodes: nodesOut, edges: [...comb, ...others], lanes, blocks, laneGap: 24, repair, hub }, true);
+      return layoutGraph({ nodeH: NH, abs: true, nodes: nodesOut, edges: [...comb, ...others], lanes, blocks, laneGap: 24, repair, hub, tour: V[vid].tour }, true);
     }
     /* crossing-minimising local search over rows and sides; `visual.py render` bakes the result into the page */
     function scoreGeo(g) {
