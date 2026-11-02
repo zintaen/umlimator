@@ -25,8 +25,10 @@ official brand marks on cards, and the script that fetches them, come from
   server, a key): one 28 px mark on the left of the card, with the name and sub-line beside it.
 - Tours: a view's `tour` (card ids in order, each pair joined by a line) sends a dot along the path every 8 s and
   lights each card as it arrives.
-- A layout check: crossings, shared lines, labels on lines or box borders, text overflow, and names that touch a
-  card's mark, per view.
+- Room for labels: a gap between two columns widens to fit the widest label crossing it, with 27 px of line on each
+  side, so a label never swallows its arrow.
+- A layout check: crossings, shared lines, labels on lines or box borders, text overflow, names that touch a card's
+  mark, and labels that leave too little of their own line, per view.
 - Stills: every view as SVG and PNG, light by default, for documents and slides.
 
 ## Use
@@ -34,10 +36,14 @@ official brand marks on cards, and the script that fetches them, come from
 ```bash
 python3 umlimator.py render examples/bookshop.json --out page.html   # the interactive page, then its check report
 python3 umlimator.py stills page.html --out stills/                   # stills/<view>.svg and .png for every view
-python3 umlimator.py stills page.html --out stills/ --views overview,api --scale 2 --theme light --reader
+python3 umlimator.py stills page.html --out stills/ --views overview,api --scale 1.5 --theme light --reader
 python3 umlimator.py check page.html --views 'pic-*'                   # the layout check on chosen views (a trailing * is a prefix)
 python3 umlimator.py check page.html --ignore right-to-left           # leave a whole kind of finding out of the report
 ```
+
+`stills` skips a view whose inputs are unchanged since its last export (its cards, lines, icons, the engine and
+the options; recorded in `<out>/.stills.json`); `--all` exports every view. `--scale` takes fractions: 1.5 is plenty
+for a picture a wiki shows at page width.
 
 `model.json` follows `engine/references/schema.md` (§ Map model): shared `nodes` and `edges`, and `views` that each
 show a subset, with optional `containers` (zone boxes), `layout` ([col, row] per node), `render: "sequence"` for
@@ -79,7 +85,7 @@ python3 umlimator.py pin-icons                                # records each new
 
 The upstream files are copied unmodified, then `patches/apply.py` edits `engine/assets/template.html` at exact anchors
 (it stops if an anchor is missing, so an upstream change is never patched blind). The comments in `patches/apply.py`
-give the reason for each of its 32 patches; the main ones:
+give the reason for each of its 34 patches; the main ones:
 
 1. `external` keeps its architecture meaning in map mode; upstream it became "External skill" with an author tag.
 2. Architecture kinds get legend wording and appear in the legend.

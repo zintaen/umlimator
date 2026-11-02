@@ -802,8 +802,14 @@
     const cols = dg.abs ? [] : [...new Set(nodes.map(n => n.col))].sort((a, b) => a - b);
     const colX = {}, colW = {}; let x = 0;
     cols.forEach(c => { colW[c] = Math.max(...nodes.filter(n => n.col === c).map(n => n.w)); });
-    for (let c = Math.floor(cols[0] ?? 0); c <= Math.ceil(cols[cols.length - 1] ?? 0); c++) { colX[c] = x; x += (colW[c] || NW) + CG; }
-    const cx = c => Number.isInteger(c) ? colX[c] : colX[Math.floor(c)] + (c % 1) * ((colW[Math.floor(c)] || NW) + CG);
+    // a labelled line between neighbouring columns gets a gap wide enough for its label and 27 px of line on each side
+    const gapAfter = {}, colOf = {}, boxOf = id => ((dg.containers || []).filter(f => (f.nodeIds || []).includes(id)).pop() || {}).id; if (map && !dg.abs) { nodes.forEach(n => colOf[n.id] = n.col);
+      (dg.edges || []).forEach(e => { const p = colOf[e.from], q = colOf[e.to]; if (p == null || q == null || !e.label || Math.abs(p - q) !== 1) return;
+        const c = Math.min(p, q), w = textW(fit(e.label, 10.5, 440), 10.5) * .92 + 18 + (e.step != null ? 20 : 0);
+        gapAfter[c] = Math.max(gapAfter[c] || 0, w + 54 + (boxOf(e.from) !== boxOf(e.to) ? 48 : 0)); }); }
+    const gap = c => Math.max(CG, gapAfter[c] || 0);
+    for (let c = Math.floor(cols[0] ?? 0); c <= Math.ceil(cols[cols.length - 1] ?? 0); c++) { colX[c] = x; x += (colW[c] || NW) + gap(c); }
+    const cx = c => Number.isInteger(c) ? colX[c] : colX[Math.floor(c)] + (c % 1) * ((colW[Math.floor(c)] || NW) + gap(Math.floor(c)));
     if (dg.abs) nodes.forEach(n => { n.x = n.ax; n.y = n.ay; if (map && n.k === 'm-script') { n.h -= 22; n.y += 11; } });
     else nodes.forEach(n => { n.x = cx(n.col) + ((colW[n.col] || n.w) - n.w) / 2; n.y = n.row * pitch; if (map && n.k === 'm-script') { n.h = NH - 22; n.y += 11; } });
     // decorations hanging on a node's top/bottom border (kind tab, step badge, ⤢ badge, author name tag):
@@ -1502,6 +1508,15 @@ ${(() => { const I = (D.icons || {})[n.icon], x = map ? n.x + 14 : n.x + (verb ?
       }
     });
     issues.push(...routeAudit(geo, where));
+    if (geo.map) geo.edges.forEach(e => { const L = e.lbl; if (!L || !e.label || !e.pts) return; // a label must leave some of its own line visible
+      const c = [L.x + L.w / 2, L.y + L.h / 2], P = e.pts; let s = 0, at = null, half = 0, tot = 0;
+      for (let i = 0; i + 1 < P.length; i++) { const a = P[i], b = P[i + 1], len = Math.abs(b[0] - a[0]) + Math.abs(b[1] - a[1]);
+        if (at == null) { const onH = a[1] === b[1] && Math.abs(c[1] - a[1]) < 2 && c[0] >= Math.min(a[0], b[0]) - 1 && c[0] <= Math.max(a[0], b[0]) + 1;
+          const onV = a[0] === b[0] && Math.abs(c[0] - a[0]) < 2 && c[1] >= Math.min(a[1], b[1]) - 1 && c[1] <= Math.max(a[1], b[1]) + 1;
+          if (onH || onV) { at = tot + Math.abs(c[0] - a[0]) + Math.abs(c[1] - a[1]); half = onH ? L.w / 2 : L.h / 2; } }
+        tot += len; }
+      if (at == null) return; const room = Math.min(at - half, tot - at - half);
+      if (room < 16) issues.push(`${where}: label "${e.label}" leaves its line ${Math.max(0, Math.round(room))} px (${e.s.label}→${e.t.label})`); });
     const els = T.filter(a => a.t === 'el');
     for (let i = 0; i < els.length; i++) for (let j = i + 1; j < els.length; j++) if (hit(els[i].b, els[j].b, -1)) issues.push(`${where}: edge labels "${els[i].txt}" and "${els[j].txt}" overlap`);
     return issues;
