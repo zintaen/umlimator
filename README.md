@@ -126,6 +126,7 @@ const map = render(document.getElementById('map'), model, {
   on: { select: e => showDetails(e.target), open: e => { e.preventDefault(); router.push(e.view); } },
 });
 map.update(nextModel);   // redraws only views whose cards or lines changed; keeps view, camera and selection
+render(el, model, { editable: true, on: { change: c => { model = myApply(model, c); map.update(model); } } });
 map.destroy();
 ```
 
@@ -135,11 +136,13 @@ into inner views, pan and zoom, and events for every card, line, container and c
 (defaults in `lib/umlimator-theme.css`; set them on any ancestor, light or dark as the host decides), fonts are the
 host's (`--um-sans`, `--um-mono`), text is measured in that font, and nothing is fetched. `mountPage` is the whole viewer that
 `umlimator.py render` writes. The API, its types and the reasons behind it: [docs/module-api.md](docs/module-api.md),
-`lib/umlimator.d.ts`. Install from git: `"umlimator": "github:zintaen/umlimator#<tag>"`.
+`lib/umlimator.d.ts`. With `editable`, gestures (add, rename, move into a container, delete, reorder, connect) emit
+`change` events and change nothing themselves: the host applies them to its own data and calls `update`
+([docs/editing.md](docs/editing.md); `examples/edit.html` is a working host, served over HTTP). Install from git: `"umlimator": "github:zintaen/umlimator#<tag>"`.
 
 ```bash
 node --test               # layout(): the benchmark views' geometry, ids, repair flag (no browser)
-python3 tests/embed.py    # render() embedded in a plain page, in headless Chrome: events, update, destroy
+python3 tests/embed.py    # render() in headless Chrome, imported over local HTTP: events, update, colours, editing
 ```
 
 ## Benchmarks

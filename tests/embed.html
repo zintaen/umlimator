@@ -1,14 +1,16 @@
 <!doctype html>
-<!-- render() embedded in a plain page, as a host would: tests/embed.py inlines lib/umlimator.js and the example model,
-     opens this in headless Chrome and reads the result from <pre id="result">. -->
+<!-- render() embedded in a plain page, as a host would: tests/embed.py serves the repository over HTTP, opens this in
+     headless Chrome (it imports lib/umlimator.js as an ES module) and reads the result from <pre id="result">. -->
 <meta charset="utf-8">
+<link rel="icon" href="data:,">
 <title>umlimator embed test</title>
 <body style="margin:0">
 <div id="a" style="width:1000px;height:700px"></div>
 <div id="b" style="width:600px;height:400px"></div>
 <script type="module">
-/*__UMLIMATOR_LIB__*/
-const MODEL = /*__MODEL__*/null;
+import { render, layout } from '../lib/umlimator.js';
+const MODEL = await (await fetch('../examples/bookshop.json')).json();
+const loaded = performance.getEntriesByType('resource').length; // the module and the model; nothing after this
 const out = { ok: [], fail: [] };
 const check = (name, cond, info) => { if (cond) out.ok.push(name); else out.fail.push(name + (info === undefined ? '' : ': ' + JSON.stringify(info))); };
 const wait = ms => new Promise(r => setTimeout(r, ms));
@@ -101,7 +103,7 @@ try {
   const est = layout(thin, 'v').nodes[0].w;
   check('text is measured in the host font', cardW('serif') < est && cardW('serif') !== cardW('monospace'), [cardW('serif'), cardW('monospace'), est]);
   check('measure: false keeps the font-independent estimate', cardW('serif', { measure: false }) === est);
-  check('makes no network requests', performance.getEntriesByType('resource').length === 0, performance.getEntriesByType('resource').map(r => r.name));
+  check('makes no network requests', performance.getEntriesByType('resource').length === loaded, performance.getEntriesByType('resource').slice(loaded).map(r => r.name));
 } catch (e) { out.fail.push('threw: ' + (e && e.stack || e)); }
 const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
 </script>

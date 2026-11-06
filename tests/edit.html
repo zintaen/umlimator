@@ -1,0 +1,114 @@
+<!doctype html>
+<!-- Editing in headless Chrome (tests/embed.py): every gesture, driven by synthetic pointer and key events, must emit the
+     exact `change` and must not change the picture until the host calls update(). -->
+<meta charset="utf-8">
+<link rel="icon" href="data:,">
+<title>umlimator edit test</title>
+<body style="margin:0">
+<div id="m" style="width:1000px;height:640px"></div>
+<script type="module">
+import { render } from '../lib/umlimator.js';
+const out = { ok: [], fail: [] };
+const check = (name, cond, info) => { if (cond) out.ok.push(name); else out.fail.push(name + (info === undefined ? '' : ': ' + JSON.stringify(info))); };
+const wait = ms => new Promise(r => setTimeout(r, ms));
+const MODEL = {
+  nodes: [{ id: 'a', label: 'Gateway', kind: 'frontend', verbs: ['get', 'put', 'list'] }, { id: 'b', label: 'Orders', kind: 'backend' },
+    { id: 'c', label: 'Billing', kind: 'backend' }, { id: 'd', label: 'Audit', kind: 'backend' }],
+  edges: [{ id: 'ab', from: 'a', to: 'b', label: 'calls' }, { id: 'ac', from: 'a', to: 'c' }, { id: 'ad', from: 'a', to: 'd' }],
+  views: [{ id: 'v', nodeIds: ['a', 'b', 'c', 'd'], containers: [{ id: 'box', label: 'Core', nodeIds: ['b', 'c'] }] }] };
+const el = document.getElementById('m');
+let sr, stage, ev = [];
+const pick = s => sr.querySelector(s);
+const centre = s => { const r = pick(s).getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; };
+const ptr = (target, type, [x, y], extra = {}) => target.dispatchEvent(new PointerEvent(type, { clientX: x, clientY: y, button: 0, pointerId: 7, pointerType: 'mouse', bubbles: true, composed: true, ...extra }));
+const key = (k, extra = {}, target = stage) => target.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true, composed: true, ...extra }));
+const click = s => { const g = pick(s), at = centre(s); ptr(g, 'pointerdown', at); ptr(g, 'pointerup', at); g.dispatchEvent(new MouseEvent('click', { clientX: at[0], clientY: at[1], bubbles: true, composed: true })); }; // as a press, then a click
+const drag = (from, to) => { const g = pick(from); ptr(g, 'pointerdown', centre(from)); const a = centre(from);
+  for (let i = 1; i <= 4; i++) ptr(stage, 'pointermove', [a[0] + (to[0] - a[0]) * i / 4, a[1] + (to[1] - a[1]) * i / 4]); ptr(stage, 'pointerup', to); };
+const bodyAt = id => ['x', 'y'].map(k => +pick(`.node[data-id="${id}"] .n-body`).getAttribute(k));
+const last = () => ev[ev.length - 1];
+const strip = c => { const { id, ...rest } = c; return rest; };
+const mount = opts => { el.innerHTML = ''; ev = []; const h = render(el, MODEL, { on: { change: c => ev.push(c) }, ...opts }); sr = el.querySelector('.umlimator').shadowRoot; stage = pick('.stage'); return h; };
+try {
+  // read-only by default
+  let h = mount({});
+  click('.node[data-id="a"] .n-label'); key('Delete'); key('F2'); key('n');
+  check('read-only: no handles, editor or add button, and no change events', !pick('.um-handle') && !pick('.um-rename') && !pick('[data-z="add"]') && ev.length === 0, ev);
+  h.destroy();
+
+  h = mount({ editable: true });
+  const before = ['a', 'b', 'c', 'd'].map(bodyAt);
+  click('.node[data-id="a"] .n-label');
+  check('a selected card shows the connect handle; the controls get an add button', !!pick('.um-handle') && !!pick('[data-z="add"]'));
+
+  // rename in place
+  key('F2');
+  const inp = pick('.um-rename');
+  check('F2 opens a field holding the name', !!inp && inp.value === 'Gateway', inp && inp.value);
+  inp.value = 'API gateway'; key('Enter', {}, inp);
+  check('Enter commits a rename', JSON.stringify(strip(last())) === JSON.stringify({ view: 'v', op: 'rename', target: { type: 'node', id: 'a', view: 'v' }, label: 'API gateway' }) && /^c/.test(last().id), last());
+  check('the picture waits for the host', pick('.node[data-id="a"] .n-label').textContent.includes('Gateway') && !pick('.node[data-id="a"] .n-label').textContent.includes('API'));
+  key('F2'); pick('.um-rename').value = 'nope'; key('Escape', {}, pick('.um-rename'));
+  check('Escape cancels a rename', ev.length === 1 && !pick('.um-rename'), ev.length);
+
+  // delete: Delete only, never Backspace (which goes up a level)
+  click('.node[data-id="d"] .n-label'); key('Backspace');
+  check('Backspace does not delete', ev.length === 1, ev.length);
+  click('.node[data-id="d"] .n-label'); key('Delete');
+  check('Delete deletes the selection', JSON.stringify(strip(last())) === JSON.stringify({ view: 'v', op: 'delete', target: { type: 'node', id: 'd', view: 'v' } }), last());
+
+  // chips: Delete and Alt + arrows act on the clicked chip
+  click('.node[data-id="a"] text[data-chip="0"]'); key('ArrowRight', { altKey: true });
+  check('Alt + → moves a chip along its list', JSON.stringify(strip(last())) === JSON.stringify({ view: 'v', op: 'reorder', target: { type: 'chip', node: 'a', index: 0, value: 'get', view: 'v' }, index: 1 }), last());
+  key('Delete');
+  check('Delete on a clicked chip deletes the chip', last().op === 'delete' && last().target.type === 'chip' && last().target.index === 0, last());
+
+  // reorder a card among its column (Alt + ↓), then the host accepts it without changing its data
+  click('.node[data-id="b"] .n-label');
+  const yb = bodyAt('b')[1], yc = bodyAt('c')[1];
+  key('ArrowDown', { altKey: true });
+  check('Alt + ↓ reorders a card among its column, with a hint', last().op === 'reorder' && last().target.id === 'b' && last().index === 1 && Number.isFinite(last().hint.row), last());
+  check('nothing moves before the host answers', bodyAt('b')[1] === yb);
+  h.update(structuredClone(MODEL));
+  check('accepted, the card takes its new place; the others keep theirs', bodyAt('b')[1] > bodyAt('c')[1] && bodyAt('a')[0] === before[0][0], [bodyAt('b'), bodyAt('c')]);
+
+  // drag a card into a container, and out of one
+  const n0 = ev.length;
+  drag('.node[data-id="a"]', centre('.family[data-family="box"] .family-title'));
+  check('dragging a card into a box emits move to the box, with a hint', last().op === 'move' && last().target.id === 'a' && last().to === 'box' && Number.isFinite(last().hint.x), last());
+  check('a faint ghost stays at the drop until the host answers', !!pick('.um-ghost.um-pending') && bodyAt('a')[0] === before[0][0]);
+  const far = (() => { const r = stage.getBoundingClientRect(); return [r.x + 30, r.y + r.height - 30]; })();
+  drag('.node[data-id="b"]', far);
+  check('dragging a card out of its box emits move to null', last().op === 'move' && last().target.id === 'b' && last().to === null, last());
+  check('a drag is not a click', ev.length === n0 + 2 && h.selection && h.selection.id === 'b', [ev.length - n0, h.selection]);
+
+  // connect: drag the handle of a selected card to another card
+  click('.node[data-id="c"] .n-label');
+  const hd = pick('.um-handle circle'), hp = centre('.um-handle circle');
+  ptr(hd, 'pointerdown', hp); ptr(stage, 'pointermove', centre('.node[data-id="d"] .n-label')); ptr(stage, 'pointerup', centre('.node[data-id="d"] .n-label'));
+  check('dragging the handle to a card adds a line', JSON.stringify(strip(last())) === JSON.stringify({ view: 'v', op: 'add', kind: 'edge', from: 'c', to: 'd' }), last());
+
+  // add a card: N names it at the centre; Alt + double-click names it where clicked
+  key('n'); const nin = pick('.um-rename');
+  check('N opens an empty name field', !!nin && nin.value === '');
+  nin.value = 'Cache'; key('Enter', {}, nin);
+  const add = last();
+  check('naming it emits add, with a hint and no id for the card (the host chooses)', add.op === 'add' && add.kind === 'node' && add.label === 'Cache' && Number.isFinite(add.hint.col) && !('node' in add), add);
+  const placed = ['a', 'b', 'c', 'd'].map(bodyAt);
+  const m2 = structuredClone(MODEL); m2.nodes.push({ id: 'e', label: 'Cache' }); m2.views[0].nodeIds.push('e');
+  h.update(m2);
+  check('the host adds it: the new card is selected, and no other card moves', h.selection && h.selection.id === 'e' && JSON.stringify(['a', 'b', 'c', 'd'].map(bodyAt)) === JSON.stringify(placed), [h.selection, placed, ['a', 'b', 'c', 'd'].map(bodyAt)]);
+  const sp = (() => { const r = stage.getBoundingClientRect(); return [r.x + r.width - 40, r.y + 40]; })();
+  stage.dispatchEvent(new MouseEvent('dblclick', { clientX: sp[0], clientY: sp[1], altKey: true, bubbles: true, composed: true }));
+  check('Alt + double-click on empty space opens a name field there', !!pick('.um-rename'));
+  key('Escape', {}, pick('.um-rename'));
+  h.destroy();
+
+  // only some operations
+  h = mount({ editable: { rename: true } });
+  click('.node[data-id="a"] .n-label'); key('Delete'); key('n');
+  check('editable: {rename} offers only renaming', !pick('.um-handle') && !pick('[data-z="add"]') && ev.length === 0 && (key('F2'), !!pick('.um-rename')), ev);
+  h.destroy();
+} catch (e) { out.fail.push('threw: ' + (e && e.stack || e)); }
+const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
+</script>
