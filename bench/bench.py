@@ -7,12 +7,13 @@
   python3 bench/bench.py --save                   # also write bench/results/<date>-<commit>.json
   python3 bench/bench.py --check-determinism      # fail if two page loads lay any view out differently
   python3 bench/bench.py --max-ms m50=1000        # fail if a view of m50 takes longer (plan + layout, median)
+  python3 bench/bench.py --expect bench/results/X.json   # fail if a view's geometry differs from that run's
 
 Per view, the median of --runs runs, each with fresh caches (patch 30 in patches/apply.py): plan is lane planning
 (planOf; a hub view tries lane orders), place is everything before routing, route the first routing and the reorder
-pass, repair the port-repair loop (rounds, and full re-routes it ran), total is plan + layout. issues is what the
+pass, repair the port-repair loop (rounds, and the port swaps it tried), total is plan + layout. issues is what the
 layout check's route audit finds; hash is the geometry, the same on every run unless the output is nondeterministic.
-A view that does not finish within --timeout seconds is reported as a timeout.
+A view that does not finish within --timeout seconds, or that repairs although it says `repair: false`, fails the run.
 """
 import argparse, datetime, html, importlib.util, json, re, statistics, subprocess, sys, tempfile
 from pathlib import Path
@@ -75,6 +76,7 @@ def main():
     p.add_argument("--save", action="store_true")
     p.add_argument("--check-determinism", action="store_true")
     p.add_argument("--max-ms", default="", help="model=ms,...: fail when a view's median total exceeds it")
+    p.add_argument("--expect", help="a results file (--save): fail when a view it lists lays out differently")
     a = p.parse_args()
     binary = visual.find_chrome() or sys.exit("bench needs Google Chrome or Chromium")
     paths = sorted((HERE / "models").glob("*.json")) + [ROOT / "examples" / "bookshop.json"]
@@ -82,6 +84,7 @@ def main():
         want = a.models.split(",")
         paths = [q for q in paths if q.stem in want]
     limits = {k: float(v) for k, v in (x.split("=") for x in a.max_ms.split(",") if x)}
+    expect = json.loads(Path(a.expect).read_text())["results"] if a.expect else {}
     results, failed = {}, []
     print(f"{'model/view':24} {'n':>3} {'e':>4} {'plan':>8} {'place':>7} {'route':>8} {'repair':>9} {'rnd':>4} {'rr':>5} "
           f"{'total ms':>9} {'iss':>4}  hash")
@@ -101,6 +104,10 @@ def main():
                 print(f"{key:24} {s['nodes']:>3} {s['edges']:>4} {s['plan']:>8} {s['place']:>7} {s['route']:>8} {s['repair']:>9} "
                       f"{s['rounds']:>4} {s['reroutes']:>5} {s['total']:>9} {s['issues']:>4}  {','.join(s['hashes'])}"
                       + (f"  optimize {s['optimize']['ms']} ms / {s['optimize']['evals']} evals" if "optimize" in s else ""))
+                if v.get("repair") is False and s["rounds"]:
+                    failed.append(f"{key}: says repair: false but ran {s['rounds']} repair round(s)")
+                if key in expect and "hashes" in expect[key] and s["hashes"] != expect[key]["hashes"]:
+                    failed.append(f"{key}: geometry {s['hashes']} differs from {a.expect} ({expect[key]['hashes']})")
                 if len(s["hashes"]) > 1:
                     failed.append(f"{key}: runs disagree ({s['hashes']})")
                 if a.check_determinism:

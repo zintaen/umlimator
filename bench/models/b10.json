@@ -168,6 +168,23 @@
     "n08",
     "n09"
    ]
+  },
+  {
+   "id": "norepair",
+   "title": "10 nodes, no port repair",
+   "nodeIds": [
+    "n00",
+    "n01",
+    "n02",
+    "n03",
+    "n04",
+    "n05",
+    "n06",
+    "n07",
+    "n08",
+    "n09"
+   ],
+   "repair": false
   }
  ]
 }
