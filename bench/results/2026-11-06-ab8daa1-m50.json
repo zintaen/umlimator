@@ -1,0 +1,11 @@
+{
+ "commit": "ab8daa1",
+ "dirty": false,
+ "runs": 1,
+ "chrome": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+ "results": {
+  "m50/overview": {
+   "timeout": 1800
+  }
+ }
+}
