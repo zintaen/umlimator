@@ -1,0 +1,67 @@
+// Types for lib/umlimator.js (hand-written; the module is plain JavaScript). docs/module-api.md explains the API.
+
+/** A map model: engine/references/schema.md § Map model, plus the README's umlimator fields. Never mutated. */
+export interface MapModel {
+  title?: string;
+  root?: string;
+  nodes: MapNode[];
+  edges?: MapEdge[];
+  views: MapView[];
+  icons?: Record<string, { g?: string; src?: string; dark?: boolean }>;
+  authors?: Record<string, { name?: string; url?: string; avatar?: string }>;
+  [key: string]: unknown;
+}
+export interface MapNode { id: string; label?: string; kind?: string; sublabel?: string; badge?: string; icon?: string; verbs?: string[]; opensView?: string; [key: string]: unknown }
+export interface MapEdge { id?: string; from: string; to: string; label?: string; [key: string]: unknown }
+export interface MapView {
+  id: string; parent?: string | null; title?: string; nodeIds: string[];
+  edges?: (string | MapEdge)[]; layout?: Record<string, [number, number]>; repair?: boolean;
+  containers?: { id: string; label?: string; nodeIds?: string[]; parent?: string }[];
+  [key: string]: unknown;
+}
+
+/** What a click or selection is about, named by ids from the model. An edge without an id is "<from>-><to>#<n>". */
+export type Ref =
+  | { type: 'node'; id: string; view: string }
+  | { type: 'edge'; ids: string[]; view: string }          // one drawn line can stand for several model edges
+  | { type: 'container'; id: string; view: string }
+  | { type: 'chip'; node: string; index: number; value: string; view: string };
+
+export interface Events {
+  click: { target: Ref; event: MouseEvent };
+  select: { target: Ref | null };                           // a chip selects its card
+  open: { target: Ref; view: string; preventDefault(): void };
+  viewchange: { view: string; from: string };
+}
+
+export interface RenderOptions {
+  view?: string;                 // default: model.root, else the view with no parent
+  select?: Ref | null;
+  controls?: boolean;            // up / zoom / fit / 1:1 / flow buttons (default true)
+  minimap?: boolean;             // default false
+  flow?: boolean;                // animated flow along lines (default: on unless prefers-reduced-motion)
+  on?: { [K in keyof Events]?: (e: Events[K]) => void };
+}
+
+export interface Handle {
+  update(model: MapModel): void;
+  setView(id: string): Promise<void> | void;
+  select(ref: Ref | null): void;
+  fit(): void;
+  on<K extends keyof Events>(type: K, fn: (e: Events[K]) => void): () => void;
+  readonly view: string | null;
+  readonly selection: Ref | null;
+  destroy(): void;
+}
+
+export interface Geometry {
+  nodes: { id: string; x: number; y: number; w: number; h: number; [key: string]: unknown }[];
+  edges: { from: string; to: string; ids: string[]; pts: [number, number][]; lbl: { x: number; y: number; w: number; h: number; text: string } | null; [key: string]: unknown }[];
+  bounds: { x: number; y: number; w: number; h: number };
+  [key: string]: unknown;
+}
+
+export function render(container: HTMLElement, model: MapModel, options?: RenderOptions): Handle;
+export function layout(model: MapModel, viewId: string, options?: { repair?: boolean }): Geometry;
+/** The whole standalone viewer (top bar, views list, details panel, search, export) that umlimator.py writes. */
+export function mountPage(container: HTMLElement, model: MapModel, options?: { params?: URLSearchParams; instant?: boolean }): Handle;

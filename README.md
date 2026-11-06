@@ -6,7 +6,8 @@ Layered, animated architecture maps you can click through, plus still pictures o
 cannot run a web page (a wiki such as Confluence, a slide deck). One JSON model in, one self-contained HTML page out.
 
 umlimator is built on the `/visual` skill of [super-board](https://github.com/EricTechPro/super-board) by Eric Tech:
-its renderer, viewer and layout check are copied unmodified and then patched (see [Credits](#credits)). The idea of
+its renderer, viewer and layout check began as a copy and are now umlimator's own module, `lib/umlimator.js`, which
+any page can embed (see [Embed](#embed) and [Credits](#credits)). The idea of
 official brand marks on cards, and the script that fetches them, come from
 [stack-diagram](https://github.com/caru-ini/stack-diagram) by caru-ini.
 
@@ -84,9 +85,9 @@ python3 umlimator.py pin-icons                                # records each new
 
 ## What was changed from super-board, and why
 
-The upstream files are copied unmodified, then `patches/apply.py` edits `engine/assets/template.html` at exact anchors
-(it stops if an anchor is missing, so an upstream change is never patched blind). The comments in `patches/apply.py`
-give the reason for each of its 40 patches; the main ones:
+Until November 2026 umlimator patched super-board's template at exact anchors (`patches/apply.py`; its comments give
+the reason for each of the 40 patches and stay in the git history). The engine then moved into an ES module,
+`lib/umlimator.js`, which anchored patches cannot express, so it is now umlimator's own code. The main changes:
 
 1. `external` keeps its architecture meaning in map mode; upstream it became "External skill" with an author tag.
 2. Architecture kinds get legend wording and appear in the legend.
@@ -112,9 +113,31 @@ complete instead of reporting no problems.
 Model fields umlimator adds: a node's `badge`, `icon` and `noSub` (name only, description in the panel); a view's
 `gap`, `rgap`, `keepPairs` and `repair` (`false`: no port repair); an edge's `fromSide` and `toSide`.
 
-The engine is super-board commit `d0b7d5a` (29 Oct 2026). To take a newer upstream version: copy
-`skills/visual/assets/template.html`, `scripts/visual.py` and `references/` into `engine/`, run
-`python3 -I patches/apply.py`, then render `examples/` and compare.
+The engine derives from super-board commit `d0b7d5a` (29 Oct 2026). `engine/scripts/visual.py` and
+`engine/references/` are still upstream's, unmodified, and CI checks that they are. CI also warns weekly when
+super-board changes its template, so a fix there can be ported into `lib/umlimator.js` by hand.
+
+## Embed
+
+```js
+import { render } from 'umlimator';   // lib/umlimator.js: one ES module, no dependencies, no build step
+const map = render(document.getElementById('map'), model, {
+  on: { select: e => showDetails(e.target), open: e => { e.preventDefault(); router.push(e.view); } },
+});
+map.update(nextModel);   // redraws only views whose cards or lines changed; keeps view, camera and selection
+map.destroy();
+```
+
+`render` draws one view at a time into a shadow root inside the element (give the element a height), with drill-down
+into inner views, pan and zoom, and events for every card, line, container and chip, each named by ids from the model.
+`layout(model, viewId)` returns a view's geometry without a DOM (Node works too). `mountPage` is the whole viewer that
+`umlimator.py render` writes. The API, its types and the reasons behind it: [docs/module-api.md](docs/module-api.md),
+`lib/umlimator.d.ts`. Install from git: `"umlimator": "github:zintaen/umlimator#<tag>"`.
+
+```bash
+node --test               # layout(): the benchmark views' geometry, ids, repair flag (no browser)
+python3 tests/embed.py    # render() embedded in a plain page, in headless Chrome: events, update, destroy
+```
 
 ## Benchmarks
 
@@ -125,7 +148,7 @@ python3 bench/bench.py --check-determinism --max-ms m50=1000 --expect bench/resu
 ```
 
 `bench/models/` holds fixed models of 10, 26 and 69 nodes and one of 50 modules with 100 edges, written once by
-`bench/gen.py`. The bench opens each view in headless Chrome (`#bench=1`, patch 30) and reports lane planning,
+`bench/gen.py`. The bench opens each view in headless Chrome (`#bench=1`) and reports lane planning,
 placement, routing, port repair (its rounds and the port swaps it tried), the total, the layout check's route issues
 and a hash of the geometry; `--optimize` adds render's layout search. `--save` keeps the numbers in `bench/results/`;
 `--expect` fails on a view whose geometry differs from a saved run's, and a view with `repair: false` that repairs
@@ -135,10 +158,12 @@ fails the run. On 6 Nov 2026 the 50-module view did not finish in 30 minutes; it
 
 ```
 umlimator.py                 CLI: render, stills, check, pin-icons
-engine/assets/template.html  super-board /visual template, patched
+lib/umlimator.js             the module: layout, routing, drawing, render(), layout(), mountPage(); and its types
+engine/assets/template.html  the page around it (derived from super-board's /visual template); render inlines lib/
 engine/scripts/visual.py     super-board /visual renderer and checker (unmodified)
 engine/references/           super-board's model schema and section guide (unmodified)
-patches/apply.py             umlimator's template patches
+docs/module-api.md           the module's API and the decisions behind it
+tests/                       layout() in Node; render() embedded in headless Chrome
 bench/                       benchmark models, harness and recorded results
 icons/                       Lucide line icons and manifest.json (brand logos: sources and hashes only)
 tools/fetch_icons.py         stack-diagram's icon fetcher (unmodified)
@@ -149,9 +174,9 @@ LICENSE, LICENSE.super-board, LICENSE.stack-diagram, THIRD_PARTY_NOTICES.md
 ## Credits
 
 - **[super-board](https://github.com/EricTechPro/super-board)** by Eric Tech, MIT (`LICENSE.super-board`). umlimator
-  is a patched copy of its `/visual` skill (commit `d0b7d5a`): `engine/assets/template.html` (patched),
-  `engine/scripts/visual.py` and `engine/references/` (unmodified). Its renderer, layered viewer, layout search and
-  layout check are super-board's work.
+  is built on its `/visual` skill (commit `d0b7d5a`): `lib/umlimator.js` and `engine/assets/template.html` derive from
+  its template (modified), `engine/scripts/visual.py` and `engine/references/` are copied unmodified. Its renderer,
+  layered viewer, layout search and layout check are super-board's work.
 - super-board's `/visual` in turn adapts ideas from **[BuilderIO/skills](https://github.com/BuilderIO/skills)** (MIT)
   and **[archify](https://github.com/tt-a1i/archify)** by tt-a1i, itself from
   **[Cocoon-AI/architecture-diagram-generator](https://github.com/Cocoon-AI/architecture-diagram-generator)** (MIT).
