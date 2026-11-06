@@ -17,9 +17,24 @@ visual = importlib.util.module_from_spec(spec); spec.loader.exec_module(visual)
 binary = visual.find_chrome() or sys.exit("tests/embed.py needs Google Chrome or Chromium")
 
 
+released = threading.Event()
+
+
 class Quiet(http.server.SimpleHTTPRequestHandler):
     def log_message(self, *a):
         pass
+
+    def do_GET(self):
+        # Headless virtual time does not stand still for real work (decoding an image, encoding a PNG): with nothing
+        # else scheduled it runs out and Chrome saves the page early. A pending request does hold it, so a test page
+        # keeps /__hold open around such work and ends it with /__release.
+        if self.path in ("/__hold", "/__release"):
+            if self.path == "/__hold":
+                released.clear(); released.wait(20)
+            else:
+                released.set()
+            self.send_response(204); self.end_headers(); return
+        super().do_GET()
 
 
 server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), functools.partial(Quiet, directory=str(ROOT)))
