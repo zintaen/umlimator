@@ -25,7 +25,7 @@
   <ol id="log" reversed></ol>
 </aside>
 <script type="module">
-import { render } from '../lib/umlimator.js';
+import { render, history } from '../lib/umlimator.js';
 
 let model = await (await fetch('bookshop.json')).json();
 let n = 0;
@@ -49,18 +49,17 @@ function apply(c) {
   return m; // a reorder or move of a card changes no meaning here; the canvas keeps the position it hinted
 }
 const log = document.getElementById('log'), note = t => log.insertAdjacentHTML('afterbegin', `<li>${t}</li>`);
-// undo is the host's: it keeps the models it had, and hands one back to the map
-const past = [], future = [];
+// undo is the host's: history() keeps the models it had, and the host hands one back to the map
+const steps = history(model);
 const map = render(document.getElementById('map'), model, { editable: true, minimap: true, on: { change: c => {
   const ok = document.getElementById('apply').checked;
   note((ok ? '' : '<b>refused</b> ') + JSON.stringify(c));
-  if (ok) { past.push(model); future.length = 0; model = apply(c); map.update(model); }
+  if (ok) { model = steps.push(apply(c)); map.update(model); }
 } } });
 addEventListener('keydown', e => {
   if (!(e.metaKey || e.ctrlKey) || e.key.toLowerCase() !== 'z') return;
-  const [from, to] = e.shiftKey ? [future, past] : [past, future];
-  e.preventDefault(); if (!from.length) return;
-  to.push(model); model = from.pop(); map.update(model); note(`<b>${e.shiftKey ? 'redo' : 'undo'}</b>`);
+  e.preventDefault(); if (!(e.shiftKey ? steps.canRedo : steps.canUndo)) return;
+  model = e.shiftKey ? steps.redo() : steps.undo(); map.update(model); note(`<b>${e.shiftKey ? 'redo' : 'undo'}</b>`);
 });
 window.map = map;
 </script>

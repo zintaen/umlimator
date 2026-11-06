@@ -93,6 +93,9 @@ export interface Geometry {
 }
 
 export function render(container: HTMLElement, model: MapModel, options?: RenderOptions): Handle;
+/** Undo for a host: it pushes each model it applies, and hands undo() / redo() results to handle.update(). */
+export interface History { readonly model: MapModel; readonly canUndo: boolean; readonly canRedo: boolean; push(m: MapModel): MapModel; undo(): MapModel; redo(): MapModel }
+export function history(model: MapModel, limit?: number): History;
 export function layout(model: MapModel, viewId: string, options?: { repair?: boolean; measure?: (text: string, px: number) => number }): Geometry;
 /** The whole standalone viewer (top bar, views list, details panel, search, export) that umlimator.py writes. */
 export function mountPage(container: HTMLElement, model: MapModel, options?: { params?: URLSearchParams; instant?: boolean }): Handle;
