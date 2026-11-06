@@ -15,6 +15,20 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 VISUAL = HERE / "engine" / "scripts" / "visual.py"
+LIB = HERE / "lib" / "umlimator.js"            # the module: layout, routing, drawing, render(), mountPage()
+PAGE = HERE / "engine" / "assets" / "template.html"  # the page around it; visual.py fills in the model
+
+
+def visual_cmd(tmp, *args):
+    """The command that runs visual.py (unmodified, super-board's) on the page with lib/umlimator.js inlined: one
+    self-contained HTML file, as before. visual.py writes pages from its TEMPLATE path, so it runs with TEMPLATE
+    pointed at that page, written into the directory `tmp`."""
+    page = Path(tmp) / "template.html"
+    page.write_text(PAGE.read_text(encoding="utf-8").replace("/*__UMLIMATOR_LIB__*/", LIB.read_text(encoding="utf-8"), 1), encoding="utf-8")
+    run = ("import importlib.util, pathlib, sys; s = importlib.util.spec_from_file_location('visual', sys.argv[1]); "
+           "v = importlib.util.module_from_spec(s); s.loader.exec_module(v); v.TEMPLATE = pathlib.Path(sys.argv[2]); "
+           "sys.argv = [sys.argv[1]] + sys.argv[3:]; v.main()")
+    return [sys.executable, "-c", run, str(VISUAL), str(page), *args]
 CHROMES = ["/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
            "/Applications/Chromium.app/Contents/MacOS/Chromium", "google-chrome", "chromium", "chromium-browser"]
 
@@ -128,12 +142,13 @@ def cmd_render(a):
 
 
 def render(a, model):
-    args = [sys.executable, str(VISUAL), "render", "--map", model, "--out", a.out, "--no-open"]
+    args = ["render", "--map", model, "--out", a.out, "--no-open"]
     if a.no_check:
         args.append("--no-check")
     if all(v.get("layout") for v in json.loads(Path(model).read_text(encoding="utf-8")).get("views") or [{}]):
         args.append("--no-optimize")  # every view laid out already: the layout search would bake nothing (and stalls on a large page)
-    r = subprocess.run(args, capture_output=True, text=True)
+    with tempfile.TemporaryDirectory() as tmp:
+        r = subprocess.run(visual_cmd(tmp, *args), capture_output=True, text=True)
     out = r.stdout + r.stderr
     i = out.find("{")
     try:

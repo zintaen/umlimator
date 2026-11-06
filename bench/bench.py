@@ -22,13 +22,15 @@ HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
 spec = importlib.util.spec_from_file_location("visual", ROOT / "engine" / "scripts" / "visual.py")
 visual = importlib.util.module_from_spec(spec); spec.loader.exec_module(visual)
+spec = importlib.util.spec_from_file_location("umlimator", ROOT / "umlimator.py")
+umlimator = importlib.util.module_from_spec(spec); spec.loader.exec_module(umlimator)
 PRE = re.compile(r'<pre id="bench"[^>]*>(.*?)</pre>', re.S)
 
 
 def page_of(model, tmp):
     out = Path(tmp) / (model.stem + ".html")
-    r = subprocess.run([sys.executable, str(ROOT / "engine" / "scripts" / "visual.py"), "render", "--map", str(model),
-                        "--out", str(out), "--no-open", "--no-check", "--no-optimize"], capture_output=True, text=True)
+    r = subprocess.run(umlimator.visual_cmd(tmp, "render", "--map", str(model), "--out", str(out), "--no-open", "--no-check",
+                                            "--no-optimize"), capture_output=True, text=True)
     if not out.is_file():
         sys.exit(f"{model}: render failed\n{r.stdout[-1500:]}{r.stderr[-1500:]}")
     return out

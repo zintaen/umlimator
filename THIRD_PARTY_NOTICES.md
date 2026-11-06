@@ -2,7 +2,7 @@
 
 umlimator contains, or builds on, the work below. Each entry says what is used and under which licence.
 
-1. super-board `/visual` (MIT): the engine in `engine/`. Its own notices for BuilderIO/skills and archify follow,
+1. super-board `/visual` (MIT): the engine in `lib/` and `engine/`. Its own notices for BuilderIO/skills and archify follow,
    kept as super-board wrote them, with one note added on archify's later licence change.
 2. caru-ini/stack-diagram (MIT): `tools/fetch_icons.py` and the rules for brand logos.
 3. Lucide (ISC, some icons MIT from Feather): the line icons in `icons/`.
@@ -10,8 +10,9 @@ umlimator contains, or builds on, the work below. Each entry says what is used a
 
 ## EricTechPro/super-board, `/visual` skill
 
-`engine/assets/template.html` (patched by `patches/apply.py`), `engine/scripts/visual.py` and `engine/references/`
-are copied from super-board commit `d0b7d5a` (29 Oct 2026). MIT, Copyright (c) 2026 Eric Tech; the full text is in
+`lib/umlimator.js` and `engine/assets/template.html` derive from super-board's `skills/visual/assets/template.html`
+at commit `d0b7d5a` (29 Oct 2026), modified by umlimator (README § What was changed from super-board);
+`engine/scripts/visual.py` and `engine/references/` are copied from that commit unmodified. MIT, Copyright (c) 2026 Eric Tech; the full text is in
 `LICENSE.super-board`. Source: https://github.com/EricTechPro/super-board
 
 super-board's own third-party notice for `/visual`, as it ships it:
