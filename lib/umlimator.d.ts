@@ -35,7 +35,19 @@ export interface Events {
   select: { target: Ref | null };                           // a chip or badge selects its card
   open: { target: Ref; view: string; preventDefault(): void };
   viewchange: { view: string; from: string };
+  change: Change;                                           // only with `editable`
 }
+
+/** Where the user dropped or placed something: a point in the view and, on a column view, its column and row. */
+export interface Hint { x: number; y: number; col?: number; row?: number }
+/** An edit the user asked for. Nothing changes until the host applies it and calls update(). */
+export type Change = { id: string; view: string; hint?: Hint } & (
+  | { op: 'add'; kind: 'node'; label: string; container?: string }
+  | { op: 'add'; kind: 'edge'; from: string; to: string; label?: string }
+  | { op: 'rename'; target: Ref; label: string }
+  | { op: 'move'; target: Extract<Ref, { type: 'node' }>; to: string | null }
+  | { op: 'delete'; target: Ref }
+  | { op: 'reorder'; target: Ref; index: number });
 
 export interface RenderOptions {
   view?: string;                 // default: model.root, else the view with no parent
@@ -45,6 +57,10 @@ export interface RenderOptions {
   flow?: boolean;                // animated flow along lines (default: on unless prefers-reduced-motion)
   /** Text widths: default the host's font (--um-sans, measured on a canvas); false: a font-independent estimate. */
   measure?: false | ((text: string, px: number) => number);
+  /** Edit gestures that emit `change` events: all of them, or only those set true. Off by default. */
+  editable?: boolean | { add?: boolean; rename?: boolean; move?: boolean; delete?: boolean; reorder?: boolean };
+  /** Cards keep their places across update() (in this handle only, never in the model). Default true. */
+  stableLayout?: boolean;
   on?: { [K in keyof Events]?: (e: Events[K]) => void };
 }
 
