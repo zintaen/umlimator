@@ -1,0 +1,173 @@
+{
+ "title": "bench 10",
+ "nodes": [
+  {
+   "id": "n00",
+   "label": "Orders 0",
+   "kind": "backend",
+   "sublabel": "calls module",
+   "what": "Module 0."
+  },
+  {
+   "id": "n01",
+   "label": "Billing 1",
+   "kind": "external",
+   "sublabel": "syncs module",
+   "what": "Module 1."
+  },
+  {
+   "id": "n02",
+   "label": "Catalog 2",
+   "kind": "queue",
+   "sublabel": "reads module",
+   "what": "Module 2."
+  },
+  {
+   "id": "n03",
+   "label": "Search 3",
+   "kind": "backend",
+   "sublabel": "uploads module",
+   "what": "Module 3."
+  },
+  {
+   "id": "n04",
+   "label": "Auth 4",
+   "kind": "queue",
+   "sublabel": "calls module",
+   "what": "Module 4."
+  },
+  {
+   "id": "n05",
+   "label": "Ledger 5",
+   "kind": "security",
+   "sublabel": "writes module",
+   "what": "Module 5."
+  },
+  {
+   "id": "n06",
+   "label": "Notify 6",
+   "kind": "ai",
+   "sublabel": "validates module",
+   "what": "Module 6."
+  },
+  {
+   "id": "n07",
+   "label": "Reports 7",
+   "kind": "security",
+   "sublabel": "queries module",
+   "what": "Module 7."
+  },
+  {
+   "id": "n08",
+   "label": "Gateway 8",
+   "kind": "database",
+   "sublabel": "caches module",
+   "what": "Module 8."
+  },
+  {
+   "id": "n09",
+   "label": "Inventory 9",
+   "kind": "database",
+   "sublabel": "syncs module",
+   "what": "Module 9."
+  }
+ ],
+ "edges": [
+  {
+   "id": "e000",
+   "from": "n02",
+   "to": "n08",
+   "label": "syncs"
+  },
+  {
+   "id": "e001",
+   "from": "n03",
+   "to": "n09",
+   "label": "calls"
+  },
+  {
+   "id": "e002",
+   "from": "n06",
+   "to": "n09"
+  },
+  {
+   "id": "e003",
+   "from": "n02",
+   "to": "n06",
+   "label": "calls"
+  },
+  {
+   "id": "e004",
+   "from": "n07",
+   "to": "n08"
+  },
+  {
+   "id": "e005",
+   "from": "n01",
+   "to": "n07"
+  },
+  {
+   "id": "e006",
+   "from": "n01",
+   "to": "n09",
+   "label": "validates"
+  },
+  {
+   "id": "e007",
+   "from": "n03",
+   "to": "n08"
+  },
+  {
+   "id": "e008",
+   "from": "n02",
+   "to": "n05",
+   "label": "writes"
+  },
+  {
+   "id": "e009",
+   "from": "n05",
+   "to": "n08",
+   "label": "uploads"
+  },
+  {
+   "id": "e010",
+   "from": "n00",
+   "to": "n05",
+   "label": "subscribes"
+  },
+  {
+   "id": "e011",
+   "from": "n07",
+   "to": "n09"
+  },
+  {
+   "id": "e012",
+   "from": "n02",
+   "to": "n03"
+  },
+  {
+   "id": "e013",
+   "from": "n06",
+   "to": "n08",
+   "label": "reads"
+  }
+ ],
+ "views": [
+  {
+   "id": "overview",
+   "title": "10 nodes",
+   "nodeIds": [
+    "n00",
+    "n01",
+    "n02",
+    "n03",
+    "n04",
+    "n05",
+    "n06",
+    "n07",
+    "n08",
+    "n09"
+   ]
+  }
+ ]
+}

@@ -50,6 +50,9 @@ jobs:
           sys.exit(1 if bad else 0)
           PY
 
+      - name: The benchmark models lay out the same on every run (timings are reported, not gated, on CI)
+        run: python3 bench/bench.py --runs 2 --timeout 300 --check-determinism
+
       - name: The example renders as committed and its layout check is clean
         run: |
           python3 umlimator.py render examples/bookshop.json --out examples/bookshop.html --no-check
