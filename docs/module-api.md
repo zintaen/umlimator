@@ -32,7 +32,8 @@ export interface Handle {
   setView(id: string): void;          // emits viewchange
   select(ref: Ref | null): void;      // emits select
   fit(): void;                        // camera: whole view in the container
-  toSVG(o?: { scale?: number }): string;  // step 6: the current view as a stand-alone SVG file
+  toSVG(o?: ExportOptions): string;   // step 6: a view as a stand-alone SVG file
+  toPNG(o?: ExportOptions): Promise<Blob | null>;   // the same, as a PNG drawn in the browser
   on<K extends keyof Events>(type: K, fn: (e: Events[K]) => void): () => void;   // returns unsubscribe
   readonly view: string;
   readonly selection: Ref | null;
@@ -184,7 +185,14 @@ events beyond verb chips (step 4); editing (step 5); SVG export without Chrome (
   keeps the host's font family by name: a viewer without that font substitutes one, as with any SVG.
 - **Drawn at rest**: no selection or its dimming, no hover, no flow animation, no edit handles or pending ghosts,
   whatever the screen shows; the screen is left exactly as it was. The same file comes out with or without a selection.
-- **One view, the one shown.** For other views, `setView(id)` first. A destroyed handle returns `''`.
+- **Any view**: `toSVG({ view })` draws another view off screen, inside the shadow root, without showing it or
+  emitting events; the file is the same one that view gives when shown. An unknown or empty view, or a destroyed
+  handle, returns `''`.
+- **PNG in the browser**: `toPNG({ view, scale })` (default scale 2) draws the same file on a canvas and resolves to a
+  PNG `Blob`. The standalone page's Export ▾ PNG uses the same code.
+- **Fonts**: the file names the host's font family; a viewer without it substitutes one. A host that wants the font
+  inside the file passes its own rules, `toSVG({ fontCSS: '@font-face { font-family: "Inter"; src: url(data:font/woff2;base64,...) }' })`;
+  they go in a `<style>` in the file. The library fetches nothing, so the font must be a `data:` URL the host already has.
 - The standalone page's "Export ▾ SVG / PNG" and the `#still` hook use the same code, so `umlimator.py stills` writes
   the same SVG a host gets; the CLI still uses Chrome to run the page and to save PNGs. Compared with step 5, the stills'
   PNGs are byte-identical and their SVGs differ only in having no leftover `var(...)` references.
