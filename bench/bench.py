@@ -5,6 +5,7 @@
   python3 bench/bench.py --models m50,b26 --runs 9
   python3 bench/bench.py --optimize               # also time render's layout search, per view without a layout
   python3 bench/bench.py --save                   # also write bench/results/<date>-<commit>.json
+  python3 bench/bench.py --write-expected         # make this run the reference geometry (bench/expected.json)
   python3 bench/bench.py --check-determinism      # fail if two page loads lay any view out differently
   python3 bench/bench.py --max-ms m50=1000        # fail if a view of m50 takes longer (plan + layout, median)
   python3 bench/bench.py --expect bench/results/X.json   # fail if a view's geometry differs from that run's
@@ -76,6 +77,7 @@ def main():
     p.add_argument("--timeout", type=int, default=120, help="seconds per view")
     p.add_argument("--optimize", action="store_true")
     p.add_argument("--save", action="store_true")
+    p.add_argument("--write-expected", action="store_true", help="write bench/expected.json: the geometry CI and node --test compare against")
     p.add_argument("--check-determinism", action="store_true")
     p.add_argument("--max-ms", default="", help="model=ms,...: fail when a view's median total exceeds it")
     p.add_argument("--expect", help="a results file (--save): fail when a view it lists lays out differently")
@@ -125,6 +127,10 @@ def main():
         out.parent.mkdir(exist_ok=True)
         out.write_text(json.dumps({"commit": sha, "dirty": bool(dirty), "runs": a.runs, "chrome": binary, "results": results}, indent=1) + "\n")
         print("saved", out.relative_to(ROOT))
+    if a.write_expected:
+        sha = subprocess.run(["git", "rev-parse", "--short", "HEAD"], capture_output=True, text=True, cwd=ROOT).stdout.strip()
+        (HERE / "expected.json").write_text(json.dumps({"commit": sha, "results": {k: {"hashes": v["hashes"]} for k, v in results.items() if "hashes" in v}}, indent=1, sort_keys=True) + "\n")
+        print("wrote bench/expected.json")
     if failed:
         sys.exit("FAILED\n  " + "\n  ".join(failed))
 

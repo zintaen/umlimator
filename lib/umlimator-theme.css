@@ -1,0 +1,61 @@
+/* umlimator's default palette and fonts: light, and dark when the system asks or <html data-theme="dark">.
+   The canvas reads only these --um-* variables (it bakes in no colour and loads no font), so a host may use this file,
+   set the variables itself (e.g. --um-bg: var(--surface)), or switch light and dark by changing them on any ancestor
+   of the map. Fonts are the host's: --um-sans and --um-mono name families the page already has; nothing is fetched. */
+/* Clean flowchart (GitHub Primer-like): light first, dark when the system or the toggle asks. */
+:root {
+  --um-stage-bg: #fbfcfd; --um-logo-tile: #ffffff; --um-logo-tile-dark: #1b1f23; --um-intake-mark: #1b1f23; --um-edited: #bf8700;
+  --um-bg: #ffffff; --um-bg-2: #f6f8fa; --um-panel: #ffffff; --um-panel-2: #f6f8fa; --um-border: #d8dee4; --um-border-2: #d1d9e0;
+  --um-text: #1f2328; --um-muted: #59636e; --um-dim: #818b98; --um-grid: rgba(31,35,40,.06); --um-mask: #ffffff; --um-arrow: #8c959f;
+  --um-shadow: 0 8px 24px rgba(31,35,40,.10); --um-dot: #e6eaef; --um-gridline: transparent; --um-chrome: rgba(255,255,255,.94);
+  --um-accent: #0969da; --um-accent-fg: #ffffff; --um-lane: rgba(31,35,40,.025);
+  --um-cyan: #0969da; --um-green: #1a7f37; --um-violet: #8250df; --um-amber: #9a6700; --um-rose: #cf222e; --um-orange: #bc4c00; --um-slate: #59636e; --um-fuchsia: #bf3989;
+  --um-k-public: #0969da; --um-k-lane: #0f766e; --um-k-ext: #8250df; --um-k-verb: #bf3989; --um-k-script: #6e7781; --um-k-hook: #cf222e; --um-k-board: #9a6700;
+  --um-w-calls: #424a53; --um-w-feeds: #0969da; --um-w-triggers: #8250df; --um-w-state: #afb8c1; --um-w-guard: #cf222e;
+  --um-add-bg: rgba(26,127,55,.10); --um-add-tx: #1a7f37; --um-del-bg: rgba(207,34,46,.08); --um-del-tx: #cf222e;
+  color-scheme: light;
+  --um-accent-f: color-mix(in srgb, var(--um-accent) 12%, var(--um-panel));
+  --um-cyan-f: color-mix(in srgb, var(--um-cyan) 9%, var(--um-panel));
+  --um-green-f: color-mix(in srgb, var(--um-green) 9%, var(--um-panel));
+  --um-violet-f: color-mix(in srgb, var(--um-violet) 9%, var(--um-panel));
+  --um-amber-f: color-mix(in srgb, var(--um-amber) 10%, var(--um-panel));
+  --um-rose-f: color-mix(in srgb, var(--um-rose) 8%, var(--um-panel));
+  --um-orange-f: color-mix(in srgb, var(--um-orange) 9%, var(--um-panel));
+  --um-slate-f: color-mix(in srgb, var(--um-slate) 8%, var(--um-panel));
+  --um-fuchsia-f: color-mix(in srgb, var(--um-fuchsia) 8%, var(--um-panel));
+  --um-k-public-f: color-mix(in srgb, var(--um-k-public) 8%, var(--um-panel));
+  --um-k-lane-f: color-mix(in srgb, var(--um-k-lane) 8%, var(--um-panel));
+  --um-k-ext-f: color-mix(in srgb, var(--um-k-ext) 7%, var(--um-panel));
+  --um-k-verb-f: color-mix(in srgb, var(--um-k-verb) 7%, var(--um-panel));
+  --um-k-script-f: color-mix(in srgb, var(--um-k-script) 5%, var(--um-panel));
+  --um-k-hook-f: color-mix(in srgb, var(--um-k-hook) 12%, var(--um-panel));
+  --um-k-board-f: color-mix(in srgb, var(--um-k-board) 9%, var(--um-panel));
+  --um-sans: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
+  --um-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+  --um-stage-bg: var(--um-bg-2); --um-edited: #d29922;
+  --um-bg: #0d1117; --um-bg-2: #010409; --um-panel: #0d1117; --um-panel-2: #151b23; --um-border: #262c36; --um-border-2: #3d444d;
+  --um-text: #f0f6fc; --um-muted: #9198a1; --um-dim: #656c76; --um-grid: rgba(240,246,252,.05); --um-mask: #0d1117; --um-arrow: #656c76;
+  --um-shadow: 0 10px 30px rgba(1,4,9,.55); --um-dot: #161b22; --um-gridline: transparent; --um-chrome: rgba(13,17,23,.92);
+  --um-accent: #4493f8; --um-accent-fg: #ffffff; --um-lane: rgba(240,246,252,.025);
+  --um-cyan: #4493f8; --um-green: #3fb950; --um-violet: #ab7df8; --um-amber: #d29922; --um-rose: #f85149; --um-orange: #db6d28; --um-slate: #9198a1; --um-fuchsia: #db61a2;
+  --um-k-public: #4493f8; --um-k-lane: #2dd4bf; --um-k-ext: #ab7df8; --um-k-verb: #f778ba; --um-k-script: #9198a1; --um-k-hook: #f85149; --um-k-board: #d29922;
+  --um-w-calls: #b7bdc8; --um-w-feeds: #4493f8; --um-w-triggers: #ab7df8; --um-w-state: #4d5562; --um-w-guard: #f85149;
+  --um-add-bg: rgba(63,185,80,.13); --um-add-tx: #56d364; --um-del-bg: rgba(248,81,73,.12); --um-del-tx: #ff7b72;
+  color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --um-stage-bg: var(--um-bg-2); --um-edited: #d29922;
+  --um-bg: #0d1117; --um-bg-2: #010409; --um-panel: #0d1117; --um-panel-2: #151b23; --um-border: #262c36; --um-border-2: #3d444d;
+  --um-text: #f0f6fc; --um-muted: #9198a1; --um-dim: #656c76; --um-grid: rgba(240,246,252,.05); --um-mask: #0d1117; --um-arrow: #656c76;
+  --um-shadow: 0 10px 30px rgba(1,4,9,.55); --um-dot: #161b22; --um-gridline: transparent; --um-chrome: rgba(13,17,23,.92);
+  --um-accent: #4493f8; --um-accent-fg: #ffffff; --um-lane: rgba(240,246,252,.025);
+  --um-cyan: #4493f8; --um-green: #3fb950; --um-violet: #ab7df8; --um-amber: #d29922; --um-rose: #f85149; --um-orange: #db6d28; --um-slate: #9198a1; --um-fuchsia: #db61a2;
+  --um-k-public: #4493f8; --um-k-lane: #2dd4bf; --um-k-ext: #ab7df8; --um-k-verb: #f778ba; --um-k-script: #9198a1; --um-k-hook: #f85149; --um-k-board: #d29922;
+  --um-w-calls: #b7bdc8; --um-w-feeds: #4493f8; --um-w-triggers: #ab7df8; --um-w-state: #4d5562; --um-w-guard: #f85149;
+  --um-add-bg: rgba(63,185,80,.13); --um-add-tx: #56d364; --um-del-bg: rgba(248,81,73,.12); --um-del-tx: #ff7b72;
+  color-scheme: dark;
+}
