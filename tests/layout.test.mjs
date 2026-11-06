@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
-import { layout } from '../lib/umlimator.js';
+import { layout, history } from '../lib/umlimator.js';
 
 const read = p => JSON.parse(readFileSync(new URL(p, import.meta.url)));
 // the bench's geometry hash (bench/bench.py, #bench=1): FNV-1a over node boxes, route points and label spots
@@ -88,4 +88,15 @@ test('a layout may place only some cards: they stay put, the rest take free slot
   assert.deepEqual([at(other).col, at(other).row], [auto.nodes.find(n => n.id === other).col, auto.nodes.find(n => n.id === other).row]);
   const slots = g.nodes.map(n => n.col + ',' + n.row);
   assert.equal(new Set(slots).size, slots.length, 'no two cards share a slot');
+});
+
+test('history(): undo and redo walk the models a host pushed; a new push drops the redo steps; limit caps the past', () => {
+  const h = history('a', 2);
+  assert.equal(h.canUndo, false); assert.equal(h.undo(), 'a');
+  h.push('b'); h.push('c');
+  assert.equal(h.undo(), 'b'); assert.equal(h.undo(), 'a'); assert.equal(h.undo(), 'a');
+  assert.equal(h.redo(), 'b'); assert.equal(h.canRedo, true);
+  h.push('x'); assert.equal(h.canRedo, false); assert.equal(h.redo(), 'x');
+  h.push('y'); h.push('z'); h.undo(); h.undo(); assert.equal(h.undo(), 'x'); // limit 2: 'b' is gone
+  assert.equal(h.model, 'x'); assert.equal(h.canUndo, false);
 });
