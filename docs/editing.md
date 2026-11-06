@@ -110,7 +110,9 @@ Undo and redo (the host's, using the event ids), multi-select, editing container
 - **Where cards land after an update.** In order: the host's own `layout`; a reordered column group, exactly (the
   same slots, the card at its new place); every other card in the slot it had; then a moved or new card at its hint,
   or the nearest free slot below it, so it never pushes an existing card aside. Hub views (one card fanning out to
-  lanes) lay out by their lanes, so positions there are not kept.
+  lanes) keep, for each card that was there, its lane (by title), its column in the lane and its order; a new card
+  takes the place the fresh plan gives it, after the cards already in that column. `stableLayout: false` lays them out
+  afresh.
 - **An identical model** passed to `update` redraws nothing, unless it accepts a pending move or reorder (a change
   that alters no data, only a position).
 - **A drag is not a click**: the click a browser sends after a drag is dropped; the next press ends that, or 400 ms.
