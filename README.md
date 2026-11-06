@@ -111,7 +111,8 @@ the reason for each of the 40 patches and stay in the git history). The engine t
 complete instead of reporting no problems.
 
 Model fields umlimator adds: a node's `badge`, `icon` and `noSub` (name only, description in the panel); a view's
-`gap`, `rgap`, `keepPairs` and `repair` (`false`: no port repair); an edge's `fromSide` and `toSide`.
+`gap`, `rgap`, `keepPairs` and `repair` (`false`: no port repair); an edge's `fromSide` and `toSide`; a node's `badges` (several,
+each a string or `{text, tone}`) and a node's or edge's `edited` (draws a marker).
 
 The engine derives from super-board commit `d0b7d5a` (29 Oct 2026). `engine/scripts/visual.py` and
 `engine/references/` are still upstream's, unmodified, and CI checks that they are. CI also warns weekly when
@@ -130,7 +131,9 @@ map.destroy();
 
 `render` draws one view at a time into a shadow root inside the element (give the element a height), with drill-down
 into inner views, pan and zoom, and events for every card, line, container and chip, each named by ids from the model.
-`layout(model, viewId)` returns a view's geometry without a DOM (Node works too). `mountPage` is the whole viewer that
+`layout(model, viewId)` returns a view's geometry without a DOM (Node works too). Colours are `--um-*` CSS variables
+(defaults in `lib/umlimator-theme.css`; set them on any ancestor, light or dark as the host decides), fonts are the
+host's (`--um-sans`, `--um-mono`), text is measured in that font, and nothing is fetched. `mountPage` is the whole viewer that
 `umlimator.py render` writes. The API, its types and the reasons behind it: [docs/module-api.md](docs/module-api.md),
 `lib/umlimator.d.ts`. Install from git: `"umlimator": "github:zintaen/umlimator#<tag>"`.
 
@@ -144,14 +147,15 @@ python3 tests/embed.py    # render() embedded in a plain page, in headless Chrom
 ```bash
 python3 bench/bench.py                       # each view of bench/models/*.json and the example: median ms per phase
 python3 bench/bench.py --models m50 --optimize --save
-python3 bench/bench.py --check-determinism --max-ms m50=1000 --expect bench/results/<a saved run>.json
+python3 bench/bench.py --check-determinism --max-ms m50=1000 --expect bench/expected.json
 ```
 
 `bench/models/` holds fixed models of 10, 26 and 69 nodes and one of 50 modules with 100 edges, written once by
 `bench/gen.py`. The bench opens each view in headless Chrome (`#bench=1`) and reports lane planning,
 placement, routing, port repair (its rounds and the port swaps it tried), the total, the layout check's route issues
 and a hash of the geometry; `--optimize` adds render's layout search. `--save` keeps the numbers in `bench/results/`;
-`--expect` fails on a view whose geometry differs from a saved run's, and a view with `repair: false` that repairs
+`--expect` fails on a view whose geometry differs from a saved run's (`bench/expected.json` is the reference, which a change
+that moves routes on purpose refreshes with `--write-expected`), and a view with `repair: false` that repairs
 fails the run. On 6 Nov 2026 the 50-module view did not finish in 30 minutes; it now lays out in about 0.9 s.
 
 ## Layout

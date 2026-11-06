@@ -78,6 +78,29 @@ try {
   check('a container click reports a container ref', JSON.stringify(ev2.slice(-2)) === JSON.stringify([{ type: 'container', id: 'box', view: 'v' }, ['select', { type: 'container', id: 'box', view: 'v' }]]), ev2.slice(-2));
   check('controls: false leaves the zoom buttons out', !sr2.querySelector('.ctl'));
   h2.destroy();
+
+  // colours, light and dark come from the host's --um-* variables; badges; edited; text in the host's font
+  const el3 = document.getElementById('b'), ev3 = [];
+  el3.style.setProperty('--um-green', 'rgb(1, 2, 3)'); el3.style.setProperty('--um-violet', 'rgb(4, 5, 6)');
+  const tagged = { nodes: [{ id: 'svc', label: 'Billing', kind: 'backend', badges: ['BUILT', { text: 'Owner: platform', tone: 'violet' }], edited: true }, { id: 'db', label: 'Ledger', kind: 'database' }],
+    edges: [{ id: 'e1', from: 'svc', to: 'db', label: 'writes', edited: true }], views: [{ id: 'v', nodeIds: ['svc', 'db'] }] };
+  const h3 = render(el3, tagged, { on: { click: e => ev3.push(e.target) } });
+  const sr3 = el3.querySelector('.umlimator').shadowRoot, body = () => getComputedStyle(sr3.querySelector('.node[data-id="svc"] .n-body')).stroke;
+  check('a card takes its colour from the host variable', body() === 'rgb(1, 2, 3)', body());
+  el3.style.setProperty('--um-green', 'rgb(7, 8, 9)');
+  check('the host switches the palette (light / dark) by changing the variable', body() === 'rgb(7, 8, 9)', body());
+  const tabs = sr3.querySelectorAll('.node[data-id="svc"] [data-badge]');
+  check('each badge is its own tab', tabs.length === 2 && getComputedStyle(tabs[1].querySelector('rect')).fill === 'rgb(4, 5, 6)', tabs.length);
+  tabs[1].querySelector('text').dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true }));
+  check('a badge click names the badge', JSON.stringify(ev3[0]) === JSON.stringify({ type: 'badge', node: 'svc', index: 1, value: 'Owner: platform', view: 'v' }), ev3);
+  check('the edited marker shows on cards and lines', !!sr3.querySelector('.node[data-id="svc"] .edited-dot') && !!sr3.querySelector('.edge-g .edited-dot') && !sr3.querySelector('.node[data-id="db"] .edited-dot'));
+  h3.destroy();
+  const thin = { nodes: [{ id: 'a', label: 'i'.repeat(40) }], views: [{ id: 'v', nodeIds: ['a'] }] }, cardW = (font, opt = {}) => {
+    el3.style.setProperty('--um-sans', font); const hh = render(el3, thin, opt);
+    const w = +el3.querySelector('.umlimator').shadowRoot.querySelector('.n-body').getAttribute('width'); hh.destroy(); return w; };
+  const est = layout(thin, 'v').nodes[0].w;
+  check('text is measured in the host font', cardW('serif') < est && cardW('serif') !== cardW('monospace'), [cardW('serif'), cardW('monospace'), est]);
+  check('measure: false keeps the font-independent estimate', cardW('serif', { measure: false }) === est);
   check('makes no network requests', performance.getEntriesByType('resource').length === 0, performance.getEntriesByType('resource').map(r => r.name));
 } catch (e) { out.fail.push('threw: ' + (e && e.stack || e)); }
 const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
