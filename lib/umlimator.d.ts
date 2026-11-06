@@ -69,6 +69,9 @@ export interface Handle {
   setView(id: string): Promise<void> | void;
   select(ref: Ref | null): void;
   fit(): void;
+  /** The current view as a stand-alone SVG file: colours and fonts resolved from the host's CSS, drawn at rest (no
+   *  selection, hover, flow or edit handles), `scale` × its natural size (default 1). No network, no headless browser. */
+  toSVG(options?: { scale?: number }): string;
   on<K extends keyof Events>(type: K, fn: (e: Events[K]) => void): () => void;
   readonly view: string | null;
   readonly selection: Ref | null;
