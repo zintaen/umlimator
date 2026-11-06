@@ -28,7 +28,7 @@ const drag = (from, to) => { const g = pick(from); ptr(g, 'pointerdown', centre(
 const bodyAt = id => ['x', 'y'].map(k => +pick(`.node[data-id="${id}"] .n-body`).getAttribute(k));
 const last = () => ev[ev.length - 1];
 const strip = c => { const { id, ...rest } = c; return rest; };
-const mount = opts => { el.innerHTML = ''; ev = []; const h = render(el, MODEL, { on: { change: c => ev.push(c) }, ...opts }); sr = el.querySelector('.umlimator').shadowRoot; stage = pick('.stage'); return h; };
+const mount = (opts, model = MODEL) => { el.innerHTML = ''; ev = []; const h = render(el, model, { on: { change: c => ev.push(c) }, ...opts }); sr = el.querySelector('.umlimator').shadowRoot; stage = pick('.stage'); return h; };
 try {
   // read-only by default
   let h = mount({});
@@ -104,6 +104,19 @@ try {
   check('Alt + double-click on empty space opens a name field there', !!pick('.um-rename'));
   key('Escape', {}, pick('.um-rename'));
   h.destroy();
+
+  // a hub view (one card fanning out into lanes) keeps its cards in place when a card is added
+  const HUB = { nodes: [{ id: 'api', label: 'API', kind: 'public' }, { id: 'auth', label: 'Auth check' }, { id: 'val', label: 'Validate' }, { id: 'db', label: 'Orders DB', kind: 'database' }, { id: 'mail', label: 'Mailer' }],
+    edges: [{ id: 'e1', from: 'api', to: 'auth', label: 'checks' }, { id: 'e2', from: 'api', to: 'val', label: 'validates' }, { id: 'e3', from: 'api', to: 'db', label: 'stores' }, { id: 'e4', from: 'api', to: 'mail', label: 'notifies' }],
+    views: [{ id: 'v', nodeIds: ['api', 'auth', 'val', 'db', 'mail'] }] };
+  const HUB2 = structuredClone(HUB); HUB2.nodes.push({ id: 'pre', label: 'Rate limit' }); HUB2.edges.unshift({ id: 'e0', from: 'api', to: 'pre', label: 'checks' }); HUB2.views[0].nodeIds.push('pre');
+  const hubIds = ['api', 'auth', 'val', 'db', 'mail'];
+  for (const stable of [true, false]) {
+    h = mount({ stableLayout: stable }, HUB); const at0 = JSON.stringify(hubIds.map(bodyAt)); h.update(HUB2);
+    const kept = JSON.stringify(hubIds.map(bodyAt)) === at0 && !!pick('.node[data-id="pre"]');
+    check(stable ? 'a hub view keeps its cards in place when a card is added' : 'stableLayout: false lets a hub view lay out afresh', stable ? kept : !kept, [at0, hubIds.map(bodyAt)]);
+    h.destroy();
+  }
 
   // only some operations
   h = mount({ editable: { rename: true } });
