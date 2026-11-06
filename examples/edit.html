@@ -1,0 +1,57 @@
+<!doctype html>
+<!-- An editable map, as a host page would embed it: the canvas emits `change` events, this page (the host) applies them
+     to its own copy of the model and calls update(). Serve the repository over HTTP to open it (ES modules do not load
+     from file://):  python3 -m http.server  then  http://localhost:8000/examples/edit.html -->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>umlimator: editing</title>
+<link rel="stylesheet" href="../lib/umlimator-theme.css">
+<style>
+  body { margin: 0; display: grid; grid-template-columns: minmax(0, 1fr) 340px; height: 100dvh; background: var(--um-bg); color: var(--um-text); font: 14px/1.5 var(--um-sans); }
+  #map { min-height: 0; }
+  aside { border-left: 1px solid var(--um-border); padding: 12px 14px; overflow: auto; }
+  h1 { font-size: 15px; margin: 0 0 6px; } p { margin: 0 0 10px; color: var(--um-muted); font-size: 12.5px; }
+  kbd { font: 600 11px var(--um-mono); border: 1px solid var(--um-border-2); border-radius: 4px; padding: 0 4px; }
+  ol { margin: 0; padding-left: 18px; font: 12px/1.45 var(--um-mono); } li { margin-bottom: 6px; word-break: break-word; }
+  label { display: block; margin: 8px 0; font-size: 12.5px; }
+</style>
+<div id="map"></div>
+<aside>
+  <h1>Editing</h1>
+  <p><kbd>Alt</kbd> + double-click or <kbd>N</kbd>: add a card · drag the dot on a selected card to another card: add a line ·
+    <kbd>F2</kbd>: rename · drag a card into a box or along its column · <kbd>Delete</kbd> · <kbd>Alt</kbd> + arrows: reorder.</p>
+  <label><input type="checkbox" id="apply" checked> apply edits (the host's decision; unticked, every edit is refused)</label>
+  <ol id="log" reversed></ol>
+</aside>
+<script type="module">
+import { render } from '../lib/umlimator.js';
+
+let model = await (await fetch('bookshop.json')).json();
+let n = 0;
+const where = (view, id) => (model.views.find(v => v.id === view).containers || []).find(c => (c.nodeIds || []).includes(id));
+// the host's own rules: how each change maps onto its data
+function apply(c) {
+  const m = structuredClone(model), v = m.views.find(x => x.id === c.view), t = c.target;
+  if (c.op === 'add' && c.kind === 'node') { const id = 'new-' + (++n); m.nodes.push({ id, label: c.label, kind: 'backend' }); v.nodeIds.push(id);
+    if (c.container) v.containers.find(x => x.id === c.container).nodeIds.push(id); }
+  else if (c.op === 'add' && c.kind === 'edge') { m.edges.push({ id: 'new-e' + (++n), from: c.from, to: c.to }); if (Array.isArray(v.edges)) v.edges.push(m.edges.at(-1).id); }
+  else if (c.op === 'rename' && t.type === 'node') m.nodes.find(x => x.id === t.id).label = c.label;
+  else if (c.op === 'rename' && t.type === 'edge') t.ids.forEach(id => { const e = m.edges.find(x => x.id === id); if (e) e.label = c.label; });
+  else if (c.op === 'rename' && t.type === 'container') v.containers.find(x => x.id === t.id).label = c.label;
+  else if (c.op === 'move') { (v.containers || []).forEach(x => { x.nodeIds = (x.nodeIds || []).filter(i => i !== t.id); }); if (c.to) v.containers.find(x => x.id === c.to).nodeIds.push(t.id); }
+  else if (c.op === 'delete' && t.type === 'node') { m.nodes = m.nodes.filter(x => x.id !== t.id); m.views.forEach(x => { x.nodeIds = x.nodeIds.filter(i => i !== t.id); (x.containers || []).forEach(b => { b.nodeIds = (b.nodeIds || []).filter(i => i !== t.id); }); });
+    m.edges = m.edges.filter(e => e.from !== t.id && e.to !== t.id); }
+  else if (c.op === 'delete' && t.type === 'edge') m.edges = m.edges.filter(e => !t.ids.includes(e.id));
+  else if (c.op === 'delete' && (t.type === 'chip' || t.type === 'badge')) { const x = m.nodes.find(q => q.id === t.node), k = t.type === 'chip' ? 'verbs' : x.badges ? 'badges' : 'badge';
+    if (k === 'badge') delete x.badge; else x[k].splice(t.index, 1); }
+  else if (c.op === 'reorder' && (t.type === 'chip' || t.type === 'badge')) { const x = m.nodes.find(q => q.id === t.node), l = t.type === 'chip' ? x.verbs : x.badges; l.splice(c.index, 0, ...l.splice(t.index, 1)); }
+  return m; // a reorder or move of a card changes no meaning here; the canvas keeps the position it hinted
+}
+const log = document.getElementById('log');
+const map = render(document.getElementById('map'), model, { editable: true, minimap: true, on: { change: c => {
+  const ok = document.getElementById('apply').checked;
+  log.insertAdjacentHTML('afterbegin', `<li>${ok ? '' : '<b>refused</b> '}${JSON.stringify(c)}</li>`);
+  if (ok) { model = apply(c); map.update(model); }
+} } });
+window.map = map;
+</script>

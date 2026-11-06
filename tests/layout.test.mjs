@@ -78,3 +78,14 @@ test('several badges per node: each gets its own tab, and the card is wide enoug
   assert.ok(three.w >= span, `${three.w} >= ${span}`);
   assert.ok(three.decoT.every(([x], i) => i === 0 || x > three.decoT[i - 1][0]), 'left to right');
 });
+
+test('a layout may place only some cards: they stay put, the rest take free slots', () => {
+  const m = read('../bench/models/b10.json'), v = m.views[0];
+  const auto = layout(m, 'overview'), first = v.nodeIds[0], other = v.nodeIds[1];
+  v.layout = { [first]: [5, 3] };
+  const g = layout(m, 'overview'), at = id => g.nodes.find(n => n.id === id);
+  assert.deepEqual([at(first).col, at(first).row], [5, 3]);
+  assert.deepEqual([at(other).col, at(other).row], [auto.nodes.find(n => n.id === other).col, auto.nodes.find(n => n.id === other).row]);
+  const slots = g.nodes.map(n => n.col + ',' + n.row);
+  assert.equal(new Set(slots).size, slots.length, 'no two cards share a slot');
+});
