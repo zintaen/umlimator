@@ -100,7 +100,7 @@ payloads; that nothing redraws until `update`; partial layouts; stable positions
 
 ## Not in step 5
 
-Undo and redo (the host's, using the event ids), multi-select, editing containers' nesting, editing view structure
+Undo and redo (the host's, using the event ids; since built in the demo), multi-select (since built), editing containers' nesting, editing view structure
 (creating views, drill-down targets), collaborative cursors.
 
 ## As built: notes
@@ -119,3 +119,9 @@ Undo and redo (the host's, using the event ids), multi-select, editing container
 - **Demo and tests.** `examples/edit.html` imports the module over HTTP and plays the host (an "apply edits" box
   refuses every edit when unticked); `tests/embed.py` serves the repository locally, drives `tests/edit.html` with
   synthetic pointer and key events, and checks that the demo draws.
+- **Several cards** (added after step 5): Shift, Cmd or Ctrl + click adds a card to the selection, or takes it out; a
+  plain click goes back to one. `handle.selected` lists every selected thing, the latest last (`handle.selection` is
+  the latest), and `select` events carry the same list as `targets`. Delete emits one `delete` per selected card, each
+  with its own id, so a host applies, refuses or undoes them one by one. Dragging still moves one card.
+- **Undo** belongs to the host: `examples/edit.html` keeps the models it had, and Cmd/Ctrl + Z hands the previous one
+  back with `update()` (Shift for redo). The canvas leaves Cmd/Ctrl keys to the page.

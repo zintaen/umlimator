@@ -19,7 +19,8 @@
 <aside>
   <h1>Editing</h1>
   <p><kbd>Alt</kbd> + double-click or <kbd>N</kbd>: add a card · drag the dot on a selected card to another card: add a line ·
-    <kbd>F2</kbd>: rename · drag a card into a box or along its column · <kbd>Delete</kbd> · <kbd>Alt</kbd> + arrows: reorder.</p>
+    <kbd>F2</kbd>: rename · drag a card into a box or along its column · <kbd>Delete</kbd> · <kbd>Alt</kbd> + arrows: reorder ·
+    <kbd>Shift</kbd> + click: several cards · <kbd>⌘/Ctrl</kbd> + <kbd>Z</kbd>: undo (the host's own history), with <kbd>Shift</kbd>: redo.</p>
   <label><input type="checkbox" id="apply" checked> apply edits (the host's decision; unticked, every edit is refused)</label>
   <ol id="log" reversed></ol>
 </aside>
@@ -47,11 +48,19 @@ function apply(c) {
   else if (c.op === 'reorder' && (t.type === 'chip' || t.type === 'badge')) { const x = m.nodes.find(q => q.id === t.node), l = t.type === 'chip' ? x.verbs : x.badges; l.splice(c.index, 0, ...l.splice(t.index, 1)); }
   return m; // a reorder or move of a card changes no meaning here; the canvas keeps the position it hinted
 }
-const log = document.getElementById('log');
+const log = document.getElementById('log'), note = t => log.insertAdjacentHTML('afterbegin', `<li>${t}</li>`);
+// undo is the host's: it keeps the models it had, and hands one back to the map
+const past = [], future = [];
 const map = render(document.getElementById('map'), model, { editable: true, minimap: true, on: { change: c => {
   const ok = document.getElementById('apply').checked;
-  log.insertAdjacentHTML('afterbegin', `<li>${ok ? '' : '<b>refused</b> '}${JSON.stringify(c)}</li>`);
-  if (ok) { model = apply(c); map.update(model); }
+  note((ok ? '' : '<b>refused</b> ') + JSON.stringify(c));
+  if (ok) { past.push(model); future.length = 0; model = apply(c); map.update(model); }
 } } });
+addEventListener('keydown', e => {
+  if (!(e.metaKey || e.ctrlKey) || e.key.toLowerCase() !== 'z') return;
+  const [from, to] = e.shiftKey ? [future, past] : [past, future];
+  e.preventDefault(); if (!from.length) return;
+  to.push(model); model = from.pop(); map.update(model); note(`<b>${e.shiftKey ? 'redo' : 'undo'}</b>`);
+});
 window.map = map;
 </script>
