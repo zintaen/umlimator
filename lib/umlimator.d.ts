@@ -32,7 +32,7 @@ export type Ref =
 
 export interface Events {
   click: { target: Ref; event: MouseEvent };
-  select: { target: Ref | null };                           // a chip or badge selects its card
+  select: { target: Ref | null; targets: Ref[] };          // a chip or badge selects its card; targets: every selected thing, the latest last
   open: { target: Ref; view: string; preventDefault(): void };
   viewchange: { view: string; from: string };
   change: Change;                                           // only with `editable`
@@ -80,7 +80,8 @@ export interface Handle {
   toPNG(options?: ExportOptions): Promise<Blob | null>;
   on<K extends keyof Events>(type: K, fn: (e: Events[K]) => void): () => void;
   readonly view: string | null;
-  readonly selection: Ref | null;
+  readonly selection: Ref | null;   // the latest selected
+  readonly selected: Ref[];          // every selected thing (Shift / Cmd / Ctrl + click adds cards), the latest last
   destroy(): void;
 }
 
