@@ -35,9 +35,11 @@ def dom(path, done):
 
 failed = False
 for page in ("tests/embed.html", "tests/edit.html"):
-    m = re.search(r'<pre id="result">(.*?)</pre>', dom(page, lambda t: 'id="result"' in t), re.S)
-    if not m:
-        print(f"FAIL {page}: the page did not report"); failed = True; continue
+    t = dom(page, lambda t: 'id="result"' in t)
+    m = re.search(r'<pre id="result">(.*?)</pre>', t, re.S)
+    if not m:  # each check names itself in the page title: say where it stopped
+        last = re.search(r"<title>(.*?)</title>", t)
+        print(f"FAIL {page}: the page did not report (last check reached: {html.unescape(last.group(1)) if last else '?'})"); failed = True; continue
     r = json.loads(html.unescape(m.group(1)))
     for name in r["ok"]:
         print("ok  ", page, "·", name)

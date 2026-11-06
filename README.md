@@ -127,8 +127,24 @@ const map = render(document.getElementById('map'), model, {
 });
 map.update(nextModel);   // redraws only views whose cards or lines changed; keeps view, camera and selection
 const file = map.toSVG({ scale: 2 });   // the current view as a stand-alone .svg, in the browser
+const png = await map.toPNG({ view: 'api' });   // any view, as a PNG Blob, without showing it
 render(el, model, { editable: true, on: { change: c => { model = myApply(model, c); map.update(model); } } });
 map.destroy();
+```
+
+In React (or any framework), mount once and pass new models to `update`:
+
+```jsx
+function MapView({ model, onSelect }) {
+  const el = useRef(null), map = useRef(null), cb = useRef(onSelect);
+  cb.current = onSelect;   // the latest callback, without re-mounting the map
+  useEffect(() => {
+    map.current = render(el.current, model, { on: { select: e => cb.current?.(e.target) } });
+    return () => map.current.destroy();
+  }, []);
+  useEffect(() => { map.current?.update(model); }, [model]);   // cheap when nothing changed
+  return <div ref={el} style={{ height: 600 }} />;
+}
 ```
 
 `render` draws one view at a time into a shadow root inside the element (give the element a height), with drill-down
@@ -139,7 +155,7 @@ host's (`--um-sans`, `--um-mono`), text is measured in that font, and nothing is
 `umlimator.py render` writes. The API, its types and the reasons behind it: [docs/module-api.md](docs/module-api.md),
 `lib/umlimator.d.ts`. With `editable`, gestures (add, rename, move into a container, delete, reorder, connect) emit
 `change` events and change nothing themselves: the host applies them to its own data and calls `update`
-([docs/editing.md](docs/editing.md); `examples/edit.html` is a working host, served over HTTP). `toSVG()` returns the current view as a stand-alone SVG file: the host's colours and fonts
+([docs/editing.md](docs/editing.md); `examples/edit.html` is a working host, served over HTTP). `toSVG()` returns a view as a stand-alone SVG file (`toPNG()` the same as a PNG): the host's colours and fonts
 resolved into it, drawn at rest (no selection, hover, flow or edit handles), with no headless browser. Install from git: `"umlimator": "github:zintaen/umlimator#<tag>"`.
 
 ```bash
