@@ -1,0 +1,178 @@
+{
+ "commit": "6c808a0",
+ "dirty": false,
+ "runs": 9,
+ "chrome": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+ "results": {
+  "b10/overview": {
+   "nodes": 10,
+   "edges": 14,
+   "plan": 0,
+   "place": 0.1,
+   "route": 6.5,
+   "repair": 9.4,
+   "rounds": 1,
+   "reroutes": 14,
+   "total": 15.5,
+   "issues": 9,
+   "cross": 4,
+   "fallback": 1,
+   "hashes": [
+    "81b68144"
+   ]
+  },
+  "b10/norepair": {
+   "nodes": 10,
+   "edges": 14,
+   "plan": 0,
+   "place": 0,
+   "route": 7,
+   "repair": 0.1,
+   "rounds": 0,
+   "reroutes": 0,
+   "total": 7.2,
+   "issues": 12,
+   "cross": 2,
+   "fallback": 2,
+   "hashes": [
+    "90d67a99"
+   ]
+  },
+  "b26/overview": {
+   "nodes": 26,
+   "edges": 44,
+   "plan": 0.1,
+   "place": 0.2,
+   "route": 61.7,
+   "repair": 84.3,
+   "rounds": 1,
+   "reroutes": 38,
+   "total": 147.1,
+   "issues": 96,
+   "cross": 17,
+   "fallback": 2,
+   "hashes": [
+    "9e111b63"
+   ]
+  },
+  "b26/n01": {
+   "nodes": 6,
+   "edges": 5,
+   "plan": 0.1,
+   "place": 0,
+   "route": 0,
+   "repair": 0,
+   "rounds": 0,
+   "reroutes": 0,
+   "total": 0.1,
+   "issues": 0,
+   "cross": 0,
+   "fallback": 0,
+   "hashes": [
+    "ca57428f"
+   ]
+  },
+  "b69/overview": {
+   "nodes": 69,
+   "edges": 114,
+   "plan": 0.3,
+   "place": 0.6,
+   "route": 858.8,
+   "repair": 827.1,
+   "rounds": 1,
+   "reroutes": 114,
+   "total": 1699.5,
+   "issues": 591,
+   "cross": 52,
+   "fallback": 21,
+   "hashes": [
+    "861aa3d1"
+   ]
+  },
+  "b69/front": {
+   "nodes": 15,
+   "edges": 8,
+   "plan": 0.1,
+   "place": 0.1,
+   "route": 1.3,
+   "repair": 0.1,
+   "rounds": 0,
+   "reroutes": 0,
+   "total": 1.6,
+   "issues": 1,
+   "cross": 0,
+   "fallback": 0,
+   "hashes": [
+    "4f170c80"
+   ]
+  },
+  "b69/back": {
+   "nodes": 19,
+   "edges": 22,
+   "plan": 0,
+   "place": 0.1,
+   "route": 27.4,
+   "repair": 33.3,
+   "rounds": 1,
+   "reroutes": 21,
+   "total": 60.9,
+   "issues": 46,
+   "cross": 11,
+   "fallback": 2,
+   "hashes": [
+    "88336da8"
+   ]
+  },
+  "m50/overview": {
+   "nodes": 50,
+   "edges": 100,
+   "plan": 0.1,
+   "place": 0.4,
+   "route": 381.9,
+   "repair": 529.1,
+   "rounds": 1,
+   "reroutes": 100,
+   "total": 900.2,
+   "issues": 636,
+   "cross": 44,
+   "fallback": 34,
+   "hashes": [
+    "bd3f12d3"
+   ]
+  },
+  "bookshop/overview": {
+   "nodes": 13,
+   "edges": 11,
+   "plan": 0.1,
+   "place": 0.1,
+   "route": 2.6,
+   "repair": 0,
+   "rounds": 0,
+   "reroutes": 0,
+   "total": 2.9,
+   "issues": 0,
+   "cross": 0,
+   "fallback": 0,
+   "hashes": [
+    "7482a914"
+   ]
+  },
+  "bookshop/api": {
+   "nodes": 6,
+   "edges": 5,
+   "plan": 0,
+   "place": 0,
+   "route": 0.5,
+   "repair": 0,
+   "rounds": 0,
+   "reroutes": 0,
+   "total": 0.5,
+   "issues": 0,
+   "cross": 0,
+   "fallback": 0,
+   "hashes": [
+    "8a4b07a4"
+   ]
+  }
+ }
+}

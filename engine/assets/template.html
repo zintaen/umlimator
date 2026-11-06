@@ -964,43 +964,83 @@
         X = X.filter(v => far(v, families.flatMap(f => [f.x, f.x + f.w]))); Y = Y.filter(v => far(v, families.flatMap(f => [f.y, f.y + f.h]))); }
       if (W) { X = X.filter(v => keep.has(v) || (v >= W.x && v <= W.x2)); Y = Y.filter(v => keep.has(v) || (v >= W.y && v <= W.y2)); }
       const nx = X.length, ny = Y.length, N = nx * ny;
+      // an end that lies in an obstacle (or, without crossings, on an earlier line) fails the search: say so before building the grid
+      const blockedAt = p => obs.some(r => inRect(p, r)) || (!allowCross && avoid.some(([a, b]) => onSegInterior(p, a, b)));
+      if (blockedAt(st) || blockedAt(en)) return null;
       const ok = new Uint8Array(N), crossAt = new Uint8Array(N);
-      for (let i = 0; i < nx; i++) for (let j = 0; j < ny; j++) {
-        const p = [X[i], Y[j]];
-        if (obs.some(r => inRect(p, r))) continue;
-        const onAv = avoid.some(([a, b]) => onSegInterior(p, a, b));
-        if (onAv && !allowCross) continue;
-        ok[i * ny + j] = 1; crossAt[i * ny + j] = onAv ? 1 : 0;
+      // each obstacle and earlier line marks only the cells and moves near it (found by binary search, then tested
+      // exactly as inRect, segHitsRect, onSegInterior and colinear do); every cell testing every obstacle and line
+      // made one route cost O(cells x obstacles)
+      const from = (A, v) => { let a = 0, b = A.length; while (a < b) { const m = (a + b) >> 1; if (A[m] < v) a = m + 1; else b = m; } return a; };
+      const inObs = new Uint8Array(N), onAv = new Uint8Array(N), blockH = new Uint8Array(N), blockV = new Uint8Array(N);
+      for (const r of obs) {
+        const i0 = from(X, r.x - 1), j0 = from(Y, r.y - 1), qx = r.x + .5, qy = r.y + .5, qx2 = qx + (r.w - 1), qy2 = qy + (r.h - 1);
+        for (let i = i0; i < nx && X[i] <= r.x + r.w + 1; i++) for (let j = j0; j < ny && Y[j] <= r.y + r.h + 1; j++)
+          if (X[i] > r.x && X[i] < r.x + r.w && Y[j] > r.y && Y[j] < r.y + r.h) inObs[i * ny + j] = 1;
+        const lx = Math.min(qx, qx2), hx = Math.max(qx, qx2), ly = Math.min(qy, qy2), hy = Math.max(qy, qy2);
+        for (let i = Math.max(0, from(X, lx - 1) - 1); i < nx - 1 && X[i] <= hx + 1; i++) for (let j = from(Y, ly - 1); j < ny && Y[j] <= hy + 1; j++)
+          if (X[i + 1] > qx && X[i] < qx2 && Y[j] > qy && Y[j] < qy2) blockH[i * ny + j] = 1;
+        for (let i = from(X, lx - 1); i < nx && X[i] <= hx + 1; i++) for (let j = Math.max(0, from(Y, ly - 1) - 1); j < ny - 1 && Y[j] <= hy + 1; j++)
+          if (X[i] > qx && X[i] < qx2 && Y[j + 1] > qy && Y[j] < qy2) blockV[i * ny + j] = 1;
       }
+      for (const [c, d] of avoid) {
+        const x1 = Math.min(c[0], d[0]), x2 = Math.max(c[0], d[0]), y1 = Math.min(c[1], d[1]), y2 = Math.max(c[1], d[1]);
+        if (c[0] === d[0]) { // vertical: cells on its interior; vertical moves alongside it
+          for (let i = from(X, x1 - 1); i < nx && X[i] <= x2 + 1; i++) if (Math.abs(X[i] - c[0]) < 0.5) for (let j = from(Y, y1 - 1); j < ny && Y[j] <= y2 + 1; j++)
+            if (Y[j] > y1 && Y[j] < y2) onAv[i * ny + j] = 1;
+          for (let i = from(X, x1 - SEP - 1); i < nx && X[i] <= x2 + SEP + 1; i++) if (Math.abs(X[i] - c[0]) < SEP - 1) for (let j = Math.max(0, from(Y, y1 - 1) - 1); j < ny - 1 && Y[j] <= y2 + 1; j++)
+            if (Math.min(Y[j + 1], y2) - Math.max(Y[j], y1) > 0) blockV[i * ny + j] = 1;
+        }
+        if (c[1] === d[1]) { // horizontal: the same, across
+          for (let j = from(Y, y1 - 1); j < ny && Y[j] <= y2 + 1; j++) if (Math.abs(Y[j] - c[1]) < 0.5) for (let i = from(X, x1 - 1); i < nx && X[i] <= x2 + 1; i++)
+            if (X[i] > x1 && X[i] < x2) onAv[i * ny + j] = 1;
+          for (let j = from(Y, y1 - SEP - 1); j < ny && Y[j] <= y2 + SEP + 1; j++) if (Math.abs(Y[j] - c[1]) < SEP - 1) for (let i = Math.max(0, from(X, x1 - 1) - 1); i < nx - 1 && X[i] <= x2 + 1; i++)
+            if (Math.min(X[i + 1], x2) - Math.max(X[i], x1) > 0) blockH[i * ny + j] = 1;
+        }
+      }
+      for (let k = 0; k < N; k++) if (!inObs[k] && (!onAv[k] || allowCross)) { ok[k] = 1; crossAt[k] = onAv[k]; }
       const ix = v => X.indexOf(v), iy = v => Y.indexOf(v);
       const s0 = ix(st[0]) * ny + iy(st[1]), t0 = ix(en[0]) * ny + iy(en[1]);
       if (!ok[s0] || !ok[t0]) return null;
-      const passable = (i1, j1, i2, j2) => {
-        const a = [X[i1], Y[j1]], b = [X[i2], Y[j2]];
-        if (obs.some(r => segHitsRect(a, b, { x: r.x + .5, y: r.y + .5, w: r.w - 1, h: r.h - 1 }))) return false;
-        return !avoid.some(([c, d]) => colinear(a, b, c, d));
-      };
+      const passable = (i1, j1, i2, j2) => !(i1 !== i2 ? blockH[Math.min(i1, i2) * ny + j1] : blockV[i1 * ny + Math.min(j1, j2)]);
+      // a target shut in a small pocket that does not hold the start cannot be reached: flood out from it (moves work
+      // both ways) and give up at once, instead of letting the search visit every cell it can reach
+      { const seen = new Uint8Array(N), q = [t0]; seen[t0] = 1;
+        for (let h = 0; h < q.length && q.length < 4000; h++) { const c = q[h], i = Math.floor(c / ny), j = c % ny;
+          if (c === s0) break;
+          for (const [i2, j2] of [[i + 1, j], [i - 1, j], [i, j + 1], [i, j - 1]]) { if (i2 < 0 || j2 < 0 || i2 >= nx || j2 >= ny) continue;
+            const c2 = i2 * ny + j2; if (!seen[c2] && ok[c2] && passable(i, j, i2, j2)) { seen[c2] = 1; q.push(c2); } } }
+        if (q.length < 4000 && !seen[s0]) return null; }
       // Dijkstra over (cell, incoming direction)
       const DIRS = [[1, 0], [-1, 0], [0, 1], [0, -1]], dist = new Float64Array(N * 4).fill(Infinity), prev = new Int32Array(N * 4).fill(-1);
-      const heap = [], hpush = (k, d) => { heap.push([d, k]); let i = heap.length - 1; while (i) { const p = (i - 1) >> 1; if (heap[p][0] <= heap[i][0]) break; [heap[p], heap[i]] = [heap[i], heap[p]]; i = p; } };
-      const hpop = () => { const top = heap[0], last = heap.pop(); if (heap.length) { heap[0] = last; let i = 0; for (;;) { const l = 2 * i + 1, r = l + 1; let m = i; if (l < heap.length && heap[l][0] < heap[m][0]) m = l; if (r < heap.length && heap[r][0] < heap[m][0]) m = r; if (m === i) break; [heap[m], heap[i]] = [heap[i], heap[m]]; i = m; } } return top; };
+      // a binary heap in typed arrays, with the same sift steps as before, so equal keys pop in the same order
+      let hd = new Float64Array(256), hk = new Int32Array(256), hn = 0, pd = 0, pk = 0;
+      const hswap = (a, b) => { const d = hd[a], k = hk[a]; hd[a] = hd[b]; hk[a] = hk[b]; hd[b] = d; hk[b] = k; };
+      const hpush = (k, d) => { if (hn === hd.length) { const d2 = new Float64Array(hn * 2), k2 = new Int32Array(hn * 2); d2.set(hd); k2.set(hk); hd = d2; hk = k2; }
+        let i = hn++; hd[i] = d; hk[i] = k; while (i) { const p = (i - 1) >> 1; if (hd[p] <= hd[i]) break; hswap(p, i); i = p; } };
+      const hpop = () => { pd = hd[0]; pk = hk[0]; hn--; if (hn) { hd[0] = hd[hn]; hk[0] = hk[hn]; let i = 0; for (;;) { const l = 2 * i + 1, r = l + 1; let m = i;
+        if (l < hn && hd[l] < hd[m]) m = l; if (r < hn && hd[r] < hd[m]) m = r; if (m === i) break; hswap(m, i); i = m; } } };
       const d0 = DIRS.findIndex(d => d[0] === OUT[e.fs][0] && d[1] === OUT[e.fs][1]);
       const dEnd = DIRS.findIndex(d => d[0] === -OUT[e.ts][0] && d[1] === -OUT[e.ts][1]);
-      dist[s0 * 4 + d0] = 0; hpush(s0 * 4 + d0, 0);
+      // A*: the heap is keyed by distance plus the straight distance left, which never overestimates (every move costs
+      // at least its length), so each route keeps its cost; the search stops visiting cells far from the target
+      const hx = Float64Array.from(X, x => Math.abs(x - en[0])), hy = Float64Array.from(Y, y => Math.abs(y - en[1])), DI = [1, -1, 0, 0], DJ = [0, 0, 1, -1];
+      dist[s0 * 4 + d0] = 0; hpush(s0 * 4 + d0, hx[(s0 / ny) | 0] + hy[s0 % ny]);
       let best = -1;
-      while (heap.length) {
-        const [d, k] = hpop(); if (d > dist[k]) continue;
-        const cell = k >> 2, dir = k & 3;
+      while (hn) {
+        hpop(); const k = pk, cell = k >> 2, dir = k & 3, i = (cell / ny) | 0, j = cell - i * ny;
+        if (pd > dist[k] + (hx[i] + hy[j])) continue;
+        const d = dist[k];
         if (cell === t0) { best = k; if (dir === dEnd) break; continue; }
-        const i = Math.floor(cell / ny), j = cell % ny;
+        const xi = X[i], yj = Y[j];
         for (let nd = 0; nd < 4; nd++) {
           if ((nd ^ 1) === dir && ((nd >> 1) === (dir >> 1))) continue; // no reversal
-          const i2 = i + DIRS[nd][0], j2 = j + DIRS[nd][1];
+          const i2 = i + DI[nd], j2 = j + DJ[nd];
           if (i2 < 0 || j2 < 0 || i2 >= nx || j2 >= ny) continue;
-          const c2 = i2 * ny + j2; if (!ok[c2] || !passable(i, j, i2, j2)) continue;
-          let w = Math.abs(X[i2] - X[i]) + Math.abs(Y[j2] - Y[j]) + (nd === dir ? 0 : BEND) + (crossAt[c2] ? CROSS : 0);
+          const c2 = i2 * ny + j2; if (!ok[c2] || (nd < 2 ? blockH[(nd === 0 ? i : i2) * ny + j] : blockV[i * ny + (nd === 2 ? j : j2)])) continue;
+          let w = Math.abs(X[i2] - xi) + Math.abs(Y[j2] - yj) + (nd === dir ? 0 : BEND) + (crossAt[c2] ? CROSS : 0);
           if (c2 === t0 && nd !== dEnd) w += BEND;
-          const k2 = c2 * 4 + nd; if (d + w < dist[k2]) { dist[k2] = d + w; prev[k2] = k; hpush(k2, d + w); }
+          const k2 = c2 * 4 + nd; if (d + w < dist[k2]) { dist[k2] = d + w; prev[k2] = k; hpush(k2, d + w + (hx[i2] + hy[j2])); }
         }
       }
       if (best < 0) return null;
@@ -1086,7 +1126,20 @@
     const issueCount = () => routeAudit({ edges }, '').length;
     const endAt = (e, n, side) => (e.s === n && e.fs === side) ? 'p1' : (e.t === n && e.ts === side) ? 'p2' : null;
     let issues = issueCount();
-    for (let round = 0; issues && dg.repair !== false && round < 8; round++) {
+    // a swap re-routes only the two swapped edges (ripped up, then routed after every other route), not the whole
+    // graph; a round goes on after an improvement; and repair spends at most 2 routings per free edge, so its cost
+    // grows with the graph instead of with crossings x edges x routing (it stalled on 26 nodes / 44 edges)
+    const restub = e => { e.stubs = [[e.p1, [e.p1[0] + OUT[e.fs][0] * STUB, e.p1[1] + OUT[e.fs][1] * STUB]], [[e.p2[0] + OUT[e.ts][0] * STUB, e.p2[1] + OUT[e.ts][1] * STUB], e.p2]]; };
+    const ripUp = e => { const i = routed.indexOf(e); if (i >= 0) routed.splice(i, 1); const L = e.lbl; if (!L) return;
+      const same = m => r => r.x === L.x - m && r.y === L.y - m && r.w === L.w + 2 * m && r.h === L.h + 2 * m;
+      const p = placed.findIndex(same(0)); if (p >= 0) placed.splice(p, 1); const q = reserved.findIndex(same(3)); if (q >= 0) reserved.splice(q, 1); };
+    // a swapped edge tries a clean route near its ends, then one that may cross (near its ends, then anywhere); it
+    // skips the clean whole-grid search, which mostly fails here and visits every cell when it does
+    const routeOne = e => { let how = 'grid'; e.lbl = null; e.pts = gridRoute(e, false, 320);
+      if (!e.pts) { how = 'cross'; e.pts = gridRoute(e, true, 320) || gridRoute(e, true, 0); } if (!e.pts) { how = 'fallback'; e.pts = fallback(e); }
+      e.how = how; routed.push(e); placeLabel(e); return true; };
+    let budget = 2 * free.length, swapped = false;
+    for (let round = 0; issues && dg.repair !== false && round < 8 && budget > 0; round++) {
       let fixed = false; __ms.rounds++;
       const segsE = e => e.pts.slice(0, -1).map((p, i) => [p, e.pts[i + 1]]);
       const xing = (a, b) => segsE(a).some(([p, q]) => segsE(b).some(([r, s]) => { // perpendicular interior crossing
@@ -1095,25 +1148,28 @@
         return hz[0][1] > Math.min(v[0][1], v[1][1]) && hz[0][1] < Math.max(v[0][1], v[1][1]) && v[0][0] > Math.min(hz[0][0], hz[1][0]) && v[0][0] < Math.max(hz[0][0], hz[1][0]); }));
       const pairs = []; edges.forEach((a, i) => edges.slice(i + 1).forEach(b => { if (xing(a, b)) pairs.push([a, b]); }));
       // a crossing pair, or a pair where one shares a node side with the other's crossing partner
-      const cand = [];
-      pairs.forEach(([a, b]) => { cand.push([a, b]); free.forEach(o => { if (o !== a && o !== b) { cand.push([a, o]); cand.push([b, o]); } }); });
+      const cand = [], seen = new Set(), add = (a, b) => { const k = a.id + '|' + b.id; if (!seen.has(k)) { seen.add(k); cand.push([a, b]); } }; // each pair once; crossing pairs first
+      pairs.forEach(([a, b]) => add(a, b)); pairs.forEach(([a, b]) => free.forEach(o => { if (o !== a && o !== b) { add(a, o); add(b, o); } }));
       outer3: for (const [a, b] of cand.filter(([x, y]) => !x.fixed && !y.fixed)) {
         for (const n of [a.s, a.t]) for (const side of ['L', 'R', 'T', 'B']) {
           const ka = endAt(a, n, side), kb = endAt(b, n, side); if (!ka || !kb) continue;
-          const pa = a[ka], pb = b[kb]; a[ka] = pb; b[kb] = pa;
-          free.forEach(e => { e.stubs = [[e.p1, [e.p1[0] + OUT[e.fs][0] * STUB, e.p1[1] + OUT[e.fs][1] * STUB]], [[e.p2[0] + OUT[e.ts][0] * STUB, e.p2[1] + OUT[e.ts][1] * STUB], e.p2]]; });
-          const snap = edges.map(e => [e, e.pts, e.lbl, e.how]), snapStats = stats, snapR = [routed.slice(), reserved.slice(), placed.slice()];
-          runRouting(order); __ms.reroutes++;
-          const now = issueCount();
-          if (now < issues) { issues = now; fixed = true; break outer3; }
-          a[ka] = pa; b[kb] = pb;
-          free.forEach(e => { e.stubs = [[e.p1, [e.p1[0] + OUT[e.fs][0] * STUB, e.p1[1] + OUT[e.fs][1] * STUB]], [[e.p2[0] + OUT[e.ts][0] * STUB, e.p2[1] + OUT[e.ts][1] * STUB], e.p2]]; });
-          snap.forEach(([e, p, l, hw]) => { e.pts = p; e.lbl = l; e.how = hw; }); stats = snapStats;
+          if (budget <= 0) break outer3;
+          const pa = a[ka], pb = b[kb]; a[ka] = pb; b[kb] = pa; restub(a); restub(b);
+          const snap = [a, b].map(e => [e, e.pts, e.lbl, e.how]), snapR = [routed.slice(), reserved.slice(), placed.slice()];
+          const ab = new Set([a, b]), was = routeAudit({ edges }, '', ab).length; // issues away from a and b cannot change
+          budget -= 2; __ms.reroutes++;
+          if (!was) { a[ka] = pa; b[kb] = pb; restub(a); restub(b); continue; } // nothing to gain: the count can only drop by their own issues
+          ripUp(a); ripUp(b);
+          const now = routeOne(a) && routeOne(b) ? issues - was + routeAudit({ edges }, '', ab).length : Infinity;
+          if (now < issues) { issues = now; fixed = swapped = true; if (!issues) break outer3; continue outer3; }
+          a[ka] = pa; b[kb] = pb; restub(a); restub(b);
+          snap.forEach(([e, p, l, hw]) => { e.pts = p; e.lbl = l; e.how = hw; });
           routed.splice(0, routed.length, ...snapR[0]); reserved.splice(0, reserved.length, ...snapR[1]); placed.splice(0, placed.length, ...snapR[2]);
         }
       }
       if (!fixed) break;
     }
+    if (swapped) { ['grid', 'cross', 'fallback'].forEach(k => { delete stats[k]; }); free.forEach(e => { stats[e.how] = (stats[e.how] || 0) + 1; }); }
     __ms.repair = performance.now() - __ms.t; delete __ms.t;
     const groups = (dg.groups || []).map(g => {
       const ms = (g.nodes || []).map(i => byId[i]).filter(Boolean);
@@ -1417,7 +1473,8 @@ ${(() => { const I = (D.icons || {})[n.icon], x = map ? n.x + 14 : n.x + (verb ?
     }
   }
 
-  function routeAudit(geo, where) {
+  function routeAudit(geo, where, only) { // only: a set of edges; counts just the issues that involve one of them
+    const sk = e => only && !only.has(e);
     const issues = [];
     // routes: no crossings, no shared runs, no label lying across another route
     const segs = geo.edges.map(e => e.pts.slice(0, -1).map((a, i) => [a, e.pts[i + 1]]));
@@ -1436,13 +1493,14 @@ ${(() => { const I = (D.icons || {})[n.icon], x = map ? n.x + 14 : n.x + (verb ?
     };
     for (let i = 0; i < segs.length; i++) for (let j = i + 1; j < segs.length; j++) {
       if (geo.edges[i].fixed && geo.edges[j].fixed) continue; // one comb: its branches share the trunk by design
+      if (sk(geo.edges[i]) && sk(geo.edges[j])) continue;
       let found = null;
       for (const s1 of segs[i]) { for (const s2 of segs[j]) { found = crossing(s1, s2); if (found) break; } if (found) break; }
       if (found === 'cross') issues.push(`${where}: edges ${name(geo.edges[i])} and ${name(geo.edges[j])} cross`);
       if (found === 'share') issues.push(`${where}: edges ${name(geo.edges[i])} and ${name(geo.edges[j])} share a line`);
     }
     geo.edges.forEach((e, i) => { if (!e.lbl) return; const L = { x: e.lbl.x + 1, y: e.lbl.y + 1, w: e.lbl.w - 2, h: e.lbl.h - 2 };
-      geo.edges.forEach((o, j) => { if (j !== i && segs[j].some(([a, b]) => Math.max(a[0], b[0]) > L.x && Math.min(a[0], b[0]) < L.x + L.w && Math.max(a[1], b[1]) > L.y && Math.min(a[1], b[1]) < L.y + L.h)) issues.push(`${where}: label "${e.lbl.text || e.lbl.step}" lies on edge ${name(o)}`); }); });
+      geo.edges.forEach((o, j) => { if (j !== i && !(sk(e) && sk(o)) && segs[j].some(([a, b]) => Math.max(a[0], b[0]) > L.x && Math.min(a[0], b[0]) < L.x + L.w && Math.max(a[1], b[1]) > L.y && Math.min(a[1], b[1]) < L.y + L.h)) issues.push(`${where}: label "${e.lbl.text || e.lbl.step}" lies on edge ${name(o)}`); }); });
     const segHit = (r, i) => segs[i].some(([a, b]) => Math.max(a[0], b[0]) > r.x && Math.min(a[0], b[0]) < r.x + r.w && Math.max(a[1], b[1]) > r.y && Math.min(a[1], b[1]) < r.y + r.h);
     if (geo.map) {
       const ex = 12;
@@ -2041,7 +2099,7 @@ ${(() => { const I = (D.icons || {})[n.icon], x = map ? n.x + 14 : n.x + (verb ?
       return out.filter(e => { const r = !(V[vid] || {}).keepPairs && pair[e.to + '>' + e.from]; if (r) { r.both = true; r.back = false; if (e.label && e.label !== r.label) r.label = (r.label ? r.label + ' / ' : '') + e.label; if (e.when) r.when = [r.when, e.when].filter(Boolean).join(' · '); return false; } pair[e.from + '>' + e.to] = e; return true; });
     }
     const condTag = l => { const m = /^(?:routes|on-ramp:?)\s+(\S+)$/i.exec(String(l || '').trim()); return m ? m[1] : null; }; // "routes bug" → a "bug" tag
-    function buildGeo(vid, override, repair = true) {
+    function buildGeo(vid, override, repair = (V[vid] || {}).repair !== false) { // a view's repair: false turns port repair off
       const v = V[vid], ids = (v.nodeIds || []).filter(i => N[i]);
       const edges = viewEdges(v).map(e => ({ ...e }));
       if (v.render === 'sequence') edges.forEach((e, i) => { e.step = i + 1; });
