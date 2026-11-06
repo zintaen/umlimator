@@ -1,0 +1,84 @@
+<!doctype html>
+<!-- render() embedded in a plain page, as a host would: tests/embed.py inlines lib/umlimator.js and the example model,
+     opens this in headless Chrome and reads the result from <pre id="result">. -->
+<meta charset="utf-8">
+<title>umlimator embed test</title>
+<body style="margin:0">
+<div id="a" style="width:1000px;height:700px"></div>
+<div id="b" style="width:600px;height:400px"></div>
+<script type="module">
+/*__UMLIMATOR_LIB__*/
+const MODEL = /*__MODEL__*/null;
+const out = { ok: [], fail: [] };
+const check = (name, cond, info) => { if (cond) out.ok.push(name); else out.fail.push(name + (info === undefined ? '' : ': ' + JSON.stringify(info))); };
+const wait = ms => new Promise(r => setTimeout(r, ms));
+const until = async (f, ms = 5000) => { const t = Date.now(); while (!f() && Date.now() - t < ms) await wait(20); return f(); };
+const before = new Set(Object.keys(window));
+try {
+  const el = document.getElementById('a'), ev = [];
+  const h = render(el, MODEL, { on: { select: e => ev.push(['select', e.target]), click: e => ev.push(['click', e.target]), open: e => ev.push(['open', e.target, e.view]), viewchange: e => ev.push(['viewchange', e]) } });
+  const sr = el.querySelector('.umlimator').shadowRoot, fire = (s, type = 'click') => sr.querySelector(s).dispatchEvent(new MouseEvent(type, { bubbles: true, composed: true }));
+  check('starts on the root view', h.view === 'overview', h.view);
+  check('draws inside a shadow root, every card of the view', sr.querySelectorAll('.node').length === 13);
+  check('adds no globals', [...Object.keys(window)].every(k => before.has(k)), [...Object.keys(window)].filter(k => !before.has(k)));
+
+  fire('.node[data-id="api"] .n-label');
+  check('a card click reports click, then select, with a node ref', JSON.stringify(ev.slice(-2)) === JSON.stringify([['click', { type: 'node', id: 'api', view: 'overview' }], ['select', { type: 'node', id: 'api', view: 'overview' }]]), ev.slice(-2));
+  check('handle.selection follows', h.selection && h.selection.id === 'api');
+
+  const ids = new Set(MODEL.edges.map(e => e.id));
+  fire('.edge-g[data-i="0"] .hitline');
+  const er = ev[ev.length - 1][1];
+  check('a line click selects an edge ref listing model edge ids', er.type === 'edge' && er.ids.length >= 1 && er.ids.every(i => ids.has(i)), er);
+
+  h.select(null);
+  check('handle.select(null) clears and reports', ev[ev.length - 1][0] === 'select' && ev[ev.length - 1][1] === null);
+
+  const stop = h.on('open', e => e.preventDefault());
+  fire('.node[data-id="api"]', 'dblclick'); await wait(300);
+  check('open can be cancelled by the host', h.view === 'overview' && ev.some(x => x[0] === 'open' && x[2] === 'api'), h.view);
+  stop();
+  fire('.node[data-id="api"]', 'dblclick');
+  check('open drills down and reports viewchange', await until(() => ev.some(x => x[0] === 'viewchange' && x[1].view === 'api' && x[1].from === 'overview')), ev.filter(x => x[0] === 'viewchange'));
+  check('handle.view follows', h.view === 'api');
+  h.setView('overview');
+  check('setView goes back up', await until(() => h.view === 'overview' && ev.filter(x => x[0] === 'viewchange').length === 2));
+
+  // update: a renamed card redraws in place; selection and view stay
+  h.select({ type: 'node', id: 'api' });
+  const svg0 = sr.querySelector('svg.map-svg');
+  h.update(structuredClone(MODEL));
+  check('an unchanged model does not redraw', sr.querySelector('svg.map-svg') === svg0);
+  const m2 = structuredClone(MODEL); m2.nodes.find(n => n.id === 'api').label = 'Orders API';
+  h.update(m2);
+  check('a changed card redraws', sr.querySelector('svg.map-svg') !== svg0 && sr.querySelector('.node[data-id="api"] .n-label').textContent.includes('Orders API'));
+  check('the view and selection survive an update', h.view === 'overview' && h.selection && h.selection.id === 'api', [h.view, h.selection]);
+  const m3 = structuredClone(m2); m3.views.find(v => v.id === 'overview').nodeIds = m3.views.find(v => v.id === 'overview').nodeIds.filter(i => i !== 'api');
+  h.update(m3);
+  check('a selected card that is gone clears the selection', h.selection === null && ev[ev.length - 1][0] === 'select' && ev[ev.length - 1][1] === null);
+  const m4 = structuredClone(m3); m4.views = m4.views.filter(v => v.id !== 'api');
+  h.setView('api'); h.update(m4);
+  check('updating away a view that is not shown keeps the current one', h.view === 'overview');
+
+  h.destroy();
+  check('destroy empties the container', el.childElementCount === 0);
+  let threw = null; try { h.update(MODEL); h.select(null); h.destroy(); } catch (e) { threw = String(e); }
+  check('a destroyed handle ignores later calls', threw === null, threw);
+
+  // chips and containers
+  const small = { nodes: [{ id: 'a', label: 'Reader', verbs: ['read', 'write'] }, { id: 'b', label: 'Store' }, { id: 'c', label: 'Index' }],
+    edges: [{ id: 'e1', from: 'a', to: 'b' }, { id: 'e2', from: 'b', to: 'c' }],
+    views: [{ id: 'v', nodeIds: ['a', 'b', 'c'], containers: [{ id: 'box', label: 'Data', nodeIds: ['b', 'c'] }] }] };
+  const el2 = document.getElementById('b'), ev2 = [];
+  const h2 = render(el2, small, { controls: false, on: { click: e => ev2.push(e.target), select: e => ev2.push(['select', e.target]) } });
+  const sr2 = el2.querySelector('.umlimator').shadowRoot;
+  sr2.querySelector('.node[data-id="a"] text[data-chip="1"]').dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true }));
+  check('each chip is clickable on its own, and selects its card', JSON.stringify(ev2) === JSON.stringify([{ type: 'chip', node: 'a', index: 1, value: 'write', view: 'v' }, ['select', { type: 'node', id: 'a', view: 'v' }]]), ev2);
+  sr2.querySelector('.family[data-family="box"] .family-box').dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true }));
+  check('a container click reports a container ref', JSON.stringify(ev2.slice(-2)) === JSON.stringify([{ type: 'container', id: 'box', view: 'v' }, ['select', { type: 'container', id: 'box', view: 'v' }]]), ev2.slice(-2));
+  check('controls: false leaves the zoom buttons out', !sr2.querySelector('.ctl'));
+  h2.destroy();
+  check('makes no network requests', performance.getEntriesByType('resource').length === 0, performance.getEntriesByType('resource').map(r => r.name));
+} catch (e) { out.fail.push('threw: ' + (e && e.stack || e)); }
+const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
+</script>
