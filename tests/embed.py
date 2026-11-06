@@ -36,6 +36,8 @@ def dom(path, done):
 failed = False
 for page in ("tests/embed.html", "tests/edit.html"):
     t = dom(page, lambda t: 'id="result"' in t)
+    if "<title>" not in t:  # Chrome gave back no page at all (a rare headless hang on CI runners): once more
+        print(f"note {page}: Chrome returned nothing; running it again"); t = dom(page, lambda t: 'id="result"' in t)
     m = re.search(r'<pre id="result">(.*?)</pre>', t, re.S)
     if not m:  # each check names itself in the page title: say where it stopped
         last = re.search(r"<title>(.*?)</title>", t)
