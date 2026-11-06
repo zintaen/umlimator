@@ -11,9 +11,9 @@ const hash = g => {
   let h = 2166136261; for (let k = 0; k < sig.length; k++) h = Math.imul(h ^ sig.charCodeAt(k), 16777619) >>> 0;
   return h.toString(16);
 };
-const expected = read('../bench/results/' + readdirSync(new URL('../bench/results/', import.meta.url)).filter(f => /^\d{4}-\d\d-\d\d-[0-9a-f]+\.json$/.test(f)).sort().pop()).results;
+const expected = read('../bench/expected.json').results; // the reference geometry (bench.py --write-expected)
 
-test('layout() draws every benchmark view exactly as the browser did (bench/results)', () => {
+test('layout() draws every benchmark view exactly as the browser did (bench/expected.json)', () => {
   const models = { ...Object.fromEntries(readdirSync(new URL('../bench/models/', import.meta.url)).map(f => [f.replace('.json', ''), read('../bench/models/' + f)])), bookshop: read('../examples/bookshop.json') };
   let n = 0;
   for (const [name, m] of Object.entries(models)) for (const v of m.views) {
@@ -47,4 +47,34 @@ test("a view's repair: false turns port repair off", () => {
 
 test('an unknown view is an error', () => {
   assert.throws(() => layout(read('../examples/bookshop.json'), 'nope'), /no view "nope"/);
+});
+
+test('the module bakes in no colour: every colour is a --um-* variable (lib/umlimator-theme.css has the defaults)', () => {
+  const src = readFileSync(new URL('../lib/umlimator.js', import.meta.url), 'utf8');
+  const found = src.match(/#[0-9a-fA-F]{3,8}\b(?![\w-])|\brgba?\(|\bhsla?\(/g) || [];
+  assert.deepEqual(found, []);
+  const theme = readFileSync(new URL('../lib/umlimator-theme.css', import.meta.url), 'utf8');
+  for (const v of ['--um-bg', '--um-text', '--um-accent', '--um-edited', '--um-sans', '--um-mono']) assert.ok(theme.includes(v + ':'), v);
+});
+
+test('nothing is fetched at runtime: no web fonts, stylesheets or imports in the module or the page', () => {
+  for (const f of ['../lib/umlimator.js', '../lib/umlimator-theme.css', '../engine/assets/template.html']) {
+    const src = readFileSync(new URL(f, import.meta.url), 'utf8');
+    assert.doesNotMatch(src, /<link\b|@import|url\(\s*['"]?https?:|fetch\(|XMLHttpRequest|fonts\.googleapis/, f);
+  }
+});
+
+test('layout() measures text with the measurer it is given (render() passes the host font)', () => {
+  const m = { nodes: [{ id: 'a', label: 'i'.repeat(40) }], views: [{ id: 'v', nodeIds: ['a'] }] };
+  const est = layout(m, 'v').nodes[0].w, narrow = layout(m, 'v', { measure: (s, px) => s.length * px * 0.25 }).nodes[0].w;
+  assert.ok(narrow < est, `${narrow} < ${est}`);
+});
+
+test('several badges per node: each gets its own tab, and the card is wide enough for all of them', () => {
+  const one = layout({ nodes: [{ id: 'a', label: 'A', badge: 'BUILT' }], views: [{ id: 'v', nodeIds: ['a'] }] }, 'v').nodes[0];
+  const three = layout({ nodes: [{ id: 'a', label: 'A', badges: ['BUILT', { text: 'Owner: platform', tone: 'violet' }, 'Q3'] }], views: [{ id: 'v', nodeIds: ['a'] }] }, 'v').nodes[0];
+  assert.equal(one.decoT.length, 1); assert.equal(three.decoT.length, 3);
+  const span = three.decoT.reduce((a, [, w]) => a + w, 0);
+  assert.ok(three.w >= span, `${three.w} >= ${span}`);
+  assert.ok(three.decoT.every(([x], i) => i === 0 || x > three.decoT[i - 1][0]), 'left to right');
 });

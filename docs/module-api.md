@@ -154,3 +154,21 @@ events beyond verb chips (step 4); editing (step 5); SVG export without Chrome (
 - `mountPage` passes a few page-only hooks to `render` (status line, overlay insets, the page's own up target and
   saved preferences) through an undocumented `_page` option; hosts do not need them.
 - `layout()` and the canvas share one code path: Node and Chrome give byte-identical geometry on every benchmark view.
+
+## Step 4: host integration (built 6 Nov 2026)
+
+- **Colours come only from CSS variables**, all named `--um-*` so they cannot collide with a host's own tokens. The
+  module bakes in no colour (a test fails on any colour literal in it). `lib/umlimator-theme.css` is the default
+  palette, light and dark; a host includes it, or sets the variables itself (`--um-bg: var(--surface)`), on any
+  ancestor of the map. Light and dark are the host's call: change the variables and the map follows.
+- **No runtime network calls.** The page no longer loads Google Fonts; fonts are the host's (`--um-sans`, `--um-mono`).
+- **Text is measured in the host's font**: `render()` measures with a canvas in `--um-sans`, and lays out again once
+  the host's fonts have loaded. `layout()` in Node, the bench and the layout search that `umlimator.py render` bakes
+  into a page keep a font-independent estimate, so their output is the same on every machine; `render(..., { measure:
+  false })` does the same in a browser.
+- **Several badges per card**: `badges: ["BUILT", { "text": "Owner: platform", "tone": "violet" }]` (the old `badge`
+  still works). Each is its own tab and its own click target: `{ type: 'badge', node, index, value }`.
+- **`edited: true`** on a node or an edge draws a marker (`--um-edited`): a dot in the card's corner, or at the middle
+  of the line.
+- Labelled lines that leave or reach one card side by side now get a column gap wide enough for all their pills next
+  to each other. This moved routes in the benchmarks on purpose; `bench/expected.json` is the new reference.
