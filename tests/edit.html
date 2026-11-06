@@ -9,7 +9,7 @@
 <script type="module">
 import { render } from '../lib/umlimator.js';
 const out = { ok: [], fail: [] };
-const check = (name, cond, info) => { if (cond) out.ok.push(name); else out.fail.push(name + (info === undefined ? '' : ': ' + JSON.stringify(info))); };
+const check = (name, cond, info) => { document.title = name; if (cond) out.ok.push(name); else out.fail.push(name + (info === undefined ? '' : ': ' + JSON.stringify(info))); };
 const wait = ms => new Promise(r => setTimeout(r, ms));
 const MODEL = {
   nodes: [{ id: 'a', label: 'Gateway', kind: 'frontend', verbs: ['get', 'put', 'list'] }, { id: 'b', label: 'Orders', kind: 'backend' },
