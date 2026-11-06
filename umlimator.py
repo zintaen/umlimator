@@ -52,9 +52,9 @@ def icon_bytes(e):
             url, _, member = e["url"].partition("#")
             req = urllib.request.Request(url, headers={"User-Agent": "umlimator"})
             data = urllib.request.urlopen(req, timeout=60).read()
-            if member:  # the manifest names the file; the package keeps it under folders
+            if member:  # the file's path in the package, or just its name (the package keeps it under folders)
                 z, want = zipfile.ZipFile(io.BytesIO(data)), urllib.parse.unquote(member)
-                data = z.read(next(n for n in z.namelist() if n.rsplit("/", 1)[-1] == want))
+                data = z.read(next(n for n in z.namelist() if want in (n, n.rsplit("/", 1)[-1])))
         except (OSError, StopIteration, zipfile.BadZipFile) as err:
             print(f"icon {e['file']}: cannot fetch {e['url']} ({err}); the card keeps its kind sigil", file=sys.stderr)
             return None
@@ -84,15 +84,18 @@ def cmd_pin_icons(a):
     (ICONS / "manifest.json").write_text(json.dumps(man, indent=2) + "\n")
 
 
-def with_icons(model_path):
-    """The model with an `icons` table of every icon its nodes name (`icon`): a Lucide line icon as its inner markup,
-    drawn in the card's kind colour; a brand mark as a data URI on a white tile, never recoloured. Returns the path to
-    render (a temporary copy next to the model, so relative paths still resolve) or the model itself."""
+def page_model(model_path, out):
+    """The model as rendered: with an `icons` table of every icon its nodes name (`icon`): a Lucide line icon as its
+    inner markup, drawn in the card's kind colour; a brand mark as a data URI on a white tile, never recoloured.
+    Returns the path of a temporary copy next to the model, so relative paths still resolve."""
     m = json.loads(Path(model_path).read_text(encoding="utf-8"))
+    # visual.py records the checkout's root relative to the page; for a page outside the checkout that path climbs
+    # through the folders above it (a home folder, a user name) into a page that gets shared
+    root = subprocess.run(["git", "rev-parse", "--show-toplevel"], capture_output=True, text=True).stdout.strip()
+    if not Path(out).resolve().is_relative_to(Path(root or os.getcwd()).resolve()):
+        m.setdefault("meta", {}).setdefault("root", "")
     names = {n["icon"] for n in m.get("nodes", []) if n.get("icon")}
     names |= {o["icon"] for v in m.get("views", []) for o in (v.get("nodeOverrides") or {}).values() if o.get("icon")}
-    if not names:
-        return model_path
     man = json.loads((ICONS / "manifest.json").read_text())
     table = {}
     for name in sorted(names):
@@ -107,19 +110,21 @@ def with_icons(model_path):
         else:
             mime = "image/svg+xml" if e["file"].endswith(".svg") else "image/" + e["file"].rsplit(".", 1)[1]
             table[name] = {"src": f"data:{mime};base64,{base64.b64encode(b).decode()}", "dark": bool(e.get("white_fill"))}
-    m["icons"] = table
+    if table:
+        m["icons"] = table
     tmp = Path(model_path).with_name("." + Path(model_path).stem + ".icons.json")
     tmp.write_text(json.dumps(m, ensure_ascii=False), encoding="utf-8")
     return str(tmp)
 
 
 def cmd_render(a):
-    model = with_icons(a.model)
+    if not Path(a.model).is_file():
+        sys.exit(f"no model at {a.model}")
+    model = page_model(a.model, a.out)
     try:
         render(a, model)
     finally:
-        if model != a.model:
-            Path(model).unlink()
+        Path(model).unlink()
 
 
 def render(a, model):
@@ -162,7 +167,10 @@ def cmd_check(a):
     counts = {k: sum(t in o for o in ov) for k, t in kinds.items()}
     counts["other"] = len(ov) - sum(counts.values())
     # --ignore drops whole kinds from the report (pictures that keep a source drawing's own direction run lines right to left)
-    skip = [kinds[k] for k in (a.ignore or "").replace("right-to-left", "rightToLeft").split(",") if k]
+    asked = [k for k in (a.ignore or "").replace("right-to-left", "rightToLeft").split(",") if k]
+    if bad := [k for k in asked if k not in kinds]:
+        sys.exit(f"--ignore: unknown kind {', '.join(bad)}; known: right-to-left, {', '.join(k for k in kinds if k != 'rightToLeft')}")
+    skip = [kinds[k] for k in asked]
     shown = [o for o in ov if not any(t in o for t in skip)]
     print(json.dumps({"checked": rep.get("checked"), "counts": counts, "ignored": len(ov) - len(shown),
                       "problems": shown, "errors": rep.get("errors", [])}, indent=1))
@@ -213,7 +221,10 @@ def cmd_stills(a):
     for v in views:
         if seen.get(v) == keys.get(v) and (out / f"{v}.png").is_file() and (out / f"{v}.svg").is_file():
             skipped.append(v); continue
-        dom = headless(b, "--virtual-time-budget=20000", "--dump-dom", f"{page.as_uri()}#still={v}&scale={a.scale}&theme={a.theme}" + ("&reader=1" if a.reader else ""))
+        try:
+            dom = headless(b, "--virtual-time-budget=20000", "--dump-dom", f"{page.as_uri()}#still={v}&scale={a.scale}&theme={a.theme}" + ("&reader=1" if a.reader else ""))
+        except subprocess.TimeoutExpired:
+            print(f"{v}: no still (Chrome did not finish in 90 s)"); continue
         meta = re.search(r'data-still="([^"]+)"', dom)
         svg = re.search(r'<div id="still">(<svg.*?</svg>)</div>', dom, re.S)
         if not (meta and svg):
@@ -223,8 +234,12 @@ def cmd_stills(a):
         with tempfile.NamedTemporaryFile("w", suffix=".html", delete=False) as f:
             f.write("<!doctype html><meta charset=utf-8><body style='margin:0'>" + svg.group(1))
         png = out / f"{v}.png"
-        headless(b, f"--window-size={info['w']},{info['h']}", f"--screenshot={png}", Path(f.name).as_uri())
-        Path(f.name).unlink()
+        try:
+            headless(b, f"--window-size={info['w']},{info['h']}", f"--screenshot={png}", Path(f.name).as_uri())
+        except subprocess.TimeoutExpired:
+            print(f"{v}: no PNG (Chrome did not finish in 90 s)"); continue
+        finally:
+            Path(f.name).unlink()
         done.append({"view": v, "w": info["w"], "h": info["h"], "png": str(png)})
         seen[v] = keys.get(v)
         record.write_text(json.dumps(seen, indent=1, sort_keys=True))

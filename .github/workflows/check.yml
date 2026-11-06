@@ -6,6 +6,10 @@ on:
   schedule:
     - cron: "0 6 * * 1"  # weekly: a logo source that changed shows up here, not in someone's picture
 
+env:
+  SB: https://raw.githubusercontent.com/EricTechPro/super-board/d0b7d5a/skills/visual  # pinned upstreams (README § What was changed)
+  SD: https://raw.githubusercontent.com/caru-ini/stack-diagram/30cbbb7/skills/stack-diagram/scripts
+
 jobs:
   check:
     runs-on: ubuntu-latest
@@ -16,12 +20,24 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: The patches still apply to super-board's template
+      - name: The copied files are upstream's, unmodified, and the patches still apply to the template
         run: |
-          curl -fsSL https://raw.githubusercontent.com/EricTechPro/super-board/d0b7d5a/skills/visual/assets/template.html \
-            -o engine/assets/template.html
+          curl -fsSL "$SB/scripts/visual.py" -o engine/scripts/visual.py
+          curl -fsSL "$SB/references/schema.md" -o engine/references/schema.md
+          curl -fsSL "$SB/references/sections.md" -o engine/references/sections.md
+          curl -fsSL "$SD/fetch_icons.py" -o tools/fetch_icons.py
+          curl -fsSL "$SB/assets/template.html" -o engine/assets/template.html
           python3 -I patches/apply.py
-          git diff --exit-code engine/assets/template.html
+          git diff --exit-code engine tools
+
+      - name: Upstream changed a copied file since its pin (a warning, time to sync)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          moved() { gh api "repos/$1/compare/$2...HEAD" --jq '.files[].filename' | grep -xE "$3" || true; }
+          for f in $(moved EricTechPro/super-board d0b7d5a 'skills/visual/(assets/template.html|scripts/visual.py|references/.*)'; moved caru-ini/stack-diagram 30cbbb7 'skills/stack-diagram/scripts/fetch_icons.py'); do
+            echo "::warning::upstream changed $f since its pin"
+          done
 
       - name: Every brand logo still downloads and matches its pinned sha256
         run: |
@@ -34,8 +50,11 @@ jobs:
           sys.exit(1 if bad else 0)
           PY
 
-      - name: The example renders and its layout check is clean
+      - name: The example renders as committed and its layout check is clean
         run: |
-          python3 umlimator.py render examples/bookshop.json --out /tmp/bookshop.html --no-check
-          python3 umlimator.py check /tmp/bookshop.html | tee /tmp/check.json
+          python3 umlimator.py render examples/bookshop.json --out examples/bookshop.html --no-check
+          t='s/"generated": "[^"]*"//'  # the render time is the only difference allowed
+          diff -q <(git show HEAD:examples/bookshop.html | sed "$t") <(sed "$t" examples/bookshop.html) \
+            || { echo "::error::examples/bookshop.html is stale: render it again and commit it"; exit 1; }
+          python3 umlimator.py check examples/bookshop.html | tee /tmp/check.json
           python3 -I -c "import json; s = open('/tmp/check.json').read(); d = json.loads(s[s.find('{'):]); assert not d['problems'], d['problems']"

@@ -109,7 +109,7 @@ SOFTWARE.
 
 ## caru-ini/stack-diagram
 
-`tools/fetch_icons.py` is copied unmodified from caru-ini/stack-diagram (commit `75dbd3e`). The rules umlimator follows
+`tools/fetch_icons.py` is copied unmodified from caru-ini/stack-diagram (commit `30cbbb7`). The rules umlimator follows
 for brand logos (official marks only, never recoloured, a white tile, a dark tile for a white mark, fetched rather than
 bundled) are stack-diagram's. MIT, Copyright (c) 2026 caru-ini; the full text is in `LICENSE.stack-diagram`.
 stack-diagram's bundled fonts (SIL OFL 1.1) are not used. Source: https://github.com/caru-ini/stack-diagram
