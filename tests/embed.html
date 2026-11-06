@@ -109,6 +109,17 @@ try {
   tabs[1].querySelector('text').dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true }));
   check('a badge click names the badge', JSON.stringify(ev3[0]) === JSON.stringify({ type: 'badge', node: 'svc', index: 1, value: 'Owner: platform', view: 'v' }), ev3);
   check('the edited marker shows on cards and lines', !!sr3.querySelector('.node[data-id="svc"] .edited-dot') && !!sr3.querySelector('.edge-g .edited-dot') && !sr3.querySelector('.node[data-id="db"] .edited-dot'));
+  // accessibility: the map is a group of named buttons; selection and focus can be followed without a mouse
+  const card = id => sr3.querySelector(`.node[data-id="${id}"]`), lab = card('svc').getAttribute('aria-label');
+  check('the map is a group, not an image (an image hides its cards from screen readers)', sr3.querySelector('svg.map-svg').getAttribute('role') === 'group');
+  check('a card is a focusable button named with its badges and edited state', card('svc').getAttribute('role') === 'button' && card('svc').tabIndex === 0 && lab.startsWith('Billing') && lab.includes('Owner: platform') && lab.includes('edited') && !card('db').getAttribute('aria-label').includes('edited'), lab);
+  h3.select({ type: 'node', id: 'svc' });
+  check('the selected card is pressed, the others not', card('svc').getAttribute('aria-pressed') === 'true' && card('db').getAttribute('aria-pressed') === 'false');
+  check('a selection is announced', sr3.querySelector('[aria-live]').textContent === 'Billing, selected', sr3.querySelector('[aria-live]').textContent);
+  card('svc').focus(); card('svc').dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, composed: true }));
+  check('an arrow key on a card moves focus to the next card that way', sr3.activeElement === card('db'), sr3.activeElement && sr3.activeElement.dataset.id);
+  h3.select(null);
+
   // the picture as a file, in the browser: host colours resolved, drawn at rest, the screen untouched
   h3.select({ type: 'node', id: 'svc' });
   file = h3.toSVG({ scale: 2 });
@@ -128,6 +139,7 @@ try {
   check('measure: false keeps the font-independent estimate', cardW('serif', { measure: false }) === est);
   check('makes no network requests', performance.getEntriesByType('resource').length === loaded, performance.getEntriesByType('resource').slice(loaded).map(r => r.name));
   const img = new Image(); img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(file);
+  check('the file is a picture: role img, nothing focusable', /^<svg[^>]* role="img"/.test(file) && !file.includes('tabindex'));
   check('the file draws as an image on its own', await img.decode().then(() => img.naturalWidth > 0, () => false));
 } catch (e) { out.fail.push('threw: ' + (e && e.stack || e)); }
 const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);

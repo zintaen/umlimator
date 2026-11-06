@@ -196,3 +196,15 @@ events beyond verb chips (step 4); editing (step 5); SVG export without Chrome (
 - The standalone page's "Export ▾ SVG / PNG" and the `#still` hook use the same code, so `umlimator.py stills` writes
   the same SVG a host gets; the CLI still uses Chrome to run the page and to save PNGs. Compared with step 5, the stills'
   PNGs are byte-identical and their SVGs differ only in having no leftover `var(...)` references.
+
+## Accessibility (added after step 6)
+
+- The map's `<svg>` is a `group` named after the view (it was an `img`, which hides its children from screen
+  readers). Each card is a focusable `button` whose name is its label, its sublabel, its badges and "edited", plus
+  "(opens inner view)" when it has one; `aria-pressed` says whether it is selected.
+- Keyboard: Tab reaches each card; arrow keys on a focused card move to the nearest card that way (on the empty canvas
+  they still pan); Enter selects, and Enter again opens; Escape clears, then goes up a level.
+- A polite live region announces each selection ("Billing, selected", "3 cards selected", "Line from A to B") and
+  each view shown.
+- Exported files (`toSVG`, `toPNG`, stills) are pictures: `role="img"` named after the view, nothing focusable.
+- Not covered: lines and containers are reachable by pointer only; colour contrast is the host's palette's.
