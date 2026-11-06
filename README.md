@@ -147,7 +147,8 @@ function MapView({ model, onSelect }) {
 }
 ```
 
-`render` draws one view at a time into a shadow root inside the element (give the element a height), with drill-down
+`render` draws one view at a time into a shadow root inside the element (give the element a height), keyboard and
+screen-reader friendly (cards are named buttons; arrows move between them; selections are announced), with drill-down
 into inner views, pan and zoom, and events for every card, line, container and chip, each named by ids from the model.
 `layout(model, viewId)` returns a view's geometry without a DOM (Node works too). Colours are `--um-*` CSS variables
 (defaults in `lib/umlimator-theme.css`; set them on any ancestor, light or dark as the host decides), fonts are the
