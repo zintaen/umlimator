@@ -16,6 +16,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 VISUAL = HERE / "engine" / "scripts" / "visual.py"
 LIB = HERE / "lib" / "umlimator.js"            # the module: layout, routing, drawing, render(), mountPage()
+THEME = HERE / "lib" / "umlimator-theme.css"   # its default palette and fonts (--um-* variables)
 PAGE = HERE / "engine" / "assets" / "template.html"  # the page around it; visual.py fills in the model
 
 
@@ -24,7 +25,8 @@ def visual_cmd(tmp, *args):
     self-contained HTML file, as before. visual.py writes pages from its TEMPLATE path, so it runs with TEMPLATE
     pointed at that page, written into the directory `tmp`."""
     page = Path(tmp) / "template.html"
-    page.write_text(PAGE.read_text(encoding="utf-8").replace("/*__UMLIMATOR_LIB__*/", LIB.read_text(encoding="utf-8"), 1), encoding="utf-8")
+    html = PAGE.read_text(encoding="utf-8").replace("/*__UMLIMATOR_THEME__*/", THEME.read_text(encoding="utf-8"), 1)
+    page.write_text(html.replace("/*__UMLIMATOR_LIB__*/", LIB.read_text(encoding="utf-8"), 1), encoding="utf-8")
     run = ("import importlib.util, pathlib, sys; s = importlib.util.spec_from_file_location('visual', sys.argv[1]); "
            "v = importlib.util.module_from_spec(s); s.loader.exec_module(v); v.TEMPLATE = pathlib.Path(sys.argv[2]); "
            "sys.argv = [sys.argv[1]] + sys.argv[3:]; v.main()")

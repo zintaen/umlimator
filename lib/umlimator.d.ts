@@ -11,8 +11,10 @@ export interface MapModel {
   authors?: Record<string, { name?: string; url?: string; avatar?: string }>;
   [key: string]: unknown;
 }
-export interface MapNode { id: string; label?: string; kind?: string; sublabel?: string; badge?: string; icon?: string; verbs?: string[]; opensView?: string; [key: string]: unknown }
-export interface MapEdge { id?: string; from: string; to: string; label?: string; [key: string]: unknown }
+/** A badge: its text, and optionally a palette name for its colour (green, amber, rose, accent, violet ... : --um-<tone>). */
+export type Badge = string | { text: string; tone?: string };
+export interface MapNode { id: string; label?: string; kind?: string; sublabel?: string; badge?: string; badges?: Badge[]; edited?: boolean; icon?: string; verbs?: string[]; opensView?: string; [key: string]: unknown }
+export interface MapEdge { id?: string; from: string; to: string; label?: string; edited?: boolean; [key: string]: unknown }
 export interface MapView {
   id: string; parent?: string | null; title?: string; nodeIds: string[];
   edges?: (string | MapEdge)[]; layout?: Record<string, [number, number]>; repair?: boolean;
@@ -25,11 +27,12 @@ export type Ref =
   | { type: 'node'; id: string; view: string }
   | { type: 'edge'; ids: string[]; view: string }          // one drawn line can stand for several model edges
   | { type: 'container'; id: string; view: string }
-  | { type: 'chip'; node: string; index: number; value: string; view: string };
+  | { type: 'chip'; node: string; index: number; value: string; view: string }
+  | { type: 'badge'; node: string; index: number; value: string; view: string };
 
 export interface Events {
   click: { target: Ref; event: MouseEvent };
-  select: { target: Ref | null };                           // a chip selects its card
+  select: { target: Ref | null };                           // a chip or badge selects its card
   open: { target: Ref; view: string; preventDefault(): void };
   viewchange: { view: string; from: string };
 }
@@ -40,6 +43,8 @@ export interface RenderOptions {
   controls?: boolean;            // up / zoom / fit / 1:1 / flow buttons (default true)
   minimap?: boolean;             // default false
   flow?: boolean;                // animated flow along lines (default: on unless prefers-reduced-motion)
+  /** Text widths: default the host's font (--um-sans, measured on a canvas); false: a font-independent estimate. */
+  measure?: false | ((text: string, px: number) => number);
   on?: { [K in keyof Events]?: (e: Events[K]) => void };
 }
 
@@ -62,6 +67,6 @@ export interface Geometry {
 }
 
 export function render(container: HTMLElement, model: MapModel, options?: RenderOptions): Handle;
-export function layout(model: MapModel, viewId: string, options?: { repair?: boolean }): Geometry;
+export function layout(model: MapModel, viewId: string, options?: { repair?: boolean; measure?: (text: string, px: number) => number }): Geometry;
 /** The whole standalone viewer (top bar, views list, details panel, search, export) that umlimator.py writes. */
 export function mountPage(container: HTMLElement, model: MapModel, options?: { params?: URLSearchParams; instant?: boolean }): Handle;
