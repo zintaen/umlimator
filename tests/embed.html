@@ -47,6 +47,18 @@ try {
   h.setView('overview');
   check('setView goes back up', await until(() => h.view === 'overview' && ev.filter(x => x[0] === 'viewchange').length === 2));
 
+  // export any view without showing it, and as a PNG in the browser
+  const apiOff = h.toSVG({ view: 'api' }), vcs = ev.filter(x => x[0] === 'viewchange').length;
+  check('toSVG({ view }) draws another view off screen; the screen stays', apiOff.startsWith('<svg') && h.view === 'overview' && ev.filter(x => x[0] === 'viewchange').length === vcs && !sr.querySelector('[style*="-100000px"]'));
+  check('toSVG of an unknown view is empty', h.toSVG({ view: 'nope' }) === '');
+  h.setView('api'); await until(() => h.view === 'api');
+  check('the off-screen file is the one the view gives when shown', h.toSVG() === apiOff);
+  h.setView('overview'); await until(() => h.view === 'overview' && ev.filter(x => x[0] === 'viewchange').length === vcs + 2);
+  const png = await h.toPNG({ view: 'api', scale: 1 }), bmp = png && await createImageBitmap(png), vbw = +apiOff.match(/viewBox="[^ ]+ [^ ]+ ([^ ]+)/)[1];
+  check('toPNG gives a PNG of the view at the asked scale', png && png.type === 'image/png' && bmp.width === Math.ceil(vbw), [png && png.type, bmp && bmp.width, vbw]);
+  const face = '@font-face { font-family: "Host Sans"; src: url(data:font/woff2;base64,AAAA); }';
+  check('fontCSS carries the host\'s @font-face rules into the file', h.toSVG({ fontCSS: face }).includes('font-family: "Host Sans"') && !h.toSVG().includes('Host Sans'));
+
   // update: a renamed card redraws in place; selection and view stay
   h.select({ type: 'node', id: 'api' });
   const svg0 = sr.querySelector('svg.map-svg');

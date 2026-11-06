@@ -64,14 +64,20 @@ export interface RenderOptions {
   on?: { [K in keyof Events]?: (e: Events[K]) => void };
 }
 
+export interface ExportOptions { view?: string; scale?: number; fontCSS?: string }
+
 export interface Handle {
   update(model: MapModel): void;
   setView(id: string): Promise<void> | void;
   select(ref: Ref | null): void;
   fit(): void;
-  /** The current view as a stand-alone SVG file: colours and fonts resolved from the host's CSS, drawn at rest (no
-   *  selection, hover, flow or edit handles), `scale` × its natural size (default 1). No network, no headless browser. */
-  toSVG(options?: { scale?: number }): string;
+  /** A view (default: the one shown; another is drawn off screen) as a stand-alone SVG file: colours resolved from the
+   *  host's CSS, drawn at rest (no selection, hover, flow or edit handles), `scale` × its natural size (default 1).
+   *  `fontCSS`: the host's own @font-face rules (data: URLs) to carry into the file. No network, no headless browser.
+   *  '' for an unknown or empty view, or a destroyed handle. */
+  toSVG(options?: ExportOptions): string;
+  /** The same picture as a PNG Blob, drawn on a canvas in the browser (default scale 2). null when there is nothing to draw. */
+  toPNG(options?: ExportOptions): Promise<Blob | null>;
   on<K extends keyof Events>(type: K, fn: (e: Events[K]) => void): () => void;
   readonly view: string | null;
   readonly selection: Ref | null;
