@@ -78,6 +78,7 @@ guidelines for anything else. Add an icon with:
 python3 -I tools/fetch_icons.py icons "name:slug"            # a brand: svgl, then devicon, then gilbarbara/logos
 python3 -I tools/fetch_icons.py icons "name=https://..."     # a brand's own official file
 python3 -I tools/fetch_icons.py icons "name:lucide/<icon>"   # a line icon (lucide.dev/icons)
+python3 -I tools/fetch_icons.py icons "name:gcp/Cloud-Run"   # an official Google Cloud icon (also aws/, azure/)
 python3 umlimator.py pin-icons                                # records each new brand logo's sha256 and moves it out of icons/
 ```
 
@@ -136,7 +137,7 @@ LICENSE, LICENSE.super-board, LICENSE.stack-diagram, THIRD_PARTY_NOTICES.md
   **[Cocoon-AI/architecture-diagram-generator](https://github.com/Cocoon-AI/architecture-diagram-generator)** (MIT).
   No source file of either is copied; super-board's notices for both are kept in `THIRD_PARTY_NOTICES.md`.
 - **[stack-diagram](https://github.com/caru-ini/stack-diagram)** by caru-ini, MIT (`LICENSE.stack-diagram`).
-  `tools/fetch_icons.py` is copied unmodified (commit `75dbd3e`); the rules umlimator follows for logos (official marks
+  `tools/fetch_icons.py` is copied unmodified (commit `30cbbb7`); the rules umlimator follows for logos (official marks
   only, never recoloured, on a white tile, fetched rather than bundled) are stack-diagram's.
 - **[Lucide](https://lucide.dev)**, ISC, with icons derived from Feather, MIT: the line icons in `icons/`.
 
