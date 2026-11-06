@@ -86,7 +86,7 @@ python3 umlimator.py pin-icons                                # records each new
 
 The upstream files are copied unmodified, then `patches/apply.py` edits `engine/assets/template.html` at exact anchors
 (it stops if an anchor is missing, so an upstream change is never patched blind). The comments in `patches/apply.py`
-give the reason for each of its 34 patches; the main ones:
+give the reason for each of its 35 patches; the main ones:
 
 1. `external` keeps its architecture meaning in map mode; upstream it became "External skill" with an author tag.
 2. Architecture kinds get legend wording and appear in the legend.
@@ -112,6 +112,19 @@ The engine is super-board commit `d0b7d5a` (29 Oct 2026). To take a newer upstre
 `skills/visual/assets/template.html`, `scripts/visual.py` and `references/` into `engine/`, run
 `python3 -I patches/apply.py`, then render `examples/` and compare.
 
+## Benchmarks
+
+```bash
+python3 bench/bench.py                       # each view of bench/models/*.json and the example: median ms per phase
+python3 bench/bench.py --models m50 --optimize --save
+python3 bench/bench.py --check-determinism --max-ms m50=1000
+```
+
+`bench/models/` holds fixed models of 10, 26 and 69 nodes and one of 50 modules with 100 edges, written once by
+`bench/gen.py`. The bench opens each view in headless Chrome (`#bench=1`, patch 30) and reports lane planning,
+placement, routing, port repair (its rounds and full re-routes), the total, the layout check's route issues and a hash
+of the geometry; `--optimize` adds render's layout search. `--save` keeps the numbers in `bench/results/`.
+
 ## Layout
 
 ```
@@ -120,6 +133,7 @@ engine/assets/template.html  super-board /visual template, patched
 engine/scripts/visual.py     super-board /visual renderer and checker (unmodified)
 engine/references/           super-board's model schema and section guide (unmodified)
 patches/apply.py             umlimator's template patches
+bench/                       benchmark models, harness and recorded results
 icons/                       Lucide line icons and manifest.json (brand logos: sources and hashes only)
 tools/fetch_icons.py         stack-diagram's icon fetcher (unmodified)
 examples/                    a made-up bookshop: model, page and stills

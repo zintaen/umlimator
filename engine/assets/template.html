@@ -791,6 +791,7 @@
   };
   /* Geometry: node boxes, ports, orthogonal routes, label slots. */
   function layoutGraph(dg, map) {
+    const __ms = { t: performance.now() };
     const CG = dg.gap ? dg.gap : map ? (dg.mainSteps && !dg.containers ? 38 : 66) : CG0, RG = dg.rgap ? dg.rgap : map ? 44 : RG0; // family borders also need clearance between columns
     const NH = dg.nodeH || 64, pitch = NH + RG;
     const nodes = (dg.nodes || []).map((n, i) => {
@@ -1068,6 +1069,7 @@
       });
       return (stats.cross || 0) + (stats.fallback || 0);
     };
+    __ms.place = performance.now() - __ms.t; __ms.t = performance.now();
     let order = [...free].sort((a, b) => (Math.abs(a.p1[0] - a.p2[0]) + Math.abs(a.p1[1] - a.p2[1])) - (Math.abs(b.p1[0] - b.p2[0]) + Math.abs(b.p1[1] - b.p2[1])));
     let bad = runRouting(order);
     // rip-up and reroute: an edge that had to cross goes first next time; keep the best attempt
@@ -1079,12 +1081,13 @@
       if (b2 < bad) { bad = b2; order = next; }
       else { snap.forEach(([e, p, l, hw]) => { e.pts = p; e.lbl = l; e.how = hw; }); stats = snapStats; routed.splice(0, routed.length, ...snapR[0]); reserved.splice(0, reserved.length, ...snapR[1]); placed.splice(0, placed.length, ...snapR[2]); break; }
     }
+    __ms.route = performance.now() - __ms.t; __ms.t = performance.now(); __ms.rounds = 0; __ms.reroutes = 0;
     // port repair: two routes that cross next to a shared node side swap ports, keep it if issues drop
     const issueCount = () => routeAudit({ edges }, '').length;
     const endAt = (e, n, side) => (e.s === n && e.fs === side) ? 'p1' : (e.t === n && e.ts === side) ? 'p2' : null;
     let issues = issueCount();
     for (let round = 0; issues && dg.repair !== false && round < 8; round++) {
-      let fixed = false;
+      let fixed = false; __ms.rounds++;
       const segsE = e => e.pts.slice(0, -1).map((p, i) => [p, e.pts[i + 1]]);
       const xing = (a, b) => segsE(a).some(([p, q]) => segsE(b).some(([r, s]) => { // perpendicular interior crossing
         const pv = p[0] === q[0], rv = r[0] === s[0]; if (pv === rv) return false;
@@ -1100,7 +1103,7 @@
           const pa = a[ka], pb = b[kb]; a[ka] = pb; b[kb] = pa;
           free.forEach(e => { e.stubs = [[e.p1, [e.p1[0] + OUT[e.fs][0] * STUB, e.p1[1] + OUT[e.fs][1] * STUB]], [[e.p2[0] + OUT[e.ts][0] * STUB, e.p2[1] + OUT[e.ts][1] * STUB], e.p2]]; });
           const snap = edges.map(e => [e, e.pts, e.lbl, e.how]), snapStats = stats, snapR = [routed.slice(), reserved.slice(), placed.slice()];
-          runRouting(order);
+          runRouting(order); __ms.reroutes++;
           const now = issueCount();
           if (now < issues) { issues = now; fixed = true; break outer3; }
           a[ka] = pa; b[kb] = pb;
@@ -1111,6 +1114,7 @@
       }
       if (!fixed) break;
     }
+    __ms.repair = performance.now() - __ms.t; delete __ms.t;
     const groups = (dg.groups || []).map(g => {
       const ms = (g.nodes || []).map(i => byId[i]).filter(Boolean);
       if (!ms.length) return null;
@@ -1122,7 +1126,7 @@
     const ys = [...families.flatMap(f => [f.y,f.y+f.h]), ...(dg.lanes || []).flatMap(l => [l.y, l.y + l.h]), ...nodes.flatMap(n => [n.y - 14, n.y + n.h + (n.tag ? 18 : 8)]), ...groups.flatMap(g => [g.y, g.y2]), ...edges.flatMap(e => e.pts.map(p => p[1])), ...placed.flatMap(p => [p.y, p.y + p.h])];
     intake.forEach(b => { xs.push(b.cx - b.r - 8 - textW(b.label || '', 10.5), b.cx + b.r); ys.push(b.cy - b.r, b.cy + b.r); });
     const M = 36, minX = Math.min(...xs) - M, minY = Math.min(...ys) - M;
-    return { stats, nodes, edges, groups, families, intake, tour: dg.tour || null, byId, map, hub: dg.hub || null, lanes: dg.lanes || [], blocks: dg.blocks || [], bounds: { x: minX, y: minY, w: Math.max(...xs) - minX + M, h: Math.max(...ys) - minY + M } };
+    return { ms: __ms, stats, nodes, edges, groups, families, intake, tour: dg.tour || null, byId, map, hub: dg.hub || null, lanes: dg.lanes || [], blocks: dg.blocks || [], bounds: { x: minX, y: minY, w: Math.max(...xs) - minX + M, h: Math.max(...ys) - minY + M } };
   }
 
   let svgSeq = 0;
@@ -2567,8 +2571,21 @@ ${(() => { const I = (D.icons || {})[n.icon], x = map ? n.x + 14 : n.x + (verb ?
       if (n0 && geo.byId[n0]) select(n0, { reveal: false });
       setHash(true);
     };
-    if (window.__instant) boot(); else requestAnimationFrame(() => setTimeout(boot, 16));
+    if (Q.get('bench')) { /* timings only, no page */ } else if (window.__instant) boot(); else requestAnimationFrame(() => setTimeout(boot, 16));
 
+    window.__bench = (vid, runs, opt) => {
+      const out = [];
+      for (let i = 0; i < runs; i++) {
+        delete planCache[vid]; delete layoutCache[vid];
+        const t0 = performance.now(); planOf(vid); const t1 = performance.now(), g = buildGeo(vid), t2 = performance.now();
+        const sig = JSON.stringify([g.nodes.map(n => [n.id, n.x, n.y, n.w, n.h]), g.edges.map(e => [e.from, e.to, e.pts, e.lbl ? [e.lbl.x, e.lbl.y] : null])]);
+        let h = 2166136261; for (let k = 0; k < sig.length; k++) h = Math.imul(h ^ sig.charCodeAt(k), 16777619) >>> 0;
+        out.push({ plan: t1 - t0, geo: t2 - t1, ...g.ms, issues: routeAudit(g, '').length, cross: g.stats.cross || 0, fallback: g.stats.fallback || 0, hash: h.toString(16) });
+      }
+      const r = { runs: out, nodes: (V[vid].nodeIds || []).filter(i => N[i]).length };
+      if (opt && !V[vid].layout && !planOf(vid).hub) { delete layoutCache[vid]; const t = performance.now(), o = optimize(vid); r.optimize = { ms: performance.now() - t, evals: o.evals, score: o.score }; }
+      return r;
+    };
     window.__mapAudit = () => {
       const out = [], host = document.createElement('div');
       host.style.cssText = 'position:absolute;left:-99999px;top:0;width:2000px;height:2000px;visibility:hidden';
@@ -2588,6 +2605,12 @@ ${(() => { const I = (D.icons || {})[n.icon], x = map ? n.x + 14 : n.x + (verb ?
 
   try { (D.kind === 'map' ? renderMap : renderDoc)(); } catch (err) { errors.push('render: ' + err.message); console.error(err); }
 
+  if (Q.get('bench')) {
+    const res = { views: {}, errors };
+    try { (Q.get('views') || '').split(',').filter(Boolean).forEach(v => { res.views[v] = window.__bench(v, +Q.get('runs') || 5, !!Q.get('optimize')); }); }
+    catch (err) { errors.push('bench: ' + err.message); }
+    const pre = document.createElement('pre'); pre.id = 'bench'; pre.hidden = true; pre.textContent = JSON.stringify(res); document.body.appendChild(pre);
+  }
   /* ---------- self-check hook for `visual.py check` ---------- */
   if (Q.get('check')) {
     const report = () => {
