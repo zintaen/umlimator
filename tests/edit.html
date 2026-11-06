@@ -22,7 +22,7 @@ const pick = s => sr.querySelector(s);
 const centre = s => { const r = pick(s).getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; };
 const ptr = (target, type, [x, y], extra = {}) => target.dispatchEvent(new PointerEvent(type, { clientX: x, clientY: y, button: 0, pointerId: 7, pointerType: 'mouse', bubbles: true, composed: true, ...extra }));
 const key = (k, extra = {}, target = stage) => target.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true, composed: true, ...extra }));
-const click = s => { const g = pick(s), at = centre(s); ptr(g, 'pointerdown', at); ptr(g, 'pointerup', at); g.dispatchEvent(new MouseEvent('click', { clientX: at[0], clientY: at[1], bubbles: true, composed: true })); }; // as a press, then a click
+const click = (s, extra = {}) => { const g = pick(s), at = centre(s); ptr(g, 'pointerdown', at); ptr(g, 'pointerup', at); g.dispatchEvent(new MouseEvent('click', { clientX: at[0], clientY: at[1], bubbles: true, composed: true, ...extra })); }; // as a press, then a click
 const drag = (from, to) => { const g = pick(from); ptr(g, 'pointerdown', centre(from)); const a = centre(from);
   for (let i = 1; i <= 4; i++) ptr(stage, 'pointermove', [a[0] + (to[0] - a[0]) * i / 4, a[1] + (to[1] - a[1]) * i / 4]); ptr(stage, 'pointerup', to); };
 const bodyAt = id => ['x', 'y'].map(k => +pick(`.node[data-id="${id}"] .n-body`).getAttribute(k));
@@ -51,6 +51,19 @@ try {
   check('the picture waits for the host', pick('.node[data-id="a"] .n-label').textContent.includes('Gateway') && !pick('.node[data-id="a"] .n-label').textContent.includes('API'));
   key('F2'); pick('.um-rename').value = 'nope'; key('Escape', {}, pick('.um-rename'));
   check('Escape cancels a rename', ev.length === 1 && !pick('.um-rename'), ev.length);
+
+  // several cards: Shift + click adds or removes one; Delete deletes each; a plain click goes back to one
+  const sels = [];
+  h.on('select', e => sels.push(e.targets.map(t => t.id)));
+  click('.node[data-id="b"] .n-label'); click('.node[data-id="c"] .n-label', { shiftKey: true });
+  check('Shift + click adds a card to the selection', JSON.stringify(h.selected.map(t => t.id)) === '["b","c"]' && h.selection.id === 'c' && sr.querySelectorAll('.node.sel').length === 2 && JSON.stringify(sels.at(-1)) === '["b","c"]', [h.selected, sels]);
+  click('.node[data-id="d"] .n-label', { metaKey: true }); click('.node[data-id="c"] .n-label', { shiftKey: true });
+  check('Shift + click on a selected card takes it out', JSON.stringify(h.selected.map(t => t.id)) === '["b","d"]', h.selected);
+  const n1 = ev.length; key('Delete');
+  check('Delete with several cards emits a delete for each', ev.length === n1 + 2 && JSON.stringify(ev.slice(-2).map(c => [c.op, c.target.id])) === '[["delete","b"],["delete","d"]]' && ev.at(-1).id !== ev.at(-2).id, ev.slice(n1));
+  ev.length = n1; // the host refused them: the rest of this test counts from here
+  click('.node[data-id="a"] .n-label');
+  check('a plain click goes back to one card', JSON.stringify(h.selected.map(t => t.id)) === '["a"]' && sr.querySelectorAll('.node.sel').length === 1);
 
   // delete: Delete only, never Backspace (which goes up a level)
   click('.node[data-id="d"] .n-label'); key('Backspace');
