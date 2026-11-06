@@ -32,6 +32,7 @@ export interface Handle {
   setView(id: string): void;          // emits viewchange
   select(ref: Ref | null): void;      // emits select
   fit(): void;                        // camera: whole view in the container
+  toSVG(o?: { scale?: number }): string;  // step 6: the current view as a stand-alone SVG file
   on<K extends keyof Events>(type: K, fn: (e: Events[K]) => void): () => void;   // returns unsubscribe
   readonly view: string;
   readonly selection: Ref | null;
@@ -172,3 +173,18 @@ events beyond verb chips (step 4); editing (step 5); SVG export without Chrome (
   of the line.
 - Labelled lines that leave or reach one card side by side now get a column gap wide enough for all their pills next
   to each other. This moved routes in the benchmarks on purpose; `bench/expected.json` is the new reference.
+
+## Step 6: SVG export in the browser (built 6 Nov 2026)
+
+- **`handle.toSVG({ scale })`** returns the current view as a stand-alone SVG string, `scale` × its natural size
+  (default 1). A host saves it as a file, puts it in a document, or draws it on a canvas for a PNG; no headless browser
+  is involved, and nothing is fetched.
+- **It stands alone**: every `var(--um-*)` is resolved, in styles and in attributes, against the host's CSS at that
+  moment (light or dark, the host's palette), so the file has no CSS variables, classes or stylesheet to depend on. Text
+  keeps the host's font family by name: a viewer without that font substitutes one, as with any SVG.
+- **Drawn at rest**: no selection or its dimming, no hover, no flow animation, no edit handles or pending ghosts,
+  whatever the screen shows; the screen is left exactly as it was. The same file comes out with or without a selection.
+- **One view, the one shown.** For other views, `setView(id)` first. A destroyed handle returns `''`.
+- The standalone page's "Export ▾ SVG / PNG" and the `#still` hook use the same code, so `umlimator.py stills` writes
+  the same SVG a host gets; the CLI still uses Chrome to run the page and to save PNGs. Compared with step 5, the stills'
+  PNGs are byte-identical and their SVGs differ only in having no leftover `var(...)` references.

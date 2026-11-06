@@ -40,6 +40,7 @@ try {
   const before = ['a', 'b', 'c', 'd'].map(bodyAt);
   click('.node[data-id="a"] .n-label');
   check('a selected card shows the connect handle; the controls get an add button', !!pick('.um-handle') && !!pick('[data-z="add"]'));
+  check('toSVG leaves the edit handle out, and the screen keeps it', !h.toSVG().includes('um-handle') && !!pick('.um-handle'));
 
   // rename in place
   key('F2');
