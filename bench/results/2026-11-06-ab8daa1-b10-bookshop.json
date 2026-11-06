@@ -1,0 +1,74 @@
+{
+ "commit": "ab8daa1",
+ "dirty": false,
+ "runs": 5,
+ "chrome": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+ "results": {
+  "b10/overview": {
+   "nodes": 10,
+   "edges": 14,
+   "plan": 0.1,
+   "place": 0.1,
+   "route": 102.2,
+   "repair": 2746.8,
+   "rounds": 2,
+   "reroutes": 60,
+   "total": 2840,
+   "issues": 10,
+   "cross": 1,
+   "fallback": 2,
+   "hashes": [
+    "3124ba0c"
+   ],
+   "optimize": {
+    "ms": 12166.3,
+    "evals": 75,
+    "score": 8897.3
+   }
+  },
+  "bookshop/overview": {
+   "nodes": 13,
+   "edges": 11,
+   "plan": 0,
+   "place": 0.1,
+   "route": 18.2,
+   "repair": 0.1,
+   "rounds": 0,
+   "reroutes": 0,
+   "total": 18.6,
+   "issues": 0,
+   "cross": 0,
+   "fallback": 0,
+   "hashes": [
+    "7482a914"
+   ],
+   "optimize": {
+    "ms": 2786.7,
+    "evals": 89,
+    "score": 793.6
+   }
+  },
+  "bookshop/api": {
+   "nodes": 6,
+   "edges": 5,
+   "plan": 0,
+   "place": 0.1,
+   "route": 2,
+   "repair": 0,
+   "rounds": 0,
+   "reroutes": 0,
+   "total": 2.1,
+   "issues": 0,
+   "cross": 0,
+   "fallback": 0,
+   "hashes": [
+    "8a4b07a4"
+   ],
+   "optimize": {
+    "ms": 20.4,
+    "evals": 16,
+    "score": 227.1
+   }
+  }
+ }
+}

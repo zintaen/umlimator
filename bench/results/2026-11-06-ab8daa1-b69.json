@@ -1,0 +1,45 @@
+{
+ "commit": "ab8daa1",
+ "dirty": false,
+ "runs": 1,
+ "chrome": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+ "results": {
+  "b69/overview": {
+   "timeout": 1800
+  },
+  "b69/front": {
+   "nodes": 15,
+   "edges": 8,
+   "plan": 0.2,
+   "place": 0.4,
+   "route": 7.9,
+   "repair": 0.3,
+   "rounds": 0,
+   "reroutes": 0,
+   "total": 9.6,
+   "issues": 1,
+   "cross": 0,
+   "fallback": 0,
+   "hashes": [
+    "4f170c80"
+   ]
+  },
+  "b69/back": {
+   "nodes": 19,
+   "edges": 22,
+   "plan": 0.3,
+   "place": 0.5,
+   "route": 513,
+   "repair": 26940.5,
+   "rounds": 8,
+   "reroutes": 128,
+   "total": 27455.5,
+   "issues": 49,
+   "cross": 9,
+   "fallback": 2,
+   "hashes": [
+    "7c664561"
+   ]
+  }
+ }
+}
