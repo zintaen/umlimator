@@ -14,6 +14,8 @@ const loaded = performance.getEntriesByType('resource').length; // the module an
 const out = { ok: [], fail: [] };
 const check = (name, cond, info) => { document.title = name; if (cond) out.ok.push(name); else out.fail.push(name + (info === undefined ? '' : ': ' + JSON.stringify(info))); };
 const wait = ms => new Promise(r => setTimeout(r, ms));
+// real work (an image decode, a PNG encode) under headless virtual time: tests/embed.py holds the clock meanwhile
+const real = async f => { const hold = fetch('/__hold'); try { return await f(); } finally { await fetch('/__release'); await hold; } };
 const until = async (f, ms = 5000) => { const t = Date.now(); while (!f() && Date.now() - t < ms) await wait(20); return f(); };
 const before = new Set(Object.keys(window));
 let file = '';
@@ -54,7 +56,7 @@ try {
   h.setView('api'); await until(() => h.view === 'api');
   check('the off-screen file is the one the view gives when shown', h.toSVG() === apiOff);
   h.setView('overview'); await until(() => h.view === 'overview' && ev.filter(x => x[0] === 'viewchange').length === vcs + 2);
-  const png = await h.toPNG({ view: 'api', scale: 0.2 }), bmp = png && await createImageBitmap(png), vbw = +apiOff.match(/viewBox="[^ ]+ [^ ]+ ([^ ]+)/)[1];
+  const png = await real(() => h.toPNG({ view: 'api', scale: 0.2 })), bmp = png && await real(() => createImageBitmap(png)), vbw = +apiOff.match(/viewBox="[^ ]+ [^ ]+ ([^ ]+)/)[1];
   check('toPNG gives a PNG of the view at the asked scale', png && png.type === 'image/png' && bmp.width === Math.ceil(vbw * 0.2), [png && png.type, bmp && bmp.width, vbw]);
   const face = '@font-face { font-family: "Host Sans"; src: url(data:font/woff2;base64,AAAA); }';
   check('fontCSS carries the host\'s @font-face rules into the file', h.toSVG({ fontCSS: face }).includes('font-family: "Host Sans"') && !h.toSVG().includes('Host Sans'));
@@ -137,10 +139,11 @@ try {
   const est = layout(thin, 'v').nodes[0].w;
   check('text is measured in the host font', cardW('serif') < est && cardW('serif') !== cardW('monospace'), [cardW('serif'), cardW('monospace'), est]);
   check('measure: false keeps the font-independent estimate', cardW('serif', { measure: false }) === est);
-  check('makes no network requests', performance.getEntriesByType('resource').length === loaded, performance.getEntriesByType('resource').slice(loaded).map(r => r.name));
+  const own = () => performance.getEntriesByType('resource').filter(r => !/\/__(hold|release)$/.test(r.name)); // the test's own clock holds are not the map's
+  check('makes no network requests', own().length === loaded, own().slice(loaded).map(r => r.name));
   const img = new Image(); img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(file);
   check('the file is a picture: role img, nothing focusable', /^<svg[^>]* role="img"/.test(file) && !file.includes('tabindex'));
-  check('the file draws as an image on its own', await img.decode().then(() => img.naturalWidth > 0, () => false));
+  check('the file draws as an image on its own', await real(() => img.decode().then(() => img.naturalWidth > 0, () => false)));
 } catch (e) { out.fail.push('threw: ' + (e && e.stack || e)); }
 const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
 </script>
