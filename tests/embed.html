@@ -16,6 +16,7 @@ const check = (name, cond, info) => { if (cond) out.ok.push(name); else out.fail
 const wait = ms => new Promise(r => setTimeout(r, ms));
 const until = async (f, ms = 5000) => { const t = Date.now(); while (!f() && Date.now() - t < ms) await wait(20); return f(); };
 const before = new Set(Object.keys(window));
+let file = '';
 try {
   const el = document.getElementById('a'), ev = [];
   const h = render(el, MODEL, { on: { select: e => ev.push(['select', e.target]), click: e => ev.push(['click', e.target]), open: e => ev.push(['open', e.target, e.view]), viewchange: e => ev.push(['viewchange', e]) } });
@@ -96,7 +97,17 @@ try {
   tabs[1].querySelector('text').dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true }));
   check('a badge click names the badge', JSON.stringify(ev3[0]) === JSON.stringify({ type: 'badge', node: 'svc', index: 1, value: 'Owner: platform', view: 'v' }), ev3);
   check('the edited marker shows on cards and lines', !!sr3.querySelector('.node[data-id="svc"] .edited-dot') && !!sr3.querySelector('.edge-g .edited-dot') && !sr3.querySelector('.node[data-id="db"] .edited-dot'));
+  // the picture as a file, in the browser: host colours resolved, drawn at rest, the screen untouched
+  h3.select({ type: 'node', id: 'svc' });
+  file = h3.toSVG({ scale: 2 });
+  const doc = new DOMParser().parseFromString(file, 'image/svg+xml'), root = doc.documentElement, vb = (root.getAttribute('viewBox') || '').split(' ').map(Number);
+  check('toSVG gives a stand-alone SVG file at the asked scale', root.localName === 'svg' && !doc.querySelector('parsererror') && vb.length === 4 && +root.getAttribute('width') === vb[2] * 2, file.slice(0, 200));
+  check('its colours are the host variables, resolved', !file.includes('var(') && file.includes('rgb(7, 8, 9)'), [file.includes('var('), (file.match(/rgb\([^)]*\)/g) || []).slice(0, 12), (file.match(/var\([^)]*\)/g) || []).slice(0, 5)]);
+  check('the screen keeps its selection', h3.selection && h3.selection.id === 'svc' && !!sr3.querySelector('.node.sel'));
+  h3.select(null);
+  check('drawn at rest: a selection does not change the file', h3.toSVG({ scale: 2 }) === file);
   h3.destroy();
+  check('a destroyed handle exports nothing', h3.toSVG() === '');
   const thin = { nodes: [{ id: 'a', label: 'i'.repeat(40) }], views: [{ id: 'v', nodeIds: ['a'] }] }, cardW = (font, opt = {}) => {
     el3.style.setProperty('--um-sans', font); const hh = render(el3, thin, opt);
     const w = +el3.querySelector('.umlimator').shadowRoot.querySelector('.n-body').getAttribute('width'); hh.destroy(); return w; };
@@ -104,6 +115,8 @@ try {
   check('text is measured in the host font', cardW('serif') < est && cardW('serif') !== cardW('monospace'), [cardW('serif'), cardW('monospace'), est]);
   check('measure: false keeps the font-independent estimate', cardW('serif', { measure: false }) === est);
   check('makes no network requests', performance.getEntriesByType('resource').length === loaded, performance.getEntriesByType('resource').slice(loaded).map(r => r.name));
+  const img = new Image(); img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(file);
+  check('the file draws as an image on its own', await img.decode().then(() => img.naturalWidth > 0, () => false));
 } catch (e) { out.fail.push('threw: ' + (e && e.stack || e)); }
 const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
 </script>
