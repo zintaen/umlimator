@@ -1,0 +1,55 @@
+{
+ "commit": "9a619aa",
+ "results": {
+  "b10/norepair": {
+   "hashes": [
+    "dcab5f77"
+   ]
+  },
+  "b10/overview": {
+   "hashes": [
+    "dcab5f77"
+   ]
+  },
+  "b26/n01": {
+   "hashes": [
+    "ca57428f"
+   ]
+  },
+  "b26/overview": {
+   "hashes": [
+    "823a257"
+   ]
+  },
+  "b69/back": {
+   "hashes": [
+    "5ca9493f"
+   ]
+  },
+  "b69/front": {
+   "hashes": [
+    "95320098"
+   ]
+  },
+  "b69/overview": {
+   "hashes": [
+    "3e1fd9db"
+   ]
+  },
+  "bookshop/api": {
+   "hashes": [
+    "cec78b19"
+   ]
+  },
+  "bookshop/overview": {
+   "hashes": [
+    "de50a666"
+   ]
+  },
+  "m50/overview": {
+   "hashes": [
+    "b8dc193e"
+   ]
+  }
+ }
+}
