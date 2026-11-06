@@ -3,7 +3,7 @@
 
   python3 -I bench/gen.py
 
-b10, b26, b69: 10, 26 and 69 nodes; m50: 50 modules and about 100 edges (the layout target). Each is a layered flow
+b10, b26, b69: 10, 26 and 69 nodes (b10 also as a view with `repair: false`); m50: 50 modules and about 100 edges (the layout target). Each is a layered flow
 with forward edges to the next one or two layers, a few back edges, and a label on about half the edges. b26 adds two
 containers and a view drawn around a hub card; b69 adds two sub-views and keepPairs with a few two-way pairs.
 """
@@ -55,7 +55,8 @@ def main():
     M = {}
 
     n, e = graph(10, 10, 14)
-    M["b10"] = model("bench 10", n, e, [{"id": "overview", "title": "10 nodes", "nodeIds": ids(n)}])
+    M["b10"] = model("bench 10", n, e, [{"id": "overview", "title": "10 nodes", "nodeIds": ids(n)},
+                                        {"id": "norepair", "title": "10 nodes, no port repair", "nodeIds": ids(n), "repair": False}])
 
     n, e = graph(26, 26, 44)
     outs = {}
