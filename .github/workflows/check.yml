@@ -50,9 +50,10 @@ jobs:
           sys.exit(1 if bad else 0)
           PY
 
-      - name: The benchmark models lay out the same on every run (timings are reported, not gated, on CI)
-        # b26, b69 and m50 take minutes to hours before the step 2 routing work (bench/results/2026-11-06-*)
-        run: python3 bench/bench.py --models b10,bookshop --runs 2 --timeout 300 --check-determinism
+      - name: The benchmark models lay out as recorded, the same on every run, and in time
+        # the 1 s target for m50 is checked on a developer machine (README § Benchmarks); a CI runner gets 5x headroom,
+        # which the engine before patches 31-35 never met (m50 did not finish in 30 min: bench/results/2026-11-06-ab8daa1-m50.json)
+        run: python3 bench/bench.py --runs 2 --timeout 300 --check-determinism --expect bench/results/2026-11-06-6c808a0.json --max-ms m50=5000,b26=2000
 
       - name: The example renders as committed and its layout check is clean
         run: |
