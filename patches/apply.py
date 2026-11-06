@@ -243,6 +243,44 @@ P = [
  #      frame they showed as faint marks along every line (Anh, 2 Nov 2026).
  ("const out = standalone(sc), b = geo.bounds;",
   "document.querySelectorAll('.flowline').forEach(e => e.remove()); const out = standalone(sc), b = geo.bounds;"),
+ # 30. Benchmarks (bench/bench.py): a laid-out view records how long placement, routing and port repair took, and how
+ #     many repair rounds and re-routes ran (geo.ms; drawing never reads it). `#bench=1&views=a,b&runs=5` times lane
+ #     planning and layout per view with fresh caches, hashes the geometry so a change in output shows, adds the layout
+ #     search with `&optimize=1`, and reports in <pre id="bench"> instead of drawing the page.
+ ("  function layoutGraph(dg, map) {\n",
+  "  function layoutGraph(dg, map) {\n    const __ms = { t: performance.now() };\n"),
+ ("    let order = [...free].sort(", "    __ms.place = performance.now() - __ms.t; __ms.t = performance.now();\n    let order = [...free].sort("),
+ ("    // port repair:",
+  "    __ms.route = performance.now() - __ms.t; __ms.t = performance.now(); __ms.rounds = 0; __ms.reroutes = 0;\n    // port repair:"),
+ ("let fixed = false;", "let fixed = false; __ms.rounds++;"),
+ ("          runRouting(order);\n", "          runRouting(order); __ms.reroutes++;\n"),
+ ("    const groups = (dg.groups || []).map(g => {",
+  "    __ms.repair = performance.now() - __ms.t; delete __ms.t;\n    const groups = (dg.groups || []).map(g => {"),
+ ("    return { stats, nodes, edges, groups, families,", "    return { ms: __ms, stats, nodes, edges, groups, families,"),
+ ("    if (window.__instant) boot(); else", "    if (Q.get('bench')) { /* timings only, no page */ } else if (window.__instant) boot(); else"),
+ ("    window.__mapAudit = () => {",
+  "    window.__bench = (vid, runs, opt) => {\n"
+  "      const out = [];\n"
+  "      for (let i = 0; i < runs; i++) {\n"
+  "        delete planCache[vid]; delete layoutCache[vid];\n"
+  "        const t0 = performance.now(); planOf(vid); const t1 = performance.now(), g = buildGeo(vid), t2 = performance.now();\n"
+  "        const sig = JSON.stringify([g.nodes.map(n => [n.id, n.x, n.y, n.w, n.h]), g.edges.map(e => [e.from, e.to, e.pts, e.lbl ? [e.lbl.x, e.lbl.y] : null])]);\n"
+  "        let h = 2166136261; for (let k = 0; k < sig.length; k++) h = Math.imul(h ^ sig.charCodeAt(k), 16777619) >>> 0;\n"
+  "        out.push({ plan: t1 - t0, geo: t2 - t1, ...g.ms, issues: routeAudit(g, '').length, cross: g.stats.cross || 0, fallback: g.stats.fallback || 0, hash: h.toString(16) });\n"
+  "      }\n"
+  "      const r = { runs: out, nodes: (V[vid].nodeIds || []).filter(i => N[i]).length };\n"
+  "      if (opt && !V[vid].layout && !planOf(vid).hub) { delete layoutCache[vid]; const t = performance.now(), o = optimize(vid); r.optimize = { ms: performance.now() - t, evals: o.evals, score: o.score }; }\n"
+  "      return r;\n"
+  "    };\n"
+  "    window.__mapAudit = () => {"),
+ ("  /* ---------- self-check hook",
+  "  if (Q.get('bench')) {\n"
+  "    const res = { views: {}, errors };\n"
+  "    try { (Q.get('views') || '').split(',').filter(Boolean).forEach(v => { res.views[v] = window.__bench(v, +Q.get('runs') || 5, !!Q.get('optimize')); }); }\n"
+  "    catch (err) { errors.push('bench: ' + err.message); }\n"
+  "    const pre = document.createElement('pre'); pre.id = 'bench'; pre.hidden = true; pre.textContent = JSON.stringify(res); document.body.appendChild(pre);\n"
+  "  }\n"
+  "  /* ---------- self-check hook"),
 ]
 for old, new in P:
     n = s.count(old)
