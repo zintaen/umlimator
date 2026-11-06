@@ -20,15 +20,19 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: The copied files are upstream's, unmodified, and the patches still apply to the template
+      - name: The copied files are upstream's, unmodified (the template became lib/umlimator.js, umlimator's own)
         run: |
           curl -fsSL "$SB/scripts/visual.py" -o engine/scripts/visual.py
           curl -fsSL "$SB/references/schema.md" -o engine/references/schema.md
           curl -fsSL "$SB/references/sections.md" -o engine/references/sections.md
           curl -fsSL "$SD/fetch_icons.py" -o tools/fetch_icons.py
-          curl -fsSL "$SB/assets/template.html" -o engine/assets/template.html
-          python3 -I patches/apply.py
-          git diff --exit-code engine tools
+          git diff --exit-code engine/scripts engine/references tools
+
+      - name: layout() draws the benchmark views as recorded, with no DOM (Node)
+        run: node --test
+
+      - name: render() embedded in a plain page reports its events and follows update() and destroy()
+        run: python3 tests/embed.py
 
       - name: Upstream changed a copied file since its pin (a warning, time to sync)
         env:
