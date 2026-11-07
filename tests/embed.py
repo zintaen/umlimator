@@ -5,6 +5,7 @@
 
 tests/embed.html: render() events, references, update(), destroy(), colours, badges, fonts.
 tests/edit.html: editing gestures and the change events they emit.
+tests/contrast.html: the default palette against WCAG AA, light and dark.
 examples/edit.html: the editing demo loads and draws.
 Each test page reports in <pre id="result">{"ok": [...], "fail": [...]}</pre>.
 """
@@ -49,7 +50,7 @@ def dom(path, done):
 
 
 failed = False
-for page in ("tests/embed.html", "tests/edit.html"):
+for page in ("tests/embed.html", "tests/edit.html", "tests/contrast.html"):
     t = dom(page, lambda t: 'id="result"' in t)
     if "<title>" not in t:  # Chrome gave back no page at all (a rare headless hang on CI runners): once more
         print(f"note {page}: Chrome returned nothing; running it again"); t = dom(page, lambda t: 'id="result"' in t)
