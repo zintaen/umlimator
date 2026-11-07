@@ -1,7 +1,8 @@
 /* umlimator's default palette and fonts: light, and dark when the system asks or <html data-theme="dark">.
    The canvas reads only these --um-* variables (it bakes in no colour and loads no font), so a host may use this file,
    set the variables itself (e.g. --um-bg: var(--surface)), or switch light and dark by changing them on any ancestor
-   of the map. Fonts are the host's: --um-sans and --um-mono name families the page already has; nothing is fetched. */
+   of the map. Fonts are the host's: --um-sans and --um-mono name families the page already has; nothing is fetched.
+   It meets WCAG AA in both themes (text 4.5:1 on its background, lines 3:1 on the stage): tests/contrast.html. */
 /* Clean flowchart (GitHub Primer-like): light first, dark when the system or the toggle asks. */
 :root {
   --um-stage-bg: #fbfcfd; --um-logo-tile: #ffffff; --um-logo-tile-dark: #1b1f23; --um-intake-mark: #1b1f23; --um-edited: #bf8700;

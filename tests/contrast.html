@@ -1,0 +1,66 @@
+<!doctype html>
+<!-- The default palette (lib/umlimator-theme.css) against WCAG AA, in light and dark, on the example map: every text
+     against what it is drawn on (the shapes under it, blended over the stage), 4.5:1; every line against the stage, 3:1.
+     Opacity counts. Two maps: the example, and one with every change state and badge tone. Run by tests/embed.py. -->
+<meta charset="utf-8">
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="../lib/umlimator-theme.css">
+<title>umlimator contrast test</title>
+<body style="margin:0">
+<div id="m" style="width:1400px;height:800px"></div>
+<script type="module">
+import { render } from '../lib/umlimator.js';
+const out = { ok: [], fail: [] };
+const check = (name, cond, info) => { document.title = name; if (cond) out.ok.push(name); else out.fail.push(name + (info === undefined ? '' : ': ' + JSON.stringify(info))); };
+// a computed colour as [r, g, b, a] in 0..1 (rgb(), rgba() and color(srgb ...), which color-mix() gives)
+const rgba = s => {
+  let m = /rgba?\(([^)]+)\)/.exec(s);
+  if (m) { const p = m[1].split(/[ ,/]+/).filter(Boolean).map(Number); return [p[0] / 255, p[1] / 255, p[2] / 255, p.length > 3 ? p[3] : 1]; }
+  m = /color\(srgb ([^)]+)\)/.exec(s);
+  if (m) { const p = m[1].split(/[ /]+/).filter(Boolean).map(Number); return [p[0], p[1], p[2], p.length > 3 ? p[3] : 1]; }
+  return null;
+};
+const over = (top, bot) => { const a = top[3]; return [0, 1, 2].map(i => top[i] * a + bot[i] * (1 - a)).concat(1); };
+const lum = c => { const f = v => v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]); };
+const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
+const opacity = el => { let o = 1; for (let e = el; e && e.tagName !== 'svg'; e = e.parentNode) o *= +getComputedStyle(e).opacity; return o; };
+const paint = (el, prop) => { const c = rgba(getComputedStyle(el)[prop]); if (c) c[3] *= opacity(el); return c; };
+const EXAMPLE = await (await fetch('../examples/bookshop.json')).json();
+const STATES = { nodes: [{ id: 'a', label: 'Planned service', sublabel: 'not built yet', change: 'planned' }, { id: 'b', label: 'Removed service', sublabel: 'going away', change: 'removed' },
+  { id: 'c', label: 'Tones', sublabel: 'badge colours', badges: ['plain', { text: 'green', tone: 'green' }, { text: 'amber', tone: 'amber' }, { text: 'rose', tone: 'rose' }, { text: 'violet', tone: 'violet' }, { text: 'cyan', tone: 'cyan' }], edited: true },
+  { id: 'd', label: 'Changed', change: 'modified', kind: 'database' }, { id: 'e', label: 'New', change: 'added', kind: 'external' }],
+  edges: [{ from: 'a', to: 'b', label: 'removes' }, { from: 'c', to: 'd', label: 'writes', style: 'dashed' }, { from: 'd', to: 'e' }], views: [{ id: 'v', nodeIds: ['a', 'b', 'c', 'd', 'e'] }] };
+try {
+  for (const [name, MODEL] of [['example', EXAMPLE], ['states', STATES]]) for (const theme of ['light', 'dark']) {
+    document.documentElement.dataset.theme = theme;
+    const el = document.getElementById('m'); el.innerHTML = '';
+    const h = render(el, MODEL, { flow: false, controls: false });
+    const sr = el.querySelector('.umlimator').shadowRoot, svg = sr.querySelector('svg.map-svg');
+    const stage = rgba(getComputedStyle(sr.querySelector('.stage')).backgroundColor);
+    const rects = [...svg.querySelectorAll('rect')].map(r => ({ r, b: r.getBBox(), m: r.getCTM() }));
+    const bad = [];
+    let texts = 0;
+    for (const t of svg.querySelectorAll('text')) {
+      if (!t.textContent.trim()) continue;
+      const tc = paint(t, 'fill'); if (!tc || tc[3] === 0) continue;
+      const bb = t.getBBox(), m = t.getCTM(), p = new DOMPoint(bb.x + bb.width / 2, bb.y + bb.height / 2).matrixTransform(m);
+      let bg = stage; // paint the rects under the text's centre, in document (painting) order
+      for (const { r, b, m: rm } of rects) {
+        const q = p.matrixTransform(rm.inverse());
+        if (q.x < b.x || q.x > b.x + b.width || q.y < b.y || q.y > b.y + b.height) continue;
+        if (r.compareDocumentPosition(t) & Node.DOCUMENT_POSITION_PRECEDING) continue; // drawn above the text
+        const f = paint(r, 'fill'); if (f && f[3] > 0) bg = over(f, bg);
+      }
+      texts++;
+      const c = ratio(over(tc, bg), bg);
+      if (c < 4.5) bad.push([t.textContent.trim().slice(0, 24), t.getAttribute('class') || t.parentNode.getAttribute('class'), +c.toFixed(2)]);
+    }
+    check(`${name}, ${theme}: every text on its background is at least 4.5:1 (${texts} texts)`, texts > 10 && !bad.length, bad);
+    const lines = []; // a line against the stage, where lines run
+    for (const e of svg.querySelectorAll('.edge-g .edge')) { const c = paint(e, 'stroke'); if (c && c[3] > 0) lines.push([e.parentNode.dataset.i, +ratio(over(c, stage), stage).toFixed(2)]); }
+    check(`${name}, ${theme}: every line against the stage is at least 3:1 (${lines.length} lines)`, lines.length >= 3 && lines.every(l => l[1] >= 3), lines.filter(l => l[1] < 3));
+    h.destroy();
+  }
+} catch (e) { out.fail.push('threw: ' + (e && e.stack || e)); }
+const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
+</script>
