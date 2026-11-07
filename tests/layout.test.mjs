@@ -2,6 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { layout, history } from '../lib/umlimator.js';
 
 const read = p => JSON.parse(readFileSync(new URL(p, import.meta.url)));
@@ -99,4 +100,10 @@ test('history(): undo and redo walk the models a host pushed; a new push drops t
   h.push('x'); assert.equal(h.canRedo, false); assert.equal(h.redo(), 'x');
   h.push('y'); h.push('z'); h.undo(); h.undo(); assert.equal(h.undo(), 'x'); // limit 2: 'b' is gone
   assert.equal(h.model, 'x'); assert.equal(h.canUndo, false);
+});
+
+test("the package exports the module and the default theme (a host imports 'umlimator/theme.css')", () => {
+  const req = createRequire(import.meta.url); // a package may resolve its own name through its exports
+  assert.match(req.resolve('umlimator'), /lib[\\/]umlimator\.js$/);
+  assert.match(req.resolve('umlimator/theme.css'), /lib[\\/]umlimator-theme\.css$/);
 });

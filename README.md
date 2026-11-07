@@ -122,6 +122,7 @@ super-board changes its template, so a fix there can be ported into `lib/umlimat
 
 ```js
 import { render } from 'umlimator';   // lib/umlimator.js: one ES module, no dependencies, no build step
+import 'umlimator/theme.css';         // the default --um-* palette and fonts (optional: set the variables yourself)
 const map = render(document.getElementById('map'), model, {
   on: { select: e => showDetails(e.target), open: e => { e.preventDefault(); router.push(e.view); } },
 });
