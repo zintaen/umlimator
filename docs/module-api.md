@@ -207,4 +207,9 @@ events beyond verb chips (step 4); editing (step 5); SVG export without Chrome (
 - A polite live region announces each selection ("Billing, selected", "3 cards selected", "Line from A to B") and
   each view shown.
 - Exported files (`toSVG`, `toPNG`, stills) are pictures: `role="img"` named after the view, nothing focusable.
-- Not covered: lines and containers are reachable by pointer only; colour contrast is the host's palette's.
+- Contrast: the default palette (`lib/umlimator-theme.css`) meets WCAG AA in light and dark. Every text is at least
+  4.5:1 on what it is drawn on (lowest: an amber badge in light, 4.87:1), and every line is at least 3:1 against the
+  stage. `tests/contrast.html` checks this on the example map and on one with every change state and badge tone. A
+  host that sets its own `--um-*` colours owns their contrast. The dimming of unrelated cards while one is selected is
+  meant to recede, and is not checked.
+- Not covered: lines and containers are reachable by pointer only.
