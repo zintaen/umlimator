@@ -358,4 +358,10 @@ events beyond verb chips (step 4); editing (step 5); SVG export without Chrome (
   1.1 times its direct route. Lines move wherever several end on one side: of the bench views all but b26/n01 and
   bookshop/api moved; the layout check finds 941 issues across them, 958 before (m50 382 to 362, b69/overview 410 to 398,
   d24/boxed 32 to 27; b26/overview 90 to 110, a random graph whose crossings shift with the order lines are routed in) (#49).
+- **At fit, the zoom controls and the minimap keep off the cards.** `render()` fitted the view to the whole element, so the
+  controls in its bottom-right corner, and the minimap above them when it is on, could cover a card there until the
+  reader panned or zoomed (a system context's row of cards with no lines runs along the bottom). Now, when a card would sit
+  under one of them, the fit also tries room for them at the bottom and at the right and keeps whichever leaves the map
+  larger; often that costs no zoom at all, as a view limited by its height just moves left. A view whose corner is empty is
+  fitted as before. The standalone page's own insets (header, legend) get the same room. Nothing changes for a host (#50).
 
