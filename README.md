@@ -106,13 +106,17 @@ the reason for each of the 40 patches and stay in the git history). The engine t
     of testing every cell against every one, its search is A* on typed arrays (same routes on every benchmark view),
     and port repair re-routes only the two edges it swaps, within a budget of 2 routings per edge. A view's
     `repair: false` turns port repair off.
+12. Containers keep apart. A view's containers are laid out as blocks: each container's cards together, in columns of
+    their own, blocks ordered by the lines between them (super-board's schema leaves this to a hand-made `layout`). With
+    or without a `layout`, the gap between two boxes, or a box and a card outside it, widens to 32 px.
 
 `render` skips upstream's layout search when every view already has a layout, and fails when the check did not
 complete instead of reporting no problems.
 
 Model fields umlimator adds: a node's `badge`, `icon` and `noSub` (name only, description in the panel); a view's
 `gap`, `rgap`, `keepPairs` and `repair` (`false`: no port repair); an edge's `fromSide` and `toSide`; a node's `badges` (several,
-each a string or `{text, tone}`) and a node's or edge's `edited` (draws a marker).
+each a string or `{text, tone}`) and a node's or edge's `edited` (draws a marker); a container's `badges` (tabs on its box's border, each a
+click target); an edge's `from` or `to` may name a container of the view, and its line then ends on the box's border.
 
 The engine derives from super-board commit `d0b7d5a` (29 Oct 2026). `engine/scripts/visual.py` and
 `engine/references/` are still upstream's, unmodified, and CI checks that they are. CI also warns weekly when
@@ -124,11 +128,13 @@ super-board changes its template, so a fix there can be ported into `lib/umlimat
 import { render } from 'umlimator';   // lib/umlimator.js: one ES module, no dependencies, no build step
 import 'umlimator/theme.css';         // the default --um-* palette and fonts (optional: set the variables yourself)
 const map = render(document.getElementById('map'), model, {
-  on: { select: e => showDetails(e.target), open: e => { e.preventDefault(); router.push(e.view); } },
+  on: { select: e => showDetails(e.target), open: e => { e.preventDefault(); router.push(e.view); },
+        click: e => { if (e.target.type === 'chip') { e.preventDefault(); openFeature(e.target.value); } } },   // a chip as a link: no select
 });
 map.update(nextModel);   // redraws only views whose cards or lines changed; keeps view, camera and selection
 const file = map.toSVG({ scale: 2 });   // the current view as a stand-alone .svg, in the browser
 const png = await map.toPNG({ view: 'api' });   // any view, as a PNG Blob, without showing it
+map.focus();   // keyboard focus back on the selected card (say, when the host's own dialog closes)
 render(el, model, { editable: true, on: { change: c => { model = myApply(model, c); map.update(model); } } });
 map.destroy();
 ```
@@ -158,7 +164,15 @@ host's (`--um-sans`, `--um-mono`), text is measured in that font, and nothing is
 `lib/umlimator.d.ts`. With `editable`, gestures (add, rename, move into a container, delete, reorder, connect) emit
 `change` events and change nothing themselves: the host applies them to its own data and calls `update`
 ([docs/editing.md](docs/editing.md); `examples/edit.html` is a working host, served over HTTP). `toSVG()` returns a view as a stand-alone SVG file (`toPNG()` the same as a PNG): the host's colours and fonts
-resolved into it, drawn at rest (no selection, hover, flow or edit handles), with no headless browser. Install from git: `"umlimator": "github:zintaen/umlimator#<tag>"`.
+resolved into it, drawn at rest (no selection, hover, flow or edit handles), with no headless browser.
+
+Install from git: `"umlimator": "github:zintaen/umlimator#<tag>"` in `dependencies`. npm 12 refuses git dependencies
+unless the project opts in (`EALLOWGIT`), so on npm 12 put this line in the `.npmrc` next to that `package.json`; it
+allows only the git dependencies the project names itself (npm 10 needs nothing):
+
+```ini
+allow-git=root
+```
 
 ```bash
 node --test               # layout(): the benchmark views' geometry, ids, repair flag (no browser)

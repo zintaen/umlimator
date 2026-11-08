@@ -74,6 +74,8 @@ interface Events {
 
 - `open` switches to the inner view unless the host calls `preventDefault()`, so a host can route drill-down through its
   own router. `viewchange` follows every switch.
+- `click` selects what was clicked (a chip or badge: its card) unless the host calls `preventDefault()`, which keeps the
+  selection as it was, so a chip, badge or card can be a link in the host.
 - Events are plain callbacks, not DOM `CustomEvent`s (no bubbling through the host's tree, typed payloads). A host that
   wants DOM events can re-dispatch.
 - Step 5 adds `change` (semantic edits: add, rename, move to container, delete, reorder, optional position hints). It
@@ -200,10 +202,13 @@ events beyond verb chips (step 4); editing (step 5); SVG export without Chrome (
 ## Accessibility (added after step 6)
 
 - The map's `<svg>` is a `group` named after the view (it was an `img`, which hides its children from screen
-  readers). Each card is a focusable `button` whose name is its label, its sublabel, its badges and "edited", plus
-  "(opens inner view)" when it has one; `aria-pressed` says whether it is selected.
+  readers). Each card is a focusable `button` named by what it shows, in the order it shows it: its label, tabs (badges),
+  step, author, inner-view count, change, sub-line and chips. So its visible text is a run of whole words of its name
+  (WCAG 2.5.3 Label in Name, at any zoom), and what it does not show, or not in full, follows in parentheses: a hidden
+  sub-line, the rest of a cut text, "edited", "opens the inner view". `aria-pressed` says whether it is selected.
 - Keyboard: Tab reaches each card; arrow keys on a focused card move to the nearest card that way (on the empty canvas
-  they still pan); Enter selects, and Enter again opens; Escape clears, then goes up a level.
+  they still pan); Enter selects, and Enter on a selected card opens its inner view (or, with none, sends `select` again,
+  as a click does); Escape clears, then goes up a level.
 - A polite live region announces each selection ("Billing, selected", "3 cards selected", "Line from A to B") and
   each view shown.
 - Exported files (`toSVG`, `toPNG`, stills) are pictures: `role="img"` named after the view, nothing focusable.
@@ -212,4 +217,48 @@ events beyond verb chips (step 4); editing (step 5); SVG export without Chrome (
   stage. `tests/contrast.html` checks this on the example map and on one with every change state and badge tone. A
   host that sets its own `--um-*` colours owns their contrast. The dimming of unrelated cards while one is selected is
   meant to recede, and is not checked.
+- Focus can come back: the map's element delegates focus (`attachShadow({ delegatesFocus: true })`), and focus that
+  reaches the canvas from outside, not by a press, goes on to the selected card; `handle.focus(ref?)` puts it on a card
+  (default: the selected one, else the map).
 - Not covered: lines and containers are reachable by pointer only.
+
+## 0.5.0: fixes from the first embedding (issues #26 to #36)
+
+- **Container boxes** are a faint panel (`--um-panel` at 45 %) with an 11 px title, from the module's own stylesheet.
+  The page's rules for them never reached the map's shadow root, so boxes were black (#26).
+- **Tints follow their tone.** The map mixes each `--um-<tone>-f` itself, from the tone and `--um-panel` in effect where
+  it is, so a host may set a tone on any ancestor of the map. The theme file mixes its tints on `:root`, where they keep
+  the default tone; those stay for page chrome. A host that wants a tint of its own sets it on the map element,
+  `.umlimator` (#29).
+- **Test DOMs.** `render()` needs no stubs in a test DOM such as jsdom: without `ResizeObserver` the view is fitted
+  once and not observed; without a 2D canvas, text is measured with the font-independent estimate (as `measure: false`
+  does); without `matchMedia` there is no reduced-motion preference (#32).
+- **Enter on a selected card** with no inner view sends `select` again, as a click does, so a keyboard user can bring
+  back the details a host shows on `select` without leaving the card (#30).
+- **Focus back into the map.** The map's element delegates focus, so `host.focus()`, which a dialog calls when it
+  gives focus back to the element that opened it, lands on the selected card (it landed on `<body>`), and
+  `handle.focus(ref?)` puts keyboard focus on a card: `ref`'s, by default the selected one, else the map (#36).
+- **A click the host takes.** `click` has `preventDefault()`: calling it keeps the selection as it was (no `select`), so
+  a host can treat a chip, a badge or a card as a link. A chip click used to select its card as well, with nothing in
+  `select` to tell the two apart (#31).
+- **Card names match what cards show** (WCAG 2.5.3). axe-core 4.14 reported `label-content-name-mismatch` on every card
+  with a sub-line or a badge (13 of the example's 13): the card's texts ran together with no whitespace between them,
+  and names held text the card did not show. Now a card's texts are apart, its name follows what it shows (above), and
+  axe finds nothing at rest, after a selection, after `update()` or zoomed out (checked with axe-core 4.14; `tests/embed.html`
+  checks the same rule without it). A card text that does not fit is cut between words (#35).
+- **Containers keep apart.** A view with containers is laid out in blocks: each container's cards together in columns of
+  their own, in call order; blocks run left to right by the lines between them, those with no line between them stack in
+  the same columns, and a nested container is a block inside its parent's. With or without a `layout`, a column (row)
+  gap widens wherever a box would come within 32 px of another box or of a card outside it, so borders never touch and a
+  line can run between them. Auto-layout used to interleave containers' cards, and boxes in neighbouring columns
+  overlapped at the default gaps. Views without containers keep their exact geometry; of the benchmark views only
+  b26/overview moved (`bench/expected.json`). The CLI's layout search swaps cards only within their box (#27).
+- **Lines to containers.** An edge whose `from` or `to` names a container of the view is drawn to the box's border
+  (the side chosen as for a card, the port in line with the other end where it can be), and is an ordinary edge `Ref`;
+  auto-layout puts its source before the box. It used to draw nothing and say nothing. An edge between a box and
+  something inside it has no line, and `console.warn` names it (#28).
+- **Badges on containers.** A container takes `badges` as a card does (strings or `{ text, tone }`): tabs on the box's
+  top border, at the right, in the same tones; the box widens to fit its title and tabs, and lines keep off them. Each is
+  a click target, `{ type: 'badge', container, index, value, view }` (a card's badge has `node` instead), and a click
+  selects the box. With `editable`, Delete and Alt + ← / → on a clicked box badge emit `delete` and `reorder` with that
+  Ref, as on a card's badges (#33).

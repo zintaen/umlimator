@@ -57,7 +57,7 @@ Backspace goes up a level):
 | rename | `F2`, or double-click the label of a selected card | `F2`, Enter to commit, Esc to cancel |
 | move to a container | drag a card into (or out of) a container box | — |
 | delete | — | `Delete` (never Backspace) |
-| reorder | drag a card up or down within its column | `Alt + ↑ / ↓`; chips and badges `Alt + ← / →` |
+| reorder | drag a card up or down within its column | `Alt + ↑ / ↓`; chips and badges (a card's or a container's) `Alt + ← / →` |
 
 Rename edits in place: a text field over the label inside the shadow root. While dragging, a ghost card and the
 target (container, slot) are highlighted; nothing else moves.

@@ -66,4 +66,4 @@ jobs:
           diff -q <(git show HEAD:examples/bookshop.html | sed "$t") <(sed "$t" examples/bookshop.html) \
             || { echo "::error::examples/bookshop.html is stale: render it again and commit it"; exit 1; }
           python3 umlimator.py check examples/bookshop.html | tee /tmp/check.json
-          python3 -I -c "import json; s = open('/tmp/check.json').read(); d = json.loads(s[s.find('{'):]); assert not d['problems'], d['problems']"
+          python3 -I -c "import json; s = open('/tmp/check.json').read(); d = json.loads(s[s.find('{'):]); assert not d['problems'] and not d['errors'], (d['problems'], d['errors'])"
