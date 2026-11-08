@@ -325,13 +325,14 @@ events beyond verb chips (step 4); editing (step 5); SVG export without Chrome (
   even when the other named its kind. A line from a hook is still a guard, and one to or from a board state. `state` was too
   light to see (1.96:1 against the light stage, 2.73:1 dark), so `--um-w-state` is darker, 3:1 or more in both themes, still
   the lightest line; `tests/contrast.html` now checks a line of every kind (#45).
-- **Cards with no lines** sit in a row of their own under the view, in view order, wrapping at its width. Auto-layout put
-  them in the first column, under the sources, so that column grew (four outside systems under five people, a column of
-  nine on a system-context map) and the lines from the sources ran around it. A card with no line in a row under every
-  card that has one never widens a column: it is spaced by its own width. The row comes from the cards' slots and lines
+- **Cards with no lines** sit in a row of their own under the view, one per column in view order, wrapping at its width.
+  Auto-layout put them in the first column, under the sources, so that column grew (four outside systems under five
+  people, a column of nine on a system-context map) and the lines from the sources ran around it. A card with no line in
+  a row under every card that has one never widens a column: one wider than its column keeps clear of its neighbour
+  instead, so the cards with lines keep the places they have without it. The row comes from the cards' slots and lines
   alone, so the stable layout across `update()` and the layout `umlimator.py render` bakes into a page draw it the same;
-  a host's `layout` places such cards where it says. Views with containers keep their block layout. Of the bench views,
-  those with such cards moved: b10 (both views), b69 (all three) and m50 (#46).
+  a host's `layout` still places every card where it says. Views with containers keep their block layout. Of the bench
+  views, those with such cards moved: b10 (both views), b69 (all three) and m50 (#46).
 - **A card can open a view the host loads later.** A node's `opensView` may name a view that is not in the model yet. The
   card looks stacked (⤢ with `opensCount` when the host gives one, else ⤢ alone), and double-click, Enter on the selected
   card and a click on its ⤢ badge emit `open` with that view's id. The map goes in once the view is in the model: the host
