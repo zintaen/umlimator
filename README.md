@@ -115,7 +115,8 @@ complete instead of reporting no problems.
 
 Model fields umlimator adds: a node's `badge`, `icon` and `noSub` (name only, description in the panel); a view's
 `gap`, `rgap`, `keepPairs` and `repair` (`false`: no port repair); an edge's `fromSide` and `toSide`; a node's `badges` (several,
-each a string or `{text, tone}`) and a node's or edge's `edited` (draws a marker).
+each a string or `{text, tone}`) and a node's or edge's `edited` (draws a marker); an edge's `from` or `to` may name a container
+of the view, and its line then ends on the box's border.
 
 The engine derives from super-board commit `d0b7d5a` (29 Oct 2026). `engine/scripts/visual.py` and
 `engine/references/` are still upstream's, unmodified, and CI checks that they are. CI also warns weekly when

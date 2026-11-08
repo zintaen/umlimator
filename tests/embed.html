@@ -104,6 +104,13 @@ try {
   check('a container click reports a container ref', JSON.stringify(ev2.slice(-2)) === JSON.stringify([{ type: 'container', id: 'box', view: 'v' }, ['select', { type: 'container', id: 'box', view: 'v' }]]), ev2.slice(-2));
   check('controls: false leaves the zoom buttons out', !sr2.querySelector('.ctl'));
   h2.destroy(); el2.style.removeProperty('--um-panel'); el2.style.removeProperty('--um-mono');
+  // a line to a container's box: drawn to its border, and clicked, selected and announced like any other line
+  const ev7 = [], h7 = render(el2, { nodes: [{ id: 'audit', label: 'Audit' }, { id: 'e1', label: 'Order', kind: 'database' }], edges: [{ id: 'x', from: 'audit', to: 'database', label: 'writes' }],
+    views: [{ id: 'v', nodeIds: ['audit', 'e1'], layout: { audit: [0, 0], e1: [2, 0] }, containers: [{ id: 'database', label: 'Database', nodeIds: ['e1'] }] }] }, { on: { select: e => ev7.push(e.target) } });
+  const sr7 = el2.querySelector('.umlimator').shadowRoot, line = sr7.querySelector('.edge-g .hitline');
+  if (line) line.dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true }));
+  check('a line to a container is drawn to its box, and selects and is announced like any line', !!line && JSON.stringify(ev7) === JSON.stringify([{ type: 'edge', ids: ['x'], view: 'v' }]) && sr7.querySelector('[aria-live]').textContent === 'Line from Audit to Database, selected', [!!line, ev7, sr7.querySelector('[aria-live]').textContent]);
+  h7.destroy();
 
   // colours, light and dark come from the host's --um-* variables; badges; edited; text in the host's font
   const el3 = document.getElementById('b'), ev3 = [];
