@@ -22,7 +22,7 @@ that writes a self-contained HTML page and still pictures (SVG, PNG) for documen
 ## Install
 
 ```json
-"dependencies": { "umlimator": "github:zintaen/umlimator#v0.7.0" }
+"dependencies": { "umlimator": "github:zintaen/umlimator#v0.8.0" }
 ```
 
 npm 12 refuses git dependencies unless the project opts in, so add this line to the `.npmrc` next to `package.json`
