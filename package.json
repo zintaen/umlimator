@@ -5,7 +5,7 @@
   "license": "MIT",
   "type": "module",
   "exports": { ".": { "types": "./lib/umlimator.d.ts", "default": "./lib/umlimator.js" }, "./theme.css": "./lib/umlimator-theme.css" },
-  "files": ["lib/", "LICENSE", "LICENSE.super-board", "THIRD_PARTY_NOTICES.md"],
+  "files": ["lib/", "LICENSE", "THIRD_PARTY_NOTICES.md"],
   "scripts": { "test": "node --test" },
   "engines": { "node": ">=18" }
 }

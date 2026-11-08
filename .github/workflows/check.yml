@@ -7,7 +7,7 @@ on:
     - cron: "0 6 * * 1"  # weekly: a logo source that changed shows up here, not in someone's picture
 
 env:
-  SB: https://raw.githubusercontent.com/EricTechPro/super-board/d0b7d5a/skills/visual  # pinned upstreams (README § What was changed)
+  SB: https://raw.githubusercontent.com/EricTechPro/super-board/d0b7d5a/skills/visual  # pinned upstreams (THIRD_PARTY_NOTICES.md)
   SD: https://raw.githubusercontent.com/caru-ini/stack-diagram/30cbbb7/skills/stack-diagram/scripts
 
 jobs:
@@ -55,7 +55,7 @@ jobs:
           PY
 
       - name: The benchmark models lay out as recorded, the same on every run, and in time
-        # m50's time is checked on a developer machine (README § Benchmarks: about 1.6 s since 0.6.0, which lays a view
+        # m50's time is checked on a developer machine (about 1.6 s since 0.6.0, which lays a view
         # out again when some of its lines find no route); a CI runner takes about 3x as long and gets 5x headroom,
         # which the engine before patches 31-35 never met (m50 did not finish in 30 min: bench/results/2026-11-06-ab8daa1-m50.json)
         run: python3 bench/bench.py --runs 2 --timeout 300 --check-determinism --expect bench/expected.json --max-ms m50=8000,b26=2000
