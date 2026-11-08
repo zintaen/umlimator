@@ -222,3 +222,6 @@ events beyond verb chips (step 4); editing (step 5); SVG export without Chrome (
   it is, so a host may set a tone on any ancestor of the map. The theme file mixes its tints on `:root`, where they keep
   the default tone; those stay for page chrome. A host that wants a tint of its own sets it on the map element,
   `.umlimator` (#29).
+- **Test DOMs.** `render()` needs no stubs in a test DOM such as jsdom: without `ResizeObserver` the view is fitted
+  once and not observed; without a 2D canvas, text is measured with the font-independent estimate (as `measure: false`
+  does); without `matchMedia` there is no reduced-motion preference (#32).
