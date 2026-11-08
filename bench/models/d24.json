@@ -1,0 +1,503 @@
+{
+ "title": "bench dense hub",
+ "nodes": [
+  {
+   "id": "api",
+   "label": "API",
+   "kind": "backend"
+  },
+  {
+   "id": "shell",
+   "label": "App shell",
+   "kind": "frontend"
+  },
+  {
+   "id": "audit",
+   "label": "Audit",
+   "kind": "security"
+  },
+  {
+   "id": "m00",
+   "label": "Orders",
+   "kind": "backend"
+  },
+  {
+   "id": "m01",
+   "label": "Billing",
+   "kind": "backend"
+  },
+  {
+   "id": "m02",
+   "label": "Catalog",
+   "kind": "backend"
+  },
+  {
+   "id": "m03",
+   "label": "Search",
+   "kind": "backend"
+  },
+  {
+   "id": "m04",
+   "label": "Auth",
+   "kind": "backend"
+  },
+  {
+   "id": "m05",
+   "label": "Ledger",
+   "kind": "backend"
+  },
+  {
+   "id": "m06",
+   "label": "Notify",
+   "kind": "backend"
+  },
+  {
+   "id": "m07",
+   "label": "Reports",
+   "kind": "backend"
+  },
+  {
+   "id": "m08",
+   "label": "Gateway",
+   "kind": "backend"
+  },
+  {
+   "id": "m09",
+   "label": "Inventory",
+   "kind": "backend"
+  },
+  {
+   "id": "m10",
+   "label": "Pricing",
+   "kind": "backend"
+  },
+  {
+   "id": "m11",
+   "label": "Profile",
+   "kind": "backend"
+  },
+  {
+   "id": "m12",
+   "label": "Audit",
+   "kind": "backend"
+  },
+  {
+   "id": "m13",
+   "label": "Export",
+   "kind": "backend"
+  },
+  {
+   "id": "m14",
+   "label": "Import",
+   "kind": "backend"
+  },
+  {
+   "id": "m15",
+   "label": "Rules",
+   "kind": "backend"
+  },
+  {
+   "id": "x0",
+   "label": "System 0",
+   "kind": "external"
+  },
+  {
+   "id": "x1",
+   "label": "System 1",
+   "kind": "external"
+  },
+  {
+   "id": "x2",
+   "label": "System 2",
+   "kind": "external"
+  },
+  {
+   "id": "x3",
+   "label": "System 3",
+   "kind": "external"
+  },
+  {
+   "id": "x4",
+   "label": "System 4",
+   "kind": "external"
+  }
+ ],
+ "edges": [
+  {
+   "id": "api-m00",
+   "from": "api",
+   "to": "m00"
+  },
+  {
+   "id": "api-m01",
+   "from": "api",
+   "to": "m01"
+  },
+  {
+   "id": "api-m02",
+   "from": "api",
+   "to": "m02"
+  },
+  {
+   "id": "api-m03",
+   "from": "api",
+   "to": "m03"
+  },
+  {
+   "id": "api-m04",
+   "from": "api",
+   "to": "m04"
+  },
+  {
+   "id": "api-m05",
+   "from": "api",
+   "to": "m05"
+  },
+  {
+   "id": "api-m06",
+   "from": "api",
+   "to": "m06"
+  },
+  {
+   "id": "api-m07",
+   "from": "api",
+   "to": "m07"
+  },
+  {
+   "id": "api-m08",
+   "from": "api",
+   "to": "m08"
+  },
+  {
+   "id": "api-m09",
+   "from": "api",
+   "to": "m09"
+  },
+  {
+   "id": "api-m10",
+   "from": "api",
+   "to": "m10"
+  },
+  {
+   "id": "api-m11",
+   "from": "api",
+   "to": "m11"
+  },
+  {
+   "id": "api-m12",
+   "from": "api",
+   "to": "m12"
+  },
+  {
+   "id": "api-m13",
+   "from": "api",
+   "to": "m13"
+  },
+  {
+   "id": "api-m14",
+   "from": "api",
+   "to": "m14"
+  },
+  {
+   "id": "api-m15",
+   "from": "api",
+   "to": "m15"
+  },
+  {
+   "id": "x0-api",
+   "from": "x0",
+   "to": "api"
+  },
+  {
+   "id": "x1-api",
+   "from": "x1",
+   "to": "api"
+  },
+  {
+   "id": "x2-api",
+   "from": "x2",
+   "to": "api"
+  },
+  {
+   "id": "x3-api",
+   "from": "x3",
+   "to": "api"
+  },
+  {
+   "id": "x4-api",
+   "from": "x4",
+   "to": "api"
+  }
+ ],
+ "views": [
+  {
+   "id": "boxed",
+   "title": "An API card, its modules, and systems that call back, in boxes",
+   "nodeIds": [
+    "api",
+    "shell",
+    "audit",
+    "m00",
+    "m01",
+    "m02",
+    "m03",
+    "m04",
+    "m05",
+    "m06",
+    "m07",
+    "m08",
+    "m09",
+    "m10",
+    "m11",
+    "m12",
+    "m13",
+    "m14",
+    "m15",
+    "x0",
+    "x1",
+    "x2",
+    "x3",
+    "x4"
+   ],
+   "layout": {
+    "shell": [
+     0,
+     0
+    ],
+    "api": [
+     0,
+     1
+    ],
+    "audit": [
+     0,
+     2
+    ],
+    "m00": [
+     1,
+     0
+    ],
+    "m01": [
+     2,
+     0
+    ],
+    "m02": [
+     3,
+     0
+    ],
+    "m03": [
+     4,
+     0
+    ],
+    "m04": [
+     1,
+     1
+    ],
+    "m05": [
+     2,
+     1
+    ],
+    "m06": [
+     3,
+     1
+    ],
+    "m07": [
+     4,
+     1
+    ],
+    "m08": [
+     1,
+     2
+    ],
+    "m09": [
+     2,
+     2
+    ],
+    "m10": [
+     3,
+     2
+    ],
+    "m11": [
+     4,
+     2
+    ],
+    "m12": [
+     1,
+     3
+    ],
+    "m13": [
+     2,
+     3
+    ],
+    "m14": [
+     3,
+     3
+    ],
+    "m15": [
+     4,
+     3
+    ],
+    "x0": [
+     5,
+     0
+    ],
+    "x1": [
+     5,
+     1
+    ],
+    "x2": [
+     5,
+     2
+    ],
+    "x3": [
+     5,
+     3
+    ],
+    "x4": [
+     5,
+     4
+    ]
+   },
+   "containers": [
+    {
+     "id": "app",
+     "label": "App",
+     "nodeIds": [
+      "api",
+      "shell",
+      "audit",
+      "m00",
+      "m01",
+      "m02",
+      "m03",
+      "m04",
+      "m05",
+      "m06",
+      "m07",
+      "m08",
+      "m09",
+      "m10",
+      "m11",
+      "m12",
+      "m13",
+      "m14",
+      "m15"
+     ]
+    },
+    {
+     "id": "systems",
+     "label": "Other systems",
+     "nodeIds": [
+      "x0",
+      "x1",
+      "x2",
+      "x3",
+      "x4"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "plain",
+   "title": "An API card and its modules",
+   "nodeIds": [
+    "api",
+    "shell",
+    "audit",
+    "m00",
+    "m01",
+    "m02",
+    "m03",
+    "m04",
+    "m05",
+    "m06",
+    "m07",
+    "m08",
+    "m09",
+    "m10",
+    "m11",
+    "m12",
+    "m13",
+    "m14",
+    "m15"
+   ],
+   "layout": {
+    "api": [
+     0,
+     1
+    ],
+    "shell": [
+     0,
+     0
+    ],
+    "audit": [
+     0,
+     2
+    ],
+    "m00": [
+     1,
+     0
+    ],
+    "m01": [
+     2,
+     0
+    ],
+    "m02": [
+     3,
+     0
+    ],
+    "m03": [
+     4,
+     0
+    ],
+    "m04": [
+     1,
+     1
+    ],
+    "m05": [
+     2,
+     1
+    ],
+    "m06": [
+     3,
+     1
+    ],
+    "m07": [
+     4,
+     1
+    ],
+    "m08": [
+     1,
+     2
+    ],
+    "m09": [
+     2,
+     2
+    ],
+    "m10": [
+     3,
+     2
+    ],
+    "m11": [
+     4,
+     2
+    ],
+    "m12": [
+     1,
+     3
+    ],
+    "m13": [
+     2,
+     3
+    ],
+    "m14": [
+     3,
+     3
+    ],
+    "m15": [
+     4,
+     3
+    ]
+   }
+  }
+ ]
+}

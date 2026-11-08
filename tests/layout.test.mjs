@@ -182,3 +182,46 @@ test("a container's badges are tabs on its top border, right of its title, and t
   assert.ok(t1.x > t0.x + t0.w && t1.x + t1.w <= f.x + f.w - 12, 'left to right, inside the box');
   assert.deepEqual(f.tabs.map(t => [t.text, t.fill]), [['TA-6', 'var(--um-slate)'], ['OWNER: DATA', 'var(--um-violet)']], 'tones as on a card');
 });
+
+test('a line to a container takes the sides that face across the wider gap, and ends in line with its other end where the border allows (#39)', () => {
+  const model = (e1, edge = {}) => ({ nodes: ['audit', 'shell', 'm', 'm2', 'e1', 'e2'].map(id => ({ id, label: id === 'audit' ? 'Audit' : id })),
+    edges: [{ id: 'audit-database', from: 'audit', to: 'database', ...edge }],
+    views: [{ id: 'v', nodeIds: ['audit', 'shell', 'm', 'm2', 'e1', 'e2'], layout: { shell: [1, 0], audit: [1, 2], m: [2, 0], m2: [3, 0], e1, e2: [e1[0] + 1, 3] },
+      containers: [{ id: 'app', label: 'App', nodeIds: ['audit', 'shell', 'm', 'm2'] }, { id: 'database', label: 'Database', nodeIds: ['e1', 'e2'] }] }] });
+  const below = layout(model([2, 3]), 'v').edges[0]; // the box 74 px below the card and 32 px to its right
+  assert.equal(`${below.fs}>${below.ts}`, 'B>T', 'bottom to top: the vertical gap is the wider');
+  assert.ok(below.pts.every((p, k) => !k || p[1] >= below.pts[k - 1][1]), `it never turns back up: ${JSON.stringify(below.pts)}`);
+  const under = layout(model([1, 3]), 'v').edges[0]; // the box under the card
+  assert.ok(under.pts.length === 2 && under.pts[0][0] === under.pts[1][0], `a straight drop: ${JSON.stringify(under.pts)}`);
+  const beside = layout({ nodes: ['a', 'e1', 'e2'].map(id => ({ id, label: id })), edges: [{ from: 'a', to: 'db' }],
+    views: [{ id: 'v', nodeIds: ['a', 'e1', 'e2'], layout: { a: [0, 0], e1: [1, 0], e2: [1, 1] }, containers: [{ id: 'db', label: 'Database', nodeIds: ['e1', 'e2'] }] }] }, 'v').edges[0];
+  assert.ok(beside.how === 'grid' && beside.pts.length === 2 && beside.pts[0][1] === beside.pts[1][1], `a box 32 px beside the card: a straight line, routed (${beside.how}): ${JSON.stringify(beside.pts)}`);
+});
+
+// #40: the issue's hub models: one card feeding n cards in a 4-wide grid beside it, a card above and below it, and systems
+// in a box of their own that call back into it (n = 4 with 5 systems is the issue's 12-card model)
+const hub = (n, inbound = 0) => {
+  const mods = Array.from({ length: n }, (_, i) => `m${i}`), sys = Array.from({ length: inbound }, (_, i) => `s${i}`);
+  const nodes = [['hub', 'API'], ['top', 'Shell'], ['low', 'Audit'], ...mods.map(id => [id, `Module ${id}`]), ...sys.map(id => [id, `System ${id}`])].map(([id, label]) => ({ id, label }));
+  return { nodes, edges: [...mods.map(id => ({ id: `hub-${id}`, from: 'hub', to: id })), ...sys.map(id => ({ id: `${id}-hub`, from: id, to: 'hub' }))],
+    views: [{ id: 'v', nodeIds: nodes.map(x => x.id), layout: { hub: [0, 1], top: [0, 0], low: [0, 2], ...Object.fromEntries(mods.map((id, i) => [id, [1 + i % 4, Math.floor(i / 4)]])), ...Object.fromEntries(sys.map((id, i) => [id, [5, i]])) },
+      ...(inbound ? { containers: [{ id: 'app', label: 'App', nodeIds: ['hub', 'top', 'low', ...mods] }, { id: 'sys', label: 'Systems', nodeIds: sys }] } : {}) }] };
+};
+const throughCards = g => g.edges.flatMap(e => g.nodes.filter(n => n.id !== e.from && n.id !== e.to && e.pts.slice(1).some((p, k) => { const a = e.pts[k];
+  return Math.max(a[0], p[0]) > n.x + 2 && Math.min(a[0], p[0]) < n.x + n.w - 2 && Math.max(a[1], p[1]) > n.y + 2 && Math.min(a[1], p[1]) < n.y + n.h - 2; })).map(n => `${e.ids.join(' / ')} through ${n.id}`));
+
+test('no line runs through a card it does not join: a line with no route gets room where it needs it, else goes around the cards (#40)', () => {
+  const issue = layout(hub(4, 5), 'v');
+  assert.deepEqual(throughCards(issue), [], "the issue's 12-card model");
+  assert.equal(issue.stats.fallback, undefined, `every line of the issue's model routes once its gaps widen: ${JSON.stringify(issue.stats)}`);
+  for (const n of [12, 13, 14, 15, 16]) for (const inbound of [0, 5]) assert.deepEqual(throughCards(layout(hub(n, inbound), 'v')), [], `one card feeding ${n} cards${inbound ? ', 5 boxed systems calling back' : ''}`);
+  for (const [f, v] of [['d24', 'boxed'], ['d24', 'plain'], ['b26', 'overview']]) assert.deepEqual(throughCards(layout(read(`../bench/models/${f}.json`), v)), [], `${f}/${v}`); // b26: loops drawn under the boxes
+});
+
+test('a line that still runs through a card is named in a console.warn (#40)', () => {
+  const m = { nodes: ['a', 'b', 'c'].map(id => ({ id, label: id.toUpperCase(), kind: 'backend' })), edges: [{ id: 'a-to-c', from: 'a', to: 'c' }],
+    views: [{ id: 'v', nodeIds: ['a', 'b', 'c'], layout: { a: [0, 0], b: [0, 1], c: [0, 2] }, rgap: 1 }] }; // 1 px between the cards: no way around b
+  const warns = [], warn = console.warn; console.warn = w => warns.push(String(w));
+  try { layout(m, 'v'); } finally { console.warn = warn; }
+  assert.ok(warns.some(w => /edge a-to-c\b.*card "b"/.test(w)), warns.join('\n'));
+});

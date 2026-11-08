@@ -6,6 +6,8 @@
 b10, b26, b69: 10, 26 and 69 nodes (b10 also as a view with `repair: false`); m50: 50 modules and about 100 edges (the layout target). Each is a layered flow
 with forward edges to the next one or two layers, a few back edges, and a label on about half the edges. b26 adds two
 containers and a view drawn around a hub card; b69 adds two sub-views and keepPairs with a few two-way pairs.
+d24: a dense hub, as a target architecture map draws one, with a layout: an API card feeds 16 modules in a 4-wide grid
+beside it, and 5 systems in a box of their own call back into it (issue #40: lines with no route ran through cards).
 """
 import json, random
 from pathlib import Path
@@ -82,6 +84,19 @@ def main():
 
     n, e = graph(50, 50, 100)
     M["m50"] = model("bench 50 modules", n, e, [{"id": "overview", "title": "50 modules", "nodeIds": ids(n)}])
+
+    hub = [{"id": "api", "label": "API", "kind": "backend"}, {"id": "shell", "label": "App shell", "kind": "frontend"},
+           {"id": "audit", "label": "Audit", "kind": "security"}]
+    mods = [{"id": f"m{i:02d}", "label": WORDS[i], "kind": "backend"} for i in range(16)]
+    systems = [{"id": f"x{i}", "label": f"System {i}", "kind": "external"} for i in range(5)]
+    lay = {"shell": [0, 0], "api": [0, 1], "audit": [0, 2], **{x["id"]: [1 + i % 4, i // 4] for i, x in enumerate(mods)},
+           **{x["id"]: [5, i] for i, x in enumerate(systems)}}
+    e = [{"id": f"api-{x['id']}", "from": "api", "to": x["id"]} for x in mods] + [{"id": f"{x['id']}-api", "from": x["id"], "to": "api"} for x in systems]
+    n = hub + mods + systems
+    M["d24"] = model("bench dense hub", n, e, [
+        {"id": "boxed", "title": "An API card, its modules, and systems that call back, in boxes", "nodeIds": ids(n), "layout": lay,
+         "containers": [{"id": "app", "label": "App", "nodeIds": ids(hub + mods)}, {"id": "systems", "label": "Other systems", "nodeIds": ids(systems)}]},
+        {"id": "plain", "title": "An API card and its modules", "nodeIds": ids(hub + mods), "layout": {i: lay[i] for i in ids(hub + mods)}}])
 
     for k, m in M.items():
         (out / f"{k}.json").write_text(json.dumps(m, indent=1) + "\n")
