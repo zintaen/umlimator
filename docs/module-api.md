@@ -206,9 +206,10 @@ events beyond verb chips (step 4); editing (step 5); SVG export without Chrome (
   step, author, inner-view count, change, sub-line and chips. So its visible text is a run of whole words of its name
   (WCAG 2.5.3 Label in Name, at any zoom), and what it does not show, or not in full, follows in parentheses: a hidden
   sub-line, the rest of a cut text, "edited", "opens the inner view". `aria-pressed` says whether it is selected.
-- Keyboard: Tab reaches each card; arrow keys on a focused card move to the nearest card that way (on the empty canvas
-  they still pan); Enter selects, and Enter on a selected card opens its inner view (or, with none, sends `select` again,
-  as a click does); Escape clears, then goes up a level.
+- Keyboard: Tab reaches each card, then (since 0.7.0) each line; arrow keys on a focused card move to the nearest card
+  that way (on the empty canvas they still pan); Enter selects, and Enter on a selected card opens its inner view (or,
+  with none, sends `select` again, as a click does); Escape clears, then goes up a level. A card's or box's tabs take focus
+  when the host listens for `click`, and Enter on one is a click on it.
 - A polite live region announces each selection ("Billing, selected", "3 cards selected", "Line from A to B") and
   each view shown.
 - Exported files (`toSVG`, `toPNG`, stills) are pictures: `role="img"` named after the view, nothing focusable.
@@ -220,7 +221,7 @@ events beyond verb chips (step 4); editing (step 5); SVG export without Chrome (
 - Focus can come back: the map's element delegates focus (`attachShadow({ delegatesFocus: true })`), and focus that
   reaches the canvas from outside, not by a press, goes on to the selected card; `handle.focus(ref?)` puts it on a card
   (default: the selected one, else the map).
-- Not covered: lines and containers are reachable by pointer only.
+- Not covered: containers themselves are reachable by pointer only (their tabs are not, with a `click` listener), and so are chips.
 
 ## 0.5.0: fixes from the first embedding (issues #26 to #36)
 
@@ -327,4 +328,18 @@ events beyond verb chips (step 4); editing (step 5); SVG export without Chrome (
   is in the model but empty is stacked too now. A click on the ⤢ badge of any stacked card opens it (it selected the
   card). Upstream's validator in `umlimator.py render` still rejects an `opensView` it cannot find, so this is for
   embeds; a page the CLI writes has every view (#47).
+- **Lines and tabs from the keyboard.** Tab reaches each card, then each of its tabs when the host listens for `click`,
+  and, after the cards, each line: a button named "Line from Orders to Store: reads · 12" ("Line between A and B, both
+  ways: …" for a two-way line; its sublabel in parentheses), pressed while selected. Enter on a line selects it, as a click
+  does (`select` with the edge `Ref`); Enter on a tab is a click on it (`click` with the badge `Ref`, then its card or box
+  is selected unless the host calls `preventDefault()`), so a tab that is a link in the host works from the keyboard. A
+  card is a button, and a button inside it is invalid (axe: nested-interactive), so a line's or card tab's focus target is
+  drawn outside it, after the cards, and the pointer still hits the line or tab itself; a box's tab is a button itself.
+  Tabs are buttons only for a host that listens for `click` (`options.on.click` or `handle.on('click')`), as status tabs
+  (BUILT, TARGET) do nothing else. Focus brought to anything by key pans it into view, and focus given back to the map
+  (`host.focus()`, `handle.focus()`) lands on the selected line as on a selected card. Tab text keeps the model's case in
+  the DOM, upper-cased by the sheet, so a screen reader, a copy or a test reads "Open data", not "OPEN DATA"; a file drawn
+  from the map (`toSVG`, stills) still has it upper-cased. Only cards and the zoom controls took focus before, and a host
+  that acts on lines and tabs had to list them beside the map. Checked with axe-core 4.14: no violation in the parts this
+  adds (#43).
 
