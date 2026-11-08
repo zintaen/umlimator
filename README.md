@@ -138,6 +138,10 @@ recorded in `bench/expected.json`; a change that moves lines on purpose refreshe
 all of the above, and checks that the files copied from upstream (`engine/scripts`, `engine/references`,
 `tools/fetch_icons.py`) are unmodified.
 
+To release, bump `package.json`'s version in a PR and add that version's `## X.Y.Z: …` section to
+`docs/module-api.md`. When the PR is merged and the checks pass on `main`, CI tags `vX.Y.Z` and publishes a GitHub
+Release with that section as its notes.
+
 ```
 umlimator.py                 CLI: render, stills, check, pin-icons
 lib/                         the module (umlimator.js), its types and the default theme
