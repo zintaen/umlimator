@@ -19,6 +19,9 @@ export interface MapEdge { id?: string; from: string; to: string; label?: string
 export interface MapView {
   id: string; parent?: string | null; title?: string; nodeIds: string[];
   edges?: (string | MapEdge)[]; layout?: Record<string, [number, number]>; repair?: boolean;
+  /** Cards 80 px tall that show their sub-line and then their chips (`verbs`) on a third line. Default: 64 px, and a card's
+   *  chips take its sub-line's place. A script card (no kind) shows no sub-line either way. */
+  subAndChips?: boolean;
   containers?: { id: string; label?: string; nodeIds?: string[]; parent?: string; badges?: Badge[] }[];   // badges: tabs on the box's border
   [key: string]: unknown;
 }
