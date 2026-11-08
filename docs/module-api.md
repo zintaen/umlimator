@@ -253,3 +253,7 @@ events beyond verb chips (step 4); editing (step 5); SVG export without Chrome (
   line can run between them. Auto-layout used to interleave containers' cards, and boxes in neighbouring columns
   overlapped at the default gaps. Views without containers keep their exact geometry; of the benchmark views only
   b26/overview moved (`bench/expected.json`). The CLI's layout search swaps cards only within their box (#27).
+- **Lines to containers.** An edge whose `from` or `to` names a container of the view is drawn to the box's border
+  (the side chosen as for a card, the port in line with the other end where it can be), and is an ordinary edge `Ref`;
+  auto-layout puts its source before the box. It used to draw nothing and say nothing. An edge between a box and
+  something inside it has no line, and `console.warn` names it (#28).

@@ -14,6 +14,7 @@ export interface MapModel {
 /** A badge: its text, and optionally a palette name for its colour (green, amber, rose, accent, violet ... : --um-<tone>). */
 export type Badge = string | { text: string; tone?: string };
 export interface MapNode { id: string; label?: string; kind?: string; sublabel?: string; badge?: string; badges?: Badge[]; edited?: boolean; icon?: string; verbs?: string[]; opensView?: string; [key: string]: unknown }
+/** from / to: a card's id, or a container's id in the view (the line ends on its box's border). */
 export interface MapEdge { id?: string; from: string; to: string; label?: string; edited?: boolean; [key: string]: unknown }
 export interface MapView {
   id: string; parent?: string | null; title?: string; nodeIds: string[];

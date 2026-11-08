@@ -153,3 +153,23 @@ test('containers: a layout keeps its slots, and the gaps between boxes widen: si
     assert.deepEqual(Object.fromEntries(g.nodes.map(n => [n.id, [n.col, n.row]])), slots, 'cards keep their slots');
   }
 });
+
+test("an edge whose end is a container is drawn to its box's border, and auto-layout puts its source before the box (#28)", () => {
+  const box = { id: 'database', label: 'Database', nodeIds: ['e1', 'e2'] }, ids = ['audit', 'e1', 'e2'];
+  const m = { nodes: [{ id: 'audit', label: 'Audit' }, { id: 'e1', label: 'Order', kind: 'database' }, { id: 'e2', label: 'Customer', kind: 'database' }],
+    edges: [{ id: 'x', from: 'audit', to: 'database', label: 'writes' }, { id: 'own', from: 'e1', to: 'database' }],
+    views: [{ id: 'v', nodeIds: ids, layout: { audit: [0, 0], e1: [2, 0], e2: [2, 1] }, containers: [box] }, { id: 'auto', nodeIds: ids, containers: [box] }] };
+  const warns = [], warn = console.warn; console.warn = w => warns.push(w);
+  try {
+    for (const vid of ['v', 'auto']) {
+      const g = layout(m, vid), f = g.families[0], a = g.nodes.find(n => n.id === 'audit'), e = g.edges.find(x => x.ids.includes('x'));
+      assert.ok(e, `${vid}: the line is drawn`);
+      const [x, y] = e.pts.at(-1);
+      assert.ok(x === f.x && y > f.y && y < f.y + f.h, `${vid}: it ends on the box's left border`);
+      assert.ok(a.x + a.w < f.x, `${vid}: its source sits before the box`);
+      assert.equal(e.lbl && e.lbl.text, 'writes', `${vid}: with its label`);
+      assert.ok(!g.edges.some(o => o.ids.includes('own')), `${vid}: a box and a card inside it get no line`);
+    }
+  } finally { console.warn = warn; }
+  assert.ok(warns.some(w => /edge own/.test(w)), 'the edge left out is named in a warning');
+});
