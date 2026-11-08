@@ -213,3 +213,12 @@ events beyond verb chips (step 4); editing (step 5); SVG export without Chrome (
   host that sets its own `--um-*` colours owns their contrast. The dimming of unrelated cards while one is selected is
   meant to recede, and is not checked.
 - Not covered: lines and containers are reachable by pointer only.
+
+## 0.5.0: fixes from the first embedding (issues #26 to #36)
+
+- **Container boxes** are a faint panel (`--um-panel` at 45 %) with an 11 px title, from the module's own stylesheet.
+  The page's rules for them never reached the map's shadow root, so boxes were black (#26).
+- **Tints follow their tone.** The map mixes each `--um-<tone>-f` itself, from the tone and `--um-panel` in effect where
+  it is, so a host may set a tone on any ancestor of the map. The theme file mixes its tints on `:root`, where they keep
+  the default tone; those stay for page chrome. A host that wants a tint of its own sets it on the map element,
+  `.umlimator` (#29).
