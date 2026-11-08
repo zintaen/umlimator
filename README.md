@@ -164,7 +164,15 @@ host's (`--um-sans`, `--um-mono`), text is measured in that font, and nothing is
 `lib/umlimator.d.ts`. With `editable`, gestures (add, rename, move into a container, delete, reorder, connect) emit
 `change` events and change nothing themselves: the host applies them to its own data and calls `update`
 ([docs/editing.md](docs/editing.md); `examples/edit.html` is a working host, served over HTTP). `toSVG()` returns a view as a stand-alone SVG file (`toPNG()` the same as a PNG): the host's colours and fonts
-resolved into it, drawn at rest (no selection, hover, flow or edit handles), with no headless browser. Install from git: `"umlimator": "github:zintaen/umlimator#<tag>"`.
+resolved into it, drawn at rest (no selection, hover, flow or edit handles), with no headless browser.
+
+Install from git: `"umlimator": "github:zintaen/umlimator#<tag>"` in `dependencies`. npm 12 refuses git dependencies
+unless the project opts in (`EALLOWGIT`), so on npm 12 put this line in the `.npmrc` next to that `package.json`; it
+allows only the git dependencies the project names itself (npm 10 needs nothing):
+
+```ini
+allow-git=root
+```
 
 ```bash
 node --test               # layout(): the benchmark views' geometry, ids, repair flag (no browser)
