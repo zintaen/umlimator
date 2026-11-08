@@ -317,4 +317,14 @@ events beyond verb chips (step 4); editing (step 5); SVG export without Chrome (
   and shows each sublabel, joined by " / ". Both reach the geometry (`weight`, `lbl.sub`); views without them keep theirs.
   Every line was drawn at one width with one label line, so a line standing for 486 relations looked like one standing
   for 1 (#44).
+- **A card can open a view the host loads later.** A node's `opensView` may name a view that is not in the model yet. The
+  card looks stacked (⤢ with `opensCount` when the host gives one, else ⤢ alone), and double-click, Enter on the selected
+  card and a click on its ⤢ badge emit `open` with that view's id. The map goes in once the view is in the model: the host
+  loads it, calls `update()`, then `setView()`, or calls `update()` inside its `open` handler, and the map goes in at once;
+  `preventDefault()` still keeps it where it is. `open` was emitted only for a view in the model, and the stacked look
+  needed that view's cards, so a host that loads one level at a time (a C4 system context, then its containers) showed
+  plain cards that did nothing; an empty placeholder view made `open` fire but left the card plain. A card whose inner view
+  is in the model but empty is stacked too now. A click on the ⤢ badge of any stacked card opens it (it selected the
+  card). Upstream's validator in `umlimator.py render` still rejects an `opensView` it cannot find, so this is for
+  embeds; a page the CLI writes has every view (#47).
 

@@ -119,7 +119,9 @@ the reason for each of the 40 patches and stay in the git history). The engine t
 `render` skips upstream's layout search when every view already has a layout, and fails when the check did not
 complete instead of reporting no problems.
 
-Model fields umlimator adds: a node's `badge`, `icon` and `noSub` (name only, description in the panel); a view's
+Model fields umlimator adds: a node's `badge`, `icon`, `noSub` (name only, description in the panel), `opensView` naming
+a view the host has not loaded yet (in an embed; the CLI's validator wants every view) and `opensCount` (the ⤢ number
+for it); a view's
 `gap`, `rgap`, `keepPairs`, `repair` (`false`: no port repair), `subAndChips` (`true`: cards 80 px tall show their sub-line,
 then their chips; by default chips take the sub-line's place) and `kindsFromLabels` (`true`: a line whose edges name no
 `kind` takes one guessed from its label's words, as the standalone page always does); an edge's `kind` (what its line

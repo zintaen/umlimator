@@ -13,7 +13,16 @@ export interface MapModel {
 }
 /** A badge: its text, and optionally a palette name for its colour (green, amber, rose, accent, violet ... : --um-<tone>). */
 export type Badge = string | { text: string; tone?: string };
-export interface MapNode { id: string; label?: string; kind?: string; sublabel?: string; badge?: string; badges?: Badge[]; edited?: boolean; icon?: string; verbs?: string[]; opensView?: string; [key: string]: unknown }
+export interface MapNode {
+  id: string; label?: string; kind?: string; sublabel?: string; badge?: string; badges?: Badge[]; edited?: boolean; icon?: string; verbs?: string[];
+  /** The view this card opens. It may name a view the host has not loaded yet: the card still looks stacked, and
+   *  double-click, Enter on the selected card and a click on its ⤢ badge emit `open` with that id; the map goes in once
+   *  the view is in the model (the host loads it, calls update(), then setView(), or calls update() in its open handler). */
+  opensView?: string;
+  /** The number on the ⤢ badge of a card whose view is not loaded yet (else ⤢ alone). A loaded view's cards are counted. */
+  opensCount?: number;
+  [key: string]: unknown;
+}
 /** What a line means, drawn as its colour: calls (the default), feeds (hands work on), triggers (suggests, offers, fires),
  *  state (reads or writes a file, board or config: a thinner line, a muted label, no flow) and guard (a hook steps in).
  *  Colours are --um-w-<kind>. An edge's `style` (emphasis, dashed, security) wins over its kind's colour. */
@@ -58,7 +67,7 @@ export type Ref =
 export interface Events {
   click: { target: Ref; event: MouseEvent; preventDefault(): void };   // preventDefault(): the selection stays as it was (no select)
   select: { target: Ref | null; targets: Ref[] };          // a chip or badge selects its card (a container's badge: its box); targets: every selected thing, the latest last
-  open: { target: Ref; view: string; preventDefault(): void };
+  open: { target: Ref; view: string; preventDefault(): void };   // view: the one the card opens, which may not be in the model yet
   viewchange: { view: string; from: string };
   change: Change;                                           // only with `editable`
 }

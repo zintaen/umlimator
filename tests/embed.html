@@ -232,7 +232,26 @@ try {
     check('…and the file keeps the width and the sublabel', /stroke-width: 4.5px/.test(h8.toSVG()) && h8.toSVG().includes('dapper, ef'));
     h8.destroy(); el8.style.removeProperty('--um-sans');
   }
-  for (const [what, m, view] of [["issue #35's model", ISSUE, 'v'], ['every kind of card text', SINK, 'v'], ['steps in a run-order view', SINK, 'p'], ['the example', MODEL, 'overview'], ['a view with subAndChips (#41)', BOTH, 'w']]) {
+  // a card that opens a view the host loads later: stacked, and every open gesture asks the host, without switching (#47)
+  const LATER = { root: 'v', nodes: [{ id: 'web', label: 'Web', kind: 'frontend' }, { id: 'api', label: 'API', kind: 'backend', opensView: 'api-inside', opensCount: 3 },
+      { id: 'db', label: 'Store', kind: 'database', opensView: 'db-inside' }], edges: [{ from: 'web', to: 'api', label: 'calls' }, { from: 'api', to: 'db' }], views: [{ id: 'v', nodeIds: ['web', 'api', 'db'] }] };
+  {
+    const el10 = document.getElementById('a'), ev10 = [], h10 = render(el10, LATER, { on: { open: e => ev10.push([e.target.id, e.view]), viewchange: e => ev10.push(['viewchange', e.view]) } });
+    const sr10 = el10.querySelector('.umlimator').shadowRoot, card = id => sr10.querySelector(`.node[data-id="${id}"]`), badge = id => card(id).querySelector('.open-hint text');
+    check('a card whose opensView is not in the model yet looks stacked: with the count the host gives, else ⤢ alone', ['api', 'db'].every(id => card(id).classList.contains('has-child') && card(id).querySelector('.n-stack'))
+      && badge('api').textContent === '⤢ 3' && badge('db').textContent === '⤢' && !card('web').classList.contains('has-child'), [badge('api') && badge('api').textContent, badge('db') && badge('db').textContent]);
+    const fire = (el, ev) => el.dispatchEvent(ev);
+    fire(card('api'), new MouseEvent('dblclick', { bubbles: true, composed: true }));
+    h10.select({ type: 'node', id: 'api' }); card('api').focus(); fire(card('api'), new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, composed: true }));
+    fire(badge('api'), new MouseEvent('click', { bubbles: true, composed: true, detail: 1 }));
+    await wait(300);
+    check('double-click, Enter on the selected card and a click on ⤢ each emit open with the view it names, and the map stays', JSON.stringify(ev10) === JSON.stringify([['api', 'api-inside'], ['api', 'api-inside'], ['api', 'api-inside']]) && h10.view === 'v', [ev10, h10.view]);
+    const off = h10.on('open', e => { const m = structuredClone(LATER); m.views.push({ id: 'db-inside', parent: 'v', nodeIds: ['web', 'api'] }); h10.update(m); });
+    fire(card('db'), new MouseEvent('dblclick', { bubbles: true, composed: true }));
+    check('a host that adds the view in its open handler (update()) goes in at once', await until(() => h10.view === 'db-inside') && ev10.some(x => x[0] === 'viewchange' && x[1] === 'db-inside'), [h10.view, ev10]);
+    off(); h10.destroy();
+  }
+  for (const [what, m, view] of [["issue #35's model", ISSUE, 'v'], ['cards that open a view not loaded yet (#47)', LATER, 'v'], ['every kind of card text', SINK, 'v'], ['steps in a run-order view', SINK, 'p'], ['the example', MODEL, 'overview'], ['a view with subAndChips (#41)', BOTH, 'w']]) {
     const el6 = document.getElementById('a'), h6 = render(el6, m, { view }), sr6 = () => el6.querySelector('.umlimator').shadowRoot, found = {};
     found['at rest'] = mismatched(sr6());
     h6.select({ type: 'node', id: sr6().querySelector('.node').dataset.id }); found.selected = mismatched(sr6());
