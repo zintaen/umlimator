@@ -9,8 +9,8 @@
 <div id="b" style="width:600px;height:400px"></div>
 <script type="module">
 import { render, layout } from '../lib/umlimator.js';
-const MODEL = await (await fetch('../examples/bookshop.json')).json();
-const loaded = performance.getEntriesByType('resource').length; // the module and the model; nothing after this
+const MODEL = await (await fetch('../examples/bookshop.json')).json(), THEME = await (await fetch('../lib/umlimator-theme.css')).text();
+const loaded = performance.getEntriesByType('resource').length; // the module, the model and the theme; nothing after this
 const out = { ok: [], fail: [] };
 const check = (name, cond, info) => { document.title = name; if (cond) out.ok.push(name); else out.fail.push(name + (info === undefined ? '' : ': ' + JSON.stringify(info))); };
 const wait = ms => new Promise(r => setTimeout(r, ms));
@@ -143,6 +143,15 @@ try {
   const est = layout(thin, 'v').nodes[0].w;
   check('text is measured in the host font', cardW('serif') < est && cardW('serif') !== cardW('monospace'), [cardW('serif'), cardW('monospace'), est]);
   check('measure: false keeps the font-independent estimate', cardW('serif', { measure: false }) === est);
+
+  // the default theme on the page, and a host that sets a tone on an ancestor of the map: the tint follows the tone
+  const sheet = new CSSStyleSheet(); sheet.replaceSync(THEME); document.adoptedStyleSheets = [sheet];
+  const el4 = document.getElementById('b'); el4.style.setProperty('--um-green', 'rgb(255, 0, 0)');
+  const h4 = render(el4, { nodes: [{ id: 'a', label: 'Orders', kind: 'backend' }], views: [{ id: 'v', nodeIds: ['a'] }] });
+  const want = document.createElement('i'); want.style.color = 'color-mix(in srgb, var(--um-green) 9%, var(--um-panel))'; el4.appendChild(want);
+  const tint = getComputedStyle(el4.querySelector('.umlimator').shadowRoot.querySelector('.n-body')).fill;
+  check('a tone set on an ancestor of the map recolours its tint too (the theme mixed it on :root)', tint === getComputedStyle(want).color, [tint, getComputedStyle(want).color]);
+  h4.destroy(); want.remove(); el4.style.removeProperty('--um-green'); document.adoptedStyleSheets = [];
   const own = () => performance.getEntriesByType('resource').filter(r => !/\/__(hold|release)$/.test(r.name)); // the test's own clock holds are not the map's
   check('makes no network requests', own().length === loaded, own().slice(loaded).map(r => r.name));
   const img = new Image(); img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(file);
