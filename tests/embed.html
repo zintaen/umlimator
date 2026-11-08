@@ -200,7 +200,23 @@ try {
     edges: [{ from: 'd', to: 'a' }, { from: 'a', to: 'b' }, { from: 'b', to: 'c' }, { from: 'c', to: 'e' }, { from: 'e', to: 'f' }],
     views: [{ id: 'v', nodeIds: ['a', 'b', 'c', 'd', 'e', 'f'] }, { id: 'w', parent: 'v', nodeIds: ['a', 'c'] }, { id: 'p', render: 'process', nodeIds: ['d', 'a', 'c'] }] };
   const ISSUE = { nodes: [{ id: 'a', label: 'Billing', badges: ['TA-1'] }, { id: 'b', label: 'Ledger' }], edges: [{ from: 'a', to: 'b' }], views: [{ id: 'v', nodeIds: ['a', 'b'] }] };
-  for (const [what, m, view] of [["issue #35's model", ISSUE, 'v'], ['every kind of card text', SINK, 'v'], ['steps in a run-order view', SINK, 'p'], ['the example', MODEL, 'overview']]) {
+  // a card with chips shows its sub-line too on a view with subAndChips: its name, the sub-line, then the chips (#41)
+  const BOTH = { nodes: [{ id: 'a', label: 'Accounts', kind: 'backend', sublabel: 'from Customer accounts', verbs: ['F-1', 'F-2'] },
+      { id: 'b', label: 'Order fulfilment and returns handling for every warehouse', kind: 'backend', sublabel: 'from Orders', verbs: ['F-3'] },
+      { id: 'c', label: 'Nightly job', sublabel: 'from cron', verbs: ['F-4'] }], // no kind: a script card, which shows no sub-line
+    edges: [{ from: 'a', to: 'b' }], views: [{ id: 'v', nodeIds: ['a', 'b', 'c'] }, { id: 'w', nodeIds: ['a', 'b', 'c'], subAndChips: true }] };
+  for (const view of ['v', 'w']) {
+    const el9 = document.getElementById('a'), h9 = render(el9, BOTH, { view }), sr9 = el9.querySelector('.umlimator').shadowRoot;
+    const card = id => { const g = sr9.querySelector(`.node[data-id="${id}"]`), body = g.querySelector('.n-body'), sub = g.querySelector('.n-sub'), label = g.querySelector('.n-label').getBBox();
+      return { y: +body.getAttribute('y'), h: +body.getAttribute('height'), sub: sub && sub.textContent, subY: sub && +sub.getAttribute('y'), nameBottom: label.y + label.height,
+        chips: [...g.querySelectorAll('rect.verb-chip')].map(r => ({ y: +r.getAttribute('y'), h: +r.getAttribute('height') })) }; };
+    const [a, b, c] = ['a', 'b', 'c'].map(card), below = (k, y) => k.chips.length && k.chips.every(r => r.y > y && r.y + r.h <= k.y + k.h - 4);
+    if (view === 'v') check('by default a card with chips keeps its 64 px and shows the chips in its sub-line\'s place', a.h === 64 && a.sub === null && a.chips.length === 2, a);
+    else check('on a view with subAndChips, a card 80 px tall draws its name, its sub-line, then its chips below them (a two-line name too); a script card still shows no sub-line',
+      a.h === 80 && a.sub === 'from Customer accounts' && below(a, a.subY) && b.sub === 'from Orders' && b.subY > b.nameBottom && below(b, b.subY) && c.sub === null && c.chips.length === 1, [a, b, c]);
+    h9.destroy();
+  }
+  for (const [what, m, view] of [["issue #35's model", ISSUE, 'v'], ['every kind of card text', SINK, 'v'], ['steps in a run-order view', SINK, 'p'], ['the example', MODEL, 'overview'], ['a view with subAndChips (#41)', BOTH, 'w']]) {
     const el6 = document.getElementById('a'), h6 = render(el6, m, { view }), sr6 = () => el6.querySelector('.umlimator').shadowRoot, found = {};
     found['at rest'] = mismatched(sr6());
     h6.select({ type: 'node', id: sr6().querySelector('.node').dataset.id }); found.selected = mismatched(sr6());
