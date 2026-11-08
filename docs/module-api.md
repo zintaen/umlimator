@@ -343,3 +343,25 @@ events beyond verb chips (step 4); editing (step 5); SVG export without Chrome (
   is in the model but empty is stacked too now. A click on the ⤢ badge of any stacked card opens it (it selected the
   card). Upstream's validator in `umlimator.py render` still rejects an `opensView` it cannot find, so this is for
   embeds; a page the CLI writes has every view (#47).
+
+## 0.8.0: fixes from Alchemy's 0.7.0 check (issues #49, #50)
+
+- **Lines into one side of a card nest.** When several cards in one column point to one card, their lines end on one side
+  of it, and the router turns each as late as it can. Routed shortest first, the last line found no track left beside the
+  others: it crossed one, or went back around its own column (on a system context, three people pointing to one system:
+  760 px for a 406 px direct route), and port repair then swapped ports to trade the crossing for the detour. Now the
+  lines that end on one side are routed in nesting order, the one whose turn lies nearest the card first, so each takes the
+  track beside the one before. And the ports on a top or bottom side follow the angle at which each line's other card
+  lies, swept from the side's left end: ordered by that card's x, then by its y in one direction, cards in one column on
+  the left of a bottom side came in the wrong order (the lines a side has no room for move to the card's bottom side, so
+  this showed with five sources or more). With three to seven sources every line now runs straight to its port, within
+  1.1 times its direct route. Lines move wherever several end on one side: of the bench views all but b26/n01 and
+  bookshop/api moved; the layout check finds 941 issues across them, 958 before (m50 382 to 362, b69/overview 410 to 398,
+  d24/boxed 32 to 27; b26/overview 90 to 110, a random graph whose crossings shift with the order lines are routed in) (#49).
+- **At fit, the zoom controls and the minimap keep off the cards.** `render()` fitted the view to the whole element, so the
+  controls in its bottom-right corner, and the minimap above them when it is on, could cover a card there until the
+  reader panned or zoomed (a system context's row of cards with no lines runs along the bottom). Now, when a card would sit
+  under one of them, the fit also tries room for them at the bottom and at the right and keeps whichever leaves the map
+  larger; often that costs no zoom at all, as a view limited by its height just moves left. A view whose corner is empty is
+  fitted as before. The standalone page's own insets (header, legend) get the same room. Nothing changes for a host (#50).
+

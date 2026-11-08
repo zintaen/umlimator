@@ -287,6 +287,26 @@ try {
     check('…handle.on("click") makes them buttons, and they go when it does', n1 === 5 && stops(sr12).length === 3, [n1, stops(sr12)]);
     h12.destroy();
   }
+  // at fit, no card sits under the zoom controls or, when it is on, the minimap (#50)
+  {
+    const card = (id, kind) => ({ id, label: id[0].toUpperCase() + id.slice(1), kind });
+    const CORNER = { root: 'v', nodes: [card('shop', 'backend'), card('ann', 'frontend'), card('ben', 'frontend'), card('cal', 'frontend'), card('ledger', 'external'), card('archive', 'external')],
+      edges: ['ann', 'ben', 'cal'].map(f => ({ from: f, to: 'shop', label: 'uses' })), views: [{ id: 'v', nodeIds: ['shop', 'ann', 'ben', 'cal', 'ledger', 'archive'] }] };
+    const ROW = { root: 'v', nodes: ['shop', 'a1', 'a2', 'a3', 'a4', 'a5', 'a6', 'a7', 'a8'].map(id => card(id, 'external')),
+      edges: ['shop', 'a1', 'a2', 'a3', 'a4', 'a5', 'a6', 'a7'].map((f, i) => ({ from: f, to: 'a' + (i + 1) })), views: [{ id: 'v', nodeIds: ['shop', 'a1', 'a2', 'a3', 'a4', 'a5', 'a6', 'a7', 'a8'] }] };
+    const sheet = new CSSStyleSheet(); sheet.replaceSync(THEME); document.adoptedStyleSheets = [sheet];
+    const under = [];
+    for (const [w, h] of [[900, 420], [1100, 560]]) for (const [name, m, minimap] of [['the issue model', CORNER, false], ['the issue model, minimap on', CORNER, true], ['a wide view, minimap on', ROW, true]]) {
+      const el = document.body.appendChild(document.createElement('div')); el.style.cssText = `width:${w}px;height:${h}px;position:relative`;
+      const hh = render(el, m, { minimap, on: { click() {} } }), sr = el.querySelector('.umlimator').shadowRoot; await wait(50);
+      const boxes = [...sr.querySelectorAll('.ctl, .minimap')].map(x => x.getBoundingClientRect()).filter(r => r.width && r.height);
+      sr.querySelectorAll('.node .n-body').forEach(b => { const c = b.getBoundingClientRect();
+        if (boxes.some(r => c.left < r.right && r.left < c.right && c.top < r.bottom && r.top < c.bottom)) under.push(`${name} at ${w}x${h}: ${b.closest('.node').dataset.id}`); });
+      hh.destroy(); el.remove();
+    }
+    document.adoptedStyleSheets = [];
+    check('at fit, no card sits under the zoom controls, nor under the minimap when it is on (900 x 420 and 1100 x 560)', !under.length, under);
+  }
   for (const [what, m, view] of [["issue #35's model", ISSUE, 'v'], ['cards that open a view not loaded yet (#47)', LATER, 'v'], ['lines and tabs that take focus (#43)', KEYS, 'w'], ['every kind of card text', SINK, 'v'], ['steps in a run-order view', SINK, 'p'], ['the example', MODEL, 'overview'], ['a view with subAndChips (#41)', BOTH, 'w']]) {
     const el6 = document.getElementById('a'), h6 = render(el6, m, { view }), sr6 = () => el6.querySelector('.umlimator').shadowRoot, found = {};
     found['at rest'] = mismatched(sr6());

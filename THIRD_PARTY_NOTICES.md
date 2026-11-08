@@ -11,9 +11,31 @@ umlimator contains, or builds on, the work below. Each entry says what is used a
 ## EricTechPro/super-board, `/visual` skill
 
 `lib/umlimator.js` and `engine/assets/template.html` derive from super-board's `skills/visual/assets/template.html`
-at commit `d0b7d5a` (29 Oct 2026), modified by umlimator (README § What was changed from super-board);
-`engine/scripts/visual.py` and `engine/references/` are copied from that commit unmodified. MIT, Copyright (c) 2026 Eric Tech; the full text is in
-`LICENSE.super-board`. Source: https://github.com/EricTechPro/super-board
+at commit `d0b7d5a` (29 Oct 2026), modified by umlimator (the changes are in its git history and `docs/module-api.md`);
+`engine/scripts/visual.py` and `engine/references/` are copied from that commit unmodified. Source:
+https://github.com/EricTechPro/super-board
+
+MIT License
+
+Copyright (c) 2026 Eric Tech
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 
 super-board's own third-party notice for `/visual`, as it ships it:
 
@@ -112,8 +134,30 @@ SOFTWARE.
 
 `tools/fetch_icons.py` is copied unmodified from caru-ini/stack-diagram (commit `30cbbb7`). The rules umlimator follows
 for brand logos (official marks only, never recoloured, a white tile, a dark tile for a white mark, fetched rather than
-bundled) are stack-diagram's. MIT, Copyright (c) 2026 caru-ini; the full text is in `LICENSE.stack-diagram`.
-stack-diagram's bundled fonts (SIL OFL 1.1) are not used. Source: https://github.com/caru-ini/stack-diagram
+bundled) are stack-diagram's. stack-diagram's bundled fonts (SIL OFL 1.1) are not used. Source:
+https://github.com/caru-ini/stack-diagram
+
+MIT License
+
+Copyright (c) 2026 caru-ini
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 
 ## Lucide icons
 

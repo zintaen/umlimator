@@ -280,3 +280,20 @@ test("an edge's weight (1, 2 or 3) and its sublabel reach the geometry: the line
   const both = layout({ ...m({}, { weight: 2, sublabel: 'ef' }), edges: [...m({}, { weight: 2, sublabel: 'ef' }).edges, { from: 'db', to: 'api', label: 'notifies', weight: 3, sublabel: 'triggers' }, { from: 'web', to: 'db', weight: 7 }] }, 'v');
   assert.deepEqual([line(both, 'db').weight, line(both, 'db').lbl.sub, both.edges.find(e => e.from === 'web' && e.to === 'db').weight], [3, 'ef / triggers', 1]);
 });
+
+// #49: cards in one column all point to one card (made-up names)
+const PEOPLE = ['ann', 'ben', 'cal', 'dee', 'eve', 'fay'];
+const users = n => ({ root: 'v', nodes: [{ id: 'shop', label: 'Shop', kind: 'backend' }, ...PEOPLE.slice(0, n).map(id => ({ id, label: id[0].toUpperCase() + id.slice(1), kind: 'frontend' }))],
+  edges: PEOPLE.slice(0, n).map(id => ({ from: id, to: 'shop', label: 'uses' })), views: [{ id: 'v', nodeIds: ['shop', ...PEOPLE.slice(0, n)] }] });
+test("lines from one column into one card nest: the card's ports on a side follow the order of their sources, and no line detours around its own column (#49)", () => {
+  for (const n of [3, 4, 5, 6]) {
+    const g = layout(users(n), 'v'), along = (side, k) => g.edges.filter(e => e.ts === side).sort((a, b) => a.p2[k] - b.p2[k]).map(e => e.from);
+    const inOrder = list => list.every((id, i) => !i || PEOPLE.indexOf(list[i - 1]) < PEOPLE.indexOf(id));
+    assert.ok(inOrder(along('L', 1)), `${n} sources: shop's left side, top to bottom: ${along('L', 1)}`);
+    assert.ok(inOrder(along('B', 0)), `${n} sources: shop's bottom side, left to right: ${along('B', 0)}`);
+    if (n === 3) assert.deepEqual(along('L', 1), ['ann', 'ben', 'cal'], "the issue's model");
+    for (const e of g.edges) { const len = e.pts.slice(1).reduce((a, p, k) => a + Math.abs(p[0] - e.pts[k][0]) + Math.abs(p[1] - e.pts[k][1]), 0);
+      const direct = Math.abs(e.pts[0][0] - e.pts.at(-1)[0]) + Math.abs(e.pts[0][1] - e.pts.at(-1)[1]);
+      assert.ok(len <= 1.1 * direct, `${n} sources: ${e.from}'s line is ${Math.round(len)} px for a direct route of ${Math.round(direct)}: ${JSON.stringify(e.pts.map(p => p.map(Math.round)))}`); }
+  }
+});
