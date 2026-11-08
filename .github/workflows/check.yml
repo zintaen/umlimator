@@ -68,3 +68,34 @@ jobs:
             || { echo "::error::examples/bookshop.html is stale: render it again and commit it"; exit 1; }
           python3 umlimator.py check examples/bookshop.html | tee /tmp/check.json
           python3 -I -c "import json; s = open('/tmp/check.json').read(); d = json.loads(s[s.find('{'):]); assert not d['problems'] and not d['errors'], (d['problems'], d['errors'])"
+
+  # Merging a version bump releases it: once the checks pass on main, the version in package.json is tagged and
+  # published as a GitHub Release, whose notes are that version's section of docs/module-api.md. A version that is tagged
+  # already is skipped, so every other push to main releases nothing.
+  release:
+    needs: check
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    concurrency: release
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Tag and release package.json's version, once
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          v=$(python3 -c "import json; print(json.load(open('package.json'))['version'])")
+          if git ls-remote --exit-code --tags origin "refs/tags/v$v" > /dev/null; then echo "v$v is released already"; exit 0; fi
+          python3 -I - "$v" <<'PY'
+          import re, sys
+          v = sys.argv[1]
+          m = re.search(rf"^## {re.escape(v)}: (.+?)\n(.*?)(?=^## |\Z)", open("docs/module-api.md").read(), re.M | re.S)
+          if not m:
+              sys.exit(f"::error::docs/module-api.md has no '## {v}: ...' section: a release's notes go there")
+          open("title.txt", "w").write(f"v{v}: {m.group(1).strip()}")
+          open("notes.md", "w").write(f'Install: `"umlimator": "github:zintaen/umlimator#v{v}"`.\n\n{m.group(2).strip()}\n')
+          PY
+          gh release create "v$v" --target "$GITHUB_SHA" --title "$(cat title.txt)" --notes-file notes.md --latest
+
