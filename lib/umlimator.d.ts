@@ -14,14 +14,27 @@ export interface MapModel {
 /** A badge: its text, and optionally a palette name for its colour (green, amber, rose, accent, violet ... : --um-<tone>). */
 export type Badge = string | { text: string; tone?: string };
 export interface MapNode { id: string; label?: string; kind?: string; sublabel?: string; badge?: string; badges?: Badge[]; edited?: boolean; icon?: string; verbs?: string[]; opensView?: string; [key: string]: unknown }
+/** What a line means, drawn as its colour: calls (the default), feeds (hands work on), triggers (suggests, offers, fires),
+ *  state (reads or writes a file, board or config: a thinner line, a muted label, no flow) and guard (a hook steps in).
+ *  Colours are --um-w-<kind>. An edge's `style` (emphasis, dashed, security) wins over its kind's colour. */
+export type WireKind = 'calls' | 'feeds' | 'triggers' | 'state' | 'guard';
 /** from / to: a card's id, or a container's id in the view (the line ends on its box's border). */
-export interface MapEdge { id?: string; from: string; to: string; label?: string; edited?: boolean; [key: string]: unknown }
+export interface MapEdge {
+  id?: string; from: string; to: string; label?: string; edited?: boolean;
+  /** The line's kind (default calls). A line that stands for several edges (A→B and B→A, parallel edges) takes the first
+   *  kind they name, in model order. Nothing is guessed from the label unless the view has `kindsFromLabels`. */
+  kind?: WireKind;
+  [key: string]: unknown;
+}
 export interface MapView {
   id: string; parent?: string | null; title?: string; nodeIds: string[];
   edges?: (string | MapEdge)[]; layout?: Record<string, [number, number]>; repair?: boolean;
   /** Cards 80 px tall that show their sub-line and then their chips (`verbs`) on a third line. Default: 64 px, and a card's
    *  chips take its sub-line's place. A script card (no kind) shows no sub-line either way. */
   subAndChips?: boolean;
+  /** Guess a line's kind from the words of its label ("reads" is state, "triggers" is triggers ...) when its edges name
+   *  none. Off in render() and layout(), which draw no legend; the standalone page (mountPage) always guesses. */
+  kindsFromLabels?: boolean;
   containers?: { id: string; label?: string; nodeIds?: string[]; parent?: string; badges?: Badge[] }[];   // badges: tabs on the box's border
   [key: string]: unknown;
 }

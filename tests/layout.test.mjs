@@ -251,3 +251,15 @@ test('cards with no lines sit in a row of their own under the view: they do not 
     assert.deepEqual(again.nodes.map(n => [n.id, n.x, n.y]), g.nodes.map(n => [n.id, n.x, n.y]), 'the same from its own slots');
   }
 });
+
+test("a line's kind is the kind its edge names: no guess from label words unless the view asks (kindsFromLabels), and a merged line takes the first kind its edges name (#45)", () => {
+  const m = (view = {}, pay = {}) => ({ root: 'v', nodes: [['web', 'Web', 'frontend'], ['api', 'API', 'backend'], ['db', 'Store', 'database'], ['pay', 'Payments', 'external']].map(([id, label, kind]) => ({ id, label, kind })),
+    edges: [{ from: 'web', to: 'api', label: 'calls · 212' }, { from: 'api', to: 'db', label: 'reads, writes · 49' }, { from: 'pay', to: 'api', label: 'triggers · 1', ...pay }, { from: 'api', to: 'pay', label: 'calls · 2', kind: 'calls' }],
+    views: [{ id: 'v', nodeIds: ['web', 'api', 'db', 'pay'], ...view }] });
+  const kinds = g => Object.fromEntries(g.edges.map(e => [`${e.from}>${e.to}`, e.wk]));
+  assert.deepEqual(kinds(layout(m(), 'v')), { 'web>api': 'calls', 'api>db': 'calls', 'pay>api': 'calls' }, 'the default kind whatever the label says; the pair takes the kind one of its edges names');
+  assert.deepEqual(kinds(layout(m({ kindsFromLabels: true }), 'v')), { 'web>api': 'calls', 'api>db': 'state', 'pay>api': 'calls' }, 'the view asks for the guess; a named kind still wins');
+  assert.deepEqual(kinds(layout(m({}, { kind: 'triggers' }), 'v')), { 'web>api': 'calls', 'api>db': 'calls', 'pay>api': 'triggers' }, 'both edges name one: the first in the model');
+  const named = m(); named.edges[1].kind = 'state';
+  assert.equal(kinds(layout(named, 'v'))['api>db'], 'state', 'a kind on an edge wins');
+});

@@ -120,8 +120,10 @@ the reason for each of the 40 patches and stay in the git history). The engine t
 complete instead of reporting no problems.
 
 Model fields umlimator adds: a node's `badge`, `icon` and `noSub` (name only, description in the panel); a view's
-`gap`, `rgap`, `keepPairs`, `repair` (`false`: no port repair) and `subAndChips` (`true`: cards 80 px tall show their sub-line,
-then their chips; by default chips take the sub-line's place); an edge's `fromSide` and `toSide`; a node's `badges` (several,
+`gap`, `rgap`, `keepPairs`, `repair` (`false`: no port repair), `subAndChips` (`true`: cards 80 px tall show their sub-line,
+then their chips; by default chips take the sub-line's place) and `kindsFromLabels` (`true`: a line whose edges name no
+`kind` takes one guessed from its label's words, as the standalone page always does); an edge's `kind` (what its line
+means, drawn as its colour: `calls`, the default, `feeds`, `triggers`, `state` or `guard`), `fromSide` and `toSide`; a node's `badges` (several,
 each a string or `{text, tone}`) and a node's or edge's `edited` (draws a marker); a container's `badges` (tabs on its box's border, each a
 click target); an edge's `from` or `to` may name a container of the view, and its line then ends on the box's border.
 
