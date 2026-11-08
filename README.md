@@ -11,9 +11,9 @@ that writes a self-contained HTML page and still pictures (SVG, PNG) for documen
 
 - **Layers**: a view per level (system, containers, components, flows). A stacked card opens its inner view, which the
   host may load only when asked.
-- **Layout and routing**: columns in reading order, ordered so lines between them cross as little as they can, orthogonal
-  lines that never run through a card, room for every
-  label, containers kept apart, and cards with no lines in a row of their own. The same model gives the same picture.
+- **Layout and routing**: columns in reading order, each ordered so the lines between columns cross as little as they
+  can; orthogonal lines that never run through a card, room for every label, containers kept apart, and cards with no
+  lines in a row of their own. The same model gives the same picture.
 - **Reading**: animated flow, neighbours lit on selection, numbered steps, tours, minimap, light and dark themes.
 - **Keyboard and screen readers**: cards, then lines, in the Tab order; arrows between cards; selections announced.
 - **Editing** (opt-in): gestures emit `change` events; the host applies them and calls `update()`.
@@ -23,7 +23,7 @@ that writes a self-contained HTML page and still pictures (SVG, PNG) for documen
 ## Install
 
 ```json
-"dependencies": { "umlimator": "github:zintaen/umlimator#v0.8.0" }
+"dependencies": { "umlimator": "github:zintaen/umlimator#v0.9.0" }
 ```
 
 npm 12 refuses git dependencies unless the project opts in, so add this line to the `.npmrc` next to `package.json`
