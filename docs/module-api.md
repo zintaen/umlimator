@@ -203,7 +203,8 @@ events beyond verb chips (step 4); editing (step 5); SVG export without Chrome (
   readers). Each card is a focusable `button` whose name is its label, its sublabel, its badges and "edited", plus
   "(opens inner view)" when it has one; `aria-pressed` says whether it is selected.
 - Keyboard: Tab reaches each card; arrow keys on a focused card move to the nearest card that way (on the empty canvas
-  they still pan); Enter selects, and Enter again opens; Escape clears, then goes up a level.
+  they still pan); Enter selects, and Enter on a selected card opens its inner view (or, with none, sends `select` again,
+  as a click does); Escape clears, then goes up a level.
 - A polite live region announces each selection ("Billing, selected", "3 cards selected", "Line from A to B") and
   each view shown.
 - Exported files (`toSVG`, `toPNG`, stills) are pictures: `role="img"` named after the view, nothing focusable.
@@ -225,3 +226,5 @@ events beyond verb chips (step 4); editing (step 5); SVG export without Chrome (
 - **Test DOMs.** `render()` needs no stubs in a test DOM such as jsdom: without `ResizeObserver` the view is fitted
   once and not observed; without a 2D canvas, text is measured with the font-independent estimate (as `measure: false`
   does); without `matchMedia` there is no reduced-motion preference (#32).
+- **Enter on a selected card** with no inner view sends `select` again, as a click does, so a keyboard user can bring
+  back the details a host shows on `select` without leaving the card (#30).
