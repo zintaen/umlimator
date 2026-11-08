@@ -109,6 +109,10 @@ the reason for each of the 40 patches and stay in the git history). The engine t
 12. Containers keep apart. A view's containers are laid out as blocks: each container's cards together, in columns of
     their own, blocks ordered by the lines between them (super-board's schema leaves this to a hand-made `layout`). With
     or without a `layout`, the gap between two boxes, or a box and a card outside it, widens to 32 px.
+13. No line runs through a card. A line the router finds no route for gets room: the column and row gaps where its way
+    around the cards would run along another line widen, and the view is laid out once more. A line still without a
+    route goes around the cards (it was a plain elbow through them, which read as a connection), and one that still
+    crosses a card is named in a console warning.
 
 `render` skips upstream's layout search when every view already has a layout, and fails when the check did not
 complete instead of reporting no problems.
@@ -184,16 +188,18 @@ python3 tests/embed.py    # render() in headless Chrome, imported over local HTT
 ```bash
 python3 bench/bench.py                       # each view of bench/models/*.json and the example: median ms per phase
 python3 bench/bench.py --models m50 --optimize --save
-python3 bench/bench.py --check-determinism --max-ms m50=1000 --expect bench/expected.json
+python3 bench/bench.py --check-determinism --max-ms m50=2000 --expect bench/expected.json
 ```
 
-`bench/models/` holds fixed models of 10, 26 and 69 nodes and one of 50 modules with 100 edges, written once by
-`bench/gen.py`. The bench opens each view in headless Chrome (`#bench=1`) and reports lane planning,
+`bench/models/` holds fixed models of 10, 26 and 69 nodes, one of 50 modules with 100 edges, and d24, a dense hub with a
+layout (one card feeding 16 cards in a 4-wide grid, and 5 boxed systems calling back), written once by `bench/gen.py`. The bench opens each view in headless Chrome (`#bench=1`) and reports lane planning,
 placement, routing, port repair (its rounds and the port swaps it tried), the total, the layout check's route issues
 and a hash of the geometry; `--optimize` adds render's layout search. `--save` keeps the numbers in `bench/results/`;
 `--expect` fails on a view whose geometry differs from a saved run's (`bench/expected.json` is the reference, which a change
 that moves routes on purpose refreshes with `--write-expected`), and a view with `repair: false` that repairs
-fails the run. On 6 Nov 2026 the 50-module view did not finish in 30 minutes; it now lays out in about 0.9 s.
+fails the run. On 6 Nov 2026 the 50-module view did not finish in 30 minutes; by 0.5.0 it laid out in about 0.7 s. Since
+0.6.0 it takes about 1.6 s: 30 of its 100 random lines find no route at first, so it is laid out again with room for
+them. A view whose lines all route is laid out once, as before.
 
 ## Layout
 

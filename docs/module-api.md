@@ -274,3 +274,14 @@ events beyond verb chips (step 4); editing (step 5); SVG export without Chrome (
   Its end on the box lines up with the port at its other end where the border allows (off the title, tabs and corners),
   so a box under a card gets a straight drop. A card 32 px beside a box gets a straight line: the two ends were closer
   than their stubs, so the router gave up and drew the plain fallback elbow (#39).
+- **No line runs through a card.** When the router found no route for a line, it drew a plain elbow through whatever
+  lay in the way, and the card's mask hid the line where it passed, so the line read as a connection to that card (on a
+  target architecture map, 16 of 28 lines). Now such a line gets room, as boxes do (#27): its way around the cards shows
+  where it would run along another line, those column and row gaps widen by 20 px per line, and the view is laid out
+  once more. A line still without a route goes around the cards, across or along other lines if it must. A loop drawn
+  under the boxes that would cut through a card is routed like any other line. A line that still crosses a card it does
+  not join (cards 1 px apart, say) is named in a `console.warn`. A view whose lines all route keeps its exact geometry;
+  one that is laid out again takes about twice as long (the 50-module bench view: 0.7 s, now 1.6 s). On the map that
+  found this, all 28 lines now route, and the map is 17 % taller. Of the bench views, b10, b26/overview, b69/overview,
+  b69/back and m50 moved; d24, a dense hub, is new. The CLI's layout search scores its candidates as before, from one
+  layout each (#40).
