@@ -113,8 +113,8 @@ the reason for each of the 40 patches and stay in the git history). The engine t
     around the cards would run along another line widen, and the view is laid out once more. A line still without a
     route goes around the cards (it was a plain elbow through them, which read as a connection), and one that still
     crosses a card is named in a console warning.
-14. Cards with no lines sit in a row of their own under the view, spaced by their own widths. They stacked in the first
-    column with the sources, which made it tall and sent the lines around it.
+14. Cards with no lines sit in a row of their own under the view, one per column; one wider than its column does not
+    widen it. They stacked in the first column with the sources, which made it tall and sent the lines around it.
 15. A line's colour is the kind its edge names (`kind`). Upstream guessed it from words in the label; the standalone page
     still does, as its legend says what the colours mean, but an embedded map (`render()`) draws no legend.
 
