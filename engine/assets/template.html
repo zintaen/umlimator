@@ -643,7 +643,7 @@ function benchView(ctx, vid, runs, opt) {
    with text measured in the page's font as the viewer does, and audited. The layout search (optimize, baked into the page by render) uses the
    font-independent estimate (approx), so a rendered page is the same on every machine. */
 function mapAudit(approx) {
-  const ctx = mapContext(D, { measure: hostMeasure(document.documentElement) });
+  const ctx = mapContext(D, { measure: hostMeasure(document.documentElement), kinds: true }); // line kinds as the viewer draws them (it guesses, for its legend)
   const { views, N, planOf, layoutCache, buildView, chain } = ctx;
   const out = [], host = document.createElement('div');
   host.style.cssText = 'position:absolute;left:-99999px;top:0;width:2000px;height:2000px;visibility:hidden';
@@ -664,7 +664,7 @@ function mapAudit(approx) {
 let mapCtx = null;
 try {
   if (D.kind === 'map') {
-    mapCtx = mapContext(D);
+    mapCtx = mapContext(D, { kinds: true });
     if (!Q.get('bench')) { document.querySelector('.bar').remove(); mountPage(app, D, { params: Q, instant: INSTANT }); }
   } else renderDoc();
 } catch (err) { errors.push('render: ' + err.message); console.error(err); }

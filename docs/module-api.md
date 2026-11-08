@@ -300,4 +300,14 @@ events beyond verb chips (step 4); editing (step 5); SVG export without Chrome (
   alone, so the stable layout across `update()` and the layout `umlimator.py render` bakes into a page draw it the same;
   a host's `layout` places such cards where it says. Views with containers keep their block layout. Of the bench views,
   those with such cards moved: b10 (both views), b69 (all three) and m50 (#46).
+- **Line colours mean what the host says.** `render()` and `layout()` take a line's kind (its colour) only from its edge's
+  `kind`: `calls` (the default), `feeds`, `triggers`, `state` (thinner, a muted label, no flow) or `guard`, drawn in
+  `--um-w-<kind>`. They guessed it from words in the label, with the skill map's patterns ("reads" gave `state`,
+  "triggers" gave `triggers`), and drew no legend, so a host's own words picked colours that meant nothing to a reader and
+  changed with the wording. A view's `kindsFromLabels: true` brings the guess back; the standalone page (`mountPage`), which
+  shows a legend, always guesses, so the CLI's pages and stills keep their colours. A line that stands for several edges
+  (A→B and B→A, parallel edges) takes the first kind they name, in model order; a merged pair took the first edge's guess
+  even when the other named its kind. A line from a hook is still a guard, and one to or from a board state. `state` was too
+  light to see (1.96:1 against the light stage, 2.73:1 dark), so `--um-w-state` is darker, 3:1 or more in both themes, still
+  the lightest line; `tests/contrast.html` now checks a line of every kind (#45).
 
