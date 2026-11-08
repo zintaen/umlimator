@@ -216,6 +216,22 @@ try {
       a.h === 80 && a.sub === 'from Customer accounts' && below(a, a.subY) && b.sub === 'from Orders' && b.subY > b.nameBottom && below(b, b.subY) && c.sub === null && c.chips.length === 1, [a, b, c]);
     h9.destroy();
   }
+  // a line's weight sets its width, and the arrowhead and hit line grow with it; its sublabel is a second line in its pill (#44)
+  const WEIGHT = { root: 'v', nodes: [{ id: 'web', label: 'Web', kind: 'frontend' }, { id: 'api', label: 'API', kind: 'backend' }, { id: 'db', label: 'Store', kind: 'database' }],
+    edges: [{ id: 'w1', from: 'web', to: 'api', label: 'calls · 2' }, { id: 'w3', from: 'api', to: 'db', label: 'reads, writes · 486', weight: 3, sublabel: 'dapper, ef' }], views: [{ id: 'v', nodeIds: ['web', 'api', 'db'] }] };
+  {
+    const el8 = document.getElementById('a'); el8.style.setProperty('--um-sans', 'sans-serif'); // the host's font (the theme sets it)
+    const h8 = render(el8, WEIGHT), sr8 = el8.querySelector('.umlimator').shadowRoot, g8 = layout(WEIGHT, 'v');
+    const lineOf = id => sr8.querySelector(`.edge-g[data-i="${g8.edges.findIndex(e => e.ids.includes(id))}"]`), px = (g, c) => parseFloat(getComputedStyle(g.querySelector(c)).strokeWidth);
+    const [one, three] = [lineOf('w1'), lineOf('w3')], mk = g => sr8.querySelector((g.querySelector('.edge').getAttribute('marker-end') || '').replace(/^url\(|\)$/g, ''));
+    check('a line of weight 3 is drawn 2.5 times as wide as one of weight 1, its hit line and arrowhead larger too', px(one, '.edge') === 1.8 && px(three, '.edge') === 4.5 && px(three, '.hitline') > px(one, '.hitline') && +mk(three).getAttribute('markerWidth') > +mk(one).getAttribute('markerWidth'),
+      [px(one, '.edge'), px(three, '.edge'), px(one, '.hitline'), px(three, '.hitline'), mk(one) && mk(one).getAttribute('markerWidth'), mk(three) && mk(three).getAttribute('markerWidth')]);
+    const lab = sr8.querySelector(`.e-lab[data-i="${three.dataset.i}"]`), box = lab.querySelector('rect').getBBox(), t1 = lab.querySelector('.e-label').getBBox(), t2 = lab.querySelector('.e-sub');
+    const bb = b => b && [b.x, b.y, b.width, b.height].map(v => +v.toFixed(1)), t2b = t2 && t2.getBBox(), inside = b => b.x >= box.x && b.y >= box.y && b.x + b.width <= box.x + box.width && b.y + b.height <= box.y + box.height;
+    check('its sublabel is a second, smaller line under the label, inside the pill', !!t2 && t2.textContent === 'dapper, ef' && t2b.y >= t1.y + t1.height - 1 && inside(t1) && inside(t2b) && parseFloat(getComputedStyle(t2).fontSize) < parseFloat(getComputedStyle(lab.querySelector('.e-label')).fontSize), [t2 && t2.textContent, bb(box), bb(t1), bb(t2b)]);
+    check('…and the file keeps the width and the sublabel', /stroke-width: 4.5px/.test(h8.toSVG()) && h8.toSVG().includes('dapper, ef'));
+    h8.destroy(); el8.style.removeProperty('--um-sans');
+  }
   for (const [what, m, view] of [["issue #35's model", ISSUE, 'v'], ['every kind of card text', SINK, 'v'], ['steps in a run-order view', SINK, 'p'], ['the example', MODEL, 'overview'], ['a view with subAndChips (#41)', BOTH, 'w']]) {
     const el6 = document.getElementById('a'), h6 = render(el6, m, { view }), sr6 = () => el6.querySelector('.umlimator').shadowRoot, found = {};
     found['at rest'] = mismatched(sr6());

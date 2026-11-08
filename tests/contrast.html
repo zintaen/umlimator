@@ -32,7 +32,7 @@ const STATES = { nodes: [{ id: 'a', label: 'Planned service', sublabel: 'not bui
   edges: [{ from: 'a', to: 'b', label: 'removes' }, { from: 'c', to: 'd', label: 'writes', style: 'dashed' }, { from: 'd', to: 'e' }], views: [{ id: 'v', nodeIds: ['a', 'b', 'c', 'd', 'e'] }] };
 // a line of every kind an edge can name (#45): calls, feeds, triggers, state, guard
 const KINDS = { nodes: ['calls', 'feeds', 'triggers', 'state', 'guard'].flatMap(k => [{ id: k, label: 'From ' + k, kind: 'backend' }, { id: k + '2', label: 'To ' + k, kind: 'database' }]),
-  edges: ['calls', 'feeds', 'triggers', 'state', 'guard'].map(k => ({ from: k, to: k + '2', label: k, kind: k })), views: [{ id: 'v', nodeIds: ['calls', 'feeds', 'triggers', 'state', 'guard'].flatMap(k => [k, k + '2']) }] };
+  edges: ['calls', 'feeds', 'triggers', 'state', 'guard'].map(k => ({ from: k, to: k + '2', label: k, kind: k, sublabel: 'over http', weight: k === 'state' ? 2 : 1 })), /* and a sublabel (#44) */ views: [{ id: 'v', nodeIds: ['calls', 'feeds', 'triggers', 'state', 'guard'].flatMap(k => [k, k + '2']) }] };
 try {
   for (const [name, MODEL] of [['example', EXAMPLE], ['states', STATES], ['line kinds', KINDS]]) for (const theme of ['light', 'dark']) {
     document.documentElement.dataset.theme = theme;

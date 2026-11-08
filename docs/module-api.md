@@ -310,4 +310,11 @@ events beyond verb chips (step 4); editing (step 5); SVG export without Chrome (
   even when the other named its kind. A line from a hook is still a guard, and one to or from a board state. `state` was too
   light to see (1.96:1 against the light stage, 2.73:1 dark), so `--um-w-state` is darker, 3:1 or more in both themes, still
   the lightest line; `tests/contrast.html` now checks a line of every kind (#45).
+- **How much a line stands for.** An edge's `weight` (1, 2 or 3; the host picks the bucket) draws its line at three widths,
+  about 1.8, 3.2 and 4.5 px, with its arrowhead and hit line larger in step; its colour, and so its contrast, stays its
+  kind's. Its `sublabel` is a second, smaller line under the label, in the same pill, counted in the room the router leaves
+  for labels (a column gap fits the wider of the two lines). A line that stands for several edges takes the largest weight
+  and shows each sublabel, joined by " / ". Both reach the geometry (`weight`, `lbl.sub`); views without them keep theirs.
+  Every line was drawn at one width with one label line, so a line standing for 486 relations looked like one standing
+  for 1 (#44).
 

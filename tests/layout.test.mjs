@@ -263,3 +263,20 @@ test("a line's kind is the kind its edge names: no guess from label words unless
   const named = m(); named.edges[1].kind = 'state';
   assert.equal(kinds(layout(named, 'v'))['api>db'], 'state', 'a kind on an edge wins');
 });
+
+test("an edge's weight (1, 2 or 3) and its sublabel reach the geometry: the line's weight, a label box with a second line, and a column gap that fits it (#44)", () => {
+  const m = (calls = {}, reads = {}) => ({ root: 'v', nodes: [['web', 'Web', 'frontend'], ['api', 'API', 'backend'], ['db', 'Store', 'database']].map(([id, label, kind]) => ({ id, label, kind })),
+    edges: [{ from: 'web', to: 'api', label: 'calls · 2', ...calls }, { from: 'api', to: 'db', label: 'reads, writes · 486', ...reads }], views: [{ id: 'v', nodeIds: ['web', 'api', 'db'] }] });
+  const plain = layout(m(), 'v'), g = layout(m({ weight: 1, sublabel: 'http' }, { weight: 3, sublabel: 'dapper, ef, sql-command, ef-raw, ado' }), 'v');
+  const line = (geo, to) => geo.edges.find(e => e.to === to), at = (geo, id) => geo.nodes.find(n => n.id === id);
+  assert.deepEqual(plain.edges.map(e => e.weight), [1, 1], 'weight 1 by default');
+  assert.deepEqual(g.edges.map(e => e.weight), [1, 3]);
+  const L = line(g, 'db').lbl, L0 = line(plain, 'db').lbl;
+  assert.equal(L.text, 'reads, writes · 486'); assert.equal(L.sub, 'dapper, ef, sql-command, ef-raw, ado');
+  assert.ok(L.h > L0.h && L.w > L0.w, `a taller box, as wide as its longer line: ${JSON.stringify([L, L0])}`);
+  assert.ok(at(g, 'db').x - (at(g, 'api').x + at(g, 'api').w) >= L.w + 54, 'the column gap fits the box with 27 px of line on each side');
+  assert.equal(line(plain, 'db').lbl.sub, undefined);
+  // a line that stands for several edges: the largest weight, every sublabel; a weight that is not 2 or 3 is 1
+  const both = layout({ ...m({}, { weight: 2, sublabel: 'ef' }), edges: [...m({}, { weight: 2, sublabel: 'ef' }).edges, { from: 'db', to: 'api', label: 'notifies', weight: 3, sublabel: 'triggers' }, { from: 'web', to: 'db', weight: 7 }] }, 'v');
+  assert.deepEqual([line(both, 'db').weight, line(both, 'db').lbl.sub, both.edges.find(e => e.from === 'web' && e.to === 'db').weight], [3, 'ef / triggers', 1]);
+});
