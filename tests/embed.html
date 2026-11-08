@@ -128,6 +128,18 @@ try {
   enter('db'); enter('db');
   check('Enter on a selected card with no inner view sends select again, as a click does', JSON.stringify(sels3) === '["db","db"]', sels3);
   offSel();
+  // focus back into the map: a dialog that gives focus back calls host.focus(); the handle can focus a card
+  const host3 = el3.querySelector('.umlimator'), stage3 = sr3.querySelector('.stage'), outside = document.body.appendChild(document.createElement('button'));
+  const focused = () => sr3.activeElement && (sr3.activeElement.dataset.id || sr3.activeElement.className);
+  h3.select({ type: 'node', id: 'svc' }); outside.focus(); host3.focus();
+  check('host.focus() (a dialog giving focus back) lands on the selected card', document.activeElement === host3 && sr3.activeElement === card('svc'), [document.activeElement.className, focused()]);
+  outside.focus(); h3.focus({ type: 'node', id: 'db' });
+  check('handle.focus(ref) puts keyboard focus on that card', sr3.activeElement === card('db'), focused());
+  outside.focus(); stage3.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, composed: true })); stage3.focus(); stage3.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, composed: true }));
+  check('a press on the empty canvas focuses the canvas, not the selected card', sr3.activeElement === stage3, focused());
+  h3.select(null); outside.focus(); h3.focus();
+  check('handle.focus() with nothing selected focuses the map', sr3.activeElement === stage3, focused());
+  outside.remove();
   h3.select(null);
 
   // the picture as a file, in the browser: host colours resolved, drawn at rest, the screen untouched
