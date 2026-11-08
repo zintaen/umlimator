@@ -74,6 +74,8 @@ interface Events {
 
 - `open` switches to the inner view unless the host calls `preventDefault()`, so a host can route drill-down through its
   own router. `viewchange` follows every switch.
+- `click` selects what was clicked (a chip or badge: its card) unless the host calls `preventDefault()`, which keeps the
+  selection as it was, so a chip, badge or card can be a link in the host.
 - Events are plain callbacks, not DOM `CustomEvent`s (no bubbling through the host's tree, typed payloads). A host that
   wants DOM events can re-dispatch.
 - Step 5 adds `change` (semantic edits: add, rename, move to container, delete, reorder, optional position hints). It
@@ -234,3 +236,6 @@ events beyond verb chips (step 4); editing (step 5); SVG export without Chrome (
 - **Focus back into the map.** The map's element delegates focus, so `host.focus()`, which a dialog calls when it
   gives focus back to the element that opened it, lands on the selected card (it landed on `<body>`), and
   `handle.focus(ref?)` puts keyboard focus on a card: `ref`'s, by default the selected one, else the map (#36).
+- **A click the host takes.** `click` has `preventDefault()`: calling it keeps the selection as it was (no `select`), so
+  a host can treat a chip, a badge or a card as a link. A chip click used to select its card as well, with nothing in
+  `select` to tell the two apart (#31).

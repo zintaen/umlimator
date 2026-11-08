@@ -95,6 +95,11 @@ try {
   check('…in toSVG() too', /<rect class="family-box"[^>]*style="fill: rgb\(10, 20, 30\);/.test(h2.toSVG()), (h2.toSVG().match(/<rect class="family-box"[^>]*>/) || [])[0]);
   sr2.querySelector('.node[data-id="a"] text[data-chip="1"]').dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true }));
   check('each chip is clickable on its own, and selects its card', JSON.stringify(ev2) === JSON.stringify([{ type: 'chip', node: 'a', index: 1, value: 'write', view: 'v' }, ['select', { type: 'node', id: 'a', view: 'v' }]]), ev2);
+  const link = h2.on('click', e => { if (e.target.type === 'chip') e.preventDefault?.(); }); // a host whose chips are links (?.: an old map has none)
+  h2.select(null); ev2.length = 0;
+  sr2.querySelector('.node[data-id="a"] text[data-chip="0"]').dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true }));
+  check('click.preventDefault() keeps the selection as it was: a chip can be a link that selects nothing', JSON.stringify(ev2) === JSON.stringify([{ type: 'chip', node: 'a', index: 0, value: 'read', view: 'v' }]) && h2.selection === null, ev2);
+  link();
   sr2.querySelector('.family[data-family="box"] .family-box').dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true }));
   check('a container click reports a container ref', JSON.stringify(ev2.slice(-2)) === JSON.stringify([{ type: 'container', id: 'box', view: 'v' }, ['select', { type: 'container', id: 'box', view: 'v' }]]), ev2.slice(-2));
   check('controls: false leaves the zoom buttons out', !sr2.querySelector('.ctl'));
