@@ -285,3 +285,8 @@ events beyond verb chips (step 4); editing (step 5); SVG export without Chrome (
   found this, all 28 lines now route, and the map is 17 % taller. Of the bench views, b10, b26/overview, b69/overview,
   b69/back and m50 moved; d24, a dense hub, is new. The CLI's layout search scores its candidates as before, from one
   layout each (#40).
+- **Sub-line and chips together.** A card's chips (`verbs`) took its sub-line's place, so a card with both showed only
+  the chips, and the sub-line was in its name alone. A view's `subAndChips: true` makes its cards 80 px tall (64 by
+  default), and a card with both shows its name, its sub-line, then its chips on a third line, in the sub-line's column,
+  clear of the mark. Its name follows what it shows (#35). It is a view option, so maps without it keep their geometry; a
+  script card (no kind) shows no sub-line either way (#41).
