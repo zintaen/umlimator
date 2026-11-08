@@ -297,3 +297,16 @@ test("lines from one column into one card nest: the card's ports on a side follo
       assert.ok(len <= 1.1 * direct, `${n} sources: ${e.from}'s line is ${Math.round(len)} px for a direct route of ${Math.round(direct)}: ${JSON.stringify(e.pts.map(p => p.map(Math.round)))}`); }
   }
 });
+
+test("auto-layout orders a column so the lines between two columns don't cross when another order avoids it, and no line detours around its column (#53)", () => {
+  const m = { root: 'v', nodes: [['front', 'Front'], ['kernel', 'Kernel'], ['frame', 'Frame'], ['backend', 'backend'], ['loose', 'Types with no component']].map(([id, label]) => ({ id, label, kind: 'backend' })),
+    edges: [{ from: 'front', to: 'backend', label: 'calls · 82' }, { from: 'frame', to: 'kernel', label: 'calls · 3' }, { from: 'loose', to: 'front', label: 'calls · 32' }],
+    views: [{ id: 'v', nodeIds: ['front', 'kernel', 'frame', 'backend', 'loose'] }] };
+  for (const boxed of [false, true]) { // a plain view, and the same cards in a box (a container's components view)
+    const g = layout(boxed ? { ...m, views: [{ ...m.views[0], containers: [{ id: 'app', label: 'App', nodeIds: ['front', 'kernel', 'frame', 'backend', 'loose'] }] }] } : m, 'v'), at = id => g.nodes.find(n => n.id === id);
+    assert.ok(at('kernel').y < at('front').y, `${boxed ? 'boxed: ' : ''}kernel above front`);
+    for (const e of g.edges) { const len = e.pts.slice(1).reduce((a, p, k) => a + Math.abs(p[0] - e.pts[k][0]) + Math.abs(p[1] - e.pts[k][1]), 0);
+      const direct = Math.abs(e.pts[0][0] - e.pts.at(-1)[0]) + Math.abs(e.pts[0][1] - e.pts.at(-1)[1]);
+      assert.ok(len <= 1.1 * direct, `${boxed ? 'boxed: ' : ''}${e.from} -> ${e.to} is ${Math.round(len)} px for a direct route of ${Math.round(direct)}`); }
+  }
+});

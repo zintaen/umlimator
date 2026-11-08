@@ -365,3 +365,18 @@ events beyond verb chips (step 4); editing (step 5); SVG export without Chrome (
   larger; often that costs no zoom at all, as a view limited by its height just moves left. A view whose corner is empty is
   fitted as before. The standalone page's own insets (header, legend) get the same room. Nothing changes for a host (#50).
 
+## 0.9.0: fixes from Alchemy's 0.8.0 check (issue #53)
+
+- **Cards in a column are ordered so the lines between columns cross as little as they can.** When two cards in one column
+  pointed, crossed, to two cards in the next (the upper to the lower, the lower to the upper), auto-layout kept that
+  order, and the router, which avoids every crossing, sent one line back around its own column: 2.92 times its direct
+  route on the issue's five cards, 5.84 times on a container's components view of 21 cards and 42 lines. Now a few
+  barycentre sweeps reorder each column by where its cards' neighbours lie in the next and the previous column, starting
+  from the reading order as before, and the new order is kept only when fewer lines cross between neighbouring columns.
+  It applies to plain views and inside each container's block; a host's `layout` is used as it is. A view whose order
+  crosses no more than another keeps it, so most views do not move: of the bench views b10 (both views), b69 (all three)
+  and m50 moved. Across the bench the layout check finds 860 issues, 941 before (m50 362 to 284, b69/back 28 to 15,
+  b69/front 2 to 1; b10/norepair 7 to 12, b10/overview 5 to 6, b69/overview 398 to 403), and the lines are 4.9% shorter in
+  all; m50 and b69 lay out faster, with fewer lines to route around others. The router still avoids every crossing it can
+  (#53).
+
