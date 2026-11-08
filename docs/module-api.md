@@ -257,3 +257,8 @@ events beyond verb chips (step 4); editing (step 5); SVG export without Chrome (
   (the side chosen as for a card, the port in line with the other end where it can be), and is an ordinary edge `Ref`;
   auto-layout puts its source before the box. It used to draw nothing and say nothing. An edge between a box and
   something inside it has no line, and `console.warn` names it (#28).
+- **Badges on containers.** A container takes `badges` as a card does (strings or `{ text, tone }`): tabs on the box's
+  top border, at the right, in the same tones; the box widens to fit its title and tabs, and lines keep off them. Each is
+  a click target, `{ type: 'badge', container, index, value, view }` (a card's badge has `node` instead), and a click
+  selects the box. With `editable`, Delete and Alt + ← / → on a clicked box badge emit `delete` and `reorder` with that
+  Ref, as on a card's badges (#33).

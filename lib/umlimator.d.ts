@@ -19,7 +19,7 @@ export interface MapEdge { id?: string; from: string; to: string; label?: string
 export interface MapView {
   id: string; parent?: string | null; title?: string; nodeIds: string[];
   edges?: (string | MapEdge)[]; layout?: Record<string, [number, number]>; repair?: boolean;
-  containers?: { id: string; label?: string; nodeIds?: string[]; parent?: string }[];
+  containers?: { id: string; label?: string; nodeIds?: string[]; parent?: string; badges?: Badge[] }[];   // badges: tabs on the box's border
   [key: string]: unknown;
 }
 
@@ -29,11 +29,12 @@ export type Ref =
   | { type: 'edge'; ids: string[]; view: string }          // one drawn line can stand for several model edges
   | { type: 'container'; id: string; view: string }
   | { type: 'chip'; node: string; index: number; value: string; view: string }
-  | { type: 'badge'; node: string; index: number; value: string; view: string };
+  | { type: 'badge'; node: string; index: number; value: string; view: string }
+  | { type: 'badge'; container: string; index: number; value: string; view: string };   // a container's badge
 
 export interface Events {
   click: { target: Ref; event: MouseEvent; preventDefault(): void };   // preventDefault(): the selection stays as it was (no select)
-  select: { target: Ref | null; targets: Ref[] };          // a chip or badge selects its card; targets: every selected thing, the latest last
+  select: { target: Ref | null; targets: Ref[] };          // a chip or badge selects its card (a container's badge: its box); targets: every selected thing, the latest last
   open: { target: Ref; view: string; preventDefault(): void };
   viewchange: { view: string; from: string };
   change: Change;                                           // only with `editable`

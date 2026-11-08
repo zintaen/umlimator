@@ -85,7 +85,7 @@ try {
   // chips and containers
   const small = { nodes: [{ id: 'a', label: 'Reader', verbs: ['read', 'write'] }, { id: 'b', label: 'Store' }, { id: 'c', label: 'Index' }],
     edges: [{ id: 'e1', from: 'a', to: 'b' }, { id: 'e2', from: 'b', to: 'c' }],
-    views: [{ id: 'v', nodeIds: ['a', 'b', 'c'], containers: [{ id: 'box', label: 'Data', nodeIds: ['b', 'c'] }] }] };
+    views: [{ id: 'v', nodeIds: ['a', 'b', 'c'], containers: [{ id: 'box', label: 'Data', nodeIds: ['b', 'c'], badges: ['TA-6', { text: 'Owner: data', tone: 'violet' }] }] }] };
   const el2 = document.getElementById('b'), ev2 = [];
   el2.style.setProperty('--um-panel', 'rgb(10, 20, 30)'); el2.style.setProperty('--um-mono', 'monospace');
   const h2 = render(el2, small, { controls: false, on: { click: e => ev2.push(e.target), select: e => ev2.push(['select', e.target]) } });
@@ -102,6 +102,10 @@ try {
   link();
   sr2.querySelector('.family[data-family="box"] .family-box').dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true }));
   check('a container click reports a container ref', JSON.stringify(ev2.slice(-2)) === JSON.stringify([{ type: 'container', id: 'box', view: 'v' }, ['select', { type: 'container', id: 'box', view: 'v' }]]), ev2.slice(-2));
+  h2.select(null); ev2.length = 0;
+  const boxTabs = sr2.querySelectorAll('.family[data-family="box"] [data-badge]');
+  if (boxTabs[1]) boxTabs[1].querySelector('text').dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true }));
+  check("a container's badges are tabs on its border: a click names the badge, and selects the box", boxTabs.length === 2 && JSON.stringify(ev2) === JSON.stringify([{ type: 'badge', container: 'box', index: 1, value: 'Owner: data', view: 'v' }, ['select', { type: 'container', id: 'box', view: 'v' }]]), [boxTabs.length, ev2]);
   check('controls: false leaves the zoom buttons out', !sr2.querySelector('.ctl'));
   h2.destroy(); el2.style.removeProperty('--um-panel'); el2.style.removeProperty('--um-mono');
   // a line to a container's box: drawn to its border, and clicked, selected and announced like any other line

@@ -173,3 +173,12 @@ test("an edge whose end is a container is drawn to its box's border, and auto-la
   } finally { console.warn = warn; }
   assert.ok(warns.some(w => /edge own/.test(w)), 'the edge left out is named in a warning');
 });
+
+test("a container's badges are tabs on its top border, right of its title, and the box is wide enough for both (#33)", () => {
+  const g = layout({ nodes: [{ id: 'a', label: 'A' }], views: [{ id: 'v', nodeIds: ['a'], containers: [{ id: 'c', label: 'Database', nodeIds: ['a'], badges: ['TA-6', { text: 'Owner: data', tone: 'violet' }] }] }] }, 'v');
+  const f = g.families[0], [t0, t1] = f.tabs || [];
+  assert.equal((f.tabs || []).length, 2);
+  assert.ok(t0.x > f.x + 12 + 'Database'.length * 6.7, 'right of the title');
+  assert.ok(t1.x > t0.x + t0.w && t1.x + t1.w <= f.x + f.w - 12, 'left to right, inside the box');
+  assert.deepEqual(f.tabs.map(t => [t.text, t.fill]), [['TA-6', 'var(--um-slate)'], ['OWNER: DATA', 'var(--um-violet)']], 'tones as on a card');
+});
