@@ -213,6 +213,9 @@ events beyond verb chips (step 4); editing (step 5); SVG export without Chrome (
   stage. `tests/contrast.html` checks this on the example map and on one with every change state and badge tone. A
   host that sets its own `--um-*` colours owns their contrast. The dimming of unrelated cards while one is selected is
   meant to recede, and is not checked.
+- Focus can come back: the map's element delegates focus (`attachShadow({ delegatesFocus: true })`), and focus that
+  reaches the canvas from outside, not by a press, goes on to the selected card; `handle.focus(ref?)` puts it on a card
+  (default: the selected one, else the map).
 - Not covered: lines and containers are reachable by pointer only.
 
 ## 0.5.0: fixes from the first embedding (issues #26 to #36)
@@ -228,3 +231,6 @@ events beyond verb chips (step 4); editing (step 5); SVG export without Chrome (
   does); without `matchMedia` there is no reduced-motion preference (#32).
 - **Enter on a selected card** with no inner view sends `select` again, as a click does, so a keyboard user can bring
   back the details a host shows on `select` without leaving the card (#30).
+- **Focus back into the map.** The map's element delegates focus, so `host.focus()`, which a dialog calls when it
+  gives focus back to the element that opened it, lands on the selected card (it landed on `<body>`), and
+  `handle.focus(ref?)` puts keyboard focus on a card: `ref`'s, by default the selected one, else the map (#36).

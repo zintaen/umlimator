@@ -78,6 +78,10 @@ export interface Handle {
   toSVG(options?: ExportOptions): string;
   /** The same picture as a PNG Blob, drawn on a canvas in the browser (default scale 2). null when there is nothing to draw. */
   toPNG(options?: ExportOptions): Promise<Blob | null>;
+  /** Puts keyboard focus on the card `ref` names (a chip or badge: its card), by default the selected card, else on the
+   *  map. The map's element delegates focus too: `host.focus()`, as a dialog does when it gives focus back, lands on
+   *  the selected card. */
+  focus(ref?: Ref | null): void;
   on<K extends keyof Events>(type: K, fn: (e: Events[K]) => void): () => void;
   readonly view: string | null;
   readonly selection: Ref | null;   // the latest selected

@@ -129,6 +129,7 @@ const map = render(document.getElementById('map'), model, {
 map.update(nextModel);   // redraws only views whose cards or lines changed; keeps view, camera and selection
 const file = map.toSVG({ scale: 2 });   // the current view as a stand-alone .svg, in the browser
 const png = await map.toPNG({ view: 'api' });   // any view, as a PNG Blob, without showing it
+map.focus();   // keyboard focus back on the selected card (say, when the host's own dialog closes)
 render(el, model, { editable: true, on: { change: c => { model = myApply(model, c); map.update(model); } } });
 map.destroy();
 ```
