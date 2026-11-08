@@ -225,3 +225,29 @@ test('a line that still runs through a card is named in a console.warn (#40)', (
   try { layout(m, 'v'); } finally { console.warn = warn; }
   assert.ok(warns.some(w => /edge a-to-c\b.*card "b"/.test(w)), warns.join('\n'));
 });
+
+// #46: a system in context: three people use it, it sends to one outside system, and three outside systems have no line
+const context = (wide = false) => {
+  const card = (id, kind) => ({ id, label: id === 'archive' && wide ? 'Archive of every signed contract since the shop opened' : id[0].toUpperCase() + id.slice(1), kind });
+  return { root: 'v', nodes: [card('shop', 'backend'), card('buyer', 'frontend'), card('clerk', 'frontend'), card('courier', 'frontend'), card('mailer', 'external'),
+      card('ledger', 'external'), card('archive', 'external'), card('printer', 'external')],
+    edges: [{ from: 'buyer', to: 'shop', label: 'uses' }, { from: 'clerk', to: 'shop', label: 'uses' }, { from: 'courier', to: 'shop', label: 'uses' }, { from: 'shop', to: 'mailer', label: 'sends' }],
+    views: [{ id: 'v', nodeIds: ['shop', 'buyer', 'clerk', 'courier', 'mailer', 'ledger', 'archive', 'printer'] }] };
+};
+test('cards with no lines sit in a row of their own under the view: they do not lengthen or widen a column that has lines (#46)', () => {
+  for (const wide of [false, true]) {
+    const m = context(wide), g = layout(m, 'v'), loose = ['ledger', 'archive', 'printer'];
+    const linked = layout({ ...m, views: [{ id: 'v', nodeIds: m.views[0].nodeIds.filter(i => !loose.includes(i)) }] }, 'v'); // the connected part alone
+    const at = id => g.nodes.find(n => n.id === id), bottom = Math.max(...linked.nodes.map(n => n.y + n.h));
+    for (const n of linked.nodes) assert.deepEqual([at(n.id).x, at(n.id).y], [n.x, n.y], `${n.id} keeps its place${wide ? ' (a wide card in the row)' : ''}`);
+    for (const id of loose) assert.ok(at(id).y > bottom, `${id} is under the connected part, not in the sources' column: ${JSON.stringify([at(id).x, at(id).y])}`);
+    assert.equal(new Set(loose.map(id => at(id).y)).size, 1, 'one row');
+    const row = loose.map(at).sort((a, b) => a.x - b.x);
+    assert.ok(row.every((n, k) => !k || n.x >= row[k - 1].x + row[k - 1].w + 24), `apart: ${JSON.stringify(row.map(n => [n.x, n.w]))}`);
+    assert.ok(g.bounds.h <= linked.bounds.h + 108 + 1, `the view keeps the height of its connected part plus one row: ${g.bounds.h} vs ${linked.bounds.h}`);
+    // the row comes from the cards' slots and lines alone, so a view drawn again from the slots it had (render()'s stable
+    // layout across update(), the layout umlimator.py render bakes into a page) is the same picture
+    const again = layout({ ...m, views: [{ ...m.views[0], layout: Object.fromEntries(g.nodes.map(n => [n.id, [n.col, n.row]])) }] }, 'v');
+    assert.deepEqual(again.nodes.map(n => [n.id, n.x, n.y]), g.nodes.map(n => [n.id, n.x, n.y]), 'the same from its own slots');
+  }
+});

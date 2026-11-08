@@ -290,3 +290,14 @@ events beyond verb chips (step 4); editing (step 5); SVG export without Chrome (
   default), and a card with both shows its name, its sub-line, then its chips on a third line, in the sub-line's column,
   clear of the mark. Its name follows what it shows (#35). It is a view option, so maps without it keep their geometry; a
   script card (no kind) shows no sub-line either way (#41).
+
+## 0.7.0: fixes from the Reader's architecture map (issues #43 to #47)
+
+- **Cards with no lines** sit in a row of their own under the view, in view order, wrapping at its width. Auto-layout put
+  them in the first column, under the sources, so that column grew (four outside systems under five people, a column of
+  nine on a system-context map) and the lines from the sources ran around it. A card with no line in a row under every
+  card that has one never widens a column: it is spaced by its own width. The row comes from the cards' slots and lines
+  alone, so the stable layout across `update()` and the layout `umlimator.py render` bakes into a page draw it the same;
+  a host's `layout` places such cards where it says. Views with containers keep their block layout. Of the bench views,
+  those with such cards moved: b10 (both views), b69 (all three) and m50 (#46).
+
