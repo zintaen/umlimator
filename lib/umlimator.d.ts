@@ -24,6 +24,13 @@ export interface MapEdge {
   /** The line's kind (default calls). A line that stands for several edges (A→B and B→A, parallel edges) takes the first
    *  kind they name, in model order. Nothing is guessed from the label unless the view has `kindsFromLabels`. */
   kind?: WireKind;
+  /** How much the line stands for, drawn as its width: 1 (the default), 2 or 3 (about 1.8, 3.2 and 4.5 px), the arrowhead and
+   *  hit line growing with it. The host picks the bucket (say under 10, under 100, 100 or more relations); anything else is 1.
+   *  A line that stands for several edges takes the largest. */
+  weight?: 1 | 2 | 3;
+  /** A second, smaller line under the label (a technology, say), placed with it and counted in the room left for labels.
+   *  Shown only with a label. A line that stands for several edges shows each of their sublabels, joined by " / ". */
+  sublabel?: string;
   [key: string]: unknown;
 }
 export interface MapView {
@@ -109,7 +116,8 @@ export interface Handle {
 
 export interface Geometry {
   nodes: { id: string; x: number; y: number; w: number; h: number; [key: string]: unknown }[];
-  edges: { from: string; to: string; ids: string[]; pts: [number, number][]; lbl: { x: number; y: number; w: number; h: number; text: string } | null; [key: string]: unknown }[];
+  edges: { from: string; to: string; ids: string[]; pts: [number, number][]; weight: 1 | 2 | 3; wk: WireKind;
+    lbl: { x: number; y: number; w: number; h: number; text: string; sub?: string } | null; [key: string]: unknown }[];
   bounds: { x: number; y: number; w: number; h: number };
   [key: string]: unknown;
 }
