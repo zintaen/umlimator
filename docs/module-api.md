@@ -262,3 +262,9 @@ events beyond verb chips (step 4); editing (step 5); SVG export without Chrome (
   a click target, `{ type: 'badge', container, index, value, view }` (a card's badge has `node` instead), and a click
   selects the box. With `editable`, Delete and Alt + ← / → on a clicked box badge emit `delete` and `reorder` with that
   Ref, as on a card's badges (#33).
+
+## 0.6.0: fixes from the target architecture map (issues #38 to #41)
+
+- **Test DOMs, quietly.** The 2D context that text is measured on is probed once per module, not once per `render()`.
+  jsdom prints "Not implemented: HTMLCanvasElement's getContext()" on every call, so a host's suite printed it once per
+  mounted map (112 times); now it prints once per test file (#38).
