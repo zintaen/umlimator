@@ -107,3 +107,49 @@ test("the package exports the module and the default theme (a host imports 'umli
   assert.match(req.resolve('umlimator'), /lib[\\/]umlimator\.js$/);
   assert.match(req.resolve('umlimator/theme.css'), /lib[\\/]umlimator-theme\.css$/);
 });
+
+// containers (#27): a box holds exactly its own cards, and keeps 32 px from other boxes and from cards outside it
+const ISSUE27 = { nodes: [['person:0', 'Shopper', 'frontend'], ['person:1', 'Clerk', 'frontend'], ['shell', 'App shell', 'frontend', ['TA-4']], ['api', 'API', 'backend', ['TA-3']],
+    ['module:0', 'Returns', 'backend', [], ['FC-7', 'FC-8']], ['module:1', 'Orders', 'backend', [], ['FC-1', 'FC-2', 'FC-3', 'FC-4', 'FC-5']], ['module:2', 'Module · later', 'backend'],
+    ['module:3', 'Billing', 'backend'], ['module:4', 'Catalogue', 'backend'], ['audit', 'Audit', 'security', ['TA-2', 'TA-9']], ['entity:0', 'ReturnRequest', 'database'],
+    ['entity:1', 'Order', 'database'], ['entity:2', 'Customer', 'database'], ['signin', 'Sign-in', 'security', ['TA-1']], ['system:0', 'Payment gateway', 'external'], ['system:1', 'SMTP relay', 'external']]
+    .map(([id, label, kind, badges = [], verbs]) => ({ id, label, kind, badges, verbs })),
+  edges: [['person:0', 'shell'], ['person:1', 'shell'], ['signin', 'shell'], ['api', 'module:0'], ['api', 'module:1'], ['api', 'module:2'], ['api', 'module:3'], ['api', 'module:4'],
+    ['system:0', 'api'], ['system:1', 'api']].map(([from, to]) => ({ from, to })),
+  views: [{ id: 'target', nodeIds: [], containers: [{ id: 'people', label: 'People', nodeIds: ['person:0', 'person:1'] },
+    { id: 'app', label: 'Target app', nodeIds: ['shell', 'api', 'module:0', 'module:1', 'module:2', 'module:3', 'module:4', 'audit'] },
+    { id: 'database', label: 'Database · TA-6', nodeIds: ['entity:0', 'entity:1', 'entity:2'] }, { id: 'systems', label: 'Other systems · TA-5', nodeIds: ['signin', 'system:0', 'system:1'] }] }] };
+ISSUE27.views[0].nodeIds = ISSUE27.nodes.map(n => n.id);
+const boxesApart = (g, view) => {
+  const inside = (a, b) => a.x >= b.x && a.y >= b.y && a.x + a.w <= b.x + b.w && a.y + a.h <= b.y + b.h;
+  const apart = (a, b) => a.x + a.w + 32 <= b.x || b.x + b.w + 32 <= a.x || a.y + a.h + 32 <= b.y || b.y + b.h + 32 <= a.y;
+  const defs = Object.fromEntries((view.containers || []).map(c => [c.id, c]));
+  const holds = (f, id) => (defs[f.id].nodeIds || []).includes(id) || (view.containers || []).some(c => c.parent === f.id && holds(c, id));
+  g.families.forEach((f, i) => {
+    g.nodes.forEach(n => assert.equal(inside(n, f), holds(f, n.id), `box ${f.id} ${holds(f, n.id) ? 'holds' : 'does not hold'} card ${n.id}`));
+    g.nodes.filter(n => !inside(n, f)).forEach(n => assert.ok(apart(f, n), `box ${f.id} keeps 32 px from card ${n.id}`));
+    g.families.slice(i + 1).filter(o => !inside(o, f) && !inside(f, o)).forEach(o => assert.ok(apart(f, o), `boxes ${f.id} and ${o.id} keep 32 px apart`));
+  });
+};
+
+test("containers: auto-layout keeps each container's cards together in a block, and boxes keep apart (#27)", () => {
+  for (const [m, vid] of [[ISSUE27, 'target'], [read('../bench/models/b26.json'), 'overview']]) {
+    const g = layout(m, vid); assert.ok(g.families.length >= 2); boxesApart(g, m.views.find(v => v.id === vid));
+  }
+});
+
+test('containers: a layout keeps its slots, and the gaps between boxes widen: side by side, stacked, nested, next to a loose card (#27)', () => {
+  const cards = ids => ids.map(id => ({ id, label: id.toUpperCase() }));
+  const cases = [
+    { a: [0, 0], b: [1, 0], boxes: [{ id: 'x', label: 'Box X', nodeIds: ['a'] }, { id: 'y', label: 'Box Y', nodeIds: ['b'] }] },          // the issue's 2-box layout
+    { a: [0, 0], b: [0, 1], boxes: [{ id: 'x', label: 'Box X', nodeIds: ['a'] }, { id: 'y', label: 'Box Y', nodeIds: ['b'] }] },          // stacked
+    { a: [0, 0], b: [1, 0], c: [2, 0], boxes: [{ id: 'p', label: 'Outer', nodeIds: ['a'] }, { id: 'k', label: 'Inner', nodeIds: ['b'], parent: 'p' }, { id: 'q', label: 'Next', nodeIds: ['c'] }] },
+    { a: [0, 0], b: [1, 0], boxes: [{ id: 'x', label: 'Box X', nodeIds: ['a'] }] },                                                       // a loose card beside a box
+  ];
+  for (const { boxes, ...slots } of cases) {
+    const ids = Object.keys(slots), view = { id: 'v', nodeIds: ids, layout: slots, containers: boxes };
+    const g = layout({ nodes: cards(ids), edges: [{ from: ids[0], to: ids[1] }], views: [view] }, 'v');
+    boxesApart(g, view);
+    assert.deepEqual(Object.fromEntries(g.nodes.map(n => [n.id, [n.col, n.row]])), slots, 'cards keep their slots');
+  }
+});

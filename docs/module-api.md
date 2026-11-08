@@ -246,3 +246,10 @@ events beyond verb chips (step 4); editing (step 5); SVG export without Chrome (
   and names held text the card did not show. Now a card's texts are apart, its name follows what it shows (above), and
   axe finds nothing at rest, after a selection, after `update()` or zoomed out (checked with axe-core 4.14; `tests/embed.html`
   checks the same rule without it). A card text that does not fit is cut between words (#35).
+- **Containers keep apart.** A view with containers is laid out in blocks: each container's cards together in columns of
+  their own, in call order; blocks run left to right by the lines between them, those with no line between them stack in
+  the same columns, and a nested container is a block inside its parent's. With or without a `layout`, a column (row)
+  gap widens wherever a box would come within 32 px of another box or of a card outside it, so borders never touch and a
+  line can run between them. Auto-layout used to interleave containers' cards, and boxes in neighbouring columns
+  overlapped at the default gaps. Views without containers keep their exact geometry; of the benchmark views only
+  b26/overview moved (`bench/expected.json`). The CLI's layout search swaps cards only within their box (#27).

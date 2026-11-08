@@ -106,6 +106,9 @@ the reason for each of the 40 patches and stay in the git history). The engine t
     of testing every cell against every one, its search is A* on typed arrays (same routes on every benchmark view),
     and port repair re-routes only the two edges it swaps, within a budget of 2 routings per edge. A view's
     `repair: false` turns port repair off.
+12. Containers keep apart. A view's containers are laid out as blocks: each container's cards together, in columns of
+    their own, blocks ordered by the lines between them (super-board's schema leaves this to a hand-made `layout`). With
+    or without a `layout`, the gap between two boxes, or a box and a card outside it, widens to 32 px.
 
 `render` skips upstream's layout search when every view already has a layout, and fails when the check did not
 complete instead of reporting no problems.
