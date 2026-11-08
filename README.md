@@ -124,7 +124,8 @@ super-board changes its template, so a fix there can be ported into `lib/umlimat
 import { render } from 'umlimator';   // lib/umlimator.js: one ES module, no dependencies, no build step
 import 'umlimator/theme.css';         // the default --um-* palette and fonts (optional: set the variables yourself)
 const map = render(document.getElementById('map'), model, {
-  on: { select: e => showDetails(e.target), open: e => { e.preventDefault(); router.push(e.view); } },
+  on: { select: e => showDetails(e.target), open: e => { e.preventDefault(); router.push(e.view); },
+        click: e => { if (e.target.type === 'chip') { e.preventDefault(); openFeature(e.target.value); } } },   // a chip as a link: no select
 });
 map.update(nextModel);   // redraws only views whose cards or lines changed; keeps view, camera and selection
 const file = map.toSVG({ scale: 2 });   // the current view as a stand-alone .svg, in the browser

@@ -31,7 +31,7 @@ export type Ref =
   | { type: 'badge'; node: string; index: number; value: string; view: string };
 
 export interface Events {
-  click: { target: Ref; event: MouseEvent };
+  click: { target: Ref; event: MouseEvent; preventDefault(): void };   // preventDefault(): the selection stays as it was (no select)
   select: { target: Ref | null; targets: Ref[] };          // a chip or badge selects its card; targets: every selected thing, the latest last
   open: { target: Ref; view: string; preventDefault(): void };
   viewchange: { view: string; from: string };
