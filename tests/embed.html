@@ -124,6 +124,10 @@ try {
   check('a selection is announced', sr3.querySelector('[aria-live]').textContent === 'Billing, selected', sr3.querySelector('[aria-live]').textContent);
   card('svc').focus(); card('svc').dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, composed: true }));
   check('an arrow key on a card moves focus to the next card that way', sr3.activeElement === card('db'), sr3.activeElement && sr3.activeElement.dataset.id);
+  const sels3 = [], offSel = h3.on('select', e => sels3.push(e.target && e.target.id)), enter = id => card(id).dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, composed: true }));
+  enter('db'); enter('db');
+  check('Enter on a selected card with no inner view sends select again, as a click does', JSON.stringify(sels3) === '["db","db"]', sels3);
+  offSel();
   h3.select(null);
 
   // the picture as a file, in the browser: host colours resolved, drawn at rest, the screen untouched
