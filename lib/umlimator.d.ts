@@ -65,7 +65,7 @@ export type Ref =
   | { type: 'badge'; container: string; index: number; value: string; view: string };   // a container's badge
 
 export interface Events {
-  click: { target: Ref; event: MouseEvent; preventDefault(): void };   // preventDefault(): the selection stays as it was (no select)
+  click: { target: Ref; event: MouseEvent | KeyboardEvent; preventDefault(): void };   // preventDefault(): the selection stays as it was (no select); Enter on a focused tab is a click (KeyboardEvent)
   select: { target: Ref | null; targets: Ref[] };          // a chip or badge selects its card (a container's badge: its box); targets: every selected thing, the latest last
   open: { target: Ref; view: string; preventDefault(): void };   // view: the one the card opens, which may not be in the model yet
   viewchange: { view: string; from: string };
@@ -112,9 +112,9 @@ export interface Handle {
   toSVG(options?: ExportOptions): string;
   /** The same picture as a PNG Blob, drawn on a canvas in the browser (default scale 2). null when there is nothing to draw. */
   toPNG(options?: ExportOptions): Promise<Blob | null>;
-  /** Puts keyboard focus on the card `ref` names (a chip or badge: its card), by default the selected card, else on the
-   *  map. The map's element delegates focus too: `host.focus()`, as a dialog does when it gives focus back, lands on
-   *  the selected card. */
+  /** Puts keyboard focus on the card or line `ref` names (a chip or badge: its card), by default the selected one, else on
+   *  the map. The map's element delegates focus too: `host.focus()`, as a dialog does when it gives focus back, lands on
+   *  the selected card or line. */
   focus(ref?: Ref | null): void;
   on<K extends keyof Events>(type: K, fn: (e: Events[K]) => void): () => void;
   readonly view: string | null;

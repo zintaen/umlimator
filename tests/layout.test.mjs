@@ -180,7 +180,7 @@ test("a container's badges are tabs on its top border, right of its title, and t
   assert.equal((f.tabs || []).length, 2);
   assert.ok(t0.x > f.x + 12 + 'Database'.length * 6.7, 'right of the title');
   assert.ok(t1.x > t0.x + t0.w && t1.x + t1.w <= f.x + f.w - 12, 'left to right, inside the box');
-  assert.deepEqual(f.tabs.map(t => [t.text, t.fill]), [['TA-6', 'var(--um-slate)'], ['OWNER: DATA', 'var(--um-violet)']], 'tones as on a card');
+  assert.deepEqual(f.tabs.map(t => [t.text, t.fill]), [['TA-6', 'var(--um-slate)'], ['Owner: data', 'var(--um-violet)']], 'tones as on a card; the text as given, which the sheet upper-cases (#43)');
 });
 
 test('a line to a container takes the sides that face across the wider gap, and ends in line with its other end where the border allows (#39)', () => {
