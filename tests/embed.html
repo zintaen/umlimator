@@ -173,6 +173,32 @@ try {
   const tint = getComputedStyle(el4.querySelector('.umlimator').shadowRoot.querySelector('.n-body')).fill;
   check('a tone set on an ancestor of the map recolours its tint too (the theme mixed it on :root)', tint === getComputedStyle(want).color, [tint, getComputedStyle(want).color]);
   h4.destroy(); want.remove(); el4.style.removeProperty('--um-green'); document.adoptedStyleSheets = [];
+
+  // WCAG 2.5.3 as axe-core 4.14 checks it (label-content-name-mismatch), written out: a card's visible text, its text nodes
+  // joined as they are and leaving out what is not displayed, is a run of whole words of its name (parentheticals left out)
+  const words = s => { let t = s.normalize('NFKD'), u; do { u = t; t = t.replace(/\([^()]*\)/g, ''); } while (t !== u); return t.replace(/[^\p{L}\p{N}]+/gu, ' ').trim().toLowerCase().split(/\s+/).filter(Boolean); };
+  const shown = (el, top) => { for (let e = el; e && e !== top; e = e.parentNode) { const cs = getComputedStyle(e); if (cs.display === 'none' || cs.visibility === 'hidden' || cs.opacity === '0') return false; } return true; };
+  const visible = (card, top) => { let t = ''; const walk = n => n.childNodes.forEach(c => { if (c.nodeType === 3) { if (shown(n, top)) t += c.data; } else if (c.nodeType === 1 && c.localName !== 'title') walk(c); }); walk(card); return t; };
+  const mismatched = sr => [...sr.querySelectorAll('.node[role="button"]')].filter(c => { const v = words(visible(c, sr)), n = words(c.getAttribute('aria-label'));
+    return v.length && !n.some((_, i) => v.every((w, j) => n[i + j] === w)); }).map(c => [c.getAttribute('aria-label'), visible(c, sr).replace(/\s+/g, ' ').trim()]);
+  const SINK = { nodes: [{ id: 'a', label: 'Billing', badges: ['TA-1'] }, // a script card: its sub-line is hidden
+      { id: 'b', label: 'Payment gateway for card and wallet payments', kind: 'external', sublabel: 'behind an adapter that retries, logs and signs every request it forwards', badges: [{ text: 'TA-5', tone: 'accent' }], change: 'planned', edited: true },
+      { id: 'c', label: 'Orders', kind: 'backend', sublabel: 'from ShopRight API', verbs: ['FC-1', 'FC-2', 'FC-3', 'FC-4', 'FC-5', 'FC-6', 'FC-7'] },
+      { id: 'd', label: 'Router', kind: 'public', sublabel: 'takes every request from the shop, checks who is asking, then hands it to a service' },
+      { id: 'e', label: 'Inner', kind: 'backend', opensView: 'w' }, { id: 'f', label: 'Skill', kind: 'skill-dep', author: 'jdoe' }],
+    edges: [{ from: 'd', to: 'a' }, { from: 'a', to: 'b' }, { from: 'b', to: 'c' }, { from: 'c', to: 'e' }, { from: 'e', to: 'f' }],
+    views: [{ id: 'v', nodeIds: ['a', 'b', 'c', 'd', 'e', 'f'] }, { id: 'w', parent: 'v', nodeIds: ['a', 'c'] }, { id: 'p', render: 'process', nodeIds: ['d', 'a', 'c'] }] };
+  const ISSUE = { nodes: [{ id: 'a', label: 'Billing', badges: ['TA-1'] }, { id: 'b', label: 'Ledger' }], edges: [{ from: 'a', to: 'b' }], views: [{ id: 'v', nodeIds: ['a', 'b'] }] };
+  for (const [what, m, view] of [["issue #35's model", ISSUE, 'v'], ['every kind of card text', SINK, 'v'], ['steps in a run-order view', SINK, 'p'], ['the example', MODEL, 'overview']]) {
+    const el6 = document.getElementById('a'), h6 = render(el6, m, { view }), sr6 = () => el6.querySelector('.umlimator').shadowRoot, found = {};
+    found['at rest'] = mismatched(sr6());
+    h6.select({ type: 'node', id: sr6().querySelector('.node').dataset.id }); found.selected = mismatched(sr6());
+    const m2 = structuredClone(m); m2.nodes[0].label += ' two'; h6.update(m2); found['after update()'] = mismatched(sr6());
+    const st = sr6().querySelector('.stage'); for (let i = 0; i < 16 && st.dataset.depth !== 'map'; i++) st.dispatchEvent(new KeyboardEvent('keydown', { key: '-', bubbles: true }));
+    found['zoomed far out'] = st.dataset.depth === 'map' ? mismatched(sr6()) : ['not zoomed out'];
+    check(`a card's visible text is a run of whole words of its name (WCAG 2.5.3), at rest, selected, after update(), zoomed out: ${what}`, Object.values(found).every(f => !f.length), found);
+    h6.destroy();
+  }
   const own = () => performance.getEntriesByType('resource').filter(r => !/\/__(hold|release)$/.test(r.name)); // the test's own clock holds are not the map's
   check('makes no network requests', own().length === loaded, own().slice(loaded).map(r => r.name));
   const img = new Image(); img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(file);

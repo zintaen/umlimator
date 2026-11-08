@@ -202,8 +202,10 @@ events beyond verb chips (step 4); editing (step 5); SVG export without Chrome (
 ## Accessibility (added after step 6)
 
 - The map's `<svg>` is a `group` named after the view (it was an `img`, which hides its children from screen
-  readers). Each card is a focusable `button` whose name is its label, its sublabel, its badges and "edited", plus
-  "(opens inner view)" when it has one; `aria-pressed` says whether it is selected.
+  readers). Each card is a focusable `button` named by what it shows, in the order it shows it: its label, tabs (badges),
+  step, author, inner-view count, change, sub-line and chips. So its visible text is a run of whole words of its name
+  (WCAG 2.5.3 Label in Name, at any zoom), and what it does not show, or not in full, follows in parentheses: a hidden
+  sub-line, the rest of a cut text, "edited", "opens the inner view". `aria-pressed` says whether it is selected.
 - Keyboard: Tab reaches each card; arrow keys on a focused card move to the nearest card that way (on the empty canvas
   they still pan); Enter selects, and Enter on a selected card opens its inner view (or, with none, sends `select` again,
   as a click does); Escape clears, then goes up a level.
@@ -239,3 +241,8 @@ events beyond verb chips (step 4); editing (step 5); SVG export without Chrome (
 - **A click the host takes.** `click` has `preventDefault()`: calling it keeps the selection as it was (no `select`), so
   a host can treat a chip, a badge or a card as a link. A chip click used to select its card as well, with nothing in
   `select` to tell the two apart (#31).
+- **Card names match what cards show** (WCAG 2.5.3). axe-core 4.14 reported `label-content-name-mismatch` on every card
+  with a sub-line or a badge (13 of the example's 13): the card's texts ran together with no whitespace between them,
+  and names held text the card did not show. Now a card's texts are apart, its name follows what it shows (above), and
+  axe finds nothing at rest, after a selection, after `update()` or zoomed out (checked with axe-core 4.14; `tests/embed.html`
+  checks the same rule without it). A card text that does not fit is cut between words (#35).
