@@ -9,8 +9,8 @@
 <div id="b" style="width:600px;height:400px"></div>
 <script type="module">
 import { render, layout } from '../lib/umlimator.js';
-const MODEL = await (await fetch('../examples/bookshop.json')).json();
-const loaded = performance.getEntriesByType('resource').length; // the module and the model; nothing after this
+const MODEL = await (await fetch('../examples/bookshop.json')).json(), THEME = await (await fetch('../lib/umlimator-theme.css')).text();
+const loaded = performance.getEntriesByType('resource').length; // the module, the model and the theme; nothing after this
 const out = { ok: [], fail: [] };
 const check = (name, cond, info) => { document.title = name; if (cond) out.ok.push(name); else out.fail.push(name + (info === undefined ? '' : ': ' + JSON.stringify(info))); };
 const wait = ms => new Promise(r => setTimeout(r, ms));
@@ -85,16 +85,36 @@ try {
   // chips and containers
   const small = { nodes: [{ id: 'a', label: 'Reader', verbs: ['read', 'write'] }, { id: 'b', label: 'Store' }, { id: 'c', label: 'Index' }],
     edges: [{ id: 'e1', from: 'a', to: 'b' }, { id: 'e2', from: 'b', to: 'c' }],
-    views: [{ id: 'v', nodeIds: ['a', 'b', 'c'], containers: [{ id: 'box', label: 'Data', nodeIds: ['b', 'c'] }] }] };
+    views: [{ id: 'v', nodeIds: ['a', 'b', 'c'], containers: [{ id: 'box', label: 'Data', nodeIds: ['b', 'c'], badges: ['TA-6', { text: 'Owner: data', tone: 'violet' }] }] }] };
   const el2 = document.getElementById('b'), ev2 = [];
+  el2.style.setProperty('--um-panel', 'rgb(10, 20, 30)'); el2.style.setProperty('--um-mono', 'monospace');
   const h2 = render(el2, small, { controls: false, on: { click: e => ev2.push(e.target), select: e => ev2.push(['select', e.target]) } });
   const sr2 = el2.querySelector('.umlimator').shadowRoot;
+  const fbox = getComputedStyle(sr2.querySelector('.family-box')), ftitle = getComputedStyle(sr2.querySelector('.family-title'));
+  check('a container box is a faint panel with an 11 px title (it was solid black)', fbox.fill === 'rgb(10, 20, 30)' && fbox.fillOpacity === '0.45' && ftitle.fontSize === '11px', [fbox.fill, fbox.fillOpacity, ftitle.fontSize]);
+  check('…in toSVG() too', /<rect class="family-box"[^>]*style="fill: rgb\(10, 20, 30\);/.test(h2.toSVG()), (h2.toSVG().match(/<rect class="family-box"[^>]*>/) || [])[0]);
   sr2.querySelector('.node[data-id="a"] text[data-chip="1"]').dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true }));
   check('each chip is clickable on its own, and selects its card', JSON.stringify(ev2) === JSON.stringify([{ type: 'chip', node: 'a', index: 1, value: 'write', view: 'v' }, ['select', { type: 'node', id: 'a', view: 'v' }]]), ev2);
+  const link = h2.on('click', e => { if (e.target.type === 'chip') e.preventDefault?.(); }); // a host whose chips are links (?.: an old map has none)
+  h2.select(null); ev2.length = 0;
+  sr2.querySelector('.node[data-id="a"] text[data-chip="0"]').dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true }));
+  check('click.preventDefault() keeps the selection as it was: a chip can be a link that selects nothing', JSON.stringify(ev2) === JSON.stringify([{ type: 'chip', node: 'a', index: 0, value: 'read', view: 'v' }]) && h2.selection === null, ev2);
+  link();
   sr2.querySelector('.family[data-family="box"] .family-box').dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true }));
   check('a container click reports a container ref', JSON.stringify(ev2.slice(-2)) === JSON.stringify([{ type: 'container', id: 'box', view: 'v' }, ['select', { type: 'container', id: 'box', view: 'v' }]]), ev2.slice(-2));
+  h2.select(null); ev2.length = 0;
+  const boxTabs = sr2.querySelectorAll('.family[data-family="box"] [data-badge]');
+  if (boxTabs[1]) boxTabs[1].querySelector('text').dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true }));
+  check("a container's badges are tabs on its border: a click names the badge, and selects the box", boxTabs.length === 2 && JSON.stringify(ev2) === JSON.stringify([{ type: 'badge', container: 'box', index: 1, value: 'Owner: data', view: 'v' }, ['select', { type: 'container', id: 'box', view: 'v' }]]), [boxTabs.length, ev2]);
   check('controls: false leaves the zoom buttons out', !sr2.querySelector('.ctl'));
-  h2.destroy();
+  h2.destroy(); el2.style.removeProperty('--um-panel'); el2.style.removeProperty('--um-mono');
+  // a line to a container's box: drawn to its border, and clicked, selected and announced like any other line
+  const ev7 = [], h7 = render(el2, { nodes: [{ id: 'audit', label: 'Audit' }, { id: 'e1', label: 'Order', kind: 'database' }], edges: [{ id: 'x', from: 'audit', to: 'database', label: 'writes' }],
+    views: [{ id: 'v', nodeIds: ['audit', 'e1'], layout: { audit: [0, 0], e1: [2, 0] }, containers: [{ id: 'database', label: 'Database', nodeIds: ['e1'] }] }] }, { on: { select: e => ev7.push(e.target) } });
+  const sr7 = el2.querySelector('.umlimator').shadowRoot, line = sr7.querySelector('.edge-g .hitline');
+  if (line) line.dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true }));
+  check('a line to a container is drawn to its box, and selects and is announced like any line', !!line && JSON.stringify(ev7) === JSON.stringify([{ type: 'edge', ids: ['x'], view: 'v' }]) && sr7.querySelector('[aria-live]').textContent === 'Line from Audit to Database, selected', [!!line, ev7, sr7.querySelector('[aria-live]').textContent]);
+  h7.destroy();
 
   // colours, light and dark come from the host's --um-* variables; badges; edited; text in the host's font
   const el3 = document.getElementById('b'), ev3 = [];
@@ -120,6 +140,22 @@ try {
   check('a selection is announced', sr3.querySelector('[aria-live]').textContent === 'Billing, selected', sr3.querySelector('[aria-live]').textContent);
   card('svc').focus(); card('svc').dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, composed: true }));
   check('an arrow key on a card moves focus to the next card that way', sr3.activeElement === card('db'), sr3.activeElement && sr3.activeElement.dataset.id);
+  const sels3 = [], offSel = h3.on('select', e => sels3.push(e.target && e.target.id)), enter = id => card(id).dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, composed: true }));
+  enter('db'); enter('db');
+  check('Enter on a selected card with no inner view sends select again, as a click does', JSON.stringify(sels3) === '["db","db"]', sels3);
+  offSel();
+  // focus back into the map: a dialog that gives focus back calls host.focus(); the handle can focus a card
+  const host3 = el3.querySelector('.umlimator'), stage3 = sr3.querySelector('.stage'), outside = document.body.appendChild(document.createElement('button'));
+  const focused = () => sr3.activeElement && (sr3.activeElement.dataset.id || sr3.activeElement.className);
+  h3.select({ type: 'node', id: 'svc' }); outside.focus(); host3.focus();
+  check('host.focus() (a dialog giving focus back) lands on the selected card', document.activeElement === host3 && sr3.activeElement === card('svc'), [document.activeElement.className, focused()]);
+  outside.focus(); h3.focus({ type: 'node', id: 'db' });
+  check('handle.focus(ref) puts keyboard focus on that card', sr3.activeElement === card('db'), focused());
+  outside.focus(); stage3.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, composed: true })); stage3.focus(); stage3.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, composed: true }));
+  check('a press on the empty canvas focuses the canvas, not the selected card', sr3.activeElement === stage3, focused());
+  h3.select(null); outside.focus(); h3.focus();
+  check('handle.focus() with nothing selected focuses the map', sr3.activeElement === stage3, focused());
+  outside.remove();
   h3.select(null);
 
   // the picture as a file, in the browser: host colours resolved, drawn at rest, the screen untouched
@@ -139,11 +175,62 @@ try {
   const est = layout(thin, 'v').nodes[0].w;
   check('text is measured in the host font', cardW('serif') < est && cardW('serif') !== cardW('monospace'), [cardW('serif'), cardW('monospace'), est]);
   check('measure: false keeps the font-independent estimate', cardW('serif', { measure: false }) === est);
+
+  // the default theme on the page, and a host that sets a tone on an ancestor of the map: the tint follows the tone
+  const sheet = new CSSStyleSheet(); sheet.replaceSync(THEME); document.adoptedStyleSheets = [sheet];
+  const el4 = document.getElementById('b'); el4.style.setProperty('--um-green', 'rgb(255, 0, 0)');
+  const h4 = render(el4, { nodes: [{ id: 'a', label: 'Orders', kind: 'backend' }], views: [{ id: 'v', nodeIds: ['a'] }] });
+  const want = document.createElement('i'); want.style.color = 'color-mix(in srgb, var(--um-green) 9%, var(--um-panel))'; el4.appendChild(want);
+  const tint = getComputedStyle(el4.querySelector('.umlimator').shadowRoot.querySelector('.n-body')).fill;
+  check('a tone set on an ancestor of the map recolours its tint too (the theme mixed it on :root)', tint === getComputedStyle(want).color, [tint, getComputedStyle(want).color]);
+  h4.destroy(); want.remove(); el4.style.removeProperty('--um-green'); document.adoptedStyleSheets = [];
+
+  // WCAG 2.5.3 as axe-core 4.14 checks it (label-content-name-mismatch), written out: a card's visible text, its text nodes
+  // joined as they are and leaving out what is not displayed, is a run of whole words of its name (parentheticals left out)
+  const words = s => { let t = s.normalize('NFKD'), u; do { u = t; t = t.replace(/\([^()]*\)/g, ''); } while (t !== u); return t.replace(/[^\p{L}\p{N}]+/gu, ' ').trim().toLowerCase().split(/\s+/).filter(Boolean); };
+  const shown = (el, top) => { for (let e = el; e && e !== top; e = e.parentNode) { const cs = getComputedStyle(e); if (cs.display === 'none' || cs.visibility === 'hidden' || cs.opacity === '0') return false; } return true; };
+  const visible = (card, top) => { let t = ''; const walk = n => n.childNodes.forEach(c => { if (c.nodeType === 3) { if (shown(n, top)) t += c.data; } else if (c.nodeType === 1 && c.localName !== 'title') walk(c); }); walk(card); return t; };
+  const mismatched = sr => [...sr.querySelectorAll('.node[role="button"]')].filter(c => { const v = words(visible(c, sr)), n = words(c.getAttribute('aria-label'));
+    return v.length && !n.some((_, i) => v.every((w, j) => n[i + j] === w)); }).map(c => [c.getAttribute('aria-label'), visible(c, sr).replace(/\s+/g, ' ').trim()]);
+  const SINK = { nodes: [{ id: 'a', label: 'Billing', badges: ['TA-1'] }, // a script card: its sub-line is hidden
+      { id: 'b', label: 'Payment gateway for card and wallet payments', kind: 'external', sublabel: 'behind an adapter that retries, logs and signs every request it forwards', badges: [{ text: 'TA-5', tone: 'accent' }], change: 'planned', edited: true },
+      { id: 'c', label: 'Orders', kind: 'backend', sublabel: 'from ShopRight API', verbs: ['FC-1', 'FC-2', 'FC-3', 'FC-4', 'FC-5', 'FC-6', 'FC-7'] },
+      { id: 'd', label: 'Router', kind: 'public', sublabel: 'takes every request from the shop, checks who is asking, then hands it to a service' },
+      { id: 'e', label: 'Inner', kind: 'backend', opensView: 'w' }, { id: 'f', label: 'Skill', kind: 'skill-dep', author: 'jdoe' }],
+    edges: [{ from: 'd', to: 'a' }, { from: 'a', to: 'b' }, { from: 'b', to: 'c' }, { from: 'c', to: 'e' }, { from: 'e', to: 'f' }],
+    views: [{ id: 'v', nodeIds: ['a', 'b', 'c', 'd', 'e', 'f'] }, { id: 'w', parent: 'v', nodeIds: ['a', 'c'] }, { id: 'p', render: 'process', nodeIds: ['d', 'a', 'c'] }] };
+  const ISSUE = { nodes: [{ id: 'a', label: 'Billing', badges: ['TA-1'] }, { id: 'b', label: 'Ledger' }], edges: [{ from: 'a', to: 'b' }], views: [{ id: 'v', nodeIds: ['a', 'b'] }] };
+  for (const [what, m, view] of [["issue #35's model", ISSUE, 'v'], ['every kind of card text', SINK, 'v'], ['steps in a run-order view', SINK, 'p'], ['the example', MODEL, 'overview']]) {
+    const el6 = document.getElementById('a'), h6 = render(el6, m, { view }), sr6 = () => el6.querySelector('.umlimator').shadowRoot, found = {};
+    found['at rest'] = mismatched(sr6());
+    h6.select({ type: 'node', id: sr6().querySelector('.node').dataset.id }); found.selected = mismatched(sr6());
+    const m2 = structuredClone(m); m2.nodes[0].label += ' two'; h6.update(m2); found['after update()'] = mismatched(sr6());
+    const st = sr6().querySelector('.stage'); for (let i = 0; i < 16 && st.dataset.depth !== 'map'; i++) st.dispatchEvent(new KeyboardEvent('keydown', { key: '-', bubbles: true }));
+    found['zoomed far out'] = st.dataset.depth === 'map' ? mismatched(sr6()) : ['not zoomed out'];
+    check(`a card's visible text is a run of whole words of its name (WCAG 2.5.3), at rest, selected, after update(), zoomed out: ${what}`, Object.values(found).every(f => !f.length), found);
+    h6.destroy();
+  }
   const own = () => performance.getEntriesByType('resource').filter(r => !/\/__(hold|release)$/.test(r.name)); // the test's own clock holds are not the map's
   check('makes no network requests', own().length === loaded, own().slice(loaded).map(r => r.name));
   const img = new Image(); img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(file);
   check('the file is a picture: role img, nothing focusable', /^<svg[^>]* role="img"/.test(file) && !file.includes('tabindex'));
   check('the file draws as an image on its own', await real(() => img.decode().then(() => img.naturalWidth > 0, () => false)));
+
+  // a test DOM such as jsdom (a host's component tests): no ResizeObserver, no matchMedia, and a canvas without a 2D context
+  const gone = ['ResizeObserver', 'matchMedia'].map(k => [k, Object.getOwnPropertyDescriptor(window, k)]), getContext = HTMLCanvasElement.prototype.getContext, errors = [];
+  const onError = e => errors.push(String(e.message));
+  addEventListener('error', onError); gone.forEach(([k]) => delete window[k]); HTMLCanvasElement.prototype.getContext = () => null;
+  try {
+    const el5 = document.getElementById('b'); let h5 = null, threw = null;
+    try { h5 = render(el5, thin); } catch (e) { threw = String(e); }
+    const sr5 = h5 && el5.querySelector('.umlimator').shadowRoot;
+    check('without ResizeObserver, matchMedia or a 2D canvas (jsdom), render() draws the map', !threw && !!sr5.querySelector('.node'), threw);
+    check('…measuring text with the font-independent estimate', !!sr5 && +sr5.querySelector('.n-body').getAttribute('width') === est);
+    if (sr5) ['in', 'out', 'fit', 'one'].forEach(z => sr5.querySelector(`[data-z="${z}"]`).dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true })));
+    await wait(50);
+    check('…and its zoom buttons work without matchMedia', !!sr5 && !errors.length, errors);
+    if (h5) h5.destroy();
+  } finally { gone.forEach(([k, d]) => Object.defineProperty(window, k, d)); HTMLCanvasElement.prototype.getContext = getContext; removeEventListener('error', onError); }
 } catch (e) { out.fail.push('threw: ' + (e && e.stack || e)); }
 const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
 </script>

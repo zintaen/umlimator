@@ -14,11 +14,12 @@ export interface MapModel {
 /** A badge: its text, and optionally a palette name for its colour (green, amber, rose, accent, violet ... : --um-<tone>). */
 export type Badge = string | { text: string; tone?: string };
 export interface MapNode { id: string; label?: string; kind?: string; sublabel?: string; badge?: string; badges?: Badge[]; edited?: boolean; icon?: string; verbs?: string[]; opensView?: string; [key: string]: unknown }
+/** from / to: a card's id, or a container's id in the view (the line ends on its box's border). */
 export interface MapEdge { id?: string; from: string; to: string; label?: string; edited?: boolean; [key: string]: unknown }
 export interface MapView {
   id: string; parent?: string | null; title?: string; nodeIds: string[];
   edges?: (string | MapEdge)[]; layout?: Record<string, [number, number]>; repair?: boolean;
-  containers?: { id: string; label?: string; nodeIds?: string[]; parent?: string }[];
+  containers?: { id: string; label?: string; nodeIds?: string[]; parent?: string; badges?: Badge[] }[];   // badges: tabs on the box's border
   [key: string]: unknown;
 }
 
@@ -28,11 +29,12 @@ export type Ref =
   | { type: 'edge'; ids: string[]; view: string }          // one drawn line can stand for several model edges
   | { type: 'container'; id: string; view: string }
   | { type: 'chip'; node: string; index: number; value: string; view: string }
-  | { type: 'badge'; node: string; index: number; value: string; view: string };
+  | { type: 'badge'; node: string; index: number; value: string; view: string }
+  | { type: 'badge'; container: string; index: number; value: string; view: string };   // a container's badge
 
 export interface Events {
-  click: { target: Ref; event: MouseEvent };
-  select: { target: Ref | null; targets: Ref[] };          // a chip or badge selects its card; targets: every selected thing, the latest last
+  click: { target: Ref; event: MouseEvent; preventDefault(): void };   // preventDefault(): the selection stays as it was (no select)
+  select: { target: Ref | null; targets: Ref[] };          // a chip or badge selects its card (a container's badge: its box); targets: every selected thing, the latest last
   open: { target: Ref; view: string; preventDefault(): void };
   viewchange: { view: string; from: string };
   change: Change;                                           // only with `editable`
@@ -78,6 +80,10 @@ export interface Handle {
   toSVG(options?: ExportOptions): string;
   /** The same picture as a PNG Blob, drawn on a canvas in the browser (default scale 2). null when there is nothing to draw. */
   toPNG(options?: ExportOptions): Promise<Blob | null>;
+  /** Puts keyboard focus on the card `ref` names (a chip or badge: its card), by default the selected card, else on the
+   *  map. The map's element delegates focus too: `host.focus()`, as a dialog does when it gives focus back, lands on
+   *  the selected card. */
+  focus(ref?: Ref | null): void;
   on<K extends keyof Events>(type: K, fn: (e: Events[K]) => void): () => void;
   readonly view: string | null;
   readonly selection: Ref | null;   // the latest selected

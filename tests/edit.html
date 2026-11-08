@@ -15,7 +15,7 @@ const MODEL = {
   nodes: [{ id: 'a', label: 'Gateway', kind: 'frontend', verbs: ['get', 'put', 'list'] }, { id: 'b', label: 'Orders', kind: 'backend' },
     { id: 'c', label: 'Billing', kind: 'backend' }, { id: 'd', label: 'Audit', kind: 'backend' }],
   edges: [{ id: 'ab', from: 'a', to: 'b', label: 'calls' }, { id: 'ac', from: 'a', to: 'c' }, { id: 'ad', from: 'a', to: 'd' }],
-  views: [{ id: 'v', nodeIds: ['a', 'b', 'c', 'd'], containers: [{ id: 'box', label: 'Core', nodeIds: ['b', 'c'] }] }] };
+  views: [{ id: 'v', nodeIds: ['a', 'b', 'c', 'd'], containers: [{ id: 'box', label: 'Core', nodeIds: ['b', 'c'], badges: ['TA-6', 'TA-7'] }] }] };
 const el = document.getElementById('m');
 let sr, stage, ev = [];
 const pick = s => sr.querySelector(s);
@@ -76,6 +76,11 @@ try {
   check('Alt + → moves a chip along its list', JSON.stringify(strip(last())) === JSON.stringify({ view: 'v', op: 'reorder', target: { type: 'chip', node: 'a', index: 0, value: 'get', view: 'v' }, index: 1 }), last());
   key('Delete');
   check('Delete on a clicked chip deletes the chip', last().op === 'delete' && last().target.type === 'chip' && last().target.index === 0, last());
+  // a container's badges: the same, on the clicked badge of the box
+  click('.family[data-family="box"] [data-badge="0"] text'); key('ArrowRight', { altKey: true });
+  check("Alt + → moves a container's badge along its list", JSON.stringify(strip(last())) === JSON.stringify({ view: 'v', op: 'reorder', target: { type: 'badge', container: 'box', index: 0, value: 'TA-6', view: 'v' }, index: 1 }), last());
+  key('Delete');
+  check("Delete on a clicked container badge deletes the badge, not the box", JSON.stringify(strip(last())) === JSON.stringify({ view: 'v', op: 'delete', target: { type: 'badge', container: 'box', index: 0, value: 'TA-6', view: 'v' } }), last());
 
   // reorder a card among its column (Alt + ↓), then the host accepts it without changing its data
   click('.node[data-id="b"] .n-label');
