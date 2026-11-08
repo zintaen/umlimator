@@ -157,6 +157,22 @@ try {
   const img = new Image(); img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(file);
   check('the file is a picture: role img, nothing focusable', /^<svg[^>]* role="img"/.test(file) && !file.includes('tabindex'));
   check('the file draws as an image on its own', await real(() => img.decode().then(() => img.naturalWidth > 0, () => false)));
+
+  // a test DOM such as jsdom (a host's component tests): no ResizeObserver, no matchMedia, and a canvas without a 2D context
+  const gone = ['ResizeObserver', 'matchMedia'].map(k => [k, Object.getOwnPropertyDescriptor(window, k)]), getContext = HTMLCanvasElement.prototype.getContext, errors = [];
+  const onError = e => errors.push(String(e.message));
+  addEventListener('error', onError); gone.forEach(([k]) => delete window[k]); HTMLCanvasElement.prototype.getContext = () => null;
+  try {
+    const el5 = document.getElementById('b'); let h5 = null, threw = null;
+    try { h5 = render(el5, thin); } catch (e) { threw = String(e); }
+    const sr5 = h5 && el5.querySelector('.umlimator').shadowRoot;
+    check('without ResizeObserver, matchMedia or a 2D canvas (jsdom), render() draws the map', !threw && !!sr5.querySelector('.node'), threw);
+    check('…measuring text with the font-independent estimate', !!sr5 && +sr5.querySelector('.n-body').getAttribute('width') === est);
+    if (sr5) ['in', 'out', 'fit', 'one'].forEach(z => sr5.querySelector(`[data-z="${z}"]`).dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true })));
+    await wait(50);
+    check('…and its zoom buttons work without matchMedia', !!sr5 && !errors.length, errors);
+    if (h5) h5.destroy();
+  } finally { gone.forEach(([k, d]) => Object.defineProperty(window, k, d)); HTMLCanvasElement.prototype.getContext = getContext; removeEventListener('error', onError); }
 } catch (e) { out.fail.push('threw: ' + (e && e.stack || e)); }
 const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
 </script>
