@@ -11,7 +11,8 @@ that writes a self-contained HTML page and still pictures (SVG, PNG) for documen
 
 - **Layers**: a view per level (system, containers, components, flows). A stacked card opens its inner view, which the
   host may load only when asked.
-- **Layout and routing**: columns in reading order, orthogonal lines that never run through a card, room for every
+- **Layout and routing**: columns in reading order, ordered so lines between them cross as little as they can, orthogonal
+  lines that never run through a card, room for every
   label, containers kept apart, and cards with no lines in a row of their own. The same model gives the same picture.
 - **Reading**: animated flow, neighbours lit on selection, numbered steps, tours, minimap, light and dark themes.
 - **Keyboard and screen readers**: cards, then lines, in the Tab order; arrows between cards; selections announced.
