@@ -87,14 +87,18 @@ try {
     edges: [{ id: 'e1', from: 'a', to: 'b' }, { id: 'e2', from: 'b', to: 'c' }],
     views: [{ id: 'v', nodeIds: ['a', 'b', 'c'], containers: [{ id: 'box', label: 'Data', nodeIds: ['b', 'c'] }] }] };
   const el2 = document.getElementById('b'), ev2 = [];
+  el2.style.setProperty('--um-panel', 'rgb(10, 20, 30)'); el2.style.setProperty('--um-mono', 'monospace');
   const h2 = render(el2, small, { controls: false, on: { click: e => ev2.push(e.target), select: e => ev2.push(['select', e.target]) } });
   const sr2 = el2.querySelector('.umlimator').shadowRoot;
+  const fbox = getComputedStyle(sr2.querySelector('.family-box')), ftitle = getComputedStyle(sr2.querySelector('.family-title'));
+  check('a container box is a faint panel with an 11 px title (it was solid black)', fbox.fill === 'rgb(10, 20, 30)' && fbox.fillOpacity === '0.45' && ftitle.fontSize === '11px', [fbox.fill, fbox.fillOpacity, ftitle.fontSize]);
+  check('…in toSVG() too', /<rect class="family-box"[^>]*style="fill: rgb\(10, 20, 30\);/.test(h2.toSVG()), (h2.toSVG().match(/<rect class="family-box"[^>]*>/) || [])[0]);
   sr2.querySelector('.node[data-id="a"] text[data-chip="1"]').dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true }));
   check('each chip is clickable on its own, and selects its card', JSON.stringify(ev2) === JSON.stringify([{ type: 'chip', node: 'a', index: 1, value: 'write', view: 'v' }, ['select', { type: 'node', id: 'a', view: 'v' }]]), ev2);
   sr2.querySelector('.family[data-family="box"] .family-box').dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true }));
   check('a container click reports a container ref', JSON.stringify(ev2.slice(-2)) === JSON.stringify([{ type: 'container', id: 'box', view: 'v' }, ['select', { type: 'container', id: 'box', view: 'v' }]]), ev2.slice(-2));
   check('controls: false leaves the zoom buttons out', !sr2.querySelector('.ctl'));
-  h2.destroy();
+  h2.destroy(); el2.style.removeProperty('--um-panel'); el2.style.removeProperty('--um-mono');
 
   // colours, light and dark come from the host's --um-* variables; badges; edited; text in the host's font
   const el3 = document.getElementById('b'), ev3 = [];
