@@ -268,3 +268,9 @@ events beyond verb chips (step 4); editing (step 5); SVG export without Chrome (
 - **Test DOMs, quietly.** The 2D context that text is measured on is probed once per module, not once per `render()`.
   jsdom prints "Not implemented: HTMLCanvasElement's getContext()" on every call, so a host's suite printed it once per
   mounted map (112 times); now it prints once per test file (#38).
+- **Lines to containers face the box.** A line to a box takes the sides that face each other across the wider of the
+  two gaps, so a box below and beside its source is entered from the top. The sides were picked as for a card, so such
+  a line left the card's side, ran down beside the box, turned back under the card and came back into the box's side.
+  Its end on the box lines up with the port at its other end where the border allows (off the title, tabs and corners),
+  so a box under a card gets a straight drop. A card 32 px beside a box gets a straight line: the two ends were closer
+  than their stubs, so the router gave up and drew the plain fallback elbow (#39).

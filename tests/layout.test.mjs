@@ -182,3 +182,18 @@ test("a container's badges are tabs on its top border, right of its title, and t
   assert.ok(t1.x > t0.x + t0.w && t1.x + t1.w <= f.x + f.w - 12, 'left to right, inside the box');
   assert.deepEqual(f.tabs.map(t => [t.text, t.fill]), [['TA-6', 'var(--um-slate)'], ['OWNER: DATA', 'var(--um-violet)']], 'tones as on a card');
 });
+
+test('a line to a container takes the sides that face across the wider gap, and ends in line with its other end where the border allows (#39)', () => {
+  const model = (e1, edge = {}) => ({ nodes: ['audit', 'shell', 'm', 'm2', 'e1', 'e2'].map(id => ({ id, label: id === 'audit' ? 'Audit' : id })),
+    edges: [{ id: 'audit-database', from: 'audit', to: 'database', ...edge }],
+    views: [{ id: 'v', nodeIds: ['audit', 'shell', 'm', 'm2', 'e1', 'e2'], layout: { shell: [1, 0], audit: [1, 2], m: [2, 0], m2: [3, 0], e1, e2: [e1[0] + 1, 3] },
+      containers: [{ id: 'app', label: 'App', nodeIds: ['audit', 'shell', 'm', 'm2'] }, { id: 'database', label: 'Database', nodeIds: ['e1', 'e2'] }] }] });
+  const below = layout(model([2, 3]), 'v').edges[0]; // the box 74 px below the card and 32 px to its right
+  assert.equal(`${below.fs}>${below.ts}`, 'B>T', 'bottom to top: the vertical gap is the wider');
+  assert.ok(below.pts.every((p, k) => !k || p[1] >= below.pts[k - 1][1]), `it never turns back up: ${JSON.stringify(below.pts)}`);
+  const under = layout(model([1, 3]), 'v').edges[0]; // the box under the card
+  assert.ok(under.pts.length === 2 && under.pts[0][0] === under.pts[1][0], `a straight drop: ${JSON.stringify(under.pts)}`);
+  const beside = layout({ nodes: ['a', 'e1', 'e2'].map(id => ({ id, label: id })), edges: [{ from: 'a', to: 'db' }],
+    views: [{ id: 'v', nodeIds: ['a', 'e1', 'e2'], layout: { a: [0, 0], e1: [1, 0], e2: [1, 1] }, containers: [{ id: 'db', label: 'Database', nodeIds: ['e1', 'e2'] }] }] }, 'v').edges[0];
+  assert.ok(beside.how === 'grid' && beside.pts.length === 2 && beside.pts[0][1] === beside.pts[1][1], `a box 32 px beside the card: a straight line, routed (${beside.how}): ${JSON.stringify(beside.pts)}`);
+});
