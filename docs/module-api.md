@@ -206,9 +206,10 @@ events beyond verb chips (step 4); editing (step 5); SVG export without Chrome (
   step, author, inner-view count, change, sub-line and chips. So its visible text is a run of whole words of its name
   (WCAG 2.5.3 Label in Name, at any zoom), and what it does not show, or not in full, follows in parentheses: a hidden
   sub-line, the rest of a cut text, "edited", "opens the inner view". `aria-pressed` says whether it is selected.
-- Keyboard: Tab reaches each card; arrow keys on a focused card move to the nearest card that way (on the empty canvas
-  they still pan); Enter selects, and Enter on a selected card opens its inner view (or, with none, sends `select` again,
-  as a click does); Escape clears, then goes up a level.
+- Keyboard: Tab reaches each card, then (since 0.7.0) each line; arrow keys on a focused card move to the nearest card
+  that way (on the empty canvas they still pan); Enter selects, and Enter on a selected card opens its inner view (or,
+  with none, sends `select` again, as a click does); Escape clears, then goes up a level. A card's or box's tabs take focus
+  when the host listens for `click`, and Enter on one is a click on it.
 - A polite live region announces each selection ("Billing, selected", "3 cards selected", "Line from A to B") and
   each view shown.
 - Exported files (`toSVG`, `toPNG`, stills) are pictures: `role="img"` named after the view, nothing focusable.
@@ -220,7 +221,7 @@ events beyond verb chips (step 4); editing (step 5); SVG export without Chrome (
 - Focus can come back: the map's element delegates focus (`attachShadow({ delegatesFocus: true })`), and focus that
   reaches the canvas from outside, not by a press, goes on to the selected card; `handle.focus(ref?)` puts it on a card
   (default: the selected one, else the map).
-- Not covered: lines and containers are reachable by pointer only.
+- Not covered: containers themselves are reachable by pointer only (their tabs are not, with a `click` listener), and so are chips.
 
 ## 0.5.0: fixes from the first embedding (issues #26 to #36)
 
@@ -290,3 +291,55 @@ events beyond verb chips (step 4); editing (step 5); SVG export without Chrome (
   default), and a card with both shows its name, its sub-line, then its chips on a third line, in the sub-line's column,
   clear of the mark. Its name follows what it shows (#35). It is a view option, so maps without it keep their geometry; a
   script card (no kind) shows no sub-line either way (#41).
+
+## 0.7.0: fixes from the Reader's architecture map (issues #43 to #47)
+
+- **Lines and tabs from the keyboard.** Tab reaches each card, then each of its tabs when the host listens for `click`,
+  and, after the cards, each line: a button named "Line from Orders to Store: reads · 12" ("Line between A and B, both
+  ways: …" for a two-way line; its sublabel in parentheses), pressed while selected. Enter on a line selects it, as a click
+  does (`select` with the edge `Ref`); Enter on a tab is a click on it (`click` with the badge `Ref`, then its card or box
+  is selected unless the host calls `preventDefault()`), so a tab that is a link in the host works from the keyboard. A
+  card is a button, and a button inside it is invalid (axe: nested-interactive), so a line's or card tab's focus target is
+  drawn outside it, after the cards, and the pointer still hits the line or tab itself; a box's tab is a button itself.
+  Tabs are buttons only for a host that listens for `click` (`options.on.click` or `handle.on('click')`), as status tabs
+  (BUILT, TARGET) do nothing else. Focus brought to anything by key pans it into view, and focus given back to the map
+  (`host.focus()`, `handle.focus()`) lands on the selected line as on a selected card. Tab text keeps the model's case in
+  the DOM, upper-cased by the sheet, so a screen reader, a copy or a test reads "Open data", not "OPEN DATA"; a file drawn
+  from the map (`toSVG`, stills) still has it upper-cased. Only cards and the zoom controls took focus before, and a host
+  that acts on lines and tabs had to list them beside the map. Checked with axe-core 4.14: no violation in the parts this
+  adds (#43).
+- **How much a line stands for.** An edge's `weight` (1, 2 or 3; the host picks the bucket) draws its line at three widths,
+  about 1.8, 3.2 and 4.5 px, with its arrowhead and hit line larger in step; its colour, and so its contrast, stays its
+  kind's. Its `sublabel` is a second, smaller line under the label, in the same pill, counted in the room the router leaves
+  for labels (a column gap fits the wider of the two lines). A line that stands for several edges takes the largest weight
+  and shows each sublabel, joined by " / ". Both reach the geometry (`weight`, `lbl.sub`); views without them keep theirs.
+  Every line was drawn at one width with one label line, so a line standing for 486 relations looked like one standing
+  for 1 (#44).
+- **Line colours mean what the host says.** `render()` and `layout()` take a line's kind (its colour) only from its edge's
+  `kind`: `calls` (the default), `feeds`, `triggers`, `state` (thinner, a muted label, no flow) or `guard`, drawn in
+  `--um-w-<kind>`. They guessed it from words in the label, with the skill map's patterns ("reads" gave `state`,
+  "triggers" gave `triggers`), and drew no legend, so a host's own words picked colours that meant nothing to a reader and
+  changed with the wording. A view's `kindsFromLabels: true` brings the guess back; the standalone page (`mountPage`), which
+  shows a legend, always guesses, so the CLI's pages and stills keep their colours. A line that stands for several edges
+  (A→B and B→A, parallel edges) takes the first kind they name, in model order; a merged pair took the first edge's guess
+  even when the other named its kind. A line from a hook is still a guard, and one to or from a board state. `state` was too
+  light to see (1.96:1 against the light stage, 2.73:1 dark), so `--um-w-state` is darker, 3:1 or more in both themes, still
+  the lightest line; `tests/contrast.html` now checks a line of every kind (#45).
+- **Cards with no lines** sit in a row of their own under the view, one per column in view order, wrapping at its width.
+  Auto-layout put them in the first column, under the sources, so that column grew (four outside systems under five
+  people, a column of nine on a system-context map) and the lines from the sources ran around it. A card with no line in
+  a row under every card that has one never widens a column: one wider than its column keeps clear of its neighbour
+  instead, so the cards with lines keep the places they have without it. The row comes from the cards' slots and lines
+  alone, so the stable layout across `update()` and the layout `umlimator.py render` bakes into a page draw it the same;
+  a host's `layout` still places every card where it says. Views with containers keep their block layout. Of the bench
+  views, those with such cards moved: b10 (both views), b69 (all three) and m50 (#46).
+- **A card can open a view the host loads later.** A node's `opensView` may name a view that is not in the model yet. The
+  card looks stacked (⤢ with `opensCount` when the host gives one, else ⤢ alone), and double-click, Enter on the selected
+  card and a click on its ⤢ badge emit `open` with that view's id. The map goes in once the view is in the model: the host
+  loads it, calls `update()`, then `setView()`, or calls `update()` inside its `open` handler, and the map goes in at once;
+  `preventDefault()` still keeps it where it is. `open` was emitted only for a view in the model, and the stacked look
+  needed that view's cards, so a host that loads one level at a time (a C4 system context, then its containers) showed
+  plain cards that did nothing; an empty placeholder view made `open` fire but left the card plain. A card whose inner view
+  is in the model but empty is stacked too now. A click on the ⤢ badge of any stacked card opens it (it selected the
+  card). Upstream's validator in `umlimator.py render` still rejects an `opensView` it cannot find, so this is for
+  embeds; a page the CLI writes has every view (#47).

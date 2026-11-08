@@ -14,7 +14,7 @@
   --um-accent: #0969da; --um-accent-fg: #ffffff; --um-lane: rgba(31,35,40,.025);
   --um-cyan: #0969da; --um-green: #1a7f37; --um-violet: #8250df; --um-amber: #9a6700; --um-rose: #cf222e; --um-orange: #bc4c00; --um-slate: #59636e; --um-fuchsia: #bf3989;
   --um-k-public: #0969da; --um-k-lane: #0f766e; --um-k-ext: #8250df; --um-k-verb: #bf3989; --um-k-script: #6e7781; --um-k-hook: #cf222e; --um-k-board: #9a6700;
-  --um-w-calls: #424a53; --um-w-feeds: #0969da; --um-w-triggers: #8250df; --um-w-state: #afb8c1; --um-w-guard: #cf222e;
+  --um-w-calls: #424a53; --um-w-feeds: #0969da; --um-w-triggers: #8250df; --um-w-state: #868f99; --um-w-guard: #cf222e;
   --um-add-bg: rgba(26,127,55,.10); --um-add-tx: #1a7f37; --um-del-bg: rgba(207,34,46,.08); --um-del-tx: #cf222e;
   color-scheme: light;
   --um-accent-f: color-mix(in srgb, var(--um-accent) 12%, var(--um-panel));
@@ -45,7 +45,7 @@
   --um-accent: #4493f8; --um-accent-fg: #ffffff; --um-lane: rgba(240,246,252,.025);
   --um-cyan: #4493f8; --um-green: #3fb950; --um-violet: #ab7df8; --um-amber: #d29922; --um-rose: #f85149; --um-orange: #db6d28; --um-slate: #9198a1; --um-fuchsia: #db61a2;
   --um-k-public: #4493f8; --um-k-lane: #2dd4bf; --um-k-ext: #ab7df8; --um-k-verb: #f778ba; --um-k-script: #9198a1; --um-k-hook: #f85149; --um-k-board: #d29922;
-  --um-w-calls: #b7bdc8; --um-w-feeds: #4493f8; --um-w-triggers: #ab7df8; --um-w-state: #4d5562; --um-w-guard: #f85149;
+  --um-w-calls: #b7bdc8; --um-w-feeds: #4493f8; --um-w-triggers: #ab7df8; --um-w-state: #59626e; --um-w-guard: #f85149;
   --um-add-bg: rgba(63,185,80,.13); --um-add-tx: #56d364; --um-del-bg: rgba(248,81,73,.12); --um-del-tx: #ff7b72;
   color-scheme: dark;
   }
@@ -58,7 +58,7 @@
   --um-accent: #4493f8; --um-accent-fg: #ffffff; --um-lane: rgba(240,246,252,.025);
   --um-cyan: #4493f8; --um-green: #3fb950; --um-violet: #ab7df8; --um-amber: #d29922; --um-rose: #f85149; --um-orange: #db6d28; --um-slate: #9198a1; --um-fuchsia: #db61a2;
   --um-k-public: #4493f8; --um-k-lane: #2dd4bf; --um-k-ext: #ab7df8; --um-k-verb: #f778ba; --um-k-script: #9198a1; --um-k-hook: #f85149; --um-k-board: #d29922;
-  --um-w-calls: #b7bdc8; --um-w-feeds: #4493f8; --um-w-triggers: #ab7df8; --um-w-state: #4d5562; --um-w-guard: #f85149;
+  --um-w-calls: #b7bdc8; --um-w-feeds: #4493f8; --um-w-triggers: #ab7df8; --um-w-state: #59626e; --um-w-guard: #f85149;
   --um-add-bg: rgba(63,185,80,.13); --um-add-tx: #56d364; --um-del-bg: rgba(248,81,73,.12); --um-del-tx: #ff7b72;
   color-scheme: dark;
 }

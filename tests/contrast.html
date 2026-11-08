@@ -30,8 +30,11 @@ const STATES = { nodes: [{ id: 'a', label: 'Planned service', sublabel: 'not bui
   { id: 'c', label: 'Tones', sublabel: 'badge colours', badges: ['plain', { text: 'green', tone: 'green' }, { text: 'amber', tone: 'amber' }, { text: 'rose', tone: 'rose' }, { text: 'violet', tone: 'violet' }, { text: 'cyan', tone: 'cyan' }], edited: true },
   { id: 'd', label: 'Changed', change: 'modified', kind: 'database' }, { id: 'e', label: 'New', change: 'added', kind: 'external' }],
   edges: [{ from: 'a', to: 'b', label: 'removes' }, { from: 'c', to: 'd', label: 'writes', style: 'dashed' }, { from: 'd', to: 'e' }], views: [{ id: 'v', nodeIds: ['a', 'b', 'c', 'd', 'e'] }] };
+// a line of every kind an edge can name (#45): calls, feeds, triggers, state, guard
+const KINDS = { nodes: ['calls', 'feeds', 'triggers', 'state', 'guard'].flatMap(k => [{ id: k, label: 'From ' + k, kind: 'backend' }, { id: k + '2', label: 'To ' + k, kind: 'database' }]),
+  edges: ['calls', 'feeds', 'triggers', 'state', 'guard'].map(k => ({ from: k, to: k + '2', label: k, kind: k, sublabel: 'over http', weight: k === 'state' ? 2 : 1 })), /* and a sublabel (#44) */ views: [{ id: 'v', nodeIds: ['calls', 'feeds', 'triggers', 'state', 'guard'].flatMap(k => [k, k + '2']) }] };
 try {
-  for (const [name, MODEL] of [['example', EXAMPLE], ['states', STATES]]) for (const theme of ['light', 'dark']) {
+  for (const [name, MODEL] of [['example', EXAMPLE], ['states', STATES], ['line kinds', KINDS]]) for (const theme of ['light', 'dark']) {
     document.documentElement.dataset.theme = theme;
     const el = document.getElementById('m'); el.innerHTML = '';
     const h = render(el, MODEL, { flow: false, controls: false });

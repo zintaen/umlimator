@@ -180,7 +180,7 @@ test("a container's badges are tabs on its top border, right of its title, and t
   assert.equal((f.tabs || []).length, 2);
   assert.ok(t0.x > f.x + 12 + 'Database'.length * 6.7, 'right of the title');
   assert.ok(t1.x > t0.x + t0.w && t1.x + t1.w <= f.x + f.w - 12, 'left to right, inside the box');
-  assert.deepEqual(f.tabs.map(t => [t.text, t.fill]), [['TA-6', 'var(--um-slate)'], ['OWNER: DATA', 'var(--um-violet)']], 'tones as on a card');
+  assert.deepEqual(f.tabs.map(t => [t.text, t.fill]), [['TA-6', 'var(--um-slate)'], ['Owner: data', 'var(--um-violet)']], 'tones as on a card; the text as given, which the sheet upper-cases (#43)');
 });
 
 test('a line to a container takes the sides that face across the wider gap, and ends in line with its other end where the border allows (#39)', () => {
@@ -224,4 +224,59 @@ test('a line that still runs through a card is named in a console.warn (#40)', (
   const warns = [], warn = console.warn; console.warn = w => warns.push(String(w));
   try { layout(m, 'v'); } finally { console.warn = warn; }
   assert.ok(warns.some(w => /edge a-to-c\b.*card "b"/.test(w)), warns.join('\n'));
+});
+
+// #46: a system in context: three people use it, it sends to one outside system, and three outside systems have no line
+const context = (wide = false) => {
+  const card = (id, kind) => ({ id, label: id === 'archive' && wide ? 'Archive of every signed contract since the shop opened' : id[0].toUpperCase() + id.slice(1), kind });
+  return { root: 'v', nodes: [card('shop', 'backend'), card('buyer', 'frontend'), card('clerk', 'frontend'), card('courier', 'frontend'), card('mailer', 'external'),
+      card('ledger', 'external'), card('archive', 'external'), card('printer', 'external')],
+    edges: [{ from: 'buyer', to: 'shop', label: 'uses' }, { from: 'clerk', to: 'shop', label: 'uses' }, { from: 'courier', to: 'shop', label: 'uses' }, { from: 'shop', to: 'mailer', label: 'sends' }],
+    views: [{ id: 'v', nodeIds: ['shop', 'buyer', 'clerk', 'courier', 'mailer', 'ledger', 'archive', 'printer'] }] };
+};
+test('cards with no lines sit in a row of their own under the view: they do not lengthen or widen a column that has lines (#46)', () => {
+  for (const wide of [false, true]) {
+    const m = context(wide), g = layout(m, 'v'), loose = ['ledger', 'archive', 'printer'];
+    const linked = layout({ ...m, views: [{ id: 'v', nodeIds: m.views[0].nodeIds.filter(i => !loose.includes(i)) }] }, 'v'); // the connected part alone
+    const at = id => g.nodes.find(n => n.id === id), bottom = Math.max(...linked.nodes.map(n => n.y + n.h));
+    for (const n of linked.nodes) assert.deepEqual([at(n.id).x, at(n.id).y], [n.x, n.y], `${n.id} keeps its place${wide ? ' (a wide card in the row)' : ''}`);
+    for (const id of loose) assert.ok(at(id).y > bottom, `${id} is under the connected part, not in the sources' column: ${JSON.stringify([at(id).x, at(id).y])}`);
+    assert.equal(new Set(loose.map(id => at(id).y)).size, 1, 'one row');
+    const row = loose.map(at).sort((a, b) => a.x - b.x);
+    assert.ok(row.every((n, k) => !k || n.x >= row[k - 1].x + row[k - 1].w + 24), `apart: ${JSON.stringify(row.map(n => [n.x, n.w]))}`);
+    assert.ok(g.bounds.h <= linked.bounds.h + 108 + 1, `the view keeps the height of its connected part plus one row: ${g.bounds.h} vs ${linked.bounds.h}`);
+    // the row comes from the cards' slots and lines alone, so a view drawn again from the slots it had (render()'s stable
+    // layout across update(), the layout umlimator.py render bakes into a page) is the same picture
+    const again = layout({ ...m, views: [{ ...m.views[0], layout: Object.fromEntries(g.nodes.map(n => [n.id, [n.col, n.row]])) }] }, 'v');
+    assert.deepEqual(again.nodes.map(n => [n.id, n.x, n.y]), g.nodes.map(n => [n.id, n.x, n.y]), 'the same from its own slots');
+  }
+});
+
+test("a line's kind is the kind its edge names: no guess from label words unless the view asks (kindsFromLabels), and a merged line takes the first kind its edges name (#45)", () => {
+  const m = (view = {}, pay = {}) => ({ root: 'v', nodes: [['web', 'Web', 'frontend'], ['api', 'API', 'backend'], ['db', 'Store', 'database'], ['pay', 'Payments', 'external']].map(([id, label, kind]) => ({ id, label, kind })),
+    edges: [{ from: 'web', to: 'api', label: 'calls · 212' }, { from: 'api', to: 'db', label: 'reads, writes · 49' }, { from: 'pay', to: 'api', label: 'triggers · 1', ...pay }, { from: 'api', to: 'pay', label: 'calls · 2', kind: 'calls' }],
+    views: [{ id: 'v', nodeIds: ['web', 'api', 'db', 'pay'], ...view }] });
+  const kinds = g => Object.fromEntries(g.edges.map(e => [`${e.from}>${e.to}`, e.wk]));
+  assert.deepEqual(kinds(layout(m(), 'v')), { 'web>api': 'calls', 'api>db': 'calls', 'pay>api': 'calls' }, 'the default kind whatever the label says; the pair takes the kind one of its edges names');
+  assert.deepEqual(kinds(layout(m({ kindsFromLabels: true }), 'v')), { 'web>api': 'calls', 'api>db': 'state', 'pay>api': 'calls' }, 'the view asks for the guess; a named kind still wins');
+  assert.deepEqual(kinds(layout(m({}, { kind: 'triggers' }), 'v')), { 'web>api': 'calls', 'api>db': 'calls', 'pay>api': 'triggers' }, 'both edges name one: the first in the model');
+  const named = m(); named.edges[1].kind = 'state';
+  assert.equal(kinds(layout(named, 'v'))['api>db'], 'state', 'a kind on an edge wins');
+});
+
+test("an edge's weight (1, 2 or 3) and its sublabel reach the geometry: the line's weight, a label box with a second line, and a column gap that fits it (#44)", () => {
+  const m = (calls = {}, reads = {}) => ({ root: 'v', nodes: [['web', 'Web', 'frontend'], ['api', 'API', 'backend'], ['db', 'Store', 'database']].map(([id, label, kind]) => ({ id, label, kind })),
+    edges: [{ from: 'web', to: 'api', label: 'calls · 2', ...calls }, { from: 'api', to: 'db', label: 'reads, writes · 486', ...reads }], views: [{ id: 'v', nodeIds: ['web', 'api', 'db'] }] });
+  const plain = layout(m(), 'v'), g = layout(m({ weight: 1, sublabel: 'http' }, { weight: 3, sublabel: 'dapper, ef, sql-command, ef-raw, ado' }), 'v');
+  const line = (geo, to) => geo.edges.find(e => e.to === to), at = (geo, id) => geo.nodes.find(n => n.id === id);
+  assert.deepEqual(plain.edges.map(e => e.weight), [1, 1], 'weight 1 by default');
+  assert.deepEqual(g.edges.map(e => e.weight), [1, 3]);
+  const L = line(g, 'db').lbl, L0 = line(plain, 'db').lbl;
+  assert.equal(L.text, 'reads, writes · 486'); assert.equal(L.sub, 'dapper, ef, sql-command, ef-raw, ado');
+  assert.ok(L.h > L0.h && L.w > L0.w, `a taller box, as wide as its longer line: ${JSON.stringify([L, L0])}`);
+  assert.ok(at(g, 'db').x - (at(g, 'api').x + at(g, 'api').w) >= L.w + 54, 'the column gap fits the box with 27 px of line on each side');
+  assert.equal(line(plain, 'db').lbl.sub, undefined);
+  // a line that stands for several edges: the largest weight, every sublabel; a weight that is not 2 or 3 is 1
+  const both = layout({ ...m({}, { weight: 2, sublabel: 'ef' }), edges: [...m({}, { weight: 2, sublabel: 'ef' }).edges, { from: 'db', to: 'api', label: 'notifies', weight: 3, sublabel: 'triggers' }, { from: 'web', to: 'db', weight: 7 }] }, 'v');
+  assert.deepEqual([line(both, 'db').weight, line(both, 'db').lbl.sub, both.edges.find(e => e.from === 'web' && e.to === 'db').weight], [3, 'ef / triggers', 1]);
 });

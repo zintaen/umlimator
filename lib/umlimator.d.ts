@@ -13,15 +13,44 @@ export interface MapModel {
 }
 /** A badge: its text, and optionally a palette name for its colour (green, amber, rose, accent, violet ... : --um-<tone>). */
 export type Badge = string | { text: string; tone?: string };
-export interface MapNode { id: string; label?: string; kind?: string; sublabel?: string; badge?: string; badges?: Badge[]; edited?: boolean; icon?: string; verbs?: string[]; opensView?: string; [key: string]: unknown }
+export interface MapNode {
+  id: string; label?: string; kind?: string; sublabel?: string; badge?: string; badges?: Badge[]; edited?: boolean; icon?: string; verbs?: string[];
+  /** The view this card opens. It may name a view the host has not loaded yet: the card still looks stacked, and
+   *  double-click, Enter on the selected card and a click on its ⤢ badge emit `open` with that id; the map goes in once
+   *  the view is in the model (the host loads it, calls update(), then setView(), or calls update() in its open handler). */
+  opensView?: string;
+  /** The number on the ⤢ badge of a card whose view is not loaded yet (else ⤢ alone). A loaded view's cards are counted. */
+  opensCount?: number;
+  [key: string]: unknown;
+}
+/** What a line means, drawn as its colour: calls (the default), feeds (hands work on), triggers (suggests, offers, fires),
+ *  state (reads or writes a file, board or config: a thinner line, a muted label, no flow) and guard (a hook steps in).
+ *  Colours are --um-w-<kind>. An edge's `style` (emphasis, dashed, security) wins over its kind's colour. */
+export type WireKind = 'calls' | 'feeds' | 'triggers' | 'state' | 'guard';
 /** from / to: a card's id, or a container's id in the view (the line ends on its box's border). */
-export interface MapEdge { id?: string; from: string; to: string; label?: string; edited?: boolean; [key: string]: unknown }
+export interface MapEdge {
+  id?: string; from: string; to: string; label?: string; edited?: boolean;
+  /** The line's kind (default calls). A line that stands for several edges (A→B and B→A, parallel edges) takes the first
+   *  kind they name, in model order. Nothing is guessed from the label unless the view has `kindsFromLabels`. */
+  kind?: WireKind;
+  /** How much the line stands for, drawn as its width: 1 (the default), 2 or 3 (about 1.8, 3.2 and 4.5 px), the arrowhead and
+   *  hit line growing with it. The host picks the bucket (say under 10, under 100, 100 or more relations); anything else is 1.
+   *  A line that stands for several edges takes the largest. */
+  weight?: 1 | 2 | 3;
+  /** A second, smaller line under the label (a technology, say), placed with it and counted in the room left for labels.
+   *  Shown only with a label. A line that stands for several edges shows each of their sublabels, joined by " / ". */
+  sublabel?: string;
+  [key: string]: unknown;
+}
 export interface MapView {
   id: string; parent?: string | null; title?: string; nodeIds: string[];
   edges?: (string | MapEdge)[]; layout?: Record<string, [number, number]>; repair?: boolean;
   /** Cards 80 px tall that show their sub-line and then their chips (`verbs`) on a third line. Default: 64 px, and a card's
    *  chips take its sub-line's place. A script card (no kind) shows no sub-line either way. */
   subAndChips?: boolean;
+  /** Guess a line's kind from the words of its label ("reads" is state, "triggers" is triggers ...) when its edges name
+   *  none. Off in render() and layout(), which draw no legend; the standalone page (mountPage) always guesses. */
+  kindsFromLabels?: boolean;
   containers?: { id: string; label?: string; nodeIds?: string[]; parent?: string; badges?: Badge[] }[];   // badges: tabs on the box's border
   [key: string]: unknown;
 }
@@ -36,9 +65,9 @@ export type Ref =
   | { type: 'badge'; container: string; index: number; value: string; view: string };   // a container's badge
 
 export interface Events {
-  click: { target: Ref; event: MouseEvent; preventDefault(): void };   // preventDefault(): the selection stays as it was (no select)
+  click: { target: Ref; event: MouseEvent | KeyboardEvent; preventDefault(): void };   // preventDefault(): the selection stays as it was (no select); Enter on a focused tab is a click (KeyboardEvent)
   select: { target: Ref | null; targets: Ref[] };          // a chip or badge selects its card (a container's badge: its box); targets: every selected thing, the latest last
-  open: { target: Ref; view: string; preventDefault(): void };
+  open: { target: Ref; view: string; preventDefault(): void };   // view: the one the card opens, which may not be in the model yet
   viewchange: { view: string; from: string };
   change: Change;                                           // only with `editable`
 }
@@ -83,9 +112,9 @@ export interface Handle {
   toSVG(options?: ExportOptions): string;
   /** The same picture as a PNG Blob, drawn on a canvas in the browser (default scale 2). null when there is nothing to draw. */
   toPNG(options?: ExportOptions): Promise<Blob | null>;
-  /** Puts keyboard focus on the card `ref` names (a chip or badge: its card), by default the selected card, else on the
-   *  map. The map's element delegates focus too: `host.focus()`, as a dialog does when it gives focus back, lands on
-   *  the selected card. */
+  /** Puts keyboard focus on the card or line `ref` names (a chip or badge: its card), by default the selected one, else on
+   *  the map. The map's element delegates focus too: `host.focus()`, as a dialog does when it gives focus back, lands on
+   *  the selected card or line. */
   focus(ref?: Ref | null): void;
   on<K extends keyof Events>(type: K, fn: (e: Events[K]) => void): () => void;
   readonly view: string | null;
@@ -96,7 +125,8 @@ export interface Handle {
 
 export interface Geometry {
   nodes: { id: string; x: number; y: number; w: number; h: number; [key: string]: unknown }[];
-  edges: { from: string; to: string; ids: string[]; pts: [number, number][]; lbl: { x: number; y: number; w: number; h: number; text: string } | null; [key: string]: unknown }[];
+  edges: { from: string; to: string; ids: string[]; pts: [number, number][]; weight: 1 | 2 | 3; wk: WireKind;
+    lbl: { x: number; y: number; w: number; h: number; text: string; sub?: string } | null; [key: string]: unknown }[];
   bounds: { x: number; y: number; w: number; h: number };
   [key: string]: unknown;
 }

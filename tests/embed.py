@@ -67,5 +67,10 @@ for page in ("tests/embed.html", "tests/edit.html", "tests/contrast.html"):
 demo = dom("examples/edit.html", lambda t: 'class="umlimator"' in t)
 print(("ok  " if 'class="umlimator"' in demo else "FAIL"), "examples/edit.html · the editing demo draws its map")
 failed |= 'class="umlimator"' not in demo
+# the standalone page (mountPage) shows a legend, so it still names line kinds from label words: "reads metrics" is state
+page = dom("examples/bookshop.html", lambda t: 'class="lgi"' in t)
+legend = "<b>calls</b>" in page and "<b>state</b>" in page
+print(("ok  " if legend else "FAIL"), "examples/bookshop.html · the standalone page's legend names the kinds it reads from labels (calls, state)")
+failed |= not legend
 server.shutdown()
 sys.exit(1 if failed else 0)

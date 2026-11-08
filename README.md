@@ -113,13 +113,22 @@ the reason for each of the 40 patches and stay in the git history). The engine t
     around the cards would run along another line widen, and the view is laid out once more. A line still without a
     route goes around the cards (it was a plain elbow through them, which read as a connection), and one that still
     crosses a card is named in a console warning.
+14. Cards with no lines sit in a row of their own under the view, one per column; one wider than its column does not
+    widen it. They stacked in the first column with the sources, which made it tall and sent the lines around it.
+15. A line's colour is the kind its edge names (`kind`). Upstream guessed it from words in the label; the standalone page
+    still does, as its legend says what the colours mean, but an embedded map (`render()`) draws no legend.
 
 `render` skips upstream's layout search when every view already has a layout, and fails when the check did not
 complete instead of reporting no problems.
 
-Model fields umlimator adds: a node's `badge`, `icon` and `noSub` (name only, description in the panel); a view's
-`gap`, `rgap`, `keepPairs`, `repair` (`false`: no port repair) and `subAndChips` (`true`: cards 80 px tall show their sub-line,
-then their chips; by default chips take the sub-line's place); an edge's `fromSide` and `toSide`; a node's `badges` (several,
+Model fields umlimator adds: a node's `badge`, `icon`, `noSub` (name only, description in the panel), `opensView` naming
+a view the host has not loaded yet (in an embed; the CLI's validator wants every view) and `opensCount` (the ⤢ number
+for it); a view's
+`gap`, `rgap`, `keepPairs`, `repair` (`false`: no port repair), `subAndChips` (`true`: cards 80 px tall show their sub-line,
+then their chips; by default chips take the sub-line's place) and `kindsFromLabels` (`true`: a line whose edges name no
+`kind` takes one guessed from its label's words, as the standalone page always does); an edge's `kind` (what its line
+means, drawn as its colour: `calls`, the default, `feeds`, `triggers`, `state` or `guard`), `weight` (1, 2 or 3: how much
+the line stands for, drawn as its width), `sublabel` (a second, smaller line under its label), `fromSide` and `toSide`; a node's `badges` (several,
 each a string or `{text, tone}`) and a node's or edge's `edited` (draws a marker); a container's `badges` (tabs on its box's border, each a
 click target); an edge's `from` or `to` may name a container of the view, and its line then ends on the box's border.
 
@@ -160,7 +169,8 @@ function MapView({ model, onSelect }) {
 ```
 
 `render` draws one view at a time into a shadow root inside the element (give the element a height), keyboard and
-screen-reader friendly (cards are named buttons; arrows move between them; selections are announced), with drill-down
+screen-reader friendly (cards are named buttons, then lines, in the Tab order; arrows move between cards; a card's tabs
+take focus when the host listens for `click`; selections are announced), with drill-down
 into inner views, pan and zoom, and events for every card, line, container and chip, each named by ids from the model.
 `layout(model, viewId)` returns a view's geometry without a DOM (Node works too). Colours are `--um-*` CSS variables
 (defaults in `lib/umlimator-theme.css`; set them on any ancestor, light or dark as the host decides), fonts are the
