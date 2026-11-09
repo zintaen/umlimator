@@ -19,7 +19,7 @@ tests/pieces.html: the standalone page's pieces in render() (#99): views list, l
 examples/edit.html, embed.html, live.html, playground.html, ask.html, replay.html, timelapse.html, drift.html, element.html: the host pages load and draw.
 Each test page reports in <pre id="result">{"ok": [...], "fail": [...]}</pre>.
 """
-import functools, html, http.server, importlib.util, json, re, subprocess, sys, tempfile, threading, time
+import functools, html, html.parser, http.server, importlib.util, json, re, subprocess, sys, tempfile, threading, time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -93,9 +93,34 @@ print(("ok  " if "Drawn: " in demo else "FAIL"), "examples/element.html · the e
 failed |= "Drawn: " not in demo
 # the standalone page (mountPage) shows a legend, so it still names line kinds from label words: "reads metrics" is state
 
-page = dom("examples/bookshop.html", lambda t: 'class="lgi"' in t)
-legend = "<b>calls</b>" in page and "<b>state</b>" in page
-print(("ok  " if legend else "FAIL"), "examples/bookshop.html · the standalone page's legend names the kinds it reads from labels (calls, state)")
+
+class Legend(html.parser.HTMLParser):
+    """The names the page's drawn legend shows (<div id="m-legend"> ... <b>name</b>), read from its elements: the parser takes
+    a script's text as data, so the module's source, which the page inlines and which has the legend's markup, is not read
+    as the legend (#113)"""
+    def __init__(self, page):
+        super().__init__(); self.divs, self.b, self.names = 0, None, []; self.feed(page)
+
+    def handle_starttag(self, tag, attrs):
+        if tag == "div" and (self.divs or dict(attrs).get("id") == "m-legend"):
+            self.divs += 1
+        elif tag == "b" and self.divs:
+            self.b = ""
+
+    def handle_endtag(self, tag):
+        if tag == "div" and self.divs:
+            self.divs -= 1
+        elif tag == "b" and self.b is not None:
+            self.names.append(self.b.strip()); self.b = None
+
+    def handle_data(self, data):
+        if self.b is not None:
+            self.b += data
+
+
+names = Legend(dom("examples/bookshop.html", lambda t: bool(Legend(t).names))).names  # waits for the legend itself; none if it never draws
+legend = {"calls", "state"} <= set(names)
+print(("ok  " if legend else "FAIL"), "examples/bookshop.html · the standalone page's legend names the kinds it reads from labels (calls, state)", "" if legend else names)
 failed |= not legend
 # the layout check of a page umlimator.py renders: a view that keeps A→B and B→A apart (keepPairs) draws the return line
 # right to left, as it should; the check does not count it against the view

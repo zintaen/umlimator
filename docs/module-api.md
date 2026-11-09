@@ -1291,3 +1291,11 @@ fix changes the page slightly: one wrapper in the details panel's markup, and ho
   and an origin added, and the helpdesk assistant) and on `examples/bookshop.html`, in a frame, in light and dark.
 - **Left out:** the map itself is unchanged. Its step and lane numbers are white on the accent too, which is 3.1:1 in
   dark; the palette's contrast check (`tests/contrast.html`) measures text over boxes only, so it doesn't see them.
+
+### The legend check waits for the drawn legend (#113)
+
+- **The wait could pass on the page's script.** `tests/embed.py` waited (#85) until the page's markup had `class="lgi"`,
+  which the module's own source, inlined in the page, always has. So it read the page before the legend was drawn.
+- **Now:** a small HTML parser reads the names in the drawn legend element (`#m-legend`), taking a script's text as text.
+  The wait asks for the legend to have names, and the check wants calls and state among them; a page that never draws
+  its legend fails it.
