@@ -73,6 +73,21 @@ try {
   const h3 = render(el2, BIKE, { view: 'system', editable: true });
   check('off in an editable map: an edit names the model\'s own views and boxes', h3.expand('trips') === false);
   h3.destroy();
+
+  // #98: a second card unfolds without drawing the first again, and either can fold first. Each card is drawn once, as a
+  // card or as the box it unfolded into, on the map, in the minimap and in the export
+  const SHOP = await (await fetch('../bench/models/u21.json')).json(), h4 = render(el2, SHOP, { view: 'shop', minimap: true });
+  const sr4 = el2.querySelector('.umlimator').shadowRoot, folded = SHOP.views.find(v => v.id === 'shop').nodeIds;
+  const drawn = root => [...root.querySelectorAll('.node')].map(g => g.getAttribute('data-id')).concat([...root.querySelectorAll('.family')].map(g => g.getAttribute('data-family'))).sort();
+  const once = () => { const map = drawn(sr4), out = drawn(new DOMParser().parseFromString(h4.toSVG(), 'image/svg+xml'));
+    return new Set(map).size === map.length && JSON.stringify(out) === JSON.stringify(map) && folded.every(id => map.includes(id))
+      && sr4.querySelectorAll('.minimap svg rect').length === sr4.querySelectorAll('.node').length + 1; };
+  for (const [a, b, first] of [['orders', 'warehouse', 'orders'], ['warehouse', 'orders', 'orders']]) {
+    const steps = [h4.expand(a) && once(), h4.expand(b) && once() && h4.expanded.join() === `${a},${b}`];
+    steps.push(h4.collapse(first) && once(), h4.collapse(first === a ? b : a) && once() && !h4.expanded.length && drawn(sr4).join() === [...folded].sort().join());
+    check(`#98: unfold ${a}, then ${b}, fold ${first} first: every card drawn once, minimap and export too`, steps.every(Boolean), steps);
+  }
+  h4.destroy();
 } catch (err) {
   out.fail.push('threw: ' + (err && err.stack || err));
 }

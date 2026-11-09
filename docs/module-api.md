@@ -791,6 +791,10 @@ the box keeps that view's run order.
 - **Numbers on cards:** a step between the card itself and a card inside has no line, since the card is the box now; and
   a numbered view drawn around one card (its hub) shows the hub's steps on the cards they reach. Those numbers go on the
   card inside, as a hub view draws them (`1`, `2·3`, `4+`).
+- **Under a numbered card:** when the card shows a number of its own (a process view's step, or a number an unfolded
+  numbered view put on it), the inner steps are numbered under it: weather's Forecast stage is step 4, so its steps are
+  4.1 to 4.4. On a card with no number, or with several (`2·3`), they stay 1, 2, 3. A number longer than two characters
+  gets a pill on its line instead of the circle.
 - **Lanes:** a hub view's boxed lanes come along as boxes inside the box, named and in their order, left to right in the
   hub's columns, with the hub before them when it is a card inside. A labelled line into a lane gets room for both
   borders it crosses.
@@ -803,3 +807,15 @@ the box keeps that view's run order.
   unfold, and CI checks them with `--expand`. `bench/models/s16.json`, a made-up print shop, has a numbered view with
   lanes around its own card and one with a loop back (`"benchViews": ["site+job", "site+pay", "site+job+pay"]`), which
   `tests/unfold.test.mjs` checks too.
+
+### A second unfolded card no longer draws the first one again (#98)
+
+Unfolding a card whose inner view lists a card that is already unfolded on the view drew that card a second time: as a
+card inside the new box, and as its own box (u21's `shop`: Order service, then Warehouse service).
+
+- **The fix:** a card unfolded on this view is still this view's, drawn as its box. So it is the new box's neighbour, not
+  one of its cards, and a card counts as unfoldable only for cards of its own that this view shows neither as cards nor as
+  boxes.
+- **Tests:** `tests/unfold.test.mjs` unfolds the two cards in both orders. `tests/unfold.html` also folds them back,
+  first-unfolded first and last-unfolded first, and checks that every card is drawn once, as a card or as its box, on the
+  map, in the minimap and in the SVG export.

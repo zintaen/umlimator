@@ -94,6 +94,29 @@ test("a numbered view drawn around the card brings its lanes as boxes, in order,
   assert.deepEqual(check(PRINT, 'site', { expand: ['job', 'pay'] }).map(i => i.message), []);
 });
 
+test('on a numbered card, a numbered view unfolds under its number: 4.1, 4.2; elsewhere it keeps 1, 2 (#82)', () => {
+  const weather = read('../examples/weather.json'), g = layout(weather, 'stages', { expand: ['st-forecast'] }), card = id => g.nodes.find(n => n.id === id);
+  assert.deepEqual(['warehouse', 'api', 'alerts'].map(i => card(i).step), ['4.1', '4.2', '4.3'], 'the Forecast stage is step 4 of the process');
+  const pushes = g.edges.find(e => e.from === 'alerts' && e.to === 'app');
+  assert.ok(pushes.step === '4.4' && pushes.lbl.step === '4.4' && pushes.lbl.sw > 16, 'a longer number gets a wider mark on its line');
+  assert.equal(card('st-publish').step, 5, "the process's own steps keep theirs");
+  const m = { nodes: [{ id: 'a', label: 'Asker' }, { id: 'b', label: 'Builder', opensView: 'b' }, { id: 'b1', label: 'Planner' }, { id: 'b2', label: 'Runner', opensView: 'b2' }, { id: 'c1', label: 'Fetcher' }, { id: 'c2', label: 'Writer' }],
+    views: [{ id: 'top', nodeIds: ['a', 'b'], edges: [{ from: 'a', to: 'b', label: 'asks' }] },
+      { id: 'b', parent: 'top', render: 'sequence', nodeIds: ['b', 'b1', 'b2'], edges: [{ from: 'b', to: 'b1', label: 'plans' }, { from: 'b', to: 'b2', label: 'runs' }] },
+      { id: 'b2', parent: 'b', render: 'sequence', nodeIds: ['b2', 'c1', 'c2'], edges: [{ from: 'b2', to: 'c1', label: 'fetches' }, { from: 'c1', to: 'c2', label: 'writes' }] }] };
+  const n = layout(m, 'top', { expand: ['b', 'b2'] });
+  assert.deepEqual([...n.nodes.map(x => x.step ?? null), ...n.edges.map(e => e.step ?? null)], [null, '1', '2.1', null, null, '2.2'], 'Runner, step 2 of Builder, numbers its own under 2');
+});
+
+test('a second card unfolds without drawing the first again, in either order (#98)', () => {
+  for (const cards of [['orders', 'warehouse'], ['warehouse', 'orders']]) {
+    const g = layout(SHOP, 'shop', { expand: cards }), ids = g.nodes.map(n => n.id), boxes = g.families.map(f => f.id);
+    assert.deepEqual(g.unfolded, cards);
+    assert.equal(new Set([...ids, ...boxes]).size, ids.length + boxes.length, `${cards}: each card once, as a card or as its box`);
+    assert.ok(!g.families.find(f => f.id === 'warehouse').nodeIds.includes('orders') && !g.families.find(f => f.id === 'orders').nodeIds.includes('warehouse'));
+  }
+});
+
 test('unfolding leaves the model alone and lays out the same every time', () => {
   const before = JSON.stringify(SHOP), a = layout(SHOP, 'shop', { expand: ['orders'] }), b = layout(SHOP, 'shop', { expand: ['orders'] });
   assert.equal(JSON.stringify(SHOP), before);
