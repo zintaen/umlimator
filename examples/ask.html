@@ -1,0 +1,82 @@
+<!doctype html>
+<!-- Ask the map: questions about bike share's Trip service, each answered in words, with the cards and lines it is about lit
+     (highlight(), from paths() and reach()) and a flow played as a tour (tour()). The answers here are written by hand;
+     "What an AI model would get" below shows the text describe() gives a model to choose them itself (docs/module-api.md).
+     Serve the repository over HTTP to open it: python3 -m http.server  then  http://localhost:8000/examples/ask.html -->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>umlimator: ask the map</title>
+<link rel="stylesheet" href="../lib/umlimator-theme.css">
+<style>
+  body { margin: 0; display: grid; grid-template-rows: auto minmax(0, 1fr); height: 100dvh; background: var(--um-bg);
+    color: var(--um-text); font: 14px/1.5 var(--um-sans); }
+  header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; padding: 8px 16px; border-bottom: 1px solid var(--um-border); font-size: 13px; }
+  header p { margin: 0; color: var(--um-muted); }
+  main { display: grid; grid-template-columns: minmax(0, 1fr) 340px; min-height: 0; }
+  #map { min-height: 0; }
+  aside { border-left: 1px solid var(--um-border); padding: 14px 16px; overflow: auto; display: flex; flex-direction: column; gap: 12px; }
+  #questions { display: flex; flex-direction: column; gap: 6px; }
+  #questions button { text-align: left; font: inherit; color: var(--um-text); background: var(--um-panel); border: 1px solid var(--um-border-2);
+    border-radius: 8px; padding: 7px 10px; cursor: pointer; }
+  #questions button[aria-pressed="true"] { border-color: var(--um-accent); color: var(--um-accent); }
+  #answer { white-space: pre-line; margin: 0; }
+  details { color: var(--um-muted); font-size: 13px; } pre { white-space: pre-wrap; font: 12px/1.5 var(--um-mono); }
+  @media (max-width: 820px) { main { grid-template-columns: 1fr; grid-template-rows: minmax(320px, 1fr) auto; } aside { border-left: 0; border-top: 1px solid var(--um-border); } }
+</style>
+<header>
+  <b>Ask the map</b>
+  <p>Bike share's Trip service. Each answer lights what it's about; a flow plays as a tour.</p>
+</header>
+<main>
+  <div id="map"></div>
+  <aside>
+    <div id="questions" role="group" aria-label="Questions">
+      <button data-q="charge" aria-pressed="false">How does a ride get charged?</button>
+      <button data-q="pricing" aria-pressed="false">What stops if Pricing is down?</button>
+      <button data-q="lifecycle" aria-pressed="false">What does the trip lifecycle set off?</button>
+      <button data-q="describe" aria-pressed="false">Describe this view</button>
+    </div>
+    <p id="answer" aria-live="polite"></p>
+    <details><summary>What an AI model would get</summary><pre id="context"></pre></details>
+  </aside>
+</main>
+<script type="module">
+import { render, describe, paths, reach } from '../lib/umlimator.js';
+import { withIcons } from './icons.js';
+
+const model = await withIcons(await (await fetch('bike-share.json')).json()), view = 'trips';
+const map = render(document.getElementById('map'), model, { view });
+const name = id => model.nodes.find(n => n.id === id).label;
+const list = xs => xs.length < 3 ? xs.join(' and ') : xs.slice(0, -1).join(', ') + ' and ' + xs.at(-1);
+const around = refs => refs.filter(r => r.type === 'node' && r.distance > 0).map(r => name(r.id));   // reach() puts the card itself first, at 0
+
+// each answer: its words, what it lights, and the tour it plays (a host with an AI model gets these from the model)
+const ANSWERS = {
+  charge() {
+    map.highlight([...paths(model, view, 'rider-app', 'payments'), ...paths(model, view, 'fare', 'pricing')]);
+    map.tour(['rider-app', 'trip-api', 'lifecycle', 'fare', 'payments']);
+    return 'The Rider app ends the ride through the Trip API. Trip lifecycle closes it and passes it to the Fare calculator, which gets the price from Pricing and charges the rider through the Payment provider.';
+  },
+  pricing() {
+    const refs = reach(model, view, 'pricing', { backward: true });
+    map.highlight(refs); map.tour(null);
+    return `${list(around(refs))} call into Pricing, one through the next: each would stall. The nearer to Pricing, the brighter.`;
+  },
+  lifecycle() {
+    const refs = reach(model, view, 'lifecycle');
+    map.highlight(refs); map.tour(null);
+    return `When a ride moves on, Trip lifecycle sets off ${list(around(refs))}.`;
+  },
+  describe() { map.highlight(null); map.tour(null); return describe(model, view); },
+};
+const answer = document.getElementById('answer');
+document.getElementById('questions').addEventListener('click', e => {
+  const b = e.target.closest('[data-q]'); if (!b) return;
+  document.querySelectorAll('[data-q]').forEach(x => x.setAttribute('aria-pressed', x === b));
+  answer.textContent = ANSWERS[b.dataset.q]();
+});
+document.getElementById('context').textContent = `describe(model, '${view}'):\n\n${describe(model, view)}\n\n`
+  + 'It answers in JSON: { "text": "...", "light": ["card ids"], "tour": ["card ids, in order along lines"] }\n'
+  + 'and the page calls highlight() with those cards and the lines between them, then tour().';
+window.map = map;
+</script>
