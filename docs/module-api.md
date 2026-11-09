@@ -511,9 +511,9 @@ A stacked card can open into a box on the map it is on, instead of switching to 
 - **Places:** the box takes the card's place. Later columns move right by its width and the cards under it in its column
   move down by its height, so the cards before it stay put and the rest keep their order; a box of this view that would
   reach into it moves down whole. Inside, the inner view's columns or this view's own reading order, with rows packed,
-  upside down or level with the neighbours: each is routed and the one the layout check scores best is kept (up to 13
-  routings; an inner view with boxes, or over 30 cards, keeps its own slots). A hub view has no columns to keep, and is
-  laid out again.
+  upside down or level with the neighbours: each is routed and the one the layout check scores best is kept (up to 7
+  routings; an inner view with boxes keeps its own slots, and a view of over 30 cards takes them at once). A hub view has
+  no columns to keep, and is laid out again.
 - **What doesn't:** a numbered (sequence) view, shown or opened, since its run order (numbers, lanes) would move or be
   lost, so that card opens; and an editable map, where an edit names the model's own views and boxes.
 - **Gestures:** E on a stacked card (focused or selected) unfolds it and puts focus on the first card inside; E on a card

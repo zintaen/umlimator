@@ -7,6 +7,7 @@ tests/embed.html: render() events, references, update(), destroy(), colours, bad
 tests/edit.html: editing gestures and the change events they emit.
 tests/contrast.html: the default palette against WCAG AA, light and dark.
 tests/unfold.html: unfolding a stacked card in place (#71): the handle, E and Alt + click, the expand event.
+tests/unfold-page.html: the same in the standalone page (mountPage): its details button, E from the page.
 examples/edit.html, embed.html, live.html, playground.html: the host pages load and draw.
 Each test page reports in <pre id="result">{"ok": [...], "fail": [...]}</pre>.
 """
@@ -55,7 +56,7 @@ def dom(path, done):
 
 
 failed = False
-for page in ("tests/embed.html", "tests/edit.html", "tests/contrast.html", "tests/unfold.html"):
+for page in ("tests/embed.html", "tests/edit.html", "tests/contrast.html", "tests/unfold.html", "tests/unfold-page.html"):
     t = dom(page, lambda t: 'id="result"' in t)
     if "<title>" not in t:  # Chrome gave back no page at all (a rare headless hang on CI runners): once more
         print(f"note {page}: Chrome returned nothing; running it again"); t = dom(page, lambda t: 'id="result"' in t)

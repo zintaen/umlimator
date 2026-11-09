@@ -1,5 +1,5 @@
 {
- "commit": "a4f8ba8",
+ "commit": "d23df8f",
  "results": {
   "b10/norepair": {
    "hashes": [
@@ -69,6 +69,56 @@
   "r19/plain": {
    "hashes": [
     "c54657ba"
+   ]
+  },
+  "u21/catalog": {
+   "hashes": [
+    "87be2816"
+   ]
+  },
+  "u21/checkout": {
+   "hashes": [
+    "8ed08f1"
+   ]
+  },
+  "u21/orders": {
+   "hashes": [
+    "20389a3e"
+   ]
+  },
+  "u21/shop": {
+   "hashes": [
+    "8cdf4145"
+   ]
+  },
+  "u21/shop+orders": {
+   "hashes": [
+    "a661cc58"
+   ]
+  },
+  "u21/shop+orders+o-checkout": {
+   "hashes": [
+    "1924d6d5"
+   ]
+  },
+  "u21/shop+warehouse": {
+   "hashes": [
+    "97cb9888"
+   ]
+  },
+  "u21/teams": {
+   "hashes": [
+    "66f78b41"
+   ]
+  },
+  "u21/teams+orders": {
+   "hashes": [
+    "6a6093d8"
+   ]
+  },
+  "u21/warehouse": {
+   "hashes": [
+    "8cf7e625"
    ]
   }
  }

@@ -1,0 +1,31 @@
+<!doctype html>
+<!-- The standalone page (mountPage) unfolding a stacked card in place (#71): the details panel's button and E from the
+     page. tests/embed.py opens this in headless Chrome and reads <pre id="result">. -->
+<meta charset="utf-8">
+<link rel="icon" href="data:,">
+<title>umlimator page unfold test</title>
+<body>
+<div id="app"></div>
+<script type="module">
+import { mountPage } from '../lib/umlimator.js';
+const BIKE = await (await fetch('../examples/bike-share.json')).json();
+const out = { ok: [], fail: [] };
+const check = (name, cond, info) => { document.title = name; if (cond) out.ok.push(name); else out.fail.push(name + (info === undefined ? '' : ': ' + JSON.stringify(info))); };
+try {
+  location.hash = '#view=system';
+  const h = mountPage(document.getElementById('app'), BIKE, { instant: true });
+  h.select({ type: 'node', id: 'trips' });
+  const b = document.querySelector('#m-panel [data-unfold]');
+  check("a stacked card that can unfold has an Unfold here button in its details", !!b);
+  b.click();
+  check('the button unfolds it in place', JSON.stringify(h.expanded) === '["trips"]' && !!document.querySelector('#m-canvas .umlimator').shadowRoot.querySelector('.family[data-family="trips"]'));
+  document.dispatchEvent(new KeyboardEvent('keydown', { key: 'e', bubbles: true }));
+  check('E from anywhere on the page folds the selected box back', h.expanded.length === 0 && h.selection && h.selection.id === 'trips', h.expanded);
+  h.select({ type: 'node', id: 'payments' });
+  check('a card with no view of its own has no such button', !document.querySelector('#m-panel [data-unfold]'));
+  check('the keys box lists E', /E · Alt \+ click/.test(document.getElementById('m-helpbox').textContent));
+} catch (err) {
+  out.fail.push('threw: ' + (err && err.stack || err));
+}
+const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
+</script>
