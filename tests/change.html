@@ -46,6 +46,11 @@ try {
   await wait(1400);
   check('an ease ends by itself after its time, leaving no styles behind', !sr.querySelector('.um-leaving') && ![...sr.querySelectorAll('.node, .edge-g, .e-lab')].some(g => g.getAttribute('style')));
   h.destroy();
+  const hq = render(el, v1, { stableLayout: false, ease: false }), sq = el.querySelector('.umlimator').shadowRoot, back3 = motion(true);
+  try { hq.update(v2); } finally { back3(); }
+  check('the option ease: false draws the next model at once, with motion allowed', !!sq.querySelector('.node[data-id="d"]') && !sq.querySelector('.um-leaving')
+    && ![...sq.querySelectorAll('.node, .edge-g, .e-lab')].some(g => g.style.transition));
+  hq.destroy();
 
   // diff's marks, as the map draws them: NEW, CHANGED and REMOVED tabs, an added line flowing, a removed one dashed
   const next = structuredClone(bike), sys = next.views.find(v => v.id === 'system');

@@ -73,7 +73,8 @@ function MapView({ model, onSelect }) {
 - `editable: true` turns on editing gestures ([docs/editing.md](docs/editing.md); `examples/edit.html` is a working host).
 - `diff(before, after)` returns `after` with each card and line marked added, changed or removed, what changed in words,
   and the views that show it; `drift(model, observed)` marks the lines traffic ran on that nobody drew, and the drawn ones
-  that carried nothing. Both are models to draw, in Node too. `update()` eases into the next model (`examples/timelapse.html`).
+  that carried nothing. Both are models to draw, in Node too. `update()` eases into the next model (`examples/timelapse.html`);
+  the option `ease: false` draws it at once.
 - `mountPage` is the whole standalone viewer that the CLI writes.
 
 The API, its types and the decisions behind it: [docs/module-api.md](docs/module-api.md) and `lib/umlimator.d.ts`.

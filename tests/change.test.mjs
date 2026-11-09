@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { diff, drift, validate } from '../lib/umlimator.js';
+import { diff, drift, validate, layout } from '../lib/umlimator.js';
 
 const bike = JSON.parse(readFileSync(new URL('../examples/bike-share.json', import.meta.url)));
 // a made-up pull request on the bike share: a queue between Trips and Payments, a rename, a card gone, a line relabelled
@@ -79,4 +79,21 @@ test('drift() brings in the lines traffic ran on but nobody drew, fades the draw
   assert.deepEqual(r.views, ['system']);
   assert.deepEqual(validate(r.model), []);
   assert.deepEqual(drift(bike, [{ from: 'trips', to: 'pricing' }]).counts.carried, 1, 'a plain list, without counts');
+});
+
+test('a line that stands for several edges shows the strongest of their marks, and fades only when all of them are idle', () => {
+  const ab = (a, b) => ({ nodes: [{ id: 'a', label: 'A' }, { id: 'b', label: 'B' }], edges: [{ id: 'ab', from: 'a', to: 'b', ...a }, { id: 'ba', from: 'b', to: 'a', ...b }],
+    views: [{ id: 'v', nodeIds: ['a', 'b'] }] });
+  const line = m => { const g = layout(m, 'v'); assert.equal(g.edges.length, 1, 'A→B and B→A draw as one line'); return g.edges[0]; };
+  assert.equal(line(ab({}, { style: 'added' })).style, 'added', 'added wins over a plain first edge');
+  assert.equal(line(ab({ style: 'added' }, { style: 'removed' })).style, 'removed', 'removed wins over added');
+  assert.equal(line(ab({ edited: true }, { style: 'security', drift: 'undrawn' })).style, 'security', 'undrawn wins over changed');
+  const both = line(ab({ edited: true, change: 'changed' }, { style: 'added' }));
+  assert.deepEqual([both.style, both.strong], ['added', true], 'added wins over changed, whose dot it hides');
+  assert.equal(line(ab({ style: 'faded', drift: 'idle' }, {})).style, undefined, 'one edge idle, one not: not faded');
+  assert.equal(line(ab({ style: 'faded', drift: 'idle' }, { style: 'faded', drift: 'idle' })).style, 'faded', 'both idle: faded');
+  assert.equal(line(ab({ style: 'faded' }, { style: 'emphasis' })).style, 'emphasis', 'a style that is no mark, when not all are idle');
+  // drift counts model edges: here 1 idle edge, drawn inside a line that carried traffic, so no line fades
+  const r = drift(ab({}, {}), [{ from: 'a', to: 'b', count: 5 }, { from: 'b', to: 'a', count: 0 }]);
+  assert.deepEqual([r.counts.carried, r.counts.idle, line(r.model).style], [1, 1, undefined]);
 });

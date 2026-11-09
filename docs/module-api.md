@@ -513,12 +513,18 @@ another three. Auto-layout now lays those out as it does lines between neighbour
   - A drawn line between two cards that traffic reached, but that carried none, fades: the new line style `faded`
     keeps its kind's colour, faint, with no flow (`drift: "idle"`). Lines to a card no traffic reached are left as they
     are, and counted as not judged.
-  - `counts`: `carried`, `undrawn`, `idle`, `unknown`, and `unmatched` services with no card.
+  - `counts`: `carried`, `undrawn`, `idle`, `unknown`, and `unmatched` services with no card. The counts are of model
+    edges, not drawn lines. A line that stands for several edges (A→B and B→A, or parallel edges) fades only when every
+    one of them is idle, so a map can show fewer faded lines than `idle` counts.
+- **A line that stands for several edges shows the strongest of their marks**, whichever edge comes first. Removed or
+  undrawn wins, then added, then changed (the edited dot, which a stronger mark hides). It fades as idle only when all
+  of its edges are idle; otherwise it takes the first style that isn't a mark.
 - **The time-lapse:** `update()` eases into the next model.
   - Cards that moved glide from where they were, and new cards fade in, then the lines whose route changed.
   - Cards and lines that left fade out where they were, as copies that nothing can click, focus, find or export.
   - It's CSS on the new picture only: the geometry is the update's own, nothing moves under reduced motion, a font that
     loads late moves nothing on purpose, and an export mid-ease draws where things end up.
+  - It's on by default. The render option `ease: false` draws the next model at once.
 - **The CLI:**
   - `umlimator.py diff BEFORE.json AFTER.json --out PAGE.html [--stills DIR]` writes the marked page, prints the summary
     and the views, and takes stills of those views.

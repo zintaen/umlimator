@@ -103,6 +103,9 @@ export interface RenderOptions {
   editable?: boolean | { add?: boolean; rename?: boolean; move?: boolean; delete?: boolean; reorder?: boolean };
   /** Cards keep their places across update() (in this handle only, never in the model). Default true. */
   stableLayout?: boolean;
+  /** update() eases into the next model: moved cards glide, new ones fade in, removed ones fade out (#67). Default true;
+   *  never under prefers-reduced-motion. false draws the next model at once. */
+  ease?: boolean;
   on?: { [K in keyof Events]?: (e: Events[K]) => void };
 }
 
@@ -111,7 +114,8 @@ export interface ExportOptions { view?: string; scale?: number; fontCSS?: string
 export interface Handle {
   /** Draws the next model, redrawing only what changed and keeping the view, camera and selection. With motion it eases
    *  in (#67): moved cards glide from where they were, new cards and rerouted lines fade in, and what left fades out
-   *  where it was; none of it under prefers-reduced-motion, and an export at any point draws where things end up. */
+   *  where it was; none of it with the option `ease: false` or under prefers-reduced-motion, and an export at any point
+   *  draws where things end up. */
   update(model: MapModel): void;
   setView(id: string): Promise<void> | void;
   select(ref: Ref | null): void;
@@ -173,7 +177,9 @@ export type Observed = { from: string; to: string; count?: number } | { parent: 
  *  labelled "not drawn" with its calls); a drawn line between two cards traffic reached, that carried none, fades
  *  (`drift: 'idle'`, style `faded`); other lines are left as they are. A service is the card `match` names, else the one
  *  with its id, else with its label (case aside). `counts`: lines that carried traffic, came in, are idle, or could not
- *  be judged (an end traffic never reached), and the services with no card; `views`: those that show drift. */
+ *  be judged (an end traffic never reached), and the services with no card; `views`: those that show drift. The counts
+ *  are of model edges, not drawn lines: a line that stands for several edges (A→B and B→A) fades only when every one of
+ *  them is idle, so a map can show fewer faded lines than `idle` counts. */
 export interface DriftResult { model: MapModel; counts: { carried: number; undrawn: number; idle: number; unknown: number; unmatched: string[] }; views: string[] }
 export function drift(model: MapModel, observed: Observed[] | { data: Observed[] }, options?: { match?: Record<string, string> }): DriftResult;
 /** The whole standalone viewer (top bar, views list, details panel, search, export) that umlimator.py writes. */

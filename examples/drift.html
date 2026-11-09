@@ -34,7 +34,8 @@ const seen = { data: [
 const match = { 'trip-service': 'trips', 'fleet-service': 'fleet', 'trips-db': 'tripsdb' };
 const { model: marked, counts } = drift(model, seen, { match });
 const c = counts;
-document.getElementById('counts').textContent = `${c.carried} lines carried traffic, ${c.undrawn} ran undrawn, ${c.idle} idle; ${c.unknown} not judged (an end the traffic never reached); no card for ${c.unmatched.join(', ') || 'none'}`;
+// counts are of the model's edges: a line drawn for two edges (moves bikes / low battery) fades only when both were idle
+document.getElementById('counts').textContent = `Edges: ${c.carried} carried traffic, ${c.undrawn} ran undrawn, ${c.idle} idle (a line drawn for two fades only when both are); ${c.unknown} not judged (an end the traffic never reached); no card for ${c.unmatched.join(', ') || 'none'}`;
 const map = render(document.getElementById('map'), marked, { view: 'system' });
 window.map = map;
 document.getElementById('on').addEventListener('change', e => map.update(e.target.checked ? marked : model));
