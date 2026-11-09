@@ -855,6 +855,46 @@ card inside the new box, and as its own box (u21's `shop`: Order service, then W
   first-unfolded first and last-unfolded first, and checks that every card is drawn once, as a card or as its box, on the
   map, in the minimap and in the SVG export.
 
+### Overlay labels keep off their neighbours (#81)
+
+- **A line's `label` pill takes the first place where it covers no card, box title or tab, line label or other pill:**
+  under the line's own label as before (on its longest run when it has none), else half way along the line, then at
+  30 %, 70 %, 15 % or 85 % of its length. An overlay still never lays the view out again.
+- **With no room at any,** the pill isn't drawn over anything. Its text goes in the line's tooltip, on a line of its own,
+  and at the end of its accessible name ("Line from Trip API to Trip lifecycle: moves the ride on, p95 1.2 s over
+  budget"), until the layer goes. `replay()`'s duration labels are such pills too.
+- **Test:** `tests/marks.html` puts a long pill on every line of bike-share's trips view: none covers a card, a line label
+  or another pill, each one with no room is in its line's tooltip and name, and removing the layer takes it out again.
+  On a line that goes around a box's title, with its label just above the title, the pill doesn't cover the title.
+
+### A recorded story's tours move (#83)
+
+- **`umlimator.py record`** takes frames along a step's tour, 2 a leg and at most 6, from its first card to its last,
+  and shares the step's duration out between them, so the step still lasts its duration. A step without a tour keeps one
+  frame. bike-share's `ride` is now 15 frames and 1.2 MB (5 frames and 0.4 MB before).
+- **How:** the frames are the page's `#shot=1&story=<id>&step=<n>&at=<0 to 1>` link, which holds the tour's dot that far
+  along its ride.
+- **Limit:** the ride is spread over the whole step, so the dot doesn't keep the live map's speed.
+- **Test:** `tests/embed.py`'s `record` check wants 2 to 6 frames for a step with a tour, each a different picture, with
+  delays that add up to the step's duration, and one frame for any other step.
+
+### The legend check waits for the legend (#85)
+
+- **`tests/embed.py` reads a page again until it has what the check reads,** for up to 60 s. Chrome reads the page once
+  its virtual time is up, and on a busy machine that could be before the standalone page, which draws on an animation
+  frame, had drawn its legend. Every page the harness reads goes through the same wait: the test pages, the host pages
+  and bookshop's legend. The test pages' own retry, once more when Chrome gave back nothing, is gone: the wait covers it.
+
+### The details panel keeps a short sentence whole (#97)
+
+- **The standalone page's details panel** cut every `when`, `what` and `how` text into at least two bullets, so
+  bike-share's Trip service, `"when": "Unlock, pause, end."`, showed "Unlock" and "pause, end.". Now a text is cut where
+  it has more than one sentence or clause (at `;`, ` · ` or ` | `), and a point longer than a line (160 characters) is cut
+  in two, as before. A short sentence stays one bullet. In the examples and bench models, 203 of 408 texts were short
+  sentences cut this way.
+- **Test:** `tests/unfold-page.html` opens Trip service's details: its `when` is one bullet, and a `how` of one
+  190-character sentence is cut into bullets of at most 160.
+
 ## 0.13.0: (unreleased)
 
 ### Lenses (#94)

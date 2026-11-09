@@ -1,6 +1,6 @@
 <!doctype html>
 <!-- The standalone page (mountPage) unfolding a stacked card in place (#71): the details panel's button and E from the
-     page. tests/embed.py opens this in headless Chrome and reads <pre id="result">. -->
+     page; and the details panel's bullets (#97). tests/embed.py opens this in headless Chrome and reads <pre id="result">. -->
 <meta charset="utf-8">
 <link rel="icon" href="data:,">
 <title>umlimator page unfold test</title>
@@ -9,6 +9,8 @@
 <script type="module">
 import { mountPage } from '../lib/umlimator.js';
 const BIKE = await (await fetch('../examples/bike-share.json')).json();
+const LONG = 'Prices a ride when it ends from the rules that Pricing sends back, charges the rider through the payment provider and keeps the receipt with the trip, so the rider app can show what it cost.';
+BIKE.nodes.find(n => n.id === 'trips').how = LONG; // one sentence, longer than a line of the details panel (its when is short)
 const out = { ok: [], fail: [] };
 const check = (name, cond, info) => { document.title = name; if (cond) out.ok.push(name); else out.fail.push(name + (info === undefined ? '' : ': ' + JSON.stringify(info))); };
 try {
@@ -24,6 +26,11 @@ try {
   h.select({ type: 'node', id: 'payments' });
   check('a card with no view of its own has no such button', !document.querySelector('#m-panel [data-unfold]'));
   check('the keys box lists E', /E · Alt \+ click/.test(document.getElementById('m-helpbox').textContent));
+  h.select({ type: 'node', id: 'trips' });
+  const bullets = tab => { document.querySelector(`#m-panel [data-tab="${tab}"]`).click(); return [...document.querySelectorAll('#m-pbody .detail-bullets li')].map(li => li.textContent); };
+  const when = bullets('when'), how = bullets('how');
+  check("the details panel keeps a short sentence as one bullet, and cuts one longer than a line into shorter ones (#97)",
+    when.length === 1 && when[0] === 'Unlock, pause, end.' && how.length > 1 && how.every(b => b.length <= 160), [when, how]);
 } catch (err) {
   out.fail.push('threw: ' + (err && err.stack || err));
 }

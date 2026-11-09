@@ -151,7 +151,7 @@ python3 umlimator.py diff --base origin/main --out diff/              # every mo
 python3 umlimator.py drift model.json traffic.json --out drift.html   # drawn vs. seen (a Jaeger or Tempo dependency list)
 python3 umlimator.py timelapse model.json --out history.html          # the model's versions in git history, on a slider
 python3 umlimator.py check page.html --expand                          # also each view with each stacked card unfolded
-python3 umlimator.py record bike-share.html --story ride --out ride.png   # bike-share's story as an animated PNG, a frame per step
+python3 umlimator.py record bike-share.html --story ride --out ride.png   # bike-share's story as an animated PNG, its tours riding
 python3 umlimator.py trace model.json trace.json --view ride-end --match match.json --out model.json   # an OTLP trace kept as a numbered view
 ```
 
