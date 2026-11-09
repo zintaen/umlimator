@@ -5,7 +5,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { layout, check } from '../lib/umlimator.js';
 
 const read = p => JSON.parse(readFileSync(new URL(p, import.meta.url)));
-const SHOP = read('../bench/models/u21.json');
+const SHOP = read('../bench/models/u21.json'), PRINT = read('../bench/models/s16.json');
 const lines = g => g.edges.map(e => `${e.from}>${e.to}`);
 const ids = g => g.edges.flatMap(e => e.ids);
 
@@ -18,7 +18,7 @@ test('every card that unfolds in the examples unfolds with a clean layout check'
       assert.deepEqual(check(m, v.id, { expand: [card.id] }).map(i => i.message), [], `${f} ${v.id} with ${card.id} unfolded`); n++;
     }
   }
-  assert.ok(n >= 5, `unfolded ${n}`); // bike-share: bikeshare, trips, fleet; weather: the check stage, the checker
+  assert.ok(n >= 7, `unfolded ${n}`); // bike-share: bikeshare, trips, fleet; weather: the check stage, the checker, the forecast stage (numbered, #82); assistant: answer (numbered)
 });
 
 test("the card becomes a box of its inner view's own cards, in the box it was in; the inner view's boxes come along", () => {
@@ -64,11 +64,57 @@ test('a card inside an unfolded box unfolds too, whatever order they are named i
   assert.ok(lines(g).includes('o-api>c-tax') && lines(g).includes('c-fraud>payments'));
 });
 
-test('what does not unfold: a numbered view, in or opened, a view not loaded, a card with no cards of its own inside', () => {
-  assert.deepEqual(layout(SHOP, 'shop', { expand: ['catalog', 'reports', 'buyers', 'nope'] }).unfolded, []);
+test('what does not unfold: a card on a numbered view, a view not loaded, a card with no cards of its own inside', () => {
+  assert.deepEqual(layout(SHOP, 'shop', { expand: ['reports', 'buyers', 'nope'] }).unfolded, []);
+  assert.deepEqual(layout(PRINT, 'job', { expand: ['pay'] }).unfolded, [], 'on a numbered view: its own steps would be numbered again');
   const book = read('../examples/bookshop.json');
-  assert.deepEqual(layout(book, 'overview', { expand: ['api'] }).unfolded, []);
+  assert.deepEqual(layout(book, 'overview', { expand: ['api'] }).unfolded, [], 'every card of its numbered view is on the overview already');
   assert.equal(layout(SHOP, 'shop').unfolded, undefined, 'no expand, no unfolded');
+});
+
+test('a numbered inner view unfolds with its run order: each line keeps its number, a step back stays a loop back (#82)', () => {
+  const g = layout(PRINT, 'site', { expand: ['pay'] }), at = l => g.edges.find(e => `${e.from}>${e.to}` === l);
+  assert.deepEqual(g.unfolded, ['pay']);
+  assert.deepEqual(['p-charge>p-check', 'p-check>bank', 'p-check>p-retry', 'p-retry>p-charge', 'p-charge>p-ledger'].map(l => at(l).step), [1, 2, 3, 4, 5]);
+  assert.equal(at('p-check>bank').lbl.step, 2, 'the number is drawn on the line');
+  assert.ok(!at('pay>bank'), "this view's line to the bank moves onto the fraud check, the numbered view's step 2");
+  assert.ok(at('p-retry>p-charge').back && !at('p-charge>p-check').back, 'trying again loops back, as the numbered view reads it');
+  assert.deepEqual(layout(SHOP, 'shop', { expand: ['catalog'] }).edges.filter(e => e.step).map(e => [e.from, e.to, e.step, !!e.back]), [['k-import', 'k-index', 1, false], ['web', 'k-index', 2, true]]);
+  assert.deepEqual(check(PRINT, 'site', { expand: ['pay'] }).map(i => i.message), []);
+});
+
+test("a numbered view drawn around the card brings its lanes as boxes, in order, and the card's own steps go on the cards they reach (#82)", () => {
+  const g = layout(PRINT, 'site', { expand: ['job'] }), card = id => g.nodes.find(n => n.id === id), lanes = g.families.filter(f => f.parent === 'job');
+  assert.deepEqual(lanes.map(f => [f.label, f.nodeIds]), [['Plan', ['crop']], ['Print', ['colour', 'printer']], ['Check', ['qa']], ['Ship', ['pack']]]);
+  assert.ok(lanes.every((f, i) => !i || f.x > lanes[i - 1].x + lanes[i - 1].w), 'left to right');
+  assert.deepEqual(['crop', 'colour', 'printer', 'qa', 'pack'].map(i => card(i).step), ['1', '3', null, '5', '6'], "the print job's own steps (it is the box now)");
+  assert.equal(g.edges.find(e => e.from === 'colour').step, 4);
+  assert.ok(lines(g).includes('crop>store') && lines(g).includes('pack>courier') && !lines(g).includes('job>store'), 'its lines out move onto the cards inside');
+  assert.deepEqual(check(PRINT, 'site', { expand: ['job'] }).map(i => i.message), []);
+  assert.deepEqual(check(PRINT, 'site', { expand: ['job', 'pay'] }).map(i => i.message), []);
+});
+
+test('on a numbered card, a numbered view unfolds under its number: 4.1, 4.2; elsewhere it keeps 1, 2 (#82)', () => {
+  const weather = read('../examples/weather.json'), g = layout(weather, 'stages', { expand: ['st-forecast'] }), card = id => g.nodes.find(n => n.id === id);
+  assert.deepEqual(['warehouse', 'api', 'alerts'].map(i => card(i).step), ['4.1', '4.2', '4.3'], 'the Forecast stage is step 4 of the process');
+  const pushes = g.edges.find(e => e.from === 'alerts' && e.to === 'app');
+  assert.ok(pushes.step === '4.4' && pushes.lbl.step === '4.4' && pushes.lbl.sw > 16, 'a longer number gets a wider mark on its line');
+  assert.equal(card('st-publish').step, 5, "the process's own steps keep theirs");
+  const m = { nodes: [{ id: 'a', label: 'Asker' }, { id: 'b', label: 'Builder', opensView: 'b' }, { id: 'b1', label: 'Planner' }, { id: 'b2', label: 'Runner', opensView: 'b2' }, { id: 'c1', label: 'Fetcher' }, { id: 'c2', label: 'Writer' }],
+    views: [{ id: 'top', nodeIds: ['a', 'b'], edges: [{ from: 'a', to: 'b', label: 'asks' }] },
+      { id: 'b', parent: 'top', render: 'sequence', nodeIds: ['b', 'b1', 'b2'], edges: [{ from: 'b', to: 'b1', label: 'plans' }, { from: 'b', to: 'b2', label: 'runs' }] },
+      { id: 'b2', parent: 'b', render: 'sequence', nodeIds: ['b2', 'c1', 'c2'], edges: [{ from: 'b2', to: 'c1', label: 'fetches' }, { from: 'c1', to: 'c2', label: 'writes' }] }] };
+  const n = layout(m, 'top', { expand: ['b', 'b2'] });
+  assert.deepEqual([...n.nodes.map(x => x.step ?? null), ...n.edges.map(e => e.step ?? null)], [null, '1', '2.1', null, null, '2.2'], 'Runner, step 2 of Builder, numbers its own under 2');
+});
+
+test('a second card unfolds without drawing the first again, in either order (#98)', () => {
+  for (const cards of [['orders', 'warehouse'], ['warehouse', 'orders']]) {
+    const g = layout(SHOP, 'shop', { expand: cards }), ids = g.nodes.map(n => n.id), boxes = g.families.map(f => f.id);
+    assert.deepEqual(g.unfolded, cards);
+    assert.equal(new Set([...ids, ...boxes]).size, ids.length + boxes.length, `${cards}: each card once, as a card or as its box`);
+    assert.ok(!g.families.find(f => f.id === 'warehouse').nodeIds.includes('orders') && !g.families.find(f => f.id === 'orders').nodeIds.includes('warehouse'));
+  }
 });
 
 test('unfolding leaves the model alone and lays out the same every time', () => {
