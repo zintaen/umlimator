@@ -1,5 +1,5 @@
 {
- "commit": "d23df8f",
+ "commit": "0082411",
  "results": {
   "b10/norepair": {
    "hashes": [
@@ -69,6 +69,36 @@
   "r19/plain": {
    "hashes": [
     "c54657ba"
+   ]
+  },
+  "s16/job": {
+   "hashes": [
+    "bf8840f3"
+   ]
+  },
+  "s16/pay": {
+   "hashes": [
+    "983c71da"
+   ]
+  },
+  "s16/site": {
+   "hashes": [
+    "5059ba88"
+   ]
+  },
+  "s16/site+job": {
+   "hashes": [
+    "8ff57d10"
+   ]
+  },
+  "s16/site+job+pay": {
+   "hashes": [
+    "4509666b"
+   ]
+  },
+  "s16/site+pay": {
+   "hashes": [
+    "45b4f348"
    ]
   },
   "u21/catalog": {
