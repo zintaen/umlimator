@@ -989,3 +989,16 @@ only), which the command calls.
 - **Tests:** `tests/import.py` imports the sample of each format in `tests/import/`, checks the cards, boxes, lines, views
   and the list of what isn't imported, and that `validate()` finds nothing, the model renders, and its layout check is
   clean. CI runs it.
+
+### Parallel renders of one model (#105)
+
+- **Two renders of one model at the same time no longer fail.** `umlimator.py render` writes a temporary copy of the
+  model next to it, so its relative paths resolve. Every render used the same name, `.<model>.icons.json`, so two at
+  once could delete each other's copy: four at once failed three times out of four. With `umlimator.py mcp` (#91)
+  serving a model, a `render` of that model could make the page fail once. Now each render's copy has a name of its
+  own, as does the copy behind a `diff` or `drift` page.
+- **A page records the model itself as its source**, `examples/bookshop.json` rather than the copy's
+  `.bookshop.icons.json`, in the form the page always used: the path in the checkout, `~/…` under home, else the
+  file's name. A model that names its own `source` keeps it.
+- **Test:** `tests/cli.py` runs four renders of bike-share at once. All finish, no copy is left behind, and the four
+  pages are the same apart from the time.

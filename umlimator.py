@@ -126,22 +126,34 @@ def cmd_pin_icons(a):
     (ICONS / "manifest.json").write_text(json.dumps(man, indent=2) + "\n")
 
 
-def page_model(model_path, out):
+def page_model(model_path, out, source=None):
     """The model as rendered: with an `icons` table of every icon its nodes name (`icon`): a Lucide line icon as its
     inner markup, drawn in the card's kind colour; a brand mark as a data URI on a white tile, never recoloured.
-    Returns the path of a temporary copy next to the model, so relative paths still resolve."""
+    Returns the path of a temporary copy next to the model, so relative paths still resolve. The copy's name is its
+    own (renders of one model can run at once), and the page records the model's path (or `source`) as its source."""
     m = json.loads(Path(model_path).read_text(encoding="utf-8"))
     # visual.py records the checkout's root relative to the page; for a page outside the checkout that path climbs
     # through the folders above it (a home folder, a user name) into a page that gets shared
     root = subprocess.run(["git", "rev-parse", "--show-toplevel"], capture_output=True, text=True).stdout.strip()
-    if not Path(out).resolve().is_relative_to(Path(root or os.getcwd()).resolve()):
+    base = Path(root or os.getcwd()).resolve()
+    if not Path(out).resolve().is_relative_to(base):
         m.setdefault("meta", {}).setdefault("root", "")
     table = icon_table([m])
     if table:
         m["icons"] = table
-    tmp = Path(model_path).with_name("." + Path(model_path).stem + ".icons.json")
-    tmp.write_text(json.dumps(m, ensure_ascii=False), encoding="utf-8")
-    return str(tmp)
+    # the path visual.py would record for the model itself (its portable_path): in the checkout, under home as ~/, else the name
+    src = Path(source or model_path).resolve()
+    m.setdefault("source", next((pre + src.relative_to(b).as_posix() for b, pre in ((base, ""), (Path.home().resolve(), "~/"))
+                                 if src.is_relative_to(b)), src.name))
+    return temp_json(m, model_path, ".icons.json")
+
+
+def temp_json(m, near, suffix):
+    """`m` written to a file of its own next to `near` (hidden, removed by the caller), so parallel renders never share one."""
+    fd, tmp = tempfile.mkstemp(prefix="." + Path(near).stem + ".", suffix=suffix, dir=Path(near).resolve().parent)
+    with os.fdopen(fd, "w", encoding="utf-8") as f:
+        f.write(json.dumps(m, ensure_ascii=False))
+    return tmp
 
 
 def icon_table(models):
@@ -218,16 +230,15 @@ def quiet(*a, **k):
 def render_model(m, near, out):
     """A model made here (a diff, a drift) as a page, without its layout check: a copy sits next to the file `near` for
     the render, so it is drawn as that file would be."""
-    tmp = Path(near).with_name("." + Path(near).stem + ".change.json")
-    tmp.write_text(json.dumps(m, ensure_ascii=False), encoding="utf-8")
+    tmp = temp_json(m, near, ".change.json")
     try:
-        model = page_model(tmp, out)
+        model = page_model(tmp, out, source=near)
         try:
             return render(argparse.Namespace(out=str(out), no_check=True), model, show=quiet)
         finally:
             Path(model).unlink()
     finally:
-        tmp.unlink()
+        Path(tmp).unlink()
 
 
 def shots(page, out, views):
