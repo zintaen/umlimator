@@ -1,0 +1,395 @@
+{
+  "title": "Clinic bookings",
+  "root": "context",
+  "nodes": [
+    {
+      "id": "patient",
+      "label": "Patient",
+      "kind": "frontend",
+      "sublabel": "Person",
+      "what": "Books and moves appointments.",
+      "icon": "user"
+    },
+    {
+      "id": "reception",
+      "label": "Receptionist",
+      "kind": "frontend",
+      "sublabel": "Person",
+      "what": "Runs a clinic's front desk.",
+      "icon": "user"
+    },
+    {
+      "id": "bookings",
+      "label": "Clinic bookings",
+      "kind": "backend",
+      "sublabel": "Software system",
+      "what": "Appointments for every clinic in the group.",
+      "opensView": "containers"
+    },
+    {
+      "id": "web",
+      "label": "Booking site",
+      "kind": "frontend",
+      "sublabel": "React",
+      "what": "Where patients book."
+    },
+    {
+      "id": "desk",
+      "label": "Front desk app",
+      "kind": "frontend",
+      "sublabel": "React",
+      "what": "Reception's view of the day."
+    },
+    {
+      "id": "api",
+      "label": "Booking API",
+      "kind": "backend",
+      "sublabel": "Go",
+      "what": "Slots, bookings and changes.",
+      "opensView": "api-components"
+    },
+    {
+      "id": "slots",
+      "label": "Slot finder",
+      "kind": "backend",
+      "sublabel": "Go",
+      "what": "Free slots per clinician."
+    },
+    {
+      "id": "book",
+      "label": "Booking handler",
+      "kind": "backend",
+      "sublabel": "Go",
+      "what": "Books, moves and cancels."
+    },
+    {
+      "id": "remind",
+      "label": "Reminder scheduler",
+      "kind": "backend",
+      "sublabel": "Go",
+      "what": "Queues a reminder a day ahead."
+    },
+    {
+      "id": "store",
+      "label": "Booking repository",
+      "kind": "backend",
+      "sublabel": "Go, pgx",
+      "what": "Reads and writes bookings."
+    },
+    {
+      "id": "db",
+      "label": "Bookings database",
+      "kind": "database",
+      "sublabel": "PostgreSQL",
+      "what": "Clinicians, slots and bookings."
+    },
+    {
+      "id": "jobs",
+      "label": "Job queue",
+      "kind": "queue",
+      "sublabel": "RabbitMQ",
+      "what": "Reminders waiting to be sent."
+    },
+    {
+      "id": "sender",
+      "label": "Reminder sender",
+      "kind": "backend",
+      "sublabel": "Python",
+      "what": "Sends each reminder."
+    },
+    {
+      "id": "sms",
+      "label": "SMS gateway",
+      "kind": "external",
+      "sublabel": "Software system",
+      "what": "Delivers text messages."
+    },
+    {
+      "id": "records",
+      "label": "Patient records",
+      "kind": "external",
+      "sublabel": "Software system",
+      "what": "The group's medical records."
+    }
+  ],
+  "edges": [
+    {
+      "id": "patient-web",
+      "from": "patient",
+      "to": "web",
+      "label": "Books appointments",
+      "sublabel": "HTTPS"
+    },
+    {
+      "id": "reception-desk",
+      "from": "reception",
+      "to": "desk",
+      "label": "Manages the day",
+      "sublabel": "HTTPS"
+    },
+    {
+      "id": "web-book",
+      "from": "web",
+      "to": "book",
+      "label": "Books",
+      "sublabel": "JSON/HTTPS"
+    },
+    {
+      "id": "desk-book",
+      "from": "desk",
+      "to": "book",
+      "label": "Moves and cancels",
+      "sublabel": "JSON/HTTPS"
+    },
+    {
+      "id": "book-slots",
+      "from": "book",
+      "to": "slots",
+      "label": "Finds a free slot"
+    },
+    {
+      "id": "slots-store",
+      "from": "slots",
+      "to": "store",
+      "label": "Reads slots"
+    },
+    {
+      "id": "book-store",
+      "from": "book",
+      "to": "store",
+      "label": "Saves bookings"
+    },
+    {
+      "id": "book-remind",
+      "from": "book",
+      "to": "remind",
+      "label": "Booked"
+    },
+    {
+      "id": "book-records",
+      "from": "book",
+      "to": "records",
+      "label": "Checks the patient",
+      "sublabel": "FHIR"
+    },
+    {
+      "id": "store-db",
+      "from": "store",
+      "to": "db",
+      "label": "Reads and writes",
+      "sublabel": "SQL"
+    },
+    {
+      "id": "remind-jobs",
+      "from": "remind",
+      "to": "jobs",
+      "label": "Queues reminders",
+      "sublabel": "AMQP"
+    },
+    {
+      "id": "sender-jobs",
+      "from": "sender",
+      "to": "jobs",
+      "label": "Takes reminders",
+      "sublabel": "AMQP"
+    },
+    {
+      "id": "sender-sms",
+      "from": "sender",
+      "to": "sms",
+      "label": "Sends texts",
+      "sublabel": "HTTPS"
+    },
+    {
+      "id": "sms-patient",
+      "from": "sms",
+      "to": "patient",
+      "label": "Texts a reminder",
+      "loop": true
+    },
+    {
+      "id": "patient-bookings",
+      "from": "patient",
+      "to": "bookings",
+      "label": "Books appointments",
+      "sublabel": "HTTPS"
+    },
+    {
+      "id": "reception-bookings",
+      "from": "reception",
+      "to": "bookings",
+      "label": "Manages the day",
+      "sublabel": "HTTPS"
+    },
+    {
+      "id": "bookings-records",
+      "from": "bookings",
+      "to": "records",
+      "label": "Checks the patient",
+      "sublabel": "FHIR"
+    },
+    {
+      "id": "bookings-sms",
+      "from": "bookings",
+      "to": "sms",
+      "label": "Sends texts",
+      "sublabel": "HTTPS"
+    },
+    {
+      "id": "web-api",
+      "from": "web",
+      "to": "api",
+      "label": "Books",
+      "sublabel": "JSON/HTTPS"
+    },
+    {
+      "id": "desk-api",
+      "from": "desk",
+      "to": "api",
+      "label": "Moves and cancels",
+      "sublabel": "JSON/HTTPS"
+    },
+    {
+      "id": "api-records",
+      "from": "api",
+      "to": "records",
+      "label": "Checks the patient",
+      "sublabel": "FHIR"
+    },
+    {
+      "id": "api-db",
+      "from": "api",
+      "to": "db",
+      "label": "Reads and writes",
+      "sublabel": "SQL"
+    },
+    {
+      "id": "api-jobs",
+      "from": "api",
+      "to": "jobs",
+      "label": "Queues reminders",
+      "sublabel": "AMQP"
+    }
+  ],
+  "views": [
+    {
+      "id": "context",
+      "title": "Clinic bookings",
+      "nodeIds": [
+        "patient",
+        "reception",
+        "bookings",
+        "sms",
+        "records"
+      ],
+      "caption": "Who books, and what the bookings system leans on.",
+      "edges": [
+        "patient-bookings",
+        "reception-bookings",
+        "bookings-records",
+        "bookings-sms",
+        "sms-patient"
+      ],
+      "parent": null
+    },
+    {
+      "id": "containers",
+      "title": "Clinic bookings containers",
+      "nodeIds": [
+        "patient",
+        "reception",
+        "web",
+        "desk",
+        "api",
+        "db",
+        "jobs",
+        "sender",
+        "sms",
+        "records"
+      ],
+      "containers": [
+        {
+          "id": "bookings",
+          "label": "Clinic bookings",
+          "nodeIds": [
+            "api",
+            "db",
+            "jobs",
+            "sender"
+          ]
+        },
+        {
+          "id": "Apps",
+          "label": "Apps",
+          "nodeIds": [
+            "web",
+            "desk"
+          ],
+          "parent": "bookings"
+        }
+      ],
+      "caption": "The apps, the API, and where bookings and reminders wait.",
+      "edges": [
+        "patient-web",
+        "reception-desk",
+        "web-api",
+        "desk-api",
+        "api-records",
+        "api-db",
+        "api-jobs",
+        "sender-jobs",
+        "sender-sms",
+        "sms-patient"
+      ],
+      "parent": "context"
+    },
+    {
+      "id": "api-components",
+      "title": "Booking API components",
+      "nodeIds": [
+        "web",
+        "desk",
+        "slots",
+        "book",
+        "remind",
+        "store",
+        "db",
+        "jobs",
+        "records"
+      ],
+      "containers": [
+        {
+          "id": "api",
+          "label": "Booking API",
+          "nodeIds": [
+            "slots",
+            "book",
+            "remind",
+            "store"
+          ]
+        },
+        {
+          "id": "Apps",
+          "label": "Apps",
+          "nodeIds": [
+            "web",
+            "desk"
+          ]
+        }
+      ],
+      "caption": "Inside the booking API.",
+      "edges": [
+        "web-book",
+        "desk-book",
+        "book-slots",
+        "slots-store",
+        "book-store",
+        "book-remind",
+        "book-records",
+        "store-db",
+        "remind-jobs"
+      ],
+      "parent": "containers"
+    }
+  ]
+}

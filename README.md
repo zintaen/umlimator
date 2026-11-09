@@ -154,9 +154,10 @@ kubectl get deploy,sts,svc,ing -A -o json > cluster.json && python3 umlimator.py
 views), C4-PlantUML (its element, relationship and boundary macros), Mermaid (`flowchart` or `graph`, and `C4Context`,
 `C4Container` or `C4Component`), and the JSON of `docker compose config` (services, `depends_on`, networks) and of
 `kubectl get` (workloads, Services, Ingresses). It tells the format from the content, then the extension; `--format`
-decides. Boundaries, subgraphs, networks and namespaces become boxes; Structurizr's views stay views, a card opening the
-view below it. What each element becomes, and what is left out: [docs/module-api.md § Import](docs/module-api.md#import-90).
-Whatever the file holds that `import` doesn't read is listed on stderr with its line (in JSON, its path).
+decides. Groups, boundaries, subgraphs, networks and namespaces become boxes; Structurizr's views stay views, a card
+opening the view below it; `examples/clinic.json` is `examples/clinic.dsl`, imported. What each element becomes, and
+what is left out: [docs/module-api.md § Import](docs/module-api.md#import-90). Whatever the file holds that `import`
+doesn't read is listed on stderr with its line (in JSON, its path).
 
 The page has breadcrumbs, a details panel per card, ⌘K search, deep links (`#view=<id>&node=<id>`, and
 `#story=<id>&step=<n>` for a story's step), stories, and export.

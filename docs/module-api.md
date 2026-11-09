@@ -918,8 +918,9 @@ only), which the command calls.
 - **What it reads**, a practical subset of each:
   - **Structurizr DSL:** `workspace`, `model` and `views`; `person`, `softwareSystem`, `container` and `component`,
     nested, with their description, technology and tags; `->` relationships (`this ->`, and `->` inside an element, too)
-    with description and technology; flat and hierarchical identifiers. Views: `systemLandscape`, `systemContext`,
-    `container` and `component`, with `include *` (or element ids), `exclude`, `title` and `description`.
+    with description and technology; `group` (and the older `enterprise`) blocks, nested; flat and hierarchical
+    identifiers. Views: `systemLandscape`, `systemContext`, `container` and `component`, with `include *` (or element
+    ids), `exclude`, `title` and `description`.
   - **C4-PlantUML:** `Person`, `System`, `Container` and `Component`, each with `Db`, `Queue` and `_Ext`; `Rel` and
     `Rel_*` (their direction hints are left to the layout), `Rel_Back` (the other way) and `BiRel` (both ways);
     `Boundary`, `Enterprise_Boundary`, `System_Boundary` and `Container_Boundary` as boxes, nested; `title`. Arguments
@@ -958,7 +959,9 @@ only), which the command calls.
   the map keeps (34 characters on a card, 28 on a line) is cut at a word, and the panel has it whole.
 - **Views:**
   - **Structurizr:** its own views. A container view boxes its system's containers, and a component view its container's
-    components. A relationship between elements a view doesn't show lifts to the nearest ones it does, an implied line as
+    components. A group is a box in each view that shows one of its members, nested as the source nests it: inside the
+    group around it, or inside the view's own box when it is in the view's system or container (whose box is in turn in
+    that element's group). A relationship between elements a view doesn't show lifts to the nearest ones it does, an implied line as
     Structurizr draws it, unless a relationship joins those two already (`!impliedRelationships false` turns this off).
     A system's card opens its container view, a container's card its component view, and each view's parent is the most
     detailed view above it that shows its subject. A workspace with no views gets a landscape, a container view per system
@@ -977,8 +980,7 @@ only), which the command calls.
   `FILE:PATH: …` in JSON (`items[8]`, `volumes`). The command prints what it wrote, `{ out, format, cards, lines, views,
   unread }`, and exits 1 when a file has nothing to import.
 - **Left out of this first version:**
-  - Structurizr groups (their members are imported, the group isn't drawn), deployment, dynamic and filtered views,
-    `!include`, `!ref`, `!extend`, constants, styles and themes;
+  - Structurizr's deployment, dynamic and filtered views, `!include`, `!ref`, `!extend`, constants, styles and themes;
   - C4 deployment nodes and dynamic diagrams (`RelIndex`);
   - Mermaid's `@{ … }` shapes and its other diagram types;
   - compose's volumes, configs and secrets, and Kubernetes' other kinds (ConfigMaps, Jobs, CronJobs…);
@@ -986,9 +988,12 @@ only), which the command calls.
 
   An imported map gets the layout check as any model does. A large diagram may need a `layout`, or a line's
   `fromSide` and `toSide`, set by hand.
-- **Tests:** `tests/import.py` imports the sample of each format in `tests/import/`, checks the cards, boxes, lines, views
-  and the list of what isn't imported, and that `validate()` finds nothing, the model renders, and its layout check is
-  clean. CI runs it.
+- **Example:** `examples/clinic.json` is what `import` writes from `examples/clinic.dsl`, a made-up clinic's workspace
+  with a group, unchanged. It is in the gallery, and CI checks it as every example (`check --expand`), imports its source
+  again and fails if the model differs.
+- **Tests:** `tests/import.py` imports the sample of each format (in `tests/import/`, and `examples/clinic.dsl` for
+  Structurizr), checks the cards, boxes, lines, views and the list of what isn't imported, and that `validate()` finds
+  nothing, the model renders, and its layout check is clean. CI runs it.
 
 ### Parallel renders of one model (#105)
 

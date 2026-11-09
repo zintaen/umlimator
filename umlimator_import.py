@@ -1,8 +1,8 @@
 """umlimator.py import (#90): diagrams a team already has, as a map model. Standard library only.
 
   structurizr   Structurizr DSL: workspace, model, views; person, softwareSystem, container and component, nested;
-                -> relationships with description and technology; tags; systemLandscape, systemContext, container and
-                component views with include * (or ids) and exclude
+                -> relationships with description and technology; tags; groups as boxes, nested; systemLandscape,
+                systemContext, container and component views with include * (or ids) and exclude
   plantuml      C4-PlantUML: Person, System, Container, Component (with Db, Queue and _Ext), Rel, Rel_*, BiRel, and
                 *_Boundary(alias, label) { ... } as boxes
   mermaid       flowchart and graph (nodes, labelled links, subgraphs as boxes), and C4Context, C4Container and
@@ -146,7 +146,7 @@ SCOPE = {"systemcontext": "softwaresystem", "container": "softwaresystem", "comp
 
 def structurizr(text, name):
     m = Model(name)
-    els, ref, path, rels, specs, stack = {}, {}, {}, [], [], []
+    els, ref, path, rels, specs, stack, groups = {}, {}, {}, [], [], [], []
     implied, comment = True, False
     for no, raw in enumerate(text.splitlines(), 1):
         s = raw.strip()
@@ -183,13 +183,13 @@ def structurizr(text, name):
         elif where in ("workspace", "model") and kw == "!impliedrelationships":
             implied = toks[1:2] != ["false"]
         elif where in ("model", "group", "el"):
-            parent = None if where == "model" else at
+            parent, grp = (None, None) if where == "model" else (at, None) if where == "el" else at  # a group's frame: (element, group)
             e, r = element(toks), relationship(toks, at if where == "el" else None)
             if e:
                 alias, typ, nm, desc, tech, tags = e
                 full = f"{path[parent]}.{alias}" if alias and parent in path else alias
                 cid = m.uniq(*[h for h in (alias and ident(alias), full and ident(full.replace(".", "-")), ident(nm)) if h])
-                els[cid] = {"type": typ, "name": nm, "desc": desc, "tech": tech, "tags": tags, "parent": parent}
+                els[cid] = {"type": typ, "name": nm, "desc": desc, "tech": tech, "tags": tags, "parent": parent, "group": grp}
                 if alias:
                     path[cid] = full
                     ref.setdefault(alias, cid)
@@ -198,9 +198,9 @@ def structurizr(text, name):
             elif r:
                 rels.append({**r, "line": no})
                 push = ("rel", rels[-1])
-            elif kw in ("group", "enterprise"):
-                m.say(no, f"{kw} {' '.join(toks[1:2])}: its members are imported, the {kw} itself is not drawn")
-                push = ("group", parent)
+            elif kw in ("group", "enterprise"):  # a box around its members, in the group around it, in the element it is in
+                groups.append({"label": (toks[1:2] or [kw])[0], "parent": grp, "owner": parent})
+                push = ("group", (parent, len(groups) - 1))
             elif where == "el" and kw in ("description", "technology", "tags") and len(toks) > 1:
                 prop(els[at], kw, toks[1:])
             else:
@@ -226,6 +226,8 @@ def structurizr(text, name):
         tags = " ".join(e["tags"]).lower()
         kind = "external" if "external" in tags else "frontend" if e["type"] == "person" else guess([tags, e["tech"], e["name"]])
         m.card(cid, e["name"], kind, e["tech"] or C4TYPE[e["type"]], e["desc"], icon="user" if e["type"] == "person" else None)
+    for g in groups:  # after the cards, so a group's name never takes an element's alias
+        g["id"] = m.uniq(ident(g["label"]), f"group-{ident(g['label'])}")
     find = lambda t: ref.get(t) or (t if t in els else None)
     lines = []
     for r in rels:
@@ -238,7 +240,7 @@ def structurizr(text, name):
         specs = [{"type": "systemlandscape", "scope": None, "include": [], "exclude": [], "line": None}] + [
             {"type": "container" if e["type"] == "softwaresystem" else "component", "scope": c, "include": [], "exclude": [], "line": None}
             for c, e in els.items() if any(x["parent"] == c for x in els.values())]
-    views(m, els, lines, specs, find, implied)
+    views(m, els, lines, specs, find, implied, groups)
     return m
 
 
@@ -272,7 +274,7 @@ def prop(x, kw, args):
         x["desc" if kw == "description" else "tech"] = args[0]
 
 
-def views(m, els, lines, specs, find, implied):
+def views(m, els, lines, specs, find, implied, groups):
     """Each view's cards, box and lines, as Structurizr draws them. A view shows elements of its level: people and
     software systems; in a container view also its system's containers (in a box); in a component view also its
     container's components (in a box) and that system's other containers. A relationship between elements a view
@@ -322,7 +324,21 @@ def views(m, els, lines, specs, find, implied):
         word = ["landscape", "context", "containers", "components"][level]
         hint = (ident(s["key"]), f"{ident(s['key'])}-{word}") if s.get("key") else f"{scope}-{word}" if scope else word
         title = s.get("title") or (els[scope]["name"] + ["", "", " containers", " components"][level] if scope else m.title)
-        box = [{"id": scope, "label": clip(els[scope]["name"], 40), "nodeIds": [c for c in ids if els[c]["parent"] == scope]}] if level > 1 else []
+        box = [{"id": scope, "label": clip(els[scope]["name"], 40), "nodeIds": [c for c in ids if els[c]["parent"] == scope and els[c]["group"] is None]}] if level > 1 else []
+        made_box = {}
+
+        def group_box(g):  # a group's box: in the group around it, else in the scope's box when the group is in the scope
+            if g not in made_box:
+                G = groups[g]
+                made_box[g] = {"id": G["id"], "label": clip(G["label"], 40), "nodeIds": [],
+                               "parent": group_box(G["parent"])["id"] if G["parent"] is not None else scope if level > 1 and G["owner"] == scope else None}
+                box.append(made_box[g])
+            return made_box[g]
+        if level > 1 and els[scope]["group"] is not None:  # the scope's box, in its own group's box
+            box[0]["parent"] = group_box(els[scope]["group"])["id"]
+        for c in ids:
+            if els[c]["group"] is not None:
+                group_box(els[c]["group"])["nodeIds"].append(c)
         m.view(hint, ids, box, title=clip(title, 60), caption=clip(s.get("desc"), 200), edges=drawn)
         if level > 1:
             m.nodes[scope].setdefault("opensView", m.views[-1]["id"])

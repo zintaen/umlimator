@@ -11,8 +11,10 @@ workspace "Clinic bookings" "Online appointments for a group of clinics" {
         reception = person "Receptionist" "Runs a clinic's front desk."
 
         bookings = softwareSystem "Clinic bookings" "Appointments for every clinic in the group." {
-            web = container "Booking site" "Where patients book." "React" "Web Browser"
-            desk = container "Front desk app" "Reception's view of the day." "React" "Web Browser"
+            group "Apps" {
+                web = container "Booking site" "Where patients book." "React" "Web Browser"
+                desk = container "Front desk app" "Reception's view of the day." "React" "Web Browser"
+            }
             api = container "Booking API" "Slots, bookings and changes." "Go" {
                 slots = component "Slot finder" "Free slots per clinician." "Go"
                 book = component "Booking handler" "Books, moves and cancels." "Go"
