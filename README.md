@@ -31,6 +31,8 @@ drill-down, a data pipeline, an AI agent's skills, and host pages for embedding,
 - **A layout check**: crossings, shared lines, detours, labels on lines, text that overflows its card.
 - **Rules**: what the model says must hold ("apps never call a database directly", "no cycles between teams' boxes"),
   marked on the map where it breaks; `umlimator.py check` fails on a broken rule, so CI does.
+- **Change**: what a pull request changes, marked on the map and said in words (with a GitHub Action that posts it);
+  a time-lapse of a model's history, where cards glide, fade in and fade out; and drift, the map against the traffic seen.
 
 ## Install
 
@@ -78,6 +80,10 @@ function MapView({ model, onSelect }) {
 - `map.overlay(name, layer)`, `highlight(refs)`, `tour(path)` and `replay(spans)` put the host's marks, a tour and a
   trace on the map; `paths()`, `reach()` and `describe()` walk a view and put it in words, in Node too.
 - `editable: true` turns on editing gestures ([docs/editing.md](docs/editing.md); `examples/edit.html` is a working host).
+- `diff(before, after)` returns `after` with each card and line marked added, changed or removed, what changed in words,
+  and the views that show it; `drift(model, observed)` marks the lines traffic ran on that nobody drew, and the drawn ones
+  that carried nothing. Both are models to draw, in Node too. `update()` eases into the next model (`examples/timelapse.html`);
+  the option `ease: false` draws it at once.
 - `mountPage` is the whole standalone viewer that the CLI writes.
 
 The API, its types and the decisions behind it: [docs/module-api.md](docs/module-api.md) and `lib/umlimator.d.ts`.
@@ -105,6 +111,8 @@ kinds such as `public`, `lane`, `script`, `hook` and `board` work too). Fields b
 | edge | `sublabel` | a second, smaller line under the label |
 | edge | `fromSide`, `toSide` | the card sides the line uses |
 | edge | `from`, `to` | may name a container of the view: the line ends on its box |
+| edge | `style: "faded"` | the line in its kind's colour, faint and with no flow (drift's idle lines) |
+| edge | `drift` | what `drift()` found: `undrawn` or `idle` |
 | view | `gap`, `rgap` | the space between columns and between rows |
 | view | `keepPairs` | A→B and B→A drawn as two lines |
 | view | `repair: false` | no port repair |
@@ -120,13 +128,33 @@ python3 umlimator.py render examples/bookshop.json --out page.html   # the inter
 python3 umlimator.py stills page.html --out stills/                   # every view as SVG and PNG
 python3 umlimator.py stills page.html --out stills/ --views overview,api --scale 1.5 --theme light
 python3 umlimator.py check page.html --views 'pic-*'                   # the layout check on chosen views
+python3 umlimator.py diff before.json after.json --out diff.html --stills diff/   # what changed, marked and in words
+python3 umlimator.py diff --base origin/main --out diff/              # every model changed since a ref, and a summary.md
+python3 umlimator.py drift model.json traffic.json --out drift.html   # drawn vs. seen (a Jaeger or Tempo dependency list)
+python3 umlimator.py timelapse model.json --out history.html          # the model's versions in git history, on a slider
 ```
 
 `check` also reports each rule the model breaks, and then exits 1.
 
 The page has breadcrumbs, a details panel per card, ⌘K search, deep links (`#view=<id>&node=<id>`) and export.
 `stills` skips a view whose inputs have not changed since its last export (`--all` exports every view). Needs Python
-3.9+ (standard library only), and Google Chrome or Chromium for `stills` and `check`.
+3.9+ (standard library only), Google Chrome or Chromium for `stills` and `check`, and Node 18+ for `diff` and `drift`.
+
+On pull requests, the diff Action posts what they change in your maps: one comment with the summary and a sketch, and
+the pictures as the run's artifact.
+
+```yaml
+on: pull_request
+permissions: { contents: read, pull-requests: write }
+jobs:
+  maps:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: zintaen/umlimator@v0.12.0
+        with:
+          models: "docs/*.json"   # optional: where the models are (default: every .json that is a map model)
+```
 
 ## Map a repo with Claude Code
 
@@ -176,9 +204,10 @@ Release with that section as its notes, and publishes the package to npm (truste
 CI also publishes the examples to GitHub Pages from `main`.
 
 ```
-umlimator.py                 CLI: render, stills, check, pin-icons
+umlimator.py                 CLI: render, stills, check, pin-icons, diff, drift, timelapse
+action.yml                   the diff Action: what a pull request changes in its maps, posted on it
 lib/                         the module (umlimator.js), its types and the default theme
-engine/                      the page template the CLI inlines the module into; the upstream renderer and schema
+engine/                      the page templates the CLI inlines the module into; the upstream renderer and schema
 docs/                        the module's API and the editing design
 tests/, bench/               tests, benchmark models and results
 icons/                       line icons and the logo manifest (sources and hashes only)

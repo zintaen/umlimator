@@ -29,6 +29,8 @@ The module embedded in a page, as an app would use it. Serve the repository over
 | [`ask.html`](ask.html) | Questions answered on the map: words, the cards and lines they are about lit (`highlight()` with `paths()` and `reach()`), a flow played as a `tour()`, and the view in sentences (`describe()`), the text an AI model would get |
 | [`replay.html`](replay.html) | A trace replayed (`replay()`): an OpenTelemetry export read by `otlpSpans()`, each call along its line at its time, its duration kept as a label, with pause and stop |
 | [`edit.html`](edit.html) | `editable`: the map emits `change` events, the host applies them and calls `update()`, with undo from `history()` |
+| [`timelapse.html`](timelapse.html) | Four made-up releases of the bike share on a slider: `update()` eases from one to the next (new cards fade in, removed ones fade out, moved ones glide), `diff()` says what changed and marks it on request |
+| [`drift.html`](drift.html) | `drift()`: the bike share against a week of made-up traffic, as a tracing backend lists it; the lines that ran undrawn come in, the drawn ones that carried nothing fade |
 | [`layout.mjs`](layout.mjs) | `layout()` in Node, with no DOM: lays out every view and fails when a line runs more than 3 times its direct route, a check a host can run in CI |
 
 [`icons.js`](icons.js) shows how a host gives `render()` the line icons in `icons/`.
@@ -73,5 +75,8 @@ The module embedded in a page, as an app would use it. Serve the repository over
 | The model's JSON Schema (`"$schema"`), `validate()` and `check()` | every model (`"$schema"`), `playground.html` |
 | The standalone page (`mountPage`) and the CLI's `render`, `check` and `stills` | every map on the site, built by CI |
 | Rules on the map (`rules`: `from` and `to` by kind, id or box, and `not`; a rule that names a box holds where it is drawn) and `rules()` | bike-share (two rules, which hold; CI's check fails if one breaks), `playground.html` (break one: add a line from Rider app to Trips database) |
+| What changed between two models (`diff()`): NEW, CHANGED and REMOVED marks, and the summary in words | `timelapse.html` (Mark what changed); the CLI's `diff` and the diff Action (`action.yml`) |
+| The time-lapse: `update()` easing into the next model | `timelapse.html`; the CLI's `timelapse` writes one from a model's git history |
+| The map against the traffic seen (`drift()`), and the line style `faded` | `drift.html`; the CLI's `drift` |
 
 Not shown: `repair: false`, a switch for debugging the router.

@@ -608,3 +608,60 @@ another three. Auto-layout now lays those out as it does lines between neighbour
   - `examples/replay.html` replays a ride ending.
 - **One at a time:** a tour and a replay both use the moving dot, so starting one ends the other.
 - **Tests:** `tests/explore.test.mjs` (Node), and `tests/marks.html`, which `tests/embed.py` runs.
+
+### Change: diff in pull requests, the time-lapse, drift (#66, #67, #68)
+
+- **`diff(before, after)`** returns `{ model, summary, views }`. The model is `after`, marked with what the map already draws:
+  - cards: `change` is `added` (a NEW tab), `changed` (CHANGED) or `removed` (REMOVED: faded, dashed, struck through);
+  - lines: `style` is `added` (green, flowing) or `removed` (rose, dashed, faded), and a changed line is `edited` (an amber
+    dot);
+  - what left comes back in its views, boxes and places;
+  - a card put into or taken out of a view is marked in that view only (`nodeOverrides`).
+
+  Cards and lines match by id, and a line without one by its ends, as a Ref names it. `summary` says what changed in
+  words, in model order, for example "adds Payments queue between Trip service and Payment provider" or "renames Accounts
+  to Accounts and sign-in". `views` lists the views that show a change. The marks are the model's own fields, so a page or
+  a still that the CLI makes shows them with nothing to call.
+- **`drift(model, observed, { match })`** returns `{ model, counts, views }`: the map against the traffic seen.
+  - `observed` is `[{ from, to, count }]`, or a Jaeger or Tempo dependency list (`[{ parent, child, callCount }]`, or
+    `{ data: [...] }`).
+  - A service is the card that `match` names, else the card with its id, else the one with its label (case aside).
+  - A line that ran but is not drawn comes in rose and dashed, labelled "not drawn" with its calls (`drift: "undrawn"`).
+  - A drawn line between two cards that traffic reached, but that carried none, fades: the new line style `faded`
+    keeps its kind's colour, faint, with no flow (`drift: "idle"`). Lines to a card no traffic reached are left as they
+    are, and counted as not judged.
+  - `counts`: `carried`, `undrawn`, `idle`, `unknown`, and `unmatched` services with no card. The counts are of model
+    edges, not drawn lines. A line that stands for several edges (A→B and B→A, or parallel edges) fades only when every
+    one of them is idle, so a map can show fewer faded lines than `idle` counts.
+- **A line that stands for several edges shows the strongest of their marks**, whichever edge comes first. Removed or
+  undrawn wins, then added, then changed (the edited dot, which a stronger mark hides). It fades as idle only when all
+  of its edges are idle; otherwise it takes the first style that isn't a mark.
+- **The time-lapse:** `update()` eases into the next model.
+  - Cards that moved glide from where they were, and new cards fade in, then the lines whose route changed.
+  - Cards and lines that left fade out where they were, as copies that nothing can click, focus, find or export.
+  - It's CSS on the new picture only: the geometry is the update's own, nothing moves under reduced motion, a font that
+    loads late moves nothing on purpose, and an export mid-ease draws where things end up.
+  - It's on by default. The render option `ease: false` draws the next model at once.
+- **The CLI:**
+  - `umlimator.py diff BEFORE.json AFTER.json --out PAGE.html [--stills DIR]` writes the marked page, prints the summary
+    and the views, and takes stills of those views.
+  - `umlimator.py diff --base REF --out DIR [--models PATHSPEC...]` does that for every map model the working tree
+    changed since a git ref. It also writes `summary.md`: the summary per file, with a mermaid sketch of the cards that
+    changed and their neighbours.
+  - `umlimator.py drift MODEL.json OBSERVED.json --out PAGE.html [--match MATCH.json] [--stills DIR]`.
+  - `umlimator.py timelapse MODEL.json --out PAGE.html [--limit N]` puts every version of the model in git history,
+    oldest first, on a slider, saying what changed at each step.
+
+  `diff` and `drift` run the module's own `diff()` and `drift()` in Node, so they need Node 18 or later.
+- **A GitHub Action**, `action.yml` (`uses: zintaen/umlimator@v0.12.0`, with `pull-requests: write`). On a pull request it
+  runs `diff --base` against the merge commit's first parent.
+  - It posts one comment with the summary and the sketch, and updates that comment on later pushes.
+  - The pages and stills go up as the run's artifact, which the comment links to.
+  - The same text goes in the job summary.
+  - The picture in the comment is mermaid, which GitHub draws itself, so nothing needs hosting and no permission beyond
+    the comment.
+  - A pull request from a fork gets a read-only token: there's no comment, and the job summary still has everything.
+
+  CI runs the Action on its own pull requests as a dry run, without the comment.
+- **Examples:** `examples/timelapse.html` shows four made-up releases of the bike share on a slider, with diff's marks
+  on request. `examples/drift.html` shows the bike share against a week of made-up traffic.

@@ -34,6 +34,16 @@ jobs:
       - name: render() embedded in a plain page reports its events and follows update() and destroy()
         run: python3 tests/embed.py
 
+      - name: The CLI's diff, drift and timelapse write their pages, and diff --base a pull request's summary
+        run: python3 tests/cli.py
+
+      - name: The diff Action pictures what a pull request changes in the example models (a dry run, without a comment)
+        if: github.event_name == 'pull_request'
+        uses: ./
+        with:
+          models: examples/*.json
+          comment: false
+
       - name: Upstream changed a copied file since its pin (a warning, time to sync)
         env:
           GH_TOKEN: ${{ github.token }}
