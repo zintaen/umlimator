@@ -936,10 +936,10 @@ const mapTabs = (n, c) => { const tw = t => t.toUpperCase().length * 6.4 + 10, b
   const t = n.k === 'm-public' ? 'PUBLIC' : n.k === 'm-ext' ? 'EXTERNAL' : n.k === 'm-lane' ? 'LANE' : ''; return t ? [{ text: t, fill: c, w: tw(t) }] : []; };
 const mapNodeW = n => {
   const px = n.emphasis ? 15 : 13;
-  const sub = n.sub || n.sublabel || '';
+  const sub = n.sub || n.sublabel || '', chips = (n.verbs || []).reduce((a, v) => a + textW(v, 9.5) + 14, -4); // its chips as svgOf draws them: each verb and 10 px, 4 px apart (#84)
   return Math.min(n.emphasis ? 205 : 386, Math.max(n.emphasis ? 146 : 138,
     Math.ceil(textW(n.label, px) + 70), badgesOf(n).length ? Math.ceil(badgesOf(n).reduce((a, b) => a + b.text.length * 6.4 + 10, 0) + (badgesOf(n).length - 1) * 4 + 120) : 0,
-    Math.min(386, Math.ceil(textW(sub, 10) + 70))));
+    Math.min(386, Math.ceil(Math.max(textW(sub, 10), chips) + 70))));
 };
 /* Geometry: node boxes, ports, orthogonal routes, label slots. A view with lines the router found no route for is laid
    out once more, with room where those lines need it (#40); a view whose lines all route keeps its geometry. */
@@ -1606,7 +1606,7 @@ return I && I.src ? `<rect x="${x - M * 3 / 28}" y="${y - M * 3 / 28}" width="${
       let vx = 0; const chips = [], maxW = third ? sw : n.w - 24; // on a third line they keep to the text's column, clear of the mark
       for (let i = 0; i < verbs.length; i++) {
         const wv = textW(verbs[i], 9.5) + 10, rest = verbs.length - i - 1, more = rest ? textW('+' + rest, 9.5) + 10 : 0;
-        if (vx + wv + (rest ? more + 4 : 0) > maxW && i) { chips.push(['+' + (verbs.length - i), textW('+' + (verbs.length - i), 9.5) + 10, true]); break; }
+        if (vx + wv + (rest ? more + 4 : 0) > maxW) { chips.push(['+' + (verbs.length - i), textW('+' + (verbs.length - i), 9.5) + 10, true]); break; } // the first too: a verb wider than any card is "+N" (#84)
         chips.push([verbs[i], wv]); vx += wv + 4;
       }
       const total = chips.reduce((a, c2) => a + c2[1], 0) + (chips.length - 1) * 4;
@@ -1902,6 +1902,8 @@ function auditSvg(svg, geo, where) {
       nodes.forEach(n => { if (n !== own && hit(a.b, R(n), -1)) issues.push(`${where}: text "${a.txt}" overlaps node "${n.label}"`); });
     }
   });
+  svg.querySelectorAll('rect.verb-chip').forEach(r => { const own = geo.byId[r.closest('[data-id]').dataset.id], x = +r.getAttribute('x'); // a chip's pill, not only its text (#84)
+    if (own && (x < own.x + 1 || x + +r.getAttribute('width') > own.x + own.w - 1)) issues.push(`${where}: chip "${r.nextElementSibling.textContent}" overflows node "${own.label}"`); });
   issues.push(...routeAudit(geo, where), ...leaveIssues(geo, where));
   const els = T.filter(a => a.t === 'el');
   for (let i = 0; i < els.length; i++) for (let j = i + 1; j < els.length; j++) if (hit(els[i].b, els[j].b, -1)) issues.push(`${where}: edge labels "${els[i].txt}" and "${els[j].txt}" overlap`);

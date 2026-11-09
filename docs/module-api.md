@@ -803,3 +803,14 @@ A stacked card can open into a box on the map it is on, instead of switching to 
   | d24/boxed | 27 → 30 | 19,093 → 19,626 |
   | m50/overview | 279 → 266 | 136,374 → 138,245 |
   | **All bench views** | **722 → 706** | **445,633 → 447,796 (+0.5%)** |
+
+### A card is wide enough for its chips (#84)
+
+- **A card's width counts its chips** (`verbs`) as it counts its name and its sub-line, up to 386 px. It counted only
+  those, so in a wide font (Verdana) a card's chips ran past its text, a long first chip past its right edge, and most
+  of them hid behind "+N": assistant's four cards with chips showed one each. Now they show all of them.
+- **A chip with no room still ends in "+N", and so does the first one.** The first chip was drawn whole, however wide;
+  a verb wider than any card is now "+1", named by its verb.
+- **The page's check reports a chip whose pill runs past its card** (`umlimator.py check`). It checked only a chip's
+  text.
+- Only cards with chips move: of the examples, assistant's four. No bench view has chips.
