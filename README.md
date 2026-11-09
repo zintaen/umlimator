@@ -150,7 +150,8 @@ python3 umlimator.py mcp model.json                                    # an MCP 
 `check` also reports each rule the model breaks, and then exits 1.
 
 The page has breadcrumbs, a details panel per card, ⌘K search, deep links (`#view=<id>&node=<id>`, and
-`#story=<id>&step=<n>` for a story's step), stories, and export.
+`#story=<id>&step=<n>` for a story's step), stories, and export. For scripts and tests, it keeps its map's handle on
+`window.umlimatorMap`: the `Handle` that `render()` returns (`setView()`, `highlight()`, `tour()`, `play()` ...).
 `stills` skips a view whose inputs have not changed since its last export (`--all` exports every view). Needs Python
 3.9+ (standard library only), Google Chrome or Chromium for `stills`, `check` and `record`, and Node 18+ for `diff`,
 `drift` and `mcp`.

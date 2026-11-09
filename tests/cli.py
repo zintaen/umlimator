@@ -162,8 +162,8 @@ sent = event()
 ok("mcp · highlight: sent to the page connected, card and line ids as Refs, on its event stream", said.startswith("Sent to 1 page") and sent.get("do") == "highlight"
    and sent.get("view") == "system" and sent.get("refs") == [{"type": "node", "id": "trips"}, {"type": "node", "id": "payments"}, {"type": "edge", "ids": ["s9"]}], (said, sent))
 c = web(); c.request("GET", "/"); r = c.getresponse(); page = r.read().decode()
-ok("mcp · serves the CLI's page, with the map's handle kept and the script that plays commands",
-   r.status == 200 and "window.umlimatorPage = mountPage(app, D," in page and "new EventSource('/events')" in page and "Fare calculator" in page)
+ok("mcp · serves the CLI's page, with the script that plays commands on its map handle (window.umlimatorMap)",
+   r.status == 200 and "const map = window.umlimatorMap" in page and "new EventSource('/events')" in page and "Fare calculator" in page)
 c = web(); c.request("GET", "/", headers={"Host": f"attacker.example:{url.group(1)}"})
 ok("mcp · a request for another host name (DNS rebinding) gets nothing", c.getresponse().status == 403)
 mcp.stdin.close()

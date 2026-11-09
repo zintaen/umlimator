@@ -886,20 +886,24 @@ stdio, so an AI assistant can read a map and drive its page. In Claude Code:
     `clear()` each push a command to every page connected to `/events`, over Server-Sent Events.
   - Each answers how many pages it reached or, with none, the URL to open. A page that connects later gets the latest
     command first, so it shows what the assistant last showed.
-  - The page is the CLI's own (`umlimator.py render`), rendered again when the model has changed, with two things added
-    only when served: the map's handle kept on `window.umlimatorPage`, and a script that plays each command with
-    `setView()`, `highlight()`, `tour()` and `play()`. A command made from a newer model reloads the page first.
+  - The page is the CLI's own (`umlimator.py render`), rendered again when the model has changed, with a script added
+    only when served that plays each command on the page's map handle, `window.umlimatorMap`, with `setView()`,
+    `highlight()`, `tour()` and `play()`. A command made from a newer model reloads the page first.
   - A highlight clears when the view changes, since on another view it would dim every card. A new command ends a story
     the server started.
 - **Safety:** the server listens on 127.0.0.1 only. A request whose `Host` isn't `127.0.0.1` or `localhost` gets 403, so
   a site that points its own name at 127.0.0.1 (DNS rebinding) reads nothing. Nothing is fetched: the server sets
   `UMLIMATOR_OFFLINE`, under which the CLI's fetches fail, so a logo not in the cache keeps its sigil (and the renderer's
   avatars their initials).
+- **The standalone page's handle:** every page `umlimator.py render` writes now keeps its map's handle (what `mountPage()`
+  returns) on `window.umlimatorMap`, for scripts and tests; the served page's script is one such script.
 - **Inside:** `umlimator_mcp.py`, next to `umlimator.py`, standard library only.
 - **Tests:** `tests/cli.py` drives the server through pipes, as a client does: `initialize`, `server/discover`,
   `tools/list`, `ping`, the standard errors, a call of each read tool on the bike share, and a tool error. Then it
   connects to `/events` as a page does: the command it missed comes first, and a `highlight` arrives with its ids as
-  Refs. It also fetches the served page, and is refused for another host name.
+  Refs. It also fetches the served page, and is refused for another host name. `tests/page-handle.html`, which
+  `tests/embed.py` runs, checks that a CLI page (`examples/bookshop.html`) keeps `window.umlimatorMap`, and that
+  `setView()` on it moves the page, its title and its link.
 - **Left out:** resources, prompts and `subscriptions/listen` (the tools never change); a way back from the page, so what
   the reader selects doesn't reach the assistant; acting on `notifications/cancelled` (a call takes a second or less);
   the Streamable HTTP transport. A server serves one model: add one per model.

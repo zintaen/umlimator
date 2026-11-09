@@ -3,8 +3,8 @@
 
 Read tools answer from the model file as it is at each call, with the module's own functions run in Node (as `diff` and
 `drift` run theirs). Page tools drive the model's page, which the server serves on http://127.0.0.1:<port>: the CLI's
-own rendered page, plus a script, added only here, that plays the commands the server pushes over Server-Sent Events.
-Standard library only, and nothing is fetched (UMLIMATOR_OFFLINE).
+own rendered page, plus a script, added only here, that plays the commands the server pushes over Server-Sent Events on
+the page's map handle (window.umlimatorMap). Standard library only, and nothing is fetched (UMLIMATOR_OFFLINE).
 
 The protocol: JSON-RPC 2.0, one message per line on stdin and stdout; logs go to stderr. Both eras of MCP: 2026-07-28,
 the current specification (per-request `_meta`, server/discover), and the `initialize` handshake of the versions before
@@ -194,11 +194,10 @@ def event(eid, cmd):
     return f"id: {eid}\ndata: {json.dumps({**cmd, 'model': version()})}\n\n".encode()
 
 
-# The script the served page gets. The page keeps its map's handle on window.umlimatorPage (MOUNT, in the served copy).
-MOUNT = "mountPage(app, D,"
+# The script the served page gets: it plays each command on the map handle every CLI page keeps (window.umlimatorMap).
 SCRIPT = """<script type="module">
 /* umlimator.py mcp (#91), in the served page only: plays the commands the server sends over Server-Sent Events */
-const map = window.umlimatorPage, model = '__MODEL__';
+const map = window.umlimatorMap, model = '__MODEL__';
 let story = null, queue = Promise.resolve();
 async function run(c) {
   if (c.model !== model) return location.reload(); // the model changed since this page was drawn: draw it again
@@ -231,10 +230,7 @@ def page():
                                    capture_output=True, text=True)
                 if r.returncode or not out.is_file():
                     raise Fail(f"umlimator.py render failed: {(r.stderr or r.stdout).strip()[-1500:]}")
-                text = out.read_text(encoding="utf-8")
-            if text.count(MOUNT) != 1:
-                raise Fail(f"the page no longer mounts its map with {MOUNT}..., where umlimator_mcp.py keeps its handle")
-            head, _, tail = text.replace(MOUNT, "window.umlimatorPage = " + MOUNT).rpartition("</body>")
+                head, _, tail = out.read_text(encoding="utf-8").rpartition("</body>")
             drawn[:] = [v, head + SCRIPT.replace("__MODEL__", v) + "</body>" + tail]
         return drawn[1]
 
