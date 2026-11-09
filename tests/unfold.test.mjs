@@ -117,6 +117,10 @@ test('a second card unfolds without drawing the first again, in either order (#9
   }
 });
 
+test("port repair counts a detour, as the layout check does: unfolding u21's Catalog no longer sends Web shop's lines round the map", () => {
+  assert.deepEqual(check(SHOP, 'shop', { expand: ['catalog'] }).map(i => i.message).filter(s => /detour/.test(s)), []);
+});
+
 test('unfolding leaves the model alone and lays out the same every time', () => {
   const before = JSON.stringify(SHOP), a = layout(SHOP, 'shop', { expand: ['orders'] }), b = layout(SHOP, 'shop', { expand: ['orders'] });
   assert.equal(JSON.stringify(SHOP), before);

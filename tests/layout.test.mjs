@@ -7,7 +7,7 @@ import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { layout, history } from '../lib/umlimator.js';
+import { layout, check, history } from '../lib/umlimator.js';
 
 const read = p => JSON.parse(readFileSync(new URL(p, import.meta.url)));
 // the bench's geometry hash (bench/bench.py, #bench=1): FNV-1a over node boxes, route points and label spots
@@ -363,6 +363,32 @@ test("a line from a card's top into another's top on the top row goes up, across
     edges: [{ from: 'a', to: 'b' }, { from: 'b', to: 'c' }, { id: 'over', from: 'a', to: 'c', fromSide: 'top', toSide: 'top' }], views: [{ id: 'v', nodeIds: ['a', 'b', 'c'] }] };
   const over = layout(m, 'v').edges.find(e => e.ids.includes('over')), docks = layout(read('../examples/bike-share.json'), 'fleet').edges.find(e => e.ids.includes('f2'));
   for (const e of [over, docks]) assert.equal(e.pts.length, 4, `${e.from} -> ${e.to}: ${JSON.stringify(e.pts.map(p => p.map(Math.round)))}`);
+});
+
+test("a box's cards sit level with the cards outside it that their lines come from, not stacked at its top (#86)", () => {
+  const card = id => ({ id, label: id.toUpperCase(), kind: 'backend' });
+  // L's top and bottom cards feed R past L4, which L2 feeds: R's two cards were stacked, and the box was levelled as a whole
+  const m = { nodes: ['l1', 'l2', 'l3', 'l4', 'r1', 'r2'].map(card), edges: [{ from: 'l1', to: 'r1' }, { from: 'l2', to: 'l4' }, { from: 'l3', to: 'r2' }],
+    views: [{ id: 'v', nodeIds: ['l1', 'l2', 'l3', 'l4', 'r1', 'r2'], containers: [{ id: 'L', label: 'L', nodeIds: ['l1', 'l2', 'l3', 'l4'] }, { id: 'R', label: 'R', nodeIds: ['r1', 'r2'] }] }] };
+  const g = layout(m, 'v'), at = id => g.nodes.find(n => n.id === id);
+  assert.deepEqual([at('r1').y, at('r2').y], [at('l1').y, at('l3').y], 'R1 and R2 level with L1 and L3');
+  for (const e of g.edges) assert.equal(e.pts.length, 2, `${e.from} -> ${e.to} runs straight: ${JSON.stringify(e.pts)}`);
+  // a generated map: the made-up monorepo with fewer imports (bench/models/r15.json), boxed by folder, crossed 9 times
+  assert.deepEqual(check(read('../bench/models/r15.json'), 'boxed').map(i => i.message), []);
+});
+
+test("far ends level with each other take a side's ports by the angle they come in at: b10's Reports 7 runs into Inventory 9, not round the map", () => {
+  const e = layout(read('../bench/models/b10.json'), 'overview').edges.find(x => x.from === 'n07' && x.to === 'n09');
+  const len = e.pts.slice(1).reduce((a, p, k) => a + Math.abs(p[0] - e.pts[k][0]) + Math.abs(p[1] - e.pts[k][1]), 0);
+  const direct = Math.abs(e.pts[0][0] - e.pts.at(-1)[0]) + Math.abs(e.pts[0][1] - e.pts.at(-1)[1]);
+  assert.ok(len <= 1.1 * direct, `${Math.round(len)} px for a direct route of ${Math.round(direct)} (1,399 px in 0.12.1)`);
+});
+
+test('a labelled line into a card in a box in a box gets room for both borders, as one into a lane does (#82)', () => {
+  const m = nested => ({ nodes: [{ id: 'a', label: 'A' }, { id: 'b', label: 'B' }], edges: [{ from: 'a', to: 'b', label: 'reads often' }],
+    views: [{ id: 'v', nodeIds: ['a', 'b'], containers: nested ? [{ id: 'o', label: 'Outer', nodeIds: [] }, { id: 'i', label: 'Inner', nodeIds: ['b'], parent: 'o' }] : [{ id: 'o', label: 'Outer', nodeIds: ['b'] }] }] });
+  const gap = g => g.nodes[1].x - (g.nodes[0].x + g.nodes[0].w);
+  assert.equal(gap(layout(m(true), 'v')) - gap(layout(m(false), 'v')), 12);
 });
 
 test('the CLI renders what render() draws: a card that opens a view the host loads later (#47), a line that ends on a box (#28); a dangling id still fails', () => {

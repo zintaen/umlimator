@@ -1058,3 +1058,77 @@ stdio, so an AI assistant can read a map and drive its page. In Claude Code:
 - **Left out:** resources, prompts and `subscriptions/listen` (the tools never change); a way back from the page, so what
   the reader selects doesn't reach the assistant; acting on `notifications/cancelled` (a call takes a second or less);
   the Streamable HTTP transport. A server serves one model: add one per model.
+
+### Layout for generated maps (#86)
+
+A map generated from code puts its cards in a box per folder, and most of its lines come into a box from outside it.
+Auto-layout saw each box as one piece: the lines into a box all met it at one point, and a box placed its cards by the
+lines inside it alone. It now sees each line where it meets its card. No API changes; layouts move (below).
+
+- **Lines into a box meet it at their own cards.** The column ordering (#53) counts the crossings between neighbouring
+  columns, and a box was one item there: every line into it met it at one point, so two lines that crossed on the way in
+  to its cards counted as none. A box now counts as tall as its rows, and each line meets it at the row of its card
+  inside, as the levelling of 0.11.0 already did.
+- **A box places its cards by the lines from outside it too.** A box ordered and levelled its cards by the lines inside
+  it alone: cards fed only from outside stacked at its top, and the box was levelled as a whole, so its lines bent, and
+  the lines past it ran into the cards beside it. A view with boxes is now laid out three times: by the lines inside each
+  box, as before; then with each card in a box level with the cards its lines come from and go to outside it too, where
+  the first pass put them; then with each box's columns ordered by those lines as well, where the second put them. A
+  box's far ends count as cards at their rows, in a column before its first (a line from the left) or after its last.
+  In the made-up monorepo of r15, packages/ui/ and packages/server/ no longer stack together, level with apps/ and
+  services/ that feed them, and the lines into packages/shared/ run between them: 9 crossings, now none.
+- **A line keeps off a box's border.** A box levelled half a row from a card puts its border within 8 px of that card's
+  ports, and the router keeps a port's track, and an earlier line's, however near a border: lines ran along borders (the
+  layout check's "runs along the border"). A run along a border now costs ten times its length.
+- **Ports for far ends level with each other (the detour 0.12.1 left in b10/overview).** Reports 7 and Billing 1 sit
+  level, above Inventory 9, whose left side took them by row, then the farther first: Billing's line, which passes under
+  Reports, took the higher port, and Reports' line had no way in that did not cross it (238 → 1,399 px in 0.12.1, once a
+  line routed before it took its cheapest way in, #80). Level far ends now take a left or right side's ports by the angle
+  they come in at, as a top or bottom side's do (#49): of two above the card, the nearer takes the higher port. Reports'
+  line is 202 px, and #80's lines stay straight.
+- **Port repair counts a detour (u21's Catalog).** Port repair swaps two lines' ports when the layout check then finds
+  fewer issues, but it counted crossings, shared runs and labels on lines, not detours. With u21's Catalog unfolded on
+  its shop view, a swap took Web shop's two lines round the map (1,226 and 2,007 px) to save one crossing, and was kept.
+  A detour now counts. That crossing stays, with a label too near its line's end: Order service → Card payments leaves
+  its card's top, past which the line from Web shop runs.
+- **Room for labels in nested boxes.** 0.12.1 gave a labelled line into a lane 12 px more for its label, since it
+  crosses two borders. Any box in a box gets them now: a line to a card in one, or to the box that holds one.
+- **The CLI's layout search keeps `render()`'s layout unless its own routes better.** The search scores its candidates
+  without port repair, and baked into the monorepo's page a layout with a crossing that `render()`'s has not. It now
+  routes the layout it found and the one it started from as the page draws them, and keeps the better.
+- **What it leaves out:** a box's far ends are where the pass before put them, so a box whose neighbours move in the last
+  pass doesn't follow them. Lines from many cards into one card still cross on the way in: r19's logger has seven, and
+  most of r19's crossings are by one of them. The monorepo is not an example: with r15's imports its page checks clean
+  under the default font, Arial and Courier New, but its line from web to kit, past charts on the same row, crosses
+  twice under Verdana and once under Georgia.
+- **Bench:** r15 is new: r19's monorepo with fewer imports (15 packages, 16 imports, near a tree), boxed by folder and
+  plain. The views that move: the plain ones with level far ends on a side (b10, b69, m50, r15/plain, r19/plain and
+  bookshop/overview; b69's also by port repair's detours), those with boxes (b26/overview, r15/boxed, r19/boxed), and
+  u21's unfolded views whose box holds a box (room for labels). Layout-check issues and total line length, 0.12.1 →
+  0.13.0 (r15 laid out by 0.12.1 for the first):
+
+  | View | Issues | Line length |
+  |---|---|---|
+  | b10/overview | 3 → 2 | 5,735 → 4,547 |
+  | b10/norepair | 5 → 3 | 5,941 → 4,563 |
+  | b26/overview | 94 → 91 | 39,998 → 40,577 |
+  | b69/overview | 224 → 221 | 132,307 → 130,785 |
+  | b69/back | 13 → 12 | 10,348 → 12,022 |
+  | m50/overview | 265 → 261 | 138,245 → 131,852 |
+  | r15/boxed (new) | 11 → 0 | 11,005 → 9,017 |
+  | r15/plain (new) | 5 → 3 | 6,366 → 6,202 |
+  | r19/boxed | 24 → 21 | 26,707 → 24,244 |
+  | r19/plain | 28 → 26 | 14,792 → 14,716 |
+  | u21/shop+orders | 1 → 1 | 6,608 → 6,668 |
+  | u21/shop+orders+o-checkout | 1 → 1 | 7,035 → 7,095 |
+  | u21/teams+orders | 0 → 0 | 5,174 → 5,246 |
+  | bookshop/overview | 0 → 0 | 4,828 → 4,983 |
+  | **All bench views** | **707 → 675** | **482,671 → 470,099 (−2.6%)** |
+
+  Placing a view's boxes three times costs under a millisecond; routing takes the rest, and moves with the layout. In the
+  browser, as `bench.py` times a view (the median of 3 runs; 0.12.1's module and this one in turn, twice, on one busy
+  machine): b26 638 → 598 ms, m50 2,460 → 2,183 ms, b69/overview 3,470 → 3,379 ms, r19/boxed 218 → 186 ms, r15/boxed
+  84 → 32 ms. CI's limits (m50 8 s, b26 3 s) hold.
+- **Tests:** `tests/layout.test.mjs`: two boxes whose cards sit level with the cards outside them that feed them, r15's
+  boxed view with a clean check, b10's Reports 7 → Inventory 9 straight, and a nested box's room for a label;
+  `tests/unfold.test.mjs`: u21's Catalog unfolds with no detour.
