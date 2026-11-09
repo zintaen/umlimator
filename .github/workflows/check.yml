@@ -81,6 +81,22 @@ jobs:
           done
           node examples/layout.mjs
 
+      - name: The Claude Code plugin's manifests parse, its skills name and describe themselves, and map-repo's CLI runs from its pinned release
+        run: |
+          python3 -I - <<'PY'
+          import json, pathlib, re, sys
+          market = json.load(open(".claude-plugin/marketplace.json"))
+          for p in market["plugins"]:
+              json.load(open(pathlib.Path(p["source"]) / ".claude-plugin" / "plugin.json"))
+          for s in pathlib.Path("plugins").glob("*/skills/*/SKILL.md"):
+              m = re.match(r"---\n(.*?)\n---\n", s.read_text(encoding="utf-8"), re.S)
+              meta = dict(line.split(":", 1) for line in (m.group(1).splitlines() if m else []) if ":" in line)
+              if not (meta.get("name", "").strip() and meta.get("description", "").strip()):
+                  sys.exit(f"{s}: its frontmatter needs a name and a description")
+          print(f"{len(market['plugins'])} plugin(s), manifests and skills ok")
+          PY
+          python3 plugins/umlimator/skills/map-repo/scripts/cli.py --help > /dev/null   # clones the pinned tag and checks its commit
+
   # The examples, live: on each push to main that passes the checks, every model's page and pictures are built and
   # published with the host pages and the module on GitHub Pages (zintaen.github.io/umlimator).
   site:
