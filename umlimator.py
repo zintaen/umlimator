@@ -12,10 +12,11 @@
   umlimator.py timelapse MODEL.json --out PAGE.html [--limit 20]   # the model's versions in git history, on a slider
   umlimator.py record PAGE.html --story ID --out STORY.png [--size 1160x740] [--scale 1] [--theme light|dark]   # a story as an animated PNG
   umlimator.py pdf PAGE.html --out MAP.pdf [--views a,b] [--theme light|dark]   # one PDF: a title page, each view with its text, legend, rules
+  umlimator.py mcp MODEL.json [--port 7391]   # an MCP server over stdio: an AI assistant reads the model and drives its page
 
 MODEL.json is the map model in engine/references/schema.md (nodes, edges, views), plus umlimator's `badge` field on a
 node (PROPOSED, TARGET, OFF ...). `stills` needs Google Chrome or Chromium; the PNGs are what a document that cannot
-run the page (a wiki such as Confluence) shows. `diff` and `drift` run the module's own diff() and drift() in Node.
+run the page (a wiki such as Confluence) shows. `diff`, `drift` and `mcp` run the module's own functions in Node.
 """
 import argparse, base64, hashlib, html, io, json, os, re, shutil, struct, subprocess, sys, tempfile, urllib.parse, urllib.request, zipfile, zlib
 from pathlib import Path
@@ -78,6 +79,14 @@ def headless(binary, *args, timeout=90):
 
 ICONS = HERE / "icons"  # Lucide line icons (ISC) and manifest.json: every icon's source, and a sha256 for each brand mark
 CACHE = Path(os.environ.get("UMLIMATOR_ICON_CACHE", Path.home() / ".cache" / "umlimator" / "icons"))  # brand marks
+
+
+def offline(*a, **k):
+    raise OSError("UMLIMATOR_OFFLINE is set, so nothing is fetched")
+
+
+if os.environ.get("UMLIMATOR_OFFLINE"):  # the MCP server's pages (#91): a logo not in the cache keeps its sigil, an avatar its initials
+    urllib.request.urlopen = offline     # (visual.py's render loads this file too, so its fetches fail the same way)
 
 
 def icon_bytes(e):
@@ -550,6 +559,15 @@ def cmd_record(a):
     print(json.dumps({"story": a.story, "frames": len(frames), "out": a.out, "bytes": Path(a.out).stat().st_size}, indent=1))
 
 
+def cmd_mcp(a):
+    """A Model Context Protocol server over stdio for one model (#91): tools that read it, and tools that drive its page,
+    served on 127.0.0.1. It lives in umlimator_mcp.py, next to this file."""
+    if not Path(a.model).is_file():
+        sys.exit(f"no model at {a.model}")
+    import umlimator_mcp
+    umlimator_mcp.serve(a.model, a.port)
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -582,6 +600,9 @@ def main():
     dr.set_defaults(f=cmd_drift)
     t = sub.add_parser("timelapse", help="the model's versions in git history on a slider"); t.add_argument("model"); t.add_argument("--out", required=True)
     t.add_argument("--limit", type=int, default=30, help="the latest N versions (default 30)"); t.set_defaults(f=cmd_timelapse)
+    mc = sub.add_parser("mcp", help="a Model Context Protocol server over stdio: an AI assistant reads the model and drives its page")
+    mc.add_argument("model"); mc.add_argument("--port", type=int, default=7391, help="the page's port on 127.0.0.1 (default 7391; another if it is taken)")
+    mc.set_defaults(f=cmd_mcp)
     a = p.parse_args(); a.f(a)
 
 

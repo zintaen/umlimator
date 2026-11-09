@@ -34,7 +34,7 @@ jobs:
       - name: render() embedded in a plain page reports its events and follows update() and destroy()
         run: python3 tests/embed.py
 
-      - name: The CLI's diff, drift and timelapse write their pages, diff --base a pull request's summary, and pdf an example's PDF
+      - name: The CLI's diff, drift and timelapse write their pages, diff --base a pull request's summary, mcp answers an MCP client, and pdf an example's PDF
         run: python3 tests/cli.py
 
       - name: The diff Action pictures what a pull request changes in the example models (a dry run, without a comment)
