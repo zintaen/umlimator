@@ -807,4 +807,4 @@ A stacked card can open into a box on the map it is on, instead of switching to 
 - **`tests/embed.py` reads a page again until it has what the check reads,** for up to 60 s. Chrome reads the page once
   its virtual time is up, and on a busy machine that could be before the standalone page, which draws on an animation
   frame, had drawn its legend. Every page the harness reads goes through the same wait: the test pages, the host pages
-  and bookshop's legend.
+  and bookshop's legend. The test pages' own retry, once more when Chrome gave back nothing, is gone: the wait covers it.

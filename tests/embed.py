@@ -56,7 +56,8 @@ base = f"http://127.0.0.1:{server.server_address[1]}/"
 def dom(path, done, wait=60):
     # reduced motion: navigation without animation frames, which headless virtual time does not run. Chrome reads the
     # page once its virtual time is up, which on a busy machine can be before the page has drawn what a check reads (the
-    # standalone page draws on an animation frame, in real time): read it again until done() holds, for up to `wait` s (#85)
+    # standalone page draws on an animation frame, in real time), or Chrome may give back nothing at all (a rare headless
+    # hang on CI runners): read it again until done() holds, for up to `wait` s (#85)
     end = time.monotonic() + wait
     while True:
         t = visual.chrome(binary, "--window-size=1200,1200", "--virtual-time-budget=30000", "--force-prefers-reduced-motion",
@@ -68,8 +69,6 @@ def dom(path, done, wait=60):
 failed = False
 for page in ("tests/embed.html", "tests/edit.html", "tests/contrast.html", "tests/rules.html", "tests/marks.html", "tests/change.html", "tests/unfold.html", "tests/unfold-page.html", "tests/stories.html"):
     t = dom(page, lambda t: 'id="result"' in t)
-    if "<title>" not in t:  # Chrome gave back no page at all (a rare headless hang on CI runners): once more
-        print(f"note {page}: Chrome returned nothing; running it again"); t = dom(page, lambda t: 'id="result"' in t)
     m = re.search(r'<pre id="result">(.*?)</pre>', t, re.S)
     if not m:  # each check names itself in the page title: say where it stopped
         last = re.search(r"<title>(.*?)</title>", t)
