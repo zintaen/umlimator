@@ -18,9 +18,9 @@ drill-down, a data pipeline, an AI agent's skills, and host pages for embedding,
 - **Unfolding in place**: a stacked card can also open into a box on the map it is on (E, or Alt + click), its inner
   view's cards inside and the lines to it moved onto them, the rest of the picture in its order.
 - **Layout and routing**: columns in reading order, each ordered so the lines cross as little as they can, those that
-  skip columns included; each card level with the cards its lines come from, so lines run straight; orthogonal lines
-  that never run through a card, room for every label, containers kept apart, and cards with no lines in a row of their
-  own, under the view or at the bottom of their box. The same model gives the same picture.
+  skip columns included; each card level with the cards its lines come from, in its box or outside it, so lines run
+  straight; orthogonal lines that never run through a card, room for every label, containers kept apart, and cards with
+  no lines in a row of their own, under the view or at the bottom of their box. The same model gives the same picture.
 - **Reading**: animated flow, neighbours lit on selection, numbered steps, tours, minimap, light and dark themes.
 - **Exploring**: every path between two cards, or everything a card reaches, lit on the map; a view in plain sentences
   (`describe()`); a tour along any path the host names.
