@@ -407,3 +407,44 @@ events beyond verb chips (step 4); editing (step 5); SVG export without Chrome (
   which keeps pairs, has 398 issues, 403 before.
 - **CI:** b26's time limit is 3 s, up from 2 s. A runner took 1.36 s on 0.9.0 with b26's layout unchanged.
 
+## 0.12.0: a model schema, validate(), check() and a playground
+
+- **A JSON Schema for the model**, `lib/umlimator.schema.json`, exported as `umlimator/schema.json`. It covers every
+  field `render()`, `layout()` and the standalone page read, with a description each, enums for line kinds, weights, sides,
+  render modes and changes, and the card kinds and tones as suggestions (any string is still allowed, as before). Keys
+  beyond it are allowed. A model file that starts with `"$schema": "<path to>/umlimator.schema.json"` gets completion and
+  checks in editors; the examples do. CI validates every example model against it.
+- **`validate(model)`** lists a model's own problems before anything is drawn, each `{ level, path, message }` with `path`
+  saying where (`views[2].nodeIds[4]`).
+  - **Errors** draw as holes or not at all:
+    - no views, or no list of cards;
+    - a card, view, line or box without an id, or with one that is used twice;
+    - a root, parent, `nodeIds`, `tour`, `stepIds`, `browserOrder` or `intake` entry that names nothing;
+    - a box's card that isn't in its view, a box's unknown parent, or a box that ends up inside itself;
+    - a line whose end is neither a card nor a box, or a view's line id that names no line.
+  - **Warnings** draw other than they say:
+    - an unknown card kind, which draws as a script card;
+    - an unknown line kind, weight or side;
+    - a `layout` or lane entry for a card the view doesn't show;
+    - an `opensView` the model doesn't have yet, which is fine when the host loads it on `open` (#47).
+
+  It accepts everything the CLI accepts since 0.10.0: a model line may end on any view's box, and a view's own line only
+  on that view's boxes.
+- **`check(model, viewId, options)`** runs the layout check's geometry on `layout()`'s geometry, so a host or CI gets it
+  without a browser. Each issue is `{ message, targets }`: the message as the page's check words it, and the cards and
+  lines it names as Refs, for `select()`.
+  - It finds overlapping cards, crossing or shared lines, detours, lines against the reading order or through a card,
+    labels on lines or off their own, boxes and lanes.
+  - The page's check (`umlimator.py check`) also measures text in the DOM: text that overflows its card or touches its
+    mark, titles that overflow, and edge labels on cards or on each other.
+  - In Node, text widths are an estimate unless `measure` is given, so the layout, and what the check finds, can differ
+    from a browser's. The playground passes the map's own font, so `check()` sees what the map shows.
+- **`examples/playground.html`**:
+  - Edit a model as JSON, and the map follows.
+  - `validate()`'s problems and `check()`'s issues for the view shown appear under the editor; clicking one selects the
+    card or line it is about, or opens the view.
+  - Share puts the model in the link (deflate-raw and base64url, by the browser's own `CompressionStream`), and the link
+    opens it again.
+  - It also has an example picker, light and dark, and SVG and PNG export.
+- **Inside:** `auditSvg` (the page's check) now builds on the same two geometry helpers `check()` uses; its report is
+  unchanged, in the same order.

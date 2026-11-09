@@ -7,7 +7,8 @@ that writes a self-contained HTML page and still pictures (SVG, PNG) for documen
 
 ![The example model's overview: a made-up bookshop with logos, line icons and a numbered flow behind the API card](examples/stills/overview.png)
 
-**Examples:** [live on GitHub Pages](https://zintaen.github.io/umlimator/), and [what each one shows](examples/README.md): a C4-style
+**Examples:** [live on GitHub Pages](https://zintaen.github.io/umlimator/), a [playground](https://zintaen.github.io/umlimator/examples/playground.html)
+to try a model in, and [what each one shows](examples/README.md): a C4-style
 drill-down, a data pipeline, an AI agent's skills, and host pages for embedding, live updates and editing.
 
 ## What it does
@@ -68,7 +69,8 @@ function MapView({ model, onSelect }) {
   Events (`click`, `select`, `open`, `viewchange`, `change`) name what they are about by ids from the model.
 - Colours are `--um-*` CSS variables, fonts are the host's (`--um-sans`, `--um-mono`), text is measured in that font,
   and nothing is fetched.
-- `layout(model, viewId)` returns a view's geometry without a DOM, in Node too.
+- `layout(model, viewId)` returns a view's geometry without a DOM, in Node too; `check(model, viewId)` runs the layout
+  check on it, and `validate(model)` finds dangling or repeated ids before anything is drawn.
 - `editable: true` turns on editing gestures ([docs/editing.md](docs/editing.md); `examples/edit.html` is a working host).
 - `mountPage` is the whole standalone viewer that the CLI writes.
 
@@ -79,6 +81,8 @@ The API, its types and the decisions behind it: [docs/module-api.md](docs/module
 A model has shared `nodes` and `edges`, and `views` that each show a subset, with optional `containers` (boxes),
 `layout` (`[col, row]` per card), `render: "sequence"` for numbered run-order views and `tour` for a dot that rides a
 path. The full schema is `engine/references/schema.md` (§ Map model); `examples/bookshop.json` uses most of it.
+A model file that starts with `"$schema": "<path to>/umlimator.schema.json"` (exported as `umlimator/schema.json`)
+gets completion and checks in editors, and `validate(model)` lists its errors and warnings, each with where it is.
 
 Card kinds: `frontend`, `backend`, `ai`, `database`, `queue`, `security`, `cloud`, `external` and `file` (skill-map
 kinds such as `public`, `lane`, `script`, `hook` and `board` work too). Fields beyond the schema:
