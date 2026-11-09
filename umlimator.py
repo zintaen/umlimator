@@ -5,10 +5,14 @@
   umlimator.py stills PAGE.html --out DIR [--views a,b] [--scale 2] [--theme light|dark] [--reader]   # each view as DIR/<view>.svg and .png;
                                                        # --reader: no CHECK tab and no drill-down pill (pictures for documents)
   umlimator.py check PAGE.html [--views a,pic-*] [--ignore right-to-left] [--timeout 600]   # the layout check, on chosen views only
+  umlimator.py diff BEFORE.json AFTER.json --out PAGE.html [--stills DIR]   # what changed, marked on one map, and in words
+  umlimator.py diff --base REF --out DIR [--models 'docs/*.json']   # every model changed since a git ref (a pull request)
+  umlimator.py drift MODEL.json OBSERVED.json --out PAGE.html [--match MATCH.json] [--stills DIR]   # drawn vs. traffic seen
+  umlimator.py timelapse MODEL.json --out PAGE.html [--limit 20]   # the model's versions in git history, on a slider
 
 MODEL.json is the map model in engine/references/schema.md (nodes, edges, views), plus umlimator's `badge` field on a
 node (PROPOSED, TARGET, OFF ...). `stills` needs Google Chrome or Chromium; the PNGs are what a document that cannot
-run the page (a wiki such as Confluence) shows.
+run the page (a wiki such as Confluence) shows. `diff` and `drift` run the module's own diff() and drift() in Node.
 """
 import argparse, base64, hashlib, html, io, json, os, re, shutil, subprocess, sys, tempfile, urllib.parse, urllib.request, zipfile
 from pathlib import Path
@@ -129,8 +133,18 @@ def page_model(model_path, out):
     root = subprocess.run(["git", "rev-parse", "--show-toplevel"], capture_output=True, text=True).stdout.strip()
     if not Path(out).resolve().is_relative_to(Path(root or os.getcwd()).resolve()):
         m.setdefault("meta", {}).setdefault("root", "")
-    names = {n["icon"] for n in m.get("nodes", []) if n.get("icon")}
-    names |= {o["icon"] for v in m.get("views", []) for o in (v.get("nodeOverrides") or {}).values() if o.get("icon")}
+    table = icon_table([m])
+    if table:
+        m["icons"] = table
+    tmp = Path(model_path).with_name("." + Path(model_path).stem + ".icons.json")
+    tmp.write_text(json.dumps(m, ensure_ascii=False), encoding="utf-8")
+    return str(tmp)
+
+
+def icon_table(models):
+    """Every icon the models' cards name, by name (see page_model)."""
+    names = {n["icon"] for m in models for n in m.get("nodes", []) if n.get("icon")}
+    names |= {o["icon"] for m in models for v in m.get("views", []) for o in (v.get("nodeOverrides") or {}).values() if o.get("icon")}
     man = json.loads((ICONS / "manifest.json").read_text())
     table = {}
     for name in sorted(names):
@@ -145,11 +159,18 @@ def page_model(model_path, out):
         else:
             mime = "image/svg+xml" if e["file"].endswith(".svg") else "image/" + e["file"].rsplit(".", 1)[1]
             table[name] = {"src": f"data:{mime};base64,{base64.b64encode(b).decode()}", "dark": bool(e.get("white_fill"))}
-    if table:
-        m["icons"] = table
-    tmp = Path(model_path).with_name("." + Path(model_path).stem + ".icons.json")
-    tmp.write_text(json.dumps(m, ensure_ascii=False), encoding="utf-8")
-    return str(tmp)
+    return table
+
+
+def js(fn, *args):
+    """One of the module's pure functions (diff, drift) run in Node, so the CLI and the module share one implementation."""
+    node = shutil.which("node") or sys.exit(f"{fn} needs Node.js 18 or later: it runs the module's own {fn}()")
+    code = (f"import * as u from {json.dumps(LIB.as_uri())}; let s = ''; for await (const c of process.stdin) s += c;"
+            f"process.stdout.write(JSON.stringify(u[{json.dumps(fn)}](...JSON.parse(s))));")
+    r = subprocess.run([node, "--input-type=module", "-e", code], input=json.dumps(args), capture_output=True, text=True)
+    if r.returncode:
+        sys.exit(r.stderr.strip()[-2000:])
+    return json.loads(r.stdout)
 
 
 def cmd_render(a):
@@ -162,7 +183,7 @@ def cmd_render(a):
         Path(model).unlink()
 
 
-def render(a, model):
+def render(a, model, show=print):
     args = ["render", "--map", model, "--out", a.out, "--no-open"]
     if a.no_check:
         args.append("--no-check")
@@ -177,12 +198,159 @@ def render(a, model):
     except json.JSONDecodeError:
         rep = {}
     chk = rep.get("check", {})
-    print(json.dumps({"out": rep.get("out", a.out), "bytes": rep.get("bytes"), "counts": chk.get("counts"),
-                      "problems": chk.get("overlaps", []), "errors": chk.get("errors", [])}, indent=1))
+    said = {"out": rep.get("out", a.out), "bytes": rep.get("bytes"), "counts": chk.get("counts"),
+            "problems": chk.get("overlaps", []), "errors": chk.get("errors", [])}
+    show(json.dumps(said, indent=1))
     if chk.get("errors"):  # a check that timed out or never reported is not a clean check
         sys.exit("check did not complete: " + "; ".join(chk["errors"]))
     if r.returncode not in (0, 2):
         sys.exit(out[-2000:])
+    return said
+
+
+def quiet(*a, **k):
+    pass
+
+
+def render_model(m, near, out):
+    """A model made here (a diff, a drift) as a page, without its layout check: a copy sits next to the file `near` for
+    the render, so it is drawn as that file would be."""
+    tmp = Path(near).with_name("." + Path(near).stem + ".change.json")
+    tmp.write_text(json.dumps(m, ensure_ascii=False), encoding="utf-8")
+    try:
+        model = page_model(tmp, out)
+        try:
+            return render(argparse.Namespace(out=str(out), no_check=True), model, show=quiet)
+        finally:
+            Path(model).unlink()
+    finally:
+        tmp.unlink()
+
+
+def shots(page, out, views):
+    """Stills of these views, for a document (no CHECK tab or drill-down pill): their PNG paths."""
+    if not (out and views):
+        return []
+    a = argparse.Namespace(page=str(page), out=str(out), views=",".join(views), scale=2.0, theme="light", reader=True, all=True)
+    return [s["png"] for s in cmd_stills(a, show=quiet)]
+
+
+def cmd_diff(a):
+    """What changed from BEFORE to AFTER, on one map: the after model with each card and line marked added, changed or
+    removed (removed ones faded, where they were), the summary in words, and stills of the views that show a change.
+    With --base, every model file the working tree changed since that git ref, each as a page in --out, and a summary.md
+    for a pull request (the diff Action posts it)."""
+    if a.base:
+        return diff_since(a)
+    if len(a.files) != 2:
+        sys.exit("diff: give BEFORE.json and AFTER.json, or --base REF")
+    before, after = (json.loads(Path(f).read_text(encoding="utf-8")) for f in a.files)
+    r = diff_page(before, after, a.files[1], a.out, a.stills)
+    print(json.dumps({k: v for k, v in r.items() if k != "model"}, indent=1))
+
+
+def diff_page(before, after, near, out, stills=None):
+    d = js("diff", before, after)
+    m = d["model"]
+    m["title"] = f"{m.get('title') or Path(near).stem}: what changed"
+    rep = render_model(m, near, out)
+    return {"out": rep["out"], "summary": d["summary"], "views": d["views"], "stills": shots(out, stills, d["views"]), "model": m}
+
+
+def diff_since(a):
+    git = lambda *x: subprocess.run(["git", *x], capture_output=True, text=True)
+    changed = git("diff", "--name-only", "-z", "--no-renames", a.base, "--", *(a.models or ["*.json"]))
+    if changed.returncode:
+        sys.exit(changed.stderr.strip())
+    out = Path(a.out); out.mkdir(parents=True, exist_ok=True)
+    load = lambda t: (lambda m: m if isinstance(m, dict) and isinstance(m.get("nodes"), list) and isinstance(m.get("views"), list) else None)(json.loads(t))
+    done, md = [], ["<!-- umlimator-diff -->", "### Map changes", ""]
+    for name in filter(None, changed.stdout.split("\0")):
+        old = git("show", f"{a.base}:{name}")
+        try:
+            before = load(old.stdout) if old.returncode == 0 else None
+            after = load(Path(name).read_text(encoding="utf-8")) if Path(name).is_file() else None
+        except json.JSONDecodeError:
+            continue
+        if not (before or after):
+            continue  # JSON, but not a map model
+        stem = name.replace("/", "-")[:-5] if name.endswith(".json") else name.replace("/", "-")
+        r = diff_page(before, after, name if after else out / f"{stem}.json", out / f"{stem}.html", out / stem)
+        if not r["summary"]:
+            continue
+        done.append({"file": name, **{k: v for k, v in r.items() if k != "model"}})
+        md += [f"**`{name}`**: " + ", ".join(r["views"]) if r["views"] else f"**`{name}`**", ""]
+        md += [f"- {s}" for s in r["summary"]] + [""] + sketch(r["model"]) + [""]
+    if not done:
+        md += ["No map model changed."]
+    (out / "summary.md").write_text("\n".join(md) + "\n", encoding="utf-8")
+    print(json.dumps(done, indent=1))
+
+
+MARKS = {"added": "#1a7f37", "changed": "#9a6700", "removed": "#cf222e"}
+
+
+def sketch(m, most=60):
+    """The cards a diff marks, and the cards next to them, as a mermaid flowchart: GitHub draws it in a comment or a
+    job summary, so the picture needs no hosting. The map's own pictures are the stills."""
+    views = [v for v in m.get("views") or [] if isinstance(v, dict)]
+    cards = {n["id"]: n for n in [*(m.get("nodes") or []), *(n for v in views for n in v.get("nodes") or [])] if isinstance(n, dict) and "id" in n}
+    lines = [e for e in [*(m.get("edges") or []), *(e for v in views for e in v.get("edges") or [])] if isinstance(e, dict) and e.get("from") in cards and e.get("to") in cards]
+    hot = {i for i, n in cards.items() if n.get("change") in MARKS}
+    lines = [e for e in lines if e.get("change") in MARKS or e["from"] in hot or e["to"] in hot]  # marked lines, and the lines of marked cards
+    near = hot | {x for e in lines for x in (e["from"], e["to"])}
+    if not near or len(near) > most:
+        return [] if not near else [f"_{len(near)} cards changed or next to a change: too many to sketch; see the pictures._"]
+    key = {i: f"n{k}" for k, i in enumerate(i for i in cards if i in near)}
+    q = lambda s: str(s).replace('"', "#quot;")
+    out = ["```mermaid", "flowchart LR"]
+    out += [f'  {key[i]}["{q(cards[i].get("label") or i)}"]' + (f":::{cards[i]['change']}" if cards[i].get("change") in MARKS else "") for i in key]
+    style = []
+    for k, e in enumerate(lines):
+        out.append(f'  {key[e["from"]]} {"-.->" if e.get("change") == "removed" else "-->"}' + (f'|"{q(e["label"])}"|' if e.get("label") else "") + f' {key[e["to"]]}')
+        if e.get("change") in MARKS:
+            style.append(f"  linkStyle {k} stroke:{MARKS[e['change']]},stroke-width:2px")
+    out += style + [f"  classDef {c} stroke:{v},stroke-width:2px" + (",stroke-dasharray:4 3" if c == "removed" else "") for c, v in MARKS.items()]
+    return out + ["```"]
+
+
+def cmd_drift(a):
+    """The map against the traffic seen: lines that run but are not drawn come in dashed rose, drawn lines between
+    services traffic reached that carried nothing fade. OBSERVED.json: [{from, to, count}], or a Jaeger or Tempo
+    dependency list ([{parent, child, callCount}], or {"data": [...]}); --match: {service: card id} where names differ."""
+    m, seen = (json.loads(Path(f).read_text(encoding="utf-8")) for f in (a.model, a.observed))
+    r = js("drift", m, seen, {"match": json.loads(Path(a.match).read_text(encoding="utf-8")) if a.match else {}})
+    r["model"]["title"] = f"{m.get('title') or Path(a.model).stem}: drawn vs. seen"
+    rep = render_model(r["model"], a.model, a.out)
+    print(json.dumps({"out": rep["out"], "counts": r["counts"], "views": r["views"], "stills": shots(a.out, a.stills, r["views"])}, indent=1))
+
+
+def cmd_timelapse(a):
+    """The model's versions in git history, oldest first, as one page with a slider: the map eases from each version to
+    the next (new cards fade in, removed ones fade out, moved ones glide), with what changed in words."""
+    log = subprocess.run(["git", "log", "--follow", "--name-only", "--format=%x00%H%x09%cs%x09%s", "--", a.model], capture_output=True, text=True)
+    if log.returncode:
+        sys.exit(log.stderr.strip())
+    rows = [r.strip().split("\n") for r in log.stdout.split("\x00") if r.strip()][::-1][-a.limit:]  # each: "sha\tdate\tsubject", "", path
+    versions = []
+    for head, *rest in rows:
+        sha, day, subject = (head.split("\t", 2) + ["", ""])[:3]
+        path = next((p for p in rest if p.strip()), a.model)
+        r = subprocess.run(["git", "show", f"{sha}:{path}"], capture_output=True, text=True)
+        try:
+            subject = subject if len(subject) <= 90 else subject[:89].rstrip() + "…"
+            versions.append({"label": f"{day} {subject}".strip(), "model": json.loads(r.stdout)})
+        except json.JSONDecodeError:
+            print(f"{sha[:7]}: {path} is not JSON there; left out", file=sys.stderr)
+    if not versions:
+        sys.exit(f"no versions of {a.model} in git history")
+    data = {"title": versions[-1]["model"].get("title") or Path(a.model).stem, "icons": icon_table([v["model"] for v in versions]), "versions": versions}
+    page = (HERE / "engine" / "assets" / "timelapse.html").read_text(encoding="utf-8")
+    page = page.replace("__TITLE__", html.escape(data["title"]), 1).replace("/*__UMLIMATOR_THEME__*/", THEME.read_text(encoding="utf-8"), 1)
+    page = page.replace("/*__VERSIONS__*/", json.dumps(data, ensure_ascii=False).replace("</", "<\\/"), 1)
+    page = page.replace("/*__UMLIMATOR_LIB__*/", LIB.read_text(encoding="utf-8"), 1)
+    Path(a.out).write_text(page, encoding="utf-8")
+    print(json.dumps({"out": a.out, "versions": [v["label"] for v in versions]}, indent=1))
 
 
 def cmd_check(a):
@@ -245,7 +413,7 @@ def still_keys(page, opts):
     return keys
 
 
-def cmd_stills(a):
+def cmd_stills(a, show=print):
     b = chrome()
     page = Path(a.page).resolve()
     out = Path(a.out); out.mkdir(parents=True, exist_ok=True)
@@ -279,8 +447,9 @@ def cmd_stills(a):
         done.append({"view": v, "w": info["w"], "h": info["h"], "png": str(png)})
         seen[v] = keys.get(v)
         record.write_text(json.dumps(seen, indent=1, sort_keys=True))
-    print(json.dumps(done, indent=1))
-    print(f"{len(done)} still(s) exported, {len(skipped)} unchanged and skipped (--all exports every view)", file=sys.stderr)
+    show(json.dumps(done, indent=1))
+    show(f"{len(done)} still(s) exported, {len(skipped)} unchanged and skipped (--all exports every view)", file=sys.stderr)
+    return done
 
 
 def main():
@@ -298,6 +467,16 @@ def main():
     c.add_argument("--timeout", type=int, default=600)
     c.add_argument("--ignore", help="kinds left out of the report: right-to-left, crossings, labelOnLine, detours, nearNode, onMark, shortLine (comma list)")
     c.set_defaults(f=cmd_check)
+    d = sub.add_parser("diff", help="what changed between two models, or in every model changed since a git ref (--base)")
+    d.add_argument("files", nargs="*", metavar="BEFORE.json AFTER.json"); d.add_argument("--out", required=True, help="the page (with --base: a folder)")
+    d.add_argument("--stills", help="a folder for stills of the views that show a change"); d.add_argument("--base", help="a git ref: diff the working tree's models against it")
+    d.add_argument("--models", nargs="*", help="with --base, git pathspecs of the model files (default: every .json that is a map model)")
+    d.set_defaults(f=cmd_diff)
+    dr = sub.add_parser("drift", help="the map against the traffic seen"); dr.add_argument("model"); dr.add_argument("observed")
+    dr.add_argument("--out", required=True); dr.add_argument("--match", help="JSON: {service name: card id}"); dr.add_argument("--stills")
+    dr.set_defaults(f=cmd_drift)
+    t = sub.add_parser("timelapse", help="the model's versions in git history on a slider"); t.add_argument("model"); t.add_argument("--out", required=True)
+    t.add_argument("--limit", type=int, default=30, help="the latest N versions (default 30)"); t.set_defaults(f=cmd_timelapse)
     a = p.parse_args(); a.f(a)
 
 

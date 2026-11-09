@@ -1,0 +1,47 @@
+<!doctype html>
+<!-- The time-lapse page `umlimator.py timelapse` writes (#67): every version of a model in git history on a slider. The
+     map eases from each version to the next (update()); the line under it says what changed (diff()). One file: the
+     module, its theme and the versions are inlined. -->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>__TITLE__</title>
+<style>/*__UMLIMATOR_THEME__*/
+  html, body { margin: 0; height: 100%; background: var(--um-bg); color: var(--um-text); font: 14px/1.5 var(--um-sans); }
+  body { display: flex; flex-direction: column; }
+  header { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; padding: 10px 16px; border-bottom: 1px solid var(--um-border); }
+  header input[type=range] { flex: 1 1 220px; accent-color: var(--um-accent); }
+  button { font: inherit; padding: 4px 12px; border: 1px solid var(--um-border-2); border-radius: 6px; background: var(--um-panel); color: var(--um-text); cursor: pointer; }
+  #map { flex: 1; min-height: 0; }
+  #said { margin: 0; padding: 8px 16px 12px; border-top: 1px solid var(--um-border); color: var(--um-muted); min-height: 1.5em; }
+</style>
+<header><button id="play" type="button">Play</button><input id="at" type="range" min="0" step="1" aria-label="Version">
+  <label><input id="marks" type="checkbox"> Mark what changed</label><b id="label" aria-live="polite"></b></header>
+<div id="map"></div>
+<p id="said" aria-live="polite"></p>
+<script id="versions" type="application/json">/*__VERSIONS__*/</script>
+<script type="module">
+/*__UMLIMATOR_LIB__*/
+const D = JSON.parse(document.getElementById('versions').textContent);
+const V = D.versions.map(v => ({ ...v, model: { ...v.model, icons: { ...D.icons, ...v.model.icons } } }));
+const $ = id => document.getElementById(id), at = $('at'), marks = $('marks'), play = $('play');
+let i = V.length - 1, timer = null;
+at.max = i;
+const map = render($('map'), V[i].model, { stableLayout: false }); // each version drawn as its own page would draw it
+function show(k) {
+  i = k; at.value = k;
+  const d = k ? diff(V[k - 1].model, V[k].model) : null, s = d ? d.summary : [];
+  map.update(marks.checked && d ? d.model : V[k].model);
+  $('label').textContent = `${k + 1} of ${V.length}: ${V[k].label}`;
+  $('said').textContent = !d ? 'The first version.' : !s.length ? 'Nothing on the map changed.' : s.slice(0, 6).join('; ') + (s.length > 6 ? `; and ${s.length - 6} more` : '') + '.';
+}
+const stop = () => { clearInterval(timer); timer = null; play.textContent = 'Play'; };
+at.addEventListener('input', () => { stop(); show(+at.value); });
+marks.addEventListener('change', () => show(i));
+play.addEventListener('click', () => {
+  if (timer) return stop();
+  if (i === V.length - 1) show(0);
+  play.textContent = 'Pause';
+  timer = setInterval(() => i < V.length - 1 ? show(i + 1) : stop(), 2200);
+});
+show(i);
+</script>
