@@ -1,9 +1,9 @@
 <!doctype html>
-<!-- replay() of a trace: a ride ending in bike share's Trip service, as an OpenTelemetry collector exports it (OTLP JSON),
-     read by otlpSpans(). Each call runs along its line at the trace's relative timing, the line glows while the call
-     lasts and keeps its duration. Services match cards by id, by label, or through the page's match map. One service
-     (fraud-check) has no card on this view, so its span is skipped and counted. The trace is made up. Serve the
-     repository over HTTP to open it: python3 -m http.server  then  http://localhost:8000/examples/replay.html -->
+<!-- replay() of a trace: a ride ending in bike share's Trip service, as an OpenTelemetry collector exports it (OTLP JSON,
+     traces/ride-end.json), read by otlpSpans(). Each call runs along its line at the trace's relative timing, the line
+     glows while the call lasts and keeps its duration. Services match cards by id, by label, or through a match map
+     (traces/match.json). One service (fraud-check) has no card on this view, so its span is skipped and counted. The
+     trace is made up. Serve the repository over HTTP to open it: python3 -m http.server  then  http://localhost:8000/examples/replay.html -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>umlimator: trace replay</title>
@@ -31,24 +31,10 @@ import { withIcons } from './icons.js';
 const model = await withIcons(await (await fetch('bike-share.json')).json());
 const map = render(document.getElementById('map'), model, { view: 'trips' });
 
-// the trace: one resource per service, each with its spans [id, parent id, name, start ms, end ms]; OTLP keeps times in ns
-const T0 = 1762700000000n, ns = ms => String((T0 + BigInt(ms)) * 1000000n);
-const service = (name, spans) => ({ resource: { attributes: [{ key: 'service.name', value: { stringValue: name } }] },
-  scopeSpans: [{ spans: spans.map(([id, parent, what, a, b]) => ({ traceId: '5b8aa5a2d2c872e8321cf37308d69df2', spanId: id, parentSpanId: parent, name: what, startTimeUnixNano: ns(a), endTimeUnixNano: ns(b) })) }] });
-const trace = { resourceSpans: [
-  service('rider-app', [['a1', '', 'tap End ride', 0, 212]]),
-  service('trip-api', [['b1', 'a1', 'POST /rides/{id}/end', 6, 206]]),
-  service('trip-lifecycle', [['c1', 'b1', 'close ride', 12, 198]]),
-  service('fare-calculator', [['d1', 'c1', 'fare for ride', 20, 118]]),
-  service('Pricing', [['e1', 'd1', 'GetPrice', 24, 61]]),
-  service('payment-gateway', [['f1', 'd1', 'POST /charges', 66, 114]]),
-  service('fraud-check', [['g1', 'f1', 'score charge', 70, 92]]),
-  service('trip-repository', [['h1', 'c1', 'save ride', 122, 160]]),
-  service('postgres', [['i1', 'h1', 'UPDATE rides', 126, 155]]),
-  service('event-publisher', [['j1', 'c1', 'publish ride.ended', 164, 190]]),
-] };
-// services whose names aren't a card's id or label: rider-app and trip-api are ids, Pricing is a label
-const match = { 'trip-lifecycle': 'lifecycle', 'fare-calculator': 'fare', 'payment-gateway': 'payments', 'trip-repository': 'trip-repo', postgres: 'tripsdb', 'event-publisher': 'trip-events' };
+// the trace, as an OpenTelemetry collector exports it (one resource per service, times in ns), and the services whose
+// names aren't a card's id or label (rider-app and trip-api are ids, Pricing is a label). umlimator.py trace keeps the
+// same trace as a numbered view: bike-share's "A ride ends, from its trace" (#96)
+const [trace, match] = await Promise.all(['traces/ride-end.json', 'traces/match.json'].map(async f => (await fetch(f)).json()));
 
 const $ = id => document.getElementById(id), status = $('status');
 let run = null;
