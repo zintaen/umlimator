@@ -136,5 +136,16 @@ export function render(container: HTMLElement, model: MapModel, options?: Render
 export interface History { readonly model: MapModel; readonly canUndo: boolean; readonly canRedo: boolean; push(m: MapModel): MapModel; undo(): MapModel; redo(): MapModel }
 export function history(model: MapModel, limit?: number): History;
 export function layout(model: MapModel, viewId: string, options?: { repair?: boolean; measure?: (text: string, px: number) => number }): Geometry;
+/** A model's own problem. path says where: "views[2].nodeIds[4]". Errors draw as holes or not at all (missing,
+ *  repeated or dangling ids, a box inside itself); warnings draw other than they say (an unknown kind, weight or side,
+ *  a view a card opens that the host has not loaded yet). The JSON Schema is umlimator/schema.json. */
+export interface Problem { level: 'error' | 'warning'; path: string; message: string }
+export function validate(model: MapModel): Problem[];
+/** One issue of the layout check: its message, as the page's check words it, and the cards and lines it names. */
+export interface CheckIssue { message: string; targets: Ref[] }
+/** The layout check's geometry for one view, on layout()'s geometry: no browser needed. The page's check (CLI) adds what
+ *  it measures in the DOM (text overflowing its card, titles, edge labels on cards or each other). In Node, text widths
+ *  are an estimate unless `measure` is given, so the layout, and what is found, can differ from a browser's. */
+export function check(model: MapModel, viewId: string, options?: { repair?: boolean; measure?: (text: string, px: number) => number }): CheckIssue[];
 /** The whole standalone viewer (top bar, views list, details panel, search, export) that umlimator.py writes. */
 export function mountPage(container: HTMLElement, model: MapModel, options?: { params?: URLSearchParams; instant?: boolean }): Handle;
