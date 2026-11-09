@@ -11,10 +11,11 @@
   umlimator.py drift MODEL.json OBSERVED.json --out PAGE.html [--match MATCH.json] [--stills DIR]   # drawn vs. traffic seen
   umlimator.py timelapse MODEL.json --out PAGE.html [--limit 20]   # the model's versions in git history, on a slider
   umlimator.py record PAGE.html --story ID --out STORY.png [--size 1160x740] [--scale 1] [--theme light|dark]   # a story as an animated PNG
+  umlimator.py mcp MODEL.json [--port 7391]   # an MCP server over stdio: an AI assistant reads the model and drives its page
 
 MODEL.json is the map model in engine/references/schema.md (nodes, edges, views), plus umlimator's `badge` field on a
 node (PROPOSED, TARGET, OFF ...). `stills` needs Google Chrome or Chromium; the PNGs are what a document that cannot
-run the page (a wiki such as Confluence) shows. `diff` and `drift` run the module's own diff() and drift() in Node.
+run the page (a wiki such as Confluence) shows. `diff`, `drift` and `mcp` run the module's own functions in Node.
 """
 import argparse, base64, hashlib, html, io, json, os, re, shutil, struct, subprocess, sys, tempfile, urllib.parse, urllib.request, zipfile, zlib
 from pathlib import Path
@@ -79,6 +80,14 @@ ICONS = HERE / "icons"  # Lucide line icons (ISC) and manifest.json: every icon'
 CACHE = Path(os.environ.get("UMLIMATOR_ICON_CACHE", Path.home() / ".cache" / "umlimator" / "icons"))  # brand marks
 
 
+def offline(*a, **k):
+    raise OSError("UMLIMATOR_OFFLINE is set, so nothing is fetched")
+
+
+if os.environ.get("UMLIMATOR_OFFLINE"):  # the MCP server's pages (#91): a logo not in the cache keeps its sigil, an avatar its initials
+    urllib.request.urlopen = offline     # (visual.py's render loads this file too, so its fetches fail the same way)
+
+
 def icon_bytes(e):
     """An icon's file: Lucide icons ship in icons/; a brand mark is not redistributed with umlimator, so it is read from
     the cache, fetched once from its official source (manifest `url`; `zip#member` reads one file from a package) and
@@ -125,22 +134,34 @@ def cmd_pin_icons(a):
     (ICONS / "manifest.json").write_text(json.dumps(man, indent=2) + "\n")
 
 
-def page_model(model_path, out):
+def page_model(model_path, out, source=None):
     """The model as rendered: with an `icons` table of every icon its nodes name (`icon`): a Lucide line icon as its
     inner markup, drawn in the card's kind colour; a brand mark as a data URI on a white tile, never recoloured.
-    Returns the path of a temporary copy next to the model, so relative paths still resolve."""
+    Returns the path of a temporary copy next to the model, so relative paths still resolve. The copy's name is its
+    own (renders of one model can run at once), and the page records the model's path (or `source`) as its source."""
     m = json.loads(Path(model_path).read_text(encoding="utf-8"))
     # visual.py records the checkout's root relative to the page; for a page outside the checkout that path climbs
     # through the folders above it (a home folder, a user name) into a page that gets shared
     root = subprocess.run(["git", "rev-parse", "--show-toplevel"], capture_output=True, text=True).stdout.strip()
-    if not Path(out).resolve().is_relative_to(Path(root or os.getcwd()).resolve()):
+    base = Path(root or os.getcwd()).resolve()
+    if not Path(out).resolve().is_relative_to(base):
         m.setdefault("meta", {}).setdefault("root", "")
     table = icon_table([m])
     if table:
         m["icons"] = table
-    tmp = Path(model_path).with_name("." + Path(model_path).stem + ".icons.json")
-    tmp.write_text(json.dumps(m, ensure_ascii=False), encoding="utf-8")
-    return str(tmp)
+    # the path visual.py would record for the model itself (its portable_path): in the checkout, under home as ~/, else the name
+    src = Path(source or model_path).resolve()
+    m.setdefault("source", next((pre + src.relative_to(b).as_posix() for b, pre in ((base, ""), (Path.home().resolve(), "~/"))
+                                 if src.is_relative_to(b)), src.name))
+    return temp_json(m, model_path, ".icons.json")
+
+
+def temp_json(m, near, suffix):
+    """`m` written to a file of its own next to `near` (hidden, removed by the caller), so parallel renders never share one."""
+    fd, tmp = tempfile.mkstemp(prefix="." + Path(near).stem + ".", suffix=suffix, dir=Path(near).resolve().parent)
+    with os.fdopen(fd, "w", encoding="utf-8") as f:
+        f.write(json.dumps(m, ensure_ascii=False))
+    return tmp
 
 
 def icon_table(models):
@@ -217,16 +238,15 @@ def quiet(*a, **k):
 def render_model(m, near, out):
     """A model made here (a diff, a drift) as a page, without its layout check: a copy sits next to the file `near` for
     the render, so it is drawn as that file would be."""
-    tmp = Path(near).with_name("." + Path(near).stem + ".change.json")
-    tmp.write_text(json.dumps(m, ensure_ascii=False), encoding="utf-8")
+    tmp = temp_json(m, near, ".change.json")
     try:
-        model = page_model(tmp, out)
+        model = page_model(tmp, out, source=near)
         try:
             return render(argparse.Namespace(out=str(out), no_check=True), model, show=quiet)
         finally:
             Path(model).unlink()
     finally:
-        tmp.unlink()
+        Path(tmp).unlink()
 
 
 def shots(page, out, views):
@@ -520,6 +540,15 @@ def cmd_record(a):
     print(json.dumps({"story": a.story, "frames": len(frames), "out": a.out, "bytes": Path(a.out).stat().st_size}, indent=1))
 
 
+def cmd_mcp(a):
+    """A Model Context Protocol server over stdio for one model (#91): tools that read it, and tools that drive its page,
+    served on 127.0.0.1. It lives in umlimator_mcp.py, next to this file."""
+    if not Path(a.model).is_file():
+        sys.exit(f"no model at {a.model}")
+    import umlimator_mcp
+    umlimator_mcp.serve(a.model, a.port)
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -550,6 +579,9 @@ def main():
     dr.set_defaults(f=cmd_drift)
     t = sub.add_parser("timelapse", help="the model's versions in git history on a slider"); t.add_argument("model"); t.add_argument("--out", required=True)
     t.add_argument("--limit", type=int, default=30, help="the latest N versions (default 30)"); t.set_defaults(f=cmd_timelapse)
+    mc = sub.add_parser("mcp", help="a Model Context Protocol server over stdio: an AI assistant reads the model and drives its page")
+    mc.add_argument("model"); mc.add_argument("--port", type=int, default=7391, help="the page's port on 127.0.0.1 (default 7391; another if it is taken)")
+    mc.set_defaults(f=cmd_mcp)
     a = p.parse_args(); a.f(a)
 
 

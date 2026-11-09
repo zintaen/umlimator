@@ -570,7 +570,8 @@ let mapCtx = null;
 try {
   if (D.kind === 'map') {
     mapCtx = mapContext(D, { kinds: true });
-    if (!Q.get('bench')) { document.querySelector('.bar').remove(); mountPage(app, D, { params: Q, instant: INSTANT }); }
+    // the map's handle (setView, highlight, tour, play ...) on window.umlimatorMap, for scripts and tests: umlimator.py mcp's page drives it
+    if (!Q.get('bench')) { document.querySelector('.bar').remove(); window.umlimatorMap = mountPage(app, D, { params: Q, instant: INSTANT }); }
   } else renderDoc();
 } catch (err) { errors.push('render: ' + err.message); console.error(err); }
 

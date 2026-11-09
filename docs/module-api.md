@@ -779,7 +779,16 @@ A stacked card can open into a box on the map it is on, instead of switching to 
 - **Tests:** `tests/stories.test.mjs` (Node: `validate()` on stories), and `tests/stories.html` (play, keys, the bar, the
   page's menu, links and recording). `tests/embed.py` runs the page and checks a `record` run's frames.
 
-## 0.12.1: fixes
+## 0.12.1: lines that come in straight, chips that fit, overlay labels with room, tours in recordings, and numbered views that unfold
+
+Fixes found while building 0.12.0 (#80 to #85, #97, #98), and unfolding finished for numbered views (#82).
+
+What moves for a host that upgrades:
+- **Some lines move.** A line between the tops of two cards on the top row now comes in straight (#80). Six bench views
+  move: across the bench there are 16 fewer layout-check issues, and the lines are 0.5% longer in all. One bench line,
+  b10/overview's Reports → Inventory, now goes round; #86 takes it up in 0.13.0.
+- **A card with chips can be wider**, up to 386 px, so a view with chips may shift (#84).
+- **A numbered inner view unfolds in place** (E, or Alt + click) instead of opening (#82).
 
 ### A line from a card's top into another's top, on the top row, runs straight (#80)
 
@@ -896,6 +905,70 @@ card inside the new box, and as its own box (u21's `shop`: Order service, then W
   190-character sentence is cut into bullets of at most 160.
 
 ## 0.13.0: (unreleased)
+
+### Parallel renders of one model (#105)
+
+- **Two renders of one model at the same time no longer fail.** `umlimator.py render` writes a temporary copy of the
+  model next to it, so its relative paths resolve. Every render used the same name, `.<model>.icons.json`, so two at
+  once could delete each other's copy: four at once failed three times out of four. With `umlimator.py mcp` (#91)
+  serving a model, a `render` of that model could make the page fail once. Now each render's copy has a name of its
+  own, as does the copy behind a `diff` or `drift` page.
+- **A page records the model itself as its source**, `examples/bookshop.json` rather than the copy's
+  `.bookshop.icons.json`, in the form the page always used: the path in the checkout, `~/…` under home, else the
+  file's name. A model that names its own `source` keeps it.
+- **Test:** `tests/cli.py` runs four renders of bike-share at once. All finish, no copy is left behind, and the four
+  pages are the same apart from the time.
+
+### MCP server (#91)
+
+`umlimator.py mcp MODEL.json [--port N]` runs a [Model Context Protocol](https://modelcontextprotocol.io) server over
+stdio, so an AI assistant can read a map and drive its page. In Claude Code:
+`claude mcp add umlimator -- python3 /path/to/umlimator.py mcp /path/to/model.json`.
+
+- **The protocol:** JSON-RPC 2.0, one message per line on stdin and stdout; logs go to stderr.
+  - **2026-07-28**, the current specification, has no handshake: `server/discover` lists the versions the server speaks,
+    and each request names its own in `_meta`. A version it doesn't speak gets `-32022` with the ones it does. Each
+    result carries `resultType: "complete"` and the server's name in `_meta`.
+  - **The handshake of the versions before it** (2025-11-25 back to 2024-11-05), which a client sends that predates
+    2026-07-28 or falls back to it: `initialize` answers with the client's version when it is one of them, else
+    2025-11-25; then `notifications/initialized`, and `ping`. Claude Code asks `server/discover` first and falls back.
+  - **Errors:** an unknown method gets `-32601`, an unknown tool `-32602`, a line that isn't JSON `-32700`. A call that
+    names what the model lacks (a view, a card, a story) is a tool error (`isError`) that lists what the model has, so
+    the assistant can fix its call.
+- **Read tools** run the module's own functions in Node, as `diff` and `drift` do, on the model file read again at each
+  call, so edits show up:
+  - `list_views()`: the views (id, title, parent, number of cards) and the stories (id, title, number of steps);
+  - `describe_view(view)`: `describe()`, then each card's id with its name, for the tools that take ids;
+  - `paths(view, from, to)` and `reach(view, card, backward?, depth?)`: `paths()` and `reach()`, as Refs;
+  - `broken_rules()` and `validate()`: `rules()` and `validate()`;
+  - `diff(other_model_path)`: `diff()`'s summary and views, from the other file to this one.
+- **Page tools** drive the model's page at `http://127.0.0.1:7391` (`--port`; when it is taken, a free port, which the
+  tools and the server's instructions name):
+  - `show_view(view)`, `highlight(refs, view?)` (card or line ids, or Refs), `tour(cards, view?)`, `play_story(id)` and
+    `clear()` each push a command to every page connected to `/events`, over Server-Sent Events.
+  - Each answers how many pages it reached or, with none, the URL to open. A page that connects later gets the latest
+    command first, so it shows what the assistant last showed.
+  - The page is the CLI's own (`umlimator.py render`), rendered again when the model has changed, with a script added
+    only when served that plays each command on the page's map handle, `window.umlimatorMap`, with `setView()`,
+    `highlight()`, `tour()` and `play()`. A command made from a newer model reloads the page first.
+  - A highlight clears when the view changes, since on another view it would dim every card. A new command ends a story
+    the server started.
+- **Safety:** the server listens on 127.0.0.1 only. A request whose `Host` isn't `127.0.0.1` or `localhost` gets 403, so
+  a site that points its own name at 127.0.0.1 (DNS rebinding) reads nothing. Nothing is fetched: the server sets
+  `UMLIMATOR_OFFLINE`, under which the CLI's fetches fail, so a logo not in the cache keeps its sigil (and the renderer's
+  avatars their initials).
+- **The standalone page's handle:** every page `umlimator.py render` writes now keeps its map's handle (what `mountPage()`
+  returns) on `window.umlimatorMap`, for scripts and tests; the served page's script is one such script.
+- **Inside:** `umlimator_mcp.py`, next to `umlimator.py`, standard library only.
+- **Tests:** `tests/cli.py` drives the server through pipes, as a client does: `initialize`, `server/discover`,
+  `tools/list`, `ping`, the standard errors, a call of each read tool on the bike share, and a tool error. Then it
+  connects to `/events` as a page does: the command it missed comes first, and a `highlight` arrives with its ids as
+  Refs. It also fetches the served page, and is refused for another host name. `tests/page-handle.html`, which
+  `tests/embed.py` runs, checks that a CLI page (`examples/bookshop.html`) keeps `window.umlimatorMap`, and that
+  `setView()` on it moves the page, its title and its link.
+- **Left out:** resources, prompts and `subscriptions/listen` (the tools never change); a way back from the page, so what
+  the reader selects doesn't reach the assistant; acting on `notifications/cancelled` (a call takes a second or less);
+  the Streamable HTTP transport. A server serves one model: add one per model.
 
 ### Page panels in render() (#99)
 

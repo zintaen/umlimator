@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """The CLI's change commands end to end (#66, #67, #68): diff of two files, diff --base in a git repository (what the
 diff Action runs on a pull request), drift and timelapse. Pages only: stills (Chrome) are covered by `stills` itself.
+And the MCP server (#91), driven through its pipes as an MCP client drives it, with a page's event stream.
 
   python3 tests/cli.py
 
-Needs Node (diff and drift run the module's own functions) and git.
+Needs Node (diff, drift and the MCP server's read tools run the module's own functions) and git.
 """
-import json, re, subprocess, sys, tempfile
+import http.client, json, re, subprocess, sys, tempfile, threading
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -87,4 +88,98 @@ with tempfile.TemporaryDirectory() as tmp:
     git("checkout", "-q", "--", "docs/map.json")
     cli("diff", "--base", "HEAD", "--out", str(t / "pr2"), cwd=g)
     ok("diff --base · says so when no map changed", "No map model changed." in ((t / "pr2" / "summary.md").read_text(encoding="utf-8") if (t / "pr2" / "summary.md").is_file() else ""))
+# four renders of one model at once (#105): each writes its own copy of the model, and every page records the model itself
+with tempfile.TemporaryDirectory() as tmp:
+    t = Path(tmp)
+    (t / "bike-share.json").write_text((ROOT / "examples" / "bike-share.json").read_text(encoding="utf-8"), encoding="utf-8")
+    runs = [subprocess.Popen([sys.executable, str(ROOT / "umlimator.py"), "render", "bike-share.json", "--out", f"p{i}.html", "--no-check"],
+                             cwd=t, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True) for i in range(4)]
+    ends = [(p.wait(), p.stderr.read()[-300:]) for p in runs]
+    ok("render · four renders of one model at once all finish", all(code == 0 for code, _ in ends), ends)
+    ok("render · and leave no copy of the model next to it", not [p.name for p in t.iterdir() if p.name.startswith(".")],
+       [p.name for p in t.iterdir()])
+    pages = [re.sub(r'"generated": "[^"]*"', "", (t / f"p{i}.html").read_text(encoding="utf-8")) for i in range(4) if (t / f"p{i}.html").is_file()]
+    ok("render · each page records the model itself as its source, and the four pages are the same",
+       len(pages) == 4 and '"source": "bike-share.json"' in pages[0] and len(set(pages)) == 1,
+       re.findall(r'"source": "[^"]*"', pages[0])[:1] if pages else "no pages")
+
+# The MCP server (#91): JSON-RPC through its pipes, a call of each read tool on the bike share, and a page tool's command
+# on the served page's event stream
+mcp = subprocess.Popen([sys.executable, str(ROOT / "umlimator.py"), "mcp", str(ROOT / "examples" / "bike-share.json"), "--port", "0"],
+                       stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True)
+stop = threading.Timer(300, mcp.kill); stop.daemon = True; stop.start()  # a server that stops answering fails here, not on CI's clock
+NEW = {"_meta": {"io.modelcontextprotocol/protocolVersion": "2026-07-28", "io.modelcontextprotocol/clientCapabilities": {}}}
+
+
+def rpc(method, params=None, n=[0]):
+    n[0] += 1
+    mcp.stdin.write(json.dumps({"jsonrpc": "2.0", "id": n[0], "method": method, "params": params or {}}) + "\n"); mcp.stdin.flush()
+    r = json.loads(mcp.stdout.readline() or "{}")
+    return r if r.get("id") == n[0] else {"error": f"no answer to {method}", "got": r}
+
+
+def tool(name, **args):  # its text, and whether it is an error
+    r = rpc("tools/call", {"name": name, "arguments": args}).get("result", {})
+    return "".join(c.get("text", "") for c in r.get("content", [])), r.get("isError")
+
+
+hello = rpc("initialize", {"protocolVersion": "2025-11-25", "capabilities": {}, "clientInfo": {"name": "tests/cli.py", "version": "0"}}).get("result", {})
+url = re.search(r"http://127\.0\.0\.1:(\d+)", hello.get("instructions", ""))
+ok("mcp · initialize answers with the client's version (2025-11-25), the tools and the page's URL",
+   hello.get("protocolVersion") == "2025-11-25" and "tools" in hello.get("capabilities", {}) and url, hello)
+mcp.stdin.write(json.dumps({"jsonrpc": "2.0", "method": "notifications/initialized"}) + "\n")  # unanswered: rpc() checks the next line's id
+found = rpc("server/discover", NEW).get("result", {})
+ok("mcp · server/discover offers 2026-07-28, the current specification", found.get("supportedVersions", [None])[0] == "2026-07-28" and found.get("resultType") == "complete", found)
+listed = [t.get("name") for t in rpc("tools/list", NEW).get("result", {}).get("tools", [])]
+ok("mcp · tools/list", listed == ["list_views", "describe_view", "paths", "reach", "broken_rules", "validate", "diff", "show_view", "highlight", "tour", "play_story", "clear"], listed)
+ok("mcp · ping, and the standard errors: no such method, no such tool, a version it doesn't speak",
+   "result" in rpc("ping") and rpc("nope").get("error", {}).get("code") == -32601 and rpc("tools/call", {"name": "nope"}).get("error", {}).get("code") == -32602
+   and rpc("tools/list", {"_meta": {"io.modelcontextprotocol/protocolVersion": "1900-01-01"}}).get("error", {}).get("code") == -32022)
+
+said, err = tool("list_views")
+got = json.loads(said) if not err else {}
+ok("mcp · list_views: the views and the stories", [v["id"] for v in got.get("views", [])] == [v["id"] for v in bike["views"]] and [s["id"] for s in got.get("stories", [])] == ["ride"], said)
+said, err = tool("describe_view", view="trips")
+ok("mcp · describe_view: the view in sentences, then its card ids", not err and said.startswith("Trip service: 12 cards") and "\nCard ids: rider-app (Rider app), " in said, said)
+said, err = tool("paths", view="trips", **{"from": "rider-app", "to": "payments"})
+got = json.loads(said) if not err else []
+ok("mcp · paths: the cards and lines from Rider app to Payment provider, as Refs", {r["id"] for r in got if r["type"] == "node"} == {"rider-app", "trip-api", "lifecycle", "fare", "payments"}
+   and [r["ids"] for r in got if r["type"] == "edge"] == [["t1"], ["t4"], ["t5"], ["t11"]], said)
+said, err = tool("reach", view="trips", card="payments", backward=True, depth=2)
+ok("mcp · reach: what leads to Payment provider, two lines out", not err and [(r["id"], r["distance"]) for r in json.loads(said) if r["type"] == "node"] == [("payments", 0), ("fare", 1), ("lifecycle", 2)], said)
+ok("mcp · broken_rules and validate: the bike share breaks none of its rules and has no problems", tool("broken_rules") == ("[]", False) and tool("validate") == ("[]", False))
+with tempfile.TemporaryDirectory() as tmp:
+    (Path(tmp) / "other.json").write_text(json.dumps(edited(bike)))
+    said, err = tool("diff", other_model_path=str(Path(tmp) / "other.json"))
+ok("mcp · diff: what changed from another model file to this one", not err and json.loads(said) == {"summary": ["renames Accounts and sign-in to Accounts", "adds Feature flags",
+   "removes Payments queue", "adds a line from Trip service to Payment provider (charges)"], "views": ["system"]}, said)
+said, err = tool("describe_view", view="nope")
+ok("mcp · a call that names what the model lacks is a tool error that says what it has", err and said.startswith("no view 'nope'; the views: context, system"), said)
+
+said, err = tool("show_view", view="trips")
+ok("mcp · a page tool with no page connected says to open its URL", not err and said.startswith("No page is connected") and url and url.group(0) in said, said)
+web = lambda: http.client.HTTPConnection("127.0.0.1", int(url.group(1)), timeout=60)
+c = web(); c.request("GET", "/events"); stream = c.getresponse()
+
+
+def event():  # the next command on the event stream
+    line = b" "
+    while line and not line.startswith(b"data:"):
+        line = stream.readline()
+    return json.loads(line[5:] or b"{}")
+
+
+sent = event()
+ok("mcp · a page that connects gets the latest command", sent.get("do") == "view" and sent.get("view") == "trips" and sent.get("model"), sent)
+said, err = tool("highlight", refs=["trips", "payments", "s9"], view="system")
+sent = event()
+ok("mcp · highlight: sent to the page connected, card and line ids as Refs, on its event stream", said.startswith("Sent to 1 page") and sent.get("do") == "highlight"
+   and sent.get("view") == "system" and sent.get("refs") == [{"type": "node", "id": "trips"}, {"type": "node", "id": "payments"}, {"type": "edge", "ids": ["s9"]}], (said, sent))
+c = web(); c.request("GET", "/"); r = c.getresponse(); page = r.read().decode()
+ok("mcp · serves the CLI's page, with the script that plays commands on its map handle (window.umlimatorMap)",
+   r.status == 200 and "const map = window.umlimatorMap" in page and "new EventSource('/events')" in page and "Fare calculator" in page)
+c = web(); c.request("GET", "/", headers={"Host": f"attacker.example:{url.group(1)}"})
+ok("mcp · a request for another host name (DNS rebinding) gets nothing", c.getresponse().status == 403)
+mcp.stdin.close()
+ok("mcp · exits when its input closes", mcp.wait(timeout=30) == 0)
 sys.exit(1 if failed else 0)
