@@ -906,6 +906,95 @@ card inside the new box, and as its own box (u21's `shop`: Order service, then W
 
 ## 0.13.0: (unreleased)
 
+### Lenses (#94)
+
+- **`lenses` in the model** are saved ways to look at one map:
+  ```json
+  "lenses": [
+    { "id": "teams", "title": "By team", "color": "owner" },
+    { "id": "data", "title": "Data flow", "pick": { "line": ["feeds", "state"] } }
+  ]
+  ```
+  - **`pick`** is a rule's selector (`id`, `kind`, `container`, `not`), with `owner`, and `line` at its top:
+    - without `line`, the lens lights the cards it picks and the lines between two of them;
+    - with `line` (line kinds, a line's own `kind`, default `calls`), it lights the lines of those kinds between two cards
+      the rest of it picks, and the cards at their ends.
+
+    Left out, it lights everything. The rest dims.
+  - **`owner`** on a card names who owns it (a team, say). Selectors pick by it, rules' as well as lenses'; a box has no
+    owner.
+  - **`color: "owner"`** rings each lit card in its owner's tone, the same on every view: owners in name order take cyan,
+    violet, green, amber, fuchsia, orange, rose and slate, then again from cyan. A legend over the controls names the
+    view's owners, and the fit keeps the cards clear of it, as of the controls.
+- **On the map,** a lens is the `lens` layer of `overlay()`, so it never lays the view out again.
+  - It stays on across `update()` and `setView()`, lighting each view as its pick picks there; a model without it takes it
+    off.
+  - `toSVG()` and `toPNG()` draw its rings and dimming, on any view, but not its legend.
+  - A lens that lights everything dims nothing, so a selection keeps its own dimming.
+- **For a host:** `handle.lens(id | null)`, false when the model has no such lens.
+- **In the standalone page:** a Lenses menu when the model has lenses, with No lens; its button names the lens that is on.
+  `#lens=<id>` in the link opens the page with it, and follows it as it changes, back and forward included.
+- **`validate()`** errors on a lens without an id, with one used twice, or with a pick that isn't an object. It warns on a
+  line kind it doesn't know, an owner no card has, a `color` other than `owner`, and an owner that isn't a name. The
+  schema has `lens` and `lensSelector`, and `owner` on cards and in `selector`.
+- **Example:** bike-share has owners (Apps, Rides, Fleet, Platform) and the two lenses above.
+- **Left out:** tones chosen per owner (a host rings cards itself with `overlay()`); lenses that hold on some views only;
+  the legend in exported files.
+- **Tests:** `tests/insight.test.mjs` (`validate()` on lenses and owners), and `tests/insight.html` (the handle, the legend,
+  exports, the page's menu and link).
+
+### Critical path and what-if (#95)
+
+- **Budgets on lines:** `latency` (ms) and `cost` (any unit). They aren't drawn. `validate()` warns on one that isn't a
+  number of 0 or more, which counts as 0.
+- **`critical(model, viewId, { from, to, by })`** returns `{ refs, total }`:
+  - the path along the view's lines with the highest total of `by`, `latency` (the default) or `cost`;
+  - from `from` to `to`, either left out for any card;
+  - a line without the budget counts 0, and a path never comes back to a card, so a loop is walked at most once;
+  - `refs`: its cards in order, then its lines, for `highlight()`; with no path, `{ refs: [], total: 0 }`.
+
+  It's pure and runs in Node. It walks every path depth first, which is exponential on a dense view with many ways
+  between two cards; a `ponytail:` note marks it.
+- **`whatIf(model, viewId, { remove: [ids] })`** returns `{ unreachable }`, and leaves the model as it is: what loses its
+  way to the cards, backward as `reach()` finds it (for calls, what depends on them), each with its distance in lines from
+  the nearest; the cards themselves come first, at 0. It lists no broken rules, because rules only forbid lines and
+  cycles, and taking cards out never adds either.
+- **In the standalone page,** the details panel adds:
+  - ⏱ and ¤ where the view's lines have latency or cost: the slowest or the costliest path from the card, or between the
+    two cards selected (either way round), lit, with its total in the hint line and as a tab on its last card;
+  - ⊘, "What if this goes down?": what loses its way to the card lit, fading with distance, the card ringed rose with a
+    DOWN tab, and the hint line says how many cards. The model isn't touched.
+
+  A new selection or view clears them, and so does the same button again.
+- **Example:** bike-share's Trip service has latency on each line and cost on four.
+- **Left out:** budgets drawn on the map; a whole view's critical path in the page (the function gives it); keys for the
+  new buttons.
+- **Tests:** `tests/insight.test.mjs` (both functions, cycles, parallel lines, two cards taken out), and
+  `tests/insight.html` (the panel's buttons, the totals, two cards, what-if).
+
+### Sequence views from traces (#96)
+
+- **`sequenceFromTrace(model, spans, { view, match, title })`** returns the model with a numbered view (`render:
+  "sequence"`, `lanes: false`) made from a trace's spans, as `otlpSpans()` reads them:
+  - each call from one card to another (a span and its parent's) is a step, in time order; calls that start together
+    keep the trace's order;
+  - its line is labelled with the span's name, and its duration goes under it ("200 ms", "1.5 s");
+  - a span's service is a card as `replay()` matches it: through `match`, else by id, else by label in any case (the two
+    now share one helper). A span with no card, one whose caller has none, and work inside one card make no step. The
+    view's caption says how many calls it has and names the services with no card.
+  - The view's id is `view` (default `trace`) and its title `title` (default its id). It takes the place of a view with
+    that id, else comes last, under the view that shows the most of its cards. The model passed in isn't changed.
+- **`umlimator.py trace MODEL.json TRACE.json --view ID --out OUT.json [--match MATCH.json] [--title T]`** reads OTLP JSON
+  with `otlpSpans()` and runs `sequenceFromTrace()`, both in Node as `diff` does. `--out` may be the model itself. It
+  prints the view's steps, cards and caption, and fails when no call runs between two cards.
+- **Example:** replay.html's trace is now a file, `examples/traces/ride-end.json`, with `traces/match.json`; the site copies
+  them. Kept as bike-share's `ride-end` view, a ride's end in 8 numbered calls, it's checked like every other example
+  view (in the browser with `--expand`, and by `layout.mjs`).
+- **Left out:** a call through a service with no card is not joined to the nearest caller that has one; every step is
+  drawn as a call, whatever the model's own line between the two cards says; spans' attributes and status.
+- **Tests:** `tests/insight.test.mjs` (the example's view, matching, order, steps left out), `tests/cli.py` (`trace` writes
+  the view the example keeps), and `tests/insight.html` (the view drawn in the page).
+
 ### Parallel renders of one model (#105)
 
 - **Two renders of one model at the same time no longer fail.** `umlimator.py render` writes a temporary copy of the
@@ -970,6 +1059,80 @@ stdio, so an AI assistant can read a map and drive its page. In Claude Code:
   the reader selects doesn't reach the assistant; acting on `notifications/cancelled` (a call takes a second or less);
   the Streamable HTTP transport. A server serves one model: add one per model.
 
+### Layout for generated maps (#86)
+
+A map generated from code puts its cards in a box per folder, and most of its lines come into a box from outside it.
+Auto-layout saw each box as one piece: the lines into a box all met it at one point, and a box placed its cards by the
+lines inside it alone. It now sees each line where it meets its card. No API changes; layouts move (below).
+
+- **Lines into a box meet it at their own cards.** The column ordering (#53) counts the crossings between neighbouring
+  columns, and a box was one item there: every line into it met it at one point, so two lines that crossed on the way in
+  to its cards counted as none. A box now counts as tall as its rows, and each line meets it at the row of its card
+  inside, as the levelling of 0.11.0 already did.
+- **A box places its cards by the lines from outside it too.** A box ordered and levelled its cards by the lines inside
+  it alone: cards fed only from outside stacked at its top, and the box was levelled as a whole, so its lines bent, and
+  the lines past it ran into the cards beside it. A view with boxes is now laid out three times: by the lines inside each
+  box, as before; then with each card in a box level with the cards its lines come from and go to outside it too, where
+  the first pass put them; then with each box's columns ordered by those lines as well, where the second put them. A
+  box's far ends count as cards at their rows, in a column before its first (a line from the left) or after its last.
+  In the made-up monorepo of r15, packages/ui/ and packages/server/ no longer stack together, level with apps/ and
+  services/ that feed them, and the lines into packages/shared/ run between them: 9 crossings, now none.
+- **A line keeps off a box's border.** A box levelled half a row from a card puts its border within 8 px of that card's
+  ports, and the router keeps a port's track, and an earlier line's, however near a border: lines ran along borders (the
+  layout check's "runs along the border"). A run along a border now costs ten times its length.
+- **Ports for far ends level with each other (the detour 0.12.1 left in b10/overview).** Reports 7 and Billing 1 sit
+  level, above Inventory 9, whose left side took them by row, then the farther first: Billing's line, which passes under
+  Reports, took the higher port, and Reports' line had no way in that did not cross it (238 → 1,399 px in 0.12.1, once a
+  line routed before it took its cheapest way in, #80). Level far ends now take a left or right side's ports by the angle
+  they come in at, as a top or bottom side's do (#49): of two above the card, the nearer takes the higher port. Reports'
+  line is 202 px, and #80's lines stay straight.
+- **Port repair counts a detour (u21's Catalog).** Port repair swaps two lines' ports when the layout check then finds
+  fewer issues, but it counted crossings, shared runs and labels on lines, not detours. With u21's Catalog unfolded on
+  its shop view, a swap took Web shop's two lines round the map (1,226 and 2,007 px) to save one crossing, and was kept.
+  A detour now counts. That crossing stays, with a label too near its line's end: Order service → Card payments leaves
+  its card's top, past which the line from Web shop runs.
+- **Room for labels in nested boxes.** 0.12.1 gave a labelled line into a lane 12 px more for its label, since it
+  crosses two borders. Any box in a box gets them now: a line to a card in one, or to the box that holds one.
+- **The CLI's layout search keeps `render()`'s layout unless its own routes better.** The search scores its candidates
+  without port repair, and baked into the monorepo's page a layout with a crossing that `render()`'s has not. It now
+  routes the layout it found and the one it started from as the page draws them, and keeps the better.
+- **What it leaves out:** a box's far ends are where the pass before put them, so a box whose neighbours move in the last
+  pass doesn't follow them. Lines from many cards into one card still cross on the way in: r19's logger has seven, and
+  most of r19's crossings are by one of them. The monorepo is not an example: with r15's imports its page checks clean
+  under the default font, Arial and Courier New, but its line from web to kit, past charts on the same row, crosses
+  twice under Verdana and once under Georgia.
+- **Bench:** r15 is new: r19's monorepo with fewer imports (15 packages, 16 imports, near a tree), boxed by folder and
+  plain. The views that move: the plain ones with level far ends on a side (b10, b69, m50, r15/plain, r19/plain and
+  bookshop/overview; b69's also by port repair's detours), those with boxes (b26/overview, r15/boxed, r19/boxed), and
+  u21's unfolded views whose box holds a box (room for labels). Layout-check issues and total line length, 0.12.1 →
+  0.13.0 (r15 laid out by 0.12.1 for the first):
+
+  | View | Issues | Line length |
+  |---|---|---|
+  | b10/overview | 3 → 2 | 5,735 → 4,547 |
+  | b10/norepair | 5 → 3 | 5,941 → 4,563 |
+  | b26/overview | 94 → 91 | 39,998 → 40,577 |
+  | b69/overview | 224 → 221 | 132,307 → 130,785 |
+  | b69/back | 13 → 12 | 10,348 → 12,022 |
+  | m50/overview | 265 → 261 | 138,245 → 131,852 |
+  | r15/boxed (new) | 11 → 0 | 11,005 → 9,017 |
+  | r15/plain (new) | 5 → 3 | 6,366 → 6,202 |
+  | r19/boxed | 24 → 21 | 26,707 → 24,244 |
+  | r19/plain | 28 → 26 | 14,792 → 14,716 |
+  | u21/shop+orders | 1 → 1 | 6,608 → 6,668 |
+  | u21/shop+orders+o-checkout | 1 → 1 | 7,035 → 7,095 |
+  | u21/teams+orders | 0 → 0 | 5,174 → 5,246 |
+  | bookshop/overview | 0 → 0 | 4,828 → 4,983 |
+  | **All bench views** | **707 → 675** | **482,671 → 470,099 (−2.6%)** |
+
+  Placing a view's boxes three times costs under a millisecond; routing takes the rest, and moves with the layout. In the
+  browser, as `bench.py` times a view (the median of 3 runs; 0.12.1's module and this one in turn, twice, on one busy
+  machine): b26 638 → 598 ms, m50 2,460 → 2,183 ms, b69/overview 3,470 → 3,379 ms, r19/boxed 218 → 186 ms, r15/boxed
+  84 → 32 ms. CI's limits (m50 8 s, b26 3 s) hold.
+- **Tests:** `tests/layout.test.mjs`: two boxes whose cards sit level with the cards outside them that feed them, r15's
+  boxed view with a clean check, b10's Reports 7 → Inventory 9 straight, and a nested box's room for a label;
+  `tests/unfold.test.mjs`: u21's Catalog unfolds with no detour.
+
 ### Page panels in render() (#99)
 
 `render()` can draw the standalone page's pieces around its canvas, so a host that embeds the map no longer rebuilds
@@ -995,9 +1158,11 @@ render(el, model, { nav: true, details: true, legend: true, hints: true });
   - On a phone's width the legend and hint line hide and the panel's tabs wrap, as in the page.
 - **Shared, not copied:** the page and `render()` draw the pieces with the same functions (`pieces()`, `hintHTML()` and
   `hinter()` in `lib/umlimator.js`), and their CSS moved from the page template into the module's stylesheet, which the
-  page already took in. The standalone page is unchanged: compared in Chrome before and after, element by element, in 20
-  states (a card selected, each tab, a path lit, the legend folded, an example full size, keys, the views list, dark, a
-  phone's width), every element of the page has the same computed style.
+  page already took in. The move left the standalone page unchanged: compared in Chrome before and after, element by
+  element, in 20 states (a card selected, each tab, a path lit, the legend folded, an example full size, keys, the views
+  list, dark, a phone's width), every element of the page has the same computed style.
+- **Lenses' panel buttons (#95):** the slowest and costliest path (⏱ ¤) and what-if (⊘) are the details panel's, so
+  `render({ details: true })` offers them too, where the view's lines have latency or cost.
 - **Keys and focus:** keys pressed anywhere in the map reach the pieces (`[ ] O > < P`, and Esc closes an example shown
   full size), and the map's other keys reach the canvas, as in the page; Enter and Space press the button they are on.
   The views list comes after the map in the tab order, so focus given to the map's element (#36) still lands on the map.

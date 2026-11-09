@@ -1,14 +1,14 @@
 {
- "commit": "0082411",
+ "commit": "6ef51b8",
  "results": {
   "b10/norepair": {
    "hashes": [
-    "2d72a133"
+    "161ed154"
    ]
   },
   "b10/overview": {
    "hashes": [
-    "da3f7334"
+    "eb7b4492"
    ]
   },
   "b26/n01": {
@@ -18,12 +18,12 @@
   },
   "b26/overview": {
    "hashes": [
-    "69da4dc1"
+    "a7ed7d17"
    ]
   },
   "b69/back": {
    "hashes": [
-    "5744aa49"
+    "fe7d1d83"
    ]
   },
   "b69/front": {
@@ -33,7 +33,7 @@
   },
   "b69/overview": {
    "hashes": [
-    "69057426"
+    "c860a9e9"
    ]
   },
   "bookshop/api": {
@@ -43,7 +43,7 @@
   },
   "bookshop/overview": {
    "hashes": [
-    "b4b5436c"
+    "e33d46fd"
    ]
   },
   "d24/boxed": {
@@ -58,17 +58,27 @@
   },
   "m50/overview": {
    "hashes": [
-    "d4a2017"
+    "7e29c505"
+   ]
+  },
+  "r15/boxed": {
+   "hashes": [
+    "41ac07bf"
+   ]
+  },
+  "r15/plain": {
+   "hashes": [
+    "86834b51"
    ]
   },
   "r19/boxed": {
    "hashes": [
-    "efab21e2"
+    "1c3c5572"
    ]
   },
   "r19/plain": {
    "hashes": [
-    "c54657ba"
+    "e565b90a"
    ]
   },
   "s16/job": {
@@ -123,12 +133,12 @@
   },
   "u21/shop+orders": {
    "hashes": [
-    "a661cc58"
+    "3edc2bd8"
    ]
   },
   "u21/shop+orders+o-checkout": {
    "hashes": [
-    "1924d6d5"
+    "22b2abf7"
    ]
   },
   "u21/shop+warehouse": {
@@ -143,7 +153,7 @@
   },
   "u21/teams+orders": {
    "hashes": [
-    "6a6093d8"
+    "a9473372"
    ]
   },
   "u21/warehouse": {

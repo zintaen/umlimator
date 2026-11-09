@@ -126,6 +126,15 @@ try {
     el.style.removeProperty('--um-panel');
     h.destroy();
     check('destroy() takes the map and its pieces away', !el.children.length); }
+
+  { const [h, sr, q] = make({ details: true, hints: true, view: 'trips' }), lit = k => q(`.panel [data-lit="${k}"]`), tab = s => [...sr.querySelectorAll('.um-marks text')].some(t => t.textContent === s);
+    h.select({ type: 'node', id: 'rider-app' });
+    check("the panel's slowest and costliest path and what-if (#95), as in the page: ⏱ ¤ ⊘ where the view's lines have budgets", !!lit('latency') && !!lit('cost') && !!lit('down'));
+    lit('latency').click();
+    check('…⏱ lights the slowest path, with its total in the hint line and on its last card', /^The slowest path: Rider app → .*, 585 ms$/.test(q('.hint').textContent) && tab('585 ms'), q('.hint').textContent);
+    h.select({ type: 'node', id: 'pricing' }); lit('down').click();
+    check('…⊘ lights what loses its way to the card, and marks it down', q('.hint').textContent === 'If Pricing goes down: 4 cards lose their way to it' && tab('down'), q('.hint').textContent);
+    h.destroy(); }
 } catch (err) {
   out.fail.push('threw: ' + (err && err.stack || err));
 }

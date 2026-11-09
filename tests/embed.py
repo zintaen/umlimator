@@ -12,6 +12,7 @@ tests/change.html: update() easing into the next model, and diff()'s and drift()
 tests/unfold.html: unfolding a stacked card in place (#71): the handle, E and Alt + click, the expand event.
 tests/unfold-page.html: the same in the standalone page (mountPage): its details button, E from the page.
 tests/stories.html: play() and its caption bar, keys and events; the standalone page's Stories menu, story links and recording.
+tests/insight.html: lenses on a map and in the page (#94), the page's slowest path and what-if (#95), a trace's numbered view (#96).
 tests/page-handle.html: a page umlimator.py renders keeps its map's handle on window.umlimatorMap, and it drives the page.
 tests/pieces.html: the standalone page's pieces in render() (#99): views list, legend, hint line, details panel, alone and together.
 examples/edit.html, embed.html, live.html, playground.html, ask.html, replay.html, timelapse.html, drift.html: the host pages load and draw.
@@ -69,7 +70,7 @@ def dom(path, done, wait=60):
 
 
 failed = False
-for page in ("tests/embed.html", "tests/edit.html", "tests/contrast.html", "tests/rules.html", "tests/marks.html", "tests/change.html", "tests/unfold.html", "tests/unfold-page.html", "tests/stories.html", "tests/page-handle.html", "tests/pieces.html"):
+for page in ("tests/embed.html", "tests/edit.html", "tests/contrast.html", "tests/rules.html", "tests/marks.html", "tests/change.html", "tests/unfold.html", "tests/unfold-page.html", "tests/stories.html", "tests/insight.html", "tests/page-handle.html", "tests/pieces.html"):
     t = dom(page, lambda t: 'id="result"' in t)
     m = re.search(r'<pre id="result">(.*?)</pre>', t, re.S)
     if not m:  # each check names itself in the page title: say where it stopped
@@ -87,6 +88,7 @@ for page, what in (("examples/edit.html", "the editing demo"), ("examples/embed.
     print(("ok  " if 'class="umlimator"' in demo else "FAIL"), f"{page} · {what} draws its map")
     failed |= 'class="umlimator"' not in demo
 # the standalone page (mountPage) shows a legend, so it still names line kinds from label words: "reads metrics" is state
+
 page = dom("examples/bookshop.html", lambda t: 'class="lgi"' in t)
 legend = "<b>calls</b>" in page and "<b>state</b>" in page
 print(("ok  " if legend else "FAIL"), "examples/bookshop.html · the standalone page's legend names the kinds it reads from labels (calls, state)")
