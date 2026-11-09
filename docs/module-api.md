@@ -777,3 +777,34 @@ A stacked card can open into a box on the map it is on, instead of switching to 
 - **Example:** bike-share's `ride` story: a ride from unlock to payment, in five steps.
 - **Tests:** `tests/stories.test.mjs` (Node: `validate()` on stories), and `tests/stories.html` (play, keys, the bar, the
   page's menu, links and recording). `tests/embed.py` runs the page and checks a `record` run's frames.
+
+## 0.12.1: fixes
+
+### Overlay labels keep off their neighbours (#81)
+
+- **A line's `label` pill takes the first place where it covers no card, line label or other pill:** under the line's
+  own label as before (on its longest run when it has none), else half way along the line, then at 30 %, 70 %, 15 % or
+  85 % of its length. An overlay still never lays the view out again.
+- **With no room at any,** the pill isn't drawn over anything. Its text goes in the line's tooltip, on a line of its own,
+  and at the end of its accessible name ("Line from Trip API to Trip lifecycle: moves the ride on, p95 1.2 s over
+  budget"), until the layer goes. `replay()`'s duration labels are such pills too.
+- **Test:** `tests/marks.html` puts a long pill on every line of bike-share's trips view: none covers a card, a line label
+  or another pill, each one with no room is in its line's tooltip and name, and removing the layer takes it out again.
+
+### A recorded story's tours move (#83)
+
+- **`umlimator.py record`** takes frames along a step's tour, 4 a leg and at most 12, from its first card to its last,
+  and shares the step's duration out between them, so the step still lasts its duration. A step without a tour keeps one
+  frame. bike-share's `ride` is now 27 frames and 2.1 MB (5 frames and 0.4 MB before).
+- **How:** the frames are the page's `#shot=1&story=<id>&step=<n>&at=<0 to 1>` link, which holds the tour's dot that far
+  along its ride.
+- **Limit:** the ride is spread over the whole step, so the dot doesn't keep the live map's speed.
+- **Test:** `tests/embed.py`'s `record` check wants 2 to 12 frames for a step with a tour, each a different picture, with
+  delays that add up to the step's duration, and one frame for any other step.
+
+### The legend check waits for the legend (#85)
+
+- **`tests/embed.py` reads a page again until it has what the check reads,** for up to 60 s. Chrome reads the page once
+  its virtual time is up, and on a busy machine that could be before the standalone page, which draws on an animation
+  frame, had drawn its legend. Every page the harness reads goes through the same wait: the test pages, the host pages
+  and bookshop's legend.

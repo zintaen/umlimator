@@ -195,8 +195,9 @@ export interface StoryPlayer {
 
 /** A mark on a card. tone: a palette name (--um-<tone>), drawn as a ring; badge: a tab after the card's own; level: 0 to 1. */
 export interface CardMark { tone?: string; badge?: Badge; pulse?: boolean; level?: number }
-/** A mark on a line. speed: its flow's speed, as a factor (0 stops it); tone: a glow under it; label: a pill under its own;
- *  dash: drawn dashed; level: 0 to 1. A drawn line that stands for several edges takes the strongest of their marks. */
+/** A mark on a line. speed: its flow's speed, as a factor (0 stops it); tone: a glow under it; label: a pill under its own,
+ *  or along the line where it covers nothing (with no room, in the line's tooltip and name instead); dash: drawn dashed;
+ *  level: 0 to 1. A drawn line that stands for several edges takes the strongest of their marks. */
 export interface LineMark { tone?: string; speed?: number; pulse?: boolean; label?: string; level?: number; dash?: boolean }
 /** A layer of marks: cards by node id, lines by edge id ("<from>-><to>#<n>" for an edge without one, as Refs name it).
  *  dim: what the layer doesn't name fades. */
