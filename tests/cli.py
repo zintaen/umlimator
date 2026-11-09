@@ -87,4 +87,18 @@ with tempfile.TemporaryDirectory() as tmp:
     git("checkout", "-q", "--", "docs/map.json")
     cli("diff", "--base", "HEAD", "--out", str(t / "pr2"), cwd=g)
     ok("diff --base · says so when no map changed", "No map model changed." in ((t / "pr2" / "summary.md").read_text(encoding="utf-8") if (t / "pr2" / "summary.md").is_file() else ""))
+# four renders of one model at once (#105): each writes its own copy of the model, and every page records the model itself
+with tempfile.TemporaryDirectory() as tmp:
+    t = Path(tmp)
+    (t / "bike-share.json").write_text((ROOT / "examples" / "bike-share.json").read_text(encoding="utf-8"), encoding="utf-8")
+    runs = [subprocess.Popen([sys.executable, str(ROOT / "umlimator.py"), "render", "bike-share.json", "--out", f"p{i}.html", "--no-check"],
+                             cwd=t, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True) for i in range(4)]
+    ends = [(p.wait(), p.stderr.read()[-300:]) for p in runs]
+    ok("render · four renders of one model at once all finish", all(code == 0 for code, _ in ends), ends)
+    ok("render · and leave no copy of the model next to it", not [p.name for p in t.iterdir() if p.name.startswith(".")],
+       [p.name for p in t.iterdir()])
+    pages = [re.sub(r'"generated": "[^"]*"', "", (t / f"p{i}.html").read_text(encoding="utf-8")) for i in range(4) if (t / f"p{i}.html").is_file()]
+    ok("render · each page records the model itself as its source, and the four pages are the same",
+       len(pages) == 4 and '"source": "bike-share.json"' in pages[0] and len(set(pages)) == 1,
+       re.findall(r'"source": "[^"]*"', pages[0])[:1] if pages else "no pages")
 sys.exit(1 if failed else 0)
