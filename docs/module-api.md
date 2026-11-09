@@ -1250,7 +1250,7 @@ render(el, model, { nav: true, details: true, legend: true, hints: true });
   `hinter()` in `lib/umlimator.js`), and their CSS moved from the page template into the module's stylesheet, which the
   page already took in. The move left the standalone page unchanged: compared in Chrome before and after, element by
   element, in 20 states (a card selected, each tab, a path lit, the legend folded, an example full size, keys, the views
-  list, dark, a phone's width), every element of the page has the same computed style.
+  list, dark, a phone's width), every element of the page has the same computed style. #112 then changes it a little.
 - **Lenses' panel buttons (#95):** the slowest and costliest path (⏱ ¤) and what-if (⊘) are the details panel's, so
   `render({ details: true })` offers them too, where the view's lines have latency or cost.
 - **Keys and focus:** keys pressed anywhere in the map reach the pieces (`[ ] O > < P`, and Esc closes an example shown
@@ -1268,3 +1268,26 @@ render(el, model, { nav: true, details: true, legend: true, hints: true });
 - **Tests:** `tests/pieces.html`, in `tests/embed.py`: each piece alone and all four together, their keys, focus and
   events, a host taking Open, `update()`, `destroy()` and the theme, and an accessibility check as axe makes it, written
   out: names, nesting, ids and what refers to them, landmarks, tabs and live regions.
+
+### The panels pass axe: a tab list of tabs, and two colours (#112)
+
+axe-core found three things in the standalone page's panels, and so in `render()`'s, since they share them (#99). The
+fix changes the page slightly: one wrapper in the details panel's markup, and how two kinds of text look.
+
+- **A tab list holds only tabs.** The details panel's ‹ › buttons were inside its `role="tablist"` (axe:
+  `aria-required-children`, critical). The tabs now have a tab list of their own, `.ptablist`, and ‹ › stand beside it.
+  The panel looks as it did; on a phone the tabs still wrap.
+- **The views list's current view** was white on the accent: 3.1:1 in dark, and its card count, at 80 %, 3.9:1 in light.
+  It is now tinted, with the accent's ring and the text's colour, as the breadcrumb's current view is (13:1 in light, 15:1
+  in dark). The details panel's PUBLIC tag was white on blue too (3.1:1 in dark), and is now drawn as the EXTERNAL one
+  is, in its kind's colour (4.6:1 in light, 5.6:1 in dark).
+- **The panel's quieter texts** ("Nothing calls this here", "Not written yet", an origin, and code in them) were
+  `--um-dim` on the panel: 3.45:1 in light, 3.56:1 in dark. They take `--um-muted` now, as the panel's other secondary
+  text does (5.7:1 or more; 6.1:1 and 6.5:1 for the texts themselves).
+- **Checked:** axe-core 4.10, run by hand on `render()` with all four pieces and on the CLI's page, for every example
+  model, in light and dark, every view, a few cards each and their tabs: 400 runs, no violations. `tests/pieces.html`
+  writes out the two rules that failed (a tab list holds only tabs; every text in a piece is 4.5:1 on what is under it,
+  3:1 when large) and checks them on `render()` with all four pieces (bike-share with a missing text, a highlight, code
+  and an origin added, and the helpdesk assistant) and on `examples/bookshop.html`, in a frame, in light and dark.
+- **Left out:** the map itself is unchanged. Its step and lane numbers are white on the accent too, which is 3.1:1 in
+  dark; the palette's contrast check (`tests/contrast.html`) measures text over boxes only, so it doesn't see them.
