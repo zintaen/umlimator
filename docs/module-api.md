@@ -906,6 +906,95 @@ card inside the new box, and as its own box (u21's `shop`: Order service, then W
 
 ## 0.13.0: (unreleased)
 
+### Lenses (#94)
+
+- **`lenses` in the model** are saved ways to look at one map:
+  ```json
+  "lenses": [
+    { "id": "teams", "title": "By team", "color": "owner" },
+    { "id": "data", "title": "Data flow", "pick": { "line": ["feeds", "state"] } }
+  ]
+  ```
+  - **`pick`** is a rule's selector (`id`, `kind`, `container`, `not`), with `owner`, and `line` at its top:
+    - without `line`, the lens lights the cards it picks and the lines between two of them;
+    - with `line` (line kinds, a line's own `kind`, default `calls`), it lights the lines of those kinds between two cards
+      the rest of it picks, and the cards at their ends.
+
+    Left out, it lights everything. The rest dims.
+  - **`owner`** on a card names who owns it (a team, say). Selectors pick by it, rules' as well as lenses'; a box has no
+    owner.
+  - **`color: "owner"`** rings each lit card in its owner's tone, the same on every view: owners in name order take cyan,
+    violet, green, amber, fuchsia, orange, rose and slate, then again from cyan. A legend over the controls names the
+    view's owners, and the fit keeps the cards clear of it, as of the controls.
+- **On the map,** a lens is the `lens` layer of `overlay()`, so it never lays the view out again.
+  - It stays on across `update()` and `setView()`, lighting each view as its pick picks there; a model without it takes it
+    off.
+  - `toSVG()` and `toPNG()` draw its rings and dimming, on any view, but not its legend.
+  - A lens that lights everything dims nothing, so a selection keeps its own dimming.
+- **For a host:** `handle.lens(id | null)`, false when the model has no such lens.
+- **In the standalone page:** a Lenses menu when the model has lenses, with No lens; its button names the lens that is on.
+  `#lens=<id>` in the link opens the page with it, and follows it as it changes, back and forward included.
+- **`validate()`** errors on a lens without an id, with one used twice, or with a pick that isn't an object. It warns on a
+  line kind it doesn't know, an owner no card has, a `color` other than `owner`, and an owner that isn't a name. The
+  schema has `lens` and `lensSelector`, and `owner` on cards and in `selector`.
+- **Example:** bike-share has owners (Apps, Rides, Fleet, Platform) and the two lenses above.
+- **Left out:** tones chosen per owner (a host rings cards itself with `overlay()`); lenses that hold on some views only;
+  the legend in exported files.
+- **Tests:** `tests/insight.test.mjs` (`validate()` on lenses and owners), and `tests/insight.html` (the handle, the legend,
+  exports, the page's menu and link).
+
+### Critical path and what-if (#95)
+
+- **Budgets on lines:** `latency` (ms) and `cost` (any unit). They aren't drawn. `validate()` warns on one that isn't a
+  number of 0 or more, which counts as 0.
+- **`critical(model, viewId, { from, to, by })`** returns `{ refs, total }`:
+  - the path along the view's lines with the highest total of `by`, `latency` (the default) or `cost`;
+  - from `from` to `to`, either left out for any card;
+  - a line without the budget counts 0, and a path never comes back to a card, so a loop is walked at most once;
+  - `refs`: its cards in order, then its lines, for `highlight()`; with no path, `{ refs: [], total: 0 }`.
+
+  It's pure and runs in Node. It walks every path depth first, which is exponential on a dense view with many ways
+  between two cards; a `ponytail:` note marks it.
+- **`whatIf(model, viewId, { remove: [ids] })`** returns `{ unreachable }`, and leaves the model as it is: what loses its
+  way to the cards, backward as `reach()` finds it (for calls, what depends on them), each with its distance in lines from
+  the nearest; the cards themselves come first, at 0. It lists no broken rules, because rules only forbid lines and
+  cycles, and taking cards out never adds either.
+- **In the standalone page,** the details panel adds:
+  - ⏱ and ¤ where the view's lines have latency or cost: the slowest or the costliest path from the card, or between the
+    two cards selected (either way round), lit, with its total in the hint line and as a tab on its last card;
+  - ⊘, "What if this goes down?": what loses its way to the card lit, fading with distance, the card ringed rose with a
+    DOWN tab, and the hint line says how many cards. The model isn't touched.
+
+  A new selection or view clears them, and so does the same button again.
+- **Example:** bike-share's Trip service has latency on each line and cost on four.
+- **Left out:** budgets drawn on the map; a whole view's critical path in the page (the function gives it); keys for the
+  new buttons.
+- **Tests:** `tests/insight.test.mjs` (both functions, cycles, parallel lines, two cards taken out), and
+  `tests/insight.html` (the panel's buttons, the totals, two cards, what-if).
+
+### Sequence views from traces (#96)
+
+- **`sequenceFromTrace(model, spans, { view, match, title })`** returns the model with a numbered view (`render:
+  "sequence"`, `lanes: false`) made from a trace's spans, as `otlpSpans()` reads them:
+  - each call from one card to another (a span and its parent's) is a step, in time order; calls that start together
+    keep the trace's order;
+  - its line is labelled with the span's name, and its duration goes under it ("200 ms", "1.5 s");
+  - a span's service is a card as `replay()` matches it: through `match`, else by id, else by label in any case (the two
+    now share one helper). A span with no card, one whose caller has none, and work inside one card make no step. The
+    view's caption says how many calls it has and names the services with no card.
+  - The view's id is `view` (default `trace`) and its title `title` (default its id). It takes the place of a view with
+    that id, else comes last, under the view that shows the most of its cards. The model passed in isn't changed.
+- **`umlimator.py trace MODEL.json TRACE.json --view ID --out OUT.json [--match MATCH.json] [--title T]`** reads OTLP JSON
+  with `otlpSpans()` and runs `sequenceFromTrace()`, both in Node as `diff` does. `--out` may be the model itself. It
+  prints the view's steps, cards and caption, and fails when no call runs between two cards.
+- **Example:** replay.html's trace is now a file, `examples/traces/ride-end.json`, with `traces/match.json`; the site copies
+  them. Kept as bike-share's `ride-end` view, a ride's end in 8 numbered calls, it's checked like every other example
+  view (in the browser with `--expand`, and by `layout.mjs`).
+- **Left out:** a call through a service with no card is not joined to the nearest caller that has one; every step is
+  drawn as a call, whatever the model's own line between the two cards says; spans' attributes and status.
+- **Tests:** `tests/insight.test.mjs` (the example's view, matching, order, steps left out), `tests/cli.py` (`trace` writes
+  the view the example keeps), and `tests/insight.html` (the view drawn in the page).
+
 ### Parallel renders of one model (#105)
 
 - **Two renders of one model at the same time no longer fail.** `umlimator.py render` writes a temporary copy of the
