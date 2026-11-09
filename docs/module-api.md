@@ -904,7 +904,28 @@ card inside the new box, and as its own box (u21's `shop`: Order service, then W
 - **Test:** `tests/unfold-page.html` opens Trip service's details: its `when` is one bullet, and a `how` of one
   190-character sentence is cut into bullets of at most 160.
 
-## 0.13.0: (unreleased)
+## 0.13.0: import, an MCP server, an element, PDF, lenses, critical paths, traces as views, embedded panels, and layout
+
+Everything since 0.12.1 (#86, #90 to #96, #99, #105, #112, #113):
+- **Maps in and out:** `umlimator.py import` reads Structurizr, C4-PlantUML, Mermaid, Compose and Kubernetes (#90).
+  `umlimator.py mcp` lets an AI assistant read a map and drive its page (#91). `<umlimator-map>` and fenced blocks
+  embed a map in docs sites with no code (#92). `umlimator.py pdf` hands in every view as one document (#93).
+- **More to see on a map:** lenses by team, data flow or anything a selector picks (#94); the slowest or costliest path,
+  and what a card's failure cuts off (#95); a trace kept as a numbered view (#96).
+- **The page's panels in `render()`:** the views navigator, the details panel, the legend and the hints, each opt-in
+  (#99). They and the page now pass axe (#112).
+- **Layout for generated maps:** lines into a box no longer converge on one entry, and a box orders its cards by the
+  lines from outside. Across the bench, 32 fewer layout issues and 2.6% shorter lines (#86).
+- **Fixes:** renders of one model can run at once (#105); the legend check waits for the drawn legend (#113).
+
+What moves for a host that upgrades:
+- **Some layouts move** (#86): boxed and generated views most. A layout pinned in the model (`layout`) doesn't move.
+- **The details panel's tab list** holds only its tabs, its ‹ › buttons sit beside it, and a few colours are darker or
+  lighter to meet WCAG AA (#112). Two theme variables are new, `--um-mark` and `--um-scrim`, with the old values.
+- **A CLI page** records the model's own path as its `source` (#105), and keeps its map's handle on
+  `window.umlimatorMap` (#91).
+
+Nothing is removed. Every option, field and command is additive: `render()` without the new options draws what it drew.
 
 ### Import (#90)
 
