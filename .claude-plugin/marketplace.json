@@ -1,0 +1,18 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "umlimator",
+  "description": "Layered architecture maps you can click through, from one JSON model.",
+  "owner": {
+    "name": "zintaen",
+    "url": "https://github.com/zintaen"
+  },
+  "plugins": [
+    {
+      "name": "umlimator",
+      "description": "Maps a codebase as a layered, clickable architecture map: context, containers and components, rendered and layout-checked.",
+      "source": "./plugins/umlimator",
+      "category": "development",
+      "homepage": "https://github.com/zintaen/umlimator"
+    }
+  ]
+}

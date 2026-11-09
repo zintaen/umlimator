@@ -8,6 +8,8 @@ with forward edges to the next one or two layers, a few back edges, and a label 
 containers and a view drawn around a hub card; b69 adds two sub-views and keepPairs with a few two-way pairs.
 d24: a dense hub, as a target architecture map draws one, with a layout: an API card feeds 16 modules in a 4-wide grid
 beside it, and 5 systems in a box of their own call back into it (issue #40: lines with no route ran through cards).
+r19 is not written here: a made-up monorepo's 19 packages and 30 imports, as a map generated from a dependency list draws
+them (a box per folder, nested, and the same cards with no boxes), where most lines skip columns (0.11.0).
 """
 import json, random
 from pathlib import Path

@@ -338,6 +338,26 @@ test("auto-layout orders a column so the lines between two columns don't cross w
   }
 });
 
+test('auto-layout puts a card level with the card its line comes from, so the line runs straight, not at the top of its column (0.11.0)', () => {
+  const card = id => ({ id, label: id.toUpperCase(), kind: 'backend' });
+  const m = { nodes: ['x', 'y', 'z', 'w', 'v'].map(card), edges: [{ from: 'x', to: 'v' }, { from: 'y', to: 'v' }, { from: 'z', to: 'w' }],
+    views: [{ id: 'v1', nodeIds: ['x', 'y', 'z', 'w', 'v'] }] };
+  const g = layout(m, 'v1'), at = id => g.nodes.find(n => n.id === id), line = g.edges.find(e => e.from === 'z');
+  assert.equal(at('w').y, at('z').y, 'W on Z\'s row');
+  assert.equal(line.pts.length, 2, `Z -> W runs straight: ${JSON.stringify(line.pts)}`);
+  // in a view with boxes: a box sits level with the card in another box that its line comes from
+  const b = { nodes: ['y1', 'y2', 'y3', 'z1'].map(card), edges: [{ from: 'y1', to: 'y2' }, { from: 'y1', to: 'y3' }, { from: 'y3', to: 'z1' }],
+    views: [{ id: 'v1', nodeIds: ['y1', 'y2', 'y3', 'z1'], containers: [{ id: 'Y', label: 'Y', nodeIds: ['y1', 'y2', 'y3'] }, { id: 'Z', label: 'Z', nodeIds: ['z1'] }] }] };
+  const gb = layout(b, 'v1'), bt = id => gb.nodes.find(n => n.id === id);
+  assert.equal(bt('z1').y, bt('y3').y, 'box Z level with Y3, the card its line comes from');
+  assert.equal(gb.edges.find(e => e.from === 'y3').pts.length, 2, 'Y3 -> Z1 runs straight');
+});
+
+test('auto-layout puts a card no line comes into just before its callee when that routes better, not in the first column (0.11.0)', () => {
+  const g = layout(read('../examples/bookshop.json'), 'overview'), at = id => g.nodes.find(n => n.id === id);
+  assert.equal(at('grafana').col, at('api').col - 1, 'Dashboards, which only reads Shop API\'s metrics, sits in the column before it');
+});
+
 test('the CLI renders what render() draws: a card that opens a view the host loads later (#47), a line that ends on a box (#28); a dangling id still fails', () => {
   const dir = mkdtempSync(join(tmpdir(), 'umlimator-cli-')), cli = fileURLToPath(new URL('../umlimator.py', import.meta.url));
   const render = m => { const p = join(dir, 'map.json'); writeFileSync(p, JSON.stringify(m)); // every view laid out: no Chrome needed

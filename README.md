@@ -15,9 +15,10 @@ drill-down, a data pipeline, an AI agent's skills, and host pages for embedding,
 
 - **Layers**: a view per level (system, containers, components, flows). A stacked card opens its inner view, which the
   host may load only when asked.
-- **Layout and routing**: columns in reading order, each ordered so the lines between columns cross as little as they
-  can; orthogonal lines that never run through a card, room for every label, containers kept apart, and cards with no
-  lines in a row of their own, under the view or at the bottom of their box. The same model gives the same picture.
+- **Layout and routing**: columns in reading order, each ordered so the lines cross as little as they can, those that
+  skip columns included; each card level with the cards its lines come from, so lines run straight; orthogonal lines
+  that never run through a card, room for every label, containers kept apart, and cards with no lines in a row of their
+  own, under the view or at the bottom of their box. The same model gives the same picture.
 - **Reading**: animated flow, neighbours lit on selection, numbered steps, tours, minimap, light and dark themes.
 - **Keyboard and screen readers**: cards, then lines, in the Tab order (a card's tabs and chips too, for a host that
   listens for click); arrows between cards; selections announced.
@@ -27,16 +28,12 @@ drill-down, a data pipeline, an AI agent's skills, and host pages for embedding,
 
 ## Install
 
-```json
-"dependencies": { "umlimator": "github:zintaen/umlimator#v0.10.0" }
+```bash
+npm install umlimator
 ```
 
-npm 12 refuses git dependencies unless the project opts in, so add this line to the `.npmrc` next to `package.json`
-(npm 10 needs nothing):
-
-```ini
-allow-git=root
-```
+Or from GitHub, at a tag or any commit: `"umlimator": "github:zintaen/umlimator#v0.11.0"`. npm 12 refuses git
+dependencies unless the project opts in, so that also needs `allow-git=root` in the `.npmrc` next to `package.json`.
 
 ## Embed
 
@@ -119,6 +116,20 @@ The page has breadcrumbs, a details panel per card, ⌘K search, deep links (`#v
 `stills` skips a view whose inputs have not changed since its last export (`--all` exports every view). Needs Python
 3.9+ (standard library only), and Google Chrome or Chromium for `stills` and `check`.
 
+## Map a repo with Claude Code
+
+The `map-repo` skill reads a codebase, writes a C4-style model (context, containers, components), renders it to a page
+and stills, and fixes what the layout check reports. Install it, then ask Claude Code to map the repository:
+
+```
+/plugin marketplace add zintaen/umlimator
+/plugin install umlimator@umlimator
+```
+
+On Claude Code 2.1.275 or later, `/plugin install umlimator --marketplace zintaen/umlimator` does both in one step. The
+skill needs git, Python 3.9+ and Chrome; on first use it fetches the CLI of one pinned release into
+`~/.cache/umlimator/cli`.
+
 ## Icons
 
 A node's `icon` names an entry in `icons/manifest.json`. Line icons ship in `icons/` and take the card's colour. Brand
@@ -148,8 +159,9 @@ all of the above, and checks that the files copied from upstream (`engine/script
 `tools/fetch_icons.py`) are unmodified.
 
 To release, bump `package.json`'s version in a PR and add that version's `## X.Y.Z: …` section to
-`docs/module-api.md`. When the PR is merged and the checks pass on `main`, CI tags `vX.Y.Z` and publishes a GitHub
-Release with that section as its notes. CI also publishes the examples to GitHub Pages from `main`.
+`docs/module-api.md`. When the PR is merged and the checks pass on `main`, CI tags `vX.Y.Z`, publishes a GitHub
+Release with that section as its notes, and publishes the package to npm (trusted publishing: no token is stored).
+CI also publishes the examples to GitHub Pages from `main`.
 
 ```
 umlimator.py                 CLI: render, stills, check, pin-icons
@@ -159,6 +171,7 @@ docs/                        the module's API and the editing design
 tests/, bench/               tests, benchmark models and results
 icons/                       line icons and the logo manifest (sources and hashes only)
 examples/                    made-up systems: models, host pages and a Node script (live: zintaen.github.io/umlimator)
+.claude-plugin/, plugins/    the Claude Code marketplace and its map-repo skill
 ```
 
 ## Licence

@@ -84,6 +84,22 @@ jobs:
       - name: Every example model is valid under the model's JSON Schema (a validator fetched for CI only, never in the module)
         run: npx --yes ajv-cli@5 validate --spec=draft2020 --all-errors -s lib/umlimator.schema.json -d "examples/*.json"
 
+      - name: The Claude Code plugin's manifests parse, its skills name and describe themselves, and map-repo's CLI runs from its pinned release
+        run: |
+          python3 -I - <<'PY'
+          import json, pathlib, re, sys
+          market = json.load(open(".claude-plugin/marketplace.json"))
+          for p in market["plugins"]:
+              json.load(open(pathlib.Path(p["source"]) / ".claude-plugin" / "plugin.json"))
+          for s in pathlib.Path("plugins").glob("*/skills/*/SKILL.md"):
+              m = re.match(r"---\n(.*?)\n---\n", s.read_text(encoding="utf-8"), re.S)
+              meta = dict(line.split(":", 1) for line in (m.group(1).splitlines() if m else []) if ":" in line)
+              if not (meta.get("name", "").strip() and meta.get("description", "").strip()):
+                  sys.exit(f"{s}: its frontmatter needs a name and a description")
+          print(f"{len(market['plugins'])} plugin(s), manifests and skills ok")
+          PY
+          python3 plugins/umlimator/skills/map-repo/scripts/cli.py --help > /dev/null   # clones the pinned tag and checks its commit
+
   # The examples, live: on each push to main that passes the checks, every model's page and pictures are built and
   # published with the host pages and the module on GitHub Pages (zintaen.github.io/umlimator).
   site:
@@ -119,15 +135,16 @@ jobs:
       - id: deploy
         uses: actions/deploy-pages@v4
 
-  # Merging a version bump releases it: once the checks pass on main, the version in package.json is tagged and
-  # published as a GitHub Release, whose notes are that version's section of docs/module-api.md. A version that is tagged
-  # already is skipped, so every other push to main releases nothing.
+  # Merging a version bump releases it: once the checks pass on main, the version in package.json is tagged, published
+  # as a GitHub Release whose notes are that version's section of docs/module-api.md, and published to npm. A version
+  # that is tagged (or on npm) already is skipped, so every other push to main releases nothing.
   release:
     needs: check
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      id-token: write  # npm's trusted publishing: npm checks that this workflow publishes, so no npm token is stored
     concurrency: release
     steps:
       - uses: actions/checkout@v4
@@ -145,7 +162,17 @@ jobs:
           if not m:
               sys.exit(f"::error::docs/module-api.md has no '## {v}: ...' section: a release's notes go there")
           open("title.txt", "w").write(f"v{v}: {m.group(1).strip()}")
-          open("notes.md", "w").write(f'Install: `"umlimator": "github:zintaen/umlimator#v{v}"`.\n\n{m.group(2).strip()}\n')
+          open("notes.md", "w").write(f'Install: `npm install umlimator@{v}`, or `"umlimator": "github:zintaen/umlimator#v{v}"`.\n\n{m.group(2).strip()}\n')
           PY
           gh release create "v$v" --target "$GITHUB_SHA" --title "$(cat title.txt)" --notes-file notes.md --latest
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24  # npm 11: trusted publishing needs 11.5.1 or later
+
+      - name: Publish package.json's version to npm, once (with provenance, from trusted publishing)
+        run: |
+          v=$(node -p "require('./package.json').version")
+          if npm view "umlimator@$v" version > /dev/null 2>&1; then echo "umlimator@$v is on npm already"; exit 0; fi
+          npm publish --access public
 
