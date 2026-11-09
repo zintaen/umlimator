@@ -6,7 +6,7 @@
 tests/embed.html: render() events, references, update(), destroy(), colours, badges, fonts.
 tests/edit.html: editing gestures and the change events they emit.
 tests/contrast.html: the default palette against WCAG AA, light and dark.
-examples/edit.html, embed.html, live.html: the host pages load and draw.
+examples/edit.html, embed.html, live.html, playground.html: the host pages load and draw.
 Each test page reports in <pre id="result">{"ok": [...], "fail": [...]}</pre>.
 """
 import functools, html, http.server, importlib.util, json, re, subprocess, sys, tempfile, threading
@@ -68,7 +68,8 @@ for page in ("tests/embed.html", "tests/edit.html", "tests/contrast.html"):
     for name in r["fail"]:
         print("FAIL", page, "·", name)
     failed |= bool(r["fail"])
-for page, what in (("examples/edit.html", "the editing demo"), ("examples/embed.html", "the host page"), ("examples/live.html", "the live page")):
+for page, what in (("examples/edit.html", "the editing demo"), ("examples/embed.html", "the host page"), ("examples/live.html", "the live page"),
+                   ("examples/playground.html", "the playground")):
     demo = dom(page, lambda t: 'class="umlimator"' in t)
     print(("ok  " if 'class="umlimator"' in demo else "FAIL"), f"{page} · {what} draws its map")
     failed |= 'class="umlimator"' not in demo

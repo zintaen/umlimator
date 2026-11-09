@@ -1,6 +1,10 @@
 {
+ "$schema": "../lib/umlimator.schema.json",
  "title": "Bookshop, an example",
  "root": "overview",
+ "meta": {
+  "project": "umlimator"
+ },
  "nodes": [
   {
    "id": "shoppers",

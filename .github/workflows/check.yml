@@ -81,6 +81,9 @@ jobs:
           done
           node examples/layout.mjs
 
+      - name: Every example model is valid under the model's JSON Schema (a validator fetched for CI only, never in the module)
+        run: npx --yes ajv-cli@5 validate --spec=draft2020 --all-errors -s lib/umlimator.schema.json -d "examples/*.json"
+
       - name: The Claude Code plugin's manifests parse, its skills name and describe themselves, and map-repo's CLI runs from its pinned release
         run: |
           python3 -I - <<'PY'

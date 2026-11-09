@@ -1,0 +1,134 @@
+<!doctype html>
+<!-- A playground for map models: edit the JSON and the map follows, with validate()'s problems and check()'s layout
+     issues for the view shown; click one to select what it is about. Share puts the model in the link. Serve the
+     repository over HTTP to open it (ES modules do not load from file://):
+     python3 -m http.server  then  http://localhost:8000/examples/playground.html -->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>umlimator: playground</title>
+<link rel="stylesheet" href="../lib/umlimator-theme.css">
+<style>
+  body { margin: 0; display: grid; grid-template: auto minmax(0, 1fr) / minmax(300px, 38%) minmax(0, 1fr); height: 100dvh;
+    background: var(--um-bg); color: var(--um-text); font: 14px/1.5 var(--um-sans); }
+  header { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; padding: 8px 14px;
+    border-bottom: 1px solid var(--um-border); font-size: 13px; }
+  header .grow { flex: 1; }
+  button, select { font: inherit; }
+  .side { display: grid; grid-template-rows: minmax(0, 1fr) auto; min-height: 0; border-right: 1px solid var(--um-border); }
+  textarea { box-sizing: border-box; width: 100%; height: 100%; margin: 0; padding: 10px 12px; border: 0; resize: none;
+    outline-offset: -2px; background: var(--um-bg-2); color: var(--um-text); font: 12.5px/1.5 var(--um-mono); tab-size: 2; }
+  #problems { max-height: 34dvh; overflow: auto; border-top: 1px solid var(--um-border); padding: 8px 12px; font-size: 13px; }
+  #problems p { margin: 0 0 6px; font-weight: 600; }
+  #problems ul { list-style: none; margin: 0; padding: 0; }
+  #problems button { all: unset; cursor: pointer; display: block; width: 100%; padding: 3px 0; overflow-wrap: anywhere; }
+  #problems button:focus-visible { outline: 2px solid var(--um-accent); outline-offset: 1px; }
+  #problems code { font: 12px var(--um-mono); color: var(--um-muted); }
+  .error { color: var(--um-rose); } .warning { color: var(--um-amber); }
+  #map { min-height: 0; }
+  #note { color: var(--um-muted); }
+  @media (max-width: 760px) {
+    body { grid-template: auto minmax(240px, 42dvh) minmax(0, 1fr) / minmax(0, 1fr); }
+    .side { border-right: 0; border-bottom: 1px solid var(--um-border); }
+  }
+</style>
+<header>
+  <b>Playground</b>
+  <label>Example <select id="example">
+    <option value="bike-share.json">Bike share</option>
+    <option value="weather.json">Weather stations</option>
+    <option value="assistant.json">Helpdesk assistant</option>
+    <option value="bookshop.json">Bookshop</option>
+  </select></label>
+  <label>View <select id="view"></select></label>
+  <span class="grow"></span>
+  <span id="note" aria-live="polite"></span>
+  <button id="share" title="Put the model in the link and copy it">Share</button>
+  <label>Theme <select id="theme"><option value="">system</option><option value="light">light</option><option value="dark">dark</option></select></label>
+  <button id="svg" title="The view as an SVG file">SVG</button>
+  <button id="png" title="The view as a PNG file">PNG</button>
+</header>
+<div class="side">
+  <textarea id="src" spellcheck="false" autocomplete="off" aria-label="The model, as JSON"></textarea>
+  <section id="problems" aria-live="polite"></section>
+</div>
+<div id="map"></div>
+<script type="module">
+import { render, validate, check } from '../lib/umlimator.js';
+import { withIcons } from './icons.js';
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+let map = null, model = null, problems = [], timer = 0;
+
+// check() lays a view out again: measured in the font render() uses (the map's --um-sans), it finds what the map shows
+const ctx = document.createElement('canvas').getContext('2d');
+const measure = (s, px) => { ctx.font = `600 ${px}px ${getComputedStyle($('map')).getPropertyValue('--um-sans').trim() || 'sans-serif'}`; return ctx.measureText(s).width; };
+
+async function run() {
+  let m;
+  try { m = JSON.parse($('src').value); } catch (e) { problems = [{ level: 'error', path: '', message: `JSON: ${e.message}` }]; return show(); }
+  problems = validate(m);
+  if (problems.some(p => p.level === 'error')) return show();   // the last good map stays
+  model = m;
+  try {
+    const drawn = await withIcons(m);
+    if (!map) map = render($('map'), drawn, { stableLayout: false, on: { viewchange: () => { views(); show(); } } });
+    else { map.update(drawn); if (!m.views.some(v => v.id === map.view)) await map.setView(m.root || m.views[0].id); }
+    window.map = map;   // for the console, and for tests/embed.py
+  } catch (e) { problems.push({ level: 'error', path: '', message: `render(): ${e.message}` }); }
+  views(); show();
+}
+
+function views() {
+  $('view').innerHTML = (model?.views || []).map(v => `<option value="${esc(v.id)}">${esc(v.title || v.id)}</option>`).join('');
+  if (map) $('view').value = map.view;
+}
+
+// the problems: the model's own (validate), then the layout check's for the view shown (check), each a button
+function show() {
+  let issues = [];
+  if (map && model && !problems.some(p => p.level === 'error')) try { issues = check(model, map.view, { measure }); } catch (e) { issues = [{ message: `check(): ${e.message}`, targets: [] }]; }
+  const items = [...problems.map((p, i) => `<li><button data-p="${i}" class="${p.level}">${esc(p.level)} <code>${esc(p.path)}</code> ${esc(p.message)}</button></li>`),
+    ...issues.map((c, i) => `<li><button data-c="${i}">${esc(c.message)}</button></li>`)];
+  const errors = problems.filter(p => p.level === 'error').length;
+  $('problems').innerHTML = `<p>${errors ? `${errors} ${errors > 1 ? 'errors' : 'error'} in the model: the map shows the last model without any`
+    : items.length ? `${problems.length} in the model, ${issues.length} in this view's layout` : 'No problems: the model is valid and this view\'s layout check is clean.'}</p><ul>${items.join('')}</ul>`;
+  $('problems').onclick = e => {
+    const b = e.target.closest('button'); if (!b || !map) return;
+    if (b.dataset.c != null) { const t = issues[+b.dataset.c].targets[0]; if (t) map.select(t); return; }
+    const path = problems[+b.dataset.p].path, at = (re, list) => { const k = path.match(re); return k ? list[+k[1]] : null; };
+    const node = at(/^nodes\[(\d+)\]/, model.nodes || []), edge = at(/^edges\[(\d+)\]/, model.edges || []), view = at(/^views\[(\d+)\]/, model.views);
+    if (node) map.select({ type: 'node', id: node.id, view: map.view });
+    else if (edge && edge.id) map.select({ type: 'edge', ids: [edge.id], view: map.view });
+    else if (view) map.setView(view.id);
+  };
+}
+
+// sharing: the model rides in the link's hash, deflate-raw and base64url (the browser's CompressionStream, no library)
+async function pack(text) {
+  const bytes = new Uint8Array(await new Response(new Blob([text]).stream().pipeThrough(new CompressionStream('deflate-raw'))).arrayBuffer());
+  let bin = ''; for (const b of bytes) bin += String.fromCharCode(b);
+  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+async function unpack(data) {
+  const bytes = Uint8Array.from(atob(data.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0));
+  return new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).text();
+}
+$('share').onclick = async () => {
+  history.replaceState(null, '', '#m=' + await pack($('src').value));
+  try { await navigator.clipboard.writeText(location.href); $('note').textContent = 'Link copied'; } catch { $('note').textContent = 'The link is in the address bar'; }
+  setTimeout(() => { $('note').textContent = ''; }, 2500);
+};
+
+async function load(file) { $('src').value = await (await fetch(file)).text(); history.replaceState(null, '', location.pathname); await run(); }
+$('example').onchange = e => load(e.target.value);
+$('view').onchange = e => map?.setView(e.target.value);
+$('src').addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(run, 350); });
+const save = (blob, name) => { const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: name }); a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000); };
+$('svg').onclick = () => map && save(new Blob([map.toSVG({ scale: 2 })], { type: 'image/svg+xml' }), `${map.view}.svg`);
+$('png').onclick = async () => { const png = await map?.toPNG(); if (png) save(png, `${map.view}.png`); };
+$('theme').onchange = e => { if (e.target.value) document.documentElement.dataset.theme = e.target.value; else delete document.documentElement.dataset.theme; };
+
+if (location.hash.startsWith('#m=')) { try { $('src').value = await unpack(location.hash.slice(3)); await run(); } catch { await load($('example').value); } }
+else await load($('example').value);
+</script>
