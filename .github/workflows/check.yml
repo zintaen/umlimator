@@ -81,6 +81,9 @@ jobs:
           done
           node examples/layout.mjs
 
+      - name: Every example model is valid under the model's JSON Schema (a validator fetched for CI only, never in the module)
+        run: npx --yes ajv-cli@5 validate --spec=draft2020 --all-errors -s lib/umlimator.schema.json -d "examples/*.json"
+
   # The examples, live: on each push to main that passes the checks, every model's page and pictures are built and
   # published with the host pages and the module on GitHub Pages (zintaen.github.io/umlimator).
   site:

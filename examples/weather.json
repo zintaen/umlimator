@@ -1,4 +1,5 @@
 {
+  "$schema": "../lib/umlimator.schema.json",
   "title": "Weather stations, an example",
   "root": "stages",
   "nodes": [

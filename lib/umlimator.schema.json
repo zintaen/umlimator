@@ -1,0 +1,825 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "$id": "https://zintaen.github.io/umlimator/lib/umlimator.schema.json",
+ "title": "umlimator map model",
+ "description": "A layered architecture map: shared cards (nodes) and lines (edges), and views that each show some of them. Keys beyond these are allowed.",
+ "type": "object",
+ "required": [
+  "nodes",
+  "views"
+ ],
+ "properties": {
+  "$schema": {
+   "type": "string"
+  },
+  "title": {
+   "type": "string",
+   "description": "The map's title."
+  },
+  "root": {
+   "type": "string",
+   "description": "The view shown first (default: the view with no parent)."
+  },
+  "nodes": {
+   "type": "array",
+   "items": {
+    "$ref": "#/$defs/node"
+   },
+   "description": "Every card, shared by the views."
+  },
+  "edges": {
+   "type": "array",
+   "items": {
+    "$ref": "#/$defs/edge"
+   },
+   "description": "Every line, shared by the views: a view draws those between its cards."
+  },
+  "views": {
+   "type": "array",
+   "minItems": 1,
+   "items": {
+    "$ref": "#/$defs/view"
+   }
+  },
+  "icons": {
+   "type": "object",
+   "description": "Icons by name, as render() draws them: g (an SVG group's inner markup, drawn in the card's colour) or src (an image URL or data URI).",
+   "additionalProperties": {
+    "type": "object",
+    "properties": {
+     "g": {
+      "type": "string"
+     },
+     "src": {
+      "type": "string"
+     },
+     "dark": {
+      "type": "boolean"
+     }
+    }
+   }
+  },
+  "authors": {
+   "type": "object",
+   "additionalProperties": {
+    "type": "object",
+    "properties": {
+     "name": {
+      "type": "string"
+     },
+     "url": {
+      "type": "string"
+     },
+     "avatar": {
+      "type": "string"
+     }
+    }
+   }
+  },
+  "sourcesBase": {
+   "type": "string",
+   "description": "A prefix for the cards' source paths."
+  }
+ },
+ "$defs": {
+  "kind": {
+   "description": "The card's kind, drawn as its colour and mark. An unknown kind draws as a script card.",
+   "anyOf": [
+    {
+     "enum": [
+      "frontend",
+      "backend",
+      "database",
+      "cloud",
+      "security",
+      "queue",
+      "external",
+      "file",
+      "ai",
+      "public",
+      "lane",
+      "script",
+      "skill-dep",
+      "dep",
+      "verb",
+      "step",
+      "hook",
+      "guard",
+      "board",
+      "state",
+      "client",
+      "ui",
+      "web",
+      "page",
+      "browser",
+      "app",
+      "api",
+      "service",
+      "server",
+      "function",
+      "endpoint",
+      "route",
+      "cli",
+      "worker",
+      "module",
+      "db",
+      "store",
+      "storage",
+      "cache",
+      "table",
+      "data",
+      "infra",
+      "cdn",
+      "deploy",
+      "host",
+      "ci",
+      "auth",
+      "secret",
+      "policy",
+      "bus",
+      "event",
+      "stream",
+      "webhook",
+      "cron",
+      "job",
+      "user",
+      "human",
+      "thirdparty",
+      "vendor",
+      "doc",
+      "config",
+      "skill",
+      "md",
+      "template",
+      "output",
+      "agent",
+      "llm",
+      "model"
+     ]
+    },
+    {
+     "type": "string"
+    }
+   ]
+  },
+  "tone": {
+   "description": "A palette colour: --um-<tone>.",
+   "anyOf": [
+    {
+     "enum": [
+      "accent",
+      "cyan",
+      "green",
+      "violet",
+      "amber",
+      "rose",
+      "orange",
+      "slate",
+      "fuchsia"
+     ]
+    },
+    {
+     "type": "string"
+    }
+   ]
+  },
+  "badge": {
+   "anyOf": [
+    {
+     "type": "string"
+    },
+    {
+     "type": "object",
+     "required": [
+      "text"
+     ],
+     "properties": {
+      "text": {
+       "type": "string"
+      },
+      "tone": {
+       "$ref": "#/$defs/tone"
+      }
+     }
+    }
+   ]
+  },
+  "side": {
+   "enum": [
+    "left",
+    "right",
+    "top",
+    "bottom"
+   ],
+   "description": "The card side the line uses."
+  },
+  "node": {
+   "type": "object",
+   "required": [
+    "id"
+   ],
+   "properties": {
+    "id": {
+     "type": "string",
+     "description": "Unique across the model, the view-local cards included."
+    },
+    "label": {
+     "type": "string",
+     "description": "The card's name."
+    },
+    "kind": {
+     "$ref": "#/$defs/kind"
+    },
+    "sublabel": {
+     "type": "string",
+     "description": "A line under the name."
+    },
+    "sub": {
+     "type": "string",
+     "description": "Same as sublabel."
+    },
+    "badge": {
+     "type": "string",
+     "description": "One tab on the card (badges takes several)."
+    },
+    "badges": {
+     "type": "array",
+     "items": {
+      "$ref": "#/$defs/badge"
+     },
+     "description": "Tabs on the card."
+    },
+    "verbs": {
+     "type": "array",
+     "items": {
+      "type": "string"
+     },
+     "description": "Chips on the card and in the details panel."
+    },
+    "icon": {
+     "type": "string",
+     "description": "A logo or line icon: a name from icons/manifest.json (render() draws what the model's icons table carries)."
+    },
+    "noSub": {
+     "type": "boolean",
+     "description": "The name only on the card; the sub-line stays in the details panel."
+    },
+    "opensView": {
+     "type": "string",
+     "description": "The view the card opens. It may name a view the host loads only when it is opened."
+    },
+    "opensCount": {
+     "type": "integer",
+     "minimum": 0,
+     "description": "The number on the ⤢ badge while the view it opens is not loaded."
+    },
+    "edited": {
+     "type": "boolean",
+     "description": "A marker on the card."
+    },
+    "change": {
+     "enum": [
+      "added",
+      "new",
+      "modified",
+      "changed",
+      "removed",
+      "planned"
+     ],
+     "description": "A NEW, CHANGED, REMOVED or PLANNED badge; removed and planned cards are dashed."
+    },
+    "emphasis": {
+     "type": "boolean",
+     "description": "Drawn as a main step."
+    },
+    "what": {
+     "type": "string",
+     "description": "The details panel's first tab. Markdown: `code`, **bold**, [links](https://…), blank-line paragraphs, - bullets."
+    },
+    "when": {
+     "type": "string",
+     "description": "When it happens. Markdown: `code`, **bold**, [links](https://…), blank-line paragraphs, - bullets."
+    },
+    "how": {
+     "type": "string",
+     "description": "How it works. Markdown: `code`, **bold**, [links](https://…), blank-line paragraphs, - bullets."
+    },
+    "note": {
+     "type": "string",
+     "description": "A note in the details panel."
+    },
+    "source": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "array",
+       "items": {
+        "type": "string"
+       }
+      }
+     ],
+     "description": "Source paths (a :line suffix is fine), relative to sourcesBase."
+    },
+    "author": {
+     "type": "string",
+     "description": "A GitHub login: a name tag under the card."
+    },
+    "origin": {
+     "type": "string",
+     "description": "Where an external skill comes from."
+    },
+    "credits": {
+     "type": "array",
+     "items": {
+      "type": "string"
+     },
+     "description": "Further authors listed in the panel."
+    },
+    "examples": {
+     "type": "array",
+     "description": "A thumbnail gallery in the panel.",
+     "items": {
+      "type": "object",
+      "properties": {
+       "title": {
+        "type": "string"
+       },
+       "caption": {
+        "type": "string"
+       },
+       "thumb": {
+        "type": "string"
+       },
+       "full": {
+        "type": "string"
+       },
+       "href": {
+        "type": "string"
+       }
+      }
+     }
+    }
+   }
+  },
+  "nodeOverride": {
+   "type": "object",
+   "description": "This card's fields in this view only.",
+   "properties": {
+    "label": {
+     "type": "string",
+     "description": "The card's name."
+    },
+    "kind": {
+     "$ref": "#/$defs/kind"
+    },
+    "sublabel": {
+     "type": "string",
+     "description": "A line under the name."
+    },
+    "sub": {
+     "type": "string",
+     "description": "Same as sublabel."
+    },
+    "badge": {
+     "type": "string",
+     "description": "One tab on the card (badges takes several)."
+    },
+    "badges": {
+     "type": "array",
+     "items": {
+      "$ref": "#/$defs/badge"
+     },
+     "description": "Tabs on the card."
+    },
+    "verbs": {
+     "type": "array",
+     "items": {
+      "type": "string"
+     },
+     "description": "Chips on the card and in the details panel."
+    },
+    "icon": {
+     "type": "string",
+     "description": "A logo or line icon: a name from icons/manifest.json (render() draws what the model's icons table carries)."
+    },
+    "noSub": {
+     "type": "boolean",
+     "description": "The name only on the card; the sub-line stays in the details panel."
+    },
+    "opensView": {
+     "type": "string",
+     "description": "The view the card opens. It may name a view the host loads only when it is opened."
+    },
+    "opensCount": {
+     "type": "integer",
+     "minimum": 0,
+     "description": "The number on the ⤢ badge while the view it opens is not loaded."
+    },
+    "edited": {
+     "type": "boolean",
+     "description": "A marker on the card."
+    },
+    "change": {
+     "enum": [
+      "added",
+      "new",
+      "modified",
+      "changed",
+      "removed",
+      "planned"
+     ],
+     "description": "A NEW, CHANGED, REMOVED or PLANNED badge; removed and planned cards are dashed."
+    },
+    "emphasis": {
+     "type": "boolean",
+     "description": "Drawn as a main step."
+    },
+    "what": {
+     "type": "string",
+     "description": "The details panel's first tab. Markdown: `code`, **bold**, [links](https://…), blank-line paragraphs, - bullets."
+    },
+    "when": {
+     "type": "string",
+     "description": "When it happens. Markdown: `code`, **bold**, [links](https://…), blank-line paragraphs, - bullets."
+    },
+    "how": {
+     "type": "string",
+     "description": "How it works. Markdown: `code`, **bold**, [links](https://…), blank-line paragraphs, - bullets."
+    },
+    "note": {
+     "type": "string",
+     "description": "A note in the details panel."
+    },
+    "source": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "array",
+       "items": {
+        "type": "string"
+       }
+      }
+     ],
+     "description": "Source paths (a :line suffix is fine), relative to sourcesBase."
+    },
+    "author": {
+     "type": "string",
+     "description": "A GitHub login: a name tag under the card."
+    },
+    "origin": {
+     "type": "string",
+     "description": "Where an external skill comes from."
+    },
+    "credits": {
+     "type": "array",
+     "items": {
+      "type": "string"
+     },
+     "description": "Further authors listed in the panel."
+    },
+    "examples": {
+     "type": "array",
+     "description": "A thumbnail gallery in the panel.",
+     "items": {
+      "type": "object",
+      "properties": {
+       "title": {
+        "type": "string"
+       },
+       "caption": {
+        "type": "string"
+       },
+       "thumb": {
+        "type": "string"
+       },
+       "full": {
+        "type": "string"
+       },
+       "href": {
+        "type": "string"
+       }
+      }
+     }
+    }
+   }
+  },
+  "edge": {
+   "type": "object",
+   "required": [
+    "from",
+    "to"
+   ],
+   "properties": {
+    "id": {
+     "type": "string",
+     "description": "A line's id; views and events refer to it. Without one, a line is \"<from>-><to>#<n>\"."
+    },
+    "from": {
+     "type": "string",
+     "description": "A card's id, or a box's id in the view: the line ends on its border."
+    },
+    "to": {
+     "type": "string",
+     "description": "A card's id, or a box's id in the view: the line ends on its border."
+    },
+    "label": {
+     "type": "string",
+     "description": "A verb or protocol, short."
+    },
+    "sublabel": {
+     "type": "string",
+     "description": "A second, smaller line under the label (a technology, say); shown only with a label."
+    },
+    "kind": {
+     "enum": [
+      "calls",
+      "feeds",
+      "triggers",
+      "state",
+      "guard"
+     ],
+     "description": "What the line means, drawn as its colour (default calls)."
+    },
+    "weight": {
+     "enum": [
+      1,
+      2,
+      3
+     ],
+     "description": "How much the line stands for, drawn as its width (default 1)."
+    },
+    "style": {
+     "enum": [
+      "emphasis",
+      "added",
+      "dashed",
+      "async",
+      "security",
+      "removed"
+     ],
+     "description": "A style that wins over the kind's colour."
+    },
+    "change": {
+     "enum": [
+      "added",
+      "removed"
+     ],
+     "description": "Drawn as an added or removed line."
+    },
+    "edited": {
+     "type": "boolean",
+     "description": "A marker on the line."
+    },
+    "fromSide": {
+     "$ref": "#/$defs/side"
+    },
+    "toSide": {
+     "$ref": "#/$defs/side"
+    },
+    "loop": {
+     "type": "boolean",
+     "description": "The view's loop back, whatever the cards' order."
+    },
+    "what": {
+     "type": "string",
+     "description": "The details panel. Markdown: `code`, **bold**, [links](https://…), blank-line paragraphs, - bullets."
+    },
+    "when": {
+     "type": "string",
+     "description": "When the line is used."
+    }
+   }
+  },
+  "container": {
+   "type": "object",
+   "required": [
+    "id"
+   ],
+   "properties": {
+    "id": {
+     "type": "string",
+     "description": "Unique in the view; a line may end on it."
+    },
+    "label": {
+     "type": "string",
+     "description": "The box's title."
+    },
+    "nodeIds": {
+     "type": "array",
+     "items": {
+      "type": "string"
+     },
+     "description": "The cards in the box; its child boxes come in by their parent."
+    },
+    "parent": {
+     "type": "string",
+     "description": "The box this one sits in."
+    },
+    "badges": {
+     "type": "array",
+     "items": {
+      "$ref": "#/$defs/badge"
+     },
+     "description": "Tabs on the box's border."
+    }
+   }
+  },
+  "view": {
+   "type": "object",
+   "required": [
+    "id",
+    "nodeIds"
+   ],
+   "properties": {
+    "id": {
+     "type": "string",
+     "description": "Unique. A card with the same id opens this view."
+    },
+    "parent": {
+     "type": [
+      "string",
+      "null"
+     ],
+     "description": "The view this one is inside (breadcrumbs, the up button)."
+    },
+    "title": {
+     "type": "string",
+     "description": "The view's title."
+    },
+    "caption": {
+     "type": "string",
+     "description": "One line under the title."
+    },
+    "note": {
+     "type": "string",
+     "description": "A note for the view."
+    },
+    "nodeIds": {
+     "type": "array",
+     "items": {
+      "type": "string"
+     },
+     "description": "The cards this view shows."
+    },
+    "edges": {
+     "type": "array",
+     "description": "The lines this view draws: model line ids or lines of its own. Default: every model line between its cards; [] draws none.",
+     "items": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "$ref": "#/$defs/edge"
+       }
+      ]
+     }
+    },
+    "nodes": {
+     "type": "array",
+     "items": {
+      "$ref": "#/$defs/node"
+     },
+     "description": "Cards only this view has."
+    },
+    "nodeOverrides": {
+     "type": "object",
+     "additionalProperties": {
+      "$ref": "#/$defs/nodeOverride"
+     },
+     "description": "Cards' fields changed in this view only, by card id."
+    },
+    "layout": {
+     "type": "object",
+     "description": "Places set by hand: card id → [column, row] (halves allowed). Default: laid out automatically.",
+     "additionalProperties": {
+      "type": "array",
+      "prefixItems": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "number"
+       }
+      ],
+      "minItems": 2,
+      "maxItems": 2
+     }
+    },
+    "containers": {
+     "type": "array",
+     "items": {
+      "$ref": "#/$defs/container"
+     },
+     "description": "Boxes around cards; parent nests them."
+    },
+    "render": {
+     "enum": [
+      "sequence",
+      "process"
+     ],
+     "description": "sequence: the lines are the run order, numbered. process: four to six bold, numbered steps."
+    },
+    "mainSteps": {
+     "type": "boolean",
+     "description": "Same as render: process."
+    },
+    "stepIds": {
+     "type": "array",
+     "items": {
+      "type": "string"
+     },
+     "description": "A process view's main steps; its other cards draw as tools."
+    },
+    "lanes": {
+     "description": "Swimlanes: by hand, or false for none (a sequence view derives them).",
+     "anyOf": [
+      {
+       "const": false
+      },
+      {
+       "type": "array",
+       "items": {
+        "type": "object",
+        "properties": {
+         "title": {
+          "type": "string"
+         },
+         "label": {
+          "type": "string"
+         },
+         "nodeIds": {
+          "type": "array",
+          "items": {
+           "type": "string"
+          }
+         }
+        }
+       }
+      }
+     ]
+    },
+    "tour": {
+     "type": "array",
+     "items": {
+      "type": "string"
+     },
+     "description": "Cards a dot rides through, in order."
+    },
+    "browserOrder": {
+     "type": "array",
+     "items": {
+      "type": "string"
+     },
+     "description": "Views the view list shows first."
+    },
+    "node": {
+     "type": "string",
+     "description": "The card the view is about (default: the card with the view's id)."
+    },
+    "intake": {
+     "type": "array",
+     "items": {
+      "type": "object",
+      "properties": {
+       "label": {
+        "type": "string"
+       },
+       "to": {
+        "type": "string"
+       }
+      }
+     }
+    },
+    "gap": {
+     "type": "number",
+     "description": "Space between columns, in px."
+    },
+    "rgap": {
+     "type": "number",
+     "description": "Space between rows, in px."
+    },
+    "keepPairs": {
+     "type": "boolean",
+     "description": "A→B and B→A drawn as two lines, not one two-way line."
+    },
+    "repair": {
+     "type": "boolean",
+     "description": "false: no port repair (a switch for debugging the router)."
+    },
+    "subAndChips": {
+     "type": "boolean",
+     "description": "Cards 80 px tall that show their sub-line, then their chips."
+    },
+    "kindsFromLabels": {
+     "type": "boolean",
+     "description": "Guess a line's kind from its label's words when its edges name none (render() and layout(); the standalone page always does)."
+    }
+   }
+  }
+ }
+}

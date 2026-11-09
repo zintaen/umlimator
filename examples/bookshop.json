@@ -1,4 +1,5 @@
 {
+ "$schema": "../lib/umlimator.schema.json",
  "title": "Bookshop, an example",
  "root": "overview",
  "nodes": [
