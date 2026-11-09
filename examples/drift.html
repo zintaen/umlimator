@@ -1,0 +1,41 @@
+<!doctype html>
+<!-- Drift (#68): the bike share's map against a week of traffic, as a tracing backend (Jaeger, Tempo) lists the calls
+     between services. drift() marks the model: lines that run but are not drawn come in, dashed rose; drawn lines
+     between services the traffic reached, that carried nothing, fade. `umlimator.py drift` writes the same page. -->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>umlimator: drawn vs. seen</title>
+<link rel="stylesheet" href="../lib/umlimator-theme.css">
+<style>
+  html, body { margin: 0; height: 100%; background: var(--um-bg); color: var(--um-text); font: 14px/1.5 var(--um-sans); }
+  body { display: flex; flex-direction: column; }
+  header { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 10px 16px; border-bottom: 1px solid var(--um-border); }
+  header span { color: var(--um-muted); }
+  i.k { display: inline-block; width: 22px; vertical-align: middle; border-top: 2px solid var(--um-rose); margin-right: 6px; }
+  i.k.idle { border-top-color: var(--um-w-calls); opacity: .35; } i.k.new { border-top-style: dashed; }
+  #map { flex: 1; min-height: 0; }
+</style>
+<header><b>Drawn vs. seen</b><label><input id="on" type="checkbox" checked> Show drift</label>
+  <span><i class="k new"></i>runs, not drawn</span><span><i class="k idle"></i>drawn, carried nothing</span><span id="counts" aria-live="polite"></span></header>
+<div id="map"></div>
+<script type="module">
+import { render, drift } from '../lib/umlimator.js';
+import { withIcons } from './icons.js';
+
+const model = await withIcons(await (await fetch('bike-share.json')).json());
+// a week of calls between services, as the tracing backend names them (made up)
+const seen = { data: [
+  ['rider-app', 'trip-service', 51200], ['rider-app', 'accounts', 49800], ['trip-service', 'pricing', 50100], ['trip-service', 'trips-db', 152000],
+  ['trip-service', 'payments', 12400], ['telemetry', 'fleet-service', 880000], ['telemetry', 'warehouse', 2100], ['ops-console', 'fleet-service', 310],
+  ['fleet-service', 'charging', 0], ['ops-console', 'trips-db', 1500], ['rider-app', 'pricing', 4100], ['push-gateway', 'rider-app', 9000],
+].map(([parent, child, callCount]) => ({ parent, child, callCount })) };
+// where a service's name is not a card's id or label
+const match = { 'trip-service': 'trips', 'fleet-service': 'fleet', 'trips-db': 'tripsdb' };
+const { model: marked, counts } = drift(model, seen, { match });
+const c = counts;
+document.getElementById('counts').textContent = `${c.carried} lines carried traffic, ${c.undrawn} ran undrawn, ${c.idle} idle; ${c.unknown} not judged (an end the traffic never reached); no card for ${c.unmatched.join(', ') || 'none'}`;
+const map = render(document.getElementById('map'), marked, { view: 'system' });
+window.map = map;
+document.getElementById('on').addEventListener('change', e => map.update(e.target.checked ? marked : model));
+</script>

@@ -40,6 +40,14 @@ export interface MapEdge {
   /** A second, smaller line under the label (a technology, say), placed with it and counted in the room left for labels.
    *  Shown only with a label. A line that stands for several edges shows each of their sublabels, joined by " / ". */
   sublabel?: string;
+  /** A style that wins over the kind's colour: emphasis (green), added (green, flowing), dashed or async (violet),
+   *  security (rose, dashed), removed (rose, dashed, faded) or faded (its kind's colour, faint, with no flow). */
+  style?: 'emphasis' | 'added' | 'dashed' | 'async' | 'security' | 'removed' | 'faded';
+  /** A change mark: added and removed draw only with the matching `style` on a map; diff() sets both, and marks a
+   *  changed line `edited`. */
+  change?: 'added' | 'removed' | 'changed';
+  /** What drift() found: undrawn (traffic ran on it, nobody drew it) or idle (drawn, carried nothing). */
+  drift?: 'undrawn' | 'idle';
   [key: string]: unknown;
 }
 export interface MapView {
@@ -101,6 +109,9 @@ export interface RenderOptions {
 export interface ExportOptions { view?: string; scale?: number; fontCSS?: string }
 
 export interface Handle {
+  /** Draws the next model, redrawing only what changed and keeping the view, camera and selection. With motion it eases
+   *  in (#67): moved cards glide from where they were, new cards and rerouted lines fade in, and what left fades out
+   *  where it was; none of it under prefers-reduced-motion, and an export at any point draws where things end up. */
   update(model: MapModel): void;
   setView(id: string): Promise<void> | void;
   select(ref: Ref | null): void;
@@ -147,5 +158,23 @@ export interface CheckIssue { message: string; targets: Ref[] }
  *  it measures in the DOM (text overflowing its card, titles, edge labels on cards or each other). In Node, text widths
  *  are an estimate unless `measure` is given, so the layout, and what is found, can differ from a browser's. */
 export function check(model: MapModel, viewId: string, options?: { repair?: boolean; measure?: (text: string, px: number) => number }): CheckIssue[];
+/** What changed from one model to the next (#66), as one model to draw: `after`, with each card marked added, changed or
+ *  removed (`change`: a NEW or CHANGED tab; REMOVED is faded, dashed and struck through) and each line likewise (`style`
+ *  added or removed; a changed one `edited`); what left comes back in its views, boxes and places, and a card put into
+ *  or taken out of a view is marked in that view only (`nodeOverrides`). Cards and lines match by id (a line without one
+ *  by its ends, as a Ref names it). `summary`: what changed in words, in model order ("adds Payments queue between
+ *  Trip service and Payment provider"); `views`: those that show a change. The marks are the model's own fields, so a
+ *  page or still the CLI makes shows them. Neither input is changed. */
+export interface DiffResult { model: MapModel; summary: string[]; views: string[] }
+export function diff(before: MapModel | null, after: MapModel | null): DiffResult;
+/** A call between two services as traffic showed it: { from, to, count }, or a Jaeger or Tempo dependency. */
+export type Observed = { from: string; to: string; count?: number } | { parent: string; child: string; callCount?: number };
+/** The map against the traffic seen (#68). A line that ran but is not drawn comes in (`drift: 'undrawn'`: rose, dashed,
+ *  labelled "not drawn" with its calls); a drawn line between two cards traffic reached, that carried none, fades
+ *  (`drift: 'idle'`, style `faded`); other lines are left as they are. A service is the card `match` names, else the one
+ *  with its id, else with its label (case aside). `counts`: lines that carried traffic, came in, are idle, or could not
+ *  be judged (an end traffic never reached), and the services with no card; `views`: those that show drift. */
+export interface DriftResult { model: MapModel; counts: { carried: number; undrawn: number; idle: number; unknown: number; unmatched: string[] }; views: string[] }
+export function drift(model: MapModel, observed: Observed[] | { data: Observed[] }, options?: { match?: Record<string, string> }): DriftResult;
 /** The whole standalone viewer (top bar, views list, details panel, search, export) that umlimator.py writes. */
 export function mountPage(container: HTMLElement, model: MapModel, options?: { params?: URLSearchParams; instant?: boolean }): Handle;

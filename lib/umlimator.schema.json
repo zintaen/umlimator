@@ -559,20 +559,29 @@
       "dashed",
       "async",
       "security",
-      "removed"
+      "removed",
+      "faded"
      ],
-     "description": "A style that wins over the kind's colour."
+     "description": "A style that wins over the kind's colour; faded keeps the kind's colour, faint and with no flow."
     },
     "change": {
      "enum": [
       "added",
-      "removed"
+      "removed",
+      "changed"
      ],
-     "description": "Drawn as an added or removed line."
+     "description": "Drawn as an added or removed line; diff() marks a changed one edited."
     },
     "edited": {
      "type": "boolean",
      "description": "A marker on the line."
+    },
+    "drift": {
+     "enum": [
+      "undrawn",
+      "idle"
+     ],
+     "description": "What drift() found: a line that carried traffic but was not drawn, or a drawn one that carried none."
     },
     "fromSide": {
      "$ref": "#/$defs/side"

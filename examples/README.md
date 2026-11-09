@@ -27,6 +27,8 @@ The module embedded in a page, as an app would use it. Serve the repository over
 | [`embed.html`](embed.html) | `render()` with a details panel from `select`, breadcrumbs from `viewchange`, a view loaded when a card opens it (`open`, `update()`, `setView()`), SVG and PNG export, light, dark and a host's own palette, the minimap, focus back to the map |
 | [`live.html`](live.html) | `update()` once a second with new line weights and tab colours: cards keep their places, and the view and camera stay |
 | [`edit.html`](edit.html) | `editable`: the map emits `change` events, the host applies them and calls `update()`, with undo from `history()` |
+| [`timelapse.html`](timelapse.html) | Four made-up releases of the bike share on a slider: `update()` eases from one to the next (new cards fade in, removed ones fade out, moved ones glide), `diff()` says what changed and marks it on request |
+| [`drift.html`](drift.html) | `drift()`: the bike share against a week of made-up traffic, as a tracing backend lists it; the lines that ran undrawn come in, the drawn ones that carried nothing fade |
 | [`layout.mjs`](layout.mjs) | `layout()` in Node, with no DOM: lays out every view and fails when a line runs more than 3 times its direct route, a check a host can run in CI |
 
 [`icons.js`](icons.js) shows how a host gives `render()` the line icons in `icons/`.
@@ -66,5 +68,8 @@ The module embedded in a page, as an app would use it. Serve the repository over
 | `layout()` in Node | `layout.mjs` |
 | The model's JSON Schema (`"$schema"`), `validate()` and `check()` | every model (`"$schema"`), `playground.html` |
 | The standalone page (`mountPage`) and the CLI's `render`, `check` and `stills` | every map on the site, built by CI |
+| What changed between two models (`diff()`): NEW, CHANGED and REMOVED marks, and the summary in words | `timelapse.html` (Mark what changed); the CLI's `diff` and the diff Action (`action.yml`) |
+| The time-lapse: `update()` easing into the next model | `timelapse.html`; the CLI's `timelapse` writes one from a model's git history |
+| The map against the traffic seen (`drift()`), and the line style `faded` | `drift.html`; the CLI's `drift` |
 
 Not shown: `repair: false`, a switch for debugging the router.

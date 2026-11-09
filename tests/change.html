@@ -1,0 +1,76 @@
+<!doctype html>
+<!-- The change features in the browser (#66, #67, #68): update() easing into the next model (the time-lapse), the
+     marks diff() and drift() put on a model as drawn, and an export mid-ease. tests/embed.py opens it in headless Chrome
+     (reduced motion forced: a check that wants motion stubs matchMedia) and reads <pre id="result">. -->
+<meta charset="utf-8">
+<link rel="icon" href="data:,">
+<title>umlimator change test</title>
+<body style="margin:0">
+<div id="a" style="width:1000px;height:700px"></div>
+<script type="module">
+import { render, diff, drift } from '../lib/umlimator.js';
+const out = { ok: [], fail: [] };
+const check = (name, cond, info) => { document.title = name; if (cond) out.ok.push(name); else out.fail.push(name + (info === undefined ? '' : ': ' + JSON.stringify(info))); };
+const wait = ms => new Promise(r => setTimeout(r, ms));
+const motion = on => { const mm = window.matchMedia; window.matchMedia = q => /reduced-motion/.test(q) ? { matches: !on, media: q, addEventListener() {}, removeEventListener() {} } : mm.call(window, q); return () => { window.matchMedia = mm; }; };
+try {
+  const bike = await (await fetch('../examples/bike-share.json')).json();
+  const card = (id, label, kind = 'backend') => ({ id, label, kind });
+  const v1 = { nodes: [card('a', 'Alpha'), card('b', 'Bravo'), card('c', 'Charlie')], edges: [{ id: 'ab', from: 'a', to: 'b' }, { id: 'bc', from: 'b', to: 'c' }],
+    views: [{ id: 'v', nodeIds: ['a', 'b', 'c'] }] };
+  const v2 = { nodes: [card('a', 'Alpha'), card('b', 'Bravo'), card('d', 'Delta'), card('e', 'Echo')], edges: [{ id: 'ad', from: 'a', to: 'd' }, { id: 'db', from: 'd', to: 'b' }, { id: 'be', from: 'b', to: 'e' }],
+    views: [{ id: 'v', nodeIds: ['a', 'd', 'b', 'e'] }] };
+  const el = document.getElementById('a'), h = render(el, v1, { stableLayout: false }), sr = el.querySelector('.umlimator').shadowRoot; // each version drawn as its own map, as a time-lapse wants
+  const at = id => sr.querySelector(`.node[data-id="${id}"]`), xy = id => { const r = at(id).querySelector('.n-body'); return [+r.getAttribute('x'), +r.getAttribute('y')]; };
+  const b1 = xy('b');
+
+  // reduced motion (the default here): the update draws its end at once
+  h.update(v2);
+  check('under reduced motion, update() eases nothing: no leaving cards, no transitions', !sr.querySelector('.um-leaving') && ![...sr.querySelectorAll('.node, .edge-g, .e-lab')].some(g => g.style.transition));
+  h.update(v1);
+
+  // motion on: the same update eases in
+  const back = motion(true);
+  try { h.update(v2); } finally { back(); }
+  const leaving = sr.querySelector('.um-leaving');
+  check('with motion, a card that left fades out where it was: a copy, which nothing can find, click or focus', !!leaving && !at('c') && leaving.querySelectorAll('.n-label').length === 1
+    && !leaving.querySelector('[data-id], [tabindex], .node, .edge-g') && leaving.getAttribute('aria-hidden') === 'true', leaving && leaving.innerHTML.length);
+  check('…a card that moved glides from its old place', JSON.stringify(xy('b')) !== JSON.stringify(b1) && /transform/.test(at('b').style.transition), at('b').style.transition);
+  check('…a new card fades in, and the lines whose route changed after it', /opacity/.test(at('d').style.transition) && [...sr.querySelectorAll('.edge-g')].some(g => /opacity .* 300ms/.test(g.style.transition)), at('d').style.transition);
+  check('…and the cards that stayed put are left alone', !at('a').style.transition);
+  const file = h.toSVG();
+  check('an export mid-ease is the end of it: no leaving copies, no transitions', !file.includes('um-leaving') && !file.includes('transition') && file.includes('Delta'));
+  check('…and the ease is over on screen too', !sr.querySelector('.um-leaving') && ![...sr.querySelectorAll('.node, .edge-g, .e-lab')].some(g => g.style.transition));
+  const back2 = motion(true);
+  try { h.update(v1); } finally { back2(); }
+  await wait(1400);
+  check('an ease ends by itself after its time, leaving no styles behind', !sr.querySelector('.um-leaving') && ![...sr.querySelectorAll('.node, .edge-g, .e-lab')].some(g => g.getAttribute('style')));
+  h.destroy();
+
+  // diff's marks, as the map draws them: NEW, CHANGED and REMOVED tabs, an added line flowing, a removed one dashed
+  const next = structuredClone(bike), sys = next.views.find(v => v.id === 'system');
+  next.nodes.push({ id: 'pay-queue', label: 'Payments queue', kind: 'queue' }); sys.nodeIds.push('pay-queue'); sys.layout['pay-queue'] = [3, 3]; sys.layout.payments = [5, 3];
+  next.edges = next.edges.filter(e => e.id !== 's9'); next.edges.push({ id: 'q1', from: 'trips', to: 'pay-queue' }, { id: 'q2', from: 'pay-queue', to: 'payments' });
+  next.nodes.find(n => n.id === 'trips').sublabel = 'rides, from unlock to end';   // Trip service opens a view: its tab sits left of the ⤢ pill
+  next.nodes = next.nodes.filter(n => n.id !== 'flags'); sys.nodeIds = sys.nodeIds.filter(id => id !== 'flags');
+  const h2 = render(el, diff(bike, next).model, { view: 'system' }), s2 = el.querySelector('.umlimator').shadowRoot;
+  const tabs = [...s2.querySelectorAll('.node text.badge-tx')].map(t => t.textContent);
+  check('diff\'s marks draw as tabs: NEW, CHANGED, REMOVED', ['NEW', 'CHANGED', 'REMOVED'].every(t => tabs.includes(t)), tabs);
+  const trips = s2.querySelector('.node[data-id="trips"]'), boxes = [...trips.querySelectorAll('rect')].filter(r => +r.getAttribute('height') === 16).map(r => [+r.getAttribute('x'), +r.getAttribute('width')]);
+  check('…a stacked card\'s CHANGED tab sits clear of its ⤢ pill', boxes.length === 2 && (boxes[0][0] + boxes[0][1] <= boxes[1][0] || boxes[1][0] + boxes[1][1] <= boxes[0][0]), boxes);
+  const flowing = [...s2.querySelectorAll('.edge-g path.edge')].filter(p => p.classList.contains('flow')).length, dashed = [...s2.querySelectorAll('.edge-g path.edge')].filter(p => p.getAttribute('stroke') === 'var(--um-rose)' && p.getAttribute('stroke-dasharray')).length;
+  check('…an added line flows green, a removed one is rose and dashed', flowing >= 2 && dashed >= 1, [flowing, dashed]);
+  check('…and a removed card is struck through', !!s2.querySelector('.node[data-id="flags"] .n-label[text-decoration="line-through"]'));
+  h2.destroy();
+
+  // drift's marks: an idle line is faint and still, an undrawn one rose and dashed
+  const r = drift(bike, [{ from: 'ops-console', to: 'tripsdb', count: 9 }, { from: 'fleet', to: 'charging', count: 0 }]);
+  const h3 = render(el, r.model, { view: 'system' }), s3 = el.querySelector('.umlimator').shadowRoot;
+  const idle = s3.querySelector('.edge-g.faded'), path = idle && idle.querySelector('path.edge');
+  check('drift\'s idle line is faded: its own colour, faint, and no flow along it', !!idle && path.getAttribute('opacity') === '0.35' && /var\(--um-w-/.test(path.getAttribute('stroke')) && getComputedStyle(idle.querySelector('.flowline')).display === 'none',
+    idle && idle.outerHTML.slice(0, 200));
+  check('…and the line that ran undrawn is rose and dashed, labelled', [...s3.querySelectorAll('.e-label')].some(t => t.textContent === 'not drawn') && [...s3.querySelectorAll('.edge-g path.edge')].some(p => p.getAttribute('stroke') === 'var(--um-rose)'));
+  h3.destroy();
+} catch (e) { out.fail.push('threw: ' + (e && e.stack || e)); }
+const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
+</script>
