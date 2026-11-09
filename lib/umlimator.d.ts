@@ -65,7 +65,7 @@ export type Ref =
   | { type: 'badge'; container: string; index: number; value: string; view: string };   // a container's badge
 
 export interface Events {
-  click: { target: Ref; event: MouseEvent | KeyboardEvent; preventDefault(): void };   // preventDefault(): the selection stays as it was (no select); Enter on a focused tab is a click (KeyboardEvent)
+  click: { target: Ref; event: MouseEvent | KeyboardEvent; preventDefault(): void };   // preventDefault(): the selection stays as it was (no select); Enter on a focused tab or chip is a click (KeyboardEvent)
   select: { target: Ref | null; targets: Ref[] };          // a chip or badge selects its card (a container's badge: its box); targets: every selected thing, the latest last
   open: { target: Ref; view: string; preventDefault(): void };   // view: the one the card opens, which may not be in the model yet
   viewchange: { view: string; from: string };
