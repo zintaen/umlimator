@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 import { layout } from '../lib/umlimator.js';
 
 const args = process.argv.slice(2), at = args.indexOf('--max'), max = at >= 0 ? Number(args.splice(at, 2)[1]) : 3;
-const files = args.length ? args : ['bookshop', 'bike-share', 'weather', 'assistant'].map(n => new URL(`${n}.json`, import.meta.url));
+const files = args.length ? args : ['bookshop', 'bike-share', 'weather', 'assistant', 'clinic'].map(n => new URL(`${n}.json`, import.meta.url));
 const length = pts => pts.slice(1).reduce((a, p, i) => a + Math.abs(p[0] - pts[i][0]) + Math.abs(p[1] - pts[i][1]), 0);
 
 let worst = 0;

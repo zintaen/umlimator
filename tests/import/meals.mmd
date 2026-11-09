@@ -1,0 +1,23 @@
+C4Context
+    title Meal planner: who uses it, and what it uses
+    %% a made-up meal planner, drawn with Mermaid's C4 macros
+
+    Person(cook, "Home cook", "Plans the week's meals")
+    Person_Ext(guest, "Guest", "Rates a shared meal")
+
+    Enterprise_Boundary(company, "Meal planner company") {
+        System(planner, "Meal planner", "Plans meals and shopping lists")
+        SystemDb(recipes, "Recipe archive", "Every recipe and its ratings")
+    }
+
+    System_Ext(grocer, "Grocer API", "Prices and delivery slots")
+    SystemQueue_Ext(mail, "Mail relay", "Sends the week's plan")
+
+    Rel(cook, planner, "Plans meals")
+    Rel(guest, planner, "Rates meals")
+    Rel(planner, recipes, "Reads and writes")
+    Rel(planner, grocer, "Orders the shopping", "HTTPS")
+    Rel(planner, mail, "Sends plans", "SMTP")
+
+    UpdateRelStyle(cook, planner, $offsetY="-20")
+    UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="1")

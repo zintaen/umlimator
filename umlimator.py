@@ -12,6 +12,7 @@
   umlimator.py trace MODEL.json TRACE.json --view ID --out OUT.json [--match MATCH.json] [--title T]   # a trace (OTLP JSON) kept as a numbered view
   umlimator.py timelapse MODEL.json --out PAGE.html [--limit 20]   # the model's versions in git history, on a slider
   umlimator.py record PAGE.html --story ID --out STORY.png [--size 1160x740] [--scale 1] [--theme light|dark]   # a story as an animated PNG
+  umlimator.py import FILE --out MODEL.json [--format structurizr|plantuml|mermaid|compose|kubernetes]   # a diagram you have, as a model
   umlimator.py pdf PAGE.html --out MAP.pdf [--views a,b] [--theme light|dark]   # one PDF: a title page, each view with its text, legend, rules
   umlimator.py mcp MODEL.json [--port 7391]   # an MCP server over stdio: an AI assistant reads the model and drives its page
 
@@ -574,6 +575,25 @@ def cmd_record(a):
     print(json.dumps({"story": a.story, "frames": len(frames), "out": a.out, "bytes": Path(a.out).stat().st_size}, indent=1))
 
 
+def cmd_import(a):
+    """A diagram a team has already, as a model (#90): Structurizr DSL, C4-PlantUML, Mermaid, or the JSON of `docker
+    compose config` or `kubectl get`. umlimator_import.py reads them; what it does not import is listed on stderr, each
+    with its line (in JSON, its path)."""
+    sys.path.insert(0, str(HERE))
+    import umlimator_import as imp
+    text = Path(a.file).read_text(encoding="utf-8")
+    fmt = a.format or imp.detect(a.file, text) or sys.exit(f"import: cannot tell the format of {a.file}: give --format ({', '.join(imp.FORMATS)})")
+    try:
+        m, unread = imp.read(fmt, text, Path(a.file).stem)
+    except json.JSONDecodeError as e:
+        sys.exit(f"import: {a.file} is not {fmt} JSON ({e})")
+    for where, msg in unread:  # ponytail: JSON keeps no line numbers, so a JSON source's item is named by its path
+        print(f"{a.file}:{where}: {msg}" if where is not None else f"{a.file}: {msg}", file=sys.stderr)
+    if not m["nodes"]:
+        sys.exit(f"import: {a.file} has nothing to import as {fmt}")
+    Path(a.out).write_text(json.dumps(m, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    print(json.dumps({"out": a.out, "format": fmt, "cards": len(m["nodes"]), "lines": len(m["edges"]),
+                      "views": [v["id"] for v in m["views"]], "unread": len(unread)}, indent=1))
 def cmd_mcp(a):
     """A Model Context Protocol server over stdio for one model (#91): tools that read it, and tools that drive its page,
     served on 127.0.0.1. It lives in umlimator_mcp.py, next to this file."""
@@ -619,6 +639,10 @@ def main():
     tr.set_defaults(f=cmd_trace)
     t = sub.add_parser("timelapse", help="the model's versions in git history on a slider"); t.add_argument("model"); t.add_argument("--out", required=True)
     t.add_argument("--limit", type=int, default=30, help="the latest N versions (default 30)"); t.set_defaults(f=cmd_timelapse)
+    im = sub.add_parser("import", help="a Structurizr, C4-PlantUML or Mermaid diagram, or compose or Kubernetes JSON, as a model")
+    im.add_argument("file"); im.add_argument("--out", required=True, help="the model, a .json file")
+    im.add_argument("--format", choices=["structurizr", "plantuml", "mermaid", "compose", "kubernetes"], help="default: read from the content, then the extension")
+    im.set_defaults(f=cmd_import)
     mc = sub.add_parser("mcp", help="a Model Context Protocol server over stdio: an AI assistant reads the model and drives its page")
     mc.add_argument("model"); mc.add_argument("--port", type=int, default=7391, help="the page's port on 127.0.0.1 (default 7391; another if it is taken)")
     mc.set_defaults(f=cmd_mcp)

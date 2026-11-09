@@ -906,6 +906,95 @@ card inside the new box, and as its own box (u21's `shop`: Order service, then W
 
 ## 0.13.0: (unreleased)
 
+### Import (#90)
+
+`umlimator.py import FILE --out MODEL.json [--format structurizr|plantuml|mermaid|compose|kubernetes]` turns a diagram a
+team already has into a model, ready for `render`. The readers are their own file, `umlimator_import.py` (standard library
+only), which the command calls.
+
+- **The format** comes from the content: a `workspace`, `@startuml`, a Mermaid header, compose's `services`, or a
+  Kubernetes `kind` or `items`. Then from the extension (`.dsl`, `.puml`, `.mmd`, `.mermaid` and the like). `--format`
+  decides when it's given.
+- **What it reads**, a practical subset of each:
+  - **Structurizr DSL:** `workspace`, `model` and `views`; `person`, `softwareSystem`, `container` and `component`,
+    nested, with their description, technology and tags; `->` relationships (`this ->`, and `->` inside an element, too)
+    with description and technology; `group` (and the older `enterprise`) blocks, nested; flat and hierarchical
+    identifiers. Views: `systemLandscape`, `systemContext`, `container` and `component`, with `include *` (or element
+    ids), `exclude`, `title` and `description`.
+  - **C4-PlantUML:** `Person`, `System`, `Container` and `Component`, each with `Db`, `Queue` and `_Ext`; `Rel` and
+    `Rel_*` (their direction hints are left to the layout), `Rel_Back` (the other way) and `BiRel` (both ways);
+    `Boundary`, `Enterprise_Boundary`, `System_Boundary` and `Container_Boundary` as boxes, nested; `title`. Arguments
+    may be named (`$tags=…`). Layout and style macros (`Lay_*`, `LAYOUT_*`, `SHOW_*`, `HIDE_*`, `Update*`, `Add*Tag`),
+    `skinparam` and the C4 library's `!include` are skipped quietly.
+  - **Mermaid:** `flowchart` and `graph`: nodes with their labels and shapes, links with labels (`-->|x|`, `-- x -->`),
+    chains and `a & b`, and `subgraph` as boxes, nested. As in Mermaid, a node belongs to the first subgraph that names
+    it, and a link to a subgraph's id ends on its box. A dotted link is an async line, a thick one a heavier line.
+    The front matter's `title` is the map's. `C4Context`, `C4Container` and `C4Component` read as C4-PlantUML does.
+  - **docker compose:** the JSON from `docker compose config --format json`. Each service is a card (its image, or the
+    folder it builds), `depends_on` and `links` are lines (with no label, as every line is one; the panel says which),
+    and the networks are boxes when there are several. A service on several networks stays between their boxes.
+  - **Kubernetes:** the JSON from `kubectl get … -o json`, a List or one object. Deployments, StatefulSets, DaemonSets,
+    Services and Ingresses are cards.
+    - A Service leads to the workloads its selector picks, and its ports are on its card.
+    - An Ingress leads to its Services, each line labelled with its path.
+    - A workload leads to a Service that one of its env values names (`http://api:8080`, `postgres.data`,
+      `api.shop.svc.cluster.local`), labelled with the variable.
+    - Namespaces are boxes when there are several. Pods and ReplicaSets that a workload owns are drawn as that workload.
+
+  YAML is read through the tools' own JSON, so no YAML parser is needed.
+- **Cards** take the model's kinds. A source's own type comes first; words in a name, technology, tags or image come next
+  (`GUESS` in `umlimator_import.py`, a heuristic):
+
+  | In the source | Card kind |
+  |---|---|
+  | A person (`person`, `Person`) | `frontend`, with a person icon; `external` for `Person_Ext` or an `External` tag |
+  | A software system (`softwareSystem`, `System`) | `backend`; `external` for `_Ext` or an `External` tag |
+  | A database: a `Db` macro, a `Database` tag, a cylinder `[(…)]`, an image such as `postgres` | `database` |
+  | A queue: a `Queue` macro, a `Queue` tag, an image such as `rabbitmq` or `kafka` | `queue` |
+  | A container, component, node, service or workload | from its words: a store or cache is `database`, a broker `queue`, sign-in `security`, an LLM `ai`, a proxy or monitoring `cloud`, an app or UI `frontend`, a document `file`; `backend` otherwise (a StatefulSet: `database`) |
+  | A Kubernetes Service or Ingress | `cloud`; a Service of type `ExternalName` is `external` |
+
+- **Text:** a name is the card's label, its technology (or else its C4 type) the line under it, and its description the
+  details panel. A relationship's description is the line's label, its technology the second line. A label longer than
+  the map keeps (34 characters on a card, 28 on a line) is cut at a word, and the panel has it whole.
+- **Views:**
+  - **Structurizr:** its own views. A container view boxes its system's containers, and a component view its container's
+    components. A group is a box in each view that shows one of its members, nested as the source nests it: inside the
+    group around it, or inside the view's own box when it is in the view's system or container (whose box is in turn in
+    that element's group). A relationship between elements a view doesn't show lifts to the nearest ones it does, an implied line as
+    Structurizr draws it, unless a relationship joins those two already (`!impliedRelationships false` turns this off).
+    A system's card opens its container view, a container's card its component view, and each view's parent is the most
+    detailed view above it that shows its subject. A workspace with no views gets a landscape, a container view per system
+    and a component view per container.
+  - **Every other source is one view**, named by its C4 level (`context`, `containers`, `components`), or `flowchart`,
+    `services` or `cluster`. Its boundaries, subgraphs, networks or namespaces are boxes.
+  - **A line to a person** is the view's loop back (`loop: true`), so people stay first, as C4 draws them.
+- **Ids** are the source's own:
+  - identifiers and aliases as they are;
+  - compose's service names;
+  - for Kubernetes, `deploy-`, `sts-`, `ds-`, `svc-` or `ing-` and the name;
+  - for a line, `from-to`.
+
+  An id that is taken already gets a number, or, for a Kubernetes object, its namespace.
+- **Nothing is dropped silently.** What isn't imported is listed on stderr, one line each: `FILE:LINE: …`, or
+  `FILE:PATH: …` in JSON (`items[8]`, `volumes`). The command prints what it wrote, `{ out, format, cards, lines, views,
+  unread }`, and exits 1 when a file has nothing to import.
+- **Left out of this first version:**
+  - Structurizr's deployment, dynamic and filtered views, `!include`, `!ref`, `!extend`, constants, styles and themes;
+  - C4 deployment nodes and dynamic diagrams (`RelIndex`);
+  - Mermaid's `@{ … }` shapes and its other diagram types;
+  - compose's volumes, configs and secrets, and Kubernetes' other kinds (ConfigMaps, Jobs, CronJobs…);
+  - layout hints (`autolayout`, `Rel_U`, `Lay_R`), since the map lays out each view itself.
+
+  An imported map gets the layout check as any model does. A large diagram may need a `layout`, or a line's
+  `fromSide` and `toSide`, set by hand.
+- **Example:** `examples/clinic.json` is what `import` writes from `examples/clinic.dsl`, a made-up clinic's workspace
+  with a group, unchanged. It is in the gallery, and CI checks it as every example (`check --expand`), imports its source
+  again and fails if the model differs.
+- **Tests:** `tests/import.py` imports the sample of each format (in `tests/import/`, and `examples/clinic.dsl` for
+  Structurizr), checks the cards, boxes, lines, views and the list of what isn't imported, and that `validate()` finds
+  nothing, the model renders, and its layout check is clean. CI runs it.
+
 ### \<umlimator-map> and docs blocks (#92)
 
 - **`<umlimator-map>`**, as `umlimator/element` (`lib/umlimator-element.js`): a map in a page from HTML alone. The

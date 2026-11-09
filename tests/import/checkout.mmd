@@ -1,0 +1,20 @@
+---
+title: Checkout, as the payments team drew it
+---
+flowchart LR
+    %% shoppers come in through the storefront
+    shopper([Shopper]) -->|browses| web[Storefront]
+    web -->|"POST /orders"| api(Order API)
+    subgraph core [Order core]
+        api --> orders[(Orders DB)]
+    end
+    api -. order placed .-> bus[[Event bus]]
+    subgraph after [After the order]
+        mailer[Mailer]
+        stock[Stock service]
+    end
+    bus -.-> mailer & stock
+    api ==>|charges| psp{{Payment provider}}
+    classDef external fill:#eee,stroke:#999
+    class psp external
+    click psp "https://example.com/psp" "The provider's docs"
