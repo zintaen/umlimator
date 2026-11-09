@@ -57,8 +57,10 @@ jobs:
       - name: The benchmark models lay out as recorded, the same on every run, and in time
         # m50's time is checked on a developer machine (about 1.6 s since 0.6.0, which lays a view
         # out again when some of its lines find no route); a CI runner takes about 3x as long and gets 5x headroom,
-        # which the engine before patches 31-35 never met (m50 did not finish in 30 min: bench/results/2026-11-06-ab8daa1-m50.json)
-        run: python3 bench/bench.py --runs 2 --timeout 300 --check-determinism --expect bench/expected.json --max-ms m50=8000,b26=2000
+        # which the engine before patches 31-35 never met (m50 did not finish in 30 min: bench/results/2026-11-06-ab8daa1-m50.json).
+        # b26 takes about 0.4 s here and took 0.78-1.36 s on a runner (1.36 s on 0.9.0, with its layout unchanged): 3 s keeps
+        # a slow runner from failing a PR on time alone
+        run: python3 bench/bench.py --runs 2 --timeout 300 --check-determinism --expect bench/expected.json --max-ms m50=8000,b26=3000
 
       - name: The example renders as committed and its layout check is clean
         run: |

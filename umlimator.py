@@ -27,10 +27,29 @@ def visual_cmd(tmp, *args):
     page = Path(tmp) / "template.html"
     html = PAGE.read_text(encoding="utf-8").replace("/*__UMLIMATOR_THEME__*/", THEME.read_text(encoding="utf-8"), 1)
     page.write_text(html.replace("/*__UMLIMATOR_LIB__*/", LIB.read_text(encoding="utf-8"), 1), encoding="utf-8")
-    run = ("import importlib.util, pathlib, sys; s = importlib.util.spec_from_file_location('visual', sys.argv[1]); "
-           "v = importlib.util.module_from_spec(s); s.loader.exec_module(v); v.TEMPLATE = pathlib.Path(sys.argv[2]); "
-           "sys.argv = [sys.argv[1]] + sys.argv[3:]; v.main()")
-    return [sys.executable, "-c", run, str(VISUAL), str(page), *args]
+    run = ("import importlib.util, pathlib, sys\n"
+           "def load(name, path): s = importlib.util.spec_from_file_location(name, path); m = importlib.util.module_from_spec(s); s.loader.exec_module(m); return m\n"
+           "v, u = load('visual', sys.argv[1]), load('umlimator', sys.argv[2]); v.TEMPLATE = pathlib.Path(sys.argv[3])\n"
+           "check = v.validate_map; v.validate_map = lambda d: check(u.upstream_view(d))\n"
+           "sys.argv = [sys.argv[1]] + sys.argv[4:]; v.main()")
+    return [sys.executable, "-c", run, str(VISUAL), str(Path(__file__).resolve()), str(page), *args]
+
+
+def upstream_view(d):
+    """The model as upstream's validate_map is shown it. umlimator allows two things that visual.py rejects: a card that
+    opens a view the host loads later (#47), and a line that ends on a container (#28). The copy it checks leaves out
+    such an opensView, and lists each container's id as a card's, so a line's other end is still checked (and named)."""
+    d = json.loads(json.dumps(d))
+    views = d.get("views") or []
+    vids = {v.get("id") for v in views}
+    for n in [*d.get("nodes", []), *(x for v in views for x in [*(v.get("nodes") or []), *(v.get("nodeOverrides") or {}).values()])]:
+        if isinstance(n, dict) and n.get("opensView") not in vids:
+            n.pop("opensView", None)
+    # ponytail: any view's box counts in every view, so a view's own line to another view's box passes; the map drops it
+    ids = {n.get("id") for n in [*d.get("nodes", []), *(n for v in views for n in v.get("nodes") or [])] if isinstance(n, dict)}
+    boxes = {c.get("id") for v in views for c in v.get("containers") or [] if isinstance(c, dict) and c.get("id")}
+    d["nodes"] = [*d.get("nodes", []), *({"id": b} for b in sorted(boxes - ids))]
+    return d
 CHROMES = ["/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
            "/Applications/Chromium.app/Contents/MacOS/Chromium", "google-chrome", "chromium", "chromium-browser"]
 

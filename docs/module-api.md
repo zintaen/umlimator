@@ -380,3 +380,30 @@ events beyond verb chips (step 4); editing (step 5); SVG export without Chrome (
   all; m50 and b69 lay out faster, with fewer lines to route around others. The router still avoids every crossing it can
   (#53).
 
+## 0.10.0: known gaps (CLI validator, chips by keyboard, depth contrast, cards with no lines in boxes, kept pairs)
+
+- **The CLI renders what `render()` draws.** `umlimator.py render` ran upstream's validator, which rejects a card whose
+  `opensView` names a view not in the model (drawn since 0.7.0, #47) and a line that ends on a container (since 0.5.0,
+  #28). `visual.py` stays as upstream wrote it (CI checks that): `umlimator.py` shows its validator a copy of the model
+  without such an `opensView`, and with each container's id listed as a card's. Every other check still applies, and an
+  error names the ids as the model has them (`edge data->nowhere has an unknown end`).
+- **The reading depth on the zoom controls passes AA contrast.** READ, MAP and FULL were drawn in `--um-dim`: 3.45:1 on the
+  bar in light and 3.57:1 in dark, under the 4.5:1 that axe's color-contrast rule asks of 10 px text. They now take
+  `--um-muted`, as the zoom does. `tests/contrast.html` checks every text on the bar, light and dark.
+- **Chips can be reached with the keyboard.** For a host that listens for click, each chip gets a focus target after its
+  card's tabs, outside the card (a button inside the card's button is invalid), named by its verb; the last chip, "+3",
+  is named by the verbs it stands for. Enter emits `click` with the chip's Ref and then selects the card, as a click on the
+  chip does, and `click.preventDefault()` keeps the selection. Without a click listener chips stay out of the Tab order,
+  as tabs do (#43).
+- **Cards with no lines in a view with boxes go in rows of their own.** #46 put them in a row under a plain view; in a view
+  with boxes they still stacked in the first column with the sources, in the view and inside each box. Now those outside
+  the boxes sit side by side in a row under the view, and those in a box in a row at the bottom of the box, as wide as its
+  columns. A box with no card that has a line keeps its cards stacked, and a host's `layout` is used as it is. The layout
+  search that `umlimator.py render` bakes into a page leaves the rows alone, as under a plain view. No bench view moves:
+  d24/boxed places its two such cards with a layout of its own.
+- **The layout check no longer flags the return line of a kept pair.** In a view with `keepPairs`, A→B and B→A are two
+  lines, and the one that runs back was reported as running right to left; the report also counted against such views in
+  the layout search. A line whose reverse is drawn too is no longer flagged. No bench view's geometry moves; b69/overview,
+  which keeps pairs, has 398 issues, 403 before.
+- **CI:** b26's time limit is 3 s, up from 2 s. A runner took 1.36 s on 0.9.0 with b26's layout unchanged.
+

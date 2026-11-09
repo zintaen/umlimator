@@ -1,8 +1,12 @@
 // node --test tests/   (Node 18+; no browser: layout() needs no DOM)
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync, readdirSync, mkdtempSync, writeFileSync, rmSync } from 'node:fs';
 import { createRequire } from 'node:module';
+import { spawnSync } from 'node:child_process';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { layout, history } from '../lib/umlimator.js';
 
 const read = p => JSON.parse(readFileSync(new URL(p, import.meta.url)));
@@ -252,6 +256,29 @@ test('cards with no lines sit in a row of their own under the view: they do not 
   }
 });
 
+test("in a view with boxes, cards with no lines outside the boxes sit in the view's row under everything, side by side, as in a plain view (#46)", () => {
+  const m = context(), loose = ['ledger', 'archive', 'printer'];
+  m.views[0].containers = [{ id: 'core', label: 'Core', nodeIds: ['shop', 'mailer'] }];
+  const g = layout(m, 'v'), at = id => g.nodes.find(n => n.id === id), box = g.families.find(f => f.id === 'core');
+  const bottom = Math.max(box.y + box.h, ...g.nodes.filter(n => !loose.includes(n.id)).map(n => n.y + n.h));
+  for (const id of loose) assert.ok(at(id).y > bottom, `${id} is under the cards with lines and their box, not in the sources' column: ${JSON.stringify([at(id).x, at(id).y])}`);
+  assert.equal(new Set(loose.map(id => at(id).y)).size, 1, 'one row');
+  const row = loose.map(at).sort((a, b) => a.x - b.x);
+  assert.ok(row.every((n, k) => !k || n.x >= row[k - 1].x + row[k - 1].w + 24), `side by side: ${JSON.stringify(row.map(n => [n.x, n.w]))}`);
+});
+
+test('cards with no lines inside a box sit in a row at the bottom of their box: they do not lengthen its first column', () => {
+  const m = context(), inside = ['ledger', 'archive'];
+  m.views[0].containers = [{ id: 'core', label: 'Core', nodeIds: ['shop', 'mailer', 'ledger', 'archive'] }];
+  const g = layout(m, 'v'), at = id => g.nodes.find(n => n.id === id), box = g.families.find(f => f.id === 'core');
+  const floor = Math.max(...['shop', 'mailer'].map(id => at(id).y + at(id).h)); // the box's cards with lines
+  for (const n of inside.map(at)) assert.ok(n.y > floor && n.x >= box.x && n.x + n.w <= box.x + box.w && n.y + n.h <= box.y + box.h,
+    `${n.id} is in its box, under its cards with lines: ${JSON.stringify([n.x, n.y])} in ${JSON.stringify([box.x, box.y, box.w, box.h])}`);
+  assert.equal(new Set(inside.map(id => at(id).y)).size, 1, 'one row at the bottom of the box');
+  assert.ok(at('archive').x >= at('ledger').x + at('ledger').w + 24, 'side by side, not stacked in its first column');
+  assert.ok(at('printer').y > box.y + box.h, "a card with no line outside the box is under it, in the view's row");
+});
+
 test("a line's kind is the kind its edge names: no guess from label words unless the view asks (kindsFromLabels), and a merged line takes the first kind its edges name (#45)", () => {
   const m = (view = {}, pay = {}) => ({ root: 'v', nodes: [['web', 'Web', 'frontend'], ['api', 'API', 'backend'], ['db', 'Store', 'database'], ['pay', 'Payments', 'external']].map(([id, label, kind]) => ({ id, label, kind })),
     edges: [{ from: 'web', to: 'api', label: 'calls · 212' }, { from: 'api', to: 'db', label: 'reads, writes · 49' }, { from: 'pay', to: 'api', label: 'triggers · 1', ...pay }, { from: 'api', to: 'pay', label: 'calls · 2', kind: 'calls' }],
@@ -309,4 +336,24 @@ test("auto-layout orders a column so the lines between two columns don't cross w
       const direct = Math.abs(e.pts[0][0] - e.pts.at(-1)[0]) + Math.abs(e.pts[0][1] - e.pts.at(-1)[1]);
       assert.ok(len <= 1.1 * direct, `${boxed ? 'boxed: ' : ''}${e.from} -> ${e.to} is ${Math.round(len)} px for a direct route of ${Math.round(direct)}`); }
   }
+});
+
+test('the CLI renders what render() draws: a card that opens a view the host loads later (#47), a line that ends on a box (#28); a dangling id still fails', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'umlimator-cli-')), cli = fileURLToPath(new URL('../umlimator.py', import.meta.url));
+  const render = m => { const p = join(dir, 'map.json'); writeFileSync(p, JSON.stringify(m)); // every view laid out: no Chrome needed
+    return spawnSync('python3', [cli, 'render', p, '--out', join(dir, 'map.html'), '--no-check'], { encoding: 'utf8' }); };
+  const m = { nodes: [{ id: 'web', label: 'Web', opensView: 'web-inside', opensCount: 4 }, { id: 'api', label: 'API' }, { id: 'db', label: 'Store', kind: 'database' }],
+    edges: [{ id: 'e1', from: 'web', to: 'data', label: 'reads' }],
+    views: [{ id: 'v', nodeIds: ['web', 'api', 'db'], containers: [{ id: 'data', label: 'Data', nodeIds: ['api', 'db'] }], nodeOverrides: { api: { opensView: 'api-inside' } },
+      edges: ['e1', { from: 'data', to: 'web', label: 'pushes' }], layout: { web: [0, 0], api: [1, 0], db: [1, 1] } }] };
+  try {
+    const ok = render(m);
+    assert.equal(ok.status, 0, ok.stderr);
+    const bad = structuredClone(m); bad.views[0].edges.push({ from: 'data', to: 'nowhere' }); bad.views[0].nodeIds.push('ghost');
+    const no = render(bad);
+    assert.notEqual(no.status, 0);
+    assert.match(no.stderr, /view 'v': unknown node 'ghost'/);
+    assert.match(no.stderr, /edge data->nowhere has an unknown end/);
+    assert.doesNotMatch(no.stderr, /opens unknown view|data->web/);
+  } finally { rmSync(dir, { recursive: true, force: true }); }
 });

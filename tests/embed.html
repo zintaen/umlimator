@@ -251,15 +251,15 @@ try {
     check('a host that adds the view in its open handler (update()) goes in at once', await until(() => h10.view === 'db-inside') && ev10.some(x => x[0] === 'viewchange' && x[1] === 'db-inside'), [h10.view, ev10]);
     off(); h10.destroy();
   }
-  // keyboard: lines follow the cards in the Tab order, and tabs are buttons when the host listens for click (#43)
-  const KEYS = { root: 'v', nodes: [{ id: 'a', label: 'Orders', kind: 'backend', badges: ['Details'] }, { id: 'b', label: 'Store', kind: 'database', badges: ['Open data'] }, { id: 'c', label: 'Mailer', kind: 'external' }],
+  // keyboard: lines follow the cards in the Tab order, and tabs and chips are buttons when the host listens for click (#43)
+  const KEYS = { root: 'v', nodes: [{ id: 'a', label: 'Orders', kind: 'backend', badges: ['Details'] }, { id: 'b', label: 'Store', kind: 'database', badges: ['Open data'], verbs: ['query', 'export'] }, { id: 'c', label: 'Mailer', kind: 'external' }],
     edges: [{ id: 'a|b', from: 'a', to: 'b', label: 'reads · 12' }, { id: 'c|x', from: 'c', to: 'x', label: 'sends' }],
     views: [{ id: 'v', nodeIds: ['a', 'b'] }, { id: 'w', nodeIds: ['a', 'b', 'c'], containers: [{ id: 'x', label: 'Outside', nodeIds: ['b'], badges: ['Open docs'] }] }] };
   {
     const el11 = document.getElementById('a'), ev11 = [], outside = document.body.appendChild(document.createElement('button'));
     const h11 = render(el11, KEYS, { on: { click: e => ev11.push(['click', e.target]), select: e => ev11.push(['select', e.target]) } });
     const sr11 = el11.querySelector('.umlimator').shadowRoot, stops = sr => [...sr.querySelectorAll('svg.map-svg [tabindex="0"]')].map(x => x.dataset.id || x.getAttribute('aria-label') || x.textContent.trim());
-    check('Tab (tree order) reaches each card, then its tabs, then the lines after the cards', JSON.stringify(stops(sr11)) === JSON.stringify(['a', 'Details', 'b', 'Open data', 'Line from Orders to Store: reads · 12']), stops(sr11));
+    check('Tab (tree order) reaches each card, then its tabs and its chips, then the lines after the cards', JSON.stringify(stops(sr11)) === JSON.stringify(['a', 'Details', 'b', 'Open data', 'query', 'export', 'Line from Orders to Store: reads · 12']), stops(sr11));
     const line = sr11.querySelector('.line-key'), tab = [...sr11.querySelectorAll('.tab-key')].find(k => k.getAttribute('aria-label') === 'Open data');
     check('a line and a tab are buttons named by what they show', line.getAttribute('role') === 'button' && !!tab && tab.getAttribute('role') === 'button' && !sr11.querySelector('.node [tabindex]'), [line.outerHTML.slice(0, 160), tab && tab.outerHTML.slice(0, 160)]);
     const press = (el, k = 'Enter') => { el.focus(); el.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true, composed: true })); };
@@ -267,12 +267,16 @@ try {
     check('Enter on a line selects it (select with the edge Ref, as a click does), and it is pressed', JSON.stringify(ev11) === JSON.stringify([['select', { type: 'edge', ids: ['a|b'], view: 'v' }]]) && line.getAttribute('aria-pressed') === 'true', ev11);
     ev11.length = 0; press(tab);
     check('Enter on a tab emits click with the badge Ref, then selects its card', JSON.stringify(ev11) === JSON.stringify([['click', { type: 'badge', node: 'b', index: 0, value: 'Open data', view: 'v' }], ['select', { type: 'node', id: 'b', view: 'v' }]]), ev11);
+    const chip = [...sr11.querySelectorAll('.chip-key')].find(k => k.getAttribute('aria-label') === 'export'); h11.select(null); ev11.length = 0; press(chip);
+    check('Enter on a chip emits click with the chip Ref, as a click on it does, then selects its card; the chip is a button outside the card',
+      chip && chip.getAttribute('role') === 'button' && !chip.closest('.node') && sr11.activeElement === chip
+      && JSON.stringify(ev11) === JSON.stringify([['click', { type: 'chip', node: 'b', index: 1, value: 'export', view: 'v' }], ['select', { type: 'node', id: 'b', view: 'v' }]]), ev11);
     const keep = h11.on('click', e => e.preventDefault()); ev11.length = 0; press(tab);
     check('…and click.preventDefault() keeps the selection, as for a mouse click', ev11.length === 1 && ev11[0][0] === 'click' && h11.selection.id === 'b', ev11);
     keep();
     const tx = sr11.querySelector('.node[data-id="b"] .tab-tx');
     check('tab text keeps its case in the DOM, and the sheet upper-cases it', tx.textContent === 'Open data' && getComputedStyle(tx).textTransform === 'uppercase', [tx.textContent, getComputedStyle(tx).textTransform]);
-    check('…while a file drawn from the map has it upper-cased, and no focus targets', h11.toSVG().includes('>OPEN DATA<') && !/line-key|tab-key|tabindex/.test(h11.toSVG()));
+    check('…while a file drawn from the map has it upper-cased, and no focus targets', h11.toSVG().includes('>OPEN DATA<') && !/line-key|tab-key|chip-key|tabindex/.test(h11.toSVG()));
     h11.select({ type: 'edge', ids: ['a|b'] }); outside.focus(); el11.querySelector('.umlimator').focus();
     check('host.focus() (a panel giving focus back) lands on the selected line', sr11.activeElement === line, sr11.activeElement && sr11.activeElement.outerHTML.slice(0, 80));
     h11.setView('w'); await until(() => h11.view === 'w'); ev11.length = 0;
@@ -282,10 +286,14 @@ try {
     check('a line to a container is named after its box', stops(sr11).includes('Line from Mailer to Outside: sends'), stops(sr11));
     h11.destroy(); outside.remove();
     const h12 = render(el11, KEYS), sr12 = el11.querySelector('.umlimator').shadowRoot;
-    check('without a click listener tabs stay out of the Tab order; lines are in it', JSON.stringify(stops(sr12)) === JSON.stringify(['a', 'b', 'Line from Orders to Store: reads · 12']), stops(sr12));
+    check('without a click listener tabs and chips stay out of the Tab order; lines are in it', JSON.stringify(stops(sr12)) === JSON.stringify(['a', 'b', 'Line from Orders to Store: reads · 12']), stops(sr12));
     const on = h12.on('click', () => {}), n1 = stops(sr12).length; on();
-    check('…handle.on("click") makes them buttons, and they go when it does', n1 === 5 && stops(sr12).length === 3, [n1, stops(sr12)]);
+    check('…handle.on("click") makes them buttons, and they go when it does', n1 === 7 && stops(sr12).length === 3, [n1, stops(sr12)]);
     h12.destroy();
+    const many = { nodes: [{ id: 'a', label: 'Tools', kind: 'backend', verbs: ['search', 'fetch', 'summarise', 'translate', 'classify', 'extract'] }], views: [{ id: 'v', nodeIds: ['a'] }] };
+    const h13 = render(el11, many, { on: { click() {} } }), keys13 = [...el11.querySelector('.umlimator').shadowRoot.querySelectorAll('.chip-key')].map(k => k.getAttribute('aria-label'));
+    check('a chip that stands for the verbs with no room ("+3") is named by them', keys13.length > 1 && keys13.length < 6 && /^\+\d+ \(more: .*extract\)$/.test(keys13.at(-1)) && keys13[0] === 'search', keys13);
+    h13.destroy();
   }
   // at fit, no card sits under the zoom controls or, when it is on, the minimap (#50)
   {
