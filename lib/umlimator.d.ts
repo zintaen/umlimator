@@ -143,8 +143,9 @@ export interface Handle {
   on<K extends keyof Events>(type: K, fn: (e: Events[K]) => void): () => void;
   /** Unfolds a stacked card of the view shown into a box in place (#71): its inner view's own cards inside, this view's
    *  lines to it moved onto them, the rest of the picture in its order. In this handle only, never in the model; kept per
-   *  view across update(). False when it can't: no loaded inner view, nothing of its own inside, a numbered (sequence)
-   *  view in or opened, an editable map. No expand event: that is for gestures. */
+   *  view across update(). A numbered (sequence) inner view keeps its run order: numbers, loops back, lanes (#82). False
+   *  when it can't: no loaded inner view, nothing of its own inside, a card on a numbered view, an editable map. No
+   *  expand event: that is for gestures. */
   expand(id: string): boolean;
   /** Folds an unfolded card back (and anything unfolded inside it). False when it was not unfolded. */
   collapse(id: string): boolean;
@@ -195,8 +196,9 @@ export interface StoryPlayer {
 
 /** A mark on a card. tone: a palette name (--um-<tone>), drawn as a ring; badge: a tab after the card's own; level: 0 to 1. */
 export interface CardMark { tone?: string; badge?: Badge; pulse?: boolean; level?: number }
-/** A mark on a line. speed: its flow's speed, as a factor (0 stops it); tone: a glow under it; label: a pill under its own;
- *  dash: drawn dashed; level: 0 to 1. A drawn line that stands for several edges takes the strongest of their marks. */
+/** A mark on a line. speed: its flow's speed, as a factor (0 stops it); tone: a glow under it; label: a pill under its own,
+ *  or along the line where it covers nothing (with no room, in the line's tooltip and name instead); dash: drawn dashed;
+ *  level: 0 to 1. A drawn line that stands for several edges takes the strongest of their marks. */
 export interface LineMark { tone?: string; speed?: number; pulse?: boolean; label?: string; level?: number; dash?: boolean }
 /** A layer of marks: cards by node id, lines by edge id ("<from>-><to>#<n>" for an edge without one, as Refs name it).
  *  dim: what the layer doesn't name fades. */
@@ -222,7 +224,8 @@ export function render(container: HTMLElement, model: MapModel, options?: Render
 export interface History { readonly model: MapModel; readonly canUndo: boolean; readonly canRedo: boolean; push(m: MapModel): MapModel; undo(): MapModel; redo(): MapModel }
 export function history(model: MapModel, limit?: number): History;
 /** expand: cards of the view unfolded in place (#71), as handle.expand() draws them; the geometry's `unfolded` lists those
- *  that did (one inside another after it), and its `families` the boxes they became (`unfolds`: the inner view). */
+ *  that did (one inside another after it), and its `families` the boxes they became (`unfolds`: the inner view). A
+ *  numbered inner view's numbers are its lines' and cards' `step`, and its lanes are boxes with `lane: true` (#82). */
 export function layout(model: MapModel, viewId: string, options?: { repair?: boolean; measure?: (text: string, px: number) => number; expand?: string[] }): Geometry & { unfolded?: string[] };
 /** A model's own problem. path says where: "views[2].nodeIds[4]". Errors draw as holes or not at all (missing,
  *  repeated or dangling ids, a box inside itself); warnings draw other than they say (an unknown kind, weight or side,

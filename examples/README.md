@@ -47,7 +47,7 @@ The module embedded in a page, as an app would use it. Serve the repository over
 |---|---|
 | Views a card opens (`opensView`) | bike-share (three levels), weather, assistant, bookshop |
 | A view the host loads when it's opened (`opensView` with `opensCount`) | bike-share: Trip service and Fleet service, in `embed.html` |
-| A stacked card unfolded in place (E, Alt + click, `map.expand()`) | bike-share: Trip service and Fleet service in `system`, Bike share in `context`; weather: Check in `stages`, Quality check in `flow` |
+| A stacked card unfolded in place (E, Alt + click, `map.expand()`) | bike-share: Trip service and Fleet service in `system`, Bike share in `context`; weather: Check in `stages`, Quality check in `flow`; numbered, with its run order: weather Forecast in `stages` (with its lanes), assistant answer in `assistant` |
 | Boxes (`containers`) and their tabs (`badges`) | bike-share `system`, weather `check` |
 | Nested boxes (`parent`) | weather `check` |
 | A line to or from a box | bike-share `system` (Monitoring → Rides), weather `check` (Checks → Quarantine) |

@@ -510,8 +510,8 @@ def apng(frames, delays, out):
 def cmd_record(a):
     """A story (#69) as an animated PNG: the page opened at each step in headless Chrome (#story=<id>&step=<n>, drawn at
     once, and with reduced motion: CSS transitions do not finish in a headless screenshot), one frame per step, shown for
-    the step's duration."""
-    # ponytail: a frame per step, so a step's tour does not move in the picture; frames along the tour if that matters
+    the step's duration. A step that plays a tour gets frames along its ride instead (&at=0 to 1), which share the step's
+    duration (#83)."""
     if Path(a.out).suffix.lower() != ".png":
         sys.exit("record: --out is a .png file, an animated PNG (GIF and MP4 need encoders umlimator does not ship: convert the PNG)")
     b, page = chrome(), Path(a.page).resolve()
@@ -522,15 +522,20 @@ def cmd_record(a):
         sys.exit(f"record: the page has no story {a.story!r} with steps (it has: {', '.join(str(s.get('id')) for s in stories if isinstance(s, dict)) or 'none'})")
     w, h = (int(x) for x in a.size.lower().split("x"))
     with tempfile.TemporaryDirectory() as tmp:
-        frames = []
-        for n in range(1, len(story["steps"]) + 1):
-            png = Path(tmp) / f"{n:03}.png"
-            headless(b, "--virtual-time-budget=8000", "--force-prefers-reduced-motion", f"--window-size={w},{h}", f"--force-device-scale-factor={a.scale}", f"--screenshot={png}",
-                     f"{page.as_uri()}#shot=1&theme={a.theme}&story={urllib.parse.quote(a.story)}&step={n}")
-            if not png.is_file():
-                sys.exit(f"record: Chrome drew no picture of step {n}")
-            frames.append(png)
-        apng(frames, [s.get("duration") or 4000 for s in story["steps"]], a.out)
+        frames, delays = [], []
+        for n, step in enumerate(story["steps"], 1):
+            # a tour: 2 frames a leg, at most 6 so the file stays small, each shown for its share of the step's duration
+            # ponytail: the ride fills the step at its own pace, not the live dot's: only the page knows the ride's length
+            # (have the page say it if the pace matters)
+            ms, k = int(step.get("duration") or 4000), max(1, min(6, 2 * len(step.get("tour") or []) - 1))
+            for i in range(k):
+                png = Path(tmp) / f"{len(frames):03}.png"
+                headless(b, "--virtual-time-budget=8000", "--force-prefers-reduced-motion", f"--window-size={w},{h}", f"--force-device-scale-factor={a.scale}", f"--screenshot={png}",
+                         f"{page.as_uri()}#shot=1&theme={a.theme}&story={urllib.parse.quote(a.story)}&step={n}" + (f"&at={i / (k - 1):.4f}" if k > 1 else ""))
+                if not png.is_file():
+                    sys.exit(f"record: Chrome drew no picture of step {n}")
+                frames.append(png); delays.append(ms * (i + 1) // k - ms * i // k)
+        apng(frames, delays, a.out)
     print(json.dumps({"story": a.story, "frames": len(frames), "out": a.out, "bytes": Path(a.out).stat().st_size}, indent=1))
 
 
@@ -546,7 +551,7 @@ def main():
     s.set_defaults(f=cmd_stills)
     pd = sub.add_parser("pdf", help="every view in one PDF, with its text, the legend and the rules"); pd.add_argument("page"); pd.add_argument("--out", required=True)
     pd.add_argument("--views", help="a,b,pic-* (a trailing * is a prefix)"); pd.add_argument("--theme", default="light", choices=["light", "dark"]); pd.set_defaults(f=cmd_pdf)
-    rc = sub.add_parser("record", help="a story as an animated PNG, a frame per step"); rc.add_argument("page")
+    rc = sub.add_parser("record", help="a story as an animated PNG, a frame per step and frames along a step's tour"); rc.add_argument("page")
     rc.add_argument("--story", required=True); rc.add_argument("--out", required=True, help="a .png file")
     rc.add_argument("--size", default="1160x740", help="the window, WxH (up to 1180 wide the views list stays shut)"); rc.add_argument("--scale", type=float, default=1)
     rc.add_argument("--theme", default="light", choices=["light", "dark"]); rc.set_defaults(f=cmd_record)
