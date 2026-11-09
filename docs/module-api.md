@@ -1409,3 +1409,78 @@ fix changes the page slightly: one wrapper in the details panel's markup, and ho
 - **Now:** a small HTML parser reads the names in the drawn legend element (`#m-legend`), taking a script's text as text.
   The wait asks for the legend to have names, and the check wants calls and state among them; a page that never draws
   its legend fails it.
+
+## 0.14.0: (unreleased)
+
+### The map's state holds together: moves, the selection, focus, gestures and marks
+
+An audit of `render()`'s implicit state machines found transitions that could stall, drop a request without a word, or
+stop half way. Every transition now finishes or rolls back, every request gets a true answer, and each piece of state
+has one owner. The ids are the audit's: L, N, S, K, E, U, O for the map (runtime), and the playback machine's name.
+
+- **A listener's error never wedges the map (H1).** `emit()` calls each listener on its own and hands an error to
+  `reportError()`. A `select` handler that read `e.target.id` threw on the `select(null)` a view change sends, and from then
+  on every `setView()` was dropped and the new view had no lens or marks. Now the move finishes, and the error is
+  reported. A call such as `select()` no longer throws a listener's error back at its caller.
+- **One move at a time, and the latest request wins (N1 to N4, N7, D1; playback story-player).**
+  - A `setView()` during a move takes the move to its own view. It used to be dropped, and its promise resolved anyway.
+  - `setView()` resolves `true` once its view shows, and `false` for a view the model lacks (with a console warning that
+    lists the model's views), when a later request supersedes it, or on `destroy()`. It resolved `undefined` either way.
+    The declared type stays `Promise<void> | void`, which a `Promise<boolean>` fits.
+  - A move ends with one `viewchange`, from the view it started on to the view it shows.
+  - A press on the map during a glide (a drill-down, a story's step) left the glide's promise pending: the move stalled,
+    deaf to Esc and `setView()`, until some later zoom (N4). The camera now settles it, and the move goes on.
+  - An `update()` that dropped the view a move was going to threw inside the move: `view` named the missing view, the map
+    stayed at opacity 0, and no move worked again (N3). The move now ends `false` on the view it was on, visible.
+  - On the standalone page, Back while a view zooms in is honoured: the map goes where the link went, and the history entry
+    Back reached is no longer overwritten (N7). A `setView()` before the page's first draw, a frame later, is kept (D1).
+- **Lifecycle (L1 to L6; playback tour and later-timers).**
+  - A model with no views draws an empty card, "This map has no views yet". The `update()` that brings views draws the
+    first one, with `viewchange` from `null`. Before, nothing was drawn, even after that update (L2). An `update()` to a
+    model with no views shows the card; it threw and left the handle unable to draw again (L3).
+  - `update()` with something that isn't a model throws a TypeError that says a map model is needed, before it changes
+    anything (L4). `render()` with a `view` the model lacks warns, and starts on the root as before (L5).
+  - A destroyed handle selects nothing and calls no listener (L1). `destroy()` settles every promise: a move's
+    `setView()` resolves `false`, and a tour and a replay end at once, not on a later frame (L6).
+- **Motion belongs to each map (playback motion-mode).** `mountPage(…, { instant: true })`, which the page's `#check`,
+  `#still` and `#shot` use, stilled every map in the document for good. Now it stills its own.
+- **The selection speaks once (S1, S2, S4).**
+  - A redraw that keeps the selection (an `update()`, the redraw once fonts load) sends no `select` event. It sent
+    `select(null)` and then the same selection, and the live region said "Nothing selected" in between. `expand()` and
+    `collapse()` send one event each.
+  - A chip or badge that was clicked is what Delete and Alt + arrows act on only while its card or box stays selected.
+    After Escape and a reselection by key, it stayed the target, and Delete removed a chip nothing showed as selected (S2).
+  - `selection`, `selected` and the events give copies of the map's Refs.
+- **Focus stays in the map (K1, N6, K2).** A redraw puts focus back on the same card or line. Before, an `update()`
+  dropped it to `<body>`, so a live map lost a keyboard reader on every update. A move keeps focus in the map, on the card
+  come back to when going up, so Escape works after Enter, Enter. Enter and Space on the map's own buttons press them;
+  Enter on a zoom button opened the selected card's view instead.
+- **One gesture at a time (E1 to E5).** A gesture is a card being dragged, a line being drawn from the handle, or a name
+  field.
+  - Escape cancels it first, before it clears the selection or goes up. A drag or a line used to go on while Escape went
+    up a level; then it threw, or added a line from a card the view didn't show.
+  - A new picture (a view change, an update that redraws, unfolding) ends it, and so does `destroy()`.
+  - A name field stays over its card through an update that keeps the card, and follows the camera. It closes with no
+    change when its card goes or the view changes.
+  - An add the host never answered no longer selects a later card.
+- **A card whose inner view loads later unfolds when it comes (U1).** E or Alt + click on it is remembered, and the live
+  region says it is waiting. The `update()` that brings the view unfolds the card and selects its box. Before, the host
+  had to call `expand()` itself.
+- **Marks keep to their view (O1, O2; playback replay-controller).**
+  - A highlight lights only the views its Refs name. A layer that dims, if it names nothing on the view shown, dims
+    nothing there. The whole next view used to go grey, so the page and `umlimator.py mcp` cleared highlights on every
+    view change.
+  - A box's Ref lights the cards in it and the lines between them. It lit nothing and dimmed everything.
+  - An older replay's `stop()` leaves a newer replay's labels, and `replay()` on a destroyed handle is done `false`.
+- **An ease's fading copies answer nothing (playback update-ease).** A selection, or `collapse()`, while an `update()`
+  eased in threw a TypeError for a line the new picture lacked.
+- **Visible behaviour changes:**
+  - a `setView()` during a move is no longer dropped, and a move ends with one `viewchange`;
+  - a model with no views shows the empty card;
+  - Escape cancels a gesture before anything else, and Enter and Space on the map's own buttons press them;
+  - a listener's error goes to `reportError()`, not to the caller.
+- **Tests:**
+  - `tests/state.html` runs in `tests/embed.py` under reduced motion.
+  - `tests/motion.html` is the motion pass: `tests/embed.py` runs it without `--force-prefers-reduced-motion`. Its
+    animation frames are timers, which headless virtual time runs.
+  - Each test fails on 0.13.0.

@@ -16,6 +16,8 @@ tests/insight.html: lenses on a map and in the page (#94), the page's slowest pa
 tests/page-handle.html: a page umlimator.py renders keeps its map's handle on window.umlimatorMap, and it drives the page.
 tests/element.html: <umlimator-map> (#92): src and inline models, attributes, events, drawing again, destroy, a docs block.
 tests/pieces.html: the standalone page's pieces in render() (#99): views list, legend, hint line, details panel, alone and together.
+tests/state.html: the map's state machines (0.14.0): truthful setView(), lifecycle, selection and focus across a new picture, gestures, marks per view.
+tests/motion.html, with motion on (no --force-prefers-reduced-motion): a press, a second setView(), update() or destroy() during a move, a selection mid-ease.
 examples/edit.html, embed.html, live.html, playground.html, ask.html, replay.html, timelapse.html, drift.html, element.html: the host pages load and draw.
 Each test page reports in <pre id="result">{"ok": [...], "fail": [...]}</pre>.
 """
@@ -57,22 +59,24 @@ threading.Thread(target=server.serve_forever, daemon=True).start()
 base = f"http://127.0.0.1:{server.server_address[1]}/"
 
 
-def dom(path, done, wait=60):
+def dom(path, done, wait=60, motion=False):
     # reduced motion: navigation without animation frames, which headless virtual time does not run. Chrome reads the
     # page once its virtual time is up, which on a busy machine can be before the page has drawn what a check reads (the
     # standalone page draws on an animation frame, in real time), or Chrome may give back nothing at all (a rare headless
-    # hang on CI runners): read it again until done() holds, for up to `wait` s (#85)
+    # hang on CI runners): read it again until done() holds, for up to `wait` s (#85). motion: the motion pass, whose pages
+    # run their animation frames on timers, which virtual time runs
     end = time.monotonic() + wait
     while True:
-        t = visual.chrome(binary, "--window-size=1200,1200", "--virtual-time-budget=30000", "--force-prefers-reduced-motion",
+        t = visual.chrome(binary, "--window-size=1200,1200", "--virtual-time-budget=30000", *([] if motion else ["--force-prefers-reduced-motion"]),
                           "--dump-dom", base + path, done=done, timeout=90)
         if done(t) or time.monotonic() > end:
             return t
 
 
 failed = False
-for page in ("tests/embed.html", "tests/edit.html", "tests/contrast.html", "tests/rules.html", "tests/marks.html", "tests/change.html", "tests/unfold.html", "tests/unfold-page.html", "tests/stories.html", "tests/insight.html", "tests/page-handle.html", "tests/element.html", "tests/pieces.html"):
-    t = dom(page, lambda t: 'id="result"' in t)
+# the motion pass: tests/motion.html runs with motion on, so a bug in what animates can't hide behind reduced motion
+for page, motion in [(p, False) for p in ("tests/embed.html", "tests/edit.html", "tests/contrast.html", "tests/rules.html", "tests/marks.html", "tests/change.html", "tests/unfold.html", "tests/unfold-page.html", "tests/stories.html", "tests/insight.html", "tests/page-handle.html", "tests/element.html", "tests/pieces.html", "tests/state.html")] + [("tests/motion.html", True)]:
+    t = dom(page, lambda t: 'id="result"' in t, motion=motion)
     m = re.search(r'<pre id="result">(.*?)</pre>', t, re.S)
     if not m:  # each check names itself in the page title: say where it stopped
         last = re.search(r"<title>(.*?)</title>", t)
