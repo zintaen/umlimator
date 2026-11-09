@@ -1,0 +1,57 @@
+<!doctype html>
+<!-- The examples' gallery: the front page of zintaen.github.io/umlimator (CI builds the maps and their pictures next to it). -->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>umlimator examples</title>
+<meta name="description" content="Layered architecture maps you can click through, from one JSON model: examples of every feature.">
+<link rel="stylesheet" href="../lib/umlimator-theme.css">
+<style>
+  body { margin: 0; background: var(--um-bg); color: var(--um-text); font: 15px/1.55 var(--um-sans); }
+  main { max-width: 1120px; margin: 0 auto; padding: 32px 16px 56px; }
+  h1 { font-size: 28px; margin: 0 0 6px; } h2 { font-size: 18px; margin: 40px 0 12px; }
+  p.lead { color: var(--um-muted); margin: 0; max-width: 680px; }
+  a { color: var(--um-accent); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
+  .card { border: 1px solid var(--um-border); border-radius: 10px; background: var(--um-panel); overflow: hidden; display: flex; flex-direction: column; }
+  /* the pictures are the light theme's: a thumbnail shows a map's left part, on the map's own background */
+  .card img { display: block; width: 100%; aspect-ratio: 2 / 1; object-fit: cover; object-position: left top; background: #fbfcfd; border-bottom: 1px solid var(--um-border); }
+  .card div { padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 6px; flex: 1; }
+  .card h3 { font-size: 16px; margin: 0; } .card p { margin: 0; color: var(--um-muted); font-size: 14px; flex: 1; }
+  .links { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 14px; }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  td { border-top: 1px solid var(--um-border); padding: 8px 10px 8px 0; vertical-align: top; } td:first-child { white-space: nowrap; }
+  code { font: 13px var(--um-mono); }
+  footer { margin-top: 40px; color: var(--um-muted); font-size: 13px; }
+</style>
+<main>
+  <h1>umlimator examples</h1>
+  <p class="lead">Layered architecture maps you can click through, from one JSON model. Each map below is a made-up system;
+    open one to pan, zoom, select and go into the cards that stack. <a href="https://github.com/zintaen/umlimator">The repository</a> ·
+    <a href="https://github.com/zintaen/umlimator/blob/main/examples/README.md">where each feature is shown</a></p>
+
+  <h2>Maps</h2>
+  <div class="grid">
+    <article class="card"><img src="stills/bike-share/system.png" alt="Bike share's boxed view: apps, the Rides and Fleet teams' services, and the systems around them" loading="lazy">
+      <div><h3>Bike share</h3><p>A C4-style drill-down in three levels, with boxes, line kinds and weights, and two views loaded only when you open them.</p>
+        <span class="links"><a href="bike-share.html">Open the map</a><a href="embed.html?model=bike-share.json">In a host page</a><a href="bike-share.json">Model</a></span></div></article>
+    <article class="card"><img src="stills/weather/flow.png" alt="Weather stations: readings from stations through checks and stores to forecasts" loading="lazy">
+      <div><h3>Weather stations</h3><p>A data pipeline: a process in five steps, lines as wide as their volume, nested boxes, a loop back and swimlanes.</p>
+        <span class="links"><a href="weather.html">Open the map</a><a href="embed.html?model=weather.json">In a host page</a><a href="weather.json">Model</a></span></div></article>
+    <article class="card"><img src="stills/assistant/assistant.png" alt="Helpdesk assistant: a public command, the board, three lanes and the tools they use" loading="lazy">
+      <div><h3>Helpdesk assistant</h3><p>An AI agent's skills: lanes, hooks that guard, a board that keeps state, chips, and steps that exist in one view only.</p>
+        <span class="links"><a href="assistant.html">Open the map</a><a href="embed.html?model=assistant.json">In a host page</a><a href="assistant.json">Model</a></span></div></article>
+    <article class="card"><img src="stills/bookshop/overview.png" alt="Bookshop: a storefront, an API, its stores and the services around them, with brand logos" loading="lazy">
+      <div><h3>Bookshop</h3><p>A product's architecture in two levels, with brand logos and an order followed step by step.</p>
+        <span class="links"><a href="bookshop.html">Open the map</a><a href="embed.html?model=bookshop.json">In a host page</a><a href="bookshop.json">Model</a></span></div></article>
+  </div>
+
+  <h2>In an app</h2>
+  <table>
+    <tr><td><a href="embed.html">A host page</a></td><td><code>render()</code> with a details panel, breadcrumbs, views loaded when opened, SVG and PNG export, themes and the minimap.</td></tr>
+    <tr><td><a href="live.html">Live updates</a></td><td><code>update()</code> every second with new line weights and tab colours; cards keep their places.</td></tr>
+    <tr><td><a href="edit.html">Editing</a></td><td>The map emits <code>change</code> events; the host applies them and keeps an undo history.</td></tr>
+    <tr><td><a href="https://github.com/zintaen/umlimator/blob/main/examples/layout.mjs">In Node</a></td><td><code>layout()</code> without a browser, as a check a host can run in CI on maps it generates.</td></tr>
+  </table>
+
+  <footer>Built from <code>main</code> by the repository's CI. MIT licence.</footer>
+</main>
