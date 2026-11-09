@@ -23,6 +23,7 @@ The module embedded in a page, as an app would use it. Serve the repository over
 
 | Page | What the host does |
 |---|---|
+| [`playground.html`](playground.html) | Edit a model as JSON and the map follows, with `validate()`'s problems and `check()`'s layout issues for the view shown, each selecting what it is about; Share puts the model in the link |
 | [`embed.html`](embed.html) | `render()` with a details panel from `select`, breadcrumbs from `viewchange`, a view loaded when a card opens it (`open`, `update()`, `setView()`), SVG and PNG export, light, dark and a host's own palette, the minimap, focus back to the map |
 | [`live.html`](live.html) | `update()` once a second with new line weights and tab colours: cards keep their places, and the view and camera stay |
 | [`edit.html`](edit.html) | `editable`: the map emits `change` events, the host applies them and calls `update()`, with undo from `history()` |
@@ -63,6 +64,7 @@ The module embedded in a page, as an app would use it. Serve the repository over
 | `render()`, its events, `update()`, `setView()`, `focus()`, `toSVG()`, `toPNG()`, themes | `embed.html`, `live.html` |
 | Editing and undo (`editable`, `change`, `history()`) | `edit.html` |
 | `layout()` in Node | `layout.mjs` |
+| The model's JSON Schema (`"$schema"`), `validate()` and `check()` | every model (`"$schema"`), `playground.html` |
 | The standalone page (`mountPage`) and the CLI's `render`, `check` and `stills` | every map on the site, built by CI |
 
 Not shown: `repair: false`, a switch for debugging the router.
