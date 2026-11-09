@@ -178,13 +178,14 @@ try {
   let wrote = false; try { s0.view = 'x'; } catch (e) { wrote = e instanceof TypeError; }
   check('…is frozen all the way down, and fresh on every read', deepFrozen(s0) && wrote && s0.view === 'system' && h.state !== s0);
   h.select({ type: 'node', id: 'trips', view: 'system' }); h.lens('teams');
-  await until(() => states.length > 0); await wait(60);
-  const st1 = states[0] || { changed: [] };
-  check('one state event for changes made together, naming each key that changed', states.length === 1 && ['selection', 'lens', 'overlays'].every(k => st1.changed.includes(k)) && !st1.changed.includes('view')
-    && st1.state.selection[0].id === 'trips' && st1.state.lens === 'teams' && st1.state.overlays.includes('lens'), states.map(e => e.changed));
+  await until(() => states.length > 0); await wait(300);
+  const st1 = states[0] || { changed: [] }, others = states.slice(1);
+  check('one state event for changes made together, naming each key that changed (the camera, refitted for the legend, after it, once at rest)', ['selection', 'lens', 'overlays'].every(k => st1.changed.includes(k)) && !st1.changed.includes('view') && !st1.changed.includes('camera')
+    && st1.state.selection[0].id === 'trips' && st1.state.lens === 'teams' && st1.state.overlays.includes('lens') && others.every(e => e.changed.join() === 'camera') && others.length <= 1, states.map(e => e.changed));
   check('the lens event says the lens shown', lenses.join() === 'teams', lenses);
-  states.length = 0; await h.setView('trips'); await until(() => states.length > 0); await wait(40);
-  check('setView(): a state event with view (and selection, cleared), the snapshot on trips', states.length === 1 && states[0].changed.includes('view') && states[0].state.view === 'trips' && states[0].state.selection.length === 0, states.map(e => e.changed));
+  states.length = 0; await h.setView('trips'); await until(() => states.length > 1); await wait(300);
+  check('setView(): a state event with view (and selection, cleared), then one with the camera once at rest, where it is', states.length === 2 && states[0].changed.includes('view') && !states[0].changed.includes('camera') && states[0].state.view === 'trips' && states[0].state.selection.length === 0
+    && states[1].changed.join() === 'camera' && JSON.stringify(states[1].state.camera) === JSON.stringify(h.state.camera), states.map(e => e.changed));
   const m8 = structuredClone(BIKE); delete m8.lenses; h.update(m8);
   check('…and an update() without the lens shown: lens event null', lenses.join() === 'teams,' && h.state.lens === null, lenses);
   check('getters: navigating, destroyed, motion', h.navigating === null && h.destroyed === false && h.motion === 'reduced');

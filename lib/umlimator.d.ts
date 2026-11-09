@@ -95,8 +95,9 @@ export interface Events {
    *  unfolds once it is: the update() that brings it unfolds the card (here or later), or expand(). preventDefault(): no change. */
   expand: { target: Extract<Ref, { type: 'node' }>; view: string; expanded: boolean; preventDefault(): void };
   story: { story: string; step: number | null; steps: number };   // a story shows its step (0-based); step null: it ended
-  /** The map's state changed (0.14.0): at most once a frame, with the keys that changed since the last state event. The last
-   *  one, on destroy(), has destroyed: true. */
+  /** The map's state changed (0.14.0): at most once a frame, with the keys that changed since the last state event. The
+   *  camera is the exception: a pan, zoom, glide or drag is one event, once it comes to rest, and until then the event's
+   *  camera is where it last rested (handle.state reads it live). The last event, on destroy(), has destroyed: true. */
   state: { state: MapState; changed: (keyof MapState)[] };
   /** The lens on the map changed: lens(), or an update() whose model lacks the lens shown (lens: null). */
   lens: { lens: string | null };
@@ -114,7 +115,7 @@ export interface MapState {
   story: { id: string; step: number; steps: number; playing: boolean } | null;
   tour: boolean;                  // a tour's dot is riding
   replay: { playing: boolean } | null;   // a replay under way: playing, or paused
-  camera: { x: number; y: number; zoom: number };   // the centre in map units, and the zoom (1: actual size)
+  camera: { x: number; y: number; zoom: number };   // the centre in map units, and the zoom (1: actual size); a state event's: at rest
   flow: boolean;
   motion: 'full' | 'reduced' | 'instant';
   gesture: 'idle' | 'dragging' | 'connecting' | 'naming';   // an edit in progress (editable maps)

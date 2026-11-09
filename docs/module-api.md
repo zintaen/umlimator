@@ -1498,6 +1498,9 @@ and the selection, and had to guess the rest from the DOM. Now it is one snapsho
   - It comes after the snapshot changes, at most once a frame. A 16 ms timer paces it, so a page in a background tab
     still reports.
   - Changes made together come as one event.
+  - The camera comes once it rests: a pan, zoom, glide or drag is one event, with `camera` in `changed`, when the camera
+    has been still for 150 ms, with no press on the map and no move under way. Until then the event's `camera` is
+    where it last rested; `handle.state` reads it live. A glide used to send an event every frame.
   - The last one, on `destroy()`, has `destroyed: true`.
   - The first state listener added with `on()` hears changes from then on.
 - **The `lens` event** `{ lens }` comes when the lens on the map changes: `lens()`, or an `update()` whose model lacks it
@@ -1512,5 +1515,6 @@ and the selection, and had to guess the rest from the DOM. Now it is one snapsho
 - **Tests:**
   - `tests/state.html`: the snapshot's keys and types, that it is JSON and frozen, the events and getters, and the last
     event on `destroy()`.
-  - `tests/motion.html`: `navigating`, a tour and a replay, while they run.
+  - `tests/motion.html`: `navigating`, a tour and a replay, while they run; a glide, and zooms one on another, each send
+    one camera event.
   - `tests/page-handle.html`: the CLI page's `window.umlimatorMap.state`.

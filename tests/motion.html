@@ -107,6 +107,17 @@ try {
   const rp = h.replay(otlpSpans(T), { match: M }), rs0 = h.state.replay; rp.pause(); const rs1 = h.state.replay; rp.stop();
   check('a replay under way is in the state: playing, then paused, then gone', JSON.stringify([rs0, rs1, h.state.replay]) === '[{"playing":true},{"playing":false},null]', [rs0, rs1, h.state.replay]);
 
+  // the camera in the state event: a glide, or zooms one on another, is one event, once the camera comes to rest
+  const ce = [], zoomKey = k => stage().dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true, composed: true, cancelable: true })), camEv = () => ce.filter(e => e.changed.includes('camera'));
+  await mount({ on: { state: e => ce.push(e) } }); ce.length = 0;
+  const z0 = h.state.camera.zoom; zoomKey('+'); // a 220 ms glide
+  await wait(100); const mid = h.state.camera.zoom, during = camEv().length;
+  await wait(600);
+  check('a glide gives exactly one camera state event, once it comes to rest; handle.state reads the camera live meanwhile', during === 0 && mid !== z0 && camEv().length === 1
+    && camEv()[0].state.camera.zoom === h.state.camera.zoom && h.state.camera.zoom !== mid, [z0, mid, during, camEv().map(e => e.state.camera.zoom), h.state.camera.zoom]);
+  ce.length = 0; zoomKey('+'); await wait(60); zoomKey('+'); await wait(60); zoomKey('-'); await wait(700);
+  check('…and zooms one on another come to rest once: one camera event', camEv().length === 1, ce.map(e => e.changed));
+
   // the page: Back while a view is still zooming in is honoured, not dropped
   if (h) { h.destroy(); h = null; }
   const pe = [], hp = mountPage(document.getElementById('page'), BIKE, { params: new URLSearchParams() });
