@@ -10,7 +10,7 @@
       "what": "Decides who handles a ticket.", "when": "On each new ticket.", "how": "How-to questions go to answer; urgent and billing ones to a person." },
     { "id": "answer", "label": "answer", "kind": "lane", "sublabel": "drafts a reply", "verbs": ["search", "draft", "check"],
       "what": "Writes a reply from the help centre and the policies.", "when": "For how-to questions.", "how": "Four steps; double-click for them." },
-    { "id": "handoff", "label": "hand off", "kind": "lane", "sublabel": "to a person", "verbs": ["summarise", "assign"],
+    { "id": "handoff", "label": "hand off", "kind": "lane", "sublabel": "to a person", "verbs": ["assign", "notify"],
       "what": "Passes a ticket to the support team.", "when": "Urgent or billing tickets.", "how": "Summarises the thread and assigns the person on shift." },
     { "id": "kb", "label": "help-centre search", "kind": "external", "sublabel": "from the docs pack",
       "what": "Searches the public help centre.", "when": "While answering.", "how": "A skill another team maintains." },

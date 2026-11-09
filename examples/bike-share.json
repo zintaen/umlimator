@@ -111,7 +111,7 @@
     { "id": "t11", "from": "fare", "to": "payments", "label": "charges", "sublabel": "REST" },
 
     { "id": "f1", "from": "telemetry", "to": "dock-listener", "label": "bike states", "kind": "feeds", "weight": 3 },
-    { "id": "f2", "from": "dock-listener", "to": "fleet-db", "label": "updates docks", "kind": "state", "weight": 2, "toSide": "top" },
+    { "id": "f2", "from": "dock-listener", "to": "fleet-db", "label": "updates docks", "kind": "state", "weight": 2, "fromSide": "top", "toSide": "top" },
     { "id": "f3", "from": "dock-listener", "to": "battery", "label": "battery levels", "kind": "feeds" },
     { "id": "f4", "from": "battery", "to": "ops-console", "label": "low battery", "kind": "triggers" },
     { "id": "f5", "from": "warehouse", "to": "forecast", "label": "a year of trips", "kind": "feeds" },
@@ -135,12 +135,13 @@
       ],
       "layout": {
         "monitoring": [2, 0],
-        "riders": [0, 2], "rider-app": [1, 2], "accounts": [2, 2], "pricing": [3, 2], "payments": [4, 2],
-        "trips": [2, 3], "tripsdb": [3, 3],
-        "ops": [0, 4], "ops-console": [1, 4],
-        "stations": [0, 6], "telemetry": [1, 6], "fleet": [2, 6], "charging": [3, 6],
-        "warehouse": [2, 7], "city": [4, 7],
-        "status": [0, 8], "flags": [1, 8]
+        "riders": [0, 2], "rider-app": [1, 2], "accounts": [2, 2], "pricing": [3, 2],
+        "trips": [2, 3], "payments": [4, 3],
+        "tripsdb": [3, 4],
+        "ops": [0, 5], "ops-console": [1, 5],
+        "stations": [0, 7], "telemetry": [1, 7], "fleet": [2, 7], "charging": [3, 7],
+        "warehouse": [2, 8], "city": [4, 8],
+        "status": [0, 9], "flags": [1, 9]
       } },
     { "id": "trips", "parent": "system", "title": "Trip service",
       "caption": "A ride from unlock to charge.",
