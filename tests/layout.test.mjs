@@ -256,6 +256,29 @@ test('cards with no lines sit in a row of their own under the view: they do not 
   }
 });
 
+test("in a view with boxes, cards with no lines outside the boxes sit in the view's row under everything, side by side, as in a plain view (#46)", () => {
+  const m = context(), loose = ['ledger', 'archive', 'printer'];
+  m.views[0].containers = [{ id: 'core', label: 'Core', nodeIds: ['shop', 'mailer'] }];
+  const g = layout(m, 'v'), at = id => g.nodes.find(n => n.id === id), box = g.families.find(f => f.id === 'core');
+  const bottom = Math.max(box.y + box.h, ...g.nodes.filter(n => !loose.includes(n.id)).map(n => n.y + n.h));
+  for (const id of loose) assert.ok(at(id).y > bottom, `${id} is under the cards with lines and their box, not in the sources' column: ${JSON.stringify([at(id).x, at(id).y])}`);
+  assert.equal(new Set(loose.map(id => at(id).y)).size, 1, 'one row');
+  const row = loose.map(at).sort((a, b) => a.x - b.x);
+  assert.ok(row.every((n, k) => !k || n.x >= row[k - 1].x + row[k - 1].w + 24), `side by side: ${JSON.stringify(row.map(n => [n.x, n.w]))}`);
+});
+
+test('cards with no lines inside a box sit in a row at the bottom of their box: they do not lengthen its first column', () => {
+  const m = context(), inside = ['ledger', 'archive'];
+  m.views[0].containers = [{ id: 'core', label: 'Core', nodeIds: ['shop', 'mailer', 'ledger', 'archive'] }];
+  const g = layout(m, 'v'), at = id => g.nodes.find(n => n.id === id), box = g.families.find(f => f.id === 'core');
+  const floor = Math.max(...['shop', 'mailer'].map(id => at(id).y + at(id).h)); // the box's cards with lines
+  for (const n of inside.map(at)) assert.ok(n.y > floor && n.x >= box.x && n.x + n.w <= box.x + box.w && n.y + n.h <= box.y + box.h,
+    `${n.id} is in its box, under its cards with lines: ${JSON.stringify([n.x, n.y])} in ${JSON.stringify([box.x, box.y, box.w, box.h])}`);
+  assert.equal(new Set(inside.map(id => at(id).y)).size, 1, 'one row at the bottom of the box');
+  assert.ok(at('archive').x >= at('ledger').x + at('ledger').w + 24, 'side by side, not stacked in its first column');
+  assert.ok(at('printer').y > box.y + box.h, "a card with no line outside the box is under it, in the view's row");
+});
+
 test("a line's kind is the kind its edge names: no guess from label words unless the view asks (kindsFromLabels), and a merged line takes the first kind its edges name (#45)", () => {
   const m = (view = {}, pay = {}) => ({ root: 'v', nodes: [['web', 'Web', 'frontend'], ['api', 'API', 'backend'], ['db', 'Store', 'database'], ['pay', 'Payments', 'external']].map(([id, label, kind]) => ({ id, label, kind })),
     edges: [{ from: 'web', to: 'api', label: 'calls · 212' }, { from: 'api', to: 'db', label: 'reads, writes · 49' }, { from: 'pay', to: 'api', label: 'triggers · 1', ...pay }, { from: 'api', to: 'pay', label: 'calls · 2', kind: 'calls' }],

@@ -13,7 +13,7 @@ that writes a self-contained HTML page and still pictures (SVG, PNG) for documen
   host may load only when asked.
 - **Layout and routing**: columns in reading order, each ordered so the lines between columns cross as little as they
   can; orthogonal lines that never run through a card, room for every label, containers kept apart, and cards with no
-  lines in a row of their own. The same model gives the same picture.
+  lines in a row of their own, under the view or at the bottom of their box. The same model gives the same picture.
 - **Reading**: animated flow, neighbours lit on selection, numbered steps, tours, minimap, light and dark themes.
 - **Keyboard and screen readers**: cards, then lines, in the Tab order; arrows between cards; selections announced.
 - **Editing** (opt-in): gestures emit `change` events; the host applies them and calls `update()`.
