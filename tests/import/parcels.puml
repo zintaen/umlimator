@@ -1,0 +1,39 @@
+@startuml parcel-tracking
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+' A made-up parcel tracker: its API's parts, and what they talk to.
+
+title Parcel tracking: inside the tracking API
+
+Person(shipper, "Shipper", "Books parcels and follows them")
+Person_Ext(courier, "Courier", "A partner's driver")
+
+System_Boundary(tracking, "Parcel tracking") {
+    Container(web, "Tracking site", "Next.js", "Booking and tracking pages")
+    Container(handset, "Courier app", "Kotlin, Android", "Scans parcels on the road")
+    Container_Boundary(api, "Tracking API") {
+        Component(routes, "REST routes", "Express", "Checks and routes each request")
+        Component(tracker, "Tracker", "TypeScript", "Moves a parcel through its states")
+    }
+    ContainerQueue(scans, "Scan events", "Kafka", "Every scan, in order")
+    ContainerDb(db, "Parcel store", "PostgreSQL", "Parcels and their scans")
+}
+
+System(notify, "Notifications", "Texts and e-mails shippers")
+System_Ext(maps, "Maps API", "Addresses and routes")
+SystemDb(billing, "Billing ledger", "Invoices, closed nightly")
+
+Rel(shipper, web, "Follows parcels", "HTTPS")
+Rel(courier, handset, "Scans parcels")
+Rel(web, routes, "Calls", "JSON/HTTPS")
+Rel(handset, scans, "Publishes scans")
+Rel_Back(tracker, scans, "Feeds")
+Rel(routes, db, "Reads parcels", "SQL")
+BiRel(tracker, db, "Reads and writes", "SQL")
+Rel_D(routes, maps, "Looks up addresses", "HTTPS")
+Rel_R(tracker, notify, "Parcel moved")
+Rel(tracker, billing, "Bills", "SFTP")
+
+Lay_R(web, handset)
+note right of billing : Run by finance
+SHOW_LEGEND()
+@enduml

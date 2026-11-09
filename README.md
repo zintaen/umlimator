@@ -37,6 +37,8 @@ drill-down, a data pipeline, an AI agent's skills, and host pages for embedding,
   marked on the map where it breaks; `umlimator.py check` fails on a broken rule, so CI does.
 - **Change**: what a pull request changes, marked on the map and said in words (with a GitHub Action that posts it);
   a time-lapse of a model's history, where cards glide, fade in and fade out; and drift, the map against the traffic seen.
+- **Import**: a Structurizr workspace, a C4-PlantUML or Mermaid diagram, or what `docker compose config` and `kubectl get`
+  print as JSON, read into a model (`umlimator.py import`), with what it can't read listed line by line.
 
 ## Install
 
@@ -141,9 +143,20 @@ python3 umlimator.py drift model.json traffic.json --out drift.html   # drawn vs
 python3 umlimator.py timelapse model.json --out history.html          # the model's versions in git history, on a slider
 python3 umlimator.py check page.html --expand                          # also each view with each stacked card unfolded
 python3 umlimator.py record bike-share.html --story ride --out ride.png   # bike-share's story as an animated PNG, a frame per step
+python3 umlimator.py import workspace.dsl --out model.json            # a diagram you have already, as a model
+docker compose config --format json > compose.json && python3 umlimator.py import compose.json --out model.json
+kubectl get deploy,sts,svc,ing -A -o json > cluster.json && python3 umlimator.py import cluster.json --out model.json
 ```
 
 `check` also reports each rule the model breaks, and then exits 1.
+
+`import` reads Structurizr DSL (people, systems, containers and components, their relationships, and the workspace's
+views), C4-PlantUML (its element, relationship and boundary macros), Mermaid (`flowchart` or `graph`, and `C4Context`,
+`C4Container` or `C4Component`), and the JSON of `docker compose config` (services, `depends_on`, networks) and of
+`kubectl get` (workloads, Services, Ingresses). It tells the format from the content, then the extension; `--format`
+decides. Boundaries, subgraphs, networks and namespaces become boxes; Structurizr's views stay views, a card opening the
+view below it. What each element becomes, and what is left out: [docs/module-api.md § Import](docs/module-api.md#import-90).
+Whatever the file holds that `import` doesn't read is listed on stderr with its line (in JSON, its path).
 
 The page has breadcrumbs, a details panel per card, ⌘K search, deep links (`#view=<id>&node=<id>`, and
 `#story=<id>&step=<n>` for a story's step), stories, and export.
@@ -223,7 +236,8 @@ Release with that section as its notes, and publishes the package to npm (truste
 CI also publishes the examples to GitHub Pages from `main`.
 
 ```
-umlimator.py                 CLI: render, stills, check, record, pin-icons, diff, drift, timelapse
+umlimator.py                 CLI: render, stills, check, record, pin-icons, diff, drift, timelapse, import
+umlimator_import.py          import's readers: Structurizr DSL, C4-PlantUML, Mermaid, compose and Kubernetes JSON
 action.yml                   the diff Action: what a pull request changes in its maps, posted on it
 lib/                         the module (umlimator.js), its types and the default theme
 engine/                      the page templates the CLI inlines the module into; the upstream renderer and schema

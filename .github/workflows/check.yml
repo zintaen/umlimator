@@ -37,6 +37,9 @@ jobs:
       - name: The CLI's diff, drift and timelapse write their pages, and diff --base a pull request's summary
         run: python3 tests/cli.py
 
+      - name: The CLI's import reads a sample of each format into a model that validates, renders and checks clean
+        run: python3 tests/import.py
+
       - name: The diff Action pictures what a pull request changes in the example models (a dry run, without a comment)
         if: github.event_name == 'pull_request'
         uses: ./

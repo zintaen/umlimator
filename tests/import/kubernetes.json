@@ -1,0 +1,220 @@
+{
+    "apiVersion": "v1",
+    "items": [
+        {
+            "apiVersion": "apps/v1",
+            "kind": "Deployment",
+            "metadata": {
+                "annotations": { "deployment.kubernetes.io/revision": "4" },
+                "creationTimestamp": "2026-10-02T09:14:31Z",
+                "generation": 4,
+                "labels": { "app": "web" },
+                "name": "web",
+                "namespace": "shop",
+                "resourceVersion": "88213",
+                "uid": "3c2b6a5e-91d4-4c1e-9d2a-0f5e0c7b9a11"
+            },
+            "spec": {
+                "replicas": 2,
+                "selector": { "matchLabels": { "app": "web" } },
+                "template": {
+                    "metadata": { "labels": { "app": "web", "tier": "frontend" } },
+                    "spec": {
+                        "containers": [
+                            {
+                                "name": "web",
+                                "image": "ghcr.io/example/tea-web:2.3.1",
+                                "ports": [ { "containerPort": 3000, "protocol": "TCP" } ],
+                                "env": [
+                                    { "name": "API_URL", "value": "http://api:8080" },
+                                    { "name": "PUBLIC_URL", "value": "https://tea.example.com" }
+                                ]
+                            }
+                        ]
+                    }
+                }
+            },
+            "status": { "availableReplicas": 2, "readyReplicas": 2, "replicas": 2, "updatedReplicas": 2 }
+        },
+        {
+            "apiVersion": "apps/v1",
+            "kind": "Deployment",
+            "metadata": {
+                "annotations": { "deployment.kubernetes.io/revision": "11" },
+                "creationTimestamp": "2026-10-02T09:14:31Z",
+                "generation": 11,
+                "labels": { "app": "api" },
+                "name": "api",
+                "namespace": "shop",
+                "resourceVersion": "91402",
+                "uid": "b81f0d3a-5e7c-4a2b-8c61-2d9e4f6a7b20"
+            },
+            "spec": {
+                "replicas": 3,
+                "selector": { "matchLabels": { "app": "api" } },
+                "template": {
+                    "metadata": { "labels": { "app": "api" } },
+                    "spec": {
+                        "containers": [
+                            {
+                                "name": "api",
+                                "image": "ghcr.io/example/tea-api:1.8.0",
+                                "ports": [ { "containerPort": 8080, "protocol": "TCP" } ],
+                                "env": [
+                                    { "name": "DATABASE_URL", "value": "postgres://shop@postgres.data:5432/shop" },
+                                    { "name": "LOG_LEVEL", "value": "info" },
+                                    { "name": "API_KEY", "valueFrom": { "secretKeyRef": { "name": "api", "key": "key" } } }
+                                ]
+                            }
+                        ]
+                    }
+                }
+            },
+            "status": { "availableReplicas": 3, "readyReplicas": 3, "replicas": 3, "updatedReplicas": 3 }
+        },
+        {
+            "apiVersion": "apps/v1",
+            "kind": "ReplicaSet",
+            "metadata": {
+                "creationTimestamp": "2026-11-04T16:40:02Z",
+                "labels": { "app": "web", "pod-template-hash": "6d4f9c7b8" },
+                "name": "web-6d4f9c7b8",
+                "namespace": "shop",
+                "ownerReferences": [
+                    { "apiVersion": "apps/v1", "blockOwnerDeletion": true, "controller": true, "kind": "Deployment", "name": "web", "uid": "3c2b6a5e-91d4-4c1e-9d2a-0f5e0c7b9a11" }
+                ],
+                "resourceVersion": "88209",
+                "uid": "d0a7c2e4-1b3f-4e5a-9c8d-6f2b1a0e9d33"
+            },
+            "spec": { "replicas": 2, "selector": { "matchLabels": { "app": "web", "pod-template-hash": "6d4f9c7b8" } } },
+            "status": { "availableReplicas": 2, "readyReplicas": 2, "replicas": 2 }
+        },
+        {
+            "apiVersion": "apps/v1",
+            "kind": "StatefulSet",
+            "metadata": {
+                "creationTimestamp": "2026-09-18T11:02:44Z",
+                "generation": 2,
+                "labels": { "app": "postgres" },
+                "name": "postgres",
+                "namespace": "data",
+                "resourceVersion": "40177",
+                "uid": "5e9d2c1b-7a4f-4b8e-a3d6-9c0f1e2b3a44"
+            },
+            "spec": {
+                "replicas": 1,
+                "serviceName": "postgres",
+                "selector": { "matchLabels": { "app": "postgres" } },
+                "template": {
+                    "metadata": { "labels": { "app": "postgres" } },
+                    "spec": {
+                        "containers": [
+                            { "name": "postgres", "image": "postgres:16", "ports": [ { "containerPort": 5432, "protocol": "TCP" } ] }
+                        ]
+                    }
+                }
+            },
+            "status": { "availableReplicas": 1, "readyReplicas": 1, "replicas": 1 }
+        },
+        {
+            "apiVersion": "v1",
+            "kind": "Service",
+            "metadata": {
+                "creationTimestamp": "2026-10-02T09:14:31Z",
+                "labels": { "app": "web" },
+                "name": "web",
+                "namespace": "shop",
+                "resourceVersion": "51230",
+                "uid": "8a1c3e5f-2d4b-4f6a-b7c9-0e1d2f3a4b55"
+            },
+            "spec": {
+                "clusterIP": "10.96.41.17",
+                "ports": [ { "port": 80, "protocol": "TCP", "targetPort": 3000 } ],
+                "selector": { "app": "web" },
+                "type": "ClusterIP"
+            },
+            "status": { "loadBalancer": {} }
+        },
+        {
+            "apiVersion": "v1",
+            "kind": "Service",
+            "metadata": {
+                "creationTimestamp": "2026-10-02T09:14:31Z",
+                "labels": { "app": "api" },
+                "name": "api",
+                "namespace": "shop",
+                "resourceVersion": "51231",
+                "uid": "9b2d4f6a-3e5c-4a7b-c8d0-1f2e3a4b5c66"
+            },
+            "spec": {
+                "clusterIP": "10.96.88.203",
+                "ports": [ { "port": 8080, "protocol": "TCP", "targetPort": 8080 } ],
+                "selector": { "app": "api" },
+                "type": "ClusterIP"
+            },
+            "status": { "loadBalancer": {} }
+        },
+        {
+            "apiVersion": "v1",
+            "kind": "Service",
+            "metadata": {
+                "creationTimestamp": "2026-09-18T11:02:44Z",
+                "labels": { "app": "postgres" },
+                "name": "postgres",
+                "namespace": "data",
+                "resourceVersion": "40170",
+                "uid": "0c3e5a7b-4f6d-4b8c-d9e1-2a3b4c5d6e77"
+            },
+            "spec": {
+                "clusterIP": "None",
+                "ports": [ { "port": 5432, "protocol": "TCP", "targetPort": 5432 } ],
+                "selector": { "app": "postgres" },
+                "type": "ClusterIP"
+            },
+            "status": { "loadBalancer": {} }
+        },
+        {
+            "apiVersion": "networking.k8s.io/v1",
+            "kind": "Ingress",
+            "metadata": {
+                "annotations": { "cert-manager.io/cluster-issuer": "letsencrypt" },
+                "creationTimestamp": "2026-10-02T09:20:05Z",
+                "generation": 3,
+                "name": "tea",
+                "namespace": "shop",
+                "resourceVersion": "77012",
+                "uid": "1d4f6b8c-5a7e-4c9d-e0f2-3b4c5d6e7f88"
+            },
+            "spec": {
+                "ingressClassName": "nginx",
+                "rules": [
+                    {
+                        "host": "tea.example.com",
+                        "http": {
+                            "paths": [
+                                { "path": "/", "pathType": "Prefix", "backend": { "service": { "name": "web", "port": { "number": 80 } } } },
+                                { "path": "/admin", "pathType": "Prefix", "backend": { "service": { "name": "admin", "port": { "number": 80 } } } }
+                            ]
+                        }
+                    }
+                ],
+                "tls": [ { "hosts": [ "tea.example.com" ], "secretName": "tea-tls" } ]
+            },
+            "status": { "loadBalancer": { "ingress": [ { "ip": "203.0.113.10" } ] } }
+        },
+        {
+            "apiVersion": "v1",
+            "data": { "FEATURES": "tins,gift-cards" },
+            "kind": "ConfigMap",
+            "metadata": {
+                "creationTimestamp": "2026-10-02T09:14:30Z",
+                "name": "api-config",
+                "namespace": "shop",
+                "resourceVersion": "51228",
+                "uid": "2e5a7c9d-6b8f-4d0e-f1a3-4c5d6e7f8a99"
+            }
+        }
+    ],
+    "kind": "List",
+    "metadata": { "resourceVersion": "" }
+}
