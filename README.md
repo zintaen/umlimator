@@ -127,6 +127,14 @@ The page has breadcrumbs, a details panel per card, ⌘K search, deep links (`#v
 `stills` skips a view whose inputs have not changed since its last export (`--all` exports every view). Needs Python
 3.9+ (standard library only), and Google Chrome or Chromium for `stills`, `check` and `record`.
 
+`record` writes an animated PNG, which browsers and GitHub show as it is. For a GIF or an MP4 (for chat or slides),
+convert it with ffmpeg:
+
+```bash
+ffmpeg -f apng -i ride.png -vf "split[a][b];[a]palettegen[p];[b][p]paletteuse" ride.gif
+ffmpeg -f apng -i ride.png -vf "scale=trunc(iw/2)*2:trunc(ih/2)*2" -pix_fmt yuv420p ride.mp4
+```
+
 ## Map a repo with Claude Code
 
 The `map-repo` skill reads a codebase, writes a C4-style model (context, containers, components), renders it to a page
