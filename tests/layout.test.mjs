@@ -358,6 +358,13 @@ test('auto-layout puts a card no line comes into just before its callee when tha
   assert.equal(at('grafana').col, at('api').col - 1, 'Dashboards, which only reads Shop API\'s metrics, sits in the column before it');
 });
 
+test("a line from a card's top into another's top on the top row goes up, across and down, not past its card and back (#80)", () => {
+  const m = { nodes: ['a', 'b', 'c'].map(id => ({ id, label: id.toUpperCase(), kind: 'backend' })), // no row above it: it can't come in from above
+    edges: [{ from: 'a', to: 'b' }, { from: 'b', to: 'c' }, { id: 'over', from: 'a', to: 'c', fromSide: 'top', toSide: 'top' }], views: [{ id: 'v', nodeIds: ['a', 'b', 'c'] }] };
+  const over = layout(m, 'v').edges.find(e => e.ids.includes('over')), docks = layout(read('../examples/bike-share.json'), 'fleet').edges.find(e => e.ids.includes('f2'));
+  for (const e of [over, docks]) assert.equal(e.pts.length, 4, `${e.from} -> ${e.to}: ${JSON.stringify(e.pts.map(p => p.map(Math.round)))}`);
+});
+
 test('the CLI renders what render() draws: a card that opens a view the host loads later (#47), a line that ends on a box (#28); a dangling id still fails', () => {
   const dir = mkdtempSync(join(tmpdir(), 'umlimator-cli-')), cli = fileURLToPath(new URL('../umlimator.py', import.meta.url));
   const render = m => { const p = join(dir, 'map.json'); writeFileSync(p, JSON.stringify(m)); // every view laid out: no Chrome needed

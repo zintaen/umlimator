@@ -216,6 +216,20 @@ try {
       a.h === 80 && a.sub === 'from Customer accounts' && below(a, a.subY) && b.sub === 'from Orders' && b.subY > b.nameBottom && below(b, b.subY) && c.sub === null && c.chips.length === 1, [a, b, c]);
     h9.destroy();
   }
+  // a card is as wide as its chips, as it is for its name and sub-line, in a wide font too; a verb no card is wide enough for is "+1" (#84)
+  const CHIPS = { nodes: [{ id: 'a', label: 'Jobs', kind: 'backend', sublabel: 'runs nightly', verbs: ['reconcile ledgers', 'hand off'] },
+      { id: 'b', label: 'Ops', kind: 'backend', verbs: ['reconcile every ledger entry against the bank statement it came from, then file it away'] }],
+    edges: [{ from: 'a', to: 'b' }], views: [{ id: 'v', nodeIds: ['a', 'b'] }, { id: 'w', nodeIds: ['a', 'b'], subAndChips: true }] };
+  for (const view of ['v', 'w']) {
+    const el14 = document.getElementById('a'); el14.style.setProperty('--um-sans', 'Verdana, "DejaVu Sans", sans-serif');
+    const h14 = render(el14, CHIPS, { view }), out = [], shown = {};
+    el14.querySelector('.umlimator').shadowRoot.querySelectorAll('.node').forEach(g => { const b = g.querySelector('.n-body'), x = +b.getAttribute('x'), w = +b.getAttribute('width');
+      shown[g.dataset.id] = [...g.querySelectorAll('text.verb-tx')].map(t => t.textContent);
+      g.querySelectorAll('rect.verb-chip').forEach(r => { if (+r.getAttribute('x') < x + 1 || +r.getAttribute('x') + +r.getAttribute('width') > x + w - 1) out.push([g.dataset.id, r.nextElementSibling.textContent, x, w, +r.getAttribute('x'), +r.getAttribute('width')]); }); });
+    check(`in a wide font, a card is wide enough for its chips and a verb wider than any card gives way to "+1": no chip runs past its card (#84), ${view === 'w' ? 'with subAndChips' : 'by default'}`,
+      !out.length && shown.a.join() === 'reconcile ledgers,hand off' && shown.b.join() === '+1', [out, shown]);
+    h14.destroy(); el14.style.removeProperty('--um-sans');
+  }
   // a line's weight sets its width, and the arrowhead and hit line grow with it; its sublabel is a second line in its pill (#44)
   const WEIGHT = { root: 'v', nodes: [{ id: 'web', label: 'Web', kind: 'frontend' }, { id: 'api', label: 'API', kind: 'backend' }, { id: 'db', label: 'Store', kind: 'database' }],
     edges: [{ id: 'w1', from: 'web', to: 'api', label: 'calls · 2' }, { id: 'w3', from: 'api', to: 'db', label: 'reads, writes · 486', weight: 3, sublabel: 'dapper, ef' }], views: [{ id: 'v', nodeIds: ['web', 'api', 'db'] }] };
@@ -290,9 +304,9 @@ try {
     const on = h12.on('click', () => {}), n1 = stops(sr12).length; on();
     check('…handle.on("click") makes them buttons, and they go when it does', n1 === 7 && stops(sr12).length === 3, [n1, stops(sr12)]);
     h12.destroy();
-    const many = { nodes: [{ id: 'a', label: 'Tools', kind: 'backend', verbs: ['search', 'fetch', 'summarise', 'translate', 'classify', 'extract'] }], views: [{ id: 'v', nodeIds: ['a'] }] };
+    const many = { nodes: [{ id: 'a', label: 'Tools', kind: 'backend', verbs: ['search', 'fetch', 'summarise', 'translate', 'classify', 'rank', 'route', 'redact', 'cite', 'compare', 'schedule', 'extract'] }], views: [{ id: 'v', nodeIds: ['a'] }] }; // more than the widest card holds (#84)
     const h13 = render(el11, many, { on: { click() {} } }), keys13 = [...el11.querySelector('.umlimator').shadowRoot.querySelectorAll('.chip-key')].map(k => k.getAttribute('aria-label'));
-    check('a chip that stands for the verbs with no room ("+3") is named by them', keys13.length > 1 && keys13.length < 6 && /^\+\d+ \(more: .*extract\)$/.test(keys13.at(-1)) && keys13[0] === 'search', keys13);
+    check('a chip that stands for the verbs with no room ("+3") is named by them', keys13.length > 1 && keys13.length < 12 && /^\+\d+ \(more: .*extract\)$/.test(keys13.at(-1)) && keys13[0] === 'search', keys13);
     h13.destroy();
   }
   // at fit, no card sits under the zoom controls or, when it is on, the minimap (#50)

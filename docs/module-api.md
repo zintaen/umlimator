@@ -710,8 +710,9 @@ A stacked card can open into a box on the map it is on, instead of switching to 
   picture: each is routed and the one the layout check scores best is kept (up to 12 routings; an inner view with boxes
   keeps its own slots, and a view of over 30 cards takes them at once). A process view's steps keep their numbers. A hub
   view has no columns to keep, and is laid out again.
-- **What doesn't:** a numbered (sequence) view, shown or opened, since its run order (numbers, lanes) would move or be
-  lost, so that card opens; and an editable map, where an edit names the model's own views and boxes.
+- **What doesn't:** a card on a numbered (sequence) view, since that view's own steps would be numbered again, so that
+  card opens (a numbered inner view unfolds, with its run order, since 0.12.1: #82); and an editable map, where an edit
+  names the model's own views and boxes.
 - **Gestures:** E on a stacked card (focused or selected) unfolds it and puts focus on the first card inside; E on a card
   inside folds it back. Alt + click does the same with the mouse, and the box's ⤡ tab folds it. Double-click and the ⤢
   badge still open the inner view. The standalone page adds an "Unfold here" button to a stacked card's details, and E to
@@ -728,7 +729,7 @@ A stacked card can open into a box on the map it is on, instead of switching to 
   the bench lays out and times, the unfolding apart, and records in `bench/expected.json`; `node --test` lays them out
   the same.
 - **Left out of this first version:** an animation (the picture redraws, cards don't glide yet); a link that keeps what is
-  unfolded; unfolding in an editable map; carrying a numbered view's run order into the box.
+  unfolded; unfolding in an editable map.
 
 ### Stories (#69)
 
@@ -777,6 +778,82 @@ A stacked card can open into a box on the map it is on, instead of switching to 
 - **Example:** bike-share's `ride` story: a ride from unlock to payment, in five steps.
 - **Tests:** `tests/stories.test.mjs` (Node: `validate()` on stories), and `tests/stories.html` (play, keys, the bar, the
   page's menu, links and recording). `tests/embed.py` runs the page and checks a `record` run's frames.
+
+## 0.12.1: fixes
+
+### A line from a card's top into another's top, on the top row, runs straight (#80)
+
+- **The router kept the dearest way into a line's end.** It looks for a route that comes into the end the way its port
+  faces; when there was none, it kept the last way in it found, which is the dearest. A line between the tops of two
+  cards on the top row can't come in from above (the router has no track there), so bike-share's "updates docks" ran
+  past Fleet store and back. Now the router keeps the cheapest way in, the first it finds: the line goes up, across and
+  down (1.17 → 1.03 times its direct route). A line that can come in head-on is routed as before.
+- **The CLI's page drew it straight** because its layout search (`optimize`, baked into the page) moved Fleet store a row
+  down, where the line could come in from above. `render()` and `layout()` try four layouts at most, and none moved it.
+  The search now keeps Fleet store level, as `render()` does.
+- **Bench:** the six views with such a line move. Each such line takes its cheapest way in; a line routed after one may
+  lose its track and go round (b10/overview's Reports 7 → Inventory 9, 238 → 1,399 px), and b10/norepair keeps another
+  of the layouts `render()` tries. Layout-check issues and line length, 0.12.0 → 0.12.1:
+
+  | View | Issues | Line length |
+  |---|---|---|
+  | b10/overview | 4 → 3 | 4,957 → 5,735 |
+  | b10/norepair | 6 → 5 | 6,393 → 5,941 |
+  | b26/overview | 94 → 96 | 40,204 → 39,998 |
+  | b69/overview | 237 → 231 | 132,668 → 132,307 |
+  | d24/boxed | 27 → 30 | 19,093 → 19,626 |
+  | m50/overview | 279 → 266 | 136,374 → 138,245 |
+  | **All bench views** | **722 → 706** | **445,633 → 447,796 (+0.5%)** |
+
+### A card is wide enough for its chips (#84)
+
+- **A card's width counts its chips** (`verbs`) as it counts its name and its sub-line, up to 386 px. It counted only
+  those, so in a wide font (Verdana) a card's chips ran past its text, a long first chip past its right edge, and most
+  of them hid behind "+N": assistant's four cards with chips showed one each. Now they show all of them.
+- **A chip with no room still ends in "+N", and so does the first one.** The first chip was drawn whole, however wide;
+  a verb wider than any card is now "+1", named by its verb.
+- **The page's check reports a chip whose pill runs past its card** (`umlimator.py check`). It checked only a chip's
+  text.
+- Only cards with chips move: of the examples, assistant's four. No bench view has chips.
+
+### A numbered view unfolds in place too (#82)
+
+A stacked card whose inner view is numbered (`render: "sequence"`) unfolds like any other (#71) instead of opening, and
+the box keeps that view's run order.
+
+- **Numbers on lines:** each of its lines in the box keeps its step number, those that take the place of this view's
+  lines to the card too, and a step back stays a loop back, as the numbered view reads it.
+- **Numbers on cards:** a step between the card itself and a card inside has no line, since the card is the box now; and
+  a numbered view drawn around one card (its hub) shows the hub's steps on the cards they reach. Those numbers go on the
+  card inside, as a hub view draws them (`1`, `2·3`, `4+`).
+- **Under a numbered card:** when the card shows a number of its own (a process view's step, or a number an unfolded
+  numbered view put on it), the inner steps are numbered under it: weather's Forecast stage is step 4, so its steps are
+  4.1 to 4.4. On a card with no number, or with several (`2·3`), they stay 1, 2, 3. A number longer than two characters
+  gets a pill on its line instead of the circle.
+- **Lanes:** a hub view's boxed lanes come along as boxes inside the box, named and in their order, left to right in the
+  hub's columns, with the hub before them when it is a card inside. A labelled line into a lane gets room for both
+  borders it crosses.
+- **What still opens:** a card on a numbered view, since that view's own steps would be numbered again. No numbered
+  inner view is held back for the layout check: as with any unfolding, the box takes the arrangement the check scores
+  best.
+- **Without a browser:** `layout()` gives a line's number as its `step`, a card's too, and a lane as a box in `families`
+  with `lane: true`.
+- **Examples and bench:** weather's Forecast stage (its lanes, with the forecaster inside) and assistant's answer now
+  unfold, and CI checks them with `--expand`. `bench/models/s16.json`, a made-up print shop, has a numbered view with
+  lanes around its own card and one with a loop back (`"benchViews": ["site+job", "site+pay", "site+job+pay"]`), which
+  `tests/unfold.test.mjs` checks too.
+
+### A second unfolded card no longer draws the first one again (#98)
+
+Unfolding a card whose inner view lists a card that is already unfolded on the view drew that card a second time: as a
+card inside the new box, and as its own box (u21's `shop`: Order service, then Warehouse service).
+
+- **The fix:** a card unfolded on this view is still this view's, drawn as its box. So it is the new box's neighbour, not
+  one of its cards, and a card counts as unfoldable only for cards of its own that this view shows neither as cards nor as
+  boxes.
+- **Tests:** `tests/unfold.test.mjs` unfolds the two cards in both orders. `tests/unfold.html` also folds them back,
+  first-unfolded first and last-unfolded first, and checks that every card is drawn once, as a card or as its box, on the
+  map, in the minimap and in the SVG export.
 
 ## 0.13.0: (unreleased)
 

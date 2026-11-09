@@ -1,0 +1,56 @@
+{
+ "title": "s16: a made-up print shop whose numbered (sequence) views unfold in place, run order, lanes and all (#82)",
+ "root": "site",
+ "benchViews": ["site+job", "site+pay", "site+job+pay"],
+ "nodes": [
+  { "id": "user", "label": "Customer", "kind": "frontend", "sublabel": "orders prints" },
+  { "id": "web", "label": "Web shop", "kind": "frontend", "sublabel": "uploads photos" },
+  { "id": "job", "label": "Print job", "kind": "backend", "sublabel": "one order", "opensView": "job" },
+  { "id": "pay", "label": "Payments", "kind": "backend", "sublabel": "charges cards", "opensView": "pay" },
+  { "id": "store", "label": "Photo store", "kind": "database", "sublabel": "the originals" },
+  { "id": "bank", "label": "Card bank", "kind": "external", "sublabel": "authorises" },
+  { "id": "courier", "label": "Courier", "kind": "external", "sublabel": "delivers" },
+  { "id": "crop", "label": "Crop", "kind": "backend", "sublabel": "fits the paper" },
+  { "id": "colour", "label": "Colour", "kind": "backend", "sublabel": "per printer" },
+  { "id": "printer", "label": "Printer", "kind": "backend", "sublabel": "the lab machine" },
+  { "id": "qa", "label": "Check", "kind": "security", "sublabel": "by eye" },
+  { "id": "pack", "label": "Pack", "kind": "backend", "sublabel": "boxes it" },
+  { "id": "p-charge", "label": "Charge", "kind": "backend", "sublabel": "one attempt" },
+  { "id": "p-check", "label": "Fraud check", "kind": "security", "sublabel": "scores it" },
+  { "id": "p-retry", "label": "Retries", "kind": "queue", "sublabel": "backs off" },
+  { "id": "p-ledger", "label": "Ledger", "kind": "database", "sublabel": "every charge" }
+ ],
+ "edges": [
+  { "id": "s1", "from": "user", "to": "web", "label": "uploads" },
+  { "id": "s2", "from": "web", "to": "job", "label": "orders" },
+  { "id": "s3", "from": "job", "to": "store", "label": "reads" },
+  { "id": "s4", "from": "job", "to": "pay", "label": "bills" },
+  { "id": "s5", "from": "pay", "to": "bank", "label": "charges" },
+  { "id": "s6", "from": "job", "to": "courier" }
+ ],
+ "views": [
+  { "id": "site", "title": "Print shop", "gap": 96, "nodeIds": ["user", "web", "job", "pay", "store", "bank", "courier"] },
+  { "id": "job", "parent": "site", "title": "A print job, step by step", "render": "sequence",
+    "lanes": [ { "title": "Plan", "nodeIds": ["crop"] }, { "title": "Print", "nodeIds": ["colour", "printer"] }, { "title": "Check", "nodeIds": ["qa"] }, { "title": "Ship", "nodeIds": ["pack", "pay"] } ],
+    "nodeIds": ["job", "crop", "colour", "printer", "qa", "pack", "pay", "store", "courier"],
+    "edges": [
+     { "id": "j1", "from": "job", "to": "crop", "label": "crops" },
+     { "id": "j2", "from": "crop", "to": "store", "label": "reads" },
+     { "id": "j3", "from": "job", "to": "colour", "label": "profiles" },
+     { "id": "j4", "from": "colour", "to": "printer", "label": "prints" },
+     { "id": "j5", "from": "job", "to": "qa", "label": "checks" },
+     { "id": "j6", "from": "job", "to": "pack", "label": "packs" },
+     { "id": "j7", "from": "pack", "to": "courier", "label": "ships" },
+     { "id": "j8", "from": "job", "to": "pay", "label": "bills" }
+    ] },
+  { "id": "pay", "parent": "site", "title": "A payment, step by step", "render": "sequence",
+    "nodeIds": ["p-charge", "p-check", "p-retry", "p-ledger", "bank"],
+    "edges": [
+     { "id": "q1", "from": "p-charge", "to": "p-check", "label": "scores" },
+     { "id": "q2", "from": "p-check", "to": "bank", "label": "authorises" },
+     { "id": "q3", "from": "p-check", "to": "p-retry", "label": "declined" },
+     { "id": "q4", "from": "p-retry", "to": "p-charge", "label": "tries again" },
+     { "id": "q5", "from": "p-charge", "to": "p-ledger", "label": "records" }
+    ] }
+ ]
+}
