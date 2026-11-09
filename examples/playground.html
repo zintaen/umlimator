@@ -1,6 +1,6 @@
 <!doctype html>
-<!-- A playground for map models: edit the JSON and the map follows, with validate()'s problems and check()'s layout
-     issues for the view shown; click one to select what it is about. Share puts the model in the link. Serve the
+<!-- A playground for map models: edit the JSON and the map follows, with validate()'s problems, and the broken rules
+     (rules()) and layout issues (check()) of the view shown; click one to select what it is about. Share puts the model in the link. Serve the
      repository over HTTP to open it (ES modules do not load from file://):
      python3 -m http.server  then  http://localhost:8000/examples/playground.html -->
 <meta charset="utf-8">
@@ -53,7 +53,7 @@
 </div>
 <div id="map"></div>
 <script type="module">
-import { render, validate, check } from '../lib/umlimator.js';
+import { render, validate, check, rules } from '../lib/umlimator.js';
 import { withIcons } from './icons.js';
 
 const $ = id => document.getElementById(id);
@@ -84,15 +84,15 @@ function views() {
   if (map) $('view').value = map.view;
 }
 
-// the problems: the model's own (validate), then the layout check's for the view shown (check), each a button
+// the problems: the model's own (validate), then the view shown's broken rules (rules) and layout check (check), each a button
 function show() {
   let issues = [];
-  if (map && model && !problems.some(p => p.level === 'error')) try { issues = check(model, map.view, { measure }); } catch (e) { issues = [{ message: `check(): ${e.message}`, targets: [] }]; }
+  if (map && model && !problems.some(p => p.level === 'error')) try { issues = [...rules(model).filter(r => r.view === map.view), ...check(model, map.view, { measure })]; } catch (e) { issues = [{ message: `check(): ${e.message}`, targets: [] }]; }
   const items = [...problems.map((p, i) => `<li><button data-p="${i}" class="${p.level}">${esc(p.level)} <code>${esc(p.path)}</code> ${esc(p.message)}</button></li>`),
     ...issues.map((c, i) => `<li><button data-c="${i}">${esc(c.message)}</button></li>`)];
   const errors = problems.filter(p => p.level === 'error').length;
   $('problems').innerHTML = `<p>${errors ? `${errors} ${errors > 1 ? 'errors' : 'error'} in the model: the map shows the last model without any`
-    : items.length ? `${problems.length} in the model, ${issues.length} in this view's layout` : 'No problems: the model is valid and this view\'s layout check is clean.'}</p><ul>${items.join('')}</ul>`;
+    : items.length ? `${problems.length} in the model, ${issues.length} in this view's rules and layout` : 'No problems: the model is valid, and this view keeps its rules and its layout check is clean.'}</p><ul>${items.join('')}</ul>`;
   $('problems').onclick = e => {
     const b = e.target.closest('button'); if (!b || !map) return;
     if (b.dataset.c != null) { const t = issues[+b.dataset.c].targets[0]; if (t) map.select(t); return; }

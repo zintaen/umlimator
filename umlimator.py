@@ -4,7 +4,8 @@
   umlimator.py render MODEL.json --out PAGE.html [--no-check]   # interactive drill-down page (one self-contained file)
   umlimator.py stills PAGE.html --out DIR [--views a,b] [--scale 2] [--theme light|dark] [--reader]   # each view as DIR/<view>.svg and .png;
                                                        # --reader: no CHECK tab and no drill-down pill (pictures for documents)
-  umlimator.py check PAGE.html [--views a,pic-*] [--ignore right-to-left] [--timeout 600]   # the layout check, on chosen views only
+  umlimator.py check PAGE.html [--views a,pic-*] [--ignore right-to-left] [--timeout 600]   # the layout check, on chosen views only;
+                                                       # it exits 1 on a rule the model breaks (rules)
 
 MODEL.json is the map model in engine/references/schema.md (nodes, edges, views), plus umlimator's `badge` field on a
 node (PROPOSED, TARGET, OFF ...). `stills` needs Google Chrome or Chromium; the PNGs are what a document that cannot
@@ -199,7 +200,7 @@ def cmd_check(a):
     rep = json.loads(html.unescape(m.group(1)))
     ov = rep.get("overlaps", [])
     kinds = {"crossings": " cross", "labelOnLine": " lies on edge ", "rightToLeft": "right-to-left", "detours": "detour",
-             "nearNode": "passes within", "onMark": "touches the mark", "shortLine": "leaves its line"}
+             "nearNode": "passes within", "onMark": "touches the mark", "shortLine": "leaves its line", "rules": ' breaks rule "'}
     counts = {k: sum(t in o for o in ov) for k, t in kinds.items()}
     counts["other"] = len(ov) - sum(counts.values())
     # --ignore drops whole kinds from the report (pictures that keep a source drawing's own direction run lines right to left)
@@ -212,6 +213,8 @@ def cmd_check(a):
                       "problems": shown, "errors": rep.get("errors", [])}, indent=1))
     if rep.get("errors"):
         sys.exit("check reported errors")
+    if broken := sum(kinds["rules"] in o for o in shown):  # the model's own rules (#70) are a contract: CI fails on them
+        sys.exit(f"{broken} broken rule{'s' if broken > 1 else ''}")
 
 
 DATA = re.compile(r'<script id="visual-data" type="application/json">(.*?)</script>', re.S)

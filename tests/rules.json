@@ -1,0 +1,27 @@
+{
+ "$schema": "../lib/umlimator.schema.json",
+ "title": "Rules, broken on purpose (tests)",
+ "nodes": [
+  { "id": "app", "label": "App", "kind": "frontend" },
+  { "id": "web", "label": "Web", "kind": "web" },
+  { "id": "api", "label": "API", "kind": "backend" },
+  { "id": "worker", "label": "Worker", "kind": "backend" },
+  { "id": "store", "label": "Store", "kind": "db" }
+ ],
+ "edges": [
+  { "id": "app-api", "from": "app", "to": "api" },
+  { "id": "web-api", "from": "web", "to": "api" },
+  { "id": "app-store", "from": "app", "to": "store", "label": "reads" },
+  { "id": "api-store", "from": "api", "to": "store", "label": "writes" },
+  { "id": "worker-api", "from": "worker", "to": "api", "label": "reports" }
+ ],
+ "views": [
+  { "id": "teams", "title": "Two teams", "nodeIds": ["app", "web", "api", "worker", "store"],
+    "containers": [{ "id": "front", "label": "Front team", "nodeIds": ["app", "web", "api"] }, { "id": "back", "label": "Back team", "nodeIds": ["worker", "store"] }] }
+ ],
+ "rules": [
+  { "id": "apps-no-db", "title": "Apps never call a database directly", "from": { "kind": "frontend" }, "to": { "kind": "database" } },
+  { "id": "api-owns-store", "title": "Only the API writes the store", "from": { "not": { "id": "api" } }, "to": { "id": "store" } },
+  { "id": "teams-acyclic", "title": "No cycles between teams", "noCycles": true }
+ ]
+}
