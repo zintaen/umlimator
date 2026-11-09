@@ -1,0 +1,101 @@
+<!doctype html>
+<!-- <umlimator-map> (#92) in a plain page: tests/embed.py serves the repository over HTTP, opens this in headless Chrome and
+     reads the result from <pre id="result">. -->
+<meta charset="utf-8">
+<link rel="icon" href="data:,">
+<title>umlimator element test</title>
+<link rel="stylesheet" href="../lib/umlimator-theme.css">
+<body style="margin:0">
+<umlimator-map id="a" src="../examples/bookshop.json" view="api" style="width:900px"><img id="still" src="../examples/stills/api.png" alt="An order, step by step"></umlimator-map>
+<umlimator-map id="b" style="width:600px">
+  <script type="application/json">{ "nodes": [{ "id": "web", "label": "Web app", "kind": "frontend" }, { "id": "api", "label": "API", "kind": "backend" }],
+    "edges": [{ "from": "web", "to": "api", "label": "calls" }], "views": [{ "id": "v", "nodeIds": ["web", "api"] }] }</script>
+  <p id="note">A web app calls an API.</p>
+</umlimator-map>
+<script>window.before = document.getElementById('note').getClientRects().length === 1 && !customElements.get('umlimator-map');</script>
+<script type="module">
+import { UmlimatorMap } from '../lib/umlimator-element.js';
+import markdownIt from '../lib/umlimator-markdown-it.js';
+const out = { ok: [], fail: [] };
+const check = (name, cond, info) => { document.title = name; if (cond) out.ok.push(name); else out.fail.push(name + (info === undefined ? '' : ': ' + JSON.stringify(info))); };
+const wait = ms => new Promise(r => setTimeout(r, ms));
+const until = async (f, ms = 5000) => { const t = Date.now(); while (!f() && Date.now() - t < ms) await wait(20); return f(); };
+const a = document.getElementById('a'), b = document.getElementById('b'), still = document.getElementById('still'), note = document.getElementById('note');
+const inner = el => el.shadowRoot.querySelector('.umlimator'), sr = el => inner(el).shadowRoot, cards = el => sr(el).querySelectorAll('.node').length;
+const fire = (s, type = 'click') => sr(a).querySelector(s).dispatchEvent(new MouseEvent(type, { bubbles: true, composed: true }));
+const ev = [], loads = [];
+['umlimator:select', 'umlimator:open', 'umlimator:viewchange', 'error'].forEach(t => a.addEventListener(t, e => ev.push([t, e.detail ?? null])));
+a.addEventListener('load', () => loads.push(a.map));
+const redrawn = async n => (await until(() => loads.length > n)) && a.map === loads[loads.length - 1];
+try {
+  check('before it is defined (as where scripts don\'t run), its children show', window.before);
+  check('once defined, its children still show until the map is drawn', a instanceof UmlimatorMap && still.getClientRects().length === 1 && a.map === null);
+
+  await until(() => a.map && b.map);
+  check('src: the model is fetched and drawn, on the view the view attribute names', a.map.view === 'api' && cards(a) === 6, [a.map.view, cards(a)]);
+  check('an inline <script type="application/json"> model is drawn', b.map.view === 'v' && cards(b) === 2);
+  check('once drawn, the children no longer show', still.getClientRects().length === 0 && note.getClientRects().length === 0);
+  const md = { renderer: { rules: { fence: () => '' } } }; markdownIt(md); // a docs site's block, as umlimator/markdown-it writes it
+  document.body.insertAdjacentHTML('beforeend', md.renderer.rules.fence([{ info: 'umlimator', content: 'height: 200\n' + b.querySelector('script').textContent }], 0));
+  const c = document.body.lastElementChild;
+  check('a docs block, its model inline in a data: URL, draws', c.localName === 'umlimator-map' && await until(() => c.map && cards(c) === 2) && c.offsetHeight === 200);
+  c.remove();
+  check('load says it is drawn', loads.length === 1 && loads[0] === a.map);
+  check('480 px tall by default, in the page\'s width', a.offsetHeight === 480 && a.offsetWidth === 900, [a.offsetHeight, a.offsetWidth]);
+  a.setAttribute('height', '300'); const px = a.offsetHeight;
+  a.setAttribute('height', '12.5rem'); const rem = a.offsetHeight;
+  a.removeAttribute('height');
+  check('height: a number is pixels, any other length is CSS; without it, the default', px === 300 && rem === 200 && a.offsetHeight === 480, [px, rem, a.offsetHeight]);
+
+  const first = a.map;
+  a.setAttribute('view', 'overview');
+  check('changing view draws it again, on that view', await redrawn(1) && a.map !== first && a.map.view === 'overview' && cards(a) === 13, a.map && a.map.view);
+  check('…and the model is not fetched again for the same src', performance.getEntriesByType('resource').filter(r => r.name.endsWith('/bookshop.json')).length === 1);
+  a.setAttribute('minimap', ''); a.setAttribute('controls', 'false');
+  check('minimap and controls="false" draw it again, once, with a minimap and no controls', await redrawn(2) && await wait(100).then(() => loads.length === 3)
+    && !!sr(a).querySelector('.minimap') && !sr(a).querySelector('.ctl'));
+  a.removeAttribute('minimap'); a.removeAttribute('controls');
+  check('…and without them, as before', await redrawn(3) && !sr(a).querySelector('.minimap') && !!sr(a).querySelector('.ctl'));
+
+  const bg = () => getComputedStyle(sr(a).querySelector('.stage')).backgroundColor;
+  document.documentElement.dataset.theme = 'light'; const light = bg(); // the page light, whatever the system's
+  a.setAttribute('theme', 'dark');
+  const dark = bg(), unchanged = loads.length === 4;
+  a.setAttribute('theme', 'light'); document.documentElement.dataset.theme = 'dark';
+  check('theme: that map\'s palette from theme.css, whatever the page\'s, without drawing it again', light === 'rgb(251, 252, 253)' && dark === 'rgb(1, 4, 9)' && bg() === light && unchanged, [light, dark, bg()]);
+  a.removeAttribute('theme'); delete document.documentElement.dataset.theme;
+  // a docs site's dark mode, with no theme attribute: VitePress's html.dark (the page light otherwise, whatever the system's),
+  // then Docusaurus's html[data-theme="dark"]; a theme attribute still wins
+  const html = document.documentElement, seen = {}, look = (name, set) => { set(); seen[name] = bg(); };
+  look('vitepress', () => { html.dataset.theme = 'light'; html.classList.add('dark'); });
+  look('vitepress, theme="light"', () => a.setAttribute('theme', 'light'));
+  look('docusaurus', () => { a.removeAttribute('theme'); html.classList.remove('dark'); html.dataset.theme = 'dark'; });
+  look('docusaurus, theme="light"', () => a.setAttribute('theme', 'light'));
+  a.removeAttribute('theme'); delete html.dataset.theme;
+  check('with no theme, it follows a docs site\'s dark mode (VitePress\'s html.dark, Docusaurus\'s data-theme); a theme still wins',
+    seen.vitepress === dark && seen.docusaurus === dark && seen['vitepress, theme="light"'] === light && seen['docusaurus, theme="light"'] === light, seen);
+
+  let bubbled = null; document.addEventListener('umlimator:select', e => { bubbled = e.target; }, { once: true });
+  fire('.node[data-id="api"] .n-label');
+  const sel = ev.filter(x => x[0] === 'umlimator:select').pop();
+  check('umlimator:select: the map\'s select event as detail, bubbling from the element', sel && sel[1].target.id === 'api' && sel[1].target.view === 'overview' && bubbled === a, sel);
+  const stop = e => e.preventDefault();
+  a.addEventListener('umlimator:open', stop);
+  fire('.node[data-id="api"]', 'dblclick'); await wait(300);
+  check('umlimator:open: preventDefault() keeps the view', ev.some(x => x[0] === 'umlimator:open' && x[1].view === 'api') && a.map.view === 'overview');
+  a.removeEventListener('umlimator:open', stop);
+  fire('.node[data-id="api"]', 'dblclick');
+  check('umlimator:viewchange follows an open that goes ahead', await until(() => ev.some(x => x[0] === 'umlimator:viewchange' && x[1].view === 'api' && x[1].from === 'overview')) && a.map.view === 'api');
+
+  a.setAttribute('src', '../examples/weather.json');
+  check('a new src is fetched and drawn', await redrawn(4) && a.map.view === 'stages', [loads.length, a.map && a.map.view]);
+  a.setAttribute('src', 'nope.json');
+  check('a model that can\'t be had: error, no map, the children show again', await until(() => ev.some(x => x[0] === 'error')) && a.map === null && still.getClientRects().length === 1);
+
+  const h = b.map; b.remove();
+  check('removing the element destroys its map', b.map === null && !inner(b) && !h.toSVG());
+  document.body.appendChild(b);
+  check('putting it back draws it again', await until(() => b.map && cards(b) === 2));
+} catch (e) { out.fail.push('threw: ' + (e && e.stack || e)); }
+const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
+</script>

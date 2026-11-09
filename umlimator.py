@@ -13,6 +13,7 @@
   umlimator.py timelapse MODEL.json --out PAGE.html [--limit 20]   # the model's versions in git history, on a slider
   umlimator.py record PAGE.html --story ID --out STORY.png [--size 1160x740] [--scale 1] [--theme light|dark]   # a story as an animated PNG
   umlimator.py import FILE --out MODEL.json [--format structurizr|plantuml|mermaid|compose|kubernetes]   # a diagram you have, as a model
+  umlimator.py pdf PAGE.html --out MAP.pdf [--views a,b] [--theme light|dark]   # one PDF: a title page, each view with its text, legend, rules
   umlimator.py mcp MODEL.json [--port 7391]   # an MCP server over stdio: an AI assistant reads the model and drives its page
 
 MODEL.json is the map model in engine/references/schema.md (nodes, edges, views), plus umlimator's `badge` field on a
@@ -492,6 +493,24 @@ def cmd_stills(a, show=print):
     return done
 
 
+def cmd_pdf(a):
+    """The map as one PDF (#93), printed by headless Chrome itself (--print-to-pdf, its Page.printToPDF): the page lays
+    the document out (#pdf=1, a reader copy) and Chrome prints it. A title page; each view (--views, else every one) as a
+    vector picture with its describe() text; the legend; the model's rules, each holding or broken."""
+    out = Path(a.out).resolve()
+    out.unlink(missing_ok=True)
+    url = Path(a.page).resolve().as_uri() + f"#pdf=1&reader=1&theme={a.theme}" + (f"&views={a.views}" if a.views else "")
+    try:  # no header or footer: Chrome's would print the page's file path (the older flag too, for an older Chrome)
+        headless(chrome(), "--virtual-time-budget=20000", "--no-pdf-header-footer", "--print-to-pdf-no-header", f"--print-to-pdf={out}", url, timeout=600)
+    except subprocess.TimeoutExpired:
+        sys.exit("pdf: Chrome did not finish in 600 s")
+    pages = len(re.findall(rb"/Type\s*/Page\b", out.read_bytes())) if out.is_file() else 0
+    if pages < 3:  # the title page, a view, the legend; a page from before 0.13.0 has no #pdf and prints as one screen
+        sys.exit(f"pdf: no view printed ({pages} page(s)): no view with cards matches --views, or the page is older than"
+                 " umlimator 0.13.0 (render it again)")
+    print(json.dumps({"out": a.out, "pages": pages, "bytes": out.stat().st_size}, indent=1))
+
+
 def apng(frames, delays, out):
     """PNG files of one size as one animated PNG, each frame shown for its delay in ms: the frames' own image data,
     numbered into APNG's frame chunks (nothing decoded or encoded again)."""
@@ -594,6 +613,8 @@ def main():
     s.add_argument("--reader", action="store_true", help="reader copy: no CHECK tab, no drill-down pill (as stillsv.js)")
     s.add_argument("--all", action="store_true", help="export every view, even one whose inputs are unchanged since its last export")
     s.set_defaults(f=cmd_stills)
+    pd = sub.add_parser("pdf", help="every view in one PDF, with its text, the legend and the rules"); pd.add_argument("page"); pd.add_argument("--out", required=True)
+    pd.add_argument("--views", help="a,b,pic-* (a trailing * is a prefix)"); pd.add_argument("--theme", default="light", choices=["light", "dark"]); pd.set_defaults(f=cmd_pdf)
     rc = sub.add_parser("record", help="a story as an animated PNG, a frame per step and frames along a step's tour"); rc.add_argument("page")
     rc.add_argument("--story", required=True); rc.add_argument("--out", required=True, help="a .png file")
     rc.add_argument("--size", default="1160x740", help="the window, WxH (up to 1180 wide the views list stays shut)"); rc.add_argument("--scale", type=float, default=1)

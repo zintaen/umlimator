@@ -1,0 +1,72 @@
+<!doctype html>
+<!-- <umlimator-map> (#92): maps in a page from HTML alone. The element loads its model (src, or a model written in the
+     page), draws it with render(), and shows its children (here a still) until then, and where scripts don't run. A docs
+     site's ```umlimator block becomes the same element. Serve the repository over HTTP to open it (ES modules do not load
+     from file://):  python3 -m http.server  then  http://localhost:8000/examples/element.html -->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>umlimator: the element</title>
+<link rel="stylesheet" href="../lib/umlimator-theme.css">
+<script type="module" src="../lib/umlimator-element.js"></script>
+<style>
+  body { margin: 0; background: var(--um-bg); color: var(--um-text); font: 15px/1.55 var(--um-sans); }
+  main { max-width: 1040px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { font-size: 24px; margin: 0 0 6px; } h2 { font-size: 17px; margin: 32px 0 6px; }
+  p { margin: 0 0 10px; color: var(--um-muted); max-width: 720px; }
+  code, pre { font: 13px var(--um-mono); } pre { background: var(--um-bg-2); padding: 10px 12px; border-radius: 8px; overflow: auto; }
+  .bar { display: flex; flex-wrap: wrap; gap: 6px 18px; align-items: center; margin: 12px 0 8px; font-size: 14px; }
+  select { font: inherit; }
+  umlimator-map { border: 1px solid var(--um-border); border-radius: 10px; }
+  #said { font: 13px var(--um-mono); min-height: 1.5em; margin-top: 6px; }
+</style>
+<main>
+  <h1>&lt;umlimator-map&gt;</h1>
+  <p>A map from HTML alone: <code>&lt;umlimator-map src="bookshop.json"&gt;</code> loads the model and draws it. Its
+    still shows until then, and stays where scripts don't run. Each control below sets an attribute, and the map follows.</p>
+  <div class="bar">
+    <label>view <select id="view"><option value="">the root</option><option value="api">api</option></select></label>
+    <label><input type="checkbox" id="minimap"> minimap</label>
+    <label><input type="checkbox" id="controls" checked> controls</label>
+    <label>theme <select id="theme"><option value="">the page's</option><option>light</option><option>dark</option></select></label>
+  </div>
+  <umlimator-map id="shop" src="bookshop.json" height="520">
+    <img src="stills/bookshop/overview.png" alt="Bookshop: a storefront, an API, its stores and the services around them">
+  </umlimator-map>
+  <p id="said" aria-live="polite"></p>
+
+  <h2>A model in the page</h2>
+  <p>No file to fetch: the model sits in a <code>&lt;script type="application/json"&gt;</code> inside the element, next to a
+    sentence for where scripts don't run.</p>
+  <umlimator-map height="230">
+    <script type="application/json">{
+      "nodes": [{ "id": "web", "label": "Web shop", "kind": "frontend" }, { "id": "api", "label": "Shop API", "kind": "backend" },
+                { "id": "orders", "label": "Orders", "kind": "database" }],
+      "edges": [{ "from": "web", "to": "api", "label": "orders" }, { "from": "api", "to": "orders", "label": "writes" }],
+      "views": [{ "id": "shop", "nodeIds": ["web", "api", "orders"] }] }</script>
+    <p>The web shop calls the shop API, which writes orders to its database.</p>
+  </umlimator-map>
+
+  <h2>In a docs site</h2>
+  <p>A fenced block becomes this element: <code>umlimator/markdown-it</code> for VitePress, <code>umlimator/remark</code>
+    for Docusaurus. A block names a model's <code>src</code>, or holds the model in JSON; on MkDocs, or any site that
+    allows HTML, write the element itself. The README's Embed section has each setup.</p>
+  <pre>```umlimator
+src: /maps/bookshop.json
+view: api
+```</pre>
+</main>
+<script type="module">
+const shop = document.getElementById('shop'), said = document.getElementById('said'), $ = id => document.getElementById(id);
+const say = t => { said.textContent = t; };
+const name = t => !t ? 'nothing' : `${t.type} ${t.id ?? t.node ?? t.ids.join(', ')}`;
+shop.addEventListener('load', () => say(`Drawn: ${shop.map.view}`));
+shop.addEventListener('error', () => say('No model: the still stays'));
+shop.addEventListener('umlimator:select', e => say(`umlimator:select · ${name(e.detail.target)}`));
+shop.addEventListener('umlimator:open', e => say(`umlimator:open · ${e.detail.view}`));
+shop.addEventListener('umlimator:viewchange', e => say(`umlimator:viewchange · ${e.detail.from} → ${e.detail.view}`));
+const attr = (key, value) => value == null ? shop.removeAttribute(key) : shop.setAttribute(key, value);
+$('view').onchange = e => attr('view', e.target.value || null);
+$('minimap').onchange = e => attr('minimap', e.target.checked ? '' : null);
+$('controls').onchange = e => attr('controls', e.target.checked ? null : 'false');
+$('theme').onchange = e => attr('theme', e.target.value || null);
+</script>

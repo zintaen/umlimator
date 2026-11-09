@@ -995,6 +995,96 @@ only), which the command calls.
   Structurizr), checks the cards, boxes, lines, views and the list of what isn't imported, and that `validate()` finds
   nothing, the model renders, and its layout check is clean. CI runs it.
 
+### \<umlimator-map> and docs blocks (#92)
+
+- **`<umlimator-map>`**, as `umlimator/element` (`lib/umlimator-element.js`): a map in a page from HTML alone. The
+  module defines the element once and exports its class, `UmlimatorMap`. It imports in Node too, where it defines
+  nothing, so a docs site's server render can import it.
+  - **The model**: `src`, a URL fetched as an `<img>`'s would be (a `data:` URL too), and kept while `src` stays the
+    same; or, without `src`, the JSON in a child `<script type="application/json">`.
+  - **Drawing**: `render()`, into the element's own shadow root.
+  - **Attributes**: `view` (the first view), `minimap` (present and not `"false"`), `controls` (`"false"` hides them),
+    `height` and `theme`.
+    - Changing `src`, `view`, `minimap` or `controls` draws the map again; attributes set together draw once.
+    - `height` is CSS and draws nothing again: a number is pixels, any other value a length. Without it the element is
+      480 px tall, which the page's CSS may change.
+    - `theme` is CSS too: `light` or `dark` gives that element `lib/umlimator-theme.css`'s palette, whatever the page's.
+      The stylesheet's light and dark blocks also select `umlimator-map[theme="light"]` and `[theme="dark"]` now.
+      Without the stylesheet, a host's own `--um-*` variables work as before.
+    - Without `theme`, the map follows the page, and a docs site's dark mode too: the dark block also selects an
+      element with no `theme` under VitePress's `html.dark` or Docusaurus's `html[data-theme="dark"]`. That selector
+      weighs nothing (`:where()`), so a host's own `--um-*` set on the element still win, and a `theme` wins over it.
+    - Taking the element out of the page destroys the map, and putting it back draws it again.
+  - **Children**: the element's other children (a still, a sentence) show until the map is drawn, and again when it
+    can't be. A slotted `<img>` fits the element's box. Where scripts don't run, the element is an unknown tag, and its
+    children show as they are.
+  - **Events**: the map's `select`, `open` and `viewchange` come as `umlimator:select`, `umlimator:open` and
+    `umlimator:viewchange` on the element, bubbling, with the map's event as `detail`.
+    - `umlimator:open` is cancelable: `preventDefault()` keeps the view, as the map's own `open` does.
+    - `load` comes each time the map is drawn. `error` comes when the model can't be fetched, parsed or drawn, with a
+      console warning that says why.
+  - **`el.map`** is the `render()` handle once drawn (`toSVG()`, `highlight()`, `setView()` and the rest), else `null`.
+  - **Fetching**: the element fetches its model and nothing else. The module itself still fetches nothing.
+  - **Types**: `lib/umlimator-element.d.ts`, with the element in `HTMLElementTagNameMap` and its events in
+    `HTMLElementEventMap`.
+- **Docs-site blocks**: a fenced `umlimator` block becomes the element.
+  - **What a block holds**: `key: value` lines, the element's attributes (`src`, `view`, `minimap`, `controls`,
+    `theme`, `height`). After them, in place of `src`, it may hold a model in JSON.
+  - **An inline model** goes into `src`, minified, as a `data:` URL. A `<script>` child would not survive: VitePress
+    compiles each page as a Vue template, which drops it.
+  - **A block the element can't use fails the build**: an unknown key, a broken model, neither `src` nor a model, or
+    both.
+  - **`umlimator/markdown-it`** (VitePress, or any markdown-it): `md.use(umlimator)` wraps the `fence` rule, and other
+    fences go to the rule it had.
+  - **`umlimator/remark`** (Docusaurus, MDX, or remark-rehype): `remarkPlugins: [umlimator]`. It walks the tree by hand
+    and replaces the block with a node that names the element (`data.hName`, `data.hProperties`). MDX and remark-rehype
+    both turn that into the element.
+  - **MkDocs, or any site that allows HTML**: write the element itself, with the module's files copied into the docs.
+    The README has each setup.
+  - Each plugin is a few lines with no dependencies, and has a `.d.ts`.
+- **Example:** `examples/element.html`: a map from `src` with its still, controls that set its attributes, its events as
+  they come, and a model in the page.
+- **Tests:** `tests/element.html` (in the browser: both kinds of model, the children before and after, each attribute,
+  VitePress's and Docusaurus's dark modes, events, drawing again, errors, removal, and a block's HTML drawn) and
+  `tests/docs.test.mjs` (in Node: each plugin's element for a block, at any depth; failing blocks; the package's
+  exports; the element module in Node).
+- **Left out:** following a change to the `<script>` child; writing the view shown back into `view`; the map's other
+  events (`click`, `change`, `expand` and `story` are on `el.map.on()`); a still in a block (write the element for one).
+  Icons come from the model's own `icons` table, as with `render()`. VitePress marks only its dark mode, so a VitePress
+  page set to light on a system set to dark shows the system's dark.
+
+### PDF (#93)
+
+- **`umlimator.py pdf PAGE.html --out MAP.pdf [--views a,b,pic-*] [--theme light|dark]`** writes the map as one PDF.
+  - **How**: headless Chrome prints it itself (`--print-to-pdf`, its `Page.printToPDF`), through the CLI's Chrome
+    driver, so there is no new dependency. It reports `{ out, pages, bytes }`.
+  - **A title page**: the model's title and the date.
+  - **Each view**, on a page of its own: the views `--views` names (a trailing `*` is a prefix), else every view with
+    cards, in the model's order.
+    - **The picture** is the one `toSVG()` draws, in vectors. Its text stays text, so a reader's search finds a card.
+    - **Its size**: as large as the view's `describe()` text below it leaves room for, and never larger than the view
+      itself. The text is in two columns.
+  - **The legend** of what those pictures draw (card kinds, stacked cards, steps, authors and line kinds), worded as the
+    page's legend words it.
+  - **The rules**: each of the model's rules, "holds" or "broken", with each break's message. A rule is judged in the
+    views printed only (with `--views`, a rule broken in a view left out holds here), and the document says so above the
+    list.
+  - **The page**: a reader copy (no check marks, drill-down pill or tour dot), A4 landscape with 12 mm margins. It has
+    none of Chrome's header and footer, which would print the page's file path. `--theme dark` darkens whole pages.
+- **In the page**: `#pdf=1[&views=…]` lays the page out as that document, once the fonts are in, and Chrome prints it.
+  The page's legend and the PDF's share one helper.
+  - A page rendered before 0.13.0 has no `#pdf` and prints as one screen. `pdf` says so and exits 1, as it does when no
+    view with cards matches `--views`.
+- **CI**: `tests/cli.py` writes bike-share's PDF and reads it back with the standard library.
+  - It checks the page count: a title page, a page per view, and one for the legend and rules.
+  - It checks the text: the title, the view titles, a card, a `describe()` line and each rule's state. Chrome writes
+    glyph ids, so the text is read through each font's ToUnicode map.
+  - It checks `--views` and `--theme`, and a rule broken in one view: broken in the whole PDF, holding in one without
+    that view.
+  - The site's build writes each example's PDF next to its page, and the gallery links to it.
+- **Left out:** bookmarks for the views (Chrome's `--generate-pdf-document-outline` would add them), a paper size or
+  orientation option, and the details panel's text for each card.
+
 ### Lenses (#94)
 
 - **`lenses` in the model** are saved ways to look at one map:

@@ -33,24 +33,25 @@
   <div class="grid">
     <article class="card"><img src="stills/bike-share/system.png" alt="Bike share's boxed view: apps, the Rides and Fleet teams' services, and the systems around them" loading="lazy">
       <div><h3>Bike share</h3><p>A C4-style drill-down in three levels, with boxes, line kinds and weights, two views loaded only when you open them, a story told step by step, lenses by team and data flow, and a trace kept as a numbered view.</p>
-        <span class="links"><a href="bike-share.html">Open the map</a><a href="bike-share.html#story=ride&step=1">Its story</a><a href="bike-share.html#view=system&lens=teams">By team</a><a href="embed.html?model=bike-share.json">In a host page</a><a href="bike-share.json">Model</a></span></div></article>
+        <span class="links"><a href="bike-share.html">Open the map</a><a href="bike-share.html#story=ride&step=1">Its story</a><a href="bike-share.html#view=system&lens=teams">By team</a><a href="embed.html?model=bike-share.json">In a host page</a><a href="bike-share.pdf">PDF</a><a href="bike-share.json">Model</a></span></div></article>
     <article class="card"><img src="stills/weather/flow.png" alt="Weather stations: readings from stations through checks and stores to forecasts" loading="lazy">
       <div><h3>Weather stations</h3><p>A data pipeline: a process in five steps, lines as wide as their volume, nested boxes, a loop back and swimlanes.</p>
-        <span class="links"><a href="weather.html">Open the map</a><a href="embed.html?model=weather.json">In a host page</a><a href="weather.json">Model</a></span></div></article>
+        <span class="links"><a href="weather.html">Open the map</a><a href="embed.html?model=weather.json">In a host page</a><a href="weather.pdf">PDF</a><a href="weather.json">Model</a></span></div></article>
     <article class="card"><img src="stills/assistant/assistant.png" alt="Helpdesk assistant: a public command, the board, three lanes and the tools they use" loading="lazy">
       <div><h3>Helpdesk assistant</h3><p>An AI agent's skills: lanes, hooks that guard, a board that keeps state, chips, and steps that exist in one view only.</p>
-        <span class="links"><a href="assistant.html">Open the map</a><a href="embed.html?model=assistant.json">In a host page</a><a href="assistant.json">Model</a></span></div></article>
+        <span class="links"><a href="assistant.html">Open the map</a><a href="embed.html?model=assistant.json">In a host page</a><a href="assistant.pdf">PDF</a><a href="assistant.json">Model</a></span></div></article>
     <article class="card"><img src="stills/bookshop/overview.png" alt="Bookshop: a storefront, an API, its stores and the services around them, with brand logos" loading="lazy">
       <div><h3>Bookshop</h3><p>A product's architecture in two levels, with brand logos and an order followed step by step.</p>
-        <span class="links"><a href="bookshop.html">Open the map</a><a href="embed.html?model=bookshop.json">In a host page</a><a href="bookshop.json">Model</a></span></div></article>
+        <span class="links"><a href="bookshop.html">Open the map</a><a href="embed.html?model=bookshop.json">In a host page</a><a href="bookshop.pdf">PDF</a><a href="bookshop.json">Model</a></span></div></article>
     <article class="card"><img src="stills/clinic/containers.png" alt="Clinic bookings' containers: the booking site, front desk app, booking API, its database and the reminder queue, with the receptionist in a Clinic staff group" loading="lazy">
       <div><h3>Clinic bookings</h3><p>Imported from a Structurizr workspace by <code>umlimator.py import</code>: its three views, a group as a box, and the lines Structurizr implies at each level.</p>
-        <span class="links"><a href="clinic.html">Open the map</a><a href="clinic.json">Model</a><a href="https://github.com/zintaen/umlimator/blob/main/examples/clinic.dsl">Its Structurizr source</a></span></div></article>
+        <span class="links"><a href="clinic.html">Open the map</a><a href="clinic.pdf">PDF</a><a href="clinic.json">Model</a><a href="https://github.com/zintaen/umlimator/blob/main/examples/clinic.dsl">Its Structurizr source</a></span></div></article>
   </div>
 
   <h2>In an app</h2>
   <table>
     <tr><td><a href="playground.html">Playground</a></td><td>Edit a model and see the map, its problems (<code>validate()</code>), its broken rules (<code>rules()</code>) and its layout check (<code>check()</code>); share it by link.</td></tr>
+    <tr><td><a href="element.html">The element</a></td><td><code>&lt;umlimator-map src="…"&gt;</code>: a map from HTML alone, its still shown until it is drawn; the block a docs site (VitePress, Docusaurus, MkDocs) turns into it.</td></tr>
     <tr><td><a href="embed.html">A host page</a></td><td><code>render()</code> with a details panel, breadcrumbs, views loaded when opened, SVG and PNG export, themes and the minimap.</td></tr>
     <tr><td><a href="live.html">Live traffic</a></td><td><code>overlay()</code> every second: flow as fast as the traffic, errors that pulse, slow lines that glow, lag on each card; the model never changes.</td></tr>
     <tr><td><a href="ask.html">Ask the map</a></td><td>Questions answered with words, the paths or reach they are about lit, and a tour; the view in sentences (<code>describe()</code>) for an AI model.</td></tr>

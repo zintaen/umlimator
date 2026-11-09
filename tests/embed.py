@@ -14,7 +14,8 @@ tests/unfold-page.html: the same in the standalone page (mountPage): its details
 tests/stories.html: play() and its caption bar, keys and events; the standalone page's Stories menu, story links and recording.
 tests/insight.html: lenses on a map and in the page (#94), the page's slowest path and what-if (#95), a trace's numbered view (#96).
 tests/page-handle.html: a page umlimator.py renders keeps its map's handle on window.umlimatorMap, and it drives the page.
-examples/edit.html, embed.html, live.html, playground.html, ask.html, replay.html, timelapse.html, drift.html: the host pages load and draw.
+tests/element.html: <umlimator-map> (#92): src and inline models, attributes, events, drawing again, destroy, a docs block.
+examples/edit.html, embed.html, live.html, playground.html, ask.html, replay.html, timelapse.html, drift.html, element.html: the host pages load and draw.
 Each test page reports in <pre id="result">{"ok": [...], "fail": [...]}</pre>.
 """
 import functools, html, http.server, importlib.util, json, re, subprocess, sys, tempfile, threading, time
@@ -69,7 +70,7 @@ def dom(path, done, wait=60):
 
 
 failed = False
-for page in ("tests/embed.html", "tests/edit.html", "tests/contrast.html", "tests/rules.html", "tests/marks.html", "tests/change.html", "tests/unfold.html", "tests/unfold-page.html", "tests/stories.html", "tests/insight.html", "tests/page-handle.html"):
+for page in ("tests/embed.html", "tests/edit.html", "tests/contrast.html", "tests/rules.html", "tests/marks.html", "tests/change.html", "tests/unfold.html", "tests/unfold-page.html", "tests/stories.html", "tests/insight.html", "tests/page-handle.html", "tests/element.html"):
     t = dom(page, lambda t: 'id="result"' in t)
     m = re.search(r'<pre id="result">(.*?)</pre>', t, re.S)
     if not m:  # each check names itself in the page title: say where it stopped
@@ -86,6 +87,9 @@ for page, what in (("examples/edit.html", "the editing demo"), ("examples/embed.
     demo = dom(page, lambda t: 'class="umlimator"' in t)
     print(("ok  " if 'class="umlimator"' in demo else "FAIL"), f"{page} · {what} draws its map")
     failed |= 'class="umlimator"' not in demo
+demo = dom("examples/element.html", lambda t: "Drawn: " in t)  # the map is in the element's shadow root: the page says when it is drawn
+print(("ok  " if "Drawn: " in demo else "FAIL"), "examples/element.html · the element page draws its map")
+failed |= "Drawn: " not in demo
 # the standalone page (mountPage) shows a legend, so it still names line kinds from label words: "reads metrics" is state
 page = dom("examples/bookshop.html", lambda t: 'class="lgi"' in t)
 legend = "<b>calls</b>" in page and "<b>state</b>" in page
