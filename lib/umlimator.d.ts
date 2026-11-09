@@ -122,8 +122,41 @@ export interface Handle {
   readonly view: string | null;
   readonly selection: Ref | null;   // the latest selected
   readonly selected: Ref[];          // every selected thing (Shift / Cmd / Ctrl + click adds cards), the latest last
+  /** Sets (or, with null, removes) a named layer of marks, drawn over the picture without touching the model. Layers stack
+   *  in the order first set: each property comes from the latest layer that sets it, and a card or line is as lit as its
+   *  lowest level. They survive update() and setView(); ids the view doesn't show are ignored. toSVG() and toPNG() draw them. */
+  overlay(name: string, layer: Overlay | null): void;
+  /** The 'highlight' layer: these cards and lines lit, the rest dimmed (in place of the selection's dimming), or null to clear.
+   *  A Ref's level (0 to 1), else its distance (as reach() gives it), fades it. A chip's or badge's Ref lights its card. */
+  highlight(refs: Lit[] | null): void;
+  /** The tour dot rides the line between each pair of cards in turn (either way), through each card to its next line; a card
+   *  it reaches flashes, and a pair with no line between them is skipped. Resolves true at the end, false when cut short (a
+   *  new tour or replay, tour(null), a new picture of the view, destroy()). With reduced motion it resolves at once.
+   *  speed: map units a second (default 240). */
+  tour(path: string[] | null, options?: { speed?: number }): Promise<boolean>;
+  /** Plays a trace: each call from one card to another (a span and its parent's) runs along their line at the trace's relative
+   *  time; the line glows while the call lasts and keeps its duration as a label (the 'replay' layer, until stop() or the next
+   *  replay). A span's service names its card: through `match`, else as a card's id, else as its label (any case).
+   *  duration: the whole trace's playing time in ms (default 6000). With reduced motion the labels appear at once. */
+  replay(spans: Span[], options?: { match?: Record<string, string>; duration?: number }): Replay;
   destroy(): void;
 }
+
+/** A mark on a card. tone: a palette name (--um-<tone>), drawn as a ring; badge: a tab after the card's own; level: 0 to 1. */
+export interface CardMark { tone?: string; badge?: Badge; pulse?: boolean; level?: number }
+/** A mark on a line. speed: its flow's speed, as a factor (0 stops it); tone: a glow under it; label: a pill under its own;
+ *  dash: drawn dashed; level: 0 to 1. A drawn line that stands for several edges takes the strongest of their marks. */
+export interface LineMark { tone?: string; speed?: number; pulse?: boolean; label?: string; level?: number; dash?: boolean }
+/** A layer of marks: cards by node id, lines by edge id ("<from>-><to>#<n>" for an edge without one, as Refs name it).
+ *  dim: what the layer doesn't name fades. */
+export interface Overlay { nodes?: Record<string, CardMark>; edges?: Record<string, LineMark>; dim?: boolean }
+/** A Ref for highlight(), with how lit it is: level (0 to 1), else distance (each step out a little fainter). */
+export type Lit = Ref & { level?: number; distance?: number };
+/** A span of a trace: start and end in milliseconds; service names the card it ran in; parent is its caller's span id. */
+export interface Span { id: string; parent?: string | null; service: string; start: number; end: number; name?: string }
+/** A replay in progress. hops: the calls it plays; skipped: spans whose service has no card on the view, or whose call has
+ *  no line there. done: true when it played to the end, false when stopped or cut short. */
+export interface Replay { readonly hops: number; readonly skipped: number; readonly done: Promise<boolean>; pause(): void; resume(): void; stop(): void }
 
 export interface Geometry {
   nodes: { id: string; x: number; y: number; w: number; h: number; [key: string]: unknown }[];
@@ -164,5 +197,13 @@ export interface Rule { id: string; title?: string; views?: string[]; from?: Sel
 export interface RuleBreak { rule: string; view: string; message: string; targets: Ref[] }
 /** Every rule the model breaks, view by view. No browser needed. */
 export function rules(model: MapModel): RuleBreak[];
+/** Every card and line on a path from one card to another along the view's lines, as Refs ([] when none joins them). */
+export function paths(model: MapModel, viewId: string, from: string, to: string): Ref[];
+/** What a card's lines lead to, or (backward) what leads to it, as Refs with their distance in lines; the card first, at 0. */
+export function reach(model: MapModel, viewId: string, from: string, options?: { backward?: boolean; depth?: number }): (Ref & { distance: number })[];
+/** A view in plain sentences: cards and kinds, boxes, what each card's lines do, cards with no line. Deterministic. */
+export function describe(model: MapModel, viewId: string): string;
+/** The spans of an OpenTelemetry trace in OTLP JSON (resourceSpans), as replay() takes them. */
+export function otlpSpans(otlp: unknown): Span[];
 /** The whole standalone viewer (top bar, views list, details panel, search, export) that umlimator.py writes. */
 export function mountPage(container: HTMLElement, model: MapModel, options?: { params?: URLSearchParams; instant?: boolean }): Handle;

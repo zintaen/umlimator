@@ -20,6 +20,10 @@ drill-down, a data pipeline, an AI agent's skills, and host pages for embedding,
   that never run through a card, room for every label, containers kept apart, and cards with no lines in a row of their
   own, under the view or at the bottom of their box. The same model gives the same picture.
 - **Reading**: animated flow, neighbours lit on selection, numbered steps, tours, minimap, light and dark themes.
+- **Exploring**: every path between two cards, or everything a card reaches, lit on the map; a view in plain sentences
+  (`describe()`); a tour along any path the host names.
+- **Live data**: marks over the map without touching the model (`overlay()`): flow as fast as the traffic, errors that
+  pulse, slow hops that glow, labels and tabs; and an OpenTelemetry trace replayed along its lines (`replay()`).
 - **Keyboard and screen readers**: cards, then lines, in the Tab order (a card's tabs and chips too, for a host that
   listens for click); arrows between cards; selections announced.
 - **Editing** (opt-in): gestures emit `change` events; the host applies them and calls `update()`.
@@ -71,6 +75,8 @@ function MapView({ model, onSelect }) {
 - `layout(model, viewId)` returns a view's geometry without a DOM, in Node too; `check(model, viewId)` runs the layout
   check on it, and `validate(model)` finds dangling or repeated ids before anything is drawn. `rules(model)` lists every
   rule the model breaks, view by view.
+- `map.overlay(name, layer)`, `highlight(refs)`, `tour(path)` and `replay(spans)` put the host's marks, a tour and a
+  trace on the map; `paths()`, `reach()` and `describe()` walk a view and put it in words, in Node too.
 - `editable: true` turns on editing gestures ([docs/editing.md](docs/editing.md); `examples/edit.html` is a working host).
 - `mountPage` is the whole standalone viewer that the CLI writes.
 

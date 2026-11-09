@@ -25,7 +25,9 @@ The module embedded in a page, as an app would use it. Serve the repository over
 |---|---|
 | [`playground.html`](playground.html) | Edit a model as JSON and the map follows, with `validate()`'s problems, and the broken rules (`rules()`) and `check()`'s layout issues for the view shown, each selecting what it is about; Share puts the model in the link |
 | [`embed.html`](embed.html) | `render()` with a details panel from `select`, breadcrumbs from `viewchange`, a view loaded when a card opens it (`open`, `update()`, `setView()`), SVG and PNG export, light, dark and a host's own palette, the minimap, focus back to the map |
-| [`live.html`](live.html) | `update()` once a second with new line weights and tab colours: cards keep their places, and the view and camera stay |
+| [`live.html`](live.html) | `overlay()` once a second, the model unchanged: flow as fast as each line's readings, lines that drop readings pulse rose, slow ones glow amber with their delay, and each card's tab shows its lag |
+| [`ask.html`](ask.html) | Questions answered on the map: words, the cards and lines they are about lit (`highlight()` with `paths()` and `reach()`), a flow played as a `tour()`, and the view in sentences (`describe()`), the text an AI model would get |
+| [`replay.html`](replay.html) | A trace replayed (`replay()`): an OpenTelemetry export read by `otlpSpans()`, each call along its line at its time, its duration kept as a label, with pause and stop |
 | [`edit.html`](edit.html) | `editable`: the map emits `change` events, the host applies them and calls `update()`, with undo from `history()` |
 | [`layout.mjs`](layout.mjs) | `layout()` in Node, with no DOM: lays out every view and fails when a line runs more than 3 times its direct route, a check a host can run in CI |
 
@@ -61,7 +63,11 @@ The module embedded in a page, as an app would use it. Serve the repository over
 | Cards that only one view has (a view's `nodes`), and per-view changes (`nodeOverrides`) | assistant `answer` |
 | Kinds read from labels (`kindsFromLabels`) | assistant |
 | Skill-map kinds | assistant |
-| `render()`, its events, `update()`, `setView()`, `focus()`, `toSVG()`, `toPNG()`, themes | `embed.html`, `live.html` |
+| `render()`, its events, `update()`, `setView()`, `focus()`, `toSVG()`, `toPNG()`, themes | `embed.html` |
+| Marks over the map (`overlay()`): flow speed, glows, pulses, labels, tabs | `live.html`, `replay.html` |
+| Paths and reach lit (`paths()`, `reach()`, `highlight()`) | `ask.html`; every map on the site (the details panel's → and ←, or Shift-click a second card and ⇄) |
+| A view in sentences (`describe()`), a tour along any path (`tour()`) | `ask.html` |
+| A trace replayed (`replay()`, `otlpSpans()`) | `replay.html` |
 | Editing and undo (`editable`, `change`, `history()`) | `edit.html` |
 | `layout()` in Node | `layout.mjs` |
 | The model's JSON Schema (`"$schema"`), `validate()` and `check()` | every model (`"$schema"`), `playground.html` |
