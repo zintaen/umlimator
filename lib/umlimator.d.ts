@@ -13,6 +13,8 @@ export interface MapModel {
   rules?: Rule[];
   /** Narrated walk-throughs of the map (#69): handle.play(id), the standalone page's Stories menu, umlimator.py record. */
   stories?: Story[];
+  /** Saved ways to look at the map (#94): handle.lens(id), the standalone page's Lenses menu and #lens=<id>. */
+  lenses?: Lens[];
   [key: string]: unknown;
 }
 /** A badge: its text, and optionally a palette name for its colour (green, amber, rose, accent, violet ... : --um-<tone>). */
@@ -25,6 +27,8 @@ export interface MapNode {
   opensView?: string;
   /** The number on the ⤢ badge of a card whose view is not loaded yet (else ⤢ alone). A loaded view's cards are counted. */
   opensCount?: number;
+  /** Who owns the card (a team, say): selectors pick by it, and a lens with color 'owner' rings the card in its owner's tone. */
+  owner?: string;
   [key: string]: unknown;
 }
 /** What a line means, drawn as its colour: calls (the default), feeds (hands work on), triggers (suggests, offers, fires),
@@ -52,6 +56,10 @@ export interface MapEdge {
   change?: 'added' | 'removed' | 'changed';
   /** What drift() found: undrawn (traffic ran on it, nobody drew it) or idle (drawn, carried nothing). */
   drift?: 'undrawn' | 'idle';
+  /** Budgets (#95), which critical() sums along a path: how long the call takes, in ms, and what it costs, in any unit.
+   *  Not drawn. */
+  latency?: number;
+  cost?: number;
   [key: string]: unknown;
 }
 export interface MapView {
@@ -159,6 +167,11 @@ export interface Handle {
   /** The 'highlight' layer: these cards and lines lit, the rest dimmed (in place of the selection's dimming), or null to clear.
    *  A Ref's level (0 to 1), else its distance (as reach() gives it), fades it. A chip's or badge's Ref lights its card. */
   highlight(refs: Lit[] | null): void;
+  /** Puts one of the model's lenses on the map (#94), or none with null: the 'lens' layer lights what it picks and dims the
+   *  rest, on every view shown, and the view is not laid out again. With color 'owner', each lit card is ringed in its
+   *  owner's tone, and a legend over the controls names them. It stays across update() and setView(); a model without the
+   *  lens takes it off. False when the model has no lens `id`. */
+  lens(id: string | null): boolean;
   /** The tour dot rides the line between each pair of cards in turn (either way), through each card to its next line; a card
    *  it reaches flashes, and a pair with no line between them is skipped. Resolves true at the end, false when cut short (a
    *  new tour or replay, tour(null), a new picture of the view, destroy()). With reduced motion it resolves at once.
@@ -236,9 +249,16 @@ export interface CheckIssue { message: string; targets: Ref[] }
  *  it measures in the DOM (text overflowing its card, titles, edge labels on cards or each other). In Node, text widths
  *  are an estimate unless `measure` is given, so the layout, and what is found, can differ from a browser's. */
 export function check(model: MapModel, viewId: string, options?: { repair?: boolean; measure?: (text: string, px: number) => number; expand?: string[] }): CheckIssue[];
-/** Picks cards by id, kind (as the map draws it: "db" picks databases) or box (at any depth), each a value or a list;
- *  every key given must hold, and `not` turns a selector round. A line's end on a box is that box: in it, of no kind. */
-export interface Selector { id?: string | string[]; kind?: string | string[]; container?: string | string[]; not?: Selector }
+/** Picks cards by id, kind (as the map draws it: "db" picks databases), box (at any depth) or owner, each a value or a
+ *  list; every key given must hold, and `not` turns a selector round. A line's end on a box is that box: in it, of no kind
+ *  and no owner. */
+export interface Selector { id?: string | string[]; kind?: string | string[]; container?: string | string[]; owner?: string | string[]; not?: Selector }
+/** A lens's pick: a Selector, and `line`, line kinds. Without `line` it lights the cards it picks and the lines between two
+ *  of them; with `line`, the lines of those kinds between two cards the rest of it picks, and their ends. */
+export interface LensSelector extends Selector { line?: WireKind | WireKind[] }
+/** A saved way to look at the map (#94): what `pick` picks lit, the rest dimmed (a pick left out lights everything);
+ *  color 'owner' rings each lit card in its owner's tone, with a legend. */
+export interface Lens { id: string; title?: string; pick?: LensSelector; color?: 'owner' }
 /** What the model says must hold (`model.rules`): no line from the cards `from` picks to the cards `to` picks (a side left
  *  out picks every card), or, with noCycles, no boxes that reach each other through their lines (a line counts between
  *  the two boxes that hold its ends right under the box they share). A rule that names a box (a container, or a box's
@@ -258,6 +278,20 @@ export function reach(model: MapModel, viewId: string, from: string, options?: {
 export function describe(model: MapModel, viewId: string): string;
 /** The spans of an OpenTelemetry trace in OTLP JSON (resourceSpans), as replay() takes them. */
 export function otlpSpans(otlp: unknown): Span[];
+/** The path along a view's lines with the highest total of `by` (#95): latency (ms, the default) or cost, summed over its
+ *  lines (a line without one counts 0), from `from` to `to` (either left out: any card), never coming back to a card. Its
+ *  cards in order, then its lines, as Refs for highlight(); no refs and 0 when no line leads there. No browser needed. */
+export function critical(model: MapModel, viewId: string, options?: { from?: string; to?: string; by?: 'latency' | 'cost' }): { refs: Ref[]; total: number };
+/** What taking cards out of a view would cost (#95), with the model left as it is. unreachable: what loses its way to them
+ *  (backward, as reach() finds it: for calls, what depends on them), each with its distance from the nearest, the cards
+ *  themselves at 0; broken: the rules a model without them breaks, in every view. No browser needed. */
+export function whatIf(model: MapModel, viewId: string, options: { remove: string[] }): { unreachable: (Ref & { distance: number })[]; broken: RuleBreak[] };
+/** A trace kept as a numbered view (#96): `model` with a sequence view (render: "sequence") whose steps are the trace's calls
+ *  between cards (a span and its parent's), in time order, each line labelled with its span's name and its duration under
+ *  it. A span's service is a card as replay() matches it (match, else id, else label in any case); the caption names the
+ *  services with no card. The view (id `view`, default "trace") replaces one with that id, else comes last, under the
+ *  view that shows the most of its cards. The model passed in is not changed. */
+export function sequenceFromTrace(model: MapModel, spans: Span[], options?: { view?: string; match?: Record<string, string>; title?: string }): MapModel;
 /** What changed from one model to the next (#66), as one model to draw: `after`, with each card marked added, changed or
  *  removed (`change`: a NEW or CHANGED tab; REMOVED is faded, dashed and struck through) and each line likewise (`style`
  *  added or removed; a changed one `edited`); what left comes back in its views, boxes and places, and a card put into

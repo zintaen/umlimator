@@ -1,0 +1,101 @@
+<!doctype html>
+<!-- lenses on a map and in the standalone page (#94), the page's slowest and costliest paths and what-if (#95), and a
+     trace's numbered view drawn (#96): tests/embed.py opens this in headless Chrome and reads <pre id="result">. -->
+<meta charset="utf-8">
+<link rel="icon" href="data:,">
+<title>umlimator insight test</title>
+<body style="margin:0">
+<div id="a" style="width:1000px;height:700px"></div>
+<div id="page" style="width:1100px;height:700px"></div>
+<script type="module">
+import { render, mountPage } from '../lib/umlimator.js';
+const BIKE = await (await fetch('../examples/bike-share.json')).json();
+const out = { ok: [], fail: [] };
+const check = (name, cond, info) => { document.title = name; if (cond) out.ok.push(name); else out.fail.push(name + (info === undefined ? '' : ': ' + JSON.stringify(info))); };
+const until = async (f, ms = 5000) => { const t = Date.now(); while (!f() && Date.now() - t < ms) await new Promise(r => setTimeout(r, 20)); return f(); };
+try {
+  // handle.lens(): what a lens picks lit, the rest dimmed, the view as it was laid out
+  const el = document.getElementById('a'), h = render(el, BIKE, { view: 'trips' }), sr = el.querySelector('.umlimator').shadowRoot;
+  const card = id => sr.querySelector(`.node[data-id="${id}"]`), line = (a, b) => sr.querySelector(`.edge-g[data-from="${a}"][data-to="${b}"]`);
+  const places = () => [...sr.querySelectorAll('.node .n-mask')].map(r => [r.closest('.node').dataset.id, r.getAttribute('x'), r.getAttribute('y')]).join(' ');
+  const ringOf = id => { const r = card(id).querySelector('.n-mask'); return [...sr.querySelectorAll('.um-ring')].find(x => +x.getAttribute('x') === +r.getAttribute('x') - 5 && +x.getAttribute('y') === +r.getAttribute('y') - 5); };
+  const tone = id => ringOf(id) && ringOf(id).getAttribute('stroke'), legend = () => sr.querySelector('.um-lens');
+  const before = places();
+  check('lens() with a lens the model does not have: false, and nothing changes', h.lens('nope') === false && !sr.querySelector('[opacity]'));
+  check('lens("data"): true; the lines of the kinds it picks (state, feeds) and their ends lit, the rest dimmed', h.lens('data') === true
+    && !card('lifecycle').hasAttribute('opacity') && !card('tripsdb').hasAttribute('opacity') && !card('telemetry').hasAttribute('opacity')
+    && !line('trip-repo', 'tripsdb').hasAttribute('opacity') && !line('trip-events', 'telemetry').hasAttribute('opacity')
+    && card('rider-app').getAttribute('opacity') === '0.2' && card('pricing').getAttribute('opacity') === '0.2' && line('lifecycle', 'fare').getAttribute('opacity') === '0.2'
+    && sr.querySelector('.stage').classList.contains('um-lit') && !legend(), [...sr.querySelectorAll('.node[opacity]')].map(n => n.dataset.id));
+  check('…the view is not laid out again', places() === before);
+  check('lens("teams"): every card lit, each one with an owner ringed in its tone, the same tone for one owner', h.lens('teams') && !sr.querySelector('.node[opacity], .edge-g[opacity]')
+    && tone('trip-api') === 'var(--um-amber)' && tone('lifecycle') === 'var(--um-amber)' && tone('rider-app') === 'var(--um-cyan)' && tone('telemetry') === 'var(--um-violet)'
+    && !ringOf('payments') && !sr.querySelector('.stage').classList.contains('um-lit') && places() === before, ['trip-api', 'rider-app', 'telemetry', 'payments'].map(tone));
+  check('…and a legend over the controls names the view\'s owners with their tones', legend() && legend().closest('.mctl') && legend().getAttribute('aria-label') === 'By team'
+    && [...legend().querySelectorAll('span')].map(s => s.textContent).join() === 'Apps,Fleet,Rides' && legend().querySelector('i').style.borderColor === 'var(--um-cyan)', legend() && legend().textContent);
+  h.setView('system'); await until(() => h.view === 'system');
+  check('the lens stays on another view: its owners, Platform too', tone('monitoring') === 'var(--um-green)' && tone('trips') === 'var(--um-amber)' && /Platform/.test(legend().textContent));
+  const file = h.toSVG({ view: 'trips' });
+  check('toSVG() of another view draws the lens as it lights that view: its 11 cards with an owner', (file.match(/class="um-ring"/g) || []).length === 11, (file.match(/class="um-ring"/g) || []).length);
+  h.update({ ...BIKE, lenses: [{ id: 'teams', title: 'Teams', color: 'owner' }] });
+  check('update() with the lens changed redraws it, the picture kept', legend() && legend().getAttribute('aria-label') === 'Teams');
+  h.update({ ...BIKE, lenses: [] });
+  check('update() with a model that has no such lens takes it off', !legend() && !sr.querySelector('.um-ring'));
+  h.update(BIKE);
+  check('lens(null): no lens', h.lens('data') && h.lens(null) === true && !sr.querySelector('[opacity], .um-ring') && !legend());
+  h.destroy();
+
+  // the standalone page: a link's lens, the Lenses menu, back and forward
+  history.replaceState(null, '', '#view=trips&lens=teams');
+  const pg = mountPage(document.getElementById('page'), BIKE, { instant: true });
+  await until(() => document.querySelector('#m-canvas .umlimator') && pg.view === 'trips');
+  const psr = document.querySelector('#m-canvas .umlimator').shadowRoot, pcard = id => psr.querySelector(`.node[data-id="${id}"]`), $ = id => document.getElementById(id);
+  const hint = () => $('m-hint').textContent, pressed = () => [...document.querySelectorAll('#m-lenses-pop [aria-pressed="true"]')].map(b => b.dataset.lens);
+  await until(() => psr.querySelector('.um-lens'));
+  check("a page's link with #lens=teams opens with the lens on, named on the Lenses menu's button", psr.querySelector('.um-lens') && $('m-lenses').textContent === '◎ By team'
+    && pressed().join() === 'teams' && /lens=teams/.test(location.hash), [$('m-lenses') && $('m-lenses').textContent, location.hash]);
+  $('m-lenses').click();
+  check('the Lenses menu lists the model\'s lenses, and No lens', !$('m-lenses-pop').hidden && [...$('m-lenses-pop').querySelectorAll('button')].map(b => b.textContent).join() === 'By team,Data flow,No lens');
+  $('m-lenses-pop').querySelector('[data-lens="data"]').click();
+  check('…picking one puts it on: the button, the link and the hint say so', $('m-lenses-pop').hidden && $('m-lenses').textContent === '◎ Data flow' && pressed().join() === 'data'
+    && /lens=data/.test(location.hash) && hint() === 'Lens: Data flow' && pcard('rider-app').getAttribute('opacity') === '0.2' && !psr.querySelector('.um-lens'), [location.hash, hint()]);
+  $('m-lenses').click(); $('m-lenses-pop').querySelector('[data-lens=""]').click();
+  check('…No lens takes it off, and out of the link', !/lens=/.test(location.hash) && !pcard('rider-app').hasAttribute('opacity') && $('m-lenses').textContent === '◎ Lenses' && pressed().join() === '', location.hash);
+  history.pushState(null, '', '#view=trips&lens=data'); dispatchEvent(new PopStateEvent('popstate'));
+  check('…back and forward bring the link\'s lens', $('m-lenses').textContent === '◎ Data flow' && pcard('rider-app').getAttribute('opacity') === '0.2');
+  $('m-lenses').click(); $('m-lenses-pop').querySelector('[data-lens=""]').click();
+
+  // the slowest and the costliest path, from the selected card or between two (#95)
+  pg.select({ type: 'node', id: 'rider-app' }); await until(() => !$('m-panel').hidden);
+  const lit = k => document.querySelector(`#m-panel [data-lit="${k}"]`), tab = s => [...psr.querySelectorAll('.um-marks text')].some(t => t.textContent === s);
+  check('a view whose lines have budgets offers the slowest and the costliest path, and what-if', !!lit('latency') && !!lit('cost') && lit('down').getAttribute('aria-label') === 'What if this goes down?');
+  lit('latency').click();
+  check('⏱ lights the slowest path from the card, its total in the hint and on its last card', hint() === 'The slowest path: Rider app → Trip API → Trip lifecycle → Fare calculator → Payment provider, 585 ms'
+    && !pcard('payments').hasAttribute('opacity') && pcard('unlock').getAttribute('opacity') === '0.2' && tab('585 ms') && pcard('payments').getAttribute('aria-description') === '585 ms', hint());
+  lit('cost').click();
+  check('¤ lights the costliest one', hint() === 'The costliest path: Rider app → Trip API → Trip lifecycle → Fare calculator → Payment provider, cost 30' && tab('cost 30') && !tab('585 ms'), hint());
+  pcard('stations').dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true, shiftKey: true })); await until(() => lit('paths'));
+  check('…a new selection clears it', !psr.querySelector('.node[opacity]') && !tab('cost 30'));
+  lit('latency').click();
+  check('with two cards selected, the slowest path between them', hint() === 'The slowest path: Rider app → Trip API → Unlock coordinator → Docking stations, 535 ms' && tab('535 ms'), hint());
+  lit('latency').click();
+  check('…the same button again clears it', hint() === 'Highlight cleared' && !psr.querySelector('.node[opacity]') && !tab('535 ms'));
+
+  // what if a card goes down (#95)
+  pg.select({ type: 'node', id: 'pricing' }); await until(() => $('m-panel').dataset.node === 'pricing');
+  lit('down').click();
+  const ring = psr.querySelector('.um-rings .um-ring');
+  check('⊘ (What if this goes down?) lights what loses its way to the card, and marks it down, without editing the model', hint() === 'If Pricing goes down: 4 cards lose their way to it; no rule breaks'
+    && pcard('fare').getAttribute('opacity') === '0.85' && pcard('unlock').getAttribute('opacity') === '0.2' && tab('down') && ring && ring.getAttribute('stroke') === 'var(--um-rose)', hint());
+  pg.setView('system'); await until(() => pg.view === 'system');
+  pg.select({ type: 'node', id: 'trips' }); await until(() => $('m-panel').dataset.node === 'trips');
+  check('a view whose lines have no budgets offers no slowest path', !lit('latency') && !lit('cost') && !!lit('down'));
+
+  // a trace kept as a numbered view (#96): bike-share's ride-end, made by umlimator.py trace
+  pg.setView('ride-end'); await until(() => pg.view === 'ride-end');
+  const steps = [...psr.querySelectorAll('.e-step-tx')].map(t => t.textContent), subs = [...psr.querySelectorAll('.e-sub')].map(t => t.textContent);
+  check("the trace's view draws its calls as numbered steps, each with its duration", steps.join() === '1,2,3,4,5,6,7,8' && subs.includes('200 ms') && subs.includes('26 ms')
+    && /8 steps/.test($('m-vpill').textContent), [steps, subs]);
+} catch (e) { out.fail.push('threw: ' + (e && e.stack || e)); }
+const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
+</script>

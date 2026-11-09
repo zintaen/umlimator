@@ -71,7 +71,7 @@ test('drift() brings in the lines traffic ran on but nobody drew, fades the draw
     { parent: 'cdn', child: 'rider-app', callCount: 40 },               // no card for cdn
   ] };
   const r = drift(bike, seen, { match: { 'trip-service': 'trips', 'fleet-service': 'fleet', 'trips-db': 'tripsdb' } });
-  assert.deepEqual(r.counts, { carried: 2, undrawn: 1, idle: 3, unknown: 35, unmatched: ['cdn'] });
+  assert.deepEqual(r.counts, { carried: 2, undrawn: 1, idle: 3, unknown: 43, unmatched: ['cdn'] }); // 40 model lines, and the 8 of the trace's view (#96)
   const came = r.model.edges.filter(e => e.drift === 'undrawn'), idle = r.model.edges.filter(e => e.drift === 'idle').map(e => e.id);
   assert.deepEqual(came, [{ id: 'drift:ops-console->tripsdb', from: 'ops-console', to: 'tripsdb', label: 'not drawn', sublabel: '1,500 calls', style: 'security', drift: 'undrawn' }]);
   assert.deepEqual(idle, ['s8', 's12', 's17']); // trips→tripsdb and fleet→ops-console: both ends had traffic, these lines none

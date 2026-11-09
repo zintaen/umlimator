@@ -12,6 +12,7 @@ tests/change.html: update() easing into the next model, and diff()'s and drift()
 tests/unfold.html: unfolding a stacked card in place (#71): the handle, E and Alt + click, the expand event.
 tests/unfold-page.html: the same in the standalone page (mountPage): its details button, E from the page.
 tests/stories.html: play() and its caption bar, keys and events; the standalone page's Stories menu, story links and recording.
+tests/insight.html: lenses on a map and in the page (#94), the page's slowest path and what-if (#95), a trace's numbered view (#96).
 examples/edit.html, embed.html, live.html, playground.html, ask.html, replay.html, timelapse.html, drift.html: the host pages load and draw.
 Each test page reports in <pre id="result">{"ok": [...], "fail": [...]}</pre>.
 """
@@ -60,7 +61,7 @@ def dom(path, done):
 
 
 failed = False
-for page in ("tests/embed.html", "tests/edit.html", "tests/contrast.html", "tests/rules.html", "tests/marks.html", "tests/change.html", "tests/unfold.html", "tests/unfold-page.html", "tests/stories.html"):
+for page in ("tests/embed.html", "tests/edit.html", "tests/contrast.html", "tests/rules.html", "tests/marks.html", "tests/change.html", "tests/unfold.html", "tests/unfold-page.html", "tests/stories.html", "tests/insight.html"):
     t = dom(page, lambda t: 'id="result"' in t)
     if "<title>" not in t:  # Chrome gave back no page at all (a rare headless hang on CI runners): once more
         print(f"note {page}: Chrome returned nothing; running it again"); t = dom(page, lambda t: 'id="result"' in t)
