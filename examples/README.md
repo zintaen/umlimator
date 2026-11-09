@@ -88,5 +88,6 @@ The module embedded in a page, as an app would use it. Serve the repository over
 | The map against the traffic seen (`drift()`), and the line style `faded` | `drift.html`; the CLI's `drift` |
 | A diagram you have already, as a model (`umlimator.py import`): Structurizr DSL, C4-PlantUML, Mermaid, compose or Kubernetes JSON | clinic, imported from [`clinic.dsl`](clinic.dsl) (CI imports it again and fails if the model differs); [`tests/import/`](../tests/import/): a sample of each other format, which CI imports, renders and checks (`tests/import.py`, with clinic's source too) |
 | Structurizr groups as boxes, nested as the source nests them | clinic `containers` (Apps, inside Clinic bookings) and `api-components` |
+| An AI assistant reading a map and driving its page (an MCP server: `umlimator.py mcp`) | any model: `python3 umlimator.py mcp examples/bike-share.json`, as `tests/cli.py` runs it |
 
 Not shown: `repair: false`, a switch for debugging the router.
