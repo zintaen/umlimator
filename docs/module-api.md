@@ -780,6 +780,30 @@ A stacked card can open into a box on the map it is on, instead of switching to 
 
 ## 0.12.1: fixes
 
+### A line from a card's top into another's top, on the top row, runs straight (#80)
+
+- **The router kept the dearest way into a line's end.** It looks for a route that comes into the end the way its port
+  faces; when there was none, it kept the last way in it found, which is the dearest. A line between the tops of two
+  cards on the top row can't come in from above (the router has no track there), so bike-share's "updates docks" ran
+  past Fleet store and back. Now the router keeps the cheapest way in, the first it finds: the line goes up, across and
+  down (1.17 → 1.03 times its direct route). A line that can come in head-on is routed as before.
+- **The CLI's page drew it straight** because its layout search (`optimize`, baked into the page) moved Fleet store a row
+  down, where the line could come in from above. `render()` and `layout()` try four layouts at most, and none moved it.
+  The search now keeps Fleet store level, as `render()` does.
+- **Bench:** the six views with such a line move. Each such line takes its cheapest way in; a line routed after one may
+  lose its track and go round (b10/overview's Reports 7 → Inventory 9, 238 → 1,399 px), and b10/norepair keeps another
+  of the layouts `render()` tries. Layout-check issues and line length, 0.12.0 → 0.12.1:
+
+  | View | Issues | Line length |
+  |---|---|---|
+  | b10/overview | 4 → 3 | 4,957 → 5,735 |
+  | b10/norepair | 6 → 5 | 6,393 → 5,941 |
+  | b26/overview | 94 → 96 | 40,204 → 39,998 |
+  | b69/overview | 237 → 231 | 132,668 → 132,307 |
+  | d24/boxed | 27 → 30 | 19,093 → 19,626 |
+  | m50/overview | 279 → 266 | 136,374 → 138,245 |
+  | **All bench views** | **722 → 706** | **445,633 → 447,796 (+0.5%)** |
+
 ### Overlay labels keep off their neighbours (#81)
 
 - **A line's `label` pill takes the first place where it covers no card, box title or tab, line label or other pill:**
@@ -802,6 +826,17 @@ A stacked card can open into a box on the map it is on, instead of switching to 
 - **Limit:** the ride is spread over the whole step, so the dot doesn't keep the live map's speed.
 - **Test:** `tests/embed.py`'s `record` check wants 2 to 6 frames for a step with a tour, each a different picture, with
   delays that add up to the step's duration, and one frame for any other step.
+
+### A card is wide enough for its chips (#84)
+
+- **A card's width counts its chips** (`verbs`) as it counts its name and its sub-line, up to 386 px. It counted only
+  those, so in a wide font (Verdana) a card's chips ran past its text, a long first chip past its right edge, and most
+  of them hid behind "+N": assistant's four cards with chips showed one each. Now they show all of them.
+- **A chip with no room still ends in "+N", and so does the first one.** The first chip was drawn whole, however wide;
+  a verb wider than any card is now "+1", named by its verb.
+- **The page's check reports a chip whose pill runs past its card** (`umlimator.py check`). It checked only a chip's
+  text.
+- Only cards with chips move: of the examples, assistant's four. No bench view has chips.
 
 ### The legend check waits for the legend (#85)
 
