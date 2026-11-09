@@ -450,7 +450,28 @@ another three. Auto-layout now lays those out as it does lines between neighbour
   tries: b10 54 → 90 ms, b69/back 62 → 155 ms, r19/plain 52 → 267 ms in Node. Larger ones take about as long or less:
   b69/overview 2.97 → 1.95 s, b26 0.52 → 0.39 s, m50 1.36 → 1.46 s.
 
-## 0.12.0: a model schema, validate(), check() and a playground
+## 0.12.0: paths, overlays, trace replay, diffs, time-lapse, drift, stories, rules, unfolding in place, and a model schema
+
+Everything since 0.11.0, in one release:
+
+- **Exploring a map, and live data on it** (#62 to #65): `overlay()` marks cards and lines without touching the model;
+  `highlight()`, `tour()`, `paths()`, `reach()` and `describe()` light, play and put a view in words; `replay()` plays an
+  OpenTelemetry trace (`otlpSpans()`) along the lines.
+- **Change** (#66 to #68): `diff()` marks what changed between two models, and a GitHub Action posts it on pull
+  requests; a time-lapse of a model's git history; `drift()`, the map against the traffic seen.
+- **Stories** (#69): narrated walk-throughs, played on the map or from the page's Stories menu, recorded from the page,
+  and written as animated PNGs by `umlimator.py record`.
+- **Rules** (#70): what the model says must hold, marked on the map where it breaks; `umlimator.py check` fails on a
+  broken rule. `check()` now names exactly the cards, lines and boxes an issue is about (#61).
+- **Unfolding in place** (#71): a stacked card opens into a box on the same map, its neighbours around it.
+- **A model schema, `validate()`, `check()` and a playground** (#59).
+
+Nothing is removed. Two defaults change for a host that upgrades:
+- `update()` eases into the next model: moved cards glide, new ones fade in, removed ones fade out. `ease: false` draws
+  it at once, as reduced motion does.
+- `umlimator.py check` exits 1 when the model breaks one of its own `rules`. A model without rules checks as before.
+
+### A model schema, validate(), check() and a playground (#59)
 
 - **A JSON Schema for the model**, `lib/umlimator.schema.json`, exported as `umlimator/schema.json`. It covers every
   field `render()`, `layout()` and the standalone page read, with a description each, enums for line kinds, weights, sides,

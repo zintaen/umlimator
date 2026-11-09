@@ -1,6 +1,6 @@
 {
   "name": "umlimator",
-  "version": "0.11.0",
+  "version": "0.12.0",
   "description": "Embeddable, layered architecture maps: layout, orthogonal routing and an interactive canvas in one ES module.",
   "keywords": ["architecture", "diagram", "c4", "map", "svg", "layout", "orthogonal-routing", "drill-down"],
   "homepage": "https://zintaen.github.io/umlimator/",
