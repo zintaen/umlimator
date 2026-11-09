@@ -47,7 +47,7 @@ drill-down, a data pipeline, an AI agent's skills, and host pages for embedding,
 npm install umlimator
 ```
 
-Or from GitHub, at a tag or any commit: `"umlimator": "github:zintaen/umlimator#v0.12.0"`. npm 12 refuses git
+Or from GitHub, at a tag or any commit: `"umlimator": "github:zintaen/umlimator#v0.12.1"`. npm 12 refuses git
 dependencies unless the project opts in, so that also needs `allow-git=root` in the `.npmrc` next to `package.json`.
 
 ## Embed
@@ -143,7 +143,7 @@ python3 umlimator.py diff --base origin/main --out diff/              # every mo
 python3 umlimator.py drift model.json traffic.json --out drift.html   # drawn vs. seen (a Jaeger or Tempo dependency list)
 python3 umlimator.py timelapse model.json --out history.html          # the model's versions in git history, on a slider
 python3 umlimator.py check page.html --expand                          # also each view with each stacked card unfolded
-python3 umlimator.py record bike-share.html --story ride --out ride.png   # bike-share's story as an animated PNG, a frame per step
+python3 umlimator.py record bike-share.html --story ride --out ride.png   # bike-share's story as an animated PNG, its tours riding
 python3 umlimator.py mcp model.json                                    # an MCP server over stdio, for an AI assistant (below)
 ```
 
@@ -175,7 +175,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: zintaen/umlimator@v0.12.0
+      - uses: zintaen/umlimator@v0.12.1
         with:
           models: "docs/*.json"   # optional: where the models are (default: every .json that is a map model)
 ```
