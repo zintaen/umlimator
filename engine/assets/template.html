@@ -396,7 +396,7 @@ if (Q.get('reader')) [...(D.nodes || []), ...(D.views || []).flatMap(v => Object
   if (n.badge) { const b = clean(n.badge); if (b) n.badge = b; else delete n.badge; }
   if (Array.isArray(n.badges)) n.badges = n.badges.map(b => b && typeof b === 'object' ? { ...b, text: clean(b.text) } : clean(b)).filter(b => b && (typeof b !== 'object' || b.text)); });
 if (Q.get('theme')) document.documentElement.dataset.theme = Q.get('theme');
-INSTANT = !!(Q.get('shot') || Q.get('check') || Q.get('still'));
+INSTANT = !!(Q.get('shot') || Q.get('check') || Q.get('still') || Q.get('pdf'));
 const errors = []; addEventListener('error', e => errors.push(String(e.message || e)));
 document.adoptedStyleSheets = [...document.adoptedStyleSheets, sheet()];
 const app = document.getElementById('app');

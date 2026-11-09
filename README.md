@@ -31,7 +31,10 @@ drill-down, a data pipeline, an AI agent's skills, and host pages for embedding,
 - **Keyboard and screen readers**: cards, then lines, in the Tab order (a card's tabs and chips too, for a host that
   listens for click); arrows between cards; selections announced.
 - **Editing** (opt-in): gestures emit `change` events; the host applies them and calls `update()`.
-- **Export**: any view as a stand-alone SVG or PNG, in the browser or from the CLI.
+- **Export**: any view as a stand-alone SVG or PNG, in the browser or from the CLI; the whole map as one PDF, each view
+  with its text, then the legend and the rules (`umlimator.py pdf`).
+- **In docs**: `<umlimator-map src="model.json">` in any page, and an `umlimator` fenced block in VitePress, Docusaurus,
+  MkDocs or any Markdown that allows HTML.
 - **A layout check**: crossings, shared lines, detours, labels on lines, text that overflows its card.
 - **Rules**: what the model says must hold ("apps never call a database directly", "no cycles between teams' boxes"),
   marked on the map where it breaks; `umlimator.py check` fails on a broken rule, so CI does.
@@ -94,6 +97,49 @@ function MapView({ model, onSelect }) {
 
 The API, its types and the decisions behind it: [docs/module-api.md](docs/module-api.md) and `lib/umlimator.d.ts`.
 
+### In a page or a docs site, as an element
+
+`<umlimator-map>` (`umlimator/element`) loads a model and draws it, with no script of your own. Its children show until
+the map is drawn, and stay where scripts don't run ([`examples/element.html`](examples/element.html)):
+
+```html
+<link rel="stylesheet" href="node_modules/umlimator/lib/umlimator-theme.css">
+<script type="module" src="node_modules/umlimator/lib/umlimator-element.js"></script>
+
+<umlimator-map src="bookshop.json" view="api" minimap height="520">
+  <img src="stills/api.png" alt="An order, step by step">
+</umlimator-map>
+```
+
+- **The model**: `src`, a URL resolved as an `<img>`'s is (a `data:` URL too), or the model in a child
+  `<script type="application/json">`.
+- **Attributes**: `view`, `minimap`, `controls="false"`, `height` (a number is pixels; 480 by default, or size it in CSS)
+  and `theme` (`light` or `dark`: theme.css's palette for that map, whatever the page's). Changing one draws the map
+  again, and removing the element destroys it.
+- **Events**: `umlimator:select`, `umlimator:open` (cancel it to stay) and `umlimator:viewchange`, the map's event as
+  `detail`; `load` once it is drawn, `error` when it can't be. `el.map` is the `render()` handle.
+- **Colours**: theme.css, as above, or your own `--um-*` variables. The element fetches nothing but its model.
+
+In a docs site, a fenced block becomes the element. It names the model's `src`, with `view` or any other attribute, or
+holds the model in JSON:
+
+````markdown
+```umlimator
+src: /maps/bookshop.json
+view: api
+```
+````
+
+- **VitePress**: in `.vitepress/config`, `markdown: { config: md => md.use(umlimator) }` (`import umlimator from
+  'umlimator/markdown-it'`) and `vue: { template: { compilerOptions: { isCustomElement: t => t === 'umlimator-map' } } }`;
+  in `.vitepress/theme/index`, `import 'umlimator/element'` and `import 'umlimator/theme.css'`.
+- **Docusaurus**: `remarkPlugins: [umlimator]` (`import umlimator from 'umlimator/remark'`) in the docs preset's options,
+  and a client module (`clientModules: ['./src/umlimator.js']`) that imports `umlimator/element` and
+  `umlimator/theme.css`.
+- **MkDocs, or any site that allows HTML**: write the element itself in the Markdown. Copy `lib/umlimator.js`,
+  `lib/umlimator-element.js` and `lib/umlimator-theme.css` into `docs/js/`, and load them in `mkdocs.yml`:
+  `extra_javascript: [{ path: js/umlimator-element.js, type: module }]` and `extra_css: [js/umlimator-theme.css]`.
+
 ## Model
 
 A model has shared `nodes` and `edges`, and `views` that each show a subset, with optional `containers` (boxes),
@@ -141,15 +187,21 @@ python3 umlimator.py drift model.json traffic.json --out drift.html   # drawn vs
 python3 umlimator.py timelapse model.json --out history.html          # the model's versions in git history, on a slider
 python3 umlimator.py check page.html --expand                          # also each view with each stacked card unfolded
 python3 umlimator.py record bike-share.html --story ride --out ride.png   # bike-share's story as an animated PNG, a frame per step
+python3 umlimator.py pdf page.html --out map.pdf                       # every view in one PDF, with its text, the legend, the rules
 ```
 
 `check` also reports each rule the model breaks, and then exits 1.
 
+`pdf` prints the map through Chrome's own print, A4 across: a title page, then each view on a page of its own, as a
+vector picture with its `describe()` text, then the legend and each rule, holding or broken
+([bike-share's](https://zintaen.github.io/umlimator/examples/bike-share.pdf), as CI builds it). It takes `--views` and
+`--theme`, as `stills` does.
+
 The page has breadcrumbs, a details panel per card, ⌘K search, deep links (`#view=<id>&node=<id>`, and
 `#story=<id>&step=<n>` for a story's step), stories, and export.
 `stills` skips a view whose inputs have not changed since its last export (`--all` exports every view). Needs Python
-3.9+ (standard library only), Google Chrome or Chromium for `stills`, `check` and `record`, and Node 18+ for `diff`
-and `drift`.
+3.9+ (standard library only), Google Chrome or Chromium for `stills`, `check`, `record` and `pdf`, and Node 18+ for
+`diff` and `drift`.
 
 `record` writes an animated PNG, which browsers and GitHub show as it is. For a GIF or an MP4 (for chat or slides),
 convert it with ffmpeg:
@@ -207,7 +259,7 @@ python3 umlimator.py pin-icons                                # records each new
 
 ```bash
 node --test                 # layout() in Node: the bench views' geometry and the layout rules
-python3 tests/embed.py      # render() in headless Chrome: events, keyboard, colours, contrast, editing
+python3 tests/embed.py      # render() in headless Chrome: events, keyboard, colours, contrast, editing, the element
 python3 bench/bench.py --check-determinism --expect bench/expected.json --max-ms m50=2000
 ```
 
@@ -223,9 +275,9 @@ Release with that section as its notes, and publishes the package to npm (truste
 CI also publishes the examples to GitHub Pages from `main`.
 
 ```
-umlimator.py                 CLI: render, stills, check, record, pin-icons, diff, drift, timelapse
+umlimator.py                 CLI: render, stills, check, record, pdf, pin-icons, diff, drift, timelapse
 action.yml                   the diff Action: what a pull request changes in its maps, posted on it
-lib/                         the module (umlimator.js), its types and the default theme
+lib/                         the module (umlimator.js), its types, the default theme, <umlimator-map> and the docs plugins
 engine/                      the page templates the CLI inlines the module into; the upstream renderer and schema
 docs/                        the module's API and the editing design
 tests/, bench/               tests, benchmark models and results
