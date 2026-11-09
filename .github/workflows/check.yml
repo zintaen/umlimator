@@ -34,6 +34,16 @@ jobs:
       - name: render() embedded in a plain page reports its events and follows update() and destroy()
         run: python3 tests/embed.py
 
+      - name: The CLI's diff, drift and timelapse write their pages, and diff --base a pull request's summary
+        run: python3 tests/cli.py
+
+      - name: The diff Action pictures what a pull request changes in the example models (a dry run, without a comment)
+        if: github.event_name == 'pull_request'
+        uses: ./
+        with:
+          models: examples/*.json
+          comment: false
+
       - name: Upstream changed a copied file since its pin (a warning, time to sync)
         env:
           GH_TOKEN: ${{ github.token }}
@@ -76,7 +86,7 @@ jobs:
           for m in examples/*.json; do
             n=$(basename "$m" .json); [ "$n" = bookshop ] && continue   # checked above, with its committed page
             python3 umlimator.py render "$m" --out "/tmp/$n.html" --no-check
-            python3 umlimator.py check "/tmp/$n.html" > "/tmp/$n.json"
+            python3 umlimator.py check "/tmp/$n.html" --expand > "/tmp/$n.json"   # every view, and again with each stacked card unfolded in place (#71)
             python3 -I -c "import json, sys; s = open(sys.argv[1]).read(); d = json.loads(s[s.find('{'):]); assert d['checked'] and not d['problems'] and not d['errors'], (sys.argv[1], d['problems'], d['errors'])" "/tmp/$n.json"
           done
           node examples/layout.mjs

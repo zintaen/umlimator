@@ -637,15 +637,17 @@ document.getElementById('theme').addEventListener('click', toggleTheme);
 }
 /* #bench=1&views=a,b&runs=5[&optimize=1] (bench/bench.py): lane planning and layout per view with fresh caches, and a hash of the geometry */
 function benchView(ctx, vid, runs, opt) {
-  const { V, N, planCache, layoutCache, planOf, buildGeo, optimize } = ctx, out = [];
+  const [v0, ...cards] = vid.split('+'), t = performance.now(); // "view+card+card": the view with those cards unfolded in place (#71)
+  if (cards.length) { ctx = mapContext(D, { kinds: true, expand: { [v0]: cards } }); vid = v0; }
+  const unfold = performance.now() - t, { V, N, planCache, layoutCache, planOf, buildGeo, optimize } = ctx, out = []; let last = null;
   for (let i = 0; i < runs; i++) {
     delete planCache[vid]; delete layoutCache[vid];
-    const t0 = performance.now(); planOf(vid); const t1 = performance.now(), g = buildGeo(vid), t2 = performance.now();
+    const t0 = performance.now(); planOf(vid); const t1 = performance.now(), g = last = buildGeo(vid), t2 = performance.now();
     const sig = JSON.stringify([g.nodes.map(n => [n.id, n.x, n.y, n.w, n.h]), g.edges.map(e => [e.from, e.to, e.pts, e.lbl ? [e.lbl.x, e.lbl.y] : null])]);
     let h = 2166136261; for (let k = 0; k < sig.length; k++) h = Math.imul(h ^ sig.charCodeAt(k), 16777619) >>> 0;
     out.push({ plan: t1 - t0, geo: t2 - t1, ...g.ms, issues: routeAudit(g, '').length, cross: g.stats.cross || 0, fallback: g.stats.fallback || 0, hash: h.toString(16) });
   }
-  const r = { runs: out, nodes: (V[vid].nodeIds || []).filter(i => N[i]).length };
+  const r = { runs: out, nodes: (V[vid].nodeIds || []).filter(i => N[i]).length, ...(cards.length ? { unfold, edges: last.edges.length } : {}) };
   if (opt && !V[vid].layout && !planOf(vid).hub) { delete layoutCache[vid]; const t = performance.now(), o = optimize(vid); r.optimize = { ms: performance.now() - t, evals: o.evals, score: o.score }; }
   return r;
 }
@@ -665,10 +667,15 @@ function mapAudit(approx) {
   const only = (Q.get('views') || '').split(',').filter(Boolean), want = v => !only.length || only.some(p => p.endsWith('*') ? v.id.startsWith(p.slice(0, -1)) : v.id === p);
   views.forEach(v => { if (!want(v) || !(v.nodeIds || []).some(i => N[i])) return; const { g, markup } = buildView(v.id, { tour: !Q.get('still'), openHint: !Q.get('reader') }); root.innerHTML = markup; out.push(...auditSvg(root.firstElementChild, g, 'view ' + v.id)); Object.entries(g.stats || {}).forEach(([k, n]) => { routes[k] = (routes[k] || 0) + n; });
     g.edges.filter(e => e.how === 'fallback').forEach(e => (routes.fallbackEdges ||= []).push(`${v.id}: ${e.from}(${e.fs})→${e.to}(${e.ts})`)); });
+  let unfolded = 0; // &expand=1: each view again with each card that unfolds in place (#71) unfolded, one at a time
+  if (Q.get('expand')) views.forEach(v => { if (!want(v)) return; (v.nodeIds || []).filter(i => ctx.unfoldable(i, v.id)).forEach(nid => {
+    const c2 = mapContext(D, { measure: hostMeasure(document.documentElement), kinds: true, expand: { [v.id]: [nid] } }); c2.planOf(v.id);
+    const { g, markup } = c2.buildView(v.id, { tour: !Q.get('still'), openHint: !Q.get('reader') }); root.innerHTML = markup; out.push(...auditSvg(root.firstElementChild, g, `view ${v.id} with ${nid} unfolded`)); unfolded++; }); });
+  out.push(...rules(D).filter(r => views.some(v => v.id === r.view && want(v))).map(r => r.message)); // a rule the model breaks (#70): umlimator.py check fails on it
   host.remove();
   const deep = views.filter(v => v.parent).sort((a, b) => chain(b.id).length - chain(a.id).length || (b.nodeIds || []).length - (a.nodeIds || []).length)[0];
   const laneView = laneReport['super-build'] ? 'super-build' : Object.keys(laneReport)[0] || null;
-  return { overlaps: out, routes, layouts, lanes: laneReport, checked: views.filter(want).length + ' views', childView: deep ? deep.id : null, laneView };
+  return { overlaps: out, routes, layouts, lanes: laneReport, checked: views.filter(want).length + ' views' + (Q.get('expand') ? `, and ${unfolded} with a card unfolded` : ''), childView: deep ? deep.id : null, laneView };
 }
 
 let mapCtx = null;

@@ -15,6 +15,8 @@ drill-down, a data pipeline, an AI agent's skills, and host pages for embedding,
 
 - **Layers**: a view per level (system, containers, components, flows). A stacked card opens its inner view, which the
   host may load only when asked.
+- **Unfolding in place**: a stacked card can also open into a box on the map it is on (E, or Alt + click), its inner
+  view's cards inside and the lines to it moved onto them, the rest of the picture in its order.
 - **Layout and routing**: columns in reading order, each ordered so the lines cross as little as they can, those that
   skip columns included; each card level with the cards its lines come from, so lines run straight; orthogonal lines
   that never run through a card, room for every label, containers kept apart, and cards with no lines in a row of their
@@ -31,6 +33,10 @@ drill-down, a data pipeline, an AI agent's skills, and host pages for embedding,
 - **Editing** (opt-in): gestures emit `change` events; the host applies them and calls `update()`.
 - **Export**: any view as a stand-alone SVG or PNG, in the browser or from the CLI.
 - **A layout check**: crossings, shared lines, detours, labels on lines, text that overflows its card.
+- **Rules**: what the model says must hold ("apps never call a database directly", "no cycles between teams' boxes"),
+  marked on the map where it breaks; `umlimator.py check` fails on a broken rule, so CI does.
+- **Change**: what a pull request changes, marked on the map and said in words (with a GitHub Action that posts it);
+  a time-lapse of a model's history, where cards glide, fade in and fade out; and drift, the map against the traffic seen.
 
 ## Install
 
@@ -69,14 +75,21 @@ function MapView({ model, onSelect }) {
 ```
 
 - `render` draws one view at a time into a shadow root (give the element a height), with pan, zoom and drill-down.
-  Events (`click`, `select`, `open`, `viewchange`, `change`) name what they are about by ids from the model.
+  Events (`click`, `select`, `open`, `viewchange`, `change`, `expand`) name what they are about by ids from the model.
+- `map.expand(id)` unfolds a stacked card in place and `map.collapse(id)` folds it; `layout(model, view, { expand })`
+  draws the same in Node.
 - Colours are `--um-*` CSS variables, fonts are the host's (`--um-sans`, `--um-mono`), text is measured in that font,
   and nothing is fetched.
 - `layout(model, viewId)` returns a view's geometry without a DOM, in Node too; `check(model, viewId)` runs the layout
-  check on it, and `validate(model)` finds dangling or repeated ids before anything is drawn.
+  check on it, and `validate(model)` finds dangling or repeated ids before anything is drawn. `rules(model)` lists every
+  rule the model breaks, view by view.
 - `map.overlay(name, layer)`, `highlight(refs)`, `tour(path)` and `replay(spans)` put the host's marks, a tour and a
   trace on the map; `paths()`, `reach()` and `describe()` walk a view and put it in words, in Node too.
 - `editable: true` turns on editing gestures ([docs/editing.md](docs/editing.md); `examples/edit.html` is a working host).
+- `diff(before, after)` returns `after` with each card and line marked added, changed or removed, what changed in words,
+  and the views that show it; `drift(model, observed)` marks the lines traffic ran on that nobody drew, and the drawn ones
+  that carried nothing. Both are models to draw, in Node too. `update()` eases into the next model (`examples/timelapse.html`);
+  the option `ease: false` draws it at once.
 - `mountPage` is the whole standalone viewer that the CLI writes.
 
 The API, its types and the decisions behind it: [docs/module-api.md](docs/module-api.md) and `lib/umlimator.d.ts`.
@@ -104,12 +117,15 @@ kinds such as `public`, `lane`, `script`, `hook` and `board` work too). Fields b
 | edge | `sublabel` | a second, smaller line under the label |
 | edge | `fromSide`, `toSide` | the card sides the line uses |
 | edge | `from`, `to` | may name a container of the view: the line ends on its box |
+| edge | `style: "faded"` | the line in its kind's colour, faint and with no flow (drift's idle lines) |
+| edge | `drift` | what `drift()` found: `undrawn` or `idle` |
 | view | `gap`, `rgap` | the space between columns and between rows |
 | view | `keepPairs` | A→B and B→A drawn as two lines |
 | view | `repair: false` | no port repair |
 | view | `subAndChips` | cards 80 px tall that show their sub-line, then their chips |
 | view | `kindsFromLabels` | a line whose edges name no `kind` takes one guessed from its label |
 | container | `badges` | tabs on the box's border |
+| model | `rules` | what must hold: no line `from` some cards `to` others (picked by id, kind or box), or `noCycles` between boxes |
 | model | `stories` | walk-throughs: steps that each set the view, camera, selection, highlight, tour and caption |
 
 ## Command line
@@ -119,13 +135,21 @@ python3 umlimator.py render examples/bookshop.json --out page.html   # the inter
 python3 umlimator.py stills page.html --out stills/                   # every view as SVG and PNG
 python3 umlimator.py stills page.html --out stills/ --views overview,api --scale 1.5 --theme light
 python3 umlimator.py check page.html --views 'pic-*'                   # the layout check on chosen views
+python3 umlimator.py diff before.json after.json --out diff.html --stills diff/   # what changed, marked and in words
+python3 umlimator.py diff --base origin/main --out diff/              # every model changed since a ref, and a summary.md
+python3 umlimator.py drift model.json traffic.json --out drift.html   # drawn vs. seen (a Jaeger or Tempo dependency list)
+python3 umlimator.py timelapse model.json --out history.html          # the model's versions in git history, on a slider
+python3 umlimator.py check page.html --expand                          # also each view with each stacked card unfolded
 python3 umlimator.py record bike-share.html --story ride --out ride.png   # bike-share's story as an animated PNG, a frame per step
 ```
+
+`check` also reports each rule the model breaks, and then exits 1.
 
 The page has breadcrumbs, a details panel per card, ⌘K search, deep links (`#view=<id>&node=<id>`, and
 `#story=<id>&step=<n>` for a story's step), stories, and export.
 `stills` skips a view whose inputs have not changed since its last export (`--all` exports every view). Needs Python
-3.9+ (standard library only), and Google Chrome or Chromium for `stills`, `check` and `record`.
+3.9+ (standard library only), Google Chrome or Chromium for `stills`, `check` and `record`, and Node 18+ for `diff`
+and `drift`.
 
 `record` writes an animated PNG, which browsers and GitHub show as it is. For a GIF or an MP4 (for chat or slides),
 convert it with ffmpeg:
@@ -133,6 +157,22 @@ convert it with ffmpeg:
 ```bash
 ffmpeg -f apng -i ride.png -vf "split[a][b];[a]palettegen[p];[b][p]paletteuse" ride.gif
 ffmpeg -f apng -i ride.png -vf "scale=trunc(iw/2)*2:trunc(ih/2)*2" -pix_fmt yuv420p ride.mp4
+```
+
+On pull requests, the diff Action posts what they change in your maps: one comment with the summary and a sketch, and
+the pictures as the run's artifact.
+
+```yaml
+on: pull_request
+permissions: { contents: read, pull-requests: write }
+jobs:
+  maps:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: zintaen/umlimator@v0.12.0
+        with:
+          models: "docs/*.json"   # optional: where the models are (default: every .json that is a map model)
 ```
 
 ## Map a repo with Claude Code
@@ -183,9 +223,10 @@ Release with that section as its notes, and publishes the package to npm (truste
 CI also publishes the examples to GitHub Pages from `main`.
 
 ```
-umlimator.py                 CLI: render, stills, check, record, pin-icons
+umlimator.py                 CLI: render, stills, check, record, pin-icons, diff, drift, timelapse
+action.yml                   the diff Action: what a pull request changes in its maps, posted on it
 lib/                         the module (umlimator.js), its types and the default theme
-engine/                      the page template the CLI inlines the module into; the upstream renderer and schema
+engine/                      the page templates the CLI inlines the module into; the upstream renderer and schema
 docs/                        the module's API and the editing design
 tests/, bench/               tests, benchmark models and results
 icons/                       line icons and the logo manifest (sources and hashes only)

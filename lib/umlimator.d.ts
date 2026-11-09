@@ -9,6 +9,8 @@ export interface MapModel {
   views: MapView[];
   icons?: Record<string, { g?: string; src?: string; dark?: boolean }>;
   authors?: Record<string, { name?: string; url?: string; avatar?: string }>;
+  /** What must hold: rules() lists what breaks them, the map marks it, and umlimator.py check fails on it. */
+  rules?: Rule[];
   /** Narrated walk-throughs of the map (#69): handle.play(id), the standalone page's Stories menu, umlimator.py record. */
   stories?: Story[];
   [key: string]: unknown;
@@ -42,6 +44,14 @@ export interface MapEdge {
   /** A second, smaller line under the label (a technology, say), placed with it and counted in the room left for labels.
    *  Shown only with a label. A line that stands for several edges shows each of their sublabels, joined by " / ". */
   sublabel?: string;
+  /** A style that wins over the kind's colour: emphasis (green), added (green, flowing), dashed or async (violet),
+   *  security (rose, dashed), removed (rose, dashed, faded) or faded (its kind's colour, faint, with no flow). */
+  style?: 'emphasis' | 'added' | 'dashed' | 'async' | 'security' | 'removed' | 'faded';
+  /** A change mark: added and removed draw only with the matching `style` on a map; diff() sets both, and marks a
+   *  changed line `edited`. */
+  change?: 'added' | 'removed' | 'changed';
+  /** What drift() found: undrawn (traffic ran on it, nobody drew it) or idle (drawn, carried nothing). */
+  drift?: 'undrawn' | 'idle';
   [key: string]: unknown;
 }
 export interface MapView {
@@ -72,6 +82,10 @@ export interface Events {
   open: { target: Ref; view: string; preventDefault(): void };   // view: the one the card opens, which may not be in the model yet
   viewchange: { view: string; from: string };
   change: Change;                                           // only with `editable`
+  /** E or Alt + click on a stacked card, or the ⤡ tab of the box it unfolded into (#71): before the card unfolds in place
+   *  (expanded: true) or folds back (false). view: the card's inner view, which may not be in the model yet; the card
+   *  unfolds once it is (the host loads it and calls update() right here, or later expand()). preventDefault(): no change. */
+  expand: { target: Extract<Ref, { type: 'node' }>; view: string; expanded: boolean; preventDefault(): void };
   story: { story: string; step: number | null; steps: number };   // a story shows its step (0-based); step null: it ended
 }
 
@@ -98,12 +112,19 @@ export interface RenderOptions {
   editable?: boolean | { add?: boolean; rename?: boolean; move?: boolean; delete?: boolean; reorder?: boolean };
   /** Cards keep their places across update() (in this handle only, never in the model). Default true. */
   stableLayout?: boolean;
+  /** update() eases into the next model: moved cards glide, new ones fade in, removed ones fade out (#67). Default true;
+   *  never under prefers-reduced-motion. false draws the next model at once. */
+  ease?: boolean;
   on?: { [K in keyof Events]?: (e: Events[K]) => void };
 }
 
 export interface ExportOptions { view?: string; scale?: number; fontCSS?: string }
 
 export interface Handle {
+  /** Draws the next model, redrawing only what changed and keeping the view, camera and selection. With motion it eases
+   *  in (#67): moved cards glide from where they were, new cards and rerouted lines fade in, and what left fades out
+   *  where it was; none of it with the option `ease: false` or under prefers-reduced-motion, and an export at any point
+   *  draws where things end up. */
   update(model: MapModel): void;
   setView(id: string): Promise<void> | void;
   select(ref: Ref | null): void;
@@ -120,6 +141,14 @@ export interface Handle {
    *  the selected card or line. */
   focus(ref?: Ref | null): void;
   on<K extends keyof Events>(type: K, fn: (e: Events[K]) => void): () => void;
+  /** Unfolds a stacked card of the view shown into a box in place (#71): its inner view's own cards inside, this view's
+   *  lines to it moved onto them, the rest of the picture in its order. In this handle only, never in the model; kept per
+   *  view across update(). False when it can't: no loaded inner view, nothing of its own inside, a numbered (sequence)
+   *  view in or opened, an editable map. No expand event: that is for gestures. */
+  expand(id: string): boolean;
+  /** Folds an unfolded card back (and anything unfolded inside it). False when it was not unfolded. */
+  collapse(id: string): boolean;
+  readonly expanded: string[];       // the cards unfolded on the view shown, in the order they were
   readonly view: string | null;
   readonly selection: Ref | null;   // the latest selected
   readonly selected: Ref[];          // every selected thing (Shift / Cmd / Ctrl + click adds cards), the latest last
@@ -192,18 +221,35 @@ export function render(container: HTMLElement, model: MapModel, options?: Render
 /** Undo for a host: it pushes each model it applies, and hands undo() / redo() results to handle.update(). */
 export interface History { readonly model: MapModel; readonly canUndo: boolean; readonly canRedo: boolean; push(m: MapModel): MapModel; undo(): MapModel; redo(): MapModel }
 export function history(model: MapModel, limit?: number): History;
-export function layout(model: MapModel, viewId: string, options?: { repair?: boolean; measure?: (text: string, px: number) => number }): Geometry;
+/** expand: cards of the view unfolded in place (#71), as handle.expand() draws them; the geometry's `unfolded` lists those
+ *  that did (one inside another after it), and its `families` the boxes they became (`unfolds`: the inner view). */
+export function layout(model: MapModel, viewId: string, options?: { repair?: boolean; measure?: (text: string, px: number) => number; expand?: string[] }): Geometry & { unfolded?: string[] };
 /** A model's own problem. path says where: "views[2].nodeIds[4]". Errors draw as holes or not at all (missing,
  *  repeated or dangling ids, a box inside itself); warnings draw other than they say (an unknown kind, weight or side,
  *  a view a card opens that the host has not loaded yet). The JSON Schema is umlimator/schema.json. */
 export interface Problem { level: 'error' | 'warning'; path: string; message: string }
 export function validate(model: MapModel): Problem[];
-/** One issue of the layout check: its message, as the page's check words it, and the cards and lines it names. */
+/** One issue of the layout check: its message, as the page's check words it, and the cards, lines and boxes it is about
+ *  (exactly those, even where two cards share a label). */
 export interface CheckIssue { message: string; targets: Ref[] }
 /** The layout check's geometry for one view, on layout()'s geometry: no browser needed. The page's check (CLI) adds what
  *  it measures in the DOM (text overflowing its card, titles, edge labels on cards or each other). In Node, text widths
  *  are an estimate unless `measure` is given, so the layout, and what is found, can differ from a browser's. */
-export function check(model: MapModel, viewId: string, options?: { repair?: boolean; measure?: (text: string, px: number) => number }): CheckIssue[];
+export function check(model: MapModel, viewId: string, options?: { repair?: boolean; measure?: (text: string, px: number) => number; expand?: string[] }): CheckIssue[];
+/** Picks cards by id, kind (as the map draws it: "db" picks databases) or box (at any depth), each a value or a list;
+ *  every key given must hold, and `not` turns a selector round. A line's end on a box is that box: in it, of no kind. */
+export interface Selector { id?: string | string[]; kind?: string | string[]; container?: string | string[]; not?: Selector }
+/** What the model says must hold (`model.rules`): no line from the cards `from` picks to the cards `to` picks (a side left
+ *  out picks every card), or, with noCycles, no boxes that reach each other through their lines (a line counts between
+ *  the two boxes that hold its ends right under the box they share). A rule that names a box (a container, or a box's
+ *  id, in from, to or a not) holds only in the views that draw one of the boxes it names; any other, in every view.
+ *  `views` narrows that further. */
+export interface Rule { id: string; title?: string; views?: string[]; from?: Selector; to?: Selector; noCycles?: boolean }
+/** A rule broken in a view: its message (as umlimator.py check prints it), and the lines, and for a cycle the boxes, it is
+ *  about. The map draws those lines rose, with a mark that names the rule. */
+export interface RuleBreak { rule: string; view: string; message: string; targets: Ref[] }
+/** Every rule the model breaks, view by view. No browser needed. */
+export function rules(model: MapModel): RuleBreak[];
 /** Every card and line on a path from one card to another along the view's lines, as Refs ([] when none joins them). */
 export function paths(model: MapModel, viewId: string, from: string, to: string): Ref[];
 /** What a card's lines lead to, or (backward) what leads to it, as Refs with their distance in lines; the card first, at 0. */
@@ -212,5 +258,25 @@ export function reach(model: MapModel, viewId: string, from: string, options?: {
 export function describe(model: MapModel, viewId: string): string;
 /** The spans of an OpenTelemetry trace in OTLP JSON (resourceSpans), as replay() takes them. */
 export function otlpSpans(otlp: unknown): Span[];
+/** What changed from one model to the next (#66), as one model to draw: `after`, with each card marked added, changed or
+ *  removed (`change`: a NEW or CHANGED tab; REMOVED is faded, dashed and struck through) and each line likewise (`style`
+ *  added or removed; a changed one `edited`); what left comes back in its views, boxes and places, and a card put into
+ *  or taken out of a view is marked in that view only (`nodeOverrides`). Cards and lines match by id (a line without one
+ *  by its ends, as a Ref names it). `summary`: what changed in words, in model order ("adds Payments queue between
+ *  Trip service and Payment provider"); `views`: those that show a change. The marks are the model's own fields, so a
+ *  page or still the CLI makes shows them. Neither input is changed. */
+export interface DiffResult { model: MapModel; summary: string[]; views: string[] }
+export function diff(before: MapModel | null, after: MapModel | null): DiffResult;
+/** A call between two services as traffic showed it: { from, to, count }, or a Jaeger or Tempo dependency. */
+export type Observed = { from: string; to: string; count?: number } | { parent: string; child: string; callCount?: number };
+/** The map against the traffic seen (#68). A line that ran but is not drawn comes in (`drift: 'undrawn'`: rose, dashed,
+ *  labelled "not drawn" with its calls); a drawn line between two cards traffic reached, that carried none, fades
+ *  (`drift: 'idle'`, style `faded`); other lines are left as they are. A service is the card `match` names, else the one
+ *  with its id, else with its label (case aside). `counts`: lines that carried traffic, came in, are idle, or could not
+ *  be judged (an end traffic never reached), and the services with no card; `views`: those that show drift. The counts
+ *  are of model edges, not drawn lines: a line that stands for several edges (A→B and B→A) fades only when every one of
+ *  them is idle, so a map can show fewer faded lines than `idle` counts. */
+export interface DriftResult { model: MapModel; counts: { carried: number; undrawn: number; idle: number; unknown: number; unmatched: string[] }; views: string[] }
+export function drift(model: MapModel, observed: Observed[] | { data: Observed[] }, options?: { match?: Record<string, string> }): DriftResult;
 /** The whole standalone viewer (top bar, views list, details panel, search, export) that umlimator.py writes. */
 export function mountPage(container: HTMLElement, model: MapModel, options?: { params?: URLSearchParams; instant?: boolean }): Handle;

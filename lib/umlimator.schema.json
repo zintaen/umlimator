@@ -76,16 +76,23 @@
     }
    }
   },
+  "sourcesBase": {
+   "type": "string",
+   "description": "A prefix for the cards' source paths."
+  },
+  "rules": {
+   "type": "array",
+   "items": {
+    "$ref": "#/$defs/rule"
+   },
+   "description": "What must hold: lines a rule forbids, or cycles between boxes. rules() lists what breaks them, the map marks it, and umlimator.py check fails on it."
+  },
   "stories": {
    "type": "array",
    "items": {
     "$ref": "#/$defs/story"
    },
    "description": "Narrated walk-throughs of the map: handle.play(id), the page's Stories menu, umlimator.py record."
-  },
-  "sourcesBase": {
-   "type": "string",
-   "description": "A prefix for the cards' source paths."
   }
  },
  "$defs": {
@@ -566,20 +573,29 @@
       "dashed",
       "async",
       "security",
-      "removed"
+      "removed",
+      "faded"
      ],
-     "description": "A style that wins over the kind's colour."
+     "description": "A style that wins over the kind's colour; faded keeps the kind's colour, faint and with no flow."
     },
     "change": {
      "enum": [
       "added",
-      "removed"
+      "removed",
+      "changed"
      ],
-     "description": "Drawn as an added or removed line."
+     "description": "Drawn as an added or removed line; diff() marks a changed one edited."
     },
     "edited": {
      "type": "boolean",
      "description": "A marker on the line."
+    },
+    "drift": {
+     "enum": [
+      "undrawn",
+      "idle"
+     ],
+     "description": "What drift() found: a line that carried traffic but was not drawn, or a drawn one that carried none."
     },
     "fromSide": {
      "$ref": "#/$defs/side"
@@ -825,6 +841,115 @@
     "kindsFromLabels": {
      "type": "boolean",
      "description": "Guess a line's kind from its label's words when its edges name none (render() and layout(); the standalone page always does)."
+    }
+   }
+  },
+  "rule": {
+   "type": "object",
+   "required": [
+    "id"
+   ],
+   "description": "No line from the cards `from` picks to the cards `to` picks (a side left out picks every card), or, with noCycles, no boxes that reach each other through their lines.",
+   "properties": {
+    "id": {
+     "type": "string",
+     "description": "Unique among the rules."
+    },
+    "title": {
+     "type": "string",
+     "description": "What the rule says, as its breaks name it: \"Apps never call a database directly\"."
+    },
+    "views": {
+     "type": "array",
+     "items": {
+      "type": "string"
+     },
+     "description": "Narrows the views it holds in: by default every view, or, for a rule that names a box (a container, or a box's id, in from, to or a not), the views that draw one of the boxes it names."
+    },
+    "from": {
+     "$ref": "#/$defs/selector",
+     "description": "The cards a forbidden line starts from."
+    },
+    "to": {
+     "$ref": "#/$defs/selector",
+     "description": "The cards a forbidden line ends on."
+    },
+    "noCycles": {
+     "const": true,
+     "description": "No boxes reach each other through their lines: a line counts between the two boxes that hold its ends right under the box (or view) they share."
+    }
+   },
+   "anyOf": [
+    {
+     "required": [
+      "from"
+     ]
+    },
+    {
+     "required": [
+      "to"
+     ]
+    },
+    {
+     "required": [
+      "noCycles"
+     ]
+    }
+   ]
+  },
+  "selector": {
+   "type": "object",
+   "additionalProperties": false,
+   "description": "Picks cards: every key given must hold. A line's end on a box is that box: in it, and of no kind.",
+   "properties": {
+    "id": {
+     "description": "Cards (or boxes) by id.",
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "array",
+       "items": {
+        "type": "string"
+       },
+       "minItems": 1
+      }
+     ]
+    },
+    "kind": {
+     "description": "Cards by kind, as the map draws it: \"db\" picks databases.",
+     "anyOf": [
+      {
+       "$ref": "#/$defs/kind"
+      },
+      {
+       "type": "array",
+       "items": {
+        "$ref": "#/$defs/kind"
+       },
+       "minItems": 1
+      }
+     ]
+    },
+    "container": {
+     "description": "Cards in these boxes, at any depth.",
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "array",
+       "items": {
+        "type": "string"
+       },
+       "minItems": 1
+      }
+     ]
+    },
+    "not": {
+     "$ref": "#/$defs/selector",
+     "description": "The cards this selector does not pick."
     }
    }
   },

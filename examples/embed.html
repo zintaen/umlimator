@@ -54,7 +54,8 @@ import { withIcons } from './icons.js';
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 const HINT = `<p class="hint">Click a card, a line or a box. <kbd>Tab</kbd> reaches the cards, then the lines; arrows move
-  between cards; <kbd>Enter</kbd> opens a stacked card; <kbd>Esc</kbd> here gives focus back to the map.</p>`;
+  between cards; <kbd>Enter</kbd> opens a stacked card and <kbd>E</kbd> unfolds it here; <kbd>Esc</kbd> here gives focus back
+  to the map.</p>`;
 let full, model, map;   // full: what the "server" has; model: what this page has loaded so far
 
 // A card whose opensView comes with an opensCount names a view the host loads only when someone opens it: the card
@@ -74,6 +75,8 @@ function mount(view) {   // the minimap is a render() option: changing it draws 
     select: e => details(e.target),
     viewchange: e => crumbs(e.view),
     open: async e => { if (loaded(e.view)) return; await load(e.view); map.setView(e.view); },
+    // E or Alt + click unfolds a stacked card in place: a view this page has not loaded yet is loaded first (#71)
+    expand: async e => { if (!e.expanded || loaded(e.view)) return; e.preventDefault(); await load(e.view); map.expand(e.target.id); },
   } });
   crumbs(map.view); details(null);
   window.map = map;   // for the console, and for tests/embed.py
@@ -107,15 +110,19 @@ function details(t) {
     return;
   }
   if (t.type === 'container' || t.container) {
-    const box = view.containers.find(c => c.id === (t.container || t.id));
+    const box = (view.containers || []).find(c => c.id === (t.container || t.id));
+    if (!box && map.expanded.includes(t.id)) { // not a box of the model: a card unfolded in place, named by its id
+      $('panel').innerHTML = `<h2>${esc(node(t.id).label)}</h2><p class="kind">unfolded here</p><p><button id="fold">Fold it back</button></p>`;
+      $('fold').addEventListener('click', () => map.collapse(t.id)); return; }
     $('panel').innerHTML = `<h2>${esc(box.label)}</h2><p class="kind">box · ${box.nodeIds?.length || 0} cards</p>`;
     return;
   }
   const n = node(t.node || t.id), opens = n.opensView || (model.views.some(v => v.id === n.id) || heldBack(full).has(n.id) ? n.id : null);
   $('panel').innerHTML = `<h2>${esc(n.label)}</h2><p class="kind">${esc(n.kind || 'card')}${n.sublabel ? ` · ${esc(n.sublabel)}` : ''}</p>
     <dl>${facts(n)}</dl>${t.type === 'chip' ? `<p>Chip: <b>${esc(t.value)}</b></p>` : ''}
-    ${opens && full.views.some(v => v.id === opens) ? `<p><button id="go">Open ${esc(opens)}</button></p>` : ''}`;
+    ${opens && full.views.some(v => v.id === opens) ? `<p><button id="go">Open ${esc(opens)}</button> <button id="unfold">Unfold here</button></p>` : ''}`;
   $('go')?.addEventListener('click', async () => { if (!loaded(opens)) await load(opens); map.setView(opens); });
+  $('unfold')?.addEventListener('click', async () => { if (!loaded(opens)) await load(opens); if (!map.expand(t.node || t.id)) $('panel').insertAdjacentHTML('beforeend', '<p class="hint">It has no cards of its own to show here: open it.</p>'); });
 }
 $('panel').addEventListener('keydown', e => { if (e.key === 'Escape') map.focus(); });   // focus goes back to the selected card
 
