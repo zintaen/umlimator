@@ -12,11 +12,11 @@
   umlimator.py trace MODEL.json TRACE.json --view ID --out OUT.json [--match MATCH.json] [--title T]   # a trace (OTLP JSON) kept as a numbered view
   umlimator.py timelapse MODEL.json --out PAGE.html [--limit 20]   # the model's versions in git history, on a slider
   umlimator.py record PAGE.html --story ID --out STORY.png [--size 1160x740] [--scale 1] [--theme light|dark]   # a story as an animated PNG
+  umlimator.py mcp MODEL.json [--port 7391]   # an MCP server over stdio: an AI assistant reads the model and drives its page
 
 MODEL.json is the map model in engine/references/schema.md (nodes, edges, views), plus umlimator's `badge` field on a
 node (PROPOSED, TARGET, OFF ...). `stills` needs Google Chrome or Chromium; the PNGs are what a document that cannot
-run the page (a wiki such as Confluence) shows. `diff`, `drift` and `trace` run the module's own diff(), drift(), otlpSpans()
-and sequenceFromTrace() in Node.
+run the page (a wiki such as Confluence) shows. `diff`, `drift`, `trace` and `mcp` run the module's own functions in Node.
 """
 import argparse, base64, hashlib, html, io, json, os, re, shutil, struct, subprocess, sys, tempfile, urllib.parse, urllib.request, zipfile, zlib
 from pathlib import Path
@@ -79,6 +79,14 @@ def headless(binary, *args, timeout=90):
 
 ICONS = HERE / "icons"  # Lucide line icons (ISC) and manifest.json: every icon's source, and a sha256 for each brand mark
 CACHE = Path(os.environ.get("UMLIMATOR_ICON_CACHE", Path.home() / ".cache" / "umlimator" / "icons"))  # brand marks
+
+
+def offline(*a, **k):
+    raise OSError("UMLIMATOR_OFFLINE is set, so nothing is fetched")
+
+
+if os.environ.get("UMLIMATOR_OFFLINE"):  # the MCP server's pages (#91): a logo not in the cache keeps its sigil, an avatar its initials
+    urllib.request.urlopen = offline     # (visual.py's render loads this file too, so its fetches fail the same way)
 
 
 def icon_bytes(e):
@@ -179,7 +187,7 @@ def icon_table(models):
 
 
 def js(fn, *args):
-    """One of the module's pure functions (diff, drift, otlpSpans, sequenceFromTrace) run in Node, so the CLI and the module share one implementation."""
+    """One of the module's functions run in Node (for diff, drift, trace and the MCP server's read tools), so the CLI and the module share one implementation."""
     node = shutil.which("node") or sys.exit(f"{fn} needs Node.js 18 or later: it runs the module's own {fn}()")
     code = (f"import * as u from {json.dumps(LIB.as_uri())}; let s = ''; for await (const c of process.stdin) s += c;"
             f"process.stdout.write(JSON.stringify(u[{json.dumps(fn)}](...JSON.parse(s))));")
@@ -547,6 +555,15 @@ def cmd_record(a):
     print(json.dumps({"story": a.story, "frames": len(frames), "out": a.out, "bytes": Path(a.out).stat().st_size}, indent=1))
 
 
+def cmd_mcp(a):
+    """A Model Context Protocol server over stdio for one model (#91): tools that read it, and tools that drive its page,
+    served on 127.0.0.1. It lives in umlimator_mcp.py, next to this file."""
+    if not Path(a.model).is_file():
+        sys.exit(f"no model at {a.model}")
+    import umlimator_mcp
+    umlimator_mcp.serve(a.model, a.port)
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -581,6 +598,9 @@ def main():
     tr.set_defaults(f=cmd_trace)
     t = sub.add_parser("timelapse", help="the model's versions in git history on a slider"); t.add_argument("model"); t.add_argument("--out", required=True)
     t.add_argument("--limit", type=int, default=30, help="the latest N versions (default 30)"); t.set_defaults(f=cmd_timelapse)
+    mc = sub.add_parser("mcp", help="a Model Context Protocol server over stdio: an AI assistant reads the model and drives its page")
+    mc.add_argument("model"); mc.add_argument("--port", type=int, default=7391, help="the page's port on 127.0.0.1 (default 7391; another if it is taken)")
+    mc.set_defaults(f=cmd_mcp)
     a = p.parse_args(); a.f(a)
 
 
