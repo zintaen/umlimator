@@ -9,7 +9,7 @@ tests/contrast.html: the default palette against WCAG AA, light and dark.
 examples/edit.html: the editing demo loads and draws.
 Each test page reports in <pre id="result">{"ok": [...], "fail": [...]}</pre>.
 """
-import functools, html, http.server, importlib.util, json, re, sys, threading
+import functools, html, http.server, importlib.util, json, re, subprocess, sys, tempfile, threading
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -72,5 +72,18 @@ page = dom("examples/bookshop.html", lambda t: 'class="lgi"' in t)
 legend = "<b>calls</b>" in page and "<b>state</b>" in page
 print(("ok  " if legend else "FAIL"), "examples/bookshop.html · the standalone page's legend names the kinds it reads from labels (calls, state)")
 failed |= not legend
+# the layout check of a page umlimator.py renders: a view that keeps A→B and B→A apart (keepPairs) draws the return line
+# right to left, as it should; the check does not count it against the view
+with tempfile.TemporaryDirectory() as tmp:
+    pairs = {"nodes": [{"id": "app", "label": "App", "kind": "frontend"}, {"id": "api", "label": "API", "kind": "backend"}, {"id": "db", "label": "Store", "kind": "database"}],
+             "edges": [{"from": "app", "to": "api", "label": "asks"}, {"from": "api", "to": "app", "label": "pushes"}, {"from": "api", "to": "db", "label": "writes"}],
+             "views": [{"id": "v", "keepPairs": True, "nodeIds": ["app", "api", "db"], "layout": {"app": [0, 0], "api": [1, 0], "db": [2, 0]}}]}
+    (Path(tmp) / "pairs.json").write_text(json.dumps(pairs))
+    r = subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "render", str(Path(tmp) / "pairs.json"), "--out", str(Path(tmp) / "pairs.html")], capture_output=True, text=True)
+    i = r.stdout.find("{"); rep = json.loads(r.stdout[i:]) if i >= 0 else {}
+    pairs_ok = r.returncode == 0 and rep.get("counts") is not None and not any("right-to-left" in p for p in rep.get("problems", []))
+print(("ok  " if pairs_ok else "FAIL"), "umlimator.py render · keepPairs: the layout check does not flag a pair's return line as running right to left",
+      "" if pairs_ok else rep.get("problems") or r.stderr[-400:])
+failed |= not pairs_ok
 server.shutdown()
 sys.exit(1 if failed else 0)
