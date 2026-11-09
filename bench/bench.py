@@ -14,6 +14,8 @@ Per view, the median of --runs runs, each with fresh caches (patch 30 in patches
 (planOf; a hub view tries lane orders), place is everything before routing, route the first routing and the reorder
 pass, repair the port-repair loop (rounds, and the port swaps it tried), total is plan + layout. issues is what the
 layout check's route audit finds; hash is the geometry, the same on every run unless the output is nondeterministic.
+A model's benchViews ("view+card") are run too: the view with those cards unfolded in place (#71), and unfold the time
+that took (routing the ways it tries).
 A view that does not finish within --timeout seconds, or that repairs although it says `repair: false`, fails the run.
 """
 import argparse, datetime, html, importlib.util, json, re, statistics, subprocess, sys, tempfile, urllib.parse

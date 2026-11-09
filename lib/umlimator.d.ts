@@ -70,6 +70,10 @@ export interface Events {
   open: { target: Ref; view: string; preventDefault(): void };   // view: the one the card opens, which may not be in the model yet
   viewchange: { view: string; from: string };
   change: Change;                                           // only with `editable`
+  /** E or Alt + click on a stacked card, or the ⤡ tab of the box it unfolded into (#71): before the card unfolds in place
+   *  (expanded: true) or folds back (false). view: the card's inner view, which may not be in the model yet; the card
+   *  unfolds once it is (the host loads it and calls update() right here, or later expand()). preventDefault(): no change. */
+  expand: { target: Extract<Ref, { type: 'node' }>; view: string; expanded: boolean; preventDefault(): void };
 }
 
 /** Where the user dropped or placed something: a point in the view and, on a column view, its column and row. */
@@ -117,6 +121,14 @@ export interface Handle {
    *  the selected card or line. */
   focus(ref?: Ref | null): void;
   on<K extends keyof Events>(type: K, fn: (e: Events[K]) => void): () => void;
+  /** Unfolds a stacked card of the view shown into a box in place (#71): its inner view's own cards inside, this view's
+   *  lines to it moved onto them, the rest of the picture in its order. In this handle only, never in the model; kept per
+   *  view across update(). False when it can't: no loaded inner view, nothing of its own inside, a numbered (sequence)
+   *  view in or opened, an editable map. No expand event: that is for gestures. */
+  expand(id: string): boolean;
+  /** Folds an unfolded card back (and anything unfolded inside it). False when it was not unfolded. */
+  collapse(id: string): boolean;
+  readonly expanded: string[];       // the cards unfolded on the view shown, in the order they were
   readonly view: string | null;
   readonly selection: Ref | null;   // the latest selected
   readonly selected: Ref[];          // every selected thing (Shift / Cmd / Ctrl + click adds cards), the latest last
@@ -135,7 +147,9 @@ export function render(container: HTMLElement, model: MapModel, options?: Render
 /** Undo for a host: it pushes each model it applies, and hands undo() / redo() results to handle.update(). */
 export interface History { readonly model: MapModel; readonly canUndo: boolean; readonly canRedo: boolean; push(m: MapModel): MapModel; undo(): MapModel; redo(): MapModel }
 export function history(model: MapModel, limit?: number): History;
-export function layout(model: MapModel, viewId: string, options?: { repair?: boolean; measure?: (text: string, px: number) => number }): Geometry;
+/** expand: cards of the view unfolded in place (#71), as handle.expand() draws them; the geometry's `unfolded` lists those
+ *  that did (one inside another after it), and its `families` the boxes they became (`unfolds`: the inner view). */
+export function layout(model: MapModel, viewId: string, options?: { repair?: boolean; measure?: (text: string, px: number) => number; expand?: string[] }): Geometry & { unfolded?: string[] };
 /** A model's own problem. path says where: "views[2].nodeIds[4]". Errors draw as holes or not at all (missing,
  *  repeated or dangling ids, a box inside itself); warnings draw other than they say (an unknown kind, weight or side,
  *  a view a card opens that the host has not loaded yet). The JSON Schema is umlimator/schema.json. */
@@ -146,6 +160,6 @@ export interface CheckIssue { message: string; targets: Ref[] }
 /** The layout check's geometry for one view, on layout()'s geometry: no browser needed. The page's check (CLI) adds what
  *  it measures in the DOM (text overflowing its card, titles, edge labels on cards or each other). In Node, text widths
  *  are an estimate unless `measure` is given, so the layout, and what is found, can differ from a browser's. */
-export function check(model: MapModel, viewId: string, options?: { repair?: boolean; measure?: (text: string, px: number) => number }): CheckIssue[];
+export function check(model: MapModel, viewId: string, options?: { repair?: boolean; measure?: (text: string, px: number) => number; expand?: string[] }): CheckIssue[];
 /** The whole standalone viewer (top bar, views list, details panel, search, export) that umlimator.py writes. */
 export function mountPage(container: HTMLElement, model: MapModel, options?: { params?: URLSearchParams; instant?: boolean }): Handle;

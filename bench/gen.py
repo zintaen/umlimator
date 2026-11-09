@@ -9,7 +9,8 @@ containers and a view drawn around a hub card; b69 adds two sub-views and keepPa
 d24: a dense hub, as a target architecture map draws one, with a layout: an API card feeds 16 modules in a 4-wide grid
 beside it, and 5 systems in a box of their own call back into it (issue #40: lines with no route ran through cards).
 r19 is not written here: a made-up monorepo's 19 packages and 30 imports, as a map generated from a dependency list draws
-them (a box per folder, nested, and the same cards with no boxes), where most lines skip columns (0.11.0).
+them (a box per folder, nested, and the same cards with no boxes), where most lines skip columns (0.11.0). Nor is u21:
+a made-up shop whose services open into views of their parts, with the views it unfolds in place listed (0.12.0, #71).
 """
 import json, random
 from pathlib import Path

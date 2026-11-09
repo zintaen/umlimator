@@ -24,7 +24,7 @@ The module embedded in a page, as an app would use it. Serve the repository over
 | Page | What the host does |
 |---|---|
 | [`playground.html`](playground.html) | Edit a model as JSON and the map follows, with `validate()`'s problems and `check()`'s layout issues for the view shown, each selecting what it is about; Share puts the model in the link |
-| [`embed.html`](embed.html) | `render()` with a details panel from `select`, breadcrumbs from `viewchange`, a view loaded when a card opens it (`open`, `update()`, `setView()`), SVG and PNG export, light, dark and a host's own palette, the minimap, focus back to the map |
+| [`embed.html`](embed.html) | `render()` with a details panel from `select`, breadcrumbs from `viewchange`, a view loaded when a card opens it (`open`, `update()`, `setView()`) or unfolds it in place (`expand`, `map.expand()`), SVG and PNG export, light, dark and a host's own palette, the minimap, focus back to the map |
 | [`live.html`](live.html) | `update()` once a second with new line weights and tab colours: cards keep their places, and the view and camera stay |
 | [`edit.html`](edit.html) | `editable`: the map emits `change` events, the host applies them and calls `update()`, with undo from `history()` |
 | [`layout.mjs`](layout.mjs) | `layout()` in Node, with no DOM: lays out every view and fails when a line runs more than 3 times its direct route, a check a host can run in CI |
@@ -37,6 +37,7 @@ The module embedded in a page, as an app would use it. Serve the repository over
 |---|---|
 | Views a card opens (`opensView`) | bike-share (three levels), weather, assistant, bookshop |
 | A view the host loads when it's opened (`opensView` with `opensCount`) | bike-share: Trip service and Fleet service, in `embed.html` |
+| A stacked card unfolded in place (E, Alt + click, `map.expand()`) | bike-share: Trip service and Fleet service in `system`, Bike share in `context`; weather: Check in `stages`, Quality check in `flow` |
 | Boxes (`containers`) and their tabs (`badges`) | bike-share `system`, weather `check` |
 | Nested boxes (`parent`) | weather `check` |
 | A line to or from a box | bike-share `system` (Monitoring → Rides), weather `check` (Checks → Quarantine) |
