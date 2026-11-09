@@ -793,13 +793,13 @@ A stacked card can open into a box on the map it is on, instead of switching to 
 
 ### A recorded story's tours move (#83)
 
-- **`umlimator.py record`** takes frames along a step's tour, 4 a leg and at most 12, from its first card to its last,
+- **`umlimator.py record`** takes frames along a step's tour, 2 a leg and at most 6, from its first card to its last,
   and shares the step's duration out between them, so the step still lasts its duration. A step without a tour keeps one
-  frame. bike-share's `ride` is now 27 frames and 2.1 MB (5 frames and 0.4 MB before).
+  frame. bike-share's `ride` is now 15 frames and 1.2 MB (5 frames and 0.4 MB before).
 - **How:** the frames are the page's `#shot=1&story=<id>&step=<n>&at=<0 to 1>` link, which holds the tour's dot that far
   along its ride.
 - **Limit:** the ride is spread over the whole step, so the dot doesn't keep the live map's speed.
-- **Test:** `tests/embed.py`'s `record` check wants 2 to 12 frames for a step with a tour, each a different picture, with
+- **Test:** `tests/embed.py`'s `record` check wants 2 to 6 frames for a step with a tour, each a different picture, with
   delays that add up to the step's duration, and one frame for any other step.
 
 ### The legend check waits for the legend (#85)

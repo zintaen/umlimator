@@ -505,10 +505,10 @@ def cmd_record(a):
     with tempfile.TemporaryDirectory() as tmp:
         frames, delays = [], []
         for n, step in enumerate(story["steps"], 1):
-            # a tour: 4 frames a leg, at most 12 so the file stays small, each shown for its share of the step's duration
+            # a tour: 2 frames a leg, at most 6 so the file stays small, each shown for its share of the step's duration
             # ponytail: the ride fills the step at its own pace, not the live dot's: only the page knows the ride's length
             # (have the page say it if the pace matters)
-            ms, k = int(step.get("duration") or 4000), max(1, min(12, 4 * len(step.get("tour") or []) - 3))
+            ms, k = int(step.get("duration") or 4000), max(1, min(6, 2 * len(step.get("tour") or []) - 1))
             for i in range(k):
                 png = Path(tmp) / f"{len(frames):03}.png"
                 headless(b, "--virtual-time-budget=8000", "--force-prefers-reduced-motion", f"--window-size={w},{h}", f"--force-device-scale-factor={a.scale}", f"--screenshot={png}",

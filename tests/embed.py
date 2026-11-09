@@ -115,7 +115,7 @@ print(("ok  " if rules_ok else "FAIL"), "umlimator.py check · the rules a model
 failed |= not rules_ok
 
 # umlimator.py record (#69): bike-share's story as an animated PNG, a frame per step, shown for the step's duration; a step
-# that plays a tour has 2 to 12 frames, each a different picture (the dot rides), which share the step's duration (#83)
+# that plays a tour has 2 to 6 frames, each a different picture (the dot rides), which share the step's duration (#83)
 with tempfile.TemporaryDirectory() as tmp:
     page, png = Path(tmp) / "bike-share.html", Path(tmp) / "ride.png"
     subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "render", str(ROOT / "examples" / "bike-share.json"), "--out", str(page), "--no-check"], capture_output=True)
@@ -134,7 +134,7 @@ with tempfile.TemporaryDirectory() as tmp:
         mine, ms = [], s.get("duration") or 4000
         while k < len(frames) and sum(d for d, _ in mine) < ms:
             mine.append(frames[k]); k += 1
-        steps_ok.append(sum(d for d, _ in mine) == ms and (1 < len(mine) <= 12 and len({f for _, f in mine}) == len(mine) if s.get("tour") else len(mine) == 1))
+        steps_ok.append(sum(d for d, _ in mine) == ms and (1 < len(mine) <= 6 and len({f for _, f in mine}) == len(mine) if s.get("tour") else len(mine) == 1))
     rec_ok = r.returncode == 0 and b[:8] == b"\x89PNG\r\n\x1a\n" and [t for t, _ in chunks].count(b"acTL") == 1 and all(steps_ok) and k == len(frames)
 print(("ok  " if rec_ok else "FAIL"), "umlimator.py record · a story as an animated PNG: a frame per step, frames along a step's tour (the dot rides), each step for its duration",
       "" if rec_ok else [[d for d, _ in frames], steps_ok, r.stderr[-400:]])
