@@ -47,9 +47,11 @@
 
   <h2>In an app</h2>
   <table>
-    <tr><td><a href="playground.html">Playground</a></td><td>Edit a model and see the map, its problems (<code>validate()</code>) and its layout check (<code>check()</code>); share it by link.</td></tr>
+    <tr><td><a href="playground.html">Playground</a></td><td>Edit a model and see the map, its problems (<code>validate()</code>), its broken rules (<code>rules()</code>) and its layout check (<code>check()</code>); share it by link.</td></tr>
     <tr><td><a href="embed.html">A host page</a></td><td><code>render()</code> with a details panel, breadcrumbs, views loaded when opened, SVG and PNG export, themes and the minimap.</td></tr>
-    <tr><td><a href="live.html">Live updates</a></td><td><code>update()</code> every second with new line weights and tab colours; cards keep their places.</td></tr>
+    <tr><td><a href="live.html">Live traffic</a></td><td><code>overlay()</code> every second: flow as fast as the traffic, errors that pulse, slow lines that glow, lag on each card; the model never changes.</td></tr>
+    <tr><td><a href="ask.html">Ask the map</a></td><td>Questions answered with words, the paths or reach they are about lit, and a tour; the view in sentences (<code>describe()</code>) for an AI model.</td></tr>
+    <tr><td><a href="replay.html">Trace replay</a></td><td>An OpenTelemetry trace played on the map: each call along its line at its time, with its duration.</td></tr>
     <tr><td><a href="edit.html">Editing</a></td><td>The map emits <code>change</code> events; the host applies them and keeps an undo history.</td></tr>
     <tr><td><a href="timelapse.html">A time-lapse</a></td><td>Four releases on a slider: new cards fade in, removed ones fade out, moved ones glide; <code>diff()</code> says what changed.</td></tr>
     <tr><td><a href="drift.html">Drawn vs. seen</a></td><td><code>drift()</code>: the map against a week of traffic; lines that ran undrawn come in, idle ones fade.</td></tr>

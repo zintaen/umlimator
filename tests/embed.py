@@ -6,8 +6,10 @@
 tests/embed.html: render() events, references, update(), destroy(), colours, badges, fonts.
 tests/edit.html: editing gestures and the change events they emit.
 tests/contrast.html: the default palette against WCAG AA, light and dark.
+tests/rules.html: rules on the map (tests/rules.json breaks each kind), and umlimator.py check failing on them.
+tests/marks.html: overlay(), highlight(), tour(), replay(), and the standalone page's paths and reach.
 tests/change.html: update() easing into the next model, and diff()'s and drift()'s marks as drawn.
-examples/edit.html, embed.html, live.html, playground.html, timelapse.html, drift.html: the host pages load and draw.
+examples/edit.html, embed.html, live.html, playground.html, ask.html, replay.html, timelapse.html, drift.html: the host pages load and draw.
 Each test page reports in <pre id="result">{"ok": [...], "fail": [...]}</pre>.
 """
 import functools, html, http.server, importlib.util, json, re, subprocess, sys, tempfile, threading
@@ -55,7 +57,7 @@ def dom(path, done):
 
 
 failed = False
-for page in ("tests/embed.html", "tests/edit.html", "tests/contrast.html", "tests/change.html"):
+for page in ("tests/embed.html", "tests/edit.html", "tests/contrast.html", "tests/rules.html", "tests/marks.html", "tests/change.html"):
     t = dom(page, lambda t: 'id="result"' in t)
     if "<title>" not in t:  # Chrome gave back no page at all (a rare headless hang on CI runners): once more
         print(f"note {page}: Chrome returned nothing; running it again"); t = dom(page, lambda t: 'id="result"' in t)
@@ -70,7 +72,7 @@ for page in ("tests/embed.html", "tests/edit.html", "tests/contrast.html", "test
         print("FAIL", page, "·", name)
     failed |= bool(r["fail"])
 for page, what in (("examples/edit.html", "the editing demo"), ("examples/embed.html", "the host page"), ("examples/live.html", "the live page"),
-                   ("examples/playground.html", "the playground"), ("examples/timelapse.html", "the time-lapse"), ("examples/drift.html", "the drift page")):
+                   ("examples/playground.html", "the playground"), ("examples/ask.html", "the ask-the-map page"), ("examples/replay.html", "the trace replay page"), ("examples/timelapse.html", "the time-lapse"), ("examples/drift.html", "the drift page")):
     demo = dom(page, lambda t: 'class="umlimator"' in t)
     print(("ok  " if 'class="umlimator"' in demo else "FAIL"), f"{page} · {what} draws its map")
     failed |= 'class="umlimator"' not in demo
@@ -92,5 +94,16 @@ with tempfile.TemporaryDirectory() as tmp:
 print(("ok  " if pairs_ok else "FAIL"), "umlimator.py render · keepPairs: the layout check does not flag a pair's return line as running right to left",
       "" if pairs_ok else rep.get("problems") or r.stderr[-400:])
 failed |= not pairs_ok
+# a model's rules (#70): the check names each rule the page's model breaks, counts them, and fails
+with tempfile.TemporaryDirectory() as tmp:
+    page = Path(tmp) / "rules.html"
+    subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "render", str(ROOT / "tests" / "rules.json"), "--out", str(page), "--no-check"], capture_output=True)
+    r = subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "check", str(page)], capture_output=True, text=True)
+    i = r.stdout.find("{"); rep = json.loads(r.stdout[i:]) if i >= 0 else {}
+    broken = [p for p in rep.get("problems", []) if ' breaks rule "' in p]
+    rules_ok = r.returncode == 1 and (rep.get("counts") or {}).get("rules") == 3 and len(broken) == 3 and "3 broken rules" in r.stderr
+print(("ok  " if rules_ok else "FAIL"), "umlimator.py check · the rules a model breaks: each named and counted, and the check fails",
+      "" if rules_ok else (rep.get("problems"), r.stderr[-400:]))
+failed |= not rules_ok
 server.shutdown()
 sys.exit(1 if failed else 0)

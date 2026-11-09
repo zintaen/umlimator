@@ -655,6 +655,7 @@ function mapAudit(approx) {
   const only = (Q.get('views') || '').split(',').filter(Boolean), want = v => !only.length || only.some(p => p.endsWith('*') ? v.id.startsWith(p.slice(0, -1)) : v.id === p);
   views.forEach(v => { if (!want(v) || !(v.nodeIds || []).some(i => N[i])) return; const { g, markup } = buildView(v.id, { tour: !Q.get('still'), openHint: !Q.get('reader') }); root.innerHTML = markup; out.push(...auditSvg(root.firstElementChild, g, 'view ' + v.id)); Object.entries(g.stats || {}).forEach(([k, n]) => { routes[k] = (routes[k] || 0) + n; });
     g.edges.filter(e => e.how === 'fallback').forEach(e => (routes.fallbackEdges ||= []).push(`${v.id}: ${e.from}(${e.fs})→${e.to}(${e.ts})`)); });
+  out.push(...rules(D).filter(r => views.some(v => v.id === r.view && want(v))).map(r => r.message)); // a rule the model breaks (#70): umlimator.py check fails on it
   host.remove();
   const deep = views.filter(v => v.parent).sort((a, b) => chain(b.id).length - chain(a.id).length || (b.nodeIds || []).length - (a.nodeIds || []).length)[0];
   const laneView = laneReport['super-build'] ? 'super-build' : Object.keys(laneReport)[0] || null;

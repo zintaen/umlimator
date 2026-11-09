@@ -20,11 +20,17 @@ drill-down, a data pipeline, an AI agent's skills, and host pages for embedding,
   that never run through a card, room for every label, containers kept apart, and cards with no lines in a row of their
   own, under the view or at the bottom of their box. The same model gives the same picture.
 - **Reading**: animated flow, neighbours lit on selection, numbered steps, tours, minimap, light and dark themes.
+- **Exploring**: every path between two cards, or everything a card reaches, lit on the map; a view in plain sentences
+  (`describe()`); a tour along any path the host names.
+- **Live data**: marks over the map without touching the model (`overlay()`): flow as fast as the traffic, errors that
+  pulse, slow hops that glow, labels and tabs; and an OpenTelemetry trace replayed along its lines (`replay()`).
 - **Keyboard and screen readers**: cards, then lines, in the Tab order (a card's tabs and chips too, for a host that
   listens for click); arrows between cards; selections announced.
 - **Editing** (opt-in): gestures emit `change` events; the host applies them and calls `update()`.
 - **Export**: any view as a stand-alone SVG or PNG, in the browser or from the CLI.
 - **A layout check**: crossings, shared lines, detours, labels on lines, text that overflows its card.
+- **Rules**: what the model says must hold ("apps never call a database directly", "no cycles between teams' boxes"),
+  marked on the map where it breaks; `umlimator.py check` fails on a broken rule, so CI does.
 - **Change**: what a pull request changes, marked on the map and said in words (with a GitHub Action that posts it);
   a time-lapse of a model's history, where cards glide, fade in and fade out; and drift, the map against the traffic seen.
 
@@ -69,7 +75,10 @@ function MapView({ model, onSelect }) {
 - Colours are `--um-*` CSS variables, fonts are the host's (`--um-sans`, `--um-mono`), text is measured in that font,
   and nothing is fetched.
 - `layout(model, viewId)` returns a view's geometry without a DOM, in Node too; `check(model, viewId)` runs the layout
-  check on it, and `validate(model)` finds dangling or repeated ids before anything is drawn.
+  check on it, and `validate(model)` finds dangling or repeated ids before anything is drawn. `rules(model)` lists every
+  rule the model breaks, view by view.
+- `map.overlay(name, layer)`, `highlight(refs)`, `tour(path)` and `replay(spans)` put the host's marks, a tour and a
+  trace on the map; `paths()`, `reach()` and `describe()` walk a view and put it in words, in Node too.
 - `editable: true` turns on editing gestures ([docs/editing.md](docs/editing.md); `examples/edit.html` is a working host).
 - `diff(before, after)` returns `after` with each card and line marked added, changed or removed, what changed in words,
   and the views that show it; `drift(model, observed)` marks the lines traffic ran on that nobody drew, and the drawn ones
@@ -110,6 +119,7 @@ kinds such as `public`, `lane`, `script`, `hook` and `board` work too). Fields b
 | view | `subAndChips` | cards 80 px tall that show their sub-line, then their chips |
 | view | `kindsFromLabels` | a line whose edges name no `kind` takes one guessed from its label |
 | container | `badges` | tabs on the box's border |
+| model | `rules` | what must hold: no line `from` some cards `to` others (picked by id, kind or box), or `noCycles` between boxes |
 
 ## Command line
 
@@ -123,6 +133,8 @@ python3 umlimator.py diff --base origin/main --out diff/              # every mo
 python3 umlimator.py drift model.json traffic.json --out drift.html   # drawn vs. seen (a Jaeger or Tempo dependency list)
 python3 umlimator.py timelapse model.json --out history.html          # the model's versions in git history, on a slider
 ```
+
+`check` also reports each rule the model breaks, and then exits 1.
 
 The page has breadcrumbs, a details panel per card, ⌘K search, deep links (`#view=<id>&node=<id>`) and export.
 `stills` skips a view whose inputs have not changed since its last export (`--all` exports every view). Needs Python

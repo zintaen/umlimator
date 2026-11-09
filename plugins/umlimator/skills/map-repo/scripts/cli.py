@@ -19,7 +19,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-REF, SHA = "v0.10.0", "972e501f6958bc5d2b6ed99696cb8123da0c77e2"   # the release this skill is written for
+REF, SHA = "v0.11.0", "a30cdfca9901b07eb5784a72768ed2e9da147f20"   # the release this skill is written for
 ref = os.environ.get("UMLIMATOR_REF", REF)
 sha = os.environ.get("UMLIMATOR_SHA", SHA if ref == REF else "")
 cache = Path(os.environ.get("UMLIMATOR_CLI_CACHE") or Path(os.environ.get("XDG_CACHE_HOME") or Path.home() / ".cache") / "umlimator" / "cli")
