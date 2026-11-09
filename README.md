@@ -37,6 +37,9 @@ drill-down, a data pipeline, an AI agent's skills, and host pages for embedding,
   marked on the map where it breaks; `umlimator.py check` fails on a broken rule, so CI does.
 - **Change**: what a pull request changes, marked on the map and said in words (with a GitHub Action that posts it);
   a time-lapse of a model's history, where cards glide, fade in and fade out; and drift, the map against the traffic seen.
+- **An AI assistant on the map**: an MCP server (`umlimator.py mcp`) through which an assistant such as Claude Code reads
+  the model (a view in words, paths, what a card reaches, broken rules, problems, a diff) and drives its page in your
+  browser (a view, a highlight, a tour, a story).
 
 ## Install
 
@@ -141,6 +144,7 @@ python3 umlimator.py drift model.json traffic.json --out drift.html   # drawn vs
 python3 umlimator.py timelapse model.json --out history.html          # the model's versions in git history, on a slider
 python3 umlimator.py check page.html --expand                          # also each view with each stacked card unfolded
 python3 umlimator.py record bike-share.html --story ride --out ride.png   # bike-share's story as an animated PNG, a frame per step
+python3 umlimator.py mcp model.json                                    # an MCP server over stdio, for an AI assistant (below)
 ```
 
 `check` also reports each rule the model breaks, and then exits 1.
@@ -148,8 +152,8 @@ python3 umlimator.py record bike-share.html --story ride --out ride.png   # bike
 The page has breadcrumbs, a details panel per card, ⌘K search, deep links (`#view=<id>&node=<id>`, and
 `#story=<id>&step=<n>` for a story's step), stories, and export.
 `stills` skips a view whose inputs have not changed since its last export (`--all` exports every view). Needs Python
-3.9+ (standard library only), Google Chrome or Chromium for `stills`, `check` and `record`, and Node 18+ for `diff`
-and `drift`.
+3.9+ (standard library only), Google Chrome or Chromium for `stills`, `check` and `record`, and Node 18+ for `diff`,
+`drift` and `mcp`.
 
 `record` writes an animated PNG, which browsers and GitHub show as it is. For a GIF or an MP4 (for chat or slides),
 convert it with ffmpeg:
@@ -174,6 +178,34 @@ jobs:
         with:
           models: "docs/*.json"   # optional: where the models are (default: every .json that is a map model)
 ```
+
+## An AI assistant on the map (MCP)
+
+`umlimator.py mcp model.json` is a [Model Context Protocol](https://modelcontextprotocol.io) server over stdio: an AI
+assistant reads the model, and shows you what it finds on the map in your browser. Add it to Claude Code:
+
+```bash
+claude mcp add umlimator -- python3 /path/to/umlimator.py mcp /path/to/model.json
+```
+
+| Tool | What it does |
+|---|---|
+| `list_views()` | the views (id, title, parent, number of cards) and the stories |
+| `describe_view(view)` | the view in sentences (`describe()`), then each card's id |
+| `paths(view, from, to)` | every card and line on a path from one card to another (`paths()`), as Refs for `highlight` |
+| `reach(view, card, backward?, depth?)` | what a card leads to, or what leads to it, with the distance of each (`reach()`) |
+| `broken_rules()`, `validate()` | each break of the model's `rules` (`rules()`), and its own problems (`validate()`) |
+| `diff(other_model_path)` | what changed from another model file to this one, in words, and the views that show it (`diff()`) |
+| `show_view(view)` | shows a view on the page |
+| `highlight(refs, view?)` | lights cards and lines (their ids, or the Refs `paths` and `reach` give) and dims the rest |
+| `tour(cards, view?)` | a dot rides the lines through these cards |
+| `play_story(id)`, `clear()` | plays one of the model's stories; takes the highlight, the tour and the story off |
+
+- The read tools run the module's own functions in Node on the model file, read again at each call, so edits show up.
+- The page tools drive the map's page, which the server serves at `http://127.0.0.1:7391` (`--port N`, or another port
+  when that one is taken). Open it in a browser. Each tool says whether a page is connected, and gives the URL when none
+  is; a page that connects later shows the latest command, and a page drawn from an older model draws itself again.
+- The server listens on 127.0.0.1 only and fetches nothing, so a logo not in the cache yet keeps its card's sigil.
 
 ## Map a repo with Claude Code
 
@@ -203,6 +235,8 @@ python3 -I tools/fetch_icons.py icons "name:lucide/<icon>"   # a line icon
 python3 umlimator.py pin-icons                                # records each new logo's sha256
 ```
 
+With `UMLIMATOR_OFFLINE=1` the CLI fetches nothing: a logo not in the cache keeps its card's sigil (`mcp` sets it).
+
 ## Development
 
 ```bash
@@ -223,7 +257,8 @@ Release with that section as its notes, and publishes the package to npm (truste
 CI also publishes the examples to GitHub Pages from `main`.
 
 ```
-umlimator.py                 CLI: render, stills, check, record, pin-icons, diff, drift, timelapse
+umlimator.py                 CLI: render, stills, check, record, pin-icons, diff, drift, timelapse, mcp
+umlimator_mcp.py             the MCP server that `umlimator.py mcp` runs
 action.yml                   the diff Action: what a pull request changes in its maps, posted on it
 lib/                         the module (umlimator.js), its types and the default theme
 engine/                      the page templates the CLI inlines the module into; the upstream renderer and schema

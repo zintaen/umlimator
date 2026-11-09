@@ -85,5 +85,6 @@ The module embedded in a page, as an app would use it. Serve the repository over
 | What changed between two models (`diff()`): NEW, CHANGED and REMOVED marks, and the summary in words | `timelapse.html` (Mark what changed); the CLI's `diff` and the diff Action (`action.yml`) |
 | The time-lapse: `update()` easing into the next model | `timelapse.html`; the CLI's `timelapse` writes one from a model's git history |
 | The map against the traffic seen (`drift()`), and the line style `faded` | `drift.html`; the CLI's `drift` |
+| An AI assistant reading a map and driving its page (an MCP server: `umlimator.py mcp`) | any model: `python3 umlimator.py mcp examples/bike-share.json`, as `tests/cli.py` runs it |
 
 Not shown: `repair: false`, a switch for debugging the router.
