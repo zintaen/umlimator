@@ -76,6 +76,13 @@
     }
    }
   },
+  "stories": {
+   "type": "array",
+   "items": {
+    "$ref": "#/$defs/story"
+   },
+   "description": "Narrated walk-throughs of the map: handle.play(id), the page's Stories menu, umlimator.py record."
+  },
   "sourcesBase": {
    "type": "string",
    "description": "A prefix for the cards' source paths."
@@ -818,6 +825,188 @@
     "kindsFromLabels": {
      "type": "boolean",
      "description": "Guess a line's kind from its label's words when its edges name none (render() and layout(); the standalone page always does)."
+    }
+   }
+  },
+  "story": {
+   "type": "object",
+   "required": [
+    "id",
+    "steps"
+   ],
+   "properties": {
+    "id": {
+     "type": "string",
+     "description": "Unique among the stories: handle.play(id), and #story=<id> in a page's link."
+    },
+    "title": {
+     "type": "string",
+     "description": "The story's name, in the Stories menu and over its captions."
+    },
+    "steps": {
+     "type": "array",
+     "minItems": 1,
+     "items": {
+      "$ref": "#/$defs/storyStep"
+     },
+     "description": "What the story shows, in order."
+    }
+   }
+  },
+  "storyStep": {
+   "type": "object",
+   "required": [
+    "view"
+   ],
+   "description": "One step: it sets the whole picture (what it leaves out is cleared), then plays its tour.",
+   "properties": {
+    "view": {
+     "type": "string",
+     "description": "The view the step shows."
+    },
+    "caption": {
+     "type": "string",
+     "description": "What the step says, in the caption bar and to screen readers."
+    },
+    "select": {
+     "description": "The card or line selected: an id, or a Ref.",
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "object",
+       "required": [
+        "type"
+       ],
+       "properties": {
+        "type": {
+         "enum": [
+          "node",
+          "edge",
+          "container"
+         ]
+        },
+        "id": {
+         "type": "string"
+        },
+        "ids": {
+         "type": "array",
+         "items": {
+          "type": "string"
+         }
+        },
+        "level": {
+         "type": "number",
+         "minimum": 0,
+         "maximum": 1
+        },
+        "distance": {
+         "type": "number",
+         "minimum": 0
+        }
+       }
+      }
+     ]
+    },
+    "highlight": {
+     "type": "array",
+     "items": {
+      "description": "A card or line by id, or a Ref (as events name things).",
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "object",
+        "required": [
+         "type"
+        ],
+        "properties": {
+         "type": {
+          "enum": [
+           "node",
+           "edge",
+           "container"
+          ]
+         },
+         "id": {
+          "type": "string"
+         },
+         "ids": {
+          "type": "array",
+          "items": {
+           "type": "string"
+          }
+         },
+         "level": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+         },
+         "distance": {
+          "type": "number",
+          "minimum": 0
+         }
+        }
+       }
+      ]
+     },
+     "description": "Cards and lines lit, the rest dimmed: ids or Refs; the lines between two cards it names light too."
+    },
+    "tour": {
+     "type": "array",
+     "items": {
+      "type": "string"
+     },
+     "description": "Card ids: the path a dot rides, once the step is shown."
+    },
+    "camera": {
+     "description": "Where the camera goes: \"fit\" (the default), a point and zoom, or a card to frame.",
+     "anyOf": [
+      {
+       "const": "fit"
+      },
+      {
+       "type": "object",
+       "required": [
+        "x",
+        "y"
+       ],
+       "properties": {
+        "x": {
+         "type": "number"
+        },
+        "y": {
+         "type": "number"
+        },
+        "zoom": {
+         "type": "number",
+         "exclusiveMinimum": 0
+        }
+       }
+      },
+      {
+       "type": "object",
+       "required": [
+        "card"
+       ],
+       "properties": {
+        "card": {
+         "type": "string"
+        },
+        "zoom": {
+         "type": "number",
+         "exclusiveMinimum": 0
+        }
+       }
+      }
+     ]
+    },
+    "duration": {
+     "type": "number",
+     "exclusiveMinimum": 0,
+     "description": "The step's time in ms when playing (default 4000); its tour runs to its end first."
     }
    }
   }

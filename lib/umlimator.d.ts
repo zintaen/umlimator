@@ -9,6 +9,8 @@ export interface MapModel {
   views: MapView[];
   icons?: Record<string, { g?: string; src?: string; dark?: boolean }>;
   authors?: Record<string, { name?: string; url?: string; avatar?: string }>;
+  /** Narrated walk-throughs of the map (#69): handle.play(id), the standalone page's Stories menu, umlimator.py record. */
+  stories?: Story[];
   [key: string]: unknown;
 }
 /** A badge: its text, and optionally a palette name for its colour (green, amber, rose, accent, violet ... : --um-<tone>). */
@@ -70,6 +72,7 @@ export interface Events {
   open: { target: Ref; view: string; preventDefault(): void };   // view: the one the card opens, which may not be in the model yet
   viewchange: { view: string; from: string };
   change: Change;                                           // only with `editable`
+  story: { story: string; step: number | null; steps: number };   // a story shows its step (0-based); step null: it ended
 }
 
 /** Where the user dropped or placed something: a point in the view and, on a column view, its column and row. */
@@ -137,7 +140,28 @@ export interface Handle {
    *  replay). A span's service names its card: through `match`, else as a card's id, else as its label (any case).
    *  duration: the whole trace's playing time in ms (default 6000). With reduced motion the labels appear at once. */
   replay(spans: Span[], options?: { match?: Record<string, string>; duration?: number }): Replay;
+  /** Tells one of the model's stories (#69): each step in turn sets the view, camera, selection, highlight and caption
+   *  (drawn in a bar on the map and said to screen readers), then plays its tour. auto (default true): the next step
+   *  follows once a step's duration is up and its tour has ended. step: where to start (0-based). The bar and the keys
+   *  (← → PageUp PageDown, Esc) step through and stop it. null when the model has no story `id` with steps. */
+  play(id: string, options?: { step?: number; auto?: boolean }): StoryPlayer | null;
   destroy(): void;
+}
+
+/** A walk-through: its steps, in order. */
+export interface Story { id: string; title?: string; steps: StoryStep[] }
+/** What one step shows. select: a card id, a line id, or a Ref. highlight: card ids, line ids or Lits; the lines between
+ *  two cards it names light too. tour: card ids, the dot's path. camera: 'fit' (the default), a point and zoom, or a card
+ *  to frame. duration: the step's time in ms when playing (default 4000; its tour runs to its end first). */
+export interface StoryStep {
+  view: string; caption?: string; select?: string | Ref; highlight?: (string | Lit)[]; tour?: string[];
+  camera?: 'fit' | { x: number; y: number; zoom?: number } | { card: string; zoom?: number }; duration?: number;
+}
+/** A story being told. step: the one shown (0-based). next() past the last step ends it (done: true); stop() closes it
+ *  (done: false). */
+export interface StoryPlayer {
+  readonly story: string; readonly step: number; readonly steps: number; readonly playing: boolean; readonly done: Promise<boolean>;
+  next(): void; prev(): void; pause(): void; resume(): void; stop(): void;
 }
 
 /** A mark on a card. tone: a palette name (--um-<tone>), drawn as a ring; badge: a tab after the card's own; level: 0 to 1. */

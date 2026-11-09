@@ -7,6 +7,7 @@ tests/embed.html: render() events, references, update(), destroy(), colours, bad
 tests/edit.html: editing gestures and the change events they emit.
 tests/contrast.html: the default palette against WCAG AA, light and dark.
 tests/marks.html: overlay(), highlight(), tour(), replay(), and the standalone page's paths and reach.
+tests/stories.html: play() and its caption bar, keys and events; the standalone page's Stories menu, story links and recording.
 examples/edit.html, embed.html, live.html, playground.html, ask.html, replay.html: the host pages load and draw.
 Each test page reports in <pre id="result">{"ok": [...], "fail": [...]}</pre>.
 """
@@ -55,7 +56,7 @@ def dom(path, done):
 
 
 failed = False
-for page in ("tests/embed.html", "tests/edit.html", "tests/contrast.html", "tests/marks.html"):
+for page in ("tests/embed.html", "tests/edit.html", "tests/contrast.html", "tests/marks.html", "tests/stories.html"):
     t = dom(page, lambda t: 'id="result"' in t)
     if "<title>" not in t:  # Chrome gave back no page at all (a rare headless hang on CI runners): once more
         print(f"note {page}: Chrome returned nothing; running it again"); t = dom(page, lambda t: 'id="result"' in t)
@@ -92,5 +93,18 @@ with tempfile.TemporaryDirectory() as tmp:
 print(("ok  " if pairs_ok else "FAIL"), "umlimator.py render · keepPairs: the layout check does not flag a pair's return line as running right to left",
       "" if pairs_ok else rep.get("problems") or r.stderr[-400:])
 failed |= not pairs_ok
+# umlimator.py record (#69): bike-share's story as an animated PNG, a frame per step, each shown for its step's duration
+with tempfile.TemporaryDirectory() as tmp:
+    page, png = Path(tmp) / "bike-share.html", Path(tmp) / "ride.png"
+    subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "render", str(ROOT / "examples" / "bike-share.json"), "--out", str(page), "--no-check"], capture_output=True)
+    r = subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "record", str(page), "--story", "ride", "--out", str(png)], capture_output=True, text=True)
+    b, chunks, i = png.read_bytes() if png.is_file() else b"", [], 8
+    while i + 8 <= len(b):
+        n = int.from_bytes(b[i:i + 4], "big"); chunks.append((b[i + 4:i + 8], b[i + 8:i + 8 + n])); i += 12 + n
+    delays = [int.from_bytes(d[20:22], "big") for t, d in chunks if t == b"fcTL"]  # fcTL: sequence, size, offset, then the delay
+    want = [s.get("duration") or 4000 for s in json.loads((ROOT / "examples" / "bike-share.json").read_text())["stories"][0]["steps"]]
+    rec_ok = r.returncode == 0 and b[:8] == b"\x89PNG\r\n\x1a\n" and [t for t, _ in chunks].count(b"acTL") == 1 and delays == want
+print(("ok  " if rec_ok else "FAIL"), "umlimator.py record · a story as an animated PNG: a frame per step, each for its step's duration", "" if rec_ok else [delays, want, r.stderr[-400:]])
+failed |= not rec_ok
 server.shutdown()
 sys.exit(1 if failed else 0)

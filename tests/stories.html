@@ -1,0 +1,119 @@
+<!doctype html>
+<!-- stories (#69): handle.play() on a map, and the standalone page's Stories menu, story links and recording.
+     tests/embed.py opens this in headless Chrome (reduced motion: a tour ends at once) and reads <pre id="result">. -->
+<meta charset="utf-8">
+<link rel="icon" href="data:,">
+<title>umlimator stories test</title>
+<body style="margin:0">
+<div id="a" style="width:1000px;height:700px"></div>
+<div id="b" style="width:600px;height:400px"></div>
+<div id="page" style="width:1100px;height:700px"></div>
+<script type="module">
+import { render, mountPage } from '../lib/umlimator.js';
+const BIKE = await (await fetch('../examples/bike-share.json')).json();
+const out = { ok: [], fail: [], debug: [] };
+const check = (name, cond, info) => { document.title = name; if (cond) out.ok.push(name); else out.fail.push(name + (info === undefined ? '' : ': ' + JSON.stringify(info))); };
+const until = async (f, ms = 5000) => { const t = Date.now(); while (!f() && Date.now() - t < ms) await new Promise(r => setTimeout(r, 20)); return f(); };
+try {
+  // render(): a story told step by step
+  const el = document.getElementById('a'), events = [], h = render(el, BIKE, { view: 'context', on: { story: e => events.push(e) } });
+  const sr = el.querySelector('.umlimator').shadowRoot, stage = sr.querySelector('.stage');
+  const card = id => sr.querySelector(`.node[data-id="${id}"]`), line = (a, b) => sr.querySelector(`.edge-g[data-from="${a}"][data-to="${b}"]`);
+  const bar = () => sr.querySelector('.um-story'), cap = () => bar() ? bar().querySelector('p').textContent : '', live = () => sr.querySelector('.um-live').textContent;
+  const btn = s => bar().querySelector(`[data-s="${s}"]`), key = k => stage.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true, composed: true }));
+  const dimmed = () => [...sr.querySelectorAll('.node[opacity]')].map(n => n.dataset.id).sort();
+
+  check('play() with no such story: null', h.play('nope') === null);
+  const p = h.play('ride', { auto: false });
+  await until(() => live().startsWith('Step 1'));
+  check('play() shows the first step: its caption in a bar on the map with the title and count, said to screen readers', p && p.steps === 5 && p.step === 0 && !p.playing
+    && /A ride, from unlock to payment · 1 \/ 5/.test(bar().textContent) && cap().startsWith('Riders hire bikes') && live().startsWith('Step 1 of 5: Riders hire bikes'), [live(), bar() && bar().textContent]);
+  check('…a story event names the story and the step', events.length === 1 && events[0].story === 'ride' && events[0].step === 0 && events[0].steps === 5, events);
+  check('…its highlight: the cards it names and the lines between them lit, the rest dimmed', !card('riders').hasAttribute('opacity') && !line('riders', 'bikeshare').hasAttribute('opacity')
+    && !line('bikeshare', 'payments').hasAttribute('opacity') && card('ops').getAttribute('opacity') === '0.2' && line('ops', 'bikeshare').getAttribute('opacity') === '0.2', dimmed());
+  check('…on the first step, ‹ is off', btn('prev').disabled && btn('play').getAttribute('aria-label') === 'Play');
+
+  p.next(); await until(() => h.view === 'system' && live().startsWith('Step 2'));
+  out.debug.push({ step2dimmed: dimmed(), lit: [...sr.querySelectorAll('.um-rings, .um-marks')].length, umlit: stage.classList.contains('um-lit'), pct: sr.querySelector('.pct').textContent });
+  check("next(): the next step's view, its selection and its camera, framing a card at 75%", p.step === 1 && h.selection && h.selection.id === 'trips' && sr.querySelector('.pct').textContent === '75%',
+    [p.step, h.selection, sr.querySelector('.pct').textContent]);
+  check('…and its highlight', !card('rider-app').hasAttribute('opacity') && !line('rider-app', 'trips').hasAttribute('opacity') && card('accounts').getAttribute('opacity') === '0.2', dimmed());
+
+  key('ArrowRight'); await until(() => h.view === 'trips' && live().startsWith('Step 3'));
+  check('→ steps on: a view further in, the tour played, nothing selected', p.step === 2 && h.selection === null && cap().startsWith('To unlock a bike') && card('fare').getAttribute('opacity') === '0.2', [p.step, h.selection]);
+  key('ArrowLeft'); await until(() => h.view === 'system' && live().startsWith('Step 2'));
+  check('← steps back', p.step === 1 && h.selection && h.selection.id === 'trips');
+  key('PageDown'); key('PageDown'); key('PageDown'); await until(() => live().startsWith('Step 5'));
+  check('PageDown steps on; on the last step › finishes the story', p.step === 4 && btn('next').getAttribute('aria-label') === 'Finish the story' && h.selection.id === 'payments', [p.step, live()]);
+  btn('next').click(); const told = await p.done;
+  check('› on the last step ends it: done is true, the bar goes, the highlight clears, and the story event says so', told === true && !bar() && !sr.querySelector('.node[opacity]')
+    && events[events.length - 1].step === null && live() === 'End of the story', [told, events[events.length - 1], live()]);
+
+  // pause, resume, Esc and the bar's own buttons
+  const q = h.play('ride', { step: 2 });
+  await until(() => live().startsWith('Step 3'));
+  check('play(id, { step }) starts there, playing', q.step === 2 && q.playing && btn('play').getAttribute('aria-label') === 'Pause');
+  q.pause(); check('pause() stops it going on; the bar offers Play', !q.playing && btn('play').getAttribute('aria-label') === 'Play' && btn('play').textContent === '▶');
+  btn('play').click(); check("the bar's ▶ plays again", q.playing && btn('play').getAttribute('aria-label') === 'Pause');
+  btn('prev').click(); await until(() => live().startsWith('Step 2'));
+  check("the bar's ‹ steps back", q.step === 1);
+  btn('play').focus(); const enter = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, composed: true, cancelable: true }); btn('play').dispatchEvent(enter);
+  check("Enter on the bar's own button is the button's (not the map's: it does not open the selected card)", !enter.defaultPrevented && h.view === 'system');
+  key('Escape'); const stopped = await q.done;
+  check('Esc stops it: done is false, the bar goes', stopped === false && !bar() && live() === 'Story closed');
+
+  // playing goes on by itself, a step's tour first, then its duration
+  const TINY = { nodes: [{ id: 'a', label: 'A' }, { id: 'b', label: 'B' }, { id: 'c', label: 'C' }], edges: [{ id: 'ab', from: 'a', to: 'b' }, { id: 'bc', from: 'b', to: 'c' }],
+    views: [{ id: 'v', nodeIds: ['a', 'b', 'c'] }],
+    stories: [{ id: 's', title: 'Tiny', steps: [{ view: 'v', caption: 'one', duration: 600 }, { view: 'v', caption: 'two', highlight: ['a', 'bc'], tour: ['a', 'b', 'c'], camera: { x: 0, y: 0, zoom: 1 }, duration: 600 }] }] };
+  const el2 = document.getElementById('b'), seen = [], h2 = render(el2, TINY, { on: { story: e => seen.push(e.step) } }), sr2 = el2.querySelector('.umlimator').shadowRoot;
+  const t = h2.play('s'), all = await t.done;
+  check('playing: each step after its duration, the story told to its end (done true)', all === true && seen.join() === '0,1,' && !sr2.querySelector('.um-story'), seen);
+  h2.play('s', { step: 1, auto: false }); await until(() => sr2.querySelector('.um-live').textContent.startsWith('Step 2'));
+  const n2 = id => sr2.querySelector(`.node[data-id="${id}"]`);
+  check('a highlight names a line by its id; a card named alone lights no line', !n2('a').hasAttribute('opacity') && n2('b').getAttribute('opacity') === '0.2'
+    && !sr2.querySelector('.edge-g[data-from="b"][data-to="c"]').hasAttribute('opacity') && sr2.querySelector('.edge-g[data-from="a"][data-to="b"]').getAttribute('opacity') === '0.2');
+  h2.destroy();
+
+  // the standalone page: a link to a story's step, the Stories menu, recording
+  history.replaceState(null, '', '#story=ride&step=2');
+  const pg = mountPage(document.getElementById('page'), BIKE, { instant: true });
+  await until(() => document.querySelector('#m-canvas .umlimator') && pg.view === 'system');
+  const psr = document.querySelector('#m-canvas .umlimator').shadowRoot, pbar = () => psr.querySelector('.um-story');
+  await until(() => pbar() && /2 \/ 5/.test(pbar().textContent));
+  check("a page's link to a story's step (#story=ride&step=2) shows that step, not playing on", pbar() && /2 \/ 5/.test(pbar().textContent) && pbar().querySelector('[data-s="play"]').getAttribute('aria-label') === 'Play',
+    pbar() && pbar().textContent);
+  check('…the link names the story and step; the legend gives way to the bar; no details panel for the step\'s own selection', /story=ride/.test(location.hash) && /step=2/.test(location.hash)
+    && document.querySelector('.mapapp').classList.contains('story') && pg.selection && pg.selection.id === 'trips' && document.getElementById('m-panel').hidden, [location.hash, pg.selection]);
+  pg.select({ type: 'node', id: 'accounts' }); await until(() => !document.getElementById('m-panel').hidden);
+  check('…a card the reader picks still opens its details', !document.getElementById('m-panel').hidden);
+  document.getElementById('m-stories').click();
+  check('the Stories menu lists the model\'s stories', !document.getElementById('m-stories-pop').hidden && document.querySelector('#m-stories-pop [data-story="ride"]').textContent === 'A ride, from unlock to payment');
+  document.querySelector('#m-stories-pop [data-story="ride"]').click(); await until(() => pbar() && /1 \/ 5/.test(pbar().textContent));
+  check('…picking one plays it from the start', document.getElementById('m-stories-pop').hidden && /1 \/ 5/.test(pbar().textContent) && pbar().querySelector('[data-s="play"]').getAttribute('aria-label') === 'Pause'
+    && /step=1/.test(location.hash));
+  pbar().querySelector('[data-s="stop"]').click(); await until(() => !pbar());
+  check('✕ closes it: the link and the legend are back as they were', !pbar() && !/story=/.test(location.hash) && !document.querySelector('.mapapp').classList.contains('story'), location.hash);
+
+  const blobs = [], own = URL.createObjectURL; URL.createObjectURL = b => { blobs.push(b); return own.call(URL, b); };
+  document.querySelector('#m-export-pop [data-x="record"]').click();
+  const rows = () => document.querySelectorAll('#m-rec-list li').length;
+  check('Export ▸ Record a story… opens the recorder, with where the map is as its first step', !!document.getElementById('m-rec') && rows() === 1, rows());
+  pg.setView('trips'); await until(() => rows() === 2, 3000);
+  pg.select({ type: 'node', id: 'fare' }); await until(() => rows() === 3, 3000);
+  check('…each view and card the reader comes to is a step', rows() === 3 && /Fare calculator/.test(document.querySelectorAll('#m-rec-list li')[2].textContent), rows());
+  document.querySelector('#m-rec [data-r="add"]').click();
+  check('…Add step takes one as the map is now', rows() === 4);
+  document.querySelector('#m-rec-list [data-del="3"]').click();
+  const c0 = document.querySelector('#m-rec-list input[data-i="0"]'); c0.value = 'Where it starts'; c0.dispatchEvent(new Event('input', { bubbles: true }));
+  document.getElementById('m-rec-title').value = 'My walk';
+  document.querySelector('#m-rec [data-r="save"]').click();
+  const saved = JSON.parse(await blobs[blobs.length - 1].text());
+  check('…Save writes the story: an id from its title, each step with its caption, view and selection', saved.id === 'my-walk' && saved.title === 'My walk' && saved.steps.length === 3
+    && saved.steps[0].caption === 'Where it starts' && saved.steps[0].view === 'context' && saved.steps[1].view === 'trips' && saved.steps[2].select === 'fare' && !('caption' in saved.steps[1]), saved);
+  document.querySelector('#m-rec [data-r="close"]').click();
+  check('…Close puts it away', !document.getElementById('m-rec'));
+  URL.createObjectURL = own;
+} catch (e) { out.fail.push('threw: ' + (e && e.stack || e)); }
+const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
+</script>

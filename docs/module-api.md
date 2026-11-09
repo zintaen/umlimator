@@ -569,3 +569,51 @@ another three. Auto-layout now lays those out as it does lines between neighbour
   - `examples/replay.html` replays a ride ending.
 - **One at a time:** a tour and a replay both use the moving dot, so starting one ends the other.
 - **Tests:** `tests/explore.test.mjs` (Node), and `tests/marks.html`, which `tests/embed.py` runs.
+
+### Stories (#69)
+
+- **`stories` in the model:** walk-throughs, each `{ id, title, steps }`. A step is
+  `{ view, caption, select, highlight, tour, camera, duration }`, and only `view` is required.
+  - **`select`:** a card id, a line id, or a Ref.
+  - **`highlight`:** card ids, line ids or Lits. The lines between two cards it names light too, so a list of cards
+    lights the path through them.
+  - **`tour`:** card ids, the path the dot rides once the step is shown.
+  - **`camera`:** `"fit"` (the default), `{ x, y, zoom }`, or `{ card, zoom }` to frame a card (zoom 1.5 unless given).
+  - **`duration`:** the step's time in ms while playing (default 4000). A step's tour runs to its end first.
+  - **A step sets the whole picture.** What it leaves out is cleared: no selection, no highlight, the view fitted. So a
+    step looks the same whether it's reached from before or after.
+  - **`validate()` checks each step.** A view the model doesn't have, or a card, line or tour stop that isn't in the
+    step's view, is an error. A camera or duration it can't use is a warning, and the step falls back to the default.
+  - **The schema:** `stories`, plus `story` and `storyStep` in `lib/umlimator.schema.json`.
+- **`handle.play(id, { step, auto })`** tells a story and returns a player, or `null` when the model has no such story
+  with steps.
+  - **The player:** `{ story, step, steps, playing, done, next(), prev(), pause(), resume(), stop() }`. `step` is 0-based.
+  - **Playing** (`auto`, the default): the next step follows once a step's duration is up and its tour has ended.
+  - **Ending:** `next()` past the last step ends the story, and `done` is `true`. `stop()` closes it, and `done` is `false`.
+  - **The caption bar** sits at the bottom left of the map, clear of the controls. It shows the title, `n / N` and the
+    caption, with ‹ ▶/❚❚ › ✕ buttons. The caption is said in the map's live region.
+  - **Keys:** ← → and PageUp / PageDown step through, and Esc closes. Enter and Space on the bar's own buttons press them.
+  - **The fit** keeps the cards clear of the bar, as it does of the controls.
+  - **The `story` event** `{ story, step, steps }` comes as each step starts, and `step: null` comes when the story ends.
+- **In the standalone page:**
+  - **The Stories menu** (only when the model has stories) plays one from the start.
+  - **Links:** `#story=<id>&step=<n>` (1-based) opens a story at that step, shown but not playing on. The link follows
+    the story as it moves.
+  - **While a story is shown,** the legend gives way to the caption bar. The step's own selection is a pointer, so it
+    opens no details panel; a card the reader picks still opens its panel.
+- **Recording in the page:** Export ▸ Record a story… opens a panel.
+  - **Steps:** each view and card the reader comes to becomes a step. Add step takes one as the map is now, with the
+    camera too once it has been moved by hand.
+  - **Captions** are typed in the panel, and a step can be removed.
+  - **Save** downloads `<id>.story.json`, with an id taken from the title, ready for the model's `stories`.
+- **`umlimator.py record PAGE.html --story ID --out STORY.png`** writes the story as an animated PNG.
+  - **Frames:** headless Chrome opens the page at each step's link, drawn at once and with reduced motion, and takes one
+    frame per step, shown for the step's duration.
+  - **Options:** `--size` (default 1160x740, small enough that the views list stays shut), `--scale` and `--theme`.
+  - **Format:** the frames' PNG data goes into APNG's frame chunks as it is, with nothing decoded, so it needs the
+    standard library only. GIF and MP4 would need encoders umlimator doesn't ship, so convert the PNG if you need one.
+  - **Limit:** with one frame per step, a step's tour doesn't move in the picture.
+  - **CI:** the site's build records every example's stories (`stills/<model>/story-<id>.png`).
+- **Example:** bike-share's `ride` story: a ride from unlock to payment, in five steps.
+- **Tests:** `tests/stories.test.mjs` (Node: `validate()` on stories), and `tests/stories.html` (play, keys, the bar, the
+  page's menu, links and recording). `tests/embed.py` runs the page and checks a `record` run's frames.

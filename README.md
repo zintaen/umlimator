@@ -24,6 +24,8 @@ drill-down, a data pipeline, an AI agent's skills, and host pages for embedding,
   (`describe()`); a tour along any path the host names.
 - **Live data**: marks over the map without touching the model (`overlay()`): flow as fast as the traffic, errors that
   pulse, slow hops that glow, labels and tabs; and an OpenTelemetry trace replayed along its lines (`replay()`).
+- **Stories**: walk-throughs in the model, step by step (view, camera, selection, highlight, tour and a caption), played
+  on the map (`play()`) or from the page's Stories menu, recorded from the page, and written as an animated PNG.
 - **Keyboard and screen readers**: cards, then lines, in the Tab order (a card's tabs and chips too, for a host that
   listens for click); arrows between cards; selections announced.
 - **Editing** (opt-in): gestures emit `change` events; the host applies them and calls `update()`.
@@ -108,6 +110,7 @@ kinds such as `public`, `lane`, `script`, `hook` and `board` work too). Fields b
 | view | `subAndChips` | cards 80 px tall that show their sub-line, then their chips |
 | view | `kindsFromLabels` | a line whose edges name no `kind` takes one guessed from its label |
 | container | `badges` | tabs on the box's border |
+| model | `stories` | walk-throughs: steps that each set the view, camera, selection, highlight, tour and caption |
 
 ## Command line
 
@@ -116,11 +119,13 @@ python3 umlimator.py render examples/bookshop.json --out page.html   # the inter
 python3 umlimator.py stills page.html --out stills/                   # every view as SVG and PNG
 python3 umlimator.py stills page.html --out stills/ --views overview,api --scale 1.5 --theme light
 python3 umlimator.py check page.html --views 'pic-*'                   # the layout check on chosen views
+python3 umlimator.py record bike-share.html --story ride --out ride.png   # bike-share's story as an animated PNG, a frame per step
 ```
 
-The page has breadcrumbs, a details panel per card, ⌘K search, deep links (`#view=<id>&node=<id>`) and export.
+The page has breadcrumbs, a details panel per card, ⌘K search, deep links (`#view=<id>&node=<id>`, and
+`#story=<id>&step=<n>` for a story's step), stories, and export.
 `stills` skips a view whose inputs have not changed since its last export (`--all` exports every view). Needs Python
-3.9+ (standard library only), and Google Chrome or Chromium for `stills` and `check`.
+3.9+ (standard library only), and Google Chrome or Chromium for `stills`, `check` and `record`.
 
 ## Map a repo with Claude Code
 
@@ -170,7 +175,7 @@ Release with that section as its notes, and publishes the package to npm (truste
 CI also publishes the examples to GitHub Pages from `main`.
 
 ```
-umlimator.py                 CLI: render, stills, check, pin-icons
+umlimator.py                 CLI: render, stills, check, record, pin-icons
 lib/                         the module (umlimator.js), its types and the default theme
 engine/                      the page template the CLI inlines the module into; the upstream renderer and schema
 docs/                        the module's API and the editing design
