@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
 """The CLI's change commands end to end (#66, #67, #68): diff of two files, diff --base in a git repository (what the
-diff Action runs on a pull request), drift and timelapse; and trace (#96). Pages only: stills (Chrome) are covered by
-`stills` itself. And the MCP server (#91), driven through its pipes as an MCP client drives it, with a page's event stream.
+diff Action runs on a pull request), drift and timelapse; trace (#96); and pdf (#93), read back with the standard
+library. Pages only for the rest: stills (Chrome) are covered by `stills` itself. And the MCP server (#91), driven
+through its pipes as an MCP client drives it, with a page's event stream.
 
   python3 tests/cli.py
 
-Needs Node (diff, drift, trace and the MCP server's read tools run the module's own functions) and git.
+Needs Node (diff, drift, trace and the MCP server's read tools run the module's own functions), git, and Chrome or
+Chromium (pdf).
 """
-import http.client, json, re, subprocess, sys, tempfile, threading
+import http.client, json, re, subprocess, sys, tempfile, threading, zlib
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -25,6 +27,36 @@ def cli(*args, cwd=None):
     if r.returncode:
         print(r.stderr[-1500:])
     return json.loads(r.stdout) if r.returncode == 0 else None
+
+
+def pdf_text(data):
+    """The text of each page of a PDF Chrome wrote, as a viewer's search finds it: Chrome writes glyph ids, which each
+    font's ToUnicode map reads back. The standard library only (zlib for the streams)."""
+    obj = dict(re.findall(rb"(\d+) 0 obj\s*(.*?)endobj", data, re.S))
+
+    def stream(n):
+        m = re.search(rb"(.*?)stream\r?\n(.*?)\r?\nendstream", obj[n], re.S)
+        return zlib.decompress(m.group(2)) if b"/FlateDecode" in m.group(1) else m.group(2)
+
+    def cmap(n):  # glyph id -> text
+        t, to = stream(n), {}
+        for a, u in re.findall(rb"<(\w+)>\s*<(\w+)>", b"".join(re.findall(rb"beginbfchar(.*?)endbfchar", t, re.S))):
+            to[int(a, 16)] = bytes.fromhex(u.decode()).decode("utf-16-be")
+        for a, z, u in re.findall(rb"<(\w+)>\s*<(\w+)>\s*<(\w+)>", b"".join(re.findall(rb"beginbfrange(.*?)endbfrange", t, re.S))):
+            to.update({k: chr(int(u, 16) + k - int(a, 16)) for k in range(int(a, 16), int(z, 16) + 1)})
+        return to
+
+    pages = []
+    for page in (b for b in obj.values() if re.search(rb"/Type\s*/Page\b", b)):
+        fonts = {f: cmap(re.search(rb"/ToUnicode (\d+) 0 R", obj[n]).group(1)) for f, n in re.findall(rb"/(F\d+) (\d+) 0 R", page)}
+        font, text = {}, ""
+        for f, run in re.findall(rb"/(F\d+) [\d.]+ Tf|<([0-9A-Fa-f]*)>", stream(re.search(rb"/Contents (\d+) 0 R", page).group(1))):
+            if f:
+                font = fonts[f]
+            else:  # ponytail: two bytes a glyph (Identity-H, as Chrome embeds every font); a one-byte font would need its codespace
+                text += "".join(font.get(int(run[i:i + 4], 16), "?") for i in range(0, len(run), 4))
+        pages.append(text)
+    return pages
 
 
 def edited(m):  # a made-up pull request on the bike share: a queue between Trips and Payments, a rename, a card gone
@@ -96,6 +128,33 @@ with tempfile.TemporaryDirectory() as tmp:
     git("checkout", "-q", "--", "docs/map.json")
     cli("diff", "--base", "HEAD", "--out", str(t / "pr2"), cwd=g)
     ok("diff --base · says so when no map changed", "No map model changed." in ((t / "pr2" / "summary.md").read_text(encoding="utf-8") if (t / "pr2" / "summary.md").is_file() else ""))
+
+    # pdf (#93): the bike share in one PDF, a title page, a page per view, then the legend and the rules; its words are text
+    cli("render", str(ROOT / "examples" / "bike-share.json"), "--out", str(t / "bike.html"), "--no-check")
+    r = cli("pdf", str(t / "bike.html"), "--out", str(t / "bike.pdf")) or {}
+    pages = pdf_text((t / "bike.pdf").read_bytes()) if (t / "bike.pdf").is_file() else []
+    titles = [v["title"] for v in bike["views"]]
+    ok("pdf · a title page, a page per view, and one for the legend and rules", r.get("pages") == len(pages) == len(titles) + 2, [r, len(pages)])
+    said = "".join(pages)
+    ok("pdf · the title, each view's title, cards and describe() text, the legend and each rule's state are text in it",
+       all(s in said for s in ["Bike share, an example", *titles, "Payment provider", "What runs: 18 cards and 15 lines.", "Legend",
+                               "Apps never call a database directly: holds", "Only the ride services touch the trips store: holds"]), said[:600])
+    r = cli("pdf", str(t / "bike.html"), "--out", str(t / "two.pdf"), "--views", "system,f*", "--theme", "dark") or {}
+    ok("pdf --views · only the views named (a trailing * a prefix)", r.get("pages") == 4 and "Fleet service" in "".join(pdf_text((t / "two.pdf").read_bytes())), r)
+    # a rule broken in one view: judged in the views a PDF prints, as it says
+    (t / "rules2.json").write_text(json.dumps({"nodes": [{"id": "app", "label": "App", "kind": "frontend"}, {"id": "api", "label": "API", "kind": "backend"},
+                                                         {"id": "db", "label": "Store", "kind": "database"}],
+                                               "edges": [{"from": "app", "to": "api", "label": "asks"}, {"from": "api", "to": "db", "label": "writes"}],
+                                               "views": [{"id": "clean", "nodeIds": ["app", "api", "db"]},
+                                                         {"id": "direct", "nodeIds": ["app", "db"], "edges": [{"from": "app", "to": "db", "label": "reads"}]}],
+                                               "rules": [{"id": "apps-no-db", "title": "Apps never call a database directly", "from": {"kind": "frontend"}, "to": {"kind": "database"}}]}))
+    cli("render", str(t / "rules2.json"), "--out", str(t / "rules2.html"), "--no-check")
+    read = lambda f, *a: "".join(pdf_text((t / f).read_bytes())) if cli("pdf", str(t / "rules2.html"), "--out", str(t / f), *a) else ""
+    every, clean = read("every.pdf"), read("clean.pdf", "--views", "clean")
+    ok("pdf · each rule is judged in the views it prints, as it says: broken with the view that breaks it, holding without it",
+       "directly: broken" in every and "view direct: edge App" in every and "directly: holds" in clean and "breaks rule" not in clean
+       and "Judged in the views printed here." in clean, [every[-240:], clean[-240:]])
+
 # four renders of one model at once (#105): each writes its own copy of the model, and every page records the model itself
 with tempfile.TemporaryDirectory() as tmp:
     t = Path(tmp)
