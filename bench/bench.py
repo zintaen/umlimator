@@ -16,7 +16,7 @@ pass, repair the port-repair loop (rounds, and the port swaps it tried), total i
 layout check's route audit finds; hash is the geometry, the same on every run unless the output is nondeterministic.
 A view that does not finish within --timeout seconds, or that repairs although it says `repair: false`, fails the run.
 """
-import argparse, datetime, html, importlib.util, json, re, statistics, subprocess, sys, tempfile
+import argparse, datetime, html, importlib.util, json, re, statistics, subprocess, sys, tempfile, urllib.parse
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -39,7 +39,7 @@ def page_of(model, tmp):
 
 def run_view(binary, page, view, runs, optimize, timeout):
     """One page load that times one view; None on a timeout."""
-    url = page.as_uri() + f"#bench=1&views={view}&runs={runs}" + ("&optimize=1" if optimize else "")
+    url = page.as_uri() + f"#bench=1&views={urllib.parse.quote(view, safe='')}&runs={runs}" + ("&optimize=1" if optimize else "")  # a + in a hash reads as a space
     # no --virtual-time-budget: it virtualises the page's clock, and the bench runs before the load event anyway
     dom = visual.chrome(binary, "--dump-dom", url, done=lambda t: "</html>" in t, timeout=timeout)
     m = PRE.search(dom)
@@ -60,6 +60,8 @@ def summary(r, edges):
          "hashes": sorted({x["hash"] for x in r["runs"]})}
     if "optimize" in r:
         s["optimize"] = {k: round(v, 1) for k, v in r["optimize"].items()}
+    if "unfold" in r:
+        s["unfold"] = round(r["unfold"], 1)
     return s
 
 
@@ -96,18 +98,21 @@ def main():
         for path in paths:
             m = json.loads(path.read_text())
             page = page_of(path, tmp)
-            for v in m["views"]:
-                key = f"{path.stem}/{v['id']}"
-                r = run_view(binary, page, v["id"], a.runs, a.optimize, a.timeout)
+            # benchViews: "view+card", the view with cards unfolded in place (#71), timed as drawn and the unfolding apart
+            for vid in [v["id"] for v in m["views"]] + m.get("benchViews", []):
+                v = next(x for x in m["views"] if x["id"] == vid.split("+")[0])
+                key = f"{path.stem}/{vid}"
+                r = run_view(binary, page, vid, a.runs, a.optimize, a.timeout)
                 if r is None:
                     results[key] = {"timeout": a.timeout}
                     print(f"{key:24} timeout > {a.timeout} s")
                     failed.append(f"{key}: no result within {a.timeout} s")
                     continue
-                s = results[key] = summary(r, view_edges(m, v))
+                s = results[key] = summary(r, r.get("edges", view_edges(m, v)))
                 print(f"{key:24} {s['nodes']:>3} {s['edges']:>4} {s['plan']:>8} {s['place']:>7} {s['route']:>8} {s['repair']:>9} "
                       f"{s['rounds']:>4} {s['reroutes']:>5} {s['total']:>9} {s['issues']:>4}  {','.join(s['hashes'])}"
-                      + (f"  optimize {s['optimize']['ms']} ms / {s['optimize']['evals']} evals" if "optimize" in s else ""))
+                      + (f"  optimize {s['optimize']['ms']} ms / {s['optimize']['evals']} evals" if "optimize" in s else "")
+                      + (f"  unfold {s['unfold']} ms" if "unfold" in s else ""))
                 if v.get("repair") is False and s["rounds"]:
                     failed.append(f"{key}: says repair: false but ran {s['rounds']} repair round(s)")
                 if key in expect and "hashes" in expect[key] and s["hashes"] != expect[key]["hashes"]:
@@ -115,7 +120,7 @@ def main():
                 if len(s["hashes"]) > 1:
                     failed.append(f"{key}: runs disagree ({s['hashes']})")
                 if a.check_determinism:
-                    r2 = run_view(binary, page, v["id"], 1, False, a.timeout)
+                    r2 = run_view(binary, page, vid, 1, False, a.timeout)
                     if r2 and r2["runs"][0]["hash"] not in s["hashes"]:
                         failed.append(f"{key}: a second page load laid it out differently")
                 if path.stem in limits and s["total"] > limits[path.stem]:

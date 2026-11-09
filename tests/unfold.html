@@ -1,0 +1,80 @@
+<!doctype html>
+<!-- Unfolding in place (#71) in render(), as a host would see it: tests/embed.py opens this in headless Chrome, as it does
+     tests/embed.html, and reads the result from <pre id="result">. -->
+<meta charset="utf-8">
+<link rel="icon" href="data:,">
+<title>umlimator unfold test</title>
+<body style="margin:0">
+<div id="a" style="width:1100px;height:760px"></div>
+<div id="b" style="width:800px;height:500px"></div>
+<script type="module">
+import { render } from '../lib/umlimator.js';
+const BIKE = await (await fetch('../examples/bike-share.json')).json();
+const out = { ok: [], fail: [] };
+const check = (name, cond, info) => { document.title = name; if (cond) out.ok.push(name); else out.fail.push(name + (info === undefined ? '' : ': ' + JSON.stringify(info))); };
+const wait = ms => new Promise(r => setTimeout(r, ms));
+try {
+  const el = document.getElementById('a'), ev = [];
+  const h = render(el, BIKE, { view: 'system', minimap: true, on: { expand: e => ev.push(['expand', e.target, e.view, e.expanded]), select: e => ev.push(['select', e.target]) } });
+  const sr = el.querySelector('.umlimator').shadowRoot, q = s => sr.querySelector(s);
+  const click = (s, init = {}) => q(s).dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true, detail: 1, ...init }));
+  const key = (k, at = q('.stage')) => at.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true, composed: true }));
+  const cards = () => [...sr.querySelectorAll('.node')].map(g => g.dataset.id);
+  const xOf = id => +q(`.node[data-id="${id}"] .n-body`).getAttribute('x'), line = (a, b) => !!q(`.edge-g[data-from="${a}"][data-to="${b}"]`);
+  const inside = ['trip-api', 'unlock', 'lifecycle', 'fare', 'trip-repo', 'trip-events'];
+  const x0 = { riders: xOf('riders'), 'rider-app': xOf('rider-app'), pricing: xOf('pricing') };
+  check('starts folded: Trip service is a card', cards().includes('trips') && !q('.family[data-family="trips"]') && h.expanded.length === 0);
+
+  check('expand(id) unfolds a stacked card into a box in place, and says so', h.expand('trips') === true && JSON.stringify(h.expanded) === '["trips"]' && !!q('.family[data-family="trips"] .fold-hint')
+    && !cards().includes('trips') && inside.every(id => cards().includes(id)) && /unfolded here/.test(q('.um-live').textContent), cards());
+  check('the box is selected, as a container', h.selection && h.selection.type === 'container' && h.selection.id === 'trips', h.selection);
+  check("the inner view's own cards sit inside the box, inside the Rides box it was in", q('.family[data-family="trips"]').dataset.parent === 'rides');
+  check('lines to the card move onto the cards inside: Rider app → Trip API, Fare calculator → Pricing', line('rider-app', 'trip-api') && line('fare', 'pricing') && !line('rider-app', 'trips'));
+  check('cards in earlier columns keep their places; later ones move right', xOf('riders') === x0.riders && xOf('rider-app') === x0['rider-app'] && xOf('pricing') > x0.pricing, [xOf('riders'), x0.riders, xOf('pricing'), x0.pricing]);
+  check('the minimap draws the unfolded view', sr.querySelectorAll('.minimap svg rect').length === sr.querySelectorAll('.node').length + 1);
+  check('toSVG draws it unfolded', h.toSVG().includes('data-family="trips"') && h.toSVG().includes('data-id="trip-api"'));
+  check('expand() of a card already unfolded, of one that opens no view, or of one not on the view is false', h.expand('trips') === false && h.expand('riders') === false && h.expand('nope') === false);
+  check('a host call emits no expand event', !ev.some(x => x[0] === 'expand'));
+
+  h.update(JSON.parse(JSON.stringify(BIKE).replace('"Rider app"', '"Rider app 2"')));
+  check('update() keeps it unfolded', JSON.stringify(h.expanded) === '["trips"]' && !!q('.family[data-family="trips"]'));
+
+  q('.node[data-id="fare"]').focus(); key('e');
+  check('E on a card inside folds its box, emits expand (expanded: false) and selects the card', JSON.stringify(ev.filter(x => x[0] === 'expand').pop()) === JSON.stringify(['expand', { type: 'node', id: 'trips', view: 'system' }, 'trips', false])
+    && h.expanded.length === 0 && cards().includes('trips') && h.selection && h.selection.id === 'trips', ev.filter(x => x[0] === 'expand'));
+  check('folded, the cards are back where they were', xOf('riders') === x0.riders && xOf('pricing') === x0.pricing, [xOf('pricing'), x0.pricing]);
+  key('e', q('.node[data-id="trips"]'));
+  check('E on a stacked card unfolds it, and focus goes inside', h.expanded[0] === 'trips' && inside.includes(sr.activeElement && sr.activeElement.dataset.id), sr.activeElement && sr.activeElement.dataset.id);
+  click('.family[data-family="trips"] .fold-hint');
+  check('the box\'s ⤡ tab folds it', h.expanded.length === 0 && cards().includes('trips'));
+  click('.node[data-id="fleet"] .n-label', { altKey: true });
+  check('Alt + click unfolds a stacked card', h.expanded[0] === 'fleet' && cards().includes('dock-listener'));
+  check('a line drawn both ways whose ends move to two cards inside stays a pair on the box', line('ops-console', 'fleet') || line('fleet', 'ops-console'));
+  click('.node[data-id="battery"] .n-label', { altKey: true });
+  check('Alt + click on a card inside folds its box', h.expanded.length === 0);
+
+  const stop = h.on('expand', e => e.preventDefault());
+  click('.node[data-id="trips"] .n-label', { altKey: true });
+  check('the host can stop it (preventDefault)', h.expanded.length === 0 && ev.filter(x => x[0] === 'expand').pop()[3] === true);
+  stop();
+
+  h.expand('trips'); await h.setView('context'); await h.setView('system');
+  check('each view keeps what is unfolded on it', h.view === 'system' && JSON.stringify(h.expanded) === '["trips"]' && !!q('.family[data-family="trips"]'));
+  const lean = JSON.parse(JSON.stringify(BIKE)); lean.views = lean.views.filter(v => v.id !== 'trips');
+  h.update(lean);
+  check('a model without its inner view folds it back', h.expanded.length === 0 && cards().includes('trips'));
+
+  // a view the host loads when asked, as with open (#47): the event comes first, the map unfolds once the view is in
+  const el2 = document.getElementById('b'), h2 = render(el2, lean, { view: 'system', on: { expand: e => { if (e.view === 'trips') h2.update(BIKE); } } });
+  const sr2 = el2.querySelector('.umlimator').shadowRoot;
+  sr2.querySelector('.node[data-id="trips"] .n-label').dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true, detail: 1, altKey: true }));
+  check('a card whose view is not loaded yet: the host loads it in its expand handler, and the card unfolds', JSON.stringify(h2.expanded) === '["trips"]' && !!sr2.querySelector('.family[data-family="trips"]'));
+  h2.destroy();
+  const h3 = render(el2, BIKE, { view: 'system', editable: true });
+  check('off in an editable map: an edit names the model\'s own views and boxes', h3.expand('trips') === false);
+  h3.destroy();
+} catch (err) {
+  out.fail.push('threw: ' + (err && err.stack || err));
+}
+const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
+</script>

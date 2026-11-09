@@ -1,0 +1,80 @@
+{
+ "title": "u21: a made-up shop whose services open into their parts, for unfolding in place (#71)",
+ "root": "shop",
+ "benchViews": ["shop+orders", "shop+warehouse", "shop+orders+o-checkout", "teams+orders"],
+ "nodes": [
+  { "id": "buyers", "label": "Buyers", "kind": "frontend", "sublabel": "browse and pay" },
+  { "id": "web", "label": "Web shop", "kind": "frontend", "sublabel": "the storefront" },
+  { "id": "orders", "label": "Order service", "kind": "backend", "sublabel": "carts to orders", "opensView": "orders" },
+  { "id": "payments", "label": "Card payments", "kind": "external", "sublabel": "charges cards" },
+  { "id": "stock", "label": "Stock database", "kind": "database", "sublabel": "what is on the shelf" },
+  { "id": "mail", "label": "Mail service", "kind": "external", "sublabel": "sends receipts" },
+  { "id": "warehouse", "label": "Warehouse service", "kind": "backend", "sublabel": "picks and packs", "opensView": "warehouse" },
+  { "id": "ops", "label": "Ops console", "kind": "frontend", "sublabel": "for the floor team" },
+  { "id": "catalog", "label": "Catalog", "kind": "backend", "sublabel": "what the shop sells", "opensView": "catalog" },
+  { "id": "reports", "label": "Reports", "kind": "backend", "sublabel": "nightly numbers", "opensView": "reports", "opensCount": 3 },
+  { "id": "o-api", "label": "Order API", "kind": "backend", "sublabel": "REST" },
+  { "id": "o-cart", "label": "Carts", "kind": "backend", "sublabel": "what buyers hold" },
+  { "id": "o-checkout", "label": "Checkout", "kind": "backend", "sublabel": "a cart becomes an order", "opensView": "checkout" },
+  { "id": "o-repo", "label": "Order store", "kind": "backend", "sublabel": "reads and writes orders" },
+  { "id": "c-tax", "label": "Tax rules", "kind": "backend", "sublabel": "per country" },
+  { "id": "c-fraud", "label": "Fraud check", "kind": "security", "sublabel": "scores each order" },
+  { "id": "w-api", "label": "Stock API", "kind": "backend", "sublabel": "REST" },
+  { "id": "w-pick", "label": "Picking", "kind": "backend", "sublabel": "routes the pickers" },
+  { "id": "w-alerts", "label": "Stock alerts", "kind": "backend", "sublabel": "low stock" },
+  { "id": "k-import", "label": "Feed import", "kind": "backend", "sublabel": "suppliers' files" },
+  { "id": "k-index", "label": "Search index", "kind": "database", "sublabel": "what buyers find" }
+ ],
+ "edges": [
+  { "id": "s1", "from": "buyers", "to": "web", "label": "browse, buy" },
+  { "id": "s2", "from": "web", "to": "orders", "label": "orders" },
+  { "id": "s3", "from": "orders", "to": "payments", "label": "charges" },
+  { "id": "s4", "from": "orders", "to": "stock", "label": "reserves", "kind": "state" },
+  { "id": "s5", "from": "orders", "to": "mail", "label": "receipts" },
+  { "id": "s6", "from": "warehouse", "to": "stock", "label": "updates", "kind": "state" },
+  { "id": "s7", "from": "ops", "to": "warehouse", "label": "moves" },
+  { "id": "s8", "from": "warehouse", "to": "ops", "label": "low stock", "kind": "triggers" },
+  { "id": "s9", "from": "web", "to": "catalog", "label": "lists" },
+  { "id": "s10", "from": "orders", "to": "warehouse", "label": "ships", "kind": "feeds" },
+  { "id": "s11", "from": "reports", "to": "stock", "label": "reads", "kind": "state" }
+ ],
+ "views": [
+  { "id": "shop", "title": "Shop", "nodeIds": ["buyers", "web", "orders", "payments", "stock", "mail", "warehouse", "ops", "catalog", "reports"] },
+  { "id": "teams", "parent": "shop", "title": "Shop, by team", "nodeIds": ["web", "orders", "payments", "stock", "ops", "warehouse"],
+    "containers": [{ "id": "sales", "label": "Sales team", "nodeIds": ["web", "orders"] }, { "id": "floor", "label": "Floor team", "nodeIds": ["ops", "warehouse"] }],
+    "layout": { "web": [0, 0], "orders": [1, 0], "payments": [2, 0], "stock": [3, 1], "ops": [1, 2], "warehouse": [2, 2] } },
+  { "id": "orders", "parent": "shop", "title": "Order service", "nodeIds": ["web", "o-api", "o-cart", "o-checkout", "o-repo", "payments", "stock", "warehouse"],
+    "containers": [{ "id": "o-core", "label": "Core", "nodeIds": ["o-cart", "o-checkout"] }],
+    "edges": [
+     { "id": "o1", "from": "web", "to": "o-api", "label": "orders" },
+     { "id": "o2", "from": "o-api", "to": "o-cart" },
+     { "id": "o3", "from": "o-api", "to": "o-checkout" },
+     { "id": "o4", "from": "o-cart", "to": "stock", "label": "reserves", "kind": "state" },
+     { "id": "o5", "from": "o-checkout", "to": "payments", "label": "charges" },
+     { "id": "o6", "from": "o-checkout", "to": "o-repo" },
+     { "id": "o7", "from": "o-repo", "to": "stock", "kind": "state" },
+     { "id": "o8", "from": "o-repo", "to": "warehouse", "label": "ships", "kind": "feeds" }
+    ] },
+  { "id": "checkout", "parent": "orders", "title": "Checkout", "nodeIds": ["o-api", "c-tax", "c-fraud", "payments", "o-repo"],
+    "edges": [
+     { "id": "c1", "from": "o-api", "to": "c-tax" },
+     { "id": "c2", "from": "c-tax", "to": "c-fraud", "label": "with tax" },
+     { "id": "c3", "from": "c-fraud", "to": "payments", "label": "charges" },
+     { "id": "c4", "from": "c-fraud", "to": "o-repo" }
+    ] },
+  { "id": "warehouse", "parent": "shop", "title": "Warehouse service", "nodeIds": ["ops", "orders", "w-api", "w-pick", "w-alerts", "stock"],
+    "edges": [
+     { "id": "w1", "from": "ops", "to": "w-api", "label": "moves" },
+     { "id": "w2", "from": "w-api", "to": "w-pick" },
+     { "id": "w3", "from": "w-pick", "to": "stock", "label": "updates", "kind": "state" },
+     { "id": "w4", "from": "w-alerts", "to": "ops", "label": "low stock", "kind": "triggers" },
+     { "id": "w5", "from": "w-pick", "to": "w-alerts", "kind": "feeds" },
+     { "id": "w6", "from": "orders", "to": "w-pick", "label": "ships", "kind": "feeds" }
+    ] },
+  { "id": "catalog", "parent": "shop", "title": "Catalog, step by step", "render": "sequence", "nodeIds": ["k-import", "k-index", "web"],
+    "edges": [
+     { "id": "k1", "from": "k-import", "to": "k-index", "label": "indexes" },
+     { "id": "k2", "from": "web", "to": "k-index", "label": "searches" }
+    ] }
+ ]
+}

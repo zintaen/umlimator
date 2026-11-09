@@ -4,7 +4,7 @@
   umlimator.py render MODEL.json --out PAGE.html [--no-check]   # interactive drill-down page (one self-contained file)
   umlimator.py stills PAGE.html --out DIR [--views a,b] [--scale 2] [--theme light|dark] [--reader]   # each view as DIR/<view>.svg and .png;
                                                        # --reader: no CHECK tab and no drill-down pill (pictures for documents)
-  umlimator.py check PAGE.html [--views a,pic-*] [--ignore right-to-left] [--timeout 600]   # the layout check, on chosen views only
+  umlimator.py check PAGE.html [--views a,pic-*] [--expand] [--ignore right-to-left] [--timeout 600]   # the layout check, on chosen views only
 
 MODEL.json is the map model in engine/references/schema.md (nodes, edges, views), plus umlimator's `badge` field on a
 node (PROPOSED, TARGET, OFF ...). `stills` needs Google Chrome or Chromium; the PNGs are what a document that cannot
@@ -188,7 +188,7 @@ def render(a, model):
 def cmd_check(a):
     """The page's own layout check, limited to --views (a trailing * is a prefix) and with a longer wait than
     visual.py check, which gives up after 45 s on a large model."""
-    url = Path(a.page).resolve().as_uri() + "#check=1&theme=light" + (f"&views={a.views}" if a.views else "")
+    url = Path(a.page).resolve().as_uri() + "#check=1&theme=light" + (f"&views={a.views}" if a.views else "") + ("&expand=1" if a.expand else "")
     try:
         dom = headless(chrome(), "--virtual-time-budget=6000", "--window-size=1440,900", "--dump-dom", url, timeout=a.timeout)
     except subprocess.TimeoutExpired:
@@ -296,6 +296,7 @@ def main():
     i = sub.add_parser("pin-icons", help="record each new brand mark's sha256 and move it out of icons/ into the cache"); i.set_defaults(f=cmd_pin_icons)
     c = sub.add_parser("check"); c.add_argument("page"); c.add_argument("--views", help="a,b,pic-* (a trailing * is a prefix)")
     c.add_argument("--timeout", type=int, default=600)
+    c.add_argument("--expand", action="store_true", help="also check each view with each stacked card unfolded in place, one at a time (#71)")
     c.add_argument("--ignore", help="kinds left out of the report: right-to-left, crossings, labelOnLine, detours, nearNode, onMark, shortLine (comma list)")
     c.set_defaults(f=cmd_check)
     a = p.parse_args(); a.f(a)
