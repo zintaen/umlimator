@@ -1,0 +1,56 @@
+<!doctype html>
+<!-- update() with live data: every second this page hands the map a new model in which each line's width follows the
+     readings it carries and each card's tab shows how far that part lags. Cards keep their places, and the view,
+     camera and selection stay as they are. The numbers are made up. Serve the repository over HTTP to open it:
+     python3 -m http.server  then  http://localhost:8000/examples/live.html -->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>umlimator: live updates</title>
+<link rel="stylesheet" href="../lib/umlimator-theme.css">
+<style>
+  body { margin: 0; display: grid; grid-template-rows: auto minmax(0, 1fr); height: 100dvh; background: var(--um-bg);
+    color: var(--um-text); font: 14px/1.5 var(--um-sans); }
+  header { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; padding: 8px 14px; border-bottom: 1px solid var(--um-border); font-size: 13px; }
+  header p { margin: 0; color: var(--um-muted); flex: 1 1 320px; }
+  button { font: inherit; }
+  #map { min-height: 0; }
+</style>
+<header>
+  <b>Weather stations, live</b>
+  <p>Lines widen with the readings they carry. A card's tab turns amber, then rose, as that part falls behind.</p>
+  <span id="clock" aria-live="off"></span>
+  <button id="pause" aria-pressed="false">Pause</button>
+</header>
+<div id="map"></div>
+<script type="module">
+import { render } from '../lib/umlimator.js';
+import { withIcons } from './icons.js';
+
+const base = await withIcons(await (await fetch('weather.json')).json());
+const flow = base.views.find(v => v.id === 'flow');
+const wave = (seed, t) => (Math.sin(t / 7 + seed * 1.7) + Math.sin(t / 3.1 + seed)) / 2;   // made-up metrics, -1 to 1
+const seed = s => [...s].reduce((a, c) => a + c.charCodeAt(0), 0);
+
+let t = 0;
+function snapshot() {
+  const m = structuredClone(base);
+  for (const e of m.edges) if (e.kind === 'feeds' && flow.nodeIds.includes(e.from)) {
+    const perMinute = Math.round(Math.exp(3.2 + 2.2 * wave(seed(e.id), t)));   // 3 to 220 readings a minute
+    e.weight = perMinute < 10 ? 1 : perMinute < 100 ? 2 : 3;                    // the host picks the buckets
+  }
+  for (const n of m.nodes) if (flow.nodeIds.includes(n.id) && n.kind !== 'external') {
+    const lag = Math.max(0, Math.round(12 + 14 * wave(seed(n.id) + 3, t)));
+    n.badges = [{ text: `lag ${String(lag).padStart(2, '\u2007')} s`, tone: lag < 8 ? 'green' : lag < 20 ? 'amber' : 'rose' }];   // a figure space keeps the tab's width
+  }
+  return m;
+}
+
+const map = render(document.getElementById('map'), snapshot(), { view: 'flow' });
+let timer = setInterval(tick, 1000);
+function tick() { t++; map.update(snapshot()); document.getElementById('clock').textContent = `t = ${t} s`; }
+document.getElementById('pause').onclick = e => {
+  const paused = !!timer; e.target.textContent = paused ? 'Resume' : 'Pause'; e.target.setAttribute('aria-pressed', paused);
+  if (paused) { clearInterval(timer); timer = null; } else timer = setInterval(tick, 1000);
+};
+window.map = map;
+</script>

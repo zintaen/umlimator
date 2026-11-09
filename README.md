@@ -7,6 +7,9 @@ that writes a self-contained HTML page and still pictures (SVG, PNG) for documen
 
 ![The example model's overview: a made-up bookshop with logos, line icons and a numbered flow behind the API card](examples/stills/overview.png)
 
+**Examples:** [live on GitHub Pages](https://zintaen.github.io/umlimator/), and [what each one shows](examples/README.md): a C4-style
+drill-down, a data pipeline, an AI agent's skills, and host pages for embedding, live updates and editing.
+
 ## What it does
 
 - **Layers**: a view per level (system, containers, components, flows). A stacked card opens its inner view, which the
@@ -142,7 +145,7 @@ all of the above, and checks that the files copied from upstream (`engine/script
 
 To release, bump `package.json`'s version in a PR and add that version's `## X.Y.Z: …` section to
 `docs/module-api.md`. When the PR is merged and the checks pass on `main`, CI tags `vX.Y.Z` and publishes a GitHub
-Release with that section as its notes.
+Release with that section as its notes. CI also publishes the examples to GitHub Pages from `main`.
 
 ```
 umlimator.py                 CLI: render, stills, check, pin-icons
@@ -151,7 +154,7 @@ engine/                      the page template the CLI inlines the module into; 
 docs/                        the module's API and the editing design
 tests/, bench/               tests, benchmark models and results
 icons/                       line icons and the logo manifest (sources and hashes only)
-examples/                    a made-up bookshop: model, page and stills
+examples/                    made-up systems: models, host pages and a Node script (live: zintaen.github.io/umlimator)
 ```
 
 ## Licence
