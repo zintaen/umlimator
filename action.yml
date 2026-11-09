@@ -2,6 +2,7 @@
 #
 #   on: pull_request
 #   permissions: { contents: read, pull-requests: write }   # pull-requests: the comment; nothing else is written
+#   concurrency: { group: "maps-${{ github.event.pull_request.number }}", cancel-in-progress: true }   # one run per pull request
 #   steps:
 #     - uses: actions/checkout@v4
 #     - uses: zintaen/umlimator@v0.13.0
@@ -11,7 +12,8 @@
 # For each model file the pull request changes: a page with each change marked (umlimator.py diff), stills of the views
 # that show one, and a summary in words with a mermaid sketch, which GitHub draws in the comment, so no picture needs
 # hosting. The pages and stills are the run's artifact, which the comment links to. One comment, updated on each push
-# (the bot's own: never a person's, even one that starts with the same marker).
+# (the bot's own: never a person's, even one that starts with the same marker). It names the commit it describes; only
+# the run for the pull request's latest commit writes it; and when the diff fails, it says so.
 # A pull request from a fork gets a read-only token: no comment, and the summary is in the job summary instead.
 name: umlimator diff
 description: Pictures what a pull request changes in umlimator map models, and posts it on the pull request.
@@ -56,24 +58,44 @@ runs:
       with:
         name: umlimator-diff
         path: ${{ runner.temp }}/umlimator-diff
-    - shell: bash
+    - id: comment
+      if: ${{ !cancelled() }}   # after a failed diff too, so the comment never goes on showing an older push's map
+      shell: bash
       env:
         GH_TOKEN: ${{ inputs.github-token }}
         COMMENT: ${{ inputs.comment }}
         CHANGED: ${{ steps.diff.outputs.changed }}
-        SUMMARY: ${{ steps.diff.outputs.summary }}
+        DIFF: ${{ steps.diff.outcome }}
+        SUMMARY: ${{ runner.temp }}/umlimator-diff/summary.md
         PICTURES: ${{ steps.pictures.outputs.artifact-url }}
         PR: ${{ github.event.pull_request.number }}
+        HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+        FORK: ${{ github.event.pull_request.head.repo.fork }}
+        RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
       run: |
+        mkdir -p "${SUMMARY%/*}"; [ -f "$SUMMARY" ] || printf '<!-- umlimator-diff -->\n### Map changes\n' > "$SUMMARY"
+        if [ "$DIFF" != success ]; then printf '\nThe map diff failed for %s: [its run](%s) says why.\n' "${HEAD:0:7}" "$RUN" >> "$SUMMARY"; fi
         if [ -n "$PICTURES" ]; then printf '\nPictures of each changed view, and pages to click through: [umlimator-diff](%s)\n' "$PICTURES" >> "$SUMMARY"; fi
+        printf '\n<sub>For commit %s.</sub>\n<!-- umlimator-diff-sha: %s -->\n' "${HEAD:0:7}" "$HEAD" >> "$SUMMARY"   # which push it describes
         cat "$SUMMARY" >> "$GITHUB_STEP_SUMMARY"
         if [ "$COMMENT" != true ] || [ -z "$PR" ]; then exit 0; fi
+        # only the run for the pull request's latest commit writes, so a slower run for an older push never overwrites it;
+        # what can't be read is not guessed at: no comment, and the summary is in this job's summary
+        now=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR" --jq .head.sha) \
+          || { echo "::warning::no comment: the pull request could not be read, so this run can't tell it is the latest"; exit 0; }
+        if [ "$now" != "$HEAD" ]; then echo "::notice::no comment: the pull request's head is $now now, and that commit's run comments"; exit 0; fi
         # one comment, found again by the marker it starts with, and only on a bot's comment (the default token posts as
         # github-actions[bot]): a person's comment that starts with the marker is never overwritten. With a person's
-        # token instead, the comment is not found again, and each push posts a new one.
-        ids=$(gh api "repos/$GITHUB_REPOSITORY/issues/$PR/comments" --paginate --jq '.[] | select(.user.type == "Bot" and (.body | startswith("<!-- umlimator-diff -->"))) | .id') || ids=""
-        id=${ids%%$'\n'*}
-        if [ "$CHANGED" = 0 ] && [ -z "$id" ]; then exit 0; fi   # no map changed, and nothing said before
-        if [ -n "$id" ]; then gh api -X PATCH "repos/$GITHUB_REPOSITORY/issues/comments/$id" -F body=@"$SUMMARY" > /dev/null
-        else gh api "repos/$GITHUB_REPOSITORY/issues/$PR/comments" -F body=@"$SUMMARY" > /dev/null; fi \
-          || echo "::notice::no comment (a pull request from a fork gets a read-only token): the summary is in this job's summary"
+        # token instead, the comment is not found again, and each push posts a new one. Every one found is updated, so one
+        # that two runs posted at once is never left stale.
+        ids=$(gh api "repos/$GITHUB_REPOSITORY/issues/$PR/comments" --paginate --jq '.[] | select(.user.type == "Bot" and (.body | startswith("<!-- umlimator-diff -->"))) | .id') \
+          || { echo "::warning::no comment: the pull request's comments could not be read, and a second comment is never posted"; exit 0; }
+        if [ "$CHANGED" = 0 ] && [ -z "$ids" ]; then exit 0; fi   # no map changed, and nothing said before
+        write() {
+          said=$(gh api "$@" -F body=@"$SUMMARY" 2>&1 > /dev/null) && return
+          if [ "$FORK" = true ]; then echo "::notice::no comment: a pull request from a fork gets a read-only token, so the summary is in this job's summary"
+          else echo "::warning::no comment: ${said//$'\n'/ } (the workflow needs permissions: pull-requests: write)"; fi
+          return 1
+        }
+        if [ -z "$ids" ]; then write "repos/$GITHUB_REPOSITORY/issues/$PR/comments" || true; fi
+        for id in $ids; do write -X PATCH "repos/$GITHUB_REPOSITORY/issues/comments/$id" || break; done
