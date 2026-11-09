@@ -15,6 +15,8 @@ drill-down, a data pipeline, an AI agent's skills, and host pages for embedding,
 
 - **Layers**: a view per level (system, containers, components, flows). A stacked card opens its inner view, which the
   host may load only when asked.
+- **Unfolding in place**: a stacked card can also open into a box on the map it is on (E, or Alt + click), its inner
+  view's cards inside and the lines to it moved onto them, the rest of the picture in its order.
 - **Layout and routing**: columns in reading order, each ordered so the lines cross as little as they can, those that
   skip columns included; each card level with the cards its lines come from, so lines run straight; orthogonal lines
   that never run through a card, room for every label, containers kept apart, and cards with no lines in a row of their
@@ -71,7 +73,9 @@ function MapView({ model, onSelect }) {
 ```
 
 - `render` draws one view at a time into a shadow root (give the element a height), with pan, zoom and drill-down.
-  Events (`click`, `select`, `open`, `viewchange`, `change`) name what they are about by ids from the model.
+  Events (`click`, `select`, `open`, `viewchange`, `change`, `expand`) name what they are about by ids from the model.
+- `map.expand(id)` unfolds a stacked card in place and `map.collapse(id)` folds it; `layout(model, view, { expand })`
+  draws the same in Node.
 - Colours are `--um-*` CSS variables, fonts are the host's (`--um-sans`, `--um-mono`), text is measured in that font,
   and nothing is fetched.
 - `layout(model, viewId)` returns a view's geometry without a DOM, in Node too; `check(model, viewId)` runs the layout
@@ -132,6 +136,7 @@ python3 umlimator.py diff before.json after.json --out diff.html --stills diff/ 
 python3 umlimator.py diff --base origin/main --out diff/              # every model changed since a ref, and a summary.md
 python3 umlimator.py drift model.json traffic.json --out drift.html   # drawn vs. seen (a Jaeger or Tempo dependency list)
 python3 umlimator.py timelapse model.json --out history.html          # the model's versions in git history, on a slider
+python3 umlimator.py check page.html --expand                          # also each view with each stacked card unfolded
 ```
 
 `check` also reports each rule the model breaks, and then exits 1.

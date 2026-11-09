@@ -24,7 +24,7 @@ The module embedded in a page, as an app would use it. Serve the repository over
 | Page | What the host does |
 |---|---|
 | [`playground.html`](playground.html) | Edit a model as JSON and the map follows, with `validate()`'s problems, and the broken rules (`rules()`) and `check()`'s layout issues for the view shown, each selecting what it is about; Share puts the model in the link |
-| [`embed.html`](embed.html) | `render()` with a details panel from `select`, breadcrumbs from `viewchange`, a view loaded when a card opens it (`open`, `update()`, `setView()`), SVG and PNG export, light, dark and a host's own palette, the minimap, focus back to the map |
+| [`embed.html`](embed.html) | `render()` with a details panel from `select`, breadcrumbs from `viewchange`, a view loaded when a card opens it (`open`, `update()`, `setView()`) or unfolds it in place (`expand`, `map.expand()`), SVG and PNG export, light, dark and a host's own palette, the minimap, focus back to the map |
 | [`live.html`](live.html) | `overlay()` once a second, the model unchanged: flow as fast as each line's readings, lines that drop readings pulse rose, slow ones glow amber with their delay, and each card's tab shows its lag |
 | [`ask.html`](ask.html) | Questions answered on the map: words, the cards and lines they are about lit (`highlight()` with `paths()` and `reach()`), a flow played as a `tour()`, and the view in sentences (`describe()`), the text an AI model would get |
 | [`replay.html`](replay.html) | A trace replayed (`replay()`): an OpenTelemetry export read by `otlpSpans()`, each call along its line at its time, its duration kept as a label, with pause and stop |
@@ -41,6 +41,7 @@ The module embedded in a page, as an app would use it. Serve the repository over
 |---|---|
 | Views a card opens (`opensView`) | bike-share (three levels), weather, assistant, bookshop |
 | A view the host loads when it's opened (`opensView` with `opensCount`) | bike-share: Trip service and Fleet service, in `embed.html` |
+| A stacked card unfolded in place (E, Alt + click, `map.expand()`) | bike-share: Trip service and Fleet service in `system`, Bike share in `context`; weather: Check in `stages`, Quality check in `flow` |
 | Boxes (`containers`) and their tabs (`badges`) | bike-share `system`, weather `check` |
 | Nested boxes (`parent`) | weather `check` |
 | A line to or from a box | bike-share `system` (Monitoring → Rides), weather `check` (Checks → Quarantine) |

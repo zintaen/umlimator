@@ -665,3 +665,46 @@ another three. Auto-layout now lays those out as it does lines between neighbour
   CI runs the Action on its own pull requests as a dry run, without the comment.
 - **Examples:** `examples/timelapse.html` shows four made-up releases of the bike share on a slider, with diff's marks
   on request. `examples/drift.html` shows the bike share against a week of made-up traffic.
+
+### Unfolding in place (#71)
+
+A stacked card can open into a box on the map it is on, instead of switching to its inner view.
+
+- **What unfolds:** a card whose inner view is loaded and has cards of its own, ones this view doesn't show already. The
+  card becomes a box with its id and name (its badges become the box's tabs), holding those cards; the inner view's other
+  cards are this view's, the box's neighbours. The inner view's boxes that hold its own cards come along inside, and a
+  card inside an unfolded box can unfold too.
+- **Lines:**
+  - Inside, the inner view's lines between the box's cards.
+  - This view's line to the card moves onto every card inside that the inner view joins to that neighbour, the same way
+    round: a neighbour two cards inside reach gets two lines. When the inner view joins it to none, the line ends on the
+    box's border.
+  - A line drawn both ways stays a pair: it moves inside only when the inner view joins that neighbour to one card both
+    ways, else both halves end on the box.
+  - Nothing else is added: the inner view's other lines to cards on this view are that view's choice, not this one's.
+- **Places:** the box takes the card's place. Later columns move right by its width and the cards under it in its column
+  move down by its height, so the cards before it stay put and the rest keep their order; a box of this view that would
+  reach into it moves down whole. Inside, the inner view's columns or this view's own reading order, with rows packed,
+  upside down or level with the neighbours, each also without the sides the inner view gave its lines for its own
+  picture: each is routed and the one the layout check scores best is kept (up to 12 routings; an inner view with boxes
+  keeps its own slots, and a view of over 30 cards takes them at once). A process view's steps keep their numbers. A hub
+  view has no columns to keep, and is laid out again.
+- **What doesn't:** a numbered (sequence) view, shown or opened, since its run order (numbers, lanes) would move or be
+  lost, so that card opens; and an editable map, where an edit names the model's own views and boxes.
+- **Gestures:** E on a stacked card (focused or selected) unfolds it and puts focus on the first card inside; E on a card
+  inside folds it back. Alt + click does the same with the mouse, and the box's ⤡ tab folds it. Double-click and the ⤢
+  badge still open the inner view. The standalone page adds an "Unfold here" button to a stacked card's details, and E to
+  its keys.
+- **For a host:** `handle.expand(id)` and `handle.collapse(id)` (true when the picture changed) and `handle.expanded`, the
+  cards unfolded on the view shown. A gesture first emits `expand { target, view, expanded, preventDefault }`; as with
+  `open` (#47), a host can load an inner view it doesn't have yet in the handler and call `update()`, and the card
+  unfolds. The state is the handle's, per view, kept across `update()` and navigation and never in the model; a model
+  that loses the inner view folds the card back. Folded, cards are back where they were.
+- **Without a browser:** `layout(model, view, { expand: [ids] })` and `check(model, view, { expand })` lay out and check a
+  view with cards unfolded; the geometry's `unfolded` lists the ones that did. `umlimator.py check page.html --expand`
+  checks every view again with each card that can unfold, one at a time; CI runs it on the examples.
+- **Bench:** `bench/models/u21.json`, a made-up shop, lists unfolded views (`"benchViews": ["shop+orders", …]`), which
+  the bench lays out and times, the unfolding apart, and records in `bench/expected.json`; `node --test` lays them out
+  the same.
+- **Left out of this first version:** an animation (the picture redraws, cards don't glide yet); a link that keeps what is
+  unfolded; unfolding in an editable map; carrying a numbered view's run order into the box.
