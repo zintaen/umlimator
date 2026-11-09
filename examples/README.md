@@ -16,6 +16,11 @@ Each map is a JSON model. CI turns it into a self-contained page (`python3 umlim
 
 [![Bike share: the boxed view](https://zintaen.github.io/umlimator/examples/stills/bike-share/system.png)](https://zintaen.github.io/umlimator/examples/bike-share.html)
 
+Bike share's story, as `umlimator.py record` writes it (CI records it for the site): open it in the page with
+[`#story=ride&step=1`](https://zintaen.github.io/umlimator/examples/bike-share.html#story=ride&step=1), or from its Stories menu.
+
+![Bike share: a ride, from unlock to payment, in five steps](https://zintaen.github.io/umlimator/examples/stills/bike-share/story-ride.png)
+
 ## Host pages
 
 The module embedded in a page, as an app would use it. Serve the repository over HTTP to open them locally
@@ -71,6 +76,7 @@ The module embedded in a page, as an app would use it. Serve the repository over
 | Paths and reach lit (`paths()`, `reach()`, `highlight()`) | `ask.html`; every map on the site (the details panel's → and ←, or Shift-click a second card and ⇄) |
 | A view in sentences (`describe()`), a tour along any path (`tour()`) | `ask.html` |
 | A trace replayed (`replay()`, `otlpSpans()`) | `replay.html` |
+| A story told step by step (`stories`, `play()`), its Stories menu and recording in the page, `umlimator.py record` | bike-share (`ride`: a ride from unlock to payment), on the site; pictured under Maps |
 | Editing and undo (`editable`, `change`, `history()`) | `edit.html` |
 | `layout()` in Node | `layout.mjs` |
 | The model's JSON Schema (`"$schema"`), `validate()` and `check()` | every model (`"$schema"`), `playground.html` |

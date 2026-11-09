@@ -26,6 +26,8 @@ drill-down, a data pipeline, an AI agent's skills, and host pages for embedding,
   (`describe()`); a tour along any path the host names.
 - **Live data**: marks over the map without touching the model (`overlay()`): flow as fast as the traffic, errors that
   pulse, slow hops that glow, labels and tabs; and an OpenTelemetry trace replayed along its lines (`replay()`).
+- **Stories**: walk-throughs in the model, step by step (view, camera, selection, highlight, tour and a caption), played
+  on the map (`play()`) or from the page's Stories menu, recorded from the page, and written as an animated PNG.
 - **Keyboard and screen readers**: cards, then lines, in the Tab order (a card's tabs and chips too, for a host that
   listens for click); arrows between cards; selections announced.
 - **Editing** (opt-in): gestures emit `change` events; the host applies them and calls `update()`.
@@ -124,6 +126,7 @@ kinds such as `public`, `lane`, `script`, `hook` and `board` work too). Fields b
 | view | `kindsFromLabels` | a line whose edges name no `kind` takes one guessed from its label |
 | container | `badges` | tabs on the box's border |
 | model | `rules` | what must hold: no line `from` some cards `to` others (picked by id, kind or box), or `noCycles` between boxes |
+| model | `stories` | walk-throughs: steps that each set the view, camera, selection, highlight, tour and caption |
 
 ## Command line
 
@@ -137,13 +140,24 @@ python3 umlimator.py diff --base origin/main --out diff/              # every mo
 python3 umlimator.py drift model.json traffic.json --out drift.html   # drawn vs. seen (a Jaeger or Tempo dependency list)
 python3 umlimator.py timelapse model.json --out history.html          # the model's versions in git history, on a slider
 python3 umlimator.py check page.html --expand                          # also each view with each stacked card unfolded
+python3 umlimator.py record bike-share.html --story ride --out ride.png   # bike-share's story as an animated PNG, a frame per step
 ```
 
 `check` also reports each rule the model breaks, and then exits 1.
 
-The page has breadcrumbs, a details panel per card, ⌘K search, deep links (`#view=<id>&node=<id>`) and export.
+The page has breadcrumbs, a details panel per card, ⌘K search, deep links (`#view=<id>&node=<id>`, and
+`#story=<id>&step=<n>` for a story's step), stories, and export.
 `stills` skips a view whose inputs have not changed since its last export (`--all` exports every view). Needs Python
-3.9+ (standard library only), Google Chrome or Chromium for `stills` and `check`, and Node 18+ for `diff` and `drift`.
+3.9+ (standard library only), Google Chrome or Chromium for `stills`, `check` and `record`, and Node 18+ for `diff`
+and `drift`.
+
+`record` writes an animated PNG, which browsers and GitHub show as it is. For a GIF or an MP4 (for chat or slides),
+convert it with ffmpeg:
+
+```bash
+ffmpeg -f apng -i ride.png -vf "split[a][b];[a]palettegen[p];[b][p]paletteuse" ride.gif
+ffmpeg -f apng -i ride.png -vf "scale=trunc(iw/2)*2:trunc(ih/2)*2" -pix_fmt yuv420p ride.mp4
+```
 
 On pull requests, the diff Action posts what they change in your maps: one comment with the summary and a sketch, and
 the pictures as the run's artifact.
@@ -209,7 +223,7 @@ Release with that section as its notes, and publishes the package to npm (truste
 CI also publishes the examples to GitHub Pages from `main`.
 
 ```
-umlimator.py                 CLI: render, stills, check, pin-icons, diff, drift, timelapse
+umlimator.py                 CLI: render, stills, check, record, pin-icons, diff, drift, timelapse
 action.yml                   the diff Action: what a pull request changes in its maps, posted on it
 lib/                         the module (umlimator.js), its types and the default theme
 engine/                      the page templates the CLI inlines the module into; the upstream renderer and schema

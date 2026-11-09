@@ -10,12 +10,13 @@
   umlimator.py diff --base REF --out DIR [--models 'docs/*.json']   # every model changed since a git ref (a pull request)
   umlimator.py drift MODEL.json OBSERVED.json --out PAGE.html [--match MATCH.json] [--stills DIR]   # drawn vs. traffic seen
   umlimator.py timelapse MODEL.json --out PAGE.html [--limit 20]   # the model's versions in git history, on a slider
+  umlimator.py record PAGE.html --story ID --out STORY.png [--size 1160x740] [--scale 1] [--theme light|dark]   # a story as an animated PNG
 
 MODEL.json is the map model in engine/references/schema.md (nodes, edges, views), plus umlimator's `badge` field on a
 node (PROPOSED, TARGET, OFF ...). `stills` needs Google Chrome or Chromium; the PNGs are what a document that cannot
 run the page (a wiki such as Confluence) shows. `diff` and `drift` run the module's own diff() and drift() in Node.
 """
-import argparse, base64, hashlib, html, io, json, os, re, shutil, subprocess, sys, tempfile, urllib.parse, urllib.request, zipfile
+import argparse, base64, hashlib, html, io, json, os, re, shutil, struct, subprocess, sys, tempfile, urllib.parse, urllib.request, zipfile, zlib
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -455,6 +456,65 @@ def cmd_stills(a, show=print):
     return done
 
 
+def apng(frames, delays, out):
+    """PNG files of one size as one animated PNG, each frame shown for its delay in ms: the frames' own image data,
+    numbered into APNG's frame chunks (nothing decoded or encoded again)."""
+    def chunks(b):
+        i = 8
+        while i < len(b):
+            n = int.from_bytes(b[i:i + 4], "big")
+            yield b[i + 4:i + 8], b[i + 8:i + 8 + n]
+            i += 12 + n
+    def chunk(t, d):
+        return len(d).to_bytes(4, "big") + t + d + zlib.crc32(t + d).to_bytes(4, "big")
+    pngs = [list(chunks(Path(f).read_bytes())) for f in frames]
+    head = pngs[0][0][1]
+    if any(p[0] != (b"IHDR", head) for p in pngs):
+        sys.exit("record: the frames are not all the same size and kind of PNG")
+    w, h = struct.unpack(">II", head[:8])
+    parts = [b"\x89PNG\r\n\x1a\n", chunk(b"IHDR", head), chunk(b"acTL", struct.pack(">II", len(pngs), 0))]
+    parts += [chunk(t, d) for t, d in pngs[0] if t in (b"sRGB", b"gAMA", b"cHRM", b"iCCP", b"pHYs")]  # the colour space, as the first frame says
+    seq = 0
+    for k, (p, ms) in enumerate(zip(pngs, delays)):
+        parts.append(chunk(b"fcTL", struct.pack(">IIIIIHHBB", seq, w, h, 0, 0, min(int(ms), 65535), 1000, 0, 0)))
+        seq += 1
+        for t, d in p:
+            if t == b"IDAT" and k == 0:
+                parts.append(chunk(b"IDAT", d))  # the first frame is the still a viewer without APNG shows
+            elif t == b"IDAT":
+                parts.append(chunk(b"fdAT", seq.to_bytes(4, "big") + d))
+                seq += 1
+    parts.append(chunk(b"IEND", b""))
+    Path(out).write_bytes(b"".join(parts))
+
+
+def cmd_record(a):
+    """A story (#69) as an animated PNG: the page opened at each step in headless Chrome (#story=<id>&step=<n>, drawn at
+    once, and with reduced motion: CSS transitions do not finish in a headless screenshot), one frame per step, shown for
+    the step's duration."""
+    # ponytail: a frame per step, so a step's tour does not move in the picture; frames along the tour if that matters
+    if Path(a.out).suffix.lower() != ".png":
+        sys.exit("record: --out is a .png file, an animated PNG (GIF and MP4 need encoders umlimator does not ship: convert the PNG)")
+    b, page = chrome(), Path(a.page).resolve()
+    data = json.loads(DATA.search(page.read_text(encoding="utf-8")).group(1))
+    stories = data.get("stories") or []
+    story = next((s for s in stories if isinstance(s, dict) and s.get("id") == a.story), None)
+    if not story or not story.get("steps"):
+        sys.exit(f"record: the page has no story {a.story!r} with steps (it has: {', '.join(str(s.get('id')) for s in stories if isinstance(s, dict)) or 'none'})")
+    w, h = (int(x) for x in a.size.lower().split("x"))
+    with tempfile.TemporaryDirectory() as tmp:
+        frames = []
+        for n in range(1, len(story["steps"]) + 1):
+            png = Path(tmp) / f"{n:03}.png"
+            headless(b, "--virtual-time-budget=8000", "--force-prefers-reduced-motion", f"--window-size={w},{h}", f"--force-device-scale-factor={a.scale}", f"--screenshot={png}",
+                     f"{page.as_uri()}#shot=1&theme={a.theme}&story={urllib.parse.quote(a.story)}&step={n}")
+            if not png.is_file():
+                sys.exit(f"record: Chrome drew no picture of step {n}")
+            frames.append(png)
+        apng(frames, [s.get("duration") or 4000 for s in story["steps"]], a.out)
+    print(json.dumps({"story": a.story, "frames": len(frames), "out": a.out, "bytes": Path(a.out).stat().st_size}, indent=1))
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -465,6 +525,10 @@ def main():
     s.add_argument("--reader", action="store_true", help="reader copy: no CHECK tab, no drill-down pill (as stillsv.js)")
     s.add_argument("--all", action="store_true", help="export every view, even one whose inputs are unchanged since its last export")
     s.set_defaults(f=cmd_stills)
+    rc = sub.add_parser("record", help="a story as an animated PNG, a frame per step"); rc.add_argument("page")
+    rc.add_argument("--story", required=True); rc.add_argument("--out", required=True, help="a .png file")
+    rc.add_argument("--size", default="1160x740", help="the window, WxH (up to 1180 wide the views list stays shut)"); rc.add_argument("--scale", type=float, default=1)
+    rc.add_argument("--theme", default="light", choices=["light", "dark"]); rc.set_defaults(f=cmd_record)
     i = sub.add_parser("pin-icons", help="record each new brand mark's sha256 and move it out of icons/ into the cache"); i.set_defaults(f=cmd_pin_icons)
     c = sub.add_parser("check"); c.add_argument("page"); c.add_argument("--views", help="a,b,pic-* (a trailing * is a prefix)")
     c.add_argument("--timeout", type=int, default=600)

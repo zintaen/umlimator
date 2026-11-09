@@ -157,5 +157,20 @@
     { "id": "apps-no-db", "title": "Apps never call a database directly", "from": { "kind": "frontend" }, "to": { "kind": "database" } },
     { "id": "rides-own-trips", "title": "Only the ride services touch the trips store",
       "from": { "not": { "container": "rides" } }, "to": { "id": "tripsdb" } }
+  ],
+  "stories": [
+    { "id": "ride", "title": "A ride, from unlock to payment",
+      "steps": [
+        { "view": "context", "caption": "Riders hire bikes from Bike share, which charges each ride through a payment provider.",
+          "highlight": ["riders", "bikeshare", "payments"] },
+        { "view": "system", "caption": "Inside, riders use the rider app, which starts and ends each ride with the trip service.",
+          "highlight": ["riders", "rider-app", "trips"], "select": "trips", "camera": { "card": "rider-app", "zoom": 0.75 } },
+        { "view": "trips", "caption": "To unlock a bike, the trip API asks the unlock coordinator, which opens the dock.",
+          "highlight": ["rider-app", "trip-api", "unlock", "stations"], "tour": ["rider-app", "trip-api", "unlock", "stations"] },
+        { "view": "trips", "caption": "When the ride ends, its lifecycle hands it to the fare calculator, which prices it with Pricing's rules.",
+          "highlight": ["trip-api", "lifecycle", "fare", "pricing"], "tour": ["trip-api", "lifecycle", "fare", "pricing"] },
+        { "view": "trips", "caption": "Last, the fare calculator charges the rider through the payment provider.",
+          "highlight": ["fare", "payments"], "select": "payments", "camera": { "card": "fare", "zoom": 1.2 }, "duration": 5000 }
+      ] }
   ]
 }
