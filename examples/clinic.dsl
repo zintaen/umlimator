@@ -8,13 +8,13 @@ workspace "Clinic bookings" "Online appointments for a group of clinics" {
 
     model {
         patient = person "Patient" "Books and moves appointments."
-        reception = person "Receptionist" "Runs a clinic's front desk."
+        group "Clinic staff" {
+            reception = person "Receptionist" "Runs a clinic's front desk."
+        }
 
         bookings = softwareSystem "Clinic bookings" "Appointments for every clinic in the group." {
-            group "Apps" {
-                web = container "Booking site" "Where patients book." "React" "Web Browser"
-                desk = container "Front desk app" "Reception's view of the day." "React" "Web Browser"
-            }
+            web = container "Booking site" "Where patients book." "React" "Web Browser"
+            desk = container "Front desk app" "Reception's view of the day." "React" "Web Browser"
             api = container "Booking API" "Slots, bookings and changes." "Go" {
                 slots = component "Slot finder" "Free slots per clinician." "Go"
                 book = component "Booking handler" "Books, moves and cancels." "Go"
@@ -30,7 +30,7 @@ workspace "Clinic bookings" "Online appointments for a group of clinics" {
         records = softwareSystem "Patient records" "The group's medical records." "External"
 
         patient -> bookings.web "Books appointments" "HTTPS"
-        reception -> bookings.desk "Manages the day" "HTTPS"
+        reception -> bookings.desk "Runs the day" "HTTPS"
         bookings.web -> bookings.api.book "Books" "JSON/HTTPS"
         bookings.desk -> bookings.api.book "Moves and cancels" "JSON/HTTPS"
         bookings.api.book -> bookings.api.slots "Finds a free slot"

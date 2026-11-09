@@ -42,9 +42,10 @@ EXPECT = {
     "examples/clinic.dsl": ("structurizr", ["context", "containers", "api-components"], [":47:", ":67:", ":75:"], lambda m: [
         ("views nest as the source's levels", [v.get("parent") for v in m["views"]] == [None, "context", "containers"]),
         ("a relationship to a container lifts to its system in the context view (an implied line)", line(m, "patient", "bookings", "context")),
-        ("the container view boxes the system's containers", box(m, "containers", "bookings").get("nodeIds") == ["api", "db", "jobs", "sender"]),
-        ("a group is a box, inside the box of the system it is in", box(m, "containers", "Apps") == {"id": "Apps", "label": "Apps", "nodeIds": ["web", "desk"], "parent": "bookings"}),
-        ("a group is a box in every view that shows its members", box(m, "api-components", "Apps") == {"id": "Apps", "label": "Apps", "nodeIds": ["web", "desk"]}),
+        ("the container view boxes the system's containers", box(m, "containers", "bookings").get("nodeIds") == ["web", "desk", "api", "db", "jobs", "sender"]),
+        ("a group is a box in each view that shows its members, and in no other",
+         [box(m, v, "clinic-staff") for v in ("context", "containers", "api-components")]
+         == [{"id": "clinic-staff", "label": "Clinic staff", "nodeIds": ["reception"]}] * 2 + [{}]),
         ("the system opens its container view, the container its component view",
          (card(m, "bookings").get("opensView"), card(m, "api").get("opensView")) == ("containers", "api-components")),
         ("kinds: people, tags (Database, Queue, External), technology",

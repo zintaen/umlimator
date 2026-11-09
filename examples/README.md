@@ -13,7 +13,7 @@ Each map is a JSON model. CI turns it into a self-contained page (`python3 umlim
 | [`bike-share.json`](bike-share.json) | A C4-style drill-down: context, containers, components | Boxes with tabs, a line to a box, line kinds and weights, a technology under each label, coloured tabs, a planned card, edited marks, a view pinned by hand, cards with no lines, two views loaded when opened, two rules that hold, owners and two lenses, latency and cost on the Trip service's lines, a trace kept as a numbered view |
 | [`weather.json`](weather.json) | A data pipeline | A process in five steps, weights by volume, a pair of lines kept apart, nested boxes, a line from a box, a loop back, swimlanes, a view list in a set order |
 | [`assistant.json`](assistant.json) | An AI agent's skills | Skill kinds (public, lane, external, verb, script, hook, board), chips under a sub-line, guard and state lines, steps that exist in one view only, a card changed for one view, kinds read from labels |
-| [`clinic.json`](clinic.json) | A Structurizr workspace, imported | What `umlimator.py import` writes from [`clinic.dsl`](clinic.dsl), as it is: the workspace's three views, its system and API as boxes, a group as a box inside one, the lines Structurizr implies, a line to a person as the loop back |
+| [`clinic.json`](clinic.json) | A Structurizr workspace, imported | What `umlimator.py import` writes from [`clinic.dsl`](clinic.dsl), as it is: the workspace's three views, its system and API as boxes, a group as a box, the lines Structurizr implies, a line to a person as the loop back |
 
 [![Bike share: the boxed view](https://zintaen.github.io/umlimator/examples/stills/bike-share/system.png)](https://zintaen.github.io/umlimator/examples/bike-share.html)
 
@@ -90,7 +90,7 @@ The module embedded in a page, as an app would use it. Serve the repository over
 | The time-lapse: `update()` easing into the next model | `timelapse.html`; the CLI's `timelapse` writes one from a model's git history |
 | The map against the traffic seen (`drift()`), and the line style `faded` | `drift.html`; the CLI's `drift` |
 | A diagram you have already, as a model (`umlimator.py import`): Structurizr DSL, C4-PlantUML, Mermaid, compose or Kubernetes JSON | clinic, imported from [`clinic.dsl`](clinic.dsl) (CI imports it again and fails if the model differs); [`tests/import/`](../tests/import/): a sample of each other format, which CI imports, renders and checks (`tests/import.py`, with clinic's source too) |
-| Structurizr groups as boxes, nested as the source nests them | clinic `containers` (Apps, inside Clinic bookings) and `api-components` |
+| Structurizr groups as boxes, nested as the source nests them | clinic `context` and `containers` (Clinic staff) |
 | An AI assistant reading a map and driving its page (an MCP server: `umlimator.py mcp`) | any model: `python3 umlimator.py mcp examples/bike-share.json`, as `tests/cli.py` runs it |
 
 Not shown: `repair: false`, a switch for debugging the router.

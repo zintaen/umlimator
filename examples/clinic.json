@@ -124,7 +124,7 @@
       "id": "reception-desk",
       "from": "reception",
       "to": "desk",
-      "label": "Manages the day",
+      "label": "Runs the day",
       "sublabel": "HTTPS"
     },
     {
@@ -218,7 +218,7 @@
       "id": "reception-bookings",
       "from": "reception",
       "to": "bookings",
-      "label": "Manages the day",
+      "label": "Runs the day",
       "sublabel": "HTTPS"
     },
     {
@@ -282,6 +282,15 @@
         "sms",
         "records"
       ],
+      "containers": [
+        {
+          "id": "clinic-staff",
+          "label": "Clinic staff",
+          "nodeIds": [
+            "reception"
+          ]
+        }
+      ],
       "caption": "Who books, and what the bookings system leans on.",
       "edges": [
         "patient-bookings",
@@ -312,6 +321,8 @@
           "id": "bookings",
           "label": "Clinic bookings",
           "nodeIds": [
+            "web",
+            "desk",
             "api",
             "db",
             "jobs",
@@ -319,13 +330,11 @@
           ]
         },
         {
-          "id": "Apps",
-          "label": "Apps",
+          "id": "clinic-staff",
+          "label": "Clinic staff",
           "nodeIds": [
-            "web",
-            "desk"
-          ],
-          "parent": "bookings"
+            "reception"
+          ]
         }
       ],
       "caption": "The apps, the API, and where bookings and reminders wait.",
@@ -366,14 +375,6 @@
             "book",
             "remind",
             "store"
-          ]
-        },
-        {
-          "id": "Apps",
-          "label": "Apps",
-          "nodeIds": [
-            "web",
-            "desk"
           ]
         }
       ],
