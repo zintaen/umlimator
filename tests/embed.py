@@ -12,6 +12,7 @@ tests/change.html: update() easing into the next model, and diff()'s and drift()
 tests/unfold.html: unfolding a stacked card in place (#71): the handle, E and Alt + click, the expand event.
 tests/unfold-page.html: the same in the standalone page (mountPage): its details button, E from the page.
 tests/stories.html: play() and its caption bar, keys and events; the standalone page's Stories menu, story links and recording.
+tests/insight.html: lenses on a map and in the page (#94), the page's slowest path and what-if (#95), a trace's numbered view (#96).
 tests/page-handle.html: a page umlimator.py renders keeps its map's handle on window.umlimatorMap, and it drives the page.
 examples/edit.html, embed.html, live.html, playground.html, ask.html, replay.html, timelapse.html, drift.html: the host pages load and draw.
 Each test page reports in <pre id="result">{"ok": [...], "fail": [...]}</pre>.
@@ -68,7 +69,7 @@ def dom(path, done, wait=60):
 
 
 failed = False
-for page in ("tests/embed.html", "tests/edit.html", "tests/contrast.html", "tests/rules.html", "tests/marks.html", "tests/change.html", "tests/unfold.html", "tests/unfold-page.html", "tests/stories.html", "tests/page-handle.html"):
+for page in ("tests/embed.html", "tests/edit.html", "tests/contrast.html", "tests/rules.html", "tests/marks.html", "tests/change.html", "tests/unfold.html", "tests/unfold-page.html", "tests/stories.html", "tests/insight.html", "tests/page-handle.html"):
     t = dom(page, lambda t: 'id="result"' in t)
     m = re.search(r'<pre id="result">(.*?)</pre>', t, re.S)
     if not m:  # each check names itself in the page title: say where it stopped

@@ -25,7 +25,12 @@ drill-down, a data pipeline, an AI agent's skills, and host pages for embedding,
 - **Exploring**: every path between two cards, or everything a card reaches, lit on the map; a view in plain sentences
   (`describe()`); a tour along any path the host names.
 - **Live data**: marks over the map without touching the model (`overlay()`): flow as fast as the traffic, errors that
-  pulse, slow hops that glow, labels and tabs; and an OpenTelemetry trace replayed along its lines (`replay()`).
+  pulse, slow hops that glow, labels and tabs; and an OpenTelemetry trace replayed along its lines (`replay()`), or kept
+  as a numbered view to review in a pull request (`umlimator.py trace`).
+- **Lenses**: saved ways to look at one map, by team or by data flow: what a lens picks lit and the rest dimmed, cards
+  ringed by owner with a legend, from the page's Lenses menu or a link. The view is never laid out again.
+- **Budgets**: lines' latency and cost; the slowest or costliest path lit with its total (`critical()`), and what loses
+  its way if a card goes down (`whatIf()`).
 - **Stories**: walk-throughs in the model, step by step (view, camera, selection, highlight, tour and a caption), played
   on the map (`play()`) or from the page's Stories menu, recorded from the page, and written as an animated PNG.
 - **Keyboard and screen readers**: cards, then lines, in the Tab order (a card's tabs and chips too, for a host that
@@ -90,6 +95,9 @@ function MapView({ model, onSelect }) {
   rule the model breaks, view by view.
 - `map.overlay(name, layer)`, `highlight(refs)`, `tour(path)` and `replay(spans)` put the host's marks, a tour and a
   trace on the map; `paths()`, `reach()` and `describe()` walk a view and put it in words, in Node too.
+- `map.lens(id)` puts one of the model's lenses on the map. `critical(model, view, { from, to, by })` finds the slowest
+  or costliest path, `whatIf(model, view, { remove })` what loses its way when cards go down, and
+  `sequenceFromTrace(model, spans, { view, match })` keeps a trace as a numbered view; all three in Node too.
 - `editable: true` turns on editing gestures ([docs/editing.md](docs/editing.md); `examples/edit.html` is a working host).
 - `diff(before, after)` returns `after` with each card and line marked added, changed or removed, what changed in words,
   and the views that show it; `drift(model, observed)` marks the lines traffic ran on that nobody drew, and the drawn ones
@@ -116,6 +124,7 @@ kinds such as `public`, `lane`, `script`, `hook` and `board` work too). Fields b
 | node | `icon` | a logo or line icon from `icons/manifest.json` |
 | node | `noSub` | the name only; the description stays in the details panel |
 | node | `opensView`, `opensCount` | the view the card opens, which may not be loaded yet, and the ⤢ number for it |
+| node | `owner` | who owns the card (a team): rules and lenses pick by it, and a lens can ring cards by owner |
 | node, edge | `edited` | a marker on the card or line |
 | edge | `kind` | what the line means, drawn as its colour: `calls` (default), `feeds`, `triggers`, `state`, `guard` |
 | edge | `weight` | 1, 2 or 3: how much the line stands for, drawn as its width |
@@ -124,14 +133,16 @@ kinds such as `public`, `lane`, `script`, `hook` and `board` work too). Fields b
 | edge | `from`, `to` | may name a container of the view: the line ends on its box |
 | edge | `style: "faded"` | the line in its kind's colour, faint and with no flow (drift's idle lines) |
 | edge | `drift` | what `drift()` found: `undrawn` or `idle` |
+| edge | `latency`, `cost` | budgets, in ms and in any unit: `critical()` sums them along a path (not drawn) |
 | view | `gap`, `rgap` | the space between columns and between rows |
 | view | `keepPairs` | A→B and B→A drawn as two lines |
 | view | `repair: false` | no port repair |
 | view | `subAndChips` | cards 80 px tall that show their sub-line, then their chips |
 | view | `kindsFromLabels` | a line whose edges name no `kind` takes one guessed from its label |
 | container | `badges` | tabs on the box's border |
-| model | `rules` | what must hold: no line `from` some cards `to` others (picked by id, kind or box), or `noCycles` between boxes |
+| model | `rules` | what must hold: no line `from` some cards `to` others (picked by id, kind, box or owner), or `noCycles` between boxes |
 | model | `stories` | walk-throughs: steps that each set the view, camera, selection, highlight, tour and caption |
+| model | `lenses` | ways to look at the map: what `pick` picks (by id, kind, box, owner or `line` kind) lit, the rest dimmed; `color: "owner"` rings cards by owner |
 
 ## Command line
 
@@ -149,6 +160,7 @@ python3 umlimator.py record bike-share.html --story ride --out ride.png   # bike
 python3 umlimator.py import workspace.dsl --out model.json            # a diagram you have already, as a model
 docker compose config --format json > compose.json && python3 umlimator.py import compose.json --out model.json
 kubectl get deploy,sts,svc,ing -A -o json > cluster.json && python3 umlimator.py import cluster.json --out model.json
+python3 umlimator.py trace model.json trace.json --view ride-end --match match.json --out model.json   # an OTLP trace kept as a numbered view
 python3 umlimator.py mcp model.json                                    # an MCP server over stdio, for an AI assistant (below)
 ```
 
@@ -163,12 +175,13 @@ opening the view below it; `examples/clinic.json` is `examples/clinic.dsl`, impo
 what is left out: [docs/module-api.md § Import](docs/module-api.md#import-90). Whatever the file holds that `import`
 doesn't read is listed on stderr with its line (in JSON, its path).
 
-The page has breadcrumbs, a details panel per card, ⌘K search, deep links (`#view=<id>&node=<id>`, and
-`#story=<id>&step=<n>` for a story's step), stories, and export. For scripts and tests, it keeps its map's handle on
-`window.umlimatorMap`: the `Handle` that `render()` returns (`setView()`, `highlight()`, `tour()`, `play()` ...).
+The page has breadcrumbs, a details panel per card (with the slowest path from it and what-if), ⌘K search, deep links
+(`#view=<id>&node=<id>`, `#story=<id>&step=<n>` for a story's step, and `#lens=<id>`), stories, lenses, and export. For
+scripts and tests, it keeps its map's handle on `window.umlimatorMap`: the `Handle` that `render()` returns (`setView()`,
+`highlight()`, `tour()`, `play()` ...).
 `stills` skips a view whose inputs have not changed since its last export (`--all` exports every view). Needs Python
 3.9+ (standard library only), Google Chrome or Chromium for `stills`, `check` and `record`, and Node 18+ for `diff`,
-`drift` and `mcp`.
+`drift`, `trace` and `mcp`.
 
 `record` writes an animated PNG, which browsers and GitHub show as it is. For a GIF or an MP4 (for chat or slides),
 convert it with ffmpeg:
@@ -272,7 +285,7 @@ Release with that section as its notes, and publishes the package to npm (truste
 CI also publishes the examples to GitHub Pages from `main`.
 
 ```
-umlimator.py                 CLI: render, stills, check, record, pin-icons, diff, drift, timelapse, import, mcp
+umlimator.py                 CLI: render, stills, check, record, pin-icons, diff, drift, timelapse, import, trace, mcp
 umlimator_import.py          import's readers: Structurizr DSL, C4-PlantUML, Mermaid, compose and Kubernetes JSON
 umlimator_mcp.py             the MCP server that `umlimator.py mcp` runs
 action.yml                   the diff Action: what a pull request changes in its maps, posted on it
