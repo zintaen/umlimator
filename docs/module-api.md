@@ -782,14 +782,15 @@ A stacked card can open into a box on the map it is on, instead of switching to 
 
 ### Overlay labels keep off their neighbours (#81)
 
-- **A line's `label` pill takes the first place where it covers no card, line label or other pill:** under the line's
-  own label as before (on its longest run when it has none), else half way along the line, then at 30 %, 70 %, 15 % or
-  85 % of its length. An overlay still never lays the view out again.
+- **A line's `label` pill takes the first place where it covers no card, box title or tab, line label or other pill:**
+  under the line's own label as before (on its longest run when it has none), else half way along the line, then at
+  30 %, 70 %, 15 % or 85 % of its length. An overlay still never lays the view out again.
 - **With no room at any,** the pill isn't drawn over anything. Its text goes in the line's tooltip, on a line of its own,
   and at the end of its accessible name ("Line from Trip API to Trip lifecycle: moves the ride on, p95 1.2 s over
   budget"), until the layer goes. `replay()`'s duration labels are such pills too.
 - **Test:** `tests/marks.html` puts a long pill on every line of bike-share's trips view: none covers a card, a line label
   or another pill, each one with no room is in its line's tooltip and name, and removing the layer takes it out again.
+  On a line that goes around a box's title, with its label just above the title, the pill doesn't cover the title.
 
 ### A recorded story's tours move (#83)
 
