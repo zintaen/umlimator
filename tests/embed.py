@@ -6,7 +6,7 @@
 tests/embed.html: render() events, references, update(), destroy(), colours, badges, fonts.
 tests/edit.html: editing gestures and the change events they emit.
 tests/contrast.html: the default palette against WCAG AA, light and dark.
-examples/edit.html: the editing demo loads and draws.
+examples/edit.html, embed.html, live.html: the host pages load and draw.
 Each test page reports in <pre id="result">{"ok": [...], "fail": [...]}</pre>.
 """
 import functools, html, http.server, importlib.util, json, re, subprocess, sys, tempfile, threading
@@ -38,7 +38,11 @@ class Quiet(http.server.SimpleHTTPRequestHandler):
         super().do_GET()
 
 
-server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), functools.partial(Quiet, directory=str(ROOT)))
+class Server(http.server.ThreadingHTTPServer):
+    request_queue_size = 64  # a host page fetches its icons in parallel; the default backlog (5) drops connections on macOS
+
+
+server = Server(("127.0.0.1", 0), functools.partial(Quiet, directory=str(ROOT)))
 threading.Thread(target=server.serve_forever, daemon=True).start()
 base = f"http://127.0.0.1:{server.server_address[1]}/"
 
@@ -64,9 +68,10 @@ for page in ("tests/embed.html", "tests/edit.html", "tests/contrast.html"):
     for name in r["fail"]:
         print("FAIL", page, "·", name)
     failed |= bool(r["fail"])
-demo = dom("examples/edit.html", lambda t: 'class="umlimator"' in t)
-print(("ok  " if 'class="umlimator"' in demo else "FAIL"), "examples/edit.html · the editing demo draws its map")
-failed |= 'class="umlimator"' not in demo
+for page, what in (("examples/edit.html", "the editing demo"), ("examples/embed.html", "the host page"), ("examples/live.html", "the live page")):
+    demo = dom(page, lambda t: 'class="umlimator"' in t)
+    print(("ok  " if 'class="umlimator"' in demo else "FAIL"), f"{page} · {what} draws its map")
+    failed |= 'class="umlimator"' not in demo
 # the standalone page (mountPage) shows a legend, so it still names line kinds from label words: "reads metrics" is state
 page = dom("examples/bookshop.html", lambda t: 'class="lgi"' in t)
 legend = "<b>calls</b>" in page and "<b>state</b>" in page

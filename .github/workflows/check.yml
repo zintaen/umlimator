@@ -71,6 +71,51 @@ jobs:
           python3 umlimator.py check examples/bookshop.html | tee /tmp/check.json
           python3 -I -c "import json; s = open('/tmp/check.json').read(); d = json.loads(s[s.find('{'):]); assert not d['problems'] and not d['errors'], (d['problems'], d['errors'])"
 
+      - name: The other examples render and their layout checks are clean, in the browser and in Node (the site shows them)
+        run: |
+          for m in examples/*.json; do
+            n=$(basename "$m" .json); [ "$n" = bookshop ] && continue   # checked above, with its committed page
+            python3 umlimator.py render "$m" --out "/tmp/$n.html" --no-check
+            python3 umlimator.py check "/tmp/$n.html" > "/tmp/$n.json"
+            python3 -I -c "import json, sys; s = open(sys.argv[1]).read(); d = json.loads(s[s.find('{'):]); assert d['checked'] and not d['problems'] and not d['errors'], (sys.argv[1], d['problems'], d['errors'])" "/tmp/$n.json"
+          done
+          node examples/layout.mjs
+
+  # The examples, live: on each push to main that passes the checks, every model's page and pictures are built and
+  # published with the host pages and the module on GitHub Pages (zintaen.github.io/umlimator).
+  site:
+    needs: check
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    concurrency: pages
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build the site
+        run: |
+          mkdir -p _site/examples
+          cp -r lib icons _site/
+          cp examples/*.json examples/*.html examples/*.js examples/*.mjs examples/README.md _site/examples/
+          for m in examples/*.json; do
+            n=$(basename "$m" .json)
+            python3 umlimator.py render "$m" --out "_site/examples/$n.html" --no-check
+            python3 umlimator.py stills "_site/examples/$n.html" --out "_site/examples/stills/$n"
+          done
+          sed 's|<meta charset="utf-8">|<meta charset="utf-8"><base href="examples/">|' examples/index.html > _site/index.html
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - id: deploy
+        uses: actions/deploy-pages@v4
+
   # Merging a version bump releases it: once the checks pass on main, the version in package.json is tagged and
   # published as a GitHub Release, whose notes are that version's section of docs/module-api.md. A version that is tagged
   # already is skipped, so every other push to main releases nothing.
