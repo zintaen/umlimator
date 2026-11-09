@@ -809,3 +809,13 @@ A stacked card can open into a box on the map it is on, instead of switching to 
   its virtual time is up, and on a busy machine that could be before the standalone page, which draws on an animation
   frame, had drawn its legend. Every page the harness reads goes through the same wait: the test pages, the host pages
   and bookshop's legend. The test pages' own retry, once more when Chrome gave back nothing, is gone: the wait covers it.
+
+### The details panel keeps a short sentence whole (#97)
+
+- **The standalone page's details panel** cut every `when`, `what` and `how` text into at least two bullets, so
+  bike-share's Trip service, `"when": "Unlock, pause, end."`, showed "Unlock" and "pause, end.". Now a text is cut where
+  it has more than one sentence or clause (at `;`, ` · ` or ` | `), and a point longer than a line (160 characters) is cut
+  in two, as before. A short sentence stays one bullet. In the examples and bench models, 203 of 408 texts were short
+  sentences cut this way.
+- **Test:** `tests/unfold-page.html` opens Trip service's details: its `when` is one bullet, and a `how` of one
+  190-character sentence is cut into bullets of at most 160.
