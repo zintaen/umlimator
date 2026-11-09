@@ -131,6 +131,7 @@ jobs:
           mkdir -p _site/examples
           cp -r lib icons _site/
           cp examples/*.json examples/*.html examples/*.js examples/*.mjs examples/README.md _site/examples/
+          cp -r examples/traces _site/examples/   # replay.html's trace, which bike-share keeps as a view too (#96)
           for m in examples/*.json; do
             n=$(basename "$m" .json)
             python3 umlimator.py render "$m" --out "_site/examples/$n.html" --no-check

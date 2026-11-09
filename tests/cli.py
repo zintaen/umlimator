@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """The CLI's change commands end to end (#66, #67, #68): diff of two files, diff --base in a git repository (what the
-diff Action runs on a pull request), drift and timelapse; and pdf (#93), read back with the standard library. Pages
-only for the rest: stills (Chrome) are covered by `stills` itself. And the MCP server (#91), driven through its pipes
-as an MCP client drives it, with a page's event stream.
+diff Action runs on a pull request), drift and timelapse; trace (#96); and pdf (#93), read back with the standard
+library. Pages only for the rest: stills (Chrome) are covered by `stills` itself. And the MCP server (#91), driven
+through its pipes as an MCP client drives it, with a page's event stream.
 
   python3 tests/cli.py
 
-Needs Node (diff, drift and the MCP server's read tools run the module's own functions), git, and Chrome or Chromium
-(pdf).
+Needs Node (diff, drift, trace and the MCP server's read tools run the module's own functions), git, and Chrome or
+Chromium (pdf).
 """
 import http.client, json, re, subprocess, sys, tempfile, threading, zlib
 from pathlib import Path
@@ -89,6 +89,14 @@ with tempfile.TemporaryDirectory() as tmp:
     r = cli("drift", str(t / "before.json"), str(t / "seen.json"), "--match", str(t / "match.json"), "--out", str(t / "drift.html")) or {}
     ok("drift · counts the lines, and names the views that show drift", r.get("counts", {}).get("undrawn") == 1 and r.get("views") == ["system"], r)
     ok("drift · the page brings in the line nobody drew", '"drift": "undrawn"' in ((t / "drift.html").read_text(encoding="utf-8") if (t / "drift.html").is_file() else ""))
+
+    # trace (#96): the replay example's trace (OTLP JSON) kept as a numbered view: the one bike-share has, in its place
+    tr, view = ROOT / "examples" / "traces", lambda m: next((v for v in m.get("views", []) if v.get("id") == "ride-end"), None)
+    r = cli("trace", str(t / "before.json"), str(tr / "ride-end.json"), "--view", "ride-end", "--match", str(tr / "match.json"),
+            "--title", "A ride ends, from its trace", "--out", str(t / "traced.json")) or {}
+    got = json.loads((t / "traced.json").read_text(encoding="utf-8")) if (t / "traced.json").is_file() else {}
+    ok("trace · a trace becomes the numbered view bike-share keeps, which it replaces where it is", r.get("steps") == 8 and r.get("cards") == 9
+       and view(got) == view(bike) and [v["id"] for v in got.get("views", [])] == [v["id"] for v in bike["views"]], r)
 
     # a repository with three versions of a map, then an edit in the working tree: a time-lapse, and what a pull request changes
     g = t / "repo"; g.mkdir()

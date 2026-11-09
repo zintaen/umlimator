@@ -1,0 +1,22 @@
+{ "resourceSpans": [
+  { "resource": {"attributes":[{"key":"service.name","value":{"stringValue":"rider-app"}}]},
+    "scopeSpans": [{ "spans": [{"traceId":"5b8aa5a2d2c872e8321cf37308d69df2","spanId":"a1","parentSpanId":"","name":"tap End ride","startTimeUnixNano":"1762700000000000000","endTimeUnixNano":"1762700000212000000"}] }] },
+  { "resource": {"attributes":[{"key":"service.name","value":{"stringValue":"trip-api"}}]},
+    "scopeSpans": [{ "spans": [{"traceId":"5b8aa5a2d2c872e8321cf37308d69df2","spanId":"b1","parentSpanId":"a1","name":"POST /rides/{id}/end","startTimeUnixNano":"1762700000006000000","endTimeUnixNano":"1762700000206000000"}] }] },
+  { "resource": {"attributes":[{"key":"service.name","value":{"stringValue":"trip-lifecycle"}}]},
+    "scopeSpans": [{ "spans": [{"traceId":"5b8aa5a2d2c872e8321cf37308d69df2","spanId":"c1","parentSpanId":"b1","name":"close ride","startTimeUnixNano":"1762700000012000000","endTimeUnixNano":"1762700000198000000"}] }] },
+  { "resource": {"attributes":[{"key":"service.name","value":{"stringValue":"fare-calculator"}}]},
+    "scopeSpans": [{ "spans": [{"traceId":"5b8aa5a2d2c872e8321cf37308d69df2","spanId":"d1","parentSpanId":"c1","name":"fare for ride","startTimeUnixNano":"1762700000020000000","endTimeUnixNano":"1762700000118000000"}] }] },
+  { "resource": {"attributes":[{"key":"service.name","value":{"stringValue":"Pricing"}}]},
+    "scopeSpans": [{ "spans": [{"traceId":"5b8aa5a2d2c872e8321cf37308d69df2","spanId":"e1","parentSpanId":"d1","name":"GetPrice","startTimeUnixNano":"1762700000024000000","endTimeUnixNano":"1762700000061000000"}] }] },
+  { "resource": {"attributes":[{"key":"service.name","value":{"stringValue":"payment-gateway"}}]},
+    "scopeSpans": [{ "spans": [{"traceId":"5b8aa5a2d2c872e8321cf37308d69df2","spanId":"f1","parentSpanId":"d1","name":"POST /charges","startTimeUnixNano":"1762700000066000000","endTimeUnixNano":"1762700000114000000"}] }] },
+  { "resource": {"attributes":[{"key":"service.name","value":{"stringValue":"fraud-check"}}]},
+    "scopeSpans": [{ "spans": [{"traceId":"5b8aa5a2d2c872e8321cf37308d69df2","spanId":"g1","parentSpanId":"f1","name":"score charge","startTimeUnixNano":"1762700000070000000","endTimeUnixNano":"1762700000092000000"}] }] },
+  { "resource": {"attributes":[{"key":"service.name","value":{"stringValue":"trip-repository"}}]},
+    "scopeSpans": [{ "spans": [{"traceId":"5b8aa5a2d2c872e8321cf37308d69df2","spanId":"h1","parentSpanId":"c1","name":"save ride","startTimeUnixNano":"1762700000122000000","endTimeUnixNano":"1762700000160000000"}] }] },
+  { "resource": {"attributes":[{"key":"service.name","value":{"stringValue":"postgres"}}]},
+    "scopeSpans": [{ "spans": [{"traceId":"5b8aa5a2d2c872e8321cf37308d69df2","spanId":"i1","parentSpanId":"h1","name":"UPDATE rides","startTimeUnixNano":"1762700000126000000","endTimeUnixNano":"1762700000155000000"}] }] },
+  { "resource": {"attributes":[{"key":"service.name","value":{"stringValue":"event-publisher"}}]},
+    "scopeSpans": [{ "spans": [{"traceId":"5b8aa5a2d2c872e8321cf37308d69df2","spanId":"j1","parentSpanId":"c1","name":"publish ride.ended","startTimeUnixNano":"1762700000164000000","endTimeUnixNano":"1762700000190000000"}] }] }
+] }

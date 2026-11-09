@@ -9,6 +9,7 @@
   umlimator.py diff BEFORE.json AFTER.json --out PAGE.html [--stills DIR]   # what changed, marked on one map, and in words
   umlimator.py diff --base REF --out DIR [--models 'docs/*.json']   # every model changed since a git ref (a pull request)
   umlimator.py drift MODEL.json OBSERVED.json --out PAGE.html [--match MATCH.json] [--stills DIR]   # drawn vs. traffic seen
+  umlimator.py trace MODEL.json TRACE.json --view ID --out OUT.json [--match MATCH.json] [--title T]   # a trace (OTLP JSON) kept as a numbered view
   umlimator.py timelapse MODEL.json --out PAGE.html [--limit 20]   # the model's versions in git history, on a slider
   umlimator.py record PAGE.html --story ID --out STORY.png [--size 1160x740] [--scale 1] [--theme light|dark]   # a story as an animated PNG
   umlimator.py pdf PAGE.html --out MAP.pdf [--views a,b] [--theme light|dark]   # one PDF: a title page, each view with its text, legend, rules
@@ -16,7 +17,7 @@
 
 MODEL.json is the map model in engine/references/schema.md (nodes, edges, views), plus umlimator's `badge` field on a
 node (PROPOSED, TARGET, OFF ...). `stills` needs Google Chrome or Chromium; the PNGs are what a document that cannot
-run the page (a wiki such as Confluence) shows. `diff`, `drift` and `mcp` run the module's own functions in Node.
+run the page (a wiki such as Confluence) shows. `diff`, `drift`, `trace` and `mcp` run the module's own functions in Node.
 """
 import argparse, base64, hashlib, html, io, json, os, re, shutil, struct, subprocess, sys, tempfile, urllib.parse, urllib.request, zipfile, zlib
 from pathlib import Path
@@ -187,7 +188,7 @@ def icon_table(models):
 
 
 def js(fn, *args):
-    """One of the module's pure functions (diff, drift) run in Node, so the CLI and the module share one implementation."""
+    """One of the module's functions run in Node (for diff, drift, trace and the MCP server's read tools), so the CLI and the module share one implementation."""
     node = shutil.which("node") or sys.exit(f"{fn} needs Node.js 18 or later: it runs the module's own {fn}()")
     code = (f"import * as u from {json.dumps(LIB.as_uri())}; let s = ''; for await (const c of process.stdin) s += c;"
             f"process.stdout.write(JSON.stringify(u[{json.dumps(fn)}](...JSON.parse(s))));")
@@ -346,6 +347,20 @@ def cmd_drift(a):
     r["model"]["title"] = f"{m.get('title') or Path(a.model).stem}: drawn vs. seen"
     rep = render_model(r["model"], a.model, a.out)
     print(json.dumps({"out": rep["out"], "counts": r["counts"], "views": r["views"], "stills": shots(a.out, a.stills, r["views"])}, indent=1))
+
+
+def cmd_trace(a):
+    """A trace kept as a numbered view (#96): MODEL.json with a sequence view made from an OpenTelemetry trace in OTLP JSON,
+    its calls between cards in time order, each labelled with its span's name and its duration; written to --out (which
+    may be MODEL.json itself). A view with that id is replaced. --match: {service name: card id} where names differ."""
+    m, trace = (json.loads(Path(f).read_text(encoding="utf-8")) for f in (a.model, a.trace))
+    opts = {"view": a.view, "match": json.loads(Path(a.match).read_text(encoding="utf-8")) if a.match else {}, **({"title": a.title} if a.title else {})}
+    out = js("sequenceFromTrace", m, js("otlpSpans", trace), opts)
+    v = next(x for x in out["views"] if x.get("id") == a.view)
+    if not v["edges"]:
+        sys.exit(f"trace: no call in {a.trace} runs between two cards of {a.model} (--match names a service's card)")
+    Path(a.out).write_text(json.dumps(out, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    print(json.dumps({"out": a.out, "view": a.view, "steps": len(v["edges"]), "cards": len(v["nodeIds"]), "caption": v["caption"]}, indent=1))
 
 
 def cmd_timelapse(a):
@@ -598,6 +613,10 @@ def main():
     dr = sub.add_parser("drift", help="the map against the traffic seen"); dr.add_argument("model"); dr.add_argument("observed")
     dr.add_argument("--out", required=True); dr.add_argument("--match", help="JSON: {service name: card id}"); dr.add_argument("--stills")
     dr.set_defaults(f=cmd_drift)
+    tr = sub.add_parser("trace", help="a trace (OTLP JSON) kept as a numbered view of the model"); tr.add_argument("model"); tr.add_argument("trace")
+    tr.add_argument("--view", required=True, help="the new view's id (one with that id is replaced)"); tr.add_argument("--out", required=True, help="the model with the view: a .json file")
+    tr.add_argument("--match", help="JSON: {service name: card id}"); tr.add_argument("--title", help="the view's title (default: its id)")
+    tr.set_defaults(f=cmd_trace)
     t = sub.add_parser("timelapse", help="the model's versions in git history on a slider"); t.add_argument("model"); t.add_argument("--out", required=True)
     t.add_argument("--limit", type=int, default=30, help="the latest N versions (default 30)"); t.set_defaults(f=cmd_timelapse)
     mc = sub.add_parser("mcp", help="a Model Context Protocol server over stdio: an AI assistant reads the model and drives its page")

@@ -93,6 +93,13 @@
     "$ref": "#/$defs/story"
    },
    "description": "Narrated walk-throughs of the map: handle.play(id), the page's Stories menu, umlimator.py record."
+  },
+  "lenses": {
+   "type": "array",
+   "items": {
+    "$ref": "#/$defs/lens"
+   },
+   "description": "Saved ways to look at the map: handle.lens(id), the page's Lenses menu and #lens=<id>. A lens lights what it picks and dims the rest; it never lays the view out again."
   }
  },
  "$defs": {
@@ -287,6 +294,10 @@
      "minimum": 0,
      "description": "The number on the ⤢ badge while the view it opens is not loaded."
     },
+    "owner": {
+     "type": "string",
+     "description": "Who owns the card (a team, say): selectors pick cards by it, and a lens with color owner rings the card in its owner's tone."
+    },
     "edited": {
      "type": "boolean",
      "description": "A marker on the card."
@@ -431,6 +442,10 @@
      "minimum": 0,
      "description": "The number on the ⤢ badge while the view it opens is not loaded."
     },
+    "owner": {
+     "type": "string",
+     "description": "Who owns the card (a team, say): selectors pick cards by it, and a lens with color owner rings the card in its owner's tone."
+    },
     "edited": {
      "type": "boolean",
      "description": "A marker on the card."
@@ -565,6 +580,16 @@
       3
      ],
      "description": "How much the line stands for, drawn as its width (default 1)."
+    },
+    "latency": {
+     "type": "number",
+     "minimum": 0,
+     "description": "How long the call takes, in ms: critical() sums it along a path. Not drawn."
+    },
+    "cost": {
+     "type": "number",
+     "minimum": 0,
+     "description": "What the call costs, in any unit: critical() sums it along a path. Not drawn."
     },
     "style": {
      "enum": [
@@ -900,7 +925,7 @@
   "selector": {
    "type": "object",
    "additionalProperties": false,
-   "description": "Picks cards: every key given must hold. A line's end on a box is that box: in it, and of no kind.",
+   "description": "Picks cards: every key given must hold. A line's end on a box is that box: in it, and of no kind or owner.",
    "properties": {
     "id": {
      "description": "Cards (or boxes) by id.",
@@ -934,6 +959,21 @@
     },
     "container": {
      "description": "Cards in these boxes, at any depth.",
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "array",
+       "items": {
+        "type": "string"
+       },
+       "minItems": 1
+      }
+     ]
+    },
+    "owner": {
+     "description": "Cards by owner.",
      "anyOf": [
       {
        "type": "string"
@@ -1132,6 +1172,129 @@
      "type": "number",
      "exclusiveMinimum": 0,
      "description": "The step's time in ms when playing (default 4000); its tour runs to its end first."
+    }
+   }
+  },
+  "lens": {
+   "type": "object",
+   "required": [
+    "id"
+   ],
+   "description": "A saved way to look at the map: what pick picks lit, the rest dimmed.",
+   "properties": {
+    "id": {
+     "type": "string",
+     "description": "Unique among the lenses: handle.lens(id), and #lens=<id> in a page's link."
+    },
+    "title": {
+     "type": "string",
+     "description": "The lens's name, in the Lenses menu and over its legend."
+    },
+    "pick": {
+     "$ref": "#/$defs/lensSelector",
+     "description": "What the lens lights; left out, everything."
+    },
+    "color": {
+     "const": "owner",
+     "description": "Rings each lit card in its owner's tone, with a legend."
+    }
+   }
+  },
+  "lensSelector": {
+   "type": "object",
+   "additionalProperties": false,
+   "description": "A lens's pick: a rule's selector, and line kinds. Without line, the cards it picks lit, and the lines between two of them; with line, the lines of those kinds between two cards the rest of it picks, and their ends.",
+   "properties": {
+    "id": {
+     "description": "Cards (or boxes) by id.",
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "array",
+       "items": {
+        "type": "string"
+       },
+       "minItems": 1
+      }
+     ]
+    },
+    "kind": {
+     "description": "Cards by kind, as the map draws it: \"db\" picks databases.",
+     "anyOf": [
+      {
+       "$ref": "#/$defs/kind"
+      },
+      {
+       "type": "array",
+       "items": {
+        "$ref": "#/$defs/kind"
+       },
+       "minItems": 1
+      }
+     ]
+    },
+    "container": {
+     "description": "Cards in these boxes, at any depth.",
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "array",
+       "items": {
+        "type": "string"
+       },
+       "minItems": 1
+      }
+     ]
+    },
+    "owner": {
+     "description": "Cards by owner.",
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "array",
+       "items": {
+        "type": "string"
+       },
+       "minItems": 1
+      }
+     ]
+    },
+    "line": {
+     "description": "Lines by kind (default calls).",
+     "anyOf": [
+      {
+       "enum": [
+        "calls",
+        "feeds",
+        "triggers",
+        "state",
+        "guard"
+       ]
+      },
+      {
+       "type": "array",
+       "items": {
+        "enum": [
+         "calls",
+         "feeds",
+         "triggers",
+         "state",
+         "guard"
+        ]
+       },
+       "minItems": 1
+      }
+     ]
+    },
+    "not": {
+     "$ref": "#/$defs/selector",
+     "description": "The cards this selector does not pick."
     }
    }
   }
