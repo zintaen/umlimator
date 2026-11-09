@@ -872,7 +872,8 @@ card inside the new box, and as its own box (u21's `shop`: Order service, then W
       the rest of it picks, and the cards at their ends.
 
     Left out, it lights everything. The rest dims.
-  - **`owner`** on a card names who owns it (a team, say). Selectors pick by it, a rule's too; a box has no owner.
+  - **`owner`** on a card names who owns it (a team, say). Selectors pick by it, rules' as well as lenses'; a box has no
+    owner.
   - **`color: "owner"`** rings each lit card in its owner's tone, the same on every view: owners in name order take cyan,
     violet, green, amber, fuchsia, orange, rose and slate, then again from cyan. A legend over the controls names the
     view's owners, and the fit keeps the cards clear of it, as of the controls.
@@ -882,7 +883,7 @@ card inside the new box, and as its own box (u21's `shop`: Order service, then W
   - `toSVG()` and `toPNG()` draw its rings and dimming, on any view, but not its legend.
   - A lens that lights everything dims nothing, so a selection keeps its own dimming.
 - **For a host:** `handle.lens(id | null)`, false when the model has no such lens.
-- **In the standalone page:** a Lenses menu when the model has lenses, the lens on shown on its button, and No lens.
+- **In the standalone page:** a Lenses menu when the model has lenses, with No lens; its button names the lens that is on.
   `#lens=<id>` in the link opens the page with it, and follows it as it changes, back and forward included.
 - **`validate()`** errors on a lens without an id, with one used twice, or with a pick that isn't an object. It warns on a
   line kind it doesn't know, an owner no card has, a `color` other than `owner`, and an owner that isn't a name. The
