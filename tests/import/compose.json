@@ -1,0 +1,155 @@
+{
+  "name": "tea-shop",
+  "networks": {
+    "data": {
+      "name": "tea-shop_data",
+      "ipam": {}
+    },
+    "edge": {
+      "name": "tea-shop_edge",
+      "ipam": {}
+    }
+  },
+  "services": {
+    "api": {
+      "build": {
+        "context": "/srv/tea-shop/api",
+        "dockerfile": "Dockerfile"
+      },
+      "command": null,
+      "depends_on": {
+        "cache": {
+          "condition": "service_started",
+          "required": true
+        },
+        "db": {
+          "condition": "service_healthy",
+          "required": true
+        },
+        "queue": {
+          "condition": "service_started",
+          "required": true
+        }
+      },
+      "entrypoint": null,
+      "environment": {
+        "DATABASE_URL": "postgres://shop@db:5432/shop"
+      },
+      "networks": {
+        "data": null,
+        "edge": null
+      }
+    },
+    "cache": {
+      "command": null,
+      "entrypoint": null,
+      "image": "redis:7",
+      "networks": {
+        "data": null
+      }
+    },
+    "db": {
+      "command": null,
+      "entrypoint": null,
+      "image": "postgres:16",
+      "networks": {
+        "data": null
+      },
+      "volumes": [
+        {
+          "type": "volume",
+          "source": "pgdata",
+          "target": "/var/lib/postgresql/data",
+          "volume": {}
+        }
+      ]
+    },
+    "mailer": {
+      "command": null,
+      "entrypoint": null,
+      "image": "axllent/mailpit",
+      "networks": {
+        "data": null
+      }
+    },
+    "proxy": {
+      "command": null,
+      "depends_on": {
+        "api": {
+          "condition": "service_started",
+          "required": true
+        },
+        "web": {
+          "condition": "service_started",
+          "required": true
+        }
+      },
+      "entrypoint": null,
+      "image": "nginx:1.27",
+      "networks": {
+        "edge": null
+      },
+      "ports": [
+        {
+          "mode": "ingress",
+          "target": 443,
+          "published": "443",
+          "protocol": "tcp"
+        }
+      ]
+    },
+    "queue": {
+      "command": null,
+      "entrypoint": null,
+      "image": "rabbitmq:3-management",
+      "networks": {
+        "data": null
+      }
+    },
+    "web": {
+      "build": {
+        "context": "/srv/tea-shop/web",
+        "dockerfile": "Dockerfile"
+      },
+      "command": null,
+      "entrypoint": null,
+      "networks": {
+        "edge": null
+      }
+    },
+    "worker": {
+      "build": {
+        "context": "/srv/tea-shop/api",
+        "dockerfile": "Dockerfile"
+      },
+      "command": [
+        "python",
+        "-m",
+        "shop.worker"
+      ],
+      "depends_on": {
+        "mailer": {
+          "condition": "service_started",
+          "restart": true,
+          "required": true
+        },
+        "queue": {
+          "condition": "service_started",
+          "required": true
+        }
+      },
+      "entrypoint": null,
+      "links": [
+        "mailer:smtp"
+      ],
+      "networks": {
+        "data": null
+      }
+    }
+  },
+  "volumes": {
+    "pgdata": {
+      "name": "tea-shop_pgdata"
+    }
+  }
+}

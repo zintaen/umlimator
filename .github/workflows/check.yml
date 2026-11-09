@@ -37,6 +37,15 @@ jobs:
       - name: The CLI's diff, drift and timelapse write their pages, diff --base a pull request's summary, mcp answers an MCP client, and pdf an example's PDF
         run: python3 tests/cli.py
 
+      - name: The CLI's import reads a sample of each format into a model that validates, renders and checks clean
+        run: python3 tests/import.py
+
+      - name: The imported example is what import writes from its Structurizr source, so the two can't drift apart
+        run: |
+          python3 umlimator.py import examples/clinic.dsl --out /tmp/clinic.json
+          diff examples/clinic.json /tmp/clinic.json \
+            || { echo "::error::examples/clinic.json is not what import writes from examples/clinic.dsl: import it again and commit it"; exit 1; }
+
       - name: The diff Action pictures what a pull request changes in the example models (a dry run, without a comment)
         if: github.event_name == 'pull_request'
         uses: ./
