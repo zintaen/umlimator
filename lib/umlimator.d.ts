@@ -115,6 +115,19 @@ export interface RenderOptions {
   /** update() eases into the next model: moved cards glide, new ones fade in, removed ones fade out (#67). Default true;
    *  never under prefers-reduced-motion. false draws the next model at once. */
   ease?: boolean;
+  /** The standalone page's pieces (#99), each on its own or any mix, all off by default. They are drawn inside the map's
+   *  element, around the canvas, with the page's look, keys and --um-* colours; update() and destroy() keep them in step.
+   *  nav: the views list (Miller columns) left of the map, opened and shut by its ☰ button or O; picking a view shows it
+   *  (viewchange). It comes after the map in the tab order, so focus given to the map's element still lands on the map. */
+  nav?: boolean;
+  /** The kinds of cards and lines the view draws, in a box over the map, bottom left, that folds away. */
+  legend?: boolean;
+  /** A line over the map's foot: what the pointer does, and for a while what just happened (a polite live region). */
+  hints?: boolean;
+  /** The selected card's details under the map: its kind, actions and tabs (when, what, how, an example, what it comes
+   *  from and leads to), [ and ] between tabs. Open and Unfold here emit open and expand as the canvas does; → ← ⇄ light
+   *  what the card leads to, what leads to it, and every path between two selected cards (> < P). */
+  details?: boolean;
   on?: { [K in keyof Events]?: (e: Events[K]) => void };
 }
 

@@ -12,6 +12,7 @@ tests/change.html: update() easing into the next model, and diff()'s and drift()
 tests/unfold.html: unfolding a stacked card in place (#71): the handle, E and Alt + click, the expand event.
 tests/unfold-page.html: the same in the standalone page (mountPage): its details button, E from the page.
 tests/stories.html: play() and its caption bar, keys and events; the standalone page's Stories menu, story links and recording.
+tests/pieces.html: the standalone page's pieces in render() (#99): views list, legend, hint line, details panel, alone and together.
 examples/edit.html, embed.html, live.html, playground.html, ask.html, replay.html, timelapse.html, drift.html: the host pages load and draw.
 Each test page reports in <pre id="result">{"ok": [...], "fail": [...]}</pre>.
 """
@@ -67,7 +68,7 @@ def dom(path, done, wait=60):
 
 
 failed = False
-for page in ("tests/embed.html", "tests/edit.html", "tests/contrast.html", "tests/rules.html", "tests/marks.html", "tests/change.html", "tests/unfold.html", "tests/unfold-page.html", "tests/stories.html"):
+for page in ("tests/embed.html", "tests/edit.html", "tests/contrast.html", "tests/rules.html", "tests/marks.html", "tests/change.html", "tests/unfold.html", "tests/unfold-page.html", "tests/stories.html", "tests/pieces.html"):
     t = dom(page, lambda t: 'id="result"' in t)
     m = re.search(r'<pre id="result">(.*?)</pre>', t, re.S)
     if not m:  # each check names itself in the page title: say where it stopped

@@ -30,6 +30,8 @@ drill-down, a data pipeline, an AI agent's skills, and host pages for embedding,
   on the map (`play()`) or from the page's Stories menu, recorded from the page, and written as an animated PNG.
 - **Keyboard and screen readers**: cards, then lines, in the Tab order (a card's tabs and chips too, for a host that
   listens for click); arrows between cards; selections announced.
+- **The page's pieces, embedded**: the standalone page's views list, details panel, legend and hint line, each one a
+  `render()` option, around the map in the host's own page.
 - **Editing** (opt-in): gestures emit `change` events; the host applies them and calls `update()`.
 - **Export**: any view as a stand-alone SVG or PNG, in the browser or from the CLI.
 - **A layout check**: crossings, shared lines, detours, labels on lines, text that overflows its card.
@@ -90,7 +92,20 @@ function MapView({ model, onSelect }) {
   and the views that show it; `drift(model, observed)` marks the lines traffic ran on that nobody drew, and the drawn ones
   that carried nothing. Both are models to draw, in Node too. `update()` eases into the next model (`examples/timelapse.html`);
   the option `ease: false` draws it at once.
-- `mountPage` is the whole standalone viewer that the CLI writes.
+- `mountPage` is the whole standalone viewer that the CLI writes. `render()` can draw its pieces too, each on its own or
+  any mix, inside the map's element; the host keeps its own header:
+
+  ```js
+  render(el, model, { nav: true, details: true, legend: true, hints: true });
+  ```
+
+  - `nav`: the views list left of the map, opened and shut by its ☰ button or O. Picking a view emits `viewchange`.
+  - `details`: the selected card's panel under the map, with its tabs (`[` and `]`). Its Open and Unfold here buttons
+    emit `open` and `expand`, as the canvas does, so a host can load a view first.
+  - `legend` and `hints`: the legend, and the line saying what the pointer does, over the map.
+
+  They share the page's code and look, take the `--um-*` colours (the theme adds `--um-mark` and `--um-scrim` for them),
+  and follow `update()` and `destroy()`. `examples/embed.html` uses them.
 
 The API, its types and the decisions behind it: [docs/module-api.md](docs/module-api.md) and `lib/umlimator.d.ts`.
 

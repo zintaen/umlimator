@@ -1,0 +1,133 @@
+<!doctype html>
+<!-- The standalone page's pieces in render() (#99): the views list, the legend, the hint line and the details panel, each
+     alone and all together, their keys, focus and events, update(), destroy(), the theme, and an accessibility check as axe
+     makes it, written out. tests/embed.py opens this in headless Chrome and reads the result from <pre id="result">. -->
+<meta charset="utf-8">
+<link rel="icon" href="data:,">
+<title>umlimator pieces test</title>
+<body style="margin:0">
+<div id="a" style="width:1200px;height:760px"></div>
+<script type="module">
+import { render } from '../lib/umlimator.js';
+const BIKE = await (await fetch('../examples/bike-share.json')).json();
+const out = { ok: [], fail: [] };
+const check = (name, cond, info) => { document.title = name; if (cond) out.ok.push(name); else out.fail.push(name + (info === undefined ? '' : ': ' + JSON.stringify(info))); };
+const wait = ms => new Promise(r => setTimeout(r, ms));
+const until = async (f, ms = 4000) => { const t = performance.now(); while (!f() && performance.now() - t < ms) await wait(20); return f(); };
+const el = document.getElementById('a'), box = e => e.getBoundingClientRect();
+const inside = (a, b) => a.left >= b.left - 1 && a.right <= b.right + 1 && a.top >= b.top - 1 && a.bottom <= b.bottom + 1;
+const meet = (a, b) => a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
+const key = (k, at) => { const e = new KeyboardEvent('keydown', { key: k, bubbles: true, composed: true, cancelable: true }); at.dispatchEvent(e); return e; };
+const click = at => at.dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true, detail: 1 }));
+const make = (o, model = BIKE) => { const h = render(el, model, { view: 'system', ...o }), sr = el.querySelector('.umlimator').shadowRoot; return [h, sr, s => sr.querySelector(s)]; };
+// what axe checks of the pieces, written out (no network here): names, nesting, ids and the references to them, landmarks, tabs
+function a11y(sr) {
+  const bad = [], pieces = [...sr.querySelectorAll('.um-frame *')].filter(e => !e.closest('.stage'));
+  const name = e => (e.getAttribute('aria-label') || e.textContent || '').trim();
+  pieces.filter(e => e.matches('button, a[href], [role="tab"]')).forEach(e => { if (!name(e)) bad.push('no name: ' + e.outerHTML.slice(0, 60));
+    if (e.parentElement.closest('button, a[href]')) bad.push('inside another control: ' + e.outerHTML.slice(0, 60)); });
+  const ids = [...sr.querySelectorAll('[id]')].map(e => e.id); ids.filter((x, i) => ids.indexOf(x) !== i).forEach(x => bad.push('id twice: ' + x));
+  sr.querySelectorAll('[aria-controls], [aria-labelledby]').forEach(e => ['aria-controls', 'aria-labelledby'].forEach(a => { const v = e.getAttribute(a); if (v && !sr.getElementById(v)) bad.push(a + ' names nothing: ' + v); }));
+  sr.querySelectorAll('aside, [role="tablist"], [role="dialog"]').forEach(e => { if (!e.getAttribute('aria-label')) bad.push('a landmark with no name: ' + e.tagName); });
+  sr.querySelectorAll('[aria-expanded]').forEach(e => { if (!['true', 'false'].includes(e.getAttribute('aria-expanded'))) bad.push('aria-expanded: ' + e.outerHTML.slice(0, 60)); });
+  if (sr.querySelector('[role="tab"]') && sr.querySelectorAll('[role="tab"][aria-selected="true"]').length !== 1) bad.push('not one selected tab');
+  sr.querySelectorAll('[role="status"]').forEach(e => { if (e.getAttribute('aria-live') !== 'polite') bad.push('a status that is not polite'); });
+  return bad;
+}
+try {
+  { const [h, sr] = make({});
+    check('with none of the options, render() draws what it always drew: the live region and the canvas, and no piece', [...sr.children].map(c => c.className).join() === 'um-live,stage'
+      && !sr.querySelector('.um-frame, .outline, .m-legend, .hint, .panel, .um-navbtn'), [...sr.children].map(c => c.className));
+    h.destroy(); }
+
+  { const seen = [], [h, sr, q] = make({ nav: true, on: { viewchange: e => seen.push(e.view) } });
+    check('nav alone: the views list and its ☰ button, and no other piece', !!q('.outline .miller .mit') && !!q('.um-navbtn') && !q('.m-legend, .hint, .panel'));
+    check('…open at the start (the model has several views), ☰ says so, and the view shown is marked', q('.um-frame').classList.contains('tree-open') && q('.um-navbtn').getAttribute('aria-expanded') === 'true'
+      && q('.mit.on').dataset.v === 'system' && q('.mit.on').getAttribute('aria-current') === 'page');
+    await wait(400); // the list opens as the page's does, with a short transition
+    check('…left of the map', box(q('.outline')).width > 150 && box(q('.outline')).right <= box(q('.stage')).left + 1, [box(q('.outline')).right, box(q('.stage')).left]);
+    click(q('.mit[data-v="trips"]')); await until(() => h.view === 'trips');
+    check('a view picked in the list is shown, with a viewchange event, and the list follows', h.view === 'trips' && seen.includes('trips') && q('.mit.on').dataset.v === 'trips', seen);
+    key('o', q('.stage'));
+    check('O on the map shuts the list, and ☰ says so', !q('.um-frame').classList.contains('tree-open') && q('.um-navbtn').getAttribute('aria-expanded') === 'false');
+    q('.um-navbtn').click();
+    check('☰ opens it again', q('.um-frame').classList.contains('tree-open') && q('.um-navbtn').getAttribute('aria-expanded') === 'true');
+    el.querySelector('.umlimator').focus();
+    check('focus given to the map element still lands on the map, not in the list (#36)', !!sr.activeElement && !!sr.activeElement.closest('.stage'), sr.activeElement && sr.activeElement.className);
+    h.destroy(); }
+
+  { const [h, sr, q] = make({ legend: true }), names = [...sr.querySelectorAll('.lgi b')].map(b => b.textContent);
+    check('legend alone: the legend over the map, and no other piece', !!q('.m-legend .lgi') && !q('.outline, .hint, .panel, .um-navbtn') && inside(box(q('.m-legend')), box(q('.stage'))));
+    check('…it names the kinds of cards and lines the view draws', names.includes('Service / API') && names.includes('Data store') && names.includes('feeds') && names.includes('state'), names);
+    check('…the fit keeps every card off it', [...sr.querySelectorAll('.node')].every(n => !meet(box(n), box(q('.m-legend')))));
+    click(q('#m-lfold'));
+    check('…its button folds it and says so', q('.m-legend').classList.contains('folded') && q('#m-lfold').getAttribute('aria-expanded') === 'false' && q('#m-lfold').getAttribute('aria-label') === 'Show legend');
+    h.destroy(); }
+
+  { const [h, sr, q] = make({ hints: true, view: 'context' }), hint = q('.hint');
+    check("hints alone: the hint line, a polite live region saying what the pointer does (not the page's search keys), and no other piece", !!hint && !q('.outline, .m-legend, .panel')
+      && hint.getAttribute('role') === 'status' && hint.getAttribute('aria-live') === 'polite' && /drag = move/.test(hint.textContent) && !/search/.test(hint.textContent), hint && hint.textContent);
+    check('…at the foot of the map', inside(box(hint), box(q('.stage'))) && Math.abs(box(hint).bottom - box(q('.stage')).bottom) < 1);
+    key('Escape', q('.stage'));
+    check('…it says what just happened: Esc on the top view', hint.textContent === 'Already at the top', hint.textContent);
+    h.destroy(); }
+
+  { const ev = [], [h, sr, q] = make({ details: true, on: { open: e => ev.push(['open', e.view]), expand: e => ev.push(['expand', e.target.id, e.expanded]) } }), panel = q('.panel');
+    check('details alone: the panel, hidden until a card is selected, and no other piece', panel.hidden && !q('.outline, .m-legend, .hint, .um-navbtn'));
+    h.select({ type: 'node', id: 'trips' });
+    check("a card selected: its details under the map, as the page shows them", !panel.hidden && q('.ph h3').textContent === 'Trip service' && /Unlock, pause, end/.test(q('.pbody').textContent)
+      && box(panel).top >= box(q('.stage')).bottom - 1);
+    const tabs = [...sr.querySelectorAll('[role="tab"]')], body = q('[role="tabpanel"]');
+    check('…its tabs: one selected, each controlling the tab panel, which the selected one names', tabs.length === 4 && tabs.filter(t => t.getAttribute('aria-selected') === 'true').length === 1
+      && tabs.every(t => sr.getElementById(t.getAttribute('aria-controls')) === body) && sr.getElementById(body.getAttribute('aria-labelledby')).getAttribute('aria-selected') === 'true');
+    key(']', q('.stage'));
+    check('] on the map shows the next tab', q('[role="tab"][aria-selected="true"]').dataset.tab === 'what');
+    q('[data-tab="links"]').click();
+    check('Behind the scenes: what it comes from and leads to', /Comes from/.test(q('.pbody').textContent) && !!q('.rel[data-n]'));
+    q('[data-tab="how"]').focus(); q('[data-tab="how"]').click();
+    check('a tab pressed keeps the focus, on that tab', sr.activeElement === q('[data-tab="how"]') && q('[data-tab="how"]').getAttribute('aria-selected') === 'true', sr.activeElement && sr.activeElement.outerHTML.slice(0, 60));
+    const enter = key('Enter', q('[data-tab="how"]'));
+    check("Enter on a button in the panel is the button's: the map leaves it alone", !enter.defaultPrevented && h.view === 'system' && !ev.length, ev);
+    q('[data-open]').click(); await until(() => h.view === 'trips');
+    check('Open emits open, as a double-click on the card does, then shows its view', JSON.stringify(ev[0]) === '["open","trips"]' && h.view === 'trips', ev);
+    await h.setView('system'); h.select({ type: 'node', id: 'trips' }); q('[data-unfold]').click();
+    check('Unfold here emits expand, as E does, and unfolds the card in place', ev.some(x => x.join() === 'expand,trips,true') && JSON.stringify(h.expanded) === '["trips"]', ev);
+    h.collapse('trips'); h.select({ type: 'node', id: 'trips' }); q('[data-lit="out"]').click();
+    check('→ lights what the card leads to, and says so in the live region (there is no hint line)', !!sr.querySelector('.node[opacity]') && /^Trip service leads to/.test(q('.um-live').textContent), q('.um-live').textContent);
+    q('[data-tab="links"]').click(); const to = q('.rel[data-n]').dataset.n; q('.rel[data-n]').click();
+    check('a card named in Behind the scenes is selected on the map', h.selection && h.selection.id === to && q('.ph h3').textContent !== 'Trip service', [to, h.selection]);
+    q('[data-close]').focus(); key('Escape', q('[data-close]')); await wait(0);
+    check('Esc in the panel closes it and gives the focus back to the map', panel.hidden && h.selection === null && !!sr.activeElement && !!sr.activeElement.closest('.stage'), sr.activeElement && sr.activeElement.className);
+    click(sr.querySelector('.edge-g'));
+    check('a line selected shows no card details', h.selection && h.selection.type === 'edge' && panel.hidden);
+    h.destroy(); }
+
+  { const ev = [], [h, sr, q] = make({ details: true, on: { open: e => { ev.push(e.view); e.preventDefault(); } } });
+    h.select({ type: 'node', id: 'trips' }); q('[data-open]').click(); await wait(100);
+    check("the host may take Open (preventDefault): the map stays where it is", JSON.stringify(ev) === '["trips"]' && h.view === 'system', [ev, h.view]);
+    h.destroy(); }
+
+  { const [h, sr, q] = make({ nav: true, legend: true, hints: true, details: true });
+    await wait(400); h.select({ type: 'node', id: 'trips' });
+    const S = box(q('.stage'));
+    check('all four: the views list left of the map, the details under it, the legend and the hint line over it', box(q('.outline')).right <= S.left + 1 && box(q('.panel')).top >= S.bottom - 1
+      && inside(box(q('.m-legend')), S) && inside(box(q('.hint')), S) && !meet(box(q('.m-legend')), box(q('.hint'))));
+    q('[data-lit="in"]').click();
+    check('…the panel says what it lit in the hint line', /lead to Trip service: lit on the map$/.test(q('.hint').textContent), q('.hint').textContent);
+    const bad = a11y(sr);
+    check('accessibility: every control named, none inside another, ids unique and found where named, landmarks named, one selected tab, polite live regions', !bad.length, bad);
+    const m2 = structuredClone(BIKE); m2.views.push({ id: 'ops-only', title: 'Operations', parent: 'system', nodeIds: ['ops', 'ops-console'] });
+    h.update(m2);
+    check('update(): the views list shows a view the model gained, and the details stay open', !!q('.mit[data-v="ops-only"]') && !q('.panel').hidden && q('.ph h3').textContent === 'Trip service');
+    const m3 = structuredClone(m2); m3.nodes.find(n => n.id === 'trips').when = 'Whenever a ride starts.'; h.update(m3);
+    check('…and the card as the model now has it', /Whenever a ride starts/.test(q('.pbody').textContent) && q('.ph h3').textContent === 'Trip service', q('.pbody').textContent);
+    el.style.setProperty('--um-panel', 'rgb(10, 20, 30)');
+    check("the pieces take the --um-* colours set on the map's element", getComputedStyle(q('.panel')).backgroundColor === 'rgb(10, 20, 30)' && getComputedStyle(q('.m-legend')).backgroundColor === 'rgb(10, 20, 30)');
+    el.style.removeProperty('--um-panel');
+    h.destroy();
+    check('destroy() takes the map and its pieces away', !el.children.length); }
+} catch (err) {
+  out.fail.push('threw: ' + (err && err.stack || err));
+}
+const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
+</script>

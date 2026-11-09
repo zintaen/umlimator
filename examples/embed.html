@@ -1,32 +1,23 @@
 <!doctype html>
-<!-- render() in a host page: the details panel, breadcrumbs, views loaded when a card opens them, export, themes and
-     the minimap are this page's own code around the map. Serve the repository over HTTP to open it (ES modules do not
-     load from file://):  python3 -m http.server  then  http://localhost:8000/examples/embed.html -->
+<!-- render() in a host page, with the standalone page's pieces (#99): the views list, the details panel, the legend and
+     the hint line, each a render() option; views loaded when a card opens them, export, themes and the minimap are this
+     page's own code around the map. Serve the repository over HTTP to open it (ES modules do not load from file://):
+     python3 -m http.server  then  http://localhost:8000/examples/embed.html -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>umlimator: a host page</title>
 <link rel="stylesheet" href="../lib/umlimator-theme.css">
 <style>
-  body { margin: 0; display: grid; grid-template: auto minmax(0, 1fr) / minmax(0, 1fr) 320px; height: 100dvh;
+  body { margin: 0; display: grid; grid-template-rows: auto minmax(0, 1fr); height: 100dvh;
     background: var(--um-bg); color: var(--um-text); font: 14px/1.5 var(--um-sans); }
-  header { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; padding: 8px 14px;
+  header { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; padding: 8px 14px;
     border-bottom: 1px solid var(--um-border); font-size: 13px; }
   header .grow { flex: 1; }
-  nav button { font: inherit; color: var(--um-accent); background: none; border: 0; padding: 0; cursor: pointer; }
   button, select { font: inherit; }
   #map { min-height: 0; }
-  aside { border-left: 1px solid var(--um-border); padding: 12px 14px; overflow: auto; }
-  aside h2 { font-size: 15px; margin: 0 0 2px; } aside .kind { color: var(--um-muted); font: 12px var(--um-mono); margin: 0 0 10px; }
-  aside dt { font-weight: 600; margin-top: 8px; } aside dd { margin: 0; color: var(--um-muted); }
-  aside .hint { color: var(--um-muted); }
-  kbd { font: 600 11px var(--um-mono); border: 1px solid var(--um-border-2); border-radius: 4px; padding: 0 4px; }
   /* a host's own palette: any --um-* variable, set on the map's element or above it */
   #map.plum { --um-accent: #7a3ea8; --um-cyan: #7a3ea8; --um-green: #2f7d5b; --um-amber: #a35a00; --um-rose: #b3305b;
     --um-w-calls: #4b3d57; --um-w-feeds: #7a3ea8; --um-stage-bg: #fbf8fd; --um-panel: #fffdfe; --um-dot: #ece4f2; }
-  @media (max-width: 760px) {
-    body { grid-template: auto minmax(0, 1fr) auto / minmax(0, 1fr); }
-    aside { border-left: 0; border-top: 1px solid var(--um-border); max-height: 38dvh; }
-  }
 </style>
 <header>
   <label>Model <select id="model">
@@ -35,27 +26,23 @@
     <option value="assistant.json">Helpdesk assistant</option>
     <option value="bookshop.json">Bookshop</option>
   </select></label>
-  <nav id="crumbs" aria-label="Views"></nav>
   <span class="grow"></span>
+  <span id="pieces"><label><input type="checkbox" id="nav" checked> views</label> <label><input type="checkbox" id="details" checked> details</label>
+    <label><input type="checkbox" id="legend" checked> legend</label> <label><input type="checkbox" id="hints" checked> hints</label>
+    <label><input type="checkbox" id="minimap"> minimap</label></span>
   <label>Theme <select id="theme">
     <option value="">system</option><option value="light">light</option><option value="dark">dark</option>
     <option value="plum">a host's palette</option>
   </select></label>
-  <label><input type="checkbox" id="minimap"> minimap</label>
   <button id="svg" title="The view as an SVG file">SVG</button>
   <button id="png" title="The view as a PNG file">PNG</button>
 </header>
 <div id="map"></div>
-<aside id="panel" aria-live="polite"></aside>
 <script type="module">
 import { render } from '../lib/umlimator.js';
 import { withIcons } from './icons.js';
 
 const $ = id => document.getElementById(id);
-const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
-const HINT = `<p class="hint">Click a card, a line or a box. <kbd>Tab</kbd> reaches the cards, then the lines; arrows move
-  between cards; <kbd>Enter</kbd> opens a stacked card and <kbd>E</kbd> unfolds it here; <kbd>Esc</kbd> here gives focus back
-  to the map.</p>`;
 let full, model, map;   // full: what the "server" has; model: what this page has loaded so far
 
 // A card whose opensView comes with an opensCount names a view the host loads only when someone opens it: the card
@@ -63,22 +50,20 @@ let full, model, map;   // full: what the "server" has; model: what this page ha
 const heldBack = m => new Set(m.nodes.filter(n => n.opensView && n.opensCount != null).map(n => n.opensView));
 const loaded = id => model.views.some(v => v.id === id);
 async function load(id) {
-  $('panel').innerHTML = `<p class="hint">Loading ${esc(id)}…</p>`;
   await new Promise(r => setTimeout(r, 300));
   model = { ...model, views: [...model.views, full.views.find(v => v.id === id)] };
   map.update(model);   // the map keeps its view, camera and selection
 }
 
-function mount(view) {   // the minimap is a render() option: changing it draws the map again, in the same view
+function mount(view) {   // the pieces and the minimap are render() options: changing one draws the map again, in the same view
   map?.destroy();
-  map = render($('map'), model, { view, minimap: $('minimap').checked, on: {
-    select: e => details(e.target),
-    viewchange: e => crumbs(e.view),
+  const on = id => $(id).checked;
+  map = render($('map'), model, { view, nav: on('nav'), details: on('details'), legend: on('legend'), hints: on('hints'), minimap: on('minimap'), on: {
+    // a card opens a view this page has not loaded yet (a double-click, Enter, or Open in its details): load it, then show it
     open: async e => { if (loaded(e.view)) return; await load(e.view); map.setView(e.view); },
-    // E or Alt + click unfolds a stacked card in place: a view this page has not loaded yet is loaded first (#71)
+    // E, Alt + click or Unfold here in its details unfolds a stacked card in place: a view not loaded yet is loaded first (#71)
     expand: async e => { if (!e.expanded || loaded(e.view)) return; e.preventDefault(); await load(e.view); map.expand(e.target.id); },
   } });
-  crumbs(map.view); details(null);
   window.map = map;   // for the console, and for tests/embed.py
 }
 
@@ -89,43 +74,6 @@ async function pick(file) {
   mount();
 }
 
-function crumbs(id) {
-  const path = [];
-  for (let v = model.views.find(x => x.id === id); v; v = model.views.find(x => x.id === v.parent)) path.unshift(v);
-  $('crumbs').innerHTML = path.map((v, i) => i < path.length - 1
-    ? `<button data-view="${esc(v.id)}">${esc(v.title || v.id)}</button> ›` : `<b>${esc(v.title || v.id)}</b>`).join(' ');
-}
-$('crumbs').onclick = e => { const b = e.target.closest('button'); if (b) map.setView(b.dataset.view); };
-
-// the panel: what the selection is about, from the host's own copy of the model (events carry ids only)
-function details(t) {
-  if (!t) { $('panel').innerHTML = HINT; return; }
-  const view = model.views.find(v => v.id === t.view);
-  const node = id => ({ ...model.nodes.find(n => n.id === id), ...(view.nodes || []).find(n => n.id === id), ...(view.nodeOverrides || {})[id] });
-  const facts = x => ['what', 'when', 'how'].filter(k => x[k]).map(k => `<dt>${k}</dt><dd>${esc(x[k])}</dd>`).join('');
-  if (t.type === 'edge') {
-    const lines = t.ids.map(id => [...model.edges, ...(view.edges || []).filter(e => typeof e === 'object')].find(e => e.id === id)).filter(Boolean);
-    $('panel').innerHTML = lines.map(e => `<h2>${esc(node(e.from).label ?? e.from)} → ${esc(node(e.to).label ?? e.to)}</h2>
-      <p class="kind">${esc(e.kind || 'calls')} · weight ${e.weight || 1}</p><dl>${e.label ? `<dt>label</dt><dd>${esc(e.label)}${e.sublabel ? ` (${esc(e.sublabel)})` : ''}</dd>` : ''}${facts(e)}</dl>`).join('');
-    return;
-  }
-  if (t.type === 'container' || t.container) {
-    const box = (view.containers || []).find(c => c.id === (t.container || t.id));
-    if (!box && map.expanded.includes(t.id)) { // not a box of the model: a card unfolded in place, named by its id
-      $('panel').innerHTML = `<h2>${esc(node(t.id).label)}</h2><p class="kind">unfolded here</p><p><button id="fold">Fold it back</button></p>`;
-      $('fold').addEventListener('click', () => map.collapse(t.id)); return; }
-    $('panel').innerHTML = `<h2>${esc(box.label)}</h2><p class="kind">box · ${box.nodeIds?.length || 0} cards</p>`;
-    return;
-  }
-  const n = node(t.node || t.id), opens = n.opensView || (model.views.some(v => v.id === n.id) || heldBack(full).has(n.id) ? n.id : null);
-  $('panel').innerHTML = `<h2>${esc(n.label)}</h2><p class="kind">${esc(n.kind || 'card')}${n.sublabel ? ` · ${esc(n.sublabel)}` : ''}</p>
-    <dl>${facts(n)}</dl>${t.type === 'chip' ? `<p>Chip: <b>${esc(t.value)}</b></p>` : ''}
-    ${opens && full.views.some(v => v.id === opens) ? `<p><button id="go">Open ${esc(opens)}</button> <button id="unfold">Unfold here</button></p>` : ''}`;
-  $('go')?.addEventListener('click', async () => { if (!loaded(opens)) await load(opens); map.setView(opens); });
-  $('unfold')?.addEventListener('click', async () => { if (!loaded(opens)) await load(opens); if (!map.expand(t.node || t.id)) $('panel').insertAdjacentHTML('beforeend', '<p class="hint">It has no cards of its own to show here: open it.</p>'); });
-}
-$('panel').addEventListener('keydown', e => { if (e.key === 'Escape') map.focus(); });   // focus goes back to the selected card
-
 const save = (blob, name) => { const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: name }); a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000); };
 $('svg').onclick = () => save(new Blob([map.toSVG({ scale: 2 })], { type: 'image/svg+xml' }), `${map.view}.svg`);
 $('png').onclick = async () => { const png = await map.toPNG(); if (png) save(png, `${map.view}.png`); };
@@ -135,7 +83,7 @@ $('theme').onchange = e => {
   if (t === 'light' || t === 'dark') root.dataset.theme = t; else if (t === 'plum') root.dataset.theme = 'light'; else delete root.dataset.theme;
   $('map').classList.toggle('plum', t === 'plum');
 };
-$('minimap').onchange = () => mount(map.view);
+$('pieces').onchange = () => mount(map.view);
 $('model').onchange = e => pick(e.target.value);
 const asked = new URLSearchParams(location.search).get('model');   // embed.html?model=weather.json
 if ([...$('model').options].some(o => o.value === asked)) $('model').value = asked;
