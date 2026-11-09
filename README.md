@@ -26,16 +26,12 @@ drill-down, a data pipeline, an AI agent's skills, and host pages for embedding,
 
 ## Install
 
-```json
-"dependencies": { "umlimator": "github:zintaen/umlimator#v0.10.0" }
+```bash
+npm install umlimator
 ```
 
-npm 12 refuses git dependencies unless the project opts in, so add this line to the `.npmrc` next to `package.json`
-(npm 10 needs nothing):
-
-```ini
-allow-git=root
-```
+Or from GitHub, at a tag or any commit: `"umlimator": "github:zintaen/umlimator#v0.10.0"`. npm 12 refuses git
+dependencies unless the project opts in, so that also needs `allow-git=root` in the `.npmrc` next to `package.json`.
 
 ## Embed
 
@@ -144,8 +140,9 @@ all of the above, and checks that the files copied from upstream (`engine/script
 `tools/fetch_icons.py`) are unmodified.
 
 To release, bump `package.json`'s version in a PR and add that version's `## X.Y.Z: …` section to
-`docs/module-api.md`. When the PR is merged and the checks pass on `main`, CI tags `vX.Y.Z` and publishes a GitHub
-Release with that section as its notes. CI also publishes the examples to GitHub Pages from `main`.
+`docs/module-api.md`. When the PR is merged and the checks pass on `main`, CI tags `vX.Y.Z`, publishes a GitHub
+Release with that section as its notes, and publishes the package to npm (trusted publishing: no token is stored).
+CI also publishes the examples to GitHub Pages from `main`.
 
 ```
 umlimator.py                 CLI: render, stills, check, pin-icons
