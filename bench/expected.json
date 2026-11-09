@@ -3,12 +3,12 @@
  "results": {
   "b10/norepair": {
    "hashes": [
-    "862948f"
+    "2d72a133"
    ]
   },
   "b10/overview": {
    "hashes": [
-    "df347c9c"
+    "da3f7334"
    ]
   },
   "b26/n01": {
@@ -18,7 +18,7 @@
   },
   "b26/overview": {
    "hashes": [
-    "cf23bc35"
+    "69da4dc1"
    ]
   },
   "b69/back": {
@@ -33,7 +33,7 @@
   },
   "b69/overview": {
    "hashes": [
-    "461ac7e2"
+    "69057426"
    ]
   },
   "bookshop/api": {
@@ -48,7 +48,7 @@
   },
   "d24/boxed": {
    "hashes": [
-    "ebe1bfb1"
+    "1f0cdbaf"
    ]
   },
   "d24/plain": {
@@ -58,7 +58,7 @@
   },
   "m50/overview": {
    "hashes": [
-    "70daf5d5"
+    "d4a2017"
    ]
   },
   "r19/boxed": {
