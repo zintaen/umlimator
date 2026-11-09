@@ -14,9 +14,10 @@ drill-down, a data pipeline, an AI agent's skills, and host pages for embedding,
 
 - **Layers**: a view per level (system, containers, components, flows). A stacked card opens its inner view, which the
   host may load only when asked.
-- **Layout and routing**: columns in reading order, each ordered so the lines between columns cross as little as they
-  can; orthogonal lines that never run through a card, room for every label, containers kept apart, and cards with no
-  lines in a row of their own, under the view or at the bottom of their box. The same model gives the same picture.
+- **Layout and routing**: columns in reading order, each ordered so the lines cross as little as they can, those that
+  skip columns included; each card level with the cards its lines come from, so lines run straight; orthogonal lines
+  that never run through a card, room for every label, containers kept apart, and cards with no lines in a row of their
+  own, under the view or at the bottom of their box. The same model gives the same picture.
 - **Reading**: animated flow, neighbours lit on selection, numbered steps, tours, minimap, light and dark themes.
 - **Keyboard and screen readers**: cards, then lines, in the Tab order (a card's tabs and chips too, for a host that
   listens for click); arrows between cards; selections announced.
@@ -27,7 +28,7 @@ drill-down, a data pipeline, an AI agent's skills, and host pages for embedding,
 ## Install
 
 ```json
-"dependencies": { "umlimator": "github:zintaen/umlimator#v0.10.0" }
+"dependencies": { "umlimator": "github:zintaen/umlimator#v0.11.0" }
 ```
 
 npm 12 refuses git dependencies unless the project opts in, so add this line to the `.npmrc` next to `package.json`

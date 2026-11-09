@@ -1,6 +1,6 @@
 {
   "name": "umlimator",
-  "version": "0.10.0",
+  "version": "0.11.0",
   "description": "Embeddable, layered architecture maps: layout, orthogonal routing and an interactive canvas in one ES module.",
   "license": "MIT",
   "type": "module",

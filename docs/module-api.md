@@ -407,3 +407,46 @@ events beyond verb chips (step 4); editing (step 5); SVG export without Chrome (
   which keeps pairs, has 398 issues, 403 before.
 - **CI:** b26's time limit is 3 s, up from 2 s. A runner took 1.36 s on 0.9.0 with b26's layout unchanged.
 
+
+## 0.11.0: lines that skip columns, cards level with their neighbours
+
+Maps generated from code are full of lines that span several columns: a service imports a package two layers down and
+another three. Auto-layout now lays those out as it does lines between neighbouring columns.
+
+- **Lines that skip columns order the cards they pass.** The column ordering of #53 counted only lines between
+  neighbouring columns. A line that skips columns now has a point in each column it passes (Sugiyama's dummy nodes),
+  placed first where the straight line between its ends would be. The sweeps order those points with the cards, and the
+  order kept is still the one that crosses least, the order given unless another crosses less.
+- **Each card is level with the cards its lines come from.** Cards were packed from the top of their column, so a line
+  into a card lower down bent up to it. Now each card takes the median row of the cards its lines come from, then of
+  those they go to, then again from the left, as near as its column's order allows (least squares, one row between
+  cards), on half rows. Boxes do the same, levelled by the card inside them that each line meets. A line into a card's
+  top or bottom (`toSide`, `fromSide`) asks for no row.
+- **A small view is laid out a few ways and keeps the best.** Up to 30 cards, a plain view is routed with its cards
+  level and packed as before, with the cards no line comes into in the first column or just before their callee, and
+  keeps the layout the layout check scores best. It's a cheap version of the search `umlimator.py render` bakes into a
+  page: that one takes 0.65 s (b10) to 18 s (b69) per view, which `render()` can't spend. A larger view takes the first
+  way.
+- **Cards keep a row apart in the CLI's search and in a layout's free slots.** Both checked for a card at exactly the
+  same row; with half rows they now keep a full row between cards.
+- **Bench:** r19 is new: a made-up monorepo's 19 packages and 30 imports, boxed by folder and plain. Layout-check issues
+  and total line length, 0.10.0 → 0.11.0:
+
+  | View | Issues | Line length |
+  |---|---|---|
+  | b69/overview | 398 → 231 | 166,834 → 132,668 |
+  | b26/overview | 110 → 92 | 45,705 → 40,204 |
+  | m50/overview | 284 → 277 | 145,926 → 136,374 |
+  | b69/back | 15 → 13 | 11,438 → 10,348 |
+  | b69/front | 1 → 0 | 1,809 → 1,599 |
+  | b10/norepair | 12 → 6 | 5,981 → 6,393 |
+  | b10/overview | 6 → 4 | 5,691 → 4,957 |
+  | bookshop/overview | 0 → 0 | 6,443 → 4,828 |
+  | bookshop/api | 0 → 0 | 1,159 → 1,035 |
+  | r19/boxed (new) | 54 → 24 | 31,266 → 26,707 |
+  | r19/plain (new) | 30 → 28 | 17,554 → 14,792 |
+  | **All bench views** | **939 → 704** | **472,307 → 412,406 (−12.7%)** |
+
+  b26/n01 (a view about one card) and d24 (laid out by hand) don't move. A small view takes longer for the ways it
+  tries: b10 54 → 90 ms, b69/back 62 → 155 ms, r19/plain 52 → 267 ms in Node. Larger ones take about as long or less:
+  b69/overview 2.97 → 1.95 s, b26 0.52 → 0.39 s, m50 1.36 → 1.46 s.
