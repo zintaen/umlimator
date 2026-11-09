@@ -955,22 +955,21 @@ card inside the new box, and as its own box (u21's `shop`: Order service, then W
 
   It's pure and runs in Node. It walks every path depth first, which is exponential on a dense view with many ways
   between two cards; a `ponytail:` note marks it.
-- **`whatIf(model, viewId, { remove: [ids] })`** returns `{ unreachable, broken }`, and leaves the model as it is:
-  - `unreachable`: what loses its way to the cards, backward as `reach()` finds it (for calls, what depends on them), each
-    with its distance in lines from the nearest; the cards themselves come first, at 0;
-  - `broken`: the rules a model without the cards breaks, every view's (`rules()`). Today's rules only forbid lines and
-    cycles, so taking cards out can mend a break but not make one: `broken` lists the breaks that stay.
+- **`whatIf(model, viewId, { remove: [ids] })`** returns `{ unreachable }`, and leaves the model as it is: what loses its
+  way to the cards, backward as `reach()` finds it (for calls, what depends on them), each with its distance in lines from
+  the nearest; the cards themselves come first, at 0. It lists no broken rules, because rules only forbid lines and
+  cycles, and taking cards out never adds either.
 - **In the standalone page,** the details panel adds:
   - ⏱ and ¤ where the view's lines have latency or cost: the slowest or the costliest path from the card, or between the
     two cards selected (either way round), lit, with its total in the hint line and as a tab on its last card;
   - ⊘, "What if this goes down?": what loses its way to the card lit, fading with distance, the card ringed rose with a
-    DOWN tab, and the hint line says how many cards and rules. The model isn't touched.
+    DOWN tab, and the hint line says how many cards. The model isn't touched.
 
   A new selection or view clears them, and so does the same button again.
 - **Example:** bike-share's Trip service has latency on each line and cost on four.
 - **Left out:** budgets drawn on the map; a whole view's critical path in the page (the function gives it); keys for the
   new buttons.
-- **Tests:** `tests/insight.test.mjs` (both functions, cycles, parallel lines, rules that stay broken), and
+- **Tests:** `tests/insight.test.mjs` (both functions, cycles, parallel lines, two cards taken out), and
   `tests/insight.html` (the panel's buttons, the totals, two cards, what-if).
 
 ### Sequence views from traces (#96)

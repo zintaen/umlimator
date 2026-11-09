@@ -287,8 +287,8 @@ export function otlpSpans(otlp: unknown): Span[];
 export function critical(model: MapModel, viewId: string, options?: { from?: string; to?: string; by?: 'latency' | 'cost' }): { refs: Ref[]; total: number };
 /** What taking cards out of a view would cost (#95), with the model left as it is. unreachable: what loses its way to them
  *  (backward, as reach() finds it: for calls, what depends on them), each with its distance from the nearest, the cards
- *  themselves at 0; broken: the rules a model without them breaks, in every view. No browser needed. */
-export function whatIf(model: MapModel, viewId: string, options: { remove: string[] }): { unreachable: (Ref & { distance: number })[]; broken: RuleBreak[] };
+ *  themselves at 0. No rule breaks: rules only forbid lines and cycles, which taking cards out never adds. No browser needed. */
+export function whatIf(model: MapModel, viewId: string, options: { remove: string[] }): { unreachable: (Ref & { distance: number })[] };
 /** A trace kept as a numbered view (#96): `model` with a sequence view (render: "sequence") whose steps are the trace's calls
  *  between cards (a span and its parent's), in time order, each line labelled with its span's name and its duration under
  *  it. A span's service is a card as replay() matches it (match, else id, else label in any case); the caption names the

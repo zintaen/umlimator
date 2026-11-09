@@ -32,19 +32,14 @@ test('critical() never comes back to a card, counts a line with no budget as 0, 
   assert.equal(critical({ ...m, edges: [{ from: 'a', to: 'b', cost: 0.1 }, { from: 'b', to: 'c', cost: 0.2 }] }, 'v', { by: 'cost' }).total, 0.3, 'no float noise in the total');
 });
 
-test('whatIf() lights what loses its way to the cards taken out (backward, nearest first), and lists the rules a model without them breaks', () => {
+test('whatIf() lights what loses its way to the cards taken out (backward, nearest first), and nothing else', () => {
   const before = structuredClone(bike), w = whatIf(bike, 'trips', { remove: ['pricing'] });
+  assert.deepEqual(Object.keys(w), ['unreachable'], 'no broken rules: taking cards out never adds a line or a cycle');
   assert.deepEqual(brief(w.unreachable), ['pricing@0', 'fare@1', 'lifecycle@2', 'trip-api@3', 'rider-app@4', 't6@1', 't5@2', 't4@3', 't1@4']);
-  assert.deepEqual(w.broken, []);
   assert.deepEqual(bike, before, 'the model is left as it is');
   assert.deepEqual(brief(whatIf(bike, 'trips', { remove: ['pricing', 'trip-repo'] }).unreachable),
     ['pricing@0', 'trip-repo@0', 'fare@1', 'lifecycle@1', 'trip-api@2', 'rider-app@3', 't6@1', 't7@1', 't5@2', 't4@2', 't1@3'], 'two cards: each thing at its distance from the nearest');
-  assert.deepEqual(whatIf(bike, 'trips', { remove: ['ghost'] }), { unreachable: [], broken: [] });
-  // tests/rules.json breaks three rules in view teams, all through App→Store; taking the store out mends two of them
-  const t = read('./rules.json'), had = rules(t).map(b => b.rule);
-  assert.deepEqual(had, ['apps-no-db', 'api-owns-store', 'teams-acyclic']);
-  assert.deepEqual(whatIf(t, 'teams', { remove: ['worker'] }).broken.map(b => b.rule), ['apps-no-db', 'api-owns-store'], 'the breaks that stay without the card');
-  assert.deepEqual(whatIf(t, 'teams', { remove: ['store'] }).broken, []);
+  assert.deepEqual(whatIf(bike, 'trips', { remove: ['ghost'] }), { unreachable: [] });
 });
 
 test("sequenceFromTrace(): the replay example's trace becomes bike-share's numbered view, which validates and checks clean", () => {

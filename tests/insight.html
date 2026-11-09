@@ -85,7 +85,7 @@ try {
   pg.select({ type: 'node', id: 'pricing' }); await until(() => $('m-panel').dataset.node === 'pricing');
   lit('down').click();
   const ring = psr.querySelector('.um-rings .um-ring');
-  check('⊘ (What if this goes down?) lights what loses its way to the card, and marks it down, without editing the model', hint() === 'If Pricing goes down: 4 cards lose their way to it; no rule breaks'
+  check('⊘ (What if this goes down?) lights what loses its way to the card, and marks it down, without editing the model', hint() === 'If Pricing goes down: 4 cards lose their way to it'
     && pcard('fare').getAttribute('opacity') === '0.85' && pcard('unlock').getAttribute('opacity') === '0.2' && tab('down') && ring && ring.getAttribute('stroke') === 'var(--um-rose)', hint());
   pg.setView('system'); await until(() => pg.view === 'system');
   pg.select({ type: 'node', id: 'trips' }); await until(() => $('m-panel').dataset.node === 'trips');
