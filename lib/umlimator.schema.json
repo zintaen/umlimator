@@ -848,7 +848,7 @@
      "items": {
       "type": "string"
      },
-     "description": "The views it holds in (default: every view)."
+     "description": "Narrows the views it holds in: by default every view, or, for a rule that names a box (a container, or a box's id, in from, to or a not), the views that draw one of the boxes it names."
     },
     "from": {
      "$ref": "#/$defs/selector",

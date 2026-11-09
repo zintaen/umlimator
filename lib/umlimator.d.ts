@@ -155,7 +155,9 @@ export function check(model: MapModel, viewId: string, options?: { repair?: bool
 export interface Selector { id?: string | string[]; kind?: string | string[]; container?: string | string[]; not?: Selector }
 /** What the model says must hold (`model.rules`): no line from the cards `from` picks to the cards `to` picks (a side left
  *  out picks every card), or, with noCycles, no boxes that reach each other through their lines (a line counts between
- *  the two boxes that hold its ends right under the box they share). `views`: only there (default: every view). */
+ *  the two boxes that hold its ends right under the box they share). A rule that names a box (a container, or a box's
+ *  id, in from, to or a not) holds only in the views that draw one of the boxes it names; any other, in every view.
+ *  `views` narrows that further. */
 export interface Rule { id: string; title?: string; views?: string[]; from?: Selector; to?: Selector; noCycles?: boolean }
 /** A rule broken in a view: its message (as umlimator.py check prints it), and the lines, and for a cycle the boxes, it is
  *  about. The map draws those lines rose, with a mark that names the rule. */

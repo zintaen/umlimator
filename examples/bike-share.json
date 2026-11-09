@@ -155,7 +155,7 @@
   ],
   "rules": [
     { "id": "apps-no-db", "title": "Apps never call a database directly", "from": { "kind": "frontend" }, "to": { "kind": "database" } },
-    { "id": "rides-own-trips", "title": "Only the ride services touch the trips store", "views": ["system"],
+    { "id": "rides-own-trips", "title": "Only the ride services touch the trips store",
       "from": { "not": { "container": "rides" } }, "to": { "id": "tripsdb" } }
   ]
 }

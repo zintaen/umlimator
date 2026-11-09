@@ -38,6 +38,18 @@ test('selectors: kinds as the map draws them, lists, boxes at any depth, not, a 
   assert.deepEqual(broken({ views: ['w'], from: { kind: 'frontend' } }), ['w:e1']);
 });
 
+test('a rule that names a box holds only in the views that draw one of its boxes: a not-container rule stays quiet elsewhere', () => {
+  const m = { nodes: [{ id: 'ui', kind: 'web' }, { id: 'svc', kind: 'service' }, { id: 'db', kind: 'db' }],
+    edges: [{ id: 'e1', from: 'ui', to: 'db' }, { id: 'e2', from: 'svc', to: 'db' }],
+    views: [{ id: 'v', nodeIds: ['ui', 'svc', 'db'], containers: [{ id: 'core', nodeIds: ['svc', 'db'] }] }, { id: 'w', nodeIds: ['ui', 'db'] }] };
+  const broken = r => rules({ ...m, rules: [{ id: 'r', ...r }] }).map(b => `${b.view}:${b.targets[0].ids}`);
+  assert.deepEqual(broken({ from: { not: { container: 'core' } }, to: { id: 'db' } }), ['v:e1']);   // w draws no "core": ui→db is not a break there
+  assert.deepEqual(broken({ from: { kind: 'frontend' }, to: { not: { id: 'core' } } }), ['v:e1']);    // a box's id names it too
+  assert.deepEqual(broken({ from: { not: { container: 'core' } } }), ['v:e1']);
+  assert.deepEqual(broken({ views: ['w'], from: { not: { container: 'core' } }, to: { id: 'db' } }), []); // views narrows it further
+  assert.deepEqual(broken({ from: { kind: 'frontend' }, to: { id: 'db' } }), ['v:e1', 'w:e1']);    // no box named: every view
+});
+
 test('noCycles weighs a box against its siblings, at every depth; a line into a box\'s own inner box is no cycle', () => {
   const m = { nodes: ['a', 'b', 'c', 'd', 'x'].map(id => ({ id, kind: 'backend' })),
     edges: [{ id: 'ab', from: 'a', to: 'b' }, { id: 'ba', from: 'b', to: 'a' }, { id: 'cd', from: 'c', to: 'd' }, { id: 'dx', from: 'd', to: 'x' }, { id: 'xc', from: 'x', to: 'c' }],

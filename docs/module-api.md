@@ -499,7 +499,7 @@ another three. Auto-layout now lays those out as it does lines between neighbour
   ```json
   "rules": [
     { "id": "apps-no-db", "title": "Apps never call a database directly", "from": { "kind": "frontend" }, "to": { "kind": "database" } },
-    { "id": "rides-own-trips", "title": "Only the ride services touch the trips store", "views": ["system"],
+    { "id": "rides-own-trips", "title": "Only the ride services touch the trips store",
       "from": { "not": { "container": "rides" } }, "to": { "id": "tripsdb" } },
     { "id": "teams-acyclic", "title": "No cycles between teams", "noCycles": true }
   ]
@@ -512,8 +512,10 @@ another three. Auto-layout now lays those out as it does lines between neighbour
   - **`noCycles`** forbids boxes that reach each other through their lines. A line counts between the two boxes that hold
     its ends right under the box (or the view) they share, so a box is weighed against its siblings, at every depth, and
     a line from a box into one of its own inner boxes counts for nothing. A cycle's targets are its boxes, then its lines.
-  - **`views`** keeps a rule to those views. Otherwise it holds in every view, so a rule that names a box (boxes belong to
-    a view) usually wants it.
+  - **Where a rule holds:** a rule that names a box (a `container`, or a box's `id`, in `from`, `to` or a `not`) holds
+    only in the views that draw at least one of the boxes it names, since a box belongs to its view. So the rides rule
+    above holds in bike-share's system view, the one with a Rides box, and not in the Trip service's view, which shows
+    the trips store without one. Any other rule holds in every view. **`views`** narrows either further.
 - **On the map**, a line that breaks a rule is drawn rose, with a "!" just after its start whose tooltip names the rules.
   Its own tooltip and its accessible name say so too. The marks are part of the picture: the canvas, `toSVG()`, `toPNG()`,
   the CLI's pages and stills. An `update()` that only changes the rules redraws the marks and keeps the cards in place.
