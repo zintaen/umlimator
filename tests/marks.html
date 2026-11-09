@@ -54,6 +54,29 @@ try {
   h.overlay('traffic', null);
   check('removing the last layer leaves the picture as it was', !sr.querySelector('.um-glow, .um-rings, .um-marks, [opacity].node, [aria-description]'));
 
+  // a crowded view (#81): a long pill on every line covers no card, box title or tab, line label or other pill; one with no
+  // room is said instead
+  const long = 'p95 1.2 s over budget', bbox = x => { const b = x.getBBox(); return { x: b.x, y: b.y, w: b.width, h: b.height }; };
+  const meets = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+  const crowd = (h, sr, ids) => { h.overlay('crowd', { edges: Object.fromEntries(ids.map(id => [id, { label: long }])) });
+    const pills = [...sr.querySelectorAll('.um-lab rect')].map(bbox), taken = [...sr.querySelectorAll('.node .n-body, .family-title, .family .pub-tab rect, .e-lab .e-lbg')].map(bbox);
+    const said = [...sr.querySelectorAll('.line-key')].filter(k => k.getAttribute('aria-label').endsWith(', ' + long));
+    return { pills: pills.length, said: said.length, ok: pills.length + said.length === sr.querySelectorAll('.edge-g').length
+      && !pills.some((p, k) => taken.some(o => meets(p, o)) || pills.some((q, j) => j !== k && meets(p, q)))
+      && said.every(k => sr.querySelector(`.edge-g[data-i="${k.dataset.i}"] > title`).textContent.endsWith('\n' + long)) }; };
+  const c1 = crowd(h, sr, BIKE.edges.map(e => e.id));
+  check("on a crowded view a line's pill covers no card, line label or other pill, and one with no room is in the line's tooltip and accessible name instead",
+    c1.ok && c1.pills > 0 && c1.said > 0, c1);
+  const BOX = { nodes: [{ id: 'app', label: 'Rider app', kind: 'frontend' }, { id: 'api', label: 'Trip API', kind: 'backend' }], edges: [{ id: 'c', from: 'app', to: 'api', label: 'calls' }],
+    views: [{ id: 'v', nodeIds: ['app', 'api'], containers: [{ id: 'trips', label: 'Trips and rides', nodeIds: ['api'] }], layout: { app: [0, 0], api: [0, 1] } }] };
+  const boxEl = document.body.appendChild(document.createElement('div')); boxEl.style.cssText = 'width:600px;height:400px';
+  const hb = render(boxEl, BOX, { view: 'v' }), c2 = crowd(hb, boxEl.querySelector('.umlimator').shadowRoot, ['c']); // the line goes round the box's title, its label just above it
+  check("…nor a box's title", c2.ok, c2);
+  hb.destroy(); boxEl.remove();
+  h.overlay('crowd', null);
+  check('…and removing the layer gives those lines their own tooltip and name back', !sr.querySelector('[data-was]')
+    && ![...sr.querySelectorAll('.line-key, .edge-g > title')].some(x => (x.getAttribute('aria-label') || x.textContent).includes(long)));
+
   // highlight(): lit, the rest dimmed; distances fade; chips and badges light their cards
   h.highlight(paths(BIKE, 'trips', 'rider-app', 'payments'));
   check('highlight(paths(…)) lights the path and dims the rest', !card('fare').hasAttribute('opacity') && card('pricing').getAttribute('opacity') === '0.2'
