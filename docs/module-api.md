@@ -1311,3 +1311,80 @@ lines inside it alone. It now sees each line where it meets its card. No API cha
 - **Tests:** `tests/layout.test.mjs`: two boxes whose cards sit level with the cards outside them that feed them, r15's
   boxed view with a clean check, b10's Reports 7 → Inventory 9 straight, and a nested box's room for a label;
   `tests/unfold.test.mjs`: u21's Catalog unfolds with no detour.
+
+### Page panels in render() (#99)
+
+`render()` can draw the standalone page's pieces around its canvas, so a host that embeds the map no longer rebuilds
+them from events. Each one is an option, on its own or with any of the others. They are all off by default, and a host
+that passes none of them gets the same map, markup and all.
+
+```js
+render(el, model, { nav: true, details: true, legend: true, hints: true });
+```
+
+- **Where they go:** inside the element the host gave, in the map's shadow root, laid out as the page lays them out. The
+  host's own header stays its own.
+  - `nav`: the views list (Miller columns) left of the map, with a ☰ button over the map's top left corner. ☰ or O opens
+    and shuts it; it starts open when the model has more than one view. Picking a view shows it, with a `viewchange`.
+  - `details`: the selected card's panel under the map: its kind and badges, its actions, and its tabs (when, what, how,
+    an example, and what it comes from and leads to), with `[` and `]` between tabs. Open and Unfold here emit `open` and
+    `expand`, as a double-click and E do, so a host can take them or load a view first (`examples/embed.html` does). → ←
+    and ⇄ light what the card leads to, what leads to it, and every path between two selected cards, as > < and P do.
+  - `legend`: the kinds of cards and lines the view draws, in a box at the bottom left that folds away. The fit keeps
+    the cards off it, as it keeps them off the hint line and ☰.
+  - `hints`: what the pointer does, at the foot of the map, and for a while what just happened ("Already at the top",
+    what → lit). It's a polite live region; without it, what the panel lights is said in the map's own live region.
+  - On a phone's width the legend and hint line hide and the panel's tabs wrap, as in the page.
+- **Shared, not copied:** the page and `render()` draw the pieces with the same functions (`pieces()`, `hintHTML()` and
+  `hinter()` in `lib/umlimator.js`), and their CSS moved from the page template into the module's stylesheet, which the
+  page already took in. The move left the standalone page unchanged: compared in Chrome before and after, element by
+  element, in 20 states (a card selected, each tab, a path lit, the legend folded, an example full size, keys, the views
+  list, dark, a phone's width), every element of the page has the same computed style. #112 then changes it a little.
+- **Lenses' panel buttons (#95):** the slowest and costliest path (⏱ ¤) and what-if (⊘) are the details panel's, so
+  `render({ details: true })` offers them too, where the view's lines have latency or cost.
+- **Keys and focus:** keys pressed anywhere in the map reach the pieces (`[ ] O > < P`, and Esc closes an example shown
+  full size), and the map's other keys reach the canvas, as in the page; Enter and Space press the button they are on.
+  The views list comes after the map in the tab order, so focus given to the map's element (#36) still lands on the map.
+  An embedded panel that redraws keeps the focus on the control it was on, and one that closes gives it back to the map.
+- **Theme:** the pieces take the `--um-*` colours. The theme file has two new ones, with the colours the page's CSS had
+  written in: `--um-mark` (the panel's `==highlighter==`, light and dark) and `--um-scrim` (behind an example shown full
+  size).
+- **`update()` and `destroy()`:** an update redraws the views list (a view the model gained is listed), the legend and an
+  open panel; `destroy()` takes them away with the map.
+- **Left out:** deep links, since the URL is the host's (`viewchange` and `select` give it what it needs); the reader's
+  choices kept in `localStorage` (the page keeps the folded legend and the open tab; an embedded map keeps them in its
+  handle); and the page's header: breadcrumbs, search, help, export and the Stories menu.
+- **Tests:** `tests/pieces.html`, in `tests/embed.py`: each piece alone and all four together, their keys, focus and
+  events, a host taking Open, `update()`, `destroy()` and the theme, and an accessibility check as axe makes it, written
+  out: names, nesting, ids and what refers to them, landmarks, tabs and live regions.
+
+### The panels pass axe: a tab list of tabs, and two colours (#112)
+
+axe-core found three things in the standalone page's panels, and so in `render()`'s, since they share them (#99). The
+fix changes the page slightly: one wrapper in the details panel's markup, and how two kinds of text look.
+
+- **A tab list holds only tabs.** The details panel's ‹ › buttons were inside its `role="tablist"` (axe:
+  `aria-required-children`, critical). The tabs now have a tab list of their own, `.ptablist`, and ‹ › stand beside it.
+  The panel looks as it did; on a phone the tabs still wrap.
+- **The views list's current view** was white on the accent: 3.1:1 in dark, and its card count, at 80 %, 3.9:1 in light.
+  It is now tinted, with the accent's ring and the text's colour, as the breadcrumb's current view is (13:1 in light, 15:1
+  in dark). The details panel's PUBLIC tag was white on blue too (3.1:1 in dark), and is now drawn as the EXTERNAL one
+  is, in its kind's colour (4.6:1 in light, 5.6:1 in dark).
+- **The panel's quieter texts** ("Nothing calls this here", "Not written yet", an origin, and code in them) were
+  `--um-dim` on the panel: 3.45:1 in light, 3.56:1 in dark. They take `--um-muted` now, as the panel's other secondary
+  text does (5.7:1 or more; 6.1:1 and 6.5:1 for the texts themselves).
+- **Checked:** axe-core 4.10, run by hand on `render()` with all four pieces and on the CLI's page, for every example
+  model, in light and dark, every view, a few cards each and their tabs: 400 runs, no violations. `tests/pieces.html`
+  writes out the two rules that failed (a tab list holds only tabs; every text in a piece is 4.5:1 on what is under it,
+  3:1 when large) and checks them on `render()` with all four pieces (bike-share with a missing text, a highlight, code
+  and an origin added, and the helpdesk assistant) and on `examples/bookshop.html`, in a frame, in light and dark.
+- **Left out:** the map itself is unchanged. Its step and lane numbers are white on the accent too, which is 3.1:1 in
+  dark; the palette's contrast check (`tests/contrast.html`) measures text over boxes only, so it doesn't see them.
+
+### The legend check waits for the drawn legend (#113)
+
+- **The wait could pass on the page's script.** `tests/embed.py` waited (#85) until the page's markup had `class="lgi"`,
+  which the module's own source, inlined in the page, always has. So it read the page before the legend was drawn.
+- **Now:** a small HTML parser reads the names in the drawn legend element (`#m-legend`), taking a script's text as text.
+  The wait asks for the legend to have names, and the check wants calls and state among them; a page that never draws
+  its legend fails it.

@@ -15,10 +15,11 @@ tests/stories.html: play() and its caption bar, keys and events; the standalone 
 tests/insight.html: lenses on a map and in the page (#94), the page's slowest path and what-if (#95), a trace's numbered view (#96).
 tests/page-handle.html: a page umlimator.py renders keeps its map's handle on window.umlimatorMap, and it drives the page.
 tests/element.html: <umlimator-map> (#92): src and inline models, attributes, events, drawing again, destroy, a docs block.
+tests/pieces.html: the standalone page's pieces in render() (#99): views list, legend, hint line, details panel, alone and together.
 examples/edit.html, embed.html, live.html, playground.html, ask.html, replay.html, timelapse.html, drift.html, element.html: the host pages load and draw.
 Each test page reports in <pre id="result">{"ok": [...], "fail": [...]}</pre>.
 """
-import functools, html, http.server, importlib.util, json, re, subprocess, sys, tempfile, threading, time
+import functools, html, html.parser, http.server, importlib.util, json, re, subprocess, sys, tempfile, threading, time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -70,7 +71,7 @@ def dom(path, done, wait=60):
 
 
 failed = False
-for page in ("tests/embed.html", "tests/edit.html", "tests/contrast.html", "tests/rules.html", "tests/marks.html", "tests/change.html", "tests/unfold.html", "tests/unfold-page.html", "tests/stories.html", "tests/insight.html", "tests/page-handle.html", "tests/element.html"):
+for page in ("tests/embed.html", "tests/edit.html", "tests/contrast.html", "tests/rules.html", "tests/marks.html", "tests/change.html", "tests/unfold.html", "tests/unfold-page.html", "tests/stories.html", "tests/insight.html", "tests/page-handle.html", "tests/element.html", "tests/pieces.html"):
     t = dom(page, lambda t: 'id="result"' in t)
     m = re.search(r'<pre id="result">(.*?)</pre>', t, re.S)
     if not m:  # each check names itself in the page title: say where it stopped
@@ -91,9 +92,35 @@ demo = dom("examples/element.html", lambda t: "Drawn: " in t)  # the map is in t
 print(("ok  " if "Drawn: " in demo else "FAIL"), "examples/element.html · the element page draws its map")
 failed |= "Drawn: " not in demo
 # the standalone page (mountPage) shows a legend, so it still names line kinds from label words: "reads metrics" is state
-page = dom("examples/bookshop.html", lambda t: 'class="lgi"' in t)
-legend = "<b>calls</b>" in page and "<b>state</b>" in page
-print(("ok  " if legend else "FAIL"), "examples/bookshop.html · the standalone page's legend names the kinds it reads from labels (calls, state)")
+
+
+class Legend(html.parser.HTMLParser):
+    """The names the page's drawn legend shows (<div id="m-legend"> ... <b>name</b>), read from its elements: the parser takes
+    a script's text as data, so the module's source, which the page inlines and which has the legend's markup, is not read
+    as the legend (#113)"""
+    def __init__(self, page):
+        super().__init__(); self.divs, self.b, self.names = 0, None, []; self.feed(page)
+
+    def handle_starttag(self, tag, attrs):
+        if tag == "div" and (self.divs or dict(attrs).get("id") == "m-legend"):
+            self.divs += 1
+        elif tag == "b" and self.divs:
+            self.b = ""
+
+    def handle_endtag(self, tag):
+        if tag == "div" and self.divs:
+            self.divs -= 1
+        elif tag == "b" and self.b is not None:
+            self.names.append(self.b.strip()); self.b = None
+
+    def handle_data(self, data):
+        if self.b is not None:
+            self.b += data
+
+
+names = Legend(dom("examples/bookshop.html", lambda t: bool(Legend(t).names))).names  # waits for the legend itself; none if it never draws
+legend = {"calls", "state"} <= set(names)
+print(("ok  " if legend else "FAIL"), "examples/bookshop.html · the standalone page's legend names the kinds it reads from labels (calls, state)", "" if legend else names)
 failed |= not legend
 # the layout check of a page umlimator.py renders: a view that keeps A→B and B→A apart (keepPairs) draws the return line
 # right to left, as it should; the check does not count it against the view
