@@ -152,5 +152,10 @@
       "caption": "From dock events to the vans' routes.",
       "nodeIds": ["telemetry", "dock-listener", "battery", "fleet-db", "warehouse", "forecast", "planner", "fleet-api", "ops-console"],
       "edges": ["f1", "f2", "f3", "f4", "f5", "f6", "f7", "f8", "f9"] }
+  ],
+  "rules": [
+    { "id": "apps-no-db", "title": "Apps never call a database directly", "from": { "kind": "frontend" }, "to": { "kind": "database" } },
+    { "id": "rides-own-trips", "title": "Only the ride services touch the trips store", "views": ["system"],
+      "from": { "not": { "container": "rides" } }, "to": { "id": "tripsdb" } }
   ]
 }

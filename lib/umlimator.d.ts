@@ -9,6 +9,8 @@ export interface MapModel {
   views: MapView[];
   icons?: Record<string, { g?: string; src?: string; dark?: boolean }>;
   authors?: Record<string, { name?: string; url?: string; avatar?: string }>;
+  /** What must hold: rules() lists what breaks them, the map marks it, and umlimator.py check fails on it. */
+  rules?: Rule[];
   [key: string]: unknown;
 }
 /** A badge: its text, and optionally a palette name for its colour (green, amber, rose, accent, violet ... : --um-<tone>). */
@@ -141,11 +143,24 @@ export function layout(model: MapModel, viewId: string, options?: { repair?: boo
  *  a view a card opens that the host has not loaded yet). The JSON Schema is umlimator/schema.json. */
 export interface Problem { level: 'error' | 'warning'; path: string; message: string }
 export function validate(model: MapModel): Problem[];
-/** One issue of the layout check: its message, as the page's check words it, and the cards and lines it names. */
+/** One issue of the layout check: its message, as the page's check words it, and the cards, lines and boxes it is about
+ *  (exactly those, even where two cards share a label). */
 export interface CheckIssue { message: string; targets: Ref[] }
 /** The layout check's geometry for one view, on layout()'s geometry: no browser needed. The page's check (CLI) adds what
  *  it measures in the DOM (text overflowing its card, titles, edge labels on cards or each other). In Node, text widths
  *  are an estimate unless `measure` is given, so the layout, and what is found, can differ from a browser's. */
 export function check(model: MapModel, viewId: string, options?: { repair?: boolean; measure?: (text: string, px: number) => number }): CheckIssue[];
+/** Picks cards by id, kind (as the map draws it: "db" picks databases) or box (at any depth), each a value or a list;
+ *  every key given must hold, and `not` turns a selector round. A line's end on a box is that box: in it, of no kind. */
+export interface Selector { id?: string | string[]; kind?: string | string[]; container?: string | string[]; not?: Selector }
+/** What the model says must hold (`model.rules`): no line from the cards `from` picks to the cards `to` picks (a side left
+ *  out picks every card), or, with noCycles, no boxes that reach each other through their lines (a line counts between
+ *  the two boxes that hold its ends right under the box they share). `views`: only there (default: every view). */
+export interface Rule { id: string; title?: string; views?: string[]; from?: Selector; to?: Selector; noCycles?: boolean }
+/** A rule broken in a view: its message (as umlimator.py check prints it), and the lines, and for a cycle the boxes, it is
+ *  about. The map draws those lines rose, with a mark that names the rule. */
+export interface RuleBreak { rule: string; view: string; message: string; targets: Ref[] }
+/** Every rule the model breaks, view by view. No browser needed. */
+export function rules(model: MapModel): RuleBreak[];
 /** The whole standalone viewer (top bar, views list, details panel, search, export) that umlimator.py writes. */
 export function mountPage(container: HTMLElement, model: MapModel, options?: { params?: URLSearchParams; instant?: boolean }): Handle;
