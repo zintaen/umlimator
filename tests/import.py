@@ -133,4 +133,28 @@ with tempfile.TemporaryDirectory() as tmp:
     ok("knows a format by its content, whatever the extension", r.returncode == 0 and json.loads(r.stdout).get("format") == "structurizr", r.stderr)
     r = run("import", str(ROOT / "tests" / "import" / "compose.json"), "--format", "kubernetes", "--out", str(t / "k.json"))
     ok("--format decides, and a file with nothing to import is an error", r.returncode == 1 and "nothing to import" in r.stderr, r.stderr)
+
+# A file cut short (a download, a file still being written) or with a comment left open says so, on stderr and in the
+# JSON's notImported (import-parsers #1 to #4, 0.14.0): it used to import as a smaller map with "unread": 0
+with tempfile.TemporaryDirectory() as tmp:
+    t = Path(tmp)
+    dsl = (ROOT / "examples" / "clinic.dsl").read_text(encoding="utf-8").splitlines(keepends=True)
+    puml = (ROOT / "tests" / "import" / "parcels.puml").read_text(encoding="utf-8").splitlines(keepends=True)
+    files = {"cut.dsl": "".join(dsl[:36]), "open.dsl": "".join(dsl[:29] + ["/* TODO: check the reminder flow\n"] + dsl[29:]),
+             "cut.puml": "".join(puml[:16]), "cut.json": "".join((ROOT / "tests" / "import" / "compose.json").read_text(encoding="utf-8").splitlines(keepends=True)[:70])}
+    for name, text in files.items():
+        (t / name).write_text(text, encoding="utf-8")
+    said = lambda r: json.loads(r.stdout) if r.returncode == 0 else {}
+    r = run("import", str(t / "cut.dsl"), "--out", str(t / "a.json"))
+    ok("a Structurizr file cut short names each block it leaves open, on stderr and in the JSON",
+       ":5: never closed: workspace" in r.stderr and ":9: never closed: model {" in r.stderr
+       and [x["where"] for x in said(r).get("notImported", [])] == [5, 9] and said(r).get("unread") == 2, r.stdout + r.stderr)
+    r = run("import", str(t / "open.dsl"), "--out", str(t / "b.json"))
+    ok("a /* never closed says which lines it hid", f":30: /* is never closed, so lines 31 to {len(files['open.dsl'].splitlines())} are not read" in r.stderr, r.stderr)
+    r = run("import", str(t / "cut.puml"), "--out", str(t / "c.json"))
+    ok("a C4-PlantUML file cut short names its open boundary and its missing @enduml",
+       ":1: @startuml has no @enduml" in r.stderr and ":10: never closed: System_Boundary(tracking" in r.stderr, r.stderr)
+    r = run("import", str(t / "cut.json"), "--out", str(t / "d.json"))
+    ok("JSON cut short is said to be invalid JSON, not a format it cannot tell", r.returncode == 1 and "is not valid JSON" in r.stderr
+       and "cut short" in r.stderr and "cannot tell the format" not in r.stderr, r.stderr)
 sys.exit(1 if failed else 0)

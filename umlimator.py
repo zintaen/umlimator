@@ -20,7 +20,7 @@ MODEL.json is the map model in engine/references/schema.md (nodes, edges, views)
 node (PROPOSED, TARGET, OFF ...). `stills` needs Google Chrome or Chromium; the PNGs are what a document that cannot
 run the page (a wiki such as Confluence) shows. `diff`, `drift`, `trace` and `mcp` run the module's own functions in Node.
 """
-import argparse, base64, hashlib, html, io, json, os, re, shutil, struct, subprocess, sys, tempfile, urllib.parse, urllib.request, zipfile, zlib
+import argparse, base64, contextlib, hashlib, html, io, json, os, re, shutil, signal, struct, subprocess, sys, tempfile, urllib.parse, urllib.request, zipfile, zlib
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -60,6 +60,45 @@ def upstream_view(d):
     boxes = {c.get("id") for v in views for c in v.get("containers") or [] if isinstance(c, dict) and c.get("id")}
     d["nodes"] = [*d.get("nodes", []), *({"id": b} for b in sorted(boxes - ids))]
     return d
+
+
+def run(cmd, timeout=None, input=None):
+    """A child process (Chrome, the engine, Node) in a session of its own, so that it and whatever it starts (Chrome's
+    helpers, the engine's Chrome) end together: on a timeout, Ctrl-C or SIGTERM the whole group is killed."""
+    p = subprocess.Popen(cmd, stdin=subprocess.PIPE if input is not None else None, stdout=subprocess.PIPE,
+                         stderr=subprocess.PIPE, text=True, start_new_session=True)
+    try:
+        out, err = p.communicate(input, timeout=timeout)
+    except BaseException:
+        with contextlib.suppress(ProcessLookupError):
+            os.killpg(p.pid, signal.SIGKILL)
+        p.communicate()
+        raise
+    return subprocess.CompletedProcess(cmd, p.returncode, out, err)
+
+
+@contextlib.contextmanager
+def replacing(path):
+    """A path beside `path` to write to, renamed over it when the block ends without an error and removed otherwise: the
+    previous file stays until the new one is whole, and a reader never sees half of one."""
+    path = Path(path)
+    tmp = path.with_name(f".{path.stem}.{os.urandom(4).hex()}{path.suffix}")  # not mkstemp: the file takes the usual mode
+    try:
+        yield tmp
+        os.replace(tmp, path)
+    finally:
+        tmp.unlink(missing_ok=True)
+
+
+def write(path, text):
+    with replacing(path) as tmp:
+        tmp.write_text(text, encoding="utf-8")
+
+
+class ChromeError(Exception):
+    """Chrome is missing, did not finish, or failed: in its own words where it said any."""
+
+
 CHROMES = ["/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
            "/Applications/Chromium.app/Contents/MacOS/Chromium", "google-chrome", "chromium", "chromium-browser"]
 
@@ -68,14 +107,24 @@ def chrome():
     for c in CHROMES:
         if Path(c).exists() or shutil.which(c):
             return c
-    sys.exit("stills needs Google Chrome or Chromium")
+    raise ChromeError("needs Google Chrome or Chromium, and none is installed")
 
 
 def headless(binary, *args, timeout=90):
-    with tempfile.TemporaryDirectory() as prof:
-        r = subprocess.run([binary, "--headless", "--disable-gpu", "--hide-scrollbars", f"--user-data-dir={prof}",
-                            "--no-first-run", "--no-default-browser-check", *args],
-                           capture_output=True, text=True, timeout=timeout)
+    """Chrome's output (--dump-dom's page); a ChromeError when it does not finish in time or exits with an error, with the
+    line of its log that says why (Chrome logs errors on success too, so its exit status decides)."""
+    prof = tempfile.mkdtemp()
+    try:
+        r = run([binary, "--headless", "--disable-gpu", "--hide-scrollbars", f"--user-data-dir={prof}", "--no-first-run",
+                 "--no-default-browser-check", *args], timeout=timeout)
+    except subprocess.TimeoutExpired:
+        raise ChromeError(f"Chrome did not finish in {timeout} s") from None
+    finally:
+        shutil.rmtree(prof, ignore_errors=True)
+    if r.returncode:
+        said = [s for s in r.stderr.splitlines() if s.strip()]
+        why = next((s for s in reversed(said) if "FATAL" in s), said[-1] if said else "")
+        raise ChromeError(f"Chrome failed (exit status {r.returncode}){': ' + why.strip() if why else ''}")
     return r.stdout
 
 
@@ -94,47 +143,52 @@ if os.environ.get("UMLIMATOR_OFFLINE"):  # the MCP server's pages (#91): a logo 
 def icon_bytes(e):
     """An icon's file: Lucide icons ship in icons/; a brand mark is not redistributed with umlimator, so it is read from
     the cache, fetched once from its official source (manifest `url`; `zip#member` reads one file from a package) and
-    used only when its sha256 matches the manifest, so a picture never changes because a source did. None if it cannot
-    be had."""
+    used only when its sha256 matches the manifest, so a picture never changes because a source did. The cached copy
+    is checked too, each time: one cut short (a crash, a full disk) is fetched again. None if it cannot be had."""
     local = ICONS / e["file"]
     if local.is_file():
         return local.read_bytes()
     cached = CACHE / e["file"]
-    if not cached.is_file():
-        try:
-            url, _, member = e["url"].partition("#")
-            req = urllib.request.Request(url, headers={"User-Agent": "umlimator"})
-            data = urllib.request.urlopen(req, timeout=60).read()
-            if member:  # the file's path in the package, or just its name (the package keeps it under folders)
-                z, want = zipfile.ZipFile(io.BytesIO(data)), urllib.parse.unquote(member)
-                data = z.read(next(n for n in z.namelist() if want in (n, n.rsplit("/", 1)[-1])))
-        except (OSError, StopIteration, zipfile.BadZipFile) as err:
-            print(f"icon {e['file']}: cannot fetch {e['url']} ({err}); the card keeps its kind sigil", file=sys.stderr)
-            return None
-        if hashlib.sha256(data).hexdigest() != e.get("sha256"):
-            print(f"icon {e['file']}: {e['url']} no longer matches its pinned sha256; the card keeps its kind sigil "
-                  "(fetch it again with tools/fetch_icons.py and pin it with `umlimator.py pin-icons`)", file=sys.stderr)
-            return None
-        CACHE.mkdir(parents=True, exist_ok=True)
-        cached.write_bytes(data)
-    return cached.read_bytes()
+    if cached.is_file():
+        data = cached.read_bytes()
+        if hashlib.sha256(data).hexdigest() == e.get("sha256"):
+            return data
+        print(f"icon {e['file']}: the copy in {CACHE} does not match its pinned sha256; fetching it again", file=sys.stderr)
+    try:
+        url, _, member = e["url"].partition("#")
+        req = urllib.request.Request(url, headers={"User-Agent": "umlimator"})
+        data = urllib.request.urlopen(req, timeout=60).read()
+        if member:  # the file's path in the package, or just its name (the package keeps it under folders)
+            z, want = zipfile.ZipFile(io.BytesIO(data)), urllib.parse.unquote(member)
+            data = z.read(next(n for n in z.namelist() if want in (n, n.rsplit("/", 1)[-1])))
+    except (OSError, StopIteration, zipfile.BadZipFile) as err:
+        print(f"icon {e['file']}: cannot fetch {e['url']} ({err}); the card keeps its kind sigil", file=sys.stderr)
+        return None
+    if hashlib.sha256(data).hexdigest() != e.get("sha256"):
+        print(f"icon {e['file']}: {e['url']} no longer matches its pinned sha256; the card keeps its kind sigil "
+              "(fetch it again with tools/fetch_icons.py and pin it with `umlimator.py pin-icons`)", file=sys.stderr)
+        return None
+    CACHE.mkdir(parents=True, exist_ok=True)
+    with replacing(cached) as tmp:  # two renders fetching one logo never read half of it
+        tmp.write_bytes(data)
+    return data
 
 
 def cmd_pin_icons(a):
     """After tools/fetch_icons.py added a brand mark to icons/: record its sha256 and move it into the cache, so the
-    repository never carries a brand's file."""
+    repository never carries a brand's file. The hashes are written first: a run cut short leaves pinned files in icons/,
+    which the next run moves."""
     man = json.loads((ICONS / "manifest.json").read_text())
-    for name, e in man.items():
-        f = ICONS / e["file"]
-        if e["source"] == "lucide" or not f.is_file():
-            continue
-        e["sha256"] = hashlib.sha256(f.read_bytes()).hexdigest()
+    new = {name: ICONS / e["file"] for name, e in man.items() if e["source"] != "lucide" and (ICONS / e["file"]).is_file()}
+    for name, f in new.items():
+        man[name]["sha256"] = hashlib.sha256(f.read_bytes()).hexdigest()
+    write(ICONS / "manifest.json", json.dumps(man, indent=2) + "\n")
+    for name, f in new.items():
         CACHE.mkdir(parents=True, exist_ok=True)
-        shutil.move(str(f), CACHE / e["file"])
-        print(f"pinned {name} ({e['source']}) -> {CACHE / e['file']}")
+        shutil.move(str(f), CACHE / man[name]["file"])
+        print(f"pinned {name} ({man[name]['source']}) -> {CACHE / man[name]['file']}")
     for dark in ICONS.glob("*_dark.*"):  # dark variants are for stack-diagram's group labels; umlimator has none
         dark.unlink()
-    (ICONS / "manifest.json").write_text(json.dumps(man, indent=2) + "\n")
 
 
 def page_model(model_path, out, source=None):
@@ -193,7 +247,7 @@ def js(fn, *args):
     node = shutil.which("node") or sys.exit(f"{fn} needs Node.js 18 or later: it runs the module's own {fn}()")
     code = (f"import * as u from {json.dumps(LIB.as_uri())}; let s = ''; for await (const c of process.stdin) s += c;"
             f"process.stdout.write(JSON.stringify(u[{json.dumps(fn)}](...JSON.parse(s))));")
-    r = subprocess.run([node, "--input-type=module", "-e", code], input=json.dumps(args), capture_output=True, text=True)
+    r = run([node, "--input-type=module", "-e", code], input=json.dumps(args))
     if r.returncode:
         sys.exit(r.stderr.strip()[-2000:])
     return json.loads(r.stdout)
@@ -210,27 +264,30 @@ def cmd_render(a):
 
 
 def render(a, model, show=print):
-    args = ["render", "--map", model, "--out", a.out, "--no-open"]
+    """The page at a.out, then (without --no-check) the engine's layout check. The engine writes a file of its own beside
+    a.out, which replaces a.out once it succeeded: a model it rejects leaves the previous page as it was, and only the
+    reason is said (stderr, exit 1). The check's screenshots, which nothing reads, stay in a temp folder."""
+    args = ["render", "--map", model, "--no-open"]
     if a.no_check:
         args.append("--no-check")
     if all(v.get("layout") for v in json.loads(Path(model).read_text(encoding="utf-8")).get("views") or [{}]):
         args.append("--no-optimize")  # every view laid out already: the layout search would bake nothing (and stalls on a large page)
-    with tempfile.TemporaryDirectory() as tmp:
-        r = subprocess.run(visual_cmd(tmp, *args), capture_output=True, text=True)
-    out = r.stdout + r.stderr
+    with tempfile.TemporaryDirectory() as tmp, replacing(a.out) as page:
+        r = run(visual_cmd(tmp, *args, "--out", str(page), *([] if a.no_check else ["--shots", tmp])))
+        out = r.stdout + r.stderr
+        if r.returncode not in (0, 2) or not page.is_file():
+            sys.exit(out.strip()[-2000:] or f"the engine failed (exit status {r.returncode})")
     i = out.find("{")
     try:
         rep = json.loads(out[i:]) if i >= 0 else {}
     except json.JSONDecodeError:
         rep = {}
     chk = rep.get("check", {})
-    said = {"out": rep.get("out", a.out), "bytes": rep.get("bytes"), "counts": chk.get("counts"),
+    if chk.get("errors"):  # a check that timed out or never reported is not a clean check
+        sys.exit(f"{a.out} is written, but its check did not complete: " + "; ".join(chk["errors"]))
+    said = {"out": str(Path(a.out).resolve()), "bytes": rep.get("bytes"), "checked": not a.no_check, "counts": chk.get("counts"),
             "problems": chk.get("overlaps", []), "errors": chk.get("errors", [])}
     show(json.dumps(said, indent=1))
-    if chk.get("errors"):  # a check that timed out or never reported is not a clean check
-        sys.exit("check did not complete: " + "; ".join(chk["errors"]))
-    if r.returncode not in (0, 2):
-        sys.exit(out[-2000:])
     return said
 
 
@@ -253,11 +310,23 @@ def render_model(m, near, out):
 
 
 def shots(page, out, views):
-    """Stills of these views, for a document (no CHECK tab or drill-down pill): their PNG paths."""
+    """Stills of these views, for a document (no CHECK tab or drill-down pill): their PNG paths, and why a view has none.
+    The pictures are extras here: no Chrome, or a view Chrome cannot draw, leaves them out and says so."""
     if not (out and views):
-        return []
-    a = argparse.Namespace(page=str(page), out=str(out), views=",".join(views), scale=2.0, theme="light", reader=True, all=True)
-    return [s["png"] for s in cmd_stills(a, show=quiet)]
+        return [], {}
+    try:
+        done, failed, _ = stills(Path(page), Path(out), views, reader=True, again=True)
+    except ChromeError as e:  # no Chrome at all
+        return [], {v: str(e) for v in views}
+    return [s["png"] for s in done], failed
+
+
+def no_pictures(failed):
+    """The views a diff or drift has no picture of, by reason, in one line."""
+    by = {}
+    for v, why in failed.items():
+        by.setdefault(why, []).append(v)
+    return "; ".join(f"no picture of {', '.join(vs)}: {why}" for why, vs in by.items())
 
 
 def cmd_diff(a):
@@ -272,6 +341,8 @@ def cmd_diff(a):
     before, after = (json.loads(Path(f).read_text(encoding="utf-8")) for f in a.files)
     r = diff_page(before, after, a.files[1], a.out, a.stills)
     print(json.dumps({k: v for k, v in r.items() if k != "model"}, indent=1))
+    if r.get("stillsFailed"):
+        print(f"diff: {no_pictures(r['stillsFailed'])}", file=sys.stderr)
 
 
 def diff_page(before, after, near, out, stills=None):
@@ -279,7 +350,19 @@ def diff_page(before, after, near, out, stills=None):
     m = d["model"]
     m["title"] = f"{m.get('title') or Path(near).stem}: what changed"
     rep = render_model(m, near, out)
-    return {"out": rep["out"], "summary": d["summary"], "views": d["views"], "stills": shots(out, stills, d["views"]), "model": m}
+    pngs, failed = shots(out, stills, d["views"])
+    return {"out": rep["out"], "summary": d["summary"], "views": d["views"], "stills": pngs, **({"stillsFailed": failed} if failed else {}), "model": m}
+
+
+def model_of(text):
+    """A file's text as (its map model, or None; why it is not JSON, or None)."""
+    if text is None:
+        return None, None
+    try:
+        m = json.loads(text)
+    except ValueError as e:
+        return None, e
+    return (m if isinstance(m, dict) and isinstance(m.get("nodes"), list) and isinstance(m.get("views"), list) else None), None
 
 
 def diff_since(a):
@@ -288,27 +371,42 @@ def diff_since(a):
     if changed.returncode:
         sys.exit(changed.stderr.strip())
     out = Path(a.out); out.mkdir(parents=True, exist_ok=True)
-    load = lambda t: (lambda m: m if isinstance(m, dict) and isinstance(m.get("nodes"), list) and isinstance(m.get("views"), list) else None)(json.loads(t))
-    done, md = [], ["<!-- umlimator-diff -->", "### Map changes", ""]
+    done, md, stems = [], ["<!-- umlimator-diff -->", "### Map changes", ""], set()
     for name in filter(None, changed.stdout.split("\0")):
         old = git("show", f"{a.base}:{name}")
-        try:
-            before = load(old.stdout) if old.returncode == 0 else None
-            after = load(Path(name).read_text(encoding="utf-8")) if Path(name).is_file() else None
-        except json.JSONDecodeError:
+        texts = (old.stdout if old.returncode == 0 else None, Path(name).read_text(encoding="utf-8") if Path(name).is_file() else None)
+        (before, e1), (after, e2) = model_of(texts[0]), model_of(texts[1])
+        # a model that no longer parses (a conflict marker, a cut) is a change to say, not a file to skip; other JSON that
+        # does not parse (a tsconfig.json with comments) is not a model
+        why = [f"{at} is not valid JSON ({e})" for at, e, t, other in ((f"its version at {a.base}", e1, texts[0], after), ("it", e2, texts[1], before))
+               if e and (other or '"nodes"' in t and '"views"' in t)]
+        if why:
+            done.append({"file": name, "error": "; ".join(why)})
+            md += [f"**`{name}`**: cannot be read: " + "; ".join(why), ""]
             continue
         if not (before or after):
             continue  # JSON, but not a map model
         stem = name.replace("/", "-")[:-5] if name.endswith(".json") else name.replace("/", "-")
-        r = diff_page(before, after, name if after else out / f"{stem}.json", out / f"{stem}.html", out / stem)
+        if stem in stems:  # a/b-c.json and a-b/c.json
+            stem += "-" + hashlib.sha256(name.encode()).hexdigest()[:6]
+        stems.add(stem)
+        try:
+            r = diff_page(before, after, name if after else out / f"{stem}.json", out / f"{stem}.html", out / stem)
+        except SystemExit as e:  # the module failed on this model (js() ends the CLI): said for this file, and the rest go on
+            done.append({"file": name, "error": str(e.code)})
+            md += [f"**`{name}`**: cannot be diffed: {e.code}", ""]
+            continue
         if not r["summary"]:
             continue
         done.append({"file": name, **{k: v for k, v in r.items() if k != "model"}})
         md += [f"**`{name}`**: " + ", ".join(r["views"]) if r["views"] else f"**`{name}`**", ""]
         md += [f"- {s}" for s in r["summary"]] + [""] + sketch(r["model"]) + [""]
+        if r.get("stillsFailed"):
+            said = no_pictures(r["stillsFailed"])
+            md += [f"_{said[:1].upper()}{said[1:]}._", ""]
     if not done:
         md += ["No map model changed."]
-    (out / "summary.md").write_text("\n".join(md) + "\n", encoding="utf-8")
+    write(out / "summary.md", "\n".join(md) + "\n")
     print(json.dumps(done, indent=1))
 
 
@@ -347,7 +445,10 @@ def cmd_drift(a):
     r = js("drift", m, seen, {"match": json.loads(Path(a.match).read_text(encoding="utf-8")) if a.match else {}})
     r["model"]["title"] = f"{m.get('title') or Path(a.model).stem}: drawn vs. seen"
     rep = render_model(r["model"], a.model, a.out)
-    print(json.dumps({"out": rep["out"], "counts": r["counts"], "views": r["views"], "stills": shots(a.out, a.stills, r["views"])}, indent=1))
+    pngs, failed = shots(a.out, a.stills, r["views"])
+    print(json.dumps({"out": rep["out"], "counts": r["counts"], "views": r["views"], "stills": pngs, **({"stillsFailed": failed} if failed else {})}, indent=1))
+    if failed:
+        print(f"drift: {no_pictures(failed)}", file=sys.stderr)
 
 
 def cmd_trace(a):
@@ -360,7 +461,7 @@ def cmd_trace(a):
     v = next(x for x in out["views"] if x.get("id") == a.view)
     if not v["edges"]:
         sys.exit(f"trace: no call in {a.trace} runs between two cards of {a.model} (--match names a service's card)")
-    Path(a.out).write_text(json.dumps(out, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    write(a.out, json.dumps(out, indent=2, ensure_ascii=False) + "\n")
     print(json.dumps({"out": a.out, "view": a.view, "steps": len(v["edges"]), "cards": len(v["nodeIds"]), "caption": v["caption"]}, indent=1))
 
 
@@ -388,31 +489,32 @@ def cmd_timelapse(a):
     page = page.replace("__TITLE__", html.escape(data["title"]), 1).replace("/*__UMLIMATOR_THEME__*/", THEME.read_text(encoding="utf-8"), 1)
     page = page.replace("/*__VERSIONS__*/", json.dumps(data, ensure_ascii=False).replace("</", "<\\/"), 1)
     page = page.replace("/*__UMLIMATOR_LIB__*/", LIB.read_text(encoding="utf-8"), 1)
-    Path(a.out).write_text(page, encoding="utf-8")
+    write(a.out, page)
     print(json.dumps({"out": a.out, "versions": [v["label"] for v in versions]}, indent=1))
 
 
 def cmd_check(a):
     """The page's own layout check, limited to --views (a trailing * is a prefix) and with a longer wait than
-    visual.py check, which gives up after 45 s on a large model."""
-    url = Path(a.page).resolve().as_uri() + "#check=1&theme=light" + (f"&views={a.views}" if a.views else "") + ("&expand=1" if a.expand else "")
-    try:
-        dom = headless(chrome(), "--virtual-time-budget=6000", "--window-size=1440,900", "--dump-dom", url, timeout=a.timeout)
-    except subprocess.TimeoutExpired:
-        sys.exit(f"check did not complete in {a.timeout} s")
-    m = re.search(r'<pre id="visual-check"[^>]*>(.*?)</pre>', dom, re.S)
-    if not m:
-        sys.exit("check did not complete: the page did not report")
-    rep = json.loads(html.unescape(m.group(1)))
-    ov = rep.get("overlaps", [])
+    visual.py check, which gives up after 45 s on a large model. A check of no view fails: it would pass by checking
+    nothing."""
     kinds = {"crossings": " cross", "labelOnLine": " lies on edge ", "rightToLeft": "right-to-left", "detours": "detour",
              "nearNode": "passes within", "onMark": "touches the mark", "shortLine": "leaves its line", "rules": ' breaks rule "'}
-    counts = {k: sum(t in o for o in ov) for k, t in kinds.items()}
-    counts["other"] = len(ov) - sum(counts.values())
     # --ignore drops whole kinds from the report (pictures that keep a source drawing's own direction run lines right to left)
     asked = [k for k in (a.ignore or "").replace("right-to-left", "rightToLeft").split(",") if k]
     if bad := [k for k in asked if k not in kinds]:
         sys.exit(f"--ignore: unknown kind {', '.join(bad)}; known: right-to-left, {', '.join(k for k in kinds if k != 'rightToLeft')}")
+    views = pick(a.page, a.views)
+    url = Path(a.page).resolve().as_uri() + "#check=1&theme=light" + (f"&views={fragment(views)}" if a.views else "") + ("&expand=1" if a.expand else "")
+    dom = headless(chrome(), "--virtual-time-budget=6000", "--window-size=1440,900", "--dump-dom", url, timeout=a.timeout)
+    m = re.search(r'<pre id="visual-check"[^>]*>(.*?)</pre>', dom, re.S)
+    if not m:
+        sys.exit("check did not complete: the page did not report")
+    rep = json.loads(html.unescape(m.group(1)))
+    if not re.match(r"[1-9]", str(rep.get("checked") or "")):  # "0 views"
+        sys.exit(f"check: no view was checked ({rep.get('checked') or 'the page did not say what it checked'})")
+    ov = rep.get("overlaps", [])
+    counts = {k: sum(t in o for o in ov) for k, t in kinds.items()}
+    counts["other"] = len(ov) - sum(counts.values())
     skip = [kinds[k] for k in asked]
     shown = [o for o in ov if not any(t in o for t in skip)]
     print(json.dumps({"checked": rep.get("checked"), "counts": counts, "ignored": len(ov) - len(shown),
@@ -431,83 +533,121 @@ def views_of(page):
     return [v["id"] for v in (data.get("views") or data.get("map", {}).get("views") or [])]
 
 
+def pick(page, spec):
+    """--views (a,b,pic-*: a trailing * is a prefix) as the page's view ids, in the page's order; every view without it.
+    A name that matches no view ends the command before Chrome starts, saying which views there are."""
+    ids = views_of(page)
+    want = [w for w in (spec or "").split(",") if w]
+    hit = lambda w, i: i.startswith(w[:-1]) if w.endswith("*") else i == w
+    if bad := [w for w in want if not any(hit(w, i) for i in ids)]:
+        sys.exit(f"--views: no view {', '.join(map(repr, bad))} in {Path(page).name}; its views: {', '.join(ids)}")
+    return [i for i in ids if not want or any(hit(w, i) for w in want)]
+
+
+def fragment(views):
+    """View ids for the page's link, each encoded: an id may hold & + % # (the page reads them with URLSearchParams)."""
+    return ",".join(urllib.parse.quote(v, safe="") for v in views)
+
+
 def still_keys(page, opts):
-    """A key per view over everything its still is drawn from: the view, its cards, every line between them, the icons
-    they use, the size of each card's inner view (the ⤢ pill), the engine code and the export options. A view whose
-    key is unchanged since its last export draws the same still."""
+    """A key per view over everything its still is drawn from: the view, its cards, every line between them or ending
+    on one of its boxes, the icons and authors they use, the model's rules (a line that breaks one is drawn rose), the
+    size of each card's inner view (the ⤢ pill), the engine code and the export options. A view whose key is unchanged
+    since its last export draws the same still."""
     t = Path(page).read_text(encoding="utf-8")
     m = DATA.search(t)
     data = json.loads(m.group(1))
     engine = hashlib.sha256((t[:m.start()] + t[m.end():]).encode()).hexdigest()
     views = data.get("views") or []
     V, N = {v["id"]: v for v in views}, {n["id"]: n for n in data.get("nodes", [])}
-    icons = data.get("icons") or {}
+    icons, authors = data.get("icons") or {}, data.get("authors") or {}
     keys = {}
     for v in views:
         ids = set(v.get("nodeIds") or [])
+        ends = ids | {c.get("id") for c in v.get("containers") or [] if isinstance(c, dict)}  # a line may end on a box (#28)
         nodes = [N.get(i) for i in sorted(ids)]
-        lines = [e for e in data.get("edges", []) if e.get("from") in ids and e.get("to") in ids]
+        lines = [e for e in data.get("edges", []) if e.get("from") in ends and e.get("to") in ends]
         kids = {i: len((V.get((N.get(i) or {}).get("opensView") or i) or {}).get("nodeIds") or []) for i in sorted(ids)}
-        used = ({n.get("icon") for n in nodes if n} | {o.get("icon") for o in (v.get("nodeOverrides") or {}).values()}) - {None}
-        blob = json.dumps([v, nodes, lines, kids, {k: icons[k] for k in sorted(used) if k in icons}, engine, opts], sort_keys=True)
+        cards = [n for n in nodes if n] + list((v.get("nodeOverrides") or {}).values())
+        used, who = ({n.get(k) for n in cards} - {None} for k in ("icon", "author"))
+        blob = json.dumps([v, nodes, lines, kids, {k: icons[k] for k in sorted(used) if k in icons},
+                           {k: authors[k] for k in sorted(who) if k in authors}, data.get("rules"), engine, opts], sort_keys=True)
         keys[v["id"]] = hashlib.sha256(blob.encode()).hexdigest()
     return keys
 
 
-def cmd_stills(a, show=print):
+def sha(f):
+    return hashlib.sha256(Path(f).read_bytes()).hexdigest()
+
+
+def stills(page, out, views, scale=2.0, theme="light", reader=False, again=False):
+    """Each view's still as out/<view>.svg and .png: (what was exported, {view: why it failed}, the views skipped). A view
+    whose key file (out/.stills/<view>.json) holds its key and both files' hashes is unchanged and skipped, unless
+    `again`. A view counts as exported only once both files are whole and the PNG is a PNG; its key file is written last.
+    A file another run, or a person, changed since is drawn again, never trusted."""
     b = chrome()
-    page = Path(a.page).resolve()
-    out = Path(a.out); out.mkdir(parents=True, exist_ok=True)
-    views = a.views.split(",") if a.views else views_of(page)
-    keys = still_keys(page, [a.scale, a.theme, a.reader])
-    record = out / ".stills.json"  # each view's key at its last export
-    seen = json.loads(record.read_text()) if record.is_file() and not a.all else {}
-    done, skipped = [], []
+    out.mkdir(parents=True, exist_ok=True)
+    keys = still_keys(page, [float(scale), theme, bool(reader)])
+    done, failed, skipped = [], {}, []
     for v in views:
-        if seen.get(v) == keys.get(v) and (out / f"{v}.png").is_file() and (out / f"{v}.svg").is_file():
-            skipped.append(v); continue
+        rec, files = out / ".stills" / f"{v}.json", {"svg": out / f"{v}.svg", "png": out / f"{v}.png"}
         try:
-            dom = headless(b, "--virtual-time-budget=20000", "--dump-dom", f"{page.as_uri()}#still={v}&scale={a.scale}&theme={a.theme}" + ("&reader=1" if a.reader else ""))
-        except subprocess.TimeoutExpired:
-            print(f"{v}: no still (Chrome did not finish in 90 s)"); continue
-        meta = re.search(r'data-still="([^"]+)"', dom)
-        svg = re.search(r'<div id="still">(<svg.*?</svg>)</div>', dom, re.S)
-        if not (meta and svg):
-            print(f"{v}: no still (view missing or page error)"); continue
-        info = json.loads(html.unescape(meta.group(1)))
-        (out / f"{v}.svg").write_text(svg.group(1), encoding="utf-8")
-        with tempfile.NamedTemporaryFile("w", suffix=".html", delete=False) as f:
-            f.write("<!doctype html><meta charset=utf-8><body style='margin:0'>" + svg.group(1))
-        png = out / f"{v}.png"
+            was = json.loads(rec.read_text())
+            if not again and was["key"] == keys.get(v) and all(sha(f) == was[k] for k, f in files.items()):
+                skipped.append(v)
+                continue
+        except (OSError, ValueError, KeyError, TypeError):
+            pass  # no key file, or one cut short: drawn again
         try:
-            headless(b, f"--window-size={info['w']},{info['h']}", f"--screenshot={png}", Path(f.name).as_uri())
-        except subprocess.TimeoutExpired:
-            print(f"{v}: no PNG (Chrome did not finish in 90 s)"); continue
-        finally:
-            Path(f.name).unlink()
-        done.append({"view": v, "w": info["w"], "h": info["h"], "png": str(png)})
-        seen[v] = keys.get(v)
-        record.write_text(json.dumps(seen, indent=1, sort_keys=True))
-    show(json.dumps(done, indent=1))
-    show(f"{len(done)} still(s) exported, {len(skipped)} unchanged and skipped (--all exports every view)", file=sys.stderr)
-    return done
+            dom = headless(b, "--virtual-time-budget=20000", "--dump-dom", f"{page.as_uri()}#still={urllib.parse.quote(v, safe='')}&scale={scale}&theme={theme}" + ("&reader=1" if reader else ""))
+            meta = re.search(r'data-still="([^"]+)"', dom)
+            svg = re.search(r'<div id="still">(<svg.*?</svg>)</div>', dom, re.S)
+            if not (meta and svg):
+                raise ChromeError("the page drew no still (a script error in the page?)")
+            info = json.loads(html.unescape(meta.group(1)))
+            with replacing(files["svg"]) as s, replacing(files["png"]) as p, tempfile.TemporaryDirectory() as tmp:
+                s.write_text(svg.group(1), encoding="utf-8")
+                pic = Path(tmp) / "still.html"
+                pic.write_text("<!doctype html><meta charset=utf-8><body style='margin:0'>" + svg.group(1), encoding="utf-8")
+                headless(b, f"--window-size={info['w']},{info['h']}", f"--screenshot={p.resolve()}", pic.as_uri())
+                if not p.is_file() or p.read_bytes()[:8] != b"\x89PNG\r\n\x1a\n":
+                    raise ChromeError("Chrome wrote no PNG")
+        except ChromeError as e:
+            failed[v] = str(e)
+            continue
+        rec.parent.mkdir(exist_ok=True)
+        write(rec, json.dumps({"key": keys.get(v), **{k: sha(f) for k, f in files.items()}}))
+        done.append({"view": v, "w": info["w"], "h": info["h"], "png": str(files["png"])})
+    (out / ".stills.json").unlink(missing_ok=True)  # the one shared record before 0.14.0
+    return done, failed, skipped
+
+
+def cmd_stills(a):
+    page, out = Path(a.page).resolve(), Path(a.out)
+    done, failed, skipped = stills(page, out, pick(page, a.views), a.scale, a.theme, a.reader, a.all)
+    if gone := sorted({r.stem for r in (out / ".stills").glob("*.json")} - set(views_of(page))):
+        print(f"stills: {out} still holds pictures of views the page no longer has: {', '.join(gone)}", file=sys.stderr)
+    if failed:
+        sys.exit(f"stills: {len(failed)} view(s) failed ({len(done)} exported, {len(skipped)} unchanged): "
+                 + "; ".join(f"{v}: {why}" for v, why in failed.items()))
+    print(json.dumps(done, indent=1))
+    print(f"{len(done)} still(s) exported, {len(skipped)} unchanged and skipped (--all exports every view)", file=sys.stderr)
 
 
 def cmd_pdf(a):
     """The map as one PDF (#93), printed by headless Chrome itself (--print-to-pdf, its Page.printToPDF): the page lays
     the document out (#pdf=1, a reader copy) and Chrome prints it. A title page; each view (--views, else every one) as a
-    vector picture with its describe() text; the legend; the model's rules, each holding or broken."""
-    out = Path(a.out).resolve()
-    out.unlink(missing_ok=True)
-    url = Path(a.page).resolve().as_uri() + f"#pdf=1&reader=1&theme={a.theme}" + (f"&views={a.views}" if a.views else "")
-    try:  # no header or footer: Chrome's would print the page's file path (the older flag too, for an older Chrome)
-        headless(chrome(), "--virtual-time-budget=20000", "--no-pdf-header-footer", "--print-to-pdf-no-header", f"--print-to-pdf={out}", url, timeout=600)
-    except subprocess.TimeoutExpired:
-        sys.exit("pdf: Chrome did not finish in 600 s")
-    pages = len(re.findall(rb"/Type\s*/Page\b", out.read_bytes())) if out.is_file() else 0
-    if pages < 3:  # the title page, a view, the legend; a page from before 0.13.0 has no #pdf and prints as one screen
-        sys.exit(f"pdf: no view printed ({pages} page(s)): no view with cards matches --views, or the page is older than"
-                 " umlimator 0.13.0 (render it again)")
+    vector picture with its describe() text; the legend; the model's rules, each holding or broken. Chrome prints to a
+    file of its own, which replaces --out only once it holds the views: a failed print leaves the previous PDF."""
+    page, out = Path(a.page).resolve(), Path(a.out)
+    views = pick(page, a.views)
+    url = page.as_uri() + f"#pdf=1&reader=1&theme={a.theme}" + (f"&views={fragment(views)}" if a.views else "")
+    with replacing(out) as tmp:  # no header or footer: Chrome's would print the page's file path (the older flag too, for an older Chrome)
+        headless(chrome(), "--virtual-time-budget=20000", "--no-pdf-header-footer", "--print-to-pdf-no-header", f"--print-to-pdf={tmp.resolve()}", url, timeout=600)
+        pages = len(re.findall(rb"/Type\s*/Page\b", tmp.read_bytes())) if tmp.is_file() else 0
+        if pages < 3:  # the title page, a view, the legend; a page from before 0.13.0 has no #pdf and prints as one screen
+            sys.exit(f"pdf: no view printed ({pages} page(s)): the views have no cards, or the page is older than umlimator 0.13.0"
+                     f" (render it again){f'; {a.out} is as it was' if out.exists() else ''}")
     print(json.dumps({"out": a.out, "pages": pages, "bytes": out.stat().st_size}, indent=1))
 
 
@@ -540,7 +680,8 @@ def apng(frames, delays, out):
                 parts.append(chunk(b"fdAT", seq.to_bytes(4, "big") + d))
                 seq += 1
     parts.append(chunk(b"IEND", b""))
-    Path(out).write_bytes(b"".join(parts))
+    with replacing(out) as tmp:
+        tmp.write_bytes(b"".join(parts))
 
 
 def cmd_record(a):
@@ -582,7 +723,13 @@ def cmd_import(a):
     sys.path.insert(0, str(HERE))
     import umlimator_import as imp
     text = Path(a.file).read_text(encoding="utf-8")
-    fmt = a.format or imp.detect(a.file, text) or sys.exit(f"import: cannot tell the format of {a.file}: give --format ({', '.join(imp.FORMATS)})")
+    fmt = a.format or imp.detect(a.file, text)
+    if not fmt and text.lstrip()[:1] in ("{", "["):  # JSON that does not parse (cut short?) is not a format it can't tell
+        try:
+            json.loads(text)
+        except ValueError as e:
+            sys.exit(f"import: {a.file} is not valid JSON ({e}): is it cut short? (give --format if it is not JSON)")
+    fmt = fmt or sys.exit(f"import: cannot tell the format of {a.file}: give --format ({', '.join(imp.FORMATS)})")
     try:
         m, unread = imp.read(fmt, text, Path(a.file).stem)
     except json.JSONDecodeError as e:
@@ -591,9 +738,10 @@ def cmd_import(a):
         print(f"{a.file}:{where}: {msg}" if where is not None else f"{a.file}: {msg}", file=sys.stderr)
     if not m["nodes"]:
         sys.exit(f"import: {a.file} has nothing to import as {fmt}")
-    Path(a.out).write_text(json.dumps(m, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    write(a.out, json.dumps(m, indent=2, ensure_ascii=False) + "\n")
     print(json.dumps({"out": a.out, "format": fmt, "cards": len(m["nodes"]), "lines": len(m["edges"]),
-                      "views": [v["id"] for v in m["views"]], "unread": len(unread)}, indent=1))
+                      "views": [v["id"] for v in m["views"]], "unread": len(unread),
+                      "notImported": [{"where": w, "message": msg} for w, msg in unread]}, indent=1))
 def cmd_mcp(a):
     """A Model Context Protocol server over stdio for one model (#91): tools that read it, and tools that drive its page,
     served on 127.0.0.1. It lives in umlimator_mcp.py, next to this file."""
@@ -609,7 +757,7 @@ def main():
     r = sub.add_parser("render"); r.add_argument("model"); r.add_argument("--out", required=True)
     r.add_argument("--no-check", action="store_true"); r.set_defaults(f=cmd_render)
     s = sub.add_parser("stills"); s.add_argument("page"); s.add_argument("--out", required=True)
-    s.add_argument("--views"); s.add_argument("--scale", type=float, default=2); s.add_argument("--theme", default="light", choices=["light", "dark"])
+    s.add_argument("--views", help="a,b,pic-* (a trailing * is a prefix)"); s.add_argument("--scale", type=float, default=2.0); s.add_argument("--theme", default="light", choices=["light", "dark"])
     s.add_argument("--reader", action="store_true", help="reader copy: no CHECK tab, no drill-down pill (as stillsv.js)")
     s.add_argument("--all", action="store_true", help="export every view, even one whose inputs are unchanged since its last export")
     s.set_defaults(f=cmd_stills)
@@ -646,7 +794,14 @@ def main():
     mc = sub.add_parser("mcp", help="a Model Context Protocol server over stdio: an AI assistant reads the model and drives its page")
     mc.add_argument("model"); mc.add_argument("--port", type=int, default=7391, help="the page's port on 127.0.0.1 (default 7391; another if it is taken)")
     mc.set_defaults(f=cmd_mcp)
-    a = p.parse_args(); a.f(a)
+    a = p.parse_args()
+    if getattr(a, "page", None) and not Path(a.page).is_file():
+        sys.exit(f"{a.cmd}: no page at {a.page}")
+    signal.signal(signal.SIGTERM, lambda *_: sys.exit(143))  # as Ctrl-C: temp files go, and the children run() started
+    try:
+        a.f(a)
+    except ChromeError as e:  # Chrome missing, out of time or failing, in every command that runs it
+        sys.exit(f"{a.cmd}: {e}")
 
 
 if __name__ == "__main__":
