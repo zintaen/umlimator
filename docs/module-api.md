@@ -930,8 +930,8 @@ only), which the command calls.
     it, and a link to a subgraph's id ends on its box. A dotted link is an async line, a thick one a heavier line.
     The front matter's `title` is the map's. `C4Context`, `C4Container` and `C4Component` read as C4-PlantUML does.
   - **docker compose:** the JSON from `docker compose config --format json`. Each service is a card (its image, or the
-    folder it builds), `depends_on` and `links` are lines, and the networks are boxes when there are several. A service
-    on several networks stays between their boxes.
+    folder it builds), `depends_on` and `links` are lines (with no label, as every line is one; the panel says which),
+    and the networks are boxes when there are several. A service on several networks stays between their boxes.
   - **Kubernetes:** the JSON from `kubectl get … -o json`, a List or one object. Deployments, StatefulSets, DaemonSets,
     Services and Ingresses are cards.
     - A Service leads to the workloads its selector picks, and its ports are on its card.
