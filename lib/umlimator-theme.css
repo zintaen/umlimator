@@ -1,5 +1,6 @@
 /* umlimator's default palette and fonts: light, and dark when the system asks or <html data-theme="dark">; a
-   <umlimator-map theme="light|dark"> takes that palette whatever the page's.
+   <umlimator-map theme="light|dark"> takes that palette whatever the page's, and one without a theme is dark in a docs
+   site's dark mode too (VitePress's <html class="dark">, Docusaurus's <html data-theme="dark">).
    The canvas reads only these --um-* variables (it bakes in no colour and loads no font), so a host may use this file,
    set the variables itself (e.g. --um-bg: var(--surface)), or switch light and dark by changing them on any ancestor
    of the map. Fonts are the host's: --um-sans and --um-mono name families the page already has; nothing is fetched.
@@ -51,7 +52,8 @@
   color-scheme: dark;
   }
 }
-:root[data-theme="dark"], umlimator-map[theme="dark"] {
+/* the docs sites' dark mode: :where() weighs nothing, so a host's own --um-* on the element still win */
+:root[data-theme="dark"], umlimator-map[theme="dark"], :where(html.dark, html[data-theme="dark"]) :where(umlimator-map:not([theme])) {
   --um-stage-bg: var(--um-bg-2); --um-edited: #d29922;
   --um-bg: #0d1117; --um-bg-2: #010409; --um-panel: #0d1117; --um-panel-2: #151b23; --um-border: #262c36; --um-border-2: #3d444d;
   --um-text: #f0f6fc; --um-muted: #9198a1; --um-dim: #656c76; --um-grid: rgba(240,246,252,.05); --um-mask: #0d1117; --um-arrow: #656c76;

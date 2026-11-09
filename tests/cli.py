@@ -131,6 +131,19 @@ with tempfile.TemporaryDirectory() as tmp:
                                "Apps never call a database directly: holds", "Only the ride services touch the trips store: holds"]), said[:600])
     r = cli("pdf", str(t / "bike.html"), "--out", str(t / "two.pdf"), "--views", "system,f*", "--theme", "dark") or {}
     ok("pdf --views · only the views named (a trailing * a prefix)", r.get("pages") == 4 and "Fleet service" in "".join(pdf_text((t / "two.pdf").read_bytes())), r)
+    # a rule broken in one view: judged in the views a PDF prints, as it says
+    (t / "rules2.json").write_text(json.dumps({"nodes": [{"id": "app", "label": "App", "kind": "frontend"}, {"id": "api", "label": "API", "kind": "backend"},
+                                                         {"id": "db", "label": "Store", "kind": "database"}],
+                                               "edges": [{"from": "app", "to": "api", "label": "asks"}, {"from": "api", "to": "db", "label": "writes"}],
+                                               "views": [{"id": "clean", "nodeIds": ["app", "api", "db"]},
+                                                         {"id": "direct", "nodeIds": ["app", "db"], "edges": [{"from": "app", "to": "db", "label": "reads"}]}],
+                                               "rules": [{"id": "apps-no-db", "title": "Apps never call a database directly", "from": {"kind": "frontend"}, "to": {"kind": "database"}}]}))
+    cli("render", str(t / "rules2.json"), "--out", str(t / "rules2.html"), "--no-check")
+    read = lambda f, *a: "".join(pdf_text((t / f).read_bytes())) if cli("pdf", str(t / "rules2.html"), "--out", str(t / f), *a) else ""
+    every, clean = read("every.pdf"), read("clean.pdf", "--views", "clean")
+    ok("pdf · each rule is judged in the views it prints, as it says: broken with the view that breaks it, holding without it",
+       "directly: broken" in every and "view direct: edge App" in every and "directly: holds" in clean and "breaks rule" not in clean
+       and "Judged in the views printed here." in clean, [every[-240:], clean[-240:]])
 
 # four renders of one model at once (#105): each writes its own copy of the model, and every page records the model itself
 with tempfile.TemporaryDirectory() as tmp:

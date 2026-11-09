@@ -922,6 +922,9 @@ card inside the new box, and as its own box (u21's `shop`: Order service, then W
     - `theme` is CSS too: `light` or `dark` gives that element `lib/umlimator-theme.css`'s palette, whatever the page's.
       The stylesheet's light and dark blocks also select `umlimator-map[theme="light"]` and `[theme="dark"]` now.
       Without the stylesheet, a host's own `--um-*` variables work as before.
+    - Without `theme`, the map follows the page, and a docs site's dark mode too: the dark block also selects an
+      element with no `theme` under VitePress's `html.dark` or Docusaurus's `html[data-theme="dark"]`. That selector
+      weighs nothing (`:where()`), so a host's own `--um-*` set on the element still win, and a `theme` wins over it.
     - Taking the element out of the page destroys the map, and putting it back draws it again.
   - **Children**: the element's other children (a still, a sentence) show until the map is drawn, and again when it
     can't be. A slotted `<img>` fits the element's box. Where scripts don't run, the element is an unknown tag, and its
@@ -953,11 +956,13 @@ card inside the new box, and as its own box (u21's `shop`: Order service, then W
 - **Example:** `examples/element.html`: a map from `src` with its still, controls that set its attributes, its events as
   they come, and a model in the page.
 - **Tests:** `tests/element.html` (in the browser: both kinds of model, the children before and after, each attribute,
-  events, drawing again, errors, removal, and a block's HTML drawn) and `tests/docs.test.mjs` (in Node: each plugin's
-  element for a block, at any depth; failing blocks; the package's exports; the element module in Node).
+  VitePress's and Docusaurus's dark modes, events, drawing again, errors, removal, and a block's HTML drawn) and
+  `tests/docs.test.mjs` (in Node: each plugin's element for a block, at any depth; failing blocks; the package's
+  exports; the element module in Node).
 - **Left out:** following a change to the `<script>` child; writing the view shown back into `view`; the map's other
   events (`click`, `change`, `expand` and `story` are on `el.map.on()`); a still in a block (write the element for one).
-  Icons come from the model's own `icons` table, as with `render()`.
+  Icons come from the model's own `icons` table, as with `render()`. VitePress marks only its dark mode, so a VitePress
+  page set to light on a system set to dark shows the system's dark.
 
 ### PDF (#93)
 
@@ -972,8 +977,9 @@ card inside the new box, and as its own box (u21's `shop`: Order service, then W
       itself. The text is in two columns.
   - **The legend** of what those pictures draw (card kinds, stacked cards, steps, authors and line kinds), worded as the
     page's legend words it.
-  - **The rules**: each of the model's rules, "holds" or "broken", with each break's message. Rules are judged in every
-    view, not only the views printed.
+  - **The rules**: each of the model's rules, "holds" or "broken", with each break's message. A rule is judged in the
+    views printed only (with `--views`, a rule broken in a view left out holds here), and the document says so above the
+    list.
   - **The page**: a reader copy (no check marks, drill-down pill or tour dot), A4 landscape with 12 mm margins. It has
     none of Chrome's header and footer, which would print the page's file path. `--theme dark` darkens whole pages.
 - **In the page**: `#pdf=1[&views=…]` lays the page out as that document, once the fonts are in, and Chrome prints it.
@@ -984,7 +990,8 @@ card inside the new box, and as its own box (u21's `shop`: Order service, then W
   - It checks the page count: a title page, a page per view, and one for the legend and rules.
   - It checks the text: the title, the view titles, a card, a `describe()` line and each rule's state. Chrome writes
     glyph ids, so the text is read through each font's ToUnicode map.
-  - It checks `--views` and `--theme`.
+  - It checks `--views` and `--theme`, and a rule broken in one view: broken in the whole PDF, holding in one without
+    that view.
   - The site's build writes each example's PDF next to its page, and the gallery links to it.
 - **Left out:** bookmarks for the views (Chrome's `--generate-pdf-document-outline` would add them), a paper size or
   orientation option, and the details panel's text for each card.

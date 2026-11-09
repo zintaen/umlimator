@@ -64,6 +64,16 @@ try {
   a.setAttribute('theme', 'light'); document.documentElement.dataset.theme = 'dark';
   check('theme: that map\'s palette from theme.css, whatever the page\'s, without drawing it again', light === 'rgb(251, 252, 253)' && dark === 'rgb(1, 4, 9)' && bg() === light && unchanged, [light, dark, bg()]);
   a.removeAttribute('theme'); delete document.documentElement.dataset.theme;
+  // a docs site's dark mode, with no theme attribute: VitePress's html.dark (the page light otherwise, whatever the system's),
+  // then Docusaurus's html[data-theme="dark"]; a theme attribute still wins
+  const html = document.documentElement, seen = {}, look = (name, set) => { set(); seen[name] = bg(); };
+  look('vitepress', () => { html.dataset.theme = 'light'; html.classList.add('dark'); });
+  look('vitepress, theme="light"', () => a.setAttribute('theme', 'light'));
+  look('docusaurus', () => { a.removeAttribute('theme'); html.classList.remove('dark'); html.dataset.theme = 'dark'; });
+  look('docusaurus, theme="light"', () => a.setAttribute('theme', 'light'));
+  a.removeAttribute('theme'); delete html.dataset.theme;
+  check('with no theme, it follows a docs site\'s dark mode (VitePress\'s html.dark, Docusaurus\'s data-theme); a theme still wins',
+    seen.vitepress === dark && seen.docusaurus === dark && seen['vitepress, theme="light"'] === light && seen['docusaurus, theme="light"'] === light, seen);
 
   let bubbled = null; document.addEventListener('umlimator:select', e => { bubbled = e.target; }, { once: true });
   fire('.node[data-id="api"] .n-label');

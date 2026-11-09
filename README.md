@@ -119,6 +119,8 @@ the map is drawn, and stay where scripts don't run ([`examples/element.html`](ex
 - **Events**: `umlimator:select`, `umlimator:open` (cancel it to stay) and `umlimator:viewchange`, the map's event as
   `detail`; `load` once it is drawn, `error` when it can't be. `el.map` is the `render()` handle.
 - **Colours**: theme.css, as above, or your own `--um-*` variables. The element fetches nothing but its model.
+- **Dark mode**: without `theme`, the map follows the page, a docs site's dark mode included: VitePress's
+  `<html class="dark">` and Docusaurus's `<html data-theme="dark">`.
 
 In a docs site, a fenced block becomes the element. It names the model's `src`, with `view` or any other attribute, or
 holds the model in JSON:
@@ -193,7 +195,7 @@ python3 umlimator.py pdf page.html --out map.pdf                       # every v
 `check` also reports each rule the model breaks, and then exits 1.
 
 `pdf` prints the map through Chrome's own print, A4 across: a title page, then each view on a page of its own, as a
-vector picture with its `describe()` text, then the legend and each rule, holding or broken
+vector picture with its `describe()` text, then the legend and each rule, holding or broken in the views printed
 ([bike-share's](https://zintaen.github.io/umlimator/examples/bike-share.pdf), as CI builds it). It takes `--views` and
 `--theme`, as `stills` does.
 
