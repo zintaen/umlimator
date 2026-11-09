@@ -1,8 +1,12 @@
 // node --test tests/   (Node 18+; no browser: layout() needs no DOM)
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync, readdirSync, mkdtempSync, writeFileSync, rmSync } from 'node:fs';
 import { createRequire } from 'node:module';
+import { spawnSync } from 'node:child_process';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { layout, history } from '../lib/umlimator.js';
 
 const read = p => JSON.parse(readFileSync(new URL(p, import.meta.url)));
@@ -309,4 +313,24 @@ test("auto-layout orders a column so the lines between two columns don't cross w
       const direct = Math.abs(e.pts[0][0] - e.pts.at(-1)[0]) + Math.abs(e.pts[0][1] - e.pts.at(-1)[1]);
       assert.ok(len <= 1.1 * direct, `${boxed ? 'boxed: ' : ''}${e.from} -> ${e.to} is ${Math.round(len)} px for a direct route of ${Math.round(direct)}`); }
   }
+});
+
+test('the CLI renders what render() draws: a card that opens a view the host loads later (#47), a line that ends on a box (#28); a dangling id still fails', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'umlimator-cli-')), cli = fileURLToPath(new URL('../umlimator.py', import.meta.url));
+  const render = m => { const p = join(dir, 'map.json'); writeFileSync(p, JSON.stringify(m)); // every view laid out: no Chrome needed
+    return spawnSync('python3', [cli, 'render', p, '--out', join(dir, 'map.html'), '--no-check'], { encoding: 'utf8' }); };
+  const m = { nodes: [{ id: 'web', label: 'Web', opensView: 'web-inside', opensCount: 4 }, { id: 'api', label: 'API' }, { id: 'db', label: 'Store', kind: 'database' }],
+    edges: [{ id: 'e1', from: 'web', to: 'data', label: 'reads' }],
+    views: [{ id: 'v', nodeIds: ['web', 'api', 'db'], containers: [{ id: 'data', label: 'Data', nodeIds: ['api', 'db'] }], nodeOverrides: { api: { opensView: 'api-inside' } },
+      edges: ['e1', { from: 'data', to: 'web', label: 'pushes' }], layout: { web: [0, 0], api: [1, 0], db: [1, 1] } }] };
+  try {
+    const ok = render(m);
+    assert.equal(ok.status, 0, ok.stderr);
+    const bad = structuredClone(m); bad.views[0].edges.push({ from: 'data', to: 'nowhere' }); bad.views[0].nodeIds.push('ghost');
+    const no = render(bad);
+    assert.notEqual(no.status, 0);
+    assert.match(no.stderr, /view 'v': unknown node 'ghost'/);
+    assert.match(no.stderr, /edge data->nowhere has an unknown end/);
+    assert.doesNotMatch(no.stderr, /opens unknown view|data->web/);
+  } finally { rmSync(dir, { recursive: true, force: true }); }
 });
