@@ -779,7 +779,16 @@ A stacked card can open into a box on the map it is on, instead of switching to 
 - **Tests:** `tests/stories.test.mjs` (Node: `validate()` on stories), and `tests/stories.html` (play, keys, the bar, the
   page's menu, links and recording). `tests/embed.py` runs the page and checks a `record` run's frames.
 
-## 0.12.1: fixes
+## 0.12.1: lines that come in straight, chips that fit, overlay labels with room, tours in recordings, and numbered views that unfold
+
+Fixes found while building 0.12.0 (#80 to #85, #97, #98), and unfolding finished for numbered views (#82).
+
+What moves for a host that upgrades:
+- **Some lines move.** A line between the tops of two cards on the top row now comes in straight (#80). Six bench views
+  move: across the bench there are 16 fewer layout-check issues, and the lines are 0.5% longer in all. One bench line,
+  b10/overview's Reports → Inventory, now goes round; #86 takes it up in 0.13.0.
+- **A card with chips can be wider**, up to 386 px, so a view with chips may shift (#84).
+- **A numbered inner view unfolds in place** (E, or Alt + click) instead of opening (#82).
 
 ### A line from a card's top into another's top, on the top row, runs straight (#80)
 
@@ -979,3 +988,16 @@ card inside the new box, and as its own box (u21's `shop`: Order service, then W
   - The site's build writes each example's PDF next to its page, and the gallery links to it.
 - **Left out:** bookmarks for the views (Chrome's `--generate-pdf-document-outline` would add them), a paper size or
   orientation option, and the details panel's text for each card.
+
+### Parallel renders of one model (#105)
+
+- **Two renders of one model at the same time no longer fail.** `umlimator.py render` writes a temporary copy of the
+  model next to it, so its relative paths resolve. Every render used the same name, `.<model>.icons.json`, so two at
+  once could delete each other's copy: four at once failed three times out of four. With `umlimator.py mcp` (#91)
+  serving a model, a `render` of that model could make the page fail once. Now each render's copy has a name of its
+  own, as does the copy behind a `diff` or `drift` page.
+- **A page records the model itself as its source**, `examples/bookshop.json` rather than the copy's
+  `.bookshop.icons.json`, in the form the page always used: the path in the checkout, `~/…` under home, else the
+  file's name. A model that names its own `source` keeps it.
+- **Test:** `tests/cli.py` runs four renders of bike-share at once. All finish, no copy is left behind, and the four
+  pages are the same apart from the time.
