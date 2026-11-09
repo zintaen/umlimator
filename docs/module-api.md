@@ -491,3 +491,42 @@ another three. Auto-layout now lays those out as it does lines between neighbour
   - It also has an example picker, light and dark, and SVG and PNG export.
 - **Inside:** `auditSvg` (the page's check) now builds on the same two geometry helpers `check()` uses; its report is
   unchanged, in the same order.
+
+### Rules on the map (#70), and check() targets (#61)
+
+- **`rules` in the model** say what must hold, and **`rules(model)`** lists each break: `{ rule, view, message, targets }`,
+  with the message worded as the page's check words it, and Refs for `select()`. It is pure and runs in Node.
+  ```json
+  "rules": [
+    { "id": "apps-no-db", "title": "Apps never call a database directly", "from": { "kind": "frontend" }, "to": { "kind": "database" } },
+    { "id": "rides-own-trips", "title": "Only the ride services touch the trips store",
+      "from": { "not": { "container": "rides" } }, "to": { "id": "tripsdb" } },
+    { "id": "teams-acyclic", "title": "No cycles between teams", "noCycles": true }
+  ]
+  ```
+  - **`from` and `to`** forbid lines from the cards one picks to the cards the other picks. A side left out picks every
+    card.
+  - **A selector** picks cards by `id`, `kind` or `container` (a box, at any depth), each a value or a list. Every key it
+    has must hold, and `not` turns a selector round. A kind is matched as the map draws it, so `"db"` is a database. A line
+    that ends on a box (#28) ends in that box, and a box has no kind.
+  - **`noCycles`** forbids boxes that reach each other through their lines. A line counts between the two boxes that hold
+    its ends right under the box (or the view) they share, so a box is weighed against its siblings, at every depth, and
+    a line from a box into one of its own inner boxes counts for nothing. A cycle's targets are its boxes, then its lines.
+  - **Where a rule holds:** a rule that names a box (a `container`, or a box's `id`, in `from`, `to` or a `not`) holds
+    only in the views that draw at least one of the boxes it names, since a box belongs to its view. So the rides rule
+    above holds in bike-share's system view, the one with a Rides box, and not in the Trip service's view, which shows
+    the trips store without one. Any other rule holds in every view. **`views`** narrows either further.
+- **On the map**, a line that breaks a rule is drawn rose, with a "!" just after its start whose tooltip names the rules.
+  Its own tooltip and its accessible name say so too. The marks are part of the picture: the canvas, `toSVG()`, `toPNG()`,
+  the CLI's pages and stills. An `update()` that only changes the rules redraws the marks and keeps the cards in place.
+- **`umlimator.py check`** reports each break after the layout issues, counts them as `rules`, and exits 1 (`N broken
+  rules`), so CI fails on a broken rule as `examples/layout.mjs` fails on a detour. `--ignore rules` leaves them out.
+  `render` lists them with the layout check's problems.
+- **`validate()`** errors on a rule without an id, with an id used twice, without `from`, `to` or `noCycles`, or with a
+  view that isn't one. It warns on a selector key it doesn't know (the selector picks more cards), an id or box that
+  names nothing, and a kind it doesn't know (that picks script cards, as such a card draws). The schema has `rule` and
+  `selector`, strict on selector keys.
+- **The playground** lists the view's broken rules before its layout issues. **bike-share** has two rules, which hold.
+- **`check()` targets (#61)** are now exactly the cards, lines and boxes each issue is about, carried out of the
+  checks themselves, no longer found by the names in the message: two cards with one label no longer both match, and
+  a box issue names its box.

@@ -25,6 +25,8 @@ drill-down, a data pipeline, an AI agent's skills, and host pages for embedding,
 - **Editing** (opt-in): gestures emit `change` events; the host applies them and calls `update()`.
 - **Export**: any view as a stand-alone SVG or PNG, in the browser or from the CLI.
 - **A layout check**: crossings, shared lines, detours, labels on lines, text that overflows its card.
+- **Rules**: what the model says must hold ("apps never call a database directly", "no cycles between teams' boxes"),
+  marked on the map where it breaks; `umlimator.py check` fails on a broken rule, so CI does.
 
 ## Install
 
@@ -67,7 +69,8 @@ function MapView({ model, onSelect }) {
 - Colours are `--um-*` CSS variables, fonts are the host's (`--um-sans`, `--um-mono`), text is measured in that font,
   and nothing is fetched.
 - `layout(model, viewId)` returns a view's geometry without a DOM, in Node too; `check(model, viewId)` runs the layout
-  check on it, and `validate(model)` finds dangling or repeated ids before anything is drawn.
+  check on it, and `validate(model)` finds dangling or repeated ids before anything is drawn. `rules(model)` lists every
+  rule the model breaks, view by view.
 - `editable: true` turns on editing gestures ([docs/editing.md](docs/editing.md); `examples/edit.html` is a working host).
 - `mountPage` is the whole standalone viewer that the CLI writes.
 
@@ -102,6 +105,7 @@ kinds such as `public`, `lane`, `script`, `hook` and `board` work too). Fields b
 | view | `subAndChips` | cards 80 px tall that show their sub-line, then their chips |
 | view | `kindsFromLabels` | a line whose edges name no `kind` takes one guessed from its label |
 | container | `badges` | tabs on the box's border |
+| model | `rules` | what must hold: no line `from` some cards `to` others (picked by id, kind or box), or `noCycles` between boxes |
 
 ## Command line
 
@@ -111,6 +115,8 @@ python3 umlimator.py stills page.html --out stills/                   # every vi
 python3 umlimator.py stills page.html --out stills/ --views overview,api --scale 1.5 --theme light
 python3 umlimator.py check page.html --views 'pic-*'                   # the layout check on chosen views
 ```
+
+`check` also reports each rule the model breaks, and then exits 1.
 
 The page has breadcrumbs, a details panel per card, ⌘K search, deep links (`#view=<id>&node=<id>`) and export.
 `stills` skips a view whose inputs have not changed since its last export (`--all` exports every view). Needs Python

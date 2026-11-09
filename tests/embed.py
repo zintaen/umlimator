@@ -6,6 +6,7 @@
 tests/embed.html: render() events, references, update(), destroy(), colours, badges, fonts.
 tests/edit.html: editing gestures and the change events they emit.
 tests/contrast.html: the default palette against WCAG AA, light and dark.
+tests/rules.html: rules on the map (tests/rules.json breaks each kind), and umlimator.py check failing on them.
 examples/edit.html, embed.html, live.html, playground.html: the host pages load and draw.
 Each test page reports in <pre id="result">{"ok": [...], "fail": [...]}</pre>.
 """
@@ -54,7 +55,7 @@ def dom(path, done):
 
 
 failed = False
-for page in ("tests/embed.html", "tests/edit.html", "tests/contrast.html"):
+for page in ("tests/embed.html", "tests/edit.html", "tests/contrast.html", "tests/rules.html"):
     t = dom(page, lambda t: 'id="result"' in t)
     if "<title>" not in t:  # Chrome gave back no page at all (a rare headless hang on CI runners): once more
         print(f"note {page}: Chrome returned nothing; running it again"); t = dom(page, lambda t: 'id="result"' in t)
@@ -91,5 +92,16 @@ with tempfile.TemporaryDirectory() as tmp:
 print(("ok  " if pairs_ok else "FAIL"), "umlimator.py render · keepPairs: the layout check does not flag a pair's return line as running right to left",
       "" if pairs_ok else rep.get("problems") or r.stderr[-400:])
 failed |= not pairs_ok
+# a model's rules (#70): the check names each rule the page's model breaks, counts them, and fails
+with tempfile.TemporaryDirectory() as tmp:
+    page = Path(tmp) / "rules.html"
+    subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "render", str(ROOT / "tests" / "rules.json"), "--out", str(page), "--no-check"], capture_output=True)
+    r = subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "check", str(page)], capture_output=True, text=True)
+    i = r.stdout.find("{"); rep = json.loads(r.stdout[i:]) if i >= 0 else {}
+    broken = [p for p in rep.get("problems", []) if ' breaks rule "' in p]
+    rules_ok = r.returncode == 1 and (rep.get("counts") or {}).get("rules") == 3 and len(broken) == 3 and "3 broken rules" in r.stderr
+print(("ok  " if rules_ok else "FAIL"), "umlimator.py check · the rules a model breaks: each named and counted, and the check fails",
+      "" if rules_ok else (rep.get("problems"), r.stderr[-400:]))
+failed |= not rules_ok
 server.shutdown()
 sys.exit(1 if failed else 0)
