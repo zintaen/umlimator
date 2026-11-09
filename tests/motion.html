@@ -94,6 +94,19 @@ try {
     (await state(t6))[0] === 'pending' && JSON.stringify(await state(t7)) === '["settled",true]');
   other.destroy();
 
+  // the readable state while things move: a move, a tour, a replay
+  await mount();
+  const pn = h.setView('system'), nav0 = h.navigating, sn = h.state.navigating;
+  await pn;
+  check('while a move is under way, navigating and state.navigating name where it goes; null once there', nav0 === 'system' && sn === 'system' && h.navigating === null && h.state.navigating === null && h.state.motion === 'full', [nav0, sn]);
+  await h.setView('context');
+  const tr = h.tour(['riders', 'bikeshare', 'payments']), riding = h.state.tour; h.tour(null); await tr;
+  check('a tour riding is in the state, and gone once it ends', riding === true && h.state.tour === false, riding);
+  await h.setView('trips');
+  const { otlpSpans } = await import('../lib/umlimator.js'), T = await (await fetch('../examples/traces/ride-end.json')).json(), M = await (await fetch('../examples/traces/match.json')).json();
+  const rp = h.replay(otlpSpans(T), { match: M }), rs0 = h.state.replay; rp.pause(); const rs1 = h.state.replay; rp.stop();
+  check('a replay under way is in the state: playing, then paused, then gone', JSON.stringify([rs0, rs1, h.state.replay]) === '[{"playing":true},{"playing":false},null]', [rs0, rs1, h.state.replay]);
+
   // the page: Back while a view is still zooming in is honoured, not dropped
   if (h) { h.destroy(); h = null; }
   const pe = [], hp = mountPage(document.getElementById('page'), BIKE, { params: new URLSearchParams() });

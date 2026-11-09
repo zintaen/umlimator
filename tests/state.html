@@ -166,6 +166,40 @@ try {
   check('replay() on a destroyed handle plays nothing and is done false', rd.hops === 0 && await rd.done === false, rd.hops);
   h = null;
 
+  // ---- the readable state (0.14.0): handle.state, the state and lens events, the getters
+  const KEYS = ['view', 'navigating', 'selection', 'expanded', 'lens', 'overlays', 'story', 'tour', 'replay', 'camera', 'flow', 'motion', 'gesture', 'destroyed'];
+  const states = [], lenses = []; mount(BIKE, { view: 'system', on: { state: e => states.push(e), lens: e => lenses.push(e.lens) } });
+  const s0 = h.state, deepFrozen = o => Object.isFrozen(o) && Object.values(o).every(v => !v || typeof v !== 'object' || deepFrozen(v));
+  check('handle.state has every MapState key, with the types the contract gives', JSON.stringify(Object.keys(s0)) === JSON.stringify(KEYS)
+    && s0.view === 'system' && s0.navigating === null && Array.isArray(s0.selection) && Array.isArray(s0.expanded) && s0.lens === null && Array.isArray(s0.overlays)
+    && s0.story === null && s0.tour === false && s0.replay === null && ['x', 'y', 'zoom'].every(k => Number.isFinite(s0.camera[k])) && typeof s0.flow === 'boolean'
+    && s0.motion === 'reduced' && s0.gesture === 'idle' && s0.destroyed === false, s0);
+  check('…is plain JSON: it comes back the same through JSON.stringify and JSON.parse', JSON.stringify(JSON.parse(JSON.stringify(s0))) === JSON.stringify(s0) && !JSON.stringify(s0).includes('undefined'));
+  let wrote = false; try { s0.view = 'x'; } catch (e) { wrote = e instanceof TypeError; }
+  check('…is frozen all the way down, and fresh on every read', deepFrozen(s0) && wrote && s0.view === 'system' && h.state !== s0);
+  h.select({ type: 'node', id: 'trips', view: 'system' }); h.lens('teams');
+  await until(() => states.length > 0); await wait(60);
+  const st1 = states[0] || { changed: [] };
+  check('one state event for changes made together, naming each key that changed', states.length === 1 && ['selection', 'lens', 'overlays'].every(k => st1.changed.includes(k)) && !st1.changed.includes('view')
+    && st1.state.selection[0].id === 'trips' && st1.state.lens === 'teams' && st1.state.overlays.includes('lens'), states.map(e => e.changed));
+  check('the lens event says the lens shown', lenses.join() === 'teams', lenses);
+  states.length = 0; await h.setView('trips'); await until(() => states.length > 0); await wait(40);
+  check('setView(): a state event with view (and selection, cleared), the snapshot on trips', states.length === 1 && states[0].changed.includes('view') && states[0].state.view === 'trips' && states[0].state.selection.length === 0, states.map(e => e.changed));
+  const m8 = structuredClone(BIKE); delete m8.lenses; h.update(m8);
+  check('…and an update() without the lens shown: lens event null', lenses.join() === 'teams,' && h.state.lens === null, lenses);
+  check('getters: navigating, destroyed, motion', h.navigating === null && h.destroyed === false && h.motion === 'reduced');
+  h.flow = false; const offFlow = !stage().classList.contains('flowing') && h.flow === false && h.state.flow === false;
+  h.flow = true;
+  check('flow can be set: the map stops or starts its flow, and says so in state', offFlow && stage().classList.contains('flowing') && h.state.flow === true);
+  const p6 = h.play('ride', { auto: false });
+  check('a story shown is in the state: its id, step, steps and playing', JSON.stringify(h.state.story) === JSON.stringify({ id: 'ride', step: 0, steps: p6.steps, playing: false }), h.state.story);
+  p6.stop(); states.length = 0;
+  const hd3 = h; hd3.destroy(); h = null;
+  check('destroy(): destroyed is true, and a last state event says so', hd3.destroyed === true && hd3.state.destroyed === true && states.length === 1 && states[0].changed.includes('destroyed') && states[0].state.destroyed === true, states.map(e => e.changed));
+  mount(EDIT, { editable: true, view: 'top' }); click('.node[data-id="b"] .n-label'); key(stage(), 'F2');
+  const naming = h.state.gesture; key(pick('.um-rename'), 'Escape');
+  check('a gesture in progress is in the state: naming while the name field is open, idle once it closes', naming === 'naming' && h.state.gesture === 'idle', naming);
+
   // ---- the standalone page: a setView() before its first draw (a frame later) is kept
   const pe = [], hp = mountPage(document.getElementById('page'), BIKE, { params: new URLSearchParams() });
   hp.on('viewchange', e => pe.push(e.view));

@@ -16,6 +16,7 @@ try {
   const map = win.umlimatorMap;
   check('a page umlimator.py renders keeps its map handle on window.umlimatorMap, showing the root view',
     !!map && typeof map.setView === 'function' && map.view === 'overview', map && map.view);
+  check('…and its state as one snapshot, plain JSON (0.14.0)', !!map.state && map.state.view === 'overview' && JSON.parse(JSON.stringify(map.state)).view === 'overview', map && map.state);
   await map.setView('api');
   check("the handle drives the page: setView('api') shows that view, and the page's title and link follow",
     map.view === 'api' && win.document.title.startsWith('An order, step by step') && win.location.hash.includes('view=api'), [map.view, win.document.title, win.location.hash]);

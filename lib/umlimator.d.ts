@@ -92,9 +92,33 @@ export interface Events {
   change: Change;                                           // only with `editable`
   /** E or Alt + click on a stacked card, or the ⤡ tab of the box it unfolded into (#71): before the card unfolds in place
    *  (expanded: true) or folds back (false). view: the card's inner view, which may not be in the model yet; the card
-   *  unfolds once it is (the host loads it and calls update() right here, or later expand()). preventDefault(): no change. */
+   *  unfolds once it is: the update() that brings it unfolds the card (here or later), or expand(). preventDefault(): no change. */
   expand: { target: Extract<Ref, { type: 'node' }>; view: string; expanded: boolean; preventDefault(): void };
   story: { story: string; step: number | null; steps: number };   // a story shows its step (0-based); step null: it ended
+  /** The map's state changed (0.14.0): at most once a frame, with the keys that changed since the last state event. The last
+   *  one, on destroy(), has destroyed: true. */
+  state: { state: MapState; changed: (keyof MapState)[] };
+  /** The lens on the map changed: lens(), or an update() whose model lacks the lens shown (lens: null). */
+  lens: { lens: string | null };
+}
+
+/** The map's state, for hosts and agents (0.14.0): handle.state, the state event, the standalone page's
+ *  window.umlimatorMap.state and <umlimator-map>'s el.map.state. Fresh on every read, frozen, and plain JSON. */
+export interface MapState {
+  view: string | null;            // shown now (null: the model has no views)
+  navigating: string | null;      // the view a move under way is going to
+  selection: Ref[];               // as `selected`
+  expanded: string[];             // as `expanded`
+  lens: string | null;
+  overlays: string[];             // the layers on the map, in stack order ('lens', 'highlight', 'replay', a host's)
+  story: { id: string; step: number; steps: number; playing: boolean } | null;
+  tour: boolean;                  // a tour's dot is riding
+  replay: { playing: boolean } | null;   // a replay under way: playing, or paused
+  camera: { x: number; y: number; zoom: number };   // the centre in map units, and the zoom (1: actual size)
+  flow: boolean;
+  motion: 'full' | 'reduced' | 'instant';
+  gesture: 'idle' | 'dragging' | 'connecting' | 'naming';   // an edit in progress (editable maps)
+  destroyed: boolean;
 }
 
 /** Where the user dropped or placed something: a point in the view and, on a column view, its column and row. */
@@ -148,6 +172,9 @@ export interface Handle {
    *  where it was; none of it with the option `ease: false` or under prefers-reduced-motion, and an export at any point
    *  draws where things end up. */
   update(model: MapModel): void;
+  /** Shows a view, zooming in or out as a drill-down does. A request during a move takes the move to its own view (the
+   *  latest wins). Resolves true once the view shows; false for a view the model lacks (with a console warning), when a
+   *  later request supersedes it, or on destroy(). */
   setView(id: string): Promise<void> | void;
   select(ref: Ref | null): void;
   fit(): void;
@@ -175,6 +202,17 @@ export interface Handle {
   readonly view: string | null;
   readonly selection: Ref | null;   // the latest selected
   readonly selected: Ref[];          // every selected thing (Shift / Cmd / Ctrl + click adds cards), the latest last
+  /** The map's state as one snapshot (0.14.0): fresh, frozen and JSON-serializable on every read. */
+  readonly state: MapState;
+  /** The view a move is going to, while one is under way (setView(), a drill-down, up); else null. */
+  readonly navigating: string | null;
+  /** True once destroy() has run: calls then do nothing, and every promise has settled. */
+  readonly destroyed: boolean;
+  /** The animated flow along lines (the ≋ button and F), to read or set. */
+  flow: boolean;
+  /** How this map moves: 'instant' (drawn without animation, as the page's #check, #still and #shot are), 'reduced' (the
+   *  reader's setting), else 'full'. */
+  readonly motion: 'full' | 'reduced' | 'instant';
   /** Sets (or, with null, removes) a named layer of marks, drawn over the picture without touching the model. Layers stack
    *  in the order first set: each property comes from the latest layer that sets it, and a card or line is as lit as its
    *  lowest level. They survive update() and setView(); ids the view doesn't show are ignored. toSVG() and toPNG() draw them. */
