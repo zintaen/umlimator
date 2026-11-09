@@ -1,0 +1,39 @@
+<!doctype html>
+<!-- Rules on the map (#70), in render(): tests/embed.py serves the repository over HTTP, opens this in headless Chrome
+     and reads the result from <pre id="result">. tests/rules.json breaks each kind of rule. -->
+<meta charset="utf-8">
+<link rel="icon" href="data:,">
+<title>umlimator rules test</title>
+<body style="margin:0">
+<div id="a" style="width:1000px;height:600px"></div>
+<script type="module">
+import { render } from '../lib/umlimator.js';
+const MODEL = await (await fetch('rules.json')).json();
+const out = { ok: [], fail: [] };
+const check = (name, cond, info) => { document.title = name; if (cond) out.ok.push(name); else out.fail.push(name + (info === undefined ? '' : ': ' + JSON.stringify(info))); };
+try {
+  const el = document.getElementById('a'), h = render(el, MODEL), sr = el.querySelector('.umlimator').shadowRoot;
+  const line = (from, to) => sr.querySelector(`.edge-g[data-from="${from}"][data-to="${to}"]`);
+  const marks = () => sr.querySelectorAll('.edge-g .rule-mark').length, at = id => sr.querySelector(`.node[data-id="${id}"] .n-body`).getAttribute('x');
+  const both = line('app', 'store');
+  check('a line that breaks a rule is drawn rose', both && both.querySelector('.edge').getAttribute('stroke') === 'var(--um-rose)');
+  check('…with one mark that names every rule it breaks', both && both.querySelectorAll('.rule-mark').length === 1
+    && both.querySelector('.rule-mark title').textContent === 'Breaks rule: Apps never call a database directly; Only the API writes the store; No cycles between teams',
+    both && both.querySelector('.rule-mark title').textContent);
+  check('the lines of a cycle of boxes are marked, and no other line', marks() === 3 && !line('app', 'api').querySelector('.rule-mark') && !line('web', 'api').querySelector('.rule-mark')
+    && line('worker', 'api').querySelector('.edge').getAttribute('stroke') === 'var(--um-rose)', marks());
+  const key = sr.querySelector(`.line-key[data-i="${both.dataset.i}"]`).getAttribute('aria-label');
+  check("the line's name says which rules it breaks, for a screen reader", key.endsWith(', breaks rule Apps never call a database directly; Only the API writes the store; No cycles between teams'), key);
+  check('the line\'s tooltip says so too', both.querySelector(':scope > title').textContent.includes('\nBreaks rule: Apps never call a database directly'));
+  check('toSVG() keeps the marks', (h.toSVG().match(/class="rule-mark"/g) || []).length === 3);
+  const x0 = at('app');
+  h.update({ ...MODEL, rules: [] });
+  check('update() with no rules: the marks go, and the cards stay where they were', marks() === 0 && at('app') === x0 && line('app', 'store').querySelector('.edge').getAttribute('stroke') !== 'var(--um-rose)', marks());
+  h.update(MODEL);
+  check('update() with the rules back: the marks come back', marks() === 3, marks());
+  h.update({ ...MODEL, edges: MODEL.edges.filter(e => e.id !== 'app-store' && e.id !== 'worker-api') });
+  check('update() that mends the model: no marks', marks() === 0, marks());
+  h.destroy();
+} catch (e) { out.fail.push('threw: ' + (e && e.stack || e)); }
+const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
+</script>

@@ -1,0 +1,108 @@
+<!doctype html>
+<!-- overlay(), highlight(), tour() and replay() on a map, and the standalone page's paths and reach (#62 to #65):
+     tests/embed.py opens this in headless Chrome (reduced motion, so a tour and a replay play at once) and reads
+     <pre id="result">. -->
+<meta charset="utf-8">
+<link rel="icon" href="data:,">
+<title>umlimator marks test</title>
+<body style="margin:0">
+<div id="a" style="width:1000px;height:700px"></div>
+<div id="page" style="width:1100px;height:700px"></div>
+<script type="module">
+import { render, mountPage, paths, reach } from '../lib/umlimator.js';
+const BIKE = await (await fetch('../examples/bike-share.json')).json();
+const out = { ok: [], fail: [] };
+const check = (name, cond, info) => { document.title = name; if (cond) out.ok.push(name); else out.fail.push(name + (info === undefined ? '' : ': ' + JSON.stringify(info))); };
+const until = async (f, ms = 5000) => { const t = Date.now(); while (!f() && Date.now() - t < ms) await new Promise(r => setTimeout(r, 20)); return f(); };
+try {
+  const el = document.getElementById('a'), h = render(el, BIKE, { view: 'trips' }), sr = el.querySelector('.umlimator').shadowRoot;
+  const line = (a, b) => sr.querySelector(`.edge-g[data-from="${a}"][data-to="${b}"]`), card = id => sr.querySelector(`.node[data-id="${id}"]`);
+  const glow = (a, b) => line(a, b).querySelector('.um-glow'), text = s => [...sr.querySelectorAll('.um-marks text')].map(t => t.textContent).includes(s);
+
+  // a layer: a line's glow, pulse, label, speed and dash; a card's ring, tab and level
+  h.overlay('traffic', { edges: { t6: { tone: 'rose', pulse: true, label: '120 ms', speed: 3 }, t11: { tone: 'amber', dash: true } },
+    nodes: { pricing: { tone: 'rose', badge: { text: 'lag 9 s', tone: 'amber' } }, fare: { level: .5 } } });
+  check('a line mark: a glow in its tone under the line, pulsing, a label pill, the flow 3 times as fast', glow('fare', 'pricing') && glow('fare', 'pricing').classList.contains('um-pulse')
+    && glow('fare', 'pricing').getAttribute('stroke') === 'var(--um-rose)' && text('120 ms') && line('fare', 'pricing').querySelector('.flowline').style.animationDuration === '0.8s',
+    [glow('fare', 'pricing') && glow('fare', 'pricing').outerHTML.slice(0, 120), line('fare', 'pricing').querySelector('.flowline').getAttribute('style')]);
+  check('…dash draws the line dashed, and a line with no mark has no glow', /^7,? 5$/.test(line('fare', 'payments').querySelector('.edge').style.strokeDasharray) && !glow('rider-app', 'trip-api'),
+    line('fare', 'payments').querySelector('.edge').getAttribute('style'));
+  const ring = sr.querySelector('.um-rings .um-ring');
+  check("a card mark: a ring in its tone, a tab after the card's own, said to screen readers; a level fades the card", ring && ring.getAttribute('stroke') === 'var(--um-rose)' && text('lag 9 s')
+    && card('pricing').getAttribute('aria-description') === 'lag 9 s' && card('fare').getAttribute('opacity') === '0.5' && !card('unlock').hasAttribute('opacity'));
+
+  // layers stack in the order first set: the latest that sets a property wins; dim fades what a layer doesn't name
+  h.overlay('focus', { edges: { t6: { tone: 'green' } }, dim: true });
+  check("a later layer's property wins, and its dim fades the rest (in place of the selection's dimming)", glow('fare', 'pricing').getAttribute('stroke') === 'var(--um-green)'
+    && card('unlock').getAttribute('opacity') === '0.2' && line('rider-app', 'trip-api').getAttribute('opacity') === '0.2' && sr.querySelector('.stage').classList.contains('um-lit'));
+  h.overlay('traffic', { edges: { t6: { tone: 'violet' } } });
+  check('setting a layer again keeps its place in the stack', glow('fare', 'pricing').getAttribute('stroke') === 'var(--um-green)');
+  h.overlay('focus', null);
+  check('null removes a layer', glow('fare', 'pricing').getAttribute('stroke') === 'var(--um-violet)' && !card('unlock').hasAttribute('opacity') && !sr.querySelector('.stage').classList.contains('um-lit'));
+
+  // marks survive update() and setView(); ids the view doesn't show are ignored; the files draw them, at rest
+  h.overlay('traffic', { edges: { t6: { tone: 'rose', label: '120 ms' } }, nodes: { fare: { badge: 'hot' }, ghost: { tone: 'rose' } } });
+  const m2 = structuredClone(BIKE); m2.nodes.find(n => n.id === 'fare').label = 'Fares';
+  h.update(m2);
+  check('marks survive an update() that redraws the view', !!glow('fare', 'pricing') && text('120 ms') && text('hot'));
+  h.setView('system'); await until(() => h.view === 'system');
+  check('…and setView(): a view without those cards and lines shows none of them', !sr.querySelector('.um-glow') && !text('hot'));
+  const file = h.toSVG({ view: 'trips' });
+  check("toSVG() of another view draws the host's marks there too", file.includes('120 ms') && file.includes('um-glow') && !file.includes('um-trip'));
+  h.setView('trips'); await until(() => h.view === 'trips');
+  check('…and back on the view they are drawn again', !!glow('fare', 'pricing') && text('120 ms'));
+  h.overlay('traffic', null);
+  check('removing the last layer leaves the picture as it was', !sr.querySelector('.um-glow, .um-rings, .um-marks, [opacity].node, [aria-description]'));
+
+  // highlight(): lit, the rest dimmed; distances fade; chips and badges light their cards
+  h.highlight(paths(BIKE, 'trips', 'rider-app', 'payments'));
+  check('highlight(paths(…)) lights the path and dims the rest', !card('fare').hasAttribute('opacity') && card('pricing').getAttribute('opacity') === '0.2'
+    && !line('fare', 'payments').hasAttribute('opacity') && line('fare', 'pricing').getAttribute('opacity') === '0.2');
+  h.select({ type: 'node', id: 'payments' });
+  check("while a highlight is on, a selection doesn't dim the map its own way", getComputedStyle(card('pricing')).opacity === '0.2' && getComputedStyle(card('trip-api')).opacity === '1',
+    [getComputedStyle(card('pricing')).opacity, getComputedStyle(card('trip-api')).opacity]);
+  h.select(null);
+  h.highlight(reach(BIKE, 'trips', 'pricing', { backward: true }));
+  const op = id => +(card(id).getAttribute('opacity') ?? 1);
+  check('highlight(reach(…)) fades each card with its distance', op('pricing') === 1 && op('fare') < 1 && op('rider-app') < op('fare') && op('rider-app') > 0.2 && op('unlock') === 0.2,
+    ['pricing', 'fare', 'rider-app', 'unlock'].map(op));
+  h.highlight([{ type: 'chip', node: 'unlock', index: 0, value: 'x', view: 'trips' }]);
+  check("a chip's Ref lights its card", !card('unlock').hasAttribute('opacity') && op('fare') === 0.2);
+  h.highlight(null);
+  check('highlight(null) clears it', !sr.querySelector('[opacity].node'));
+
+  // tour() and replay() under reduced motion: they finish at once
+  check('tour() resolves true at the end of a path it can ride', await h.tour(['rider-app', 'trip-api', 'lifecycle', 'fare', 'payments']) === true);
+  check('…false when no line joins its cards, or for tour(null)', await h.tour(['rider-app', 'pricing']) === false && await h.tour(null) === false && !sr.querySelector('.um-trip'));
+  const spans = [{ id: 'r', service: 'rider-app', start: 0, end: 180 }, { id: 'a', parent: 'r', service: 'trip-api', start: 5, end: 175 },
+    { id: 'l', parent: 'a', service: 'Trip lifecycle', start: 10, end: 170 }, { id: 'f', parent: 'l', service: 'fare-calculator', start: 20, end: 90 },
+    { id: 'p', parent: 'f', service: 'pricing', start: 25, end: 60 }, { id: 'x', parent: 'f', service: 'fraud-check', start: 30, end: 50 },
+    { id: 'q', parent: 'r', service: 'pricing', start: 1, end: 2 }];
+  const rp = h.replay(spans, { match: { 'fare-calculator': 'fare' } });
+  check('replay() matches services by match, id and label, and counts the spans it skips (no card; no line for the call)', rp.hops === 4 && rp.skipped === 2, [rp.hops, rp.skipped]);
+  check("…each call's line keeps its duration as a label", await rp.done === true && text('170 ms') && text('160 ms') && text('70 ms') && text('35 ms'));
+  rp.stop();
+  check('stop() takes the labels off', !sr.querySelector('.um-marks'));
+  h.destroy();
+
+  // the standalone page: > and < light what a card leads to and what leads to it; P lights the paths between two cards
+  const pageEl = document.getElementById('page'), p = mountPage(pageEl, BIKE, { instant: true });
+  await until(() => p.view === 'context' && document.querySelector('#m-canvas .umlimator'));
+  p.setView('trips'); await until(() => p.view === 'trips');
+  const psr = document.querySelector('#m-canvas .umlimator').shadowRoot, pcard = id => psr.querySelector(`.node[data-id="${id}"]`);
+  const key = k => document.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true }));
+  const hint = () => document.getElementById('m-hint').textContent;
+  p.select({ type: 'node', id: 'lifecycle' }); key('>');
+  check('the page: > lights what the selected card leads to, and says so in the hint line (a live region)', /^Trip lifecycle leads to 7 cards/.test(hint()) && pcard('trip-api').getAttribute('opacity') === '0.2'
+    && !pcard('lifecycle').hasAttribute('opacity') && pcard('fare').getAttribute('opacity') === '0.85' && document.getElementById('m-hint').getAttribute('aria-live') === 'polite', hint());
+  key('>');
+  check('…the same key again clears it', !pcard('trip-api').hasAttribute('opacity') && hint() === 'Highlight cleared', hint());
+  document.querySelector('#m-panel [data-lit="in"]').click();
+  check("…the panel's ← button lights what leads to it", /^2 cards lead to Trip lifecycle/.test(hint()) && pcard('trip-api').getAttribute('opacity') === '0.85' && pcard('pricing').getAttribute('opacity') === '0.2', hint());
+  pcard('fare').dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true, shiftKey: true }));
+  check('a new selection clears the highlight; two cards selected offer paths', !pcard('trip-api').hasAttribute('opacity') && !!document.querySelector('#m-panel [data-lit="paths"]'));
+  key('P');
+  check('P lights every path between the two cards', /^Every path from Trip lifecycle to Fare calculator: 2 cards/.test(hint()) && pcard('pricing').getAttribute('opacity') === '0.2', hint());
+} catch (e) { out.fail.push('threw: ' + (e && e.stack || e)); }
+const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
+</script>

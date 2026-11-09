@@ -661,6 +661,7 @@ function mapAudit(approx) {
   if (Q.get('expand')) views.forEach(v => { if (!want(v)) return; (v.nodeIds || []).filter(i => ctx.unfoldable(i, v.id)).forEach(nid => {
     const c2 = mapContext(D, { measure: hostMeasure(document.documentElement), kinds: true, expand: { [v.id]: [nid] } }); c2.planOf(v.id);
     const { g, markup } = c2.buildView(v.id, { tour: !Q.get('still'), openHint: !Q.get('reader') }); root.innerHTML = markup; out.push(...auditSvg(root.firstElementChild, g, `view ${v.id} with ${nid} unfolded`)); unfolded++; }); });
+  out.push(...rules(D).filter(r => views.some(v => v.id === r.view && want(v))).map(r => r.message)); // a rule the model breaks (#70): umlimator.py check fails on it
   host.remove();
   const deep = views.filter(v => v.parent).sort((a, b) => chain(b.id).length - chain(a.id).length || (b.nodeIds || []).length - (a.nodeIds || []).length)[0];
   const laneView = laneReport['super-build'] ? 'super-build' : Object.keys(laneReport)[0] || null;

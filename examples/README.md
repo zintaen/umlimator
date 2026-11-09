@@ -10,7 +10,7 @@ Each map is a JSON model. CI turns it into a self-contained page (`python3 umlim
 | Model | Use case | What it shows |
 |---|---|---|
 | [`bookshop.json`](bookshop.json) | A product's architecture, in two levels | Brand logos, the details panel, a step-by-step order flow with a tour |
-| [`bike-share.json`](bike-share.json) | A C4-style drill-down: context, containers, components | Boxes with tabs, a line to a box, line kinds and weights, a technology under each label, coloured tabs, a planned card, edited marks, a view pinned by hand, cards with no lines, two views loaded when opened |
+| [`bike-share.json`](bike-share.json) | A C4-style drill-down: context, containers, components | Boxes with tabs, a line to a box, line kinds and weights, a technology under each label, coloured tabs, a planned card, edited marks, a view pinned by hand, cards with no lines, two views loaded when opened, two rules that hold |
 | [`weather.json`](weather.json) | A data pipeline | A process in five steps, weights by volume, a pair of lines kept apart, nested boxes, a line from a box, a loop back, swimlanes, a view list in a set order |
 | [`assistant.json`](assistant.json) | An AI agent's skills | Skill kinds (public, lane, external, verb, script, hook, board), chips under a sub-line, guard and state lines, steps that exist in one view only, a card changed for one view, kinds read from labels |
 
@@ -23,10 +23,14 @@ The module embedded in a page, as an app would use it. Serve the repository over
 
 | Page | What the host does |
 |---|---|
-| [`playground.html`](playground.html) | Edit a model as JSON and the map follows, with `validate()`'s problems and `check()`'s layout issues for the view shown, each selecting what it is about; Share puts the model in the link |
+| [`playground.html`](playground.html) | Edit a model as JSON and the map follows, with `validate()`'s problems, and the broken rules (`rules()`) and `check()`'s layout issues for the view shown, each selecting what it is about; Share puts the model in the link |
 | [`embed.html`](embed.html) | `render()` with a details panel from `select`, breadcrumbs from `viewchange`, a view loaded when a card opens it (`open`, `update()`, `setView()`) or unfolds it in place (`expand`, `map.expand()`), SVG and PNG export, light, dark and a host's own palette, the minimap, focus back to the map |
-| [`live.html`](live.html) | `update()` once a second with new line weights and tab colours: cards keep their places, and the view and camera stay |
+| [`live.html`](live.html) | `overlay()` once a second, the model unchanged: flow as fast as each line's readings, lines that drop readings pulse rose, slow ones glow amber with their delay, and each card's tab shows its lag |
+| [`ask.html`](ask.html) | Questions answered on the map: words, the cards and lines they are about lit (`highlight()` with `paths()` and `reach()`), a flow played as a `tour()`, and the view in sentences (`describe()`), the text an AI model would get |
+| [`replay.html`](replay.html) | A trace replayed (`replay()`): an OpenTelemetry export read by `otlpSpans()`, each call along its line at its time, its duration kept as a label, with pause and stop |
 | [`edit.html`](edit.html) | `editable`: the map emits `change` events, the host applies them and calls `update()`, with undo from `history()` |
+| [`timelapse.html`](timelapse.html) | Four made-up releases of the bike share on a slider: `update()` eases from one to the next (new cards fade in, removed ones fade out, moved ones glide), `diff()` says what changed and marks it on request |
+| [`drift.html`](drift.html) | `drift()`: the bike share against a week of made-up traffic, as a tracing backend lists it; the lines that ran undrawn come in, the drawn ones that carried nothing fade |
 | [`layout.mjs`](layout.mjs) | `layout()` in Node, with no DOM: lays out every view and fails when a line runs more than 3 times its direct route, a check a host can run in CI |
 
 [`icons.js`](icons.js) shows how a host gives `render()` the line icons in `icons/`.
@@ -62,10 +66,18 @@ The module embedded in a page, as an app would use it. Serve the repository over
 | Cards that only one view has (a view's `nodes`), and per-view changes (`nodeOverrides`) | assistant `answer` |
 | Kinds read from labels (`kindsFromLabels`) | assistant |
 | Skill-map kinds | assistant |
-| `render()`, its events, `update()`, `setView()`, `focus()`, `toSVG()`, `toPNG()`, themes | `embed.html`, `live.html` |
+| `render()`, its events, `update()`, `setView()`, `focus()`, `toSVG()`, `toPNG()`, themes | `embed.html` |
+| Marks over the map (`overlay()`): flow speed, glows, pulses, labels, tabs | `live.html`, `replay.html` |
+| Paths and reach lit (`paths()`, `reach()`, `highlight()`) | `ask.html`; every map on the site (the details panel's → and ←, or Shift-click a second card and ⇄) |
+| A view in sentences (`describe()`), a tour along any path (`tour()`) | `ask.html` |
+| A trace replayed (`replay()`, `otlpSpans()`) | `replay.html` |
 | Editing and undo (`editable`, `change`, `history()`) | `edit.html` |
 | `layout()` in Node | `layout.mjs` |
 | The model's JSON Schema (`"$schema"`), `validate()` and `check()` | every model (`"$schema"`), `playground.html` |
 | The standalone page (`mountPage`) and the CLI's `render`, `check` and `stills` | every map on the site, built by CI |
+| Rules on the map (`rules`: `from` and `to` by kind, id or box, and `not`; a rule that names a box holds where it is drawn) and `rules()` | bike-share (two rules, which hold; CI's check fails if one breaks), `playground.html` (break one: add a line from Rider app to Trips database) |
+| What changed between two models (`diff()`): NEW, CHANGED and REMOVED marks, and the summary in words | `timelapse.html` (Mark what changed); the CLI's `diff` and the diff Action (`action.yml`) |
+| The time-lapse: `update()` easing into the next model | `timelapse.html`; the CLI's `timelapse` writes one from a model's git history |
+| The map against the traffic seen (`drift()`), and the line style `faded` | `drift.html`; the CLI's `drift` |
 
 Not shown: `repair: false`, a switch for debugging the router.

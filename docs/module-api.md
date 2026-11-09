@@ -492,6 +492,180 @@ another three. Auto-layout now lays those out as it does lines between neighbour
 - **Inside:** `auditSvg` (the page's check) now builds on the same two geometry helpers `check()` uses; its report is
   unchanged, in the same order.
 
+### Rules on the map (#70), and check() targets (#61)
+
+- **`rules` in the model** say what must hold, and **`rules(model)`** lists each break: `{ rule, view, message, targets }`,
+  with the message worded as the page's check words it, and Refs for `select()`. It is pure and runs in Node.
+  ```json
+  "rules": [
+    { "id": "apps-no-db", "title": "Apps never call a database directly", "from": { "kind": "frontend" }, "to": { "kind": "database" } },
+    { "id": "rides-own-trips", "title": "Only the ride services touch the trips store",
+      "from": { "not": { "container": "rides" } }, "to": { "id": "tripsdb" } },
+    { "id": "teams-acyclic", "title": "No cycles between teams", "noCycles": true }
+  ]
+  ```
+  - **`from` and `to`** forbid lines from the cards one picks to the cards the other picks. A side left out picks every
+    card.
+  - **A selector** picks cards by `id`, `kind` or `container` (a box, at any depth), each a value or a list. Every key it
+    has must hold, and `not` turns a selector round. A kind is matched as the map draws it, so `"db"` is a database. A line
+    that ends on a box (#28) ends in that box, and a box has no kind.
+  - **`noCycles`** forbids boxes that reach each other through their lines. A line counts between the two boxes that hold
+    its ends right under the box (or the view) they share, so a box is weighed against its siblings, at every depth, and
+    a line from a box into one of its own inner boxes counts for nothing. A cycle's targets are its boxes, then its lines.
+  - **Where a rule holds:** a rule that names a box (a `container`, or a box's `id`, in `from`, `to` or a `not`) holds
+    only in the views that draw at least one of the boxes it names, since a box belongs to its view. So the rides rule
+    above holds in bike-share's system view, the one with a Rides box, and not in the Trip service's view, which shows
+    the trips store without one. Any other rule holds in every view. **`views`** narrows either further.
+- **On the map**, a line that breaks a rule is drawn rose, with a "!" just after its start whose tooltip names the rules.
+  Its own tooltip and its accessible name say so too. The marks are part of the picture: the canvas, `toSVG()`, `toPNG()`,
+  the CLI's pages and stills. An `update()` that only changes the rules redraws the marks and keeps the cards in place.
+- **`umlimator.py check`** reports each break after the layout issues, counts them as `rules`, and exits 1 (`N broken
+  rules`), so CI fails on a broken rule as `examples/layout.mjs` fails on a detour. `--ignore rules` leaves them out.
+  `render` lists them with the layout check's problems.
+- **`validate()`** errors on a rule without an id, with an id used twice, without `from`, `to` or `noCycles`, or with a
+  view that isn't one. It warns on a selector key it doesn't know (the selector picks more cards), an id or box that
+  names nothing, and a kind it doesn't know (that picks script cards, as such a card draws). The schema has `rule` and
+  `selector`, strict on selector keys.
+- **The playground** lists the view's broken rules before its layout issues. **bike-share** has two rules, which hold.
+- **`check()` targets (#61)** are now exactly the cards, lines and boxes each issue is about, carried out of the
+  checks themselves, no longer found by the names in the message: two cards with one label no longer both match, and
+  a box issue names its box.
+
+### Exploring a map, and live data on it (#62 to #65)
+
+- **`handle.overlay(name, layer | null)`** puts marks on the picture without touching the model (#63).
+  - **What a layer names:** `{ nodes: { id: CardMark }, edges: { id: LineMark }, dim }`. Cards go by node id. Lines go
+    by edge id, or `"<from>-><to>#<n>"` for an edge without one, as Refs name them.
+  - **A line's mark:**
+    - `speed`: its flow's speed, as a factor (0 stops it);
+    - `tone`: a glow under the line, in `--um-<tone>`;
+    - `pulse`;
+    - `label`: a pill under the line's own;
+    - `level`, from 0 to 1;
+    - `dash`.
+
+    A drawn line that stands for several edges takes the strongest of their marks: a pulsing one first, then the most
+    lit, then the fastest.
+  - **A card's mark:**
+    - `tone`: a ring around the card;
+    - `badge`: a tab after its own, which is also its `aria-description`;
+    - `pulse`;
+    - `level`.
+  - **Stacking:** layers stack in the order they were first set. Each property comes from the latest layer that sets it,
+    and a card or line is as lit as its lowest level.
+    - `dim: true` fades whatever the layer doesn't name, in place of the selection's dimming.
+    - `null` removes a layer.
+  - **Lifetime:** marks survive `update()` and `setView()`. Ids the view doesn't show are ignored.
+  - **Exports:** `toSVG()` and `toPNG()` draw the marks, at rest. They belong to the host, like the model; the selection
+    and hover don't.
+  - **`examples/live.html`** now shows its traffic this way, and its model never changes:
+    - flow speed follows the readings;
+    - a line that drops readings pulses rose;
+    - a slow line glows amber, with its delay;
+    - each card's tab shows how far that part lags.
+- **`handle.highlight(refs | null)`** is the `highlight` layer (#62): these cards and lines are lit and the rest dimmed.
+  - A Ref's `level` fades it; without one, its `distance` does.
+  - A chip's or badge's Ref lights its card.
+- **`handle.tour(path, options)`**: the tour dot rides the line between each pair of cards in turn (either way), and
+  through each card to its next line.
+  - Each card it reaches flashes. A pair with no line between them is skipped.
+  - It resolves `true` at the end and `false` when cut short: by a new tour or replay, `tour(null)`, a new picture of the
+    view, or `destroy()`. With reduced motion it resolves at once.
+  - `speed` is in map units a second (default 240).
+- **`paths(model, viewId, from, to)`** and **`reach(model, viewId, from, { backward, depth })`** walk a view's lines,
+  with no DOM, and return Refs for `highlight()` (#64).
+  - `paths()`: every card and line on a path from one card to another, following lines forward.
+  - `reach()`: what a card's lines lead to or, with `backward`, what leads to it. For calls, that is who depends on it.
+    - Each card comes with its `distance` in lines, starting with the card itself at 0.
+    - `depth` stops the walk that many lines out.
+  - A line's Ref names one model edge.
+  - **In the standalone page:**
+    - the details panel's → and ← (or the > and < keys) light what a card leads to and what leads to it;
+    - with two cards selected (Shift-click), ⇄ (or P) lights every path between them, in either direction;
+    - the hint line, a live region, says what was lit;
+    - a new selection or view clears it, and so does the same key again.
+- **`describe(model, viewId)`**: the view in plain sentences, the same for the same model (#62).
+  - It covers the cards and their kinds, the boxes, what each card's lines do (in run order on a sequence view), and the
+    cards with no line.
+  - Uses: a text alternative, docs, or context for an AI model.
+- **`examples/ask.html`** answers questions about bike share's Trip service in words, with a highlight and a tour. Its
+  answers are written by hand. For an AI model to choose them instead, a host:
+  1. sends the model `describe()`'s text and the question;
+  2. asks for JSON back: the answer, the card ids to light, and a tour's card ids in order;
+  3. calls `highlight()` with those cards and `paths()` between them, then `tour()`.
+
+  The library itself makes no network call.
+- **`handle.replay(spans, options)`** plays a trace (#65). Each call from one card to another (a span and its parent's)
+  runs along their line at the trace's relative time.
+  - **Timing:** the whole trace plays in `duration` ms (default 6000).
+  - **Marks:** the line glows while the call lasts, then keeps its duration as a label in the `replay` layer, until
+    `stop()` or the next replay.
+  - **Spans** are `{ id, parent, service, start, end }`, in milliseconds. `otlpSpans(json)` reads them from an
+    OpenTelemetry trace in OTLP JSON.
+  - **Matching:** a span's service names its card through `match`, else as a card's id, else as its label, in any case.
+  - **Returns** `{ hops, skipped, done, pause(), resume(), stop() }`. `skipped` counts the spans whose service has no card
+    on the view, or whose call has no line there.
+  - `examples/replay.html` replays a ride ending.
+- **One at a time:** a tour and a replay both use the moving dot, so starting one ends the other.
+- **Tests:** `tests/explore.test.mjs` (Node), and `tests/marks.html`, which `tests/embed.py` runs.
+
+### Change: diff in pull requests, the time-lapse, drift (#66, #67, #68)
+
+- **`diff(before, after)`** returns `{ model, summary, views }`. The model is `after`, marked with what the map already draws:
+  - cards: `change` is `added` (a NEW tab), `changed` (CHANGED) or `removed` (REMOVED: faded, dashed, struck through);
+  - lines: `style` is `added` (green, flowing) or `removed` (rose, dashed, faded), and a changed line is `edited` (an amber
+    dot);
+  - what left comes back in its views, boxes and places;
+  - a card put into or taken out of a view is marked in that view only (`nodeOverrides`).
+
+  Cards and lines match by id, and a line without one by its ends, as a Ref names it. `summary` says what changed in
+  words, in model order, for example "adds Payments queue between Trip service and Payment provider" or "renames Accounts
+  to Accounts and sign-in". `views` lists the views that show a change. The marks are the model's own fields, so a page or
+  a still that the CLI makes shows them with nothing to call.
+- **`drift(model, observed, { match })`** returns `{ model, counts, views }`: the map against the traffic seen.
+  - `observed` is `[{ from, to, count }]`, or a Jaeger or Tempo dependency list (`[{ parent, child, callCount }]`, or
+    `{ data: [...] }`).
+  - A service is the card that `match` names, else the card with its id, else the one with its label (case aside).
+  - A line that ran but is not drawn comes in rose and dashed, labelled "not drawn" with its calls (`drift: "undrawn"`).
+  - A drawn line between two cards that traffic reached, but that carried none, fades: the new line style `faded`
+    keeps its kind's colour, faint, with no flow (`drift: "idle"`). Lines to a card no traffic reached are left as they
+    are, and counted as not judged.
+  - `counts`: `carried`, `undrawn`, `idle`, `unknown`, and `unmatched` services with no card. The counts are of model
+    edges, not drawn lines. A line that stands for several edges (A→B and B→A, or parallel edges) fades only when every
+    one of them is idle, so a map can show fewer faded lines than `idle` counts.
+- **A line that stands for several edges shows the strongest of their marks**, whichever edge comes first. Removed or
+  undrawn wins, then added, then changed (the edited dot, which a stronger mark hides). It fades as idle only when all
+  of its edges are idle; otherwise it takes the first style that isn't a mark.
+- **The time-lapse:** `update()` eases into the next model.
+  - Cards that moved glide from where they were, and new cards fade in, then the lines whose route changed.
+  - Cards and lines that left fade out where they were, as copies that nothing can click, focus, find or export.
+  - It's CSS on the new picture only: the geometry is the update's own, nothing moves under reduced motion, a font that
+    loads late moves nothing on purpose, and an export mid-ease draws where things end up.
+  - It's on by default. The render option `ease: false` draws the next model at once.
+- **The CLI:**
+  - `umlimator.py diff BEFORE.json AFTER.json --out PAGE.html [--stills DIR]` writes the marked page, prints the summary
+    and the views, and takes stills of those views.
+  - `umlimator.py diff --base REF --out DIR [--models PATHSPEC...]` does that for every map model the working tree
+    changed since a git ref. It also writes `summary.md`: the summary per file, with a mermaid sketch of the cards that
+    changed and their neighbours.
+  - `umlimator.py drift MODEL.json OBSERVED.json --out PAGE.html [--match MATCH.json] [--stills DIR]`.
+  - `umlimator.py timelapse MODEL.json --out PAGE.html [--limit N]` puts every version of the model in git history,
+    oldest first, on a slider, saying what changed at each step.
+
+  `diff` and `drift` run the module's own `diff()` and `drift()` in Node, so they need Node 18 or later.
+- **A GitHub Action**, `action.yml` (`uses: zintaen/umlimator@v0.12.0`, with `pull-requests: write`). On a pull request it
+  runs `diff --base` against the merge commit's first parent.
+  - It posts one comment with the summary and the sketch, and updates that comment on later pushes.
+  - The pages and stills go up as the run's artifact, which the comment links to.
+  - The same text goes in the job summary.
+  - The picture in the comment is mermaid, which GitHub draws itself, so nothing needs hosting and no permission beyond
+    the comment.
+  - A pull request from a fork gets a read-only token: there's no comment, and the job summary still has everything.
+
+  CI runs the Action on its own pull requests as a dry run, without the comment.
+- **Examples:** `examples/timelapse.html` shows four made-up releases of the bike share on a slider, with diff's marks
+  on request. `examples/drift.html` shows the bike share against a week of made-up traffic.
+
 ### Unfolding in place (#71)
 
 A stacked card can open into a box on the map it is on, instead of switching to its inner view.
