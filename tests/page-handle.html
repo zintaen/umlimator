@@ -1,0 +1,26 @@
+<!doctype html>
+<!-- A page that umlimator.py render writes keeps its map's handle on window.umlimatorMap, for scripts and tests (the page
+     umlimator.py mcp serves drives it): examples/bookshop.html, in a frame. tests/embed.py opens this in headless Chrome
+     and reads <pre id="result">. -->
+<meta charset="utf-8">
+<link rel="icon" href="data:,">
+<title>umlimator page handle test</title>
+<body>
+<iframe id="page" src="../examples/bookshop.html" style="width:1200px;height:800px;border:0"></iframe>
+<script type="module">
+const out = { ok: [], fail: [] };
+const check = (name, cond, info) => { document.title = name; if (cond) out.ok.push(name); else out.fail.push(name + (info === undefined ? '' : ': ' + JSON.stringify(info))); };
+try {
+  const win = document.getElementById('page').contentWindow;
+  for (let i = 0; i < 200 && !(win.umlimatorMap && win.umlimatorMap.view); i++) await new Promise(r => setTimeout(r, 50)); // the map drawn
+  const map = win.umlimatorMap;
+  check('a page umlimator.py renders keeps its map handle on window.umlimatorMap, showing the root view',
+    !!map && typeof map.setView === 'function' && map.view === 'overview', map && map.view);
+  await map.setView('api');
+  check("the handle drives the page: setView('api') shows that view, and the page's title and link follow",
+    map.view === 'api' && win.document.title.startsWith('An order, step by step') && win.location.hash.includes('view=api'), [map.view, win.document.title, win.location.hash]);
+} catch (err) {
+  out.fail.push('threw: ' + (err && err.stack || err));
+}
+const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
+</script>
