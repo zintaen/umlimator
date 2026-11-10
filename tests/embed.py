@@ -21,7 +21,7 @@ tests/motion.html, with motion on (no --force-prefers-reduced-motion): a press, 
 tests/page-state.html: the standalone page's state (0.14.0): its keys, the link it keeps, stories in the history, the details panel, menus, #still and check.
 tests/page-motion.html, with motion on: the page's history through moves: Back and Forward, a story's steps on other views, the reader's own move.
 tests/shapes.html: card shapes (0.15.0): each shape in each notation, ports on outlines, a notation change that lays nothing out, the toggle, link, exports, legend.
-examples/edit.html, embed.html, live.html, playground.html, ask.html, replay.html, timelapse.html, drift.html, element.html, shapes.html: the host pages load and draw.
+examples/edit.html, embed.html, live.html, playground.html, ask.html, replay.html, timelapse.html, drift.html, element.html, notations.html: the host pages load and draw.
 Each test page reports in <pre id="result">{"ok": [...], "fail": [...]}</pre>.
 """
 import functools, html, html.parser, http.server, importlib.util, json, re, subprocess, sys, tempfile, threading, time
@@ -98,8 +98,8 @@ for page, what in (("examples/edit.html", "the editing demo"), ("examples/embed.
 demo = dom("examples/element.html", lambda t: "Drawn: " in t)  # the map is in the element's shadow root: the page says when it is drawn
 print(("ok  " if "Drawn: " in demo else "FAIL"), "examples/element.html · the element page draws its map")
 failed |= "Drawn: " not in demo
-demo = dom("examples/shapes.html", lambda t: "Drawn: 6 maps" in t)  # six elements: the page says when all have drawn
-print(("ok  " if "Drawn: 6 maps" in demo else "FAIL"), "examples/shapes.html · the card shapes gallery draws its six maps")
+demo = dom("examples/notations.html", lambda t: "Drawn: 6 maps" in t)  # six elements: the page says when all have drawn
+print(("ok  " if "Drawn: 6 maps" in demo else "FAIL"), "examples/notations.html · the card shapes gallery draws its six maps")
 failed |= "Drawn: 6 maps" not in demo
 # the standalone page (mountPage) shows a legend, so it still names line kinds from label words: "reads metrics" is state
 

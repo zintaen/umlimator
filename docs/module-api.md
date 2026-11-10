@@ -2420,7 +2420,7 @@ reader's notation into its link.
 | `external` | box, dashed | |
 | any other | box, with UML's component icon as its mark when it has no icon | component (§11.6.4) |
 
-**The 13 shapes**, all drawn inside the card's box (the gallery, `examples/shapes.html`, shows each one):
+**The 13 shapes**, all drawn inside the card's box (the gallery, `examples/notations.html`, shows each one):
 
 - `box`: the rounded box;
 - `person`: a head over a body with wide shoulders. The body starts 12 px down, so a side port's highest place lands on

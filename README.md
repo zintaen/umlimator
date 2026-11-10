@@ -26,7 +26,7 @@ drill-down, a data pipeline, an AI agent's skills, and host pages for embedding,
   browser apps, phones, databases, queues and files as the C4 model's tools do. `uml` draws UML 2.5's actors, nodes,
   artifacts, packages and data stores, with UML's component icon on a box. A card's own `shape` wins in any notation.
   The notation comes from the model, a view, `render()`, the page's toggle or the link; switching it draws the cards
-  again and lays nothing out ([`examples/shapes.html`](examples/shapes.html)).
+  again and lays nothing out ([`examples/notations.html`](examples/notations.html)).
 - **Exploring**: every path between two cards, or everything a card reaches, lit on the map; a view in plain sentences
   (`describe()`); a tour along any path the host names.
 - **Live data**: marks over the map without touching the model (`overlay()`): flow as fast as the traffic, errors that
