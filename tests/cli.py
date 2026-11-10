@@ -29,17 +29,20 @@ def cli(*args, cwd=None):
     return json.loads(r.stdout) if r.returncode == 0 else None
 
 
+def stream(o):
+    """A PDF object's stream, inflated: its /Length bytes, as its data may end in a \\r of its own."""
+    m = re.search(rb"(.*?)stream\r?\n", o, re.S)
+    data = o[m.end():m.end() + int(re.search(rb"/Length (\d+)", m.group(1)).group(1))]
+    return zlib.decompress(data) if b"/FlateDecode" in m.group(1) else data
+
+
 def pdf_text(data):
     """The text of each page of a PDF Chrome wrote, as a viewer's search finds it: Chrome writes glyph ids, which each
     font's ToUnicode map reads back. The standard library only (zlib for the streams)."""
     obj = dict(re.findall(rb"(\d+) 0 obj\s*(.*?)endobj", data, re.S))
 
-    def stream(n):
-        m = re.search(rb"(.*?)stream\r?\n(.*?)\r?\nendstream", obj[n], re.S)
-        return zlib.decompress(m.group(2)) if b"/FlateDecode" in m.group(1) else m.group(2)
-
     def cmap(n):  # glyph id -> text
-        t, to = stream(n), {}
+        t, to = stream(obj[n]), {}
         for a, u in re.findall(rb"<(\w+)>\s*<(\w+)>", b"".join(re.findall(rb"beginbfchar(.*?)endbfchar", t, re.S))):
             to[int(a, 16)] = bytes.fromhex(u.decode()).decode("utf-16-be")
         for a, z, u in re.findall(rb"<(\w+)>\s*<(\w+)>\s*<(\w+)>", b"".join(re.findall(rb"beginbfrange(.*?)endbfrange", t, re.S))):
@@ -50,13 +53,20 @@ def pdf_text(data):
     for page in (b for b in obj.values() if re.search(rb"/Type\s*/Page\b", b)):
         fonts = {f: cmap(re.search(rb"/ToUnicode (\d+) 0 R", obj[n]).group(1)) for f, n in re.findall(rb"/(F\d+) (\d+) 0 R", page)}
         font, text = {}, ""
-        for f, run in re.findall(rb"/(F\d+) [\d.]+ Tf|<([0-9A-Fa-f]*)>", stream(re.search(rb"/Contents (\d+) 0 R", page).group(1))):
+        for f, run in re.findall(rb"/(F\d+) [\d.]+ Tf|<([0-9A-Fa-f]*)>", stream(obj[re.search(rb"/Contents (\d+) 0 R", page).group(1)])):
             if f:
                 font = fonts[f]
             else:  # ponytail: two bytes a glyph (Identity-H, as Chrome embeds every font); a one-byte font would need its codespace
                 text += "".join(font.get(int(run[i:i + 4], 16), "?") for i in range(0, len(run), 4))
         pages.append(text)
     return pages
+
+
+def fills(data):
+    """The colours, (r, g, b), a PDF's first page is filled with, in order: the first is the page's background, to the edge."""
+    obj = dict(re.findall(rb"(\d+) 0 obj\s*(.*?)endobj", data, re.S))
+    page = next(b for b in obj.values() if re.search(rb"/Type\s*/Page\b", b))
+    return [tuple(map(float, c)) for c in re.findall(rb"([\d.]+) ([\d.]+) ([\d.]+) rg", stream(obj[re.search(rb"/Contents (\d+) 0 R", page).group(1)]))]
 
 
 def edited(m):  # a made-up pull request on the bike share: a queue between Trips and Payments, a rename, a card gone
@@ -129,18 +139,51 @@ with tempfile.TemporaryDirectory() as tmp:
     cli("diff", "--base", "HEAD", "--out", str(t / "pr2"), cwd=g)
     ok("diff --base · says so when no map changed", "No map model changed." in ((t / "pr2" / "summary.md").read_text(encoding="utf-8") if (t / "pr2" / "summary.md").is_file() else ""))
 
-    # pdf (#93): the bike share in one PDF, a title page, a page per view, then the legend and the rules; its words are text
+    # pdf (#93): the bike share as a document for a review; its words are text. A cover with the contents; each view from a
+    # page of its own, under its path, with its legend and tables of its cards, lines and boxes; the rules as a table
     cli("render", str(ROOT / "examples" / "bike-share.json"), "--out", str(t / "bike.html"), "--no-check")
     r = cli("pdf", str(t / "bike.html"), "--out", str(t / "bike.pdf")) or {}
     pages = pdf_text((t / "bike.pdf").read_bytes()) if (t / "bike.pdf").is_file() else []
-    titles = [v["title"] for v in bike["views"]]
-    ok("pdf · a title page, a page per view, and one for the legend and rules", r.get("pages") == len(pages) == len(titles) + 2, [r, len(pages)])
-    said = "".join(pages)
-    ok("pdf · the title, each view's title, cards and describe() text, the legend and each rule's state are text in it",
-       all(s in said for s in ["Bike share, an example", *titles, "Payment provider", "What runs: 18 cards and 15 lines.", "Legend",
-                               "Apps never call a database directly: holds", "Only the ride services touch the trips store: holds"]), said[:600])
+    ok("pdf · every page ends in the title and page N of M, as many pages as it says",
+       pages and r.get("pages") == len(pages) and all(p.endswith(f"Bike share, an examplepage {i} of {len(pages)}") for i, p in enumerate(pages, 1)), [r, [p[-40:] for p in pages]])
+    V = {v["id"]: v for v in bike["views"]}
+    path = lambda v: (path(V[v["parent"]]) + " › " if v.get("parent") else "") + v["title"]
+    at = {v["id"]: next((i for i, p in enumerate(pages, 1) if p.startswith(f"{path(v)}{len(v['nodeIds'])} cards")), None) for v in bike["views"]}
+    at["rules"] = next((i for i, p in enumerate(pages, 1) if p.startswith("Rules")), None)
+    cover = pages[0] if pages else ""
+    ok("pdf · the cover: the title, the date, the model's file, a summary line, and the contents, each view with the page its header starts",
+       re.match(r"Bike share, an example\d{4}-\d\d-\d\d · examples/bike-share\.json5 views · 32 cards · 48 lines · 2 rulesContents", cover) and None not in at.values()
+       and all(f"{v['title']}{v['caption']}{at[v['id']]}" in cover for v in bike["views"]) and f"Rules{at['rules']}Bike share" in cover, [cover[:500], at])
+    flat = lambda p: re.sub(r"\s", "", p)  # a cell's text wraps without a space
+    seen = lambda a, b=None: "".join(pages[a - 1:b and b - 1]) if a else ""  # the pages from page a to the one before b
+    ok("pdf · a view's page: its legend, then tables of its cards (name, sub-line, kind, what it is), lines (from → to, label, technology) and boxes",
+       "Legend" in seen(at["system"], at["system"] and at["system"] + 1) and all(flat(s) in flat(seen(at["system"], at["trips"])) for s in [
+           "CardKindWhat it is", "Payment providercards and walletsExternalTakes card and wallet payments.", "From → toLabelTechnology",
+           "Rider app → Trip servicestarts, ends ridesREST", "BoxHolds", "RidesAccounts, Trip service, Pricing and Trips database"])
+       and "#From → toLabelTechnology1Rider app → Trip APIPOST /rides/{id}/end200 ms" in seen(at["ride-end"]), seen(at["system"], at["trips"])[:600])
+    ok("pdf · the rules, as a table: each rule, the views it applies in, holds or broken, and what breaks it",
+       "RuleApplies inStateLines that break itApps never call a database directlyevery view printedholdsnoneOnly the ride services touch the trips storeWhat runsholdsnone" in pages[-1], pages[-1:])
     r = cli("pdf", str(t / "bike.html"), "--out", str(t / "two.pdf"), "--views", "system,f*", "--theme", "dark") or {}
-    ok("pdf --views · only the views named (a trailing * a prefix)", r.get("pages") == 4 and "Fleet service" in "".join(pdf_text((t / "two.pdf").read_bytes())), r)
+    two = pdf_text((t / "two.pdf").read_bytes()) if (t / "two.pdf").is_file() else []
+    heads = {m.group(1) for p in two[1:-1] if (m := re.match(r"(.*?)(?: \(continued\))?\d+ cards?", p))}
+    ok("pdf --views · only the views named (a trailing * a prefix), then the rules", r.get("pages") == len(two) and "2 views · " in two[0]
+       and heads == {"Bike share › What runs", "Bike share › What runs › Fleet service"} and two[-1].startswith("Rules"), [r, [p[:40] for p in two]])
+    dark = fills((t / "two.pdf").read_bytes()) if two else []
+    ok("pdf --theme dark · its pages are dark to the edge", dark and max(dark[0]) < .15, dark[:3])
+    # a view of forty cards: its tables go on over the pages after its picture, under their heading and header row again,
+    # never a row cut; and a model with no rules has no rules section
+    (t / "long.json").write_text(json.dumps({"title": "Forty parts", "views": [{"id": "all", "title": "All parts", "nodeIds": [f"p{i}" for i in range(40)]}],
+        "nodes": [{"id": f"p{i}", "label": f"Part {i}", "kind": "backend", "sublabel": f"tech {i}", "what": f"Part {i} of forty."} for i in range(40)],
+        "edges": [{"from": f"p{i}", "to": f"p{i + 1}", "label": f"hands {i} on", "sublabel": "HTTPS"} for i in range(39)]}))
+    cli("render", str(t / "long.json"), "--out", str(t / "long.html"), "--no-check")
+    long = pdf_text((t / "long.pdf").read_bytes()) if cli("pdf", str(t / "long.html"), "--out", str(t / "long.pdf")) else []
+    went = re.findall(r"(Cards 40|Lines 39)\(continued\)(.{0,25})", "".join(long))
+    rows = [flat(f"Part {i}tech {i}Service / APIPart {i} of forty.") for i in range(40)] + [flat(f"Part {i} → Part {i + 1}hands {i} onHTTPS") for i in range(39)]
+    ok("pdf · a long table goes on over the next pages, its heading and header row again, and never cuts a row",
+       len(long) > 2 and all(p.startswith("All parts (continued)") for p in long[2:]) and went
+       and all(h.startswith("CardKindWhat it is" if k == "Cards 40" else "From → toLabelTechnology") for k, h in went)
+       and all(sum(s in flat(p) for p in long) == 1 for s in rows), [len(long), went, [s for s in rows if sum(s in flat(p) for p in long) != 1][:3]])
+    ok("pdf · a model with no rules has no rules section", long and "Rules" not in "".join(long) and "rule" not in long[0], long[:1])
     # a rule broken in one view: judged in the views a PDF prints, as it says
     (t / "rules2.json").write_text(json.dumps({"nodes": [{"id": "app", "label": "App", "kind": "frontend"}, {"id": "api", "label": "API", "kind": "backend"},
                                                          {"id": "db", "label": "Store", "kind": "database"}],
@@ -152,7 +195,7 @@ with tempfile.TemporaryDirectory() as tmp:
     read = lambda f, *a: "".join(pdf_text((t / f).read_bytes())) if cli("pdf", str(t / "rules2.html"), "--out", str(t / f), *a) else ""
     every, clean = read("every.pdf"), read("clean.pdf", "--views", "clean")
     ok("pdf · each rule is judged in the views it prints, as it says: broken with the view that breaks it, holding without it",
-       "directly: broken" in every and "view direct: edge App" in every and "directly: holds" in clean and "breaks rule" not in clean
+       "Apps never call a database directlyevery view printedbrokendirect: App→Store" in every and "Apps never call a database directlyevery view printedholdsnone" in clean
        and "Judged in the views printed here." in clean, [every[-240:], clean[-240:]])
 
 # four renders of one model at once (#105): each writes its own copy of the model, and every page records the model itself

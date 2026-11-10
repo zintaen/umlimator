@@ -88,7 +88,7 @@ The module embedded in a page, as an app would use it. Serve the repository over
 | The model's JSON Schema (`"$schema"`), `validate()` and `check()` | every model written by hand (`"$schema"`), `playground.html` |
 | The standalone page (`mountPage`) and the CLI's `render`, `check` and `stills` | every map on the site, built by CI |
 | The `<umlimator-map>` element (`src`, a model in the page, `view`, `minimap`, `controls`, `theme`, `height`, its events) and the docs-site blocks (`umlimator/markdown-it`, `umlimator/remark`) | `element.html`; the README's Embed section has each docs setup |
-| Every view in one PDF, with its text, the legend and the rules (`umlimator.py pdf`) | every map on the site (its PDF link, built by CI); bike-share's is checked in CI |
+| Every view in one PDF to hand in for a review: a cover with the contents, each view with its legend and tables, the rules (`umlimator.py pdf`) | every map on the site (its PDF link, built by CI); bike-share's is checked in CI |
 | Rules on the map (`rules`: `from` and `to` by kind, id or box, and `not`; a rule that names a box holds where it is drawn) and `rules()` | bike-share (two rules, which hold; CI's check fails if one breaks), `playground.html` (break one: add a line from Rider app to Trips database) |
 | What changed between two models (`diff()`): NEW, CHANGED and REMOVED marks, and the summary in words | `timelapse.html` (Mark what changed); the CLI's `diff` and the diff Action (`action.yml`) |
 | The time-lapse: `update()` easing into the next model | `timelapse.html`; the CLI's `timelapse` writes one from a model's git history |
