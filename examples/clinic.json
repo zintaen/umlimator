@@ -1,22 +1,25 @@
 {
   "title": "Clinic bookings",
   "root": "context",
+  "shapes": "c4",
   "nodes": [
     {
       "id": "patient",
       "label": "Patient",
-      "kind": "frontend",
+      "kind": "person",
       "sublabel": "Person",
       "what": "Books and moves appointments.",
-      "icon": "user"
+      "icon": "user",
+      "shape": "person"
     },
     {
       "id": "reception",
       "label": "Receptionist",
-      "kind": "frontend",
+      "kind": "person",
       "sublabel": "Person",
       "what": "Runs a clinic's front desk.",
-      "icon": "user"
+      "icon": "user",
+      "shape": "person"
     },
     {
       "id": "bookings",
@@ -81,7 +84,8 @@
       "label": "Bookings database",
       "kind": "database",
       "sublabel": "PostgreSQL",
-      "what": "Clinicians, slots and bookings."
+      "what": "Clinicians, slots and bookings.",
+      "shape": "cylinder"
     },
     {
       "id": "jobs",

@@ -1,0 +1,43 @@
+{
+  "$schema": "../lib/umlimator.schema.json",
+  "title": "Card shapes",
+  "meta": { "project": "umlimator" },
+  "shapes": "c4",
+  "nodes": [
+    { "id": "shoppers", "label": "Shoppers", "kind": "person", "sublabel": "browse and buy", "what": "The people who use the shop. **c4** and **uml** draw a person." },
+    { "id": "staff", "label": "Support staff", "kind": "user", "sublabel": "answer tickets", "what": "People outside the system: a `user` card is external, and a person in **c4** and **uml**." },
+    { "id": "storefront", "label": "Storefront", "kind": "frontend", "sublabel": "React single-page app", "what": "A browser app in **c4**; a component in **uml**." },
+    { "id": "app", "label": "Shop app", "kind": "mobile", "sublabel": "iOS and Android", "what": "A phone app in **c4**." },
+    { "id": "desk", "label": "Back office", "kind": "frontend", "shape": "window", "sublabel": "desktop, staff only", "what": "Its own `shape`, a window, in every notation." },
+    { "id": "api", "label": "Shop API", "kind": "backend", "sublabel": "FastAPI", "what": "A box in **box** and **c4**; UML's component icon marks it in **uml**." },
+    { "id": "cli", "label": "Admin CLI", "kind": "cli", "sublabel": "python3", "what": "A terminal in **c4**." },
+    { "id": "agent", "label": "Support agent", "kind": "agent", "sublabel": "drafts replies", "what": "A robot in **c4** and **uml** (UML's non-human actor)." },
+    { "id": "orders", "label": "Orders", "kind": "database", "sublabel": "PostgreSQL", "what": "A cylinder in **c4** and **uml**." },
+    { "id": "queue", "label": "Order queue", "kind": "queue", "sublabel": "RabbitMQ", "what": "A pipe in **c4**." },
+    { "id": "policies", "label": "policies.md", "kind": "file", "sublabel": "refunds, warranty", "what": "A page with its corner folded in **c4** and **uml** (UML's artifact)." },
+    { "id": "pricing", "label": "Pricing", "kind": "module", "sublabel": "rules, discounts", "what": "A folder in **uml** (UML's package)." },
+    { "id": "hosts", "label": "Hosts", "kind": "cloud", "sublabel": "two servers", "what": "A box seen in perspective in **uml** (UML's node)." },
+    { "id": "fraud", "label": "Fraud check", "kind": "hook", "sublabel": "fires on its own", "what": "A hook: a hexagon in every notation." },
+    { "id": "payments", "label": "Payments", "kind": "external", "sublabel": "cards, refunds", "what": "Outside the system: dashed in **c4** and **uml**." }
+  ],
+  "edges": [
+    { "id": "browse", "from": "shoppers", "to": "storefront", "label": "browse, buy" },
+    { "id": "go", "from": "shoppers", "to": "app", "label": "on the go" },
+    { "id": "answer", "from": "staff", "to": "desk", "label": "answer" },
+    { "id": "checkout", "from": "storefront", "to": "api", "label": "checkout" },
+    { "id": "order", "from": "app", "to": "api", "label": "order" },
+    { "id": "manage", "from": "desk", "to": "api", "label": "manage" },
+    { "id": "jobs", "from": "cli", "to": "api", "label": "runs jobs" },
+    { "id": "save", "from": "api", "to": "orders", "label": "saves" },
+    { "id": "paid", "from": "api", "to": "queue", "label": "paid order" },
+    { "id": "charge", "from": "api", "to": "payments", "label": "charges" },
+    { "id": "price", "from": "api", "to": "pricing", "label": "prices" },
+    { "id": "check", "from": "api", "to": "fraud", "label": "checks", "kind": "triggers" },
+    { "id": "reply", "from": "queue", "to": "agent", "label": "tickets" },
+    { "id": "read", "from": "agent", "to": "policies", "label": "reads", "kind": "state" }
+  ],
+  "views": [
+    { "id": "shapes", "title": "Card shapes", "caption": "One model in three notations: box, c4 and uml.",
+      "nodeIds": ["shoppers", "staff", "storefront", "app", "desk", "cli", "api", "orders", "queue", "payments", "pricing", "fraud", "agent", "policies", "hosts"] }
+  ]
+}

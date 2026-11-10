@@ -1,0 +1,59 @@
+<!doctype html>
+<!-- Card shapes (0.15.0), side by side: one model (shapes.json) in each notation, box, c4 and uml, in the light and the dark theme. Each
+     map is a <umlimator-map> whose shapes attribute picks the notation; the buttons set it on every map, and the maps draw
+     their cards again with nothing laid out. Serve the repository over HTTP to open it (ES modules do not load from
+     file://):  python3 -m http.server  then  http://localhost:8000/examples/notations.html (the site's shapes.html is the model's own page) -->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>umlimator: card shapes</title>
+<link rel="stylesheet" href="../lib/umlimator-theme.css">
+<script type="module" src="../lib/umlimator-element.js"></script>
+<style>
+  body { margin: 0; background: var(--um-bg); color: var(--um-text); font: 15px/1.55 var(--um-sans); }
+  main { max-width: 1180px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { font-size: 24px; margin: 0 0 6px; } h2 { font-size: 17px; margin: 30px 0 4px; }
+  p { margin: 0 0 10px; color: var(--um-muted); max-width: 760px; }
+  code { font: 13px var(--um-mono); }
+  .bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 12px 0 4px; }
+  .bar button { font: 600 13px var(--um-sans); padding: 5px 12px; border-radius: 8px; border: 1px solid var(--um-border-2); background: var(--um-panel); color: var(--um-text); cursor: pointer; }
+  .bar button[aria-pressed="true"] { border-color: var(--um-accent); color: var(--um-accent); }
+  .pair { display: grid; gap: 10px; }
+  .pair figure { margin: 0; } .pair figcaption { font: 600 12px var(--um-mono); color: var(--um-muted); margin: 0 0 4px; }
+  umlimator-map { border: 1px solid var(--um-border); border-radius: 10px; }
+  #said { font: 13px var(--um-mono); min-height: 1.5em; margin-top: 10px; }
+</style>
+<main>
+  <h1>Card shapes</h1>
+  <p>A notation draws each card as a shape: <b>box</b> (the default, every card a rounded box), <b>c4</b> (people, browser apps,
+    phones, databases, queues and files as the C4 model's tools draw them) or <b>uml</b> (UML 2.5's actor, node, artifact,
+    package and data store, with UML's component icon on a box). A card's own <code>shape</code> wins in every notation: here,
+    the back office is a window. Each shape keeps to its card's box, so the layout is the same in all three.</p>
+  <div class="bar" role="group" aria-label="Every map's notation">
+    <span>Every map:</span><button data-n="">its own</button><button data-n="box">box</button><button data-n="c4">c4</button><button data-n="uml">uml</button>
+  </div>
+  <p id="said" aria-live="polite"></p>
+  <h2>box</h2>
+  <div class="pair">
+    <figure><figcaption>light</figcaption><umlimator-map src="shapes.json" shapes="box" theme="light" height="440"><p>The card shapes model in the box notation.</p></umlimator-map></figure>
+    <figure><figcaption>dark</figcaption><umlimator-map src="shapes.json" shapes="box" theme="dark" height="440"><p>The card shapes model in the box notation, dark.</p></umlimator-map></figure>
+  </div>
+  <h2>c4</h2>
+  <div class="pair">
+    <figure><figcaption>light</figcaption><umlimator-map src="shapes.json" shapes="c4" theme="light" height="440"><p>The card shapes model in the c4 notation.</p></umlimator-map></figure>
+    <figure><figcaption>dark</figcaption><umlimator-map src="shapes.json" shapes="c4" theme="dark" height="440"><p>The card shapes model in the c4 notation, dark.</p></umlimator-map></figure>
+  </div>
+  <h2>uml</h2>
+  <div class="pair">
+    <figure><figcaption>light</figcaption><umlimator-map src="shapes.json" shapes="uml" theme="light" height="440"><p>The card shapes model in the uml notation.</p></umlimator-map></figure>
+    <figure><figcaption>dark</figcaption><umlimator-map src="shapes.json" shapes="uml" theme="dark" height="440"><p>The card shapes model in the uml notation, dark.</p></umlimator-map></figure>
+  </div>
+</main>
+<script type="module">
+const maps = [...document.querySelectorAll('umlimator-map')], said = document.getElementById('said'), own = maps.map(m => m.getAttribute('shapes'));
+let drawn = 0;
+maps.forEach(m => m.addEventListener('load', () => { drawn++; if (drawn === maps.length) said.textContent = `Drawn: ${drawn} maps, each in its notation.`; }, { once: true }));
+document.querySelector('.bar').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return;
+  maps.forEach((m, i) => m.setAttribute('shapes', b.dataset.n || own[i])); // the map draws its cards again; nothing is laid out
+  document.querySelectorAll('.bar button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+  said.textContent = b.dataset.n ? `Every map in ${b.dataset.n}.` : 'Each map in its own notation.'; });
+</script>

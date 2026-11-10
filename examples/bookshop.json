@@ -9,7 +9,7 @@
   {
    "id": "shoppers",
    "label": "Shoppers",
-   "kind": "frontend",
+   "kind": "person",
    "icon": "users",
    "sublabel": "browse, buy, track orders",
    "what": "People who buy books on the site.",
