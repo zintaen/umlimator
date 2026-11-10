@@ -141,6 +141,30 @@ try {
   click('.node[data-id="a"] .n-label'); key('Delete'); key('n');
   check('editable: {rename} offers only renaming', !pick('.um-handle') && !pick('[data-z="add"]') && ev.length === 0 && (key('F2'), !!pick('.um-rename')), ev);
   h.destroy();
+
+  // an edit's places wait for the host's answer, and its next model says whether it applied them (E6, E7)
+  h = mount({ editable: true });
+  const yOf = id => bodyAt(id)[1], order = () => ['b', 'c'].sort((p, q) => yOf(p) - yOf(q)).join(), o0 = order();
+  click('.node[data-id="b"] .n-label'); key('ArrowDown', { altKey: true });
+  const r1 = last(), mA = structuredClone(MODEL); mA.nodes.find(n => n.id === 'd').label = 'Audit trail'; h.update(mA); // refused, and someone renames Audit
+  check('a reorder the host refused stays unapplied when an unrelated update comes next (it was applied)', r1.op === 'reorder' && order() === o0, [o0, order()]);
+  click('.node[data-id="b"] .n-label'); key('ArrowDown', { altKey: true });
+  const r2 = last(), mB = structuredClone(mA); mB.views[0].layout = { b: [r2.hint.col, r2.hint.row] }; mB.nodes.find(n => n.id === 'a').label = 'API gateway'; h.update(mB);
+  const o1 = order();
+  check("one the host applies by writing the card's place into layout is applied, whatever else the update changes", o1 !== o0, [o0, o1]);
+  h.update(mA);
+  check('undo, an update back to the model before it: the cards go back where they were', order() === o0, order());
+  h.update(mB);
+  check('redo, the model after it: they move again', order() === o1, order());
+  const a0 = bodyAt('a');
+  drag('.node[data-id="a"]', centre('.family[data-family="box"] .family-title'));
+  const mv = last(), mC = structuredClone(mB); mC.views[0].containers[0].nodeIds.push('a'); h.update(mC);
+  const a1 = bodyAt('a'); h.update(mB);
+  check('a move into a box, applied, then undone: the card is back where it was', mv.op === 'move' && mv.to === 'box' && JSON.stringify(a1) !== JSON.stringify(a0) && JSON.stringify(bodyAt('a')) === JSON.stringify(a0), [a0, a1, bodyAt('a')]);
+  key('n'); const nf = pick('.um-rename'); nf.value = 'Queue'; key('Enter', {}, nf); // the host refuses the add
+  const mD = structuredClone(mB); mD.nodes.push({ id: 'z', label: "Someone else's card" }); mD.views[0].nodeIds.push('z'); h.update(mD);
+  check("an add the host refused: someone else's new card in the next update is not taken for it, nor selected", !!pick('.node[data-id="z"]') && !(h.selection && h.selection.id === 'z'), h.selection);
+  h.destroy();
 } catch (e) { out.fail.push('threw: ' + (e && e.stack || e)); }
 const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
 </script>
