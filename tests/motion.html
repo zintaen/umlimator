@@ -144,6 +144,21 @@ try {
   const sa = h.play('ride', { step: 2, auto: false }); await until(() => sr.querySelector('.um-trip circle'), 4000); const a0 = dot(); await wait(300);
   check("…and a story opened with auto: false, which nobody paused, still rides its step's tour", Number.isFinite(a0) && dot() !== a0, [a0, dot()]);
   sa.stop();
+  // the page's ❚❚ is in the state (#131): paused, one state event each way, none for the same value again; under it a story,
+  // its step's tour and a replay keep their own state (playing: it would play, held by the page), and a tour held is on the map
+  const se = []; await mount({ view: 'trips', on: { state: e => se.push(e) } });
+  const X3 = h[Object.getOwnPropertySymbols(h)[0]], said = () => se.filter(e => e.changed.includes('paused')).map(e => e.state.paused).join();
+  const sq = h.play('ride', { step: 2 }); await until(() => sr.querySelector('.um-trip circle') && sq.state === 'playing', 4000);
+  X3.pause(true); X3.pause(true); await wait(100); const on = [h.state.paused, h.state.story && h.state.story.playing, h.state.tour, sq.state, said()];
+  X3.pause(false); await wait(100); const off = [h.state.paused, said()];
+  sq.pause(); const own = [h.state.paused, h.state.story.playing, h.state.tour]; sq.stop();
+  check("the page's ❚❚ is in the state: paused, one state event each way; the story still playing, and its step's tour held on the map",
+    on.join() === 'true,true,true,playing,true' && off.join() === 'false,true,false' && own.join() === 'false,false,true', [on, off, own]);
+  se.length = 0; const rq = h.replay(otlpSpans(T), { match: M }); await wait(100);
+  X3.pause(true); await wait(100); const ron = [h.state.paused, JSON.stringify(h.state.replay), said()];
+  X3.pause(false); await wait(100); const roff = [h.state.paused, JSON.stringify(h.state.replay), said()]; rq.stop();
+  check("…and over a replay: paused, one state event each way, the replay still playing", ron.join() === 'true,{"playing":true},true'
+    && roff.join() === 'false,{"playing":true},true,false', [ron, roff]);
   // an update() as a step's camera glides in: the step still gets its framing (rider-app at 75%)
   await mount({ view: 'context' });
   let cut = false; h.on('select', e => { if (cut || !e.target || e.target.id !== 'trips') return; cut = true; const m = structuredClone(BIKE); m.nodes.find(n => n.id === 'accounts').label = 'Accounts and sign-in'; h.update(m); });

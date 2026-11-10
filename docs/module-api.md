@@ -266,9 +266,10 @@ sent or compared as it is.
 | `expanded` | `string[]` | the cards unfolded on the view shown, in the order they unfolded |
 | `lens` | string or `null` | the lens on the map |
 | `overlays` | `string[]` | the layers of marks, in the order first set: `lens`, `highlight`, `story`, `tour`, `replay`, the page's `lit`, the MCP page's `mcp`, a host's own |
-| `story` | `{ id, step, steps, playing }` or `null` | the story shown: its step (from 0), how many it has, and whether it goes on by itself |
-| `tour` | boolean | a tour's dot rides (a path lit at rest under reduced motion is `false`) |
-| `replay` | `{ playing }` or `null` | a replay under way, playing or paused by its `pause()` |
+| `story` | `{ id, step, steps, playing }` or `null` | the story shown: its step (from 0), how many it has, and whether it goes on by itself, the player's own state |
+| `tour` | boolean | a tour's dot is on the map, riding or held (by `paused`, or by its story's pause); a path lit at rest under reduced motion is `false` |
+| `replay` | `{ playing }` or `null` | a replay under way, playing or paused by its own `pause()` |
+| `paused` | boolean | the standalone page's ❚❚ holds every clock: a tour's or a replay's dot, a story's step and the flow. It leaves `story`, `tour`, `replay` and `flow` as they are, so `playing: true` with `paused: true` is a story or a replay that would play, held by the page (0.15.0) |
 | `camera` | `{ x, y, zoom }` | the centre in map units, to a tenth, and the zoom (1 is actual size), to a thousandth |
 | `flow` | boolean | the lines flow (≋, F) |
 | `motion` | `'full'`, `'reduced'` or `'instant'` | how this map moves |
@@ -344,8 +345,9 @@ the player shown, and `player.state` names its state.
 | any | an `update()` that changes the step shown | entering that step again, as the model has it now |
 
 - `play()` of a story the model lacks returns `null`, and the story shown plays on.
-- The page's ❚❚ holds the step's time and its tour, without a pause: `player.state` stays `playing`. ▶ gives the step
-  its time again.
+- The page's ❚❚ holds the step's time and its tour, without a pause: `player.state` stays `playing`, and `MapState`
+  reads `paused: true` with `story.playing: true`, a story that would play, held by the page. ▶ gives the step its time
+  again.
 - **Emits:** `story` `{ story, step, steps, playing }` on each change: entering a step (before the step's own `select`
   and `viewchange`), a pause or a resume (the same step), and the end (`step: null`, on `destroy()` too). The step's
   selection comes as `select`, and its highlight is the `story` layer. The live region says "Step 2 of 5: …", then
@@ -353,15 +355,15 @@ the player shown, and `player.state` names its state.
 - **Settles:** `player.done`: `true` once told to the end, `false` when stopped.
 
 **Tours and replays**, in `render()`: one trip at a time, from `tour()`, `replay()` or a story step's tour. The trip
-is read as `tour` and `replay` in `MapState`.
+is read as `tour` and `replay` in `MapState`, and the page's ❚❚ as `paused`.
 
 | State | What moves it | Goes to |
 |---|---|---|
 | no trip | `tour(path)`, `replay(spans)`, a story step's tour | riding: `tour: true`, or `replay: { playing: true }` |
 | no trip | `tour(path)` under reduced motion | lit at rest: the path in the `tour` layer, its cards ringed and numbered, said in the live region; `tour()` resolves `true` at once |
 | no trip | `replay(spans)` under reduced motion | no trip: each call's duration labelled at once, and `done` resolves |
-| riding | the page's ❚❚; a story's pause, for its step's tour; the replay's `pause()` (`replay.playing: false`) | held where it is |
-| held | ▶; the story's `resume()`; the replay's `resume()` | riding |
+| riding | the page's ❚❚ (`paused: true`); a story's pause, for its step's tour; the replay's `pause()` (`replay.playing: false`) | held where it is, still on the map: `tour` stays `true`, and under ❚❚ `replay.playing` stays as it was |
+| held | ▶ (`paused: false`); the story's `resume()`; the replay's `resume()` | riding |
 | riding | the dot reaches the end | no trip: `true`; a replay's labels stay |
 | riding or held | Esc on the map ("Tour stopped", "Replay stopped"), `tour(null)`, the next tour or replay, a new picture of the view (a move, an `update()` that redraws it, unfolding), a story's next step or its end, for its step's tour, the replay's `stop()`, `destroy()` | no trip: `false`; a replay's labels go |
 | lit at rest | the same | no trip: the path is taken off |
@@ -461,6 +463,9 @@ on the map's handle and posts back what it shows.
 
 - A page that opens later gets what the assistant wants shown, not the last command. A tour or story that a page
   reports ended is taken out of it.
+- A command ends only the assistant's own tour and story. The page counts the assistant's tour as on the map until its
+  dot reaches the end or is cut short or replaced; a path lit at rest under reduced motion, until a story's step or end
+  takes its place. So a command with no tour leaves the tour of a story the reader started: that story is the reader's.
 - While the model's latest version does not render, every answer begins with why, the page shows the same in a bar,
   and `page_state()` gives `model.renders: false`.
 
@@ -2395,3 +2400,45 @@ up into Patient's lower right port; and "Books appointments" (Patient → Bookin
   It is in the gallery, and its layout check is clean with `--expand`, in the default font and in Arial, Verdana, Georgia
   and Courier New.
 - **No change** to `lib/`, the CLI or the types.
+
+## 0.15.0: (unreleased)
+
+### The page's ❚❚ is in the state, and the assistant's commands end only its own tour (#131, #132)
+
+Both gaps were found while writing the State chapter (#129).
+
+- **The page's ❚❚ is in `MapState` (#131).** ❚❚ holds every clock, but `handle.state` didn't say so. Under it
+  `story.playing`, `replay.playing` and `tour` stayed `true` while nothing moved, and no `state` event came, so an agent
+  reading `page_state()` couldn't tell that the page was paused.
+  - `MapState.paused` is `true` while the standalone page's ❚❚ is on. A `state` event comes each way, with `paused` in
+    `changed`, and none when the page sets the value it already has, as it does on each new picture.
+  - Each machine keeps its own state under it. `story.playing` is the player's (it goes on by itself) and
+    `replay.playing` the replay's, so `playing: true` with `paused: true` is a story or a replay that would play, held
+    by the page. `flow` stays as the reader or the host set it.
+  - `tour` is `true` while a tour's dot is on the map, riding or held, whether by ❚❚ or by its story's pause. Its type
+    said "riding".
+  - A map that no page holds, such as a host's `render()`, reads `paused: false`.
+- **The assistant's commands end only its own tour (#132).** The page that `umlimator.py mcp` serves kept the number of
+  the assistant's last tour after that tour had ended. So its next command with no tour (`highlight`, `show_view`,
+  `clear`) called `tour(null)` and ended whatever rode then, such as the step's tour of a story the reader had started.
+  - The page now holds the assistant's tour only while it is on the map: until its dot reaches the end, or is cut
+    short or replaced.
+  - Under reduced motion, a path lit at rest stays the assistant's until a story's step or end takes its place, so
+    `clear` still takes it off.
+  - Each tour still starts once. A page never plays an ended tour again, even when a command comes before the server
+    hears that the tour ended.
+  - Stories were already safe, and stay so.
+- **Visible changes:** `handle.state`, the `state` event and each page in `page_state()` have `paused`. The assistant's
+  `highlight`, `show_view` or `clear` no longer stops a tour that the reader's story rides.
+- **API added:** `MapState.paused: boolean`. No type, flag, event shape or model field changes. The comments on
+  `MapState`'s `story`, `tour` and `replay` now say what each means under ❚❚.
+- **Docs:** the State chapter says the same: the `MapState` table, the story player's and the trips' tables, and the MCP
+  server's page.
+- **Tests:**
+  - `tests/motion.html` puts ❚❚ over a playing story with its step's tour, then over a replay. It reads `paused`, and
+    one `state` event each way.
+  - `tests/state.html` lists the new key.
+  - `tests/mcp.py`: the reader's story rides a step's tour through the assistant's next command. Under reduced motion the
+    story's path stays lit through it, and `clear` still takes the assistant's own path off.
+
+  Each check fails before this change.

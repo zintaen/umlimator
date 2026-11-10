@@ -329,7 +329,7 @@ SCRIPT = """<script type="module">
 const map = window.umlimatorMap, model = '__MODEL__', MAP = '__MAP__'; // MAP: which model file this page is (another's server may take the port later)
 const page = self.crypto && crypto.randomUUID ? crypto.randomUUID() : String(Math.random()).slice(2);
 const LIMIT = 5000; // ms a command may take here before it is answered as not shown (a tab in the background stops animation)
-let want = {}, done = null, tour = 0, story = null, queue = Promise.resolve();
+let want = {}, done = null, tour = { n: 0 }, story = null, queue = Promise.resolve(); // tour: the assistant's last, n, and on while it is on the map (#132)
 const post = extra => fetch('/state', { method: 'POST', headers: { 'Content-Type': 'application/json' }, keepalive: true,
   body: JSON.stringify({ page, map: MAP, model, state: map.state, ...extra }) }).catch(() => {});
 // the assistant's highlight is about its view: on another it would dim every card, so it shows on that view only
@@ -350,10 +350,12 @@ async function show(c) {
   banner(c.renderError && 'The model no longer renders, so this is its last version that did: ' + c.renderError);
   want = c.want || {};
   if (!want.story && story) { story.stop(); story = null; } // a command ends the story the assistant started
-  if (!want.tour && tour) { map.tour(null); tour = 0; }
+  if (!want.tour && tour.on) { map.tour(null); tour.on = false; } // and its tour, while that is on the map: never a trip the reader started
   if (want.view && want.view !== map.view && !(await map.setView(want.view))) throw new Error(`the view ${want.view} did not show`);
   lit();
-  if (want.tour && want.tour.n !== tour) { tour = want.tour.n; map.tour(want.tour.cards); }
+  if (want.tour && want.tour.n !== tour.n) { // each tour starts once. Its dot leaves the map when it ends: at its end, cut short or replaced
+    const t = tour = { n: want.tour.n, on: true }, ends = map.tour(want.tour.cards);
+    if (map.state.tour) ends.then(() => { t.on = false; }); } // a path lit at rest (reduced motion) stays until a story's step or end takes it
   if (want.story && want.story.n !== (story && story.n)) {
     const told = map.play(want.story.story);
     if (!told) throw new Error(`the page has no story ${want.story.story}`);
@@ -369,6 +371,7 @@ function apply(c) {
     e => { done = c.id; post({ ack: c.id, error: String((e && e.message) || e) }); }).finally(() => clearTimeout(timer));
 }
 map.on('state', ({ changed }) => { if (changed.includes('view')) lit(); post({}); });
+map.on('story', () => { if (!map.story || map.story.state === 'entering') tour.on = false; }); // a step entered, or the end, took the trip off the map
 function listen() {
   if (!map.view) return setTimeout(listen, 50); // once the map is drawn
   const es = new EventSource(`/events?page=${encodeURIComponent(page)}&map=${MAP}`);
