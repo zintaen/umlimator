@@ -2,7 +2,7 @@
 
   structurizr   Structurizr DSL: workspace, model, views; person, softwareSystem, container and component, nested;
                 -> relationships with description and technology; tags; groups as boxes, nested; systemLandscape,
-                systemContext, container and component views with include * (or ids) and exclude
+                systemContext, container and component views with include * (or ids) and exclude; element styles' shapes
   plantuml      C4-PlantUML: Person, System, Container, Component (with Db, Queue and _Ext), Rel, Rel_*, BiRel, and
                 *_Boundary(alias, label) { ... } as boxes
   mermaid       flowchart and graph (nodes, labelled links, subgraphs as boxes), and C4Context, C4Container and
@@ -153,12 +153,17 @@ TOKEN = re.compile(r'"((?:[^"\\]|\\.)*)"|(\S+)')
 C4TYPE = {"person": "Person", "softwaresystem": "Software system", "container": "Container", "component": "Component"}
 LEVELS = ["systemlandscape", "systemcontext", "container", "component"]
 SCOPE = {"systemcontext": "softwaresystem", "container": "softwaresystem", "component": "container"}
+TAG = {"person": "Person", "softwaresystem": "Software System", "container": "Container", "component": "Component"}  # built in
+# a Structurizr style's shape as one of the map's (0.15.0); Circle, Ellipse, Diamond, Bucket and Component have none
+SZ_SHAPE = {"box": "box", "roundedbox": "box", "person": "person", "robot": "robot", "cylinder": "cylinder", "pipe": "pipe",
+            "folder": "folder", "webbrowser": "browser", "window": "window", "terminal": "terminal", "shell": "terminal",
+            "mobiledeviceportrait": "mobile", "mobiledevicelandscape": "mobile", "hexagon": "hexagon"}
 
 
 def structurizr(text, name):
     m = Model(name)
     m.shapes = "c4"
-    els, ref, path, rels, specs, stack, groups = {}, {}, {}, [], [], [], []
+    els, ref, path, rels, specs, stack, groups, styles = {}, {}, {}, [], [], [], [], []
     implied, comment, opened = True, 0, []  # comment: the line a /* ... */ opened on; opened: each open block's line and text
     for no, raw in enumerate(text.splitlines(), 1):
         s = raw.strip()
@@ -231,6 +236,14 @@ def structurizr(text, name):
             at["title" if kw == "title" else "desc"] = toks[1]
         elif where == "view" and kw in ("autolayout", "default"):
             pass  # the map lays every view out itself
+        elif where == "views" and kw == "styles":
+            push = ("styles", None)
+        elif where == "styles" and kw == "element" and len(toks) > 1:
+            push = ("style", toks[1].strip())
+        elif where == "style" and kw == "shape" and len(toks) > 1:
+            styles.append((at, toks[1]))
+            if toks[1].lower() not in SZ_SHAPE:
+                m.say(no, f'element "{at}": shape {toks[1]} has no counterpart, so a card it falls on is drawn by its kind')
         else:
             m.say(no, f"not imported: {clip(s, 80)}")
         if opens:
@@ -240,7 +253,13 @@ def structurizr(text, name):
     for cid, e in els.items():
         tags = " ".join(e["tags"]).lower()
         kind = ("user" if "external" in tags else "person") if e["type"] == "person" else "external" if "external" in tags else c4guess([tags, e["tech"], e["name"]])
-        m.card(cid, e["name"], kind, e["tech"] or C4TYPE[e["type"]], e["desc"], icon="user" if e["type"] == "person" else None)
+        # Structurizr's precedence (Styles.findElementStyle): the element's tags in order, Element and its type's tag first;
+        # for each tag its styles in the order written; a later shape wins
+        shape = None
+        for t in dict.fromkeys(["Element", TAG[e["type"]], *e["tags"]]):
+            shape = next((sh for tag, sh in reversed(styles) if tag == t), shape)
+        m.card(cid, e["name"], kind, e["tech"] or C4TYPE[e["type"]], e["desc"], icon="user" if e["type"] == "person" else None,
+               shape=shape and SZ_SHAPE.get(shape.lower()))
     for g in groups:  # after the cards, so a group's name never takes an element's alias
         g["id"] = m.uniq(ident(g["label"]), f"group-{ident(g['label'])}")
     find = lambda t: ref.get(t) or (t if t in els else None)
@@ -445,6 +464,8 @@ def c4(lines, m):
             rels.append((no, a, r.group(1), r.group(2)))
         elif not (c and QUIET.fullmatch(name)):
             m.say(no, f"not imported: {clip(s, 80)}")
+        elif named.get("shape"):  # ponytail: a tag's $shape (RoundedBoxShape, EightSidedShape) is said, not drawn
+            m.say(no, f"{name}({clip((pos or [''])[0], 40)}): $shape={named['shape']} is not imported")
         if opens:
             stack.append(alias)
             opened.append((no, s))
