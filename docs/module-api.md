@@ -1518,3 +1518,91 @@ and the selection, and had to guess the rest from the DOM. Now it is one snapsho
   - `tests/motion.html`: `navigating`, a tour and a replay, while they run; a glide, and zooms one on another, each send
     one camera event.
   - `tests/page-handle.html`: the CLI page's `window.umlimatorMap.state`.
+
+### The standalone page's state: its keys, the link, stories in the history, the panel and the element
+
+The page audit (wave 2) found the page's own machines: its keys, its link, its menus and panels, and the element's
+lifecycle. Each decided its transitions in several places, so they contradicted each other. Each now has one owner. The
+ids are the audit's: a machine, then the number of its defect.
+
+- **One key router (keyboard-router 1 to 3, example-lightbox 1 and 2, search-palette 1, help-dialog 1).** One table
+  decides each key, read from the top open layer down. The layers, in order: an example shown full size, search, the key
+  list, a menu, the view's popover, the story recorder, a story, then the map.
+  - Enter, Space and the arrows aimed at a control outside the map are that control's. With a card selected, Enter on a
+    details tab, the panel's ×, Export ▾, an item of the views list or the example's × opened the card's inner view
+    instead, and the control did nothing. Arrows on those controls panned the map.
+  - Esc and Backspace close the top open layer, whatever has the focus. Search no longer stays open while the map goes up
+    a level behind it. A menu gives focus back to its button. The recorder closes as its Close button does. Backspace
+    closes a story as Esc does (`play(null)`); before, it cleared the step's card and then went up a level under the
+    story's bar.
+  - An example shown full size holds the keys: Esc closes it, Tab stays in it, and Enter and Space press its own
+    buttons. Focus goes back to its thumbnail. Before, O, /, ? and i acted on the page behind it.
+  - The key list (?) is made from the same table, so it can't drift from what the keys do.
+- **One owner for the link (deep-link 3 to 5, lens-picker 1 and 2, theme 1).** One function writes the fragment, from
+  what the map shows. Another follows a link: on load, and on Back, Forward or an edited link.
+  - A new view is a new entry, written once the move lands. A selection, a story step on the same view, a lens and the
+    theme rewrite the entry. Since the move became latest-wins, the select a move sends mid-move rewrote the entry being
+    left with the new view, so Back skipped it; now it waits for the move.
+  - A link applies its lens, view, story step and card together, and nothing is written until the map has settled. A
+    move the reader starts meanwhile wins and gets an entry of its own.
+  - What the model lacks is corrected in the link, and the hint line says so: "Link corrected: no view “nope”". The same
+    goes for a card, a story, a step or a lens. Before, a missing view or card stayed in the address bar.
+  - `reader=1` stays in the link, so a reader copy's Export ▸ Copy link is a reader copy. A link that names the theme names
+    the one shown, after ◐ too; it named the theme the page opened with, which won on reload.
+  - The lens follows the `lens` event, so a lens put on with `handle.lens()`, or dropped by an `update()`, shows on the
+    Lenses button and in the link.
+- **Stories in the history (story-mirror 1).** A story step's entry is the entry of the step's own view. Back and Forward
+  show that step, not playing on, and an entry with no story closes the one shown. Before, the history ignored stories:
+  Back moved the view under a bar still on its last step, and each entry named the next step.
+- **The details panel (details-panel 1 to 5, lit-highlight 1 and 3, legend-fold 1).**
+  - The tab the reader chose stays chosen. A card without it shows its first tab, and the next card that has it shows
+    it again. Before, the choice was forgotten until a reload.
+  - A story step's own selection is a pointer, by id, whether the step names its card or gives a Ref. `[` and `]` don't
+    open the panel for it, and a click on that card does.
+  - A tab or the legend's fold changed by keyboard keeps focus on its button, and a panel that closes gives focus back to
+    the map, on the page as in `render()`'s pieces.
+  - What → ← ⇄ ⏱ ¤ ⊘ light is on the page's own layer, `lit`, so it never takes away a story's or a host's `highlight()`.
+    The button that is on says so (`aria-pressed`). `handle.state.overlays` lists `lit`, not `highlight`.
+- **Menus, phones and the views list (search-palette 2, header-menus 1, views-navigator 2).** One menu is open at a time,
+  and search, the key list or another menu closes it; ⌘K left Stories or Lenses open under search. On a phone's width,
+  Stories and Lenses stay in the header as their glyphs ▶ and ◎, and keep their names for screen readers. Only Export
+  is hidden. The views list closes when the window narrows to a phone's width, where it would cover the map.
+- **The page's handle (page-lifecycle 1).** `destroy()` also takes the page's listeners on the document and window away.
+  Before, the key list, search and Back still acted on a destroyed map.
+- **One-shot modes (page-modes 1 and 2).**
+  - `#still` for a view the model lacks writes `data-still` with an `error` and stops. It used to poll for ever, until
+    Chrome's budget ran out.
+  - The `#check` report lists a promise that failed with no one to catch it (`unhandledrejection`). It waits two tasks
+    after the fonts so such a failure can come in.
+- **`<umlimator-map>` (element 1 to 4).**
+  - A model with no view to draw fires `error`, not `load`, and the element's children show again.
+  - `error` is an `ErrorEvent`, and its `message` says why: a fetch's status, bad JSON, or no view.
+  - `el.loading` is true from the moment a draw is asked for until `load` or `error`. Meanwhile `el.map` is still the map
+    drawn last.
+  - An attribute set to the value it has draws nothing again. A host that set `view` again threw away where the reader
+    had gone.
+  - `el.map.state` is the map's `MapState`.
+- **Visible behaviour changes:**
+  - Enter and Space on a page control press it.
+  - Esc and Backspace close the top open layer first; Backspace closes a story.
+  - Stories are in the history.
+  - A link the map can't follow is corrected and said in the hint line.
+  - `reader=1` stays in the link.
+  - The lit paths are the `lit` layer.
+  - Stories and Lenses show on phones.
+  - The element fires `error` for a model with no view.
+- **API added:** `el.loading`, and the element's `error` as an `ErrorEvent`. `lib/umlimator-element.d.ts` has `loading`;
+  nothing in `lib/umlimator.d.ts` changed.
+- **Left for later:**
+  - Search's index after an `update()`.
+  - The hint line on a phone, and its live region repeating the key hints.
+  - The ◐ button's state for screen readers.
+  - `#check` staying in the link.
+  - Pausing a story when the reader moves, and the header's ❚❚ pausing a story, belong to the story player's change.
+- **Tests:**
+  - `tests/page-state.html` covers the keys, the link, stories in the history, the panel, menus, a phone's width (the
+    template's CSS, in a frame), `#still` and the check report. `tests/embed.py` runs it under reduced motion.
+  - `tests/page-motion.html` runs in the motion pass: Back twice during moves, a selection and then a move, a story step
+    on another view, and the reader's own move while a link is followed.
+  - `tests/element.html` adds the element's checks.
+  - Each defect fixed has a check that fails without this change.

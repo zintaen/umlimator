@@ -96,6 +96,24 @@ try {
   check('removing the element destroys its map', b.map === null && !inner(b) && !h.toSVG());
   document.body.appendChild(b);
   check('putting it back draws it again', await until(() => b.map && cards(b) === 2));
+  check("el.map.state is the map's state (0.14.0)", b.map.state.view === 'v' && Object.isFrozen(b.map.state) && b.map.state.destroyed === false, b.map.state);
+
+  // the element's own state (0.14.0): a model that draws nothing, why an error is, a draw under way, an attribute set again
+  const d = document.createElement('umlimator-map'), dev = []; d.innerHTML = '<p id="dnote">No map here.</p>';
+  ['load', 'error'].forEach(t => d.addEventListener(t, e => dev.push(e)));
+  d.setAttribute('src', 'data:application/json,' + encodeURIComponent('{"nodes":[],"views":[]}')); document.body.appendChild(d);
+  await until(() => dev.length);
+  check('a model with no view to draw is an error, not a load: no map, the children show', dev.length === 1 && dev[0].type === 'error' && d.map === null
+    && document.getElementById('dnote').getClientRects().length === 1, dev.map(e => e.type));
+  check('…the error is an ErrorEvent, its message the reason', dev[0] instanceof ErrorEvent && /no view to draw/.test(dev[0].message), dev[0].message);
+  d.setAttribute('src', '../examples/weather.json');
+  const wasLoading = d.loading; await until(() => dev.length === 2);
+  check('loading is true from the moment a new src is set until the map is drawn', wasLoading === true && dev[1].type === 'load' && d.loading === false && d.map && d.map.view === 'stages', [wasLoading, d.loading]);
+  const drawn = d.map; d.setAttribute('src', '../examples/weather.json'); await wait(200);
+  check('an attribute set to the value it has draws nothing again', d.map === drawn && dev.length === 2 && d.loading === false);
+  d.setAttribute('src', 'nope.json'); await until(() => dev.length === 3);
+  check("…and a model that can't be had ends loading, with an error that says why", d.loading === false && dev[2] instanceof ErrorEvent && /nope\.json: 404/.test(dev[2].message), dev[2].message);
+  d.remove();
 } catch (e) { out.fail.push('threw: ' + (e && e.stack || e)); }
 const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
 </script>

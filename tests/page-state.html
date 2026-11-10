@@ -1,0 +1,180 @@
+<!doctype html>
+<!-- The standalone page's state machines (0.14.0): its key router, the link it keeps, stories in the history, the details
+     panel, its menus and its one-shot modes. tests/embed.py opens this in headless Chrome, with reduced motion, and reads
+     <pre id="result">. Each check is a defect the page audit reproduced, and fails without the fix. -->
+<meta charset="utf-8">
+<link rel="icon" href="data:,">
+<title>umlimator page state test</title>
+<body style="margin:0">
+<div id="page" style="width:1200px;height:800px"></div>
+<script type="module">
+import { mountPage } from '../lib/umlimator.js';
+const out = { ok: [], fail: [] };
+const check = (name, cond, info) => { document.title = name; if (cond) out.ok.push(name); else out.fail.push(name + (info === undefined ? '' : ': ' + JSON.stringify(info))); };
+const wait = ms => new Promise(r => setTimeout(r, ms));
+const until = async (f, ms = 4000) => { const t = Date.now(); while (!f() && Date.now() - t < ms) await wait(20); return f(); };
+const BIKE = await (await fetch('../examples/bike-share.json')).json();
+// bike-share, with an example on Trip service (the Example tab, shown full size) and a story whose step selects by Ref
+const M = structuredClone(BIKE), thumb = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="32" height="20"><rect width="32" height="20" fill="#38bdf8"/></svg>');
+M.nodes.find(n => n.id === 'trips').examples = [{ title: 'Trip screen', thumb }];
+M.stories.push({ id: 'refsel', title: 'A Ref', steps: [{ view: 'system', caption: 'Trip service, by a Ref', select: { type: 'node', id: 'trips', view: 'system' } }] });
+const $ = id => document.getElementById(id), box = $('page');
+let pg = null;
+const mount = async (hash = '', params = '') => { // a fresh page on the test's own document and link
+  if (pg) pg.destroy(); box.innerHTML = ''; history.replaceState(null, '', location.pathname + (hash || ''));
+  pg = mountPage(box, M, { instant: true, params: new URLSearchParams(params) });
+  await until(() => pg.view && document.querySelector('#m-canvas .umlimator')); await wait(30); return pg; };
+const sr = () => document.querySelector('#m-canvas .umlimator').shadowRoot, card = id => sr().querySelector(`.node[data-id="${id}"]`);
+const click = el => el.dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true, cancelable: true }));
+const key = (k, at = document.activeElement || document.body, o = {}) => { const e = new KeyboardEvent('keydown', { key: k, bubbles: true, composed: true, cancelable: true, ...o }); at.dispatchEvent(e); return e; };
+const link = () => Object.fromEntries(new URLSearchParams(location.hash.slice(1)));
+const hint = () => $('m-hint').textContent, panel = () => !$('m-panel').hidden, bar = () => (sr().querySelector('.um-story .um-st') || {}).textContent || null;
+const back = async (f, ms) => { history.back(); return until(f, ms); }, forward = async (f, ms) => { history.forward(); return until(f, ms); };
+for (let i = 0; i < 6; i++) history.pushState(null, '', location.pathname + '#before-' + i); // entries to come back to: Back never leaves this page
+try {
+  /* ---------- the key router ---------- */
+  await mount('#view=context');
+  pg.select({ type: 'node', id: 'bikeshare' }); await until(panel);
+  $('pt-what').focus(); let e = key('Enter');
+  check('Enter on a details tab is the tab\'s: the map does not open the selected card\'s view, nor take the key', !e.defaultPrevented && pg.view === 'context', [e.defaultPrevented, pg.view]);
+  e = key('Enter', document.querySelector('#m-panel [data-close]'));
+  check('…nor on the panel\'s close button', !e.defaultPrevented && pg.view === 'context');
+  e = key('Enter', $('m-export'));
+  check('…nor on the header\'s buttons (Export)', !e.defaultPrevented && pg.view === 'context');
+  const cam0 = JSON.stringify(pg.state.camera); e = key('ArrowDown', $('pt-what'));
+  check('arrows on a control outside the map are the control\'s: the map does not pan', !e.defaultPrevented && JSON.stringify(pg.state.camera) === cam0, [cam0, pg.state.camera]);
+  e = key('Enter', document.body);
+  check('…and Enter with no control focused still opens the selected card, as before', e.defaultPrevented && await until(() => pg.view === 'system'), pg.view);
+  await pg.setView('system'); pg.select({ type: 'node', id: 'trips' }); await until(panel);
+  e = key('Enter', document.querySelector('#m-tree [data-v="fleet"]'));
+  check('Enter on an item of the views list is the item\'s, not the selected card\'s (Trip service opens Trips)', !e.defaultPrevented && pg.view === 'system', pg.view);
+
+  key('/', document.body); await until(() => !$('m-pal').hidden);
+  $('m-q').blur(); e = key('Escape', document.body);
+  check('Esc with search open and focus out of its field closes search, and only search', $('m-pal').hidden && pg.view === 'system' && e.defaultPrevented, [$('m-pal').hidden, pg.view]);
+
+  $('m-stories').click(); document.querySelector('#m-stories-pop button').focus();
+  key('Escape');
+  check('Esc on an open menu closes it and gives focus back to its button', $('m-stories-pop').hidden && document.activeElement === $('m-stories'), document.activeElement && document.activeElement.id);
+  $('m-stories').click(); key('k', document.body, { metaKey: true });
+  check('⌘K closes an open menu as search opens: one layer at a time', !$('m-pal').hidden && $('m-stories-pop').hidden && $('m-stories').getAttribute('aria-expanded') === 'false');
+  key('Escape', $('m-q'));
+  $('m-lenses').click(); $('m-export').click();
+  check('opening a menu closes the one open', $('m-lenses-pop').hidden && !$('m-export-pop').hidden); $('m-export').click();
+  $('m-export').click(); document.querySelector('#m-export-pop [data-x="record"]').click(); await until(() => $('m-rec'));
+  key('Escape', document.body);
+  check('Esc closes the story recorder when it is on top, as its Close button does', !$('m-rec') && pg.view === 'system');
+  const rows = [...document.querySelectorAll('#m-helpbox dt')].map(x => x.textContent);
+  check('the key list (?) is the router\'s table: Esc · Backspace closes what is on top, the recorder and a story too', rows.includes('Esc · Backspace') && rows.includes('?') && /the recorder, a story too/.test($('m-helpbox').textContent), rows);
+
+  /* ---------- stories and their keys ---------- */
+  pg.select(null); pg.play('ride', { step: 1, auto: false }); await until(() => bar() === 'A ride, from unlock to payment · 2 / 5' && pg.selection && pg.selection.id === 'trips');
+  check("a story's step selects its card as a pointer: no details", !panel());
+  key(']', document.body);
+  check('…] does not open them either (it moves between the tabs of an open panel)', !panel());
+  click(card('trips')); await until(panel);
+  check('…a click on that very card does: the reader picked it', panel());
+  key('Backspace', document.body);
+  check('Backspace closes a story, as Esc does; the map stays on its view', pg.state.story === null && pg.view === 'system' && !bar(), [pg.state.story, pg.view]);
+  pg.select(null); pg.play('refsel', { auto: false }); await until(() => bar() && pg.selection && pg.selection.id === 'trips');
+  check("a step that selects its card by Ref is a pointer too: no details", !panel());
+  key('Escape', document.body);
+
+  /* ---------- the details panel ---------- */
+  pg.select({ type: 'node', id: 'trips' }); await until(panel);
+  click($('pt-examples'));
+  pg.select({ type: 'node', id: 'rider-app' }); await until(() => panel() && $('m-panel').dataset.node === 'rider-app');
+  const shown = document.querySelector('#m-panel .ptab[aria-selected="true"]').dataset.tab;
+  pg.select({ type: 'node', id: 'trips' }); await until(() => $('m-panel').dataset.node === 'trips');
+  check('the tab the reader chose stays chosen across a card that has not got it', shown === 'when' && document.querySelector('#m-panel .ptab[aria-selected="true"]').dataset.tab === 'examples',
+    [shown, document.querySelector('#m-panel .ptab[aria-selected="true"]').dataset.tab]);
+  $('pt-how').focus(); click($('pt-how'));
+  check('a tab switched by keyboard keeps focus on the tab', document.activeElement && document.activeElement.dataset.tab === 'how', document.activeElement && document.activeElement.outerHTML.slice(0, 60));
+  click($('pt-examples')); const ex = document.querySelector('#m-panel [data-ex]'); ex.focus(); click(ex);
+  const lb = $('m-lightbox'); await until(() => lb && !lb.hidden);
+  e = key('Enter', lb.querySelector('[data-lbclose]'));
+  check('an example shown full size holds the keys: Enter on its close button is the button\'s, and the map stays', !e.defaultPrevented && pg.view === 'system' && !lb.hidden);
+  const tree0 = document.body.classList.contains('tree-open'); e = key('o', lb.querySelector('[data-lbclose]'));
+  check('…the page\'s keys wait (O leaves the views list), and Esc closes it, giving focus back to its thumbnail',
+    e.defaultPrevented && document.body.classList.contains('tree-open') === tree0 && (key('Escape', lb.querySelector('[data-lbclose]')), lb.hidden) && document.activeElement === document.querySelector('#m-panel [data-ex]'));
+  const lit = () => document.querySelector('#m-panel [data-lit="out"]');
+  click(lit());
+  check("what the panel lights is said on its button (aria-pressed), and drawn on the page's own layer, not the host's highlight",
+    lit().getAttribute('aria-pressed') === 'true' && pg.state.overlays.includes('lit') && !pg.state.overlays.includes('highlight'), pg.state.overlays);
+  pg.highlight([{ type: 'node', id: 'rider-app', view: 'system' }]); click(lit());
+  check("…so lighting it off leaves a host's highlight on the map", pg.state.overlays.includes('highlight') && !pg.state.overlays.includes('lit') && lit().getAttribute('aria-pressed') === 'false', pg.state.overlays);
+  pg.highlight(null);
+
+  /* ---------- the link ---------- */
+  await mount('#view=nope&node=riders');
+  check('a link to a view the map lacks: the link is corrected to what shows, and the hint line says so', await until(() => /Link corrected: no view “nope”/.test(hint())) && link().view === 'context', [hint(), location.hash]);
+  history.pushState(null, '', '#view=system&node=nope'); dispatchEvent(new PopStateEvent('popstate'));
+  check('an edited link naming a card the view lacks: corrected, and said', await until(() => pg.view === 'system' && /no card “nope”/.test(hint())) && !('node' in link()), [location.hash, hint()]);
+  history.pushState(null, '', '#view=system&story=nope&lens=nope'); dispatchEvent(new PopStateEvent('popstate'));
+  check('…a story or a lens the model lacks, the same', await until(() => /no story “nope”/.test(hint()) && /no lens “nope”/.test(hint())) && !('story' in link()) && !('lens' in link()), [location.hash, hint()]);
+  pg.lens('teams');
+  check('a lens put on through the handle is in the link and on the Lenses button', link().lens === 'teams' && $('m-lenses').textContent === '◎ By team', [location.hash, $('m-lenses').textContent]);
+  pg.lens(null);
+  await mount('#view=system&reader=1', 'reader=1');
+  check('a reader copy keeps reader=1 in its link', link().reader === '1' && link().view === 'system', location.hash);
+  const theme0 = document.documentElement.dataset.theme;
+  await mount('#view=context&theme=dark', 'theme=dark'); document.documentElement.dataset.theme = 'dark';
+  $('m-theme').click();
+  check('a link that names the theme names the one shown, after ◐ too', link().theme === 'light' && document.documentElement.dataset.theme === 'light', location.hash);
+  try { localStorage.removeItem('visual-theme'); } catch (_) {} if (theme0) document.documentElement.dataset.theme = theme0; else delete document.documentElement.dataset.theme;
+
+  // a move keeps the entry it leaves: a selection there stays in it (the select a move sends rewrote it)
+  await mount('#view=context');
+  pg.select({ type: 'node', id: 'bikeshare' }); await until(() => link().node === 'bikeshare');
+  await pg.setView('system');
+  check('Back after a move from a card comes back to that view and that card', await back(() => pg.view === 'context' && pg.selection && pg.selection.id === 'bikeshare') && link().node === 'bikeshare', [pg.view, location.hash]);
+
+  // stories in the history: each step's entry is its own view's, and Back and Forward show its step
+  await mount('#view=context');
+  const pl = pg.play('ride', { auto: false }); await until(() => bar() === 'A ride, from unlock to payment · 1 / 5');
+  for (let k = 2; k <= 3; k++) { pl.next(); await until(() => bar() === `A ride, from unlock to payment · ${k} / 5` && pg.navigating === null); await wait(30); }
+  check("a story's steps go into the history, each in its own view's entry", link().view === 'trips' && link().story === 'ride' && link().step === '3', location.hash);
+  check('…Back shows the step before, on its view: the story plays that step', await back(() => bar() === 'A ride, from unlock to payment · 2 / 5' && pg.view === 'system') && link().step === '2' && link().node === 'trips', [bar(), pg.view, location.hash]);
+  check('…and again', await back(() => bar() === 'A ride, from unlock to payment · 1 / 5' && pg.view === 'context') && link().step === '1', [bar(), pg.view, location.hash]);
+  key('Escape', document.body);
+  check('…Esc closes the story, and its entry no longer names it', !bar() && !('story' in link()), location.hash);
+  check('…Forward into a step\'s entry shows that step again', await forward(() => bar() === 'A ride, from unlock to payment · 2 / 5' && pg.view === 'system'), [bar(), pg.view]);
+  check('…and Back to an entry with no story closes it', await back(() => !bar() && pg.view === 'context') && pg.state.story === null, [bar(), pg.view]);
+
+  /* ---------- destroy() takes the page's listeners with it ---------- */
+  pg.destroy(); const help0 = $('m-helpbox').hidden;
+  key('?', document.body); key('/', document.body);
+  check('after destroy(), the page\'s keys act on nothing: no key list, no search', help0 && $('m-helpbox').hidden && $('m-pal').hidden);
+  pg = null; box.innerHTML = ''; history.replaceState(null, '', location.pathname);
+
+  /* ---------- the page's own look: phones, and a window narrowed (the template's CSS, in a frame) ---------- */
+  const tpl = await (await fetch('../engine/assets/template.html')).text(), css = tpl.match(/<style>([\s\S]*?)<\/style>/)[1];
+  const lib = new URL('../lib/umlimator.js', location.href).href, model = JSON.stringify(M).replace(/</g, '\\u003c');
+  const frame = async width => { const f = document.createElement('iframe'); f.style.cssText = `width:${width}px;height:700px;border:0`;
+    f.srcdoc = `<!doctype html><meta charset="utf-8"><link rel="stylesheet" href="${new URL('../lib/umlimator-theme.css', location.href).href}"><style>${css}</style><main id="app" class="wrap"></main>`
+      + `<script type="module">import { mountPage } from '${lib}'; window.h = mountPage(document.getElementById('app'), ${model}, { instant: true });<\/script>`;
+    document.body.appendChild(f); await until(() => f.contentWindow.h && f.contentWindow.h.view, 6000); await wait(60); return f; };
+  const phone = await frame(400), pd = phone.contentDocument, shownMenu = id => getComputedStyle(pd.getElementById(id).closest('.menu')).display !== 'none';
+  check("on a phone's width the Stories and Lenses menus stay, as their glyphs, and keep their names", shownMenu('m-stories') && shownMenu('m-lenses') && !shownMenu('m-export')
+    && pd.getElementById('m-stories').getBoundingClientRect().width <= 34 && pd.getElementById('m-lenses').textContent === '◎ Lenses', [shownMenu('m-stories'), shownMenu('m-lenses'), shownMenu('m-export')]);
+  phone.remove();
+  const wide = await frame(1300), open0 = wide.contentDocument.body.classList.contains('tree-open');
+  wide.style.width = '700px'; wide.contentWindow.dispatchEvent(new Event('resize')); // as the window's own resize does (headless virtual time runs no rendering step)
+  check('the views list, open on a wide window, closes when the window narrows to a phone\'s (it would cover the map)', open0 && await until(() => !wide.contentDocument.body.classList.contains('tree-open')));
+  wide.remove();
+
+  /* ---------- one-shot modes: #still for a view the model lacks, and check's report ---------- */
+  const f1 = document.createElement('iframe'); f1.style.cssText = 'width:900px;height:600px;border:0'; f1.src = '../examples/bookshop.html#still=nope'; document.body.appendChild(f1);
+  const still = await until(() => f1.contentDocument && f1.contentDocument.documentElement.getAttribute('data-still'), 6000);
+  check('#still for a view the model lacks answers at once, with the reason (data-still), instead of waiting for ever', !!still && /no view "nope"/.test(JSON.parse(still).error), still);
+  f1.remove();
+  const page = await (await fetch('../examples/bookshop.html')).text();
+  const late = URL.createObjectURL(new Blob([page.replace('</body>', '<script type="module">Promise.reject(new Error("a late failure"))<\/script></body>')], { type: 'text/html' }));
+  const f2 = document.createElement('iframe'); f2.style.cssText = 'width:900px;height:600px;border:0'; f2.src = late + '#check=1'; document.body.appendChild(f2);
+  const rep = await until(() => f2.contentDocument && f2.contentDocument.getElementById('visual-check'), 8000) && JSON.parse(f2.contentDocument.getElementById('visual-check').textContent);
+  check("check's report has a promise that failed with no one to catch it", rep && rep.errors.some(x => /a late failure/.test(x)), rep && rep.errors);
+  f2.remove(); URL.revokeObjectURL(late);
+} catch (err) { out.fail.push('threw: ' + (err && err.stack || err)); }
+const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
+</script>
+</body>

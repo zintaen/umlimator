@@ -196,7 +196,9 @@
   @media (max-width: 820px) {
     .mapapp, body.tree-open .mapapp { grid-template-columns: 0 minmax(0, 1fr); grid-template-rows: 48px minmax(0, 1fr); }
     .mbar { gap: 8px; padding: 0 10px; }
-    .crumbs, #m-export, .menu, #m-help, .findbtn .ft, .findbtn .kbd { display: none; }
+    .crumbs, .menu:has(#m-export), #m-help, .findbtn .ft, .findbtn .kbd { display: none; }
+    .mbar .ibtn.txt { width: 32px; padding: 0; } /* Stories and Lenses stay, as their glyphs; their names are still read out */
+    .mbar .ibtn.txt .lbl { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
     .findbtn { width: 32px; padding: 0; justify-content: center; }
     .mbrand { flex: 1; } .mbrand span { overflow: hidden; text-overflow: ellipsis; }
     .outline { position: fixed; top: 48px; bottom: 0; left: 0; width: min(320px, 88vw); z-index: 20; box-shadow: var(--um-shadow); }
@@ -287,6 +289,7 @@ if (Q.get('reader')) [...(D.nodes || []), ...(D.views || []).flatMap(v => Object
 if (Q.get('theme')) document.documentElement.dataset.theme = Q.get('theme');
 const INSTANT = !!(Q.get('shot') || Q.get('check') || Q.get('still') || Q.get('pdf')); // this page's map draws without animation (its own handle only)
 const errors = []; addEventListener('error', e => errors.push(String(e.message || e)));
+addEventListener('unhandledrejection', e => errors.push(String((e.reason && e.reason.message) || e.reason))); // a promise that fails with no one to catch it: check reports it too (0.14.0)
 document.adoptedStyleSheets = [...document.adoptedStyleSheets, sheet()];
 const app = document.getElementById('app');
 function renderDoc() {
@@ -593,7 +596,9 @@ if (Q.get('check')) {
     res.errors = errors;
     const pre = document.createElement('pre'); pre.id = 'visual-check'; pre.hidden = true; pre.textContent = JSON.stringify(res); document.body.appendChild(pre);
   };
-  (document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve()).then(report, report);
+  // two tasks after the fonts: a promise the page's start left to fail is in the report, as its unhandledrejection comes in a task of its own
+  const later = () => setTimeout(() => setTimeout(report));
+  (document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve()).then(later, later);
 }
 </script>
 </body>
