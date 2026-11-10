@@ -329,6 +329,10 @@ waiting for it, read as `navigating`.
   playing story.
 - **Settles:** `setView()` resolves `true` or `false` as above. Under reduced motion the view is drawn before
   `setView()` returns.
+- **Up** goes back the way the reader came. `render()` keeps the views the reader walked through, by any move
+  (`setView()`, `open`, a story's step, the views list). Up goes to the one before, and from the first view to its
+  parent in the model. A view walked through again cuts the walk back to it, and an `update()` drops the views it takes
+  away. The page goes up its breadcrumbs instead.
 
 **The story player**, in `render()`: `play()`, the page's Stories menu, or a link's `story=&step=`. `handle.story` is
 the player shown, and `player.state` names its state.
@@ -423,7 +427,13 @@ the top layer, wherever the focus is; a text field keeps its own keys.
 | Following | an entry that names no story | the story shown stops |
 
 The link's keys are `view`, `node`, `story`, `step` (from 1), `lens`, and `theme` when the page was opened with one;
-`reader`, `check` and `shot` stay as the page was opened.
+`reader` stays as the page was opened. `check`, `shot` and `still` describe one run, and the link the page writes
+leaves them out, so Copy link never shares a page in check mode.
+
+The hint line shows the key hints, and for a while what just happened ("Link corrected: …", "Already at the top").
+That message is said in a live region of its own, so a screen reader hears the message and not the key hints after it.
+At a phone's width the key hints are hidden and a message shows as a toast at the foot of the map. ◐ is a toggle named
+"Dark theme", pressed while the page is dark.
 
 **`<umlimator-map>`'s lifecycle**, in `lib/umlimator-element.js`:
 
@@ -2840,3 +2850,29 @@ Both gaps were found while writing the State chapter (#129).
   crossing-aware order of the whole view's rows and columns, not the router.
 - **u21's Catalog unfolded** on its shop view checks clean in the browser in all five fonts. Node's text estimate still
   finds one label ("orders") 10 px from its line's end, which is label placement (#108).
+
+### The page and the reader (#133 to #137)
+
+- **Search finds what an `update()` brought (#133).** The page indexed its cards and views once, on mount. After an
+  `update()` that added "Pager duty", searching "pager" said "Nothing called “pager”. Did you mean Pager duty?". Search
+  now reads the model shown, and an `update()` that leaves the view's picture as it was hands the page the new model
+  too.
+- **Messages have a live region of their own, and a phone shows them (#134).** The hint line was the live region, and
+  each message ended by writing the key hints back into it, so a screen reader heard them after every message. At a
+  phone's width the line was hidden, messages with it. Now the line is not live; a polite live region beside it says
+  each message. At 820 px or less the key hints stay hidden and a message shows as a toast at the foot of the map. The
+  same holds for `render()`'s `hints`.
+- **◐ says which theme is on (#135).** It is named "Dark theme" and is pressed (`aria-pressed`) while the page is dark,
+  following the system's theme when the page sets none.
+- **The link leaves out `check` and `shot` (#136).** A page opened with `#check=1` wrote `check=1` into every link, so
+  Copy link from a check run shared a page in check mode. The link keeps `reader` and drops the one-run modes.
+- **Escape and ↑ go back the way the reader came (#137).** In a bare `render()` they went to the view's parent in the
+  model, a view a reader whom `setView()` or a story's step brought along may never have seen. `render()` now keeps
+  the views walked through and goes back along them, then to the parent in the model. The page keeps its breadcrumbs.
+- **Visible changes:** the hint line has no `role="status"` or `aria-live`; the live region is the element after it.
+  ◐'s label is "Dark theme", with `aria-pressed`. Up after `setView()` goes to the view the map came from.
+- **API added:** none. No type, option, event shape or model field changes.
+- **Docs:** the State chapter says how up chooses its view, which keys the link keeps, and the hint line's live region.
+- **Tests:** `tests/page-state.html` (search after `update()`, the hint line at 400 px, ◐, `#check=1` and `#shot=1`),
+  `tests/embed.html` (Escape and ↑ after `setView()`), `tests/pieces.html` and `tests/marks.html` (the message's live
+  region). Each new check fails before this change.

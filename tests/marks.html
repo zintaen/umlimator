@@ -116,8 +116,9 @@ try {
   const key = k => document.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true }));
   const hint = () => document.getElementById('m-hint').textContent;
   p.select({ type: 'node', id: 'lifecycle' }); key('>');
-  check('the page: > lights what the selected card leads to, and says so in the hint line (a live region)', /^Trip lifecycle leads to 7 cards/.test(hint()) && pcard('trip-api').getAttribute('opacity') === '0.2'
-    && !pcard('lifecycle').hasAttribute('opacity') && pcard('fare').getAttribute('opacity') === '0.85' && document.getElementById('m-hint').getAttribute('aria-live') === 'polite', hint());
+  check('the page: > lights what the selected card leads to, and says so in the hint line and its live region', /^Trip lifecycle leads to 7 cards/.test(hint()) && pcard('trip-api').getAttribute('opacity') === '0.2'
+    && !pcard('lifecycle').hasAttribute('opacity') && pcard('fare').getAttribute('opacity') === '0.85' && document.getElementById('m-hint').nextElementSibling.getAttribute('aria-live') === 'polite'
+    && document.getElementById('m-hint').nextElementSibling.textContent === hint(), hint());
   key('>');
   check('…the same key again clears it', !pcard('trip-api').hasAttribute('opacity') && hint() === 'Highlight cleared', hint());
   document.querySelector('#m-panel [data-lit="in"]').click();
