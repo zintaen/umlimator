@@ -31,7 +31,7 @@ try {
   check('…a story event names the story and the step', events.length === 1 && events[0].story === 'ride' && events[0].step === 0 && events[0].steps === 5, events);
   check('…its highlight: the cards it names and the lines between them lit, the rest dimmed', !card('riders').hasAttribute('opacity') && !line('riders', 'bikeshare').hasAttribute('opacity')
     && !line('bikeshare', 'payments').hasAttribute('opacity') && card('ops').getAttribute('opacity') === '0.2' && line('ops', 'bikeshare').getAttribute('opacity') === '0.2', dimmed());
-  check('…on the first step, ‹ is off', btn('prev').disabled && btn('play').getAttribute('aria-label') === 'Play');
+  check('…on the first step, ‹ is off', btn('prev').getAttribute('aria-disabled') === 'true' && btn('play').getAttribute('aria-label') === 'Play');
 
   p.next(); await until(() => h.view === 'system' && live().startsWith('Step 2'));
   out.debug.push({ step2dimmed: dimmed(), lit: [...sr.querySelectorAll('.um-rings, .um-marks')].length, umlit: stage.classList.contains('um-lit'), pct: sr.querySelector('.pct').textContent });
@@ -75,6 +75,98 @@ try {
     && !sr2.querySelector('.edge-g[data-from="b"][data-to="c"]').hasAttribute('opacity') && sr2.querySelector('.edge-g[data-from="a"][data-to="b"]').getAttribute('opacity') === '0.2');
   h2.destroy();
 
+  // 0.14.0: the story player on the map's state contract (the playback audit's story-player, tour and flow defects)
+  const wait = ms => new Promise(r => setTimeout(r, ms)), soon = (p, ms = 500) => Promise.race([p, wait(ms).then(() => 'pending')]);
+  const el3 = document.getElementById('b'), se = [], h3 = render(el3, BIKE, { view: 'context', on: { story: e => se.push({ ...e }) } });
+  const sr3 = el3.querySelector('.umlimator').shadowRoot, stage3 = sr3.querySelector('.stage'), live3 = () => sr3.querySelector('.um-live').textContent;
+  const bar3 = () => sr3.querySelector('.um-story'), b3 = s => bar3().querySelector(`[data-s="${s}"]`), op3 = id => sr3.querySelector(`.node[data-id="${id}"]`).getAttribute('opacity') || '1';
+  const p3 = h3.play('ride', { auto: false }), entering = p3 && p3.state;
+  check('a story enters its first step; handle.story is its player', entering === 'entering' && h3.story === p3, entering);
+  await until(() => live3().startsWith('Step 1'));
+  check('…then shows it, paused (auto: false), and its story event says playing: false', p3.state === 'paused' && se.length === 1 && se[0].step === 0 && se[0].playing === false, [p3.state, se]);
+  check('play() with an id the model lacks returns null and leaves the story shown', h3.play('nope') === null && h3.story === p3 && !!bar3() && p3.state === 'paused', h3.story && h3.story.state);
+  p3.resume(); const r1 = [p3.state, se.length, se[se.length - 1]]; p3.pause(); const r2 = [p3.state, se.length, se[se.length - 1]];
+  check('resume() and pause() each send a story event for the step shown, saying whether it plays', r1[0] === 'playing' && r1[1] === 2 && r1[2].step === 0 && r1[2].playing === true
+    && r2[0] === 'paused' && r2[1] === 3 && r2[2].step === 0 && r2[2].playing === false, [r1, r2]);
+  const lit3 = [h3.state.overlays.slice(), op3('ops')]; h3.highlight(null);
+  check("a step's highlight is the story's own layer: highlight(null) leaves it", lit3[0].includes('story') && !lit3[0].includes('highlight') && lit3[1] === '0.2' && op3('ops') === '0.2' && op3('riders') === '1', lit3);
+  b3('next').click(); await until(() => live3().startsWith('Step 2'));
+  b3('prev').focus(); b3('prev').click(); await until(() => live3().startsWith('Step 1'));
+  check('‹ on step 2 brings step 1, where ‹ is off and keeps the focus', b3('prev').getAttribute('aria-disabled') === 'true' && sr3.activeElement === b3('prev'), sr3.activeElement && sr3.activeElement.outerHTML.slice(0, 60));
+  b3('stop').focus(); b3('stop').click();
+  check('✕ with the focus on it: the bar goes and the focus goes back to the map, not to <body>', !bar3() && sr3.activeElement === stage3 && p3.state === 'stopped', [sr3.activeElement && String(sr3.activeElement.className), document.activeElement.tagName, p3.state]);
+  check('…handle.story is null, and the last story event says it ended, not playing', h3.story === null && h3.state.story === null && se[se.length - 1].step === null && se[se.length - 1].playing === false, se[se.length - 1]);
+  check('play(null) with no story shown returns null', h3.play(null) === null && h3.story === null);
+  const p4 = h3.play('ride', { auto: false }); await until(() => live3().startsWith('Step 1'));
+  check('play(null) stops the story shown: done false, no bar', h3.play(null) === null && await soon(p4.done) === false && !bar3() && p4.state === 'stopped' && h3.story === null);
+  // a step dims alone: what was lit before it (a host's highlight, a lens) keeps its marks but doesn't dim; what is lit after it dims instead
+  h3.highlight([{ type: 'node', id: 'maps', view: 'context' }]);
+  const p5 = h3.play('ride', { auto: false }); await until(() => live3().startsWith('Step 1'));
+  const before5 = ['riders', 'maps', 'ops'].map(op3);
+  h3.highlight([{ type: 'node', id: 'ops', view: 'context' }]); const after5 = ['riders', 'maps', 'ops'].map(op3);
+  p5.stop();
+  check("a step's dimming stands alone over a highlight set before it; one set while it shows dims instead; the story's stop leaves the host's highlight", before5.join() === '1,0.2,0.2'
+    && after5.join() === '0.2,0.2,1' && h3.state.overlays.includes('highlight') && !h3.state.overlays.includes('story') && op3('ops') === '1' && op3('riders') === '0.2', [before5, after5, h3.state.overlays]);
+  h3.highlight(null); h3.lens('data');
+  const p6 = h3.play('ride', { auto: false }); await until(() => live3().startsWith('Step 1'));
+  check('a lens put on before the story keeps what a step lights lit', ['riders', 'bikeshare', 'payments'].map(op3).join() === '1,1,1' && op3('ops') === '0.2', ['riders', 'bikeshare', 'payments', 'ops'].map(op3));
+  p6.stop(); h3.lens(null);
+  // a step folds back what the reader unfolded on its view before it lights anything (the rest of G)
+  await h3.setView('system'); h3.expand('trips'); const unf = h3.expanded.slice(); await h3.setView('context');
+  const litLine = (a, b) => { const e = sr3.querySelector(`.edge-g[data-from="${a}"][data-to="${b}"]`); return !!e && !e.hasAttribute('opacity'); };
+  const pf = h3.play('ride', { step: 1, auto: false }); await until(() => live3().startsWith('Step 2'));
+  check('a step folds back what the reader unfolded on its view, then selects and lights what it names', unf.join() === 'trips' && h3.view === 'system' && h3.expanded.length === 0
+    && h3.selection && h3.selection.id === 'trips' && litLine('rider-app', 'trips'), [unf, h3.view, h3.expanded, h3.selection]);
+  pf.stop();
+  // update() reconciles the story shown with the model, by its id
+  const p7 = h3.play('ride', { step: 1, auto: false }); await until(() => live3().startsWith('Step 2'));
+  const B7 = structuredClone(BIKE); B7.stories[0].steps[1].caption = 'A new caption'; h3.update(B7);
+  await until(() => bar3() && bar3().querySelector('p').textContent === 'A new caption', 2000);
+  check("update() with a story's new steps: the story shown takes them, at the same step", p7.step === 1 && h3.story === p7 && bar3().querySelector('p').textContent === 'A new caption', bar3() && bar3().textContent);
+  const B8 = structuredClone(BIKE); delete B8.stories; h3.update(B8);
+  check('update() to a model without the story stops it: done false, no bar, no story in the state', await soon(p7.done) === false && !bar3() && h3.story === null && h3.state.story === null && p7.state === 'stopped', [p7.state, h3.state.story]);
+  h3.update(BIKE);
+  const p8 = h3.play('ride', { auto: false }); await until(() => live3().startsWith('Step 1')); const n8 = se.length; h3.destroy();
+  check('destroy() ends the story shown with a last story event (step null)', await soon(p8.done) === false && se.length === n8 + 1 && se[se.length - 1].step === null && se[se.length - 1].playing === false, se.slice(n8));
+
+  // auto-play waits once the reader takes the map: a press, a key, a view or a selection the story didn't make
+  const T2 = { nodes: [{ id: 'a', label: 'A' }, { id: 'b', label: 'B' }, { id: 'c', label: 'C' }, { id: 'x', label: 'X' }, { id: 'y', label: 'Y' }],
+    edges: [{ id: 'ab', from: 'a', to: 'b' }, { id: 'bc', from: 'b', to: 'c' }, { id: 'xy', from: 'x', to: 'y' }],
+    views: [{ id: 'v', nodeIds: ['a', 'b', 'c'] }, { id: 'w', parent: 'v', nodeIds: ['x', 'y'] }],
+    stories: [{ id: 's', title: 'Two', steps: [{ view: 'v', caption: 'one', duration: 600 }, { view: 'v', caption: 'two', select: 'b', duration: 600 }] }] };
+  const h4 = render(el3, T2), sr4 = el3.querySelector('.umlimator').shadowRoot, stage4 = sr4.querySelector('.stage'), live4 = () => sr4.querySelector('.um-live').textContent;
+  const key4 = k => stage4.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true, composed: true, cancelable: true }));
+  const press4 = () => ['pointerdown', 'pointerup'].forEach(t => stage4.dispatchEvent(new PointerEvent(t, { bubbles: true, composed: true, button: 0, pointerType: 'mouse', pointerId: 3, clientX: 20, clientY: 20 })));
+  const taken = [];
+  for (const [what, act] of [['a press on the map', press4], ['a key the map acts on (+)', () => key4('+')], ['a view the host opens', () => h4.setView('w')], ['a selection the host makes', () => h4.select({ type: 'node', id: 'c' })]]) {
+    if (h4.view !== 'v') await h4.setView('v');
+    const pl = h4.play('s'); await until(() => live4().startsWith('Step 1')); act(); await wait(1500);
+    taken.push([what, pl.state, pl.step, h4.state.story && h4.state.story.playing]); pl.stop();
+  }
+  check('auto-play waits once the reader takes the map: a press, a key, a view or a selection the story did not make pauses it on its step', taken.every(([, s, k, pl]) => s === 'paused' && k === 0 && pl === false), taken);
+  const pw = h4.play('s'); await until(() => live4().startsWith('Step 1')); press4(); pw.resume(); await until(() => pw.step === 1, 3000);
+  check('…and resume() plays on', pw.step === 1, pw.step);
+  pw.stop(); h4.destroy();
+  const h4b = render(el3, T2, { wheel: 'ctrl' }), stage4b = el3.querySelector('.umlimator').shadowRoot.querySelector('.stage'), wheel4b = ctrlKey => stage4b.dispatchEvent(new WheelEvent('wheel', { bubbles: true, composed: true, cancelable: true, deltaY: 40, ctrlKey }));
+  const pc = h4b.play('s'); await until(() => pc.state === 'playing'); wheel4b(false); const scrolled = pc.state; wheel4b(true);
+  check("with wheel: 'ctrl', a wheel that scrolls the page past the map leaves the story playing; one that zooms pauses it", scrolled === 'playing' && pc.state === 'paused', [scrolled, pc.state]);
+  pc.stop(); h4b.destroy();
+
+  // under reduced motion a tour lights its path at rest and says it; Esc takes it off. ≋ is not offered, as nothing would move
+  const h5 = render(el3, BIKE, { view: 'trips' }), sr5 = el3.querySelector('.umlimator').shadowRoot, stage5 = sr5.querySelector('.stage');
+  const key5 = k => stage5.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true, composed: true, cancelable: true }));
+  const t5 = await h5.tour(['rider-app', 'trip-api', 'unlock', 'stations']), tabs5 = [...sr5.querySelectorAll('.um-marks .um-tab text')].map(t => t.textContent);
+  check('under reduced motion a tour lights its path at rest: its cards ringed and numbered in turn, its lines glowing; the live region says it',
+    t5 === true && h5.state.overlays.includes('tour') && sr5.querySelectorAll('.um-rings .um-ring').length === 4 && tabs5.join() === '1,2,3,4' && sr5.querySelectorAll('.um-glow').length === 3
+    && sr5.querySelector('.um-live').textContent === 'Tour: Rider app → Trip API → Unlock coordinator → Docking stations', [t5, h5.state.overlays, tabs5, sr5.querySelector('.um-live').textContent]);
+  key5('Escape');
+  check('…Esc takes the path off, and the map stays where it is', !h5.state.overlays.includes('tour') && !sr5.querySelector('.um-rings') && h5.view === 'trips', [h5.state.overlays, h5.view]);
+  key5('f');
+  check('under reduced motion ≋ is not offered and F does nothing', getComputedStyle(sr5.querySelector('[data-z="flow"]')).display === 'none' && h5.flow === false && h5.state.flow === false);
+  h5.flow = true;
+  check("…and a host's flow: true draws no flow lines", getComputedStyle(sr5.querySelector('.flowline')).opacity === '0', getComputedStyle(sr5.querySelector('.flowline')).opacity);
+  h5.destroy();
+
   // the standalone page: a link to a story's step, the Stories menu, recording
   history.replaceState(null, '', '#story=ride&step=2');
   const pg = mountPage(document.getElementById('page'), BIKE, { instant: true });
@@ -114,6 +206,27 @@ try {
   document.querySelector('#m-rec [data-r="close"]').click();
   check('…Close puts it away', !document.getElementById('m-rec'));
   URL.createObjectURL = own;
+
+  // 0.14.0: the recorder and Esc, a story shown, Save and Close; flow's default
+  check("the page doesn't save flow's default as the reader's choice: only ≋ and F do", localStorage.getItem('visual-flow') === null, localStorage.getItem('visual-flow'));
+  const rec = () => document.getElementById('m-rec'), escape = () => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+  document.querySelector('#m-export-pop [data-x="record"]').click();
+  const at0 = [pg.view, pg.selection && pg.selection.id]; escape();
+  check('Esc closes the recorder when it is on top, and the map keeps its view and selection', !rec() && pg.view === at0[0] && (pg.selection && pg.selection.id) === at0[1], [!!rec(), pg.view, pg.selection, at0]);
+  document.querySelector('#m-export-pop [data-x="record"]').click();
+  pg.play('ride', { auto: false }); await until(() => pbar() && /1 \/ 5/.test(pbar().textContent)); await new Promise(r => setTimeout(r, 900));
+  check('no step is taken while a story is shown: its steps are not the reader\'s', rows() === 1, rows());
+  pbar().querySelector('[data-s="stop"]').click(); await until(() => !pbar());
+  document.querySelector('#m-rec-list [data-del="0"]').click();
+  check('Save is off with no steps', document.querySelector('#m-rec [data-r="save"]').disabled === true);
+  document.querySelector('#m-rec [data-r="add"]').click(); document.querySelector('#m-rec [data-r="add"]').click();
+  const c1 = document.querySelector('#m-rec-list input[data-i="0"]'); c1.value = 'Unsaved'; c1.dispatchEvent(new Event('input', { bubbles: true }));
+  let asked = 0; const conf = window.confirm; window.confirm = () => { asked++; return false; };
+  document.querySelector('#m-rec [data-r="close"]').click();
+  check('Close with steps not saved asks first, and No keeps them', asked === 1 && !!rec() && rows() === 2, [asked, rows()]);
+  window.confirm = () => { asked++; return true; }; escape();
+  check('…Esc asks too, and Yes closes it', asked === 2 && !rec(), asked);
+  window.confirm = conf;
 } catch (e) { out.fail.push('threw: ' + (e && e.stack || e)); }
 const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
 </script>
