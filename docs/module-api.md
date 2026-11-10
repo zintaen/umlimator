@@ -1560,6 +1560,87 @@ and the selection, and had to guess the rest from the DOM. Now it is one snapsho
 - **Tests:** `tests/embed.html` checks both modes. `tests/element.html` checks the attribute, and `tests/docs.test.mjs`
   the block key.
 
+### Playback on the state contract: stories, tours, replays and flow
+
+The playback audit found a story with no named states that played on after the model dropped it, or after the reader took
+the map. The page's Pause paused only CSS. Esc closed neither the recorder nor a tour, and a tour under reduced motion
+showed nothing. The ids are the audit's playback machines: story-player, tour, story-recorder and flow.
+
+- **The story player has named states (story-player).**
+  - `player.state` is `entering` (the step's view, camera, selection and highlight on their way), `playing` or `paused`
+    on a step, then `ended` or `stopped`.
+  - `handle.story` is the player of the story shown, whoever started it: `play()`, the standalone page's Stories menu, or
+    a link. `MapState.story` keeps its shape, `{ id, step, steps, playing }`.
+- **A story event for every change (story-player).** The `story` event carries `playing`. It also comes on a pause or a
+  resume (the same step) and on `destroy()` (step `null`). Before, a host heard of neither.
+- **`play(null)` stops the story shown, and an unknown id leaves it alone (story-player).** Before, `play('nope')` stopped
+  the story shown and then returned `null`.
+- **The story follows the model (story-player).**
+  - An `update()` whose model no longer has the story stops it: `done` false, a story event, and no bar. Before, the old
+    steps played on.
+  - An `update()` whose model changes the story's steps shows the step the story is on as the model now has it.
+  - An `update()` while a step's camera glides in no longer leaves the camera half way: the glide goes on to the step's
+    framing. The camera's glide now says whether it arrived.
+- **A playing story waits once the reader takes the map (story-player).**
+  - These pause it, and the bar shows ▶:
+    - a press on the map (not on the story's bar), the wheel, a key the map acts on, or a zoom button;
+    - a host's `fit()`;
+    - a view or a selection the story didn't make: a host's `setView()` or `select()`, or the page's views list or
+      search.
+  - `resume()` or ▶ plays on.
+  - A view opened while a step's move was under way leaves that step out of it, paused, and `resume()` shows the step
+    again.
+  - Before, the next step undid what the reader had done, once its duration was up.
+- **Focus stays in the map (story-player).** Closing the story from its bar (✕, or ✓ on the last step) puts focus on the
+  map. It fell to `<body>`, out of reach of the map's keys. ‹ on the first step is `aria-disabled` and keeps the focus.
+- **A step sets the whole picture, unfolded cards too (story-player).** A step folds back the cards the reader unfolded
+  on its view before it selects and lights anything. Before, a card unfolded into a box kept the step from selecting it
+  and from lighting its lines (bike-share's Trip service on the system view).
+- **A story lights its own layer (story-player).** A step's highlight is the `story` layer, not the shared `highlight`.
+  So `highlight(null)` (a host's, the page's, or `umlimator.py mcp`'s on a view change) leaves it, and a story's end
+  leaves a host's highlight.
+  - While a step shows, its dimming stands alone. A layer that dimmed before the step (a host's highlight, a lens) keeps
+    its rings and tabs but doesn't dim, so the step looks as it was told.
+  - A layer set while the step shows dims in the step's place, so what the reader lights then still shows.
+- **The page's Pause holds every clock (tour).** ❚❚ paused CSS and SMIL only, so a tour's dot, a replay and a playing
+  story went on. Now they hold where they are, and ▶ lets them go on. A story's step is given its time again.
+- **Esc ends a tour or a replay (tour).** At the top with nothing selected, Esc said "Already at the top" and the dot rode
+  on. Now Esc ends a tour or a replay first, after a gesture or a story, and says so.
+- **Under reduced motion a tour is shown and said (tour).** With no dot to ride, `tour()` showed and said nothing. Now it
+  lights the path at rest in the `tour` layer: its cards ringed and numbered in turn, its lines glowing, nothing dimmed.
+  - The live region says it: "Tour: Rider app → Trip API → …". A story's step says its caption instead.
+  - The path stays until the next tour or replay, `tour(null)`, Esc or a new picture.
+  - `MapState.tour` stays false, since no dot rides.
+- **The recorder (story-recorder).**
+  - Esc closes it when it is on top. Before, Esc cleared the selection, then went up a level, and each was recorded as a
+    step.
+  - It takes no steps while a story is shown.
+  - Save is off with no steps.
+  - Close, Esc and leaving the page ask first while it holds steps or captions that aren't saved.
+- **Flow (flow).**
+  - The page saves flow only when the reader presses ≋ or F. It saved the default at load, so the setting of a reader's
+    first visit stuck.
+  - Under reduced motion no flow is drawn: ≋ isn't offered, F does nothing, and the page ignores a saved choice. A
+    host's `flow = true` sets the state and draws nothing.
+  - The rule that hid flow lines under reduced motion lost to another, so they showed as still dashes with ≋ pressed.
+- **Visible behaviour changes:**
+  - a story's auto-play pauses when the reader takes the map, and a paused story holds its step's tour;
+  - a step folds back the cards unfolded on its view;
+  - a step's dimming stands alone;
+  - the story event comes on pause, resume and `destroy()`;
+  - the page's Pause holds tours, replays and stories;
+  - Esc ends a tour or a replay before it clears the selection or goes up;
+  - under reduced motion a tour is lit at rest and said, and ≋ is hidden;
+  - ‹ on the first step is `aria-disabled`, not `disabled`.
+- **A pause holds the step's tour too (story-player).** `pause()`, the bar's ❚❚, or the reader taking the map stops the
+  step's tour where it is, and `resume()` or ▶ lets it ride on, as the page's ❚❚ does. Before, a paused story's dot rode
+  on. A story opened with `auto: false` isn't paused by anyone, so it still rides each step's tour.
+- **Docs (update-ease):** unfolding in place has eased since 0.12.0, as any `update()` does, though that release's notes
+  above say it doesn't yet.
+- **Types:** `StoryPlayer.state`, `Handle.story`, `play(id: string | null)`, and `playing` on the story event.
+- **Tests:** `tests/stories.html` (reduced motion) and `tests/motion.html` (motion on). Each new check fails before this
+  change.
+
 ### The standalone page's state: its keys, the link, stories in the history, the panel and the element
 
 The page audit (wave 2) found the page's own machines: its keys, its link, its menus and panels, and the element's
@@ -1573,9 +1654,9 @@ ids are the audit's: a machine, then the number of its defect.
     details tab, the panel's ×, Export ▾, an item of the views list or the example's × opened the card's inner view
     instead, and the control did nothing. Arrows on those controls panned the map.
   - Esc and Backspace close the top open layer, wherever the focus is (a text field takes its own keys). Search no longer
-    stays open while the map goes up a level behind it. A menu gives focus back to its button. The recorder closes as its Close button does. Backspace
-    closes a story as Esc does (`play(null)`); before, it cleared the step's card and then went up a level under the
-    story's bar.
+    stays open while the map goes up a level behind it. A menu gives focus back to its button. The recorder closes, and
+    asks first when it holds steps not saved (the playback change above). Backspace closes a story as Esc does
+    (`play(null)`); before, it cleared the step's card and then went up a level under the story's bar.
   - An example shown full size holds the keys: Esc closes it, Tab stays in it, and Enter and Space press its own
     buttons. Focus goes back to its thumbnail. Before, O, /, ? and i acted on the page behind it.
   - The key list (?) is made from the same table, so it can't drift from what the keys do.
@@ -1639,7 +1720,6 @@ ids are the audit's: a machine, then the number of its defect.
   - The hint line on a phone, and its live region repeating the key hints.
   - The ◐ button's state for screen readers.
   - `#check` staying in the link.
-  - Pausing a story when the reader moves, and the header's ❚❚ pausing a story, belong to the story player's change.
 - **Tests:**
   - `tests/page-state.html` covers the keys, the link, stories in the history, the panel, menus, a phone's width (the
     template's CSS, in a frame), `#still` and the check report. `tests/embed.py` runs it under reduced motion.
