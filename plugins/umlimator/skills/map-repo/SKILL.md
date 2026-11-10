@@ -85,7 +85,7 @@ and stop after about five rounds; report what is left.
 | map model problems: an unknown node, an edge with an unknown end | Fix the ids. |
 | `edges A and B cross`, `takes a detour`, `runs round its own end` | Send one line out of another side (`fromSide`/`toSide`: top, bottom, left, right). If a view keeps failing, pin it: `"layout": { "<id>": [col, row], ... }`. |
 | `runs right-to-left` | Draw the line in the flow's direction, or mark a real back line `"loop": true`. |
-| `label ... lies on edge`, `leaves its line`, `sits on the border of family` | Shorten the label, or drop it and say it in `what`. |
+| `label ... lies on edge`, `leaves its line`, `sits on the border of family`, `has no room on edge` | Shorten the label, or drop it and say it in `what`. |
 | `text ... overflows node` | Shorten the label, the sublabel or the chips. |
 | `passes within 12px of node` | Give the view room (`gap`, `rgap`), or pin it. |
 
