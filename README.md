@@ -301,12 +301,18 @@ claude mcp add umlimator -- python3 /path/to/umlimator.py mcp /path/to/model.jso
 | `show_view(view)` | shows a view on the page |
 | `highlight(refs, view?)` | lights cards and lines (their ids, or the Refs `paths` and `reach` give) and dims the rest |
 | `tour(cards, view?)` | a dot rides the lines through these cards |
-| `play_story(id)`, `clear()` | plays one of the model's stories; takes the highlight, the tour and the story off |
+| `play_story(id)`, `clear()` | plays one of the model's stories; takes the assistant's highlight, tour and story off |
+| `page_state()` | what each open page shows (its map's `state`: view, selection, layers, story, camera), and whether the model renders |
 
 - The read tools run the module's own functions in Node on the model file, read again at each call, so edits show up.
 - The page tools drive the map's page, which the server serves at `http://127.0.0.1:7391` (`--port N`, or another port
-  when that one is taken). Open it in a browser. Each tool says whether a page is connected, and gives the URL when none
-  is; a page that connects later shows the latest command, and a page drawn from an older model draws itself again.
+  when that one is taken). Open it in a browser.
+  - A tool answers "shown" once a page has shown it, or says why none did: the page's own error, or a tab in the
+    background that didn't finish in time. With no page open, it gives the URL.
+  - A page that opens later shows what the assistant built: the view, with the highlight on it, and a tour or story
+    still under way.
+  - The assistant's highlight is a layer of its own (`mcp`): off on another view, back on its own.
+  - A model that stops rendering keeps the last page that did, and the tools and the page say why.
 - The server listens on 127.0.0.1 only and fetches nothing, so a logo not in the cache yet keeps its card's sigil.
 
 ## Map a repo with Claude Code
