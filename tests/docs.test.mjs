@@ -18,6 +18,7 @@ const asHtml = n => `<${n.data.hName}${Object.entries(n.data.hProperties).map(([
 test('markdown-it: a block with src and view becomes the element with those attributes; other fences stay the host\'s', () => {
   assert.equal(fence('umlimator', 'src: /maps/shop.json\nview: api\nminimap: true\n'), '<umlimator-map src="/maps/shop.json" view="api" minimap="true"></umlimator-map>\n');
   assert.equal(fence('umlimator {.wide}', 'src: a.json'), '<umlimator-map src="a.json"></umlimator-map>\n');
+  assert.equal(fence('umlimator', 'src: a.json\nwheel: ctrl'), '<umlimator-map src="a.json" wheel="ctrl"></umlimator-map>\n'); // a map in a document lets the page scroll
   assert.equal(fence('js', 'let x'), '<pre>the host\'s</pre>');
 });
 
