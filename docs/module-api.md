@@ -2005,3 +2005,77 @@ model without rules printed "The model has no rules." The page now lays the docu
     every row whole on one page;
   - that a model without rules has no rules section.
   - In `tests/outcomes.py`, one view's PDF has two pages.
+
+### No line runs round one of its own cards, and a line that only jogged runs straight (clinic's reminder)
+
+What the maintainer saw in the gallery's `examples/clinic.json`: the dashed "Texts a reminder" line, from the SMS gateway on
+the right into Patient on the far left, ran left along the top, over Patient, down its far side, along the bottom and back
+up into Patient's lower right port; and "Books appointments" (Patient → Booking site) jogged just before Booking site.
+
+- **The cause was the router, not the import.** A line into a person is the importer's loop back (`loop: true`), and it
+  stays: it is what keeps people first. Without it Patient lands right of the SMS gateway, and the line to Booking site runs
+  back instead, round Booking site. The router took any route that crossed no line, however long, and a route round one of
+  the line's own cards was one. Patient's right side has two ports, ordered by where their far ends sit, so the reminder,
+  from lower down, got the lower port, under Patient's other line, and could only reach it from behind. Nothing counted
+  it: the detour rule measures a route against the straight distance between its ends, and a long line goes round a card
+  well within 2.5 times that; port repair starts from lines that cross, and this one crossed none.
+- **The router:** a line never goes behind one of its own ends, past the side opposite its port, unless its other end is
+  there (a side a model set away from it with `fromSide` or `toSide`, or a loop drawn under the boxes). It crosses instead
+  where it must, and port repair, which swaps the ports of two lines that cross by a shared side, then sorts most of those
+  out: the reminder takes Patient's upper port.
+- **Two lines that still cross:** one takes another side, and the view is laid out once more, kept only with fewer issues.
+  A line that closes a loop leaves its source on the far side and runs round the map, as a loop under the boxes does, and
+  still comes in on its target's near side, as a kept pair's return line does. Of two other lines, the steeper comes into
+  its target's top or bottom. Views of up to 30 cards, as `bestFlow`. On clinic's containers view the reminder now leaves
+  the SMS gateway on its right, runs up past Patient records and along the top, and comes into Patient's upper right port.
+  With Clinic bookings unfolded on the context view, "Sends texts" comes up past Patient records into the SMS gateway's
+  bottom.
+- **Port repair** tries every pair of lines. It kept the pairs it had tried by edge id, so in a model whose edges have no
+  ids (r15's and r19's, like most generated maps) every pair was the same pair, and only the first was tried; r19's views
+  drew differently with ids. Before routing two swapped lines again, it first moves each one's route onto the other's port,
+  which uncrosses two lines that cross where they leave one side; and the line it routes first keeps off the other's stub.
+- **The jog:** a line that jogs 16 px or less between two sides that face each other runs straight when one of its ends
+  is the only port on its side: that port moves level with the other end, when no issue comes with it. A side's ports are
+  spread round its middle, so Patient's lower port and Booking site's one port were 8 px apart.
+- **Labels:** a label tries, after its five usual spots on a segment, the spots just clear of each card's stub room, tag,
+  label and line beside it, so it finds a gap the five missed. Clinic's "Queues reminders" had a gap 15 px wide and sat on
+  its box's border; the straightened "Books appointments" would have too.
+- **The layout check** names a line that runs round one of its own ends: `edge SMS gateway→Patient runs round its own end
+  "Patient"`. `check()`, the page's check and `umlimator.py check` report it, with the line and that end as its targets;
+  the CLI counts it as `roundEnd`, and `--ignore roundEnd` leaves it out. The layout searches (`bestFlow`, the CLI's
+  `optimize`, a hub's lane orders and an unfolded box's arrangements) score it as an issue.
+- **Numbers, before → after:**
+  - Lines round one of their own ends, in the browser with `--expand`, under the default font, Arial, Verdana, Georgia
+    and Courier New: clinic had 3 in each font (the reminder on containers, and with Booking API unfolded; "Sends texts"
+    with Clinic bookings unfolded) → 0. The other examples had none. Every example checks clean in all five fonts.
+  - In Node (`layout()`): clinic's context and containers views had 1 each → 0; the bench views had 43 (b26/overview 5,
+    b69/overview 8, b69/back 4, d24/boxed 3, d24/plain 3, m50/overview 11, r15/boxed 1, r15/plain 1, r19/boxed 5,
+    r19/plain 2) → 0.
+  - Jogs of 16 px or less, in the bench and example views: 73 → 23.
+  - The bench's issues (its route audit, which counted no line round its own end before): 675 → 690. Counting those 43
+    lines too, 718 → 690. Every view has as many or fewer, but b69/overview (221 → 246) and m50/overview (261 → 288), two
+    made-up graphs of 69 and 50 cards over the 30-card limit, where lines that went round their cards now cross.
+- **Bench views that moved** (`bench/expected.json`):
+  - lines round their own ends now cross or take another side: b26/overview (91 → 82 issues), b69/overview, b69/back
+    (12 → 8: the retry brought 8 lines into their targets' tops or bottoms), d24/boxed (30 → 24), d24/plain (its three
+    lines from API into their targets' tops, and another of `bestFlow`'s arrangements), m50/overview (laid out again with
+    room where its lines now need it, #40), r15/boxed and r15/plain (3 → 2), r19/boxed (21 → 16) and r19/plain (26 → 15;
+    both also by port repair trying every pair, and r19/plain by the retry);
+  - jogs straightened: b10/overview (2), s16/pay, s16/site+pay and s16/site+job+pay (Retries → Charge, Fraud check →
+    Card bank), u21/teams (2), u21/orders, u21/warehouse, u21/catalog and bookshop/overview (Edge proxy → Storefront,
+    Order worker → Email service). Where a straight line scores better, `bestFlow` keeps another arrangement: b69/front,
+    s16/pay and u21/checkout, whose first three cards now sit level with Payments;
+  - labels at a new spot, and the routes after them: s16/site+job, u21/shop, u21/orders (1 → 0 issues),
+    u21/shop+warehouse and u21/teams+orders.
+- **Visible behaviour changes:** a line that went round its own card takes another way: it crosses, or another side, and
+  a loop back that crossed may leave its source on the far side. A short jog into a card's lone port is a straight line.
+  Some labels sit elsewhere on their lines, and some plain views pick another of their arrangements. Views with a line that
+  still crosses, up to 30 cards, take a layout more (b26/overview, about 30% longer).
+- **API added:** the check's new issue, and `roundEnd` for `umlimator.py check --ignore`. Nothing else: no model field,
+  option or type.
+- **Tests** (`tests/layout.test.mjs`), each failing before:
+  - a cut-down clinic model, its context and containers views: no line goes behind one of its own ends, the reminder
+    comes in on Patient's right side, and the check is clean (before, it went round Patient, and the check said nothing);
+  - its patient's line into the booking site has two points;
+  - r19's views draw the same with an id on every edge as without;
+  - clinic's api-components view checks clean in Node ("Queues reminders" sat on its box's border).
