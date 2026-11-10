@@ -140,6 +140,10 @@ try {
   const pw = h4.play('s'); await until(() => live4().startsWith('Step 1')); press4(); pw.resume(); await until(() => pw.step === 1, 3000);
   check('…and resume() plays on', pw.step === 1, pw.step);
   pw.stop(); h4.destroy();
+  const h4b = render(el3, T2, { wheel: 'ctrl' }), stage4b = el3.querySelector('.umlimator').shadowRoot.querySelector('.stage'), wheel4b = ctrlKey => stage4b.dispatchEvent(new WheelEvent('wheel', { bubbles: true, composed: true, cancelable: true, deltaY: 40, ctrlKey }));
+  const pc = h4b.play('s'); await until(() => pc.state === 'playing'); wheel4b(false); const scrolled = pc.state; wheel4b(true);
+  check("with wheel: 'ctrl', a wheel that scrolls the page past the map leaves the story playing; one that zooms pauses it", scrolled === 'playing' && pc.state === 'paused', [scrolled, pc.state]);
+  pc.stop(); h4b.destroy();
 
   // under reduced motion a tour lights its path at rest and says it; Esc takes it off. ≋ is not offered, as nothing would move
   const h5 = render(el3, BIKE, { view: 'trips' }), sr5 = el3.querySelector('.umlimator').shadowRoot, stage5 = sr5.querySelector('.stage');
