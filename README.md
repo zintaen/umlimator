@@ -141,7 +141,8 @@ the map is drawn, and stay where scripts don't run ([`examples/element.html`](ex
 
 - **The model**: `src`, a URL resolved as an `<img>`'s is (a `data:` URL too), or the model in a child
   `<script type="application/json">`.
-- **Attributes**: `view`, `minimap`, `controls="false"`, `height` (a number is pixels; 480 by default, or size it in CSS)
+- **Attributes**: `view`, `minimap`, `controls="false"`, `wheel="ctrl"` (the wheel zooms only with Ctrl or ⌘, and scrolls
+  the page otherwise, as a map in a document should), `height` (a number is pixels; 480 by default, or size it in CSS)
   and `theme` (`light` or `dark`: theme.css's palette for that map, whatever the page's). Changing one draws the map
   again, and removing the element destroys it.
 - **Events**: `umlimator:select`, `umlimator:open` (cancel it to stay) and `umlimator:viewchange`, the map's event as
