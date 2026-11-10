@@ -115,12 +115,18 @@ try {
   pg.lens('teams');
   check('a lens put on through the handle is in the link and on the Lenses button', link().lens === 'teams' && $('m-lenses').textContent === '◎ By team', [location.hash, $('m-lenses').textContent]);
   pg.lens(null);
+  await mount('#check=1', 'check=1');
+  check('a page opened with #check=1 leaves check out of the link it writes: Copy link shares a page to read (#136)', await until(() => link().view === 'context') && !('check' in link()), location.hash);
+  await mount('#shot=1', 'shot=1');
+  check('…shot the same', await until(() => link().view === 'context') && !('shot' in link()), location.hash);
   await mount('#view=system&reader=1', 'reader=1');
   check('a reader copy keeps reader=1 in its link', link().reader === '1' && link().view === 'system', location.hash);
   const theme0 = document.documentElement.dataset.theme;
   await mount('#view=context&theme=dark', 'theme=dark'); document.documentElement.dataset.theme = 'dark';
   $('m-theme').click();
   check('a link that names the theme names the one shown, after ◐ too', link().theme === 'light' && document.documentElement.dataset.theme === 'light', location.hash);
+  const pressed = () => $('m-theme').getAttribute('aria-pressed'), named = $('m-theme').getAttribute('aria-label');
+  check('◐ says which theme is on: "Dark theme", pressed in dark and not in light (#135)', named === 'Dark theme' && pressed() === 'false' && ($('m-theme').click(), pressed() === 'true'), [named, pressed()]);
   try { localStorage.removeItem('visual-theme'); } catch (_) {} if (theme0) document.documentElement.dataset.theme = theme0; else delete document.documentElement.dataset.theme;
 
   // a move keeps the entry it leaves: a selection there stays in it (the select a move sends rewrote it)
@@ -141,6 +147,17 @@ try {
   check('…Forward into a step\'s entry shows that step again', await forward(() => bar() === 'A ride, from unlock to payment · 2 / 5' && pg.view === 'system'), [bar(), pg.view]);
   check('…and Back to an entry with no story closes it', await back(() => !bar() && pg.view === 'context') && pg.state.story === null, [bar(), pg.view]);
 
+  /* ---------- search after update() (#133) ---------- */
+  const M2 = structuredClone(M); M2.nodes.push({ id: 'pager', label: 'Pager duty', kind: 'backend' }); M2.views.push({ id: 'oncall', title: 'On call', parent: 'context', nodeIds: ['pager'] });
+  const search = async text => { key('/', document.body); await until(() => !$('m-pal').hidden); $('m-q').value = text; $('m-q').dispatchEvent(new Event('input')); const r = $('m-res').textContent; key('Escape', $('m-q')); return r; };
+  pg.update(M2); await until(() => pg.navigating === null);
+  let found = await search('pager');
+  check('search finds the card and view an update() brought, with no did-you-mean that contradicts it', /Pager duty/.test(found) && !/Nothing called/.test(found), found);
+  found = await search('on call');
+  check('…and its view', /On call/.test(found) && !/Nothing called/.test(found), found);
+  pg.update(M); await until(() => pg.navigating === null); found = await search('pager');
+  check('…and drops what an update() took away', /Nothing called/.test(found) && !/Pager duty/.test(found), found);
+
   /* ---------- destroy() takes the page's listeners with it ---------- */
   pg.destroy(); const help0 = $('m-helpbox').hidden;
   key('?', document.body); key('/', document.body);
@@ -152,11 +169,18 @@ try {
   const lib = new URL('../lib/umlimator.js', location.href).href, model = JSON.stringify(M).replace(/</g, '\\u003c');
   const frame = async width => { const f = document.createElement('iframe'); f.style.cssText = `width:${width}px;height:700px;border:0`;
     f.srcdoc = `<!doctype html><meta charset="utf-8"><link rel="stylesheet" href="${new URL('../lib/umlimator-theme.css', location.href).href}"><style>${css}</style><main id="app" class="wrap"></main>`
-      + `<script type="module">import { mountPage } from '${lib}'; window.h = mountPage(document.getElementById('app'), ${model}, { instant: true });<\/script>`;
+      + `<script type="module">import { mountPage } from '${lib}'; window.h = mountPage(document.getElementById('app'), ${model}, { instant: true });`
+      + `document.adoptedStyleSheets = [document.querySelector('.umlimator').shadowRoot.adoptedStyleSheets[0]];<\/script>`; // the module's sheet on the page, as the template adopts it
     document.body.appendChild(f); await until(() => f.contentWindow.h && f.contentWindow.h.view, 6000); await wait(60); return f; };
   const phone = await frame(400), pd = phone.contentDocument, shownMenu = id => getComputedStyle(pd.getElementById(id).closest('.menu')).display !== 'none';
   check("on a phone's width the Stories and Lenses menus stay, as their glyphs, and keep their names", shownMenu('m-stories') && shownMenu('m-lenses') && !shownMenu('m-export')
     && pd.getElementById('m-stories').getBoundingClientRect().width <= 34 && pd.getElementById('m-lenses').textContent === '◎ Lenses', [shownMenu('m-stories'), shownMenu('m-lenses'), shownMenu('m-export')]);
+  const ph = pd.getElementById('m-hint'), phs = () => phone.contentWindow.getComputedStyle(ph);
+  check("on a phone's width the hint line's key hints stay hidden", phs().display === 'none', phs().display);
+  pd.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, composed: true, cancelable: true }));
+  const pr = ph.getBoundingClientRect();
+  check("…and a message shows there, inside the window, and is said in a live region of its own, not with the key hints (#134)", phs().display !== 'none' && pr.width > 0 && pr.left >= 0 && pr.right <= 400 && pr.bottom <= 700
+    && ph.textContent === 'Already at the top' && !ph.hasAttribute('aria-live') && ph.nextElementSibling.getAttribute('aria-live') === 'polite' && ph.nextElementSibling.textContent === 'Already at the top', [phs().display, ph.textContent, pr.left, pr.right, pr.bottom]);
   phone.remove();
   const wide = await frame(1300), open0 = wide.contentDocument.body.classList.contains('tree-open');
   wide.style.width = '700px'; wide.contentWindow.dispatchEvent(new Event('resize')); // as the window's own resize does (headless virtual time runs no rendering step)
