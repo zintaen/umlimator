@@ -2938,3 +2938,35 @@ Both gaps were found while writing the State chapter (#129).
     step's number touches its person's or robot's shape, in c4 and uml.
 
   Each check fails before this change.
+
+### Lines into a busy card go round the outside, or its target to the foot of its column (part of #149)
+
+- **What was wrong (#149).** r19's logger has seven lines in. After #111 its lines still crossed others: 5 crossings in
+  the boxed view and 6 in the plain one involved a line into logger. The graph can't be drawn without some crossing, and
+  in columns one is forced (search and api both feed schemas and logger), so the aim is fewer, not none.
+- **What holds now.** On a view of up to 30 cards where lines into a card that six or more lines come into still cross
+  another line, after #111's tries, the lines of those pairs are tried one at a time, first pair first: out its source's
+  far side, into its target's far side (round the outside, as #111's two cards that feed the same two), or with its
+  target moved to the foot of its column, under the column's other cards that have lines. A layout with fewer such
+  crossings and no more issues is kept, and the next tries start from it. At most 14 layouts more; the view keeps the
+  result only when it has fewer issues than before the search. bestFlow's tries of a plain view's ways don't run it; the
+  way it keeps does.
+- **Visible changes.** In r19's boxed view, api's lines into auth and schemas, worker's into db and db's into schemas go
+  round the outside, and queue sits at the foot of its column; in its plain view, search's line into schemas leaves
+  search's far side. No other bench view or example
+  moves: none other has a card with six lines in on a view of up to 30 cards.
+- **API added:** none. No type, option, model field or event changes.
+- **Bench** (`bench/expected.json` written again by `bench.py --write-expected`), before → after:
+
+  | View | Issues | Crossings into logger | Total ms |
+  |---|---|---|---|
+  | r19/boxed | 12 → 7 | 5 → 1 | 585 → 1,270 |
+  | r19/plain | 13 → 10 | 6 → 3 | 1,715 → 2,281 |
+
+  In all, 663 → 655.
+- **Test** (`tests/layout.test.mjs`, fails before this change): r19's lines into logger cross 1 time in boxed (7
+  issues) and 3 in plain (10 issues).
+- **What is left of #149: r19/plain.** Its last three crossings into logger (api → queue with search → logger, worker →
+  db with api → logger and auth → logger) don't clear by a line's side or a card's row: trying every side at both
+  ends of each line in those pairs, and each end at the top or foot of its column, stays at 3. They clear when search moves next to db (column 2) and the
+  rows are levelled again around it (2 crossings, 11 issues), which is a placement change, not a routing one.
