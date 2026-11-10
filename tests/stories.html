@@ -111,6 +111,13 @@ try {
   const p6 = h3.play('ride', { auto: false }); await until(() => live3().startsWith('Step 1'));
   check('a lens put on before the story keeps what a step lights lit', ['riders', 'bikeshare', 'payments'].map(op3).join() === '1,1,1' && op3('ops') === '0.2', ['riders', 'bikeshare', 'payments', 'ops'].map(op3));
   p6.stop(); h3.lens(null);
+  // a step folds back what the reader unfolded on its view before it lights anything (the rest of G)
+  await h3.setView('system'); h3.expand('trips'); const unf = h3.expanded.slice(); await h3.setView('context');
+  const litLine = (a, b) => { const e = sr3.querySelector(`.edge-g[data-from="${a}"][data-to="${b}"]`); return !!e && !e.hasAttribute('opacity'); };
+  const pf = h3.play('ride', { step: 1, auto: false }); await until(() => live3().startsWith('Step 2'));
+  check('a step folds back what the reader unfolded on its view, then selects and lights what it names', unf.join() === 'trips' && h3.view === 'system' && h3.expanded.length === 0
+    && h3.selection && h3.selection.id === 'trips' && litLine('rider-app', 'trips'), [unf, h3.view, h3.expanded, h3.selection]);
+  pf.stop();
   // update() reconciles the story shown with the model, by its id
   const p7 = h3.play('ride', { step: 1, auto: false }); await until(() => live3().startsWith('Step 2'));
   const B7 = structuredClone(BIKE); B7.stories[0].steps[1].caption = 'A new caption'; h3.update(B7);

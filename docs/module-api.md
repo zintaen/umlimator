@@ -1593,6 +1593,9 @@ showed nothing. The ids are the audit's playback machines: story-player, tour, s
   - Before, the next step undid what the reader had done, once its duration was up.
 - **Focus stays in the map (story-player).** Closing the story from its bar (✕, or ✓ on the last step) puts focus on the
   map. It fell to `<body>`, out of reach of the map's keys. ‹ on the first step is `aria-disabled` and keeps the focus.
+- **A step sets the whole picture, unfolded cards too (story-player).** A step folds back the cards the reader unfolded
+  on its view before it selects and lights anything. Before, a card unfolded into a box kept the step from selecting it
+  and from lighting its lines (bike-share's Trip service on the system view).
 - **A story lights its own layer (story-player).** A step's highlight is the `story` layer, not the shared `highlight`.
   So `highlight(null)` (a host's, the page's, or `umlimator.py mcp`'s on a view change) leaves it, and a story's end
   leaves a host's highlight.
@@ -1621,15 +1624,17 @@ showed nothing. The ids are the audit's playback machines: story-player, tour, s
     host's `flow = true` sets the state and draws nothing.
   - The rule that hid flow lines under reduced motion lost to another, so they showed as still dashes with ≋ pressed.
 - **Visible behaviour changes:**
-  - a story's auto-play pauses when the reader takes the map;
+  - a story's auto-play pauses when the reader takes the map, and a paused story holds its step's tour;
+  - a step folds back the cards unfolded on its view;
   - a step's dimming stands alone;
   - the story event comes on pause, resume and `destroy()`;
   - the page's Pause holds tours, replays and stories;
   - Esc ends a tour or a replay before it clears the selection or goes up;
   - under reduced motion a tour is lit at rest and said, and ≋ is hidden;
   - ‹ on the first step is `aria-disabled`, not `disabled`.
-- **Not changed:** `pause()` holds a story's auto-play only, and its step's tour still rides, as it does for a story
-  opened with `auto: false`. The page's ❚❚ holds everything.
+- **A pause holds the step's tour too (story-player).** `pause()`, the bar's ❚❚, or the reader taking the map stops the
+  step's tour where it is, and `resume()` or ▶ lets it ride on, as the page's ❚❚ does. Before, a paused story's dot rode
+  on. A story opened with `auto: false` isn't paused by anyone, so it still rides each step's tour.
 - **Docs (update-ease):** unfolding in place has eased since 0.12.0, as any `update()` does, though that release's notes
   above say it doesn't yet.
 - **Types:** `StoryPlayer.state`, `Handle.story`, `play(id: string | null)`, and `playing` on the story event.

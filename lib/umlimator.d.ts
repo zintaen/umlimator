@@ -251,7 +251,8 @@ export interface Handle {
    *  (drawn in a bar on the map and said to screen readers), then plays its tour. auto (default true): the next step
    *  follows once a step's duration is up and its tour has ended. step: where to start (0-based). The bar and the keys
    *  (← → PageUp PageDown, Esc) step through and stop it. The reader taking the map (a press, a key, a view or a selection
-   *  the story didn't make) pauses it. A step's highlight is its own 'story' layer, and dims alone while the step shows.
+   *  the story didn't make) pauses it, and a pause holds the step's tour too, until resume(). A step folds back the cards
+   *  unfolded on its view first, and its highlight is its own 'story' layer, which dims alone while the step shows.
    *  null when the model has no story `id` with steps, and the story shown, if any, plays on; play(null) stops it. */
   play(id: string | null, options?: { step?: number; auto?: boolean }): StoryPlayer | null;
   destroy(): void;

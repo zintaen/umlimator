@@ -133,6 +133,17 @@ try {
   X2.pause(true); await wait(1500); const held = sp.step; X2.pause(false); await until(() => sp.step === 1, 3000);
   check("the page's Pause holds a playing story on its step; Play lets it go on", held === 0 && sp.step === 1, [held, sp.step]);
   sp.stop();
+  // the story's own pause holds its step's tour too, and resume lets it ride on (M); a story opened with auto: false still rides it
+  await mount({ view: 'trips' });
+  const sm = h.play('ride', { step: 2 }), playBtn = () => sr.querySelector('.um-story [data-s="play"]');
+  await until(() => sr.querySelector('.um-trip circle'), 4000); await wait(150);
+  sm.pause(); const q0 = dot(); await wait(400); const q1 = dot(); sm.resume(); await wait(200); const q2 = dot();
+  playBtn().click(); const q3 = dot(); await wait(400); const q4 = dot(); playBtn().click(); await wait(200); const q5 = dot();
+  check("the story's pause() and its bar's ❚❚ hold its step's tour where it is; resume() and ▶ let it ride on", Number.isFinite(q0) && q0 === q1 && q2 !== q1 && q3 === q4 && q5 !== q4, [q0, q1, q2, q3, q4, q5]);
+  sm.stop();
+  const sa = h.play('ride', { step: 2, auto: false }); await until(() => sr.querySelector('.um-trip circle'), 4000); const a0 = dot(); await wait(300);
+  check("…and a story opened with auto: false, which nobody paused, still rides its step's tour", Number.isFinite(a0) && dot() !== a0, [a0, dot()]);
+  sa.stop();
   // an update() as a step's camera glides in: the step still gets its framing (rider-app at 75%)
   await mount({ view: 'context' });
   let cut = false; h.on('select', e => { if (cut || !e.target || e.target.id !== 'trips') return; cut = true; const m = structuredClone(BIKE); m.nodes.find(n => n.id === 'accounts').label = 'Accounts and sign-in'; h.update(m); });
