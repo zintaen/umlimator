@@ -56,6 +56,11 @@ try {
     && !!sr(a).querySelector('.minimap') && !sr(a).querySelector('.ctl'));
   a.removeAttribute('minimap'); a.removeAttribute('controls');
   check('…and without them, as before', await redrawn(3) && !sr(a).querySelector('.minimap') && !!sr(a).querySelector('.ctl'));
+  // wheel="ctrl": a map in a document leaves a plain wheel to the page (another element, so a's draws keep their count)
+  const wh = document.createElement('umlimator-map'); wh.setAttribute('wheel', 'ctrl'); wh.setAttribute('src', '../examples/bookshop.json'); document.body.append(wh);
+  const wheel = (el, extra) => { const w = new WheelEvent('wheel', { deltaY: -100, clientX: 300, clientY: 200, bubbles: true, composed: true, cancelable: true, ...extra }); sr(el).querySelector('.stage').dispatchEvent(w); return w.defaultPrevented; };
+  check('wheel="ctrl" leaves a plain wheel to the page, and zooms with Ctrl (wheel zooms without it)', await until(() => wh.map) && !wheel(wh) && wheel(wh, { ctrlKey: true }) && wheel(a));
+  wh.remove();
 
   const bg = () => getComputedStyle(sr(a).querySelector('.stage')).backgroundColor;
   document.documentElement.dataset.theme = 'light'; const light = bg(); // the page light, whatever the system's
