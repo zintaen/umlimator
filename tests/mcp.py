@@ -153,7 +153,7 @@ try:
     away = until(lambda: (lambda s: s if s["view"] == "context" else None)(chrome.eval(sid, LOOK)))
     chrome.eval(sid, "window.umlimatorMap.setView('system')")
     back = until(lambda: (lambda s: s if s["view"] == "system" and "mcp" in s["overlays"] else None)(chrome.eval(sid, LOOK)))
-    ok("mcp-page-player#5 · on another view the assistant's layer is off (nothing dims); back on its view, it is on again",
+    ok("rule 3 · the assistant's highlight is its own layer: off on another view (nothing dims), and back on its own",
        away and "mcp" not in away["overlays"] and away["dimmed"] == 0 and back and back["lit"] == ["payments"], (away, back))
 
     # the model stops rendering: the page keeps the last version that did, and the tools say why

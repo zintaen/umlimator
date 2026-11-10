@@ -1590,7 +1590,7 @@ stopped rendering took the page down. And the assistant could not learn what the
       for that shows all its cards, else the first view that does.
     - A tour or story that a page reports has ended is taken out, so a page that opens later doesn't play it again.
     - When a new version of the model renders, what it no longer has (a view, cards, lines, a story) is dropped.
-- **The assistant's highlight is its own (mcp-page-player 3 and 5):**
+- **The assistant's highlight is its own (mcp-page-player 3, and the decision's rule 3):**
   - *What was wrong.* The assistant's highlight shared the map's `highlight` layer with the page's own lit paths and
     stories. The reader's view change cleared it without a word. `clear()` stopped only the server's story.
   - *Now.* It is drawn on a layer of its own, `mcp`: off on any other view, so it never dims every card there, and back
