@@ -223,6 +223,264 @@ events beyond verb chips (step 4); editing (step 5); SVG export without Chrome (
   (default: the selected one, else the map).
 - Not covered: containers themselves are reachable by pointer only (their tabs are not, with a `click` listener), and so are chips.
 
+## State
+
+What the map is doing at any moment, and what moves it, as built in 0.14.0. A map runs several state machines: a move
+between views, a story, a tour or replay, an edit gesture, and around it the page's keys and link, the element's
+lifecycle and the MCP server's page. Each follows four rules, and the map's state can be read as one snapshot,
+`MapState`. The tables below are checked against `lib/umlimator.js`, `lib/umlimator-element.js` and `umlimator_mcp.py`.
+`examples/states.json` draws the main machines with umlimator itself.
+
+### The four rules
+
+1. **A transition finishes or rolls back.** A move between views runs in `try`/`finally`: if anything in it throws, a
+   bug or a page hook, the map stops being busy, the fade comes off, and every `setView()` waiting resolves `false`, so
+   the next move works. A host's listener can't get that far: `emit()` calls each listener on its own and hands its
+   error to `reportError()`. The CLI writes each file to a temp file and renames it over the target only once it is
+   whole, so a `pdf` that fails leaves the previous PDF.
+2. **Every request gets a truthful outcome.** `setView()` resolves `true` once its view shows. It resolves `false` for a
+   view the model lacks, when a later request supersedes it, when an `update()` takes its view away during the move, and
+   on `destroy()`. The MCP server's page tools say "Shown on 1 page" only after the page has posted that it showed the
+   command; otherwise they say what happened: the page could not, it did not within 6 s, or no page is open. `check`
+   exits 1 when it checked no view.
+3. **One owner per piece of state.** Each kind of mark has a layer of its own: the host's `highlight`, a story's
+   `story`, the lens's `lens`, the page's lit paths `lit`, the assistant's `mcp`, a tour lit at rest `tour`, a replay's
+   `replay`. So `highlight(null)` never takes away a story's step. Motion belongs to each handle: `instant` stills its
+   own map only. On the page, one function writes the link and one follows it. The MCP server sends a page what the
+   assistant wants shown, folded from its commands, not its last command.
+4. **State is readable.** People read it in the link (`#view=&node=&story=&step=&lens=`), in focus that stays in the
+   map, and in the live region and the hint line. Hosts read it from getters, events and types: `MapState`, the
+   `state`, `story` and `lens` events, `StoryPlayer.state`. Agents read one JSON snapshot, `handle.state`, which the MCP
+   server's `page_state()` returns as each open page posts it.
+
+### `MapState`
+
+`handle.state` builds a fresh snapshot on each read. It is frozen all the way down and plain JSON, so it can be logged,
+sent or compared as it is.
+
+| Field | Value | What it says |
+|---|---|---|
+| `view` | string or `null` | the view shown; `null` while the model has no views |
+| `navigating` | string or `null` | the view a move under way is going to |
+| `selection` | `Ref[]` | every selected thing, the latest last (as `selected`) |
+| `expanded` | `string[]` | the cards unfolded on the view shown, in the order they unfolded |
+| `lens` | string or `null` | the lens on the map |
+| `overlays` | `string[]` | the layers of marks, in the order first set: `lens`, `highlight`, `story`, `tour`, `replay`, the page's `lit`, the MCP page's `mcp`, a host's own |
+| `story` | `{ id, step, steps, playing }` or `null` | the story shown: its step (from 0), how many it has, and whether it goes on by itself |
+| `tour` | boolean | a tour's dot rides (a path lit at rest under reduced motion is `false`) |
+| `replay` | `{ playing }` or `null` | a replay under way, playing or paused by its `pause()` |
+| `camera` | `{ x, y, zoom }` | the centre in map units, to a tenth, and the zoom (1 is actual size), to a thousandth |
+| `flow` | boolean | the lines flow (≋, F) |
+| `motion` | `'full'`, `'reduced'` or `'instant'` | how this map moves |
+| `gesture` | `'idle'`, `'dragging'`, `'connecting'` or `'naming'` | an edit in progress, on an editable map |
+| `destroyed` | boolean | `destroy()` has run |
+
+**The `state` event**, `{ state, changed }`:
+- It comes after the snapshot changes, at most once a frame. The first change starts a 16 ms timer, a timer and not a
+  frame so that a page in a background tab still reports, and the changes made until it fires come as one event.
+- `changed` lists the keys whose value differs from the last event's.
+- The camera comes once it rests: 150 ms without a change, with no press on the map and no move under way. A pan, zoom,
+  glide or drag is one event, with `camera` in `changed`. Until then the event's `camera` is where the camera last
+  rested, while `handle.state` reads it live.
+- A state listener hears the changes made after it was added, with `on()` or with `on: { state }` from the start.
+- The last one comes from `destroy()`, with `destroyed: true` and the camera where it stopped.
+
+The other events are as they were. Two are focused on one machine: `story` on every change of the story shown, and
+`lens` when the lens changes.
+
+**Getters beside it:** `navigating`, `destroyed`, `motion`, `story` (the `StoryPlayer` of the story shown, whoever
+started it), and `flow`, which a host can also set (`handle.flow = false`); the page saves only what the reader sets with
+≋ or F.
+
+**Where it is read:**
+- `handle.state` on any `render()` or `mountPage()` handle;
+- `window.umlimatorMap.state` on a page the CLI writes;
+- `el.map.state` on `<umlimator-map>`;
+- the MCP server's `page_state()` tool. Each open page posts its `MapState` on every `state` event and after each
+  command. The tool returns, for each page, its `state`, whether it shows the model's latest version, and the last
+  command it showed or why it could not; then what the assistant asked for last (`asked`) and whether the model renders.
+
+### The machines
+
+Each table names a machine's states as the code holds them, what moves it, and where it goes.
+
+**Navigation**, in `render()`: one move at a time, and the latest request wins. A move is the target and the requests
+waiting for it, read as `navigating`.
+
+| State | What moves it | Goes to |
+|---|---|---|
+| At rest (`navigating: null`) | `setView(id)`; `open` (double-click, Enter, ⤢); up (Esc or Backspace with nothing selected, the up button); a story's step; the page's link, views list, breadcrumbs and search | Leaving; under reduced motion or `instant`, Drawing at once |
+| At rest | `setView()` of the view shown, or of a view the model lacks | At rest: `true`, or `false` with a console warning that lists the model's views |
+| Leaving: the camera zooms into the card or out, then the view fades (130 ms) | the fade ends | Drawing the latest target |
+| Leaving | the latest target is the view the move started on, or an `update()` took it away | At rest on the view it started on, the camera back: `true` when that view was asked for, `false` for a view gone |
+| Drawing | the latest target drawn, the selection cleared | Entering |
+| Entering: the camera zooms to fit (460 ms) | the camera arrives | At rest: the requests for that view resolve `true` |
+| Entering | a request for another view came meanwhile | Leaving again, towards it |
+| A move | `setView()` of another view | the same state, aimed at the new view: the requests before it resolve `false` at once. A request for the view the move is going to waits with the others for it |
+| A move | a press on the map | the same state: the glide settles at once, and the move goes on |
+| Any | `destroy()` | Destroyed: every waiting request resolves `false` |
+
+- **Emits:** `open` before a drill-down (`preventDefault()` keeps the view); `select` with `null` when the view drawn
+  clears the selection; one `viewchange` `{ view, from }` per move, from the view it started on to the view it shows,
+  and none when it ends where it started; "Showing …" in the live region. A move the story didn't ask for pauses a
+  playing story.
+- **Settles:** `setView()` resolves `true` or `false` as above. Under reduced motion the view is drawn before
+  `setView()` returns.
+
+**The story player**, in `render()`: `play()`, the page's Stories menu, or a link's `story=&step=`. `handle.story` is
+the player shown, and `player.state` names its state.
+
+| State (`player.state`) | What moves it | Goes to |
+|---|---|---|
+| none (`handle.story` is `null`) | `play(id)`; the Stories menu; a link with `story=&step=` (shown paused) | entering its first step, or `step` |
+| entering: the step's view, camera, selection and highlight on their way | all in place | playing, or paused when it was paused or opened with `auto: false` |
+| entering | the reader went to another view on the way | paused on the step; `resume()` shows it again |
+| playing | the step's time is up (default 4 s) and its tour has ended | entering the next step |
+| playing | `pause()`, ❚❚ on the bar; the reader taking the map: a press, a wheel that zooms, a key the map acts on, a zoom button, a host's `fit()`, `setView()` or `select()`, the page's views list or search | paused, the step's tour held too |
+| paused | `resume()`, ▶ | playing |
+| playing or paused | `next()`, `prev()`, › ‹ on the bar, → ← PageDown PageUp | entering that step, still playing or paused |
+| any | past the last step: `next()` or ✓ on it, or its time up while playing | ended: `done` resolves `true` |
+| any | `stop()`, ✕, Esc (Backspace too on the page), `play(null)`, another `play()`, an `update()` whose model lacks the story, `destroy()` | stopped: `done` resolves `false` |
+| any | an `update()` that changes the step shown | entering that step again, as the model has it now |
+
+- `play()` of a story the model lacks returns `null`, and the story shown plays on.
+- The page's ❚❚ holds the step's time and its tour, without a pause: `player.state` stays `playing`. ▶ gives the step
+  its time again.
+- **Emits:** `story` `{ story, step, steps, playing }` on each change: entering a step (before the step's own `select`
+  and `viewchange`), a pause or a resume (the same step), and the end (`step: null`, on `destroy()` too). The step's
+  selection comes as `select`, and its highlight is the `story` layer. The live region says "Step 2 of 5: …", then
+  "End of the story" or "Story closed".
+- **Settles:** `player.done`: `true` once told to the end, `false` when stopped.
+
+**Tours and replays**, in `render()`: one trip at a time, from `tour()`, `replay()` or a story step's tour. The trip
+is read as `tour` and `replay` in `MapState`.
+
+| State | What moves it | Goes to |
+|---|---|---|
+| no trip | `tour(path)`, `replay(spans)`, a story step's tour | riding: `tour: true`, or `replay: { playing: true }` |
+| no trip | `tour(path)` under reduced motion | lit at rest: the path in the `tour` layer, its cards ringed and numbered, said in the live region; `tour()` resolves `true` at once |
+| no trip | `replay(spans)` under reduced motion | no trip: each call's duration labelled at once, and `done` resolves |
+| riding | the page's ❚❚; a story's pause, for its step's tour; the replay's `pause()` (`replay.playing: false`) | held where it is |
+| held | ▶; the story's `resume()`; the replay's `resume()` | riding |
+| riding | the dot reaches the end | no trip: `true`; a replay's labels stay |
+| riding or held | Esc on the map ("Tour stopped", "Replay stopped"), `tour(null)`, the next tour or replay, a new picture of the view (a move, an `update()` that redraws it, unfolding), a story's next step or its end, for its step's tour, the replay's `stop()`, `destroy()` | no trip: `false`; a replay's labels go |
+| lit at rest | the same | no trip: the path is taken off |
+
+- **Emits:** nothing of its own, besides `state`. Each card the dot reaches flashes.
+- **Settles:** `tour()` resolves `true` at the end (at once when lit at rest), and `false` when cut short or when no
+  line joins its cards. `replay().done` resolves `true` at the end (at once under reduced motion), and `false` when
+  stopped or cut short, when no call makes a hop on the view, and from a destroyed handle.
+
+**Gestures**, in `render()` with `editable`: one at a time, read as `gesture`. A gesture never changes the model: it
+emits `change`, and the host applies it and calls `update()`.
+
+| State (`gesture`) | What moves it | Goes to |
+|---|---|---|
+| `idle` | a card pressed and moved 5 px (with `move` or `reorder`) | `dragging` |
+| `idle` | a press on the handle beside the selected card (with `add`) | `connecting` |
+| `idle` | F2 (`rename`); N, ＋, or Alt + double-click on the canvas (`add`) | `naming`: a name field over the card, line, box or new card |
+| `dragging` | released | `idle`: `change` with `move` or `reorder` and a place hint, or none where nothing would change |
+| `connecting` | released over another card | `idle`: `change` with `add` and `kind: 'edge'`; released elsewhere, none |
+| `naming` | Enter | `idle`: `change` with `rename` or `add`, when the name is new and not empty |
+| `naming` | Esc in the field, or the field losing focus | `idle`, no change |
+| any | Escape on the map, before anything else; a new picture (a move, an `update()` that redraws, unfolding); `destroy()` | `idle`, no change; a name field stays over its card through a redraw of the same view while the card is there |
+
+**The page's keys**, in `mountPage()`: one router reads each key from the top open layer down. Esc and Backspace close
+the top layer, wherever the focus is; a text field keeps its own keys.
+
+| Layer, from the top | Opened by | Esc or Backspace |
+|---|---|---|
+| An example shown full size | a thumbnail in the details panel | closes it, and focus goes back to the thumbnail. While open it holds every key: Tab stays in it |
+| Search | / or ⌘K (Ctrl K), the Find button | closes it, and focus goes back where it was. ⌘K closes it too |
+| The key list | ? or its button | closes it |
+| A menu: Export, Stories or Lenses | its button | closes it, and focus goes back to its button |
+| The view's popover | i, or the view's pill | closes it |
+| The story recorder | Export ▸ Record a story… | closes it, asking first while it holds steps not saved |
+| A story | the Stories menu, a link, `play()` | stops it (`play(null)`) |
+| The map | always there | the map's own keys: Esc ends a tour or replay; then Esc or Backspace clears the selection, else goes up a level ("Already at the top") |
+
+- One of search, the key list and the menus is open at a time: each closes the others.
+- While search is open, the router acts on Esc, Backspace and ⌘K only.
+- Enter, Space and the arrows aimed at a control outside the map are that control's own. The map's keys reach its
+  canvas from anywhere else on the page.
+- In `render()` alone, Escape cancels a gesture, then stops a story, then ends a tour or replay, then clears the
+  selection, then goes up.
+
+**The page's link**, in `mountPage()`: one function writes it from what the map shows, and another follows it.
+
+| State | What moves it | Goes to |
+|---|---|---|
+| In step: the link names the view, card, story step and lens shown | a new view shown | a new history entry |
+| In step | a selection, a story step on the view shown, a lens, ◐ when the link names the theme | the same entry, rewritten |
+| A move under way | the selection it clears | nothing written: the new view's entry comes once the move lands |
+| In step | the page's load, Back, Forward, or an edited link | following it: its lens, then its view (a move), then its story step, shown paused, or its card. Nothing is written meanwhile |
+| Following | the map has settled | in step, the entry rewritten. What the model lacks is corrected in the link, and the hint line says so: "Link corrected: no view “x”" |
+| Following | the reader starts a move of their own | that move wins, with an entry of its own |
+| Following | an entry that names no story | the story shown stops |
+
+The link's keys are `view`, `node`, `story`, `step` (from 1), `lens`, and `theme` when the page was opened with one;
+`reader`, `check` and `shot` stay as the page was opened.
+
+**`<umlimator-map>`'s lifecycle**, in `lib/umlimator-element.js`:
+
+| State | What moves it | Goes to |
+|---|---|---|
+| Not drawn: the element's children show | connected to a document | loading |
+| Loading: `el.loading` is `true`, and `el.map` is still the map drawn last, or `null` | the model fetched from `src`, or read from a child `<script type="application/json">`, drawn with a view to show | drawn: `load` |
+| Loading | a fetch that fails, JSON that doesn't parse, no model, `render()` throwing, or a model with no view to draw | failed: `error`, an `ErrorEvent` whose `message` says why. The children show again, and `el.map` is `null` |
+| Loading | another change before the model comes | loading: the later draw wins, with one `load` |
+| Drawn or failed | `src`, `view`, `minimap`, `controls` or `wheel` set to a new value | loading. A model already fetched from the same `src` is used again |
+| Drawn | an attribute set to the value it has, or `height` | drawn: nothing is drawn again; `height` resizes it |
+| Any | removed from the document | not drawn: the map destroyed, `el.loading` `false` |
+
+The map's `select`, `open` and `viewchange` come as `umlimator:select`, `umlimator:open` (`preventDefault()` keeps the
+view) and `umlimator:viewchange`.
+
+**The MCP server's page**, in `umlimator_mcp.py`: the page it serves runs a script that shows what the assistant wants
+on the map's handle and posts back what it shows.
+
+| The served page | What moves it | Goes to |
+|---|---|---|
+| Waiting for the map | the map drawn | listening: the event stream open, its `MapState` posted |
+| Listening | the map's `state` event | listening: its `MapState` posted; the assistant's highlight, the `mcp` layer, shown on its own view only |
+| Listening | an event: what the assistant wants shown (view, highlight, tour, story), with the command's id | showing it, one command at a time |
+| Showing | shown | listening: its `MapState` posted with the command's id |
+| Showing | an error (a view that did not show, a story the page lacks) or more than 5 s | listening: the command's id posted with the error |
+| Showing | an event from a newer version of the model | reloading, to draw that version |
+| Listening | the event stream refused: another model's server took the port | following no server: a bar says so, and the map stays as it is |
+| Any | a command it has shown already | nothing |
+
+| A page tool on the server (`show_view`, `highlight`, `tour`, `play_story`, `clear`) | What moves it | Goes to |
+|---|---|---|
+| Called | a view, card, line or story the model lacks | answered with an error that says which (and, for a view or a story, the ones it has); nothing is sent |
+| Called | the model's latest version drawn (one that doesn't render keeps the last page that did) | folded into what the pages should show: the latest view, highlight, tour and story |
+| Folded | sent to every open page | waiting, up to 6 s |
+| Waiting | every open page answers, or 0.5 s after the first answer | answered: "Shown on 1 page at …, on view trips", or "The page could not show it: …" |
+| Waiting | 6 s go by with no answer | answered: "Sent to 1 open page at …, which did not show it within 6 s …" |
+| Waiting | no page is open | answered: "No page is connected: open … in a browser, and it shows this once it connects." |
+
+- A page that opens later gets what the assistant wants shown, not the last command. A tour or story that a page
+  reports ended is taken out of it.
+- While the model's latest version does not render, every answer begins with why, the page shows the same in a bar,
+  and `page_state()` gives `model.renders: false`.
+
+### What happens on `destroy()`
+
+In the order the code does it:
+1. A gesture in progress is cancelled, with no `change`.
+2. The story shown stops: a last `story` event with `step: null`, and its `done` resolves `false`.
+3. Every waiting `setView()` resolves `false`, and a tour or replay ends: `tour()` and `replay().done` resolve `false`.
+4. Timers stop, every wait inside a move settles, and the camera's glide stops.
+5. The map's element is removed, and the container is left empty.
+6. A state listener hears a last `state` event, with `destroyed: true` and the camera where it stopped. Then every
+   listener is dropped.
+
+After it, `destroyed` is `true` and `state` still reads. Every call is safe and does nothing: `setView()` and `tour()`
+resolve `false`, `replay()` returns one whose `done` is `false`, `play()` returns `null`, `toSVG()` returns `''` and `toPNG()` `null`,
+`lens()`, `expand()` and `collapse()` return `false`, and `on()` returns an unsubscribe that does nothing.
+`mountPage()`'s handle also takes the page's listeners off the document and the window, and `<umlimator-map>` destroys
+its map when it leaves the document.
+
 ## 0.5.0: fixes from the first embedding (issues #26 to #36)
 
 - **Container boxes** are a faint panel (`--um-panel` at 45 %) with an 11 px title, from the module's own stylesheet.
@@ -1410,7 +1668,44 @@ fix changes the page slightly: one wrapper in the details panel's markup, and ho
   The wait asks for the legend to have names, and the check wants calls and state among them; a page that never draws
   its legend fails it.
 
-## 0.14.0: (unreleased)
+## 0.14.0: state that holds together and can be read, tools that say what happened, cleaner lines and a PDF to hand in
+
+Everything since 0.13.0 (#116 to #127, #129):
+- **The map's state holds together** (#117, #120, #121): every move, gesture and playback finishes or rolls back. A
+  `setView()` during a move takes the move over, and resolves `true` once its view shows, `false` otherwise. A
+  listener's error no longer stalls the map, focus and the selection survive a redraw, and motion belongs to each map.
+  An edit's places follow the host's answer, and undo moves cards back.
+- **…and can be read** (#118): `handle.state` is one frozen JSON snapshot, a `MapState`, and the `state` event says
+  what changed. The page's `window.umlimatorMap.state`, the element's `el.map.state` and the MCP server's `page_state()`
+  read the same.
+- **The page** (#123): keys go to the top open layer, the link follows the map, stories are in the history, and the
+  element reports a model with nothing to draw.
+- **Tools that say what happened** (#116, #119, #122): a CLI command that fails keeps the previous output and prints no
+  JSON. The MCP server's page tools say "shown" only once the page has shown it. The diff Action's comment names its
+  commit and is written only for the pull request's latest one, and npm publishes only the commit its version is tagged
+  at.
+- **Lines** (#124, #125, #127): no line runs round one of its own cards (43 on the bench did, none now), a short jog runs
+  straight, a tour's dot rides under the cards, and a line's flow keeps its width and its arrowhead.
+- **The PDF** (#126): a cover with the contents, each view on a page of its own with its legend and tables, the rules
+  as a table, and page numbers. `--paper letter` for US paper.
+- **`wheel: 'ctrl'`** (#120) lets a document scroll past a map embedded in it.
+- **A State chapter** (#129) in these docs: the four rules, `MapState`, and each machine's states and transitions.
+  `examples/states.json` draws umlimator's own state machines with umlimator.
+
+What moves for a host that upgrades:
+- **`setView()`** resolves `true` or `false`, where it resolved `undefined`, and a call during a move is no longer
+  dropped. A move ends with one `viewchange`.
+- **A listener's error** goes to `reportError()`, not to the caller of `select()` and the like.
+- **Escape** cancels a gesture, a tour or a replay before it clears the selection or goes up. Enter and Space on a
+  control press it, on the map and on the page.
+- **Stories:** auto-play pauses when the reader takes the map, and the page keeps stories in its history.
+- **The CLI:** `stills` exits 1 when a view fails, and `check` when it checked no view. The first `stills` after
+  upgrading draws every view again (`.stills.json` gives way to `.stills/`).
+- **Some lines take another way** (#127), and some labels sit elsewhere on their lines. A layout pinned in the model
+  doesn't move.
+- **The PDF's pages** are laid out anew: a cover, a page or more per view, then the rules.
+
+Nothing is removed. Every type, option, field, fragment, event and command is as it was, or new.
 
 ### The map's state holds together: moves, the selection, focus, gestures and marks
 
@@ -1509,7 +1804,8 @@ and the selection, and had to guess the rest from the DOM. Now it is one snapsho
   or `'full'`). `flow` can be set too: `handle.flow = false` stops the lines' flow. A host's setting isn't saved as the
   page reader's choice; the page saves only what ≋ and F set.
 - **Where it is read:** any `render()` handle, the standalone page's `window.umlimatorMap.state`, and `<umlimator-map>`'s
-  `el.map.state`. `umlimator.py mcp` is to read it with a `page_state()` tool, in the next wave.
+  `el.map.state`. `umlimator.py mcp` reads it with its `page_state()` tool: "The MCP server's page says what it shows",
+  below.
 - **Types:** `lib/umlimator.d.ts` adds `MapState`, `Events['state']`, `Events['lens']` and the getters. Nothing in it
   changed, except comments: `setView()`'s says what its promise resolves to.
 - **Tests:**
@@ -2079,6 +2375,26 @@ up into Patient's lower right port; and "Books appointments" (Patient → Bookin
   - its patient's line into the booking site has two points;
   - r19's views draw the same with an id on every edge as without;
   - clinic's api-components view checks clean in Node ("Queues reminders" sat on its box's border).
+
+### The state machines, written down: a State chapter and a map of them
+
+- **Docs:** "State", a chapter before the release notes, gives the four rules with an example of each from the
+  code, and the `MapState` contract as it shipped: each field, when the `state` event comes and what `changed` lists, and
+  where hosts and agents read it. Then each machine's states and transitions as built, with what moves it, what it
+  emits and which promise settles with what: navigation, the story player, tours and replays, gestures, the page's keys
+  and its link, `<umlimator-map>`'s lifecycle and the MCP server's page. Last, what `destroy()` does, in order.
+- **Example:** `examples/states.json` maps umlimator's main state machines with umlimator. Its
+  first view shows how navigation, stories, tours, the page and the MCP page relate; each of them has a view of its own.
+  - States are cards, and transitions are lines labelled with what moves them.
+  - A composite state is a box: a story shown, a dot that rides.
+  - The machines that run in order are numbered (`render: "sequence"`): a move, Esc down the page's layers, and a page
+    tool's run.
+  - The tour view has a tour, and the story `assistant` walks a typical path, from an assistant's `show_view` to the
+    reader's Esc.
+
+  It is in the gallery, and its layout check is clean with `--expand`, in the default font and in Arial, Verdana, Georgia
+  and Courier New.
+- **No change** to `lib/`, the CLI or the types.
 
 ## 0.15.0: (unreleased)
 
