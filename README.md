@@ -251,7 +251,9 @@ decides. Groups, boundaries, subgraphs, networks and namespaces become boxes; St
 opening the view below it; `examples/clinic.json` is `examples/clinic.dsl`, imported. What each element becomes, and
 what is left out: [docs/module-api.md § Import](docs/module-api.md#import-90). Whatever the file holds that `import`
 doesn't read is listed on stderr with its line (in JSON, its path). A Structurizr, C4-PlantUML or Mermaid C4 source is
-drawn in the `c4` notation: its people as people (`person`, or `user` outside the system), its phone apps as phones.
+drawn in the `c4` notation: its people as people (`person`, or `user` outside the system), its phone apps as phones. A
+Structurizr workspace's `styles` give its elements their shapes (`shape Person`, `Cylinder`, `WebBrowser`, ...), in
+Structurizr's own order; a shape the map has no counterpart for is listed in `notImported`.
 
 `pdf` prints the map through Chrome's own print, as a document to hand in for a review
 ([bike-share's](https://zintaen.github.io/umlimator/examples/bike-share.pdf), as CI builds it). A cover has the title,

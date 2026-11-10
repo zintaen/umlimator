@@ -1261,7 +1261,7 @@ only), which the command calls.
   `FILE:PATH: …` in JSON (`items[8]`, `volumes`). The command prints what it wrote, `{ out, format, cards, lines, views,
   unread }`, and exits 1 when a file has nothing to import.
 - **Left out of this first version:**
-  - Structurizr's deployment, dynamic and filtered views, `!include`, `!ref`, `!extend`, constants, styles and themes;
+  - Structurizr's deployment, dynamic and filtered views, `!include`, `!ref`, `!extend`, constants, themes, and styles but their `shape` (0.15.0);
   - C4 deployment nodes and dynamic diagrams (`RelIndex`);
   - Mermaid's `@{ … }` shapes and its other diagram types;
   - compose's volumes, configs and secrets, and Kubernetes' other kinds (ConfigMaps, Jobs, CronJobs…);
@@ -2515,7 +2515,31 @@ moves under reduced motion, in an instant page or in an export.
   `frontend` or `external`; the colours are the same.
 - A frontend container whose technology or name says it runs on a phone (mobile, Android, iOS, Xamarin, Flutter, React
   Native, SwiftUI) is kind `mobile`.
-- `examples/clinic.json` is imported again: its notation and its two people.
+- A Structurizr workspace's `styles` are read for their `shape`: each element whose tags a style names takes that
+  shape as its own `shape`. Where several styles apply, Structurizr's own order decides (`Styles.findElementStyle`): the
+  element's tags in order, `Element` first, then its type's (`Person`, `Software System`, `Container`, `Component`), then
+  its own as written; of two styles for one tag, the later; a later shape wins. Themes (`theme`, `themes`) are not read,
+  and a style's other properties (colours, borders, sizes) are listed as not imported, each with its line.
+
+  | Structurizr shape | the card's `shape` |
+  | --- | --- |
+  | `Box`, `RoundedBox` | `box` |
+  | `Person` | `person` |
+  | `Robot` | `robot` |
+  | `Cylinder` | `cylinder` |
+  | `Pipe` | `pipe` |
+  | `Folder` | `folder` |
+  | `WebBrowser` | `browser` |
+  | `Window` | `window` |
+  | `Terminal`, `Shell` | `terminal` |
+  | `MobileDevicePortrait`, `MobileDeviceLandscape` | `mobile` |
+  | `Hexagon` | `hexagon` |
+  | `Circle`, `Ellipse`, `Diamond`, `Bucket`, `Component` | none: listed in `notImported` with its style's tag, and a card it falls on is drawn by its kind |
+
+- A C4-PlantUML tag's `$shape` (`AddElementTag(..., $shape=RoundedBoxShape()|EightSidedShape())`) is not drawn; it
+  is listed in `notImported`.
+- `examples/clinic.json` is imported again: its notation and its two people, and, from its styles, its people's
+  `person` shape and its database's `cylinder`.
 
 **The examples' people** are kind `person`: the bookshop's Shoppers, and bike-share's Riders and Operations team.
 In `box` they look as before (a `person` is a `frontend` card); in `c4` and `uml` they are people, not browser apps.
