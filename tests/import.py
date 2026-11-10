@@ -115,21 +115,37 @@ m, un = imp.read("structurizr", styled, "x")
 ok("structurizr · styles' shapes by Structurizr's precedence: Element first, then the type's tag, then the element's own in order; "
    "of two styles for one tag the later; a shape with no counterpart (Bucket) leaves the card to its kind, and is said",
    [card(m, i).get("shape") for i in ("u", "s", "w", "a", "d")] == ["person", "box", "browser", None, "cylinder"]
-   and [msg for _, msg in un] == ["not imported: background #08427b", 'element "Bucketed": shape Bucket has no counterpart, so a card it falls on is drawn by its kind'],
+   and [msg for _, msg in un] == ["not imported: background #08427b", 'element "Bucketed": shape Bucket has no counterpart, so a card it falls on is drawn as it would be without it'],
    ([card(m, i) for i in ("u", "s", "w", "a", "d")], un))
 for how, on in (("FALSE", False), ("none", False), ("com.structurizr.model.DefaultImpliedRelationshipsStrategy", False), ("true", True),
-                ("com.structurizr.model.CreateImpliedRelationshipsUnlessSameRelationshipExistsStrategy", True), ("com.example.MyStrategy", True)):
+                ("com.structurizr.model.CreateImpliedRelationshipsUnlessSameRelationshipExistsStrategy", True), ("com.example.MyStrategy", True),
+                ("com.structurizr.model.CreateImpliedRelationshipsUnlessBogusStrategy", True)):
     m, un = imp.read("structurizr", dsl.replace("model {", f"!impliedRelationships {how}\n  model {{"), "x")
     said = [msg for _, msg in un]
-    ok(f"structurizr · !impliedRelationships {how} draws implied lines {'as' if on else 'not, as'} Structurizr does{', and is said' if how.endswith('MyStrategy') else ''}",
-       m["views"][0]["edges"] == (["u-s"] if on else []) and said == ([f"!impliedRelationships {how}: a strategy umlimator does not know, so implied lines are drawn as Structurizr's default draws them"] if how.endswith("MyStrategy") else []),
+    ok(f"structurizr · !impliedRelationships {how} draws implied lines {'as' if on else 'not, as'} Structurizr does{', and is said' if how.endswith(('MyStrategy', 'BogusStrategy')) else ''}",
+       m["views"][0]["edges"] == (["u-s"] if on else []) and said == ([f"!impliedRelationships {how}: a strategy umlimator does not know, so implied lines are drawn as Structurizr's default draws them"] if how.endswith(("MyStrategy", "BogusStrategy")) else []),
        (m["views"], un))
+same = ('workspace {\n model {\n  u = person "User"\n  s = softwareSystem "Shop" {\n   w = container "Web"\n   w2 = container "Api"\n  }\n'
+        '  u -> s "Browses"\n  u -> w "Uses"\n  u -> w2 "Reads"\n  u -> w2 "Browses"\n }\n views {\n  systemContext s {\n   include *\n  }\n }\n}\n')
+for how, want in (("CreateImpliedRelationshipsUnlessSameRelationshipExistsStrategy", ["Browses", "Uses", "Reads"]), ("true", ["Browses"])):
+    m, un = imp.read("structurizr", same.replace("model {", f"!impliedRelationships com.structurizr.model.{how}\n model {{" if "." not in how and how != "true" else f"!impliedRelationships {how}\n model {{"), "x")
+    labels = [next(e for e in m["edges"] if e["id"] == i).get("label") for i in m["views"][0]["edges"]]
+    ok(f"structurizr · !impliedRelationships {how}: an implied line per {'description, unless a relationship with it joins the two' if how != 'true' else 'pair, unless any relationship joins them'}",
+       labels == want and not un, (labels, un))
 guessed = ('workspace {\n model {\n  portal = softwareSystem "Customer Portal"\n  mobb = softwareSystem "Mobile Banking" {\n   web = container "Web Application" "" "Java and Spring MVC" {\n'
            '    mc = component "Mobile Controller" "" "Spring MVC"\n   }\n   app = container "Mobile App" "" "Xamarin"\n  }\n }\n}\n')
 m, un = imp.read("structurizr", guessed, "x")
 ok("structurizr · a software system or component its words make frontend or mobile keeps that colour, drawn a box; a container is a browser or a phone",
    [(card(m, i).get("kind"), card(m, i).get("shape")) for i in ("portal", "mobb", "web", "mc", "app")]
    == [("frontend", "box"), ("mobile", "box"), ("frontend", None), ("mobile", "box"), ("mobile", None)], [card(m, i) for i in ("portal", "mobb", "web", "mc", "app")])
+tools = ('workspace {\n model {\n  dw = softwareSystem "Data Warehouse"\n  bus = softwareSystem "Event Bus"\n  dms = softwareSystem "Document Management System" {\n'
+         '   api = container "Api" {\n    st = component "Orders Store" "" "JPA"\n    fx = component "File Exporter"\n   }\n   db = container "Database" "" "Postgres"\n  }\n }\n}\n')
+m, un = imp.read("structurizr", tools, "x")
+ok("structurizr · a software system or component its words make a store, a queue or a file keeps that colour, drawn a box; a container takes the shape",
+   [(card(m, i).get("kind"), card(m, i).get("shape")) for i in ("dw", "bus", "dms", "st", "fx", "db")]
+   == [("database", "box"), ("queue", "box"), ("file", "box"), ("database", "box"), ("file", "box"), ("database", None)], m["nodes"])
+m, un = imp.read("plantuml", '@startuml\nComponent(st, "Orders Store", "JPA")\nComponentDb(cdb, "Ledger")\n@enduml\n', "x")
+ok("C4 · a component its words make a store is drawn a box; a ComponentDb is a cylinder", [(card(m, i).get("kind"), card(m, i).get("shape")) for i in ("st", "cdb")] == [("database", "box"), ("database", None)], m["nodes"])
 m, un = imp.read("plantuml", '@startuml\nComponent(mc, "Mobile Controller", "Spring MVC")\nContainer(app, "Mobile App", "Xamarin")\n@enduml\n', "x")
 ok("C4 · a component its words make mobile is drawn a box, a container a phone", [(card(m, i).get("kind"), card(m, i).get("shape")) for i in ("mc", "app")] == [("mobile", "box"), ("mobile", None)], m["nodes"])
 m, un = imp.read("plantuml", '@startuml\nAddElementTag("v2", $shape=EightSidedShape())\nAddElementTag("old", $bgColor="grey")\nSystem(a, "A", $tags="v2")\n@enduml\n', "x")

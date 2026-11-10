@@ -47,6 +47,12 @@ def guess(words, default="backend"):
 MOBILE = r"\bmobile\b|android|\bios\b|iphone|ipad|xamarin|flutter|react.?native|swiftui"
 
 
+# the kinds the c4 notation draws as a tool (NOTED.c4 in lib/umlimator.js): a browser, a phone, a cylinder, a pipe, a page.
+# Structurizr and C4-PlantUML draw only a container in a tool's shape by its words, so a software system or component that
+# guesses one keeps its kind (its colour) and is drawn a box (0.15.0)
+TOOL_KINDS = ("frontend", "mobile", "database", "queue", "file")
+
+
 def c4guess(words):
     k = guess(words)
     return "mobile" if k == "frontend" and re.search(MOBILE, " ".join(w for w in words if w).lower()) else k
@@ -155,6 +161,10 @@ LEVELS = ["systemlandscape", "systemcontext", "container", "component"]
 SCOPE = {"systemcontext": "softwaresystem", "container": "softwaresystem", "component": "container"}
 TAG = {"person": "Person", "softwaresystem": "Software System", "container": "Container", "component": "Component"}  # built in
 # a Structurizr style's shape as one of the map's (0.15.0); Circle, Ellipse, Diamond, Bucket and Component have none
+# !impliedRelationships: Structurizr's strategy names, as umlimator draws them (None: no implied lines)
+IMPLIED = {"false": None, "none": None, "defaultimpliedrelationshipsstrategy": None,
+           "true": "any", "createimpliedrelationshipsunlessanyrelationshipexistsstrategy": "any",
+           "createimpliedrelationshipsunlesssamerelationshipexistsstrategy": "same"}
 SZ_SHAPE = {"box": "box", "roundedbox": "box", "person": "person", "robot": "robot", "cylinder": "cylinder", "pipe": "pipe",
             "folder": "folder", "webbrowser": "browser", "window": "window", "terminal": "terminal", "shell": "terminal",
             "mobiledeviceportrait": "mobile", "mobiledevicelandscape": "mobile", "hexagon": "hexagon"}
@@ -164,7 +174,7 @@ def structurizr(text, name):
     m = Model(name)
     m.shapes = "c4"
     els, ref, path, rels, specs, stack, groups, styles = {}, {}, {}, [], [], [], [], []
-    implied, comment, opened = True, 0, []  # comment: the line a /* ... */ opened on; opened: each open block's line and text
+    implied, comment, opened = "any", 0, []  # comment: the line a /* ... */ opened on; opened: each open block's line and text
     for no, raw in enumerate(text.splitlines(), 1):
         s = raw.strip()
         if comment or s.startswith("/*"):
@@ -199,11 +209,12 @@ def structurizr(text, name):
         elif where in ("workspace", "model") and kw == "!identifiers":
             pass  # flat and hierarchical identifiers both resolve
         elif where in ("workspace", "model") and kw == "!impliedrelationships":
-            # Structurizr's names (ImpliedRelationshipsParser): false is its default strategy, which creates none; true and
-            # the CreateImpliedRelationshipsUnless... strategies create them; another class is said, and drawn as the DSL's default
+            # Structurizr's names (ImpliedRelationshipsParser): false is its default strategy, which creates none; true is
+            # "unless any relationship exists", and "unless the same relationship exists" (same description) has its own;
+            # another class is said, and drawn as the DSL's default ("unless any")
             how = toks[1].rsplit(".", 1)[-1].lower() if len(toks) > 1 else "true"
-            implied = how not in ("false", "none", "defaultimpliedrelationshipsstrategy")
-            if implied and how != "true" and not re.fullmatch(r"createimpliedrelationshipsunless\w*strategy", how):
+            implied = IMPLIED.get(how, "any")
+            if how not in IMPLIED:
                 m.say(no, f"!impliedRelationships {toks[1]}: a strategy umlimator does not know, so implied lines are drawn as Structurizr's default draws them")
         elif where in ("model", "group", "el"):
             parent, grp = (None, None) if where == "model" else (at, None) if where == "el" else at  # a group's frame: (element, group)
@@ -248,7 +259,7 @@ def structurizr(text, name):
         elif where == "style" and kw == "shape" and len(toks) > 1:
             styles.append((at, toks[1]))
             if toks[1].lower() not in SZ_SHAPE:
-                m.say(no, f'element "{at}": shape {toks[1]} has no counterpart, so a card it falls on is drawn by its kind')
+                m.say(no, f'element "{at}": shape {toks[1]} has no counterpart, so a card it falls on is drawn as it would be without it')
         else:
             m.say(no, f"not imported: {clip(s, 80)}")
         if opens:
@@ -264,8 +275,8 @@ def structurizr(text, name):
         for t in dict.fromkeys(["Element", TAG[e["type"]], *e["tags"]]):
             shape = next((sh for tag, sh in reversed(styles) if tag == t), shape)
         shape = shape and SZ_SHAPE.get(shape.lower())
-        if not shape and e["type"] in ("softwaresystem", "component") and kind in ("frontend", "mobile"):
-            shape = "box"  # the colour its words give, but c4 draws only a container as a browser or a phone, as Structurizr draws these a box
+        if not shape and e["type"] in ("softwaresystem", "component") and kind in TOOL_KINDS:
+            shape = "box"  # the colour its words give, but a box, as Structurizr draws it: only a container takes a tool's shape
         m.card(cid, e["name"], kind, e["tech"] or C4TYPE[e["type"]], e["desc"], icon="user" if e["type"] == "person" else None, shape=shape)
     for g in groups:  # after the cards, so a group's name never takes an element's alias
         g["id"] = m.uniq(ident(g["label"]), f"group-{ident(g['label'])}")
@@ -331,7 +342,10 @@ def views(m, els, lines, specs, find, implied, groups):
     container's components (in a box) and that system's other containers. A relationship between elements a view
     doesn't show lifts to the nearest ones it does (an implied line), unless a relationship joins those two already."""
     up = lambda c: [c, *up(els[c]["parent"])] if c else []
-    direct, made, placed = {(a, b) for a, b, _, _ in lines}, {}, []
+    # implied: "any" draws one implied line per pair unless a relationship joins them; "same" one per description, unless a
+    # relationship with that description joins them (Structurizr's two strategies)
+    key = lambda x, y, r: (x, y) if implied == "any" else (x, y, r["desc"])
+    direct, made, placed = {key(a, b, r) for a, b, _, r in lines}, {}, []
     for s in specs:
         typ, scope = s["type"], find(s["scope"]) if s["scope"] else None
         if typ != "systemlandscape" and not (scope and els[scope]["type"] == SCOPE[typ]):
@@ -365,10 +379,10 @@ def views(m, els, lines, specs, find, implied, groups):
                 continue
             if (x, y) == (a, b):
                 drawn.append(eid)
-            elif implied and (x, y) not in direct and (x, y) not in seen:
-                made[(x, y)] = made.get((x, y)) or m.line(x, y, r["desc"], r["tech"], loop=els[y]["type"] == "person")
-                drawn.append(made[(x, y)])
-                seen.add((x, y))
+            elif implied and (k := key(x, y, r)) not in direct and k not in seen:
+                made[k] = made.get(k) or m.line(x, y, r["desc"], r["tech"], loop=els[y]["type"] == "person")
+                drawn.append(made[k])
+                seen.add(k)
         if not ids:
             m.say(s["line"], f"{typ} view {s.get('key') or ''}: shows nothing, so it is left out")
             continue
@@ -454,7 +468,7 @@ def c4(lines, m):
                     else "external" if ext else "backend" if base == "System" else c4guess([a.get("tags"), a.get("techn"), a.get("label")])
                 m.card(cid, a.get("label"), kind, a.get("techn") or ("External " + TYPE[base].lower() if ext else TYPE[base]),
                        a.get("descr"), icon="user" if base == "Person" else None,
-                       shape="box" if base == "Component" and kind in ("frontend", "mobile") else None)  # a component is a box, as a Structurizr one
+                       shape="box" if base == "Component" and not shape and kind in TOOL_KINDS else None)  # a component its words guess is a box, as a Structurizr one
                 bases.add(base)
                 if base == "Person":
                     people.add(cid)

@@ -190,6 +190,57 @@ try {
   mount(OWN, { shapes: 'box', minimap: true }); h.overlay('t', { nodes: { orders: { tone: 'rose' } } }); await wait(30);
   check('box: a card\'s own shape has its ring on its outline, and the minimap draws it', sr.querySelector('.um-rings path.um-ring') && !sr.querySelector('.um-rings rect.um-ring') && sr.querySelectorAll('.minimap path').length === 2, sr.querySelectorAll('.minimap path').length);
 
+  // ---- the second review: an overlay's tab clear of a head, ears and a folder's tab; every line and feed end on a person's or
+  // robot's outline, wherever layout put it; a step's number clear of the arrows into a card's left side
+  const svgEl = () => sr.querySelector('svg.map-svg');
+  const inFill = (id, x, y) => sr.querySelector(`.node[data-id="${id}"] .n-body`).isPointInFill(pt(svgEl(), x, y));
+  const HEADS = { nodes: [{ id: 'p', label: 'Person', kind: 'person', badges: ['beta'] }, { id: 'p2', label: 'Plain person', kind: 'person' }, { id: 'r', label: 'Robot', kind: 'agent' },
+    { id: 'sr', label: 'Short robot', kind: 'script', shape: 'robot' }, { id: 'f2', label: 'Folder tabs', kind: 'module', shape: 'folder', badges: ['beta'] }, { id: 'api', label: 'API', kind: 'backend' }],
+    edges: [{ from: 'p', to: 'api' }, { from: 'p2', to: 'api' }, { from: 'r', to: 'api' }, { from: 'sr', to: 'api' }, { from: 'f2', to: 'api' }],
+    views: [{ id: 'v', nodeIds: ['p', 'p2', 'r', 'sr', 'f2', 'api'] }] };
+  for (const nt of ['c4', 'uml']) {
+    mount(HEADS, { shapes: nt }); await wait(40);
+    const hg = inner(h).geo().byId, words = { p: 'hot', p2: 'blocked', r: 'new', sr: 'hotsr', f2: 'xx' };
+    h.overlay('m', { nodes: Object.fromEntries(Object.entries(words).map(([id, b]) => [id, { badge: b }])) });
+    const bad = Object.entries(words).flatMap(([id, b]) => { const n = hg[id], r = rectOf(([...sr.querySelectorAll('.um-tab')].find(g => g.textContent === b) || {}).firstChild); if (!r.length) return [`${id}: no tab`];
+      const out = []; if (r[0] + r[2] > n.x + n.w + .5) out.push(`${id}: past the card's right edge`);
+      // above the tab line (the shoulder's, or a folder's), a shape's body is its head, its ears or its folder tab: the tab covers none of it
+      if (id !== 'f2') for (let i = 0; i <= 20; i++) for (const y of [r[1] + .5, r[1] + 4, r[1] + 7]) if (inFill(id, r[0] + r[2] * i / 20, y)) { out.push(`${id}: over its head at ${r[0] + r[2] * i / 20},${y}`); i = 21; break; }
+      return out; });
+    check(`${nt}: an overlay's tab is kept off a person's head and a robot's ears, and inside a folder card`, !bad.length, bad);
+  }
+  const AIR = { nodes: [{ id: 'n1', label: 'Node 1', kind: 'queue' }, { id: 'n2', label: 'Node 2', kind: 'script', shape: 'robot' }, { id: 'n3', label: 'Node 3', kind: 'database' }, { id: 'n6', label: 'Node 6', kind: 'frontend' },
+    { id: 'n7', label: 'Node 7', kind: 'queue' }, { id: 'n8', label: 'Node 8', kind: 'script', shape: 'person' }, { id: 'h', label: 'Human', kind: 'person' }, { id: 'a', label: 'Agent', kind: 'agent' },
+    { id: 'hs', label: 'Short human', kind: 'script', shape: 'person' }, { id: 'rs2', label: 'Short bot', kind: 'script', shape: 'robot' }],
+    edges: [{ from: 'n7', to: 'n2' }, { from: 'n7', to: 'n6' }, { from: 'n1', to: 'n8' }, { from: 'n3', to: 'n8' }, { from: 'n7', to: 'n1' }, { from: 'n2', to: 'n3' }, { from: 'h', to: 'n6' }, { from: 'a', to: 'n6' }, { from: 'hs', to: 'n6' }, { from: 'rs2', to: 'n6' }],
+    views: [{ id: 'v', nodeIds: ['n1', 'n2', 'n3', 'n6', 'n7', 'n8', 'h', 'a', 'hs', 'rs2'],
+      intake: [...['h', 'a'].flatMap(to => [1, 2, 3, 4].map(i => ({ to, label: to + i }))), ...['hs', 'rs2'].flatMap(to => [1, 2, 3].map(i => ({ to, label: to + i })))] }] };
+  for (const nt of ['box', 'c4', 'uml']) {
+    mount(AIR, { shapes: nt }); await wait(40);
+    const ag = inner(h).geo(), n2 = ag.byId.n2, e72 = ag.edges.find(e => e.from === 'n7' && e.to === 'n2');
+    const ports = ['n2', 'n8'].flatMap(id => [...sr.querySelectorAll(`.node[data-id="${id}"] .n-port`)].map(c => [id, +c.getAttribute('cx'), +c.getAttribute('cy')]));
+    const ends = [...sr.querySelectorAll('.intake > path.edge')].map((p, i) => { const q = p.getPointAtLength(p.getTotalLength()); return [ag.intake[i].to, q.x, q.y]; });
+    const off = [...ports, ...ends].filter(([id, x, y]) => !onOutline(id, x, y));
+    check(`${nt}: a robot's or person's line ends and feeds are on its outline, a port high on a short card's side and the top feed of four included`,
+      e72 && e72.pts[e72.pts.length - 1][1] - n2.y < 12 && ports.length >= 4 && ends.length === 14 && !off.length, [e72 && e72.pts, n2 && n2.y, off]);
+  }
+  const STEPS = { nodes: [...['s1', 's2', 's3', 'hb'].map(id => ({ id, label: id.toUpperCase(), kind: 'backend' })), { id: 'p', label: 'Person', kind: 'person' }, { id: 'r', label: 'Robot', kind: 'agent' }],
+    edges: [...['s1', 's2', 's3'].flatMap(s => [{ from: s, to: 'p' }, { from: s, to: 'r' }]), { from: 'p', to: 'hb' }, { from: 'r', to: 'hb' }],
+    views: [{ id: 'cs', nodeIds: ['s1', 's2', 's3', 'p', 'r', 'hb'], cardSteps: { p: '1', r: '2', s1: '3' } }] };
+  for (const nt of ['c4', 'uml']) {
+    mount(STEPS, { shapes: nt }); await wait(40);
+    const sg = inner(h).geo(), hidden = [];
+    sg.edges.forEach((e, i) => { if (!['p', 'r'].includes(e.to) || e.ts !== 'L') return; const r = rectOf(sr.querySelector(`.node[data-id="${e.to}"] .step rect`)), path = sr.querySelector(`.edge-g[data-i="${i}"] .edge`), q = path.getPointAtLength(path.getTotalLength());
+      // the arrowhead: 10 px back from the end, 4 px either side
+      if (q.x - 10 < r[0] + r[2] && q.x > r[0] && q.y - 4 < r[1] + r[3] && q.y + 4 > r[1]) hidden.push([e.from, e.to, q.x, q.y, r]); });
+    check(`${nt}: a step's number covers no arrow into the card's left side`, !hidden.length && sr.querySelectorAll('.step rect').length === 3, hidden);
+  }
+  // a shape or kind named like an object's own key is not a shape: the card is drawn by its kind
+  errors.length = 0;
+  mount({ shapes: 'c4', nodes: [{ id: 'db', label: 'DB', kind: 'database', shape: 'constructor' }, { id: 'api', label: 'API', kind: 'constructor', shape: '__proto__' }], edges: [{ from: 'api', to: 'db' }],
+    views: [{ id: 'v', nodeIds: ['db', 'api'] }] }); await wait(40);
+  check('a shape "constructor" or "__proto__" draws the card by its kind, with no error', JSON.stringify(drawn()) === JSON.stringify({ db: 'cylinder', api: 'box' }) && !errors.length, [drawn(), errors]);
+
   check('no errors on the way', !errors.length, errors);
 } catch (e) { out.fail.push('threw: ' + (e && e.stack || e)); }
 if (h) h.destroy();

@@ -1234,7 +1234,7 @@ only), which the command calls.
   | In the source | Card kind |
   |---|---|
   | A person (`person`, `Person`) | `frontend`, with a person icon; `external` for `Person_Ext` or an `External` tag |
-  | A software system (`softwareSystem`, `System`) | `backend`; `external` for `_Ext` or an `External` tag |
+  | A software system (`softwareSystem`, `System`) | `backend` (Structurizr: from its words, as a container, but drawn a box); `external` for `_Ext` or an `External` tag |
   | A database: a `Db` macro, a `Database` tag, a cylinder `[(…)]`, an image such as `postgres` | `database` |
   | A queue: a `Queue` macro, a `Queue` tag, an image such as `rabbitmq` or `kafka` | `queue` |
   | A container, component, node, service or workload | from its words: a store or cache is `database`, a broker `queue`, sign-in `security`, an LLM `ai`, a proxy or monitoring `cloud`, an app or UI `frontend`, a document `file`; `backend` otherwise (a StatefulSet: `database`) |
@@ -1249,7 +1249,9 @@ only), which the command calls.
     group around it, or inside the view's own box when it is in the view's system or container (whose box is in turn in
     that element's group). A relationship between elements a view doesn't show lifts to the nearest ones it does, an implied line as
     Structurizr draws it, unless a relationship joins those two already (`!impliedRelationships false`, `none` or
-    `DefaultImpliedRelationshipsStrategy` turns this off; a strategy it doesn't know is listed in `notImported`).
+    `DefaultImpliedRelationshipsStrategy` turns this off; `CreateImpliedRelationshipsUnlessSameRelationshipExistsStrategy`
+    draws one per description unless a relationship with that description joins them; a strategy it doesn't know is
+    listed in `notImported`).
     A system's card opens its container view, a container's card its component view, and each view's parent is the most
     detailed view above it that shows its subject. A workspace with no views gets a landscape, a container view per system
     and a component view per container.
@@ -2467,16 +2469,16 @@ reader's notation into its link.
 **The 13 shapes**, all drawn inside the card's box (the gallery, `examples/notations.html`, shows each one):
 
 - `box`: the rounded box;
-- `person`: a head over a body with wide shoulders. The body starts 12 px down (higher on a card too short for that),
-  so a side port's highest place lands on it;
+- `person`: a head over a body with wide shoulders. The body starts 12 px down, or just above the highest line or feed
+  that ends on its left or right side, so each one lands on it;
 - `browser`, `window` and `terminal`: a title bar with three dots, then an address field, nothing, or a `>_`;
 - `mobile`: a phone on its side, with a screen, a home button and a speaker;
 - `cylinder`: a lid on top;
 - `pipe`: a cylinder on its side, open at the right;
 - `document`: a page with its corner folded;
 - `hexagon`: the hook card's;
-- `robot`: a square head with ears, over a body that starts 14 px down, or higher where a side port would be above it (12
-  px on a 42 px script card);
+- `robot`: a square head with ears, over a body that starts 14 px down, or just above the highest line or feed that ends
+  on its side (its head as much shorter);
 - `folder`: a tab on top;
 - `node`: a box seen in perspective.
 
@@ -2541,7 +2543,7 @@ moves under reduced motion, in an instant page or in an export.
   | `Terminal`, `Shell` | `terminal` |
   | `MobileDevicePortrait`, `MobileDeviceLandscape` | `mobile` |
   | `Hexagon` | `hexagon` |
-  | `Circle`, `Ellipse`, `Diamond`, `Bucket`, `Component` | none: listed in `notImported` with its style's tag, and a card it falls on is drawn by its kind |
+  | `Circle`, `Ellipse`, `Diamond`, `Bucket`, `Component` | none: listed in `notImported` with its style's tag, and a card it falls on is drawn as it would be without it |
 
 - A C4-PlantUML tag's `$shape` (`AddElementTag(..., $shape=RoundedBoxShape()|EightSidedShape())`) is not drawn; it
   is listed in `notImported`.
@@ -2570,13 +2572,16 @@ In `box` they look as before (a `person` is a `frontend` card); in `c4` and `uml
 
 **Fixes from the release's review** (each with a regression test):
 
-- An overlay's or lens's badge tab sits on a person's, robot's or folder's tab line, as the card's own tabs do, and
-  after a folder's own tab, not over it. It sat at the box's top.
+- An overlay's or lens's badge tab sits on a person's, robot's or folder's tab line, as the card's own tabs do. It sat at
+  the box's top. After the card's own tabs, it takes the first place inside the card clear of a head (a robot's ears
+  too), ⤢, the change badge and a folder's tab, else the place inside it that covers least of them.
 - A badge's keyboard focus ring (a host that listens for `click`) is round its tab on those shapes. It was drawn above.
 - A step's number on a card (a numbered or process view) sits on the shape's tab line too, on a person's or robot's
-  shoulder, not in the air above it.
-- A robot on a 42 px script card took its upper side port above its body, with the line's end in the air: its body
-  starts higher on a short card (so does a person's), so each side port lands on the outline.
+  shoulder, not in the air above it; but no lower than 16 px above the highest line or feed into the card's left side
+  (and no higher than the box's corner, where it was), so it covers no arrow.
+- A line or feed that ended on a robot's or person's side above its body ended in the air: a 42 px script card's upper
+  port, a port that a short jog moves level with the line's other end, the top one of four feeds. The body now starts
+  just above the highest line or feed on either side, as laid out, and a robot's head is as much shorter.
 - A view's intake (feeds) lines end on the outline, as other lines do. They stopped at the box's side, up to 8 px short
   of a hexagon and 5 px of a person.
 - In uml, a card whose `icon` the model's `icons` table does not have shows UML's component mark, and now the legend
@@ -2584,13 +2589,18 @@ In `box` they look as before (a `person` is a `frontend` card); in `c4` and `uml
 - In `box`, a card's own `shape` has its overlay and lens rings on its outline, is drawn as its shape in the minimap,
   and a tour's or replay's dot rides its lines into the outline, as in c4 and uml. They treated it as a box.
 - `validate()` warns about a `shape` it doesn't know in a view's `nodeOverrides`, as on a card.
-- Import: a Structurizr software system or component, or a C4-PlantUML `Component`, whose words make it `frontend` or
-  `mobile` keeps that kind (its colour) but gets `shape: "box"`, so c4 draws it as Structurizr does, not as a browser
-  or a phone. Only a container is drawn as a browser or a phone.
+- A `shape` or `kind` such as `constructor` or `__proto__` is no shape and no kind: `validate()` warns, and the card is
+  drawn by its kind, or as a script card. Drawing it threw.
+- Import: a Structurizr software system or component, or a C4-PlantUML `Component`, whose words make it `frontend`,
+  `mobile`, `database`, `queue` or `file` keeps that kind (its colour) but gets `shape: "box"`, so c4 draws it as
+  Structurizr does, not as a browser, a phone, a cylinder, a pipe or a page. Only a container takes a shape from its
+  words; a `SystemDb` or `ComponentDb` is still a cylinder.
 - Import: `!impliedRelationships` reads Structurizr's strategy names: `false` (any case), `none` and
-  `DefaultImpliedRelationshipsStrategy` draw no implied lines; `true` and the
-  `CreateImpliedRelationshipsUnless...Strategy` ones draw them. Any other value is listed in `notImported` and drawn as
-  Structurizr's default (implied lines on). Before, anything but a lowercase `false` turned them on, unsaid.
+  `DefaultImpliedRelationshipsStrategy` draw no implied lines; `true` and
+  `CreateImpliedRelationshipsUnlessAnyRelationshipExistsStrategy` draw one per pair, unless a relationship joins the
+  two; `CreateImpliedRelationshipsUnlessSameRelationshipExistsStrategy` draws one per description, unless a relationship
+  with that description joins them. Any other value is listed in `notImported` and drawn as Structurizr's default
+  (unless any). Before, anything but a lowercase `false` turned them on, unsaid.
 
 **Tests:**
 
