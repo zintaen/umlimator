@@ -2517,6 +2517,9 @@ moves under reduced motion, in an instant page or in an export.
   Native, SwiftUI) is kind `mobile`.
 - `examples/clinic.json` is imported again: its notation and its two people.
 
+**The examples' people** are kind `person`: the bookshop's Shoppers, and bike-share's Riders and Operations team.
+In `box` they look as before (a `person` is a `frontend` card); in `c4` and `uml` they are people, not browser apps.
+
 **Behaviour changes:**
 
 - **The legend's key for `external` is solid in `box`,** as its cards are. It was dashed while the cards were solid, since
