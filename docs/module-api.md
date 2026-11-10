@@ -1572,8 +1572,8 @@ ids are the audit's: a machine, then the number of its defect.
   - Enter, Space and the arrows aimed at a control outside the map are that control's. With a card selected, Enter on a
     details tab, the panel's ×, Export ▾, an item of the views list or the example's × opened the card's inner view
     instead, and the control did nothing. Arrows on those controls panned the map.
-  - Esc and Backspace close the top open layer, whatever has the focus. Search no longer stays open while the map goes up
-    a level behind it. A menu gives focus back to its button. The recorder closes as its Close button does. Backspace
+  - Esc and Backspace close the top open layer, wherever the focus is (a text field takes its own keys). Search no longer
+    stays open while the map goes up a level behind it. A menu gives focus back to its button. The recorder closes as its Close button does. Backspace
     closes a story as Esc does (`play(null)`); before, it cleared the step's card and then went up a level under the
     story's bar.
   - An example shown full size holds the keys: Esc closes it, Tab stays in it, and Enter and Space press its own
