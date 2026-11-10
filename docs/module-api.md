@@ -2406,7 +2406,33 @@ up into Patient's lower right port; and "Books appointments" (Patient → Bookin
   and Courier New.
 - **No change** to `lib/`, the CLI or the types.
 
-## 0.15.0: (unreleased)
+## 0.15.0: cards drawn as C4's and UML's shapes, reading aids for a view, and the page's pause in the state
+
+Everything since 0.14.0 (#138, #139, #141):
+- **Card shapes** (#138): three notations. `box`, the default, draws every card as before, picture for picture. `c4`
+  draws people, browser apps, phones, databases, queues and files as the C4 model's tools draw them, and `uml` draws
+  UML 2.5's actor, node, artifact, package and data store. A card's own `shape` (13 of them) wins in any notation. The
+  notation comes from the model, a view, `render()`, the element, the page's toggle or the link. Switching it draws the
+  cards again and lays nothing out: layout, routes, the checks and the bench see each card's box only. Import reads a
+  Structurizr workspace's styles for their shape.
+- **Reading aids** (#139): a box's `tone` tints its region, a line's `step` (a number or up to 3 characters) is drawn
+  as a pill on it, and `--um-tint` sets how deep the tints are. In `c4` every box is a dashed boundary.
+- **The state** (#141): `MapState.paused` says the page's ❚❚ is on, and the assistant's commands in `umlimator.py mcp`
+  end only its own tour, never one the reader started.
+- **The release's review**: 13 defects in the shapes and the aids, each fixed with a regression test (listed under
+  each section).
+
+What moves for a host that upgrades:
+- **A map that names no notation draws as it did**, except that the legend's key for `external` is solid in `box`, as
+  its cards are.
+- **New kind words:** a card of kind `person`, `mobile` or `package` was an unknown kind (a script card, with a
+  `validate()` warning). Now it is a `frontend` or `backend` card.
+- **`MapState` has two more keys,** `paused` and `shapes`, and a `state` event comes when either changes.
+- **The dark theme's `--um-accent-fg`** is `#0d1117`, where it was white, so text on the accent reads at 4.5:1 or more.
+- **Import:** a Structurizr style's `shape` becomes the card's `shape`, a style's shape umlimator doesn't draw is listed
+  in `notImported`, and `!impliedRelationships` reads Structurizr's strategy names.
+
+Nothing is removed. Every type, option, field, fragment, event and command is as it was, or new.
 
 ### Card shapes: box, c4 and uml
 
