@@ -140,34 +140,37 @@ with tempfile.TemporaryDirectory() as tmp:
     ok("diff --base · says so when no map changed", "No map model changed." in ((t / "pr2" / "summary.md").read_text(encoding="utf-8") if (t / "pr2" / "summary.md").is_file() else ""))
 
     # pdf (#93): the bike share as a document for a review; its words are text. A cover with the contents; each view from a
-    # page of its own, under its path, with its legend and tables of its cards, lines and boxes; the rules as a table
+    # page of its own, under its path, with its legend and tables of its cards, lines and boxes; the rules as a table. The
+    # words are compared without spaces: a PDF's text keeps none where a line wraps or between two runs of text, and where
+    # a line wraps depends on the fonts a system has
+    flat = lambda s: re.sub(r"\s", "", s)
+    read = lambda f: [flat(p) for p in pdf_text((t / f).read_bytes())] if (t / f).is_file() else []
     cli("render", str(ROOT / "examples" / "bike-share.json"), "--out", str(t / "bike.html"), "--no-check")
     r = cli("pdf", str(t / "bike.html"), "--out", str(t / "bike.pdf")) or {}
-    pages = pdf_text((t / "bike.pdf").read_bytes()) if (t / "bike.pdf").is_file() else []
+    pages = read("bike.pdf")
     ok("pdf · every page ends in the title and page N of M, as many pages as it says",
-       pages and r.get("pages") == len(pages) and all(p.endswith(f"Bike share, an examplepage {i} of {len(pages)}") for i, p in enumerate(pages, 1)), [r, [p[-40:] for p in pages]])
+       pages and r.get("pages") == len(pages) and all(p.endswith(flat(f"Bike share, an example page {i} of {len(pages)}")) for i, p in enumerate(pages, 1)), [r, [p[-40:] for p in pages]])
     V = {v["id"]: v for v in bike["views"]}
     path = lambda v: (path(V[v["parent"]]) + " › " if v.get("parent") else "") + v["title"]
-    at = {v["id"]: next((i for i, p in enumerate(pages, 1) if p.startswith(f"{path(v)}{len(v['nodeIds'])} cards")), None) for v in bike["views"]}
+    at = {v["id"]: next((i for i, p in enumerate(pages, 1) if p.startswith(flat(f"{path(v)} {len(v['nodeIds'])} cards"))), None) for v in bike["views"]}
     at["rules"] = next((i for i, p in enumerate(pages, 1) if p.startswith("Rules")), None)
     cover = pages[0] if pages else ""
     ok("pdf · the cover: the title, the date, the model's file, a summary line, and the contents, each view with the page its header starts",
-       re.match(r"Bike share, an example\d{4}-\d\d-\d\d · examples/bike-share\.json5 views · 32 cards · 48 lines · 2 rulesContents", cover) and None not in at.values()
-       and all(f"{v['title']}{v['caption']}{at[v['id']]}" in cover for v in bike["views"]) and f"Rules{at['rules']}Bike share" in cover, [cover[:500], at])
-    flat = lambda p: re.sub(r"\s", "", p)  # a cell's text wraps without a space
+       re.match(r"Bikeshare,anexample\d{4}-\d\d-\d\d·examples/bike-share\.json5views·32cards·48lines·2rulesContents", cover) and None not in at.values()
+       and all(flat(f"{v['title']}{v['caption']}{at[v['id']]}") in cover for v in bike["views"]) and f"Rules{at['rules']}Bikeshare" in cover, [cover[:500], at])
     seen = lambda a, b=None: "".join(pages[a - 1:b and b - 1]) if a else ""  # the pages from page a to the one before b
     ok("pdf · a view's page: its legend, then tables of its cards (name, sub-line, kind, what it is), lines (from → to, label, technology) and boxes",
-       "Legend" in seen(at["system"], at["system"] and at["system"] + 1) and all(flat(s) in flat(seen(at["system"], at["trips"])) for s in [
+       "Legend" in seen(at["system"], at["system"] and at["system"] + 1) and all(flat(s) in seen(at["system"], at["trips"]) for s in [
            "CardKindWhat it is", "Payment providercards and walletsExternalTakes card and wallet payments.", "From → toLabelTechnology",
            "Rider app → Trip servicestarts, ends ridesREST", "BoxHolds", "RidesAccounts, Trip service, Pricing and Trips database"])
-       and "#From → toLabelTechnology1Rider app → Trip APIPOST /rides/{id}/end200 ms" in seen(at["ride-end"]), seen(at["system"], at["trips"])[:600])
-    ok("pdf · the rules, as a table: each rule, the views it applies in, holds or broken, and what breaks it",
-       "RuleApplies inStateLines that break itApps never call a database directlyevery view printedholdsnoneOnly the ride services touch the trips storeWhat runsholdsnone" in pages[-1], pages[-1:])
+       and flat("#From → toLabelTechnology1Rider app → Trip APIPOST /rides/{id}/end200 ms") in seen(at["ride-end"]), seen(at["system"], at["trips"])[:600])
+    ok("pdf · the rules, as a table: each rule, the views it applies in, holds or broken, and what breaks it", flat(
+       "RuleApplies inStateLines that break itApps never call a database directlyevery view printedholdsnoneOnly the ride services touch the trips storeWhat runsholdsnone") in pages[-1], pages[-1:])
     r = cli("pdf", str(t / "bike.html"), "--out", str(t / "two.pdf"), "--views", "system,f*", "--theme", "dark") or {}
-    two = pdf_text((t / "two.pdf").read_bytes()) if (t / "two.pdf").is_file() else []
-    heads = {m.group(1) for p in two[1:-1] if (m := re.match(r"(.*?)(?: \(continued\))?\d+ cards?", p))}
-    ok("pdf --views · only the views named (a trailing * a prefix), then the rules", r.get("pages") == len(two) and "2 views · " in two[0]
-       and heads == {"Bike share › What runs", "Bike share › What runs › Fleet service"} and two[-1].startswith("Rules"), [r, [p[:40] for p in two]])
+    two = read("two.pdf")
+    heads = {m.group(1) for p in two[1:-1] if (m := re.match(r"(.*?)(?:\(continued\))?\d+cards?", p))}
+    ok("pdf --views · only the views named (a trailing * a prefix), then the rules", r.get("pages") == len(two) and "2views·" in two[0]
+       and heads == {flat("Bike share › What runs"), flat("Bike share › What runs › Fleet service")} and two[-1].startswith("Rules"), [r, [p[:40] for p in two]])
     dark = fills((t / "two.pdf").read_bytes()) if two else []
     ok("pdf --theme dark · its pages are dark to the edge", dark and max(dark[0]) < .15, dark[:3])
     # a view of forty cards: its tables go on over the pages after its picture, under their heading and header row again,
@@ -176,13 +179,13 @@ with tempfile.TemporaryDirectory() as tmp:
         "nodes": [{"id": f"p{i}", "label": f"Part {i}", "kind": "backend", "sublabel": f"tech {i}", "what": f"Part {i} of forty."} for i in range(40)],
         "edges": [{"from": f"p{i}", "to": f"p{i + 1}", "label": f"hands {i} on", "sublabel": "HTTPS"} for i in range(39)]}))
     cli("render", str(t / "long.json"), "--out", str(t / "long.html"), "--no-check")
-    long = pdf_text((t / "long.pdf").read_bytes()) if cli("pdf", str(t / "long.html"), "--out", str(t / "long.pdf")) else []
-    went = re.findall(r"(Cards 40|Lines 39)\(continued\)(.{0,25})", "".join(long))
+    long = read("long.pdf") if cli("pdf", str(t / "long.html"), "--out", str(t / "long.pdf")) else []
+    went = re.findall(r"(Cards40|Lines39)\(continued\)(.{0,25})", "".join(long))
     rows = [flat(f"Part {i}tech {i}Service / APIPart {i} of forty.") for i in range(40)] + [flat(f"Part {i} → Part {i + 1}hands {i} onHTTPS") for i in range(39)]
     ok("pdf · a long table goes on over the next pages, its heading and header row again, and never cuts a row",
-       len(long) > 2 and all(p.startswith("All parts (continued)") for p in long[2:]) and went
-       and all(h.startswith("CardKindWhat it is" if k == "Cards 40" else "From → toLabelTechnology") for k, h in went)
-       and all(sum(s in flat(p) for p in long) == 1 for s in rows), [len(long), went, [s for s in rows if sum(s in flat(p) for p in long) != 1][:3]])
+       len(long) > 2 and all(p.startswith("Allparts(continued)") for p in long[2:]) and went
+       and all(h.startswith("CardKindWhatitis" if k == "Cards40" else "From→toLabelTechnology") for k, h in went)
+       and all(sum(s in p for p in long) == 1 for s in rows), [len(long), went, [s for s in rows if sum(s in p for p in long) != 1][:3], [p[:80] for p in long]])
     ok("pdf · a model with no rules has no rules section", long and "Rules" not in "".join(long) and "rule" not in long[0], long[:1])
     # a rule broken in one view: judged in the views a PDF prints, as it says
     (t / "rules2.json").write_text(json.dumps({"nodes": [{"id": "app", "label": "App", "kind": "frontend"}, {"id": "api", "label": "API", "kind": "backend"},
@@ -192,11 +195,11 @@ with tempfile.TemporaryDirectory() as tmp:
                                                          {"id": "direct", "nodeIds": ["app", "db"], "edges": [{"from": "app", "to": "db", "label": "reads"}]}],
                                                "rules": [{"id": "apps-no-db", "title": "Apps never call a database directly", "from": {"kind": "frontend"}, "to": {"kind": "database"}}]}))
     cli("render", str(t / "rules2.json"), "--out", str(t / "rules2.html"), "--no-check")
-    read = lambda f, *a: "".join(pdf_text((t / f).read_bytes())) if cli("pdf", str(t / "rules2.html"), "--out", str(t / f), *a) else ""
-    every, clean = read("every.pdf"), read("clean.pdf", "--views", "clean")
+    printed = lambda f, *a: "".join(read(f)) if cli("pdf", str(t / "rules2.html"), "--out", str(t / f), *a) else ""
+    every, clean = printed("every.pdf"), printed("clean.pdf", "--views", "clean")
     ok("pdf · each rule is judged in the views it prints, as it says: broken with the view that breaks it, holding without it",
-       "Apps never call a database directlyevery view printedbrokendirect: App→Store" in every and "Apps never call a database directlyevery view printedholdsnone" in clean
-       and "Judged in the views printed here." in clean, [every[-240:], clean[-240:]])
+       flat("Apps never call a database directlyevery view printedbrokendirect: App→Store") in every and flat("Apps never call a database directlyevery view printedholdsnone") in clean
+       and flat("Judged in the views printed here.") in clean, [every[-240:], clean[-240:]])
 
 # four renders of one model at once (#105): each writes its own copy of the model, and every page records the model itself
 with tempfile.TemporaryDirectory() as tmp:
