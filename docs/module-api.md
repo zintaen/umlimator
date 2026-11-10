@@ -2584,6 +2584,8 @@ In `box` they look as before (a `person` is a `frontend` card); in `c4` and `uml
   just above the highest line or feed on either side, as laid out, and a robot's head is as much shorter.
 - A view's intake (feeds) lines end on the outline, as other lines do. They stopped at the box's side, up to 8 px short
   of a hexagon and 5 px of a person.
+- A line onto a robot head's rounded corner, and a line or feed into a folder whose tab sits after the card's own tabs
+  (or into its right side's top), ends on the outline. They ended up to 2 and 4 px off it.
 - In uml, a card whose `icon` the model's `icons` table does not have shows UML's component mark, and now the legend
   names it too.
 - In `box`, a card's own `shape` has its overlay and lens rings on its outline, is drawn as its shape in the minimap,
