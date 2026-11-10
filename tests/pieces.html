@@ -90,11 +90,13 @@ try {
     h.destroy(); }
 
   { const [h, sr, q] = make({ hints: true, view: 'context' }), hint = q('.hint');
-    check("hints alone: the hint line, a polite live region saying what the pointer does (not the page's search keys), and no other piece", !!hint && !q('.outline, .m-legend, .panel')
-      && hint.getAttribute('role') === 'status' && hint.getAttribute('aria-live') === 'polite' && /drag = move/.test(hint.textContent) && !/search/.test(hint.textContent), hint && hint.textContent);
+    check("hints alone: the hint line, saying what the pointer does (not the page's search keys), and no other piece", !!hint && !q('.outline, .m-legend, .panel')
+      && /drag = move/.test(hint.textContent) && !/search/.test(hint.textContent), hint && hint.textContent);
     check('…at the foot of the map', inside(box(hint), box(q('.stage'))) && Math.abs(box(hint).bottom - box(q('.stage')).bottom) < 1);
     key('Escape', q('.stage'));
     check('…it says what just happened: Esc on the top view', hint.textContent === 'Already at the top', hint.textContent);
+    check("…in a polite live region of its own: the key hints are not a live region, so they are not read after each message (#134)", !hint.hasAttribute('aria-live') && !hint.hasAttribute('role')
+      && hint.nextElementSibling.getAttribute('aria-live') === 'polite' && hint.nextElementSibling.textContent === 'Already at the top', hint.nextElementSibling && hint.nextElementSibling.outerHTML);
     h.destroy(); }
 
   { const ev = [], [h, sr, q] = make({ details: true, on: { open: e => ev.push(['open', e.view]), expand: e => ev.push(['expand', e.target.id, e.expanded]) } }), panel = q('.panel');

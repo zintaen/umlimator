@@ -348,6 +348,16 @@ try {
     check(`a card's visible text is a run of whole words of its name (WCAG 2.5.3), at rest, selected, after update(), zoomed out: ${what}`, Object.values(found).every(f => !f.length), found);
     h6.destroy();
   }
+  { // #137: Escape and ↑ go back the way the reader came, then to the model's parent
+    const el7 = document.getElementById('a'), h7 = render(el7, MODEL, { view: 'api' }), sr7 = el7.querySelector('.umlimator').shadowRoot, st7 = sr7.querySelector('.stage');
+    const esc7 = async () => { st7.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); await until(() => h7.navigating === null); return h7.view; };
+    await h7.setView('checkout');
+    check("a bare render(): Escape after setView() goes back to the view the reader came from, not the view's parent in the model (#137)", await esc7() === 'api', h7.view);
+    check('…and from the first view, to its parent in the model', await esc7() === 'overview', h7.view);
+    await h7.setView('checkout'); sr7.querySelector('[data-z="up"]').dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true })); await until(() => h7.navigating === null);
+    check('…↑ the same', h7.view === 'overview', h7.view);
+    h7.destroy();
+  }
   const own = () => performance.getEntriesByType('resource').filter(r => !/\/__(hold|release)$/.test(r.name)); // the test's own clock holds are not the map's
   check('makes no network requests', own().length === loaded, own().slice(loaded).map(r => r.name));
   const img = new Image(); img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(file);
