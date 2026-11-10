@@ -224,6 +224,19 @@ try {
     check(`${nt}: a robot's or person's line ends and feeds are on its outline, a port high on a short card's side and the top feed of four included`,
       e72 && e72.pts[e72.pts.length - 1][1] - n2.y < 12 && ports.length >= 4 && ends.length === 14 && !off.length, [e72 && e72.pts, n2 && n2.y, off]);
   }
+  // a line onto a robot head's rounded corner, and feeds into a folder whose tab sits after the card's own: their ends on the outline
+  const ROOF = { nodes: [{ id: 't', label: 'Bot', kind: 'agent' }, ...[0, 1, 2, 3, 4, 5].map(i => ({ id: 'o' + i, label: 'Out ' + i, kind: 'script' })),
+    { id: 'fd', label: 'Billing', kind: 'module', shape: 'folder', badges: ['beta'] }, { id: 'fa', label: 'API', kind: 'backend' }],
+    edges: [...[0, 1, 2, 3, 4, 5].map(i => ({ from: 't', to: 'o' + i })), { from: 'fd', to: 'fa' }],
+    views: [{ id: 'v', nodeIds: ['t', 'o0', 'o1', 'o2', 'o3', 'o4', 'o5', 'fd', 'fa'], intake: [1, 2, 3, 4].map(i => ({ to: 'fd', label: 'src' + i })) }] };
+  for (const nt of ['box', 'c4', 'uml']) {
+    mount(ROOF, { shapes: nt }); await wait(40);
+    const rg = inner(h).geo(), tops = rg.edges.filter(e => e.from === 't' && e.fs === 'T').map(e => ['t', ...e.pts[0]]);
+    const starts = [...sr.querySelectorAll('.edge-g')].filter(e => e.dataset.from === 't').map(e => ['t', ...e.querySelector('.edge').getAttribute('d').match(/^M ([\d.]+) ([\d.]+)/).slice(1).map(Number)]);
+    const fends = [...sr.querySelectorAll('.intake > path.edge')].map(p => { const q = p.getPointAtLength(p.getTotalLength()); return ['fd', q.x, q.y]; });
+    const off = [...starts, ...fends].filter(([id, x, y]) => !onOutline(id, x, y));
+    check(`${nt}: a line from a robot's head and the feeds into a folder whose tab has moved end on the outline`, tops.length && fends.length === 4 && !off.length, [tops, off]);
+  }
   const STEPS = { nodes: [...['s1', 's2', 's3', 'hb'].map(id => ({ id, label: id.toUpperCase(), kind: 'backend' })), { id: 'p', label: 'Person', kind: 'person' }, { id: 'r', label: 'Robot', kind: 'agent' }],
     edges: [...['s1', 's2', 's3'].flatMap(s => [{ from: s, to: 'p' }, { from: s, to: 'r' }]), { from: 'p', to: 'hb' }, { from: 'r', to: 'hb' }],
     views: [{ id: 'cs', nodeIds: ['s1', 's2', 's3', 'p', 'r', 'hb'], cardSteps: { p: '1', r: '2', s1: '3' } }] };
