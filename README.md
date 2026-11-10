@@ -249,7 +249,9 @@ The page has breadcrumbs, a details panel per card (with the slowest path from i
 (`#view=<id>&node=<id>`, `#story=<id>&step=<n>` for a story's step, and `#lens=<id>`), stories, lenses, and export. For
 scripts and tests, it keeps its map's handle on `window.umlimatorMap`: the `Handle` that `render()` returns (`setView()`,
 `highlight()`, `tour()`, `play()` ...).
-`stills` skips a view whose inputs have not changed since its last export (`--all` exports every view). Needs Python
+`stills` skips a view whose inputs have not changed since its last export (`--all` exports every view), and exits 1,
+saying why, when a view can't be exported. In `stills`, `check` and `pdf`, `--views` takes view ids, and a trailing `*`
+is a prefix; a name that matches no view is an error. A command that fails leaves its previous output as it was. Needs Python
 3.9+ (standard library only), Google Chrome or Chromium for `stills`, `check`, `record` and `pdf`, and Node 18+ for
 `diff`, `drift`, `trace` and `mcp`.
 

@@ -147,17 +147,18 @@ SCOPE = {"systemcontext": "softwaresystem", "container": "softwaresystem", "comp
 def structurizr(text, name):
     m = Model(name)
     els, ref, path, rels, specs, stack, groups = {}, {}, {}, [], [], [], []
-    implied, comment = True, False
+    implied, comment, opened = True, 0, []  # comment: the line a /* ... */ opened on; opened: each open block's line and text
     for no, raw in enumerate(text.splitlines(), 1):
         s = raw.strip()
         if comment or s.startswith("/*"):
-            comment = "*/" not in s
+            comment = (comment or no) if "*/" not in s else 0
             continue
         if not s or s.startswith(("//", "#")):
             continue
         if s == "}":
             if stack:
                 stack.pop()
+                opened.pop()
             else:
                 m.say(no, "a } that closes nothing")
             continue
@@ -222,6 +223,8 @@ def structurizr(text, name):
             m.say(no, f"not imported: {clip(s, 80)}")
         if opens:
             stack.append(push or ("skip", None))
+            opened.append((no, s))
+    left_open(m, opened, comment and ("/*", comment, len(text.splitlines())))
     for cid, e in els.items():
         tags = " ".join(e["tags"]).lower()
         kind = "external" if "external" in tags else "frontend" if e["type"] == "person" else guess([tags, e["tech"], e["name"]])
@@ -242,6 +245,16 @@ def structurizr(text, name):
             for c, e in els.items() if any(x["parent"] == c for x in els.values())]
     views(m, els, lines, specs, find, implied, groups)
     return m
+
+
+def left_open(m, opened, comment=None):
+    """What a file leaves open at its end, each said with its line: a block never closed (a file cut short ends inside
+    one), and a comment never closed, (mark, its line, the last line), which hid every line after it."""
+    if comment:
+        mark, no, last = comment
+        m.say(no, f"{mark} is never closed, so lines {no + 1} to {last} are not read")
+    for no, s in opened:
+        m.say(no, f"never closed: {clip(s, 60)} (is the file cut short?)")
 
 
 def element(toks):
@@ -377,11 +390,12 @@ def call_args(s):
 
 def c4(lines, m):
     """Macro calls, one per line: elements, boundaries ({ ... } boxes), relationships. One view."""
-    boxes, stack, rels, bases, people = [], [], [], set(), set()
+    boxes, stack, rels, bases, people, opened = [], [], [], set(), set(), []
     for no, s in lines:
         if s == "}":
             if stack:
                 stack.pop()
+                opened.pop()
             else:
                 m.say(no, "a } that closes nothing")
             continue
@@ -420,6 +434,8 @@ def c4(lines, m):
             m.say(no, f"not imported: {clip(s, 80)}")
         if opens:
             stack.append(alias)
+            opened.append((no, s))
+    left_open(m, opened)
     ids = m.view("components" if "Component" in bases else "containers" if "Container" in bases else "context", list(m.nodes), boxes)
     for no, a, bi, back in rels:
         x, y = (a.get("to"), a.get("from")) if back else (a.get("from"), a.get("to"))
@@ -435,11 +451,11 @@ PUML_QUIET = re.compile(r"(@startuml|!include|!theme|!pragma|!define|skinparam|h
 
 
 def plantuml(text, name):
-    m, lines, block, done = Model(name), [], False, None
+    m, lines, block, done, start = Model(name), [], 0, None, None  # block: the line a /' ... '/ opened on
     for no, raw in enumerate(text.splitlines(), 1):
         s = raw.strip()
         if block or s.startswith("/'"):
-            block = "'/" not in s
+            block = (block or no) if "'/" not in s else 0
         elif done and s and not s.startswith("'"):
             m.say(no, f"only the first diagram is imported (its @enduml is line {done})")
             break
@@ -449,7 +465,11 @@ def plantuml(text, name):
             m.say(no, f"not followed: {clip(s, 80)}")
         elif s and not s.startswith("'") and not PUML_QUIET.match(s):
             lines.append((no, s))
+        start = start or (no if not block and s.lower().startswith("@startuml") else None)
     c4(lines, m)
+    left_open(m, [], block and ("/'", block, len(text.splitlines())))
+    if start and not done:
+        m.say(start, "@startuml has no @enduml (is the file cut short?)")
     return m
 
 

@@ -37,6 +37,9 @@ jobs:
       - name: The CLI's diff, drift and timelapse write their pages, diff --base a pull request's summary, mcp answers an MCP client, and pdf an example's PDF
         run: python3 tests/cli.py
 
+      - name: When something goes wrong, the CLI says so and leaves the previous output (Chrome failing, --views, render, pdf, stills, diff --base, icons, mcp)
+        run: python3 tests/outcomes.py
+
       - name: The CLI's import reads a sample of each format into a model that validates, renders and checks clean
         run: python3 tests/import.py
 
