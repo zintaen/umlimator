@@ -187,6 +187,14 @@ with tempfile.TemporaryDirectory() as tmp:
        and all(h.startswith("CardKindWhatitis" if k == "Cards40" else "From→toLabelTechnology") for k, h in went)
        and all(sum(s in p for p in long) == 1 for s in rows), [len(long), went, [s for s in rows if sum(s in p for p in long) != 1][:3], [p[:80] for p in long]])
     ok("pdf · a model with no rules has no rules section", long and "Rules" not in "".join(long) and "rule" not in long[0], long[:1])
+    # a view that is not numbered, whose lines have steps (0.15.0): its table of lines gives each its step, as a numbered view's
+    (t / "steps.json").write_text(json.dumps({"nodes": [{"id": "a", "label": "Shop"}, {"id": "b", "label": "API"}, {"id": "c", "label": "Bank"}],
+        "edges": [{"from": "a", "to": "b", "label": "buys", "step": 1}, {"from": "b", "to": "c", "label": "charges", "step": 2}, {"from": "a", "to": "c", "label": "asks"}],
+        "views": [{"id": "v", "title": "Steps", "nodeIds": ["a", "b", "c"]}]}))
+    cli("render", str(t / "steps.json"), "--out", str(t / "steps.html"), "--no-check")
+    stepped = "".join(read("steps.pdf")) if cli("pdf", str(t / "steps.html"), "--out", str(t / "steps.pdf")) else ""
+    ok("pdf · a view whose lines have steps lists each line's step in its table of lines",
+       flat("#From → toLabelTechnology1Shop → APIbuys2API → BankchargesShop → Bankasks") in stepped, stepped[-300:])
     # a rule broken in one view: judged in the views a PDF prints, as it says
     (t / "rules2.json").write_text(json.dumps({"nodes": [{"id": "app", "label": "App", "kind": "frontend"}, {"id": "api", "label": "API", "kind": "backend"},
                                                          {"id": "db", "label": "Store", "kind": "database"}],

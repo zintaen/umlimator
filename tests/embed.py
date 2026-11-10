@@ -20,6 +20,7 @@ tests/state.html: the map's state machines (0.14.0): truthful setView(), lifecyc
 tests/motion.html, with motion on (no --force-prefers-reduced-motion): a press, a second setView(), update() or destroy() during a move, a selection mid-ease.
 tests/page-state.html: the standalone page's state (0.14.0): its keys, the link it keeps, stories in the history, the details panel, menus, #still and check.
 tests/page-motion.html, with motion on: the page's history through moves: Back and Forward, a story's steps on other views, the reader's own move.
+tests/aids.html: the reading aids (0.15.0): a box's tone, a step on a line in any view, --um-tint; light and dark, the minimap, SVG and PNG.
 examples/edit.html, embed.html, live.html, playground.html, ask.html, replay.html, timelapse.html, drift.html, element.html: the host pages load and draw.
 Each test page reports in <pre id="result">{"ok": [...], "fail": [...]}</pre>.
 """
@@ -77,7 +78,7 @@ def dom(path, done, wait=60, motion=False):
 
 failed = False
 # the motion pass: tests/motion.html runs with motion on, so a bug in what animates can't hide behind reduced motion
-for page, motion in [(p, False) for p in ("tests/embed.html", "tests/edit.html", "tests/contrast.html", "tests/rules.html", "tests/marks.html", "tests/change.html", "tests/unfold.html", "tests/unfold-page.html", "tests/stories.html", "tests/insight.html", "tests/page-handle.html", "tests/element.html", "tests/pieces.html", "tests/state.html", "tests/page-state.html")] + [("tests/motion.html", True), ("tests/page-motion.html", True)]:
+for page, motion in [(p, False) for p in ("tests/embed.html", "tests/edit.html", "tests/contrast.html", "tests/rules.html", "tests/marks.html", "tests/change.html", "tests/unfold.html", "tests/unfold-page.html", "tests/stories.html", "tests/insight.html", "tests/page-handle.html", "tests/element.html", "tests/pieces.html", "tests/state.html", "tests/page-state.html", "tests/aids.html")] + [("tests/motion.html", True), ("tests/page-motion.html", True)]:
     t = dom(page, lambda t: 'id="result"' in t, motion=motion)
     m = re.search(r'<pre id="result">(.*?)</pre>', t, re.S)
     if not m:  # each check names itself in the page title: say where it stopped

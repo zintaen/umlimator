@@ -581,6 +581,11 @@
      ],
      "description": "How much the line stands for, drawn as its width (default 1)."
     },
+    "step": {
+     "type": "number",
+     "minimum": 0,
+     "description": "Its place in the order things happen (2, or 2.1 for a step within step 2), drawn in a circle on the line in any view; a numbered view (render: sequence) numbers its lines in run order instead."
+    },
     "latency": {
      "type": "number",
      "minimum": 0,
@@ -673,6 +678,10 @@
       "$ref": "#/$defs/badge"
      },
      "description": "Tabs on the box's border."
+    },
+    "tone": {
+     "$ref": "#/$defs/tone",
+     "description": "A tinted region behind the box, as a badge's tone names it (--um-<tone>): the box's border is dashed and its title in the tone."
     }
    }
   },

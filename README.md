@@ -95,7 +95,8 @@ function MapView({ model, onSelect }) {
 - `map.expand(id)` unfolds a stacked card in place and `map.collapse(id)` folds it; `layout(model, view, { expand })`
   draws the same in Node.
 - Colours are `--um-*` CSS variables, fonts are the host's (`--um-sans`, `--um-mono`), text is measured in that font,
-  and nothing is fetched.
+  and nothing is fetched. `--um-tint` sets how deep the cards' and the boxes' tints are: 1 by default, 0 for none, 2 for
+  twice as deep (a tint stops at 18% of its colour, so text on it keeps 4.5:1).
 - `layout(model, viewId)` returns a view's geometry without a DOM, in Node too; `check(model, viewId)` runs the layout
   check on it, and `validate(model)` finds dangling or repeated ids before anything is drawn. `rules(model)` lists every
   rule the model breaks, view by view.
@@ -193,6 +194,7 @@ kinds such as `public`, `lane`, `script`, `hook` and `board` work too). Fields b
 | node, edge | `edited` | a marker on the card or line |
 | edge | `kind` | what the line means, drawn as its colour: `calls` (default), `feeds`, `triggers`, `state`, `guard` |
 | edge | `weight` | 1, 2 or 3: how much the line stands for, drawn as its width |
+| edge | `step` | a number (2, or 2.1) in a circle on the line, in any view: the order things happen. It is in the line's name and title. A numbered view numbers its lines in run order instead |
 | edge | `sublabel` | a second, smaller line under the label |
 | edge | `fromSide`, `toSide` | the card sides the line uses |
 | edge | `from`, `to` | may name a container of the view: the line ends on its box |
@@ -205,6 +207,7 @@ kinds such as `public`, `lane`, `script`, `hook` and `board` work too). Fields b
 | view | `subAndChips` | cards 80 px tall that show their sub-line, then their chips |
 | view | `kindsFromLabels` | a line whose edges name no `kind` takes one guessed from its label |
 | container | `badges` | tabs on the box's border |
+| container | `tone` | a palette name, as a badge's: the region behind the box tinted in it, its border dashed and its title in the tone |
 | model | `rules` | what must hold: no line `from` some cards `to` others (picked by id, kind, box or owner), or `noCycles` between boxes |
 | model | `stories` | walk-throughs: steps that each set the view, camera, selection, highlight, tour and caption |
 | model | `lenses` | ways to look at the map: what `pick` picks (by id, kind, box, owner or `line` kind) lit, the rest dimmed; `color: "owner"` rings cards by owner |

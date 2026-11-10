@@ -45,6 +45,12 @@ export interface MapEdge {
    *  hit line growing with it. The host picks the bucket (say under 10, under 100, 100 or more relations); anything else is 1.
    *  A line that stands for several edges takes the largest. */
   weight?: 1 | 2 | 3;
+  /** Its place in the order things happen, drawn in a circle on the line before its label, as a numbered view draws its
+   *  steps, in any view: 2, or 2.1 for a step within step 2. The line's name and title say it ("Step 2: …"). A numbered view
+   *  (`render: 'sequence'`) numbers its lines in run order instead. A line that stands for several edges shows the first
+   *  one's step (a view's `keepPairs` draws each edge as its own line). A step on a model edge shows in every view that
+   *  draws the edge; a view's own edge numbers it in that view only. */
+  step?: number;
   /** A second, smaller line under the label (a technology, say), placed with it and counted in the room left for labels.
    *  Shown only with a label. A line that stands for several edges shows each of their sublabels, joined by " / ". */
   sublabel?: string;
@@ -71,7 +77,9 @@ export interface MapView {
   /** Guess a line's kind from the words of its label ("reads" is state, "triggers" is triggers ...) when its edges name
    *  none. Off in render() and layout(), which draw no legend; the standalone page (mountPage) always guesses. */
   kindsFromLabels?: boolean;
-  containers?: { id: string; label?: string; nodeIds?: string[]; parent?: string; badges?: Badge[] }[];   // badges: tabs on the box's border
+  /** Boxes: badges are tabs on the box's border; tone, a palette name as a badge's (--um-<tone>), tints the region behind the
+   *  box (as deep as --um-tint makes the cards), with its border dashed and its title in the tone. */
+  containers?: { id: string; label?: string; nodeIds?: string[]; parent?: string; badges?: Badge[]; tone?: string }[];
   [key: string]: unknown;
 }
 

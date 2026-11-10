@@ -9,7 +9,7 @@ Each map is a JSON model. CI turns it into a self-contained page (`python3 umlim
 
 | Model | Use case | What it shows |
 |---|---|---|
-| [`bookshop.json`](bookshop.json) | A product's architecture, in two levels | Brand logos, the details panel, a step-by-step order flow with a tour |
+| [`bookshop.json`](bookshop.json) | A product's architecture, in two levels | Brand logos, the details panel, a step-by-step order flow with a tour, and the checkout at a glance: numbered steps on its lines, its main path heavier, boxes with a tone |
 | [`bike-share.json`](bike-share.json) | A C4-style drill-down: context, containers, components | Boxes with tabs, a line to a box, line kinds and weights, a technology under each label, coloured tabs, a planned card, edited marks, a view pinned by hand, cards with no lines, two views loaded when opened, two rules that hold, owners and two lenses, latency and cost on the Trip service's lines, a trace kept as a numbered view |
 | [`weather.json`](weather.json) | A data pipeline | A process in five steps, weights by volume, a pair of lines kept apart, nested boxes, a line from a box, a loop back, swimlanes, a view list in a set order |
 | [`assistant.json`](assistant.json) | An AI agent's skills | Skill kinds (public, lane, external, verb, script, hook, board), chips under a sub-line, guard and state lines, steps that exist in one view only, a card changed for one view, kinds read from labels |
@@ -50,10 +50,11 @@ The module embedded in a page, as an app would use it. Serve the repository over
 | A view the host loads when it's opened (`opensView` with `opensCount`) | bike-share: Trip service and Fleet service, in `embed.html` |
 | A stacked card unfolded in place (E, Alt + click, `map.expand()`) | bike-share: Trip service and Fleet service in `system`, Bike share in `context`; weather: Check in `stages`, Quality check in `flow`; numbered, with its run order: weather Forecast in `stages` (with its lanes), assistant answer in `assistant` |
 | Boxes (`containers`) and their tabs (`badges`) | bike-share `system`, weather `check` |
+| A box's tone, a tinted region (`tone`) | bookshop `checkout` |
 | Nested boxes (`parent`) | weather `check` |
 | A line to or from a box | bike-share `system` (Monitoring → Rides), weather `check` (Checks → Quarantine) |
 | Line kinds (`kind`: calls, feeds, triggers, state, guard) | bike-share, weather, assistant `answer` |
-| Line weights (`weight`) | bike-share, weather, `live.html` |
+| Line weights (`weight`) | bike-share, weather, bookshop `checkout`, `live.html` |
 | A line's second label (`sublabel`) | bike-share (REST, gRPC, MQTT) |
 | The sides a line uses (`fromSide`, `toSide`) | bike-share `system` and `fleet`, weather `flow` |
 | Tabs on cards (`badges`, with `tone`) | bike-share (SSO, v2 beta, 3 partitions), `live.html` |
@@ -62,11 +63,12 @@ The module embedded in a page, as an app would use it. Serve the repository over
 | A card with its name only (`noSub`) | bike-share (Payment provider) |
 | Edited and planned marks (`edited`, `change: "planned"`) | bike-share (Pricing, Charging), assistant (phone calls) |
 | Cards with no lines in a row of their own | assistant (the hooks, phone calls) |
-| Positions set by hand (`layout`) | bike-share `system`, assistant `answer` |
+| Positions set by hand (`layout`) | bike-share `system`, assistant `answer`, bookshop `checkout` |
 | Space between columns and rows (`gap`, `rgap`) | weather `check` |
 | A→B and B→A as two lines (`keepPairs`) | weather `flow` |
 | A view's loop back (`loop: true`) | weather `check` |
 | Steps in run order (`render: "sequence"`) and a tour | bookshop `api`, weather `forecaster`, assistant `answer`, bike-share `ride-end` (no tour) |
+| Steps on the lines of any view (`step`) | bookshop `checkout` (with a tour) |
 | Swimlanes (`lanes`) | weather `forecaster` |
 | A process in steps (`render: "process"`, `stepIds`) | weather `stages` |
 | The view list's order (`browserOrder`) | weather `stages` |
@@ -74,6 +76,7 @@ The module embedded in a page, as an app would use it. Serve the repository over
 | Kinds read from labels (`kindsFromLabels`) | assistant |
 | Skill-map kinds | assistant |
 | `render()`, its events, `update()`, `setView()`, `focus()`, `toSVG()`, `toPNG()`, themes | `embed.html` |
+| Deeper tints (`--um-tint`) | `embed.html`, its host's palette |
 | The standalone page's pieces in `render()`: views list, details panel, legend, hint line (`nav`, `details`, `legend`, `hints`) | `embed.html` |
 | Marks over the map (`overlay()`): flow speed, glows, pulses, labels, tabs | `live.html`, `replay.html` |
 | Paths and reach lit (`paths()`, `reach()`, `highlight()`) | `ask.html`; every map on the site (the details panel's → and ←, or Shift-click a second card and ⇄) |

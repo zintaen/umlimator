@@ -1,0 +1,122 @@
+<!doctype html>
+<!-- The reading aids (0.15.0) in the browser: a box's tone (a tinted region, a dashed border, its title in the tone), a step
+     on a line in any view (its mark, its name and title), and --um-tint, light and dark; the minimap, the SVG and the PNG
+     keep them. tests/embed.py opens it in headless Chrome and reads <pre id="result">. -->
+<meta charset="utf-8">
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="../lib/umlimator-theme.css">
+<title>umlimator reading aids test</title>
+<body style="margin:0">
+<div id="a" style="width:1400px;height:600px"></div>
+<script type="module">
+import { render } from '../lib/umlimator.js';
+const out = { ok: [], fail: [] };
+const check = (name, cond, info) => { document.title = name; if (cond) out.ok.push(name); else out.fail.push(name + (info === undefined ? '' : ': ' + JSON.stringify(info))); };
+// real work (a PNG encode, an image decode) under headless virtual time: tests/embed.py holds the clock meanwhile
+const real = async f => { const hold = fetch('/__hold'); try { return await f(); } finally { await fetch('/__release'); await hold; } };
+// a computed colour as [r, g, b, a] in 0..1 (rgb(), rgba() and color(srgb ...), which color-mix() gives); a theme's #hex
+const rgba = s => {
+  let m = /rgba?\(([^)]+)\)/.exec(s);
+  if (m) { const p = m[1].split(/[ ,/]+/).filter(Boolean).map(Number); return [p[0] / 255, p[1] / 255, p[2] / 255, p.length > 3 ? p[3] : 1]; }
+  m = /color\(srgb ([^)]+)\)/.exec(s);
+  if (m) { const p = m[1].split(/[ /]+/).filter(Boolean).map(Number); return [p[0], p[1], p[2], p.length > 3 ? p[3] : 1]; }
+  m = /^\s*#([0-9a-f]{6})\s*$/i.exec(s);
+  return m ? [0, 2, 4].map(i => parseInt(m[1].slice(i, i + 2), 16) / 255).concat(1) : null;
+};
+const mix = (a, b, p) => [0, 1, 2].map(i => a[i] * p + b[i] * (1 - p)).concat(1); // color-mix(in srgb, a p, b)
+const near = (a, b, e = 2 / 255) => !!a && !!b && a.every((v, i) => Math.abs(v - b[i]) <= e);
+const lum = c => { const f = v => v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]); };
+const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
+const r3 = c => c && c.map(v => +v.toFixed(3));
+
+const card = (id, label, kind) => ({ id, label, kind, sublabel: 'a sub-line' });
+const MODEL = {
+  nodes: [card('shop', 'Shoppers', 'frontend'), card('web', 'Storefront', 'frontend'), card('api', 'Shop API', 'backend'), card('q', 'Order queue', 'queue'),
+    card('wk', 'Order worker', 'backend'), card('db', 'Database', 'database'), card('mail', 'Email', 'external')],
+  edges: [{ id: 'e1', from: 'shop', to: 'web', label: 'browse, buy', step: 1, weight: 2 }, { id: 'e2', from: 'web', to: 'api', label: 'checkout', sublabel: 'JSON over HTTPS', step: 2 },
+    { id: 'e3', from: 'api', to: 'q', step: 3 }, { id: 'e4', from: 'q', to: 'wk', label: 'next order', step: 4.1 }, { id: 'e5', from: 'wk', to: 'db', label: 'save' }, { id: 'e6', from: 'wk', to: 'mail' }],
+  views: [{ id: 'v', nodeIds: ['shop', 'web', 'api', 'q', 'wk', 'db', 'mail'], containers: [{ id: 'front', label: 'Web', tone: 'cyan', nodeIds: ['web', 'api'] },
+    { id: 'orders', label: 'Orders', tone: 'orange', nodeIds: ['q', 'wk'] }, { id: 'store', label: 'Store', nodeIds: ['db'] }, { id: 'post', label: 'Post', tone: 'nope', nodeIds: ['mail'] }] },
+    { id: 's', render: 'sequence', nodeIds: ['shop', 'web', 'api'], edges: [{ id: 's1', from: 'shop', to: 'web', label: 'goes', step: 9 }, 'e2'] }] };
+try {
+  document.documentElement.dataset.theme = 'light';
+  const el = document.getElementById('a'), h = render(el, MODEL, { flow: false, minimap: true }), host = el.querySelector('.umlimator'), sr = host.shadowRoot;
+  const box = id => sr.querySelector(`.family[data-family="${id}"]`), cs = (s, p) => getComputedStyle(typeof s === 'string' ? sr.querySelector(s) : s)[p];
+  const theme = n => rgba(getComputedStyle(host).getPropertyValue('--um-' + n));
+  const region = (id, p = .07) => { const b = box(id).querySelector('.family-box'), tone = { front: 'cyan', orders: 'orange', post: 'slate' }[id];
+    return { fill: rgba(cs(b, 'fill')), want: mix(theme(tone), theme('panel'), p), title: rgba(cs(box(id).querySelector('.family-title'), 'fill')), tone }; };
+
+  // a box's tone: a tinted region under its border, behind its cards; the border dashed in the tone; the title in the tone
+  for (const th of ['light', 'dark']) {
+    document.documentElement.dataset.theme = th;
+    const f = region('front'), o = region('orders'), fb = box('front').querySelector('.family-box');
+    check(`${th}: a box with a tone is a region tinted 7% in it, opaque, over --um-panel`, near(f.fill, f.want) && near(o.fill, o.want) && cs(fb, 'fillOpacity') === '1', [r3(f.fill), r3(f.want), r3(o.fill), r3(o.want)]);
+    check(`${th}: …its border dashed, in the tone at 60%`, cs(fb, 'strokeDasharray') === '7px, 5px' && near(rgba(cs(fb, 'stroke')), theme('cyan').slice(0, 3).concat(.6), 3 / 255), [cs(fb, 'strokeDasharray'), cs(fb, 'stroke')]);
+    check(`${th}: …its title in the tone, mixed a quarter with --um-text`, near(f.title, mix(theme('cyan'), theme('text'), .75)) && near(o.title, mix(theme('orange'), theme('text'), .75)), [r3(f.title), r3(o.title)]);
+    for (const tint of ['1', '2']) {
+      el.style.setProperty('--um-tint', tint);
+      const bad = ['front', 'orders', 'post'].map(id => [id, region(id)]).map(([id, r]) => [id, +ratio(r.title, r.fill).toFixed(2)]).filter(x => x[1] < 4.5);
+      check(`${th}, --um-tint ${tint}: every box's title is 4.5:1 or more on its region`, !bad.length, bad);
+    }
+    el.style.removeProperty('--um-tint');
+    const s = region('post');
+    check(`${th}: a tone the theme does not have is drawn in slate`, near(s.fill, s.want), [r3(s.fill), r3(s.want)]);
+    const p = box('store').querySelector('.family-box');
+    check(`${th}: a box with no tone is the faint panel it was`, !box('store').classList.contains('toned') && near(rgba(cs(p, 'fill')), theme('panel')) && cs(p, 'fillOpacity') === '0.45' && cs(p, 'strokeDasharray') === 'none', [cs(p, 'fill'), cs(p, 'fillOpacity'), cs(p, 'strokeDasharray')]);
+  }
+  document.documentElement.dataset.theme = 'light';
+  const fam = [...sr.querySelectorAll('svg.map-svg .family, svg.map-svg .node')].map(x => x.classList.contains('node') ? 'card' : x.dataset.family);
+  check('the regions are drawn before (under) every card', fam.indexOf('card') === 4 && fam.lastIndexOf('post') === 3, fam);
+  h.select({ type: 'container', id: 'front', view: 'v' });
+  check('a selected box with a tone is outlined in the accent, as any box', near(rgba(cs(box('front').querySelector('.family-box'), 'stroke')), theme('accent')), cs(box('front').querySelector('.family-box'), 'stroke'));
+  h.select(null);
+
+  // --um-tint: how deep a card's and a box's tint is; the accent's tint (chips, menus) keeps its own
+  const webFill = () => rgba(cs('.node[data-id="web"] .n-body', 'fill')), cyan = theme('cyan'), panel = theme('panel');
+  const tints = ['0', '1', '2', '5'].map(t => { el.style.setProperty('--um-tint', t); return [t, webFill(), region('front').fill, getComputedStyle(host).getPropertyValue('--um-accent-f')]; });
+  el.style.removeProperty('--um-tint');
+  const want = { 0: [0, 0], 1: [.09, .07], 2: [.18, .14], 5: [.18, .18] };
+  check('--um-tint scales a card\'s tint and a box\'s region: 0 none, 1 as drawn, 2 twice, and never past 18%', tints.every(([t, c, r]) => near(c, mix(cyan, panel, want[t][0])) && near(r, mix(cyan, panel, want[t][1]))), tints.map(([t, c, r]) => [t, r3(c), r3(r)]));
+  check('…and leaves the accent\'s tint alone', tints.every(x => / 12%/.test(x[3])), tints.map(x => x[3]));
+  host.style.setProperty('--um-cyan-f', 'rgb(1, 2, 3)'); el.style.setProperty('--um-tint', '2');
+  check('…while a tint the host sets on the map stays as set', cs('.node[data-id="web"] .n-body', 'fill') === 'rgb(1, 2, 3)', cs('.node[data-id="web"] .n-body', 'fill'));
+  host.style.removeProperty('--um-cyan-f'); el.style.removeProperty('--um-tint');
+
+  // a step on a line, in a view that is not numbered: drawn as a numbered view draws it
+  const lab = id => { const i = [...sr.querySelectorAll('.edge-g')].findIndex(g => g.dataset.from === MODEL.edges.find(e => e.id === id).from && g.dataset.to === MODEL.edges.find(e => e.id === id).to); return sr.querySelector(`.e-lab[data-i="${i}"]`); };
+  const key = from => sr.querySelector(`.line-key[data-i="${[...sr.querySelectorAll('.edge-g')].findIndex(g => g.dataset.from === from)}"]`);
+  const l1 = lab('e1'), mark = l1 && l1.querySelector('.e-step-tx'), text = l1 && l1.querySelector('.e-label');
+  check('a line with a step draws its number in a circle, before its label', !!l1 && !!l1.querySelector('circle.e-step') && mark.textContent === '1' && text.textContent === 'browse, buy' && mark.getBBox().x + mark.getBBox().width < text.getBBox().x, l1 && l1.outerHTML.slice(0, 300));
+  const l3 = lab('e3'), l4 = lab('e4');
+  check('…alone on a line with no label, and in a pill for 4.1', !!l3 && l3.querySelector('.e-step-tx').textContent === '3' && !l3.querySelector('.e-label') && !!l4 && l4.querySelector('rect.e-step') && l4.querySelector('.e-step-tx').textContent === '4.1', [l3 && l3.outerHTML.slice(0, 200), l4 && l4.outerHTML.slice(0, 200)]);
+  check('…and the page\'s check reads the number as an edge label\'s text (a mark on a card or a label is found)', mark.dataset.t === 'el' && mark.dataset.o === 'shop>web', [mark.dataset.t, mark.dataset.o]);
+  const k2 = key('web'), t2 = [...sr.querySelectorAll('.edge-g')].find(g => g.dataset.from === 'web').querySelector(':scope > title');
+  check("the step is in the line's accessible name and its title", k2.getAttribute('aria-label') === 'Step 2: Line from Storefront to Shop API: checkout (JSON over HTTPS)' && t2.textContent === 'Step 2: Storefront → Shop API: checkout (JSON over HTTPS)', [k2.getAttribute('aria-label'), t2.textContent]);
+  check('…and a line without one is named as before', key('wk').getAttribute('aria-label') === 'Line from Order worker to Database: save' && !lab('e5').querySelector('.e-step'), key('wk').getAttribute('aria-label'));
+  await h.setView('s');
+  check('a numbered view numbers its lines in run order, whatever their step', key('shop').getAttribute('aria-label').startsWith('Step 1: ') && sr.querySelector('.e-step-tx').textContent === '1', key('shop').getAttribute('aria-label'));
+  await h.setView('v');
+
+  // the minimap draws each region; the SVG and the PNG keep the regions and the steps, in either theme
+  const mini = [...sr.querySelectorAll('.minimap svg rect:not(.vp)')].filter(r => r.getAttribute('fill-opacity') === '.14').map(r => r.getAttribute('fill'));
+  check('the minimap draws each box with a tone as its region, under the rest', JSON.stringify(mini) === JSON.stringify(['var(--um-cyan)', 'var(--um-orange)', 'var(--um-nope)']) && sr.querySelector('.minimap svg rect').getAttribute('fill-opacity') === '.14', mini);
+  for (const th of ['light', 'dark']) {
+    document.documentElement.dataset.theme = th;
+    const doc = new DOMParser().parseFromString(h.toSVG(), 'image/svg+xml'), fb = doc.querySelector('.family[data-family="front"] .family-box'), ft = doc.querySelector('.family[data-family="front"] .family-title');
+    check(`${th}: the SVG keeps the region, its dashed border and its title, in the colours drawn`, near(rgba(fb.style.fill), region('front').fill) && fb.style.fillOpacity === '1' && /7px,? 5px/.test(fb.style.strokeDasharray) && near(rgba(ft.style.fill), region('front').title),
+      [fb.style.fill, fb.style.fillOpacity, fb.style.strokeDasharray, ft.style.fill]);
+    check(`${th}: …and the steps`, [...doc.querySelectorAll('.e-step-tx')].map(t => t.textContent).join() === '1,2,3,4.1', [...doc.querySelectorAll('.e-step-tx')].map(t => t.textContent));
+  }
+  document.documentElement.dataset.theme = 'light';
+  const file = h.toSVG(), vb = file.match(/viewBox="([^"]+)"/)[1].split(' ').map(Number), fb = box('front').querySelector('.family-box');
+  const at = [+fb.getAttribute('x') + 24 - vb[0], +fb.getAttribute('y') + +fb.getAttribute('height') - 6 - vb[1]]; // inside the region, clear of its cards and lines
+  const px = await real(async () => { const png = await h.toPNG({ scale: 1 }), bmp = await createImageBitmap(png), c = new OffscreenCanvas(bmp.width, bmp.height).getContext('2d');
+    c.drawImage(bmp, 0, 0); return [...c.getImageData(Math.round(at[0]), Math.round(at[1]), 1, 1).data].map(v => v / 255); });
+  check('the PNG keeps the region\'s tint', near(px, region('front').fill, 3 / 255), [r3(px), r3(region('front').fill)]);
+
+  h.update({ ...MODEL, views: [{ ...MODEL.views[0], containers: MODEL.views[0].containers.map(({ tone, ...c }) => c) }, MODEL.views[1]] });
+  check('update() without the tones draws plain boxes again', !sr.querySelector('.family.toned') && !sr.querySelector('.minimap svg rect[fill-opacity=".14"]'), sr.querySelectorAll('.family.toned').length);
+  h.destroy();
+} catch (e) { out.fail.push('threw: ' + (e && e.stack || e)); }
+const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
+</script>

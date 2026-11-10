@@ -39,6 +39,10 @@
   --um-sans: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
   --um-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
 }
+/* How deep the map's tints are, in either theme: a card's kind colour, and a box's tone (containers[].tone). 1 is as
+   drawn here, 0 is none (plain panels), 2 twice as deep. The map stops a tint at 18% of its colour, where a card's
+   sub-line would fall below 4.5:1. Set it on the map or any ancestor; on :root only, so a map's own setting wins. */
+:root { --um-tint: 1; }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
   --um-stage-bg: var(--um-bg-2); --um-edited: #d29922;
