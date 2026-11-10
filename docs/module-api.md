@@ -271,6 +271,7 @@ sent or compared as it is.
 | `replay` | `{ playing }` or `null` | a replay under way, playing or paused by its `pause()` |
 | `camera` | `{ x, y, zoom }` | the centre in map units, to a tenth, and the zoom (1 is actual size), to a thousandth |
 | `flow` | boolean | the lines flow (≋, F) |
+| `shapes` | `'box'`, `'c4'` or `'uml'` | the notation the view shown is drawn in (0.15.0) |
 | `motion` | `'full'`, `'reduced'` or `'instant'` | how this map moves |
 | `gesture` | `'idle'`, `'dragging'`, `'connecting'` or `'naming'` | an edit in progress, on an editable map |
 | `destroyed` | boolean | `destroy()` has run |
@@ -290,7 +291,8 @@ The other events are as they were. Two are focused on one machine: `story` on ev
 
 **Getters beside it:** `navigating`, `destroyed`, `motion`, `story` (the `StoryPlayer` of the story shown, whoever
 started it), and `flow`, which a host can also set (`handle.flow = false`); the page saves only what the reader sets with
-≋ or F.
+≋ or F. `shapes` (0.15.0) a host can set too (`handle.shapes = 'c4'`, or `null` for each view's own); the page keeps what
+the reader picks with its toggle.
 
 **Where it is read:**
 - `handle.state` on any `render()` or `mountPage()` handle;
@@ -2397,6 +2399,156 @@ up into Patient's lower right port; and "Books appointments" (Patient → Bookin
 - **No change** to `lib/`, the CLI or the types.
 
 ## 0.15.0: (unreleased)
+
+### Card shapes: box, c4 and uml
+
+A notation draws each card as a shape. Every shape is drawn inside its card's own box, so the layout, the routes, the
+widths, the layout check and the bench hashes are the same in all three. Switching the notation draws the cards again
+and lays nothing out.
+
+- **`box`** is the default and today's look: every card a rounded box, a hook a hexagon, as before. A map that names no
+  notation draws as it did, picture for picture.
+- **`c4`** draws people, browser apps, phones, databases, queues and files as the C4 model's tools (Structurizr,
+  C4-PlantUML, draw.io) draw them.
+- **`uml`** draws UML 2.5's actor (§18.1.4), node (§19.4.4), artifact (§19.3.4), package (§12.2.4) and data store, and
+  puts UML's component icon (§11.6.4) on a box as its mark, not as its outline.
+- **A card's own `shape`** wins in every notation, `box` included.
+
+**Where the notation is set**, each over the one before:
+
+1. the model's `shapes`, for every view;
+2. a view's `shapes`;
+3. `render()`'s `shapes` option, the host's;
+4. the standalone page's toggle, next to ◐, the reader's (box, c4, uml in turn); the page keeps it for that page, as it
+   keeps the theme;
+5. the link, `#shapes=c4`.
+
+`handle.shapes` reads the notation of the view shown and sets the host's (`null`: each view's own again).
+`MapState.shapes` says it, the `state` event names `shapes` when it changes, and `<umlimator-map shapes="…">` sets it
+(changing the attribute draws the cards again in the map drawn, with no new load or layout). The page writes a
+reader's notation into its link.
+
+**What `c4` draws.** The kind word the model wrote comes first, then the kind it means:
+
+| Card | Shape |
+|---|---|
+| kind `person`, `user` or `human` | person (a `user` is external: grey and dashed) |
+| kind `mobile` | mobile (a phone on its side, as the C4 model's example draws its mobile app) |
+| kind `agent` | robot |
+| kind `cli` | terminal |
+| `frontend` | browser |
+| `database` | cylinder |
+| `queue` | pipe |
+| `file` | document |
+| `hook` | hexagon |
+| `external` | box, dashed |
+| any other | box |
+
+**What `uml` draws:**
+
+| Card | Shape | UML 2.5 |
+|---|---|---|
+| kind `person`, `user` or `human` | person | actor (§18.1.4) |
+| kind `agent` | robot | a non-human actor (§18.1.4) |
+| `cloud` | node | node (§19.4.4) |
+| kind `module` or `package` | folder | package (§12.2.4) |
+| `database` | cylinder | data store (§15.4.4 names it «datastore»; the cylinder is the common picture) |
+| `file` | document | artifact (§19.3.4) |
+| `hook` | hexagon | (umlimator's own) |
+| `external` | box, dashed | |
+| any other | box, with UML's component icon as its mark when it has no icon | component (§11.6.4) |
+
+**The 13 shapes**, all drawn inside the card's box (the gallery, `examples/notations.html`, shows each one):
+
+- `box`: the rounded box;
+- `person`: a head over a body with wide shoulders. The body starts 12 px down, so a side port's highest place lands on
+  it;
+- `browser`, `window` and `terminal`: a title bar with three dots, then an address field, nothing, or a `>_`;
+- `mobile`: a phone on its side, with a screen, a home button and a speaker;
+- `cylinder`: a lid on top;
+- `pipe`: a cylinder on its side, open at the right;
+- `document`: a page with its corner folded;
+- `hexagon`: the hook card's;
+- `robot`: a square head with ears;
+- `folder`: a tab on top;
+- `node`: a box seen in perspective.
+
+A person's, robot's, phone's, terminal's, folder's and node's card with no icon takes a mark of its shape's own.
+
+**How a shape keeps the engine as it was:**
+
+- **Same box.** Layout, routing and the checks see the card's box only.
+- **Ports on the outline.** Layout's ports stay on the box. The picture slides each line's end along its side's normal
+  onto the outline and lengthens the end by as much, so a line meets a cylinder's lid or a person's shoulder. A tour's
+  and a replay's dot ride the lines as drawn, into the shape at its outline.
+- **A safe area.** Each shape names the rows its mark and text use: below a title bar, under a person's or robot's head,
+  under a cylinder's lid. Where a two-line sub-line or a sub-line under a two-line name wouldn't fit, it gives way, and the
+  tooltip and the details panel keep it. `umlimator.py check` measures a shape's text against that area too.
+- **One outline** draws the mask, the body, the stack (two copies of the outline), the overlay and lens rings (the outline
+  5 px out), the public ring, the glow and focus (on the outline, as before), the minimap and the legend's key. Exports
+  (SVG, PNG, the PDF) are pictures of what is drawn, so they draw the shapes, at rest.
+- **Tabs and badges** keep their places along the top. On a person, robot or folder they sit on the body's top; a head
+  moves aside from them, and a title bar's dots and address field give way to them.
+
+**The legend** shows the shapes in use. A kind drawn in one shape (data stores as cylinders, say) has that shape as its
+key, and the other shapes drawn (a person, a browser app ...) have keys of their own, in a neutral outline, as colour
+is the kinds'. In uml it names UML's component.
+
+**Motion** lands on the shape. As something arrives at a card (a tour's or replay's dot, `flash()`), its accent lights:
+a person's head, a cylinder's lid, a pipe's open end, a title bar, a page's fold, a phone's screen, a robot's eyes, a
+folder's tab or a node's top edge. A pipe's floor carries a row of dots at the flow's speed while the flow is on. Neither
+moves under reduced motion, in an instant page or in an export.
+
+**`validate()`:**
+
+- warns about a `shape` or a `shapes` it doesn't know;
+- hints, where a view draws c4, that a `frontend` card with a person's icon (`user`, `users`, `usercheck`) and no `shape`
+  draws as a browser: kind `person`, or `shape: "person"`, draws a person.
+
+**The schema** has `shape` on a card (and in `nodeOverrides`) and `shapes` on the model and on a view, and the kind words
+`person`, `mobile` (both `frontend`) and `package` (`backend`).
+
+**Import:**
+
+- `umlimator.py import` writes `"shapes": "c4"` for a Structurizr, C4-PlantUML or Mermaid C4 source.
+- A person is kind `person`, or `user` when it is external (`Person_Ext`, or an `External` tag). Before, both were
+  `frontend` or `external`; the colours are the same.
+- A frontend container whose technology or name says it runs on a phone (mobile, Android, iOS, Xamarin, Flutter, React
+  Native, SwiftUI) is kind `mobile`.
+- `examples/clinic.json` is imported again: its notation and its two people.
+
+**The examples' people** are kind `person`: the bookshop's Shoppers, and bike-share's Riders and Operations team.
+In `box` they look as before (a `person` is a `frontend` card); in `c4` and `uml` they are people, not browser apps.
+
+**Behaviour changes:**
+
+- **The legend's key for `external` is solid in `box`,** as its cards are. It was dashed while the cards were solid, since
+  the first commit. In c4 and uml, external cards are dashed and so is their key.
+- **New kind words.** A card of kind `person`, `mobile` or `package` was an unknown kind (a script card, with a
+  `validate()` warning). Now it is a `frontend` or `backend` card.
+- **A view's `shapes` lays nothing out:** it is left out of the key that decides whether a view is laid out again.
+
+**API added:**
+
+- `render()`'s `shapes` option and `handle.shapes`;
+- `MapState.shapes`;
+- `<umlimator-map shapes>`;
+- the page's toggle, `#shapes=` and its kept choice;
+- the types `Notation` and `Shape`;
+- `shape` on a card, and `shapes` on the model and a view.
+
+**Tests:**
+
+- `tests/shapes.html` runs under reduced motion. For each shape in each notation it checks that the shape is inside its
+  box, that its ports and lines' ends are on its outline, and that its text is in its face. It also checks that a change
+  of notation keeps the same geometry, camera and selection; the state event; `update()`; exports; the legend; rings;
+  the minimap; validate(); the element; and the page's toggle, link and kept choice.
+- `tests/motion.html` checks the accent and the pipe's floor with motion on.
+- `tests/shapes.test.mjs` checks that every example and two benchmark models lay out the same in all three notations,
+  and checks validate()'s warnings.
+- `tests/import.py` checks the notation and kinds `import` writes.
+- The bench's `--expect` is unchanged, and the box notation's stills of bookshop and bike-share are byte for byte as
+  before.
 
 ### Reading aids: a box's tone, a step on any line, and how deep the tints are
 

@@ -1,11 +1,12 @@
 {
   "title": "Clinic bookings",
   "root": "context",
+  "shapes": "c4",
   "nodes": [
     {
       "id": "patient",
       "label": "Patient",
-      "kind": "frontend",
+      "kind": "person",
       "sublabel": "Person",
       "what": "Books and moves appointments.",
       "icon": "user"
@@ -13,7 +14,7 @@
     {
       "id": "reception",
       "label": "Receptionist",
-      "kind": "frontend",
+      "kind": "person",
       "sublabel": "Person",
       "what": "Runs a clinic's front desk.",
       "icon": "user"

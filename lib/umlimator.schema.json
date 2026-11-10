@@ -20,6 +20,14 @@
    "type": "string",
    "description": "The view shown first (default: the view with no parent)."
   },
+  "shapes": {
+   "enum": [
+    "box",
+    "c4",
+    "uml"
+   ],
+   "description": "The notation every view's cards are (a view's own wins) is drawn in (0.15.0): box (every card a rounded box, the default), c4 (people, browser apps, phones, databases, queues and files as the C4 model's tools draw them) or uml (UML 2.5's actor, node, artifact, package and data store, and the component icon on a box)."
+  },
   "nodes": {
    "type": "array",
    "items": {
@@ -134,6 +142,8 @@
       "page",
       "browser",
       "app",
+      "person",
+      "mobile",
       "api",
       "service",
       "server",
@@ -143,6 +153,7 @@
       "cli",
       "worker",
       "module",
+      "package",
       "db",
       "store",
       "storage",
@@ -281,6 +292,24 @@
      "type": "string",
      "description": "A logo or line icon: a name from icons/manifest.json (render() draws what the model's icons table carries)."
     },
+    "shape": {
+     "enum": [
+      "box",
+      "person",
+      "browser",
+      "mobile",
+      "cylinder",
+      "pipe",
+      "document",
+      "hexagon",
+      "robot",
+      "terminal",
+      "window",
+      "folder",
+      "node"
+     ],
+     "description": "The card's own shape, in every notation (0.15.0): box, person, browser, mobile, cylinder, pipe, document, hexagon, robot, terminal, window, folder or node. Without it the notation draws the card by its kind."
+    },
     "noSub": {
      "type": "boolean",
      "description": "The name only on the card; the sub-line stays in the details panel."
@@ -398,6 +427,24 @@
     },
     "kind": {
      "$ref": "#/$defs/kind"
+    },
+    "shape": {
+     "enum": [
+      "box",
+      "person",
+      "browser",
+      "mobile",
+      "cylinder",
+      "pipe",
+      "document",
+      "hexagon",
+      "robot",
+      "terminal",
+      "window",
+      "folder",
+      "node"
+     ],
+     "description": "The card's own shape, in every notation (0.15.0): box, person, browser, mobile, cylinder, pipe, document, hexagon, robot, terminal, window, folder or node. Without it the notation draws the card by its kind."
     },
     "sublabel": {
      "type": "string",
@@ -871,6 +918,14 @@
     "subAndChips": {
      "type": "boolean",
      "description": "Cards 80 px tall that show their sub-line, then their chips."
+    },
+    "shapes": {
+     "enum": [
+      "box",
+      "c4",
+      "uml"
+     ],
+     "description": "The notation this view's cards are is drawn in (0.15.0): box (every card a rounded box, the default), c4 (people, browser apps, phones, databases, queues and files as the C4 model's tools draw them) or uml (UML 2.5's actor, node, artifact, package and data store, and the component icon on a box)."
     },
     "kindsFromLabels": {
      "type": "boolean",
