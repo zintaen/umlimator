@@ -264,11 +264,13 @@ ffmpeg -f apng -i ride.png -vf "scale=trunc(iw/2)*2:trunc(ih/2)*2" -pix_fmt yuv4
 ```
 
 On pull requests, the diff Action posts what they change in your maps: one comment with the summary and a sketch, and
-the pictures as the run's artifact.
+the pictures as the run's artifact. The comment names the commit it describes, only the run for the pull request's
+latest commit writes it, and it says so when the diff fails.
 
 ```yaml
 on: pull_request
 permissions: { contents: read, pull-requests: write }
+concurrency: { group: "maps-${{ github.event.pull_request.number }}", cancel-in-progress: true }   # one run per pull request
 jobs:
   maps:
     runs-on: ubuntu-latest
