@@ -41,7 +41,7 @@
       <div><h3>Helpdesk assistant</h3><p>An AI agent's skills: lanes, hooks that guard, a board that keeps state, chips, and steps that exist in one view only.</p>
         <span class="links"><a href="assistant.html">Open the map</a><a href="embed.html?model=assistant.json">In a host page</a><a href="assistant.pdf">PDF</a><a href="assistant.json">Model</a></span></div></article>
     <article class="card"><img src="stills/bookshop/overview.png" alt="Bookshop: a storefront, an API, its stores and the services around them, with brand logos" loading="lazy">
-      <div><h3>Bookshop</h3><p>A product's architecture in two levels, with brand logos and an order followed step by step.</p>
+      <div><h3>Bookshop</h3><p>A product's architecture in two levels, with brand logos, an order followed step by step, and its checkout at a glance: numbered steps and tinted boxes.</p>
         <span class="links"><a href="bookshop.html">Open the map</a><a href="embed.html?model=bookshop.json">In a host page</a><a href="bookshop.pdf">PDF</a><a href="bookshop.json">Model</a></span></div></article>
     <article class="card"><img src="stills/clinic/containers.png" alt="Clinic bookings' containers: the booking site, front desk app, booking API, its database and the reminder queue, with the receptionist in a Clinic staff group" loading="lazy">
       <div><h3>Clinic bookings</h3><p>Imported from a Structurizr workspace by <code>umlimator.py import</code>: its three views, a group as a box, and the lines Structurizr implies at each level.</p>
@@ -49,11 +49,15 @@
     <article class="card"><img src="stills/states/machines.png" alt="umlimator's state machines: the page and the MCP page drive render()'s handle, whose story player, navigation and tours report every change to MapState" loading="lazy">
       <div><h3>umlimator's state machines</h3><p>umlimator's own state machines, drawn with umlimator: navigation, the story player, tours, the page's keys and the MCP page, with states as cards, transitions as lines and a story along a typical path.</p>
         <span class="links"><a href="states.html">Open the map</a><a href="states.html#story=assistant&step=1">Its story</a><a href="states.pdf">PDF</a><a href="states.json">Model</a><a href="https://github.com/zintaen/umlimator/blob/main/docs/module-api.md#state">The State chapter</a></span></div></article>
+    <article class="card"><img src="stills/shapes/shapes.png" alt="Card shapes in the c4 notation: people, a browser app, a phone, a window, a terminal, an agent, a database, a queue and a file around a shop's API" loading="lazy">
+      <div><h3>Card shapes</h3><p>A card of each kind the notations draw, in <code>c4</code>; the page's ⬡ toggle shows it in <code>box</code> and <code>uml</code>, and the gallery puts all three side by side.</p>
+        <span class="links"><a href="shapes.html">Open the map</a><a href="notations.html">Side by side</a><a href="shapes.pdf">PDF</a><a href="shapes.json">Model</a></span></div></article>
   </div>
 
   <h2>In an app</h2>
   <table>
     <tr><td><a href="playground.html">Playground</a></td><td>Edit a model and see the map, its problems (<code>validate()</code>), its broken rules (<code>rules()</code>) and its layout check (<code>check()</code>); share it by link.</td></tr>
+    <tr><td><a href="notations.html">Card shapes</a></td><td>One model in each notation, <code>box</code>, <code>c4</code> and <code>uml</code>, light and dark: all 13 shapes, a card's own <code>shape</code>, and a switch that draws the cards again without laying them out.</td></tr>
     <tr><td><a href="element.html">The element</a></td><td><code>&lt;umlimator-map src="…"&gt;</code>: a map from HTML alone, its still shown until it is drawn; the block a docs site (VitePress, Docusaurus, MkDocs) turns into it.</td></tr>
     <tr><td><a href="embed.html">A host page</a></td><td><code>render()</code> with the standalone page's pieces (views list, details panel, legend, hint line), views loaded when opened, SVG and PNG export, themes and the minimap.</td></tr>
     <tr><td><a href="live.html">Live traffic</a></td><td><code>overlay()</code> every second: flow as fast as the traffic, errors that pulse, slow lines that glow, lag on each card; the model never changes.</td></tr>

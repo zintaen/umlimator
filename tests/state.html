@@ -167,13 +167,13 @@ try {
   h = null;
 
   // ---- the readable state (0.14.0): handle.state, the state and lens events, the getters
-  const KEYS = ['view', 'navigating', 'selection', 'expanded', 'lens', 'overlays', 'story', 'tour', 'replay', 'paused', 'camera', 'flow', 'motion', 'gesture', 'destroyed'];
+  const KEYS = ['view', 'navigating', 'selection', 'expanded', 'lens', 'overlays', 'story', 'tour', 'replay', 'paused', 'camera', 'flow', 'shapes', 'motion', 'gesture', 'destroyed']; // shapes: 0.15.0
   const states = [], lenses = []; mount(BIKE, { view: 'system', on: { state: e => states.push(e), lens: e => lenses.push(e.lens) } });
   const s0 = h.state, deepFrozen = o => Object.isFrozen(o) && Object.values(o).every(v => !v || typeof v !== 'object' || deepFrozen(v));
   check('handle.state has every MapState key, with the types the contract gives', JSON.stringify(Object.keys(s0)) === JSON.stringify(KEYS)
     && s0.view === 'system' && s0.navigating === null && Array.isArray(s0.selection) && Array.isArray(s0.expanded) && s0.lens === null && Array.isArray(s0.overlays)
     && s0.story === null && s0.tour === false && s0.replay === null && s0.paused === false && ['x', 'y', 'zoom'].every(k => Number.isFinite(s0.camera[k])) && typeof s0.flow === 'boolean'
-    && s0.motion === 'reduced' && s0.gesture === 'idle' && s0.destroyed === false, s0);
+    && s0.shapes === 'box' && s0.motion === 'reduced' && s0.gesture === 'idle' && s0.destroyed === false, s0);
   check('…is plain JSON: it comes back the same through JSON.stringify and JSON.parse', JSON.stringify(JSON.parse(JSON.stringify(s0))) === JSON.stringify(s0) && !JSON.stringify(s0).includes('undefined'));
   let wrote = false; try { s0.view = 'x'; } catch (e) { wrote = e instanceof TypeError; }
   check('…is frozen all the way down, and fresh on every read', deepFrozen(s0) && wrote && s0.view === 'system' && h.state !== s0);

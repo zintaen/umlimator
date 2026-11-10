@@ -272,6 +272,7 @@ sent or compared as it is.
 | `paused` | boolean | the standalone page's ❚❚ holds every clock: a tour's or a replay's dot, a story's step and the flow. It leaves `story`, `tour`, `replay` and `flow` as they are, so `playing: true` with `paused: true` is a story or a replay that would play, held by the page (0.15.0) |
 | `camera` | `{ x, y, zoom }` | the centre in map units, to a tenth, and the zoom (1 is actual size), to a thousandth |
 | `flow` | boolean | the lines flow (≋, F) |
+| `shapes` | `'box'`, `'c4'` or `'uml'` | the notation the view shown is drawn in (0.15.0) |
 | `motion` | `'full'`, `'reduced'` or `'instant'` | how this map moves |
 | `gesture` | `'idle'`, `'dragging'`, `'connecting'` or `'naming'` | an edit in progress, on an editable map |
 | `destroyed` | boolean | `destroy()` has run |
@@ -291,7 +292,8 @@ The other events are as they were. Two are focused on one machine: `story` on ev
 
 **Getters beside it:** `navigating`, `destroyed`, `motion`, `story` (the `StoryPlayer` of the story shown, whoever
 started it), and `flow`, which a host can also set (`handle.flow = false`); the page saves only what the reader sets with
-≋ or F.
+≋ or F. `shapes` (0.15.0) a host can set too (`handle.shapes = 'c4'`, or `null` for each view's own); the page keeps what
+the reader picks with its toggle.
 
 **Where it is read:**
 - `handle.state` on any `render()` or `mountPage()` handle;
@@ -1264,7 +1266,7 @@ only), which the command calls.
   `FILE:PATH: …` in JSON (`items[8]`, `volumes`). The command prints what it wrote, `{ out, format, cards, lines, views,
   unread }`, and exits 1 when a file has nothing to import.
 - **Left out of this first version:**
-  - Structurizr's deployment, dynamic and filtered views, `!include`, `!ref`, `!extend`, constants, styles and themes;
+  - Structurizr's deployment, dynamic and filtered views, `!include`, `!ref`, `!extend`, constants, themes, and styles but their `shape` (0.15.0);
   - C4 deployment nodes and dynamic diagrams (`RelIndex`);
   - Mermaid's `@{ … }` shapes and its other diagram types;
   - compose's volumes, configs and secrets, and Kubernetes' other kinds (ConfigMaps, Jobs, CronJobs…);
@@ -2402,6 +2404,268 @@ up into Patient's lower right port; and "Books appointments" (Patient → Bookin
 - **No change** to `lib/`, the CLI or the types.
 
 ## 0.15.0: (unreleased)
+
+### Card shapes: box, c4 and uml
+
+A notation draws each card as a shape. Every shape is drawn inside its card's own box, so the layout, the routes, the
+widths, the layout check and the bench hashes are the same in all three. Switching the notation draws the cards again
+and lays nothing out.
+
+- **`box`** is the default and today's look: every card a rounded box, a hook a hexagon, as before. A map that names no
+  notation draws as it did, picture for picture.
+- **`c4`** draws people, browser apps, phones, databases, queues and files as the C4 model's tools (Structurizr,
+  C4-PlantUML, draw.io) draw them.
+- **`uml`** draws UML 2.5's actor (§18.1.4), node (§19.4.4), artifact (§19.3.4), package (§12.2.4) and data store, and
+  puts UML's component icon (§11.6.4) on a box as its mark, not as its outline.
+- **A card's own `shape`** wins in every notation, `box` included.
+
+**Where the notation is set**, each over the one before:
+
+1. the model's `shapes`, for every view;
+2. a view's `shapes`;
+3. `render()`'s `shapes` option, the host's;
+4. the standalone page's toggle, next to ◐, the reader's (box, c4, uml in turn); the page keeps it for that page, as it
+   keeps the theme;
+5. the link, `#shapes=c4`.
+
+`handle.shapes` reads the notation of the view shown and sets the host's (`null`: each view's own again).
+`MapState.shapes` says it, the `state` event names `shapes` when it changes, and `<umlimator-map shapes="…">` sets it
+(changing the attribute draws the cards again in the map drawn, with no new load or layout). The page writes a
+reader's notation into its link.
+
+**What `c4` draws.** The kind word the model wrote comes first, then the kind it means:
+
+| Card | Shape |
+|---|---|
+| kind `person`, `user` or `human` | person (a `user` is external: grey and dashed) |
+| kind `mobile` | mobile (a phone on its side, as the C4 model's example draws its mobile app) |
+| kind `agent` | robot |
+| kind `cli` | terminal |
+| `frontend` | browser |
+| `database` | cylinder |
+| `queue` | pipe |
+| `file` | document |
+| `hook` | hexagon |
+| `external` | box, dashed |
+| any other | box |
+
+**What `uml` draws:**
+
+| Card | Shape | UML 2.5 |
+|---|---|---|
+| kind `person`, `user` or `human` | person | actor (§18.1.4) |
+| kind `agent` | robot | a non-human actor (§18.1.4) |
+| `cloud` | node | node (§19.4.4) |
+| kind `module` or `package` | folder | package (§12.2.4) |
+| `database` | cylinder | data store (§15.4.4 names it «datastore»; the cylinder is the common picture) |
+| `file` | document | artifact (§19.3.4) |
+| `hook` | hexagon | (umlimator's own) |
+| `external` | box, dashed | |
+| any other | box, with UML's component icon as its mark when it has no icon | component (§11.6.4) |
+
+**The 13 shapes**, all drawn inside the card's box (the gallery, `examples/notations.html`, shows each one):
+
+- `box`: the rounded box;
+- `person`: a head over a body with wide shoulders. The body starts 12 px down, so a side port's highest place lands on
+  it;
+- `browser`, `window` and `terminal`: a title bar with three dots, then an address field, nothing, or a `>_`;
+- `mobile`: a phone on its side, with a screen, a home button and a speaker;
+- `cylinder`: a lid on top;
+- `pipe`: a cylinder on its side, open at the right;
+- `document`: a page with its corner folded;
+- `hexagon`: the hook card's;
+- `robot`: a square head with ears;
+- `folder`: a tab on top;
+- `node`: a box seen in perspective.
+
+A person's, robot's, phone's, terminal's, folder's and node's card with no icon takes a mark of its shape's own.
+
+**How a shape keeps the engine as it was:**
+
+- **Same box.** Layout, routing and the checks see the card's box only.
+- **Ports on the outline.** Layout's ports stay on the box. The picture slides each line's end along its side's normal
+  onto the outline and lengthens the end by as much, so a line meets a cylinder's lid or a person's shoulder. A tour's
+  and a replay's dot ride the lines as drawn, into the shape at its outline.
+- **A safe area.** Each shape names the rows its mark and text use: below a title bar, under a person's or robot's head,
+  under a cylinder's lid. Where a two-line sub-line or a sub-line under a two-line name wouldn't fit, it gives way, and the
+  tooltip and the details panel keep it. `umlimator.py check` measures a shape's text against that area too.
+- **One outline** draws the mask, the body, the stack (two copies of the outline), the overlay and lens rings (the outline
+  5 px out), the public ring, the glow and focus (on the outline, as before), the minimap and the legend's key. Exports
+  (SVG, PNG, the PDF) are pictures of what is drawn, so they draw the shapes, at rest.
+- **Tabs and badges** keep their places along the top. On a person, robot or folder they sit on the body's top; a head
+  moves aside from them, and a title bar's dots and address field give way to them.
+
+**The legend** shows the shapes in use. A kind drawn in one shape (data stores as cylinders, say) has that shape as its
+key, and the other shapes drawn (a person, a browser app ...) have keys of their own, in a neutral outline, as colour
+is the kinds'. In uml it names UML's component.
+
+**Motion** lands on the shape. As something arrives at a card (a tour's or replay's dot, `flash()`), its accent lights:
+a person's head, a cylinder's lid, a pipe's open end, a title bar, a page's fold, a phone's screen, a robot's eyes, a
+folder's tab or a node's top edge. A pipe's floor carries a row of dots at the flow's speed while the flow is on. Neither
+moves under reduced motion, in an instant page or in an export.
+
+**`validate()`:**
+
+- warns about a `shape` or a `shapes` it doesn't know;
+- hints, where a view draws c4, that a `frontend` card with a person's icon (`user`, `users`, `usercheck`) and no `shape`
+  draws as a browser: kind `person`, or `shape: "person"`, draws a person.
+
+**The schema** has `shape` on a card (and in `nodeOverrides`) and `shapes` on the model and on a view, and the kind words
+`person`, `mobile` (both `frontend`) and `package` (`backend`).
+
+**Import:**
+
+- `umlimator.py import` writes `"shapes": "c4"` for a Structurizr, C4-PlantUML or Mermaid C4 source.
+- A person is kind `person`, or `user` when it is external (`Person_Ext`, or an `External` tag). Before, both were
+  `frontend` or `external`; the colours are the same.
+- A frontend container whose technology or name says it runs on a phone (mobile, Android, iOS, Xamarin, Flutter, React
+  Native, SwiftUI) is kind `mobile`.
+- A Structurizr workspace's `styles` are read for their `shape`: each element whose tags a style names takes that
+  shape as its own `shape`. Where several styles apply, Structurizr's own order decides (`Styles.findElementStyle`): the
+  element's tags in order, `Element` first, then its type's (`Person`, `Software System`, `Container`, `Component`), then
+  its own as written; of two styles for one tag, the later; a later shape wins. Themes (`theme`, `themes`) are not read,
+  and a style's other properties (colours, borders, sizes) are listed as not imported, each with its line.
+
+  | Structurizr shape | the card's `shape` |
+  | --- | --- |
+  | `Box`, `RoundedBox` | `box` |
+  | `Person` | `person` |
+  | `Robot` | `robot` |
+  | `Cylinder` | `cylinder` |
+  | `Pipe` | `pipe` |
+  | `Folder` | `folder` |
+  | `WebBrowser` | `browser` |
+  | `Window` | `window` |
+  | `Terminal`, `Shell` | `terminal` |
+  | `MobileDevicePortrait`, `MobileDeviceLandscape` | `mobile` |
+  | `Hexagon` | `hexagon` |
+  | `Circle`, `Ellipse`, `Diamond`, `Bucket`, `Component` | none: listed in `notImported` with its style's tag, and a card it falls on is drawn by its kind |
+
+- A C4-PlantUML tag's `$shape` (`AddElementTag(..., $shape=RoundedBoxShape()|EightSidedShape())`) is not drawn; it
+  is listed in `notImported`.
+- `examples/clinic.json` is imported again: its notation and its two people, and, from its styles, its people's
+  `person` shape and its database's `cylinder`.
+
+**The examples' people** are kind `person`: the bookshop's Shoppers, and bike-share's Riders and Operations team.
+In `box` they look as before (a `person` is a `frontend` card); in `c4` and `uml` they are people, not browser apps.
+
+**Behaviour changes:**
+
+- **The legend's key for `external` is solid in `box`,** as its cards are. It was dashed while the cards were solid, since
+  the first commit. In c4 and uml, external cards are dashed and so is their key.
+- **New kind words.** A card of kind `person`, `mobile` or `package` was an unknown kind (a script card, with a
+  `validate()` warning). Now it is a `frontend` or `backend` card.
+- **A view's `shapes` lays nothing out:** it is left out of the key that decides whether a view is laid out again.
+
+**API added:**
+
+- `render()`'s `shapes` option and `handle.shapes`;
+- `MapState.shapes`;
+- `<umlimator-map shapes>`;
+- the page's toggle, `#shapes=` and its kept choice;
+- the types `Notation` and `Shape`;
+- `shape` on a card, and `shapes` on the model and a view.
+
+**Tests:**
+
+- `tests/shapes.html` runs under reduced motion. For each shape in each notation it checks that the shape is inside its
+  box, that its ports and lines' ends are on its outline, and that its text is in its face. It also checks that a change
+  of notation keeps the same geometry, camera and selection; the state event; `update()`; exports; the legend; rings;
+  the minimap; validate(); the element; and the page's toggle, link and kept choice.
+- `tests/motion.html` checks the accent and the pipe's floor with motion on.
+- `tests/shapes.test.mjs` checks that every example and two benchmark models lay out the same in all three notations,
+  and checks validate()'s warnings.
+- `tests/import.py` checks the notation and kinds `import` writes.
+- The bench's `--expect` is unchanged, and the box notation's stills of bookshop and bike-share are byte for byte as
+  before.
+
+### Reading aids: a box's tone, a step on any line, and how deep the tints are
+
+The ByteByteGo half of the card-shapes decision: three small hooks that say how to read a view, in any notation. Logos
+and a heavier main path were there already (a card's `icon`, a line's `weight`). The bookshop's new `checkout` view
+shows the tone and the steps with them; `--um-tint` is the host's to set.
+
+- **A box's tone** (`containers[].tone`): a palette name, as a badge's (`--um-<tone>`).
+  - The region behind the box is tinted in it: 7% of the tone over `--um-panel`, opaque, under the box's border and
+    behind its cards. A box without a tone is the faint panel it was.
+  - Its border is dashed, in the tone at 60%. Its title is in the tone mixed a quarter with `--um-text`, which keeps it
+    at 4.5:1 or more on its region in both themes; in the tone alone, amber's title would be 4.45:1 in light.
+  - A tone the theme does not define is drawn in slate. A selected box, and an edit's drop target, are outlined in the
+    accent as before.
+  - The minimap draws each region under the rest, and the exports (SVG, PNG, the PDF, stills) keep it, resolved as every
+    colour is.
+- **A step on any line** (`edges[].step`): a number, such as 2, or 2.1 for a step within step 2, or text of up to 3
+  characters, such as 2a.
+  - It is drawn as a numbered view draws its run order: a circle at the start of the line's label for one character, a
+    pill for two or three (2a, 12, 4.1), or alone on a line with no label. A numbered view (`render: "sequence"`) still
+    numbers its lines in run order, whatever their step.
+  - It shows as written everywhere: the mark, the line's name and title, `describe()` and the PDF.
+  - Where steps order lines (the PDF's table of lines), numbers go by value and text by its leading number, then the
+    rest: 2 < 2a < 2b < 3 < 10. Lines without a step come last.
+  - It is in the line's accessible name ("Step 2: Line from Storefront to Shop API: checkout (JSON over HTTPS)") and its
+    title, as a numbered view's are; in `describe()`, which says `Storefront calls Shop API ("checkout", JSON over
+    HTTPS, step 2).`; in the details panel; and in the first column of the PDF's table of lines.
+  - A model edge's step shows in every view that draws the edge; a view's own edge (an object in its `edges`) numbers it
+    in that view only. Lines drawn as one (parallel, or A→B with B→A) show the first one's step and list each in their
+    title; a view's `keepPairs` draws each with its own.
+  - **Room:** a numbered line with no label gets a gap wide enough for its mark between neighbouring columns, 22 px with
+    27 px of line on each side, as a labelled line gets one for its label; before, it got none. Where a label has no
+    room, the line shows its number alone and keeps the label in its title, as numbered views always have: a view's
+    `gap` or `rgap` gives it room.
+  - **The layout check knows the mark:** `check()` and the page's check say when a mark with no label leaves its line
+    less than 16 px, as they say it of a label, and the page's check reads the number as an edge label's text, so a mark
+    on a card or on another label is found.
+- **`--um-tint`**: how deep the tints are, a card's and a box's. 1 is the default (as before), 0 none, 2 twice as deep.
+  - The map mixes every kind's tint as `min(its % × --um-tint, 18%)` of the colour: past 18%, a card's sub-line would
+    fall below 4.5:1 (on the hook's red in light, the lane's teal in dark).
+  - The theme file declares it on `:root` only, so a value a host sets on the map or above it wins. A tint a host sets
+    itself (`--um-<tone>-f` on the map element, #29) stays as set.
+  - The accent's tint (a hub's tags, the menus) and the details panel's PUBLIC tag keep theirs: their text is in their
+    tone, which a deeper tint would take below 4.5:1.
+- **In `c4`, every box is a boundary**, dashed as Structurizr and C4-PlantUML draw one (7 on, 5 off, in its border
+  colour). A box with a tone stays tinted and dashed, in any notation; `box` and `uml` leave a box without one solid.
+  The minimap draws the dashed boxes dashed, and the exports keep the dashes.
+- **Step numbers read at 4.5:1 or more in dark.** The dark theme's `--um-accent-fg` was white, 3.1:1 on the dark accent
+  (`#4493f8`); it is `#0d1117` now, 6.1:1. The light theme is unchanged (white, 5.2:1).
+- **`validate()`** warns when a step is neither a number of 0 or more nor text of 1 to 3 characters (it is drawn as
+  written), and when a tone is not a name (the box is drawn in slate, or as a plain box when the tone is empty).
+- **The example:** the bookshop's third view, `checkout` ("Checkout, at a glance"), reads like the proposal's blend: six
+  numbered steps, the main path at weight 2 with a tour along it, the web tier and the order handling as cyan and orange
+  boxes, Payment provider below in a column of its own, and the bookshop's logos. Its layout check is clean in the
+  browser and in Node, and under Arial, Verdana, Georgia and Courier New, with every label whole.
+  `examples/embed.html`'s host palette sets `--um-tint: 2`.
+- **Visible behaviour changes:** none for a model without these fields, but:
+  - a numbered view's line with no label gets the room above (no view in the bench or the examples has one);
+  - the check reads more: the mark of a numbered line with no label, and every step's number in the page's check (it
+    finds nothing new in the examples);
+  - the details panel's PUBLIC tag mixes its tint itself (8% of `--um-k-public`, the colour it had), so a host's own
+    `--um-k-public-f` no longer reaches it;
+  - in dark, the numbers in numbered views' step circles and swimlane circles, and in the page's views list, are dark on
+    the accent instead of white; so is the icon on the details panel's kind tile (5.6:1 to 7.5:1, where white was 2.5:1
+    to 3.4:1). A host that sets its own `--um-accent-fg` keeps it;
+  - a step of two characters (10, 12) is a pill where it was a circle, so assistant's numbered view lays its tenth
+    line's label out a little wider (no bench view has one);
+  - in `c4`, boxes are dashed.
+- **API added:** `edges[].step` (a number or short text), `containers[].tone` and `--um-tint`, in the schema,
+  `lib/umlimator.d.ts` and the README.
+- **Bench:** unchanged (`bench/expected.json`). It times the new `bookshop/checkout`, which has no recorded geometry.
+- **Tests:**
+  - `tests/aids.test.mjs` (Node): `validate()` on steps and tones; a box's tone in the geometry; a step drawn in any
+    view, and run order winning in a numbered one; lines drawn as one; the room for a mark with no label (76 px where it
+    had 66); `describe()`; text steps (2a drawn as written, a circle for one character and a pill for two or three); the
+    bookshop's checkout, with every label whole and a clean check.
+  - `tests/aids.html` (browser, light and dark): a region's colour, opacity, dashed border and title, and its title at
+    4.5:1 or more at `--um-tint` 1 and 2; an unknown tone, a box with none, the regions under the cards, a selected box;
+    `--um-tint` at 0, 1, 2 and 5 on a card and a region, the accent's tint left alone, a host's own tint kept; steps
+    drawn with a label, alone and as a pill, their name and title, the page's check reading them, run order in a
+    numbered view, a text step (5a) as written; the minimap; the SVG in both themes; boxes in c4, uml and box (picture,
+    minimap and SVG); `update()` dropping the tones.
+  - `tests/contrast.html`: boxes in every palette tone, holding cards of every kind, at `--um-tint` 1 and 2, light and
+    dark; and now the numbers on circles: steps on a view's lines (1, 2a, 3.1), a numbered view's, and weather's
+    swimlane numbers, which fail on the old dark theme at 3.1:1. The arrow between swimlanes is a graphic and is held to
+    3:1.
+  - `tests/cli.py`: the PDF's table of lines gives each line its step, in step order (2, 2a, 10, then none).
+- **Left out:** a legend entry for steps or regions, and a view's tour riding its steps.
 
 ### The page's ❚❚ is in the state, and the assistant's commands end only its own tour (#131, #132)
 

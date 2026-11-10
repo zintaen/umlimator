@@ -1,7 +1,8 @@
 <!doctype html>
 <!-- The default palette (lib/umlimator-theme.css) against WCAG AA, in light and dark, on the example map: every text
      against what it is drawn on (the shapes under it, blended over the stage), 4.5:1; every line against the stage, 3:1.
-     Opacity counts. Two maps: the example, and one with every change state and badge tone. Run by tests/embed.py. -->
+     Opacity counts. The maps: the example, one with every change state and badge tone, one with every line kind, and boxes
+     in every tone with cards of every kind, at --um-tint 1 and 2. Run by tests/embed.py. -->
 <meta charset="utf-8">
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="../lib/umlimator-theme.css">
@@ -33,14 +34,29 @@ const STATES = { nodes: [{ id: 'a', label: 'Planned service', sublabel: 'not bui
 // a line of every kind an edge can name (#45): calls, feeds, triggers, state, guard
 const KINDS = { nodes: ['calls', 'feeds', 'triggers', 'state', 'guard'].flatMap(k => [{ id: k, label: 'From ' + k, kind: 'backend' }, { id: k + '2', label: 'To ' + k, kind: 'database' }]),
   edges: ['calls', 'feeds', 'triggers', 'state', 'guard'].map(k => ({ from: k, to: k + '2', label: k, kind: k, sublabel: 'over http', weight: k === 'state' ? 2 : 1 })), /* and a sublabel (#44) */ views: [{ id: 'v', nodeIds: ['calls', 'feeds', 'triggers', 'state', 'guard'].flatMap(k => [k, k + '2']) }] };
+// a box in each palette tone (0.15.0), its title on its region, holding cards of every kind: at --um-tint 2 too, the deepest
+// the theme file names, their sub-lines on the deeper tints
+const TONES = ['accent', 'cyan', 'green', 'violet', 'amber', 'rose', 'orange', 'slate', 'fuchsia'], SORTS = ['frontend', 'backend', 'database', 'cloud', 'security', 'queue',
+  'external', 'file', 'ai', 'public', 'lane', 'dep', 'verb', 'script', 'hook', 'board', 'step'];
+const TONED = { nodes: SORTS.map(k => ({ id: k, label: k, kind: k, sublabel: 'what it does' })),
+  edges: [['frontend', 'backend'], ['backend', 'database'], ['backend', 'queue']].map(([from, to]) => ({ from, to, label: 'calls' })),
+  views: [{ id: 'v', nodeIds: SORTS, containers: TONES.map((t, i) => ({ id: t, label: t + ' box', tone: t, nodeIds: SORTS.filter((_, j) => j % TONES.length === i) })) }] };
+// step numbers in their circles and pills (0.15.0): on a view's lines (a number, a sub-step, text), in a numbered view, and a
+// numbered view's swimlane numbers (weather's forecaster)
+const STEPS = { nodes: ['a', 'b', 'c', 'd'].map(id => ({ id, label: 'Part ' + id, kind: 'backend' })),
+  edges: [{ from: 'a', to: 'b', label: 'asks', step: 1 }, { from: 'b', to: 'c', step: '2a' }, { from: 'c', to: 'd', label: 'pays', step: 3.1 }],
+  views: [{ id: 'v', nodeIds: ['a', 'b', 'c', 'd'] }, { id: 's', render: 'sequence', nodeIds: ['a', 'b', 'c', 'd'] }] };
+const WEATHER = await (await fetch('../examples/weather.json')).json();
 try {
-  for (const [name, MODEL] of [['example', EXAMPLE], ['states', STATES], ['line kinds', KINDS]]) for (const theme of ['light', 'dark']) {
+  for (const [name, MODEL, tint, view] of [['example', EXAMPLE], ['states', STATES], ['line kinds', KINDS], ['boxes in every tone', TONED], ['boxes in every tone, --um-tint 2', TONED, 2],
+    ['steps on a view\'s lines', STEPS], ['a numbered view', STEPS, 1, 's'], ['swimlanes', WEATHER, 1, 'forecaster']]) for (const theme of ['light', 'dark']) {
     document.documentElement.dataset.theme = theme;
     const el = document.getElementById('m'); el.innerHTML = '';
-    const h = render(el, MODEL, { flow: false, controls: false });
+    el.style.setProperty('--um-tint', tint || 1);
+    const h = render(el, MODEL, { flow: false, controls: false, ...(view ? { view } : {}) });
     const sr = el.querySelector('.umlimator').shadowRoot, svg = sr.querySelector('svg.map-svg');
     const stage = rgba(getComputedStyle(sr.querySelector('.stage')).backgroundColor);
-    const rects = [...svg.querySelectorAll('rect')].map(r => ({ r, b: r.getBBox(), m: r.getCTM() }));
+    const rects = [...svg.querySelectorAll('rect, circle')].map(r => ({ r, b: r.getBBox(), m: r.getCTM() })); // a step's or a lane's number sits on a circle
     const bad = [];
     let texts = 0;
     for (const t of svg.querySelectorAll('text')) {
@@ -56,7 +72,8 @@ try {
       }
       texts++;
       const c = ratio(over(tc, bg), bg);
-      if (c < 4.5) bad.push([t.textContent.trim().slice(0, 24), t.getAttribute('class') || t.parentNode.getAttribute('class'), +c.toFixed(2)]);
+      // the arrow between swimlanes is a graphic, not text: 3:1
+      if (c < (t.classList.contains('lane-arrow') ? 3 : 4.5)) bad.push([t.textContent.trim().slice(0, 24), t.getAttribute('class') || t.parentNode.getAttribute('class'), +c.toFixed(2)]);
     }
     check(`${name}, ${theme}: every text on its background is at least 4.5:1 (${texts} texts)`, texts > 10 && !bad.length, bad);
     const lines = []; // a line against the stage, where lines run

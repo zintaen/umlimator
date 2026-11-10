@@ -39,7 +39,7 @@ card = lambda m, cid: next((n for n in m["nodes"] if n["id"] == cid), {})
 
 # per sample: its format, the views, what stderr names (file:where), and what the model says
 EXPECT = {
-    "examples/clinic.dsl": ("structurizr", ["context", "containers", "api-components"], [":47:", ":67:", ":75:"], lambda m: [
+    "examples/clinic.dsl": ("structurizr", ["context", "containers", "api-components"], [":47:", ":75:"], lambda m: [
         ("views nest as the source's levels", [v.get("parent") for v in m["views"]] == [None, "context", "containers"]),
         ("a relationship to a container lifts to its system in the context view (an implied line)", line(m, "patient", "bookings", "context")),
         ("the container view boxes the system's containers", box(m, "containers", "bookings").get("nodeIds") == ["web", "desk", "api", "db", "jobs", "sender"]),
@@ -49,7 +49,9 @@ EXPECT = {
         ("the system opens its container view, the container its component view",
          (card(m, "bookings").get("opensView"), card(m, "api").get("opensView")) == ("containers", "api-components")),
         ("kinds: people, tags (Database, Queue, External), technology",
-         [card(m, i)["kind"] for i in ("patient", "db", "jobs", "sms", "web", "sender")] == ["frontend", "database", "queue", "external", "frontend", "backend"]),
+         [card(m, i)["kind"] for i in ("patient", "db", "jobs", "sms", "web", "sender")] == ["person", "database", "queue", "external", "frontend", "backend"]),
+        ("a C4 source is drawn in the c4 notation (0.15.0)", m.get("shapes") == "c4"),
+        ("its styles' shapes are the cards' (0.15.0)", [card(m, i).get("shape") for i in ("patient", "reception", "db", "web")] == ["person", "person", "cylinder", None]),
         ("a line to a person is the view's loop back", (line(m, "sms", "patient") or {}).get("loop") is True),
         ("description and technology are the label and the second line",
          {k: (line(m, "store", "db") or {}).get(k) for k in ("label", "sublabel")} == {"label": "Reads and writes", "sublabel": "SQL"})]),
@@ -57,18 +59,21 @@ EXPECT = {
         ("boundaries are boxes, nested", box(m, "components", "api") == {"id": "api", "label": "Tracking API", "nodeIds": ["routes", "tracker"], "parent": "tracking"}),
         ("Rel_Back points the other way", line(m, "scans", "tracker") and not line(m, "tracker", "scans") or False),
         ("BiRel is a line each way", line(m, "tracker", "db") and line(m, "db", "tracker") or False),
-        ("kinds: Db, Queue, _Ext, Person, technology",
-         [card(m, i)["kind"] for i in ("billing", "scans", "courier", "maps", "shipper", "web")] == ["database", "queue", "external", "external", "frontend", "frontend"])]),
+        ("kinds: Db, Queue, _Ext, Person (person, and user outside), technology",
+         [card(m, i)["kind"] for i in ("billing", "scans", "courier", "maps", "shipper", "web")] == ["database", "queue", "user", "external", "person", "frontend"]),
+        ("a C4 source is drawn in the c4 notation (0.15.0)", m.get("shapes") == "c4")]),
     "tests/import/checkout.mmd": ("mermaid", ["flowchart"], [], lambda m: [
         ("the front matter's title", m["title"] == "Checkout, as the payments team drew it"),
         ("subgraphs are boxes of the nodes first named in them", [box(m, "flowchart", b).get("nodeIds") for b in ("core", "after")] == [["api", "orders"], ["mailer", "stock"]]),
         ("a cylinder is a database", card(m, "orders")["kind"] == "database"),
+        ("a flowchart keeps the box notation", "shapes" not in m),
         ("labels, dotted (async) and thick (heavier) links, and a & b",
          [(line(m, *p) or {}).get(k) for p, k in ((("web", "api"), "label"), (("api", "bus"), "style"), (("api", "psp"), "weight"))] == ["POST /orders", "async", 2]
          and line(m, "bus", "mailer") and line(m, "bus", "stock") or False)]),
     "tests/import/meals.mmd": ("mermaid", ["context"], [], lambda m: [
         ("Mermaid's C4 boundary is a box", box(m, "context", "company").get("nodeIds") == ["planner", "recipes"]),
-        ("kinds: Person_Ext, SystemDb, SystemQueue_Ext", [card(m, i)["kind"] for i in ("guest", "recipes", "mail")] == ["external", "database", "queue"])]),
+        ("kinds: Person_Ext, SystemDb, SystemQueue_Ext", [card(m, i)["kind"] for i in ("guest", "recipes", "mail")] == ["user", "database", "queue"]),
+        ("Mermaid's C4 is drawn in the c4 notation (0.15.0)", m.get("shapes") == "c4")]),
     "tests/import/compose.json": ("compose", ["services"], [":volumes:"], lambda m: [
         ("networks are boxes; a service on both stays between them",
          [box(m, "services", b).get("nodeIds") for b in ("network-edge", "network-data")] == [["proxy", "web"], ["cache", "db", "mailer", "queue", "worker"]]),
@@ -101,6 +106,19 @@ ok("structurizr · no views: a landscape and a view per system, the line implied
    [(v["id"], v.get("parent"), v["edges"]) for v in m["views"]] == [("landscape", None, ["u-s"]), ("s-containers", "landscape", ["u-w"])], m["views"])
 m, un = imp.read("structurizr", dsl.replace("model {", "!impliedRelationships false\n  model {"), "x")
 ok("structurizr · !impliedRelationships false draws no implied line", m["views"][0]["edges"] == [], m["views"])
+styled = ('workspace {\n model {\n  u = person "User"\n  s = softwareSystem "Shop" {\n   w = container "Web" "" "React" "Web Browser"\n'
+          '   a = container "App" "" "Swift" "Mobile,Bucketed"\n   d = container "Data" "" "Postgres" "Database"\n  }\n }\n views {\n  styles {\n'
+          + "".join(f'   element "{t}" {{\n    {p}\n   }}\n' for t, p in (("Database", "shape Cylinder"), ("Element", "shape RoundedBox"),
+            ("Person", "shape Robot"), ("Person", "shape person"), ("Person", "background #08427b"), ("Web Browser", "shape WebBrowser"),
+            ("Mobile", "shape MobileDevicePortrait"), ("Bucketed", "shape Bucket"))) + '  }\n }\n}\n')
+m, un = imp.read("structurizr", styled, "x")
+ok("structurizr · styles' shapes by Structurizr's precedence: Element first, then the type's tag, then the element's own in order; "
+   "of two styles for one tag the later; a shape with no counterpart (Bucket) leaves the card to its kind, and is said",
+   [card(m, i).get("shape") for i in ("u", "s", "w", "a", "d")] == ["person", "box", "browser", None, "cylinder"]
+   and [msg for _, msg in un] == ["not imported: background #08427b", 'element "Bucketed": shape Bucket has no counterpart, so a card it falls on is drawn by its kind'],
+   ([card(m, i) for i in ("u", "s", "w", "a", "d")], un))
+m, un = imp.read("plantuml", '@startuml\nAddElementTag("v2", $shape=EightSidedShape())\nAddElementTag("old", $bgColor="grey")\nSystem(a, "A", $tags="v2")\n@enduml\n', "x")
+ok("C4 · a tag's $shape is said, not drawn", un == [(2, 'AddElementTag(v2): $shape=EightSidedShape() is not imported')], un)
 nested = dsl.replace('u = person "User"', 'group "Company" {\n group "Sales" {\n u = person "User"\n }').replace('u -> w', '}\n u -> w')
 m, un = imp.read("structurizr", nested, "x")
 ok("structurizr · groups nest as boxes, and a view's scope sits in its own group's box",

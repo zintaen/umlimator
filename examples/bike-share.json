@@ -3,9 +3,9 @@
   "title": "Bike share, an example",
   "root": "context",
   "nodes": [
-    { "id": "riders", "label": "Riders", "kind": "frontend", "icon": "users", "sublabel": "unlock, ride, pay",
+    { "id": "riders", "label": "Riders", "kind": "person", "icon": "users", "sublabel": "unlock, ride, pay",
       "what": "People who hire a bike from a dock.", "when": "Every ride.", "how": "They use the rider app on a phone." },
-    { "id": "ops", "label": "Operations team", "kind": "frontend", "icon": "usercheck", "sublabel": "rebalance, repair",
+    { "id": "ops", "label": "Operations team", "kind": "person", "icon": "usercheck", "sublabel": "rebalance, repair",
       "what": "Staff who keep bikes where riders want them.", "when": "All day, in shifts.", "how": "They plan van routes in the ops console." },
     { "id": "bikeshare", "label": "Bike share", "kind": "backend", "icon": "layers", "sublabel": "the whole system", "opensView": "system",
       "what": "Everything the city's bike share runs on.", "when": "Always on.", "how": "Apps, services and data on one platform. Double-click to go in." },

@@ -15,8 +15,16 @@ export interface MapModel {
   stories?: Story[];
   /** Saved ways to look at the map (#94): handle.lens(id), the standalone page's Lenses menu and #lens=<id>. */
   lenses?: Lens[];
+  /** The notation every view's cards are drawn in (0.15.0; a view's own `shapes` wins). Default 'box'. */
+  shapes?: Notation;
   [key: string]: unknown;
 }
+/** How cards are drawn (0.15.0): box (every card a rounded box, the default), c4 (people, browser apps, phones, databases,
+ *  queues and files as the C4 model's tools draw them) or uml (UML 2.5's actor, node, artifact, package and data store,
+ *  and the component icon on a box). Each shape keeps to its card's box: the layout is the same in every notation. */
+export type Notation = 'box' | 'c4' | 'uml';
+/** A card's shape (0.15.0). */
+export type Shape = 'box' | 'person' | 'browser' | 'mobile' | 'cylinder' | 'pipe' | 'document' | 'hexagon' | 'robot' | 'terminal' | 'window' | 'folder' | 'node';
 /** A badge: its text, and optionally a palette name for its colour (green, amber, rose, accent, violet ... : --um-<tone>). */
 export type Badge = string | { text: string; tone?: string };
 export interface MapNode {
@@ -29,6 +37,8 @@ export interface MapNode {
   opensCount?: number;
   /** Who owns the card (a team, say): selectors pick by it, and a lens with color 'owner' rings the card in its owner's tone. */
   owner?: string;
+  /** The card's own shape, in every notation (0.15.0); without it, the notation draws the card by its kind. */
+  shape?: Shape;
   [key: string]: unknown;
 }
 /** What a line means, drawn as its colour: calls (the default), feeds (hands work on), triggers (suggests, offers, fires),
@@ -45,6 +55,13 @@ export interface MapEdge {
    *  hit line growing with it. The host picks the bucket (say under 10, under 100, 100 or more relations); anything else is 1.
    *  A line that stands for several edges takes the largest. */
   weight?: 1 | 2 | 3;
+  /** Its place in the order things happen, drawn in a circle on the line before its label, as a numbered view draws its
+   *  steps, in any view: 2, 2.1 for a step within step 2, or text of up to 3 characters such as "2a" (a pill for 2 or 3
+   *  characters). The line's name and title say it as written ("Step 2a: …"); in order, 2 < 2a < 2b < 3. A numbered view
+   *  (`render: 'sequence'`) numbers its lines in run order instead. A line that stands for several edges shows the first
+   *  one's step (a view's `keepPairs` draws each edge as its own line). A step on a model edge shows in every view that
+   *  draws the edge; a view's own edge numbers it in that view only. */
+  step?: number | string;
   /** A second, smaller line under the label (a technology, say), placed with it and counted in the room left for labels.
    *  Shown only with a label. A line that stands for several edges shows each of their sublabels, joined by " / ". */
   sublabel?: string;
@@ -71,7 +88,11 @@ export interface MapView {
   /** Guess a line's kind from the words of its label ("reads" is state, "triggers" is triggers ...) when its edges name
    *  none. Off in render() and layout(), which draw no legend; the standalone page (mountPage) always guesses. */
   kindsFromLabels?: boolean;
-  containers?: { id: string; label?: string; nodeIds?: string[]; parent?: string; badges?: Badge[] }[];   // badges: tabs on the box's border
+  /** Boxes: badges are tabs on the box's border; tone, a palette name as a badge's (--um-<tone>), tints the region behind the
+   *  box (as deep as --um-tint makes the cards), with its border dashed and its title in the tone. */
+  containers?: { id: string; label?: string; nodeIds?: string[]; parent?: string; badges?: Badge[]; tone?: string }[];
+  /** The notation this view's cards are drawn in (0.15.0): it wins over the model's. */
+  shapes?: Notation;
   [key: string]: unknown;
 }
 
@@ -122,6 +143,7 @@ export interface MapState {
   paused: boolean;
   camera: { x: number; y: number; zoom: number };   // the centre in map units, and the zoom (1: actual size); a state event's: at rest
   flow: boolean;
+  shapes: Notation;               // the notation the view shown is drawn in (0.15.0)
   motion: 'full' | 'reduced' | 'instant';
   gesture: 'idle' | 'dragging' | 'connecting' | 'naming';   // an edit in progress (editable maps)
   destroyed: boolean;
@@ -150,6 +172,8 @@ export interface RenderOptions {
   wheel?: 'zoom' | 'ctrl';
   minimap?: boolean;             // default false
   flow?: boolean;                // animated flow along lines (default: on unless prefers-reduced-motion)
+  /** The notation every view is drawn in (0.15.0), over each view's and the model's own. */
+  shapes?: Notation;
   /** Text widths: default the host's font (--um-sans, measured on a canvas); false: a font-independent estimate. */
   measure?: false | ((text: string, px: number) => number);
   /** Edit gestures that emit `change` events: all of them, or only those set true. Off by default. */
@@ -222,6 +246,10 @@ export interface Handle {
   readonly destroyed: boolean;
   /** The animated flow along lines (the ≋ button and F), to read or set. */
   flow: boolean;
+  /** The notation the view shown is drawn in (0.15.0). Set it to draw every view in one (null: each view's own): the
+   *  cards are drawn again from the geometry they have, with the camera, selection, lens and marks; nothing is laid out. */
+  get shapes(): Notation;
+  set shapes(notation: Notation | null);
   /** How this map moves: 'instant' (drawn without animation, as the page's #check, #still and #shot are), 'reduced' (the
    *  reader's setting), else 'full'. */
   readonly motion: 'full' | 'reduced' | 'instant';

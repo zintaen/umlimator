@@ -22,6 +22,11 @@ drill-down, a data pipeline, an AI agent's skills, and host pages for embedding,
   straight; orthogonal lines that never run through a card, room for every label, containers kept apart, and cards with
   no lines in a row of their own, under the view or at the bottom of their box. The same model gives the same picture.
 - **Reading**: animated flow, neighbours lit on selection, numbered steps, tours, minimap, light and dark themes.
+- **Card shapes**: three notations. `box` (the default) draws every card as a rounded box, as before. `c4` draws people,
+  browser apps, phones, databases, queues and files as the C4 model's tools do. `uml` draws UML 2.5's actors, nodes,
+  artifacts, packages and data stores, with UML's component icon on a box. A card's own `shape` wins in any notation.
+  The notation comes from the model, a view, `render()`, the page's toggle or the link; switching it draws the cards
+  again and lays nothing out ([`examples/notations.html`](examples/notations.html)).
 - **Exploring**: every path between two cards, or everything a card reaches, lit on the map; a view in plain sentences
   (`describe()`); a tour along any path the host names.
 - **Live data**: marks over the map without touching the model (`overlay()`): flow as fast as the traffic, errors that
@@ -95,7 +100,8 @@ function MapView({ model, onSelect }) {
 - `map.expand(id)` unfolds a stacked card in place and `map.collapse(id)` folds it; `layout(model, view, { expand })`
   draws the same in Node.
 - Colours are `--um-*` CSS variables, fonts are the host's (`--um-sans`, `--um-mono`), text is measured in that font,
-  and nothing is fetched.
+  and nothing is fetched. `--um-tint` sets how deep the cards' and the boxes' tints are: 1 by default, 0 for none, 2 for
+  twice as deep (a tint stops at 18% of its colour, so text on it keeps 4.5:1).
 - `layout(model, viewId)` returns a view's geometry without a DOM, in Node too; `check(model, viewId)` runs the layout
   check on it, and `validate(model)` finds dangling or repeated ids before anything is drawn. `rules(model)` lists every
   rule the model breaks, view by view.
@@ -104,6 +110,9 @@ function MapView({ model, onSelect }) {
 - `map.lens(id)` puts one of the model's lenses on the map. `critical(model, view, { from, to, by })` finds the slowest
   or costliest path, `whatIf(model, view, { remove })` what loses its way when cards go down, and
   `sequenceFromTrace(model, spans, { view, match })` keeps a trace as a numbered view; all three in Node too.
+- `shapes: 'box' | 'c4' | 'uml'` draws every view in that notation, over each view's own (and the model's).
+  `map.shapes` reads the notation shown and sets another (`null`: each view's own again); the cards are drawn again from
+  the geometry they have, with the camera, selection and marks kept, and nothing is laid out.
 - `editable: true` turns on editing gestures ([docs/editing.md](docs/editing.md); `examples/edit.html` is a working host).
 - `diff(before, after)` returns `after` with each card and line marked added, changed or removed, what changed in words,
   and the views that show it; `drift(model, observed)` marks the lines traffic ran on that nobody drew, and the drawn ones
@@ -145,7 +154,8 @@ the map is drawn, and stay where scripts don't run ([`examples/element.html`](ex
 - **Attributes**: `view`, `minimap`, `controls="false"`, `wheel="ctrl"` (the wheel zooms only with Ctrl or ⌘, and scrolls
   the page otherwise, as a map in a document should), `height` (a number is pixels; 480 by default, or size it in CSS)
   and `theme` (`light` or `dark`: theme.css's palette for that map, whatever the page's). Changing one draws the map
-  again, and removing the element destroys it.
+  again, and removing the element destroys it. `shapes` (`box`, `c4` or `uml`) is the notation; changing it draws the
+  cards again in the map drawn, with nothing loaded or laid out again.
 - **Events**: `umlimator:select`, `umlimator:open` (cancel it to stay) and `umlimator:viewchange`, the map's event as
   `detail`; `load` once it is drawn, `error` when it can't be. `el.map` is the `render()` handle.
 - **Colours**: theme.css, as above, or your own `--um-*` variables. The element fetches nothing but its model.
@@ -190,9 +200,11 @@ kinds such as `public`, `lane`, `script`, `hook` and `board` work too). Fields b
 | node | `noSub` | the name only; the description stays in the details panel |
 | node | `opensView`, `opensCount` | the view the card opens, which may not be loaded yet, and the ⤢ number for it |
 | node | `owner` | who owns the card (a team): rules and lenses pick by it, and a lens can ring cards by owner |
+| node | `shape` | the card's own shape in every notation: `box`, `person`, `browser`, `mobile`, `cylinder`, `pipe`, `document`, `hexagon`, `robot`, `terminal`, `window`, `folder` or `node` |
 | node, edge | `edited` | a marker on the card or line |
 | edge | `kind` | what the line means, drawn as its colour: `calls` (default), `feeds`, `triggers`, `state`, `guard` |
 | edge | `weight` | 1, 2 or 3: how much the line stands for, drawn as its width |
+| edge | `step` | a number (2, or 2.1) or text of up to 3 characters (2a), in a circle on the line in any view (a pill for 2 or 3 characters): the order things happen, shown as written in the line's name and title. A numbered view numbers its lines in run order instead |
 | edge | `sublabel` | a second, smaller line under the label |
 | edge | `fromSide`, `toSide` | the card sides the line uses |
 | edge | `from`, `to` | may name a container of the view: the line ends on its box |
@@ -204,7 +216,9 @@ kinds such as `public`, `lane`, `script`, `hook` and `board` work too). Fields b
 | view | `repair: false` | no port repair |
 | view | `subAndChips` | cards 80 px tall that show their sub-line, then their chips |
 | view | `kindsFromLabels` | a line whose edges name no `kind` takes one guessed from its label |
+| view, model | `shapes` | the notation the cards are drawn in: `box` (default), `c4` or `uml`; a view's wins over the model's ([what each draws](docs/module-api.md#card-shapes-box-c4-and-uml)) |
 | container | `badges` | tabs on the box's border |
+| container | `tone` | a palette name, as a badge's: the region behind the box tinted in it, its border dashed and its title in the tone (in `c4`, every box is dashed) |
 | model | `rules` | what must hold: no line `from` some cards `to` others (picked by id, kind, box or owner), or `noCycles` between boxes |
 | model | `stories` | walk-throughs: steps that each set the view, camera, selection, highlight, tour and caption |
 | model | `lenses` | ways to look at the map: what `pick` picks (by id, kind, box, owner or `line` kind) lit, the rest dimmed; `color: "owner"` rings cards by owner |
@@ -239,7 +253,10 @@ views), C4-PlantUML (its element, relationship and boundary macros), Mermaid (`f
 decides. Groups, boundaries, subgraphs, networks and namespaces become boxes; Structurizr's views stay views, a card
 opening the view below it; `examples/clinic.json` is `examples/clinic.dsl`, imported. What each element becomes, and
 what is left out: [docs/module-api.md § Import](docs/module-api.md#import-90). Whatever the file holds that `import`
-doesn't read is listed on stderr with its line (in JSON, its path).
+doesn't read is listed on stderr with its line (in JSON, its path). A Structurizr, C4-PlantUML or Mermaid C4 source is
+drawn in the `c4` notation: its people as people (`person`, or `user` outside the system), its phone apps as phones. A
+Structurizr workspace's `styles` give its elements their shapes (`shape Person`, `Cylinder`, `WebBrowser`, ...), in
+Structurizr's own order; a shape the map has no counterpart for is listed in `notImported`.
 
 `pdf` prints the map through Chrome's own print, as a document to hand in for a review
 ([bike-share's](https://zintaen.github.io/umlimator/examples/bike-share.pdf), as CI builds it). A cover has the title,
@@ -251,7 +268,8 @@ the title and "page N of M". It takes `--views` and `--theme`, as `stills` does,
 default; both across).
 
 The page has breadcrumbs, a details panel per card (with the slowest path from it and what-if), ⌘K search, deep links
-(`#view=<id>&node=<id>`, `#story=<id>&step=<n>` for a story's step, and `#lens=<id>`), stories, lenses, and export. For
+(`#view=<id>&node=<id>`, `#story=<id>&step=<n>` for a story's step, `#lens=<id>` and `#shapes=c4`), stories, lenses, a
+card shapes toggle next to ◐ (box, c4, uml; the page keeps the reader's choice), and export. For
 scripts and tests, it keeps its map's handle on `window.umlimatorMap`: the `Handle` that `render()` returns (`setView()`,
 `highlight()`, `tour()`, `play()` ...).
 `stills` skips a view whose inputs have not changed since its last export (`--all` exports every view), and exits 1,

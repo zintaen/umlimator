@@ -215,6 +215,17 @@ try {
   const back = new URLSearchParams(location.hash.slice(1)).get('view');
   check('on the page, Back while a view zooms in takes the map where the link went: the map and the link agree', hp.view === back && back !== 'trips', [hp.view, location.hash, pe]);
   hp.destroy();
+
+  // ---- card shapes (0.15.0), with motion: what arrives lights a shape's accent, and a queue's floor moves with the flow
+  const SH = await (await fetch('../examples/shapes.json')).json(), sbox = document.createElement('div');
+  sbox.style.cssText = 'width:1200px;height:700px'; document.body.appendChild(sbox);
+  const hs = render(sbox, SH, { shapes: 'c4', flow: true }), ss = sbox.querySelector('.umlimator').shadowRoot;
+  await wait(50); hs[Object.getOwnPropertySymbols(hs)[0]].flash('orders'); await wait(30);
+  const lid = ss.querySelector('.node[data-id="orders"] .n-accent'), floor = ss.querySelector('.node[data-id="queue"] .n-floor');
+  check('shapes: an arriving card lights its accent (the lid of a database)', getComputedStyle(lid).animationName === 'accent', getComputedStyle(lid).animationName);
+  check('shapes: a queue\'s floor moves while the flow is on, and is gone when it is off', getComputedStyle(floor).animationName === 'floor' && +getComputedStyle(floor).opacity > 0
+    && (hs.flow = false, getComputedStyle(floor).animationName === 'none' || +getComputedStyle(floor).opacity === 0), [getComputedStyle(floor).animationName, getComputedStyle(floor).opacity]);
+  hs.destroy(); sbox.remove();
 } catch (e) { out.fail.push('threw: ' + (e && e.stack || e)); }
 removeEventListener('error', onError);
 const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
