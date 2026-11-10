@@ -45,7 +45,7 @@ TOOLS = [
     tool("validate", "The model's own problems, found before anything is drawn (ids that name nothing or are used twice, unknown kinds): "
          "{level, path, message}. [] when there are none."),
     tool("diff", "What changed from another model file to this one: the changes in words, and the views that show them.",
-         {"other_model_path": {"type": "string", "description": "the other model's JSON file: absolute, or relative to where the server runs"}},
+         {"other_model_path": {"type": "string", "description": "the other model's JSON file: absolute, or relative to the model's folder (else to where the server runs)"}},
          "other_model_path"),
     tool("show_view", "Shows a view on the map's page." + PAGE, {"view": VIEW}, "view"),
     tool("highlight", "Lights cards and lines on the map's page and dims the rest. view: the view to show first." + PAGE,
@@ -164,11 +164,13 @@ def call(name, a):
     if name == "validate":
         return node("validate", m)
     if name == "diff":
-        other = Path(a["other_model_path"]).expanduser()
+        given = Path(a["other_model_path"]).expanduser()
+        tried = list(dict.fromkeys([given] if given.is_absolute() else [MODEL.parent / given, Path.cwd() / given]))
+        other = next((p for p in tried if p.is_file()), tried[0])
         try:
             before = json.loads(other.read_text(encoding="utf-8"))
         except (OSError, ValueError) as e:
-            raise Fail(f"cannot read {other}: {e}")
+            raise Fail(f"cannot read {a['other_model_path']} (looked for {' and '.join(map(str, tried))}): {e}")
         d = node("diff", before, m)
         return {"summary": d["summary"], "views": d["views"]}
     if name == "page_state":
@@ -539,11 +541,19 @@ def result(method, p):
 
 
 def answer(line):
-    """The reply to one message: None for a notification, or for a response (this server sends no requests)."""
+    """The reply to one line: a message's, a batch's (a list of replies: JSON-RPC 2.0, and MCP 2025-03-26, which this
+    server speaks, has batches), or None for notifications and responses."""
     try:
         msg = json.loads(line)
     except ValueError:
         return failure(None, -32700, "Parse error")
+    if isinstance(msg, list):
+        return [r for r in map(reply, msg) if r is not None] or None if msg else failure(None, -32600, "Invalid Request")
+    return reply(msg)
+
+
+def reply(msg):
+    """The reply to one message: None for a notification, or for a response (this server sends no requests)."""
     if isinstance(msg, dict) and "method" not in msg and ("result" in msg or "error" in msg):
         return None
     if not isinstance(msg, dict) or msg.get("jsonrpc") != "2.0" or not isinstance(msg.get("method"), str):
@@ -567,20 +577,26 @@ def serve(model, port):
     MAPID = hashlib.sha256(str(MODEL).encode()).hexdigest()[:16]
     os.environ["UMLIMATOR_OFFLINE"] = "1"  # the page's render fetches no logo: the server reaches nothing beyond 127.0.0.1
     cli.urllib.request.urlopen = cli.offline  # (the page is rendered in this process, which read the variable before it was set)
-    try:
-        httpd = http.server.ThreadingHTTPServer(("127.0.0.1", port), Page)
-    except OSError:  # taken (another map's server, say): a free one, which the tools name
-        print(f"port {port} is taken: the page is served on another", file=sys.stderr)
-        httpd = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Page)
+    # taken (another map's server, say): this model's own port, the same on each run so an open page's URL keeps
+    # working, else any free one; the tools name it
+    own = 7400 + int(hashlib.sha256(str(MODEL).encode()).hexdigest(), 16) % 500
+    for p in dict.fromkeys((port, own, 0)):
+        try:
+            httpd = http.server.ThreadingHTTPServer(("127.0.0.1", p), Page)
+            break
+        except OSError:
+            if not p:
+                raise
+            print(f"port {p} is taken", file=sys.stderr)
     port = httpd.server_address[1]
     URL, HOSTS = f"http://127.0.0.1:{port}", {f"127.0.0.1:{port}", f"localhost:{port}"}
     ORIGINS = {f"http://{h}" for h in HOSTS}
-    HELLO = (f"The architecture map in {MODEL.name}. The read tools answer from the file as it is at each call; the page tools drive "
-             f"the map's interactive page at {URL}, which the user opens in a browser.")
+    HELLO = (f"The architecture map in {MODEL} (the server runs in {Path.cwd()}). The read tools answer from the file as it is "
+             f"at each call; the page tools drive the map's interactive page at {URL}, which the user opens in a browser.")
     threading.Thread(target=httpd.serve_forever, daemon=True).start()
     print(f"umlimator mcp: {MODEL.name}, its page at {URL}", file=sys.stderr)
     out, sys.stdout = sys.stdout.buffer, sys.stderr  # stdout carries the protocol only: a stray print goes to the log
     for line in sys.stdin.buffer:
-        if line.strip() and (reply := answer(line)) is not None:
-            out.write(json.dumps(reply).encode() + b"\n")
+        if line.strip() and (said := answer(line)) is not None:
+            out.write(json.dumps(said).encode() + b"\n")
             out.flush()

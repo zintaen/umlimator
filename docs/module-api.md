@@ -1641,6 +1641,108 @@ showed nothing. The ids are the audit's playback machines: story-player, tour, s
 - **Tests:** `tests/stories.html` (reduced motion) and `tests/motion.html` (motion on). Each new check fails before this
   change.
 
+### The CLI says what happened, and leaves the previous output when it fails (tooling)
+
+The state-machine audit found these in the CLI, its caches and the MCP server's small parts. The ids are those of its
+tooling inventory (machine, #n). Each fix follows the decision's rules: a step finishes or rolls back, every request gets
+a true outcome, and the state can be read.
+
+- **Outputs (cli-out-artifact 1 to 3, cli-render-pipeline 1):**
+  - *What was wrong.* A failed run could destroy or replace the last good output.
+    - `pdf` deleted the previous PDF before printing, and left a 2-page PDF after a failure.
+    - `render` of a model the engine rejects printed `{"out": …, "errors": []}` and kept the previous page, so the
+      failure looked like a success.
+    - `trace` rewrote the model in place.
+  - *Now.* Every file a command writes goes first to a temp file beside it, which is renamed over the target only once
+    it is whole: the page, pictures, PDF, animated PNG, imported or traced model, time-lapse, `summary.md` and cache files.
+    - A failed run leaves the previous file, and `pdf` says so.
+    - `render` prints its JSON only when the page was written. Otherwise it prints nothing on stdout, the engine's reason
+      on stderr, and exits 1.
+- **Chrome (chrome-driver 1 to 4):**
+  - *What was wrong.* Chrome's exit status and log were dropped. A Chrome that could not start (say, run as root in a
+    container) read as a page problem, with wrong advice. `record` let a timeout escape as a traceback. Chrome's helpers
+    outlived a timeout. Every command said "stills needs Google Chrome or Chromium".
+  - *Now.* A failing Chrome is said in its own words (its log line, with the exit status), and every command handles a
+    timeout the same way (`<command>: Chrome did not finish in N s`). Chrome, the engine and Node each run in a process
+    group of their own, which ends with the command on a timeout, Ctrl-C or SIGTERM.
+- **`--views` (page-hook-protocol 1 to 4):**
+  - *What was wrong.*
+    - `check --views sytem` passed: "0 views" checked, exit 0, and CI's own guard passed on that string.
+    - View ids holding `&`, `+`, `%` or `#`, which the schema allows, could not be stilled, checked or printed.
+    - `stills --views` took no trailing `*`, though `check` and `pdf` did.
+  - *Now.* `check`, `stills` and `pdf` resolve `--views` against the page before Chrome starts, with one rule: a
+    trailing `*` is a prefix. A name that matches no view exits 1 and lists the page's views. Ids are percent-encoded
+    in the page's link. `check` exits 1 when it checked no view.
+- **`render` (cli-render-pipeline 2, 3 and 5):**
+  - *What was wrong.* SIGTERM (an agent's timeout, a cancelled CI job) left the model's hidden copy beside the model,
+    and the engine wrote the page after the command had ended. A checked render left its screenshots in `.<page>-check/`
+    beside the page. `--no-check` output read like a clean check.
+  - *Now.* SIGTERM cleans up as Ctrl-C does. The screenshots, which nothing read, stay in a temp folder. The JSON says
+    `"checked": true` or `false`.
+- **The stills cache (stills-cache 1 to 8):**
+  - *What was wrong.*
+    - A view whose PNG Chrome never wrote was recorded as fresh, so the old PNG stayed for good.
+    - Two runs into one folder left pictures that the shared `.stills.json` disagreed with, and later runs skipped them.
+    - The key left out lines that end on a box, the model's rules (a broken rule's line is drawn rose) and authors.
+    - A failed view exited 0, with text before the JSON on stdout.
+    - `--scale 2` and the default keyed differently.
+    - `--all --views a` dropped every other view's entry.
+    - A record cut short crashed every later run.
+    - A view the page no longer has kept its pictures without a word.
+  - *Now.*
+    - A view's key file, `.stills/<view>.json`, holds its key and the hashes of both files. It is written last, once
+      both files are whole and the PNG is a PNG.
+    - A view is skipped only when its key and both hashes match, so a file another run or a person changed is drawn
+      again.
+    - The key covers those inputs, and scale counts as a number.
+    - A failed view exits 1 with its reason, and stdout is only ever the JSON list.
+    - Pictures of views the page no longer has are named on stderr.
+- **`diff --base`, which the Action runs (diff-base-run 1 to 4):**
+  - *What was wrong.*
+    - A model the pull request broke (a conflict marker) was skipped: "No map model changed."
+    - A failed still put text before the JSON on stdout, so the Action's `changed` came out empty.
+    - With no Chrome the whole command failed, and no summary was written.
+    - `a/b-c.json` and `a-b/c.json` wrote one page.
+  - *Now.*
+    - A map model that no longer parses is a change: an entry `{file, error}` in the JSON and a line in the summary.
+      Other JSON that doesn't parse, such as a `tsconfig.json` with comments, is still not a model.
+    - The pictures are extras: a view without one is listed in `stillsFailed` and said in the summary.
+    - Each model is diffed on its own, so `summary.md` is always written.
+    - A name that is taken gets a short hash.
+- **`import` (import-parsers 1 to 4):**
+  - *What was wrong.* A file cut short, or one with an unclosed `/*`, imported as a smaller map with `"unread": 0`.
+    JSON cut short read as a format it could not tell.
+  - *Now.* At the end of the file, each block still open (Structurizr, C4-PlantUML's boundaries), a comment never
+    closed (and the lines it hid), and an `@startuml` with no `@enduml` are listed with their lines. JSON that does not
+    parse says so. The JSON adds `notImported: [{where, message}]` beside the `unread` count.
+- **The icon cache (icon-cache 1 to 3):**
+  - *What was wrong.* A cached logo was trusted forever, so one cut short was drawn broken in every page. The cache was
+    written in place. `pin-icons` moved files before it recorded their hashes.
+  - *Now.* A cached logo is checked against its sha256 each time it is read, and fetched again when it doesn't match.
+    Offline, the card keeps its sigil. Writes are whole. `pin-icons` writes the hashes first.
+- **The MCP server, its parts away from the page (mcp-session 2 to 4):**
+  - *What was wrong.* A taken port moved the page to a random port on each run. A JSON-RPC batch got one `-32600`,
+    though the 2025-03-26 version it speaks has batches. `diff`'s relative paths resolved in a folder the agent was
+    never told.
+  - *Now.* A taken port falls back to a port of the model's own, the same on each run, and only then to any port. A
+    batch gets a batch of replies. The instructions name the model's whole path and the folder the server runs in. A
+    relative path is looked for in the model's folder first, and an error names where it looked.
+  - The page's own machines (its state, acknowledgements, replay and last good page, and mcp-session 1) came in the
+    next wave, on the map's state contract: "The MCP server's page says what it shows", below.
+- **Behaviour changes, all for defects the audit reproduced:**
+  - `stills` exits 1 when a view fails.
+  - The first `stills` run after upgrading draws every view again (`.stills.json` gives way to `.stills/`).
+  - `check` exits 1 when `--views` names no view or no view is checked.
+  - `render`, `pdf`, `stills` and `record` print no JSON when they fail. `check` prints none when the check could not
+    run, and its report, as before, when the model breaks a rule.
+  - `render`'s JSON gains `checked`, `import`'s gains `notImported`, and `diff` and `drift` gain `stillsFailed` when a
+    view has no picture.
+- **Left as it was:** `render`'s own check still gives up after the engine's 45 s on a very large model
+  (cli-render-pipeline 4, not reproduced). The engine is upstream's and unmodified; `check` waits 600 s.
+- **Tests:** `tests/outcomes.py` (new, in CI) runs each of the audit's repros through the CLI, with a stand-in only where
+  a real Chrome can't be made to fail on demand: one that cannot start, one whose helper outlives it, and one that dies
+  on a screenshot. Each defect has a case that failed before these changes. `tests/import.py` adds files cut short.
+
 ### The MCP server's page says what it shows (tooling, wave 2)
 
 The state-machine audit found these in `umlimator.py mcp`'s page, by the ids of its tooling inventory. Its page tools
@@ -1692,9 +1794,9 @@ stopped rendering took the page down. And the assistant could not learn what the
   - *What was wrong.* When another model's server took the port, an open tab reloaded into that map without a word.
   - *Now.* The page names its model file, and another model's server refuses its event stream. The tab stays as it was
     and says that its server now serves another map.
-- **Left out:**
+- **Known limits, for later:**
   - mcp-page-render 3: `GET /` still renders under the lock when the model changed since the last page tool, which
-    renders first, so a page rarely waits.
+    renders first, so a page rarely waits. Rendering in the background would end it.
   - mcp-page-player 4: a headless browser that waits for network idle still waits on the event stream for ever (wait
     for `load`). `page_state()` gives an assistant the page's state without a browser.
 - **Tests:**
