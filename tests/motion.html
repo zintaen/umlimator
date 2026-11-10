@@ -161,6 +161,34 @@ try {
   s3.stop();
 
   // the page: Back while a view is still zooming in is honoured, not dropped
+  // a tour's dot rides under the cards: into a card and out at its next line, not across the card's name
+  await mount(); await h.setView('trips'); await wait(300);
+  const pt = h.tour(['rider-app', 'trip-api', 'lifecycle', 'fare', 'payments']); await wait(120);
+  const tripG = sr.querySelector('svg > .um-trip'), cardsG = sr.querySelector('svg > .nodes');
+  check("tour()'s dot is drawn under the cards (its layer comes before the cards'), over the lines",
+    !!(tripG && cardsG && tripG.compareDocumentPosition(cardsG) & Node.DOCUMENT_POSITION_FOLLOWING), [!!tripG, !!cardsG]);
+  h.tour(null); await pt;
+  const TOURED = { nodes: [{ id: 'a', label: 'A', kind: 'frontend' }, { id: 'b', label: 'B', kind: 'backend' }, { id: 'c', label: 'C', kind: 'database' }],
+    edges: [{ from: 'a', to: 'b' }, { from: 'b', to: 'c' }], views: [{ id: 'v', nodeIds: ['a', 'b', 'c'], tour: ['a', 'b', 'c'] }] };
+  await mount({}, TOURED);
+  const ownTour = sr.querySelector('svg > .tour'), ownCards = sr.querySelector('svg > .nodes');
+  check("a view's own tour is drawn under its cards too",
+    !!(ownTour && ownCards && ownTour.compareDocumentPosition(ownCards) & Node.DOCUMENT_POSITION_FOLLOWING), [!!ownTour, !!ownCards]);
+  // a line's flow: never wider than its line, and it stops where the arrowhead begins, so the arrow keeps its shape
+  await mount(); await h.setView('system'); await wait(300);
+  // the widths the rules give, not a moment of a line's .15 s width transition or its selection glow
+  const widths = g => { const e = g.querySelector('.edge'), f = g.querySelector('.flowline'), still = v => [e, f].forEach(x => { x.style.transition = v; x.style.animation = v; });
+    still('none'); e.getBoundingClientRect();
+    const r = [parseFloat(getComputedStyle(f).strokeWidth), parseFloat(getComputedStyle(e).strokeWidth), f.getTotalLength(), e.getTotalLength()];
+    still(''); return r; };
+  const eg = [...sr.querySelectorAll('svg .edge-g')].find(g => g.querySelector('.flowline') && g.querySelector('.edge').getTotalLength() > 60);
+  const [fw, ew, fl, el] = eg ? widths(eg) : [];
+  check("a line's flow is no wider than the line", eg && fw <= ew + 0.01, [fw, ew]);
+  check("…and stops where its arrowhead begins (shorter than the line by the arrowhead)", eg && fl <= el - 8 && fl >= el - 20, [fl, el]);
+  h.select({ type: 'node', id: 'trips', view: 'system' }); await wait(300);
+  const hot = sr.querySelector('svg .edge-g.hot');
+  const [hw, hew] = hot ? widths(hot) : [];
+  check("a selected card's lines: the flow stays as wide as the line, not a bump on it", hot && hw <= hew + 0.01, [hw, hew, !!hot]);
   if (h) { h.destroy(); h = null; }
   const pe = [], hp = mountPage(document.getElementById('page'), BIKE, { params: new URLSearchParams() });
   hp.on('viewchange', e => pe.push(e.view));
