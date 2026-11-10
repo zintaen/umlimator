@@ -94,7 +94,9 @@ export interface Events {
    *  (expanded: true) or folds back (false). view: the card's inner view, which may not be in the model yet; the card
    *  unfolds once it is: the update() that brings it unfolds the card (here or later), or expand(). preventDefault(): no change. */
   expand: { target: Extract<Ref, { type: 'node' }>; view: string; expanded: boolean; preventDefault(): void };
-  story: { story: string; step: number | null; steps: number };   // a story shows its step (0-based); step null: it ended
+  /** A story changed: it shows a step (0-based), it was paused or resumed (playing), or it ended (step null, on destroy()
+   *  too). playing (0.14.0): it goes on by itself. */
+  story: { story: string; step: number | null; steps: number; playing: boolean };
   /** The map's state changed (0.14.0): at most once a frame, with the keys that changed since the last state event. The
    *  camera is the exception: a pan, zoom, glide or drag is one event, once it comes to rest, and until then the event's
    *  camera is where it last rested (handle.state reads it live). The last event, on destroy(), has destroyed: true. */
@@ -111,7 +113,7 @@ export interface MapState {
   selection: Ref[];               // as `selected`
   expanded: string[];             // as `expanded`
   lens: string | null;
-  overlays: string[];             // the layers on the map, in stack order ('lens', 'highlight', 'replay', a host's)
+  overlays: string[];             // the layers on the map, in stack order ('lens', 'highlight', 'replay', 'story', 'tour', a host's)
   story: { id: string; step: number; steps: number; playing: boolean } | null;
   tour: boolean;                  // a tour's dot is riding
   replay: { playing: boolean } | null;   // a replay under way: playing, or paused
@@ -220,6 +222,8 @@ export interface Handle {
   /** How this map moves: 'instant' (drawn without animation, as the page's #check, #still and #shot are), 'reduced' (the
    *  reader's setting), else 'full'. */
   readonly motion: 'full' | 'reduced' | 'instant';
+  /** The player of the story shown, whoever started it (play(), the standalone page's Stories menu or a link), else null. */
+  readonly story: StoryPlayer | null;
   /** Sets (or, with null, removes) a named layer of marks, drawn over the picture without touching the model. Layers stack
    *  in the order first set: each property comes from the latest layer that sets it, and a card or line is as lit as its
    *  lowest level. They survive update() and setView(); ids the view doesn't show are ignored. toSVG() and toPNG() draw them. */
@@ -236,8 +240,9 @@ export interface Handle {
   lens(id: string | null): boolean;
   /** The tour dot rides the line between each pair of cards in turn (either way), through each card to its next line; a card
    *  it reaches flashes, and a pair with no line between them is skipped. Resolves true at the end, false when cut short (a
-   *  new tour or replay, tour(null), a new picture of the view, destroy()). With reduced motion it resolves at once.
-   *  speed: map units a second (default 240). */
+   *  new tour or replay, tour(null), Esc on the map, a new picture of the view, destroy()). With reduced motion no dot rides:
+   *  it resolves at once, and the path is lit at rest (its cards ringed and numbered in turn, its lines glowing: the 'tour'
+   *  layer) and said, until the next tour or replay, tour(null), Esc or a new picture. speed: map units a second (default 240). */
   tour(path: string[] | null, options?: { speed?: number }): Promise<boolean>;
   /** Plays a trace: each call from one card to another (a span and its parent's) runs along their line at the trace's relative
    *  time; the line glows while the call lasts and keeps its duration as a label (the 'replay' layer, until stop() or the next
@@ -247,8 +252,11 @@ export interface Handle {
   /** Tells one of the model's stories (#69): each step in turn sets the view, camera, selection, highlight and caption
    *  (drawn in a bar on the map and said to screen readers), then plays its tour. auto (default true): the next step
    *  follows once a step's duration is up and its tour has ended. step: where to start (0-based). The bar and the keys
-   *  (← → PageUp PageDown, Esc) step through and stop it. null when the model has no story `id` with steps. */
-  play(id: string, options?: { step?: number; auto?: boolean }): StoryPlayer | null;
+   *  (← → PageUp PageDown, Esc) step through and stop it. The reader taking the map (a press, a key, a view or a selection
+   *  the story didn't make) pauses it, and a pause holds the step's tour too, until resume(). A step folds back the cards
+   *  unfolded on its view first, and its highlight is its own 'story' layer, which dims alone while the step shows.
+   *  null when the model has no story `id` with steps, and the story shown, if any, plays on; play(null) stops it. */
+  play(id: string | null, options?: { step?: number; auto?: boolean }): StoryPlayer | null;
   destroy(): void;
 }
 
@@ -262,9 +270,11 @@ export interface StoryStep {
   camera?: 'fit' | { x: number; y: number; zoom?: number } | { card: string; zoom?: number }; duration?: number;
 }
 /** A story being told. step: the one shown (0-based). next() past the last step ends it (done: true); stop() closes it
- *  (done: false). */
+ *  (done: false). state (0.14.0): entering a step (its view, camera, selection and highlight on their way), playing or paused
+ *  on it, then ended or stopped. */
 export interface StoryPlayer {
   readonly story: string; readonly step: number; readonly steps: number; readonly playing: boolean; readonly done: Promise<boolean>;
+  readonly state: 'entering' | 'playing' | 'paused' | 'ended' | 'stopped';
   next(): void; prev(): void; pause(): void; resume(): void; stop(): void;
 }
 
