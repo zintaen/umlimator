@@ -39,13 +39,17 @@
   --um-sans: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
   --um-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
 }
+/* How deep the map's tints are, in either theme: a card's kind colour, and a box's tone (containers[].tone). 1 is as
+   drawn here, 0 is none (plain panels), 2 twice as deep. The map stops a tint at 18% of its colour, where a card's
+   sub-line would fall below 4.5:1. Set it on the map or any ancestor; on :root only, so a map's own setting wins. */
+:root { --um-tint: 1; }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
   --um-stage-bg: var(--um-bg-2); --um-edited: #d29922;
   --um-bg: #0d1117; --um-bg-2: #010409; --um-panel: #0d1117; --um-panel-2: #151b23; --um-border: #262c36; --um-border-2: #3d444d;
   --um-text: #f0f6fc; --um-muted: #9198a1; --um-dim: #656c76; --um-grid: rgba(240,246,252,.05); --um-mask: #0d1117; --um-arrow: #656c76;
   --um-shadow: 0 10px 30px rgba(1,4,9,.55); --um-dot: #161b22; --um-gridline: transparent; --um-chrome: rgba(13,17,23,.92);
-  --um-accent: #4493f8; --um-accent-fg: #ffffff; --um-lane: rgba(240,246,252,.025);
+  --um-accent: #4493f8; --um-accent-fg: #0d1117; --um-lane: rgba(240,246,252,.025);
   --um-cyan: #4493f8; --um-green: #3fb950; --um-violet: #ab7df8; --um-amber: #d29922; --um-rose: #f85149; --um-orange: #db6d28; --um-slate: #9198a1; --um-fuchsia: #db61a2;
   --um-k-public: #4493f8; --um-k-lane: #2dd4bf; --um-k-ext: #ab7df8; --um-k-verb: #f778ba; --um-k-script: #9198a1; --um-k-hook: #f85149; --um-k-board: #d29922;
   --um-w-calls: #b7bdc8; --um-w-feeds: #4493f8; --um-w-triggers: #ab7df8; --um-w-state: #59626e; --um-w-guard: #f85149;
@@ -59,7 +63,7 @@
   --um-bg: #0d1117; --um-bg-2: #010409; --um-panel: #0d1117; --um-panel-2: #151b23; --um-border: #262c36; --um-border-2: #3d444d;
   --um-text: #f0f6fc; --um-muted: #9198a1; --um-dim: #656c76; --um-grid: rgba(240,246,252,.05); --um-mask: #0d1117; --um-arrow: #656c76;
   --um-shadow: 0 10px 30px rgba(1,4,9,.55); --um-dot: #161b22; --um-gridline: transparent; --um-chrome: rgba(13,17,23,.92);
-  --um-accent: #4493f8; --um-accent-fg: #ffffff; --um-lane: rgba(240,246,252,.025);
+  --um-accent: #4493f8; --um-accent-fg: #0d1117; --um-lane: rgba(240,246,252,.025);
   --um-cyan: #4493f8; --um-green: #3fb950; --um-violet: #ab7df8; --um-amber: #d29922; --um-rose: #f85149; --um-orange: #db6d28; --um-slate: #9198a1; --um-fuchsia: #db61a2;
   --um-k-public: #4493f8; --um-k-lane: #2dd4bf; --um-k-ext: #ab7df8; --um-k-verb: #f778ba; --um-k-script: #9198a1; --um-k-hook: #f85149; --um-k-board: #d29922;
   --um-w-calls: #b7bdc8; --um-w-feeds: #4493f8; --um-w-triggers: #ab7df8; --um-w-state: #59626e; --um-w-guard: #f85149;

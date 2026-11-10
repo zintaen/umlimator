@@ -269,6 +269,130 @@
     "worker",
     "mail"
    ]
+  },
+  {
+   "id": "checkout",
+   "parent": "overview",
+   "title": "Checkout, at a glance",
+   "caption": "An order's way in six numbered steps: the main path drawn heavier, the web tier and the order handling as tinted boxes.",
+   "nodeIds": [
+    "shoppers",
+    "storefront",
+    "api",
+    "payments",
+    "queue",
+    "worker",
+    "mail"
+   ],
+   "containers": [
+    {
+     "id": "web",
+     "label": "Web",
+     "tone": "cyan",
+     "nodeIds": [
+      "storefront",
+      "api"
+     ]
+    },
+    {
+     "id": "orders",
+     "label": "Orders",
+     "tone": "orange",
+     "nodeIds": [
+      "queue",
+      "worker"
+     ]
+    }
+   ],
+   "edges": [
+    {
+     "id": "c1",
+     "from": "shoppers",
+     "to": "storefront",
+     "label": "browse, buy",
+     "step": 1,
+     "weight": 2
+    },
+    {
+     "id": "c2",
+     "from": "storefront",
+     "to": "api",
+     "label": "checkout",
+     "sublabel": "JSON over HTTPS",
+     "step": 2,
+     "weight": 2
+    },
+    {
+     "id": "c3",
+     "from": "api",
+     "to": "payments",
+     "label": "charge the card",
+     "step": 3
+    },
+    {
+     "id": "c4",
+     "from": "api",
+     "to": "queue",
+     "label": "paid order",
+     "step": 4,
+     "weight": 2
+    },
+    {
+     "id": "c5",
+     "from": "queue",
+     "to": "worker",
+     "label": "next order",
+     "step": 5,
+     "weight": 2
+    },
+    {
+     "id": "c6",
+     "from": "worker",
+     "to": "mail",
+     "label": "confirmation",
+     "step": 6,
+     "weight": 2
+    }
+   ],
+   "tour": [
+    "shoppers",
+    "storefront",
+    "api",
+    "queue",
+    "worker",
+    "mail"
+   ],
+   "layout": {
+    "shoppers": [
+     0,
+     0
+    ],
+    "storefront": [
+     1,
+     0
+    ],
+    "api": [
+     2,
+     0
+    ],
+    "payments": [
+     3,
+     1
+    ],
+    "queue": [
+     4,
+     0
+    ],
+    "worker": [
+     5,
+     0
+    ],
+    "mail": [
+     6,
+     0
+    ]
+   },
+   "rgap": 104
   }
  ]
 }
