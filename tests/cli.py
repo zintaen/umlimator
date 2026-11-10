@@ -9,7 +9,7 @@ through its pipes as an MCP client drives it, with a page's event stream.
 Needs Node (diff, drift, trace and the MCP server's read tools run the module's own functions), git, and Chrome or
 Chromium (pdf).
 """
-import http.client, json, re, subprocess, sys, tempfile, threading, zlib
+import http.client, json, re, subprocess, sys, tempfile, threading, time, zlib
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -29,17 +29,20 @@ def cli(*args, cwd=None):
     return json.loads(r.stdout) if r.returncode == 0 else None
 
 
+def stream(o):
+    """A PDF object's stream, inflated: its /Length bytes, as its data may end in a \\r of its own."""
+    m = re.search(rb"(.*?)stream\r?\n", o, re.S)
+    data = o[m.end():m.end() + int(re.search(rb"/Length (\d+)", m.group(1)).group(1))]
+    return zlib.decompress(data) if b"/FlateDecode" in m.group(1) else data
+
+
 def pdf_text(data):
     """The text of each page of a PDF Chrome wrote, as a viewer's search finds it: Chrome writes glyph ids, which each
     font's ToUnicode map reads back. The standard library only (zlib for the streams)."""
     obj = dict(re.findall(rb"(\d+) 0 obj\s*(.*?)endobj", data, re.S))
 
-    def stream(n):
-        m = re.search(rb"(.*?)stream\r?\n(.*?)\r?\nendstream", obj[n], re.S)
-        return zlib.decompress(m.group(2)) if b"/FlateDecode" in m.group(1) else m.group(2)
-
     def cmap(n):  # glyph id -> text
-        t, to = stream(n), {}
+        t, to = stream(obj[n]), {}
         for a, u in re.findall(rb"<(\w+)>\s*<(\w+)>", b"".join(re.findall(rb"beginbfchar(.*?)endbfchar", t, re.S))):
             to[int(a, 16)] = bytes.fromhex(u.decode()).decode("utf-16-be")
         for a, z, u in re.findall(rb"<(\w+)>\s*<(\w+)>\s*<(\w+)>", b"".join(re.findall(rb"beginbfrange(.*?)endbfrange", t, re.S))):
@@ -50,13 +53,20 @@ def pdf_text(data):
     for page in (b for b in obj.values() if re.search(rb"/Type\s*/Page\b", b)):
         fonts = {f: cmap(re.search(rb"/ToUnicode (\d+) 0 R", obj[n]).group(1)) for f, n in re.findall(rb"/(F\d+) (\d+) 0 R", page)}
         font, text = {}, ""
-        for f, run in re.findall(rb"/(F\d+) [\d.]+ Tf|<([0-9A-Fa-f]*)>", stream(re.search(rb"/Contents (\d+) 0 R", page).group(1))):
+        for f, run in re.findall(rb"/(F\d+) [\d.]+ Tf|<([0-9A-Fa-f]*)>", stream(obj[re.search(rb"/Contents (\d+) 0 R", page).group(1)])):
             if f:
                 font = fonts[f]
             else:  # ponytail: two bytes a glyph (Identity-H, as Chrome embeds every font); a one-byte font would need its codespace
                 text += "".join(font.get(int(run[i:i + 4], 16), "?") for i in range(0, len(run), 4))
         pages.append(text)
     return pages
+
+
+def fills(data):
+    """The colours, (r, g, b), a PDF's first page is filled with, in order: the first is the page's background, to the edge."""
+    obj = dict(re.findall(rb"(\d+) 0 obj\s*(.*?)endobj", data, re.S))
+    page = next(b for b in obj.values() if re.search(rb"/Type\s*/Page\b", b))
+    return [tuple(map(float, c)) for c in re.findall(rb"([\d.]+) ([\d.]+) ([\d.]+) rg", stream(obj[re.search(rb"/Contents (\d+) 0 R", page).group(1)]))]
 
 
 def edited(m):  # a made-up pull request on the bike share: a queue between Trips and Payments, a rename, a card gone
@@ -129,18 +139,54 @@ with tempfile.TemporaryDirectory() as tmp:
     cli("diff", "--base", "HEAD", "--out", str(t / "pr2"), cwd=g)
     ok("diff --base · says so when no map changed", "No map model changed." in ((t / "pr2" / "summary.md").read_text(encoding="utf-8") if (t / "pr2" / "summary.md").is_file() else ""))
 
-    # pdf (#93): the bike share in one PDF, a title page, a page per view, then the legend and the rules; its words are text
+    # pdf (#93): the bike share as a document for a review; its words are text. A cover with the contents; each view from a
+    # page of its own, under its path, with its legend and tables of its cards, lines and boxes; the rules as a table. The
+    # words are compared without spaces: a PDF's text keeps none where a line wraps or between two runs of text, and where
+    # a line wraps depends on the fonts a system has
+    flat = lambda s: re.sub(r"\s", "", s)
+    read = lambda f: [flat(p) for p in pdf_text((t / f).read_bytes())] if (t / f).is_file() else []
     cli("render", str(ROOT / "examples" / "bike-share.json"), "--out", str(t / "bike.html"), "--no-check")
     r = cli("pdf", str(t / "bike.html"), "--out", str(t / "bike.pdf")) or {}
-    pages = pdf_text((t / "bike.pdf").read_bytes()) if (t / "bike.pdf").is_file() else []
-    titles = [v["title"] for v in bike["views"]]
-    ok("pdf · a title page, a page per view, and one for the legend and rules", r.get("pages") == len(pages) == len(titles) + 2, [r, len(pages)])
-    said = "".join(pages)
-    ok("pdf · the title, each view's title, cards and describe() text, the legend and each rule's state are text in it",
-       all(s in said for s in ["Bike share, an example", *titles, "Payment provider", "What runs: 18 cards and 15 lines.", "Legend",
-                               "Apps never call a database directly: holds", "Only the ride services touch the trips store: holds"]), said[:600])
+    pages = read("bike.pdf")
+    ok("pdf · every page ends in the title and page N of M, as many pages as it says",
+       pages and r.get("pages") == len(pages) and all(p.endswith(flat(f"Bike share, an example page {i} of {len(pages)}")) for i, p in enumerate(pages, 1)), [r, [p[-40:] for p in pages]])
+    V = {v["id"]: v for v in bike["views"]}
+    path = lambda v: (path(V[v["parent"]]) + " › " if v.get("parent") else "") + v["title"]
+    at = {v["id"]: next((i for i, p in enumerate(pages, 1) if p.startswith(flat(f"{path(v)} {len(v['nodeIds'])} cards"))), None) for v in bike["views"]}
+    at["rules"] = next((i for i, p in enumerate(pages, 1) if p.startswith("Rules")), None)
+    cover = pages[0] if pages else ""
+    ok("pdf · the cover: the title, the date, the model's file, a summary line, and the contents, each view with the page its header starts",
+       re.match(r"Bikeshare,anexample\d{4}-\d\d-\d\d·examples/bike-share\.json5views·32cards·48lines·2rulesContents", cover) and None not in at.values()
+       and all(flat(f"{v['title']}{v['caption']}{at[v['id']]}") in cover for v in bike["views"]) and f"Rules{at['rules']}Bikeshare" in cover, [cover[:500], at])
+    seen = lambda a, b=None: "".join(pages[a - 1:b and b - 1]) if a else ""  # the pages from page a to the one before b
+    ok("pdf · a view's page: its legend, then tables of its cards (name, sub-line, kind, what it is), lines (from → to, label, technology) and boxes",
+       "Legend" in seen(at["system"], at["system"] and at["system"] + 1) and all(flat(s) in seen(at["system"], at["trips"]) for s in [
+           "CardKindWhat it is", "Payment providercards and walletsExternalTakes card and wallet payments.", "From → toLabelTechnology",
+           "Rider app → Trip servicestarts, ends ridesREST", "BoxHolds", "RidesAccounts, Trip service, Pricing and Trips database"])
+       and flat("#From → toLabelTechnology1Rider app → Trip APIPOST /rides/{id}/end200 ms") in seen(at["ride-end"]), seen(at["system"], at["trips"])[:600])
+    ok("pdf · the rules, as a table: each rule, the views it applies in, holds or broken, and what breaks it", flat(
+       "RuleApplies inStateLines that break itApps never call a database directlyevery view printedholdsnoneOnly the ride services touch the trips storeWhat runsholdsnone") in pages[-1], pages[-1:])
     r = cli("pdf", str(t / "bike.html"), "--out", str(t / "two.pdf"), "--views", "system,f*", "--theme", "dark") or {}
-    ok("pdf --views · only the views named (a trailing * a prefix)", r.get("pages") == 4 and "Fleet service" in "".join(pdf_text((t / "two.pdf").read_bytes())), r)
+    two = read("two.pdf")
+    heads = {m.group(1) for p in two[1:-1] if (m := re.match(r"(.*?)(?:\(continued\))?\d+cards?", p))}
+    ok("pdf --views · only the views named (a trailing * a prefix), then the rules", r.get("pages") == len(two) and "2views·" in two[0]
+       and heads == {flat("Bike share › What runs"), flat("Bike share › What runs › Fleet service")} and two[-1].startswith("Rules"), [r, [p[:40] for p in two]])
+    dark = fills((t / "two.pdf").read_bytes()) if two else []
+    ok("pdf --theme dark · its pages are dark to the edge", dark and max(dark[0]) < .15, dark[:3])
+    # a view of forty cards: its tables go on over the pages after its picture, under their heading and header row again,
+    # never a row cut; and a model with no rules has no rules section
+    (t / "long.json").write_text(json.dumps({"title": "Forty parts", "views": [{"id": "all", "title": "All parts", "nodeIds": [f"p{i}" for i in range(40)]}],
+        "nodes": [{"id": f"p{i}", "label": f"Part {i}", "kind": "backend", "sublabel": f"tech {i}", "what": f"Part {i} of forty."} for i in range(40)],
+        "edges": [{"from": f"p{i}", "to": f"p{i + 1}", "label": f"hands {i} on", "sublabel": "HTTPS"} for i in range(39)]}))
+    cli("render", str(t / "long.json"), "--out", str(t / "long.html"), "--no-check")
+    long = read("long.pdf") if cli("pdf", str(t / "long.html"), "--out", str(t / "long.pdf")) else []
+    went = re.findall(r"(Cards40|Lines39)\(continued\)(.{0,25})", "".join(long))
+    rows = [flat(f"Part {i}tech {i}Service / APIPart {i} of forty.") for i in range(40)] + [flat(f"Part {i} → Part {i + 1}hands {i} onHTTPS") for i in range(39)]
+    ok("pdf · a long table goes on over the next pages, its heading and header row again, and never cuts a row",
+       len(long) > 2 and all(p.startswith("Allparts(continued)") for p in long[2:]) and went
+       and all(h.startswith("CardKindWhatitis" if k == "Cards40" else "From→toLabelTechnology") for k, h in went)
+       and all(sum(s in p for p in long) == 1 for s in rows), [len(long), went, [s for s in rows if sum(s in p for p in long) != 1][:3], [p[:80] for p in long]])
+    ok("pdf · a model with no rules has no rules section", long and "Rules" not in "".join(long) and "rule" not in long[0], long[:1])
     # a rule broken in one view: judged in the views a PDF prints, as it says
     (t / "rules2.json").write_text(json.dumps({"nodes": [{"id": "app", "label": "App", "kind": "frontend"}, {"id": "api", "label": "API", "kind": "backend"},
                                                          {"id": "db", "label": "Store", "kind": "database"}],
@@ -149,11 +195,11 @@ with tempfile.TemporaryDirectory() as tmp:
                                                          {"id": "direct", "nodeIds": ["app", "db"], "edges": [{"from": "app", "to": "db", "label": "reads"}]}],
                                                "rules": [{"id": "apps-no-db", "title": "Apps never call a database directly", "from": {"kind": "frontend"}, "to": {"kind": "database"}}]}))
     cli("render", str(t / "rules2.json"), "--out", str(t / "rules2.html"), "--no-check")
-    read = lambda f, *a: "".join(pdf_text((t / f).read_bytes())) if cli("pdf", str(t / "rules2.html"), "--out", str(t / f), *a) else ""
-    every, clean = read("every.pdf"), read("clean.pdf", "--views", "clean")
+    printed = lambda f, *a: "".join(read(f)) if cli("pdf", str(t / "rules2.html"), "--out", str(t / f), *a) else ""
+    every, clean = printed("every.pdf"), printed("clean.pdf", "--views", "clean")
     ok("pdf · each rule is judged in the views it prints, as it says: broken with the view that breaks it, holding without it",
-       "directly: broken" in every and "view direct: edge App" in every and "directly: holds" in clean and "breaks rule" not in clean
-       and "Judged in the views printed here." in clean, [every[-240:], clean[-240:]])
+       flat("Apps never call a database directlyevery view printedbrokendirect: App→Store") in every and flat("Apps never call a database directlyevery view printedholdsnone") in clean
+       and flat("Judged in the views printed here.") in clean, [every[-240:], clean[-240:]])
 
 # four renders of one model at once (#105): each writes its own copy of the model, and every page records the model itself
 with tempfile.TemporaryDirectory() as tmp:
@@ -198,7 +244,7 @@ mcp.stdin.write(json.dumps({"jsonrpc": "2.0", "method": "notifications/initializ
 found = rpc("server/discover", NEW).get("result", {})
 ok("mcp · server/discover offers 2026-07-28, the current specification", found.get("supportedVersions", [None])[0] == "2026-07-28" and found.get("resultType") == "complete", found)
 listed = [t.get("name") for t in rpc("tools/list", NEW).get("result", {}).get("tools", [])]
-ok("mcp · tools/list", listed == ["list_views", "describe_view", "paths", "reach", "broken_rules", "validate", "diff", "show_view", "highlight", "tour", "play_story", "clear"], listed)
+ok("mcp · tools/list", listed == ["list_views", "describe_view", "paths", "reach", "broken_rules", "validate", "diff", "show_view", "highlight", "tour", "play_story", "clear", "page_state"], listed)
 ok("mcp · ping, and the standard errors: no such method, no such tool, a version it doesn't speak",
    "result" in rpc("ping") and rpc("nope").get("error", {}).get("code") == -32601 and rpc("tools/call", {"name": "nope"}).get("error", {}).get("code") == -32602
    and rpc("tools/list", {"_meta": {"io.modelcontextprotocol/protocolVersion": "1900-01-01"}}).get("error", {}).get("code") == -32022)
@@ -226,25 +272,31 @@ ok("mcp · a call that names what the model lacks is a tool error that says what
 said, err = tool("show_view", view="trips")
 ok("mcp · a page tool with no page connected says to open its URL", not err and said.startswith("No page is connected") and url and url.group(0) in said, said)
 web = lambda: http.client.HTTPConnection("127.0.0.1", int(url.group(1)), timeout=60)
-c = web(); c.request("GET", "/events"); stream = c.getresponse()
+c = web(); c.request("GET", "/events?page=t1"); stream = c.getresponse()  # a page, as the served script names itself
+sent = []
 
 
-def event():  # the next command on the event stream
+def acks():  # each command on the event stream, answered as the page answers once it has shown it (tests/mcp.py drives a real one)
     line = b" "
-    while line and not line.startswith(b"data:"):
+    while line:
         line = stream.readline()
-    return json.loads(line[5:] or b"{}")
+        if line.startswith(b"data:"):
+            sent.append(json.loads(line[5:]))
+            a = web(); a.request("POST", "/state", json.dumps({"page": "t1", "model": sent[-1]["model"], "ack": sent[-1]["id"], "state": {"view": sent[-1]["want"]["view"]}}),
+                                 {"Content-Type": "application/json"}); a.getresponse().read()
 
 
-sent = event()
-ok("mcp · a page that connects gets the latest command", sent.get("do") == "view" and sent.get("view") == "trips" and sent.get("model"), sent)
+threading.Thread(target=acks, daemon=True).start()
+time.sleep(0.5)
+ok("mcp · a page that connects gets what the assistant asked last", sent and sent[0]["want"]["view"] == "trips" and sent[0].get("model"), sent)
 said, err = tool("highlight", refs=["trips", "payments", "s9"], view="system")
-sent = event()
-ok("mcp · highlight: sent to the page connected, card and line ids as Refs, on its event stream", said.startswith("Sent to 1 page") and sent.get("do") == "highlight"
-   and sent.get("view") == "system" and sent.get("refs") == [{"type": "node", "id": "trips"}, {"type": "node", "id": "payments"}, {"type": "edge", "ids": ["s9"]}], (said, sent))
+ok("mcp · highlight: shown on the page once it answers, with card and line ids as Refs, on its event stream", said.startswith("Shown on 1 page") and sent[-1]["want"]["view"] == "system"
+   and sent[-1]["want"]["highlight"] == {"refs": [{"type": "node", "id": "trips"}, {"type": "node", "id": "payments"}, {"type": "edge", "ids": ["s9"]}], "view": "system"}, (said, sent[-1:]))
 c = web(); c.request("GET", "/"); r = c.getresponse(); page = r.read().decode()
-ok("mcp · serves the CLI's page, with the script that plays commands on its map handle (window.umlimatorMap)",
-   r.status == 200 and "const map = window.umlimatorMap" in page and "new EventSource('/events')" in page and "Fare calculator" in page)
+ok("mcp · serves the CLI's page, with the script that shows commands on its map handle (window.umlimatorMap)",
+   r.status == 200 and "const map = window.umlimatorMap" in page and "new EventSource(`/events?page=" in page and "Fare calculator" in page)
+c = web(); c.request("POST", "/state", "{}", {"Content-Type": "application/json", "Origin": "https://attacker.example"})
+ok("mcp · another site's page posts nothing", c.getresponse().status == 403)
 c = web(); c.request("GET", "/", headers={"Host": f"attacker.example:{url.group(1)}"})
 ok("mcp · a request for another host name (DNS rebinding) gets nothing", c.getresponse().status == 403)
 mcp.stdin.close()

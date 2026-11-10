@@ -38,8 +38,9 @@ drill-down, a data pipeline, an AI agent's skills, and host pages for embedding,
 - **The page's pieces, embedded**: the standalone page's views list, details panel, legend and hint line, each one a
   `render()` option, around the map in the host's own page.
 - **Editing** (opt-in): gestures emit `change` events; the host applies them and calls `update()`.
-- **Export**: any view as a stand-alone SVG or PNG, in the browser or from the CLI; the whole map as one PDF, each view
-  with its text, then the legend and the rules (`umlimator.py pdf`).
+- **Export**: any view as a stand-alone SVG or PNG, in the browser or from the CLI; the whole map as one PDF to hand in
+  for a review: a cover with the contents, each view with its legend and tables of its cards, lines and boxes, then the
+  rules (`umlimator.py pdf`).
 - **In docs**: `<umlimator-map src="model.json">` in any page, and an `umlimator` fenced block in VitePress, Docusaurus,
   MkDocs or any Markdown that allows HTML.
 - **A layout check**: crossings, shared lines, detours, labels on lines, text that overflows its card.
@@ -224,7 +225,7 @@ python3 umlimator.py record bike-share.html --story ride --out ride.png   # bike
 python3 umlimator.py import workspace.dsl --out model.json            # a diagram you have already, as a model
 docker compose config --format json > compose.json && python3 umlimator.py import compose.json --out model.json
 kubectl get deploy,sts,svc,ing -A -o json > cluster.json && python3 umlimator.py import cluster.json --out model.json
-python3 umlimator.py pdf page.html --out map.pdf                       # every view in one PDF, with its text, the legend, the rules
+python3 umlimator.py pdf page.html --out map.pdf                       # every view in one PDF: a cover, each view with its tables, the rules
 python3 umlimator.py trace model.json trace.json --view ride-end --match match.json --out model.json   # an OTLP trace kept as a numbered view
 python3 umlimator.py mcp model.json                                    # an MCP server over stdio, for an AI assistant (below)
 ```
@@ -240,10 +241,14 @@ opening the view below it; `examples/clinic.json` is `examples/clinic.dsl`, impo
 what is left out: [docs/module-api.md § Import](docs/module-api.md#import-90). Whatever the file holds that `import`
 doesn't read is listed on stderr with its line (in JSON, its path).
 
-`pdf` prints the map through Chrome's own print, A4 across: a title page, then each view on a page of its own, as a
-vector picture with its `describe()` text, then the legend and each rule, holding or broken in the views printed
-([bike-share's](https://zintaen.github.io/umlimator/examples/bike-share.pdf), as CI builds it). It takes `--views` and
-`--theme`, as `stills` does.
+`pdf` prints the map through Chrome's own print, as a document to hand in for a review
+([bike-share's](https://zintaen.github.io/umlimator/examples/bike-share.pdf), as CI builds it). A cover has the title,
+the date, the model's file, a summary line and the contents with each view's page. Each view starts a page of its own,
+under its path ("Bike share › What runs"): its picture in vectors, as large as the page allows, the legend of what it
+draws, and tables of its cards, lines and boxes, which go on over the next pages with their header row when they are
+long. The rules follow as a table, when the model has any, each holding or broken in the views printed. Every page ends in
+the title and "page N of M". It takes `--views` and `--theme`, as `stills` does, and `--paper a4|letter` (A4 is the
+default; both across).
 
 The page has breadcrumbs, a details panel per card (with the slowest path from it and what-if), ⌘K search, deep links
 (`#view=<id>&node=<id>`, `#story=<id>&step=<n>` for a story's step, and `#lens=<id>`), stories, lenses, and export. For
@@ -301,12 +306,18 @@ claude mcp add umlimator -- python3 /path/to/umlimator.py mcp /path/to/model.jso
 | `show_view(view)` | shows a view on the page |
 | `highlight(refs, view?)` | lights cards and lines (their ids, or the Refs `paths` and `reach` give) and dims the rest |
 | `tour(cards, view?)` | a dot rides the lines through these cards |
-| `play_story(id)`, `clear()` | plays one of the model's stories; takes the highlight, the tour and the story off |
+| `play_story(id)`, `clear()` | plays one of the model's stories; takes the assistant's highlight, tour and story off |
+| `page_state()` | what each open page shows (its map's `state`: view, selection, layers, story, camera), and whether the model renders |
 
 - The read tools run the module's own functions in Node on the model file, read again at each call, so edits show up.
 - The page tools drive the map's page, which the server serves at `http://127.0.0.1:7391` (`--port N`, or another port
-  when that one is taken). Open it in a browser. Each tool says whether a page is connected, and gives the URL when none
-  is; a page that connects later shows the latest command, and a page drawn from an older model draws itself again.
+  when that one is taken). Open it in a browser.
+  - A tool answers "shown" once a page has shown it, or says why none did: the page's own error, or a tab in the
+    background that didn't finish in time. With no page open, it gives the URL.
+  - A page that opens later shows what the assistant built: the view, with the highlight on it, and a tour or story
+    still under way.
+  - The assistant's highlight is a layer of its own (`mcp`): off on another view, back on its own.
+  - A model that stops rendering keeps the last page that did, and the tools and the page say why.
 - The server listens on 127.0.0.1 only and fetches nothing, so a logo not in the cache yet keeps its card's sigil.
 
 ## Map a repo with Claude Code

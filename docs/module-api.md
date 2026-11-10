@@ -1727,8 +1727,8 @@ a true outcome, and the state can be read.
   - *Now.* A taken port falls back to a port of the model's own, the same on each run, and only then to any port. A
     batch gets a batch of replies. The instructions name the model's whole path and the folder the server runs in. A
     relative path is looked for in the model's folder first, and an error names where it looked.
-  - The page's own machines (its state, acknowledgements, replay and last good page, and mcp-session 1) come in the
-    next wave, on the map's state contract.
+  - The page's own machines (its state, acknowledgements, replay and last good page, and mcp-session 1) came in the
+    next wave, on the map's state contract: "The MCP server's page says what it shows", below.
 - **Behaviour changes, all for defects the audit reproduced:**
   - `stills` exits 1 when a view fails.
   - The first `stills` run after upgrading draws every view again (`.stills.json` gives way to `.stills/`).
@@ -1881,3 +1881,127 @@ ids are the audit's: a machine, then the number of its defect.
     on another view, and the reader's own move while a link is followed.
   - `tests/element.html` adds the element's checks.
   - Each defect fixed has a check that fails without this change.
+
+### The MCP server's page says what it shows (tooling, wave 2)
+
+The state-machine audit found these in `umlimator.py mcp`'s page, by the ids of its tooling inventory. Its page tools
+answered "sent" for what was written to a socket. A page that opened late got the last command alone. A model that
+stopped rendering took the page down. And the assistant could not learn what the page showed.
+
+- **Shown means shown (mcp-sse-clients 1 and 2, mcp-page-player 1 and 2):**
+  - *What was wrong.* A closed tab counted as connected for up to 20 s, so "Sent to 1 page" could go to nobody. A
+    command that came while a page was connecting was played twice. No tool read what the page showed, and a command
+    stuck behind a move (a tab in the background) held every later one.
+  - *Now.* The served page posts its map's `state` (the `MapState` of 0.14.0) on each change, and after each command it
+    has shown or failed to, with the command's id.
+    - A page tool waits up to 6 s for that, and answers "Shown on N pages, on view X", "The page could not show it: …",
+      "Sent to N open pages, which did not show it within 6 s…", or "No page is connected: open …".
+    - A command that takes the page more than 5 s is answered as failed, with why, and the next one goes on.
+    - The page shows each command once, whatever comes twice.
+    - A closed tab drops out within 2 s, the ping's interval.
+  - The new read tool `page_state()` returns, for each open page, its `state`, whether it shows the model's latest
+    version, and the last command it showed (or why not). It also returns what the assistant asked for last, and
+    whether the model renders.
+- **A late page shows what the assistant built (mcp-latest-command 1 to 3):**
+  - *What was wrong.* After `show_view(trips)` and `highlight(...)`, a page that opened later got the highlight alone,
+    on the root view, where it dimmed every card. A replayed command carried the version of the model at replay time.
+    A story or tour sent long ago played again.
+  - *Now.* The server folds its commands into what the page should show, `{view, highlight, tour, story}`, the latest of
+    each, and sends that.
+    - A highlight or tour that names no view goes on the view its Refs name. Otherwise it goes on the last view asked
+      for that shows all its cards, else the first view that does.
+    - A tour or story that a page reports has ended is taken out, so a page that opens later doesn't play it again.
+    - When a new version of the model renders, what it no longer has (a view, cards, lines, a story) is dropped.
+- **The assistant's highlight is its own (mcp-page-player 3, and the decision's rule 3):**
+  - *What was wrong.* The assistant's highlight shared the map's `highlight` layer with the page's own lit paths and
+    stories. The reader's view change cleared it without a word. `clear()` stopped only the server's story.
+  - *Now.* It is drawn on a layer of its own, `mcp`: off on any other view, so it never dims every card there, and back
+    when the reader returns to its view. `page_state()` shows it in `overlays`. `clear()` takes off the assistant's
+    highlight, tour and story; a story the reader started is the reader's.
+  - For this, the module's `highlight()` takes `{ layer }` (additive): `highlight(refs, { layer: 'mcp' })` draws the
+    same marks as a layer of that name, and `null` clears that layer only.
+- **A model that stops rendering keeps the page (mcp-page-render 1 and 2):**
+  - *What was wrong.* The page reloaded into a bare 500 and lost its map and its event stream, while the tools went on
+    saying "Sent to 1 page". The page was labelled with the version read before the render, which an edit during it
+    could change.
+  - *Now.* The page is rendered from a snapshot of the model's bytes, labelled with their hash, and when a page tool
+    is called. A version that doesn't render keeps the last page that did. The page tools begin their answer with "The
+    model no longer renders, so the page shows its last version that did: <why>", the page shows the same in a bar,
+    and `page_state()` gives `model.renders: false`.
+  - Before any version renders, the page says why and draws the map once one does.
+- **A tab outlives its server (mcp-session 1):**
+  - *What was wrong.* When another model's server took the port, an open tab reloaded into that map without a word.
+  - *Now.* The page names its model file, and another model's server refuses its event stream. The tab stays as it was
+    and says that its server now serves another map.
+- **Known limits, for later:**
+  - mcp-page-render 3: `GET /` still renders under the lock when the model changed since the last page tool, which
+    renders first, so a page rarely waits. Rendering in the background would end it.
+  - mcp-page-player 4: a headless browser that waits for network idle still waits on the event stream for ever (wait
+    for `load`). `page_state()` gives an assistant the page's state without a browser.
+- **Tests:**
+  - `tests/mcp.py` (new, in CI) drives the server through its pipes, as a client does, and its page in headless Chrome
+    over the DevTools protocol. It runs one case per defect above, and 11 of its first 13 fail on 0.13.0's server;
+    `mcp-session 1` was added after.
+  - `tests/cli.py`'s MCP part answers as a page does.
+
+### A tour's dot rides under the cards, and a line's flow keeps its width and its arrowhead (#124)
+
+- **The dot rides under the cards.** A tour's dot (the model's `tour`, `tour()` and `replay()`) is now drawn over the
+  lines and boxes but under the cards. It goes into a card and comes out at its next line, instead of crossing the card's
+  name. `umlimator.py record` spreads a tour's frames over the lines only, so every frame still shows the dot.
+- **The flow is as wide as its line.** A line's flow was drawn wider than the line (2.4 px on 1.6, and 3.4 on 2.8 when
+  selected), so the line looked lumpy. Now it is exactly as wide, in the canvas colour: light pulses moving along the line.
+- **The flow stops where the arrowhead begins.** It used to run into the arrowhead and bend its shape. Now it stops short,
+  at both ends of a two-way line, by the arrowhead's length for the line's weight.
+- **Tests:** `tests/motion.html` checks the dot's layer (for `tour()` and a view's own tour), the flow's width (normal and
+  selected), and where the flow ends.
+
+### The PDF reads as a document to hand in for a review (`pdf`)
+
+The maintainer's review of `umlimator.py pdf` (#93): "PDF layout seems too simple and not formatted well." Each view's
+picture sat in a band with empty page around it. Its `describe()` sentences ran below in two columns, a wall of text
+("Cards: …, …, …" in one paragraph), and then half the page was empty. The legend sat alone on a page of its own, and a
+model without rules printed "The model has no rules." The page now lays the document out itself, a page at a time.
+
+- **The cover**: the model's title, the date, the model's file (its `source`), a summary line (views, cards, lines, and
+  rules when it has any) and the contents. Each view is listed with its caption and its page, indented under the printed
+  views that hold it, and the rules come last.
+- **Each view, from a page of its own**:
+  - **A header**: the view's path ("Bike share › What runs"), its counts, and its caption under them.
+  - **The picture**, as large as the page allows, never larger than drawn, and in its own proportions.
+    - A picture too tall to leave room below it keeps the page's height, and the tables go beside it, in one column.
+    - It is drawn up to 30% smaller (never below a scale of 0.6) when that keeps all its tables on its page.
+  - **The legend** of what this view draws, under the picture.
+  - **Tables**, in place of the sentences, in two columns below the picture:
+    - its cards: the name with its sub-line, the kind, and what it is;
+    - its lines: from → to, the label, and the technology (the line's sub-line). A numbered view's lines are in run
+      order, with their step numbers;
+    - its boxes, with the cards each holds.
+  - **A long table** goes on in the next column or on the next page, under its heading and header row again. A row is
+    never cut, a heading never ends a column, and a table's last row never goes on alone.
+- **The rules**, only when the model has any: a table of each rule, the printed views it applies in, holds or broken,
+  and the lines that break it.
+- **Every page** ends in the model's title and "page N of M". The views and the rules are the PDF's bookmarks.
+- **Print typography**: the page's own fonts (`--um-sans`, `--um-mono`), one type scale (26, 14, 9, 8.5 and 8 pt) and the
+  margins in `@page`. With `--theme dark`, whole pages are dark, margins included.
+- **`--paper a4|letter`**: A4, the default, or US Letter, both across.
+- **How**: Chrome's own page breaks can't be read back, and the contents need each view's page. So the page sets every
+  break itself: each sheet is exactly one page, and a table's rows are moved on one at a time, as measured.
+- **Visible behaviour changes**:
+  - The layout and the page count: a cover, a page or more per view, then the rules. Before, there was a title page, a
+    page per view, and one page for the legend and the rules.
+  - A model without rules has no rules section, and no "The model has no rules.".
+  - In the PDF, the legend's ⤢ Stacked "opens a view of its own"; the page's legend still says "double-click to open".
+  - `pdf` fails when the PDF has fewer than two pages (the cover and a view). Before, it took three.
+- **API added**: `umlimator.py pdf --paper a4|letter`, and `&paper=letter` beside `#pdf=1` in the page's link.
+- **Left out**: a model-wide legend in an appendix (each view's page has its own), portrait pages, and page references
+  from a stacked card to its view.
+- **Tests**: `tests/cli.py` reads the PDFs back with the standard library, as before. It checks:
+  - every page ends in the title and "page N of M", and there are as many pages as `pdf` reports;
+  - the cover: its title, date, file, summary line and contents, with each view's page number the page its header starts;
+  - a view's legend and its tables of cards, lines and boxes, a numbered view's steps, and the rules table;
+  - `--views`, and a dark theme painted to the edge of the page;
+  - a view of 40 cards, whose tables go on over the next pages, each time under the table's heading and header row, with
+    every row whole on one page;
+  - that a model without rules has no rules section.
+  - In `tests/outcomes.py`, one view's PDF has two pages.
