@@ -517,7 +517,8 @@ def cmd_check(a):
     visual.py check, which gives up after 45 s on a large model. A check of no view fails: it would pass by checking
     nothing."""
     kinds = {"crossings": " cross", "labelOnLine": " lies on edge ", "rightToLeft": "right-to-left", "detours": "detour",
-             "nearNode": "passes within", "onMark": "touches the mark", "shortLine": "leaves its line", "rules": ' breaks rule "'}
+             "nearNode": "passes within", "onMark": "touches the mark", "shortLine": "leaves its line", "roundEnd": "runs round its own end",
+             "rules": ' breaks rule "'}
     # --ignore drops whole kinds from the report (pictures that keep a source drawing's own direction run lines right to left)
     asked = [k for k in (a.ignore or "").replace("right-to-left", "rightToLeft").split(",") if k]
     if bad := [k for k in asked if k not in kinds]:
@@ -790,7 +791,7 @@ def main():
     c = sub.add_parser("check"); c.add_argument("page"); c.add_argument("--views", help="a,b,pic-* (a trailing * is a prefix)")
     c.add_argument("--timeout", type=int, default=600)
     c.add_argument("--expand", action="store_true", help="also check each view with each stacked card unfolded in place, one at a time (#71)")
-    c.add_argument("--ignore", help="kinds left out of the report: right-to-left, crossings, labelOnLine, detours, nearNode, onMark, shortLine (comma list)")
+    c.add_argument("--ignore", help="kinds left out of the report: right-to-left, crossings, labelOnLine, detours, nearNode, onMark, shortLine, roundEnd (comma list)")
     c.set_defaults(f=cmd_check)
     d = sub.add_parser("diff", help="what changed between two models, or in every model changed since a git ref (--base)")
     d.add_argument("files", nargs="*", metavar="BEFORE.json AFTER.json"); d.add_argument("--out", required=True, help="the page (with --base: a folder)")
