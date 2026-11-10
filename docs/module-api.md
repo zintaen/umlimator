@@ -2790,6 +2790,67 @@ Both gaps were found while writing the State chapter (#129).
 
 ## 0.16.0: (unreleased)
 
+### Loops under the boxes come into their target's near side, lines into a busy card route first, and a line goes round two cards that feed the same two (#128, #111)
+
+- **What was wrong.**
+  - **A loop under the boxes (#128).** A line that closes a loop out of a box runs under the boxes: out its source's
+    right side, down past every box and card in its way, and left along the bottom. It then came up into its target's
+    bottom, the far side from where it came. #127 brought routed loops into their target's near side; loops under the
+    boxes were left as they were (weather's check view, s16's unfolded pay, b26).
+  - **Lines into one busy card (#111).** Lines were routed shortest first. Lines into a card that many lines come into
+    were often routed after the lines round it, which had taken the tracks by the card, so they crossed them on the way
+    in. r19's logger has seven lines in, and most of r19's crossings were by one of them.
+  - **Two cards that feed the same two cards (#111).** In the made-up monorepo of r15, web and admin both import kit and
+    api-client. Drawn left to right with every line between facing sides, two of those four lines must cross, whatever
+    the order of the cards. The retry #127 added moves a line onto its target's top or bottom, which doesn't help here,
+    so the map had a crossing in the plain view in every font, and in the boxed view under Verdana and Georgia.
+- **What holds now.**
+  - A loop under the boxes comes up the gap right of its target and into its near side, at the lowest port there, below
+    the side's other lines. Where that would cut through a card, it comes up into the target's bottom as before, and
+    where that would too, the router takes it. Two loops into one card nest: the outer one comes up nearer the card,
+    into the lower port.
+  - Lines into a card that six or more lines come into are routed first, in the order that nests them (#49), and the
+    other lines go round them.
+  - When lines still cross after #127's retry, on a view of up to 30 cards, one line goes round the outside: out its
+    source's far side and into its target's top (or bottom), round the cards between. The candidates are the lines of
+    two cards that both feed both ends of a crossing pair, then the crossing lines themselves. Up to four layouts more
+    are tried, and the one with the fewest issues is kept.
+- **Example:** `examples/monorepo.json`, the r15 monorepo, with its generator `examples/monorepo.py`, which writes the
+  model from a list of imports: a card per package, a box per folder, nested as the folders are, and the same cards with
+  no boxes. Its page checks clean in the default font and under Arial, Verdana, Georgia and Courier New.
+- **Visible changes.** The loops under the boxes in weather's check view, s16's site view with pay unfolded (and with
+  job and pay), and b26's overview come into their target's right side. b26 has two more of them: n11 → n20 and
+  n02 → n10 came up through a card on the old way, so the router took them; now they run under the boxes. Lines into
+  r19's logger, and into m50's busiest cards, take other tracks. In d24's boxed view and r15's plain one a line goes
+  round the outside. No other example moves.
+- **API added:** none. No type, option, model field or event changes.
+- **Bench**, layout-check issues before → after (b69/back has the same count with another picture; the other views draw
+  as before):
+
+  | View | Issues | Total ms |
+  |---|---|---|
+  | b26/overview | 82 → 81 | 620 → 793 |
+  | d24/boxed | 24 → 12 | 198 → 171 |
+  | m50/overview | 288 → 268 | 1,032 → 1,019 |
+  | r15/plain | 2 → 0 | 165 → 159 |
+  | r19/boxed | 16 → 12 (crossings 15 → 10) | 271 → 421 |
+  | r19/plain | 15 → 13 | 667 → 1,646 |
+  | b69/back | 8 → 8 | 224 → 473 |
+  | s16/site+pay, s16/site+job+pay | 0 → 0 | |
+
+  In all, 690 → 649. The extra layouts cost time where lines still cross: r19/plain most, which gains nothing from them.
+- **Tests** (`tests/layout.test.mjs`; each fails before this change): weather's check view brings its loop into
+  Readings' right side at the lowest port and checks clean, and b26's two loops into n21 nest; r19's views have at most
+  12 and 13 issues; the monorepo example checks clean, with one of web's and admin's lines out its card's far side.
+- **What is left of #111: r19's logger.** Lines into it still cross other lines: 5 crossings in the boxed view and 6 in
+  the plain one involve a line into logger. Placing logger elsewhere doesn't clear them: with every other card where it
+  is, each free slot in the view gives at least 5 such crossings in either view (the boxed view's current slot is the
+  best). In the plain view api, db and logger sit in one row, so api's line into logger must pass db, under it or over
+  it, and a line from worker into db's bottom, or from auth into db's top, then crosses it. Clearing them needs a
+  crossing-aware order of the whole view's rows and columns, not the router.
+- **u21's Catalog unfolded** on its shop view checks clean in the browser in all five fonts. Node's text estimate still
+  finds one label ("orders") 10 px from its line's end, which is label placement (#108).
+
 ### The page and the reader (#133 to #137)
 
 - **Search finds what an `update()` brought (#133).** The page indexed its cards and views once, on mount. After an

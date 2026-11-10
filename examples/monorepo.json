@@ -1,0 +1,331 @@
+{
+  "title": "A monorepo's packages, mapped from its dependency list",
+  "root": "boxed",
+  "nodes": [
+    {
+      "id": "apps/web",
+      "label": "web",
+      "kind": "frontend",
+      "icon": "window",
+      "sublabel": "apps/web",
+      "what": "The apps/web package."
+    },
+    {
+      "id": "apps/admin",
+      "label": "admin",
+      "kind": "frontend",
+      "icon": "window",
+      "sublabel": "apps/admin",
+      "what": "The apps/admin package."
+    },
+    {
+      "id": "apps/mobile",
+      "label": "mobile",
+      "kind": "frontend",
+      "icon": "window",
+      "sublabel": "apps/mobile",
+      "what": "The apps/mobile package."
+    },
+    {
+      "id": "services/api",
+      "label": "api",
+      "kind": "backend",
+      "icon": "server",
+      "sublabel": "services/api",
+      "what": "The services/api package."
+    },
+    {
+      "id": "services/worker",
+      "label": "worker",
+      "kind": "backend",
+      "icon": "server",
+      "sublabel": "services/worker",
+      "what": "The services/worker package."
+    },
+    {
+      "id": "packages/ui/charts",
+      "label": "charts",
+      "kind": "frontend",
+      "icon": "package",
+      "sublabel": "packages/ui/charts",
+      "what": "The packages/ui/charts package."
+    },
+    {
+      "id": "packages/ui/kit",
+      "label": "kit",
+      "kind": "frontend",
+      "icon": "package",
+      "sublabel": "packages/ui/kit",
+      "what": "The packages/ui/kit package."
+    },
+    {
+      "id": "packages/ui/tokens",
+      "label": "tokens",
+      "kind": "frontend",
+      "icon": "package",
+      "sublabel": "packages/ui/tokens",
+      "what": "The packages/ui/tokens package."
+    },
+    {
+      "id": "packages/shared/api-client",
+      "label": "api-client",
+      "kind": "file",
+      "icon": "package",
+      "sublabel": "packages/shared/api-client",
+      "what": "The packages/shared/api-client package."
+    },
+    {
+      "id": "packages/shared/schemas",
+      "label": "schemas",
+      "kind": "file",
+      "icon": "package",
+      "sublabel": "packages/shared/schemas",
+      "what": "The packages/shared/schemas package."
+    },
+    {
+      "id": "packages/server/auth",
+      "label": "auth",
+      "kind": "backend",
+      "icon": "package",
+      "sublabel": "packages/server/auth",
+      "what": "The packages/server/auth package."
+    },
+    {
+      "id": "packages/server/db",
+      "label": "db",
+      "kind": "backend",
+      "icon": "package",
+      "sublabel": "packages/server/db",
+      "what": "The packages/server/db package."
+    },
+    {
+      "id": "packages/server/mailer",
+      "label": "mailer",
+      "kind": "backend",
+      "icon": "package",
+      "sublabel": "packages/server/mailer",
+      "what": "The packages/server/mailer package."
+    },
+    {
+      "id": "tools/release",
+      "label": "release",
+      "kind": "file",
+      "icon": "wrench",
+      "sublabel": "tools/release",
+      "what": "The tools/release package."
+    },
+    {
+      "id": "tools/codemods",
+      "label": "codemods",
+      "kind": "file",
+      "icon": "wrench",
+      "sublabel": "tools/codemods",
+      "what": "The tools/codemods package."
+    }
+  ],
+  "edges": [
+    {
+      "from": "apps/web",
+      "to": "packages/ui/kit",
+      "weight": 3,
+      "what": "140 imports"
+    },
+    {
+      "from": "apps/web",
+      "to": "packages/shared/api-client",
+      "weight": 2,
+      "what": "60 imports"
+    },
+    {
+      "from": "apps/admin",
+      "to": "packages/ui/kit",
+      "weight": 2,
+      "what": "90 imports"
+    },
+    {
+      "from": "apps/admin",
+      "to": "packages/ui/charts",
+      "weight": 2,
+      "what": "25 imports"
+    },
+    {
+      "from": "apps/admin",
+      "to": "packages/shared/api-client",
+      "weight": 2,
+      "what": "40 imports"
+    },
+    {
+      "from": "apps/mobile",
+      "to": "packages/shared/api-client",
+      "weight": 2,
+      "what": "30 imports"
+    },
+    {
+      "from": "services/api",
+      "to": "packages/server/auth",
+      "weight": 2,
+      "what": "30 imports"
+    },
+    {
+      "from": "services/api",
+      "to": "packages/server/db",
+      "weight": 2,
+      "what": "80 imports"
+    },
+    {
+      "from": "services/api",
+      "to": "packages/shared/schemas",
+      "weight": 2,
+      "what": "55 imports"
+    },
+    {
+      "from": "services/worker",
+      "to": "packages/server/db",
+      "weight": 2,
+      "what": "25 imports"
+    },
+    {
+      "from": "services/worker",
+      "to": "packages/server/mailer",
+      "weight": 1,
+      "what": "9 imports"
+    },
+    {
+      "from": "packages/ui/charts",
+      "to": "packages/ui/kit",
+      "weight": 2,
+      "what": "10 imports"
+    },
+    {
+      "from": "packages/ui/kit",
+      "to": "packages/ui/tokens",
+      "weight": 2,
+      "what": "45 imports"
+    },
+    {
+      "from": "packages/shared/api-client",
+      "to": "packages/shared/schemas",
+      "weight": 2,
+      "what": "22 imports"
+    },
+    {
+      "from": "packages/server/auth",
+      "to": "packages/server/db",
+      "weight": 1,
+      "what": "6 imports"
+    },
+    {
+      "from": "packages/server/db",
+      "to": "packages/shared/schemas",
+      "weight": 2,
+      "what": "14 imports"
+    }
+  ],
+  "views": [
+    {
+      "id": "boxed",
+      "parent": null,
+      "title": "Packages, a box per folder",
+      "nodeIds": [
+        "apps/web",
+        "apps/admin",
+        "apps/mobile",
+        "services/api",
+        "services/worker",
+        "packages/ui/charts",
+        "packages/ui/kit",
+        "packages/ui/tokens",
+        "packages/shared/api-client",
+        "packages/shared/schemas",
+        "packages/server/auth",
+        "packages/server/db",
+        "packages/server/mailer",
+        "tools/release",
+        "tools/codemods"
+      ],
+      "containers": [
+        {
+          "id": "apps/",
+          "label": "apps/",
+          "nodeIds": [
+            "apps/web",
+            "apps/admin",
+            "apps/mobile"
+          ]
+        },
+        {
+          "id": "services/",
+          "label": "services/",
+          "nodeIds": [
+            "services/api",
+            "services/worker"
+          ]
+        },
+        {
+          "id": "packages/",
+          "label": "packages/",
+          "nodeIds": []
+        },
+        {
+          "id": "packages/ui/",
+          "label": "packages/ui/",
+          "nodeIds": [
+            "packages/ui/charts",
+            "packages/ui/kit",
+            "packages/ui/tokens"
+          ],
+          "parent": "packages/"
+        },
+        {
+          "id": "packages/shared/",
+          "label": "packages/shared/",
+          "nodeIds": [
+            "packages/shared/api-client",
+            "packages/shared/schemas"
+          ],
+          "parent": "packages/"
+        },
+        {
+          "id": "packages/server/",
+          "label": "packages/server/",
+          "nodeIds": [
+            "packages/server/auth",
+            "packages/server/db",
+            "packages/server/mailer"
+          ],
+          "parent": "packages/"
+        },
+        {
+          "id": "tools/",
+          "label": "tools/",
+          "nodeIds": [
+            "tools/release",
+            "tools/codemods"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "plain",
+      "parent": "boxed",
+      "title": "Packages, no boxes",
+      "nodeIds": [
+        "apps/web",
+        "apps/admin",
+        "apps/mobile",
+        "services/api",
+        "services/worker",
+        "packages/ui/charts",
+        "packages/ui/kit",
+        "packages/ui/tokens",
+        "packages/shared/api-client",
+        "packages/shared/schemas",
+        "packages/server/auth",
+        "packages/server/db",
+        "packages/server/mailer",
+        "tools/release",
+        "tools/codemods"
+      ]
+    }
+  ]
+}
