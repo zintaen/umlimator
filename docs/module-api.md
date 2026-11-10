@@ -1484,3 +1484,37 @@ has one owner. The ids are the audit's: L, N, S, K, E, U, O for the map (runtime
   - `tests/motion.html` is the motion pass: `tests/embed.py` runs it without `--force-prefers-reduced-motion`. Its
     animation frames are timers, which headless virtual time runs.
   - Each test fails on 0.13.0.
+
+### The map's state, readable: `handle.state` and the `state` event
+
+Before, the map's state was spread over flags, DOM classes and private variables. A host or an agent could read the view
+and the selection, and had to guess the rest from the DOM. Now it is one snapshot.
+
+- **`handle.state`** is a `MapState` with `view`, `navigating`, `selection`, `expanded`, `lens`, `overlays`, `story`,
+  `tour`, `replay`, `camera`, `flow`, `motion`, `gesture` and `destroyed`.
+  - Each read builds a fresh one, frozen all the way down and plain JSON, so it can be logged, sent or compared as it is.
+  - `camera` is the centre in map units, to a tenth, and the zoom, to a thousandth.
+- **The `state` event** is `{ state, changed }`, where `changed` lists the keys that changed since the last one.
+  - It comes after the snapshot changes, at most once a frame. A 16 ms timer paces it, so a page in a background tab
+    still reports.
+  - Changes made together come as one event.
+  - The camera comes once it rests: a pan, zoom, glide or drag is one event, with `camera` in `changed`, when the camera
+    has been still for 150 ms, with no press on the map and no move under way. Until then the event's `camera` is
+    where it last rested; `handle.state` reads it live. A glide used to send an event every frame.
+  - The last one, on `destroy()`, has `destroyed: true`.
+  - The first state listener added with `on()` hears changes from then on.
+- **The `lens` event** `{ lens }` comes when the lens on the map changes: `lens()`, or an `update()` whose model lacks it
+  (`lens: null`).
+- **Getters next to it:** `navigating` (the view a move is going to), `destroyed`, and `motion` (`'instant'`, `'reduced'`
+  or `'full'`). `flow` can be set too: `handle.flow = false` stops the lines' flow. A host's setting isn't saved as the
+  page reader's choice; the page saves only what ≋ and F set.
+- **Where it is read:** any `render()` handle, the standalone page's `window.umlimatorMap.state`, and `<umlimator-map>`'s
+  `el.map.state`. `umlimator.py mcp` is to read it with a `page_state()` tool, in the next wave.
+- **Types:** `lib/umlimator.d.ts` adds `MapState`, `Events['state']`, `Events['lens']` and the getters. Nothing in it
+  changed, except comments: `setView()`'s says what its promise resolves to.
+- **Tests:**
+  - `tests/state.html`: the snapshot's keys and types, that it is JSON and frozen, the events and getters, and the last
+    event on `destroy()`.
+  - `tests/motion.html`: `navigating`, a tour and a replay, while they run; a glide, and zooms one on another, each send
+    one camera event.
+  - `tests/page-handle.html`: the CLI page's `window.umlimatorMap.state`.
