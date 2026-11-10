@@ -2876,3 +2876,65 @@ Both gaps were found while writing the State chapter (#129).
 - **Tests:** `tests/page-state.html` (search after `update()`, the hint line at 400 px, ◐, `#check=1` and `#shot=1`),
   `tests/embed.html` (Escape and ↑ after `setView()`), `tests/pieces.html` and `tests/marks.html` (the message's live
   region). Each new check fails before this change.
+
+### Labels keep their words and keep off box borders, and a card's step sits on its shape (#108, #142, #144)
+
+- **What was wrong:**
+  - **Labels side by side** (#108): two labelled lines that leave a card 16 px apart, too close for their labels to
+    stack, each put its label in the middle of its line. The second label then had no room, and showed only its step,
+    or was squeezed onto a box's border. The assistant example's "a draft", whose line jogs 16 px into Check, showed only
+    its 6 beside "writes with".
+  - **Labels between box borders** (#142, #108): a line from a card in one box past a card in another crosses two
+    borders. Between them there was too little room, so its label sat on a border or showed only its step. Wider fonts
+    made it worse: a short label such as "Sends" sat on both borders under Arial, Verdana, Georgia and Courier New.
+  - **The check** said nothing when a label showed only its step. It named a label on a box's border, but the CLI
+    counted that as `other`.
+  - **A card's step** (#144): a step's number keeps 16 px above the highest line into its card's left side, so it
+    covers no arrow. When that line ends 16 px or less below the card's top, the number went up to the box's corner,
+    about 4 px above a person's or a robot's shoulder.
+- **What holds now:**
+  - **A label moves another one aside:** when every spot on its line is taken by a label placed before it, that label
+    tries each of its other spots in turn until both fit, each with its words.
+  - **The layout makes room:** a label that sits on a box's border, shows only its step, or finds no spot asks for room.
+    The column gap the label sits in widens by its width, or else the row gap by its height and 14 px. A label in
+    neither, or with no spot, widens the gap that its line's longest run crosses, a column gap first. This room comes
+    on top of what keeps boxes apart. The
+    view is laid out again with it, rip-up tries included, and that layout is kept only if it has fewer issues and
+    fewer labels cut to their step.
+  - **The check names what is left:** `check()` and the page's check report
+    `label "hands over job 0" has no room on edge A→T0: only its step 1 shows`. `umlimator.py check` counts it as
+    `labelNoRoom`, and a label on a box's border as `labelOnBorder`. `--ignore` takes both.
+  - **The step sits on the shape:** where its number has to stay that high, a person's or a robot's shoulder comes up
+    under it, 5 px below its middle. The head is as much shorter.
+- **Numbers, before → after:**
+  - The page's check, with `--expand` (not for b26, b69 and m50), on every bench model, example and import sample,
+    under the default font, Arial, Verdana, Georgia and Courier New:
+    - labels on a box's border: 1 in each font (u21, shop with orders unfolded: "orders") → 0;
+    - labels that show only their step: 0, and the new check finds none;
+    - all issues: 691 → 656 in the default font, 667 → 635 in Arial, 667 → 666 in Verdana, 678 → 652 in Georgia, 665 →
+      644 in Courier New. All of them are in the bench's made-up graphs, and only b69 under Verdana has more (249 → 251).
+      Every example and import sample checks clean in all five fonts, as before.
+  - The bench's issues (its route audit): 690 → 682. No view has more: m50/overview 288 → 282, u21/shop+orders and
+    u21/shop+orders+o-checkout 1 → 0 ("orders" sat on Order service's border).
+- **Bench views that moved** (`bench/expected.json`):
+  - laid out again with room for a label: s16/pay ("declined" showed only its 3) and the views that unfold into it
+    (s16/site+pay, s16/site+job+pay), u21/shop+orders and u21/shop+orders+o-checkout;
+  - a label moved aside for another: bookshop/api ("paid order" makes room for "checkout", which showed only its 2),
+    u21/shop, b69/overview, b69/back and m50/overview;
+  - bookshop/checkout is in the file now, as the bench's own update writes every view; its geometry is as it was.
+- **Visible changes:** some labels sit elsewhere on their lines. Some views with a label that had no room are wider or
+  taller where it now fits. A person's or robot's shoulder is higher when a step sits on it and a line comes in on its
+  left near the top.
+- **API added:** the check's new issue, and `labelOnBorder` and `labelNoRoom` for `umlimator.py check --ignore`. No
+  model field, option or type changes.
+- **Tests:**
+  - `tests/layout.test.mjs`: models made for each case: a numbered line past two box borders, with a short, a middling
+    and a long label; and two lines that leave a card 16 px apart, one jogging into its target. Every label keeps its
+    words and the check finds nothing. u21's shop with Orders unfolded has no label on a border. Another test is six
+    numbered lines down one column, whose labels have no room: the check names each one.
+  - `tests/aids.html`: the same models under Arial, Verdana, Georgia and Courier New. No label is cut or on a border.
+  - `tests/embed.py`: the CLI counts a label that shows only its step as `labelNoRoom`, and `--ignore` takes both kinds.
+  - `tests/shapes.html`: the step test's model, whose left ports are 16, 32 and 48 px down, now also checks that each
+    step's number touches its person's or robot's shape, in c4 and uml.
+
+  Each check fails before this change.

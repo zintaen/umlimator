@@ -451,6 +451,36 @@ test("two cards that both feed the same two cards: one line goes round the outsi
   assert.equal(round.length, 1, JSON.stringify(round.map(e => e.pts)));
 });
 
+// a numbered line from a card in one box past a card in another (#142), and two labelled lines that leave a card 16 px apart,
+// one of them jogging 16 px into its target (#108, as assistant's "a draft"): each label shows its words, off the boxes' borders
+const BOXES = (label, step) => ({ nodes: [{ id: 'a', label: 'Alpha' }, { id: 'b', label: 'Beta' }, { id: 'c', label: 'Gamma' }],
+  edges: [{ from: 'a', to: 'b', label, step }, { from: 'c', to: 'b' }],
+  views: [{ id: 'v', nodeIds: ['a', 'b', 'c'], containers: [{ id: 'x', label: 'Left', nodeIds: ['a'] }, { id: 'y', label: 'Right', nodeIds: ['b', 'c'] }] }] });
+const JOG = { nodes: [{ id: 'draft', label: 'Draft' }, { id: 'check', label: 'Check' }, { id: 'model', label: 'Model', kind: 'external' }, { id: 'tone', label: 'Tone guide', kind: 'database' }],
+  edges: [{ from: 'draft', to: 'model', label: 'writes with' }, { from: 'draft', to: 'check', label: 'a draft' }, { from: 'tone', to: 'check', label: 'reviews' }],
+  views: [{ id: 'v', render: 'sequence', lanes: false, nodeIds: ['draft', 'check', 'model', 'tone'], layout: { tone: [0, 0], draft: [0, 1], check: [1, 1], model: [1, 2] } }] };
+
+test('a label keeps its words, off the boxes\' borders: on a line with a step past two box borders (#142), and beside a line that leaves its card 16 px from it (#108)', () => {
+  const cases = [...['Sends', 'Sends the report', 'Sends the nightly report every day'].flatMap(l => [[`boxes, "${l}"`, BOXES(l)], [`boxes, "${l}", step 1`, BOXES(l, 1)]]), ['two lines side by side, one jogging', JOG]];
+  for (const [name, m] of cases) {
+    const g = layout(m, 'v');
+    assert.deepEqual(g.edges.filter(e => e.label && (!e.lbl || e.lbl.short)).map(e => e.label), [], `${name}: a label cut to its step`);
+    assert.deepEqual(check(m, 'v').map(i => i.message).filter(s => / sits on the border | has no room /.test(s)), [], name);
+  }
+  assert.ok(layout(JOG, 'v').edges.some(e => e.label === 'a draft' && e.pts.length === 4 && Math.abs(e.pts[3][1] - e.pts[0][1]) <= 16), 'the line jogs 16 px or less');
+  // u21's shop with Orders unfolded: "orders", on the line down into Order API, sat on the box's left border
+  assert.deepEqual(check(read('../bench/models/u21.json'), 'shop', { expand: ['orders'] }).map(i => i.message).filter(s => s.includes(' sits on the border ')), []);
+});
+
+test('the layout check names a label that has no room on its line and shows only its step (#142)', () => {
+  // six numbered lines from a card down to the six cards under it, in one column: their labels have no room beside each other
+  const ids = [0, 1, 2, 3, 4, 5].map(i => 't' + i), m = { nodes: [{ id: 'a', label: 'A' }, ...ids.map((id, i) => ({ id, label: 'T' + i }))],
+    edges: ids.map((id, i) => ({ from: 'a', to: id, label: 'hands over job ' + i, step: i + 1 })), views: [{ id: 'v', nodeIds: ['a', ...ids], layout: Object.fromEntries([['a', [0, 0]], ...ids.map((id, i) => [id, [0, i + 1]])]) }] };
+  const cut = layout(m, 'v').edges.filter(e => e.lbl && e.lbl.short).map(e => `view v: label "${e.label}" has no room on edge A→${e.t.label}: only its step ${e.step} shows`);
+  assert.ok(cut.length, 'a label cut to its step');
+  assert.deepEqual(check(m, 'v').map(i => i.message).filter(s => s.includes(' has no room ')), cut);
+});
+
 test('a labelled line into a card in a box in a box gets room for both borders, as one into a lane does (#82)', () => {
   const m = nested => ({ nodes: [{ id: 'a', label: 'A' }, { id: 'b', label: 'B' }], edges: [{ from: 'a', to: 'b', label: 'reads often' }],
     views: [{ id: 'v', nodeIds: ['a', 'b'], containers: nested ? [{ id: 'o', label: 'Outer', nodeIds: [] }, { id: 'i', label: 'Inner', nodeIds: ['b'], parent: 'o' }] : [{ id: 'o', label: 'Outer', nodeIds: ['b'] }] }] });

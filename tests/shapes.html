@@ -246,7 +246,11 @@ try {
     sg.edges.forEach((e, i) => { if (!['p', 'r'].includes(e.to) || e.ts !== 'L') return; const r = rectOf(sr.querySelector(`.node[data-id="${e.to}"] .step rect`)), path = sr.querySelector(`.edge-g[data-i="${i}"] .edge`), q = path.getPointAtLength(path.getTotalLength());
       // the arrowhead: 10 px back from the end, 4 px either side
       if (q.x - 10 < r[0] + r[2] && q.x > r[0] && q.y - 4 < r[1] + r[3] && q.y + 4 > r[1]) hidden.push([e.from, e.to, q.x, q.y, r]); });
+    // and it sits on the shape: some of its pill is on the person's or robot's outline or inside it (#144: 4 px above the shoulder)
+    const svg = sr.querySelector('svg.map-svg'), apart = ['p', 'r'].filter(id => { const r = rectOf(sr.querySelector(`.node[data-id="${id}"] .step rect`)), b = sr.querySelector(`.node[data-id="${id}"] .n-body`);
+      for (let i = 0; i <= 20; i++) for (let j = 0; j <= 20; j++) { const q = pt(svg, r[0] + r[2] * i / 20, r[1] + r[3] * j / 20); if (b.isPointInFill(q) || b.isPointInStroke(q)) return false; } return true; });
     check(`${nt}: a step's number covers no arrow into the card's left side`, !hidden.length && sr.querySelectorAll('.step rect').length === 3, hidden);
+    check(`${nt}: a step's number on a person or robot whose highest line into its left side ends 16 px down touches its shape (#144)`, !apart.length && sg.edges.some(e => e.to === 'p' && e.ts === 'L' && e.pts.at(-1)[1] - e.t.y <= 16), [apart, sg.edges.filter(e => e.to === 'p').map(e => e.pts.at(-1)[1] - e.t.y)]);
   }
   // a shape or kind named like an object's own key is not a shape: the card is drawn by its kind
   errors.length = 0;
