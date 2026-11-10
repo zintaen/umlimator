@@ -427,6 +427,23 @@ test("a line's label finds the gap where it fits between the cards and lines bes
   assert.deepEqual(check(read('../examples/clinic.json'), 'api-components').map(i => i.message), []);
 });
 
+test("a loop drawn under the boxes comes up beside its target into its near side, the lowest port there; two into one card nest (#128)", () => {
+  const near = (g, from, to) => { const e = g.edges.find(e => e.from === from && e.to === to), t = e.t, [x, y] = e.pts.at(-1);
+    assert.equal(e.how, 'under', `${from} -> ${to} runs under the boxes`); assert.equal(e.ts, 'R', `${from} -> ${to} comes into ${to}'s near side`);
+    assert.equal(x, t.x + t.w); assert.ok(e.pts.slice(-3).every(([px]) => px >= t.x + t.w), JSON.stringify(e.pts)); // up the gap beside it
+    assert.ok(g.edges.every(o => o === e || o.ts !== 'R' || o.t !== t || o.pts.at(-1)[1] <= y || o.under), 'the lowest port on that side');
+    return e; };
+  const w = read('../examples/weather.json'), g = layout(w, 'check');
+  near(g, 'quarantine', 'readings'); assert.deepEqual(check(w, 'check').map(i => i.message), []);
+  const b = layout(read('../bench/models/b26.json'), 'overview'), [i, o] = [near(b, 'n18', 'n21'), near(b, 'n14', 'n21')]; // o runs lower: it comes up nearer the card, into the lower port
+  assert.ok(o.pts.at(-1)[1] > i.pts.at(-1)[1] && o.pts.at(-2)[0] < i.pts.at(-2)[0], JSON.stringify([i.pts, o.pts]));
+});
+
+test("lines into a card that six or more lines come into are routed first, and cross less: r19's logger has seven (#111)", () => {
+  const m = read('../bench/models/r19.json'), n = v => check(m, v).length;
+  assert.ok(n('boxed') <= 12 && n('plain') <= 13, JSON.stringify([n('boxed'), n('plain')])); // 16 and 15 before: the line crossings in boxed 15 → 10
+});
+
 test('a labelled line into a card in a box in a box gets room for both borders, as one into a lane does (#82)', () => {
   const m = nested => ({ nodes: [{ id: 'a', label: 'A' }, { id: 'b', label: 'B' }], edges: [{ from: 'a', to: 'b', label: 'reads often' }],
     views: [{ id: 'v', nodeIds: ['a', 'b'], containers: nested ? [{ id: 'o', label: 'Outer', nodeIds: [] }, { id: 'i', label: 'Inner', nodeIds: ['b'], parent: 'o' }] : [{ id: 'o', label: 'Outer', nodeIds: ['b'] }] }] });

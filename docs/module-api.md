@@ -2777,3 +2777,52 @@ Both gaps were found while writing the State chapter (#129).
     story's path stays lit through it, and `clear` still takes the assistant's own path off.
 
   Each check fails before this change.
+
+## 0.16.0: (unreleased)
+
+### Loops under the boxes come into their target's near side, and lines into a busy card route first (#128, part of #111)
+
+- **What was wrong.**
+  - **A loop under the boxes (#128).** A line that closes a loop out of a box runs under the boxes: out its source's
+    right side, down past every box and card in its way, and left along the bottom. It then came up into its target's
+    bottom, the far side from where it came. #127 brought routed loops into their target's near side; loops under the
+    boxes were left as they were (weather's check view, s16's unfolded pay, b26).
+  - **Lines into one busy card (#111).** Lines were routed shortest first. Lines into a card that many lines come into
+    were often routed after the lines round it, which had taken the tracks by the card, so they crossed them on the way
+    in. r19's logger has seven lines in, and most of r19's crossings were by one of them.
+- **What holds now.**
+  - A loop under the boxes comes up the gap right of its target and into its near side, at the lowest port there, below
+    the side's other lines. Where that would cut through a card, it comes up into the target's bottom as before, and
+    where that would too, the router takes it. Two loops into one card nest: the outer one comes up nearer the card,
+    into the lower port.
+  - Lines into a card that six or more lines come into are routed first, in the order that nests them (#49), and the
+    other lines go round them.
+- **Visible changes.** The loops under the boxes in weather's check view, s16's site view with pay unfolded (and with
+  job and pay), and b26's overview come into their target's right side. b26 has two more of them: n11 → n20 and
+  n02 → n10 came up through a card on the old way, so the router took them; now they run under the boxes. Lines into
+  r19's logger, and into m50's busiest cards, take other tracks. No other example moves.
+- **API added:** none. No type, option, model field or event changes.
+- **Bench**, layout-check issues before → after (the other views draw as before):
+
+  | View | Issues |
+  |---|---|
+  | b26/overview | 82 → 81 |
+  | m50/overview | 288 → 268 |
+  | r19/boxed | 16 → 12 (crossings 15 → 10) |
+  | r19/plain | 15 → 13 |
+  | s16/site+pay, s16/site+job+pay | 0 → 0 |
+
+  In all, 690 → 663.
+- **Tests** (`tests/layout.test.mjs`; each fails before this change): weather's check view brings its loop into
+  Readings' right side at the lowest port and checks clean, and b26's two loops into n21 nest; r19's views have at most
+  12 and 13 issues.
+- **What is left of #111.**
+  - **r19's logger.** Its lines still cross other lines: 5 crossings in the boxed view and 6 in the plain one involve a
+    line into logger. In the plain view api, db and logger sit in one row, so api's line into logger must pass db, under
+    it or over it, and the line from worker into db's bottom, or from auth into db's top, then crosses it. Clearing them
+    needs the layout to place the cards otherwise, not the router.
+  - **The monorepo map (r15).** Drawn by `umlimator.py render`, its plain view has one crossing in every test font, and
+    its boxed view one in the default font, Verdana and Georgia. web and admin both import kit and api-client, kit sits
+    above api-client, and one of the four lines has to cross another or go round the map. So it is not an example yet.
+  - **u21's Catalog unfolded** on its shop view checks clean in the browser in all five fonts. Node's text estimate
+    still finds one label ("orders") 10 px from its line's end, which is label placement (#108).

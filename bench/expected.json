@@ -1,5 +1,5 @@
 {
- "commit": "47280ee",
+ "commit": "449ca99",
  "results": {
   "b10/norepair": {
    "hashes": [
@@ -18,7 +18,7 @@
   },
   "b26/overview": {
    "hashes": [
-    "e57657e9"
+    "8f8e2bb4"
    ]
   },
   "b69/back": {
@@ -41,6 +41,11 @@
     "b3d2849e"
    ]
   },
+  "bookshop/checkout": {
+   "hashes": [
+    "e259c79c"
+   ]
+  },
   "bookshop/overview": {
    "hashes": [
     "12e6dea4"
@@ -58,7 +63,7 @@
   },
   "m50/overview": {
    "hashes": [
-    "8273bb09"
+    "358d4cbb"
    ]
   },
   "r15/boxed": {
@@ -73,12 +78,12 @@
   },
   "r19/boxed": {
    "hashes": [
-    "527ddbca"
+    "ea1ee544"
    ]
   },
   "r19/plain": {
    "hashes": [
-    "b67493c7"
+    "cb3c446a"
    ]
   },
   "s16/job": {
@@ -103,12 +108,12 @@
   },
   "s16/site+job+pay": {
    "hashes": [
-    "e8bf88d9"
+    "2d49348f"
    ]
   },
   "s16/site+pay": {
    "hashes": [
-    "cc8fa8e4"
+    "19a87bd0"
    ]
   },
   "u21/catalog": {
