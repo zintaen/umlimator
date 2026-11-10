@@ -46,7 +46,9 @@ function apply(c) {
   else if (c.op === 'delete' && (t.type === 'chip' || t.type === 'badge')) { const x = t.container ? v.containers.find(q => q.id === t.container) : m.nodes.find(q => q.id === t.node), k = t.type === 'chip' ? 'verbs' : x.badges ? 'badges' : 'badge';
     if (k === 'badge') delete x.badge; else x[k].splice(t.index, 1); }
   else if (c.op === 'reorder' && (t.type === 'chip' || t.type === 'badge')) { const x = t.container ? v.containers.find(q => q.id === t.container) : m.nodes.find(q => q.id === t.node), l = t.type === 'chip' ? x.verbs : x.badges; l.splice(c.index, 0, ...l.splice(t.index, 1)); }
-  return m; // a reorder or move of a card changes no meaning here; the canvas keeps the position it hinted
+  // a card's new place goes into the view's layout: the map sees the edit applied, and undo and redo move the card back and forth
+  if ((c.op === 'move' || c.op === 'reorder') && t.type === 'node' && c.hint && Number.isFinite(c.hint.col)) v.layout = { ...v.layout, [t.id]: [c.hint.col, c.hint.row] };
+  return m;
 }
 const log = document.getElementById('log'), note = t => log.insertAdjacentHTML('afterbegin', `<li>${t}</li>`);
 // undo is the host's: history() keeps the models it had, and the host hands one back to the map
