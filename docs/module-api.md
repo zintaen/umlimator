@@ -1727,8 +1727,8 @@ a true outcome, and the state can be read.
   - *Now.* A taken port falls back to a port of the model's own, the same on each run, and only then to any port. A
     batch gets a batch of replies. The instructions name the model's whole path and the folder the server runs in. A
     relative path is looked for in the model's folder first, and an error names where it looked.
-  - The page's own machines (its state, acknowledgements, replay and last good page, and mcp-session 1) come in the
-    next wave, on the map's state contract.
+  - The page's own machines (its state, acknowledgements, replay and last good page, and mcp-session 1) came in the
+    next wave, on the map's state contract: "The MCP server's page says what it shows", below.
 - **Behaviour changes, all for defects the audit reproduced:**
   - `stills` exits 1 when a view fails.
   - The first `stills` run after upgrading draws every view again (`.stills.json` gives way to `.stills/`).
@@ -1881,6 +1881,68 @@ ids are the audit's: a machine, then the number of its defect.
     on another view, and the reader's own move while a link is followed.
   - `tests/element.html` adds the element's checks.
   - Each defect fixed has a check that fails without this change.
+
+### The MCP server's page says what it shows (tooling, wave 2)
+
+The state-machine audit found these in `umlimator.py mcp`'s page, by the ids of its tooling inventory. Its page tools
+answered "sent" for what was written to a socket. A page that opened late got the last command alone. A model that
+stopped rendering took the page down. And the assistant could not learn what the page showed.
+
+- **Shown means shown (mcp-sse-clients 1 and 2, mcp-page-player 1 and 2):**
+  - *What was wrong.* A closed tab counted as connected for up to 20 s, so "Sent to 1 page" could go to nobody. A
+    command that came while a page was connecting was played twice. No tool read what the page showed, and a command
+    stuck behind a move (a tab in the background) held every later one.
+  - *Now.* The served page posts its map's `state` (the `MapState` of 0.14.0) on each change, and after each command it
+    has shown or failed to, with the command's id.
+    - A page tool waits up to 6 s for that, and answers "Shown on N pages, on view X", "The page could not show it: …",
+      "Sent to N open pages, which did not show it within 6 s…", or "No page is connected: open …".
+    - A command that takes the page more than 5 s is answered as failed, with why, and the next one goes on.
+    - The page shows each command once, whatever comes twice.
+    - A closed tab drops out within 2 s, the ping's interval.
+  - The new read tool `page_state()` returns, for each open page, its `state`, whether it shows the model's latest
+    version, and the last command it showed (or why not). It also returns what the assistant asked for last, and
+    whether the model renders.
+- **A late page shows what the assistant built (mcp-latest-command 1 to 3):**
+  - *What was wrong.* After `show_view(trips)` and `highlight(...)`, a page that opened later got the highlight alone,
+    on the root view, where it dimmed every card. A replayed command carried the version of the model at replay time.
+    A story or tour sent long ago played again.
+  - *Now.* The server folds its commands into what the page should show, `{view, highlight, tour, story}`, the latest of
+    each, and sends that.
+    - A highlight or tour that names no view goes on the view its Refs name. Otherwise it goes on the last view asked
+      for that shows all its cards, else the first view that does.
+    - A tour or story that a page reports has ended is taken out, so a page that opens later doesn't play it again.
+    - When a new version of the model renders, what it no longer has (a view, cards, lines, a story) is dropped.
+- **The assistant's highlight is its own (mcp-page-player 3, and the decision's rule 3):**
+  - *What was wrong.* The assistant's highlight shared the map's `highlight` layer with the page's own lit paths and
+    stories. The reader's view change cleared it without a word. `clear()` stopped only the server's story.
+  - *Now.* It is drawn on a layer of its own, `mcp`: off on any other view, so it never dims every card there, and back
+    when the reader returns to its view. `page_state()` shows it in `overlays`. `clear()` takes off the assistant's
+    highlight, tour and story; a story the reader started is the reader's.
+  - For this, the module's `highlight()` takes `{ layer }` (additive): `highlight(refs, { layer: 'mcp' })` draws the
+    same marks as a layer of that name, and `null` clears that layer only.
+- **A model that stops rendering keeps the page (mcp-page-render 1 and 2):**
+  - *What was wrong.* The page reloaded into a bare 500 and lost its map and its event stream, while the tools went on
+    saying "Sent to 1 page". The page was labelled with the version read before the render, which an edit during it
+    could change.
+  - *Now.* The page is rendered from a snapshot of the model's bytes, labelled with their hash, and when a page tool
+    is called. A version that doesn't render keeps the last page that did. The page tools begin their answer with "The
+    model no longer renders, so the page shows its last version that did: <why>", the page shows the same in a bar,
+    and `page_state()` gives `model.renders: false`.
+  - Before any version renders, the page says why and draws the map once one does.
+- **A tab outlives its server (mcp-session 1):**
+  - *What was wrong.* When another model's server took the port, an open tab reloaded into that map without a word.
+  - *Now.* The page names its model file, and another model's server refuses its event stream. The tab stays as it was
+    and says that its server now serves another map.
+- **Known limits, for later:**
+  - mcp-page-render 3: `GET /` still renders under the lock when the model changed since the last page tool, which
+    renders first, so a page rarely waits. Rendering in the background would end it.
+  - mcp-page-player 4: a headless browser that waits for network idle still waits on the event stream for ever (wait
+    for `load`). `page_state()` gives an assistant the page's state without a browser.
+- **Tests:**
+  - `tests/mcp.py` (new, in CI) drives the server through its pipes, as a client does, and its page in headless Chrome
+    over the DevTools protocol. It runs one case per defect above, and 11 of its first 13 fail on 0.13.0's server;
+    `mcp-session 1` was added after.
+  - `tests/cli.py`'s MCP part answers as a page does.
 
 ### The PDF reads as a document to hand in for a review (`pdf`)
 
