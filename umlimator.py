@@ -20,7 +20,7 @@ MODEL.json is the map model in engine/references/schema.md (nodes, edges, views)
 node (PROPOSED, TARGET, OFF ...). `stills` needs Google Chrome or Chromium; the PNGs are what a document that cannot
 run the page (a wiki such as Confluence) shows. `diff`, `drift`, `trace` and `mcp` run the module's own functions in Node.
 """
-import argparse, base64, contextlib, hashlib, html, io, json, os, re, shutil, signal, struct, subprocess, sys, tempfile, urllib.parse, urllib.request, zipfile, zlib
+import argparse, atexit, base64, contextlib, hashlib, html, io, json, os, re, shutil, signal, struct, subprocess, sys, tempfile, urllib.parse, urllib.request, zipfile, zlib
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -213,12 +213,31 @@ def page_model(model_path, out, source=None):
     return temp_json(m, model_path, ".icons.json")
 
 
+_temps = set()  # temp_json's copies still on disk: removed however the process ends, SIGTERM (exit 143) included
+atexit.register(lambda: [p.unlink(missing_ok=True) for p in list(_temps)])
+
+
 def temp_json(m, near, suffix):
-    """`m` written to a file of its own next to `near` (hidden, removed by the caller), so parallel renders never share one."""
-    fd, tmp = tempfile.mkstemp(prefix="." + Path(near).stem + ".", suffix=suffix, dir=Path(near).resolve().parent)
+    """`m` written to a file of its own next to `near` (hidden), so parallel renders never share one. Its name is
+    registered before the file exists, so a stop at any moment leaves nothing behind; the caller removes it (untemp)."""
+    d = Path(near).resolve().parent
+    while True:
+        tmp = d / f".{Path(near).stem}.{os.urandom(4).hex()}{suffix}"
+        _temps.add(tmp)
+        try:
+            fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+            break
+        except FileExistsError:
+            _temps.discard(tmp)
     with os.fdopen(fd, "w", encoding="utf-8") as f:
         f.write(json.dumps(m, ensure_ascii=False))
-    return tmp
+    return str(tmp)
+
+
+def untemp(path):
+    """A temp_json copy, removed."""
+    Path(path).unlink(missing_ok=True)
+    _temps.discard(Path(path))
 
 
 def icon_table(models):
@@ -260,7 +279,7 @@ def cmd_render(a):
     try:
         render(a, model)
     finally:
-        Path(model).unlink()
+        untemp(model)
 
 
 def render(a, model, show=print):
@@ -304,9 +323,9 @@ def render_model(m, near, out):
         try:
             return render(argparse.Namespace(out=str(out), no_check=True), model, show=quiet)
         finally:
-            Path(model).unlink()
+            untemp(model)
     finally:
-        Path(tmp).unlink()
+        untemp(tmp)
 
 
 def shots(page, out, views):
