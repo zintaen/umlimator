@@ -124,7 +124,7 @@ with tempfile.TemporaryDirectory() as tmp:
     r = cli("check", odd, "--views", "R&D")
     ok("page-hook-protocol#2 · and checked", r.returncode == 0 and (said(r) or {}).get("checked") == "1 views", r.stdout + r.stderr)
     r = cli("pdf", odd, "--out", t / "odd.pdf", "--views", "a+b")
-    ok("page-hook-protocol#2 · and printed", r.returncode == 0 and (said(r) or {}).get("pages") == 3, r.stdout + r.stderr)
+    ok("page-hook-protocol#2 · and printed: the cover and its page", r.returncode == 0 and (said(r) or {}).get("pages") == 2, r.stdout + r.stderr)
     r = cli("stills", page, "--out", t / "fl", "--views", "fl*,nope")
     ok("page-hook-protocol#3 · a name that matches no view ends stills before Chrome starts", r.returncode == 1 and "no view 'nope'" in r.stderr and not (t / "fl").exists(), r.stderr)
     r = cli("stills", page, "--out", t / "fl", "--views", "fl*")

@@ -1955,3 +1955,53 @@ stopped rendering took the page down. And the assistant could not learn what the
   at both ends of a two-way line, by the arrowhead's length for the line's weight.
 - **Tests:** `tests/motion.html` checks the dot's layer (for `tour()` and a view's own tour), the flow's width (normal and
   selected), and where the flow ends.
+
+### The PDF reads as a document to hand in for a review (`pdf`)
+
+The maintainer's review of `umlimator.py pdf` (#93): "PDF layout seems too simple and not formatted well." Each view's
+picture sat in a band with empty page around it. Its `describe()` sentences ran below in two columns, a wall of text
+("Cards: …, …, …" in one paragraph), and then half the page was empty. The legend sat alone on a page of its own, and a
+model without rules printed "The model has no rules." The page now lays the document out itself, a page at a time.
+
+- **The cover**: the model's title, the date, the model's file (its `source`), a summary line (views, cards, lines, and
+  rules when it has any) and the contents. Each view is listed with its caption and its page, indented under the printed
+  views that hold it, and the rules come last.
+- **Each view, from a page of its own**:
+  - **A header**: the view's path ("Bike share › What runs"), its counts, and its caption under them.
+  - **The picture**, as large as the page allows, never larger than drawn, and in its own proportions.
+    - A picture too tall to leave room below it keeps the page's height, and the tables go beside it, in one column.
+    - It is drawn up to 30% smaller (never below a scale of 0.6) when that keeps all its tables on its page.
+  - **The legend** of what this view draws, under the picture.
+  - **Tables**, in place of the sentences, in two columns below the picture:
+    - its cards: the name with its sub-line, the kind, and what it is;
+    - its lines: from → to, the label, and the technology (the line's sub-line). A numbered view's lines are in run
+      order, with their step numbers;
+    - its boxes, with the cards each holds.
+  - **A long table** goes on in the next column or on the next page, under its heading and header row again. A row is
+    never cut, a heading never ends a column, and a table's last row never goes on alone.
+- **The rules**, only when the model has any: a table of each rule, the printed views it applies in, holds or broken,
+  and the lines that break it.
+- **Every page** ends in the model's title and "page N of M". The views and the rules are the PDF's bookmarks.
+- **Print typography**: the page's own fonts (`--um-sans`, `--um-mono`), one type scale (26, 14, 9, 8.5 and 8 pt) and the
+  margins in `@page`. With `--theme dark`, whole pages are dark, margins included.
+- **`--paper a4|letter`**: A4, the default, or US Letter, both across.
+- **How**: Chrome's own page breaks can't be read back, and the contents need each view's page. So the page sets every
+  break itself: each sheet is exactly one page, and a table's rows are moved on one at a time, as measured.
+- **Visible behaviour changes**:
+  - The layout and the page count: a cover, a page or more per view, then the rules. Before, there was a title page, a
+    page per view, and one page for the legend and the rules.
+  - A model without rules has no rules section, and no "The model has no rules.".
+  - In the PDF, the legend's ⤢ Stacked "opens a view of its own"; the page's legend still says "double-click to open".
+  - `pdf` fails when the PDF has fewer than two pages (the cover and a view). Before, it took three.
+- **API added**: `umlimator.py pdf --paper a4|letter`, and `&paper=letter` beside `#pdf=1` in the page's link.
+- **Left out**: a model-wide legend in an appendix (each view's page has its own), portrait pages, and page references
+  from a stacked card to its view.
+- **Tests**: `tests/cli.py` reads the PDFs back with the standard library, as before. It checks:
+  - every page ends in the title and "page N of M", and there are as many pages as `pdf` reports;
+  - the cover: its title, date, file, summary line and contents, with each view's page number the page its header starts;
+  - a view's legend and its tables of cards, lines and boxes, a numbered view's steps, and the rules table;
+  - `--views`, and a dark theme painted to the edge of the page;
+  - a view of 40 cards, whose tables go on over the next pages, each time under the table's heading and header row, with
+    every row whole on one page;
+  - that a model without rules has no rules section.
+  - In `tests/outcomes.py`, one view's PDF has two pages.
