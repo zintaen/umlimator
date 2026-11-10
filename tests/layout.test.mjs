@@ -444,6 +444,13 @@ test("lines into a card that six or more lines come into are routed first, and c
   assert.ok(n('boxed') <= 12 && n('plain') <= 13, JSON.stringify([n('boxed'), n('plain')])); // 16 and 15 before: the line crossings in boxed 15 → 10
 });
 
+test("two cards that both feed the same two cards: one line goes round the outside, so the generated monorepo map checks clean (#111)", () => {
+  const m = read('../examples/monorepo.json');
+  for (const v of m.views) assert.deepEqual(check(m, v.id).map(i => i.message), [], v.id); // plain: web -> kit crossed admin's lines into api-client and charts
+  const round = layout(m, 'plain').edges.filter(e => /apps\/(web|admin)/.test(e.from) && e.fs === 'L'); // out its source's far side, round the column
+  assert.equal(round.length, 1, JSON.stringify(round.map(e => e.pts)));
+});
+
 test('a labelled line into a card in a box in a box gets room for both borders, as one into a lane does (#82)', () => {
   const m = nested => ({ nodes: [{ id: 'a', label: 'A' }, { id: 'b', label: 'B' }], edges: [{ from: 'a', to: 'b', label: 'reads often' }],
     views: [{ id: 'v', nodeIds: ['a', 'b'], containers: nested ? [{ id: 'o', label: 'Outer', nodeIds: [] }, { id: 'i', label: 'Inner', nodeIds: ['b'], parent: 'o' }] : [{ id: 'o', label: 'Outer', nodeIds: ['b'] }] }] });
