@@ -1,7 +1,8 @@
 <!doctype html>
 <!-- The reading aids (0.15.0) in the browser: a box's tone (a tinted region, a dashed border, its title in the tone), a step
-     on a line in any view (its mark, its name and title), and --um-tint, light and dark; the minimap, the SVG and the PNG
-     keep them. tests/embed.py opens it in headless Chrome and reads <pre id="result">. -->
+     on a line in any view (its mark, its name and title), and --um-tint, light and dark; the minimap and the SVG keep them
+     (toPNG() draws that SVG, as tests/embed.html checks). tests/embed.py opens it in headless Chrome and reads
+     <pre id="result">. -->
 <meta charset="utf-8">
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="../lib/umlimator-theme.css">
@@ -12,8 +13,6 @@
 import { render } from '../lib/umlimator.js';
 const out = { ok: [], fail: [] };
 const check = (name, cond, info) => { document.title = name; if (cond) out.ok.push(name); else out.fail.push(name + (info === undefined ? '' : ': ' + JSON.stringify(info))); };
-// real work (a PNG encode, an image decode) under headless virtual time: tests/embed.py holds the clock meanwhile
-const real = async f => { const hold = fetch('/__hold'); try { return await f(); } finally { await fetch('/__release'); await hold; } };
 // a computed colour as [r, g, b, a] in 0..1 (rgb(), rgba() and color(srgb ...), which color-mix() gives); a theme's #hex
 const rgba = s => {
   let m = /rgba?\(([^)]+)\)/.exec(s);
@@ -108,11 +107,6 @@ try {
     check(`${th}: …and the steps`, [...doc.querySelectorAll('.e-step-tx')].map(t => t.textContent).join() === '1,2,3,4.1', [...doc.querySelectorAll('.e-step-tx')].map(t => t.textContent));
   }
   document.documentElement.dataset.theme = 'light';
-  const file = h.toSVG(), vb = file.match(/viewBox="([^"]+)"/)[1].split(' ').map(Number), fb = box('front').querySelector('.family-box');
-  const at = [+fb.getAttribute('x') + 24 - vb[0], +fb.getAttribute('y') + +fb.getAttribute('height') - 6 - vb[1]]; // inside the region, clear of its cards and lines
-  const px = await real(async () => { const png = await h.toPNG({ scale: 1 }), bmp = await createImageBitmap(png), c = new OffscreenCanvas(bmp.width, bmp.height).getContext('2d');
-    c.drawImage(bmp, 0, 0); return [...c.getImageData(Math.round(at[0]), Math.round(at[1]), 1, 1).data].map(v => v / 255); });
-  check('the PNG keeps the region\'s tint', near(px, region('front').fill, 3 / 255), [r3(px), r3(region('front').fill)]);
 
   h.update({ ...MODEL, views: [{ ...MODEL.views[0], containers: MODEL.views[0].containers.map(({ tone, ...c }) => c) }, MODEL.views[1]] });
   check('update() without the tones draws plain boxes again', !sr.querySelector('.family.toned') && !sr.querySelector('.minimap svg rect[fill-opacity=".14"]'), sr.querySelectorAll('.family.toned').length);

@@ -20,7 +20,7 @@ tests/state.html: the map's state machines (0.14.0): truthful setView(), lifecyc
 tests/motion.html, with motion on (no --force-prefers-reduced-motion): a press, a second setView(), update() or destroy() during a move, a selection mid-ease.
 tests/page-state.html: the standalone page's state (0.14.0): its keys, the link it keeps, stories in the history, the details panel, menus, #still and check.
 tests/page-motion.html, with motion on: the page's history through moves: Back and Forward, a story's steps on other views, the reader's own move.
-tests/aids.html: the reading aids (0.15.0): a box's tone, a step on a line in any view, --um-tint; light and dark, the minimap, SVG and PNG.
+tests/aids.html: the reading aids (0.15.0): a box's tone, a step on a line in any view, --um-tint; light and dark, the minimap and the SVG.
 examples/edit.html, embed.html, live.html, playground.html, ask.html, replay.html, timelapse.html, drift.html, element.html: the host pages load and draw.
 Each test page reports in <pre id="result">{"ok": [...], "fail": [...]}</pre>.
 """

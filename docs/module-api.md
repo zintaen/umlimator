@@ -2462,7 +2462,7 @@ the tone and the steps with them; `--um-tint` is the host's to set.
     4.5:1 or more at `--um-tint` 1 and 2; an unknown tone, a box with none, the regions under the cards, a selected box;
     `--um-tint` at 0, 1, 2 and 5 on a card and a region, the accent's tint left alone, a host's own tint kept; steps
     drawn with a label, alone and as a pill, their name and title, the page's check reading them, run order in a
-    numbered view; the minimap; the SVG in both themes and a pixel of the PNG; `update()` dropping the tones.
+    numbered view; the minimap; the SVG in both themes; `update()` dropping the tones.
   - `tests/contrast.html`: boxes in every palette tone, holding cards of every kind, at `--um-tint` 1 and 2, light and
     dark.
   - `tests/cli.py`: the PDF's table of lines gives each line its step.
