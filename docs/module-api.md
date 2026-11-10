@@ -1560,6 +1560,189 @@ and the selection, and had to guess the rest from the DOM. Now it is one snapsho
 - **Tests:** `tests/embed.html` checks both modes. `tests/element.html` checks the attribute, and `tests/docs.test.mjs`
   the block key.
 
+### Playback on the state contract: stories, tours, replays and flow
+
+The playback audit found a story with no named states that played on after the model dropped it, or after the reader took
+the map. The page's Pause paused only CSS. Esc closed neither the recorder nor a tour, and a tour under reduced motion
+showed nothing. The ids are the audit's playback machines: story-player, tour, story-recorder and flow.
+
+- **The story player has named states (story-player).**
+  - `player.state` is `entering` (the step's view, camera, selection and highlight on their way), `playing` or `paused`
+    on a step, then `ended` or `stopped`.
+  - `handle.story` is the player of the story shown, whoever started it: `play()`, the standalone page's Stories menu, or
+    a link. `MapState.story` keeps its shape, `{ id, step, steps, playing }`.
+- **A story event for every change (story-player).** The `story` event carries `playing`. It also comes on a pause or a
+  resume (the same step) and on `destroy()` (step `null`). Before, a host heard of neither.
+- **`play(null)` stops the story shown, and an unknown id leaves it alone (story-player).** Before, `play('nope')` stopped
+  the story shown and then returned `null`.
+- **The story follows the model (story-player).**
+  - An `update()` whose model no longer has the story stops it: `done` false, a story event, and no bar. Before, the old
+    steps played on.
+  - An `update()` whose model changes the story's steps shows the step the story is on as the model now has it.
+  - An `update()` while a step's camera glides in no longer leaves the camera half way: the glide goes on to the step's
+    framing. The camera's glide now says whether it arrived.
+- **A playing story waits once the reader takes the map (story-player).**
+  - These pause it, and the bar shows ▶:
+    - a press on the map (not on the story's bar), the wheel, a key the map acts on, or a zoom button;
+    - a host's `fit()`;
+    - a view or a selection the story didn't make: a host's `setView()` or `select()`, or the page's views list or
+      search.
+  - `resume()` or ▶ plays on.
+  - A view opened while a step's move was under way leaves that step out of it, paused, and `resume()` shows the step
+    again.
+  - Before, the next step undid what the reader had done, once its duration was up.
+- **Focus stays in the map (story-player).** Closing the story from its bar (✕, or ✓ on the last step) puts focus on the
+  map. It fell to `<body>`, out of reach of the map's keys. ‹ on the first step is `aria-disabled` and keeps the focus.
+- **A step sets the whole picture, unfolded cards too (story-player).** A step folds back the cards the reader unfolded
+  on its view before it selects and lights anything. Before, a card unfolded into a box kept the step from selecting it
+  and from lighting its lines (bike-share's Trip service on the system view).
+- **A story lights its own layer (story-player).** A step's highlight is the `story` layer, not the shared `highlight`.
+  So `highlight(null)` (a host's, the page's, or `umlimator.py mcp`'s on a view change) leaves it, and a story's end
+  leaves a host's highlight.
+  - While a step shows, its dimming stands alone. A layer that dimmed before the step (a host's highlight, a lens) keeps
+    its rings and tabs but doesn't dim, so the step looks as it was told.
+  - A layer set while the step shows dims in the step's place, so what the reader lights then still shows.
+- **The page's Pause holds every clock (tour).** ❚❚ paused CSS and SMIL only, so a tour's dot, a replay and a playing
+  story went on. Now they hold where they are, and ▶ lets them go on. A story's step is given its time again.
+- **Esc ends a tour or a replay (tour).** At the top with nothing selected, Esc said "Already at the top" and the dot rode
+  on. Now Esc ends a tour or a replay first, after a gesture or a story, and says so.
+- **Under reduced motion a tour is shown and said (tour).** With no dot to ride, `tour()` showed and said nothing. Now it
+  lights the path at rest in the `tour` layer: its cards ringed and numbered in turn, its lines glowing, nothing dimmed.
+  - The live region says it: "Tour: Rider app → Trip API → …". A story's step says its caption instead.
+  - The path stays until the next tour or replay, `tour(null)`, Esc or a new picture.
+  - `MapState.tour` stays false, since no dot rides.
+- **The recorder (story-recorder).**
+  - Esc closes it when it is on top. Before, Esc cleared the selection, then went up a level, and each was recorded as a
+    step.
+  - It takes no steps while a story is shown.
+  - Save is off with no steps.
+  - Close, Esc and leaving the page ask first while it holds steps or captions that aren't saved.
+- **Flow (flow).**
+  - The page saves flow only when the reader presses ≋ or F. It saved the default at load, so the setting of a reader's
+    first visit stuck.
+  - Under reduced motion no flow is drawn: ≋ isn't offered, F does nothing, and the page ignores a saved choice. A
+    host's `flow = true` sets the state and draws nothing.
+  - The rule that hid flow lines under reduced motion lost to another, so they showed as still dashes with ≋ pressed.
+- **Visible behaviour changes:**
+  - a story's auto-play pauses when the reader takes the map, and a paused story holds its step's tour;
+  - a step folds back the cards unfolded on its view;
+  - a step's dimming stands alone;
+  - the story event comes on pause, resume and `destroy()`;
+  - the page's Pause holds tours, replays and stories;
+  - Esc ends a tour or a replay before it clears the selection or goes up;
+  - under reduced motion a tour is lit at rest and said, and ≋ is hidden;
+  - ‹ on the first step is `aria-disabled`, not `disabled`.
+- **A pause holds the step's tour too (story-player).** `pause()`, the bar's ❚❚, or the reader taking the map stops the
+  step's tour where it is, and `resume()` or ▶ lets it ride on, as the page's ❚❚ does. Before, a paused story's dot rode
+  on. A story opened with `auto: false` isn't paused by anyone, so it still rides each step's tour.
+- **Docs (update-ease):** unfolding in place has eased since 0.12.0, as any `update()` does, though that release's notes
+  above say it doesn't yet.
+- **Types:** `StoryPlayer.state`, `Handle.story`, `play(id: string | null)`, and `playing` on the story event.
+- **Tests:** `tests/stories.html` (reduced motion) and `tests/motion.html` (motion on). Each new check fails before this
+  change.
+
+### The CLI says what happened, and leaves the previous output when it fails (tooling)
+
+The state-machine audit found these in the CLI, its caches and the MCP server's small parts. The ids are those of its
+tooling inventory (machine, #n). Each fix follows the decision's rules: a step finishes or rolls back, every request gets
+a true outcome, and the state can be read.
+
+- **Outputs (cli-out-artifact 1 to 3, cli-render-pipeline 1):**
+  - *What was wrong.* A failed run could destroy or replace the last good output.
+    - `pdf` deleted the previous PDF before printing, and left a 2-page PDF after a failure.
+    - `render` of a model the engine rejects printed `{"out": …, "errors": []}` and kept the previous page, so the
+      failure looked like a success.
+    - `trace` rewrote the model in place.
+  - *Now.* Every file a command writes goes first to a temp file beside it, which is renamed over the target only once
+    it is whole: the page, pictures, PDF, animated PNG, imported or traced model, time-lapse, `summary.md` and cache files.
+    - A failed run leaves the previous file, and `pdf` says so.
+    - `render` prints its JSON only when the page was written. Otherwise it prints nothing on stdout, the engine's reason
+      on stderr, and exits 1.
+- **Chrome (chrome-driver 1 to 4):**
+  - *What was wrong.* Chrome's exit status and log were dropped. A Chrome that could not start (say, run as root in a
+    container) read as a page problem, with wrong advice. `record` let a timeout escape as a traceback. Chrome's helpers
+    outlived a timeout. Every command said "stills needs Google Chrome or Chromium".
+  - *Now.* A failing Chrome is said in its own words (its log line, with the exit status), and every command handles a
+    timeout the same way (`<command>: Chrome did not finish in N s`). Chrome, the engine and Node each run in a process
+    group of their own, which ends with the command on a timeout, Ctrl-C or SIGTERM.
+- **`--views` (page-hook-protocol 1 to 4):**
+  - *What was wrong.*
+    - `check --views sytem` passed: "0 views" checked, exit 0, and CI's own guard passed on that string.
+    - View ids holding `&`, `+`, `%` or `#`, which the schema allows, could not be stilled, checked or printed.
+    - `stills --views` took no trailing `*`, though `check` and `pdf` did.
+  - *Now.* `check`, `stills` and `pdf` resolve `--views` against the page before Chrome starts, with one rule: a
+    trailing `*` is a prefix. A name that matches no view exits 1 and lists the page's views. Ids are percent-encoded
+    in the page's link. `check` exits 1 when it checked no view.
+- **`render` (cli-render-pipeline 2, 3 and 5):**
+  - *What was wrong.* SIGTERM (an agent's timeout, a cancelled CI job) left the model's hidden copy beside the model,
+    and the engine wrote the page after the command had ended. A checked render left its screenshots in `.<page>-check/`
+    beside the page. `--no-check` output read like a clean check.
+  - *Now.* SIGTERM cleans up as Ctrl-C does. The screenshots, which nothing read, stay in a temp folder. The JSON says
+    `"checked": true` or `false`.
+- **The stills cache (stills-cache 1 to 8):**
+  - *What was wrong.*
+    - A view whose PNG Chrome never wrote was recorded as fresh, so the old PNG stayed for good.
+    - Two runs into one folder left pictures that the shared `.stills.json` disagreed with, and later runs skipped them.
+    - The key left out lines that end on a box, the model's rules (a broken rule's line is drawn rose) and authors.
+    - A failed view exited 0, with text before the JSON on stdout.
+    - `--scale 2` and the default keyed differently.
+    - `--all --views a` dropped every other view's entry.
+    - A record cut short crashed every later run.
+    - A view the page no longer has kept its pictures without a word.
+  - *Now.*
+    - A view's key file, `.stills/<view>.json`, holds its key and the hashes of both files. It is written last, once
+      both files are whole and the PNG is a PNG.
+    - A view is skipped only when its key and both hashes match, so a file another run or a person changed is drawn
+      again.
+    - The key covers those inputs, and scale counts as a number.
+    - A failed view exits 1 with its reason, and stdout is only ever the JSON list.
+    - Pictures of views the page no longer has are named on stderr.
+- **`diff --base`, which the Action runs (diff-base-run 1 to 4):**
+  - *What was wrong.*
+    - A model the pull request broke (a conflict marker) was skipped: "No map model changed."
+    - A failed still put text before the JSON on stdout, so the Action's `changed` came out empty.
+    - With no Chrome the whole command failed, and no summary was written.
+    - `a/b-c.json` and `a-b/c.json` wrote one page.
+  - *Now.*
+    - A map model that no longer parses is a change: an entry `{file, error}` in the JSON and a line in the summary.
+      Other JSON that doesn't parse, such as a `tsconfig.json` with comments, is still not a model.
+    - The pictures are extras: a view without one is listed in `stillsFailed` and said in the summary.
+    - Each model is diffed on its own, so `summary.md` is always written.
+    - A name that is taken gets a short hash.
+- **`import` (import-parsers 1 to 4):**
+  - *What was wrong.* A file cut short, or one with an unclosed `/*`, imported as a smaller map with `"unread": 0`.
+    JSON cut short read as a format it could not tell.
+  - *Now.* At the end of the file, each block still open (Structurizr, C4-PlantUML's boundaries), a comment never
+    closed (and the lines it hid), and an `@startuml` with no `@enduml` are listed with their lines. JSON that does not
+    parse says so. The JSON adds `notImported: [{where, message}]` beside the `unread` count.
+- **The icon cache (icon-cache 1 to 3):**
+  - *What was wrong.* A cached logo was trusted forever, so one cut short was drawn broken in every page. The cache was
+    written in place. `pin-icons` moved files before it recorded their hashes.
+  - *Now.* A cached logo is checked against its sha256 each time it is read, and fetched again when it doesn't match.
+    Offline, the card keeps its sigil. Writes are whole. `pin-icons` writes the hashes first.
+- **The MCP server, its parts away from the page (mcp-session 2 to 4):**
+  - *What was wrong.* A taken port moved the page to a random port on each run. A JSON-RPC batch got one `-32600`,
+    though the 2025-03-26 version it speaks has batches. `diff`'s relative paths resolved in a folder the agent was
+    never told.
+  - *Now.* A taken port falls back to a port of the model's own, the same on each run, and only then to any port. A
+    batch gets a batch of replies. The instructions name the model's whole path and the folder the server runs in. A
+    relative path is looked for in the model's folder first, and an error names where it looked.
+  - The page's own machines (its state, acknowledgements, replay and last good page, and mcp-session 1) come in the
+    next wave, on the map's state contract.
+- **Behaviour changes, all for defects the audit reproduced:**
+  - `stills` exits 1 when a view fails.
+  - The first `stills` run after upgrading draws every view again (`.stills.json` gives way to `.stills/`).
+  - `check` exits 1 when `--views` names no view or no view is checked.
+  - `render`, `pdf`, `stills` and `record` print no JSON when they fail. `check` prints none when the check could not
+    run, and its report, as before, when the model breaks a rule.
+  - `render`'s JSON gains `checked`, `import`'s gains `notImported`, and `diff` and `drift` gain `stillsFailed` when a
+    view has no picture.
+- **Left as it was:** `render`'s own check still gives up after the engine's 45 s on a very large model
+  (cli-render-pipeline 4, not reproduced). The engine is upstream's and unmodified; `check` waits 600 s.
+- **Tests:** `tests/outcomes.py` (new, in CI) runs each of the audit's repros through the CLI, with a stand-in only where
+  a real Chrome can't be made to fail on demand: one that cannot start, one whose helper outlives it, and one that dies
+  on a screenshot. Each defect has a case that failed before these changes. `tests/import.py` adds files cut short.
+
 ### The diff Action's comment, the release and map-repo's CLI end in a true state (tooling)
 
 The state-machine audit found these in three of umlimator's tools, by the ids of its tooling inventory. What holds now:

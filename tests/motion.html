@@ -118,6 +118,48 @@ try {
   ce.length = 0; zoomKey('+'); await wait(60); zoomKey('+'); await wait(60); zoomKey('-'); await wait(700);
   check('…and zooms one on another come to rest once: one camera event', camEv().length === 1, ce.map(e => e.changed));
 
+  // playback (0.14.0): the page's Pause holds every clock; Esc ends a tour; a step's camera and view against an update() and the reader
+  await mount({ view: 'trips' });
+  const X = h[Object.getOwnPropertySymbols(h)[0]], dot = () => +(sr.querySelector('.um-trip circle') || { getAttribute: () => NaN }).getAttribute('cx');
+  const tp = h.tour(['rider-app', 'trip-api', 'unlock', 'stations']); await wait(150);
+  X.pause(true); const d0 = dot(); await wait(400); const d1 = dot(); X.pause(false); await wait(200); const d2 = dot();
+  check("the page's Pause holds a tour's dot where it is, and Play lets it ride on", Number.isFinite(d0) && d0 === d1 && d2 !== d1, [d0, d1, d2]);
+  stage().dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, composed: true, cancelable: true }));
+  check('Esc ends a tour: its promise is false, the dot goes, and the map stays where it is', JSON.stringify(await state(tp)) === '["settled",false]' && !sr.querySelector('.um-trip') && h.state.tour === false && h.view === 'trips', [h.view, h.state.tour]);
+  const T2 = { nodes: [{ id: 'a', label: 'A' }, { id: 'b', label: 'B' }], edges: [{ id: 'ab', from: 'a', to: 'b' }], views: [{ id: 'v', nodeIds: ['a', 'b'] }],
+    stories: [{ id: 's', steps: [{ view: 'v', caption: 'one', duration: 600 }, { view: 'v', caption: 'two', duration: 600 }] }] };
+  await mount({}, T2);
+  const X2 = h[Object.getOwnPropertySymbols(h)[0]], sp = h.play('s'); await until(() => sp.state === 'playing', 2000);
+  X2.pause(true); await wait(1500); const held = sp.step; X2.pause(false); await until(() => sp.step === 1, 3000);
+  check("the page's Pause holds a playing story on its step; Play lets it go on", held === 0 && sp.step === 1, [held, sp.step]);
+  sp.stop();
+  // the story's own pause holds its step's tour too, and resume lets it ride on (M); a story opened with auto: false still rides it
+  await mount({ view: 'trips' });
+  const sm = h.play('ride', { step: 2 }), playBtn = () => sr.querySelector('.um-story [data-s="play"]');
+  await until(() => sr.querySelector('.um-trip circle'), 4000); await wait(150);
+  sm.pause(); const q0 = dot(); await wait(400); const q1 = dot(); sm.resume(); await wait(200); const q2 = dot();
+  playBtn().click(); const q3 = dot(); await wait(400); const q4 = dot(); playBtn().click(); await wait(200); const q5 = dot();
+  check("the story's pause() and its bar's ❚❚ hold its step's tour where it is; resume() and ▶ let it ride on", Number.isFinite(q0) && q0 === q1 && q2 !== q1 && q3 === q4 && q5 !== q4, [q0, q1, q2, q3, q4, q5]);
+  sm.stop();
+  const sa = h.play('ride', { step: 2, auto: false }); await until(() => sr.querySelector('.um-trip circle'), 4000); const a0 = dot(); await wait(300);
+  check("…and a story opened with auto: false, which nobody paused, still rides its step's tour", Number.isFinite(a0) && dot() !== a0, [a0, dot()]);
+  sa.stop();
+  // an update() as a step's camera glides in: the step still gets its framing (rider-app at 75%)
+  await mount({ view: 'context' });
+  let cut = false; h.on('select', e => { if (cut || !e.target || e.target.id !== 'trips') return; cut = true; const m = structuredClone(BIKE); m.nodes.find(n => n.id === 'accounts').label = 'Accounts and sign-in'; h.update(m); });
+  const s2 = h.play('ride', { step: 1, auto: false });
+  await until(() => cut && s2.state === 'paused', 4000); await wait(800);
+  check("an update() as a step's camera glides in: the camera still comes to the step's framing", cut && Math.abs(h.state.camera.zoom - 0.75) < 0.01, [cut, h.state.camera]);
+  s2.stop();
+  // the reader opens another view while a step's move is under way: the step leaves that view alone, and resume() shows it again
+  await mount({ view: 'context' });
+  const s3 = h.play('ride', { step: 1 }); await until(() => h.navigating === 'system', 2000);
+  await h.setView('fleet'); await wait(600);
+  const left = [h.view, h.state.selection.length, h.state.overlays.includes('story'), s3.state];
+  s3.resume(); await until(() => h.view === 'system' && h.selection && h.selection.id === 'trips', 4000);
+  check("a view the reader opens during a step's move: the step leaves it alone, paused; resume() shows the step again", left.join() === 'fleet,0,false,paused' && h.view === 'system' && s3.step === 1, [left, h.view, s3.step]);
+  s3.stop();
+
   // the page: Back while a view is still zooming in is honoured, not dropped
   if (h) { h.destroy(); h = null; }
   const pe = [], hp = mountPage(document.getElementById('page'), BIKE, { params: new URLSearchParams() });
