@@ -1944,6 +1944,18 @@ stopped rendering took the page down. And the assistant could not learn what the
     `mcp-session 1` was added after.
   - `tests/cli.py`'s MCP part answers as a page does.
 
+### A tour's dot rides under the cards, and a line's flow keeps its width and its arrowhead (#124)
+
+- **The dot rides under the cards.** A tour's dot (the model's `tour`, `tour()` and `replay()`) is now drawn over the
+  lines and boxes but under the cards. It goes into a card and comes out at its next line, instead of crossing the card's
+  name. `umlimator.py record` spreads a tour's frames over the lines only, so every frame still shows the dot.
+- **The flow is as wide as its line.** A line's flow was drawn wider than the line (2.4 px on 1.6, and 3.4 on 2.8 when
+  selected), so the line looked lumpy. Now it is exactly as wide, in the canvas colour: light pulses moving along the line.
+- **The flow stops where the arrowhead begins.** It used to run into the arrowhead and bend its shape. Now it stops short,
+  at both ends of a two-way line, by the arrowhead's length for the line's weight.
+- **Tests:** `tests/motion.html` checks the dot's layer (for `tour()` and a view's own tour), the flow's width (normal and
+  selected), and where the flow ends.
+
 ### The PDF reads as a document to hand in for a review (`pdf`)
 
 The maintainer's review of `umlimator.py pdf` (#93): "PDF layout seems too simple and not formatted well." Each view's
