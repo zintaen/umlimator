@@ -2426,8 +2426,8 @@ the tone and the steps with them; `--um-tint` is the host's to set.
     title; a view's `keepPairs` draws each with its own.
   - **Room:** a numbered line with no label gets a gap wide enough for its mark between neighbouring columns, 22 px with
     27 px of line on each side, as a labelled line gets one for its label; before, it got none. Where a label has no
-    room, the line shows its number alone and keeps the label in its title, as numbered views have done since #82: a
-    view's `gap` or `rgap` gives it room.
+    room, the line shows its number alone and keeps the label in its title, as numbered views always have: a view's
+    `gap` or `rgap` gives it room.
   - **The layout check knows the mark:** `check()` and the page's check say when a mark with no label leaves its line
     less than 16 px, as they say it of a label, and the page's check reads the number as an edge label's text, so a mark
     on a card or on another label is found.
