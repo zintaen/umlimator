@@ -1,7 +1,7 @@
 # Examples
 
 Every example below is live at **[zintaen.github.io/umlimator](https://zintaen.github.io/umlimator/)**, built from `main`.
-The systems are made up.
+The systems are made up, except the last map's: umlimator's own state machines.
 
 ## Maps
 
@@ -14,6 +14,7 @@ Each map is a JSON model. CI turns it into a self-contained page (`python3 umlim
 | [`weather.json`](weather.json) | A data pipeline | A process in five steps, weights by volume, a pair of lines kept apart, nested boxes, a line from a box, a loop back, swimlanes, a view list in a set order |
 | [`assistant.json`](assistant.json) | An AI agent's skills | Skill kinds (public, lane, external, verb, script, hook, board), chips under a sub-line, guard and state lines, steps that exist in one view only, a card changed for one view, kinds read from labels |
 | [`clinic.json`](clinic.json) | A Structurizr workspace, imported | What `umlimator.py import` writes from [`clinic.dsl`](clinic.dsl), as it is: the workspace's three views, its system and API as boxes, a group as a box, the lines Structurizr implies, a line to a person as the loop back |
+| [`states.json`](states.json) | State machines: umlimator's own, drawn with umlimator | How navigation, stories, tours, the page and the MCP page relate, then a view per machine: states as cards, transitions as lines labelled with what moves them, composite states as boxes, the machines that run in order numbered, loops back, a tour, and a story along a typical path. The [State chapter](../docs/module-api.md#state) has the tables |
 
 [![Bike share: the boxed view](https://zintaen.github.io/umlimator/examples/stills/bike-share/system.png)](https://zintaen.github.io/umlimator/examples/bike-share.html)
 
@@ -66,7 +67,7 @@ The module embedded in a page, as an app would use it. Serve the repository over
 | Space between columns and rows (`gap`, `rgap`) | weather `check` |
 | A→B and B→A as two lines (`keepPairs`) | weather `flow` |
 | A view's loop back (`loop: true`) | weather `check` |
-| Steps in run order (`render: "sequence"`) and a tour | bookshop `api`, weather `forecaster`, assistant `answer`, bike-share `ride-end` (no tour) |
+| Steps in run order (`render: "sequence"`) and a tour | bookshop `api`, weather `forecaster`, assistant `answer`, bike-share `ride-end` (no tour); states `navigation` (with loops back), `keys` and `mcp` (with boxes) |
 | Swimlanes (`lanes`) | weather `forecaster` |
 | A process in steps (`render: "process"`, `stepIds`) | weather `stages` |
 | The view list's order (`browserOrder`) | weather `stages` |
@@ -82,7 +83,7 @@ The module embedded in a page, as an app would use it. Serve the repository over
 | A trace kept as a numbered view (`sequenceFromTrace()`, `umlimator.py trace`): each call a step, its duration under its label | bike-share `ride-end`, made from `traces/ride-end.json` with `traces/match.json` |
 | Lenses (`lenses`, `owner`, `map.lens()`), the page's Lenses menu and `#lens=<id>` | bike-share: By team (cards ringed by owner, with a legend) and Data flow (feeds and state lines lit, the rest dimmed) |
 | Budgets (`latency`, `cost`): the slowest or costliest path (`critical()`) and what-if (`whatIf()`) | bike-share `trips`: the details panel's ⏱, ¤ and ⊘ (What if this goes down?) |
-| A story told step by step (`stories`, `play()`), its Stories menu and recording in the page, `umlimator.py record` | bike-share (`ride`: a ride from unlock to payment), on the site; pictured under Maps |
+| A story told step by step (`stories`, `play()`), its Stories menu and recording in the page, `umlimator.py record` | bike-share (`ride`: a ride from unlock to payment), on the site; pictured under Maps; states (`assistant`: a page tool, then the reader) |
 | Editing and undo (`editable`, `change`, `history()`) | `edit.html` |
 | `layout()` in Node | `layout.mjs` |
 | The model's JSON Schema (`"$schema"`), `validate()` and `check()` | every model written by hand (`"$schema"`), `playground.html` |

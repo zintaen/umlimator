@@ -25,7 +25,7 @@
 </style>
 <main>
   <h1>umlimator examples</h1>
-  <p class="lead">Layered architecture maps you can click through, from one JSON model. Each map below is a made-up system;
+  <p class="lead">Layered architecture maps you can click through, from one JSON model. Each map below is a made-up system but the last, umlimator's own state machines;
     open one to pan, zoom, select and go into the cards that stack. <a href="https://github.com/zintaen/umlimator">The repository</a> ·
     <a href="https://github.com/zintaen/umlimator/blob/main/examples/README.md">where each feature is shown</a></p>
 
@@ -46,6 +46,9 @@
     <article class="card"><img src="stills/clinic/containers.png" alt="Clinic bookings' containers: the booking site, front desk app, booking API, its database and the reminder queue, with the receptionist in a Clinic staff group" loading="lazy">
       <div><h3>Clinic bookings</h3><p>Imported from a Structurizr workspace by <code>umlimator.py import</code>: its three views, a group as a box, and the lines Structurizr implies at each level.</p>
         <span class="links"><a href="clinic.html">Open the map</a><a href="clinic.pdf">PDF</a><a href="clinic.json">Model</a><a href="https://github.com/zintaen/umlimator/blob/main/examples/clinic.dsl">Its Structurizr source</a></span></div></article>
+    <article class="card"><img src="stills/states/machines.png" alt="umlimator's state machines: the page and the MCP page drive render()'s handle, whose story player, navigation and tours report every change to MapState" loading="lazy">
+      <div><h3>umlimator's state machines</h3><p>umlimator's own state machines, drawn with umlimator: navigation, the story player, tours, the page's keys and the MCP page, with states as cards, transitions as lines and a story along a typical path.</p>
+        <span class="links"><a href="states.html">Open the map</a><a href="states.html#story=assistant&step=1">Its story</a><a href="states.pdf">PDF</a><a href="states.json">Model</a><a href="https://github.com/zintaen/umlimator/blob/main/docs/module-api.md#state">The State chapter</a></span></div></article>
   </div>
 
   <h2>In an app</h2>
