@@ -1,0 +1,65 @@
+<!doctype html>
+<!-- The standalone page's link with motion on (0.14.0): tests/embed.py opens this without --force-prefers-reduced-motion.
+     Headless virtual time runs one animation frame only, so frames here are 16 ms timers, which it does run. Back and
+     Forward during moves, a story's steps on other views, and the reader's own move while a link is followed: the history
+     keeps one entry per view shown, each with what that view showed. -->
+<meta charset="utf-8">
+<link rel="icon" href="data:,">
+<title>umlimator page motion test</title>
+<body style="margin:0">
+<div id="page" style="width:1200px;height:800px"></div>
+<script type="module">
+window.requestAnimationFrame = cb => setTimeout(() => cb(performance.now()), 16);
+window.cancelAnimationFrame = id => clearTimeout(id);
+import { mountPage } from '../lib/umlimator.js';
+const out = { ok: [], fail: [] };
+const check = (name, cond, info) => { document.title = name; if (cond) out.ok.push(name); else out.fail.push(name + (info === undefined ? '' : ': ' + JSON.stringify(info))); };
+const wait = ms => new Promise(r => setTimeout(r, ms));
+const until = async (f, ms = 5000) => { const t = Date.now(); while (!f() && Date.now() - t < ms) await wait(20); return f(); };
+const BIKE = await (await fetch('../examples/bike-share.json')).json(), box = document.getElementById('page');
+const link = () => Object.fromEntries(new URLSearchParams(location.hash.slice(1)));
+let pg = null;
+const mount = async hash => { if (pg) pg.destroy(); box.innerHTML = ''; history.replaceState(null, '', location.pathname + hash);
+  pg = mountPage(box, BIKE, { params: new URLSearchParams() }); await until(() => pg.view && !pg.navigating); await document.fonts.ready; await wait(400); return pg; };
+const settled = () => pg.navigating === null;
+const bar = () => { const s = document.querySelector('#m-canvas .umlimator'); return s && (s.shadowRoot.querySelector('.um-story .um-st') || {}).textContent || null; };
+for (let i = 0; i < 6; i++) history.pushState(null, '', location.pathname + '#before-' + i); // entries to come back to: Back never leaves this page
+try {
+  check('motion is on for this page (tests/embed.py runs it without --force-prefers-reduced-motion)', !matchMedia('(prefers-reduced-motion: reduce)').matches);
+
+  // Back twice, quickly, while the map moves: it lands two entries back, and the entries are the views they were
+  await mount('#view=context');
+  await pg.setView('system'); await pg.setView('trips');
+  history.back(); await wait(80); history.back();
+  check('Back twice during moves lands two entries back, the map and the link agreeing', await until(() => pg.view === 'context' && settled()) && link().view === 'context', [pg.view, location.hash]);
+  history.forward();
+  check('…and Forward finds the next entry as it was', await until(() => pg.view === 'system' && settled()) && link().view === 'system', [pg.view, location.hash]);
+
+  // a card selected, then a move: the select the move sends doesn't rewrite the entry left
+  pg.select({ type: 'node', id: 'trips' }); await until(() => link().node === 'trips');
+  await pg.setView('fleet');
+  history.back();
+  check('a move from a selected card keeps the entry it leaves: Back finds the view and the card', await until(() => pg.view === 'system' && settled() && pg.selection && pg.selection.id === 'trips') && link().node === 'trips', [pg.view, location.hash]);
+
+  // a story whose step moves to another view: the step's entry is that view's, once the move lands
+  await mount('#view=context');
+  const pl = pg.play('ride', { auto: false }); await until(() => /1 \/ 5/.test(bar() || ''));
+  pl.next(); await until(() => /2 \/ 5/.test(bar() || '') && pg.view === 'system' && settled()); await wait(100);
+  check("a story's step on another view goes into that view's entry, once it shows", link().view === 'system' && link().step === '2' && link().node === 'trips', location.hash);
+  history.back();
+  check('…and Back plays the step before, on its own view', await until(() => /1 \/ 5/.test(bar() || '') && pg.view === 'context' && settled()) && link().view === 'context' && link().step === '1', [bar(), pg.view, location.hash]);
+  pl.stop(); pg.play && null;
+
+  // the reader's own move, while a link is followed, wins as a new entry of the reader's
+  await mount('#view=context');
+  await pg.setView('system');
+  history.back(); await wait(60); // the link's move to context is under way
+  document.querySelector('#m-tree [data-v="fleet"]').click(); // the views list lists the view shown's children: system's, still
+  check("a move the reader starts while a link is followed is the reader's: the map goes there, in an entry of its own", await until(() => pg.view === 'fleet' && settled()) && link().view === 'fleet', [pg.view, location.hash]);
+  history.back();
+  check('…and Back returns to the entry the link was', await until(() => pg.view === 'context' && settled()) && link().view === 'context', [pg.view, location.hash]);
+  pg.destroy(); pg = null;
+} catch (e) { out.fail.push('threw: ' + (e && e.stack || e)); }
+const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
+</script>
+</body>
