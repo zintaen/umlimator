@@ -1519,6 +1519,47 @@ and the selection, and had to guess the rest from the DOM. Now it is one snapsho
     one camera event.
   - `tests/page-handle.html`: the CLI page's `window.umlimatorMap.state`.
 
+### An edit's places follow the host's answer, and undo moves cards back (E6, E7)
+
+- **Before:** a card moved, reordered or added emitted `change` with a place hint, and the hint waited for "the next
+  update", whichever it was. A reorder the host refused was applied by the next unrelated update, a collaborator's
+  rename, say (E6). And positions lived only in the handle, so the host's undo of a move put the model back while the
+  cards stayed where they were dropped (E7).
+- **Now the next update decides.** Its model either shows the edit or not:
+  - a move into or out of a box, as the card in its new box;
+  - an add, as a new card in the view with the name the reader typed (case and spaces aside);
+  - a place alone (a move to a spot, a reorder), as the card's own `layout` entry the host wrote, or as the model
+    unchanged, the host answering an edit that changes no field, as `examples/edit.html` did.
+
+  If the model shows the edit, its places are used. If not, they are dropped, and nothing moves for an edit the host
+  refused, whatever comes next. The added card the update shows is the one selected.
+- **Undo and redo:** places an update applied are kept with the model before and the model after. An update back to
+  the model before puts every card back where it was then (undo), and one to the model after moves them again (redo),
+  the 20 latest moves. A move or reorder whose answer left the model unchanged can't be told apart from no edit, so
+  only a host that keeps places in the model gets undo for them. `examples/edit.html` now writes a card's new place into
+  its view's `layout`, so its ⌘/Ctrl Z and ⇧ ⌘/Ctrl Z move cards back and forth.
+- **No new API.** An `update(model, { applied: [changeIds] })` was considered and not added. The model already has a
+  field for places (`layout`), so a host can always show an edit applied in the model, whatever else the update changes.
+  The unchanged model still works for hosts that keep no places.
+- **Visible behaviour changes:** an update that doesn't show a pending edit no longer applies its places, and an add is
+  matched by its name, not by being the only new card.
+- **Tests:** `tests/edit.html` has a refused reorder before an unrelated update, a reorder applied by `layout` together
+  with another change, its undo and redo, a move into a box undone, and a refused add before someone else's new card.
+
+### A map in a document lets the page scroll: `wheel: 'ctrl'` (C1)
+
+- **Before:** the wheel over a map always zoomed it, and a trackpad's scroll panned it, so a page couldn't scroll past
+  a map embedded in it. The docs blocks were where this hurt most.
+- **`render(el, model, { wheel: 'ctrl' })`:** only Ctrl or ⌘ with the wheel, or a trackpad's pinch, zooms. A plain wheel
+  or trackpad scroll is left to the page, and the hint line says "Ctrl + scroll = zoom". `'zoom'`, the default, is
+  as before.
+- **`<umlimator-map wheel="ctrl">`**, and `wheel: ctrl` in a docs block, give the element's map the same. Changing the
+  attribute draws the map again, as `minimap` and `controls` do.
+- **Left out (V2):** in a bare `render()`, Escape and ↑ still go to the view's parent in the model, not to the view the
+  reader came from; the standalone page keeps its own history. Left for later.
+- **Tests:** `tests/embed.html` checks both modes. `tests/element.html` checks the attribute, and `tests/docs.test.mjs`
+  the block key.
+
 ### The MCP server's page says what it shows (tooling, wave 2)
 
 The state-machine audit found these in `umlimator.py mcp`'s page, by the ids of its tooling inventory. Its page tools

@@ -108,6 +108,15 @@ try {
   check("a container's badges are tabs on its border: a click names the badge, and selects the box", boxTabs.length === 2 && JSON.stringify(ev2) === JSON.stringify([{ type: 'badge', container: 'box', index: 1, value: 'Owner: data', view: 'v' }, ['select', { type: 'container', id: 'box', view: 'v' }]]), [boxTabs.length, ev2]);
   check('controls: false leaves the zoom buttons out', !sr2.querySelector('.ctl'));
   h2.destroy(); el2.style.removeProperty('--um-panel'); el2.style.removeProperty('--um-mono');
+  // the wheel: 'zoom' (the default) zooms and keeps the page still; 'ctrl' zooms only with Ctrl or ⌘, and lets the page scroll
+  const wheelOn = (hw, extra) => { const st = el2.querySelector('.umlimator').shadowRoot.querySelector('.stage'), k0 = hw.state.camera.zoom;
+    const w = new WheelEvent('wheel', { deltaY: -100, deltaMode: 0, clientX: 300, clientY: 200, bubbles: true, composed: true, cancelable: true, ...extra }); st.dispatchEvent(w);
+    return [w.defaultPrevented, hw.state.camera.zoom !== k0]; };
+  let hw = render(el2, small);
+  const wz = wheelOn(hw); hw.destroy(); hw = render(el2, small, { wheel: 'ctrl' });
+  const wc = wheelOn(hw), wk = wheelOn(hw, { ctrlKey: true }), wm = wheelOn(hw, { metaKey: true }); hw.destroy();
+  check("wheel: 'zoom' (the default) zooms, and keeps the page from scrolling", JSON.stringify(wz) === '[true,true]', wz);
+  check("wheel: 'ctrl' leaves a plain wheel to the page, and zooms with Ctrl or ⌘", JSON.stringify([wc, wk, wm]) === '[[false,false],[true,true],[true,true]]', [wc, wk, wm]);
   // a line to a container's box: drawn to its border, and clicked, selected and announced like any other line
   const ev7 = [], h7 = render(el2, { nodes: [{ id: 'audit', label: 'Audit' }, { id: 'e1', label: 'Order', kind: 'database' }], edges: [{ id: 'x', from: 'audit', to: 'database', label: 'writes' }],
     views: [{ id: 'v', nodeIds: ['audit', 'e1'], layout: { audit: [0, 0], e1: [2, 0] }, containers: [{ id: 'database', label: 'Database', nodeIds: ['e1'] }] }] }, { on: { select: e => ev7.push(e.target) } });

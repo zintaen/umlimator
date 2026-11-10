@@ -124,7 +124,10 @@ export interface MapState {
 
 /** Where the user dropped or placed something: a point in the view and, on a column view, its column and row. */
 export interface Hint { x: number; y: number; col?: number; row?: number }
-/** An edit the user asked for. Nothing changes until the host applies it and calls update(). */
+/** An edit the user asked for. Nothing changes until the host applies it and calls update(). The places it hints (a card
+ *  moved, reordered or added) are used only if that update's model shows the edit: the card in its new box, a new card
+ *  with its name, or, for a place alone, the card's `layout` entry written or the model unchanged. Any other update drops
+ *  them. An update back to the model before an applied move, or after it (undo, redo), puts the cards back as they were. */
 export type Change = { id: string; view: string; hint?: Hint } & (
   | { op: 'add'; kind: 'node'; label: string; container?: string }
   | { op: 'add'; kind: 'edge'; from: string; to: string; label?: string }
@@ -137,6 +140,9 @@ export interface RenderOptions {
   view?: string;                 // default: model.root, else the view with no parent
   select?: Ref | null;
   controls?: boolean;            // up / zoom / fit / 1:1 / flow buttons (default true)
+  /** 'zoom' (the default): the wheel zooms the map, and a trackpad pans it. 'ctrl': only Ctrl or ⌘ with the wheel (and a
+   *  trackpad's pinch) zooms, and the wheel otherwise scrolls the page, as a map in a document should. */
+  wheel?: 'zoom' | 'ctrl';
   minimap?: boolean;             // default false
   flow?: boolean;                // animated flow along lines (default: on unless prefers-reduced-motion)
   /** Text widths: default the host's font (--um-sans, measured on a canvas); false: a font-independent estimate. */
