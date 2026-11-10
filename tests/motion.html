@@ -1,0 +1,136 @@
+<!doctype html>
+<!-- The map's moves with motion on (0.14.0): tests/embed.py opens this without --force-prefers-reduced-motion. Headless
+     virtual time runs one animation frame only, so frames here are 16 ms timers, which it does run. A press during a
+     glide, a second setView(), an update() or destroy() mid-move, a selection mid-ease: each finishes or settles. -->
+<meta charset="utf-8">
+<link rel="icon" href="data:,">
+<title>umlimator motion test</title>
+<body style="margin:0">
+<div id="a" style="width:1000px;height:700px"></div>
+<div id="b" style="width:1000px;height:700px"></div>
+<div id="page" style="width:1200px;height:800px"></div>
+<script type="module">
+window.requestAnimationFrame = cb => setTimeout(() => cb(performance.now()), 16);
+window.cancelAnimationFrame = id => clearTimeout(id);
+const motionOn = !matchMedia('(prefers-reduced-motion: reduce)').matches;
+import { render, mountPage } from '../lib/umlimator.js';
+const out = { ok: [], fail: [] };
+const check = (name, cond, info) => { document.title = name; if (cond) out.ok.push(name); else out.fail.push(name + (info === undefined ? '' : ': ' + JSON.stringify(info))); };
+const wait = ms => new Promise(r => setTimeout(r, ms));
+const until = async (f, ms = 3000) => { const t = Date.now(); while (!f() && Date.now() - t < ms) await wait(20); return f(); };
+const state = p => Promise.race([p.then(v => ['settled', v]), wait(0).then(() => ['pending'])]);
+const BIKE = await (await fetch('../examples/bike-share.json')).json();
+const errors = [], onError = e => errors.push(String(e.message || e.error)); addEventListener('error', onError);
+const el = document.getElementById('a');
+let h = null, sr = null, ev = [];
+// each scenario on a fresh map, once its first resize and font redraws have passed (either moves the camera)
+const mount = async (opts = {}, model = BIKE) => { if (h) h.destroy(); el.innerHTML = ''; ev = [];
+  h = render(el, model, { ...opts, on: { viewchange: e => ev.push(e.view), select: e => ev.push('select:' + (e.target ? e.target.id : null)), ...(opts.on || {}) } });
+  sr = el.querySelector('.umlimator').shadowRoot; await document.fonts.ready; await wait(400); return h; };
+const stage = () => sr.querySelector('.stage');
+const press = () => { const s = stage(); s.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, composed: true, button: 0, pointerType: 'mouse', pointerId: 9, clientX: 30, clientY: 30 }));
+  s.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, composed: true, button: 0, pointerType: 'mouse', pointerId: 9, clientX: 30, clientY: 30 })); };
+try {
+  check('motion is on for this page (tests/embed.py runs it without --force-prefers-reduced-motion)', motionOn);
+
+  // a press as the drill-down zoom starts settled nothing: the map stayed on the old view, busy, until a later camera move
+  await mount();
+  sr.querySelector('.node[data-id="bikeshare"]').dispatchEvent(new MouseEvent('dblclick', { bubbles: true, composed: true, detail: 2 }));
+  press(); // the same task: before the zoom's first frame
+  await until(() => ev.includes('system'), 3000);
+  check('a press on the map as a drill-down zooms in lets the move finish: the view shows and viewchange comes', h.view === 'system' && ev.includes('system'), [h.view, ev]);
+  check('…and the next setView() is not dropped', await h.setView('trips') === true && h.view === 'trips', h.view);
+
+  // the same press as the new view zooms in
+  await mount();
+  let pressed = false; const mo = new MutationObserver(() => { if (pressed || h.view !== 'system') return; pressed = true; press(); mo.disconnect(); });
+  mo.observe(stage(), { childList: true });
+  const pz = h.setView('system');
+  check('a press as the new view zooms in: the setView() promise is true and viewchange comes', await pz === true && pressed && ev.includes('system'), [pressed, ev]);
+
+  // latest wins: a second setView() during a move retargets it
+  await mount();
+  const p1 = h.setView('system'); await wait(60);
+  const p2 = h.setView('fleet');
+  const [r1, r2] = await Promise.all([p1, p2]);
+  check('a setView() during a move takes it to its own view: the first resolves false, the second true, one viewchange', r1 === false && r2 === true && h.view === 'fleet' && ev.filter(x => !String(x).startsWith('select')).join() === 'fleet', [r1, r2, h.view, ev]);
+
+  // an update() that drops the view being gone to
+  await mount({ view: 'system' });
+  const p3 = h.setView('fleet'); await wait(40);
+  const m2 = structuredClone(BIKE); m2.views = m2.views.filter(v => v.id !== 'fleet'); h.update(m2);
+  check("an update() that drops the view a move goes to: its setView() resolves false, and the map stays visible on its view", await p3 === false && h.view === 'system' && !stage().classList.contains('fading'), [h.view, stage().className]);
+  check('…and the next setView() works', await h.setView('trips') === true && h.view === 'trips', h.view);
+
+  // a listener that throws during a move
+  await mount({ on: { select: e => { void e.target.id; } } });
+  h.select({ type: 'node', id: 'bikeshare', view: 'context' }); errors.length = 0;
+  const p4 = h.setView('system');
+  check('a select listener that throws during a move: the move completes, the error is reported', await p4 === true && h.view === 'system' && errors.length > 0 && !stage().classList.contains('fading'), [h.view, errors]);
+
+  // destroy() settles every promise
+  await mount();
+  const p5 = h.setView('system'); await wait(60);
+  const t5 = h.tour(['riders', 'bikeshare', 'payments']); const h5 = h; h = null; h5.destroy();
+  await wait(0);
+  check("destroy() during a move: setView()'s promise resolves false", JSON.stringify(await state(p5)) === '["settled",false]');
+  check("…and a tour's resolves false at once, not on a later frame", JSON.stringify(await state(t5)) === '["settled",false]');
+
+  // the ease's fading copies answer nothing: a selection mid-ease, and collapse() right after expand()
+  await mount({ view: 'system' });
+  errors.length = 0; const m3 = structuredClone(BIKE), sys = m3.views.find(v => v.id === 'system'); sys.nodeIds = sys.nodeIds.slice(0, 3);
+  h.update(m3); const easing = !!sr.querySelector('.um-leaving'); let threw = null;
+  try { h.select({ type: 'node', id: sys.nodeIds[0], view: 'system' }); } catch (e) { threw = String(e); }
+  check('a selection while an update() eases in throws nothing and is reported (select event)', easing && threw === null && ev.includes('select:' + sys.nodeIds[0]) && errors.length === 0, [easing, threw, errors]);
+  await mount({ view: 'system' });
+  threw = null; try { h.expand('trips'); await wait(300); h.collapse('trips'); } catch (e) { threw = String(e); }
+  check('collapse() right after expand(), with the default ease, throws nothing', threw === null && h.expanded.length === 0, threw);
+
+  // motion belongs to each map: an instant one (as the page's #check, #still and #shot draw) stills only itself
+  await mount();
+  const other = render(document.getElementById('b'), BIKE, { _page: { instant: true } });
+  const t6 = h.tour(['riders', 'bikeshare', 'payments']), t7 = other.tour(['riders', 'bikeshare', 'payments']);
+  check('a map drawn instant leaves another map moving: its tour rides while the instant one\'s is done at once',
+    (await state(t6))[0] === 'pending' && JSON.stringify(await state(t7)) === '["settled",true]');
+  other.destroy();
+
+  // the readable state while things move: a move, a tour, a replay
+  await mount();
+  const pn = h.setView('system'), nav0 = h.navigating, sn = h.state.navigating;
+  await pn;
+  check('while a move is under way, navigating and state.navigating name where it goes; null once there', nav0 === 'system' && sn === 'system' && h.navigating === null && h.state.navigating === null && h.state.motion === 'full', [nav0, sn]);
+  await h.setView('context');
+  const tr = h.tour(['riders', 'bikeshare', 'payments']), riding = h.state.tour; h.tour(null); await tr;
+  check('a tour riding is in the state, and gone once it ends', riding === true && h.state.tour === false, riding);
+  await h.setView('trips');
+  const { otlpSpans } = await import('../lib/umlimator.js'), T = await (await fetch('../examples/traces/ride-end.json')).json(), M = await (await fetch('../examples/traces/match.json')).json();
+  const rp = h.replay(otlpSpans(T), { match: M }), rs0 = h.state.replay; rp.pause(); const rs1 = h.state.replay; rp.stop();
+  check('a replay under way is in the state: playing, then paused, then gone', JSON.stringify([rs0, rs1, h.state.replay]) === '[{"playing":true},{"playing":false},null]', [rs0, rs1, h.state.replay]);
+
+  // the camera in the state event: a glide, or zooms one on another, is one event, once the camera comes to rest
+  const ce = [], zoomKey = k => stage().dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true, composed: true, cancelable: true })), camEv = () => ce.filter(e => e.changed.includes('camera'));
+  await mount({ on: { state: e => ce.push(e) } }); ce.length = 0;
+  const z0 = h.state.camera.zoom; zoomKey('+'); // a 220 ms glide
+  await wait(100); const mid = h.state.camera.zoom, during = camEv().length;
+  await wait(600);
+  check('a glide gives exactly one camera state event, once it comes to rest; handle.state reads the camera live meanwhile', during === 0 && mid !== z0 && camEv().length === 1
+    && camEv()[0].state.camera.zoom === h.state.camera.zoom && h.state.camera.zoom !== mid, [z0, mid, during, camEv().map(e => e.state.camera.zoom), h.state.camera.zoom]);
+  ce.length = 0; zoomKey('+'); await wait(60); zoomKey('+'); await wait(60); zoomKey('-'); await wait(700);
+  check('…and zooms one on another come to rest once: one camera event', camEv().length === 1, ce.map(e => e.changed));
+
+  // the page: Back while a view is still zooming in is honoured, not dropped
+  if (h) { h.destroy(); h = null; }
+  const pe = [], hp = mountPage(document.getElementById('page'), BIKE, { params: new URLSearchParams() });
+  hp.on('viewchange', e => pe.push(e.view));
+  await until(() => hp.view === 'context', 3000); await wait(400);
+  await hp.setView('system'); await wait(200);
+  hp.setView('trips'); await until(() => hp.view === 'trips', 3000);
+  history.back();
+  await until(() => hp.view !== 'trips' && !hp[Object.getOwnPropertySymbols(hp)[0]].busy(), 4000); await wait(300);
+  const back = new URLSearchParams(location.hash.slice(1)).get('view');
+  check('on the page, Back while a view zooms in takes the map where the link went: the map and the link agree', hp.view === back && back !== 'trips', [hp.view, location.hash, pe]);
+  hp.destroy();
+} catch (e) { out.fail.push('threw: ' + (e && e.stack || e)); }
+removeEventListener('error', onError);
+const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
+</script>

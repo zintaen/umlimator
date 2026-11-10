@@ -1,0 +1,214 @@
+<!doctype html>
+<!-- The map's state machines hold together (0.14.0): every request gets a truthful outcome, a listener's error or an update()
+     never wedges the map, the selection, focus and a gesture in progress survive or end cleanly across a new picture, and
+     marks keep to the view they are about. tests/embed.py opens this in headless Chrome under reduced motion and reads
+     <pre id="result">; tests/motion.html checks the same with motion. -->
+<meta charset="utf-8">
+<link rel="icon" href="data:,">
+<title>umlimator state test</title>
+<body style="margin:0">
+<div id="a" style="width:1000px;height:700px"></div>
+<div id="page" style="width:1200px;height:800px"></div>
+<script type="module">
+import { render, mountPage, paths } from '../lib/umlimator.js';
+const out = { ok: [], fail: [] };
+const check = (name, cond, info) => { document.title = name; if (cond) out.ok.push(name); else out.fail.push(name + (info === undefined ? '' : ': ' + JSON.stringify(info))); };
+const wait = ms => new Promise(r => setTimeout(r, ms));
+const until = async (f, ms = 3000) => { const t = Date.now(); while (!f() && Date.now() - t < ms) await wait(20); return f(); };
+const BOOK = await (await fetch('../examples/bookshop.json')).json(), BIKE = await (await fetch('../examples/bike-share.json')).json();
+const errors = [], onError = e => errors.push(String(e.message || e.error)); addEventListener('error', onError);
+const warned = [], warn0 = console.warn; console.warn = (...a) => { warned.push(a.join(' ')); warn0(...a); };
+const el = document.getElementById('a');
+let h = null, sr = null;
+const mount = (model, opts = {}) => { if (h) h.destroy(); el.innerHTML = ''; h = render(el, model, opts); sr = el.querySelector('.umlimator').shadowRoot; return h; };
+const key = (target, k, extra = {}) => { const e = new KeyboardEvent('keydown', { key: k, bubbles: true, composed: true, cancelable: true, ...extra }); target.dispatchEvent(e); return e; };
+const pick = s => sr.querySelector(s), stage = () => pick('.stage');
+const centre = s => { const r = pick(s).getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; };
+const ptr = (target, type, [x, y], extra = {}) => target.dispatchEvent(new PointerEvent(type, { clientX: x, clientY: y, button: 0, pointerId: 7, pointerType: 'mouse', bubbles: true, composed: true, ...extra }));
+const click = (s, extra = {}) => { const g = pick(s), at = centre(s); ptr(g, 'pointerdown', at); ptr(g, 'pointerup', at); g.dispatchEvent(new MouseEvent('click', { clientX: at[0], clientY: at[1], bubbles: true, composed: true, ...extra })); };
+const dimmed = () => [...sr.querySelectorAll('.node')].filter(g => g.getAttribute('opacity') === '0.2').map(g => g.dataset.id);
+try {
+  // ---- lifecycle: a first model with no views, an update() to none, a bad update(), calls on a destroyed handle
+  let ev = [];
+  mount({ nodes: [], views: [] }, { on: { viewchange: e => ev.push(e) } });
+  check('a model with no views draws the empty card, not a blank canvas', h.view === null && /no views yet/.test((pick('.empty-view') || {}).textContent || ''));
+  h.update(BOOK);
+  check('…and update() with views draws the first one (it drew nothing for good), with viewchange from null',
+    h.view === 'overview' && sr.querySelectorAll('.node').length === 13 && JSON.stringify(ev) === '[{"view":"overview","from":null}]', [h.view, ev]);
+  let threw = null; try { h.update({ nodes: [], views: [] }); } catch (e) { threw = String(e); }
+  check('update() to a model with no views throws nothing and shows the empty card', threw === null && h.view === null && !!pick('.empty-view') && !sr.querySelector('.node'), [threw, h.view]);
+  h.update(BOOK);
+  check('…and the next update() draws again', h.view === 'overview' && sr.querySelectorAll('.node').length === 13, h.view);
+  threw = null; try { h.update(null); } catch (e) { threw = e; }
+  check('update(null) throws a TypeError that says a map model is needed, and changes nothing', threw instanceof TypeError && /map model/.test(threw.message) && h.view === 'overview' && sr.querySelectorAll('.node').length === 13, String(threw));
+  ev = []; const sels = []; h.on('select', e => sels.push(e.target));
+  mount(BOOK, { on: { select: e => sels.push(e.target), viewchange: e => ev.push(e) } }); sels.length = 0;
+  const h1 = h; h1.destroy();
+  h1.select({ type: 'node', id: 'api', view: 'overview' }); h1.fit(); h1.on('select', () => sels.push('late'));
+  check('a destroyed handle selects nothing and calls no listener', sels.length === 0 && h1.selection === null, [sels, h1.selection]);
+  check('…and setView() on it resolves false', await h1.setView('api') === false);
+  h = null;
+
+  // ---- navigation: truthful promises, unknown views, a listener that throws
+  mount(BOOK, { on: { viewchange: e => ev.push(e.view) } }); ev = [];
+  warned.length = 0;
+  check('setView() resolves true once the view shows', await h.setView('api') === true && h.view === 'api' && ev.join() === 'api', [h.view, ev]);
+  check('…and true for the view shown', await h.setView('api') === true && ev.length === 1);
+  const r0 = await h.setView('no-such-view');
+  check('setView() of a view the model lacks resolves false, and warns with the views it has', r0 === false && h.view === 'api' && warned.some(w => /no-such-view/.test(w) && /"overview"/.test(w)), [r0, warned]);
+  warned.length = 0; mount(BOOK, { view: 'not-loaded' });
+  check('render() with a view the model lacks warns, and starts on the root', h.view === 'overview' && warned.some(w => /not-loaded/.test(w)), warned);
+  errors.length = 0; ev = [];
+  mount(BOOK, { on: { select: e => { ev.push(e.target.id); }, viewchange: e => ev.push('view:' + e.view) } }); // reads e.target.id: throws on null
+  h.select({ type: 'node', id: 'api', view: 'overview' });
+  const r1 = await h.setView('api');
+  check('a select listener that throws (on the null a view change sends) is reported, and the move completes', r1 === true && h.view === 'api' && ev.includes('view:api') && errors.length > 0, [r1, h.view, ev, errors]);
+  check('…and the next setView() works', await h.setView('overview') === true && h.view === 'overview', h.view);
+
+  // ---- selection: one event per real change, copies, a chip's Delete
+  const se = []; mount(BOOK, { on: { select: e => se.push(e.target && e.target.id) } });
+  h.select({ type: 'node', id: 'api', view: 'overview' }); se.length = 0;
+  const live = []; new MutationObserver(rs => rs.forEach(r => r.addedNodes.forEach(n => live.push(n.textContent)))).observe(pick('.um-live'), { childList: true });
+  const m2 = structuredClone(BOOK); m2.nodes.find(n => n.id === 'db').label = 'Orders DB'; h.update(m2); await wait(30);
+  check('update() that redraws the view, with the selection still drawn, sends no select event and says nothing', se.length === 0 && live.length === 0 && h.selection.id === 'api', [se, live]);
+  const copy = h.selection; copy.id = 'db';
+  check("handle.selection is a copy: changing it changes nothing", h.selection.id === 'api' && h.selected[0].id === 'api');
+  const m3 = structuredClone(m2); m3.views[0].nodeIds = m3.views[0].nodeIds.filter(i => i !== 'api'); h.update(m3);
+  check('…and one that drops the selected card sends select(null), once', JSON.stringify(se) === '[null]', se);
+  const ue = []; mount(BIKE, { view: 'system', on: { select: e => ue.push(e.target ? e.target.type + ':' + e.target.id : null) } });
+  h.select({ type: 'node', id: 'trips', view: 'system' }); ue.length = 0;
+  h.expand('trips'); const afterExpand = [...ue]; ue.length = 0; h.collapse('trips');
+  check('expand() and collapse() send one select event each: the box, then the card', afterExpand.join() === 'container:trips' && ue.join() === 'node:trips', [afterExpand, ue]);
+  const EDIT = { nodes: [{ id: 'a', label: 'Gateway', kind: 'frontend', verbs: ['get', 'put'] }, { id: 'b', label: 'Orders', kind: 'backend' }, { id: 'c', label: 'Billing', kind: 'backend' }, { id: 'x', label: 'Inner X', kind: 'backend' }, { id: 'y', label: 'Inner Y', kind: 'database' }],
+    edges: [{ id: 'ab', from: 'a', to: 'b' }, { id: 'ac', from: 'a', to: 'c' }, { id: 'xy', from: 'x', to: 'y' }, { id: 'ax', from: 'a', to: 'x' }],
+    views: [{ id: 'top', nodeIds: ['a', 'b', 'c'] }, { id: 'child', parent: 'top', nodeIds: ['a', 'x', 'y'], edges: ['ax', 'xy'] }] };
+  const ch = []; mount(EDIT, { editable: true, view: 'top', on: { change: c => ch.push(c) } });
+  click('.node[data-id="a"] text[data-chip="0"]'); key(stage(), 'Escape');
+  const ga = pick('.node[data-id="a"]'); ga.focus(); key(ga, 'Enter'); key(ga, 'Delete');
+  check('a chip clicked, then Escape, Enter on its card and Delete: the card is deleted, not the chip', ch.length === 1 && ch[0].op === 'delete' && ch[0].target.type === 'node' && ch[0].target.id === 'a', ch);
+
+  // ---- focus: kept on the same card through a redraw; in the map after a drill-down by keyboard
+  mount(BOOK);
+  h.focus({ type: 'node', id: 'api', view: 'overview' });
+  const m4 = structuredClone(BOOK); m4.nodes.find(n => n.id === 'db').label = 'Orders DB'; h.update(m4);
+  check('update() that redraws the view keeps keyboard focus on the same card', sr.activeElement && sr.activeElement.dataset.id === 'api', sr.activeElement && sr.activeElement.outerHTML.slice(0, 60));
+  const card = pick('.node[data-id="api"]'); key(card, 'Enter'); key(card, 'Enter'); await until(() => h.view === 'api');
+  check('Enter, Enter opens the card\'s view and focus stays in the map', h.view === 'api' && !!sr.activeElement, sr.activeElement && sr.activeElement.className);
+  key(sr.activeElement, 'Escape'); await until(() => h.view === 'overview');
+  check('…so Escape goes back up, and focus lands on the card come back to', h.view === 'overview' && sr.activeElement && sr.activeElement.dataset.id === 'api', [h.view, sr.activeElement && sr.activeElement.dataset.id]);
+  h.select({ type: 'node', id: 'api', view: 'overview' });
+  const zin = pick('[data-z="in"]'); zin.focus(); const ke = key(zin, 'Enter'); await wait(50);
+  check('Enter on a focused zoom button is the button\'s: the map leaves it alone (it opened the selected card\'s view)', !ke.defaultPrevented && h.view === 'overview', [ke.defaultPrevented, h.view]);
+
+  // ---- gestures: one at a time, Escape first, and a new picture ends them
+  errors.length = 0; ch.length = 0; mount(EDIT, { editable: true, view: 'child', on: { change: c => ch.push(c) } });
+  let a0 = centre('.node[data-id="x"]'); ptr(pick('.node[data-id="x"]'), 'pointerdown', a0);
+  for (let i = 1; i <= 3; i++) ptr(stage(), 'pointermove', [a0[0] + 30 * i, a0[1] + 20 * i]);
+  const ghost = !!pick('.um-ghost'); key(stage(), 'Escape');
+  check('Escape during a card drag cancels the drag: the ghost goes, the view stays', ghost && !pick('.um-ghost') && h.view === 'child', [ghost, h.view]);
+  ptr(stage(), 'pointermove', [a0[0] + 150, a0[1] + 90]); ptr(stage(), 'pointerup', [a0[0] + 150, a0[1] + 90]);
+  check('…and its pointer\'s release emits nothing and throws nothing', ch.length === 0 && errors.length === 0, [ch, errors]);
+  click('.node[data-id="x"] .n-label'); const hd = centre('.um-handle'); ptr(pick('.um-handle'), 'pointerdown', hd); ptr(stage(), 'pointermove', [hd[0] + 40, hd[1] + 10]);
+  key(stage(), 'Escape'); const still = h.view, sel1 = h.selection && h.selection.id;
+  ptr(stage(), 'pointermove', [hd[0] + 80, hd[1] + 20]); ptr(stage(), 'pointerup', centre('.node[data-id="y"] .n-label'));
+  check('Escape while drawing a line cancels it (the selection and view stay), and the release adds no line', still === 'child' && sel1 === 'x' && !pick('.um-link') && ch.length === 0 && errors.length === 0, [still, sel1, ch, errors]);
+  click('.node[data-id="x"] .n-label'); key(stage(), 'F2');
+  const f1 = pick('.um-rename'); await h.setView('top');
+  check('a name field closes when the view changes, and emits nothing', !!f1 && !pick('.um-rename') && ch.length === 0, ch);
+  click('.node[data-id="b"] .n-label'); key(stage(), 'F2');
+  const m5 = structuredClone(EDIT); m5.nodes.find(n => n.id === 'c').label = 'Billing (renamed elsewhere)'; h.update(m5);
+  const f2 = pick('.um-rename');
+  check('…stays open over its card through an update() that keeps the card', !!f2 && f2.isConnected && sr.activeElement === f2, !!f2);
+  const m6 = structuredClone(m5); m6.views[0].nodeIds = ['a', 'c']; h.update(m6);
+  check('…and closes, emitting nothing, when an update() drops its card', !pick('.um-rename') && ch.length === 0, ch);
+  mount(EDIT, { editable: true, view: 'top', on: { change: c => ch.push(c) } }); ch.length = 0;
+  key(stage(), 'n'); const nf = pick('.um-rename'); nf.value = 'Cache'; key(nf, 'Enter'); // the host refuses the add
+  click('.node[data-id="b"] .n-label');
+  const m7 = structuredClone(EDIT); m7.nodes.push({ id: 'z', label: "Someone else's card", kind: 'backend' }); m7.views[0].nodeIds.push('z'); h.update(m7);
+  check("an add the host refused leaves the next update()'s lone new card unselected: the selection stays the reader's", ch.length === 1 && h.selection && h.selection.id === 'b', [ch.length, h.selection]);
+
+  // ---- unfolding a card whose view the host loads later
+  const lazy = structuredClone(BOOK); Object.assign(lazy.nodes.find(n => n.id === 'worker'), { opensView: 'jobs', opensCount: 3 });
+  const withJobs = m => { const n = structuredClone(m); n.nodes.push({ id: 'j1', label: 'Job reader', kind: 'backend' }, { id: 'j2', label: 'Job runner', kind: 'backend' }, { id: 'j3', label: 'Job store', kind: 'database' });
+    n.edges.push({ id: 'j12', from: 'j1', to: 'j2' }, { id: 'j23', from: 'j2', to: 'j3' }); n.views.push({ id: 'jobs', parent: 'overview', title: 'Jobs', nodeIds: ['j1', 'j2', 'j3'] }); return n; };
+  const xe = []; mount(lazy, { on: { expand: e => { xe.push(e.view); setTimeout(() => h.update(withJobs(lazy)), 100); } } });
+  const wk = pick('.node[data-id="worker"]'); wk.focus(); key(wk, 'e');
+  const said0 = pick('.um-live').textContent;
+  await until(() => h.expanded.includes('worker'), 2000);
+  check('E on a card whose view loads later: the reader is told, and the update() that brings the view unfolds it, its box selected',
+    xe.join() === 'jobs' && /not loaded yet/.test(said0) && h.expanded.join() === 'worker' && h.selection && h.selection.type === 'container' && h.selection.id === 'worker', [xe, said0, h.expanded, h.selection]);
+
+  // ---- marks: a highlight keeps to its view; a box's Ref lights its cards
+  mount(BIKE, { view: 'trips' });
+  h.highlight(paths(BIKE, 'trips', 'rider-app', 'tripsdb'));
+  const onTrips = dimmed().length;
+  await h.setView('fleet');
+  check("a highlight of trips' Refs dims nothing on the fleet view", onTrips > 0 && dimmed().length === 0 && !stage().classList.contains('um-lit'), [onTrips, dimmed()]);
+  await h.setView('trips');
+  check('…and lights trips again when it is shown', dimmed().length === onTrips, dimmed());
+  h.highlight(null); await h.setView('system');
+  h.highlight([{ type: 'container', id: 'rides', view: 'system' }]);
+  const rides = BIKE.views.find(v => v.id === 'system').containers.find(c => c.id === 'rides').nodeIds;
+  check("a box's Ref lights the cards in it and dims the rest", rides.every(id => !dimmed().includes(id)) && dimmed().length === sr.querySelectorAll('.node').length - rides.length, [rides, dimmed()]);
+  h.overlay('host', { nodes: { 'not-on-this-view': { tone: 'rose' } }, dim: true }); h.highlight(null);
+  check('a layer that dims, naming nothing on the view shown, dims nothing there', dimmed().length === 0, dimmed());
+  h.overlay('host', null);
+
+  // ---- replays: an older one's stop() leaves the newer one alone; a destroyed handle's replay is done false
+  mount(BIKE, { view: 'trips' });
+  const T = await (await fetch('../examples/traces/ride-end.json')).json(), M = await (await fetch('../examples/traces/match.json')).json();
+  const { otlpSpans } = await import('../lib/umlimator.js'), spans = otlpSpans(T);
+  const labels = () => sr.querySelectorAll('.um-lab').length;
+  const ra = h.replay(spans, { match: M }), rb = h.replay(spans.slice(0, 4), { match: M }), nb = labels();
+  ra.stop();
+  check("an older replay's stop() leaves the newer replay's labels", nb > 0 && labels() === nb, [nb, labels()]);
+  const hd2 = h; hd2.destroy(); const rd = hd2.replay(spans, { match: M });
+  check('replay() on a destroyed handle plays nothing and is done false', rd.hops === 0 && await rd.done === false, rd.hops);
+  h = null;
+
+  // ---- the readable state (0.14.0): handle.state, the state and lens events, the getters
+  const KEYS = ['view', 'navigating', 'selection', 'expanded', 'lens', 'overlays', 'story', 'tour', 'replay', 'camera', 'flow', 'motion', 'gesture', 'destroyed'];
+  const states = [], lenses = []; mount(BIKE, { view: 'system', on: { state: e => states.push(e), lens: e => lenses.push(e.lens) } });
+  const s0 = h.state, deepFrozen = o => Object.isFrozen(o) && Object.values(o).every(v => !v || typeof v !== 'object' || deepFrozen(v));
+  check('handle.state has every MapState key, with the types the contract gives', JSON.stringify(Object.keys(s0)) === JSON.stringify(KEYS)
+    && s0.view === 'system' && s0.navigating === null && Array.isArray(s0.selection) && Array.isArray(s0.expanded) && s0.lens === null && Array.isArray(s0.overlays)
+    && s0.story === null && s0.tour === false && s0.replay === null && ['x', 'y', 'zoom'].every(k => Number.isFinite(s0.camera[k])) && typeof s0.flow === 'boolean'
+    && s0.motion === 'reduced' && s0.gesture === 'idle' && s0.destroyed === false, s0);
+  check('…is plain JSON: it comes back the same through JSON.stringify and JSON.parse', JSON.stringify(JSON.parse(JSON.stringify(s0))) === JSON.stringify(s0) && !JSON.stringify(s0).includes('undefined'));
+  let wrote = false; try { s0.view = 'x'; } catch (e) { wrote = e instanceof TypeError; }
+  check('…is frozen all the way down, and fresh on every read', deepFrozen(s0) && wrote && s0.view === 'system' && h.state !== s0);
+  h.select({ type: 'node', id: 'trips', view: 'system' }); h.lens('teams');
+  await until(() => states.length > 0); await wait(300);
+  const st1 = states[0] || { changed: [] }, others = states.slice(1);
+  check('one state event for changes made together, naming each key that changed (the camera, refitted for the legend, after it, once at rest)', ['selection', 'lens', 'overlays'].every(k => st1.changed.includes(k)) && !st1.changed.includes('view') && !st1.changed.includes('camera')
+    && st1.state.selection[0].id === 'trips' && st1.state.lens === 'teams' && st1.state.overlays.includes('lens') && others.every(e => e.changed.join() === 'camera') && others.length <= 1, states.map(e => e.changed));
+  check('the lens event says the lens shown', lenses.join() === 'teams', lenses);
+  states.length = 0; await h.setView('trips'); await until(() => states.length > 1); await wait(300);
+  check('setView(): a state event with view (and selection, cleared), then one with the camera once at rest, where it is', states.length === 2 && states[0].changed.includes('view') && !states[0].changed.includes('camera') && states[0].state.view === 'trips' && states[0].state.selection.length === 0
+    && states[1].changed.join() === 'camera' && JSON.stringify(states[1].state.camera) === JSON.stringify(h.state.camera), states.map(e => e.changed));
+  const m8 = structuredClone(BIKE); delete m8.lenses; h.update(m8);
+  check('…and an update() without the lens shown: lens event null', lenses.join() === 'teams,' && h.state.lens === null, lenses);
+  check('getters: navigating, destroyed, motion', h.navigating === null && h.destroyed === false && h.motion === 'reduced');
+  h.flow = false; const offFlow = !stage().classList.contains('flowing') && h.flow === false && h.state.flow === false;
+  h.flow = true;
+  check('flow can be set: the map stops or starts its flow, and says so in state', offFlow && stage().classList.contains('flowing') && h.state.flow === true);
+  const p6 = h.play('ride', { auto: false });
+  check('a story shown is in the state: its id, step, steps and playing', JSON.stringify(h.state.story) === JSON.stringify({ id: 'ride', step: 0, steps: p6.steps, playing: false }), h.state.story);
+  p6.stop(); states.length = 0;
+  const hd3 = h; hd3.destroy(); h = null;
+  check('destroy(): destroyed is true, and a last state event says so', hd3.destroyed === true && hd3.state.destroyed === true && states.length === 1 && states[0].changed.includes('destroyed') && states[0].state.destroyed === true, states.map(e => e.changed));
+  mount(EDIT, { editable: true, view: 'top' }); click('.node[data-id="b"] .n-label'); key(stage(), 'F2');
+  const naming = h.state.gesture; key(pick('.um-rename'), 'Escape');
+  check('a gesture in progress is in the state: naming while the name field is open, idle once it closes', naming === 'naming' && h.state.gesture === 'idle', naming);
+
+  // ---- the standalone page: a setView() before its first draw (a frame later) is kept
+  const pe = [], hp = mountPage(document.getElementById('page'), BIKE, { params: new URLSearchParams() });
+  hp.on('viewchange', e => pe.push(e.view));
+  const pr = hp.setView('trips');
+  await wait(800);
+  check('on the page, a setView() before the first draw is kept: the first draw does not put the root back', await pr === true && hp.view === 'trips' && pe.join() === 'trips' && /view=trips/.test(location.hash), [hp.view, pe, location.hash]);
+  hp.destroy();
+} catch (e) { out.fail.push('threw: ' + (e && e.stack || e)); }
+removeEventListener('error', onError); console.warn = warn0;
+const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
+</script>
