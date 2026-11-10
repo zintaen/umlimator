@@ -1,6 +1,6 @@
 {
   "name": "umlimator",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Maps a codebase as a layered, clickable architecture map: reads the repository, writes a C4-style model, renders it to one HTML page with stills, and fixes what the layout check reports.",
   "author": {
     "name": "zintaen",
