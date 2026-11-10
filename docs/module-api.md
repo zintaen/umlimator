@@ -1641,6 +1641,160 @@ showed nothing. The ids are the audit's playback machines: story-player, tour, s
 - **Tests:** `tests/stories.html` (reduced motion) and `tests/motion.html` (motion on). Each new check fails before this
   change.
 
+### The CLI says what happened, and leaves the previous output when it fails (tooling)
+
+The state-machine audit found these in the CLI, its caches and the MCP server's small parts. The ids are those of its
+tooling inventory (machine, #n). Each fix follows the decision's rules: a step finishes or rolls back, every request gets
+a true outcome, and the state can be read.
+
+- **Outputs (cli-out-artifact 1 to 3, cli-render-pipeline 1):**
+  - *What was wrong.* A failed run could destroy or replace the last good output.
+    - `pdf` deleted the previous PDF before printing, and left a 2-page PDF after a failure.
+    - `render` of a model the engine rejects printed `{"out": …, "errors": []}` and kept the previous page, so the
+      failure looked like a success.
+    - `trace` rewrote the model in place.
+  - *Now.* Every file a command writes goes first to a temp file beside it, which is renamed over the target only once
+    it is whole: the page, pictures, PDF, animated PNG, imported or traced model, time-lapse, `summary.md` and cache files.
+    - A failed run leaves the previous file, and `pdf` says so.
+    - `render` prints its JSON only when the page was written. Otherwise it prints nothing on stdout, the engine's reason
+      on stderr, and exits 1.
+- **Chrome (chrome-driver 1 to 4):**
+  - *What was wrong.* Chrome's exit status and log were dropped. A Chrome that could not start (say, run as root in a
+    container) read as a page problem, with wrong advice. `record` let a timeout escape as a traceback. Chrome's helpers
+    outlived a timeout. Every command said "stills needs Google Chrome or Chromium".
+  - *Now.* A failing Chrome is said in its own words (its log line, with the exit status), and every command handles a
+    timeout the same way (`<command>: Chrome did not finish in N s`). Chrome, the engine and Node each run in a process
+    group of their own, which ends with the command on a timeout, Ctrl-C or SIGTERM.
+- **`--views` (page-hook-protocol 1 to 4):**
+  - *What was wrong.*
+    - `check --views sytem` passed: "0 views" checked, exit 0, and CI's own guard passed on that string.
+    - View ids holding `&`, `+`, `%` or `#`, which the schema allows, could not be stilled, checked or printed.
+    - `stills --views` took no trailing `*`, though `check` and `pdf` did.
+  - *Now.* `check`, `stills` and `pdf` resolve `--views` against the page before Chrome starts, with one rule: a
+    trailing `*` is a prefix. A name that matches no view exits 1 and lists the page's views. Ids are percent-encoded
+    in the page's link. `check` exits 1 when it checked no view.
+- **`render` (cli-render-pipeline 2, 3 and 5):**
+  - *What was wrong.* SIGTERM (an agent's timeout, a cancelled CI job) left the model's hidden copy beside the model,
+    and the engine wrote the page after the command had ended. A checked render left its screenshots in `.<page>-check/`
+    beside the page. `--no-check` output read like a clean check.
+  - *Now.* SIGTERM cleans up as Ctrl-C does. The screenshots, which nothing read, stay in a temp folder. The JSON says
+    `"checked": true` or `false`.
+- **The stills cache (stills-cache 1 to 8):**
+  - *What was wrong.*
+    - A view whose PNG Chrome never wrote was recorded as fresh, so the old PNG stayed for good.
+    - Two runs into one folder left pictures that the shared `.stills.json` disagreed with, and later runs skipped them.
+    - The key left out lines that end on a box, the model's rules (a broken rule's line is drawn rose) and authors.
+    - A failed view exited 0, with text before the JSON on stdout.
+    - `--scale 2` and the default keyed differently.
+    - `--all --views a` dropped every other view's entry.
+    - A record cut short crashed every later run.
+    - A view the page no longer has kept its pictures without a word.
+  - *Now.*
+    - A view's key file, `.stills/<view>.json`, holds its key and the hashes of both files. It is written last, once
+      both files are whole and the PNG is a PNG.
+    - A view is skipped only when its key and both hashes match, so a file another run or a person changed is drawn
+      again.
+    - The key covers those inputs, and scale counts as a number.
+    - A failed view exits 1 with its reason, and stdout is only ever the JSON list.
+    - Pictures of views the page no longer has are named on stderr.
+- **`diff --base`, which the Action runs (diff-base-run 1 to 4):**
+  - *What was wrong.*
+    - A model the pull request broke (a conflict marker) was skipped: "No map model changed."
+    - A failed still put text before the JSON on stdout, so the Action's `changed` came out empty.
+    - With no Chrome the whole command failed, and no summary was written.
+    - `a/b-c.json` and `a-b/c.json` wrote one page.
+  - *Now.*
+    - A map model that no longer parses is a change: an entry `{file, error}` in the JSON and a line in the summary.
+      Other JSON that doesn't parse, such as a `tsconfig.json` with comments, is still not a model.
+    - The pictures are extras: a view without one is listed in `stillsFailed` and said in the summary.
+    - Each model is diffed on its own, so `summary.md` is always written.
+    - A name that is taken gets a short hash.
+- **`import` (import-parsers 1 to 4):**
+  - *What was wrong.* A file cut short, or one with an unclosed `/*`, imported as a smaller map with `"unread": 0`.
+    JSON cut short read as a format it could not tell.
+  - *Now.* At the end of the file, each block still open (Structurizr, C4-PlantUML's boundaries), a comment never
+    closed (and the lines it hid), and an `@startuml` with no `@enduml` are listed with their lines. JSON that does not
+    parse says so. The JSON adds `notImported: [{where, message}]` beside the `unread` count.
+- **The icon cache (icon-cache 1 to 3):**
+  - *What was wrong.* A cached logo was trusted forever, so one cut short was drawn broken in every page. The cache was
+    written in place. `pin-icons` moved files before it recorded their hashes.
+  - *Now.* A cached logo is checked against its sha256 each time it is read, and fetched again when it doesn't match.
+    Offline, the card keeps its sigil. Writes are whole. `pin-icons` writes the hashes first.
+- **The MCP server, its parts away from the page (mcp-session 2 to 4):**
+  - *What was wrong.* A taken port moved the page to a random port on each run. A JSON-RPC batch got one `-32600`,
+    though the 2025-03-26 version it speaks has batches. `diff`'s relative paths resolved in a folder the agent was
+    never told.
+  - *Now.* A taken port falls back to a port of the model's own, the same on each run, and only then to any port. A
+    batch gets a batch of replies. The instructions name the model's whole path and the folder the server runs in. A
+    relative path is looked for in the model's folder first, and an error names where it looked.
+  - The page's own machines (its state, acknowledgements, replay and last good page, and mcp-session 1) come in the
+    next wave, on the map's state contract.
+- **Behaviour changes, all for defects the audit reproduced:**
+  - `stills` exits 1 when a view fails.
+  - The first `stills` run after upgrading draws every view again (`.stills.json` gives way to `.stills/`).
+  - `check` exits 1 when `--views` names no view or no view is checked.
+  - `render`, `pdf`, `stills` and `record` print no JSON when they fail. `check` prints none when the check could not
+    run, and its report, as before, when the model breaks a rule.
+  - `render`'s JSON gains `checked`, `import`'s gains `notImported`, and `diff` and `drift` gain `stillsFailed` when a
+    view has no picture.
+- **Left as it was:** `render`'s own check still gives up after the engine's 45 s on a very large model
+  (cli-render-pipeline 4, not reproduced). The engine is upstream's and unmodified; `check` waits 600 s.
+- **Tests:** `tests/outcomes.py` (new, in CI) runs each of the audit's repros through the CLI, with a stand-in only where
+  a real Chrome can't be made to fail on demand: one that cannot start, one whose helper outlives it, and one that dies
+  on a screenshot. Each defect has a case that failed before these changes. `tests/import.py` adds files cut short.
+
+### The diff Action's comment, the release and map-repo's CLI end in a true state (tooling)
+
+The state-machine audit found these in three of umlimator's tools, by the ids of its tooling inventory. What holds now:
+
+- **The diff Action's comment** (`action.yml`):
+  - *Two runs at once posted two comments, and later runs updated only the first (action-comment 1).* Only the run for
+    the pull request's latest commit writes: it reads the pull request's head first, and a run for an older push writes
+    nothing. Every comment the bot left with the marker is updated, so one posted twice before is never left stale. A
+    `concurrency` group per pull request, as in the README's example, runs them one at a time.
+  - *A lookup that failed posted a second comment (action-comment 2).* Comments or a head that can't be read mean no
+    comment and a warning. The summary is in the job summary, as before.
+  - *Any failed write was reported as a fork's read-only token (action-comment 3).* On a fork's pull request it still is,
+    as a notice. On the repository's own, the warning gives gh's own message and the permission the workflow needs
+    (`pull-requests: write`).
+  - *The comment named no commit, so after a failed or slower run it showed an older push as current (action-comment 4).*
+    It ends with the commit it describes, in words and as `<!-- umlimator-diff-sha: <sha> -->`. The comment step runs
+    after a failed diff too (a cancelled run skips it), and the comment then says the diff failed for that commit, with
+    the run's link.
+- **The release job** (`.github/workflows/check.yml`):
+  - *A failed npm publish was retried by the next push, which published that later commit under the version the tag gave
+    an earlier one (release-pipeline 1).* A version is tagged at the commit that releases it, and npm gets that commit
+    only: a push whose version is tagged at another commit publishes nothing.
+  - *The Release, marked latest and saying `npm install umlimator@X`, came before npm had X (release-pipeline 2).* It is
+    a draft until npm has the version, then published and marked latest.
+  - *A tag made by hand read as "released already" (release-pipeline 3).* A version tagged at another commit counts as
+    released only once its Release is published. Otherwise the job fails, names the tag's commit and says to re-run that
+    commit's release job (for a tag made by hand: delete it and re-run this one). A re-run finishes a release where it
+    stopped, since each step checks what is done first.
+- **map-repo's `cli.py`:**
+  - *Two first uses at once cloned into one folder, and one failed with a traceback (skill-cli-cache 1).* Each first use
+    clones into a folder of its own and renames it into place whole; the one that finishes second uses the first's.
+  - *No network on first use ended in a traceback (skill-cli-cache 2).* git says why, then one line says the first use
+    needs the network once, or `UMLIMATOR_CLI_CACHE` naming a folder that holds the release.
+  - *The pin was checked only when cloning (skill-cli-cache 3).* Every run checks that the cache holds the pinned commit,
+    and says to delete the folder to fetch it again when it doesn't.
+- **Visible changes:** the comment's last lines name its commit; a run for an older push leaves the comment alone; a
+  refused write on the repository's own pull request is a warning that names the permission; a GitHub Release is a draft
+  until npm has its version; and a push to main fails while an earlier release of its version is unfinished.
+- **Tests:** `tests/steps.py`, which CI runs, reads each step's `run:` block from `action.yml` and `check.yml` by its id
+  and runs it as GitHub does, against stand-ins for gh, git and npm:
+  - the release: a new version; npm failing, then a re-run; npm failing, then a later push; a later push after a release;
+    missing notes; a tag made by hand;
+  - the comment: two runs at once, a run for an older commit, comments and a head that can't be read, a refused write on
+    the repository's own pull request and on a fork's, a failed diff;
+  - `cli.py`, against a local tagged repository: two first uses at once, no network, a changed pin.
+
+  Each of these fails on 0.13.0's steps.
+- **Left out:** the artifact's fixed name, which a second use of the Action in one run trips on (action-comment 5); and a
+  check that fails on the release's merge commit still lets the next push release that later commit (release-pipeline
+  4). The site job needs no change: it runs under `bash -e`, so it fails when `stills` does, and `stills` exits 1 on a
+  failed view now (the CLI's change set).
+
 ### The standalone page's state: its keys, the link, stories in the history, the panel and the element
 
 The page audit (wave 2) found the page's own machines: its keys, its link, its menus and panels, and the element's

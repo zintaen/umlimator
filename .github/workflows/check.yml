@@ -37,8 +37,14 @@ jobs:
       - name: The CLI's diff, drift and timelapse write their pages, diff --base a pull request's summary, mcp answers an MCP client, and pdf an example's PDF
         run: python3 tests/cli.py
 
+      - name: When something goes wrong, the CLI says so and leaves the previous output (Chrome failing, --views, render, pdf, stills, diff --base, icons, mcp)
+        run: python3 tests/outcomes.py
+
       - name: The CLI's import reads a sample of each format into a model that validates, renders and checks clean
         run: python3 tests/import.py
+
+      - name: The diff Action's comment step, the release job's steps and map-repo's CLI, run against stand-ins for GitHub, git and npm
+        run: python3 tests/steps.py
 
       - name: The imported example is what import writes from its Structurizr source, so the two can't drift apart
         run: |
@@ -159,9 +165,11 @@ jobs:
       - id: deploy
         uses: actions/deploy-pages@v4
 
-  # Merging a version bump releases it: once the checks pass on main, the version in package.json is tagged, published
-  # as a GitHub Release whose notes are that version's section of docs/module-api.md, and published to npm. A version
-  # that is tagged (or on npm) already is skipped, so every other push to main releases nothing.
+  # Merging a version bump releases it: once the checks pass on main, package.json's version is tagged at that push's
+  # commit and published to npm from it, and then its GitHub Release (notes: that version's section of docs/module-api.md)
+  # is published; until npm has the version, the Release is a draft. Every other push to main releases nothing: a version
+  # tagged at another commit is never published from this one, and one whose release did not finish fails each later push
+  # and names the commit whose release job to re-run, which finishes it (tests/steps.py runs these steps).
   release:
     needs: check
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -173,12 +181,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Tag and release package.json's version, once
+      - name: Tag package.json's version at this commit, once, and draft its Release
+        id: tag
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           v=$(python3 -c "import json; print(json.load(open('package.json'))['version'])")
-          if git ls-remote --exit-code --tags origin "refs/tags/v$v" > /dev/null; then echo "v$v is released already"; exit 0; fi
+          at=$(git ls-remote origin "refs/tags/v$v" "refs/tags/v$v^{}" | tail -n1 | cut -f1)   # the tag's commit (an annotated tag peeled)
+          if [ -n "$at" ] && [ "$at" != "$GITHUB_SHA" ]; then   # another commit's version: nothing is published from this one
+            if [ "$(gh release view "v$v" --json isDraft --jq .isDraft 2> /dev/null)" = false ]; then echo "v$v is released already, from $at"; exit 0; fi
+            echo "::error::v$v is tagged at $at, but its release did not finish (its GitHub Release is a draft or missing): re-run the release job of the push of $at; for a tag made by hand, delete it and re-run this one"
+            exit 1
+          fi
           python3 -I - "$v" <<'PY'
           import re, sys
           v = sys.argv[1]
@@ -188,15 +202,21 @@ jobs:
           open("title.txt", "w").write(f"v{v}: {m.group(1).strip()}")
           open("notes.md", "w").write(f'Install: `npm install umlimator@{v}`, or `"umlimator": "github:zintaen/umlimator#v{v}"`.\n\n{m.group(2).strip()}\n')
           PY
-          gh release create "v$v" --target "$GITHUB_SHA" --title "$(cat title.txt)" --notes-file notes.md --latest
+          [ -n "$at" ] || gh api "repos/$GITHUB_REPOSITORY/git/refs" -f ref="refs/tags/v$v" -f sha="$GITHUB_SHA" > /dev/null
+          gh release view "v$v" > /dev/null 2>&1 || gh release create "v$v" --verify-tag --draft --title "$(cat title.txt)" --notes-file notes.md
+          echo "release=yes" >> "$GITHUB_OUTPUT"
 
       - uses: actions/setup-node@v4
+        if: steps.tag.outputs.release == 'yes'
         with:
           node-version: 24  # npm 11: trusted publishing needs 11.5.1 or later
 
-      - name: Publish package.json's version to npm, once (with provenance, from trusted publishing)
+      - name: Publish the tagged version to npm, once (with provenance, from trusted publishing), then its Release
+        id: npm
+        if: steps.tag.outputs.release == 'yes'
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           v=$(node -p "require('./package.json').version")
-          if npm view "umlimator@$v" version > /dev/null 2>&1; then echo "umlimator@$v is on npm already"; exit 0; fi
-          npm publish --access public
-
+          if npm view "umlimator@$v" version > /dev/null 2>&1; then echo "umlimator@$v is on npm already"; else npm publish --access public; fi
+          if [ "$(gh release view "v$v" --json isDraft --jq .isDraft)" = true ]; then gh release edit "v$v" --draft=false --latest; fi
