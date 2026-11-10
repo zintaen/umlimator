@@ -1743,6 +1743,58 @@ a true outcome, and the state can be read.
   a real Chrome can't be made to fail on demand: one that cannot start, one whose helper outlives it, and one that dies
   on a screenshot. Each defect has a case that failed before these changes. `tests/import.py` adds files cut short.
 
+### The diff Action's comment, the release and map-repo's CLI end in a true state (tooling)
+
+The state-machine audit found these in three of umlimator's tools, by the ids of its tooling inventory. What holds now:
+
+- **The diff Action's comment** (`action.yml`):
+  - *Two runs at once posted two comments, and later runs updated only the first (action-comment 1).* Only the run for
+    the pull request's latest commit writes: it reads the pull request's head first, and a run for an older push writes
+    nothing. Every comment the bot left with the marker is updated, so one posted twice before is never left stale. A
+    `concurrency` group per pull request, as in the README's example, runs them one at a time.
+  - *A lookup that failed posted a second comment (action-comment 2).* Comments or a head that can't be read mean no
+    comment and a warning. The summary is in the job summary, as before.
+  - *Any failed write was reported as a fork's read-only token (action-comment 3).* On a fork's pull request it still is,
+    as a notice. On the repository's own, the warning gives gh's own message and the permission the workflow needs
+    (`pull-requests: write`).
+  - *The comment named no commit, so after a failed or slower run it showed an older push as current (action-comment 4).*
+    It ends with the commit it describes, in words and as `<!-- umlimator-diff-sha: <sha> -->`. The comment step runs
+    after a failed diff too (a cancelled run skips it), and the comment then says the diff failed for that commit, with
+    the run's link.
+- **The release job** (`.github/workflows/check.yml`):
+  - *A failed npm publish was retried by the next push, which published that later commit under the version the tag gave
+    an earlier one (release-pipeline 1).* A version is tagged at the commit that releases it, and npm gets that commit
+    only: a push whose version is tagged at another commit publishes nothing.
+  - *The Release, marked latest and saying `npm install umlimator@X`, came before npm had X (release-pipeline 2).* It is
+    a draft until npm has the version, then published and marked latest.
+  - *A tag made by hand read as "released already" (release-pipeline 3).* A version tagged at another commit counts as
+    released only once its Release is published. Otherwise the job fails, names the tag's commit and says to re-run that
+    commit's release job (for a tag made by hand: delete it and re-run this one). A re-run finishes a release where it
+    stopped, since each step checks what is done first.
+- **map-repo's `cli.py`:**
+  - *Two first uses at once cloned into one folder, and one failed with a traceback (skill-cli-cache 1).* Each first use
+    clones into a folder of its own and renames it into place whole; the one that finishes second uses the first's.
+  - *No network on first use ended in a traceback (skill-cli-cache 2).* git says why, then one line says the first use
+    needs the network once, or `UMLIMATOR_CLI_CACHE` naming a folder that holds the release.
+  - *The pin was checked only when cloning (skill-cli-cache 3).* Every run checks that the cache holds the pinned commit,
+    and says to delete the folder to fetch it again when it doesn't.
+- **Visible changes:** the comment's last lines name its commit; a run for an older push leaves the comment alone; a
+  refused write on the repository's own pull request is a warning that names the permission; a GitHub Release is a draft
+  until npm has its version; and a push to main fails while an earlier release of its version is unfinished.
+- **Tests:** `tests/steps.py`, which CI runs, reads each step's `run:` block from `action.yml` and `check.yml` by its id
+  and runs it as GitHub does, against stand-ins for gh, git and npm:
+  - the release: a new version; npm failing, then a re-run; npm failing, then a later push; a later push after a release;
+    missing notes; a tag made by hand;
+  - the comment: two runs at once, a run for an older commit, comments and a head that can't be read, a refused write on
+    the repository's own pull request and on a fork's, a failed diff;
+  - `cli.py`, against a local tagged repository: two first uses at once, no network, a changed pin.
+
+  Each of these fails on 0.13.0's steps.
+- **Left out:** the artifact's fixed name, which a second use of the Action in one run trips on (action-comment 5); and a
+  check that fails on the release's merge commit still lets the next push release that later commit (release-pipeline
+  4). The site job needs no change: it runs under `bash -e`, so it fails when `stills` does, and `stills` exits 1 on a
+  failed view now (the CLI's change set).
+
 ### The MCP server's page says what it shows (tooling, wave 2)
 
 The state-machine audit found these in `umlimator.py mcp`'s page, by the ids of its tooling inventory. Its page tools
