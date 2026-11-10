@@ -1,0 +1,898 @@
+{
+ "$schema": "../lib/umlimator.schema.json",
+ "title": "umlimator's state machines",
+ "root": "machines",
+ "nodes": [
+  {
+   "id": "page",
+   "label": "The page",
+   "kind": "frontend",
+   "icon": "window",
+   "sublabel": "mountPage(): keys, link",
+   "opensView": "keys",
+   "what": "The standalone page around the map, `mountPage()`: breadcrumbs, search, menus, the details panel and the story recorder.",
+   "how": "One key router reads each key from the top open layer down. One function writes the link from what the map shows, and another follows a link, on load and on Back or Forward."
+  },
+  {
+   "id": "mcp",
+   "label": "MCP page",
+   "kind": "ai",
+   "icon": "bot",
+   "sublabel": "umlimator.py mcp",
+   "opensView": "mcp",
+   "what": "The page `umlimator.py mcp` serves, which an AI assistant drives with its page tools: `show_view`, `highlight`, `tour`, `play_story` and `clear`.",
+   "how": "The server folds the assistant's commands into what the page should show, and sends that. The page shows it on the map's handle and posts its `MapState` back, which `page_state()` returns."
+  },
+  {
+   "id": "navigation",
+   "label": "Navigation",
+   "kind": "backend",
+   "icon": "network",
+   "sublabel": "setView(): latest wins",
+   "opensView": "navigation",
+   "what": "A move from one view to another: `setView()`, a drill-down, up, a story's step, or a link.",
+   "how": "One move at a time. A request during a move takes it to its own view, and every request's promise says whether its view was shown."
+  },
+  {
+   "id": "story",
+   "label": "Story player",
+   "kind": "backend",
+   "icon": "flag",
+   "sublabel": "play(): step by step",
+   "opensView": "story",
+   "what": "A story told step by step: `play()`, the page's Stories menu, or a link's `story=` and `step=`.",
+   "how": "`player.state` is entering, playing or paused, then ended or stopped. A `story` event comes on each change. A move or a selection the story didn't make pauses it."
+  },
+  {
+   "id": "tour",
+   "label": "Tour and replay",
+   "kind": "backend",
+   "icon": "retry",
+   "sublabel": "a dot that rides",
+   "opensView": "tour",
+   "what": "One trip at a time: `tour()`, `replay()`, or a story step's tour.",
+   "how": "Its promise is true when the dot reaches the end, and false when the trip is cut short."
+  },
+  {
+   "id": "mapstate",
+   "label": "MapState",
+   "kind": "database",
+   "icon": "state",
+   "sublabel": "handle.state, state event",
+   "what": "The map's state as one snapshot: fresh, frozen and plain JSON on every read. The `state` event says which of its keys changed.",
+   "how": "`handle.state`, the page's `window.umlimatorMap.state`, `<umlimator-map>`'s `el.map.state`, and the MCP tool `page_state()`."
+  },
+  {
+   "id": "nav-rest",
+   "label": "At rest",
+   "kind": "state",
+   "sublabel": "navigating: null",
+   "what": "A view is shown and no move is under way."
+  },
+  {
+   "id": "nav-leaving",
+   "label": "Leaving",
+   "kind": "state",
+   "sublabel": "into the card or out",
+   "what": "The camera zooms into the card that opens the view, or out, and the view fades (130 ms). Skipped under reduced motion."
+  },
+  {
+   "id": "nav-drawing",
+   "label": "Drawing",
+   "kind": "state",
+   "sublabel": "the latest target",
+   "what": "The view asked for last is drawn, and the selection is cleared (a `select` event with `null`)."
+  },
+  {
+   "id": "nav-entering",
+   "label": "Entering",
+   "kind": "state",
+   "sublabel": "zoom to fit",
+   "what": "The camera zooms to fit the new view. A press on the map settles the glide, and the move goes on."
+  },
+  {
+   "id": "st-none",
+   "label": "No story",
+   "kind": "state",
+   "sublabel": "handle.story: null",
+   "what": "`handle.story` is `null`. `play()` of a story the model lacks returns `null` and leaves the story shown."
+  },
+  {
+   "id": "st-entering",
+   "label": "Entering a step",
+   "kind": "state",
+   "sublabel": "view, camera, highlight",
+   "what": "The step's view, camera, selection and highlight are on their way. The `story` event comes first."
+  },
+  {
+   "id": "st-playing",
+   "label": "Playing",
+   "kind": "state",
+   "sublabel": "next step on its own",
+   "what": "The next step comes once this one's time is up (4 s unless the step says) and its tour has ended."
+  },
+  {
+   "id": "st-paused",
+   "label": "Paused",
+   "kind": "state",
+   "icon": "pause",
+   "sublabel": "its tour held too",
+   "what": "`pause()`, ❚❚ on the bar, or the reader taking the map: a press, a wheel that zooms, a key, a view or a selection the story didn't make."
+  },
+  {
+   "id": "st-ended",
+   "label": "Ended",
+   "kind": "external",
+   "icon": "checks",
+   "sublabel": "done: true",
+   "what": "Past the last step: `next()`, ✓ on the bar, or the last step's time. `player.done` resolves `true`."
+  },
+  {
+   "id": "st-stopped",
+   "label": "Stopped",
+   "kind": "external",
+   "icon": "eyeoff",
+   "sublabel": "done: false",
+   "what": "`stop()`, ✕, Esc, `play(null)`, another `play()`, an `update()` whose model lacks the story, or `destroy()`. `player.done` resolves `false`."
+  },
+  {
+   "id": "tr-none",
+   "label": "No trip",
+   "kind": "state",
+   "sublabel": "state.tour: false",
+   "what": "No dot rides. `tour()` and `replay()` start one; a new one ends the one before."
+  },
+  {
+   "id": "tr-riding",
+   "label": "Riding",
+   "kind": "state",
+   "sublabel": "state.tour: true",
+   "what": "The dot rides the line between each pair of cards in turn, and each card it reaches flashes."
+  },
+  {
+   "id": "tr-held",
+   "label": "Held",
+   "kind": "state",
+   "icon": "pause",
+   "sublabel": "where it is",
+   "what": "The page's ❚❚, a paused story (for its step's tour), or the replay's `pause()`."
+  },
+  {
+   "id": "tr-end",
+   "label": "Reached the end",
+   "kind": "external",
+   "icon": "checks",
+   "sublabel": "resolves true",
+   "what": "`tour()` resolves `true`, and so does a replay's `done`; a replay's labels stay."
+  },
+  {
+   "id": "tr-cut",
+   "label": "Cut short",
+   "kind": "external",
+   "icon": "eyeoff",
+   "sublabel": "resolves false",
+   "what": "Esc on the map, `tour(null)`, the next tour or replay, a new picture of the view, the replay's `stop()`, or `destroy()`."
+  },
+  {
+   "id": "tr-rest",
+   "label": "Lit at rest",
+   "kind": "state",
+   "sublabel": "the path lit and said",
+   "what": "Under reduced motion no dot rides: the path is lit in the `tour` layer and said, and `tour()` resolves `true` at once. It stays until Esc, `tour(null)`, the next trip or a new picture."
+  },
+  {
+   "id": "ky-lightbox",
+   "label": "An example, full size",
+   "kind": "state",
+   "sublabel": "holds every key",
+   "what": "An example shown full size, from a thumbnail in the details panel. It holds every key while open; Esc closes it and focus goes back to the thumbnail."
+  },
+  {
+   "id": "ky-search",
+   "label": "Search",
+   "kind": "state",
+   "sublabel": "/ or ⌘K opens it",
+   "what": "Esc closes it and gives focus back; ⌘K (Ctrl K) closes it too."
+  },
+  {
+   "id": "ky-help",
+   "label": "The key list",
+   "kind": "state",
+   "sublabel": "? opens it",
+   "what": "One of search, the key list and the menus is open at a time."
+  },
+  {
+   "id": "ky-menu",
+   "label": "A menu",
+   "kind": "state",
+   "sublabel": "Export, Stories, Lenses",
+   "what": "Esc closes it and gives focus back to its button."
+  },
+  {
+   "id": "ky-pill",
+   "label": "The view's popover",
+   "kind": "state",
+   "sublabel": "i opens it",
+   "what": "The popover of the view's pill."
+  },
+  {
+   "id": "ky-recorder",
+   "label": "The recorder",
+   "kind": "state",
+   "sublabel": "asks if not saved",
+   "what": "Export ▸ Record a story…: Esc closes it, asking first while it holds steps not saved."
+  },
+  {
+   "id": "ky-story",
+   "label": "A story",
+   "kind": "state",
+   "sublabel": "stopped: play(null)",
+   "what": "Esc or Backspace stops the story shown."
+  },
+  {
+   "id": "ky-trip",
+   "label": "A tour or replay",
+   "kind": "state",
+   "sublabel": "Esc ends it",
+   "what": "Esc ends it and says so: “Tour stopped”, “Replay stopped”."
+  },
+  {
+   "id": "ky-selection",
+   "label": "The selection",
+   "kind": "state",
+   "sublabel": "Esc clears it"
+  },
+  {
+   "id": "ky-up",
+   "label": "Up a level",
+   "kind": "state",
+   "sublabel": "else: at the top",
+   "what": "Esc or Backspace with nothing selected goes up a level; at the top, the hint line says “Already at the top”."
+  },
+  {
+   "id": "mc-asked",
+   "label": "A page tool",
+   "kind": "ai",
+   "icon": "bot",
+   "sublabel": "show_view, highlight…",
+   "what": "`show_view`, `highlight`, `tour`, `play_story` or `clear`. A view, card, line or story the model lacks is an error, and nothing is sent."
+  },
+  {
+   "id": "mc-want",
+   "label": "Folded",
+   "kind": "state",
+   "sublabel": "view, highlight, tour, story",
+   "what": "The latest of each, so a page that opens later shows what the assistant built, not its last command."
+  },
+  {
+   "id": "mc-sent",
+   "label": "Sent",
+   "kind": "state",
+   "sublabel": "to each open page",
+   "what": "One event (Server-Sent Events) to each open page."
+  },
+  {
+   "id": "mc-showing",
+   "label": "Shown on the page",
+   "kind": "frontend",
+   "icon": "window",
+   "sublabel": "once, within 5 s",
+   "what": "The page shows each command once, one at a time; one that takes more than 5 s is answered as not shown."
+  },
+  {
+   "id": "mc-acked",
+   "label": "Acknowledged",
+   "kind": "state",
+   "sublabel": "its MapState, posted",
+   "what": "The page posts its `MapState` with the command's id, or the error that stopped it."
+  },
+  {
+   "id": "mc-answer",
+   "label": "Answered",
+   "kind": "ai",
+   "icon": "checks",
+   "sublabel": "Shown on 1 page",
+   "what": "“Shown on 1 page at …, on view …”. Otherwise the tool says the page could not show it and why, that the open pages did not show it within 6 s, or that no page is connected and the URL to open."
+  }
+ ],
+ "views": [
+  {
+   "id": "machines",
+   "title": "umlimator's state machines",
+   "caption": "The machines a host, a reader or an agent drives, and the state they all report. Double-click one for its states.",
+   "gap": 290,
+   "rgap": 64,
+   "nodeIds": [
+    "page",
+    "mcp",
+    "story",
+    "navigation",
+    "tour",
+    "mapstate"
+   ],
+   "containers": [
+    {
+     "id": "handle",
+     "label": "render()'s handle",
+     "nodeIds": [
+      "story",
+      "navigation",
+      "tour"
+     ]
+    }
+   ],
+   "layout": {
+    "page": [
+     0,
+     0
+    ],
+    "mcp": [
+     0,
+     1
+    ],
+    "story": [
+     1,
+     0.5
+    ],
+    "navigation": [
+     2,
+     0
+    ],
+    "tour": [
+     3,
+     1
+    ],
+    "mapstate": [
+     4,
+     0.5
+    ]
+   },
+   "edges": [
+    {
+     "id": "c1",
+     "from": "page",
+     "to": "handle",
+     "label": "keys, a link"
+    },
+    {
+     "id": "c2",
+     "from": "mcp",
+     "to": "handle",
+     "label": "page tools"
+    },
+    {
+     "id": "c3",
+     "from": "story",
+     "to": "navigation",
+     "label": "a step's view"
+    },
+    {
+     "id": "c4",
+     "from": "story",
+     "to": "tour",
+     "label": "a step's tour"
+    },
+    {
+     "id": "c5",
+     "from": "navigation",
+     "to": "tour",
+     "label": "ends it"
+    },
+    {
+     "id": "c6",
+     "from": "handle",
+     "to": "mapstate",
+     "label": "every change"
+    }
+   ]
+  },
+  {
+   "id": "navigation",
+   "parent": "machines",
+   "title": "Navigation",
+   "caption": "One move at a time, and the latest request wins. setView() resolves true once its view shows, else false.",
+   "render": "sequence",
+   "lanes": false,
+   "gap": 120,
+   "nodeIds": [
+    "nav-rest",
+    "nav-leaving",
+    "nav-drawing",
+    "nav-entering"
+   ],
+   "edges": [
+    {
+     "id": "n1",
+     "from": "nav-rest",
+     "to": "nav-leaving",
+     "label": "setView(), open, up"
+    },
+    {
+     "id": "n2",
+     "from": "nav-leaving",
+     "to": "nav-drawing",
+     "label": "faded"
+    },
+    {
+     "id": "n3",
+     "from": "nav-drawing",
+     "to": "nav-entering",
+     "label": "drawn"
+    },
+    {
+     "id": "n4",
+     "from": "nav-entering",
+     "to": "nav-leaving",
+     "label": "a later request",
+     "toSide": "top"
+    },
+    {
+     "id": "n5",
+     "from": "nav-entering",
+     "to": "nav-rest",
+     "label": "shown: true"
+    }
+   ]
+  },
+  {
+   "id": "story",
+   "parent": "machines",
+   "title": "Story player",
+   "caption": "player.state: entering a step, playing or paused on it, then ended or stopped. A story event comes on each change.",
+   "rgap": 110,
+   "nodeIds": [
+    "st-none",
+    "st-entering",
+    "st-playing",
+    "st-paused",
+    "st-ended",
+    "st-stopped"
+   ],
+   "containers": [
+    {
+     "id": "st-shown",
+     "label": "A story shown",
+     "nodeIds": [
+      "st-entering",
+      "st-playing",
+      "st-paused"
+     ],
+     "badges": [
+      "one at a time"
+     ]
+    }
+   ],
+   "layout": {
+    "st-none": [
+     0,
+     0.5
+    ],
+    "st-entering": [
+     1,
+     0.5
+    ],
+    "st-playing": [
+     2,
+     0
+    ],
+    "st-paused": [
+     2,
+     1
+    ],
+    "st-ended": [
+     3,
+     0
+    ],
+    "st-stopped": [
+     3,
+     1
+    ]
+   },
+   "edges": [
+    {
+     "id": "s1",
+     "from": "st-none",
+     "to": "st-entering",
+     "label": "play(id)"
+    },
+    {
+     "id": "s2",
+     "from": "st-entering",
+     "to": "st-playing",
+     "label": "shown"
+    },
+    {
+     "id": "s3",
+     "from": "st-playing",
+     "to": "st-entering",
+     "label": "time up, next()"
+    },
+    {
+     "id": "s4",
+     "from": "st-entering",
+     "to": "st-paused",
+     "label": "shown"
+    },
+    {
+     "id": "s5",
+     "from": "st-paused",
+     "to": "st-entering",
+     "label": "next(), prev()"
+    },
+    {
+     "id": "s6",
+     "from": "st-playing",
+     "to": "st-paused",
+     "label": "pause(), reader input"
+    },
+    {
+     "id": "s7",
+     "from": "st-paused",
+     "to": "st-playing",
+     "label": "resume()"
+    },
+    {
+     "id": "s8",
+     "from": "st-shown",
+     "to": "st-ended",
+     "label": "past the last step"
+    },
+    {
+     "id": "s9",
+     "from": "st-shown",
+     "to": "st-stopped",
+     "label": "stop(), ✕, Esc"
+    }
+   ]
+  },
+  {
+   "id": "tour",
+   "parent": "machines",
+   "title": "Tour and replay",
+   "caption": "One trip at a time. tour() and a replay's done resolve true at the end, false when cut short.",
+   "gap": 96,
+   "rgap": 80,
+   "nodeIds": [
+    "tr-none",
+    "tr-riding",
+    "tr-held",
+    "tr-end",
+    "tr-cut",
+    "tr-rest"
+   ],
+   "containers": [
+    {
+     "id": "tr-trip",
+     "label": "A dot rides",
+     "nodeIds": [
+      "tr-riding",
+      "tr-held"
+     ]
+    }
+   ],
+   "layout": {
+    "tr-none": [
+     0,
+     0
+    ],
+    "tr-riding": [
+     1,
+     0
+    ],
+    "tr-held": [
+     1,
+     1
+    ],
+    "tr-end": [
+     2,
+     0
+    ],
+    "tr-cut": [
+     2,
+     1
+    ],
+    "tr-rest": [
+     2,
+     2
+    ]
+   },
+   "edges": [
+    {
+     "id": "t1",
+     "from": "tr-none",
+     "to": "tr-riding",
+     "label": "tour(), replay()"
+    },
+    {
+     "id": "t2",
+     "from": "tr-riding",
+     "to": "tr-held",
+     "label": "❚❚, pause()"
+    },
+    {
+     "id": "t3",
+     "from": "tr-held",
+     "to": "tr-riding",
+     "label": "▶, resume()"
+    },
+    {
+     "id": "t4",
+     "from": "tr-riding",
+     "to": "tr-end",
+     "label": "the last line"
+    },
+    {
+     "id": "t5",
+     "from": "tr-trip",
+     "to": "tr-cut",
+     "label": "Esc, tour(null)"
+    },
+    {
+     "id": "t6",
+     "from": "tr-none",
+     "to": "tr-rest",
+     "label": "reduced motion"
+    }
+   ],
+   "tour": [
+    "tr-none",
+    "tr-riding",
+    "tr-end"
+   ]
+  },
+  {
+   "id": "keys",
+   "parent": "machines",
+   "title": "The page's keys",
+   "caption": "Esc and Backspace close the top open layer first, in this order. On the map, Esc ends a tour or replay, then clears the selection, then goes up.",
+   "render": "sequence",
+   "lanes": false,
+   "nodeIds": [
+    "ky-lightbox",
+    "ky-search",
+    "ky-help",
+    "ky-menu",
+    "ky-pill",
+    "ky-recorder",
+    "ky-story",
+    "ky-trip",
+    "ky-selection",
+    "ky-up"
+   ],
+   "edges": [
+    {
+     "id": "k1",
+     "from": "ky-lightbox",
+     "to": "ky-search",
+     "label": "Esc"
+    },
+    {
+     "id": "k2",
+     "from": "ky-search",
+     "to": "ky-help",
+     "label": "Esc"
+    },
+    {
+     "id": "k3",
+     "from": "ky-help",
+     "to": "ky-menu",
+     "label": "Esc"
+    },
+    {
+     "id": "k4",
+     "from": "ky-menu",
+     "to": "ky-pill",
+     "label": "Esc"
+    },
+    {
+     "id": "k5",
+     "from": "ky-pill",
+     "to": "ky-recorder",
+     "label": "Esc"
+    },
+    {
+     "id": "k6",
+     "from": "ky-recorder",
+     "to": "ky-story",
+     "label": "Esc"
+    },
+    {
+     "id": "k7",
+     "from": "ky-story",
+     "to": "ky-trip",
+     "label": "Esc"
+    },
+    {
+     "id": "k8",
+     "from": "ky-trip",
+     "to": "ky-selection",
+     "label": "Esc"
+    },
+    {
+     "id": "k9",
+     "from": "ky-selection",
+     "to": "ky-up",
+     "label": "Esc"
+    }
+   ]
+  },
+  {
+   "id": "mcp",
+   "parent": "machines",
+   "title": "The MCP page",
+   "caption": "A page tool, step by step: it answers “shown” only once a page has shown it.",
+   "render": "sequence",
+   "lanes": false,
+   "gap": 240,
+   "nodeIds": [
+    "mc-asked",
+    "mc-want",
+    "mc-sent",
+    "mc-showing",
+    "mc-acked",
+    "mc-answer"
+   ],
+   "containers": [
+    {
+     "id": "mc-server",
+     "label": "umlimator.py mcp",
+     "nodeIds": [
+      "mc-asked",
+      "mc-want",
+      "mc-sent"
+     ]
+    },
+    {
+     "id": "mc-page",
+     "label": "The served page",
+     "nodeIds": [
+      "mc-showing",
+      "mc-acked"
+     ]
+    }
+   ],
+   "edges": [
+    {
+     "id": "m1",
+     "from": "mc-asked",
+     "to": "mc-want",
+     "label": "rendered"
+    },
+    {
+     "id": "m2",
+     "from": "mc-want",
+     "to": "mc-sent",
+     "label": "SSE"
+    },
+    {
+     "id": "m3",
+     "from": "mc-sent",
+     "to": "mc-showing",
+     "label": "applied"
+    },
+    {
+     "id": "m4",
+     "from": "mc-showing",
+     "to": "mc-acked",
+     "label": "posted"
+    },
+    {
+     "id": "m5",
+     "from": "mc-acked",
+     "to": "mc-answer",
+     "label": "within 6 s"
+    }
+   ]
+  }
+ ],
+ "stories": [
+  {
+   "id": "assistant",
+   "title": "An assistant, then the reader",
+   "steps": [
+    {
+     "view": "machines",
+     "caption": "An assistant calls show_view. The MCP page asks render()'s handle for the view.",
+     "highlight": [
+      "mcp",
+      "navigation"
+     ],
+     "select": "mcp"
+    },
+    {
+     "view": "mcp",
+     "caption": "The server folds the command into what the page should show and sends it. The page shows it and posts its MapState back, so the tool can answer “Shown on 1 page”.",
+     "highlight": [
+      "mc-asked",
+      "mc-want",
+      "mc-sent",
+      "mc-showing",
+      "mc-acked",
+      "mc-answer"
+     ],
+     "tour": [
+      "mc-asked",
+      "mc-want",
+      "mc-sent",
+      "mc-showing",
+      "mc-acked",
+      "mc-answer"
+     ],
+     "duration": 6000
+    },
+    {
+     "view": "navigation",
+     "caption": "On the page, the move leaves the view, draws the new one and zooms in. setView() resolves true, and one viewchange follows.",
+     "highlight": [
+      "nav-rest",
+      "nav-leaving",
+      "nav-drawing",
+      "nav-entering"
+     ],
+     "tour": [
+      "nav-rest",
+      "nav-leaving",
+      "nav-drawing",
+      "nav-entering",
+      "nav-rest"
+     ]
+    },
+    {
+     "view": "story",
+     "caption": "The reader plays a story: each step enters, then plays. A press on the map pauses it, and ▶ plays on.",
+     "highlight": [
+      "st-none",
+      "st-entering",
+      "st-playing",
+      "st-paused"
+     ],
+     "tour": [
+      "st-none",
+      "st-entering",
+      "st-playing",
+      "st-paused"
+     ]
+    },
+    {
+     "view": "tour",
+     "caption": "A tour rides until the dot reaches the end: tour() resolves true. The page's ❚❚ holds it, and Esc cuts it short: false.",
+     "highlight": [
+      "tr-none",
+      "tr-riding",
+      "tr-held",
+      "tr-end"
+     ],
+     "select": "tr-held"
+    },
+    {
+     "view": "keys",
+     "caption": "Esc closes the top open layer first: the story, then the tour, then the selection, then up a level.",
+     "highlight": [
+      "ky-story",
+      "ky-trip",
+      "ky-selection",
+      "ky-up"
+     ],
+     "tour": [
+      "ky-story",
+      "ky-trip",
+      "ky-selection",
+      "ky-up"
+     ]
+    },
+    {
+     "view": "machines",
+     "caption": "Every change reaches MapState as one state event, and page_state() reads it back for the assistant.",
+     "highlight": [
+      "navigation",
+      "story",
+      "tour",
+      "mapstate",
+      "mcp"
+     ],
+     "select": "mapstate"
+    }
+   ]
+  }
+ ]
+}
