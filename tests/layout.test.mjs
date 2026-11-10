@@ -384,6 +384,49 @@ test("far ends level with each other take a side's ports by the angle they come 
   assert.ok(len <= 1.1 * direct, `${Math.round(len)} px for a direct route of ${Math.round(direct)} (1,399 px in 0.12.1)`);
 });
 
+// clinic's context and containers views, cut down: the line into the patient is the importer's loop back, from a card on the right
+const CLINIC = (() => {
+  const card = (id, label, kind, sublabel) => ({ id, label, kind, sublabel }), line = (from, to, label, sublabel, loop) => ({ id: from + '-' + to, from, to, label, sublabel, loop });
+  return { nodes: [card('patient', 'Patient', 'frontend', 'Person'), card('reception', 'Receptionist', 'frontend', 'Person'), card('bookings', 'Clinic bookings', 'backend', 'Software system'),
+    card('web', 'Booking site', 'frontend', 'React'), card('desk', 'Front desk app', 'frontend', 'React'), card('api', 'Booking API', 'backend', 'Go'), card('db', 'Bookings database', 'database', 'PostgreSQL'),
+    card('jobs', 'Job queue', 'queue', 'RabbitMQ'), card('sender', 'Reminder sender', 'backend', 'Python'), card('sms', 'SMS gateway', 'external', 'Software system'), card('records', 'Patient records', 'external', 'Software system')],
+  edges: [line('patient', 'bookings', 'Books appointments', 'HTTPS'), line('reception', 'bookings', 'Runs the day', 'HTTPS'), line('bookings', 'records', 'Checks the patient', 'FHIR'),
+    line('bookings', 'sms', 'Sends texts', 'HTTPS'), line('sms', 'patient', 'Texts a reminder', undefined, true), line('patient', 'web', 'Books appointments', 'HTTPS'),
+    line('reception', 'desk', 'Runs the day', 'HTTPS'), line('web', 'api', 'Books', 'JSON/HTTPS'), line('desk', 'api', 'Moves and cancels', 'JSON/HTTPS'), line('api', 'records', 'Checks the patient', 'FHIR'),
+    line('api', 'db', 'Reads and writes', 'SQL'), line('api', 'jobs', 'Queues reminders', 'AMQP'), line('sender', 'jobs', 'Takes reminders', 'AMQP'), line('sender', 'sms', 'Sends texts', 'HTTPS')],
+  views: [{ id: 'context', nodeIds: ['patient', 'reception', 'bookings', 'sms', 'records'], containers: [{ id: 'staff', label: 'Clinic staff', nodeIds: ['reception'] }],
+    edges: ['patient-bookings', 'reception-bookings', 'bookings-records', 'bookings-sms', 'sms-patient'] },
+  { id: 'containers', nodeIds: ['patient', 'reception', 'web', 'desk', 'api', 'db', 'jobs', 'sender', 'sms', 'records'],
+    containers: [{ id: 'system', label: 'Clinic bookings', nodeIds: ['web', 'desk', 'api', 'db', 'jobs', 'sender'] }, { id: 'staff', label: 'Clinic staff', nodeIds: ['reception'] }],
+    edges: ['patient-web', 'reception-desk', 'web-api', 'desk-api', 'api-records', 'api-db', 'api-jobs', 'sender-jobs', 'sender-sms', 'sms-patient'] }] };
+})();
+
+test("a line from a card on the right into a card on its left comes in on the near side and never runs round one of its own cards (clinic's reminder)", () => {
+  // behind a card: past its side opposite the port; a line may go there only when its other end is there
+  const behind = (n, side, [x, y]) => side === 'R' ? x < n.x - .5 : side === 'L' ? x > n.x + n.w + .5 : side === 'B' ? y < n.y - .5 : y > n.y + n.h + .5;
+  for (const v of CLINIC.views) {
+    const g = layout(CLINIC, v.id);
+    for (const e of g.edges) for (const [n, side, far] of [[e.s, e.fs, e.pts.at(-1)], [e.t, e.ts, e.pts[0]]])
+      assert.ok(behind(n, side, far) || !e.pts.some(p => behind(n, side, p)), `${v.id}: ${e.from} -> ${e.to} runs round ${n.id}: ${JSON.stringify(e.pts.map(p => p.map(Math.round)))}`);
+    assert.equal(g.edges.find(e => e.from === 'sms').ts, 'R', `${v.id}: the reminder comes in on the patient's near side`);
+    assert.deepEqual(check(CLINIC, v.id).map(i => i.message), [], v.id); // it went over the patient, down its far side and under it, and the check said nothing
+  }
+});
+
+test("a line that only jogged between two cards facing each other runs straight: clinic's patient books on the booking site", () => {
+  const e = layout(CLINIC, 'containers').edges.find(e => e.from === 'patient');
+  assert.equal(e.pts.length, 2, JSON.stringify(e.pts)); // the patient's two ports are spread round its middle, the site's one port was in its middle
+});
+
+test("a model's edge ids don't change its picture: port repair tries every pair of lines either way (r19's edges have none)", () => {
+  const m = read('../bench/models/r19.json'), named = structuredClone(m); named.edges.forEach((e, i) => { e.id = 'e' + i; });
+  for (const v of m.views) assert.deepEqual(layout(m, v.id).edges.map(e => e.pts), layout(named, v.id).edges.map(e => e.pts), v.id);
+});
+
+test("a line's label finds the gap where it fits between the cards and lines beside it, not the box border by it (clinic's \"Queues reminders\")", () => {
+  assert.deepEqual(check(read('../examples/clinic.json'), 'api-components').map(i => i.message), []);
+});
+
 test('a labelled line into a card in a box in a box gets room for both borders, as one into a lane does (#82)', () => {
   const m = nested => ({ nodes: [{ id: 'a', label: 'A' }, { id: 'b', label: 'B' }], edges: [{ from: 'a', to: 'b', label: 'reads often' }],
     views: [{ id: 'v', nodeIds: ['a', 'b'], containers: nested ? [{ id: 'o', label: 'Outer', nodeIds: [] }, { id: 'i', label: 'Inner', nodeIds: ['b'], parent: 'o' }] : [{ id: 'o', label: 'Outer', nodeIds: ['b'] }] }] });

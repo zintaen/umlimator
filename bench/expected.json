@@ -1,5 +1,5 @@
 {
- "commit": "6ef51b8",
+ "commit": "47280ee",
  "results": {
   "b10/norepair": {
    "hashes": [
@@ -8,7 +8,7 @@
   },
   "b10/overview": {
    "hashes": [
-    "eb7b4492"
+    "7301482b"
    ]
   },
   "b26/n01": {
@@ -18,22 +18,22 @@
   },
   "b26/overview": {
    "hashes": [
-    "a7ed7d17"
+    "e57657e9"
    ]
   },
   "b69/back": {
    "hashes": [
-    "fe7d1d83"
+    "9558d229"
    ]
   },
   "b69/front": {
    "hashes": [
-    "d1fb5ecc"
+    "13a3501d"
    ]
   },
   "b69/overview": {
    "hashes": [
-    "c860a9e9"
+    "7ce70b82"
    ]
   },
   "bookshop/api": {
@@ -43,42 +43,42 @@
   },
   "bookshop/overview": {
    "hashes": [
-    "e33d46fd"
+    "12e6dea4"
    ]
   },
   "d24/boxed": {
    "hashes": [
-    "1f0cdbaf"
+    "4790eecd"
    ]
   },
   "d24/plain": {
    "hashes": [
-    "caf12b33"
+    "22a8212e"
    ]
   },
   "m50/overview": {
    "hashes": [
-    "7e29c505"
+    "8273bb09"
    ]
   },
   "r15/boxed": {
    "hashes": [
-    "41ac07bf"
+    "e785c729"
    ]
   },
   "r15/plain": {
    "hashes": [
-    "86834b51"
+    "666ba1b7"
    ]
   },
   "r19/boxed": {
    "hashes": [
-    "1c3c5572"
+    "527ddbca"
    ]
   },
   "r19/plain": {
    "hashes": [
-    "e565b90a"
+    "b67493c7"
    ]
   },
   "s16/job": {
@@ -88,7 +88,7 @@
   },
   "s16/pay": {
    "hashes": [
-    "983c71da"
+    "1e5c2186"
    ]
   },
   "s16/site": {
@@ -98,37 +98,37 @@
   },
   "s16/site+job": {
    "hashes": [
-    "8ff57d10"
+    "5d152acd"
    ]
   },
   "s16/site+job+pay": {
    "hashes": [
-    "4509666b"
+    "e8bf88d9"
    ]
   },
   "s16/site+pay": {
    "hashes": [
-    "45b4f348"
+    "cc8fa8e4"
    ]
   },
   "u21/catalog": {
    "hashes": [
-    "87be2816"
+    "40badf54"
    ]
   },
   "u21/checkout": {
    "hashes": [
-    "8ed08f1"
+    "b8026e1b"
    ]
   },
   "u21/orders": {
    "hashes": [
-    "20389a3e"
+    "d53ab7f4"
    ]
   },
   "u21/shop": {
    "hashes": [
-    "8cdf4145"
+    "ebc824d8"
    ]
   },
   "u21/shop+orders": {
@@ -143,22 +143,22 @@
   },
   "u21/shop+warehouse": {
    "hashes": [
-    "97cb9888"
+    "c14e3ce1"
    ]
   },
   "u21/teams": {
    "hashes": [
-    "66f78b41"
+    "d53b4804"
    ]
   },
   "u21/teams+orders": {
    "hashes": [
-    "a9473372"
+    "22cceab9"
    ]
   },
   "u21/warehouse": {
    "hashes": [
-    "8cf7e625"
+    "84e9552c"
    ]
   }
  }

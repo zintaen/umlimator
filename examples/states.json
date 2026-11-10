@@ -336,11 +336,11 @@
     ],
     "navigation": [
      2,
-     0
+     1
     ],
     "tour": [
      3,
-     1
+     0
     ],
     "mapstate": [
      4,
@@ -394,6 +394,7 @@
    "render": "sequence",
    "lanes": false,
    "gap": 120,
+   "rgap": 90,
    "nodeIds": [
     "nav-rest",
     "nav-leaving",
