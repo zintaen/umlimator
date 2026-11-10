@@ -173,6 +173,11 @@ with tempfile.TemporaryDirectory() as tmp:
        and heads == {flat("Bike share › What runs"), flat("Bike share › What runs › Fleet service")} and two[-1].startswith("Rules"), [r, [p[:40] for p in two]])
     dark = fills((t / "two.pdf").read_bytes()) if two else []
     ok("pdf --theme dark · its pages are dark to the edge", dark and max(dark[0]) < .15, dark[:3])
+    # card shapes (0.15.0): a model in the c4 notation prints its shapes, and its legend keys them
+    cli("render", str(ROOT / "examples" / "shapes.json"), "--out", str(t / "shapes.html"), "--no-check")
+    shp = read("shapes.pdf") if cli("pdf", str(t / "shapes.html"), "--out", str(t / "shapes.pdf")) else []
+    ok("pdf · a model in the c4 notation: its legend keys the shapes it draws (a person, a browser app, a phone)",
+       shp and all(flat(k) in "".join(shp) for k in ("Personsomeone who uses it", "Browser appruns in a web browser", "Mobile appruns on a phone")), [p[:200] for p in shp[1:2]])
     # a view of forty cards: its tables go on over the pages after its picture, under their heading and header row again,
     # never a row cut; and a model with no rules has no rules section
     (t / "long.json").write_text(json.dumps({"title": "Forty parts", "views": [{"id": "all", "title": "All parts", "nodeIds": [f"p{i}" for i in range(40)]}],
