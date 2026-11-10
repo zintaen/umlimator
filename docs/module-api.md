@@ -1727,8 +1727,8 @@ a true outcome, and the state can be read.
   - *Now.* A taken port falls back to a port of the model's own, the same on each run, and only then to any port. A
     batch gets a batch of replies. The instructions name the model's whole path and the folder the server runs in. A
     relative path is looked for in the model's folder first, and an error names where it looked.
-  - The page's own machines (its state, acknowledgements, replay and last good page, and mcp-session 1) come in the
-    next wave, on the map's state contract.
+  - The page's own machines (its state, acknowledgements, replay and last good page, and mcp-session 1) came in the
+    next wave, on the map's state contract: "The MCP server's page says what it shows", below.
 - **Behaviour changes, all for defects the audit reproduced:**
   - `stills` exits 1 when a view fails.
   - The first `stills` run after upgrading draws every view again (`.stills.json` gives way to `.stills/`).
@@ -1794,6 +1794,155 @@ The state-machine audit found these in three of umlimator's tools, by the ids of
   check that fails on the release's merge commit still lets the next push release that later commit (release-pipeline
   4). The site job needs no change: it runs under `bash -e`, so it fails when `stills` does, and `stills` exits 1 on a
   failed view now (the CLI's change set).
+
+### The standalone page's state: its keys, the link, stories in the history, the panel and the element
+
+The page audit (wave 2) found the page's own machines: its keys, its link, its menus and panels, and the element's
+lifecycle. Each decided its transitions in several places, so they contradicted each other. Each now has one owner. The
+ids are the audit's: a machine, then the number of its defect.
+
+- **One key router (keyboard-router 1 to 3, example-lightbox 1 and 2, search-palette 1, help-dialog 1).** One table
+  decides each key, read from the top open layer down. The layers, in order: an example shown full size, search, the key
+  list, a menu, the view's popover, the story recorder, a story, then the map.
+  - Enter, Space and the arrows aimed at a control outside the map are that control's. With a card selected, Enter on a
+    details tab, the panel's ×, Export ▾, an item of the views list or the example's × opened the card's inner view
+    instead, and the control did nothing. Arrows on those controls panned the map.
+  - Esc and Backspace close the top open layer, wherever the focus is (a text field takes its own keys). Search no longer
+    stays open while the map goes up a level behind it. A menu gives focus back to its button. The recorder closes, and
+    asks first when it holds steps not saved (the playback change above). Backspace closes a story as Esc does
+    (`play(null)`); before, it cleared the step's card and then went up a level under the story's bar.
+  - An example shown full size holds the keys: Esc closes it, Tab stays in it, and Enter and Space press its own
+    buttons. Focus goes back to its thumbnail. Before, O, /, ? and i acted on the page behind it.
+  - The key list (?) is made from the same table, so it can't drift from what the keys do.
+- **One owner for the link (deep-link 3 to 5, lens-picker 1 and 2, theme 1).** One function writes the fragment, from
+  what the map shows. Another follows a link: on load, and on Back, Forward or an edited link.
+  - A new view is a new entry, written once the move lands. A selection, a story step on the same view, a lens and the
+    theme rewrite the entry. Since the move became latest-wins, the select a move sends mid-move rewrote the entry being
+    left with the new view, so Back skipped it; now it waits for the move.
+  - A link applies its lens, view, story step and card together, and nothing is written until the map has settled. A
+    move the reader starts meanwhile wins and gets an entry of its own.
+  - What the model lacks is corrected in the link, and the hint line says so: "Link corrected: no view “nope”". The same
+    goes for a card, a story, a step or a lens. Before, a missing view or card stayed in the address bar.
+  - `reader=1` stays in the link, so a reader copy's Export ▸ Copy link is a reader copy. A link that names the theme names
+    the one shown, after ◐ too; it named the theme the page opened with, which won on reload.
+  - The lens follows the `lens` event, so a lens put on with `handle.lens()`, or dropped by an `update()`, shows on the
+    Lenses button and in the link.
+- **Stories in the history (story-mirror 1).** A story step's entry is the entry of the step's own view. Back and Forward
+  show that step, not playing on, and an entry with no story closes the one shown. Before, the history ignored stories:
+  Back moved the view under a bar still on its last step, and each entry named the next step.
+- **The details panel (details-panel 1 to 5, lit-highlight 1 and 3, legend-fold 1).**
+  - The tab the reader chose stays chosen. A card without it shows its first tab, and the next card that has it shows
+    it again. Before, the choice was forgotten until a reload.
+  - A story step's own selection is a pointer, by id, whether the step names its card or gives a Ref. `[` and `]` don't
+    open the panel for it, and a click on that card does.
+  - A tab or the legend's fold changed by keyboard keeps focus on its button, and a panel that closes gives focus back to
+    the map, on the page as in `render()`'s pieces.
+  - What → ← ⇄ ⏱ ¤ ⊘ light is on the page's own layer, `lit`, so it never takes away a story's or a host's `highlight()`.
+    The button that is on says so (`aria-pressed`). `handle.state.overlays` lists `lit`, not `highlight`.
+- **Menus, phones and the views list (search-palette 2, header-menus 1, views-navigator 2).** One menu is open at a time,
+  and search, the key list or another menu closes it; ⌘K left Stories or Lenses open under search. On a phone's width,
+  Stories and Lenses stay in the header as their glyphs ▶ and ◎, and keep their names for screen readers. Only Export
+  is hidden. The views list closes when the window narrows to a phone's width, where it would cover the map.
+- **The page's handle (page-lifecycle 1).** `destroy()` also takes the page's listeners on the document and window away.
+  Before, the key list, search and Back still acted on a destroyed map.
+- **One-shot modes (page-modes 1 and 2).**
+  - `#still` for a view the model lacks writes `data-still` with an `error` and stops. It used to poll for ever, until
+    Chrome's budget ran out.
+  - The `#check` report lists a promise that failed with no one to catch it (`unhandledrejection`). It waits two tasks
+    after the fonts so such a failure can come in.
+- **`<umlimator-map>` (element 1 to 4).**
+  - A model with no view to draw fires `error`, not `load`, and the element's children show again.
+  - `error` is an `ErrorEvent`, and its `message` says why: a fetch's status, bad JSON, or no view.
+  - `el.loading` is true from the moment a draw is asked for until `load` or `error`. Meanwhile `el.map` is still the map
+    drawn last.
+  - An attribute set to the value it has draws nothing again. A host that set `view` again threw away where the reader
+    had gone.
+  - `el.map.state` is the map's `MapState`.
+- **Visible behaviour changes:**
+  - Enter and Space on a page control press it.
+  - Esc and Backspace close the top open layer first; Backspace closes a story.
+  - Stories are in the history.
+  - A link the map can't follow is corrected and said in the hint line.
+  - `reader=1` stays in the link.
+  - The lit paths are the `lit` layer.
+  - Stories and Lenses show on phones.
+  - The element fires `error` for a model with no view.
+- **API added:** `el.loading`, and the element's `error` as an `ErrorEvent`. `lib/umlimator-element.d.ts` has `loading`;
+  nothing in `lib/umlimator.d.ts` changed.
+- **Left for later:**
+  - Search's index after an `update()`.
+  - The hint line on a phone, and its live region repeating the key hints.
+  - The ◐ button's state for screen readers.
+  - `#check` staying in the link.
+- **Tests:**
+  - `tests/page-state.html` covers the keys, the link, stories in the history, the panel, menus, a phone's width (the
+    template's CSS, in a frame), `#still` and the check report. `tests/embed.py` runs it under reduced motion.
+  - `tests/page-motion.html` runs in the motion pass: Back twice during moves, a selection and then a move, a story step
+    on another view, and the reader's own move while a link is followed.
+  - `tests/element.html` adds the element's checks.
+  - Each defect fixed has a check that fails without this change.
+
+### The MCP server's page says what it shows (tooling, wave 2)
+
+The state-machine audit found these in `umlimator.py mcp`'s page, by the ids of its tooling inventory. Its page tools
+answered "sent" for what was written to a socket. A page that opened late got the last command alone. A model that
+stopped rendering took the page down. And the assistant could not learn what the page showed.
+
+- **Shown means shown (mcp-sse-clients 1 and 2, mcp-page-player 1 and 2):**
+  - *What was wrong.* A closed tab counted as connected for up to 20 s, so "Sent to 1 page" could go to nobody. A
+    command that came while a page was connecting was played twice. No tool read what the page showed, and a command
+    stuck behind a move (a tab in the background) held every later one.
+  - *Now.* The served page posts its map's `state` (the `MapState` of 0.14.0) on each change, and after each command it
+    has shown or failed to, with the command's id.
+    - A page tool waits up to 6 s for that, and answers "Shown on N pages, on view X", "The page could not show it: …",
+      "Sent to N open pages, which did not show it within 6 s…", or "No page is connected: open …".
+    - A command that takes the page more than 5 s is answered as failed, with why, and the next one goes on.
+    - The page shows each command once, whatever comes twice.
+    - A closed tab drops out within 2 s, the ping's interval.
+  - The new read tool `page_state()` returns, for each open page, its `state`, whether it shows the model's latest
+    version, and the last command it showed (or why not). It also returns what the assistant asked for last, and
+    whether the model renders.
+- **A late page shows what the assistant built (mcp-latest-command 1 to 3):**
+  - *What was wrong.* After `show_view(trips)` and `highlight(...)`, a page that opened later got the highlight alone,
+    on the root view, where it dimmed every card. A replayed command carried the version of the model at replay time.
+    A story or tour sent long ago played again.
+  - *Now.* The server folds its commands into what the page should show, `{view, highlight, tour, story}`, the latest of
+    each, and sends that.
+    - A highlight or tour that names no view goes on the view its Refs name. Otherwise it goes on the last view asked
+      for that shows all its cards, else the first view that does.
+    - A tour or story that a page reports has ended is taken out, so a page that opens later doesn't play it again.
+    - When a new version of the model renders, what it no longer has (a view, cards, lines, a story) is dropped.
+- **The assistant's highlight is its own (mcp-page-player 3, and the decision's rule 3):**
+  - *What was wrong.* The assistant's highlight shared the map's `highlight` layer with the page's own lit paths and
+    stories. The reader's view change cleared it without a word. `clear()` stopped only the server's story.
+  - *Now.* It is drawn on a layer of its own, `mcp`: off on any other view, so it never dims every card there, and back
+    when the reader returns to its view. `page_state()` shows it in `overlays`. `clear()` takes off the assistant's
+    highlight, tour and story; a story the reader started is the reader's.
+  - For this, the module's `highlight()` takes `{ layer }` (additive): `highlight(refs, { layer: 'mcp' })` draws the
+    same marks as a layer of that name, and `null` clears that layer only.
+- **A model that stops rendering keeps the page (mcp-page-render 1 and 2):**
+  - *What was wrong.* The page reloaded into a bare 500 and lost its map and its event stream, while the tools went on
+    saying "Sent to 1 page". The page was labelled with the version read before the render, which an edit during it
+    could change.
+  - *Now.* The page is rendered from a snapshot of the model's bytes, labelled with their hash, and when a page tool
+    is called. A version that doesn't render keeps the last page that did. The page tools begin their answer with "The
+    model no longer renders, so the page shows its last version that did: <why>", the page shows the same in a bar,
+    and `page_state()` gives `model.renders: false`.
+  - Before any version renders, the page says why and draws the map once one does.
+- **A tab outlives its server (mcp-session 1):**
+  - *What was wrong.* When another model's server took the port, an open tab reloaded into that map without a word.
+  - *Now.* The page names its model file, and another model's server refuses its event stream. The tab stays as it was
+    and says that its server now serves another map.
+- **Known limits, for later:**
+  - mcp-page-render 3: `GET /` still renders under the lock when the model changed since the last page tool, which
+    renders first, so a page rarely waits. Rendering in the background would end it.
+  - mcp-page-player 4: a headless browser that waits for network idle still waits on the event stream for ever (wait
+    for `load`). `page_state()` gives an assistant the page's state without a browser.
+- **Tests:**
+  - `tests/mcp.py` (new, in CI) drives the server through its pipes, as a client does, and its page in headless Chrome
+    over the DevTools protocol. It runs one case per defect above, and 11 of its first 13 fail on 0.13.0's server;
+    `mcp-session 1` was added after.
+  - `tests/cli.py`'s MCP part answers as a page does.
 
 ### A tour's dot rides under the cards, and a line's flow keeps its width and its arrowhead (#124)
 
