@@ -1,6 +1,7 @@
 <!doctype html>
 <!-- The reading aids (0.15.0) in the browser: a box's tone (a tinted region, a dashed border, its title in the tone), a step
-     on a line in any view (its mark, its name and title), and --um-tint, light and dark; the minimap and the SVG keep them
+     on a line in any view (its mark, its name and title, a number or text such as 5a), every box dashed in c4, and
+     --um-tint, light and dark; the minimap and the SVG keep them
      (toPNG() draws that SVG, as tests/embed.html checks). tests/embed.py opens it in headless Chrome and reads
      <pre id="result">. -->
 <meta charset="utf-8">
@@ -33,7 +34,7 @@ const MODEL = {
   nodes: [card('shop', 'Shoppers', 'frontend'), card('web', 'Storefront', 'frontend'), card('api', 'Shop API', 'backend'), card('q', 'Order queue', 'queue'),
     card('wk', 'Order worker', 'backend'), card('db', 'Database', 'database'), card('mail', 'Email', 'external')],
   edges: [{ id: 'e1', from: 'shop', to: 'web', label: 'browse, buy', step: 1, weight: 2 }, { id: 'e2', from: 'web', to: 'api', label: 'checkout', sublabel: 'JSON over HTTPS', step: 2 },
-    { id: 'e3', from: 'api', to: 'q', step: 3 }, { id: 'e4', from: 'q', to: 'wk', label: 'next order', step: 4.1 }, { id: 'e5', from: 'wk', to: 'db', label: 'save' }, { id: 'e6', from: 'wk', to: 'mail' }],
+    { id: 'e3', from: 'api', to: 'q', step: 3 }, { id: 'e4', from: 'q', to: 'wk', label: 'next order', step: 4.1 }, { id: 'e5', from: 'wk', to: 'db', label: 'save' }, { id: 'e6', from: 'wk', to: 'mail', step: '5a' }],
   views: [{ id: 'v', nodeIds: ['shop', 'web', 'api', 'q', 'wk', 'db', 'mail'], containers: [{ id: 'front', label: 'Web', tone: 'cyan', nodeIds: ['web', 'api'] },
     { id: 'orders', label: 'Orders', tone: 'orange', nodeIds: ['q', 'wk'] }, { id: 'store', label: 'Store', nodeIds: ['db'] }, { id: 'post', label: 'Post', tone: 'nope', nodeIds: ['mail'] }] },
     { id: 's', render: 'sequence', nodeIds: ['shop', 'web', 'api'], edges: [{ id: 's1', from: 'shop', to: 'web', label: 'goes', step: 9 }, 'e2'] }] };
@@ -95,8 +96,11 @@ try {
   await h.setView('s');
   check('a numbered view numbers its lines in run order, whatever their step', key('shop').getAttribute('aria-label').startsWith('Step 1: ') && sr.querySelector('.e-step-tx').textContent === '1', key('shop').getAttribute('aria-label'));
   await h.setView('v');
+  const l6 = lab('e6'), k6 = key('wk') && sr.querySelector(`.line-key[data-i="${[...sr.querySelectorAll('.edge-g')].findIndex(g => g.dataset.from === 'wk' && g.dataset.to === 'mail')}"]`);
+  check('a step written as text (5a) is drawn as written, in a pill, and named as written', !!l6 && l6.querySelector('rect.e-step') && l6.querySelector('.e-step-tx').textContent === '5a'
+    && k6.getAttribute('aria-label') === 'Step 5a: Line from Order worker to Email', [l6 && l6.outerHTML.slice(0, 200), k6 && k6.getAttribute('aria-label')]);
 
-  // the minimap draws each region; the SVG and the PNG keep the regions and the steps, in either theme
+  // the minimap draws each region; the SVG keeps the regions and the steps, in either theme
   const mini = [...sr.querySelectorAll('.minimap svg rect:not(.vp)')].filter(r => r.getAttribute('fill-opacity') === '.14').map(r => r.getAttribute('fill'));
   check('the minimap draws each box with a tone as its region, under the rest', JSON.stringify(mini) === JSON.stringify(['var(--um-cyan)', 'var(--um-orange)', 'var(--um-nope)']) && sr.querySelector('.minimap svg rect').getAttribute('fill-opacity') === '.14', mini);
   for (const th of ['light', 'dark']) {
@@ -104,9 +108,22 @@ try {
     const doc = new DOMParser().parseFromString(h.toSVG(), 'image/svg+xml'), fb = doc.querySelector('.family[data-family="front"] .family-box'), ft = doc.querySelector('.family[data-family="front"] .family-title');
     check(`${th}: the SVG keeps the region, its dashed border and its title, in the colours drawn`, near(rgba(fb.style.fill), region('front').fill) && fb.style.fillOpacity === '1' && /7px,? 5px/.test(fb.style.strokeDasharray) && near(rgba(ft.style.fill), region('front').title),
       [fb.style.fill, fb.style.fillOpacity, fb.style.strokeDasharray, ft.style.fill]);
-    check(`${th}: …and the steps`, [...doc.querySelectorAll('.e-step-tx')].map(t => t.textContent).join() === '1,2,3,4.1', [...doc.querySelectorAll('.e-step-tx')].map(t => t.textContent));
+    check(`${th}: …and the steps`, [...doc.querySelectorAll('.e-step-tx')].map(t => t.textContent).join() === '1,2,3,4.1,5a', [...doc.querySelectorAll('.e-step-tx')].map(t => t.textContent));
   }
   document.documentElement.dataset.theme = 'light';
+
+  // in c4 every box is a boundary, dashed; box and uml dash only a box with a tone; the minimap and the SVG carry the dashes
+  const dashes = () => ['front', 'store'].map(id => cs(box(id).querySelector('.family-box'), 'strokeDasharray'));
+  const miniDashed = () => [...sr.querySelectorAll('.minimap svg rect:not(.vp)')].filter(r => r.getAttribute('stroke-dasharray')).length;
+  const seen = {};
+  for (const nt of ['c4', 'uml', 'box']) {
+    h.shapes = nt;
+    const doc = new DOMParser().parseFromString(h.toSVG(), 'image/svg+xml');
+    seen[nt] = [h.shapes, ...dashes(), miniDashed(), doc.querySelector('.family[data-family="store"] .family-box').style.strokeDasharray || 'none'];
+  }
+  check('in c4 every box is dashed, a box with a tone as in any notation; box and uml leave a plain box solid', JSON.stringify(seen) === JSON.stringify({
+    c4: ['c4', '7px, 5px', '7px, 5px', 4, '7px, 5px'], uml: ['uml', '7px, 5px', 'none', 3, 'none'], box: ['box', '7px, 5px', 'none', 3, 'none'] }), seen);
+  h.shapes = null;
 
   h.update({ ...MODEL, views: [{ ...MODEL.views[0], containers: MODEL.views[0].containers.map(({ tone, ...c }) => c) }, MODEL.views[1]] });
   check('update() without the tones draws plain boxes again', !sr.querySelector('.family.toned') && !sr.querySelector('.minimap svg rect[fill-opacity=".14"]'), sr.querySelectorAll('.family.toned').length);

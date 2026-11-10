@@ -629,9 +629,18 @@
      "description": "How much the line stands for, drawn as its width (default 1)."
     },
     "step": {
-     "type": "number",
-     "minimum": 0,
-     "description": "Its place in the order things happen (2, or 2.1 for a step within step 2), drawn in a circle on the line in any view; a numbered view (render: sequence) numbers its lines in run order instead."
+     "anyOf": [
+      {
+       "type": "number",
+       "minimum": 0
+      },
+      {
+       "type": "string",
+       "minLength": 1,
+       "maxLength": 3
+      }
+     ],
+     "description": "Its place in the order things happen: a number (2, or 2.1 for a step within step 2) or text of up to 3 characters (2a), drawn in a circle on the line in any view (a pill for 2 or 3 characters); a numbered view (render: sequence) numbers its lines in run order instead."
     },
     "latency": {
      "type": "number",

@@ -2553,8 +2553,8 @@ In `box` they look as before (a `person` is a `frontend` card); in `c4` and `uml
 ### Reading aids: a box's tone, a step on any line, and how deep the tints are
 
 The ByteByteGo half of the card-shapes decision: three small hooks that say how to read a view, in any notation. Logos
-and a heavier main path were there already (a card's `icon`, a line's `weight`). The bookshop's new `checkout` view shows
-the tone and the steps with them; `--um-tint` is the host's to set.
+and a heavier main path were there already (a card's `icon`, a line's `weight`). The bookshop's new `checkout` view
+shows the tone and the steps with them; `--um-tint` is the host's to set.
 
 - **A box's tone** (`containers[].tone`): a palette name, as a badge's (`--um-<tone>`).
   - The region behind the box is tinted in it: 7% of the tone over `--um-panel`, opaque, under the box's border and
@@ -2565,14 +2565,17 @@ the tone and the steps with them; `--um-tint` is the host's to set.
     accent as before.
   - The minimap draws each region under the rest, and the exports (SVG, PNG, the PDF, stills) keep it, resolved as every
     colour is.
-- **A step on any line** (`edges[].step`): a number, such as 2, or 2.1 for a step within step 2.
-  - It is drawn as a numbered view draws its run order: a circle at the start of the line's label (a pill for 2.1), or
-    alone on a line with no label. A numbered view (`render: "sequence"`) still numbers its lines in run order, whatever
-    their step.
+- **A step on any line** (`edges[].step`): a number, such as 2, or 2.1 for a step within step 2, or text of up to 3
+  characters, such as 2a.
+  - It is drawn as a numbered view draws its run order: a circle at the start of the line's label for one character, a
+    pill for two or three (2a, 12, 4.1), or alone on a line with no label. A numbered view (`render: "sequence"`) still
+    numbers its lines in run order, whatever their step.
+  - It shows as written everywhere: the mark, the line's name and title, `describe()` and the PDF.
+  - Where steps order lines (the PDF's table of lines), numbers go by value and text by its leading number, then the
+    rest: 2 < 2a < 2b < 3 < 10. Lines without a step come last.
   - It is in the line's accessible name ("Step 2: Line from Storefront to Shop API: checkout (JSON over HTTPS)") and its
-    title, as a numbered view's are; in `describe()`, which says
-    `Storefront calls Shop API ("checkout", JSON over HTTPS, step 2).`; in the details panel; and in the first column of
-    the PDF's table of lines.
+    title, as a numbered view's are; in `describe()`, which says `Storefront calls Shop API ("checkout", JSON over
+    HTTPS, step 2).`; in the details panel; and in the first column of the PDF's table of lines.
   - A model edge's step shows in every view that draws the edge; a view's own edge (an object in its `edges`) numbers it
     in that view only. Lines drawn as one (parallel, or A→B with B→A) show the first one's step and list each in their
     title; a view's `keepPairs` draws each with its own.
@@ -2590,8 +2593,13 @@ the tone and the steps with them; `--um-tint` is the host's to set.
     itself (`--um-<tone>-f` on the map element, #29) stays as set.
   - The accent's tint (a hub's tags, the menus) and the details panel's PUBLIC tag keep theirs: their text is in their
     tone, which a deeper tint would take below 4.5:1.
-- **`validate()`** warns when a step is not a number of 0 or more (it is drawn as written) and when a tone is not a name
-  (the box is drawn in slate, or as a plain box when the tone is empty).
+- **In `c4`, every box is a boundary**, dashed as Structurizr and C4-PlantUML draw one (7 on, 5 off, in its border
+  colour). A box with a tone stays tinted and dashed, in any notation; `box` and `uml` leave a box without one solid.
+  The minimap draws the dashed boxes dashed, and the exports keep the dashes.
+- **Step numbers read at 4.5:1 or more in dark.** The dark theme's `--um-accent-fg` was white, 3.1:1 on the dark accent
+  (`#4493f8`); it is `#0d1117` now, 6.1:1. The light theme is unchanged (white, 5.2:1).
+- **`validate()`** warns when a step is neither a number of 0 or more nor text of 1 to 3 characters (it is drawn as
+  written), and when a tone is not a name (the box is drawn in slate, or as a plain box when the tone is empty).
 - **The example:** the bookshop's third view, `checkout` ("Checkout, at a glance"), reads like the proposal's blend: six
   numbered steps, the main path at weight 2 with a tour along it, the web tier and the order handling as cyan and orange
   boxes, Payment provider below in a column of its own, and the bookshop's logos. Its layout check is clean in the
@@ -2602,20 +2610,30 @@ the tone and the steps with them; `--um-tint` is the host's to set.
   - the check reads more: the mark of a numbered line with no label, and every step's number in the page's check (it
     finds nothing new in the examples);
   - the details panel's PUBLIC tag mixes its tint itself (8% of `--um-k-public`, the colour it had), so a host's own
-    `--um-k-public-f` no longer reaches it.
-- **API added:** `edges[].step`, `containers[].tone` and `--um-tint`, in the schema, `lib/umlimator.d.ts` and the
-  README.
+    `--um-k-public-f` no longer reaches it;
+  - in dark, the numbers in numbered views' step circles and swimlane circles, and in the page's views list, are dark on
+    the accent instead of white; so is the icon on the details panel's kind tile (5.6:1 to 7.5:1, where white was 2.5:1
+    to 3.4:1). A host that sets its own `--um-accent-fg` keeps it;
+  - a step of two characters (10, 12) is a pill where it was a circle, so assistant's numbered view lays its tenth
+    line's label out a little wider (no bench view has one);
+  - in `c4`, boxes are dashed.
+- **API added:** `edges[].step` (a number or short text), `containers[].tone` and `--um-tint`, in the schema,
+  `lib/umlimator.d.ts` and the README.
 - **Bench:** unchanged (`bench/expected.json`). It times the new `bookshop/checkout`, which has no recorded geometry.
 - **Tests:**
   - `tests/aids.test.mjs` (Node): `validate()` on steps and tones; a box's tone in the geometry; a step drawn in any
     view, and run order winning in a numbered one; lines drawn as one; the room for a mark with no label (76 px where it
-    had 66); `describe()`; the bookshop's checkout, with every label whole and a clean check.
+    had 66); `describe()`; text steps (2a drawn as written, a circle for one character and a pill for two or three); the
+    bookshop's checkout, with every label whole and a clean check.
   - `tests/aids.html` (browser, light and dark): a region's colour, opacity, dashed border and title, and its title at
     4.5:1 or more at `--um-tint` 1 and 2; an unknown tone, a box with none, the regions under the cards, a selected box;
     `--um-tint` at 0, 1, 2 and 5 on a card and a region, the accent's tint left alone, a host's own tint kept; steps
     drawn with a label, alone and as a pill, their name and title, the page's check reading them, run order in a
-    numbered view; the minimap; the SVG in both themes; `update()` dropping the tones.
+    numbered view, a text step (5a) as written; the minimap; the SVG in both themes; boxes in c4, uml and box (picture,
+    minimap and SVG); `update()` dropping the tones.
   - `tests/contrast.html`: boxes in every palette tone, holding cards of every kind, at `--um-tint` 1 and 2, light and
-    dark.
-  - `tests/cli.py`: the PDF's table of lines gives each line its step.
-- **Left out:** a legend entry for steps or regions, a step written as text ("2a"), and a view's tour riding its steps.
+    dark; and now the numbers on circles: steps on a view's lines (1, 2a, 3.1), a numbered view's, and weather's
+    swimlane numbers, which fail on the old dark theme at 3.1:1. The arrow between swimlanes is a graphic and is held to
+    3:1.
+  - `tests/cli.py`: the PDF's table of lines gives each line its step, in step order (2, 2a, 10, then none).
+- **Left out:** a legend entry for steps or regions, and a view's tour riding its steps.

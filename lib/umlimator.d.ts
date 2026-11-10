@@ -56,11 +56,12 @@ export interface MapEdge {
    *  A line that stands for several edges takes the largest. */
   weight?: 1 | 2 | 3;
   /** Its place in the order things happen, drawn in a circle on the line before its label, as a numbered view draws its
-   *  steps, in any view: 2, or 2.1 for a step within step 2. The line's name and title say it ("Step 2: …"). A numbered view
+   *  steps, in any view: 2, 2.1 for a step within step 2, or text of up to 3 characters such as "2a" (a pill for 2 or 3
+   *  characters). The line's name and title say it as written ("Step 2a: …"); in order, 2 < 2a < 2b < 3. A numbered view
    *  (`render: 'sequence'`) numbers its lines in run order instead. A line that stands for several edges shows the first
    *  one's step (a view's `keepPairs` draws each edge as its own line). A step on a model edge shows in every view that
    *  draws the edge; a view's own edge numbers it in that view only. */
-  step?: number;
+  step?: number | string;
   /** A second, smaller line under the label (a technology, say), placed with it and counted in the room left for labels.
    *  Shown only with a label. A line that stands for several edges shows each of their sublabels, joined by " / ". */
   sublabel?: string;

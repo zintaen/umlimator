@@ -9,12 +9,13 @@ const read = p => JSON.parse(readFileSync(new URL(p, import.meta.url)));
 const cards = ids => ids.map(id => ({ id, label: id.toUpperCase(), kind: 'backend' }));
 
 test('validate() takes a step on a line and a tone on a box, and warns when they are not what they draw', () => {
-  const m = { nodes: cards(['a', 'b']), edges: [{ id: 'e1', from: 'a', to: 'b', step: 2.1 }, { id: 'e2', from: 'b', to: 'a', step: '2a' }, { id: 'e3', from: 'a', to: 'b', step: -1 }],
+  const m = { nodes: cards(['a', 'b']), edges: [{ id: 'e1', from: 'a', to: 'b', step: 2.1 }, { id: 'e2', from: 'b', to: 'a', step: '2ab' }, { id: 'e3', from: 'a', to: 'b', step: -1 },
+    { id: 'e4', from: 'a', to: 'b', step: '2abc' }, { id: 'e5', from: 'a', to: 'b', step: '' }],
     views: [{ id: 'v', nodeIds: ['a', 'b'], edges: ['e1', { from: 'a', to: 'b', step: 3 }, { from: 'b', to: 'a', step: null }],
       containers: [{ id: 'x', nodeIds: ['a'], tone: 'orange' }, { id: 'y', nodeIds: ['b'], tone: 5 }, { id: 'z', tone: false }] }] };
+  const no = 'is not a number of 0 or more, or text of 1 to 3 characters (2a): drawn as written';
   assert.deepEqual(validate(m).map(p => `${p.level} ${p.path}: ${p.message}`), [
-    'warning edges[1].step: step "2a" is not a number of 0 or more: drawn as written',
-    'warning edges[2].step: step -1 is not a number of 0 or more: drawn as written',
+    `warning edges[2].step: step -1 ${no}`, `warning edges[3].step: step "2abc" ${no}`, `warning edges[4].step: step "" ${no}`,
     'warning views[0].containers[1].tone: tone 5 is not a palette name (green, amber, ...): drawn in slate',
     'warning views[0].containers[2].tone: tone false is not a palette name (green, amber, ...): ignored',
   ]);
@@ -33,6 +34,17 @@ test('a step is drawn on its line in any view, before the label; a numbered view
   assert.ok(at('ab').w > 16 + 4 + 20 && at('bc').sw > 16, 'the mark is in the pill, and 1.5 is a pill of its own'); // as #82 draws 4.1
   assert.deepEqual(check(m, 'v'), []);
   assert.deepEqual(layout(m, 's').edges.map(e => e.lbl.step), [1, 2]);
+});
+
+test('a step may be short text: drawn as written, a circle for one character and a pill for two or three', () => {
+  const m = { nodes: cards(['a', 'b', 'c', 'd']), edges: [{ id: 'ab', from: 'a', to: 'b', label: 'asks', step: '2a' }, { id: 'bc', from: 'b', to: 'c', step: 'b' },
+    { id: 'cd', from: 'c', to: 'd', label: 'pays', step: 12 }], views: [{ id: 'v', nodeIds: ['a', 'b', 'c', 'd'] }] };
+  const g = layout(m, 'v'), at = id => g.edges.find(e => e.ids.includes(id)).lbl;
+  assert.deepEqual([at('ab').step, at('ab').text, at('bc').step, at('cd').step], ['2a', 'asks', 'b', 12]);
+  assert.ok(at('bc').sw === 16 && at('ab').sw >= 20 && at('cd').sw >= 20, JSON.stringify([at('ab').sw, at('bc').sw, at('cd').sw])); // 16: the circle
+  assert.deepEqual(validate(m), []);
+  assert.deepEqual(check(m, 'v'), []);
+  assert.match(describe(m, 'v'), /\nA calls B \("asks", step 2a\)\.\n/);
 });
 
 test('lines drawn as one show the first one\'s step, and their title lists each; keepPairs numbers each line', () => {
