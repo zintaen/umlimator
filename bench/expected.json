@@ -1,5 +1,5 @@
 {
- "commit": "47280ee",
+ "commit": "449ca99",
  "results": {
   "b10/norepair": {
    "hashes": [
@@ -23,7 +23,7 @@
   },
   "b69/back": {
    "hashes": [
-    "9558d229"
+    "53149179"
    ]
   },
   "b69/front": {
@@ -33,12 +33,17 @@
   },
   "b69/overview": {
    "hashes": [
-    "7ce70b82"
+    "8e0b7363"
    ]
   },
   "bookshop/api": {
    "hashes": [
-    "b3d2849e"
+    "bfeb7b5f"
+   ]
+  },
+  "bookshop/checkout": {
+   "hashes": [
+    "e259c79c"
    ]
   },
   "bookshop/overview": {
@@ -58,7 +63,7 @@
   },
   "m50/overview": {
    "hashes": [
-    "8273bb09"
+    "a8bb72e0"
    ]
   },
   "r15/boxed": {
@@ -88,7 +93,7 @@
   },
   "s16/pay": {
    "hashes": [
-    "1e5c2186"
+    "ae675a45"
    ]
   },
   "s16/site": {
@@ -103,12 +108,12 @@
   },
   "s16/site+job+pay": {
    "hashes": [
-    "e8bf88d9"
+    "a8b978ea"
    ]
   },
   "s16/site+pay": {
    "hashes": [
-    "cc8fa8e4"
+    "ed24a46b"
    ]
   },
   "u21/catalog": {
@@ -128,17 +133,17 @@
   },
   "u21/shop": {
    "hashes": [
-    "ebc824d8"
+    "2e426fb2"
    ]
   },
   "u21/shop+orders": {
    "hashes": [
-    "3edc2bd8"
+    "8a60e9f1"
    ]
   },
   "u21/shop+orders+o-checkout": {
    "hashes": [
-    "22b2abf7"
+    "e2bfad24"
    ]
   },
   "u21/shop+warehouse": {

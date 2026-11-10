@@ -138,6 +138,28 @@ try {
   check('a step such as "1<b" is in its line\'s title as written, and no card goes into that title', ns.length === 3 && ns.every(n => !n.closest('title') && n.getBoundingClientRect().width > 0)
     && [...sr2.querySelectorAll('.edge-g > title')].some(t => t.textContent.startsWith('Step 1<b: ')), ns.map(n => !!n.closest('title')));
   h2.destroy();
+
+  // under the four test fonts, a label keeps its words and keeps off the boxes' borders: on a numbered line past two box borders
+  // (#142), and beside a line that leaves its card 16 px from it, jogging into its target (#108; tests/layout.test.mjs, in Node)
+  const BOXES = (label, step) => ({ nodes: [{ id: 'a', label: 'Alpha' }, { id: 'b', label: 'Beta' }, { id: 'c', label: 'Gamma' }],
+    edges: [{ from: 'a', to: 'b', label, step }, { from: 'c', to: 'b' }],
+    views: [{ id: 'v', nodeIds: ['a', 'b', 'c'], containers: [{ id: 'x', label: 'Left', nodeIds: ['a'] }, { id: 'y', label: 'Right', nodeIds: ['b', 'c'] }] }] });
+  const JOG = { nodes: [{ id: 'draft', label: 'Draft' }, { id: 'check', label: 'Check' }, { id: 'model', label: 'Model', kind: 'external' }, { id: 'tone', label: 'Tone guide', kind: 'database' }],
+    edges: [{ from: 'draft', to: 'model', label: 'writes with' }, { from: 'draft', to: 'check', label: 'a draft' }, { from: 'tone', to: 'check', label: 'reviews' }],
+    views: [{ id: 'v', render: 'sequence', lanes: false, nodeIds: ['draft', 'check', 'model', 'tone'], layout: { tone: [0, 0], draft: [0, 1], check: [1, 1], model: [1, 2] } }] };
+  const inner = x => x[Object.getOwnPropertySymbols(x)[0]], bad = [];
+  for (const font of ['Arial', 'Verdana', 'Georgia', '"Courier New"']) {
+    el.style.setProperty('--um-sans', font);
+    for (const [name, m] of [...['Sends', 'Sends the report', 'Sends the nightly report every day'].flatMap(l => [[l, BOXES(l)], [l + ' (1)', BOXES(l, 1)]]), ['jog', JOG]]) {
+      const h3 = render(el, m, { flow: false }), g = inner(h3).geo();
+      g.edges.forEach(e => { const L = e.lbl; if (!e.label) return; if (!L || L.short) return bad.push([font, name, e.label, 'cut']);
+        (g.families || []).forEach(f => { const xin = L.x + L.w > f.x && L.x < f.x + f.w, yin = L.y + L.h > f.y && L.y < f.y + f.h;
+          if ((xin && [f.y, f.y + f.h].some(u => L.y < u && L.y + L.h > u)) || (yin && [f.x, f.x + f.w].some(u => L.x < u && L.x + L.w > u))) bad.push([font, name, e.label, 'on ' + f.id]); }); });
+      h3.destroy();
+    }
+  }
+  el.style.removeProperty('--um-sans');
+  check('under Arial, Verdana, Georgia and Courier New a label keeps its words and keeps off the boxes\' borders, on a numbered line past two borders (#142) and beside a line 16 px from it (#108)', !bad.length, bad);
 } catch (e) { out.fail.push('threw: ' + (e && e.stack || e)); }
 const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
 </script>

@@ -157,6 +157,25 @@ with tempfile.TemporaryDirectory() as tmp:
 print(("ok  " if rules_ok else "FAIL"), "umlimator.py check · the rules a model breaks: each named and counted, and the check fails",
       "" if rules_ok else (rep.get("problems"), r.stderr[-400:]))
 failed |= not rules_ok
+# a label with no room (#142) and one on a box's border (#108) are kinds of their own: counted, and --ignore leaves them out.
+# Six numbered lines from a card down a column to six cards: their labels have no room beside each other, only their steps show
+with tempfile.TemporaryDirectory() as tmp:
+    ids = [f"t{i}" for i in range(6)]
+    col = {"nodes": [{"id": "a", "label": "A"}] + [{"id": t, "label": t.upper()} for t in ids],
+           "edges": [{"from": "a", "to": t, "label": f"hands over job {i}", "step": i + 1} for i, t in enumerate(ids)],
+           "views": [{"id": "v", "nodeIds": ["a"] + ids, "layout": {"a": [0, 0], **{t: [0, i + 1] for i, t in enumerate(ids)}}}]}
+    (Path(tmp) / "col.json").write_text(json.dumps(col)); page = Path(tmp) / "col.html"
+    subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "render", str(Path(tmp) / "col.json"), "--out", str(page), "--no-check"], capture_output=True)
+    reps = []
+    for extra in ([], ["--ignore", "labelOnBorder,labelNoRoom"]):
+        r = subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "check", str(page), *extra], capture_output=True, text=True)
+        i = r.stdout.find("{"); reps.append((r.returncode, json.loads(r.stdout[i:]) if i >= 0 else {}))
+    cut = [p for p in reps[0][1].get("problems", []) if " has no room on edge " in p and "only its step" in p]
+    kinds_ok = reps[0][0] == 0 and cut and (reps[0][1].get("counts") or {}).get("labelNoRoom") == len(cut) and "labelOnBorder" in reps[0][1]["counts"] \
+        and reps[1][0] == 0 and reps[1][1].get("ignored") == len(cut) and not any(" has no room " in p for p in reps[1][1].get("problems", []))
+print(("ok  " if kinds_ok else "FAIL"), "umlimator.py check · a label that shows only its step is named and counted as labelNoRoom; --ignore labelOnBorder,labelNoRoom leaves them out",
+      "" if kinds_ok else reps)
+failed |= not kinds_ok
 
 # umlimator.py record (#69): bike-share's story as an animated PNG, a frame per step, shown for the step's duration; a step
 # that plays a tour has 2 to 6 frames, each a different picture (the dot rides), which share the step's duration (#83)
