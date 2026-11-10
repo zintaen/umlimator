@@ -9,7 +9,7 @@ through its pipes as an MCP client drives it, with a page's event stream.
 Needs Node (diff, drift, trace and the MCP server's read tools run the module's own functions), git, and Chrome or
 Chromium (pdf).
 """
-import http.client, json, re, subprocess, sys, tempfile, threading, zlib
+import http.client, json, re, subprocess, sys, tempfile, threading, time, zlib
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -198,7 +198,7 @@ mcp.stdin.write(json.dumps({"jsonrpc": "2.0", "method": "notifications/initializ
 found = rpc("server/discover", NEW).get("result", {})
 ok("mcp · server/discover offers 2026-07-28, the current specification", found.get("supportedVersions", [None])[0] == "2026-07-28" and found.get("resultType") == "complete", found)
 listed = [t.get("name") for t in rpc("tools/list", NEW).get("result", {}).get("tools", [])]
-ok("mcp · tools/list", listed == ["list_views", "describe_view", "paths", "reach", "broken_rules", "validate", "diff", "show_view", "highlight", "tour", "play_story", "clear"], listed)
+ok("mcp · tools/list", listed == ["list_views", "describe_view", "paths", "reach", "broken_rules", "validate", "diff", "show_view", "highlight", "tour", "play_story", "clear", "page_state"], listed)
 ok("mcp · ping, and the standard errors: no such method, no such tool, a version it doesn't speak",
    "result" in rpc("ping") and rpc("nope").get("error", {}).get("code") == -32601 and rpc("tools/call", {"name": "nope"}).get("error", {}).get("code") == -32602
    and rpc("tools/list", {"_meta": {"io.modelcontextprotocol/protocolVersion": "1900-01-01"}}).get("error", {}).get("code") == -32022)
@@ -226,25 +226,31 @@ ok("mcp · a call that names what the model lacks is a tool error that says what
 said, err = tool("show_view", view="trips")
 ok("mcp · a page tool with no page connected says to open its URL", not err and said.startswith("No page is connected") and url and url.group(0) in said, said)
 web = lambda: http.client.HTTPConnection("127.0.0.1", int(url.group(1)), timeout=60)
-c = web(); c.request("GET", "/events"); stream = c.getresponse()
+c = web(); c.request("GET", "/events?page=t1"); stream = c.getresponse()  # a page, as the served script names itself
+sent = []
 
 
-def event():  # the next command on the event stream
+def acks():  # each command on the event stream, answered as the page answers once it has shown it (tests/mcp.py drives a real one)
     line = b" "
-    while line and not line.startswith(b"data:"):
+    while line:
         line = stream.readline()
-    return json.loads(line[5:] or b"{}")
+        if line.startswith(b"data:"):
+            sent.append(json.loads(line[5:]))
+            a = web(); a.request("POST", "/state", json.dumps({"page": "t1", "model": sent[-1]["model"], "ack": sent[-1]["id"], "state": {"view": sent[-1]["want"]["view"]}}),
+                                 {"Content-Type": "application/json"}); a.getresponse().read()
 
 
-sent = event()
-ok("mcp · a page that connects gets the latest command", sent.get("do") == "view" and sent.get("view") == "trips" and sent.get("model"), sent)
+threading.Thread(target=acks, daemon=True).start()
+time.sleep(0.5)
+ok("mcp · a page that connects gets what the assistant asked last", sent and sent[0]["want"]["view"] == "trips" and sent[0].get("model"), sent)
 said, err = tool("highlight", refs=["trips", "payments", "s9"], view="system")
-sent = event()
-ok("mcp · highlight: sent to the page connected, card and line ids as Refs, on its event stream", said.startswith("Sent to 1 page") and sent.get("do") == "highlight"
-   and sent.get("view") == "system" and sent.get("refs") == [{"type": "node", "id": "trips"}, {"type": "node", "id": "payments"}, {"type": "edge", "ids": ["s9"]}], (said, sent))
+ok("mcp · highlight: shown on the page once it answers, with card and line ids as Refs, on its event stream", said.startswith("Shown on 1 page") and sent[-1]["want"]["view"] == "system"
+   and sent[-1]["want"]["highlight"] == {"refs": [{"type": "node", "id": "trips"}, {"type": "node", "id": "payments"}, {"type": "edge", "ids": ["s9"]}], "view": "system"}, (said, sent[-1:]))
 c = web(); c.request("GET", "/"); r = c.getresponse(); page = r.read().decode()
-ok("mcp · serves the CLI's page, with the script that plays commands on its map handle (window.umlimatorMap)",
-   r.status == 200 and "const map = window.umlimatorMap" in page and "new EventSource('/events')" in page and "Fare calculator" in page)
+ok("mcp · serves the CLI's page, with the script that shows commands on its map handle (window.umlimatorMap)",
+   r.status == 200 and "const map = window.umlimatorMap" in page and "new EventSource(`/events?page=" in page and "Fare calculator" in page)
+c = web(); c.request("POST", "/state", "{}", {"Content-Type": "application/json", "Origin": "https://attacker.example"})
+ok("mcp · another site's page posts nothing", c.getresponse().status == 403)
 c = web(); c.request("GET", "/", headers={"Host": f"attacker.example:{url.group(1)}"})
 ok("mcp · a request for another host name (DNS rebinding) gets nothing", c.getresponse().status == 403)
 mcp.stdin.close()

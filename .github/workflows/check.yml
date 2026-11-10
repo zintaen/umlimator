@@ -34,6 +34,9 @@ jobs:
       - name: render() embedded in a plain page reports its events and follows update() and destroy()
         run: python3 tests/embed.py
 
+      - name: The MCP server's page in headless Chrome says what it shows, and a tool says shown only once it did
+        run: python3 tests/mcp.py
+
       - name: The CLI's diff, drift and timelapse write their pages, diff --base a pull request's summary, mcp answers an MCP client, and pdf an example's PDF
         run: python3 tests/cli.py
 

@@ -219,8 +219,10 @@ export interface Handle {
    *  lowest level. They survive update() and setView(); ids the view doesn't show are ignored. toSVG() and toPNG() draw them. */
   overlay(name: string, layer: Overlay | null): void;
   /** The 'highlight' layer: these cards and lines lit, the rest dimmed (in place of the selection's dimming), or null to clear.
-   *  A Ref's level (0 to 1), else its distance (as reach() gives it), fades it. A chip's or badge's Ref lights its card. */
-  highlight(refs: Lit[] | null): void;
+   *  A Ref's level (0 to 1), else its distance (as reach() gives it), fades it. A chip's or badge's Ref lights its card.
+   *  layer (0.14.0): draw them as a layer of that name instead, so two owners never clear each other's (the MCP page's
+   *  assistant uses 'mcp'); null clears that layer only. */
+  highlight(refs: Lit[] | null, options?: { layer?: string }): void;
   /** Puts one of the model's lenses on the map (#94), or none with null: the 'lens' layer lights what it picks and dims the
    *  rest, on every view shown, and the view is not laid out again. With color 'owner', each lit card is ringed in its
    *  owner's tone, and a legend over the controls names them. It stays across update() and setView(); a model without the
