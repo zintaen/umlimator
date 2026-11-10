@@ -43,6 +43,15 @@ def guess(words, default="backend"):
     return next((k for k, rx in GUESS if re.search(rx, t)), default)
 
 
+# a C4 source's app that runs on a phone: a mobile card, which the c4 notation draws as a phone (0.15.0)
+MOBILE = r"\bmobile\b|android|\bios\b|iphone|ipad|xamarin|flutter|react.?native|swiftui"
+
+
+def c4guess(words):
+    k = guess(words)
+    return "mobile" if k == "frontend" and re.search(MOBILE, " ".join(w for w in words if w).lower()) else k
+
+
 def clip(s, n):
     s = re.sub(r"\s+", " ", re.sub(r"<br\s*/?>|\\n", " ", str(s or ""))).strip()
     return s if len(s) <= n else s[:n - 1].rsplit(" ", 1)[0].rstrip(",;:") + "…"
@@ -57,6 +66,7 @@ def ident(s):
 class Model:
     def __init__(self, title):
         self.title, self.nodes, self.edges, self.views, self.unread, self.ids = title, {}, [], [], [], set()
+        self.shapes = None  # the notation a C4 source's cards are drawn in (0.15.0)
 
     def say(self, where, msg):
         self.unread.append((where, msg))
@@ -94,7 +104,8 @@ class Model:
 
     def model(self):
         root = next((v["id"] for v in self.views if not v.get("parent")), None)
-        return {"title": self.title, **({"root": root} if root else {}), "nodes": list(self.nodes.values()), "edges": self.edges, "views": self.views}
+        return {"title": self.title, **({"root": root} if root else {}), **({"shapes": self.shapes} if self.shapes else {}),
+                "nodes": list(self.nodes.values()), "edges": self.edges, "views": self.views}
 
 
 def detect(path, text):
@@ -146,6 +157,7 @@ SCOPE = {"systemcontext": "softwaresystem", "container": "softwaresystem", "comp
 
 def structurizr(text, name):
     m = Model(name)
+    m.shapes = "c4"
     els, ref, path, rels, specs, stack, groups = {}, {}, {}, [], [], [], []
     implied, comment, opened = True, 0, []  # comment: the line a /* ... */ opened on; opened: each open block's line and text
     for no, raw in enumerate(text.splitlines(), 1):
@@ -227,7 +239,7 @@ def structurizr(text, name):
     left_open(m, opened, comment and ("/*", comment, len(text.splitlines())))
     for cid, e in els.items():
         tags = " ".join(e["tags"]).lower()
-        kind = "external" if "external" in tags else "frontend" if e["type"] == "person" else guess([tags, e["tech"], e["name"]])
+        kind = ("user" if "external" in tags else "person") if e["type"] == "person" else "external" if "external" in tags else c4guess([tags, e["tech"], e["name"]])
         m.card(cid, e["name"], kind, e["tech"] or C4TYPE[e["type"]], e["desc"], icon="user" if e["type"] == "person" else None)
     for g in groups:  # after the cards, so a group's name never takes an element's alias
         g["id"] = m.uniq(ident(g["label"]), f"group-{ident(g['label'])}")
@@ -389,8 +401,9 @@ def call_args(s):
 
 
 def c4(lines, m):
-    """Macro calls, one per line: elements, boundaries ({ ... } boxes), relationships. One view."""
+    """Macro calls, one per line: elements, boundaries ({ ... } boxes), relationships. One view, in the c4 notation."""
     boxes, stack, rels, bases, people, opened = [], [], [], set(), set(), []
+    m.shapes = "c4"
     for no, s in lines:
         if s == "}":
             if stack:
@@ -411,8 +424,8 @@ def c4(lines, m):
             if not a.get("alias") or a["alias"] in m.ids:
                 m.say(no, f"{name}({a.get('alias', '')}): {'its alias is used already' if a.get('alias') else 'no alias'}")
             else:
-                cid, kind = m.uniq(a["alias"]), "database" if shape == "Db" else "queue" if shape == "Queue" else "external" if ext else \
-                    "frontend" if base == "Person" else "backend" if base == "System" else guess([a.get("tags"), a.get("techn"), a.get("label")])
+                cid, kind = m.uniq(a["alias"]), "database" if shape == "Db" else "queue" if shape == "Queue" else ("user" if ext else "person") if base == "Person" \
+                    else "external" if ext else "backend" if base == "System" else c4guess([a.get("tags"), a.get("techn"), a.get("label")])
                 m.card(cid, a.get("label"), kind, a.get("techn") or ("External " + TYPE[base].lower() if ext else TYPE[base]),
                        a.get("descr"), icon="user" if base == "Person" else None)
                 bases.add(base)
