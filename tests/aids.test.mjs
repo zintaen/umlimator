@@ -78,3 +78,11 @@ test("the bookshop's checkout reads as the blend: six steps with their labels wh
   assert.deepEqual(g.families.map(f => [f.id, f.tone]), [['web', 'cyan'], ['orders', 'orange']]);
   assert.deepEqual(check(shop, 'checkout'), []);
 });
+
+test('A→B and B→A drawn as one: the first one\'s step on the line, and its title lists each with its own', () => {
+  const m = { nodes: cards(['a', 'b']), edges: [{ id: 'x', from: 'a', to: 'b', label: 'asks', step: 1 }, { id: 'y', from: 'b', to: 'a', label: 'answers', step: 2 }], views: [{ id: 'v', nodeIds: ['a', 'b'] }] };
+  const [one] = layout(m, 'v').edges;
+  assert.deepEqual([one.both, one.step, one.label, one.when], [true, 1, 'asks / answers', '1. asks\n2. answers']);
+  delete m.edges[0].step; // only B→A has a step: it is still in the title
+  assert.equal(layout(m, 'v').edges[0].when, 'asks\n2. answers');
+});

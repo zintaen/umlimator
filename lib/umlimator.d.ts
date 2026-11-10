@@ -135,9 +135,12 @@ export interface MapState {
   expanded: string[];             // as `expanded`
   lens: string | null;
   overlays: string[];             // the layers on the map, in stack order ('lens', 'highlight', 'replay', 'story', 'tour', a host's)
-  story: { id: string; step: number; steps: number; playing: boolean } | null;
-  tour: boolean;                  // a tour's dot is riding
-  replay: { playing: boolean } | null;   // a replay under way: playing, or paused
+  story: { id: string; step: number; steps: number; playing: boolean } | null;   // playing: the player's own (it goes on by itself)
+  tour: boolean;                  // a tour's dot is on the map, riding or held (by paused, or by its story's pause); a path lit at rest: false
+  replay: { playing: boolean } | null;   // a replay under way: playing, or paused by its own pause()
+  /** The standalone page's ❚❚ is on (0.15.0): it holds every clock (a tour's or a replay's dot, a story's step, the flow)
+   *  and leaves each one's own state as it is, so story.playing or replay.playing true under it means "would play, held". */
+  paused: boolean;
   camera: { x: number; y: number; zoom: number };   // the centre in map units, and the zoom (1: actual size); a state event's: at rest
   flow: boolean;
   shapes: Notation;               // the notation the view shown is drawn in (0.15.0)

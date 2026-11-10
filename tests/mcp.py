@@ -8,6 +8,7 @@ audit's repros (tooling.json's mcp machines), which failed before:
 - a model that stops rendering keeps the last page that did, and the tools say why; fixed, the page draws it;
 - a command the page can't finish is answered, in time, with why (a stuck setView, as a tab in the background has);
 - a closed tab is not counted; a tour that has ended is not played again for a page that opens later;
+- a command ends only the assistant's own tour, never the tour of a story the reader started (#132);
 - clear() takes the assistant's story off, and leaves a story the reader started.
 
   python3 tests/mcp.py
@@ -187,6 +188,31 @@ try:
     said = tool("tour", cards=["rider-app", "trip-api", "lifecycle"])
     ended = until(lambda: "tour" in state()["asked"] and state()["asked"]["tour"] is None, 30)
     ok("mcp-latest-command#3 · a tour that ended is taken out of what a later page is shown", said.startswith("Shown on 1 page") and ended, (said, state()["asked"]))
+
+    # the assistant's tour has ended: its next command leaves a tour the reader started, here a story's step tour (#132)
+    chrome.eval(sid, "window.umlimatorMap.play('ride', { step: 3 }) && true")  # the reader's own: a step on trips, with a tour
+    rode = until(lambda: chrome.eval(sid, "window.umlimatorMap.state.tour"))
+    said = tool("highlight", refs=["fare"], view="trips")
+    ok("#132 · a command ends only the assistant's own tour: the next one leaves the tour of a story the reader started riding",
+       rode and said.startswith("Shown on 1 page") and chrome.eval(sid, "window.umlimatorMap.state.tour"), (rode, said))
+    chrome.eval(sid, "window.umlimatorMap.play(null), true")
+    # …and under reduced motion, where a tour is a path lit at rest: a story's step takes the assistant's off and keeps its
+    # own through the assistant's next command, and clear() takes the assistant's own off
+    chrome.call("Emulation.setEmulatedMedia", {"features": [{"name": "prefers-reduced-motion", "value": "reduce"}]}, sid)
+    lit = "window.umlimatorMap.state.overlays.includes('tour')"
+    tool("tour", cards=["rider-app", "trip-api", "lifecycle"])
+    mine = chrome.eval(sid, lit)
+    chrome.eval(sid, "window.umlimatorMap.play('ride', { step: 3 }) && true")
+    theirs = until(lambda: chrome.eval(sid, "!!window.umlimatorMap.state.story && " + lit))
+    tool("highlight", refs=["fare"], view="trips")
+    kept = chrome.eval(sid, lit)
+    chrome.eval(sid, "window.umlimatorMap.play(null), true")
+    tool("tour", cards=["rider-app", "trip-api", "lifecycle"])
+    tool("clear")
+    cleared = not chrome.eval(sid, lit)
+    chrome.call("Emulation.setEmulatedMedia", {"features": []}, sid)
+    ok("#132 · …under reduced motion too: the story's path lit at rest stays through the assistant's next command, and clear() takes the assistant's own off",
+       mine and theirs and kept and cleared, (mine, theirs, kept, cleared))
 
     # clear() takes the assistant's story off, and leaves the reader's
     said = tool("play_story", id="ride")

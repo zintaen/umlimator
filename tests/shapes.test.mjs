@@ -33,3 +33,17 @@ test('validate() warns about a shape or notation it does not know, and hints whe
   // a frontend card with a person's icon is fine where no view draws c4
   assert.deepEqual(validate({ nodes: [{ id: 'r', kind: 'frontend', icon: 'users' }], views: [{ id: 'v', shapes: 'uml', nodeIds: ['r'] }] }), []);
 });
+
+test('validate() warns about a shape it does not know in a view\'s nodeOverrides, as on a card', () => {
+  const got = validate({ nodes: [{ id: 'db', kind: 'database' }], views: [{ id: 'v', nodeIds: ['db'], nodeOverrides: { db: { shape: 'cylindr' } } }, { id: 'w', nodeIds: ['db'], nodeOverrides: { db: { shape: 'Cylinder' } } }] });
+  assert.deepEqual(got.map(p => `${p.level} ${p.path}`), ['warning views[0].nodeOverrides.db.shape']);
+});
+
+test('a shape or kind named like an object\'s own key (constructor, __proto__) is not a shape or a kind: validate() warns, on a card and in nodeOverrides', () => {
+  for (const sh of ['constructor', '__proto__', 'toString']) {
+    const m = { shapes: 'c4', nodes: [{ id: 'db', label: 'DB', kind: 'database', shape: sh }, { id: 'api', label: 'API', kind: 'backend' }], edges: [{ from: 'api', to: 'db' }],
+      views: [{ id: 'v', label: 'V', nodeIds: ['db', 'api'], nodeOverrides: { db: { shape: sh } } }] };
+    assert.deepEqual(validate(m).map(p => `${p.level} ${p.path}`), ['warning nodes[0].shape', 'warning views[0].nodeOverrides.db.shape'], sh);
+    assert.deepEqual(validate({ nodes: [{ id: 'a', kind: sh }], views: [{ id: 'v', nodeIds: ['a'] }] }).map(p => `${p.level} ${p.path}`), ['warning nodes[0].kind'], sh);
+  }
+});

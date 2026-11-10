@@ -158,6 +158,102 @@ try {
   pg.destroy(); box.innerHTML = ''; try { localStorage.removeItem(key); } catch (_) {}
   history.replaceState(null, '', location.pathname);
 
+  // ---- what sits on a shape's top, and what meets its outline (the 0.15.0 review's fixes)
+  const FIX = { nodes: [{ id: 'p', label: 'Person', kind: 'person', badges: ['beta'] }, { id: 'r', label: 'Robot', kind: 'agent' }, { id: 'f', label: 'Pricing', kind: 'module', badges: ['v2'] },
+    { id: 'api', label: 'API', kind: 'backend' }, { id: 'sa', label: 'Job A', kind: 'backend' }, { id: 'sb', label: 'Job B', kind: 'backend' }, { id: 'rs', label: 'Bot script', kind: 'script', shape: 'robot' }],
+    edges: [{ from: 'p', to: 'api' }, { from: 'r', to: 'api' }, { from: 'f', to: 'api' }, { from: 'sa', to: 'rs' }, { from: 'sb', to: 'rs' }],
+    views: [{ id: 'v', nodeIds: ['p', 'r', 'f', 'api', 'sa', 'sb', 'rs'], intake: [{ to: 'p', label: 'one' }, { to: 'p', label: 'two' }, { to: 'p', label: 'three' }] },
+      { id: 'steps', render: 'process', nodeIds: ['p', 'r', 'api'] }] };
+  const rectOf = r => r ? ['x', 'y', 'width', 'height'].map(k => +r.getAttribute(k)) : [];
+  const onOutline = (id, x, y) => { const b = sr.querySelector(`.node[data-id="${id}"] .n-body`); b.style.strokeWidth = '3px'; const on = b.isPointInStroke(pt(sr.querySelector('svg.map-svg'), x, y)); b.style.strokeWidth = ''; return on; };
+  mount(FIX, { shapes: 'uml', on: { click() {} } }); await wait(60);
+  const fg = inner(h).geo().byId;
+  h.overlay('m', { nodes: { p: { badge: 'hot' }, r: { badge: 'new' }, f: { badge: 'xx' } } });
+  const otab = t => rectOf(([...sr.querySelectorAll('.um-tab')].find(g => g.textContent === t) || {}).firstChild), own = id => rectOf(sr.querySelector(`.node[data-id="${id}"] .pub-tab rect`));
+  check('an overlay\'s tab sits on a person\'s, robot\'s and folder\'s tab line, as the card\'s own tabs do', otab('hot')[1] === own('p')[1] && otab('xx')[1] === own('f')[1] && otab('new')[1] === fg.r.y + 14 - 8,
+    [otab('hot'), own('p'), otab('new'), fg.r.y, otab('xx'), own('f')]);
+  const ftab = sr.querySelector('.node[data-id="f"] .n-det.n-accent').getBBox();
+  check('…and after a folder\'s own tab, not over it', otab('xx')[0] >= ftab.x + ftab.width, [otab('xx'), ftab.x + ftab.width]);
+  const ring = id => rectOf(sr.querySelector(`.tab-key[data-node="${id}"] rect`));
+  check('a badge\'s keyboard focus ring is round its tab on a person and a folder', ['p', 'f'].every(id => ring(id)[1] <= own(id)[1] && ring(id)[1] + ring(id)[3] >= own(id)[1] + own(id)[3]), ['p', 'f'].map(id => [ring(id), own(id)]));
+  const rsPorts = [...sr.querySelectorAll('.node[data-id="rs"] .n-port')].map(c => [+c.getAttribute('cx'), +c.getAttribute('cy')]);
+  check('a robot on a 42 px script card takes both its left ports on its outline', fg.rs.h === 42 && rsPorts.length === 2 && rsPorts.every(([x, y]) => onOutline('rs', x, y)), [fg.rs.h, rsPorts]);
+  const feeds = [...sr.querySelectorAll('.intake > path.edge')].map(p => { const q = p.getPointAtLength(p.getTotalLength()); return [q.x, q.y]; });
+  check('a feeds line ends on a person\'s outline, as a line does', feeds.length === 3 && feeds.every(([x, y]) => onOutline('p', x, y)), feeds);
+  await h.setView('steps'); await wait(60);
+  const pill = id => { const g = sr.querySelector(`.node[data-id="${id}"]`), r = rectOf(g.querySelector('.step rect')), b = g.querySelector('.n-body'), svg = sr.querySelector('svg.map-svg'); let hit = 0;
+    for (let i = 0; i <= 20; i++) for (let j = 0; j <= 20; j++) if (b.isPointInFill(pt(svg, r[0] + r[2] * i / 20, r[1] + r[3] * j / 20))) hit++; return hit; };
+  check('a step\'s number sits on a person\'s and a robot\'s shoulder, not in the air above it', pill('p') > 0 && pill('r') > 0, [pill('p'), pill('r')]);
+  mount(BOOK, { shapes: 'uml', legend: true });
+  check('uml: the legend names UML\'s component where a card\'s icon is not in the icon table, so the card shows the component mark', sr.querySelector('.node .n-sigil path[d^="M4.5 4.5"]') && names().includes('Component'), names());
+  const OWN = structuredClone(SHAPES); OWN.nodes.find(n => n.id === 'orders').shape = 'cylinder';
+  mount(OWN, { shapes: 'box', minimap: true }); h.overlay('t', { nodes: { orders: { tone: 'rose' } } }); await wait(30);
+  check('box: a card\'s own shape has its ring on its outline, and the minimap draws it', sr.querySelector('.um-rings path.um-ring') && !sr.querySelector('.um-rings rect.um-ring') && sr.querySelectorAll('.minimap path').length === 2, sr.querySelectorAll('.minimap path').length);
+
+  // ---- the second review: an overlay's tab clear of a head, ears and a folder's tab; every line and feed end on a person's or
+  // robot's outline, wherever layout put it; a step's number clear of the arrows into a card's left side
+  const svgEl = () => sr.querySelector('svg.map-svg');
+  const inFill = (id, x, y) => sr.querySelector(`.node[data-id="${id}"] .n-body`).isPointInFill(pt(svgEl(), x, y));
+  const HEADS = { nodes: [{ id: 'p', label: 'Person', kind: 'person', badges: ['beta'] }, { id: 'p2', label: 'Plain person', kind: 'person' }, { id: 'r', label: 'Robot', kind: 'agent' },
+    { id: 'sr', label: 'Short robot', kind: 'script', shape: 'robot' }, { id: 'f2', label: 'Folder tabs', kind: 'module', shape: 'folder', badges: ['beta'] }, { id: 'api', label: 'API', kind: 'backend' }],
+    edges: [{ from: 'p', to: 'api' }, { from: 'p2', to: 'api' }, { from: 'r', to: 'api' }, { from: 'sr', to: 'api' }, { from: 'f2', to: 'api' }],
+    views: [{ id: 'v', nodeIds: ['p', 'p2', 'r', 'sr', 'f2', 'api'] }] };
+  for (const nt of ['c4', 'uml']) {
+    mount(HEADS, { shapes: nt }); await wait(40);
+    const hg = inner(h).geo().byId, words = { p: 'hot', p2: 'blocked', r: 'new', sr: 'hotsr', f2: 'xx' };
+    h.overlay('m', { nodes: Object.fromEntries(Object.entries(words).map(([id, b]) => [id, { badge: b }])) });
+    const bad = Object.entries(words).flatMap(([id, b]) => { const n = hg[id], r = rectOf(([...sr.querySelectorAll('.um-tab')].find(g => g.textContent === b) || {}).firstChild); if (!r.length) return [`${id}: no tab`];
+      const out = []; if (r[0] + r[2] > n.x + n.w + .5) out.push(`${id}: past the card's right edge`);
+      // above the tab line (the shoulder's, or a folder's), a shape's body is its head, its ears or its folder tab: the tab covers none of it
+      if (id !== 'f2') for (let i = 0; i <= 20; i++) for (const y of [r[1] + .5, r[1] + 4, r[1] + 7]) if (inFill(id, r[0] + r[2] * i / 20, y)) { out.push(`${id}: over its head at ${r[0] + r[2] * i / 20},${y}`); i = 21; break; }
+      return out; });
+    check(`${nt}: an overlay's tab is kept off a person's head and a robot's ears, and inside a folder card`, !bad.length, bad);
+  }
+  const AIR = { nodes: [{ id: 'n1', label: 'Node 1', kind: 'queue' }, { id: 'n2', label: 'Node 2', kind: 'script', shape: 'robot' }, { id: 'n3', label: 'Node 3', kind: 'database' }, { id: 'n6', label: 'Node 6', kind: 'frontend' },
+    { id: 'n7', label: 'Node 7', kind: 'queue' }, { id: 'n8', label: 'Node 8', kind: 'script', shape: 'person' }, { id: 'h', label: 'Human', kind: 'person' }, { id: 'a', label: 'Agent', kind: 'agent' },
+    { id: 'hs', label: 'Short human', kind: 'script', shape: 'person' }, { id: 'rs2', label: 'Short bot', kind: 'script', shape: 'robot' }],
+    edges: [{ from: 'n7', to: 'n2' }, { from: 'n7', to: 'n6' }, { from: 'n1', to: 'n8' }, { from: 'n3', to: 'n8' }, { from: 'n7', to: 'n1' }, { from: 'n2', to: 'n3' }, { from: 'h', to: 'n6' }, { from: 'a', to: 'n6' }, { from: 'hs', to: 'n6' }, { from: 'rs2', to: 'n6' }],
+    views: [{ id: 'v', nodeIds: ['n1', 'n2', 'n3', 'n6', 'n7', 'n8', 'h', 'a', 'hs', 'rs2'],
+      intake: [...['h', 'a'].flatMap(to => [1, 2, 3, 4].map(i => ({ to, label: to + i }))), ...['hs', 'rs2'].flatMap(to => [1, 2, 3].map(i => ({ to, label: to + i })))] }] };
+  for (const nt of ['box', 'c4', 'uml']) {
+    mount(AIR, { shapes: nt }); await wait(40);
+    const ag = inner(h).geo(), n2 = ag.byId.n2, e72 = ag.edges.find(e => e.from === 'n7' && e.to === 'n2');
+    const ports = ['n2', 'n8'].flatMap(id => [...sr.querySelectorAll(`.node[data-id="${id}"] .n-port`)].map(c => [id, +c.getAttribute('cx'), +c.getAttribute('cy')]));
+    const ends = [...sr.querySelectorAll('.intake > path.edge')].map((p, i) => { const q = p.getPointAtLength(p.getTotalLength()); return [ag.intake[i].to, q.x, q.y]; });
+    const off = [...ports, ...ends].filter(([id, x, y]) => !onOutline(id, x, y));
+    check(`${nt}: a robot's or person's line ends and feeds are on its outline, a port high on a short card's side and the top feed of four included`,
+      e72 && e72.pts[e72.pts.length - 1][1] - n2.y < 12 && ports.length >= 4 && ends.length === 14 && !off.length, [e72 && e72.pts, n2 && n2.y, off]);
+  }
+  // a line onto a robot head's rounded corner, and feeds into a folder whose tab sits after the card's own: their ends on the outline
+  const ROOF = { nodes: [{ id: 't', label: 'Bot', kind: 'agent' }, ...[0, 1, 2, 3, 4, 5].map(i => ({ id: 'o' + i, label: 'Out ' + i, kind: 'script' })),
+    { id: 'fd', label: 'Billing', kind: 'module', shape: 'folder', badges: ['beta'] }, { id: 'fa', label: 'API', kind: 'backend' }],
+    edges: [...[0, 1, 2, 3, 4, 5].map(i => ({ from: 't', to: 'o' + i })), { from: 'fd', to: 'fa' }],
+    views: [{ id: 'v', nodeIds: ['t', 'o0', 'o1', 'o2', 'o3', 'o4', 'o5', 'fd', 'fa'], intake: [1, 2, 3, 4].map(i => ({ to: 'fd', label: 'src' + i })) }] };
+  for (const nt of ['box', 'c4', 'uml']) {
+    mount(ROOF, { shapes: nt }); await wait(40);
+    const rg = inner(h).geo(), tops = rg.edges.filter(e => e.from === 't' && e.fs === 'T').map(e => ['t', ...e.pts[0]]);
+    const starts = [...sr.querySelectorAll('.edge-g')].filter(e => e.dataset.from === 't').map(e => ['t', ...e.querySelector('.edge').getAttribute('d').match(/^M ([\d.]+) ([\d.]+)/).slice(1).map(Number)]);
+    const fends = [...sr.querySelectorAll('.intake > path.edge')].map(p => { const q = p.getPointAtLength(p.getTotalLength()); return ['fd', q.x, q.y]; });
+    const off = [...starts, ...fends].filter(([id, x, y]) => !onOutline(id, x, y));
+    check(`${nt}: a line from a robot's head and the feeds into a folder whose tab has moved end on the outline`, tops.length && fends.length === 4 && !off.length, [tops, off]);
+  }
+  const STEPS = { nodes: [...['s1', 's2', 's3', 'hb'].map(id => ({ id, label: id.toUpperCase(), kind: 'backend' })), { id: 'p', label: 'Person', kind: 'person' }, { id: 'r', label: 'Robot', kind: 'agent' }],
+    edges: [...['s1', 's2', 's3'].flatMap(s => [{ from: s, to: 'p' }, { from: s, to: 'r' }]), { from: 'p', to: 'hb' }, { from: 'r', to: 'hb' }],
+    views: [{ id: 'cs', nodeIds: ['s1', 's2', 's3', 'p', 'r', 'hb'], cardSteps: { p: '1', r: '2', s1: '3' } }] };
+  for (const nt of ['c4', 'uml']) {
+    mount(STEPS, { shapes: nt }); await wait(40);
+    const sg = inner(h).geo(), hidden = [];
+    sg.edges.forEach((e, i) => { if (!['p', 'r'].includes(e.to) || e.ts !== 'L') return; const r = rectOf(sr.querySelector(`.node[data-id="${e.to}"] .step rect`)), path = sr.querySelector(`.edge-g[data-i="${i}"] .edge`), q = path.getPointAtLength(path.getTotalLength());
+      // the arrowhead: 10 px back from the end, 4 px either side
+      if (q.x - 10 < r[0] + r[2] && q.x > r[0] && q.y - 4 < r[1] + r[3] && q.y + 4 > r[1]) hidden.push([e.from, e.to, q.x, q.y, r]); });
+    check(`${nt}: a step's number covers no arrow into the card's left side`, !hidden.length && sr.querySelectorAll('.step rect').length === 3, hidden);
+  }
+  // a shape or kind named like an object's own key is not a shape: the card is drawn by its kind
+  errors.length = 0;
+  mount({ shapes: 'c4', nodes: [{ id: 'db', label: 'DB', kind: 'database', shape: 'constructor' }, { id: 'api', label: 'API', kind: 'constructor', shape: '__proto__' }], edges: [{ from: 'api', to: 'db' }],
+    views: [{ id: 'v', nodeIds: ['db', 'api'] }] }); await wait(40);
+  check('a shape "constructor" or "__proto__" draws the card by its kind, with no error', JSON.stringify(drawn()) === JSON.stringify({ db: 'cylinder', api: 'box' }) && !errors.length, [drawn(), errors]);
+
   check('no errors on the way', !errors.length, errors);
 } catch (e) { out.fail.push('threw: ' + (e && e.stack || e)); }
 if (h) h.destroy();

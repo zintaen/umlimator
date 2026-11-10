@@ -266,9 +266,10 @@ sent or compared as it is.
 | `expanded` | `string[]` | the cards unfolded on the view shown, in the order they unfolded |
 | `lens` | string or `null` | the lens on the map |
 | `overlays` | `string[]` | the layers of marks, in the order first set: `lens`, `highlight`, `story`, `tour`, `replay`, the page's `lit`, the MCP page's `mcp`, a host's own |
-| `story` | `{ id, step, steps, playing }` or `null` | the story shown: its step (from 0), how many it has, and whether it goes on by itself |
-| `tour` | boolean | a tour's dot rides (a path lit at rest under reduced motion is `false`) |
-| `replay` | `{ playing }` or `null` | a replay under way, playing or paused by its `pause()` |
+| `story` | `{ id, step, steps, playing }` or `null` | the story shown: its step (from 0), how many it has, and whether it goes on by itself, the player's own state |
+| `tour` | boolean | a tour's dot is on the map, riding or held (by `paused`, or by its story's pause); a path lit at rest under reduced motion is `false` |
+| `replay` | `{ playing }` or `null` | a replay under way, playing or paused by its own `pause()` |
+| `paused` | boolean | the standalone page's ❚❚ holds every clock: a tour's or a replay's dot, a story's step and the flow. It leaves `story`, `tour`, `replay` and `flow` as they are, so `playing: true` with `paused: true` is a story or a replay that would play, held by the page (0.15.0) |
 | `camera` | `{ x, y, zoom }` | the centre in map units, to a tenth, and the zoom (1 is actual size), to a thousandth |
 | `flow` | boolean | the lines flow (≋, F) |
 | `shapes` | `'box'`, `'c4'` or `'uml'` | the notation the view shown is drawn in (0.15.0) |
@@ -346,8 +347,9 @@ the player shown, and `player.state` names its state.
 | any | an `update()` that changes the step shown | entering that step again, as the model has it now |
 
 - `play()` of a story the model lacks returns `null`, and the story shown plays on.
-- The page's ❚❚ holds the step's time and its tour, without a pause: `player.state` stays `playing`. ▶ gives the step
-  its time again.
+- The page's ❚❚ holds the step's time and its tour, without a pause: `player.state` stays `playing`, and `MapState`
+  reads `paused: true` with `story.playing: true`, a story that would play, held by the page. ▶ gives the step its time
+  again.
 - **Emits:** `story` `{ story, step, steps, playing }` on each change: entering a step (before the step's own `select`
   and `viewchange`), a pause or a resume (the same step), and the end (`step: null`, on `destroy()` too). The step's
   selection comes as `select`, and its highlight is the `story` layer. The live region says "Step 2 of 5: …", then
@@ -355,15 +357,15 @@ the player shown, and `player.state` names its state.
 - **Settles:** `player.done`: `true` once told to the end, `false` when stopped.
 
 **Tours and replays**, in `render()`: one trip at a time, from `tour()`, `replay()` or a story step's tour. The trip
-is read as `tour` and `replay` in `MapState`.
+is read as `tour` and `replay` in `MapState`, and the page's ❚❚ as `paused`.
 
 | State | What moves it | Goes to |
 |---|---|---|
 | no trip | `tour(path)`, `replay(spans)`, a story step's tour | riding: `tour: true`, or `replay: { playing: true }` |
 | no trip | `tour(path)` under reduced motion | lit at rest: the path in the `tour` layer, its cards ringed and numbered, said in the live region; `tour()` resolves `true` at once |
 | no trip | `replay(spans)` under reduced motion | no trip: each call's duration labelled at once, and `done` resolves |
-| riding | the page's ❚❚; a story's pause, for its step's tour; the replay's `pause()` (`replay.playing: false`) | held where it is |
-| held | ▶; the story's `resume()`; the replay's `resume()` | riding |
+| riding | the page's ❚❚ (`paused: true`); a story's pause, for its step's tour; the replay's `pause()` (`replay.playing: false`) | held where it is, still on the map: `tour` stays `true`, and under ❚❚ `replay.playing` stays as it was |
+| held | ▶ (`paused: false`); the story's `resume()`; the replay's `resume()` | riding |
 | riding | the dot reaches the end | no trip: `true`; a replay's labels stay |
 | riding or held | Esc on the map ("Tour stopped", "Replay stopped"), `tour(null)`, the next tour or replay, a new picture of the view (a move, an `update()` that redraws it, unfolding), a story's next step or its end, for its step's tour, the replay's `stop()`, `destroy()` | no trip: `false`; a replay's labels go |
 | lit at rest | the same | no trip: the path is taken off |
@@ -463,6 +465,9 @@ on the map's handle and posts back what it shows.
 
 - A page that opens later gets what the assistant wants shown, not the last command. A tour or story that a page
   reports ended is taken out of it.
+- A command ends only the assistant's own tour and story. The page counts the assistant's tour as on the map until its
+  dot reaches the end or is cut short or replaced; a path lit at rest under reduced motion, until a story's step or end
+  takes its place. So a command with no tour leaves the tour of a story the reader started: that story is the reader's.
 - While the model's latest version does not render, every answer begins with why, the page shows the same in a bar,
   and `page_state()` gives `model.renders: false`.
 
@@ -1229,7 +1234,7 @@ only), which the command calls.
   | In the source | Card kind |
   |---|---|
   | A person (`person`, `Person`) | `frontend`, with a person icon; `external` for `Person_Ext` or an `External` tag |
-  | A software system (`softwareSystem`, `System`) | `backend`; `external` for `_Ext` or an `External` tag |
+  | A software system (`softwareSystem`, `System`) | `backend` (Structurizr: from its words, as a container, but drawn a box); `external` for `_Ext` or an `External` tag |
   | A database: a `Db` macro, a `Database` tag, a cylinder `[(…)]`, an image such as `postgres` | `database` |
   | A queue: a `Queue` macro, a `Queue` tag, an image such as `rabbitmq` or `kafka` | `queue` |
   | A container, component, node, service or workload | from its words: a store or cache is `database`, a broker `queue`, sign-in `security`, an LLM `ai`, a proxy or monitoring `cloud`, an app or UI `frontend`, a document `file`; `backend` otherwise (a StatefulSet: `database`) |
@@ -1243,7 +1248,10 @@ only), which the command calls.
     components. A group is a box in each view that shows one of its members, nested as the source nests it: inside the
     group around it, or inside the view's own box when it is in the view's system or container (whose box is in turn in
     that element's group). A relationship between elements a view doesn't show lifts to the nearest ones it does, an implied line as
-    Structurizr draws it, unless a relationship joins those two already (`!impliedRelationships false` turns this off).
+    Structurizr draws it, unless a relationship joins those two already (`!impliedRelationships false`, `none` or
+    `DefaultImpliedRelationshipsStrategy` turns this off; `CreateImpliedRelationshipsUnlessSameRelationshipExistsStrategy`
+    draws one per description unless a relationship with that description joins them; a strategy it doesn't know is
+    listed in `notImported`).
     A system's card opens its container view, a container's card its component view, and each view's parent is the most
     detailed view above it that shows its subject. A workspace with no views gets a landscape, a container view per system
     and a component view per container.
@@ -2461,15 +2469,16 @@ reader's notation into its link.
 **The 13 shapes**, all drawn inside the card's box (the gallery, `examples/notations.html`, shows each one):
 
 - `box`: the rounded box;
-- `person`: a head over a body with wide shoulders. The body starts 12 px down, so a side port's highest place lands on
-  it;
+- `person`: a head over a body with wide shoulders. The body starts 12 px down, or just above the highest line or feed
+  that ends on its left or right side, so each one lands on it;
 - `browser`, `window` and `terminal`: a title bar with three dots, then an address field, nothing, or a `>_`;
 - `mobile`: a phone on its side, with a screen, a home button and a speaker;
 - `cylinder`: a lid on top;
 - `pipe`: a cylinder on its side, open at the right;
 - `document`: a page with its corner folded;
 - `hexagon`: the hook card's;
-- `robot`: a square head with ears;
+- `robot`: a square head with ears, over a body that starts 14 px down, or just above the highest line or feed that ends
+  on its side (its head as much shorter);
 - `folder`: a tab on top;
 - `node`: a box seen in perspective.
 
@@ -2534,7 +2543,7 @@ moves under reduced motion, in an instant page or in an export.
   | `Terminal`, `Shell` | `terminal` |
   | `MobileDevicePortrait`, `MobileDeviceLandscape` | `mobile` |
   | `Hexagon` | `hexagon` |
-  | `Circle`, `Ellipse`, `Diamond`, `Bucket`, `Component` | none: listed in `notImported` with its style's tag, and a card it falls on is drawn by its kind |
+  | `Circle`, `Ellipse`, `Diamond`, `Bucket`, `Component` | none: listed in `notImported` with its style's tag, and a card it falls on is drawn as it would be without it |
 
 - A C4-PlantUML tag's `$shape` (`AddElementTag(..., $shape=RoundedBoxShape()|EightSidedShape())`) is not drawn; it
   is listed in `notImported`.
@@ -2560,6 +2569,40 @@ In `box` they look as before (a `person` is a `frontend` card); in `c4` and `uml
 - the page's toggle, `#shapes=` and its kept choice;
 - the types `Notation` and `Shape`;
 - `shape` on a card, and `shapes` on the model and a view.
+
+**Fixes from the release's review** (each with a regression test):
+
+- An overlay's or lens's badge tab sits on a person's, robot's or folder's tab line, as the card's own tabs do. It sat at
+  the box's top. After the card's own tabs, it takes the first place inside the card clear of a head (a robot's ears
+  too), ⤢, the change badge and a folder's tab, else the place inside it that covers least of them.
+- A badge's keyboard focus ring (a host that listens for `click`) is round its tab on those shapes. It was drawn above.
+- A step's number on a card (a numbered or process view) sits on the shape's tab line too, on a person's or robot's
+  shoulder, not in the air above it; but no lower than 16 px above the highest line or feed into the card's left side
+  (and no higher than the box's corner, where it was), so it covers no arrow.
+- A line or feed that ended on a robot's or person's side above its body ended in the air: a 42 px script card's upper
+  port, a port that a short jog moves level with the line's other end, the top one of four feeds. The body now starts
+  just above the highest line or feed on either side, as laid out, and a robot's head is as much shorter.
+- A view's intake (feeds) lines end on the outline, as other lines do. They stopped at the box's side, up to 8 px short
+  of a hexagon and 5 px of a person.
+- A line onto a robot head's rounded corner, and a line or feed into a folder whose tab sits after the card's own tabs
+  (or into its right side's top), ends on the outline. They ended up to 2 and 4 px off it.
+- In uml, a card whose `icon` the model's `icons` table does not have shows UML's component mark, and now the legend
+  names it too.
+- In `box`, a card's own `shape` has its overlay and lens rings on its outline, is drawn as its shape in the minimap,
+  and a tour's or replay's dot rides its lines into the outline, as in c4 and uml. They treated it as a box.
+- `validate()` warns about a `shape` it doesn't know in a view's `nodeOverrides`, as on a card.
+- A `shape` or `kind` such as `constructor` or `__proto__` is no shape and no kind: `validate()` warns, and the card is
+  drawn by its kind, or as a script card. Drawing it threw.
+- Import: a Structurizr software system or component, or a C4-PlantUML `Component`, whose words make it `frontend`,
+  `mobile`, `database`, `queue` or `file` keeps that kind (its colour) but gets `shape: "box"`, so c4 draws it as
+  Structurizr does, not as a browser, a phone, a cylinder, a pipe or a page. Only a container takes a shape from its
+  words; a `SystemDb` or `ComponentDb` is still a cylinder.
+- Import: `!impliedRelationships` reads Structurizr's strategy names: `false` (any case), `none` and
+  `DefaultImpliedRelationshipsStrategy` draw no implied lines; `true` and
+  `CreateImpliedRelationshipsUnlessAnyRelationshipExistsStrategy` draw one per pair, unless a relationship joins the
+  two; `CreateImpliedRelationshipsUnlessSameRelationshipExistsStrategy` draws one per description, unless a relationship
+  with that description joins them. Any other value is listed in `notImported` and drawn as Structurizr's default
+  (unless any). Before, anything but a lowercase `false` turned them on, unsaid.
 
 **Tests:**
 
@@ -2660,4 +2703,51 @@ shows the tone and the steps with them; `--um-tint` is the host's to set.
     swimlane numbers, which fail on the old dark theme at 3.1:1. The arrow between swimlanes is a graphic and is held to
     3:1.
   - `tests/cli.py`: the PDF's table of lines gives each line its step, in step order (2, 2a, 10, then none).
+- **Fixes from the release's review** (each with a regression test):
+  - A text step goes into its line's title escaped. A step such as `1<b`, which validates, put every card inside that
+    title, so the map showed none.
+  - A→B and B→A drawn as one two-way line list each in their title with its step (`1. asks`, `2. answers`), as
+    parallel lines do. B→A's step was on no drawn line.
+  - The minimap draws a box in a tone the theme does not define in slate, as the picture does, and in c4 with its
+    dashed boundary. It was black, with no border.
 - **Left out:** a legend entry for steps or regions, and a view's tour riding its steps.
+
+### The page's ❚❚ is in the state, and the assistant's commands end only its own tour (#131, #132)
+
+Both gaps were found while writing the State chapter (#129).
+
+- **The page's ❚❚ is in `MapState` (#131).** ❚❚ holds every clock, but `handle.state` didn't say so. Under it
+  `story.playing`, `replay.playing` and `tour` stayed `true` while nothing moved, and no `state` event came, so an agent
+  reading `page_state()` couldn't tell that the page was paused.
+  - `MapState.paused` is `true` while the standalone page's ❚❚ is on. A `state` event comes each way, with `paused` in
+    `changed`, and none when the page sets the value it already has, as it does on each new picture.
+  - Each machine keeps its own state under it. `story.playing` is the player's (it goes on by itself) and
+    `replay.playing` the replay's, so `playing: true` with `paused: true` is a story or a replay that would play, held
+    by the page. `flow` stays as the reader or the host set it.
+  - `tour` is `true` while a tour's dot is on the map, riding or held, whether by ❚❚ or by its story's pause. Its type
+    said "riding".
+  - A map that no page holds, such as a host's `render()`, reads `paused: false`.
+- **The assistant's commands end only its own tour (#132).** The page that `umlimator.py mcp` serves kept the number of
+  the assistant's last tour after that tour had ended. So its next command with no tour (`highlight`, `show_view`,
+  `clear`) called `tour(null)` and ended whatever rode then, such as the step's tour of a story the reader had started.
+  - The page now holds the assistant's tour only while it is on the map: until its dot reaches the end, or is cut
+    short or replaced.
+  - Under reduced motion, a path lit at rest stays the assistant's until a story's step or end takes its place, so
+    `clear` still takes it off.
+  - Each tour still starts once. A page never plays an ended tour again, even when a command comes before the server
+    hears that the tour ended.
+  - Stories were already safe, and stay so.
+- **Visible changes:** `handle.state`, the `state` event and each page in `page_state()` have `paused`. The assistant's
+  `highlight`, `show_view` or `clear` no longer stops a tour that the reader's story rides.
+- **API added:** `MapState.paused: boolean`. No type, flag, event shape or model field changes. The comments on
+  `MapState`'s `story`, `tour` and `replay` now say what each means under ❚❚.
+- **Docs:** the State chapter says the same: the `MapState` table, the story player's and the trips' tables, and the MCP
+  server's page.
+- **Tests:**
+  - `tests/motion.html` puts ❚❚ over a playing story with its step's tour, then over a replay. It reads `paused`, and
+    one `state` event each way.
+  - `tests/state.html` lists the new key.
+  - `tests/mcp.py`: the reader's story rides a step's tour through the assistant's next command. Under reduced motion the
+    story's path stays lit through it, and `clear` still takes the assistant's own path off.
+
+  Each check fails before this change.
