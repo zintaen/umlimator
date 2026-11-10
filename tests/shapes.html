@@ -158,6 +158,38 @@ try {
   pg.destroy(); box.innerHTML = ''; try { localStorage.removeItem(key); } catch (_) {}
   history.replaceState(null, '', location.pathname);
 
+  // ---- what sits on a shape's top, and what meets its outline (the 0.15.0 review's fixes)
+  const FIX = { nodes: [{ id: 'p', label: 'Person', kind: 'person', badges: ['beta'] }, { id: 'r', label: 'Robot', kind: 'agent' }, { id: 'f', label: 'Pricing', kind: 'module', badges: ['v2'] },
+    { id: 'api', label: 'API', kind: 'backend' }, { id: 'sa', label: 'Job A', kind: 'backend' }, { id: 'sb', label: 'Job B', kind: 'backend' }, { id: 'rs', label: 'Bot script', kind: 'script', shape: 'robot' }],
+    edges: [{ from: 'p', to: 'api' }, { from: 'r', to: 'api' }, { from: 'f', to: 'api' }, { from: 'sa', to: 'rs' }, { from: 'sb', to: 'rs' }],
+    views: [{ id: 'v', nodeIds: ['p', 'r', 'f', 'api', 'sa', 'sb', 'rs'], intake: [{ to: 'p', label: 'one' }, { to: 'p', label: 'two' }, { to: 'p', label: 'three' }] },
+      { id: 'steps', render: 'process', nodeIds: ['p', 'r', 'api'] }] };
+  const rectOf = r => r ? ['x', 'y', 'width', 'height'].map(k => +r.getAttribute(k)) : [];
+  const onOutline = (id, x, y) => { const b = sr.querySelector(`.node[data-id="${id}"] .n-body`); b.style.strokeWidth = '3px'; const on = b.isPointInStroke(pt(sr.querySelector('svg.map-svg'), x, y)); b.style.strokeWidth = ''; return on; };
+  mount(FIX, { shapes: 'uml', on: { click() {} } }); await wait(60);
+  const fg = inner(h).geo().byId;
+  h.overlay('m', { nodes: { p: { badge: 'hot' }, r: { badge: 'new' }, f: { badge: 'xx' } } });
+  const otab = t => rectOf(([...sr.querySelectorAll('.um-tab')].find(g => g.textContent === t) || {}).firstChild), own = id => rectOf(sr.querySelector(`.node[data-id="${id}"] .pub-tab rect`));
+  check('an overlay\'s tab sits on a person\'s, robot\'s and folder\'s tab line, as the card\'s own tabs do', otab('hot')[1] === own('p')[1] && otab('xx')[1] === own('f')[1] && otab('new')[1] === fg.r.y + 14 - 8,
+    [otab('hot'), own('p'), otab('new'), fg.r.y, otab('xx'), own('f')]);
+  const ftab = sr.querySelector('.node[data-id="f"] .n-det.n-accent').getBBox();
+  check('…and after a folder\'s own tab, not over it', otab('xx')[0] >= ftab.x + ftab.width, [otab('xx'), ftab.x + ftab.width]);
+  const ring = id => rectOf(sr.querySelector(`.tab-key[data-node="${id}"] rect`));
+  check('a badge\'s keyboard focus ring is round its tab on a person and a folder', ['p', 'f'].every(id => ring(id)[1] <= own(id)[1] && ring(id)[1] + ring(id)[3] >= own(id)[1] + own(id)[3]), ['p', 'f'].map(id => [ring(id), own(id)]));
+  const rsPorts = [...sr.querySelectorAll('.node[data-id="rs"] .n-port')].map(c => [+c.getAttribute('cx'), +c.getAttribute('cy')]);
+  check('a robot on a 42 px script card takes both its left ports on its outline', fg.rs.h === 42 && rsPorts.length === 2 && rsPorts.every(([x, y]) => onOutline('rs', x, y)), [fg.rs.h, rsPorts]);
+  const feeds = [...sr.querySelectorAll('.intake > path.edge')].map(p => { const q = p.getPointAtLength(p.getTotalLength()); return [q.x, q.y]; });
+  check('a feeds line ends on a person\'s outline, as a line does', feeds.length === 3 && feeds.every(([x, y]) => onOutline('p', x, y)), feeds);
+  await h.setView('steps'); await wait(60);
+  const pill = id => { const g = sr.querySelector(`.node[data-id="${id}"]`), r = rectOf(g.querySelector('.step rect')), b = g.querySelector('.n-body'), svg = sr.querySelector('svg.map-svg'); let hit = 0;
+    for (let i = 0; i <= 20; i++) for (let j = 0; j <= 20; j++) if (b.isPointInFill(pt(svg, r[0] + r[2] * i / 20, r[1] + r[3] * j / 20))) hit++; return hit; };
+  check('a step\'s number sits on a person\'s and a robot\'s shoulder, not in the air above it', pill('p') > 0 && pill('r') > 0, [pill('p'), pill('r')]);
+  mount(BOOK, { shapes: 'uml', legend: true });
+  check('uml: the legend names UML\'s component where a card\'s icon is not in the icon table, so the card shows the component mark', sr.querySelector('.node .n-sigil path[d^="M4.5 4.5"]') && names().includes('Component'), names());
+  const OWN = structuredClone(SHAPES); OWN.nodes.find(n => n.id === 'orders').shape = 'cylinder';
+  mount(OWN, { shapes: 'box', minimap: true }); h.overlay('t', { nodes: { orders: { tone: 'rose' } } }); await wait(30);
+  check('box: a card\'s own shape has its ring on its outline, and the minimap draws it', sr.querySelector('.um-rings path.um-ring') && !sr.querySelector('.um-rings rect.um-ring') && sr.querySelectorAll('.minimap path').length === 2, sr.querySelectorAll('.minimap path').length);
+
   check('no errors on the way', !errors.length, errors);
 } catch (e) { out.fail.push('threw: ' + (e && e.stack || e)); }
 if (h) h.destroy();

@@ -199,7 +199,12 @@ def structurizr(text, name):
         elif where in ("workspace", "model") and kw == "!identifiers":
             pass  # flat and hierarchical identifiers both resolve
         elif where in ("workspace", "model") and kw == "!impliedrelationships":
-            implied = toks[1:2] != ["false"]
+            # Structurizr's names (ImpliedRelationshipsParser): false is its default strategy, which creates none; true and
+            # the CreateImpliedRelationshipsUnless... strategies create them; another class is said, and drawn as the DSL's default
+            how = toks[1].rsplit(".", 1)[-1].lower() if len(toks) > 1 else "true"
+            implied = how not in ("false", "none", "defaultimpliedrelationshipsstrategy")
+            if implied and how != "true" and not re.fullmatch(r"createimpliedrelationshipsunless\w*strategy", how):
+                m.say(no, f"!impliedRelationships {toks[1]}: a strategy umlimator does not know, so implied lines are drawn as Structurizr's default draws them")
         elif where in ("model", "group", "el"):
             parent, grp = (None, None) if where == "model" else (at, None) if where == "el" else at  # a group's frame: (element, group)
             e, r = element(toks), relationship(toks, at if where == "el" else None)
@@ -258,8 +263,10 @@ def structurizr(text, name):
         shape = None
         for t in dict.fromkeys(["Element", TAG[e["type"]], *e["tags"]]):
             shape = next((sh for tag, sh in reversed(styles) if tag == t), shape)
-        m.card(cid, e["name"], kind, e["tech"] or C4TYPE[e["type"]], e["desc"], icon="user" if e["type"] == "person" else None,
-               shape=shape and SZ_SHAPE.get(shape.lower()))
+        shape = shape and SZ_SHAPE.get(shape.lower())
+        if not shape and e["type"] in ("softwaresystem", "component") and kind in ("frontend", "mobile"):
+            shape = "box"  # the colour its words give, but c4 draws only a container as a browser or a phone, as Structurizr draws these a box
+        m.card(cid, e["name"], kind, e["tech"] or C4TYPE[e["type"]], e["desc"], icon="user" if e["type"] == "person" else None, shape=shape)
     for g in groups:  # after the cards, so a group's name never takes an element's alias
         g["id"] = m.uniq(ident(g["label"]), f"group-{ident(g['label'])}")
     find = lambda t: ref.get(t) or (t if t in els else None)
@@ -446,7 +453,8 @@ def c4(lines, m):
                 cid, kind = m.uniq(a["alias"]), "database" if shape == "Db" else "queue" if shape == "Queue" else ("user" if ext else "person") if base == "Person" \
                     else "external" if ext else "backend" if base == "System" else c4guess([a.get("tags"), a.get("techn"), a.get("label")])
                 m.card(cid, a.get("label"), kind, a.get("techn") or ("External " + TYPE[base].lower() if ext else TYPE[base]),
-                       a.get("descr"), icon="user" if base == "Person" else None)
+                       a.get("descr"), icon="user" if base == "Person" else None,
+                       shape="box" if base == "Component" and kind in ("frontend", "mobile") else None)  # a component is a box, as a Structurizr one
                 bases.add(base)
                 if base == "Person":
                     people.add(cid)

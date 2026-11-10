@@ -1248,7 +1248,8 @@ only), which the command calls.
     components. A group is a box in each view that shows one of its members, nested as the source nests it: inside the
     group around it, or inside the view's own box when it is in the view's system or container (whose box is in turn in
     that element's group). A relationship between elements a view doesn't show lifts to the nearest ones it does, an implied line as
-    Structurizr draws it, unless a relationship joins those two already (`!impliedRelationships false` turns this off).
+    Structurizr draws it, unless a relationship joins those two already (`!impliedRelationships false`, `none` or
+    `DefaultImpliedRelationshipsStrategy` turns this off; a strategy it doesn't know is listed in `notImported`).
     A system's card opens its container view, a container's card its component view, and each view's parent is the most
     detailed view above it that shows its subject. A workspace with no views gets a landscape, a container view per system
     and a component view per container.
@@ -2466,15 +2467,16 @@ reader's notation into its link.
 **The 13 shapes**, all drawn inside the card's box (the gallery, `examples/notations.html`, shows each one):
 
 - `box`: the rounded box;
-- `person`: a head over a body with wide shoulders. The body starts 12 px down, so a side port's highest place lands on
-  it;
+- `person`: a head over a body with wide shoulders. The body starts 12 px down (higher on a card too short for that),
+  so a side port's highest place lands on it;
 - `browser`, `window` and `terminal`: a title bar with three dots, then an address field, nothing, or a `>_`;
 - `mobile`: a phone on its side, with a screen, a home button and a speaker;
 - `cylinder`: a lid on top;
 - `pipe`: a cylinder on its side, open at the right;
 - `document`: a page with its corner folded;
 - `hexagon`: the hook card's;
-- `robot`: a square head with ears;
+- `robot`: a square head with ears, over a body that starts 14 px down, or higher where a side port would be above it (12
+  px on a 42 px script card);
 - `folder`: a tab on top;
 - `node`: a box seen in perspective.
 
@@ -2565,6 +2567,30 @@ In `box` they look as before (a `person` is a `frontend` card); in `c4` and `uml
 - the page's toggle, `#shapes=` and its kept choice;
 - the types `Notation` and `Shape`;
 - `shape` on a card, and `shapes` on the model and a view.
+
+**Fixes from the release's review** (each with a regression test):
+
+- An overlay's or lens's badge tab sits on a person's, robot's or folder's tab line, as the card's own tabs do, and
+  after a folder's own tab, not over it. It sat at the box's top.
+- A badge's keyboard focus ring (a host that listens for `click`) is round its tab on those shapes. It was drawn above.
+- A step's number on a card (a numbered or process view) sits on the shape's tab line too, on a person's or robot's
+  shoulder, not in the air above it.
+- A robot on a 42 px script card took its upper side port above its body, with the line's end in the air: its body
+  starts higher on a short card (so does a person's), so each side port lands on the outline.
+- A view's intake (feeds) lines end on the outline, as other lines do. They stopped at the box's side, up to 8 px short
+  of a hexagon and 5 px of a person.
+- In uml, a card whose `icon` the model's `icons` table does not have shows UML's component mark, and now the legend
+  names it too.
+- In `box`, a card's own `shape` has its overlay and lens rings on its outline, is drawn as its shape in the minimap,
+  and a tour's or replay's dot rides its lines into the outline, as in c4 and uml. They treated it as a box.
+- `validate()` warns about a `shape` it doesn't know in a view's `nodeOverrides`, as on a card.
+- Import: a Structurizr software system or component, or a C4-PlantUML `Component`, whose words make it `frontend` or
+  `mobile` keeps that kind (its colour) but gets `shape: "box"`, so c4 draws it as Structurizr does, not as a browser
+  or a phone. Only a container is drawn as a browser or a phone.
+- Import: `!impliedRelationships` reads Structurizr's strategy names: `false` (any case), `none` and
+  `DefaultImpliedRelationshipsStrategy` draw no implied lines; `true` and the
+  `CreateImpliedRelationshipsUnless...Strategy` ones draw them. Any other value is listed in `notImported` and drawn as
+  Structurizr's default (implied lines on). Before, anything but a lowercase `false` turned them on, unsaid.
 
 **Tests:**
 
@@ -2665,6 +2691,13 @@ shows the tone and the steps with them; `--um-tint` is the host's to set.
     swimlane numbers, which fail on the old dark theme at 3.1:1. The arrow between swimlanes is a graphic and is held to
     3:1.
   - `tests/cli.py`: the PDF's table of lines gives each line its step, in step order (2, 2a, 10, then none).
+- **Fixes from the release's review** (each with a regression test):
+  - A text step goes into its line's title escaped. A step such as `1<b`, which validates, put every card inside that
+    title, so the map showed none.
+  - A→B and B→A drawn as one two-way line list each in their title with its step (`1. asks`, `2. answers`), as
+    parallel lines do. B→A's step was on no drawn line.
+  - The minimap draws a box in a tone the theme does not define in slate, as the picture does, and in c4 with its
+    dashed boundary. It was black, with no border.
 - **Left out:** a legend entry for steps or regions, and a view's tour riding its steps.
 
 ### The page's ❚❚ is in the state, and the assistant's commands end only its own tour (#131, #132)

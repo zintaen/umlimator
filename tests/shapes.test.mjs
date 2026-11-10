@@ -33,3 +33,8 @@ test('validate() warns about a shape or notation it does not know, and hints whe
   // a frontend card with a person's icon is fine where no view draws c4
   assert.deepEqual(validate({ nodes: [{ id: 'r', kind: 'frontend', icon: 'users' }], views: [{ id: 'v', shapes: 'uml', nodeIds: ['r'] }] }), []);
 });
+
+test('validate() warns about a shape it does not know in a view\'s nodeOverrides, as on a card', () => {
+  const got = validate({ nodes: [{ id: 'db', kind: 'database' }], views: [{ id: 'v', nodeIds: ['db'], nodeOverrides: { db: { shape: 'cylindr' } } }, { id: 'w', nodeIds: ['db'], nodeOverrides: { db: { shape: 'Cylinder' } } }] });
+  assert.deepEqual(got.map(p => `${p.level} ${p.path}`), ['warning views[0].nodeOverrides.db.shape']);
+});

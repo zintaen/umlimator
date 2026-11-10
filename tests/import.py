@@ -117,6 +117,21 @@ ok("structurizr · styles' shapes by Structurizr's precedence: Element first, th
    [card(m, i).get("shape") for i in ("u", "s", "w", "a", "d")] == ["person", "box", "browser", None, "cylinder"]
    and [msg for _, msg in un] == ["not imported: background #08427b", 'element "Bucketed": shape Bucket has no counterpart, so a card it falls on is drawn by its kind'],
    ([card(m, i) for i in ("u", "s", "w", "a", "d")], un))
+for how, on in (("FALSE", False), ("none", False), ("com.structurizr.model.DefaultImpliedRelationshipsStrategy", False), ("true", True),
+                ("com.structurizr.model.CreateImpliedRelationshipsUnlessSameRelationshipExistsStrategy", True), ("com.example.MyStrategy", True)):
+    m, un = imp.read("structurizr", dsl.replace("model {", f"!impliedRelationships {how}\n  model {{"), "x")
+    said = [msg for _, msg in un]
+    ok(f"structurizr · !impliedRelationships {how} draws implied lines {'as' if on else 'not, as'} Structurizr does{', and is said' if how.endswith('MyStrategy') else ''}",
+       m["views"][0]["edges"] == (["u-s"] if on else []) and said == ([f"!impliedRelationships {how}: a strategy umlimator does not know, so implied lines are drawn as Structurizr's default draws them"] if how.endswith("MyStrategy") else []),
+       (m["views"], un))
+guessed = ('workspace {\n model {\n  portal = softwareSystem "Customer Portal"\n  mobb = softwareSystem "Mobile Banking" {\n   web = container "Web Application" "" "Java and Spring MVC" {\n'
+           '    mc = component "Mobile Controller" "" "Spring MVC"\n   }\n   app = container "Mobile App" "" "Xamarin"\n  }\n }\n}\n')
+m, un = imp.read("structurizr", guessed, "x")
+ok("structurizr · a software system or component its words make frontend or mobile keeps that colour, drawn a box; a container is a browser or a phone",
+   [(card(m, i).get("kind"), card(m, i).get("shape")) for i in ("portal", "mobb", "web", "mc", "app")]
+   == [("frontend", "box"), ("mobile", "box"), ("frontend", None), ("mobile", "box"), ("mobile", None)], [card(m, i) for i in ("portal", "mobb", "web", "mc", "app")])
+m, un = imp.read("plantuml", '@startuml\nComponent(mc, "Mobile Controller", "Spring MVC")\nContainer(app, "Mobile App", "Xamarin")\n@enduml\n', "x")
+ok("C4 · a component its words make mobile is drawn a box, a container a phone", [(card(m, i).get("kind"), card(m, i).get("shape")) for i in ("mc", "app")] == [("mobile", "box"), ("mobile", None)], m["nodes"])
 m, un = imp.read("plantuml", '@startuml\nAddElementTag("v2", $shape=EightSidedShape())\nAddElementTag("old", $bgColor="grey")\nSystem(a, "A", $tags="v2")\n@enduml\n', "x")
 ok("C4 · a tag's $shape is said, not drawn", un == [(2, 'AddElementTag(v2): $shape=EightSidedShape() is not imported')], un)
 nested = dsl.replace('u = person "User"', 'group "Company" {\n group "Sales" {\n u = person "User"\n }').replace('u -> w', '}\n u -> w')

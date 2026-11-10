@@ -29,6 +29,7 @@ const lum = c => { const f = v => v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.05
 const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
 const r3 = c => c && c.map(v => +v.toFixed(3));
 
+const cards3 = () => ['a', 'b', 'c'].map(id => ({ id, label: id.toUpperCase(), kind: 'backend' }));
 const card = (id, label, kind) => ({ id, label, kind, sublabel: 'a sub-line' });
 const MODEL = {
   nodes: [card('shop', 'Shoppers', 'frontend'), card('web', 'Storefront', 'frontend'), card('api', 'Shop API', 'backend'), card('q', 'Order queue', 'queue'),
@@ -101,8 +102,9 @@ try {
     && k6.getAttribute('aria-label') === 'Step 5a: Line from Order worker to Email', [l6 && l6.outerHTML.slice(0, 200), k6 && k6.getAttribute('aria-label')]);
 
   // the minimap draws each region; the SVG keeps the regions and the steps, in either theme
-  const mini = [...sr.querySelectorAll('.minimap svg rect:not(.vp)')].filter(r => r.getAttribute('fill-opacity') === '.14').map(r => r.getAttribute('fill'));
-  check('the minimap draws each box with a tone as its region, under the rest', JSON.stringify(mini) === JSON.stringify(['var(--um-cyan)', 'var(--um-orange)', 'var(--um-nope)']) && sr.querySelector('.minimap svg rect').getAttribute('fill-opacity') === '.14', mini);
+  const miniRg = () => [...sr.querySelectorAll('.minimap svg rect:not(.vp)')].filter(r => r.getAttribute('fill-opacity') === '.14'), mini = miniRg().map(r => [cs(r, 'fill'), cs(r, 'stroke')]);
+  check('the minimap draws each box with a tone as its region, under the rest, in its tone: one the theme does not have in slate, as the picture',
+    mini.length === 3 && ['cyan', 'orange', 'slate'].every((t, i) => near(rgba(mini[i][0]), theme(t)) && near(rgba(mini[i][1]), theme(t))) && sr.querySelector('.minimap svg rect').getAttribute('fill-opacity') === '.14', mini);
   for (const th of ['light', 'dark']) {
     document.documentElement.dataset.theme = th;
     const doc = new DOMParser().parseFromString(h.toSVG(), 'image/svg+xml'), fb = doc.querySelector('.family[data-family="front"] .family-box'), ft = doc.querySelector('.family[data-family="front"] .family-title');
@@ -120,6 +122,7 @@ try {
     h.shapes = nt;
     const doc = new DOMParser().parseFromString(h.toSVG(), 'image/svg+xml');
     seen[nt] = [h.shapes, ...dashes(), miniDashed(), doc.querySelector('.family[data-family="store"] .family-box').style.strokeDasharray || 'none'];
+    if (nt === 'c4') check('c4: the minimap\'s boundary of a box in a tone the theme does not have is drawn, in slate', (r => !!r && near(rgba(cs(r, 'stroke')), theme('slate')))(miniRg().find(r => /--um-nope/.test(r.getAttribute('style')))), miniRg().map(r => cs(r, 'stroke')));
   }
   check('in c4 every box is dashed, a box with a tone as in any notation; box and uml leave a plain box solid', JSON.stringify(seen) === JSON.stringify({
     c4: ['c4', '7px, 5px', '7px, 5px', 4, '7px, 5px'], uml: ['uml', '7px, 5px', 'none', 3, 'none'], box: ['box', '7px, 5px', 'none', 3, 'none'] }), seen);
@@ -128,6 +131,13 @@ try {
   h.update({ ...MODEL, views: [{ ...MODEL.views[0], containers: MODEL.views[0].containers.map(({ tone, ...c }) => c) }, MODEL.views[1]] });
   check('update() without the tones draws plain boxes again', !sr.querySelector('.family.toned') && !sr.querySelector('.minimap svg rect[fill-opacity=".14"]'), sr.querySelectorAll('.family.toned').length);
   h.destroy();
+
+  // a text step goes into a line's title escaped: "1<b" is a step, and every card still shows
+  const h2 = render(el, { nodes: cards3(), edges: [{ from: 'a', to: 'b', label: 'asks', step: '1<b' }, { from: 'b', to: 'c', label: 'go', step: 2 }], views: [{ id: 'v', nodeIds: ['a', 'b', 'c'] }] }, { flow: false });
+  const sr2 = el.querySelector('.umlimator').shadowRoot, ns = [...sr2.querySelectorAll('.node')];
+  check('a step such as "1<b" is in its line\'s title as written, and no card goes into that title', ns.length === 3 && ns.every(n => !n.closest('title') && n.getBoundingClientRect().width > 0)
+    && [...sr2.querySelectorAll('.edge-g > title')].some(t => t.textContent.startsWith('Step 1<b: ')), ns.map(n => !!n.closest('title')));
+  h2.destroy();
 } catch (e) { out.fail.push('threw: ' + (e && e.stack || e)); }
 const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
 </script>
