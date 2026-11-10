@@ -1668,7 +1668,44 @@ fix changes the page slightly: one wrapper in the details panel's markup, and ho
   The wait asks for the legend to have names, and the check wants calls and state among them; a page that never draws
   its legend fails it.
 
-## 0.14.0: (unreleased)
+## 0.14.0: state that holds together and can be read, tools that say what happened, cleaner lines and a PDF to hand in
+
+Everything since 0.13.0 (#116 to #127, #129):
+- **The map's state holds together** (#117, #120, #121): every move, gesture and playback finishes or rolls back. A
+  `setView()` during a move takes the move over, and resolves `true` once its view shows, `false` otherwise. A
+  listener's error no longer stalls the map, focus and the selection survive a redraw, and motion belongs to each map.
+  An edit's places follow the host's answer, and undo moves cards back.
+- **…and can be read** (#118): `handle.state` is one frozen JSON snapshot, a `MapState`, and the `state` event says
+  what changed. The page's `window.umlimatorMap.state`, the element's `el.map.state` and the MCP server's `page_state()`
+  read the same.
+- **The page** (#123): keys go to the top open layer, the link follows the map, stories are in the history, and the
+  element reports a model with nothing to draw.
+- **Tools that say what happened** (#116, #119, #122): a CLI command that fails keeps the previous output and prints no
+  JSON. The MCP server's page tools say "shown" only once the page has shown it. The diff Action's comment names its
+  commit and is written only for the pull request's latest one, and npm publishes only the commit its version is tagged
+  at.
+- **Lines** (#124, #125, #127): no line runs round one of its own cards (43 on the bench did, none now), a short jog runs
+  straight, a tour's dot rides under the cards, and a line's flow keeps its width and its arrowhead.
+- **The PDF** (#126): a cover with the contents, each view on a page of its own with its legend and tables, the rules
+  as a table, and page numbers. `--paper letter` for US paper.
+- **`wheel: 'ctrl'`** (#120) lets a document scroll past a map embedded in it.
+- **A State chapter** (#129) in these docs: the four rules, `MapState`, and each machine's states and transitions.
+  `examples/states.json` draws umlimator's own state machines with umlimator.
+
+What moves for a host that upgrades:
+- **`setView()`** resolves `true` or `false`, where it resolved `undefined`, and a call during a move is no longer
+  dropped. A move ends with one `viewchange`.
+- **A listener's error** goes to `reportError()`, not to the caller of `select()` and the like.
+- **Escape** cancels a gesture, a tour or a replay before it clears the selection or goes up. Enter and Space on a
+  control press it, on the map and on the page.
+- **Stories:** auto-play pauses when the reader takes the map, and the page keeps stories in its history.
+- **The CLI:** `stills` exits 1 when a view fails, and `check` when it checked no view. The first `stills` after
+  upgrading draws every view again (`.stills.json` gives way to `.stills/`).
+- **Some lines take another way** (#127), and some labels sit elsewhere on their lines. A layout pinned in the model
+  doesn't move.
+- **The PDF's pages** are laid out anew: a cover, a page or more per view, then the rules.
+
+Nothing is removed. Every type, option, field, fragment, event and command is as it was, or new.
 
 ### The map's state holds together: moves, the selection, focus, gestures and marks
 
@@ -1767,7 +1804,8 @@ and the selection, and had to guess the rest from the DOM. Now it is one snapsho
   or `'full'`). `flow` can be set too: `handle.flow = false` stops the lines' flow. A host's setting isn't saved as the
   page reader's choice; the page saves only what ≋ and F set.
 - **Where it is read:** any `render()` handle, the standalone page's `window.umlimatorMap.state`, and `<umlimator-map>`'s
-  `el.map.state`. `umlimator.py mcp` is to read it with a `page_state()` tool, in the next wave.
+  `el.map.state`. `umlimator.py mcp` reads it with its `page_state()` tool: "The MCP server's page says what it shows",
+  below.
 - **Types:** `lib/umlimator.d.ts` adds `MapState`, `Events['state']`, `Events['lens']` and the getters. Nothing in it
   changed, except comments: `setView()`'s says what its promise resolves to.
 - **Tests:**
