@@ -90,7 +90,8 @@ Releases: 0.17.0 after 1.1 to 1.8 (nothing new is drawn, so it is a pure regress
 ```
 src/core/      model (ids, migrate, validate), registry, apply (commands), text (measuring)
 src/layout/    layered (today's), route (the router), later: compound, timeaxis, tree
-src/draw/      svg, shapes, lines (ends and labels)
+src/draw/      svg, shapes, lines
+src/typed/     what only a registered type's geometry takes (0.18.0, risks.md C5): typed layout, the classifier, line ends and end labels
 src/canvas/    render (camera, selection, keyboard), edit (gestures), pieces (views list, palette, properties, problems, legend, hints)
 src/page/      the standalone page, print
 src/map/       the map type: kinds, lanes, hubs, numbered views

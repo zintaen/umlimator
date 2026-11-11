@@ -247,6 +247,16 @@
    "edit": "0b21f8c7d7caeb47",
    "edited layout on-azure": "9051f0e9737ebb38",
    "edited validate": "404236670800e847"
+  },
+  "examples/sales-classes.json": {
+   "layout domain": "2fd63f01f9be46bc",
+   "describe domain": "4c005fc83694fe1c",
+   "layout payments": "d9f3592e93c031c4",
+   "describe payments": "a178ff45a4dcdc2a",
+   "validate": "4878f0dc5df1125a",
+   "edit": "9048137cf08520da",
+   "edited layout domain": "1444dacb47688a12",
+   "edited validate": "4878f0dc5df1125a"
   }
  },
  "all": {

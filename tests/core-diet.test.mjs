@@ -1,6 +1,7 @@
 // The core's diet (0.18.0, risks.md C5): what only a registered diagram type takes moved to src/typed/, which only
 // lib/umlimator-all.js holds. lib/umlimator.js must behave exactly as before for every input, so each version-2 example
-// (the 28 targets) is laid out, described, validated and edited with it, and the class example with umlimator-all.js, and
+// (the 28 targets and examples/sales-classes.json) is laid out, described, validated and edited with it, and the class
+// example with umlimator-all.js, and
 // each answer is held to its fingerprint as main gave it before the move (tests/core-diet.json, recorded with
 // `node tests/core-diet.test.mjs --record DIR`, DIR holding that commit's two built files). tests/core-diet.html holds the
 // markup render() draws to the same fingerprints.
@@ -37,7 +38,8 @@ const CLASS = 'examples/sales-classes.json';
 const read = url => JSON.parse(readFileSync(url));
 async function fingerprints(dir) {
   const core = await import(new URL('umlimator.js', dir)), all = await import(new URL('umlimator-all.js', dir));
-  return { core: Object.fromEntries(targets().map(([f, url]) => [f, answers(core, read(url))])), all: { [CLASS]: answers(all, read(new URL('../' + CLASS, here))) } };
+  const cls = new URL('../' + CLASS, here);
+  return { core: Object.fromEntries([...targets(), [CLASS, cls]].map(([f, url]) => [f, answers(core, read(url))])), all: { [CLASS]: answers(all, read(cls)) } };
 }
 
 if (process.argv[2] === '--record') {
@@ -45,8 +47,22 @@ if (process.argv[2] === '--record') {
 } else {
   test('umlimator.js lays out, describes, validates and edits every version-2 example as main did before the move; umlimator-all.js the class example', async () => {
     const now = await fingerprints(new URL('../lib/', here)), { core, all } = read(FIX);
-    assert.equal(Object.keys(now.core).length, 28);
+    assert.equal(Object.keys(now.core).length, 29);
+    assert.ok(CLASS in core, 'the class example is held with umlimator.js too');
     assert.deepEqual(now, { core, all });
+  });
+
+  test("the docs say what these tests hold, and the moved code's old homes are named nowhere", () => {
+    const txt = f => readFileSync(new URL('../' + f, here), 'utf8'), views = Object.keys(read(FIX).markup).length;
+    const log = txt('docs/diagrams/README.md').split('\n- **').find(l => l.startsWith('12 Nov 2026 (the core\'s diet)')).replace(/\s+/g, ' ');
+    assert.match(log, new RegExp(`markup of ${views} views`)); assert.match(log, /sales-classes\.json/); assert.doesNotMatch(log, /stills match|28 version-2/);
+    assert.ok(txt('docs/module-api.md').replace(/\s+/g, ' ').includes(`for the 29 version-2 examples, and \`render()\`'s markup of ${views} views`));
+    assert.doesNotMatch(txt('src/uml/class.js'), /src\/draw\/shapes\.js\)|svg\.js's/);
+    assert.match(txt('docs/diagrams/plan.md'), /^src\/typed\/ /m);
+  });
+
+  test('the core calls each TYPED hook unguarded: lib/umlimator.js never reaches one (src/typed/ fills them all in umlimator-all.js)', () => {
+    for (const f of ['src/draw/svg.js', 'src/layout/layered.js']) assert.doesNotMatch(readFileSync(new URL('../' + f, here), 'utf8'), /TYPED\.\w+ &&/, f);
   });
 
   test('umlimator.js holds none of src/typed/, and umlimator-all.js holds it all', () => {

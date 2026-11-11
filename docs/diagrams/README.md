@@ -258,7 +258,9 @@ node docs/diagrams/examples/check.mjs         # the target examples match model.
   `layoutPass`'s typed rows, loops and fanned lines, the classifier, the line-end table and the end labels; the core keeps
   the `TYPED` slot (`src/core/registry.js`) they fill. Each moved piece is reached only through a registered type's
   layout (`layoutGraph(…, false)`, `dg.typed`, a non-map geometry), which `lib/umlimator.js` never has.
-  `tests/core-diet.test.mjs` and `tests/core-diet.html` hold `layout()`, `describe()`, `validate()`, an `apply()` edit
-  and `render()`'s markup of the 28 version-2 examples to main's (9c1cf4f); the geometry hashes and the stills match.
+  `tests/core-diet.test.mjs` holds `layout()`, `describe()`, `validate()` and an `apply()` edit of the 28 targets and
+  `examples/sales-classes.json` with `lib/umlimator.js`, and of the class example with `lib/umlimator-all.js`, to main's
+  (9c1cf4f); `tests/core-diet.html` holds `render()`'s markup of 11 views (three examples from `lib/umlimator.js`, the
+  class example from `lib/umlimator-all.js`); the bench's geometry hashes match and `tests/class.html` passes.
   `lib/umlimator.js`: 182,603 B with `gzip -9`, 10.70% over 0.16.0 and 10.65% over 0.16.1 (189,745 B before);
   1,154 bytes above 10%. What more could leave the core changes what it does: see risks.md C5.

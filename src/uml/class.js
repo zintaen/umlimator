@@ -138,7 +138,7 @@ const CLASS_DEF = {
   },
 };
 
-/* ---- drawing input: the classifier's and the note's (src/draw/shapes.js) ---- */
+/* ---- drawing input: the classifier's (src/typed/draw.js draws it) and the note's ---- */
 const COMPARTMENTS = { attributes: 'uml.Property', operations: 'uml.Operation', literals: 'uml.EnumerationLiteral' };
 function compartmentsOf(n) { // a class's attributes and operations; an enumeration's literals, then the others it has
   const c = name => ({ name, members: UML_ARR(n.members).filter(m => UML_OBJ(m) && m.type === COMPARTMENTS[name]) });
@@ -167,7 +167,7 @@ SHAPE.note = {
   },
 };
 
-/* ---- lines: how each kind is drawn (svg.js's ENDS), and its words ---- */
+/* ---- lines: how each kind is drawn (src/typed/draw.js's ENDS), and its words ---- */
 const endOfLine = (e, w) => { const at = ((UML_OBJ(e.props) && UML_OBJ(e.props.ends) ? e.props.ends : {})[w]) || {};
   return at.aggregation === 'composite' ? 'filled-diamond' : at.aggregation === 'shared' ? 'diamond' : at.navigable ? 'open' : 'none'; };
 const endsOf = e => (UML_OBJ(e.props) && UML_OBJ(e.props.ends) ? e.props.ends : {});
@@ -187,7 +187,7 @@ const lineLabel = e => [stereoText(e), e.label].filter(UML_HAS).join(' ');
 const LINE_WORDS = { 'uml.Association': ['Association', 'a link between instances'], 'uml.Generalization': ['Generalization', 'is a kind of the one it points to'],
   'uml.InterfaceRealization': ['Realization', 'implements the interface it points to'], 'uml.Dependency': ['Dependency', 'uses the one it points to'],
   'uml.CommentLink': ['Comment link', 'what a comment is about'] };
-const LEGEND_ENDS = { // small copies of svg.js's ends, pointing right with the tip at x 26
+const LEGEND_ENDS = { // small copies of src/typed/draw.js's ends, pointing right with the tip at x 26
   none: '', open: '<path d="M17 4L26 8L17 12" fill="none"/>', triangle: '<path d="M16 3L26 8L16 13Z" fill="var(--um-panel)"/>',
   diamond: '<path d="M12 8L19 4L26 8L19 12Z" fill="var(--um-panel)"/>', 'filled-diamond': '<path d="M12 8L19 4L26 8L19 12Z" fill="var(--um-muted)"/>' };
 const legendItem = (end, dashed, name, says) => `<span class="lgi" title="${esc(name + ' — ' + says)}"><svg class="lgs" viewBox="0 0 28 16" aria-hidden="true"><g stroke="var(--um-muted)" stroke-width="1.4" stroke-linejoin="round"><path d="M2 8H${end === 'none' ? 26 : end.includes('diamond') ? 12 : 17}"${dashed ? ' stroke-dasharray="3 2"' : ''}/>${LEGEND_ENDS[end]}</g></svg><b>${esc(name)}</b><span>${esc(says)}</span></span>`;
