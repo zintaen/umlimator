@@ -17,7 +17,7 @@ Update this table in every pull request that belongs to the plan.
 | Planning | | Proposal, model, plan, risks, 28 target examples, UI draft | Merged 12 Nov 2026 (60a159c) | #151 |
 | Before the plan | 0.16.0 | Fixes already on `main` (#146 to #148, #150) | Released 11 Nov 2026 (cf516c8, npm latest); map-repo pinned to it | #146, #147, #148, #150, #152, #153 |
 | Before the split | 0.16.1 | `validate()` warns of a line from a card to itself (`risks.md` F1) | Released 11 Nov 2026 (8f0240f, GitHub and npm latest); map-repo pinned to it | #155, #156 |
-| 1a Foundation | 0.17.0 | Work packages 1.1 to 1.8 | Note approved (#154). 1.1 merged (657e7e9), 1.2 merged (aeb8390). 1.3, the registry, in review. Next: 1.4 to 1.8, four lanes | #154, #157, #158, #160 |
+| 1a Foundation | 0.17.0 | Work packages 1.1 to 1.8 | Note approved (#154). 1.1 (657e7e9), 1.2 (aeb8390), 1.3 (2567a99) merged. 1.6, commands, in review. Next: 1.4, 1.5, 1.8 | #154, #157, #158, #160, (this PR) |
 | 1b Class | 0.18.0 | Work packages 1.9 to 1.12 | Not started | |
 | 2 | 0.19.0 | Object, package | Not started | |
 | 3 | 0.20.0 | Sequence, communication | Not started | |
@@ -136,3 +136,8 @@ node docs/diagrams/examples/check.mjs         # the target examples match model.
   error, one warning per view), makes drawing refuse a newer `schemaVersion`, and moves `measureText` and the held
   warnings into the core (`src/core/text.js`, `src/core/warn.js`), so the core no longer imports the map. The maintainer chose
   whole built files for families (`notes/stage-1.md` §2.5): the registry stays internal until the spike.
+- **11 Nov 2026 (1.3 merged, 1.6).** 1.3 merged (#160, 2567a99) after a review whose two medium and three low findings
+  were fixed in it. 1.6 adds `apply()` and `references()` (`src/core/apply.js`): `set`, `add`, `hide`, `delete` with
+  its cascade (M4), `reparent`, all or nothing; undo is `history()`'s snapshot (P3). Deleting any element of any example
+  or target example leaves a model that validates. The `edit` event that carries these commands is 1.7's, with the
+  gestures that emit it.
