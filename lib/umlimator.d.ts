@@ -360,7 +360,7 @@ export function layout(model: MapModel, viewId: string, options?: { repair?: boo
 export interface Problem { level: 'error' | 'warning'; path: string; message: string }
 export function validate(model: MapModel): Problem[];
 /** The model at the schema version this release reads (0.17.0). Versions 1 and 2 come back unchanged; lines with no id
- *  keep their positional names. Throws on a newer version, or a schemaVersion that is not one. */
+ *  keep their positional names. Throws on a newer version (a whole number above 2). */
 export function migrate<M extends MapModel>(model: M): M;
 /** A command on the model (0.17.0). `path` is a dotted path or a list of keys; `value` undefined removes the field. */
 export type Command =

@@ -22,16 +22,13 @@ test('every version-1 model migrates to itself, untouched: lines with no id keep
   assert.equal(migrate({ ...m, schemaVersion: 2 }).edges[0].id, undefined);
 });
 
-test('a newer schemaVersion, or a number that is not a version, is an error: migrate() throws and validate() says so (F6)', () => {
+test('a newer schemaVersion is an error: migrate() throws and validate() says so (F6); other values read as a map', () => {
   const m = { schemaVersion: 3, nodes: [], views: [{ id: 'v', nodeIds: [] }] };
   assert.throws(() => migrate(m), /schemaVersion 3 is newer than this release reads \(2\)/);
   assert.deepEqual(validate(m).filter(p => p.path === 'schemaVersion').map(p => p.level), ['error']);
-  for (const v of [0, 1.5, -2]) {
-    assert.throws(() => migrate({ ...m, schemaVersion: v }), /is not a version/, String(v));
-    assert.deepEqual(validate({ ...m, schemaVersion: v }).filter(p => p.path === 'schemaVersion').map(p => p.level), ['error'], String(v));
-  }
-  // a host may have set a schemaVersion of its own before version 2 existed: not a number reads as a map, with a warning
-  for (const v of ['2', true, {}]) {
+  // a host may have set a schemaVersion of its own before version 2 existed: a value that is not 1 or 2, and not a whole
+  // number above 2, reads as a map, with a warning
+  for (const v of [0, 1.5, -2, '2', true, {}]) {
     const h = { ...m, schemaVersion: v };
     assert.equal(migrate(h), h, String(v));
     assert.deepEqual(validate(h).filter(p => p.path === 'schemaVersion').map(p => p.level), ['warning'], String(v));

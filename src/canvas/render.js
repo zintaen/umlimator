@@ -6,7 +6,8 @@ import { cardLook, drawnPts, noteOf, sidePorts, tabAfter, tabLine } from '../dra
 import { hit } from '../layout/layered.js';
 import { edgeRefIds } from '../map/api.js';
 import { badgesOf, mapTabs, toneOf } from '../map/cards.js';
-import { mapContext, warn } from '../map/context.js';
+import { warn } from '../core/warn.js';
+import { mapContext } from '../map/context.js';
 import { canon } from '../map/diff.js';
 import { cardMatcher, msText } from '../map/insight.js';
 import { KIND, NOTATIONS } from '../map/kinds.js';

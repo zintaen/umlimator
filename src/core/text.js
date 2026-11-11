@@ -1,5 +1,7 @@
-import { measureText } from '../map/context.js';
-
+// Text width. Without a measurer: a monospace estimate (font-independent, so layouts are the same on every machine;
+// the bench and layout() in Node use it). render() measures in the host's own font while it lays out a view: measured().
+let measureText = null;
+const measured = (M, f) => { const prev = measureText; measureText = M; try { return f(); } finally { measureText = prev; } };
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const inline = s => esc(s)
   .replace(/`([^`]+)`/g, '<code>$1</code>')
@@ -28,4 +30,4 @@ function fit(s, px, max, words) { s = String(s ?? ''); if (textW(s, px) <= max) 
   const w = words ? s.slice(0, k + 1).replace(/\S*$/, '').replace(/[\s,;:]+$/, '') : '';
   return (w || s.slice(0, k)) + '…'; }
 
-export { esc, inline, md, textW, sansW, hostMeasure, wrap2, clauseFit, fit };
+export { measureText, measured, esc, inline, md, textW, sansW, hostMeasure, wrap2, clauseFit, fit };

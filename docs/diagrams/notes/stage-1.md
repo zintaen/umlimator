@@ -72,9 +72,12 @@ The header's "one file, no build step" becomes "built from `src/` by `tools/buil
 
 - `lib/umlimator-all.js` is not written by 1.1: it would equal `lib/umlimator.js`, and nothing reads it. Work
   package 1.8 adds it to the build and points the page at it (F5). From 1.9 it is the core and every family.
-- A family file (`lib/umlimator-uml.js`, from 1.9) needs the core's helpers. Whether it imports them from
-  `./umlimator.js` (they would become public exports) or receives them from `registerDiagramType()` is settled by 1.3,
-  and the build's rule for family files is added with it.
+- A family file needs the core's helpers. **Settled by 1.3:** every built file is whole. `lib/umlimator.js` is the
+  core and the map; `lib/umlimator-all.js` (from 1.8) is the core, the map and every family, built from the same
+  sources by a second list in `tools/build.mjs`. A host loads one of them, never both. The registry and the helpers stay
+  internal, so nothing is exported before the sequence spike settles them; a family that ships on its own
+  (`umlimator-uml.js`) waits until they are public, after 1.12. The cost: a host that draws one family loads all of
+  them, which C5's budget does not count because `lib/umlimator.js` does not grow.
 - No minifying, no source maps: the built file is the sources.
 
 ## 3. Where today's code goes

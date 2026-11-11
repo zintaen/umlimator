@@ -1,9 +1,8 @@
-import { clauseFit, esc, fit, sansW, textW, wrap2 } from '../core/text.js';
+import { clauseFit, esc, fit, measureText, sansW, textW, wrap2 } from '../core/text.js';
 import { roundPath, trimLine } from './lines.js';
 import { cardLook, drawnPts, noteOf, r2, sidePorts, tabLine } from './shapes.js';
 import { CHG } from '../layout/layered.js';
 import { WIRES, badgesOf, mapTabs, toneOf } from '../map/cards.js';
-import { measureText } from '../map/context.js';
 import { KIND, SIGIL } from '../map/kinds.js';
 
 let svgSeq = 0;
