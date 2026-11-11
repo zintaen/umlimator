@@ -3168,3 +3168,12 @@ What moves for a host that upgrades:
     type keeps its layered hook. The typed checks accept a typed view's own `nodes`.
   - `model.md`: a sequence view's occurrences (messages and interaction uses) are one ordered list in `edges`, and
     `props.after` is gone; messages stay inline; activations are derived by intervals. The sequence example follows.
+- **The spike's findings, after review (1.12b).** `delete` of an element with many lines to it is near its speed before
+  0.18.0 again (a tenth of the first cut's time: each line goes without a scan of the model).
+  `references()` and `delete` look in a view's own `nodes` too: a declared prop there is reported and dropped, and a
+  `parent` reported. A type's `validate(model)` that takes no view runs once per type, not once per view. Of what a type's `draw`
+  returns, only `under` and `over` reach the SVG. An empty view (no `nodeIds`) lays out to an empty geometry instead of
+  throwing, for a map, a class view and a type's own `layout.run`. The sequence example's interaction use covers the
+  lifeline between the two it named (`covers: ["api", "payments", "receipt"]`), and `check.mjs` checks that `covers`
+  names lifelines next to each other in `nodeIds`; a registered type that declares no `refs` is checked by its hand
+  list again.

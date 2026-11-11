@@ -145,7 +145,9 @@ emits these commands as an `edit` event from work package 1.7.
 From 0.18.0 (the sequence spike's findings, `docs/diagrams/notes/spike-sequence.md` §3):
 
 - `add { element, view, index, in: 'view' }` puts the element in the view itself: a line, or an item of the view's
-  type (an interaction use), into `view.edges` at `index`; a node into `view.nodes`; a fragment into `view.fragments`.
+  type (an interaction use), into `view.edges` at `index`; a node of the type's palette (or any node, for a type with
+  none) into `view.nodes`, its id into `nodeIds` at `index`; anything else into `view.fragments` (a node not in the
+  palette too: a comment added to a sequence view whose palette is lifelines goes there and is not drawn as a card).
   This is how a sequence view's inline messages are inserted at a time position. `in: 'model'`, the default, is `add`
   as before.
 - `delete` re-homes what it held and that stays: a message, a fragment or an interaction use inside a deleted fragment

@@ -330,8 +330,8 @@ function mapContext(model, opts = {}) {
   // with no layout (a change of notation draws the cards again and nothing else)
   const notationOf = vid => noteOf((V[vid] || {}).shapes) || noteOf(D.shapes) || 'box';
   function drawView(vid, g, opts = {}) {
-    const v = V[vid], shapes = noteOf(opts.shapes) || notationOf(vid), T = ownLayout(vid);
-    return { markup: svgOf(g, { title: v.title, subject: subjectOf(v), icons: D.icons, broken: brokenIn(vid), ...opts, shapes, ...(T && T.draw && T.draw(g, { esc, r2, textW })) }), shapes };
+    const v = V[vid], shapes = noteOf(opts.shapes) || notationOf(vid), T = ownLayout(vid), L = T && T.draw && T.draw(g, { esc, r2, textW }); // its two layers only
+    return { markup: svgOf(g, { title: v.title, subject: subjectOf(v), icons: D.icons, broken: brokenIn(vid), ...opts, shapes, ...(L && { under: L.under, over: L.over }) }), shapes };
   }
   // the rules a view's lines break (#70), by model edge id: svgOf draws such a line rose, with a mark that names them
   let ruled = null;

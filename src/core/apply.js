@@ -61,6 +61,7 @@ function refs(m, ids, only) {
   const vids = new Set();
   arr(m.views).forEach((v, i) => { if (!isObj(v) || (only && !only(i))) return; const at = ['views', i]; vids.add(v.id);
     ['nodeIds', 'tour', 'stepIds'].forEach(k => arr(v[k]).forEach((id, j) => { if (has(id)) say([...at, k, j], 'view'); }));
+    arr(v.nodes).forEach((n, j) => element(n, [...at, 'nodes', j], false));
     arr(v.edges).forEach((e, j) => { if (has(e)) say([...at, 'edges', j], 'view'); else element(e, [...at, 'edges', j], true); });
     arr(v.fragments).forEach((f, j) => element(f, [...at, 'fragments', j], false));
     [['layout', 'pin'], ['present', 'present'], ['nodeOverrides', 'override']].forEach(([k, kind]) => Object.keys(isObj(v[k]) ? v[k] : {}).forEach(id => { if (has(id)) say([...at, k, id], kind); }));
@@ -184,10 +185,10 @@ function run(m, c, gone) {
     }
     case 'delete': {
       if (!at.has(c.id) && gone.has(c.id)) return; // gone with an earlier command of this transaction
-      need(c.id); const now = new Set();
+      need(c.id); const now = new Set(), kids = new Map();
+      for (const [k, o] of at) if ((o.kind === 'node' || o.kind === 'member') && o.x.parent != null) { if (!kids.has(o.x.parent)) kids.set(o.x.parent, []); kids.get(o.x.parent).push(k); }
       const take = id => { const r = at.get(id); if (!r || now.has(id)) return; now.add(id);
-        arr(r.x.members).forEach(y => isObj(y) && take(y.id));
-        for (const [k, o] of at) if ((o.kind === 'node' || o.kind === 'member') && o.x.parent === id) take(k); }; // what it owns goes with it
+        arr(r.x.members).forEach(y => isObj(y) && take(y.id)); arr(kids.get(id)).forEach(take); }; // what it owns goes with it
       take(c.id);
       // lines to what is gone go too, lines to those lines, and what a type's refs cascade (a reply with its call)
       const cascade = x => Object.entries(propRefs(x.type)).some(([p, how]) => how === 'cascade' && [].concat(dig(x, p)).some(id => now.has(id)));

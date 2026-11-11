@@ -29,7 +29,7 @@ export function check(model, expected) {
   const has = (id, what) => { if (id != null && !ids.has(id)) say(`${what}: ${JSON.stringify(id)} is not an element`); };
   const N = new Map(arr(model.nodes).map(n => [n.id, n]));
   arr(model.edges).forEach(e => { if (e && e.type == null) ['from', 'to'].forEach(k => has(e[k], `edge ${e.id}.${k}`)); }); // an untyped edge: the core leaves it to the map's checks
-  const T = diagramOf({ diagram: expected }), declared = T && (T.refs || {}); // a registered type's refs, else the hand list
+  const T = diagramOf({ diagram: expected }), declared = T && T.refs; // a registered type's refs, else the hand list
   all.forEach(x => { const p = x.props || {}; // props that name other elements, or a view
     if (declared) Object.keys(Object.hasOwn(declared, x.type) ? declared[x.type] : {}).forEach(k => [].concat(k.split('.').reduce((o, j) => o && o[j], x)).forEach(id => has(id, `${x.id}.${k}`)));
     else { REF.forEach(k => has(p[k], `${x.id}.props.${k}`)); REFS.forEach(k => arr(p[k]).forEach(id => has(id, `${x.id}.props.${k}`))); }
@@ -47,6 +47,8 @@ export function check(model, expected) {
       msgs.forEach(m => { if (m.parent != null && !ops.has(m.parent)) say(`${m.id}: its parent ${m.parent} is not an operand of ${at}`); });
       ops.forEach((f, o) => { const i = msgs.map((m, k) => (inside(m, o) ? k : -1)).filter(k => k >= 0);
         if (i.length && i[i.length - 1] - i[0] + 1 !== i.length) say(`operand ${o}: its occurrences are not next to each other in time`); });
+      msgs.forEach(m => { const c = arr((m.props || {}).covers).map(id => arr(v.nodeIds).indexOf(id)).sort((a, b) => a - b); // covers: lifelines next to each other
+        if (c.length && (c[0] < 0 || c[c.length - 1] - c[0] + 1 !== c.length)) say(`${m.id}: its covers are not lifelines next to each other in nodeIds`); });
     }
     const t = v.timeline; // a timing view: each change is on a lifeline of the view, in one of its states, no earlier than the one before
     if (t) { const last = {}, changes = new Set(arr(t.changes).map(c => c.id));

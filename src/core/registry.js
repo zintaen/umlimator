@@ -12,12 +12,8 @@ function registerDiagramType(name, def = {}) {
   return type;
 }
 
-/* A definition's fields, optional and provisional (notes/spike-sequence.md §1 says what each does); absent, as before:
-   elements [{ type, label }], lines [{ type, label, props? }] (a new line copies props), props { [type]: [field] };
-   layout { run(model, view, { measure, pos, memo }) -> geo, key(model, view), pins, directions, bake }, else 1.9's
-   layout({ model, view, pos, memo }); draw(geo, { esc, r2, textW }) -> { under, over }; items [type]; refs { [type]:
-   { 'props.replyTo': 'cascade' | 'drop' } }; validate(model, view) -> problems; edits { connect(model, view, from, to,
-   at, line) -> commands }. 1.9's: rankFlip, member, rules, describe. */
+/* A definition's fields are optional and provisional; absent, things go as before. notes/spike-sequence.md §1 says what
+   each does (validate(model) with no view runs once a type, not once a view); 1.9's: rankFlip, member, rules, describe. */
 
 /* A view's type: the map for a view with no diagram, the registered type, or null for one this release does not draw */
 const diagramOf = view => TYPES.get(view && view.diagram != null ? view.diagram : 'map') || null;

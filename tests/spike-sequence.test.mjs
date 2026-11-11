@@ -32,6 +32,16 @@ test('the sequence example: one ordered list of occurrences, f3 among the messag
   // an interaction use counts for its operand's contiguity: f3 moved out of f1-paid's run of occurrences is found
   const m = structuredClone(SEQ), f3 = V(m).edges.splice(7, 1)[0]; V(m).edges.push(f3);
   assert.deepEqual(check(m, 'uml.sequence'), ['operand f1-paid: its occurrences are not next to each other in time']);
+  // covers names lifelines next to each other in nodeIds (model.md row 11): f3 over api and receipt only skips payments
+  const gap = structuredClone(SEQ); V(gap).edges.find(e => e.id === 'f3').props.covers = ['api', 'receipt'];
+  assert.deepEqual(check(gap, 'uml.sequence'), ['f3: its covers are not lifelines next to each other in nodeIds']);
+});
+
+test('check.mjs: a registered type that declares no refs is still checked by the hand list', () => {
+  const CLS = JSON.parse(readFileSync(new URL('../docs/diagrams/examples/01-class.json', import.meta.url)));
+  assert.deepEqual(check(CLS, 'uml.class'), []);
+  const n = CLS.nodes[0]; n.props = { ...n.props, attachedTo: 'nope' };
+  assert.deepEqual(check(CLS, 'uml.class'), [`${n.id}.props.attachedTo: "nope" is not an element`]);
 });
 
 test('P4: add with in "view" puts a message into the view\'s edges at its index, not into the model', () => {
@@ -65,7 +75,7 @@ test('P7: a type\'s refs: deleting a call takes its replies (cascade), and refer
   assert.deepEqual(ids(V(m).edges), ['m1', 'm2', 'm3', 'm6', 'm7', 'f3', 'm9', 'm10']);
   assert.deepEqual(errors(m), []);
   // hide keeps what props name: the model keeps the element
-  assert.deepEqual(run({ op: 'hide', id: 'receipt', view: 'checkout' }).views[0].edges.find(e => e.id === 'f3').props.covers, ['api', 'receipt']);
+  assert.deepEqual(run({ op: 'hide', id: 'receipt', view: 'checkout' }).views[0].edges.find(e => e.id === 'f3').props.covers, ['api', 'payments', 'receipt']);
 });
 
 test('P8: unwrapping a fragment re-homes what it held into the fragment\'s own operand, not to the top', () => {
@@ -86,9 +96,9 @@ test('P8: unwrapping a fragment re-homes what it held into the fragment\'s own o
 });
 
 test('P9: deleting a lifeline takes its messages and drops it from what covers it; references() says so', () => {
-  assert.deepEqual(references(SEQ, 'receipt').filter(r => r.kind === 'prop').map(r => r.path.join('/')), ['views/0/edges/7/props/covers/1']);
+  assert.deepEqual(references(SEQ, 'receipt').filter(r => r.kind === 'prop').map(r => r.path.join('/')), ['views/0/edges/7/props/covers/2']);
   const m = run({ op: 'delete', id: 'receipt' });
-  assert.deepEqual(byId(m, 'f3').props.covers, ['api']);
+  assert.deepEqual(byId(m, 'f3').props.covers, ['api', 'payments']);
   assert.ok(!byId(m, 'm6'));
   assert.deepEqual(errors(m), []);
 });
@@ -123,6 +133,7 @@ test('items: the core checks no ends on a type\'s items; a type not drawn yet pa
 });
 
 let runs = 0, seen = null;
+const RUN_GEO = (model, view) => ({ nodes: [], edges: [], groups: [], bounds: { x: 0, y: 0, w: 100, h: 50 }, byId: {}, map: false, view: view.id });
 registerDiagramType('test.run', {
   layout: { run(model, view, ctx) { runs++; seen = { ...ctx, w: textW('abcd', 10) };
     return { nodes: [], edges: [], groups: [], bounds: { x: 0, y: 0, w: 100, h: 50 }, byId: {}, map: false, view: view.id }; },
@@ -155,4 +166,45 @@ test('draw: a type\'s layers go under the lines and over the nodes, before the l
 
 test('validate: each typed view\'s type rules, a problem said once however many views share it', () => {
   assert.deepEqual(validate(RUN).filter(p => p.path.startsWith('views')).map(p => `${p.path} ${p.message}`), ['views said once', 'views.v per view', 'views.w per view']);
+});
+
+test('delete: a node with many lines goes about as fast as a leaf (each line is taken without a scan of the model)', () => {
+  const nodes = Array.from({ length: 2000 }, (_, i) => ({ id: 'n' + i })), m = { nodes, views: [{ id: 'v', nodeIds: nodes.map(n => n.id) }],
+    edges: Array.from({ length: 4000 }, (_, i) => ({ id: 'e' + i, from: 'n0', to: 'n' + (1 + (i % 1999)) })) };
+  const best = id => Math.min(...Array.from({ length: 5 }, () => { const t = performance.now(); apply(m, { op: 'delete', id }); return performance.now() - t; }));
+  const hub = best('n0'), leaf = best('n1999'); // 0.18.0's first cut: the hub about 12 times the leaf
+  assert.ok(hub < 4 * leaf, `hub ${hub.toFixed(1)} ms, leaf ${leaf.toFixed(1)} ms`);
+  assert.equal(apply(m, { op: 'delete', id: 'n0' }).edges.length, 0);
+});
+
+test('refs: a view\'s own node is searched for the props its type declares, and for its parent', () => {
+  registerDiagramType('test.note', { refs: { 'test.Note': { 'props.about': 'drop' } } });
+  const m = { schemaVersion: 2, nodes: [{ id: 'a', type: 'test.A' }, { id: 'p', type: 'test.A' }],
+    views: [{ id: 'v', diagram: 'test.note', nodeIds: ['a', 'n'], nodes: [{ id: 'n', type: 'test.Note', parent: 'p', props: { about: 'a' } }] }] };
+  assert.deepEqual(references(m, 'a').map(r => `${r.kind} ${r.path.join('/')}`), ['view views/0/nodeIds/0', 'prop views/0/nodes/0/props/about']);
+  assert.deepEqual(references(m, 'p').map(r => `${r.kind} ${r.path.join('/')}`), ['parent views/0/nodes/0/parent']);
+  assert.deepEqual(apply(m, { op: 'delete', id: 'a' }).views[0].nodes[0].props, {});
+});
+
+test('validate: a type\'s validate(model) runs once however many views it has; validate(model, view) once per view', () => {
+  let calls = 0;
+  registerDiagramType('test.once', { validate: model => { calls++; return [{ level: 'warning', path: 'nodes', message: 'once' }]; } });
+  const m = { schemaVersion: 2, nodes: [{ id: 'a', type: 't.A' }], views: ['v', 'w', 'x'].map(id => ({ id, diagram: 'test.once', nodeIds: ['a'] })) };
+  assert.equal(validate(m).filter(p => p.message === 'once').length, 1);
+  assert.equal(calls, 1);
+  assert.equal(validate(RUN).filter(p => p.message === 'per view').length, 2); // test.run's takes the view
+});
+
+test('draw: only a type\'s two layers reach the SVG; nothing else it returns overrides the host\'s options', () => {
+  registerDiagramType('test.inject', { layout: { run: RUN_GEO }, draw: () => ({ under: '<g class="i-under"/>', title: 'INJECTED', subject: 'x' }) });
+  const m = { schemaVersion: 2, nodes: [{ id: 'a', type: 't.A', label: 'A' }], views: [{ id: 'v', diagram: 'test.inject', title: 'The real title', nodeIds: ['a'] }] };
+  const { markup } = mapContext(m, {}).buildView('v');
+  assert.ok(markup.includes('i-under') && markup.includes('The real title') && !markup.includes('INJECTED'), markup);
+});
+
+test('an empty typed view lays out: no lifeline, no class, no card (rowsFor with no column)', () => {
+  registerDiagramType('test.empty', { layout: { run: RUN_GEO, pins: false } });
+  for (const v of [{ diagram: 'test.empty', nodeIds: [] }, { diagram: 'test.empty' }, { diagram: 'uml.class', nodeIds: [] }, { nodeIds: [] }])
+    assert.deepEqual(layout({ schemaVersion: 2, nodes: [], views: [{ id: 'v', ...v }] }, 'v').nodes, [], JSON.stringify(v));
+  assert.deepEqual(layout({ nodes: [], views: [{ id: 'v', nodeIds: [] }] }, 'v').nodes, []); // a version-1 map too
 });

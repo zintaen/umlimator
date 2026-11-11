@@ -215,4 +215,16 @@ node docs/diagrams/examples/check.mjs         # the target examples match model.
   ordered list in `edges` (`props.after` gone), messages inline, activations derived by intervals; `11-sequence.json` and
   `check.mjs` follow. `apply()`: `add … in: 'view'`, a delete that re-homes what stays to the nearest owner left, and
   declared references that cascade or drop; P4 to P11 are tests (`tests/spike-sequence.test.mjs`). The core grew by
-  1,137 bytes gzipped (190,526 B): 14.92% over 0.16.1 (C5: 15%), about 140 bytes of the budget left.
+  1,137 bytes gzipped (190,526 B with Node's zlib at its default level, the measure of C5's 165,727 B for 0.16.0):
+  14.96% over 0.16.0, about 60 bytes of C5's 15% left. With `gzip -9` it was 189,730 B against 164,954 B, 15.02%.
+- **12 Nov 2026 (1.12b, the spike findings' review).** The review's 11 findings are fixed, each with a test in
+  `tests/spike-sequence.test.mjs`: `delete` of a node with 4,000 lines takes 9 ms again, not 92 (main: 6 ms): a
+  parent's children are found once, not by a scan of the model for each line; `references()` and `delete` look in a view's own `nodes`; a
+  type's `validate(model)` that takes no view runs once a type; only a type's `under` and `over` reach the SVG; an
+  empty view lays out (`rowsFor` with no column) for maps, class views and `layout.run`; `11-sequence.json`'s f3 covers
+  `payments` too, and `check.mjs` checks that `covers` is contiguous and reads the hand list for a type that declares no
+  `refs`; `model.md` §3 says the stage 3 note adopts the point (it does not exist yet); `editing.md` says where
+  `in: 'view'` puts a node outside the palette. The registry's field list now points to `notes/spike-sequence.md` §1,
+  which pays for the fixes: the core is 52 bytes smaller (190,474 B, Node's zlib): 14.93% over 0.16.0, 112 bytes left;
+  with `gzip -9`, 189,678 B, 14.99%, 19 bytes left; with `gzip` at its default, 190,014 B, 15.00%, 2 bytes left. The
+  next change to the core has no budget: it pays for itself or goes to a family file.

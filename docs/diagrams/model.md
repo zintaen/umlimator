@@ -153,7 +153,7 @@ file is then updated with it.
 | Stage | Point |
 |---|---|
 | 1 | Settled in [`notes/stage-1.md`](notes/stage-1.md): row heights are per row (§4); `present.collapsed` hides a compartment and `present.<id>.rows` shows "+n more" (§5) |
-| 1 (spike), 3 | Settled by [`notes/spike-sequence.md`](notes/spike-sequence.md) §2.1, accepted 12 Nov 2026, adopted by the stage 3 note: the order of things in a sequence that are not messages is one ordered list, `edges`, and `props.after` is gone; an empty operand keeps one empty row |
+| 1 (spike), 3 | Settled by [`notes/spike-sequence.md`](notes/spike-sequence.md) §2.1, accepted 12 Nov 2026 (the stage 3 note adopts it): the order of things in a sequence that are not messages is one ordered list, `edges`, and `props.after` is gone; an empty operand keeps one empty row |
 | 3 | Settled by the same note, §2.2: a sequence view's messages are inline, and a communication view keeps its own (row 12) |
 | 3 | Settled by the same note, §2.3: activations nest by intervals (the five rules under the tables) |
 | 4 | A transition that starts or ends on a region's border; entry and exit points are out of the subset |
