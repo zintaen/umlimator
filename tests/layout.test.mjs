@@ -18,6 +18,11 @@ const hash = g => {
 };
 const expected = read('../bench/expected.json').results; // the reference geometry (bench.py --write-expected)
 
+test('the module built from src/ exports what 0.16.0 exported, no more and no less (stage 1 note, §2.3)', async () => {
+  assert.deepEqual(Object.keys(await import('../lib/umlimator.js')).sort(), ['check', 'critical', 'describe', 'diff', 'drift', 'history',
+    'layout', 'mountPage', 'otlpSpans', 'paths', 'reach', 'render', 'rules', 'sequenceFromTrace', 'validate', 'whatIf']);
+});
+
 test('layout() draws every benchmark view exactly as the browser did (bench/expected.json)', () => {
   const models = { ...Object.fromEntries(readdirSync(new URL('../bench/models/', import.meta.url)).map(f => [f.replace('.json', ''), read('../bench/models/' + f)])), bookshop: read('../examples/bookshop.json') };
   let n = 0;

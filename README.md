@@ -371,6 +371,7 @@ With `UMLIMATOR_OFFLINE=1` the CLI fetches nothing: a logo not in the cache keep
 ## Development
 
 ```bash
+npm run build               # src/ into lib/umlimator.js: edit the sources, commit both
 node --test                 # layout() in Node: the bench views' geometry and the layout rules
 python3 tests/embed.py      # render() in headless Chrome: events, keyboard, colours, contrast, editing, the element
 python3 bench/bench.py --check-determinism --expect bench/expected.json --max-ms m50=2000
@@ -379,7 +380,8 @@ python3 bench/bench.py --check-determinism --expect bench/expected.json --max-ms
 The bench lays out fixed models (10 to 69 cards, and 50 modules with 100 lines) in headless Chrome and reports the
 time per phase, the layout check's issues and a hash of the geometry. `--expect` fails on a view that no longer draws as
 recorded in `bench/expected.json`; a change that moves lines on purpose refreshes it with `--write-expected`. CI runs
-all of the above, and checks that the files copied from upstream (`engine/scripts`, `engine/references`,
+all of the above, fails when `lib/umlimator.js` is not what `src/` builds or a source uses a name it does not import,
+and checks that the files copied from upstream (`engine/scripts`, `engine/references`,
 `tools/fetch_icons.py`) are unmodified.
 
 To release, bump `package.json`'s version in a PR and add that version's `## X.Y.Z: …` section to
@@ -392,7 +394,8 @@ umlimator.py                 CLI: render, stills, check, record, pdf, pin-icons,
 umlimator_import.py          import's readers: Structurizr DSL, C4-PlantUML, Mermaid, compose and Kubernetes JSON
 umlimator_mcp.py             the MCP server that `umlimator.py mcp` runs
 action.yml                   the diff Action: what a pull request changes in its maps, posted on it
-lib/                         the module (umlimator.js), its types, the default theme, <umlimator-map> and the docs plugins
+src/                         the module's sources, by layer: core, draw, layout, map, canvas, page (tools/build.mjs joins them)
+lib/                         the module (umlimator.js, built and committed), its types, the default theme, <umlimator-map> and the docs plugins
 engine/                      the page templates the CLI inlines the module into; the upstream renderer and schema
 docs/                        the module's API and the editing design; docs/diagrams/: the plan for 28 diagram types (not built yet)
 tests/, bench/               tests, benchmark models and results
