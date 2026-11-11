@@ -3054,6 +3054,11 @@ Stage 1a of the plan for 28 diagram types (`docs/diagrams/`). Nothing new is dra
   id)` lists every place that names an element, as a list of keys and a kind, for a host with a store of its own. What
   a type's own properties name (a message's `replyTo`, a timeline) is the type's to keep, from its stage. The canvas
   emits these commands from 1.7.
+- **The command line and the page on typed models (1.8).** `render`, `check`, `stills` and `pdf` work on a version-2
+  model: the upstream engine's check is shown each member as a card, so a line may end on one (F3); the page's search
+  for row orders bakes no layout into a typed view (F4). The CLI's page inlines `lib/umlimator-all.js`, a second whole
+  file built from the same sources with every diagram family in it (`umlimator/all`); until a family ships it holds the
+  same code as `lib/umlimator.js` (F5, stage 1 note §2.5).
 
 What moves for a host that upgrades: nothing is drawn differently. `validate()` returns a new error for a
 `schemaVersion` that is a whole number above 2, and drawing such a model throws; any other value but 1 or 2 is a

@@ -26,13 +26,13 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 VISUAL = HERE / "engine" / "scripts" / "visual.py"
-LIB = HERE / "lib" / "umlimator.js"            # the module: layout, routing, drawing, render(), mountPage()
+LIB = HERE / "lib" / "umlimator-all.js"        # the module with every diagram family, in one file with no imports (built: tools/build.mjs)
 THEME = HERE / "lib" / "umlimator-theme.css"   # its default palette and fonts (--um-* variables)
 PAGE = HERE / "engine" / "assets" / "template.html"  # the page around it; visual.py fills in the model
 
 
 def visual_cmd(tmp, *args):
-    """The command that runs visual.py (unmodified, super-board's) on the page with lib/umlimator.js inlined: one
+    """The command that runs visual.py (unmodified, super-board's) on the page with lib/umlimator-all.js inlined: one
     self-contained HTML file, as before. visual.py writes pages from its TEMPLATE path, so it runs with TEMPLATE
     pointed at that page, written into the directory `tmp`."""
     page = Path(tmp) / "template.html"
@@ -59,7 +59,17 @@ def upstream_view(d):
     # ponytail: any view's box counts in every view, so a view's own line to another view's box passes; the map drops it
     ids = {n.get("id") for n in [*d.get("nodes", []), *(n for v in views for n in v.get("nodes") or [])] if isinstance(n, dict)}
     boxes = {c.get("id") for v in views for c in v.get("containers") or [] if isinstance(c, dict) and c.get("id")}
-    d["nodes"] = [*d.get("nodes", []), *({"id": b} for b in sorted(boxes - ids))]
+    # schema version 2: a member (an attribute, a port) may be a line's end; upstream knows cards only, so each member is
+    # listed as a card too (risks.md F3)
+    members = []  # only in version 2: a version-1 model's own `members` field means nothing to the map
+    def walk(x):
+        for m in x.get("members") or []:
+            if isinstance(m, dict) and isinstance(m.get("id"), str):
+                members.append(m["id"]); walk(m)
+    for n in d.get("nodes", []) if d.get("schemaVersion") == 2 else []:
+        if isinstance(n, dict): walk(n)
+    # a member that shares a node's id stays listed, so upstream says the id is used twice, as validate() does
+    d["nodes"] = [*d.get("nodes", []), *({"id": b} for b in sorted(boxes - ids)), *({"id": m} for m in members if m not in boxes)]
     return d
 
 

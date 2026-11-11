@@ -60,7 +60,7 @@ test('an unknown view is an error', () => {
 });
 
 test('the module bakes in no colour: every colour is a --um-* variable (lib/umlimator-theme.css has the defaults)', () => {
-  const src = readFileSync(new URL('../lib/umlimator.js', import.meta.url), 'utf8');
+  const src = readFileSync(new URL('../lib/umlimator-all.js', import.meta.url), 'utf8'); // everything umlimator.js has, and every family
   const found = src.match(/#[0-9a-fA-F]{3,8}\b(?![\w-])|\brgba?\(|\bhsla?\(/g) || [];
   assert.deepEqual(found, []);
   const theme = readFileSync(new URL('../lib/umlimator-theme.css', import.meta.url), 'utf8');
@@ -68,7 +68,7 @@ test('the module bakes in no colour: every colour is a --um-* variable (lib/umli
 });
 
 test('nothing is fetched at runtime: no web fonts, stylesheets or imports in the module or the page', () => {
-  for (const f of ['../lib/umlimator.js', '../lib/umlimator-theme.css', '../engine/assets/template.html']) {
+  for (const f of ['../lib/umlimator.js', '../lib/umlimator-all.js', '../lib/umlimator-theme.css', '../engine/assets/template.html']) {
     const src = readFileSync(new URL(f, import.meta.url), 'utf8');
     assert.doesNotMatch(src, /<link\b|@import|url\(\s*['"]?https?:|fetch\(|XMLHttpRequest|fonts\.googleapis/, f);
   }
