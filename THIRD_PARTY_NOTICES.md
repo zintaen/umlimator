@@ -10,7 +10,7 @@ umlimator contains, or builds on, the work below. Each entry says what is used a
 
 ## EricTechPro/super-board, `/visual` skill
 
-`lib/umlimator.js` and `engine/assets/template.html` derive from super-board's `skills/visual/assets/template.html`
+`src/` (built into `lib/umlimator.js`) and `engine/assets/template.html` derive from super-board's `skills/visual/assets/template.html`
 at commit `d0b7d5a` (29 Oct 2026), modified by umlimator (the changes are in its git history and `docs/module-api.md`);
 `engine/scripts/visual.py` and `engine/references/` are copied from that commit unmodified. Source:
 https://github.com/EricTechPro/super-board

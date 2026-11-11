@@ -28,6 +28,24 @@ jobs:
           curl -fsSL "$SD/fetch_icons.py" -o tools/fetch_icons.py
           git diff --exit-code engine/scripts engine/references tools
 
+      - name: lib/umlimator.js is what src/ builds, and each source imports every name it uses from another (a compiler fetched for CI only, never in the module)
+        run: |
+          node tools/build.mjs
+          git diff --exit-code lib || { echo "::error::lib/ is not what src/ builds: run npm run build and commit it"; exit 1; }
+          s=0; npx --yes -p typescript@5.9.3 tsc --allowJs --checkJs --noEmit --skipLibCheck --noUnusedLocals --target es2022 --module es2022 \
+            --moduleResolution bundler --lib es2023,dom,dom.iterable $(find src -name '*.js') > /tmp/tsc.txt || s=$?
+          [ "$s" = 0 ] || [ "$s" = 2 ] || { cat /tmp/tsc.txt; echo "::error::tsc did not run (exit $s)"; exit 1; }   # 2: it ran and found type errors, which are not checked
+          python3 -I - <<'PY'
+          import re, sys
+          bad = []  # a name no source declares or imports, an import from a file that does not export it, an assignment to an import, an import nothing uses
+          for l in open("/tmp/tsc.txt"):
+              m = re.match(r"(.+?)\((\d+),\d+\): error (TS\d+): ", l)
+              if m and (m[3] in ("TS2304", "TS2552", "TS2632", "TS2305", "TS2307", "TS2459") or m[3] in ("TS6133", "TS6192") and open(m[1]).read().split("\n")[int(m[2]) - 1].startswith("import ")):
+                  bad.append(l.strip())
+          print("\n".join(bad) or "every source imports what it uses")
+          sys.exit(1 if bad else 0)
+          PY
+
       - name: layout() draws the benchmark views as recorded, with no DOM (Node)
         run: node --test
 
