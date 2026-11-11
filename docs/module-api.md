@@ -3097,3 +3097,28 @@ What moves for a host that upgrades:
 - **A host that edits a version-2 model** (`editable`) gets the `edit` event and panels on its typed views; map views
   emit `change` as before.
 
+
+## 0.18.0: the class diagram (in progress)
+
+- **The class diagram, `uml.class` (1.9).** A view of a version-2 model whose `diagram` is `"uml.class"` draws as a UML class
+  diagram, in `lib/umlimator-all.js` only (`lib/umlimator.js`, what a map host loads, does not carry it): classes,
+  interfaces, enumerations, data types and primitive types as classifiers with their compartments, comments as notes,
+  packages as named boxes (their contents drawn inside them come with stage 2); associations with role and multiplicity
+  by each end, composition and aggregation diamonds and navigable ends, generalization and realization (hollow triangle,
+  realization dashed), dependency (open arrow, dashed) and comment links. The view lays itself out with the map's own
+  ranking, the general class above its specializations when it runs `down`, and pins in `layout`; an edit that changes
+  no size or line lays nothing out again. Members are edited as one line of UML text in the properties panel
+  (`+ total: Money [1] = 0`, `- {static} count: Integer`, `+ place(at: Date, in qty: Int): Order`); a line that does not
+  read is kept in the field, marked invalid, and nothing is applied. `validate()` adds the type's rules (unique member and
+  classifier names, multiplicities, generalization cycles and kinds, realization targets, composite ends, member kinds,
+  comment links), each problem naming its `rule` and its elements; `describe()` writes a class view per element
+  ("Class Order (entity), 5 attributes, 3 operations; composed of OrderLine (lines, 1..*)"); elements and lines have
+  accessible names; the legend keys the line kinds and ends. Maps draw exactly as before.
+- **The class diagram, after review (1.9).** A version-1 model is a map whatever its views say: a view with
+  `diagram: "uml.class"` and no `schemaVersion: 2` lays out and is described as before. An association's aggregation and
+  navigability are set from the properties panel inside `props.ends`, as its role and multiplicity are. Member names may
+  be in any script (`größe: Int`, `名前`), and a type may end in `[]` (`tags: String[] [0..*]`). An enumeration's new
+  member is a literal when it is a bare name, else a property or an operation; a comment or a package offers no members.
+  A refused member line loses its invalid mark once a good one is added or Escape puts it back. A generalization from or
+  to anything but a classifier breaks `generalization-kinds`. Ids, types and view ids named `constructor`, `toString` or
+  `__proto__` lay out like any other (M3).

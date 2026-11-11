@@ -18,7 +18,7 @@ Update this table in every pull request that belongs to the plan.
 | Before the plan | 0.16.0 | Fixes already on `main` (#146 to #148, #150) | Released 11 Nov 2026 (cf516c8, npm latest); map-repo pinned to it | #146, #147, #148, #150, #152, #153 |
 | Before the split | 0.16.1 | `validate()` warns of a line from a card to itself (`risks.md` F1) | Released 11 Nov 2026 (8f0240f, GitHub and npm latest); map-repo pinned to it | #155, #156 |
 | 1a Foundation | 0.17.0 | Work packages 1.1 to 1.8 | Released 11 Nov 2026 (555bfdc, GitHub and npm latest); map-repo pinned to it | #154, #157, #158, #160, #161, #162, #163, #164, #165, #166, #167 |
-| 1b Class | 0.18.0 | Work packages 1.9 to 1.12 | In progress: 1.9, 1.10 and the 1.12 spike built in parallel lanes | |
+| 1b Class | 0.18.0 | Work packages 1.9 to 1.12 | 1.12's findings merged (#171). 1.9 (#168) and 1.10 (#169) in review. Next: 1.11, and the spike's changes to the registry, `model.md` and `apply()` | #168, #169, #171 |
 | 2 | 0.19.0 | Object, package | Not started | |
 | 3 | 0.20.0 | Sequence, communication | Not started | |
 | 4 | 0.21.0 | Use case, activity, state machine, interaction overview | Not started | |
@@ -176,3 +176,24 @@ node docs/diagrams/examples/check.mjs         # the target examples match model.
   (`layout`, `draw`, `items`, `refs`, `validate`, `edits`), three recommendations for `model.md` §3 that wait for the
   maintainer (one ordered list for a sequence's occurrences instead of `props.after`; inline messages; activations
   derived by intervals), and the commands a sequence needs (`add … in: 'view'`, a delete that re-homes what it held).
+- **12 Nov 2026 (1.9).** 1.9 adds `src/uml/class.js`, in `lib/umlimator-all.js` only: the `uml.class` definition (palette,
+  lines, a properties form per type, with association ends as fields inside `props.ends`), the member micro-syntax
+  (`parseMember`, `printMember`; `print(parse(x))` stable, an unreadable line refused with a warning, E3, E4), ten
+  validators with a passing and a failing fixture each, a `describe()` writer, accessible names and a legend. A registered
+  type with a `layout` hook is laid out by `layoutTyped` from the map's ranking (generalizations turned so the general class
+  comes first), with the memo kept across `update()`; comments draw as notes. The core grew by the wiring only: 14.3%
+  gzipped over 0.16.1 now (C5: 15%). Measured: a 40-class view lays out in 65 to 90 ms in Node, an edit that moves nothing
+  in about 1 ms, and paints in 5 ms in the browser (P1). End labels keep clear of the other lines when drawn; reserving
+  their room in the layout (L4, L5) is still to come. Packages draw as named boxes until stage 2 nests their contents.
+- **12 Nov 2026 (1.9, review).** The review's findings fixed, each with a test: a version-1 model's `diagram` field is
+  ignored by the layout and `describe()` again; aggregation and navigability set inside `props.ends` from the panel;
+  prototype-named ids, types and view ids (M3) in the class type and in `untangle`, `rowsFor` and `flowPos`; Unicode member
+  names and `String[]`; members only where the type has compartments; generalization-kinds on any non-classifier end; the
+  invalid mark cleared; `tests/class.html` reads the layout memo's run count across `update()`. The core: 14.3% gzipped (188631 B)
+  over 0.16.1. Definition of done, the items 1.9 does not finish: 6 is now tested on the class example (a 30-step
+  session undone, redone and reopened from saved JSON); 8 checks names and text contrast (classifiers, the note, end
+  labels, the legend), but **typed lines are drawn in `--um-arrow`, 2.96:1 on the light stage, under 3:1**: raising it
+  changes the maps' palette or the line colour `tests/notation.test.mjs` pins, so it is the lead's call; 9 is enforced by
+  `tests/class.html`'s 40-class check, with the stress fixture 1.11's; 1 (the schema and `.d.ts`) and 7 (the fidelity
+  table, in the conformance note) are documents of `plan.md` §7, which 1.11 owns. Left: a model-held member label with
+  a space, or a type with `=`, prints a line the micro-syntax does not read back.

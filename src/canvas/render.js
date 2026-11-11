@@ -816,7 +816,7 @@ export function render(container, model, options = {}) {
     const old = ctx, keys = {}, wantNew = selectNew && !own;
     old.views.forEach(v => { keys[v.id] = relayout ? null : old.viewKey(v.id); });
     current = model2;
-    ctx = mapContext(withPlaces(model2, use), { measure, kinds: !!P.kinds, prev: options.stableLayout === false ? null : old.planCache, expand: expanded });
+    ctx = mapContext(withPlaces(model2, use), { measure, kinds: !!P.kinds, prev: options.stableLayout === false ? null : old.planCache, expand: expanded, memos: relayout ? null : old.memos });
     Object.keys(expanded).forEach(v => { expanded[v] = ctx.unfolded[v] || []; }); // a card or inner view the model no longer has folds
     if (!own) selectNew = false;
     ctx.views.forEach(v => { const id = v.id; if (keys[id] == null || keys[id] !== ctx.viewKey(id)) return;
