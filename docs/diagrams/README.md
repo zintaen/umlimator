@@ -16,7 +16,8 @@ Update this table in every pull request that belongs to the plan.
 |---|---|---|---|---|
 | Planning | | Proposal, model, plan, risks, 28 target examples, UI draft | Merged 12 Nov 2026 (60a159c) | #151 |
 | Before the plan | 0.16.0 | Fixes already on `main` (#146 to #148, #150) | Released 11 Nov 2026 (cf516c8, npm latest); map-repo pinned to it | #146, #147, #148, #150, #152, #153 |
-| 1a Foundation | 0.17.0 | Work packages 1.1 to 1.8 | Not started. Next step: the stage 1 design note (`plan.md` §4.1) | |
+| Before the split | 0.16.1 | `validate()` warns of a line from a card to itself (`risks.md` F1) | In review; it merges and releases before 1.1 opens | #155 |
+| 1a Foundation | 0.17.0 | Work packages 1.1 to 1.8 The stage 1 design note ([`notes/stage-1.md`](notes/stage-1.md)) approved and merged (5c4979d). Next: 1.1, the split, after 0.16.1 | #154 |
 | 1b Class | 0.18.0 | Work packages 1.9 to 1.12 | Not started | |
 | 2 | 0.19.0 | Object, package | Not started | |
 | 3 | 0.20.0 | Sequence, communication | Not started | |
@@ -59,7 +60,7 @@ All on 11 Nov 2026, by the maintainer. The options that were weighed are in `pro
 | [`risks.md`](risks.md) | Findings that changed the plan, risks, edge cases, and what to do about each |
 | [`ui-draft.html`](ui-draft.html) | A drawing of the editor: views, palette, canvas, properties, problems |
 | [`examples/`](examples/) | One target model per diagram type, `01-class.json` to `28-azure.json`, and `check.mjs`, which checks them against `model.md` |
-| `notes/` | Design notes, one per stage, written when the stage starts |
+| [`notes/`](notes/) | Design notes, one per stage, written when the stage starts: [`stage-1.md`](notes/stage-1.md) |
 
 ## Picking up a work package
 
@@ -96,9 +97,7 @@ node docs/diagrams/examples/check.mjs         # the target examples match model.
 
 | Question | Assumed until answered |
 |---|---|
-| Should a line from a card to itself warn now (`risks.md` F1), in a 0.16.1, or wait for stage 1, which draws it? | Not decided; 0.16.0 shipped without it |
 | Are copy, paste and duplicate wanted before 1.0.0 (`risks.md` E7)? | No |
-| Which build tool does the split use? | Decided in the stage 1 design note |
 | May a tool download the AWS and Google icon packs for its users? | Unknown; to be read from the vendors' terms before milestone 4 |
 
 ## Log
@@ -112,3 +111,11 @@ node docs/diagrams/examples/check.mjs         # the target examples match model.
 - **11 Nov 2026 (later).** The plan merged (#151, 60a159c). 0.16.0 released (#152, cf516c8): GitHub Release and npm
   latest. map-repo's pin moved to v0.16.0, plugin 0.1.7 (#153). Main's run for #151 failed once on a page timeout in
   `tests/motion.html` and passed on a re-run: a flake. Next: the stage 1 design note (`plan.md` §4.1).
+- **11 Nov 2026 (later still).** The stage 1 design note proposed (`notes/stage-1.md`), against 7c7f34d. It picks a
+  concatenating build script with no dependency, maps today's file onto 21 sources, and settles rows, compartments and
+  direction. Found while mapping the file: `autoLayout` and `hubLayout` are called from nowhere (1.4 deletes them), and
+  `mapContext` sets two bindings the core reads (1.3 moves them).
+- **11 Nov 2026 (approved).** The maintainer approved the stage 1 note as written (#154, merged as 5c4979d), and chose to
+  warn of a line from a card to itself in a 0.16.1 before the split. 1.1 was rehearsed on a scratch branch: the built file
+  holds the same 129 top-level statements and 886 comments as the old one, `node --test` passes and the geometry hashes
+  match.
