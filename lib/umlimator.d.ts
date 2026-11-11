@@ -2,6 +2,9 @@
 
 /** A map model: engine/references/schema.md § Map model, plus the README's umlimator fields. Never mutated. */
 export interface MapModel {
+  /** 1 (or none): a map, read as always. 2: it may hold typed elements and typed views (docs/diagrams/model.md). A newer
+   *  version is an error: validate() says so and migrate() throws (0.17.0). */
+  schemaVersion?: 1 | 2;
   title?: string;
   root?: string;
   nodes: MapNode[];
@@ -39,6 +42,14 @@ export interface MapNode {
   owner?: string;
   /** The card's own shape, in every notation (0.15.0); without it, the notation draws the card by its kind. */
   shape?: Shape;
+  /** Schema version 2 (0.17.0): the element's type, <notation>.<Name> (uml.Class), and the envelope's fields. */
+  type?: string; parent?: string; props?: Record<string, unknown>; members?: Element[];
+  [key: string]: unknown;
+}
+/** A typed element in schema version 2's envelope (docs/diagrams/model.md §1): a node, a member, a typed edge, a
+ *  fragment. Nodes, edges, members and fragments share one id space; an id never contains "->". */
+export interface Element {
+  id: string; type: string; label?: string; parent?: string; props?: Record<string, unknown>; members?: Element[];
   [key: string]: unknown;
 }
 /** What a line means, drawn as its colour: calls (the default), feeds (hands work on), triggers (suggests, offers, fires),
@@ -48,6 +59,8 @@ export type WireKind = 'calls' | 'feeds' | 'triggers' | 'state' | 'guard';
 /** from / to: a card's id, or a container's id in the view (the line ends on its box's border). */
 export interface MapEdge {
   id?: string; from: string; to: string; label?: string; edited?: boolean;
+  /** Schema version 2 (0.17.0): a typed edge has a type and an id; `from` and `to` may name a member. */
+  type?: string; parent?: string; props?: Record<string, unknown>;
   /** The line's kind (default calls). A line that stands for several edges (A→B and B→A, parallel edges) takes the first
    *  kind they name, in model order. Nothing is guessed from the label unless the view has `kindsFromLabels`. */
   kind?: WireKind;
@@ -81,6 +94,9 @@ export interface MapEdge {
 }
 export interface MapView {
   id: string; parent?: string | null; title?: string; nodeIds: string[];
+  /** Schema version 2 (0.17.0): a typed view's diagram type (uml.class); without it the view is a map. Not drawn yet. */
+  diagram?: string; subject?: string; direction?: 'right' | 'down'; notation?: string;
+  present?: Record<string, { collapsed?: string[]; rows?: number; [key: string]: unknown }>;
   edges?: (string | MapEdge)[]; layout?: Record<string, [number, number]>; repair?: boolean;
   /** Cards 80 px tall that show their sub-line and then their chips (`verbs`) on a third line. Default: 64 px, and a card's
    *  chips take its sub-line's place. A script card (no kind) shows no sub-line either way. */
@@ -347,6 +363,9 @@ export function layout(model: MapModel, viewId: string, options?: { repair?: boo
  *  a view a card opens that the host has not loaded yet, a line from a card or box to itself, which is not drawn). The JSON Schema is umlimator/schema.json. */
 export interface Problem { level: 'error' | 'warning'; path: string; message: string }
 export function validate(model: MapModel): Problem[];
+/** The model at the schema version this release reads (0.17.0). Versions 1 and 2 come back unchanged; lines with no id
+ *  keep their positional names. Throws on a newer version, or a schemaVersion that is not one. */
+export function migrate<M extends MapModel>(model: M): M;
 /** One issue of the layout check: its message, as the page's check words it, and the cards, lines and boxes it is about
  *  (exactly those, even where two cards share a label). */
 export interface CheckIssue { message: string; targets: Ref[] }

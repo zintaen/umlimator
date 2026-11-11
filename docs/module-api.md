@@ -3008,3 +3008,23 @@ Nothing is removed. Every type, option, field, event and command is as it was, o
 
 What moves for a host that upgrades: a model with such a line gets one warning per line from `validate()`, from the MCP
 server's `validate` tool and in the playground. Nothing is drawn differently; no geometry changes.
+
+## 0.17.0: the foundation for typed diagrams (in progress)
+
+Stage 1a of the plan for 28 diagram types (`docs/diagrams/`). Nothing new is drawn, and every map draws as it did.
+
+- **The module is built from sources (1.1, #157).** `lib/umlimator.js` is now written by `npm run build`
+  (`tools/build.mjs`, no dependency) from 21 files under `src/`. It holds the same statements as 0.16.1's, in another
+  order, and it is still one file with no imports, so a host loads it as before. CI fails when it is stale.
+- **Schema version 2 and `migrate()` (1.2).** A model may say `"schemaVersion": 2`: it may then hold typed elements
+  (`type`, `parent`, `props`, `members`) and typed views (`diagram`, `subject`, `direction`, `present`), as
+  `docs/diagrams/model.md` describes. The JSON Schema and the types know these fields. A model with no
+  `schemaVersion`, or with 1, is a map, read as before.
+  - `migrate(model)` returns the model at the version this release reads. Versions 1 and 2 come back unchanged: lines
+    with no id keep their positional names. A newer version, or a value that is not a version, throws.
+  - `validate()` reports a newer `schemaVersion` as an error, so a model written by a later release is not drawn
+    wrongly without a word (F6).
+
+What moves for a host that upgrades: nothing is drawn differently. `validate()` returns a new error for a
+`schemaVersion` that is not 1 or 2.
+
