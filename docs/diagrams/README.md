@@ -17,7 +17,7 @@ Update this table in every pull request that belongs to the plan.
 | Planning | | Proposal, model, plan, risks, 28 target examples, UI draft | Merged 12 Nov 2026 (60a159c) | #151 |
 | Before the plan | 0.16.0 | Fixes already on `main` (#146 to #148, #150) | Released 11 Nov 2026 (cf516c8, npm latest); map-repo pinned to it | #146, #147, #148, #150, #152, #153 |
 | Before the split | 0.16.1 | `validate()` warns of a line from a card to itself (`risks.md` F1) | In review; it merges and releases before 1.1 opens | #155 |
-| 1a Foundation | 0.17.0 | Work packages 1.1 to 1.8 The stage 1 design note ([`notes/stage-1.md`](notes/stage-1.md)) approved and merged (5c4979d). Next: 1.1, the split, after 0.16.1 | #154 |
+| 1a Foundation | 0.17.0 | Work packages 1.1 to 1.8 | The stage 1 design note ([`notes/stage-1.md`](notes/stage-1.md)) approved and merged (5c4979d). 1.1, the split, in review: no other pull request touching `lib/` is open | #154, #157 |
 | 1b Class | 0.18.0 | Work packages 1.9 to 1.12 | Not started | |
 | 2 | 0.19.0 | Object, package | Not started | |
 | 3 | 0.20.0 | Sequence, communication | Not started | |
@@ -119,3 +119,6 @@ node docs/diagrams/examples/check.mjs         # the target examples match model.
   warn of a line from a card to itself in a 0.16.1 before the split. 1.1 was rehearsed on a scratch branch: the built file
   holds the same 129 top-level statements and 886 comments as the old one, `node --test` passes and the geometry hashes
   match.
+- **11 Nov 2026 (1.1).** The split opened as #157: 21 sources under `src/`, `tools/build.mjs`, and two CI checks (a
+  fresh `lib/`, true imports). The built file holds 0.16.1's 129 top-level statements and 886 comments, reordered;
+  every suite passes, the geometry hashes match, and the 26 stills of the examples are byte-identical.
