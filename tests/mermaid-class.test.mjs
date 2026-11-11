@@ -53,7 +53,7 @@ function generate(seed) {
       const kind = type === 'uml.Enumeration' ? 'uml.EnumerationLiteral' : pick(['uml.Property', 'uml.Operation']);
       const name = pick(kind === 'uml.Property' ? ['total', 'unit price', 'count', 'id', 'x'] : ['place', 'add', 'settle', 'go']);
       const lbl = kind === 'uml.EnumerationLiteral' ? pick(['DRAFT', 'placed', 'Shipped_2', 'x']) : name;
-      if (kind === 'uml.EnumerationLiteral' && labels.has(lbl)) continue;
+      if (labels.has(lbl)) continue; // a classifier's members have different names (1.9's member-names)
       labels.add(lbl);
       const vis = maybe(0.7, pick(['public', 'private', 'protected', 'package']));
       const props = kind === 'uml.Property' ? clean({ visibility: vis, valueType: maybe(0.7, pick(TYPES)), multiplicity: maybe(0.3, pick(['0..1', '1..*', '*', '3'])),
@@ -180,16 +180,16 @@ test('text over the size limit is refused with a report; a large file under it r
   const t1 = performance.now(); read('classDiagram\nclass A{\n' + '+x : ' + 'List~'.repeat(150000) + '\n}\n'); // tilde runs, unbalanced
   assert.ok(performance.now() - t1 < 2000, `${performance.now() - t1} ms`);
   // one name repeated: a relation, a member, a hinted note, each id one more -<n>; finding the next is not a count from 2
-  for (const each of ['A-->B\n', 'A : x\n', '%% id: x\nnote "a"\n']) {
+  for (const each of ['A-->B\n', 'A : x\n', '%% id: x\nnote "a"\n']) { // a repeated member is reported, and its id still made
     const t2 = performance.now(), r2 = read('classDiagram\n' + each.repeat(40000));
     assert.ok(performance.now() - t2 < 3000, `${JSON.stringify(each)}: ${performance.now() - t2} ms`);
     const ids = [...r2.model.nodes.flatMap(n => [n.id, ...(n.members || []).map(x => x.id)]), ...r2.model.edges.map(e => e.id)];
     assert.equal(new Set(ids).size, ids.length);
   }
-  const w = { schemaVersion: 2, nodes: [{ id: 'A', type: 'uml.Class', label: 'A', members: Array.from({ length: 20000 }, (_, k) => ({ id: `m${k}`, type: 'uml.Property', label: 'x' })) }], edges: [], views: [] };
+  const w = { schemaVersion: 2, nodes: [{ id: 'A', type: 'uml.Class', label: 'A' }], edges: Array.from({ length: 20000 }, (_, k) => ({ id: `e${k}`, type: 'uml.Dependency', from: 'A', to: 'A' })), views: [] };
   const t3 = performance.now(), wrote = write(w);
   assert.ok(performance.now() - t3 < 3000, `${performance.now() - t3} ms`);
-  assert.equal(read(wrote).model.nodes[0].members.at(-1).id, 'm19999');
+  assert.equal(read(wrote).model.edges.at(-1).id, 'e19999');
 });
 
 test('malformed input is reported, never thrown', () => {
@@ -290,4 +290,15 @@ test('a directive over several lines is passed over; a view with no direction is
   assert.equal(read('classDiagram\nclass A').model.views[0].direction, 'down');
   assert.deepEqual(read('classDiagram\nA --oak').model.edges, [{ id: 'A-oak', type: 'uml.Association', from: 'A', to: 'oak' }]);
   assert.deepEqual(read('classDiagram\nA --o B').model.edges[0].props, { ends: { to: { aggregation: 'shared' } } });
+});
+
+test('a member named twice is read once, reported; an interface that realizes one specializes it', () => {
+  const r = read('classDiagram\nA ..|> B\nB ..|> C\nclass D {\n+x : int\n+x : String\n+f(a : int)\n+f(a : String)\n+f(b : int)\n}\nclass `a->>b`');
+  assert.deepEqual(r.model.edges.map(e => [e.id, e.type]), [['A-B', 'uml.InterfaceRealization'], ['B-C', 'uml.Generalization']]);
+  assert.deepEqual(r.model.nodes.find(n => n.id === 'D').members.map(x => x.id), ['D.x', 'D.f', 'D.f-2']);
+  assert.deepEqual(r.report.map(x => `${x.line} ${x.status}: ${x.message}`), [
+    '2 approximated: A ..|> B: B is realized, so it is read as an interface', '3 approximated: B ..|> C: C is realized, so it is read as an interface',
+    '3 approximated: B ..|> C: B is an interface, so it specializes C', '6 skipped: D.x: D has a member x already', '9 skipped: D.f: D has a member f(int) already',
+    '11 approximated: class a->>b: an id holds no "->", so it is a-b']);
+  assert.deepEqual(validate(r.model).filter(p => p.level === 'error'), []);
 });

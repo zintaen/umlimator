@@ -3118,6 +3118,9 @@ What moves for a host that upgrades:
   reader stays linear (R2) with one relation, member or note repeated. Two names that differ only by `->` get two ids,
   reported; a namespace renamed for a class's name is reported at its own line; a %%{ ... }%% directive over several lines
   is passed over (by `umlimator.py import` too); `<<constructor>>` or `<<__proto__>>` is a stereotype like any other.
+  With 1.9's rules in mind: a member named twice in one class (an operation, with the same parameter types) is read once
+  and the second reported `skipped`; an interface's realization of another is read as a generalization, reported; and an
+  id never keeps a `->` (`a->>b` is `a-b`).
   The writer writes nothing but a `%% not written:` line for a model with no `uml.class` view or a `viewId` it does not
   have; keeps a line break, a lone `}`, a `<<` or a `%%` out of a member's line and a `>>` out of a stereotype; and says in
   `%% not written:` what it drops: an end's `navigable` beside a diamond, a class's non-namespace parent, nodes in a
