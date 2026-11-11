@@ -60,7 +60,7 @@ All on 11 Nov 2026, by the maintainer. The options that were weighed are in `pro
 | [`risks.md`](risks.md) | Findings that changed the plan, risks, edge cases, and what to do about each |
 | [`ui-draft.html`](ui-draft.html) | A drawing of the editor: views, palette, canvas, properties, problems |
 | [`examples/`](examples/) | One target model per diagram type, `01-class.json` to `28-azure.json`, and `check.mjs`, which checks them against `model.md` |
-| [`notes/`](notes/) | Design notes, one per stage, written when the stage starts: [`stage-1.md`](notes/stage-1.md) |
+| [`notes/`](notes/) | Design notes, one per stage, written when the stage starts: [`stage-1.md`](notes/stage-1.md); the sequence spike's findings, [`spike-sequence.md`](notes/spike-sequence.md) |
 
 ## Picking up a work package
 
@@ -171,3 +171,8 @@ node docs/diagrams/examples/check.mjs         # the target examples match model.
 - **11 Nov 2026 (0.17.0).** 0.17.0 released (#166, 555bfdc): GitHub Release and npm latest. map-repo's pin moved to
   v0.17.0, plugin 0.1.9. Stage 1b started: 1.9 (the class type), 1.10 (the Mermaid class reader) and 1.12 (the
   sequence spike) are built in parallel lanes, each reviewed from two lenses before the maintainer's approval.
+- **12 Nov 2026 (1.12).** The sequence spike ran on a scratch branch (`sequence-spike`, never merged) and wrote its
+  findings in `notes/spike-sequence.md`: the registry fields a type that does not use the layered layout needs
+  (`layout`, `draw`, `items`, `refs`, `validate`, `edits`), three recommendations for `model.md` §3 that wait for the
+  maintainer (one ordered list for a sequence's occurrences instead of `props.after`; inline messages; activations
+  derived by intervals), and the commands a sequence needs (`add … in: 'view'`, a delete that re-homes what it held).
