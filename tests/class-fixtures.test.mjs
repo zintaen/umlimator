@@ -1,5 +1,5 @@
 // The class diagram's fixtures (work package 1.11): tests/class-minimal.json, the smallest class view, and
-// tests/class-stress.json, risks.md G1's edge cases in a view of 42 elements, laid out within P1's budget.
+// tests/class-stress.json, risks.md G1's edge cases in a view of 50 elements, laid out within P1's budget.
 // tests/class.html draws both in a browser, in both themes and three fonts.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -54,7 +54,7 @@ test('the stress fixture holds every edge case of risks.md G1, so it cannot be t
   assert.ok(Object.values(pairs).some(k => k >= 4), 'four lines between two classes');
   assert.ok(STRESS.nodes.some(n => n.type === 'uml.Package' && N[n.parent] && N[n.parent].type === 'uml.Package'), 'a package holding a package');
   assert.ok(STRESS.nodes.some(n => n.type === 'uml.Enumeration' && !ms(n).length), 'an enumeration with no literals');
-  assert.ok(STRESS.views[0].nodeIds.length >= 40, 'a view of 40 elements or more (P1)');
+  assert.ok(STRESS.views[0].nodeIds.length >= 50, 'a view of 50 elements or more (P1: a full layout of 50 nodes in 1 s)');
   assert.deepEqual(validate(STRESS).filter(p => p.level === 'error'), []);
 });
 
@@ -65,23 +65,36 @@ test('the stress fixture lays out with no overlap, no line through a node and no
     assert.deepEqual(r.others, [], `${v.id}: check() finds nothing but lines that cross`);
     assert.ok(r.labels > 20 || v.id !== 'all', `${v.id}: ${r.labels} end labels`);
     console.log(`# ${v.id}: ${r.g.nodes.length} elements, ${r.g.edges.length} lines, ${r.crossings.length} crossings`);
+    // the counts docs/conformance/uml-class.md and risks.md L4 state: a change of layout that moves them updates both
+    assert.equal(r.crossings.length, { all: 29, 'edge-cases': 2 }[v.id], `${v.id}: the crossings the conformance note states`);
   }
   const a = layout(STRESS, 'edge-cases').nodes.find(n => n.id === 'person'), b = layout(STRESS, 'all').nodes.find(n => n.id === 'person');
   assert.ok(a.h < b.h / 4, 'present.person.rows: 8 caps the 60-member class in one view, which the other shows whole');
 });
 
-test('performance (risks.md P1): the stress fixture lays out in under 1 s, and an edit that moves nothing in under 100 ms', () => {
+test('performance (risks.md P1): the stress fixture lays out in under 1 s, and an edit that moves nothing is laid out and drawn (SVG markup) in under 100 ms', () => {
   const runs = [];
   for (let i = 0; i < 3; i++) { // the first run is cold (the JIT warms up on it); a page lays out warm after its first draw
     const memos = {}, t0 = performance.now(); mapContext(STRESS, { memos }).buildGeo('all'); const full = performance.now() - t0;
-    const t1 = performance.now(); mapContext(apply(STRESS, [{ op: 'set', id: 'buys', path: 'props.ends.to.role', value: 'buyer' }]), { memos }).buildGeo('all'); const paint = performance.now() - t1;
+    const t1 = performance.now(), out = mapContext(apply(STRESS, [{ op: 'set', id: 'buys', path: 'props.ends.to.role', value: 'buyer' }]), { memos }).buildView('all').markup; const paint = performance.now() - t1;
+    assert.ok(out.includes('>buyer<'), 'the markup holds the edit');
     const t2 = performance.now(); mapContext(apply(STRESS, [{ op: 'set', id: 'book', path: 'label', value: 'BookWithALongerName' }]), { memos }).buildGeo('all'); const grow = performance.now() - t2;
     assert.equal(memos.all.runs, 2, 'the role laid out nothing again; the longer name laid out once');
     runs.push({ full, paint, grow });
   }
   const best = k => Math.min(...runs.map(r => r[k]));
-  console.log(`# 42 elements, 51 lines: full layout ${runs.map(r => Math.round(r.full)).join(', ')} ms; an edit that moves nothing ${runs.map(r => r.paint.toFixed(1)).join(', ')} ms; one that resizes a class ${runs.map(r => Math.round(r.grow)).join(', ')} ms`);
+  console.log(`# ${STRESS.views[0].nodeIds.length} elements, ${STRESS.edges.length} lines: full layout ${runs.map(r => Math.round(r.full)).join(', ')} ms; an edit that moves nothing, laid out and drawn ${runs.map(r => r.paint.toFixed(1)).join(', ')} ms; one that resizes a class ${runs.map(r => Math.round(r.grow)).join(', ')} ms`);
   assert.ok(best('full') < 1000, `full layout ${best('full')} ms`);
   assert.ok(best('grow') < 1000, `an edit that resizes a class ${best('grow')} ms`);
   assert.ok(best('paint') < 100, `an edit that moves nothing ${best('paint')} ms`);
+});
+
+test('a view with no elements lays out as an empty stage, and draws', () => {
+  for (const m of [{ schemaVersion: 2, nodes: [], edges: [], views: [{ id: 'v', diagram: 'uml.class', nodeIds: [] }] }, { schemaVersion: 2, nodes: [], edges: [], views: [{ id: 'v', diagram: 'uml.class' }] },
+    { nodes: [], edges: [], views: [{ id: 'v', nodeIds: [] }] }, { ...MINIMAL, views: [{ ...MINIMAL.views[0], nodeIds: [] }] }]) {
+    const g = layout(m, 'v');
+    assert.deepEqual([g.nodes.length, g.edges.length, g.bounds], [0, 0, { x: -36, y: -36, w: 72, h: 72 }]);
+    assert.match(mapContext(m).buildView('v').markup, /^<svg viewBox="-36 -36 72 72"/);
+    assert.deepEqual(check(m, 'v'), []);
+  }
 });

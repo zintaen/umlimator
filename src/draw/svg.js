@@ -20,7 +20,7 @@ function svgOf(geo, opts = {}) {
   const LINE = map ? 'var(--um-arrow)' : 'var(--um-muted)'; // a typed view's lines: 3:1 or more in both themes
   const col = k => `var(--um-${KIND[k][0]})`, fill = k => `var(--um-${KIND[k][0]}-f)`;
   const estyle = e => {
-    if (e.style === 'faded') return { ...(map && e.wk ? { c: `var(--um-w-${e.wk})`, m: e.wk, cls: ' w-' + e.wk + ' faded' } : { c: 'var(--um-arrow)', m: 'd', cls: ' faded' }), dash: '', op: .35 }; // its own colour, faint, no flow (drift's idle lines)
+    if (e.style === 'faded') return { ...(map && e.wk ? { c: `var(--um-w-${e.wk})`, m: e.wk, cls: ' w-' + e.wk + ' faded' } : { c: LINE, m: 'd', cls: ' faded' }), dash: '', op: .35 }; // its own colour, faint, no flow (drift's idle lines)
     if (map && e.wk && !e.style) return { c: `var(--um-w-${e.wk})`, m: e.wk, dash: e.back ? '6 5' : '', cls: ' w-' + e.wk + (e.back ? ' back' : '') };
     const st = e.style || (e.change === 'added' ? 'added' : e.change === 'removed' ? 'removed' : '');
     if (st === 'added' || st === 'emphasis') return { c: 'var(--um-green)', m: 'g', dash: '', flow: st === 'added' || e.animate };

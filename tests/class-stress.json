@@ -1,7 +1,7 @@
 {
   "$schema": "../lib/umlimator.schema.json",
   "schemaVersion": 2,
-  "title": "The class diagram's stress fixture (tests): risks.md G1 in a view of 42 elements",
+  "title": "The class diagram's stress fixture (tests): risks.md G1 in a view of 50 elements",
   "root": "all",
   "nodes": [
     {"id": "shop", "type": "uml.Package", "label": "shop"},
@@ -237,6 +237,46 @@
       {"id": "account.code", "type": "uml.Property", "label": "code", "props": {"visibility": "private", "valueType": "String"}},
       {"id": "account.label", "type": "uml.Property", "label": "label", "props": {"visibility": "public", "valueType": "String"}},
       {"id": "account.describe", "type": "uml.Operation", "label": "describe", "props": {"visibility": "public", "returnType": "String"}}
+    ] },
+    {"id": "store", "type": "uml.Class", "label": "Store", "parent": "shop", "members": [
+      {"id": "store.code", "type": "uml.Property", "label": "code", "props": {"visibility": "private", "valueType": "String"}},
+      {"id": "store.label", "type": "uml.Property", "label": "label", "props": {"visibility": "public", "valueType": "String"}},
+      {"id": "store.describe", "type": "uml.Operation", "label": "describe", "props": {"visibility": "public", "returnType": "String"}}
+    ] },
+    {"id": "staff", "type": "uml.Class", "label": "Staff", "parent": "shop", "members": [
+      {"id": "staff.code", "type": "uml.Property", "label": "code", "props": {"visibility": "private", "valueType": "String"}},
+      {"id": "staff.label", "type": "uml.Property", "label": "label", "props": {"visibility": "public", "valueType": "String"}},
+      {"id": "staff.describe", "type": "uml.Operation", "label": "describe", "props": {"visibility": "public", "returnType": "String"}}
+    ] },
+    {"id": "shift", "type": "uml.Class", "label": "Shift", "parent": "shop", "members": [
+      {"id": "shift.code", "type": "uml.Property", "label": "code", "props": {"visibility": "private", "valueType": "String"}},
+      {"id": "shift.label", "type": "uml.Property", "label": "label", "props": {"visibility": "public", "valueType": "String"}},
+      {"id": "shift.describe", "type": "uml.Operation", "label": "describe", "props": {"visibility": "public", "returnType": "String"}}
+    ] },
+    {"id": "loyalty", "type": "uml.Class", "label": "Loyalty", "parent": "shop", "members": [
+      {"id": "loyalty.code", "type": "uml.Property", "label": "code", "props": {"visibility": "private", "valueType": "String"}},
+      {"id": "loyalty.label", "type": "uml.Property", "label": "label", "props": {"visibility": "public", "valueType": "String"}},
+      {"id": "loyalty.describe", "type": "uml.Operation", "label": "describe", "props": {"visibility": "public", "returnType": "String"}}
+    ] },
+    {"id": "promotion", "type": "uml.Class", "label": "Promotion", "parent": "shop", "members": [
+      {"id": "promotion.code", "type": "uml.Property", "label": "code", "props": {"visibility": "private", "valueType": "String"}},
+      {"id": "promotion.label", "type": "uml.Property", "label": "label", "props": {"visibility": "public", "valueType": "String"}},
+      {"id": "promotion.describe", "type": "uml.Operation", "label": "describe", "props": {"visibility": "public", "returnType": "String"}}
+    ] },
+    {"id": "banner", "type": "uml.Class", "label": "Banner", "parent": "shop", "members": [
+      {"id": "banner.code", "type": "uml.Property", "label": "code", "props": {"visibility": "private", "valueType": "String"}},
+      {"id": "banner.label", "type": "uml.Property", "label": "label", "props": {"visibility": "public", "valueType": "String"}},
+      {"id": "banner.describe", "type": "uml.Operation", "label": "describe", "props": {"visibility": "public", "returnType": "String"}}
+    ] },
+    {"id": "gift", "type": "uml.Class", "label": "Gift", "parent": "shop", "members": [
+      {"id": "gift.code", "type": "uml.Property", "label": "code", "props": {"visibility": "private", "valueType": "String"}},
+      {"id": "gift.label", "type": "uml.Property", "label": "label", "props": {"visibility": "public", "valueType": "String"}},
+      {"id": "gift.describe", "type": "uml.Operation", "label": "describe", "props": {"visibility": "public", "returnType": "String"}}
+    ] },
+    {"id": "bundle", "type": "uml.Class", "label": "Bundle", "parent": "shop", "members": [
+      {"id": "bundle.code", "type": "uml.Property", "label": "code", "props": {"visibility": "private", "valueType": "String"}},
+      {"id": "bundle.label", "type": "uml.Property", "label": "label", "props": {"visibility": "public", "valueType": "String"}},
+      {"id": "bundle.describe", "type": "uml.Operation", "label": "describe", "props": {"visibility": "public", "returnType": "String"}}
     ] }
   ],
   "edges": [
@@ -291,9 +331,16 @@
     {"id": "refund-is-entity", "type": "uml.Generalization", "from": "refund", "to": "base"},
     {"id": "shipment-is-entity", "type": "uml.Generalization", "from": "shipment", "to": "base"},
     {"id": "account-is-entity", "type": "uml.Generalization", "from": "account", "to": "base"}
+,
+    {"id": "store-staff", "type": "uml.Association", "from": "store", "to": "staff", "props": {"ends": {"from": {"multiplicity": "1"}, "to": {"multiplicity": "*", "navigable": true}}}},
+    {"id": "staff-shift", "type": "uml.Association", "from": "staff", "to": "shift", "props": {"ends": {"from": {"multiplicity": "1"}, "to": {"multiplicity": "*", "navigable": true}}}},
+    {"id": "shift-loyalty", "type": "uml.Association", "from": "shift", "to": "loyalty", "props": {"ends": {"from": {"multiplicity": "*"}, "to": {"multiplicity": "0..1", "navigable": true}}}},
+    {"id": "promotion-banner", "type": "uml.Association", "from": "promotion", "to": "banner", "props": {"ends": {"from": {"multiplicity": "1"}, "to": {"multiplicity": "0..*", "navigable": true}}}},
+    {"id": "banner-gift", "type": "uml.Association", "from": "banner", "to": "gift", "props": {"ends": {"from": {"multiplicity": "*"}, "to": {"multiplicity": "0..1", "navigable": true}}}},
+    {"id": "gift-bundle", "type": "uml.Association", "from": "gift", "to": "bundle", "props": {"ends": {"from": {"multiplicity": "*"}, "to": {"multiplicity": "1", "navigable": true}}}}
   ],
   "views": [
-    {"id": "all", "diagram": "uml.class", "title": "Every element", "direction": "down", "nodeIds": ["shop", "catalog", "person", "empty", "kind", "base", "order", "customer", "payable", "money", "decimal", "status", "note", "book", "author", "publisher", "series", "edition", "format", "genre", "review", "rating", "shelf", "stock", "warehouse", "supplier", "price", "discount", "coupon", "cart", "cartitem", "wishlist", "invoice", "refund", "shipment", "parcel", "carrier", "address", "region", "taxrule", "currency", "account"]},
+    {"id": "all", "diagram": "uml.class", "title": "Every element", "direction": "down", "nodeIds": ["shop", "catalog", "person", "empty", "kind", "base", "order", "customer", "payable", "money", "decimal", "status", "note", "book", "author", "publisher", "series", "edition", "format", "genre", "review", "rating", "shelf", "stock", "warehouse", "supplier", "price", "discount", "coupon", "cart", "cartitem", "wishlist", "invoice", "refund", "shipment", "parcel", "carrier", "address", "region", "taxrule", "currency", "account", "store", "staff", "shift", "loyalty", "promotion", "banner", "gift", "bundle"]},
     {"id": "edge-cases", "diagram": "uml.class", "title": "The edge cases, left to right, Person capped at 8 rows", "nodeIds": ["shop", "catalog", "person", "empty", "kind", "base", "order", "customer", "payable", "money", "decimal", "status", "note"], "present": {"person": {"rows": 8}}}
   ]
 }

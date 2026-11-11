@@ -78,6 +78,10 @@ test('line ends: a table of markers, used only by a line that asks; end labels i
   assert.match(svg, /class="edge"[^>]*stroke="var\(--um-muted\)"/);
   const mapSvg = mapContext({ nodes: [{ id: 'a' }, { id: 'b' }], edges: [{ from: 'a', to: 'b' }], views: [{ id: 'v', nodeIds: ['a', 'b'] }] }).buildView('v').markup;
   assert.match(mapSvg, /id="g\d+-d"[^>]*><path [^>]*fill="var\(--um-arrow\)"/); assert.ok(!mapSvg.includes('var(--um-muted)'), 'nothing of a map is --um-muted');
+  // a faded line (drift's idle lines) keeps its ends' colour: --um-muted in a typed view, its wire's on a map
+  assert.match(svgOf(geo([a, b], [{ ...e, style: 'faded' }])), /class="edge" stroke="var\(--um-muted\)"[^>]*opacity="0.35"/);
+  const fadedMap = mapContext({ nodes: [{ id: 'a' }, { id: 'b' }], edges: [{ from: 'a', to: 'b', style: 'faded' }], views: [{ id: 'v', nodeIds: ['a', 'b'] }] }).buildView('v').markup;
+  assert.match(fadedMap, /class="edge" stroke="var\(--um-w-calls\)"[^>]*opacity="0.35"/); assert.ok(!fadedMap.includes('var(--um-muted)'), 'a faded map line keeps its wire colour');
   assert.match(svg, /class="edge"[^>]*stroke-dasharray="6 4"/);
   const boxes = endLabels(e);
   assert.deepEqual(boxes.map(x => [x.end, x.kind, x.text]), [['from', 'role', 'order'], ['from', 'mult', '1'], ['to', 'role', 'lines'], ['to', 'mult', '1..*']]);

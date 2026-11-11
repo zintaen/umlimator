@@ -100,19 +100,22 @@ try {
     all('.edge-g').forEach(g => { const [a, b] = ends(g.querySelector('path.edge').getAttribute('d'));
       [[a, g.dataset.from], [b, g.dataset.to]].forEach(([p, id]) => { const body = pick(`.node[data-id="${id}"] .n-body`); body.style.strokeWidth = '3px';
         const q = svg.createSVGPoint(); q.x = p[0]; q.y = p[1]; if (!body.isPointInStroke(q)) bad.push(`${g.dataset.from}>${g.dataset.to} ends off ${id}`); body.style.strokeWidth = ''; }); });
+    all('.edge-g').forEach(g => { const n = g.querySelector('path.edge').getAttribute('d').match(/-?\d+(\.\d+)?/g).map(Number), pts = []; for (let i = 0; i < n.length; i += 2) pts.push([n[i], n[i + 1]]);
+      pts.slice(1).forEach((q, k) => { const p = pts[k], s = { x: Math.min(p[0], q[0]), y: Math.min(p[1], q[1]), w: Math.abs(q[0] - p[0]) || .01, h: Math.abs(q[1] - p[1]) || .01 }; // as clean() in tests/class-fixtures.test.mjs
+        Object.entries(B).forEach(([id, b]) => { if (id !== g.dataset.from && id !== g.dataset.to && meets(s, { x: b.x + 1, y: b.y + 1, w: b.w - 2, h: b.h - 2 })) bad.push(`${g.dataset.from}>${g.dataset.to} runs through ${id}`); }); }); });
     all('text.end-lab').forEach(x => { const [bx, by, bw, bh] = x.dataset.box.split(' ').map(Number); if (Object.values(B).some(n => meets({ x: bx, y: by, w: bw, h: bh }, n))) bad.push(`"${x.textContent}" on an element`); });
     const stageBg = css(pick('.stage'), 'backgroundColor');
     all('.edge-g path.edge').forEach(x => { const c = ratio(css(x, 'stroke'), stageBg); if (c < 3) bad.push(`a line at ${c}:1`); });
-    check(`${tag}: all ${v.nodeIds.length} elements and ${all('.edge-g').length} lines drawn; no overlap, no text out of its compartment, every line end on its element, end labels clear, lines 3:1`,
+    check(`${tag}: all ${v.nodeIds.length} elements and ${all('.edge-g').length} lines drawn; no overlap, no text out of its compartment, no line through an element, every line end on its element, end labels clear, lines 3:1`,
       nodes.length === v.nodeIds.length && all('.edge-g').length && !bad.length, bad.slice(0, 12));
     h.destroy();
   }
   document.documentElement.dataset.theme = 'light'; el.style.removeProperty('--um-sans');
-  { // performance (risks.md P1) on the stress fixture: an edit that moves nothing, from update() to paint
-    const h = mount(FIX.stress, { view: 'all', editable: true });
-    const t0 = performance.now(); h.update(apply(FIX.stress, [{ op: 'set', id: 'buys', path: 'props.ends.to.role', value: 'buyer' }])); const paint = performance.now() - t0;
-    console.log(`the stress fixture: an edit that moves nothing ${Math.round(paint)} ms`);
-    check(`the stress fixture (42 elements, 51 lines): an edit that moves nothing paints in under 100 ms (${Math.round(paint)} ms)`, paint < 100 && all('.node').length === 42, paint);
+  { // the stress fixture redrawn after an edit that moves nothing. Not a timing: headless Chrome runs on virtual time, where
+    // performance.now() does not move; risks.md P1's budgets are measured in Node (tests/class-fixtures.test.mjs)
+    const h = mount(FIX.stress, { view: 'all', editable: true }), n = FIX.stress.views[0].nodeIds.length;
+    h.update(apply(FIX.stress, [{ op: 'set', id: 'buys', path: 'props.ends.to.role', value: 'buyer' }]));
+    check(`the stress fixture (${n} elements): an edit that moves nothing is drawn, every element still there`, all('.node').length === n && all('text.end-lab').some(x => x.textContent === 'buyer'));
     h.destroy();
   }
   document.documentElement.dataset.theme = 'light'; el.style.removeProperty('--um-sans');
@@ -184,21 +187,20 @@ try {
   check('a broken rule is listed in the problems panel, by its rule', all('.um-editor .um-probs button').some(b => /composite-multiplicity: the composite end at "Order"/.test(b.textContent)), all('.um-editor .um-probs button').map(b => b.textContent));
   h.destroy();
 
-  // ---- performance (risks.md P1): a 40-element class view, an edit to paint
+  // ---- a 40-element class view, edited: the layout memo kept across update(). Not a timing: headless Chrome runs on virtual
+  // time, where performance.now() does not move; risks.md P1's budgets are measured in Node (tests/class-fixtures.test.mjs)
   const P = (id, label, t) => ({ id, type: 'uml.Property', label, props: { visibility: 'private', valueType: t } }), nodes = [], edges = [];
   for (let i = 0; i < 40; i++) nodes.push({ id: 'c' + i, type: 'uml.Class', label: 'Class' + i, members: [P(`c${i}.a`, 'a', 'Int'), P(`c${i}.b`, 'b', 'String')] });
   for (let i = 1; i < 40; i++) edges.push(i % 3 ? { id: 'e' + i, type: 'uml.Association', from: 'c' + Math.floor((i - 1) / 2), to: 'c' + i, props: { ends: { to: { multiplicity: '*' } } } } : { id: 'e' + i, type: 'uml.Generalization', from: 'c' + i, to: 'c' + Math.floor((i - 1) / 2) });
   const BIG = { schemaVersion: 2, nodes, edges, views: [{ id: 'domain', diagram: 'uml.class', direction: 'down', nodeIds: nodes.map(n => n.id) }] };
-  let t0 = performance.now(); h = mount(BIG, { editable: true }); const first = performance.now() - t0;
+  h = mount(BIG, { editable: true });
   const runs = () => ((h[Object.getOwnPropertySymbols(h)[0]].ctx().memos.domain) || {}).runs, r0 = runs();
   const at = () => all('.node').map(g => g.getAttribute('aria-label') + box(g).x + ',' + box(g).y).join('|'), before = at();
-  t0 = performance.now(); h.update(apply(BIG, [{ op: 'set', id: 'e1', path: 'props.ends.to.role', value: 'kids' }])); const paint = performance.now() - t0;
+  h.update(apply(BIG, [{ op: 'set', id: 'e1', path: 'props.ends.to.role', value: 'kids' }]));
   const r1 = runs();
-  t0 = performance.now(); h.update(apply(BIG, [{ op: 'set', id: 'c5', path: 'label', value: 'Class5Renamed' }])); const grow = performance.now() - t0;
+  h.update(apply(BIG, [{ op: 'set', id: 'c5', path: 'label', value: 'Class5Renamed' }]));
   check('update() keeps the view\'s layout memo: an edit that moves nothing lays out nothing, one that resizes a class lays out once', r0 >= 1 && r1 === r0 && runs() === r0 + 1, [r0, r1, runs()]);
-  console.log(`40 classes: first draw ${Math.round(first)} ms, an edit that moves nothing ${Math.round(paint)} ms, one that resizes a class ${Math.round(grow)} ms`);
-  check(`a 40-element class view: an edit that moves nothing paints in under 100 ms (${Math.round(paint)} ms; first draw ${Math.round(first)} ms, a resize ${Math.round(grow)} ms)`,
-    paint < 100 && before.split('|').length === 40 && !!pick('text.end-lab'), { first, paint, grow });
+  check('a 40-element class view: every element and an end label drawn after the edits', before.split('|').length === 40 && all('.node').length === 40 && !!pick('text.end-lab'));
   h.destroy();
 } catch (e) { out.fail.push('threw: ' + (e && e.stack || e)); }
 const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);

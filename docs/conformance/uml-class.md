@@ -52,8 +52,11 @@ drawn) and `rows` (at most n rows, then "+k more").
 - XMI and UML diagram interchange; code generation and reverse engineering.
 - A member held in the model whose label has a space, or whose type holds `=`, prints a line the member syntax does not
   read back (`docs/diagrams/README.md`, log of 1.9).
-- Two lines may cross where the layered layout finds no better order: the stress fixture's four lines between Order and
-  Customer cross twice beside the other lines they meet (`tests/class-fixtures.test.mjs` counts it).
+- Lines cross where the layered layout finds no better order, more often past 40 elements. In `tests/class-stress.json`
+  the `edge-cases` view (13 elements, 15 lines) has 2 crossings, among the four lines between Order and Customer; the
+  `all` view (50 elements, 57 lines) has 29: 4 where those lines meet Order's line to Shipment, 25 elsewhere (Review's
+  and Shelf's lines to Book, generalizations to Entity across Customer's and Order's lines, and others).
+  `tests/class-fixtures.test.mjs` pins both counts (`docs/diagrams/risks.md` L4).
 
 ## Writers: what each shows of a class diagram
 

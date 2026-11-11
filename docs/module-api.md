@@ -3154,13 +3154,16 @@ What moves for a host that upgrades:
   where it is now. `examples/class-editor.html` is a host that edits it: `edit` events applied with `apply()`, undo and
   redo from `history()`, a refusal, and Save. `tests/class-minimal.json` and `tests/class-stress.json` (risks.md G1: a
   class with no members and one with 60, abstract, static and derived members, a reflexive association, four lines
-  between two classes, a package in a package, an enumeration with no literals, in a view of 42 elements and 51 lines)
+  between two classes, a package in a package, an enumeration with no literals, in a view of 50 elements and 57 lines)
   lay out with no overlap, no line through an element and no end label on one, in Node and in Chrome under three fonts
-  and both themes; the stress fixture lays out in under 1 s and repaints an edit that moves nothing in under 100 ms
-  (P1), which CI checks.
+  and both themes; the stress fixture lays out in under 1 s, and an edit that moves nothing is laid out and drawn as SVG
+  markup in under 100 ms (P1), both timed in Node in CI.
+- **A view with no elements draws (1.11).** `layout()` and `check()` of a view whose `nodeIds` are empty
+  or missing threw (`Cannot read properties of undefined`), for a class view and a map's alike; such a view now lays out
+  as an empty stage, 72 by 72. Every other view draws as before.
 - **Lines of a typed view reach 3:1 (1.11).** A class diagram's lines and their ends are drawn in `--um-muted`, 5.95:1
-  on the light stage and 7.05:1 on the dark one, where `--um-arrow` gave 2.96:1 in light. No new variable; a map's lines
-  are drawn exactly as before.
+  on the light stage and 7.05:1 on the dark one, where `--um-arrow` gave 2.96:1 in light; a faded line (drift's idle
+  lines) too, at its usual opacity. No new variable; a map's lines are drawn exactly as before.
 - **Types and schema (1.11).** `lib/umlimator.d.ts` exports the class diagram's vocabulary: `UmlClassElementType`,
   `UmlClassMemberType`, `UmlClassLineType`, `UmlVisibility`, `UmlClassifierProps`, `UmlPropertyProps`,
   `UmlOperationProps`, `UmlAssociationEnd`, `UmlLineProps` and `UmlPresent`. `lib/umlimator.schema.json` describes the
