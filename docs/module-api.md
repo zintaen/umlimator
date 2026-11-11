@@ -3026,6 +3026,15 @@ Stage 1a of the plan for 28 diagram types (`docs/diagrams/`). Nothing new is dra
     without a word (F6). A value that is not a number is a warning, and the model reads as a map.
   - `validate()` does not yet check typed elements: on a version-2 model it still reports a line that ends on a member
     as "neither a card nor a box". The typed checks join it with the diagram registry.
+- **Commands (1.6).** `apply(model, commands)` runs a transaction (one command or a list) on a copy and returns the
+  new model; the one given is never changed, and a command that cannot run throws with none of the transaction
+  applied. The commands: `set` (a field of an element or a view, by a path: `props.visibility`, or
+  `['present', 'order.lines', 'rows']`), `add` (a node, a line, or a member at a place, optionally shown in a view),
+  `hide` (out of one view, with its pin, `present` and the view's lines to it; the model keeps it), `delete` (out of
+  the model with its members, what it owns, the lines to them and every place that names them: views, pins, boxes,
+  stories, lenses and rules; a lens or rule that named only it picks nothing) and `reparent`. Undo is the model before,
+  which `history()` keeps: undo and redo give back byte-identical models. `references(model, id)` lists every place
+  that names an element, for a host with a store of its own. The canvas emits these commands from 1.7.
 
 What moves for a host that upgrades: nothing is drawn differently. `validate()` returns a new error for a numeric
 `schemaVersion` other than 1 or 2, and a warning for one that is not a number.

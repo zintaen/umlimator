@@ -362,6 +362,21 @@ export function validate(model: MapModel): Problem[];
 /** The model at the schema version this release reads (0.17.0). Versions 1 and 2 come back unchanged; lines with no id
  *  keep their positional names. Throws on a newer version, or a schemaVersion that is not one. */
 export function migrate<M extends MapModel>(model: M): M;
+/** A command on the model (0.17.0). `path` is a dotted path or a list of keys; `value` undefined removes the field. */
+export type Command =
+  | { op: 'set'; id: string; path: string | string[]; value: unknown }
+  | { op: 'set'; view: string; path: string | string[]; value: unknown }
+  | { op: 'add'; element: Element | (Element & { from: string; to: string }); to?: string; index?: number; view?: string }
+  | { op: 'hide'; id: string; view: string }
+  | { op: 'delete'; id: string }
+  | { op: 'reparent'; id: string; parent: string | null };
+/** The model after a transaction: one command, or a list run in order, on a copy (0.17.0). A command that cannot run
+ *  throws, and none of the transaction is applied. `delete` takes with it the element's members, what it owns, the lines
+ *  to them and every place that names them (references()). Undo is the model before: keep it with history(). */
+export function apply<M extends MapModel>(model: M, commands: Command | Command[]): M;
+/** Where a model names an element, other than the element itself (0.17.0): 'views[0].nodeIds[2]' and what each is. */
+export interface Reference { path: string; kind: 'end' | 'parent' | 'part' | 'view' | 'pin' | 'present' | 'override' | 'subject' | 'story' | 'lens' | 'rule' }
+export function references(model: MapModel, id: string): Reference[];
 /** One issue of the layout check: its message, as the page's check words it, and the cards, lines and boxes it is about
  *  (exactly those, even where two cards share a label). */
 export interface CheckIssue { message: string; targets: Ref[] }
