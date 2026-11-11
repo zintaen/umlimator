@@ -10,7 +10,7 @@ All verified.
 
 | # | Finding | Evidence | What it means |
 |---|---|---|---|
-| F1 | A line from a card to itself is dropped, and nothing says so | A model with `from: "a", to: "a"`: `validate()` returns no problem and `layout()` draws no line | Self-transitions, reflexive associations and self-messages need a self-loop route. Stage 1. Today's map should at least warn: a small fix for 0.16.0 |
+| F1 | A line from a card to itself is dropped, and nothing says so | A model with `from: "a", to: "a"`: `validate()` returns no problem and `layout()` draws no line | Self-transitions, reflexive associations and self-messages need a self-loop route. Stage 1. From 0.16.1, `validate()` warns of such a line on a map: `a line from "a" to itself: not drawn` |
 | F2 | Two lines between the same two cards are drawn as one | The same run: `e` and `e2` come back as one line | Typed lines must stay apart, each with its own ports and label. Stage 1 |
 | F3 | The CLI validates every model through the upstream script, which knows cards only | `upstream_view()` in `umlimator.py`; `validate_map()` in `engine/scripts/visual.py`, which CI requires unmodified | A line that ends on a member (a port) is "an unknown end" there. `upstream_view()` must show members as cards, as it already does boxes. Stage 1 |
 | F4 | `render` bakes a row order into every view's `layout` | `cmd_render()` in `visual.py` ("bake") | A view whose layout has no slots (sequence, timing, mindmap) must return nothing to bake. Stages 1 and 3 |
