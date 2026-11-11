@@ -130,7 +130,8 @@ export function validate(model) {
     });
   });
   if (typed) {
-    out.push(...typedProblems(m));
+    const said = new Set(out.map(p => p.path)); // a duplicate id both checks find is said once
+    out.push(...typedProblems(m).filter(p => !(p.level === 'error' && said.has(p.path))));
     views.forEach((v, i) => { const at = `views[${i}].diagram`; // a well-formed name of a type this release does not draw (M13)
       if (typedView(v) && !diagramOf(v) && !out.some(p => p.path === at)) warn(at, `diagram "${v.diagram}" is not drawn by this release: its nodes are drawn as plain cards`); });
   }

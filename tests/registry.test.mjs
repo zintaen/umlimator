@@ -24,11 +24,11 @@ test('a typed view whose diagram is not drawn yet shows its nodes as plain cards
     nodes: [{ id: 'order', type: 'uml.Class', label: 'Order', members: [{ id: 'order.lines', type: 'uml.Property', label: 'lines' }] },
       { id: 'line', type: 'uml.Class', label: 'Line' }, { id: 'note', type: 'uml.Comment', label: 'a note' }],
     edges: [{ id: 'has', type: 'uml.Association', from: 'order.lines', to: 'line', label: 'has' }],
-    views: [{ id: 'd', diagram: 'uml.class', nodeIds: ['order', 'line', 'note'], edges: ['has'] }] };
-  const before = JSON.stringify(m), [g, w] = said(() => layout(m, 'd'));
+    views: [{ id: 'plain', diagram: 'uml.class', nodeIds: ['order', 'line', 'note'], edges: ['has'] }] };
+  const before = JSON.stringify(m), [g, w] = said(() => layout(m, 'plain'));
   assert.deepEqual(g.nodes.map(n => n.id).sort(), ['line', 'note', 'order']);
   assert.deepEqual(g.edges.map(e => [e.from, e.to]), [['order', 'line']]);
-  assert.ok(w.some(x => /view "d": diagram "uml\.class" is not drawn by this release/.test(x)), w.join('\n'));
+  assert.ok(w.some(x => /view "plain": diagram "uml\.class" is not drawn by this release/.test(x)), w.join('\n'));
   assert.equal(JSON.stringify(m), before); // the host's model is never touched
   assert.deepEqual(validate(m).map(p => `${p.level} ${p.path}`), ['warning views[0].diagram']);
 });
@@ -68,7 +68,27 @@ test('the registry: the map is the default, names are <notation>.<kind>, a name 
   assert.throws(() => registerDiagramType('map'), /registered already/);
 });
 
-test('a model newer than this release is refused when drawn, not drawn wrongly (F6)', () => {
+test('a model newer than this release is refused when drawn, not drawn wrongly (F6); other values draw as a map', () => {
   const m = { schemaVersion: 3, nodes: [{ id: 'a' }], views: [{ id: 'v', nodeIds: ['a'] }] };
   assert.throws(() => layout(m, 'v'), /schemaVersion 3 is newer than this release reads/);
+  for (const v of [0, 1.5, -1, '3', null]) assert.deepEqual(layout({ ...m, schemaVersion: v }, 'v').nodes.map(n => n.id), ['a'], String(v));
+});
+
+// from the review of #160
+test('a map view of a version-2 model draws the model\'s lines as they are, whatever typed views the model also has', () => {
+  const base = { schemaVersion: 2, nodes: [{ id: 'order', type: 'uml.Class', members: [{ id: 'order.lines', type: 'uml.Property' }] }, { id: 'line', type: 'uml.Class' }],
+    edges: [{ id: 'has', type: 'uml.Association', from: 'order.lines', to: 'line' }] };
+  const lines = (views, id) => said(() => layout({ ...base, views }, id))[0].edges.map(e => [e.from, e.to]);
+  for (const map of [{ id: 'm', nodeIds: ['order', 'line'] }, { id: 'm', nodeIds: ['order', 'line'], edges: ['has'] }]) {
+    const alone = lines([map], 'm');
+    assert.deepEqual(lines([map, { id: 'c', diagram: 'uml.class', nodeIds: ['order', 'line'] }], 'm'), alone);
+    assert.deepEqual(lines([map, { id: 'c', diagram: 'uml.class', nodeIds: ['order', 'line'] }], 'c'), [['order', 'line']]); // the plain view's own copy
+  }
+});
+
+test('a view whose diagram is "map" is checked as a map, and an id used twice is said once', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'a' }], views: [{ id: 'v', diagram: 'map', nodeIds: ['a', 'b'], nodes: [{ id: 'b' }], edges: [{ from: 'a', to: 'b' }] }] };
+  assert.deepEqual(validate(m), []);
+  const twice = { schemaVersion: 2, nodes: [{ id: 'a', type: 'uml.Class' }, { id: 'a', type: 'uml.Class' }], views: [{ id: 'v', nodeIds: ['a'] }] };
+  assert.deepEqual(validate(twice).map(p => `${p.level} ${p.path}`), ['error nodes[1].id']);
 });

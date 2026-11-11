@@ -5,20 +5,19 @@
    refuses a newer version rather than draw it wrongly (risks.md F6). */
 const SCHEMA_VERSION = 2;
 
-/* What is wrong with a model's schemaVersion, or null: { level, message }. A number this release cannot read (newer than 2,
-   or not a whole number from 1) is an error; a value that is not a number, which a host may have set for its own
-   reasons before version 2 existed, is a warning and the model reads as a map. None, null, 1 and 2 are fine. */
+/* What is wrong with a model's schemaVersion, or null: { level, message }. A whole number newer than 2 is an error: that
+   model is drawn wrongly otherwise (F6). Any other value that is not 1 or 2 (0, 1.5, "2"), which a host may have set
+   for its own reasons before version 2 existed, is a warning and the model reads as a map. None and null are fine. */
 function versionProblem(model) {
   const v = model && typeof model === 'object' ? model.schemaVersion : undefined;
   if (v == null || v === 1 || v === SCHEMA_VERSION) return null;
-  if (typeof v !== 'number') return { level: 'warning', message: `schemaVersion ${JSON.stringify(v)} is not a number: read as a map (1)` };
-  if (!Number.isInteger(v) || v < 1) return { level: 'error', message: `schemaVersion ${v} is not a version (1 or 2)` };
+  if (!Number.isInteger(v) || v < 1) return { level: 'warning', message: `schemaVersion ${JSON.stringify(v)} is not a version (1 or 2): read as a map (1)` };
   return { level: 'error', message: `schemaVersion ${v} is newer than this release reads (${SCHEMA_VERSION}): upgrade umlimator to read it` };
 }
 
 /* migrate(model): the model at the version this release reads. Versions 1 and 2 are read as they are, so the model comes
    back unchanged: lines without an id keep their positional names ("a->b#0"), which stories, lenses and hosts hold
-   (risks.md F9). A newer version, or a number that is not a version, throws. */
+   (risks.md F9). A newer version throws. */
 export function migrate(model) {
   const p = versionProblem(model);
   if (p && p.level === 'error') throw new Error(p.message);
@@ -49,7 +48,8 @@ function typedProblems(model) {
   nodes.forEach((n, i) => { element(n, `nodes[${i}]`, 'node'); typeOf(n, `nodes[${i}]`, false); });
   const typedEdge = e => isObj(e) && e.type != null;
   arr(m.edges).forEach((e, i) => { if (typedEdge(e)) { element(e, `edges[${i}]`, 'edge'); typeOf(e, `edges[${i}]`, true); } });
-  views.forEach((v, i) => { if (v.diagram == null) return;
+  const typedView = v => v.diagram != null && v.diagram !== 'map'; // a view with diagram 'map' is a map: the map's checks
+  views.forEach((v, i) => { if (!typedView(v)) return;
     arr(v.edges).forEach((e, j) => { if (isObj(e)) { element(e, `views[${i}].edges[${j}]`, 'edge'); typeOf(e, `views[${i}].edges[${j}]`, true); } });
     arr(v.fragments).forEach((f, j) => element(f, `views[${i}].fragments[${j}]`, 'fragment'));
     ['changes', 'constraints'].forEach(k => arr((v.timeline || {})[k]).forEach((c, j) => element(c, `views[${i}].timeline.${k}[${j}]`, 'time'))); });
@@ -70,7 +70,7 @@ function typedProblems(model) {
   };
   arr(m.edges).forEach((e, i) => { if (typedEdge(e)) ends(e, `edges[${i}]`, boxes); });
   const nodeIds = new Set(nodes.filter(isObj).map(n => n.id));
-  views.forEach((v, i) => { if (v.diagram == null) return; const at = `views[${i}]`;
+  views.forEach((v, i) => { if (!typedView(v)) return; const at = `views[${i}]`;
     if (typeof v.diagram !== 'string' || !/^[a-z0-9]+(\.[a-z0-9-]+)?$/.test(v.diagram)) warn(at + '.diagram', `diagram ${name(v.diagram)} is not <notation> or <notation>.<kind> (uml.class)`);
     if (v.direction != null && !['right', 'down'].includes(v.direction)) warn(at + '.direction', `direction ${name(v.direction)} is not right or down: drawn right`);
     arr(v.nodeIds).forEach((id, j) => { if (!nodeIds.has(id)) err(`${at}.nodeIds[${j}]`, `${name(id)} is not a node`); });
