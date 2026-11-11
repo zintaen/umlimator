@@ -142,6 +142,17 @@ transaction of `set`, `add`, `move`, `hide`, `delete` and `reparent`, and `refer
 Undo is a snapshot of the model before (`history()`), so undo and redo give back byte-identical models. The canvas
 emits these commands as an `edit` event from work package 1.7.
 
+From 0.18.0 (the sequence spike's findings, `docs/diagrams/notes/spike-sequence.md` §3):
+
+- `add { element, view, index, in: 'view' }` puts the element in the view itself: a line, or an item of the view's
+  type (an interaction use), into `view.edges` at `index`; a node into `view.nodes`; a fragment into `view.fragments`.
+  This is how a sequence view's inline messages are inserted at a time position. `in: 'model'`, the default, is `add`
+  as before.
+- `delete` re-homes what it held and that stays: a message, a fragment or an interaction use inside a deleted fragment
+  or operand goes to the nearest owner that stays (unwrapping an `opt` leaves its messages in the operand around it),
+  not to the top. What a diagram type declares its properties name goes too (a reply with its call) or leaves the
+  list (a deleted lifeline leaves an interaction use's `covers`); `references()` lists those with kind `prop`.
+
 ## Typed views: the `edit` event (1.7)
 
 With `editable`, a typed view of a version-2 model (its `diagram` set and not `'map'`) emits `edit` instead of `change`:
@@ -175,7 +186,9 @@ The panels sit over the map's left side, only on a typed view with `editable`:
   (its `nodes`, and the objects in its `edges`), marked "only in" that view. Members are not listed: they show in their
   owner's properties. "In no diagram" leaves what no view shows.
 
-The relationship picker offers the type's `lines`. A type this release does not draw offers one generic node and one
+The relationship picker offers the type's `lines`; an entry may carry `props`, which the new line takes (a reply is a
+`uml.Message` with `sort: 'reply'`). A type may give its own commands for a new line (its `edits.connect`, provisional),
+which the canvas emits in place of the `add`. A type this release does not draw offers one generic node and one
 generic line, `core.Node` and `core.Line`. Every control is a button or a field with a name. Escape in a panel puts back
 the field's value and goes back to the map. An empty name, of an element or a member, changes nothing, as on the map;
 an empty property field removes the property.

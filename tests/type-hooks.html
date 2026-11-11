@@ -1,0 +1,60 @@
+<!doctype html>
+<!-- A type's definition on the canvas (notes/spike-sequence.md §1, tests/embed.py): a relationship picker entry's `props`
+     are copied onto the new line, a type's `edits.connect` gives the commands a new line emits, and a type's `layout.run`
+     and `draw` layers reach the picture. Imports src/ to register test types. -->
+<meta charset="utf-8">
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="../lib/umlimator-theme.css">
+<title>umlimator type hooks test</title>
+<body style="margin:0">
+<div id="m" style="width:1100px;height:680px"></div>
+<script type="module">
+import { render } from '../src/canvas/render.js';
+import { registerDiagramType } from '../src/core/registry.js';
+import { apply } from '../src/core/apply.js';
+const out = { ok: [], fail: [] };
+const check = (name, cond, info) => { document.title = name; if (cond) out.ok.push(name); else out.fail.push(name + (info === undefined ? '' : ': ' + JSON.stringify(info))); };
+const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+registerDiagramType('test.props', { elements: [{ type: 'test.Box', label: 'Box' }],
+  lines: [{ type: 'test.Msg', label: 'Call', props: { sort: 'call' } }, { type: 'test.Msg', label: 'Reply', props: { sort: 'reply' } }] });
+let asked = null;
+registerDiagramType('test.hooks', { elements: [{ type: 'test.Box', label: 'Box' }], lines: [{ type: 'test.Msg', label: 'Call', props: { sort: 'call' } }],
+  edits: { connect(model, view, from, to, at, line) { asked = { views: model.views.length, view: view.id, from, to, at, line: line.label };
+    return [{ op: 'add', element: { id: 'msg1', type: line.type, from, to, props: { ...line.props } }, view: view.id, index: 0, in: 'view' }]; } },
+  layout: { run(model, view) { const nodes = view.nodeIds.map((id, i) => ({ id, label: id.toUpperCase(), x: 40 + i * 200, y: 40, w: 120, h: 40, k: 'file' }));
+    return { nodes, edges: [], groups: [], bounds: { x: 0, y: 0, w: 500, h: 300 }, byId: Object.fromEntries(nodes.map(n => [n.id, n])), map: false }; } },
+  draw: () => ({ under: '<g class="t-under"><rect x="0" y="0" width="10" height="10"/></g>', over: '<g class="t-over"><text x="5" y="5">over</text></g>' }) });
+const MODEL = { schemaVersion: 2, nodes: [{ id: 'a', type: 'test.Box', label: 'Alpha' }, { id: 'b', type: 'test.Box', label: 'Beta' }], edges: [],
+  views: [{ id: 'p', diagram: 'test.props', nodeIds: ['a', 'b'], layout: { a: [0, 0], b: [1, 0] } }, { id: 'h', diagram: 'test.hooks', nodeIds: ['a', 'b'], edges: [] }] };
+const el = document.getElementById('m');
+let sr, stage, ed = [];
+const pick = s => sr.querySelector(s), all = s => [...sr.querySelectorAll(s)];
+const key = (k, extra = {}, target = stage) => target.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true, composed: true, cancelable: true, ...extra }));
+const mount = view => { el.innerHTML = ''; ed = []; const h = render(el, MODEL, { view, editable: true, on: { edit: e => ed.push(e) } }); sr = el.querySelector('.umlimator').shadowRoot; stage = pick('.stage'); return h; };
+const card = id => { const g = pick(`.node[data-id="${id}"]`), r = g.getBoundingClientRect(), at = { clientX: r.x + r.width / 2, clientY: r.y + r.height / 2, button: 0, pointerId: 7, pointerType: 'mouse', bubbles: true, composed: true };
+  g.dispatchEvent(new PointerEvent('pointerdown', at)); g.dispatchEvent(new PointerEvent('pointerup', at)); g.dispatchEvent(new MouseEvent('click', at)); };
+try {
+  // ---- the picker copies an entry's props onto the new line
+  let h = mount('p');
+  card('a'); key('l'); key('b'); key('Enter');
+  check('the picker offers both entries of one line type', same(all('.um-pick button').map(b => b.textContent), ['Call', 'Reply']));
+  key('ArrowDown', {}, sr.activeElement); key('Enter', {}, sr.activeElement);
+  const e = ed[ed.length - 1];
+  check('the new line takes the entry\'s props', !!e && same(e.commands, [{ op: 'add', element: { id: 'msg1', type: 'test.Msg', from: 'a', to: 'b', props: { sort: 'reply' } }, view: 'p' }]), e);
+  check('its commands apply', !!e && apply(MODEL, e.commands).edges[0].props.sort === 'reply');
+  h.destroy();
+
+  // ---- a type's layout.run and draw reach the picture; its edits.connect gives the new line's commands
+  h = mount('h');
+  check('the type\'s run lays the view out', pick('.node[data-id="b"]') && pick('.node[data-id="b"]').textContent.includes('B'));
+  const svg = pick('svg').outerHTML;
+  check('the type\'s layers: under before the lines, over after the nodes', svg.indexOf('t-under') < svg.indexOf('class="edges"') && svg.indexOf('class="nodes"') < svg.indexOf('t-over'), svg.slice(0, 400));
+  card('a'); key('l'); key('b'); key('Enter');
+  const c = ed[ed.length - 1];
+  check('connect asks the type, with the model, the view, both ends, no slot yet and the picker\'s line', same(asked, { views: 2, view: 'h', from: 'a', to: 'b', at: null, line: 'Call' }), asked);
+  check('and emits what it returns', !!c && same(c.commands, [{ op: 'add', element: { id: 'msg1', type: 'test.Msg', from: 'a', to: 'b', props: { sort: 'call' } }, view: 'h', index: 0, in: 'view' }]), c);
+  check('which puts the line in the view, not the model', !!c && (m => !m.edges.length && m.views[1].edges[0].id === 'msg1')(apply(MODEL, c.commands)));
+  h.destroy();
+} catch (x) { out.fail.push('threw: ' + (x && x.stack || x)); }
+const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
+</script>

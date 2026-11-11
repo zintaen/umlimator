@@ -3148,3 +3148,23 @@ What moves for a host that upgrades:
   `%% not written:` what it drops: an end's `navigable` beside a diamond, a class's non-namespace parent, nodes in a
   cycle of parents, a line that ends on a member, an unknown visibility. `umlimator.py import` of a classDiagram from a
   copy without `src/` says it needs a full clone.
+- **The sequence spike's findings applied (1.12, `docs/diagrams/notes/spike-sequence.md` §5, items 1 to 3).** Additive;
+  maps and class views draw as before.
+  - `add { element, view, index, in: 'view' }` puts the element into the view's own list for its kind: a line, or one
+    of the view type's items, into `view.edges` at `index`; a node of the type's palette (or any node, for a type with
+    none) into `view.nodes`, its id into `nodeIds` at `index`; anything else into `view.fragments`. `in: 'model'` is the
+    default and does what `add` did. A line refused into a view that lists no lines while the model has some.
+  - `delete` gives what it held and that stays (lines, fragments, interaction uses) the nearest owner that stays, not
+    none: unwrapping a fragment leaves its messages in the operand around it. A diagram type's `refs` declaration says
+    which of an element type's props name elements: deleting the named element takes the holder with it (`cascade`: a
+    reply goes with its call) or takes the id out (`drop`: a deleted lifeline leaves `covers`). `references()` reports
+    those places with kind `'prop'`; `hide` leaves them.
+  - Inside the registry (still internal, provisional): a type may lay its views out with its own `layout.run(model, view,
+    { measure, pos, memo })`, called in the host's measure, and keep the geometry with `layout.key`; `layout.pins: false`
+    ignores a view's pins; `draw(geo, kit)` adds markup under the lines and over the nodes; `items` names the entries of
+    `view.edges` that are not lines, whose ends the typed checks leave alone (a type not drawn yet passes over entries with
+    neither end); `validate(model, view)` runs per typed view and each problem is said once; a relationship picker
+    entry's `props` are copied onto the new line, and `edits.connect` gives the commands a new line emits. 1.9's class
+    type keeps its layered hook. The typed checks accept a typed view's own `nodes`.
+  - `model.md`: a sequence view's occurrences (messages and interaction uses) are one ordered list in `edges`, and
+    `props.after` is gone; messages stay inline; activations are derived by intervals. The sequence example follows.

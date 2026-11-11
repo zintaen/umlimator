@@ -1,8 +1,8 @@
-import { fit, measured, sansW, textW } from '../core/text.js';
+import { esc, fit, measured, sansW, textW } from '../core/text.js';
 import { migrate } from '../core/model.js';
 import { diagramOf } from '../core/registry.js';
 import { held, warn } from '../core/warn.js';
-import { noteOf } from '../draw/shapes.js';
+import { noteOf, r2 } from '../draw/shapes.js';
 import { svgOf } from '../draw/svg.js';
 import { leaveIssues, routeAudit } from '../layout/audit.js';
 import { layoutGraph, pillW, pullSources, rowsFor, untangle } from '../layout/layered.js';
@@ -274,7 +274,7 @@ function mapContext(model, opts = {}) {
     return P;
   }
   // a typed view whose type lays it out (1.9): the plain flow's ranking, with the lines the type turns round for it
-  const ownLayout = vid => { if (D.schemaVersion !== 2) return null; const T = diagramOf(V[vid]); return T && T.layout ? T : null; }; // version 1: a map
+  const ownLayout = vid => { if (D.schemaVersion !== 2) return null; const T = diagramOf(V[vid]); return T && T.layout && (T.layout.run || typeof T.layout === 'function') ? T : null; }; // version 1: a map
   const autoPos = vid => ownLayout(vid) ? flowPos(vid, { flip: ownLayout(vid).rankFlip }) : ((V[vid] || {}).containers || []).length ? blockPos(vid) : bestFlow(vid);
   const memos = opts.memos || Object.create(null); // per view, layoutTyped's memo, kept across update()s: an edit that moves nothing lays out nothing
   const level = e => !/^(top|bottom)$/.test(e.fromSide) && !/^(top|bottom)$/.test(e.toSide); // a line into a card's top or bottom asks for no row
@@ -330,8 +330,8 @@ function mapContext(model, opts = {}) {
   // with no layout (a change of notation draws the cards again and nothing else)
   const notationOf = vid => noteOf((V[vid] || {}).shapes) || noteOf(D.shapes) || 'box';
   function drawView(vid, g, opts = {}) {
-    const v = V[vid], shapes = noteOf(opts.shapes) || notationOf(vid);
-    return { markup: svgOf(g, { title: v.title, subject: subjectOf(v), icons: D.icons, broken: brokenIn(vid), ...opts, shapes }), shapes };
+    const v = V[vid], shapes = noteOf(opts.shapes) || notationOf(vid), T = ownLayout(vid);
+    return { markup: svgOf(g, { title: v.title, subject: subjectOf(v), icons: D.icons, broken: brokenIn(vid), ...opts, shapes, ...(T && T.draw && T.draw(g, { esc, r2, textW })) }), shapes };
   }
   // the rules a view's lines break (#70), by model edge id: svgOf draws such a line rose, with a mark that names them
   let ruled = null;
@@ -370,7 +370,14 @@ function mapContext(model, opts = {}) {
   // with no route, no way round the cards for them, no warning)
   function buildGeo(vid, override, repair = (V[vid] || {}).repair !== false, quick = false) { // a view's repair: false turns port repair off
     const v = V[vid], ids = (v.nodeIds || []).filter(i => N[i]), T = ownLayout(vid);
-    if (T) return T.layout({ model: D, view: v, pos: override || (v.layout ? fillLayout(vid, v.layout) : (layoutCache[vid] ||= autoPos(vid))), memo: memos[vid] ||= {} });
+    if (T) { // the type's layout (registry.js), in the host's measure (R2)
+      const L = T.layout, memo = memos[vid] ||= {}, k = !override && L.key ? L.key(D, v) : null;
+      if (k != null && memo.runKey === k) return memo.runGeo;
+      const pos = override || (v.layout && L.pins !== false ? fillLayout(vid, v.layout) : (layoutCache[vid] ||= autoPos(vid)));
+      const g = L.run ? L.run(D, v, { measure: M, pos, memo }) : L({ model: D, view: v, pos, memo });
+      if (k != null) Object.assign(memo, { runKey: k, runGeo: g });
+      return g;
+    }
     const edges = viewEdges(v).map(e => ({ ...e }));
     if (v.render === 'sequence') edges.forEach((e, i) => { e.step = i + 1; });
     const P = planCache[vid] || { flow: true, backKeys: loopsOf(v).keys, steps: {} };

@@ -75,7 +75,9 @@ function typedEditor(api) {
     const t = nodeTypes()[i], cam = api.cam(); if (!t || !can('add') || !cam) return;
     api.editor({ x: cam.s.cx - 80, y: cam.s.cy - 13, w: 160, h: 26 }, '', value => emit([{ op: 'add', element: { ...typed(t, 'node'), label: value }, view: api.view() }]));
   }
-  const addLine = (from, to, t) => emit([{ op: 'add', element: { ...typed(t, 'line'), from, to }, view: api.view() }]);
+  const hook = k => { const E = def().edits; return isRec(E) && typeof E[k] === 'function' ? E[k] : null; }; // registry.js edits
+  const addLine = (from, to, t) => { const c = hook('connect'); // at (a slot): stage 3's
+    emit(c ? arrOf(c(model(), view(), from, to, null, t)) : [{ op: 'add', element: { ...typed(t, 'line'), from, to, ...(isRec(t.props) ? { props: structuredClone(t.props) } : {}) }, view: api.view() }]); };
   function connect(from, to) { // the relationship picker, when the type has more than one kind of line
     if (!can('add') || !from || !to || from === to) return;
     const types = lineTypes();

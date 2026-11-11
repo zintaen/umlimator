@@ -208,3 +208,11 @@ node docs/diagrams/examples/check.mjs         # the target examples match model.
   realization's target is an interface (with 1.9 merged, the fixture passes `validate()`), `n` multiplicities, linear ids
   for repeated names, prototype-safe lookup tables, the writer's line breaks and silent drops, multi-line directives, a
   CLI copy with no `src/`. Checked on a trial merge with `class-type` (1.9).
+- **12 Nov 2026 (the spike's findings applied).** The maintainer accepted `notes/spike-sequence.md` §2.1 to §2.3, and
+  §5's items 1 to 3 are applied. The registry documents its provisional fields (`layout.run` and `key`, `pins`, `draw`'s
+  two layers, `items`, `refs`, `validate(model, view)`, `lines` with `props`, `edits.connect`) and dispatches to a type's
+  `run` inside the host's measure; `uml.class` keeps its layered hook. `model.md`: a sequence's occurrences are one
+  ordered list in `edges` (`props.after` gone), messages inline, activations derived by intervals; `11-sequence.json` and
+  `check.mjs` follow. `apply()`: `add … in: 'view'`, a delete that re-homes what stays to the nearest owner left, and
+  declared references that cascade or drop; P4 to P11 are tests (`tests/spike-sequence.test.mjs`). The core grew by
+  1,137 bytes gzipped (190,526 B): 14.92% over 0.16.1 (C5: 15%), about 140 bytes of the budget left.

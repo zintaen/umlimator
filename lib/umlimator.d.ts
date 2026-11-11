@@ -371,7 +371,9 @@ export function migrate<M extends MapModel>(model: M): M;
 export type Command =
   | { op: 'set'; id: string; path: string | string[]; value: unknown }
   | { op: 'set'; view: string; path: string | string[]; value: unknown }
-  | { op: 'add'; element: { id: string; [key: string]: unknown }; owner?: string; index?: number; view?: string }
+  | { op: 'add'; element: { id: string; [key: string]: unknown }; owner?: string; index?: number; view?: string; in?: 'model' }
+  /** 0.18.0: into the view's own list for its kind: a line or an item in `edges`, a node in `nodes`, else `fragments` */
+  | { op: 'add'; element: { id: string; [key: string]: unknown }; view: string; index?: number; in: 'view'; owner?: never }
   | { op: 'move'; id: string; index: number; owner?: string; view?: never }
   | { op: 'move'; id: string; view: string; index: number; owner?: never }
   | { op: 'hide'; id: string; view: string }
@@ -380,11 +382,13 @@ export type Command =
 /** The model after a transaction: one command, or a list run in order, on a copy (0.17.0). A command that cannot run
  *  throws, and none of the transaction is applied. `delete` takes with it the element's members, what it owns, the lines
  *  to them and every place that names them (references()); one already gone in the same transaction is passed over.
- *  `hide` takes it out of one view with all the view says of it. Undo is the model before: keep it with history(). */
+ *  `hide` takes it out of one view with all the view says of it. Undo is the model before: keep it with history().
+ *  From 0.18.0 `delete` gives what the element held and that stays its nearest owner left, and a diagram type's declared
+ *  references cascade (a reply with its call) or drop (an id out of a list). */
 export function apply<M extends MapModel>(model: M, commands: Command | Command[]): M;
 /** Where a model names an element, other than the element itself (0.17.0): the keys from the model down to the place
  *  (['views', 0, 'nodeIds', 2]) and what it is: 'end', 'parent', 'part', 'view', 'pin', 'present', 'override',
- *  'subject', 'story', 'lens' or 'rule'; later releases may add kinds. */
+ *  'subject', 'story', 'lens', 'rule' or (0.18.0) 'prop', a property a diagram type declares; later releases may add kinds. */
 export interface Reference { path: (string | number)[]; kind: string }
 export function references(model: MapModel, id: string): Reference[];
 /** One issue of the layout check: its message, as the page's check words it, and the cards, lines and boxes it is about

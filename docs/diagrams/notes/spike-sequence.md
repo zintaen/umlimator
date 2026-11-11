@@ -6,6 +6,9 @@ Status: **findings**, 11 Nov 2026, against `main` at 555bfdc (0.17.0). The spike
 `risks.md` X5). The stage 3 note settles the sequence type itself; the decisions marked **recommended** here are the
 maintainer's to take.
 
+**Applied** 12 Nov 2026: the maintainer accepted §2.1 to §2.3; §5's items 1 to 3 are in `src/core/registry.js`,
+`model.md` and `src/core/apply.js`, with P4 to P11 as tests (`tests/spike-sequence.test.mjs`). Item 4 is stage 3's.
+
 ## 0. What was built, and what it showed
 
 - `spike/sequence.js` (about 170 lines): a time-axis layout, `layoutSequence(model, viewId)`, and a draw hook,
