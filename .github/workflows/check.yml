@@ -37,10 +37,10 @@ jobs:
           [ "$s" = 0 ] || [ "$s" = 2 ] || { cat /tmp/tsc.txt; echo "::error::tsc did not run (exit $s)"; exit 1; }   # 2: it ran and found type errors, which are not checked
           python3 -I - <<'PY'
           import re, sys
-          bad = []  # a name no source declares or imports, an assignment to an import, an import nothing uses
+          bad = []  # a name no source declares or imports, an import from a file that does not export it, an assignment to an import, an import nothing uses
           for l in open("/tmp/tsc.txt"):
               m = re.match(r"(.+?)\((\d+),\d+\): error (TS\d+): ", l)
-              if m and (m[3] in ("TS2304", "TS2552", "TS2632") or m[3] in ("TS6133", "TS6192") and open(m[1]).read().split("\n")[int(m[2]) - 1].startswith("import ")):
+              if m and (m[3] in ("TS2304", "TS2552", "TS2632", "TS2305", "TS2307", "TS2459") or m[3] in ("TS6133", "TS6192") and open(m[1]).read().split("\n")[int(m[2]) - 1].startswith("import ")):
                   bad.append(l.strip())
           print("\n".join(bad) or "every source imports what it uses")
           sys.exit(1 if bad else 0)

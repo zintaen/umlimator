@@ -1,8 +1,9 @@
 // Builds lib/umlimator.js from src/: the sources in the order below, each without its imports and its closing
 // `export { … };`, every other line as written. No dependency. `npm run build`; CI fails when lib/ is stale.
 // The rules a source keeps are in docs/diagrams/notes/stage-1.md §2.2.
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, readdirSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 
 const ORDER = [
   'core/text', 'core/history',
@@ -35,6 +36,10 @@ function body(name) {
   return lines.slice(i, j).join('\n').trimEnd();
 }
 
+// every source is in ORDER, and every name in ORDER is a source: a file left out would be missing from lib/ silently
+const found = readdirSync(new URL('src/', root), { recursive: true }).filter(f => f.endsWith('.js')).map(f => f.replaceAll('\\', '/').slice(0, -3)).sort();
+if (found.join() !== [...ORDER].sort().join()) throw new Error(`tools/build.mjs: ORDER lists ${[...ORDER].sort().join(', ')}; src/ has ${found.join(', ')}`);
+
 const out = new URL('lib/umlimator.js', root);
 writeFileSync(out, [HEADER, ...ORDER.map(body)].join('\n') + '\n');
-execFileSync(process.execPath, ['--check', out.pathname], { stdio: 'inherit' }); // it parses
+execFileSync(process.execPath, ['--check', fileURLToPath(out)], { stdio: 'inherit' }); // it parses

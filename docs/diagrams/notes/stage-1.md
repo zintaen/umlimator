@@ -44,6 +44,7 @@ note; how a family file reaches the core's helpers is settled by 1.3 (§2.5).
 - reads the sources in the order it lists them (core, draw, layout, map, canvas, page);
 - drops their `import` statements and their closing `export { … };` lists, and keeps every other line as written;
 - writes `lib/umlimator.js`: today's header comment, then the sources;
+- fails when a file under `src/` is not in its list, or a listed one is missing;
 - checks its output: it parses (`node --check`), and a test in `tests/layout.test.mjs` pins its exports to the 16 of
   0.16.0.
 
@@ -52,8 +53,8 @@ CI gains two checks:
 - **Fresh:** `node tools/build.mjs && git diff --exit-code lib` fails when a committed built file is stale, as the
   check of `examples/bookshop.html` does.
 - **Honest imports:** a TypeScript compiler, pinned to an exact version and fetched in CI only, as `ajv-cli` is, runs
-  over `src/` and keeps only these errors: a name not found (TS2304, TS2552), an unused import (TS6133 on an
-  import, TS6192) and an assignment to an import (TS2632). Type errors are ignored. The bundle would run with a missing import; this keeps each file's list of what it
+  over `src/` and keeps only these errors: a name not found (TS2304, TS2552), an import from a file that does not export it
+  (TS2305, TS2307, TS2459), an unused import (TS6133 on an import, TS6192) and an assignment to an import (TS2632). Type errors are ignored. The bundle would run with a missing import; this keeps each file's list of what it
   uses true, which is what lets a work package own a folder.
 
 ### 2.4 Why 1.1 cannot change behaviour
