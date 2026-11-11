@@ -22,15 +22,21 @@ test('every version-1 model migrates to itself, untouched: lines with no id keep
   assert.equal(migrate({ ...m, schemaVersion: 2 }).edges[0].id, undefined);
 });
 
-test('a newer schemaVersion, or one that is not a version, is an error: migrate() throws and validate() says so (F6)', () => {
+test('a newer schemaVersion, or a number that is not a version, is an error: migrate() throws and validate() says so (F6)', () => {
   const m = { schemaVersion: 3, nodes: [], views: [{ id: 'v', nodeIds: [] }] };
   assert.throws(() => migrate(m), /schemaVersion 3 is newer than this release reads \(2\)/);
   assert.deepEqual(validate(m).filter(p => p.path === 'schemaVersion').map(p => p.level), ['error']);
-  for (const v of [0, 1.5, '2', null]) {
+  for (const v of [0, 1.5, -2]) {
     assert.throws(() => migrate({ ...m, schemaVersion: v }), /is not a version/, String(v));
-    assert.equal(validate({ ...m, schemaVersion: v }).filter(p => p.path === 'schemaVersion').length, 1, String(v));
+    assert.deepEqual(validate({ ...m, schemaVersion: v }).filter(p => p.path === 'schemaVersion').map(p => p.level), ['error'], String(v));
   }
-  for (const v of [1, 2]) assert.deepEqual(validate({ ...m, schemaVersion: v }), [], String(v));
+  // a host may have set a schemaVersion of its own before version 2 existed: not a number reads as a map, with a warning
+  for (const v of ['2', true, {}]) {
+    const h = { ...m, schemaVersion: v };
+    assert.equal(migrate(h), h, String(v));
+    assert.deepEqual(validate(h).filter(p => p.path === 'schemaVersion').map(p => p.level), ['warning'], String(v));
+  }
+  for (const v of [1, 2, null, undefined]) assert.deepEqual(validate({ ...m, schemaVersion: v }), [], String(v));
 });
 
 test('the 28 target examples pass the typed core\'s checks', () => {
@@ -71,6 +77,16 @@ test('the typed core names each problem by where it is: ids, types, ownership, e
     'warning views[1].diagram',
   ]);
   const says = path => typedProblems(bad).find(p => p.path === path).message;
+  // from the review of #158: a type that is not text, a view's edge id that names a node, a fragment inside its own
+  // operand, a parent that is an edge, and a member of an edge with a broken parent
+  const v2 = (o = {}) => ({ schemaVersion: 2, nodes: [{ id: 'a', type: 'uml.Class' }], ...o });
+  const paths = m => typedProblems(m).map(p => p.path);
+  assert.deepEqual(paths(v2({ nodes: [{ id: 'a', type: { toString: 1 } }] })), ['nodes[0].type']);
+  assert.deepEqual(paths(v2({ views: [{ id: 'v', diagram: 'uml.class', nodeIds: ['a'], edges: ['a'] }] })), ['views[0].edges[0]']);
+  assert.deepEqual(paths(v2({ views: [{ id: 'v', diagram: 'uml.sequence', nodeIds: [],
+    fragments: [{ id: 'f', type: 'uml.CombinedFragment', parent: 'o', members: [{ id: 'o', type: 'uml.InteractionOperand' }] }] }] })), ['views[0].fragments[0].parent']);
+  assert.match(typedProblems(v2({ nodes: [{ id: 'a', type: 'uml.Class', parent: 'e' }], edges: [{ id: 'e', type: 'uml.Dependency', from: 'a', to: 'a' }] }))[0].message, /is not an owner: it is an edge/);
+  assert.deepEqual(paths(v2({ edges: [{ id: 'e', type: 'uml.Association', from: 'a', to: 'a', members: [{ id: 'q', type: 'uml.Property', parent: 'zz' }] }] })), ['edges[0].members[0].parent']);
   assert.match(says('nodes[1].id'), /id "b" is used twice \(also nodes\[0\]\.members\[1\]\)/);
   assert.match(says('nodes[4].parent'), /"c" ends up inside itself/);
   assert.match(says('nodes[5].id'), /contains "->"/);

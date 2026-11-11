@@ -3018,13 +3018,15 @@ Stage 1a of the plan for 28 diagram types (`docs/diagrams/`). Nothing new is dra
   order, and it is still one file with no imports, so a host loads it as before. CI fails when it is stale.
 - **Schema version 2 and `migrate()` (1.2).** A model may say `"schemaVersion": 2`: it may then hold typed elements
   (`type`, `parent`, `props`, `members`) and typed views (`diagram`, `subject`, `direction`, `present`), as
-  `docs/diagrams/model.md` describes. The JSON Schema and the types know these fields. A model with no
-  `schemaVersion`, or with 1, is a map, read as before.
+  `docs/diagrams/model.md` describes. The JSON Schema and the types describe these fields without constraining them,
+  so no map that passed before fails now. A model with no `schemaVersion`, or with 1, is a map, read as before.
   - `migrate(model)` returns the model at the version this release reads. Versions 1 and 2 come back unchanged: lines
-    with no id keep their positional names. A newer version, or a value that is not a version, throws.
-  - `validate()` reports a newer `schemaVersion` as an error, so a model written by a later release is not drawn
-    wrongly without a word (F6).
+    with no id keep their positional names. A newer version, or a number that is not a version (0, 1.5), throws.
+  - `validate()` reports such a `schemaVersion` as an error, so a model written by a later release is not drawn wrongly
+    without a word (F6). A value that is not a number is a warning, and the model reads as a map.
+  - `validate()` does not yet check typed elements: on a version-2 model it still reports a line that ends on a member
+    as "neither a card nor a box". The typed checks join it with the diagram registry.
 
-What moves for a host that upgrades: nothing is drawn differently. `validate()` returns a new error for a
-`schemaVersion` that is not 1 or 2.
+What moves for a host that upgrades: nothing is drawn differently. `validate()` returns a new error for a numeric
+`schemaVersion` other than 1 or 2, and a warning for one that is not a number.
 

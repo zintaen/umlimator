@@ -11,18 +11,21 @@ const DIAGRAMS = ['uml.class', 'uml.object', 'uml.package', 'uml.composite-struc
   'uml.information-flow', 'sysml.requirement', 'sysml.block-definition', 'sysml.internal-block', 'sysml.parametric', 'er', 'flowchart',
   'dfd', 'c4', 'bpmn', 'mindmap', 'aws', 'gcp', 'azure']; // in file order: 01 to 28
 const C4 = ['c4.landscape', 'c4.context', 'c4.container', 'c4.component', 'c4.dynamic', 'c4.deployment'];
+const TYPE = /^[a-z0-9]+\.[A-Z][A-Za-z0-9]*$/; // in the examples every element is typed, though a version-2 model may hold untyped cards
 const REF = ['replyTo', 'attachedTo', 'references', 'container', 'after'], REFS = ['conveyed', 'covers', 'extensionPoints', 'categoryValueRef']; // props that name elements
 
 export function check(model, expected) {
   // ids, types, ownership, edge ends and typed views: the library's own checks (src/core/model.js)
   const out = typedProblems(model).map(p => `${p.path}: ${p.message}`), say = m => out.push(m), ids = new Set(), all = [], arr = x => (Array.isArray(x) ? x : []);
   if (model.schemaVersion !== 2) say('schemaVersion is not 2');
-  const add = x => { if (!x || typeof x.id !== 'string') return; ids.add(x.id); all.push(x); arr(x.members).forEach(add); };
+  const add = (x, typed = true) => { if (!x || typeof x.id !== 'string') return; ids.add(x.id); all.push(x);
+    if (typed && !TYPE.test(x.type || '')) say(`${x.id}: type ${JSON.stringify(x.type)} is not <notation>.<Name>`); arr(x.members).forEach(m => add(m)); };
   const views = arr(model.views), vids = new Set(views.map(v => v.id)), inline = v => arr(v.edges).filter(e => e && typeof e === 'object');
-  arr(model.nodes).forEach(add); arr(model.edges).forEach(add);
-  views.forEach(v => { inline(v).forEach(add); arr(v.fragments).forEach(add); arr((v.timeline || {}).constraints).forEach(add); });
+  arr(model.nodes).forEach(n => add(n)); arr(model.edges).forEach(e => add(e));
+  views.forEach(v => { inline(v).forEach(e => add(e)); arr(v.fragments).forEach(f => add(f)); arr((v.timeline || {}).constraints).forEach(c => add(c)); });
   const has = (id, what) => { if (id != null && !ids.has(id)) say(`${what}: ${JSON.stringify(id)} is not an element`); };
   const N = new Map(arr(model.nodes).map(n => [n.id, n]));
+  arr(model.edges).forEach(e => { if (e && e.type == null) ['from', 'to'].forEach(k => has(e[k], `edge ${e.id}.${k}`)); }); // an untyped edge: the core leaves it to the map's checks
   all.forEach(x => { const p = x.props || {}; // props that name other elements, or a view: a type's own checks, later
     REF.forEach(k => has(p[k], `${x.id}.props.${k}`)); REFS.forEach(k => arr(p[k]).forEach(id => has(id, `${x.id}.props.${k}`)));
     if (p.refersTo != null && !vids.has(p.refersTo)) say(`${x.id}.props.refersTo: ${p.refersTo} is not a view`); });

@@ -17,10 +17,6 @@
    "description": "The map's title."
   },
   "schemaVersion": {
-   "enum": [
-    1,
-    2
-   ],
    "description": "1 (or none): a map, read as always. 2: it may hold typed elements and typed views (docs/diagrams/model.md). A newer version is an error (0.17.0)."
   },
   "root": {
@@ -423,24 +419,16 @@
      }
     },
     "type": {
-     "type": "string",
-     "pattern": "^[a-z0-9]+\\.[A-Z][A-Za-z0-9]*$",
-     "description": "Schema version 2: the element's type, <notation>.<Name> (uml.Class)."
+     "description": "Schema version 2: the element's type, <notation>.<Name> (uml.Class). validate() checks typed fields only in a model with schemaVersion 2."
     },
     "parent": {
-     "type": "string",
      "description": "Schema version 2: the element that owns it (a package, a composite state, a lane)."
     },
     "props": {
-     "type": "object",
      "description": "Schema version 2: the type's own properties."
     },
     "members": {
-     "type": "array",
-     "items": {
-      "$ref": "#/$defs/element"
-     },
-     "description": "Schema version 2: owned parts, in display order (attributes, ports, regions, lanes)."
+     "description": "Schema version 2: owned parts, in display order (attributes, ports, regions, lanes), each a typed element."
     }
    }
   },
@@ -729,16 +717,12 @@
      "description": "When the line is used."
     },
     "type": {
-     "type": "string",
-     "pattern": "^[a-z0-9]+\\.[A-Z][A-Za-z0-9]*$",
      "description": "Schema version 2: the element's type, <notation>.<Name> (uml.Class)."
     },
     "parent": {
-     "type": "string",
      "description": "Schema version 2: the element that owns it (a package, a composite state, a lane)."
     },
     "props": {
-     "type": "object",
      "description": "Schema version 2: the type's own properties."
     }
    }
@@ -981,52 +965,24 @@
      "description": "Guess a line's kind from its label's words when its edges name none (render() and layout(); the standalone page always does)."
     },
     "diagram": {
-     "type": "string",
      "description": "Schema version 2: the view's diagram type (uml.class); without it the view is a map. Not drawn yet (0.17.0)."
     },
     "subject": {
-     "type": "string",
      "description": "Schema version 2: the element this diagram is the inside of."
     },
     "direction": {
-     "enum": [
-      "right",
-      "down"
-     ],
      "description": "Schema version 2: a typed view's layout direction (default right). A map stays left to right."
     },
     "notation": {
-     "type": "string",
      "description": "Schema version 2: a skin of the diagram type (crowsfoot for er)."
     },
     "present": {
-     "type": "object",
-     "additionalProperties": {
-      "type": "object",
-      "properties": {
-       "collapsed": {
-        "type": "array",
-        "items": {
-         "type": "string"
-        }
-       },
-       "rows": {
-        "type": "integer",
-        "minimum": 0
-       }
-      }
-     },
      "description": "Schema version 2: what the layout cannot derive, per element: collapsed compartments, rows shown before +n more."
     },
     "fragments": {
-     "type": "array",
-     "items": {
-      "$ref": "#/$defs/element"
-     },
      "description": "Schema version 2: a sequence view's combined fragments and interaction uses."
     },
     "timeline": {
-     "type": "object",
      "description": "Schema version 2: a timing view's unit, changes and constraints."
     }
    }
@@ -1457,44 +1413,6 @@
     "not": {
      "$ref": "#/$defs/selector",
      "description": "The cards this selector does not pick."
-    }
-   }
-  },
-  "element": {
-   "type": "object",
-   "description": "Schema version 2: a typed element in the envelope of docs/diagrams/model.md §1. Nodes, edges, members and fragments share one id space.",
-   "required": [
-    "id"
-   ],
-   "properties": {
-    "id": {
-     "type": "string",
-     "minLength": 1,
-     "not": {
-      "pattern": "->"
-     }
-    },
-    "label": {
-     "type": "string"
-    },
-    "type": {
-     "type": "string",
-     "pattern": "^[a-z0-9]+\\.[A-Z][A-Za-z0-9]*$",
-     "description": "Schema version 2: the element's type, <notation>.<Name> (uml.Class)."
-    },
-    "parent": {
-     "type": "string",
-     "description": "Schema version 2: the element that owns it (a package, a composite state, a lane)."
-    },
-    "props": {
-     "type": "object",
-     "description": "Schema version 2: the type's own properties."
-    },
-    "members": {
-     "type": "array",
-     "items": {
-      "$ref": "#/$defs/element"
-     }
     }
    }
   }

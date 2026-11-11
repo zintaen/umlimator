@@ -10,7 +10,7 @@ const WIRE_KINDS = ['calls', 'feeds', 'triggers', 'state', 'guard'], SIDES = ['l
 export function validate(model) {
   const out = [], err = (path, message) => out.push({ level: 'error', path, message }), warn = (path, message) => out.push({ level: 'warning', path, message });
   const arr = x => (Array.isArray(x) ? x : []), m = model && typeof model === 'object' ? model : {}, views = arr(m.views).filter(v => v && typeof v === 'object');
-  const newer = versionProblem(m); if (newer) err('schemaVersion', newer); // a model this release cannot read is drawn wrongly: say so (F6)
+  const ver = versionProblem(m); if (ver) (ver.level === 'error' ? err : warn)('schemaVersion', ver.message); // a model this release cannot read is drawn wrongly: say so (F6)
   if (!Array.isArray(m.nodes)) err('nodes', 'the model needs a list of cards');
   if (!views.length) err('views', 'the model has no views');
   const ids = new Set(), vids = new Set(), lineIds = new Set();
