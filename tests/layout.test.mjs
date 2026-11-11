@@ -444,6 +444,12 @@ test("lines into a card that six or more lines come into are routed first, and c
   assert.ok(n('boxed') <= 12 && n('plain') <= 13, JSON.stringify([n('boxed'), n('plain')])); // 16 and 15 before: the line crossings in boxed 15 → 10
 });
 
+test("lines into a busy card that still cross: one at a time goes round the outside, or its target to the foot of its column, kept with fewer issues: r19's logger (#149)", () => {
+  const m = read('../bench/models/r19.json');
+  const into = v => { const is = check(m, v).map(i => i.message); return [is.filter(s => / (cross|share a line)$/.test(s) && /→logger /.test(s.replace(/ (cross|share a line)$/, ' '))).length, is.length]; };
+  assert.deepEqual([into('boxed'), into('plain')], [[1, 7], [3, 10]]); // [5, 12] and [6, 13] before
+});
+
 test("two cards that both feed the same two cards: one line goes round the outside, so the generated monorepo map checks clean (#111)", () => {
   const m = read('../examples/monorepo.json');
   for (const v of m.views) assert.deepEqual(check(m, v.id).map(i => i.message), [], v.id); // plain: web -> kit crossed admin's lines into api-client and charts
