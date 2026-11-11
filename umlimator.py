@@ -768,10 +768,14 @@ def cmd_import(a):
             sys.exit(f"import: {a.file} is not valid JSON ({e}): is it cut short? (give --format if it is not JSON)")
     fmt = fmt or sys.exit(f"import: cannot tell the format of {a.file}: give --format ({', '.join(imp.FORMATS)})")
     if fmt == "mermaid" and imp.mermaid_class(text):  # a classDiagram: the module's reader, in Node (risks.md R7)
+        reader = HERE / "src" / "readers" / "mermaid-class.js"
         if not shutil.which("node"):
             sys.exit(f"import: {a.file} is a Mermaid classDiagram, which the module's reader reads in Node.js 18 or later; "
                      "install Node to import it. Structurizr, C4-PlantUML, compose, Kubernetes and Mermaid's flowcharts and C4 diagrams need only Python")
-        r = js("readMermaidClass", text, module=HERE / "src" / "readers" / "mermaid-class.js")
+        if not reader.is_file():  # a copy of the CLI with lib/ but not src/
+            sys.exit(f"import: {a.file} is a Mermaid classDiagram, whose reader is src/readers/mermaid-class.js, which this copy of "
+                     f"umlimator does not have ({reader.parent} is missing it): import it from a full clone of the repository")
+        r = js("readMermaidClass", text, module=reader)
         m, unread = r["model"], [(x["line"], f"{x['status']}: {x['message']}") for x in r["report"]]
     else:
         try:

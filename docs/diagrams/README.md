@@ -175,3 +175,7 @@ node docs/diagrams/examples/check.mjs         # the target examples match model.
   `tests/import/classes.mmd`, modelled on Mermaid's class page, pins the report (R4). `umlimator.py import` routes a
   classDiagram to it through Node and names the formats that need only Python (R7). It reads and writes `model.md`'s
   vocabulary and depends on no code of 1.9.
+- **12 Nov 2026 (1.10 review).** The two-lens review's 15 findings on 1.10 are fixed, each with a regression test: a
+  realization's target is an interface (with 1.9 merged, the fixture passes `validate()`), `n` multiplicities, linear ids
+  for repeated names, prototype-safe lookup tables, the writer's line breaks and silent drops, multi-line directives, a
+  CLI copy with no `src/`. Checked on a trial merge with `class-type` (1.9).

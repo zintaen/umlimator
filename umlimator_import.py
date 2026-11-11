@@ -8,7 +8,7 @@
   mermaid       flowchart and graph (nodes, labelled links, subgraphs as boxes), and C4Context, C4Container and
                 C4Component, whose macros are C4-PlantUML's (a classDiagram is the module's to read: umlimator.py
                 import runs src/readers/mermaid-class.js in Node)
-  compose      `docker compose config --format json`: services, depends_on and links, networks as boxes
+  compose       `docker compose config --format json`: services, depends_on and links, networks as boxes
   kubernetes    `kubectl get ... -o json` (a List or one object): Deployments, StatefulSets, DaemonSets, Services (to the
                 workloads their selector picks), Ingresses (to their Services), and env values that name a Service
 
@@ -140,7 +140,15 @@ def detect(path, text):
 def mermaid_class(text):
     """Whether Mermaid text is a classDiagram, which the module's reader reads (src/readers/mermaid-class.js, through Node):
     this file reads Mermaid's flowcharts and C4 diagrams only."""
-    return next((s for s in (l.strip() for l in front(text)[1].splitlines()) if s and not s.startswith("%%")), "").startswith("classDiagram")
+    directive = False  # a %%{ ... }%% directive may run over several lines
+    for s in (l.strip() for l in front(text)[1].splitlines()):
+        if directive:
+            directive = "}%%" not in s
+        elif s.startswith("%%"):
+            directive = s[2:].strip().startswith("{") and "}%%" not in s
+        elif s:
+            return s.startswith("classDiagram")
+    return False
 
 
 def front(text):

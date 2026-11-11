@@ -212,7 +212,7 @@ with tempfile.TemporaryDirectory() as tmp:
 name = "tests/import/classes.mmd"
 ok("mermaid · a classDiagram is known by its content, and the Python reader leaves it to the module's",
    imp.detect("x", "%% a\nclassDiagram\n") == "mermaid" and imp.mermaid_class("---\ntitle: t\n---\nclassDiagram\n")
-   and not imp.mermaid_class("flowchart LR\n") and "module's reader" in imp.read("mermaid", "classDiagram\nA --> B\n", "x")[1][0][1])
+   and not imp.mermaid_class("flowchart LR\n") and imp.mermaid_class('%%{\n  init: {\n    "theme": "dark"\n  }\n}%%\nclassDiagram\n') and "module's reader" in imp.read("mermaid", "classDiagram\nA --> B\n", "x")[1][0][1])
 with tempfile.TemporaryDirectory() as tmp:
     t = Path(tmp)
     r = run("import", str(ROOT / name), "--out", str(t / "classes.json"))
@@ -223,7 +223,7 @@ with tempfile.TemporaryDirectory() as tmp:
        r.stdout + r.stderr)
     got = [l[len(str(ROOT / name)):].split(" ", 1)[0] for l in r.stderr.splitlines()]
     ok(f"{name} · lists what it skips or approximates, each with its line",
-       got == [f":{n}:" for n in (3, 10, 11, 12, 46, 61, 63, 66, 83, 93, 94, 95, 97, 98, 99, 100)] and said.get("unread") == 16, r.stderr)
+       got == [f":{n}:" for n in (3, 10, 11, 12, 46, 60, 61, 63, 66, 83, 93, 94, 95, 97, 98, 99, 100)] and said.get("unread") == 17, r.stderr)
     types = {n["id"]: n["type"] for n in m["nodes"]}
     ok(f"{name} · classes, an interface, an enumeration, namespaces and notes; each relation's UML kind",
        [types.get(i) for i in ("Duck", "Shape", "Color", "BaseShapes", "note-1")] == ["uml.Class", "uml.Interface", "uml.Enumeration", "uml.Package", "uml.Comment"]
@@ -239,4 +239,13 @@ with tempfile.TemporaryDirectory() as tmp:
     r = subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "import", str(ROOT / "tests" / "import" / "checkout.mmd"), "--out", str(t / "y.json")],
                        capture_output=True, text=True, env=bare)
     ok("without Node, a Mermaid flowchart still imports", r.returncode == 0 and (t / "y.json").is_file(), r.stderr)
+    # a copy of the CLI with lib/ but no src/: a sentence, not Node's stack trace
+    bare = t / "bare"
+    bare.mkdir()
+    for f in ("umlimator.py", "umlimator_import.py"):
+        shutil.copy(ROOT / f, bare / f)
+    shutil.copytree(ROOT / "lib", bare / "lib")
+    r = subprocess.run([sys.executable, str(bare / "umlimator.py"), "import", str(ROOT / name), "--out", str(t / "z.json")], capture_output=True, text=True)
+    ok("with no src/, a classDiagram's import says it needs a full clone", r.returncode == 1 and "full clone" in r.stderr
+       and "ERR_MODULE_NOT_FOUND" not in r.stderr and not (t / "z.json").exists(), r.stderr)
 sys.exit(1 if failed else 0)

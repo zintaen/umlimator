@@ -3111,3 +3111,15 @@ What moves for a host that upgrades:
   above its statement, and what the subset leaves out in `%% not written:` comments, so `read(write(model))` gives the
   model back on the subset (a view's `layout` and `present` are not written). `umlimator.py import` reads a
   classDiagram with it, through Node; without Node it says so, and every other format still imports with Python alone.
+- **The 1.10 reader's review (1.10).** What `..|>` points to is read as an interface, as a lollipop's is, and reported
+  when the source does not declare it `<<interface>>`, so the reader's model passes 1.9's `realization-target` rule;
+  Mermaid's `n` (`0..n`, `1..n`, `int[n]`) is the multiplicity `*`, reported as `many` is, and a bracket that is no
+  multiplicity (`int[5..2]`) stays in the type. A repeated name's next id is found where the last one stopped, so the
+  reader stays linear (R2) with one relation, member or note repeated. Two names that differ only by `->` get two ids,
+  reported; a namespace renamed for a class's name is reported at its own line; a %%{ ... }%% directive over several lines
+  is passed over (by `umlimator.py import` too); `<<constructor>>` or `<<__proto__>>` is a stereotype like any other.
+  The writer writes nothing but a `%% not written:` line for a model with no `uml.class` view or a `viewId` it does not
+  have; keeps a line break, a lone `}`, a `<<` or a `%%` out of a member's line and a `>>` out of a stereotype; and says in
+  `%% not written:` what it drops: an end's `navigable` beside a diamond, a class's non-namespace parent, nodes in a
+  cycle of parents, a line that ends on a member, an unknown visibility. `umlimator.py import` of a classDiagram from a
+  copy without `src/` says it needs a full clone.
