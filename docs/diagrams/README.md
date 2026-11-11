@@ -16,7 +16,7 @@ Update this table in every pull request that belongs to the plan.
 |---|---|---|---|---|
 | Planning | | Proposal, model, plan, risks, 28 target examples, UI draft | Merged 12 Nov 2026 (60a159c) | #151 |
 | Before the plan | 0.16.0 | Fixes already on `main` (#146 to #148, #150) | Released 11 Nov 2026 (cf516c8, npm latest); map-repo pinned to it | #146, #147, #148, #150, #152, #153 |
-| 1a Foundation | 0.17.0 | Work packages 1.1 to 1.8 | The stage 1 design note ([`notes/stage-1.md`](notes/stage-1.md)) is proposed and awaits approval; 1.1 starts after it | (this PR) |
+| 1a Foundation | 0.17.0 | Work packages 1.1 to 1.8 | The stage 1 design note ([`notes/stage-1.md`](notes/stage-1.md)) is proposed and awaits approval; 1.1 starts after it | #154 |
 | 1b Class | 0.18.0 | Work packages 1.9 to 1.12 | Not started | |
 | 2 | 0.19.0 | Object, package | Not started | |
 | 3 | 0.20.0 | Sequence, communication | Not started | |
