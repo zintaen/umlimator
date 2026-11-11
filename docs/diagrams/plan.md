@@ -61,8 +61,8 @@ One release per stage, by the repository's own rule: bump `package.json`, add th
 ### 4.1 Before it starts
 
 - 0.16.0 is released, and no other pull request touching `lib/umlimator.js` is open (`risks.md` F11, X1).
-- A design note, `docs/diagrams/notes/stage-1.md`, settles the open points of `model.md` §3 for stage 1 and the
-  build tool. It is approved before work package 1.2 starts.
+- A design note, [`notes/stage-1.md`](notes/stage-1.md), settles the open points of `model.md` §3 for stage 1, the
+  build tool and the layout direction. It is approved before work package 1.1 starts.
 
 ### 4.2 Work packages
 
@@ -70,14 +70,14 @@ Each is one pull request. "Owns" is the files only that package may change while
 
 | # | Work package | Owns | Needs | Done when |
 |---|---|---|---|---|
-| 1.1 | **Split the module.** Sources move to `src/` by layer (§4.3). A build writes `lib/umlimator.js` (today's exports) and `lib/umlimator-all.js` (one file with no imports, for the page). Built files are committed, and CI fails when they are stale | Everything; lands alone | 0.16.0 | Same exports; byte-identical geometry hashes and `box` stills; every suite passes; the CLI inlines the built file |
+| 1.1 | **Split the module.** Sources move to `src/` by layer (§4.3, and the stage 1 note §3). `tools/build.mjs` concatenates them into `lib/umlimator.js` (today's exports). Built files are committed, and CI fails when they are stale or a source's imports are not true | Everything; lands alone | 0.16.0, the stage 1 note | Same exports; the top-level statements of 0.16.0's file, unchanged; byte-identical geometry hashes and `box` stills; every suite passes; the CLI inlines the built file |
 | 1.2 | **Schema version 2.** `schemaVersion`; the envelope; one id space; `migrate()`; `validate()` for the typed core (ids, references, ownership cycles, unknown types kept and warned); a newer version is an error | `src/core/model.js`, schema, types | 1.1 | Every version-1 fixture migrates to itself; the 28 target examples pass `validate()`'s structural part; F6 and F9 have tests |
 | 1.3 | **Registry and dispatch.** `registerDiagramType()` (provisional); the map registers itself as the default; a view's `diagram` picks its type, layout strategy and gestures | `src/core/registry.js`, `src/map/` | 1.2 | A view with no `diagram` runs today's code path unchanged; an unknown `diagram` draws plain cards with a warning |
 | 1.4 | **Layout.** Node sizes from shapes; rows as tall as their tallest node; `direction`; typed lines kept apart; self-loops (F1); the view key split into geometry and paint (F7); only changed lines routed again | `src/layout/` | 1.3 | Maps unchanged; fixtures with a 20-member class, four lines between two nodes and a self-loop lay out clean; an edit to a non-geometric property routes nothing |
 | 1.5 | **Notation.** Shapes report `size()` and `ports()`; the classifier shape; a table of line ends (hollow triangle, hollow and filled diamond, open arrow, dashed line); end labels placed with the labels | `src/draw/` | 1.3 | Text stays inside faces and ends meet outlines, in both themes and three fonts |
 | 1.6 | **Commands.** `apply()`; transactions; `set`, member `add`, `hide`, `delete` with its cascade (M4), `reparent`; the `edit` event; `references()` | `src/core/apply.js` | 1.2 | Each command has a test of its result and its inverse; a 30-step script undoes and redoes to byte-identical models |
 | 1.7 | **Editing on the canvas.** Palette; relationship picker; member rows edited in place; keyboard connect; the properties panel built from a type's schema; the problems list; the outline of elements (M5) | `src/canvas/` | 1.5, 1.6 | Every gesture has a test of its command and its keyboard path; a read-only embed has none of it in its DOM |
-| 1.8 | **CLI and page.** `upstream_view()` shows members (F3); typed views bake nothing (F4); the page loads `umlimator-all.js` (F5); `check`, `stills` and `pdf` work on typed views | `umlimator.py`, `engine/assets/` | 1.3 | `render`, `check`, `stills` and `pdf` succeed on the class example; the copied upstream files are still unmodified |
+| 1.8 | **CLI and page.** `upstream_view()` shows members (F3); typed views bake nothing (F4); the build writes `umlimator-all.js` and the page loads it (F5); `check`, `stills` and `pdf` work on typed views | `umlimator.py`, `engine/assets/`, `tools/build.mjs` | 1.3 | `render`, `check`, `stills` and `pdf` succeed on the class example; the copied upstream files are still unmodified |
 | 1.9 | **The class type.** Definition; the member micro-syntax; validators; `describe()` writer; accessible names; legend | `src/uml/class.js` | 1.4 to 1.7 | The definition of done, on `proposal.md` §8.2's subset |
 | 1.10 | **Mermaid class reader and writer,** in JavaScript; `umlimator.py import` calls it through Node (R7) | `src/readers/mermaid-class.js` | 1.9 | `read(write(model))` equals the model on the subset; a file with every construct on Mermaid's class page gives the pinned report |
 | 1.11 | **Fixtures, examples, docs.** `01-class.json` moves to `examples/`; minimal and stress fixtures; an editing host page; every document in §7 | `examples/`, `tests/`, docs | 1.9 | In the gallery and CI |
