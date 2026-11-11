@@ -17,7 +17,7 @@ Update this table in every pull request that belongs to the plan.
 | Planning | | Proposal, model, plan, risks, 28 target examples, UI draft | Merged 12 Nov 2026 (60a159c) | #151 |
 | Before the plan | 0.16.0 | Fixes already on `main` (#146 to #148, #150) | Released 11 Nov 2026 (cf516c8, npm latest); map-repo pinned to it | #146, #147, #148, #150, #152, #153 |
 | Before the split | 0.16.1 | `validate()` warns of a line from a card to itself (`risks.md` F1) | Released 11 Nov 2026 (8f0240f, GitHub and npm latest); map-repo pinned to it | #155, #156 |
-| 1a Foundation | 0.17.0 | Work packages 1.1 to 1.8 | Note approved (#154). 1.1 (657e7e9), 1.2 (aeb8390), 1.3 (2567a99), 1.6 (c4d32cd) merged. 1.8 (#162) in review. 1.5 (notation, #164) in review. Next: 1.4 | #154, #157, #158, #160, #161, #162, #164 |
+| 1a Foundation | 0.17.0 | Work packages 1.1 to 1.8 | Note approved (#154). 1.1 (657e7e9), 1.2 (aeb8390), 1.3 (2567a99), 1.6 (c4d32cd), 1.8 (b411f11), 1.4 (bbfc617) merged. 1.5 (#164) in review. Next: 1.7, then the 0.17.0 release | #154, #157, #158, #160, #161, #162, #163, #164 |
 | 1b Class | 0.18.0 | Work packages 1.9 to 1.12 | Not started | |
 | 2 | 0.19.0 | Object, package | Not started | |
 | 3 | 0.20.0 | Sequence, communication | Not started | |
@@ -146,6 +146,12 @@ node docs/diagrams/examples/check.mjs         # the target examples match model.
   `render`, `check`, `stills` and `pdf` succeed on the class and component examples (`tests/cli.py`).
   For 1.9: `umlimator/element` imports `umlimator.js`; once a family ships, the element needs a build that uses
   `umlimator-all.js`, or a host that loads both gets two copies (from the review of #162).
+- **11 Nov 2026 (1.4).** 1.4 adds `src/layout/typed.js` (`layoutTyped`, internal) and options on the layered layout that
+  no map sets, so the geometry hashes are unchanged: rows as tall as their tallest node, self-loops (F1), room for the
+  labels of lines between one pair (F2; the merge F2 found is the map's `prepEdges`, which typed views do not take),
+  `direction: "down"` as a transform, and a geometry key with a memo (F7). `autoLayout` and `hubLayout` deleted. Left
+  for later: end labels (L4, L5) and their reserved boxes, layout hints (L6), which come with the class type's ends
+  (1.9); routing only the lines that changed, which needs the router lifted out of `layoutPass`.
 - **11 Nov 2026 (1.5).** 1.5 adds UML's notation to `src/draw/`, opt in: every shape reports `size()` and `ports()`; the
   classifier shape; a table of line ends and dashed lines (`e.end`); end labels in boxes by each end (`endLabels()`,
   for 1.4 to treat as obstacles). A map never reads the new fields. `tests/notation.html` draws hand-built geometry in

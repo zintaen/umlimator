@@ -3059,6 +3059,13 @@ Stage 1a of the plan for 28 diagram types (`docs/diagrams/`). Nothing new is dra
   for row orders bakes no layout into a typed view (F4). The CLI's page inlines `lib/umlimator-all.js`, a second whole
   file built from the same sources with every diagram family in it (`umlimator/all`); until a family ships it holds the
   same code as `lib/umlimator.js` (F5, stage 1 note §2.5).
+- **The layout for typed views (1.4).** Internal until the class type draws with it (1.9), and off for every map, which
+  lays out as it did: rows as tall as their tallest node (stage 1 note §4); a line from a node to itself drawn as a loop
+  on its top right corner, with its label (F1); lines between one pair each with their own ports and label (F2), which
+  laid out down fan out to lanes of their own, as their labels are wider than the lines are apart;
+  `direction: "down"`, a left-to-right layout with every box turned, transposed (§6); and a geometry key, so that an
+  edit that moves nothing (a colour, a `props` field) repaints without laying out or routing again (F7). The unused
+  `autoLayout` and `hubLayout` are gone.
 - **Notation (1.5).** The drawing code learns UML's notation, used only where a typed view's drawing asks for it, so no
   map draws differently: every shape reports `size(n)` and `ports(n, side, k)` (line ends spread along a side, on its
   outline), and a typed view's node is drawn in the shape it names; a classifier shape (stereotypes, the name in italics
