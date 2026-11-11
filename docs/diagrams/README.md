@@ -17,7 +17,7 @@ Update this table in every pull request that belongs to the plan.
 | Planning | | Proposal, model, plan, risks, 28 target examples, UI draft | Merged 12 Nov 2026 (60a159c) | #151 |
 | Before the plan | 0.16.0 | Fixes already on `main` (#146 to #148, #150) | Released 11 Nov 2026 (cf516c8, npm latest); map-repo pinned to it | #146, #147, #148, #150, #152, #153 |
 | Before the split | 0.16.1 | `validate()` warns of a line from a card to itself (`risks.md` F1) | Released 11 Nov 2026 (8f0240f, GitHub and npm latest); map-repo pinned to it | #155, #156 |
-| 1a Foundation | 0.17.0 | Work packages 1.1 to 1.8 | Note approved (#154). 1.1 (657e7e9), 1.2 (aeb8390), 1.3 (2567a99), 1.6 (c4d32cd), 1.8 (b411f11), 1.4 (bbfc617) merged. 1.5 (#164) in review. Next: 1.7, then the 0.17.0 release | #154, #157, #158, #160, #161, #162, #163, #164 |
+| 1a Foundation | 0.17.0 | Work packages 1.1 to 1.8 | Note approved (#154). 1.1 (657e7e9), 1.2 (aeb8390), 1.3 (2567a99), 1.6 (c4d32cd), 1.8 (b411f11), 1.4 (bbfc617) merged. 1.5 (#164) in review. 1.7 (canvas editing) in review. Next: the 0.17.0 release | #154, #157, #158, #160, #161, #162, #163, #164 |
 | 1b Class | 0.18.0 | Work packages 1.9 to 1.12 | Not started | |
 | 2 | 0.19.0 | Object, package | Not started | |
 | 3 | 0.20.0 | Sequence, communication | Not started | |
@@ -156,3 +156,9 @@ node docs/diagrams/examples/check.mjs         # the target examples match model.
   classifier shape; a table of line ends and dashed lines (`e.end`); end labels in boxes by each end (`endLabels()`,
   for 1.4 to treat as obstacles). A map never reads the new fields. `tests/notation.html` draws hand-built geometry in
   both themes and three fonts; the 26 stills of the examples are byte-identical and the geometry hashes match.
+- **11 Nov 2026 (1.7).** 1.7 adds `src/canvas/edit.js`: on a typed view with `editable`, every gesture emits one
+  `edit` event carrying a transaction (rename, pin, hide, delete, connect with the relationship picker, palette, member
+  rows, properties, outline), each with a key (`L` connects by keyboard; Alt + arrows move a pin). The panels read three
+  provisional fields of a type's definition (`elements`, `lines`, `props`). Maps keep `change`; `tests/edit.html` is
+  unchanged, and `tests/typed-edit.html` checks each gesture's commands, by pointer and keyboard, through `apply()`.
+  Member rows are edited in the properties panel until the class type draws them (1.9).

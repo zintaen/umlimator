@@ -12,6 +12,12 @@ function registerDiagramType(name, def = {}) {
   return type;
 }
 
+/* A definition may hold, all optional and provisional (1.7's panels read them):
+     elements  [{ type, label }]          the palette: what a user can add to the view
+     lines     [{ type, label }]          the relationship picker: the kinds of line between two elements
+     props     { [type]: [{ key, label, kind: 'text' | 'bool' | 'enum', options? }] }   the properties form, per element type
+   Without them the canvas offers one generic node and one generic line, and shows an element's props to read. */
+
 /* A view's type: the map for a view with no diagram, the registered type, or null for one this release does not draw */
 const diagramOf = view => TYPES.get(view && view.diagram != null ? view.diagram : 'map') || null;
 

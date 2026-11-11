@@ -141,3 +141,37 @@ transaction of `set`, `add`, `move`, `hide`, `delete` and `reparent`, and `refer
 
 Undo is a snapshot of the model before (`history()`), so undo and redo give back byte-identical models. The canvas
 emits these commands as an `edit` event from work package 1.7.
+
+## Typed views: the `edit` event (1.7)
+
+With `editable`, a typed view of a version-2 model (its `diagram` set and not `'map'`) emits `edit` instead of `change`:
+
+```ts
+interface Events { edit: { view: string; commands: Command[] } }   // one transaction: apply(model, commands), then update()
+```
+
+As on a map, nothing is drawn until the host's `update()` (risks.md E12). One gesture is one transaction: one per
+committed field, per drag, per multi-select delete (E2). New elements get ids the canvas picks, free in the model
+(`class1`, `uses2`). A map view, and every view of a version-1 model, keeps `change` exactly as above.
+
+| Edit | Pointer | Keyboard | Commands |
+|---|---|---|---|
+| rename a node or line | double-click a selected card's name | `F2`, Enter | `set label` |
+| move a card | drag it to a slot | `Alt + arrows` | `set` of the view's `layout` pin, `['layout', id]` |
+| remove from this view | Remove from view (properties) | `Delete` | `hide` (an element that lives in this view only: `delete`) |
+| delete from the model | Delete from model (properties), ✕ (outline) | `Shift + Delete` | `delete` |
+| add a line | drag a selected card's handle to a card, then pick its kind | `L`, then arrows or type a name, Enter; the picker by arrows and Enter | `add` of a line, shown in the view |
+| add an element | a palette entry, then its name | `N` (the first entry), or Enter on an entry | `add` with `view` |
+| a member row | edit its row; ↑ ↓; the new row | Enter; `Alt + ↑ / ↓` in a row; Enter in the new row | `set label`, `move`, `add` with `owner` |
+| a property | edit the field | Enter (a text field), Space, arrows | `set` of `props.<key>` |
+| show an element here | Show (outline) | Enter on it | `set` of the view's `nodeIds` (or `edges`) |
+
+The panels sit over the map's left side, only on a typed view with `editable`: the palette (the type's `elements`),
+properties (the selected element's name, the type's `props` schema, its member rows, and the two removals), problems
+(what `validate()` finds about this view's elements; choosing one selects it) and the outline of every node and line in
+the model, with an "In no diagram" filter (risks.md M5). The relationship picker offers the type's `lines`. A type
+this release does not draw offers one generic node and one generic line, with no `type`. Every control is a button or a
+field with a name; Escape in a panel goes back to the map.
+
+Not built yet: member rows drawn on the card itself (they come with the class type, 1.9, which draws them); offering
+only the lines allowed between two ends (E6); selecting an element after the host adds it.

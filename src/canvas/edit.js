@@ -168,6 +168,7 @@ function typedEditor(api) {
   }
   function problems() {
     const m = model(), vi = arrOf(m.views).indexOf(view()), at = elementsOf(m), drawn = id => api.drawn(top(id));
+    // ponytail: validate() on each update() and new picture; keep its result per model if large models make that slow
     let list = []; try { list = validate(m); } catch (_) { /* a model validate() cannot read: no list */ }
     const mine = list.map(p => ({ ...p, id: elementAt(m, p.path) })).filter(p => p.id ? at.has(p.id) && drawn(p.id) : String(p.path).startsWith(`views[${vi}]`));
     return `<h3>Problems (${mine.length})</h3>` + (mine.length ? '<ul>' + mine.map((p, i) => `<li><button class="um-${p.level === 'error' ? 'err' : 'warn'}" data-f="pr:${i}" data-go="${esc(p.id || '')}">${esc(p.level)}: ${esc(p.message)}</button></li>`).join('') + '</ul>' : '<p class="um-note">None</p>');
