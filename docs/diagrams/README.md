@@ -15,7 +15,7 @@ Update this table in every pull request that belongs to the plan.
 | Stage | Release | Scope | Status | Pull requests |
 |---|---|---|---|---|
 | Planning | | Proposal, model, plan, risks, 28 target examples, UI draft | Merged 12 Nov 2026 (60a159c) | #151 |
-| Before the plan | 0.16.0 | Fixes already on `main` (#146 to #148, #150) | Release pull request open | #146, #147, #148, #150 |
+| Before the plan | 0.16.0 | Fixes already on `main` (#146 to #148, #150) | Released 11 Nov 2026 (cf516c8, npm latest); map-repo pinned to it | #146, #147, #148, #150, #152, #153 |
 | 1a Foundation | 0.17.0 | Work packages 1.1 to 1.8 | Not started. Next step: the stage 1 design note (`plan.md` §4.1) | |
 | 1b Class | 0.18.0 | Work packages 1.9 to 1.12 | Not started | |
 | 2 | 0.19.0 | Object, package | Not started | |
@@ -96,7 +96,7 @@ node docs/diagrams/examples/check.mjs         # the target examples match model.
 
 | Question | Assumed until answered |
 |---|---|
-| Should 0.16.0 warn about a line from a card to itself (`risks.md` F1)? | Yes, as a small fix before it is released |
+| Should a line from a card to itself warn now (`risks.md` F1), in a 0.16.1, or wait for stage 1, which draws it? | Not decided; 0.16.0 shipped without it |
 | Are copy, paste and duplicate wanted before 1.0.0 (`risks.md` E7)? | No |
 | Which build tool does the split use? | Decided in the stage 1 design note |
 | May a tool download the AWS and Google icon packs for its users? | Unknown; to be read from the vendors' terms before milestone 4 |
@@ -109,3 +109,6 @@ node docs/diagrams/examples/check.mjs         # the target examples match model.
   examples were reviewed against `model.md`, which gained what they showed was missing.
 - **12 Nov 2026.** `main` moved to 189eee9 (#150, a routing fix towards 0.16.0). The facts the plan rests on were
   checked again there and hold; line numbers in `proposal.md` remain those of 449ca99.
+- **11 Nov 2026 (later).** The plan merged (#151, 60a159c). 0.16.0 released (#152, cf516c8): GitHub Release and npm
+  latest. map-repo's pin moved to v0.16.0, plugin 0.1.7 (#153). Main's run for #151 failed once on a page timeout in
+  `tests/motion.html` and passed on a re-run: a flake. Next: the stage 1 design note (`plan.md` §4.1).
