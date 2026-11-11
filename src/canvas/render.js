@@ -1,4 +1,5 @@
 import { Camera } from './camera.js';
+import { typedEditor } from './edit.js';
 import { hintHTML, hinter, pieces } from './pieces.js';
 import { STYLES } from './styles.js';
 import { esc, hostMeasure, sansW } from '../core/text.js';
@@ -155,12 +156,13 @@ export function render(container, model, options = {}) {
     refocus(back);
     if (v && pc) pc.chrome();
     if (v && P.onMount) P.onMount(inner);
+    if (tx) tx.mount(); // a typed view's panels (1.7)
     touch();
     return true;
   }
   // at fit the cards keep off the pieces over the map (#99): the views list's button, the hint line, and the legend, which
   // the map leaves room for above it or to its right, whichever leaves the map larger
-  const lg = q('.m-legend'), fitIn = () => { const I = { t: q('.um-navbtn') ? 54 : 16, r: 16, b: tell ? 40 : 16, l: 16 };
+  const lg = q('.m-legend'), fitIn = () => { const I = { t: q('.um-navbtn') ? 54 : 16, r: 16, b: tell ? 40 : 16, l: 16 + (tx ? tx.width() : 0) }; // a typed view's panels, left
     return lg && !lg.hidden ? [{ ...I, b: 48 + lg.offsetHeight }, { ...I, l: 24 + lg.offsetWidth }] : I; };
 
   /* at fit, the zoom controls and the minimap keep off the cards (#50): when a card would sit under one of them, the fit
@@ -247,6 +249,7 @@ export function render(container, model, options = {}) {
   /* selection: the selected node, its neighbours and wires stay lit; the rest dims */
   function paint() {
     if (!svg) return;
+    if (tx) tx.paint();
     svg.querySelectorAll('.um-handle').forEach(h => h.remove());
     if (can('add') && sel && sel.type === 'node' && geo.byId[sel.id]) { const n = geo.byId[sel.id];
       svg.insertAdjacentHTML('beforeend', `<g class="um-edit um-handle" data-from="${esc(n.id)}"><title>Drag to another card to add a line</title><circle cx="${n.x + n.w + 12}" cy="${n.y + n.h / 2}" r="6"/></g>`); }
@@ -444,7 +447,7 @@ export function render(container, model, options = {}) {
     if (k === 'Escape' && cancelGesture()) return true; // Escape stops a gesture in progress before anything else
     if (story) { const r = storyKey(e); if (r != null) return r; } // a story's keys first (#69)
     if (k === 'Escape' && trip && trip.kind) { const was = trip.kind; endTrip(); say(was === 'replay' ? 'Replay stopped' : 'Tour stopped'); return true; } // Esc ends a tour or a replay first
-    if (E && editKey(e)) return true;
+    if (E && (typed() ? tx.key(e) : editKey(e))) return true;
     if (e.altKey) return false;
     const lk = e.target && e.target.closest && e.target.closest('.line-key'), tk = e.target && e.target.closest && e.target.closest('.tab-key, .family [data-badge]');
     const ck = e.target && e.target.closest && e.target.closest('.chip-key'), card = ck && [...svg.querySelectorAll('.node')].find(x => x.dataset.id === ck.dataset.node);
@@ -476,12 +479,13 @@ export function render(container, model, options = {}) {
   /* the gesture in progress, one at a time: a card dragged, a line drawn from the handle, or a name field open (naming:
      { ref, place, close }). Escape, a new picture (setView, an update that redraws, unfolding) and destroy() cancel it,
      with no change emitted; keepName leaves a name field open over the same view's card, which mount() checks */
-  const gestureNow = () => conn ? 'connecting' : drag && drag.on ? 'dragging' : naming ? 'naming' : 'idle';
+  const gestureNow = () => conn || (tx && tx.linking()) ? 'connecting' : drag && drag.on ? 'dragging' : naming ? 'naming' : 'idle';
   function cancelGesture(keepName = false) { // true when something was in progress
     let was = false;
     if (conn) { if (conn.path) conn.path.remove(); conn = null; was = stale = true; } // its pointerup and click then do nothing
     if (drag) { if (drag.ghost) drag.ghost.remove(); if (drag.on) was = stale = true; drag = null; }
     if (naming && !keepName) { naming.close(false); was = true; }
+    if (tx && tx.cancel()) was = true;
     if (was) touch();
     return was;
   }
@@ -586,10 +590,11 @@ export function render(container, model, options = {}) {
     ref = copyRef(ref); if (!can('rename') || !ref || !nameBox(ref)) return;
     const n = ref.type === 'node' && geo.byId[ref.id], e = ref.type === 'edge' && geo.edges[edgeIndex(ref)], f = ref.type === 'container' && (geo.families || []).find(x => x.id === ref.id);
     const text = n ? String(ctx.nodeIn(n.id, cur).label ?? n.label ?? '') : e ? String((e.all || [e])[0].label || '') : String(f.label || f.id);
-    editor(null, text, v => change({ op: 'rename', target: ref, label: v }), ref);
+    editor(null, text, v => typed() ? tx.label(ref, v) : change({ op: 'rename', target: ref, label: v }), ref);
   }
   function addAt(x, y) {
     if (!can('add') || !geo) return;
+    if (typed()) return tx.add();
     const hint = hintAt(x, y), box = boxAt(x, y);
     editor({ x: x - 80, y: y - 13, w: 160, h: 26 }, '', label => change({ op: 'add', kind: 'node', label, ...(box ? { container: box.id } : {}), hint }));
   }
@@ -639,7 +644,7 @@ export function render(container, model, options = {}) {
     if (stale) { stale = false; swallow = performance.now() + 400; return; } // the release of a gesture Escape or a new picture cancelled
     if (conn) { const c = conn; conn = null; if (c.path) c.path.remove(); swallow = performance.now() + 400;
       const g = root.elementFromPoint(e.clientX, e.clientY), t = g && g.closest && g.closest('.node');
-      if (t && t.dataset.id !== c.from && geo.byId[t.dataset.id]) change({ op: 'add', kind: 'edge', from: c.from, to: t.dataset.id });
+      if (t && t.dataset.id !== c.from && geo.byId[t.dataset.id]) typed() ? tx.connect(c.from, t.dataset.id) : change({ op: 'add', kind: 'edge', from: c.from, to: t.dataset.id });
       return; }
     if (!drag) return;
     const d = drag; drag = null;
@@ -650,7 +655,8 @@ export function render(container, model, options = {}) {
     const x = n.x + n.w / 2 + dx, y = n.y + n.h / 2 + dy, hint = hintAt(x, y), from = boxOf(n.id), into = boxAt(x, y);
     const fromId = from ? from.id : null, toId = into ? into.id : null;
     let ev = null;
-    if (toId !== fromId && can('move')) ev = change({ op: 'move', target: nodeRef(n.id), to: toId, hint });
+    if (typed()) ev = tx.drop(n, hint); // a typed view: the card's pin
+    else if (toId !== fromId && can('move')) ev = change({ op: 'move', target: nodeRef(n.id), to: toId, hint });
     else if (gridView() && hint.col === n.col && can('reorder')) {
       const sib = siblings(n), at = sib.indexOf(n), i = sib.filter(m => m !== n && m.y + m.h / 2 < y).length;
       if (i !== at) ev = change({ op: 'reorder', target: nodeRef(n.id), index: i, hint }, reorderSlots(n, i));
@@ -1192,6 +1198,13 @@ export function render(container, model, options = {}) {
     return st.ctl;
   }
 
+  /* a typed view of a version 2 model (1.7): its gestures emit `edit`, a transaction of commands, and its panels show */
+  const tx = E && typedEditor({ root, stage, can, say, status, touch, nearest, nameOf, editor, picked,
+    emit: commands => emit('edit', { view: cur, commands }), view: () => cur, model: () => current, geo: () => geo, svg: () => svg, cam: () => cam, sel: () => sel,
+    selectId: id => { const e = geo.byId[id] ? null : geo.edges.find(x => edgeRefIds(x).includes(id)); return e ? select(edgeRef(e)) : select(nodeRef(id)); },
+    drawn: id => !!geo.byId[id] || geo.edges.some(x => edgeRefIds(x).includes(id)), rename: () => rename(sel), focus: () => focusMap() });
+  const typed = () => !!tx && tx.on();
+
   const inner = { ctx: () => ctx, geo: () => geo, cam: () => cam, svg: () => svg, stage, host, go, open, up, flash, setFlow, pause, key, startView, standalone, play,
     select, busy: () => busy, flowing: () => stage.classList.contains('flowing'), view: () => cur, unfold: gesture, lens: setLens,
     highlight, overlay, focus: focusMap, editable: !!E, shapes: () => shapesNow(), setShapes, override: () => shapesSet }; // a story's pointer is the pieces' own, from the story event (0.14.0)
@@ -1230,7 +1243,7 @@ export function render(container, model, options = {}) {
   if (measure && !own && document.fonts && document.fonts.status !== 'loaded') document.fonts.ready.then(() => { if (dead || !current || typeof current !== 'object') return; measure = hostMeasure(host); update(current, true); });
 
   return {
-    update: m => update(m),
+    update: m => { update(m); if (tx && !dead) tx.refresh(); },
     setView: id => go(id), // a Promise<boolean>: true once the view shows; false for a view the model lacks, a later request, or destroy()
     select: ref => { if (!dead) select(ref); },
     fit: () => { if (cam && !dead) { readerMoved(); cam.fit(); } }, // the host takes the camera: a story playing waits

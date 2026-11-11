@@ -123,6 +123,10 @@ export interface Events {
   open: { target: Ref; view: string; preventDefault(): void };   // view: the one the card opens, which may not be in the model yet
   viewchange: { view: string; from: string };
   change: Change;                                           // only with `editable`
+  /** A gesture on a typed view (a schema version 2 view whose `diagram` is set and is not 'map'), with `editable`
+   *  (0.17.0): a transaction for the host to apply with apply(model, commands) and hand back with update(). Nothing is
+   *  drawn before. Map views emit `change`, never this. */
+  edit: { view: string; commands: Command[] };
   /** E or Alt + click on a stacked card, or the ⤡ tab of the box it unfolded into (#71): before the card unfolds in place
    *  (expanded: true) or folds back (false). view: the card's inner view, which may not be in the model yet; the card
    *  unfolds once it is: the update() that brings it unfolds the card (here or later), or expand(). preventDefault(): no change. */

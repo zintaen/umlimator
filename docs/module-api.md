@@ -3073,6 +3073,15 @@ Stage 1a of the plan for 28 diagram types (`docs/diagrams/`). Nothing new is dra
   "/", `collapsed` and `rows` applied, text cut to the box); a table of line ends (open and filled arrow, hollow
   triangle, hollow and filled diamond) and dashed lines; role and multiplicity by each end, in boxes clear of their line
   and its nodes, which layout can avoid. Internal until a class view draws with it (1.9).
+- **Editing typed views (1.7).** With `editable`, a gesture on a typed view of a version-2 model (`diagram` set and not
+  `'map'`) emits an `edit` event, `{ view, commands }`: one transaction of the commands above, for the host to apply
+  with `apply()` and hand back with `update()`; nothing is drawn before. One transaction per committed field, per drag
+  and per multi-select delete (E2). Map views, and every view of a version-1 model, emit `change` exactly as before and
+  get no new markup; a read-only embed gets none either. The gestures and keys are in `docs/editing.md`. A typed view
+  also shows panels over the map's left side, driven by its type's definition (internal fields of the registry):
+  a palette (`elements`), the relationship picker (`lines`), properties (`props`, per element type) with the element's
+  member rows, the problems `validate()` finds in the view, and the outline of every element with an "in no diagram"
+  filter (M5). A type this release does not draw has one generic node and one generic line, `core.Node` and `core.Line`.
 
 What moves for a host that upgrades: nothing is drawn differently. `validate()` returns a new error for a
 `schemaVersion` that is a whole number above 2, and drawing such a model throws; any other value but 1 or 2 is a

@@ -195,6 +195,20 @@ const STYLES = `
   .um-live { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   .um-still *, .um-still *::before, .um-still *::after { transition: none !important; animation: none !important; }
   svg .um-link { fill: none; stroke: var(--um-accent); stroke-width: 2; stroke-dasharray: 5 4; pointer-events: none; }
+  /* a typed view's editing (1.7): the panels over the map's left side, the relationship picker, a line's other end */
+  svg .node.um-target .n-mask { stroke: var(--um-accent); stroke-width: 2.5; stroke-dasharray: 6 4; }
+  .um-editor { position: absolute; left: 8px; top: 8px; bottom: 8px; width: 236px; overflow: auto; z-index: 5; box-sizing: border-box; padding: 2px 10px 10px; border-radius: 10px; background: var(--um-panel); border: 1px solid var(--um-border-2); box-shadow: var(--um-shadow); font: 12px/1.45 var(--um-sans); color: var(--um-text); }
+  .um-editor h3 { margin: 10px 0 4px; font: 700 10px var(--um-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--um-muted); }
+  .um-editor ul { list-style: none; margin: 0; padding: 0; } .um-editor li, .um-editor .um-row { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; margin: 3px 0; }
+  .um-editor li > :first-child { flex: 1; min-width: 0; text-align: left; } .um-editor small { color: var(--um-muted); }
+  .um-editor label { display: block; margin: 4px 0; color: var(--um-muted); } .um-editor label.um-check { display: flex; gap: 6px; align-items: center; }
+  .um-editor input:not([type]), .um-editor select { display: block; width: 100%; min-height: 24px; box-sizing: border-box; border: 1px solid var(--um-border-2); border-radius: 6px; background: var(--um-bg-2); color: var(--um-text); font: inherit; padding: 1px 6px; }
+  .um-editor li input { display: inline-block; }
+  .um-editor button, .um-pick button { min-height: 24px; min-width: 24px; border: 1px solid var(--um-border-2); border-radius: 6px; background: var(--um-bg-2); color: var(--um-text); font: inherit; padding: 1px 7px; cursor: pointer; }
+  .um-editor button:hover, .um-editor button:focus-visible, .um-pick button:hover, .um-pick button:focus { border-color: var(--um-accent); color: var(--um-accent); outline: none; }
+  .um-editor .um-err { border-color: color-mix(in srgb, var(--um-rose) 60%, var(--um-border-2)); } .um-editor .um-warn { border-color: color-mix(in srgb, var(--um-amber) 60%, var(--um-border-2)); }
+  .um-editor .um-note, .um-editor dd { margin: 2px 0; color: var(--um-muted); } .um-editor dl { margin: 4px 0; } .um-editor dt { font-weight: 600; }
+  .um-pick { position: absolute; z-index: 6; display: grid; gap: 2px; padding: 4px; border-radius: 8px; background: var(--um-panel); border: 1px solid var(--um-border-2); box-shadow: var(--um-shadow); font: 12px var(--um-sans); }
   @media (max-width: 820px) { .minimap { display: none; } .mctl { bottom: 14px; right: 12px; } }
   /* marks (#63): a ring around a card, a glow under a line, tabs and labels over the map; a layer that dims (um-lit)
      sets how lit each thing is, in place of the selection's dimming */
