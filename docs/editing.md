@@ -166,12 +166,24 @@ committed field, per drag, per multi-select delete (E2). New elements get ids th
 | a property | edit the field | Enter (a text field), Space, arrows | `set` of `props.<key>` |
 | show an element here | Show (outline) | Enter on it | `set` of the view's `nodeIds` (or `edges`) |
 
-The panels sit over the map's left side, only on a typed view with `editable`: the palette (the type's `elements`),
-properties (the selected element's name, the type's `props` schema, its member rows, and the two removals), problems
-(what `validate()` finds about this view's elements; choosing one selects it) and the outline of every node and line in
-the model, with an "In no diagram" filter (risks.md M5). The relationship picker offers the type's `lines`. A type
-this release does not draw offers one generic node and one generic line, `core.Node` and `core.Line`. Every control is a button or a
-field with a name; Escape in a panel goes back to the map.
+The panels sit over the map's left side, only on a typed view with `editable`:
+
+- the palette: the type's `elements`;
+- properties: the selected element's name, the type's `props` schema, its member rows, and the two removals;
+- problems: what `validate()` finds about this view's elements; choosing one selects it;
+- the outline (risks.md M5): the model's nodes (`nodes`) and lines (`edges`), then each view's own cards and lines
+  (its `nodes`, and the objects in its `edges`), marked "only in" that view. Members are not listed: they show in their
+  owner's properties. "In no diagram" leaves what no view shows.
+
+The relationship picker offers the type's `lines`. A type this release does not draw offers one generic node and one
+generic line, `core.Node` and `core.Line`. Every control is a button or a field with a name. Escape in a panel puts back
+the field's value and goes back to the map. An empty name, of an element or a member, changes nothing, as on the map;
+an empty property field removes the property.
+
+The `editable` flags hold for the panels too: without `add` there is no palette, handle, Show or new-member row; without
+`delete` no Remove, Delete or ✕; without `reorder` no ↑ ↓ on member rows; without `rename` the fields are shown
+disabled, to read; `move` is the pin.
 
 Not built yet: member rows drawn on the card itself (they come with the class type, 1.9, which draws them); offering
-only the lines allowed between two ends (E6); selecting an element after the host adds it.
+only the lines allowed between two ends (E6); selecting an element after the host adds it. The relationship picker
+closes on any `update()` that draws the view again, even one unrelated to the line being added.

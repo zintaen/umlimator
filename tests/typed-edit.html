@@ -4,6 +4,7 @@
      a read-only embed has none of it; a map view keeps its `change` events. Imports src/ to register a test type. -->
 <meta charset="utf-8">
 <link rel="icon" href="data:,">
+<link rel="stylesheet" href="../lib/umlimator-theme.css">
 <title>umlimator typed edit test</title>
 <body style="margin:0">
 <div id="m" style="width:1100px;height:680px"></div>
@@ -76,11 +77,10 @@ try {
   gives('Alt + ↓ sets the card\'s pin a row down', [{ op: 'set', view: 'v', path: ['layout', 'c'], value: [1, 2] }], m => same(V(m).layout.c, [1, 2]) && same(V(m).layout.a, [0, 0]));
   key('ArrowRight', { altKey: true });
   gives('Alt + → a column right', [{ op: 'set', view: 'v', path: ['layout', 'c'], value: [2, 1] }], m => same(V(m).layout.c, [2, 1]));
-  const n0 = ed.length, r = stage.getBoundingClientRect(), to = [r.x + r.width - 60, r.y + r.height - 50], from = centre('.node[data-id="c"]');
+  const n0 = ed.length, to = [centre('.node[data-id="d"] .n-body')[0], centre('.node[data-id="b"] .n-body')[1]], from = centre('.node[data-id="c"] .n-body');
   ptr(pick('.node[data-id="c"]'), 'pointerdown', from); for (let i = 1; i <= 4; i++) ptr(stage, 'pointermove', [from[0] + (to[0] - from[0]) * i / 4, from[1] + (to[1] - from[1]) * i / 4]); ptr(stage, 'pointerup', to);
-  const pv = last().commands[0].value;
-  check('a drag is one transaction: one set of the pin', ed.length === n0 + 1 && last().commands.length === 1 && Number.isInteger(pv[0]) && Number.isInteger(pv[1]) && !same(pv, [1, 1]), last());
-  gives('the drag\'s pin applies', [{ op: 'set', view: 'v', path: ['layout', 'c'], value: pv }], m => same(V(m).layout.c, pv));
+  check('a drag is one transaction', ed.length === n0 + 1, ed.length - n0);
+  gives('a drag to the empty slot in d\'s column and b\'s row: the pin [2, 0]', [{ op: 'set', view: 'v', path: ['layout', 'c'], value: [2, 0] }], m => same(V(m).layout.c, [2, 0]));
 
   // ---- Delete hides from this view, Shift + Delete deletes from the model; a selection is one transaction (E2, E5)
   card('c'); key('Delete');
@@ -130,8 +130,12 @@ try {
   f('p:owner').value = 'y'; key('Enter', {}, f('p:owner')); f('p:owner').dispatchEvent(new Event('change', { bubbles: true }));
   gives('a text field, Enter: one set of props.owner (and the change after it adds nothing)', [{ op: 'set', id: 'a', path: 'props.owner', value: 'y' }], m => node(m, 'a').props.owner === 'y');
   check('one event for one field', ed.filter(e => e.commands[0].path === 'props.owner').length === 1);
-  f('label').value = 'Alef'; key('Enter', {}, f('label'));
-  gives('the name field: set label', [{ op: 'set', id: 'a', path: 'label', value: 'Alef' }], m => node(m, 'a').label === 'Alef');
+  f('label').value = 'Alef'; f('label').dispatchEvent(new Event('change', { bubbles: true }));
+  gives('the name field, committed by a blur alone (its change event): set label', [{ op: 'set', id: 'a', path: 'label', value: 'Alef' }], m => node(m, 'a').label === 'Alef');
+  let n1 = ed.length; f('label').value = '  '; key('Enter', {}, f('label'));
+  check('an empty name does nothing, and the field shows the name again', ed.length === n1 && f('label').value === 'Alef', [ed.length - n1, f('label').value]);
+  f('p:owner').value = 'typed'; key('Escape', {}, f('p:owner')); f('p:owner').dispatchEvent(new Event('change', { bubbles: true }));
+  check('Escape in a field puts its value back, and the blur after it emits nothing', ed.length === n1 && f('p:owner').value === 'y', [ed.length - n1, f('p:owner').value]);
   f('p:abstract').click();
   gives('a bool: set to true', [{ op: 'set', id: 'a', path: 'props.abstract', value: true }], m => node(m, 'a').props.abstract === true);
   f('p:tier').value = 'gold'; f('p:tier').dispatchEvent(new Event('change', { bubbles: true }));
@@ -147,6 +151,10 @@ try {
   gives('Alt + ↓ on a member row: move it down', [{ op: 'move', id: 'a1', index: 1 }], m => same(node(m, 'a').members.map(x => x.id), ['a2', 'a1', 'a3']));
   panel('[data-up="a2"]').click();
   gives('↑ on a member row: move it up', [{ op: 'move', id: 'a2', index: 0 }], m => same(node(m, 'a').members.map(x => x.id), ['a2', 'a1', 'a3']));
+  panel('[data-down="a1"]').click();
+  gives('↓ on a member row: move it down', [{ op: 'move', id: 'a1', index: 1 }], m => same(node(m, 'a').members.map(x => x.id), ['a2', 'a1', 'a3']));
+  n1 = ed.length; f('m:a2').value = ''; key('Enter', {}, f('m:a2'));
+  check('an empty member name does nothing', ed.length === n1 && f('m:a2').value === 'two', f('m:a2').value);
   f('new').value = 'four'; key('Enter', {}, f('new'));
   gives('the new member row: an add with the owner, typed as the last member', [{ op: 'add', element: { id: 'member1', label: 'four' }, owner: 'a' }], m => node(m, 'a').members[3].label === 'four');
 
@@ -163,8 +171,8 @@ try {
   check('"In no diagram" leaves the orphan', same(rows(), ['z']), rows());
   key('Enter', {}, panel('[data-show="z"]'));
   gives('Show here: the view\'s nodeIds with it', [{ op: 'set', view: 'v', path: 'nodeIds', value: ['a', 'b', 'c', 'd', 'z'] }], m => V(m).nodeIds.includes('z'));
-  panel('[data-del="z"]').click();
-  gives('✕ in the outline: delete from the model', [{ op: 'delete', id: 'z' }], m => !node(m, 'z'));
+  key('Enter', {}, panel('[data-del="z"]'));
+  gives('✕ in the outline, by Enter: delete from the model', [{ op: 'delete', id: 'z' }], m => !node(m, 'z'));
 
   // ---- the host applies: the panels follow update()
   const next = apply(MODEL, [{ op: 'set', id: 'a', path: 'label', value: 'Aleph' }]);
@@ -183,11 +191,65 @@ try {
   key('n'); pick('.um-rename').value = 'Thing'; key('Enter', {}, pick('.um-rename'));
   gives('N adds a core.Node', [{ op: 'add', element: { id: 'node1', type: 'core.Node', label: 'Thing' }, view: 'v' }], m => m.views[0].nodeIds.includes('node1'), U);
   check('its properties: the name, and the props to read', !!f('label') && !f('p:owner') && panel('.um-props dl').textContent.includes('owner'));
+  check('the outline lists a line of one view only, saying so, with no Show', all('.um-editor .um-els [data-go]').some(b => b.dataset.go === 'loc' && b.textContent.includes('only in v')) && !panel('[data-show="loc"]'));
   h.select({ type: 'edge', ids: ['loc'], view: 'v' }); key('Delete');
   gives('Delete on a line of this view only: delete', [{ op: 'delete', id: 'loc' }], m => !m.views[0].edges.some(e => e.id === 'loc'), U);
   h.select({ type: 'edge', ids: ['ab'], view: 'v' }); key('Delete');
   gives('Delete on a listed model line: hide it from the view', [{ op: 'hide', id: 'ab', view: 'v' }], m => !m.views[0].edges.includes('ab') && m.edges.some(e => e.id === 'ab'), U);
   h.destroy();
+
+  // ---- the editable flags: a control the host does not offer is not there, or is shown disabled
+  h = mount({ editable: { move: true } });
+  card('a');
+  check('editable: { move }: no palette, handle, ↑ ↓, new member, Remove, Delete, Show or ✕; the fields shown disabled',
+    panel('.um-pal').hidden && !all('.um-editor .um-pal button').length && !pick('.um-handle') && !panel('[data-up], [data-down], [data-new], [data-hide], [data-kill], [data-show], [data-del]')
+    && all('.um-editor .um-props input, .um-editor .um-props select').every(x => x.disabled));
+  key('F2'); key('Delete'); key('l'); key('n');
+  check('…and its keys emit nothing but a pin', !pick('.um-rename') && ed.length === 0 && (key('ArrowDown', { altKey: true }), ed.length === 1 && last().commands[0].path[0] === 'layout'), ed);
+  h.destroy();
+
+  // ---- a type that is not a string, in a node and a member, does not break the panels
+  const W = structuredClone(MODEL); W.nodes.push({ id: 'q', type: 7, label: 'Seven', members: [{ id: 'q1', type: { x: 1 }, label: 'm' }] }); W.views[0].nodeIds.push('q');
+  h = mount({ editable: true }, W);
+  card('q');
+  check('a node whose type is 7: it draws, its properties and the outline show it', !!pick('.node[data-id="q"]') && f('label').value === 'Seven' && all('.um-editor .um-els [data-go]').some(b => b.dataset.go === 'q'));
+  f('new').value = 'next'; key('Enter', {}, f('new'));
+  check('a member added after one whose type is an object: no type copied', same(last().commands, [{ op: 'add', element: { id: 'member1', label: 'next' }, owner: 'q' }]), last());
+  h.destroy();
+
+  // ---- the panels and the picker, as axe checks them (written out), and every text 4.5:1 on what is under it, in both themes
+  const rgba = c => { let m = /rgba?\(([^)]+)\)/.exec(c); if (m) { const p = m[1].split(/[ ,/]+/).filter(Boolean).map(Number); return [p[0] / 255, p[1] / 255, p[2] / 255, p.length > 3 ? p[3] : 1]; }
+    m = /color\(srgb ([^)]+)\)/.exec(c); if (m) { const p = m[1].split(/[ /]+/).filter(Boolean).map(Number); return [p[0], p[1], p[2], p.length > 3 ? p[3] : 1]; } return null; };
+  const over = (t, b) => [0, 1, 2].map(i => t[i] * t[3] + b[i] * (1 - t[3])).concat(1);
+  const lum = c => { const g = v => v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; return 0.2126 * g(c[0]) + 0.7152 * g(c[1]) + 0.0722 * g(c[2]); };
+  const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
+  for (const theme of ['light', 'dark']) {
+    document.documentElement.dataset.theme = theme;
+    h = mount({ editable: true }); card('a'); key('l'); key('g'); key('Enter'); // the properties of a Box with members, and the picker open
+    const pieces = [pick('.um-editor'), pick('.um-pick')], bad = [], under = rgba(getComputedStyle(stage).backgroundColor), cs = e => getComputedStyle(e);
+    const name = e => (e.getAttribute('aria-label') || e.textContent || (e.closest('label') || {}).textContent || '').trim();
+    pieces.forEach(p => { if (!p) return bad.push('missing piece');
+      if (!p.getAttribute('aria-label')) bad.push('a piece with no name');
+      p.querySelectorAll('section').forEach(x => { if (!x.getAttribute('aria-label')) bad.push('a section with no name'); });
+      p.querySelectorAll('button, input, select').forEach(x => { if (!name(x)) bad.push('no name: ' + x.outerHTML.slice(0, 60)); if (x.parentElement.closest('button')) bad.push('inside a button: ' + x.outerHTML.slice(0, 60)); });
+      [p, ...p.querySelectorAll('*')].forEach(e => {
+        const text = e.matches('input:not([type]), select') ? e.value : [...e.childNodes].some(n => n.nodeType === 3 && n.data.trim());
+        if (!text || e.disabled || !e.getClientRects().length) return;
+        const down = []; for (let a = e; a; a = a.parentElement) { down.unshift(a); if (a === p) break; }
+        let bg = under, o = 1; down.forEach(a => { const c = rgba(cs(a).backgroundColor); if (c && c[3] > 0) bg = over(c, bg); o *= +cs(a).opacity; });
+        const fg = rgba(cs(e).color); fg[3] *= o; const c = ratio(over(fg, bg), bg);
+        if (c < 4.5) bad.push(`${(e.value || e.textContent).trim().slice(0, 24)} (${e.className || e.tagName}): ${c.toFixed(2)}`); }); });
+    check(`the palette, properties, problems, outline and picker, ${theme}: every control named, every text at least 4.5:1`, !bad.length, bad.slice(0, 8));
+    h.destroy();
+  }
+  delete document.documentElement.dataset.theme;
+
+  // ---- a large model: an editable update() costs about what a read-only one does (risks.md P1)
+  const BIG = { schemaVersion: 2, nodes: Array.from({ length: 2000 }, (_, i) => ({ id: 'n' + i, type: 'Bad', label: 'Node ' + i })), edges: [],
+    views: [{ id: 'v', diagram: 'test.box', nodeIds: Array.from({ length: 40 }, (_, i) => 'n' + i) }] };
+  const timed = opts => { const hh = mount(opts, BIG), m2 = structuredClone(BIG); m2.nodes[0].label = 'First'; const t0 = performance.now(); hh.update(m2); const t = performance.now() - t0; hh.destroy(); return t; };
+  const ro = timed({}), rw = timed({ editable: true });
+  check(`2000 nodes with 2000 warnings: an editable update() (${rw.toFixed(0)} ms) within 4 times a read-only one (${ro.toFixed(0)} ms) and 100 ms`, rw < ro * 4 + 100, [ro, rw]);
 } catch (e) { out.fail.push('threw: ' + (e && e.stack || e)); }
 const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
 </script>
