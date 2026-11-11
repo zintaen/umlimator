@@ -6,10 +6,10 @@ import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const ORDER = [
-  'core/model', 'core/text', 'core/history',
+  'core/model', 'core/registry', 'core/warn', 'core/text', 'core/history',
   'draw/shapes', 'draw/lines', 'draw/svg',
   'layout/layered', 'layout/audit',
-  'map/kinds', 'map/cards', 'map/context', 'map/api', 'map/validate', 'map/diff', 'map/insight', 'map/lens',
+  'map/kinds', 'map/typed', 'map/cards', 'map/context', 'map/api', 'map/validate', 'map/diff', 'map/insight', 'map/lens',
   'canvas/styles', 'canvas/camera', 'canvas/render', 'canvas/pieces',
   'page/page', 'page/print',
 ];

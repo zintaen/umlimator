@@ -3024,9 +3024,17 @@ Stage 1a of the plan for 28 diagram types (`docs/diagrams/`). Nothing new is dra
     with no id keep their positional names. A newer version, or a number that is not a version (0, 1.5), throws.
   - `validate()` reports such a `schemaVersion` as an error, so a model written by a later release is not drawn wrongly
     without a word (F6). A value that is not a number is a warning, and the model reads as a map.
-  - `validate()` does not yet check typed elements: on a version-2 model it still reports a line that ends on a member
-    as "neither a card nor a box". The typed checks join it with the diagram registry.
+  - On a version-2 model `validate()` checks typed elements, lines and views by the typed core's rules (ids in one space,
+    types, ownership and its cycles, line ends on members) and the rest by a map's, as before (1.3).
+
+- **Diagram types (1.3).** A typed view's `diagram` picks its type. A view with none is a map and takes exactly the
+  path it always has; so does every view of a version-1 model, whatever its fields. This release draws no typed
+  diagram yet: a typed view is drawn as plain cards, its nodes as cards and its typed lines between them (a line that
+  ends on a member is drawn to the node that owns it), with a warning in the console and from `validate()`. The model
+  is kept as it is. The registry is internal until the types settle.
+- `layout()`, `render()` and the other drawing calls refuse a model with a newer `schemaVersion` (they throw, with the
+  message `validate()` gives) rather than draw it wrongly.
 
 What moves for a host that upgrades: nothing is drawn differently. `validate()` returns a new error for a numeric
-`schemaVersion` other than 1 or 2, and a warning for one that is not a number.
+`schemaVersion` other than 1 or 2, and a warning for one that is not a number; drawing such a numeric version throws.
 

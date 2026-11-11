@@ -17,7 +17,7 @@ Update this table in every pull request that belongs to the plan.
 | Planning | | Proposal, model, plan, risks, 28 target examples, UI draft | Merged 12 Nov 2026 (60a159c) | #151 |
 | Before the plan | 0.16.0 | Fixes already on `main` (#146 to #148, #150) | Released 11 Nov 2026 (cf516c8, npm latest); map-repo pinned to it | #146, #147, #148, #150, #152, #153 |
 | Before the split | 0.16.1 | `validate()` warns of a line from a card to itself (`risks.md` F1) | Released 11 Nov 2026 (8f0240f, GitHub and npm latest); map-repo pinned to it | #155, #156 |
-| 1a Foundation | 0.17.0 | Work packages 1.1 to 1.8 | Note approved (#154). 1.1, the split, merged (657e7e9). 1.2, schema version 2, in review. Next: 1.3, the registry | #154, #157, #158 |
+| 1a Foundation | 0.17.0 | Work packages 1.1 to 1.8 | Note approved (#154). 1.1 merged (657e7e9), 1.2 merged (aeb8390). 1.3, the registry, in review. Next: 1.4 to 1.8, four lanes | #154, #157, #158, (this PR) |
 | 1b Class | 0.18.0 | Work packages 1.9 to 1.12 | Not started | |
 | 2 | 0.19.0 | Object, package | Not started | |
 | 3 | 0.20.0 | Sequence, communication | Not started | |
@@ -129,3 +129,9 @@ node docs/diagrams/examples/check.mjs         # the target examples match model.
   `validate()` now reports (F6), and the typed core's checks (ids, types, ownership, edge ends, typed views), which the
   28 target examples pass and `examples/check.mjs` now reuses. `validate()` runs the typed checks from 1.3, with the
   registry, as the note says. Unknown types are warned of from 1.3 too: until a type is registered, none is known.
+- **11 Nov 2026 (1.2 merged, 1.3).** 1.2 merged (#158, aeb8390) after a review whose findings were fixed in it. The
+  motion test's timeouts were reproduced under load and fixed by a larger virtual-time budget for the motion pass
+  (#159, in review). 1.3 adds `src/core/registry.js` (internal), registers the map as the default type, draws a typed view of a
+  diagram not drawn yet as plain cards with a warning, joins the typed checks into `validate()` (the 28 examples: no
+  error, one warning per view), makes drawing refuse a newer `schemaVersion`, and moves `measureText` and the held
+  warnings into the core (`src/core/text.js`, `src/core/warn.js`), so the core no longer imports the map.
