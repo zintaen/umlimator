@@ -48,9 +48,10 @@ const SHAPE_SAYS = { person: ['Person', 'someone who uses it'], browser: ['Brows
 const swatchOf = (sh, k, c, f, dashed) => { const n = { x: 0, y: 0, w: 100, h: 64 }, S = SHAPE[sh]; // a legend's key: the card's outline, small
   return `<svg class="lgs" viewBox="-4 -4 108 72" aria-hidden="true"><path d="${S.out(n)}" fill="${f}" stroke="${c}"${dashed ? ' stroke-dasharray="3 2"' : ''}/>${S.det ? S.det(n, c, k) : ''}</svg>`; };
 function legendItems(gs, opens = 'double-click to open', notes = [], icons = {}) { // what these pictures draw, each with what it means: the view's legend, and the PDF's (#93). notes: each picture's notation (0.15.0)
-  const ns = gs.flatMap(g => g.nodes), es = gs.flatMap(g => g.edges), used = [...new Set(ns.map(n => n.k))];
+  const typedKeys = [...new Set(gs.flatMap(g => g.legend || []))]; // a typed view's type writes its own keys (1.9); its cards and lines are not a map's
+  const ns = gs.flatMap(g => g.legend ? [] : g.nodes), es = gs.flatMap(g => g.legend ? [] : g.edges), used = [...new Set(ns.map(n => n.k))];
   // each card as its picture's notation draws it: its shape, its dash and its mark (the legend draws what the map draws)
-  const cards = gs.flatMap((g, i) => { const nt = g.map ? noteOf(notes[i]) || 'box' : 'box';
+  const cards = gs.flatMap((g, i) => { if (g.legend) return []; const nt = g.map ? noteOf(notes[i]) || 'box' : 'box';
     return g.nodes.map(n => { const sh = shapeOf(n, nt), I = (icons || {})[n.icon]; // an icon the table lacks leaves the card the component mark, as svgOf draws it
       return { k: n.k, sh, dash: nt !== 'box' && n.k === 'external', comp: nt === 'uml' && sh === 'box' && !(I && (I.src || I.g)) && !String(n.k).startsWith('m-') }; }); });
   const kindShape = k => { const s = [...new Set(cards.filter(d => d.k === k).map(d => d.sh))]; return s.length === 1 && s[0] !== 'box' && !(k === 'm-hook' && s[0] === 'hexagon') ? s[0] : null; };
@@ -68,7 +69,7 @@ function legendItems(gs, opens = 'double-click to open', notes = [], icons = {})
     .concat(ns.some(n => n.step) ? ['<span class="lgi"><i class="num">1</i><b>Step</b><span>run order</span></span>'] : [])
     .concat(ns.some(n => n.tag) ? ['<span class="lgi"><i class="tag"></i><b>@author</b><span>who wrote it</span></span>'] : [])
     .concat(WIRES.filter(w => es.some(e => e.wk === w[0])).map(w => `<span class="lgi"><i class="w" style="border-color:var(--um-w-${w[0]})"></i><b>${w[1]}</b><span>${w[2]}</span></span>`))
-    .concat(es.some(e => e.back) ? ['<span class="lgi"><i class="w dash" style="border-color:var(--um-w-calls)"></i><b>loops back</b><span>the one line that runs right to left</span></span>'] : []);
+    .concat(es.some(e => e.back) ? ['<span class="lgi"><i class="w dash" style="border-color:var(--um-w-calls)"></i><b>loops back</b><span>the one line that runs right to left</span></span>'] : []).concat(typedKeys);
 }
 
 function pieces(X, el, o) {

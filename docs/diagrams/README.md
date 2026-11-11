@@ -168,3 +168,13 @@ node docs/diagrams/examples/check.mjs         # the target examples match model.
   view takes about 175 ms, over P1's 100 ms from an edit to paint; the core is 13.5% larger gzipped than 0.16.1 (C5's
   budget is 15%), so what comes next lands in family files, not the core; a map model line carrying `fixed` or `under`
   still reaches the layout (older than this plan, in `prepEdges`).
+- **12 Nov 2026 (1.9).** 1.9 adds `src/uml/class.js`, in `lib/umlimator-all.js` only: the `uml.class` definition (palette,
+  lines, a properties form per type, with association ends as fields inside `props.ends`), the member micro-syntax
+  (`parseMember`, `printMember`; `print(parse(x))` stable, an unreadable line refused with a warning, E3, E4), ten
+  validators with a passing and a failing fixture each, a `describe()` writer, accessible names and a legend. A registered
+  type with a `layout` hook is laid out by `layoutTyped` from the map's ranking (generalizations turned so the general class
+  comes first), with the memo kept across `update()`; comments draw as notes. The core grew by the wiring only: 14.3%
+  gzipped over 0.16.1 now (C5: 15%). Measured: a 40-class view lays out in 65 to 90 ms in Node, an edit that moves nothing
+  in about 1 ms, and paints in 5 ms in the browser (P1). End labels keep clear of the other lines when drawn; reserving
+  their room in the layout (L4, L5) is still to come. Packages draw as named boxes until stage 2 nests their contents.
+

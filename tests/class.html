@@ -1,0 +1,133 @@
+<!doctype html>
+<!-- The class diagram (1.9) in headless Chrome (tests/embed.py), from lib/umlimator-all.js: docs/diagrams/examples/01-class.json
+     drawn by render() in both themes and three fonts (no overlap, text inside faces, line ends on outlines, end labels clear
+     of the nodes, names, the legend), then edited through the edit event and apply(): a member edited as text, a line
+     the micro-syntax cannot read, a new member, a new association with the relationship picker. -->
+<meta charset="utf-8">
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="../lib/umlimator-theme.css">
+<title>umlimator class diagram test</title>
+<body style="margin:0">
+<div id="m" style="width:1200px;height:1100px"></div>
+<script type="module">
+import { render, apply, validate, describe } from '../lib/umlimator-all.js';
+const out = { ok: [], fail: [] };
+const check = (name, cond, info) => { document.title = name; if (cond) out.ok.push(name); else out.fail.push(name + (info === undefined ? '' : ': ' + JSON.stringify(info))); };
+const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+const el = document.getElementById('m');
+let sr, stage, ed = [];
+const pick = s => sr.querySelector(s), all = s => [...sr.querySelectorAll(s)];
+const ptr = (target, type, [x, y]) => target.dispatchEvent(new PointerEvent(type, { clientX: x, clientY: y, button: 0, pointerId: 7, pointerType: 'mouse', bubbles: true, composed: true }));
+const key = (k, extra = {}, target = stage) => target.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true, composed: true, cancelable: true, ...extra }));
+const click = s => { const g = pick(s), r = g.getBoundingClientRect(), at = [r.x + r.width / 2, r.y + r.height / 2]; ptr(g, 'pointerdown', at); ptr(g, 'pointerup', at); g.dispatchEvent(new MouseEvent('click', { clientX: at[0], clientY: at[1], bubbles: true, composed: true })); };
+const mount = (model, opts = {}) => { el.innerHTML = ''; ed = []; const h = render(el, model, { view: 'domain', on: { edit: e => ed.push(e) }, ...opts }); sr = el.querySelector('.umlimator').shadowRoot; stage = pick('.stage'); return h; };
+const errors = m => validate(m).filter(p => p.level === 'error');
+const box = g => { const r = g.querySelector('.n-body').getBBox(); return { x: r.x, y: r.y, w: r.width, h: r.height }; };
+const meets = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+const ends = d => { const n = d.match(/-?\d+(\.\d+)?/g).map(Number); return [[n[0], n[1]], [n[n.length - 2], n[n.length - 1]]]; };
+const FONTS = { serif: 'serif', sans: 'sans-serif', wide: 'monospace' };
+const MODEL = await (await fetch('../docs/diagrams/examples/01-class.json')).json();
+try {
+  // ---- drawing: both themes, three fonts
+  const widths = {};
+  for (const theme of ['light', 'dark']) for (const [fname, family] of Object.entries(FONTS)) {
+    document.documentElement.dataset.theme = theme; el.style.setProperty('--um-sans', family);
+    const tag = `${theme}, ${fname}`, h = mount(MODEL, { legend: true }), svg = pick('svg.um-svg, .stage svg'), nodes = all('.node');
+    const B = Object.fromEntries(nodes.map(g => [g.dataset.id, box(g)])); widths[fname] = B.order.w;
+    check(`${tag}: every element of the view is drawn, classes as classifiers and the comment as a note`, nodes.length === 11
+      && nodes.filter(g => g.dataset.shape === 'classifier').length === 10 && pick('.node[data-id="note-total"]').dataset.shape === 'note', nodes.map(g => g.dataset.id));
+    const over = []; Object.entries(B).forEach(([a, p]) => Object.entries(B).forEach(([b, q]) => { if (a < b && meets(p, q)) over.push(a + '/' + b); }));
+    check(`${tag}: no two elements overlap`, !over.length, over);
+    const spill = [];
+    nodes.forEach(g => { const n = B[g.dataset.id]; g.querySelectorAll('[data-band]').forEach(band => { const [t, b] = band.dataset.band.split(' ').map(Number);
+      band.querySelectorAll('text').forEach(x => { const r = x.getBBox(); if (r.x < n.x + 1 || r.x + r.width > n.x + n.w - 1 || r.y < t - .5 || r.y + r.height > b + .5) spill.push(`${g.dataset.id}: ${x.textContent}`); }); }); });
+    check(`${tag}: every text stays inside its element and its compartment`, !spill.length && nodes.every(g => g.querySelector('text')), spill);
+    const off = [];
+    all('.edge-g').forEach(g => { const [a, b] = ends(g.querySelector('path.edge').getAttribute('d'));
+      [[a, g.dataset.from], [b, g.dataset.to]].forEach(([p, id]) => { const body = pick(`.node[data-id="${id}"] .n-body`); body.style.strokeWidth = '3px';
+        const q = svg.createSVGPoint(); q.x = p[0]; q.y = p[1]; if (!body.isPointInStroke(q)) off.push(`${g.dataset.from}>${g.dataset.to} at ${id}`); body.style.strokeWidth = ''; }); });
+    check(`${tag}: all 8 lines are drawn, and every line end meets its element's outline`, all('.edge-g').length === 8 && !off.length, off);
+    const labs = all('text.end-lab'), onNode = labs.filter(x => { const [bx, by, bw, bh] = x.dataset.box.split(' ').map(Number); return Object.values(B).some(n => meets({ x: bx, y: by, w: bw, h: bh }, n)); });
+    check(`${tag}: roles and multiplicities are drawn by their ends, clear of every element`, labs.length === 12 && !onNode.length, onNode.map(x => x.textContent));
+    const segs = all('.edge-g path.edge').flatMap(p => { const n = p.getAttribute('d').match(/-?\d+(\.\d+)?/g).map(Number), q = []; for (let k = 0; k < n.length; k += 2) q.push([n[k], n[k + 1]]);
+      return q.slice(1).map((b, k) => ({ x: Math.min(q[k][0], b[0]) - .5, y: Math.min(q[k][1], b[1]) - .5, w: Math.abs(b[0] - q[k][0]) + 1, h: Math.abs(b[1] - q[k][1]) + 1 })); });
+    const boxes = labs.map(x => { const [bx, by, bw, bh] = x.dataset.box.split(' ').map(Number); return { t: x.textContent, x: bx, y: by, w: bw, h: bh }; });
+    const crossed = boxes.filter(b => segs.some(q => meets(b, q)) || boxes.some(c => c !== b && meets(b, c))).map(b => b.t);
+    check(`${tag}: no role or multiplicity lies on a line or on another`, !crossed.length, crossed);
+    const kinds = new Set(all('marker').map(m => m.id.replace(/^g\d+-/, '').replace(/-[a-z]+$/, '')));
+    check(`${tag}: the ends are UML's: triangle, open arrow, hollow and filled diamond; realization and dependency dashed`,
+      ['triangle', 'open', 'diamond', 'filled-diamond'].every(k => kinds.has(k)) && pick('.edge-g[data-from="order"][data-to="payable"] path.edge').getAttribute('stroke-dasharray') === '6 4'
+      && pick('.edge-g[data-from="order"][data-to="money"] path.edge').getAttribute('stroke-dasharray') === '6 4' && !pick('.edge-g[data-from="card-payment"] path.edge').getAttribute('stroke-dasharray'), [...kinds]);
+    check(`${tag}: elements and lines have names a screen reader reads`,
+      pick('.node[data-id="order"]').getAttribute('aria-label') === 'Class Order (entity), 5 attributes, 3 operations'
+      && pick('.node[data-id="status"]').getAttribute('aria-label') === 'Enumeration OrderStatus (enumeration), 4 literals'
+      && pick('.node[data-id="note-total"]').getAttribute('aria-label').startsWith('Comment: total is the sum')
+      && pick('.edge-g[data-from="order"][data-to="line"] title').textContent === 'Association from Order (1) to OrderLine (lines, 1..*)', pick('.edge-g[data-from="order"][data-to="line"] title').textContent);
+    const legend = [...sr.querySelectorAll('.m-legend b')].map(b => b.textContent);
+    check(`${tag}: the legend keys the line kinds and the association's ends the view draws`,
+      same(legend, ['Association', 'Generalization', 'Realization', 'Dependency', 'Comment link', 'Composition', 'Aggregation', 'Navigable end']), legend);
+    h.destroy();
+  }
+  check('the three fonts measure differently', new Set(Object.values(widths)).size === 3, widths);
+  document.documentElement.dataset.theme = 'light'; el.style.removeProperty('--um-sans');
+  check('describe() writes the class view in words', describe(MODEL, 'domain').startsWith('Sales domain: a class diagram of 11 elements and 8 lines.'));
+
+  // ---- editing: a member as text, through the edit event and apply()
+  let h = mount(MODEL, { editable: true });
+  click('.node[data-id="order"] .c-name');
+  const row = id => pick(`.um-editor [data-m="${id}"]`), enter = t => key('Enter', {}, t);
+  check('the properties panel lists the members in UML\'s text form', row('order.total').value === '+ /total: Money' && row('order.add').value === '+ add(book: Book, quantity: Integer)', [row('order.total').value, row('order.add').value]);
+  row('order.total').value = '+ /total: Money [1] = 0'; enter(row('order.total'));
+  const e1 = ed[ed.length - 1], m1 = e1 && apply(MODEL, e1.commands), t1 = m1 && m1.nodes.find(n => n.id === 'order').members.find(x => x.id === 'order.total');
+  check('a member edited as text: one edit event of one transaction, setting its label and props', ed.length === 1 && same(e1.commands, [{ op: 'set', id: 'order.total', path: 'label', value: 'total' },
+    { op: 'set', id: 'order.total', path: 'props', value: { visibility: 'public', isDerived: true, valueType: 'Money', multiplicity: '1', default: '0' } }]) && !errors(m1).length, e1);
+  h.update(m1);
+  check('after update() the row is drawn as edited', all('.node[data-id="order"] .c-row').some(x => x.textContent === '+ /total: Money [1] = 0'));
+  click('.node[data-id="order"] .c-name');
+  row('order.id').value = '- id UUID'; enter(row('order.id'));
+  check('a line the micro-syntax cannot read: no event, the text kept as written and marked invalid (E3)', ed.length === 1 && row('order.id').value === '- id UUID' && row('order.id').getAttribute('aria-invalid') === 'true');
+  const add = pick('.um-editor [data-new]'); add.value = '+ refund(amount: Money): Receipt'; enter(add);
+  const e2 = ed[ed.length - 1];
+  check('a new member typed as text is added as an operation with its parameters', ed.length === 2 && same(e2.commands, [{ op: 'add', element: { id: 'operation1', type: 'uml.Operation', label: 'refund',
+    props: { visibility: 'public', parameters: [{ name: 'amount', valueType: 'Money' }], returnType: 'Receipt' } }, owner: 'order' }]) && !errors(apply(m1, e2.commands)).length, e2);
+  // ---- a new association: L, a name typed, Enter, then the relationship picker
+  click('.node[data-id="customer"] .c-name'); key('l'); key('B'); key('o'); key('Enter');
+  const items = all('.um-pick button').map(b => b.textContent);
+  check('L, a name and Enter open the relationship picker with the class diagram\'s five lines', same(items, ['Association', 'Generalization', 'Realization', 'Dependency', 'Comment link']), items);
+  all('.um-pick button')[0].click();
+  const e3 = ed[ed.length - 1], m3 = e3 && apply(m1, e3.commands);
+  check('picking Association emits one add of a uml.Association from Customer to Book', ed.length === 3 && same(e3.commands, [{ op: 'add', element: { id: 'association1', type: 'uml.Association', from: 'customer', to: 'book' }, view: 'domain' }]) && !errors(m3).length, e3);
+  h.update(m3);
+  check('after update() the new association is drawn', !!pick('.edge-g[data-from="customer"][data-to="book"]') && all('.edge-g').length === 9);
+  // its ends in the properties panel: a field inside props
+  h.select({ type: 'edge', ids: ['association1'], view: 'domain' });
+  const f = k => pick(`.um-editor [data-f="p:${k}"]`);
+  f('ends.to.multiplicity').value = '0..*'; f('ends.to.multiplicity').dispatchEvent(new Event('change', { bubbles: true }));
+  const e4 = ed[ed.length - 1];
+  check('an association end\'s multiplicity is set inside props.ends', ed.length === 4 && same(e4.commands, [{ op: 'set', id: 'association1', path: ['props', 'ends', 'to', 'multiplicity'], value: '0..*' }])
+    && apply(m3, e4.commands).edges.find(x => x.id === 'association1').props.ends.to.multiplicity === '0..*', e4);
+  h.select({ type: 'node', id: 'order', view: 'domain' });
+  f('stereotypes').value = 'entity, root'; f('stereotypes').dispatchEvent(new Event('change', { bubbles: true }));
+  check('stereotypes are a list, edited as text', same(ed[ed.length - 1].commands, [{ op: 'set', id: 'order', path: 'props.stereotypes', value: ['entity', 'root'] }]), ed[ed.length - 1]);
+  // a validator's problem shows in the problems list, naming its rule
+  const bad = apply(m3, [{ op: 'set', id: 'order-lines', path: ['props', 'ends', 'from', 'multiplicity'], value: '0..*' }]);
+  h.update(bad);
+  check('a broken rule is listed in the problems panel, by its rule', all('.um-editor .um-probs button').some(b => /composite-multiplicity: the composite end at "Order"/.test(b.textContent)), all('.um-editor .um-probs button').map(b => b.textContent));
+  h.destroy();
+
+  // ---- performance (risks.md P1): a 40-element class view, an edit to paint
+  const P = (id, label, t) => ({ id, type: 'uml.Property', label, props: { visibility: 'private', valueType: t } }), nodes = [], edges = [];
+  for (let i = 0; i < 40; i++) nodes.push({ id: 'c' + i, type: 'uml.Class', label: 'Class' + i, members: [P(`c${i}.a`, 'a', 'Int'), P(`c${i}.b`, 'b', 'String')] });
+  for (let i = 1; i < 40; i++) edges.push(i % 3 ? { id: 'e' + i, type: 'uml.Association', from: 'c' + Math.floor((i - 1) / 2), to: 'c' + i, props: { ends: { to: { multiplicity: '*' } } } } : { id: 'e' + i, type: 'uml.Generalization', from: 'c' + i, to: 'c' + Math.floor((i - 1) / 2) });
+  const BIG = { schemaVersion: 2, nodes, edges, views: [{ id: 'domain', diagram: 'uml.class', direction: 'down', nodeIds: nodes.map(n => n.id) }] };
+  let t0 = performance.now(); h = mount(BIG, { editable: true }); const first = performance.now() - t0;
+  const at = () => all('.node').map(g => g.getAttribute('aria-label') + box(g).x + ',' + box(g).y).join('|'), before = at();
+  t0 = performance.now(); h.update(apply(BIG, [{ op: 'set', id: 'e1', path: 'props.ends.to.role', value: 'kids' }])); const paint = performance.now() - t0;
+  t0 = performance.now(); h.update(apply(BIG, [{ op: 'set', id: 'c5', path: 'label', value: 'Class5Renamed' }])); const grow = performance.now() - t0;
+  console.log(`40 classes: first draw ${Math.round(first)} ms, an edit that moves nothing ${Math.round(paint)} ms, one that resizes a class ${Math.round(grow)} ms`);
+  check(`a 40-element class view: an edit that moves nothing paints in under 100 ms (${Math.round(paint)} ms; first draw ${Math.round(first)} ms, a resize ${Math.round(grow)} ms)`,
+    paint < 100 && before.split('|').length === 40 && !!pick('text.end-lab'), { first, paint, grow });
+  h.destroy();
+} catch (e) { out.fail.push('threw: ' + (e && e.stack || e)); }
+const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
+</script>

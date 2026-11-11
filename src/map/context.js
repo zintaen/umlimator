@@ -1,5 +1,6 @@
 import { fit, measured, sansW, textW } from '../core/text.js';
 import { migrate } from '../core/model.js';
+import { diagramOf } from '../core/registry.js';
 import { held, warn } from '../core/warn.js';
 import { noteOf } from '../draw/shapes.js';
 import { svgOf } from '../draw/svg.js';
@@ -272,7 +273,10 @@ function mapContext(model, opts = {}) {
     for (const order of [false, true]) { was = now; now = {}; P = block(null, P, order).pos; } // levelled by the lines from outside, then ordered by them too
     return P;
   }
-  const autoPos = vid => ((V[vid] || {}).containers || []).length ? blockPos(vid) : bestFlow(vid);
+  // a typed view whose type lays it out (1.9): the plain flow's ranking, with the lines the type turns round for it
+  const ownLayout = vid => { const T = diagramOf(V[vid]); return T && T.layout ? T : null; };
+  const autoPos = vid => ownLayout(vid) ? flowPos(vid, { flip: ownLayout(vid).rankFlip }) : ((V[vid] || {}).containers || []).length ? blockPos(vid) : bestFlow(vid);
+  const memos = opts.memos || {}; // per view, layoutTyped's memo, kept across update()s: an edit that moves nothing lays out nothing
   const level = e => !/^(top|bottom)$/.test(e.fromSide) && !/^(top|bottom)$/.test(e.toSide); // a line into a card's top or bottom asks for no row
   /* A small plain view is routed a few ways and keeps the one the layout check scores best: cards level with their
      neighbours, or packed from the top as before, with cards no line comes into beside their callee or not. A cheap
@@ -292,7 +296,8 @@ function mapContext(model, opts = {}) {
   const fanIn = vid => { const k = {}; return viewEdges(V[vid] || {}).some(e => e.from !== e.to && (k[e.to] = (k[e.to] || 0) + 1) >= 6); };
   const drawn = {}; // the way bestFlow kept, routed already: the view's next buildGeo takes it once instead of routing it again
   function flowPos(vid, o = {}) {
-    const v = V[vid], lp = loopsOf(v), fwd = lp.edges.filter((e, k) => !lp.back.has(k) && e.from !== e.to);
+    const v = o.flip ? { ...V[vid], edges: viewEdges(V[vid]).map(e => o.flip(e) ? { ...e, from: e.to, to: e.from } : e) } : V[vid];
+    const lp = loopsOf(v), fwd = lp.edges.filter((e, k) => !lp.back.has(k) && e.from !== e.to);
     // cards with no line go in rows of their own under the view (#46), as wide as its columns; they stacked with the sources
     const all = (v.nodeIds || []).filter(i => N[i]), lined = new Set(lp.edges.filter(e => e.from !== e.to).flatMap(e => [e.from, e.to]));
     const loose = lined.size ? all.filter(i => !lined.has(i)) : [], ids = all.filter(i => !loose.includes(i));
@@ -364,7 +369,8 @@ function mapContext(model, opts = {}) {
   // quick: a candidate the layout searches below score and may drop, laid out once, as it was before 0.6.0 (no room for lines
   // with no route, no way round the cards for them, no warning)
   function buildGeo(vid, override, repair = (V[vid] || {}).repair !== false, quick = false) { // a view's repair: false turns port repair off
-    const v = V[vid], ids = (v.nodeIds || []).filter(i => N[i]);
+    const v = V[vid], ids = (v.nodeIds || []).filter(i => N[i]), T = ownLayout(vid);
+    if (T) return T.layout({ model: D, view: v, pos: override || (v.layout ? fillLayout(vid, v.layout) : (layoutCache[vid] ||= autoPos(vid))), memo: memos[vid] ||= {} });
     const edges = viewEdges(v).map(e => ({ ...e }));
     if (v.render === 'sequence') edges.forEach((e, i) => { e.step = i + 1; });
     const P = planCache[vid] || { flow: true, backKeys: loopsOf(v).keys, steps: {} };
@@ -607,7 +613,7 @@ function mapContext(model, opts = {}) {
     for (let more = true; more && todo.length;) { more = false; todo = todo.filter(nid => { if (!unfold(vid, nid)) return true; (unfolded[vid] ||= []).push(nid); return !(more = true); }); } }))();
   const geoCache = {};
   return { D, views, nodes, N, V, rootId, nodeIn, childOf, opensOf, subjectOf, viewsWith, kidsOf, chain, viewEdges, isState, planOf: withM(planOf), planCache,
-    layoutCache, geoCache, buildGeo: withM(buildGeo), buildView: withM(buildView), drawView: withM(drawView), notationOf, optimize: withM(optimize), flowPos, kidCount, viewKey, brokenIn, unfoldable, unfolded };
+    layoutCache, geoCache, memos, buildGeo: withM(buildGeo), buildView: withM(buildView), drawView: withM(drawView), notationOf, optimize: withM(optimize), flowPos, kidCount, viewKey, brokenIn, unfoldable, unfolded };
 }
 
 export { mapContext };
