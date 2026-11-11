@@ -126,3 +126,18 @@ Undo and redo (the host's, using the event ids; since built in the demo), multi-
 - **Undo** belongs to the host; `history(model)` is a small helper for it: the host pushes each model it applies, and
   hands `undo()` / `redo()` results to `update()`. The canvas never sees it. `examples/edit.html` uses it for Cmd/Ctrl +
   Z (Shift for redo); the canvas leaves Cmd/Ctrl keys to the page.
+
+## Commands for typed models (0.17.0)
+
+Map views keep the `change` event above, and a host applies it by hand as before. For schema version 2
+(`docs/diagrams/model.md`) the library also applies edits itself: `apply(model, commands)` returns the model after a
+transaction of `set`, `add`, `move`, `hide`, `delete` and `reparent`, and `references(model, id)` says what names an element.
+`docs/module-api.md` § 0.17.0 describes each command. Two kinds of removal, as a modelling tool has them:
+
+| Command | Takes away | Keeps |
+|---|---|---|
+| `hide` (Delete, from 1.7) | all one view says of the element: its place, pin, `present`, box, tour, the view's lines to it, the story steps on that view | the element, and every other view of it |
+| `delete` (Shift + Delete, from 1.7) | the element, its members, what it owns, the lines to them, and every place that names them | nothing of it; undo brings all of it back |
+
+Undo is a snapshot of the model before (`history()`), so undo and redo give back byte-identical models. The canvas
+emits these commands as an `edit` event from work package 1.7.

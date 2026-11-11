@@ -362,6 +362,27 @@ export function validate(model: MapModel): Problem[];
 /** The model at the schema version this release reads (0.17.0). Versions 1 and 2 come back unchanged; lines with no id
  *  keep their positional names. Throws on a newer version (a whole number above 2). */
 export function migrate<M extends MapModel>(model: M): M;
+/** A command on the model (0.17.0). `path` is a dotted path, or a list of keys when a key holds a dot; `value`
+ *  undefined removes the field. `id`, `members`, `parent`, `from` and `to` change by their own commands, not by set. */
+export type Command =
+  | { op: 'set'; id: string; path: string | string[]; value: unknown }
+  | { op: 'set'; view: string; path: string | string[]; value: unknown }
+  | { op: 'add'; element: { id: string; [key: string]: unknown }; owner?: string; index?: number; view?: string }
+  | { op: 'move'; id: string; index: number; owner?: string; view?: never }
+  | { op: 'move'; id: string; view: string; index: number; owner?: never }
+  | { op: 'hide'; id: string; view: string }
+  | { op: 'delete'; id: string }
+  | { op: 'reparent'; id: string; parent: string | null };
+/** The model after a transaction: one command, or a list run in order, on a copy (0.17.0). A command that cannot run
+ *  throws, and none of the transaction is applied. `delete` takes with it the element's members, what it owns, the lines
+ *  to them and every place that names them (references()); one already gone in the same transaction is passed over.
+ *  `hide` takes it out of one view with all the view says of it. Undo is the model before: keep it with history(). */
+export function apply<M extends MapModel>(model: M, commands: Command | Command[]): M;
+/** Where a model names an element, other than the element itself (0.17.0): the keys from the model down to the place
+ *  (['views', 0, 'nodeIds', 2]) and what it is: 'end', 'parent', 'part', 'view', 'pin', 'present', 'override',
+ *  'subject', 'story', 'lens' or 'rule'; later releases may add kinds. */
+export interface Reference { path: (string | number)[]; kind: string }
+export function references(model: MapModel, id: string): Reference[];
 /** One issue of the layout check: its message, as the page's check words it, and the cards, lines and boxes it is about
  *  (exactly those, even where two cards share a label). */
 export interface CheckIssue { message: string; targets: Ref[] }
