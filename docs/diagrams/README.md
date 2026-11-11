@@ -17,7 +17,7 @@ Update this table in every pull request that belongs to the plan.
 | Planning | | Proposal, model, plan, risks, 28 target examples, UI draft | Merged 12 Nov 2026 (60a159c) | #151 |
 | Before the plan | 0.16.0 | Fixes already on `main` (#146 to #148, #150) | Released 11 Nov 2026 (cf516c8, npm latest); map-repo pinned to it | #146, #147, #148, #150, #152, #153 |
 | Before the split | 0.16.1 | `validate()` warns of a line from a card to itself (`risks.md` F1) | Released 11 Nov 2026 (8f0240f, GitHub and npm latest); map-repo pinned to it | #155, #156 |
-| 1a Foundation | 0.17.0 | Work packages 1.1 to 1.8 | Note approved (#154). 1.1 (657e7e9), 1.2 (aeb8390), 1.3 (2567a99), 1.6 (c4d32cd), 1.8 (b411f11), 1.4 (bbfc617) merged. 1.5 (#164) in review. 1.7 (canvas editing) in review. Next: the 0.17.0 release | #154, #157, #158, #160, #161, #162, #163, #164 |
+| 1a Foundation | 0.17.0 | Work packages 1.1 to 1.8 | All merged (1.7: b71b4f6). Release in review: #166 | #154, #157, #158, #160, #161, #162, #163, #164, #165, #166 |
 | 1b Class | 0.18.0 | Work packages 1.9 to 1.12 | Not started | |
 | 2 | 0.19.0 | Object, package | Not started | |
 | 3 | 0.20.0 | Sequence, communication | Not started | |
@@ -162,3 +162,9 @@ node docs/diagrams/examples/check.mjs         # the target examples match model.
   provisional fields of a type's definition (`elements`, `lines`, `props`). Maps keep `change`; `tests/edit.html` is
   unchanged, and `tests/typed-edit.html` checks each gesture's commands, by pointer and keyboard, through `apply()`.
   Member rows are edited in the properties panel until the class type draws them (1.9).
+- **11 Nov 2026 (1a complete).** 1.4 (#163), 1.5 (#164) and 1.7 (#165) merged, each built by a lane agent in its own
+  worktree and reviewed by another agent before the maintainer's approval; every review's findings were fixed and
+  tested in the same pull request. 0.17.0's release pull request follows. Noted for 1.9: laying out a 40-node typed
+  view takes about 175 ms, over P1's 100 ms from an edit to paint; the core is 13.5% larger gzipped than 0.16.1 (C5's
+  budget is 15%), so what comes next lands in family files, not the core; a map model line carrying `fixed` or `under`
+  still reaches the layout (older than this plan, in `prepEdges`).
