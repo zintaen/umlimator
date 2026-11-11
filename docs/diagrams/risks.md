@@ -61,9 +61,9 @@ Host applications embed today's map notation. Nothing below may change what they
 
 | # | Risk or edge case | What to do | Stage |
 |---|---|---|---|
-| L1 | Row pitch is constant; a 20-member class is taller than its row | Rows take the height of their tallest node. Long compartments collapse to "+n more" above a threshold the view sets | 1 |
+| L1 | Row pitch is constant; a 20-member class is taller than its row | Rows take the height of their tallest node. A node's compartments show "+n more" past `present.<id>.rows`; `collapsed` hides one ([`notes/stage-1.md`](notes/stage-1.md) §4, §5) | 1 |
 | L2 | Node size depends on the font, so geometry differs between Node (an estimate) and a browser, and between fonts | Hashes use the estimate, as now. Each fixture is also laid out under three fonts in the browser tests, with no overlap or overflow allowed | 1 |
-| L3 | Top-to-bottom direction touches every part of the layered layout | Implement as a transform of the finished left-to-right geometry where that is exact (ports, labels and shapes rotate with it); otherwise a `direction` threaded through. Decide in the design note; maps stay left to right | 1 |
+| L3 | Top-to-bottom direction touches every part of the layered layout | Decided ([`notes/stage-1.md`](notes/stage-1.md) §6): lay out left to right with every box turned, then transpose; text is drawn afterwards, upright. Maps stay left to right | 1 |
 | L4 | Several typed lines between one pair crowd each other's labels and ends | Ports spread along the side; end labels sit in reserved boxes by each end; the label step treats them as obstacles. The fixture has four lines between two classes | 1 |
 | L5 | End labels (role, multiplicity) collide where many lines meet one side | The side widens before labels overlap, as gaps widen for labels today | 1 |
 | L6 | Inheritance wants the parent above; associations have no direction | A relation may carry a layout hint; hints never override a pin | 1 |

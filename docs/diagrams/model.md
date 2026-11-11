@@ -52,10 +52,12 @@ Check the examples against this page with `node docs/diagrams/examples/check.mjs
    frames, message numbers, lane sizes until a user resizes one.
 10. **Presentation is per view** and never meaning:
     - `layout`: pins, `{ id: [col, row] }`, as today;
-    - `present`: `{ id: { collapsed: ["operations"], side: "left", as: "ball", fromSide: "bottom", w: 240 } }`,
-      only what the layout cannot derive;
+    - `present`: `{ id: { collapsed: ["operations"], rows: 8, side: "left", as: "ball", fromSide: "bottom", w: 240 } }`,
+      only what the layout cannot derive. `collapsed` hides the named compartments, divider and all; `rows` shows at
+      most that many rows per compartment, then "+k more" ([`notes/stage-1.md`](notes/stage-1.md) §5);
     - `notation`: a skin of the diagram type (`crowsfoot` or `idef1x` for `er`), as `shapes` is for maps;
-    - `direction`: `right` (the default, today's) or `down`.
+    - `direction`: `right` (the default, today's) or `down`, which lays the view out turned and transposes it. A map
+      view stays left to right, with a warning (stage 1 note, §6).
 11. **Text, not references, for now.** A property's type is text (`"valueType": "Money"`). References by id
     (`classifierRef`) come with integrity across diagram types, after 1.0.0.
 12. **Unknown is kept.** A type the library does not know is drawn as a plain card with a warning and written back
@@ -135,7 +137,7 @@ file is then updated with it.
 
 | Stage | Point |
 |---|---|
-| 1 | Whether row heights are per row (simple, stable) or compacted. Whether `present.collapsed` hides a compartment or shows "+n more" |
+| 1 | Settled in [`notes/stage-1.md`](notes/stage-1.md): row heights are per row (§4); `present.collapsed` hides a compartment and `present.<id>.rows` shows "+n more" (§5) |
 | 1 (spike), 3 | The order of things in a sequence that are not messages: an interaction use, an empty operand, a state invariant. The draft uses `props.after` (a message id). The alternative is one ordered list of items |
 | 3 | Whether a sequence view's messages are inline (the draft) or model edges that a communication view shares by id (row 12) |
 | 3 | Self-messages and re-entrant calls: how activations nest |
