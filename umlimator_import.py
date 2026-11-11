@@ -6,8 +6,9 @@
   plantuml      C4-PlantUML: Person, System, Container, Component (with Db, Queue and _Ext), Rel, Rel_*, BiRel, and
                 *_Boundary(alias, label) { ... } as boxes
   mermaid       flowchart and graph (nodes, labelled links, subgraphs as boxes), and C4Context, C4Container and
-                C4Component, whose macros are C4-PlantUML's
-  compose       `docker compose config --format json`: services, depends_on and links, networks as boxes
+                C4Component, whose macros are C4-PlantUML's (a classDiagram is the module's to read: umlimator.py
+                import runs src/readers/mermaid-class.js in Node)
+  compose      `docker compose config --format json`: services, depends_on and links, networks as boxes
   kubernetes    `kubectl get ... -o json` (a List or one object): Deployments, StatefulSets, DaemonSets, Services (to the
                 workloads their selector picks), Ingresses (to their Services), and env values that name a Service
 
@@ -20,7 +21,7 @@ from pathlib import Path
 FORMATS = ["structurizr", "plantuml", "mermaid", "compose", "kubernetes"]
 EXT = {".dsl": "structurizr", ".puml": "plantuml", ".plantuml": "plantuml", ".pu": "plantuml", ".iuml": "plantuml",
        ".mmd": "mermaid", ".mermaid": "mermaid"}
-MERMAID = re.compile(r"(flowchart|graph|C4Context|C4Container|C4Component)\b")
+MERMAID = re.compile(r"(flowchart|graph|C4Context|C4Container|C4Component|classDiagram)\b")
 
 # ponytail: a keyword guess over names, technologies, tags and images, the first match winning; a source's own type
 # (a cylinder, ContainerDb, _Ext, a StatefulSet) comes first. Add words when a common stack lands on the wrong colour.
@@ -134,6 +135,12 @@ def detect(path, text):
     if re.match(r"workspace\b", first, re.I):
         return "structurizr"
     return EXT.get(Path(path).suffix.lower())
+
+
+def mermaid_class(text):
+    """Whether Mermaid text is a classDiagram, which the module's reader reads (src/readers/mermaid-class.js, through Node):
+    this file reads Mermaid's flowcharts and C4 diagrams only."""
+    return next((s for s in (l.strip() for l in front(text)[1].splitlines()) if s and not s.startswith("%%")), "").startswith("classDiagram")
 
 
 def front(text):
@@ -536,8 +543,9 @@ def mermaid(text, name):
     m = Model(title or name)
     lines = [(no, s) for no, s in ((no, l.strip()) for no, l in enumerate(body.splitlines(), 1)) if s and not s.startswith("%%")]
     head = MERMAID.match(lines[0][1]) if lines else None
-    if not head:
-        m.say(lines[0][0] if lines else 1, "not a flowchart, graph or C4 diagram: nothing imported")
+    if not head or head.group(1) == "classDiagram":
+        m.say(lines[0][0] if lines else 1, "a classDiagram is read by the module's reader, in Node (umlimator.py import): nothing imported here"
+              if head else "not a flowchart, graph or C4 diagram: nothing imported")
         return m
     rest = re.sub(r"^\s*(TB|TD|BT|RL|LR)?\s*;?", "", lines[0][1][head.end():])
     body = ([(lines[0][0], rest)] if rest.strip() else []) + lines[1:]

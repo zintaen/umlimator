@@ -19,7 +19,8 @@
 
 MODEL.json is the map model in engine/references/schema.md (nodes, edges, views), plus umlimator's `badge` field on a
 node (PROPOSED, TARGET, OFF ...). `stills` needs Google Chrome or Chromium; the PNGs are what a document that cannot
-run the page (a wiki such as Confluence) shows. `diff`, `drift`, `trace` and `mcp` run the module's own functions in Node.
+run the page (a wiki such as Confluence) shows. `diff`, `drift`, `trace` and `mcp` run the module's own functions in Node,
+and so does `import` of a Mermaid classDiagram (its reader is the module's, src/readers/mermaid-class.js).
 """
 import argparse, atexit, base64, contextlib, hashlib, html, io, json, os, re, shutil, signal, struct, subprocess, sys, tempfile, urllib.parse, urllib.request, zipfile, zlib
 from pathlib import Path
@@ -272,10 +273,11 @@ def icon_table(models):
     return table
 
 
-def js(fn, *args):
-    """One of the module's functions run in Node (for diff, drift, trace and the MCP server's read tools), so the CLI and the module share one implementation."""
+def js(fn, *args, module=LIB):
+    """One of the module's functions run in Node (for diff, drift, trace, the MCP server's read tools, and import's
+    Mermaid class reader, an internal source), so the CLI and the module share one implementation."""
     node = shutil.which("node") or sys.exit(f"{fn} needs Node.js 18 or later: it runs the module's own {fn}()")
-    code = (f"import * as u from {json.dumps(LIB.as_uri())}; let s = ''; for await (const c of process.stdin) s += c;"
+    code = (f"import * as u from {json.dumps(module.as_uri())}; let s = ''; for await (const c of process.stdin) s += c;"
             f"process.stdout.write(JSON.stringify(u[{json.dumps(fn)}](...JSON.parse(s))));")
     r = run([node, "--input-type=module", "-e", code], input=json.dumps(args))
     if r.returncode:
@@ -752,8 +754,9 @@ def cmd_record(a):
 
 def cmd_import(a):
     """A diagram a team has already, as a model (#90): Structurizr DSL, C4-PlantUML, Mermaid, or the JSON of `docker
-    compose config` or `kubectl get`. umlimator_import.py reads them; what it does not import is listed on stderr, each
-    with its line (in JSON, its path)."""
+    compose config` or `kubectl get`. umlimator_import.py reads them, but for a Mermaid classDiagram, which the module's
+    reader reads in Node into a typed model (schema version 2, one uml.class view); what it does not import is listed on
+    stderr, each with its line (in JSON, its path)."""
     sys.path.insert(0, str(HERE))
     import umlimator_import as imp
     text = Path(a.file).read_text(encoding="utf-8")
@@ -764,10 +767,17 @@ def cmd_import(a):
         except ValueError as e:
             sys.exit(f"import: {a.file} is not valid JSON ({e}): is it cut short? (give --format if it is not JSON)")
     fmt = fmt or sys.exit(f"import: cannot tell the format of {a.file}: give --format ({', '.join(imp.FORMATS)})")
-    try:
-        m, unread = imp.read(fmt, text, Path(a.file).stem)
-    except json.JSONDecodeError as e:
-        sys.exit(f"import: {a.file} is not {fmt} JSON ({e})")
+    if fmt == "mermaid" and imp.mermaid_class(text):  # a classDiagram: the module's reader, in Node (risks.md R7)
+        if not shutil.which("node"):
+            sys.exit(f"import: {a.file} is a Mermaid classDiagram, which the module's reader reads in Node.js 18 or later; "
+                     "install Node to import it. Structurizr, C4-PlantUML, compose, Kubernetes and Mermaid's flowcharts and C4 diagrams need only Python")
+        r = js("readMermaidClass", text, module=HERE / "src" / "readers" / "mermaid-class.js")
+        m, unread = r["model"], [(x["line"], f"{x['status']}: {x['message']}") for x in r["report"]]
+    else:
+        try:
+            m, unread = imp.read(fmt, text, Path(a.file).stem)
+        except json.JSONDecodeError as e:
+            sys.exit(f"import: {a.file} is not {fmt} JSON ({e})")
     for where, msg in unread:  # ponytail: JSON keeps no line numbers, so a JSON source's item is named by its path
         print(f"{a.file}:{where}: {msg}" if where is not None else f"{a.file}: {msg}", file=sys.stderr)
     if not m["nodes"]:

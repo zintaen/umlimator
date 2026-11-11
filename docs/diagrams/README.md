@@ -168,3 +168,10 @@ node docs/diagrams/examples/check.mjs         # the target examples match model.
   view takes about 175 ms, over P1's 100 ms from an edit to paint; the core is 13.5% larger gzipped than 0.16.1 (C5's
   budget is 15%), so what comes next lands in family files, not the core; a map model line carrying `fixed` or `under`
   still reaches the layout (older than this plan, in `prepEdges`).
+- **12 Nov 2026 (1.10).** 1.10 adds `src/readers/mermaid-class.js`, in `lib/umlimator-all.js` only (`tools/build.mjs`'s
+  `ALL`), against Mermaid 12.3.0: a hand-written linear reader with a 1 MiB limit and a report of what it skips or
+  approximates (R1, R2), ids from the source's names (R3), and a writer whose `%% id:` comments keep the ids Mermaid has
+  no place for. `read(write(model))` equals the model for both views of `01-class.json` and 500 generated models;
+  `tests/import/classes.mmd`, modelled on Mermaid's class page, pins the report (R4). `umlimator.py import` routes a
+  classDiagram to it through Node and names the formats that need only Python (R7). It reads and writes `model.md`'s
+  vocabulary and depends on no code of 1.9.

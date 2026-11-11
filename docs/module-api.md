@@ -3097,3 +3097,17 @@ What moves for a host that upgrades:
 - **A host that edits a version-2 model** (`editable`) gets the `edit` event and panels on its typed views; map views
   emit `change` as before.
 
+
+## 0.18.0: the class diagram (in progress)
+
+- **A Mermaid `classDiagram` reader and writer (1.10).** `src/readers/mermaid-class.js`, written against Mermaid 12.3.0's
+  class diagram page, is in `lib/umlimator-all.js` only, and internal until the registry is public:
+  `readMermaidClass(text)` gives `{ model, report }`, a version-2 model with one `uml.class` view in `model.md`'s
+  vocabulary, and a report of each statement it `skipped` or `approximated`, with its line (styling, links, accessibility
+  text and Mermaid's configuration are skipped; a dashed link with no arrow, a lollipop, a generic class, `many`, `BT`
+  and `RL` are approximated). Ids come from the source's names (a class's, a namespace's; `<class>.<member>`,
+  `<from>-<to>`, `note-<n>`), so the same text always gives the same ids; text over 1 MiB is refused, and nothing throws.
+  `writeMermaidClass(model, viewId)` writes one class view; an id the reader would not derive goes in a `%% id:` comment
+  above its statement, and what the subset leaves out in `%% not written:` comments, so `read(write(model))` gives the
+  model back on the subset (a view's `layout` and `present` are not written). `umlimator.py import` reads a
+  classDiagram with it, through Node; without Node it says so, and every other format still imports with Python alone.
