@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 2,
+  "title": "Bookshop: opening plan",
+  "root": "plan",
+  "nodes": [
+    { "id": "opening", "type": "mindmap.Topic", "label": "Opening the bookshop" },
+    { "id": "catalogue", "type": "mindmap.Topic", "label": "Catalogue", "parent": "opening" },
+    { "id": "first-titles", "type": "mindmap.Topic", "label": "Choose the first 500 titles", "parent": "catalogue" },
+    { "id": "wholesalers", "type": "mindmap.Topic", "label": "Agree terms with two wholesalers", "parent": "catalogue" },
+    { "id": "website", "type": "mindmap.Topic", "label": "Website", "parent": "opening" },
+    { "id": "storefront", "type": "mindmap.Topic", "label": "Storefront", "parent": "website" },
+    { "id": "checkout", "type": "mindmap.Topic", "label": "Checkout", "parent": "website" },
+    { "id": "card-payments", "type": "mindmap.Topic", "label": "Card payments", "parent": "checkout" },
+    { "id": "order-emails", "type": "mindmap.Topic", "label": "Order confirmation emails", "parent": "checkout" },
+    { "id": "launch", "type": "mindmap.Topic", "label": "Launch", "parent": "opening" },
+    { "id": "newsletter", "type": "mindmap.Topic", "label": "Newsletter to the waiting list", "parent": "launch" },
+    { "id": "opening-offer", "type": "mindmap.Topic", "label": "Free delivery in the first week", "parent": "launch" },
+    { "id": "warehouse", "type": "mindmap.Topic", "label": "Warehouse", "parent": "opening" },
+    { "id": "shelving", "type": "mindmap.Topic", "label": "Shelving and a packing table", "parent": "warehouse" },
+    { "id": "courier", "type": "mindmap.Topic", "label": "Courier contract", "parent": "warehouse" },
+    { "id": "legal", "type": "mindmap.Topic", "label": "Legal and money", "parent": "opening" },
+    { "id": "company", "type": "mindmap.Topic", "label": "Register the company", "parent": "legal" },
+    { "id": "bank", "type": "mindmap.Topic", "label": "Business bank account", "parent": "legal" }
+  ],
+  "edges": [],
+  "views": [
+    { "id": "plan", "diagram": "mindmap", "title": "Opening the bookshop", "parent": null,
+      "nodeIds": ["opening",
+        "catalogue", "first-titles", "wholesalers",
+        "website", "storefront", "checkout", "card-payments", "order-emails",
+        "launch", "newsletter", "opening-offer",
+        "warehouse", "shelving", "courier",
+        "legal", "company", "bank"],
+      "present": { "catalogue": { "side": "right" }, "website": { "side": "right" }, "launch": { "side": "right" },
+        "warehouse": { "side": "left" }, "legal": { "side": "left" } } }
+  ]
+}

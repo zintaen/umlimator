@@ -1,0 +1,67 @@
+{
+  "schemaVersion": 2,
+  "title": "Bookshop: an order's life",
+  "root": "order-life",
+  "nodes": [
+    { "id": "created", "type": "uml.Pseudostate", "props": { "kind": "initial" } },
+    { "id": "placed", "type": "uml.State", "label": "Placed",
+      "props": { "entry": "reserve the books", "do": "poll the payment provider", "exit": "log the payment result" },
+      "members": [
+        { "id": "placed.address", "type": "uml.InternalTransition", "props": { "trigger": "address changed", "effect": "update the delivery address" } }
+      ] },
+    { "id": "payment-outcome", "type": "uml.Pseudostate", "props": { "kind": "choice" } },
+    { "id": "prepaid", "type": "uml.Pseudostate", "props": { "kind": "fork" } },
+    { "id": "fulfilling", "type": "uml.State", "label": "Fulfilling",
+      "members": [
+        { "id": "fulfilling.parcel", "type": "uml.Region", "label": "Parcel" },
+        { "id": "fulfilling.payment", "type": "uml.Region", "label": "Payment" }
+      ] },
+    { "id": "parcel-start", "type": "uml.Pseudostate", "parent": "fulfilling.parcel", "props": { "kind": "initial" } },
+    { "id": "picking", "type": "uml.State", "label": "Picking", "parent": "fulfilling.parcel", "props": { "do": "collect the books from the shelves" } },
+    { "id": "packed", "type": "uml.State", "label": "Packed", "parent": "fulfilling.parcel", "props": { "entry": "print the address label" } },
+    { "id": "payment-start", "type": "uml.Pseudostate", "parent": "fulfilling.payment", "props": { "kind": "initial" } },
+    { "id": "capturing", "type": "uml.State", "label": "Capturing payment", "parent": "fulfilling.payment", "props": { "entry": "ask the payment provider to capture" } },
+    { "id": "captured", "type": "uml.State", "label": "Payment captured", "parent": "fulfilling.payment" },
+    { "id": "ready", "type": "uml.Pseudostate", "props": { "kind": "join" } },
+    { "id": "delivery", "type": "uml.State", "label": "In delivery" },
+    { "id": "delivery-start", "type": "uml.Pseudostate", "parent": "delivery", "props": { "kind": "initial" } },
+    { "id": "in-transit", "type": "uml.State", "label": "In transit", "parent": "delivery", "props": { "do": "follow the carrier's tracking" } },
+    { "id": "out-for-delivery", "type": "uml.State", "label": "Out for delivery", "parent": "delivery", "props": { "entry": "text the shopper a delivery window" } },
+    { "id": "delivery-history", "type": "uml.Pseudostate", "parent": "delivery", "props": { "kind": "shallowHistory" } },
+    { "id": "enquiry", "type": "uml.State", "label": "Under enquiry", "props": { "entry": "open a case with the carrier", "exit": "close the case" } },
+    { "id": "cancelled", "type": "uml.State", "label": "Cancelled", "props": { "entry": "release the reserved books" } },
+    { "id": "erased", "type": "uml.Pseudostate", "props": { "kind": "terminate" } },
+    { "id": "delivered", "type": "uml.FinalState" }
+  ],
+  "edges": [
+    { "id": "t-created", "type": "uml.Transition", "from": "created", "to": "placed" },
+    { "id": "t-payment-result", "type": "uml.Transition", "from": "placed", "to": "payment-outcome", "props": { "trigger": "payment result" } },
+    { "id": "t-authorised", "type": "uml.Transition", "from": "payment-outcome", "to": "fulfilling", "props": { "guard": "card authorised" } },
+    { "id": "t-prepaid", "type": "uml.Transition", "from": "payment-outcome", "to": "prepaid", "props": { "guard": "paid in full by gift card" } },
+    { "id": "t-declined", "type": "uml.Transition", "from": "payment-outcome", "to": "cancelled", "props": { "guard": "else", "effect": "email the shopper" } },
+    { "id": "t-prepaid-picking", "type": "uml.Transition", "from": "prepaid", "to": "picking" },
+    { "id": "t-prepaid-captured", "type": "uml.Transition", "from": "prepaid", "to": "captured" },
+    { "id": "t-parcel-start", "type": "uml.Transition", "from": "parcel-start", "to": "picking" },
+    { "id": "t-picked", "type": "uml.Transition", "from": "picking", "to": "packed", "props": { "trigger": "all books picked" } },
+    { "id": "t-payment-start", "type": "uml.Transition", "from": "payment-start", "to": "capturing" },
+    { "id": "t-capture-retry", "type": "uml.Transition", "from": "capturing", "to": "capturing",
+      "props": { "trigger": "capture failed", "guard": "attempts < 3", "effect": "count the attempt" } },
+    { "id": "t-capture-given-up", "type": "uml.Transition", "from": "capturing", "to": "cancelled", "props": { "trigger": "capture failed", "guard": "attempts >= 3" } },
+    { "id": "t-captured", "type": "uml.Transition", "from": "capturing", "to": "captured", "props": { "trigger": "capture confirmed" } },
+    { "id": "t-packed-ready", "type": "uml.Transition", "from": "packed", "to": "ready" },
+    { "id": "t-captured-ready", "type": "uml.Transition", "from": "captured", "to": "ready" },
+    { "id": "t-handed-over", "type": "uml.Transition", "from": "ready", "to": "delivery", "props": { "effect": "hand the parcel to the carrier" } },
+    { "id": "t-delivery-start", "type": "uml.Transition", "from": "delivery-start", "to": "in-transit" },
+    { "id": "t-at-depot", "type": "uml.Transition", "from": "in-transit", "to": "out-for-delivery", "props": { "trigger": "reached the local depot" } },
+    { "id": "t-delivered", "type": "uml.Transition", "from": "out-for-delivery", "to": "delivered", "props": { "trigger": "parcel signed for", "effect": "email the receipt" } },
+    { "id": "t-problem", "type": "uml.Transition", "from": "delivery", "to": "enquiry", "props": { "trigger": "problem reported" } },
+    { "id": "t-resolved", "type": "uml.Transition", "from": "enquiry", "to": "delivery-history", "props": { "trigger": "problem resolved" } },
+    { "id": "t-cancel", "type": "uml.Transition", "from": "fulfilling", "to": "cancelled", "props": { "trigger": "cancel requested", "effect": "refund the payment" } },
+    { "id": "t-erase", "type": "uml.Transition", "from": "cancelled", "to": "erased", "props": { "trigger": "after 30 days", "effect": "erase the shopper's details" } }
+  ],
+  "views": [
+    { "id": "order-life", "diagram": "uml.state-machine", "title": "An order's life", "parent": null,
+      "nodeIds": ["created", "placed", "payment-outcome", "prepaid", "fulfilling", "parcel-start", "picking", "packed", "payment-start", "capturing", "captured",
+        "ready", "delivery", "delivery-start", "in-transit", "out-for-delivery", "delivery-history", "enquiry", "cancelled", "erased", "delivered"] }
+  ]
+}

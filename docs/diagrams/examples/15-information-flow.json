@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 2,
+  "title": "Bookshop: what travels with an order",
+  "root": "order-flows",
+  "nodes": [
+    { "id": "shopper", "type": "uml.Actor", "label": "Shopper" },
+    { "id": "storefront", "type": "uml.Component", "label": "Storefront" },
+    { "id": "api", "type": "uml.Component", "label": "Shop API" },
+    { "id": "payments", "type": "uml.Component", "label": "Payment provider" },
+    { "id": "warehouse", "type": "uml.Component", "label": "Warehouse" },
+    { "id": "email", "type": "uml.Component", "label": "Email service" },
+    { "id": "order", "type": "uml.InformationItem", "label": "Order" },
+    { "id": "card", "type": "uml.InformationItem", "label": "Card details" },
+    { "id": "receipt", "type": "uml.InformationItem", "label": "Receipt" },
+    { "id": "stock", "type": "uml.InformationItem", "label": "Stock level" }
+  ],
+  "edges": [
+    { "id": "shopper-storefront", "type": "uml.InformationFlow", "from": "shopper", "to": "storefront", "props": { "conveyed": ["order", "card"] } },
+    { "id": "storefront-payments", "type": "uml.InformationFlow", "from": "storefront", "to": "payments", "props": { "conveyed": ["card"] } },
+    { "id": "storefront-api", "type": "uml.InformationFlow", "from": "storefront", "to": "api", "props": { "conveyed": ["order"] } },
+    { "id": "api-warehouse", "type": "uml.InformationFlow", "from": "api", "to": "warehouse", "props": { "conveyed": ["order"] } },
+    { "id": "warehouse-api", "type": "uml.InformationFlow", "from": "warehouse", "to": "api", "props": { "conveyed": ["stock"] } },
+    { "id": "api-storefront", "type": "uml.InformationFlow", "from": "api", "to": "storefront", "props": { "conveyed": ["stock"] } },
+    { "id": "api-email", "type": "uml.InformationFlow", "from": "api", "to": "email", "props": { "conveyed": ["order", "receipt"] } },
+    { "id": "email-shopper", "type": "uml.InformationFlow", "from": "email", "to": "shopper", "props": { "conveyed": ["receipt"] } }
+  ],
+  "views": [
+    { "id": "order-flows", "diagram": "uml.information-flow", "title": "What travels with an order", "parent": null,
+      "nodeIds": ["shopper", "storefront", "api", "payments", "warehouse", "email", "order", "card", "receipt", "stock"] }
+  ]
+}

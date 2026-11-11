@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 2,
+  "title": "Bookshop: modelling conventions",
+  "root": "profile",
+  "nodes": [
+    { "id": "conventions", "type": "uml.Profile", "label": "BookshopConventions" },
+    { "id": "mc-class", "type": "uml.MetaclassReference", "label": "Class", "parent": "conventions" },
+    { "id": "mc-property", "type": "uml.MetaclassReference", "label": "Property", "parent": "conventions" },
+    { "id": "entity", "type": "uml.Stereotype", "label": "entity", "parent": "conventions",
+      "members": [
+        { "id": "entity.table", "type": "uml.Property", "label": "table", "props": { "valueType": "String" } }
+      ] },
+    { "id": "aggregate-root", "type": "uml.Stereotype", "label": "aggregateRoot", "parent": "conventions",
+      "members": [
+        { "id": "aggregate-root.boundedContext", "type": "uml.Property", "label": "boundedContext", "props": { "valueType": "String" } }
+      ] },
+    { "id": "owned", "type": "uml.Stereotype", "label": "owned", "parent": "conventions",
+      "members": [
+        { "id": "owned.team", "type": "uml.Property", "label": "team", "props": { "valueType": "String" } }
+      ] },
+    { "id": "column", "type": "uml.Stereotype", "label": "column", "parent": "conventions",
+      "members": [
+        { "id": "column.name", "type": "uml.Property", "label": "name", "props": { "valueType": "String", "multiplicity": "0..1" } },
+        { "id": "column.indexed", "type": "uml.Property", "label": "indexed", "props": { "valueType": "Boolean", "default": "false" } }
+      ] },
+    { "id": "sales", "type": "uml.Package", "label": "sales" },
+    { "id": "order", "type": "uml.Class", "label": "Order", "parent": "sales",
+      "props": { "stereotypes": ["aggregateRoot", "owned"], "tags": { "table": "orders", "boundedContext": "sales", "team": "checkout" } },
+      "members": [
+        { "id": "order.placedAt", "type": "uml.Property", "label": "placedAt",
+          "props": { "visibility": "private", "valueType": "Instant", "stereotypes": ["column"], "tags": { "name": "placed_at", "indexed": "true" } } }
+      ] }
+  ],
+  "edges": [
+    { "id": "entity-extends-class", "type": "uml.Extension", "from": "entity", "to": "mc-class" },
+    { "id": "owned-extends-class", "type": "uml.Extension", "from": "owned", "to": "mc-class", "props": { "isRequired": true } },
+    { "id": "column-extends-property", "type": "uml.Extension", "from": "column", "to": "mc-property" },
+    { "id": "root-is-entity", "type": "uml.Generalization", "from": "aggregate-root", "to": "entity" },
+    { "id": "sales-applies-conventions", "type": "uml.ProfileApplication", "from": "sales", "to": "conventions" }
+  ],
+  "views": [
+    { "id": "profile", "diagram": "uml.profile", "title": "Bookshop conventions profile", "parent": null, "direction": "down",
+      "nodeIds": ["conventions", "mc-class", "mc-property", "entity", "aggregate-root", "owned", "column", "sales", "order"] }
+  ]
+}

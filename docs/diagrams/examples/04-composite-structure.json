@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 2,
+  "title": "Bookshop: inside the order service",
+  "root": "internals",
+  "nodes": [
+    { "id": "order-service", "type": "uml.Class", "label": "OrderService",
+      "members": [
+        { "id": "order-service.api", "type": "uml.Port", "label": "api" },
+        { "id": "order-service.payments", "type": "uml.Port", "label": "payments" },
+        { "id": "order-service.checkout", "type": "uml.Property", "label": "checkout", "props": { "valueType": "Checkout", "multiplicity": "1", "aggregation": "composite" } },
+        { "id": "order-service.pricing", "type": "uml.Property", "label": "pricing", "props": { "valueType": "PriceCalculator", "multiplicity": "1", "aggregation": "composite" } },
+        { "id": "order-service.orders", "type": "uml.Property", "label": "orders", "props": { "valueType": "OrderRepository", "multiplicity": "1", "aggregation": "composite" } },
+        { "id": "order-service.listeners", "type": "uml.Property", "label": "listeners", "props": { "valueType": "OrderListener", "multiplicity": "0..*", "aggregation": "shared" } }
+      ] },
+    { "id": "checkout", "type": "uml.Class", "label": "Checkout",
+      "members": [
+        { "id": "checkout.requests", "type": "uml.Port", "label": "requests" },
+        { "id": "checkout.quotes", "type": "uml.Port", "label": "quotes" },
+        { "id": "checkout.charges", "type": "uml.Port", "label": "charges" }
+      ] },
+    { "id": "price-calculator", "type": "uml.Class", "label": "PriceCalculator",
+      "members": [
+        { "id": "price-calculator.quotes", "type": "uml.Port", "label": "quotes" }
+      ] },
+    { "id": "order-events", "type": "uml.CollaborationUse", "label": "orderEvents", "parent": "order-service", "props": { "collaboration": "PublishSubscribe" } },
+    { "id": "publish-subscribe", "type": "uml.Collaboration", "label": "PublishSubscribe",
+      "members": [
+        { "id": "publish-subscribe.publisher", "type": "uml.Property", "label": "publisher", "props": { "valueType": "EventSource", "multiplicity": "1" } },
+        { "id": "publish-subscribe.subscriber", "type": "uml.Property", "label": "subscriber", "props": { "valueType": "EventListener", "multiplicity": "0..*" } }
+      ] }
+  ],
+  "edges": [
+    { "id": "api-to-checkout", "type": "uml.Connector", "from": "order-service.api", "to": "checkout.requests",
+      "props": { "ends": { "to": { "part": "order-service.checkout" } } } },
+    { "id": "checkout-to-pricing", "type": "uml.Connector", "from": "checkout.quotes", "to": "price-calculator.quotes",
+      "props": { "ends": { "from": { "part": "order-service.checkout" }, "to": { "part": "order-service.pricing" } } } },
+    { "id": "checkout-to-payments", "type": "uml.Connector", "from": "checkout.charges", "to": "order-service.payments",
+      "props": { "ends": { "from": { "part": "order-service.checkout" } } } },
+    { "id": "checkout-to-orders", "type": "uml.Connector", "from": "order-service.checkout", "to": "order-service.orders" },
+    { "id": "checkout-to-listeners", "type": "uml.Connector", "from": "order-service.checkout", "to": "order-service.listeners" },
+    { "id": "publisher-to-subscriber", "type": "uml.Connector", "from": "publish-subscribe.publisher", "to": "publish-subscribe.subscriber" },
+    { "id": "checkout-is-publisher", "type": "uml.RoleBinding", "from": "order-service.checkout", "to": "order-events", "label": "publisher" },
+    { "id": "listeners-are-subscribers", "type": "uml.RoleBinding", "from": "order-service.listeners", "to": "order-events", "label": "subscriber" }
+  ],
+  "views": [
+    { "id": "internals", "diagram": "uml.composite-structure", "title": "Inside OrderService", "parent": null,
+      "subject": "order-service",
+      "nodeIds": ["order-service", "order-events", "publish-subscribe"] }
+  ]
+}

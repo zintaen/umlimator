@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 2,
+  "title": "Bookshop: what shoppers do",
+  "root": "shopping",
+  "nodes": [
+    { "id": "shopper", "type": "uml.Actor", "label": "Shopper" },
+    { "id": "member", "type": "uml.Actor", "label": "Member" },
+    { "id": "payment-provider", "type": "uml.Actor", "label": "Payment provider" },
+    { "id": "bookshop", "type": "uml.Subject", "label": "Online bookshop" },
+    { "id": "browse", "type": "uml.UseCase", "label": "Browse the catalog", "parent": "bookshop" },
+    { "id": "checkout", "type": "uml.UseCase", "label": "Check out", "parent": "bookshop",
+      "members": [
+        { "id": "checkout.payment", "type": "uml.ExtensionPoint", "label": "payment" },
+        { "id": "checkout.extras", "type": "uml.ExtensionPoint", "label": "extras" }
+      ] },
+    { "id": "pay", "type": "uml.UseCase", "label": "Pay for the order", "parent": "bookshop" },
+    { "id": "pay-by-card", "type": "uml.UseCase", "label": "Pay by card", "parent": "bookshop" },
+    { "id": "redeem-voucher", "type": "uml.UseCase", "label": "Redeem a voucher", "parent": "bookshop" },
+    { "id": "gift-wrap", "type": "uml.UseCase", "label": "Add gift wrapping", "parent": "bookshop" },
+    { "id": "sign-in", "type": "uml.UseCase", "label": "Sign in", "parent": "bookshop" },
+    { "id": "track", "type": "uml.UseCase", "label": "Track an order", "parent": "bookshop" }
+  ],
+  "edges": [
+    { "id": "member-is-shopper", "type": "uml.Generalization", "from": "member", "to": "shopper" },
+    { "id": "shopper-browses", "type": "uml.Association", "from": "shopper", "to": "browse" },
+    { "id": "shopper-checks-out", "type": "uml.Association", "from": "shopper", "to": "checkout" },
+    { "id": "member-tracks", "type": "uml.Association", "from": "member", "to": "track" },
+    { "id": "provider-takes-card", "type": "uml.Association", "from": "payment-provider", "to": "pay-by-card" },
+    { "id": "checkout-includes-pay", "type": "uml.Include", "from": "checkout", "to": "pay" },
+    { "id": "track-includes-sign-in", "type": "uml.Include", "from": "track", "to": "sign-in" },
+    { "id": "card-is-pay", "type": "uml.Generalization", "from": "pay-by-card", "to": "pay" },
+    { "id": "voucher-extends-checkout", "type": "uml.Extend", "from": "redeem-voucher", "to": "checkout",
+      "props": { "extensionPoints": ["checkout.payment"], "condition": "the shopper has a voucher code" } },
+    { "id": "gift-wrap-extends-checkout", "type": "uml.Extend", "from": "gift-wrap", "to": "checkout",
+      "props": { "extensionPoints": ["checkout.extras"], "condition": "the order is a gift" } }
+  ],
+  "views": [
+    { "id": "shopping", "diagram": "uml.use-case", "title": "Shopping", "parent": null,
+      "nodeIds": ["shopper", "member", "payment-provider", "bookshop", "browse", "checkout", "pay", "pay-by-card", "redeem-voucher", "gift-wrap", "sign-in", "track"] }
+  ]
+}

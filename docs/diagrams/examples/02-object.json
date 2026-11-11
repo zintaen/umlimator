@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 2,
+  "title": "Bookshop: one placed order",
+  "root": "snapshot",
+  "nodes": [
+    { "id": "ada", "type": "uml.InstanceSpecification", "label": "ada", "props": { "classifier": "Customer" },
+      "members": [
+        { "id": "ada.email", "type": "uml.Slot", "label": "email", "props": { "value": "ada@example.org" } }
+      ] },
+    { "id": "order-1042", "type": "uml.InstanceSpecification", "label": "order1042", "props": { "classifier": "Order" },
+      "members": [
+        { "id": "order-1042.status", "type": "uml.Slot", "label": "status", "props": { "value": "placed" } },
+        { "id": "order-1042.total", "type": "uml.Slot", "label": "total", "props": { "value": "34.00 EUR" } }
+      ] },
+    { "id": "line-1", "type": "uml.InstanceSpecification", "label": "line1", "props": { "classifier": "OrderLine" },
+      "members": [
+        { "id": "line-1.quantity", "type": "uml.Slot", "label": "quantity", "props": { "value": "2" } }
+      ] },
+    { "id": "line-2", "type": "uml.InstanceSpecification", "label": "line2", "props": { "classifier": "OrderLine" },
+      "members": [
+        { "id": "line-2.quantity", "type": "uml.Slot", "label": "quantity", "props": { "value": "1" } }
+      ] },
+    { "id": "middlemarch", "type": "uml.InstanceSpecification", "label": "middlemarch", "props": { "classifier": "Book" },
+      "members": [
+        { "id": "middlemarch.title", "type": "uml.Slot", "label": "title", "props": { "value": "Middlemarch" } },
+        { "id": "middlemarch.price", "type": "uml.Slot", "label": "price", "props": { "value": "12.50 EUR" } }
+      ] },
+    { "id": "frankenstein", "type": "uml.InstanceSpecification", "label": "frankenstein", "props": { "classifier": "Book" },
+      "members": [
+        { "id": "frankenstein.title", "type": "uml.Slot", "label": "title", "props": { "value": "Frankenstein" } },
+        { "id": "frankenstein.price", "type": "uml.Slot", "label": "price", "props": { "value": "9.00 EUR" } }
+      ] },
+    { "id": "card", "type": "uml.InstanceSpecification", "label": "card", "props": { "classifier": "CardPayment" },
+      "members": [
+        { "id": "card.amount", "type": "uml.Slot", "label": "amount", "props": { "value": "34.00 EUR" } },
+        { "id": "card.last4", "type": "uml.Slot", "label": "last4", "props": { "value": "4242" } }
+      ] }
+  ],
+  "edges": [
+    { "id": "ada-places-order", "type": "uml.Link", "from": "ada", "to": "order-1042", "label": "places",
+      "props": { "ends": { "to": { "role": "orders" } } } },
+    { "id": "order-has-line-1", "type": "uml.Link", "from": "order-1042", "to": "line-1",
+      "props": { "ends": { "to": { "role": "lines" } } } },
+    { "id": "order-has-line-2", "type": "uml.Link", "from": "order-1042", "to": "line-2",
+      "props": { "ends": { "to": { "role": "lines" } } } },
+    { "id": "line-1-is-for", "type": "uml.Link", "from": "line-1", "to": "middlemarch",
+      "props": { "ends": { "to": { "role": "book" } } } },
+    { "id": "line-2-is-for", "type": "uml.Link", "from": "line-2", "to": "frankenstein",
+      "props": { "ends": { "to": { "role": "book" } } } },
+    { "id": "order-paid-by-card", "type": "uml.Link", "from": "order-1042", "to": "card",
+      "props": { "ends": { "to": { "role": "payments" } } } }
+  ],
+  "views": [
+    { "id": "snapshot", "diagram": "uml.object", "title": "Order 1042, just placed", "parent": null, "direction": "down",
+      "nodeIds": ["ada", "order-1042", "line-1", "line-2", "middlemarch", "frankenstein", "card"] }
+  ]
+}

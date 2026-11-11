@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 2,
+  "title": "Bookshop: on Google Cloud",
+  "root": "on-gcp",
+  "nodes": [
+    { "id": "users", "type": "gcp.User", "label": "Shoppers" },
+    { "id": "project", "type": "gcp.Zone", "label": "bookshop-prod", "props": { "zoneType": "project" } },
+    { "id": "dns", "type": "gcp.Product", "label": "DNS", "parent": "project", "props": { "icon": "Cloud-DNS" } },
+    { "id": "lb", "type": "gcp.Product", "label": "Load balancer", "parent": "project", "props": { "icon": "Cloud-Load-Balancing" } },
+    { "id": "cdn", "type": "gcp.Product", "label": "CDN", "parent": "project", "props": { "icon": "Cloud-CDN" } },
+    { "id": "assets", "type": "gcp.Product", "label": "Storefront files", "parent": "project", "props": { "icon": "Cloud-Storage" } },
+    { "id": "queue", "type": "gcp.Product", "label": "Order queue", "parent": "project", "props": { "icon": "Pub-Sub" } },
+    { "id": "region", "type": "gcp.Zone", "label": "europe-west1", "parent": "project", "props": { "zoneType": "region" } },
+    { "id": "api", "type": "gcp.Product", "label": "Shop API", "parent": "region", "props": { "icon": "Cloud-Run" } },
+    { "id": "worker", "type": "gcp.Product", "label": "Order worker", "parent": "region", "props": { "icon": "Cloud-Run" } },
+    { "id": "network", "type": "gcp.Zone", "label": "bookshop-vpc", "parent": "region", "props": { "zoneType": "network" } },
+    { "id": "subnet", "type": "gcp.Zone", "label": "data subnet, 10.10.0.0/24", "parent": "network", "props": { "zoneType": "subnetwork" } },
+    { "id": "zone-b", "type": "gcp.Zone", "label": "europe-west1-b", "parent": "subnet", "props": { "zoneType": "zone" } },
+    { "id": "db", "type": "gcp.Product", "label": "Database, primary", "parent": "zone-b", "props": { "icon": "Cloud-SQL" } },
+    { "id": "zone-c", "type": "gcp.Zone", "label": "europe-west1-c", "parent": "subnet", "props": { "zoneType": "zone" } },
+    { "id": "db-standby", "type": "gcp.Product", "label": "Database, standby", "parent": "zone-c", "props": { "icon": "Cloud-SQL" } }
+  ],
+  "edges": [
+    { "id": "users-dns", "type": "gcp.Path", "from": "users", "to": "dns", "label": "looks up" },
+    { "id": "users-lb", "type": "gcp.Path", "from": "users", "to": "lb", "label": "HTTPS" },
+    { "id": "lb-cdn", "type": "gcp.Path", "from": "lb", "to": "cdn", "label": "storefront" },
+    { "id": "cdn-assets", "type": "gcp.Path", "from": "cdn", "to": "assets", "label": "cache fill" },
+    { "id": "lb-api", "type": "gcp.Path", "from": "lb", "to": "api", "label": "/api" },
+    { "id": "api-db", "type": "gcp.Path", "from": "api", "to": "db", "label": "SQL" },
+    { "id": "api-queue", "type": "gcp.Path", "from": "api", "to": "queue", "label": "paid order" },
+    { "id": "queue-worker", "type": "gcp.Path", "from": "queue", "to": "worker", "label": "pushes" },
+    { "id": "worker-db", "type": "gcp.Path", "from": "worker", "to": "db", "label": "SQL" },
+    { "id": "db-replica", "type": "gcp.Path", "from": "db", "to": "db-standby", "label": "replicates" }
+  ],
+  "views": [
+    { "id": "on-gcp", "diagram": "gcp", "title": "Bookshop on Google Cloud", "parent": null,
+      "nodeIds": ["users", "project", "dns", "lb", "cdn", "assets", "queue", "region", "api", "worker",
+        "network", "subnet", "zone-b", "db", "zone-c", "db-standby"] }
+  ],
+  "iconPacks": { "gcp": "2025" }
+}

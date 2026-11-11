@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 2,
+  "title": "Bookshop: packages",
+  "root": "packages",
+  "nodes": [
+    { "id": "shared", "type": "uml.Package", "label": "shared" },
+    { "id": "money", "type": "uml.DataType", "label": "Money", "parent": "shared" },
+    { "id": "catalog", "type": "uml.Package", "label": "catalog" },
+    { "id": "book", "type": "uml.Class", "label": "Book", "parent": "catalog" },
+    { "id": "sales", "type": "uml.Package", "label": "sales" },
+    { "id": "customer", "type": "uml.Class", "label": "Customer", "parent": "sales" },
+    { "id": "order", "type": "uml.Class", "label": "Order", "parent": "sales" },
+    { "id": "line", "type": "uml.Class", "label": "OrderLine", "parent": "sales" },
+    { "id": "status", "type": "uml.Enumeration", "label": "OrderStatus", "parent": "sales" },
+    { "id": "payments", "type": "uml.Package", "label": "payments" },
+    { "id": "payable", "type": "uml.Interface", "label": "Payable", "parent": "payments" },
+    { "id": "payment", "type": "uml.Class", "label": "Payment", "parent": "payments" },
+    { "id": "card", "type": "uml.Package", "label": "card", "parent": "payments" },
+    { "id": "card-payment", "type": "uml.Class", "label": "CardPayment", "parent": "card" },
+    { "id": "wholesale", "type": "uml.Package", "label": "wholesale" },
+    { "id": "wholesale-order", "type": "uml.Class", "label": "Order", "parent": "wholesale" }
+  ],
+  "edges": [
+    { "id": "catalog-imports-shared", "type": "uml.PackageImport", "from": "catalog", "to": "shared", "props": { "visibility": "public" } },
+    { "id": "sales-imports-catalog", "type": "uml.PackageImport", "from": "sales", "to": "catalog", "props": { "visibility": "public" } },
+    { "id": "payments-accesses-shared", "type": "uml.PackageImport", "from": "payments", "to": "shared", "props": { "visibility": "private" } },
+    { "id": "wholesale-merges-sales", "type": "uml.PackageMerge", "from": "wholesale", "to": "sales" },
+    { "id": "sales-needs-payments", "type": "uml.Dependency", "from": "sales", "to": "payments" }
+  ],
+  "views": [
+    { "id": "packages", "diagram": "uml.package", "title": "Bookshop packages", "parent": null, "direction": "down",
+      "nodeIds": ["shared", "money", "catalog", "book", "sales", "customer", "order", "line", "status", "payments", "payable", "payment", "card", "card-payment",
+        "wholesale", "wholesale-order"] }
+  ]
+}
