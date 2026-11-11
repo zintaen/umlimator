@@ -1,11 +1,19 @@
 import { clauseFit, esc, fit, measureText, sansW, textW, wrap2 } from '../core/text.js';
-import { roundPath, trimLine } from './lines.js';
-import { cardLook, drawnPts, noteOf, r2, sidePorts, tabLine } from './shapes.js';
+import { endLabels, roundPath, trimLine } from './lines.js';
+import { SHAPE, cardLook, drawnPts, noteOf, r2, sidePorts, tabLine } from './shapes.js';
 import { CHG } from '../layout/layered.js';
 import { WIRES, badgesOf, mapTabs, toneOf } from '../map/cards.js';
-import { KIND, SIGIL } from '../map/kinds.js';
+import { KIND, SIGIL, hasKey } from '../map/kinds.js';
 
 let svgSeq = 0;
+// A typed view's line (1.5; a map's lines never read it) says how it is drawn in e.end: { from, to, dashed, labels }. from
+// and to name an end in this table, the line's ends as UML draws them (none, or a name it does not hold, draws no marker);
+// dashed: a dependency's or realization's line; labels: each end's role and multiplicity (endLabels). Each end: [its
+// length, half its height, its path pointing right with the tip at its length, its fill]. Its tip is where the line ends,
+// on the node's outline. Hollow is the stage's background, filled the line's own colour (T2), in either theme
+const ENDS = { none: null, arrow: [10, 4, 'M0 0L10 4L0 8Z', 'line'], open: [10, 5, 'M0 0L10 5L0 10', 'none'], triangle: [13, 7, 'M0 0L13 7L0 14Z', 'hollow'],
+  diamond: [16, 6, 'M0 6L8 0L16 6L8 12Z', 'hollow'], 'filled-diamond': [16, 6, 'M0 6L8 0L16 6L8 12Z', 'line'] };
+const endOf = (E, w) => hasKey(ENDS, E[w]) && ENDS[E[w]] ? E[w] : null;
 /* SVG markup. opts: { childCount(id) -> n, subject: id, title } */
 function svgOf(geo, opts = {}) {
   const id = 'g' + (svgSeq++), { nodes, edges, groups, bounds: B, map } = geo;
@@ -28,12 +36,18 @@ function svgOf(geo, opts = {}) {
   const marker = (n, c, k = 1) => `<marker id="${id}-${n}" markerWidth="${10 * k}" markerHeight="${8 * k}" refX="${9 * k}" refY="${4 * k}" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M0 0 L${10 * k} ${4 * k} L0 ${8 * k} Z" fill="${c}"/></marker>`;
   const MC = { d: 'var(--um-arrow)', g: 'var(--um-green)', r: 'var(--um-rose)', v: 'var(--um-violet)', h: 'var(--um-cyan)', ...Object.fromEntries(WIRES.map(w => [w[0], `var(--um-w-${w[0]})`])) };
   const heavy = [...new Set(edges.filter(e => e.weight > 1).map(e => lstyle(e).m + '-w' + e.weight))]; // a heavier line's arrowhead grows with it
+  const typed = e => !map && e.end ? e.end : null, ends = [...new Set(edges.flatMap(e => typed(e) ? ['from', 'to'].map(w => endOf(e.end, w)).filter(Boolean).map(k => k + '-' + lstyle(e).m) : []))];
+  const endMark = km => { const k = km.slice(0, km.lastIndexOf('-')), m = km.slice(k.length + 1), [L, H, p, fl] = ENDS[k];
+    return `<marker id="${id}-${km}" markerWidth="${L}" markerHeight="${2 * H}" refX="${L}" refY="${H}" orient="auto-start-reverse" markerUnits="userSpaceOnUse" overflow="visible"><path d="${p}" fill="${fl === 'line' ? MC[m] : fl === 'hollow' ? 'var(--um-stage-bg)' : 'none'}" stroke="${MC[m]}" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/></marker>`; };
   // the notation (0.15.0): each card's look, and each line as drawn, its ends on the cards' outlines (a map's cards only)
   const notation = map ? noteOf(opts.shapes) || 'box' : 'box', kidsOf = n => n.kids != null ? n.kids : opts.childCount ? opts.childCount(n.id) : 0;
-  const ports = map ? sidePorts(geo) : null, looks = new Map(map ? nodes.map(n => [n, cardLook(n, notation, !!(kidsOf(n) || n.opens) && opts.openHint !== false, ports.get(n))]) : []);
-  const drawn = edges.map(e => looks.size ? drawnPts(e, n => looks.get(n) || null) : e.pts);
+  // another view's node is drawn in its own shape, when it names one (1.5): its lines end where its ports() put them, on
+  // its outline already, so they are drawn as given
+  const ports = map ? sidePorts(geo) : null, looks = new Map(map ? nodes.map(n => [n, cardLook(n, notation, !!(kidsOf(n) || n.opens) && opts.openHint !== false, ports.get(n))])
+    : nodes.map(n => [n, n.shape != null && cardLook(n, 'box', false, null)]).filter(x => x[1]));
+  const drawn = edges.map(e => map && looks.size ? drawnPts(e, n => looks.get(n) || null) : e.pts);
   let s = `<svg viewBox="${B.x} ${B.y} ${B.w} ${B.h}" data-w="${B.w}" data-h="${B.h}" role="${map ? 'group' : 'img'}" aria-label="${esc(opts.title || 'Diagram')}" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">
-    <defs>${marker('d', 'var(--um-arrow)')}${marker('g', 'var(--um-green)')}${marker('r', 'var(--um-rose)')}${marker('v', 'var(--um-violet)')}${marker('h', 'var(--um-cyan)')}${map ? WIRES.map(w => marker(w[0], `var(--um-w-${w[0]})`)).join('') : ''}${heavy.map(m => { const [c, k] = m.split('-w'); return marker(m, MC[c], 1 + (k - 1) * .35); }).join('')}</defs>`;
+    <defs>${marker('d', 'var(--um-arrow)')}${marker('g', 'var(--um-green)')}${marker('r', 'var(--um-rose)')}${marker('v', 'var(--um-violet)')}${marker('h', 'var(--um-cyan)')}${map ? WIRES.map(w => marker(w[0], `var(--um-w-${w[0]})`)).join('') : ''}${heavy.map(m => { const [c, k] = m.split('-w'); return marker(m, MC[c], 1 + (k - 1) * .35); }).join('')}${ends.map(endMark).join('')}</defs>`;
   const families = geo.families || [], familyDepth = f => f.parent ? 1 + familyDepth(families.find(p => p.id === f.parent) || {}) : 0;
   families.slice().sort((a,b) => familyDepth(a)-familyDepth(b)).forEach(f => { // in c4 every box is a boundary, dashed as Structurizr draws one (a toned box is dashed in any notation)
     s += `<g class="family${f.tone ? ' toned' : ''}" data-family="${esc(f.id)}"${f.parent ? ` data-parent="${esc(f.parent)}"` : ''}${f.tone ? ` style="--um-tone:${toneOf(f)}"` : ''}><rect class="family-box" x="${f.x}" y="${f.y}" width="${f.w}" height="${f.h}" rx="14" stroke="var(--um-${familyDepth(f) ? 'cyan' : 'border-2'})"${notation === 'c4' ? ' stroke-dasharray="7 5"' : ''}/>
@@ -78,12 +92,14 @@ function svgOf(geo, opts = {}) {
       ${tour ? `<circle r="3.2" class="tour tour-packet" opacity="0"><animateMotion path="${bp}" keyPoints="0;0;1" keyTimes="0;.86;1" calcMode="linear" dur="${TOUR}s" repeatCount="indefinite"/>${tourAnim('0;0;.8;.8;0', [0, .86, .88, .99, 1])}</circle>` : ''}</g>`;
   });
   edges.forEach((e, i) => {
-    const st = lstyle(e), why = broke(e), d = roundPath(drawn[i]), mk = st.m + (e.weight > 1 ? '-w' + e.weight : '');
-    const tip = 9 * (e.weight > 1 ? 1 + (e.weight - 1) * .35 : 1), fd = roundPath(trimLine(drawn[i], e.both ? tip : 0, tip)); // an arrowhead's length (marker refX)
+    const E = typed(e), st = E && E.dashed ? { ...lstyle(e), dash: '6 4' } : lstyle(e), why = broke(e), d = roundPath(drawn[i]), mk = st.m + (e.weight > 1 ? '-w' + e.weight : '');
+    const cut = w => endOf(E, w) ? ENDS[endOf(E, w)][0] : 0, at = w => endOf(E, w) ? `url(#${id}-${endOf(E, w)}-${st.m})` : '';
+    const tip = 9 * (e.weight > 1 ? 1 + (e.weight - 1) * .35 : 1), fd = roundPath(E ? trimLine(drawn[i], cut('from'), cut('to')) : trimLine(drawn[i], e.both ? tip : 0, tip)); // an arrowhead's length (marker refX)
+    const marks = E ? `${at('to') ? `marker-end="${at('to')}"` : ''} ${at('from') ? `marker-start="${at('from')}"` : ''}` : `marker-end="url(#${id}-${mk})" ${e.both ? `marker-start="url(#${id}-${mk})"` : ''}`;
     if (tour && tour.legs[i]) { const [a, b] = tour.legs[i];
       s += `<path d="${d}" class="tour-glow" stroke="${st.c}" opacity="0">${tourAnim('0;0;.55;.55;0;0', [0, a, Math.min(a + .01, b), b, b + .03, 1])}</path>`; }
     s += `<g class="edge-g${st.cls || ''}${e.weight > 1 ? ' wt-' + e.weight : ''}" data-from="${esc(e.from)}" data-to="${esc(e.to)}" data-i="${i}"><path d="${d}" class="halo"/><path d="${d}" class="hitline"/>
-      <path d="${d}" class="edge${st.flow ? ' flow' : ''}" stroke="${st.c}" ${st.dash && !st.flow ? `stroke-dasharray="${st.dash}"` : ''} ${st.op ? `opacity="${st.op}"` : ''} marker-end="url(#${id}-${mk})" ${e.both ? `marker-start="url(#${id}-${mk})"` : ''}/>
+      <path d="${d}" class="edge${st.flow ? ' flow' : ''}" stroke="${st.c}" ${st.dash && !st.flow ? `stroke-dasharray="${st.dash}"` : ''} ${st.op ? `opacity="${st.op}"` : ''} ${marks}/>
       <path d="${fd}" class="flowline" stroke="${st.c}"/>${(e.all || [e]).some(x => x.edited) && !e.strong ? (() => { let m = [e.pts[0], e.pts[1]];
         e.pts.slice(1).forEach((p, k) => { const a = e.pts[k]; if (Math.abs(p[0] - a[0]) + Math.abs(p[1] - a[1]) > Math.abs(m[1][0] - m[0][0]) + Math.abs(m[1][1] - m[0][1])) m = [a, p]; });
         return `<circle cx="${(m[0][0] + m[1][0]) / 2}" cy="${(m[0][1] + m[1][1]) / 2}" r="4" class="edited-dot"><title>Edited</title></circle>`; })() : ''}${why.length ? ruleMark(e, why) : ''}
@@ -93,6 +109,7 @@ function svgOf(geo, opts = {}) {
   // line, rather than across the card's name
   s += '</g>' + (tour ? `<g class="tour" aria-hidden="true"><circle r="5.5" class="tour-dot"><animateMotion path="${tour.d}" dur="${TOUR}s" repeatCount="indefinite"/></circle></g>` : '') + '<g class="nodes">';
   nodes.forEach(n => {
+    if (!map && n.shape === 'classifier') { s += SHAPE.classifier.draw(n, col(n.k), fill(n.k)); return; } // a typed view's class box (1.5)
     const c = col(n.k), f = fill(n.k), removed = n.change === 'removed', planned = n.change === 'planned';
     const L = looks.get(n) || null, S = L && L.S; // a shaped card (0.15.0); null: a box, drawn as before
     const pub = map && n.k === 'm-public', priv = map && n.k === 'm-script', ext = map && n.k === 'm-ext', verb = map && n.k === 'm-verb', hook = map && n.k === 'm-hook' && String(n.shape ?? '').toLowerCase() !== 'box';
@@ -207,6 +224,7 @@ return I && I.src ? `<rect x="${x - M * 3 / 28}" y="${y - M * 3 / 28}" width="${
   }
   s += '</g><g class="labels depth-read">';
   edges.forEach((e, i) => {
+    if (typed(e)) s += endLabels(e, drawn[i]).map(b => `<text x="${r2(b.x + b.w / 2)}" y="${r2(b.y + 10.5)}" text-anchor="middle" class="end-lab" data-i="${i}" data-end="${b.end}" data-box="${b.x} ${b.y} ${b.w} ${b.h}" fill="var(--um-muted)" style="font:500 10px var(--um-sans)">${esc(b.text)}</text>`).join('');
     if (!e.lbl) return;
     const L = e.lbl;
     if (map) {

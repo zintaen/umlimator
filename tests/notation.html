@@ -1,0 +1,126 @@
+<!doctype html>
+<!-- Notation (1.5): a classifier, every line end and end labels, drawn by svgOf from hand-built geometry (no diagram type
+     registers a class view until 1.9), in both themes and three fonts. Text stays inside its face and its compartment,
+     line ends meet the outlines, end labels keep to their boxes clear of the nodes and the line, hollow ends are the
+     stage's background and filled ends the line's colour. tests/embed.py opens this in headless Chrome and reads
+     <pre id="result">. -->
+<meta charset="utf-8">
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="../lib/umlimator-theme.css">
+<title>umlimator notation test</title>
+<body style="margin:0">
+<div id="a" style="width:1100px;height:700px;background:var(--um-stage-bg)"></div>
+<script type="module">
+import { SHAPE } from '../src/draw/shapes.js';
+import { endLabels } from '../src/draw/lines.js';
+import { svgOf } from '../src/draw/svg.js';
+import { hostMeasure, measured } from '../src/core/text.js';
+import { STYLES } from '../src/canvas/styles.js';
+const out = { ok: [], fail: [] };
+const check = (name, cond, info) => { document.title = name; if (cond) out.ok.push(name); else out.fail.push(name + (info === undefined ? '' : ': ' + JSON.stringify(info))); };
+document.head.insertAdjacentHTML('beforeend', `<style>${STYLES}</style>`);
+const el = document.getElementById('a');
+const P = (label, props = {}) => ({ type: 'uml.Property', label, props: { visibility: 'private', ...props } });
+const O = (label, props = {}) => ({ type: 'uml.Operation', label, props: { visibility: 'public', ...props } });
+const NODES = [
+  { id: 'order', type: 'uml.Class', label: 'Order', abstract: true, stereotypes: ['entity'], compartments: [
+    { name: 'attributes', members: [P('total', { valueType: 'Money', multiplicity: '1' }), P('count', { valueType: 'Integer', isDerived: true }), P('next', { valueType: 'Integer', isStatic: true, default: '1' })] },
+    { name: 'operations', members: [O('place', { parameters: [{ name: 'at', valueType: 'Date' }, { name: 'by', valueType: 'Customer', direction: 'inout' }], returnType: 'Order' }), O('price', { isAbstract: true, returnType: 'Money' })] }] },
+  { id: 'line', type: 'uml.Class', label: 'OrderLineWithAVeryLongNameThatMustBeCutToFitTheBoxWidthCap', compartments: [
+    { name: 'attributes', members: [P('a' + 'veryLongAttributeName'.repeat(5), { valueType: 'Map<String, List<Money>>', multiplicity: '0..*' }), P('qty', { valueType: 'Integer' })] },
+    { name: 'operations', members: [] }] },
+  { id: 'status', type: 'uml.Enumeration', label: 'Status', stereotypes: ['enumeration'], compartments: [{ name: 'literals', members: ['OPEN', 'PAID', 'SHIPPED'].map(label => ({ type: 'uml.EnumerationLiteral', label })) }] },
+  { id: 'customer', type: 'uml.Class', label: 'Customer', rows: 2, collapsed: ['operations'], compartments: [
+    { name: 'attributes', members: ['name', 'email', 'phone', 'since', 'tier'].map(l => P(l, { valueType: 'String' })) }, { name: 'operations', members: [O('rename')] }] },
+];
+function draw(theme) { // the geometry svgOf takes: each classifier at its size(), a person and a data store in their own shapes,
+  // six lines between them with every end kind, each line's ends where its nodes' ports() put them
+  const size = Object.fromEntries(NODES.map(n => [n.id, SHAPE.classifier.size(n)])), top = Math.max(size.order.h, size.line.h) + 140;
+  const at = { order: [40, 40], line: [500, 40], status: [40, 40 + top], customer: [500, 40 + top] };
+  const nodes = [...NODES.map(n => ({ ...n, shape: 'classifier', k: 'backend', x: at[n.id][0], y: at[n.id][1], ...size[n.id] })),
+    { id: 'clerk', label: 'Clerk', shape: 'person', k: 'frontend', x: 920, y: 40, w: 120, h: 90 }, { id: 'store', label: 'Store', shape: 'cylinder', k: 'database', x: 920, y: 40 + top, w: 120, h: 80 }];
+  const by = Object.fromEntries(nodes.map(n => [n.id, n])), { order: A, line: B, status: C, customer: D, clerk: P, store: Y } = by;
+  const port = (n, side, k = 1, i = 0) => SHAPE[n.shape].ports(n, side, k)[i];
+  // a line from port a to port b: straight when they line up, else with an elbow halfway (across, or up and down)
+  const L = (s, a, t, b, end) => { const flat = a[1] === b[1] || a[0] === b[0], mx = (a[0] + b[0]) / 2;
+    return { from: s.id, to: t.id, s, t, pts: flat ? [a, b] : [a, [mx, a[1]], [mx, b[1]], b], end }; };
+  const edges = [
+    L(A, port(A, 'R', 4), B, [B.x, port(A, 'R', 4)[1]], { from: 'filled-diamond', to: 'open', labels: { from: { role: 'order', mult: '1' }, to: { role: 'lines', mult: '1..*' } } }),
+    L(B, port(B, 'B', 8), D, [port(B, 'B', 8)[0], D.y], { from: 'none', to: 'triangle', labels: { to: { role: 'parent', mult: '0..1' } } }),
+    L(C, port(C, 'T', 3), A, [port(C, 'T', 3)[0], A.y + A.h], { from: 'diamond', to: 'arrow', labels: { from: { role: 'whole' }, to: { mult: '*' } } }),
+    L(D, port(D, 'L', 4), C, [C.x + C.w, port(D, 'L', 4)[1]], { from: 'none', to: 'triangle', dashed: true }),
+    L(B, port(B, 'R'), P, port(P, 'L'), { from: 'none', to: 'open' }), // into the person's body, below its shoulder
+    L(Y, port(Y, 'T', 3), P, port(P, 'B', 3), { from: 'diamond', to: 'filled-diamond', labels: { from: { role: 'store', mult: '1' } } }), // from the data store's lid, off its middle
+  ];
+  const B0 = { x: 0, y: 0, w: 1100, h: 700 };
+  return { nodes, edges, svg: svgOf({ nodes, edges, groups: [], bounds: B0, byId: by }, { title: 'Notation ' + theme }) };
+}
+const pt = (svg, x, y) => { const p = svg.createSVGPoint(); p.x = x; p.y = y; return p; };
+const meets = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+const FONTS = { serif: 'serif', sans: 'sans-serif', wide: 'monospace' }; // generic families: three different fonts on any machine
+const seen = {}, widths = {};
+try {
+  for (const theme of ['light', 'dark']) for (const [fname, family] of Object.entries(FONTS)) {
+    document.documentElement.dataset.theme = theme; el.style.setProperty('--um-sans', family);
+    const tag = `${theme}, ${fname}`, M = hostMeasure(el), G = measured(M, () => draw(theme)); widths[fname] = M('+ place(at: Date): Order', 11);
+    el.innerHTML = G.svg; const svg = el.querySelector('svg');
+    // ---- text inside its face: the box's sides, and its compartment's band
+    const spill = [];
+    svg.querySelectorAll('.node.classifier').forEach(g => { const n = G.nodes.find(x => x.id === g.dataset.id);
+      g.querySelectorAll('[data-band]').forEach(band => { const [t, b] = band.dataset.band.split(' ').map(Number);
+        band.querySelectorAll('text').forEach(x => { const r = x.getBBox();
+          if (r.x < n.x + 1 || r.x + r.width > n.x + n.w - 1 || r.y < t - .5 || r.y + r.height > b + .5 || x.getComputedTextLength() > n.w - 16 + .5) spill.push(`${n.id}: ${x.textContent} ${[r.x, r.y, r.width, r.height].map(Math.round)}`); }); }); });
+    check(`${tag}: every text of a classifier stays inside its box and its compartment`, svg.querySelectorAll('.classifier text').length === 19 && !spill.length, spill);
+    check(`${tag}: a name too long for the widest box is cut, not let out`, G.nodes.find(n => n.id === 'line').w === 320 && /…$/.test(svg.querySelector('.node[data-id="line"] .c-name').textContent));
+    // ---- line ends: each line ends on the outline it meets, under the tip of its marker
+    const off = [];
+    G.edges.forEach((e, i) => { const path = svg.querySelector(`.edge-g[data-i="${i}"] .edge`);
+      [['from', e.pts[0], e.s, 'marker-start'], ['to', e.pts[e.pts.length - 1], e.t, 'marker-end']].forEach(([w, p, n, attr]) => {
+        const body = svg.querySelector(`.node[data-id="${n.id}"] .n-body`); body.style.strokeWidth = '3px';
+        if (!body.isPointInStroke(pt(svg, p[0], p[1]))) off.push(`${e.from}>${e.to} ${w}: off the outline`); body.style.strokeWidth = '';
+        const kind = e.end[w], ref = path.getAttribute(attr), mk = ref && svg.querySelector(ref.slice(4, -1));
+        if (kind === 'none') { if (ref) off.push(`${e.from}>${e.to} ${w}: a marker on no end`); return; }
+        if (!mk) { off.push(`${e.from}>${e.to} ${w}: no ${kind} marker`); return; }
+        const r = mk.querySelector('path').getBBox(); // the marker's tip, in its own space, is its reference point: where the line ends
+        if (Math.abs(r.x + r.width - +mk.getAttribute('refX')) > .01 || Math.abs(r.y + r.height / 2 - +mk.getAttribute('refY')) > .01) off.push(`${e.from}>${e.to} ${w}: ${kind}'s tip is not its end`); }); });
+    check(`${tag}: every line end meets its node's outline, under its marker's tip`, !off.length, off);
+    check(`${tag}: a node that names a shape is drawn in it, and its lines end on that outline (a person, a data store)`, svg.querySelector('.node[data-id="clerk"]').dataset.shape === 'person' && svg.querySelector('.node[data-id="store"]').dataset.shape === 'cylinder'
+      && G.edges[5].pts[0][1] > G.nodes.find(n => n.id === 'store').y + .5);
+    const kinds = new Set(G.edges.flatMap(e => [e.end.from, e.end.to]));
+    check(`${tag}: the lines use every end: none, arrow, open, triangle, diamond, filled diamond`, ['none', 'arrow', 'open', 'triangle', 'diamond', 'filled-diamond'].every(k => kinds.has(k)), [...kinds]);
+    check(`${tag}: a dashed line is dashed`, svg.querySelector('.edge-g[data-i="3"] .edge').getAttribute('stroke-dasharray') === '6 4' && !svg.querySelector('.edge-g[data-i="0"] .edge').getAttribute('stroke-dasharray'));
+    // ---- end labels: in their boxes, by their ends, clear of the nodes and of the line
+    const bad = [], labs = [...svg.querySelectorAll('text.end-lab')];
+    labs.forEach(x => { const [bx, by, bw, bh] = x.dataset.box.split(' ').map(Number), r = x.getBBox(), box = { x: bx, y: by, w: bw, h: bh }, e = G.edges[+x.dataset.i];
+      if (r.x < bx - .5 || r.x + r.width > bx + bw + .5 || r.y < by - .5 || r.y + r.height > by + bh + .5) bad.push(`${x.textContent}: outside its box`);
+      G.nodes.forEach(n => { if (meets(box, { x: n.x, y: n.y, w: n.w, h: n.h })) bad.push(`${x.textContent}: on ${n.id}`); });
+      const p = x.dataset.end === 'from' ? e.pts[0] : e.pts[e.pts.length - 1];
+      if (e.pts.slice(1).some((q, k) => { const o = e.pts[k]; return meets(box, { x: Math.min(o[0], q[0]) - 1, y: Math.min(o[1], q[1]) - 1, w: Math.abs(q[0] - o[0]) + 2, h: Math.abs(q[1] - o[1]) + 2 }); })) bad.push(`${x.textContent}: on its line`);
+      const d = Math.max(box.x - p[0], p[0] - box.x - box.w, box.y - p[1], p[1] - box.y - box.h, 0); if (d > 60) bad.push(`${x.textContent}: ${Math.round(d)} px from its end`); });
+    check(`${tag}: each end label is drawn in its box, by its end, clear of the nodes and its line`, labs.length === G.edges.reduce((a, e) => a + endLabels(e).length, 0) && labs.length === 10 && !bad.length, bad);
+    // ---- colours (T2): hollow is the stage's background, filled the line's colour, in this theme
+    const fillOf = k => getComputedStyle([...svg.querySelectorAll('marker')].find(m => m.id.replace(/^g\d+-/, '') === k + '-d').querySelector('path')).fill, stage = getComputedStyle(el).backgroundColor, line = getComputedStyle(svg.querySelector('.edge-g .edge')).stroke;
+    check(`${tag}: hollow ends are the stage's background, filled ends and the arrow the line's colour, open ends unfilled`,
+      fillOf('triangle') === stage && fillOf('diamond') === stage && fillOf('filled-diamond') === line && fillOf('arrow') === line && fillOf('open') === 'none' && stage !== line, [fillOf('triangle'), stage, fillOf('filled-diamond'), line, fillOf('arrow'), fillOf('open')]);
+    seen[theme] = [stage, line];
+    check(`${tag}: a classifier is named by its kind, its name and what it holds`,
+      svg.querySelector('.node[data-id="order"]').getAttribute('aria-label') === 'Class Order (entity, abstract), 3 attributes, 2 operations'
+      && svg.querySelector('.node[data-id="status"]').getAttribute('aria-label') === 'Enumeration Status (enumeration), 3 literals'
+      && svg.querySelector('.node[data-id="customer"]').getAttribute('aria-label') === 'Class Customer, 5 attributes, 1 operation');
+  }
+  check('the three fonts measure differently: one row, three widths', new Set(Object.values(widths)).size === 3, widths);
+  check('the two themes draw the ends in their own colours', seen.light && seen.dark && seen.light[0] !== seen.dark[0] && seen.light[1] !== seen.dark[1], seen);
+  // ---- what the classifier shows, the same in every font
+  const svg = el.querySelector('svg'), cust = svg.querySelector('.node[data-id="customer"]');
+  check('rows: 2 shows two rows, then "+3 more"; a collapsed compartment has no rows and no divider',
+    [...cust.querySelectorAll('.c-row')].map(x => x.textContent).join('|') === '- name: String|- email: String' && cust.querySelector('.c-more').textContent === '+3 more'
+    && cust.querySelectorAll('.c-comp').length === 1 && !cust.querySelector('[data-comp="operations"]'));
+  const ord = svg.querySelector('.node[data-id="order"]'), rows = [...ord.querySelectorAll('.c-row')];
+  check('rows in UML form: visibility, "/" for derived, type, multiplicity, default, parameters and return type',
+    rows.map(x => x.textContent).join('|') === '- total: Money [1]|- /count: Integer|- next: Integer = 1|+ place(at: Date, inout by: Customer): Order|+ price(): Money', rows.map(x => x.textContent));
+  check('a static member is underlined; an abstract class and operation are in italics; stereotypes sit over the name',
+    rows[2].getAttribute('text-decoration') === 'underline' && !rows[0].getAttribute('text-decoration') && getComputedStyle(rows[4]).fontStyle === 'italic' && getComputedStyle(rows[3]).fontStyle === 'normal'
+    && getComputedStyle(ord.querySelector('.c-name')).fontStyle === 'italic' && ord.querySelector('.c-st').textContent === '«entity»' && ord.querySelector('.c-st').getBBox().y < ord.querySelector('.c-name').getBBox().y);
+} catch (e) { out.fail.push('threw: ' + (e && e.stack || e)); }
+const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
+</script>
