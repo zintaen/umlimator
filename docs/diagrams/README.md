@@ -139,3 +139,5 @@ node docs/diagrams/examples/check.mjs         # the target examples match model.
 - **11 Nov 2026 (1.8).** 1.8 makes the CLI read typed models: `upstream_view()` lists members as cards (F3), the page
   bakes no layout into a typed view (F4), and the build writes `lib/umlimator-all.js`, which the CLI inlines (F5).
   `render`, `check`, `stills` and `pdf` succeed on the class and component examples (`tests/cli.py`).
+  For 1.9: `umlimator/element` imports `umlimator.js`; once a family ships, the element needs a build that uses
+  `umlimator-all.js`, or a host that loads both gets two copies (from the review of #162).

@@ -32,7 +32,7 @@ PAGE = HERE / "engine" / "assets" / "template.html"  # the page around it; visua
 
 
 def visual_cmd(tmp, *args):
-    """The command that runs visual.py (unmodified, super-board's) on the page with lib/umlimator.js inlined: one
+    """The command that runs visual.py (unmodified, super-board's) on the page with lib/umlimator-all.js inlined: one
     self-contained HTML file, as before. visual.py writes pages from its TEMPLATE path, so it runs with TEMPLATE
     pointed at that page, written into the directory `tmp`."""
     page = Path(tmp) / "template.html"
@@ -61,14 +61,15 @@ def upstream_view(d):
     boxes = {c.get("id") for v in views for c in v.get("containers") or [] if isinstance(c, dict) and c.get("id")}
     # schema version 2: a member (an attribute, a port) may be a line's end; upstream knows cards only, so each member is
     # listed as a card too (risks.md F3)
-    members = []
+    members = []  # only in version 2: a version-1 model's own `members` field means nothing to the map
     def walk(x):
         for m in x.get("members") or []:
             if isinstance(m, dict) and isinstance(m.get("id"), str):
                 members.append(m["id"]); walk(m)
-    for n in d.get("nodes", []):
+    for n in d.get("nodes", []) if d.get("schemaVersion") == 2 else []:
         if isinstance(n, dict): walk(n)
-    d["nodes"] = [*d.get("nodes", []), *({"id": b} for b in sorted(boxes - ids)), *({"id": m} for m in members if m not in ids and m not in boxes)]
+    # a member that shares a node's id stays listed, so upstream says the id is used twice, as validate() does
+    d["nodes"] = [*d.get("nodes", []), *({"id": b} for b in sorted(boxes - ids)), *({"id": m} for m in members if m not in boxes)]
     return d
 
 

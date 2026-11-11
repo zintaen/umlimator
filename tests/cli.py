@@ -191,6 +191,13 @@ with tempfile.TemporaryDirectory() as tmp:
         ok(f"stills · {name}: a picture of every view", st is not None and len(list((t / f"stills-{name}").glob("*.png"))) == len(src["views"]), st)
         pd = cli("pdf", str(t / f"{name}.html"), "--out", str(t / f"{name}.pdf"))
         ok(f"pdf · {name}: written", pd is not None and (t / f"{name}.pdf").read_bytes()[:5] == b"%PDF-", pd)
+    # upstream's check still catches what validate() calls wrong: a version-1 model's own `members` are not ends, and a
+    # member that shares a node's id is an id used twice (from the review of #162)
+    for name, m in [("v1-members", {"nodes": [{"id": "a", "members": [{"id": "a.p"}]}, {"id": "b"}], "edges": [{"from": "a.p", "to": "b"}], "views": [{"id": "v", "nodeIds": ["a", "b"]}]}),
+                    ("v2-twice", {"schemaVersion": 2, "nodes": [{"id": "a", "type": "uml.Class"}, {"id": "b", "type": "uml.Class", "members": [{"id": "a", "type": "uml.Property"}]}], "views": [{"id": "v", "nodeIds": ["a", "b"]}]})]:
+        (t / f"{name}.json").write_text(json.dumps(m))
+        r = subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "render", str(t / f"{name}.json"), "--out", str(t / f"{name}.html"), "--no-check"], capture_output=True, text=True)
+        ok(f"render · {name}: refused, as validate() refuses it", r.returncode != 0 and ("unknown end" in r.stderr + r.stdout or "duplicate" in (r.stderr + r.stdout).lower()), (r.returncode, (r.stderr + r.stdout)[-300:]))
     # card shapes (0.15.0): a model in the c4 notation prints its shapes, and its legend keys them
     cli("render", str(ROOT / "examples" / "shapes.json"), "--out", str(t / "shapes.html"), "--no-check")
     shp = read("shapes.pdf") if cli("pdf", str(t / "shapes.html"), "--out", str(t / "shapes.pdf")) else []
