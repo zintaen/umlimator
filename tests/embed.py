@@ -68,10 +68,13 @@ def dom(path, done, wait=60, motion=False):
     # page once its virtual time is up, which on a busy machine can be before the page has drawn what a check reads (the
     # standalone page draws on an animation frame, in real time), or Chrome may give back nothing at all (a rare headless
     # hang on CI runners): read it again until done() holds, for up to `wait` s (#85). motion: the motion pass, whose pages
-    # run their animation frames on timers, which virtual time runs
+    # run their animation frames on timers, which virtual time runs. Under load they need more of it: with 30 s of virtual
+    # time tests/motion.html stopped before it reported in 5 of 9 CI runs and in 2 of 4 runs on a loaded laptop, and with
+    # 120 s it reported in 16 of 16 loaded runs. Virtual time ends when the page has reported, so a bigger budget costs
+    # nothing then
     end = time.monotonic() + wait
     while True:
-        t = visual.chrome(binary, "--window-size=1200,1200", "--virtual-time-budget=30000", *([] if motion else ["--force-prefers-reduced-motion"]),
+        t = visual.chrome(binary, "--window-size=1200,1200", f"--virtual-time-budget={120000 if motion else 30000}", *([] if motion else ["--force-prefers-reduced-motion"]),
                           "--dump-dom", base + path, done=done, timeout=90)
         if done(t) or time.monotonic() > end:
             return t
