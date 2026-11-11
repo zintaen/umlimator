@@ -2999,3 +2999,12 @@ Nothing is removed. Every type, option, field, event and command is as it was, o
   db with api → logger and auth → logger) don't clear by a line's side or a card's row: trying every side at both
   ends of each line in those pairs, and each end at the top or foot of its column, stays at 3. They clear when search moves next to db (column 2) and the
   rows are levelled again around it (2 crossings, 11 issues), which is a placement change, not a routing one.
+
+## 0.16.1: validate() warns of a line from a card to itself
+
+- **`validate()`** returns a warning for a line whose `from` and `to` name the same card or box, in the model's lines
+  or a view's: `a line from "a" to itself: not drawn`. No view draws such a line, and until now nothing said so
+  (`docs/diagrams/risks.md` F1). Typed diagrams will draw one as a loop; maps keep leaving it out.
+
+What moves for a host that upgrades: a model with such a line gets one warning per line from `validate()`, from the MCP
+server's `validate` tool and in the playground. Nothing is drawn differently; no geometry changes.

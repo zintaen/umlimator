@@ -344,7 +344,7 @@ export function history(model: MapModel, limit?: number): History;
 export function layout(model: MapModel, viewId: string, options?: { repair?: boolean; measure?: (text: string, px: number) => number; expand?: string[] }): Geometry & { unfolded?: string[] };
 /** A model's own problem. path says where: "views[2].nodeIds[4]". Errors draw as holes or not at all (missing,
  *  repeated or dangling ids, a box inside itself); warnings draw other than they say (an unknown kind, weight or side,
- *  a view a card opens that the host has not loaded yet). The JSON Schema is umlimator/schema.json. */
+ *  a view a card opens that the host has not loaded yet, a line from a card or box to itself, which is not drawn). The JSON Schema is umlimator/schema.json. */
 export interface Problem { level: 'error' | 'warning'; path: string; message: string }
 export function validate(model: MapModel): Problem[];
 /** One issue of the layout check: its message, as the page's check words it, and the cards, lines and boxes it is about
