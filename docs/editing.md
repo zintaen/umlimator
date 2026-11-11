@@ -170,7 +170,7 @@ The panels sit over the map's left side, only on a typed view with `editable`: t
 properties (the selected element's name, the type's `props` schema, its member rows, and the two removals), problems
 (what `validate()` finds about this view's elements; choosing one selects it) and the outline of every node and line in
 the model, with an "In no diagram" filter (risks.md M5). The relationship picker offers the type's `lines`. A type
-this release does not draw offers one generic node and one generic line, with no `type`. Every control is a button or a
+this release does not draw offers one generic node and one generic line, `core.Node` and `core.Line`. Every control is a button or a
 field with a name; Escape in a panel goes back to the map.
 
 Not built yet: member rows drawn on the card itself (they come with the class type, 1.9, which draws them); offering

@@ -3081,7 +3081,7 @@ Stage 1a of the plan for 28 diagram types (`docs/diagrams/`). Nothing new is dra
   also shows panels over the map's left side, driven by its type's definition (internal fields of the registry):
   a palette (`elements`), the relationship picker (`lines`), properties (`props`, per element type) with the element's
   member rows, the problems `validate()` finds in the view, and the outline of every element with an "in no diagram"
-  filter (M5). A type this release does not draw has one generic node and one generic line, neither with a `type`.
+  filter (M5). A type this release does not draw has one generic node and one generic line, `core.Node` and `core.Line`.
 
 What moves for a host that upgrades: nothing is drawn differently. `validate()` returns a new error for a
 `schemaVersion` that is a whole number above 2, and drawing such a model throws; any other value but 1 or 2 is a

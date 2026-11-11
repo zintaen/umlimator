@@ -11,6 +11,7 @@
 import { render } from '../src/canvas/render.js';
 import { registerDiagramType } from '../src/core/registry.js';
 import { apply } from '../src/core/apply.js';
+import { validate } from '../src/map/validate.js';
 const out = { ok: [], fail: [] };
 const check = (name, cond, info) => { document.title = name; if (cond) out.ok.push(name); else out.fail.push(name + (info === undefined ? '' : ': ' + JSON.stringify(info))); };
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
@@ -37,8 +38,11 @@ const panel = s => pick('.um-editor ' + s);
 const button = text => all('.um-editor button').find(b => b.textContent.trim() === text);
 const mount = (opts, model = MODEL, view = 'v') => { el.innerHTML = ''; ed = []; ch = []; const h = render(el, model, { view, on: { edit: e => ed.push(e), change: c => ch.push(c) }, ...opts }); sr = el.querySelector('.umlimator').shadowRoot; stage = pick('.stage'); return h; };
 // the event's commands, exactly, and the model they give
-const gives = (name, cmds, test) => { const e = last(); let m = null, err = null; try { m = e && apply(MODEL, e.commands); } catch (x) { err = String(x); }
-  check(name, !!e && e.view === 'v' && same(e.commands, cmds) && !!m && test(m), { e, err }); };
+// and the model they give validates with no error (warnings are fine)
+const errors = m => validate(m).filter(p => p.level === 'error');
+const gives = (name, cmds, test, base = MODEL) => { const e = last(); let m = null, err = null; try { m = e && apply(base, e.commands); } catch (x) { err = String(x); }
+  const bad = m ? errors(m) : [];
+  check(name, !!e && e.view === 'v' && same(e.commands, cmds) && !!m && test(m) && !bad.length, { e, err, bad }); };
 const node = (m, id) => m.nodes.find(n => n.id === id), V = m => m.views[0];
 try {
   // ---- a read-only embed: none of it in its DOM, and no event
@@ -168,13 +172,21 @@ try {
   check('after update() the picture and the panel show the host\'s model', pick('.node[data-id="a"] .n-label').textContent.includes('Aleph') && f('label').value === 'Aleph');
   h.destroy();
 
-  // ---- a type this release does not draw: one generic node and one generic line, no picker
-  const U = structuredClone(MODEL); U.views[0].diagram = 'uml.class';
+  // ---- a type this release does not draw: core.Node and core.Line, no picker. Its view lists its lines, one its own
+  const U = structuredClone(MODEL); U.views[0].diagram = 'uml.class'; U.views[0].edges = ['ab', 'cd', { id: 'loc', type: 'core.Line', from: 'a', to: 'c' }];
+  check('the models the tests start from have no error', !errors(MODEL).length && !errors(U).length, [errors(MODEL), errors(U)]);
   h = mount({ editable: true }, U);
   check('an unregistered type: the panels, with one generic palette entry', !!pick('.um-editor') && same(all('.um-editor .um-pal button').map(b => b.textContent), ['Node']));
   card('a'); key('l'); key('b'); key('Enter');
-  check('an unregistered type connects with no picker: an untyped line', !pick('.um-pick') && same(last().commands, [{ op: 'add', element: { id: 'line1', from: 'a', to: 'b' }, view: 'v' }]), last());
+  check('an unregistered type connects with no picker', !pick('.um-pick'));
+  gives('a core.Line, listed in the view\'s lines', [{ op: 'add', element: { id: 'line1', type: 'core.Line', from: 'a', to: 'b' }, view: 'v' }], m => m.views[0].edges.includes('line1'), U);
+  key('n'); pick('.um-rename').value = 'Thing'; key('Enter', {}, pick('.um-rename'));
+  gives('N adds a core.Node', [{ op: 'add', element: { id: 'node1', type: 'core.Node', label: 'Thing' }, view: 'v' }], m => m.views[0].nodeIds.includes('node1'), U);
   check('its properties: the name, and the props to read', !!f('label') && !f('p:owner') && panel('.um-props dl').textContent.includes('owner'));
+  h.select({ type: 'edge', ids: ['loc'], view: 'v' }); key('Delete');
+  gives('Delete on a line of this view only: delete', [{ op: 'delete', id: 'loc' }], m => !m.views[0].edges.some(e => e.id === 'loc'), U);
+  h.select({ type: 'edge', ids: ['ab'], view: 'v' }); key('Delete');
+  gives('Delete on a listed model line: hide it from the view', [{ op: 'hide', id: 'ab', view: 'v' }], m => !m.views[0].edges.includes('ab') && m.edges.some(e => e.id === 'ab'), U);
   h.destroy();
 } catch (e) { out.fail.push('threw: ' + (e && e.stack || e)); }
 const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
