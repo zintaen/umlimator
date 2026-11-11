@@ -1,3 +1,4 @@
+import { diagramOf } from './registry.js';
 /* ---------- the model's version and the typed core (schema version 2: docs/diagrams/model.md) ----------
    A model with no schemaVersion is version 1, a map, and reads as it always has. Version 2 adds typed elements: each in
    one envelope ({ id, type, label, parent, props, members }), with nodes, edges, members, fragments and a timing view's
@@ -50,6 +51,7 @@ function typedProblems(model) {
   arr(m.edges).forEach((e, i) => { if (typedEdge(e)) { element(e, `edges[${i}]`, 'edge'); typeOf(e, `edges[${i}]`, true); } });
   const typedView = v => v.diagram != null && v.diagram !== 'map'; // a view with diagram 'map' is a map: the map's checks
   views.forEach((v, i) => { if (!typedView(v)) return;
+    arr(v.nodes).forEach((n, j) => element(n, `views[${i}].nodes[${j}]`, 'node'));
     arr(v.edges).forEach((e, j) => { if (isObj(e)) { element(e, `views[${i}].edges[${j}]`, 'edge'); typeOf(e, `views[${i}].edges[${j}]`, true); } });
     arr(v.fragments).forEach((f, j) => element(f, `views[${i}].fragments[${j}]`, 'fragment'));
     ['changes', 'constraints'].forEach(k => arr((v.timeline || {})[k]).forEach((c, j) => element(c, `views[${i}].timeline.${k}[${j}]`, 'time'))); });
@@ -73,9 +75,10 @@ function typedProblems(model) {
   views.forEach((v, i) => { if (!typedView(v)) return; const at = `views[${i}]`;
     if (typeof v.diagram !== 'string' || !/^[a-z0-9]+(\.[a-z0-9-]+)?$/.test(v.diagram)) warn(at + '.diagram', `diagram ${name(v.diagram)} is not <notation> or <notation>.<kind> (uml.class)`);
     if (v.direction != null && !['right', 'down'].includes(v.direction)) warn(at + '.direction', `direction ${name(v.direction)} is not right or down: drawn right`);
-    arr(v.nodeIds).forEach((id, j) => { if (!nodeIds.has(id)) err(`${at}.nodeIds[${j}]`, `${name(id)} is not a node`); });
-    const mine = new Set(arr(v.containers).map(c => isObj(c) && c.id));
-    arr(v.edges).forEach((e, j) => { if (typeof e === 'string') { if (kindOf.get(e) !== 'edge') err(`${at}.edges[${j}]`, `${name(e)} is not a typed edge`); } else if (isObj(e)) ends(e, `${at}.edges[${j}]`, mine); });
+    arr(v.nodeIds).forEach((id, j) => { if (!nodeIds.has(id) && !arr(v.nodes).some(n => isObj(n) && n.id === id)) err(`${at}.nodeIds[${j}]`, `${name(id)} is not a node`); });
+    const mine = new Set(arr(v.containers).map(c => isObj(c) && c.id)), T = diagramOf(v); // an item (the type's items; else no ends) is no line
+    const item = e => (T ? arr(T.items).includes(e.type) : e.from == null && e.to == null);
+    arr(v.edges).forEach((e, j) => { if (typeof e === 'string') { if (kindOf.get(e) !== 'edge') err(`${at}.edges[${j}]`, `${name(e)} is not a typed edge`); } else if (isObj(e) && !item(e)) ends(e, `${at}.edges[${j}]`, mine); });
     if (v.subject != null && !has(v.subject)) err(at + '.subject', `subject ${name(v.subject)} is not an element`);
     ['layout', 'present'].forEach(k => Object.keys(isObj(v[k]) ? v[k] : {}).forEach(id => { if (!has(id)) warn(`${at}.${k}.${id}`, `${name(id)} is not an element: ignored`); })); });
   return out;

@@ -54,7 +54,7 @@ Host applications embed today's map notation. Nothing below may change what they
 | M9 | Generic fields duplicate typed ones (`sublabel` against `props.technology`) | A type draws from `props` only. Readers stop writing the generic twin once the typed field exists | M2 |
 | M10 | One JSON Schema for 28 vocabularies becomes unreadable | Generate it from the registry's descriptors at build time; CI checks the examples against it | 1 |
 | M11 | A reorder of members reads as "changed" in `diff()` | Correct but vague. The per-type diff writer says "moved" | 1 |
-| M12 | Two views order the same messages differently | Allowed only when messages are inline. Messages shared by id carry one order, in the view that owns the interaction; the spike settles which form is the default | 1, 3 |
+| M12 | Two views order the same messages differently | Allowed only when messages are inline. Messages shared by id carry one order, in the view that owns the interaction. Settled: a sequence view's messages are inline (`notes/spike-sequence.md` §2.2) | 1, 3 |
 | M13 | A model from a newer release holds types this release lacks | Drawn as plain cards with a warning and written back unchanged; `ext` is never touched | 1 |
 
 ## 4. Layout, routing and notation

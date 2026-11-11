@@ -38,7 +38,7 @@ Check the examples against this page with `node docs/diagrams/examples/check.mjs
    and never contain `->` (today's positional line ids do). Every typed edge has an id.
 6. **`parent`** is ownership, and nesting on the picture:
    - on a node: the node or member that holds it (a package, a composite state or its region, a lane, a group);
-   - on a message or a fragment in a sequence view: the operand it lies in.
+   - on a message, an interaction use or a fragment in a sequence view: the operand it lies in.
 7. **Edge ends.** Properties of an end live in `props.ends.from` and `props.ends.to` (role, multiplicity,
    aggregation, navigability). When the end is a port or parameter reached through a part, `props.ends.<end>.part`
    names the part, as UML's `partWithPort` does.
@@ -47,7 +47,8 @@ Check the examples against this page with `node docs/diagrams/examples/check.mjs
    to the extended one, from an artifact to the node it is deployed on, from the referenced entity to the one that refers to it (an ER
    relationship).
 8. **Order is meaning only where the type says so:** `members` (display order), `view.edges` in sequence,
-   communication and C4 dynamic views (time order), `view.nodeIds` in a mind map (sibling order) and in a sequence
+   communication and C4 dynamic views (time order; in a sequence view it orders the view's occurrences, messages and
+   interaction uses, in one list), `view.nodeIds` in a mind map (sibling order) and in a sequence
    view (lifelines, left to right).
 9. **Derived, never stored:** the size of a node sized by its content, compound bounds, activation bars, fragment
    frames, message numbers, lane sizes until a user resizes one.
@@ -59,6 +60,8 @@ Check the examples against this page with `node docs/diagrams/examples/check.mjs
     - `notation`: a skin of the diagram type (`crowsfoot` or `idef1x` for `er`), as `shapes` is for maps;
     - `direction`: `right` (the default, today's) or `down`, which lays the view out turned and transposes it. A map
       view stays left to right, with a warning (stage 1 note, §6).
+
+    In a sequence view `layout` pins mean nothing (warned, not drawn), and `direction` is `down` only.
 11. **Text, not references, for now.** A property's type is text (`"valueType": "Money"`). References by id
     (`classifierRef`) come with integrity across diagram types, after 1.0.0.
 12. **Unknown is kept.** A type the library does not know is drawn as a plain card with a warning and written back
@@ -103,7 +106,7 @@ file is then updated with it.
 | 8 | `uml.use-case` | `uml.Actor`, `uml.UseCase`, `uml.Subject` | `uml.ExtensionPoint` | `uml.Association`, `uml.Include`, `uml.Extend` (`props.extensionPoints`, `props.condition`), `uml.Generalization` | Use cases have the subject as `parent` |
 | 9 | `uml.activity` | `uml.InitialNode`, `uml.ActivityFinalNode`, `uml.FlowFinalNode`, `uml.Action`, `uml.CallBehaviorAction`, `uml.SendSignalAction`, `uml.AcceptEventAction`, `uml.DecisionNode`, `uml.MergeNode`, `uml.ForkNode`, `uml.JoinNode`, `uml.ObjectNode`, `uml.DataStoreNode`, `uml.ActivityPartition` | | `uml.ControlFlow`, `uml.ObjectFlow` | A flow's guard is `props.guard`. A node's partition is its `parent`. A call behaviour action opens a view |
 | 10 | `uml.state-machine` | `uml.State`, `uml.Pseudostate`, `uml.FinalState` | `uml.Region`, `uml.InternalTransition` | `uml.Transition` | State props: `entry`, `do`, `exit`. Pseudostate `props.kind`: `initial`, `choice`, `junction`, `fork`, `join`, `shallowHistory`, `deepHistory`, `terminate`. Transition and internal transition props: `trigger`, `guard`, `effect`. A substate's or pseudostate's `parent` is the state, or one of its regions; at the top it has none |
-| 11 | `uml.sequence` | `uml.Lifeline` | | `uml.Message` | `nodeIds` orders lifelines; `edges` orders messages. Lifeline props: `represents`. Message props, the same on rows 12 and 14: `sort` (`call`, `async`, `reply`, `create`, `delete`) and `replyTo`. `fragments`: `uml.CombinedFragment` (`props.operator`) with `uml.InteractionOperand` members (`label` is the guard), and `uml.InteractionUse` (`props.refersTo`, `props.covers`, `props.after`). A message in an operand has that operand as `parent` |
+| 11 | `uml.sequence` | `uml.Lifeline` | | `uml.Message` | `nodeIds` orders lifelines; `edges` orders the view's occurrences: its messages and interaction uses, inline, in time order. Lifeline props: `represents`. Message props, the same on rows 12 and 14: `sort` (`call`, `async`, `reply`, `create`, `delete`) and `replyTo`; several replies name one call only across the operands of one `alt`. `uml.InteractionUse` (in `edges`, not a line): `parent`, `props.refersTo`, `props.covers` (lifelines next to each other in `nodeIds`). `fragments`: `uml.CombinedFragment` (`props.operator`) with `uml.InteractionOperand` members (`label` is the guard), each taking its place from what it holds. An occurrence or a fragment in an operand has that operand as `parent`. A lifeline is created at most once and deleted at most once. Activations are derived (below) |
 | 12 | `uml.communication` | `uml.Lifeline` | | `uml.Connector`, `uml.Message` | Messages are model edges; the view's `edges` lists the connectors, then the messages in time order. Numbers are derived. A message is drawn on the connector that joins its two lifelines; a self message needs a connector from the lifeline to itself |
 | 13 | `uml.interaction-overview` | `uml.InitialNode`, `uml.ActivityFinalNode`, `uml.DecisionNode`, `uml.MergeNode`, `uml.ForkNode`, `uml.JoinNode`, `uml.InteractionUse`, `uml.Interaction` | | `uml.ControlFlow` | An interaction use or inline interaction names its sequence view in `opensView`; those views, with their lifelines and messages, are in the same model |
 | 14 | `uml.timing` | `uml.Lifeline` | | `uml.Message` | Lifeline `props.states`. `timeline`: `unit`, `changes` (`[{ id, lifeline, at, state }]`), `constraints` (`[{ id, type, from, to, label }]`, types `uml.DurationConstraint`, `uml.TimeConstraint`; a time constraint has `from` only). Messages are inline, as in a sequence view, with `sentAt` and `receivedAt` |
@@ -134,14 +137,26 @@ file is then updated with it.
 
 `uml.Comment` with `uml.CommentLink`, and `props.stereotypes`, are available on every UML and SysML diagram.
 
+**Activations in a sequence view (row 11)** are derived by intervals, never stored (rule 9;
+[`notes/spike-sequence.md`](notes/spike-sequence.md) §2.3):
+
+1. A `call` opens an activation on its receiver at its own row; a self-call opens it where its loop comes back.
+2. It closes at the last reply whose `replyTo` names it. Replies in different operands of an `alt` all close it: the bar
+   runs to the last.
+3. With no reply, a self-call returns at once (its bar is one short step); any other call returns when its caller next
+   sends a message, after the receiver's own last message before that.
+4. `async`, `create` and `delete` open none. A reply or a message sent from a lifeline with no open bar leaves its stem.
+5. Depth: an activation is nested in each of its lifeline's activations that contain it; each level is drawn 6 px to the
+   right. A re-entrant call (A calls B, B calls A) is a second bar on A inside the first, by the same rule.
+
 ## 3. Open points, by the stage that settles them
 
 | Stage | Point |
 |---|---|
 | 1 | Settled in [`notes/stage-1.md`](notes/stage-1.md): row heights are per row (§4); `present.collapsed` hides a compartment and `present.<id>.rows` shows "+n more" (§5) |
-| 1 (spike), 3 | The order of things in a sequence that are not messages: an interaction use, an empty operand, a state invariant. The draft uses `props.after` (a message id). The alternative is one ordered list of items |
-| 3 | Whether a sequence view's messages are inline (the draft) or model edges that a communication view shares by id (row 12) |
-| 3 | Self-messages and re-entrant calls: how activations nest |
+| 1 (spike), 3 | Settled by [`notes/spike-sequence.md`](notes/spike-sequence.md) §2.1, accepted 12 Nov 2026 (the stage 3 note adopts it): the order of things in a sequence that are not messages is one ordered list, `edges`, and `props.after` is gone; an empty operand keeps one empty row |
+| 3 | Settled by the same note, §2.2: a sequence view's messages are inline, and a communication view keeps its own (row 12) |
+| 3 | Settled by the same note, §2.3: activations nest by intervals (the five rules under the tables) |
 | 4 | A transition that starts or ends on a region's border; entry and exit points are out of the subset |
 | 5 | Ports on parts: `ends.<end>.part` against a path form; where a port sits is `present.<port>.side` and its order on that side |
 | 5 | Whether a provided interface is always an `uml.Interface` node drawn as a ball, or may be a port's property |

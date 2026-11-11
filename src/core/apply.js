@@ -1,3 +1,4 @@
+import { diagramOf, propRefs } from './registry.js';
 /* ---------- commands: apply() and references() (work package 1.6) ----------
    apply(model, commands) runs a transaction, one command or a list run in order, on a copy of the model and returns the
    new model; the one given is never changed. A command that cannot run throws, and none of the transaction is applied.
@@ -10,7 +11,8 @@
                                              value undefined removes it. Through objects only; id, members, parent,
                                              from and to change by their own commands
      add       { element, owner?, index?, view? }  a node (no from/to), a line, or with `owner` a member, at `index`
-                                             among the owner's members, else among the view's; `view` shows it there
+                                             among the owner's members, else among the view's; `view` shows it there;
+                                             in 'view' (not 'model'): in its edges, nodes or fragments (registry.js)
      move      { id, index, owner? }         a member to another place among its owner's members, or to a new owner
                { id, view, index }           an element or line to another place in a view's order (its nodeIds or edges)
      hide      { id, view }                  out of one view, with all the view says of it: its place, pin, present,
@@ -18,14 +20,16 @@
                                              keeps it (risks.md E5). A line that lives only in that view goes with it
      delete    { id }                        out of the model, with its members, what it owns, the lines to them, and
                                              every place that names them (references()). One already gone in the same
-                                             transaction is passed over, so a selection deletes in one transaction (E2)
+                                             transaction is passed over, so a selection deletes in one transaction (E2).
+                                             What it held and stays goes to its nearest owner left
      reparent  { id, parent }                a new owner by `parent`, or none with parent null
-   An element is a node, a member, a model line or a view's own line with an id, or a fragment (schema version 2's id
-   space). What a type's own properties name (props.replyTo, a timeline) is the type's to keep, from its stage. */
+   An element is a node, a member, a model line or a view's own line or item with an id, or a fragment (schema version 2's
+   id space). */
 
 const isObj = x => x !== null && typeof x === 'object' && !Array.isArray(x), arr = x => (Array.isArray(x) ? x : []);
 const UNSAFE = new Set(['__proto__', 'constructor', 'prototype']); // never a key a command writes (risks.md M3)
 const isLine = x => isObj(x) && (x.from != null || x.to != null);
+const dig = (x, path) => path.split('.').reduce((o, k) => (isObj(o) ? o[k] : undefined), x);
 
 /* Every element by id: { x, list, kind, owner, view } (owner: the element whose member it is; view: the view a line or
    fragment of its own lives in) */
@@ -42,7 +46,7 @@ function index(m) {
 }
 
 /* Where a model names any of `ids` (a Set): [{ path, kind }], path a list of keys from the model down. Kinds: end, parent,
-   part, view, pin, present, override, subject, story, lens, rule. Neither the element itself nor its members are listed.
+   part, prop, view, pin, present, override, subject, story, lens, rule. Neither the element itself nor its members are listed.
    only(viewIndex): look in those views and their story steps only (hide), else in all of the model. */
 function refs(m, ids, only) {
   const out = [], say = (path, kind) => out.push({ path, kind }), has = id => typeof id === 'string' && ids.has(id);
@@ -50,11 +54,14 @@ function refs(m, ids, only) {
     if (has(x.parent)) say([...at, 'parent'], 'parent');
     if (line) ['from', 'to'].forEach(k => { if (has(x[k])) say([...at, k], 'end');
       if (has((((x.props || {}).ends || {})[k] || {}).part)) say([...at, 'props', 'ends', k, 'part'], 'part'); });
+    Object.keys(propRefs(x.type)).forEach(p => { const v = dig(x, p), ks = p.split('.');
+      if (has(v)) say([...at, ...ks], 'prop'); else arr(v).forEach((id, j) => { if (has(id)) say([...at, ...ks, j], 'prop'); }); });
     arr(x.members).forEach((y, j) => element(y, [...at, 'members', j], false)); };
   if (!only) { arr(m.nodes).forEach((n, i) => element(n, ['nodes', i], false)); arr(m.edges).forEach((e, i) => element(e, ['edges', i], true)); }
   const vids = new Set();
   arr(m.views).forEach((v, i) => { if (!isObj(v) || (only && !only(i))) return; const at = ['views', i]; vids.add(v.id);
     ['nodeIds', 'tour', 'stepIds'].forEach(k => arr(v[k]).forEach((id, j) => { if (has(id)) say([...at, k, j], 'view'); }));
+    arr(v.nodes).forEach((n, j) => element(n, [...at, 'nodes', j], false));
     arr(v.edges).forEach((e, j) => { if (has(e)) say([...at, 'edges', j], 'view'); else element(e, [...at, 'edges', j], true); });
     arr(v.fragments).forEach((f, j) => element(f, [...at, 'fragments', j], false));
     [['layout', 'pin'], ['present', 'present'], ['nodeOverrides', 'override']].forEach(([k, kind]) => Object.keys(isObj(v[k]) ? v[k] : {}).forEach(id => { if (has(id)) say([...at, k, id], kind); }));
@@ -132,8 +139,18 @@ function run(m, c, gone) {
     }
     case 'add': {
       if ('to' in c) throw new Error('add: the owner of a member is `owner`');
+      if (c.in != null && c.in !== 'view' && c.in !== 'model') throw new Error(`add: in is 'view' or 'model', not ${JSON.stringify(c.in)}`);
       checkNew(c.element, at);
       const x = structuredClone(c.element), owner = c.owner != null ? need(c.owner) : null;
+      if (c.in === 'view') {
+        if (c.view == null || owner) throw new Error('add: in \'view\' needs a view, and no owner');
+        const v = viewOf(c.view), T = diagramOf(v) || {}, pal = arr(T.elements);
+        const k = isLine(x) || arr(T.items).includes(x.type) ? 'edges' : !pal.length || pal.some(t => isObj(t) && t.type === x.type) ? 'nodes' : 'fragments';
+        if (k === 'edges' && !Array.isArray(v.edges) && arr(m.edges).length) throw new Error(`add: view "${c.view}" shows every line between its cards; list its lines first`);
+        const list = (v[k] ||= []);
+        if (k === 'nodes') { list.push(x); (v.nodeIds ||= []).splice(place(v.nodeIds, c.index), 0, x.id); } else list.splice(place(list, c.index), 0, x);
+        return;
+      }
       if (owner && owner.kind !== 'node' && owner.kind !== 'member' && owner.kind !== 'fragment') throw new Error(`add: "${c.owner}" holds no members`);
       const v = c.view != null ? viewOf(c.view) : null, list = owner ? (owner.x.members ||= []) : isLine(x) ? (m.edges ||= []) : (m.nodes ||= []);
       list.splice(owner ? place(list, c.index) : list.length, 0, x);
@@ -163,19 +180,24 @@ function run(m, c, gone) {
       const ends = l => isObj(l) && (ids.has(l.from) || ids.has(l.to)); // the view's lines to it, listed or its own, leave the view with it
       if (Array.isArray(v.edges)) v.edges = v.edges.filter(y => { const l = typeof y === 'string' ? (at.get(y) || {}).x : y, out = y === c.id || ends(l);
         if (out && isObj(l) && typeof l.id === 'string') ids.add(l.id); return !out; }); // what names those lines in this view goes too
-      clear(m, refs(m, ids, i => i === vi).filter(r => r.kind !== 'end' && r.kind !== 'parent' && r.kind !== 'part'));
+      clear(m, refs(m, ids, i => i === vi).filter(r => !['end', 'parent', 'part', 'prop'].includes(r.kind)));
       return;
     }
     case 'delete': {
       if (!at.has(c.id) && gone.has(c.id)) return; // gone with an earlier command of this transaction
-      need(c.id); const now = new Set();
+      need(c.id); const now = new Set(), kids = new Map();
+      for (const [k, o] of at) if ((o.kind === 'node' || o.kind === 'member') && o.x.parent != null) { if (!kids.has(o.x.parent)) kids.set(o.x.parent, []); kids.get(o.x.parent).push(k); }
       const take = id => { const r = at.get(id); if (!r || now.has(id)) return; now.add(id);
-        arr(r.x.members).forEach(y => isObj(y) && take(y.id));
-        for (const [k, o] of at) if ((o.kind === 'node' || o.kind === 'member') && o.x.parent === id) take(k); }; // what it owns goes with it
+        arr(r.x.members).forEach(y => isObj(y) && take(y.id)); arr(kids.get(id)).forEach(take); }; // what it owns goes with it
       take(c.id);
-      // lines to what is gone go too, and lines to those lines; a line whose parent goes (a message in a deleted operand)
-      // stays, outside it
-      for (let more = true; more;) { more = false; for (const [k, o] of at) if (!now.has(k) && o.kind === 'edge' && (now.has(o.x.from) || now.has(o.x.to))) { now.add(k); more = true; } }
+      // lines to what is gone go too, lines to those lines, and what a type's refs cascade (a reply with its call)
+      const cascade = x => Object.entries(propRefs(x.type)).some(([p, how]) => how === 'cascade' && [].concat(dig(x, p)).some(id => now.has(id)));
+      for (let more = true; more;) { more = false; for (const [k, o] of at) if (!now.has(k) && (o.kind === 'edge' && (now.has(o.x.from) || now.has(o.x.to)) || cascade(o.x))) { take(k); more = true; } }
+      // what stays in something gone goes to its nearest owner left; an operand's messages to its fragment's parent
+      const above = id => { const r = at.get(id); return r && (r.x.parent ?? (r.owner && above(r.owner.id))); };
+      for (const [k, o] of at) if (!now.has(k) && now.has(o.x.parent)) { let p = o.x.parent;
+        for (let n = 0; p != null && now.has(p) && n++ < at.size;) p = above(p);
+        if (p != null && !now.has(p)) o.x.parent = p; else delete o.x.parent; }
       for (const [k, o] of at) if (now.has(k) && !(o.owner && now.has(o.owner.id))) { const i = o.list.indexOf(o.x); if (i >= 0) o.list.splice(i, 1); }
       for (let found = refs(m, now); found.length; found = refs(m, now)) clear(m, found); // a line without an id to a gone line goes in a second round
       now.forEach(id => gone.add(id));

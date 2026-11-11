@@ -21,6 +21,7 @@
         { "id": "m5", "type": "uml.Message", "from": "payments", "to": "api", "label": "paid", "parent": "f1-paid", "props": { "sort": "reply", "replyTo": "m4" } },
         { "id": "m6", "type": "uml.Message", "from": "api", "to": "receipt", "label": "new(order)", "parent": "f1-paid", "props": { "sort": "create" } },
         { "id": "m7", "type": "uml.Message", "from": "api", "to": "storefront", "label": "orderPlaced", "parent": "f2-notify", "props": { "sort": "async" } },
+        { "id": "f3", "type": "uml.InteractionUse", "label": "Send receipt email", "parent": "f1-paid", "props": { "covers": ["api", "payments", "receipt"] } },
         { "id": "m8", "type": "uml.Message", "from": "payments", "to": "api", "label": "declined", "parent": "f1-declined", "props": { "sort": "reply", "replyTo": "m4" } },
         { "id": "m9", "type": "uml.Message", "from": "api", "to": "storefront", "label": "result", "props": { "sort": "reply", "replyTo": "m2" } },
         { "id": "m10", "type": "uml.Message", "from": "storefront", "to": "shopper", "label": "confirmation page", "props": { "sort": "reply", "replyTo": "m1" } }
@@ -34,9 +35,7 @@
         { "id": "f2", "type": "uml.CombinedFragment", "parent": "f1-paid", "props": { "operator": "opt" },
           "members": [
             { "id": "f2-notify", "type": "uml.InteractionOperand", "label": "shopper is still on the page" }
-          ] },
-        { "id": "f3", "type": "uml.InteractionUse", "label": "Send receipt email", "parent": "f1-paid",
-          "props": { "covers": ["api", "receipt"], "after": "m7" } }
+          ] }
       ] }
   ]
 }

@@ -18,7 +18,7 @@ Update this table in every pull request that belongs to the plan.
 | Before the plan | 0.16.0 | Fixes already on `main` (#146 to #148, #150) | Released 11 Nov 2026 (cf516c8, npm latest); map-repo pinned to it | #146, #147, #148, #150, #152, #153 |
 | Before the split | 0.16.1 | `validate()` warns of a line from a card to itself (`risks.md` F1) | Released 11 Nov 2026 (8f0240f, GitHub and npm latest); map-repo pinned to it | #155, #156 |
 | 1a Foundation | 0.17.0 | Work packages 1.1 to 1.8 | Released 11 Nov 2026 (555bfdc, GitHub and npm latest); map-repo pinned to it | #154, #157, #158, #160, #161, #162, #163, #164, #165, #166, #167 |
-| 1b Class | 0.18.0 | Work packages 1.9 to 1.12 | 1.9 merged (#168); 1.12's findings merged (#171). 1.10 (#169) in review. Next: 1.11, and the spike's changes to the registry, `model.md` and `apply()` | #168, #169, #171 |
+| 1b Class | 0.18.0 | Work packages 1.9 to 1.12 | 1.9 (#168), 1.10 (#169), 1.11 (#172) and 1.12's findings (#171) merged; the spike's changes in review (#173). Next: moving typed-only code out of the core (C5), then the 0.18.0 release | #168, #169, #171, #172, #173 |
 | 2 | 0.19.0 | Object, package | Not started | |
 | 3 | 0.20.0 | Sequence, communication | Not started | |
 | 4 | 0.21.0 | Use case, activity, state machine, interaction overview | Not started | |
@@ -233,3 +233,23 @@ node docs/diagrams/examples/check.mjs         # the target examples match model.
   element in the browser's fonts. A view with no elements (a class view or a map's) threw in `rowsFor`; it lays out as an
   empty stage, 72 by 72 (the core: +42 B gzipped). Left to the lead: the status table, and sign-off on the typed line
   colour in `src/draw/svg.js`.
+- **12 Nov 2026 (the spike's findings applied).** The maintainer accepted `notes/spike-sequence.md` §2.1 to §2.3, and
+  §5's items 1 to 3 are applied. The registry documents its provisional fields (`layout.run` and `key`, `pins`, `draw`'s
+  two layers, `items`, `refs`, `validate(model, view)`, `lines` with `props`, `edits.connect`) and dispatches to a type's
+  `run` inside the host's measure; `uml.class` keeps its layered hook. `model.md`: a sequence's occurrences are one
+  ordered list in `edges` (`props.after` gone), messages inline, activations derived by intervals; `11-sequence.json` and
+  `check.mjs` follow. `apply()`: `add … in: 'view'`, a delete that re-homes what stays to the nearest owner left, and
+  declared references that cascade or drop; P4 to P11 are tests (`tests/spike-sequence.test.mjs`). The core grew by
+  1,137 bytes gzipped (190,526 B with Node's zlib at its default level, the measure of C5's 165,727 B for 0.16.0):
+  14.96% over 0.16.0, about 60 bytes of C5's 15% left. With `gzip -9` it was 189,730 B against 164,954 B, 15.02%.
+- **12 Nov 2026 (1.12b, the spike findings' review).** The review's 11 findings are fixed, each with a test in
+  `tests/spike-sequence.test.mjs`: `delete` of a node with 4,000 lines takes 9 ms again, not 92 (main: 6 ms): a
+  parent's children are found once, not by a scan of the model for each line; `references()` and `delete` look in a view's own `nodes`; a
+  type's `validate(model)` that takes no view runs once a type; only a type's `under` and `over` reach the SVG; an
+  empty view lays out (`rowsFor` with no column) for maps, class views and `layout.run`; `11-sequence.json`'s f3 covers
+  `payments` too, and `check.mjs` checks that `covers` is contiguous and reads the hand list for a type that declares no
+  `refs`; `model.md` §3 says the stage 3 note adopts the point (it does not exist yet); `editing.md` says where
+  `in: 'view'` puts a node outside the palette. The registry's field list now points to `notes/spike-sequence.md` §1,
+  which pays for the fixes: the core is 52 bytes smaller (190,474 B, Node's zlib): 14.93% over 0.16.0, 112 bytes left;
+  with `gzip -9`, 189,678 B, 14.99%, 19 bytes left; with `gzip` at its default, 190,014 B, 15.00%, 2 bytes left. The
+  next change to the core has no budget: it pays for itself or goes to a family file.

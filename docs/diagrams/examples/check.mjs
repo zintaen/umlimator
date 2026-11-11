@@ -2,9 +2,13 @@
 // Structure only: the library's typed core checks (ids, types, ownership, ends), then what model.md says of each type
 // (diagram names, props that name elements, sequence and timing order). It draws nothing. An example whose type draws
 // moves to examples/ (plan.md §2, item 10) and is listed in MOVED, where it is checked as before.
+// What a registered type's props
+// name comes from its own declaration (the registry's `refs`); model.md's hand list covers the types not registered yet.
 import { readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { typedProblems } from '../../../src/core/model.js';
+import { diagramOf } from '../../../src/core/registry.js';
+import '../../../src/uml/class.js'; // registers uml.class
 
 const DIAGRAMS = ['uml.class', 'uml.object', 'uml.package', 'uml.composite-structure', 'uml.component', 'uml.deployment', 'uml.profile',
   'uml.use-case', 'uml.activity', 'uml.state-machine', 'uml.sequence', 'uml.communication', 'uml.interaction-overview', 'uml.timing',
@@ -12,7 +16,7 @@ const DIAGRAMS = ['uml.class', 'uml.object', 'uml.package', 'uml.composite-struc
   'dfd', 'c4', 'bpmn', 'mindmap', 'aws', 'gcp', 'azure']; // in file order: 01 to 28
 const C4 = ['c4.landscape', 'c4.context', 'c4.container', 'c4.component', 'c4.dynamic', 'c4.deployment'];
 const TYPE = /^[a-z0-9]+\.[A-Z][A-Za-z0-9]*$/; // in the examples every element is typed, though a version-2 model may hold untyped cards
-const REF = ['replyTo', 'attachedTo', 'references', 'container', 'after'], REFS = ['conveyed', 'covers', 'extensionPoints', 'categoryValueRef']; // props that name elements
+const REF = ['replyTo', 'attachedTo', 'references', 'container'], REFS = ['conveyed', 'covers', 'extensionPoints', 'categoryValueRef']; // props that name elements
 
 // the target examples that moved to examples/ when their type drew: the name they had here, and where they are now
 export const MOVED = { '01-class.json': '../../../examples/sales-classes.json' };
@@ -35,8 +39,10 @@ export function check(model, expected) {
   const has = (id, what) => { if (id != null && !ids.has(id)) say(`${what}: ${JSON.stringify(id)} is not an element`); };
   const N = new Map(arr(model.nodes).map(n => [n.id, n]));
   arr(model.edges).forEach(e => { if (e && e.type == null) ['from', 'to'].forEach(k => has(e[k], `edge ${e.id}.${k}`)); }); // an untyped edge: the core leaves it to the map's checks
-  all.forEach(x => { const p = x.props || {}; // props that name other elements, or a view: a type's own checks, later
-    REF.forEach(k => has(p[k], `${x.id}.props.${k}`)); REFS.forEach(k => arr(p[k]).forEach(id => has(id, `${x.id}.props.${k}`)));
+  const T = diagramOf({ diagram: expected }), declared = T && T.refs; // a registered type's refs, else the hand list
+  all.forEach(x => { const p = x.props || {}; // props that name other elements, or a view
+    if (declared) Object.keys(Object.hasOwn(declared, x.type) ? declared[x.type] : {}).forEach(k => [].concat(k.split('.').reduce((o, j) => o && o[j], x)).forEach(id => has(id, `${x.id}.${k}`)));
+    else { REF.forEach(k => has(p[k], `${x.id}.props.${k}`)); REFS.forEach(k => arr(p[k]).forEach(id => has(id, `${x.id}.props.${k}`))); }
     if (p.refersTo != null && !vids.has(p.refersTo)) say(`${x.id}.props.refersTo: ${p.refersTo} is not a view`); });
   if (!views.length) say('no views');
   if (model.root != null && !vids.has(model.root)) say(`root ${model.root} is not a view`);
@@ -44,12 +50,15 @@ export function check(model, expected) {
     const at = `view ${v.id}`, ok = expected === 'c4' ? C4.includes(v.diagram) : DIAGRAMS.includes(v.diagram) || C4.includes(v.diagram);
     if (!ok) say(`${at}: diagram ${JSON.stringify(v.diagram)} is not one of model.md's`);
     if (v.parent != null && !vids.has(v.parent)) say(`${at}: parent ${v.parent} is not a view`);
-    if (v.diagram === 'uml.sequence') { // a message's parent is an operand, and an operand's messages are next to each other in time
+    if (v.diagram === 'uml.sequence') { // an occurrence's parent is an operand, and an operand's occurrences (messages and
+      // interaction uses, one ordered list in edges) are next to each other in time
       const ops = new Map(arr(v.fragments).flatMap(f => arr(f.members).map(o => [o.id, f]))), msgs = inline(v); // an operand's id, and its fragment
       const inside = (m, o) => { for (let p = m.parent; p != null; p = (ops.get(p) || {}).parent) if (p === o) return true; return false; };
-      msgs.forEach(m => { if (m.parent != null && !ops.has(m.parent)) say(`message ${m.id}: its parent ${m.parent} is not an operand of ${at}`); });
+      msgs.forEach(m => { if (m.parent != null && !ops.has(m.parent)) say(`${m.id}: its parent ${m.parent} is not an operand of ${at}`); });
       ops.forEach((f, o) => { const i = msgs.map((m, k) => (inside(m, o) ? k : -1)).filter(k => k >= 0);
-        if (i.length && i[i.length - 1] - i[0] + 1 !== i.length) say(`operand ${o}: its messages are not next to each other in time`); });
+        if (i.length && i[i.length - 1] - i[0] + 1 !== i.length) say(`operand ${o}: its occurrences are not next to each other in time`); });
+      msgs.forEach(m => { const c = arr((m.props || {}).covers).map(id => arr(v.nodeIds).indexOf(id)).sort((a, b) => a - b); // covers: lifelines next to each other
+        if (c.length && (c[0] < 0 || c[c.length - 1] - c[0] + 1 !== c.length)) say(`${m.id}: its covers are not lifelines next to each other in nodeIds`); });
     }
     const t = v.timeline; // a timing view: each change is on a lifeline of the view, in one of its states, no earlier than the one before
     if (t) { const last = {}, changes = new Set(arr(t.changes).map(c => c.id));

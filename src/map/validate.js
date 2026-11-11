@@ -134,7 +134,9 @@ export function validate(model) {
     out.push(...typedProblems(m).filter(p => !(p.level === 'error' && said.has(p.path))));
     views.forEach((v, i) => { const at = `views[${i}].diagram`; // a well-formed name of a type this release does not draw (M13)
       if (typedView(v) && !diagramOf(v) && !out.some(p => p.path === at)) warn(at, `diagram "${v.diagram}" is not drawn by this release: its nodes are drawn as plain cards`); });
-    new Set(views.filter(typedView).map(diagramOf)).forEach(T => { if (T && T.validate) out.push(...T.validate(m)); }); // each type's own rules, once (1.9)
+    const once = new Set(); // each view's type's rules, a problem once; a validate(model) that takes no view, once a type
+    views.filter(typedView).forEach(v => { const T = diagramOf(v); if (!T || !T.validate || once.has(T)) return; if (T.validate.length < 2) once.add(T);
+      T.validate(m, v).forEach(p => { const k = JSON.stringify([p.level, p.path, p.message]); if (!once.has(k)) { once.add(k); out.push(p); } }); });
   }
   return out;
 }

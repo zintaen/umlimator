@@ -14,7 +14,7 @@ let svgSeq = 0;
 const ENDS = { none: null, arrow: [10, 4, 'M0 0L10 4L0 8Z', 'line'], open: [10, 5, 'M0 0L10 5L0 10', 'none'], triangle: [13, 7, 'M0 0L13 7L0 14Z', 'hollow'],
   diamond: [16, 6, 'M0 6L8 0L16 6L8 12Z', 'hollow'], 'filled-diamond': [16, 6, 'M0 6L8 0L16 6L8 12Z', 'line'] };
 const endOf = (E, w) => hasKey(ENDS, E[w]) && ENDS[E[w]] ? E[w] : null;
-/* SVG markup. opts: { childCount(id) -> n, subject: id, title } */
+/* SVG markup. opts: { childCount(id) -> n, subject: id, title, under, over } */
 function svgOf(geo, opts = {}) {
   const id = 'g' + (svgSeq++), { nodes, edges, groups, bounds: B, map } = geo;
   const LINE = map ? 'var(--um-arrow)' : 'var(--um-muted)'; // a typed view's lines: 3:1 or more in both themes
@@ -84,7 +84,7 @@ function svgOf(geo, opts = {}) {
     return { d: roundPath(P), legs, at };
   })() : null;
   const tourAnim = (vals, times) => `<animate attributeName="opacity" values="${vals}" keyTimes="${times.map(f2).join(';')}" dur="${TOUR}s" repeatCount="indefinite"/>`;
-  s += '<g class="edges">';
+  s += (opts.under || '') + '<g class="edges">'; // a type's layers (registry.js draw)
   (geo.intake || []).forEach(b => {
     const bp = roundPath(looks.size ? drawnPts({ pts: b.pts, t: geo.byId[b.to], ts: 'L' }, n => looks.get(n) || null) : b.pts); // its end on the card's outline, as a line's
     s += `<g class="intake"><title>${esc(b.label)} feeds ${esc((geo.byId[b.to] || {}).label || b.to)}</title><path d="${bp}" class="edge" stroke="var(--um-w-feeds)" marker-end="url(#${id}-feeds)"/>
@@ -223,7 +223,7 @@ return I && I.src ? `<rect x="${x - M * 3 / 28}" y="${y - M * 3 / 28}" width="${
       const name = `${e.step != null ? `Step ${e.step}: ` : ''}Line ${e.both ? `between ${e.s.label} and ${e.t.label}, both ways` : `from ${e.s.label} to ${e.t.label}`}${said}${broke(e).length ? `, breaks rule ${broke(e).join('; ')}` : ''}`;
       s += `<g class="um-key line-key${e.weight > 1 ? ' wt-' + e.weight : ''}" data-i="${i}" tabindex="0" role="button" aria-pressed="false" aria-label="${esc(name)}"><path d="${roundPath(drawn[i])}" class="key-ring"/></g>`; });
   }
-  s += '</g><g class="labels depth-read">';
+  s += '</g>' + (opts.over || '') + '<g class="labels depth-read">';
   // a typed line's end labels keep clear of the other lines, their labels and the end labels placed before them (1.9, L5)
   const segs = map ? [] : drawn.map(p => p.slice(1).map((q, k) => ({ x: Math.min(p[k][0], q[0]) - 3, y: Math.min(p[k][1], q[1]) - 3, w: Math.abs(q[0] - p[k][0]) + 6, h: Math.abs(q[1] - p[k][1]) + 6 }))), placed = [];
   const endLabs = i => { const bs = endLabels(edges[i], drawn[i], [...placed, ...segs.flatMap((S, j) => j === i ? [] : [...S, ...(edges[j].lbl ? [edges[j].lbl] : [])])]); placed.push(...bs); return bs; };
