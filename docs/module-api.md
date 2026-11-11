@@ -3037,13 +3037,23 @@ Stage 1a of the plan for 28 diagram types (`docs/diagrams/`). Nothing new is dra
   (0, 1.5, "2") is a warning, and the model draws as a map, as it did.
 - **Commands (1.6).** `apply(model, commands)` runs a transaction (one command or a list) on a copy and returns the
   new model; the one given is never changed, and a command that cannot run throws with none of the transaction
-  applied. The commands: `set` (a field of an element or a view, by a path: `props.visibility`, or
-  `['present', 'order.lines', 'rows']`), `add` (a node, a line, or a member at a place, optionally shown in a view),
-  `hide` (out of one view, with its pin, `present` and the view's lines to it; the model keeps it), `delete` (out of
-  the model with its members, what it owns, the lines to them and every place that names them: views, pins, boxes,
-  stories, lenses and rules; a lens or rule that named only it picks nothing) and `reparent`. Undo is the model before,
-  which `history()` keeps: undo and redo give back byte-identical models. `references(model, id)` lists every place
-  that names an element, for a host with a store of its own. The canvas emits these commands from 1.7.
+  applied.
+  - `set { id | view, path, value }`: a field, by a dotted path or a list of keys (`['present', 'order.total', 'rows']`);
+    through objects only. `id`, `members`, `parent`, `from` and `to` are not set: they have their own commands.
+  - `add { element, owner?, index?, view? }`: a node, a line, or a member of `owner`, at `index`; `view` shows it there.
+  - `move { id, index, owner? }`: a member to another place, or to another owner, keeping its id and lines; with
+    `view`, an element or line to another place in that view's order.
+  - `hide { id, view }`: out of one view, with all the view says of it (its place, pin, `present`, box, tour, the view's
+    lines to it, the story steps on that view); the model keeps it. A line that lives only in that view goes with it.
+  - `delete { id }`: out of the model with its members, what it owns, the lines to them (and lines to those lines),
+    and every place that names them; a lens or rule that named only it picks nothing. An id already gone earlier in the
+    same transaction is passed over, so a selection deletes in one transaction.
+  - `reparent { id, parent }`: a new owner, or none with `null`; never into itself.
+
+  Undo is the model before, which `history()` keeps: undo and redo give back byte-identical models. `references(model,
+  id)` lists every place that names an element, as a list of keys and a kind, for a host with a store of its own. What
+  a type's own properties name (a message's `replyTo`, a timeline) is the type's to keep, from its stage. The canvas
+  emits these commands from 1.7.
 
 What moves for a host that upgrades: nothing is drawn differently. `validate()` returns a new error for a
 `schemaVersion` that is a whole number above 2, and drawing such a model throws; any other value but 1 or 2 is a
