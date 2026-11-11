@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 const ORDER = [
   'core/model', 'core/registry', 'core/warn', 'core/text', 'core/history', 'core/apply',
   'draw/shapes', 'draw/lines', 'draw/svg',
-  'layout/layered', 'layout/audit',
+  'layout/layered', 'layout/audit', 'layout/typed',
   'map/kinds', 'map/typed', 'map/cards', 'map/context', 'map/api', 'map/validate', 'map/diff', 'map/insight', 'map/lens',
   'canvas/styles', 'canvas/camera', 'canvas/render', 'canvas/pieces',
   'page/page', 'page/print',
