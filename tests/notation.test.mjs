@@ -3,7 +3,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { SHAPE, SHAPE_NAMES } from '../src/draw/shapes.js';
-import { endLabels } from '../src/draw/lines.js';
+import { endLabels } from '../src/typed/draw.js';
 import { svgOf } from '../src/draw/svg.js';
 import { mapNodeW } from '../src/map/cards.js';
 import { mapContext } from '../src/map/context.js';

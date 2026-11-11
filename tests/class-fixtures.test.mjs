@@ -10,7 +10,7 @@ import '../src/uml/class.js';
 import { layout, check } from '../src/map/api.js';
 import { mapContext } from '../src/map/context.js';
 import { validate } from '../src/map/validate.js';
-import { endLabels } from '../src/draw/lines.js';
+import { endLabels } from '../src/typed/draw.js';
 
 const read = p => JSON.parse(readFileSync(new URL(p, import.meta.url)));
 const MINIMAL = read('./class-minimal.json'), STRESS = read('./class-stress.json');

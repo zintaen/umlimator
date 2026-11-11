@@ -1,14 +1,15 @@
 import { registerDiagramType } from '../core/registry.js';
 import { esc, fit, textW } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
-import { layoutTyped } from '../layout/typed.js';
+import '../typed/draw.js'; // SHAPE.classifier, which the note's outline and ports take
+import { layoutTyped } from '../typed/layout.js';
 
 /* ---------- the class diagram, uml.class (work package 1.9) ----------
    The subset of proposal.md §8.2: class, interface, enumeration with literals, data type, primitive type; attributes and
    operations in UML's text form; stereotypes as text; packages as owners (drawn as a node until stage 2 draws ownership);
    association with both ends, generalization, interface realization, dependency; comments. A view whose `diagram` is
-   'uml.class' is laid out by layoutTyped (src/layout/typed.js) and drawn with the classifier shape and the line-end table
-   (src/draw/). Ships in lib/umlimator-all.js only (stage 1 note §2.5). */
+   'uml.class' is laid out by layoutTyped (src/typed/layout.js) and drawn with the classifier shape and the line-end table
+   (src/typed/draw.js). Ships in lib/umlimator-all.js only (stage 1 note §2.5). */
 
 const UML_OBJ = x => x !== null && typeof x === 'object' && !Array.isArray(x), UML_ARR = x => (Array.isArray(x) ? x : []);
 const UML_HAS = x => x != null && x !== '';
