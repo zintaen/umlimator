@@ -3059,6 +3059,12 @@ Stage 1a of the plan for 28 diagram types (`docs/diagrams/`). Nothing new is dra
   for row orders bakes no layout into a typed view (F4). The CLI's page inlines `lib/umlimator-all.js`, a second whole
   file built from the same sources with every diagram family in it (`umlimator/all`); until a family ships it holds the
   same code as `lib/umlimator.js` (F5, stage 1 note §2.5).
+- **The layout for typed views (1.4).** Internal until the class type draws with it (1.9), and off for every map, which
+  lays out as it did: rows as tall as their tallest node (stage 1 note §4); a line from a node to itself drawn as a loop
+  on its top right corner, with its label (F1); lines between one pair each with their own ports and label (F2);
+  `direction: "down"`, a left-to-right layout with every box turned, transposed (§6); and a geometry key, so that an
+  edit that moves nothing (a colour, a `props` field) repaints without laying out or routing again (F7). The unused
+  `autoLayout` and `hubLayout` are gone.
 
 What moves for a host that upgrades: nothing is drawn differently. `validate()` returns a new error for a
 `schemaVersion` that is a whole number above 2, and drawing such a model throws; any other value but 1 or 2 is a
