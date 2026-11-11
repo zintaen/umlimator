@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
 import { migrate, validate } from '../lib/umlimator.js';
 import { typedProblems } from '../src/core/model.js'; // the typed core's checks; validate() runs them from 1.3
+import { targets } from '../docs/diagrams/examples/check.mjs'; // the 28, those moved to examples/ too
 
 const read = p => JSON.parse(readFileSync(new URL(p, import.meta.url)));
 const jsons = dir => readdirSync(new URL(dir, import.meta.url)).filter(f => f.endsWith('.json')).map(f => dir + f);
@@ -37,9 +38,9 @@ test('a newer schemaVersion is an error: migrate() throws and validate() says so
 });
 
 test('the 28 target examples pass the typed core\'s checks', () => {
-  const files = readdirSync(new URL('../docs/diagrams/examples/', import.meta.url)).filter(f => /^\d\d-.*\.json$/.test(f));
+  const files = targets();
   assert.equal(files.length, 28);
-  for (const f of files) assert.deepEqual(typedProblems(read('../docs/diagrams/examples/' + f)), [], f);
+  for (const [f, url] of files) assert.deepEqual(typedProblems(JSON.parse(readFileSync(url))), [], f);
 });
 
 test('the typed core names each problem by where it is: ids, types, ownership, ends and typed views', () => {

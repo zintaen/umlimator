@@ -187,3 +187,23 @@ disabled, to read; `move` is the pin.
 Not built yet: member rows drawn on the card itself (they come with the class type, 1.9, which draws them); offering
 only the lines allowed between two ends (E6); selecting an element after the host adds it. The relationship picker
 closes on any `update()` that draws the view again, even one unrelated to the line being added.
+
+## The class diagram's gestures (0.18.0)
+
+A `uml.class` view (`examples/class-editor.html` is a working host) takes every gesture above, with the type's own
+palette, lines and fields. Each is one `edit` event; the host applies it with `apply()`.
+
+| Edit | Pointer | Keyboard | Commands |
+|---|---|---|---|
+| add a classifier, a package or a comment | a palette entry (Class, Interface, Enumeration, Data type, Primitive type, Package, Comment), then its name | `N` adds a class; Enter on an entry | `add` with `view` |
+| add a line | the handle to another element, then Association, Generalization, Realization, Dependency or Comment link | `L`, a name or arrows, Enter, then the picker | `add` of the line, shown in the view |
+| edit a member | its row in the properties panel, as one line of UML text: `+ /total: Money [1] = 0`, `- {static} count: Integer`, `+ place(at: Date, in qty: Int): Order` | Enter commits; Escape puts the row back | `set label` and `set props`, one transaction; the props the text does not write (stereotypes, a host's own) are kept |
+| add a member | the New member row | Enter | `add` with `owner`: an operation when it has brackets, else an attribute; on an enumeration, a bare name is a literal |
+| reorder members | ↑ ↓ by a row | `Alt + ↑ / ↓` in a row | `move` |
+| abstract, stereotypes | Abstract (a class), Stereotypes (`entity, root`: a list, written as text) | Space; Enter | `set` of `props.isAbstract`, `props.stereotypes` |
+| an association's ends | From and To: role, multiplicity, aggregation (none, shared, composite), navigable | Enter, arrows, Space | `set` of `['props', 'ends', 'from' or 'to', key]` |
+
+A member line the syntax does not read (`+ total Money`) is kept in its row as typed, marked invalid with the reason
+in the hint line, and nothing is applied (risks.md E3); a good line, or Escape, clears the mark. A comment and a package
+have no Members section. What breaks a rule of the class diagram (`validate()`, `docs/conformance/uml-class.md`) shows
+in the problems list, by its rule and its elements, and choosing it selects them.

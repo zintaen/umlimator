@@ -24,7 +24,7 @@ const canon = m => ({ ...m, nodes: [...m.nodes].sort(byId), edges: [...m.edges].
 const roundTrip = (m, viewId) => { const text = write(m, viewId), back = read(text); return { text, back }; };
 
 test('read(write(model)) is the class example, view by view, and nothing is reported', () => {
-  const m = json('../docs/diagrams/examples/01-class.json');
+  const m = json('../examples/sales-classes.json');
   for (const v of m.views) {
     const { text, back } = roundTrip(m, v.id);
     assert.deepEqual(back.report, [], text);
@@ -277,7 +277,7 @@ test('the writer says what it drops: a parent cycle, a class\'s class parent, a 
   assert.deepEqual(cyc.split('\n').filter(l => l.includes('not written')).map(l => l.trim()), [
     '%% not written: B: its parent A, a uml.Class, which only a namespace can be', '%% not written: p (uml.Package)', '%% not written: q (uml.Package)',
     '%% not written: A (uml.Class)', '%% not written: e (uml.Dependency)']);
-  const m = json('../docs/diagrams/examples/01-class.json');
+  const m = json('../examples/sales-classes.json');
   assert.equal(write(m, 'nope'), '%% not written: view nope, which the model does not have\n');
   const weather = json('../examples/weather.json');
   assert.equal(write(weather), '%% not written: the model, which has no uml.class view\n');

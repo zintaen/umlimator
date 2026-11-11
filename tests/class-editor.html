@@ -1,0 +1,39 @@
+<!doctype html>
+<!-- The class diagram editor host page (examples/class-editor.html, 1.11) in headless Chrome (tests/embed.py), in a frame:
+     an edit made in the properties panel reaches the host, which applies it and draws it; Undo and Redo give back the
+     models before and after; a refused edit changes nothing. -->
+<meta charset="utf-8">
+<link rel="icon" href="data:,">
+<title>umlimator class editor test</title>
+<body style="margin:0">
+<iframe id="f" src="../examples/class-editor.html" style="width:1300px;height:900px;border:0"></iframe>
+<script type="module">
+const out = { ok: [], fail: [] };
+const check = (name, cond, info) => { document.title = name; if (cond) out.ok.push(name); else out.fail.push(name + (info === undefined ? '' : ': ' + JSON.stringify(info))); };
+const tick = () => new Promise(r => setTimeout(r, 50));
+try {
+  const f = document.getElementById('f'); await new Promise(r => f.addEventListener('load', r, { once: true }));
+  const w = f.contentWindow, d = f.contentDocument;
+  for (let i = 0; i < 100 && !(w.map && d.querySelector('.umlimator')); i++) await tick();
+  const sr = d.querySelector('.umlimator').shadowRoot, pick = s => sr.querySelector(s), all = s => [...sr.querySelectorAll(s)];
+  const rows = () => all('.node[data-id="order"] .c-row').map(x => x.textContent), log = () => [...d.querySelectorAll('#log li')].map(x => x.textContent);
+  check('the editor draws the class example: 11 elements, 8 lines, a legend', all('.node').length === 11 && all('.edge-g').length === 8 && !!pick('.m-legend'));
+  const before = rows();
+  w.map.select({ type: 'node', id: 'order', view: 'domain' });
+  const row = pick('.um-editor [data-m="order.total"]');
+  row.value = '+ /total: Money [1]'; row.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, composed: true, cancelable: true }));
+  await tick();
+  check('a member edited as text: the host applies the transaction and the class shows it', rows().includes('+ /total: Money [1]') && log().length === 1 && /"op":"set"/.test(log()[0]), [rows(), log()]);
+  check('Undo is enabled once there is something to undo', !d.getElementById('undo').disabled && d.getElementById('redo').disabled);
+  d.getElementById('undo').click(); await tick();
+  check('Undo gives back the model before: the row as it was', JSON.stringify(rows()) === JSON.stringify(before) && !d.getElementById('redo').disabled, rows());
+  d.getElementById('redo').click(); await tick();
+  check('Redo applies it again', rows().includes('+ /total: Money [1]'), rows());
+  d.getElementById('apply').checked = false;
+  w.map.select({ type: 'node', id: 'order', view: 'domain' });
+  const r2 = pick('.um-editor [data-m="order.total"]'); r2.value = '+ /total: Money [0..1]';
+  r2.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, composed: true, cancelable: true })); await tick();
+  check('a refused edit changes nothing, and the log says so', rows().includes('+ /total: Money [1]') && /^refused /.test(log()[0]), [rows(), log()[0]]);
+} catch (e) { out.fail.push('threw: ' + (e && e.stack || e)); }
+const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
+</script>

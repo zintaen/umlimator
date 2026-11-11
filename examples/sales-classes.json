@@ -1,4 +1,5 @@
 {
+  "$schema": "../lib/umlimator.schema.json",
   "schemaVersion": 2,
   "title": "Bookshop: sales domain",
   "root": "domain",

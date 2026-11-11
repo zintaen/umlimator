@@ -43,6 +43,13 @@ drill-down, a data pipeline, an AI agent's skills, and host pages for embedding,
 - **The page's pieces, embedded**: the standalone page's views list, details panel, legend and hint line, each one a
   `render()` option, around the map in the host's own page.
 - **Editing** (opt-in): gestures emit `change` events; the host applies them and calls `update()`.
+- **UML class diagrams** (0.18.0, the first of 28 diagram types): a typed model drawn in UML's notation, classes with
+  their attributes and operations, interfaces, enumerations, data types, notes, and associations with roles,
+  multiplicities, composition, aggregation and navigable ends, generalization, realization and dependency; laid out by
+  itself, pinned where you pin it. Edited on the canvas (members as one line of UML text, a palette, a relationship
+  picker), each gesture an `edit` event the host applies with `apply()`; checked by the class diagram's rules; read from
+  and written to Mermaid's `classDiagram` ([`examples/sales-classes.json`](examples/sales-classes.json),
+  [what it covers](docs/conformance/uml-class.md)).
 - **Export**: any view as a stand-alone SVG or PNG, in the browser or from the CLI; the whole map as one PDF to hand in
   for a review: a cover with the contents, each view with its legend and tables of its cards, lines and boxes, then the
   rules (`umlimator.py pdf`).
@@ -114,6 +121,9 @@ function MapView({ model, onSelect }) {
   `map.shapes` reads the notation shown and sets another (`null`: each view's own again); the cards are drawn again from
   the geometry they have, with the camera, selection and marks kept, and nothing is laid out.
 - `editable: true` turns on editing gestures ([docs/editing.md](docs/editing.md); `examples/edit.html` is a working host).
+- `import { render, apply, history } from 'umlimator/all'` draws diagram types too: a class diagram, whose gestures emit
+  `edit` transactions that `apply(model, e.commands)` turns into the next model (`examples/class-editor.html` is a
+  working host). `umlimator` alone draws maps, and a typed view as plain cards with a warning.
 - `diff(before, after)` returns `after` with each card and line marked added, changed or removed, what changed in words,
   and the views that show it; `drift(model, observed)` marks the lines traffic ran on that nobody drew, and the drawn ones
   that carried nothing. Both are models to draw, in Node too. `update()` eases into the next model (`examples/timelapse.html`);
@@ -189,9 +199,10 @@ A model has shared `nodes` and `edges`, and `views` that each show a subset, wit
 path. The full schema is `engine/references/schema.md` (§ Map model); `examples/bookshop.json` uses most of it.
 A model file that starts with `"$schema": "<path to>/umlimator.schema.json"` (exported as `umlimator/schema.json`)
 gets completion and checks in editors, and `validate(model)` lists its errors and warnings, each with where it is.
-`"schemaVersion": 2` marks a model that may hold typed elements and typed views (`docs/diagrams/model.md`); none is
-drawn as such yet: a typed view shows its nodes as plain cards, with a warning. A model with no `schemaVersion` is a
-map, as always, and a version newer than the module reads is an error.
+`"schemaVersion": 2` marks a model that may hold typed elements and typed views (`docs/diagrams/model.md`). A view whose
+`diagram` is `"uml.class"` is a UML class diagram, drawn by `umlimator/all` and the CLI; a type not drawn yet shows its
+nodes as plain cards, with a warning. A model with no `schemaVersion` is a map, as always, and a version newer than the
+module reads is an error.
 
 Card kinds: `frontend`, `backend`, `ai`, `database`, `queue`, `security`, `cloud`, `external` and `file` (skill-map
 kinds such as `public`, `lane`, `script`, `hook` and `board` work too). Fields beyond the schema:
@@ -226,6 +237,19 @@ kinds such as `public`, `lane`, `script`, `hook` and `board` work too). Fields b
 | model | `stories` | walk-throughs: steps that each set the view, camera, selection, highlight, tour and caption |
 | model | `lenses` | ways to look at the map: what `pick` picks (by id, kind, box, owner or `line` kind) lit, the rest dimmed; `color: "owner"` rings cards by owner |
 
+In a version-2 model, a class diagram (`examples/sales-classes.json`; every field in
+[`docs/conformance/uml-class.md`](docs/conformance/uml-class.md)):
+
+| On | Field | What it does |
+|---|---|---|
+| node, member, edge | `type` | what it is: `uml.Class`, `uml.Interface`, `uml.Enumeration`, `uml.DataType`, `uml.PrimitiveType`, `uml.Package`, `uml.Comment`; members `uml.Property`, `uml.Operation`, `uml.EnumerationLiteral`; lines `uml.Association`, `uml.Generalization`, `uml.InterfaceRealization`, `uml.Dependency`, `uml.CommentLink` |
+| node | `members` | its attributes, operations or literals, in order, each `{ id, type, label, props }` |
+| node | `parent` | the package that owns it |
+| node, member, edge | `props` | the type's own fields: `isAbstract`, `stereotypes`; a member's `visibility`, `valueType`, `multiplicity`, `default`, `isStatic`, `isDerived`, `parameters`, `returnType`; an association's `ends.from` and `ends.to` (`role`, `multiplicity`, `aggregation`, `navigable`) |
+| view | `diagram` | `"uml.class"`: the view is a class diagram |
+| view | `direction` | `"down"` lays it out top to bottom, the general class above (default `"right"`) |
+| view | `present` | per element: `collapsed` compartments, and at most `rows` rows each, then "+k more" |
+
 ## Command line
 
 ```bash
@@ -240,6 +264,8 @@ python3 umlimator.py timelapse model.json --out history.html          # the mode
 python3 umlimator.py check page.html --expand                          # also each view with each stacked card unfolded
 python3 umlimator.py record bike-share.html --story ride --out ride.png   # bike-share's story as an animated PNG, its tours riding
 python3 umlimator.py import workspace.dsl --out model.json            # a diagram you have already, as a model
+python3 umlimator.py import classes.mmd --out classes.json            # a Mermaid classDiagram, as a UML class diagram (needs Node)
+python3 umlimator.py render examples/sales-classes.json --out classes.html   # a class diagram's page; stills, check and pdf take it too
 docker compose config --format json > compose.json && python3 umlimator.py import compose.json --out model.json
 kubectl get deploy,sts,svc,ing -A -o json > cluster.json && python3 umlimator.py import cluster.json --out model.json
 python3 umlimator.py pdf page.html --out map.pdf                       # every view in one PDF: a cover, each view with its tables, the rules
@@ -251,7 +277,7 @@ python3 umlimator.py mcp model.json                                    # an MCP 
 
 `import` reads Structurizr DSL (people, systems, containers and components, their relationships, and the workspace's
 views), C4-PlantUML (its element, relationship and boundary macros), Mermaid (`flowchart` or `graph`, and `C4Context`,
-`C4Container` or `C4Component`), and the JSON of `docker compose config` (services, `depends_on`, networks) and of
+`C4Container` or `C4Component`; a `classDiagram` becomes a UML class diagram, read through Node), and the JSON of `docker compose config` (services, `depends_on`, networks) and of
 `kubectl get` (workloads, Services, Ingresses). It tells the format from the content, then the extension; `--format`
 decides. Groups, boundaries, subgraphs, networks and namespaces become boxes; Structurizr's views stay views, a card
 opening the view below it; `examples/clinic.json` is `examples/clinic.dsl`, imported. What each element becomes, and

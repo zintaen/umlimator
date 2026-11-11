@@ -348,7 +348,7 @@ Reusing `nodes` and `edges` means `diff()`, `rules()`, lenses, `describe()`, pat
 and the importers' model work on every new type on the day it ships. A parallel `elements` and `relationships`
 vocabulary would have forked every one of those.
 
-**A structural diagram** (from [`examples/01-class.json`](examples/01-class.json)):
+**A structural diagram** (from `examples/01-class.json`, now [`../../examples/sales-classes.json`](../../examples/sales-classes.json)):
 
 ```jsonc
 { "id": "order", "type": "uml.Class", "label": "Order", "parent": "sales",

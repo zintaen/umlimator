@@ -1,0 +1,65 @@
+<!doctype html>
+<!-- A class diagram edited in a host page: the canvas emits `edit` events, each a transaction of commands; this page (the
+     host) applies them with apply(), keeps every model in history() for undo, and calls update(). Serve the repository
+     over HTTP to open it (ES modules do not load from file://):  python3 -m http.server  then
+     http://localhost:8000/examples/class-editor.html -->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>umlimator: a class diagram editor</title>
+<link rel="stylesheet" href="../lib/umlimator-theme.css">
+<style>
+  body { margin: 0; display: grid; grid-template-columns: minmax(0, 1fr) 340px; height: 100dvh; background: var(--um-bg); color: var(--um-text); font: 14px/1.5 var(--um-sans); }
+  #map { min-height: 0; }
+  aside { border-left: 1px solid var(--um-border); padding: 12px 14px; overflow: auto; }
+  h1 { font-size: 15px; margin: 0 0 6px; } p { margin: 0 0 10px; color: var(--um-muted); font-size: 12.5px; }
+  kbd { font: 600 11px var(--um-mono); border: 1px solid var(--um-border-2); border-radius: 4px; padding: 0 4px; }
+  code { font: 12px var(--um-mono); }
+  ol { margin: 0; padding-left: 18px; font: 12px/1.45 var(--um-mono); } li { margin-bottom: 6px; word-break: break-word; }
+  label { display: block; margin: 8px 0; font-size: 12.5px; }
+  .bar { display: flex; gap: 6px; margin: 8px 0 12px; }
+  button { font: inherit; font-size: 12.5px; color: var(--um-text); background: var(--um-panel-2); border: 1px solid var(--um-border-2); border-radius: 6px; padding: 2px 10px; cursor: pointer; }
+  button:disabled { color: var(--um-dim); cursor: default; }
+  @media (max-width: 760px) { body { grid-template-columns: 1fr; grid-template-rows: 60dvh auto; height: auto; } aside { border-left: 0; border-top: 1px solid var(--um-border); } }
+</style>
+<div id="map"></div>
+<aside>
+  <h1>A class diagram editor</h1>
+  <p>Select a class to edit it in the properties panel: its name, stereotypes, and each member as one line of UML
+    (<code>+ total: Money [1] = 0</code>, <code>+ place(at: Date): Order</code>). A palette entry, or <kbd>N</kbd>: add a
+    class · drag a selected class's handle to another, or <kbd>L</kbd>: add a line, then pick its kind · <kbd>F2</kbd>:
+    rename · <kbd>Alt</kbd> + arrows: pin it elsewhere · <kbd>Delete</kbd>: remove from this view, with <kbd>Shift</kbd>:
+    from the model · <kbd>⌘/Ctrl</kbd> + <kbd>Z</kbd>: undo, with <kbd>Shift</kbd>: redo.</p>
+  <label><input type="checkbox" id="apply" checked> apply edits (the host's decision; unticked, every edit is refused)</label>
+  <div class="bar"><button id="undo" disabled>Undo</button><button id="redo" disabled>Redo</button><button id="save">Save the model</button></div>
+  <ol id="log" reversed></ol>
+</aside>
+<script type="module">
+import { render, apply, history, validate } from '../lib/umlimator-all.js';
+
+const log = document.getElementById('log'), note = html => log.insertAdjacentHTML('afterbegin', `<li>${html}</li>`);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+const undoB = document.getElementById('undo'), redoB = document.getElementById('redo');
+// undo is the host's: history() keeps each model it applied, and undo() and redo() hand one back to the map
+const steps = history(await (await fetch('sales-classes.json')).json());
+const map = render(document.getElementById('map'), steps.model, { editable: true, legend: true, minimap: true, on: { edit: e => {
+  if (!document.getElementById('apply').checked) return note('<b>refused</b> ' + esc(JSON.stringify(e.commands)));
+  let next;
+  try { next = apply(steps.model, e.commands); } catch (err) { return note('<b>not applied</b> ' + esc(err.message)); } // all or nothing: nothing changed
+  const errors = validate(next).filter(p => p.level === 'error').length; // the canvas lists the problems; the host may refuse on them
+  note(esc(JSON.stringify(e.commands)) + (errors ? ` <b>(${errors} error${errors > 1 ? 's' : ''})</b>` : ''));
+  show(steps.push(next));
+} } });
+function show(model) { map.update(model); undoB.disabled = !steps.canUndo; redoB.disabled = !steps.canRedo; }
+const undo = () => { if (steps.canUndo) { show(steps.undo()); note('<b>undo</b>'); } }, redo = () => { if (steps.canRedo) { show(steps.redo()); note('<b>redo</b>'); } };
+undoB.onclick = undo; redoB.onclick = redo;
+addEventListener('keydown', e => {
+  if (!(e.metaKey || e.ctrlKey) || e.key.toLowerCase() !== 'z') return;
+  e.preventDefault(); (e.shiftKey ? redo : undo)();
+});
+// the model is the save format: reopening it and editing on gives what an unbroken session would (definition of done, 6)
+document.getElementById('save').onclick = () => {
+  const a = Object.assign(document.createElement('a'), { download: 'sales-classes.json', href: URL.createObjectURL(new Blob([JSON.stringify(steps.model, null, 2)], { type: 'application/json' })) });
+  a.click(); URL.revokeObjectURL(a.href);
+};
+window.map = map;   // for the console, and for tests/embed.py
+</script>

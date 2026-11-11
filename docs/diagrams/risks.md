@@ -64,7 +64,7 @@ Host applications embed today's map notation. Nothing below may change what they
 | L1 | Row pitch is constant; a 20-member class is taller than its row | Rows take the height of their tallest node. A node's compartments show "+n more" past `present.<id>.rows`; `collapsed` hides one ([`notes/stage-1.md`](notes/stage-1.md) §4, §5) | 1 |
 | L2 | Node size depends on the font, so geometry differs between Node (an estimate) and a browser, and between fonts | Hashes use the estimate, as now. Each fixture is also laid out under three fonts in the browser tests, with no overlap or overflow allowed | 1 |
 | L3 | Top-to-bottom direction touches every part of the layered layout | Decided ([`notes/stage-1.md`](notes/stage-1.md) §6): lay out left to right with every box turned, then transpose; text is drawn afterwards, upright. Maps stay left to right | 1 |
-| L4 | Several typed lines between one pair crowd each other's labels and ends | Ports spread along the side; end labels sit in reserved boxes by each end; the label step treats them as obstacles. The fixture has four lines between two classes | 1 |
+| L4 | Several typed lines between one pair crowd each other's labels and ends | Ports spread along the side; end labels sit in reserved boxes by each end; the label step treats them as obstacles. The fixture has four lines between two classes. Known limit (1.11): the layered layout leaves crossings it finds no better order for, 2 in the stress fixture's 13-element view and 29 in its 50-element one, pinned in `tests/class-fixtures.test.mjs` and stated in `docs/conformance/uml-class.md` | 1 |
 | L5 | End labels (role, multiplicity) collide where many lines meet one side | The side widens before labels overlap, as gaps widen for labels today | 1 |
 | L6 | Inheritance wants the parent above; associations have no direction | A relation may carry a layout hint; hints never override a pin | 1 |
 | L7 | A line that ends on another line: a note on an association, an association class, a constraint between two lines | Out of the subsets. `uml.CommentLink` ends on nodes and members only; a later stage may add ends on lines | Later |
@@ -118,6 +118,7 @@ Host applications embed today's map notation. Nothing below may change what they
 | R5 | BPMN files carry positions; D1 lays out automatically | Positions are not kept on import, and the report says so once per file. Export writes diagram interchange from the layout | M4 |
 | R6 | Users expect XMI | Out of scope through 1.0.0 and said so in each UML type's conformance note | All |
 | R7 | New readers are JavaScript; `umlimator.py import` is Python | The command calls the module through Node, as `diff` and `trace` do; without Node it says which formats need it | 1 |
+| R8 | Found in 1.11: the PDF's tables of cards and lines are the map's. On a class diagram every element's kind reads "Script", a line with no label reads "calls", and members are not listed; the picture and the legend are right | Per-type tables in `umlimator.py pdf` (the element's type, a line's kind, a classifier's members), from the type's `describe()` words. `docs/conformance/uml-class.md` lists it until then | 1 or 2 |
 
 ## 8. Performance, accessibility, security, theming
 

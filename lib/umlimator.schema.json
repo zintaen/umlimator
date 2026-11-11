@@ -419,16 +419,106 @@
      }
     },
     "type": {
-     "description": "Schema version 2: the element's type, <notation>.<Name> (uml.Class). validate() checks typed fields only in a model with schemaVersion 2."
+     "description": "Schema version 2: the element's type, <notation>.<Name> (uml.Class). validate() checks typed fields only in a model with schemaVersion 2. The class diagram (uml.class, 0.18.0): uml.Class, uml.Interface, uml.Enumeration, uml.DataType, uml.PrimitiveType, uml.Package and uml.Comment; their members uml.Property, uml.Operation and uml.EnumerationLiteral.",
+     "examples": [
+      "uml.Class",
+      "uml.Interface",
+      "uml.Enumeration",
+      "uml.DataType",
+      "uml.PrimitiveType",
+      "uml.Package",
+      "uml.Comment"
+     ]
     },
     "parent": {
      "description": "Schema version 2: the element that owns it (a package, a composite state, a lane)."
     },
     "props": {
-     "description": "Schema version 2: the type's own properties."
+     "description": "Schema version 2: the type's own properties. The class diagram (uml.class, 0.18.0): isAbstract and stereotypes on a classifier; on a member, the fields of its UML text (docs/conformance/uml-class.md).",
+     "anyOf": [
+      {
+       "type": "object",
+       "properties": {
+        "isAbstract": {
+         "description": "uml.Class, uml.Operation: true draws the name in italics ({abstract} in a member's text)."
+        },
+        "stereotypes": {
+         "description": "Any UML element: names drawn «in guillemets», as text (['entity'])."
+        }
+       }
+      },
+      true
+     ]
     },
     "members": {
-     "description": "Schema version 2: owned parts, in display order (attributes, ports, regions, lanes), each a typed element."
+     "description": "Schema version 2: owned parts, in display order (attributes, ports, regions, lanes), each a typed element. The class diagram (uml.class, 0.18.0): a classifier's attributes (uml.Property) and operations (uml.Operation), an enumeration's literals (uml.EnumerationLiteral).",
+     "anyOf": [
+      {
+       "type": "array",
+       "items": {
+        "description": "A member: { id, type, label, props }, in the same envelope as a node.",
+        "anyOf": [
+         {
+          "type": "object",
+          "properties": {
+           "id": {
+            "description": "Unique among every node, edge and member of the model."
+           },
+           "type": {
+            "description": "uml.Property, uml.Operation or uml.EnumerationLiteral in a class diagram."
+           },
+           "label": {
+            "description": "The member's name; the rest of its UML text is in props."
+           },
+           "props": {
+            "description": "The member's UML text as fields: + {static} /total: Money [1] = 0.",
+            "anyOf": [
+             {
+              "type": "object",
+              "properties": {
+               "isAbstract": {
+                "description": "uml.Class, uml.Operation: true draws the name in italics ({abstract} in a member's text)."
+               },
+               "stereotypes": {
+                "description": "Any UML element: names drawn «in guillemets», as text (['entity'])."
+               },
+               "visibility": {
+                "description": "uml.Property, uml.Operation: public, private, protected or package (+ - # ~)."
+               },
+               "valueType": {
+                "description": "uml.Property, and each of an operation's parameters: its type, as text (Money, String[], Map<K, V>)."
+               },
+               "multiplicity": {
+                "description": "uml.Property: 1, *, n..m or n..* (0..1, 1..*), kept as written."
+               },
+               "default": {
+                "description": "uml.Property: its default value, as text."
+               },
+               "isStatic": {
+                "description": "uml.Property, uml.Operation: true underlines it ({static} in its text)."
+               },
+               "isDerived": {
+                "description": "uml.Property: true writes / before its name."
+               },
+               "parameters": {
+                "description": "uml.Operation: [{ name, valueType, direction }], direction in, out, inout or return."
+               },
+               "returnType": {
+                "description": "uml.Operation: its return type, as text."
+               }
+              }
+             },
+             true
+            ]
+           }
+          }
+         },
+         true
+        ]
+       }
+      },
+      true
+     ]
     }
    }
   },
@@ -717,13 +807,88 @@
      "description": "When the line is used."
     },
     "type": {
-     "description": "Schema version 2: the element's type, <notation>.<Name> (uml.Class)."
+     "description": "Schema version 2: the element's type, <notation>.<Name> (uml.Class). The class diagram (uml.class, 0.18.0): uml.Association, uml.Generalization (from the specific to the general), uml.InterfaceRealization (to the interface), uml.Dependency (from the client) and uml.CommentLink (from the comment).",
+     "examples": [
+      "uml.Association",
+      "uml.Generalization",
+      "uml.InterfaceRealization",
+      "uml.Dependency",
+      "uml.CommentLink"
+     ]
     },
     "parent": {
      "description": "Schema version 2: the element that owns it (a package, a composite state, a lane)."
     },
     "props": {
-     "description": "Schema version 2: the type's own properties."
+     "description": "Schema version 2: the type's own properties. The class diagram (uml.class, 0.18.0): an association's ends, and stereotypes on any line («use» on a dependency).",
+     "anyOf": [
+      {
+       "type": "object",
+       "properties": {
+        "ends": {
+         "description": "uml.Association: { from, to }, each end's role, multiplicity, aggregation and navigability.",
+         "anyOf": [
+          {
+           "type": "object",
+           "properties": {
+            "from": {
+             "description": "One end of an association.",
+             "anyOf": [
+              {
+               "type": "object",
+               "properties": {
+                "role": {
+                 "description": "The role name, drawn by the end."
+                },
+                "multiplicity": {
+                 "description": "Drawn by the end: 1, *, n..m or n..*."
+                },
+                "aggregation": {
+                 "description": "none, shared (a hollow diamond at this end) or composite (a filled diamond; its multiplicity at most 1)."
+                },
+                "navigable": {
+                 "description": "true draws an open arrowhead at this end."
+                }
+               }
+              },
+              true
+             ]
+            },
+            "to": {
+             "description": "One end of an association.",
+             "anyOf": [
+              {
+               "type": "object",
+               "properties": {
+                "role": {
+                 "description": "The role name, drawn by the end."
+                },
+                "multiplicity": {
+                 "description": "Drawn by the end: 1, *, n..m or n..*."
+                },
+                "aggregation": {
+                 "description": "none, shared (a hollow diamond at this end) or composite (a filled diamond; its multiplicity at most 1)."
+                },
+                "navigable": {
+                 "description": "true draws an open arrowhead at this end."
+                }
+               }
+              },
+              true
+             ]
+            }
+           }
+          },
+          true
+         ]
+        },
+        "stereotypes": {
+         "description": "Any UML element: names drawn «in guillemets», as text (['entity'])."
+        }
+       }
+      },
+      true
+     ]
     }
    }
   },
@@ -965,7 +1130,10 @@
      "description": "Guess a line's kind from its label's words when its edges name none (render() and layout(); the standalone page always does)."
     },
     "diagram": {
-     "description": "Schema version 2: the view's diagram type (uml.class); without it the view is a map. Not drawn yet (0.17.0)."
+     "description": "Schema version 2: the view's diagram type; without it the view is a map. uml.class draws a class diagram (0.18.0, lib/umlimator-all.js); a type this release does not draw is drawn as plain cards, with a warning.",
+     "examples": [
+      "uml.class"
+     ]
     },
     "subject": {
      "description": "Schema version 2: the element this diagram is the inside of."
@@ -977,7 +1145,30 @@
      "description": "Schema version 2: a skin of the diagram type (crowsfoot for er)."
     },
     "present": {
-     "description": "Schema version 2: what the layout cannot derive, per element: collapsed compartments, rows shown before +n more."
+     "description": "Schema version 2: what the layout cannot derive, per element: collapsed compartments, rows shown before +n more.",
+     "anyOf": [
+      {
+       "type": "object",
+       "additionalProperties": {
+        "description": "What a view shows of one element, by its id.",
+        "anyOf": [
+         {
+          "type": "object",
+          "properties": {
+           "collapsed": {
+            "description": "Compartments not drawn, divider and all: ['attributes', 'operations'] (an enumeration's: 'literals')."
+           },
+           "rows": {
+            "description": "At most this many rows in each compartment, then \"+k more\"."
+           }
+          }
+         },
+         true
+        ]
+       }
+      },
+      true
+     ]
     },
     "fragments": {
      "description": "Schema version 2: a sequence view's combined fragments and interaction uses."

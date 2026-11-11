@@ -1,0 +1,346 @@
+{
+  "$schema": "../lib/umlimator.schema.json",
+  "schemaVersion": 2,
+  "title": "The class diagram's stress fixture (tests): risks.md G1 in a view of 50 elements",
+  "root": "all",
+  "nodes": [
+    {"id": "shop", "type": "uml.Package", "label": "shop"},
+    {"id": "catalog", "type": "uml.Package", "label": "catalog", "parent": "shop"},
+    {"id": "person", "type": "uml.Class", "label": "Person", "parent": "shop", "members": [
+      {"id": "person.field01", "type": "uml.Property", "label": "field01", "props": {"visibility": "private", "valueType": "Integer"}},
+      {"id": "person.field02", "type": "uml.Property", "label": "field02", "props": {"visibility": "private", "valueType": "Date"}},
+      {"id": "person.field03", "type": "uml.Property", "label": "field03", "props": {"visibility": "private", "valueType": "Money"}},
+      {"id": "person.field04", "type": "uml.Property", "label": "field04", "props": {"visibility": "private", "valueType": "String"}},
+      {"id": "person.field05", "type": "uml.Property", "label": "field05", "props": {"visibility": "private", "valueType": "Integer"}},
+      {"id": "person.field06", "type": "uml.Property", "label": "field06", "props": {"visibility": "private", "valueType": "Date"}},
+      {"id": "person.field07", "type": "uml.Property", "label": "field07", "props": {"visibility": "private", "valueType": "Money"}},
+      {"id": "person.field08", "type": "uml.Property", "label": "field08", "props": {"visibility": "private", "valueType": "String"}},
+      {"id": "person.field09", "type": "uml.Property", "label": "field09", "props": {"visibility": "private", "valueType": "Integer"}},
+      {"id": "person.field10", "type": "uml.Property", "label": "field10", "props": {"visibility": "private", "valueType": "Date"}},
+      {"id": "person.field11", "type": "uml.Property", "label": "field11", "props": {"visibility": "private", "valueType": "Money"}},
+      {"id": "person.field12", "type": "uml.Property", "label": "field12", "props": {"visibility": "private", "valueType": "String"}},
+      {"id": "person.field13", "type": "uml.Property", "label": "field13", "props": {"visibility": "private", "valueType": "Integer"}},
+      {"id": "person.field14", "type": "uml.Property", "label": "field14", "props": {"visibility": "private", "valueType": "Date"}},
+      {"id": "person.field15", "type": "uml.Property", "label": "field15", "props": {"visibility": "private", "valueType": "Money"}},
+      {"id": "person.field16", "type": "uml.Property", "label": "field16", "props": {"visibility": "private", "valueType": "String"}},
+      {"id": "person.field17", "type": "uml.Property", "label": "field17", "props": {"visibility": "private", "valueType": "Integer"}},
+      {"id": "person.field18", "type": "uml.Property", "label": "field18", "props": {"visibility": "private", "valueType": "Date"}},
+      {"id": "person.field19", "type": "uml.Property", "label": "field19", "props": {"visibility": "private", "valueType": "Money"}},
+      {"id": "person.field20", "type": "uml.Property", "label": "field20", "props": {"visibility": "private", "valueType": "String"}},
+      {"id": "person.field21", "type": "uml.Property", "label": "field21", "props": {"visibility": "private", "valueType": "Integer"}},
+      {"id": "person.field22", "type": "uml.Property", "label": "field22", "props": {"visibility": "private", "valueType": "Date"}},
+      {"id": "person.field23", "type": "uml.Property", "label": "field23", "props": {"visibility": "private", "valueType": "Money"}},
+      {"id": "person.field24", "type": "uml.Property", "label": "field24", "props": {"visibility": "private", "valueType": "String"}},
+      {"id": "person.field25", "type": "uml.Property", "label": "field25", "props": {"visibility": "private", "valueType": "Integer"}},
+      {"id": "person.field26", "type": "uml.Property", "label": "field26", "props": {"visibility": "private", "valueType": "Date"}},
+      {"id": "person.field27", "type": "uml.Property", "label": "field27", "props": {"visibility": "private", "valueType": "Money"}},
+      {"id": "person.field28", "type": "uml.Property", "label": "field28", "props": {"visibility": "private", "valueType": "String"}},
+      {"id": "person.field29", "type": "uml.Property", "label": "field29", "props": {"visibility": "private", "valueType": "Integer"}},
+      {"id": "person.field30", "type": "uml.Property", "label": "field30", "props": {"visibility": "private", "valueType": "Date"}},
+      {"id": "person.field31", "type": "uml.Property", "label": "field31", "props": {"visibility": "private", "valueType": "Money"}},
+      {"id": "person.field32", "type": "uml.Property", "label": "field32", "props": {"visibility": "private", "valueType": "String"}},
+      {"id": "person.field33", "type": "uml.Property", "label": "field33", "props": {"visibility": "private", "valueType": "Integer"}},
+      {"id": "person.field34", "type": "uml.Property", "label": "field34", "props": {"visibility": "private", "valueType": "Date"}},
+      {"id": "person.field35", "type": "uml.Property", "label": "field35", "props": {"visibility": "private", "valueType": "Money"}},
+      {"id": "person.field36", "type": "uml.Property", "label": "field36", "props": {"visibility": "private", "valueType": "String"}},
+      {"id": "person.field37", "type": "uml.Property", "label": "field37", "props": {"visibility": "private", "valueType": "Integer"}},
+      {"id": "person.field38", "type": "uml.Property", "label": "field38", "props": {"visibility": "private", "valueType": "Date"}},
+      {"id": "person.field39", "type": "uml.Property", "label": "field39", "props": {"visibility": "private", "valueType": "Money"}},
+      {"id": "person.field40", "type": "uml.Property", "label": "field40", "props": {"visibility": "private", "valueType": "String"}},
+      {"id": "person.field41", "type": "uml.Property", "label": "field41", "props": {"visibility": "private", "valueType": "Integer"}},
+      {"id": "person.field42", "type": "uml.Property", "label": "field42", "props": {"visibility": "private", "valueType": "Date"}},
+      {"id": "person.field43", "type": "uml.Property", "label": "field43", "props": {"visibility": "private", "valueType": "Money"}},
+      {"id": "person.field44", "type": "uml.Property", "label": "field44", "props": {"visibility": "private", "valueType": "String"}},
+      {"id": "person.field45", "type": "uml.Property", "label": "field45", "props": {"visibility": "private", "valueType": "Integer"}},
+      {"id": "person.field46", "type": "uml.Property", "label": "field46", "props": {"visibility": "private", "valueType": "Date"}},
+      {"id": "person.field47", "type": "uml.Property", "label": "field47", "props": {"visibility": "private", "valueType": "Money"}},
+      {"id": "person.field48", "type": "uml.Property", "label": "field48", "props": {"visibility": "private", "valueType": "String"}},
+      {"id": "person.field49", "type": "uml.Property", "label": "field49", "props": {"visibility": "private", "valueType": "Integer"}},
+      {"id": "person.field50", "type": "uml.Property", "label": "field50", "props": {"visibility": "private", "valueType": "Date"}},
+      {"id": "person.field51", "type": "uml.Property", "label": "field51", "props": {"visibility": "private", "valueType": "Money"}},
+      {"id": "person.field52", "type": "uml.Property", "label": "field52", "props": {"visibility": "private", "valueType": "String"}},
+      {"id": "person.field53", "type": "uml.Property", "label": "field53", "props": {"visibility": "private", "valueType": "Integer"}},
+      {"id": "person.field54", "type": "uml.Property", "label": "field54", "props": {"visibility": "private", "valueType": "Date"}},
+      {"id": "person.field55", "type": "uml.Property", "label": "field55", "props": {"visibility": "private", "valueType": "Money"}},
+      {"id": "person.field56", "type": "uml.Property", "label": "field56", "props": {"visibility": "private", "valueType": "String"}},
+      {"id": "person.field57", "type": "uml.Property", "label": "field57", "props": {"visibility": "private", "valueType": "Integer"}},
+      {"id": "person.field58", "type": "uml.Property", "label": "field58", "props": {"visibility": "private", "valueType": "Date"}},
+      {"id": "person.field59", "type": "uml.Property", "label": "field59", "props": {"visibility": "private", "valueType": "Money"}},
+      {"id": "person.field60", "type": "uml.Property", "label": "field60", "props": {"visibility": "private", "valueType": "String"}}
+    ] },
+    {"id": "empty", "type": "uml.Class", "label": "Marker", "parent": "shop"},
+    {"id": "kind", "type": "uml.Enumeration", "label": "Kind", "parent": "shop"},
+    {"id": "base", "type": "uml.Class", "label": "Entity", "parent": "shop", "props": {"isAbstract": true}, "members": [
+      {"id": "base.id", "type": "uml.Property", "label": "id", "props": {"visibility": "protected", "valueType": "UUID"}},
+      {"id": "base.count", "type": "uml.Property", "label": "count", "props": {"visibility": "public", "valueType": "Integer", "isStatic": true}},
+      {"id": "base.age", "type": "uml.Property", "label": "age", "props": {"visibility": "public", "valueType": "Integer", "isDerived": true}},
+      {"id": "base.validate", "type": "uml.Operation", "label": "validate", "props": {"visibility": "public", "isAbstract": true, "returnType": "Boolean"}},
+      {"id": "base.create", "type": "uml.Operation", "label": "create", "props": {"visibility": "public", "isStatic": true, "returnType": "Entity"}}
+    ] },
+    {"id": "order", "type": "uml.Class", "label": "Order", "parent": "shop", "members": [
+      {"id": "order.placed", "type": "uml.Property", "label": "placed", "props": {"visibility": "private", "valueType": "Date"}},
+      {"id": "order.total", "type": "uml.Property", "label": "total", "props": {"visibility": "public", "valueType": "Money", "isDerived": true}},
+      {"id": "order.place", "type": "uml.Operation", "label": "place", "props": {"visibility": "public", "returnType": "Receipt"}}
+    ] },
+    {"id": "customer", "type": "uml.Class", "label": "Customer", "parent": "shop", "members": [{"id": "customer.email", "type": "uml.Property", "label": "email", "props": {"visibility": "private", "valueType": "String"}}, {"id": "customer.orders", "type": "uml.Operation", "label": "orders", "props": {"visibility": "public", "returnType": "Order[]"}}]},
+    {"id": "payable", "type": "uml.Interface", "label": "Payable", "parent": "shop", "members": [{"id": "payable.amountDue", "type": "uml.Operation", "label": "amountDue", "props": {"visibility": "public", "returnType": "Money"}}]},
+    {"id": "money", "type": "uml.DataType", "label": "Money", "parent": "shop", "members": [{"id": "money.amount", "type": "uml.Property", "label": "amount", "props": {"visibility": "public", "valueType": "Decimal"}}, {"id": "money.currency", "type": "uml.Property", "label": "currency", "props": {"visibility": "public", "valueType": "String"}}]},
+    {"id": "decimal", "type": "uml.PrimitiveType", "label": "Decimal", "parent": "shop"},
+    {"id": "status", "type": "uml.Enumeration", "label": "Status", "parent": "shop", "members": [
+      {"id": "status.draft", "type": "uml.EnumerationLiteral", "label": "draft"},
+      {"id": "status.placed", "type": "uml.EnumerationLiteral", "label": "placed"},
+      {"id": "status.paid", "type": "uml.EnumerationLiteral", "label": "paid"},
+      {"id": "status.shipped", "type": "uml.EnumerationLiteral", "label": "shipped"}
+    ] },
+    {"id": "note", "type": "uml.Comment", "label": "Every entity has an id; Person shows all 60 of its fields"},
+    {"id": "book", "type": "uml.Class", "label": "Book", "parent": "catalog", "members": [
+      {"id": "book.code", "type": "uml.Property", "label": "code", "props": {"visibility": "private", "valueType": "String"}},
+      {"id": "book.label", "type": "uml.Property", "label": "label", "props": {"visibility": "public", "valueType": "String"}},
+      {"id": "book.describe", "type": "uml.Operation", "label": "describe", "props": {"visibility": "public", "returnType": "String"}}
+    ] },
+    {"id": "author", "type": "uml.Class", "label": "Author", "parent": "catalog", "members": [
+      {"id": "author.code", "type": "uml.Property", "label": "code", "props": {"visibility": "private", "valueType": "String"}},
+      {"id": "author.label", "type": "uml.Property", "label": "label", "props": {"visibility": "public", "valueType": "String"}},
+      {"id": "author.describe", "type": "uml.Operation", "label": "describe", "props": {"visibility": "public", "returnType": "String"}}
+    ] },
+    {"id": "publisher", "type": "uml.Class", "label": "Publisher", "parent": "catalog", "members": [
+      {"id": "publisher.code", "type": "uml.Property", "label": "code", "props": {"visibility": "private", "valueType": "String"}},
+      {"id": "publisher.label", "type": "uml.Property", "label": "label", "props": {"visibility": "public", "valueType": "String"}},
+      {"id": "publisher.describe", "type": "uml.Operation", "label": "describe", "props": {"visibility": "public", "returnType": "String"}}
+    ] },
+    {"id": "series", "type": "uml.Class", "label": "Series", "parent": "catalog", "members": [
+      {"id": "series.code", "type": "uml.Property", "label": "code", "props": {"visibility": "private", "valueType": "String"}},
+      {"id": "series.label", "type": "uml.Property", "label": "label", "props": {"visibility": "public", "valueType": "String"}},
+      {"id": "series.describe", "type": "uml.Operation", "label": "describe", "props": {"visibility": "public", "returnType": "String"}}
+    ] },
+    {"id": "edition", "type": "uml.Class", "label": "Edition", "parent": "catalog", "members": [
+      {"id": "edition.code", "type": "uml.Property", "label": "code", "props": {"visibility": "private", "valueType": "String"}},
+      {"id": "edition.label", "type": "uml.Property", "label": "label", "props": {"visibility": "public", "valueType": "String"}},
+      {"id": "edition.describe", "type": "uml.Operation", "label": "describe", "props": {"visibility": "public", "returnType": "String"}}
+    ] },
+    {"id": "format", "type": "uml.Class", "label": "Format", "parent": "catalog", "members": [
+      {"id": "format.code", "type": "uml.Property", "label": "code", "props": {"visibility": "private", "valueType": "String"}},
+      {"id": "format.label", "type": "uml.Property", "label": "label", "props": {"visibility": "public", "valueType": "String"}},
+      {"id": "format.describe", "type": "uml.Operation", "label": "describe", "props": {"visibility": "public", "returnType": "String"}}
+    ] },
+    {"id": "genre", "type": "uml.Class", "label": "Genre", "parent": "catalog", "members": [
+      {"id": "genre.code", "type": "uml.Property", "label": "code", "props": {"visibility": "private", "valueType": "String"}},
+      {"id": "genre.label", "type": "uml.Property", "label": "label", "props": {"visibility": "public", "valueType": "String"}},
+      {"id": "genre.describe", "type": "uml.Operation", "label": "describe", "props": {"visibility": "public", "returnType": "String"}}
+    ] },
+    {"id": "review", "type": "uml.Class", "label": "Review", "parent": "catalog", "members": [
+      {"id": "review.code", "type": "uml.Property", "label": "code", "props": {"visibility": "private", "valueType": "String"}},
+      {"id": "review.label", "type": "uml.Property", "label": "label", "props": {"visibility": "public", "valueType": "String"}},
+      {"id": "review.describe", "type": "uml.Operation", "label": "describe", "props": {"visibility": "public", "returnType": "String"}}
+    ] },
+    {"id": "rating", "type": "uml.Class", "label": "Rating", "parent": "catalog", "members": [
+      {"id": "rating.code", "type": "uml.Property", "label": "code", "props": {"visibility": "private", "valueType": "String"}},
+      {"id": "rating.label", "type": "uml.Property", "label": "label", "props": {"visibility": "public", "valueType": "String"}},
+      {"id": "rating.describe", "type": "uml.Operation", "label": "describe", "props": {"visibility": "public", "returnType": "String"}}
+    ] },
+    {"id": "shelf", "type": "uml.Class", "label": "Shelf", "parent": "catalog", "members": [
+      {"id": "shelf.code", "type": "uml.Property", "label": "code", "props": {"visibility": "private", "valueType": "String"}},
+      {"id": "shelf.label", "type": "uml.Property", "label": "label", "props": {"visibility": "public", "valueType": "String"}},
+      {"id": "shelf.describe", "type": "uml.Operation", "label": "describe", "props": {"visibility": "public", "returnType": "String"}}
+    ] },
+    {"id": "stock", "type": "uml.Class", "label": "Stock", "parent": "catalog", "members": [
+      {"id": "stock.code", "type": "uml.Property", "label": "code", "props": {"visibility": "private", "valueType": "String"}},
+      {"id": "stock.label", "type": "uml.Property", "label": "label", "props": {"visibility": "public", "valueType": "String"}},
+      {"id": "stock.describe", "type": "uml.Operation", "label": "describe", "props": {"visibility": "public", "returnType": "String"}}
+    ] },
+    {"id": "warehouse", "type": "uml.Class", "label": "Warehouse", "parent": "catalog", "members": [
+      {"id": "warehouse.code", "type": "uml.Property", "label": "code", "props": {"visibility": "private", "valueType": "String"}},
+      {"id": "warehouse.label", "type": "uml.Property", "label": "label", "props": {"visibility": "public", "valueType": "String"}},
+      {"id": "warehouse.describe", "type": "uml.Operation", "label": "describe", "props": {"visibility": "public", "returnType": "String"}}
+    ] },
+    {"id": "supplier", "type": "uml.Class", "label": "Supplier", "parent": "catalog", "members": [
+      {"id": "supplier.code", "type": "uml.Property", "label": "code", "props": {"visibility": "private", "valueType": "String"}},
+      {"id": "supplier.label", "type": "uml.Property", "label": "label", "props": {"visibility": "public", "valueType": "String"}},
+      {"id": "supplier.describe", "type": "uml.Operation", "label": "describe", "props": {"visibility": "public", "returnType": "String"}}
+    ] },
+    {"id": "price", "type": "uml.Class", "label": "Price", "parent": "catalog", "members": [
+      {"id": "price.code", "type": "uml.Property", "label": "code", "props": {"visibility": "private", "valueType": "String"}},
+      {"id": "price.label", "type": "uml.Property", "label": "label", "props": {"visibility": "public", "valueType": "String"}},
+      {"id": "price.describe", "type": "uml.Operation", "label": "describe", "props": {"visibility": "public", "returnType": "String"}}
+    ] },
+    {"id": "discount", "type": "uml.Class", "label": "Discount", "parent": "catalog", "members": [
+      {"id": "discount.code", "type": "uml.Property", "label": "code", "props": {"visibility": "private", "valueType": "String"}},
+      {"id": "discount.label", "type": "uml.Property", "label": "label", "props": {"visibility": "public", "valueType": "String"}},
+      {"id": "discount.describe", "type": "uml.Operation", "label": "describe", "props": {"visibility": "public", "returnType": "String"}}
+    ] },
+    {"id": "coupon", "type": "uml.Class", "label": "Coupon", "parent": "shop", "members": [
+      {"id": "coupon.code", "type": "uml.Property", "label": "code", "props": {"visibility": "private", "valueType": "String"}},
+      {"id": "coupon.label", "type": "uml.Property", "label": "label", "props": {"visibility": "public", "valueType": "String"}},
+      {"id": "coupon.describe", "type": "uml.Operation", "label": "describe", "props": {"visibility": "public", "returnType": "String"}}
+    ] },
+    {"id": "cart", "type": "uml.Class", "label": "Cart", "parent": "shop", "members": [
+      {"id": "cart.code", "type": "uml.Property", "label": "code", "props": {"visibility": "private", "valueType": "String"}},
+      {"id": "cart.label", "type": "uml.Property", "label": "label", "props": {"visibility": "public", "valueType": "String"}},
+      {"id": "cart.describe", "type": "uml.Operation", "label": "describe", "props": {"visibility": "public", "returnType": "String"}}
+    ] },
+    {"id": "cartitem", "type": "uml.Class", "label": "CartItem", "parent": "shop", "members": [
+      {"id": "cartitem.code", "type": "uml.Property", "label": "code", "props": {"visibility": "private", "valueType": "String"}},
+      {"id": "cartitem.label", "type": "uml.Property", "label": "label", "props": {"visibility": "public", "valueType": "String"}},
+      {"id": "cartitem.describe", "type": "uml.Operation", "label": "describe", "props": {"visibility": "public", "returnType": "String"}}
+    ] },
+    {"id": "wishlist", "type": "uml.Class", "label": "Wishlist", "parent": "shop", "members": [
+      {"id": "wishlist.code", "type": "uml.Property", "label": "code", "props": {"visibility": "private", "valueType": "String"}},
+      {"id": "wishlist.label", "type": "uml.Property", "label": "label", "props": {"visibility": "public", "valueType": "String"}},
+      {"id": "wishlist.describe", "type": "uml.Operation", "label": "describe", "props": {"visibility": "public", "returnType": "String"}}
+    ] },
+    {"id": "invoice", "type": "uml.Class", "label": "Invoice", "parent": "shop", "members": [
+      {"id": "invoice.code", "type": "uml.Property", "label": "code", "props": {"visibility": "private", "valueType": "String"}},
+      {"id": "invoice.label", "type": "uml.Property", "label": "label", "props": {"visibility": "public", "valueType": "String"}},
+      {"id": "invoice.describe", "type": "uml.Operation", "label": "describe", "props": {"visibility": "public", "returnType": "String"}}
+    ] },
+    {"id": "refund", "type": "uml.Class", "label": "Refund", "parent": "shop", "members": [
+      {"id": "refund.code", "type": "uml.Property", "label": "code", "props": {"visibility": "private", "valueType": "String"}},
+      {"id": "refund.label", "type": "uml.Property", "label": "label", "props": {"visibility": "public", "valueType": "String"}},
+      {"id": "refund.describe", "type": "uml.Operation", "label": "describe", "props": {"visibility": "public", "returnType": "String"}}
+    ] },
+    {"id": "shipment", "type": "uml.Class", "label": "Shipment", "parent": "shop", "members": [
+      {"id": "shipment.code", "type": "uml.Property", "label": "code", "props": {"visibility": "private", "valueType": "String"}},
+      {"id": "shipment.label", "type": "uml.Property", "label": "label", "props": {"visibility": "public", "valueType": "String"}},
+      {"id": "shipment.describe", "type": "uml.Operation", "label": "describe", "props": {"visibility": "public", "returnType": "String"}}
+    ] },
+    {"id": "parcel", "type": "uml.Class", "label": "Parcel", "parent": "shop", "members": [
+      {"id": "parcel.code", "type": "uml.Property", "label": "code", "props": {"visibility": "private", "valueType": "String"}},
+      {"id": "parcel.label", "type": "uml.Property", "label": "label", "props": {"visibility": "public", "valueType": "String"}},
+      {"id": "parcel.describe", "type": "uml.Operation", "label": "describe", "props": {"visibility": "public", "returnType": "String"}}
+    ] },
+    {"id": "carrier", "type": "uml.Class", "label": "Carrier", "parent": "shop", "members": [
+      {"id": "carrier.code", "type": "uml.Property", "label": "code", "props": {"visibility": "private", "valueType": "String"}},
+      {"id": "carrier.label", "type": "uml.Property", "label": "label", "props": {"visibility": "public", "valueType": "String"}},
+      {"id": "carrier.describe", "type": "uml.Operation", "label": "describe", "props": {"visibility": "public", "returnType": "String"}}
+    ] },
+    {"id": "address", "type": "uml.Class", "label": "Address", "parent": "shop", "members": [
+      {"id": "address.code", "type": "uml.Property", "label": "code", "props": {"visibility": "private", "valueType": "String"}},
+      {"id": "address.label", "type": "uml.Property", "label": "label", "props": {"visibility": "public", "valueType": "String"}},
+      {"id": "address.describe", "type": "uml.Operation", "label": "describe", "props": {"visibility": "public", "returnType": "String"}}
+    ] },
+    {"id": "region", "type": "uml.Class", "label": "Region", "parent": "shop", "members": [
+      {"id": "region.code", "type": "uml.Property", "label": "code", "props": {"visibility": "private", "valueType": "String"}},
+      {"id": "region.label", "type": "uml.Property", "label": "label", "props": {"visibility": "public", "valueType": "String"}},
+      {"id": "region.describe", "type": "uml.Operation", "label": "describe", "props": {"visibility": "public", "returnType": "String"}}
+    ] },
+    {"id": "taxrule", "type": "uml.Class", "label": "TaxRule", "parent": "shop", "members": [
+      {"id": "taxrule.code", "type": "uml.Property", "label": "code", "props": {"visibility": "private", "valueType": "String"}},
+      {"id": "taxrule.label", "type": "uml.Property", "label": "label", "props": {"visibility": "public", "valueType": "String"}},
+      {"id": "taxrule.describe", "type": "uml.Operation", "label": "describe", "props": {"visibility": "public", "returnType": "String"}}
+    ] },
+    {"id": "currency", "type": "uml.Class", "label": "Currency", "parent": "shop", "members": [
+      {"id": "currency.code", "type": "uml.Property", "label": "code", "props": {"visibility": "private", "valueType": "String"}},
+      {"id": "currency.label", "type": "uml.Property", "label": "label", "props": {"visibility": "public", "valueType": "String"}},
+      {"id": "currency.describe", "type": "uml.Operation", "label": "describe", "props": {"visibility": "public", "returnType": "String"}}
+    ] },
+    {"id": "account", "type": "uml.Class", "label": "Account", "parent": "shop", "members": [
+      {"id": "account.code", "type": "uml.Property", "label": "code", "props": {"visibility": "private", "valueType": "String"}},
+      {"id": "account.label", "type": "uml.Property", "label": "label", "props": {"visibility": "public", "valueType": "String"}},
+      {"id": "account.describe", "type": "uml.Operation", "label": "describe", "props": {"visibility": "public", "returnType": "String"}}
+    ] },
+    {"id": "store", "type": "uml.Class", "label": "Store", "parent": "shop", "members": [
+      {"id": "store.code", "type": "uml.Property", "label": "code", "props": {"visibility": "private", "valueType": "String"}},
+      {"id": "store.label", "type": "uml.Property", "label": "label", "props": {"visibility": "public", "valueType": "String"}},
+      {"id": "store.describe", "type": "uml.Operation", "label": "describe", "props": {"visibility": "public", "returnType": "String"}}
+    ] },
+    {"id": "staff", "type": "uml.Class", "label": "Staff", "parent": "shop", "members": [
+      {"id": "staff.code", "type": "uml.Property", "label": "code", "props": {"visibility": "private", "valueType": "String"}},
+      {"id": "staff.label", "type": "uml.Property", "label": "label", "props": {"visibility": "public", "valueType": "String"}},
+      {"id": "staff.describe", "type": "uml.Operation", "label": "describe", "props": {"visibility": "public", "returnType": "String"}}
+    ] },
+    {"id": "shift", "type": "uml.Class", "label": "Shift", "parent": "shop", "members": [
+      {"id": "shift.code", "type": "uml.Property", "label": "code", "props": {"visibility": "private", "valueType": "String"}},
+      {"id": "shift.label", "type": "uml.Property", "label": "label", "props": {"visibility": "public", "valueType": "String"}},
+      {"id": "shift.describe", "type": "uml.Operation", "label": "describe", "props": {"visibility": "public", "returnType": "String"}}
+    ] },
+    {"id": "loyalty", "type": "uml.Class", "label": "Loyalty", "parent": "shop", "members": [
+      {"id": "loyalty.code", "type": "uml.Property", "label": "code", "props": {"visibility": "private", "valueType": "String"}},
+      {"id": "loyalty.label", "type": "uml.Property", "label": "label", "props": {"visibility": "public", "valueType": "String"}},
+      {"id": "loyalty.describe", "type": "uml.Operation", "label": "describe", "props": {"visibility": "public", "returnType": "String"}}
+    ] },
+    {"id": "promotion", "type": "uml.Class", "label": "Promotion", "parent": "shop", "members": [
+      {"id": "promotion.code", "type": "uml.Property", "label": "code", "props": {"visibility": "private", "valueType": "String"}},
+      {"id": "promotion.label", "type": "uml.Property", "label": "label", "props": {"visibility": "public", "valueType": "String"}},
+      {"id": "promotion.describe", "type": "uml.Operation", "label": "describe", "props": {"visibility": "public", "returnType": "String"}}
+    ] },
+    {"id": "banner", "type": "uml.Class", "label": "Banner", "parent": "shop", "members": [
+      {"id": "banner.code", "type": "uml.Property", "label": "code", "props": {"visibility": "private", "valueType": "String"}},
+      {"id": "banner.label", "type": "uml.Property", "label": "label", "props": {"visibility": "public", "valueType": "String"}},
+      {"id": "banner.describe", "type": "uml.Operation", "label": "describe", "props": {"visibility": "public", "returnType": "String"}}
+    ] },
+    {"id": "gift", "type": "uml.Class", "label": "Gift", "parent": "shop", "members": [
+      {"id": "gift.code", "type": "uml.Property", "label": "code", "props": {"visibility": "private", "valueType": "String"}},
+      {"id": "gift.label", "type": "uml.Property", "label": "label", "props": {"visibility": "public", "valueType": "String"}},
+      {"id": "gift.describe", "type": "uml.Operation", "label": "describe", "props": {"visibility": "public", "returnType": "String"}}
+    ] },
+    {"id": "bundle", "type": "uml.Class", "label": "Bundle", "parent": "shop", "members": [
+      {"id": "bundle.code", "type": "uml.Property", "label": "code", "props": {"visibility": "private", "valueType": "String"}},
+      {"id": "bundle.label", "type": "uml.Property", "label": "label", "props": {"visibility": "public", "valueType": "String"}},
+      {"id": "bundle.describe", "type": "uml.Operation", "label": "describe", "props": {"visibility": "public", "returnType": "String"}}
+    ] }
+  ],
+  "edges": [
+    {"id": "manages", "type": "uml.Association", "from": "person", "to": "person", "props": {"ends": {"from": {"role": "manager", "multiplicity": "0..1"}, "to": {"role": "reports", "multiplicity": "*"}}}},
+    {"id": "buys", "type": "uml.Association", "from": "customer", "to": "order", "label": "places", "props": {"ends": {"from": {"multiplicity": "1"}, "to": {"role": "orders", "multiplicity": "0..*", "navigable": true}}}},
+    {"id": "pays", "type": "uml.Association", "from": "customer", "to": "order", "props": {"ends": {"to": {"role": "paid", "multiplicity": "0..*"}}}},
+    {"id": "owes", "type": "uml.Association", "from": "order", "to": "customer", "props": {"ends": {"from": {"aggregation": "shared"}, "to": {"role": "debtor", "multiplicity": "1"}}}},
+    {"id": "order-needs-customer", "type": "uml.Dependency", "from": "order", "to": "customer", "props": {"stereotypes": ["use"]}},
+    {"id": "order-is-entity", "type": "uml.Generalization", "from": "order", "to": "base"},
+    {"id": "customer-is-entity", "type": "uml.Generalization", "from": "customer", "to": "base"},
+    {"id": "person-is-entity", "type": "uml.Generalization", "from": "person", "to": "base"},
+    {"id": "order-payable", "type": "uml.InterfaceRealization", "from": "order", "to": "payable"},
+    {"id": "order-money", "type": "uml.Dependency", "from": "order", "to": "money"},
+    {"id": "order-status", "type": "uml.Dependency", "from": "order", "to": "status"},
+    {"id": "order-kind", "type": "uml.Dependency", "from": "order", "to": "kind"},
+    {"id": "money-decimal", "type": "uml.Dependency", "from": "money", "to": "decimal"},
+    {"id": "note-link", "type": "uml.CommentLink", "from": "note", "to": "base"},
+    {"id": "customer-person", "type": "uml.Association", "from": "customer", "to": "person", "props": {"ends": {"to": {"role": "who", "multiplicity": "1", "navigable": true}}}},
+    {"id": "book-author", "type": "uml.Association", "from": "book", "to": "author", "props": {"ends": {"from": {"multiplicity": "*"}, "to": {"multiplicity": "1..*", "navigable": true}}}},
+    {"id": "book-publisher", "type": "uml.Association", "from": "book", "to": "publisher", "props": {"ends": {"from": {"multiplicity": "*"}, "to": {"multiplicity": "1", "navigable": true}}}},
+    {"id": "book-series", "type": "uml.Association", "from": "book", "to": "series", "props": {"ends": {"from": {"multiplicity": "*"}, "to": {"multiplicity": "0..1", "navigable": true}}}},
+    {"id": "book-edition", "type": "uml.Association", "from": "book", "to": "edition", "props": {"ends": {"to": {"multiplicity": "1..*", "navigable": true}}}},
+    {"id": "edition-format", "type": "uml.Association", "from": "edition", "to": "format", "props": {"ends": {"from": {"multiplicity": "*"}, "to": {"multiplicity": "1", "navigable": true}}}},
+    {"id": "book-genre", "type": "uml.Association", "from": "book", "to": "genre", "props": {"ends": {"from": {"multiplicity": "*"}, "to": {"multiplicity": "*", "navigable": true}}}},
+    {"id": "review-book", "type": "uml.Association", "from": "review", "to": "book", "props": {"ends": {"from": {"multiplicity": "*"}, "to": {"multiplicity": "1", "navigable": true}}}},
+    {"id": "review-rating", "type": "uml.Association", "from": "review", "to": "rating", "props": {"ends": {"to": {"multiplicity": "1", "navigable": true}}}},
+    {"id": "shelf-book", "type": "uml.Association", "from": "shelf", "to": "book", "props": {"ends": {"to": {"multiplicity": "*", "navigable": true}}}},
+    {"id": "stock-edition", "type": "uml.Association", "from": "stock", "to": "edition", "props": {"ends": {"from": {"multiplicity": "*"}, "to": {"multiplicity": "1", "navigable": true}}}},
+    {"id": "stock-warehouse", "type": "uml.Association", "from": "stock", "to": "warehouse", "props": {"ends": {"from": {"multiplicity": "*"}, "to": {"multiplicity": "1", "navigable": true}}}},
+    {"id": "warehouse-supplier", "type": "uml.Association", "from": "warehouse", "to": "supplier", "props": {"ends": {"from": {"multiplicity": "*"}, "to": {"multiplicity": "*", "navigable": true}}}},
+    {"id": "edition-price", "type": "uml.Association", "from": "edition", "to": "price", "props": {"ends": {"to": {"multiplicity": "1", "navigable": true}}}},
+    {"id": "price-discount", "type": "uml.Association", "from": "price", "to": "discount", "props": {"ends": {"to": {"multiplicity": "0..1", "navigable": true}}}},
+    {"id": "discount-coupon", "type": "uml.Association", "from": "discount", "to": "coupon", "props": {"ends": {"to": {"multiplicity": "*", "navigable": true}}}},
+    {"id": "cart-cartitem", "type": "uml.Association", "from": "cart", "to": "cartitem", "props": {"ends": {"from": {"multiplicity": "1", "aggregation": "composite"}, "to": {"multiplicity": "*", "navigable": true}}}},
+    {"id": "cartitem-edition", "type": "uml.Association", "from": "cartitem", "to": "edition", "props": {"ends": {"from": {"multiplicity": "*"}, "to": {"multiplicity": "1", "navigable": true}}}},
+    {"id": "customer-wishlist", "type": "uml.Association", "from": "customer", "to": "wishlist", "props": {"ends": {"from": {"multiplicity": "1"}, "to": {"multiplicity": "0..1", "navigable": true}}}},
+    {"id": "wishlist-book", "type": "uml.Association", "from": "wishlist", "to": "book", "props": {"ends": {"to": {"multiplicity": "*", "navigable": true}}}},
+    {"id": "customer-cart", "type": "uml.Association", "from": "customer", "to": "cart", "props": {"ends": {"from": {"multiplicity": "1"}, "to": {"multiplicity": "0..1", "navigable": true}}}},
+    {"id": "order-invoice", "type": "uml.Association", "from": "order", "to": "invoice", "props": {"ends": {"from": {"multiplicity": "1"}, "to": {"multiplicity": "1", "navigable": true}}}},
+    {"id": "invoice-refund", "type": "uml.Association", "from": "invoice", "to": "refund", "props": {"ends": {"from": {"multiplicity": "1", "aggregation": "composite"}, "to": {"multiplicity": "*", "navigable": true}}}},
+    {"id": "order-shipment", "type": "uml.Association", "from": "order", "to": "shipment", "props": {"ends": {"from": {"multiplicity": "1"}, "to": {"multiplicity": "*", "navigable": true}}}},
+    {"id": "shipment-parcel", "type": "uml.Association", "from": "shipment", "to": "parcel", "props": {"ends": {"from": {"multiplicity": "1", "aggregation": "composite"}, "to": {"multiplicity": "1..*", "navigable": true}}}},
+    {"id": "parcel-carrier", "type": "uml.Association", "from": "parcel", "to": "carrier", "props": {"ends": {"from": {"multiplicity": "*"}, "to": {"multiplicity": "1", "navigable": true}}}},
+    {"id": "shipment-address", "type": "uml.Association", "from": "shipment", "to": "address", "props": {"ends": {"from": {"multiplicity": "*"}, "to": {"multiplicity": "1", "navigable": true}}}},
+    {"id": "address-region", "type": "uml.Association", "from": "address", "to": "region", "props": {"ends": {"from": {"multiplicity": "*"}, "to": {"multiplicity": "1", "navigable": true}}}},
+    {"id": "region-taxrule", "type": "uml.Association", "from": "region", "to": "taxrule", "props": {"ends": {"to": {"multiplicity": "*", "navigable": true}}}},
+    {"id": "price-currency", "type": "uml.Association", "from": "price", "to": "currency", "props": {"ends": {"from": {"multiplicity": "*"}, "to": {"multiplicity": "1", "navigable": true}}}},
+    {"id": "customer-account", "type": "uml.Association", "from": "customer", "to": "account", "props": {"ends": {"from": {"multiplicity": "1"}, "to": {"multiplicity": "1", "navigable": true}}}},
+    {"id": "cart-order", "type": "uml.Association", "from": "cart", "to": "order", "props": {"ends": {"to": {"multiplicity": "0..1", "navigable": true}}}},
+    {"id": "review-customer", "type": "uml.Association", "from": "review", "to": "customer", "props": {"ends": {"from": {"multiplicity": "*"}, "to": {"multiplicity": "1", "navigable": true}}}},
+    {"id": "invoice-is-entity", "type": "uml.Generalization", "from": "invoice", "to": "base"},
+    {"id": "refund-is-entity", "type": "uml.Generalization", "from": "refund", "to": "base"},
+    {"id": "shipment-is-entity", "type": "uml.Generalization", "from": "shipment", "to": "base"},
+    {"id": "account-is-entity", "type": "uml.Generalization", "from": "account", "to": "base"}
+,
+    {"id": "store-staff", "type": "uml.Association", "from": "store", "to": "staff", "props": {"ends": {"from": {"multiplicity": "1"}, "to": {"multiplicity": "*", "navigable": true}}}},
+    {"id": "staff-shift", "type": "uml.Association", "from": "staff", "to": "shift", "props": {"ends": {"from": {"multiplicity": "1"}, "to": {"multiplicity": "*", "navigable": true}}}},
+    {"id": "shift-loyalty", "type": "uml.Association", "from": "shift", "to": "loyalty", "props": {"ends": {"from": {"multiplicity": "*"}, "to": {"multiplicity": "0..1", "navigable": true}}}},
+    {"id": "promotion-banner", "type": "uml.Association", "from": "promotion", "to": "banner", "props": {"ends": {"from": {"multiplicity": "1"}, "to": {"multiplicity": "0..*", "navigable": true}}}},
+    {"id": "banner-gift", "type": "uml.Association", "from": "banner", "to": "gift", "props": {"ends": {"from": {"multiplicity": "*"}, "to": {"multiplicity": "0..1", "navigable": true}}}},
+    {"id": "gift-bundle", "type": "uml.Association", "from": "gift", "to": "bundle", "props": {"ends": {"from": {"multiplicity": "*"}, "to": {"multiplicity": "1", "navigable": true}}}}
+  ],
+  "views": [
+    {"id": "all", "diagram": "uml.class", "title": "Every element", "direction": "down", "nodeIds": ["shop", "catalog", "person", "empty", "kind", "base", "order", "customer", "payable", "money", "decimal", "status", "note", "book", "author", "publisher", "series", "edition", "format", "genre", "review", "rating", "shelf", "stock", "warehouse", "supplier", "price", "discount", "coupon", "cart", "cartitem", "wishlist", "invoice", "refund", "shipment", "parcel", "carrier", "address", "region", "taxrule", "currency", "account", "store", "staff", "shift", "loyalty", "promotion", "banner", "gift", "bundle"]},
+    {"id": "edge-cases", "diagram": "uml.class", "title": "The edge cases, left to right, Person capped at 8 rows", "nodeIds": ["shop", "catalog", "person", "empty", "kind", "base", "order", "customer", "payable", "money", "decimal", "status", "note"], "present": {"person": {"rows": 8}}}
+  ]
+}
