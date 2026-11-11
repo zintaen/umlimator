@@ -38,7 +38,7 @@ test('the sequence example: one ordered list of occurrences, f3 among the messag
 });
 
 test('check.mjs: a registered type that declares no refs is still checked by the hand list', () => {
-  const CLS = JSON.parse(readFileSync(new URL('../docs/diagrams/examples/01-class.json', import.meta.url)));
+  const CLS = JSON.parse(readFileSync(new URL('../examples/sales-classes.json', import.meta.url)));
   assert.deepEqual(check(CLS, 'uml.class'), []);
   const n = CLS.nodes[0]; n.props = { ...n.props, attachedTo: 'nope' };
   assert.deepEqual(check(CLS, 'uml.class'), [`${n.id}.props.attachedTo: "nope" is not an element`]);

@@ -48,11 +48,36 @@ export interface MapNode {
 /** A typed element in schema version 2's envelope (docs/diagrams/model.md §1): a node, a member, a typed edge, a
  *  fragment. Nodes, edges, members and fragments share one id space; an id never contains "->". A typed edge is an
  *  Element with `from` and `to`, which may name a member. A typed view is a MapView with `diagram` (uml.class), and may
- *  have `subject`, `direction` ('right' | 'down'), `notation`, `present`, `fragments` and `timeline`. None is drawn yet. */
+ *  have `subject`, `direction` ('right' | 'down'), `notation`, `present`, `fragments` and `timeline`. umlimator/all draws `uml.class` (0.18.0); other types draw as plain cards. */
 export interface Element {
   id: string; type: string; label?: string; parent?: string; props?: Record<string, unknown>; members?: Element[];
   [key: string]: unknown;
 }
+/** The class diagram's vocabulary (a view with `diagram: 'uml.class'`, drawn by umlimator/all from 0.18.0;
+ *  docs/conformance/uml-class.md). These describe what `type` and `props` hold; validate() reports what breaks the type's
+ *  rules, and a field written otherwise is kept as it is. */
+export type UmlClassElementType = 'uml.Class' | 'uml.Interface' | 'uml.Enumeration' | 'uml.DataType' | 'uml.PrimitiveType' | 'uml.Package' | 'uml.Comment';
+export type UmlClassMemberType = 'uml.Property' | 'uml.Operation' | 'uml.EnumerationLiteral';
+/** From the client to the supplier: a generalization from the specific to the general, a realization to the interface,
+ *  a comment link from the comment. */
+export type UmlClassLineType = 'uml.Association' | 'uml.Generalization' | 'uml.InterfaceRealization' | 'uml.Dependency' | 'uml.CommentLink';
+export type UmlVisibility = 'public' | 'private' | 'protected' | 'package';
+/** A classifier's or a package's props. Stereotypes are drawn «in guillemets»; any UML element or line may have them. */
+export interface UmlClassifierProps { isAbstract?: boolean; stereotypes?: string[]; [key: string]: unknown }
+/** An attribute's props: its UML text `+ {static} /total: Money [1] = 0` as fields. Types and defaults are text. */
+export interface UmlPropertyProps { visibility?: UmlVisibility; valueType?: string; multiplicity?: string; default?: string; isStatic?: boolean; isDerived?: boolean; stereotypes?: string[]; [key: string]: unknown }
+/** An operation's props: `+ {static} place(at: Date, in qty: Int): Order` as fields. */
+export interface UmlOperationProps {
+  visibility?: UmlVisibility; parameters?: { name: string; valueType?: string; direction?: 'in' | 'out' | 'inout' | 'return' }[];
+  returnType?: string; isStatic?: boolean; isAbstract?: boolean; stereotypes?: string[]; [key: string]: unknown;
+}
+/** One end of an association. A multiplicity is 1, *, n..m or n..*, kept as written; a composite end's is at most 1. */
+export interface UmlAssociationEnd { role?: string; multiplicity?: string; aggregation?: 'none' | 'shared' | 'composite'; navigable?: boolean }
+/** A line's props: an association's two ends, and stereotypes («use» on a dependency). */
+export interface UmlLineProps { ends?: { from?: UmlAssociationEnd; to?: UmlAssociationEnd }; stereotypes?: string[]; [key: string]: unknown }
+/** What a typed view shows of one element, in its `present` by the element's id: compartments not drawn, divider and
+ *  all, and at most `rows` rows in each, then "+k more". */
+export interface UmlPresent { collapsed?: ('attributes' | 'operations' | 'literals')[]; rows?: number }
 /** What a line means, drawn as its colour: calls (the default), feeds (hands work on), triggers (suggests, offers, fires),
  *  state (reads or writes a file, board or config: a thinner line, a muted label, no flow) and guard (a hook steps in).
  *  Colours are --um-w-<kind>. An edge's `style` (emphasis, dashed, security) wins over its kind's colour. */

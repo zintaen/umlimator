@@ -175,9 +175,9 @@ with tempfile.TemporaryDirectory() as tmp:
     ok("pdf --theme dark · its pages are dark to the edge", dark and max(dark[0]) < .15, dark[:3])
     # schema version 2 (1.8): typed models go through the upstream engine's check (a line may end on a member, F3), the
     # page bakes no layout into a typed view (F4), and render, check, stills and pdf work on them
-    for name in ("01-class", "05-component"):
-        src = json.loads((ROOT / "docs" / "diagrams" / "examples" / f"{name}.json").read_text())
-        r = cli("render", str(ROOT / "docs" / "diagrams" / "examples" / f"{name}.json"), "--out", str(t / f"{name}.html"))
+    for name, path in (("sales-classes", ROOT / "examples" / "sales-classes.json"), ("05-component", ROOT / "docs" / "diagrams" / "examples" / "05-component.json")):
+        src = json.loads(path.read_text())
+        r = cli("render", str(path), "--out", str(t / f"{name}.html"))
         ok(f"render · a typed model ({name}): the engine accepts lines that end on members, and the check is clean",
            r is not None and not r.get("problems") and not r.get("errors"), r)
         page = (t / f"{name}.html").read_text(encoding="utf-8") if r else ""

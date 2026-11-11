@@ -59,7 +59,7 @@ All on 11 Nov 2026, by the maintainer. The options that were weighed are in `pro
 | [`model.md`](model.md) | The typed model: its rules and each diagram type's vocabulary |
 | [`risks.md`](risks.md) | Findings that changed the plan, risks, edge cases, and what to do about each |
 | [`ui-draft.html`](ui-draft.html) | A drawing of the editor: views, palette, canvas, properties, problems |
-| [`examples/`](examples/) | One target model per diagram type, `01-class.json` to `28-azure.json`, and `check.mjs`, which checks them against `model.md` |
+| [`examples/`](examples/) | One target model per diagram type, `01-class.json` to `28-azure.json`, and `check.mjs`, which checks them against `model.md`; a type's file moves to [`../../examples/`](../../examples/) when it draws (`check.mjs` lists where: `01-class.json` is `examples/sales-classes.json`) |
 | [`notes/`](notes/) | Design notes, one per stage, written when the stage starts: [`stage-1.md`](notes/stage-1.md); the sequence spike's findings, [`spike-sequence.md`](notes/spike-sequence.md) |
 
 ## Picking up a work package
@@ -208,6 +208,31 @@ node docs/diagrams/examples/check.mjs         # the target examples match model.
   realization's target is an interface (with 1.9 merged, the fixture passes `validate()`), `n` multiplicities, linear ids
   for repeated names, prototype-safe lookup tables, the writer's line breaks and silent drops, multi-line directives, a
   CLI copy with no `src/`. Checked on a trial merge with `class-type` (1.9).
+- **12 Nov 2026 (1.11).** 1.11 closes the class type's definition of done. 10: `01-class.json` moved to
+  `examples/sales-classes.json`, in the gallery (stills and PDF on the site) and CI (rendered, checked, valid against the
+  schema: F8); `check.mjs` keeps a list of what moved and checks it there, and the tests that counted 28 files use it.
+  `tests/class-minimal.json` and `tests/class-stress.json` (G1, a view of 50 elements and 57 lines) lay out with no
+  overlap, no line through an element and no end label on one, in Node and in Chrome under three fonts and both themes.
+  9: `tests/class-fixtures.test.mjs` fails when the stress fixture's full layout takes 1 s or more, or an edit that moves
+  nothing 100 ms to lay out and draw as SVG markup (best of three: about 200 ms and 5 ms here). 8: a typed view's lines
+  and ends are drawn in `--um-muted` (5.95:1 light, 7.05:1 dark; `--um-arrow` was 2.96:1), maps unchanged, checked in
+  `tests/class.html`. 1: the class vocabulary in `lib/umlimator.d.ts` and `lib/umlimator.schema.json`, which describes
+  and rejects nothing (nested descriptions sit in `anyOf: [{ type, … }, true]`, so ajv's strict mode stays quiet). 7, 11:
+  `docs/conformance/uml-class.md`, with the fidelity table measured on the example; `examples/class-editor.html`, a host
+  that applies `edit` events with `apply()` and keeps `history()`, tested in a frame (`tests/class-editor.html`). The
+  core: +31 B gzipped, 14.3% over 0.16.1 (188662 B). Found: the PDF's tables of a class diagram are the map's (every
+  kind "Script", unlabelled lines "calls"; `risks.md` R8); lines cross where the layered layout finds no better
+  order: 29 crossings in the stress fixture's `all` view (4 of them the lines between Order and Customer, 25 elsewhere)
+  and 2 in `edge-cases` (those four lines among themselves), pinned in the test and recorded under `risks.md` L4; a
+  browser timing under headless virtual time reads 0 ms, so P1 is enforced in Node and the browser checks claim no time.
+- **12 Nov 2026 (1.11 review).** The review's findings on 1.11 are fixed, each with a test. A faded line in a typed view
+  (drift's idle lines) is stroked in its ends' `--um-muted`; maps unchanged. The stress fixture's `all` view grew to 50
+  elements and 57 lines (eight plain classes in two chains of associations), so P1's 50-node full layout is measured;
+  its crossings are stated per view. The Node budget times layout and SVG markup, not layout alone; `tests/class.html`'s
+  two timing checks no longer claim a paint time they cannot measure, and its fixture loop checks for a line through an
+  element in the browser's fonts. A view with no elements (a class view or a map's) threw in `rowsFor`; it lays out as an
+  empty stage, 72 by 72 (the core: +42 B gzipped). Left to the lead: the status table, and sign-off on the typed line
+  colour in `src/draw/svg.js`.
 - **12 Nov 2026 (the spike's findings applied).** The maintainer accepted `notes/spike-sequence.md` §2.1 to §2.3, and
   §5's items 1 to 3 are applied. The registry documents its provisional fields (`layout.run` and `key`, `pins`, `draw`'s
   two layers, `items`, `refs`, `validate(model, view)`, `lines` with `props`, `edits.connect`) and dispatches to a type's
