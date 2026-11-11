@@ -3009,14 +3009,14 @@ Nothing is removed. Every type, option, field, event and command is as it was, o
 What moves for a host that upgrades: a model with such a line gets one warning per line from `validate()`, from the MCP
 server's `validate` tool and in the playground. Nothing is drawn differently; no geometry changes.
 
-## 0.17.0: the foundation for typed diagrams (in progress)
+## 0.17.0: the foundation for typed diagrams: schema version 2, commands, and the layout, notation and editing they will use
 
 Stage 1a of the plan for 28 diagram types (`docs/diagrams/`). Nothing new is drawn, and every map draws as it did.
 
 - **The module is built from sources (1.1, #157).** `lib/umlimator.js` is now written by `npm run build`
   (`tools/build.mjs`, no dependency) from 21 files under `src/`. It holds the same statements as 0.16.1's, in another
   order, and it is still one file with no imports, so a host loads it as before. CI fails when it is stale.
-- **Schema version 2 and `migrate()` (1.2).** A model may say `"schemaVersion": 2`: it may then hold typed elements
+- **Schema version 2 and `migrate()` (1.2, #158).** A model may say `"schemaVersion": 2`: it may then hold typed elements
   (`type`, `parent`, `props`, `members`) and typed views (`diagram`, `subject`, `direction`, `present`), as
   `docs/diagrams/model.md` describes. The JSON Schema and the types describe these fields without constraining them,
   so no map that passed before fails now. A model with no `schemaVersion`, or with 1, is a map, read as before.
@@ -3027,7 +3027,7 @@ Stage 1a of the plan for 28 diagram types (`docs/diagrams/`). Nothing new is dra
   - On a version-2 model `validate()` checks typed elements, lines and views by the typed core's rules (ids in one space,
     types, ownership and its cycles, line ends on members) and the rest by a map's, as before (1.3).
 
-- **Diagram types (1.3).** A typed view's `diagram` picks its type. A view with none is a map and takes exactly the
+- **Diagram types (1.3, #160).** A typed view's `diagram` picks its type. A view with none is a map and takes exactly the
   path it always has; so does every view of a version-1 model, whatever its fields. This release draws no typed
   diagram yet: a typed view is drawn as plain cards, its nodes as cards and its typed lines between them (a line that
   ends on a member is drawn to the node that owns it), with a warning in the console and from `validate()`. The model
@@ -3035,7 +3035,7 @@ Stage 1a of the plan for 28 diagram types (`docs/diagrams/`). Nothing new is dra
 - `layout()`, `render()` and the other drawing calls refuse a model whose `schemaVersion` is a whole number above 2
   (they throw, with the message `validate()` gives) rather than draw it wrongly. Any other value that is not 1 or 2
   (0, 1.5, "2") is a warning, and the model draws as a map, as it did.
-- **Commands (1.6).** `apply(model, commands)` runs a transaction (one command or a list) on a copy and returns the
+- **Commands (1.6, #161).** `apply(model, commands)` runs a transaction (one command or a list) on a copy and returns the
   new model; the one given is never changed, and a command that cannot run throws with none of the transaction
   applied.
   - `set { id | view, path, value }`: a field, by a dotted path or a list of keys (`['present', 'order.total', 'rows']`);
@@ -3054,26 +3054,26 @@ Stage 1a of the plan for 28 diagram types (`docs/diagrams/`). Nothing new is dra
   id)` lists every place that names an element, as a list of keys and a kind, for a host with a store of its own. What
   a type's own properties name (a message's `replyTo`, a timeline) is the type's to keep, from its stage. The canvas
   emits these commands from 1.7.
-- **The command line and the page on typed models (1.8).** `render`, `check`, `stills` and `pdf` work on a version-2
+- **The command line and the page on typed models (1.8, #162).** `render`, `check`, `stills` and `pdf` work on a version-2
   model: the upstream engine's check is shown each member as a card, so a line may end on one (F3); the page's search
   for row orders bakes no layout into a typed view (F4). The CLI's page inlines `lib/umlimator-all.js`, a second whole
   file built from the same sources with every diagram family in it (`umlimator/all`); until a family ships it holds the
   same code as `lib/umlimator.js` (F5, stage 1 note §2.5).
-- **The layout for typed views (1.4).** Internal until the class type draws with it (1.9), and off for every map, which
+- **The layout for typed views (1.4, #163).** Internal until the class type draws with it (1.9), and off for every map, which
   lays out as it did: rows as tall as their tallest node (stage 1 note §4); a line from a node to itself drawn as a loop
   on its top right corner, with its label (F1); lines between one pair each with their own ports and label (F2), which
   laid out down fan out to lanes of their own, as their labels are wider than the lines are apart;
   `direction: "down"`, a left-to-right layout with every box turned, transposed (§6); and a geometry key, so that an
   edit that moves nothing (a colour, a `props` field) repaints without laying out or routing again (F7). The unused
   `autoLayout` and `hubLayout` are gone.
-- **Notation (1.5).** The drawing code learns UML's notation, used only where a typed view's drawing asks for it, so no
+- **Notation (1.5, #164).** The drawing code learns UML's notation, used only where a typed view's drawing asks for it, so no
   map draws differently: every shape reports `size(n)` and `ports(n, side, k)` (line ends spread along a side, on its
   outline), and a typed view's node is drawn in the shape it names; a classifier shape (stereotypes, the name in italics
   when abstract, a compartment per member kind with rows in UML's form, static members underlined, derived ones marked
   "/", `collapsed` and `rows` applied, text cut to the box); a table of line ends (open and filled arrow, hollow
   triangle, hollow and filled diamond) and dashed lines; role and multiplicity by each end, in boxes clear of their line
   and its nodes, which layout can avoid. Internal until a class view draws with it (1.9).
-- **Editing typed views (1.7).** With `editable`, a gesture on a typed view of a version-2 model (`diagram` set and not
+- **Editing typed views (1.7, #165).** With `editable`, a gesture on a typed view of a version-2 model (`diagram` set and not
   `'map'`) emits an `edit` event, `{ view, commands }`: one transaction of the commands above, for the host to apply
   with `apply()` and hand back with `update()`; nothing is drawn before. One transaction per committed field, per drag
   and per multi-select delete (E2). Map views, and every view of a version-1 model, emit `change` exactly as before and
@@ -3083,7 +3083,17 @@ Stage 1a of the plan for 28 diagram types (`docs/diagrams/`). Nothing new is dra
   member rows, the problems `validate()` finds in the view, and the outline of every element with an "in no diagram"
   filter (M5). A type this release does not draw has one generic node and one generic line, `core.Node` and `core.Line`.
 
-What moves for a host that upgrades: nothing is drawn differently. `validate()` returns a new error for a
-`schemaVersion` that is a whole number above 2, and drawing such a model throws; any other value but 1 or 2 is a
-warning.
+- **Also in this release:** `validate()` warns of a line from a card to itself, which no view draws (0.16.1, #155); the
+  browser tests give their motion pass more time (#159).
+
+What moves for a host that upgrades:
+- **Nothing is drawn differently.** Every map's geometry, every example's stills and every test of 0.16.1 are unchanged.
+- **New exports:** `migrate`, `apply` and `references`, the `edit` event, and the subpath `umlimator/all`. Nothing is
+  removed or renamed.
+- **`validate()`** returns a new error for a `schemaVersion` that is a whole number above 2, and drawing such a model
+  throws; any other value but 1 or 2 is a warning.
+- **Size:** `lib/umlimator.js`, what a map host loads, is 187 kB gzipped, up 13.5% from 165 kB (the plan's budget is
+  15%). The npm package grows from 206 kB to 417 kB, as it now carries `lib/umlimator-all.js` too.
+- **A host that edits a version-2 model** (`editable`) gets the `edit` event and panels on its typed views; map views
+  emit `change` as before.
 
