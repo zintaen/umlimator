@@ -29,11 +29,11 @@ function roundPath(pts, r = 9) {
 // a box placed before it moves away from the line, 4 px at a time, on its side and then the other, at the end or centred
 // across it (a short end segment, a loop). pts: the line as drawn; e.s and e.t: its nodes. Layout (1.4) may take the boxes
 // as obstacles; it moves them apart where many lines meet (L5)
-function endLabels(e, pts = e.pts) {
+function endLabels(e, pts = e.pts, also = []) { // also: boxes to keep clear of too (other lines, their labels: svgOf)
   const T = e.end && e.end.labels, out = []; if (!T || !pts || pts.length < 2) return out;
   const meets = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
   const keep = [...pts.slice(1).map((q, i) => { const p = pts[i]; return { x: Math.min(p[0], q[0]) - 7.5, y: Math.min(p[1], q[1]) - 7.5, w: Math.abs(q[0] - p[0]) + 15, h: Math.abs(q[1] - p[1]) + 15 }; }),
-    ...[e.s, e.t].filter(n => n && Number.isFinite(n.x)).map(n => ({ x: n.x - 2, y: n.y - 2, w: n.w + 4, h: n.h + 4 }))];
+    ...[e.s, e.t].filter(n => n && Number.isFinite(n.x)).map(n => ({ x: n.x - 2, y: n.y - 2, w: n.w + 4, h: n.h + 4 })), ...also];
   [['from', pts[0], pts[1]], ['to', pts[pts.length - 1], pts[pts.length - 2]]].forEach(([end, p, q]) => {
     const at = T[end] || {}, flat = Math.abs(q[0] - p[0]) >= Math.abs(q[1] - p[1]), dir = Math.sign(flat ? q[0] - p[0] : q[1] - p[1]) || 1;
     [['role', at.role, -1], ['mult', at.mult, 1]].forEach(([kind, t, side]) => { if (t == null || t === '') return;

@@ -103,13 +103,13 @@ function svgOf(geo, opts = {}) {
       <path d="${fd}" class="flowline" stroke="${st.c}"/>${(e.all || [e]).some(x => x.edited) && !e.strong ? (() => { let m = [e.pts[0], e.pts[1]];
         e.pts.slice(1).forEach((p, k) => { const a = e.pts[k]; if (Math.abs(p[0] - a[0]) + Math.abs(p[1] - a[1]) > Math.abs(m[1][0] - m[0][0]) + Math.abs(m[1][1] - m[0][1])) m = [a, p]; });
         return `<circle cx="${(m[0][0] + m[1][0]) / 2}" cy="${(m[0][1] + m[1][1]) / 2}" r="4" class="edited-dot"><title>Edited</title></circle>`; })() : ''}${why.length ? ruleMark(e, why) : ''}
-      <title>${e.step != null ? 'Step ' + esc(e.step) + ': ' : ''}${esc(e.s.label)} ${e.both ? '⇄' : '→'} ${esc(e.t.label)}${e.label ? ': ' + esc(e.label) : ''}${e.label && e.sublabel ? ' (' + esc(e.sublabel) + ')' : ''}${e.when ? '\n' + esc(e.when) : ''}${why.length ? '\nBreaks rule: ' + esc(why.join('; ')) : ''}</title></g>`;
+      <title>${!map && e.aria != null ? esc(e.aria) : `${e.step != null ? 'Step ' + esc(e.step) + ': ' : ''}${esc(e.s.label)} ${e.both ? '⇄' : '→'} ${esc(e.t.label)}${e.label ? ': ' + esc(e.label) : ''}`}${e.label && e.sublabel ? ' (' + esc(e.sublabel) + ')' : ''}${e.when ? '\n' + esc(e.when) : ''}${why.length ? '\nBreaks rule: ' + esc(why.join('; ')) : ''}</title></g>`;
   });
   // the tour's dot rides over the lines and boxes but under the cards: it goes into a card and comes out at its next
   // line, rather than across the card's name
   s += '</g>' + (tour ? `<g class="tour" aria-hidden="true"><circle r="5.5" class="tour-dot"><animateMotion path="${tour.d}" dur="${TOUR}s" repeatCount="indefinite"/></circle></g>` : '') + '<g class="nodes">';
   nodes.forEach(n => {
-    if (!map && n.shape === 'classifier') { s += SHAPE.classifier.draw(n, col(n.k), fill(n.k)); return; } // a typed view's class box (1.5)
+    if (!map && hasKey(SHAPE, n.shape) && SHAPE[n.shape].draw) { s += SHAPE[n.shape].draw(n, col(n.k), fill(n.k)); return; } // a typed view's own shape: a class box (1.5), a note (1.9)
     const c = col(n.k), f = fill(n.k), removed = n.change === 'removed', planned = n.change === 'planned';
     const L = looks.get(n) || null, S = L && L.S; // a shaped card (0.15.0); null: a box, drawn as before
     const pub = map && n.k === 'm-public', priv = map && n.k === 'm-script', ext = map && n.k === 'm-ext', verb = map && n.k === 'm-verb', hook = map && n.k === 'm-hook' && String(n.shape ?? '').toLowerCase() !== 'box';
@@ -223,8 +223,11 @@ return I && I.src ? `<rect x="${x - M * 3 / 28}" y="${y - M * 3 / 28}" width="${
       s += `<g class="um-key line-key${e.weight > 1 ? ' wt-' + e.weight : ''}" data-i="${i}" tabindex="0" role="button" aria-pressed="false" aria-label="${esc(name)}"><path d="${roundPath(drawn[i])}" class="key-ring"/></g>`; });
   }
   s += '</g><g class="labels depth-read">';
+  // a typed line's end labels keep clear of the other lines, their labels and the end labels placed before them (1.9, L5)
+  const segs = map ? [] : drawn.map(p => p.slice(1).map((q, k) => ({ x: Math.min(p[k][0], q[0]) - 3, y: Math.min(p[k][1], q[1]) - 3, w: Math.abs(q[0] - p[k][0]) + 6, h: Math.abs(q[1] - p[k][1]) + 6 }))), placed = [];
+  const endLabs = i => { const bs = endLabels(edges[i], drawn[i], [...placed, ...segs.flatMap((S, j) => j === i ? [] : [...S, ...(edges[j].lbl ? [edges[j].lbl] : [])])]); placed.push(...bs); return bs; };
   edges.forEach((e, i) => {
-    if (typed(e)) s += endLabels(e, drawn[i]).map(b => `<text x="${r2(b.x + b.w / 2)}" y="${r2(b.y + 10.5)}" text-anchor="middle" class="end-lab" data-i="${i}" data-end="${b.end}" data-box="${b.x} ${b.y} ${b.w} ${b.h}" fill="var(--um-muted)" style="font:500 10px var(--um-sans)">${esc(b.text)}</text>`).join('');
+    if (typed(e)) s += endLabs(i).map(b => `<text x="${r2(b.x + b.w / 2)}" y="${r2(b.y + 10.5)}" text-anchor="middle" class="end-lab" data-i="${i}" data-end="${b.end}" data-box="${b.x} ${b.y} ${b.w} ${b.h}" fill="var(--um-muted)" style="font:500 10px var(--um-sans)">${esc(b.text)}</text>`).join('');
     if (!e.lbl) return;
     const L = e.lbl;
     if (map) {

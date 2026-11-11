@@ -5,3 +5,5 @@ __pycache__/
 .*-check/
 # temporary model copy written by render
 .*.icons.json
+# local worktrees of agents and tools
+.claude/worktrees/
