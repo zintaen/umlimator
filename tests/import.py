@@ -206,4 +206,46 @@ with tempfile.TemporaryDirectory() as tmp:
     r = run("import", str(t / "cut.json"), "--out", str(t / "d.json"))
     ok("JSON cut short is said to be invalid JSON, not a format it cannot tell", r.returncode == 1 and "is not valid JSON" in r.stderr
        and "cut short" in r.stderr and "cannot tell the format" not in r.stderr, r.stderr)
+
+# A Mermaid classDiagram is read by the module's reader, in Node (plan 1.10, risks.md R7): a typed model with one uml.class
+# view, and its report on stderr. tests/mermaid-class.test.mjs pins the reader's report and its round trip
+name = "tests/import/classes.mmd"
+ok("mermaid · a classDiagram is known by its content, and the Python reader leaves it to the module's",
+   imp.detect("x", "%% a\nclassDiagram\n") == "mermaid" and imp.mermaid_class("---\ntitle: t\n---\nclassDiagram\n")
+   and not imp.mermaid_class("flowchart LR\n") and imp.mermaid_class('%%{\n  init: {\n    "theme": "dark"\n  }\n}%%\nclassDiagram\n') and "module's reader" in imp.read("mermaid", "classDiagram\nA --> B\n", "x")[1][0][1])
+with tempfile.TemporaryDirectory() as tmp:
+    t = Path(tmp)
+    r = run("import", str(ROOT / name), "--out", str(t / "classes.json"))
+    said = json.loads(r.stdout) if r.returncode == 0 else {}
+    m = json.loads((t / "classes.json").read_text(encoding="utf-8")) if r.returncode == 0 else {"nodes": [], "edges": [], "views": [{}]}
+    ok(f"{name} · read by the module's reader as one uml.class view of a version-2 model",
+       said.get("format") == "mermaid" and said.get("views") == ["class-diagram"] and m.get("schemaVersion") == 2 and m["views"][0].get("diagram") == "uml.class",
+       r.stdout + r.stderr)
+    got = [l[len(str(ROOT / name)):].split(" ", 1)[0] for l in r.stderr.splitlines()]
+    ok(f"{name} · lists what it skips or approximates, each with its line",
+       got == [f":{n}:" for n in (3, 10, 11, 12, 46, 60, 61, 63, 66, 83, 93, 94, 95, 97, 98, 99, 100)] and said.get("unread") == 17, r.stderr)
+    types = {n["id"]: n["type"] for n in m["nodes"]}
+    ok(f"{name} · classes, an interface, an enumeration, namespaces and notes; each relation's UML kind",
+       [types.get(i) for i in ("Duck", "Shape", "Color", "BaseShapes", "note-1")] == ["uml.Class", "uml.Interface", "uml.Enumeration", "uml.Package", "uml.Comment"]
+       and [(line(m, a, b) or {}).get("type") for a, b in (("Duck", "Animal"), ("classK", "classL"), ("classM", "classN"), ("note-2", "Duck"))]
+       == ["uml.Generalization", "uml.Dependency", "uml.InterfaceRealization", "uml.CommentLink"], m["edges"])
+    problems = [p for p in u.js("validate", m) if p["level"] == "error"]
+    ok(f"{name} · validate() finds no error", problems == [], problems)
+    # without Node: the class diagram says so, and names the formats that need only Python, which still import
+    bare = dict(__import__("os").environ, PATH=tmp)
+    r = subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "import", str(ROOT / name), "--out", str(t / "x.json")], capture_output=True, text=True, env=bare)
+    ok("without Node, a classDiagram's import says it needs Node, and which formats do not", r.returncode == 1 and "Node.js 18" in r.stderr
+       and "need only Python" in r.stderr and not (t / "x.json").exists(), r.stderr)
+    r = subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "import", str(ROOT / "tests" / "import" / "checkout.mmd"), "--out", str(t / "y.json")],
+                       capture_output=True, text=True, env=bare)
+    ok("without Node, a Mermaid flowchart still imports", r.returncode == 0 and (t / "y.json").is_file(), r.stderr)
+    # a copy of the CLI with lib/ but no src/: a sentence, not Node's stack trace
+    bare = t / "bare"
+    bare.mkdir()
+    for f in ("umlimator.py", "umlimator_import.py"):
+        shutil.copy(ROOT / f, bare / f)
+    shutil.copytree(ROOT / "lib", bare / "lib")
+    r = subprocess.run([sys.executable, str(bare / "umlimator.py"), "import", str(ROOT / name), "--out", str(t / "z.json")], capture_output=True, text=True)
+    ok("with no src/, a classDiagram's import says it needs a full clone", r.returncode == 1 and "full clone" in r.stderr
+       and "ERR_MODULE_NOT_FOUND" not in r.stderr and not (t / "z.json").exists(), r.stderr)
 sys.exit(1 if failed else 0)

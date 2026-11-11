@@ -1,0 +1,100 @@
+---
+title: Every construct on Mermaid's class diagram page
+config:
+  class:
+    hideEmptyMembersBox: true
+---
+%% Modelled on Mermaid 12.3.0's docs/syntax/classDiagram.md (MIT), one block per section of that page.
+%% The pinned report of what is not read as written is in tests/mermaid-class.test.mjs.
+classDiagram
+    direction RL
+    accTitle: Every construct
+    accDescr {
+        A class diagram that uses each construct once
+    }
+    %% Notes
+    note "From Duck till Zebra"
+    note for Duck "can fly<br>can swim"
+    %% Members, two ways
+    Animal <|-- Duck
+    Animal <|-- Fish
+    Animal : +int age
+    Animal : +String gender
+    Animal: +isMammal()
+    class Duck{
+        +String beakColor
+        +swim()
+    }
+    class Fish{
+        -int sizeInFeet
+        -canEat()
+    }
+    %% Class labels, and backticks
+    class Car["Car with *! symbols"]
+    class `Animal Class!`
+    `Animal Class!` --> Car
+    %% Return types, generics, visibility, static and abstract
+    class BankAccount{
+        +String owner
+        +BigDecimal balance$
+        +deposit(amount) bool
+        +withdrawal(amount) int
+        ~audit()$
+        #someAbstractMethod() int*
+        -idCard : IdCard
+    }
+    class Square~Shape~{
+        int id
+        List~int~ position
+        setPoints(List~int~ points)
+        getPoints() List~int~
+    }
+    Square : +getDistanceMatrix() List~List~int~~
+    %% Every relation, and labels on relations
+    classA --|> classB : Inheritance
+    classC --* classD : Composition
+    classE --o classF : Aggregation
+    classG --> classH : Association
+    classI -- classJ : Link(Solid)
+    classK ..> classL : Dependency
+    classM ..|> classN : Realization
+    classO .. classP : Link(Dashed)
+    %% Two-way relations
+    Animal <|--|> Zebra
+    Owner <--> Pet
+    %% Lollipop interfaces
+    bar ()-- foo
+    %% Namespaces, labelled and nested
+    namespace BaseShapes {
+        class Triangle
+        class Rectangle {
+          double width
+          double height
+        }
+    }
+    namespace Auth["Authentication Service"] {
+        class UserService
+    }
+    namespace Company.Engineering {
+        class TechLead
+    }
+    %% Cardinality
+    Customer "1" --> "*" Ticket
+    Galaxy --> "many" Star : Contains
+    %% Annotations, three ways
+    class Shape <<interface>>
+    class Color{
+        <<enumeration>>
+        RED
+        BLUE
+    }
+    <<Service>> Car
+    %% Interaction
+    click Duck href "https://example.com" "A link"
+    callback Fish "callbackFunction" "A callback"
+    link Zebra "https://example.com" "A link"
+    %% Styling
+    style Duck fill:#f9f,stroke:#333
+    class Mineral:::someclass
+    classDef someclass fill:#f96
+    cssClass "Duck,Fish" someclass

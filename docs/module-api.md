@@ -3122,3 +3122,29 @@ What moves for a host that upgrades:
   A refused member line loses its invalid mark once a good one is added or Escape puts it back. A generalization from or
   to anything but a classifier breaks `generalization-kinds`. Ids, types and view ids named `constructor`, `toString` or
   `__proto__` lay out like any other (M3).
+- **A Mermaid `classDiagram` reader and writer (1.10).** `src/readers/mermaid-class.js`, written against Mermaid 12.3.0's
+  class diagram page, is in `lib/umlimator-all.js` only, and internal until the registry is public:
+  `readMermaidClass(text)` gives `{ model, report }`, a version-2 model with one `uml.class` view in `model.md`'s
+  vocabulary, and a report of each statement it `skipped` or `approximated`, with its line (styling, links, accessibility
+  text and Mermaid's configuration are skipped; a dashed link with no arrow, a lollipop, a generic class, `many`, `BT`
+  and `RL` are approximated). Ids come from the source's names (a class's, a namespace's; `<class>.<member>`,
+  `<from>-<to>`, `note-<n>`), so the same text always gives the same ids; text over 1 MiB is refused, and nothing throws.
+  `writeMermaidClass(model, viewId)` writes one class view; an id the reader would not derive goes in a `%% id:` comment
+  above its statement, and what the subset leaves out in `%% not written:` comments, so `read(write(model))` gives the
+  model back on the subset (a view's `layout` and `present` are not written). `umlimator.py import` reads a
+  classDiagram with it, through Node; without Node it says so, and every other format still imports with Python alone.
+- **The 1.10 reader's review (1.10).** What `..|>` points to is read as an interface, as a lollipop's is, and reported
+  when the source does not declare it `<<interface>>`, so the reader's model passes 1.9's `realization-target` rule;
+  Mermaid's `n` (`0..n`, `1..n`, `int[n]`) is the multiplicity `*`, reported as `many` is, and a bracket that is no
+  multiplicity (`int[5..2]`) stays in the type. A repeated name's next id is found where the last one stopped, so the
+  reader stays linear (R2) with one relation, member or note repeated. Two names that differ only by `->` get two ids,
+  reported; a namespace renamed for a class's name is reported at its own line; a %%{ ... }%% directive over several lines
+  is passed over (by `umlimator.py import` too); `<<constructor>>` or `<<__proto__>>` is a stereotype like any other.
+  With 1.9's rules in mind: a member named twice in one class (an operation, with the same parameter types) is read once
+  and the second reported `skipped`; an interface's realization of another is read as a generalization, reported; and an
+  id never keeps a `->` (`a->>b` is `a-b`).
+  The writer writes nothing but a `%% not written:` line for a model with no `uml.class` view or a `viewId` it does not
+  have; keeps a line break, a lone `}`, a `<<` or a `%%` out of a member's line and a `>>` out of a stereotype; and says in
+  `%% not written:` what it drops: an end's `navigable` beside a diamond, a class's non-namespace parent, nodes in a
+  cycle of parents, a line that ends on a member, an unknown visibility. `umlimator.py import` of a classDiagram from a
+  copy without `src/` says it needs a full clone.

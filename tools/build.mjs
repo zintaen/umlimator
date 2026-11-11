@@ -36,13 +36,13 @@ function body(name) {
   return lines.slice(i, j).join('\n').trimEnd();
 }
 
-// every source is in ORDER, and every name in ORDER is a source: a file left out would be missing from lib/ silently
-const found = readdirSync(new URL('src/', root), { recursive: true }).filter(f => f.endsWith('.js')).map(f => f.replaceAll('\\', '/').slice(0, -3)).sort();
-const ALL = [...ORDER, 'uml/class']; // the core and the map, then every diagram family (stage 1 note §2.5): src/<family>/
-if (found.join() !== [...ALL].sort().join()) throw new Error(`tools/build.mjs: ORDER and ALL list ${[...ALL].sort().join(', ')}; src/ has ${found.join(', ')}`);
-
 // two whole files from the same sources (stage 1 note §2.5): the core and the map, for hosts that draw maps; and every
-// diagram family too, which the standalone page inlines
+// diagram family too, which the standalone page inlines. A family's files are listed here only, so umlimator.js does not grow
+const ALL = [...ORDER, 'uml/class', 'readers/mermaid-class'];
+
+// every source is in ALL, and every name in ALL is a source: a file left out would be missing from lib/ silently
+const found = readdirSync(new URL('src/', root), { recursive: true }).filter(f => f.endsWith('.js')).map(f => f.replaceAll('\\', '/').slice(0, -3)).sort();
+if (found.join() !== [...ALL].sort().join()) throw new Error(`tools/build.mjs: ORDER and ALL list ${[...ALL].sort().join(', ')}; src/ has ${found.join(', ')}`);
 for (const [name, list, what] of [['umlimator.js', ORDER, ''], ['umlimator-all.js', ALL, ' This file adds every diagram family to umlimator.js.']]) {
   const out = new URL('lib/' + name, root);
   const head = what ? HEADER.replace(/\n \*\/$/, `\n *${what}\n */`) : HEADER;

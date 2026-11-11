@@ -18,7 +18,7 @@ Update this table in every pull request that belongs to the plan.
 | Before the plan | 0.16.0 | Fixes already on `main` (#146 to #148, #150) | Released 11 Nov 2026 (cf516c8, npm latest); map-repo pinned to it | #146, #147, #148, #150, #152, #153 |
 | Before the split | 0.16.1 | `validate()` warns of a line from a card to itself (`risks.md` F1) | Released 11 Nov 2026 (8f0240f, GitHub and npm latest); map-repo pinned to it | #155, #156 |
 | 1a Foundation | 0.17.0 | Work packages 1.1 to 1.8 | Released 11 Nov 2026 (555bfdc, GitHub and npm latest); map-repo pinned to it | #154, #157, #158, #160, #161, #162, #163, #164, #165, #166, #167 |
-| 1b Class | 0.18.0 | Work packages 1.9 to 1.12 | 1.12's findings merged (#171). 1.9 (#168) and 1.10 (#169) in review. Next: 1.11, and the spike's changes to the registry, `model.md` and `apply()` | #168, #169, #171 |
+| 1b Class | 0.18.0 | Work packages 1.9 to 1.12 | 1.9 merged (#168); 1.12's findings merged (#171). 1.10 (#169) in review. Next: 1.11, and the spike's changes to the registry, `model.md` and `apply()` | #168, #169, #171 |
 | 2 | 0.19.0 | Object, package | Not started | |
 | 3 | 0.20.0 | Sequence, communication | Not started | |
 | 4 | 0.21.0 | Use case, activity, state machine, interaction overview | Not started | |
@@ -197,3 +197,14 @@ node docs/diagrams/examples/check.mjs         # the target examples match model.
   `tests/class.html`'s 40-class check, with the stress fixture 1.11's; 1 (the schema and `.d.ts`) and 7 (the fidelity
   table, in the conformance note) are documents of `plan.md` §7, which 1.11 owns. Left: a model-held member label with
   a space, or a type with `=`, prints a line the micro-syntax does not read back.
+- **12 Nov 2026 (1.10).** 1.10 adds `src/readers/mermaid-class.js`, in `lib/umlimator-all.js` only (`tools/build.mjs`'s
+  `ALL`), against Mermaid 12.3.0: a hand-written linear reader with a 1 MiB limit and a report of what it skips or
+  approximates (R1, R2), ids from the source's names (R3), and a writer whose `%% id:` comments keep the ids Mermaid has
+  no place for. `read(write(model))` equals the model for both views of `01-class.json` and 500 generated models;
+  `tests/import/classes.mmd`, modelled on Mermaid's class page, pins the report (R4). `umlimator.py import` routes a
+  classDiagram to it through Node and names the formats that need only Python (R7). It reads and writes `model.md`'s
+  vocabulary and depends on no code of 1.9.
+- **12 Nov 2026 (1.10 review).** The two-lens review's 15 findings on 1.10 are fixed, each with a regression test: a
+  realization's target is an interface (with 1.9 merged, the fixture passes `validate()`), `n` multiplicities, linear ids
+  for repeated names, prototype-safe lookup tables, the writer's line breaks and silent drops, multi-line directives, a
+  CLI copy with no `src/`. Checked on a trial merge with `class-type` (1.9).
