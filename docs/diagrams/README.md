@@ -17,8 +17,8 @@ Update this table in every pull request that belongs to the plan.
 | Planning | | Proposal, model, plan, risks, 28 target examples, UI draft | Merged 12 Nov 2026 (60a159c) | #151 |
 | Before the plan | 0.16.0 | Fixes already on `main` (#146 to #148, #150) | Released 11 Nov 2026 (cf516c8, npm latest); map-repo pinned to it | #146, #147, #148, #150, #152, #153 |
 | Before the split | 0.16.1 | `validate()` warns of a line from a card to itself (`risks.md` F1) | Released 11 Nov 2026 (8f0240f, GitHub and npm latest); map-repo pinned to it | #155, #156 |
-| 1a Foundation | 0.17.0 | Work packages 1.1 to 1.8 | All merged (1.7: b71b4f6). Release in review: #166 | #154, #157, #158, #160, #161, #162, #163, #164, #165, #166 |
-| 1b Class | 0.18.0 | Work packages 1.9 to 1.12 | Not started | |
+| 1a Foundation | 0.17.0 | Work packages 1.1 to 1.8 | Released 11 Nov 2026 (555bfdc, GitHub and npm latest); map-repo pinned to it | #154, #157, #158, #160, #161, #162, #163, #164, #165, #166, #167 |
+| 1b Class | 0.18.0 | Work packages 1.9 to 1.12 | In progress: 1.9, 1.10 and the 1.12 spike built in parallel lanes | |
 | 2 | 0.19.0 | Object, package | Not started | |
 | 3 | 0.20.0 | Sequence, communication | Not started | |
 | 4 | 0.21.0 | Use case, activity, state machine, interaction overview | Not started | |
@@ -168,3 +168,6 @@ node docs/diagrams/examples/check.mjs         # the target examples match model.
   view takes about 175 ms, over P1's 100 ms from an edit to paint; the core is 13.5% larger gzipped than 0.16.1 (C5's
   budget is 15%), so what comes next lands in family files, not the core; a map model line carrying `fixed` or `under`
   still reaches the layout (older than this plan, in `prepEdges`).
+- **11 Nov 2026 (0.17.0).** 0.17.0 released (#166, 555bfdc): GitHub Release and npm latest. map-repo's pin moved to
+  v0.17.0, plugin 0.1.9. Stage 1b started: 1.9 (the class type), 1.10 (the Mermaid class reader) and 1.12 (the
+  sequence spike) are built in parallel lanes, each reviewed from two lenses before the maintainer's approval.
