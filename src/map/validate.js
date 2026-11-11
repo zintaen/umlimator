@@ -1,4 +1,5 @@
-import { versionProblem } from '../core/model.js';
+import { typedProblems, versionProblem } from '../core/model.js';
+import { diagramOf } from '../core/registry.js';
 import { SHAPE_NAMES, noteOf, shapeOf } from '../draw/shapes.js';
 import { mapContext } from './context.js';
 import { ALIAS, KIND, MAPK, NOTATIONS, hasKey, kindOf } from './kinds.js';
@@ -14,6 +15,8 @@ export function validate(model) {
   if (!Array.isArray(m.nodes)) err('nodes', 'the model needs a list of cards');
   if (!views.length) err('views', 'the model has no views');
   const ids = new Set(), vids = new Set(), lineIds = new Set();
+  // schema version 2: typed lines and typed views are the typed core's to check (src/core/model.js), the rest is a map's
+  const typed = m.schemaVersion === 2, typedView = v => typed && v.diagram != null && v.diagram !== 'map';
   const card = (n, at) => {
     if (!n || typeof n.id !== 'string' || !n.id) return err(at + '.id', 'a card needs an id');
     if (ids.has(n.id)) err(at + '.id', `card id "${n.id}" is used twice`); ids.add(n.id);
@@ -49,9 +52,9 @@ export function validate(model) {
   };
   // a model line may end on any view's box (#28); a view's own line only on that view's boxes
   const anyBox = new Set(views.flatMap(v => arr(v.containers).map(c => c && c.id)));
-  arr(m.edges).forEach((e, i) => { line(e, `edges[${i}]`, new Set([...ids, ...anyBox]));
+  arr(m.edges).forEach((e, i) => { if (!(typed && e && e.type != null)) line(e, `edges[${i}]`, new Set([...ids, ...anyBox]));
     if (e && e.id != null) { if (lineIds.has(e.id)) err(`edges[${i}].id`, `line id "${e.id}" is used twice`); lineIds.add(e.id); } });
-  views.forEach((v, i) => {
+  views.forEach((v, i) => { if (typedView(v)) return;
     const at = `views[${i}]`, mine = new Set(arr(v.nodeIds)), boxes = {};
     if (v.parent != null && !vids.has(v.parent) && !ids.has(v.parent)) err(at + '.parent', `parent "${v.parent}" is not a view`);
     arr(v.nodeIds).forEach((id, j) => { if (!ids.has(id)) err(`${at}.nodeIds[${j}]`, `"${id}" is not a card`); });
@@ -126,6 +129,12 @@ export function validate(model) {
       if (st.duration != null && !(st.duration > 0)) warn(p + '.duration', `duration ${JSON.stringify(st.duration)} is not a number of ms: 4000`);
     });
   });
+  if (typed) {
+    const said = new Set(out.map(p => p.path)); // a duplicate id both checks find is said once
+    out.push(...typedProblems(m).filter(p => !(p.level === 'error' && said.has(p.path))));
+    views.forEach((v, i) => { const at = `views[${i}].diagram`; // a well-formed name of a type this release does not draw (M13)
+      if (typedView(v) && !diagramOf(v) && !out.some(p => p.path === at)) warn(at, `diagram "${v.diagram}" is not drawn by this release: its nodes are drawn as plain cards`); });
+  }
   return out;
 }
 

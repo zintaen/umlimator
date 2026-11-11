@@ -1,17 +1,15 @@
-import { fit, sansW, textW } from '../core/text.js';
+import { fit, measured, sansW, textW } from '../core/text.js';
+import { migrate } from '../core/model.js';
+import { held, warn } from '../core/warn.js';
 import { noteOf } from '../draw/shapes.js';
 import { svgOf } from '../draw/svg.js';
 import { leaveIssues, routeAudit } from '../layout/audit.js';
 import { layoutGraph, pillW, pullSources, rowsFor, untangle } from '../layout/layered.js';
 import { WIRES, badgesOf, mapNodeW } from './cards.js';
 import { markOf } from './diff.js';
+import { plainViews } from './typed.js';
 import { arrOf, rules } from './validate.js';
 
-// Text width. Without a measurer: a monospace estimate (font-independent, so layouts are the same on every machine;
-// the bench and layout() in Node use it). render() sets measureText to the host's own font while it lays out a view.
-let measureText = null;
-const warned = new Set(), warn = m => { if (hush) hush.push(m); else if (!warned.has(m)) { warned.add(m); console.warn('umlimator: ' + m); } }; // each warning once
-let hush = null; // a layout tried and maybe dropped (unfolding, #71) keeps its warnings here: only the one kept says them
 
 /* Swimlanes for run-order views. A view may set `lanes` ([{title, nodeIds}] or false); otherwise a
    sequence view is read step by step and each part is filed under the first workflow phase its own
@@ -47,8 +45,9 @@ function edgeIds(list) {
 
 /* The model's views and everything that lays one out. Works on its own copy of the model, needs no DOM. */
 function mapContext(model, opts = {}) {
-  const D = structuredClone(model || {});
-  const M = opts.measure || null, withM = f => (...a) => { const prev = measureText; measureText = M; try { return f(...a); } finally { measureText = prev; } };
+  const D = structuredClone(migrate(model) || {}); // a newer schemaVersion throws: drawn wrongly otherwise (F6)
+  plainViews(D); // typed views of a diagram this release does not draw: plain cards
+  const M = opts.measure || null, withM = f => (...a) => measured(M, () => f(...a));
   edgeIds(D.edges); (D.views || []).forEach(v => { if (Array.isArray(v.edges)) edgeIds(v.edges); });
   const views = (D.views || []).filter(v => v && v.id);
   const nodes = [...(D.nodes || []), ...views.flatMap(v => v.nodes || [])];
@@ -592,7 +591,7 @@ function mapContext(model, opts = {}) {
     const strays = g => (g.families || []).reduce((a, f) => a + g.nodes.filter(n => !(f.nodeIds || []).includes(n.id) && n.x + n.w / 2 > f.x && n.x + n.w / 2 < f.x + f.w && n.y + n.h / 2 > f.y && n.y + n.h / 2 < f.y + f.h
       && !(g.families || []).some(o => o.id !== f.id && (o.nodeIds || []).includes(n.id) && o.x >= f.x && o.y >= f.y && o.x + o.w <= f.x + f.w && o.y + o.h <= f.y + f.h)).length, 0);
     let best = null; // ponytail: up to 12 routings per unfold, a view of over 30 cards one; a smarter search when a bigger map needs it
-    const score = ({ L, free }) => { v.edges = free ? freeE : keepE; hush = []; let g; try { g = buildGeo(vid, L); } finally { g && (g.said = hush); hush = null; }
+    const score = ({ L, free }) => { v.edges = free ? freeE : keepE; const [g, said] = held(() => buildGeo(vid, L)); g.said = said;
       const s = scoreGeo(g) + (strays(g) * 5 + leaveIssues(g, '').length) * 1000; if (!best || s < best.s - .5) best = { L, g, s, free }; };
     ways.forEach(score);
     // still an issue, and cards under the card in its column: the box one column to the right instead, so they keep their slots
@@ -611,4 +610,4 @@ function mapContext(model, opts = {}) {
     layoutCache, geoCache, buildGeo: withM(buildGeo), buildView: withM(buildView), drawView: withM(drawView), notationOf, optimize: withM(optimize), flowPos, kidCount, viewKey, brokenIn, unfoldable, unfolded };
 }
 
-export { measureText, warn, mapContext };
+export { mapContext };

@@ -2,7 +2,7 @@ import { fit, sansW, textW } from '../core/text.js';
 import { behind, detour, onBorder, routeAudit } from './audit.js';
 import { edgeRefIds } from '../map/api.js';
 import { badgesOf, mapNodeW, mapTabs, toneOf } from '../map/cards.js';
-import { warn } from '../map/context.js';
+import { warn } from '../core/warn.js';
 import { kindOf } from '../map/kinds.js';
 
 const CHG = { added: ['green', 'NEW'], new: ['green', 'NEW'], modified: ['amber', 'CHANGED'], changed: ['amber', 'CHANGED'], removed: ['rose', 'REMOVED'], planned: ['cyan', 'PLANNED'] };

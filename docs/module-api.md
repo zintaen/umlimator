@@ -3021,12 +3021,22 @@ Stage 1a of the plan for 28 diagram types (`docs/diagrams/`). Nothing new is dra
   `docs/diagrams/model.md` describes. The JSON Schema and the types describe these fields without constraining them,
   so no map that passed before fails now. A model with no `schemaVersion`, or with 1, is a map, read as before.
   - `migrate(model)` returns the model at the version this release reads. Versions 1 and 2 come back unchanged: lines
-    with no id keep their positional names. A newer version, or a number that is not a version (0, 1.5), throws.
-  - `validate()` reports such a `schemaVersion` as an error, so a model written by a later release is not drawn wrongly
-    without a word (F6). A value that is not a number is a warning, and the model reads as a map.
-  - `validate()` does not yet check typed elements: on a version-2 model it still reports a line that ends on a member
-    as "neither a card nor a box". The typed checks join it with the diagram registry.
+    with no id keep their positional names. A newer version throws.
+  - `validate()` reports a newer `schemaVersion` as an error, so a model written by a later release is not drawn wrongly
+    without a word (F6). Any other value that is not 1 or 2 is a warning, and the model reads as a map.
+  - On a version-2 model `validate()` checks typed elements, lines and views by the typed core's rules (ids in one space,
+    types, ownership and its cycles, line ends on members) and the rest by a map's, as before (1.3).
 
-What moves for a host that upgrades: nothing is drawn differently. `validate()` returns a new error for a numeric
-`schemaVersion` other than 1 or 2, and a warning for one that is not a number.
+- **Diagram types (1.3).** A typed view's `diagram` picks its type. A view with none is a map and takes exactly the
+  path it always has; so does every view of a version-1 model, whatever its fields. This release draws no typed
+  diagram yet: a typed view is drawn as plain cards, its nodes as cards and its typed lines between them (a line that
+  ends on a member is drawn to the node that owns it), with a warning in the console and from `validate()`. The model
+  is kept as it is. The registry is internal until the types settle.
+- `layout()`, `render()` and the other drawing calls refuse a model whose `schemaVersion` is a whole number above 2
+  (they throw, with the message `validate()` gives) rather than draw it wrongly. Any other value that is not 1 or 2
+  (0, 1.5, "2") is a warning, and the model draws as a map, as it did.
+
+What moves for a host that upgrades: nothing is drawn differently. `validate()` returns a new error for a
+`schemaVersion` that is a whole number above 2, and drawing such a model throws; any other value but 1 or 2 is a
+warning.
 
