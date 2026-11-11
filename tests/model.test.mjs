@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { validate, check } from '../lib/umlimator.js';
+import { validate, check, layout } from '../lib/umlimator.js';
 
 const read = p => JSON.parse(readFileSync(new URL(p, import.meta.url)));
 
@@ -28,6 +28,16 @@ test('validate() names each error and warning by where it is, and accepts what r
   ]);
   assert.match(validate(bad).find(p => p.path === 'views[0].containers[0].parent').message, /inside itself/);
   assert.deepEqual(validate({ nodes: [] }).map(p => p.path), ['views']);
+});
+
+test('validate() warns of a line from a card or a box to itself, which no view draws (F1)', () => {
+  const m = { nodes: [{ id: 'a' }, { id: 'b' }], edges: [{ from: 'a', to: 'a' }, { from: 'a', to: 'b' }],
+    views: [{ id: 'v', nodeIds: ['a', 'b'], edges: [{ from: 'box', to: 'box' }, { from: 'a', to: 'b' }], containers: [{ id: 'box', nodeIds: ['b'] }] }] };
+  assert.deepEqual(validate(m).map(p => `${p.level} ${p.path} ${p.message}`), [
+    'warning edges[0] a line from "a" to itself: not drawn',
+    'warning views[0].edges[0] a line from "box" to itself: not drawn',
+  ]);
+  assert.equal(layout(m, 'v').edges.length, 1); // the view's own lines: only a -> b is drawn
 });
 
 test('check() reports the layout check\'s geometry for a view, naming the lines it is about', () => {
