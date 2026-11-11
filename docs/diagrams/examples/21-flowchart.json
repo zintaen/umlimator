@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 2,
+  "title": "Bookshop: handling a returned book",
+  "root": "returns",
+  "nodes": [
+    { "id": "start", "type": "flow.Terminator", "label": "Returned parcel arrives" },
+    { "id": "slip", "type": "flow.InputOutput", "label": "Read the returns slip" },
+    { "id": "key-in", "type": "flow.ManualInput", "label": "Key in the order number" },
+    { "id": "inspect", "type": "flow.Process", "label": "Inspect the book" },
+    { "id": "resaleable", "type": "flow.Decision", "label": "Fit for resale?" },
+    { "id": "refund", "type": "flow.PredefinedProcess", "label": "Refund the payment" },
+    { "id": "wait", "type": "flow.Delay", "label": "Wait for the bank to confirm" },
+    { "id": "restock", "type": "flow.Process", "label": "Put the book back on the shelf" },
+    { "id": "stock", "type": "flow.Database", "label": "Stock records" },
+    { "id": "letter", "type": "flow.Document", "label": "Rejection letter" },
+    { "id": "post-back", "type": "flow.Process", "label": "Post the book back" },
+    { "id": "join", "type": "flow.Connector", "label": "A" },
+    { "id": "end", "type": "flow.Terminator", "label": "Return closed" }
+  ],
+  "edges": [
+    { "id": "start-slip", "type": "flow.Flow", "from": "start", "to": "slip" },
+    { "id": "slip-key-in", "type": "flow.Flow", "from": "slip", "to": "key-in" },
+    { "id": "key-in-inspect", "type": "flow.Flow", "from": "key-in", "to": "inspect" },
+    { "id": "inspect-resaleable", "type": "flow.Flow", "from": "inspect", "to": "resaleable" },
+    { "id": "resaleable-yes", "type": "flow.Flow", "from": "resaleable", "to": "refund", "label": "yes" },
+    { "id": "resaleable-no", "type": "flow.Flow", "from": "resaleable", "to": "letter", "label": "no" },
+    { "id": "refund-wait", "type": "flow.Flow", "from": "refund", "to": "wait" },
+    { "id": "wait-restock", "type": "flow.Flow", "from": "wait", "to": "restock" },
+    { "id": "restock-stock", "type": "flow.Flow", "from": "restock", "to": "stock" },
+    { "id": "stock-join", "type": "flow.Flow", "from": "stock", "to": "join" },
+    { "id": "letter-post-back", "type": "flow.Flow", "from": "letter", "to": "post-back" },
+    { "id": "post-back-join", "type": "flow.Flow", "from": "post-back", "to": "join" },
+    { "id": "join-end", "type": "flow.Flow", "from": "join", "to": "end" }
+  ],
+  "views": [
+    { "id": "returns", "diagram": "flowchart", "title": "Handling a returned book", "parent": null, "direction": "down",
+      "nodeIds": ["start", "slip", "key-in", "inspect", "resaleable", "refund", "wait", "restock", "stock", "letter", "post-back", "join", "end"] }
+  ]
+}

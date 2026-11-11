@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Umlimator diagram editor: UI draft</title>
+<style>
+  :root { --bg: #ffffff; --bg2: #f6f8fa; --panel: #ffffff; --border: #d8dee4; --border2: #d1d9e0; --text: #1f2328; --muted: #59636e; --dim: #818b98;
+    --stage: #fbfcfd; --accent: #0969da; --accent-f: #e7f0fb; --accent-fg: #ffffff; --green: #1a7f37; --amber: #9a6700; --amber-f: #fbf3df; --rose: #cf222e; --rose-f: #fcebec;
+    --line: #424a53; --dot: #e6eaef; --sans: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #0d1117; --bg2: #161b22; --panel: #161b22; --border: #30363d; --border2: #3d444d; --text: #e6edf3; --muted: #9198a1; --dim: #7d8590;
+    --stage: #0d1117; --accent: #4493f8; --accent-f: #132339; --accent-fg: #0d1117; --green: #3fb950; --amber: #d29922; --amber-f: #2a2111; --rose: #f85149; --rose-f: #2d1416; --line: #b1bac4; --dot: #21262d; } }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 28px 16px 48px; background: var(--bg); color: var(--text); font: 14px/1.5 var(--sans); }
+  main { max-width: 1180px; margin: 0 auto; }
+  h1 { font-size: 22px; margin: 0 0 4px; } h2 { font-size: 16px; margin: 36px 0 6px; } p { margin: 0 0 10px; max-width: 78ch; } .lede, .note { color: var(--muted); }
+  code { font: 12px var(--mono); background: var(--bg2); padding: 1px 4px; border-radius: 4px; }
+  .app { display: grid; grid-template-columns: 208px minmax(0, 1fr) 268px; grid-template-rows: 40px auto auto; border: 1px solid var(--border2); border-radius: 10px; overflow: hidden; background: var(--panel); }
+  .bar { grid-column: 1 / -1; display: flex; align-items: center; gap: 10px; padding: 0 12px; border-bottom: 1px solid var(--border); background: var(--bg2); font-size: 13px; }
+  .bar .sp { flex: 1; } .crumb { color: var(--muted); } .crumb b { color: var(--text); }
+  .chip { font-size: 11px; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--border2); color: var(--muted); background: var(--panel); white-space: nowrap; }
+  .chip.ok { color: var(--green); } .chip.warn { color: var(--amber); background: var(--amber-f); border-color: transparent; }
+  .btn { font: 12px var(--sans); padding: 3px 9px; border: 1px solid var(--border2); border-radius: 6px; background: var(--panel); color: var(--text); white-space: nowrap; }
+  .btn.pri { background: var(--accent); color: var(--accent-fg); border-color: transparent; } .btn.danger { color: var(--rose); }
+  .side { border-right: 1px solid var(--border); padding: 10px 10px 12px; font-size: 13px; min-width: 0; } .props { border-left: 1px solid var(--border); border-right: 0; }
+  .side h3 { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin: 12px 0 5px; display: flex; gap: 6px; align-items: center; } .side h3:first-child { margin-top: 0; }
+  .tree { list-style: none; margin: 0; padding: 0; } .tree li { padding: 2px 6px; border-radius: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tree .grp { color: var(--muted); font-size: 12px; padding-left: 0; } .tree .on { background: var(--accent-f); color: var(--accent); font-weight: 600; } .tree .in { padding-left: 18px; } .tree .in2 { padding-left: 30px; color: var(--muted); }
+  .n { display: inline-grid; place-items: center; width: 17px; height: 17px; border-radius: 50%; background: var(--text); color: var(--bg); font: 700 10px var(--sans); flex: none; }
+  .stage { position: relative; background: var(--stage); background-image: radial-gradient(var(--dot) 1px, transparent 1px); background-size: 16px 16px; min-width: 0; }
+  .stage svg { display: block; width: 100%; height: auto; }
+  .palette { position: absolute; left: 8px; top: 8px; display: grid; gap: 3px; padding: 5px; background: var(--panel); border: 1px solid var(--border2); border-radius: 8px; }
+  .palette b { font: 600 9px var(--sans); color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin-top: 3px; }
+  .tool { width: 30px; height: 26px; border: 1px solid transparent; border-radius: 5px; display: grid; place-items: center; } .tool.on { background: var(--accent-f); border-color: var(--accent); }
+  .tool svg { width: 20px; height: 16px; } .tool * { stroke: var(--line); fill: none; stroke-width: 1.4; }
+  .ctl { position: absolute; right: 8px; bottom: 8px; display: flex; gap: 3px; padding: 3px; background: var(--panel); border: 1px solid var(--border2); border-radius: 8px; font-size: 12px; } .ctl span { padding: 1px 7px; color: var(--muted); }
+  .field { display: grid; grid-template-columns: 78px 1fr; gap: 6px; align-items: center; margin-bottom: 5px; } .field label { color: var(--muted); font-size: 12px; }
+  .inp { border: 1px solid var(--border2); border-radius: 5px; padding: 2px 7px; background: var(--bg); font-size: 12px; min-height: 24px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; } .inp.sel::after { content: " ▾"; color: var(--dim); }
+  .rows { border: 1px solid var(--border); border-radius: 6px; overflow: hidden; } .rows div { font: 11px var(--mono); padding: 3px 7px; border-top: 1px solid var(--border); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .rows div:first-child { border-top: 0; } .rows .ed { background: var(--accent-f); outline: 1px solid var(--accent); outline-offset: -1px; } .rows .add { color: var(--accent); font-family: var(--sans); } .rows .bad { color: var(--amber); }
+  .foot { grid-column: 1 / -1; border-top: 1px solid var(--border); font-size: 12px; }
+  .probs { display: grid; gap: 2px; padding: 7px 12px; } .probs div { display: flex; gap: 8px; align-items: baseline; } .lv { font-weight: 700; } .lv.w { color: var(--amber); } .lv.e { color: var(--rose); } .rule { color: var(--dim); font-family: var(--mono); font-size: 11px; }
+  .hint { padding: 5px 12px; border-top: 1px solid var(--border); color: var(--muted); background: var(--bg2); } kbd { font: 11px var(--mono); border: 1px solid var(--border2); border-bottom-width: 2px; border-radius: 4px; padding: 0 4px; background: var(--panel); color: var(--text); }
+  table { border-collapse: collapse; font-size: 13px; margin: 10px 0 0; } th, td { text-align: left; padding: 4px 12px 4px 0; border-bottom: 1px solid var(--border); vertical-align: top; } th { color: var(--muted); font-weight: 600; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 14px; margin-top: 10px; } .card { border: 1px solid var(--border2); border-radius: 10px; padding: 12px; background: var(--panel); min-width: 0; }
+  .card h3 { margin: 0 0 8px; font-size: 13px; } .pick { display: grid; gap: 2px; font-size: 13px; } .pick div { padding: 3px 8px; border-radius: 5px; display: flex; justify-content: space-between; gap: 8px; } .pick .on { background: var(--accent-f); color: var(--accent); } .pick small { color: var(--dim); }
+  pre { margin: 0; font: 11.5px/1.5 var(--mono); background: var(--bg2); padding: 10px; border-radius: 6px; overflow-x: auto; }
+  /* the drawings */
+  .box { fill: var(--panel); stroke: var(--line); stroke-width: 1.2; } .sel { stroke: var(--accent); stroke-width: 2.2; } .sep { stroke: var(--line); stroke-width: 1; } .frame { fill: none; stroke: var(--dim); stroke-width: 1.1; }
+  .ln { stroke: var(--line); stroke-width: 1.4; fill: none; } .dash { stroke-dasharray: 6 4; } .hollow { fill: var(--stage); stroke: var(--line); stroke-width: 1.4; } .solid { fill: var(--line); stroke: var(--line); }
+  .acc { stroke: var(--accent); } .accf { fill: var(--accent); } text { fill: var(--text); font: 11px var(--sans); } .tm { font: 10px var(--mono); } .tb { font-weight: 700; font-size: 12px; } .ti { font-style: italic; } .tk { fill: var(--muted); font-size: 10px; } .tu { text-decoration: underline; }
+  .edit { fill: var(--accent-f); stroke: var(--accent); stroke-width: 1.2; } .act { fill: var(--bg2); stroke: var(--line); stroke-width: 1; } .life { stroke: var(--dim); stroke-width: 1; stroke-dasharray: 5 4; }
+  .cn circle { fill: var(--text); } .cn text { fill: var(--bg); font: 700 10px var(--sans); text-anchor: middle; }
+  @media (max-width: 900px) { .app { grid-template-columns: 1fr; } .side { border: 0; border-top: 1px solid var(--border); } .stage { order: -1; } .bar { order: -2; } }
+</style>
+<main>
+<h1>Diagram editor: UI draft</h1>
+<p class="lede">A drawing of the target, not a build. It follows the decisions taken: diagrams lay themselves out and a user pins what matters; the host owns the model; every panel is a piece a host may turn on around its own page, as the views list and details panel are today. Labels and positions are illustrative.</p>
+
+<h2>1. A class diagram, while editing</h2>
+<div class="app">
+  <div class="bar"><span>☰</span><span class="crumb">Bookshop › <b>Sales domain</b></span><span class="chip">class diagram</span><span class="sp"></span>
+    <span class="btn">↶</span><span class="btn">↷</span><span class="chip warn">2 problems</span><span class="btn">◐</span><span class="btn">Export ▾</span></div>
+  <div class="side">
+    <h3><span class="n">1</span> Views</h3>
+    <ul class="tree"><li class="grp">▾ Class diagrams</li><li class="in on">Sales domain</li><li class="in">Payments only</li><li class="grp">▾ Sequence diagrams</li><li class="in">Checkout</li><li class="grp">▾ Maps</li><li class="in">Bookshop</li><li class="in" style="color:var(--accent)">+ New diagram…</li></ul>
+    <h3><span class="n">2</span> Elements</h3>
+    <div class="inp" style="margin-bottom:5px;color:var(--dim)">Search…</div>
+    <ul class="tree"><li class="grp">▾ sales <small>package</small></li><li class="in">Customer</li><li class="in on">Order</li><li class="in2">id, placedAt, status, total…</li><li class="in">OrderLine</li><li class="in">Payment</li><li class="grp">▸ In no diagram (1)</li></ul>
+  </div>
+  <div class="stage">
+    <svg viewBox="-52 0 752 440" role="img" aria-label="Class diagram of the bookshop's sales package: Customer, Order (selected, one attribute being edited), OrderLine, CardPayment, Payment and the Payable interface, with their associations">
+      <path class="frame" d="M10 30V16h74v14M10 30h680v396H10z"/><text x="18" y="27" class="tb">sales</text>
+      <!-- Customer -->
+      <rect class="box" x="24" y="96" width="140" height="64" rx="3"/><path class="sep" d="M24 122h140"/><text x="94" y="113" text-anchor="middle" class="tb">Customer</text>
+      <text x="32" y="137" class="tm">- email: String</text><text x="32" y="152" class="tm">- name: String [0..1]</text>
+      <!-- Order, selected -->
+      <rect class="box sel" x="250" y="56" width="226" height="170" rx="3"/><path class="sep" d="M250 90h226M250 173h226"/>
+      <text x="363" y="69" text-anchor="middle" class="tk">«entity»</text><text x="363" y="83" text-anchor="middle" class="tb">Order</text>
+      <text x="258" y="105" class="tm">- id: UUID</text><text x="258" y="120" class="tm">- placedAt: Instant [0..1]</text><text x="258" y="135" class="tm">- status: OrderStatus = draft</text>
+      <rect class="edit" x="254" y="139" width="218" height="16" rx="2"/><text x="258" y="150" class="tm">+ /total: Money▏</text><text x="258" y="165" class="tm tu">+ count: Integer</text>
+      <text x="258" y="188" class="tm">+ place(): Receipt</text><text x="258" y="203" class="tm">+ add(book: Book, quantity: Integer)</text><text x="258" y="218" class="tm">+ cancel()</text>
+      <circle class="accf" cx="476" cy="160" r="5"/>
+      <!-- OrderLine -->
+      <rect class="box" x="552" y="96" width="128" height="64" rx="3"/><path class="sep" d="M552 122h128"/><text x="616" y="113" text-anchor="middle" class="tb">OrderLine</text>
+      <text x="560" y="137" class="tm">- quantity: Integer</text><text x="560" y="152" class="tm">- unitPrice: Money</text>
+      <!-- Customer to Order -->
+      <path class="ln" d="M164 128H250"/><text x="170" y="122" class="tk">1</text><text x="244" y="122" text-anchor="end" class="tk">0..*</text><text x="244" y="141" text-anchor="end" class="tk">orders</text>
+      <!-- Order to OrderLine, composite -->
+      <path class="solid" d="M476 128l10-5 10 5-10 5z"/><path class="ln" d="M496 128H552"/><text x="500" y="122" class="tk">1</text><text x="546" y="122" text-anchor="end" class="tk">1..*</text><text x="546" y="141" text-anchor="end" class="tk">lines</text>
+      <!-- CardPayment, Payment, Payable -->
+      <rect class="box" x="40" y="326" width="150" height="68" rx="3"/><path class="sep" d="M40 352h150M40 374h150"/><text x="115" y="343" text-anchor="middle" class="tb">CardPayment</text><text x="48" y="367" class="tm">- last4: String</text><text x="48" y="388" class="tm">+ settle()</text>
+      <rect class="box" x="283" y="318" width="160" height="70" rx="3"/><path class="sep" d="M283 344h160M283 366h160"/><text x="363" y="335" text-anchor="middle" class="tb ti">Payment</text><text x="291" y="359" class="tm"># amount: Money</text><text x="291" y="381" class="tm ti">+ settle()</text>
+      <rect class="box" x="548" y="318" width="132" height="58" rx="3"/><path class="sep" d="M548 352h132"/><text x="614" y="331" text-anchor="middle" class="tk">«interface»</text><text x="614" y="345" text-anchor="middle" class="tb">Payable</text><text x="556" y="367" class="tm">+ amountDue(): Money</text>
+      <path class="ln" d="M190 356H271"/><path class="hollow" d="M283 356l-12-7v14z"/>
+      <path class="hollow" d="M363 226l-5 10 5 10 5-10z"/><path class="ln" d="M363 246V318"/><text x="357" y="312" text-anchor="end" class="tk">payments</text><text x="369" y="312" class="tk">0..*</text>
+      <path class="ln dash" d="M476 200H614V306"/><path class="hollow" d="M614 318l-7-12h14z"/>
+      <!-- callouts -->
+      <g class="cn"><circle cx="461" cy="147" r="8"/><text x="461" y="150.5">4</text><circle cx="494" cy="162" r="8"/><text x="494" y="165.5">5</text><circle cx="207" cy="110" r="8"/><text x="207" y="113.5">6</text></g>
+    </svg>
+    <div class="palette" aria-label="Palette"><b><span class="n">3</span></b>
+      <div class="tool on" title="Select"><svg viewBox="0 0 20 16"><path d="M5 2l9 6-4 1 2 4-2 1-2-4-3 3z"/></svg></div>
+      <b>Add</b>
+      <div class="tool" title="Class"><svg viewBox="0 0 20 16"><rect x="3" y="2" width="14" height="12"/><path d="M3 6h14M3 10h14"/></svg></div>
+      <div class="tool" title="Interface"><svg viewBox="0 0 20 16"><circle cx="10" cy="6" r="4"/><path d="M10 10v4"/></svg></div>
+      <div class="tool" title="Enumeration"><svg viewBox="0 0 20 16"><rect x="3" y="2" width="14" height="12"/><path d="M8 5h4M8 8h3M8 11h4M8 5v6"/></svg></div>
+      <div class="tool" title="Package"><svg viewBox="0 0 20 16"><path d="M3 5V2h6v3M3 5h14v9H3z"/></svg></div>
+      <div class="tool" title="Note"><svg viewBox="0 0 20 16"><path d="M4 2h9l3 3v9H4zM13 2v3h3"/></svg></div>
+      <b>Join</b>
+      <div class="tool" title="Association"><svg viewBox="0 0 20 16"><path d="M3 8h14"/></svg></div>
+      <div class="tool" title="Composition"><svg viewBox="0 0 20 16"><path d="M9 8h8"/><path d="M3 8l3-3 3 3-3 3z" style="fill:var(--line)"/></svg></div>
+      <div class="tool" title="Generalization"><svg viewBox="0 0 20 16"><path d="M3 8h8M17 8l-6-4v8z"/></svg></div>
+      <div class="tool" title="Realization"><svg viewBox="0 0 20 16"><path d="M3 8h8" stroke-dasharray="3 2"/><path d="M17 8l-6-4v8z"/></svg></div>
+      <div class="tool" title="Dependency"><svg viewBox="0 0 20 16"><path d="M3 8h13" stroke-dasharray="3 2"/><path d="M12 4l5 4-5 4"/></svg></div>
+    </div>
+    <div class="ctl"><span>↑</span><span>−</span><span>100%</span><span>+</span><span>Fit</span><span>Lay out again</span></div>
+  </div>
+  <div class="side props">
+    <h3><span class="n">7</span> Properties: class</h3>
+    <div class="field"><label>Name</label><div class="inp">Order</div></div>
+    <div class="field"><label>Stereotypes</label><div class="inp">entity</div></div>
+    <div class="field"><label>Owner</label><div class="inp sel">sales</div></div>
+    <div class="field"><label>Abstract</label><div>☐</div></div>
+    <h3>Attributes</h3>
+    <div class="rows"><div>⠿ - id: UUID</div><div>⠿ - placedAt: Instant [0..1]</div><div>⠿ - status: OrderStatus = draft</div><div class="ed">⠿ + /total: Money</div><div>⠿ + count: Integer</div><div class="add">+ Add attribute</div></div>
+    <h3>Operations</h3>
+    <div class="rows"><div>⠿ + place(): Receipt</div><div>⠿ + add(book: Book, quantity: Integer)</div><div>⠿ + cancel()</div><div class="add">+ Add operation</div></div>
+    <h3>Shown in</h3>
+    <p style="margin:0 0 8px;font-size:12px">Sales domain (pinned), Payments only</p>
+    <div style="display:flex;gap:6px;flex-wrap:wrap"><span class="btn">Remove from view</span><span class="btn danger">Delete from model</span></div>
+  </div>
+  <div class="foot">
+    <div class="probs"><div><span class="n">8</span><b>Problems</b></div>
+      <div><span class="lv w">warning</span><span><b>Customer.name</b>: "String [0..1" does not parse as a type and multiplicity; kept as written</span><span class="rule">uml.member-syntax</span></div>
+      <div><span class="lv e">error</span><span><b>Payment</b> is abstract and has no subclass in this model that implements <b>settle()</b>… <i>(example of a rule a host may add)</i></span><span class="rule">host.abstract-unused</span></div></div>
+    <div class="hint"><span class="n">9</span> Drag from <b style="color:var(--accent)">●</b> to join two classes · <kbd>Enter</kbd> adds a row · <kbd>F2</kbd> renames · <kbd>L</kbd> joins from the keyboard · <kbd>Delete</kbd> removes from this view · <kbd>Shift</kbd> + <kbd>Delete</kbd> deletes from the model</div>
+  </div>
+</div>
+
+<table>
+  <tr><th>#</th><th>Piece</th><th>Today</th><th>How a host turns it on</th></tr>
+  <tr><td>1</td><td>Views list, grouped by diagram type, with "New diagram"</td><td>Exists as the views list; grouping and creating are new</td><td><code>nav: true</code></td></tr>
+  <tr><td>2</td><td>Elements outline: everything in the model, also what no diagram shows</td><td>New</td><td><code>nav: true</code></td></tr>
+  <tr><td>3</td><td>Palette: the diagram type's elements and lines</td><td>New (today: one "+" for a card)</td><td><code>palette: true</code></td></tr>
+  <tr><td>4</td><td>A member row edited in place; the type's micro-syntax parses it</td><td>New (today: a name field)</td><td><code>editable: true</code></td></tr>
+  <tr><td>5</td><td>The handle a line is drawn from; on drop, the lines allowed between the two ends are offered</td><td>Exists for one kind of line</td><td><code>editable: true</code></td></tr>
+  <tr><td>6</td><td>Line ends: roles, multiplicities, diamonds and triangles</td><td>New</td><td>Part of the diagram type</td></tr>
+  <tr><td>7</td><td>Properties, a form built from the type's schema</td><td>The details panel exists, read-only, under the map</td><td><code>properties: true</code></td></tr>
+  <tr><td>8</td><td>Problems: the type's rules and the host's own, each naming its elements</td><td>Rules are marked on the map today; the list is new</td><td><code>problems: true</code></td></tr>
+  <tr><td>9</td><td>Hint line: what the pointer and keys do here, and why a drop was refused</td><td>Exists</td><td><code>hints: true</code></td></tr>
+</table>
+<p class="note" style="margin-top:10px">A host that wants its own panels turns none of these on and listens to the same events: the canvas alone is enough to edit.</p>
+
+<h2>2. A sequence diagram: the same pieces, other gestures</h2>
+<div class="app" style="grid-template-columns: minmax(0,1fr) 268px; grid-template-rows: auto auto;">
+  <div class="stage">
+    <svg viewBox="0 0 700 400" role="img" aria-label="Sequence diagram of a checkout: shopper, storefront, api and payments lifelines; the charge message is selected; an alt fragment holds the accepted and declined replies">
+      <g><rect class="box" x="25" y="14" width="110" height="28" rx="3"/><text x="80" y="27" text-anchor="middle" class="tk">«actor»</text><text x="80" y="38" text-anchor="middle" class="tb">shopper</text>
+      <rect class="box" x="175" y="14" width="110" height="28" rx="3"/><text x="230" y="32" text-anchor="middle" class="tb">storefront</text>
+      <rect class="box" x="345" y="14" width="110" height="28" rx="3"/><text x="400" y="32" text-anchor="middle" class="tb">api : ShopApi</text>
+      <rect class="box" x="515" y="14" width="110" height="28" rx="3"/><text x="570" y="32" text-anchor="middle" class="tb">payments</text></g>
+      <path class="life" d="M80 42V388M230 42V388M400 42V388M570 42V388"/>
+      <rect class="act" x="225" y="78" width="10" height="298"/><rect class="act" x="395" y="108" width="10" height="246"/><rect class="act" x="565" y="173" width="10" height="143"/>
+      <path class="ln" d="M80 80H225"/><path class="solid" d="M225 80l-9-4v8z"/><text x="152" y="75" text-anchor="middle">1: checkout()</text>
+      <path class="ln" d="M235 110H395"/><path class="solid" d="M395 110l-9-4v8z"/><text x="315" y="105" text-anchor="middle">2: place(order)</text>
+      <path class="ln" d="M405 132h26v16h-26"/><path class="solid" d="M405 148l9-4v8z"/><text x="438" y="143">3: validate(order)</text>
+      <path class="ln acc" style="stroke-width:2.2" d="M405 175H565"/><path class="accf" d="M565 175l-9-4v8z"/><text x="485" y="170" text-anchor="middle" style="fill:var(--accent);font-weight:700">4: charge(total)</text>
+      <text x="382" y="179" text-anchor="end" style="fill:var(--accent)">↕</text>
+      <path class="frame" d="M186 196H652V334H186z"/><path class="box" d="M186 196h40v13l-6 6h-34z"/><text x="193" y="209" class="tb">alt</text><text x="236" y="210" class="tk">[payment accepted]</text>
+      <path class="ln dash" d="M565 232H405"/><path class="ln" d="M414 228l-9 4 9 4"/><text x="485" y="227" text-anchor="middle">5: paid</text>
+      <path class="ln" d="M395 260H235"/><path class="ln" d="M244 256l-9 4 9 4"/><text x="315" y="255" text-anchor="middle">6: orderPlaced</text>
+      <path class="life" d="M186 280H652"/><text x="194" y="296" class="tk">[else]</text>
+      <path class="ln dash" d="M565 314H405"/><path class="ln" d="M414 310l-9 4 9 4"/><text x="485" y="309" text-anchor="middle">7: declined</text>
+      <path class="ln dash" d="M395 354H235"/><path class="ln" d="M244 350l-9 4 9 4"/><text x="315" y="349" text-anchor="middle">8: result</text>
+      <path class="ln dash" d="M225 376H80"/><path class="ln" d="M89 372l-9 4 9 4"/><text x="152" y="371" text-anchor="middle">9: confirmation page</text>
+    </svg>
+    <div class="ctl"><span>−</span><span>100%</span><span>+</span><span>Fit</span></div>
+  </div>
+  <div class="side props">
+    <h3>Properties: message</h3>
+    <div class="field"><label>Label</label><div class="inp">charge(total)</div></div>
+    <div class="field"><label>Sort</label><div class="inp sel">call</div></div>
+    <div class="field"><label>From</label><div class="inp sel">api</div></div>
+    <div class="field"><label>To</label><div class="inp sel">payments</div></div>
+    <div class="field"><label>In operand</label><div class="inp sel">none</div></div>
+    <h3>Replies</h3>
+    <div class="rows"><div>5: paid <small style="color:var(--dim)">alt, payment accepted</small></div><div>7: declined <small style="color:var(--dim)">alt, else</small></div><div class="add">+ Add a reply</div></div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px"><span class="btn">Wrap in a fragment…</span><span class="btn">Show as communication</span></div>
+  </div>
+  <div class="foot" style="grid-column:1/-1"><div class="hint">Drag <b style="color:var(--accent)">↕</b> or press <kbd>Alt</kbd> + <kbd>↑</kbd> <kbd>↓</kbd> to move a message in time · drag between two lifelines to add one · numbers, activation bars and the fragment's frame are drawn from the order, never stored</div></div>
+</div>
+<p class="note" style="margin-top:10px">Nothing here is placed by hand: lifelines are columns in the order given, messages are rows in time order, and a frame covers the messages that name its operand. Moving a message is a change of order, which is meaning.</p>
+
+<h2>3. Smaller moments</h2>
+<div class="cards">
+  <div class="card"><h3>After a line is dropped on a class</h3>
+    <div class="pick"><div class="on"><span>Association</span><small>Enter</small></div><div><span>Composition</span><small>whole to part</small></div><div><span>Generalization</span><small>Order is a Payment</small></div><div><span>Dependency</span></div><div style="color:var(--dim)"><span>Interface realization</span><small>Payment is not an interface</small></div></div>
+    <p class="note" style="margin:8px 0 0;font-size:12px">Only the lines the type allows between these two ends can be chosen; the rest say why not. The last choice is the default next time.</p></div>
+  <div class="card"><h3>New diagram</h3>
+    <div class="pick"><div class="on"><span>Class</span><small>UML</small></div><div><span>Sequence</span><small>UML</small></div><div><span>State machine</span><small>UML</small></div><div><span>Entity-relationship</span><small>ER</small></div><div><span>Map</span><small>today's</small></div><div style="color:var(--dim)"><span>BPMN</span><small>not in this release</small></div></div>
+    <p class="note" style="margin:8px 0 0;font-size:12px">A host lists only the diagram types it has loaded. Elements already in the model can be shown in the new view.</p></div>
+  <div class="card"><h3>After an import</h3>
+    <p style="margin:0 0 6px"><span class="chip warn">3 not imported</span> from <code>domain.mmd</code></p>
+    <div class="rows"><div>line 14 · skipped · <code>class Order~T~</code> generics</div><div>line 22 · kept as text · note on a relation</div><div>line 31 · approximated · <code>*--</code> with no label</div></div>
+    <p class="note" style="margin:8px 0 0;font-size:12px">Nothing is dropped silently: each line says what became of it. The same list comes back from the reader and on the command line.</p></div>
+  <div class="card"><h3>What a host writes</h3>
+<pre>import { render } from 'umlimator';
+import 'umlimator/uml';          // the diagram types it wants
+
+const map = render(el, model, {
+  editable: true, palette: true,
+  properties: true, problems: true,
+  nav: true, hints: true,
+  on: { edit: e =&gt; save(store.apply(e)) },
+});</pre>
+    <p class="note" style="margin:8px 0 0;font-size:12px">Maps embedded today keep working with no change: a view without a diagram type is a map.</p></div>
+</div>
+</main>
+</html>

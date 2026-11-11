@@ -1,0 +1,88 @@
+{
+  "schemaVersion": 2,
+  "title": "Bookshop: sales domain",
+  "root": "domain",
+  "nodes": [
+    { "id": "sales", "type": "uml.Package", "label": "sales" },
+    { "id": "customer", "type": "uml.Class", "label": "Customer", "parent": "sales",
+      "members": [
+        { "id": "customer.email", "type": "uml.Property", "label": "email", "props": { "visibility": "private", "valueType": "String" } },
+        { "id": "customer.name", "type": "uml.Property", "label": "name", "props": { "visibility": "private", "valueType": "String", "multiplicity": "0..1" } }
+      ] },
+    { "id": "order", "type": "uml.Class", "label": "Order", "parent": "sales",
+      "props": { "stereotypes": ["entity"] },
+      "members": [
+        { "id": "order.id", "type": "uml.Property", "label": "id", "props": { "visibility": "private", "valueType": "UUID" } },
+        { "id": "order.placedAt", "type": "uml.Property", "label": "placedAt", "props": { "visibility": "private", "valueType": "Instant", "multiplicity": "0..1" } },
+        { "id": "order.status", "type": "uml.Property", "label": "status", "props": { "visibility": "private", "valueType": "OrderStatus", "default": "draft" } },
+        { "id": "order.total", "type": "uml.Property", "label": "total", "props": { "visibility": "public", "valueType": "Money", "isDerived": true } },
+        { "id": "order.count", "type": "uml.Property", "label": "count", "props": { "visibility": "public", "valueType": "Integer", "isStatic": true } },
+        { "id": "order.place", "type": "uml.Operation", "label": "place", "props": { "visibility": "public", "returnType": "Receipt" } },
+        { "id": "order.add", "type": "uml.Operation", "label": "add", "props": { "visibility": "public",
+          "parameters": [ { "name": "book", "valueType": "Book" }, { "name": "quantity", "valueType": "Integer" } ] } },
+        { "id": "order.cancel", "type": "uml.Operation", "label": "cancel", "props": { "visibility": "public" } }
+      ] },
+    { "id": "line", "type": "uml.Class", "label": "OrderLine", "parent": "sales",
+      "members": [
+        { "id": "line.quantity", "type": "uml.Property", "label": "quantity", "props": { "visibility": "private", "valueType": "Integer", "default": "1" } },
+        { "id": "line.unitPrice", "type": "uml.Property", "label": "unitPrice", "props": { "visibility": "private", "valueType": "Money" } }
+      ] },
+    { "id": "book", "type": "uml.Class", "label": "Book", "parent": "sales",
+      "members": [
+        { "id": "book.isbn", "type": "uml.Property", "label": "isbn", "props": { "visibility": "public", "valueType": "String" } },
+        { "id": "book.title", "type": "uml.Property", "label": "title", "props": { "visibility": "public", "valueType": "String" } },
+        { "id": "book.price", "type": "uml.Property", "label": "price", "props": { "visibility": "public", "valueType": "Money" } }
+      ] },
+    { "id": "payable", "type": "uml.Interface", "label": "Payable", "parent": "sales",
+      "members": [
+        { "id": "payable.amountDue", "type": "uml.Operation", "label": "amountDue", "props": { "visibility": "public", "returnType": "Money" } }
+      ] },
+    { "id": "payment", "type": "uml.Class", "label": "Payment", "parent": "sales",
+      "props": { "isAbstract": true },
+      "members": [
+        { "id": "payment.amount", "type": "uml.Property", "label": "amount", "props": { "visibility": "protected", "valueType": "Money" } },
+        { "id": "payment.settle", "type": "uml.Operation", "label": "settle", "props": { "visibility": "public", "isAbstract": true } }
+      ] },
+    { "id": "card-payment", "type": "uml.Class", "label": "CardPayment", "parent": "sales",
+      "members": [
+        { "id": "card-payment.last4", "type": "uml.Property", "label": "last4", "props": { "visibility": "private", "valueType": "String" } },
+        { "id": "card-payment.settle", "type": "uml.Operation", "label": "settle", "props": { "visibility": "public" } }
+      ] },
+    { "id": "status", "type": "uml.Enumeration", "label": "OrderStatus", "parent": "sales",
+      "members": [
+        { "id": "status.draft", "type": "uml.EnumerationLiteral", "label": "draft" },
+        { "id": "status.placed", "type": "uml.EnumerationLiteral", "label": "placed" },
+        { "id": "status.shipped", "type": "uml.EnumerationLiteral", "label": "shipped" },
+        { "id": "status.cancelled", "type": "uml.EnumerationLiteral", "label": "cancelled" }
+      ] },
+    { "id": "money", "type": "uml.DataType", "label": "Money", "parent": "sales",
+      "members": [
+        { "id": "money.amount", "type": "uml.Property", "label": "amount", "props": { "visibility": "public", "valueType": "Decimal" } },
+        { "id": "money.currency", "type": "uml.Property", "label": "currency", "props": { "visibility": "public", "valueType": "String" } }
+      ] },
+    { "id": "note-total", "type": "uml.Comment", "label": "total is the sum of the lines' unit price times quantity" }
+  ],
+  "edges": [
+    { "id": "customer-orders", "type": "uml.Association", "from": "customer", "to": "order", "label": "places",
+      "props": { "ends": { "from": { "multiplicity": "1" }, "to": { "role": "orders", "multiplicity": "0..*", "navigable": true } } } },
+    { "id": "order-lines", "type": "uml.Association", "from": "order", "to": "line",
+      "props": { "ends": { "from": { "aggregation": "composite", "multiplicity": "1" }, "to": { "role": "lines", "multiplicity": "1..*", "navigable": true } } } },
+    { "id": "line-book", "type": "uml.Association", "from": "line", "to": "book",
+      "props": { "ends": { "from": { "multiplicity": "0..*" }, "to": { "role": "book", "multiplicity": "1", "navigable": true } } } },
+    { "id": "order-payment", "type": "uml.Association", "from": "order", "to": "payment",
+      "props": { "ends": { "from": { "aggregation": "shared", "multiplicity": "1" }, "to": { "role": "payments", "multiplicity": "0..*" } } } },
+    { "id": "order-payable", "type": "uml.InterfaceRealization", "from": "order", "to": "payable" },
+    { "id": "card-is-payment", "type": "uml.Generalization", "from": "card-payment", "to": "payment" },
+    { "id": "order-uses-money", "type": "uml.Dependency", "from": "order", "to": "money", "props": { "stereotypes": ["use"] } },
+    { "id": "note-total-link", "type": "uml.CommentLink", "from": "note-total", "to": "order" }
+  ],
+  "views": [
+    { "id": "domain", "diagram": "uml.class", "title": "Sales domain", "parent": null, "direction": "down",
+      "nodeIds": ["sales", "customer", "order", "line", "book", "payable", "payment", "card-payment", "status", "money", "note-total"],
+      "layout": { "order": [1, 0] },
+      "present": { "book": { "collapsed": ["operations"] } } },
+    { "id": "payments", "diagram": "uml.class", "title": "Payments only", "parent": "domain", "direction": "down",
+      "nodeIds": ["order", "payable", "payment", "card-payment"],
+      "present": { "order": { "collapsed": ["attributes", "operations"] } } }
+  ]
+}

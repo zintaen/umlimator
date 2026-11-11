@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 2,
+  "title": "Bookshop: data flow",
+  "root": "level-1",
+  "nodes": [
+    { "id": "customer", "type": "dfd.ExternalEntity", "label": "Customer" },
+    { "id": "provider", "type": "dfd.ExternalEntity", "label": "Payment provider" },
+    { "id": "courier", "type": "dfd.ExternalEntity", "label": "Courier" },
+    { "id": "take-order", "type": "dfd.Process", "label": "Take order", "opensView": "level-2-take-order", "props": { "number": "1" } },
+    { "id": "take-payment", "type": "dfd.Process", "label": "Take payment", "props": { "number": "2" } },
+    { "id": "ship-order", "type": "dfd.Process", "label": "Ship order", "props": { "number": "3" } },
+    { "id": "books", "type": "dfd.DataStore", "label": "Books", "props": { "number": "D1" } },
+    { "id": "orders", "type": "dfd.DataStore", "label": "Orders", "props": { "number": "D2" } },
+    { "id": "check-basket", "type": "dfd.Process", "label": "Check the basket", "props": { "number": "1.1" } },
+    { "id": "total-order", "type": "dfd.Process", "label": "Total the order", "props": { "number": "1.2" } },
+    { "id": "record-order", "type": "dfd.Process", "label": "Record the order", "props": { "number": "1.3" } }
+  ],
+  "edges": [
+    { "id": "basket", "type": "dfd.DataFlow", "from": "customer", "to": "take-order", "label": "basket" },
+    { "id": "price-and-stock", "type": "dfd.DataFlow", "from": "books", "to": "take-order", "label": "price and stock" },
+    { "id": "new-order", "type": "dfd.DataFlow", "from": "take-order", "to": "orders", "label": "new order" },
+    { "id": "confirmation", "type": "dfd.DataFlow", "from": "take-order", "to": "customer", "label": "order confirmation" },
+    { "id": "amount-due", "type": "dfd.DataFlow", "from": "orders", "to": "take-payment", "label": "amount due" },
+    { "id": "charge-request", "type": "dfd.DataFlow", "from": "take-payment", "to": "provider", "label": "charge request" },
+    { "id": "charge-result", "type": "dfd.DataFlow", "from": "provider", "to": "take-payment", "label": "charge result" },
+    { "id": "paid-order", "type": "dfd.DataFlow", "from": "take-payment", "to": "ship-order", "label": "paid order" },
+    { "id": "stock-change", "type": "dfd.DataFlow", "from": "ship-order", "to": "books", "label": "stock change" },
+    { "id": "shipping-label", "type": "dfd.DataFlow", "from": "ship-order", "to": "courier", "label": "shipping label" },
+    { "id": "shipping-notice", "type": "dfd.DataFlow", "from": "ship-order", "to": "customer", "label": "shipping notice" },
+    { "id": "l2-basket", "type": "dfd.DataFlow", "from": "customer", "to": "check-basket", "label": "basket" },
+    { "id": "l2-price-and-stock", "type": "dfd.DataFlow", "from": "books", "to": "check-basket", "label": "price and stock" },
+    { "id": "l2-checked-lines", "type": "dfd.DataFlow", "from": "check-basket", "to": "total-order", "label": "checked lines" },
+    { "id": "l2-totalled-order", "type": "dfd.DataFlow", "from": "total-order", "to": "record-order", "label": "totalled order" },
+    { "id": "l2-new-order", "type": "dfd.DataFlow", "from": "record-order", "to": "orders", "label": "new order" },
+    { "id": "l2-confirmation", "type": "dfd.DataFlow", "from": "record-order", "to": "customer", "label": "order confirmation" }
+  ],
+  "views": [
+    { "id": "level-1", "diagram": "dfd", "title": "Bookshop, level 1", "parent": null, "notation": "yourdon",
+      "nodeIds": ["customer", "provider", "courier", "take-order", "take-payment", "ship-order", "books", "orders"] },
+    { "id": "level-2-take-order", "diagram": "dfd", "title": "1 Take order", "parent": "level-1", "notation": "yourdon",
+      "nodeIds": ["customer", "books", "orders", "check-basket", "total-order", "record-order"] }
+  ]
+}

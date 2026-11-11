@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 2,
+  "title": "E-bike: blocks",
+  "root": "blocks",
+  "nodes": [
+    { "id": "rental-vehicle", "type": "sysml.Block", "label": "RentalVehicle" },
+    { "id": "ebike", "type": "sysml.Block", "label": "EBike",
+      "members": [
+        { "id": "ebike.wheels", "type": "sysml.PartProperty", "label": "wheels", "props": { "valueType": "Wheel", "multiplicity": "2" } },
+        { "id": "ebike.dock", "type": "sysml.ReferenceProperty", "label": "dock", "props": { "valueType": "Dock", "multiplicity": "0..1" } },
+        { "id": "ebike.rangeEq", "type": "sysml.ConstraintProperty", "label": "rangeEq", "props": { "valueType": "RangeEquation" } }
+      ] },
+    { "id": "battery", "type": "sysml.Block", "label": "Battery",
+      "members": [
+        { "id": "battery.capacity", "type": "sysml.ValueProperty", "label": "capacity", "props": { "valueType": "Energy" } },
+        { "id": "battery.cellVoltage", "type": "sysml.ValueProperty", "label": "cellVoltage", "props": { "valueType": "Voltage", "multiplicity": "10" } },
+        { "id": "battery.charge", "type": "sysml.Port", "label": "charge", "props": { "valueType": "ChargeInterface" } }
+      ] },
+    { "id": "motor", "type": "sysml.Block", "label": "Motor",
+      "members": [
+        { "id": "motor.ratedPower", "type": "sysml.ValueProperty", "label": "ratedPower", "props": { "valueType": "Power" } }
+      ] },
+    { "id": "controller", "type": "sysml.Block", "label": "Controller",
+      "members": [
+        { "id": "controller.setAssistLevel", "type": "uml.Operation", "label": "setAssistLevel",
+          "props": { "parameters": [ { "name": "level", "valueType": "Integer" } ] } }
+      ] },
+    { "id": "dock", "type": "sysml.Block", "label": "Dock",
+      "members": [
+        { "id": "dock.charge", "type": "sysml.Port", "label": "charge", "props": { "valueType": "~ChargeInterface" } }
+      ] },
+    { "id": "charge-interface", "type": "sysml.InterfaceBlock", "label": "ChargeInterface",
+      "members": [
+        { "id": "charge-interface.dc", "type": "sysml.FlowProperty", "label": "dc", "props": { "valueType": "DCPower", "direction": "in" } },
+        { "id": "charge-interface.stateOfCharge", "type": "sysml.FlowProperty", "label": "stateOfCharge", "props": { "valueType": "Percent", "direction": "out" } }
+      ] },
+    { "id": "range-equation", "type": "sysml.ConstraintBlock", "label": "RangeEquation",
+      "props": { "constraint": "range = capacity / consumption" },
+      "members": [
+        { "id": "range-equation.range", "type": "sysml.ConstraintParameter", "label": "range", "props": { "valueType": "Distance" } },
+        { "id": "range-equation.capacity", "type": "sysml.ConstraintParameter", "label": "capacity", "props": { "valueType": "Energy" } },
+        { "id": "range-equation.consumption", "type": "sysml.ConstraintParameter", "label": "consumption", "props": { "valueType": "EnergyPerDistance" } }
+      ] },
+    { "id": "voltage", "type": "sysml.ValueType", "label": "Voltage", "props": { "unit": "V", "quantityKind": "voltage" } },
+    { "id": "energy", "type": "sysml.ValueType", "label": "Energy", "props": { "unit": "Wh", "quantityKind": "energy" } }
+  ],
+  "edges": [
+    { "id": "ebike-battery", "type": "uml.Association", "from": "ebike", "to": "battery",
+      "props": { "ends": { "from": { "aggregation": "composite", "multiplicity": "0..1" }, "to": { "role": "battery", "multiplicity": "1" } } } },
+    { "id": "ebike-motor", "type": "uml.Association", "from": "ebike", "to": "motor",
+      "props": { "ends": { "from": { "aggregation": "composite", "multiplicity": "1" }, "to": { "role": "motor", "multiplicity": "1" } } } },
+    { "id": "ebike-controller", "type": "uml.Association", "from": "ebike", "to": "controller",
+      "props": { "ends": { "from": { "aggregation": "composite", "multiplicity": "1" }, "to": { "role": "controller", "multiplicity": "1" } } } },
+    { "id": "ebike-is-rental-vehicle", "type": "uml.Generalization", "from": "ebike", "to": "rental-vehicle" },
+    { "id": "dock-uses-charge-interface", "type": "uml.Dependency", "from": "dock", "to": "charge-interface", "props": { "stereotypes": ["use"] } }
+  ],
+  "views": [
+    { "id": "blocks", "diagram": "sysml.block-definition", "title": "E-bike blocks", "parent": null, "direction": "down",
+      "nodeIds": ["rental-vehicle", "ebike", "battery", "motor", "controller", "dock", "charge-interface", "range-equation", "voltage", "energy"] }
+  ]
+}

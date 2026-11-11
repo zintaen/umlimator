@@ -394,7 +394,7 @@ umlimator_mcp.py             the MCP server that `umlimator.py mcp` runs
 action.yml                   the diff Action: what a pull request changes in its maps, posted on it
 lib/                         the module (umlimator.js), its types, the default theme, <umlimator-map> and the docs plugins
 engine/                      the page templates the CLI inlines the module into; the upstream renderer and schema
-docs/                        the module's API and the editing design
+docs/                        the module's API and the editing design; docs/diagrams/: the plan for 28 diagram types (not built yet)
 tests/, bench/               tests, benchmark models and results
 icons/                       line icons and the logo manifest (sources and hashes only)
 examples/                    made-up systems: models, host pages and a Node script (live: zintaen.github.io/umlimator)

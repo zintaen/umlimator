@@ -1,0 +1,70 @@
+{
+  "schemaVersion": 2,
+  "title": "Bookshop: buying a book",
+  "root": "buy-book",
+  "nodes": [
+    { "id": "start", "type": "uml.InitialNode" },
+    { "id": "ref-find", "type": "uml.InteractionUse", "label": "Find a book", "opensView": "find-book" },
+    { "id": "try-payment", "type": "uml.MergeNode" },
+    { "id": "ref-checkout", "type": "uml.InteractionUse", "label": "Check out", "opensView": "checkout" },
+    { "id": "payment-ok", "type": "uml.DecisionNode", "label": "Payment accepted?" },
+    { "id": "split", "type": "uml.ForkNode" },
+    { "id": "ref-receipt", "type": "uml.InteractionUse", "label": "Email the receipt", "opensView": "email-receipt" },
+    { "id": "sd-queue", "type": "uml.Interaction", "label": "Queue the order", "opensView": "queue-order" },
+    { "id": "both-done", "type": "uml.JoinNode" },
+    { "id": "done", "type": "uml.ActivityFinalNode" },
+    { "id": "shopper", "type": "uml.Lifeline", "label": "shopper", "props": { "represents": "Shopper", "stereotypes": ["actor"] } },
+    { "id": "storefront", "type": "uml.Lifeline", "label": "storefront", "props": { "represents": "Storefront" } },
+    { "id": "api", "type": "uml.Lifeline", "label": "api", "props": { "represents": "ShopApi" } },
+    { "id": "payments", "type": "uml.Lifeline", "label": "payments", "props": { "represents": "PaymentProvider" } },
+    { "id": "email", "type": "uml.Lifeline", "label": "email", "props": { "represents": "EmailService" } },
+    { "id": "queue", "type": "uml.Lifeline", "label": "queue", "props": { "represents": "OrderQueue" } },
+    { "id": "worker", "type": "uml.Lifeline", "label": "worker", "props": { "represents": "OrderWorker" } }
+  ],
+  "edges": [
+    { "id": "f-start", "type": "uml.ControlFlow", "from": "start", "to": "ref-find" },
+    { "id": "f-found", "type": "uml.ControlFlow", "from": "ref-find", "to": "try-payment" },
+    { "id": "f-pay", "type": "uml.ControlFlow", "from": "try-payment", "to": "ref-checkout" },
+    { "id": "f-result", "type": "uml.ControlFlow", "from": "ref-checkout", "to": "payment-ok" },
+    { "id": "f-accepted", "type": "uml.ControlFlow", "from": "payment-ok", "to": "split", "props": { "guard": "payment accepted" } },
+    { "id": "f-declined", "type": "uml.ControlFlow", "from": "payment-ok", "to": "try-payment", "props": { "guard": "else" } },
+    { "id": "f-to-receipt", "type": "uml.ControlFlow", "from": "split", "to": "ref-receipt" },
+    { "id": "f-to-queue", "type": "uml.ControlFlow", "from": "split", "to": "sd-queue" },
+    { "id": "f-receipt-sent", "type": "uml.ControlFlow", "from": "ref-receipt", "to": "both-done" },
+    { "id": "f-queued", "type": "uml.ControlFlow", "from": "sd-queue", "to": "both-done" },
+    { "id": "f-done", "type": "uml.ControlFlow", "from": "both-done", "to": "done" }
+  ],
+  "views": [
+    { "id": "buy-book", "diagram": "uml.interaction-overview", "title": "Buying a book", "parent": null, "direction": "down",
+      "nodeIds": ["start", "ref-find", "try-payment", "ref-checkout", "payment-ok", "split", "ref-receipt", "sd-queue", "both-done", "done"] },
+    { "id": "find-book", "diagram": "uml.sequence", "title": "Find a book", "parent": "buy-book",
+      "nodeIds": ["shopper", "storefront", "api"],
+      "edges": [
+        { "id": "find-1", "type": "uml.Message", "from": "shopper", "to": "storefront", "label": "search(title)", "props": { "sort": "call" } },
+        { "id": "find-2", "type": "uml.Message", "from": "storefront", "to": "api", "label": "findBooks(title)", "props": { "sort": "call" } },
+        { "id": "find-3", "type": "uml.Message", "from": "api", "to": "storefront", "label": "books", "props": { "sort": "reply", "replyTo": "find-2" } },
+        { "id": "find-4", "type": "uml.Message", "from": "storefront", "to": "shopper", "label": "results page", "props": { "sort": "reply", "replyTo": "find-1" } }
+      ] },
+    { "id": "checkout", "diagram": "uml.sequence", "title": "Check out", "parent": "buy-book",
+      "nodeIds": ["storefront", "api", "payments"],
+      "edges": [
+        { "id": "pay-1", "type": "uml.Message", "from": "storefront", "to": "api", "label": "place(order)", "props": { "sort": "call" } },
+        { "id": "pay-2", "type": "uml.Message", "from": "api", "to": "payments", "label": "charge(total)", "props": { "sort": "call" } },
+        { "id": "pay-3", "type": "uml.Message", "from": "payments", "to": "api", "label": "accepted or declined", "props": { "sort": "reply", "replyTo": "pay-2" } },
+        { "id": "pay-4", "type": "uml.Message", "from": "api", "to": "storefront", "label": "result", "props": { "sort": "reply", "replyTo": "pay-1" } }
+      ] },
+    { "id": "email-receipt", "diagram": "uml.sequence", "title": "Email the receipt", "parent": "buy-book",
+      "nodeIds": ["api", "email", "shopper"],
+      "edges": [
+        { "id": "mail-1", "type": "uml.Message", "from": "api", "to": "email", "label": "send(receipt)", "props": { "sort": "async" } },
+        { "id": "mail-2", "type": "uml.Message", "from": "email", "to": "shopper", "label": "receipt email", "props": { "sort": "async" } }
+      ] },
+    { "id": "queue-order", "diagram": "uml.sequence", "title": "Queue the order", "parent": "buy-book",
+      "nodeIds": ["api", "queue", "worker"],
+      "edges": [
+        { "id": "queue-1", "type": "uml.Message", "from": "api", "to": "queue", "label": "enqueue(order)", "props": { "sort": "call" } },
+        { "id": "queue-2", "type": "uml.Message", "from": "queue", "to": "api", "label": "queued", "props": { "sort": "reply", "replyTo": "queue-1" } },
+        { "id": "queue-3", "type": "uml.Message", "from": "queue", "to": "worker", "label": "orderPlaced", "props": { "sort": "async" } }
+      ] }
+  ]
+}

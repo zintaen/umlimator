@@ -106,3 +106,10 @@ The module embedded in a page, as an app would use it. Serve the repository over
 | An AI assistant reading a map and driving its page (an MCP server: `umlimator.py mcp`) | any model: `python3 umlimator.py mcp examples/bike-share.json`, as `tests/cli.py` runs it |
 
 Not shown: `repair: false`, a switch for debugging the router.
+
+## Diagram types to come
+
+Umlimator is growing from maps to 28 diagram types: UML's 14, SysML's four, ER, flowchart, data flow, C4, BPMN,
+mindmap, and AWS, GCP and Azure architecture. One target model per type is in
+[`docs/diagrams/examples/`](../docs/diagrams/examples/). Nothing draws them yet. Each moves here, into the gallery and
+CI, when its stage ships; [`docs/diagrams/README.md`](../docs/diagrams/README.md) says where that work stands.

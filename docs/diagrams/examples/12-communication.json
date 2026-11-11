@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 2,
+  "title": "Bookshop: checkout, as a communication diagram",
+  "root": "checkout",
+  "nodes": [
+    { "id": "shopper", "type": "uml.Lifeline", "label": "shopper", "props": { "represents": "Shopper", "stereotypes": ["actor"] } },
+    { "id": "storefront", "type": "uml.Lifeline", "label": "storefront", "props": { "represents": "Storefront" } },
+    { "id": "api", "type": "uml.Lifeline", "label": "api", "props": { "represents": "ShopApi" } },
+    { "id": "payments", "type": "uml.Lifeline", "label": "payments", "props": { "represents": "PaymentProvider" } },
+    { "id": "receipt", "type": "uml.Lifeline", "label": "receipt", "props": { "represents": "Receipt" } }
+  ],
+  "edges": [
+    { "id": "shopper-storefront", "type": "uml.Connector", "from": "shopper", "to": "storefront" },
+    { "id": "storefront-api", "type": "uml.Connector", "from": "storefront", "to": "api" },
+    { "id": "api-self", "type": "uml.Connector", "from": "api", "to": "api" },
+    { "id": "api-payments", "type": "uml.Connector", "from": "api", "to": "payments" },
+    { "id": "api-receipt", "type": "uml.Connector", "from": "api", "to": "receipt" },
+    { "id": "m1", "type": "uml.Message", "from": "shopper", "to": "storefront", "label": "checkout()", "props": { "sort": "call" } },
+    { "id": "m2", "type": "uml.Message", "from": "storefront", "to": "api", "label": "place(order)", "props": { "sort": "call" } },
+    { "id": "m3", "type": "uml.Message", "from": "api", "to": "api", "label": "validate(order)", "props": { "sort": "call" } },
+    { "id": "m4", "type": "uml.Message", "from": "api", "to": "payments", "label": "charge(total)", "props": { "sort": "call" } },
+    { "id": "m5", "type": "uml.Message", "from": "payments", "to": "api", "label": "paid", "props": { "sort": "reply", "replyTo": "m4" } },
+    { "id": "m6", "type": "uml.Message", "from": "api", "to": "receipt", "label": "new(order)", "props": { "sort": "create" } },
+    { "id": "m7", "type": "uml.Message", "from": "api", "to": "storefront", "label": "orderPlaced", "props": { "sort": "async" } },
+    { "id": "m8", "type": "uml.Message", "from": "api", "to": "storefront", "label": "result", "props": { "sort": "reply", "replyTo": "m2" } },
+    { "id": "m9", "type": "uml.Message", "from": "storefront", "to": "shopper", "label": "confirmation page", "props": { "sort": "reply", "replyTo": "m1" } }
+  ],
+  "views": [
+    { "id": "checkout", "diagram": "uml.communication", "title": "Checkout: payment accepted", "parent": null,
+      "nodeIds": ["shopper", "storefront", "api", "payments", "receipt"],
+      "edges": ["shopper-storefront", "storefront-api", "api-self", "api-payments", "api-receipt",
+        "m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8", "m9"] }
+  ]
+}
