@@ -2788,7 +2788,36 @@ Both gaps were found while writing the State chapter (#129).
 
   Each check fails before this change.
 
-## 0.16.0: (unreleased)
+## 0.16.0: lines that cross less round busy cards and under boxes, labels that keep their words, and the page's reader
+
+Everything since 0.15.0 (#146, #147, #148, #150):
+- **Routing** (#128, #111, #149): a loop under the boxes comes up beside its target into its near side; lines into a
+  card that six or more lines come into are routed first, and those that still cross go round the outside or move
+  their target to the foot of its column; of two cards that feed the same two, one line goes round the outside.
+  `examples/monorepo.json` and its generator `examples/monorepo.py` are new.
+- **Labels** (#108, #142, #144): a label whose spots are taken moves the one before it aside; a label on a box's
+  border, cut to its step or with no spot gets room where it sits, the view laid out again and kept when it is better;
+  the check names a label that shows only its step; a card's step sits on a person's or robot's shoulder.
+- **The page and the reader** (#133 to #137): search finds what an `update()` brought; messages have a live region of
+  their own and show on a phone; ◐ says which theme is on; the link leaves out `check` and `shot`; Escape and ↑ go back
+  the way the reader came.
+- **The bench's layout-check issues:** 690 → 655. No view has more.
+
+What moves for a host that upgrades:
+- **Pictures move where lines crossed or labels had no room:** some lines take other tracks or go round the outside,
+  some labels sit elsewhere on their lines, and some views with a label that had no room are wider or taller. A host
+  that compares stills or geometry with a recorded copy records them again. Each section below names the views that
+  moved.
+- **Layout can take longer** on views of up to 30 cards where lines still cross: up to 18 layouts more. r19/plain's
+  total went from 1.7 s to 2.3 s in the bench; views with no crossing left cost what they did.
+- **Up after `setView()`** goes back to the view the map came from, not to the view's parent in the model.
+- **The hint line** is no longer a live region; the element after it is. ◐ is named "Dark theme", with `aria-pressed`.
+- **The link** drops `check` and `shot`.
+- **`umlimator.py check`** reports a new issue, a label that shows only its step, counted as `labelNoRoom`; a label on
+  a box's border is counted as `labelOnBorder`, no longer as `other`. Both take `--ignore`.
+
+Nothing is removed. Every type, option, field, event and command is as it was, or new.
+
 
 ### Loops under the boxes come into their target's near side, lines into a busy card route first, and a line goes round two cards that feed the same two (#128, #111)
 
