@@ -1,8 +1,8 @@
 // Checks the target examples against docs/diagrams/model.md: node docs/diagrams/examples/check.mjs
 // Structure only: the library's typed core checks (ids, types, ownership, ends), then what model.md says of each type
-// (diagram names, props that name elements, sequence and timing order). It draws nothing.
+// (diagram names, props that name elements, sequence and timing order). It draws nothing. An example whose type draws
+// moves to examples/ (plan.md §2, item 10) and is listed in MOVED, where it is checked as before.
 import { readdirSync, readFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { typedProblems } from '../../../src/core/model.js';
 
@@ -13,6 +13,15 @@ const DIAGRAMS = ['uml.class', 'uml.object', 'uml.package', 'uml.composite-struc
 const C4 = ['c4.landscape', 'c4.context', 'c4.container', 'c4.component', 'c4.dynamic', 'c4.deployment'];
 const TYPE = /^[a-z0-9]+\.[A-Z][A-Za-z0-9]*$/; // in the examples every element is typed, though a version-2 model may hold untyped cards
 const REF = ['replyTo', 'attachedTo', 'references', 'container', 'after'], REFS = ['conveyed', 'covers', 'extensionPoints', 'categoryValueRef']; // props that name elements
+
+// the target examples that moved to examples/ when their type drew: the name they had here, and where they are now
+export const MOVED = { '01-class.json': '../../../examples/sales-classes.json' };
+
+// all 28 target examples, those still here and those that moved, in file order: [name, its URL]
+export function targets() {
+  const here = new URL('./', import.meta.url), names = [...readdirSync(here).filter(f => /^\d\d-.*\.json$/.test(f)), ...Object.keys(MOVED)].sort();
+  return names.map(f => [f, new URL(Object.hasOwn(MOVED, f) ? MOVED[f] : f, here)]);
+}
 
 export function check(model, expected) {
   // ids, types, ownership, edge ends and typed views: the library's own checks (src/core/model.js)
@@ -57,12 +66,12 @@ export function check(model, expected) {
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const dir = dirname(fileURLToPath(import.meta.url)), files = readdirSync(dir).filter(f => /^\d\d-.*\.json$/.test(f)).sort();
+  const all = targets(), files = all.map(([f]) => f);
   let bad = 0;
-  for (const f of files) {
+  for (const [f, url] of all) {
     let problems;
-    try { problems = check(JSON.parse(readFileSync(join(dir, f), 'utf8')), DIAGRAMS[+f.slice(0, 2) - 1]); } catch (e) { problems = [String(e.message)]; }
-    console.log(`${problems.length ? 'FAIL' : 'ok  '} ${f}`); problems.forEach(p => console.log('     ' + p)); bad += problems.length ? 1 : 0;
+    try { problems = check(JSON.parse(readFileSync(url, 'utf8')), DIAGRAMS[+f.slice(0, 2) - 1]); } catch (e) { problems = [String(e.message)]; }
+    console.log(`${problems.length ? 'FAIL' : 'ok  '} ${f}${Object.hasOwn(MOVED, f) ? ' (moved: ' + MOVED[f].replace(/^(\.\.\/)+/, '') + ')' : ''}`); problems.forEach(p => console.log('     ' + p)); bad += problems.length ? 1 : 0;
   }
   const missing = DIAGRAMS.map((d, i) => String(i + 1).padStart(2, '0')).filter(n => !files.some(f => f.startsWith(n + '-')));
   if (missing.length) console.log('no example yet for: ' + missing.join(', '));

@@ -6,6 +6,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { layout, validate } from '../lib/umlimator.js';
 import { registerDiagramType, diagramOf } from '../src/core/registry.js';
 import '../src/map/typed.js'; // registers the map in this (source) copy of the registry
+import { targets } from '../docs/diagrams/examples/check.mjs'; // the 28, those moved to examples/ too
 
 const read = p => JSON.parse(readFileSync(new URL(p, import.meta.url)));
 const said = f => { const w = [], keep = console.warn; console.warn = m => w.push(String(m)); try { return [f(), w]; } finally { console.warn = keep; } };
@@ -34,10 +35,10 @@ test('a typed view whose diagram is not drawn yet shows its nodes as plain cards
 });
 
 test('the 28 target examples lay out as plain cards, and validate() finds no error in them, only diagrams not drawn yet', () => {
-  const dir = '../docs/diagrams/examples/', files = readdirSync(new URL(dir, import.meta.url)).filter(f => /^\d\d-.*\.json$/.test(f));
+  const files = targets();
   assert.equal(files.length, 28);
-  for (const f of files) {
-    const m = read(dir + f);
+  for (const [f, url] of files) {
+    const m = JSON.parse(readFileSync(url));
     for (const v of m.views) said(() => assert.ok(layout(m, v.id).nodes.length || !(v.nodeIds || []).length, `${f} ${v.id}`));
     for (const p of validate(m)) assert.ok(p.level === 'warning' && /^views\[\d+\]\.diagram$/.test(p.path), `${f}: ${p.level} ${p.path} ${p.message}`);
   }

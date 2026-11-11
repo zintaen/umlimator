@@ -14,7 +14,7 @@ import { describe } from '../src/map/insight.js';
 import { multBounds, parseMember, printMember, memberEdit, classProblems } from '../src/uml/class.js';
 
 const read = p => JSON.parse(readFileSync(new URL(p, import.meta.url)));
-const CLASS = read('../docs/diagrams/examples/01-class.json');
+const CLASS = read('../examples/sales-classes.json');
 
 test('the definition: uml.class is registered with its palette, its lines, a properties form per type and its hooks', () => {
   const T = diagramOf({ diagram: 'uml.class' });

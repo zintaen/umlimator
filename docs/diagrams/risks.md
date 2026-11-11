@@ -118,6 +118,7 @@ Host applications embed today's map notation. Nothing below may change what they
 | R5 | BPMN files carry positions; D1 lays out automatically | Positions are not kept on import, and the report says so once per file. Export writes diagram interchange from the layout | M4 |
 | R6 | Users expect XMI | Out of scope through 1.0.0 and said so in each UML type's conformance note | All |
 | R7 | New readers are JavaScript; `umlimator.py import` is Python | The command calls the module through Node, as `diff` and `trace` do; without Node it says which formats need it | 1 |
+| R8 | Found in 1.11: the PDF's tables of cards and lines are the map's. On a class diagram every element's kind reads "Script", a line with no label reads "calls", and members are not listed; the picture and the legend are right | Per-type tables in `umlimator.py pdf` (the element's type, a line's kind, a classifier's members), from the type's `describe()` words. `docs/conformance/uml-class.md` lists it until then | 1 or 2 |
 
 ## 8. Performance, accessibility, security, theming
 

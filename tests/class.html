@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- The class diagram (1.9) in headless Chrome (tests/embed.py), from lib/umlimator-all.js: docs/diagrams/examples/01-class.json
+<!-- The class diagram (1.9) in headless Chrome (tests/embed.py), from lib/umlimator-all.js: examples/sales-classes.json
      drawn by render() in both themes and three fonts (no overlap, text inside faces, line ends on outlines, end labels clear
      of the nodes, names, the legend), then edited through the edit event and apply(): a member edited as text, a line
      the micro-syntax cannot read, a new member, a new association with the relationship picker. -->
@@ -33,7 +33,7 @@ const blend = (top, bot) => [0, 1, 2].map(i => top[i] * top[3] + bot[i] * (1 - t
 const lum = c => { const f = v => v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]); };
 const ratio = (fg, bg) => { const [x, y] = [lum(blend(fg, bg)), lum(bg)].sort((p, q) => q - p); return +((x + 0.05) / (y + 0.05)).toFixed(2); };
 const css = (el, k) => rgba(getComputedStyle(el)[k]);
-const MODEL = await (await fetch('../docs/diagrams/examples/01-class.json')).json();
+const MODEL = await (await fetch('../examples/sales-classes.json')).json();
 try {
   // ---- drawing: both themes, three fonts
   const widths = {};
@@ -79,11 +79,42 @@ try {
     all('text.end-lab').forEach(x => { const c = ratio(css(x, 'fill'), stageBg); if (c < 4.5) low.push(['end', x.textContent, c]); });
     const lgBg = blend(css(pick('.m-legend'), 'backgroundColor'), stageBg);
     all('.m-legend b, .m-legend .lgi > span').forEach(x => { const c = ratio(css(x, 'color'), lgBg); if (c < 4.5) low.push(['legend', x.textContent, c]); });
-    // not yet the lines: drawn in --um-arrow, 2.96:1 on the light stage, under 3:1 (the lead's to decide: docs/diagrams/README.md, log)
     check(`${tag}: contrast: every text of the classifiers, the note, the end labels and the legend is at least 4.5:1`, !low.length, low);
+    // the lines and their ends (1.11): drawn in --um-muted, at least 3:1 on the stage (WCAG 1.4.11); --um-arrow, a map's, is 2.96:1 on the light stage
+    const faint = [...all('.edge-g path.edge').map(x => ['line ' + x.closest('.edge-g').dataset.from + '>' + x.closest('.edge-g').dataset.to, css(x, 'stroke')]),
+      ...all('marker path[stroke]').map(x => ['end ' + x.closest('marker').id.replace(/^g\d+-/, ''), css(x, 'stroke')])].map(([w, c]) => [w, ratio(c, stageBg)]).filter(([, c]) => c < 3);
+    check(`${tag}: contrast: every line and line end is at least 3:1 on the stage`, all('.edge-g').length && !faint.length, faint);
     h.destroy();
   }
   check('the three fonts measure differently', new Set(Object.values(widths)).size === 3, widths);
+  // ---- the fixtures (1.11): tests/class-minimal.json and tests/class-stress.json (risks.md G1), each view in both themes and
+  // three fonts: no overlap, text inside its compartment, line ends on outlines, end labels clear of every element, lines 3:1
+  const FIX = { minimal: await (await fetch('class-minimal.json')).json(), stress: await (await fetch('class-stress.json')).json() };
+  for (const [fx, M] of Object.entries(FIX)) for (const v of M.views) for (const theme of ['light', 'dark']) for (const [fname, family] of Object.entries(FONTS)) {
+    document.documentElement.dataset.theme = theme; el.style.setProperty('--um-sans', family);
+    const tag = `${fx} ${v.id}, ${theme}, ${fname}`, h = mount(M, { view: v.id }), svg = pick('svg.um-svg, .stage svg'), nodes = all('.node'), bad = [];
+    const B = Object.fromEntries(nodes.map(g => [g.dataset.id, box(g)]));
+    Object.entries(B).forEach(([a, p]) => Object.entries(B).forEach(([b, q]) => { if (a < b && meets(p, q)) bad.push(`${a}/${b} overlap`); }));
+    nodes.forEach(g => { const n = B[g.dataset.id]; g.querySelectorAll('[data-band]').forEach(band => { const [t, b] = band.dataset.band.split(' ').map(Number);
+      band.querySelectorAll('text').forEach(x => { const r = x.getBBox(); if (r.x < n.x + 1 || r.x + r.width > n.x + n.w - 1 || r.y < t - .5 || r.y + r.height > b + .5) bad.push(`${g.dataset.id}: "${x.textContent}" spills`); }); }); });
+    all('.edge-g').forEach(g => { const [a, b] = ends(g.querySelector('path.edge').getAttribute('d'));
+      [[a, g.dataset.from], [b, g.dataset.to]].forEach(([p, id]) => { const body = pick(`.node[data-id="${id}"] .n-body`); body.style.strokeWidth = '3px';
+        const q = svg.createSVGPoint(); q.x = p[0]; q.y = p[1]; if (!body.isPointInStroke(q)) bad.push(`${g.dataset.from}>${g.dataset.to} ends off ${id}`); body.style.strokeWidth = ''; }); });
+    all('text.end-lab').forEach(x => { const [bx, by, bw, bh] = x.dataset.box.split(' ').map(Number); if (Object.values(B).some(n => meets({ x: bx, y: by, w: bw, h: bh }, n))) bad.push(`"${x.textContent}" on an element`); });
+    const stageBg = css(pick('.stage'), 'backgroundColor');
+    all('.edge-g path.edge').forEach(x => { const c = ratio(css(x, 'stroke'), stageBg); if (c < 3) bad.push(`a line at ${c}:1`); });
+    check(`${tag}: all ${v.nodeIds.length} elements and ${all('.edge-g').length} lines drawn; no overlap, no text out of its compartment, every line end on its element, end labels clear, lines 3:1`,
+      nodes.length === v.nodeIds.length && all('.edge-g').length && !bad.length, bad.slice(0, 12));
+    h.destroy();
+  }
+  document.documentElement.dataset.theme = 'light'; el.style.removeProperty('--um-sans');
+  { // performance (risks.md P1) on the stress fixture: an edit that moves nothing, from update() to paint
+    const h = mount(FIX.stress, { view: 'all', editable: true });
+    const t0 = performance.now(); h.update(apply(FIX.stress, [{ op: 'set', id: 'buys', path: 'props.ends.to.role', value: 'buyer' }])); const paint = performance.now() - t0;
+    console.log(`the stress fixture: an edit that moves nothing ${Math.round(paint)} ms`);
+    check(`the stress fixture (42 elements, 51 lines): an edit that moves nothing paints in under 100 ms (${Math.round(paint)} ms)`, paint < 100 && all('.node').length === 42, paint);
+    h.destroy();
+  }
   document.documentElement.dataset.theme = 'light'; el.style.removeProperty('--um-sans');
   check('describe() writes the class view in words', describe(MODEL, 'domain').startsWith('Sales domain: a class diagram of 11 elements and 8 lines.'));
 

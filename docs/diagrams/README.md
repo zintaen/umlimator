@@ -59,7 +59,7 @@ All on 11 Nov 2026, by the maintainer. The options that were weighed are in `pro
 | [`model.md`](model.md) | The typed model: its rules and each diagram type's vocabulary |
 | [`risks.md`](risks.md) | Findings that changed the plan, risks, edge cases, and what to do about each |
 | [`ui-draft.html`](ui-draft.html) | A drawing of the editor: views, palette, canvas, properties, problems |
-| [`examples/`](examples/) | One target model per diagram type, `01-class.json` to `28-azure.json`, and `check.mjs`, which checks them against `model.md` |
+| [`examples/`](examples/) | One target model per diagram type, `01-class.json` to `28-azure.json`, and `check.mjs`, which checks them against `model.md`; a type's file moves to [`../../examples/`](../../examples/) when it draws (`check.mjs` lists where: `01-class.json` is `examples/sales-classes.json`) |
 | [`notes/`](notes/) | Design notes, one per stage, written when the stage starts: [`stage-1.md`](notes/stage-1.md); the sequence spike's findings, [`spike-sequence.md`](notes/spike-sequence.md) |
 
 ## Picking up a work package
@@ -208,3 +208,18 @@ node docs/diagrams/examples/check.mjs         # the target examples match model.
   realization's target is an interface (with 1.9 merged, the fixture passes `validate()`), `n` multiplicities, linear ids
   for repeated names, prototype-safe lookup tables, the writer's line breaks and silent drops, multi-line directives, a
   CLI copy with no `src/`. Checked on a trial merge with `class-type` (1.9).
+- **12 Nov 2026 (1.11).** 1.11 closes the class type's definition of done. 10: `01-class.json` moved to
+  `examples/sales-classes.json`, in the gallery (stills and PDF on the site) and CI (rendered, checked, valid against the
+  schema: F8); `check.mjs` keeps a list of what moved and checks it there, and the tests that counted 28 files use it.
+  `tests/class-minimal.json` and `tests/class-stress.json` (G1, a view of 42 elements and 51 lines) lay out with no
+  overlap, no line through an element and no end label on one, in Node and in Chrome under three fonts and both themes.
+  9: `tests/class-fixtures.test.mjs` fails when the stress fixture's full layout takes 1 s or more, or an edit that moves
+  nothing 100 ms (best of three: about 160 ms and 2 ms here, 290 ms under the full suite's load). 8: a typed view's lines
+  and ends are drawn in `--um-muted` (5.95:1 light, 7.05:1 dark; `--um-arrow` was 2.96:1), maps unchanged, checked in
+  `tests/class.html`. 1: the class vocabulary in `lib/umlimator.d.ts` and `lib/umlimator.schema.json`, which describes
+  and rejects nothing (nested descriptions sit in `anyOf: [{ type, … }, true]`, so ajv's strict mode stays quiet). 7, 11:
+  `docs/conformance/uml-class.md`, with the fidelity table measured on the example; `examples/class-editor.html`, a host
+  that applies `edit` events with `apply()` and keeps `history()`, tested in a frame (`tests/class-editor.html`). The
+  core: +31 B gzipped, 14.3% over 0.16.1 (188662 B). Found: the PDF's tables of a class diagram are the map's (every
+  kind "Script", unlabelled lines "calls"; `risks.md` R8); the stress fixture's four lines between two classes cross
+  twice among the lines around them; a browser timing under headless virtual time reads 0 ms, so P1 is enforced in Node.

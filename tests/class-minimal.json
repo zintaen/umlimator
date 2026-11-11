@@ -1,0 +1,16 @@
+{
+  "$schema": "../lib/umlimator.schema.json",
+  "schemaVersion": 2,
+  "title": "A minimal class view (tests)",
+  "root": "v",
+  "nodes": [
+    {"id": "order", "type": "uml.Class", "label": "Order", "members": [{"id": "order.total", "type": "uml.Property", "label": "total", "props": {"visibility": "private", "valueType": "Money"}}, {"id": "order.place", "type": "uml.Operation", "label": "place", "props": {"visibility": "public"}}]},
+    {"id": "line", "type": "uml.Class", "label": "OrderLine"}
+  ],
+  "edges": [
+    {"id": "order-lines", "type": "uml.Association", "from": "order", "to": "line", "props": {"ends": {"from": {"aggregation": "composite", "multiplicity": "1"}, "to": {"role": "lines", "multiplicity": "1..*", "navigable": true}}}}
+  ],
+  "views": [
+    {"id": "v", "diagram": "uml.class", "title": "Minimal", "nodeIds": ["order", "line"]}
+  ]
+}

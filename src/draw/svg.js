@@ -17,6 +17,7 @@ const endOf = (E, w) => hasKey(ENDS, E[w]) && ENDS[E[w]] ? E[w] : null;
 /* SVG markup. opts: { childCount(id) -> n, subject: id, title } */
 function svgOf(geo, opts = {}) {
   const id = 'g' + (svgSeq++), { nodes, edges, groups, bounds: B, map } = geo;
+  const LINE = map ? 'var(--um-arrow)' : 'var(--um-muted)'; // a typed view's lines: 3:1 or more in both themes
   const col = k => `var(--um-${KIND[k][0]})`, fill = k => `var(--um-${KIND[k][0]}-f)`;
   const estyle = e => {
     if (e.style === 'faded') return { ...(map && e.wk ? { c: `var(--um-w-${e.wk})`, m: e.wk, cls: ' w-' + e.wk + ' faded' } : { c: 'var(--um-arrow)', m: 'd', cls: ' faded' }), dash: '', op: .35 }; // its own colour, faint, no flow (drift's idle lines)
@@ -26,7 +27,7 @@ function svgOf(geo, opts = {}) {
     if (st === 'removed') return { c: 'var(--um-rose)', m: 'r', dash: '5 5', op: .7 };
     if (st === 'security') return { c: 'var(--um-rose)', m: 'r', dash: '5 5' };
     if (st === 'dashed' || st === 'async') return { c: 'var(--um-violet)', m: 'v', dash: '4 4' };
-    return { c: 'var(--um-arrow)', m: 'd', dash: '' };
+    return { c: LINE, m: 'd', dash: '' };
   };
   // a line that breaks a rule (#70): rose, with a "!" just after its start that names the rule (opts.broken: rule titles by edge id)
   const broke = e => opts.broken ? [...new Set((e.all || [e]).flatMap(x => opts.broken[x._id] || []))] : [];
@@ -34,7 +35,7 @@ function svgOf(geo, opts = {}) {
   const ruleMark = (e, why) => { const [a, b] = e.pts, L = Math.abs(b[0] - a[0]) + Math.abs(b[1] - a[1]) || 1, t = Math.min(18, L / 2) / L, x = a[0] + (b[0] - a[0]) * t, y = a[1] + (b[1] - a[1]) * t;
     return `<g class="rule-mark"><title>Breaks rule: ${esc(why.join('; '))}</title><circle cx="${x}" cy="${y}" r="6.5"/><text x="${x}" y="${y + 3.4}" text-anchor="middle">!</text></g>`; };
   const marker = (n, c, k = 1) => `<marker id="${id}-${n}" markerWidth="${10 * k}" markerHeight="${8 * k}" refX="${9 * k}" refY="${4 * k}" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M0 0 L${10 * k} ${4 * k} L0 ${8 * k} Z" fill="${c}"/></marker>`;
-  const MC = { d: 'var(--um-arrow)', g: 'var(--um-green)', r: 'var(--um-rose)', v: 'var(--um-violet)', h: 'var(--um-cyan)', ...Object.fromEntries(WIRES.map(w => [w[0], `var(--um-w-${w[0]})`])) };
+  const MC = { d: LINE, g: 'var(--um-green)', r: 'var(--um-rose)', v: 'var(--um-violet)', h: 'var(--um-cyan)', ...Object.fromEntries(WIRES.map(w => [w[0], `var(--um-w-${w[0]})`])) };
   const heavy = [...new Set(edges.filter(e => e.weight > 1).map(e => lstyle(e).m + '-w' + e.weight))]; // a heavier line's arrowhead grows with it
   const typed = e => !map && e.end ? e.end : null, ends = [...new Set(edges.flatMap(e => typed(e) ? ['from', 'to'].map(w => endOf(e.end, w)).filter(Boolean).map(k => k + '-' + lstyle(e).m) : []))];
   const endMark = km => { const k = km.slice(0, km.lastIndexOf('-')), m = km.slice(k.length + 1), [L, H, p, fl] = ENDS[k];
@@ -47,7 +48,7 @@ function svgOf(geo, opts = {}) {
     : nodes.map(n => [n, n.shape != null && cardLook(n, 'box', false, null)]).filter(x => x[1]));
   const drawn = edges.map(e => map && looks.size ? drawnPts(e, n => looks.get(n) || null) : e.pts);
   let s = `<svg viewBox="${B.x} ${B.y} ${B.w} ${B.h}" data-w="${B.w}" data-h="${B.h}" role="${map ? 'group' : 'img'}" aria-label="${esc(opts.title || 'Diagram')}" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">
-    <defs>${marker('d', 'var(--um-arrow)')}${marker('g', 'var(--um-green)')}${marker('r', 'var(--um-rose)')}${marker('v', 'var(--um-violet)')}${marker('h', 'var(--um-cyan)')}${map ? WIRES.map(w => marker(w[0], `var(--um-w-${w[0]})`)).join('') : ''}${heavy.map(m => { const [c, k] = m.split('-w'); return marker(m, MC[c], 1 + (k - 1) * .35); }).join('')}${ends.map(endMark).join('')}</defs>`;
+    <defs>${marker('d', LINE)}${marker('g', 'var(--um-green)')}${marker('r', 'var(--um-rose)')}${marker('v', 'var(--um-violet)')}${marker('h', 'var(--um-cyan)')}${map ? WIRES.map(w => marker(w[0], `var(--um-w-${w[0]})`)).join('') : ''}${heavy.map(m => { const [c, k] = m.split('-w'); return marker(m, MC[c], 1 + (k - 1) * .35); }).join('')}${ends.map(endMark).join('')}</defs>`;
   const families = geo.families || [], familyDepth = f => f.parent ? 1 + familyDepth(families.find(p => p.id === f.parent) || {}) : 0;
   families.slice().sort((a,b) => familyDepth(a)-familyDepth(b)).forEach(f => { // in c4 every box is a boundary, dashed as Structurizr draws one (a toned box is dashed in any notation)
     s += `<g class="family${f.tone ? ' toned' : ''}" data-family="${esc(f.id)}"${f.parent ? ` data-parent="${esc(f.parent)}"` : ''}${f.tone ? ` style="--um-tone:${toneOf(f)}"` : ''}><rect class="family-box" x="${f.x}" y="${f.y}" width="${f.w}" height="${f.h}" rx="14" stroke="var(--um-${familyDepth(f) ? 'cyan' : 'border-2'})"${notation === 'c4' ? ' stroke-dasharray="7 5"' : ''}/>

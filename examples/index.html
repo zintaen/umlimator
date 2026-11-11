@@ -54,6 +54,13 @@
         <span class="links"><a href="shapes.html">Open the map</a><a href="notations.html">Side by side</a><a href="shapes.pdf">PDF</a><a href="shapes.json">Model</a></span></div></article>
   </div>
 
+  <h2>Diagrams</h2>
+  <div class="grid">
+    <article class="card"><img src="stills/sales-classes/domain.png" alt="A UML class diagram of a bookshop's sales domain: Customer, Order, OrderLine, Book, an abstract Payment and its CardPayment, the Payable interface, the OrderStatus enumeration, the Money data type and a note" loading="lazy">
+      <div><h3>A class diagram</h3><p>UML's class diagram from a typed model: compartments of attributes and operations, an interface, an enumeration and a data type, composition and aggregation, generalization, realization, a «use» dependency and a note, each end with its role and multiplicity.</p>
+        <span class="links"><a href="sales-classes.html">Open the diagram</a><a href="class-editor.html">Edit it</a><a href="sales-classes.pdf">PDF</a><a href="sales-classes.json">Model</a><a href="https://github.com/zintaen/umlimator/blob/main/docs/conformance/uml-class.md">What it covers</a></span></div></article>
+  </div>
+
   <h2>In an app</h2>
   <table>
     <tr><td><a href="playground.html">Playground</a></td><td>Edit a model and see the map, its problems (<code>validate()</code>), its broken rules (<code>rules()</code>) and its layout check (<code>check()</code>); share it by link.</td></tr>
@@ -64,6 +71,7 @@
     <tr><td><a href="ask.html">Ask the map</a></td><td>Questions answered with words, the paths or reach they are about lit, and a tour; the view in sentences (<code>describe()</code>) for an AI model.</td></tr>
     <tr><td><a href="replay.html">Trace replay</a></td><td>An OpenTelemetry trace played on the map: each call along its line at its time, with its duration.</td></tr>
     <tr><td><a href="edit.html">Editing</a></td><td>The map emits <code>change</code> events; the host applies them and keeps an undo history.</td></tr>
+    <tr><td><a href="class-editor.html">A class diagram editor</a></td><td>A class diagram emits <code>edit</code> events, each a transaction of commands; the host applies them with <code>apply()</code> and keeps <code>history()</code> for undo and redo.</td></tr>
     <tr><td><a href="timelapse.html">A time-lapse</a></td><td>Four releases on a slider: new cards fade in, removed ones fade out, moved ones glide; <code>diff()</code> says what changed.</td></tr>
     <tr><td><a href="drift.html">Drawn vs. seen</a></td><td><code>drift()</code>: the map against a week of traffic; lines that ran undrawn come in, idle ones fade.</td></tr>
     <tr><td><a href="https://github.com/zintaen/umlimator/blob/main/examples/layout.mjs">In Node</a></td><td><code>layout()</code> without a browser, as a check a host can run in CI on maps it generates.</td></tr>

@@ -25,6 +25,18 @@ Bike share's story, as `umlimator.py record` writes it (CI records it for the si
 
 ![Bike share: a ride, from unlock to payment, in five steps](https://zintaen.github.io/umlimator/examples/stills/bike-share/story-ride.png)
 
+## Diagrams
+
+A diagram type draws a typed model (`"schemaVersion": 2`, [`docs/diagrams/model.md`](../docs/diagrams/model.md)) in its
+own notation. CI renders and checks each as it does the maps, and validates it against the JSON Schema; the site shows
+its stills and its PDF.
+
+| Model | Diagram | What it shows |
+|---|---|---|
+| [`sales-classes.json`](sales-classes.json) | UML class diagram (`uml.class`, 0.18.0) | A bookshop's sales domain: classes with attributes and operations, a stereotype, an abstract class and operation, static and derived attributes, an interface and its realization, an enumeration, a data type, a package, a note; associations with roles, multiplicities, composition, aggregation and navigable ends, a generalization and a «use» dependency; the view laid out top to bottom with one class pinned and a compartment collapsed, and a second view of the payments alone. What the class diagram covers, and what each export shows: [`docs/conformance/uml-class.md`](../docs/conformance/uml-class.md) |
+
+[![The class diagram's domain view](https://zintaen.github.io/umlimator/examples/stills/sales-classes/domain.png)](https://zintaen.github.io/umlimator/examples/sales-classes.html)
+
 ## Host pages
 
 The module embedded in a page, as an app would use it. Serve the repository over HTTP to open them locally
@@ -38,6 +50,7 @@ The module embedded in a page, as an app would use it. Serve the repository over
 | [`ask.html`](ask.html) | Questions answered on the map: words, the cards and lines they are about lit (`highlight()` with `paths()` and `reach()`), a flow played as a `tour()`, and the view in sentences (`describe()`), the text an AI model would get |
 | [`replay.html`](replay.html) | A trace replayed (`replay()`): an OpenTelemetry export ([`traces/ride-end.json`](traces/ride-end.json)) read by `otlpSpans()`, each call along its line at its time, its duration kept as a label, with pause and stop; `umlimator.py trace` keeps the same trace as bike-share's `ride-end` view |
 | [`edit.html`](edit.html) | `editable`: the map emits `change` events, the host applies them and calls `update()`, with undo from `history()` |
+| [`class-editor.html`](class-editor.html) | `editable` on a class diagram: each gesture emits one `edit` event, a transaction of commands, which the host applies with `apply()`, keeps in `history()` for undo and redo, and draws with `update()`; it may refuse one, and it saves the model as it is |
 | [`timelapse.html`](timelapse.html) | Four made-up releases of the bike share on a slider: `update()` eases from one to the next (new cards fade in, removed ones fade out, moved ones glide), `diff()` says what changed and marks it on request |
 | [`drift.html`](drift.html) | `drift()`: the bike share against a week of made-up traffic, as a tracing backend lists it; the lines that ran undrawn come in, the drawn ones that carried nothing fade |
 | [`notations.html`](notations.html) | `shapes.json` in each notation, `box`, `c4` and `uml`, light and dark, each a `<umlimator-map shapes="…">`; buttons set every map's notation, which draws its cards again and lays nothing out |
@@ -91,6 +104,10 @@ The module embedded in a page, as an app would use it. Serve the repository over
 | Budgets (`latency`, `cost`): the slowest or costliest path (`critical()`) and what-if (`whatIf()`) | bike-share `trips`: the details panel's ⏱, ¤ and ⊘ (What if this goes down?) |
 | A story told step by step (`stories`, `play()`), its Stories menu and recording in the page, `umlimator.py record` | bike-share (`ride`: a ride from unlock to payment), on the site; pictured under Maps; states (`assistant`: a page tool, then the reader) |
 | Editing and undo (`editable`, `change`, `history()`) | `edit.html` |
+| A diagram type: a typed model in its own notation (`schemaVersion: 2`, a view's `diagram`), from `umlimator/all` | sales-classes (`uml.class`) |
+| A class diagram's parts: compartments, members as UML text, stereotypes, line ends, end labels, notes (`present.collapsed`, `direction: "down"`) | sales-classes `domain` and `payments` |
+| Editing a typed view (`edit` events, `apply()`, `history()`; the palette, the relationship picker, the properties and members as text, the problems, the outline) | `class-editor.html` |
+| A Mermaid `classDiagram`, imported (`umlimator.py import`) | [`tests/import/classes.mmd`](../tests/import/classes.mmd), which CI imports (`tests/import.py`) |
 | `layout()` in Node | `layout.mjs` |
 | The model's JSON Schema (`"$schema"`), `validate()` and `check()` | every model written by hand (`"$schema"`), `playground.html` |
 | The standalone page (`mountPage`) and the CLI's `render`, `check` and `stills` | every map on the site, built by CI |
@@ -111,5 +128,6 @@ Not shown: `repair: false`, a switch for debugging the router.
 
 Umlimator is growing from maps to 28 diagram types: UML's 14, SysML's four, ER, flowchart, data flow, C4, BPMN,
 mindmap, and AWS, GCP and Azure architecture. One target model per type is in
-[`docs/diagrams/examples/`](../docs/diagrams/examples/). Nothing draws them yet. Each moves here, into the gallery and
-CI, when its stage ships; [`docs/diagrams/README.md`](../docs/diagrams/README.md) says where that work stands.
+[`docs/diagrams/examples/`](../docs/diagrams/examples/). Each moves here, into the gallery and CI, when its stage
+ships: the class diagram's is `sales-classes.json`. [`docs/diagrams/README.md`](../docs/diagrams/README.md) says where
+that work stands.

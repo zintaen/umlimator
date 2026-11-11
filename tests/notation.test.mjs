@@ -6,6 +6,7 @@ import { SHAPE, SHAPE_NAMES } from '../src/draw/shapes.js';
 import { endLabels } from '../src/draw/lines.js';
 import { svgOf } from '../src/draw/svg.js';
 import { mapNodeW } from '../src/map/cards.js';
+import { mapContext } from '../src/map/context.js';
 
 const prop = (label, props = {}) => ({ type: 'uml.Property', label, props: { visibility: 'public', ...props } });
 const op = (label, props = {}) => ({ type: 'uml.Operation', label, props: { visibility: 'public', ...props } });
@@ -72,7 +73,11 @@ test('line ends: a table of markers, used only by a line that asks; end labels i
   assert.match(svg, /marker-end="url\(#g\d+-triangle-d\)"/);
   assert.match(svg, /marker-start="url\(#g\d+-filled-diamond-d\)"/);
   assert.match(svg, /id="g\d+-triangle-d"[^>]*refX="13"[^>]*><path d="M0 0L13 7L0 14Z" fill="var\(--um-stage-bg\)"/, 'a hollow end is the stage\'s background');
-  assert.match(svg, /id="g\d+-filled-diamond-d"[^>]*><path [^>]*fill="var\(--um-arrow\)"/, 'a filled end is the line\'s colour');
+  assert.match(svg, /id="g\d+-filled-diamond-d"[^>]*><path [^>]*fill="var\(--um-muted\)"/, 'a filled end is the line\'s colour');
+  // a typed view's lines are --um-muted, 3:1 or more on the stage in both themes (DoD 8, tests/class.html measures it); a map's stay --um-arrow
+  assert.match(svg, /class="edge"[^>]*stroke="var\(--um-muted\)"/);
+  const mapSvg = mapContext({ nodes: [{ id: 'a' }, { id: 'b' }], edges: [{ from: 'a', to: 'b' }], views: [{ id: 'v', nodeIds: ['a', 'b'] }] }).buildView('v').markup;
+  assert.match(mapSvg, /id="g\d+-d"[^>]*><path [^>]*fill="var\(--um-arrow\)"/); assert.ok(!mapSvg.includes('var(--um-muted)'), 'nothing of a map is --um-muted');
   assert.match(svg, /class="edge"[^>]*stroke-dasharray="6 4"/);
   const boxes = endLabels(e);
   assert.deepEqual(boxes.map(x => [x.end, x.kind, x.text]), [['from', 'role', 'order'], ['from', 'mult', '1'], ['to', 'role', 'lines'], ['to', 'mult', '1..*']]);
