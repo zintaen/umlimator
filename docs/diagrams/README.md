@@ -14,8 +14,8 @@ Update this table in every pull request that belongs to the plan.
 
 | Stage | Release | Scope | Status | Pull requests |
 |---|---|---|---|---|
-| Planning | | Proposal, model, plan, risks, 28 target examples, UI draft | Written 11 Nov 2026; in review | #151 |
-| Before the plan | 0.16.0 | Fixes already on `main` (#146 to #148, #150) | Merged, not released | #146, #147, #148, #150 |
+| Planning | | Proposal, model, plan, risks, 28 target examples, UI draft | Merged 12 Nov 2026 (60a159c) | #151 |
+| Before the plan | 0.16.0 | Fixes already on `main` (#146 to #148, #150) | Release pull request open | #146, #147, #148, #150 |
 | 1a Foundation | 0.17.0 | Work packages 1.1 to 1.8 | Not started. Next step: the stage 1 design note (`plan.md` §4.1) | |
 | 1b Class | 0.18.0 | Work packages 1.9 to 1.12 | Not started | |
 | 2 | 0.19.0 | Object, package | Not started | |
