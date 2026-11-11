@@ -3059,12 +3059,13 @@ Stage 1a of the plan for 28 diagram types (`docs/diagrams/`). Nothing new is dra
   for row orders bakes no layout into a typed view (F4). The CLI's page inlines `lib/umlimator-all.js`, a second whole
   file built from the same sources with every diagram family in it (`umlimator/all`); until a family ships it holds the
   same code as `lib/umlimator.js` (F5, stage 1 note §2.5).
-- **Notation (1.5).** The drawing code learns UML's notation, used only where a typed view's drawing asks for it, so
-  no map draws differently: every shape reports `size()` and `ports(side, k)` (line ends spread along a side, on its
-  outline); a classifier shape (stereotypes, the name in italics when abstract, a compartment per member kind with rows
-  in UML's form, static members underlined, derived ones marked "/", `collapsed` and `rows` applied, text cut to the
-  box); a table of line ends (open and filled arrow, hollow triangle, hollow and filled diamond) and dashed lines;
-  role and multiplicity by each end, in boxes layout can avoid. Internal until a class view draws with it (1.9).
+- **Notation (1.5).** The drawing code learns UML's notation, used only where a typed view's drawing asks for it, so no
+  map draws differently: every shape reports `size(n)` and `ports(n, side, k)` (line ends spread along a side, on its
+  outline), and a typed view's node is drawn in the shape it names; a classifier shape (stereotypes, the name in italics
+  when abstract, a compartment per member kind with rows in UML's form, static members underlined, derived ones marked
+  "/", `collapsed` and `rows` applied, text cut to the box); a table of line ends (open and filled arrow, hollow
+  triangle, hollow and filled diamond) and dashed lines; role and multiplicity by each end, in boxes clear of their line
+  and its nodes, which layout can avoid. Internal until a class view draws with it (1.9).
 
 What moves for a host that upgrades: nothing is drawn differently. `validate()` returns a new error for a
 `schemaVersion` that is a whole number above 2, and drawing such a model throws; any other value but 1 or 2 is a

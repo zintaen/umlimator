@@ -54,7 +54,7 @@ test('the classifier draws its rows in UML form, escapes every string, and names
   assert.match(svg, />\+ total: Money \[1\]</);
   assert.match(svg, /text-decoration="underline"[^>]*>\+ \/count: Integer</, 'a static member is underlined, a derived one has "/"');
   assert.match(svg, />\+ place\(at: Date\): Order</);
-  assert.match(svg, /aria-label="Class Order&lt;script&gt;, 2 attributes, 1 operation"/);
+  assert.match(svg, /aria-label="Class Order&lt;script&gt; \(a&amp;b\), 2 attributes, 1 operation"/);
   const abs = svgOf(geo([placed(order({ abstract: true, rows: 1, collapsed: ['operations'] }))]));
   assert.match(abs, /class="c-name"[^>]*style="font:italic 600/, 'an abstract name is in italics');
   assert.match(abs, />\+1 more</);
@@ -82,4 +82,30 @@ test('line ends: a table of markers, used only by a line that asks; end labels i
   const down = endLabels({ end: { labels: { to: { role: 'r', mult: 'm' } } } }, [[0, 0], [0, 100]]);
   assert.ok(down[0].x + down[0].w === -8 && down[1].x === 8 && down[0].y + down[0].h === 96, 'a line up or down: role left, multiplicity right');
   assert.ok(svg.includes('class="end-lab"') && (svg.match(/class="end-lab"/g) || []).length === 4);
+});
+
+test('the classifier passes over entries that are not objects: a null compartment, member or parameter', () => {
+  const n = { id: 'x', shape: 'classifier', label: 'X', k: 'backend', stereotypes: [null, 'tag'], compartments: [null, 7, { name: 'attributes', members: [null, 'a', prop('ok', { valueType: 'Integer' })] },
+    { name: 'operations', members: [op('run', { parameters: [null, { name: 'n', valueType: 'Integer' }, 3] }), { type: 'uml.Operation', label: 'bare', props: null }] }] };
+  const s = SHAPE.classifier.size(n); assert.equal(s.h, 42 + 23 + 38);
+  const svg = svgOf(geo([{ ...n, x: 0, y: 0, ...s }]));
+  assert.match(svg, />\+ run\(n: Integer\)</);
+  assert.match(svg, />bare\(\)</);
+  assert.match(svg, /aria-label="Class X \(tag\), 1 attribute, 2 operations"/);
+});
+
+// a box meets a segment (a rectangle round two points) or a node
+const meets = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+const segs = pts => pts.slice(1).map((q, i) => { const p = pts[i]; return { x: Math.min(p[0], q[0]) - 1, y: Math.min(p[1], q[1]) - 1, w: Math.abs(q[0] - p[0]) + 2, h: Math.abs(q[1] - p[1]) + 2 }; });
+const clear = (boxes, pts, nodes) => boxes.every(b => ![...segs(pts), ...nodes].some(o => meets(b, o)) && boxes.every(c => c === b || !meets(b, c)));
+const labels = { from: { role: 'items', mult: '0..*' }, to: { role: 'owner', mult: '1' } };
+
+test('end labels keep clear of every segment of their line and of both nodes: a 6 px line, a self-loop', () => {
+  const s = { x: -100, y: -30, w: 100, h: 60 }, t = { x: 6, y: -30, w: 100, h: 60 }, short = [[0, 0], [6, 0]];
+  const a = endLabels({ s, t, end: { labels } }, short);
+  assert.equal(a.length, 4); assert.ok(clear(a, short, [s, t]), JSON.stringify(a));
+  const n = { x: 0, y: 0, w: 120, h: 80 }, { x, y, w } = n, loop = [[x + w, y + 12], [x + w + 24, y + 12], [x + w + 24, y - 24], [x + w - 12, y - 24], [x + w - 12, y]];
+  const b = endLabels({ s: n, t: n, end: { labels } }, loop);
+  assert.equal(b.length, 4); assert.ok(clear(b, loop, [n]), JSON.stringify(b));
+  b.forEach(k => { const p = k.end === 'from' ? loop[0] : loop[loop.length - 1]; assert.ok(Math.max(k.x - p[0], p[0] - k.x - k.w, k.y - p[1], p[1] - k.y - k.h, 0) < 60, `${k.text} stays by its end`); });
 });

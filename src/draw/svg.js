@@ -41,8 +41,11 @@ function svgOf(geo, opts = {}) {
     return `<marker id="${id}-${km}" markerWidth="${L}" markerHeight="${2 * H}" refX="${L}" refY="${H}" orient="auto-start-reverse" markerUnits="userSpaceOnUse" overflow="visible"><path d="${p}" fill="${fl === 'line' ? MC[m] : fl === 'hollow' ? 'var(--um-stage-bg)' : 'none'}" stroke="${MC[m]}" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/></marker>`; };
   // the notation (0.15.0): each card's look, and each line as drawn, its ends on the cards' outlines (a map's cards only)
   const notation = map ? noteOf(opts.shapes) || 'box' : 'box', kidsOf = n => n.kids != null ? n.kids : opts.childCount ? opts.childCount(n.id) : 0;
-  const ports = map ? sidePorts(geo) : null, looks = new Map(map ? nodes.map(n => [n, cardLook(n, notation, !!(kidsOf(n) || n.opens) && opts.openHint !== false, ports.get(n))]) : []);
-  const drawn = edges.map(e => looks.size ? drawnPts(e, n => looks.get(n) || null) : e.pts);
+  // another view's node is drawn in its own shape, when it names one (1.5): its lines end where its ports() put them, on
+  // its outline already, so they are drawn as given
+  const ports = map ? sidePorts(geo) : null, looks = new Map(map ? nodes.map(n => [n, cardLook(n, notation, !!(kidsOf(n) || n.opens) && opts.openHint !== false, ports.get(n))])
+    : nodes.map(n => [n, n.shape != null && cardLook(n, 'box', false, null)]).filter(x => x[1]));
+  const drawn = edges.map(e => map && looks.size ? drawnPts(e, n => looks.get(n) || null) : e.pts);
   let s = `<svg viewBox="${B.x} ${B.y} ${B.w} ${B.h}" data-w="${B.w}" data-h="${B.h}" role="${map ? 'group' : 'img'}" aria-label="${esc(opts.title || 'Diagram')}" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">
     <defs>${marker('d', 'var(--um-arrow)')}${marker('g', 'var(--um-green)')}${marker('r', 'var(--um-rose)')}${marker('v', 'var(--um-violet)')}${marker('h', 'var(--um-cyan)')}${map ? WIRES.map(w => marker(w[0], `var(--um-w-${w[0]})`)).join('') : ''}${heavy.map(m => { const [c, k] = m.split('-w'); return marker(m, MC[c], 1 + (k - 1) * .35); }).join('')}${ends.map(endMark).join('')}</defs>`;
   const families = geo.families || [], familyDepth = f => f.parent ? 1 + familyDepth(families.find(p => p.id === f.parent) || {}) : 0;
