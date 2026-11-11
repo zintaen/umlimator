@@ -17,8 +17,8 @@ Update this table in every pull request that belongs to the plan.
 | Planning | | Proposal, model, plan, risks, 28 target examples, UI draft | Merged 12 Nov 2026 (60a159c) | #151 |
 | Before the plan | 0.16.0 | Fixes already on `main` (#146 to #148, #150) | Released 11 Nov 2026 (cf516c8, npm latest); map-repo pinned to it | #146, #147, #148, #150, #152, #153 |
 | Before the split | 0.16.1 | `validate()` warns of a line from a card to itself (`risks.md` F1) | Released 11 Nov 2026 (8f0240f, GitHub and npm latest); map-repo pinned to it | #155, #156 |
-| 1a Foundation | 0.17.0 | Work packages 1.1 to 1.8 | All merged (1.7: b71b4f6). Release in review: #166 | #154, #157, #158, #160, #161, #162, #163, #164, #165, #166 |
-| 1b Class | 0.18.0 | Work packages 1.9 to 1.12 | Not started | |
+| 1a Foundation | 0.17.0 | Work packages 1.1 to 1.8 | Released 11 Nov 2026 (555bfdc, GitHub and npm latest); map-repo pinned to it | #154, #157, #158, #160, #161, #162, #163, #164, #165, #166, #167 |
+| 1b Class | 0.18.0 | Work packages 1.9 to 1.12 | 1.12's findings merged (#171). 1.9 (#168) and 1.10 (#169) in review. Next: 1.11, and the spike's changes to the registry, `model.md` and `apply()` | #168, #169, #171 |
 | 2 | 0.19.0 | Object, package | Not started | |
 | 3 | 0.20.0 | Sequence, communication | Not started | |
 | 4 | 0.21.0 | Use case, activity, state machine, interaction overview | Not started | |
@@ -60,7 +60,7 @@ All on 11 Nov 2026, by the maintainer. The options that were weighed are in `pro
 | [`risks.md`](risks.md) | Findings that changed the plan, risks, edge cases, and what to do about each |
 | [`ui-draft.html`](ui-draft.html) | A drawing of the editor: views, palette, canvas, properties, problems |
 | [`examples/`](examples/) | One target model per diagram type, `01-class.json` to `28-azure.json`, and `check.mjs`, which checks them against `model.md` |
-| [`notes/`](notes/) | Design notes, one per stage, written when the stage starts: [`stage-1.md`](notes/stage-1.md) |
+| [`notes/`](notes/) | Design notes, one per stage, written when the stage starts: [`stage-1.md`](notes/stage-1.md); the sequence spike's findings, [`spike-sequence.md`](notes/spike-sequence.md) |
 
 ## Picking up a work package
 
@@ -168,6 +168,14 @@ node docs/diagrams/examples/check.mjs         # the target examples match model.
   view takes about 175 ms, over P1's 100 ms from an edit to paint; the core is 13.5% larger gzipped than 0.16.1 (C5's
   budget is 15%), so what comes next lands in family files, not the core; a map model line carrying `fixed` or `under`
   still reaches the layout (older than this plan, in `prepEdges`).
+- **11 Nov 2026 (0.17.0).** 0.17.0 released (#166, 555bfdc): GitHub Release and npm latest. map-repo's pin moved to
+  v0.17.0, plugin 0.1.9. Stage 1b started: 1.9 (the class type), 1.10 (the Mermaid class reader) and 1.12 (the
+  sequence spike) are built in parallel lanes, each reviewed from two lenses before the maintainer's approval.
+- **12 Nov 2026 (1.12).** The sequence spike ran on a scratch branch (`sequence-spike`, never merged) and wrote its
+  findings in `notes/spike-sequence.md`: the registry fields a type that does not use the layered layout needs
+  (`layout`, `draw`, `items`, `refs`, `validate`, `edits`), three recommendations for `model.md` §3 that wait for the
+  maintainer (one ordered list for a sequence's occurrences instead of `props.after`; inline messages; activations
+  derived by intervals), and the commands a sequence needs (`add … in: 'view'`, a delete that re-homes what it held).
 - **12 Nov 2026 (1.9).** 1.9 adds `src/uml/class.js`, in `lib/umlimator-all.js` only: the `uml.class` definition (palette,
   lines, a properties form per type, with association ends as fields inside `props.ends`), the member micro-syntax
   (`parseMember`, `printMember`; `print(parse(x))` stable, an unreadable line refused with a warning, E3, E4), ten
@@ -189,4 +197,3 @@ node docs/diagrams/examples/check.mjs         # the target examples match model.
   `tests/class.html`'s 40-class check, with the stress fixture 1.11's; 1 (the schema and `.d.ts`) and 7 (the fidelity
   table, in the conformance note) are documents of `plan.md` §7, which 1.11 owns. Left: a model-held member label with
   a space, or a type with `=`, prints a line the micro-syntax does not read back.
-
