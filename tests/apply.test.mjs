@@ -117,6 +117,16 @@ test('hide takes an element out of one view with all that view says of it; the m
     views: [{ id: 's', diagram: 'uml.sequence', nodeIds: ['a', 'b'], edges: [{ id: 'm1', type: 'uml.Message', from: 'a', to: 'b' }] }] };
   assert.throws(() => run(seq, { op: 'hide', id: 'm1', view: 's' }), /lives only in view "s": delete it/);
   assert.deepEqual(run(seq, { op: 'hide', id: 'b', view: 's' }).views[0].edges, []); // a message to a hidden lifeline goes with it
+  // from the re-review of #161: a story step naming a message that left with its lifeline; a move whose cycle runs through
+  // a parent; a node with a field named to is not a line; move takes a view or an owner
+  const told = { ...seq, stories: [{ id: 's', steps: [{ view: 's', select: 'm1', highlight: ['m1'] }] }] };
+  const t2 = run(told, { op: 'hide', id: 'a', view: 's' });
+  assert.deepEqual([t2.stories[0].steps[0], errors(t2)], [{ view: 's', highlight: [] }, []]);
+  const st = { schemaVersion: 2, nodes: [{ id: 'S', type: 'uml.State', members: [{ id: 'R', type: 'uml.Region' }] }, { id: 'T', type: 'uml.State', parent: 'R' }], views: [{ id: 'v', nodeIds: ['S', 'T'] }] };
+  assert.throws(() => run(st, { op: 'move', id: 'R', owner: 'T' }), /inside itself/);
+  const n = { nodes: [{ id: 'a' }, { id: 'n', to: 'a' }], views: [{ id: 'v', nodeIds: ['a', 'n'] }] };
+  assert.deepEqual(run(n, { op: 'delete', id: 'a' }).nodes, [{ id: 'n', to: 'a' }]);
+  assert.throws(() => run(base(), { op: 'move', id: 'order.lines', owner: 'line', view: 'd', index: 0 }), /not both/);
 });
 
 test('delete takes out the element, its members, what it owns, the lines to them, and everything that names them (M4)', () => {

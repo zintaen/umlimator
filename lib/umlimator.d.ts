@@ -368,8 +368,8 @@ export type Command =
   | { op: 'set'; id: string; path: string | string[]; value: unknown }
   | { op: 'set'; view: string; path: string | string[]; value: unknown }
   | { op: 'add'; element: { id: string; [key: string]: unknown }; owner?: string; index?: number; view?: string }
-  | { op: 'move'; id: string; index: number; owner?: string }
-  | { op: 'move'; id: string; view: string; index: number }
+  | { op: 'move'; id: string; index: number; owner?: string; view?: never }
+  | { op: 'move'; id: string; view: string; index: number; owner?: never }
   | { op: 'hide'; id: string; view: string }
   | { op: 'delete'; id: string }
   | { op: 'reparent'; id: string; parent: string | null };
