@@ -3208,5 +3208,5 @@ What moves for a host that upgrades:
   every input: its exports, maps, and version-2 models (plain cards for a type it does not draw, typed editing,
   `apply()`, `references()`, `migrate()`, `validate()`, `describe()`). `tests/core-diet.test.mjs` and
   `tests/core-diet.html` hold both files to what main gave before the move: `layout()`, `describe()`, `validate()` and an
-  edit through `apply()` for the 29 version-2 examples, and `render()`'s markup of 11 views of three of them. `lib/umlimator.js` is 182,603 B with
+  edit through `apply()` for the 29 version-2 examples, and `render()`'s markup of 11 views of three of them. `lib/umlimator.js` is 182,601 B with
   `gzip -9`, 10.70% over 0.16.0 (it was 189,745 B, 15.03%).
