@@ -131,7 +131,8 @@ node docs/diagrams/examples/check.mjs         # the target examples match model.
   registry, as the note says. Unknown types are warned of from 1.3 too: until a type is registered, none is known.
 - **11 Nov 2026 (1.2 merged, 1.3).** 1.2 merged (#158, aeb8390) after a review whose findings were fixed in it. The
   motion test's timeouts were reproduced under load and fixed by a larger virtual-time budget for the motion pass
-  (#159, in review). 1.3 adds `src/core/registry.js` (internal), registers the map as the default type, draws a typed view of a
+  (#159, merged). 1.3 adds `src/core/registry.js` (internal), registers the map as the default type, draws a typed view of a
   diagram not drawn yet as plain cards with a warning, joins the typed checks into `validate()` (the 28 examples: no
   error, one warning per view), makes drawing refuse a newer `schemaVersion`, and moves `measureText` and the held
-  warnings into the core (`src/core/text.js`, `src/core/warn.js`), so the core no longer imports the map.
+  warnings into the core (`src/core/text.js`, `src/core/warn.js`), so the core no longer imports the map. The maintainer chose
+  whole built files for families (`notes/stage-1.md` §2.5): the registry stays internal until the spike.
