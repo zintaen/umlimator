@@ -3035,6 +3035,11 @@ Stage 1a of the plan for 28 diagram types (`docs/diagrams/`). Nothing new is dra
 - `layout()`, `render()` and the other drawing calls refuse a model whose `schemaVersion` is a whole number above 2
   (they throw, with the message `validate()` gives) rather than draw it wrongly. Any other value that is not 1 or 2
   (0, 1.5, "2") is a warning, and the model draws as a map, as it did.
+- **The command line and the page on typed models (1.8).** `render`, `check`, `stills` and `pdf` work on a version-2
+  model: the upstream engine's check is shown each member as a card, so a line may end on one (F3); the page's search
+  for row orders bakes no layout into a typed view (F4). The CLI's page inlines `lib/umlimator-all.js`, a second whole
+  file built from the same sources with every diagram family in it (`umlimator/all`); until a family ships it holds the
+  same code as `lib/umlimator.js` (F5, stage 1 note §2.5).
 
 What moves for a host that upgrades: nothing is drawn differently. `validate()` returns a new error for a
 `schemaVersion` that is a whole number above 2, and drawing such a model throws; any other value but 1 or 2 is a

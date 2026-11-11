@@ -173,6 +173,24 @@ with tempfile.TemporaryDirectory() as tmp:
        and heads == {flat("Bike share › What runs"), flat("Bike share › What runs › Fleet service")} and two[-1].startswith("Rules"), [r, [p[:40] for p in two]])
     dark = fills((t / "two.pdf").read_bytes()) if two else []
     ok("pdf --theme dark · its pages are dark to the edge", dark and max(dark[0]) < .15, dark[:3])
+    # schema version 2 (1.8): typed models go through the upstream engine's check (a line may end on a member, F3), the
+    # page bakes no layout into a typed view (F4), and render, check, stills and pdf work on them
+    for name in ("01-class", "05-component"):
+        src = json.loads((ROOT / "docs" / "diagrams" / "examples" / f"{name}.json").read_text())
+        r = cli("render", str(ROOT / "docs" / "diagrams" / "examples" / f"{name}.json"), "--out", str(t / f"{name}.html"))
+        ok(f"render · a typed model ({name}): the engine accepts lines that end on members, and the check is clean",
+           r is not None and not r.get("problems") and not r.get("errors"), r)
+        page = (t / f"{name}.html").read_text(encoding="utf-8") if r else ""
+        data = re.search(r'<script[^>]*id="visual-data"[^>]*>(.*?)</script>', page, re.S)
+        views = json.loads(data.group(1))["views"] if data else []
+        ok(f"render · {name}: no layout is baked into a typed view; one the model gives is kept",
+           views and all(("layout" in v) == ("layout" in w) for v, w in zip(views, src["views"])), [(v["id"], "layout" in v) for v in views])
+        c = cli("check", str(t / f"{name}.html"))
+        ok(f"check · {name}: every view checked, nothing wrong", c is not None and c.get("checked") and not c["problems"] and not c["errors"], c)
+        st = cli("stills", str(t / f"{name}.html"), "--out", str(t / f"stills-{name}"))
+        ok(f"stills · {name}: a picture of every view", st is not None and len(list((t / f"stills-{name}").glob("*.png"))) == len(src["views"]), st)
+        pd = cli("pdf", str(t / f"{name}.html"), "--out", str(t / f"{name}.pdf"))
+        ok(f"pdf · {name}: written", pd is not None and (t / f"{name}.pdf").read_bytes()[:5] == b"%PDF-", pd)
     # card shapes (0.15.0): a model in the c4 notation prints its shapes, and its legend keys them
     cli("render", str(ROOT / "examples" / "shapes.json"), "--out", str(t / "shapes.html"), "--no-check")
     shp = read("shapes.pdf") if cli("pdf", str(t / "shapes.html"), "--out", str(t / "shapes.pdf")) else []

@@ -40,6 +40,12 @@ function body(name) {
 const found = readdirSync(new URL('src/', root), { recursive: true }).filter(f => f.endsWith('.js')).map(f => f.replaceAll('\\', '/').slice(0, -3)).sort();
 if (found.join() !== [...ORDER].sort().join()) throw new Error(`tools/build.mjs: ORDER lists ${[...ORDER].sort().join(', ')}; src/ has ${found.join(', ')}`);
 
-const out = new URL('lib/umlimator.js', root);
-writeFileSync(out, [HEADER, ...ORDER.map(body)].join('\n') + '\n');
-execFileSync(process.execPath, ['--check', fileURLToPath(out)], { stdio: 'inherit' }); // it parses
+// two whole files from the same sources (stage 1 note §2.5): the core and the map, for hosts that draw maps; and every
+// diagram family too, which the standalone page inlines. Until a family exists, they hold the same code
+const ALL = [...ORDER]; // families are added here
+for (const [name, list, what] of [['umlimator.js', ORDER, ''], ['umlimator-all.js', ALL, ' This file adds every diagram family to umlimator.js.']]) {
+  const out = new URL('lib/' + name, root);
+  const head = what ? HEADER.replace(/\n \*\/$/, `\n *${what}\n */`) : HEADER;
+  writeFileSync(out, [head, ...list.map(body)].join('\n') + '\n');
+  execFileSync(process.execPath, ['--check', fileURLToPath(out)], { stdio: 'inherit' }); // it parses
+}

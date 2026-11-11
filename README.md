@@ -374,7 +374,7 @@ With `UMLIMATOR_OFFLINE=1` the CLI fetches nothing: a logo not in the cache keep
 ## Development
 
 ```bash
-npm run build               # src/ into lib/umlimator.js: edit the sources, commit both
+npm run build               # src/ into lib/umlimator.js and lib/umlimator-all.js: edit the sources, commit all three
 node --test                 # layout() in Node: the bench views' geometry and the layout rules
 python3 tests/embed.py      # render() in headless Chrome: events, keyboard, colours, contrast, editing, the element
 python3 bench/bench.py --check-determinism --expect bench/expected.json --max-ms m50=2000
@@ -398,7 +398,7 @@ umlimator_import.py          import's readers: Structurizr DSL, C4-PlantUML, Mer
 umlimator_mcp.py             the MCP server that `umlimator.py mcp` runs
 action.yml                   the diff Action: what a pull request changes in its maps, posted on it
 src/                         the module's sources, by layer: core, draw, layout, map, canvas, page (tools/build.mjs joins them)
-lib/                         the module (umlimator.js, built and committed), its types, the default theme, <umlimator-map> and the docs plugins
+lib/                         the module (umlimator.js; umlimator-all.js with every diagram family; both built and committed), its types, the default theme, <umlimator-map> and the docs plugins
 engine/                      the page templates the CLI inlines the module into; the upstream renderer and schema
 docs/                        the module's API and the editing design; docs/diagrams/: the plan for 28 diagram types (not built yet)
 tests/, bench/               tests, benchmark models and results

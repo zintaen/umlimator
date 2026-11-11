@@ -555,7 +555,8 @@ function mapAudit(approx) {
   const root = host.attachShadow({ mode: 'open' }); root.adoptedStyleSheets = [sheet()];
   const routes = {}, layouts = {}, laneReport = {};
   views.forEach(v => { const L = planOf(v.id); if (L.hub) laneReport[v.id] = L.lanes.map(l => l.title); });
-  if (Q.get('optimize')) views.forEach(v => { if (!v.layout && !approx.planOf(v.id).hub) { const r = approx.optimize(v.id); layouts[v.id] = r.pos; layoutCache[v.id] = r.pos; } });
+  const typed = id => D.schemaVersion === 2 && ((D.views || []).find(x => x && x.id === id) || {}).diagram != null && ((D.views || []).find(x => x.id === id) || {}).diagram !== 'map'; // a typed view lays itself out: nothing to bake (F4)
+  if (Q.get('optimize')) views.forEach(v => { if (!v.layout && !typed(v.id) && !approx.planOf(v.id).hub) { const r = approx.optimize(v.id); layouts[v.id] = r.pos; layoutCache[v.id] = r.pos; } });
   const only = (Q.get('views') || '').split(',').filter(Boolean), want = v => !only.length || only.some(p => p.endsWith('*') ? v.id.startsWith(p.slice(0, -1)) : v.id === p);
   views.forEach(v => { if (!want(v) || !(v.nodeIds || []).some(i => N[i])) return; const { g, markup } = buildView(v.id, { tour: !Q.get('still'), openHint: !Q.get('reader') }); root.innerHTML = markup; out.push(...auditSvg(root.firstElementChild, g, 'view ' + v.id)); Object.entries(g.stats || {}).forEach(([k, n]) => { routes[k] = (routes[k] || 0) + n; });
     g.edges.filter(e => e.how === 'fallback').forEach(e => (routes.fallbackEdges ||= []).push(`${v.id}: ${e.from}(${e.fs})→${e.to}(${e.ts})`)); });
