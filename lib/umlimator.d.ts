@@ -2,6 +2,9 @@
 
 /** A map model: engine/references/schema.md § Map model, plus the README's umlimator fields. Never mutated. */
 export interface MapModel {
+  /** 1 (or none): a map, read as always. 2: it may hold typed elements and typed views (docs/diagrams/model.md). A newer
+   *  version is an error: validate() says so and migrate() throws (0.17.0). */
+  schemaVersion?: number;
   title?: string;
   root?: string;
   nodes: MapNode[];
@@ -39,6 +42,15 @@ export interface MapNode {
   owner?: string;
   /** The card's own shape, in every notation (0.15.0); without it, the notation draws the card by its kind. */
   shape?: Shape;
+  /** In schema version 2 (0.17.0) a node may also be a typed Element: type, parent, props, members. */
+  [key: string]: unknown;
+}
+/** A typed element in schema version 2's envelope (docs/diagrams/model.md §1): a node, a member, a typed edge, a
+ *  fragment. Nodes, edges, members and fragments share one id space; an id never contains "->". A typed edge is an
+ *  Element with `from` and `to`, which may name a member. A typed view is a MapView with `diagram` (uml.class), and may
+ *  have `subject`, `direction` ('right' | 'down'), `notation`, `present`, `fragments` and `timeline`. None is drawn yet. */
+export interface Element {
+  id: string; type: string; label?: string; parent?: string; props?: Record<string, unknown>; members?: Element[];
   [key: string]: unknown;
 }
 /** What a line means, drawn as its colour: calls (the default), feeds (hands work on), triggers (suggests, offers, fires),
@@ -347,6 +359,9 @@ export function layout(model: MapModel, viewId: string, options?: { repair?: boo
  *  a view a card opens that the host has not loaded yet, a line from a card or box to itself, which is not drawn). The JSON Schema is umlimator/schema.json. */
 export interface Problem { level: 'error' | 'warning'; path: string; message: string }
 export function validate(model: MapModel): Problem[];
+/** The model at the schema version this release reads (0.17.0). Versions 1 and 2 come back unchanged; lines with no id
+ *  keep their positional names. Throws on a newer version, or a schemaVersion that is not one. */
+export function migrate<M extends MapModel>(model: M): M;
 /** One issue of the layout check: its message, as the page's check words it, and the cards, lines and boxes it is about
  *  (exactly those, even where two cards share a label). */
 export interface CheckIssue { message: string; targets: Ref[] }

@@ -16,6 +16,9 @@
    "type": "string",
    "description": "The map's title."
   },
+  "schemaVersion": {
+   "description": "1 (or none): a map, read as always. 2: it may hold typed elements and typed views (docs/diagrams/model.md). A newer version is an error (0.17.0)."
+  },
   "root": {
    "type": "string",
    "description": "The view shown first (default: the view with no parent)."
@@ -414,6 +417,18 @@
        }
       }
      }
+    },
+    "type": {
+     "description": "Schema version 2: the element's type, <notation>.<Name> (uml.Class). validate() checks typed fields only in a model with schemaVersion 2."
+    },
+    "parent": {
+     "description": "Schema version 2: the element that owns it (a package, a composite state, a lane)."
+    },
+    "props": {
+     "description": "Schema version 2: the type's own properties."
+    },
+    "members": {
+     "description": "Schema version 2: owned parts, in display order (attributes, ports, regions, lanes), each a typed element."
     }
    }
   },
@@ -700,6 +715,15 @@
     "when": {
      "type": "string",
      "description": "When the line is used."
+    },
+    "type": {
+     "description": "Schema version 2: the element's type, <notation>.<Name> (uml.Class)."
+    },
+    "parent": {
+     "description": "Schema version 2: the element that owns it (a package, a composite state, a lane)."
+    },
+    "props": {
+     "description": "Schema version 2: the type's own properties."
     }
    }
   },
@@ -939,6 +963,27 @@
     "kindsFromLabels": {
      "type": "boolean",
      "description": "Guess a line's kind from its label's words when its edges name none (render() and layout(); the standalone page always does)."
+    },
+    "diagram": {
+     "description": "Schema version 2: the view's diagram type (uml.class); without it the view is a map. Not drawn yet (0.17.0)."
+    },
+    "subject": {
+     "description": "Schema version 2: the element this diagram is the inside of."
+    },
+    "direction": {
+     "description": "Schema version 2: a typed view's layout direction (default right). A map stays left to right."
+    },
+    "notation": {
+     "description": "Schema version 2: a skin of the diagram type (crowsfoot for er)."
+    },
+    "present": {
+     "description": "Schema version 2: what the layout cannot derive, per element: collapsed compartments, rows shown before +n more."
+    },
+    "fragments": {
+     "description": "Schema version 2: a sequence view's combined fragments and interaction uses."
+    },
+    "timeline": {
+     "description": "Schema version 2: a timing view's unit, changes and constraints."
     }
    }
   },

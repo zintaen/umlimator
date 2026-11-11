@@ -1,41 +1,32 @@
 // Checks the target examples against docs/diagrams/model.md: node docs/diagrams/examples/check.mjs
-// Structure only (ids, references, type names, order). It draws nothing: the library does not read these fields yet.
+// Structure only: the library's typed core checks (ids, types, ownership, ends), then what model.md says of each type
+// (diagram names, props that name elements, sequence and timing order). It draws nothing.
 import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { typedProblems } from '../../../src/core/model.js';
 
 const DIAGRAMS = ['uml.class', 'uml.object', 'uml.package', 'uml.composite-structure', 'uml.component', 'uml.deployment', 'uml.profile',
   'uml.use-case', 'uml.activity', 'uml.state-machine', 'uml.sequence', 'uml.communication', 'uml.interaction-overview', 'uml.timing',
   'uml.information-flow', 'sysml.requirement', 'sysml.block-definition', 'sysml.internal-block', 'sysml.parametric', 'er', 'flowchart',
   'dfd', 'c4', 'bpmn', 'mindmap', 'aws', 'gcp', 'azure']; // in file order: 01 to 28
 const C4 = ['c4.landscape', 'c4.context', 'c4.container', 'c4.component', 'c4.dynamic', 'c4.deployment'];
-const TYPE = /^[a-z0-9]+\.[A-Z][A-Za-z0-9]*$/;
+const TYPE = /^[a-z0-9]+\.[A-Z][A-Za-z0-9]*$/; // in the examples every element is typed, though a version-2 model may hold untyped cards
 const REF = ['replyTo', 'attachedTo', 'references', 'container', 'after'], REFS = ['conveyed', 'covers', 'extensionPoints', 'categoryValueRef']; // props that name elements
 
 export function check(model, expected) {
-  const out = [], say = m => out.push(m), ids = new Map(), all = [], arr = x => (Array.isArray(x) ? x : []);
+  // ids, types, ownership, edge ends and typed views: the library's own checks (src/core/model.js)
+  const out = typedProblems(model).map(p => `${p.path}: ${p.message}`), say = m => out.push(m), ids = new Set(), all = [], arr = x => (Array.isArray(x) ? x : []);
   if (model.schemaVersion !== 2) say('schemaVersion is not 2');
-  const add = (x, where, typed = true) => { // one id space: nodes, edges, members, fragments, a timing view's changes and constraints
-    if (!x || typeof x.id !== 'string' || !x.id) return say(`${where}: no id`);
-    if (x.id.includes('->')) say(`${where} ${x.id}: an id may not contain "->"`);
-    if (ids.has(x.id)) say(`id ${x.id} is used twice (${ids.get(x.id)} and ${where})`); else ids.set(x.id, where);
-    if (typed && !TYPE.test(x.type || '')) say(`${where} ${x.id}: type ${JSON.stringify(x.type)} is not <notation>.<Name>`);
-    all.push(x); arr(x.members).forEach(m => add(m, `member of ${x.id}`));
-  };
+  const add = (x, typed = true) => { if (!x || typeof x.id !== 'string') return; ids.add(x.id); all.push(x);
+    if (typed && !TYPE.test(x.type || '')) say(`${x.id}: type ${JSON.stringify(x.type)} is not <notation>.<Name>`); arr(x.members).forEach(m => add(m)); };
   const views = arr(model.views), vids = new Set(views.map(v => v.id)), inline = v => arr(v.edges).filter(e => e && typeof e === 'object');
-  arr(model.nodes).forEach(n => add(n, 'node'));
-  arr(model.edges).forEach(e => add(e, 'edge'));
-  views.forEach(v => { inline(v).forEach(e => add(e, `edge of view ${v.id}`)); arr(v.fragments).forEach(f => add(f, `fragment of view ${v.id}`));
-    arr((v.timeline || {}).changes).forEach(c => add(c, `change of view ${v.id}`, false)); arr((v.timeline || {}).constraints).forEach(c => add(c, `constraint of view ${v.id}`)); });
+  arr(model.nodes).forEach(n => add(n)); arr(model.edges).forEach(e => add(e));
+  views.forEach(v => { inline(v).forEach(e => add(e)); arr(v.fragments).forEach(f => add(f)); arr((v.timeline || {}).constraints).forEach(c => add(c)); });
   const has = (id, what) => { if (id != null && !ids.has(id)) say(`${what}: ${JSON.stringify(id)} is not an element`); };
-  const N = new Map(arr(model.nodes).map(n => [n.id, n])), parentOf = new Map();
-  const owned = x => { if (x.parent != null) { has(x.parent, `parent of ${x.id}`); parentOf.set(x.id, x.parent); } arr(x.members).forEach(owned); };
-  arr(model.nodes).forEach(owned);
-  const ends = (e, where) => { has(e.from, `${where} ${e.id}.from`); has(e.to, `${where} ${e.id}.to`); if (e.parent != null) has(e.parent, `parent of ${e.id}`);
-    ['from', 'to'].forEach(k => has(((e.props || {}).ends || {})[k]?.part, `${where} ${e.id}.props.ends.${k}.part`)); };
-  arr(model.edges).forEach(e => ends(e, 'edge'));
-  for (const [id] of parentOf) { const seen = new Set([id]); for (let p = parentOf.get(id); p != null; p = parentOf.get(p)) { if (seen.has(p)) { say(`${id} ends up inside itself`); break; } seen.add(p); } }
-  all.forEach(x => { const p = x.props || {}; // props that name other elements, or a view
+  const N = new Map(arr(model.nodes).map(n => [n.id, n]));
+  arr(model.edges).forEach(e => { if (e && e.type == null) ['from', 'to'].forEach(k => has(e[k], `edge ${e.id}.${k}`)); }); // an untyped edge: the core leaves it to the map's checks
+  all.forEach(x => { const p = x.props || {}; // props that name other elements, or a view: a type's own checks, later
     REF.forEach(k => has(p[k], `${x.id}.props.${k}`)); REFS.forEach(k => arr(p[k]).forEach(id => has(id, `${x.id}.props.${k}`)));
     if (p.refersTo != null && !vids.has(p.refersTo)) say(`${x.id}.props.refersTo: ${p.refersTo} is not a view`); });
   if (!views.length) say('no views');
@@ -43,12 +34,6 @@ export function check(model, expected) {
   views.forEach(v => {
     const at = `view ${v.id}`, ok = expected === 'c4' ? C4.includes(v.diagram) : DIAGRAMS.includes(v.diagram) || C4.includes(v.diagram);
     if (!ok) say(`${at}: diagram ${JSON.stringify(v.diagram)} is not one of model.md's`);
-    arr(v.nodeIds).forEach(id => { if (!N.has(id)) say(`${at}: nodeIds has ${JSON.stringify(id)}, which is not a node`); });
-    arr(v.edges).forEach(e => (typeof e === 'string' ? has(e, `${at}.edges`) : ends(e, `edge of ${at}`)));
-    arr(v.fragments).forEach(f => { if (f.parent != null) has(f.parent, `parent of ${f.id}`); });
-    has(v.subject, `${at}.subject`);
-    Object.keys(v.layout || {}).forEach(id => has(id, `${at}.layout`));
-    Object.keys(v.present || {}).forEach(id => has(id, `${at}.present`));
     if (v.parent != null && !vids.has(v.parent)) say(`${at}: parent ${v.parent} is not a view`);
     if (v.diagram === 'uml.sequence') { // a message's parent is an operand, and an operand's messages are next to each other in time
       const ops = new Map(arr(v.fragments).flatMap(f => arr(f.members).map(o => [o.id, f]))), msgs = inline(v); // an operand's id, and its fragment

@@ -17,7 +17,7 @@ Update this table in every pull request that belongs to the plan.
 | Planning | | Proposal, model, plan, risks, 28 target examples, UI draft | Merged 12 Nov 2026 (60a159c) | #151 |
 | Before the plan | 0.16.0 | Fixes already on `main` (#146 to #148, #150) | Released 11 Nov 2026 (cf516c8, npm latest); map-repo pinned to it | #146, #147, #148, #150, #152, #153 |
 | Before the split | 0.16.1 | `validate()` warns of a line from a card to itself (`risks.md` F1) | Released 11 Nov 2026 (8f0240f, GitHub and npm latest); map-repo pinned to it | #155, #156 |
-| 1a Foundation | 0.17.0 | Work packages 1.1 to 1.8 | The stage 1 design note ([`notes/stage-1.md`](notes/stage-1.md)) approved and merged (5c4979d). 1.1, the split, merged. Next: 1.2, schema version 2 | #154, #157 |
+| 1a Foundation | 0.17.0 | Work packages 1.1 to 1.8 | Note approved (#154). 1.1, the split, merged (657e7e9). 1.2, schema version 2, in review. Next: 1.3, the registry | #154, #157, #158 |
 | 1b Class | 0.18.0 | Work packages 1.9 to 1.12 | Not started | |
 | 2 | 0.19.0 | Object, package | Not started | |
 | 3 | 0.20.0 | Sequence, communication | Not started | |
@@ -124,3 +124,8 @@ node docs/diagrams/examples/check.mjs         # the target examples match model.
 - **11 Nov 2026 (1.1).** The split opened as #157: 21 sources under `src/`, `tools/build.mjs`, and two CI checks (a
   fresh `lib/`, true imports). The built file holds 0.16.1's 129 top-level statements and 886 comments, reordered;
   every suite passes, the geometry hashes match, and the 26 stills of the examples are byte-identical.
+- **11 Nov 2026 (1.1 merged, 1.2).** The split merged (#157, 657e7e9). Its CI hit the `tests/motion.html` timeout on
+  three of six runs, each passing on a re-run. 1.2 adds `src/core/model.js`: `migrate()` (public), the version check that
+  `validate()` now reports (F6), and the typed core's checks (ids, types, ownership, edge ends, typed views), which the
+  28 target examples pass and `examples/check.mjs` now reuses. `validate()` runs the typed checks from 1.3, with the
+  registry, as the note says. Unknown types are warned of from 1.3 too: until a type is registered, none is known.

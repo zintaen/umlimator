@@ -189,6 +189,8 @@ A model has shared `nodes` and `edges`, and `views` that each show a subset, wit
 path. The full schema is `engine/references/schema.md` (§ Map model); `examples/bookshop.json` uses most of it.
 A model file that starts with `"$schema": "<path to>/umlimator.schema.json"` (exported as `umlimator/schema.json`)
 gets completion and checks in editors, and `validate(model)` lists its errors and warnings, each with where it is.
+`"schemaVersion": 2` marks a model that may hold typed elements and typed views (`docs/diagrams/model.md`); none is
+drawn yet. A model with no `schemaVersion` is a map, as always, and a version newer than the module reads is an error.
 
 Card kinds: `frontend`, `backend`, `ai`, `database`, `queue`, `security`, `cloud`, `external` and `file` (skill-map
 kinds such as `public`, `lane`, `script`, `hook` and `board` work too). Fields beyond the schema:
