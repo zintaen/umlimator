@@ -262,5 +262,5 @@ node docs/diagrams/examples/check.mjs         # the target examples match model.
   `examples/sales-classes.json` with `lib/umlimator.js`, and of the class example with `lib/umlimator-all.js`, to main's
   (9c1cf4f); `tests/core-diet.html` holds `render()`'s markup of 11 views (three examples from `lib/umlimator.js`, the
   class example from `lib/umlimator-all.js`); the bench's geometry hashes match and `tests/class.html` passes.
-  `lib/umlimator.js`: 182,601 B with `gzip -9`, 10.70% over 0.16.0 and 10.65% over 0.16.1 (189,745 B before);
-  1,152 bytes above 10%. What more could leave the core changes what it does: see risks.md C5.
+  `lib/umlimator.js`: 182,603 B with `gzip -9`, 10.70% over 0.16.0 and 10.65% over 0.16.1 (189,745 B before);
+  1,154 bytes above 10%. What more could leave the core changes what it does: see risks.md C5.

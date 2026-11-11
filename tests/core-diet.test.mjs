@@ -61,8 +61,10 @@ if (process.argv[2] === '--record') {
     assert.match(txt('docs/diagrams/plan.md'), /^src\/typed\/ /m);
   });
 
-  test('the core calls each TYPED hook unguarded: lib/umlimator.js never reaches one (src/typed/ fills them all in umlimator-all.js)', () => {
-    for (const f of ['src/draw/svg.js', 'src/layout/layered.js']) assert.doesNotMatch(readFileSync(new URL('../' + f, here), 'utf8'), /TYPED\.\w+ &&/, f);
+  // svgOf draws a registered type's own geometry with or without src/typed/draw.js (tests/type-hooks.html registers one from
+  // src/ with no src/typed/), so its hook stays guarded; layoutPass's hooks run only for dg.typed, which only src/typed/ sets
+  test('svgOf calls TYPED.lines only when src/typed/draw.js has filled it', () => {
+    assert.match(readFileSync(new URL('../src/draw/svg.js', here), 'utf8'), /!map && TYPED\.lines \? TYPED\.lines\(/);
   });
 
   test('umlimator.js holds none of src/typed/, and umlimator-all.js holds it all', () => {
