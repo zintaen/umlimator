@@ -42,7 +42,7 @@ export function reach(model, viewId, from, options = {}) {
 /** A view in plain sentences: its cards and their kinds, its boxes, what each card's lines do (in run order on a sequence
  *  view), and the cards with no line. The same model gives the same words: a text alternative, docs, or an AI's context. */
 export function describe(model, viewId) {
-  const T = diagramOf(arrOf(model && model.views).find(v => v && v.id === viewId)); if (T && T.describe) return T.describe(model, viewId); // a type's own words (1.9)
+  const T = model && model.schemaVersion === 2 && diagramOf(arrOf(model.views).find(v => v && v.id === viewId)); if (T && T.describe) return T.describe(model, viewId); // a type's own words (1.9)
   const { ctx, v, ids, edges } = lineGraph(model, viewId), boxes = (v.containers || []).filter(c => c && c.id);
   const name = id => ctx.N[id] ? ctx.nodeIn(id, viewId).label || id : (boxes.find(c => c.id === id) || {}).label || id;
   const list = xs => xs.length < 3 ? xs.join(' and ') : xs.slice(0, -1).join(', ') + ' and ' + xs[xs.length - 1];

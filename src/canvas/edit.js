@@ -159,13 +159,15 @@ function typedEditor(api) {
     const text = (f, v, name, more = '') => `<label>${esc(name)}<input data-f="${esc(f)}" data-was="${esc(v)}" value="${esc(v)}"${more}${off}></label>`;
     let h = `<h3>Properties${x.type != null ? ': ' + esc(x.type) : ''}</h3>` + text('label', x.label ?? '', 'Name');
     schema.forEach(f => { const v = Array.isArray(f.path) ? f.path.reduce((o, k) => isRec(o) ? o[k] : undefined, P) : P[f.key], name = f.label || f.key; // path: a field inside props (ends.from.role)
-      if (f.kind === 'bool') h += `<label class="um-check"><input type="checkbox" data-f="p:${esc(f.key)}" data-key="${esc(f.key)}"${v ? ' checked' : ''}${off}>${esc(name)}</label>`;
-      else if (f.kind === 'enum') h += `<label>${esc(name)}<select data-f="p:${esc(f.key)}" data-key="${esc(f.key)}"${off}>${['', ...arrOf(f.options)].map(o => `<option value="${esc(o)}"${o === v ? ' selected' : ''}>${esc(o)}</option>`).join('')}</select></label>`;
-      else h += text('p:' + f.key, f.kind === 'list' ? arrOf(v).join(', ') : v ?? '', name, ` data-key="${esc(f.key)}"${Array.isArray(f.path) ? ` data-path="${esc(JSON.stringify(f.path))}"` : ''}${f.kind === 'list' ? ' data-list' : ''}`); });
+      const key = ` data-key="${esc(f.key)}"${Array.isArray(f.path) ? ` data-path="${esc(JSON.stringify(f.path))}"` : ''}`;
+      if (f.kind === 'bool') h += `<label class="um-check"><input type="checkbox" data-f="p:${esc(f.key)}"${key}${v ? ' checked' : ''}${off}>${esc(name)}</label>`;
+      else if (f.kind === 'enum') h += `<label>${esc(name)}<select data-f="p:${esc(f.key)}"${key}${off}>${['', ...arrOf(f.options)].map(o => `<option value="${esc(o)}"${o === v ? ' selected' : ''}>${esc(o)}</option>`).join('')}</select></label>`;
+      else h += text('p:' + f.key, f.kind === 'list' ? arrOf(v).join(', ') : v ?? '', name, key + (f.kind === 'list' ? ' data-list' : '')); });
     const rest = schema.length ? [] : Object.entries(P); // no schema: what it holds, to read
     if (rest.length) h += '<dl>' + rest.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(typeof v === 'string' ? v : JSON.stringify(v))}</dd>`).join('') + '</dl>';
-    if (e.kind === 'node') {
-      const ms = arrOf(x.members).filter(m => isRec(m) && typeof m.id === 'string'), M = def().member, line = m => M ? M.print(m) : m.label ?? ''; // a type's member text: "+ total: Money [1]" (1.9)
+    const M = def().member;
+    if (e.kind === 'node' && !(M && M.holds && !M.holds(x))) { // a comment holds none
+      const ms = arrOf(x.members).filter(m => isRec(m) && typeof m.id === 'string'), line = m => M ? M.print(m) : m.label ?? ''; // a type's member text: "+ total: Money [1]" (1.9)
       h += '<h3>Members</h3><ul>' + ms.map((m, i) => `<li><input data-f="m:${esc(m.id)}" data-m="${esc(m.id)}" data-was="${esc(line(m))}" value="${esc(line(m))}" aria-label="Member ${i + 1} of ${ms.length}${can('reorder') ? ', Alt + arrows to move it' : ''}"${off}>`
         + (can('reorder') ? `<button data-f="up:${esc(m.id)}" data-up="${esc(m.id)}" aria-label="Move ${esc(nameOf(m))} up">↑</button><button data-f="down:${esc(m.id)}" data-down="${esc(m.id)}" aria-label="Move ${esc(nameOf(m))} down">↓</button>` : '') + '</li>').join('')
         + '</ul>' + (can('add') ? '<input data-f="new" data-new placeholder="New member, Enter adds it" aria-label="New member">' : '');
@@ -196,8 +198,8 @@ function typedEditor(api) {
     const d = t.dataset, at = elementsOf(model()), id = selId(at);
     const M = def().member, bad = why => { t.setAttribute('aria-invalid', 'true'); api.status(why); }; // a line the type cannot read: kept as written, nothing applied (E3)
     if (d.new != null) { const value = t.value.trim(), x = id && at.get(id); if (!value || !x || !can('add')) return;
-      const r = M && M.parse(value, x.x.type === 'uml.Enumeration' ? 'uml.EnumerationLiteral' : undefined); if (r && r.error) return bad(r.error);
-      const prev = arrOf(x.x.members).filter(isRec).pop(); t.value = '';
+      const r = M && M.add(value, x.x); if (r && r.error) return bad(r.error);
+      const prev = arrOf(x.x.members).filter(isRec).pop(); t.value = ''; t.removeAttribute('aria-invalid');
       return emit([{ op: 'add', element: r ? { ...typed(r, 'member'), label: r.label, ...(Object.keys(r.props).length ? { props: r.props } : {}) } : { ...typed(prev || {}, 'member'), label: value }, owner: id }]); }
     if (!can('rename') || (!id && d.m == null)) return;
     let value = t.type === 'checkbox' ? t.checked : t.value.trim();
@@ -231,7 +233,7 @@ function typedEditor(api) {
       else if (d.orphans != null) { orphans = b.checked; put('.um-els', outline()); } });
     panel.addEventListener('change', e => { if (e.target.dataset.orphans == null) commit(e.target); });
     panel.addEventListener('keydown', e => { e.stopPropagation(); const t = e.target, K = e.key; // the panel's keys stay in it
-      if (K === 'Escape') { if (t.tagName === 'INPUT' && t.type !== 'checkbox') t.value = t.dataset.was ?? ''; api.focus(); } // what was typed is not kept
+      if (K === 'Escape') { if (t.tagName === 'INPUT' && t.type !== 'checkbox') { t.value = t.dataset.was ?? ''; t.removeAttribute('aria-invalid'); } api.focus(); } // what was typed is not kept
       else if (K === 'Enter' && t.tagName === 'BUTTON') { e.preventDefault(); t.click(); }
       else if (K === 'Enter' && t.tagName === 'INPUT' && t.type !== 'checkbox') { e.preventDefault(); commit(t); }
       else if (e.altKey && t.dataset.m != null && (K === 'ArrowUp' || K === 'ArrowDown')) { e.preventDefault(); moveMember(t.dataset.m, K === 'ArrowUp' ? -1 : 1); } });

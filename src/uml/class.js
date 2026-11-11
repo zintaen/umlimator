@@ -12,15 +12,16 @@ import { layoutTyped } from '../layout/typed.js';
 
 const UML_OBJ = x => x !== null && typeof x === 'object' && !Array.isArray(x), UML_ARR = x => (Array.isArray(x) ? x : []);
 const UML_HAS = x => x != null && x !== '';
+const UML_OWN = (o, k) => (o != null && Object.hasOwn(o, k) ? o[k] : undefined); // a lookup by a model's id or type: 'constructor' is not Object's (risks.md M3)
 
 /* ---- the member micro-syntax (risks.md E3, E4) ----
    A property:  [visibility] [{static}] [/]name [: Type] [[multiplicity]] [= default]      + {static} /total: Money [1] = 0
    An operation: [visibility] [{static}] [{abstract}] name([direction] name: Type, …) [: Type]   + place(at: Date, in qty: Int): Order
    A literal:   name
-   Visibility is + - # ~. A multiplicity is n, *, n..m or n..*, its text kept as written. parseMember() returns
+   A name is letters of any script, digits, _ and $; a type may end in [] (String[]). Visibility is + - # ~. A multiplicity is n, *, n..m or n..*, its text kept as written. parseMember() returns
    { type, label, props } or { error }; printMember() writes a member back, and print(parse(x)) is stable. */
 const MEMBER_SIGN = { public: '+', private: '-', protected: '#', package: '~' }, SIGN_VIS = { '+': 'public', '-': 'private', '#': 'protected', '~': 'package' };
-const MEMBER_NAME = /^[A-Za-z_$][\w$]*/;
+const MEMBER_NAME = /^[\p{L}_$][\p{L}\p{M}\p{N}_$]*/u; // a name in any script: Größe, 名前
 const SYNTAX_KEYS = ['visibility', 'valueType', 'multiplicity', 'default', 'isStatic', 'isDerived', 'isAbstract', 'parameters', 'returnType'];
 
 /* a multiplicity's bounds: '1', '*', '0..1', '1..*', '2..5' → { lower, upper } (upper Infinity for *); null for anything else */
@@ -78,7 +79,7 @@ function parseMember(text, kind) {
   if (props.isAbstract) return fail('a property is not {abstract}');
   if (s[0] === ':') { // the type: up to a multiplicity or a default outside brackets
     let i = 1, depth = 0;
-    for (; i < s.length; i++) { const c = s[i]; if (c === '<' || c === '(') depth++; else if (c === '>' || c === ')') depth--; else if (depth === 0 && (c === '[' || c === '=')) break; }
+    for (; i < s.length; i++) { const c = s[i]; if (c === '<' || c === '(') depth++; else if (c === '>' || c === ')') depth--; else if (depth === 0 && c === '[' && s[i + 1] === ']') i++; else if (depth === 0 && (c === '[' || c === '=')) break; } // String[]: an array type, not a multiplicity
     const t = s.slice(1, i).trim(); if (!t) return fail('a type follows the colon');
     props.valueType = t; s = s.slice(i).trim();
   }
@@ -108,6 +109,12 @@ function memberEdit(m, text) {
   if (r.error) return r;
   const keep = Object.fromEntries(Object.entries(UML_OBJ(m.props) ? m.props : {}).filter(([k]) => !SYNTAX_KEYS.includes(k)));
   return { commands: [{ op: 'set', id: m.id, path: 'label', value: r.label }, { op: 'set', id: m.id, path: 'props', value: { ...keep, ...r.props } }] };
+}
+
+/* a line typed into an owner's "New member": on an enumeration a bare name is a literal, anything else a property or an operation */
+function memberAdd(text, owner) {
+  const t = String(text ?? '').trim(), nm = MEMBER_NAME.exec(t);
+  return parseMember(t, owner && owner.type === 'uml.Enumeration' && nm && nm[0] === t ? 'uml.EnumerationLiteral' : undefined);
 }
 
 /* ---- the vocabulary (model.md, uml.class) ---- */
@@ -213,7 +220,7 @@ function nodeName(n) {
 }
 function lineName(e, at) {
   const nm = id => { const r = at.get(id); return r ? nameOfEl(r.owner || r.x) + (r.owner ? '.' + nameOfEl(r.x) : '') : id; };
-  const [word] = LINE_WORDS[e.type] || ['Line'], said = lineLabel(e), E = endsOf(e);
+  const [word] = UML_OWN(LINE_WORDS, e.type) || ['Line'], said = lineLabel(e), E = endsOf(e);
   const end = w => { const t = [(E[w] || {}).role, (E[w] || {}).multiplicity].filter(UML_HAS); return t.length ? ` (${t.join(', ')})` : ''; };
   return `${word} from ${nm(e.from)}${end('from')} to ${nm(e.to)}${end('to')}${said ? ': ' + said : ''}`;
 }
@@ -224,10 +231,10 @@ function lineName(e, at) {
 function classGeo({ model, view, pos, memo }) {
   const at = classIndex(model), present = UML_OBJ(view.present) ? view.present : {}, ids = UML_ARR(view.nodeIds).filter(id => (at.get(id) || {}).kind === 'node');
   const shown = new Set(ids), top = id => { const r = at.get(id); return r && r.owner ? top(r.owner.id) : id; };
-  const nodes = ids.map(id => { const n = at.get(id).x, pr = UML_OBJ(present[id]) ? present[id] : {}, p = UML_OBJ(n.props) ? n.props : {};
-    const look = n.type === 'uml.Comment' ? { shape: 'note' } : { shape: 'classifier', stereotypes: [...(IMPLIED[n.type] ? [IMPLIED[n.type]] : []), ...UML_ARR(p.stereotypes).filter(UML_HAS)],
+  const nodes = ids.map(id => { const n = at.get(id).x, pr = UML_OBJ(UML_OWN(present, id)) ? present[id] : {}, p = UML_OBJ(n.props) ? n.props : {};
+    const look = n.type === 'uml.Comment' ? { shape: 'note' } : { shape: 'classifier', stereotypes: [...(UML_OWN(IMPLIED, n.type) ? [IMPLIED[n.type]] : []), ...UML_ARR(p.stereotypes).filter(UML_HAS)],
       abstract: !!p.isAbstract, compartments: compartmentsOf(n), collapsed: UML_ARR(pr.collapsed), ...(Number.isFinite(pr.rows) ? { rows: pr.rows } : {}) };
-    const d = { id, label: nameOfEl(n), type: n.type || 'uml.Class', kind: 'file', ...look, aria: nodeName(n), col: (pos[id] || [0, 0])[0], row: (pos[id] || [0, 0])[1] };
+    const d = { id, label: nameOfEl(n), type: n.type || 'uml.Class', kind: 'file', ...look, aria: nodeName(n), col: (UML_OWN(pos, id) || [0, 0])[0], row: (UML_OWN(pos, id) || [0, 0])[1] };
     return { ...d, ...SHAPE[d.shape].size(d) }; });
   const list = Array.isArray(view.edges) ? view.edges : UML_ARR(model.edges);
   const edges = list.map(e => (typeof e === 'string' ? (at.get(e) || {}).x : e)).filter(e => UML_OBJ(e) && typeof e.id === 'string')
@@ -245,7 +252,7 @@ const RULES = {
   'classifier-names': 'classifiers in one owner have different names',
   multiplicity: 'a multiplicity is n, *, n..m or n..*, its lower bound not above its upper',
   'generalization-cycle': 'nothing is its own ancestor',
-  'generalization-kinds': 'a generalization joins two classifiers of one kind',
+  'generalization-kinds': 'a generalization joins two classifiers of one kind (not a package, a comment or a member)',
   'realization-target': 'an interface realization runs from a classifier to an interface',
   'interface-composite': 'an interface owns no part by composition',
   'composite-multiplicity': 'a composite end\'s multiplicity is at most 1',
@@ -254,7 +261,7 @@ const RULES = {
 };
 function classProblems(model) {
   const out = [], at = classIndex(UML_OBJ(model) ? model : {}), q = id => JSON.stringify(nameOfEl((at.get(id) || { x: { id } }).x));
-  const say = (rule, path, ids, msg, level = 'error') => out.push({ level, rule, path, ids, message: `${rule}: ${msg}` });
+  const say = (rule, path, ids, msg, level = 'error') => out.push({ level, rule, path, ids: ids.filter(x => x != null), message: `${rule}: ${msg}` }); // a line with no end names what it has
   const els = [...at.values()], nodes = els.filter(r => r.kind === 'node' && String(r.x.type || '').startsWith('uml.')), lines = els.filter(r => r.kind === 'edge' && String(r.x.type || '').startsWith('uml.'));
   const typeOfId = id => (at.get(id) || { x: {} }).x.type, isCls = id => CLASSIFIERS.includes(typeOfId(id));
   nodes.forEach(({ x, path }) => {
@@ -279,9 +286,9 @@ function classProblems(model) {
       const b = UML_HAS(at2.multiplicity) ? multRule(String(at2.multiplicity), `${path}.props.ends.${w}.multiplicity`, [e.id], `the ${w} end of ${lineName(e, at)}`) : null;
       if (at2.aggregation === 'composite') {
         if (typeOfId(who) === 'uml.Interface') say('interface-composite', `${path}.props.ends.${w}.aggregation`, [e.id, who], `interface ${q(who)} owns a part by composition (${e.id})`);
-        if (b && b.upper > 1) say('composite-multiplicity', `${path}.props.ends.${w}.multiplicity`, [e.id, who], `the composite end at ${q(who)} has multiplicity [${at2.multiplicity}], more than 1 (${e.id})`); } });
+        if (b && b.upper > 1) say('composite-multiplicity', `${path}.props.ends.${w}.multiplicity`, [e.id, who], `the composite end${who != null ? ' at ' + q(who) : ''} has multiplicity [${at2.multiplicity}], more than 1 (${e.id})`); } });
     if (e.type === 'uml.Generalization') {
-      if (isCls(e.from) && isCls(e.to) && typeOfId(e.from) !== typeOfId(e.to)) say('generalization-kinds', path, [e.id, ...ends], `${typeWord(typeOfId(e.from)).toLowerCase()} ${q(e.from)} specializes ${typeWord(typeOfId(e.to)).toLowerCase()} ${q(e.to)} (${e.id})`);
+      if (at.has(e.from) && at.has(e.to) && (!isCls(e.from) || !isCls(e.to) || typeOfId(e.from) !== typeOfId(e.to))) say('generalization-kinds', path, [e.id, ...ends], `${typeWord(typeOfId(e.from)).toLowerCase()} ${q(e.from)} specializes ${typeWord(typeOfId(e.to)).toLowerCase()} ${q(e.to)} (${e.id})`);
       if (!parents.has(e.from)) parents.set(e.from, []); parents.get(e.from).push([e.to, path, e.id]); }
     if (e.type === 'uml.InterfaceRealization' && (typeOfId(e.to) !== 'uml.Interface' || !isCls(e.from) || typeOfId(e.from) === 'uml.Interface'))
       say('realization-target', path, [e.id, ...ends], `${e.id} runs from ${q(e.from)} to ${q(e.to)}: from a class, enumeration or data type to an interface`);
@@ -328,7 +335,7 @@ const CLASS_TYPE = registerDiagramType('uml.class', {
   // general one comes first: above its specializations in a view laid out down (risks.md L6)
   rankFlip: e => e.type === 'uml.Generalization' || e.type === 'uml.InterfaceRealization',
   layout: classGeo,
-  member: { print: printMember, parse: parseMember, edit: memberEdit },
+  member: { print: printMember, edit: memberEdit, add: memberAdd, holds: n => compartmentsOf(n).length > 0 }, // holds: the panel offers members (not on a comment or a package)
   validate: classProblems,
   rules: RULES,
   describe: classDescribe,

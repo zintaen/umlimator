@@ -30,10 +30,10 @@ const labelW = e => textW(fit((e.step != null ? e.step + ' · ' : '') + (e.label
    leaves a at row oa inside it and reaches b at row ob, as rowsFor's links do (the middle when not given). Each line into a
    box has its own entry, so two that cross on the way in to its cards count as crossing; they all met it at one point.
    fixed: items at a set row in columns of their own, which stay as they are (a box's far ends, in blockPos). */
-function untangle(cols, links, h = () => 1, fixed = {}) {
-  const colOf = {}; cols.forEach((c, k) => c.forEach(id => { colOf[id] = k; }));
-  const segs = [], extra = new Set(), want = {}, hh = id => extra.has(id) ? 1 : h(id), mid = (id, o) => o ?? (hh(id) - 1) / 2;
-  const tops = () => { const at = {}; cols.forEach(c => { let r = 0; c.forEach(id => { at[id] = fixed[id] ?? r; r += hh(id); }); }); return at; }; // each item's top row
+function untangle(cols, links, h = () => 1, fixed = Object.create(null)) { // maps by id: no prototype (M3)
+  const colOf = Object.create(null); cols.forEach((c, k) => c.forEach(id => { colOf[id] = k; }));
+  const segs = [], extra = new Set(), want = Object.create(null), hh = id => extra.has(id) ? 1 : h(id), mid = (id, o) => o ?? (hh(id) - 1) / 2;
+  const tops = () => { const at = Object.create(null); cols.forEach(c => { let r = 0; c.forEach(id => { at[id] = fixed[id] ?? r; r += hh(id); }); }); return at; }; // each item's top row
   const at0 = tops();
   links.forEach(([a, b, oa, ob], n) => {
     const ka = colOf[a], kb = colOf[b]; if (ka == null || kb == null || kb <= ka) return;
@@ -45,7 +45,7 @@ function untangle(cols, links, h = () => 1, fixed = {}) {
   });
   if (extra.size) cols.forEach((c, k) => { const ps = [...extra].filter(p => colOf[p] === k);
     if (ps.length) cols[k] = [...c.map(id => [id, at0[id], 0]), ...ps.map(p => [p, want[p], 1])].sort((x, y) => x[1] - y[1] || x[2] - y[2]).map(x => x[0]); });
-  const ins = {}, outs = {}; segs.forEach(([a, b, oa, ob]) => { (outs[a] ||= []).push([b, ob, oa]); (ins[b] ||= []).push([a, oa, ob]); });
+  const ins = Object.create(null), outs = Object.create(null); segs.forEach(([a, b, oa, ob]) => { (outs[a] ||= []).push([b, ob, oa]); (ins[b] ||= []).push([a, oa, ob]); });
   const crossings = () => { const at = tops(); let n = 0;
     for (let i = 0; i < segs.length; i++) for (let j = i + 1; j < segs.length; j++) { const [a, b, oa, ob] = segs[i], [c, d, oc, od] = segs[j];
       if (colOf[a] === colOf[c] && (at[a] + oa - at[c] - oc) * (at[b] + ob - at[d] - od) < 0) n++; }
@@ -75,9 +75,9 @@ function pullSources(ids, links, rank) {
    adjacent violators); on half rows from 0. A line between cards on one row runs straight, past fewer cards. h: an item's
    height in rows (a box in a view with boxes); a link [a, b, oa, ob] leaves a at row oa inside it and reaches b at row
    ob (a box's card), else at its middle. fixed: items at a set row, in columns of their own that stay (as untangle's). */
-function rowsFor(cols, links, h = () => 1, fixed = {}) {
-  const row = {}, colOf = {}; cols.forEach((c, k) => { let r = 0; c.forEach(id => { row[id] = fixed[id] ?? r; r += h(id); colOf[id] = k; }); });
-  const ins = {}, outs = {}, at = (id, o) => o ?? (h(id) - 1) / 2; // where a link meets an item, in rows from its top
+function rowsFor(cols, links, h = () => 1, fixed = Object.create(null)) {
+  const row = Object.create(null), colOf = Object.create(null); cols.forEach((c, k) => { let r = 0; c.forEach(id => { row[id] = fixed[id] ?? r; r += h(id); colOf[id] = k; }); });
+  const ins = Object.create(null), outs = Object.create(null), at = (id, o) => o ?? (h(id) - 1) / 2; // where a link meets an item, in rows from its top
   links.forEach(([a, b, oa, ob]) => { if (colOf[a] == null || colOf[b] == null || colOf[b] <= colOf[a]) return;
     (outs[a] ||= []).push([b, at(b, ob), at(a, oa)]); (ins[b] ||= []).push([a, at(a, oa), at(b, ob)]); });
   const median = xs => { const s = xs.slice().sort((a, b) => a - b), m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
@@ -86,7 +86,7 @@ function rowsFor(cols, links, h = () => 1, fixed = {}) {
       while (blocks.length > 1 && blocks.at(-2).sum / blocks.at(-2).n > blocks.at(-1).sum / blocks.at(-1).n) { const b = blocks.pop(), a = blocks.at(-1); a.ids.push(...b.ids); a.sum += b.sum; a.n += b.n; } });
     off = 0; blocks.forEach(b => b.ids.forEach(id => { row[id] = b.sum / b.n + off; off += h(id); })); };
   for (const [from, to, step] of [[1, cols.length, 1], [cols.length - 2, -1, -1], [1, cols.length, 1]])
-    for (let k = from; k !== to; k += step) { if (cols[k].every(id => id in fixed)) continue; const want = {};
+    for (let k = from; k !== to; k += step) { if (cols[k].every(id => id in fixed)) continue; const want = Object.create(null);
       cols[k].forEach(id => { const nb = (step > 0 ? ins : outs)[id] || []; want[id] = nb.length ? median(nb.map(([x, ox, o]) => row[x] + ox - o)) : row[id]; });
       fit(cols[k], want); }
   const low = Math.min(...Object.keys(row).filter(id => !(id in fixed)).map(id => row[id]));

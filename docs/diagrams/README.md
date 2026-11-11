@@ -177,4 +177,16 @@ node docs/diagrams/examples/check.mjs         # the target examples match model.
   gzipped over 0.16.1 now (C5: 15%). Measured: a 40-class view lays out in 65 to 90 ms in Node, an edit that moves nothing
   in about 1 ms, and paints in 5 ms in the browser (P1). End labels keep clear of the other lines when drawn; reserving
   their room in the layout (L4, L5) is still to come. Packages draw as named boxes until stage 2 nests their contents.
+- **12 Nov 2026 (1.9, review).** The review's findings fixed, each with a test: a version-1 model's `diagram` field is
+  ignored by the layout and `describe()` again; aggregation and navigability set inside `props.ends` from the panel;
+  prototype-named ids, types and view ids (M3) in the class type and in `untangle`, `rowsFor` and `flowPos`; Unicode member
+  names and `String[]`; members only where the type has compartments; generalization-kinds on any non-classifier end; the
+  invalid mark cleared; `tests/class.html` reads the layout memo's run count across `update()`. The core: 14.3% gzipped (188631 B)
+  over 0.16.1. Definition of done, the items 1.9 does not finish: 6 is now tested on the class example (a 30-step
+  session undone, redone and reopened from saved JSON); 8 checks names and text contrast (classifiers, the note, end
+  labels, the legend), but **typed lines are drawn in `--um-arrow`, 2.96:1 on the light stage, under 3:1**: raising it
+  changes the maps' palette or the line colour `tests/notation.test.mjs` pins, so it is the lead's call; 9 is enforced by
+  `tests/class.html`'s 40-class check, with the stress fixture 1.11's; 1 (the schema and `.d.ts`) and 7 (the fidelity
+  table, in the conformance note) are documents of `plan.md` §7, which 1.11 owns. Left: a model-held member label with
+  a space, or a type with `=`, prints a line the micro-syntax does not read back.
 

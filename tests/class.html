@@ -26,6 +26,13 @@ const box = g => { const r = g.querySelector('.n-body').getBBox(); return { x: r
 const meets = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
 const ends = d => { const n = d.match(/-?\d+(\.\d+)?/g).map(Number); return [[n[0], n[1]], [n[n.length - 2], n[n.length - 1]]]; };
 const FONTS = { serif: 'serif', sans: 'sans-serif', wide: 'monospace' };
+// contrast (DoD 8), as tests/contrast.html measures it: a computed colour as [r, g, b, a], blended over what is under it
+const rgba = s => { let m = /rgba?\(([^)]+)\)/.exec(s); if (m) { const p = m[1].split(/[ ,/]+/).filter(Boolean).map(Number); return [p[0] / 255, p[1] / 255, p[2] / 255, p.length > 3 ? p[3] : 1]; }
+  m = /color\(srgb ([^)]+)\)/.exec(s); if (m) { const p = m[1].split(/[ /]+/).filter(Boolean).map(Number); return [p[0], p[1], p[2], p.length > 3 ? p[3] : 1]; } return null; };
+const blend = (top, bot) => [0, 1, 2].map(i => top[i] * top[3] + bot[i] * (1 - top[3])).concat(1);
+const lum = c => { const f = v => v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]); };
+const ratio = (fg, bg) => { const [x, y] = [lum(blend(fg, bg)), lum(bg)].sort((p, q) => q - p); return +((x + 0.05) / (y + 0.05)).toFixed(2); };
+const css = (el, k) => rgba(getComputedStyle(el)[k]);
 const MODEL = await (await fetch('../docs/diagrams/examples/01-class.json')).json();
 try {
   // ---- drawing: both themes, three fonts
@@ -66,6 +73,14 @@ try {
     const legend = [...sr.querySelectorAll('.m-legend b')].map(b => b.textContent);
     check(`${tag}: the legend keys the line kinds and the association's ends the view draws`,
       same(legend, ['Association', 'Generalization', 'Realization', 'Dependency', 'Comment link', 'Composition', 'Aggregation', 'Navigable end']), legend);
+    const stageBg = css(pick('.stage'), 'backgroundColor'), low = [];
+    nodes.forEach(g => { const bg = blend(css(g.querySelector('.n-body'), 'fill'), blend(css(g.querySelector('.n-mask'), 'fill') || [0, 0, 0, 0], stageBg));
+      g.querySelectorAll('text').forEach(x => { const c = ratio(css(x, 'fill'), bg); if (c < 4.5) low.push([g.dataset.id, x.textContent, c]); }); });
+    all('text.end-lab').forEach(x => { const c = ratio(css(x, 'fill'), stageBg); if (c < 4.5) low.push(['end', x.textContent, c]); });
+    const lgBg = blend(css(pick('.m-legend'), 'backgroundColor'), stageBg);
+    all('.m-legend b, .m-legend .lgi > span').forEach(x => { const c = ratio(css(x, 'color'), lgBg); if (c < 4.5) low.push(['legend', x.textContent, c]); });
+    // not yet the lines: drawn in --um-arrow, 2.96:1 on the light stage, under 3:1 (the lead's to decide: docs/diagrams/README.md, log)
+    check(`${tag}: contrast: every text of the classifiers, the note, the end labels and the legend is at least 4.5:1`, !low.length, low);
     h.destroy();
   }
   check('the three fonts measure differently', new Set(Object.values(widths)).size === 3, widths);
@@ -106,9 +121,32 @@ try {
   const e4 = ed[ed.length - 1];
   check('an association end\'s multiplicity is set inside props.ends', ed.length === 4 && same(e4.commands, [{ op: 'set', id: 'association1', path: ['props', 'ends', 'to', 'multiplicity'], value: '0..*' }])
     && apply(m3, e4.commands).edges.find(x => x.id === 'association1').props.ends.to.multiplicity === '0..*', e4);
+  // aggregation (a select) and navigability (a checkbox): inside props.ends too, never a dotted key on props
+  f('ends.from.aggregation').value = 'composite'; f('ends.from.aggregation').dispatchEvent(new Event('change', { bubbles: true }));
+  f('ends.to.navigable').checked = true; f('ends.to.navigable').dispatchEvent(new Event('change', { bubbles: true }));
+  const e5 = ed.slice(4).flatMap(x => x.commands), m5 = apply(apply(m3, e4.commands), e5);
+  check('an association end\'s aggregation and navigability are set inside props.ends', ed.length === 6 && same(e5, [{ op: 'set', id: 'association1', path: ['props', 'ends', 'from', 'aggregation'], value: 'composite' },
+    { op: 'set', id: 'association1', path: ['props', 'ends', 'to', 'navigable'], value: true }]) && same(m5.edges.find(x => x.id === 'association1').props, { ends: { to: { multiplicity: '0..*', navigable: true }, from: { aggregation: 'composite' } } }), e5);
+  h.update(m5);
+  const a5 = pick('.edge-g[data-from="customer"][data-to="book"] path.edge');
+  check('after update() the composite diamond and the navigable end are drawn, and the panel shows them', /-filled-diamond-/.test(a5.getAttribute('marker-start')) && /-open-/.test(a5.getAttribute('marker-end'))
+    && f('ends.from.aggregation').value === 'composite' && f('ends.to.navigable').checked, [a5.getAttribute('marker-start'), a5.getAttribute('marker-end'), f('ends.from.aggregation').value]);
+  ed.length = 4;
   h.select({ type: 'node', id: 'order', view: 'domain' });
   f('stereotypes').value = 'entity, root'; f('stereotypes').dispatchEvent(new Event('change', { bubbles: true }));
   check('stereotypes are a list, edited as text', same(ed[ed.length - 1].commands, [{ op: 'set', id: 'order', path: 'props.stereotypes', value: ['entity', 'root'] }]), ed[ed.length - 1]);
+  // a comment holds no members: no Members section; a refused new member is marked invalid until one is added or Escape
+  h.select({ type: 'node', id: 'note-total', view: 'domain' });
+  check('a comment\'s properties have no Members section', !pick('.um-editor [data-new]') && !all('.um-editor .um-props h3').some(x => x.textContent === 'Members'));
+  h.select({ type: 'node', id: 'order', view: 'domain' });
+  const nw = () => pick('.um-editor [data-new]'), n0 = ed.length;
+  nw().value = '- id UUID'; enter(nw());
+  const refused = nw().getAttribute('aria-invalid') === 'true' && ed.length === n0;
+  nw().value = 'größe: Int'; enter(nw());
+  check('a refused new member is marked invalid; a good one is added (any script) and clears the mark', refused && ed.length === n0 + 1 && ed[n0].commands[0].element.label === 'größe' && !nw().hasAttribute('aria-invalid'), [refused, ed.slice(n0)]);
+  row('order.id').value = '- id UUID'; enter(row('order.id')); const was = row('order.id').getAttribute('aria-invalid'); key('Escape', {}, row('order.id'));
+  check('Escape on a refused member row puts its text back and clears the mark', was === 'true' && row('order.id').value === row('order.id').dataset.was && !row('order.id').hasAttribute('aria-invalid'));
+  ed.length = n0;
   // a validator's problem shows in the problems list, naming its rule
   const bad = apply(m3, [{ op: 'set', id: 'order-lines', path: ['props', 'ends', 'from', 'multiplicity'], value: '0..*' }]);
   h.update(bad);
@@ -121,9 +159,12 @@ try {
   for (let i = 1; i < 40; i++) edges.push(i % 3 ? { id: 'e' + i, type: 'uml.Association', from: 'c' + Math.floor((i - 1) / 2), to: 'c' + i, props: { ends: { to: { multiplicity: '*' } } } } : { id: 'e' + i, type: 'uml.Generalization', from: 'c' + i, to: 'c' + Math.floor((i - 1) / 2) });
   const BIG = { schemaVersion: 2, nodes, edges, views: [{ id: 'domain', diagram: 'uml.class', direction: 'down', nodeIds: nodes.map(n => n.id) }] };
   let t0 = performance.now(); h = mount(BIG, { editable: true }); const first = performance.now() - t0;
+  const runs = () => ((h[Object.getOwnPropertySymbols(h)[0]].ctx().memos.domain) || {}).runs, r0 = runs();
   const at = () => all('.node').map(g => g.getAttribute('aria-label') + box(g).x + ',' + box(g).y).join('|'), before = at();
   t0 = performance.now(); h.update(apply(BIG, [{ op: 'set', id: 'e1', path: 'props.ends.to.role', value: 'kids' }])); const paint = performance.now() - t0;
+  const r1 = runs();
   t0 = performance.now(); h.update(apply(BIG, [{ op: 'set', id: 'c5', path: 'label', value: 'Class5Renamed' }])); const grow = performance.now() - t0;
+  check('update() keeps the view\'s layout memo: an edit that moves nothing lays out nothing, one that resizes a class lays out once', r0 >= 1 && r1 === r0 && runs() === r0 + 1, [r0, r1, runs()]);
   console.log(`40 classes: first draw ${Math.round(first)} ms, an edit that moves nothing ${Math.round(paint)} ms, one that resizes a class ${Math.round(grow)} ms`);
   check(`a 40-element class view: an edit that moves nothing paints in under 100 ms (${Math.round(paint)} ms; first draw ${Math.round(first)} ms, a resize ${Math.round(grow)} ms)`,
     paint < 100 && before.split('|').length === 40 && !!pick('text.end-lab'), { first, paint, grow });

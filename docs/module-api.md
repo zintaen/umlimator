@@ -3114,3 +3114,11 @@ What moves for a host that upgrades:
   comment links), each problem naming its `rule` and its elements; `describe()` writes a class view per element
   ("Class Order (entity), 5 attributes, 3 operations; composed of OrderLine (lines, 1..*)"); elements and lines have
   accessible names; the legend keys the line kinds and ends. Maps draw exactly as before.
+- **The class diagram, after review (1.9).** A version-1 model is a map whatever its views say: a view with
+  `diagram: "uml.class"` and no `schemaVersion: 2` lays out and is described as before. An association's aggregation and
+  navigability are set from the properties panel inside `props.ends`, as its role and multiplicity are. Member names may
+  be in any script (`größe: Int`, `名前`), and a type may end in `[]` (`tags: String[] [0..*]`). An enumeration's new
+  member is a literal when it is a bare name, else a property or an operation; a comment or a package offers no members.
+  A refused member line loses its invalid mark once a good one is added or Escape puts it back. A generalization from or
+  to anything but a classifier breaks `generalization-kinds`. Ids, types and view ids named `constructor`, `toString` or
+  `__proto__` lay out like any other (M3).

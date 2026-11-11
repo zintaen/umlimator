@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { diagramOf } from '../src/core/registry.js';
 import { apply } from '../src/core/apply.js';
+import { history } from '../src/core/history.js';
 import '../src/map/typed.js';
 import { layout, check } from '../src/map/api.js';
 import { mapContext } from '../src/map/context.js';
@@ -39,6 +40,11 @@ const CANON = [ // print(parse(x)) === x
   ['+ {abstract} settle()', 'uml.Operation', { visibility: 'public', isAbstract: true }],
   ['+ {static} {abstract} make(out log, inout n: Int)', 'uml.Operation', { visibility: 'public', isStatic: true, isAbstract: true, parameters: [{ name: 'log', direction: 'out' }, { name: 'n', valueType: 'Int', direction: 'inout' }] }],
   ['- index(m: Map<K, V>): List<K>', 'uml.Operation', { visibility: 'private', parameters: [{ name: 'm', valueType: 'Map<K, V>' }], returnType: 'List<K>' }],
+  ['+ größe: Int', 'uml.Property', { visibility: 'public', valueType: 'Int' }], // names in any script (review of 1.9)
+  ['名前: String', 'uml.Property', { valueType: 'String' }],
+  ['café()', 'uml.Operation', {}],
+  ['tags: String[] [0..1]', 'uml.Property', { valueType: 'String[]', multiplicity: '0..1' }], // an array type: [] is not a multiplicity
+  ['+ f(xs: Int[]): Int[]', 'uml.Operation', { visibility: 'public', parameters: [{ name: 'xs', valueType: 'Int[]' }], returnType: 'Int[]' }],
 ];
 test('the micro-syntax: each fixture line parses to its props and prints back as written', () => {
   for (const [text, type, props] of CANON) {
@@ -203,4 +209,79 @@ test('the classifier graphs\' edge cases (risks.md G1) lay out clean: 60 members
     assert.deepEqual(g.edges.map(e => e.id).sort(), ['g', 'self', 'w1', 'w2', 'w3', 'w4'], 'every line drawn, each on its own');
   }
   assert.ok(layout(m, 'd').nodes.find(n => n.id === 'a').h < layout(m, 'v').nodes.find(n => n.id === 'a').h, 'rows: 8 caps the long class');
+});
+
+// ---- review of 1.9: fixes, each with its regression
+test('a version-1 model is a map: a view that says diagram "uml.class" lays out and describes as it does without it (model.md rule 1)', () => {
+  const m = read('../examples/bookshop.json'), d = structuredClone(m), vid = m.views[0].id;
+  assert.equal(m.schemaVersion, undefined);
+  d.views[0].diagram = 'uml.class';
+  const flat = g => JSON.stringify(g, (k, v) => (k === 'all' || k === 'ms' ? undefined : v)); // not `all` (a merged line lists itself) or `ms` (timings)
+  assert.equal(flat(layout(d, vid)), flat(layout(m, vid)));
+  assert.equal(layout(d, vid).map, true);
+  assert.equal(describe(d, vid), describe(m, vid));
+  assert.deepEqual(check(d, vid), check(m, vid));
+});
+
+test('ids, types and view ids named like Object\'s members (risks.md M3): a class view lays out, describes and validates, and Object.prototype is untouched', () => {
+  for (const w of ['constructor', 'toString', '__proto__', 'hasOwnProperty']) {
+    const models = [
+      { schemaVersion: 2, nodes: [{ id: 'a', type: 'uml.Class', label: 'A' }, { id: 'b', type: w, label: 'B' }], edges: [{ id: 'e', type: w, from: 'a', to: 'b' }], views: [{ id: 'v', diagram: 'uml.class', nodeIds: ['a', 'b'] }] },
+      { schemaVersion: 2, nodes: [{ id: w, type: 'uml.Class', label: 'A' }, { id: 'b', type: 'uml.Class', label: 'B' }, { id: 'c', type: 'uml.Class', label: 'C' }],
+        edges: [{ id: w + 'e', type: 'uml.Association', from: w, to: 'b' }, { id: 'g', type: 'uml.Generalization', from: 'c', to: w }], views: [{ id: 'v', diagram: 'uml.class', nodeIds: [w, 'b', 'c'] }] },
+      { schemaVersion: 2, nodes: [{ id: 'a', type: 'uml.Class', label: 'A' }], edges: [], views: [{ id: w, diagram: 'uml.class', nodeIds: ['a'] }] },
+    ];
+    for (const m of models) {
+      const vid = m.views[0].id, g = layout(m, vid), at = new Set(g.nodes.map(n => n.x + ',' + n.y));
+      assert.equal(g.nodes.length, m.nodes.length, `${w}: every node drawn`);
+      assert.ok(g.nodes.every(n => Number.isFinite(n.x) && Number.isFinite(n.y)) && at.size === g.nodes.length, `${w}: placed, apart`);
+      assert.ok(g.nodes.every(n => (n.stereotypes || []).every(t => typeof t === 'string')), `${w}: no stereotype from Object`);
+      describe(m, vid); validate(m);
+      assert.deepEqual(Object.keys(Object.prototype), [], `${w}: Object.prototype untouched`);
+    }
+  }
+});
+
+test('the micro-syntax on a non-ASCII name: a member edited as text', () => {
+  const r = memberEdit({ id: 'a.u', type: 'uml.Property', label: 'Größe' }, 'Größe: Integer');
+  assert.deepEqual(r.commands, [{ op: 'set', id: 'a.u', path: 'label', value: 'Größe' }, { op: 'set', id: 'a.u', path: 'props', value: { valueType: 'Integer' } }]);
+});
+
+test('the member hooks: an enumeration takes a literal, or a property or an operation; a comment and a package hold no members', () => {
+  const M = diagramOf({ diagram: 'uml.class' }).member, en = { type: 'uml.Enumeration' };
+  assert.deepEqual(M.add('PAID', en), { type: 'uml.EnumerationLiteral', label: 'PAID', props: {} });
+  assert.equal(M.add('code: Int', en).type, 'uml.Property');
+  assert.equal(M.add('+ next(): Status', en).type, 'uml.Operation');
+  assert.equal(M.add('PAID', { type: 'uml.Class' }).type, 'uml.Property');
+  assert.deepEqual(['uml.Class', 'uml.Enumeration', 'uml.Interface', 'uml.Comment', 'uml.Package'].map(t => M.holds({ type: t })), [true, true, true, false, false]);
+});
+
+test('validators: a generalization joins classifiers only; a composite end with no element names none', () => {
+  for (const [a, b] of [['uml.Comment', 'uml.Class'], ['uml.Class', 'uml.Package'], ['uml.Package', 'uml.Package']]) {
+    const got = classProblems({ nodes: [{ id: 'x', type: a }, { id: 'y', type: b }], edges: [{ id: 'g', type: 'uml.Generalization', from: 'x', to: 'y' }] });
+    assert.deepEqual(got.map(p => [p.rule, p.ids]), [['generalization-kinds', ['g', 'x', 'y']]], a + ' → ' + b);
+  }
+  const got = classProblems({ nodes: [{ id: 'a', type: 'uml.Class' }], edges: [{ id: 'x', type: 'uml.Association', from: 'a', props: { ends: { to: { aggregation: 'composite', multiplicity: '*' } } } }] });
+  assert.deepEqual(got.map(p => [p.rule, p.ids]), [['composite-multiplicity', ['x']]]);
+  assert.doesNotMatch(got[0].message, /undefined/);
+});
+
+test('save and reopen (DoD 6): a 30-step class session undoes and redoes to byte-identical models, and reopening its saved JSON midway ends where the session does', () => {
+  const T = diagramOf({ diagram: 'uml.class' }), steps = [];
+  const memberOf = id => CLASS.nodes.flatMap(n => n.members || []).find(m => m.id === id);
+  for (let i = 0; i < 5; i++) steps.push(
+    [{ op: 'add', element: { id: `k${i}`, type: 'uml.Class', label: `Kind${i}` }, view: 'domain' }],
+    [{ op: 'add', element: { id: `k${i}.v`, ...T.member.add(`- {static} väärtus${i}: Money [0..1] = 0`, { type: 'uml.Class' }) }, owner: `k${i}` }],
+    [{ op: 'add', element: { id: `a${i}`, type: 'uml.Association', from: 'order', to: `k${i}` }, view: 'domain' }],
+    [{ op: 'set', id: `a${i}`, path: ['props', 'ends', 'from', 'aggregation'], value: 'composite' }, { op: 'set', id: `a${i}`, path: ['props', 'ends', 'to', 'navigable'], value: true }],
+    i % 2 ? [{ op: 'add', element: { id: `g${i}`, type: 'uml.Generalization', from: `k${i}`, to: `k${i - 1}` }, view: 'domain' }] : T.member.edit(memberOf('order.total'), `+ /total: Money [${i % 3 ? 1 : '0..1'}]`).commands,
+    [[{ op: 'set', id: `k${i}`, path: 'props.stereotypes', value: ['entity'] }], [{ op: 'move', id: 'order.cancel', index: 0 }], [{ op: 'delete', id: `a${i}` }]][i % 3]);
+  assert.equal(steps.length, 30);
+  const h = history(CLASS), seen = [JSON.stringify(h.model)];
+  for (const s of steps) { h.push(apply(h.model, s)); seen.push(JSON.stringify(h.model)); assert.deepEqual(validate(h.model).filter(p => p.level === 'error'), [], `step ${seen.length - 1}`); }
+  for (let i = 29; i >= 0; i--) assert.equal(JSON.stringify(h.undo()), seen[i], `undo to ${i}`);
+  for (let i = 1; i <= 30; i++) assert.equal(JSON.stringify(h.redo()), seen[i], `redo to ${i}`);
+  const reopened = steps.slice(15).reduce((m, s) => apply(m, s), JSON.parse(seen[15])); // saved as JSON at step 15, read back, continued
+  assert.equal(JSON.stringify(reopened), seen[30]);
+  assert.equal(JSON.stringify(layout(reopened, 'domain'), (k, v) => (k === 'ms' ? undefined : v)), JSON.stringify(layout(JSON.parse(seen[30]), 'domain'), (k, v) => (k === 'ms' ? undefined : v)));
 });

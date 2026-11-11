@@ -250,7 +250,7 @@ function mapContext(model, opts = {}) {
       // the box's lines to cards outside it (#86): each far end at its row from the box's top, where the pass before put both.
       // ponytail: three passes, so a far end that moves in the last one is followed where it was, and a far end in the card's
       // own column, or a line to a box, places nothing; passes until nothing moves, if a map needs them
-      const far = [], fixed = {}, top = P && g != null && was[g] ? Object.keys(was[g].pos).map(c => P[c] && P[c][1] - was[g].pos[c][1]).find(r => r != null) : null;
+      const far = [], fixed = Object.create(null), top = P && g != null && was[g] ? Object.keys(was[g].pos).map(c => P[c] && P[c][1] - was[g].pos[c][1]).find(r => r != null) : null;
       if (top != null) fwd.forEach(e => { const fin = holds(g, e.from); if (fin === holds(g, e.to)) return;
         const [mine, other] = fin ? [e.from, e.to] : [e.to, e.from], x = itemIn(mine, g), p = P[mine], q = P[other]; if (x === undefined || !p || !q || p[0] === q[0]) return;
         const id = '\u0002' + far.length, left = q[0] < p[0]; fixed[id] = q[1] - top;
@@ -274,9 +274,9 @@ function mapContext(model, opts = {}) {
     return P;
   }
   // a typed view whose type lays it out (1.9): the plain flow's ranking, with the lines the type turns round for it
-  const ownLayout = vid => { const T = diagramOf(V[vid]); return T && T.layout ? T : null; };
+  const ownLayout = vid => { if (D.schemaVersion !== 2) return null; const T = diagramOf(V[vid]); return T && T.layout ? T : null; }; // version 1: a map
   const autoPos = vid => ownLayout(vid) ? flowPos(vid, { flip: ownLayout(vid).rankFlip }) : ((V[vid] || {}).containers || []).length ? blockPos(vid) : bestFlow(vid);
-  const memos = opts.memos || {}; // per view, layoutTyped's memo, kept across update()s: an edit that moves nothing lays out nothing
+  const memos = opts.memos || Object.create(null); // per view, layoutTyped's memo, kept across update()s: an edit that moves nothing lays out nothing
   const level = e => !/^(top|bottom)$/.test(e.fromSide) && !/^(top|bottom)$/.test(e.toSide); // a line into a card's top or bottom asks for no row
   /* A small plain view is routed a few ways and keeps the one the layout check scores best: cards level with their
      neighbours, or packed from the top as before, with cards no line comes into beside their callee or not. A cheap
@@ -301,11 +301,11 @@ function mapContext(model, opts = {}) {
     // cards with no line go in rows of their own under the view (#46), as wide as its columns; they stacked with the sources
     const all = (v.nodeIds || []).filter(i => N[i]), lined = new Set(lp.edges.filter(e => e.from !== e.to).flatMap(e => [e.from, e.to]));
     const loose = lined.size ? all.filter(i => !lined.has(i)) : [], ids = all.filter(i => !loose.includes(i));
-    const rank = {}; ids.forEach(i => { rank[i] = 0; });
+    const rank = Object.create(null); ids.forEach(i => { rank[i] = 0; });
     for (let it = 0; it <= ids.length; it++) fwd.forEach(e => { if (rank[e.to] < rank[e.from] + 1) rank[e.to] = rank[e.from] + 1; });
     const seen = id => { const k = lp.edges.findIndex(e => e.to === id || e.from === id); return k < 0 ? 999 : k; };
     const sink = i => isState(i) && !fwd.some(e => e.from === i); // state that leads nowhere sits along the bottom
-    const pos = {}, links = fwd.map(e => [e.from, e.to]);
+    const pos = Object.create(null), links = fwd.map(e => [e.from, e.to]);
     const order = rk => { const cols = {}; ids.forEach(i => (cols[rk[i]] ||= []).push(i));
       const ranks = Object.keys(cols).map(Number).sort((a, b) => a - b), mains = ranks.map(c => cols[c].filter(i => !sink(i)).sort((a, b) => seen(a) - seen(b)));
       untangle(mains, links); return { cols, ranks, mains }; }; // in reading order, unless another order crosses less (#53)
@@ -341,7 +341,7 @@ function mapContext(model, opts = {}) {
     (ruled ||= rules(D)).forEach(b => { if (b.view === vid) b.targets.forEach(t => { if (t.type === 'edge') t.ids.forEach(i => { const l = by[i] ||= []; if (!l.includes(title(b.rule))) l.push(title(b.rule)); }); }); });
     return Object.keys(by).length ? by : null;
   };
-  const layoutCache = {};
+  const layoutCache = Object.create(null); // M3
   // the cards a card opens: its inner view's, else the count the host gives for one it has not loaded (opensCount)
   const kidCount = (nid, vid) => { const c = childOf(nid, vid), k = c && c !== vid ? (V[c].nodeIds || []).length : 0, n = +nodeIn(nid, vid).opensCount;
     return k || (opensOf(nid, vid) && n > 0 ? Math.floor(n) : 0); };
