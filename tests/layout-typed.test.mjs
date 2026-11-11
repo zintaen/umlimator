@@ -2,10 +2,17 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { layoutGraph, hit } from '../src/layout/layered.js';
-import { layoutTyped } from '../src/layout/typed.js';
+import { readFileSync } from 'node:fs';
+import { VIEW_GEO, VIEW_PAINT, geometryKey, layoutTyped } from '../src/layout/typed.js';
 import { routeAudit, overlapIssues } from '../src/layout/audit.js';
+import { layout } from '../src/map/api.js';
 
-const clean = g => { assert.deepEqual(overlapIssues(g, ''), []); assert.deepEqual(routeAudit(g, ''), []); };
+// routeAudit lets lines with a set route (a hub's comb) share and cross one another; a typed view's loops and fans are audited as any line
+const clean = g => { assert.deepEqual(overlapIssues(g, ''), []); assert.deepEqual(routeAudit({ ...g, edges: g.edges.map(e => ({ ...e, fixed: undefined })) }, ''), []); };
+const FOUR = dir => ({ direction: dir, nodes: [{ id: 'a', label: 'A', col: 0, row: 0, w: 140, h: 80 }, { id: 'b', label: 'B', col: 1, row: 0, w: 140, h: 80 }],
+  edges: ['owner', 'buyer', 'seller', 'agent'].map(r => ({ id: r, from: 'a', to: 'b', label: r })) });
+const LOOPS = { nodes: [{ id: 'up', label: 'Up', col: 0, row: 0, w: 140, h: 80 }, { id: 'st', label: 'Waiting', col: 0, row: 1, w: 140, h: 80 }, { id: 'nx', label: 'Next', col: 1, row: 1, w: 140, h: 80 }],
+  edges: [{ id: 'retry', from: 'st', to: 'st', label: 'retry' }, { id: 'again', from: 'st', to: 'st', label: 'again' }, { id: 'go', from: 'st', to: 'nx', label: 'go' }, { id: 'in', from: 'up', to: 'st' }] };
 const segs = e => e.pts.slice(1).map((p, i) => [e.pts[i], p]);
 const cuts = (e, n) => segs(e).some(([a, b]) => Math.max(a[0], b[0]) > n.x && Math.min(a[0], b[0]) < n.x + n.w && Math.max(a[1], b[1]) > n.y && Math.min(a[1], b[1]) < n.y + n.h);
 // a class of 20 members: 20 rows of 18 px under a 40 px name
@@ -28,8 +35,7 @@ test('with every node the view\'s node height, a typed view\'s rows have a map\'
 });
 
 test('four lines between two nodes are laid out apart: their own ports, no shared run, labels that do not overlap (risks.md F2)', () => {
-  const g = layoutTyped({ nodes: [{ id: 'a', label: 'A', col: 0, row: 0, w: 140, h: 80 }, { id: 'b', label: 'B', col: 1, row: 0, w: 140, h: 80 }],
-    edges: ['owner', 'buyer', 'seller', 'agent'].map(r => ({ id: r, from: 'a', to: 'b', label: r })) });
+  const g = layoutTyped(FOUR('right'));
   clean(g);
   assert.equal(g.edges.length, 4);
   for (const k of ['p1', 'p2']) assert.equal(new Set(g.edges.map(e => e[k].join())).size, 4, `four ports for ${k}`);
@@ -38,8 +44,7 @@ test('four lines between two nodes are laid out apart: their own ports, no share
 });
 
 test('a line from a node to itself is a loop on its top right corner, clear of other nodes, with its label (risks.md F1)', () => {
-  const g = layoutTyped({ nodes: [{ id: 'up', label: 'Up', col: 0, row: 0, w: 140, h: 80 }, { id: 'st', label: 'Waiting', col: 0, row: 1, w: 140, h: 80 }, { id: 'nx', label: 'Next', col: 1, row: 1, w: 140, h: 80 }],
-    edges: [{ id: 'retry', from: 'st', to: 'st', label: 'retry' }, { id: 'again', from: 'st', to: 'st', label: 'again' }, { id: 'go', from: 'st', to: 'nx', label: 'go' }, { id: 'in', from: 'up', to: 'st' }] });
+  const g = layoutTyped(LOOPS);
   clean(g);
   const st = g.byId.st, loops = g.edges.filter(e => e.from === 'st' && e.to === 'st');
   assert.equal(loops.length, 2);
@@ -50,6 +55,39 @@ test('a line from a node to itself is a loop on its top right corner, clear of o
     g.nodes.forEach(n => { assert.ok(!cuts(e, n), `loop ${e.id} cuts ${n.id}`); assert.ok(!hit(e.lbl, n), `label of ${e.id} on ${n.id}`); });
   });
   assert.ok(!hit(loops[0].lbl, loops[1].lbl));
+  // other lines keep 10 px off a loop's corners (the line from above came down onto the outer loop's corner without that)
+  const corners = loops.flatMap(e => e.pts.slice(1, 4)), others = g.edges.filter(e => !loops.includes(e));
+  const away = (p, [a, b]) => Math.hypot(p[0] - Math.max(Math.min(a[0], b[0]), Math.min(Math.max(a[0], b[0]), p[0])), p[1] - Math.max(Math.min(a[1], b[1]), Math.min(Math.max(a[1], b[1]), p[1])));
+  corners.forEach(p => others.forEach(e => segs(e).forEach(s => assert.ok(away(p, s) >= 10, `line ${e.id} passes ${away(p, s).toFixed(1)} px from a loop's corner`))));
+  // a line pushed off level by the loops' ports runs straight again, its port moved level with its other end (port repair)
+  assert.equal(g.edges.find(e => e.id === 'go').pts.length, 2);
+});
+
+test('a self-loop on a node whose id is a name objects inherit lays out', () => {
+  for (const id of ['constructor', 'toString', '__proto__']) {
+    const g = layoutTyped({ nodes: [{ id, label: id, col: 0, row: 0, w: 140, h: 80 }], edges: [{ id: 'l', from: id, to: id, label: 'again' }] });
+    assert.equal(g.edges[0].pts.length, 5, id);
+  }
+});
+
+test('a map line or view with a field named as one the typed layout uses lays out as without it', () => {
+  const model = extra => ({ nodes: ['a', 'b', 'c'].map(id => ({ id, label: id.toUpperCase() })), views: [{ id: 'v', nodeIds: ['a', 'b', 'c'], ...extra.view }],
+    edges: [{ id: 'e1', from: 'a', to: 'b', label: 'calls', ...extra.line }, { id: 'e2', from: 'a', to: 'c', label: 'reads', ...extra.line }, { id: 'e3', from: 'b', to: 'c' }] });
+  const geo = m => { const g = layout(m, 'v'); return JSON.stringify([g.nodes.map(n => [n.id, n.x, n.y, n.w, n.h]), g.edges.map(e => [e.pts, e.lbl && [e.lbl.x, e.lbl.y, e.lbl.w, e.lbl.h]]), g.bounds]); };
+  const names = ['self', 'fan', 'how', 'corners', 'typed', 'turned', 'direction', 'lane'];
+  const plain = geo(model({}));
+  assert.equal(geo(model({ line: Object.fromEntries(names.map(k => [k, true])) })), plain);
+  assert.equal(geo(model({ view: { typed: true, turned: true, direction: 'down' } })), plain);
+});
+
+test('direction "down" keeps the label of every line between one pair, as "right" does (risks.md F2)', () => {
+  for (const dir of ['right', 'down']) {
+    const g = layoutTyped(FOUR(dir)), L = g.edges.map(e => e.lbl);
+    clean(g);
+    assert.equal(L.filter(Boolean).length, 4, dir);
+    assert.equal(new Set(g.edges.flatMap(e => [e.p1.join(), e.p2.join()])).size, 8, `${dir}: four ports on each node`);
+    L.forEach((l, i) => L.slice(i + 1).forEach(m => assert.ok(!hit(l, m), `${dir}: labels "${l.text}" and "${m.text}" overlap`)));
+  }
 });
 
 test('direction "down" is the left-to-right layout of the view with every box turned, transposed (stage 1 note §6)', () => {
@@ -78,4 +116,13 @@ test('an edit that moves nothing (a colour, a props field) lays out and routes n
   assert.equal(memo.runs, 2, 'a size edit lays out again');
   layoutTyped({ ...dg, edges: [{ ...dg.edges[0], label: 'calls' }] }, memo);
   assert.equal(memo.runs, 3, 'a label edit lays out again: the label\'s size moves geometry');
+  const m2 = {}, red = layoutTyped(dg, m2), plain = layoutTyped({ ...dg, nodes: [{ ...dg.nodes[0], color: undefined }, dg.nodes[1]].map(({ color, ...n }) => n) }, m2);
+  assert.equal(m2.runs, 1); assert.equal(plain, red); assert.ok(!('color' in plain.byId.a), 'a colour taken off goes');
+  for (const k of ['mainSteps', 'blocks']) assert.notEqual(geometryKey({ ...dg, [k]: k === 'blocks' ? [{ x: 0, y: 0, w: 9, h: 9 }] : true }), geometryKey(dg), k);
+});
+
+test('the geometry key holds every field of the view the layout reads that is not paint', () => {
+  const read = new Set([...readFileSync(new URL('../src/layout/layered.js', import.meta.url), 'utf8').matchAll(/\bdg\.(\w+)/g)].map(m => m[1]));
+  ['nodes', 'edges', ...VIEW_GEO, ...VIEW_PAINT].forEach(k => read.delete(k));
+  assert.deepEqual([...read], []);
 });

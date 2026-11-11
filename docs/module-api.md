@@ -3061,7 +3061,8 @@ Stage 1a of the plan for 28 diagram types (`docs/diagrams/`). Nothing new is dra
   same code as `lib/umlimator.js` (F5, stage 1 note §2.5).
 - **The layout for typed views (1.4).** Internal until the class type draws with it (1.9), and off for every map, which
   lays out as it did: rows as tall as their tallest node (stage 1 note §4); a line from a node to itself drawn as a loop
-  on its top right corner, with its label (F1); lines between one pair each with their own ports and label (F2);
+  on its top right corner, with its label (F1); lines between one pair each with their own ports and label (F2), which
+  laid out down fan out to lanes of their own, as their labels are wider than the lines are apart;
   `direction: "down"`, a left-to-right layout with every box turned, transposed (§6); and a geometry key, so that an
   edit that moves nothing (a colour, a `props` field) repaints without laying out or routing again (F7). The unused
   `autoLayout` and `hubLayout` are gone.
