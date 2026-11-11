@@ -18,7 +18,7 @@ Update this table in every pull request that belongs to the plan.
 | Before the plan | 0.16.0 | Fixes already on `main` (#146 to #148, #150) | Released 11 Nov 2026 (cf516c8, npm latest); map-repo pinned to it | #146, #147, #148, #150, #152, #153 |
 | Before the split | 0.16.1 | `validate()` warns of a line from a card to itself (`risks.md` F1) | Released 11 Nov 2026 (8f0240f, GitHub and npm latest); map-repo pinned to it | #155, #156 |
 | 1a Foundation | 0.17.0 | Work packages 1.1 to 1.8 | Released 11 Nov 2026 (555bfdc, GitHub and npm latest); map-repo pinned to it | #154, #157, #158, #160, #161, #162, #163, #164, #165, #166, #167 |
-| 1b Class | 0.18.0 | Work packages 1.9 to 1.12 | 1.9 merged (#168); 1.12's findings merged (#171). 1.10 (#169) in review. Next: 1.11, and the spike's changes to the registry, `model.md` and `apply()` | #168, #169, #171 |
+| 1b Class | 0.18.0 | Work packages 1.9 to 1.12 | 1.9 (#168), 1.10 (#169), 1.11 (#172) and 1.12's findings (#171) merged; the spike's changes in review (#173). Next: moving typed-only code out of the core (C5), then the 0.18.0 release | #168, #169, #171, #172, #173 |
 | 2 | 0.19.0 | Object, package | Not started | |
 | 3 | 0.20.0 | Sequence, communication | Not started | |
 | 4 | 0.21.0 | Use case, activity, state machine, interaction overview | Not started | |
