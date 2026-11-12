@@ -18,9 +18,9 @@ Update this table in every pull request that belongs to the plan.
 | Before the plan | 0.16.0 | Fixes already on `main` (#146 to #148, #150) | Released 11 Nov 2026 (cf516c8, npm latest); map-repo pinned to it | #146, #147, #148, #150, #152, #153 |
 | Before the split | 0.16.1 | `validate()` warns of a line from a card to itself (`risks.md` F1) | Released 11 Nov 2026 (8f0240f, GitHub and npm latest); map-repo pinned to it | #155, #156 |
 | 1a Foundation | 0.17.0 | Work packages 1.1 to 1.8 | Released 11 Nov 2026 (555bfdc, GitHub and npm latest); map-repo pinned to it | #154, #157, #158, #160, #161, #162, #163, #164, #165, #166, #167 |
-| 1b Class | 0.18.0 | Work packages 1.9 to 1.12 | Released 12 Nov 2026 (1ffaaea, GitHub and npm latest); map-repo pinned to it | #168, #169, #171, #172, #173, #175, #176, (this PR) |
-| 2 | 0.19.0 | Object, package | Design note approved ([`notes/stage-2.md`](notes/stage-2.md)). 2.1 (6981b9a), 2.2 (5d8ddbe), 2.3 (9cce0e4), 2.4 (313c2b1) and 2.5 (faf418f) merged. In review: 2.6 (#195); then the 0.19.0 release | #174, #183, #184, #185, #188, #190, #195 |
-| 3 | 0.20.0 | Sequence, communication | Design note approved ([`notes/stage-3.md`](notes/stage-3.md)). 3.0 (b17b678), 3.1 (7117a2e), 3.2 (9ddd4a7), 3.3 (b062d55, its gestures 3ab554d), 3.4 (a253447), 3.5 (d2ed722) and 3.6 (417b4f1) merged, with the notes' changes elsewhere (b8e2315) and the router's speed flags (110a494). 3.7 (f98e317) merged. Next: 3.8 | #174, #177, #179, #180, #181, #182, #186, #187, #189, #191, #193, #194 |
+| 1b Class | 0.18.0 | Work packages 1.9 to 1.12 | Released 12 Nov 2026 (1ffaaea, GitHub and npm latest); map-repo pinned to it | #168, #169, #171, #172, #173, #175, #176, #178 |
+| 2 | 0.19.0 | Object, package | Design note approved ([`notes/stage-2.md`](notes/stage-2.md)). 2.1 (6981b9a), 2.2 (5d8ddbe), 2.3 (9cce0e4), 2.4 (313c2b1) and 2.5 (faf418f) and 2.6 (adc49b0) merged, with the Owner field's pin fix (1dc86f5). Releasing 0.19.0 (this PR); map-repo's pin does not move for it | #174, #183, #184, #185, #188, #190, #195, #196, (this PR) |
+| 3 | 0.20.0 | Sequence, communication | Design note approved ([`notes/stage-3.md`](notes/stage-3.md)). 3.0 (b17b678), 3.1 (7117a2e), 3.2 (9ddd4a7), 3.3 (b062d55, its gestures 3ab554d), 3.4 (a253447), 3.5 (d2ed722) and 3.6 (417b4f1) and 3.7 (f98e317) merged, with the notes' changes elsewhere (b8e2315) and the router's speed flags (110a494). Being built: 3.8; then the 0.20.0 release | #174, #177, #179, #180, #181, #182, #186, #187, #189, #191, #193, #194 |
 | 4 | 0.21.0 | Use case, activity, state machine, interaction overview | Not started | |
 | 5 | 0.22.0 | Component, deployment, composite structure | Not started | |
 | 6 | 0.23.0 | Profile, timing | Not started | |
@@ -274,3 +274,6 @@ node docs/diagrams/examples/check.mjs         # the target examples match model.
 - **12 Nov 2026 (0.18.0).** 0.18.0 released (#176, 1ffaaea): GitHub Release and npm latest. map-repo's pin moved to
   v0.18.0, plugin 0.1.10. Stage 2's lanes (2.1, 2.4, 2.5) start, as its note asks, after the release; stage 3's 3.1, 3.2
   and 3.6 are built on 3.0, each reviewed from two lenses before the maintainer's approval.
+- **12 Nov 2026 (stage 2 complete).** 2.1 to 2.6 merged, and the Owner field's pin fix (#196). 0.19.0's release pull
+  request follows. It also carries stage 3's types, which are on `main` (3.0 to 3.7), provisional until 0.20.0; 3.8 is
+  being built. `lib/umlimator.js` is 186,800 B with `gzip -9`, 13.24% over 0.16.0.

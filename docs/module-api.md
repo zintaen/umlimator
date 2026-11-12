@@ -3229,7 +3229,7 @@ What moves for a host that upgrades:
   441 kB.
 - **`umlimator.py import`** reads a Mermaid `classDiagram` through Node; every other format imports with Python alone.
 
-## 0.19.0: the object and package diagrams, packages drawn as boxes, ownership edited on the canvas, and the PDF's tables per type (in progress)
+## 0.19.0: the object and package diagrams, packages drawn as boxes, ownership edited on the canvas, and the PDF's tables per type
 
 Stage 2 of the plan for 28 diagram types (`docs/diagrams/notes/stage-2.md`). Maps draw as they did. **Class views with
 packages draw differently**, by the maintainer's decision (§10.1, `docs/diagrams/plan.md` §1).
@@ -3304,6 +3304,9 @@ packages draw differently**, by the maintainer's decision (§10.1, `docs/diagram
   (C10). [`docs/conformance/uml-object.md`](conformance/uml-object.md) and
   [`docs/conformance/uml-package.md`](conformance/uml-package.md) state each subset, UML 2.5.1's clauses, what is left
   out and what the SVG, PNG and PDF writers show; `uml-class.md` says what nesting changed.
+- **The Owner field removes a pin too (#196).** Setting an element's owner in the properties panel now sends the
+  `reparent` and, when the card was pinned, the `set` that removes its pin, in one transaction, as a drop does. Before, the
+  pin stayed and the card could be drawn outside its new box.
 - **Types and schema (2.6).** `lib/umlimator.d.ts` exports the object and package diagrams' vocabulary:
   `UmlObjectElementType`, `UmlObjectMemberType`, `UmlObjectLineType`, `UmlInstanceProps`, `UmlSlotProps`,
   `UmlLinkProps`, `UmlPackageElementType`, `UmlPackageLineType` and `UmlPackageImportProps`.
@@ -3333,7 +3336,12 @@ What moves for a host that upgrades:
   line between a package and what it holds, package URIs, a diagram frame, the tab above an open package's body, nested
   classifiers; checking slot values against their types, classifiers and associations by reference, a link's
   multiplicity, n-ary links; XMI; a reader for either type.
-- **Size:** `lib/umlimator.js`, what a map host loads, is 186.6 kB with `gzip -9` on `main` as this is written, 13.15% over
-  0.16.0 (the plan's budget is 15%); 2.1's box code and 2.5's tables are in it (12.42% after them), and so is stage 3's
-  canvas hook slot (3.4), which is on `main` too. `lib/umlimator-all.js` is 261.9 kB, up from 211.5 kB in 0.18.0. The npm
-  package is 497 kB, up from 441 kB.
+- **Stage 3's work, already on `main`, ships in this release too, provisional until 0.20.0.** `umlimator/all` draws a
+  version-2 view with `diagram: "uml.sequence"` or `"uml.communication"`, and `import` reads a Mermaid
+  `sequenceDiagram` through Node; their schema, `.d.ts` types, fixtures, examples and conformance notes come in 0.20.0,
+  whose section says what they do. A typed view's root `<svg>` now has `role="group"`, as a map's has, where 0.18.0
+  gave a class view `role="img"`: it holds named, focusable parts (3.4). `lib/umlimator.js` draws neither type.
+- **Size:** `lib/umlimator.js`, what a map host loads, is 186.8 kB with `gzip -9` (186,800 B), 13.24% over 0.16.0's
+  164,954 B (the plan's budget is 15%), up from 182.6 kB in 0.18.0: 2.1's box code and 2.5's tables, and stage 3's
+  canvas hook slot (3.4) and speed flags (#191). `lib/umlimator-all.js` is 276.8 kB, up from 211.5 kB in 0.18.0, with
+  stage 3's types in it. The npm package is 512 kB, up from 441 kB.
