@@ -3346,7 +3346,7 @@ What moves for a host that upgrades:
   canvas hook slot (3.4) and speed flags (#191). `lib/umlimator-all.js` is 276.8 kB, up from 211.5 kB in 0.18.0, with
   stage 3's types in it. The npm package is 512 kB, up from 441 kB.
 
-## 0.20.0: the sequence and communication diagrams (in progress)
+## 0.20.0: the sequence and communication diagrams
 
 Stage 3 of the plan for 28 diagram types (`docs/diagrams/notes/stage-3.md`). Everything here is additive: maps, class
 views and every earlier example draw as they did. The new code is in `lib/umlimator-all.js`, except what the canvas
@@ -3418,23 +3418,29 @@ needs in the core (3.4, 3.8).
   describes the same fields for editors, accepts an interaction use inline in a view's `edges`, and rejects nothing it
   accepted before.
 
-What moves for a host that upgrades:
-- **A host that loads `umlimator/all`** draws a version-2 view with `diagram: "uml.sequence"` or
-  `"uml.communication"` as a sequence or communication diagram, where 0.19.0 drew plain cards and warned;
-  `lib/umlimator.js` still draws plain cards for them.
-- **Typed views on the canvas** (class views too): lines have key rings in the Tab order, Shift + click adds a line to
-  the selection, and `L` may start from a selected line. A line from an element to itself can be drawn by gesture. A
-  class view's picture is unchanged but for its key rings.
+What moves for a host that upgrades from 0.19.0 (which already carried 3.0 to 3.7, provisionally; from 0.18.0, add
+everything above):
+- **The two types are no longer provisional.** `umlimator/all` draws a version-2 view with `diagram: "uml.sequence"` or
+  `"uml.communication"` as 0.19.0 did; their schema, `.d.ts` types, fixtures, examples and conformance notes are new
+  (3.8). `lib/umlimator.js` still draws plain cards for them.
 - **The layout check** (`check()`, `umlimator.py check`) does not count a node marked `holder` (a sequence's frame,
-  operand or use) as overlapping what it holds. No map node has the mark, so maps check as before.
-- **`umlimator.py import`** reads a Mermaid `sequenceDiagram` through Node; **`umlimator.py trace`** takes
-  `--diagram uml.sequence`. Without it, `trace` writes the numbered view, as before.
-- **New exports:** the two diagrams' types in `lib/umlimator.d.ts`. Nothing is removed or renamed; the registry, the
-  Mermaid sequence reader and writer and the helpers stay internal.
+  operand or use) as overlapping a node it fully contains; a use over a lifeline head, or two crossing frames, are still
+  reported. No map node has the mark, so maps check as before.
+- **`umlimator.py`** leaves a sequence view's interaction uses, which have no ends, out of what the upstream engine
+  reads (F3), where 0.19.0 refused the model with "an unknown end"; any other line with no ends is still reported.
+  **`umlimator.py trace`** takes `--diagram uml.sequence`; without it, `trace` writes the numbered view, as before.
+- **The schema** accepts a sequence view's interaction use inline in its `edges` (a `uml.InteractionUse` with no ends)
+  and describes the new fields; it rejects nothing it accepted before. **`lib/umlimator.d.ts`** exports the two
+  diagrams' types, and `MapView.edges` takes an element too.
+- From 0.18.0, also: typed views on the canvas (class views too) give lines key rings in the Tab order, Shift + click
+  adds a line to the selection, and `L` may start from a selected line; a typed view's root `<svg>` is `role="group"`;
+  `umlimator.py import` reads a Mermaid `sequenceDiagram` (all in 0.19.0).
+- **Nothing is removed or renamed;** the registry, the Mermaid sequence reader and writer and the helpers stay internal.
 - **Left out** (`notes/stage-3.md` §13): gates, continuations, state invariants, time constraints, found and lost
   messages, coregions, the seven other operators (drawn by name), an actor drawn as a figure, notes and `autonumber` in
   a sequence view, hiding a message; concurrent numbers and multi-objects in a communication view; XMI. The `map-repo`
   skill, the MCP server and the diff Action meet these types in one package after 0.20.0 (C10, S15).
-- **Size:** `lib/umlimator.js`, what a map host loads, is 186.9 kB (186,920 B) with `gzip -9` on this branch, 13.32% over 0.16.0
+- **Size:** `lib/umlimator.js`, what a map host loads, is 186.9 kB (186,920 B) with `gzip -9`, 13.32% over 0.16.0
   (the plan's budget is 15%); stage 3 added 835 B to it in 3.4, 107 B in #191 and 130 B in 3.8, the rest is stage 2's.
-  `lib/umlimator-all.js` is 276.9 kB (276,892 B), up from 211.5 kB in 0.18.0.
+  `lib/umlimator-all.js` is 276.9 kB (276,892 B), up from 211.5 kB in 0.18.0. The npm package is 515 kB, up from
+  512 kB in 0.19.0.
