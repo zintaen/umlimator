@@ -75,7 +75,7 @@ test('a map line or view with a field named as one the typed layout uses lays ou
   const model = extra => ({ nodes: ['a', 'b', 'c'].map(id => ({ id, label: id.toUpperCase() })), views: [{ id: 'v', nodeIds: ['a', 'b', 'c'], ...extra.view }],
     edges: [{ id: 'e1', from: 'a', to: 'b', label: 'calls', ...extra.line }, { id: 'e2', from: 'a', to: 'c', label: 'reads', ...extra.line }, { id: 'e3', from: 'b', to: 'c' }] });
   const geo = m => { const g = layout(m, 'v'); return JSON.stringify([g.nodes.map(n => [n.id, n.x, n.y, n.w, n.h]), g.edges.map(e => [e.pts, e.lbl && [e.lbl.x, e.lbl.y, e.lbl.w, e.lbl.h]]), g.bounds]); };
-  const names = ['self', 'fan', 'how', 'corners', 'typed', 'turned', 'direction', 'lane'];
+  const names = ['self', 'fan', 'how', 'corners', 'typed', 'turned', 'direction', 'lane', 'cut']; // cut: a typed line's label width (4.1)
   const plain = geo(model({}));
   assert.equal(geo(model({ line: Object.fromEntries(names.map(k => [k, true])) })), plain);
   assert.equal(geo(model({ view: { typed: true, turned: true, direction: 'down' } })), plain);
@@ -117,6 +117,8 @@ test('an edit that moves nothing (a colour, a props field) lays out and routes n
   assert.equal(memo.runs, 2, 'a size edit lays out again');
   layoutTyped({ ...dg, edges: [{ ...dg.edges[0], label: 'calls' }] }, memo);
   assert.equal(memo.runs, 3, 'a label edit lays out again: the label\'s size moves geometry');
+  layoutTyped({ ...dg, edges: [{ ...dg.edges[0], label: 'calls', cut: 280 }] }, memo);
+  assert.equal(memo.runs, 4, 'a line\'s cut lays out again: the width its label is cut at moves geometry (notes/stage-4.md S7)');
   const m2 = {}, red = layoutTyped(dg, m2), plain = layoutTyped({ ...dg, nodes: [{ ...dg.nodes[0], color: undefined }, dg.nodes[1]].map(({ color, ...n }) => n) }, m2);
   assert.equal(m2.runs, 1); assert.equal(plain, red); assert.ok(!('color' in plain.byId.a), 'a colour taken off goes');
   for (const k of ['mainSteps', 'blocks']) assert.notEqual(geometryKey({ ...dg, [k]: k === 'blocks' ? [{ x: 0, y: 0, w: 9, h: 9 }] : true }), geometryKey(dg), k);
