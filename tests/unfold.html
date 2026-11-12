@@ -31,7 +31,7 @@ try {
   check("the inner view's own cards sit inside the box, inside the Rides box it was in", q('.family[data-family="trips"]').dataset.parent === 'rides');
   check('lines to the card move onto the cards inside: Rider app → Trip API, Fare calculator → Pricing', line('rider-app', 'trip-api') && line('fare', 'pricing') && !line('rider-app', 'trips'));
   check('cards in earlier columns keep their places; later ones move right', xOf('riders') === x0.riders && xOf('rider-app') === x0['rider-app'] && xOf('pricing') > x0.pricing, [xOf('riders'), x0.riders, xOf('pricing'), x0.pricing]);
-  check('the minimap draws the unfolded view', sr.querySelectorAll('.minimap svg rect').length === sr.querySelectorAll('.node').length + 1);
+  check('the minimap draws the unfolded view', sr.querySelectorAll('.minimap svg rect, .minimap svg path').length === sr.querySelectorAll('.node').length + 1);
   check('toSVG draws it unfolded', h.toSVG().includes('data-family="trips"') && h.toSVG().includes('data-id="trip-api"'));
   check('expand() of a card already unfolded, of one that opens no view, or of one not on the view is false', h.expand('trips') === false && h.expand('riders') === false && h.expand('nope') === false);
   check('a host call emits no expand event', !ev.some(x => x[0] === 'expand'));
@@ -81,7 +81,7 @@ try {
   const drawn = root => [...root.querySelectorAll('.node')].map(g => g.getAttribute('data-id')).concat([...root.querySelectorAll('.family')].map(g => g.getAttribute('data-family'))).sort();
   const once = () => { const map = drawn(sr4), out = drawn(new DOMParser().parseFromString(h4.toSVG(), 'image/svg+xml'));
     return new Set(map).size === map.length && JSON.stringify(out) === JSON.stringify(map) && folded.every(id => map.includes(id))
-      && sr4.querySelectorAll('.minimap svg rect').length === sr4.querySelectorAll('.node').length + 1; };
+      && sr4.querySelectorAll('.minimap svg rect, .minimap svg path').length === sr4.querySelectorAll('.node').length + 1; };
   for (const [a, b, first] of [['orders', 'warehouse', 'orders'], ['warehouse', 'orders', 'orders']]) {
     const steps = [h4.expand(a) && once(), h4.expand(b) && once() && h4.expanded.join() === `${a},${b}`];
     steps.push(h4.collapse(first) && once(), h4.collapse(first === a ? b : a) && once() && !h4.expanded.length && drawn(sr4).join() === [...folded].sort().join());
