@@ -792,11 +792,11 @@ Under (a): a state's rows are its activities and internal transitions; a pseudos
 its partition; a use case's its extension points; an extend's line label is its drawn label already.
 
 As built in 4.9: `view` is the view object, as `boxes(model, view)` takes it, and `model` the context's copy of the model;
-`rows` returning `undefined` or `null` lists the members as before, and an empty list lists nothing; `word` names a node's
+`rows` returning anything but a list lists the members as before, and an empty list lists nothing; `word` names a node's
 kind only, a line's kind staying its type word. Only the table's heading reads "Elements": its header row stays "Card, Kind,
 Members" (`tests/cli.py` reads it) and the page's header still counts cards. The tables are built by `tablesOf(ctx, view, g)`
-apart from `printDoc`, internal to `print.js`, so `tests/print-typed.test.mjs` reads them in Node. The core grows by 121 B
-(`gzip -9` of `lib/umlimator.js`, 186,920 B to 187,041 B, measured before 4.1 merged).
+apart from `printDoc`, internal to `print.js`, so `tests/print-typed.test.mjs` reads them in Node. The core grows by 136 B
+(`/usr/bin/gzip -9` of `lib/umlimator.js`, 186,907 B to 187,043 B, measured before 4.1 merged).
 
 ## 16. Fixtures
 

@@ -20,22 +20,22 @@ const cells = row => [...row.matchAll(/<td>(.*?)<\/td>/g)].map(m => m[1]);
 const seen = [];
 registerDiagramType('test.print', {
   word: (model, id) => model.nodes.find(n => n.id === id).props?.kind, // none: the type word, as before
-  rows: (model, view, id) => { seen.push([model.title, view.id, id]); return id === 'plain' ? undefined : ['entry / reserve the books', 'in <Warehouse>']; },
+  rows: (model, view, id) => { seen.push([model.title, view.id, id]); const r = { plain: undefined, empty: [], nil: null, text: 'not a list' }; return id in r ? r[id] : ['entry / reserve the books', 'in <Warehouse>']; }, // all but a list: the members
 });
 const M = { schemaVersion: 2, title: 'print test',
   nodes: [{ id: 'placed', type: 'test.State', label: 'Placed', props: { kind: 'Initial pseudostate' }, members: [{ id: 'placed.r', type: 'test.Region', label: 'never listed' }] },
-    { id: 'plain', type: 'test.State', label: 'Plain', members: [{ id: 'plain.r', type: 'test.Region', label: 'its member' }] }],
+    ...['plain', 'empty', 'nil', 'text'].map(id => ({ id, type: 'test.State', label: id, members: [{ id: id + '.r', type: 'test.Region', label: 'its member' }] }))],
   edges: [{ id: 'go', type: 'test.Transition', from: 'placed', to: 'plain', label: 'pay' }],
-  views: [{ id: 'sm', diagram: 'test.print', nodeIds: ['placed', 'plain'], edges: ['go'] }] };
+  views: [{ id: 'sm', diagram: 'test.print', nodeIds: ['placed', 'plain', 'empty', 'nil', 'text'], edges: ['go'] }] };
 
 test('a type\'s word and rows: the element\'s kind and what is listed for it, escaped; with none, the type word and its members', () => {
   const ctx = mapContext(M), [els, lines] = tablesOf(ctx, ctx.V.sm, NONE);
-  assert.match(els.title, /^Elements <span>2<\/span>$/);
+  assert.match(els.title, /^Elements <span>5<\/span>$/);
   assert.equal(els.head, '<th>Card</th><th>Kind</th><th>Members</th>'); // the header row as R8's, which tests/cli.py reads
   assert.deepEqual(els.rows.map(cells), [['<b>Placed</b>', 'Initial pseudostate', '<p>entry / reserve the books</p><p>in &lt;Warehouse&gt;</p>'],
-    ['<b>Plain</b>', 'State', '<p>its member</p>']]);
-  assert.deepEqual(seen, [['print test', 'sm', 'placed'], ['print test', 'sm', 'plain']]); // the model, the view and the element's id
-  assert.deepEqual(lines.rows.map(cells), [['<i class="w" style="border-color:var(--um-w-calls)"></i>Placed → Plain', 'pay', 'Transition']]);
+    ['<b>plain</b>', 'State', '<p>its member</p>'], ['<b>empty</b>', 'State', ''], ['<b>nil</b>', 'State', '<p>its member</p>'], ['<b>text</b>', 'State', '<p>its member</p>']]);
+  assert.deepEqual(seen, ['placed', 'plain', 'empty', 'nil', 'text'].map(id => ['print test', 'sm', id])); // the model, the view and the element's id
+  assert.deepEqual(lines.rows.map(cells), [['<i class="w" style="border-color:var(--um-w-calls)"></i>Placed → plain', 'pay', 'Transition']]);
 });
 
 // What printDoc listed before 4.9, for the examples drawn today: pinned as one hash a file over its views' tables, those
