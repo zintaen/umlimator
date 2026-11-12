@@ -19,7 +19,7 @@ view drawing ownership as nesting (`plan.md` §5, row 2).
 | S7 | Editing ownership | Drag into or out of a box: `reparent`. By keyboard: an Owner field in the properties panel. Deleting a package deletes what it owns, as `apply()` does today | §8 |
 | S8 | The object diagram | The classifier shape with an underlined head, `name : Classifier`; slots as `feature = value` rows; links with a name and end roles | §9 |
 | S9 | What the class view gains | Packages drawn as nesting in every class view, from 0.19.0: an exception to `plan.md` §1 and §8 that the maintainer approves; 0.18.0 says it is coming | §10 |
-| S10 | The Mermaid reader's namespaces | The reader is unchanged. The writer keeps nested braces and names an owner the view does not show in its `%% not written:` lines | §11 |
+| S10 | The Mermaid reader's namespaces | The reader changes only where 2.4 found it unlike Mermaid 12.3.0 (§11). The writer keeps nested braces and names an owner the view does not show in its `%% not written:` lines | §11 |
 | S11 | The core's budget (C5) | The diet lands first. Stage 2's core changes are the ones listed in §12; everything else goes in family files | §12 |
 | S12 | The PDF's tables (R8) and a re-own in `diff()` (M11) | In this stage, as their own lane, in the core | §13 |
 
@@ -318,6 +318,10 @@ Stage 2's changes, all in `src/readers/mermaid-class.js` and its tests:
 | (b) Write the hidden owner as an empty namespace with an id hint | `parent` survives | Mermaid draws a package the view does not show; reading back adds it to the view |
 | (c) A `%% parent: <id>` hint | The class keeps its `parent` | The owner is not in the text, so the model read back has a `parent` that is not an element, and `validate()` errors; the reader changes too |
 
+- **The reader, where 2.4 found it unlike Mermaid 12.3.0's ClassDB.** A namespace is known by its parent and its name,
+  so the same name inside two parents is two packages (`A.X`, `B.X`), the second reported and its id given `-2`; an
+  import of such text gets new ids and parents where 1.10 merged the two. A dotted name of over 32 parts is read as one
+  name (R2), and a note inside a namespace is reported.
 - `tests/import/classes.mmd`'s report is pinned again; the 500 generated models gain nested owners and hidden owners, with
   a hidden owner's `parent` dropped from the expected model.
 
