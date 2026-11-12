@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 const ORDER = [
   'core/model', 'core/registry', 'core/warn', 'core/text', 'core/history', 'core/apply',
   'draw/shapes', 'draw/lines', 'draw/svg',
-  'layout/layered', 'layout/audit', 'layout/typed',
+  'layout/layered', 'layout/audit',
   'map/kinds', 'map/typed', 'map/cards', 'map/context', 'map/api', 'map/validate', 'map/diff', 'map/insight', 'map/lens',
   'canvas/styles', 'canvas/camera', 'canvas/edit', 'canvas/render', 'canvas/pieces',
   'page/page', 'page/print',
@@ -37,8 +37,9 @@ function body(name) {
 }
 
 // two whole files from the same sources (stage 1 note §2.5): the core and the map, for hosts that draw maps; and every
-// diagram family too, which the standalone page inlines. A family's files are listed here only, so umlimator.js does not grow
-const ALL = [...ORDER, 'uml/class', 'readers/mermaid-class'];
+// diagram family too, which the standalone page inlines. A family's files are listed here only, so umlimator.js does not grow;
+// so is src/typed/, what only a registered type's geometry takes (the hooks in TYPED, registry.js: risks.md C5)
+const ALL = [...ORDER, 'typed/layout', 'typed/draw', 'uml/class', 'readers/mermaid-class'];
 
 // every source is in ALL, and every name in ALL is a source: a file left out would be missing from lib/ silently
 const found = readdirSync(new URL('src/', root), { recursive: true }).filter(f => f.endsWith('.js')).map(f => f.replaceAll('\\', '/').slice(0, -3)).sort();

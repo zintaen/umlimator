@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { layoutGraph, hit } from '../src/layout/layered.js';
 import { readFileSync } from 'node:fs';
-import { VIEW_GEO, VIEW_PAINT, geometryKey, layoutTyped } from '../src/layout/typed.js';
+import { VIEW_GEO, VIEW_PAINT, geometryKey, layoutTyped } from '../src/typed/layout.js';
 import { routeAudit, overlapIssues } from '../src/layout/audit.js';
 import { layout } from '../src/map/api.js';
 
@@ -122,7 +122,7 @@ test('an edit that moves nothing (a colour, a props field) lays out and routes n
 });
 
 test('the geometry key holds every field of the view the layout reads that is not paint', () => {
-  const read = new Set([...readFileSync(new URL('../src/layout/layered.js', import.meta.url), 'utf8').matchAll(/\bdg\.(\w+)/g)].map(m => m[1]));
+  const read = new Set(['../src/layout/layered.js', '../src/typed/layout.js'].flatMap(f => [...readFileSync(new URL(f, import.meta.url), 'utf8').matchAll(/\bdg\.(\w+)/g)].map(m => m[1])));
   ['nodes', 'edges', ...VIEW_GEO, ...VIEW_PAINT].forEach(k => read.delete(k));
   assert.deepEqual([...read], []);
 });

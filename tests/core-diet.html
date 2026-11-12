@@ -1,0 +1,37 @@
+<!doctype html>
+<!-- The core's diet (0.18.0, risks.md C5) in headless Chrome (tests/embed.py): the markup render() draws, with the
+     font-independent measure, for every view of the class example and of two other version-2 examples from
+     lib/umlimator.js, and of the class example from lib/umlimator-all.js, held to its fingerprint as main drew it before
+     src/typed/ left the core (tests/core-diet.json's "markup"). ?lib=DIR draws with DIR's two files, and ?record shows the
+     fingerprints instead, to record them. -->
+<meta charset="utf-8">
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="../lib/umlimator-theme.css">
+<title>umlimator core diet test</title>
+<body style="margin:0">
+<div id="m" style="width:1200px;height:900px"></div>
+<script type="module">
+const q = new URLSearchParams(location.search), lib = q.get('lib') || '../lib';
+const out = { ok: [], fail: [] };
+const check = (name, cond, info) => { document.title = name; if (cond) out.ok.push(name); else out.fail.push(name + (info === undefined ? '' : ': ' + JSON.stringify(info))); };
+const hex = async s => [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s)))].map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 16);
+const el = document.getElementById('m');
+const CASES = [['umlimator.js', 'examples/sales-classes.json'], ['umlimator.js', 'docs/diagrams/examples/23-c4.json'], ['umlimator.js', 'docs/diagrams/examples/09-activity.json'],
+  ['umlimator-all.js', 'examples/sales-classes.json']];
+try {
+  const prints = {};
+  for (const [file, path] of CASES) {
+    const U = await import(`${lib}/${file}`), model = await (await fetch('../' + path)).json();
+    for (const v of model.views) {
+      el.innerHTML = ''; const h = U.render(el, model, { view: v.id, measure: false });
+      const svg = el.querySelector('.umlimator').shadowRoot.querySelector('.stage svg');
+      prints[`${file} ${path} ${v.id}`] = svg ? await hex(svg.outerHTML) : 'no svg'; h.destroy();
+    }
+  }
+  if (q.has('record')) { const pre = document.createElement('pre'); pre.id = 'prints'; pre.textContent = JSON.stringify(prints); document.body.appendChild(pre); }
+  const was = (await (await fetch('core-diet.json')).json()).markup;
+  check(`${Object.keys(prints).length} views, from both files, draw the markup main drew before the move`, JSON.stringify(prints) === JSON.stringify(was),
+    Object.keys(prints).filter(k => prints[k] !== (was || {})[k]));
+} catch (e) { out.fail.push('threw: ' + (e && e.stack || e)); }
+const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
+</script>

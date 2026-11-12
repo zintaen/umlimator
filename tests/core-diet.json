@@ -1,0 +1,287 @@
+{
+ "core": {
+  "01-class.json": {
+   "layout domain": "f99f62a842c0005e",
+   "describe domain": "4c005fc83694fe1c",
+   "layout payments": "d9f3592e93c031c4",
+   "describe payments": "a178ff45a4dcdc2a",
+   "validate": "4878f0dc5df1125a",
+   "edit": "9048137cf08520da",
+   "edited layout domain": "1444dacb47688a12",
+   "edited validate": "4878f0dc5df1125a"
+  },
+  "02-object.json": {
+   "layout snapshot": "182a5a58106b3e93",
+   "describe snapshot": "c56c3c84340b34f2",
+   "validate": "cab32711b2db1840",
+   "edit": "dd07b6a0211d079d",
+   "edited layout snapshot": "ff71ca739b4d5e48",
+   "edited validate": "cab32711b2db1840"
+  },
+  "03-package.json": {
+   "layout packages": "91454ac689648dc4",
+   "describe packages": "d20a05df72974e5a",
+   "validate": "120c89b39ffa15db",
+   "edit": "f04391b607d8fdf6",
+   "edited layout packages": "1a201368b694b365",
+   "edited validate": "120c89b39ffa15db"
+  },
+  "04-composite-structure.json": {
+   "layout internals": "529f8c9edabd2f4b",
+   "describe internals": "73562a4cba22a31d",
+   "validate": "ef0d9527a1cff1d1",
+   "edit": "cdf620926c03fccf",
+   "edited layout internals": "a323cfad04832dfe",
+   "edited validate": "ef0d9527a1cff1d1"
+  },
+  "05-component.json": {
+   "layout components": "b712e626688d837e",
+   "describe components": "ded335757f6e411b",
+   "validate": "67ddb7c01be29dae",
+   "edit": "bc94220a6e2ff5a9",
+   "edited layout components": "6a93c9721bb05173",
+   "edited validate": "67ddb7c01be29dae"
+  },
+  "06-deployment.json": {
+   "layout production": "68b391a0c6e5c3a8",
+   "describe production": "97de455e61920fba",
+   "validate": "188677cf11fda0f2",
+   "edit": "e14c5096ae22f7c7",
+   "edited layout production": "73b8f0ce28cfb530",
+   "edited validate": "188677cf11fda0f2"
+  },
+  "07-profile.json": {
+   "layout profile": "2770308cf93b5ad0",
+   "describe profile": "cb5112596dd8f61d",
+   "validate": "404406d891846b91",
+   "edit": "5d8ce38ba615b75a",
+   "edited layout profile": "bdc05593b04b44c7",
+   "edited validate": "404406d891846b91"
+  },
+  "08-use-case.json": {
+   "layout shopping": "1e558abd73cc70b8",
+   "describe shopping": "5259358ce4b20952",
+   "validate": "3e26030a38d3c0fd",
+   "edit": "c5c2e3d05c3a3a34",
+   "edited layout shopping": "d015ddb8de5f109e",
+   "edited validate": "3e26030a38d3c0fd"
+  },
+  "09-activity.json": {
+   "layout fulfil": "5ee69b9ce93a566c",
+   "describe fulfil": "8b911ab000160c24",
+   "layout take-payment": "67fd75967408bf98",
+   "describe take-payment": "9a41a849b1bc507d",
+   "validate": "f39e7fc55d1bfb14",
+   "edit": "f61e5af8d7461d26",
+   "edited layout fulfil": "a86e3b50eae1efb7",
+   "edited validate": "f39e7fc55d1bfb14"
+  },
+  "10-state-machine.json": {
+   "layout order-life": "532561673f5e9b97",
+   "describe order-life": "7d01fd526a5c0028",
+   "validate": "b40ef156fb4f53d9",
+   "edit": "ed2e6f42c4f61c81",
+   "edited layout order-life": "f41e1949cb85ceed",
+   "edited validate": "b40ef156fb4f53d9"
+  },
+  "11-sequence.json": {
+   "layout checkout": "12d8a195960b3da0",
+   "describe checkout": "50e5368f367f6f2c",
+   "validate": "341df7b05404ef6b",
+   "edit": "b37b377882ba00da",
+   "edited layout checkout": "2b78515c90411267",
+   "edited validate": "341df7b05404ef6b"
+  },
+  "12-communication.json": {
+   "layout checkout": "78ef2300a20ae7f3",
+   "describe checkout": "58cfaf8289517fad",
+   "validate": "5fafafbd2641045a",
+   "edit": "907ac46cee46553a",
+   "edited layout checkout": "204292c9623d7b0e",
+   "edited validate": "5fafafbd2641045a"
+  },
+  "13-interaction-overview.json": {
+   "layout buy-book": "5da76e5783cd414d",
+   "describe buy-book": "60f329bcc4588c07",
+   "layout find-book": "2db131f40127cbb1",
+   "describe find-book": "94f07a377d1a77fb",
+   "layout checkout": "2b7bcef2953cfcf7",
+   "describe checkout": "97fbf6b862fffb23",
+   "layout email-receipt": "72e1cc0f80f0cf39",
+   "describe email-receipt": "03786a8cc81775fc",
+   "layout queue-order": "425337a23df09361",
+   "describe queue-order": "7449099c00fc275a",
+   "validate": "7c46e575833c33ea",
+   "edit": "013c2cf9545ded56",
+   "edited layout buy-book": "8e33f098c3fc707c",
+   "edited validate": "7c46e575833c33ea"
+  },
+  "14-timing.json": {
+   "layout charge": "d4fe78eacf648e01",
+   "describe charge": "f18206f18ec03efe",
+   "validate": "15fb5a7287101490",
+   "edit": "f8098a494b38cc95",
+   "edited layout charge": "67848559d04bb34f",
+   "edited validate": "15fb5a7287101490"
+  },
+  "15-information-flow.json": {
+   "layout order-flows": "e3227e80276d1d0b",
+   "describe order-flows": "493a293223bb0a60",
+   "validate": "7ec9149d7f7cb39d",
+   "edit": "0ebaeaf73ffaffd0",
+   "edited layout order-flows": "9e9bac7096e2722d",
+   "edited validate": "7ec9149d7f7cb39d"
+  },
+  "16-requirement.json": {
+   "layout requirements": "2b79f94cc2a23d23",
+   "describe requirements": "76f561fb7111405c",
+   "validate": "506d251fdef33c37",
+   "edit": "204a566cab3e6686",
+   "edited layout requirements": "3e4acd88ac53d778",
+   "edited validate": "506d251fdef33c37"
+  },
+  "17-block-definition.json": {
+   "layout blocks": "ee9cc67d0eb5b34a",
+   "describe blocks": "9bb392b80ebc7c7a",
+   "validate": "b5a4060a9e0361bb",
+   "edit": "11fcc9f317727b4a",
+   "edited layout blocks": "75ada3debc815919",
+   "edited validate": "b5a4060a9e0361bb"
+  },
+  "18-internal-block.json": {
+   "layout inside-ebike": "f00ed8b444361131",
+   "describe inside-ebike": "cc89b02836319369",
+   "validate": "17c2e3928a271090",
+   "edit": "b784d2e89e052d45",
+   "edited layout inside-ebike": "93a43e36bfa3a41b",
+   "edited validate": "17c2e3928a271090"
+  },
+  "19-parametric.json": {
+   "layout range": "607d7936489207f9",
+   "describe range": "0342c3c5e14543ef",
+   "validate": "309c92e80082904a",
+   "edit": "d0cfd8c3e648502c",
+   "edited layout range": "750019b4ab1f794e",
+   "edited validate": "309c92e80082904a"
+  },
+  "20-entity-relationship.json": {
+   "layout schema": "6402d1a7e631e3fe",
+   "describe schema": "4afe147d0a8f7446",
+   "validate": "81188d47e20523d9",
+   "edit": "67c87b1f5afafcac",
+   "edited layout schema": "00eedee60e05c5c4",
+   "edited validate": "81188d47e20523d9"
+  },
+  "21-flowchart.json": {
+   "layout returns": "56a8a578e7e17f6e",
+   "describe returns": "7ebf4e711b8dc893",
+   "validate": "70a87dcf3efcd0ef",
+   "edit": "95dd2ddf86c599f2",
+   "edited layout returns": "f45a9abdafd924ef",
+   "edited validate": "70a87dcf3efcd0ef"
+  },
+  "22-data-flow.json": {
+   "layout level-1": "b0a739c071b949dc",
+   "describe level-1": "4fce93ad02093599",
+   "layout level-2-take-order": "4817e50035dd7f8e",
+   "describe level-2-take-order": "026fccfcbe925914",
+   "validate": "7a0c0bcafd1a3203",
+   "edit": "6a11595d9bbe434d",
+   "edited layout level-1": "10432d9da8a850b2",
+   "edited validate": "7a0c0bcafd1a3203"
+  },
+  "23-c4.json": {
+   "layout context": "d8eae7f8964e75a3",
+   "describe context": "cb60e44caae1b2c1",
+   "layout containers": "2cd07be31a8054e3",
+   "describe containers": "33d3fd10f80363be",
+   "layout components": "46dad2410a83a89e",
+   "describe components": "4854b64fa9e957cd",
+   "layout placing-an-order": "550c82cc4a2db3f1",
+   "describe placing-an-order": "653acc42899383a6",
+   "layout deployment": "bee0a0ec261bc1b9",
+   "describe deployment": "edb33982e909c61d",
+   "validate": "a2acbd3da44354fe",
+   "edit": "f5c22166544e4e44",
+   "edited layout context": "dd1869c906d6b7e9",
+   "edited validate": "a2acbd3da44354fe"
+  },
+  "24-bpmn.json": {
+   "layout order-to-shipment": "6712ee49e26259ef",
+   "describe order-to-shipment": "ecf4fcbad3ccddc8",
+   "layout pick-and-pack": "7343b6d3cab47631",
+   "describe pick-and-pack": "eca3a5543186357d",
+   "validate": "ab94089ef574e55a",
+   "edit": "5c3336d6bb2bb308",
+   "edited layout order-to-shipment": "a8175fcc481a8320",
+   "edited validate": "ab94089ef574e55a"
+  },
+  "25-mindmap.json": {
+   "layout plan": "40d1db484d7a288d",
+   "describe plan": "5ce7d90d6db7de1c",
+   "validate": "daec15d409755e13",
+   "edit": "7a43e0f6e8cf68cd",
+   "edited layout plan": "965650fe0da3a8b8",
+   "edited validate": "daec15d409755e13"
+  },
+  "26-aws.json": {
+   "layout on-aws": "25a693b61352218e",
+   "describe on-aws": "7e9817993976ea18",
+   "validate": "65524f88f886c00e",
+   "edit": "15a4aedf265f33c3",
+   "edited layout on-aws": "dccd79198d30a769",
+   "edited validate": "65524f88f886c00e"
+  },
+  "27-gcp.json": {
+   "layout on-gcp": "b1cd8d0b1e8638be",
+   "describe on-gcp": "1c900fcefcced3d6",
+   "validate": "d8a750f6d7f41721",
+   "edit": "f3ac52d5419f721a",
+   "edited layout on-gcp": "c1076a4640c593ee",
+   "edited validate": "d8a750f6d7f41721"
+  },
+  "28-azure.json": {
+   "layout on-azure": "56b4477cf525c8ec",
+   "describe on-azure": "cff3f0a67beedd92",
+   "validate": "404236670800e847",
+   "edit": "0b21f8c7d7caeb47",
+   "edited layout on-azure": "9051f0e9737ebb38",
+   "edited validate": "404236670800e847"
+  },
+  "examples/sales-classes.json": {
+   "layout domain": "2fd63f01f9be46bc",
+   "describe domain": "4c005fc83694fe1c",
+   "layout payments": "d9f3592e93c031c4",
+   "describe payments": "a178ff45a4dcdc2a",
+   "validate": "4878f0dc5df1125a",
+   "edit": "9048137cf08520da",
+   "edited layout domain": "1444dacb47688a12",
+   "edited validate": "4878f0dc5df1125a"
+  }
+ },
+ "all": {
+  "examples/sales-classes.json": {
+   "layout domain": "52c3eff80bb8d454",
+   "describe domain": "3e07af65bdf7fba9",
+   "layout payments": "3d029673eb078ecf",
+   "describe payments": "c9f3531df4f8c1f7",
+   "validate": "643d5437104296e2",
+   "edit": "9048137cf08520da",
+   "edited layout domain": "30b19e175d515b6e",
+   "edited validate": "643d5437104296e2"
+  }
+ },
+ "markup": {
+  "umlimator.js examples/sales-classes.json domain": "696d921a36f1dec5",
+  "umlimator.js examples/sales-classes.json payments": "20b80251a9bb6baa",
+  "umlimator.js docs/diagrams/examples/23-c4.json context": "a787b2af45c91ccc",
+  "umlimator.js docs/diagrams/examples/23-c4.json containers": "f5d3f06fe20edac5",
+  "umlimator.js docs/diagrams/examples/23-c4.json components": "8b6a53a013239160",
+  "umlimator.js docs/diagrams/examples/23-c4.json placing-an-order": "2f4573bd6b7ca683",
+  "umlimator.js docs/diagrams/examples/23-c4.json deployment": "cba791212106b858",
+  "umlimator.js docs/diagrams/examples/09-activity.json fulfil": "e32f36e4f74bd8c7",
+  "umlimator.js docs/diagrams/examples/09-activity.json take-payment": "fc54192e340a685c",
+  "umlimator-all.js examples/sales-classes.json domain": "8ac957819d86da0f",
+  "umlimator-all.js examples/sales-classes.json payments": "baf77dbbcd404c8b"
+ }
+}
