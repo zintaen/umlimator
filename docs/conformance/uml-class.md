@@ -44,8 +44,9 @@ drawn) and `rows` (at most n rows, then "+k more").
   constraints and OCL; generalization sets; nested classifiers (a class's `parent` is a package, never a class).
 - Object diagrams (stage 2); packages drawn with their contents inside them, and package import and merge (stage 2).
   Until 0.19.0 a package is a named box, and the view draws its classes beside it. From 0.19.0 every class view draws
-  a package as a box holding what it owns and qualifies names (`sales::Order`), so this picture changes, by the
-  maintainer's decision (`docs/diagrams/notes/stage-2.md` §10.1).
+  a package with something it owns shown as a box holding it (a package with nothing it owns shown stays closed), and
+  qualifies names (`sales::Order`), so this picture changes, by the maintainer's decision
+  (`docs/diagrams/notes/stage-2.md` §10.1).
 - Notation the subset does not draw: property modifiers (`{readOnly}`, `{ordered}`, `{unique}`), derived unions,
   the association-end ownership dot, an association's name-direction triangle, end visibility, ball-and-socket
   interfaces (the component diagram's, stage 5), stereotype icons.

@@ -10,9 +10,9 @@ Agents build this. There are no time estimates: a work package is sized by what 
 
 - All 28 diagram types meet the definition of done below, on the subsets in `model.md` and `proposal.md` §8.5.
 - Every model that drew before draws the same. Nothing in the public API was removed. One exception, approved by the
-  maintainer on 12 Nov 2026 (#174): from 0.19.0 a class view draws its packages as boxes holding what they own, and
-  qualifies names, so a class picture of 0.18.0 changes ([`notes/stage-2.md`](notes/stage-2.md) §10.1). Maps do not
-  change.
+  maintainer on 12 Nov 2026 (#174): from 0.19.0 a class view draws a package with something it owns shown as a box
+  holding it, and qualifies names, so a class picture of 0.18.0 changes ([`notes/stage-2.md`](notes/stage-2.md)
+  §10.1). Maps do not change.
 - The API, the model's schema and each type's conformance note are frozen and documented.
 
 **Decided on 11 Nov 2026:** 1.0.0 comes after all 28 types, not after the 14 UML types.
@@ -36,7 +36,8 @@ A type ships when every line holds. This is the merge checklist.
 10. **Examples:** its file moves from `docs/diagrams/examples/` to `examples/`, joins the gallery and CI, and gains a
     minimal and a stress fixture under `tests/`.
 11. **Docs:** every document in §7 is updated, and a conformance note states the subset and what is left out.
-12. **Regression:** the geometry hashes, the examples' stills and every earlier test are unchanged.
+12. **Regression:** the geometry hashes, the examples' stills and every earlier test are unchanged, except the class
+    view's pictures and tests that §1's exception changes from 0.19.0 (work package 2.2).
 
 ## 3. Releases
 

@@ -36,10 +36,13 @@ Check the examples against this page with `node docs/diagrams/examples/check.mjs
    model. Views keep their own, because a
    view may share a card's id on purpose (the card then opens it). Ids are opaque, chosen by the host or the reader,
    and never contain `->` (today's positional line ids do). Every typed edge has an id.
-6. **`parent`** is ownership. A type draws it as nesting where it names boxes (stage 2's `boxes`,
-   [`notes/stage-2.md`](notes/stage-2.md) §4):
+6. **`parent`** is ownership:
    - on a node: the node or member that holds it (a package, a composite state or its region, a lane, a group);
    - on a message, an interaction use or a fragment in a sequence view: the operand it lies in.
+
+   A type draws a node's `parent` as nesting where it names boxes (stage 2's `boxes`,
+   [`notes/stage-2.md`](notes/stage-2.md) §4). A sequence view places its operands on the time axis, not as boxes
+   ([`notes/stage-3.md`](notes/stage-3.md) §4.2).
 7. **Edge ends.** Properties of an end live in `props.ends.from` and `props.ends.to` (role, multiplicity,
    aggregation, navigability). When the end is a port or parameter reached through a part, `props.ends.<end>.part`
    names the part, as UML's `partWithPort` does.
@@ -81,8 +84,9 @@ Check the examples against this page with `node docs/diagrams/examples/check.mjs
 ```
 
 On a class, package or object view, `subject` names the package whose inside the view shows. An element whose owners
-are not all shown is drawn with their names joined by `::`, from its nearest shown owner, else from the `subject`, else
-from the top (`payments::card::CardPayment`). The `subject` is not drawn unless `nodeIds` lists it; then it is a box
+are not all shown is drawn with the hidden owners' names joined by `::`: from its owner on the picture (its nearest
+shown owner that may be a box); with none, from the `subject` when that is one of its owners, else from the top
+(`payments::card::CardPayment`). The `subject` is not drawn unless `nodeIds` lists it; then it is a box
 holding the rest ([`notes/stage-2.md`](notes/stage-2.md) §2, §6).
 
 ### The model
