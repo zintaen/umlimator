@@ -203,7 +203,7 @@ function mapContext(model, opts = {}) {
   /* a layout may place only some cards: they keep their slots, the rest take their auto-layout slot or the next free
      row below it (a complete layout is used as it is) */
   function fillLayout(vid, L) {
-    const ids = (V[vid].nodeIds || []).filter(i => N[i]);
+    const bx = boxesOf(vid), ids = (V[vid].nodeIds || []).filter(i => N[i] && !bx.some(b => b.id === i)); // a box takes its place from what it holds
     if (ids.every(i => Array.isArray(L[i]))) return L;
     const auto = autoPos(vid), out = {};
     ids.forEach(i => { if (Array.isArray(L[i])) out[i] = L[i]; });
@@ -218,8 +218,9 @@ function mapContext(model, opts = {}) {
      lines come from and go to outside it too, where the pass before put them; then ordered by those lines as well. Its far
      ends are items at their rows, in a column before its first (a line from the left) or after its last. A box's cards were
      placed by its own lines alone, so a box fed from outside, and the lines that pass it, ran into the cards beside it. */
-  function blockPos(vid) {
-    const v = V[vid], ids = (v.nodeIds || []).filter(i => N[i]), lp = loopsOf(v), boxes = (v.containers || []).filter(c => c && c.id);
+  // A typed view whose type gives boxes (notes/stage-2.md §3.2) passes them, T: { boxes, flip }; their ids are not cards
+  function blockPos(vid, T) {
+    const v = T ? flipView(vid, T.flip) : V[vid], boxes = T ? T.boxes : (v.containers || []).filter(c => c && c.id), ids = (v.nodeIds || []).filter(i => N[i] && !(T && boxes.some(b => b.id === i))), lp = loopsOf(v);
     const fwd = lp.edges.filter((e, k) => !lp.back.has(k) && e.from !== e.to), byBox = Object.fromEntries(boxes.map(b => [b.id, b]));
     const home = Object.fromEntries(ids.map(i => [i, (boxes.filter(b => (b.nodeIds || []).includes(i)).pop() || {}).id ?? null])); // the box a card is drawn in
     const up = x => ids.includes(x) ? home[x] : byBox[x] && byBox[byBox[x].parent] ? byBox[x].parent : null; // the box a card or box sits in
@@ -275,7 +276,10 @@ function mapContext(model, opts = {}) {
   }
   // a typed view whose type lays it out (1.9): the plain flow's ranking, with the lines the type turns round for it
   const ownLayout = vid => { if (D.schemaVersion !== 2) return null; const T = diagramOf(V[vid]); return T && T.layout && (T.layout.run || typeof T.layout === 'function') ? T : null; }; // version 1: a map
-  const autoPos = vid => ownLayout(vid) ? flowPos(vid, { flip: ownLayout(vid).rankFlip }) : ((V[vid] || {}).containers || []).length ? blockPos(vid) : bestFlow(vid);
+  // its boxes (registry.js): the type's, from the model; a map's are its containers
+  const boxesOf = vid => { const T = ownLayout(vid); return T && T.boxes ? arrOf(T.boxes(D, V[vid])).filter(b => b && b.id != null) : []; };
+  const autoPos = vid => { const T = ownLayout(vid), bx = boxesOf(vid);
+    return T ? bx.length ? blockPos(vid, { boxes: bx, flip: T.rankFlip }) : flowPos(vid, { flip: T.rankFlip }) : ((V[vid] || {}).containers || []).length ? blockPos(vid) : bestFlow(vid); };
   const memos = opts.memos || Object.create(null); // per view, layoutTyped's memo, kept across update()s: an edit that moves nothing lays out nothing
   const level = e => !/^(top|bottom)$/.test(e.fromSide) && !/^(top|bottom)$/.test(e.toSide); // a line into a card's top or bottom asks for no row
   /* A small plain view is routed a few ways and keeps the one the layout check scores best: cards level with their
@@ -295,8 +299,9 @@ function mapContext(model, opts = {}) {
   let scouting = false;
   const fanIn = vid => { const k = {}; return viewEdges(V[vid] || {}).some(e => e.from !== e.to && (k[e.to] = (k[e.to] || 0) + 1) >= 6); };
   const drawn = {}; // the way bestFlow kept, routed already: the view's next buildGeo takes it once instead of routing it again
+  const flipView = (vid, flip) => flip ? { ...V[vid], edges: viewEdges(V[vid]).map(e => flip(e) ? { ...e, from: e.to, to: e.from } : e) } : V[vid];
   function flowPos(vid, o = {}) {
-    const v = o.flip ? { ...V[vid], edges: viewEdges(V[vid]).map(e => o.flip(e) ? { ...e, from: e.to, to: e.from } : e) } : V[vid];
+    const v = flipView(vid, o.flip);
     const lp = loopsOf(v), fwd = lp.edges.filter((e, k) => !lp.back.has(k) && e.from !== e.to);
     // cards with no line go in rows of their own under the view (#46), as wide as its columns; they stacked with the sources
     const all = (v.nodeIds || []).filter(i => N[i]), lined = new Set(lp.edges.filter(e => e.from !== e.to).flatMap(e => [e.from, e.to]));
@@ -498,7 +503,7 @@ function mapContext(model, opts = {}) {
   const viewKey = vid => {
     const v = V[vid], ids = (v.nodeIds || []).filter(i => N[i]), ns = ids.map(i => nodeIn(i, vid));
     const icons = [...new Set(ns.map(n => n.icon).filter(Boolean))].map(k => (D.icons || {})[k]), who = [...new Set(ns.map(n => n.author).filter(Boolean))].map(k => (D.authors || {})[k]);
-    return JSON.stringify([{ ...v, shapes: undefined }, ns, viewEdges(v), ids.map(i => [kidCount(i, vid), opensOf(i, vid)]), icons, who]); // a view's notation lays nothing out
+    return JSON.stringify([{ ...v, shapes: undefined }, ns, viewEdges(v), ids.map(i => [kidCount(i, vid), opensOf(i, vid)]), icons, who, boxesOf(vid)]); // a view's notation lays nothing out; a type's boxes do
   };
   /* ---------- unfolding in place (#71): a stacked card opens into a box on the view it is on ----------
      The card becomes a box with its id and name, holding its inner view's own cards: those not on this view already (the

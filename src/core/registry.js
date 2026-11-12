@@ -13,7 +13,15 @@ function registerDiagramType(name, def = {}) {
 }
 
 /* A definition's fields are optional and provisional; absent, things go as before. notes/spike-sequence.md §1 says what
-   each does (validate(model) with no view runs once a type, not once a view); 1.9's: rankFlip, member, rules, describe. */
+   each does (validate(model) with no view runs once a type, not once a view); 1.9's: rankFlip, member, rules, describe.
+   2.1's (notes/stage-2.md §3, §4.2, §8):
+   - boxes(model, view) -> [{ id, label, title, nodeIds, parent, shape, aria }]: the view's boxes, a map's container format plus
+     the drawn title, the shape whose frame(f) draws it (SHAPE, src/draw/shapes.js) and its accessible name. A box's id is in the
+     view's nodeIds but takes no slot: the layout context places its nodeIds as a block (blockPos), and the type's layout passes
+     the same boxes to layoutTyped as containers. A drop into, out of or between boxes emits reparent, then the pin; an edit
+     that changes them lays the view out again (render.js withPlaces). None: no boxes, as before.
+   - owners(model, element) -> [{ id, label }]: the properties panel's Owner field for that element, a select of these and
+     "none", which emits reparent (the element itself and what it holds are left out). None, or not a list: no Owner field. */
 
 /* A view's type: the map for a view with no diagram, the registered type, or null for one this release does not draw */
 const diagramOf = view => TYPES.get(view && view.diagram != null ? view.diagram : 'map') || null;

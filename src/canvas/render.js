@@ -8,6 +8,7 @@ import { hit } from '../layout/layered.js';
 import { edgeRefIds } from '../map/api.js';
 import { badgesOf, mapTabs, toneOf } from '../map/cards.js';
 import { warn } from '../core/warn.js';
+import { diagramOf } from '../core/registry.js';
 import { mapContext } from '../map/context.js';
 import { canon } from '../map/diff.js';
 import { cardMatcher, msText } from '../map/insight.js';
@@ -655,7 +656,7 @@ export function render(container, model, options = {}) {
     const x = n.x + n.w / 2 + dx, y = n.y + n.h / 2 + dy, hint = hintAt(x, y), from = boxOf(n.id), into = boxAt(x, y);
     const fromId = from ? from.id : null, toId = into ? into.id : null;
     let ev = null;
-    if (typed()) ev = tx.drop(n, hint); // a typed view: the card's pin
+    if (typed()) ev = tx.drop(n, hint, toId, fromId); // a typed view: the card's pin, and its owner when it left its box (notes/stage-2.md §8)
     else if (toId !== fromId && can('move')) ev = change({ op: 'move', target: nodeRef(n.id), to: toId, hint });
     else if (gridView() && hint.col === n.col && can('reorder')) {
       const sib = siblings(n), at = sib.indexOf(n), i = sib.filter(m => m !== n && m.y + m.h / 2 < y).length;
@@ -668,14 +669,18 @@ export function render(container, model, options = {}) {
   stage.addEventListener('pointerup', endGesture);
   stage.addEventListener('pointercancel', () => { if (drag && drag.ghost) drag.ghost.remove(); if (conn && conn.path) conn.path.remove(); drag = conn = null; stale = false; });
   /* the model to draw after an update: cards keep the slots they had (the host's own layout wins), a moved or added card
-     takes its hint; kept in this handle only, never written to the host's model */
-  function withPlaces(m, use = null) { // use: an edit the update applied, { view, hv: id -> its place, ex: a reordered group's places }
+     takes its hint; kept in this handle only, never written to the host's model. A typed view's boxes take no slot, and an edit
+     that changed what they hold lays the view out again, so every box holds exactly its contents (notes/stage-2.md §3.2) */
+  const boxesIn = (m, v) => { const T = m && m.schemaVersion === 2 && v && v.diagram != null && diagramOf(v); return T && T.boxes ? arrOf(T.boxes(m, v)).filter(b => b && b.id != null) : []; };
+  const boxKey = bs => JSON.stringify(bs.map(b => [b.id, b.nodeIds, b.parent]));
+  function withPlaces(m, use = null, prev = null) { // use: an edit the update applied, { view, hv: id -> its place, ex: a reordered group's places }; prev: the model before
     if (options.stableLayout === false) return m;
     const out = structuredClone(m);
     (out.views || []).forEach(v => {
-      const was = placed[v.id], { hv = {}, ex = {} } = use && use.view === v.id ? use : {};
+      const bx = boxesIn(out, v), pv = viewIn(prev, v.id), again = pv.id != null && boxKey(boxesIn(prev, pv)) !== boxKey(bx);
+      const was = again ? null : placed[v.id], { hv = {}, ex = {} } = use && use.view === v.id && !again ? use : {};
       if (!was && !Object.keys(hv).length && !Object.keys(ex).length) return;
-      const ids = (v.nodeIds || []).filter(id => typeof id === 'string'), mine = v.layout || {}, L = {}, taken = new Set(), key = p => p[0] + ',' + p[1];
+      const ids = (v.nodeIds || []).filter(id => typeof id === 'string' && !bx.some(b => b.id === id)), mine = v.layout || {}, L = {}, taken = new Set(), key = p => p[0] + ',' + p[1];
       const put = (id, p) => { let [c, r] = p; while (taken.has(key([c, r]))) r++; L[id] = [c, r]; taken.add(key([c, r])); };
       ids.forEach(id => { if (Array.isArray(mine[id])) { L[id] = mine[id]; taken.add(key(mine[id])); } });    // the host's own layout
       ids.forEach(id => { if (!L[id] && ex[id]) put(id, ex[id]); });                                               // a reordered column group
@@ -813,10 +818,10 @@ export function render(container, model, options = {}) {
     // a card E or Alt + click asked to unfold before its view was loaded unfolds once a model brings that view (#71)
     const brought = []; Object.entries(asked).forEach(([vid, m]) => m.forEach((c, nid) => { if (!arrOf(model2.views).some(v => v && v.id === c)) return;
       m.delete(nid); const l = expanded[vid] ||= []; if (!l.includes(nid)) { l.push(nid); if (vid === cur) brought.push(nid); } }));
-    const old = ctx, keys = {}, wantNew = selectNew && !own;
+    const old = ctx, keys = {}, wantNew = selectNew && !own, before = current;
     old.views.forEach(v => { keys[v.id] = relayout ? null : old.viewKey(v.id); });
     current = model2;
-    ctx = mapContext(withPlaces(model2, use), { measure, kinds: !!P.kinds, prev: options.stableLayout === false ? null : old.planCache, expand: expanded, memos: relayout ? null : old.memos });
+    ctx = mapContext(withPlaces(model2, use, before), { measure, kinds: !!P.kinds, prev: options.stableLayout === false ? null : old.planCache, expand: expanded, memos: relayout ? null : old.memos });
     Object.keys(expanded).forEach(v => { expanded[v] = ctx.unfolded[v] || []; }); // a card or inner view the model no longer has folds
     if (!own) selectNew = false;
     ctx.views.forEach(v => { const id = v.id; if (keys[id] == null || keys[id] !== ctx.viewKey(id)) return;
