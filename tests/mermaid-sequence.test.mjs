@@ -313,3 +313,12 @@ test('text keeps the spaces at its ends, an empty text is named, a lifeline with
   assert.deepEqual(back.model.nodes.map(n => [n.id, n.label, n.props?.represents ?? null]), [['a', ' ', null], ['b', ' B ', null], ['c', 'c', 'T'], ['par_over', 'par_over', null]]);
   assert.deepEqual([v.edges[0].label, v.fragments[0].members[0].label, v.edges[1].from], ['  padded  ', ' g ', 'par_over']);
 });
+
+test('a par_over block is read as par, reported, and its end closes it, not the fragment around it', () => {
+  const r = read('sequenceDiagram\nparticipant a\nparticipant b\nopt outer\npar_over one\na->>b: x\nand two\nb->>a: y\nend\na->>b: z\nend\n');
+  const v = r.model.views[0], [o, p] = v.fragments;
+  assert.deepEqual(v.fragments.map(f => [f.props.operator, f.members.length]), [['opt', 1], ['par', 2]]);
+  assert.equal(p.parent, o.members[0].id);
+  assert.deepEqual(v.edges.map(e => e.parent), [p.members[0].id, p.members[1].id, o.members[0].id]);
+  assert.deepEqual(r.report.map(x => x.status), ['approximated']);
+});

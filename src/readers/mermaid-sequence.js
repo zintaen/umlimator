@@ -28,7 +28,7 @@
      call answered only in another operand of an alt is unanswered); `create participant B` makes the next message to
      B a create, `destroy B` the next message to B a delete. Other arrows are read as the nearest, approximated;
    - `+`, `-`, `activate`, `deactivate`: activations are derived, so nothing is read; reported where they disagree;
-   - `alt`/`else`, `opt`, `loop`, `par`/`and`, `break` ... `end` are fragments and operands, the text their guard (a bare
+   - `alt`/`else`, `opt`, `loop`, `par`/`and`, `break` ... `end` are fragments and operands (`par_over` is read as `par`, reported), the text their guard (a bare
      `else` is the guard else). `critical`/`option` and `rect` are read as their content; `box` as its participants;
    - `;` ends a statement as a line does (an entity such as #59; does not); `<br>` is a line break in text. */
 const MS_LIMIT = 1 << 20; // characters; a sequence diagram a person writes is a few kilobytes
@@ -242,6 +242,7 @@ function readMermaidSequence(text) {
         if (on) { was[word === 'activate' ? 'plus' : 'minus'] = true; last = was; }
         else say(no, 'approximated', `${word} ${rest}: activations are derived from the messages, so it is not read`);
       } else if (MS_OPS.includes(word)) open(word, rest, no);
+      else if (word === 'par_over') { open('par', rest, no); say(no, 'approximated', `par_over ${rest}: read as par (a par drawn over its participants only)`); }
       else if (word === 'else' || word === 'and') {
         if (top && top.frag && top.frag.operator === (word === 'else' ? 'alt' : 'par')) {
           const op = { kind: 'op', frag: top.frag, k: top.frag.ops.length + 1, label: rest ? msDecode(rest) : word === 'else' ? 'else' : undefined, hint: hint.id };
