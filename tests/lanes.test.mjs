@@ -24,6 +24,11 @@ test('lanes come depth first, siblings by order; a lane whose parent is no lane,
   assert.deepEqual(laneOrder([{ id: 'a', parent: 'b' }, { id: 'b', parent: 'a' }, { id: 'c', parent: 'gone' }, { id: 'd', parent: 'd' }]).map(l => [l.id, l.parent, l.depth]),
     [['c', null, 0], ['d', null, 0], ['a', null, 0], ['b', 'a', 1]]);
   assert.deepEqual(laneOrder(null), []);
+  // only some with an order: those by it first, the rest after them in list order
+  assert.deepEqual(laneOrder([{ id: 'a' }, { id: 'b', order: 5 }, { id: 'c' }, { id: 'd', order: 0 }]).map(l => l.id), ['d', 'b', 'a', 'c']);
+  // 5000 lanes, each nested in the one before: no recursion to overflow
+  const deep = Array.from({ length: 5000 }, (_, k) => ({ id: 'L' + k, parent: k ? 'L' + (k - 1) : null })), got = laneOrder(deep);
+  assert.equal(got.length, 5000); assert.equal(got.at(-1).depth, 4999);
 });
 
 test('laneRows: each lane a run of rows in order, nested lanes inside their parents, none shared; a node in no lane after them', () => {
@@ -46,8 +51,15 @@ test('laneRows: each lane a run of rows in order, nested lanes inside their pare
   assert.deepEqual([pos.done, pos.post], [[4, 7], [4, 8]]);
   // the ranked order inside a lane and a column is kept
   assert.ok(pos.take[1] < pos.take2[1]);
-  assert.deepEqual(laneRows({}, laneOf, LANES), {});
-  assert.deepEqual(laneRows({ a: [0, 3], b: [0, 1] }, () => null, []), { a: [0, 1], b: [0, 0] }); // no lanes: rows packed in ranked order
+  assert.deepEqual({ ...laneRows({}, laneOf, LANES) }, {});
+  assert.deepEqual({ ...laneRows({ a: [0, 3], b: [0, 1] }, () => null, []) }, { a: [0, 1], b: [0, 0] }); // no lanes: rows packed in ranked order
+  // a node in a lane that is not in the list: after every lane, with the nodes in no lane
+  assert.deepEqual({ ...laneRows({ a: [0, 0], x: [0, 1] }, id => (id === 'x' ? 'ghost' : 'p'), [{ id: 'p' }, { id: 'q' }]) }, { a: [0, 0], x: [0, 2] });
+  // ids that name Object.prototype's keys lay out like any other (M3)
+  for (const id of ['constructor', '__proto__', 'toString']) {
+    const out = laneRows(JSON.parse(`{"${id}":[0,0],"a":[0,1]}`), k => (k === id ? 'q' : 'p'), [{ id: 'p' }, { id: 'q' }]);
+    assert.ok(Object.hasOwn(out, id), id); assert.deepEqual(out[id], [0, 1]); assert.deepEqual(out.a, [0, 0]);
+  }
 });
 
 // the rows laid out as the activity type will (rgap 64, both flags off), and the bands on that geometry
@@ -90,10 +102,35 @@ test('a divider lies 12 px off the gap\'s centre line toward the later lane, an 
   const gap = { nodes: [n('a', 0, 0), n('b', 2, 200), n('c', 3, 300)], bounds: { x: -36, y: -36, w: 172, h: 412 } };
   assert.deepEqual(laneBands(gap, [{ id: 'p' }, { id: 'none' }, { id: 'q' }], id => (id === 'a' ? 'p' : 'q'), false).bands.map(b => [b.y, b.y + b.h]),
     [[-18, 82], [82, 182], [182, 358]]);
+  // at an end, past a default gap, a row that leaves the band 120 px across
   const end = laneBands({ nodes: [n('a', 0, 0)], bounds: { x: -36, y: -36, w: 172, h: 112 } }, [{ id: 'p' }, { id: 'none' }], () => 'p', false);
-  assert.deepEqual(end.bands.map(b => [b.y, b.y + b.h]), [[-22 + 12, 74], [74, 40 + LN.gap + 64 + LN.gap / 2 - 12]]);
-  assert.equal(end.bounds.y + end.bounds.h, 158 + LN.pad);
+  assert.deepEqual(end.bands.map(b => [b.y, b.y + b.h]), [[-22 + 12, 74], [74, 194]]);
+  assert.equal(end.bounds.y + end.bounds.h, 194 + LN.pad);
   assert.deepEqual(laneBands(g, [], laneOf, false), { bands: [], shift: { x: 0, y: 0 }, bounds: g.bounds });
+});
+
+// a self-loop's label widens the gap past rgap; the router's lines stay rgap / 2 from each row, and the divider 12 px off them
+for (const label of ['mmmm', 'mmmmm']) test(`a gap a loop labelled ${label} widens: the divider keeps 12 px off the router's line`, () => {
+  const lanes = [{ id: 'p' }, { id: 'q' }], of = id => (id === 'a' ? 'p' : 'q'), pos = laneRows({ a: [0, 0], b: [1, 0] }, of, lanes);
+  const g = layoutTyped({ direction: 'down', rgap: 64, repair: false, reroute: false, nodes: Object.keys(pos).map(id => ({ id, label: id, col: pos[id][0], row: pos[id][1], w: 100, h: 40 })),
+    edges: [{ id: 'e', from: 'a', to: 'b' }, { id: 'l', from: 'b', to: 'b', label }] });
+  const [a, b] = ['a', 'b'].map(id => g.nodes.find(n => n.id === id)); assert.ok(b.x - (a.x + a.w) > 64, 'the gap is wider than rgap');
+  const div = laneBands(g, lanes, of, true, 64).bands[1].x, lines = [a.x + a.w + 32, b.x - 32];
+  lines.forEach(y => assert.ok(Math.abs(div - y) >= 12, `the divider at ${div}, a line at ${y}`));
+  assert.equal(b.x - div, 20, '20 px to the later row');
+});
+
+// an empty lane first or last, on layoutTyped's geometry, both directions: kept, and 120 px across at least
+for (const direction of ['right', 'down']) test(`laid out ${direction}, an empty lane at either end is 120 px across at least`, () => {
+  const turned = direction === 'down', [A, S] = turned ? ['x', 'w'] : ['y', 'h'];
+  for (const lanes of [[{ id: 'none' }, { id: 'p' }], [{ id: 'p' }, { id: 'none' }]]) {
+    const pos = laneRows({ a: [0, 0], b: [1, 0] }, () => 'p', lanes);
+    const g = layoutTyped({ direction, rgap: 64, repair: false, reroute: false, nodes: Object.keys(pos).map(id => ({ id, label: id, col: pos[id][0], row: pos[id][1], w: 100, h: 40 })), edges: [{ id: 'e', from: 'a', to: 'b' }] });
+    const { bands, shift, bounds } = laneBands(g, lanes, () => 'p', turned, 64), none = bands.find(d => d.id === 'none'), p = bands.find(d => d.id === 'p');
+    assert.ok(none[S] >= 120, `${lanes[0].id} first: the empty lane is ${none[S]} px`);
+    moved(g, shift).forEach(n => { assert.ok(within(n, p)); assert.ok(!meets(n, none)); });
+    bands.forEach(d => assert.ok(within(d, bounds)));
+  }
 });
 
 test('laid out twice from one memo, the bands are the same and the memo\'s geometry is untouched (§2.4)', () => {
