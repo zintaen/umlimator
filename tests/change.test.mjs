@@ -105,4 +105,9 @@ test('diff() says a re-own on a class model in words: an element moved into a pa
   const d = diff(sales, after);
   assert.deepEqual(d.summary, ['renames Book to Title (parent)', 'moves Payment into billing', 'moves Money out of sales', 'adds billing']);
   assert.deepEqual(['payment', 'money'].map(id => d.model.nodes.find(n => n.id === id).change), ['changed', 'changed']);
+  // no owner, absent or null, is no move; and a map (schema version 1) keeps its words
+  const nul = structuredClone(sales), none = structuredClone(sales); nul.nodes.find(n => n.id === 'payment').parent = null; delete none.nodes.find(n => n.id === 'payment').parent;
+  assert.deepEqual([diff(none, nul).summary, diff(nul, none).summary], [['changes Payment (parent)'], ['changes Payment (parent)']]);
+  const map = p => ({ nodes: [{ id: 'x', label: 'X', parent: p }, { id: 'y' }, { id: 'z' }] });
+  assert.deepEqual(diff(map('y'), map('z')).summary, ['changes X (parent)']);
 });

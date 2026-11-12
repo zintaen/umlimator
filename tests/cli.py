@@ -197,6 +197,11 @@ with tempfile.TemporaryDirectory() as tmp:
        all(flat(s) in txt for s in ["CardKindMembers", "OrderClass- id: UUID", "+ add(book: Book, quantity: Integer)", "MoneyData type+ amount: Decimal",
                                     "From → toLabelKind", "Customer → OrderplacesAssociation", "CardPayment → PaymentGeneralization", "Order → PayableInterface realization"])
        and "Script" not in txt and "calls" not in txt, txt[:800])
+    # an element with no type is drawn as a class, and its row says so
+    bare = json.loads((ROOT / "examples" / "sales-classes.json").read_text()); next(n for n in bare["nodes"] if n["id"] == "order").pop("type")
+    (t / "bare.json").write_text(json.dumps(bare))
+    bt = "".join(read("bare.pdf")) if cli("render", str(t / "bare.json"), "--out", str(t / "bare.html")) and cli("pdf", str(t / "bare.html"), "--out", str(t / "bare.pdf")) else ""
+    ok("pdf · an element with no type: its Kind is Class, as the picture draws it", flat("OrderClass- id: UUID") in bt, bt[:800])
     # upstream's check still catches what validate() calls wrong: a version-1 model's own `members` are not ends, and a
     # member that shares a node's id is an id used twice (from the review of #162)
     for name, m in [("v1-members", {"nodes": [{"id": "a", "members": [{"id": "a.p"}]}, {"id": "b"}], "edges": [{"from": "a.p", "to": "b"}], "views": [{"id": "v", "nodeIds": ["a", "b"]}]}),
