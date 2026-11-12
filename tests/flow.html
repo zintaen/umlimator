@@ -1,0 +1,93 @@
+<!doctype html>
+<!-- Control nodes and actions (4.2, notes/stage-4.md §4.1) in headless Chrome (tests/embed.py): the six shapes of
+     src/uml/flow.js, sized by size() inside render()'s measure through a stand-in type and drawn by svgOf, in both themes and
+     three fonts: each drawn the size it gave, its outline filling its box; a point on any side slid by inset (drawnPts, as a
+     typed line's end is) within 1 px of the drawn outline; every text inside its shape; a click 11 px from a small shape's
+     middle lands on it; outlines 3:1 and texts and filled glyphs 4.5:1 on the stage; named. Where lines end on these shapes
+     is 4.1's slide in the typed line drawer, checked once it is merged (tests/typed-shapes.test.mjs, the types' pages); this
+     page draws no lines. tests/flow.test.mjs checks the same shapes in Node. Imports src/ to register the stand-in type. -->
+<meta charset="utf-8">
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="../lib/umlimator-theme.css">
+<title>umlimator flow shapes test</title>
+<body style="margin:0">
+<div id="m" style="width:1180px;height:900px"></div>
+<script type="module">
+import { render } from '../src/canvas/render.js';
+import { registerDiagramType } from '../src/core/registry.js';
+import { SHAPE, drawnPts } from '../src/draw/shapes.js';
+import '../src/uml/flow.js';
+const out = { ok: [], fail: [] };
+const check = (name, cond, info) => { document.title = name; if (cond) out.ok.push(name); else out.fail.push(name + (info === undefined ? '' : ': ' + JSON.stringify(info))); };
+const LONG = 'Take the next order from the queue and check every book against the warehouse stock before it is packed for the carrier';
+// each case: [id, shape, its input]
+const CASES = [['i', 'initial', {}], ['f', 'final', {}], ['ff', 'flow-final', {}], ['d', 'diamond', {}], ['d1', 'diamond', { label: 'In stock?' }],
+  ['d2', 'diamond', { label: 'All books in stock for this order?' }], ['d3', 'diamond', { label: LONG }], ['b', 'bar', { busy: 3 }], ['bd', 'bar', { busy: 1, down: true }],
+  ['r', 'rounded', { label: 'Pack' }], ['r3', 'rounded', { label: LONG }], ['rs', 'rounded', { label: 'Charge the card', stereotypes: ['external'] }]];
+let geo = null;
+registerDiagramType('test.flow', {
+  layout: { pins: false, run() { let x = 40, y = 40, row = 0;
+    const nodes = CASES.map(([id, shape, input]) => { const n = { id, shape, k: 'file', aria: `${shape} ${id}`, ...input, ...SHAPE[shape].size(input) };
+      if (x + n.w > 1100) { x = 40; y += row + 50; row = 0; } Object.assign(n, { x, y }); x += n.w + 50; row = Math.max(row, n.h); return n; });
+    geo = { nodes, edges: [], groups: [], byId: Object.fromEntries(nodes.map(n => [n.id, n])), bounds: { x: 0, y: 0, w: 1140, h: y + row + 40 }, map: false };
+    return geo; } } });
+const MODEL = { schemaVersion: 2, nodes: CASES.map(([id]) => ({ id, type: 'test.Node' })), edges: [], views: [{ id: 'v', diagram: 'test.flow', nodeIds: CASES.map(c => c[0]) }] };
+const el = document.getElementById('m');
+let sr;
+const pick = s => sr.querySelector(s), all = s => [...sr.querySelectorAll(s)];
+const bb = x => { const r = x.getBBox(); return { x: r.x, y: r.y, w: r.width, h: r.height }; };
+const FONTS = { serif: 'serif', sans: 'sans-serif', wide: 'monospace' };
+const rgba = s => { let m = /rgba?\(([^)]+)\)/.exec(s); if (m) { const p = m[1].split(/[ ,/]+/).filter(Boolean).map(Number); return [p[0] / 255, p[1] / 255, p[2] / 255, p.length > 3 ? p[3] : 1]; }
+  m = /color\(srgb ([^)]+)\)/.exec(s); if (m) { const p = m[1].split(/[ /]+/).filter(Boolean).map(Number); return [p[0], p[1], p[2], p.length > 3 ? p[3] : 1]; } return null; };
+const blend = (top, bot) => [0, 1, 2].map(i => top[i] * top[3] + bot[i] * (1 - top[3])).concat(1);
+const lum = c => { const f = v => v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]); };
+const ratio = (fg, bg) => { const [x, y] = [lum(blend(fg, bg)), lum(bg)].sort((p, q) => q - p); return +((x + 0.05) / (y + 0.05)).toFixed(2); };
+const hit = (svg, x, y) => { const p = new DOMPoint(x, y).matrixTransform(svg.getScreenCTM()), e = sr.elementFromPoint(p.x, p.y), g = e && e.closest('.node'); return g ? g.dataset.id : null; };
+try {
+  const wide = {};
+  for (const theme of ['light', 'dark']) for (const [fname, family] of Object.entries(FONTS)) {
+    document.documentElement.dataset.theme = theme; el.style.setProperty('--um-sans', family);
+    el.innerHTML = ''; const h = render(el, MODEL, { view: 'v' }); sr = el.querySelector('.umlimator').shadowRoot;
+    const svg = pick('.stage svg'), tag = `${theme}, ${fname}`, bad = [], off = [], texts = [], hits = {};
+    const stageBg = rgba(getComputedStyle(pick('.stage')).backgroundColor), low = [];
+    for (const n of geo.nodes) { const g = pick(`.node[data-id="${n.id}"]`);
+      if (!g) { bad.push(`${n.id} not drawn`); continue; }
+      if (g.dataset.shape !== n.shape || g.getAttribute('aria-label') !== n.aria) bad.push(`${n.id}: shape ${g.dataset.shape}, named ${g.getAttribute('aria-label')}`);
+      const body = g.querySelector('.n-body'), B = bb(body);
+      if ([B.x - n.x, B.y - n.y, B.w - n.w, B.h - n.h].some(v => Math.abs(v) > 1)) bad.push(`${n.id}: drawn ${JSON.stringify(B)}, laid out ${[n.x, n.y, n.w, n.h]}`);
+      // a point on each side slid by inset lies within 1 px of the outline as drawn (a copy of it, stroked 2 px wide)
+      const probe = body.cloneNode(); probe.setAttribute('stroke-width', '2'); probe.removeAttribute('class'); g.appendChild(probe);
+      const look = m => ({ ...m, S: SHAPE[m.shape] });
+      for (const side of ['L', 'R', 'T', 'B']) for (let k = 0; k <= 12; k++) {
+        const v = side === 'L' || side === 'R', t = v ? n.y + n.h * k / 12 : n.x + n.w * k / 12, p = v ? [side === 'L' ? n.x : n.x + n.w, t] : [t, side === 'T' ? n.y : n.y + n.h];
+        const [q] = drawnPts({ s: n, t: null, fs: side, pts: [p, [p[0] + 9, p[1] + 9]] }, look);
+        if (!probe.isPointInStroke(new DOMPoint(q[0], q[1]))) off.push(`${n.id} ${side} ${q}`); }
+      probe.remove();
+      // every text inside its shape: in a rounded box within its padding, in a diamond by its four corners
+      g.querySelectorAll('text').forEach(tx => { const T = bb(tx), cx = n.x + n.w / 2, cy = n.y + n.h / 2; texts.push(tx.textContent);
+        const inside = n.shape === 'diamond' ? [[T.x, T.y], [T.x + T.w, T.y], [T.x, T.y + T.h], [T.x + T.w, T.y + T.h]].every(([x, y]) => Math.abs(x - cx) / (n.w / 2) + Math.abs(y - cy) / (n.h / 2) <= 1.02)
+          : T.x >= n.x + 8 && T.x + T.w <= n.x + n.w - 8 && T.y >= n.y - .5 && T.y + T.h <= n.y + n.h + .5;
+        if (!inside) bad.push(`${n.id}: "${tx.textContent}" out of its shape ${JSON.stringify(T)}`);
+        const r = ratio(rgba(getComputedStyle(tx).fill), stageBg); if (r < 4.5) low.push([n.id, tx.textContent, r]); });
+      const r = ratio(rgba(getComputedStyle(body).stroke), stageBg); if (r < 3) low.push([n.id, 'outline', r]);
+      const solid = ['initial', 'bar'].includes(n.shape) ? body : g.querySelector('.fl-dot');
+      if (solid) { const s = ratio(rgba(getComputedStyle(solid).fill), stageBg); if (s < 4.5) low.push([n.id, 'filled', s]); }
+      // a click 11 px from a small shape's middle, across a bar's thickness, or at a large one's middle, lands on it
+      const cx = n.x + n.w / 2, cy = n.y + n.h / 2;
+      hits[n.id] = n.shape === 'bar' ? [hit(svg, n.w > n.h ? cx : cx - 11, n.w > n.h ? cy + 11 : cy), hit(svg, n.w > n.h ? cx : cx + 11, n.w > n.h ? cy - 11 : cy)]
+        : ['diamond', 'rounded'].includes(n.shape) && n.w > 40 ? [hit(svg, cx, cy)] : [hit(svg, cx - 11, cy), hit(svg, cx, cy + 11)];
+      if (n.id === 'r3') wide[fname] = n.w;
+    }
+    check(`${tag}: ${geo.nodes.length} shapes drawn the size they gave and named; every text inside its shape`, !bad.length && geo.nodes.length === CASES.length, bad.slice(0, 10));
+    check(`${tag}: a point on each side of each shape, slid by its inset, lies within 1 px of its drawn outline`, !off.length, off.slice(0, 10));
+    check(`${tag}: a click 11 px from a circle's, a bare diamond's or a bar's middle lands on it (24 px hit areas), and in a large shape's middle`, Object.entries(hits).every(([id, got]) => got.every(x => x === id)), hits);
+    check(`${tag}: outlines 3:1, texts and filled glyphs 4.5:1 on the stage`, !low.length, low);
+    check(`${tag}: a long action name on three lines, the last cut; a diamond's text on at most two`, pick('.node[data-id="r3"]').querySelectorAll('.c-name').length === 3 && pick('.node[data-id="r3"] .c-name:last-of-type').textContent.endsWith('…')
+      && pick('.node[data-id="d3"]').querySelectorAll('text').length === 2 && pick('.node[data-id="d1"]').querySelectorAll('text').length === 1 && texts.includes('«external»'), texts);
+    h.destroy();
+  }
+  check('the three fonts measure differently, and the long action is 320 px or less in each', new Set(Object.values(wide)).size === 3 && Object.values(wide).every(w => w <= 320), wide);
+} catch (x) { out.fail.push('threw: ' + (x && x.stack || x)); }
+document.documentElement.dataset.theme = 'light'; el.style.removeProperty('--um-sans');
+const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
+</script>
