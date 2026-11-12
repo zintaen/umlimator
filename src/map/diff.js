@@ -81,6 +81,7 @@ export function diff(before, after) {
       said.push(`adds ${name(n.id)}` + (ins.length === 1 && outs.length === 1 ? ` between ${ins[0]} and ${outs[0]}` : (ins.length ? `, from ${andList(ins)}` : '') + (outs.length ? `, to ${andList(outs)}` : ''))); }
     if (h === 'removed') said.push(`removes ${name(n.id)}`);
     if (h === 'changed') { const [o, x] = was.get(n), keys = diffKeys([o, x]), rest = keys.filter(k => k !== 'label');
+      if (keys.join() === 'parent') return said.push(`moves ${name(n.id)} ${x.parent != null ? 'into ' + name(x.parent) : 'out of ' + name(o.parent)}`); // a re-own (schema version 2)
       said.push((keys.includes('label') ? `renames ${o.label || o.id} to ${x.label || x.id}` : `changes ${name(n.id)}`) + (rest.length ? ` (${rest.join(', ')})` : '')); } });
   lines.forEach(e => { const h = how.get(e); if (!h || cardHow.get(e.from) === h && h !== 'changed' || cardHow.get(e.to) === h && h !== 'changed') return;
     const ends = `${name(e.from)} to ${name(e.to)}`, lab = e.label ? ` (${e.label})` : '';

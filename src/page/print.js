@@ -1,4 +1,5 @@
 import { legendItems } from '../canvas/pieces.js';
+import { diagramOf } from '../core/registry.js';
 import { esc, md } from '../core/text.js';
 import { stepOrder } from '../layout/layered.js';
 import { edgeRefIds } from '../map/api.js';
@@ -11,9 +12,10 @@ import { andList, arrOf, boxesNamed, rules } from '../map/validate.js';
    - The cover: the title, the date, the model's file, a summary line and the contents, each view with its page.
    - Each view, from a page of its own: a header (the view's path and its caption), its picture (toSVG()'s, in vectors)
      as large as the page allows and never larger than drawn, the legend of what it draws, then tables of its cards,
-     lines and boxes. They fill two columns below the picture, or one column beside a picture too tall to leave room
-     below. A table that runs out of room goes on in the next column, under its heading and header row again; a row is
-     never cut, and a heading never ends a column.
+     lines and boxes (on a typed view: each element's type and members, as its type prints them, and each line's kind).
+     They fill two columns below the picture, or one column beside a picture too tall to leave room below. A table that
+     runs out of room goes on in the next column, under its heading and header row again; a row is never cut, and a
+     heading never ends a column.
    - The rules, when the model has any: each holding or broken in the views printed, and what breaks it. */
 function printDoc(X, model, Q) {
   const { D, views, V, N, chain, nodeIn, viewEdges, geoCache } = X.ctx();
@@ -103,6 +105,8 @@ function printDoc(X, model, Q) {
   shown.forEach(([v, svg], vi) => {
     const g = geoCache[v.id].g, ids = cards(v), es = lines(v), seq = v.render === 'sequence', stepped = es.some(e => e.step != null), at = Object.fromEntries(g.nodes.map(n => [n.id, n]));
     const wk = new Map(g.edges.flatMap(d => edgeRefIds(d).map(id => [id, d.wk]))), held = boxes(v).map(c => [c, arrOf(c.nodeIds).filter(i => ids.includes(i))]).filter(([, ins]) => ins.length);
+    const typed = (v.diagram ?? 'map') !== 'map', word = t => String(t || '').split('.').pop().replace(/([a-z])([A-Z])/g, (_, a, b) => a + ' ' + b.toLowerCase()); // 'uml.DataType': "Data type"
+    const asText = (diagramOf(v)?.member || {}).print || (m => m.label ?? m.id); // a member as its type writes it, else its name
     const up = chain(v.id).slice(0, -1).map(id => `<span class="up">${T(V[id])} › </span>`).join('');
     const head = more => `<header>${more ? `<div class="h2">${up}${T(v)} <span class="up">(continued)</span></div>` : `<h2>${up}${T(v)}</h2>`}<span class="meta">${[count(ids.length, 'card'), count(es.length, 'line'), ...(held.length ? [count(held.length, 'box', 'boxes')] : [])].join(' · ')}</span></header>${!more && v.caption ? `<p class="cap">${esc(v.caption)}</p>` : ''}`;
     const body = sheet(head(false), vi);
@@ -117,11 +121,12 @@ function printDoc(X, model, Q) {
     const lay = (f, more) => { s.setAttribute('width', b.width * k * f); s.setAttribute('height', b.height * k * f); body.querySelector('.cols')?.remove();
       const first = cols(body, side ? 1 : 2); if (side) first[0].append(lg); return pour(paging(more && head, 2, first), tables); };
     const tables = [
-      { title: `Cards <span>${ids.length}</span>`, cls: 'cards', head: '<th>Card</th><th>Kind</th><th>What it is</th>', rows: ids.map(id => { const c = nodeIn(id, v.id), t = KIND[kindOf(c.kind, true)], d = at[id] || {}, sub = c.sublabel ?? c.sub;
+      { title: `Cards <span>${ids.length}</span>`, cls: 'cards', head: `<th>Card</th><th>Kind</th><th>${typed ? 'Members' : 'What it is'}</th>`, rows: ids.map(id => { const c = nodeIn(id, v.id), t = KIND[kindOf(c.kind, true)], d = at[id] || {}, sub = c.sublabel ?? c.sub;
         return `<tr><td>${d.step ? `<i class="num">${esc(d.step)}</i>` : ''}<b>${esc(c.label || id)}</b>${d.kids || d.opens ? ' ⤢' : ''}${sub ? `<small>${esc(sub)}</small>` : ''}</td>`
-          + `<td><i class="sw" style="border-color:var(--um-${t[0]});background:var(--um-${t[0]}-f)"></i>${t[1]}</td><td>${c.what ? md(c.what) : ''}</td></tr>`; }) },
-      { title: `Lines <span>${es.length}</span>`, cls: 'lines', head: `${seq || stepped ? '<th class="n">#</th>' : ''}<th>From → to</th><th>Label</th><th>Technology</th>`, rows: (stepped && !seq ? [...es].sort((a, b) => stepOrder(a.step, b.step)) : es).map((e, i) => { const w = wk.get(e._id) || 'calls';
-        return `<tr>${seq ? `<td>${i + 1}</td>` : stepped ? `<td>${esc(e.step ?? '')}</td>` : ''}<td><i class="w" style="border-color:var(--um-w-${w})"></i>${name(v, e.from)} → ${name(v, e.to)}</td><td>${e.label ? esc(e.label) : `<span class="up">${w}</span>`}</td><td>${esc(e.sublabel || '')}</td></tr>`; }) },
+          + (typed ? `<td>${esc(word(c.type))}</td><td>${arrOf(c.members).filter(m => m && typeof m === 'object').map(m => `<p>${esc(asText(m))}</p>`).join('')}</td></tr>`
+            : `<td><i class="sw" style="border-color:var(--um-${t[0]});background:var(--um-${t[0]}-f)"></i>${t[1]}</td><td>${c.what ? md(c.what) : ''}</td></tr>`); }) },
+      { title: `Lines <span>${es.length}</span>`, cls: 'lines', head: `${seq || stepped ? '<th class="n">#</th>' : ''}<th>From → to</th><th>Label</th><th>${typed ? 'Kind' : 'Technology'}</th>`, rows: (stepped && !seq ? [...es].sort((a, b) => stepOrder(a.step, b.step)) : es).map((e, i) => { const w = wk.get(e._id) || 'calls';
+        return `<tr>${seq ? `<td>${i + 1}</td>` : stepped ? `<td>${esc(e.step ?? '')}</td>` : ''}<td><i class="w" style="border-color:var(--um-w-${w})"></i>${name(v, e.from)} → ${name(v, e.to)}</td><td>${e.label ? esc(e.label) : typed ? '' : `<span class="up">${w}</span>`}</td><td>${esc(typed ? word(e.type) : e.sublabel || '')}</td></tr>`; }) },
       { title: `Boxes <span>${held.length}</span>`, cls: 'boxes', head: '<th>Box</th><th>Holds</th>', rows: held.map(([c, ins]) => `<tr><td><b>${esc(c.label || c.id)}</b></td><td>${andList(ins.map(i => name(v, i)))}</td></tr>`) },
     ].filter(x => x.rows.length);
     [1, .9, .8, .7].some(f => k * f >= Math.min(k, .6) && lay(f)) || lay(1, true);

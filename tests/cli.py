@@ -191,6 +191,12 @@ with tempfile.TemporaryDirectory() as tmp:
         ok(f"stills · {name}: a picture of every view", st is not None and len(list((t / f"stills-{name}").glob("*.png"))) == len(src["views"]), st)
         pd = cli("pdf", str(t / f"{name}.html"), "--out", str(t / f"{name}.pdf"))
         ok(f"pdf · {name}: written", pd is not None and (t / f"{name}.pdf").read_bytes()[:5] == b"%PDF-", pd)
+    # R8: a class view's tables list each element's type and members, as the type prints them, and each line's kind
+    txt = "".join(read("sales-classes.pdf"))
+    ok("pdf · sales-classes: its tables list element types, members and line kinds, not the map's kinds",
+       all(flat(s) in txt for s in ["CardKindMembers", "OrderClass- id: UUID", "+ add(book: Book, quantity: Integer)", "MoneyData type+ amount: Decimal",
+                                    "From → toLabelKind", "Customer → OrderplacesAssociation", "CardPayment → PaymentGeneralization", "Order → PayableInterface realization"])
+       and "Script" not in txt and "calls" not in txt, txt[:800])
     # upstream's check still catches what validate() calls wrong: a version-1 model's own `members` are not ends, and a
     # member that shares a node's id is an id used twice (from the review of #162)
     for name, m in [("v1-members", {"nodes": [{"id": "a", "members": [{"id": "a.p"}]}, {"id": "b"}], "edges": [{"from": "a.p", "to": "b"}], "views": [{"id": "v", "nodeIds": ["a", "b"]}]}),

@@ -97,3 +97,12 @@ test('a line that stands for several edges shows the strongest of their marks, a
   const r = drift(ab({}, {}), [{ from: 'a', to: 'b', count: 5 }, { from: 'b', to: 'a', count: 0 }]);
   assert.deepEqual([r.counts.carried, r.counts.idle, line(r.model).style], [1, 1, undefined]);
 });
+
+test('diff() says a re-own on a class model in words: an element moved into a package, or out of one (M11)', () => {
+  const sales = JSON.parse(readFileSync(new URL('../examples/sales-classes.json', import.meta.url))), after = structuredClone(sales), at = id => after.nodes.find(n => n.id === id);
+  after.nodes.push({ id: 'billing', type: 'uml.Package', label: 'billing' });
+  at('payment').parent = 'billing'; delete at('money').parent; at('book').parent = 'billing'; at('book').label = 'Title';
+  const d = diff(sales, after);
+  assert.deepEqual(d.summary, ['renames Book to Title (parent)', 'moves Payment into billing', 'moves Money out of sales', 'adds billing']);
+  assert.deepEqual(['payment', 'money'].map(id => d.model.nodes.find(n => n.id === id).change), ['changed', 'changed']);
+});
