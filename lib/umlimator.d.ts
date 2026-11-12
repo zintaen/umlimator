@@ -48,7 +48,7 @@ export interface MapNode {
 /** A typed element in schema version 2's envelope (docs/diagrams/model.md §1): a node, a member, a typed edge, a
  *  fragment. Nodes, edges, members and fragments share one id space; an id never contains "->". A typed edge is an
  *  Element with `from` and `to`, which may name a member. A typed view is a MapView with `diagram` (uml.class), and may
- *  have `subject`, `direction` ('right' | 'down'), `notation`, `present`, `fragments` and `timeline`. umlimator/all draws `uml.class` (0.18.0); other types draw as plain cards. */
+ *  have `subject`, `direction` ('right' | 'down'), `notation`, `present`, `fragments` and `timeline`. umlimator/all draws `uml.class` (0.18.0), `uml.sequence` and `uml.communication` (0.20.0); other types draw as plain cards. */
 export interface Element {
   id: string; type: string; label?: string; parent?: string; props?: Record<string, unknown>; members?: Element[];
   [key: string]: unknown;
@@ -78,6 +78,33 @@ export interface UmlLineProps { ends?: { from?: UmlAssociationEnd; to?: UmlAssoc
 /** What a typed view shows of one element, in its `present` by the element's id: compartments not drawn, divider and
  *  all, and at most `rows` rows in each, then "+k more". */
 export interface UmlPresent { collapsed?: ('attributes' | 'operations' | 'literals')[]; rows?: number }
+/** The sequence diagram's vocabulary (a view with `diagram: 'uml.sequence'`, umlimator/all from 0.20.0;
+ *  docs/conformance/uml-sequence.md). Lifelines are model nodes the view lists in `nodeIds`, left to right. Messages and
+ *  interaction uses are inline in the view's `edges`, in time order; a fragment's content is one run there, operand by
+ *  operand. Combined fragments are in the view's `fragments`, each with its operands as `members`; an occurrence's or a
+ *  fragment's `parent` is the operand that holds it. Activations and message numbers are derived, never stored. */
+export type UmlSequenceElementType = 'uml.Lifeline' | 'uml.InteractionUse' | 'uml.CombinedFragment';
+export type UmlSequenceMemberType = 'uml.InteractionOperand';
+export type UmlSequenceLineType = 'uml.Message';
+/** A lifeline's props: what it represents, by name, as text (drawn `name : Type`); stereotype `actor` draws «actor». */
+export interface UmlLifelineProps { represents?: string; stereotypes?: string[]; [key: string]: unknown }
+/** A message's kind: a call (filled arrow, the default), async (open arrow), reply (dashed, open), create (dashed, open;
+ *  the receiver's head is lowered to it) or delete (the receiver's stem ends in a cross). */
+export type UmlMessageSort = 'call' | 'async' | 'reply' | 'create' | 'delete';
+/** A message's props: its sort; a reply's `replyTo`, the id of the earlier call it answers. */
+export interface UmlMessageProps { sort?: UmlMessageSort; replyTo?: string; stereotypes?: string[]; [key: string]: unknown }
+/** An interaction use's props: the lifelines it covers (next to each other in `nodeIds`), and the view it refers to. */
+export interface UmlInteractionUseProps { covers?: string[]; refersTo?: string; [key: string]: unknown }
+/** A combined fragment's operator; any other is drawn by its name, with a warning. opt, loop and break have one operand,
+ *  whose `label` is its guard. */
+export type UmlInteractionOperator = 'alt' | 'opt' | 'loop' | 'par' | 'break';
+export interface UmlCombinedFragmentProps { operator?: UmlInteractionOperator; [key: string]: unknown }
+/** The communication diagram's vocabulary (a view with `diagram: 'uml.communication'`, umlimator/all from 0.20.0;
+ *  docs/conformance/uml-communication.md): lifelines; connectors and messages are model edges the view's `edges` lists,
+ *  connectors first. Only the messages' order means anything; their numbers (1, 1.1, 1.1.2) are derived. A message's
+ *  props are UmlMessageProps; a message needs a connector between its two lifelines. */
+export type UmlCommunicationElementType = 'uml.Lifeline';
+export type UmlCommunicationLineType = 'uml.Connector' | 'uml.Message';
 /** What a line means, drawn as its colour: calls (the default), feeds (hands work on), triggers (suggests, offers, fires),
  *  state (reads or writes a file, board or config: a thinner line, a muted label, no flow) and guard (a hook steps in).
  *  Colours are --um-w-<kind>. An edge's `style` (emphasis, dashed, security) wins over its kind's colour. */
@@ -118,7 +145,8 @@ export interface MapEdge {
 }
 export interface MapView {
   id: string; parent?: string | null; title?: string; nodeIds: string[];
-  edges?: (string | MapEdge)[]; layout?: Record<string, [number, number]>; repair?: boolean;
+  /** Model line ids or lines of its own; in a sequence view (0.20.0) its messages and interaction uses (Elements), in time order. */
+  edges?: (string | MapEdge | Element)[]; layout?: Record<string, [number, number]>; repair?: boolean;
   /** Cards 80 px tall that show their sub-line and then their chips (`verbs`) on a third line. Default: 64 px, and a card's
    *  chips take its sub-line's place. A script card (no kind) shows no sub-line either way. */
   subAndChips?: boolean;

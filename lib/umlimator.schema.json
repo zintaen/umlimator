@@ -419,7 +419,7 @@
      }
     },
     "type": {
-     "description": "Schema version 2: the element's type, <notation>.<Name> (uml.Class). validate() checks typed fields only in a model with schemaVersion 2. The class diagram (uml.class, 0.18.0): uml.Class, uml.Interface, uml.Enumeration, uml.DataType, uml.PrimitiveType, uml.Package and uml.Comment; their members uml.Property, uml.Operation and uml.EnumerationLiteral.",
+     "description": "Schema version 2: the element's type, <notation>.<Name> (uml.Class). validate() checks typed fields only in a model with schemaVersion 2. The class diagram (uml.class, 0.18.0): uml.Class, uml.Interface, uml.Enumeration, uml.DataType, uml.PrimitiveType, uml.Package and uml.Comment; their members uml.Property, uml.Operation and uml.EnumerationLiteral. The sequence and communication diagrams (uml.sequence, uml.communication, 0.20.0): uml.Lifeline.",
      "examples": [
       "uml.Class",
       "uml.Interface",
@@ -427,14 +427,15 @@
       "uml.DataType",
       "uml.PrimitiveType",
       "uml.Package",
-      "uml.Comment"
+      "uml.Comment",
+      "uml.Lifeline"
      ]
     },
     "parent": {
      "description": "Schema version 2: the element that owns it (a package, a composite state, a lane)."
     },
     "props": {
-     "description": "Schema version 2: the type's own properties. The class diagram (uml.class, 0.18.0): isAbstract and stereotypes on a classifier; on a member, the fields of its UML text (docs/conformance/uml-class.md).",
+     "description": "Schema version 2: the type's own properties. The class diagram (uml.class, 0.18.0): isAbstract and stereotypes on a classifier; on a member, the fields of its UML text (docs/conformance/uml-class.md). The sequence and communication diagrams (uml.sequence, uml.communication, 0.20.0): a lifeline's represents, and stereotypes (actor draws «actor» over its name).",
      "anyOf": [
       {
        "type": "object",
@@ -444,6 +445,9 @@
         },
         "stereotypes": {
          "description": "Any UML element: names drawn «in guillemets», as text (['entity'])."
+        },
+        "represents": {
+         "description": "uml.Lifeline: what it is an instance of, by name, as text; drawn name : Type (docs/diagrams/risks.md M8)."
         }
        }
       },
@@ -807,20 +811,22 @@
      "description": "When the line is used."
     },
     "type": {
-     "description": "Schema version 2: the element's type, <notation>.<Name> (uml.Class). The class diagram (uml.class, 0.18.0): uml.Association, uml.Generalization (from the specific to the general), uml.InterfaceRealization (to the interface), uml.Dependency (from the client) and uml.CommentLink (from the comment).",
+     "description": "Schema version 2: the element's type, <notation>.<Name> (uml.Class). The class diagram (uml.class, 0.18.0): uml.Association, uml.Generalization (from the specific to the general), uml.InterfaceRealization (to the interface), uml.Dependency (from the client) and uml.CommentLink (from the comment). The sequence diagram (uml.sequence, 0.20.0): uml.Message, inline in its view's edges, in time order. The communication diagram (uml.communication, 0.20.0): uml.Connector and uml.Message, model lines its view lists, connectors first; only the messages' order means anything.",
      "examples": [
       "uml.Association",
       "uml.Generalization",
       "uml.InterfaceRealization",
       "uml.Dependency",
-      "uml.CommentLink"
+      "uml.CommentLink",
+      "uml.Message",
+      "uml.Connector"
      ]
     },
     "parent": {
-     "description": "Schema version 2: the element that owns it (a package, a composite state, a lane)."
+     "description": "Schema version 2: the element that owns it (a package, a composite state, a lane). In a sequence view: the operand (uml.InteractionOperand) of one of its fragments that holds the message; none at the top level."
     },
     "props": {
-     "description": "Schema version 2: the type's own properties. The class diagram (uml.class, 0.18.0): an association's ends, and stereotypes on any line («use» on a dependency).",
+     "description": "Schema version 2: the type's own properties. The class diagram (uml.class, 0.18.0): an association's ends, and stereotypes on any line («use» on a dependency). The sequence and communication diagrams (0.20.0): a message's sort and replyTo.",
      "anyOf": [
       {
        "type": "object",
@@ -884,6 +890,19 @@
         },
         "stereotypes": {
          "description": "Any UML element: names drawn «in guillemets», as text (['entity'])."
+        },
+        "sort": {
+         "description": "uml.Message: call (the default), async, reply, create or delete; any other is drawn as a call, with a warning.",
+         "examples": [
+          "call",
+          "async",
+          "reply",
+          "create",
+          "delete"
+         ]
+        },
+        "replyTo": {
+         "description": "uml.Message, a reply: the id of the earlier call it answers, which it goes back along."
         }
        }
       },
@@ -969,7 +988,7 @@
     },
     "edges": {
      "type": "array",
-     "description": "The lines this view draws: model line ids or lines of its own. Default: every model line between its cards; [] draws none.",
+     "description": "The lines this view draws: model line ids or lines of its own. Default: every model line between its cards; [] draws none. In a sequence view (uml.sequence, 0.20.0): its occurrences in time order, each message and interaction use inline, a fragment's operand by operand.",
      "items": {
       "anyOf": [
        {
@@ -977,6 +996,14 @@
        },
        {
         "$ref": "#/$defs/edge"
+       },
+       {
+        "type": "object",
+        "required": [
+         "id",
+         "type"
+        ],
+        "description": "Schema version 2: an occurrence of a sequence view that is not a line: an interaction use (uml.InteractionUse), its label the interaction it refers to, props.covers the lifelines it spans (next to each other in nodeIds), props.refersTo a view's id, parent its operand."
        }
       ]
      }
@@ -1130,16 +1157,18 @@
      "description": "Guess a line's kind from its label's words when its edges name none (render() and layout(); the standalone page always does)."
     },
     "diagram": {
-     "description": "Schema version 2: the view's diagram type; without it the view is a map. uml.class draws a class diagram (0.18.0, lib/umlimator-all.js); a type this release does not draw is drawn as plain cards, with a warning.",
+     "description": "Schema version 2: the view's diagram type; without it the view is a map. uml.class draws a class diagram (0.18.0, lib/umlimator-all.js), uml.sequence a sequence diagram and uml.communication a communication diagram (0.20.0); a type this release does not draw is drawn as plain cards, with a warning.",
      "examples": [
-      "uml.class"
+      "uml.class",
+      "uml.sequence",
+      "uml.communication"
      ]
     },
     "subject": {
      "description": "Schema version 2: the element this diagram is the inside of."
     },
     "direction": {
-     "description": "Schema version 2: a typed view's layout direction (default right). A map stays left to right."
+     "description": "Schema version 2: a typed view's layout direction (default right). A map stays left to right. A sequence view is always down; another direction is a warning."
     },
     "notation": {
      "description": "Schema version 2: a skin of the diagram type (crowsfoot for er)."
@@ -1171,7 +1200,7 @@
      ]
     },
     "fragments": {
-     "description": "Schema version 2: a sequence view's combined fragments and interaction uses."
+     "description": "Schema version 2: a sequence view's combined fragments (uml.CombinedFragment, props.operator alt, opt, loop, par or break), outermost first; each one's members are its operands (uml.InteractionOperand, label the guard) in order, and its parent is the operand that holds it (uml.sequence, 0.20.0)."
     },
     "timeline": {
      "description": "Schema version 2: a timing view's unit, changes and constraints."
