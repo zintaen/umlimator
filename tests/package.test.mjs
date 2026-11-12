@@ -137,6 +137,60 @@ test('§7: a line between a package and something it holds is not drawn, and war
   assert.equal(describe(m, 'v').split('\n')[0], 'v: a package diagram of 5 elements and 1 line.');
 });
 
+test('§7: a line from an open package to itself is not drawn, and warned of, and describe() leaves it out; on a closed one it is a loop', () => {
+  const m = structuredClone(PKG); m.edges.push({ id: 'self', type: 'uml.Dependency', from: 'sales', to: 'sales' });
+  assert.ok(!layout(m, 'packages').edges.some(e => e.id === 'self'));
+  assert.deepEqual(validate(m).filter(p => p.rule === 'line-inside').map(p => [p.ids, p.message]), [[['self', 'sales'], 'line-inside: self, from "sales" to itself, a box, is not drawn in view "packages"']]);
+  const d = describe(m, 'packages');
+  assert.equal(d.split('\n')[0], 'Bookshop packages: a package diagram of 16 elements and 5 lines.');
+  assert.ok(!/depends on sales\b/.test(d), d);
+  m.views[0].nodeIds = ['sales', 'catalog'];
+  assert.equal(layout(m, 'packages').edges.find(e => e.id === 'self').pts.length, 5, 'closed: a loop');
+  assert.deepEqual(validate(m).filter(p => p.rule === 'line-inside'), []);
+});
+
+test('an ownership cycle is broken on the picture: an element on it has no owner, one under it is held by the first element of it it meets', () => {
+  const m = { schemaVersion: 2, nodes: [N('a', 'Package', 'a', 'b'), N('b', 'Package', 'b', 'a'), N('x', 'Class', 'X', 'a'), N('y', 'Class', 'Y'), N('s', 'Package', 's', 's')],
+    edges: [], views: [{ id: 'v', diagram: 'uml.package', nodeIds: ['a', 'b', 'x', 'y', 's'] }] };
+  const pic = ownersOn(m, m.views[0]);
+  assert.deepEqual(['a', 'b', 'x', 'y', 's'].map(pic.owner), [null, null, 'a', null, null]);
+  assert.deepEqual(['a', 'x', 's'].map(pic.full), ['a', 'a::X', 's']);
+  assert.deepEqual(check(m, 'v'), []);
+  assert.deepEqual(describe(m, 'v').split('\n'), ['v: a package diagram of 5 elements and 0 lines.', 'Package a, holding 1 element.', 'Class X.', 'Package b (closed).', 'Class Y.', 'Package s (closed).']);
+});
+
+test('a closed package\'s tab moves off the line ends on its top, and a line ending under it ends on the tab\'s top', () => {
+  const m = { schemaVersion: 2, nodes: ['alpha', 'beta', 'gamma', 'library', 'box'].map(id => N(id, 'Package', id)).concat(N('c', 'Class', 'C', 'box')),
+    edges: ['alpha', 'beta', 'gamma', 'c'].map((f, i) => ({ id: 'e' + i, type: i < 3 ? 'uml.PackageImport' : 'uml.Dependency', from: f, to: 'library' })),
+    views: [{ id: 'v', diagram: 'uml.package', direction: 'down', nodeIds: ['alpha', 'beta', 'gamma', 'library', 'box', 'c'] }] };
+  const g = layout(m, 'v'), L = g.byId.library, tx = L.tabX ?? L.x, tw = Math.min(48, Math.round(L.w * .4));
+  const ends = g.edges.map(e => e.pts[e.pts.length - 1]);
+  assert.ok(ends.every(([x, y]) => (x >= tx && x <= tx + tw) ? y === L.y - 8 : y === L.y && (x <= tx - 6 || x >= tx + tw + 6)), JSON.stringify([tx, ends]));
+  assert.ok(ends.some(([, y]) => y === L.y - 8), 'some line ends on the tab');
+  assert.match(svgOf(g), new RegExp(`data-id="library"[^]*?<path d="M${tx} ${L.y}V${L.y - 8}H${tx + tw}V${L.y}"`));
+  assert.deepEqual(check(m, 'v'), []);
+  const once = JSON.stringify(g.edges.map(e => e.pts)), memo = {}, T2 = diagramOf({ diagram: 'uml.package' });
+  const run = () => JSON.stringify(T2.layout({ model: m, view: m.views[0], pos: Object.fromEntries(g.nodes.map(n => [n.id, [n.col, n.row]])), memo }).edges.map(e => e.pts));
+  assert.equal(run(), run(), 'a memo\'s geometry is moved once');
+  assert.ok(once.length > 0);
+});
+
+test('a line\'s accessible name qualifies a member\'s owner as it is drawn', () => {
+  const m = { schemaVersion: 2, nodes: [N('s', 'Package', 'sales'), N('w', 'Package', 'wholesale'), N('o1', 'Class', 'Order', 's', { members: [{ id: 't1', type: 'uml.Property', label: 'total' }] }),
+    N('o2', 'Class', 'Order', 'w', { members: [{ id: 't2', type: 'uml.Property', label: 'total' }] }), N('r', 'Class', 'Report')],
+    edges: [{ id: 'd1', type: 'uml.Dependency', from: 'r', to: 't1' }, { id: 'd2', type: 'uml.Dependency', from: 'r', to: 't2' }, { id: 'd3', type: 'uml.Dependency', from: 'r', to: 'o2' }],
+    views: [{ id: 'v', diagram: 'uml.class', nodeIds: ['o1', 'o2', 'r'] }] };
+  assert.deepEqual(layout(m, 'v').edges.map(e => e.aria), ['Dependency from Report to sales::Order.total', 'Dependency from Report to wholesale::Order.total', 'Dependency from Report to wholesale::Order']);
+});
+
+test('ownersOn groups a view by owner once: a view of 8,800 elements reads its boxes and order in linear time', () => {
+  const big = P => { const nodes = []; for (let i = 0; i < P; i++) { nodes.push(N('p' + i, 'Package', 'p' + i)); for (let j = 0; j < 10; j++) nodes.push(N(`c${i}_${j}`, 'Class', 'C' + j, 'p' + i)); }
+    return { schemaVersion: 2, nodes, edges: [], views: [{ id: 'v', diagram: 'uml.package', nodeIds: nodes.map(n => n.id) }] }; };
+  const time = m => { const t = performance.now(); const pic = ownersOn(m, m.views[0]); assert.equal(readingOrder(pic).length, m.nodes.length); return performance.now() - t; };
+  const [small, large] = [big(200), big(800)]; time(small);
+  assert.ok(time(large) < 10 * Math.max(2, time(small)), 'about 4x the time for 4x the elements, not 16x or more');
+});
+
 // ---- validators: each with a passing and a failing case
 const BREAKS = {
   'import-ends': m => { m.edges.push({ id: 'bad', type: 'uml.PackageImport', from: 'sales', to: 'book' }); return ['bad', 'sales', 'book']; },
@@ -156,9 +210,9 @@ test('validators: 03-package.json breaks no rule; each rule fails on a model tha
     assert.deepEqual([...p.ids].sort(), [...ids].sort(), rule);
     assert.ok(validate(m).some(q => q.rule === rule && q.path === p.path), `${rule}: in validate()`);
   }
-  // an import to itself; a merge from a class; a package and a class may share a name in one owner
-  for (const e of [{ id: 'self', type: 'uml.PackageImport', from: 'sales', to: 'sales' }, { id: 'cm', type: 'uml.PackageMerge', from: 'book', to: 'sales' }]) {
-    const m = structuredClone(PKG); m.edges.push(e); assert.deepEqual(T.validate(m, m.views[0]).map(p => p.rule), ['import-ends'], e.id); }
+  // an import to itself (on a box, not drawn either); a merge from a class; a package and a class may share a name in one owner
+  for (const [e, rules] of [[{ id: 'self', type: 'uml.PackageImport', from: 'sales', to: 'sales' }, ['import-ends', 'line-inside']], [{ id: 'cm', type: 'uml.PackageMerge', from: 'book', to: 'sales' }, ['import-ends']]]) {
+    const m = structuredClone(PKG); m.edges.push(e); assert.deepEqual(T.validate(m, m.views[0]).map(p => p.rule), rules, e.id); }
   const m = structuredClone(PKG); m.nodes.push(N('c2', 'Class', 'sales')); assert.deepEqual(T.validate(m, m.views[0]), []);
   // the class type warns of owners and boxes too; the classifier rules run on a model with only a package view
   const c = structuredClone(PKG); BREAKS['owner-kinds'](c); BREAKS['own-boxes'](c); c.views[0].diagram = 'uml.class';

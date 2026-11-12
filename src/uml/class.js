@@ -4,7 +4,7 @@ import { SHAPE, r2 } from '../draw/shapes.js';
 import '../typed/draw.js'; // SHAPE.classifier, which the note's outline and ports take
 import { labelW } from '../layout/layered.js';
 import { layoutTyped } from '../typed/layout.js';
-import { OWNER_RULES, holdsLine, ownerChoices, ownerProblems, ownersOn, readingOrder } from './owners.js';
+import { OWNER_RULES, holdsLine, ownerChoices, ownerProblems, ownersOn, placeTabs, readingOrder } from './owners.js';
 
 /* ---------- the class diagram, uml.class (work package 1.9) ----------
    The subset of proposal.md §8.2: class, interface, enumeration with literals, data type, primitive type; attributes and
@@ -233,7 +233,8 @@ function nodeName(n, pic, look = CLASS_LOOK) {
   return [`${typeWord(n.type)} ${nm}${why.length ? ` (${why.join(', ')})` : ''}`, ...counts].join(', ');
 }
 function lineName(e, at, pic) {
-  const nm = id => { const r = at.get(id); return r ? (pic && !r.owner && r.kind === 'node' ? pic.name(id) : nameOfEl(r.owner || r.x)) + (r.owner ? '.' + nameOfEl(r.x) : '') : id; };
+  const drawn = x => (pic && pic.at.get(x.id) === x ? pic.name(x.id) : nameOfEl(x)); // a node's drawn name; a member's owner's too
+  const nm = id => { const r = at.get(id); return !r ? id : r.owner ? drawn(r.owner) + '.' + nameOfEl(r.x) : r.kind === 'node' ? drawn(r.x) : nameOfEl(r.x); };
   const [word] = UML_OWN(LINE_WORDS, e.type) || ['Line'], said = lineLabel(e), E = endsOf(e);
   const end = w => { const t = [(E[w] || {}).role, (E[w] || {}).multiplicity].filter(UML_HAS); return t.length ? ` (${t.join(', ')})` : ''; };
   return `${word} from ${nm(e.from)}${end('from')} to ${nm(e.to)}${end('to')}${said ? ': ' + said : ''}`;
@@ -270,7 +271,7 @@ const typeGeo = look => ({ model, view, pos, memo }) => {
   const down = view.direction === 'down', wide = !down && pic.boxes.length ? Math.max(0, ...edges.filter(e => e.label).map(labelW)) : 0;
   const g = layoutTyped({ nodes, edges, ...(pic.boxes.length ? { containers: pic.boxes } : {}), direction: down ? 'down' : 'right', gap: 96 + (wide ? Math.ceil(wide) + 40 : 0), rgap: 56 }, memo);
   g.legend = legendOf(g.edges);
-  return g;
+  return placeTabs(g);
 };
 const classGeo = typeGeo(CLASS_LOOK);
 
