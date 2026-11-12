@@ -78,6 +78,10 @@ test('rule 5: an activation inside another of its lifeline is one level deeper (
   assert.deepEqual(bars(m), [['A', 'c0', 'r0', 1], ['B', 'c1', 'r1', 1], ['A', 'c2', 'r2', 2]]);
   assert.deepEqual(bars(seq([M('c1', 'A', 'B', 'call'), M('r1', 'B', 'A', 'reply', { replyTo: 'c1' }), M('c2', 'A', 'B', 'call'), M('r2', 'B', 'A', 'reply', { replyTo: 'c2' })])),
     [['B', 'c1', 'r1', 1], ['B', 'c2', 'r2', 1]]);
+  // a bar that opens on the row another closes on (rule 3, on an incoming call) only touches it; a self-call there nests
+  assert.deepEqual(bars(seq([M('c', 'A', 'B', 'call'), M('d', 'C', 'B', 'call'), M('y', 'A', 'D', 'async'), M('r', 'B', 'C', 'reply', { replyTo: 'd' })])),
+    [['B', 'c', 'd', 1], ['B', 'd', 'r', 1]]);
+  assert.deepEqual(bars(seq([M('c', 'A', 'B', 'call'), M('s', 'B', 'B', 'call'), M('y', 'A', 'D', 'async')])), [['B', 'c', 's', 1], ['B', 's', 's', 2]]);
 });
 
 test('message numbers (S8): example 12 gives §6.3\'s table, replies included', () => {
@@ -109,6 +113,8 @@ test('reply matching (§5.2): the latest unanswered call from the reply\'s recei
   assert.equal(on(replyCallFor, two, 'A', 'B'), null, 'it goes back along the call');
   two.views[0].edges.push(M('r2', 'B', 'A', 'reply', { replyTo: 'c2' }));
   assert.equal(on(replyCallFor, two, 'B', 'A'), 'c1');
+  // a reply placed before a call answers nothing (reply-call rejects it, and it closes no bar)
+  assert.equal(on(replyCallFor, seq([M('r', 'B', 'A', 'reply', { replyTo: 'c' }), M('c', 'A', 'B', 'call')]), 'B', 'A'), 'c');
   // a call made in one operand of an alt is not answered from another
   const alt = seq([M('c', 'A', 'B', 'call', { parent: 'o1' })], [ALT('alt-1', 'o1', 'o2')]);
   assert.equal(on(replyCallFor, alt, 'B', 'A', { index: 1, parent: 'o2' }), null);
@@ -147,6 +153,9 @@ test('reply-once: two replies to one call lie in different operands of one alt, 
   one(seq([M('c', 'A', 'B', 'call'), r('r1', 'o1'), r('r2', 'o2')], [ALT('par-1', 'o1', 'o2')]), 'reply-once', ['c', 'r1', 'r2']);
   one(seq([M('c', 'A', 'B', 'call'), r('r1', 'o1'), r('r2', 'o1')], [ALT('alt-1', 'o1', 'o2')]), 'reply-once', ['c', 'r1', 'r2']);
   one(seq([M('c', 'A', 'B', 'call'), r('r1', 'o1'), r('r2')], [ALT('alt-1', 'o1', 'o2')]), 'reply-once', ['c', 'r1', 'r2']);
+  // replies to what is not an earlier call answer nothing: reply-call says so, once each, and reply-once is silent
+  for (const c of [M('c', 'A', 'B', 'async'), M('c', 'A', 'B', 'reply')]) assert.deepEqual(on(interactionProblems, seq([c, r('r1'), r('r2')])).filter(p => p.level === 'error').map(p => [p.rule, p.ids]), [['reply-call', ['r1', 'c']], ['reply-call', ['r2', 'c']]]);
+  assert.deepEqual(on(interactionProblems, seq([r('r1'), r('r2'), M('c', 'A', 'B', 'call')])).map(p => p.rule), ['reply-call', 'reply-call']);
   // a communication view has no operands: one reply to a call
   const m = copy(COM); m.edges.push({ ...m.edges.find(e => e.id === 'm5'), id: 'm5b' }); m.views[0].edges.push('m5b');
   const [p] = on(interactionProblems, m);

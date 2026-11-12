@@ -45,9 +45,11 @@ function barsOf(w) {
     if (!end && c.from !== c.to) { // 3: back when its caller next sends, after the receiver's own last message before that; a self-call at once
       const next = ms.find(m => m.r > c.r && m.from === c.from), until = next ? next.r : Infinity;
       end = ms.filter(m => m.r > c.r && m.r < until && (m.from === c.to || m.to === c.to)).pop(); }
-    end = end || c; bars.push({ head: c.to, call: c.id, to: end.id, a: c.r, b: end.r }); });
-  // 5: one level deeper for each bar of its lifeline it starts inside (for bars that nest, the ones that contain it)
-  bars.forEach(x => { x.depth = 1 + bars.filter(o => o !== x && o.head === x.head && o.a < x.a && x.a <= o.b).length; });
+    end = end || c; bars.push({ head: c.to, call: c.id, to: end.id, a: c.r, b: end.r, self: c.from === c.to }); });
+  /* 5: one level deeper for each bar of its lifeline it starts inside (for bars that nest, the ones that contain it). A bar
+     that opens on the row another closes on (rule 3 closes one on an incoming call) only touches it, unless it is a
+     self-call: that one is sent from inside the bar and comes back into it */
+  bars.forEach(x => { x.depth = 1 + bars.filter(o => o !== x && o.head === x.head && o.a < x.a && (x.a < o.b || (x.a === o.b && x.self))).length; });
   return bars;
 }
 
@@ -73,7 +75,7 @@ function replyCallFor(model, view, from, to, at) {
   const w = interactionWalk(model, view), ms = w.occ.filter(o => o.message), idx = at && at.index != null ? at.index : Infinity, where = at ? at.parent ?? null : null;
   for (let k = ms.length - 1; k >= 0; k--) { const c = ms[k];
     if (c.i < idx && c.sort === 'call' && c.from === to && c.to === from && !apartInAlt(w, c.parent, where)
-      && !ms.some(r => r.sort === 'reply' && r.replyTo === c.id && !apartInAlt(w, r.parent, where))) return c.id; }
+      && !ms.some(r => r.r > c.r && r.sort === 'reply' && r.replyTo === c.id && !apartInAlt(w, r.parent, where))) return c.id; }
   return null;
 }
 
@@ -97,7 +99,7 @@ function interactionProblems(model, view) {
       if (m.replyTo == null) say('reply-call', m, '.props', [m.id], `${nm(m)} names no call in replyTo`, 'warning');
       else if (!c || c.r > m.r || c.sort !== 'call') say('reply-call', m, '.props.replyTo', [m.id, c && c.id], `${nm(m)} answers ${JSON.stringify(m.replyTo)}, which is not an earlier call of this view`);
       else if (m.from !== c.to || m.to !== c.from) say('reply-call', m, '', [m.id, c.id], `${nm(m)} runs from ${m.from} to ${m.to}, not back along ${nm(c)} (${c.from} to ${c.to})`);
-      if (c) { const was = replies.get(c.id) || [], e = was.find(o => !apartInAlt(w, o.parent, m.parent));
+      if (c && c.sort === 'call' && c.r < m.r) { const was = replies.get(c.id) || [], e = was.find(o => !apartInAlt(w, o.parent, m.parent));
         if (e) say('reply-once', m, '.props.replyTo', [c.id, e.id, m.id], `${nm(e)} and ${nm(m)} both answer ${nm(c)}, and do not lie in different operands of one alt`);
         replies.set(c.id, [...was, m]); } }
     if (m.sort === 'create' && m.to != null) { const e = ms.find(o => o.r < m.r && touches(o, m.to));
