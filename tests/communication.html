@@ -433,7 +433,9 @@ try {
   click('.node[data-id="payments"] .c-name'); key('l'); key('s'); key('t'); key('Enter'); all('.um-pick button')[3].click();
   step('a reply answers the latest unanswered call from its receiver to its sender', [{ op: 'add', element: { id: 'm12', type: 'uml.Message', from: 'payments', to: 'storefront', props: { sort: 'reply', replyTo: 'm11' } }, view: 'checkout', index: 17 }]);
   click('.node[data-id="storefront"] .c-name'); key('l'); key('a'); key('Enter'); all('.um-pick button')[0].click();
-  check('a second connector between two lifelines is refused: no event', ed.length === 0, ed);
+  // the hook returns { error: 'storefront and api are linked already' } (tests/communication.test.mjs); today's canvas drops it
+  // (src/canvas/edit.js addLine, arrOf), so no reason reaches the hint line: 3.4 routes it to api.status
+  check('a second connector between two lifelines is refused: no event (its reason is not shown before 3.4)', ed.length === 0, ed);
   click('.node[data-id="receipt"] .c-name'); key('ArrowDown', { altKey: true });
   const pin = ed[0] && ed[0].commands[0];
   step('Alt + ↓ pins a lifeline a row down', pin ? [pin] : null, m => m.views[0].layout.receipt[1] === pin.value[1] && pin.path[1] === 'receipt');

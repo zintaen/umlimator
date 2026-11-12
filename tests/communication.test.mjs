@@ -122,6 +122,61 @@ test('the fixtures (notes/stage-3.md §9) hold every case, validate, and lay out
   assert.ok(r.g.byId.receipt.y > g0.byId.receipt.y && r.g.byId.receipt.x < g0.byId.receipt.x);
 });
 
+// review of 3.5: a stack between its two lifelines, so a connector's halves leave it on opposite sides and its rows' arrows
+// point both ways; no half sent back across the picture; a joined connector that never crosses itself outside its stack
+const lifelines = n => Array.from({ length: n }, (_, i) => ({ id: 'L' + i, type: 'uml.Lifeline' }));
+const con = (id, from, to) => ({ id, type: 'uml.Connector', from, to });
+const view1 = (nodes, edges, extra = {}) => ({ schemaVersion: 2, nodes, edges, views: [{ id: 'v', diagram: 'uml.communication', nodeIds: nodes.map(n => n.id), edges: edges.map(e => e.id), ...extra }] });
+const crossings = P => { const out = []; P.slice(1).forEach((b, i) => P.slice(i + 3).forEach((d, k) => { const a = P[i], c = P[i + k + 2], h = a[1] === b[1];
+  if (h === (c[1] === d[1])) return; const [A, B, C, D] = h ? [a, b, c, d] : [c, d, a, b];
+  if (C[0] > Math.min(A[0], B[0]) && C[0] < Math.max(A[0], B[0]) && A[1] > Math.min(C[1], D[1]) && A[1] < Math.max(C[1], D[1])) out.push([C[0], A[1]]); })); return out; };
+const outsideStack = (g, e) => { const rs = (e.stack || []).map(id => g.byId[id]), x = rs[0] ? rs[0].x : 0, y = rs[0] ? rs[0].y : 0, h = 16 * rs.length, w = rs[0] ? rs[0].w : 0;
+  return crossings(e.pts).filter(([cx, cy]) => !(cx >= x && cx <= x + w && cy >= y && cy <= y + h)); };
+test('a stack sits between its two lifelines: rows sent each way point opposite ways, and no connector runs back through another one\'s rows', () => {
+  const both = view1(lifelines(3), [con('L1-L2', 'L1', 'L2'), con('L0-L1', 'L0', 'L1'), msg('m3', 'L2', 'L0', 'async'), con('L2-L0', 'L2', 'L0'), msg('m6', 'L2', 'L0', 'async'), msg('m8', 'L0', 'L2', 'call')]);
+  both.views[0].edges = ['L1-L2', 'L0-L1', 'L2-L0', 'm3', 'm6', 'm8'];
+  assert.deepEqual(validate(both), []);
+  let g = layout(both, 'v');
+  assert.deepEqual(['m3', 'm6', 'm8'].map(id => g.byId[id].dir), ['left', 'left', 'right'], 'toward L0 (left), toward L2 (right)');
+  const st = g.byId.m3; assert.ok(g.byId.L0.x + g.byId.L0.w < st.x && st.x + st.w < g.byId.L2.x, 'the stack between L0 and L2');
+  const back = view1(lifelines(4), [msg('m1', 'L0', 'L2', 'call'), con('L0-L2', 'L0', 'L2'), con('L1-L3', 'L1', 'L3'), msg('m3', 'L1', 'L2', 'call'), con('L1-L2', 'L1', 'L2'),
+    msg('m4', 'L0', 'L2', 'call'), msg('m6', 'L2', 'L0', 'call'), msg('m8', 'L2', 'L3', 'async'), con('L2-L3', 'L2', 'L3'), con('L3-L0', 'L3', 'L0')]);
+  back.views[0].edges = ['L0-L2', 'L1-L3', 'L1-L2', 'L2-L3', 'L3-L0', 'm1', 'm3', 'm4', 'm6', 'm8'];
+  assert.deepEqual(validate(back), []);
+  const warned = [], warn = console.warn; console.warn = (...a) => warned.push(a.join(' '));
+  try { const r = clean(back, 'v'); assert.deepEqual([r.bad, r.others], [[], []]); } finally { console.warn = warn; }
+  assert.deepEqual(warned, [], 'the router found a way round every row');
+  // a three-lifeline cycle, a fourth message the other way round it, and three sent back: no connector loops round on itself
+  const cyc = view1(lifelines(3), [con('ab', 'L0', 'L1'), con('bc', 'L1', 'L2'), con('ca', 'L2', 'L0'), msg('m1', 'L0', 'L1', 'async'), msg('m2', 'L1', 'L2', 'async'), msg('m3', 'L2', 'L0', 'async'), msg('m4', 'L0', 'L2', 'async')]);
+  for (const m of [cyc, apply(cyc, ['x1', 'x2'].map(id => ({ op: 'add', element: msg(id, 'L2', 'L0', 'async'), view: 'v' })))]) {
+    g = layout(m, 'v');
+    g.edges.forEach(e => assert.deepEqual(outsideStack(g, e), [], e.id));
+  }
+});
+
+test('random views (a seeded sweep of 80, laid out right and down, self-messages among them): no overlap, no connector through another element, rows sent each way point opposite ways, and no connector crosses itself outside its stack', () => {
+  let seed = 3; const rnd = () => (seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648, pick = a => a[Math.floor(rnd() * a.length)];
+  const warned = [], warn = console.warn; console.warn = (...a) => warned.push(a.join(' '));
+  let loops = 0, twoWay = 0;
+  try {
+    for (let t = 0; t < 80; t++) {
+      const ids = lifelines(2 + Math.floor(rnd() * 5));
+      let m = view1(ids, [], { direction: rnd() < .3 ? 'down' : 'right' });
+      for (let k = 0; k < 14; k++) { const a = pick(ids).id, b = rnd() < .15 ? a : pick(ids).id, cs = commConnect(m, VIEW(m), a, b, null, { type: 'uml.Message', props: { sort: pick(['call', 'async']) } }); if (Array.isArray(cs)) m = apply(m, cs); }
+      const r = clean(m, 'v'), E = new Map(m.edges.map(e => [e.id, e]));
+      assert.deepEqual([r.bad, r.others], [[], []], `view ${t}`);
+      r.g.edges.filter(e => e.stack).forEach(e => {
+        const ways = new Map(e.stack.map(id => [E.get(id).from, r.g.byId[id].dir]));
+        if (ways.size === 2) { twoWay++; assert.notEqual(...ways.values(), `view ${t}, ${e.id}: a row each way`); }
+        loops += e.from === e.to; assert.deepEqual(outsideStack(r.g, e), [], `view ${t}, ${e.id}`);
+      });
+    }
+  } finally { console.warn = warn; }
+  console.log(`# sweep: ${twoWay} stacks with rows each way, ${loops} self connectors with messages`);
+  assert.deepEqual(warned, []);
+  assert.ok(twoWay > 50 && loops > 20);
+});
+
 test('a view with no lifelines, or with messages and no connector, lays out and draws', () => {
   for (const v of [{ id: 'v', diagram: 'uml.communication', nodeIds: [], edges: [] }, { id: 'v', diagram: 'uml.communication', nodeIds: ['client', 'server'], edges: ['get', 'got'] }]) {
     const m = { ...MINIMAL, views: [v] }, g = layout(m, 'v');
@@ -229,6 +284,15 @@ test('add: the palette\'s lifeline, last or at an index; remove: a connector tak
   m = run(EX, commRemove(EX, V, ['payments'], false));
   assert.ok(!VIEW(m).edges.some(id => ['api-payments', 'm4', 'm5'].includes(id)), 'a lifeline hidden takes its connectors and messages');
   run(EX, commRemove(EX, V, ['payments', 'api-payments', 'm4'], true));
+  // a connector deleted from the model takes the messages another view carries on it, and none another connector carries there
+  const two = { schemaVersion: 2, nodes: [{ id: 'a', type: 'uml.Lifeline' }, { id: 'b', type: 'uml.Lifeline' }],
+    edges: [{ id: 'c', type: 'uml.Connector', from: 'a', to: 'b' }, { id: 'c2', type: 'uml.Connector', from: 'b', to: 'a' }, msg('m1', 'a', 'b', 'call'), msg('m2', 'a', 'b', 'async'), msg('m3', 'b', 'a', 'async')],
+    views: [{ id: 'v1', diagram: 'uml.communication', nodeIds: ['a', 'b'], edges: ['c', 'm1'] }, { id: 'v2', diagram: 'uml.communication', nodeIds: ['a', 'b'], edges: ['c', 'm2'] },
+      { id: 'v3', diagram: 'uml.communication', nodeIds: ['a', 'b'], edges: ['c', 'c2', 'm3'] }] };
+  assert.deepEqual(validate(two), []);
+  assert.deepEqual(commRemove(two, two.views[0], ['c'], true), [{ op: 'delete', id: 'c' }, { op: 'delete', id: 'm1' }, { op: 'delete', id: 'm2' }], 'm3 stays on c2 in v3');
+  run(two, commRemove(two, two.views[0], ['c'], true));
+  assert.deepEqual(commRemove(two, two.views[0], ['c'], false), [{ op: 'hide', id: 'c', view: 'v1' }, { op: 'hide', id: 'm1', view: 'v1' }]);
 });
 
 test('save and reopen (DoD 6): a 30-step communication session undoes and redoes to byte-identical models, and reopening its saved JSON midway ends where the session does', () => {
