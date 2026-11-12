@@ -15,7 +15,7 @@ import { describe } from '../src/map/insight.js';
 import { svgOf } from '../src/draw/svg.js';
 import { parseSlot, printSlot, slotEdit } from '../src/uml/object.js';
 
-const OBJ = JSON.parse(readFileSync(new URL('../docs/diagrams/examples/02-object.json', import.meta.url)));
+const OBJ = JSON.parse(readFileSync(new URL('../examples/order-objects.json', import.meta.url)));
 const T = diagramOf({ diagram: 'uml.object' });
 const I = (id, label, classifier, slots = [], more = {}) => ({ id, type: 'uml.InstanceSpecification', ...(label != null ? { label } : {}), ...(classifier ? { props: { classifier } } : {}),
   ...(slots.length ? { members: slots.map(([f, v]) => ({ id: `${id}.${f}`, type: 'uml.Slot', label: f, ...(v != null ? { props: { value: v } } : {}) })) } : {}), ...more });

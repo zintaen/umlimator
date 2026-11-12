@@ -1,0 +1,75 @@
+<!doctype html>
+<!-- The package and object diagrams' fixtures (2.6, notes/stage-2.md §15) in headless Chrome (tests/embed.py), from
+     lib/umlimator-all.js: tests/package-minimal.json, tests/package-stress.json, tests/object-minimal.json and
+     tests/object-stress.json, each view drawn by render() in both themes, three fonts and both directions: no overlap, text
+     inside its element and compartment, no line through an element, through a tab or along a box's border, every line end
+     on its element's outline or its box's border, roles clear of every element, each box holding exactly what it owns on the
+     picture, its title in its header, lines at 3:1. tests/package-fixtures.test.mjs and tests/object-fixtures.test.mjs hold
+     the same in Node, with P1's budgets. -->
+<meta charset="utf-8">
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="../lib/umlimator-theme.css">
+<title>umlimator package and object fixtures test</title>
+<body style="margin:0">
+<div id="m" style="width:1200px;height:1000px"></div>
+<script type="module">
+import { render } from '../lib/umlimator-all.js';
+const out = { ok: [], fail: [] };
+const check = (name, cond, info) => { document.title = name; if (cond) out.ok.push(name); else out.fail.push(name + (info === undefined ? '' : ': ' + JSON.stringify(info))); };
+const el = document.getElementById('m');
+let sr;
+const pick = s => sr.querySelector(s), all = s => [...sr.querySelectorAll(s)];
+const rect = r => ({ x: r.x, y: r.y, w: r.width, h: r.height }), box = g => rect(g.getBBox());
+const meets = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+const inside = (a, b) => a.x >= b.x && a.y >= b.y && a.x + a.w <= b.x + b.w && a.y + a.h <= b.y + b.h;
+const nums = d => d.match(/-?\d+(\.\d+)?/g).map(Number), pts = d => { const n = nums(d), p = []; for (let i = 0; i < n.length; i += 2) p.push([n[i], n[i + 1]]); return p; };
+const FONTS = { serif: 'serif', sans: 'sans-serif', wide: 'monospace' };
+const rgba = s => { let m = /rgba?\(([^)]+)\)/.exec(s); if (m) { const p = m[1].split(/[ ,/]+/).filter(Boolean).map(Number); return [p[0] / 255, p[1] / 255, p[2] / 255, p.length > 3 ? p[3] : 1]; }
+  m = /color\(srgb ([^)]+)\)/.exec(s); if (m) { const p = m[1].split(/[ /]+/).filter(Boolean).map(Number); return [p[0], p[1], p[2], p.length > 3 ? p[3] : 1]; } return null; };
+const blend = (top, bot) => [0, 1, 2].map(i => top[i] * top[3] + bot[i] * (1 - top[3])).concat(1);
+const lum = c => { const f = v => v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]); };
+const ratio = (fg, bg) => { const [x, y] = [lum(blend(fg, bg)), lum(bg)].sort((p, q) => q - p); return +((x + 0.05) / (y + 0.05)).toFixed(2); };
+const css = (e, k) => rgba(getComputedStyle(e)[k]);
+const FIX = {};
+for (const f of ['package-minimal', 'package-stress', 'object-minimal', 'object-stress']) FIX[f] = await (await fetch(f + '.json')).json();
+try {
+  for (const [fx, MODEL] of Object.entries(FIX)) for (const v of MODEL.views) for (const direction of ['down', 'right']) for (const theme of ['light', 'dark']) for (const [fname, family] of Object.entries(FONTS)) {
+    document.documentElement.dataset.theme = theme; el.style.setProperty('--um-sans', family);
+    const M = structuredClone(MODEL); M.views.find(x => x.id === v.id).direction = direction;
+    el.innerHTML = ''; const h = render(el, M, { view: v.id }); sr = el.querySelector('.umlimator').shadowRoot;
+    const tag = `${fx} ${v.id}, ${direction}, ${theme}, ${fname}`, svg = pick('svg.um-svg, .stage svg'), nodes = all('.node'), bad = [];
+    const own = Object.fromEntries(M.nodes.map(n => [n.id, n.parent])), holds = (b, id) => { for (let p = own[id], k = 0; p != null && k < 99; p = own[p], k++) if (p === b) return true; return false; };
+    const B = Object.fromEntries(nodes.map(g => [g.dataset.id, box(g.querySelector('.n-body'))])), F = Object.fromEntries(all('.family').map(g => [g.dataset.family, box(g.querySelector('.family-box'))]));
+    // a closed package's tab above its body, and an open one's in its header: no line goes through either
+    const tabs = [...nodes.filter(g => g.querySelector('.n-det') && g.dataset.shape === 'package').map(g => [g.dataset.id, box(g.querySelector('.n-det'))]),
+      ...all('.family').map(g => { const [x, y, r, t] = nums(g.querySelector('.pk-tab').getAttribute('d')); return [g.dataset.family, { x, y: t, w: r - x, h: y - t }]; })]; // M x y H r V t
+    Object.entries(B).forEach(([a, p]) => Object.entries(B).forEach(([b, q]) => { if (a < b && meets(p, q)) bad.push(`${a}/${b} overlap`); }));
+    // text measured unhinted: fit into 1200 px, the right-hand stress view is drawn at a tenth of its size, and Linux's
+    // hinting at that pixel size doubles a name's getBBox height, a spill no reader at any zoom sees
+    svg.style.textRendering = 'geometricPrecision';
+    nodes.forEach(g => { const n = B[g.dataset.id]; g.querySelectorAll('[data-band]').forEach(band => { const [t, b] = band.dataset.band.split(' ').map(Number);
+      band.querySelectorAll('text').forEach(x => { const r = x.getBBox(); if (r.x < n.x + 1 || r.x + r.width > n.x + n.w - 1 || r.y < t - .5 || r.y + r.height > b + .5) bad.push(`${g.dataset.id}: "${x.textContent}" spills`); }); }); });
+    Object.entries(F).forEach(([f, r]) => { Object.entries({ ...B, ...F }).forEach(([n, b]) => { if (n !== f && inside(b, r) !== holds(f, n)) bad.push(`${f} ${holds(f, n) ? 'lacks' : 'covers'} ${n}`); });
+      const t = box(pick(`.family[data-family="${f}"] .family-title`)); if (!inside(t, r) || t.y > r.y + 24) bad.push(`${f}'s title spills`); });
+    all('.edge-g').forEach(g => { const p = pts(g.querySelector('path.edge').getAttribute('d')), { from, to } = g.dataset;
+      [[p[0], from], [p[p.length - 1], to]].forEach(([q, id]) => { // on a node's outline (a closed package's tab too), or on a box's border
+        if (F[id]) { const r = F[id]; if (!([r.x, r.x + r.w].some(x => Math.abs(x - q[0]) < 1) || [r.y, r.y + r.h].some(y => Math.abs(y - q[1]) < 1))) bad.push(`${from}>${to} ends off ${id}'s border`); return; }
+        const parts = [...pick(`.node[data-id="${id}"]`).querySelectorAll('.n-body, .n-det')], s = svg.createSVGPoint(); s.x = q[0]; s.y = q[1];
+        const on = parts.some(b => { b.style.strokeWidth = '3px'; const r = b.isPointInStroke(s); b.style.strokeWidth = ''; return r; }); if (!on) bad.push(`${from}>${to} ends off ${id}`); });
+      p.slice(1).forEach((q, k) => { const a = p[k], s = { x: Math.min(a[0], q[0]), y: Math.min(a[1], q[1]), w: Math.abs(q[0] - a[0]) || .01, h: Math.abs(q[1] - a[1]) || .01 };
+        Object.entries(B).forEach(([id, b]) => { if (id !== from && id !== to && meets(s, { x: b.x + 1, y: b.y + 1, w: b.w - 2, h: b.h - 2 })) bad.push(`${from}>${to} runs through ${id}`); });
+        tabs.forEach(([id, t]) => { if (id !== from && id !== to && meets(s, { x: t.x + 1, y: t.y + 1, w: t.w - 2, h: t.h - 2 })) bad.push(`${from}>${to} runs through ${id}'s tab`); });
+        Object.entries(F).forEach(([id, r]) => { const vert = a[0] === q[0] && Math.min(a[1], q[1]) < r.y + r.h - 1 && Math.max(a[1], q[1]) > r.y + 1, horiz = a[1] === q[1] && Math.min(a[0], q[0]) < r.x + r.w - 1 && Math.max(a[0], q[0]) > r.x + 1;
+          if ((vert && [r.x, r.x + r.w].some(x => Math.abs(a[0] - x) < 1)) || (horiz && [r.y, r.y + r.h].some(y => Math.abs(a[1] - y) < 1))) bad.push(`${from}>${to} runs along ${id}'s border`); }); }); });
+    all('text.end-lab').forEach(x => { const [bx, by, bw, bh] = x.dataset.box.split(' ').map(Number); const on = Object.entries(B).find(([, n]) => meets({ x: bx, y: by, w: bw, h: bh }, n)); if (on) bad.push(`line ${x.dataset.i}'s "${x.textContent}" (${x.dataset.end}) on ${on[0]}`); });
+    const stageBg = css(pick('.stage'), 'backgroundColor');
+    all('.edge-g path.edge').forEach(x => { const c = ratio(css(x, 'stroke'), stageBg); if (c < 3) bad.push(`a line at ${c}:1`); });
+    const shown = new Set(v.nodeIds), drawn = M.edges.filter(e => shown.has(e.from) && shown.has(e.to)).length;
+    check(`${tag}: all ${v.nodeIds.length} elements (${Object.keys(F).length} of them boxes) and ${all('.edge-g').length} lines drawn; no overlap, no text out of its element, no line through an element, a tab or along a border, every end on its element, roles clear, boxes hold their own, lines 3:1`,
+      nodes.length + Object.keys(F).length === v.nodeIds.length && all('.edge-g').length && all('.edge-g').length <= drawn && !bad.length, bad.slice(0, 12));
+    h.destroy();
+  }
+  document.documentElement.dataset.theme = 'light'; el.style.removeProperty('--um-sans');
+} catch (e) { out.fail.push('threw: ' + (e && e.stack || e)); }
+const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
+</script>

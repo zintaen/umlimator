@@ -10,6 +10,8 @@ audit's repros (tooling.json's mcp machines), which failed before:
 - a closed tab is not counted; a tour that has ended is not played again for a page that opens later;
 - a command ends only the assistant's own tour, never the tour of a story the reader started (#132);
 - clear() takes the assistant's story off, and leaves a story the reader started.
+And C10 (2.6): an object model and a package model, served the same way, answer its read tools in their own words and show a
+highlight on the diagram the page draws.
 
   python3 tests/mcp.py
 
@@ -128,6 +130,7 @@ LOOK = """(() => { const m = window.umlimatorMap, host = document.querySelector(
   svg = host && host.shadowRoot && host.shadowRoot.querySelector('svg'), cards = svg ? [...svg.querySelectorAll('.node')] : [];
   return m && { view: m.view, lit: cards.filter(c => !c.getAttribute('opacity')).map(c => c.dataset.id).sort(), dimmed: cards.filter(c => c.getAttribute('opacity')).length,
     overlays: m.state.overlays, story: m.state.story, banner: (document.getElementById('mcp-banner') || {}).textContent || null }; })()"""
+BOXES = "(() => { const host = document.querySelector('#m-canvas .umlimator'); return host ? host.shadowRoot.querySelectorAll('.family').length : -1; })()"
 chrome = Chrome()
 try:
     # the assistant builds a picture before any page is open: a view, then a highlight on it (no view named)
@@ -260,4 +263,33 @@ finally:
     srv.stdin.close()
     srv.wait(timeout=30)
     shutil.rmtree(work, ignore_errors=True)
+# C10 (2.6): an object model and a package model served the same way. The read tools answer with the type's own words, and
+# a page tool's highlight is shown on the diagram the page draws (umlimator/all: a typed view), boxes and all
+for f, view, refs, first, cards, boxes in (("order-objects", "snapshot", ["order-1042", "card"], "Order 1042, just placed: an object diagram of 7 elements and 6 lines.", 7, 0),
+                                          ("bookshop-packages", "packages", ["order", "payment"], "Bookshop packages: a package diagram of 16 elements and 5 lines.", 10, 6)):
+    m = json.loads((ROOT / "examples" / f"{f}.json").read_text(encoding="utf-8"))
+    srv = subprocess.Popen([sys.executable, str(ROOT / "umlimator.py"), "mcp", str(ROOT / "examples" / f"{f}.json"), "--port", "0"], stdin=subprocess.PIPE,
+                           stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
+    stop = threading.Timer(300, srv.kill); stop.daemon = True; stop.start()
+    chrome = Chrome()
+    try:
+        url = re.search(r"http://127\.0\.0\.1:\d+", rpc("initialize", {"protocolVersion": "2025-11-25", "capabilities": {},
+                                                                     "clientInfo": {"name": "tests/mcp.py", "version": "0"}})["result"]["instructions"]).group(0)
+        views = json.loads(tool("list_views"))
+        said = tool("describe_view", view=view)
+        ok(f"C10 · {f}: list_views and describe_view answer in the diagram's own words, then its element ids",
+           [v["id"] for v in views.get("views", [])] == [view] and said.startswith(first) and f"\nCard ids: {m['views'][0]['nodeIds'][0]} (" in said, (views, said[:300]))
+        ok(f"C10 · {f}: validate finds no problem", tool("validate") == "[]")
+        tab, sid = chrome.open(url + "/")
+        drawn = until(lambda: (lambda s: s if s and s["view"] == view and len(s["lit"]) == cards else None)(chrome.eval(sid, LOOK)))
+        ok(f"C10 · {f}: the page draws the diagram: {cards} elements, {boxes} of its packages as boxes", drawn and chrome.eval(sid, BOXES) == boxes, (drawn, chrome.eval(sid, BOXES)))
+        until(lambda: state()["pages"][0].get("state"))  # the page's event stream is connected, so the tool waits for it to show
+        said = tool("highlight", refs=refs, view=view)
+        got = until(lambda: (lambda s: s if s and "mcp" in s["overlays"] and s["lit"] == sorted(refs) else None)(chrome.eval(sid, LOOK)))
+        ok(f"C10 · {f}: highlight is shown on the diagram, the rest dimmed, and the tool says so once it is", said.startswith(f"Shown on 1 page at {url}, on view {view}")
+           and got and got["dimmed"] == cards - len(refs), (said, got))
+    finally:
+        chrome.quit()
+        srv.stdin.close()
+        srv.wait(timeout=30)
 sys.exit(1 if failed else 0)

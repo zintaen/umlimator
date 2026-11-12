@@ -48,7 +48,9 @@ export interface MapNode {
 /** A typed element in schema version 2's envelope (docs/diagrams/model.md §1): a node, a member, a typed edge, a
  *  fragment. Nodes, edges, members and fragments share one id space; an id never contains "->". A typed edge is an
  *  Element with `from` and `to`, which may name a member. A typed view is a MapView with `diagram` (uml.class), and may
- *  have `subject`, `direction` ('right' | 'down'), `notation`, `present`, `fragments` and `timeline`. umlimator/all draws `uml.class` (0.18.0); other types draw as plain cards. */
+ *  have `subject`, `direction` ('right' | 'down'), `notation`, `present`, `fragments` and `timeline`. umlimator/all draws `uml.class` (0.18.0), `uml.object` and `uml.package` (0.19.0); other types draw as plain cards.
+ *  From 0.19.0 those three draw a shown package that owns something the view shows as a box holding it (`parent`), and
+ *  qualify names (`sales::Order`) from the nearest shown owner, the view's `subject`, or the top. */
 export interface Element {
   id: string; type: string; label?: string; parent?: string; props?: Record<string, unknown>; members?: Element[];
   [key: string]: unknown;
@@ -75,6 +77,25 @@ export interface UmlOperationProps {
 export interface UmlAssociationEnd { role?: string; multiplicity?: string; aggregation?: 'none' | 'shared' | 'composite'; navigable?: boolean }
 /** A line's props: an association's two ends, and stereotypes («use» on a dependency). */
 export interface UmlLineProps { ends?: { from?: UmlAssociationEnd; to?: UmlAssociationEnd }; stereotypes?: string[]; [key: string]: unknown }
+/** The object diagram's vocabulary (a view with `diagram: 'uml.object'`, umlimator/all from 0.19.0;
+ *  docs/conformance/uml-object.md). An instance with no `label` is anonymous (drawn `: Order`); a slot's `label` is the
+ *  feature it gives a value. A classifier node an object view shows is drawn as in a class view. */
+export type UmlObjectElementType = 'uml.InstanceSpecification' | 'uml.Package' | 'uml.Comment';
+export type UmlObjectMemberType = 'uml.Slot';
+export type UmlObjectLineType = 'uml.Link' | 'uml.CommentLink';
+/** An instance's props: its classifier by name or qualified name, as text (docs/diagrams/risks.md M8). */
+export interface UmlInstanceProps { classifier?: string; stereotypes?: string[]; [key: string]: unknown }
+/** A slot's props: its value as text; with none, the slot is drawn by its feature alone. */
+export interface UmlSlotProps { value?: string; [key: string]: unknown }
+/** A link's props: the association it is an instance of, by name, and the roles at its ends. */
+export interface UmlLinkProps { association?: string; ends?: { from?: { role?: string }; to?: { role?: string } }; stereotypes?: string[]; [key: string]: unknown }
+/** The package diagram's vocabulary (a view with `diagram: 'uml.package'`, umlimator/all from 0.19.0;
+ *  docs/conformance/uml-package.md): packages and the class diagram's classifiers, drawn by their names. An import or
+ *  a merge runs from the importing or merging package. */
+export type UmlPackageElementType = 'uml.Package' | 'uml.Class' | 'uml.Interface' | 'uml.Enumeration' | 'uml.DataType' | 'uml.PrimitiveType' | 'uml.Comment';
+export type UmlPackageLineType = 'uml.PackageImport' | 'uml.PackageMerge' | 'uml.Dependency' | 'uml.CommentLink';
+/** A package import's props: public (the default) is drawn «import», private «access». */
+export interface UmlPackageImportProps { visibility?: 'public' | 'private'; stereotypes?: string[]; [key: string]: unknown }
 /** What a typed view shows of one element, in its `present` by the element's id: compartments not drawn, divider and
  *  all, and at most `rows` rows in each, then "+k more". */
 export interface UmlPresent { collapsed?: ('attributes' | 'operations' | 'literals')[]; rows?: number }

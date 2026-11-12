@@ -21,7 +21,7 @@ const TYPE = /^[a-z0-9]+\.[A-Z][A-Za-z0-9]*$/; // in the examples every element 
 const REF = ['replyTo', 'attachedTo', 'references', 'container'], REFS = ['conveyed', 'covers', 'extensionPoints', 'categoryValueRef']; // props that name elements
 
 // the target examples that moved to examples/ when their type drew: the name they had here, and where they are now
-export const MOVED = { '01-class.json': '../../../examples/sales-classes.json' };
+export const MOVED = { '01-class.json': '../../../examples/sales-classes.json', '02-object.json': '../../../examples/order-objects.json', '03-package.json': '../../../examples/bookshop-packages.json' };
 
 // all 28 target examples, those still here and those that moved, in file order: [name, its URL]
 export function targets() {

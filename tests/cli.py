@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """The CLI's change commands end to end (#66, #67, #68): diff of two files, diff --base in a git repository (what the
-diff Action runs on a pull request), drift and timelapse; trace (#96); and pdf (#93), read back with the standard
+diff Action runs on a pull request; on an object and a package model as the Action's step runs it, 2.6), drift and timelapse; trace (#96); and pdf (#93), read back with the standard
 library. Pages only for the rest: stills (Chrome) are covered by `stills` itself. And the MCP server (#91), driven
 through its pipes as an MCP client drives it, with a page's event stream.
 
@@ -139,6 +139,32 @@ with tempfile.TemporaryDirectory() as tmp:
     cli("diff", "--base", "HEAD", "--out", str(t / "pr2"), cwd=g)
     ok("diff --base · says so when no map changed", "No map model changed." in ((t / "pr2" / "summary.md").read_text(encoding="utf-8") if (t / "pr2" / "summary.md").is_file() else ""))
 
+    # the diff Action's step as CI runs it (C10, 2.6): a pull request's merge commit against its first parent, the pathspec
+    # examples/*.json passed to git as written (set -f), on one object model and one package model
+    a = t / "action"; (a / "examples").mkdir(parents=True)
+    agit = lambda *x: subprocess.run(["git", "-C", str(a), "-c", "user.name=test", "-c", "user.email=test@example.invalid", *x], capture_output=True, text=True, check=True)
+    agit("init", "-q")
+    for f in ("order-objects", "bookshop-packages"):
+        (a / "examples" / f"{f}.json").write_text((ROOT / "examples" / f"{f}.json").read_text(encoding="utf-8"), encoding="utf-8")
+    agit("add", "examples"); agit("commit", "-q", "-m", "base")
+    obj = json.loads((a / "examples" / "order-objects.json").read_text()); o = next(n for n in obj["nodes"] if n["id"] == "order-1042"); o["label"] = "order1043"; o["members"][0]["props"]["value"] = "paid"
+    (a / "examples" / "order-objects.json").write_text(json.dumps(obj, indent=1))
+    pkg = json.loads((a / "examples" / "bookshop-packages.json").read_text()); next(n for n in pkg["nodes"] if n["id"] == "book")["parent"] = "sales"
+    (a / "examples" / "bookshop-packages.json").write_text(json.dumps(pkg, indent=1))
+    agit("commit", "-q", "-am", "the pull request")
+    r = cli("diff", "--base", "HEAD^1", "--out", str(t / "action-out"), "--models", "examples/*.json", cwd=a) or []
+    by = {x["file"]: x for x in r}
+    md = (t / "action-out" / "summary.md").read_text(encoding="utf-8") if (t / "action-out" / "summary.md").is_file() else ""
+    ok("diff --base, as the Action runs it · an object model: what changed in words, its view, a page and a still",
+       by.get("examples/order-objects.json", {}).get("summary") == ["renames order1042 to order1043 (members)"] and by["examples/order-objects.json"]["views"] == ["snapshot"]
+       and (t / "action-out" / "examples-order-objects.html").is_file() and all(Path(s).is_file() for s in by["examples/order-objects.json"].get("stills", [None])), r)
+    ok("diff --base, as the Action runs it · a package model: a re-own reads moves … into …, with its view, a page and a still",
+       by.get("examples/bookshop-packages.json", {}).get("summary") == ["moves Book into sales"] and by["examples/bookshop-packages.json"]["views"] == ["packages"]
+       and (t / "action-out" / "examples-bookshop-packages.html").is_file() and all(Path(s).is_file() for s in by["examples/bookshop-packages.json"].get("stills", [None])), r)
+    ok("diff --base, as the Action runs it · the summary the Action posts names both files and what changed",
+       md.startswith("<!-- umlimator-diff -->") and "**`examples/order-objects.json`**: snapshot" in md and "- renames order1042 to order1043" in md
+       and "**`examples/bookshop-packages.json`**: packages" in md and "- moves Book into sales" in md and md.count("```mermaid") == 2, md[:800])
+
     # pdf (#93): the bike share as a document for a review; its words are text. A cover with the contents; each view from a
     # page of its own, under its path, with its legend and tables of its cards, lines and boxes; the rules as a table. The
     # words are compared without spaces: a PDF's text keeps none where a line wraps or between two runs of text, and where
@@ -175,7 +201,8 @@ with tempfile.TemporaryDirectory() as tmp:
     ok("pdf --theme dark · its pages are dark to the edge", dark and max(dark[0]) < .15, dark[:3])
     # schema version 2 (1.8): typed models go through the upstream engine's check (a line may end on a member, F3), the
     # page bakes no layout into a typed view (F4), and render, check, stills and pdf work on them
-    for name, path in (("sales-classes", ROOT / "examples" / "sales-classes.json"), ("05-component", ROOT / "docs" / "diagrams" / "examples" / "05-component.json")):
+    for name, path in (("sales-classes", ROOT / "examples" / "sales-classes.json"), ("order-objects", ROOT / "examples" / "order-objects.json"),
+                       ("bookshop-packages", ROOT / "examples" / "bookshop-packages.json"), ("05-component", ROOT / "docs" / "diagrams" / "examples" / "05-component.json")):
         src = json.loads(path.read_text())
         r = cli("render", str(path), "--out", str(t / f"{name}.html"))
         ok(f"render · a typed model ({name}): the engine accepts lines that end on members, and the check is clean",
@@ -197,6 +224,15 @@ with tempfile.TemporaryDirectory() as tmp:
        all(flat(s) in txt for s in ["CardKindMembers", "OrderClass- id: UUID", "+ add(book: Book, quantity: Integer)", "MoneyData type+ amount: Decimal",
                                     "From → toLabelKind", "Customer → OrderplacesAssociation", "CardPayment → PaymentGeneralization", "Order → PayableInterface realization"])
        and "Script" not in txt and "calls" not in txt, txt[:800])
+    # 2.6: the object diagram's tables list each instance with its slots, the package diagram's each element's kind and each line's
+    txt = "".join(read("order-objects.pdf"))
+    ok("pdf · order-objects: its tables list each instance's kind and its slots as feature = value, and each link",
+       all(flat(s) in txt for s in ["CardKindMembers", "order1042Instance specificationstatus = placedtotal = 34.00 EUR", "cardInstance specificationamount = 34.00 EURlast4 = 4242",
+                                    "From → toLabelKind", "ada → order1042placesLink", "order1042 → cardLink"]) and "Script" not in txt and "calls" not in txt, txt[:800])
+    txt = "".join(read("bookshop-packages.pdf"))
+    ok("pdf · bookshop-packages: its tables list each element's kind (package, class, interface, enumeration, data type) and each line's",
+       all(flat(s) in txt for s in ["CardKindMembers", "sharedPackageMoneyData type", "OrderStatusEnumeration", "PayableInterface", "wholesalePackageOrderClass",
+                                    "catalog → sharedPackage import", "wholesale → salesPackage merge", "sales → paymentsDependency"]) and "Script" not in txt and "calls" not in txt, txt[:800])
     # an element with no type is drawn as a class, and its row says so
     bare = json.loads((ROOT / "examples" / "sales-classes.json").read_text()); next(n for n in bare["nodes"] if n["id"] == "order").pop("type")
     (t / "bare.json").write_text(json.dumps(bare))

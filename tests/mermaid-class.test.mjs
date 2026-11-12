@@ -45,7 +45,7 @@ test('read(write(model)) is the class example, view by view, less the owners a v
 });
 
 test('read(write(model)) is 03-package.json\'s classes in a class view, less the owners the view does not show and the packages\' lines, which the text names', () => {
-  const m = json('../docs/diagrams/examples/03-package.json'), pkg = new Set(m.nodes.filter(n => n.type === 'uml.Package').map(n => n.id));
+  const m = json('../examples/bookshop-packages.json'), pkg = new Set(m.nodes.filter(n => n.type === 'uml.Package').map(n => n.id));
   const views = {
     all: m.nodes.map(n => n.id), // payments holds card, which holds card-payment: nested braces
     classes: m.nodes.filter(n => !pkg.has(n.id)).map(n => n.id), // every owner hidden
