@@ -10,7 +10,7 @@ import { NW, OWN_ROUTE, labelW, layoutGraph } from '../layout/layered.js';
 
 // what moves a typed view's geometry: every field of the view layoutGraph reads but VIEW_PAINT (a test holds the two lists to
 // layered.js), and these of a node and a line. Anything else (a colour, a `props` field) only repaints
-const VIEW_GEO = ['abs', 'authors', 'blocks', 'containers', 'direction', 'fan', 'flipped', 'gap', 'groups', 'hub', 'intake', 'laneGap', 'lanes', 'mainSteps', 'nodeH', 'quick', 'repair', 'rgap', 'turned', 'typed'];
+const VIEW_GEO = ['abs', 'authors', 'blocks', 'containers', 'direction', 'fan', 'flipped', 'gap', 'groups', 'hub', 'intake', 'laneGap', 'lanes', 'mainSteps', 'nodeH', 'quick', 'repair', 'reroute', 'rgap', 'turned', 'typed'];
 const VIEW_PAINT = ['tour', 'subAndChips'], NODE_GEO = ['id', 'col', 'row', 'w', 'h', 'ax', 'ay'], EDGE_GEO = ['id', 'from', 'to', 'label', 'step', 'fromSide', 'toSide', 'back', 'fixed', 'sublabel'];
 const geometryKey = dg => JSON.stringify([VIEW_GEO.map(k => dg[k]), (dg.nodes || []).map(n => NODE_GEO.map(k => n[k])), (dg.edges || []).map(e => EDGE_GEO.map(k => e[k]))]);
 
@@ -36,7 +36,8 @@ function repaint(g, was, dg) {
 
 /* dg: layoutGraph's input, with `direction` ("right", the default, or "down"). memo: an object kept for the view between
    calls; while the geometry key is the same, the geometry it holds is repainted and returned, and nothing is laid out or
-   routed. memo.runs counts the layouts. */
+   routed. memo.runs counts the layouts. dg.reroute false: lines that had to cross are not routed again in a new order (the
+   rip-up and reroute pass, layered.js), for a type whose edits must be quick (risks.md P1); a map never sets it. */
 function layoutTyped(dg, memo) {
   const key = memo && geometryKey(dg);
   if (memo && memo.key === key) { const g = repaint(memo.g, memo.dg, dg); memo.dg = dg; return g; }
