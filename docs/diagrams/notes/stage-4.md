@@ -1,6 +1,6 @@
 # Stage 4 design note: use case, activity, state machine and interaction overview
 
-Status: **proposed**, awaiting the maintainer's approval. Written against `main` at af4a141 (0.19.0's release merged, #197;
+Status: **approved** by the maintainer 12 Nov 2026 (#201), with every recommendation of §20 taken. Written against `main` at af4a141 (0.19.0's release merged, #197;
 stage 3's 3.0 to 3.7 merged, 3.8 being built), then revised after a feasibility review and a UML fidelity review, and
 checked again against 0.20.0 at 0723e37 (3.8 merged, #198): between the two only `src/layout/audit.js` and
 `src/uml/sequence.js` changed, and nothing read here moved. The maintainer approves it before work package 4.0 starts.
