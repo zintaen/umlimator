@@ -105,6 +105,9 @@ function stIndex(model) {
   const subs = id => [...(kids.get(id) || []), ...stMembers((N.get(id) || {}).x, 'uml.Region').flatMap(r => kids.get(r.id) || [])];
   return { N, M, kids, subs };
 }
+// an element's owner (a region's is its state), and whether id is anc or lies under it
+const stUp = (I, id) => { const r = I.M.get(id); return r ? r.owner.id : (I.N.get(id) || { x: {} }).x.parent; };
+const stWithin = (I, id, anc) => { for (let p = id, seen = new Set(); p != null && !seen.has(p); p = stUp(I, p)) { if (p === anc) return true; seen.add(p); } return false; };
 // the words of an element as its accessible name says them: "Initial pseudostate", "Final state", "Placed"
 const stWord = x => (x.type === 'uml.Pseudostate' ? (ST_OWN(ST_KIND_WORD, stKind(x)) || 'Pseudostate') + (ST_HAS(x.label) ? ' ' + x.label : '') : x.type === 'uml.FinalState' ? 'Final state' + (ST_HAS(x.label) ? ' ' + x.label : '') : stName(x));
 // a state's activities as its compartment and its name say them
@@ -113,8 +116,8 @@ const stRows = x => [...stActs(x).map(([k, t]) => `${k} / ${t}`), ...stMembers(x
 function stPic(model, view) {
   const pic = ownersOn(model, view, ST_LOOK), I = stIndex(model);
   const boxes = pic.boxes.map(b => { const x = pic.at.get(b.id);
-    if (x.type === 'uml.Region') { const s = pic.at.get(b.parent), rs = stMembers(s, 'uml.Region'), k = rs.indexOf(x) + 1;
-      return { ...b, aria: `Region ${ST_HAS(x.label) ? x.label : k} of ${stName(s)}, ${stPlural(pic.holds(b.id).length, 'state')}` }; }
+    if (x.type === 'uml.Region') { const s = pic.at.get(b.parent), rs = stMembers(s, 'uml.Region'), k = rs.indexOf(x) + 1; // s: none when ownersOn broke a cycle
+      return { ...b, aria: `Region ${ST_HAS(x.label) ? x.label : k} of ${s ? stName(s) : String(b.parent ?? '')}, ${stPlural(pic.holds(b.id).length, 'state')}` }; }
     return { ...b, aria: stNodeName(x, pic, I, true) }; });
   return { ...pic, I, boxes };
 }
@@ -132,8 +135,8 @@ function stNodeName(x, pic, I, open) {
 // the lines drawn: those the view lists, or with no list the model's of this type's kinds, between two elements it shows
 function stLines(model, view, pic) {
   const E = new Map(); ST_ARR(model && model.edges).forEach(e => { if (ST_OBJ(e) && typeof e.id === 'string' && !E.has(e.id)) E.set(e.id, e); });
-  const shown = new Set(pic.ids), list = Array.isArray(view.edges) ? view.edges.map(x => (typeof x === 'string' ? E.get(x) : x)) : [...E.values()].filter(e => ST_LINES.includes(e.type));
-  return list.filter(e => ST_OBJ(e) && typeof e.id === 'string' && shown.has(e.from) && shown.has(e.to));
+  const shown = new Set(pic.ids), list = Array.isArray(view.edges) ? view.edges.map(x => (typeof x === 'string' ? E.get(x) : x)) : [...E.values()];
+  return list.filter(e => ST_OBJ(e) && typeof e.id === 'string' && ST_LINES.includes(e.type) && shown.has(e.from) && shown.has(e.to));
 }
 const stLineLabel = e => (e.type === 'uml.Transition' ? [...stStereo(e).map(t => `«${t}»`), stPartsText(e)].filter(ST_HAS).join(' ') : stStereo(e).map(t => `«${t}»`).join(' '));
 // "Transition from Capturing payment to itself: capture failed [attempts < 3] / count the attempt"
@@ -289,13 +292,13 @@ function stProblems(model) {
         const far = many.map(([e]) => (k === 'fork' ? e.to : e.from)), maps = far.map(f => new Map(ups(f).filter(([, r]) => r).map(([s, r]) => [s, r])));
         const ok = [...maps[0].keys()].some(s => maps.every(m => m.has(s)) && new Set(maps.map(m => m.get(s))).size === far.length);
         if (!ok) say('error', 'fork-join', path, [id, ...far], `the ${k === 'fork' ? 'targets' : 'sources'} of ${q(id)} (${far.map(q).join(', ')}) do not lie in different regions of one state`); } }
-    if (k === 'shallowHistory' || k === 'deepHistory') { add(hist, `${where}\u0000${k}`, id);
+    if (k === 'shallowHistory' || k === 'deepHistory') { add(hist, JSON.stringify([where, k]), id);
       if (where == null) say('error', 'history-owner', path, [id], `${q(id)} is at the top; a history is owned by a state or a region`);
       if (o.length > 1) say('error', 'history-one', path, ids(o), `${q(id)} has ${o.length} outgoing transitions (${list(o)}); a history has one default at most`); }
   });
   inits.forEach((ids, where) => { if (ids.length > 1) say('error', 'initial-one', N.has(ids[1]) ? N.get(ids[1]).path : 'nodes', [...ids, where], `${where == null ? 'the top' : q(where)} has ${ids.length} initial pseudostates (${ids.join(', ')})`); });
-  hist.forEach((ids, k) => { if (ids.length > 1) { const [where, kind] = k.split('\u0000');
-    say('error', 'history-one', N.get(ids[1]).path, [...ids, where === 'null' ? null : where], `${where === 'null' ? 'the top' : q(where)} has ${ids.length} ${ST_KIND_WORD[kind].toLowerCase()} pseudostates (${ids.join(', ')})`); } });
+  hist.forEach((ids, k) => { if (ids.length > 1) { const [where, kind] = JSON.parse(k);
+    say('error', 'history-one', N.get(ids[1]).path, [...ids, where], `${where == null ? 'the top' : q(where)} has ${ids.length} ${ST_KIND_WORD[kind].toLowerCase()} pseudostates (${ids.join(', ')})`); } });
   ts.forEach(([e, path]) => {
     // onto a composite's border: an initial pseudostate in each region (or in the state, with none)
     const to = N.get(e.to); if (to && to.x.type === 'uml.State' && I.subs(e.to).length) {
@@ -336,14 +339,17 @@ const stSetParts = (x, r) => ['trigger', 'guard', 'effect'].filter(k => (ST_PROP
 function stRename(model, view, id, text) {
   const e = ST_ARR(model && model.edges).find(x => ST_OBJ(x) && x.id === id); if (!e || e.type !== 'uml.Transition') return null;
   if (printTransition(ST_PROPS(e)) == null) return { error: `${id}'s text does not read back: edit its trigger, guard and effect in the properties panel` };
-  const r = parseTransition(text); return r.error ? r : stSetParts(e, r);
+  // the text F2 opens is the drawn label, its «stereotypes» first: they are not parts
+  const pre = stStereo(e).map(t => `«${t}»`).join(' '), t = String(text ?? '').trimStart(), r = parseTransition(pre && t.startsWith(pre) ? t.slice(pre.length) : t);
+  return r.error ? r : stSetParts(e, r);
 }
 // a compartment row typed on a state: `entry / …`, `do / …` and `exit / …` set that activity (a second one replaces the
 // first, said); null for any other row, which is an internal transition or a region (member below). member: the row's id
-// when it edits one, which then goes
+// when it edits one, which then goes; a region's row is never one (null: member.edit names the region)
 function stActivityRow(model, stateId, text, member) {
   const s = ST_ARR(model && model.nodes).find(n => ST_OBJ(n) && n.id === stateId), r = parseTransition(text);
   if (!s || s.type !== 'uml.State' || r.error || !ST_ACTS.includes(r.trigger)) return null;
+  if (member != null && !stMembers(s, 'uml.InternalTransition').some(m => m.id === member)) return null;
   const k = r.trigger, was = ST_PROPS(s)[k];
   if (r.guard != null) return { error: `${k} / … is the state's ${k} activity: it takes no guard` };
   if (r.effect == null) return { error: `${k} / … is the state's ${k} activity: write it after the /` };
@@ -354,7 +360,8 @@ function stActivityRow(model, stateId, text, member) {
 const stRegionRow = t => { const m = /^\s*region\b\s*(.*)$/s.exec(String(t ?? '')); return m ? m[1].trim() : null; };
 const ST_MEMBER = {
   print: m => (m.type === 'uml.Region' ? `region ${m.label ?? ''}`.trim() : stPartsText(m)),
-  add(text) { const nm = stRegionRow(text); if (nm != null) return { type: 'uml.Region', label: nm || undefined, props: {} };
+  // `region x / y` and `region x [y]` are internal transitions
+  add(text) { const nm = stRegionRow(text); if (nm != null && !/[/[]/.test(nm)) return { type: 'uml.Region', label: nm || undefined, props: {} };
     const r = parseTransition(text, 'an internal transition is trigger [guard] / effect'); if (r.error) return r;
     if (ST_ACTS.includes(r.trigger)) return { error: `${r.trigger} / … is the state's ${r.trigger} activity: select the state and type it again` };
     return { type: 'uml.InternalTransition', props: Object.fromEntries(['trigger', 'guard', 'effect'].filter(k => r[k] != null).map(k => [k, r[k]])) }; },
@@ -371,15 +378,24 @@ function stMoveTo(model, view, id, at) {
   if (!ST_OBJ(at) || !Array.isArray(at.pt) || !ST_OBJ(at.geo)) return null;
   const [x, y] = at.pt, f = ST_ARR(at.geo.families).filter(b => x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h).sort((a, b) => a.w * a.h - b.w * b.h)[0];
   const s = f && ST_ARR(model.nodes).find(n => ST_OBJ(n) && n.id === f.id), rs = s && s.type === 'uml.State' ? stMembers(s, 'uml.Region') : [], n = ST_ARR(model.nodes).find(m => ST_OBJ(m) && m.id === id);
-  if (rs.length !== 1 || !n || n.parent === rs[0].id) return null;
+  if (rs.length !== 1 || !n || n.parent === rs[0].id || stWithin(stIndex(model), s.id, id)) return null; // into itself: the default refuses it
   const L = view.layout; return [{ op: 'reparent', id, parent: rs[0].id }, ...(ST_OBJ(L) && Object.hasOwn(L, id) ? [{ op: 'set', view: view.id, path: ['layout', id], value: undefined }] : [])];
 }
-// the Owner field: every state and region of the model by its name from the top ("Fulfilling", "Fulfilling / Parcel")
+// the Owner field: every state and region of the model by its name from the top ("Fulfilling", "Fulfilling / Parcel"),
+// but the element itself and what lies under it
 function stOwners(model, x) {
   if (!ST_OBJ(x) || x.from != null || !ST_VERTEX.includes(x.type) && x.type !== 'uml.Comment') return null;
-  const I = stIndex(model), up = id => { const r = I.M.get(id); return r ? r.owner.id : (I.N.get(id) || { x: {} }).x.parent; };
-  const full = id => { const out = [], seen = new Set(); for (let p = id; p != null && !seen.has(p); p = up(p)) { seen.add(p); const e = (I.N.get(p) || I.M.get(p)).x; out.unshift(ST_HAS(e.label) ? e.label : p); } return out.join(' / '); };
-  return [...I.N.values()].filter(({ x: n }) => n.type === 'uml.State').flatMap(({ x: n }) => [{ id: n.id, label: full(n.id) }, ...stMembers(n, 'uml.Region').map(r => ({ id: r.id, label: full(r.id) }))]);
+  const I = stIndex(model);
+  const full = id => { const out = [], seen = new Set(); for (let p = id; p != null && !seen.has(p); p = stUp(I, p)) { seen.add(p); const e = (I.N.get(p) || I.M.get(p)).x; out.unshift(ST_HAS(e.label) ? e.label : p); } return out.join(' / '); };
+  return [...I.N.values()].filter(({ x: n }) => n.type === 'uml.State').flatMap(({ x: n }) => [{ id: n.id, label: full(n.id) }, ...stMembers(n, 'uml.Region').map(r => ({ id: r.id, label: full(r.id) }))])
+    .filter(o => !stWithin(I, o.id, x.id));
+}
+// remove: a region deleted from the model (Shift + Delete on its box, the member list's ✕) says how many elements it held (§10.3)
+function stRemove(model, view, ids, fromModel) {
+  const I = stIndex(model), rs = fromModel ? ids.filter(id => I.M.has(id) && I.M.get(id).x.type === 'uml.Region') : [];
+  if (!rs.length) return null;
+  const held = [...I.N.keys()].filter(n => rs.some(r => stWithin(I, n, r))).length, x = I.M.get(rs[0]).x;
+  return { commands: ids.map(id => ({ op: 'delete', id })), say: `Deleted ${rs.length === 1 ? 'region ' + (ST_HAS(x.label) ? x.label : x.id) : stPlural(rs.length, 'region')} and the ${stPlural(held, 'element')} ${rs.length === 1 ? 'it' : 'they'} held` };
 }
 
 /* The panel's member rows reach a type only through member.add and member.edit, which give a member, not commands; so a
@@ -424,7 +440,7 @@ const ST_TYPE = registerDiagramType('uml.state-machine', {
   validate: stProblems,
   rules: ST_RULES,
   describe: stDescribe,
-  edits: { add: stAdd, rename: stRename, moveTo: stMoveTo },
+  edits: { add: stAdd, rename: stRename, moveTo: stMoveTo, remove: stRemove },
 });
 
-export { ST_TYPE, ST_RULES, stGeo, stProblems, stDescribe, stAdd, stRename, stMoveTo, stActivityRow, stOwners, ST_MEMBER };
+export { ST_TYPE, ST_RULES, stGeo, stProblems, stDescribe, stAdd, stRename, stMoveTo, stActivityRow, stOwners, stRemove, ST_MEMBER };

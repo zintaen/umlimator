@@ -49,7 +49,7 @@ test('the definition: uml.state-machine with its palette (kinds and name: false)
   assert.deepEqual(T.props['uml.Pseudostate'][0], { key: 'kind', label: 'Kind', kind: 'enum', options: ['initial', 'choice', 'junction', 'fork', 'join', 'shallowHistory', 'deepHistory', 'terminate'] });
   assert.deepEqual(T.props['uml.Transition'].map(f => f.key), ['trigger', 'guard', 'effect', 'stereotypes']);
   for (const k of ['layout', 'validate', 'describe', 'boxes', 'owners']) assert.equal(typeof T[k], 'function', k);
-  assert.deepEqual(Object.keys(T.edits).sort(), ['add', 'moveTo', 'rename']);
+  assert.deepEqual(Object.keys(T.edits).sort(), ['add', 'moveTo', 'remove', 'rename']);
   assert.deepEqual(['uml.State', 'uml.Pseudostate', 'uml.FinalState'].map(t => T.member.holds({ type: t })), [true, false, false]);
   assert.equal(Object.keys(T.rules).length, 17);
 });
@@ -212,6 +212,12 @@ test('validators: 10-state-machine.json breaks no rule; each rule fails on a mod
   assert.deepEqual(T.validate(guard).map(p => [p.rule, p.level]), [['fork-join', 'error']]);
   const elses = structuredClone(SM); elses.edges.find(e => e.id === 't-prepaid').props.guard = 'else';
   assert.deepEqual(T.validate(elses).map(p => [p.rule, p.level]), [['choice-guards', 'warning']]);
+  // a state with id "null": its history and one at the top are two owners, not one
+  const top = structuredClone(SM); top.nodes.push({ id: 'null', type: 'uml.State', label: 'N' }, { id: 'hn', type: 'uml.Pseudostate', parent: 'null', props: { kind: 'shallowHistory' } }, { id: 'ht', type: 'uml.Pseudostate', props: { kind: 'shallowHistory' } });
+  assert.deepEqual(T.validate(top).map(p => p.rule), ['history-owner']);
+  // a state owned by its own region (hostile input) still draws
+  const loop = structuredClone(SM); node(loop, 'fulfilling').parent = 'fulfilling.parcel';
+  assert.ok(layout(loop, 'order-life').nodes.length); assert.match(mapContext(loop).buildView('order-life').markup, /<svg/);
   // a class model is not ours
   assert.deepEqual(T.validate({ nodes: [{ id: 'K', type: 'uml.Class' }], edges: [{ id: 'g', type: 'uml.Generalization', from: 'K', to: 'K' }] }), []);
 });
@@ -231,6 +237,12 @@ test('F2 on a transition round-trips its parts: one set per part that changed; a
   const bad = structuredClone(SM); bad.edges.find(x => x.id === 't-picked').props.trigger = 'all [books';
   assert.match(r('t-picked', 'all books', bad).error, /properties panel/);
   assert.equal(r('placed', 'Placed again'), null, 'a state: set label, the default');
+  // F2 opens the drawn label, «stereotypes» first: they are not read into the trigger
+  const st = structuredClone(SM); st.edges.find(x => x.id === 't-capture-retry').props.stereotypes = ['async'];
+  const text = layout(st, 'order-life').edges.find(x => x.id === 't-capture-retry').label;
+  assert.equal(text, '«async» capture failed [attempts < 3] / count the attempt');
+  assert.deepEqual(r('t-capture-retry', text, st), [], 'its own drawn text: nothing changes');
+  assert.deepEqual(r('t-capture-retry', '«async» capture lost', st)[0], { op: 'set', id: 't-capture-retry', path: 'props.trigger', value: 'capture lost' });
 });
 
 test('member rows: an internal transition by its text, a region as `region <name>`; a row `entry / x` sets the prop (a second replaces the first, said)', () => {
@@ -254,6 +266,8 @@ test('member rows: an internal transition by its text, a region as `region <name
   assert.match(stActivityRow(SM, 'placed', 'entry [x] / y').error, /no guard/);
   assert.match(stActivityRow(SM, 'placed', 'entry').error, /after the \//);
   assert.match(M.add('entry / x').error, /entry activity/, 'without the panel\'s reading: refused, never a reserved trigger');
+  assert.equal(stActivityRow(SM, 'fulfilling', 'entry / start', 'fulfilling.parcel'), null, 'a region\'s row: never an activity, so the region and what it holds stay');
+  assert.deepEqual(M.add('region changed / log'), { type: 'uml.InternalTransition', props: { trigger: 'region changed', effect: 'log' } }, 'a trigger that starts with region');
 });
 
 test('add: a pseudostate with its kind and no name; a region into the selected state, else { error }; anything else the default', () => {
@@ -287,14 +301,24 @@ test('moveTo: a node dropped into the box of a state with one region goes to tha
   const f = g.families.find(x => x.id === 'fulfilling.parcel');
   assert.equal(T.edits.moveTo(m, m.views[0], 'cancelled', { pt: [f.x + 4, f.y + 4], geo: g }), null, 'into a region\'s own box: the default reparent');
   assert.equal(T.edits.moveTo(m, m.views[0], 'cancelled', { by: [0, 1], geo: g }), null, 'Alt + arrows: a pin');
+  assert.equal(T.edits.moveTo(m, m.views[0], 'delivery', { pt, geo: g }), null, 'into itself: never its own region');
   assert.deepEqual(validate(apply(m, T.edits.moveTo(m, m.views[0], 'cancelled', { pt, geo: g }))).filter(p => p.level === 'error'), []);
 });
 
 test('the Owner field: every state and region by its name from the top; deleting a state takes its regions and what they hold', () => {
   const o = T.owners(SM, node(SM, 'cancelled'));
   assert.deepEqual(o.slice(0, 4), [{ id: 'placed', label: 'Placed' }, { id: 'fulfilling', label: 'Fulfilling' }, { id: 'fulfilling.parcel', label: 'Fulfilling / Parcel' }, { id: 'fulfilling.payment', label: 'Fulfilling / Payment' }]);
-  assert.equal(o.length, 11 + 2, 'eleven states, two regions');
+  assert.equal(o.length, 10 + 2, 'the ten other states, two regions');
   assert.equal(T.owners(SM, SM.edges[0]), null);
+  const of = T.owners(SM, node(SM, 'fulfilling')).map(x => x.id);
+  assert.equal(of.length, 13 - 7, 'not itself, its regions, nor the five states under it');
+  for (const id of ['fulfilling', 'fulfilling.parcel', 'fulfilling.payment', 'picking', 'packed', 'capturing', 'captured']) assert.ok(!of.includes(id), id);
+  assert.deepEqual(validate(apply(SM, [{ op: 'reparent', id: 'fulfilling', parent: of.at(-1) }])).filter(p => p.rule === 'owner-kinds'), []);
+  // a region deleted from the model says how many elements it held (§10.3); hidden from the view, the default
+  const del = T.edits.remove(SM, V, ['fulfilling.parcel'], true);
+  assert.deepEqual(del, { commands: [{ op: 'delete', id: 'fulfilling.parcel' }], say: 'Deleted region Parcel and the 3 elements it held' });
+  assert.equal(apply(SM, del.commands).nodes.filter(n => ['parcel-start', 'picking', 'packed'].includes(n.id)).length, 0);
+  assert.equal(T.edits.remove(SM, V, ['fulfilling.parcel'], false), null); assert.equal(T.edits.remove(SM, V, ['placed'], true), null);
   const m = apply(SM, [{ op: 'delete', id: 'fulfilling' }]);
   assert.ok(!m.nodes.some(n => ['picking', 'packed', 'capturing', 'captured', 'parcel-start', 'payment-start'].includes(n.id)));
 });
