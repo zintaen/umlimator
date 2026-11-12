@@ -1,0 +1,121 @@
+<!doctype html>
+<!-- The sequence type (3.3, notes/stage-3.md §4, §5) in headless Chrome (tests/embed.py), from lib/umlimator-all.js:
+     docs/diagrams/examples/11-sequence.json drawn by render() in both themes and three fonts (no overlap, every text in its
+     face or backing, no label on a bar, no line through a head, the names, the legend, contrast), its reading order, a
+     click on a message's arrowhead and on a self-message's loop selecting the message, and the gestures the canvas already
+     carries to the type: a message by L and by the handle (edits.connect), applied with apply() and drawn again. -->
+<meta charset="utf-8">
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="../lib/umlimator-theme.css">
+<title>umlimator sequence diagram test</title>
+<body style="margin:0">
+<div id="m" style="width:1180px;height:1000px"></div>
+<script type="module">
+import { render, apply, validate, layout } from '../lib/umlimator-all.js';
+const out = { ok: [], fail: [] };
+const check = (name, cond, info) => { document.title = name; if (cond) out.ok.push(name); else out.fail.push(name + (info === undefined ? '' : ': ' + JSON.stringify(info))); };
+const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+const MODEL = await (await fetch('../docs/diagrams/examples/11-sequence.json')).json();
+const el = document.getElementById('m');
+let sr, stage, ed = [];
+const pick = s => sr.querySelector(s), all = s => [...sr.querySelectorAll(s)];
+const mount = (model, opts = {}) => { el.innerHTML = ''; ed = []; const h = render(el, model, { view: 'checkout', on: { edit: e => ed.push(e) }, ...opts }); sr = el.querySelector('.umlimator').shadowRoot; stage = pick('.stage'); return h; };
+const ptr = (target, type, [x, y]) => target.dispatchEvent(new PointerEvent(type, { clientX: x, clientY: y, button: 0, pointerId: 7, pointerType: 'mouse', bubbles: true, composed: true }));
+const key = (k, extra = {}, target = stage) => target.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true, composed: true, cancelable: true, ...extra }));
+const centre = s => { const r = pick(s).getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; };
+const clickAt = ([x, y]) => { const t = sr.elementFromPoint(x, y); ptr(t, 'pointerdown', [x, y]); ptr(t, 'pointerup', [x, y]); t.dispatchEvent(new MouseEvent('click', { clientX: x, clientY: y, bubbles: true, composed: true })); return t; };
+const click = s => clickAt(centre(s));
+// a point of the drawing (svg coordinates) on the screen
+const screen = (x, y) => { const p = new DOMPoint(x, y).matrixTransform(pick('.stage svg').getScreenCTM()); return [p.x, p.y]; };
+const bb = x => { const r = x.getBBox(); return { x: r.x, y: r.y, w: r.width, h: r.height }; };
+const meets = (a, b, k = 0) => a.x + k < b.x + b.w && b.x + k < a.x + a.w && a.y + k < b.y + b.h && b.y + k < a.y + a.h;
+const inside = (a, b, k = .5) => a.x >= b.x - k && a.y >= b.y - k && a.x + a.w <= b.x + b.w + k && a.y + a.h <= b.y + b.h + k;
+const FONTS = { serif: 'serif', sans: 'sans-serif', wide: 'monospace' };
+const rgba = s => { let m = /rgba?\(([^)]+)\)/.exec(s); if (m) { const p = m[1].split(/[ ,/]+/).filter(Boolean).map(Number); return [p[0] / 255, p[1] / 255, p[2] / 255, p.length > 3 ? p[3] : 1]; }
+  m = /color\(srgb ([^)]+)\)/.exec(s); if (m) { const p = m[1].split(/[ /]+/).filter(Boolean).map(Number); return [p[0], p[1], p[2], p.length > 3 ? p[3] : 1]; } return null; };
+const blend = (top, bot) => [0, 1, 2].map(i => top[i] * top[3] + bot[i] * (1 - top[3])).concat(1);
+const lum = c => { const f = v => v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]); };
+const ratio = (fg, bg) => { const [x, y] = [lum(blend(fg, bg)), lum(bg)].sort((p, q) => q - p); return +((x + 0.05) / (y + 0.05)).toFixed(2); };
+const errors = m => validate(m).filter(p => p.level === 'error');
+try {
+  // ---- drawing: both themes, three fonts
+  for (const theme of ['light', 'dark']) for (const [fname, family] of Object.entries(FONTS)) {
+    document.documentElement.dataset.theme = theme; el.style.setProperty('--um-sans', family);
+    const tag = `${theme}, ${fname}`, h = mount(MODEL), bad = [];
+    const heads = all('.node.lifeline'), body = g => bb(g.querySelector('.n-body'));
+    heads.forEach(g => { const B = body(g); g.querySelectorAll('text').forEach(t => { if (!inside(bb(t), B, -1)) bad.push(`${g.dataset.id}: "${t.textContent}" out of its head`); }); });
+    all('.e-lab').forEach(g => { if (!inside(bb(g.querySelector('text')), bb(g.querySelector('rect')))) bad.push(`label "${g.textContent}" out of its backing`); });
+    all('.node.frame, .node.use').forEach(g => { const t = g.querySelector('.f-tag + text'); if (!inside(bb(t), bb(g.querySelector('.f-tag')))) bad.push(`${g.dataset.id}: tag "${t.textContent}" out of its tag`); });
+    all('.node.operand').forEach(g => { const t = g.querySelector('text'); if (t && !inside(bb(t), bb(g.querySelector('.f-guard')))) bad.push(`${g.dataset.id}: guard "${t.textContent}" out of its backing`); });
+    all('.node.use').forEach(g => { const t = g.querySelector('.f-name + text'); if (!inside(bb(t), bb(g.querySelector('.f-name'))) || !inside(bb(t), bb(g.querySelector('.f-hit')))) bad.push(`${g.dataset.id}: its name out of its box`); });
+    const solid = [...heads.map(g => [g.dataset.id, body(g)]), ...all('.e-lab rect').map(r => ['label ' + r.parentNode.textContent, bb(r)]),
+      ...all('.f-tag').map(t => ['tag of ' + t.closest('.node').dataset.id, bb(t)]), ...all('.node.operand').filter(g => g.querySelector('text')).map(g => ['guard of ' + g.dataset.id, bb(g.querySelector('.f-guard'))]),
+      ...all('.f-name').map(t => ['name of ' + t.closest('.node').dataset.id, bb(t)])];
+    solid.forEach(([a, p], i) => solid.slice(i + 1).forEach(([b, q]) => { if (meets(p, q, .5)) bad.push(`${a} meets ${b}`); }));
+    const bars = all('.seq-bar').map(bb);
+    all('.e-lab rect').forEach(r => { if (bars.some(b => meets(bb(r), b, .5))) bad.push(`label "${r.parentNode.textContent}" on a bar`); });
+    all('.edge-g path.edge').forEach(p => { const n = p.getAttribute('d').match(/-?\d+(\.\d+)?/g).map(Number), g = p.closest('.edge-g');
+      for (let k = 2; k < n.length; k += 2) { const s = { x: Math.min(n[k - 2], n[k]), y: Math.min(n[k - 1], n[k + 1]), w: Math.abs(n[k] - n[k - 2]) || .01, h: Math.abs(n[k + 1] - n[k - 1]) || .01 };
+        heads.forEach(hd => { const B = body(hd); if (meets(s, { x: B.x + 1, y: B.y + 1, w: B.w - 2, h: B.h - 2 })) bad.push(`line ${g.dataset.from}>${g.dataset.to} through ${hd.dataset.id}`); }); } });
+    check(`${tag}: example 11 drawn: 5 heads, 10 messages, 2 frames, 3 operands, 1 use, 4 bars, a stem each; no overlap, every text in its face, no label on a bar, no line through a head`,
+      heads.length === 5 && all('.edge-g').length === 10 && all('.node.frame').length === 2 && all('.node.operand').length === 3 && all('.node.use').length === 1 && bars.length === 4 && all('.seq-stem').length === 5 && !bad.length, bad.slice(0, 10));
+    // names (A1): nodes by aria-label, messages by their title
+    const aria = id => (pick(`.node[data-id="${id}"]`) || {}).getAttribute?.('aria-label'), titles = all('.edge-g > title').map(t => t.textContent);
+    check(`${tag}: heads, fragments, operands, the use and every message are named`, aria('api') === 'Lifeline api : ShopApi' && aria('shopper') === 'Lifeline shopper : Shopper (actor)'
+      && aria('f1') === 'Combined fragment alt, 2 operands' && aria('f1-paid') === 'Operand payment accepted of alt, 3 occurrences' && aria('f3') === 'Interaction use Send receipt email, over api to receipt'
+      && titles[3] === 'Message 4 of 10: api to payments, charge(total), call' && titles[4] === 'Message 5 of 10: payments to api, paid, reply, in alt, payment accepted' && titles.length === 10,
+      [all('.node').map(g => g.getAttribute('aria-label')), titles]);
+    // contrast: texts on their backings 4.5:1; outlines, stems, bars and lines 3:1 on the stage
+    const bg = rgba(getComputedStyle(stage).backgroundColor), low = [];
+    all('.node.frame text, .node.operand text, .node.use text, .node.lifeline text, .e-lab text').forEach(t => { const r = ratio(rgba(getComputedStyle(t).fill), bg); if (r < 4.5) low.push([t.textContent, r]); });
+    all('.frame-box rect, .frame-box path, .seq-stem, .seq-bar, .edge-g path.edge').forEach(x => { const r = ratio(rgba(getComputedStyle(x).stroke), bg); if (r < 3) low.push([x.getAttribute('class'), r]); });
+    check(`${tag}: contrast: texts 4.5:1, outlines, stems, bars and messages 3:1`, !low.length, low.slice(0, 6));
+    h.destroy();
+  }
+  document.documentElement.dataset.theme = 'light'; el.style.removeProperty('--um-sans');
+  const legend = (() => { el.innerHTML = ''; render(el, MODEL, { view: 'checkout', legend: true }); sr = el.querySelector('.umlimator').shadowRoot; return all('.m-legend b').map(b => b.textContent); })();
+  check('a legend asked for names the four sorts example 11 draws', same(legend, ['Call', 'Async', 'Reply', 'Create']), legend);
+
+  // ---- reading order (S13): the type's geo.order, as the canvas will follow it (3.4)
+  check('geo.order: the heads, then each fragment, operand and occurrence in time order',
+    same(layout(MODEL, 'checkout').order, ['shopper', 'storefront', 'api', 'payments', 'receipt', 'm1', 'm2', 'm3', 'm4', 'f1', 'f1-paid', 'm5', 'm6', 'f2', 'f2-notify', 'm7', 'f3', 'f1-declined', 'm8', 'm9', 'm10']));
+
+  // ---- a click on a message's arrowhead, on a self-message's loop, on a stem: the canvas selects what is under it
+  // the points as drawn (the canvas lays out in the host's font): a line's path, and the longest piece of a stem's hit strip
+  let h = mount(MODEL);
+  const ptsOf = d => d.match(/-?\d+(\.\d+)?/g).map(Number).reduce((a, v, i) => (i % 2 ? a[a.length - 1].push(v) : a.push([v]), a), []);
+  const line = k => ptsOf(all('.edge-g')[k].querySelector('path.edge').getAttribute('d')), m4 = line(3), m3 = line(2);
+  const pieces = [...pick('.node[data-id="storefront"] .ll-hit').getAttribute('d').matchAll(/M(-?[\d.]+) (-?[\d.]+)V(-?[\d.]+)/g)].map(x => [+x[1], +x[2], +x[3]]);
+  const [sx, y1, y2] = pieces.sort((a, b) => (b[2] - b[1]) - (a[2] - a[1]))[0];
+  const sel = () => h.selection && (h.selection.ids || [h.selection.id]);
+  clickAt(screen(m4[m4.length - 1][0] - 3, m4[m4.length - 1][1])); const head = sel();
+  clickAt(screen(m3[1][0], (m3[1][1] + m3[2][1]) / 2)); const loop = sel();
+  clickAt(screen(sx + 9, (y1 + y2) / 2)); const st = sel();
+  check('a click on m4\'s arrowhead selects m4; on m3\'s loop, m3; on storefront\'s stem between rows, storefront', same([head, loop, st], [['m4'], ['m3'], ['storefront']]), [head, loop, st]);
+  h.destroy();
+
+  // ---- connect through edits.connect: by L, and by the handle; applied, it validates and draws one more message
+  h = mount(MODEL, { editable: true });
+  click('.node[data-id="api"] .n-body'); key('l'); key('p'); key('Enter');
+  check('L from a lifeline, a name typed, Enter: the picker lists the five sorts', same(all('.um-pick button').map(b => b.textContent), ['Call', 'Async', 'Reply', 'Create', 'Delete']));
+  key('Enter', {}, sr.activeElement);
+  let e = ed[ed.length - 1], next = e && apply(MODEL, e.commands);
+  check('by L: the type\'s commands, a new call at the end of the view, which validates', !!e && same(e.commands, [{ op: 'add', element: { id: 'm11', type: 'uml.Message', from: 'api', to: 'payments', props: { sort: 'call' } }, view: 'checkout', index: 11, in: 'view' }])
+    && !next.edges.length && !errors(next).length, e);
+  h.update(next);
+  check('drawn again: 11 messages', all('.edge-g').length === 11);
+  click('.node[data-id="payments"] .n-body');
+  const hp = centre('.um-handle circle'); ptr(pick('.um-handle circle'), 'pointerdown', hp); ptr(stage, 'pointermove', centre('.node[data-id="api"] .n-body')); ptr(stage, 'pointerup', centre('.node[data-id="api"] .n-body'));
+  click('.um-pick button:nth-child(3)'); // Reply
+  e = ed[ed.length - 1]; const after = e && apply(next, e.commands);
+  check('by the handle, then Reply: a reply at the end that answers the new call, which validates', !!e && same(e.commands[0].element, { id: 'm12', type: 'uml.Message', from: 'payments', to: 'api', props: { sort: 'reply', replyTo: 'm11' } })
+    && !errors(after).length, e && e.commands);
+  // a create to a lifeline that already has messages: the type refuses, and nothing is emitted
+  const n = ed.length; click('.node[data-id="api"] .n-body'); key('l'); key('r'); key('Enter'); key('ArrowDown', {}, sr.activeElement); key('ArrowDown', {}, sr.activeElement); key('ArrowDown', {}, sr.activeElement);
+  const chosen = sr.activeElement && sr.activeElement.textContent; key('Enter', {}, sr.activeElement);
+  check('a create to receipt, which m6 creates already: the type refuses it, and no event', chosen === 'Create' && ed.length === n, [chosen, ed.slice(n)]);
+  h.destroy();
+} catch (x) { out.fail.push('threw: ' + (x && x.stack || x)); }
+document.documentElement.dataset.theme = 'light'; el.style.removeProperty('--um-sans');
+const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
+</script>

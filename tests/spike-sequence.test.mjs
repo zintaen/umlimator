@@ -1,8 +1,7 @@
 // The sequence spike's findings applied (docs/diagrams/notes/spike-sequence.md §5, items 1 to 3): the registry's fields
 // (layout.run and key, pins, draw, items, refs, validate), one ordered list of a sequence's occurrences (model.md), and
 // apply()'s `in: 'view'` and re-homing delete. P4 to P11 are the spike's evidence cases, each now passing. Runs on the
-// sources, with a stand-in `uml.sequence` registered in this process only: it declares the spike's items and refs, and no
-// layout (stage 3 brings the type).
+// sources, with the real `uml.sequence` (src/uml/sequence.js, 3.3), which check.mjs registers and calls.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -15,8 +14,6 @@ import { layout } from '../src/map/api.js';
 import { validate } from '../src/map/validate.js';
 import { check } from '../docs/diagrams/examples/check.mjs';
 
-registerDiagramType('uml.sequence', { title: 'sequence (a stand-in for stage 3)', elements: [{ type: 'uml.Lifeline', label: 'Lifeline' }],
-  items: ['uml.InteractionUse'], refs: { 'uml.Message': { 'props.replyTo': 'cascade' }, 'uml.InteractionUse': { 'props.covers': 'drop' } } });
 
 const SEQ = JSON.parse(readFileSync(new URL('../docs/diagrams/examples/11-sequence.json', import.meta.url)));
 const frozen = x => { if (x && typeof x === 'object') { Object.values(x).forEach(frozen); Object.freeze(x); } return x; };
@@ -31,10 +28,10 @@ test('the sequence example: one ordered list of occurrences, f3 among the messag
   assert.deepEqual(errors(SEQ), []);
   // an interaction use counts for its operand's contiguity: f3 moved out of f1-paid's run of occurrences is found
   const m = structuredClone(SEQ), f3 = V(m).edges.splice(7, 1)[0]; V(m).edges.push(f3);
-  assert.deepEqual(check(m, 'uml.sequence'), ['operand f1-paid: its occurrences are not next to each other in time']);
+  assert.deepEqual(check(m, 'uml.sequence'), ['views[0].fragments[0]: contiguous: fragment f1\'s occurrences (m5, m6, m7, m8, f3) are not one run in edges']);
   // covers names lifelines next to each other in nodeIds (model.md row 11): f3 over api and receipt only skips payments
   const gap = structuredClone(SEQ); V(gap).edges.find(e => e.id === 'f3').props.covers = ['api', 'receipt'];
-  assert.deepEqual(check(gap, 'uml.sequence'), ['f3: its covers are not lifelines next to each other in nodeIds']);
+  assert.deepEqual(check(gap, 'uml.sequence'), ['views[0].edges[7].props.covers: covers: f3 covers api, receipt, which are not next to each other in nodeIds']);
 });
 
 test('check.mjs: a registered type that declares no refs is still checked by the hand list', () => {
@@ -86,7 +83,8 @@ test('P8: unwrapping a fragment re-homes what it held into the fragment\'s own o
   // an operand alone: what it held goes to its fragment's parent (here none); a nested fragment moves up with it
   const o = run({ op: 'delete', id: 'f1-paid' });
   assert.deepEqual([byId(o, 'm5').parent, byId(o, 'f3').parent, V(o).fragments.find(f => f.id === 'f2').parent, byId(o, 'm7').parent], [undefined, undefined, undefined, 'f2-notify']);
-  assert.deepEqual(errors(o), []);
+  // the sequence type names what that leaves: paid (m5) and declined (m8) both answer charge, no longer in two operands of the alt
+  assert.deepEqual(errors(o).map(p => [p.rule, p.ids]), [['reply-once', ['m4', 'm5', 'm8']]]);
   // deeper: an operand of a fragment inside an operand gives its messages to the outer operand
   assert.equal(byId(run({ op: 'delete', id: 'f2-notify' }), 'm7').parent, 'f1-paid');
   // nodes still go with the owner they are in, as before
