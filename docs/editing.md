@@ -222,3 +222,50 @@ A member line the syntax does not read (`+ total Money`) is kept in its row as t
 in the hint line, and nothing is applied (risks.md E3); a good line, or Escape, clears the mark. A comment and a package
 have no Members section. What breaks a rule of the class diagram (`validate()`, `docs/conformance/uml-class.md`) shows
 in the problems list, by its rule and its elements, and choosing it selects them.
+
+## The sequence and communication diagrams' gestures (0.20.0)
+
+A type may take a gesture over through its `edits` hooks (`connect`, `moveTo`, `wrap`, `add`, `remove`;
+`docs/diagrams/notes/stage-3.md` §5.1). Each hook gives one transaction, emitted as one `edit` event, or `null` to leave
+the gesture as it was, or `{ error }`, which the hint line says and which emits nothing: a hook never emits an edit that
+breaks one of its type's rules, and the host may still refuse one. On a typed view a line may run from an element to
+itself (a self-message, a reflexive association); lines have key rings, read in the type's `geo.order`; Shift + click and
+Shift + Enter add a line to the selection; `L` starts from a selected line too.
+
+The **sequence diagram** (`uml.sequence`, `examples/checkout-sequence.json`) is laid out on a time axis and has no pins:
+
+| Edit | Pointer | Keyboard | Commands |
+|---|---|---|---|
+| add a lifeline | the palette (Lifeline) | `N`, after the selected lifeline | `add` of a model node into `nodeIds`; a use that covers both its neighbours covers it too |
+| reorder lifelines | drag a head sideways | `Alt + ← / →` | `move` on `nodeIds`; refused when it splits a use's `covers` |
+| insert a message | drag from a stem, between two messages, to another stem (to its own: a self-message), then Call, Async, Reply, Create or Delete | select a message, `L`, the other end, Enter: it goes right after, sent from that message's receiver; from a lifeline, at the end | `add` with `view` and `index`, in the slot's operand; a reply also gets `replyTo`, the latest unanswered call back along it |
+| move a message or a use in time, into or out of an operand | drag it up or down | `Alt + ↑ / ↓`: one slot | `move` on the view's `edges`, then `reparent` |
+| move a fragment | drag its frame | `Alt + ↑ / ↓` | one `move` per occurrence it holds, then a `reparent`; into itself is refused |
+| wrap in a fragment | select a run (Shift + click), `W`, pick alt, opt, loop, par or break | Shift + Enter on key rings, `W` | `add` of the fragment, with one operand (an `alt` gets two, the second "else"), then a `reparent` of each; a run that is not one piece, or has two parents, is refused |
+| add, rename, reorder operands | the frame's member list in the properties panel | F2, Enter; `Alt + ↑ / ↓` in a row | `add` with `owner`, `set label`; a reorder also moves the operand's occurrences, so they stay one run |
+| add an interaction use | the palette (Interaction use) | its palette button | `add` at the slot; `covers` is the selected lifeline, or every lifeline |
+| rename a lifeline, a message or a guard | double-click it once selected | `F2` | `set label` |
+| sort, replyTo, operator, covers, refersTo, represents | the properties panel | Enter | `set` |
+| unwrap a fragment | Delete on its frame | `Delete`, `Shift + Delete` | `delete`: what it held goes to the operand around it |
+| delete one operand | its member row's ✕ | | its occurrences move to just after the fragment, then `delete`; the last operand deletes the fragment |
+| delete a message or a use | | `Delete` or `Shift + Delete` (it lives in the view) | `delete`; a call's replies go with it |
+| remove a lifeline from the view | Remove from view | `Delete` | `hide`, which takes the messages to and from it, and a `set` of each `covers` without it; the hint says how many messages go |
+| delete a lifeline | Delete from model | `Shift + Delete` | `delete`: its messages go, and `covers` drop it |
+
+A message cannot be hidden from its own view; the gesture is to delete it. `Alt + ↑ / ↓` skips a fragment that would
+hold only the moving run (it has no place in time); a drag to its slot still puts a message there.
+
+The **communication diagram** (`uml.communication`, `examples/checkout-communication.json`) is laid out by the layered
+layout, as a class diagram:
+
+| Edit | Pointer | Keyboard | Commands |
+|---|---|---|---|
+| add a lifeline | the palette | `N` | `add` with `view` |
+| add a connector or a message | the handle or a drag to another lifeline (or its own), then Connector, Call, Async, Reply, Create or Delete | `L`, the other end, Enter | `add`; a new message goes after the selected one, or last, and a connector is added in the same transaction when none joins its two lifelines |
+| move a message in time | drag its row onto another row: it takes that row's place | `Alt + ↑ / ↓` on a row: one place | `move` on the view's `edges` |
+| move a lifeline | drag it | `Alt + arrows` | a pin, as on a class view |
+| hide or delete a message or a connector | Remove from view, Delete from model | `Delete`, `Shift + Delete` | `hide`, with a hidden call's replies and a hidden connector's messages; or `delete`, which takes a connector's messages in every communication view where no other connector joins their lifelines |
+
+Numbers are derived, so a move renumbers. `tests/sequence.html` and `tests/communication.html` test each gesture by
+pointer and by key; the conformance notes (`docs/conformance/uml-sequence.md`, `uml-communication.md`) list what is left
+out.
