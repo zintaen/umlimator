@@ -18,7 +18,7 @@ const hit = (a, b, pad = 0) => a.x < b.x + b.w + pad && b.x < a.x + a.w + pad &&
 // a line whose route layoutPass draws itself in a typed view: 'loop' (a node to itself) or 'fan'. A symbol, so no field of a
 // model's line can set it
 const OWN_ROUTE = Symbol('own route');
-const labelW = e => textW(fit((e.step != null ? e.step + ' · ' : '') + (e.label || ''), 10, 150), 10) + 12;
+const labelW = e => textW(fit((e.step != null ? e.step + ' · ' : '') + (e.label || ''), 10, e.cut || 150), 10) + 12;
 
 /* Layered auto-layout for views that carry no col/row: longest-path layers (cycles broken by DFS),
    barycentre ordering sweeps, integer rows so row gaps stay free as routing channels. */
@@ -603,7 +603,7 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
   const put = (e, s, full) => { placed.push(s.box); reserved.push(s.grow); e.lbl = { ...s.lbl, short: s.lbl.text !== full }; };
   const unput = e => { const L = e.lbl, same = m => r => r.x === L.x - m && r.y === L.y - m && r.w === L.w + 2 * m && r.h === L.h + 2 * m;
     const p = placed.findIndex(same(0)), q = reserved.findIndex(same(3)); if (p >= 0) placed.splice(p, 1); if (q >= 0) reserved.splice(q, 1); e.lbl = null; };
-  const fullOf = e => map ? fit(e.label || '', 10.5, e.under ? 320 : 440) : fit((e.step != null ? e.step + ' · ' : '') + (e.label || ''), 10, 150);
+  const fullOf = e => map ? fit(e.label || '', 10.5, e.under ? 320 : 440) : fit((e.step != null ? e.step + ' · ' : '') + (e.label || ''), 10, e.cut || 150);
   function placeLabel(e) {
     if (!e.label && e.step == null) return;
     const full = fullOf(e);
