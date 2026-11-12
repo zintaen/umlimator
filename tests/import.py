@@ -277,4 +277,34 @@ with tempfile.TemporaryDirectory() as tmp:
     r = subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "import", str(ROOT / name), "--out", str(t / "x.json")], capture_output=True, text=True, env=bare)
     ok("without Node, a sequenceDiagram's import says it needs Node", r.returncode == 1 and "Mermaid sequenceDiagram" in r.stderr and "Node.js 18" in r.stderr
        and not (t / "x.json").exists(), r.stderr)
+# A Mermaid stateDiagram is read by the module's reader too (notes/stage-4.md §13, 4.8): one uml.state-machine view.
+# tests/mermaid-state.test.mjs pins the reader's report and its round trip
+name = "tests/import/state.mmd"
+ok("mermaid · a stateDiagram (and stateDiagram-v2) is known by its content, and the Python reader leaves it to the module's",
+   imp.detect("x", "%% a\nstateDiagram-v2\n") == "mermaid" and imp.mermaid_typed("---\ntitle: t\n---\nstateDiagram\n") == "stateDiagram"
+   and imp.mermaid_typed("stateDiagram-v2\n") == "stateDiagram" and imp.mermaid_typed("stateDiagramX\n") is None
+   and "a stateDiagram is read by the module's reader" in imp.read("mermaid", "stateDiagram-v2\n[*] --> a\n", "x")[1][0][1])
+with tempfile.TemporaryDirectory() as tmp:
+    t = Path(tmp)
+    r = run("import", str(ROOT / name), "--out", str(t / "state.json"))
+    said = json.loads(r.stdout) if r.returncode == 0 else {}
+    m = json.loads((t / "state.json").read_text(encoding="utf-8")) if r.returncode == 0 else {"nodes": [], "edges": [], "views": [{}]}
+    v = m["views"][0]
+    ok(f"{name} · read by the module's reader as one uml.state-machine view of a version-2 model, past its byte-order mark",
+       said.get("format") == "mermaid" and said.get("views") == ["state-diagram"] and m.get("schemaVersion") == 2 and v.get("diagram") == "uml.state-machine"
+       and m.get("title") == "Every construct on Mermaid's state diagram page" and said.get("cards") == 64 and said.get("lines") == 52, r.stdout + r.stderr)
+    got = [l[len(str(ROOT / name)):].split(" ", 1)[0] for l in r.stderr.splitlines()]
+    ok(f"{name} · lists what it skips or approximates, each with its line",
+       got == [f":{n}:" for n in (3, 10, 11, 70, 87, 93, 94, 95, 96, 97, 106, 109, 119, 120, 123, 125, 126, 127, 128, 129)] and said.get("unread") == 20, r.stderr)
+    kinds = {n["id"]: (n["type"], (n.get("props") or {}).get("kind")) for n in m["nodes"]}
+    ok(f"{name} · states, composites with regions, pseudostates and final states, transitions and notes",
+       [kinds.get(i) for i in ("Active", "if_state", "fork_state", "hist", "start", "end")] == [("uml.State", None), ("uml.Pseudostate", "choice"),
+        ("uml.Pseudostate", "fork"), ("uml.Pseudostate", "shallowHistory"), ("uml.Pseudostate", "initial"), ("uml.FinalState", None)]
+       and len(next(n for n in m["nodes"] if n["id"] == "Active").get("members", [])) == 3 and {e["type"] for e in m["edges"]} == {"uml.Transition", "uml.CommentLink"}, m["nodes"])
+    problems = [p for p in u.js("validate", m) if p["level"] == "error"]
+    ok(f"{name} · validate() finds no error", problems == [], problems)
+    bare = dict(__import__("os").environ, PATH=tmp)
+    r = subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "import", str(ROOT / name), "--out", str(t / "x.json")], capture_output=True, text=True, env=bare)
+    ok("without Node, a stateDiagram's import says it needs Node", r.returncode == 1 and "Mermaid stateDiagram" in r.stderr and "Node.js 18" in r.stderr
+       and not (t / "x.json").exists(), r.stderr)
 sys.exit(1 if failed else 0)
