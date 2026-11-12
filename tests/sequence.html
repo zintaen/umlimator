@@ -3,8 +3,14 @@
      docs/diagrams/examples/11-sequence.json drawn by render() in both themes and three fonts (no overlap, every text in its
      face or backing, no label on a bar, no line through a head, the names, the legend, contrast), its reading order, a
      click on a message's arrowhead and on a self-message's loop selecting the message, axe's rules for the pieces drawn as
-     role="img" written out (the drawing a named group that holds the keys), and the gestures the canvas already carries to the type: a message by L and by the handle
-     (edits.connect), F2 on a lifeline and a message, and a field of the properties panel, applied with apply(). -->
+     role="img" written out (the drawing a named group that holds the keys). Then every gesture of §5.2 on the canvas, by
+     pointer and by keyboard, each edit event the type's transaction, applied with apply() and drawn again: the tab stops in
+     geo.order; heads, messages, uses and frames moved by Alt + arrows and by drags; W on a run selected by Shift + click and
+     Shift + Enter; Delete and Shift + Delete (a frame unwrapped, an operand per §5.4, a lifeline out of covers, the hint
+     counting its messages); N and the palette; a message by L, by the handle, from a stem, and to its own stem; guards by F2
+     and double-click; the properties panel and member list of a frame, operand, message and use; refusals said on the hint
+     line with no event. 30 of them are one session, undone and redone through update(), and reopened after step 15 and
+     done again: byte-identical models. -->
 <meta charset="utf-8">
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="../lib/umlimator-theme.css">
@@ -12,7 +18,7 @@
 <body style="margin:0">
 <div id="m" style="width:1180px;height:1000px"></div>
 <script type="module">
-import { render, apply, validate, layout } from '../lib/umlimator-all.js';
+import { render, apply, validate, layout, history } from '../lib/umlimator-all.js';
 const out = { ok: [], fail: [] };
 const check = (name, cond, info) => { document.title = name; if (cond) out.ok.push(name); else out.fail.push(name + (info === undefined ? '' : ': ' + JSON.stringify(info))); };
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
@@ -85,7 +91,7 @@ try {
   const legend = (() => { el.innerHTML = ''; render(el, MODEL, { view: 'checkout', legend: true }); sr = el.querySelector('.umlimator').shadowRoot; return all('.m-legend b').map(b => b.textContent); })();
   check('a legend asked for names the four sorts example 11 draws', same(legend, ['Call', 'Async', 'Reply', 'Create']), legend);
 
-  // ---- reading order (S13): the type's geo.order, as the canvas will follow it (3.4)
+  // ---- reading order (S13): the type's geo.order, which the canvas follows (below)
   check('geo.order: the heads, then each fragment, operand and occurrence in time order',
     same(layout(MODEL, 'checkout').order, ['shopper', 'storefront', 'api', 'payments', 'receipt', 'm1', 'm2', 'm3', 'm4', 'f1', 'f1-paid', 'm5', 'm6', 'f2', 'f2-notify', 'm7', 'f3', 'f1-declined', 'm8', 'm9', 'm10']));
 
@@ -128,7 +134,7 @@ try {
   h.destroy();
 
   // ---- rename by F2 and a field in the properties panel (§5.2), which the canvas already gives a typed view's nodes and
-  // lines. A guard (an operand is a member of a fragment in the view, which the canvas does not look in) waits for 3.4
+  // lines. A guard's F2 and double-click are with the gestures below
   h = mount(MODEL, { editable: true });
   const rename = (select, text) => { select(); key('F2'); const f = pick('.um-rename'); if (!f) return null; f.value = text; key('Enter', {}, f); return ed[ed.length - 1]; };
   const ren = [rename(() => click('.node[data-id="api"] .n-body'), 'API'), rename(() => clickAt(screen(m4[m4.length - 1][0] - 3, m4[m4.length - 1][1])), 'charge(amount)')].map(e => e && e.commands);
@@ -137,6 +143,127 @@ try {
   const renamed = ren.length === 3 && ren.every(Boolean) && ren.reduce((m, c) => apply(m, c), MODEL);
   check('F2 then Enter on api and on m4, and api\'s Represents in the properties panel: one set each, which validates', same(ren, [[{ op: 'set', id: 'api', path: 'label', value: 'API' }],
     [{ op: 'set', id: 'm4', path: 'label', value: 'charge(amount)' }], [{ op: 'set', id: 'api', path: 'props.represents', value: 'Gateway' }]]) && !errors(renamed).length, ren);
+  h.destroy();
+  // ---- 3.3's gestures on the canvas (notes/stage-3.md §5.2), now that 3.4's hooks are in: each by pointer and by keyboard,
+  // its edit event the type's transaction, applied with apply() and drawn again; a refused one says why on the hint line and
+  // emits nothing. 30 of them are one session, undone, redone and reopened (definition of done 6)
+  let cur = MODEL;
+  const V = () => cur.views[0];
+  h = mount(cur, { editable: true, hints: true });
+  // the canvas's own geometry: layout() measuring in the host's font, as render() does (src/core/text.js), checked just below
+  const c2d = document.createElement('canvas').getContext('2d'), fam = getComputedStyle(el).getPropertyValue('--um-sans').trim() || getComputedStyle(el).fontFamily || 'sans-serif';
+  const measure = (t, px) => { c2d.font = `600 ${px}px ${fam}`; return c2d.measureText(t).width; };
+  const G = () => layout(cur, 'checkout', { measure });
+  const sy = (index, parent) => G().slots.find(s => s.index === index && s.parent === parent).y;
+  const rowY = id => G().edges.find(x => x.id === id).pts[0][1], stemX = id => G().byId[id].stem.x;
+  const mid4 = ptsOf(all('.edge-g')[3].querySelector('path.edge').getAttribute('d'))[0];
+  check('layout() in this page places m4 and api\'s stem where the canvas draws them', Math.abs(mid4[1] - rowY('m4')) < .5 && Math.abs(+pieces[0][0] - stemX('storefront')) < .5, [mid4, rowY('m4'), pieces[0][0], stemX('storefront')]);
+  const hint = () => (pick('.hint') || {}).textContent || '';
+  // reading order (S13) on the canvas: its tab stops, in the order Tab reads them, are geo.order's, one each: the heads, then
+  // each fragment, operand and occurrence in time order; nothing drawn is a tab stop of its own
+  const stops = all('.stage svg [tabindex]').filter(x => x.tabIndex >= 0).map(x => x.dataset.node ?? (x.classList.contains('line-key') ? G().edges[+x.dataset.i].id : x.getAttribute('class')));
+  check('Tab from the first head reads example 11\'s heads, then its fragments, operands and occurrences in time order (geo.order)', same(stops, G().order) && stops[0] === 'shopper', stops);
+  const ringN = id => pick(`.node-key[data-node="${id}"]`), ringL = id => pick(`.line-key[data-i="${G().edges.findIndex(x => x.id === id)}"]`);
+  const keyOn = (r, k, extra = {}) => { r.focus(); key(k, extra, r); };
+  const choose = id => keyOn(ringN(id) || ringL(id), 'Enter'); // a ring and Enter: as a click on it
+  const kAct = (k, extra = {}) => key(k, extra, sr.activeElement && sr.activeElement !== document.body ? sr.activeElement : stage);
+  const hitOf = id => pick(`.edge-g[data-i="${G().edges.findIndex(x => x.id === id)}"] .hitline`);
+  const clickLineOf = (id, extra = {}) => { const g = hitOf(id), r = g.getBoundingClientRect(), at = [r.x + r.width / 2, r.y + r.height / 2];
+    ptr(g, 'pointerdown', at); ptr(g, 'pointerup', at); g.dispatchEvent(new MouseEvent('click', { clientX: at[0], clientY: at[1], bubbles: true, composed: true, ...extra })); };
+  const clickNode = (id, extra = {}) => { const g = pick(`.node[data-id="${id}"]`), b = g.querySelector('.n-body, .f-guard, .f-name, .f-tag'), r = b.getBoundingClientRect(), at = [r.x + r.width / 2, r.y + r.height / 2];
+    ptr(b, 'pointerdown', at); ptr(b, 'pointerup', at); b.dispatchEvent(new MouseEvent('click', { clientX: at[0], clientY: at[1], bubbles: true, composed: true, ...extra })); return b; };
+  const glideTo = (g, from, to) => { ptr(g, 'pointerdown', from); for (let i = 1; i <= 4; i++) ptr(stage, 'pointermove', [from[0] + (to[0] - from[0]) * i / 4, from[1] + (to[1] - from[1]) * i / 4]); ptr(stage, 'pointerup', to);
+    g.dispatchEvent(new MouseEvent('click', { clientX: to[0], clientY: to[1], bubbles: true, composed: true })); };
+  // a card dragged by its body (a head's box, a frame's tag, a use's name) by (dx, dy) in the picture's units
+  const dragNodeBy = (id, dx, dy) => { const b = pick(`.node[data-id="${id}"]`).querySelector('.n-body, .f-name'), r = b.getBoundingClientRect(), from = [r.x + r.width / 2, r.y + r.height / 2], k = pick('.stage svg').getScreenCTM().a;
+    glideTo(b, from, [from[0] + dx * k, from[1] + dy * k]); };
+  const dragLineTo = (id, y) => { const g = hitOf(id), r = g.getBoundingClientRect(), from = [r.x + r.width / 2, r.y + r.height / 2]; glideTo(g, from, [from[0], screen(0, y)[1]]); };
+  const stemDrag = (from, to, y) => { const s = pick(`.node[data-id="${from}"] .ll-hit`); glideTo(s, screen(stemX(from) - 10, y), screen(stemX(to) + 10, y)); }; // across the stem's 24 px strip
+  const typeName = text => { const f = pick('.um-rename'); if (!f) return false; f.value = text; key('Enter', {}, f); return true; };
+  const field = (f, value) => { const x = pick(`.um-props [data-f="${f}"]`); if (!x) return false; x.value = value; x.dispatchEvent(new Event('change', { bubbles: true })); return true; };
+  const pickKind = label => { const b = all('.um-pick button').find(x => x.textContent === label); if (b) click2(b); return !!b; };
+  const click2 = b => b.dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true }));
+  const panelButton = text => all('.um-editor button').find(b => b.textContent.trim() === text);
+  const errs = m => errors(m).map(p => p.message);
+  const seenS = [JSON.stringify(cur)], hist = history(cur);
+  let replay = false, keep = true; // replay: the reopened run, checked once at its end; keep: a step of the 30, kept in the history
+  // a step: the gesture, its one edit event and the commands it carries, applied; drawn again
+  const step = (name, act, want) => { const n = ed.length; act(); const e = ed[n], c = e && e.commands;
+    const okCmds = ed.length === n + 1 && same(c, want);
+    let next = null, bad = [];
+    try { next = okCmds && apply(cur, c); bad = next ? errs(next).filter(x => !errs(cur).includes(x)) : []; } catch (x) { bad = [String(x)]; }
+    if (!replay) check(`${name}: its transaction, which apply() takes with no new error`, okCmds && next && !bad.length, [ed.length - n, c, bad]);
+    if (next && !bad.length) { cur = next; if (keep && !replay) { hist.push(cur); seenS.push(JSON.stringify(cur)); } h.update(cur); }
+    return c; };
+  // a refusal: no edit event, and the type's reason on the hint line
+  const refuse = (name, act, re) => { const n = ed.length; act(); const said = hint();
+    check(`${name}: refused, nothing emitted, the reason on the hint line`, ed.length === n && re.test(said), [ed.slice(n).map(e => e.commands), said]); };
+  const S = [ // the session: 30 steps through the canvas
+    ['Alt + → on the head shopper (keyboard)', () => { choose('shopper'); kAct('ArrowRight', { altKey: true }); }, [{ op: 'move', id: 'shopper', view: 'checkout', index: 1 }]],
+    ['the head shopper dragged left of storefront (pointer)', () => dragNodeBy('shopper', G().byId.storefront.x - G().byId.shopper.x - 30, 0), [{ op: 'move', id: 'shopper', view: 'checkout', index: 0 }]],
+    ['Alt + ↓ on m3 (keyboard)', () => { choose('m3'); kAct('ArrowDown', { altKey: true }); }, [{ op: 'move', id: 'm3', view: 'checkout', index: 3 }]],
+    ['m3 dragged up between m2 and m4 (pointer)', () => dragLineTo('m3', sy(2, null)), [{ op: 'move', id: 'm3', view: 'checkout', index: 2 }]],
+    ['Alt + ↑ on the frame f2 (keyboard)', () => { choose('f2'); kAct('ArrowUp', { altKey: true }); }, [{ op: 'move', id: 'm7', view: 'checkout', index: 5 }]],
+    ['the frame f2 dragged down below m6 (pointer)', () => { const n = G().byId.f2; dragNodeBy('f2', 0, sy(7, 'f1-paid') - (n.y + n.h) + 4); }, [{ op: 'move', id: 'm7', view: 'checkout', index: 6 }]],
+    ['the use f3 dragged down into the declined operand (pointer)', () => { const n = G().byId.f3; dragNodeBy('f3', 0, sy(8, 'f1-declined') - (n.y + n.h)); }, [{ op: 'reparent', id: 'f3', parent: 'f1-declined' }]],
+    ['Alt + ↑ on the use f3 (keyboard)', () => { choose('f3'); kAct('ArrowUp', { altKey: true }); }, [{ op: 'reparent', id: 'f3', parent: 'f1-paid' }]],
+    ['W on m9 and m10 (Enter, Shift + Enter on their rings), then loop (keyboard)', () => { choose('m9'); keyOn(ringL('m10'), 'Enter', { shiftKey: true }); kAct('w'); kAct('ArrowDown'); kAct('ArrowDown'); kAct('Enter'); }, [{ op: 'add', element: { id: 'f4', type: 'uml.CombinedFragment', props: { operator: 'loop' }, members: [{ id: 'f4.1', type: 'uml.InteractionOperand' }] }, view: 'checkout', in: 'view' }, { op: 'reparent', id: 'm9', parent: 'f4.1' }, { op: 'reparent', id: 'm10', parent: 'f4.1' }]],
+    ['W on m1 and m2 (click, Shift + click), then opt (pointer)', () => { clickLineOf('m1'); clickLineOf('m2', { shiftKey: true }); key('w'); pickKind('opt'); }, [{ op: 'add', element: { id: 'f5', type: 'uml.CombinedFragment', props: { operator: 'opt' }, members: [{ id: 'f5.1', type: 'uml.InteractionOperand' }] }, view: 'checkout', in: 'view' }, { op: 'reparent', id: 'm1', parent: 'f5.1' }, { op: 'reparent', id: 'm2', parent: 'f5.1' }]],
+    ['Delete on the frame f5: unwrapped (keyboard)', () => { choose('f5'); kAct('Delete'); }, [{ op: 'delete', id: 'f5' }]],
+    ['the panel\'s Remove from view on the frame f4 (pointer)', () => { clickNode('f4'); click2(panelButton('Remove from view')); }, [{ op: 'delete', id: 'f4' }]],
+    ['N on the head storefront, a name: a lifeline after it (keyboard)', () => { choose('storefront'); kAct('n'); typeName('audit'); }, [{ op: 'add', element: { id: 'audit1', type: 'uml.Lifeline', label: 'audit' }, view: 'checkout', index: 2 }]],
+    ['the palette\'s Interaction use with m4 selected: a use at the slot after it (pointer)', () => { clickLineOf('m4'); click2(panelButton('Interaction use')); typeName('Log in'); }, [{ op: 'add', element: { id: 'ref1', type: 'uml.InteractionUse', label: 'Log in', props: { covers: ['shopper', 'storefront', 'audit1', 'api', 'payments', 'receipt'] } }, view: 'checkout', index: 4, in: 'view' }]],
+    ['L on m2, audit typed, Enter, Call: from m2\'s receiver, right after it (keyboard)', () => { choose('m2'); kAct('l'); kAct('a'); kAct('u'); kAct('Enter'); kAct('Enter'); }, [{ op: 'add', element: { id: 'm11', type: 'uml.Message', from: 'api', to: 'audit1', props: { sort: 'call' } }, view: 'checkout', index: 2, in: 'view' }]],
+    ['a line dragged from audit\'s stem to api\'s, just below it, then Reply (pointer)', () => { stemDrag('audit1', 'api', sy(3, null)); pickKind('Reply'); }, [{ op: 'add', element: { id: 'm12', type: 'uml.Message', from: 'audit1', to: 'api', props: { sort: 'reply', replyTo: 'm11' } }, view: 'checkout', index: 3, in: 'view' }]],
+    ['a line dragged from storefront\'s stem to its own, then Call: a self-message (pointer)', () => { stemDrag('storefront', 'storefront', sy(1, null)); pickKind('Call'); }, [{ op: 'add', element: { id: 'm13', type: 'uml.Message', from: 'storefront', to: 'storefront', props: { sort: 'call' } }, view: 'checkout', index: 1, in: 'view' }]],
+    ['L on the head shopper, its own name typed, Enter, Async: a self-message at the end (keyboard)', () => { choose('shopper'); kAct('l'); kAct('s'); kAct('h'); kAct('Enter'); kAct('ArrowDown'); kAct('Enter'); }, [{ op: 'add', element: { id: 'm14', type: 'uml.Message', from: 'shopper', to: 'shopper', props: { sort: 'async' } }, view: 'checkout', index: 15, in: 'view' }]],
+    ['a double-click on the guard else, a new guard (pointer)', () => { const b = clickNode('f1-declined'); b.dispatchEvent(new MouseEvent('dblclick', { bubbles: true, composed: true, cancelable: true })); typeName('payment declined'); }, [{ op: 'set', id: 'f1-declined', path: 'label', value: 'payment declined' }]],
+    ['F2 on the operand f2-notify, a new guard (keyboard)', () => { choose('f2-notify'); kAct('F2'); typeName('still on the page'); }, [{ op: 'set', id: 'f2-notify', path: 'label', value: 'still on the page' }]],
+    ['the frame f2 selected: its Operator in the properties panel (pointer)', () => { clickNode('f2'); field('p:operator', 'loop'); }, [{ op: 'set', id: 'f2', path: 'props.operator', value: 'loop' }]],
+    ['the frame f1\'s member list: an operand added (keyboard)', () => { choose('f1'); const f = pick('.um-props [data-f="new"]'); f.value = 'retry'; key('Enter', {}, f); }, [{ op: 'add', element: { id: 'interactionoperand1', type: 'uml.InteractionOperand', label: 'retry' }, owner: 'f1' }]],
+    ['the frame f1\'s member list: an operand renamed (pointer)', () => { clickNode('f1'); field('m:f1-paid', 'paid'); }, [{ op: 'set', id: 'f1-paid', path: 'label', value: 'paid' }]],
+    ['the frame f1\'s member list: ↑ on the declined operand, which takes m8 with it (pointer)', () => { clickNode('f1'); click2(pick('.um-props [data-up="f1-declined"]')); }, [{ op: 'move', id: 'f1-declined', index: 0 }, { op: 'move', id: 'm8', view: 'checkout', index: 8 }]],
+    ['the frame f1\'s member list: Alt + ↓ on the declined operand, back (keyboard)', () => { choose('f1'); const f = pick('.um-props [data-m="f1-declined"]'); f.focus(); key('ArrowDown', { altKey: true }, f); }, [{ op: 'move', id: 'f1-declined', index: 1 }, { op: 'move', id: 'm8', view: 'checkout', index: 12 }]],
+    ['a message\'s Sort in the properties panel (pointer)', () => { clickLineOf('m7'); field('p:sort', 'call'); }, [{ op: 'set', id: 'm7', path: 'props.sort', value: 'call' }]],
+    ['a message\'s Reply to in the properties panel, emptied (keyboard)', () => { choose('m10'); const f = pick('.um-props [data-f="p:replyTo"]'); f.focus(); f.value = ''; key('Enter', {}, f); }, [{ op: 'set', id: 'm10', path: 'props.replyTo' }]],
+    ['a use\'s Covers in the properties panel (pointer)', () => { clickNode('ref1'); field('p:covers', 'storefront, audit1, api'); }, [{ op: 'set', id: 'ref1', path: 'props.covers', value: ['storefront', 'audit1', 'api'] }]],
+    ['a use\'s Refers to in the properties panel (keyboard)', () => { choose('ref1'); const f = pick('.um-props [data-f="p:refersTo"]'); f.focus(); f.value = 'login'; key('Enter', {}, f); }, [{ op: 'set', id: 'ref1', path: 'props.refersTo', value: 'login' }]],
+    ['Delete on the head audit: out of the view and of each covers (keyboard)', () => { choose('audit1'); kAct('Delete'); }, [{ op: 'set', id: 'ref1', path: 'props.covers', value: ['storefront', 'api'] }, { op: 'hide', id: 'audit1', view: 'checkout' }]],
+  ];
+  S.forEach(([name, act, want], k) => { step(name, act, want); if (k === 29) check('…and the hint line counts the messages that go with it', hint() === 'Removed audit from the view, and 2 messages with it', hint()); });
+  check('the session is 30 steps', seenS.length === 31, seenS.length);
+  // more of §5.2 on the session's end: Shift + Delete, §5.4's operand, and refusals by pointer and by keyboard
+  const end30 = cur; keep = false;
+  step('Shift + Delete on the self-message m13 (keyboard)', () => { choose('m13'); kAct('Delete', { shiftKey: true }); }, [{ op: 'delete', id: 'm13' }]);
+  step('the panel\'s Delete from model on shopper\'s self-message m14 (pointer)', () => { clickLineOf('m14'); click2(panelButton('Delete from model')); }, [{ op: 'delete', id: 'm14' }]);
+  step('W on m9 and m10, then alt: two operands, the second else (keyboard)', () => { choose('m9'); keyOn(ringL('m10'), 'Enter', { shiftKey: true }); kAct('w'); kAct('Enter'); }, [{ op: 'add', element: { id: 'f4', type: 'uml.CombinedFragment', props: { operator: 'alt' }, members: [{ id: 'f4.1', type: 'uml.InteractionOperand' }, { id: 'f4.2', type: 'uml.InteractionOperand', label: 'else' }] }, view: 'checkout', in: 'view' }, { op: 'reparent', id: 'm9', parent: 'f4.1' }, { op: 'reparent', id: 'm10', parent: 'f4.1' }]);
+  step('Alt + ↓ on m10: into the else operand (keyboard)', () => { choose('m10'); kAct('ArrowDown', { altKey: true }); }, [{ op: 'reparent', id: 'm10', parent: 'f4.2' }]);
+  step('Delete on the operand that holds m9: m9 moves to just after the alt, the operand goes (S6) (keyboard)', () => { choose(V().fragments.at(-1).members[0].id); kAct('Delete'); }, [{ op: 'move', id: 'm9', view: 'checkout', index: 11 }, { op: 'delete', id: 'f4.1' }]);
+  step('Delete on the last operand: its fragment goes (pointer)', () => { clickNode(V().fragments.at(-1).members[0].id); click2(panelButton('Remove from view')); }, [{ op: 'delete', id: 'f4' }]);
+  refuse('Alt + ↑ on m5, out of the alt: it and m8 would answer m4 outside one alt (keyboard)', () => { choose('m5'); kAct('ArrowUp', { altKey: true }); }, /^reply-once: /);
+  refuse('m5 dragged above m4, the call it answers (pointer)', () => dragLineTo('m5', sy(0, null)), /^reply-call: /);
+  refuse('Delete on the operand paid: m5 would answer m4 outside the alt beside m8 (keyboard)', () => { choose('f1-paid'); kAct('Delete'); }, /^reply-once: /);
+  refuse('a line dragged from api\'s stem to receipt\'s, then Create: receipt is created already (pointer)', () => { const s = G().byId.receipt.stem; stemDrag('api', 'receipt', (s.y1 + s.y2) / 2); pickKind('Create'); }, /^create-once: /);
+  step('a double-click on the message m4, a new name (pointer)', () => { clickLineOf('m4'); hitOf('m4').dispatchEvent(new MouseEvent('dblclick', { bubbles: true, composed: true, cancelable: true })); typeName('charge(sum)'); },
+    [{ op: 'set', id: 'm4', path: 'label', value: 'charge(sum)' }]);
+  step('the palette\'s Lifeline with payments selected: a lifeline after it (pointer)', () => { choose('payments'); click2(panelButton('Lifeline')); typeName('fraud'); },
+    [{ op: 'add', element: { id: 'fraud1', type: 'uml.Lifeline', label: 'fraud' }, view: 'checkout', index: 4 }, { op: 'set', id: 'f3', path: 'props.covers', value: ['api', 'payments', 'fraud1', 'receipt'] }]);
+  step('the palette\'s Interaction use by keyboard, with api and payments selected (Enter, Shift + Enter): a use over them, at the end', () => { choose('api'); keyOn(ringN('payments'), 'Enter', { shiftKey: true }); const b = panelButton('Interaction use'); b.focus(); key('Enter', {}, b); typeName('Audit'); },
+    [{ op: 'add', element: { id: 'ref2', type: 'uml.InteractionUse', label: 'Audit', props: { covers: ['api', 'payments'] } }, view: 'checkout', index: V().edges.length, in: 'view' }]);
+  step('Shift + Delete on the head receipt: deleted from the model (keyboard)', () => { choose('receipt'); kAct('Delete', { shiftKey: true }); }, [{ op: 'delete', id: 'receipt' }]);
+  check('…and the hint line counts the messages that go with it', hint() === 'Deleted receipt, and 1 message with it', hint());
+  h.destroy();
+  // undone and redone through the canvas, each model drawn; then reopened after step 15 and the rest done again
+  h = mount(hist.model, { editable: true, hints: true });
+  check('the history holds the session\'s end', hist.model === end30);
+  const back = [], fwd = [];
+  for (let k = 29; k >= 0; k--) { const m = hist.undo(); h.update(m); back.push(JSON.stringify(m) === seenS[k] && all('.edge-g').length === m.views[0].edges.filter(e => e.type === 'uml.Message').length); }
+  for (let k = 1; k <= 30; k++) { const m = hist.redo(); h.update(m); fwd.push(JSON.stringify(m) === seenS[k]); }
+  check('the 30 steps undone, then redone, through update(): byte-identical models each step, each drawn', back.every(Boolean) && fwd.every(Boolean) && !hist.canRedo, [back.indexOf(false), fwd.indexOf(false)]);
+  h.destroy();
+  cur = JSON.parse(seenS[15]); h = mount(cur, { editable: true, hints: true }); replay = true;
+  S.slice(15).forEach(([name, act, want]) => step(name, act, want));
+  check('reopened after step 15 (JSON), steps 16 to 30 done again on the canvas: byte-identical to the session\'s end', JSON.stringify(cur) === seenS[30], [cur.views[0].edges.map(e => e.id), JSON.parse(seenS[30]).views[0].edges.map(e => e.id)]);
   h.destroy();
 } catch (x) { out.fail.push('threw: ' + (x && x.stack || x)); }
 document.documentElement.dataset.theme = 'light'; el.style.removeProperty('--um-sans');

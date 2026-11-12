@@ -250,21 +250,26 @@ function sqConnect(model, view, from, to, at, line) {
   return sqGuard(model, V, [{ op: 'add', element, view: V.id, index: slot.index ?? SQ_ARR(V.edges).length, in: 'view' }]);
 }
 
+// a lifeline dropped at x: its place in nodeIds, among the other heads as laid out (the host's font moves them a little)
+const sqColAt = (model, V, id, x) => layoutTimeAxis(sqInput(model, V)).heads.filter(h => h.id !== id && h.x + h.w / 2 < x).length;
+
 /* moveTo(model, view, id, at): a message, a use or a fragment to the slot `at`, or one slot up or down with at = { by: [0, ±1] }
    (Alt + Up/Down); a lifeline one place left or right with { by: [±1, 0] } (Alt + Left/Right), or to its place in nodeIds
-   with { index } (a drag sideways); an operand one place up or down among its fragment's (the member list's Alt + Up/Down),
-   or to its place with { index }: a move of the member, then one move per occurrence it holds, so edges follows the new
-   order. Anything else: null */
+   with { index }, or to the place nearest a drop's point { pt: [x, y] } (a drag sideways); an operand one place up or down
+   among its fragment's (the member list's Alt + Up/Down), or to its place with { index }: a move of the member, then one
+   move per occurrence it holds, so edges follows the new order. A slot the canvas passes (it has a y, or a drop's pt) is
+   never read as a place in nodeIds or members. Anything else: null */
 function sqMoveTo(model, view, id, at) {
   const V = sqView(model, view); if (!V || !SQ_OBJ(at)) return null;
-  const by = Array.isArray(at.by) ? at.by : null, ids = SQ_ARR(V.nodeIds);
-  if (ids.includes(id)) { const i = ids.indexOf(id), j = by ? (by[1] ? null : i + Math.sign(by[0])) : Number.isInteger(at.index) ? at.index : null;
+  const by = Array.isArray(at.by) ? at.by : null, ids = SQ_ARR(V.nodeIds), pt = Array.isArray(at.pt) ? at.pt : null, slot0 = !!pt || Number.isFinite(at.y);
+  const place = () => (!slot0 && Number.isInteger(at.index) ? at.index : null);
+  if (ids.includes(id)) { const i = ids.indexOf(id), j = by ? (by[1] ? null : i + Math.sign(by[0])) : pt ? sqColAt(model, V, id, +pt[0]) : place();
     if (j == null) return null; if (j < 0 || j >= ids.length || j === i) return [];
     return sqGuard(model, V, [{ op: 'move', id, view: V.id, index: j }]); }
   const X = sqIndex(model, V);
   if (X.opOf.has(id)) { // an operand among its fragment's operands: { by: [0, ±1] } or { index }; edges follows (contiguous)
     const f = X.opOf.get(id), ops = SQ_ARR(f.members).filter(SQ_OBJ).map(o => o.id), k = ops.indexOf(id);
-    const j = by ? (by[0] ? null : k + Math.sign(by[1])) : Number.isInteger(at.index) ? at.index : null;
+    const j = by ? (by[0] ? null : k + Math.sign(by[1])) : place();
     if (j == null) return null; if (j < 0 || j >= ops.length || j === k) return [];
     const R = sqRunOf(X, V, f.id); if (R.error) return R;
     const mine = o => (X.block.get(f.id) || []).filter(x => x.chain.some(c => c.op === o)).map(x => x.i), now = mine(id);
@@ -312,18 +317,20 @@ function sqWrap(model, view, ids, kind) {
   return sqGuard(model, V, [{ op: 'add', element, view: V.id, in: 'view' }, ...[...items].map(id => ({ op: 'reparent', id, parent: members[0].id }))]);
 }
 
-/* add(model, view, entry, label, at): the palette. A lifeline is a model node, placed after the lifeline `at.after` names
-   (the selected one), else last, and each use that covers both lifelines beside it covers it too; an interaction use goes in the view at the slot `at`, covering `at.covers` or every lifeline */
+/* add(model, view, entry, label, at): the palette and N. A lifeline is a model node, placed after the last lifeline selected
+   (at.sel, the ids the canvas has selected) or the one `at.after` names, else last, and each use that covers both lifelines
+   beside it covers it too; an interaction use goes in the view at the slot `at`, covering the lifelines selected and those
+   between them, else `at.covers`, else every lifeline */
 function sqAdd(model, view, entry, label, at) {
   const V = sqView(model, view), type = SQ_OBJ(entry) ? entry.type : null; if (!V) return null;
-  const ids = SQ_ARR(V.nodeIds), t = SQ_HAS(label) ? String(label) : null;
-  if (type === 'uml.Lifeline') { const i = SQ_OBJ(at) ? ids.indexOf(at.after) : -1, id = sqNewId(model, t || 'lifeline');
+  const ids = SQ_ARR(V.nodeIds), t = SQ_HAS(label) ? String(label) : null, js = SQ_ARR(SQ_OBJ(at) && at.sel).map(x => ids.indexOf(x)).filter(j => j >= 0);
+  if (type === 'uml.Lifeline') { const i = js.length ? js[js.length - 1] : SQ_OBJ(at) ? ids.indexOf(at.after) : -1, id = sqNewId(model, t || 'lifeline');
     // a use that covers both its neighbours covers it too, so covers stays next to each other
     const grow = i < 0 || i + 1 >= ids.length ? [] : sqIndex(model, V).occ.filter(o => !o.message && [ids[i], ids[i + 1]].every(x => SQ_ARR(sqProps(o.el).covers).includes(x)))
       .map(o => ({ op: 'set', id: o.id, path: 'props.covers', value: sqProps(o.el).covers.flatMap(x => (x === ids[i] ? [x, id] : [x])) }));
     return sqGuard(model, V, [{ op: 'add', element: { id, type, ...(t ? { label: t } : {}) }, view: V.id, index: i < 0 ? ids.length : i + 1 }, ...grow]); }
   if (type === 'uml.InteractionUse') { const slot = SQ_OBJ(at) && Number.isInteger(at.index) ? at : { index: SQ_ARR(V.edges).length, parent: null };
-    const covers = SQ_ARR(SQ_OBJ(at) && at.covers).length ? [...at.covers] : [...ids];
+    const covers = js.length ? ids.slice(Math.min(...js), Math.max(...js) + 1) : SQ_ARR(SQ_OBJ(at) && at.covers).length ? [...at.covers] : [...ids];
     return sqGuard(model, V, [{ op: 'add', element: { id: sqNewId(model, 'ref'), type, ...(t ? { label: t } : {}), ...(slot.parent != null ? { parent: slot.parent } : {}), props: { covers } }, view: V.id, index: slot.index, in: 'view' }]); }
   return null;
 }
@@ -332,7 +339,8 @@ function sqAdd(model, view, entry, label, at) {
    messages with it, after a set that drops it from each use's covers); Shift + Delete deletes it from the model. A message,
    a use or a fragment lives in the view: either deletes it (a call's replies go with it; a fragment's content stays). An
    operand's content moves to just after its fragment before it goes (S6); the last operand, or all of them at once, takes
-   its fragment */
+   its fragment. With a lifeline among what goes, the commands come as { commands, say }: say, for the hint line, counts the
+   messages that go with it */
 function sqRemove(model, view, ids, fromModel) {
   const V = sqView(model, view); if (!V) return null;
   const X = sqIndex(model, V), lifelines = SQ_ARR(V.nodeIds), out = [], sel = new Set(SQ_ARR(ids));
@@ -349,7 +357,10 @@ function sqRemove(model, view, ids, fromModel) {
       out.push({ op: 'delete', id }); continue; }
     out.push({ op: 'delete', id: f ? f.id : id });
   }
-  return sqGuard(model, V, out);
+  const r = sqGuard(model, V, out), heads = sqHeads(model, V).filter(n => sel.has(n.id)), hs = new Set(heads.map(n => n.id));
+  if (!Array.isArray(r) || !r.length || !heads.length) return r;
+  const n = X.occ.filter(o => o.message && (hs.has(o.from) || hs.has(o.to))).length;
+  return { commands: r, say: `${fromModel ? 'Deleted' : 'Removed'} ${heads.map(sqName).join(', ')}${fromModel ? '' : ' from the view'}, and ${n ? `${n} ${n === 1 ? 'message' : 'messages'}` : 'no message'} with ${heads.length > 1 ? 'them' : 'it'}` };
 }
 
 /* operands are a fragment's members, edited in the properties panel's member list (src/canvas/edit.js): a guard as text */
