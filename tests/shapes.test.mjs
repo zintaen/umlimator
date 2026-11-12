@@ -34,6 +34,14 @@ test('validate() warns about a shape it does not know, a shapes field it no long
   assert.equal(got.find(p => p.path === 'views[0].shapes').message, 'shapes is no longer read: maps draw in one style');
 });
 
+test('validate() says nothing of a person\'s icon on a frontend card only typed views hold: they keep their own notation (0.21.0)', async () => {
+  const all = await import('../lib/umlimator-all.js');
+  const model = typed => ({ schemaVersion: 2, nodes: [{ id: 'r', type: 'uml.Class', label: 'Riders', kind: 'frontend', icon: 'users' }],
+    views: [{ id: 'c', diagram: 'uml.class', nodeIds: ['r'] }, ...(typed ? [] : [{ id: 'm', nodeIds: ['r'] }])] });
+  assert.ok(!all.validate(model(true)).some(p => p.path === 'nodes[0].kind'));
+  assert.ok(all.validate(model(false)).some(p => p.path === 'nodes[0].kind'));
+});
+
 test('validate() warns about a shape it does not know in a view\'s nodeOverrides, as on a card', () => {
   const got = validate({ nodes: [{ id: 'db', kind: 'database' }], views: [{ id: 'v', nodeIds: ['db'], nodeOverrides: { db: { shape: 'cylindr' } } }, { id: 'w', nodeIds: ['db'], nodeOverrides: { db: { shape: 'Cylinder' } } }] });
   assert.deepEqual(got.map(p => `${p.level} ${p.path}`), ['warning views[0].nodeOverrides.db.shape']);

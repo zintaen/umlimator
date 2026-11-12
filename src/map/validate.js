@@ -35,8 +35,10 @@ export function validate(model) {
   const later = (x, at) => { if (x && x.opensView && !vids.has(x.opensView)) warn(at + '.opensView', `opens "${x.opensView}", a view the model does not have: fine if the host loads it when it is opened`); };
   arr(m.nodes).forEach((n, i) => later(n, `nodes[${i}]`));
   views.forEach((v, i) => gone(v, `views[${i}].`));
-  // a frontend card is drawn as a browser: a person's icon on one says the model means a person (0.15.0)
-  arr(m.nodes).forEach((n, i) => { if (!n || n.shape != null || !['user', 'users', 'usercheck'].includes(n.icon)) return;
+  // a frontend card is drawn as a browser: a person's icon on one says the model means a person (0.15.0); not said of a card
+  // only typed views hold, which keep their own notation (0.21.0)
+  const typedOnly = id => { const vs = views.filter(v => arr(v.nodeIds).includes(id)); return vs.length && vs.every(v => typedView(v) && diagramOf(v)); };
+  arr(m.nodes).forEach((n, i) => { if (!n || n.shape != null || !['user', 'users', 'usercheck'].includes(n.icon) || typedOnly(n.id)) return;
     if (shapeOf({ ...n, k: kindOf(n.kind, true) }) === 'browser') warn(`nodes[${i}].kind`, `"${n.label || n.id}" has a person's icon, but a ${n.kind} card is drawn as a browser: kind "person" (or shape "person") draws a person`); });
   const line = (e, at, ends) => {
     if (!e || typeof e !== 'object') return err(at, 'a line is an object with from and to');

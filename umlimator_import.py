@@ -51,7 +51,8 @@ MOBILE = r"\bmobile\b|android|\bios\b|iphone|ipad|xamarin|flutter|react.?native|
 
 # the kinds a map draws as one of C4's tools (NOTED in lib/umlimator.js): a browser, a phone, a cylinder, a pipe, a page.
 # Structurizr and C4-PlantUML draw only a container in a tool's shape by its words, so a software system or component that
-# guesses one keeps its kind (its colour) and is drawn a box (0.15.0)
+# guesses one keeps its kind (its colour) and is drawn a box (0.15.0). A cloud card a map draws as a node, which C4 never
+# draws: a C4 source's gateway, proxy or monitor keeps its colour and is drawn a box, a container's too (0.21.0)
 TOOL_KINDS = ("frontend", "mobile", "database", "queue", "file")
 
 
@@ -289,7 +290,7 @@ def structurizr(text, name):
         for t in dict.fromkeys(["Element", TAG[e["type"]], *e["tags"]]):
             shape = next((sh for tag, sh in reversed(styles) if tag == t), shape)
         shape = shape and SZ_SHAPE.get(shape.lower())
-        if not shape and e["type"] in ("softwaresystem", "component") and kind in TOOL_KINDS:
+        if not shape and (e["type"] in ("softwaresystem", "component") and kind in TOOL_KINDS or kind == "cloud"):
             shape = "box"  # the colour its words give, but a box, as Structurizr draws it: only a container takes a tool's shape
         m.card(cid, e["name"], kind, e["tech"] or C4TYPE[e["type"]], e["desc"], icon="user" if e["type"] == "person" else None, shape=shape)
     for g in groups:  # after the cards, so a group's name never takes an element's alias
@@ -481,7 +482,7 @@ def c4(lines, m):
                     else "external" if ext else "backend" if base == "System" else c4guess([a.get("tags"), a.get("techn"), a.get("label")])
                 m.card(cid, a.get("label"), kind, a.get("techn") or ("External " + TYPE[base].lower() if ext else TYPE[base]),
                        a.get("descr"), icon="user" if base == "Person" else None,
-                       shape="box" if base == "Component" and not shape and kind in TOOL_KINDS else None)  # a component its words guess is a box, as a Structurizr one
+                       shape="box" if not shape and (base == "Component" and kind in TOOL_KINDS or kind == "cloud") else None)  # a component its words guess is a box, as a Structurizr one; a cloud is never a node
                 bases.add(base)
                 if base == "Person":
                     people.add(cid)

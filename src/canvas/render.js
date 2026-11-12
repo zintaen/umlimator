@@ -88,7 +88,7 @@ export function render(container, model, options = {}) {
   let cam = null, geo = null, svg = null, cur = null, sel = null, more = [], busy = false, paused = false, dead = false;
   const pic = vid => ctx.geoCache[vid] ||= ctx.buildView(vid, { tour: P.tour !== false, openHint: P.openHint !== false }); // a view's picture: laid out once
   // each card's look, for what is drawn over the picture: rings, the minimap, a tour's or replay's dot
-  const lookIn = g => { const m = new Map(), ports = sidePorts(g); return n => { if (!m.has(n)) m.set(n, cardLook(n, true, !!(n.kids || n.opens) && P.openHint !== false, ports.get(n))); return m.get(n); }; };
+  const lookIn = g => { const m = new Map(), ports = sidePorts(g); return n => { if (!m.has(n)) m.set(n, g.map ? cardLook(n, true, !!(n.kids || n.opens) && P.openHint !== false, ports.get(n)) : cardLook(n, false, false, null)); return m.get(n); }; };
   const looker = () => lookIn(geo);
   const timers = new Set(), later = (f, ms) => { const t = setTimeout(() => { timers.delete(t); if (!dead) f(); }, ms); timers.add(t); return t; };
   const sleeping = new Set(); // a sleep resolves on its own, or when the map is destroyed: nothing that awaits one is left pending

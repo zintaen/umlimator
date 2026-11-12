@@ -144,6 +144,13 @@ m, un = imp.read("structurizr", tools, "x")
 ok("structurizr · a software system or component its words make a store, a queue or a file keeps that colour, drawn a box; a container takes the shape",
    [(card(m, i).get("kind"), card(m, i).get("shape")) for i in ("dw", "bus", "dms", "st", "fx", "db")]
    == [("database", "box"), ("queue", "box"), ("file", "box"), ("database", "box"), ("file", "box"), ("database", None)], m["nodes"])
+gw = ('workspace {\n model {\n  gw = softwareSystem "API Gateway"\n  s = softwareSystem "Shop" {\n   edge = container "Edge" "" "nginx" {\n'
+      '    lb = component "Load balancer" "" "HAProxy"\n   }\n  }\n }\n}\n')
+m, un = imp.read("structurizr", gw, "x")
+ok("structurizr · a system, container or component its words make cloud keeps that colour, drawn a box, never a node (0.21.0)",
+   [(card(m, i).get("kind"), card(m, i).get("shape")) for i in ("gw", "edge", "lb")] == [("cloud", "box")] * 3, m["nodes"])
+m, un = imp.read("plantuml", '@startuml\nContainer(edge, "Edge", "nginx")\nComponent(lb, "Load balancer", "HAProxy")\n@enduml\n', "x")
+ok("C4 · a container or component its words make cloud is drawn a box (0.21.0)", [(card(m, i).get("kind"), card(m, i).get("shape")) for i in ("edge", "lb")] == [("cloud", "box")] * 2, m["nodes"])
 m, un = imp.read("plantuml", '@startuml\nComponent(st, "Orders Store", "JPA")\nComponentDb(cdb, "Ledger")\n@enduml\n', "x")
 ok("C4 · a component its words make a store is drawn a box; a ComponentDb is a cylinder", [(card(m, i).get("kind"), card(m, i).get("shape")) for i in ("st", "cdb")] == [("database", "box"), ("database", None)], m["nodes"])
 m, un = imp.read("plantuml", '@startuml\nComponent(mc, "Mobile Controller", "Spring MVC")\nContainer(app, "Mobile App", "Xamarin")\n@enduml\n', "x")

@@ -3491,9 +3491,10 @@ picture changes) and to "additive only" (the choice's API goes).
   `render()` option, an element attribute or a link parameter named `shapes` is ignored: nothing is drawn again.
 - **Changed pictures:** every map's cards (and so its stills, PDFs and exports) draw in the one style; a map that named
   no notation, which drew every card as a box, now draws shapes. Its layout is the same.
-- `validate()`'s hint for a `frontend` card with a person's icon (`user`, `users`, `usercheck`) now holds in every view,
-  not only in `c4` ones: such a card is drawn as a browser.
+- `validate()`'s hint for a `frontend` card with a person's icon (`user`, `users`, `usercheck`) now holds in every map
+  view, not only in `c4` ones: such a card is drawn as a browser. A card only typed views hold is not told.
 - `umlimator.py import` no longer writes `"shapes": "c4"`; a Structurizr style's shape still becomes the card's own
-  `shape`.
+  `shape`. A C4 source's element its words make `cloud` (a gateway, a proxy, a monitor), which C4 draws as a box and a
+  map would draw as a node, is written with `shape: "box"`, whatever its type.
 - `examples/shapes.json` is the one style's gallery, `examples/notations.html` shows it light and dark, and
   `examples/clinic.json` is imported again without `shapes`.

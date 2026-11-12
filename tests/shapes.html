@@ -224,6 +224,13 @@ try {
     views: [{ id: 'v', nodeIds: ['db', 'api'] }] }); await wait(40);
   check('a shape "constructor" or "__proto__" draws the card by its kind, with no error', JSON.stringify(drawn()) === JSON.stringify({ db: 'cylinder', api: 'box' }) && !errors.length, [drawn(), errors]);
 
+  // a typed view keeps UML's own notation: its cards are not drawn, ringed or put in the minimap as their kind's shape
+  const CLS = await (await fetch('../examples/sales-classes.json')).json();
+  mount(CLS, { minimap: true }); await wait(40);
+  const tid = inner(h).geo().nodes[0].id; h.overlay('t', { nodes: { [tid]: { tone: 'rose' } } }); await wait(30);
+  check('a class view\'s minimap draws its cards as boxes and a ring on a class is a box', !sr.querySelector('.minimap path') && sr.querySelectorAll('.minimap rect:not(.vp)').length > 0
+    && sr.querySelector('.um-rings rect.um-ring') && !sr.querySelector('.um-rings path.um-ring'), [sr.querySelectorAll('.minimap path').length, !!sr.querySelector('.um-rings path.um-ring')]);
+
   check('no errors on the way', !errors.length, errors);
 } catch (e) { out.fail.push('threw: ' + (e && e.stack || e)); }
 if (h) h.destroy();
