@@ -10,16 +10,20 @@
    from the source's names (R3): a lifeline's is its name; a message is <from>-<to>, then -2, -3 ... for each pair, so
    inserting one renames only the later messages of its own pair; a fragment <operator>-<n>, an operand <fragment>.<k>.
    `%% id: <id>` above a statement gives that element its id instead (`%% operand-id:` the first operand of a fragment's
-   line). It never throws.
+   line); `%% reply-to: <id>` above a reply names its call, when that is not the one found below; `%% represents: <type>`
+   above a participant is its `represents`. It never throws.
 
    writeMermaidSequence(model, viewId?) -> text: one sequence view as Mermaid. What Mermaid cannot carry is kept in its
-   comments, as the class writer does: an id the reader would not derive as `%% id:`; an interaction use as
-   `%% use: <id> refersTo=<id>` above `Note over <first>,<last>: ref <label>`; an element the subset leaves out as
+   comments, as the class writer does: an id the reader would not derive as `%% id:`, a reply's call it would not find as
+   `%% reply-to:`, a lifeline's `represents` as `%% represents:` (and in its alias, `as <label> : <type>`, for Mermaid to
+   show); an interaction use as `%% use: <id> refersTo=<id>` above `Note over <first>,<last>: ref <label>`; a space at
+   either end of a text as an entity (#32;), which Mermaid shows and the reader's trim keeps; an element the subset leaves out as
    `%% not written: <id> (<type>)`, and a property Mermaid has no place for as `%% not written: <id>: <what>`.
 
    How UML maps onto Mermaid's text, both ways:
-   - `participant A`, `actor A` (stereotype actor), `as <label>`; an alias `name : Type` is the label and `represents`
-     (an encoded colon, #58;, stays in the label). `@{ "type": ... }` is read as a stereotype, approximated;
+   - `participant A`, `actor A` (stereotype actor), `as <label>`: the alias is the label, as Mermaid shows it; under a
+     `%% represents:` comment it is `<label> : <type>`, split at its first colon (an encoded one, #58;, stays in the
+     label). `@{ "type": ... }` is read as a stereotype, approximated;
    - `->>` call, `-)` async, `-->>` reply, its `replyTo` the latest unanswered call from its receiver to its sender (a
      call answered only in another operand of an alt is unanswered); `create participant B` makes the next message to
      B a create, `destroy B` the next message to B a delete. Other arrows are read as the nearest, approximated;
@@ -35,8 +39,8 @@ const MS_ARROWS = [['<<-->>', 'reply', 'its arrowhead at the sender is not drawn
   ['-->>', 'reply'], ['->>', 'call'], ['--)', 'async', 'its dotted line is drawn solid'], ['-)', 'async'],
   ['--x', 'async', 'its dotted line and its cross are not drawn'], ['-x', 'async', 'its cross is not drawn'],
   ['-->', 'reply', 'it has no arrowhead, and is drawn with one'], ['->', 'call', 'it has no arrowhead, and is drawn with one']];
-// Mermaid's keywords (case-insensitive, whole words): a lifeline's name the writer gives never starts with one
-const MS_KEYWORDS = new Set(['participant', 'actor', 'create', 'destroy', 'activate', 'deactivate', 'note', 'alt', 'else', 'opt', 'loop', 'par', 'and',
+// Mermaid 12.3.0's lexer keywords (sequenceDiagram.jison; case-insensitive, whole words): a lifeline's name the writer gives never starts with one
+const MS_KEYWORDS = new Set(['participant', 'actor', 'create', 'destroy', 'activate', 'deactivate', 'note', 'alt', 'else', 'opt', 'loop', 'par', 'par_over', 'and',
   'break', 'critical', 'option', 'rect', 'box', 'end', 'autonumber', 'title', 'acctitle', 'accdescr', 'link', 'links', 'properties', 'details',
   'left', 'right', 'over', 'as', 'off', 'sequencediagram']);
 const msId = name => String(name).replace(/->+/g, '-'); // an id never holds "->" (model.md rule 5)
@@ -69,10 +73,10 @@ function msStatements(line) {
   return out.map(x => x.trim()).filter(Boolean);
 }
 
-// the keyword a statement starts with, lower-case, or '' (a keyword is a whole word, as Mermaid's lexer reads it)
+// the keyword a statement starts with, lower-case, or '' (a keyword is a whole word, as Mermaid's lexer reads it: par_over is one)
 function msWord(s) {
   let e = 0;
-  while (e < s.length && /[A-Za-z]/.test(s[e])) e++;
+  while (e < s.length && /[A-Za-z_]/.test(s[e])) e++;
   return e && !/\w/.test(s[e] ?? ' ') ? s.slice(0, e).toLowerCase() : '';
 }
 
@@ -109,36 +113,45 @@ function msParticipant(rest) {
 }
 
 // which call each reply answers, the same for the reader and the writer: the latest call from the reply's receiver to its
-// sender that has no reply yet, where a reply in another operand of an alt does not count. occ: [{ from, to, sort, parent }]
-// in time order; fragments: [{ parent, props: { operator }, members: [{ id }] }]. Returns Map reply -> call.
+// sender that has no reply yet, where a reply in another operand of an alt does not count; or the call its `want` names,
+// when that is an earlier call the reply goes back along (the writer's `%% reply-to:`). occ: [{ x, id, from, to, sort,
+// parent, want }] in time order; fragments: [{ parent, props: { operator }, members: [{ id }] }]. Returns
+// [Map reply -> call, Set of the replies (their x) whose call is their want and not the latest unanswered one].
 // ponytail: an operand's chain stops at 64 levels and one reply looks at 256 earlier answers at most, so hostile text
 // stays linear (R2); past that a reply finds no call, which the reader reports. Raise both if real diagrams need it
 function msMatch(occ, fragments) {
   const fragOf = new Map();
   for (const f of fragments) for (const o of f.members) fragOf.set(o.id, f);
   const chain = p => { const c = [], seen = new Set(); while (fragOf.has(p) && !seen.has(p) && c.length < 64) { seen.add(p); c.push(p); p = fragOf.get(p).parent; } return c; };
-  const stacks = new Map(), out = new Map();
+  // each pair's calls in time order; up[k] is k while call k is open and a lower index once it is closed (a union-find
+  // with path halving), so a reply passes each closed call once, wherever it lies in the stack (R2)
+  const stacks = new Map(), byId = new Map(), out = new Map(), forced = new Set();
+  const open = (st, k) => { const up = st.up; while (k >= 0 && up[k] !== k) { if (up[k] >= 0) up[k] = up[up[k]]; k = up[k]; } return k; };
   for (const x of occ) {
     if (x.sort === 'call') {
       const key = `${x.from}\0${x.to}`;
-      if (!stacks.has(key)) stacks.set(key, []);
-      stacks.get(key).push({ x, chain: chain(x.parent), answers: [], closed: false });
+      if (!stacks.has(key)) stacks.set(key, { calls: [], up: [] });
+      const st = stacks.get(key), call = { x, st, k: st.calls.length, key, chain: new Set(chain(x.parent)), answers: [] };
+      st.calls.push(call); st.up.push(call.k);
+      if (x.id != null) byId.set(x.id, call);
     } else if (x.sort === 'reply') {
-      const st = stacks.get(`${x.to}\0${x.from}`) || [], c = chain(x.parent), at = new Map(c.map(o => [fragOf.get(o), o]));
+      const key = `${x.to}\0${x.from}`, st = stacks.get(key), c = chain(x.parent), at = new Map(c.map(o => [fragOf.get(o), o]));
       // two answers are apart when they lie in different operands of one alt
       const apart = a => a.some(o => { const f = fragOf.get(o), y = at.get(f); return y !== undefined && y !== o && f.props?.operator === 'alt'; });
-      while (st.length && st.at(-1).closed) st.pop();
-      let budget = 256;
-      for (let k = st.length - 1; k >= 0 && budget > 0; k--) {
-        const call = st[k];
-        if (call.closed || call.answers.some(a => --budget < 0 || !apart(a))) continue;
-        out.set(x, call.x); call.answers.push(c);
-        if (c.every(o => call.chain.includes(o))) call.closed = true; // answered where it was made, or outside it: no later reply sees it
-        break;
+      let budget = 256, found;
+      if (st) for (let k = open(st, st.calls.length - 1); k >= 0 && budget > 0; k = open(st, k - 1)) {
+        const call = st.calls[k];
+        if (call.answers.some(a => --budget < 0 || !apart(a))) continue;
+        found = call; break;
       }
+      const want = x.want != null ? byId.get(x.want) : undefined;
+      if (want && want.key === key && want !== found) { found = want; forced.add(x.x); }
+      if (!found) continue;
+      out.set(x, found.x); found.answers.push(c);
+      if (c.every(o => found.chain.has(o))) found.st.up[found.k] = found.k - 1; // answered where it was made, or outside it: no later reply sees it
     }
   }
-  return out;
+  return [out, forced];
 }
 
 function readMermaidSequence(text) {
@@ -180,17 +193,14 @@ function readMermaidSequence(text) {
     const rec = life(p.name, no), n = rec.node, stereotypes = [...(actor ? ['actor'] : []), ...(p.type ? [p.type] : [])];
     if (hint.id != null) rec.hint = hint.id;
     if (p.type) say(no, 'approximated', `${p.name}'s type ${p.type} is read as a stereotype, shown as text`);
-    if (p.alias != null) {
-      const c = p.alias.indexOf(':'), label = msDecode(c < 0 ? p.alias : p.alias.slice(0, c)).trim(), type = c < 0 ? '' : msDecode(p.alias.slice(c + 1)).trim();
-      n.label = label;
-      if (type) n.props = { ...n.props, represents: type };
-    }
+    if (p.alias != null) { const c = hint.represents ? p.alias.indexOf(':') : -1; n.label = msDecode((c < 0 ? p.alias : p.alias.slice(0, c)).trim()); }
+    if (hint.represents) n.props = { ...n.props, represents: msDecode(hint.represents) };
     if (stereotypes.length) n.props = { ...n.props, stereotypes };
     if (created) creating.set(p.name, no);
   };
   const open = (operator, guard, no) => {
     const frag = { kind: 'frag', operator, no, hint: hint.id, parent: cur(), ops: [] };
-    const op = { kind: 'op', frag, label: guard ? msDecode(guard) : undefined, hint: hint.operand };
+    const op = { kind: 'op', frag, k: 1, label: guard ? msDecode(guard) : undefined, hint: hint.operand };
     frag.ops.push(op); items.push(frag, op); stack.push({ frag, cur: op, no });
   };
 
@@ -206,6 +216,8 @@ function readMermaidSequence(text) {
       }
       else if (c.startsWith('id:')) hint.id = c.slice(3).trim();
       else if (c.startsWith('operand-id:')) hint.operand = c.slice(11).trim();
+      else if (c.startsWith('represents:')) hint.represents = c.slice(11).trim();
+      else if (c.startsWith('reply-to:')) hint.replyTo = c.slice(9).trim();
       else if (c.startsWith('use:')) {
         const u = c.slice(4).trim(), r = u.indexOf(' refersTo=');
         hint.use = r < 0 ? { id: u } : { id: u.slice(0, r).trim(), refersTo: u.slice(r + 10).trim() };
@@ -232,7 +244,7 @@ function readMermaidSequence(text) {
       } else if (MS_OPS.includes(word)) open(word, rest, no);
       else if (word === 'else' || word === 'and') {
         if (top && top.frag && top.frag.operator === (word === 'else' ? 'alt' : 'par')) {
-          const op = { kind: 'op', frag: top.frag, label: rest ? msDecode(rest) : word === 'else' ? 'else' : undefined, hint: hint.id };
+          const op = { kind: 'op', frag: top.frag, k: top.frag.ops.length + 1, label: rest ? msDecode(rest) : word === 'else' ? 'else' : undefined, hint: hint.id };
           top.frag.ops.push(op); items.push(op); top.cur = op;
         } else say(no, 'skipped', `${word} outside ${word === 'else' ? 'an alt' : 'a par'}: not read`);
       } else if (word === 'critical') { stack.push({ what: 'critical', cur: cur(), no }); say(no, 'approximated', `critical ${rest}: its content is read, with no frame (critical is not in the subset)`); }
@@ -269,7 +281,7 @@ function readMermaidSequence(text) {
         else if (destroying.has(from.name)) { say(destroying.get(from.name), 'skipped', `destroy ${from.name}: the next message is from it, so its stem is not ended`); destroying.delete(from.name); }
         if (sort === m.arrow[1] && m.arrow[2]) say(no, 'approximated', `${what}: read as ${sort === 'async' ? 'an' : 'a'} ${sort}; ${m.arrow[2]}`);
         if (m.central) say(no, 'approximated', `${what}: the central connection is not drawn`);
-        const msg = { kind: 'msg', no, what, from, to, sort, label: msDecode(m.text), hint: hint.id, parent: cur(), plus: m.plus, minus: m.minus };
+        const msg = { kind: 'msg', no, what, from, to, sort, label: msDecode(m.text), hint: hint.id, want: hint.replyTo || undefined, parent: cur(), plus: m.plus, minus: m.minus };
         items.push(msg); last = msg;
       }
       hint = {};
@@ -291,14 +303,14 @@ function readMermaidSequence(text) {
     if (x.kind === 'msg') x.id = uniq(x.hint ?? `${x.from.node.id}-${x.to.node.id}`);
     else if (x.kind === 'use') x.id = uniq(x.id || 'use');
     else if (x.kind === 'frag') { const n = (seen.get(x.operator) || 0) + 1; seen.set(x.operator, n); x.id = uniq(x.hint ?? `${x.operator}-${n}`); }
-    else x.id = uniq(x.hint ?? `${x.frag.id}.${x.frag.ops.indexOf(x) + 1}`);
+    else x.id = uniq(x.hint ?? `${x.frag.id}.${x.k}`);
   }
 
   const nodes = order.map(r => r.node), at = new Map(nodes.map((n, k) => [n.id, k]));
   const frags = items.filter(x => x.kind === 'frag').map(f => ({ id: f.id, type: 'uml.CombinedFragment', ...(f.parent ? { parent: f.parent.id } : {}), props: { operator: f.operator },
     members: f.ops.map(o => ({ id: o.id, type: 'uml.InteractionOperand', ...(o.label != null ? { label: o.label } : {}) })) }));
   const occ = items.filter(x => x.kind === 'msg' || x.kind === 'use');
-  const replies = msMatch(occ.filter(x => x.kind === 'msg').map(x => ({ x, from: x.from.node.id, to: x.to.node.id, sort: x.sort, parent: x.parent?.id })), frags);
+  const [replies] = msMatch(occ.filter(x => x.kind === 'msg').map(x => ({ x, id: x.id, from: x.from.node.id, to: x.to.node.id, sort: x.sort, parent: x.parent?.id, want: x.want })), frags);
   const answer = new Map([...replies].map(([r, c]) => [r.x, c.x])), lastReply = new Map();
   for (const [r, c] of answer) lastReply.set(c, r);
   const edges = occ.map(x => {
@@ -309,6 +321,7 @@ function readMermaidSequence(text) {
     }
     const call = answer.get(x);
     if (x.sort === 'reply' && !call) say(x.no, 'approximated', `${x.what}: a reply with no call from ${x.to.name} to ${x.from.name} before it answers none`);
+    if (x.want != null && call?.id !== x.want) say(x.no, 'approximated', `${x.what}: reply-to ${x.want} is not an earlier call from ${x.to.name} to ${x.from.name}, so it is not read`);
     if (x.plus && x.sort !== 'call') say(x.no, 'approximated', `${x.what}: its + is not read: activations are derived, and ${x.sort === 'async' ? 'an' : 'a'} ${x.sort} opens none`);
     if (x.minus && !(call && lastReply.get(call) === x)) say(x.no, 'approximated', `${x.what}: its - is not read: activations are derived, and a bar ends at the last reply to its call`);
     return { id: x.id, type: 'uml.Message', from: x.from.node.id, to: x.to.node.id, ...(x.label ? { label: x.label } : {}), ...(x.parent ? { parent: x.parent.id } : {}),
@@ -328,8 +341,10 @@ function writeMermaidSequence(model, viewId) {
   if (viewId != null && !view) return `%% not written: view ${flat(viewId)}, which the model does not have\n`;
   if (!view) return '%% not written: the model, which has no uml.sequence view\n';
   if (view.diagram !== 'uml.sequence') return `%% not written: view ${flat(view.id)}, a ${flat(view.diagram)} view, not a uml.sequence one\n`;
-  const enc = s => String(s).replace(/[#;<>\\]/g, c => ({ '#': '#35;', ';': '#59;', '<': '#lt;', '>': '#gt;', '\\': '#92;' })[c]).replace(/\r\n|\r|\n/g, '<br>');
-  const encA = s => enc(s).replace(/:/g, '#58;'); // an alias: its first colon splits the label from what it represents
+  // text: Mermaid's own characters as entities, a line break as <br>, and a space at either end as an entity, which the reader's trim keeps
+  const enc = s => String(s).replace(/[#;<>\\]/g, c => ({ '#': '#35;', ';': '#59;', '<': '#lt;', '>': '#gt;', '\\': '#92;' })[c]).replace(/\r\n|\r|\n/g, '<br>')
+    .replace(/^\s|\s$/g, c => `#${c.codePointAt(0)};`);
+  const encA = s => enc(s).replace(/:/g, '#58;'); // an alias: under %% represents:, its first colon ends the label
   const out = [], notWritten = [], skip = x => notWritten.push(`${flat(x.id)} (${flat(x.type)})`), lose = (id, what) => notWritten.push(`${flat(id)}: ${flat(what)}`);
   const title = has(view.title) ? view.title : m.title;
   if (has(title)) out.push('---', `title: ${/^[\p{L}\p{N}][\p{L}\p{N} _.,()-]*$/u.test(title) && !title.endsWith(' ') ? title : JSON.stringify(String(title))}`, '---');
@@ -341,7 +356,9 @@ function writeMermaidSequence(model, viewId) {
   const lifes = [];
   for (const id of arr(view.nodeIds)) { const n = byId.get(id); if (!n) continue; if (n.type === 'uml.Lifeline' && !nl(n.id)) lifes.push(n); else skip(n); }
   const isLife = new Set(lifes.map(n => n.id));
-  const edgeOf = e => (typeof e === 'string' ? arr(m.edges).find(x => isObj(x) && x.id === e) : e);
+  const edgeById = new Map();
+  for (const x of arr(m.edges)) if (isObj(x) && !edgeById.has(x.id)) edgeById.set(x.id, x);
+  const edgeOf = e => (typeof e === 'string' ? edgeById.get(e) : e);
   const occ = [];
   for (const x of arr(view.edges).map(edgeOf).filter(isObj)) {
     const ok = !nl(x.id) && (x.type === 'uml.Message' ? isLife.has(x.from) && isLife.has(x.to)
@@ -356,13 +373,12 @@ function writeMermaidSequence(model, viewId) {
     if (has(f.label)) lose(f.id, `label ${f.label}`);
     frags.push(f); ops.forEach((o, i) => opOf.set(o.id, { f, i }));
   }
-  // where an element sits: the operands from the top down, through fragments that are written
-  const chain = p => { const c = [], seen = new Set(); while (opOf.has(p) && !seen.has(p)) { seen.add(p); c.push(opOf.get(p)); p = opOf.get(p).f.parent; } return c.reverse(); };
-  const full = new Set(), kids = new Map(); // fragments with an occurrence in them; the empty ones by the operand they end
-  for (const x of occ) for (const { f } of chain(x.parent)) full.add(f);
-  for (const f of frags) if (!full.has(f)) { const c = chain(f.parent), p = c.length ? c.at(-1).f.members[c.at(-1).i].id : null; if (!kids.has(p)) kids.set(p, []); kids.get(p).push(f); }
+  // fragments with an occurrence in them, and the empty ones by the operand they end (null: the top)
+  const full = new Set(), kids = new Map();
+  for (const x of occ) for (let p = x.parent; opOf.has(p) && !full.has(opOf.get(p).f); p = opOf.get(p).f.parent) full.add(opOf.get(p).f);
+  for (const f of frags) if (!full.has(f)) { const p = opOf.has(f.parent) ? f.parent : null; if (!kids.has(p)) kids.set(p, []); kids.get(p).push(f); }
 
-  // the sorts as written, and the replies' calls as the reader will find them
+  // the sorts as written
   const sortOf = new Map(), touched = new Set(), created = [];
   for (const x of occ) {
     if (x.type !== 'uml.Message') { arr(x.props.covers).forEach(c => touched.add(c)); continue; }
@@ -372,13 +388,7 @@ function writeMermaidSequence(model, viewId) {
     if (s === 'create') created.push(x.to);
     touched.add(x.from); touched.add(x.to); sortOf.set(x, s);
   }
-  const msgs = occ.filter(x => sortOf.has(x));
-  const found = msMatch(msgs.map(x => ({ x, from: x.from, to: x.to, sort: sortOf.get(x), parent: x.parent })), frags);
-  const callOf = new Map([...found].map(([r, c]) => [r.x, c.x])), lastReply = new Map(), answered = new Set();
-  for (const [r, c] of callOf) { lastReply.set(c, r); answered.add(c); }
-  for (const x of msgs) if (sortOf.get(x) === 'reply' && (callOf.get(x)?.id ?? undefined) !== (x.props?.replyTo ?? undefined)) {
-    lose(x.id, has(x.props?.replyTo) ? `replyTo ${x.props.replyTo}, which is not the call the reader finds` : 'no replyTo, though the reader finds a call');
-  }
+  const replySlot = notWritten.length; // a reply's call is found once the fragments are placed; what is lost about it goes here
 
   // lifelines: those not created up front, in the view's order, then the created ones where they are created
   const isCreated = new Set(created), written = [...lifes.filter(n => !isCreated.has(n.id)), ...created.map(id => byId.get(id))];
@@ -391,63 +401,93 @@ function writeMermaidSequence(model, viewId) {
     let name = String(n.id);
     if (!safe(name)) { let base = name.replace(/[^\p{L}\p{N}_]+/gu, '_').replace(/^_+|_+$/g, ''); if (!safe(base)) base = 'L_' + base; name = msFree(taken, takenNext, base); taken.add(name); }
     names.set(n.id, name);
-    const p = isObj(n.props) ? n.props : {}, st = arr(p.stereotypes), actor = st[0] === 'actor';
+    const p = isObj(n.props) ? n.props : {}, st = arr(p.stereotypes), actor = st[0] === 'actor', rep = has(p.represents);
     st.slice(actor ? 1 : 0).forEach(s => lose(n.id, `stereotype ${s}`));
-    const label = has(n.label) ? String(n.label) : '', alias = label !== name || has(p.represents) ? encA(label) + (has(p.represents) ? ' : ' + encA(p.represents) : '') : '';
+    // the reader takes the alias as the label, and splits it at its first colon only under a %% represents: comment
+    const label = has(n.label) ? String(n.label) : name, alias = label !== name || rep ? encA(label) + (rep ? ' : ' + encA(p.represents) : '') : '';
     if (!has(n.label)) lose(n.id, 'no label, read as its name');
-    heads.set(n.id, [idOf(n.id, name), `${actor ? 'actor' : 'participant'} ${name}${alias.trim() ? ' as ' + alias : ''}`]);
+    heads.set(n.id, [...(idOf(n.id, name) != null ? [`%% id: ${n.id}`] : []), ...(rep ? [`%% represents: ${enc(p.represents)}`] : []),
+      `${actor ? 'actor' : 'participant'} ${name}${alias ? ' as ' + alias : ''}`]);
   }
-  for (const n of lifes) if (!isCreated.has(n.id)) { const [hint, text] = heads.get(n.id); out.push(...(hint ? [`  %% id: ${hint}`] : []), `  ${text}`); }
+  for (const n of lifes) if (!isCreated.has(n.id)) out.push(...heads.get(n.id).map(l => '  ' + l));
 
   // the occurrences in time order, opening and closing fragments around them; an empty fragment ends its operand
-  const stack = [], done = new Set(), broken = new Set(), count = new Map();
+  const stack = [], on = new Map(), done = new Set(), broken = new Set(), count = new Map(), parentOf = new Map(); // on: fragment -> its place in the stack
   const put = (depth, ...xs) => out.push(...xs.map(x => '  '.repeat(depth + 1) + x));
+  const top = () => (stack.length ? stack.at(-1).f.members[stack.at(-1).i].id : undefined); // the operand being written
+  const empty = (x, what) => { if (x.label === '') lose(x.id, `an empty ${what}, read as none`); };
   const guard = o => (has(o.label) ? ' ' + enc(o.label) : '');
   const begin = f => {
     const op = f.props.operator, n = (count.get(op) || 0) + 1, o = f.members[0], fh = idOf(f.id, `${op}-${n}`), oh = idOf(o.id, `${f.id}.1`);
-    count.set(op, n);
+    count.set(op, n); empty(o, 'guard');
     put(stack.length, ...(fh ? [`%% id: ${fh}`] : []), ...(oh ? [`%% operand-id: ${oh}`] : []), op + guard(o));
-    stack.push({ f, i: 0 }); done.add(f);
+    parentOf.set(f, top()); on.set(f, stack.length); stack.push({ f, i: 0 }); done.add(f);
   };
   const ends = o => { for (const k of kids.get(o.id) || []) if (!done.has(k)) { begin(k); finish(); } };
   const advance = () => {
-    const top = stack.at(-1), f = top.f;
-    ends(f.members[top.i]);
-    const o = f.members[++top.i], h = idOf(o.id, `${f.id}.${top.i + 1}`), alt = f.props.operator === 'alt';
-    if (alt && !has(o.label)) lose(o.id, 'no guard, read as else');
+    const t = stack.at(-1), f = t.f;
+    ends(f.members[t.i]);
+    const o = f.members[++t.i], h = idOf(o.id, `${f.id}.${t.i + 1}`), alt = f.props.operator === 'alt';
+    if (alt && !has(o.label)) lose(o.id, 'no guard, read as else'); else empty(o, 'guard');
     put(stack.length - 1, ...(h ? [`%% id: ${h}`] : []), alt ? (o.label === 'else' ? 'else' : 'else' + guard(o)) : 'and' + guard(o));
   };
-  const finish = () => { const top = stack.at(-1); while (top.i < top.f.members.length - 1) advance(); ends(top.f.members[top.i]); stack.pop(); put(stack.length, 'end'); };
-  const arrows = { call: '->>', async: '-)', reply: '-->>', create: '->>', delete: '-x' };
+  const finish = () => { const t = stack.at(-1); while (t.i < t.f.members.length - 1) advance(); ends(t.f.members[t.i]); stack.pop(); on.delete(t.f); put(stack.length, 'end'); };
+  const at = new Map(written.map((n, k) => [n.id, k])), msgAt = new Map(); // msgAt: a message -> its line, written once its call is known
+  // ponytail: an occurrence walks up from its operand to the first fragment open on the stack, so a model written in order
+  // costs its size; one whose fragments are not one run (named below) can cost its depth per occurrence
   for (const x of occ) {
-    const c = chain(x.parent);
-    let k = 0;
-    while (k < stack.length && k < c.length && stack[k].f === c[k].f && stack[k].i === c[k].i) k++;
-    const on = k < stack.length && k < c.length && stack[k].f === c[k].f && c[k].i > stack[k].i;
-    while (stack.length > k + (on ? 1 : 0)) finish();
-    if (on) while (stack[k].i < c[k].i) advance();
-    for (let j = stack.length; j < c.length; j++) {
-      if (done.has(c[j].f)) { if (!broken.has(c[j].f)) { broken.add(c[j].f); lose(c[j].f.id, 'its occurrences are not one run in the view\'s edges'); } break; }
-      begin(c[j].f);
-      while (stack.at(-1).i < c[j].i) advance();
+    const path = [], seen = new Set(); // the operands to open, innermost first
+    let p = x.parent, keep = 0, later = false;
+    while (opOf.has(p) && !seen.has(p)) {
+      seen.add(p);
+      const o = opOf.get(p), s = on.get(o.f);
+      if (s !== undefined) { keep = s; if (o.i === stack[s].i) keep++; else { later = o.i > stack[s].i; path.push(o); } break; }
+      path.push(o); p = o.f.parent;
+    }
+    while (stack.length > keep + (later ? 1 : 0)) finish();
+    if (later) { const o = path.pop(); while (stack.at(-1).i < o.i) advance(); }
+    for (let j = path.length - 1; j >= 0; j--) {
+      const o = path[j];
+      if (done.has(o.f)) { if (!broken.has(o.f)) { broken.add(o.f); lose(o.f.id, 'its occurrences are not one run in the view\'s edges'); } break; }
+      begin(o.f);
+      while (stack.at(-1).i < o.i) advance();
     }
     const d = stack.length;
     if (x.type === 'uml.InteractionUse') {
-      const cov = x.props.covers, ks = cov.map(id => written.findIndex(n => n.id === id)), lo = ks.reduce((a, b) => Math.min(a, b)), hi = ks.reduce((a, b) => Math.max(a, b));
-      if (written.slice(lo, hi + 1).some((n, j) => n.id !== cov[j]) || cov.length !== hi - lo + 1) lose(x.id, `covers ${cov.join(', ')}, which are not lifelines next to each other in order`);
-      idOf(x.id, x.id);
+      const cov = x.props.covers, ks = cov.map(id => at.get(id)), lo = ks.reduce((a, b) => Math.min(a, b)), hi = ks.reduce((a, b) => Math.max(a, b));
+      if (cov.length !== hi - lo + 1 || written.slice(lo, hi + 1).some((n, j) => n.id !== cov[j])) lose(x.id, `covers ${cov.join(', ')}, which are not lifelines next to each other in order`);
+      idOf(x.id, x.id); empty(x, 'label');
       const ends2 = lo === hi ? names.get(written[lo].id) : `${names.get(written[lo].id)},${names.get(written[hi].id)}`;
       put(d, `%% use: ${x.id}${has(x.props.refersTo) ? ' refersTo=' + x.props.refersTo : ''}`, `Note over ${ends2}: ref${has(x.label) ? ' ' + enc(x.label) : ''}`);
       continue;
     }
     const s = sortOf.get(x);
-    if (s === 'create') { const [hint, text] = heads.get(x.to); put(d, ...(hint ? [`%% id: ${hint}`] : []), 'create ' + text); }
+    if (s === 'create') put(d, ...heads.get(x.to).map((l, k, a) => (k === a.length - 1 ? 'create ' + l : l)));
     if (s === 'delete') put(d, `destroy ${names.get(x.to)}`);
-    const h = idOf(x.id, `${x.from}-${x.to}`), plus = s === 'call' && answered.has(x) ? '+' : '', minus = s === 'reply' && lastReply.get(callOf.get(x)) === x ? '-' : '';
-    put(d, ...(h ? [`%% id: ${h}`] : []), `${names.get(x.from)}${arrows[s]}${plus}${minus}${names.get(x.to)}:${has(x.label) ? ' ' + enc(x.label) : ''}`);
+    empty(x, 'label');
+    msgAt.set(x, { line: out.length, pad: '  '.repeat(d + 1), h: idOf(x.id, `${x.from}-${x.to}`), parent: top() });
+    out.push(null);
   }
   while (stack.length) finish();
   for (const f of kids.get(null) || []) if (!done.has(f)) { begin(f); finish(); }
+  for (const f of frags) if (!done.has(f)) { skip(f); f.members.forEach(skip); } // inside a fragment that is not one run
+
+  // the replies' calls as the reader will find them, from where the messages are written
+  const msgs = [...msgAt.keys()], placed = frags.filter(f => done.has(f)).map(f => ({ ...f, parent: parentOf.get(f) }));
+  const [found, forced] = msMatch(msgs.map(x => ({ x, id: x.id, from: x.from, to: x.to, sort: sortOf.get(x), parent: msgAt.get(x).parent,
+    want: sortOf.get(x) === 'reply' && has(x.props?.replyTo) ? x.props.replyTo : undefined })), placed);
+  const callOf = new Map([...found].map(([r, c]) => [r.x, c.x])), lastReply = new Map(), lost = [];
+  for (const [r, c] of callOf) lastReply.set(c, r);
+  const arrows = { call: '->>', async: '-)', reply: '-->>', create: '->>', delete: '-x' };
+  for (const x of msgs) {
+    const s = sortOf.get(x), { line, pad, h } = msgAt.get(x), plus = s === 'call' && lastReply.has(x) ? '+' : '', minus = s === 'reply' && lastReply.get(callOf.get(x)) === x ? '-' : '';
+    if (s === 'reply' && (callOf.get(x)?.id ?? undefined) !== (x.props?.replyTo ?? undefined)) {
+      lost.push(`${flat(x.id)}: ${flat(has(x.props?.replyTo) ? `replyTo ${x.props.replyTo}, which is not an earlier call the reply goes back along` : 'no replyTo, though the reader finds a call')}`);
+    }
+    out[line] = [...(h ? [`%% id: ${h}`] : []), ...(forced.has(x) ? [`%% reply-to: ${callOf.get(x).id}`] : []),
+      `${names.get(x.from)}${arrows[s]}${plus}${minus}${names.get(x.to)}:${has(x.label) ? ' ' + enc(x.label) : ''}`].map(l => pad + l).join('\n');
+  }
+  notWritten.splice(replySlot, 0, ...lost);
   for (const x of notWritten) out.push(`  %% not written: ${x}`);
   return out.join('\n') + '\n';
 }

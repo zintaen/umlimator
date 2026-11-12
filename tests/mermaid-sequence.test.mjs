@@ -30,7 +30,7 @@ test('read(write(model)) is example 11, ids included, and nothing is reported', 
   assert.match(text, /api->>\+payments: charge\(total\)\n/);
   assert.match(text, /payments-->>-api: declined\n/);
   assert.match(text, / {4}%% use: f3\n {4}Note over api,receipt: ref Send receipt email\n/);
-  assert.match(text, / {4}create participant receipt as receipt : Receipt\n/);
+  assert.match(text, / {4}%% represents: Receipt\n {4}create participant receipt as receipt : Receipt\n/);
 });
 
 // a seeded generator of models in the subset (proposal.md §8.2)
@@ -42,12 +42,12 @@ function generate(seed) {
   const clean = o => Object.fromEntries(Object.entries(o).filter(([, x]) => x !== undefined));
   const NAMES = ['api', 'payments', 'Two words!', 'end', 'x-ray', 'card-payment', 'Ünit', 'loop', 'a_b', 'alt-1', 'shop.web', 'L_end', 'Note'];
   const lifeline = k => {
-    const id = take(pick(NAMES), `L${k}`), props = clean({ represents: maybe(0.4, pick(['ShopApi', 'pkg::Type', 'A : B'])), stereotypes: maybe(0.2, ['actor']) });
-    return clean({ id, type: 'uml.Lifeline', label: pick([id, id, 'Label with spaces', 'colon: inside', 'Quotes "and" <angles>', 'two\nlines', 'semi;colon #1']), props: Object.keys(props).length ? props : undefined });
+    const id = take(pick(NAMES), `L${k}`), props = clean({ represents: maybe(0.4, pick(['ShopApi', 'pkg::Type', 'A : B', ' T '])), stereotypes: maybe(0.2, ['actor']) });
+    return clean({ id, type: 'uml.Lifeline', label: pick([id, id, 'Label with spaces', 'colon: inside', 'Quotes "and" <angles>', 'two\nlines', 'semi;colon #1', ' padded ', ' ']), props: Object.keys(props).length ? props : undefined });
   };
   const upfront = Array.from({ length: 1 + Math.floor(r() * 5) }, (_, k) => lifeline(k)), pool = Array.from({ length: Math.floor(r() * 3) }, (_, k) => lifeline(10 + k));
   const all = [...upfront, ...pool], alive = upfront.map(n => n.id), created = [], frags = [], edges = [], open = new Map();
-  const GUARDS = ['payment accepted', 'x > 1; y #2', 'two\nlines', 'end'];
+  const GUARDS = ['payment accepted', 'x > 1; y #2', 'two\nlines', 'end', ' g '];
   const gen = (parent, depth) => {
     for (let k = 0, n = Math.floor(r() * (depth ? 6 : 14)); k < n; k++) {
       const x = r();
@@ -66,10 +66,10 @@ function generate(seed) {
         if (sort === 'create') { if (pool.length) { to = pool.shift().id; alive.push(to); created.push(to); } else sort = 'call'; }
         if (sort === 'delete') { const others = alive.filter(a => a !== from); if (others.length) { to = pick(others); alive.splice(alive.indexOf(to), 1); } else sort = 'call'; }
         const id = take(`${from}-${to}`, `m${edges.length}`), key = `${from}\0${to}`, back = `${to}\0${from}`;
-        // a reply answers the latest call back that has none yet; sometimes another one, which the reader may not find
+        // a reply answers the latest call back that has none yet; sometimes another one, which the writer names in %% reply-to:
         if (sort === 'reply') { if (open.get(back)?.length) replyTo = r() < 0.85 ? open.get(back).pop() : pick(open.get(back)); else sort = 'call'; }
         if (sort === 'call') { if (!open.has(key)) open.set(key, []); open.get(key).push(id); }
-        edges.push(clean({ id, type: 'uml.Message', from, to, label: maybe(0.9, pick(['place(order)', 'ok', 'a; b #1 <br> c\\n', 'two\nlines', 'x: y', 'end'])), parent,
+        edges.push(clean({ id, type: 'uml.Message', from, to, label: maybe(0.9, pick(['place(order)', 'ok', 'a; b #1 <br> c\\n', 'two\nlines', 'x: y', 'end', '  padded  '])), parent,
           props: clean({ sort, replyTo }) }));
       }
     }
@@ -82,26 +82,16 @@ function generate(seed) {
 }
 
 test('read(write(model)) equals the model, for 500 generated models in the subset', () => {
-  let replies = 0, lossy = 0, hints = 0;
+  let hints = 0, replyTo = 0;
   for (let seed = 1; seed <= 500; seed++) {
-    const m = generate(seed), text = write(m), back = read(text), want = structuredClone(m);
-    hints += text.split('%% id:').length - 1;
-    // a reply whose replyTo is not the call the reader finds: the writer says so, and the reader finds its own
-    const got = new Map(back.model.views[0].edges.map(e => [e.id, e]));
-    for (const e of want.views[0].edges) if (e.props?.sort === 'reply') {
-      replies++;
-      if (!text.includes(`%% not written: ${e.id}: `)) continue;
-      lossy++;
-      const r2 = got.get(e.id)?.props.replyTo;
-      if (r2 === undefined) delete e.props.replyTo; else e.props.replyTo = r2;
-    }
-    // a reply whose call is not written may find none, which the reader reports; nothing else is
-    assert.deepEqual(back.report.filter(x => !/a reply with no call/.test(x.message)), [], `seed ${seed}\n${text}`);
-    assert.ok(back.report.length <= lossy, `seed ${seed}\n${text}`);
-    assert.deepEqual(canon(back.model), canon(project(want, want.root)), `seed ${seed}\n${text}`);
+    const m = generate(seed), text = write(m), back = read(text);
+    hints += text.split('%% id:').length - 1; replyTo += text.split('%% reply-to:').length - 1;
+    assert.doesNotMatch(text, /%% not written/, `seed ${seed}\n${text}`);
+    assert.deepEqual(back.report, [], `seed ${seed}\n${text}`);
+    assert.deepEqual(canon(back.model), canon(project(m, m.root)), `seed ${seed}\n${text}`);
   }
-  assert.ok(lossy > 0 && lossy < replies / 4, `${lossy} of ${replies} replies' calls are not written`);
   assert.ok(hints > 500, `${hints} ids are written as hints`);
+  assert.ok(replyTo > 10, `${replyTo} replies' calls are written as hints`);
 });
 
 test('a file with every construct on Mermaid\'s sequence page gives the pinned report (R1, R4)', () => {
@@ -151,7 +141,7 @@ test('a file with every construct on Mermaid\'s sequence page gives the pinned r
   assert.deepEqual(v.nodeIds, ['Alice', 'Bob', 'Boundary', 'J', 'API', 'Auth', 'api', 'Carol', 'Dave', 'Carl', 'D']);
   assert.deepEqual([node('Bob').props, node('J').label, node('API').label, node('Auth').label, node('D').label, node('D').props],
     [{ stereotypes: ['actor'] }, 'John', 'Public API', 'Auth Service', 'Donald', { stereotypes: ['actor'] }]);
-  assert.deepEqual(node('api'), { id: 'api', type: 'uml.Lifeline', label: 'api', props: { represents: 'ShopApi' } });
+  assert.deepEqual(node('api'), { id: 'api', type: 'uml.Lifeline', label: 'api : ShopApi' }); // the alias as Mermaid shows it: no %% represents: above it
   // arrows, replies and their calls, create and destroy
   assert.deepEqual(['Solid line with arrowhead', 'Dotted line with arrowhead', 'Solid, open arrow', 'Hi Carl!', 'We are too many', 'I agree'].map(l => [msg(l).id, msg(l).props]), [
     ['Alice-J-2', { sort: 'call' }], ['J-Alice-2', { sort: 'reply', replyTo: 'Alice-J-2' }], ['Alice-J-7', { sort: 'async' }],
@@ -193,14 +183,14 @@ test('+, -, activate and deactivate are reported only where they disagree with t
     '11 B->>A: its - is not read: activations are derived, and a bar ends at the last reply to its call']);
 });
 
-test('participants: an alias name : Type, an encoded colon kept in the label, an actor created; a title statement; a %% id: above anything', () => {
-  const r = read(['sequenceDiagram', 'title: Paying', '%% id: the-api', 'participant api as api : Shop<br>Api', 'participant w as a#58; b', '%% id: m1',
+test('participants: an alias name : Type under %% represents:, a colon in a plain alias, an encoded colon kept in the label, an actor created; a title statement; a %% id: above anything', () => {
+  const r = read(['sequenceDiagram', 'title: Paying', '%% id: the-api', '%% represents: Shop<br>Api', 'participant api as api : Shop<br>Api', 'participant w as a#58; b', 'participant s as Service: v2', '%% id: m1',
     'api->>w: go', 'create actor x as X', 'w->>x: make', '%% id: f', '%% operand-id: f-yes', 'alt yes', '%% id: f-no', 'else no', 'end'].join('\n'));
   const v = r.model.views[0];
   assert.deepEqual(r.report, []);
   assert.equal(r.model.title, 'Paying');
   assert.deepEqual(r.model.nodes, [{ id: 'the-api', type: 'uml.Lifeline', label: 'api', props: { represents: 'Shop\nApi' } }, { id: 'w', type: 'uml.Lifeline', label: 'a: b' },
-    { id: 'x', type: 'uml.Lifeline', label: 'X', props: { stereotypes: ['actor'] } }]);
+    { id: 's', type: 'uml.Lifeline', label: 'Service: v2' }, { id: 'x', type: 'uml.Lifeline', label: 'X', props: { stereotypes: ['actor'] } }]);
   assert.deepEqual(v.edges.map(e => [e.id, e.from, e.to, e.props.sort]), [['m1', 'the-api', 'w', 'call'], ['w-x', 'w', 'x', 'create']]);
   assert.deepEqual(v.fragments, [{ id: 'f', type: 'uml.CombinedFragment', props: { operator: 'alt' }, members: [{ id: 'f-yes', type: 'uml.InteractionOperand', label: 'yes' }, { id: 'f-no', type: 'uml.InteractionOperand', label: 'no' }] }]);
 });
@@ -219,6 +209,20 @@ test('text over the size limit is refused with a report; a large file under it r
     'sequenceDiagram\n%% use: u\nNote over ' + Array.from({ length: 100000 }, (_, k) => `P${k}`).join(',') + ': ref x\n',
     'sequenceDiagram\n' + 'A->>B: x;'.repeat(60000)];
   for (const h of hostile) { const t = performance.now(); read(h); assert.ok(performance.now() - t < 5000, `${h.slice(16, 40)}: ${performance.now() - t} ms`); }
+  // a reply that walks past many answered calls under one open call; an alt or a par with many operands (review of 3.6)
+  const past = 'sequenceDiagram\n' + 'A->>B\n'.repeat(80000) + 'A->>B\nopt\nB-->>A\nend\n' + 'B-->>A\n'.repeat(80000);
+  for (const h of [past, 'sequenceDiagram\npar\n' + 'and\n'.repeat(260000) + 'end\n', 'sequenceDiagram\nalt\n' + 'else\n'.repeat(209000) + 'end\n']) {
+    assert.ok(h.length < 1 << 20);
+    const t = performance.now(), back = read(h).model, t2 = performance.now();
+    write(back);
+    assert.ok(t2 - t < 2000 && performance.now() - t2 < 2000, `${h.slice(16, 40)}: read ${t2 - t} ms, write ${performance.now() - t2} ms`);
+  }
+  // the writer on models small text gives: a deep nest, a use over many lifelines
+  for (const h of ['sequenceDiagram\n' + 'alt x\n'.repeat(5000) + 'A->>B: deep\n'.repeat(5000), 'sequenceDiagram\n%% use: u\nNote over ' + Array.from({ length: 30000 }, (_, k) => `P${k}`).join(',') + ': ref x\n']) {
+    const back = read(h).model, t = performance.now();
+    write(back);
+    assert.ok(performance.now() - t < 1000, `${h.slice(16, 40)}: write ${performance.now() - t} ms`);
+  }
   const many = { schemaVersion: 2, nodes: [{ id: 'A', type: 'uml.Lifeline', label: 'A' }, { id: 'B', type: 'uml.Lifeline', label: 'B' }],
     views: [{ id: 'v', diagram: 'uml.sequence', nodeIds: ['A', 'B'], edges: Array.from({ length: 20000 }, (_, k) => ({ id: `e${k}`, type: 'uml.Message', from: 'A', to: 'B', props: { sort: 'call' } })) }] };
   const t3 = performance.now(), wrote = write(many);
@@ -264,15 +268,48 @@ test('the writer names in comments what it cannot write, and the reader passes o
   assert.deepEqual(text.split('\n').filter(l => l.includes('not written')).map(l => l.trim()), [
     '%% not written: k (uml.Class)', '%% not written: x (uml.Message)', '%% not written: f (uml.CombinedFragment)', '%% not written: f.1 (uml.InteractionOperand)',
     '%% not written: m1: sort shout, written as a call', '%% not written: m2: sort create: the lifeline is in the diagram before it, written as a call',
-    '%% not written: m4: replyTo m1, which is not the call the reader finds', '%% not written: v: the order of its lifelines: Mermaid places a lifeline a message creates after the others',
+    '%% not written: v: the order of its lifelines: Mermaid places a lifeline a message creates after the others',
     '%% not written: a: stereotype boundary', '%% not written: u: covers a, c, which are not lifelines next to each other in order', '%% not written: g.2: no guard, read as else']);
+  assert.match(text, /%% reply-to: m1\n {2}b-->>-a:\n/);
   const back = read(text);
   assert.deepEqual(back.report, []);
   assert.deepEqual(back.model.views[0].nodeIds, ['a', 'b', 'c']);
   assert.deepEqual(back.model.views[0].edges.map(e => [e.id, e.props.sort, e.props.replyTo ?? e.props.covers ?? null]),
-    [['m1', 'call', null], ['m2', 'call', null], ['m3', 'create', null], ['m4', 'reply', 'm2'], ['u', undefined, ['a', 'b', 'c']]]);
+    [['m1', 'call', null], ['m2', 'call', null], ['m3', 'create', null], ['m4', 'reply', 'm1'], ['u', undefined, ['a', 'b', 'c']]]);
   assert.equal(write(m, 'nope'), '%% not written: view nope, which the model does not have\n');
   const classes = json('../examples/sales-classes.json');
   assert.equal(write(classes), '%% not written: the model, which has no uml.sequence view\n');
   assert.match(write(classes, classes.views[0].id), /^%% not written: view .*, not a uml\.sequence one\n$/);
+});
+
+test('a reply written outside its broken fragment keeps its call, through %% reply-to: (review of 3.6)', () => {
+  const M = (id, from, to, sort, more) => ({ id, type: 'uml.Message', from, to, ...more, props: { sort, ...more?.props } });
+  const m = { schemaVersion: 2, nodes: [{ id: 'A', type: 'uml.Lifeline', label: 'A' }, { id: 'B', type: 'uml.Lifeline', label: 'B' }],
+    views: [{ id: 'v', diagram: 'uml.sequence', nodeIds: ['A', 'B'], edges: [M('c1', 'A', 'B', 'call'), M('c2', 'A', 'B', 'call'),
+      M('r1', 'B', 'A', 'reply', { parent: 'g.1', props: { replyTo: 'c2' } }), M('t', 'A', 'B', 'async'), M('r2', 'B', 'A', 'reply', { parent: 'g.2', props: { replyTo: 'c2' } })],
+    fragments: [{ id: 'g', type: 'uml.CombinedFragment', props: { operator: 'alt' }, members: [{ id: 'g.1', type: 'uml.InteractionOperand', label: 'a' }, { id: 'g.2', type: 'uml.InteractionOperand', label: 'b' }] }] }] };
+  const text = write(m), back = read(text);
+  assert.deepEqual(text.split('\n').filter(l => l.includes('not written')).map(l => l.trim()), ["%% not written: g: its occurrences are not one run in the view's edges"]);
+  assert.deepEqual(back.report, []);
+  assert.deepEqual(back.model.views[0].edges.map(e => [e.id, e.parent ?? null, e.props.replyTo ?? null]),
+    [['c1', null, null], ['c2', null, null], ['r1', 'g.1', 'c2'], ['t', null, null], ['r2', null, 'c2']]);
+  // a reply-to the reader cannot follow is reported
+  assert.deepEqual(read('sequenceDiagram\nA->>B: c\n%% reply-to: nope\nB-->>A: r\n').report.map(x => `${x.line} ${x.message}`), ['4 B-->>A: reply-to nope is not an earlier call from A to B, so it is not read']);
+});
+
+test('text keeps the spaces at its ends, an empty text is named, a lifeline with no label reads as its name, par_over is a keyword (review of 3.6)', () => {
+  const L = (id, label, props) => ({ id, type: 'uml.Lifeline', ...(label !== undefined ? { label } : {}), ...(props ? { props } : {}) });
+  const m = { schemaVersion: 2, nodes: [L('a', ' '), L('b', ' B '), L('c', undefined, { represents: 'T' }), L('par_over', 'par_over')],
+    views: [{ id: 'v', diagram: 'uml.sequence', nodeIds: ['a', 'b', 'c', 'par_over'], edges: [
+      { id: 'm1', type: 'uml.Message', from: 'a', to: 'b', label: '  padded  ', parent: 'o.1', props: { sort: 'call' } },
+      { id: 'm2', type: 'uml.Message', from: 'par_over', to: 'b', label: '', parent: 'p.1', props: { sort: 'call' } }],
+    fragments: [{ id: 'o', type: 'uml.CombinedFragment', props: { operator: 'opt' }, members: [{ id: 'o.1', type: 'uml.InteractionOperand', label: ' g ' }] },
+      { id: 'p', type: 'uml.CombinedFragment', props: { operator: 'opt' }, members: [{ id: 'p.1', type: 'uml.InteractionOperand', label: '' }] }] }] };
+  const text = write(m), back = read(text), v = back.model.views[0];
+  assert.match(text, /participant L_par_over as par_over\n/);
+  assert.deepEqual(text.split('\n').filter(l => l.includes('not written')).map(l => l.trim()),
+    ['%% not written: c: no label, read as its name', '%% not written: p.1: an empty guard, read as none', '%% not written: m2: an empty label, read as none']);
+  assert.deepEqual(back.report, []);
+  assert.deepEqual(back.model.nodes.map(n => [n.id, n.label, n.props?.represents ?? null]), [['a', ' ', null], ['b', ' B ', null], ['c', 'c', 'T'], ['par_over', 'par_over', null]]);
+  assert.deepEqual([v.edges[0].label, v.fragments[0].members[0].label, v.edges[1].from], ['  padded  ', ' g ', 'par_over']);
 });
