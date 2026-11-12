@@ -1,0 +1,106 @@
+import { esc, fit, textW } from '../core/text.js';
+import { SHAPE, r2 } from '../draw/shapes.js';
+import '../typed/draw.js'; // SHAPE.classifier, whose ports the closed package takes
+
+/* ---------- owners on the picture (work package 2.2, notes/stage-2.md §4 to §7) ----------
+   What the class, package and object views share: which shown package is a box and what it holds (§4.1), the names drawn
+   with the owners the view does not show (§6), the package's shape, open and closed (§5), and the rules about owners and
+   boxes (§7, §10.3). Only lib/umlimator-all.js holds this file. */
+
+const OWN_OBJ = x => x !== null && typeof x === 'object' && !Array.isArray(x), OWN_ARR = x => (Array.isArray(x) ? x : []);
+const OWN_BOXES = ['uml.Package']; // the node types that may be a box (§4.1, 1)
+// the types of rows 1 to 3 whose owner is a package (rule owner-kinds); comments are not checked
+const OWNED = ['uml.Class', 'uml.Interface', 'uml.Enumeration', 'uml.DataType', 'uml.PrimitiveType', 'uml.Package', 'uml.InstanceSpecification'];
+const ownName = x => String(x.label ?? x.id);
+const stereoOf = x => OWN_ARR(OWN_OBJ(x.props) ? x.props.stereotypes : null).filter(t => t != null && t !== '').map(String);
+
+// every node of a model by id (the first of an id), and the chain of its owners, nearest first, with no cycle
+function ownIndex(model) {
+  const at = new Map(); OWN_ARR(OWN_OBJ(model) ? model.nodes : null).forEach(n => { if (OWN_OBJ(n) && typeof n.id === 'string' && !at.has(n.id)) at.set(n.id, n); });
+  const chain = id => { const out = [], seen = new Set([id]); for (let p = (at.get(id) || {}).parent; p != null && at.has(p) && !seen.has(p); p = at.get(p).parent) { seen.add(p); out.push(p); } return out; };
+  return { at, chain };
+}
+
+/* A view's picture of its owners: { ids, owner(id), boxes, name(id), full(id) }. ids: the nodes it shows; owner(id): an
+   element's owner on the picture, its nearest shown owner that may be a box, or null (§4.1, 2); boxes: the open packages, in
+   the registry's format (registry.js boxes), each holding exactly the shown elements whose owner on the picture it is, and
+   the boxes nested in it by `parent`; name(id): the drawn name, with the owners between it and its owner on the picture,
+   or with none from the view's subject when that is one of its owners, else from the top (§6); full(id): from the top */
+function ownersOn(model, view) {
+  const { at, chain } = ownIndex(model), ids = OWN_ARR(OWN_OBJ(view) ? view.nodeIds : null).filter(id => at.has(id)), shown = new Set(ids);
+  const ow = new Map(ids.map(id => [id, chain(id).find(p => shown.has(p) && OWN_BOXES.includes(at.get(p).type)) ?? null])), owner = id => ow.get(id) ?? null;
+  const upTo = (id, stop) => { const c = chain(id), k = c.indexOf(stop); return [...(k < 0 ? c : c.slice(0, k)).reverse(), id].map(x => ownName(at.get(x))).join('::'); };
+  const full = id => upTo(id, null), subject = OWN_OBJ(view) ? view.subject : null;
+  const name = id => { const o = owner(id); return upTo(id, o != null ? o : chain(id).includes(subject) ? subject : null); };
+  const open = new Set(ids.map(owner).filter(x => x != null));
+  const boxes = ids.filter(id => open.has(id)).map(id => { const p = at.get(id), st = stereoOf(p), held = ids.filter(x => owner(x) === id), o = owner(id), nm = name(id);
+    return { id, label: ownName(p), title: [...st.map(t => `«${t}»`), nm].join(' '), nodeIds: held.filter(x => !open.has(x)), ...(o != null ? { parent: o } : {}), shape: 'package',
+      aria: `Package ${nm}${st.length ? ` (${st.join(', ')})` : ''}, holding ${held.length} element${held.length === 1 ? '' : 's'}` }; });
+  return { ids, owner, boxes, name, full, open, chain, at };
+}
+
+// the reading order of a view's elements (§5): each box, then what it holds, depth first; the rest in the view's order
+function readingOrder(pic) {
+  const out = [], put = o => pic.ids.filter(id => pic.owner(id) === o).forEach(id => { out.push(id); if (pic.open.has(id)) put(id); });
+  put(null);
+  return out;
+}
+
+// a line between a package and something it holds, at any depth (§7): a, b node ids
+const holdsLine = (pic, a, b) => [[a, b], [b, a]].some(([p, x]) => (pic.at.get(p) || {}).type === 'uml.Package' && pic.chain(x).includes(p));
+
+// the Owner field (registry.js owners): every package of the model by its name from the top, for an element a package may own
+function ownerChoices(model, x) {
+  if (!OWN_OBJ(x) || !(OWNED.includes(x.type) || x.type === 'uml.Comment') || x.from != null) return null;
+  const { at, chain } = ownIndex(model), full = id => [...chain(id).reverse(), id].map(k => ownName(at.get(k))).join('::');
+  return [...at.values()].filter(n => n.type === 'uml.Package').map(n => ({ id: n.id, label: full(n.id) }));
+}
+
+/* ---- the rules about owners and boxes (§9.3, §10.3). Each problem: { level, rule, path, message, ids } ---- */
+const OWNER_RULES = {
+  'owner-kinds': 'a classifier, package or instance is owned by a package',
+  'line-inside': 'a line between a package and something it holds is not drawn',
+  'own-boxes': 'a view\'s hand-written containers are ignored where the type gives boxes',
+};
+// model: the owner-kinds rule; view (the type's view): line-inside and own-boxes for it, lines as `drawn(model, view)` gives
+// them ({ e, from, to }, the ends as nodes, before a line between a package and what it holds is left out)
+function ownerProblems(model, view, lines) {
+  const out = [], say = (rule, path, ids, msg) => out.push({ level: 'warning', rule, path, ids, message: `${rule}: ${msg}` });
+  const all = new Map(), put = (x, kind) => { if (OWN_OBJ(x) && typeof x.id === 'string' && !all.has(x.id)) { all.set(x.id, { x, kind }); OWN_ARR(x.members).forEach(m => put(m, 'member')); } };
+  OWN_ARR(model.nodes).forEach(n => put(n, 'node')); const q = id => JSON.stringify(ownName((all.get(id) || { x: { id } }).x));
+  OWN_ARR(model.nodes).forEach((n, i) => { if (!OWN_OBJ(n) || !OWNED.includes(n.type) || n.parent == null || !all.has(n.parent)) return;
+    const p = all.get(n.parent).x; if (p.type !== 'uml.Package') say('owner-kinds', `nodes[${i}].parent`, [n.id, p.id], `${q(n.id)} is owned by ${q(p.id)}, a ${String(p.type).split('.').pop()}, not a package`); });
+  if (!view) return out;
+  const vi = OWN_ARR(model.views).indexOf(view), pic = ownersOn(model, view);
+  lines.forEach(({ e, from, to }) => { if (holdsLine(pic, from, to)) say('line-inside', `views[${vi}]`, [e.id, from, to], `${e.id}, between ${q(from)} and ${q(to)}, which one holds, is not drawn in view ${JSON.stringify(view.id)}`); });
+  if (OWN_ARR(view.containers).length) say('own-boxes', `views[${vi}].containers`, [view.id], `view ${JSON.stringify(view.id)} draws its packages as boxes; its own containers are ignored`);
+  return out;
+}
+
+/* ---- the package's shape (§5): SHAPE.package, closed as a node, open as a box's frame ---- */
+const PK = { pad: 12, gap: 10, name: 13, st: 11, sth: 14, nl: 18, tab: 8, minW: 96, maxW: 320 };
+const pkTexts = n => [...OWN_ARR(n.stereotypes).map(t => [`«${t}»`, PK.st]), [n.label ?? '', PK.name]];
+SHAPE.package = {
+  // closed: a folder, its body the node's box and its empty tab above it (UML 2.5.1, 12.2.4), the stereotypes and the name
+  // centred in the body; as wide as its widest text, within 96 and 320 px (a longer one is cut)
+  size: n => ({ w: Math.ceil(Math.min(PK.maxW, Math.max(PK.minW, ...pkTexts(n).map(([t, px]) => textW(t, px) + 2 * PK.pad)))), h: 2 * PK.gap + OWN_ARR(n.stereotypes).length * PK.sth + PK.nl }),
+  out: SHAPE.classifier.out, face: n => [n.y, n.y + n.h], inset: () => 0, ports: SHAPE.classifier.ports,
+  draw(n, c, f) {
+    const { x, y, w, h } = n, tw = Math.min(48, Math.round(w * .4)), cx = r2(x + w / 2), st = OWN_ARR(n.stereotypes); let ty = y + PK.gap;
+    const tx = st.map(t => { const s = `<text x="${cx}" y="${r2(ty + 11)}" text-anchor="middle" class="c-st" fill="var(--um-muted)" style="font:400 ${PK.st}px var(--um-sans)">${esc(fit(`«${t}»`, PK.st, w - 2 * PK.pad))}</text>`; ty += PK.sth; return s; });
+    tx.push(`<text x="${cx}" y="${r2(ty + 14)}" text-anchor="middle" class="c-name" fill="var(--um-text)" style="font:600 ${PK.name}px var(--um-sans)" data-o="${esc(n.id)}">${esc(fit(n.label ?? '', PK.name, w - 2 * PK.pad))}</text>`);
+    return `<g class="node package" data-id="${esc(n.id)}" data-shape="package" tabindex="-1" role="img" aria-label="${esc(n.aria || 'Package ' + (n.label ?? ''))}">`
+      + `<path d="M${x} ${y}V${y - PK.tab}H${r2(x + tw)}V${y}" class="n-det" fill="${f}" stroke="${c}"/><rect x="${x}" y="${y}" width="${w}" height="${h}" class="n-mask"/>`
+      + `<rect x="${x}" y="${y}" width="${w}" height="${h}" class="n-body" fill="${f}" stroke="${c}"/><g class="c-head" data-band="${r2(y)} ${r2(y + h)}">${tx.join('')}</g></g>`;
+  },
+  // open: the box's border, and a tab in its header room at the top left, closed by a line under it and one on its right,
+  // holding the stereotypes and the name (the box's title, cut to its width). The border has class family-box, which the
+  // canvas outlines on selection and under a drag; the title keeps class family-title, which the audit and the canvas read
+  frame(f) {
+    const hd = Math.min(f.w - 16, textW(f.title, 11) + 16), tr = r2(f.x + 8 + hd);
+    return `<rect class="family-box" x="${f.x}" y="${f.y}" width="${f.w}" height="${f.h}" stroke="var(--um-muted)"/><path d="M${f.x} ${r2(f.y + 24)}H${tr}V${f.y}" class="pk-tab" fill="none" stroke="var(--um-muted)" stroke-width="1.2"/>`
+      + `<text class="family-title" x="${r2(f.x + 12)}" y="${r2(f.y + 16)}" fill="var(--um-text)" style="font:600 11px var(--um-sans)" data-t="ft" data-o="${esc(f.id)}">${esc(fit(f.title ?? f.label ?? f.id, 11, hd - 4))}</text>`;
+  },
+};
+
+export { OWN_BOXES, OWNER_RULES, ownersOn, readingOrder, holdsLine, ownerChoices, ownerProblems };

@@ -26,6 +26,8 @@ tests/typed-edit.html: editing a typed view (1.7): each gesture's edit event, by
 tests/notation.html: notation (1.5): a classifier, every line end and end labels from svgOf, in both themes and three fonts: text in its face, ends on outlines.
 tests/class.html: the class diagram (1.9): examples/sales-classes.json drawn in both themes and three fonts, edited as text and by the picker through apply(), an edit to paint on 40 classes; the fixtures tests/class-minimal.json and
   tests/class-stress.json in both themes and three fonts, an edit to paint on the stress fixture.
+tests/package.html: the package diagram (2.2): 03-package.json in both themes, three fonts and both directions (boxes hold exactly their contents, titles, ends, names, contrast,
+  legend), a closed package, and each gesture by pointer and keyboard (palette, import by the picker, visibility, Owner, a drop into a box, a box's name, hide, delete).
 tests/class-editor.html: examples/class-editor.html, the class diagram editor, in a frame: an edit applied by the host, undone and redone, one refused.
 tests/type-hooks.html: a type's definition on the canvas (the sequence spike's §1): a line's props, edits.connect, layout.run, draw's layers.
 tests/timeaxis.html: the time-axis layout and its shapes (3.2): each T case in both themes and three fonts, laid out clean; hit areas on stems, messages, loops, guards, frames and uses.
@@ -90,7 +92,7 @@ def dom(path, done, wait=60, motion=False):
 
 failed = False
 # the motion pass: tests/motion.html runs with motion on, so a bug in what animates can't hide behind reduced motion
-for page, motion in [(p, False) for p in ("tests/embed.html", "tests/edit.html", "tests/typed-edit.html", "tests/contrast.html", "tests/rules.html", "tests/marks.html", "tests/change.html", "tests/unfold.html", "tests/unfold-page.html", "tests/stories.html", "tests/insight.html", "tests/page-handle.html", "tests/element.html", "tests/pieces.html", "tests/state.html", "tests/page-state.html", "tests/shapes.html", "tests/aids.html", "tests/notation.html", "tests/class.html", "tests/class-editor.html", "tests/type-hooks.html", "tests/core-diet.html", "tests/timeaxis.html")] + [("tests/motion.html", True), ("tests/page-motion.html", True)]:
+for page, motion in [(p, False) for p in ("tests/embed.html", "tests/edit.html", "tests/typed-edit.html", "tests/contrast.html", "tests/rules.html", "tests/marks.html", "tests/change.html", "tests/unfold.html", "tests/unfold-page.html", "tests/stories.html", "tests/insight.html", "tests/page-handle.html", "tests/element.html", "tests/pieces.html", "tests/state.html", "tests/page-state.html", "tests/shapes.html", "tests/aids.html", "tests/notation.html", "tests/class.html", "tests/class-editor.html", "tests/package.html", "tests/type-hooks.html", "tests/core-diet.html", "tests/timeaxis.html")] + [("tests/motion.html", True), ("tests/page-motion.html", True)]:
     t = dom(page, lambda t: 'id="result"' in t, motion=motion)
     m = re.search(r'<pre id="result">(.*?)</pre>', t, re.S)
     if not m:  # each check names itself in the page title: say where it stopped
