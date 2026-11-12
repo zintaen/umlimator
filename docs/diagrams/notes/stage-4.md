@@ -456,6 +456,34 @@ Each problem is `{ level, rule, path, message, ids }`, as in `class.js`.
   from every extend that names it (`refs: { 'uml.Extend': { 'props.extensionPoints': 'drop' } }`).
 - A use case dropped into a subject's box, or the Owner field, reparents it (stage 2's gestures, through `owners`).
 
+### 8.5 As built in 4.4
+
+Where `src/uml/usecase.js` departs from §8.1 to §8.4 and §4.1:
+
+- **The ellipse is 1.42 times its text block, not 1.3.** A box 1.3 times as wide and as tall does not fit inside its
+  ellipse at the corners ((1/1.3)² × 2 = 1.18 > 1); about √2 does, so a long first or last line never leaves the ellipse.
+  It is 96 × 44 px at least.
+- **Actors first, by the type.** `rankFlip` sees a line only, not its ends' types, so it cannot turn an association drawn
+  from a use case; and a generalization between two actors, turned, put the specialized actor in a column of its own
+  between the actors and the subject (`08-use-case.json` then had a crossing in both directions). So the layout moves
+  every actor shown outside a box into the first column of the host's ranking (the top row laid out down), in the order of
+  the rows of the use cases it is associated with, a specialization after its general, and the rest one column on, on a
+  copy of `pos`. A view with any pin keeps the host's ranking as it is. `edits.connect` adds an association drawn from a
+  use case to an actor from the actor, so the model says it the same way. `08-use-case.json` then lays out clean right and
+  down, in Node and in Chrome.
+- **An extend's label is cut at 280 px** (S7's `cut`), as the state, activity and overview lines are: `«extend» (payment)
+  [the shopper has a voucher code]` is about 260 px. Other use case lines keep 150 px.
+- **Stereotypes** are drawn over a use case's name and under an actor's figure, and on a subject's header line before its
+  name (its 24 px header room holds one line), as the box's title already is.
+- **A closed subject** is the classifier shape with its name only ("Subject Online bookshop").
+- **The Owner field** offers a use case every subject and package, and an actor, a subject or a comment every package, by
+  its name.
+- **An extension point is deleted** by the command (`delete`), which drops it from every extend; the canvas has no gesture
+  that deletes a member row, for any type (the class type's members neither): a canvas change, outside this package.
+- **P1:** on a generated view of 50 elements and 60 lines (eight actors, a subject holding 41 use cases) a use case renamed
+  is laid out and drawn in 31 to 60 ms of CPU, best of five, a full layout in 35 to 90 ms; `tests/usecase.test.mjs`
+  holds the budgets.
+
 ## 9. The activity type
 
 ### 9.1 Drawing
