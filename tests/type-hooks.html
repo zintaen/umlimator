@@ -326,7 +326,11 @@ try {
   h.update(apply(SHP, [{ op: 'set', id: 'w', path: 'label', value: 'Ship it' }]));
   check('4.1 an update that changes no box keeps every place, and the region boxes', ['p', 'q', 'u'].map(at).join(' ') === was && famAt('S.r1') === wasBox, [was, ['p', 'q', 'u'].map(at).join(' ')]);
   h.update(apply(SHP, [{ op: 'reparent', id: 'q', parent: 'S.r1' }]));
-  check('4.1 a move into the other region lays the view out again: one region holds both, no region box', !pick('.family[data-family="S.r1"]') && !!pick('.family[data-family="S"]'));
+  check('4.1 a move into the other region lays the view out again: one region holds both, its box only (§6.1, 2)', !!pick('.family[data-family="S.r1"]') && !pick('.family[data-family="S.r2"]') && !!pick('.family[data-family="S"]'));
+  // F2 on a line with no id (a positional id, d->u#0): rename is not asked with an id the model does not hold
+  h.update({ ...SHP, edges: SHP.edges.map(({ id, ...e }) => id === 'e2' ? e : { id, ...e }) }); said.length = 0;
+  clickLine(lineI()); key('F2'); pick('.um-rename').value = 'in stock'; key('Enter', {}, pick('.um-rename'));
+  check('4.1 F2 on a line with no id: rename not asked with its positional id', !said.some(s => s[0] === 'rename'), said);
   h.destroy();
 } catch (x) { out.fail.push('threw: ' + (x && x.stack || x)); }
 const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);

@@ -35,13 +35,14 @@ function ownIndex(model, members = []) {
    or with none from the view's subject when that is one of its owners, else from the top (§6); full(id): from the top.
    look (notes/stage-4.md §8.2, §6.1), each field optional: boxTypes, the node types that may be a box (OWN_BOXES); qualify
    false, names drawn without their owners; members, member types that are boxes too (a state's regions): one is shown when
-   its node is and it holds something shown, and is a box only beside another of its node's (with one, what it holds sits in
-   the node's box); shape(x) and word(x), a box's shape and the word its accessible name starts with ('package', 'Package') */
+   its node is and it holds something shown, and is a box when its node has two or more in the model (with one, what it
+   holds sits in the node's box); shape(x) and word(x), a box's shape and the word its accessible name starts with ('package', 'Package') */
 function ownersOn(model, view, look = {}) {
   const { boxTypes = OWN_BOXES, qualify = true, members = [], shape = () => 'package', word = () => 'Package' } = look;
   const { at, chain, up, mems } = ownIndex(model, members), ids = OWN_ARR(OWN_OBJ(view) ? view.nodeIds : null).filter(id => at.has(id) && !mems.has(id)), seen = new Set(ids);
   const live = new Set(ids.flatMap(id => chain(id).filter(p => mems.has(p) && seen.has(up.get(p))))), place = m => OWN_ARR(at.get(up.get(m)).members).indexOf(at.get(m)); // members holding something shown
-  const kept = [...live].filter(m => [...live].some(k => k !== m && up.get(k) === up.get(m))).sort((a, b) => place(a) - place(b)), all = [...ids, ...kept], shown = new Set(all);
+  const many = m => OWN_ARR(at.get(up.get(m)).members).filter(x => OWN_OBJ(x) && members.includes(x.type)).length > 1; // §6.1, 2: two or more in the model
+  const kept = [...live].filter(many).sort((a, b) => place(a) - place(b)), all = [...ids, ...kept], shown = new Set(all);
   const ow = new Map(all.map(id => [id, chain(id).find(p => shown.has(p) && (mems.has(p) || boxTypes.includes(at.get(p).type))) ?? null])), owner = id => ow.get(id) ?? null;
   const upTo = (id, stop) => { const c = chain(id), k = c.indexOf(stop); return [...(k < 0 ? c : c.slice(0, k)).reverse(), id].map(x => ownName(at.get(x))).join('::'); };
   const full = id => upTo(id, null), subject = OWN_OBJ(view) ? view.subject : null;

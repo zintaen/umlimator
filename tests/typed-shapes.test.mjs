@@ -117,7 +117,7 @@ test('a typed line with no inset at either end is drawn from the router\'s own p
   assert.deepEqual([l.a, l.b], [g.edges[0].pts[0], g.edges[0].pts.at(-1)]);
 });
 
-test('ownersOn\'s look: box types, names unqualified, a state\'s regions as boxes only when two hold something shown, shape and word', () => {
+test('ownersOn\'s look: box types, names unqualified, a state\'s regions as boxes when it has two in the model, shape and word', () => {
   const pic = ownersOn(SHAPES_MODEL, SHAPES_MODEL.views[0], LOOK);
   assert.deepEqual(pic.boxes.map(b => [b.id, b.parent ?? null, b.nodeIds, b.shape]), [['S', null, [], 'package'], ['S.r1', 'S', ['p'], 'package'], ['S.r2', 'S', ['q'], 'package']]);
   assert.equal(pic.boxes[1].aria, 'Region left, holding 1 element');
@@ -125,9 +125,9 @@ test('ownersOn\'s look: box types, names unqualified, a state\'s regions as boxe
   assert.deepEqual(pic.ids.includes('S.r1'), false, 'a region is no node of the picture');
   assert.equal(pic.owner('p'), 'S.r1'); assert.equal(pic.owner('S.r2'), 'S');
   assert.deepEqual(readingOrder(pic).slice(-5), ['S', 'S.r1', 'p', 'S.r2', 'q'], 'regions in members order');
-  // with only one region holding something shown, what it holds sits in the state's box: no region box (§6.1, 3)
+  // with only one region holding something shown, that region is still a box: the state has two in the model (§6.1, 2)
   const one = ownersOn(SHAPES_MODEL, { ...SHAPES_MODEL.views[0], nodeIds: ['S', 'p'] }, LOOK);
-  assert.deepEqual(one.boxes.map(b => [b.id, b.nodeIds]), [['S', ['p']]]);
+  assert.deepEqual(one.boxes.map(b => [b.id, b.nodeIds]), [['S', []], ['S.r1', ['p']]]);
   // the state not shown: its regions are no boxes either
   assert.deepEqual(ownersOn(SHAPES_MODEL, { ...SHAPES_MODEL.views[0], nodeIds: ['p', 'q'] }, LOOK).boxes, []);
   // names: qualified by default (stage 2), not with qualify false
@@ -149,7 +149,7 @@ test('a box whose id is a member\'s is placed by blockPos and holds exactly its 
   }
   // a reparent to a member applies (apply()'s reparent takes a member as the parent), and the picture follows
   const m = apply(SHAPES_MODEL, [{ op: 'reparent', id: 'q', parent: 'S.r1' }]), g = mapContext(m).buildGeo('all');
-  assert.deepEqual(g.families.map(f => f.id), ['S'], 'one region holds both now: no region box');
+  assert.deepEqual(g.families.map(f => f.id).sort(), ['S', 'S.r1'], 'one region holds both now: its box, the empty one not drawn');
 });
 
 test('a typed line\'s cut: its label is cut at that width, not 150 px; a change of it lays the view out again (notes/stage-4.md S7)', () => {
@@ -199,7 +199,7 @@ const spikeStates = (scattered = false) => {
   else {
     const inR = r => simple.filter(id => nodes.find(n => n.id === id).parent === r), top = inR(undefined);
     leafs.forEach(r => { const l = inR(r); l.slice(1).forEach((b, i) => line(l[i], b)); line(l.at(-1), l[0]); });
-    mids.forEach(r => line(inR(r)[0], r + 'c.a' === r ? r : inR(r + 'c.a')[0] || inR(r + 'c.a.ac.a')[0] || inR(r)[0]));
+    mids.forEach(r => line(inR(r)[0], inR(r + 'c.a')[0] || inR(r + 'c.a.ac.a')[0] || inR(r)[0]));
     top.slice(1).forEach((b, i) => line(top[i], b));
     leafs.forEach((r, i) => { line(inR(r).at(-1), top[i % top.length]); line(top[(i + 1) % top.length], inR(r)[1]); });
     while (edges.length < 60) line(top[edges.length % top.length], inR(leafs[edges.length % 8])[2]);

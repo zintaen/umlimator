@@ -77,7 +77,7 @@ What is left out of the subsets is in §18.
 | Q15 | The hooks and the picker (`src/typed/edit.js`) | A hook is a plain function of the model and never sees `c.picker`; only `wrap()` opens one. `I.addNode` asks for a name in `api.editor` before it calls `add` | §12 |
 | Q16 | `moveTo`'s `at` | `{ slot, pt, col }`: the drop point, no geometry | §9.4 |
 | Q17 | `blockPos` and `frameOf` | Boxes of one rank are sorted by `first()`, the index of their first line, not by any member order. Each box level adds 72 px along a right-laid flow (36 px a side), 44 px across it, and 24 px of header room (`frameOf`, `src/layout/layered.js`) | §6.2 |
-| Q18 | `nameBox` (`src/canvas/render.js`) | A node's rename field is `n.w - 58` px wide: negative for a diamond, a circle or a bar. 4.1 found that `editor`'s `place` already draws every field `Math.max(120, box.w × k)` px wide, at any zoom, so F2 on a diamond opens a 120 px field with no change | §2.3 |
+| Q18 | `nameBox` (`src/canvas/render.js`) | A node's rename field is `n.w - 58` px wide: negative for a diamond, a circle or a bar. 4.1 found that `editor`'s `place` already draws every field `Math.max(120, box.w × k)` px wide, at any zoom, so F2 on a diamond opens a 120 px field with no change. The field starts at `n.x + 50`: beside a node narrower than 50 px (a 28 px diamond, a 20 px circle, a bar), not over it; kept as it is | §2.3 |
 | Q19 | `layoutTyped` on `tests/class-stress.json` (52 nodes, 59 lines), warm runs, two machines' measures | No flags 135 to 176 ms; `reroute: false` 123 to 145 ms; `repair: false` 48 to 53 ms; both 24 ms. Port repair is the cost. `viewKey` (`context.js`) holds labels, so a label edit also runs `autoPos` again (15 to 30 ms); `layoutGraph` runs `layoutPass` twice when `labelRoom` is set | §17 |
 
 ### 2.3 The core's budget (C5, S14)
@@ -110,7 +110,7 @@ What may touch the core, each change stating its bytes in its pull request:
 | A box whose id is a member's, if `blockPos`, `withPlaces` or the drop need it (§6.3). Not needed, 0 B: they take a member's id as they are (4.1) | `src/map/context.js`, `src/canvas/render.js` | 4.1 | 200 B |
 | The new registry fields documented | `src/core/registry.js` | 4.1 | 150 B: the build keeps comments, so they count |
 
-4.1 spent 132 B (186,920 B to 187,052 B with this machine's `gzip -9`): 11 B for `cut`, 121 B for the registry's comment,
+4.1 spent 132 B (186,907 B to 187,039 B): 11 B for `cut`, 121 B for the registry's comment,
 which documents 4.9's `rows` and `word` too. The `svgOf`, rename field and member-id box rows needed nothing.
 
 | Option | For | Against |
@@ -425,8 +425,8 @@ A transition's label is the printed text. A flow's is `name [guard]`; a guard al
 
 `ownersOn(model, view, look)` gains an optional `look`: `{ boxTypes, qualify, members, shape, word }` (`shape(x)` and
 `word(x)` give a box's shape and the word its accessible name starts with, `'package'` and `'Package'` by default). A
-member of a `members` type is shown when its node is shown and it holds something shown, and is a box only beside another
-of its node's: §6.1's rules 2 and 3 are `ownersOn`'s, so the state type passes the look and nothing more. With none it is stage 2's
+member of a `members` type is shown when its node is shown and it holds something shown, and is a box when its node has
+two or more in the model: §6.1's rules 2 and 3 are `ownersOn`'s, so the state type passes the look and nothing more. With none it is stage 2's
 (`['uml.Package']`, qualified names, nodes only), so the class, package and object views do not change. The use case type
 passes `{ boxTypes: ['uml.Subject', 'uml.Package'], qualify: false }`: a subject with a shown use case is a box, and a use
 case shown without its subject keeps its own name. The state type passes `{ boxTypes: ['uml.State'], qualify: false,
@@ -659,7 +659,8 @@ A hook is a plain function of the model and never sees the canvas (Q15), and `I.
   keeping state of its own (§9.4). (4.1: for a card's drop and Alt + arrows; a line's drag and a member's move keep their
   `at` as it was.)
 - **`V` on a selected node** whose palette entry names a diagram kind in `opens` (`opens: 'uml.sequence'`,
-  `'uml.activity'`): a picker of the model's views of that kind, then `set opensView` (S18).
+  `'uml.activity'`): a picker of the model's views of that kind, then `set opensView` (S18). It is allowed under
+  `rename`.
 
 ### 12.2 Choosing the view it opens (S18)
 

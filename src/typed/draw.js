@@ -96,7 +96,8 @@ function endLabels(e, pts = e.pts, also = []) { // also: boxes to keep clear of 
 // line with ends: its style, its points trimmed for its flow, its markers; labels(i): its end labels' text.
 // First each end on a node drawn by a typed shape with an inset (a circle, a diamond: notes/stage-4.md §4.2) is slid from
 // the node's box onto its outline, as a map's on its cards: drawn[i] becomes a copy (drawnPts), so the layout's points,
-// which a memo hands back (Q13), are never changed. A shape with no inset keeps its box end; the classifier's inset is 0
+// which a memo hands back (Q13), are never changed. Every typed shape with an inset gets the
+// copy, its ends rounded; where the inset is 0 (the classifier, a package, an object) the ends stay on the box
 const insetLook = n => { const S = n && hasKey(SHAPE, n.shape) ? SHAPE[n.shape] : null; return S && S.draw && S.inset ? { ...n, S } : null; };
 TYPED.lines = ({ id, edges, drawn, lstyle, MC }) => {
   edges.forEach((e, i) => { if (e.pts) drawn[i] = drawnPts(e, insetLook); });
