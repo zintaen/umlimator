@@ -4,8 +4,13 @@
      and `draw` layers reach the picture. The canvas hooks (3.4, notes/stage-3.md §5.1), with src/typed/edit.js loaded: on a
      stand-in sequence type with a palette, slots and geo.order, each of connect, moveTo, wrap, add and remove is called by
      pointer and by keyboard, with the slot the gesture names, and the edit event carries what it returns; { error } emits
-     nothing and is said; a line to itself is drawn; a fragment shows its properties and members. Imports src/ to register
-     test types. -->
+     nothing and is said; a line to itself is drawn; a fragment shows its properties and members. 4.1's typed engine
+     (notes/stage-4.md §4.2, §6.3, §12.1), on a stand-in type with an ellipse, a diamond, a bar, a 20 px circle and a state
+     whose regions are boxes with a member's id: every line end on its shape's outline within 1 px under three fonts; F2 on a
+     line calls edits.rename by key and by a double-click; F2 on a diamond opens a field 120 px wide at least; a region box
+     is selected as a container, and a drop into it emits reparent to the region; a hook's { pick, then } opens the picker
+     and applies the choice; a name: false entry is added with no name field; V emits set opensView; moveTo's at holds
+     geo. Imports src/ to register test types. -->
 <meta charset="utf-8">
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="../lib/umlimator-theme.css">
@@ -18,6 +23,10 @@ import { registerDiagramType } from '../src/core/registry.js';
 import { apply } from '../src/core/apply.js';
 import '../src/uml/frame.js'; // SHAPE.lifeline and SHAPE.frame, the stand-in's heads and fragments
 import '../src/typed/edit.js'; // TYPED.edit: the type's hooks on the canvas (3.4)
+import { SHAPE, boxOut, r2 } from '../src/draw/shapes.js';
+import { esc } from '../src/core/text.js';
+import { layoutTyped } from '../src/typed/layout.js';
+import { ownersOn, readingOrder } from '../src/uml/owners.js';
 const out = { ok: [], fail: [] };
 const check = (name, cond, info) => { document.title = name; if (cond) out.ok.push(name); else out.fail.push(name + (info === undefined ? '' : ': ' + JSON.stringify(info))); };
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
@@ -207,6 +216,117 @@ try {
   const BARE = { ...SEQ, views: [{ ...SEQ.views[0], diagram: 'test.bare' }] };
   h = mount('s', BARE); card('f1'); key('Delete');
   check('no remove hook: Delete on a view\'s own fragment deletes it, which apply() takes', !!last() && same(last().commands, [{ op: 'delete', id: 'f1' }]) && !apply(BARE, last().commands).views[0].fragments.length, last());
+  h.destroy();
+
+  // ---- 4.1: the stand-in shapes (as tests/typed-shapes.test.mjs's), each with its inset and how far a point is off its outline
+  const dip = (e, u, r) => e * (1 - Math.sqrt(Math.max(0, 1 - (u / r) ** 2)));
+  const ellInset = (n, s, t) => s === 'L' || s === 'R' ? dip(n.w / 2, t - n.y - n.h / 2, n.h / 2) : dip(n.h / 2, t - n.x - n.w / 2, n.w / 2);
+  const look = inner => (n, c, f) => `<g class="node" data-id="${esc(n.id)}" data-shape="${n.shape}" tabindex="-1" role="img" aria-label="${esc(n.aria || '')}"><rect x="${n.x}" y="${n.y}" width="${n.w}" height="${n.h}" class="n-mask" fill="transparent"/>${inner(n, c, f)}</g>`;
+  const box0 = { out: boxOut(0), face: n => [n.y, n.y + n.h] };
+  Object.assign(SHAPE, {
+    'h-ellipse': { ...box0, size: () => ({ w: 140, h: 64 }), inset: ellInset, draw: look((n, c, f) => `<ellipse cx="${r2(n.x + n.w / 2)}" cy="${r2(n.y + n.h / 2)}" rx="${n.w / 2}" ry="${n.h / 2}" fill="${f}" stroke="${c}"/>`) },
+    'h-diamond': { ...box0, size: () => ({ w: 28, h: 28 }), inset: (n, s, t) => s === 'L' || s === 'R' ? n.w / 2 * Math.min(1, Math.abs(t - n.y - n.h / 2) / (n.h / 2)) : n.h / 2 * Math.min(1, Math.abs(t - n.x - n.w / 2) / (n.w / 2)),
+      draw: look((n, c, f) => { const cx = n.x + n.w / 2, cy = n.y + n.h / 2; return `<path d="M${cx} ${n.y}L${n.x + n.w} ${cy}L${cx} ${n.y + n.h}L${n.x} ${cy}Z" fill="${f}" stroke="${c}"/>`; }) },
+    'h-circle': { ...box0, size: () => ({ w: 20, h: 20 }), inset: ellInset, draw: look((n, c) => `<circle cx="${n.x + 10}" cy="${n.y + 10}" r="10" fill="${c}"/>`) },
+    'h-bar': { ...box0, size: () => ({ w: 6, h: 64 }), inset: () => 0, draw: look((n, c) => `<rect x="${n.x}" y="${n.y}" width="${n.w}" height="${n.h}" fill="${c}"/>`) } });
+  const OFF = { 'h-ellipse': (n, [x, y]) => Math.abs(Math.hypot((x - n.x - n.w / 2) / (n.w / 2), (y - n.y - n.h / 2) / (n.h / 2)) - 1) * Math.min(n.w, n.h) / 2,
+    'h-diamond': (n, [x, y]) => Math.abs(Math.abs(x - n.x - n.w / 2) / (n.w / 2) + Math.abs(y - n.y - n.h / 2) / (n.h / 2) - 1) * n.w / 2 / Math.SQRT2,
+    'h-circle': (n, [x, y]) => Math.abs(Math.hypot(x - n.x - 10, y - n.y - 10) - 10) };
+  const offBox = (n, [x, y]) => { const dx = Math.max(n.x - x, 0, x - n.x - n.w), dy = Math.max(n.y - y, 0, y - n.y - n.h); return dx || dy ? Math.hypot(dx, dy) : Math.min(x - n.x, n.x + n.w - x, y - n.y, n.y + n.h - y); };
+  const SH = { 'test.Case': 'h-ellipse', 'test.Decision': 'h-diamond', 'test.Start': 'h-circle', 'test.Fork': 'h-bar' };
+  const LOOK = { boxTypes: ['test.State'], qualify: false, members: ['test.Region'], word: x => x.type === 'test.Region' ? 'Region' : 'State' };
+  const said = [];
+  registerDiagramType('test.shapes', { title: 'shapes stand-in',
+    elements: [{ type: 'test.Case', label: 'Case' }, { type: 'test.Decision', label: 'Decision', name: false }, { type: 'test.Start', label: 'Start', name: false }, { type: 'test.Use', label: 'Use', opens: 'test.sub' }, { type: 'test.Empty', label: 'Empty' }],
+    lines: [{ type: 'test.Flow', label: 'Flow' }],
+    boxes: (model, view) => ownersOn(model, view, LOOK).boxes,
+    layout({ model, view, pos, memo }) { const pic = ownersOn(model, view, LOOK), at = id => pic.at.get(id);
+      const nodes = pic.ids.filter(id => !pic.open.has(id)).map(id => { const x = at(id), shape = SH[x.type] || 'classifier', d = { id, label: x.label ?? '', type: x.type, kind: 'file', shape, aria: x.label, col: (pos[id] || [0, 0])[0], row: (pos[id] || [0, 0])[1] }; return { ...d, ...SHAPE[shape].size(d) }; });
+      const ids = new Set(nodes.map(n => n.id)), bar = id => at(id).type === 'test.Fork';
+      const edges = model.edges.filter(e => ids.has(e.from) && ids.has(e.to)).map(e => ({ id: e.id, _id: e.id, from: e.from, to: e.to, label: e.label, end: { to: 'open' }, aria: 'Flow ' + e.id, ...(bar(e.from) ? { fromSide: 'right' } : {}), ...(bar(e.to) ? { toSide: 'left' } : {}) }));
+      const g = layoutTyped({ nodes, edges, ...(pic.boxes.length ? { containers: pic.boxes } : {}), gap: 64, rgap: 64, repair: false, reroute: false }, memo);
+      return { ...g, order: [...readingOrder(pic), ...g.edges.map(e => e.id)] }; },
+    edits: {
+      rename(model, view, id, text) { said.push(['rename', id, text]); if (text === 'bad [') return { error: 'unbalanced [' };
+        return model.edges.some(e => e.id === id) ? [{ op: 'set', id, path: 'props.guard', value: text }] : null; },
+      add(model, view, entry, label, at) { said.push(['add', entry.type, label]);
+        if (entry.type === 'test.Use') return { pick: ['First sub', 'Second sub'], then: i => [{ op: 'add', element: { id: 'use1', type: entry.type, label, opensView: ['sub1', 'sub2'][i] }, view: view.id }] };
+        if (entry.type === 'test.Empty') return { pick: [], then: () => [] };
+        return null; },
+      moveTo(model, view, id, at) { said.push(['moveTo', id, !!(at && at.geo && at.geo.byId && at.geo.byId[id])]); return null; } } });
+  const Nd = (id, type, label, more = {}) => ({ id, type: 'test.' + type, label, ...more }), Ln = (id, from, to, label) => ({ id, type: 'test.Flow', from, to, ...(label ? { label } : {}) });
+  const SHP = { schemaVersion: 2,
+    nodes: [Nd('s', 'Start', ''), Nd('d', 'Decision', 'Ready?'), Nd('u', 'Case', 'Check out'), Nd('v', 'Case', 'Pay'), Nd('w', 'Case', 'Ship'), Nd('x', 'Case', 'Wrap'), Nd('f', 'Fork', ''), Nd('z', 'Case', 'Done'), Nd('j', 'Case', 'Log'),
+      Nd('S', 'State', 'Busy', { members: [{ id: 'S.r1', type: 'test.Region', label: 'left' }, { id: 'S.r2', type: 'test.Region', label: 'right' }] }), Nd('p', 'Case', 'Pick', { parent: 'S.r1' }), Nd('q', 'Case', 'Pack', { parent: 'S.r2' }),
+      Nd('o', 'Use', 'Find', { opensView: 'sub1' })],
+    edges: [Ln('e1', 's', 'd'), Ln('e2', 'd', 'u', 'yes'), Ln('e3', 'd', 'v', 'no'), Ln('e4', 'd', 'w'), Ln('e5', 'x', 'd'), Ln('e7', 'u', 'f'), Ln('e8', 'v', 'f'), Ln('e9', 'w', 'f'), Ln('e10', 'f', 'z'), Ln('e11', 'f', 'j'),
+      Ln('e12', 'x', 'u'), Ln('e14', 'z', 'u'), Ln('e16', 'p', 'q'), Ln('e17', 'z', 'p'), Ln('e18', 'j', 'o')],
+    views: [{ id: 'sh', diagram: 'test.shapes', nodeIds: ['s', 'd', 'u', 'v', 'w', 'x', 'f', 'z', 'j', 'S', 'p', 'q', 'o'] },
+      { id: 'sub1', diagram: 'test.sub', title: 'First sub', nodeIds: [] }, { id: 'sub2', diagram: 'test.sub', title: 'Second sub', nodeIds: [] }] };
+  const num = (g, k) => +g.getAttribute(k);
+  for (const family of ['serif', 'sans-serif', 'monospace']) { // three fonts: the labels, and so the layout, differ
+    el.style.setProperty('--um-sans', family); h = mount('sh', SHP);
+    const off = [], nodeAt = id => { const g = pick(`.node[data-id="${CSS.escape(id)}"]`), r = g && g.querySelector('.n-mask, .n-body');
+      if (r) return { shape: g.dataset.shape, x: num(r, 'x'), y: num(r, 'y'), w: num(r, 'width'), h: num(r, 'height') };
+      const b = pick(`.family[data-family="${CSS.escape(id)}"] .family-box`); return { shape: 'box', x: num(b, 'x'), y: num(b, 'y'), w: num(b, 'width'), h: num(b, 'height') }; };
+    all('.edge-g').forEach(g => { const v = g.querySelector('.edge').getAttribute('d').match(/-?\d+(\.\d+)?/g).map(Number);
+      [[g.dataset.from, v.slice(0, 2)], [g.dataset.to, v.slice(-2)]].forEach(([id, p]) => { const n = nodeAt(id), d = (OFF[n.shape] || offBox)(n, p); if (!(d <= 1)) off.push(`${g.dataset.from}>${g.dataset.to} at ${id} (${n.shape}): ${d.toFixed(2)} px`); }); });
+    check(`4.1 ${family}: every line end on its shape's outline within 1 px (ellipse, diamond, circle, bar, box)`, all('.edge-g').length === 15 && !off.length, off);
+    if (family !== 'monospace') h.destroy();
+  }
+  el.style.removeProperty('--um-sans');
+  // F2 on a line: edits.rename, by key and by a double-click on the selected line; its { error } said, nothing emitted
+  said.length = 0; let k0 = ed.length;
+  const lineI = id => all('.edge-g').findIndex(g => g.dataset.from === 'd' && g.dataset.to === 'u'), li = lineI();
+  clickLine(li); key('F2');
+  check('4.1 F2 on a line opens its drawn label', !!pick('.um-rename') && pick('.um-rename').value === 'yes', pick('.um-rename') && pick('.um-rename').value);
+  pick('.um-rename').value = 'in stock'; key('Enter', {}, pick('.um-rename'));
+  check('4.1 F2 on a line, by key: rename asked with the line\'s id and the text, and its commands emitted', same(said, [['rename', 'e2', 'in stock']]) && ed.length === k0 + 1 && same(last().commands, [{ op: 'set', id: 'e2', path: 'props.guard', value: 'in stock' }]), [said, last()]);
+  said.length = 0; clickLine(li); pick(`.edge-g[data-i="${li}"] .hitline`).dispatchEvent(new MouseEvent('dblclick', { bubbles: true, composed: true }));
+  check('4.1 a double-click on the selected line opens the same field', !!pick('.um-rename'));
+  pick('.um-rename').value = 'bad ['; key('Enter', {}, pick('.um-rename'));
+  check('4.1 rename by pointer; its { error }: said on the hint line, nothing emitted', same(said, [['rename', 'e2', 'bad [']]) && ed.length === k0 + 1 && sr.querySelector('.um-live').textContent === 'unbalanced [', [said, sr.querySelector('.um-live').textContent]);
+  said.length = 0; card('u'); key('F2'); pick('.um-rename').value = 'Check in'; key('Enter', {}, pick('.um-rename'));
+  check('4.1 rename\'s null: set label, as before', same(said, [['rename', 'u', 'Check in']]) && same(last().commands, [{ op: 'set', id: 'u', path: 'label', value: 'Check in' }]), last());
+  // F2 on a diamond (28 px): a field 120 px wide at least
+  card('d'); key('F2');
+  check('4.1 F2 on a 28 px diamond opens a field 120 px wide at least', !!pick('.um-rename') && pick('.um-rename').getBoundingClientRect().width >= 120, pick('.um-rename') && pick('.um-rename').getBoundingClientRect().width);
+  key('Escape', {}, pick('.um-rename'));
+  // a region's box: a box whose id is a member's, selected as a container; a drop into it reparents to the region
+  click(pick('.family[data-family="S.r2"] .family-box'));
+  check('4.1 a region\'s box is selected as a container, by its member id', !!h.selection && h.selection.type === 'container' && h.selection.id === 'S.r2', h.selection);
+  said.length = 0; k0 = ed.length;
+  { const g = pick('.node[data-id="p"]'), r = g.querySelector('.n-mask').getBoundingClientRect(), b = pick('.family[data-family="S.r2"] .family-box').getBoundingClientRect();
+    glide(g, [r.x + r.width / 2, r.y + r.height / 2], [b.x + b.width - 10, b.y + b.height - 10]); } // p's centre to the region's bottom right corner
+  check('4.1 a drop into a region\'s box: moveTo asked, with the canvas\'s geometry in at.geo', same(said, [['moveTo', 'p', true]]), said);
+  check('4.1 …and its null: reparent to the region (a member), which apply() takes', ed.length === k0 + 1 && same(last().commands, [{ op: 'reparent', id: 'p', parent: 'S.r2' }]) && apply(SHP, last().commands).nodes.find(n => n.id === 'p').parent === 'S.r2', last());
+  said.length = 0; card('u'); key('ArrowRight', { altKey: true });
+  check('4.1 Alt + arrow: moveTo\'s at holds geo too', same(said, [['moveTo', 'u', true]]), said);
+  // a hook's { pick, then }: the picker opens with its labels and the choice is applied; an empty pick is said
+  said.length = 0; k0 = ed.length; select(null); button('Use').click(); pick('.um-rename').value = 'Browse'; key('Enter', {}, pick('.um-rename'));
+  await Promise.resolve(); // the picker opens once the name field has closed
+  check('4.1 { pick, then }: the picker opens with the labels, named', same(all('.um-pick button').map(b => b.textContent), ['First sub', 'Second sub']) && pick('.um-pick').getAttribute('aria-label') === 'Choose' && ed.length === k0, all('.um-pick button').map(b => b.textContent));
+  click(all('.um-pick button')[1]);
+  check('4.1 …and the choice goes to then, whose commands are emitted', same(said, [['add', 'test.Use', 'Browse']]) && same(last().commands, [{ op: 'add', element: { id: 'use1', type: 'test.Use', label: 'Browse', opensView: 'sub2' }, view: 'sh' }]), last());
+  k0 = ed.length; button('Empty').click(); pick('.um-rename').value = 'None'; key('Enter', {}, pick('.um-rename'));
+  check('4.1 an empty pick: said, nothing opened or emitted', !pick('.um-pick') && ed.length === k0 && sr.querySelector('.um-live').textContent === 'Nothing to choose from', sr.querySelector('.um-live').textContent);
+  // name: false: added with no name field, add asked with an empty label; its null: the default add, with no label
+  said.length = 0; button('Decision').click();
+  check('4.1 name: false: no name field; add asked with an empty label; null, the default add, unnamed', !pick('.um-rename') && same(said, [['add', 'test.Decision', '']]) && same(last().commands, [{ op: 'add', element: { id: 'decision1', type: 'test.Decision' }, view: 'sh' }]), [said, last()]);
+  // V on a node whose entry opens a kind: a picker of the model's views of that kind, then set opensView
+  card('o'); key('v'); await Promise.resolve();
+  check('4.1 V: a picker of the views of its entry\'s kind, named', same(all('.um-pick button').map(b => b.textContent), ['First sub', 'Second sub']) && pick('.um-pick').getAttribute('aria-label') === 'Opens view', all('.um-pick button').map(b => b.textContent));
+  key('ArrowDown', {}, sr.activeElement); key('Enter', {}, sr.activeElement);
+  check('4.1 …by keyboard: set opensView, which apply() takes', same(last().commands, [{ op: 'set', id: 'o', path: 'opensView', value: 'sub2' }]) && apply(SHP, last().commands).nodes.find(n => n.id === 'o').opensView === 'sub2', last());
+  k0 = ed.length; card('u'); key('v'); await Promise.resolve();
+  check('4.1 V on a node whose entry opens nothing: no picker, nothing emitted', !pick('.um-pick') && ed.length === k0);
+  // places are kept (withPlaces) across an update that changes no box, a region's box included; a move to another region lays out again
+  const at = id => pick(`.node[data-id="${id}"] .n-mask`).getAttribute('x') + ',' + pick(`.node[data-id="${id}"] .n-mask`).getAttribute('y');
+  const famAt = id => ['x', 'y', 'width', 'height'].map(k => pick(`.family[data-family="${id}"] .family-box`).getAttribute(k)).join(), was = ['p', 'q', 'u'].map(at).join(' '), wasBox = famAt('S.r1');
+  h.update(apply(SHP, [{ op: 'set', id: 'w', path: 'label', value: 'Ship it' }]));
+  check('4.1 an update that changes no box keeps every place, and the region boxes', ['p', 'q', 'u'].map(at).join(' ') === was && famAt('S.r1') === wasBox, [was, ['p', 'q', 'u'].map(at).join(' ')]);
+  h.update(apply(SHP, [{ op: 'reparent', id: 'q', parent: 'S.r1' }]));
+  check('4.1 a move into the other region lays the view out again: one region holds both, no region box', !pick('.family[data-family="S.r1"]') && !!pick('.family[data-family="S"]'));
   h.destroy();
 } catch (x) { out.fail.push('threw: ' + (x && x.stack || x)); }
 const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);

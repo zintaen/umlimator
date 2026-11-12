@@ -6423,8 +6423,13 @@ function endLabels(e, pts = e.pts, also = []) { // also: boxes to keep clear of 
 }
 
 // svgOf's typed lines (TYPED.lines): { id, edges, drawn, lstyle, MC } -> defs, the markers of the ends drawn; edge(e, i), a
-// line with ends: its style, its points trimmed for its flow, its markers; labels(i): its end labels' text
+// line with ends: its style, its points trimmed for its flow, its markers; labels(i): its end labels' text.
+// First each end on a node drawn by a typed shape with an inset (a circle, a diamond: notes/stage-4.md §4.2) is slid from
+// the node's box onto its outline, as a map's on its cards: drawn[i] becomes a copy (drawnPts), so the layout's points,
+// which a memo hands back (Q13), are never changed. A shape with no inset keeps its box end; the classifier's inset is 0
+const insetLook = n => { const S = n && hasKey(SHAPE, n.shape) ? SHAPE[n.shape] : null; return S && S.draw && S.inset ? { ...n, S } : null; };
 TYPED.lines = ({ id, edges, drawn, lstyle, MC }) => {
+  edges.forEach((e, i) => { if (e.pts) drawn[i] = drawnPts(e, insetLook); });
   const ends = [...new Set(edges.flatMap(e => e.end ? ['from', 'to'].map(w => endOf(e.end, w)).filter(Boolean).map(k => k + '-' + lstyle(e).m) : []))];
   const endMark = km => { const k = km.slice(0, km.lastIndexOf('-')), m = km.slice(k.length + 1), [L, H, p, fl] = ENDS[k];
     return `<marker id="${id}-${km}" markerWidth="${L}" markerHeight="${2 * H}" refX="${L}" refY="${H}" orient="auto-start-reverse" markerUnits="userSpaceOnUse" overflow="visible"><path d="${p}" fill="${fl === 'line' ? MC[m] : fl === 'hollow' ? 'var(--um-stage-bg)' : 'none'}" stroke="${MC[m]}" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/></marker>`; };
@@ -6457,6 +6462,14 @@ TYPED.lines = ({ id, edges, drawn, lstyle, MC }) => {
    - wrap(model, view, ids, kind): W, then a picker of the type's `wraps` (strings, or entries with a label).
    - add(model, view, entry, label, at): the palette and N, once the name is typed; at as for L, with sel, the ids selected.
    - remove(model, view, ids, fromModel): Delete (fromModel false), Shift + Delete, the panel's buttons and the outline's ✕.
+   - rename(model, view, id, text): F2 or a double-click on a selected element, Enter with the text typed (I.label). Null:
+     set label, as before (notes/stage-4.md §12.1).
+   Any hook may also return { pick: [label, …], then: i => result }: a picker of the labels opens under the element selected
+   (else the view's first node), and the index chosen goes to then, whose result is read as the hook's; an empty pick is
+   said and does nothing. A palette entry with name: false is added with no name field (add gets an empty label; with no
+   add hook, the element has no label). moveTo's at, for a card dropped or Alt + arrows, holds geo, the canvas's geometry.
+   V on a selected node whose palette entry has opens (a diagram kind, 'uml.sequence'): a picker of the model's views of
+   that kind, then set opensView.
    A slot is an entry of the geometry's `slots` ({ index, y, parent, after }, src/layout/timeaxis.js; x too where a type has
    one); with none, at is null. A view's fragments (view.fragments) are elements too: selected, they show their properties and
    their members (operands) in the panel, as a card does; a double-click on a selected member drawn as a card (an operand's
@@ -6473,20 +6486,37 @@ TYPED.edit = (I, c) => {
   const keyAt = () => { const S = slots(), s = api.sel(), id = s && (s.id ?? arrOf(s.ids)[0]); return S.find(x => x.after != null && x.after === id) || S.at(-1) || null; };
   const world = ev => { const r = api.stage.getBoundingClientRect(); return api.cam().toWorld(ev.clientX - r.left, ev.clientY - r.top); };
   // what a hook returned: null, the default; { error }, said; else its commands
-  const ran = (r, dflt) => { if (r == null) return dflt();
+  const ran = (r, dflt = () => true) => { if (r == null) return dflt();
+    if (isRec(r) && Array.isArray(r.pick) && typeof r.then === 'function') return choose(r.pick, i => ran(r.then(i), dflt));
     if (isRec(r) && r.error != null) { api.status(String(r.error)); api.say(String(r.error)); return false; }
     if (isRec(r) && Array.isArray(r.commands)) { if (r.say != null) { api.status(String(r.say)); api.say(String(r.say)); } return emit(r.commands); }
     return emit(arrOf(r)); };
   I.ran = ran; // connect's result, read by the core's addLine
+  // a picker of labels under the element selected, else the view's first node, opened once the gesture is over (a name
+  // field closing takes the focus back, which would close it). ponytail: a view with no node has nothing to hold it, so
+  // nothing opens; c.picker taking a point would lift that
+  function choose(labels, done, name = 'Choose') { const g = api.geo(), s = api.sel(), at = s && Object.hasOwn(g.byId || {}, s.id) ? s.id : (g.nodes[0] || {}).id;
+    if (!labels.length || at == null) { api.status('Nothing to choose from'); api.say('Nothing to choose from'); return false; }
+    const opts = labels.map(l => ({ label: String(l) }));
+    queueMicrotask(() => { c.picker(at, opts, t => done(opts.indexOf(t))); const m = api.stage.querySelector('.um-pick'); if (m) m.setAttribute('aria-label', name); });
+    return true; }
 
   I.connect = (from, to, ev, at) => base.connect(from, to, ev, at !== undefined ? at : ev ? near(...world(ev)) : keyAt());
   I.drop = (n, hint, into, from) => { const h = hook('moveTo'), dflt = () => base.drop(n, hint, into, from), dy = hint.y - (n.y + n.h / 2);
     const g = api.geo(), col = arrOf((view() || {}).nodeIds).filter(id => id !== n.id && isRec(g.byId[id]) && g.byId[id].x + g.byId[id].w / 2 < hint.x).length;
-    return h && can('move') ? ran(h(model(), view(), n.id, { ...near(hint.x, hint.y + Math.sign(dy) * n.h / 2), pt: [hint.x, hint.y], col }), dflt) : dflt(); };
-  I.addNode = i => { const h = hook('add'), t = c.nodeTypes()[i], cam = api.cam(); if (!h || !t || !can('add') || !cam) return base.addNode(i);
+    return h && can('move') ? ran(h(model(), view(), n.id, { ...near(hint.x, hint.y + Math.sign(dy) * n.h / 2), pt: [hint.x, hint.y], col, geo: g }), dflt) : dflt(); };
+  I.addNode = i => { const h = hook('add'), t = c.nodeTypes()[i], cam = api.cam(); if (!t || !can('add') || !cam || (!h && t.name !== false)) return base.addNode(i);
     const s = keyAt(), at = s && { ...s, sel: c.picks() }; // where the selection is now, before the name field takes the focus
-    api.editor({ x: cam.s.cx - 80, y: cam.s.cy - 13, w: 160, h: 26 }, '', label => ran(h(model(), view(), t, label, at),
-      () => emit([{ op: 'add', element: { ...c.typed(t, 'node'), label }, view: api.view() }]))); };
+    const go = label => ran(h && h(model(), view(), t, label, at), () => emit([{ op: 'add', element: { ...c.typed(t, 'node'), ...(label ? { label } : {}) }, view: api.view() }]));
+    if (t.name === false) return go('');
+    api.editor({ x: cam.s.cx - 80, y: cam.s.cy - 13, w: 160, h: 26 }, '', go); };
+  I.label = (ref, text) => { const h = hook('rename'), id = ref && (ref.type === 'edge' ? arrOf(ref.ids)[0] : ref.id), dflt = () => base.label(ref, text);
+    return h && can('rename') && id != null ? ran(h(model(), view(), id, text), dflt) : dflt(); };
+  // V: the views a selected node may open, by its palette entry's opens; the one chosen is its opensView (notes/stage-4.md S18)
+  function opens(id) { const x = arrOf(model().nodes).find(n => isRec(n) && n.id === id), t = x && c.nodeTypes().find(e => e.type === x.type && typeof e.opens === 'string');
+    if (!t) return false;
+    const vs = arrOf(model().views).filter(v => isRec(v) && v.diagram === t.opens);
+    choose(vs.map(v => v.title ?? v.id), i => emit([{ op: 'set', id, path: 'opensView', value: vs[i].id }]), 'Opens view'); return true; }
   I.remove = (fromModel, ids = c.picks()) => { const h = hook('remove'), dflt = () => base.remove(fromModel, ids);
     return h && can('delete') && ids.length ? ran(h(model(), view(), ids, !!fromModel), dflt) : dflt(); };
   function wrap(ids) { // W: the picker of the type's wraps, under the first card selected, else under the far end of the first line
@@ -6499,8 +6529,9 @@ TYPED.edit = (I, c) => {
   I.key = e => {
     if (I.linking()) return base.key(e);
     const K = e.key, ids = c.picks(), mv = hook('moveTo');
-    if (e.altKey && DIR[K] && mv && ids.length && can('move')) { const r = mv(model(), view(), ids.at(-1), { by: DIR[K] }); if (r == null) return base.key(e); ran(r); return true; }
+    if (e.altKey && DIR[K] && mv && ids.length && can('move')) { const r = mv(model(), view(), ids.at(-1), { by: DIR[K], geo: api.geo() }); if (r == null) return base.key(e); ran(r); return true; }
     if ((K === 'w' || K === 'W') && !e.altKey && hook('wrap') && can('add') && ids.length) { wrap(ids); return true; }
+    if ((K === 'v' || K === 'V') && !e.altKey && !e.ctrlKey && !e.metaKey && can('rename') && ids.length && opens(ids.at(-1))) return true;
     return base.key(e);
   };
 
@@ -6577,13 +6608,16 @@ const ownName = x => String(x.label ?? x.id);
 const stereoOf = x => OWN_ARR(OWN_OBJ(x.props) ? x.props.stereotypes : null).filter(t => t != null && t !== '').map(String);
 
 // every node of a model by id (the first of an id), and the chain of its owners, nearest first. An ownership cycle (the
-// core's error) is broken: an element on one has no owner, and one under one stops at the first element of it it meets
-function ownIndex(model) {
-  const at = new Map(); OWN_ARR(OWN_OBJ(model) ? model.nodes : null).forEach(n => { if (OWN_OBJ(n) && typeof n.id === 'string' && !at.has(n.id)) at.set(n.id, n); });
+// core's error) is broken: an element on one has no owner, and one under one stops at the first element of it it meets.
+// members: the member types indexed too (a state's regions, notes/stage-4.md §6.1), each owned by its node
+function ownIndex(model, members = []) {
+  const at = new Map(), up = new Map(), mems = new Set(), put = (x, p) => { if (OWN_OBJ(x) && typeof x.id === 'string' && !at.has(x.id)) { at.set(x.id, x); up.set(x.id, p); return true; } };
+  OWN_ARR(OWN_OBJ(model) ? model.nodes : null).forEach(n => put(n, n.parent));
+  if (members.length) [...at.values()].forEach(n => OWN_ARR(n.members).forEach(m => { if (OWN_OBJ(m) && members.includes(m.type) && put(m, n.id)) mems.add(m.id); }));
   const chain = id => { const out = [], seen = new Set([id]);
-    for (let p = (at.get(id) || {}).parent; p != null && at.has(p); p = at.get(p).parent) { if (seen.has(p)) return p === id ? [] : out.slice(0, out.indexOf(p) + 1); seen.add(p); out.push(p); }
+    for (let p = up.get(id); p != null && at.has(p); p = up.get(p)) { if (seen.has(p)) return p === id ? [] : out.slice(0, out.indexOf(p) + 1); seen.add(p); out.push(p); }
     return out; };
-  return { at, chain };
+  return { at, chain, up, mems };
 }
 
 /* A view's picture of its owners: { ids, owner(id), holds(o), boxes, name(id), full(id) }. ids: the nodes it shows; owner(id): an
@@ -6591,18 +6625,25 @@ function ownIndex(model) {
    whose owner on the picture o is (null: the top), in the view's order; boxes: the open packages, in
    the registry's format (registry.js boxes), each holding exactly the shown elements whose owner on the picture it is, and
    the boxes nested in it by `parent`; name(id): the drawn name, with the owners between it and its owner on the picture,
-   or with none from the view's subject when that is one of its owners, else from the top (§6); full(id): from the top */
-function ownersOn(model, view) {
-  const { at, chain } = ownIndex(model), ids = OWN_ARR(OWN_OBJ(view) ? view.nodeIds : null).filter(id => at.has(id)), shown = new Set(ids);
-  const ow = new Map(ids.map(id => [id, chain(id).find(p => shown.has(p) && OWN_BOXES.includes(at.get(p).type)) ?? null])), owner = id => ow.get(id) ?? null;
+   or with none from the view's subject when that is one of its owners, else from the top (§6); full(id): from the top.
+   look (notes/stage-4.md §8.2, §6.1), each field optional: boxTypes, the node types that may be a box (OWN_BOXES); qualify
+   false, names drawn without their owners; members, member types that are boxes too (a state's regions): one is shown when
+   its node is and it holds something shown, and is a box only beside another of its node's (with one, what it holds sits in
+   the node's box); shape(x) and word(x), a box's shape and the word its accessible name starts with ('package', 'Package') */
+function ownersOn(model, view, look = {}) {
+  const { boxTypes = OWN_BOXES, qualify = true, members = [], shape = () => 'package', word = () => 'Package' } = look;
+  const { at, chain, up, mems } = ownIndex(model, members), ids = OWN_ARR(OWN_OBJ(view) ? view.nodeIds : null).filter(id => at.has(id) && !mems.has(id)), seen = new Set(ids);
+  const live = new Set(ids.flatMap(id => chain(id).filter(p => mems.has(p) && seen.has(up.get(p))))), place = m => OWN_ARR(at.get(up.get(m)).members).indexOf(at.get(m)); // members holding something shown
+  const kept = [...live].filter(m => [...live].some(k => k !== m && up.get(k) === up.get(m))).sort((a, b) => place(a) - place(b)), all = [...ids, ...kept], shown = new Set(all);
+  const ow = new Map(all.map(id => [id, chain(id).find(p => shown.has(p) && (mems.has(p) || boxTypes.includes(at.get(p).type))) ?? null])), owner = id => ow.get(id) ?? null;
   const upTo = (id, stop) => { const c = chain(id), k = c.indexOf(stop); return [...(k < 0 ? c : c.slice(0, k)).reverse(), id].map(x => ownName(at.get(x))).join('::'); };
   const full = id => upTo(id, null), subject = OWN_OBJ(view) ? view.subject : null;
-  const name = id => { const o = owner(id); return upTo(id, o != null ? o : chain(id).includes(subject) ? subject : null); };
-  const by = new Map(); ids.forEach(id => { const o = owner(id); if (!by.has(o)) by.set(o, []); by.get(o).push(id); }); // grouped once: a view of 10,000 elements
+  const name = id => { const o = owner(id); return !qualify ? ownName(at.get(id)) : upTo(id, o != null ? o : chain(id).includes(subject) ? subject : null); };
+  const by = new Map(); all.forEach(id => { const o = owner(id); if (!by.has(o)) by.set(o, []); by.get(o).push(id); }); // grouped once: a view of 10,000 elements
   const holds = o => by.get(o) || [], open = new Set([...by.keys()].filter(x => x != null));
-  const boxes = ids.filter(id => open.has(id)).map(id => { const p = at.get(id), st = stereoOf(p), held = holds(id), o = owner(id), nm = name(id);
-    return { id, label: ownName(p), title: [...st.map(t => `«${t}»`), nm].join(' '), nodeIds: held.filter(x => !open.has(x)), ...(o != null ? { parent: o } : {}), shape: 'package',
-      aria: `Package ${nm}${st.length ? ` (${st.join(', ')})` : ''}, holding ${held.length} element${held.length === 1 ? '' : 's'}` }; });
+  const boxes = all.filter(id => open.has(id)).map(id => { const p = at.get(id), st = stereoOf(p), held = holds(id), o = owner(id), nm = name(id);
+    return { id, label: ownName(p), title: [...st.map(t => `«${t}»`), nm].join(' '), nodeIds: held.filter(x => !open.has(x)), ...(o != null ? { parent: o } : {}), shape: shape(p),
+      aria: `${word(p)} ${nm}${st.length ? ` (${st.join(', ')})` : ''}, holding ${held.length} element${held.length === 1 ? '' : 's'}` }; });
   return { ids, owner, holds, boxes, name, full, open, chain, at };
 }
 

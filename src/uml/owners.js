@@ -15,13 +15,16 @@ const ownName = x => String(x.label ?? x.id);
 const stereoOf = x => OWN_ARR(OWN_OBJ(x.props) ? x.props.stereotypes : null).filter(t => t != null && t !== '').map(String);
 
 // every node of a model by id (the first of an id), and the chain of its owners, nearest first. An ownership cycle (the
-// core's error) is broken: an element on one has no owner, and one under one stops at the first element of it it meets
-function ownIndex(model) {
-  const at = new Map(); OWN_ARR(OWN_OBJ(model) ? model.nodes : null).forEach(n => { if (OWN_OBJ(n) && typeof n.id === 'string' && !at.has(n.id)) at.set(n.id, n); });
+// core's error) is broken: an element on one has no owner, and one under one stops at the first element of it it meets.
+// members: the member types indexed too (a state's regions, notes/stage-4.md §6.1), each owned by its node
+function ownIndex(model, members = []) {
+  const at = new Map(), up = new Map(), mems = new Set(), put = (x, p) => { if (OWN_OBJ(x) && typeof x.id === 'string' && !at.has(x.id)) { at.set(x.id, x); up.set(x.id, p); return true; } };
+  OWN_ARR(OWN_OBJ(model) ? model.nodes : null).forEach(n => put(n, n.parent));
+  if (members.length) [...at.values()].forEach(n => OWN_ARR(n.members).forEach(m => { if (OWN_OBJ(m) && members.includes(m.type) && put(m, n.id)) mems.add(m.id); }));
   const chain = id => { const out = [], seen = new Set([id]);
-    for (let p = (at.get(id) || {}).parent; p != null && at.has(p); p = at.get(p).parent) { if (seen.has(p)) return p === id ? [] : out.slice(0, out.indexOf(p) + 1); seen.add(p); out.push(p); }
+    for (let p = up.get(id); p != null && at.has(p); p = up.get(p)) { if (seen.has(p)) return p === id ? [] : out.slice(0, out.indexOf(p) + 1); seen.add(p); out.push(p); }
     return out; };
-  return { at, chain };
+  return { at, chain, up, mems };
 }
 
 /* A view's picture of its owners: { ids, owner(id), holds(o), boxes, name(id), full(id) }. ids: the nodes it shows; owner(id): an
@@ -29,18 +32,25 @@ function ownIndex(model) {
    whose owner on the picture o is (null: the top), in the view's order; boxes: the open packages, in
    the registry's format (registry.js boxes), each holding exactly the shown elements whose owner on the picture it is, and
    the boxes nested in it by `parent`; name(id): the drawn name, with the owners between it and its owner on the picture,
-   or with none from the view's subject when that is one of its owners, else from the top (§6); full(id): from the top */
-function ownersOn(model, view) {
-  const { at, chain } = ownIndex(model), ids = OWN_ARR(OWN_OBJ(view) ? view.nodeIds : null).filter(id => at.has(id)), shown = new Set(ids);
-  const ow = new Map(ids.map(id => [id, chain(id).find(p => shown.has(p) && OWN_BOXES.includes(at.get(p).type)) ?? null])), owner = id => ow.get(id) ?? null;
+   or with none from the view's subject when that is one of its owners, else from the top (§6); full(id): from the top.
+   look (notes/stage-4.md §8.2, §6.1), each field optional: boxTypes, the node types that may be a box (OWN_BOXES); qualify
+   false, names drawn without their owners; members, member types that are boxes too (a state's regions): one is shown when
+   its node is and it holds something shown, and is a box only beside another of its node's (with one, what it holds sits in
+   the node's box); shape(x) and word(x), a box's shape and the word its accessible name starts with ('package', 'Package') */
+function ownersOn(model, view, look = {}) {
+  const { boxTypes = OWN_BOXES, qualify = true, members = [], shape = () => 'package', word = () => 'Package' } = look;
+  const { at, chain, up, mems } = ownIndex(model, members), ids = OWN_ARR(OWN_OBJ(view) ? view.nodeIds : null).filter(id => at.has(id) && !mems.has(id)), seen = new Set(ids);
+  const live = new Set(ids.flatMap(id => chain(id).filter(p => mems.has(p) && seen.has(up.get(p))))), place = m => OWN_ARR(at.get(up.get(m)).members).indexOf(at.get(m)); // members holding something shown
+  const kept = [...live].filter(m => [...live].some(k => k !== m && up.get(k) === up.get(m))).sort((a, b) => place(a) - place(b)), all = [...ids, ...kept], shown = new Set(all);
+  const ow = new Map(all.map(id => [id, chain(id).find(p => shown.has(p) && (mems.has(p) || boxTypes.includes(at.get(p).type))) ?? null])), owner = id => ow.get(id) ?? null;
   const upTo = (id, stop) => { const c = chain(id), k = c.indexOf(stop); return [...(k < 0 ? c : c.slice(0, k)).reverse(), id].map(x => ownName(at.get(x))).join('::'); };
   const full = id => upTo(id, null), subject = OWN_OBJ(view) ? view.subject : null;
-  const name = id => { const o = owner(id); return upTo(id, o != null ? o : chain(id).includes(subject) ? subject : null); };
-  const by = new Map(); ids.forEach(id => { const o = owner(id); if (!by.has(o)) by.set(o, []); by.get(o).push(id); }); // grouped once: a view of 10,000 elements
+  const name = id => { const o = owner(id); return !qualify ? ownName(at.get(id)) : upTo(id, o != null ? o : chain(id).includes(subject) ? subject : null); };
+  const by = new Map(); all.forEach(id => { const o = owner(id); if (!by.has(o)) by.set(o, []); by.get(o).push(id); }); // grouped once: a view of 10,000 elements
   const holds = o => by.get(o) || [], open = new Set([...by.keys()].filter(x => x != null));
-  const boxes = ids.filter(id => open.has(id)).map(id => { const p = at.get(id), st = stereoOf(p), held = holds(id), o = owner(id), nm = name(id);
-    return { id, label: ownName(p), title: [...st.map(t => `«${t}»`), nm].join(' '), nodeIds: held.filter(x => !open.has(x)), ...(o != null ? { parent: o } : {}), shape: 'package',
-      aria: `Package ${nm}${st.length ? ` (${st.join(', ')})` : ''}, holding ${held.length} element${held.length === 1 ? '' : 's'}` }; });
+  const boxes = all.filter(id => open.has(id)).map(id => { const p = at.get(id), st = stereoOf(p), held = holds(id), o = owner(id), nm = name(id);
+    return { id, label: ownName(p), title: [...st.map(t => `«${t}»`), nm].join(' '), nodeIds: held.filter(x => !open.has(x)), ...(o != null ? { parent: o } : {}), shape: shape(p),
+      aria: `${word(p)} ${nm}${st.length ? ` (${st.join(', ')})` : ''}, holding ${held.length} element${held.length === 1 ? '' : 's'}` }; });
   return { ids, owner, holds, boxes, name, full, open, chain, at };
 }
 

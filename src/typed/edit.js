@@ -20,6 +20,14 @@ import { arrOf } from '../map/validate.js';
    - wrap(model, view, ids, kind): W, then a picker of the type's `wraps` (strings, or entries with a label).
    - add(model, view, entry, label, at): the palette and N, once the name is typed; at as for L, with sel, the ids selected.
    - remove(model, view, ids, fromModel): Delete (fromModel false), Shift + Delete, the panel's buttons and the outline's ✕.
+   - rename(model, view, id, text): F2 or a double-click on a selected element, Enter with the text typed (I.label). Null:
+     set label, as before (notes/stage-4.md §12.1).
+   Any hook may also return { pick: [label, …], then: i => result }: a picker of the labels opens under the element selected
+   (else the view's first node), and the index chosen goes to then, whose result is read as the hook's; an empty pick is
+   said and does nothing. A palette entry with name: false is added with no name field (add gets an empty label; with no
+   add hook, the element has no label). moveTo's at, for a card dropped or Alt + arrows, holds geo, the canvas's geometry.
+   V on a selected node whose palette entry has opens (a diagram kind, 'uml.sequence'): a picker of the model's views of
+   that kind, then set opensView.
    A slot is an entry of the geometry's `slots` ({ index, y, parent, after }, src/layout/timeaxis.js; x too where a type has
    one); with none, at is null. A view's fragments (view.fragments) are elements too: selected, they show their properties and
    their members (operands) in the panel, as a card does; a double-click on a selected member drawn as a card (an operand's
@@ -36,20 +44,37 @@ TYPED.edit = (I, c) => {
   const keyAt = () => { const S = slots(), s = api.sel(), id = s && (s.id ?? arrOf(s.ids)[0]); return S.find(x => x.after != null && x.after === id) || S.at(-1) || null; };
   const world = ev => { const r = api.stage.getBoundingClientRect(); return api.cam().toWorld(ev.clientX - r.left, ev.clientY - r.top); };
   // what a hook returned: null, the default; { error }, said; else its commands
-  const ran = (r, dflt) => { if (r == null) return dflt();
+  const ran = (r, dflt = () => true) => { if (r == null) return dflt();
+    if (isRec(r) && Array.isArray(r.pick) && typeof r.then === 'function') return choose(r.pick, i => ran(r.then(i), dflt));
     if (isRec(r) && r.error != null) { api.status(String(r.error)); api.say(String(r.error)); return false; }
     if (isRec(r) && Array.isArray(r.commands)) { if (r.say != null) { api.status(String(r.say)); api.say(String(r.say)); } return emit(r.commands); }
     return emit(arrOf(r)); };
   I.ran = ran; // connect's result, read by the core's addLine
+  // a picker of labels under the element selected, else the view's first node, opened once the gesture is over (a name
+  // field closing takes the focus back, which would close it). ponytail: a view with no node has nothing to hold it, so
+  // nothing opens; c.picker taking a point would lift that
+  function choose(labels, done, name = 'Choose') { const g = api.geo(), s = api.sel(), at = s && Object.hasOwn(g.byId || {}, s.id) ? s.id : (g.nodes[0] || {}).id;
+    if (!labels.length || at == null) { api.status('Nothing to choose from'); api.say('Nothing to choose from'); return false; }
+    const opts = labels.map(l => ({ label: String(l) }));
+    queueMicrotask(() => { c.picker(at, opts, t => done(opts.indexOf(t))); const m = api.stage.querySelector('.um-pick'); if (m) m.setAttribute('aria-label', name); });
+    return true; }
 
   I.connect = (from, to, ev, at) => base.connect(from, to, ev, at !== undefined ? at : ev ? near(...world(ev)) : keyAt());
   I.drop = (n, hint, into, from) => { const h = hook('moveTo'), dflt = () => base.drop(n, hint, into, from), dy = hint.y - (n.y + n.h / 2);
     const g = api.geo(), col = arrOf((view() || {}).nodeIds).filter(id => id !== n.id && isRec(g.byId[id]) && g.byId[id].x + g.byId[id].w / 2 < hint.x).length;
-    return h && can('move') ? ran(h(model(), view(), n.id, { ...near(hint.x, hint.y + Math.sign(dy) * n.h / 2), pt: [hint.x, hint.y], col }), dflt) : dflt(); };
-  I.addNode = i => { const h = hook('add'), t = c.nodeTypes()[i], cam = api.cam(); if (!h || !t || !can('add') || !cam) return base.addNode(i);
+    return h && can('move') ? ran(h(model(), view(), n.id, { ...near(hint.x, hint.y + Math.sign(dy) * n.h / 2), pt: [hint.x, hint.y], col, geo: g }), dflt) : dflt(); };
+  I.addNode = i => { const h = hook('add'), t = c.nodeTypes()[i], cam = api.cam(); if (!t || !can('add') || !cam || (!h && t.name !== false)) return base.addNode(i);
     const s = keyAt(), at = s && { ...s, sel: c.picks() }; // where the selection is now, before the name field takes the focus
-    api.editor({ x: cam.s.cx - 80, y: cam.s.cy - 13, w: 160, h: 26 }, '', label => ran(h(model(), view(), t, label, at),
-      () => emit([{ op: 'add', element: { ...c.typed(t, 'node'), label }, view: api.view() }]))); };
+    const go = label => ran(h && h(model(), view(), t, label, at), () => emit([{ op: 'add', element: { ...c.typed(t, 'node'), ...(label ? { label } : {}) }, view: api.view() }]));
+    if (t.name === false) return go('');
+    api.editor({ x: cam.s.cx - 80, y: cam.s.cy - 13, w: 160, h: 26 }, '', go); };
+  I.label = (ref, text) => { const h = hook('rename'), id = ref && (ref.type === 'edge' ? arrOf(ref.ids)[0] : ref.id), dflt = () => base.label(ref, text);
+    return h && can('rename') && id != null ? ran(h(model(), view(), id, text), dflt) : dflt(); };
+  // V: the views a selected node may open, by its palette entry's opens; the one chosen is its opensView (notes/stage-4.md S18)
+  function opens(id) { const x = arrOf(model().nodes).find(n => isRec(n) && n.id === id), t = x && c.nodeTypes().find(e => e.type === x.type && typeof e.opens === 'string');
+    if (!t) return false;
+    const vs = arrOf(model().views).filter(v => isRec(v) && v.diagram === t.opens);
+    choose(vs.map(v => v.title ?? v.id), i => emit([{ op: 'set', id, path: 'opensView', value: vs[i].id }]), 'Opens view'); return true; }
   I.remove = (fromModel, ids = c.picks()) => { const h = hook('remove'), dflt = () => base.remove(fromModel, ids);
     return h && can('delete') && ids.length ? ran(h(model(), view(), ids, !!fromModel), dflt) : dflt(); };
   function wrap(ids) { // W: the picker of the type's wraps, under the first card selected, else under the far end of the first line
@@ -62,8 +87,9 @@ TYPED.edit = (I, c) => {
   I.key = e => {
     if (I.linking()) return base.key(e);
     const K = e.key, ids = c.picks(), mv = hook('moveTo');
-    if (e.altKey && DIR[K] && mv && ids.length && can('move')) { const r = mv(model(), view(), ids.at(-1), { by: DIR[K] }); if (r == null) return base.key(e); ran(r); return true; }
+    if (e.altKey && DIR[K] && mv && ids.length && can('move')) { const r = mv(model(), view(), ids.at(-1), { by: DIR[K], geo: api.geo() }); if (r == null) return base.key(e); ran(r); return true; }
     if ((K === 'w' || K === 'W') && !e.altKey && hook('wrap') && can('add') && ids.length) { wrap(ids); return true; }
+    if ((K === 'v' || K === 'V') && !e.altKey && !e.ctrlKey && !e.metaKey && can('rename') && ids.length && opens(ids.at(-1))) return true;
     return base.key(e);
   };
 
