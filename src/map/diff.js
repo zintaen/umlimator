@@ -80,7 +80,8 @@ export function diff(before, after) {
     if (h === 'added') { const ins = lines.filter(e => e.to === n.id && how.get(e) === 'added').map(e => name(e.from)), outs = lines.filter(e => e.from === n.id && how.get(e) === 'added').map(e => name(e.to));
       said.push(`adds ${name(n.id)}` + (ins.length === 1 && outs.length === 1 ? ` between ${ins[0]} and ${outs[0]}` : (ins.length ? `, from ${andList(ins)}` : '') + (outs.length ? `, to ${andList(outs)}` : ''))); }
     if (h === 'removed') said.push(`removes ${name(n.id)}`);
-    if (h === 'changed') { const [o, x] = was.get(n), keys = diffKeys([o, x]), rest = keys.filter(k => k !== 'label');
+    if (h === 'changed') { const [o, x] = was.get(n), keys = diffKeys([o, x]), rest = keys.filter(k => k !== 'label'), p0 = o.parent ?? null, p1 = x.parent ?? null;
+      if (keys.join() === 'parent' && p0 !== p1 && A.schemaVersion === 2 && out.schemaVersion === 2) return said.push(`moves ${name(n.id)} ${p1 != null ? 'into ' + name(p1) : 'out of ' + name(p0)}`); // a re-own (schema version 2; absent or null is no owner)
       said.push((keys.includes('label') ? `renames ${o.label || o.id} to ${x.label || x.id}` : `changes ${name(n.id)}`) + (rest.length ? ` (${rest.join(', ')})` : '')); } });
   lines.forEach(e => { const h = how.get(e); if (!h || cardHow.get(e.from) === h && h !== 'changed' || cardHow.get(e.to) === h && h !== 'changed') return;
     const ends = `${name(e.from)} to ${name(e.to)}`, lab = e.label ? ` (${e.label})` : '';

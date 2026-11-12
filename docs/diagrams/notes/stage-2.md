@@ -342,7 +342,7 @@ needs these changes in the core; nothing else of it does:
 | The `boxes` field documented | `src/core/registry.js` | 2.1 | A comment only |
 | The classifier's `underline` flag (§9.1, if (a)) | `src/draw/shapes.js` | 2.3 | The classifier shape is the core's |
 | Typed tables in the PDF (R8) | `src/page/print.js` | 2.5 | `print.js` is in the core's `ORDER` |
-| A re-own reads "moved into …" in `diff()`'s summary (M11) | `src/map/diff.js` | 2.5 | `diff()` is the core's |
+| A re-own reads "moves … into …" in `diff()`'s summary (M11) | `src/map/diff.js` | 2.5 | `diff()` is the core's |
 
 | Option | For | Against |
 |---|---|---|
@@ -358,8 +358,8 @@ same. `risks.md` M11: a reorder, and now a re-own, reads only "changed" in `diff
 
 - **(a) Fix both in stage 2, as their own lane (recommended):** for a typed view, `print.js` lists the element's type word
   (from its `type`, as `typeWord` does), a line's type word, and members or slots through the type's `member.print`. No
-  new registry field, so the lane does not touch `registry.js`. `diff()` says "`X` moved into `Y`" when only `parent`
-  changed. It runs beside the rest; 2.5 shows it on the class type, and 2.6 shows it on the object and package types.
+  new registry field, so the lane does not touch `registry.js`. `diff()` says "moves `X` into `Y`" (or "out of `Y`")
+  when only `parent` changed, in the present tense of its other lines (2.5). It runs beside the rest; 2.5 shows it on the class type, and 2.6 shows it on the object and package types.
 - (b) Leave both listed in each conformance note: no work now; three notes with the same limits.
 
 ## 14. Out of the subsets
@@ -406,7 +406,7 @@ proposes its row in its pull request's description.
 | 2.2 | **The package type, and nesting in the class view.** §4.1's rule, §6's names and `SHAPE.package` in a shared family file; `uml.package` (§10.2, §10.3); the class type's `boxes` and rules; `classGeo` taking a type's look; `describe()`, accessible names, legend | `src/uml/owners.js` (new), `src/uml/package.js` (new), `src/uml/class.js`, `tools/build.mjs` (`ALL`), `tests/package.test.mjs` (new), `tests/class.test.mjs`, `tests/class-fixtures.test.mjs`, `tests/class.html`, `tests/class-stress.json`, `examples/sales-classes.json` (`subject` on "Payments only") | 2.1 to merge; it may start on `owners.js` and the validators beside 2.1 | The definition of done's items 2, 4, 5, 6 and 8 on row 3's subset; every validator with a passing and a failing case; `03-package.json` draws; a 30-step session on it undoes, redoes and reopens to byte-identical models. The class tests, counts and pinned crossings rewritten in a commit that says why (§10.1) |
 | 2.3 | **The object type.** §9: the instance's look, the slot micro-syntax, validators, `describe()`, accessible names, legend; the classifier's `underline` | `src/uml/object.js` (new), `src/draw/shapes.js` (`classSvg`'s name only), `tools/build.mjs` (`ALL`, one line, after 2.2), `tests/object.test.mjs` (new), `tests/object.html` (new) | 2.2 (`classGeo`'s look, `owners.js`) | Items 2, 4, 5, 6 and 8 on row 2's subset; `print(parse(x))` stable for every fixture slot; `02-object.json` draws, and a 30-step session on it returns byte-identical models. Within C5 |
 | 2.4 | **Mermaid namespaces.** §11 | `src/readers/mermaid-class.js`, `tests/mermaid-class.test.mjs`, `tests/import/` | This note | Nested braces confirmed against Mermaid 12.3.0; `read(write(model))` equals the model, less hidden owners named in the report, for `03-package.json`'s classes in a class view, `sales-classes.json`'s "Payments only" view, and 500 generated models with nested and hidden owners; the pinned report updated |
-| 2.5 | **The PDF's tables (R8) and a re-own in `diff()` (M11).** §13 | `src/page/print.js`, `src/map/diff.js`, `tests/change.test.mjs`, `tests/cli.py` (the `pdf` checks) | The diet, this note | A class example's PDF lists element types, line kinds and members; `diff()` says "moved into" for a re-own on a class model. Within C5 |
+| 2.5 | **The PDF's tables (R8) and a re-own in `diff()` (M11).** §13 | `src/page/print.js`, `src/map/diff.js`, `tests/change.test.mjs`, `tests/cli.py` (the `pdf` checks) | The diet, this note | A class example's PDF lists element types, line kinds and members; `diff()` says "moves … into" for a re-own on a class model. Within C5 |
 | 2.6 | **Fixtures, examples, docs.** `02-object.json` and `03-package.json` move to `examples/`, into the gallery and CI; §15's fixtures; C10; every document of `plan.md` §7 | `examples/` (but `sales-classes.json`), `docs/diagrams/examples/check.mjs`, `tests/package-*.json`, `tests/object-*.json`, `tests/package-fixtures.test.mjs`, `tests/object-fixtures.test.mjs` (new), `tests/cli.py` (after 2.5), `tests/mcp.py`, `lib/umlimator.d.ts`, `lib/umlimator.schema.json`, `docs/conformance/` (new `uml-package.md`, `uml-object.md`; `uml-class.md`), `docs/module-api.md`, `docs/editing.md`, `README.md`, `docs/diagrams/` (but the status table) | 2.2, 2.3, 2.4, 2.5 | Items 1, 3, 7, 9, 10, 11 and 12 for both types: the registry and the generated schema hold both; the fixtures lay out clean; fidelity tables measured on the examples; P1 enforced on both stress fixtures; `render`, `check`, `stills` and `pdf` succeed on both examples, the object PDF listing slots and the package PDF element kinds; the MCP server and the diff Action each tested with one object and one package model (C10); the stress fixtures' crossings pinned and stated; R8 closed in `risks.md` |
 
 ### 16.3 What runs at the same time
@@ -432,7 +432,7 @@ diet ──▶ 0.18.0 ──▶ note approved ──┬─▶ 2.1 (boxes) ──
 maintainer approves that pull request by number. Its notes say:
 
 - new: the object and package diagrams; boxes on typed views; the Owner field and drop to re-own; the PDF's typed tables;
-  "moved into" in `diff()`;
+  "moves … into" in `diff()`;
 - changed: class views draw packages as boxes and qualify names (0.18.0's class pictures differ, by the maintainer's
   decision, §10.1); a re-own lays a typed view out again; the Mermaid writer names a hidden owner in `%% not written:`;
 - left out: §14.
