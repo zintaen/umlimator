@@ -113,3 +113,17 @@ test('running a helper again with the same options.view replaces that view and t
   assert.throws(() => sequenceFromView(m, 'nope'), /no view "nope"/);
   assert.throws(() => sequenceFromView(EX11, 'checkout'), /not a numbered view/);
 });
+
+test('derived ids stay unique: cards with "-", a card m<n>, cards "a->b" and "a-b"; guards of untaken alts and inherited keys', () => {
+  const nv = (ids, lines) => ({ nodes: ids.map(id => ({ id })), edges: lines.map(([from, to]) => ({ from, to })), views: [{ id: 'v', render: 'sequence', nodeIds: ids }] });
+  const unique = m => { const ids = allIds(m); assert.equal(new Set(ids).size, ids.length, ids.join(' ')); assert.deepEqual(errors(m).filter(p => !p.message.startsWith('id "a->b"')), []); }; // the source's own card
+  [nv(['a-b', 'c', 'a', 'b-c'], [['a-b', 'c'], ['a', 'b-c']]), nv(['m1', 'b'], [['m1', 'b']]), nv(['a->b', 'a-b'], [['a->b', 'a-b']])]
+    .forEach(m => { unique(sequenceFromView(m, 'v', { view: 's' }).model); unique(communicationFromView(m, 'v', { view: 's' }).model); });
+  const ex = structuredClone(EX11), cv = ex.views[0], msg = cv.edges.find(e => e.parent === 'f1-declined');
+  cv.fragments.push({ id: 'f4', type: 'uml.CombinedFragment', parent: 'f1-declined', props: { operator: 'alt' },
+    members: [{ id: 'retry', type: 'uml.InteractionOperand', label: 'retry' }, { id: 'give-up', type: 'uml.InteractionOperand', label: 'give up' }] });
+  cv.edges.push({ ...msg, id: 'm99', parent: 'retry', props: { sort: 'call' } });
+  assert.equal(view(communicationFromView(ex, 'checkout', { operands: { f1: 'f1-paid' } }).model, 'checkout.communication').title, 'Checkout: payment accepted');
+  const proto = structuredClone(EX11); proto.views[0].fragments.find(f => f.id === 'f1').id = '__proto__';
+  assert.deepEqual(communicationFromView(proto, 'checkout').report.filter(r => r.id === '__proto__'), []);
+});
