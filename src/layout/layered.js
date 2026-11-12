@@ -657,8 +657,8 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
   let bad = runRouting(order);
   // rip-up and reroute: an edge that had to cross goes first next time; keep the best attempt (not when the view is laid
   // out again with room for lines: that layout's tries seldom gained anything, and they cost a third of its time; with room for
-  // a label it tries, as the layout it may replace did)
-  for (let tries = 0; bad && (!last || room.lx) && tries < 4; tries++) {
+  // a label it tries, as the layout it may replace did; none with reroute: false)
+  for (let tries = 0; bad && dg.reroute !== false && (!last || room.lx) && tries < 4; tries++) {
     const stuck = order.filter(e => e.how !== 'grid');
     const next = [...stuck, ...order.filter(e => e.how === 'grid')];
     const snap = order.map(e => [e, e.pts, e.lbl, e.how]), snapStats = stats, snapR = [routed.slice(), reserved.slice(), placed.slice()];
