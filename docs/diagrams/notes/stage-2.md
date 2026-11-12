@@ -139,6 +139,7 @@ provisional fields in `src/core/registry.js` (`notes/spike-sequence.md` §1).
 
 - **Where the code goes.** A family shape, `SHAPE.package`, in the family file: `size`, `out`, `face`, `inset`, `ports` and
   `draw` for the closed node, as `SHAPE.note` is added by `src/uml/class.js`; and `frame(f)` for the open box. `frame(f)`
+  draws its border with class `family-box`, which the canvas's selection outline and drop highlight match (2.1), and
   keeps `<text class="family-title" data-t="ft" data-o="<id>">`: the audit checks title overflow with it, and
   `render.js` reads it to announce "Box …, selected". In `svgOf`, a family whose `shape` has a `frame` is drawn by it,
   inside the same `<g class="family" data-family>` the canvas selects; every other family is drawn as now. Maps never set
@@ -180,7 +181,8 @@ provisional fields in `src/core/registry.js` (`notes/spike-sequence.md` §1).
 ## 8. Editing ownership (S7)
 
 - **By pointer:** dropping a node into a box, or out of every box, emits one transaction: `reparent` to the package under
-  the drop point, then the node's pin. Outside every box, the new owner is the view's `subject`, or none when the view has
+  the drop point, and the removal of a pin the node had (2.1: the view is laid out again, §3.2, so a slot read off the
+  old picture would land elsewhere). Outside every box, the new owner is the view's `subject`, or none when the view has
   no subject. A drop in the box it is already drawn in emits the pin only, as now, even when its model owner is a hidden
   package inside that box. The box under the drag is highlighted, as on maps. `render.js` finds it (`boxAt`) but
   `endGesture` calls `tx.drop(n, hint)` alone: 2.1 passes the box and the box the node was in (`boxOf`, which reads
