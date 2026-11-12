@@ -27,7 +27,8 @@ Update this table in every pull request that belongs to the plan.
 | Milestone 2 | 0.24.0 | ER, flowchart, data flow, information flow, C4 | Not started | |
 | Milestone 3 | 0.25.0 | SysML v1.7's four diagrams | Not started | |
 | Milestone 4 | 0.26.0, 0.27.0 | AWS, GCP, Azure, mindmap; BPMN | Not started | |
-| Stabilization | 1.0.0 | Frozen API and schema, conformance notes | Not started | |
+| After the 28 types | 0.28.0 and later | What the maintainer asks for next | Not started | |
+| Stabilization | 1.0.0 | Frozen API and schema, conformance notes; when the maintainer says it is ready | Not started | |
 
 ## What is decided
 
@@ -48,7 +49,7 @@ All on 11 Nov 2026, by the maintainer. The options that were weighed are in `pro
 | D11 | The single module file is split into sources; built files are committed |
 | D12 | Mermaid is the first text notation |
 | | Agents build this: the plan has no time estimates |
-| | 1.0.0 is the release after all 28 types |
+| | 1.0.0 comes after all 28 types, when the maintainer says it is ready; after 0.27.0 the work goes on in 0.28.0 and later (13 Nov 2026) |
 
 ## What is in this folder
 
@@ -286,3 +287,6 @@ node docs/diagrams/examples/check.mjs         # the target examples match model.
   v0.20.0, plugin 0.1.11; the skill still writes maps only (C10, S15). Next: the stage 4 design note for approval.
 - **13 Nov 2026 (stage 4 begins).** The stage 4 design note approved (#201, e7d1830), every recommendation of §20 taken.
   4.0 lists the stage's eight sources in `ALL`; then 4.1, 4.2, 4.3, 4.8 and 4.9 run in parallel (§19.3).
+- **13 Nov 2026 (after 0.27.0).** The maintainer decided that 0.27.0 is not followed by 1.0.0 as a matter of course: the
+  work goes on in 0.28.0, 0.29.0 and later, and 1.0.0 is released when the maintainer says it is ready (`plan.md` §1,
+  §3, §6).

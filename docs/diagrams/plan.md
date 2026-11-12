@@ -15,7 +15,9 @@ Agents build this. There are no time estimates: a work package is sized by what 
   §10.1). Maps do not change.
 - The API, the model's schema and each type's conformance note are frozen and documented.
 
-**Decided on 11 Nov 2026:** 1.0.0 comes after all 28 types, not after the 14 UML types.
+**Decided on 11 Nov 2026:** 1.0.0 comes after all 28 types, not after the 14 UML types. **Decided on 13 Nov 2026:**
+0.27.0 is not followed by 1.0.0 as a matter of course; the work goes on in 0.28.0, 0.29.0 and later, and 1.0.0 is
+released when the maintainer says it is ready.
 
 ## 2. Definition of done for a diagram type
 
@@ -58,7 +60,8 @@ One release per stage, by the repository's own rule: bump `package.json`, add th
 | 0.25.0 | Milestone 3 | SysML v1.7: requirement, block definition, internal block, parametric |
 | 0.26.0 | Milestone 4a | AWS, GCP, Azure; mindmap |
 | 0.27.0 | Milestone 4b | BPMN |
-| 1.0.0 | Stabilization | Section 6 |
+| 0.28.0 and later | After the 28 types | What the maintainer asks for next; 1.0.0 is not released as a matter of course |
+| 1.0.0 | Stabilization | Section 6, when the maintainer says it is ready |
 
 ## 4. Stage 1 in detail: foundation and the class diagram
 
@@ -137,6 +140,8 @@ for every type in it.
 Before M4a starts: read the terms inside each vendor's icon download (`proposal.md` §6.5).
 
 ## 6. 1.0.0: stabilization
+
+When the maintainer says 1.0.0 is ready (13 Nov 2026: not straight after 0.27.0):
 
 - Freeze and document the registry, the commands and the schema; write the migration guide from 0.x.
 - One conformance note per type, linked from the README; no claim beyond the tested subset.
