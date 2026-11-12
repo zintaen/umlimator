@@ -232,6 +232,13 @@ package it is drawn as a loop.
 | (b) A family shape that edits the classifier's markup as text | No core bytes | Couples the family to `classSvg`'s markup |
 | (c) A whole instance shape in the family file | No core bytes, no coupling | Copies `classSvg` |
 
+As 2.3 built it: the `underline` flag is on `classSvg`'s name in `src/typed/draw.js`, where the core's diet moved the
+classifier shape, so `lib/umlimator.js` is unchanged. A classifier an object view shows (a class, interface,
+enumeration, data type or primitive type, which the outline's Show adds like any model node) is drawn with the class
+view's look: its name not underlined, its keyword over it, its attributes and operations (an enumeration's literals),
+and it is named and described as the class view names it ("Class Order, 1 attribute, 0 operations"). UML allows a
+classifier in an object diagram, so no rule warns of one.
+
 ### 9.2 Editing
 
 - Palette: Instance, Comment. Lines: Link, Comment link. Properties: an instance's classifier and stereotypes; a link's
@@ -396,6 +403,16 @@ along a box's border and none through a tab, under three fonts and both themes, 
 
 `tests/class-stress.json` already holds packages (`shop`, `catalog` in `shop`); it draws them as boxes from 2.2 and gains
 two classes (§10.1). `tests/class-minimal.json` has none.
+
+As 2.6 built them: each fixture is laid out clean, right and down, in Node (`tests/package-fixtures.test.mjs`,
+`tests/object-fixtures.test.mjs`, which also check that no line runs through a closed or an open package's tab or along
+a box's border, and that each box holds exactly its own) and in Chrome under three fonts and both themes
+(`tests/package-object.html`). `tests/package-minimal.json` has three views: the main one, one with `subject`, and one
+with hand-written `containers`. `tests/package-stress.json` has 50 nodes in 10 open packages over three levels, two
+closed packages and 60 lines; `tests/object-stress.json` 50 instances and 60 links. Their crossings are pinned: none
+down and 1 right for the packages, 42 either way for the objects. Two layout limits found on the way are stated in the
+conformance notes and in `risks.md` L5 and L8: a role laid on a neighbouring instance (laid out right, in Chrome), and
+a line routed through a box that holds neither of its ends (`examples/bookshop-packages.json`).
 
 ## 16. Work packages
 

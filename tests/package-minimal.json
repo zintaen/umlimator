@@ -1,0 +1,53 @@
+{
+  "$schema": "../lib/umlimator.schema.json",
+  "schemaVersion": 2,
+  "title": "A minimal package view (tests)",
+  "root": "v",
+  "nodes": [
+    {"id": "top", "type": "uml.Package", "label": "top"},
+    {"id": "mid", "type": "uml.Package", "label": "mid", "parent": "top"},
+    {"id": "deep", "type": "uml.Package", "label": "deep", "parent": "mid"},
+    {"id": "leaf", "type": "uml.Class", "label": "Leaf", "parent": "deep"},
+    {"id": "a1", "type": "uml.Class", "label": "A1", "parent": "top"},
+    {"id": "a2", "type": "uml.Class", "label": "A2", "parent": "top"},
+    {"id": "inner", "type": "uml.Package", "label": "inner", "parent": "top"},
+    {"id": "in-class", "type": "uml.Class", "label": "Inner", "parent": "inner"},
+    {"id": "root", "type": "uml.Class", "label": "Root"},
+    {"id": "nested", "type": "uml.Class", "label": "Nested", "parent": "root"},
+    {"id": "empty", "type": "uml.Package", "label": "empty"},
+    {"id": "hidden", "type": "uml.Package", "label": "hidden"},
+    {"id": "h1", "type": "uml.Class", "label": "H1", "parent": "hidden"},
+    {"id": "some", "type": "uml.Package", "label": "some"},
+    {"id": "s1", "type": "uml.Class", "label": "S1", "parent": "some"},
+    {"id": "s2", "type": "uml.Class", "label": "S2", "parent": "some"},
+    {"id": "sales", "type": "uml.Package", "label": "sales"},
+    {"id": "order", "type": "uml.Class", "label": "Order", "parent": "sales"},
+    {"id": "customer", "type": "uml.Class", "label": "Customer", "parent": "sales"},
+    {"id": "wholesale", "type": "uml.Package", "label": "wholesale"},
+    {"id": "w-order", "type": "uml.Class", "label": "Order", "parent": "wholesale"},
+    {"id": "payments", "type": "uml.Package", "label": "payments"},
+    {"id": "card", "type": "uml.Package", "label": "card", "parent": "payments"},
+    {"id": "card-payment", "type": "uml.Class", "label": "CardPayment", "parent": "card"}
+  ],
+  "edges": [
+    {"id": "leaf-to-root", "type": "uml.Dependency", "from": "leaf", "to": "root"},
+    {"id": "a1-to-a2", "type": "uml.Dependency", "from": "a1", "to": "a2"},
+    {"id": "some-needs-sales", "type": "uml.Dependency", "from": "some", "to": "sales"},
+    {"id": "sales-imports-top", "type": "uml.PackageImport", "from": "sales", "to": "top", "props": {"visibility": "public"}},
+    {"id": "top-imports-empty", "type": "uml.PackageImport", "from": "top", "to": "empty"},
+    {"id": "wholesale-accesses-some", "type": "uml.PackageImport", "from": "wholesale", "to": "some", "props": {"visibility": "private"}},
+    {"id": "wholesale-merges-sales", "type": "uml.PackageMerge", "from": "wholesale", "to": "sales"},
+    {"id": "order-pays", "type": "uml.Dependency", "from": "order", "to": "card-payment"},
+    {"id": "top-holds-a1", "type": "uml.Dependency", "from": "top", "to": "a1"}
+  ],
+  "views": [
+    {"id": "v", "diagram": "uml.package", "title": "Minimal", "direction": "down",
+     "nodeIds": ["top", "mid", "deep", "leaf", "a1", "a2", "in-class", "root", "nested", "empty", "hidden", "some", "s1", "sales", "order", "customer", "wholesale", "w-order", "card-payment"],
+     "layout": {"customer": [1, 1]}},
+    {"id": "payments", "diagram": "uml.package", "title": "Payments, from its subject", "subject": "payments",
+     "nodeIds": ["card-payment", "order"]},
+    {"id": "boxes", "diagram": "uml.package", "title": "Hand-written containers, ignored",
+     "nodeIds": ["sales", "order", "customer", "some", "s1"],
+     "containers": [{"id": "drawn", "label": "Drawn by hand", "nodeIds": ["order", "s1"]}]}
+  ]
+}

@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- The package diagram (2.2) in headless Chrome (tests/embed.py), from lib/umlimator-all.js: docs/diagrams/examples/03-package.json
+<!-- The package diagram (2.2) in headless Chrome (tests/embed.py), from lib/umlimator-all.js: examples/bookshop-packages.json
      drawn by render() in both themes and three fonts (each box holds exactly what it owns on the picture, titles in their
      tabs, line ends on borders, names, contrast, the legend, a closed package as a folder), then edited through the edit
      event and apply(), by pointer and by keyboard: the palette, a package import by the picker, its visibility, the Owner
@@ -36,7 +36,7 @@ const blend = (top, bot) => [0, 1, 2].map(i => top[i] * top[3] + bot[i] * (1 - t
 const lum = c => { const f = v => v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]); };
 const ratio = (fg, bg) => { const [x, y] = [lum(blend(fg, bg)), lum(bg)].sort((p, q) => q - p); return +((x + 0.05) / (y + 0.05)).toFixed(2); };
 const css = (e, k) => rgba(getComputedStyle(e)[k]);
-const MODEL = await (await fetch('../docs/diagrams/examples/03-package.json')).json();
+const MODEL = await (await fetch('../examples/bookshop-packages.json')).json();
 // what each box holds on the picture, at any depth (notes/stage-2.md §4.1): its classes and the boxes in it
 const HOLDS = { shared: ['money'], catalog: ['book'], sales: ['customer', 'order', 'line', 'status'], payments: ['payable', 'payment', 'card-payment'], card: ['card-payment'], wholesale: ['wholesale-order'] };
 try {

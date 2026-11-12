@@ -49,7 +49,15 @@ drill-down, a data pipeline, an AI agent's skills, and host pages for embedding,
   itself, pinned where you pin it. Edited on the canvas (members as one line of UML text, a palette, a relationship
   picker), each gesture an `edit` event the host applies with `apply()`; checked by the class diagram's rules; read from
   and written to Mermaid's `classDiagram` ([`examples/sales-classes.json`](examples/sales-classes.json),
-  [what it covers](docs/conformance/uml-class.md)).
+  [what it covers](docs/conformance/uml-class.md)). From 0.19.0 a package owning classes the view shows is a box holding
+  them, and names are qualified (`sales::Order`).
+- **UML object and package diagrams** (0.19.0): instances with their slots (`order1042 : Order`, underlined;
+  `status = placed`) and links with names and roles ([`examples/order-objects.json`](examples/order-objects.json),
+  [what it covers](docs/conformance/uml-object.md)); packages as boxes holding what they own, at any depth, or as
+  closed folders, with «import», «access», «merge» and dependencies between them
+  ([`examples/bookshop-packages.json`](examples/bookshop-packages.json), [what it covers](docs/conformance/uml-package.md)).
+  Ownership is edited by dropping an element into a box, or with the Owner field; both are checked by their types'
+  rules, and the PDF's tables list slots and element kinds.
 - **UML sequence and communication diagrams** (0.20.0): lifelines on a time axis with calls, async messages, replies,
   creates and deletes, activation bars derived from the messages, `alt`, `opt`, `loop`, `par` and `break` frames with
   their guards, and interaction uses ([`examples/checkout-sequence.json`](examples/checkout-sequence.json),
@@ -131,7 +139,7 @@ function MapView({ model, onSelect }) {
   `map.shapes` reads the notation shown and sets another (`null`: each view's own again); the cards are drawn again from
   the geometry they have, with the camera, selection and marks kept, and nothing is laid out.
 - `editable: true` turns on editing gestures ([docs/editing.md](docs/editing.md); `examples/edit.html` is a working host).
-- `import { render, apply, history } from 'umlimator/all'` draws diagram types too: a class, sequence or communication diagram, whose gestures emit
+- `import { render, apply, history } from 'umlimator/all'` draws diagram types too: a class, object, package, sequence or communication diagram, whose gestures emit
   `edit` transactions that `apply(model, e.commands)` turns into the next model (`examples/class-editor.html` is a
   working host). `umlimator` alone draws maps, and a typed view as plain cards with a warning.
 - `diff(before, after)` returns `after` with each card and line marked added, changed or removed, what changed in words,
@@ -210,8 +218,8 @@ path. The full schema is `engine/references/schema.md` (§ Map model); `examples
 A model file that starts with `"$schema": "<path to>/umlimator.schema.json"` (exported as `umlimator/schema.json`)
 gets completion and checks in editors, and `validate(model)` lists its errors and warnings, each with where it is.
 `"schemaVersion": 2` marks a model that may hold typed elements and typed views (`docs/diagrams/model.md`). A view whose
-`diagram` is `"uml.class"`, `"uml.sequence"` or `"uml.communication"` is a UML class, sequence or communication diagram,
-drawn by `umlimator/all` and the CLI; a type not drawn yet shows its
+`diagram` is `"uml.class"`, `"uml.object"`, `"uml.package"`, `"uml.sequence"` or `"uml.communication"` is a UML class, object,
+package, sequence or communication diagram, drawn by `umlimator/all` and the CLI; a type not drawn yet shows its
 nodes as plain cards, with a warning. A model with no `schemaVersion` is a map, as always, and a version newer than the
 module reads is an error.
 
@@ -249,15 +257,20 @@ kinds such as `public`, `lane`, `script`, `hook` and `board` work too). Fields b
 | model | `lenses` | ways to look at the map: what `pick` picks (by id, kind, box, owner or `line` kind) lit, the rest dimmed; `color: "owner"` rings cards by owner |
 
 In a version-2 model, a class diagram (`examples/sales-classes.json`; every field in
-[`docs/conformance/uml-class.md`](docs/conformance/uml-class.md)):
+[`docs/conformance/uml-class.md`](docs/conformance/uml-class.md)), an object diagram (`examples/order-objects.json`,
+[`uml-object.md`](docs/conformance/uml-object.md)) and a package diagram (`examples/bookshop-packages.json`,
+[`uml-package.md`](docs/conformance/uml-package.md)):
 
 | On | Field | What it does |
 |---|---|---|
 | node, member, edge | `type` | what it is: `uml.Class`, `uml.Interface`, `uml.Enumeration`, `uml.DataType`, `uml.PrimitiveType`, `uml.Package`, `uml.Comment`; members `uml.Property`, `uml.Operation`, `uml.EnumerationLiteral`; lines `uml.Association`, `uml.Generalization`, `uml.InterfaceRealization`, `uml.Dependency`, `uml.CommentLink` |
 | node | `members` | its attributes, operations or literals, in order, each `{ id, type, label, props }` |
-| node | `parent` | the package that owns it |
+| node, member, edge | `type`, from 0.19.0 | an object diagram's `uml.InstanceSpecification`, its members `uml.Slot`, lines `uml.Link`; a package diagram's `uml.Package` and the classifiers above, lines `uml.PackageImport`, `uml.PackageMerge`, `uml.Dependency` |
+| node | `parent` | the package that owns it: from 0.19.0 drawn as a box holding it when the view shows both |
+| node, member, edge | `props`, from 0.19.0 | an instance's `classifier` (a name, as text); a slot's `value`; a link's `association` and its ends' `role`; a package import's `visibility`, `public` («import») or `private` («access») |
 | node, member, edge | `props` | the type's own fields: `isAbstract`, `stereotypes`; a member's `visibility`, `valueType`, `multiplicity`, `default`, `isStatic`, `isDerived`, `parameters`, `returnType`; an association's `ends.from` and `ends.to` (`role`, `multiplicity`, `aggregation`, `navigable`) |
-| view | `diagram` | `"uml.class"`: the view is a class diagram |
+| view | `diagram` | `"uml.class"`, `"uml.object"` or `"uml.package"`: the view is a class, object or package diagram |
+| view | `subject` | the package the view shows the inside of: names are qualified from it |
 | view | `direction` | `"down"` lays it out top to bottom, the general class above (default `"right"`) |
 | view | `present` | per element: `collapsed` compartments, and at most `rows` rows each, then "+k more" |
 
@@ -453,7 +466,7 @@ action.yml                   the diff Action: what a pull request changes in its
 src/                         the module's sources, by layer: core, draw, layout, map, canvas, page (tools/build.mjs joins them)
 lib/                         the module (umlimator.js; umlimator-all.js with every diagram family; both built and committed), its types, the default theme, <umlimator-map> and the docs plugins
 engine/                      the page templates the CLI inlines the module into; the upstream renderer and schema
-docs/                        the module's API and the editing design; docs/diagrams/: the plan for 28 diagram types (not built yet)
+docs/                        the module's API and the editing design; docs/conformance/: what each diagram type covers; docs/diagrams/: the plan for 28 diagram types
 tests/, bench/               tests, benchmark models and results
 icons/                       line icons and the logo manifest (sources and hashes only)
 examples/                    made-up systems: models, host pages and a Node script (live: zintaen.github.io/umlimator)

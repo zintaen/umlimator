@@ -223,6 +223,45 @@ in the hint line, and nothing is applied (risks.md E3); a good line, or Escape, 
 have no Members section. What breaks a rule of the class diagram (`validate()`, `docs/conformance/uml-class.md`) shows
 in the problems list, by its rule and its elements, and choosing it selects them.
 
+## Ownership, and the object and package diagrams' gestures (0.19.0)
+
+From 0.19.0 a class, object or package view draws a shown package that owns something the view shows as a box holding
+it (`docs/diagrams/notes/stage-2.md` §4). Ownership is `parent`, and it is edited two ways:
+
+| Edit | Pointer | Keyboard | Commands |
+|---|---|---|---|
+| put an element in a package, or take it out | drop its card into a package's box, into another box, or outside every box (the box under the drag is highlighted) | the **Owner** field in the properties panel: "none" and every package by its qualified name (`payments::card`); the element's own owner is always listed | `reparent` to that package (outside every box: the view's `subject`, or none); either way, a `set` that removes the card's pin when it had one goes in the same transaction |
+| select a package drawn as a box | a click on its border or its title | the outline of elements | a container selection: F2, Delete, Shift + Delete and the properties panel act on the package |
+| rename it | F2 on the box | `F2`, Enter | `set label`: the package's own name, not the qualified one |
+| hide it from the view | Remove from view (properties) | `Delete` | `hide`: what it held stays on the picture, its names qualified (`sales::Order`) |
+| delete it from the model | Delete from model (properties) | `Shift + Delete` | `delete`: the package and everything it owns, at any depth; undo brings all of it back |
+
+A drop in the box the card is already drawn in pins it, as before. After a re-own the view is laid out again, so each box
+holds exactly its contents; the picture moves on that edit (`notes/stage-2.md` §3.2). A package is not offered as its own
+owner or under itself. A new element is not created inside the selected package: add it, then set its Owner. Dragging a
+box does nothing, and neither do `Alt + arrows` on it; its place comes from what it holds.
+
+The **package diagram** (`uml.package`) has the class diagram's palette (Package, Class, Interface, Enumeration, Data
+type, Primitive type, Comment; `N` adds a package) and four lines in the picker: Import, Merge, Dependency, Comment link.
+An import's **Visibility** field is public («import») or private («access»): a `set` of `props.visibility`. A classifier
+is drawn by its name here; its members are edited in a class view.
+
+The **object diagram** (`uml.object`) has two elements, Instance and Comment (`N` adds an instance), and two lines,
+Link and Comment link.
+
+| Edit | Pointer | Keyboard | Commands |
+|---|---|---|---|
+| name an instance | double-click a selected instance's head | `F2`: the name alone, not `name : Classifier` | `set label` |
+| its classifier, stereotypes | the Classifier and Stereotypes fields | Enter | `set` of `props.classifier`, `props.stereotypes` |
+| a slot | its row in the properties panel, as `feature = value` (or `feature` with no value) | Enter commits; Escape puts the row back | `set label` and `set props`, one transaction |
+| add a slot | the New member row | Enter | `add` with `owner` |
+| reorder slots | ↑ ↓ by a row | `Alt + ↑ / ↓` in a row | `move` |
+| a link's association and roles | Association, From role, To role | Enter | `set` of `props.association`, `['props', 'ends', 'from' or 'to', 'role']` |
+
+A slot line with no feature name (`= 3`) is kept in its row as typed, marked invalid, and nothing is applied (risks.md
+E3). `examples/order-objects.json` and `examples/bookshop-packages.json` are the examples; `tests/object.html` and
+`tests/package.html` test each gesture by pointer and by key.
+
 ## The sequence and communication diagrams' gestures (0.20.0)
 
 A type may take a gesture over through its `edits` hooks (`connect`, `moveTo`, `wrap`, `add`, `remove`;

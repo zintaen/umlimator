@@ -3229,6 +3229,115 @@ What moves for a host that upgrades:
   441 kB.
 - **`umlimator.py import`** reads a Mermaid `classDiagram` through Node; every other format imports with Python alone.
 
+## 0.19.0: the object and package diagrams, packages drawn as boxes, ownership edited on the canvas, and the PDF's tables per type (in progress)
+
+Stage 2 of the plan for 28 diagram types (`docs/diagrams/notes/stage-2.md`). Maps draw as they did. **Class views with
+packages draw differently**, by the maintainer's decision (§10.1, `docs/diagrams/plan.md` §1).
+
+- **Boxes on typed views (2.1).** A registered type's `boxes(model, view)` are laid out with the map's box code: each
+  box's contents kept together, boxes 32 px apart, a line ending on a box's border, box borders in the routing grid. A
+  box whose shape has `frame(f)` is drawn by it; the frame draws its border with class `family-box` and its title with
+  class `family-title`. Dropping a card into, out of or between boxes emits `reparent` and removes any pin the card had,
+  and the view is laid out again only when an element shown before and after is now drawn in a different box. The
+  properties panel has an **Owner** field built from the type's `owners(model, element)`, which always lists the
+  element's current owner. A box is selected as a container for F2, Delete, Shift + Delete and the panel. Inside the
+  registry (still internal, provisional): the fields `boxes` and `owners`. Maps draw as before.
+- **The package diagram, `uml.package`, and packages in class views (2.2).** `uml.package` draws packages, imports
+  («import», and «access» for a private one), merges («merge») and dependencies, each dashed with an open arrowhead,
+  and the class diagram's classifiers by their names and keywords. In both `uml.package` and `uml.class` views (and
+  `uml.object`, 2.3), a shown package that owns shown elements is drawn as a box holding exactly those elements, its name
+  in a tab in its top left corner; any other package is drawn as a closed folder, whose tab moves along its top away from
+  where lines end. Names are qualified (`payments::card::CardPayment`) from the nearest shown owner, else from the view's
+  `subject`, else from the top; this covers accessible names and `describe()` too, including a line to a member, which
+  names its owner as drawn. A line between a package and something it holds, or from an open package to itself, is not
+  drawn, and rule `line-inside` warns of it; on a closed package a line to itself is a loop. An ownership cycle (already
+  a core error) no longer drops elements from the picture or from `describe()`. The package type's rules: `import-ends`
+  and `package-names` (errors), `owner-kinds`, `line-inside` and `own-boxes` (warnings: a view's hand-written
+  `containers` are ignored where the type gives boxes), and the class diagram's own; `describe()` writes each box, then
+  what it holds, depth first. `examples/sales-classes.json`'s "Payments only" view takes `subject: "sales"`, so its
+  classes keep their plain names.
+- **The object diagram, `uml.object` (2.3).** An instance specification is drawn with the classifier shape, its head
+  underlined: `name : Classifier`, `: Classifier` for an anonymous one, or its name alone; one compartment of slots,
+  `feature = value` (or `feature` with no value). A link is an association with no end marks: its name, or else its
+  association, on the line, and each end's role by its end. A package holding a shown instance is a box, with names
+  qualified as in the class view. A slot is edited as one line in the properties panel (`print(parse(x))` is stable; a
+  line with no feature name is kept as typed, marked invalid, and nothing is applied); F2 renames the instance, and its
+  classifier is a property. Rules: `slot-kinds`, `link-ends` (errors), `instance-of` (a warning: when the classifier names
+  exactly one classifier of the model, by its name or qualified name, each slot names an attribute of it or of one of its
+  generals), `owner-kinds` and the class diagram's `member-names`. `describe()`, accessible names ("Instance
+  specification order1042 : Order, 2 slots") and the legend. The underline is one attribute on the classifier shape's
+  name, in `src/typed/draw.js`, so `lib/umlimator.js` is unchanged.
+- **The object diagram, after review (2.3).** A class, interface, enumeration or other classifier added to an object
+  view is drawn as it is in the class view, with its name not underlined, its keyword and its compartments, and screen
+  readers announce it as one ("Class Order, 1 attribute, 0 operations"). Before, it was drawn and announced as an
+  instance.
+- **Mermaid class diagrams: namespaces (2.4).** Namespaces nest as Mermaid 12.3.0 nests them. The reader knows a
+  namespace by its parent and its name, so a namespace with the same name inside another parent is a separate package,
+  reported and renamed with `-2` and so on; text that 0.18.0 read into one package reads into two, with new ids. A
+  dotted name of over 32 parts is read as one name, and a note inside a namespace is reported. The writer nests in
+  braces. It writes a namespace whose id is its parent's dotted path in dotted form at the top, unless a written
+  namespace beside it has the same last part. It leaves out a namespace with no class in it, and it handles models
+  nested thousands deep. It names an owner the view does not show in a `%% not written:` line; when the shown
+  namespace's id is that owner's dotted path, the line also says that Mermaid draws the owner anyway, because Mermaid
+  splits names at their dots.
+- **The PDF's tables per type, and a re-own in `diff()` (2.5).** The PDF of a version-2 model has tables that suit the
+  diagram (`risks.md` R8): the cards table gives each element's type word ("Class", "Data type", "Instance
+  specification", "Package"; an element with no type counts as a class) and its members or slots as the type prints
+  them; the lines table gives each line's kind ("Association", "Package import", "Link") where a map's PDF gives the
+  technology. `diff()` on a version-2 model says "moves X into Y" or "moves X out of Y" when an element's owner is the
+  only thing that changed (M11), and so do `umlimator.py diff` and the diff Action. Maps' PDFs and diffs are unchanged: a
+  map whose node's `parent` changes still reads "changes X (parent)".
+- **Fixtures, examples and documents (2.6).** The object example moved from `docs/diagrams/examples/02-object.json` to
+  `examples/order-objects.json`, and the package example from `03-package.json` to `examples/bookshop-packages.json`:
+  both are in the gallery (their stills and PDFs on the site) and in CI, which renders and checks them, validates them
+  against the JSON Schema and runs the diff Action's dry run on them; `docs/diagrams/examples/check.mjs` lists what
+  moved. `tests/package-minimal.json` (`notes/stage-2.md` §15: empty, hidden and partly shown packages, three levels with
+  a line from depth 3 to depth 0, imports, an access and a merge, qualified names, a subject, two classes named Order, a
+  pinned class in a box, what the rules warn of) and `tests/object-minimal.json` (anonymous instances, slots with no
+  value, a long value, named and association-only links, roles, two links on one pair, a link to itself, a qualified
+  instance, `instance-of`) lay out with no overlap, no line through an element, a tab or along a box's border and no
+  role on an element, right and down, in Node and in Chrome under three fonts and both themes;
+  `tests/package-stress.json` (50 nodes in 10 boxes over three levels, 60 lines) and `tests/object-stress.json` (50
+  instances, 60 links) lay out in under 1 s, and an edit that moves nothing is laid out and drawn as SVG markup in under
+  100 ms (P1), both timed in Node in CI, their crossings pinned. `tests/cli.py` renders, checks, stills and prints both
+  examples and runs the diff Action's step as CI runs it on both; `tests/mcp.py` serves both to an MCP client and a page
+  (C10). [`docs/conformance/uml-object.md`](conformance/uml-object.md) and
+  [`docs/conformance/uml-package.md`](conformance/uml-package.md) state each subset, UML 2.5.1's clauses, what is left
+  out and what the SVG, PNG and PDF writers show; `uml-class.md` says what nesting changed.
+- **Types and schema (2.6).** `lib/umlimator.d.ts` exports the object and package diagrams' vocabulary:
+  `UmlObjectElementType`, `UmlObjectMemberType`, `UmlObjectLineType`, `UmlInstanceProps`, `UmlSlotProps`,
+  `UmlLinkProps`, `UmlPackageElementType`, `UmlPackageLineType` and `UmlPackageImportProps`.
+  `lib/umlimator.schema.json` describes the same fields (instances, slots, links and their roles and association, an
+  import's visibility, the `uml.object` and `uml.package` views, `subject`) for editors, and rejects nothing it accepted
+  before.
+
+What moves for a host that upgrades:
+- **A class view with packages draws differently** (the maintainer's decision, `notes/stage-2.md` §10.1, an exception to
+  "every model that drew before draws the same"): a package owning classes the view shows is a box holding them, not a
+  named box beside them; a package owning nothing shown is a closed folder; a class whose owners are not all shown is
+  named `sales::Order`. A line between a package and a class it holds is no longer drawn, with a warning. A view's own
+  `containers` are ignored on a class view, with a warning. Maps, and class views with no packages, draw as before; every
+  map's geometry and every map example's stills are unchanged.
+- **A re-own lays a typed view out again**, so each box holds exactly its contents; the picture moves on that edit.
+- **A host that loads `umlimator/all`** draws a version-2 view with `diagram: "uml.object"` or `"uml.package"` as an
+  object or package diagram, where 0.18.0 drew plain cards and warned; `lib/umlimator.js` still draws plain cards.
+- **`validate()`** on a class model adds `owner-kinds`, `line-inside` and `own-boxes`, all warnings.
+- **The Mermaid writer** names an owner the view does not show in `%% not written:`; **the reader** gives a namespace
+  that shares its name with one in another parent its own package and id (`X-2`), where 0.18.0 merged the two.
+- **The PDF** of a version-2 model lists each element's type and members or slots, and each line's kind, where 0.18.0
+  printed the map's "Script" and "calls".
+- **`diff()`** on a version-2 model says "moves X into Y" for a re-own, where 0.18.0 said "changes X (parent)".
+- **New exports:** the object and package diagrams' types in `lib/umlimator.d.ts`. Nothing is removed or renamed; the
+  registry stays internal.
+- **Left out** (`notes/stage-2.md` §14): the semantics of package merge, element import, the ⊕ containment notation, a
+  line between a package and what it holds, package URIs, a diagram frame, the tab above an open package's body, nested
+  classifiers; checking slot values against their types, classifiers and associations by reference, a link's
+  multiplicity, n-ary links; XMI; a reader for either type.
+- **Size:** `lib/umlimator.js`, what a map host loads, is 186.6 kB with `gzip -9` on `main` as this is written, 13.15% over
+  0.16.0 (the plan's budget is 15%); 2.1's box code and 2.5's tables are in it (12.42% after them), and so is stage 3's
+  canvas hook slot (3.4), which is on `main` too. `lib/umlimator-all.js` is 261.9 kB, up from 211.5 kB in 0.18.0. The npm
+  package is 497 kB, up from 441 kB.
+
 ## 0.20.0: the sequence and communication diagrams (in progress)
 
 Stage 3 of the plan for 28 diagram types (`docs/diagrams/notes/stage-3.md`). Everything here is additive: maps, class
@@ -3318,6 +3427,6 @@ What moves for a host that upgrades:
   messages, coregions, the seven other operators (drawn by name), an actor drawn as a figure, notes and `autonumber` in
   a sequence view, hiding a message; concurrent numbers and multi-objects in a communication view; XMI. The `map-repo`
   skill, the MCP server and the diff Action meet these types in one package after 0.20.0 (C10, S15).
-- **Size:** `lib/umlimator.js`, what a map host loads, is 186.9 kB with `gzip -9` on this branch, 13.29% over 0.16.0
+- **Size:** `lib/umlimator.js`, what a map host loads, is 186.9 kB (186,920 B) with `gzip -9` on this branch, 13.32% over 0.16.0
   (the plan's budget is 15%); stage 3 added 835 B to it in 3.4, 107 B in #191 and 130 B in 3.8, the rest is stage 2's.
-  `lib/umlimator-all.js` is 276.9 kB, up from 211.5 kB in 0.18.0.
+  `lib/umlimator-all.js` is 276.9 kB (276,892 B), up from 211.5 kB in 0.18.0.
