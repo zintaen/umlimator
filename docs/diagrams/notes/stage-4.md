@@ -243,7 +243,7 @@ unchanged.
 
 | File | Holds | Why there |
 |---|---|---|
-| `src/uml/flow.js` | `initial`, `final`, `flow-final`, `diamond`, `bar`, `rounded`; the flow rules shared by the activity and overview types (§9.3, §11.3); the flow label's print (`name [guard]`) | Three types draw them; one lane builds them before the types. `rounded` is here so that neither the activity file nor the state file imports the other |
+| `src/uml/flow.js` | `initial`, `final`, `flow-final`, `diamond`, `bar`, `rounded`; the flow rules shared by the activity and overview types (§9.3, §11.3); the flow label's print (`name [guard]`). As built in 4.2: `flowProblems(model, view, ends)` (`ends`: the node types a flow of the calling type may end on) checks the model's flows that touch a node the view shows and the control nodes it shows, with `FLOW_RULES` to spread into a type's `rules` and `FLOW_CONTROL`, the seven control node types; `flowText(name, guard)` draws a flow's label, `printFlow` is null where it would not read back, `parseFlow(text)` gives `{ name, guard }` or `{ error }`; `flowWrap(text, px, max, lines)` wraps a name. The bar reads `n.busy` (the lines on its busiest side) and `n.down` (the view laid out down) in `size`. A diamond's text is one line up to 80 px, else two balanced lines (`wrap2`), the diamond twice the text's box plus 12 px across and 4 px along; a rounded box's name is 12 px on 16 px lines, its stereotypes 11 px over it, at least 96 × 36 px | Three types draw them; one lane builds them before the types. `rounded` is here so that neither the activity file nor the state file imports the other |
 | `src/uml/activity.js` | `signal`; the action's and the call behaviour action's looks on `rounded` | The activity's own |
 | `src/uml/state.js` | `junction`, `history`, `terminate`; the state's look (`rounded` with a compartment of activities, and the decomposition indicator when closed); the state's and the region's frames | The state machine's own |
 | `src/uml/usecase.js` | `ellipse`, `actor`, the subject's frame | The use case's own |
@@ -262,23 +262,40 @@ unchanged.
 
 ```js
 laneRows(pos, laneOf, lanes) -> pos'      // pos: { id: [col, row] } as ranked; laneOf: id -> its innermost lane, or null;
-                                          // lanes: [{ id, parent, order }] outermost first. pos': each lane a run of rows
-laneBands(g, lanes, laneOf, turned) -> { bands: [{ id, parent, depth, x, y, w, h, head }], shift }   // g is read, never written
+                                          // lanes: [{ id, parent, order }] outermost first, siblings by `order` (else list
+                                          // order). pos': a new object, each lane a run of whole rows from row 0
+laneBands(g, lanes, laneOf, turned) -> { bands: [{ id, parent, depth, x, y, w, h, head }], shift, bounds }   // g is read, never written
 ```
+
+(As built in 4.3: `laneBands` also returns `bounds`, `g.bounds` moved by `shift` and grown to hold the bands, since an empty
+lane at an end has a row the layout never placed; `shift` is `{ x, y }`, and the bands are where they lie after it. A
+lane's own nodes take the rows before its nested lanes'. A lane whose parent is no lane, or lies on a cycle of parents, is
+at the top. `laneBands` finds each lane's rows again from `g`'s nodes' `col` and `row`; its one other input is a fifth
+argument, `rgap`, the row gap the type laid out with, since `g` does not carry it and a loop's label or a line's label can
+widen a gap past it; without it the narrowest gap between two rows is taken. Siblings with an `order` come first, by it;
+those without one follow in list order.)
 
 - **Rows.** Within each column, the nodes keep their ranked order, sorted by lane (depth first, in `nodeIds` order). Lane
   `k` takes `rows_k` rows, the most of its nodes in any one column; lanes follow each other with no shared row. A nested
   lane's rows sit inside its parent's.
 - **A node in no lane** (L10) goes in rows after every lane, outside them, with the warning `in-lane`.
-- **An empty lane** keeps one row and a minimum width of 120 px.
+- **An empty lane** keeps one row and a minimum width of 120 px. (As built: the row holds no node, so the layout gives it
+  the view's node height; between two lanes its band is that row and one row gap, 128 px at the activity's `rgap` of 64,
+  and so 120 px at least for an `rgap` of 56 or more. At an end it takes a row past one row gap that leaves its band
+  120 px across: 80 px at an `rgap` of 64, and never under 64 px. Both hold laid out either way.)
 - **Pins.** A pin's column is kept; its row is taken as an order inside its lane, so a pin never moves a node to another
   lane. Changing lane is a change of owner (§9.4).
 - **Bands.** After the layout, each band spans the whole diagram along the flow, and across it from the divider before
-  its first row to the divider after its last. A header of 22 px per level of nesting is added at the start of the flow
+  its first row to the divider after its last. (As built in 4.3: along the flow
+  the bands start and end 16 px inside `g.bounds`, the header strips included, and the `bounds` returned hold them with 16 px
+  to spare.) A header of 22 px per level of nesting is added at the start of the flow
   (the top laid out down, the left laid out right); the type applies `shift` to its copy of the geometry (§2.4), never to
   what `layoutTyped` returned.
 - **Dividers.** A band's edge and its divider are one line, drawn 12 px off the gap's centre line toward the later lane,
-  since the router runs lines along the centre lines (`gapLinesY`). The activity type passes its own `rgap` of 64 px (the
+  since the router runs lines along the centre lines (`gapLinesY`); the outer edges of the first and last lanes lie 12 px
+  inside the gap's centre line, toward the lane (as built in 4.3). (As built: the router's lines lie `rgap / 2` from each
+  row, so they meet at the centre only when a gap is `rgap` wide; the divider is placed `rgap / 2 - 12` px before the later
+  row, which keeps it 12 px off the nearer line however wide the gap.) The activity type passes its own `rgap` of 64 px (the
   typed default `RG0` is 44 px), so 20 px are left between a divider and the nodes on its near side. 4.5's fixtures check
   that no line runs along a divider for more than 24 px; if one does, the fixture pins it and the conformance note states
   it (as L8 does for boxes).
@@ -363,8 +380,10 @@ asked only if neither works.
 UML's `trigger-list ['[' guard ']'] ['/' effect]`. In `src/uml/transition.js`:
 
 ```js
-parseTransition(text) -> { trigger, guard, effect } | { error }   // each part trimmed text, or undefined when absent
+parseTransition(text, form?) -> { trigger, guard, effect } | { error }   // each part trimmed text, or undefined when absent or empty;
+                                                                   // form: what the error says the text should be (a flow's, §7.2)
 printTransition({ trigger, guard, effect }) -> text | null          // null: it would not read back (below)
+transitionText({ trigger, guard, effect }) -> text                  // the parts joined as printed, whether or not they read back: the drawn label
 ```
 
 - The trigger runs to the first `[` or `/` outside brackets and parentheses, so a call trigger's parameters keep theirs
@@ -375,10 +394,12 @@ printTransition({ trigger, guard, effect }) -> text | null          // null: it 
 - The effect is everything after the first `/` outside the guard, trimmed; it may hold anything.
 - Absent parts are left out; an empty text is all three absent. `printTransition` writes `trigger [guard] / effect` with
   one space round each part, leaving out what is absent.
-- **Refused:** an unbalanced `[`, `]`, `(` or `)`; a second guard; a text over 4,096 characters. The text is kept as written in the
+- **Refused:** an unbalanced or crossed `[`, `]`, `(` or `)` in the trigger or the guard; a second guard, or any other text between
+  the guard's `]` and the `/` (4.2: `a [g] b` would not read back); a text over 4,096 characters. The effect is not checked. The text is kept as written in the
   field, nothing is applied, and the hint line says why (E3).
-- **Not printable:** a trigger that holds `[` or `/`, or a guard with unbalanced brackets, which only a host can write
-  into the model. `printTransition` returns null; the line is drawn with its parts joined by spaces, warned of by
+- **Not printable:** any parts for which `printTransition` returns null: a trigger that holds `/` or `[` outside
+  parentheses, or an unbalanced or crossed bracket or parenthesis, or a guard with unbalanced brackets, which only a host
+  can write into the model. `printTransition` returns null; the line is drawn with its parts joined by spaces, warned of by
   `label-syntax`, and its F2 text is that drawing, which the parser reads differently, so F2 then edits the parts in the
   properties panel only.
 - **Round trip:** `print(parse(x))` is stable for every fixture text (E3), and `parse(print(p))` equals `p` for every
@@ -392,7 +413,7 @@ printTransition({ trigger, guard, effect }) -> text | null          // null: it 
 | A transition's drawn label, F2 on it | `trigger`, `guard`, `effect` |
 | An internal transition's member row | The same; a row with no trigger is warned of (`internal-trigger`). A row whose trigger is exactly `entry`, `do` or `exit` is not an internal transition: UML reserves those words for the state's activities, so the row sets that prop (and a second `entry` row replaces the first, said on the hint line). The Mermaid reader's `s1 : entry / x` follows the same rule |
 | A state's `entry`, `do`, `exit` | Not parsed: each is drawn as a row `entry / text` and edited in the properties panel or as that row |
-| An activity or overview flow, F2 on it | The trigger's place is the flow's name, the guard its guard; an effect is refused ("a flow has no effect"); so a name holding `/`, `[` or `]` outside brackets is refused, and is written in the properties panel's name field |
+| An activity or overview flow, F2 on it | The trigger's place is the flow's name, the guard its guard; an effect is refused ("a flow is name [guard]: it has an effect"), a bare `/` too; so a name holding `/`, `[` or `]` outside brackets is refused, and is written in the properties panel's name field |
 | The Mermaid reader's `A --> B : text` and `A : text` | §13 |
 
 ### 7.3 Drawn
