@@ -1,0 +1,490 @@
+<!doctype html>
+<!-- The communication diagram (3.5, notes/stage-3.md §6) in headless Chrome (tests/embed.py), from lib/umlimator-all.js:
+     docs/diagrams/examples/12-communication.json and the fixtures below (§9: the minimal view; the edge cases, two messages
+     each way on one link, a self-message on a self connector, six messages on one link, a lifeline with no connector, every
+     sort; 20 lifelines, 30 connectors and 200 messages) drawn by render() in both themes and three fonts: no overlap, every
+     text in its face, no connector through another element, line ends on the lifelines, names, the reading order of the
+     picture, the legend and contrast; then the gestures, by pointer and by keyboard, through the type's hooks as 3.4 calls them
+     (src/typed/edit.js), each through the edit event and apply(): Tab's key rings in geo.order, the refused connect's reason
+     on the hint line, N and the palette at an index, Delete and Shift + Delete of a connector taking its messages.
+     tests/communication.test.mjs reads the fixtures from here and lays them out in Node. -->
+<meta charset="utf-8">
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="../lib/umlimator-theme.css">
+<title>umlimator communication diagram test</title>
+<body style="margin:0">
+<div id="m" style="width:1400px;height:900px"></div>
+<script type="application/json" id="minimal">
+{ "schemaVersion": 2, "title": "Communication: the smallest view",
+  "nodes": [
+    {"id":"client","type":"uml.Lifeline","label":"client","props":{"represents":"Client"}},
+    {"id":"server","type":"uml.Lifeline","label":"server","props":{"represents":"Server"}}
+  ],
+  "edges": [
+    {"id":"client-server","type":"uml.Connector","from":"client","to":"server"},
+    {"id":"get","type":"uml.Message","from":"client","to":"server","label":"get(id)","props":{"sort":"call"}},
+    {"id":"got","type":"uml.Message","from":"server","to":"client","label":"item","props":{"sort":"reply","replyTo":"get"}}
+  ],
+  "views": [
+    {"id":"v","diagram":"uml.communication","title":"A call and its reply",
+      "nodeIds": ["client","server"],
+      "edges": ["client-server","get","got"] }
+  ] }
+</script>
+<script type="application/json" id="stress">
+{ "schemaVersion": 2, "title": "Communication: edge cases and 200 messages",
+  "nodes": [
+    {"id":"user","type":"uml.Lifeline","label":"user","props":{"represents":"Shopper","stereotypes":["actor"]}},
+    {"id":"client","type":"uml.Lifeline","label":"client","props":{"represents":"Client"}},
+    {"id":"server","type":"uml.Lifeline","label":"server","props":{"represents":"Server"}},
+    {"id":"store","type":"uml.Lifeline","label":"store","props":{"represents":"Store"}},
+    {"id":"receipt","type":"uml.Lifeline","label":"receipt","props":{"represents":"Receipt"}},
+    {"id":"idle","type":"uml.Lifeline","label":"idle","props":{"represents":"Spare"}},
+    {"id":"gateway","type":"uml.Lifeline","label":"gateway","props":{"represents":"ApiGateway"}},
+    {"id":"auth","type":"uml.Lifeline","label":"auth","props":{"represents":"AuthService"}},
+    {"id":"users","type":"uml.Lifeline","label":"users","props":{"represents":"UserDirectory"}},
+    {"id":"orders","type":"uml.Lifeline","label":"orders","props":{"represents":"OrderService"}},
+    {"id":"cart","type":"uml.Lifeline","label":"cart","props":{"represents":"CartService"}},
+    {"id":"catalog","type":"uml.Lifeline","label":"catalog","props":{"represents":"CatalogService"}},
+    {"id":"pricing","type":"uml.Lifeline","label":"pricing","props":{"represents":"PricingEngine"}},
+    {"id":"stock","type":"uml.Lifeline","label":"stock","props":{"represents":"StockKeeper"}},
+    {"id":"payments","type":"uml.Lifeline","label":"payments","props":{"represents":"PaymentProvider"}},
+    {"id":"fraud","type":"uml.Lifeline","label":"fraud","props":{"represents":"FraudCheck"}},
+    {"id":"ledger","type":"uml.Lifeline","label":"ledger","props":{"represents":"Ledger"}},
+    {"id":"shipping","type":"uml.Lifeline","label":"shipping","props":{"represents":"ShippingService"}},
+    {"id":"carriers","type":"uml.Lifeline","label":"carriers","props":{"represents":"CarrierAdapter"}},
+    {"id":"mailer","type":"uml.Lifeline","label":"mailer","props":{"represents":"Mailer"}},
+    {"id":"search","type":"uml.Lifeline","label":"search","props":{"represents":"SearchIndex"}},
+    {"id":"reviews","type":"uml.Lifeline","label":"reviews","props":{"represents":"ReviewStore"}},
+    {"id":"media","type":"uml.Lifeline","label":"media","props":{"represents":"MediaStore"}},
+    {"id":"audit","type":"uml.Lifeline","label":"audit","props":{"represents":"AuditLog"}},
+    {"id":"reports","type":"uml.Lifeline","label":"reports","props":{"represents":"ReportBuilder"}},
+    {"id":"billing","type":"uml.Lifeline","label":"billing","props":{"represents":"BillingService"}}
+  ],
+  "edges": [
+    {"id":"user-client","type":"uml.Connector","from":"user","to":"client"},
+    {"id":"client-server","type":"uml.Connector","from":"client","to":"server"},
+    {"id":"server-self","type":"uml.Connector","from":"server","to":"server"},
+    {"id":"server-store","type":"uml.Connector","from":"server","to":"store"},
+    {"id":"server-receipt","type":"uml.Connector","from":"server","to":"receipt"},
+    {"id":"e1","type":"uml.Message","from":"user","to":"client","label":"buy()","props":{"sort":"call"}},
+    {"id":"e2","type":"uml.Message","from":"client","to":"server","label":"open()","props":{"sort":"call"}},
+    {"id":"e3","type":"uml.Message","from":"server","to":"client","label":"ask(detail)","props":{"sort":"call"}},
+    {"id":"e4","type":"uml.Message","from":"client","to":"server","label":"detail","props":{"sort":"reply","replyTo":"e3"}},
+    {"id":"e5","type":"uml.Message","from":"server","to":"server","label":"log(event)","props":{"sort":"call"}},
+    {"id":"e6","type":"uml.Message","from":"server","to":"store","label":"save(a)","props":{"sort":"call"}},
+    {"id":"e7","type":"uml.Message","from":"store","to":"server","label":"saved","props":{"sort":"reply","replyTo":"e6"}},
+    {"id":"e8","type":"uml.Message","from":"server","to":"store","label":"save(b)","props":{"sort":"call"}},
+    {"id":"e9","type":"uml.Message","from":"store","to":"server","label":"saved","props":{"sort":"reply","replyTo":"e8"}},
+    {"id":"e10","type":"uml.Message","from":"server","to":"store","label":"flush()","props":{"sort":"call"}},
+    {"id":"e11","type":"uml.Message","from":"store","to":"server","label":"flushed","props":{"sort":"reply","replyTo":"e10"}},
+    {"id":"e12","type":"uml.Message","from":"server","to":"receipt","label":"new(order)","props":{"sort":"create"}},
+    {"id":"e13","type":"uml.Message","from":"server","to":"client","label":"progress","props":{"sort":"async"}},
+    {"id":"e14","type":"uml.Message","from":"server","to":"receipt","label":"dispose()","props":{"sort":"delete"}},
+    {"id":"e15","type":"uml.Message","from":"server","to":"client","label":"opened","props":{"sort":"reply","replyTo":"e2"}},
+    {"id":"e16","type":"uml.Message","from":"client","to":"user","label":"done","props":{"sort":"reply","replyTo":"e1"}},
+    {"id":"gateway-auth","type":"uml.Connector","from":"gateway","to":"auth"},
+    {"id":"gateway-users","type":"uml.Connector","from":"gateway","to":"users"},
+    {"id":"auth-orders","type":"uml.Connector","from":"auth","to":"orders"},
+    {"id":"orders-cart","type":"uml.Connector","from":"orders","to":"cart"},
+    {"id":"orders-catalog","type":"uml.Connector","from":"orders","to":"catalog"},
+    {"id":"orders-pricing","type":"uml.Connector","from":"orders","to":"pricing"},
+    {"id":"pricing-stock","type":"uml.Connector","from":"pricing","to":"stock"},
+    {"id":"stock-payments","type":"uml.Connector","from":"stock","to":"payments"},
+    {"id":"gateway-fraud","type":"uml.Connector","from":"gateway","to":"fraud"},
+    {"id":"fraud-ledger","type":"uml.Connector","from":"fraud","to":"ledger"},
+    {"id":"users-shipping","type":"uml.Connector","from":"users","to":"shipping"},
+    {"id":"users-carriers","type":"uml.Connector","from":"users","to":"carriers"},
+    {"id":"carriers-mailer","type":"uml.Connector","from":"carriers","to":"mailer"},
+    {"id":"gateway-search","type":"uml.Connector","from":"gateway","to":"search"},
+    {"id":"catalog-reviews","type":"uml.Connector","from":"catalog","to":"reviews"},
+    {"id":"gateway-media","type":"uml.Connector","from":"gateway","to":"media"},
+    {"id":"auth-audit","type":"uml.Connector","from":"auth","to":"audit"},
+    {"id":"carriers-reports","type":"uml.Connector","from":"carriers","to":"reports"},
+    {"id":"audit-billing","type":"uml.Connector","from":"audit","to":"billing"},
+    {"id":"search-media","type":"uml.Connector","from":"search","to":"media"},
+    {"id":"auth-carriers","type":"uml.Connector","from":"auth","to":"carriers"},
+    {"id":"cart-fraud","type":"uml.Connector","from":"cart","to":"fraud"},
+    {"id":"users-media","type":"uml.Connector","from":"users","to":"media"},
+    {"id":"search-audit","type":"uml.Connector","from":"search","to":"audit"},
+    {"id":"stock-mailer","type":"uml.Connector","from":"stock","to":"mailer"},
+    {"id":"pricing-audit","type":"uml.Connector","from":"pricing","to":"audit"},
+    {"id":"cart-shipping","type":"uml.Connector","from":"cart","to":"shipping"},
+    {"id":"fraud-shipping","type":"uml.Connector","from":"fraud","to":"shipping"},
+    {"id":"catalog-payments","type":"uml.Connector","from":"catalog","to":"payments"},
+    {"id":"carriers-media","type":"uml.Connector","from":"carriers","to":"media"},
+    {"id":"a1","type":"uml.Message","from":"gateway","to":"users","label":"notify(total)","props":{"sort":"call"}},
+    {"id":"a2","type":"uml.Message","from":"users","to":"gateway","label":"notify(token)","props":{"sort":"async"}},
+    {"id":"a3","type":"uml.Message","from":"users","to":"shipping","label":"check(invoice)","props":{"sort":"call"}},
+    {"id":"a4","type":"uml.Message","from":"shipping","to":"users","label":"user","props":{"sort":"reply","replyTo":"a3"}},
+    {"id":"a5","type":"uml.Message","from":"users","to":"carriers","label":"find(token)","props":{"sort":"call"}},
+    {"id":"a6","type":"uml.Message","from":"carriers","to":"users","label":"none","props":{"sort":"reply","replyTo":"a5"}},
+    {"id":"a7","type":"uml.Message","from":"users","to":"gateway","label":"found","props":{"sort":"reply","replyTo":"a1"}},
+    {"id":"a8","type":"uml.Message","from":"gateway","to":"auth","label":"load(invoice)","props":{"sort":"call"}},
+    {"id":"a9","type":"uml.Message","from":"auth","to":"orders","label":"find(item)","props":{"sort":"call"}},
+    {"id":"a10","type":"uml.Message","from":"orders","to":"cart","label":"get(parcel)","props":{"sort":"call"}},
+    {"id":"a11","type":"uml.Message","from":"cart","to":"fraud","label":"load(item)","props":{"sort":"call"}},
+    {"id":"a12","type":"uml.Message","from":"fraud","to":"cart","label":"none","props":{"sort":"reply","replyTo":"a11"}},
+    {"id":"a13","type":"uml.Message","from":"cart","to":"orders","label":"result","props":{"sort":"reply","replyTo":"a10"}},
+    {"id":"a14","type":"uml.Message","from":"orders","to":"auth","label":"done","props":{"sort":"reply","replyTo":"a9"}},
+    {"id":"a15","type":"uml.Message","from":"auth","to":"audit","label":"score(event)","props":{"sort":"call"}},
+    {"id":"a16","type":"uml.Message","from":"audit","to":"auth","label":"result","props":{"sort":"reply","replyTo":"a15"}},
+    {"id":"a17","type":"uml.Message","from":"auth","to":"gateway","label":"found","props":{"sort":"reply","replyTo":"a8"}},
+    {"id":"a18","type":"uml.Message","from":"gateway","to":"media","label":"record(event)","props":{"sort":"call"}},
+    {"id":"a19","type":"uml.Message","from":"media","to":"gateway","label":"items","props":{"sort":"reply","replyTo":"a18"}},
+    {"id":"a20","type":"uml.Message","from":"gateway","to":"fraud","label":"score(event)","props":{"sort":"call"}},
+    {"id":"a21","type":"uml.Message","from":"fraud","to":"gateway","label":"reserve(order)","props":{"sort":"call"}},
+    {"id":"a22","type":"uml.Message","from":"gateway","to":"fraud","label":"none","props":{"sort":"reply","replyTo":"a21"}},
+    {"id":"a23","type":"uml.Message","from":"fraud","to":"gateway","label":"done","props":{"sort":"reply","replyTo":"a20"}},
+    {"id":"a24","type":"uml.Message","from":"gateway","to":"auth","label":"price(event)","props":{"sort":"call"}},
+    {"id":"a25","type":"uml.Message","from":"auth","to":"gateway","label":"check(parcel)","props":{"sort":"call"}},
+    {"id":"a26","type":"uml.Message","from":"gateway","to":"auth","label":"none","props":{"sort":"reply","replyTo":"a25"}},
+    {"id":"a27","type":"uml.Message","from":"auth","to":"gateway","label":"result","props":{"sort":"reply","replyTo":"a24"}},
+    {"id":"a28","type":"uml.Message","from":"gateway","to":"users","label":"record(items)","props":{"sort":"call"}},
+    {"id":"a29","type":"uml.Message","from":"users","to":"shipping","label":"get(items)","props":{"sort":"call"}},
+    {"id":"a30","type":"uml.Message","from":"shipping","to":"users","label":"score(items)","props":{"sort":"call"}},
+    {"id":"a31","type":"uml.Message","from":"users","to":"shipping","label":"result","props":{"sort":"reply","replyTo":"a30"}},
+    {"id":"a32","type":"uml.Message","from":"shipping","to":"fraud","label":"list(event)","props":{"sort":"call"}},
+    {"id":"a33","type":"uml.Message","from":"fraud","to":"shipping","label":"done","props":{"sort":"reply","replyTo":"a32"}},
+    {"id":"a34","type":"uml.Message","from":"shipping","to":"users","label":"none","props":{"sort":"reply","replyTo":"a29"}},
+    {"id":"a35","type":"uml.Message","from":"users","to":"gateway","label":"load(total)","props":{"sort":"call"}},
+    {"id":"a36","type":"uml.Message","from":"gateway","to":"users","label":"ok","props":{"sort":"reply","replyTo":"a35"}},
+    {"id":"a37","type":"uml.Message","from":"users","to":"carriers","label":"price(user)","props":{"sort":"call"}},
+    {"id":"a38","type":"uml.Message","from":"carriers","to":"users","label":"check(item)","props":{"sort":"call"}},
+    {"id":"a39","type":"uml.Message","from":"users","to":"carriers","label":"result","props":{"sort":"reply","replyTo":"a38"}},
+    {"id":"a40","type":"uml.Message","from":"carriers","to":"users","label":"get(user)","props":{"sort":"async"}},
+    {"id":"a41","type":"uml.Message","from":"carriers","to":"users","label":"reserve(user)","props":{"sort":"call"}},
+    {"id":"a42","type":"uml.Message","from":"users","to":"carriers","label":"result","props":{"sort":"reply","replyTo":"a41"}},
+    {"id":"a43","type":"uml.Message","from":"carriers","to":"media","label":"notify(user)","props":{"sort":"call"}},
+    {"id":"a44","type":"uml.Message","from":"media","to":"carriers","label":"none","props":{"sort":"reply","replyTo":"a43"}},
+    {"id":"a45","type":"uml.Message","from":"carriers","to":"users","label":"score(order)","props":{"sort":"call"}},
+    {"id":"a46","type":"uml.Message","from":"users","to":"carriers","label":"done","props":{"sort":"reply","replyTo":"a45"}},
+    {"id":"a47","type":"uml.Message","from":"carriers","to":"users","label":"found","props":{"sort":"reply","replyTo":"a37"}},
+    {"id":"a48","type":"uml.Message","from":"users","to":"carriers","label":"record(user)","props":{"sort":"call"}},
+    {"id":"a49","type":"uml.Message","from":"carriers","to":"reports","label":"load(event)","props":{"sort":"call"}},
+    {"id":"a50","type":"uml.Message","from":"reports","to":"carriers","label":"reserve(event)","props":{"sort":"call"}},
+    {"id":"a51","type":"uml.Message","from":"carriers","to":"media","label":"verify(parcel)","props":{"sort":"call"}},
+    {"id":"a52","type":"uml.Message","from":"media","to":"carriers","label":"none","props":{"sort":"reply","replyTo":"a51"}},
+    {"id":"a53","type":"uml.Message","from":"carriers","to":"reports","label":"ok","props":{"sort":"reply","replyTo":"a50"}},
+    {"id":"a54","type":"uml.Message","from":"reports","to":"carriers","label":"load(order)","props":{"sort":"call"}},
+    {"id":"a55","type":"uml.Message","from":"carriers","to":"users","label":"get(total)","props":{"sort":"call"}},
+    {"id":"a56","type":"uml.Message","from":"users","to":"carriers","label":"none","props":{"sort":"reply","replyTo":"a55"}},
+    {"id":"a57","type":"uml.Message","from":"carriers","to":"media","label":"load(token)","props":{"sort":"call"}},
+    {"id":"a58","type":"uml.Message","from":"media","to":"carriers","label":"found","props":{"sort":"reply","replyTo":"a57"}},
+    {"id":"a59","type":"uml.Message","from":"carriers","to":"users","label":"get(user)","props":{"sort":"call"}},
+    {"id":"a60","type":"uml.Message","from":"users","to":"carriers","label":"found","props":{"sort":"reply","replyTo":"a59"}},
+    {"id":"a61","type":"uml.Message","from":"carriers","to":"reports","label":"send(event)","props":{"sort":"call"}},
+    {"id":"a62","type":"uml.Message","from":"reports","to":"carriers","label":"none","props":{"sort":"reply","replyTo":"a61"}},
+    {"id":"a63","type":"uml.Message","from":"carriers","to":"reports","label":"result","props":{"sort":"reply","replyTo":"a54"}},
+    {"id":"a64","type":"uml.Message","from":"reports","to":"carriers","label":"list(invoice)","props":{"sort":"async"}},
+    {"id":"a65","type":"uml.Message","from":"reports","to":"carriers","label":"charge(order)","props":{"sort":"call"}},
+    {"id":"a66","type":"uml.Message","from":"carriers","to":"reports","label":"none","props":{"sort":"reply","replyTo":"a65"}},
+    {"id":"a67","type":"uml.Message","from":"reports","to":"carriers","label":"find(order)","props":{"sort":"call"}},
+    {"id":"a68","type":"uml.Message","from":"carriers","to":"media","label":"charge(total)","props":{"sort":"async"}},
+    {"id":"a69","type":"uml.Message","from":"carriers","to":"media","label":"list(order)","props":{"sort":"async"}},
+    {"id":"a70","type":"uml.Message","from":"carriers","to":"mailer","label":"verify(item)","props":{"sort":"call"}},
+    {"id":"a71","type":"uml.Message","from":"mailer","to":"carriers","label":"event","props":{"sort":"reply","replyTo":"a70"}},
+    {"id":"a72","type":"uml.Message","from":"carriers","to":"auth","label":"load(items)","props":{"sort":"call"}},
+    {"id":"a73","type":"uml.Message","from":"auth","to":"carriers","label":"found","props":{"sort":"reply","replyTo":"a72"}},
+    {"id":"a74","type":"uml.Message","from":"carriers","to":"reports","label":"item","props":{"sort":"reply","replyTo":"a67"}},
+    {"id":"a75","type":"uml.Message","from":"reports","to":"carriers","label":"check(items)","props":{"sort":"call"}},
+    {"id":"a76","type":"uml.Message","from":"carriers","to":"reports","label":"found","props":{"sort":"reply","replyTo":"a75"}},
+    {"id":"a77","type":"uml.Message","from":"reports","to":"carriers","label":"found","props":{"sort":"reply","replyTo":"a49"}},
+    {"id":"a78","type":"uml.Message","from":"carriers","to":"users","label":"ok","props":{"sort":"reply","replyTo":"a48"}},
+    {"id":"a79","type":"uml.Message","from":"users","to":"gateway","label":"none","props":{"sort":"reply","replyTo":"a28"}},
+    {"id":"a80","type":"uml.Message","from":"gateway","to":"media","label":"notify(items)","props":{"sort":"call"}},
+    {"id":"a81","type":"uml.Message","from":"media","to":"gateway","label":"reserve(user)","props":{"sort":"call"}},
+    {"id":"a82","type":"uml.Message","from":"gateway","to":"users","label":"check(parcel)","props":{"sort":"call"}},
+    {"id":"a83","type":"uml.Message","from":"users","to":"media","label":"verify(user)","props":{"sort":"call"}},
+    {"id":"a84","type":"uml.Message","from":"media","to":"gateway","label":"find(items)","props":{"sort":"call"}},
+    {"id":"a85","type":"uml.Message","from":"gateway","to":"media","label":"result","props":{"sort":"reply","replyTo":"a84"}},
+    {"id":"a86","type":"uml.Message","from":"media","to":"users","label":"found","props":{"sort":"reply","replyTo":"a83"}},
+    {"id":"a87","type":"uml.Message","from":"users","to":"gateway","label":"charge(user)","props":{"sort":"call"}},
+    {"id":"a88","type":"uml.Message","from":"gateway","to":"users","label":"ok","props":{"sort":"reply","replyTo":"a87"}},
+    {"id":"a89","type":"uml.Message","from":"users","to":"media","label":"notify(user)","props":{"sort":"call"}},
+    {"id":"a90","type":"uml.Message","from":"media","to":"users","label":"ok","props":{"sort":"reply","replyTo":"a89"}},
+    {"id":"a91","type":"uml.Message","from":"users","to":"gateway","label":"found","props":{"sort":"reply","replyTo":"a82"}},
+    {"id":"a92","type":"uml.Message","from":"gateway","to":"media","label":"ok","props":{"sort":"reply","replyTo":"a81"}},
+    {"id":"a93","type":"uml.Message","from":"media","to":"gateway","label":"check(event)","props":{"sort":"call"}},
+    {"id":"a94","type":"uml.Message","from":"gateway","to":"auth","label":"load(user)","props":{"sort":"call"}},
+    {"id":"a95","type":"uml.Message","from":"auth","to":"gateway","label":"event","props":{"sort":"reply","replyTo":"a94"}},
+    {"id":"a96","type":"uml.Message","from":"gateway","to":"search","label":"load(invoice)","props":{"sort":"call"}},
+    {"id":"a97","type":"uml.Message","from":"search","to":"media","label":"check(total)","props":{"sort":"call"}},
+    {"id":"a98","type":"uml.Message","from":"media","to":"carriers","label":"list(item)","props":{"sort":"call"}},
+    {"id":"a99","type":"uml.Message","from":"carriers","to":"media","label":"result","props":{"sort":"reply","replyTo":"a98"}},
+    {"id":"a100","type":"uml.Message","from":"media","to":"carriers","label":"send(invoice)","props":{"sort":"call"}},
+    {"id":"a101","type":"uml.Message","from":"carriers","to":"media","label":"user","props":{"sort":"reply","replyTo":"a100"}},
+    {"id":"a102","type":"uml.Message","from":"media","to":"search","label":"ok","props":{"sort":"reply","replyTo":"a97"}},
+    {"id":"a103","type":"uml.Message","from":"search","to":"gateway","label":"invoice","props":{"sort":"reply","replyTo":"a96"}},
+    {"id":"a104","type":"uml.Message","from":"gateway","to":"search","label":"find(parcel)","props":{"sort":"call"}},
+    {"id":"a105","type":"uml.Message","from":"search","to":"media","label":"find(token)","props":{"sort":"async"}},
+    {"id":"a106","type":"uml.Message","from":"search","to":"gateway","label":"invoice","props":{"sort":"reply","replyTo":"a104"}},
+    {"id":"a107","type":"uml.Message","from":"gateway","to":"media","label":"result","props":{"sort":"reply","replyTo":"a93"}},
+    {"id":"a108","type":"uml.Message","from":"media","to":"gateway","label":"ok","props":{"sort":"reply","replyTo":"a80"}},
+    {"id":"a109","type":"uml.Message","from":"gateway","to":"auth","label":"list(user)","props":{"sort":"call"}},
+    {"id":"a110","type":"uml.Message","from":"auth","to":"gateway","label":"verify(event)","props":{"sort":"call"}},
+    {"id":"a111","type":"uml.Message","from":"gateway","to":"users","label":"score(items)","props":{"sort":"call"}},
+    {"id":"a112","type":"uml.Message","from":"users","to":"carriers","label":"get(order)","props":{"sort":"async"}},
+    {"id":"a113","type":"uml.Message","from":"users","to":"gateway","label":"item","props":{"sort":"reply","replyTo":"a111"}},
+    {"id":"a114","type":"uml.Message","from":"gateway","to":"auth","label":"event","props":{"sort":"reply","replyTo":"a110"}},
+    {"id":"a115","type":"uml.Message","from":"auth","to":"gateway","label":"done","props":{"sort":"reply","replyTo":"a109"}},
+    {"id":"a116","type":"uml.Message","from":"gateway","to":"users","label":"score(items)","props":{"sort":"call"}},
+    {"id":"a117","type":"uml.Message","from":"users","to":"carriers","label":"find(total)","props":{"sort":"call"}},
+    {"id":"a118","type":"uml.Message","from":"carriers","to":"users","label":"score(order)","props":{"sort":"call"}},
+    {"id":"a119","type":"uml.Message","from":"users","to":"carriers","label":"charge(order)","props":{"sort":"call"}},
+    {"id":"a120","type":"uml.Message","from":"carriers","to":"reports","label":"record(user)","props":{"sort":"call"}},
+    {"id":"a121","type":"uml.Message","from":"reports","to":"carriers","label":"parcel","props":{"sort":"reply","replyTo":"a120"}},
+    {"id":"a122","type":"uml.Message","from":"carriers","to":"users","label":"done","props":{"sort":"reply","replyTo":"a119"}},
+    {"id":"a123","type":"uml.Message","from":"users","to":"carriers","label":"found","props":{"sort":"reply","replyTo":"a118"}},
+    {"id":"a124","type":"uml.Message","from":"carriers","to":"mailer","label":"get(token)","props":{"sort":"call"}},
+    {"id":"a125","type":"uml.Message","from":"mailer","to":"carriers","label":"score(total)","props":{"sort":"async"}},
+    {"id":"a126","type":"uml.Message","from":"mailer","to":"carriers","label":"result","props":{"sort":"reply","replyTo":"a124"}},
+    {"id":"a127","type":"uml.Message","from":"carriers","to":"users","label":"result","props":{"sort":"reply","replyTo":"a117"}},
+    {"id":"a128","type":"uml.Message","from":"users","to":"gateway","label":"invoice","props":{"sort":"reply","replyTo":"a116"}},
+    {"id":"a129","type":"uml.Message","from":"gateway","to":"search","label":"reserve(event)","props":{"sort":"call"}},
+    {"id":"a130","type":"uml.Message","from":"search","to":"gateway","label":"none","props":{"sort":"reply","replyTo":"a129"}},
+    {"id":"a131","type":"uml.Message","from":"gateway","to":"fraud","label":"get(item)","props":{"sort":"call"}},
+    {"id":"a132","type":"uml.Message","from":"fraud","to":"ledger","label":"notify(parcel)","props":{"sort":"call"}},
+    {"id":"a133","type":"uml.Message","from":"ledger","to":"fraud","label":"result","props":{"sort":"reply","replyTo":"a132"}},
+    {"id":"a134","type":"uml.Message","from":"fraud","to":"shipping","label":"verify(total)","props":{"sort":"call"}},
+    {"id":"a135","type":"uml.Message","from":"shipping","to":"cart","label":"list(order)","props":{"sort":"async"}},
+    {"id":"a136","type":"uml.Message","from":"shipping","to":"fraud","label":"found","props":{"sort":"reply","replyTo":"a134"}},
+    {"id":"a137","type":"uml.Message","from":"fraud","to":"gateway","label":"none","props":{"sort":"reply","replyTo":"a131"}},
+    {"id":"a138","type":"uml.Message","from":"gateway","to":"media","label":"reserve(items)","props":{"sort":"call"}},
+    {"id":"a139","type":"uml.Message","from":"media","to":"gateway","label":"charge(item)","props":{"sort":"call"}},
+    {"id":"a140","type":"uml.Message","from":"gateway","to":"users","label":"get(item)","props":{"sort":"call"}},
+    {"id":"a141","type":"uml.Message","from":"users","to":"shipping","label":"check(token)","props":{"sort":"call"}},
+    {"id":"a142","type":"uml.Message","from":"shipping","to":"users","label":"result","props":{"sort":"reply","replyTo":"a141"}},
+    {"id":"a143","type":"uml.Message","from":"users","to":"gateway","label":"none","props":{"sort":"reply","replyTo":"a140"}},
+    {"id":"a144","type":"uml.Message","from":"gateway","to":"media","label":"none","props":{"sort":"reply","replyTo":"a139"}},
+    {"id":"a145","type":"uml.Message","from":"media","to":"carriers","label":"notify(total)","props":{"sort":"call"}},
+    {"id":"a146","type":"uml.Message","from":"carriers","to":"auth","label":"get(user)","props":{"sort":"call"}},
+    {"id":"a147","type":"uml.Message","from":"auth","to":"carriers","label":"result","props":{"sort":"reply","replyTo":"a146"}},
+    {"id":"a148","type":"uml.Message","from":"carriers","to":"auth","label":"reserve(token)","props":{"sort":"call"}},
+    {"id":"a149","type":"uml.Message","from":"auth","to":"audit","label":"list(order)","props":{"sort":"async"}},
+    {"id":"a150","type":"uml.Message","from":"auth","to":"carriers","label":"result","props":{"sort":"reply","replyTo":"a148"}},
+    {"id":"a151","type":"uml.Message","from":"carriers","to":"auth","label":"find(order)","props":{"sort":"call"}},
+    {"id":"a152","type":"uml.Message","from":"auth","to":"orders","label":"list(token)","props":{"sort":"call"}},
+    {"id":"a153","type":"uml.Message","from":"orders","to":"auth","label":"result","props":{"sort":"reply","replyTo":"a152"}},
+    {"id":"a154","type":"uml.Message","from":"auth","to":"carriers","label":"ok","props":{"sort":"reply","replyTo":"a151"}},
+    {"id":"a155","type":"uml.Message","from":"carriers","to":"users","label":"record(total)","props":{"sort":"call"}},
+    {"id":"a156","type":"uml.Message","from":"users","to":"carriers","label":"load(token)","props":{"sort":"call"}},
+    {"id":"a157","type":"uml.Message","from":"carriers","to":"users","label":"done","props":{"sort":"reply","replyTo":"a156"}},
+    {"id":"a158","type":"uml.Message","from":"users","to":"media","label":"reserve(items)","props":{"sort":"call"}},
+    {"id":"a159","type":"uml.Message","from":"media","to":"search","label":"notify(user)","props":{"sort":"call"}},
+    {"id":"a160","type":"uml.Message","from":"search","to":"media","label":"order","props":{"sort":"reply","replyTo":"a159"}},
+    {"id":"a161","type":"uml.Message","from":"media","to":"search","label":"send(token)","props":{"sort":"call"}},
+    {"id":"a162","type":"uml.Message","from":"search","to":"media","label":"ok","props":{"sort":"reply","replyTo":"a161"}},
+    {"id":"a163","type":"uml.Message","from":"media","to":"carriers","label":"send(event)","props":{"sort":"call"}},
+    {"id":"a164","type":"uml.Message","from":"carriers","to":"media","label":"items","props":{"sort":"reply","replyTo":"a163"}},
+    {"id":"a165","type":"uml.Message","from":"media","to":"users","label":"ok","props":{"sort":"reply","replyTo":"a158"}},
+    {"id":"a166","type":"uml.Message","from":"users","to":"media","label":"send(invoice)","props":{"sort":"call"}},
+    {"id":"a167","type":"uml.Message","from":"media","to":"users","label":"none","props":{"sort":"reply","replyTo":"a166"}},
+    {"id":"a168","type":"uml.Message","from":"users","to":"shipping","label":"price(user)","props":{"sort":"call"}},
+    {"id":"a169","type":"uml.Message","from":"shipping","to":"users","label":"result","props":{"sort":"reply","replyTo":"a168"}},
+    {"id":"a170","type":"uml.Message","from":"users","to":"carriers","label":"done","props":{"sort":"reply","replyTo":"a155"}},
+    {"id":"a171","type":"uml.Message","from":"carriers","to":"media","label":"none","props":{"sort":"reply","replyTo":"a145"}},
+    {"id":"a172","type":"uml.Message","from":"media","to":"gateway","label":"done","props":{"sort":"reply","replyTo":"a138"}},
+    {"id":"a173","type":"uml.Message","from":"gateway","to":"media","label":"find(order)","props":{"sort":"call"}},
+    {"id":"a174","type":"uml.Message","from":"media","to":"gateway","label":"none","props":{"sort":"reply","replyTo":"a173"}},
+    {"id":"a175","type":"uml.Message","from":"gateway","to":"search","label":"notify(parcel)","props":{"sort":"call"}},
+    {"id":"a176","type":"uml.Message","from":"search","to":"audit","label":"get(order)","props":{"sort":"call"}},
+    {"id":"a177","type":"uml.Message","from":"audit","to":"search","label":"order","props":{"sort":"reply","replyTo":"a176"}},
+    {"id":"a178","type":"uml.Message","from":"search","to":"gateway","label":"reserve(parcel)","props":{"sort":"call"}},
+    {"id":"a179","type":"uml.Message","from":"gateway","to":"search","label":"charge(invoice)","props":{"sort":"async"}},
+    {"id":"a180","type":"uml.Message","from":"gateway","to":"users","label":"verify(parcel)","props":{"sort":"call"}},
+    {"id":"a181","type":"uml.Message","from":"users","to":"media","label":"list(item)","props":{"sort":"call"}},
+    {"id":"a182","type":"uml.Message","from":"media","to":"search","label":"load(parcel)","props":{"sort":"async"}},
+    {"id":"a183","type":"uml.Message","from":"media","to":"users","label":"score(parcel)","props":{"sort":"call"}},
+    {"id":"a184","type":"uml.Message","from":"users","to":"media","label":"ok","props":{"sort":"reply","replyTo":"a183"}},
+    {"id":"a185","type":"uml.Message","from":"media","to":"users","label":"invoice","props":{"sort":"reply","replyTo":"a181"}},
+    {"id":"a186","type":"uml.Message","from":"users","to":"gateway","label":"user","props":{"sort":"reply","replyTo":"a180"}},
+    {"id":"a187","type":"uml.Message","from":"gateway","to":"auth","label":"record(invoice)","props":{"sort":"call"}},
+    {"id":"a188","type":"uml.Message","from":"auth","to":"gateway","label":"result","props":{"sort":"reply","replyTo":"a187"}},
+    {"id":"a189","type":"uml.Message","from":"gateway","to":"search","label":"none","props":{"sort":"reply","replyTo":"a178"}},
+    {"id":"a190","type":"uml.Message","from":"search","to":"gateway","label":"get(total)","props":{"sort":"call"}},
+    {"id":"a191","type":"uml.Message","from":"gateway","to":"search","label":"none","props":{"sort":"reply","replyTo":"a190"}},
+    {"id":"a192","type":"uml.Message","from":"search","to":"gateway","label":"done","props":{"sort":"reply","replyTo":"a175"}},
+    {"id":"a193","type":"uml.Message","from":"gateway","to":"search","label":"record(parcel)","props":{"sort":"call"}},
+    {"id":"a194","type":"uml.Message","from":"search","to":"gateway","label":"load(event)","props":{"sort":"call"}},
+    {"id":"a195","type":"uml.Message","from":"gateway","to":"search","label":"ok","props":{"sort":"reply","replyTo":"a194"}},
+    {"id":"a196","type":"uml.Message","from":"search","to":"media","label":"score(token)","props":{"sort":"call"}},
+    {"id":"a197","type":"uml.Message","from":"media","to":"carriers","label":"price(user)","props":{"sort":"call"}},
+    {"id":"a198","type":"uml.Message","from":"carriers","to":"reports","label":"charge(item)","props":{"sort":"call"}},
+    {"id":"a199","type":"uml.Message","from":"reports","to":"carriers","label":"none","props":{"sort":"reply","replyTo":"a198"}},
+    {"id":"a200","type":"uml.Message","from":"carriers","to":"media","label":"none","props":{"sort":"reply","replyTo":"a197"}}
+  ],
+  "views": [
+    {"id":"edge-cases","diagram":"uml.communication","title":"Edge cases",
+      "nodeIds": ["user","client","server","store","receipt","idle"],
+      "edges": ["user-client","client-server","server-self","server-store","server-receipt","e1","e2","e3","e4","e5","e6","e7","e8","e9","e10","e11","e12","e13","e14","e15","e16"] },
+    {"id":"all","diagram":"uml.communication","title":"20 lifelines, 30 connectors, 200 messages",
+      "nodeIds": ["gateway","auth","users","orders","cart","catalog","pricing","stock","payments","fraud","ledger","shipping","carriers","mailer","search","reviews","media","audit","reports","billing"],
+      "edges": ["gateway-auth","gateway-users","auth-orders","orders-cart","orders-catalog","orders-pricing","pricing-stock","stock-payments","gateway-fraud","fraud-ledger","users-shipping","users-carriers","carriers-mailer","gateway-search","catalog-reviews","gateway-media","auth-audit","carriers-reports","audit-billing","search-media","auth-carriers","cart-fraud","users-media","search-audit","stock-mailer","pricing-audit","cart-shipping","fraud-shipping","catalog-payments","carriers-media","a1","a2","a3","a4","a5","a6","a7","a8","a9","a10","a11","a12","a13","a14","a15","a16","a17","a18","a19","a20","a21","a22","a23","a24","a25","a26","a27","a28","a29","a30","a31","a32","a33","a34","a35","a36","a37","a38","a39","a40","a41","a42","a43","a44","a45","a46","a47","a48","a49","a50","a51","a52","a53","a54","a55","a56","a57","a58","a59","a60","a61","a62","a63","a64","a65","a66","a67","a68","a69","a70","a71","a72","a73","a74","a75","a76","a77","a78","a79","a80","a81","a82","a83","a84","a85","a86","a87","a88","a89","a90","a91","a92","a93","a94","a95","a96","a97","a98","a99","a100","a101","a102","a103","a104","a105","a106","a107","a108","a109","a110","a111","a112","a113","a114","a115","a116","a117","a118","a119","a120","a121","a122","a123","a124","a125","a126","a127","a128","a129","a130","a131","a132","a133","a134","a135","a136","a137","a138","a139","a140","a141","a142","a143","a144","a145","a146","a147","a148","a149","a150","a151","a152","a153","a154","a155","a156","a157","a158","a159","a160","a161","a162","a163","a164","a165","a166","a167","a168","a169","a170","a171","a172","a173","a174","a175","a176","a177","a178","a179","a180","a181","a182","a183","a184","a185","a186","a187","a188","a189","a190","a191","a192","a193","a194","a195","a196","a197","a198","a199","a200"] }
+  ] }
+</script><script type="module">
+import { render, apply, validate, describe } from '../lib/umlimator-all.js';
+const out = { ok: [], fail: [] };
+const check = (name, cond, info) => { document.title = name; if (cond) out.ok.push(name); else out.fail.push(name + (info === undefined ? '' : ': ' + JSON.stringify(info))); };
+const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+const el = document.getElementById('m');
+let sr, stage, ed = [], sel = [];
+const pick = s => sr.querySelector(s), all = s => [...sr.querySelectorAll(s)];
+const ptr = (target, type, [x, y]) => target.dispatchEvent(new PointerEvent(type, { clientX: x, clientY: y, button: 0, pointerId: 7, pointerType: 'mouse', bubbles: true, composed: true }));
+const key = (k, extra = {}, target = stage) => target.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true, composed: true, cancelable: true, ...extra }));
+const client = (x, y) => { const p = new DOMPoint(x, y).matrixTransform(pick('svg').getScreenCTM()); return [p.x, p.y]; }; // a point of the picture, on the screen
+const handleTo = (x, y) => { const c = pick('.um-handle circle'), r = c.getBoundingClientRect(), to = client(x, y); ptr(c, 'pointerdown', [r.x + r.width / 2, r.y + r.height / 2]); ptr(stage, 'pointermove', to); ptr(stage, 'pointerup', to); };
+const click = s => { const g = pick(s), r = g.getBoundingClientRect(), at = [r.x + r.width / 2, r.y + r.height / 2]; ptr(g, 'pointerdown', at); ptr(g, 'pointerup', at); g.dispatchEvent(new MouseEvent('click', { clientX: at[0], clientY: at[1], bubbles: true, composed: true })); };
+const mount = (model, opts = {}) => { el.innerHTML = ''; ed = []; sel = []; const h = render(el, model, { on: { edit: e => ed.push(e), select: e => sel.push(e) }, ...opts }); sr = el.querySelector('.umlimator').shadowRoot; stage = pick('.stage'); return h; };
+const errors = m => validate(m).filter(p => p.level === 'error');
+const bb = x => { const r = x.getBBox(); return { x: r.x, y: r.y, w: r.width, h: r.height }; };
+const meets = (a, b, k = 0) => a.x + k < b.x + b.w && b.x + k < a.x + a.w && a.y + k < b.y + b.h && b.y + k < a.y + a.h;
+const inside = (a, b, k = .5) => a.x >= b.x - k && a.y >= b.y - k && a.x + a.w <= b.x + b.w + k && a.y + a.h <= b.y + b.h + k;
+const ptsOf = d => { const n = d.match(/-?\d+(\.\d+)?/g).map(Number), p = []; for (let i = 0; i < n.length; i += 2) p.push([n[i], n[i + 1]]); return p; };
+const segs = p => p.slice(1).map((q, k) => ({ x: Math.min(p[k][0], q[0]), y: Math.min(p[k][1], q[1]), w: Math.abs(q[0] - p[k][0]) || .01, h: Math.abs(q[1] - p[k][1]) || .01 }));
+const num = g => /, ([\d.]+):/.exec(g.getAttribute('aria-label'))[1].split('.').map(Number);
+const byNum = (a, b) => { const p = num(a), q = num(b); for (let i = 0; i < Math.max(p.length, q.length); i++) { const d = (p[i] ?? -1) - (q[i] ?? -1); if (d) return d; } return 0; };
+const FONTS = { serif: 'serif', sans: 'sans-serif', wide: 'monospace' };
+// contrast (DoD 8), as tests/contrast.html measures it: a computed colour as [r, g, b, a], blended over what is under it
+const rgba = s => { let m = /rgba?\(([^)]+)\)/.exec(s); if (m) { const p = m[1].split(/[ ,/]+/).filter(Boolean).map(Number); return [p[0] / 255, p[1] / 255, p[2] / 255, p.length > 3 ? p[3] : 1]; }
+  m = /color\(srgb ([^)]+)\)/.exec(s); if (m) { const p = m[1].split(/[ /]+/).filter(Boolean).map(Number); return [p[0], p[1], p[2], p.length > 3 ? p[3] : 1]; } return null; };
+const blend = (top, bot) => [0, 1, 2].map(i => top[i] * top[3] + bot[i] * (1 - top[3])).concat(1);
+const lum = c => { const f = v => v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]); };
+const ratio = (fg, bg) => { const [x, y] = [lum(blend(fg, bg)), lum(bg)].sort((p, q) => q - p); return +((x + 0.05) / (y + 0.05)).toFixed(2); };
+const css = (x, k) => rgba(getComputedStyle(x)[k]);
+const EX = await (await fetch('../docs/diagrams/examples/12-communication.json')).json();
+const FIX = Object.fromEntries(['minimal', 'stress'].map(k => [k, JSON.parse(document.getElementById(k).textContent)]));
+const CASES = [['example 12', EX, 'checkout'], ['minimal', FIX.minimal, 'v'], ['edge cases', FIX.stress, 'edge-cases'], ['200 messages', FIX.stress, 'all']];
+try {
+  const widths = {};
+  for (const theme of ['light', 'dark']) for (const [fname, family] of Object.entries(FONTS)) for (const [name, M, vid] of CASES) {
+    document.documentElement.dataset.theme = theme; el.style.setProperty('--um-sans', family);
+    const tag = `${name}, ${theme}, ${fname}`, h = mount(M, { view: vid, legend: true }), svg = pick('.stage svg'), v = M.views.find(x => x.id === vid), bad = [];
+    const E = new Map(M.edges.map(e => [e.id, e])), listed = v.edges.map(id => E.get(id)), cons = listed.filter(e => e.type === 'uml.Connector'), msgs = listed.filter(e => e.type === 'uml.Message');
+    const heads = all('.node.lifeline'), rows = all('.node.message-row'), lines = all('.edge-g');
+    const B = new Map([...heads.map(g => [g.dataset.id, bb(g.querySelector('.n-body'))]), ...rows.map(g => [g.dataset.id, bb(g.querySelector('.mr-back'))])]);
+    if (name === 'example 12') widths[fname] = B.get('m6').w;
+    const ids = [...B.keys()];
+    ids.forEach((a, i) => ids.slice(i + 1).forEach(b => { if (meets(B.get(a), B.get(b), .5)) bad.push(`${a} and ${b} overlap`); }));
+    heads.forEach(g => g.querySelectorAll('text').forEach(t => { if (!inside(bb(t), B.get(g.dataset.id), -1)) bad.push(`${g.dataset.id}: "${t.textContent}" out of its head`); }));
+    rows.forEach(g => { const R = B.get(g.dataset.id); [g.querySelector('text'), g.querySelector('.mr-arrow')].forEach(t => { if (!inside(bb(t), R)) bad.push(`${g.dataset.id}: "${t.textContent}" out of its row`); }); });
+    // a connector runs into its own stack of rows; never through another lifeline or another connector's rows. Its ends lie
+    // on its lifelines' outlines
+    const pair = (a, b) => [a, b].sort().join(' '), rides = new Map(cons.map(c => [c.id, new Set(msgs.filter(m => pair(m.from, m.to) === pair(c.from, c.to)).map(m => m.id))]));
+    lines.forEach(g => { const c = cons.find(x => x.from === g.dataset.from && x.to === g.dataset.to), p = ptsOf(g.querySelector('path.edge').getAttribute('d'));
+      if (!c) { bad.push(`a line ${g.dataset.from}>${g.dataset.to} that is no connector`); return; }
+      segs(p).forEach(s => B.forEach((b, id) => { if (id !== c.from && id !== c.to && !rides.get(c.id).has(id) && meets(s, { x: b.x + 1, y: b.y + 1, w: b.w - 2, h: b.h - 2 })) bad.push(`${c.id} runs through ${id}`); }));
+      [[p[0], c.from], [p[p.length - 1], c.to]].forEach(([q, id]) => { const body = pick(`.node[data-id="${id}"] .n-body`); body.style.strokeWidth = '3px';
+        const o = svg.createSVGPoint(); [o.x, o.y] = q; if (!body.isPointInStroke(o) && !(c.from === c.to)) bad.push(`${c.id} ends off ${id}`); body.style.strokeWidth = ''; }); });
+    check(`${tag}: ${heads.length} lifelines, ${rows.length} message rows and ${lines.length} connectors drawn; no overlap, every text in its face, no connector through another element, every end on its lifeline`,
+      heads.length === v.nodeIds.length && rows.length === msgs.length && lines.length === cons.length && !bad.length, bad.slice(0, 12));
+    // the picture in reading order (S13): the lifelines left to right, then the messages by number
+    const nodes = all('.node'), xs = heads.map(g => B.get(g.dataset.id)), sorted = rows.slice().sort(byNum);
+    check(`${tag}: the picture reads in order, the lifelines left to right, then the messages by number`, same(nodes.map(g => g.dataset.id), [...heads, ...rows].map(g => g.dataset.id))
+      && xs.every((b, i) => !i || b.x > xs[i - 1].x || (b.x === xs[i - 1].x && b.y > xs[i - 1].y)) && same(rows.map(g => g.dataset.id), sorted.map(g => g.dataset.id)), nodes.map(g => g.dataset.id).slice(0, 30));
+    // contrast: texts 4.5:1 on what is under them, lines and arrows 3:1 on the stage
+    const stageBg = css(pick('.stage'), 'backgroundColor'), low = [];
+    heads.forEach(g => { const bg = blend(css(g.querySelector('.n-body'), 'fill'), blend(css(g.querySelector('.n-mask'), 'fill') || [0, 0, 0, 0], stageBg));
+      g.querySelectorAll('text').forEach(x => { const r = ratio(css(x, 'fill'), bg); if (r < 4.5) low.push([g.dataset.id, x.textContent, r]); }); });
+    rows.forEach(g => { const bg = blend(css(g.querySelector('.mr-back'), 'fill'), stageBg), r = ratio(css(g.querySelector('text'), 'fill'), bg), a = ratio(css(g.querySelector('.mr-arrow'), 'stroke'), bg);
+      if (r < 4.5) low.push([g.dataset.id, 'text', r]); if (a < 3) low.push([g.dataset.id, 'arrow', a]); });
+    lines.forEach(g => { const r = ratio(css(g.querySelector('path.edge'), 'stroke'), stageBg); if (r < 3) low.push(['line', g.dataset.from, r]); });
+    const lgBg = blend(css(pick('.m-legend'), 'backgroundColor'), stageBg);
+    all('.m-legend b, .m-legend .lgi > span').forEach(x => { const r = ratio(css(x, 'color'), lgBg); if (r < 4.5) low.push(['legend', x.textContent, r]); });
+    check(`${tag}: contrast: texts 4.5:1, connectors and arrows 3:1`, !low.length, low.slice(0, 8));
+    if (name === 'example 12') {
+      const T = id => pick(`.node[data-id="${id}"] text`).textContent, aria = id => pick(`.node[data-id="${id}"]`).getAttribute('aria-label');
+      check(`${tag}: the rows carry notes/stage-3.md §6.3's numbers`, same(['m1', 'm2', 'm3', 'm4', 'm5', 'm6', 'm7', 'm8', 'm9'].map(T), ['1: checkout()', '1.1: place(order)', '1.1.1: validate(order)', '1.1.2: charge(total)',
+        '1.1.2.1: paid', '1.1.3: «create» new(order)', '1.1.4: orderPlaced', '1.1.5: result', '1.2: confirmation page']), rows.map(g => g.textContent));
+      check(`${tag}: lifelines, messages and connectors have names a screen reader reads`, aria('api') === 'Lifeline api : ShopApi' && aria('shopper') === 'Lifeline shopper : Shopper (actor)'
+        && aria('m4') === 'Message 4 of 9, 1.1.2: api to payments, charge(total), call' && aria('m5') === 'Message 5 of 9, 1.1.2.1: payments to api, paid, reply to 1.1.2'
+        && pick('.edge-g[data-from="api"][data-to="payments"] title').textContent === 'Connector between api and payments, 2 messages'
+        && pick('.edge-g[data-from="api"][data-to="api"] title').textContent === 'Connector from api to itself, 1 message', [aria('m4'), aria('m5')]);
+      const turn = id => /rotate\((\d+)/.exec(pick(`.node[data-id="${id}"] .mr-arrow`).getAttribute('transform'))[1];
+      check(`${tag}: each row's arrow points toward its receiver, a reply's dashed`, turn('m1') === '0' && turn('m9') === '180' && turn('m2') === '0' && turn('m8') === '180'
+        && !!pick('.node[data-id="m5"] .mr-arrow path[stroke-dasharray]') && !pick('.node[data-id="m4"] .mr-arrow path[stroke-dasharray]'), ['m1', 'm9', 'm2', 'm8'].map(turn));
+      const legend = all('.m-legend b').map(b => b.textContent);
+      check(`${tag}: the legend keys the connector and the sorts the view draws`, same(legend, ['Connector', 'Call', 'Async', 'Reply', 'Create']), legend);
+    }
+    h.destroy();
+  }
+  check('the three fonts measure differently', new Set(Object.values(widths)).size === 3, widths);
+  document.documentElement.dataset.theme = 'light'; el.style.removeProperty('--um-sans');
+  check('describe() writes the view in words', describe(EX, 'checkout').startsWith('Checkout: payment accepted: a communication diagram of 5 lifelines, 5 connectors and 9 messages.'));
+
+  // ---- the gestures, through the type's hooks (3.4), each through the edit event and apply()
+  let model = EX, h = mount(model, { view: 'checkout', editable: true });
+  const ring = id => pick(`.node-key[data-node="${id}"]`), lineRing = name => all('.line-key').find(k => k.getAttribute('aria-label') === name);
+  const hint = () => pick('.um-live').textContent;
+  // Tab goes through the key rings, in geo.order: the lifelines left to right, the connectors, then the rows by number; the
+  // cards themselves are out of the tab order
+  { const keys = all('.keys > .um-key'), heads = all('.node.lifeline').map(g => g.dataset.id), rows = all('.node.message-row').map(g => g.dataset.id);
+    check('Tab follows geo.order: a ring for each lifeline left to right, each connector, then each row by number; no card is a tab stop',
+      same(keys.map(k => k.dataset.node ?? 'line'), [...heads, ...Array(5).fill('line'), ...rows]) && keys.every(k => k.tabIndex === 0)
+      && all('.node').every(g => g.tabIndex === -1) && ring('m4').getAttribute('aria-label') === 'Message 4 of 9, 1.1.2: api to payments, charge(total), call'
+      && !!lineRing('Connector between api and payments, 2 messages'), keys.map(k => k.dataset.node ?? k.getAttribute('aria-label'))); }
+  const step = (what, want, then = () => true) => { const e = ed[ed.length - 1], next = e && apply(model, e.commands); if (next) h.update(next);
+    check(what, ed.length === 1 && same(e.commands, want) && !errors(next).length && then(next), [ed.map(x => x.commands), next && errors(next)]); if (next) model = next; ed = []; };
+  click('.node[data-id="m7"] .mr-back');
+  check('a click on a message row selects the message', same(sel.at(-1).target, { type: 'node', id: 'm7', view: 'checkout' }), sel.at(-1));
+  const f = k => pick(`.um-editor [data-f="p:${k}"]`);
+  check('its properties are the message\'s: sort and reply to', f('sort') && f('sort').value === 'async' && !!f('replyTo'));
+  f('sort').value = 'call'; f('sort').dispatchEvent(new Event('change', { bubbles: true }));
+  step('the sort, set in the properties panel', [{ op: 'set', id: 'm7', path: 'props.sort', value: 'call' }], () => pick('.node[data-id="m7"]').dataset.sort === 'call');
+  click('.node[data-id="m9"] .mr-back'); key('F2'); pick('.um-rename').value = 'confirmation'; key('Enter', {}, pick('.um-rename'));
+  step('F2 renames a message', [{ op: 'set', id: 'm9', path: 'label', value: 'confirmation' }], () => pick('.node[data-id="m9"] text').textContent === '1.2: confirmation');
+  // L from a lifeline, a name typed, Enter: the picker offers a connector and each sort; the type's connect hook writes the message
+  click('.node[data-id="shopper"] .c-name'); key('l'); key('s'); key('t'); key('Enter');
+  const items = all('.um-pick button').map(b => b.textContent);
+  check('L, a name and Enter open the picker: a connector and the five sorts', same(items, ['Connector', 'Call', 'Async', 'Reply', 'Create', 'Delete']), items);
+  all('.um-pick button')[1].click();
+  step('picking Call adds a message after the last, on the connector there is', [{ op: 'add', element: { id: 'm10', type: 'uml.Message', from: 'shopper', to: 'storefront', props: { sort: 'call' } }, view: 'checkout', index: 14 }],
+    () => pick('.node[data-id="m10"] text').textContent === '2' && pick('.node[data-id="m10"]').getAttribute('aria-label') === 'Message 10 of 10, 2: shopper to storefront, call' && all('.node.message-row').length === 10);
+  click('.node[data-id="storefront"] .c-name'); key('l'); key('p'); key('Enter'); all('.um-pick button')[1].click();
+  step('a call between lifelines no connector joins adds the connector in the same transaction', [{ op: 'add', element: { id: 'm11', type: 'uml.Message', from: 'storefront', to: 'payments', props: { sort: 'call' } }, view: 'checkout', index: 15 },
+    { op: 'add', element: { id: 'storefront-payments', type: 'uml.Connector', from: 'storefront', to: 'payments' }, view: 'checkout', index: 5 }], () => all('.edge-g').length === 6 && !!pick('.node[data-id="m11"]'));
+  click('.node[data-id="payments"] .c-name'); key('l'); key('s'); key('t'); key('Enter'); all('.um-pick button')[3].click();
+  step('a reply answers the latest unanswered call from its receiver to its sender', [{ op: 'add', element: { id: 'm12', type: 'uml.Message', from: 'payments', to: 'storefront', props: { sort: 'reply', replyTo: 'm11' } }, view: 'checkout', index: 17 }]);
+  click('.node[data-id="storefront"] .c-name'); key('l'); key('a'); key('Enter'); all('.um-pick button')[0].click();
+  // the hook returns { error }, which 3.4 says on the hint line (src/typed/edit.js ran)
+  check('a second connector between two lifelines is refused by keyboard: no event, and the reason said', ed.length === 0 && hint() === 'storefront and api are linked already', [ed, hint()]);
+  { const a = pick('.node[data-id="api"] .n-body').getBBox(); click('.node[data-id="storefront"] .c-name'); handleTo(a.x + a.width / 2, a.y + a.height / 2); click('.um-pick button'); } // the picker's first entry, Connector
+  check('…and by pointer, from the handle to the other lifeline', ed.length === 0 && hint() === 'storefront and api are linked already', [ed, hint()]);
+  click('.node[data-id="receipt"] .c-name'); key('ArrowDown', { altKey: true });
+  const pin = ed[0] && ed[0].commands[0];
+  step('Alt + ↓ pins a lifeline a row down', pin ? [pin] : null, m => m.views[0].layout.receipt[1] === pin.value[1] && pin.path[1] === 'receipt');
+  const B2 = all('.node').map(g => [g.dataset.id, bb(g.querySelector('.n-body, .mr-back'))]), over = [];
+  B2.forEach(([a, p], i) => B2.slice(i + 1).forEach(([b, q]) => { if (meets(p, q, .5)) over.push(a + '/' + b); }));
+  check('after the pin, nothing overlaps', !over.length, over);
+  click('.node[data-id="m12"] .mr-back'); key('Delete');
+  step('Delete hides a message from the view', [{ op: 'hide', id: 'm12', view: 'checkout' }], () => !pick('.node[data-id="m12"]'));
+  click('.node[data-id="m2"] .mr-back'); key('Delete', { shiftKey: true });
+  step('Shift + Delete deletes a call, and its reply with it', [{ op: 'delete', id: 'm2' }], m => !m.edges.some(e => e.id === 'm8') && !pick('.node[data-id="m8"]'));
+  // N and the palette go through the type's add hook (3.4): the id from the name, after the selected lifeline (its slot),
+  // else last. Before 3.4 the canvas's default added it, as "lifeline1"
+  key('n'); pick('.um-rename').value = 'audit'; key('Enter', {}, pick('.um-rename'));
+  step('N with no lifeline selected adds a lifeline last', [{ op: 'add', element: { id: 'audit', type: 'uml.Lifeline', label: 'audit' }, view: 'checkout' }], m => !!pick('.node.lifeline[data-id="audit"]') && m.views[0].nodeIds.at(-1) === 'audit');
+  let at = model.views[0].nodeIds.indexOf('storefront') + 1;
+  ring('storefront').focus(); key('Enter', {}, sr.activeElement); key('n'); pick('.um-rename').value = 'cache'; key('Enter', {}, pick('.um-rename'));
+  step('N on a lifeline selected from its ring adds the new one after it', [{ op: 'add', element: { id: 'cache', type: 'uml.Lifeline', label: 'cache' }, view: 'checkout', index: at }], m => m.views[0].nodeIds[at] === 'cache');
+  at = model.views[0].nodeIds.indexOf('api') + 1;
+  click('.node[data-id="api"] .c-name'); pick('.um-pal [data-add="0"]').click(); pick('.um-rename').value = 'log'; key('Enter', {}, pick('.um-rename'));
+  step('the palette, by pointer, adds a lifeline after the one clicked', [{ op: 'add', element: { id: 'log', type: 'uml.Lifeline', label: 'log' }, view: 'checkout', index: at }], m => m.views[0].nodeIds[at] === 'log');
+  // a connector goes with the messages it carries: Delete hides them from the view, Shift + Delete deletes them
+  click('.edge-g[data-from="api"][data-to="payments"] .hitline'); pick('.um-editor [data-hide]').click();
+  step('a connector clicked, then Remove from view: it and its messages leave the view', [{ op: 'hide', id: 'api-payments', view: 'checkout' }, { op: 'hide', id: 'm4', view: 'checkout' }, { op: 'hide', id: 'm5', view: 'checkout' }],
+    m => m.edges.some(e => e.id === 'm4') && !pick('.edge-g[data-from="api"][data-to="payments"]') && !pick('.node[data-id="m4"]') && !pick('.node[data-id="m5"]'));
+  lineRing('Connector between storefront and payments, 1 message').focus(); key('Enter', {}, sr.activeElement); key('Delete', { shiftKey: true }, sr.activeElement);
+  step('a connector\'s ring, Enter, Shift + Delete: it and its message are deleted from the model', [{ op: 'delete', id: 'storefront-payments' }, { op: 'delete', id: 'm11' }],
+    m => !m.edges.some(e => ['storefront-payments', 'm11', 'm12'].includes(e.id)) && !pick('.node[data-id="m11"]'));
+  // the keyboard reaches the messages: arrows go from a lifeline's ring to the ring of the nearest node, here a row. Before
+  // 3.4 the focus went to the row's card; 3.4 gives a typed view key rings (svg.js) and the arrows move the focus from ring to ring
+  const head = ring('shopper'); head.focus(); key('ArrowRight', {}, head);
+  const to = sr.activeElement, toG = to && to.dataset.node && pick(`.node[data-id="${to.dataset.node}"]`);
+  check('→ from a lifeline\'s ring moves focus to the ring of the nearest node to its right, a message row, named', !!toG && to.classList.contains('node-key') && toG.dataset.shape === 'message-row'
+    && to.getAttribute('aria-label') === toG.getAttribute('aria-label') && /^Message \d+ of \d+, [\d.]+: \w+ to \w+/.test(to.getAttribute('aria-label')), to && to.outerHTML.slice(0, 120));
+  h.destroy();
+} catch (x) { out.fail.push('threw: ' + (x && x.stack || x)); }
+document.documentElement.dataset.theme = 'light'; el.style.removeProperty('--um-sans');
+const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
+</script>
