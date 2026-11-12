@@ -95,6 +95,8 @@ test('linear: 4,096 characters of nested brackets and of slashes read in a few m
   assert.ok(!parse(deep).error && parse(wide).error && parse(flat).error);
   // R2: no regular expression with nested repetition. The parser has none at all; flow.js's two have no quantified group
   const src = f => readFileSync(new URL(`../src/uml/${f}`, import.meta.url), 'utf8');
-  assert.doesNotMatch(src('transition.js').replace(/\/\/.*|\/\*[\s\S]*?\*\//g, ''), /RegExp|\.(test|exec|match|replace|split)\(\//);
+  const bare = src('transition.js').replace(/\/\/.*|\/\*[\s\S]*?\*\//g, '');
+  assert.doesNotMatch(bare, /RegExp|\.(test|exec|match|replace|split)\(\//);
+  assert.doesNotMatch(bare, /(^|[=(,:!&|?{};]\s*)\/[^/*\s]/m, 'no regular expression literal');
   assert.doesNotMatch(src('flow.js'), /\)[*+{]/);
 });

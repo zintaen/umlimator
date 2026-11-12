@@ -374,8 +374,9 @@ transitionText({ trigger, guard, effect }) -> text                  // the parts
 - **Refused:** an unbalanced or crossed `[`, `]`, `(` or `)` in the trigger or the guard; a second guard, or any other text between
   the guard's `]` and the `/` (4.2: `a [g] b` would not read back); a text over 4,096 characters. The effect is not checked. The text is kept as written in the
   field, nothing is applied, and the hint line says why (E3).
-- **Not printable:** a trigger that holds `[` or `/`, or a guard with unbalanced brackets, which only a host can write
-  into the model. `printTransition` returns null; the line is drawn with its parts joined by spaces, warned of by
+- **Not printable:** any parts for which `printTransition` returns null: a trigger that holds `/` or `[` outside
+  parentheses, or an unbalanced or crossed bracket or parenthesis, or a guard with unbalanced brackets, which only a host
+  can write into the model. `printTransition` returns null; the line is drawn with its parts joined by spaces, warned of by
   `label-syntax`, and its F2 text is that drawing, which the parser reads differently, so F2 then edits the parts in the
   properties panel only.
 - **Round trip:** `print(parse(x))` is stable for every fixture text (E3), and `parse(print(p))` equals `p` for every
@@ -389,7 +390,7 @@ transitionText({ trigger, guard, effect }) -> text                  // the parts
 | A transition's drawn label, F2 on it | `trigger`, `guard`, `effect` |
 | An internal transition's member row | The same; a row with no trigger is warned of (`internal-trigger`). A row whose trigger is exactly `entry`, `do` or `exit` is not an internal transition: UML reserves those words for the state's activities, so the row sets that prop (and a second `entry` row replaces the first, said on the hint line). The Mermaid reader's `s1 : entry / x` follows the same rule |
 | A state's `entry`, `do`, `exit` | Not parsed: each is drawn as a row `entry / text` and edited in the properties panel or as that row |
-| An activity or overview flow, F2 on it | The trigger's place is the flow's name, the guard its guard; an effect is refused ("a flow has no effect"); so a name holding `/`, `[` or `]` outside brackets is refused, and is written in the properties panel's name field |
+| An activity or overview flow, F2 on it | The trigger's place is the flow's name, the guard its guard; an effect is refused ("a flow is name [guard]: it has an effect"), a bare `/` too; so a name holding `/`, `[` or `]` outside brackets is refused, and is written in the properties panel's name field |
 | The Mermaid reader's `A --> B : text` and `A : text` | §13 |
 
 ### 7.3 Drawn

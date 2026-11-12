@@ -1,6 +1,6 @@
 import { esc, fit, textW, wrap2 } from '../core/text.js';
 import { SHAPE, portsOn, r2 } from '../draw/shapes.js';
-import { parseTransition, printTransition, transitionText } from './transition.js';
+import { printTransition, transitionText, trScan } from './transition.js';
 
 /* ---------- control nodes, actions and flows: what the activity, state machine and interaction overview share (work
    package 4.2, notes/stage-4.md §4.1, §7.2, §9.3) ----------
@@ -60,7 +60,7 @@ SHAPE.diamond = {
   inset(n, s, t) { const a = n.w / 2, b = n.h / 2;
     return s === 'L' || s === 'R' ? a * Math.min(1, Math.abs(t - n.y - b) / b) : b * Math.min(1, Math.abs(t - n.x - a) / a); },
   draw(n) { const ls = diamondLines(n), cx = n.x + n.w / 2, y0 = n.y + n.h / 2 - ls.length * FL.lh / 2;
-    return flowNode(n, 'diamond', ls.length ? `Decision ${ls.join(' ')}` : 'Decision', flowBody(SHAPE.diamond.out(n), FL.bg)
+    return flowNode(n, 'diamond', String(n.label ?? '').trim() ? `Decision ${String(n.label).trim()}` : 'Decision', flowBody(SHAPE.diamond.out(n), FL.bg)
       + ls.map((l, i) => flowSvgText(cx, y0 + i * FL.lh + 10.5, l, FL.px, 500, FL.ink, 'c-name')).join('')); },
 };
 
@@ -75,7 +75,7 @@ SHAPE.bar = {
 };
 
 /* ---- the rounded rectangle: stereotypes, then the name on up to three lines, centred ---- */
-const roundedParts = n => { const st = FL_ARR(n.stereotypes).filter(t => t != null && t !== '').map(t => fit(`«${t}»`, FL.st, FL.maxW - 2 * FL.padX)), ls = flowWrap(n.label, FL.name, FL.nmax, 3);
+const roundedParts = n => { const st = FL_ARR(n.stereotypes).filter(t => String(t ?? '').trim() !== '').map(t => fit(`«${t}»`, FL.st, FL.maxW - 2 * FL.padX)), ls = flowWrap(n.label, FL.name, FL.nmax, 3);
   return { st, ls, w: Math.ceil(Math.min(FL.maxW, Math.max(FL.minW, ...st.map(t => textW(t, FL.st) + 2 * FL.padX), ...ls.map(l => textW(l, FL.name) + 2 * FL.padX)))),
     h: Math.max(FL.minH, 2 * FL.padY + st.length * FL.sth + Math.max(1, ls.length) * FL.nlh) }; };
 SHAPE.rounded = {
@@ -85,7 +85,7 @@ SHAPE.rounded = {
     let y = n.y + (n.h - st.length * FL.sth - Math.max(1, ls.length) * FL.nlh) / 2;
     const tx = st.map(t => { const s = flowSvgText(cx, y + 11, fit(t, FL.st, max), FL.st, 400, FL.line, 'c-st'); y += FL.sth; return s; });
     ls.forEach(l => { tx.push(flowSvgText(cx, y + 12, fit(l, FL.name, max), FL.name, 600, FL.ink, 'c-name')); y += FL.nlh; });
-    return flowNode(n, 'rounded', `Action ${n.label ?? ''}`, flowBody(SHAPE.rounded.out(n), FL.bg) + tx.join('')); },
+    return flowNode(n, 'rounded', String(n.label ?? '').trim() ? `Action ${String(n.label).trim()}` : 'Action', flowBody(SHAPE.rounded.out(n), FL.bg) + tx.join('')); },
 };
 for (const k of ['initial', 'final', 'flow-final', 'diamond', 'bar', 'rounded']) { const S = SHAPE[k]; S.face = n => [n.y, n.y + n.h]; S.ports = (n, side, j = 1) => portsOn(S, n, side, j); }
 
@@ -140,8 +140,8 @@ function flowProblems(model, view, ends) {
 const flowText = (name, guard) => transitionText({ trigger: name, guard });
 const printFlow = (name, guard) => printTransition({ trigger: name, guard });
 function parseFlow(text) {
-  const r = parseTransition(text, 'a flow is name [guard]');
-  return r.error ? r : r.effect !== undefined ? { error: 'a flow has no effect: a name holding / is written in the properties panel' } : { name: r.trigger, guard: r.guard };
+  const r = trScan(text, 'a flow is name [guard]');
+  return r.error ? r : r.slash >= 0 ? { error: 'a flow is name [guard]: it has an effect; a name holding / is written in the properties panel' } : { name: r.trigger, guard: r.guard };
 }
 
 export { flowWrap, FLOW_LINES, FLOW_CONTROL, FLOW_RULES, flowProblems, flowText, printFlow, parseFlow };

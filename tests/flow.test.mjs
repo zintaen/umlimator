@@ -77,6 +77,10 @@ test('drawn: a node of the shape it names, its accessible name, a hit area 24 px
   }
   assert.match(SHAPE.initial.draw({ ...NODES[0] }), /aria-label="Initial node"/, 'a name of its own with no aria');
   assert.match(SHAPE.diamond.draw({ ...NODES[4] }), /aria-label="Decision In stock\?"/);
+  const long = 'Take the next order from the queue and check that every line is in stock';
+  assert.match(SHAPE.diamond.draw({ ...NODES[4], label: long }), new RegExp(`aria-label="Decision ${long}"`), 'the whole label, not the cut lines');
+  assert.match(SHAPE.rounded.draw({ ...NODES[12], label: ' ' }), /aria-label="Action"/);
+  assert.equal(SHAPE.rounded.size({ stereotypes: [' '] }).h, SHAPE.rounded.size({}).h, 'a blank stereotype is not drawn');
   assert.equal((SHAPE.rounded.draw(NODES[12]).match(/class="c-name"/g) || []).length, 3, 'three lines, the last cut');
   assert.match(SHAPE.rounded.draw(NODES[12]), /…<\/text><\/g>$/);
   assert.deepEqual(flowWrap('aa bb cc dd ee', 12, textW('aa bb', 12), 2), ['aa bb', 'cc…'], 'the last line holds the rest, cut between words');
@@ -150,6 +154,7 @@ test('a flow\'s label (§7.2, §7.3): "name [guard]", an effect refused, a name 
   assert.equal(flowText('ship', 'paid'), 'ship [paid]'); assert.equal(flowText(undefined, 'else'), '[else]'); assert.equal(flowText('ship'), 'ship');
   assert.equal(printFlow('ship', 'paid'), 'ship [paid]'); assert.equal(printFlow('a/b'), null); assert.equal(flowText('a/b', 'g'), 'a/b [g]');
   assert.deepEqual(parseFlow('ship [paid]'), { name: 'ship', guard: 'paid' }); assert.deepEqual(parseFlow('[else]'), { name: undefined, guard: 'else' });
-  assert.match(parseFlow('ship / email').error, /a flow has no effect/);
+  assert.match(parseFlow('ship / email').error, /^a flow is name \[guard\]: it has an effect/);
+  for (const t of ['ship /', '/', '[g] /']) assert.match(parseFlow(t).error, /^a flow is name \[guard\]: it has an effect/, t);
   assert.match(parseFlow('ship [paid').error, /^a flow is name \[guard\]: /);
 });

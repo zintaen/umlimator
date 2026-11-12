@@ -11,7 +11,8 @@
 const TR_MAX = 4096, TR_OPEN = { '[': ']', '(': ')' }, TR_CLOSE = { ']': '[', ')': '(' };
 const trPart = x => { const s = x == null ? '' : String(x).trim(); return s === '' ? undefined : s; };
 
-function parseTransition(text, form = 'a transition is trigger [guard] / effect') { // form: what the error says the text should be
+// the parts and where the effect's / is (-1 for none), so a caller can tell "a /" from "a / x"; form: what the error says the text should be
+function trScan(text, form = 'a transition is trigger [guard] / effect') {
   const s = String(text ?? ''), fail = why => ({ error: `${form}: ${why}` });
   if (s.length > TR_MAX) return fail(`the text is over ${TR_MAX} characters`);
   const stack = []; let i = 0, guardAt = -1, guardEnd = -1, slash = -1;
@@ -24,8 +25,9 @@ function parseTransition(text, form = 'a transition is trigger [guard] / effect'
   }
   if (stack.length) return fail(`the ${stack[stack.length - 1]} it opens is not closed`);
   const tEnd = guardAt >= 0 ? guardAt : slash >= 0 ? slash : s.length;
-  return { trigger: trPart(s.slice(0, tEnd)), guard: guardAt >= 0 ? trPart(s.slice(guardAt + 1, guardEnd)) : undefined, effect: slash >= 0 ? trPart(s.slice(slash + 1)) : undefined };
+  return { trigger: trPart(s.slice(0, tEnd)), guard: guardAt >= 0 ? trPart(s.slice(guardAt + 1, guardEnd)) : undefined, effect: slash >= 0 ? trPart(s.slice(slash + 1)) : undefined, slash };
 }
+function parseTransition(text, form) { const r = trScan(text, form); return r.error ? r : { trigger: r.trigger, guard: r.guard, effect: r.effect }; }
 
 // the parts as drawn: "trigger [guard] / effect", each part left out when absent. A text the parser may read otherwise
 // (a host wrote "[" or "/" into a trigger) is drawn so too: printTransition says whether it reads back
@@ -38,4 +40,4 @@ function printTransition(p) {
   return !r.error && ['trigger', 'guard', 'effect'].every(k => r[k] === trPart(p && p[k])) ? t : null;
 }
 
-export { parseTransition, printTransition, transitionText };
+export { trScan, parseTransition, printTransition, transitionText };
