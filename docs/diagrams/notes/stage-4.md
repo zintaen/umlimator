@@ -1,8 +1,10 @@
 # Stage 4 design note: use case, activity, state machine and interaction overview
 
 Status: **proposed**, awaiting the maintainer's approval. Written against `main` at af4a141 (0.19.0's release merged, #197;
-stage 3's 3.0 to 3.7 merged, 3.8 being built). The maintainer approves it before work package 4.0 starts. Symbols are
-named, not line numbers.
+stage 3's 3.0 to 3.7 merged, 3.8 being built), then revised after a feasibility review and a UML fidelity review, and
+checked again against 0.20.0 at 0723e37 (3.8 merged, #198): between the two only `src/layout/audit.js` and
+`src/uml/sequence.js` changed, and nothing read here moved. The maintainer approves it before work package 4.0 starts.
+Symbols are named, not line numbers.
 
 Stage 4 ships release 0.21.0: the use case diagram (`uml.use-case`), the activity diagram (`uml.activity`), the state
 machine diagram (`uml.state-machine`) and the interaction overview diagram (`uml.interaction-overview`) (`plan.md` §5,
@@ -14,24 +16,27 @@ transition micro-syntax. Its reader: Mermaid's `stateDiagram`.
 | # | Point | Decision (recommended) | Section |
 |---|---|---|---|
 | S1 | The vocabulary of `model.md` rows 8, 9, 10 and 13 | Kept, with refinements: partitions nest; a flow's name and guard share one label; regions are optional; a transition never ends on a region; the overview's `uml.Interaction` is an inline interaction | §3 |
-| S2 | Which shapes are not boxes, and their sizes | Twelve shapes in four family files: those three types share in `src/uml/flow.js`, the rest in their type's file. Each gives `size`, `out`, `face`, `inset` and `draw`, and a hit area of 24 px at least | §4.1 |
-| S3 | How a line ends on a shape that is not a box | The router keeps ending lines on the node's box; the typed line drawer slides each end along its side's normal onto the outline with the shape's `inset`, as maps already do for their card shapes. In `src/typed/draw.js`, so no core byte | §4.2 |
-| S4 | Lanes (partitions) | Bands across the flow, laid out by moving each node's row into its lane's run of rows before the layered layout, in `src/layout/lanes.js`. Partitions are nodes drawn as a header strip; the bands are drawn in the type's `under` layer. No core byte | §5 |
-| S5 | Regions in compound nodes | A state with a shown substate is a box (stage 2's `boxes`); each region of it is a nested box whose id is the region's (a member's) id. Regions are drawn by a dashed divider in the gap between them, stretched across the state | §6 |
+| S2 | Which shapes are not boxes, and their sizes | Twelve shapes in four family files: those three types share in `src/uml/flow.js`, the rest in their type's file. Each gives `size`, `out`, `inset` and `draw`, and a hit area of 24 px at least. The router reads none of them (Q14): where a line must leave a side, the type sets `fromSide`/`toSide` | §4.1 |
+| S3 | How a line ends on a shape that is not a box | The router keeps ending lines on the node's box; the typed line drawer slides each end onto the outline with the core's own `drawnPts`, on a copy of the points, as maps already do for their card shapes. Shapes with no `inset` keep the box end. In `src/typed/draw.js`; 40 B in `svgOf` only if a consumer of `drawn` needs it | §4.2 |
+| S4 | Lanes (partitions) | Bands across the flow, laid out by moving each node's row into its lane's run of rows before the layered layout, in `src/layout/lanes.js`. Partitions are left out of the layout and added back after it as header strips; the bands are drawn in the type's `under` layer and kept in `geo.bands`. No core byte | §5 |
+| S5 | Regions in compound nodes | A state with a shown substate is a box (stage 2's `boxes`). When two or more of its regions hold something shown, each is a nested box whose id is the region's (a member's) id, drawn by a dashed divider in the gap between them, stretched across the state; with one, its contents sit in the state's box directly | §6 |
 | S6 | The transition micro-syntax | `trigger [guard] / effect`, read by one hand-written parser shared by the state type, the activity type's flow labels and the Mermaid reader; `print(parse(x))` is stable, and a text the parser cannot read is refused and kept as written (E3) | §7 |
-| S7 | A long transition or guard label | A typed line may carry `cut`, the width its label is cut at; the state and activity types set 280 px. One field in `layered.js`'s `labelW`, the stage's only planned layout change in the core | §7.4 |
-| S8 | A decision node's text | The diamond grows to hold it, on at most two lines; with no text it is 28 px | §4.1 |
+| S7 | A long transition or guard label | A typed line may carry `cut`, the width its label is cut at; the state, activity and overview types set 280 px. One field in `layered.js`'s `labelW` and `typed/layout.js`'s `EDGE_GEO`, the stage's only planned layout change in the core | §7.4 |
+| S8 | A decision node's text | The diamond grows to hold it, on at most two lines; with no text it is 28 px. A deviation from UML (which puts the question in a «decisionInput» note or beside the node), stated in §18 and the conformance note | §4.1 |
 | S9 | Renaming a line through its type | A new hook, `edits.rename(model, view, id, text)`, which `src/typed/edit.js` calls from the canvas's `I.label`. No core byte | §12.1 |
 | S10 | Deleting a partition | The activity type's `remove` hook moves what the partition holds to the partition's own parent, then deletes it: a partition groups, it does not own | §9.4 |
 | S11 | The inline interaction | Drawn at full size inside an `sd` frame, from the sequence type's own geometry, read only; opened to be edited. Above 8 lifelines or 20 messages it is drawn as its frame and name, with a warning | §11.2 |
-| S12 | The Mermaid state subset | §13's table, against Mermaid 12.3.0, with the limits of 3.6 (1 MiB, linear, never throws) and a nesting limit of 64 | §13 |
+| S12 | The Mermaid state subset | §13's table, against Mermaid 12.3.0, with the limits of 3.6 (1 MiB, linear, never throws) and a nesting limit of 64; a state's plain description read as a linked comment; reserved and colliding ids suffixed | §13 |
 | S13 | The PDF's tables per type (R8, and R9, new) | A type may give `rows(model, view, id)`, the text `print.js` lists for an element in place of its members, and `word(model, id)`, its kind; typed tables are headed "Elements" | §15 |
-| S14 | The core's budget (C5) | Stage 4 spends at most 600 B of the 2,777 B left after 3.8; everything listed in §2.3 stays in family files | §2.3 |
-| S15 | P1 for the common edit | A transition's label, a flow's guard and a use case's name are laid out and drawn in under 100 ms on each stress fixture, as 3.5 did for messages; `reroute: false` is the means | §17 |
+| S14 | The core's budget (C5) | Stage 4 spends at most 600 B of the 2,790 B left at 0.20.0; everything listed in §2.3 stays in family files | §2.3 |
+| S15 | P1 for the common edit | A transition's label, a flow's guard and a use case's name are laid out and drawn in under 100 ms on each stress fixture, as 3.5 did for messages. The four types pass `repair: false` and `reroute: false` always, as the communication type does: `reroute: false` alone measures 123 to 131 ms on a 52-node view (Q19). A spike in 4.1 measures it on a view with lanes and with composites three deep before the type lanes start | §17 |
 | S16 | C10 for the four types | Tested in 4.10 as 2.6 did (the MCP server, the diff Action), per-type `diff()` writers left to the package after 0.20.0 | §19.5 |
-| S17 | Order with stage 3 | 4.0 follows 3.8's merge; 0.21.0 ships after 0.20.0 | §19.3 |
-| S18 | Choosing the view an interaction use or a call behaviour action opens | A picker of the model's views of the right kind when the element is added, through the `add` hook; no new properties field | §12.2 |
+| S17 | Order with stage 3 | 4.0 follows 3.8's merge (#198); 0.21.0 ships after 0.20.0 | §19.3 |
+| S18 | Choosing the view an interaction use or a call behaviour action opens | A picker of the model's views of the right kind when the element is added (the `add` hook's new `{ pick, then }` result), and again by `V` on the selected node, which emits `set opensView`. In `src/typed/edit.js`; no core byte, no new properties field | §12.2 |
 | S19 | A composite state's entry, do and exit | Not drawn on its box in 0.21.0; in its accessible name, `describe()`, the panel and the PDF | §10.1 |
+| S20 | The order of a state's regions in the picture | The order `blockPos` gives boxes of one rank (by their first line), not `members` order; the panel, the PDF and the accessible names keep `members` order | §6.2 |
+| S21 | How strict the control-node rules are | Where UML allows one (one incoming to a fork, one outgoing from a join or a merge, none into an initial node), more is an error; where UML wants two or more, fewer is a warning, since a diagram being drawn passes through it | §9.3, §10.2 |
+| S22 | Mermaid's unsupported crossings | A transition between substates of two composites, or from outside into a substate, is written as a transition with a `%% warning:` line above it; Mermaid 12.3.0's parser is run on the writer's output once in 4.8, from a scratch page, not as a dependency | §13 |
 
 What is left out of the subsets is in §18.
 
@@ -66,13 +71,21 @@ What is left out of the subsets is in §18.
 | Q9 | The properties panel's field kinds | `text`, `enum` (static options), `list`, `bool`; every field writes under `props`. `opensView` is not a `props` field | S18 |
 | Q10 | `print.js` | A typed view lists each element's type word and its members by the type's `member.print`, and each line's label and kind, under the map's heading "Cards" | S13 |
 | Q11 | `context.js`'s `opensOf` | A typed node's `opensView` opens its view as a card's does (a click on the selected node) | §9, §11 |
-| Q12 | `ownersOn` (`src/uml/owners.js`) | Box types are fixed (`OWN_BOXES = ['uml.Package']`), names are qualified, and only model nodes are indexed, not members | §8.2, §6 |
+| Q12 | `ownersOn` (`src/uml/owners.js`) | Box types are fixed (`OWN_BOXES = ['uml.Package']`), names are qualified, and only model nodes are indexed, not members: `chain()` stops at a member. Every box gets `shape: 'package'` and the accessible name "Package …" | §8.2, §6 |
+| Q13 | `layoutTyped`'s memo (`src/typed/layout.js`) | On a cache hit it returns `memo.g` itself, which `repaint` mutates. For a typed view `svgOf`'s `drawn[i]` is that `e.pts` (Q1) | §2.4, §4.2, §5, §6.2 |
+| Q14 | `layoutPass`'s ports | The router reads no shape's `face`, `out` or `ports`: ports are spread along the box's sides. Only map drawing reads them (`sidePorts`, `face` in `svg.js`, rings in `render.js`). A line's `fromSide` and `toSide` are read, and are in `EDGE_GEO` | §4.1 |
+| Q15 | The hooks and the picker (`src/typed/edit.js`) | A hook is a plain function of the model and never sees `c.picker`; only `wrap()` opens one. `I.addNode` asks for a name in `api.editor` before it calls `add` | §12 |
+| Q16 | `moveTo`'s `at` | `{ slot, pt, col }`: the drop point, no geometry | §9.4 |
+| Q17 | `blockPos` and `frameOf` | Boxes of one rank are sorted by `first()`, the index of their first line, not by any member order. Each box level adds 72 px along a right-laid flow (36 px a side), 44 px across it, and 24 px of header room (`frameOf`, `src/layout/layered.js`) | §6.2 |
+| Q18 | `nameBox` (`src/canvas/render.js`) | A node's rename field is `n.w - 58` px wide: negative for a diamond, a circle or a bar | §2.3 |
+| Q19 | `layoutTyped` on `tests/class-stress.json` (52 nodes, 59 lines), warm runs, two machines' measures | No flags 135 to 176 ms; `reroute: false` 123 to 145 ms; `repair: false` 48 to 53 ms; both 24 ms. Port repair is the cost. `viewKey` (`context.js`) holds labels, so a label edit also runs `autoPos` again (15 to 30 ms); `layoutGraph` runs `layoutPass` twice when `labelRoom` is set | §17 |
 
 ### 2.3 The core's budget (C5, S14)
 
-Measured with `gzip -9` as C5 says: `lib/umlimator.js` is 186,787 B at af4a141, and 186,920 B once 3.8 has merged. The
-cap is 189,697 B (0.16.0's 164,954 B plus 15%). That leaves 2,777 B for stages 4 to 6 and the three milestones, and stage
-5 (ports on borders, deep nesting) is the one most likely to need the layout's code.
+Measured with `gzip -9` as C5 says: `lib/umlimator.js` is 186,787 B at af4a141, and 186,907 B at 0.20.0 (0723e37). The
+cap is 189,697 B (0.16.0's 164,954 B plus 15%). That leaves 2,790 B for stages 4 to 6 and the three milestones, and stage
+5 (ports on borders, deep nesting) is the one most likely to need the layout's code. (Another `gzip` build measures both
+13 B higher; each pull request measures before and after with the same one.)
 
 What stays out of the core, in files listed in `tools/build.mjs`'s `ALL` only:
 
@@ -91,6 +104,8 @@ What may touch the core, each change stating its bytes in its pull request:
 | Change | File | Lane | Target |
 |---|---|---|---|
 | A typed line's `cut` (S7) | `src/layout/layered.js` | 4.1 | 40 B |
+| The slide where `drawn` is built, only if a consumer of `drawn` reads `e.pts` (§4.2) | `src/draw/svg.js` | 4.1 | 40 B |
+| The rename field at least 120 px wide (Q18): `Math.max(n.w - 58, 120)` | `src/canvas/render.js` | 4.1 | 20 B |
 | `rows` and `word` read by the PDF's tables; "Elements" for a typed view (S13) | `src/page/print.js` | 4.9 | 150 B |
 | A box whose id is a member's, if `blockPos`, `withPlaces` or the drop need it (§6.3) | `src/map/context.js`, `src/canvas/render.js` | 4.1 | 200 B |
 | The new registry fields documented | `src/core/registry.js` | 4.1 | 150 B: the build keeps comments, so they count |
@@ -101,8 +116,13 @@ What may touch the core, each change stating its bytes in its pull request:
 | (b) First come, first served | Nothing to decide | Stage 5 may find no room for ports, the one change that cannot be a family file's |
 | (c) Raise C5 | No wait | The maintainer's call; maps' hosts pay for UML |
 
+The six targets add up to 600 B. S20's recommendation (regions in first-line order) needs no `context.js` change; its
+other option would add about 30 B there and needs the maintainer.
+
 If (a) holds and a change goes over, the fallbacks are, in this order: S13 keeps the "Cards" heading and lists members only
-(the fidelity table states the gap); S7 keeps the 150 px cut; a member-id box falls back to §6.3's node form.
+(the fidelity table states the gap); S7 keeps the 150 px cut; a member-id box falls back to §6.3's node form; the slide's
+`svgOf` change is replaced by the type drawing its own line paths. The rename field's 20 B has no fallback: without it F2
+on a decision draws a broken field.
 
 ### 2.4 Rules every package keeps
 
@@ -114,6 +134,11 @@ If (a) holds and a change goes over, the fallbacks are, in this order: S13 keeps
 - **The API is additive only** (C2). Nothing is exported from `lib/umlimator.js` that was not; the four types, the
   parser and the reader are internal, in `lib/umlimator-all.js`, as stage 3's helpers are. New registry fields
   (`edits.rename`, `rows`, `word`, a line's `cut`) are optional and provisional; a type without them behaves as before.
+- **Nothing after `layoutTyped` edits what it returned** (Q13). On a cache hit it returns the cached geometry, so a step
+  that shifts it, adds nodes to it or stretches a frame in it would do so again on every paint. A type's post-layout steps
+  (the line slide, `laneBands`' `shift`, the partitions' headers, the regions' stretch) work on a copy: new `nodes` and
+  `edges` arrays, and a new object for each node or point list they change. 4.1's test lays a view out twice from one memo
+  and checks the two pictures are byte-identical.
 - **No host application's name** appears in code, tests or docs (`plan.md` §8).
 
 ## 3. Vocabulary (S1)
@@ -126,7 +151,7 @@ The rows of `model.md`, refined. `uml.Comment`, `uml.CommentLink` and `props.ste
 | 8 | `uml.use-case` | `uml.Actor`, `uml.UseCase`, `uml.Subject`, `uml.Comment` | `uml.ExtensionPoint` (of a use case) | `uml.Association`, `uml.Include`, `uml.Extend`, `uml.Generalization`, `uml.CommentLink` | A use case's `parent` is a subject, or none. Extend props: `extensionPoints` (ids of the extended use case's extension points), `condition` (text). An association joins an actor and a use case; its ends' props are not read |
 | 9 | `uml.activity` | `uml.InitialNode`, `uml.ActivityFinalNode`, `uml.FlowFinalNode`, `uml.Action`, `uml.CallBehaviorAction`, `uml.SendSignalAction`, `uml.AcceptEventAction`, `uml.DecisionNode`, `uml.MergeNode`, `uml.ForkNode`, `uml.JoinNode`, `uml.ObjectNode`, `uml.DataStoreNode`, `uml.ActivityPartition`, `uml.Comment` | | `uml.ControlFlow`, `uml.ObjectFlow`, `uml.CommentLink` | A node's partition is its `parent`; a partition's `parent` is a partition (nested lanes) or none. A flow's `label` is its name, `props.guard` its guard. A call behaviour action's `opensView` names an activity view |
 | 10 | `uml.state-machine` | `uml.State`, `uml.Pseudostate`, `uml.FinalState`, `uml.Comment` | `uml.Region`, `uml.InternalTransition` (of a state) | `uml.Transition`, `uml.CommentLink` | State props: `entry`, `do`, `exit`. Pseudostate `props.kind`: `initial`, `choice`, `junction`, `fork`, `join`, `shallowHistory`, `deepHistory`, `terminate`. Transition and internal transition props: `trigger`, `guard`, `effect`, each text (§7). A substate's or pseudostate's `parent` is a state, or a region of one; at the top, none |
-| 13 | `uml.interaction-overview` | `uml.InitialNode`, `uml.ActivityFinalNode`, `uml.DecisionNode`, `uml.MergeNode`, `uml.ForkNode`, `uml.JoinNode`, `uml.InteractionUse`, `uml.Interaction`, `uml.Comment` | | `uml.ControlFlow`, `uml.CommentLink` | An interaction use (drawn `ref`) or an inline interaction (`uml.Interaction`, drawn `sd` with its content) names its `uml.sequence` view in `opensView`; those views, with their lifelines and messages, are in the same model. A flow's guard is `props.guard` |
+| 13 | `uml.interaction-overview` | `uml.InitialNode`, `uml.ActivityFinalNode`, `uml.FlowFinalNode`, `uml.DecisionNode`, `uml.MergeNode`, `uml.ForkNode`, `uml.JoinNode`, `uml.InteractionUse`, `uml.Interaction`, `uml.Comment` | | `uml.ControlFlow`, `uml.CommentLink` | An interaction use (drawn `ref`) or an inline interaction (`uml.Interaction`, drawn `sd` with its content) names its `uml.sequence` view in `opensView`; those views, with their lifelines and messages, are in the same model. A flow's guard is `props.guard` |
 
 What changed against `model.md`:
 
@@ -135,7 +160,10 @@ What changed against `model.md`:
 - **A partition groups; it does not own.** UML's partitions do not own their nodes. The model keeps `parent` for them,
   but deleting a partition keeps what it held (S10, §9.4).
 - **A flow's name and guard.** An activity or overview flow is drawn `name [guard]`; F2 edits both through §7's parser,
-  with the trigger's place holding the name and no effect allowed (§7.3).
+  with the trigger's place holding the name and no effect allowed (§7.3). So a flow's name may not hold `/`, `[` or `]`
+  outside brackets: F2 refuses it, and the properties panel's name field is the way to write one.
+- **The overview's vocabulary gains `uml.FlowFinalNode`.** UML 2.5.1 §17.10 builds overview diagrams from activity
+  notation, flow final included; `flow.js` draws it already.
 - **Regions are optional.** A composite state with substates whose `parent` is the state itself has one implicit region.
   A state with both regions and direct substates is warned of (`region-mixed`); its direct substates are drawn in an
   implicit region before the others.
@@ -154,26 +182,34 @@ The four example files keep their shapes. `check.mjs` gains no hand rule for the
 ### 4.1 The shapes
 
 Each is a `SHAPE` entry added by a family file, as `src/uml/class.js` adds `SHAPE.note`: `size(n)` from its text, `out(n, d)`
-its outline, `face(n)` the span of its left and right sides where ports go, `inset(n, side, t)` how far inside the box's
-side its outline is at `t`, `ports` from `portsOn`, and `draw(n, c, f)`. Text is cut with `fit`, never overflows; strokes
-are `--um-muted`, fills the stage's background or `--um-text` (T2).
+its outline, `inset(n, side, t)` how far inside the box's side its outline is at `t`, and `draw(n, c, f)`. The router reads
+none of them (Q14): it spreads ports along the box's sides, and the draw-time slide (§4.2) is what puts each end on the
+outline. Text is cut with `fit`, never overflows; strokes are `--um-muted`, fills the stage's background or `--um-text` (T2).
 
 | Shape | For | Size | Outline and ports | Hit area |
 |---|---|---|---|---|
 | `initial` | Initial node, initial pseudostate | 20 px circle, filled | A circle; one port per side (Q2) | A transparent 24 px circle |
 | `final` | Activity final, final state | 22 px, a ring round a filled circle | A circle | 24 px |
 | `flow-final` | Flow final | 22 px, a circle with an X | A circle | 24 px |
-| `diamond` | Decision, merge, choice | 28 px with no text; with text, grown to hold it on at most two lines of 11 px, cut at 160 px a line (S8) | A diamond; side ports slide onto its edges | Its own outline |
-| `bar` | Fork, join (both node and pseudostate) | 6 px thick, across the flow: `L × 6` laid out down, `6 × L` right, `L` = max(48, 16 × (lines on its busiest side + 1)) | Its long sides hold the ports; its ends hold none | A transparent band 24 px thick |
+| `diamond` | Decision, merge, choice | 28 px with no text; with text, grown to hold it on at most two lines of 11 px, cut at 160 px a line (S8) | A diamond; a line's end slides onto its edges when drawn | Its own outline |
+| `bar` | Fork, join (both node and pseudostate) | 6 px thick, across the flow: `L × 6` laid out down, `6 × L` right, `L` = max(48, 16 × (lines on its busiest side + 1)) | Its long sides: the type sets `fromSide`/`toSide` on every line of a bar (the side facing the flow's start for lines in, the other for lines out), since the router does not read the shape | A transparent band 24 px thick |
 | `junction` | Junction pseudostate | 12 px filled circle | A circle, one port per side | 24 px |
 | `history` | Shallow and deep history | 24 px circle with `H` or `H*` | A circle | Its own outline |
 | `terminate` | Terminate pseudostate | 20 px X | Its box (an X has no outline to slide to) | 24 px |
-| `rounded` | Action, call behaviour action, state | As the classifier: text from 96 to 320 px wide; an action's name wraps to three lines of 180 px, then is cut | A rectangle with 10 px corners; `face` leaves the corners out | Itself |
-| `signal` | Send signal action (convex pentagon), accept event action (concave) | As `rounded`, plus 14 px for the point or notch | The pentagon; a port on the pointed side slides to its edges | Itself |
-| `ellipse` | Use case | Its name wrapped to three lines of 160 px, the ellipse 1.3 times that box; with extension points, a divider and the compartment "extension points" under the name | An ellipse; ports slide onto it | Itself |
+| `rounded` | Action, call behaviour action, state | As the classifier: text from 96 to 320 px wide; an action's name wraps to three lines of 180 px, then is cut | A rectangle with 10 px corners; an end within a corner slides onto the arc | Itself |
+| `signal` | Send signal action (convex pentagon), accept event action (concave) | As `rounded`, plus 14 px for the point or notch | The pentagon; an end on the pointed side slides to its edges | Itself |
+| `ellipse` | Use case | Its name wrapped to three lines of 160 px, the ellipse 1.3 times that box; with extension points, a divider and the compartment "extension points" under the name | An ellipse; ends slide onto it | Itself |
 | `actor` | Actor | A stick figure 24 × 44, its name under it, the node as wide as the wider | Its box, narrowed to the figure's 24 px column on the left and right | Itself |
 
 The state's frame, the subject's frame, the partition's header and the inline interaction are boxes, in §5, §6, §8 and §11.
+The overview's interaction use is stage 3's `SHAPE.use`, which has `draw` only: `overview.js` gives a look over it with
+`size` from `useSize` (`src/uml/frame.js`), `out` its rectangle and `inset` 0.
+| S8 option, a decision node's text | For | Against |
+|---|---|---|
+| **(a) Inside the diamond, which grows to hold it on at most two lines; stated as a deviation from UML in §18 and the conformance note (recommended)** | What flowchart readers expect; `09-activity.json` relies on it ("All books in stock?"); the text never collides with the lines | Not UML notation: UML draws no label inside a decision node |
+| (b) Beside the diamond, top right | UML's place for a node's name | Collides with lines that enter at the top; the layout does not reserve room for it |
+| (c) A «decisionInput» note linked to the diamond | UML's notation for the question | A second element per decision, and decision input behaviour is out of the subset (§18) |
+
 Two shapes each come in two types' looks: `bar` for a fork and a join, `diamond` for a decision and a merge. A merge and a
 decision are drawn alike, as UML draws them (risks.md §6, F); their accessible names tell them apart (L13).
 
@@ -181,7 +217,7 @@ decision are drawn alike, as UML draws them (risks.md §6, F); their accessible 
 
 | Option | For | Against |
 |---|---|---|
-| **(a) The router ends a line on the node's box, as now; the typed line drawer slides each end along its side's normal onto the outline with `inset` (recommended)** | What maps do (`drawnPts`, Q1); the code sits in `TYPED.lines` (`src/typed/draw.js`), which mutates `drawn` before `svgOf` uses it for the path, the arrowhead's trim, the end labels and the hit line; no core byte. The classifier's `inset` is 0, so no class, package or object picture moves | The last segment lengthens by the inset: on an ellipse's side far from its middle, a long stub. Ports on a small node are one per side |
+| **(a) The router ends a line on the node's box, as now; the typed line drawer slides each end along its side's normal onto the outline with `inset` (recommended)** | What maps do: the code is the core's exported `drawnPts` (Q1), which copies the points, called from `TYPED.lines` (`src/typed/draw.js`) with a look that returns the node's shape when it has an `inset`, else null. It replaces `drawn[i]` with that copy before `svgOf` uses it for the path, the arrowhead's trim, the end labels and the hit line, and never edits the points in place (for a typed view `drawn[i]` is the cached `e.pts`, Q13); no core byte. Shapes with no `inset` (`SHAPE.lifeline`, `SHAPE.use`, the classifier) keep their box end, so no class, package, object, sequence or communication picture moves | The last segment lengthens by the inset: on an ellipse's side far from its middle, a long stub. Ports on a small node are one per side |
 | (b) Ports on the outline from the start: the router reads `ports()` | Exact ends, short stubs | `layoutPass`'s port code is the core's; a change there moves maps' geometry hashes unless guarded, and costs bytes stage 5 needs for its ports |
 | (c) Every shape draws inside a box and the line ends at the box | Nothing to build | A line stops in the air beside a circle or a diamond: what L12 is about |
 
@@ -190,12 +226,12 @@ How (a) behaves on each shape:
 - **Small circles** (20 to 24 px) take one port per side (Q2); extras on the left and right go to the top and bottom, as
   for any node. A port at a side's middle is on the circle, so the slide is 0 for a single line.
 - **The diamond:** a single port per side is its vertex. Several on one side slide onto its edges and meet them at an angle.
-- **The bar:** lines enter and leave on its long sides; the bar grows with the busier side (§4.1), so ports keep 16 px apart.
+- **The bar:** lines enter and leave on its long sides, by the `fromSide`/`toSide` the type sets; the bar grows with the busier side (§4.1), so ports keep 16 px apart.
 - **The actor:** a line ends at the figure's column, not at its name's width.
 - **Arrowheads** are trimmed from the slid line, so the tip touches the outline (`tests/notation.html`'s rule, now for these shapes).
 
 4.1 checks every consumer of `drawn` in `svgOf` and `endLabels`. If one reads `e.pts` instead, the slide moves to the
-point `drawn` is built, which is the core's (`svgOf`), at about 40 B within the stage's share.
+point `drawn` is built, which is the core's (`svgOf`), at about 40 B within the stage's share; so 4.1 owns `src/draw/svg.js`.
 
 ### 4.3 Where the code goes
 
@@ -203,7 +239,7 @@ point `drawn` is built, which is the core's (`svgOf`), at about 40 B within the 
 |---|---|---|
 | `src/uml/flow.js` | `initial`, `final`, `flow-final`, `diamond`, `bar`, `rounded`; the flow rules shared by the activity and overview types (§9.3, §11.3); the flow label's print (`name [guard]`) | Three types draw them; one lane builds them before the types. `rounded` is here so that neither the activity file nor the state file imports the other |
 | `src/uml/activity.js` | `signal`; the action's and the call behaviour action's looks on `rounded` | The activity's own |
-| `src/uml/state.js` | `junction`, `history`, `terminate`; the state's look (`rounded` with a compartment of activities); the state's and the region's frames | The state machine's own |
+| `src/uml/state.js` | `junction`, `history`, `terminate`; the state's look (`rounded` with a compartment of activities, and the decomposition indicator when closed); the state's and the region's frames | The state machine's own |
 | `src/uml/usecase.js` | `ellipse`, `actor`, the subject's frame | The use case's own |
 
 ## 5. Lanes (S4, L10)
@@ -221,7 +257,7 @@ point `drawn` is built, which is the core's (`svgOf`), at about 40 B within the 
 ```js
 laneRows(pos, laneOf, lanes) -> pos'      // pos: { id: [col, row] } as ranked; laneOf: id -> its innermost lane, or null;
                                           // lanes: [{ id, parent, order }] outermost first. pos': each lane a run of rows
-laneBands(g, lanes, laneOf, turned) -> { bands: [{ id, parent, depth, x, y, w, h, head }], shift }
+laneBands(g, lanes, laneOf, turned) -> { bands: [{ id, parent, depth, x, y, w, h, head }], shift }   // g is read, never written
 ```
 
 - **Rows.** Within each column, the nodes keep their ranked order, sorted by lane (depth first, in `nodeIds` order). Lane
@@ -231,19 +267,30 @@ laneBands(g, lanes, laneOf, turned) -> { bands: [{ id, parent, depth, x, y, w, h
 - **An empty lane** keeps one row and a minimum width of 120 px.
 - **Pins.** A pin's column is kept; its row is taken as an order inside its lane, so a pin never moves a node to another
   lane. Changing lane is a change of owner (§9.4).
-- **Bands.** After the layout, each band spans the whole diagram along the flow, and across it from the middle of the gap
-  before its first row to the middle of the gap after its last. A header of 22 px per level of nesting is added at the
-  start of the flow (the top laid out down, the left laid out right); `shift` moves the geometry by it.
-- **Dividers.** Drawn 10 px off each gap's centre line, which the router uses (`gapLinesY`). 4.5's fixtures check that no
-  line runs along a divider for more than 24 px; if one does, the fixture pins it and the conformance note states it (as
-  L8 does for boxes).
+- **Bands.** After the layout, each band spans the whole diagram along the flow, and across it from the divider before
+  its first row to the divider after its last. A header of 22 px per level of nesting is added at the start of the flow
+  (the top laid out down, the left laid out right); the type applies `shift` to its copy of the geometry (§2.4), never to
+  what `layoutTyped` returned.
+- **Dividers.** A band's edge and its divider are one line, drawn 12 px off the gap's centre line toward the later lane,
+  since the router runs lines along the centre lines (`gapLinesY`). The activity type passes its own `rgap` of 64 px (the
+  typed default `RG0` is 44 px), so 20 px are left between a divider and the nodes on its near side. 4.5's fixtures check
+  that no line runs along a divider for more than 24 px; if one does, the fixture pins it and the conformance note states
+  it (as L8 does for boxes).
+- **Where the bands are kept.** In `geo.bands`, the type's own key: not `geo.lanes`, which `svgOf` draws as a map's
+  numbered run lanes.
 
 ### 5.3 Drawing and selecting
 
 - The bands' outlines and dividers go in the type's `under` layer, with `frame()` from `src/uml/frame.js`.
-- Each partition is a node of the geometry with shape `partition`: its header strip, its name cut to the band, and a
-  transparent hit area on the strip only. So a click on the header selects the partition, F2 renames it, Delete and the
-  outline work, with no canvas change: stage 3's way for frames (`notes/stage-3.md` S2).
+- **Partitions are left out of the layout.** A shown partition is in `nodeIds`, so `autoPos` and `layoutTyped` would rank
+  and place it as an unconnected node in a cell of its own and route lines round it. The type takes partitions out of the
+  `dg.nodes` it lays out, and after the layout adds each back to its copy of the geometry (`nodes`, `byId`) as a node with
+  shape `partition`, on its band's header strip: its name cut to the band, and a transparent hit area on the strip only. So
+  a click on the header selects the partition, F2 renames it, Delete and the outline work, with no canvas change.
+  Stage 3's frames are not quite the precedent: the sequence type builds its whole geometry itself (`rank: false`,
+  `pins: false`), while the activity type adds these few nodes to a layered geometry.
+- A drag or Alt + arrow on a partition's header goes to `moveTo`, which returns `[]`: nothing changes and no pin is set (a
+  lane's place is its partition's place in `nodeIds`, §5.2; moving a lane by hand is left out, §18).
 - A partition is not a Tab stop of its own: `geo.order` lists it before its first node (§14).
 
 ## 6. Regions in compound nodes (S5, L11)
@@ -251,20 +298,33 @@ laneBands(g, lanes, laneOf, turned) -> { bands: [{ id, parent, depth, x, y, w, h
 ### 6.1 The rule
 
 1. A state is **open** (a box) when the view shows one of its substates, at any depth through its regions; otherwise it is
-   drawn closed, as a simple state.
-2. An open state with regions holds one nested box per region that holds something shown, in `members` order. A region
-   that holds nothing shown is not drawn; the state's accessible name counts it.
-3. An open state with no regions holds its substates directly (one implicit region).
+   drawn closed, as a simple state. A closed state that has substates in the model carries UML's decomposition indicator
+   (two small linked rounded rectangles at its bottom right, drawn by the state's look in `state.js`), and its accessible
+   name says "Composite state".
+2. An open state with two or more regions in the model holds one nested box per region that holds something shown. A
+   region that holds nothing shown is not drawn; the state's accessible name counts it.
+3. An open state with no regions, or with exactly one, holds its substates directly: no region box. That keeps one box
+   level per state in the common case (Q17's 72 px a level). A drop into a one-region state's box goes to the state
+   type's `moveTo`, which returns `reparent` to the region.
 4. The boxes are given by the state type's `boxes(model, view)`, built by `ownersOn` with §8.2's options (state and region
-   as box types, members indexed), so the stage 2 code that places, routes and edits boxes takes them unchanged.
+   as box types, members indexed), so the stage 2 code that places, routes and edits boxes takes them unchanged. Beyond
+   §8.2's options, the state's use of `ownersOn` needs: `chain()` to step from a member to its owning node (Q12), a region
+   counted as shown when anything under it is shown (a region is never in `nodeIds`), and the look's `shape` and type
+   word, so a state's box is not drawn or named as a package.
 
 ### 6.2 Drawing
 
 - **The state's frame** (`SHAPE.state.frame`): a rectangle with 10 px corners on the box's border, the name in the 24 px
   header room, a solid line under it. Laid out down, the header room is on the turned side, as for packages (2.1).
 - **A region's frame** draws no border. After the layout, the state type stretches each region's frame across its state
-  (the axis the regions are not stacked along) and draws a dashed divider in the gap before each region but the first. A
-  region's name, if it has one, is drawn at its top left in 10 px.
+  (the axis the regions are not stacked along), on its copy of the geometry (§2.4), and draws a dashed divider in the gap
+  before each region but the first. A region's name, if it has one, is drawn at its top left in 10 px.
+- **Order (S20).** `blockPos` sorts boxes of one rank by `first()`, the index of their first line (Q17), so regions are
+  drawn in the order their contents' first lines come in the model's `edges`, not in `members` order. Reordering regions in
+  the member list changes the panel, the PDF and the reading order, not the picture.
+- **Width.** Each box level costs 72 px along a right-laid flow and 44 px across it, plus 24 px of header room (Q17). A
+  composite three deep with two regions at each level is six box levels: about 430 px wider than the same states with no
+  regions. Rule 3 keeps a one-region state to one level; stage 5's deep nesting meets the same cost.
 - **Stacking.** `blockPos` stacks a state's regions in one column (Q6): one above the other laid out right, side by side
   laid out down. A line between two regions' contents would rank one before the other (it is warned of, `region-cross`);
   the dividers are then drawn only where two regions' extents part on one axis, and the fixture checks the picture.
@@ -272,9 +332,14 @@ laneBands(g, lanes, laneOf, turned) -> { bands: [{ id, parent, depth, x, y, w, h
 
 | Option | For | Against |
 |---|---|---|
-| **(a) Regions as nested boxes with no border, a divider in the gap (recommended)** | Stage 2's code places and routes them; a region is selectable as a container and a drop into it reparents to it | The gap between regions is 32 px (the boxes' gap), wider than UML draws it |
+| **(a) Regions as nested boxes with no border, a divider in the gap (recommended)** | Stage 2's code places and routes them; a region is selectable as a container and a drop into it reparents to it | The gap between regions is 32 px (the boxes' gap), wider than UML draws it; each region level adds 72 px of padding (Q17), so deep orthogonal states grow wide |
 | (b) A region as a compartment of a node laid out by the type itself, recursively | UML's tight picture | A recursive layout in a family file: lines across levels need a last routing pass the typed router does not do (stage 2 §3.1's option (b)) |
 | (c) Regions not drawn: substates of all regions in one box | Nothing new | Orthogonal regions are the meaning of a fork into them |
+
+| S20 option, the order of a state's regions | For | Against |
+|---|---|---|
+| **(a) The order `blockPos` gives (by first line); `members` order in the panel, the PDF and the reading order (recommended)** | No core byte; UML gives regions no order, so the picture is not wrong; it is stable for a given model | Reordering regions in the member list does not move them; a region with no line comes last |
+| (b) `blockPos` sorts boxes of one rank by a box's `order` field when it has one | Member order drawn | About 30 B in `context.js` (core), past §2.3's 600 B unless a fallback is taken; maps' geometry to guard |
 
 ### 6.3 Box ids that are members
 
@@ -296,13 +361,15 @@ parseTransition(text) -> { trigger, guard, effect } | { error }   // each part t
 printTransition({ trigger, guard, effect }) -> text | null          // null: it would not read back (below)
 ```
 
-- The trigger runs to the first `[` or `/` outside brackets. It may hold commas (a trigger list) and spaces
-  (`after 30 days`); it is text (M8): no event is parsed.
-- The guard runs from that `[` to its matching `]`, counting nested brackets (`a[0] > 1`). A `/` inside it is the guard's.
+- The trigger runs to the first `[` or `/` outside brackets and parentheses, so a call trigger's parameters keep theirs
+  (`evt(a/b)`, `pay(amount[0])`). It may hold commas (a trigger list) and spaces (`after 30 days`); it is text (M8): no
+  event is parsed.
+- The guard runs from that `[` to its matching `]`, counting nested brackets and parentheses (`a[0] > 1`,
+  `max(a, b[1]) > 2`). A `/` inside it is the guard's.
 - The effect is everything after the first `/` outside the guard, trimmed; it may hold anything.
 - Absent parts are left out; an empty text is all three absent. `printTransition` writes `trigger [guard] / effect` with
   one space round each part, leaving out what is absent.
-- **Refused:** an unbalanced `[` or `]`; a second guard; a text over 4,096 characters. The text is kept as written in the
+- **Refused:** an unbalanced `[`, `]`, `(` or `)`; a second guard; a text over 4,096 characters. The text is kept as written in the
   field, nothing is applied, and the hint line says why (E3).
 - **Not printable:** a trigger that holds `[` or `/`, or a guard with unbalanced brackets, which only a host can write
   into the model. `printTransition` returns null; the line is drawn with its parts joined by spaces, warned of by
@@ -310,16 +377,16 @@ printTransition({ trigger, guard, effect }) -> text | null          // null: it 
   properties panel only.
 - **Round trip:** `print(parse(x))` is stable for every fixture text (E3), and `parse(print(p))` equals `p` for every
   printable `p`. The parser is linear and has no regular expression with nested repetition (R2). 4.2 tests 500 generated
-  texts each way.
+  texts each way, with parentheses, brackets and `/` inside triggers and guards among them.
 
 ### 7.2 Where it is used
 
 | Text | Read as |
 |---|---|
 | A transition's drawn label, F2 on it | `trigger`, `guard`, `effect` |
-| An internal transition's member row | The same; a row with no trigger is warned of (`internal-trigger`) |
-| A state's `entry`, `do`, `exit` | Not parsed: each is drawn as a row `entry / text` and edited in the properties panel |
-| An activity or overview flow, F2 on it | The trigger's place is the flow's name, the guard its guard; an effect is refused ("a flow has no effect") |
+| An internal transition's member row | The same; a row with no trigger is warned of (`internal-trigger`). A row whose trigger is exactly `entry`, `do` or `exit` is not an internal transition: UML reserves those words for the state's activities, so the row sets that prop (and a second `entry` row replaces the first, said on the hint line). The Mermaid reader's `s1 : entry / x` follows the same rule |
+| A state's `entry`, `do`, `exit` | Not parsed: each is drawn as a row `entry / text` and edited in the properties panel or as that row |
+| An activity or overview flow, F2 on it | The trigger's place is the flow's name, the guard its guard; an effect is refused ("a flow has no effect"); so a name holding `/`, `[` or `]` outside brackets is refused, and is written in the properties panel's name field |
 | The Mermaid reader's `A --> B : text` and `A : text` | §13 |
 
 ### 7.3 Drawn
@@ -331,7 +398,7 @@ A transition's label is the printed text. A flow's is `name [guard]`; a guard al
 
 | Option | For | Against |
 |---|---|---|
-| **(a) A typed line may carry `cut`, read by `labelW` and `fullOf`; the state and activity types set 280 px (recommended)** | About 40 B in the core; class, package, object and communication lines have no `cut` and keep 150 px, so their pictures do not move | Wider labels push columns apart |
+| **(a) A typed line may carry `cut`, read by `labelW` and `fullOf`, and added to `EDGE_GEO` in `src/typed/layout.js` so a change of it lays the view out again; the state, activity and overview types set 280 px (recommended)** | About 40 B in the core (`typed/layout.js` is in `ALL` only); class, package, object and communication lines have no `cut` and keep 150 px, so their pictures do not move. The overview's flows are `name [guard]` as the activity's, so they take the same cut | Wider labels push columns apart, and set `labelRoom` more often, which lays the view out twice (Q19) |
 | (b) Keep 150 px | No core byte | Most transitions with a guard and an effect are cut; their full text is only in the tooltip and accessible name (Q4) |
 | (c) Labels on two lines | UML tools often wrap | The label's box height (18 px) and the label step are the core's: more bytes, more geometry |
 
@@ -365,10 +432,11 @@ Each problem is `{ level, rule, path, message, ids }`, as in `class.js`.
 | `association-ends` | error | An association joins an actor and a use case |
 | `include-ends` | error | An include runs from a use case to another use case |
 | `extend-ends` | error | An extend runs from a use case to another use case |
-| `extend-points` | error | Each of an extend's `extensionPoints` is an extension point of the use case it points to |
+| `extend-points` | error | An extend names at least one extension point (UML's `extensionLocation` is 1..*), and each of its `extensionPoints` is an extension point of the use case it points to |
 | `generalization-kinds` | error | A generalization joins two actors or two use cases |
 | `use-case-owner` | warning | A use case's owner is a subject or a package; an actor's is none or a package |
-| `include-cycle` | warning | Includes form no cycle |
+| `include-cycle` | error | Includes form no cycle, a use case including itself among them (UML's `cannot_include_self`) |
+| `named` | error | Every actor and use case has a name (UML's `must_have_name`) |
 | `point-names` | warning | A use case's extension points have different names |
 
 ### 8.4 Editing
@@ -386,11 +454,13 @@ Each problem is `{ level, rule, path, message, ids }`, as in `class.js`.
 - Control nodes from `flow.js`; actions `rounded`; a call behaviour action `rounded` with UML's rake glyph at its bottom
   right, and opened by a click on it when selected (Q11); send and accept `signal`; an object node a rectangle; a data
   store a rectangle with «datastore» over its name.
-- Flows: a control flow and an object flow are both drawn as a line with a filled arrow (UML draws them alike); the
-  legend and the accessible name tell them apart. Labels `name [guard]` (§7.3).
+- Flows: a control flow and an object flow are both drawn as a solid line with an open (stick) arrowhead, as UML 2.5.1
+  §15.2.4 draws every activity edge; the legend and the accessible name tell them apart. `tests/notation.html`'s
+  arrowhead checks gain both. Labels `name [guard]` (§7.3).
 - Layout: `layoutTyped` from the host's ranking, with `laneRows` applied to the ranked positions before it and
-  `laneBands` after (§5). `direction` either
-  way; `09-activity.json` is laid out down.
+  `laneBands` after (§5), `repair: false`, `reroute: false` (§17) and `rgap: 64` (§5.2). `direction` either way;
+  `09-activity.json` is laid out down. The type ranks with the host (`autoPos`), so it cannot take `layout.rank: false`
+  as the communication type does.
 
 ### 9.2 Lanes in the view
 
@@ -401,15 +471,17 @@ Each problem is `{ level, rule, path, message, ids }`, as in `class.js`.
 
 ### 9.3 Validators
 
-Rules marked "shared" are in `src/uml/flow.js`; the interaction overview runs them too.
+Rules marked "shared" are in `src/uml/flow.js`; the interaction overview runs them too, and each shared rule's passing
+and failing cases run under both types (4.5's and 4.7's tests), not only in `tests/flow.test.mjs`. The levels follow S21:
+a model UML forbids is an error; one that is only unfinished is a warning.
 
 | Rule | Level | Checks that |
 |---|---|---|
-| `flow-ends` (shared) | error | A flow joins two nodes of the type's control or action kinds; a partition or a comment is never a flow's end |
-| `initial-flows` (shared) | warning | An initial node has no incoming flow and one outgoing |
+| `flow-ends` (shared) | error | A flow joins two nodes of the type's control, action or object node kinds (object nodes and data stores included); a partition or a comment is never a flow's end |
+| `initial-flows` (shared) | error, warning | Error: an initial node has an incoming flow, or more than one outgoing. Warning: it has no outgoing flow yet |
 | `final-flows` (shared) | error | An activity final or a flow final has no outgoing flow |
-| `fork-join` (shared) | warning | A fork has one incoming and two or more outgoing flows; a join the reverse |
-| `decision-merge` (shared) | warning | A decision has one incoming and two or more outgoing; a merge the reverse |
+| `fork-join` (shared) | error, warning | Error: a fork has more than one incoming flow, a join more than one outgoing. Warning: a fork has fewer than two outgoing, a join fewer than two incoming |
+| `decision-merge` (shared) | error, warning | Error: a decision has more than one incoming flow (there are no decision input flows in the subset), a merge more than one outgoing. Warning: a decision has fewer than two outgoing, a merge fewer than two incoming. UML's combined decision/merge diamond and join/fork bar are two nodes in the model, so a single node used both ways is flagged on purpose |
 | `decision-guards` (shared) | warning | Each flow out of a decision has a guard, and at most one is `else` |
 | `object-flow` | warning | An object flow has an object node or a data store at one end at least; a control flow has none at either |
 | `partition-owner` | error | A partition's owner is a partition or none; a node's owner is a partition or none |
@@ -420,8 +492,10 @@ Rules marked "shared" are in `src/uml/flow.js`; the interaction overview runs th
 
 - Palette: every node type of row 9, Partition, Comment. Lines: Control flow, Object flow, Comment link.
 - **Changing lane:** a node dropped in another band is moved there by the type's `moveTo` hook: `reparent` to the band's
-  partition under the drop point (`at.pt`; the type keeps the bands it last laid out, by view), and the removal of its pin,
-  in one transaction; dropped outside every band, to none. By keyboard: the Owner field, listing the partitions (`owners`).
+  partition under the drop point, and the removal of its pin, in one transaction; dropped outside every band, to none. The
+  hook finds the band in `at.geo.bands`: 4.1 makes `src/typed/edit.js` pass the canvas's geometry (`api.geo()`) in `at`
+  (Q16), so the type keeps no state of its own, and two canvases showing one view do not share it. By keyboard: the Owner
+  field, listing the partitions (`owners`).
 - **Moving within a lane:** `moveTo` returns null, so Alt + arrows set a pin (§5.2: its row is an order inside the lane).
 - **Deleting a partition (S10):**
 
@@ -432,13 +506,18 @@ Rules marked "shared" are in `src/uml/flow.js`; the interaction overview runs th
 | (c) Refused while it holds anything | Safe | A step per node |
 
 - Nesting a partition: its Owner field. Adding a node while a partition is selected puts it in that partition (`add` hook).
+  Initial, final, flow final, fork and join entries carry `name: false`, so the palette adds them with no name prompt (§12.1).
+- **Properties** (DoD 4): a flow's name and guard (text; F2 edits both, §7.2); an object node's and a data store's name; a
+  call behaviour action's view (`V`, §12.2); stereotypes on every element.
+- **Hiding:** an element leaves the view by Delete and the model by Shift + Delete (the `remove` hook's `fromModel`).
 
 ## 10. The state machine type
 
 ### 10.1 Drawing
 
 - A simple state: `rounded`, its name, then one compartment of rows: `entry / …`, `do / …`, `exit / …`, then each internal
-  transition printed (§7). `present.collapsed` and `rows` work as on a class (stage 1 note §5).
+  transition printed (§7). `present.collapsed` and `rows` work as on a class (stage 1 note §5). A closed composite state
+  is drawn the same, with the decomposition indicator (§6.1).
 - A composite state: §6's box. Its `entry`, `do` and `exit` are not drawn on the box in this release (S19 below): they are in
   its accessible name, `describe()`, the properties panel and the PDF.
 - Pseudostates and the final state: §4.1's shapes, by `kind`. An unknown `kind` is drawn as a junction, with the warning `pseudo-kind`.
@@ -456,11 +535,15 @@ Rules marked "shared" are in `src/uml/flow.js`; the interaction overview runs th
 | `transition-ends` | error | A transition joins states, pseudostates or final states, never a region, a comment or a line |
 | `owner-kinds` | error | A substate's or pseudostate's owner is a state or a region of one; a region is a member of a state |
 | `initial-one` | error | A region (or a state with no regions, or the top) has at most one initial pseudostate |
-| `initial-out` | warning | An initial pseudostate has no incoming transition and one outgoing, with no trigger or guard |
+| `initial-out` | error, warning | Error: an initial pseudostate has an incoming transition, more than one outgoing, or a trigger or guard on its outgoing one. Warning: it has no outgoing transition yet |
 | `final-out` | error | A final state and a terminate pseudostate have no outgoing transition |
+| `final-kind` | error | A final state has no regions, no `entry`, `do` or `exit`, and no internal transitions |
 | `choice-guards` | warning | Each transition out of a choice has a guard, and at most one is `else` (a choice with no `else`: risks.md §6, F) |
-| `fork-join` | warning | A fork has one incoming and two or more outgoing transitions, a join the reverse; a fork's targets lie in different regions of one state |
+| `fork-join` | error, warning | Error: a fork has more than one incoming transition or a join more than one outgoing; a transition out of a fork or into a join has a trigger or a guard; a fork's targets, or a join's sources, do not lie in different regions of one orthogonal state, at any depth inside those regions. Warning: a fork has fewer than two outgoing, a join fewer than two incoming |
 | `history-owner` | error | A history pseudostate's owner is a state or a region |
+| `history-one` | error | A region (or a state with no regions) has at most one shallow and one deep history, and a history has at most one outgoing transition (its default) |
+| `composite-entry` | warning | A transition that ends on a composite state's border finds an initial pseudostate in each of its regions; otherwise its entry is ill-defined |
+| `reserved-trigger` | error | No internal transition's trigger is `entry`, `do` or `exit` (a model a host wrote; the editor makes such a row the prop, §7.2) |
 | `region-mixed` | warning | A state does not hold both regions and direct substates |
 | `region-cross` | warning | No transition joins the contents of two regions of one state |
 | `internal-trigger` | warning | An internal transition has a trigger |
@@ -470,14 +553,22 @@ Rules marked "shared" are in `src/uml/flow.js`; the interaction overview runs th
 ### 10.3 Editing
 
 - Palette: State, Initial, Final state, Choice, Junction, Fork, Join, Shallow history, Deep history, Terminate, Region,
-  Comment. Each pseudostate entry carries its `kind`, which the `add` hook writes (Q8). Region adds a region to the
-  selected state; with no state selected the hint line says so.
+  Comment. Each pseudostate entry carries its `kind`, which the `add` hook writes (Q8), and `name: false`, so it is added
+  with no name prompt (pseudostates have no label, §3; §12.1). Region adds a region to the selected state; with no state
+  selected the hint line says so.
 - Lines: Transition, Comment link. A self-transition is drawn by pointer or by `L` and the state's own name (3.4).
 - **F2 on a transition** opens its printed text; Enter calls `edits.rename`, which parses it and emits one `set` per part
   that changed (`undefined` clears one). A text the parser refuses returns `{ error }` (E3).
 - **Internal transitions and regions** are member rows of the state (the type's `member` hook): an internal transition by
-  its printed text; a region as `region <name>`. A new row is read as an internal transition. Reordering regions moves
-  their boxes.
+  its printed text; a region as `region <name>`. A new row is read as an internal transition, but a row `entry / …`,
+  `do / …` or `exit / …` sets that prop (§7.2). Reordering regions changes the panel, the PDF and the reading order, not
+  the picture (S20, §6.2).
+- **Properties** (DoD 4): a state's `entry`, `do` and `exit` (text); a pseudostate's `kind` (an `enum` of the eight, so a
+  kind is changed after the pseudostate is added); a transition's `trigger`, `guard` and `effect` (text each: the way to
+  edit a line `label-syntax` warns of, whose F2 text does not read back, §7.1); a region's name; stereotypes.
+- **Hiding:** a state's compartment rows (activities and internal transitions) by `present.collapsed` and `rows`; a
+  region by hiding what it holds (it is then not drawn, §6.1); any element from the view by Delete, from the model by
+  Shift + Delete.
 - **Nesting:** a state dropped into an open state's or region's box reparents to it; the Owner field lists the states and
   regions of the model by their names from the top. A closed state becomes composite through the Owner field of what it
   will hold.
@@ -488,9 +579,10 @@ Rules marked "shared" are in `src/uml/flow.js`; the interaction overview runs th
 
 ### 11.1 Drawing
 
-- Control nodes from `flow.js`; an interaction use is stage 3's `SHAPE.use` (`ref` tag, centred name); an inline
-  interaction is §11.2's frame. Flows as in the activity type. Layout: `layoutTyped`, direction right by default
-  (`13-interaction-overview.json` is laid out down).
+- Control nodes from `flow.js`, flow final included; an interaction use is stage 3's `SHAPE.use` (`ref` tag, centred
+  name) with §4.1's look over it; an inline interaction is §11.2's frame. Flows as in the activity type: a solid line with
+  an open arrowhead, cut at 280 px. Layout: `layoutTyped` with `repair: false`, `reroute: false`, direction right by
+  default (`13-interaction-overview.json` is laid out down).
 - Both open their sequence view with a click on the selected node (Q11).
 
 ### 11.2 The inline interaction (S11)
@@ -501,10 +593,14 @@ Rules marked "shared" are in `src/uml/flow.js`; the interaction overview runs th
 | (b) Always the frame and name only | Simple | Then it is an interaction use with another tag |
 | (c) Scaled to fit a fixed width | Any size fits | Text below 8 px cannot be read; three fonts' checks fail |
 
-How (a) works: the node's size is the time axis's bounds plus the `sd` tag's row. Its `draw` writes the sequence's
-`under` layer, then each head through `SHAPE.lifeline.draw` and each message as a path with its own arrowhead path,
-inside a `<g transform>`. The inner markup loses `class="node"`, `data-id` and `tabindex`, so the canvas sees one node.
-The inline view's messages are counted in the node's accessible name, not read one by one.
+How (a) works: the node's size is the time axis's bounds plus the `sd` tag's row. Its `draw` writes, inside a
+`<g transform>`: the sequence's `under` layer (`sqDraw` gives frames, stems, interaction uses' spans, activation bars and
+destruction crosses, and nothing else); each head through `SHAPE.lifeline.draw`; each fragment's tag and each operand's
+guard through `SHAPE.frame.draw` and `SHAPE.operand.draw`; each interaction use's box through `SHAPE.use.draw`; and each
+message as a path with its own arrowhead path and its label. The inner markup loses `class="node"`, `data-id` and
+`tabindex`, and its hit elements (`.ll-hit`, from which `src/typed/edit.js` starts a connect gesture inside any `.node`,
+and `.f-hit`) are left out, so the canvas sees one node and no gesture starts inside it. The inline view's messages are
+counted in the node's accessible name, not read one by one.
 
 ### 11.3 Validators and editing
 
@@ -515,9 +611,12 @@ The inline view's messages are counted in the node's accessible name, not read o
 | `overview-kinds` | warning | The view shows only row 13's node types |
 | `inline-size` | warning | An inline interaction's view has at most 8 lifelines and 20 messages (S11) |
 
-- Palette: Initial, Final, Decision, Merge, Fork, Join, Interaction use, Inline interaction, Comment. Lines: Control flow,
-  Comment link.
-- Adding an interaction use or an inline interaction asks for its view (S18). A guard is edited by F2 (§7.2).
+- Palette: Initial, Final, Flow final, Decision, Merge, Fork, Join, Interaction use, Inline interaction, Comment. Lines:
+  Control flow, Comment link. Control node entries carry `name: false` (§12.1).
+- Adding an interaction use or an inline interaction asks for its view (S18); `V` on one changes it. A guard is edited by
+  F2 (§7.2).
+- **Properties** (DoD 4): a flow's name and guard (text); an interaction use's or inline interaction's view (`V`);
+  stereotypes. Hiding as in the activity type.
 
 ## 12. Editing through the canvas hooks
 
@@ -528,22 +627,36 @@ Every type's gestures go through stage 3's hooks. One is added, in `src/typed/ed
 | Hook | Called by | Used by |
 |---|---|---|
 | `connect(model, view, from, to, at, line)` | Connect, by pointer and by `L` | The activity type: a flow from a decision gets the guard `else` when it is its second exit with no guard |
-| `moveTo(model, view, id, at)` | A drop, Alt + arrows | Activity (§9.4, a drop across lanes); the others return null: a pin, or a drop into a box (stage 2) |
-| `add(model, view, entry, label, at)` | Palette, `N` | State (a pseudostate's `kind`, a region); activity (into the selected partition); overview and activity (the view picker, S18) |
+| `moveTo(model, view, id, at)` | A drop, Alt + arrows | Activity (§9.4, a drop across lanes, from `at.geo`; `[]` on a partition's header); state (a drop into a one-region state, §6.1); the others return null: a pin, or a drop into a box (stage 2) |
+| `add(model, view, entry, label, at)` | Palette, `N` | State (a pseudostate's `kind`, a region); activity (into the selected partition); overview and activity (the view picker, S18, through the `{ pick, then }` result below) |
 | `remove(model, view, ids, fromModel)` | Delete, Shift + Delete | Activity (S10) |
 | **`rename(model, view, id, text)` (new)** | F2 or a double-click on a selected element, through the canvas's `I.label` (Q7) | State (a transition), activity and overview (a flow): the parsed parts as `set`s. Null: `set label`, as now |
 
 `rename` returns what the others return: commands, `{ commands, say }`, null or `{ error }`. 4.1 adds it, with a test-only
 type in `tests/type-hooks.html`, and documents it in `src/core/registry.js` beside `edits`.
 
+A hook is a plain function of the model and never sees the canvas (Q15), and `I.addNode` asks for a name before it calls
+`add`. So 4.1 also changes `src/typed/edit.js`'s protocol, with no core byte, tested on the same test-only type:
+
+- **`{ pick, then }`.** Any hook may return `{ pick: [label, …], then: i => result }`: `src/typed/edit.js` opens
+  `c.picker` with the labels under the element and hands the chosen index to `then`, whose result is read as a hook's. An
+  empty `pick` says so on the hint line and does nothing.
+- **`name: false` on a palette entry.** `I.addNode` skips the name prompt and calls `add` with an empty label: control
+  nodes, pseudostates and regions have no name to ask for.
+- **`at.geo`.** `moveTo`'s `at` gains the canvas's geometry (`api.geo()`), so a type reads what it drew (the bands) without
+  keeping state of its own (§9.4).
+- **`V` on a selected node** whose palette entry names a diagram kind in `opens` (`opens: 'uml.sequence'`,
+  `'uml.activity'`): a picker of the model's views of that kind, then `set opensView` (S18).
+
 ### 12.2 Choosing the view it opens (S18)
 
 | Option | For | Against |
 |---|---|---|
-| **(a) The `add` hook opens a picker (`c.picker`, as `W` does) of the model's views of the right kind; the element is added with `opensView` set. Changing it later: delete and add again (recommended)** | No core byte; one gesture. The fixtures and examples set `opensView` in JSON | No way to retarget one in the panel |
-| (b) A properties field kind `view`, writing a top-level field | Retarget in place | The panel is the core's `src/canvas/edit.js` (Q9): bytes, and a new field kind every type then offers |
+| **(a) The `add` hook returns `{ pick, then }` (§12.1), a picker of the model's views of the right kind, and the element is added with `opensView` set; `V` on the selected node opens the same picker and emits `set opensView` (recommended)** | No core byte; created and changed by pointer and by key, as DoD 4 asks. The fixtures and examples set `opensView` in JSON | The panel does not show the field; the view's name is in the accessible name ("opens Find a book") and on the node |
+| (b) Picker on add only; changing the view is delete and add again, a DoD 4 exception the maintainer accepts in §20 | Less to build | Deleting the element also deletes its flows; DoD 4 is not met for `opensView` |
+| (c) A properties field kind `view`, writing a top-level field | Retarget in the panel | The panel is the core's `src/canvas/edit.js` (Q9): bytes, and a new field kind every type then offers |
 
-With no view of the right kind, the picker says so on the hint line, and nothing is added.
+With no view of the right kind, the picker says so on the hint line, and nothing is added or changed.
 
 ## 13. The Mermaid state reader and writer (S12)
 
@@ -557,24 +670,39 @@ since the readers share one scope in `lib/umlimator-all.js`.
 |---|---|---|
 | `stateDiagram`, `stateDiagram-v2` | One `uml.state-machine` view | |
 | `s1`, `state s1`, `state "Long name" as s1` | A `uml.State`, its id `s1`, its label the name | |
-| `s1 : text` | Read by §7's parser: `entry / x`, `do / x`, `exit / x` as those props; any other text with a trigger and a `/` as an internal transition | approximated, for a text that is neither: kept in `ext.mermaid.description` |
-| `s1 --> s2`, `s1 --> s2 : text` | A `uml.Transition`, its text parsed (§7) | approximated when the parser refuses: the text kept as the trigger's in `ext.mermaid.label` |
-| `[*] --> s1`, `s1 --> [*]` | An initial pseudostate and a final state of the enclosing scope, once each per scope | |
-| `state s1 { … }`, nested | A composite state; its contents get it as `parent` | |
+| `s1 : text`, `s1:text` | Read by §7's parser: `entry / x`, `do / x`, `exit / x` as those props; any other text with a trigger and a `/` as an internal transition | approximated, for a plain description (Mermaid's most common state text): a `uml.Comment` linked to the state, marked `ext.mermaid.description`, so it is drawn and the writer writes it back as `s1 : text` |
+| `s1 --> s2`, `s1 --> s2 : text`, `s1 --> s2: text` | A `uml.Transition`, its text parsed (§7); the label starts at the first `:` after the target | approximated when the parser refuses: the text kept as the trigger's in `ext.mermaid.label` |
+| `[*] --> s1`, `s1 --> [*]` | An initial pseudostate and a final state of the enclosing scope, once each per scope; each `--` region is a scope of its own | |
+| `state s1 { … }`, `state "Long" as s1 { … }`, nested | A composite state; its contents get it as `parent`. Mermaid's ids are global: a state's parent is the scope of the first body that names it, even when it was named at the top first | reported: a state named in two composites' bodies, kept in the first |
 | `--` inside a composite | Regions: ids `<state>.r1`, `<state>.r2`, …; contents get the region as `parent` | |
 | `state f <<fork>>`, `<<join>>`, `<<choice>>` | A pseudostate of that kind | |
-| `note left of s1 : text`, `note right of s1` … `end note` | A `uml.Comment` and a `uml.CommentLink` to `s1` | approximated: the side is not kept |
+| `note left of s1 : text`, `note right of s1` … `end note` | A `uml.Comment` and a `uml.CommentLink` to `s1` | approximated: the side is not kept. A note with no `end note` is closed at the end of the text, reported |
 | `direction LR`, `TB` | The view's `direction`: `right`, `down` | approximated for `RL`, `BT`, and a `direction` inside a composite |
 | `classDef`, `class`, `:::`, `style`, `hide empty description`, `scale`, `accTitle`, `accDescr`, `%%{init}%%` | Not read | skipped |
 | `title`, or `title` in front matter | The view's title | |
 | `%% id: <id>` above a statement; `%% kind: <kind>` above a state; `%% region: <id> <name>` before a region | That element's id; a junction, history or terminate pseudostate; a region's id and name | |
 | A line the reader does not know | Not read | skipped |
+| CRLF line ends, a byte-order mark | Read as LF, the mark dropped | |
 
 Ids and limits:
 
-- A state's id is its Mermaid name; an initial pseudostate's `<scope>.start` (the top's `start`), a final state's
-  `<scope>.end`; a transition's `<from>-<to>`, then `-2`, `-3` for each pair, so inserting one renames only the later
-  transitions of its own pair. Reading the same text twice gives the same ids.
+- A state's id is its Mermaid name; an initial pseudostate's `<scope>.start` (the top's `start`, a region's
+  `<state>.r1.start`), a final state's `<scope>.end`; a transition's `<from>-<to>`, then `-2`, `-3` for each pair, so
+  inserting one renames only the later transitions of its own pair. Reading the same text twice gives the same ids.
+- **Collisions.** States take their names first (a first pass over the text), then pseudostates and transitions their
+  derived ids; a derived id already taken takes the next free `-2`, `-3`, … So a user state named `start` or `end` keeps
+  its name and the initial pseudostate becomes `start-2`, and `a-b --> c` against `a --> b-c` gives `a-b-c` and `a-b-c-2`.
+  The writer writes `%% id:` where the reader would not derive the id.
+- **`%% id:`** naming an id already taken is ignored, the derived id kept, reported; one holding `->` has it as `-`,
+  reported (`model.md` rule 5), as `mermaid-class.js` does.
+- `tests/import/state.mmd` covers each of these, and `direction` inside a composite, `state "Long" as s1 { … }`, CRLF and a
+  byte-order mark.
+
+| Option, a state's plain description (`s1 : text` that is not an activity or an internal transition) | For | Against |
+|---|---|---|
+| **(a) A `uml.Comment` linked to the state, marked `ext.mermaid.description`, written back as `s1 : text` (recommended)** | Drawn, as Mermaid draws it; UML's way to attach free text; the round trip holds | A note shape where Mermaid draws text inside the state |
+| (b) Kept in `ext.mermaid.description` only | The model holds no new element | Mermaid's most common state text is not drawn at all: an imported diagram looks emptier than its source |
+| (c) Drawn as a row of the state's compartment | Where Mermaid draws it | A state has no such property in UML; a new prop every writer must carry |
 - Hostile input, as 3.6: over 1 MiB, nothing is read; composites nested deeper than 64 levels are read flat from there,
   reported; an unclosed `{` is closed at the end, reported; a `}` with nothing open is skipped; names such as
   `constructor` or `__proto__` are looked up with own-key checks (M3); no regular expression with nested repetition runs
@@ -591,11 +719,23 @@ The writer:
   `%% kind:` comment, labelled `●`, `H`, `H*` and `×` so Mermaid shows something near UML;
 - writes each transition with its printed label; an initial pseudostate or final state as `[*]`, with `%% id:` above its
   first transition when its id is not the one the reader derives;
-- writes a comment linked to one state as a `note right of`; any other as `%% not written:`;
-- writes a second final state in one scope as one `[*]`, and says so in `%% not written:`, since Mermaid merges them.
+- writes a comment marked `ext.mermaid.description` as `s1 : text`; any other comment linked to one state as a
+  `note right of`; any other as `%% not written:`;
+- writes a second final state in one scope as one `[*]`, and says so in `%% not written:`, since Mermaid merges them;
+- writes a transition between substates of two different composites, or from outside a composite into a substate (both
+  in `10-state-machine.json`: its fork into two regions), as a transition, with `%% warning: Mermaid may not draw this`
+  above it (S22): Mermaid's page says such transitions are not supported, and our reader reads them back.
 
 `read(write(model))` equals the model on the subset, ids included, for `10-state-machine.json` and 500 generated models.
-`tests/import/state.mmd` holds every construct on Mermaid's page and pins the report (R4).
+`tests/import/state.mmd` holds every construct on Mermaid's page and pins the report (R4). Once, in 4.8, the writer's
+output for `10-state-machine.json` and for ten generated models is parsed by Mermaid 12.3.0 itself, from a scratch page
+in Chrome that loads it from a CDN (not a dependency of the repository); what it refuses or draws wrongly is recorded in
+the conformance note's fidelity table and in `state.mmd`'s header.
+
+| S22 option, crossings Mermaid does not support | For | Against |
+|---|---|---|
+| **(a) Written as transitions, with a `%% warning:` line above each (recommended)** | `read(write(model))` holds for example 10, as 4.8's done-when asks; a reader of the text sees the risk | Mermaid may draw them wrongly or refuse the file |
+| (b) Written as `%% not written:` with a report | What Mermaid draws is all Mermaid supports | The round trip loses example 10's fork into its regions: our own reader cannot read it back |
 
 Mermaid has no use case, activity or interaction overview notation. Its flowchart reader is milestone 2's.
 
@@ -666,12 +806,13 @@ shape's outline (by 1 px) and none through a box's header.
 | `activity-stress.json`, view `edge-cases` | A decision with three exits (F); a merge and a decision side by side (F); a fork with a branch that ends early in a flow final (F); an object flow through an object node; a data store; send and accept; a call behaviour action opening a view; partitions nested two deep (L10); a node in no lane (warned, outside); an empty lane; a flow across three lanes; a loop back through a merge; a decision with no guard on one exit (warned) |
 | `activity-stress.json`, view `all` | 50 nodes, 60 flows, four lanes (P1) |
 | `state-minimal.json` | Initial, a state, final |
-| `state-stress.json`, view `edge-cases` | A self-transition (F); a transition to a shallow history (F); a choice with no `else` (F, warned); a composite with two regions (L11); a transition from a substate to a state outside (L11) and one into a substate from outside; a fork into two regions and a join out; composites nested three deep; a state with entry, do, exit and three internal transitions; terminate; junction; deep history; a 300 px transition label (cut, full text in its name); two transitions between one pair (F2); a state with regions and a direct substate (warned) |
+| `state-stress.json`, view `edge-cases` | A self-transition (F); a transition to a shallow history (F); a choice with no `else` (F, warned); a composite with two regions (L11); a transition from a substate to a state outside (L11) and one into a substate from outside; a fork into two regions and a join out; composites nested three deep; a state with entry, do, exit and three internal transitions; terminate; junction; deep history; a 300 px transition label (cut, full text in its name); two transitions between one pair (F2); a state with regions and a direct substate (warned); a transition onto a composite's border with a region that has no initial pseudostate (`composite-entry`, warned); a closed composite (its decomposition indicator); an internal transition row `entry / x` (read as the prop) |
 | `state-stress.json`, view `all` | 50 states, 60 transitions, composites three deep (P1) |
 | `overview-minimal.json` | Initial, an interaction use, final, and its sequence view |
-| `overview-stress.json`, view `edge-cases` | A decision looping back through a merge; a fork and join round an inline interaction and a use; an inline interaction of 6 lifelines and 12 messages; one of 9 lifelines (frame only, warned); a use whose view is missing (error) |
+| `overview-stress.json`, view `edge-cases` | A decision looping back through a merge; a fork and join round an inline interaction and a use; a branch ending in a flow final; an inline interaction of 6 lifelines and 12 messages, with a fragment and an interaction use in it; one of 9 lifelines (frame only, warned); a use whose view is missing (error) |
 | `overview-stress.json`, view `all` | 40 nodes, 50 flows, 10 inline interactions (P1) |
-| `tests/import/state.mmd` | Every construct on Mermaid's stateDiagram page (§13) |
+| `tests/import/state.mmd` | Every construct on Mermaid's stateDiagram page (§13), and §13's collisions, scopes and hostile cases |
+| `tests/notation.html` | Its arrowhead checks gain the activity and overview flows (open) and the state transitions (open), on these shapes |
 
 Each validator also has a passing and a failing case in its type's test. The four target examples move to
 `examples/shopping-use-cases.json`, `examples/fulfil-activity.json`, `examples/order-states.json` and
@@ -687,29 +828,49 @@ Each validator also has a passing and a failing case in its type's test. The fou
 | The overview's | Each inline interaction's time axis under 5 ms (3.2's measure is 200 rows in under 5 ms) |
 | The Mermaid reader and writer | 500 transitions each way under 100 ms |
 
-- A label edit changes a line's label width, which is in the geometry key (`EDGE_GEO`), so the view is laid out again.
-  Stage 3 met the same budget for a message edit with `reroute: false` (`notes/stage-3.md` §10); each type here passes it
-  in its `dg` the same way. A lane change moves rows, so it is a full layout too.
-- If a type's common edit misses 100 ms with `reroute: false`, its package does not merge; the maintainer then chooses
-  between a layout worker (P2) and holding that edit to the 1 s budget, as 1.11 did for edits that move geometry.
+- A label edit changes a line's label, which is in the geometry key (`EDGE_GEO`) and in the view's `viewKey`
+  (`context.js`), so the view is ranked again (`autoPos`, 15 to 30 ms on 52 nodes) and laid out again. A lane change
+  moves rows, so it is a full layout too. A wider label sets `labelRoom` more often, and then `layoutGraph` runs
+  `layoutPass` twice.
+- What the layout costs (Q19, `tests/class-stress.json`, 52 nodes and 59 lines, about the size of §16's stress views):
+  with no flags 135 to 176 ms; with `reroute: false` alone 123 to 145 ms, still over 100 ms; with `repair: false` 48 to
+  53 ms; with both 24 ms. Port repair is the cost. The communication type meets 100 ms with both flags and `rank: false`;
+  the four types here rank with the host, so they cannot drop the ranking.
+- **What turning port repair off costs the picture:** two lines that cross next to a shared side keep their ports
+  instead of swapping them, and a line that jogs 16 px or less before a lone port keeps its jog. The fixtures pin those
+  crossings, and each conformance note states it. Both flags are passed on every layout, not only after an edit: they are
+  in the geometry key, and a picture that changed when the model was reopened would break DoD 6.
+- **A spike before the type lanes start.** In 4.1, on a test-only view of 50 nodes and 60 lines with four lanes, and one
+  with composites three deep (two regions at each level), the common edit (a label, a lane change) laid out and drawn
+  with both flags, best of three in Node. If it is under 100 ms, the type lanes go on; if not, the maintainer decides
+  between §20 #13's other options before 4.5 and 4.6 start.
+- If a type's common edit still misses 100 ms in its own package, the package does not merge until the maintainer
+  decides.
 - Browser timings under headless virtual time prove nothing (1.11).
+
+| Option, P1 for the common edit | For | Against |
+|---|---|---|
+| **(a) `repair: false` and `reroute: false` on every layout of the four types, as the communication type does; the spike in 4.1 confirms it (recommended)** | Measured at 24 ms for the layout on 52 nodes, leaving room for `autoPos`, a second `layoutPass` and the SVG; no core byte; one picture whether laid out fresh or after an edit | More crossings next to shared sides and short jogs, pinned and stated; the spike may still find the lanes' or regions' views over budget |
+| (b) Keep both passes and hold the common edit to the 1 s budget, as 1.11 did for edits that move geometry | The best picture | A label edit takes 150 to 180 ms or more: P1's 100 ms is not met for the edit people make most |
+| (c) Both passes off only when an edit lays the view out again | The best picture on open | The flags are in the geometry key: the picture after an edit differs from the same model reopened (DoD 6), and the next full layout jumps |
+| (d) A layout worker (P2) | Edits never block the page | A new mechanism, with core bytes; the picture arrives after the edit |
 
 ## 18. Left out of the subsets
 
 | Type | Left out |
 |---|---|
-| Use case | Use cases owned by classifiers other than a subject; an actor drawn as a rectangle «actor»; a use case drawn as a classifier rectangle; an extend's condition in a note (it is on the line); association ends (multiplicity, navigability); n-ary associations; secondary actors placed on the right; realizations of a use case |
-| Activity | Pins and parameter nodes; exception handlers; interruptible regions; expansion regions; structured nodes (loop, conditional, sequence); time events (the hourglass); streaming and weights; join specifications; multi-dimensional partitions; partitions that represent a classifier; central buffers; connectors (labelled circles); the activity's frame and parameters; a flow's effect |
-| State machine | Entry and exit points; connection point references; submachine states; protocol state machines; deferred triggers; transitions on a region's border; local and internal transition kinds; parsed events, parameters and time triggers (text); a composite state's activities drawn on its box (S19); history's default transition checked; the semantics of choice against junction |
-| Interaction overview | Editing an inline interaction in place (it is opened); the diagram's own `sd` frame and its `lifelines` clause; duration and time constraints (stage 6); partitions |
-| All four | XMI (R6); copy and paste (E7); per-type `diff()` writers (C10's package after 0.20.0); a reader for use case, activity and overview (Mermaid has none); resizing a lane by hand; retargeting `opensView` in the panel (S18) |
+| Use case | Use-case descriptions (the text of the flows, `proposal.md` §8.5); several subjects per use case (UML's `subject` is 0..*), a subject distinct from the use case's owner, and the subject as a typed classifier (a component or class shown with its keyword): here a subject is the use case's `parent`, so at most one, and an untyped box; an actor drawn as a rectangle «actor»; a use case drawn as a classifier rectangle; an extend's condition in a note (it is on the line); association ends (multiplicity, navigability); n-ary associations; secondary actors placed on the right; realizations of a use case |
+| Activity | Pins and parameter nodes; exception handlers; interruptible regions; expansion regions; structured nodes (loop, conditional, sequence); time events (the hourglass); streaming and weights; join specifications; multi-dimensional partitions; partitions that represent a classifier; central buffers; connectors (labelled circles); the activity's frame and parameters; a flow's effect; decision input behaviour («decisionInput»), and the question drawn inside the diamond instead of in a note or beside it (S8, a deviation); an object node's type, `[state]`, upper bound and ordering; «selection» and «transformation» on object flows; changing a flow between control and object kind (delete and add); moving a lane by hand (its order is `nodeIds` order) |
+| State machine | Entry and exit points; connection point references; submachine states; protocol state machines; deferred triggers; transitions on a region's border; local transitions; an internal transition drawn as a line (a `kind` of internal on a transition), since internal transitions are member rows here; the transition-oriented signal send and receive notation (UML §14.2.4); parsed events, parameters and time triggers (text); state invariants; a composite state's activities drawn on its box (S19); the semantics of a history's default transition (`history-one` checks there is at most one) and of choice against junction; regions drawn in `members` order (S20) |
+| Interaction overview | Editing an inline interaction in place (it is opened); the diagram's own `sd` frame and its `lifelines` clause; duration and time constraints (stage 6); partitions; an interaction use's arguments and return value; inline interactions of kinds other than a sequence (`opens-sequence` asks for a `uml.sequence` view) |
+| All four | XMI (R6); copy and paste (E7); per-type `diff()` writers (C10's package after 0.20.0); a reader for use case, activity and overview (Mermaid has none); resizing a lane by hand; `opensView` as a field of the properties panel (it is changed by `V`, S18) |
 
 ## 19. Work packages
 
 ### 19.1 Before stage 4 starts
 
 - This note is approved, and `model.md` and `risks.md` take §21's changes with it.
-- 3.8 has merged (it rebuilds `lib/` and edits `umlimator.py`, `check.mjs` and the docs that 4.8 and 4.10 own later).
+- 3.8 has merged (#198; it rebuilds `lib/` and edits `umlimator.py`, `check.mjs` and the docs that 4.8 and 4.10 own later).
 
 ### 19.2 The packages
 
@@ -721,16 +882,16 @@ proposes its row in its pull request's description, and writes its release notes
 | # | Work package | Owns | Needs | Done when |
 |---|---|---|---|---|
 | 4.0 | **List the files** (the lead). The stage's eight sources as empty files, in `ALL` in load order: `uml/transition`, `uml/flow`, `layout/lanes`, `uml/usecase`, `uml/activity`, `uml/state`, `uml/overview`, `readers/mermaid-state` | `tools/build.mjs`, the eight empty files | This note; 3.8 merged | `lib/umlimator-all.js` changes by blank lines only; `lib/umlimator.js` not at all; no other stage 4 lane edits `ALL` |
-| 4.1 | **The typed engine for shapes, boxes and renames.** §4.2's slide in `TYPED.lines`; `edits.rename` through `I.label` (§12.1); `ownersOn`'s `look` (§8.2); a box whose id is a member's (§6.3); a typed line's `cut` (S7); the new registry fields documented. Tested with a test-only type that has an ellipse, a diamond, a bar, a 20 px circle, a box with a member's id and a rename hook | `src/typed/draw.js`, `src/typed/edit.js`, `src/uml/owners.js`, `src/core/registry.js`, `src/layout/layered.js`, `src/map/context.js`, `src/canvas/render.js`, `tests/typed-shapes.test.mjs` (new), `tests/type-hooks.html`, `tests/typed-edit.html`, `tests/layout-typed.test.mjs` | 4.0 | Maps unchanged (geometry hashes, stills, `tests/edit.html`); the class, package, object, sequence and communication markup in `tests/core-diet.html` and their tests unchanged; on the test type every line end is on its shape's outline within 1 px, in Node and in Chrome under three fonts; F2 on a line calls `rename` by pointer and by key; a drop into a member-id box emits `reparent` to the member. The core's bytes before and after, within §2.3 |
-| 4.2 | **Control nodes and the transition micro-syntax.** §4.1's shared shapes in `flow.js` (`initial`, `final`, `flow-final`, `diamond`, `bar`, `rounded`); the shared flow rules (§9.3); §7's parser and printer | `src/uml/flow.js`, `src/uml/transition.js`, `tests/flow.test.mjs`, `tests/transition.test.mjs`, `tests/flow.html` (new) | 4.0; 4.1 for `tests/flow.html`'s line ends | Each shape's size, outline and `inset` agree (a point slid by `inset` lies on `out`) in Node; drawn in both themes and three fonts with no text overflow; each shared rule has a passing and a failing case; `print(parse(x))` stable and `parse(print(p))` equal on 500 generated texts and every fixture text; refused texts give `{ error }`; no regular expression with nested repetition |
+| 4.1 | **The typed engine for shapes, boxes and renames.** §4.2's slide in `TYPED.lines`, by `drawnPts`, on a copy; `edits.rename` through `I.label` (§12.1); §12.1's protocol: `{ pick, then }`, `name: false`, `at.geo`, `V` for `opensView`; `ownersOn`'s `look` (§8.2) with §6.1's member chain, shown regions, `shape` and type word; a box whose id is a member's (§6.3); a typed line's `cut` (S7) in `labelW`, `fullOf` and `EDGE_GEO`; the rename field's minimum width (Q18); the new registry fields documented. §17's spike, reported in the pull request before 4.5 and 4.6 start. Tested with a test-only type that has an ellipse, a diamond, a bar, a 20 px circle, a box with a member's id, a rename hook and a hook returning `{ pick, then }` | `src/typed/draw.js`, `src/typed/edit.js`, `src/typed/layout.js`, `src/uml/owners.js`, `src/core/registry.js`, `src/layout/layered.js`, `src/map/context.js`, `src/canvas/render.js`, `src/draw/svg.js` (only for §4.2's contingency), `tests/typed-shapes.test.mjs` (new), `tests/type-hooks.html`, `tests/typed-edit.html`, `tests/layout-typed.test.mjs` | 4.0 | Maps unchanged (geometry hashes, stills, `tests/edit.html`); the class, package, object, sequence and communication markup in `tests/core-diet.html` and their tests unchanged; on the test type every line end is on its shape's outline within 1 px, in Node and in Chrome under three fonts; a view laid out twice from one memo draws byte-identical markup (§2.4); F2 on a line calls `rename` by pointer and by key; F2 on a diamond opens a field at least 120 px wide; a drop into a member-id box emits `reparent` to the member; a `{ pick, then }` result opens the picker and applies the choice; a `name: false` entry is added with no prompt; `V` emits `set opensView`. The spike's timings in the pull request. The core's bytes before and after, within §2.3 |
+| 4.2 | **Control nodes and the transition micro-syntax.** §4.1's shared shapes in `flow.js` (`initial`, `final`, `flow-final`, `diamond`, `bar`, `rounded`); the shared flow rules (§9.3), at S21's levels; §7's parser and printer, parentheses balanced | `src/uml/flow.js`, `src/uml/transition.js`, `tests/flow.test.mjs`, `tests/transition.test.mjs`, `tests/flow.html` (new) | 4.0; 4.1 for `tests/flow.html`'s line ends | Each shape's size, outline and `inset` agree (a point slid by `inset` lies on `out`) in Node; drawn in both themes and three fonts with no text overflow; each shared rule has a passing and a failing case; `print(parse(x))` stable and `parse(print(p))` equal on 500 generated texts and every fixture text; refused texts give `{ error }`; no regular expression with nested repetition |
 | 4.3 | **Lanes.** §5.2's `laneRows` and `laneBands` | `src/layout/lanes.js`, `tests/lanes.test.mjs` (new) | 4.0 | On hand-built positions: lanes in order, nested lanes inside their parents, no two lanes share a row, pins kept in their lane, a node in no lane after the lanes, an empty lane kept; bands cover their nodes in both directions; 200 nodes in 10 lanes in under 5 ms |
 | 4.4 | **The use case type.** §8: shapes, definition, `boxes`, rules, `describe()`, names, legend, `geo.order`, hooks | `src/uml/usecase.js`, `tests/usecase.test.mjs`, `tests/usecase.html` (new) | 4.1 | Definition of done 2, 4, 5, 6 and 8 on row 8's subset; every gesture by pointer and by key through `apply()`; a 30-step session undone, redone and reopened to byte-identical models; `08-use-case.json` lays out clean |
-| 4.5 | **The activity type.** §9: shapes, lanes, definition, rules, `describe()`, names, legend, hooks (`moveTo`, `remove`, `add`, `rename`, `connect`) | `src/uml/activity.js`, `tests/activity.test.mjs`, `tests/activity.html` (new) | 4.1, 4.2, 4.3 | As 4.4 on row 9; a drop across lanes and the Owner field each emit their transaction; deleting a partition keeps its nodes; `09-activity.json` lays out clean, down and right; no line runs along a divider for over 24 px in it |
-| 4.6 | **The state machine type.** §6 and §10: the state's look and frame, regions, pseudostates, definition, rules, `describe()`, names, legend, hooks (`add`, `rename`, `member`) | `src/uml/state.js`, `tests/state.test.mjs`, `tests/state.html` (new) | 4.1, 4.2 | As 4.4 on row 10; F2 on a transition round-trips its parts; regions stack with dividers across their state; `10-state-machine.json` lays out clean, right and down |
-| 4.7 | **The interaction overview type.** §11: definition, the inline interaction, rules, `describe()`, names, legend, hooks (`add`, `rename`) | `src/uml/overview.js`, `tests/overview.test.mjs`, `tests/overview.html` (new) | 4.1, 4.2 | As 4.4 on row 13; `13-interaction-overview.json` lays out clean, its inline interaction's markup holds no `.node` but its own; opening a use shows its sequence view |
-| 4.8 | **Mermaid state reader and writer.** §13, with `import` routing `stateDiagram` to it | `src/readers/mermaid-state.js`, `tests/mermaid-state.test.mjs`, `tests/import/state.mmd`, `umlimator.py`, `umlimator_import.py`, `tests/import.py` | 4.0; 4.2's `transition.js` to merge (it may start beside 4.2); `model.md` row 10 only | `read(write(model))` equals the model, ids included, for example 10 and 500 generated models; the report pinned; the same source read twice gives the same ids; §13's hostile inputs read in under 1 s each and never throw |
+| 4.5 | **The activity type.** §9: shapes, lanes, partitions added after the layout, definition, rules, `describe()`, names, legend, hooks (`moveTo`, `remove`, `add`, `rename`, `connect`), §9.4's properties | `src/uml/activity.js`, `tests/activity.test.mjs`, `tests/activity.html` (new) | 4.1 (and its spike), 4.2, 4.3 | As 4.4 on row 9; each shared flow rule's passing and failing case run under this type; a drop across lanes and the Owner field each emit their transaction; a drag on a partition's header sets no pin; deleting a partition keeps its nodes; `09-activity.json` lays out clean, down and right; no line runs along a divider for over 24 px in it |
+| 4.6 | **The state machine type.** §6 and §10: the state's look and frame, the decomposition indicator, regions, pseudostates, definition, rules, `describe()`, names, legend, hooks (`add`, `rename`, `member`, `moveTo`), §10.3's properties | `src/uml/state.js`, `tests/state.test.mjs`, `tests/state.html` (new) | 4.1 (and its spike), 4.2 | As 4.4 on row 10; F2 on a transition round-trips its parts; a row `entry / x` sets the prop; a pseudostate's kind changed in the panel redraws its shape; regions stack with dividers across their state; `10-state-machine.json` lays out clean, right and down |
+| 4.7 | **The interaction overview type.** §11: definition, the interaction use's look, the inline interaction, rules, `describe()`, names, legend, hooks (`add`, `rename`), §11.3's properties | `src/uml/overview.js`, `tests/overview.test.mjs`, `tests/overview.html` (new) | 4.1, 4.2 | As 4.4 on row 13; each shared flow rule's passing and failing case run under this type; `13-interaction-overview.json` lays out clean, its inline interaction's markup holds no `.node`, `.ll-hit` or `.f-hit` but its own, and draws its fragments' tags, guards, uses and message labels; opening a use shows its sequence view |
+| 4.8 | **Mermaid state reader and writer.** §13, with `import` routing `stateDiagram` to it | `src/readers/mermaid-state.js`, `tests/mermaid-state.test.mjs`, `tests/import/state.mmd`, `umlimator.py`, `umlimator_import.py`, `tests/import.py` | 4.0; 4.2's `transition.js` to merge (it may start beside 4.2); `model.md` row 10 only | `read(write(model))` equals the model, ids included, for example 10 and 500 generated models; the report pinned; the same source read twice gives the same ids; §13's collisions give the ids it states; §13's hostile inputs read in under 1 s each and never throw; the writer's output for example 10 and ten generated models parsed once by Mermaid 12.3.0, the result recorded (§13) |
 | 4.9 | **The PDF's tables per type (R9).** §15's `rows` and `word`, "Elements" for a typed view | `src/page/print.js`, `tests/print-typed.test.mjs` (new) | 4.0; 4.1 for the fields' documentation | With a test-only type, the tables list its rows and words; maps' tables unchanged; class, object and package PDFs' tables unchanged but for the heading. The core's bytes before and after, within §2.3 |
-| 4.10 | **Fixtures, examples, docs, CLI.** §16's files and their tests (`tests/stage4-fixtures.test.mjs`, `tests/stage4.html`); the four examples moved, with `check.mjs`'s `MOVED`; `render`, `check`, `stills` and `pdf` on each; the schema and `.d.ts`; C10's tests (S16); every document of `plan.md` §7; `docs/conformance/uml-use-case.md`, `uml-activity.md`, `uml-state-machine.md`, `uml-interaction-overview.md`; the lanes' release notes gathered into `docs/module-api.md` | `examples/`, `tests/*-minimal.json`, `tests/*-stress.json` of the four types, `tests/stage4-fixtures.test.mjs`, `tests/stage4.html`, `tests/cli.py`, `tests/mcp.py`, `umlimator.py` (after 4.8), `lib/umlimator.d.ts`, `lib/umlimator.schema.json`, `docs/diagrams/examples/check.mjs`, `docs/` (but the status table) | 4.4 to 4.9 | Definition of done 1, 3, 7, 9, 10, 11 and 12 for all four types. §17's budgets enforced in CI. Each PDF lists what §15 says. The four examples in the gallery and CI. The stress fixtures' crossings pinned and stated |
+| 4.10 | **Fixtures, examples, docs, CLI.** §16's files and their tests (`tests/stage4-fixtures.test.mjs`, `tests/stage4.html`); the four examples moved, with `check.mjs`'s `MOVED`; `render`, `check`, `stills` and `pdf` on each; the schema and `.d.ts`; C10's tests (S16); every document of `plan.md` §7; `docs/conformance/uml-use-case.md`, `uml-activity.md`, `uml-state-machine.md`, `uml-interaction-overview.md`; the lanes' release notes gathered into `docs/module-api.md` | `examples/`, `tests/*-minimal.json`, `tests/*-stress.json` of the four types, `tests/stage4-fixtures.test.mjs`, `tests/stage4.html`, `tests/notation.html`, `tests/cli.py`, `tests/mcp.py`, `umlimator.py` (after 4.8), `lib/umlimator.d.ts`, `lib/umlimator.schema.json`, `docs/diagrams/examples/check.mjs`, `docs/` (but the status table) | 4.4 to 4.9 | Definition of done 1, 3, 7, 9, 10, 11 and 12 for all four types. §17's budgets enforced in CI. Each PDF lists what §15 says. The four examples in the gallery and CI. The stress fixtures' crossings pinned and stated |
 
 ### 19.3 What runs at the same time (S17)
 
@@ -740,14 +901,17 @@ proposes its row in its pull request's description, and writes its release notes
              ├─▶ 4.2 control nodes, syntax ──┴──────────────┼───▶ 4.7 overview ──────┤
              ├─▶ 4.3 lanes ─────────────────────────────────┴───▶ 4.5 activity ──────┼─▶ 4.10 ─▶ 0.21.0
              ├─▶ 4.8 Mermaid state (with 4.2's transition.js) ───────────────────────┤
-             └─▶ 4.9 PDF tables ─────────────────────────────────────────────────────┘
+             └─▶ 4.9 PDF tables (merges after 4.1) ──────────────────────────────────┘
 ```
 
 - Five lanes once 4.0 has merged: 4.1, 4.2, 4.3, 4.8 and 4.9, each in its own worktree. 4.8 merges after 4.2.
 - Then four type lanes: 4.4 after 4.1; 4.6 and 4.7 after 4.1 and 4.2; 4.5 after 4.1, 4.2 and 4.3. Each may write its
   definition, rules and `describe()` against the contracts above before its needs merge, and tests its drawing and
   gestures once they have.
-- Only 4.1 and 4.9 touch the core. The second to merge states its bytes against `main` with the first merged.
+- Only 4.1 and 4.9 touch the core. 4.9 merges after 4.1, since 4.1 owns `src/core/registry.js`, where 4.9's `rows` and
+  `word` are documented; it states its bytes against `main` with 4.1 merged.
+- 4.5 and 4.6 start their drawing and gestures after 4.1's spike (§17) is reported; if it misses, after the maintainer
+  decides §20 #13.
 - 0.21.0 ships after 0.20.0, which ships after 3.8.
 - One reviewing agent that did not write the code checks each pull request against the definition of done; before the
   first of two open branches merges, their merge is rehearsed in a scratch worktree (X2).
@@ -765,7 +929,8 @@ No two open packages edit one file. Where a file passes between packages, it pas
 |---|---|---|
 | `tools/build.mjs` | 4.0 | No other stage 4 package |
 | `src/core/registry.js` | 4.1 (every new field's comment, 4.9's too) | No other |
-| `src/uml/owners.js`, `src/typed/*` | 4.1 | Read only by 4.4 to 4.7 |
+| `src/uml/owners.js`, `src/typed/*` (`typed/layout.js` included) | 4.1 | Read only by 4.4 to 4.7 |
+| `src/draw/svg.js`, `src/canvas/render.js`, `src/layout/layered.js`, `src/map/context.js` | 4.1 | No other stage 4 package |
 | `src/uml/frame.js`, `sequence.js`, `interaction.js`, `src/layout/timeaxis.js` | Read only by 4.7 | No stage 4 package edits them |
 | `src/uml/flow.js`, `transition.js` | 4.2 | Read only by 4.5 to 4.8 |
 | `umlimator.py` | 4.8 | 4.10 |
@@ -799,29 +964,31 @@ Each is set out with its options and trade-offs in the section named; the recomm
 
 | # | Question | Recommended | Other options | Section |
 |---|---|---|---|---|
-| 1 | How much of the core's 2,777 B stage 4 may spend | At most 600 B, fallbacks named | First come; raise C5 | §2.3 |
+| 1 | How much of the core's 2,790 B stage 4 may spend | At most 600 B, fallbacks named | First come; raise C5 | §2.3 |
 | 2 | How lines end on shapes that are not boxes | Slide onto the outline when drawn, in a family file | Ports on the outline in the router (core); end at the box | §4.2 |
-| 3 | A decision node's text | The diamond grows to hold it | Text beside the diamond (collides with lines at the top); not drawn | §4.1 |
-| 4 | How lanes are laid out | Bands by rows, in `src/layout/lanes.js` | Stage 2's boxes; the map's lanes | §5.1 |
-| 5 | How regions are drawn | Nested boxes with no border, dividers in the gap | A recursive compartment layout; not drawn | §6.2 |
-| 6 | Labels over 150 px | A per-line `cut`, 280 px for transitions and flows | Keep 150 px; two-line labels | §7.4 |
+| 3 | A decision node's text | The diamond grows to hold it, stated as a deviation from UML (§18) | Text beside the diamond (UML's place; collides with lines at the top); a «decisionInput» note; not drawn | §4.1 |
+| 4 | How lanes are laid out | Bands by rows, in `src/layout/lanes.js`; partitions out of the layout, added back after | Stage 2's boxes; the map's lanes | §5.1 |
+| 5 | How regions are drawn | Nested boxes with no border, dividers in the gap, only for a state with two or more regions (72 px a level, Q17) | A recursive compartment layout; not drawn | §6.2 |
+| 6 | Labels over 150 px | A per-line `cut`, 280 px for transitions and for activity and overview flows | Keep 150 px; two-line labels | §7.4 |
 | 7 | Deleting a partition | Its nodes go to its parent | Cascade; refuse | §9.4 |
 | 8 | A composite state's activities | Not drawn on the box this release | A header that grows (core) | §10.1 |
 | 9 | The inline interaction | Full size, read only, frame only above 8 lifelines or 20 messages | Frame only; scaled | §11.2 |
-| 10 | Choosing the view an element opens | A picker when it is added | A `view` field kind in the panel (core) | §12.2 |
-| 11 | Mermaid's notes; Mermaid's missing pseudostates | Read as comments; written as plain states under `%% kind:` | Skipped; not written | §13 |
+| 10 | Choosing and changing the view an element opens (DoD 4) | A picker when it is added, and `V` to change it, in `src/typed/edit.js` | Picker on add only, with a DoD 4 exception for `opensView`; a `view` field kind in the panel (core) | §12.2 |
+| 11 | Mermaid's notes, missing pseudostates and plain descriptions | Notes read as comments; junction, history and terminate written as plain states under `%% kind:`; a plain description read as a linked comment marked to be written back | Notes skipped; those pseudostates not written; descriptions kept in `ext` only, or drawn as a compartment row | §13 |
 | 12 | The PDF's tables per type (R9) | `rows` and `word` fields, "Elements" heading | Gaps listed in each fidelity table | §15 |
-| 13 | P1 for the common edit | Under 100 ms with `reroute: false`; else the package waits | Hold label edits to the 1 s budget | §17 |
+| 13 | P1 for the common edit | `repair: false` and `reroute: false` on every layout of the four types, confirmed by 4.1's spike | Keep both passes and hold the edit to 1 s; both off only after an edit (breaks DoD 6); a layout worker | §17 |
 | 14 | Order with stage 3 | 4.0 after 3.8, 0.21.0 after 0.20.0 | Start after 0.20.0 is released | §19.3 |
 | 15 | C10 for the four types | Tested in 4.10 | Folded into the package after 0.20.0 | §19.5 |
+| 16 | The order of a state's regions in the picture (S20) | First-line order, as `blockPos` gives; `members` order everywhere else | Member order drawn, about 30 B in `context.js` | §6.2 |
+| 17 | Transitions Mermaid does not support (S22) | Written as transitions with a `%% warning:` line | Written as `%% not written:` (example 10's round trip breaks) | §13 |
 
 ## 21. What this note changes elsewhere
 
-- **`model.md`.** Rows 8, 9, 10 and 13 as §3; rule 6 adds that a state draws `parent` as nesting, a region as a nested box,
+- **`model.md`.** Rows 8, 9, 10 and 13 as §3 (row 13 gains `uml.FlowFinalNode`); rule 6 adds that a state draws `parent` as nesting, a region as a nested box,
   and that a partition's `parent` is a lane, not nesting; §3's stage 4 row is settled: a transition never ends on a
   region, entry and exit points are out; a stage 4 row points here.
 - **`risks.md`.** L10 and L11 point to §5 and §6, with their fixtures (§16); L12 points to §4 and closes with 0.21.0; L13
-  points to §14; F (§6) points to §16; R8's leftover heading moves to a new row R9 (§15); P1 gains the common edits of §17;
+  points to §14; F (§6) points to §16; R8's leftover heading moves to a new row R9 (§15); P1 gains the common edits of §17 and the measured cost of port repair (Q19);
   C5 records stage 4's share (§2.3); C10 records stage 4's tests (S16); a new row for lines along a lane's divider (§5.2);
   E3 gains the transition micro-syntax (§7).
 - **`plan.md`.** §5's stage 4 row points here. §4.3 lists `src/layout/lanes.js` as built in `ALL` only.
