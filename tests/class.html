@@ -41,8 +41,11 @@ try {
     document.documentElement.dataset.theme = theme; el.style.setProperty('--um-sans', family);
     const tag = `${theme}, ${fname}`, h = mount(MODEL, { legend: true }), svg = pick('svg.um-svg, .stage svg'), nodes = all('.node');
     const B = Object.fromEntries(nodes.map(g => [g.dataset.id, box(g)])); widths[fname] = B.order.w;
-    check(`${tag}: every element of the view is drawn, classes as classifiers and the comment as a note`, nodes.length === 11
-      && nodes.filter(g => g.dataset.shape === 'classifier').length === 10 && pick('.node[data-id="note-total"]').dataset.shape === 'note', nodes.map(g => g.dataset.id));
+    // from 0.19.0 (2.2) the package sales is a box holding the nine classes it owns, not a node (notes/stage-2.md §10.1)
+    const sales = pick('.family[data-family="sales"]'), held = sales && (r => ({ x: r.x, y: r.y, w: r.width, h: r.height }))(sales.querySelector('.family-box').getBBox());
+    check(`${tag}: every element of the view is drawn, classes as classifiers in the package sales's box and the comment as a note outside it`, nodes.length === 10
+      && nodes.filter(g => g.dataset.shape === 'classifier').length === 9 && pick('.node[data-id="note-total"]').dataset.shape === 'note' && !!held
+      && sales.getAttribute('aria-label') === 'Package sales, holding 9 elements' && nodes.every(g => { const b = box(g), at = b.x >= held.x && b.y >= held.y && b.x + b.w <= held.x + held.w && b.y + b.h <= held.y + held.h; return at === (g.dataset.id !== 'note-total'); }), nodes.map(g => g.dataset.id));
     const over = []; Object.entries(B).forEach(([a, p]) => Object.entries(B).forEach(([b, q]) => { if (a < b && meets(p, q)) over.push(a + '/' + b); }));
     check(`${tag}: no two elements overlap`, !over.length, over);
     const spill = [];
@@ -107,13 +110,13 @@ try {
     const stageBg = css(pick('.stage'), 'backgroundColor');
     all('.edge-g path.edge').forEach(x => { const c = ratio(css(x, 'stroke'), stageBg); if (c < 3) bad.push(`a line at ${c}:1`); });
     check(`${tag}: all ${v.nodeIds.length} elements and ${all('.edge-g').length} lines drawn; no overlap, no text out of its compartment, no line through an element, every line end on its element, end labels clear, lines 3:1`,
-      nodes.length === v.nodeIds.length && all('.edge-g').length && !bad.length, bad.slice(0, 12));
+      nodes.length + all('.family').length === v.nodeIds.length && all('.edge-g').length && !bad.length, bad.slice(0, 12)); // an open package is a box, not a node (2.2)
     h.destroy();
   }
   document.documentElement.dataset.theme = 'light'; el.style.removeProperty('--um-sans');
   { // the stress fixture redrawn after an edit that moves nothing. Not a timing: headless Chrome runs on virtual time, where
     // performance.now() does not move; risks.md P1's budgets are measured in Node (tests/class-fixtures.test.mjs)
-    const h = mount(FIX.stress, { view: 'all', editable: true }), n = FIX.stress.views[0].nodeIds.length;
+    const h = mount(FIX.stress, { view: 'all', editable: true }), n = FIX.stress.views[0].nodeIds.length - 2; // shop and catalog are boxes (2.2)
     h.update(apply(FIX.stress, [{ op: 'set', id: 'buys', path: 'props.ends.to.role', value: 'buyer' }]));
     check(`the stress fixture (${n} elements): an edit that moves nothing is drawn, every element still there`, all('.node').length === n && all('text.end-lab').some(x => x.textContent === 'buyer'));
     h.destroy();

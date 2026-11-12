@@ -1,0 +1,133 @@
+<!doctype html>
+<!-- The package diagram (2.2) in headless Chrome (tests/embed.py), from lib/umlimator-all.js: docs/diagrams/examples/03-package.json
+     drawn by render() in both themes and three fonts (each box holds exactly what it owns on the picture, titles in their
+     tabs, line ends on borders, names, contrast, the legend, a closed package as a folder), then edited through the edit
+     event and apply(), by pointer and by keyboard: the palette, a package import by the picker, its visibility, the Owner
+     field, a drop into another box, a box's name, hiding and deleting a box, a pin. -->
+<meta charset="utf-8">
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="../lib/umlimator-theme.css">
+<title>umlimator package diagram test</title>
+<body style="margin:0">
+<div id="m" style="width:1200px;height:1000px"></div>
+<script type="module">
+import { render, apply, validate, describe } from '../lib/umlimator-all.js';
+const out = { ok: [], fail: [] };
+const check = (name, cond, info) => { document.title = name; if (cond) out.ok.push(name); else out.fail.push(name + (info === undefined ? '' : ': ' + JSON.stringify(info))); };
+const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+const el = document.getElementById('m');
+let sr, stage, ed = [];
+const pick = s => sr.querySelector(s), all = s => [...sr.querySelectorAll(s)];
+const centre = s => { const r = pick(s).getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; };
+const ptr = (target, type, [x, y]) => target.dispatchEvent(new PointerEvent(type, { clientX: x, clientY: y, button: 0, pointerId: 7, pointerType: 'mouse', bubbles: true, composed: true }));
+const key = (k, extra = {}, target = stage) => target.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true, composed: true, cancelable: true, ...extra }));
+const click = s => { const g = pick(s), at = centre(s); ptr(g, 'pointerdown', at); ptr(g, 'pointerup', at); g.dispatchEvent(new MouseEvent('click', { clientX: at[0], clientY: at[1], bubbles: true, composed: true })); };
+const mount = (model, opts = {}) => { el.innerHTML = ''; ed = []; const h = render(el, model, { view: 'packages', on: { edit: e => ed.push(e) }, ...opts }); sr = el.querySelector('.umlimator').shadowRoot; stage = pick('.stage'); return h; };
+const errors = m => validate(m).filter(p => p.level === 'error');
+const last = () => ed[ed.length - 1];
+const gives = (name, cmds, test, base) => { const e = last(); let m = null; try { m = e && apply(base, e.commands); } catch (x) { m = null; }
+  check(name, !!e && same(e.commands, cmds) && !!m && test(m) && !errors(m).length, e); return m; };
+const box = g => { const r = g.getBBox(); return { x: r.x, y: r.y, w: r.width, h: r.height }; };
+const inside = (a, b) => a.x >= b.x && a.y >= b.y && a.x + a.w <= b.x + b.w && a.y + a.h <= b.y + b.h;
+const FONTS = { serif: 'serif', sans: 'sans-serif', wide: 'monospace' };
+const rgba = s => { let m = /rgba?\(([^)]+)\)/.exec(s); if (m) { const p = m[1].split(/[ ,/]+/).filter(Boolean).map(Number); return [p[0] / 255, p[1] / 255, p[2] / 255, p.length > 3 ? p[3] : 1]; }
+  m = /color\(srgb ([^)]+)\)/.exec(s); if (m) { const p = m[1].split(/[ /]+/).filter(Boolean).map(Number); return [p[0], p[1], p[2], p.length > 3 ? p[3] : 1]; } return null; };
+const blend = (top, bot) => [0, 1, 2].map(i => top[i] * top[3] + bot[i] * (1 - top[3])).concat(1);
+const lum = c => { const f = v => v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]); };
+const ratio = (fg, bg) => { const [x, y] = [lum(blend(fg, bg)), lum(bg)].sort((p, q) => q - p); return +((x + 0.05) / (y + 0.05)).toFixed(2); };
+const css = (e, k) => rgba(getComputedStyle(e)[k]);
+const MODEL = await (await fetch('../docs/diagrams/examples/03-package.json')).json();
+// what each box holds on the picture, at any depth (notes/stage-2.md §4.1): its classes and the boxes in it
+const HOLDS = { shared: ['money'], catalog: ['book'], sales: ['customer', 'order', 'line', 'status'], payments: ['payable', 'payment', 'card-payment'], card: ['card-payment'], wholesale: ['wholesale-order'] };
+try {
+  for (const theme of ['light', 'dark']) for (const [fname, family] of Object.entries(FONTS)) for (const direction of ['down', 'right']) {
+    document.documentElement.dataset.theme = theme; el.style.setProperty('--um-sans', family);
+    const M = structuredClone(MODEL); M.views[0].direction = direction;
+    const tag = `${theme}, ${fname}, ${direction}`, h = mount(M, { legend: true }), svg = pick('svg.um-svg, .stage svg'), bad = [];
+    const B = Object.fromEntries(all('.node').map(g => [g.dataset.id, box(g.querySelector('.n-body'))])), F = Object.fromEntries(all('.family').map(g => [g.dataset.family, box(g.querySelector('.family-box'))]));
+    check(`${tag}: ten classes as nodes, six open packages as boxes`, Object.keys(B).length === 10 && same(Object.keys(F).sort(), Object.keys(HOLDS).sort()), [Object.keys(B), Object.keys(F)]);
+    Object.entries(F).forEach(([f, r]) => Object.entries(B).forEach(([n, b]) => { if (inside(b, r) !== HOLDS[f].includes(n)) bad.push(`${f} ${HOLDS[f].includes(n) ? 'lacks' : 'covers'} ${n}`); }));
+    all('.family').forEach(g => { const t = box(g.querySelector('.family-title')), r = F[g.dataset.family]; if (!inside(t, r) || t.y > r.y + 24) bad.push(`${g.dataset.family}'s title spills`); });
+    all('.edge-g').forEach(g => { const n = g.querySelector('path.edge').getAttribute('d').match(/-?\d+(\.\d+)?/g).map(Number), p = [n[n.length - 2], n[n.length - 1]], t = F[g.dataset.to];
+      if (!t || !([t.x, t.x + t.w].some(x => Math.abs(x - p[0]) < 1) || [t.y, t.y + t.h].some(y => Math.abs(y - p[1]) < 1))) bad.push(`${g.dataset.from}>${g.dataset.to} ends off its border`); });
+    check(`${tag}: each box holds exactly what it owns on the picture, its title in its header, every line ending on a box's border`, !bad.length, bad);
+    const keys = all('.edge-g text, .edge-g .e-label, text.e-label').map(x => x.textContent).filter(t => /«/.test(t));
+    check(`${tag}: the keywords «import», «access» and «merge» are drawn`, ['«import»', '«access»', '«merge»'].every(k => keys.includes(k)), keys);
+    check(`${tag}: boxes and lines have names a screen reader reads`, pick('.family[data-family="payments"]').getAttribute('aria-label') === 'Package payments, holding 3 elements'
+      && pick('.node[data-id="wholesale-order"]').getAttribute('aria-label') === 'Class Order' && pick('.edge-g[data-from="payments"] title').textContent === 'Package import from payments to shared: «access»');
+    const legend = all('.m-legend b').map(b => b.textContent);
+    check(`${tag}: the legend keys the import, the merge and the dependency`, same(legend, ['Dependency', 'Package import', 'Package merge']), legend);
+    const stageBg = css(pick('.stage'), 'backgroundColor'), low = [];
+    all('.family').forEach(g => { const bg = blend(css(g.querySelector('.family-box'), 'fill') || [0, 0, 0, 0], stageBg), t = g.querySelector('.family-title');
+      const c = ratio(css(t, 'fill'), bg); if (c < 4.5) low.push([g.dataset.family, 'title', c]);
+      [g.querySelector('.family-box'), g.querySelector('.pk-tab')].forEach(x => { const k = ratio(css(x, 'stroke'), stageBg); if (k < 3) low.push([g.dataset.family, x.getAttribute('class'), k]); }); });
+    check(`${tag}: contrast: a box's title 4.5:1, its border and tab 3:1`, !low.length, low);
+    h.destroy();
+  }
+  document.documentElement.dataset.theme = 'light'; el.style.removeProperty('--um-sans');
+  // a closed package: a folder, named, with its lines on its body
+  const CLOSED = { ...MODEL, views: [{ id: 'packages', diagram: 'uml.package', title: 'Two', nodeIds: ['sales', 'payments', 'card-payment'] }] };
+  let h = mount(CLOSED);
+  const fold = pick('.node[data-id="sales"]'), body = box(fold.querySelector('.n-body')), tab = box(fold.querySelector('.n-det'));
+  check('a closed package is a folder: its tab over its body, its name inside, named "(closed)"', fold.dataset.shape === 'package' && fold.getAttribute('aria-label') === 'Package sales (closed)'
+    && tab.y + tab.h <= body.y + .5 && tab.x === body.x && inside(box(fold.querySelector('.c-name')), body), [body, tab]);
+  check('…a class shown without its owner is qualified', pick('.node[data-id="card-payment"]').getAttribute('aria-label') === 'Class card::CardPayment' && pick('.node[data-id="card-payment"] .c-name').textContent === 'card::CardPayment');
+  h.destroy();
+  check('describe() writes each box, then what it holds', describe(MODEL, 'packages').split('\n').slice(0, 3).join('|') === 'Bookshop packages: a package diagram of 16 elements and 5 lines.|Package shared, holding 1 element.|Data type Money.');
+
+  // ---- editing (DoD 4), each gesture's commands applied with apply()
+  h = mount(MODEL, { editable: true });
+  const button = t => all('.um-editor button').find(b => b.textContent.trim() === t), panel = s => pick('.um-editor ' + s);
+  check('the palette: the package diagram\'s elements', same(all('.um-editor .um-pal button').map(b => b.textContent), ['Package', 'Class', 'Interface', 'Enumeration', 'Data type', 'Primitive type', 'Comment']));
+  key('n'); pick('.um-rename').value = 'billing'; key('Enter', {}, pick('.um-rename'));
+  let m1 = gives('N adds a package, shown in the view', [{ op: 'add', element: { id: 'package1', type: 'uml.Package', label: 'billing' }, view: 'packages' }], m => m.views[0].nodeIds.includes('package1'), MODEL);
+  button('Class').click(); pick('.um-rename').value = 'Invoice'; key('Enter', {}, pick('.um-rename'));
+  gives('the palette\'s Class, named', [{ op: 'add', element: { id: 'class1', type: 'uml.Class', label: 'Invoice' }, view: 'packages' }], m => !!m.nodes.find(n => n.id === 'class1'), MODEL);
+  h.update(m1); key('n'); pick('.um-rename').value = 'ledger'; key('Enter', {}, pick('.um-rename'));
+  m1 = apply(m1, last().commands); h.update(m1);
+  check('after update() a new package with nothing in it is drawn closed', !!pick('.node[data-id="package1"][data-shape="package"]') && !!pick('.node[data-id="package2"][data-shape="package"]'));
+  // connect by keyboard: L, a name, Enter, then the picker
+  click('.node[data-id="package1"] .c-name'); key('l'); for (const c of 'ledger') key(c); key('Enter');
+  const items = all('.um-pick button').map(b => b.textContent);
+  check('L, a name and Enter open the picker with the package diagram\'s four lines', same(items, ['Import', 'Merge', 'Dependency', 'Comment link']), items);
+  all('.um-pick button')[0].click();
+  const m2 = gives('picking Import: one add of a uml.PackageImport to the box\'s package', [{ op: 'add', element: { id: 'packageimport1', type: 'uml.PackageImport', from: 'package1', to: 'package2' }, view: 'packages' }], m => m.edges.some(e => e.id === 'packageimport1'), m1);
+  h.update(m2);
+  check('after update() the import is drawn «import»', pick('.edge-g[data-from="package1"][data-to="package2"]') && pick('.edge-g[data-from="package1"] title').textContent.endsWith('«import»'));
+  h.select({ type: 'edge', ids: ['packageimport1'], view: 'packages' });
+  const vis = panel('[data-f="p:visibility"]'); vis.value = 'private'; vis.dispatchEvent(new Event('change', { bubbles: true }));
+  const m3 = gives('its visibility, private: «access»', [{ op: 'set', id: 'packageimport1', path: 'props.visibility', value: 'private' }], m => m.edges.find(e => e.id === 'packageimport1').props.visibility === 'private', m2);
+  h.update(m3);
+  check('after update() it reads «access»', pick('.edge-g[data-from="package1"] title').textContent.endsWith('«access»'));
+  // the Owner field, by keyboard
+  h.select({ type: 'node', id: 'book', view: 'packages' });
+  const own = panel('[data-f="owner"]'), opts = [...own.options].map(o => o.textContent);
+  check('the Owner field: none and every package by its name from the top, its owner selected', same(opts, ['none', 'shared', 'catalog', 'sales', 'payments', 'payments::card', 'wholesale', 'billing', 'ledger']) && own.value === 'catalog', opts);
+  own.value = 'package1'; own.dispatchEvent(new Event('change', { bubbles: true }));
+  const m4 = gives('Owner: reparent the class', [{ op: 'reparent', id: 'book', parent: 'package1' }], m => m.nodes.find(n => n.id === 'book').parent === 'package1', m3);
+  h.update(m4);
+  check('after update() billing is open, holding Book, and catalog is closed', !!pick('.family[data-family="package1"]') && inside(box(pick('.node[data-id="book"] .n-body')), box(pick('.family[data-family="package1"] .family-box')))
+    && !!pick('.node[data-id="catalog"][data-shape="package"]'));
+  // a drop into another box, by pointer
+  const to = pick('.family[data-family="wholesale"] .family-box').getBoundingClientRect(), from = centre('.node[data-id="status"] .n-body'), at = [to.left + 14, to.bottom - 14];
+  ptr(pick('.node[data-id="status"]'), 'pointerdown', from); for (let i = 1; i <= 4; i++) ptr(stage, 'pointermove', [from[0] + (at[0] - from[0]) * i / 4, from[1] + (at[1] - from[1]) * i / 4]); ptr(stage, 'pointerup', at);
+  gives('a class dropped into another package\'s box: reparent', [{ op: 'reparent', id: 'status', parent: 'wholesale' }], m => m.nodes.find(n => n.id === 'status').parent === 'wholesale', m4);
+  // Alt + arrows pin a class
+  click('.node[data-id="money"] .c-name'); key('ArrowDown', { altKey: true });
+  check('Alt + ↓ pins a class', last().commands.length === 1 && last().commands[0].op === 'set' && same(last().commands[0].path, ['layout', 'money']), last());
+  // a box: selected as a container, F2, Delete, Shift + Delete
+  click('.family[data-family="sales"] .family-title');
+  check('a click on a box\'s title selects the package', same(h.selection && [h.selection.type, h.selection.id], ['container', 'sales']), h.selection);
+  key('F2'); check('F2 on a box: a field holding its own name', pick('.um-rename') && pick('.um-rename').value === 'sales');
+  pick('.um-rename').value = 'orders'; key('Enter', {}, pick('.um-rename'));
+  gives('F2 on a box: set its label', [{ op: 'set', id: 'sales', path: 'label', value: 'orders' }], m => m.nodes.find(n => n.id === 'sales').label === 'orders', m4);
+  key('Delete');
+  const m5 = gives('Delete on a box: hide the package from the view', [{ op: 'hide', id: 'sales', view: 'packages' }], m => !m.views[0].nodeIds.includes('sales'), m4);
+  key('Delete', { shiftKey: true });
+  gives('Shift + Delete on a box: delete the package and what it owns', [{ op: 'delete', id: 'sales' }], m => !m.nodes.some(n => ['sales', 'order', 'customer'].includes(n.id)), m4);
+  h.update(m5);
+  check('after hiding sales its classes are drawn qualified, outside every box', pick('.node[data-id="order"] .c-name').textContent === 'sales::Order' && !all('.family').some(f => f.dataset.family === 'sales'));
+  h.destroy();
+} catch (e) { out.fail.push('threw: ' + (e && e.stack || e)); }
+const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
+</script>

@@ -2,11 +2,14 @@ import { registerDiagramType } from '../core/registry.js';
 import { esc, fit, textW } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
 import '../typed/draw.js'; // SHAPE.classifier, which the note's outline and ports take
+import { labelW } from '../layout/layered.js';
 import { layoutTyped } from '../typed/layout.js';
+import { OWNER_RULES, holdsLine, ownerChoices, ownerProblems, ownersOn, placeTabs, readingOrder } from './owners.js';
 
 /* ---------- the class diagram, uml.class (work package 1.9) ----------
    The subset of proposal.md §8.2: class, interface, enumeration with literals, data type, primitive type; attributes and
-   operations in UML's text form; stereotypes as text; packages as owners (drawn as a node until stage 2 draws ownership);
+   operations in UML's text form; stereotypes as text; packages as owners, a package holding what it owns that the view
+   shows as a box, and names qualified by the owners it does not show (2.2, notes/stage-2.md §4 to §7, src/uml/owners.js);
    association with both ends, generalization, interface realization, dependency; comments. A view whose `diagram` is
    'uml.class' is laid out by layoutTyped (src/typed/layout.js) and drawn with the classifier shape and the line-end table
    (src/typed/draw.js). Ships in lib/umlimator-all.js only (stage 1 note §2.5). */
@@ -177,16 +180,20 @@ function lineLook(e) {
     case 'uml.InterfaceRealization': return { from: 'none', to: 'triangle', dashed: true };
     case 'uml.Dependency': return { from: 'none', to: 'open', dashed: true };
     case 'uml.CommentLink': return { from: 'none', to: 'none', dashed: true };
+    case 'uml.PackageImport': case 'uml.PackageMerge': return { from: 'none', to: 'open', dashed: true };
     case 'uml.Association': { const E = endsOf(e), lab = w => ({ role: (E[w] || {}).role, mult: (E[w] || {}).multiplicity });
       return { from: endOfLine(e, 'from'), to: endOfLine(e, 'to'), labels: { from: lab('from'), to: lab('to') } }; }
     default: return { from: 'none', to: 'arrow' };
   }
 }
 const stereoText = x => UML_ARR(UML_OBJ(x.props) ? x.props.stereotypes : null).filter(UML_HAS).map(t => `«${t}»`).join(' ');
-const lineLabel = e => [stereoText(e), e.label].filter(UML_HAS).join(' ');
+// a package import says «import», or «access» when private; a merge «merge» (notes/stage-2.md §10.2)
+const keyword = e => e.type === 'uml.PackageImport' ? ((UML_OBJ(e.props) ? e.props.visibility : null) === 'private' ? '«access»' : '«import»') : e.type === 'uml.PackageMerge' ? '«merge»' : '';
+const lineLabel = e => [keyword(e), stereoText(e), e.label].filter(UML_HAS).join(' ');
 const LINE_WORDS = { 'uml.Association': ['Association', 'a link between instances'], 'uml.Generalization': ['Generalization', 'is a kind of the one it points to'],
   'uml.InterfaceRealization': ['Realization', 'implements the interface it points to'], 'uml.Dependency': ['Dependency', 'uses the one it points to'],
-  'uml.CommentLink': ['Comment link', 'what a comment is about'] };
+  'uml.CommentLink': ['Comment link', 'what a comment is about'], 'uml.PackageImport': ['Package import', 'sees the names of the one it points to: «import», or «access» kept private'],
+  'uml.PackageMerge': ['Package merge', 'takes in what the one it points to holds'] };
 const LEGEND_ENDS = { // small copies of src/typed/draw.js's ends, pointing right with the tip at x 26
   none: '', open: '<path d="M17 4L26 8L17 12" fill="none"/>', triangle: '<path d="M16 3L26 8L16 13Z" fill="var(--um-panel)"/>',
   diamond: '<path d="M12 8L19 4L26 8L19 12Z" fill="var(--um-panel)"/>', 'filled-diamond': '<path d="M12 8L19 4L26 8L19 12Z" fill="var(--um-muted)"/>' };
@@ -212,39 +219,61 @@ function classIndex(model) {
 const typeWord = t => String(t || 'uml.Class').split('.').pop().replace(/([a-z])([A-Z])/g, (_, a, b) => a + ' ' + b.toLowerCase()); // 'uml.DataType': "Data type"
 const nameOfEl = x => String(x.label ?? x.id);
 const plural = (k, w) => `${k} ${k === 1 ? w : w + 's'}`;
-// an element's accessible name: "Class Order (entity, abstract), 5 attributes, 3 operations"
-function nodeName(n) {
+/* A type's look (notes/stage-2.md §10.2): the class, package and object views share classGeo's code. members: whether a
+   classifier shows its compartments; own: the line types a view with no `edges` list draws (none: every type); word: the
+   diagram's name in describe() */
+const CLASS_LOOK = { members: true, own: null, word: 'class diagram' };
+// an element's accessible name: "Class Order (entity, abstract), 5 attributes, 3 operations", by its drawn name (pic: the
+// view's owners, owners.js); "Package sales, holding 4 elements"; "Package payments (closed)"
+function nodeName(n, pic, look = CLASS_LOOK) {
   if (n.type === 'uml.Comment') return 'Comment: ' + nameOfEl(n);
-  const p = UML_OBJ(n.props) ? n.props : {}, why = [...UML_ARR(p.stereotypes).filter(UML_HAS), ...(p.isAbstract ? ['abstract'] : [])];
-  const counts = compartmentsOf(n).map(c => plural(c.members.length, c.name.replace(/s$/, '')));
-  return [`${typeWord(n.type)} ${nameOfEl(n)}${why.length ? ` (${why.join(', ')})` : ''}`, ...counts].join(', ');
+  const p = UML_OBJ(n.props) ? n.props : {}, why = [...UML_ARR(p.stereotypes).filter(UML_HAS), ...(p.isAbstract ? ['abstract'] : [])], nm = pic ? pic.name(n.id) : nameOfEl(n);
+  if (n.type === 'uml.Package') { const b = pic && pic.boxes.find(x => x.id === n.id); return b ? b.aria : `Package ${nm} (${[...why, 'closed'].join(', ')})`; }
+  const counts = look.members ? compartmentsOf(n).map(c => plural(c.members.length, c.name.replace(/s$/, ''))) : [];
+  return [`${typeWord(n.type)} ${nm}${why.length ? ` (${why.join(', ')})` : ''}`, ...counts].join(', ');
 }
-function lineName(e, at) {
-  const nm = id => { const r = at.get(id); return r ? nameOfEl(r.owner || r.x) + (r.owner ? '.' + nameOfEl(r.x) : '') : id; };
+function lineName(e, at, pic) {
+  const drawn = x => (pic && pic.at.get(x.id) === x ? pic.name(x.id) : nameOfEl(x)); // a node's drawn name; a member's owner's too
+  const nm = id => { const r = at.get(id); return !r ? id : r.owner ? drawn(r.owner) + '.' + nameOfEl(r.x) : r.kind === 'node' ? drawn(r.x) : nameOfEl(r.x); };
   const [word] = UML_OWN(LINE_WORDS, e.type) || ['Line'], said = lineLabel(e), E = endsOf(e);
   const end = w => { const t = [(E[w] || {}).role, (E[w] || {}).multiplicity].filter(UML_HAS); return t.length ? ` (${t.join(', ')})` : ''; };
   return `${word} from ${nm(e.from)}${end('from')} to ${nm(e.to)}${end('to')}${said ? ': ' + said : ''}`;
 }
 
-/* the class view's geometry: { model, view, pos (col, row by id, the layered layout's ranking or the view's pins), memo,
-   direction }. A line that ends on a member is drawn to the member's owner; a line between two nodes the view does not
-   both show is not drawn */
-function classGeo({ model, view, pos, memo }) {
-  const at = classIndex(model), present = UML_OBJ(view.present) ? view.present : {}, ids = UML_ARR(view.nodeIds).filter(id => (at.get(id) || {}).kind === 'node');
-  const shown = new Set(ids), top = id => { const r = at.get(id); return r && r.owner ? top(r.owner.id) : id; };
-  const nodes = ids.map(id => { const n = at.get(id).x, pr = UML_OBJ(UML_OWN(present, id)) ? present[id] : {}, p = UML_OBJ(n.props) ? n.props : {};
-    const look = n.type === 'uml.Comment' ? { shape: 'note' } : { shape: 'classifier', stereotypes: [...(UML_OWN(IMPLIED, n.type) ? [IMPLIED[n.type]] : []), ...UML_ARR(p.stereotypes).filter(UML_HAS)],
-      abstract: !!p.isAbstract, compartments: compartmentsOf(n), collapsed: UML_ARR(pr.collapsed), ...(Number.isFinite(pr.rows) ? { rows: pr.rows } : {}) };
-    const d = { id, label: nameOfEl(n), type: n.type || 'uml.Class', kind: 'file', ...look, aria: nodeName(n), col: (UML_OWN(pos, id) || [0, 0])[0], row: (UML_OWN(pos, id) || [0, 0])[1] };
-    return { ...d, ...SHAPE[d.shape].size(d) }; });
-  const list = Array.isArray(view.edges) ? view.edges : UML_ARR(model.edges);
-  const edges = list.map(e => (typeof e === 'string' ? (at.get(e) || {}).x : e)).filter(e => UML_OBJ(e) && typeof e.id === 'string')
-    .map(e => ({ e, from: top(e.from), to: top(e.to) })).filter(({ from, to }) => shown.has(from) && shown.has(to))
-    .map(({ e, from, to }) => ({ id: e.id, _id: e.id, type: e.type, from, to, label: lineLabel(e) || undefined, end: lineLook(e), aria: lineName(e, at), ...(UML_OBJ(e.style) || typeof e.style === 'string' ? { style: e.style } : {}) }));
-  const g = layoutTyped({ nodes, edges, direction: view.direction === 'down' ? 'down' : 'right', gap: 96, rgap: 56 }, memo);
-  g.legend = legendOf(g.edges);
-  return g;
+/* a view's lines: { at, pic, lines: [{ e, from, to }] }, each line the view lists (or, with no list, each model line of the
+   look's own types) whose ends, a member's taken to its owner, the view both shows. A line between a package and something it
+   holds is among them: it is drawn by none (holdsLine), and rule line-inside warns of it */
+function drawnLines(model, view, own) {
+  const at = classIndex(model), pic = ownersOn(model, view), shown = new Set(pic.ids), top = id => { const r = at.get(id); return r && r.owner ? top(r.owner.id) : id; };
+  const list = Array.isArray(view.edges) ? view.edges : UML_ARR(model.edges).filter(e => !own || (UML_OBJ(e) && own.includes(e.type)));
+  const lines = list.map(e => (typeof e === 'string' ? (at.get(e) || {}).x : e)).filter(e => UML_OBJ(e) && typeof e.id === 'string')
+    .map(e => ({ e, from: top(e.from), to: top(e.to) })).filter(({ from, to }) => shown.has(from) && shown.has(to));
+  return { at, pic, lines };
 }
+
+/* the view's geometry, for a type's look: { model, view, pos (col, row by id, the layered layout's ranking or the view's
+   pins), memo, direction }. A line that ends on a member is drawn to the member's owner; a line between two nodes the view
+   does not both show is not drawn. An open package is a box (its id takes no slot), passed to layoutTyped as a container */
+const typeGeo = look => ({ model, view, pos, memo }) => {
+  const { at, pic, lines } = drawnLines(model, view, look.own), present = UML_OBJ(view.present) ? view.present : {};
+  const nodes = pic.ids.filter(id => !pic.open.has(id)).map(id => { const n = at.get(id).x, pr = UML_OBJ(UML_OWN(present, id)) ? present[id] : {}, p = UML_OBJ(n.props) ? n.props : {};
+    const st = UML_ARR(p.stereotypes).filter(UML_HAS);
+    const shape = n.type === 'uml.Comment' ? { shape: 'note' } : n.type === 'uml.Package' ? { shape: 'package', stereotypes: st }
+      : { shape: 'classifier', stereotypes: [...(UML_OWN(IMPLIED, n.type) ? [IMPLIED[n.type]] : []), ...st], abstract: !!p.isAbstract, compartments: look.members ? compartmentsOf(n) : [],
+        collapsed: UML_ARR(pr.collapsed), ...(Number.isFinite(pr.rows) ? { rows: pr.rows } : {}) };
+    const d = { id, label: n.type === 'uml.Comment' ? nameOfEl(n) : pic.name(id), type: n.type || 'uml.Class', kind: 'file', ...shape, aria: nodeName(n, pic, look), col: (UML_OWN(pos, id) || [0, 0])[0], row: (UML_OWN(pos, id) || [0, 0])[1] };
+    return { ...d, ...SHAPE[d.shape].size(d) }; });
+  const edges = lines.filter(({ from, to }) => !holdsLine(pic, from, to))
+    .map(({ e, from, to }) => ({ id: e.id, _id: e.id, type: e.type, from, to, label: lineLabel(e) || undefined, end: lineLook(e), aria: lineName(e, at, pic), ...(UML_OBJ(e.style) || typeof e.style === 'string' ? { style: e.style } : {}) }));
+  // a box's border and padding take 48 px of each side of the gap between columns, so a line from box to box has none left for
+  // its label, which is then not drawn: laid out left to right, a view with boxes and labelled lines spreads its columns by its
+  // widest label and 40 px for its stubs (laid out down, a label sits across its line, in the gap between rows)
+  const down = view.direction === 'down', wide = !down && pic.boxes.length ? Math.max(0, ...edges.filter(e => e.label).map(labelW)) : 0;
+  const g = layoutTyped({ nodes, edges, ...(pic.boxes.length ? { containers: pic.boxes } : {}), direction: down ? 'down' : 'right', gap: 96 + (wide ? Math.ceil(wide) + 40 : 0), rgap: 56 }, memo);
+  g.legend = legendOf(g.edges);
+  return placeTabs(g);
+};
+const classGeo = typeGeo(CLASS_LOOK);
 
 /* ---- validators (proposal.md §8.3). Each problem: { level, rule, path, message, ids }; the message names the rule and
    the elements. Ownership cycles and references that do not resolve are the core's checks (src/core/model.js) ---- */
@@ -306,28 +335,30 @@ function classProblems(model) {
   return out;
 }
 
-/* ---- describe(): the view in words, per element: "Class Order (entity), 5 attributes, 3 operations; associated with
-   OrderLine (lines, 1..*)" ---- */
-function classDescribe(model, viewId) {
+/* ---- describe(): the view in words, per element, each box then what it holds: "Class Order (entity), 5 attributes, 3
+   operations; associated with OrderLine (lines, 1..*)"; "Package sales, holding 4 elements; imports catalog" ---- */
+const describeAs = look => (model, viewId) => {
   const v = UML_ARR(model && model.views).find(x => UML_OBJ(x) && x.id === viewId); if (!v) throw new Error(`umlimator: no view ${JSON.stringify(viewId)}`);
-  const at = classIndex(model), top = id => { const r = at.get(id); return r && r.owner ? top(r.owner.id) : id; };
-  const ids = UML_ARR(v.nodeIds).filter(id => (at.get(id) || {}).kind === 'node'), shown = new Set(ids), nm = id => nameOfEl(at.get(id).x);
-  const lines = (Array.isArray(v.edges) ? v.edges : UML_ARR(model.edges)).map(e => (typeof e === 'string' ? (at.get(e) || {}).x : e))
-    .filter(e => UML_OBJ(e) && shown.has(top(e.from)) && shown.has(top(e.to)));
+  const { at, pic, lines: all } = drawnLines(model, v, look.own), lines = all.filter(({ from, to }) => !holdsLine(pic, from, to));
+  const nm = id => (at.get(id).x.type === 'uml.Comment' ? nameOfEl(at.get(id).x) : pic.name(id));
   const end = (e, w) => { const E = endsOf(e)[w] || {}, t = [E.role, E.multiplicity].filter(UML_HAS); return t.length ? ` (${t.join(', ')})` : ''; };
-  const out = [`${v.title || v.id}: a class diagram of ${plural(ids.length, 'element')} and ${plural(lines.length, 'line')}.`];
-  ids.forEach(id => { const said = [];
-    lines.forEach(e => { const f = top(e.from), t = top(e.to), E = endsOf(e);
+  const out = [`${v.title || v.id}: a ${look.word} of ${plural(pic.ids.length, 'element')} and ${plural(lines.length, 'line')}.`];
+  readingOrder(pic).forEach(id => { const said = [];
+    lines.forEach(({ e, from: f, to: t }) => { const E = endsOf(e);
       if (e.type === 'uml.Association' && (f === id || t === id)) { const [me, far] = f === id ? ['from', 'to'] : ['to', 'from'], agg = (E[me] || {}).aggregation, whole = (E[far] || {}).aggregation;
         const verb = agg === 'composite' ? 'composed of' : agg === 'shared' ? 'aggregates' : whole === 'composite' ? 'part of' : whole === 'shared' ? 'held by' : 'associated with';
         said.push(`${verb} ${nm(far === 'to' ? t : f)}${end(e, far)}${UML_HAS(e.label) ? ` ("${e.label}")` : ''}`); }
-      else if (f === id && e.type === 'uml.Generalization') said.push(`a kind of ${nm(t)}`);
-      else if (f === id && e.type === 'uml.InterfaceRealization') said.push(`realizes ${nm(t)}`);
-      else if (f === id && e.type === 'uml.Dependency') said.push(`depends on ${nm(t)}${stereoText(e) ? ' ' + stereoText(e) : ''}`);
-      else if (f === id && e.type === 'uml.CommentLink') said.push(`about ${nm(t)}`); });
-    out.push(nodeName(at.get(id).x) + (said.length ? '; ' + said.join('; ') : '') + '.'); });
+      else if (f !== id) return;
+      else if (e.type === 'uml.Generalization') said.push(`a kind of ${nm(t)}`);
+      else if (e.type === 'uml.InterfaceRealization') said.push(`realizes ${nm(t)}`);
+      else if (e.type === 'uml.Dependency') said.push(`depends on ${nm(t)}${stereoText(e) ? ' ' + stereoText(e) : ''}`);
+      else if (e.type === 'uml.PackageImport') said.push(`${keyword(e) === '«access»' ? 'accesses' : 'imports'} ${nm(t)}`);
+      else if (e.type === 'uml.PackageMerge') said.push(`merges ${nm(t)}`);
+      else if (e.type === 'uml.CommentLink') said.push(`about ${nm(t)}`); });
+    out.push(nodeName(at.get(id).x, pic, look) + (said.length ? '; ' + said.join('; ') : '') + '.'); });
   return out.join('\n');
-}
+};
+const classDescribe = describeAs(CLASS_LOOK);
 
 /* ---- the type ---- */
 const CLASS_TYPE = registerDiagramType('uml.class', {
@@ -336,10 +367,13 @@ const CLASS_TYPE = registerDiagramType('uml.class', {
   // general one comes first: above its specializations in a view laid out down (risks.md L6)
   rankFlip: e => e.type === 'uml.Generalization' || e.type === 'uml.InterfaceRealization',
   layout: classGeo,
+  // the view's open packages, the boxes the layout draws (notes/stage-2.md §4), and the Owner field's packages (§8)
+  boxes: (model, view) => ownersOn(model, view).boxes,
+  owners: ownerChoices,
   member: { print: printMember, edit: memberEdit, add: memberAdd, holds: n => compartmentsOf(n).length > 0 }, // holds: the panel offers members (not on a comment or a package)
-  validate: classProblems,
-  rules: RULES,
+  validate: (model, view) => [...classProblems(model), ...ownerProblems(model, view, drawnLines(model, view, null).lines)],
+  rules: { ...RULES, ...OWNER_RULES },
   describe: classDescribe,
 });
 
-export { CLASS_TYPE, multBounds, parseMember, printMember, memberEdit, classProblems, classDescribe, classGeo };
+export { CLASS_TYPE, CLASS_DEF, RULES, multBounds, parseMember, printMember, memberEdit, classProblems, classDescribe, classGeo, typeGeo, describeAs, drawnLines };

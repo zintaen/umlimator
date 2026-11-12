@@ -6,7 +6,7 @@
    "layout payments": "d9f3592e93c031c4",
    "describe payments": "a178ff45a4dcdc2a",
    "validate": "4878f0dc5df1125a",
-   "edit": "9048137cf08520da",
+   "edit": "9ceac429fa63b932",
    "edited layout domain": "1444dacb47688a12",
    "edited validate": "4878f0dc5df1125a"
   },
@@ -254,20 +254,20 @@
    "layout payments": "d9f3592e93c031c4",
    "describe payments": "a178ff45a4dcdc2a",
    "validate": "4878f0dc5df1125a",
-   "edit": "9048137cf08520da",
+   "edit": "9ceac429fa63b932",
    "edited layout domain": "1444dacb47688a12",
    "edited validate": "4878f0dc5df1125a"
   }
  },
  "all": {
   "examples/sales-classes.json": {
-   "layout domain": "52c3eff80bb8d454",
-   "describe domain": "3e07af65bdf7fba9",
+   "layout domain": "43190ae8baae9614",
+   "describe domain": "ec67e2b45dd6f57c",
    "layout payments": "3d029673eb078ecf",
    "describe payments": "c9f3531df4f8c1f7",
    "validate": "643d5437104296e2",
-   "edit": "9048137cf08520da",
-   "edited layout domain": "30b19e175d515b6e",
+   "edit": "9ceac429fa63b932",
+   "edited layout domain": "d54b02969b57d23e",
    "edited validate": "643d5437104296e2"
   }
  },
@@ -281,7 +281,7 @@
   "umlimator.js docs/diagrams/examples/23-c4.json deployment": "cba791212106b858",
   "umlimator.js docs/diagrams/examples/09-activity.json fulfil": "e32f36e4f74bd8c7",
   "umlimator.js docs/diagrams/examples/09-activity.json take-payment": "fc54192e340a685c",
-  "umlimator-all.js examples/sales-classes.json domain": "8ac957819d86da0f",
+  "umlimator-all.js examples/sales-classes.json domain": "944a4be8b01660d0",
   "umlimator-all.js examples/sales-classes.json payments": "baf77dbbcd404c8b"
  }
 }

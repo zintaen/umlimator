@@ -105,6 +105,9 @@ What changed against `model.md`:
    model's ownership and a view's boxes cannot drift apart (`proposal.md` §3.3, row 3). `validate()` still accepts them on
    any view.
 
+As 2.2 built it: an element on a cycle of `parent`s (already a core error) has no owner on the picture, and an element
+under a cycle is held by the first element of the cycle its chain meets, so nothing drops from the picture or `describe()`.
+
 ### 4.2 The registry field
 
 `boxes(model, view) → [{ id, label, title, nodeIds, parent, shape, aria }]`: the map's container format, plus `title`,
@@ -150,6 +153,10 @@ provisional fields in `src/core/registry.js` (`notes/spike-sequence.md` §1).
 
 `SHAPE.folder`, the map's card skin, is not reused: it is a card with tabs and badges, and a map's look must not change.
 
+As 2.2 built it: a closed package's tab is drawn above its box, and moves along the top edge away from where lines end;
+a line that would end under the tab ends on the tab's top. In a view laid out left to right, a box's border and padding
+take 48 px from each side of the gap between columns, so the gap widens by the widest label between boxes plus 40 px.
+
 ## 6. Qualified names (S5)
 
 - A shown element whose owners are not all shown is drawn with the names of the owners between it and its owner on the
@@ -177,6 +184,9 @@ provisional fields in `src/core/registry.js` (`notes/spike-sequence.md` §1).
 - A line to an element the view does not show is not drawn, as now. It is never moved to the element's owner.
 - A line from an element in a box to anything outside crosses each border between them. The router already crosses box
   borders on maps (L8). The fixture (§15) has one from depth 3 to depth 0.
+
+As 2.2 built it: a line from an open package to itself is not drawn either, and `line-inside` warns of it; on a closed
+package it is drawn as a loop.
 
 ## 8. Editing ownership (S7)
 
@@ -298,6 +308,8 @@ only a package view. The class type calls `owner-kinds` and `own-boxes`, since c
 | `own-boxes` | warning | a view's hand-written `containers` are ignored where the type gives boxes (per view, §4.1) |
 
 Ownership cycles are the core's check already (M7).
+
+As 2.2 built it: the class type warns of `line-inside` too, since a class view does not draw those lines either.
 
 ## 11. The Mermaid reader's namespaces (S10)
 
