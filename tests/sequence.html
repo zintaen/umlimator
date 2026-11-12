@@ -6,9 +6,10 @@
      role="img" written out (the drawing a named group that holds the keys). Then every gesture of §5.2 on the canvas, by
      pointer and by keyboard, each edit event the type's transaction, applied with apply() and drawn again: the tab stops in
      geo.order; heads, messages, uses and frames moved by Alt + arrows and by drags; W on a run selected by Shift + click and
-     Shift + Enter; Delete and Shift + Delete (a frame unwrapped, an operand per §5.4, a lifeline out of covers, the hint
-     counting its messages); N and the palette; a message by L, by the handle, from a stem, and to its own stem; guards by F2
-     and double-click; the properties panel and member list of a frame, operand, message and use; refusals said on the hint
+     Shift + Enter; Delete and Shift + Delete (a frame unwrapped by either, a use deleted by key and by the panel, an operand
+     per §5.4, a lifeline out of covers, the hint counting its messages); N and the palette; a message by L, by the handle,
+     from a stem (also released over a use or a guard on another stem), and to its own stem; a head dropped by the heads as
+     drawn in the host's font; heads, guards and messages renamed by F2 and by double-click; the properties panel and member list of a frame, operand, message and use; refusals said on the hint
      line with no event. 30 of them are one session, undone and redone through update(), and reopened after step 15 and
      done again: byte-identical models. -->
 <meta charset="utf-8">
@@ -264,6 +265,28 @@ try {
   cur = JSON.parse(seenS[15]); h = mount(cur, { editable: true, hints: true }); replay = true;
   S.slice(15).forEach(([name, act, want]) => step(name, act, want));
   check('reopened after step 15 (JSON), steps 16 to 30 done again on the canvas: byte-identical to the session\'s end', JSON.stringify(cur) === seenS[30], [cur.views[0].edges.map(e => e.id), JSON.parse(seenS[30]).views[0].edges.map(e => e.id)]);
+  h.destroy();
+  // ---- on example 11 again (3.3b review): a head dropped by the heads as drawn in the host's font, a line from a stem
+  // released over a use or a guard on another stem, a head renamed by double-click, Shift + Delete on a frame, a use deleted
+  cur = MODEL; replay = false; keep = false; h = mount(cur, { editable: true, hints: true });
+  const cx = id => G().byId[id].x + G().byId[id].w / 2, reset = () => { cur = MODEL; h.update(cur); };
+  step('a double-click on the head api, a new name (pointer)', () => { clickNode('api'); pick('.node[data-id="api"] .c-name').dispatchEvent(new MouseEvent('dblclick', { bubbles: true, composed: true, cancelable: true })); typeName('API'); },
+    [{ op: 'set', id: 'api', path: 'label', value: 'API' }]);
+  reset();
+  step('the head shopper dropped 10 px right of storefront\'s drawn centre: after it (pointer)', () => dragNodeBy('shopper', cx('storefront') + 10 - cx('shopper'), 0), [{ op: 'move', id: 'shopper', view: 'checkout', index: 1 }]);
+  refuse('…then 10 px right of api\'s drawn centre: between api and payments, which f3 covers (pointer)', () => dragNodeBy('shopper', cx('api') + 10 - cx('shopper'), 0), /^covers: /);
+  reset();
+  // a line from shopper's stem released on another lifeline's stem where a use's or a guard's hit area lies over it
+  for (const [over, to, y] of [['f3', 'payments', G().byId.f3.y + G().byId.f3.h / 2], ['f1-declined', 'storefront', G().byId['f1-declined'].y + 8]]) {
+    const at = screen(stemX(to) + 10, y), t = sr.elementFromPoint(...at), under = t && t.closest('.node'), n = ed.length;
+    stemDrag('shopper', to, y); pickKind('Call'); const c = ed[n] && ed[n].commands;
+    check(`a line from shopper's stem released on ${to}'s stem over ${over}: a call to ${to}, not to ${over} (pointer)`, under && under.dataset.id === over && ed.length === n + 1 && c[0].element.from === 'shopper' && c[0].element.to === to && !!apply(cur, c), [under && under.dataset.id, c, hint()]);
+  }
+  step('Shift + Delete on the frame f2: unwrapped (keyboard)', () => { choose('f2'); kAct('Delete', { shiftKey: true }); }, [{ op: 'delete', id: 'f2' }]);
+  reset();
+  step('the panel\'s Remove from view on the use f3 (pointer)', () => { clickNode('f3'); click2(panelButton('Remove from view')); }, [{ op: 'delete', id: 'f3' }]);
+  reset();
+  step('Delete on the use f3 (keyboard)', () => { choose('f3'); kAct('Delete'); }, [{ op: 'delete', id: 'f3' }]);
   h.destroy();
 } catch (x) { out.fail.push('threw: ' + (x && x.stack || x)); }
 document.documentElement.dataset.theme = 'light'; el.style.removeProperty('--um-sans');

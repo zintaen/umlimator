@@ -13,7 +13,8 @@ import { arrOf } from '../map/validate.js';
      own name after L (a self-message, a reflexive association). A press on a lifeline's stem (SHAPE.lifeline's .ll-hit)
      draws a line too, released on another stem or its own.
    - moveTo(model, view, id, at): a card or line dropped (the slot nearest the drop: a line's pointer, a card's edge that
-     leads the move; a card's at also holds pt, the point its centre was dropped at), Alt + arrows ({ by: [dx, dy] }), or a
+     leads the move; a card's at also holds pt, the point its centre was dropped at, and col, how many of the view's other
+     cards (nodeIds) are drawn left of pt, measured on the canvas in the host's font), Alt + arrows ({ by: [dx, dy] }), or a
      member's ↑ and ↓ in the panel and Alt + Up/Down on it ({ by: [0, ±1] }; null: the member list's own move). Null: the
      card's pin, as before, unless the type has layout.pins false.
    - wrap(model, view, ids, kind): W, then a picker of the type's `wraps` (strings, or entries with a label).
@@ -22,7 +23,7 @@ import { arrOf } from '../map/validate.js';
    A slot is an entry of the geometry's `slots` ({ index, y, parent, after }, src/layout/timeaxis.js; x too where a type has
    one); with none, at is null. A view's fragments (view.fragments) are elements too: selected, they show their properties and
    their members (operands) in the panel, as a card does; a double-click on a selected member drawn as a card (an operand's
-   guard), or on a selected line, renames it, as F2 does. */
+   guard), on a selected lifeline's name, or on a selected line, renames it, as F2 does. */
 
 const DIR = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
 
@@ -43,7 +44,8 @@ TYPED.edit = (I, c) => {
 
   I.connect = (from, to, ev, at) => base.connect(from, to, ev, at !== undefined ? at : ev ? near(...world(ev)) : keyAt());
   I.drop = (n, hint, into, from) => { const h = hook('moveTo'), dflt = () => base.drop(n, hint, into, from), dy = hint.y - (n.y + n.h / 2);
-    return h && can('move') ? ran(h(model(), view(), n.id, { ...near(hint.x, hint.y + Math.sign(dy) * n.h / 2), pt: [hint.x, hint.y] }), dflt) : dflt(); };
+    const g = api.geo(), col = arrOf((view() || {}).nodeIds).filter(id => id !== n.id && isRec(g.byId[id]) && g.byId[id].x + g.byId[id].w / 2 < hint.x).length;
+    return h && can('move') ? ran(h(model(), view(), n.id, { ...near(hint.x, hint.y + Math.sign(dy) * n.h / 2), pt: [hint.x, hint.y], col }), dflt) : dflt(); };
   I.addNode = i => { const h = hook('add'), t = c.nodeTypes()[i], cam = api.cam(); if (!h || !t || !can('add') || !cam) return base.addNode(i);
     const s = keyAt(), at = s && { ...s, sel: c.picks() }; // where the selection is now, before the name field takes the focus
     api.editor({ x: cam.s.cx - 80, y: cam.s.cy - 13, w: 160, h: 26 }, '', label => ran(h(model(), view(), t, label, at),
@@ -96,8 +98,9 @@ TYPED.edit = (I, c) => {
   });
   api.stage.addEventListener('pointerup', e => { const d = drag, h = hook('moveTo'); if (!stop()) return; swallow = true;
     if (d.from != null) { const t = api.root.elementFromPoint(e.clientX, e.clientY), g = t && t.closest && t.closest('.node'), [x, y] = world(e);
-      // on a card, else on a stem where its strip is cut (a message's row, a bar): the lifeline whose stem it is
-      const to = g && api.geo().byId[g.dataset.id] ? g.dataset.id : (api.geo().nodes.find(n => isRec(n.stem) && Math.abs(n.stem.x - x) <= 12 && y >= n.stem.y1 && y <= n.stem.y2) || {}).id;
+      // on a card of the view's (not a frame's tag, a guard or a use over a stem), else on a stem where its strip is cut (a
+      // message's row, a bar, a frame or a use): the lifeline whose stem it is
+      const to = g && api.geo().byId[g.dataset.id] && arrOf((view() || {}).nodeIds).includes(g.dataset.id) ? g.dataset.id : (api.geo().nodes.find(n => isRec(n.stem) && Math.abs(n.stem.x - x) <= 12 && y >= n.stem.y1 && y <= n.stem.y2) || {}).id;
       if (to != null) I.connect(d.from, to, e); }
     else if (h) ran(h(model(), view(), d.id, near(...world(e))), () => true);
     api.touch(); });
@@ -106,12 +109,13 @@ TYPED.edit = (I, c) => {
   I.cancel = () => { const a = stop(); if (a) swallow = true; return base.cancel() || a; };
   I.mount = () => { stop(); base.mount(); };
 
-  // a double-click on a selected operand (a member drawn as a card) or line: its name, as F2 (before the card's open)
+  // a double-click on a selected operand (a member drawn as a card), a selected lifeline's name, or a line: its name, as F2 (before the card's open)
   api.stage.addEventListener('dblclick', e => {
     const s = api.sel(), g = I.on() && can('rename') && s && e.target.closest && (e.target.closest('.node') || e.target.closest('.edge-g, .e-lab'));
     if (!g) return;
-    const member = s.type === 'node' && g.dataset.id === s.id && arrOf((view() || {}).fragments).some(f => isRec(f) && arrOf(f.members).some(m => isRec(m) && m.id === s.id));
-    if (!member && !(s.type === 'edge' && !g.classList.contains('node'))) return;
+    const mine = s.type === 'node' && g.dataset.id === s.id, head = mine && g.classList.contains('lifeline') && e.target.closest('.c-name'); // its name: .c-name, not the core's .n-label
+    const member = mine && arrOf((view() || {}).fragments).some(f => isRec(f) && arrOf(f.members).some(m => isRec(m) && m.id === s.id));
+    if (!head && !member && !(s.type === 'edge' && !g.classList.contains('node'))) return;
     e.preventDefault(); e.stopPropagation(); api.rename();
   }, true);
   /* a member's ↑ and ↓ in the panel, and Alt + Up/Down on it, ask moveTo first: an operand's occurrences move with it */

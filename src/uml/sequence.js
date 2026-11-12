@@ -250,12 +250,14 @@ function sqConnect(model, view, from, to, at, line) {
   return sqGuard(model, V, [{ op: 'add', element, view: V.id, index: slot.index ?? SQ_ARR(V.edges).length, in: 'view' }]);
 }
 
-// a lifeline dropped at x: its place in nodeIds, among the other heads as laid out (the host's font moves them a little)
+// a lifeline dropped at x: its place in nodeIds, among the other heads as laid out in the default measure. The canvas passes
+// col, its count of heads drawn left of the drop in the host's font, which wins: the two layouts can differ by more than a gap
 const sqColAt = (model, V, id, x) => layoutTimeAxis(sqInput(model, V)).heads.filter(h => h.id !== id && h.x + h.w / 2 < x).length;
 
 /* moveTo(model, view, id, at): a message, a use or a fragment to the slot `at`, or one slot up or down with at = { by: [0, ±1] }
    (Alt + Up/Down); a lifeline one place left or right with { by: [±1, 0] } (Alt + Left/Right), or to its place in nodeIds
-   with { index }, or to the place nearest a drop's point { pt: [x, y] } (a drag sideways); an operand one place up or down
+   with { index }, or to the place nearest a drop's point { pt: [x, y], col } (a drag sideways; col, the canvas's count of
+   heads drawn left of pt, when given); an operand one place up or down
    among its fragment's (the member list's Alt + Up/Down), or to its place with { index }: a move of the member, then one
    move per occurrence it holds, so edges follows the new order. A slot the canvas passes (it has a y, or a drop's pt) is
    never read as a place in nodeIds or members. Anything else: null */
@@ -263,7 +265,7 @@ function sqMoveTo(model, view, id, at) {
   const V = sqView(model, view); if (!V || !SQ_OBJ(at)) return null;
   const by = Array.isArray(at.by) ? at.by : null, ids = SQ_ARR(V.nodeIds), pt = Array.isArray(at.pt) ? at.pt : null, slot0 = !!pt || Number.isFinite(at.y);
   const place = () => (!slot0 && Number.isInteger(at.index) ? at.index : null);
-  if (ids.includes(id)) { const i = ids.indexOf(id), j = by ? (by[1] ? null : i + Math.sign(by[0])) : pt ? sqColAt(model, V, id, +pt[0]) : place();
+  if (ids.includes(id)) { const i = ids.indexOf(id), j = by ? (by[1] ? null : i + Math.sign(by[0])) : pt ? (Number.isInteger(at.col) ? at.col : sqColAt(model, V, id, +pt[0])) : place();
     if (j == null) return null; if (j < 0 || j >= ids.length || j === i) return [];
     return sqGuard(model, V, [{ op: 'move', id, view: V.id, index: j }]); }
   const X = sqIndex(model, V);

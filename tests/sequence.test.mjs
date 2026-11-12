@@ -236,6 +236,9 @@ test('moveTo: a lifeline one place left or right (Alt + Left/Right), or to its p
   assert.deepEqual(sqMoveTo(SEQ, V(SEQ), 'shopper', { index: 4, y: 300, parent: null, pt: [(xs[1] + xs[2]) / 2, 60] }), [{ op: 'move', id: 'shopper', view: 'checkout', index: 1 }]);
   assert.deepEqual(sqMoveTo(SEQ, V(SEQ), 'shopper', { index: 4, y: 300, parent: null, pt: [xs[0] + 20, 60] }), []); // back where it was
   assert.equal(sqMoveTo(SEQ, V(SEQ), 'storefront', { index: 0, y: 300, parent: null }), null); // a slot with no point: not a place in nodeIds
+  // the canvas's col (the heads it draws left of the drop, in the host's font) wins over pt measured again here
+  assert.deepEqual(sqMoveTo(SEQ, V(SEQ), 'shopper', { index: 4, y: 300, parent: null, pt: [xs[0] + 20, 60], col: 1 }), [{ op: 'move', id: 'shopper', view: 'checkout', index: 1 }]);
+  assert.match(sqMoveTo(SEQ, V(SEQ), 'shopper', { index: 4, y: 300, parent: null, pt: [xs[0] + 20, 60], col: 2 }).error, /^covers: /);
 });
 test('moveTo: an operand up or down among its fragment\'s (the member list), and what it holds moves with it; the member hook adds and renames', () => {
   const c = sqMoveTo(SEQ, V(SEQ), 'f1-declined', { by: [0, -1] });
