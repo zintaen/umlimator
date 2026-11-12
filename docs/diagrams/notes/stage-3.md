@@ -344,7 +344,7 @@ Validators:
 - `message-link` (error): a connector of this view joins the message's two lifelines. A self-message needs a self connector.
 - The shared `reply-call`, `create-once`, `delete-once` and `sort`. Under `reply-call`, a call has at most one reply here, since there are no operands.
 
-`geo.order`: lifelines in the layout's order, then the message rows by number.
+`geo.order`: lifelines in the layout's order, then the connectors (so each has a key ring), then the message rows by number (3.5).
 
 Gestures:
 
