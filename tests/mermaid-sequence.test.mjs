@@ -322,3 +322,11 @@ test('a par_over block is read as par, reported, and its end closes it, not the 
   assert.deepEqual(v.edges.map(e => e.parent), [p.members[0].id, p.members[1].id, o.members[0].id]);
   assert.deepEqual(r.report.map(x => x.status), ['approximated']);
 });
+
+test('a lifeline waiting to be created that sends a message creating another is not created later (integration of 3.3 and 3.6)', () => {
+  const r = read('sequenceDiagram\nparticipant A\ncreate participant B\ncreate participant C\nB->>C: hi\nA->>B: late\n');
+  const v = r.model.views[0];
+  assert.deepEqual(v.edges.map(e => `${e.from}>${e.to} ${e.props.sort}`), ['B>C create', 'A>B call']);
+  assert.deepEqual(r.report.map(x => `${x.line} ${x.message}`), ['3 create B: the next message is from it, so nothing creates it']);
+  assert.deepEqual(validate(r.model).filter(p => p.level === 'error'), []);
+});
