@@ -528,14 +528,16 @@ export function render(container, model, options = {}) {
   function hintAt(x, y) { // a point in the view, and on a column view its column and row
     const h = { x: Math.round(x), y: Math.round(y) };
     if (!gridView()) return h;
+    const T = typed() && (ctx.V[cur] || {}).direction === 'down', X = n => T ? n.y + n.h / 2 : n.x + n.w / 2, Y = n => T ? n.x : n.y; // a typed view laid out down: its columns run down
+    if (T) [x, y] = [y, x];
     const cols = [...new Set(geo.nodes.filter(n => !n.aside).map(n => n.col))].sort((a, b) => a - b); // the row of cards with no line keeps off the columns
-    const mid = c => { const ns = geo.nodes.filter(n => n.col === c && !n.aside); return ns.reduce((a, n) => a + n.x + n.w / 2, 0) / ns.length; };
+    const mid = c => { const ns = geo.nodes.filter(n => n.col === c && !n.aside); return ns.reduce((a, n) => a + X(n), 0) / ns.length; };
     const first = cols[0], last = cols[cols.length - 1], step = cols.length > 1 ? (mid(last) - mid(first)) / (last - first) : 260;
     let col = first, best = Infinity; cols.forEach(c => { const d = Math.abs(mid(c) - x); if (d < best) { best = d; col = c; } });
     if (x > mid(last) + step / 2) col = last + Math.round((x - mid(last)) / step);
     else if (x < mid(first) - step / 2) col = Math.max(0, first - Math.round((mid(first) - x) / step));
-    const a = geo.nodes[0], b = geo.nodes.find(n => n.row !== a.row), pitch = b ? (b.y - a.y) / (b.row - a.row) : 108;
-    h.col = col; h.row = Math.max(0, Math.round((y - (a.y - a.row * pitch) - 32) / pitch));
+    const a = geo.nodes[0], b = geo.nodes.find(n => n.row !== a.row), pitch = b ? (Y(b) - Y(a)) / (b.row - a.row) : 108;
+    h.col = col; h.row = Math.max(0, Math.round((y - (Y(a) - a.row * pitch) - 32) / pitch));
     return h;
   }
   const siblings = n => { const b = boxOf(n.id); return geo.nodes.filter(m => m.col === n.col && !m.aside === !n.aside && boxOf(m.id) === b).sort((p, q) => p.y - q.y); };
@@ -670,14 +672,16 @@ export function render(container, model, options = {}) {
   stage.addEventListener('pointercancel', () => { if (drag && drag.ghost) drag.ghost.remove(); if (conn && conn.path) conn.path.remove(); drag = conn = null; stale = false; });
   /* the model to draw after an update: cards keep the slots they had (the host's own layout wins), a moved or added card
      takes its hint; kept in this handle only, never written to the host's model. A typed view's boxes take no slot, and an edit
-     that changed what they hold lays the view out again, so every box holds exactly its contents (notes/stage-2.md §3.2) */
+     that changed the box an element shown before and after is drawn in lays the view out again, so every box holds exactly its
+     contents (notes/stage-2.md §3.2); hiding or deleting a card keeps the places */
   const boxesIn = (m, v) => { const T = m && m.schemaVersion === 2 && v && v.diagram != null && diagramOf(v); return T && T.boxes ? arrOf(T.boxes(m, v)).filter(b => b && b.id != null) : []; };
-  const boxKey = bs => JSON.stringify(bs.map(b => [b.id, b.nodeIds, b.parent]));
+  const ownersOn = bs => new Map(bs.flatMap(b => [[b.id, b.parent ?? null], ...arrOf(b.nodeIds).map(id => [id, b.id])])); // id -> the box it is drawn in
   function withPlaces(m, use = null, prev = null) { // use: an edit the update applied, { view, hv: id -> its place, ex: a reordered group's places }; prev: the model before
     if (options.stableLayout === false) return m;
     const out = structuredClone(m);
     (out.views || []).forEach(v => {
-      const bx = boxesIn(out, v), pv = viewIn(prev, v.id), again = pv.id != null && boxKey(boxesIn(prev, pv)) !== boxKey(bx);
+      const bx = boxesIn(out, v), pv = viewIn(prev, v.id), A = ownersOn(boxesIn(prev, pv)), B = ownersOn(bx);
+      const shown = new Set(arrOf(pv.nodeIds)), again = A.size + B.size > 0 && arrOf(v.nodeIds).some(id => shown.has(id) && (A.get(id) ?? null) !== (B.get(id) ?? null));
       const was = again ? null : placed[v.id], { hv = {}, ex = {} } = use && use.view === v.id && !again ? use : {};
       if (!was && !Object.keys(hv).length && !Object.keys(ex).length) return;
       const ids = (v.nodeIds || []).filter(id => typeof id === 'string' && !bx.some(b => b.id === id)), mine = v.layout || {}, L = {}, taken = new Set(), key = p => p[0] + ',' + p[1];

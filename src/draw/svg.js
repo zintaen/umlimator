@@ -42,7 +42,9 @@ function svgOf(geo, opts = {}) {
     <defs>${marker('d', LINE)}${marker('g', 'var(--um-green)')}${marker('r', 'var(--um-rose)')}${marker('v', 'var(--um-violet)')}${marker('h', 'var(--um-cyan)')}${map ? WIRES.map(w => marker(w[0], `var(--um-w-${w[0]})`)).join('') : ''}${heavy.map(m => { const [c, k] = m.split('-w'); return marker(m, MC[c], 1 + (k - 1) * .35); }).join('')}${T ? T.defs : ''}</defs>`;
   const families = geo.families || [], familyDepth = f => f.parent ? 1 + familyDepth(families.find(p => p.id === f.parent) || {}) : 0;
   families.slice().sort((a,b) => familyDepth(a)-familyDepth(b)).forEach(f => { // in c4 every box is a boundary, dashed as Structurizr draws one (a toned box is dashed in any notation)
-    // a typed view's box whose shape draws a frame (notes/stage-2.md §5): the shape's markup, keeping .family-title, in the group the canvas selects
+    // a typed view's box whose shape draws a frame (notes/stage-2.md §5): the shape's markup, in the group the canvas selects. It keeps
+    // .family-title (the audit, the canvas's "Box …, selected") and draws its border with class family-box: the canvas outlines a
+    // selected box and the box under a drag by .family-box alone (src/canvas/styles.js)
     if (!map && hasKey(SHAPE, f.shape) && SHAPE[f.shape].frame) { s += `<g class="family" data-family="${esc(f.id)}"${f.parent ? ` data-parent="${esc(f.parent)}"` : ''}${f.aria ? ` role="img" aria-label="${esc(f.aria)}"` : ''}>${SHAPE[f.shape].frame(f)}</g>`; return; }
     s += `<g class="family${f.tone ? ' toned' : ''}" data-family="${esc(f.id)}"${f.parent ? ` data-parent="${esc(f.parent)}"` : ''}${f.tone ? ` style="--um-tone:${toneOf(f)}"` : ''}><rect class="family-box" x="${f.x}" y="${f.y}" width="${f.w}" height="${f.h}" rx="14" stroke="var(--um-${familyDepth(f) ? 'cyan' : 'border-2'})"${notation === 'c4' ? ' stroke-dasharray="7 5"' : ''}/>
       <text class="family-title" x="${f.x+12}" y="${f.y+18}" fill="var(--um-muted)" data-t="ft" data-o="${esc(f.id)}">${esc(!map && f.title || f.label || f.id)}</text>${(f.tabs || []).map(t => t.fold ? `

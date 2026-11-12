@@ -177,7 +177,7 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
   cols.forEach(c => { const ns = nodes.filter(n => n.col === c && !n.aside); if (ns.length) colW[c] = Math.max(...ns.map(n => n.w)); });
   // a labelled line between neighbouring columns gets a gap wide enough for its label and 27 px of line on each side (a
   // numbered line with no label: for its step mark). A typed view's too, so lines between one pair keep their own labels (risks.md F2)
-  const gapAfter = {}, colOf = {}, boxOf = id => ((dg.containers || []).filter(f => (f.nodeIds || []).includes(id)).pop() || {}).id; if ((map || dg.typed) && !dg.abs) { nodes.forEach(n => colOf[n.id] = n.col);
+  const gapAfter = {}, colOf = Object.create(null), boxOf = id => ((dg.containers || []).filter(f => (f.nodeIds || []).includes(id)).pop() || {}).id; if ((map || dg.typed) && !dg.abs) { nodes.forEach(n => colOf[n.id] = n.col);
     // labelled lines that leave (or reach) one card side by side run 16 px apart, too close for their pills to stack,
     // so the pills sit next to each other: the gap fits them all, with 6 px between pills
     const sum = {};
@@ -214,7 +214,7 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
   // grows to hold it; laid out turned (direction down), the 24 px header room goes left, the side that becomes the top
   const familyDefs = dg.containers || [], tagged = n => map && (n.author || n.k === 'm-ext'), TB = !map && dg.turned; // tagged: a name tag hangs under the card
   const headW = f => textW(!map && f.title || f.label || f.id, 11) + 16; // a box's title, as the audit measures it
-  const framesNow = () => { const cache = {};
+  const framesNow = () => { const cache = Object.create(null); // a box may be named 'constructor'
     const frameOf = (f, trail = new Set()) => {
       if (cache[f.id]) return cache[f.id];
       if (trail.has(f.id)) return null;
@@ -243,11 +243,12 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
     const fr = framesNow().map(f => ({ ...f, s: span(nodes.filter(n => within(n, f))) })).filter(f => f.s);
     const cards = nodes.map(n => ({ x: n.x, y: n.y, w: n.w, h: n.h + (tagged(n) ? 14 : 0), s: span([n]) }));
     const wantX = {}, wantY = {}, want = (o, k, v) => { if (v > 0) o[k] = Math.max(o[k] || 0, Math.ceil(v)); };
-    const at = v => map ? Math.floor(v) : v; // the room goes after that column (row); a typed view's: after a half row too, so a card on row .5 leaves a box on 1.5
+    const at = v => map ? Math.floor(v) : v; // the room goes after that row; a typed view's: after a half row too, so a card on row .5 leaves a box on 1.5
+    // a column's room goes after a whole column k (gap(k) reads no other), and moves a column c in (k, k + 1) by c - k of it
     fr.forEach((A, i) => [...fr.slice(i + 1), ...cards].forEach(B => {
       if (within(A, B) || within(B, A) || !hit(A, B, BOXGAP)) return;
       const a = A.s, b = B.s;
-      if (a.c1 < b.c0 || b.c1 < a.c0) { const [L, R] = a.c1 < b.c0 ? [A, B] : [B, A]; want(wantX, at(L.s.c1), L.x + L.w + BOXGAP - R.x); }
+      if (a.c1 < b.c0 || b.c1 < a.c0) { const [L, R] = a.c1 < b.c0 ? [A, B] : [B, A], k = Math.floor(L.s.c1); want(wantX, k, (L.x + L.w + BOXGAP - R.x) / (Math.min(1, R.s.c0 - k) - L.s.c1 + k)); }
       else if (a.r1 < b.r0 || b.r1 < a.r0) { const [T, U] = a.r1 < b.r0 ? [A, B] : [B, A]; want(wantY, at(T.s.r1), T.y + T.h + BOXGAP - U.y); }
     }));
     if (!Object.keys(wantX).length && !Object.keys(wantY).length) break;
@@ -296,7 +297,7 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
   const headOf = f => Math.min((TB ? f.h : f.w) - 16, headW(f)); // the length of a box's title along its header
   const boxEnd = Object.fromEntries(families.map(f => [f.id, { id: f.id, label: f.label || f.id, box: true, x: f.x, y: f.y, w: f.w, h: f.h, hd: TB ? headOf(f) : 0,
     decoT: TB ? [] : [[f.x + 8, headOf(f)], ...(f.tabs || []).map(t => [t.x - 6, t.w + 12])], decoB: [] }]));
-  const end = id => byId[id] || boxEnd[id], holds = (b, n) => b.box && n !== b && n.x >= b.x && n.y >= b.y && n.x + n.w <= b.x + b.w && n.y + n.h <= b.y + b.h;
+  const endOf = Object.assign(Object.create(null), boxEnd, byId), end = id => endOf[id], holds = (b, n) => b.box && n !== b && n.x >= b.x && n.y >= b.y && n.x + n.w <= b.x + b.w && n.y + n.h <= b.y + b.h;
   const edges = (dg.edges || []).filter(e => { const s = end(e.from), t = end(e.to); if (!s || !t || (e.from === e.to && !loops[e.from])) return false;
     if (holds(s, t) || holds(t, s)) { warn(`no line for edge ${e.id ?? e.from + '->' + e.to}: it joins the box "${(holds(s, t) ? s : t).id}" and something inside it`); return false; }
     return true; }).map(e => ({ ...e, s: end(e.from), t: end(e.to) }));

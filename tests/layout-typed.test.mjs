@@ -142,7 +142,7 @@ registerDiagramType('test.nest', { title: 'nested boxes',
     const nodes = view.nodeIds.filter(id => !skip.has(id)).map(id => ({ id, label: model.nodes.find(n => n.id === id).label, col: pos[id][0], row: pos[id][1], w: 132, h: 56 }));
     const edges = model.edges.filter(e => shown.has(e.from) && shown.has(e.to)).map(e => ({ ...e }));
     return layoutTyped({ nodes, edges, containers: bx, direction: view.direction }, memo); } });
-SHAPE['test-frame'] = { frame: f => `<rect class="test-frame" x="${f.x}" y="${f.y}" width="${f.w}" height="${f.h}"/><text class="family-title" data-t="ft" data-o="${f.id}">${f.title}</text>` };
+SHAPE['test-frame'] = { frame: f => `<rect class="family-box test-frame" x="${f.x}" y="${f.y}" width="${f.w}" height="${f.h}"/><text class="family-title" data-t="ft" data-o="${f.id}">${f.title}</text>` };
 // three levels of boxes, A holding B holding C; c1 at depth 3 has a line to t0 at depth 0, one to c2 in its own box, and one in from
 // b1 a box out; a1 calls t1, and t1 a box's border (B); D, a box beside A with no line, whose title is wider than its card
 const NEST = (extra = {}) => ({ schemaVersion: 2,
@@ -153,6 +153,9 @@ const NEST = (extra = {}) => ({ schemaVersion: 2,
   views: [{ id: 'v', diagram: 'test.nest', nodeIds: ['A', 'B', 'C', 'c1', 'c2', 'b1', 'a1', 't0', 't1', 'D', 'd1'], ...extra }] });
 const fam = g => Object.fromEntries(g.families.map(f => [f.id, f]));
 const within = (o, f) => o.x > f.x && o.y > f.y && o.x + o.w < f.x + f.w && o.y + o.h < f.y + f.h;
+// boxes that do not nest, and a box and a card outside it, keep 32 px apart
+const apart = (g, why) => g.families.forEach(f => [...g.families.filter(o => o !== f && !within(o, f) && !within(f, o)), ...g.nodes.filter(n => !within(n, f))]
+  .forEach(o => assert.ok(!hit(f, o, 32 - 1), `${why}: ${f.id} within 32 px of ${o.id}`)));
 
 test('three levels of boxes, a line from depth 3 to depth 0: laid out clean, right and down; each box holds exactly its contents', () => {
   for (const direction of ['right', 'down']) {
@@ -178,8 +181,20 @@ test('three levels of boxes, a line from depth 3 to depth 0: laid out clean, rig
       assert.ok(t.x + t.w <= f.x + f.w - 8, `${direction}: ${f.id} fits its title`);
       g.edges.forEach(e => { assert.ok(!e.pts.slice(1).some((q, i) => hit(t, { x: Math.min(q[0], e.pts[i][0]), y: Math.min(q[1], e.pts[i][1]), w: Math.abs(q[0] - e.pts[i][0]), h: Math.abs(q[1] - e.pts[i][1]) })), `${direction}: ${e.id} crosses ${f.id}'s title`);
         assert.ok(!e.lbl || !hit(t, e.lbl), `${direction}: ${e.id}'s label on ${f.id}'s title`); });
-      [...g.families.filter(o => o !== f && !within(o, f) && !within(f, o)), ...g.nodes.filter(n => !within(n, f))].forEach(o => assert.ok(!hit(f, o, 32 - 1), `${direction}: ${f.id} within 32 px of ${o.id}`)); });
+    });
+    apart(g, direction);
   }
+});
+
+test('a pin on a half column or a half row: every box still keeps 32 px from other boxes and cards (the room goes after the whole column)', () => {
+  for (const pin of [{ t1: [0.5, 0.5] }, { t1: [0.5, 0] }, { t0: [3.5, 2] }]) apart(layout(NEST({ layout: pin }), 'v'), JSON.stringify(pin));
+});
+
+test('a box named as a member every object inherits (constructor, __proto__, toString) is laid out as any other name', () => {
+  const as = name => JSON.stringify({ ...layout(JSON.parse(JSON.stringify(NEST()).replaceAll('"B"', JSON.stringify(name))), 'v'), ms: 0 }).replaceAll(JSON.stringify(name), '"B"');
+  ['constructor', '__proto__', 'toString'].forEach(name => assert.equal(as(name), as('B'), name));
+  const map = layout({ nodes: [{ id: 'a', label: 'A' }], views: [{ id: 'm', nodeIds: ['a'], containers: [{ id: 'constructor', label: 'K', nodeIds: ['a'] }] }] }, 'm'); // a map's box too
+  assert.deepEqual(map.families.map(f => [f.id, Number.isFinite(f.w)]), [['constructor', true]]);
 });
 
 test('a box\'s pin takes no slot: pins on box ids alone lay the view out as no pins do', () => {
@@ -205,8 +220,8 @@ test('a typed view\'s boxes take the type\'s, not the view\'s own containers; a 
 
 test('svgOf draws a box whose shape has a frame by it, in the group the canvas selects, named; without one, as a map\'s box with its title', () => {
   const g = layout(NEST(), 'v'), s = svgOf(g);
-  assert.match(s, /<g class="family" data-family="B" data-parent="A" role="img" aria-label="Box Beta"><rect class="test-frame" [^>]*\/><text class="family-title" data-t="ft" data-o="B">«box» Beta<\/text><\/g>/);
-  assert.equal((s.match(/class="family-box"/g) || []).length, 0);
+  assert.match(s, /<g class="family" data-family="B" data-parent="A" role="img" aria-label="Box Beta"><rect class="family-box test-frame" [^>]*\/><text class="family-title" data-t="ft" data-o="B">«box» Beta<\/text><\/g>/);
+  assert.equal((s.match(/class="family-box test-frame"/g) || []).length, 4); // the frame's own markup, with the class the canvas outlines a box by
   const plain = svgOf({ ...g, families: g.families.map(({ shape, ...f }) => f) });
   assert.equal((plain.match(/class="family-box"/g) || []).length, 4);
   assert.match(plain, /data-o="C">«box» Gamma<\/text>/);
