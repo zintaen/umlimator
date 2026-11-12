@@ -84,3 +84,12 @@ test('performance (risks.md P1, notes/stage-3.md §10): the view all lays out an
   console.log(`# 20 lifelines, 200 messages, 10 fragments: laid out and drawn in ${runs.map(t => t.toFixed(1)).join(', ')} ms`);
   assert.ok(Math.min(...runs) < 100, `${Math.min(...runs)} ms`);
 });
+
+test('the layout check lets a frame, an operand or a use hold what it meets, but not cross it (from the review of 3.8)', async () => {
+  const { overlapIssues } = await import('../src/layout/audit.js');
+  const n = (label, x, y, w, h, holder) => ({ label, x, y, w, h, ...(holder ? { holder } : {}) });
+  const head = n('head', 0, 0, 100, 40), frame = n('alt', -10, 60, 300, 200, true);
+  assert.deepEqual(overlapIssues({ nodes: [head, frame, n('new head', 20, 80, 100, 40), n('use', 0, 140, 200, 30, true)] }, 'v'), []);
+  assert.deepEqual(overlapIssues({ nodes: [head, n('use', 0, 20, 200, 30, true)] }, 'v'), ['v: nodes "head" and "use" overlap']);
+  assert.deepEqual(overlapIssues({ nodes: [frame, n('opt', 200, 100, 300, 100, true)] }, 'v'), ['v: nodes "alt" and "opt" overlap']);
+});

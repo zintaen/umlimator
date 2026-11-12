@@ -49,8 +49,10 @@ def visual_cmd(tmp, *args):
 
 def upstream_view(d):
     """The model as upstream's validate_map is shown it. umlimator allows two things that visual.py rejects: a card that
-    opens a view the host loads later (#47), and a line that ends on a container (#28). The copy it checks leaves out
-    such an opensView, and lists each container's id as a card's, so a line's other end is still checked (and named)."""
+    opens a view the host loads later (#47), and a line that ends on a container (#28); in schema version 2, also a line
+    that ends on a member and a sequence view's interaction use, which has no ends (F3). The copy it checks leaves out
+    such an opensView and such a use, and lists each container's and member's id as a card's, so a line's other end is
+    still checked (and named)."""
     d = json.loads(json.dumps(d))
     views = d.get("views") or []
     vids = {v.get("id") for v in views}
@@ -69,11 +71,11 @@ def upstream_view(d):
                 members.append(m["id"]); walk(m)
     for n in d.get("nodes", []) if d.get("schemaVersion") == 2 else []:
         if isinstance(n, dict): walk(n)
-    # and a view's own items with no ends (a sequence's interaction use, between its messages in `edges`) are not lines:
-    # upstream would call each "an unknown end" (F3), so the copy leaves them out
+    # and a sequence view's interaction uses (between its messages in `edges`, with no ends) are not lines: upstream would
+    # call each "an unknown end" (F3), so the copy leaves them out; any other line with no ends is still reported
     for v in views if d.get("schemaVersion") == 2 else []:
-        if isinstance(v.get("edges"), list):
-            v["edges"] = [e for e in v["edges"] if not (isinstance(e, dict) and "from" not in e and "to" not in e)]
+        if v.get("diagram") == "uml.sequence" and isinstance(v.get("edges"), list):
+            v["edges"] = [e for e in v["edges"] if not (isinstance(e, dict) and e.get("type") == "uml.InteractionUse")]
     # a member that shares a node's id stays listed, so upstream says the id is used twice, as validate() does
     d["nodes"] = [*d.get("nodes", []), *({"id": b} for b in sorted(boxes - ids)), *({"id": m} for m in members if m not in boxes)]
     return d
@@ -491,7 +493,10 @@ def cmd_drift(a):
 def cmd_trace(a):
     """A trace kept as a numbered view (#96): MODEL.json with a sequence view made from an OpenTelemetry trace in OTLP JSON,
     its calls between cards in time order, each labelled with its span's name and its duration; written to --out (which
-    may be MODEL.json itself). A view with that id is replaced. --match: {service name: card id} where names differ."""
+    may be MODEL.json itself). A view with that id is replaced. --match: {service name: card id} where names differ.
+    --diagram uml.sequence: the view is a UML sequence view, and the model written is a version-2 model (which releases
+    before 0.17.0 refuse); the summary printed adds `diagram` and the helper's `report`. It needs src/uml/convert.js, so
+    a full clone of the repository: without it trace exits with a message."""
     m, trace = (json.loads(Path(f).read_text(encoding="utf-8")) for f in (a.model, a.trace))
     opts = {"view": a.view, "match": json.loads(Path(a.match).read_text(encoding="utf-8")) if a.match else {}, **({"title": a.title} if a.title else {})}
     report = None

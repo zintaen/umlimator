@@ -33,9 +33,9 @@ tests/object.html: the object diagram (2.3): 02-object.json in both themes, thre
 tests/class-editor.html: examples/class-editor.html, the class diagram editor, in a frame: an edit applied by the host, undone and redone, one refused.
 tests/type-hooks.html: a type's definition on the canvas (the sequence spike's §1): a line's props, edits.connect, layout.run, draw's layers.
 tests/timeaxis.html: the time-axis layout and its shapes (3.2): each T case in both themes and three fonts, laid out clean; hit areas on stems, messages, loops, guards, frames and uses.
-tests/sequence.html: the sequence type (3.3): example 11 in both themes and three fonts, laid out clean and named; its reading order; a click on an arrowhead or a loop selects the message; a message by L and by the handle through edits.connect.
+tests/sequence.html: the sequence type (3.3): examples/checkout-sequence.json in both themes and three fonts, laid out clean and named; its reading order; a click on an arrowhead or a loop selects the message; a message by L and by the handle through edits.connect.
 tests/sequence-fixtures.html: the sequence fixtures (3.8): tests/sequence-*.json, every view in both themes and three fonts, laid out clean, named, contrast.
-tests/communication.html: the communication diagram (3.5): example 12 and the fixtures (tests/communication-*.json) in both themes and three fonts, laid out clean, named, in reading order; its gestures by pointer and keyboard on 3.4's canvas, through apply().
+tests/communication.html: the communication diagram (3.5): examples/checkout-communication.json and the fixtures (tests/communication-*.json) in both themes and three fonts, laid out clean, named, in reading order; its gestures by pointer and keyboard on 3.4's canvas, through apply().
 tests/core-diet.html: the markup render() draws from lib/umlimator.js (three version-2 examples) and lib/umlimator-all.js (the class example), as main drew it before src/typed/ left the core (0.18.0).
 examples/edit.html, embed.html, live.html, playground.html, ask.html, replay.html, timelapse.html, drift.html, element.html, notations.html: the host pages load and draw.
 Each test page reports in <pre id="result">{"ok": [...], "fail": [...]}</pre>.

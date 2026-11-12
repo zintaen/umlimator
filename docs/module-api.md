@@ -3273,7 +3273,7 @@ needs in the core (3.4, 3.8).
   (`connect`, `moveTo`, `add`, `remove`) never return an edit that breaks a rule; deleting a connector from the model
   takes the messages it carries in every communication view.
 - **Mermaid sequence diagrams (3.6).** `umlimator.py import` reads a `sequenceDiagram` (Mermaid 12.3.0) through Node into
-  one `uml.sequence` view, and reports what it skipped or approximated; it refuses text over 1 MiB and never throws. The
+  one `uml.sequence` view, and reports what it skipped or approximated; it refuses text over 1,048,576 characters and never throws. The
   writer (internal) writes a view back, with `%% id:`, `%% operand-id:`, `%% reply-to:`, `%% represents:` and
   `%% use:` comments, and `%% not written:` for what Mermaid cannot carry; `read(write(model))` equals the model, ids
   included. A participant's alias is read as its label, as Mermaid shows it.
@@ -3318,6 +3318,6 @@ What moves for a host that upgrades:
   messages, coregions, the seven other operators (drawn by name), an actor drawn as a figure, notes and `autonumber` in
   a sequence view, hiding a message; concurrent numbers and multi-objects in a communication view; XMI. The `map-repo`
   skill, the MCP server and the diff Action meet these types in one package after 0.20.0 (C10, S15).
-- **Size:** `lib/umlimator.js`, what a map host loads, is 186.8 kB with `gzip -9` on this branch, 13.24% over 0.16.0
-  (the plan's budget is 15%); stage 3 added 836 B to it in 3.4 and 41 B in 3.8, the rest is stage 2's. `lib/umlimator-all.js`
-  is 276.8 kB, up from 211.5 kB in 0.18.0.
+- **Size:** `lib/umlimator.js`, what a map host loads, is 186.9 kB with `gzip -9` on this branch, 13.29% over 0.16.0
+  (the plan's budget is 15%); stage 3 added 835 B to it in 3.4, 107 B in #191 and 130 B in 3.8, the rest is stage 2's.
+  `lib/umlimator-all.js` is 276.9 kB, up from 211.5 kB in 0.18.0.

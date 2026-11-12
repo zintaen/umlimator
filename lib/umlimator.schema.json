@@ -1003,6 +1003,41 @@
          "id",
          "type"
         ],
+        "properties": {
+         "type": {
+          "const": "uml.InteractionUse"
+         },
+         "label": {
+          "description": "The interaction it refers to, by name."
+         },
+         "parent": {
+          "description": "The operand (uml.InteractionOperand) that holds it; none at the top level."
+         },
+         "props": {
+          "properties": {
+           "covers": {
+            "description": "The ids of the lifelines it spans, next to each other in the view's nodeIds."
+           },
+           "refersTo": {
+            "description": "The id of the view it refers to."
+           }
+          }
+         }
+        },
+        "not": {
+         "anyOf": [
+          {
+           "required": [
+            "from"
+           ]
+          },
+          {
+           "required": [
+            "to"
+           ]
+          }
+         ]
+        },
         "description": "Schema version 2: an occurrence of a sequence view that is not a line: an interaction use (uml.InteractionUse), its label the interaction it refers to, props.covers the lifelines it spans (next to each other in nodeIds), props.refersTo a view's id, parent its operand."
        }
       ]
@@ -1200,7 +1235,48 @@
      ]
     },
     "fragments": {
-     "description": "Schema version 2: a sequence view's combined fragments (uml.CombinedFragment, props.operator alt, opt, loop, par or break), outermost first; each one's members are its operands (uml.InteractionOperand, label the guard) in order, and its parent is the operand that holds it (uml.sequence, 0.20.0)."
+     "description": "Schema version 2: a sequence view's combined fragments (uml.CombinedFragment, props.operator alt, opt, loop, par or break), outermost first; each one's members are its operands (uml.InteractionOperand, label the guard) in order, and its parent is the operand that holds it (uml.sequence, 0.20.0).",
+     "items": {
+      "properties": {
+       "type": {
+        "examples": [
+         "uml.CombinedFragment"
+        ]
+       },
+       "parent": {
+        "description": "The operand (uml.InteractionOperand) that holds it; none at the top level."
+       },
+       "props": {
+        "properties": {
+         "operator": {
+          "description": "The fragment's operator; any other is a warning.",
+          "examples": [
+           "alt",
+           "opt",
+           "loop",
+           "par",
+           "break"
+          ]
+         }
+        }
+       },
+       "members": {
+        "description": "Its operands, in order.",
+        "items": {
+         "properties": {
+          "type": {
+           "examples": [
+            "uml.InteractionOperand"
+           ]
+          },
+          "label": {
+           "description": "The operand's guard."
+          }
+         }
+        }
+       }
+      }
+     }
     },
     "timeline": {
      "description": "Schema version 2: a timing view's unit, changes and constraints."

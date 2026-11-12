@@ -118,6 +118,11 @@ with tempfile.TemporaryDirectory() as tmp:
        and all(isinstance(e, dict) and e.get("type") == "uml.Message" and "->" not in e["id"] for e in v.get("edges", [])), r)
     rv = cli("render", str(t / "traced-uml.json"), "--out", str(t / "traced-uml.html"))
     ok("trace --diagram uml.sequence · the model renders and its check is clean", rv is not None and not rv.get("problems") and not rv.get("errors"), rv)
+    (t / "bare").mkdir(); (t / "bare" / "umlimator.py").write_bytes((ROOT / "umlimator.py").read_bytes())  # a copy with no src/
+    r = subprocess.run([sys.executable, str(t / "bare" / "umlimator.py"), "trace", str(t / "before.json"), str(tr / "ride-end.json"), "--view", "ride-end",
+                        "--diagram", "uml.sequence", "--out", str(t / "bare" / "out.json")], capture_output=True, text=True)
+    ok("trace --diagram uml.sequence · with no src/, it says it needs a full clone and writes nothing",
+       r.returncode != 0 and "src/uml/convert.js" in r.stderr and not (t / "bare" / "out.json").exists(), (r.returncode, r.stderr[-300:]))
 
     # a repository with three versions of a map, then an edit in the working tree: a time-lapse, and what a pull request changes
     g = t / "repo"; g.mkdir()
@@ -228,7 +233,10 @@ with tempfile.TemporaryDirectory() as tmp:
     # upstream's check still catches what validate() calls wrong: a version-1 model's own `members` are not ends, and a
     # member that shares a node's id is an id used twice (from the review of #162)
     for name, m in [("v1-members", {"nodes": [{"id": "a", "members": [{"id": "a.p"}]}, {"id": "b"}], "edges": [{"from": "a.p", "to": "b"}], "views": [{"id": "v", "nodeIds": ["a", "b"]}]}),
-                    ("v2-twice", {"schemaVersion": 2, "nodes": [{"id": "a", "type": "uml.Class"}, {"id": "b", "type": "uml.Class", "members": [{"id": "a", "type": "uml.Property"}]}], "views": [{"id": "v", "nodeIds": ["a", "b"]}]})]:
+                    ("v2-twice", {"schemaVersion": 2, "nodes": [{"id": "a", "type": "uml.Class"}, {"id": "b", "type": "uml.Class", "members": [{"id": "a", "type": "uml.Property"}]}], "views": [{"id": "v", "nodeIds": ["a", "b"]}]}),
+                    # 3.8: only a sequence view's interaction use may have no ends; a map's or a class view's line still may not
+                    *((f"v2-no-ends-{k}", {"schemaVersion": 2, "nodes": [{"id": "a", "type": "uml.Class"}, {"id": "b", "type": "uml.Class"}], "views": [{"id": "v", "nodeIds": ["a", "b"], "edges": [{"id": "zz", "type": k}]}]})
+                      for k in ("calls", "uml.Association"))]:
         (t / f"{name}.json").write_text(json.dumps(m))
         r = subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "render", str(t / f"{name}.json"), "--out", str(t / f"{name}.html"), "--no-check"], capture_output=True, text=True)
         ok(f"render · {name}: refused, as validate() refuses it", r.returncode != 0 and ("unknown end" in r.stderr + r.stdout or "duplicate" in (r.stderr + r.stdout).lower()), (r.returncode, (r.stderr + r.stdout)[-300:]))

@@ -465,9 +465,10 @@ laid out in Node (`tests/sequence-fixtures.test.mjs`, which asserts each T case 
 under three fonts and both themes (`tests/sequence-fixtures.html`). The communication fixtures were already drawn and
 tested by 3.5, inline in `tests/communication.html`; 3.8 moved them, unchanged, into `tests/communication-minimal.json`
 and `tests/communication-stress.json`, which that page and `tests/communication.test.mjs` now read. Two changes outside
-3.8's Owns made `check` pass on the sequence example: the layout check (`src/layout/audit.js`, in the core, 41 B with
-`gzip -9`) leaves out of its overlap and label checks a node marked `holder`, and `src/uml/sequence.js` marks its
-frames, operands and uses so, as §4.2 says the overlap check should treat them. The PDF's tables leave out
+3.8's Owns made `check` pass on the sequence example: the layout check (`src/layout/audit.js`, in the core, 130 B with
+`gzip -9`) does not count a node marked `holder` as overlapping a node it holds (one crossing it still is), and leaves
+it out of its label checks; `src/uml/sequence.js` marks its frames, operands and uses so, as §4.2 says the overlap
+check should treat them. The PDF's tables leave out
 self-messages and list no fragments (`risks.md` R9); the conformance notes' fidelity tables state it.
 
 ## 10. Performance (P1)

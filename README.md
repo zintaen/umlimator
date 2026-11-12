@@ -58,7 +58,8 @@ drill-down, a data pipeline, an AI agent's skills, and host pages for embedding,
   [what it covers](docs/conformance/uml-communication.md)). Messages are inserted, moved in time, wrapped in a frame and
   deleted on the canvas, by pointer and by key, each gesture an `edit` event; checked by the types' rules; a sequence
   diagram is read from and written to Mermaid's `sequenceDiagram`, and an OpenTelemetry trace becomes one
-  (`umlimator.py trace --diagram uml.sequence`).
+  (`umlimator.py trace --diagram uml.sequence`). The MCP server, the `map-repo` skill and the diff Action learn these
+  types in one package after 0.20.0; until then a reorder of a view's messages shows in a diff as changed, not moved.
 - **Export**: any view as a stand-alone SVG or PNG, in the browser or from the CLI; the whole map as one PDF to hand in
   for a review: a cover with the contents, each view with its legend and tables of its cards, lines and boxes, then the
   rules (`umlimator.py pdf`).
@@ -294,7 +295,7 @@ docker compose config --format json > compose.json && python3 umlimator.py impor
 kubectl get deploy,sts,svc,ing -A -o json > cluster.json && python3 umlimator.py import cluster.json --out model.json
 python3 umlimator.py pdf page.html --out map.pdf                       # every view in one PDF: a cover, each view with its tables, the rules
 python3 umlimator.py trace model.json trace.json --view ride-end --match match.json --out model.json   # an OTLP trace kept as a numbered view
-python3 umlimator.py trace model.json trace.json --view ride-end --match match.json --diagram uml.sequence --out model.json   # ... as a UML sequence diagram
+python3 umlimator.py trace model.json trace.json --view ride-end --match match.json --diagram uml.sequence --out traced.json  # ... as a UML sequence diagram, in a version-2 model
 python3 umlimator.py mcp model.json                                    # an MCP server over stdio, for an AI assistant (below)
 ```
 

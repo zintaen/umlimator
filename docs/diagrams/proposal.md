@@ -366,7 +366,7 @@ vocabulary would have forked every one of those.
   "present": { "book": { "collapsed": ["operations"] } } }
 ```
 
-**A specialized behavioural diagram** (from [`examples/11-sequence.json`](examples/11-sequence.json)):
+**A specialized behavioural diagram** (from `examples/11-sequence.json`, now [`../../examples/checkout-sequence.json`](../../examples/checkout-sequence.json)):
 
 ```jsonc
 { "id": "checkout", "diagram": "uml.sequence",

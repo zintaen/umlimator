@@ -22,8 +22,9 @@ into this type, through the numbered view.
 | 17.7 InteractionUse | `uml.InteractionUse`, inline in `edges`; `props.covers` (lifelines next to each other), `props.refersTo` a view | a box over the lifelines it covers, `ref` in its tag, its label in it |
 
 Rules, each `validate()` problem naming its `rule` and its elements (`notes/stage-3.md` §4.3): `parent-operand`,
-`contiguous` (a fragment's content is one run in `edges`, operand by operand), `message-ends`, `reply-call`,
-`reply-once`, `create-once`, `delete-once`, `covers` (errors); `operator`, `sort`, `empty`, `view` (warnings: another
+`contiguous` (a fragment's content is one run in `edges`, operand by operand), `message-ends`, `reply-call` (a
+warning when a reply names no call), `reply-once`, `create-once`, `delete-once`, `covers` (a warning when a use covers
+none, drawn across all of them) (errors); `operator`, `sort`, `empty`, `view` (warnings: another
 operator or sort is drawn by its name or as a call; an empty operand or fragment; pins, or a direction other than down).
 The shared ones live in `src/uml/interaction.js` and the communication diagram runs them too.
 
