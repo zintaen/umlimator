@@ -18,7 +18,7 @@ Update this table in every pull request that belongs to the plan.
 | Before the plan | 0.16.0 | Fixes already on `main` (#146 to #148, #150) | Released 11 Nov 2026 (cf516c8, npm latest); map-repo pinned to it | #146, #147, #148, #150, #152, #153 |
 | Before the split | 0.16.1 | `validate()` warns of a line from a card to itself (`risks.md` F1) | Released 11 Nov 2026 (8f0240f, GitHub and npm latest); map-repo pinned to it | #155, #156 |
 | 1a Foundation | 0.17.0 | Work packages 1.1 to 1.8 | Released 11 Nov 2026 (555bfdc, GitHub and npm latest); map-repo pinned to it | #154, #157, #158, #160, #161, #162, #163, #164, #165, #166, #167 |
-| 1b Class | 0.18.0 | Work packages 1.9 to 1.12 | 1.9 (#168), 1.10 (#169), 1.11 (#172) and 1.12's findings (#171) merged; the spike's changes in review (#173). Next: moving typed-only code out of the core (C5), then the 0.18.0 release | #168, #169, #171, #172, #173 |
+| 1b Class | 0.18.0 | Work packages 1.9 to 1.12 | All merged, with the spike's changes (#173) and the core's diet (#175). Release in review: this PR | #168, #169, #171, #172, #173, #175, (this PR) |
 | 2 | 0.19.0 | Object, package | Not started | |
 | 3 | 0.20.0 | Sequence, communication | Not started | |
 | 4 | 0.21.0 | Use case, activity, state machine, interaction overview | Not started | |
@@ -264,3 +264,6 @@ node docs/diagrams/examples/check.mjs         # the target examples match model.
   class example from `lib/umlimator-all.js`); the bench's geometry hashes match and `tests/class.html` passes.
   `lib/umlimator.js`: 182,603 B with `gzip -9`, 10.70% over 0.16.0 and 10.65% over 0.16.1 (189,745 B before);
   1,154 bytes above 10%. What more could leave the core changes what it does: see risks.md C5.
+- **12 Nov 2026 (1b complete).** 1.9 to 1.12 and the core's diet merged; 0.18.0's release pull request follows, then
+  map-repo's pin. `lib/umlimator.js` is smaller than 0.17.0's (182,603 B with `gzip -9`, 187,356 B before). Next: the
+  stage 2 and 3 notes (#174), then their work packages.
