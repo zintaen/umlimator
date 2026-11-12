@@ -93,7 +93,7 @@ function routeAudit(geo, where, only, refs) { // only: a set of edges; counts ju
    measures in the DOM (text against its card, a lane's or box's title, edge labels against each other). */
 const box = n => ({ x: n.x, y: n.y, w: n.w, h: n.h });
 function overlapIssues(geo, where, refs) {
-  const issues = [], nodes = geo.nodes, say = teller(issues, refs);
+  const issues = [], nodes = geo.nodes.filter(n => !n.holder), say = teller(issues, refs); // a holder (a sequence's frame) holds what it meets
   for (let i = 0; i < nodes.length; i++) for (let j = i + 1; j < nodes.length; j++) if (hit(box(nodes[i]), box(nodes[j]), -1)) say(`${where}: nodes "${nodes[i].label}" and "${nodes[j].label}" overlap`, nodes[i], nodes[j]);
   return issues;
 }
@@ -117,7 +117,7 @@ function leaveIssues(geo, where, refs) {
 function auditSvg(svg, geo, where) {
   const issues = overlapIssues(geo, where), R = box;
   const T = [...svg.querySelectorAll('text[data-t]')].map(t => { let b; try { b = t.getBBox(); } catch (_) { return null; } return { t: t.dataset.t, o: t.dataset.o, txt: t.textContent, b: { x: b.x, y: b.y, w: b.width, h: b.height } }; }).filter(x => x && x.b.w);
-  const nodes = geo.nodes, faces = Object.fromEntries([...svg.querySelectorAll('.node[data-face]')].map(g => [g.dataset.id, g.dataset.face.split(' ').map(Number)])); // a shape's face (0.15.0)
+  const nodes = geo.nodes.filter(n => !n.holder), faces = Object.fromEntries([...svg.querySelectorAll('.node[data-face]')].map(g => [g.dataset.id, g.dataset.face.split(' ').map(Number)])); // a shape's face (0.15.0)
   T.forEach(a => {
     if (a.t === 'lt' || a.t === 'ft') {
       nodes.forEach(n => { if (hit(a.b, R(n), -1)) issues.push(`${where}: lane "${a.txt}": header covers node "${n.label}"`); });

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """The CLI's change commands end to end (#66, #67, #68): diff of two files, diff --base in a git repository (what the
-diff Action runs on a pull request), drift and timelapse; trace (#96); and pdf (#93), read back with the standard
+diff Action runs on a pull request), drift and timelapse; trace (#96; as a UML sequence view, 3.8); and pdf (#93), read back with the standard
 library. Pages only for the rest: stills (Chrome) are covered by `stills` itself. And the MCP server (#91), driven
 through its pipes as an MCP client drives it, with a page's event stream.
 
@@ -108,6 +108,17 @@ with tempfile.TemporaryDirectory() as tmp:
     ok("trace · a trace becomes the numbered view bike-share keeps, which it replaces where it is", r.get("steps") == 8 and r.get("cards") == 9
        and view(got) == view(bike) and [v["id"] for v in got.get("views", [])] == [v["id"] for v in bike["views"]], r)
 
+    # trace --diagram uml.sequence (3.8): the same trace as a UML sequence view, through the helper (notes/stage-3.md §7)
+    r = cli("trace", str(t / "before.json"), str(tr / "ride-end.json"), "--view", "ride-end", "--match", str(tr / "match.json"),
+            "--diagram", "uml.sequence", "--out", str(t / "traced-uml.json")) or {}
+    got = json.loads((t / "traced-uml.json").read_text(encoding="utf-8")) if (t / "traced-uml.json").is_file() else {}
+    v = view(got) or {}
+    ok("trace --diagram uml.sequence · a version-2 model whose view is a sequence diagram: a lifeline per card, a call per step, ids with no ->",
+       got.get("schemaVersion") == 2 and v.get("diagram") == "uml.sequence" and r.get("steps") == 8 and r.get("cards") == 9 and r.get("report") == []
+       and all(isinstance(e, dict) and e.get("type") == "uml.Message" and "->" not in e["id"] for e in v.get("edges", [])), r)
+    rv = cli("render", str(t / "traced-uml.json"), "--out", str(t / "traced-uml.html"))
+    ok("trace --diagram uml.sequence · the model renders and its check is clean", rv is not None and not rv.get("problems") and not rv.get("errors"), rv)
+
     # a repository with three versions of a map, then an edit in the working tree: a time-lapse, and what a pull request changes
     g = t / "repo"; g.mkdir()
     git = lambda *a: subprocess.run(["git", "-C", str(g), "-c", "user.name=test", "-c", "user.email=test@example.invalid", *a], capture_output=True, text=True, check=True)
@@ -175,7 +186,10 @@ with tempfile.TemporaryDirectory() as tmp:
     ok("pdf --theme dark · its pages are dark to the edge", dark and max(dark[0]) < .15, dark[:3])
     # schema version 2 (1.8): typed models go through the upstream engine's check (a line may end on a member, F3), the
     # page bakes no layout into a typed view (F4), and render, check, stills and pdf work on them
-    for name, path in (("sales-classes", ROOT / "examples" / "sales-classes.json"), ("05-component", ROOT / "docs" / "diagrams" / "examples" / "05-component.json")):
+    # 3.8: a sequence model's interaction use sits among its messages in the view's `edges` with no ends, and the copy
+    # upstream checks leaves it out (F3: it was "an unknown end")
+    for name, path in (("sales-classes", ROOT / "examples" / "sales-classes.json"), ("checkout-sequence", ROOT / "examples" / "checkout-sequence.json"),
+                       ("checkout-communication", ROOT / "examples" / "checkout-communication.json"), ("05-component", ROOT / "docs" / "diagrams" / "examples" / "05-component.json")):
         src = json.loads(path.read_text())
         r = cli("render", str(path), "--out", str(t / f"{name}.html"))
         ok(f"render · a typed model ({name}): the engine accepts lines that end on members, and the check is clean",
@@ -196,6 +210,15 @@ with tempfile.TemporaryDirectory() as tmp:
     ok("pdf · sales-classes: its tables list element types, members and line kinds, not the map's kinds",
        all(flat(s) in txt for s in ["CardKindMembers", "OrderClass- id: UUID", "+ add(book: Book, quantity: Integer)", "MoneyData type+ amount: Decimal",
                                     "From → toLabelKind", "Customer → OrderplacesAssociation", "CardPayment → PaymentGeneralization", "Order → PayableInterface realization"])
+       and "Script" not in txt and "calls" not in txt, txt[:800])
+    # 3.8: a sequence's and a communication's tables give each lifeline's kind and each message's, connectors too (R8)
+    txt = "".join(read("checkout-sequence.pdf"))
+    ok("pdf · checkout-sequence: its tables list each lifeline and each message between two lifelines, by kind",
+       all(flat(s) in txt for s in ["CardKindMembers", "apiLifeline", "From → toLabelKind", "shopper → storefrontcheckout()Message", "payments → apipaidMessage"])
+       and "Script" not in txt and "calls" not in txt, txt[:800])
+    txt = "".join(read("checkout-communication.pdf"))
+    ok("pdf · checkout-communication: its tables list each lifeline, each connector and each message, by kind",
+       all(flat(s) in txt for s in ["apiLifeline", "api → paymentsConnector", "api → paymentscharge(total)Message", "1.1.2.1: paid"])
        and "Script" not in txt and "calls" not in txt, txt[:800])
     # an element with no type is drawn as a class, and its row says so
     bare = json.loads((ROOT / "examples" / "sales-classes.json").read_text()); next(n for n in bare["nodes"] if n["id"] == "order").pop("type")

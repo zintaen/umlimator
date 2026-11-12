@@ -23,7 +23,7 @@ const byId = (a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
 const canon = m => ({ ...m, nodes: [...m.nodes].sort(byId), views: m.views.map(v => (v.fragments ? { ...v, fragments: [...v.fragments].sort(byId) } : v)) });
 
 test('read(write(model)) is example 11, ids included, and nothing is reported', () => {
-  const m = json('../docs/diagrams/examples/11-sequence.json'), text = write(m), back = read(text);
+  const m = json('../examples/checkout-sequence.json'), text = write(m), back = read(text);
   assert.deepEqual(back.report, [], text);
   assert.deepEqual(canon(back.model), canon(project(m, 'checkout')), text);
   // the writer's text is Mermaid's: the main bars by + and -, the use as a note, the created lifeline where it is created

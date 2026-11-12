@@ -18,7 +18,7 @@ import { commProblems, commConnect, commMoveTo, commAdd, commRemove } from '../s
 const PAGE = readFileSync(new URL('./communication.html', import.meta.url), 'utf8');
 const block = id => JSON.parse(new RegExp(`<script type="application/json" id="${id}">([\\s\\S]*?)</script>`).exec(PAGE)[1]);
 const MINIMAL = block('minimal'), STRESS = block('stress');
-const EX = JSON.parse(readFileSync(new URL('../docs/diagrams/examples/12-communication.json', import.meta.url), 'utf8'));
+const EX = JSON.parse(readFileSync(new URL('../examples/checkout-communication.json', import.meta.url), 'utf8'));
 const VIEW = m => m.views[0], errors = m => validate(m).filter(p => p.level === 'error');
 const meets = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
 const rowsOf = g => g.nodes.filter(n => n.shape === 'message-row');

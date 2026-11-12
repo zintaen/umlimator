@@ -12,7 +12,7 @@ import '../src/uml/communication.js'; // empty until 3.5 (#187) merges; then val
 import { sequenceFromView, communicationFromView, sequenceFromSpans } from '../src/uml/convert.js';
 
 const read = p => JSON.parse(readFileSync(new URL(p, import.meta.url)));
-const EX11 = read('../docs/diagrams/examples/11-sequence.json'), EX12 = read('../docs/diagrams/examples/12-communication.json');
+const EX11 = read('../examples/checkout-sequence.json'), EX12 = read('../examples/checkout-communication.json');
 const errors = m => validate(m).filter(p => p.level === 'error');
 const view = (m, id) => m.views.find(v => v.id === id);
 // every id an element of the model has

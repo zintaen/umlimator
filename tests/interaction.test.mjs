@@ -7,7 +7,7 @@ import { readFileSync } from 'node:fs';
 import { interactionWalk, activationBars, messageNumbers, replyCallFor, INTERACTION_RULES, interactionProblems } from '../src/uml/interaction.js';
 
 const read = p => JSON.parse(readFileSync(new URL(p, import.meta.url)));
-const SEQ = read('../docs/diagrams/examples/11-sequence.json'), COM = read('../docs/diagrams/examples/12-communication.json');
+const SEQ = read('../examples/checkout-sequence.json'), COM = read('../examples/checkout-communication.json');
 const copy = x => JSON.parse(JSON.stringify(x));
 
 // a sequence model of lifelines A to E with the given occurrences and fragments

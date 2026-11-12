@@ -1,6 +1,6 @@
 <!doctype html>
 <!-- The communication diagram (3.5, notes/stage-3.md §6) in headless Chrome (tests/embed.py), from lib/umlimator-all.js:
-     docs/diagrams/examples/12-communication.json and the fixtures below (§9: the minimal view; the edge cases, two messages
+     examples/checkout-communication.json and the fixtures below (§9: the minimal view; the edge cases, two messages
      each way on one link, a self-message on a self connector, six messages on one link, a lifeline with no connector, every
      sort; 20 lifelines, 30 connectors and 200 messages) drawn by render() in both themes and three fonts: no overlap, every
      text in its face, no connector through another element, line ends on the lifelines, names, the reading order of the
@@ -352,7 +352,7 @@ const blend = (top, bot) => [0, 1, 2].map(i => top[i] * top[3] + bot[i] * (1 - t
 const lum = c => { const f = v => v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]); };
 const ratio = (fg, bg) => { const [x, y] = [lum(blend(fg, bg)), lum(bg)].sort((p, q) => q - p); return +((x + 0.05) / (y + 0.05)).toFixed(2); };
 const css = (x, k) => rgba(getComputedStyle(x)[k]);
-const EX = await (await fetch('../docs/diagrams/examples/12-communication.json')).json();
+const EX = await (await fetch('../examples/checkout-communication.json')).json();
 const FIX = Object.fromEntries(['minimal', 'stress'].map(k => [k, JSON.parse(document.getElementById(k).textContent)]));
 const CASES = [['example 12', EX, 'checkout'], ['minimal', FIX.minimal, 'v'], ['edge cases', FIX.stress, 'edge-cases'], ['200 messages', FIX.stress, 'all']];
 try {
