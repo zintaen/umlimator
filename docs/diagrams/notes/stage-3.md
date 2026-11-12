@@ -418,6 +418,10 @@ The writer:
 - puts `+` on a call that has a reply and `-` on its last reply, so Mermaid draws the main bars;
 - writes `%% id: <id>` above any lifeline, message, fragment or operand whose id the reader would not derive, as the class writer does;
 - keeps what Mermaid cannot carry in `%% not written:` comments, as the class writer does.
+- as 3.6 built it: `%% operand-id: <id>` above a fragment's opening line names its first operand, which that line
+  starts; `%% reply-to: <call>` above a reply names a call the reader's matching would not find; `%% represents: <type>`
+  keeps a lifeline's `represents` where its alias has no `: Type`; a space at either end of a text is written `#32;`,
+  which the reader's trim keeps. The reader reads `par_over` as `par`, reported.
 
 `read(write(model))` equals the model on the subset, ids included. `tests/import/sequence.mmd` holds every construct on Mermaid's page and pins the report (R4).
 
