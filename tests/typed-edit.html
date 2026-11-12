@@ -3,7 +3,10 @@
      `edit` event whose commands are checked exactly and applied with apply(); the panels follow the type's definition;
      a read-only embed has none of it; a map view keeps its `change` events. Imports src/ to register a test type.
      Boxes on a typed view (2.1, notes/stage-2.md §8): a drop into, out of and between boxes, the Owner field, a box selected
-     as a container; after a re-own every box holds exactly its contents. A second test type gives boxes from `parent`. -->
+     as a container; after a re-own every box holds exactly its contents. A second test type gives boxes from `parent`.
+     What 3.4 adds to lib/umlimator.js (notes/stage-3.md §5.1): key rings on a typed view's lines, in geo.order when its type
+     gives one; lines in the selection (Shift + click, Shift + Enter on a ring); L from a line when the type has edits.connect;
+     no pin with layout.pins false. This page loads no src/typed/edit.js: a line to itself is still refused, as in 0.17.0. -->
 <meta charset="utf-8">
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="../lib/umlimator-theme.css">
@@ -376,6 +379,58 @@ try {
     h.destroy();
   }
   delete document.documentElement.dataset.theme;
+
+  // ---- 3.4, the core's share: lines in the selection, by pointer and by keyboard
+  h = mount({ editable: true });
+  const hit = i => `.edge-g[data-i="${i}"] .hitline`, kr = i => pick(`.line-key[data-i="${i}"]`), ids = () => h.selected.map(r => r.type === 'edge' ? r.ids[0] : r.id);
+  click(hit(0)); click(hit(1), { shiftKey: true });
+  check('3.4: Shift + click adds a line to the selection, both shown selected and their rings pressed', same(ids(), ['ab', 'cd']) && all('.edge-g.hot').length === 2 && all('.line-key[aria-pressed="true"]').length === 2, ids());
+  key('Delete', { shiftKey: true });
+  gives('Shift + Delete with two lines selected: one transaction', [{ op: 'delete', id: 'ab' }, { op: 'delete', id: 'cd' }], m => !m.edges.length);
+  click(hit(1), { shiftKey: true });
+  check('Shift + click on a line selected takes it out', same(ids(), ['ab']), ids());
+  key('Escape'); kr(1).focus(); key('Enter', {}, kr(1)); kr(0).focus(); key('Enter', { shiftKey: true }, kr(0));
+  check('Enter on a ring selects its line, Shift + Enter on another adds it', same(ids(), ['cd', 'ab']), ids());
+  card('a'); click(hit(1), { shiftKey: true }); key('Delete', { shiftKey: true });
+  gives('a card and a line in one selection: one transaction', [{ op: 'delete', id: 'a' }, { op: 'delete', id: 'cd' }], m => !node(m, 'a') && !m.edges.length);
+  click(hit(0)); key('l');
+  check('L on a line of a type with no edits.connect: nothing', h.state.gesture === 'idle');
+  h.destroy();
+
+  // ---- 3.4: a type with its own layout, geo.order, edits.connect and layout.pins false
+  let asked = null, seen = null;
+  registerDiagramType('test.conn', { lines: [{ type: 'test.Msg', label: 'Call' }],
+    edits: { connect(model, view, from, to, at, line) { asked = { from, to, at, line: line.label }; return [{ op: 'add', element: { id: 'n1', type: line.type, from, to }, view: view.id, in: 'view' }]; } },
+    layout: { pins: false, run(model, view, { pos }) { seen = pos;
+      const nodes = view.nodeIds.map((id, i) => ({ id, label: model.nodes.find(n => n.id === id).label, x: 40 + i * 300, y: 40, w: 140, h: 48, k: 'file', col: i, row: 0 })), byId = Object.fromEntries(nodes.map(n => [n.id, n]));
+      const edges = view.edges.map((e, k) => { const a = byId[e.from], b = byId[e.to], y = 160 + 60 * k; return { id: e.id, _id: e.id, from: e.from, to: e.to, s: a, t: b, pts: [[a.x + 70, y], [b.x + 70, y]], aria: `Message ${k + 1}: ${e.label}` }; });
+      return { nodes, edges, groups: [], byId, bounds: { x: 0, y: 0, w: 640, h: 320 }, map: false, order: ['b', 'm1', 'a', 'm2'] }; } } });
+  const CONN = { schemaVersion: 2, nodes: [{ id: 'a', type: 'test.Box', label: 'Alpha' }, { id: 'b', type: 'test.Box', label: 'Beta' }],
+    views: [{ id: 'q', diagram: 'test.conn', nodeIds: ['a', 'b'], layout: { a: [3, 3] }, edges: [{ id: 'm1', type: 'test.Msg', from: 'a', to: 'b', label: 'ask' }, { id: 'm2', type: 'test.Msg', from: 'b', to: 'a', label: 'tell' }] }] };
+  h = mount({ editable: true }, CONN, 'q');
+  check('layout.pins false: the type\'s run gets no pins and no ranking (pos {})', same(seen, {}), seen);
+  check('a typed view\'s key rings follow geo.order, a line\'s named by its aria, after the cards', same(all('.keys > .um-key').map(k => k.dataset.node ?? k.getAttribute('aria-label')), ['b', 'Message 1: ask', 'a', 'Message 2: tell'])
+    && pick('svg').innerHTML.indexOf('class="keys"') > pick('svg').innerHTML.indexOf('class="nodes"') && !all('.node[tabindex="0"]').length, all('.keys > .um-key').map(k => k.outerHTML.slice(0, 100)));
+  const nr = id => pick(`.node-key[data-node="${id}"]`);
+  nr('b').focus(); key('Enter', {}, nr('b'));
+  check('Enter on a node\'s ring selects the node; the ring is pressed', h.selection && h.selection.id === 'b' && nr('b').getAttribute('aria-pressed') === 'true' && pick('.node[data-id="b"]').classList.contains('sel'), h.selection);
+  key('ArrowLeft', {}, nr('b'));
+  check('an arrow from a node\'s ring: the nearest node\'s ring', sr.activeElement === nr('a'));
+  h.focus({ type: 'node', id: 'b', view: 'q' });
+  check('focus() on a node with a ring: its ring', sr.activeElement === nr('b'));
+  click(hit(0)); key('l');
+  check('L on a line, with edits.connect: a line from its far end', h.state.gesture === 'connecting' && pick('.um-live').textContent.startsWith('Line from Beta'), pick('.um-live').textContent);
+  key('a'); key('Enter');
+  check('…Enter: connect asked, with no slot in umlimator.js', same(asked, { from: 'b', to: 'a', at: null, line: 'Call' }) && same(last().commands, [{ op: 'add', element: { id: 'n1', type: 'test.Msg', from: 'b', to: 'a' }, view: 'q', in: 'view' }]), asked);
+  let n2 = ed.length; asked = null;
+  card('a'); key('l'); key('a'); key('l'); key('Enter'); key('Escape');
+  check('a line to itself by keyboard: refused without src/typed/edit.js', ed.length === n2 && !asked);
+  card('a'); { const hp = centre('.um-handle circle'); ptr(pick('.um-handle circle'), 'pointerdown', hp); ptr(stage, 'pointermove', centre('.node[data-id="a"] .n-label')); ptr(stage, 'pointerup', centre('.node[data-id="a"] .n-label')); }
+  check('…and by pointer', ed.length === n2 && !asked && !pick('.um-pick'));
+  card('a'); key('ArrowRight', { altKey: true }); key('ArrowDown', { altKey: true });
+  { const from = centre('.node[data-id="a"] .n-body'); ptr(pick('.node[data-id="a"]'), 'pointerdown', from); for (let i = 1; i <= 4; i++) ptr(stage, 'pointermove', [from[0] + 60 * i, from[1] + 40 * i]); ptr(stage, 'pointerup', [from[0] + 240, from[1] + 160]); }
+  check('layout.pins false: no pin by Alt + arrows or by a drag', ed.length === n2, ed.slice(n2));
+  h.destroy();
 
   // ---- a large model: an editable update() costs about what a read-only one does (risks.md P1)
   const BIG = { schemaVersion: 2, nodes: Array.from({ length: 2000 }, (_, i) => ({ id: 'n' + i, type: 'Bad', label: 'Node ' + i })), edges: [],

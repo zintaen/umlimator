@@ -1,4 +1,4 @@
-import { diagramOf } from '../core/registry.js';
+import { TYPED, diagramOf } from '../core/registry.js';
 import { esc } from '../core/text.js';
 import { arrOf, validate } from '../map/validate.js';
 
@@ -13,7 +13,8 @@ import { arrOf, validate } from '../map/validate.js';
    Keys on a typed view: F2 renames, N adds the palette's first element, L connects (arrows or type a name, Enter),
    Alt + arrows move the card's pin, Delete hides it from this view, Shift + Delete deletes it from the model. A box the type
    gives (registry.js boxes) is selected as a container and takes F2, Delete and the panel as a card does; a card dropped in
-   another box, or the Owner field, gives it a new owner (reparent). */
+   another box, or the Owner field, gives it a new owner (reparent). L on a line starts at its far end, with edits.connect;
+   layout.pins false: no pin. src/typed/edit.js takes gestures over (TYPED.edit, registry.js). */
 
 const GENERIC_NODE = { type: 'core.Node', label: 'Node' }, GENERIC_LINE = { type: 'core.Line', label: 'Line' };
 const isRec = x => x !== null && typeof x === 'object' && !Array.isArray(x);
@@ -23,7 +24,7 @@ function elementsOf(m) {
   const at = new Map(), put = (x, kind, owner) => { if (!isRec(x) || typeof x.id !== 'string' || at.has(x.id)) return;
     at.set(x.id, { x, kind, owner }); arrOf(x.members).forEach(y => put(y, 'member', x)); };
   arrOf(m && m.nodes).forEach(n => put(n, 'node')); arrOf(m && m.edges).forEach(e => put(e, 'edge'));
-  arrOf(m && m.views).forEach(v => { if (isRec(v)) { arrOf(v.nodes).forEach(n => put(n, 'node')); arrOf(v.edges).forEach(e => put(e, 'edge')); } });
+  arrOf(m && m.views).forEach(v => { if (isRec(v)) { [...arrOf(v.nodes), ...arrOf(TYPED.edit && v.fragments)].forEach(n => put(n, 'node')); arrOf(v.edges).forEach(e => put(e, 'edge')); } });
   return at;
 }
 
@@ -61,15 +62,16 @@ function typedEditor(api) {
 
   /* the gestures */
   const label = (ref, value) => { const at = elementsOf(model()), id = idsOf(ref).find(x => at.has(x)); if (id && can('rename')) emit([{ op: 'set', id, path: 'label', value }]); };
-  const pin = (id, c, r) => can('move') && Number.isFinite(c) && Number.isFinite(r) && c >= 0 && r >= 0 && emit([{ op: 'set', view: api.view(), path: ['layout', id], value: [c, r] }]);
+  const pin = (id, c, r) => can('move') && (def().layout || {}).pins !== false && Number.isFinite(c) && Number.isFinite(r) && c >= 0 && r >= 0 && emit([{ op: 'set', view: api.view(), path: ['layout', id], value: [c, r] }]);
   // a drop (notes/stage-2.md §8): in the box it is drawn in, its pin; into another box, or out of every box, a new owner (the
   // box's, else the view's subject or none), in one transaction. The view is then laid out again (§3.2), so a slot read off the
   // picture before would land elsewhere and stretch a box over cards it does not hold: no pin, and a pin it had is removed.
   // into, from: the box under the drop, the box it was in
   const drop = (n, hint, into = null, from = null) => { const L = view().layout; return into === from ? (hint.col !== n.col || hint.row !== n.row) && pin(n.id, hint.col, hint.row)
     : can('move') && emit([{ op: 'reparent', id: n.id, parent: into ?? view().subject ?? null }, ...(isRec(L) && Object.hasOwn(L, n.id) ? [{ op: 'set', view: api.view(), path: ['layout', n.id], value: undefined }] : [])]); };
-  function remove(fromModel) { // Delete: out of this view; Shift + Delete: out of the model (risks.md E5). One transaction for the selection (E2)
-    const ids = [...new Set(api.picked().flatMap(idsOf))]; if (!can('delete') || !ids.length) return false;
+  const picks = () => [...new Set(api.picked().flatMap(idsOf))];
+  function remove(fromModel, ids = picks()) { // Delete: out of this view; Shift + Delete: out of the model (risks.md E5). One transaction for the selection (E2)
+    if (!can('delete') || !ids.length) return false;
     if (fromModel) return emit(ids.map(id => ({ op: 'delete', id })));
     const v = view(), own = new Set([...arrOf(v.nodes), ...arrOf(v.edges)].filter(isRec).map(x => x.id)), at = elementsOf(model()), out = [];
     ids.forEach(id => { const e = at.get(id);
@@ -83,12 +85,12 @@ function typedEditor(api) {
     api.editor({ x: cam.s.cx - 80, y: cam.s.cy - 13, w: 160, h: 26 }, '', value => emit([{ op: 'add', element: { ...typed(t, 'node'), label: value }, view: api.view() }]));
   }
   const hook = k => { const E = def().edits; return isRec(E) && typeof E[k] === 'function' ? E[k] : null; }; // registry.js edits
-  const addLine = (from, to, t) => { const c = hook('connect'); // at (a slot): stage 3's
-    emit(c ? arrOf(c(model(), view(), from, to, null, t)) : [{ op: 'add', element: { ...typed(t, 'line'), from, to, ...(isRec(t.props) ? { props: structuredClone(t.props) } : {}) }, view: api.view() }]); };
-  function connect(from, to) { // the relationship picker, when the type has more than one kind of line
-    if (!can('add') || !from || !to || from === to) return;
+  const addLine = (from, to, t, at) => { const c = hook('connect'); // at: a slot (src/typed/edit.js)
+    emit(c ? arrOf(c(model(), view(), from, to, at, t)) : [{ op: 'add', element: { ...typed(t, 'line'), from, to, ...(isRec(t.props) ? { props: structuredClone(t.props) } : {}) }, view: api.view() }]); };
+  function connect(from, to, ev, at = null) { // the relationship picker, when the type has more than one kind of line
+    if (!can('add') || !from || !to || from === to && !I.self) return;
     const types = lineTypes();
-    if (types.length === 1) addLine(from, to, types[0]); else picker(to, types, t => addLine(from, to, t));
+    if (types.length === 1) addLine(from, to, types[0], at); else picker(to, types, t => addLine(from, to, t, at));
   }
   function closeMenu(back) { const m = menu; if (!m) return false; menu = null; m.remove(); if (back) api.focus(); api.touch(); return true; }
   function picker(at, types, done) {
@@ -124,10 +126,10 @@ function typedEditor(api) {
   function linkKey(e) {
     const K = e.key;
     if (K === 'Escape') { endLink(); say('No line added'); return true; }
-    if (K === 'Enter') { const { from, to } = link; if (!to || to === from) { say('Pick another card first'); return true; } endLink(); connect(from, to); return true; }
+    if (K === 'Enter') { const { from, to } = link; if (!to || to === from && !I.self) { say('Pick another card first'); return true; } endLink(); I.connect(from, to); return true; }
     if (K.startsWith('Arrow')) { const g = api.geo(), n = api.nearest(g.byId[link.to || link.from], K); if (n) { link.to = n.id; mark(); } return true; }
     if (K.length === 1 && !e.altKey) { const now = performance.now(); link.find = (now - link.t < 900 ? link.find : '') + K.toLowerCase(); link.t = now;
-      const hit = api.geo().nodes.find(n => n.id !== link.from && String(api.nameOf(n.id)).toLowerCase().startsWith(link.find));
+      const ns = api.geo().nodes.filter(n => String(api.nameOf(n.id)).toLowerCase().startsWith(link.find)), hit = ns.find(n => n.id !== link.from) || I.self && ns[0];
       if (hit) { link.to = hit.id; mark(); } return true; }
     return false;
   }
@@ -137,11 +139,12 @@ function typedEditor(api) {
     if (e.altKey) { const d = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[K], n = s && s.type === 'node' && api.geo().byId[s.id];
       if (!d || !n) return false; if (Number.isFinite(n.col)) pin(n.id, n.col + d[0], n.row + d[1]); return true; }
     if (K === 'F2' && s && can('rename')) { api.rename(); return true; }
-    if ((K === 'n' || K === 'N') && can('add')) { addNode(0); return true; }
-    if ((K === 'l' || K === 'L') && can('add') && s && s.type === 'node') {
-      link = { from: s.id, to: null, find: '', t: 0 }; api.touch();
-      say(`Line from ${api.nameOf(s.id)}: arrows or type a name, Enter to choose, Escape to stop`); return true; }
-    if (K === 'Delete' && s) { remove(e.shiftKey); return true; }
+    if ((K === 'n' || K === 'N') && can('add')) { I.addNode(0); return true; }
+    const from = s && (s.type === 'node' ? s.id : s.type === 'edge' && hook('connect') && (api.geo().edges.find(x => idsOf(s).includes(x._id)) || {}).to);
+    if ((K === 'l' || K === 'L') && can('add') && from) {
+      link = { from, to: null, find: '', t: 0 }; api.touch();
+      say(`Line from ${api.nameOf(from)}: arrows or type a name, Enter to choose, Escape to stop`); return true; }
+    if (K === 'Delete' && s) { I.remove(e.shiftKey); return true; }
     return false;
   }
 
@@ -240,12 +243,12 @@ function typedEditor(api) {
     panel.className = 'um-editor'; panel.setAttribute('aria-label', 'Edit this diagram');
     panel.innerHTML = '<section class="um-pal" aria-label="Palette"></section><section class="um-props" aria-label="Properties"></section><section class="um-probs" aria-label="Problems"></section><section class="um-els" aria-label="Elements"></section>';
     panel.addEventListener('click', e => { const b = e.target.closest('button, [data-orphans]'); if (!b) return; const d = b.dataset;
-      if (d.add != null) addNode(+d.add);
+      if (d.add != null) I.addNode(+d.add);
       else if (d.go != null) { if (!d.go || !api.selectId(top(d.go))) api.status('Not drawn in this view'); }
       else if (d.show != null) show(d.show);
-      else if (d.del != null) { if (can('delete')) emit([{ op: 'delete', id: d.del }]); }
+      else if (d.del != null) I.remove(true, [d.del]);
       else if (d.up != null || d.down != null) moveMember(d.up ?? d.down, d.up != null ? -1 : 1);
-      else if (d.hide != null || d.kill != null) remove(d.kill != null);
+      else if (d.hide != null || d.kill != null) I.remove(d.kill != null);
       else if (d.orphans != null) { orphans = b.checked; put('.um-els', outline()); } });
     panel.addEventListener('change', e => { if (e.target.dataset.orphans == null) commit(e.target); });
     panel.addEventListener('keydown', e => { e.stopPropagation(); const t = e.target, K = e.key; // the panel's keys stay in it
@@ -262,12 +265,14 @@ function typedEditor(api) {
     refresh();
   }
 
-  return { on, key, label, drop, connect, mount, refresh,
+  const I = { on, key, label, drop, connect, mount, refresh, addNode, remove,
     paint: () => { if (panel && on()) put('.um-props', props()); },
-    add: () => addNode(0),
+    add: () => I.addNode(0),
     cancel: () => { const a = endLink(), b = closeMenu(false); return a || b; },
     linking: () => !!link || !!menu,
     width: () => panel ? panel.offsetWidth + 8 : 0 };
+  if (TYPED.edit) TYPED.edit(I, { api, model, view, def, hook, emit, typed, nodeTypes, picker, picks });
+  return I;
 }
 
-export { typedEditor };
+export { typedEditor, isRec };

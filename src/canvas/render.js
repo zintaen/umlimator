@@ -109,14 +109,15 @@ export function render(container, model, options = {}) {
   const upOf = () => (P.upTarget ? P.upTarget() : trail.length > 1 ? trail[trail.length - 2] : (ctx.V[cur] || {}).parent) || null;
   const nodeRef = id => ({ type: 'node', id, view: cur });
   const copyRef = r => r && { ...r, ...(Array.isArray(r.ids) ? { ids: [...r.ids] } : {}) }; // a host gets copies: the map's Refs stay its own
-  const picked = () => sel ? [...more.map(nodeRef), copyRef(sel)] : []; // every selected thing, the latest last (more: other selected cards)
+  const picked = () => sel ? [...more, sel].map(copyRef) : []; // every selected thing, the latest last (more: the others' refs)
   const say = t => { const l = root.querySelector('.um-live'); if (l) l.textContent = t; };
+  const nodeG = id => [...svg.querySelectorAll('.node')].find(x => x.dataset.id === id), ringOf = id => [...svg.querySelectorAll('.node-key')].find(x => x.dataset.node === id); // no CSS.escape: jsdom has none
   const nameOf = id => ctx.nodeIn(id, cur).label || ((geo.families || []).find(f => f.id === id) || {}).label || id;
   let said = '[]'; // the selection last reported: a select event means it changed, or a click asked again (again)
   const emitSel = (again = false) => {
     const now = JSON.stringify(picked()); if (now === said && !again) return; said = now;
-    say(!sel ? 'Nothing selected' : sel.type === 'node' ? nameOf(sel.id) + (more.length ? `, ${more.length + 1} cards selected` : ', selected')
-      : sel.type === 'edge' ? (e => e ? `Line from ${nameOf(e.from)} to ${nameOf(e.to)}, selected` : 'Line selected')(geo.edges[edgeIndex(sel)]) : `Box ${(svg.querySelector(`.family[data-family="${CSS.escape(sel.id)}"] .family-title`) || {}).textContent || sel.id}, selected`);
+    say(!sel ? 'Nothing selected' : (sel.type === 'node' ? nameOf(sel.id) : sel.type === 'edge' ? (e => e ? `Line from ${nameOf(e.from)} to ${nameOf(e.to)}` : 'Line')(geo.edges[edgeIndex(sel)])
+      : `Box ${(svg.querySelector(`.family[data-family="${CSS.escape(sel.id)}"] .family-title`) || {}).textContent || sel.id}`) + (more.length ? `, ${more.length + 1} ${picked().every(r => r.type === 'node') ? 'cards ' : ''}selected` : ', selected'));
     emit('select', { target: copyRef(sel), targets: picked() });
   };
   const edgeRef = e => ({ type: 'edge', ids: edgeRefIds(e), view: cur });
@@ -255,25 +256,25 @@ export function render(container, model, options = {}) {
     if (can('add') && sel && sel.type === 'node' && geo.byId[sel.id]) { const n = geo.byId[sel.id];
       svg.insertAdjacentHTML('beforeend', `<g class="um-edit um-handle" data-from="${esc(n.id)}"><title>Drag to another card to add a line</title><circle cx="${n.x + n.w + 12}" cy="${n.y + n.h / 2}" r="6"/></g>`); }
     svg.querySelectorAll('.sel,.nb,.hot').forEach(g => g.classList.remove('sel', 'nb', 'hot')); stage.classList.remove('focusing');
-    svg.querySelectorAll('.node').forEach(g => g.setAttribute('aria-pressed', !!sel && sel.type === 'node' && (g.dataset.id === sel.id || more.includes(g.dataset.id))));
-    const li = sel && sel.type === 'edge' ? edgeIndex(sel) : -1; svg.querySelectorAll('.line-key').forEach(k => k.setAttribute('aria-pressed', +k.dataset.i === li));
+    const pk = picked(), ns = pk.filter(r => r.type === 'node').map(r => r.id), li = pk.filter(r => r.type === 'edge').map(edgeIndex);
+    svg.querySelectorAll('.line-key').forEach(k => k.setAttribute('aria-pressed', li.includes(+k.dataset.i))); svg.querySelectorAll('.node, .node-key').forEach(g => g.setAttribute('aria-pressed', ns.includes(g.dataset.id ?? g.dataset.node)));
     if (!sel) return;
     if (sel.type === 'node') {
       const nid = sel.id, ups = new Set(), downs = new Set();
       geo.edges.forEach(e => { if (e.to === nid) ups.add(e.from); if (e.from === nid) downs.add(e.to); });
-      svg.querySelectorAll('.node').forEach(g => { const id = g.dataset.id; g.classList.toggle('sel', id === nid || more.includes(id)); g.classList.toggle('nb', ups.has(id) || downs.has(id)); });
+      svg.querySelectorAll('.node').forEach(g => { const id = g.dataset.id; g.classList.toggle('sel', ns.includes(id)); g.classList.toggle('nb', ups.has(id) || downs.has(id)); });
       svg.querySelectorAll('.edge-g').forEach(g => g.classList.toggle('hot', g.dataset.from === nid || g.dataset.to === nid));
       svg.querySelectorAll('.e-lab').forEach(g => { const e = geo.edges[g.dataset.i]; g.classList.toggle('hot', e.from === nid || e.to === nid); });
       svg.querySelectorAll('.n-port[data-edges]').forEach(p => p.classList.toggle('hot', p.dataset.edges.split(',').some(i => geo.edges[i] && (geo.edges[i].from === nid || geo.edges[i].to === nid)))); // not an ease's fading copy (#67)
       stage.classList.add('focusing');
     } else if (sel.type === 'edge') {
-      const i = edgeIndex(sel), e = geo.edges[i];
-      svg.querySelectorAll(`.edge-g[data-i="${i}"], .e-lab[data-i="${i}"]`).forEach(g => g.classList.add('hot'));
+      const e = geo.edges[edgeIndex(sel)];
       svg.querySelectorAll('.node').forEach(g => g.classList.toggle('nb', g.dataset.id === e.from || g.dataset.id === e.to));
       stage.classList.add('focusing');
     } else if (sel.type === 'container') {
       const f = svg.querySelector(`.family[data-family="${CSS.escape(sel.id)}"]`); if (f) f.classList.add('sel');
     }
+    li.forEach(i => svg.querySelectorAll(`.edge-g[data-i="${i}"], .e-lab[data-i="${i}"]`).forEach(g => g.classList.add('hot'))); // the lines selected
   }
   function select(ref, o = {}) {
     if (ref && (ref.type === 'chip' || ref.type === 'badge')) ref = ref.container != null ? { type: 'container', id: ref.container } : nodeRef(ref.node); // a chip or badge: its card (box)
@@ -297,11 +298,14 @@ export function render(container, model, options = {}) {
     return best;
   }
 
-  /* several cards: Shift (or Cmd / Ctrl) + click adds a card to the selection, or takes it out */
-  function toggle(id) {
-    if (id === sel.id) { if (!more.length) return select(null); sel = nodeRef(more.pop()); }
-    else if (more.includes(id)) more = more.filter(x => x !== id);
-    else { more.push(sel.id); sel = nodeRef(id); }
+  /* several cards: Shift (or Cmd / Ctrl) + click adds a card to the selection, or takes it out; on a typed view a line too, and
+     Shift + Enter on its ring (notes/stage-3.md §5.1). ref: a nodeRef or edgeRef */
+  const kinds = () => typed() ? ['node', 'edge'] : ['node'], refKey = r => JSON.stringify([r.type, r.id, r.ids]);
+  function toggle(ref) {
+    const k = refKey(ref);
+    if (k === refKey(sel)) { if (!more.length) return select(null); sel = more.pop(); }
+    else if (more.some(r => refKey(r) === k)) more = more.filter(r => refKey(r) !== k);
+    else { more.push(sel.type === 'node' ? nodeRef(sel.id) : sel); sel = ref; }
     sub = null; selectNew = false; paint(); emitSel();
   }
 
@@ -428,7 +432,7 @@ export function render(container, model, options = {}) {
     if (cur && ctx.geoCache[cur] && ctx.geoCache[cur].shapes !== noteFor(cur)) {
       const keep = sel, keepMore = more, touched = cam.touched;
       mount(cur); cam.set({}); cam.touched = touched;
-      if (keep && exists(keep)) { sel = keep; more = keep.type === 'node' ? keepMore.filter(id => geo.byId[id]) : []; paint(); }
+      if (keep && exists(keep)) { sel = keep; more = keepMore.filter(exists); paint(); }
       emitSel(); }
     touch(); return true;
   }
@@ -444,7 +448,7 @@ export function render(container, model, options = {}) {
 
   /* keys on the canvas; the page forwards the same keys when the focus is elsewhere */
   function key(e) {
-    const k = e.key, g = e.target && e.target.closest && e.target.closest('.node');
+    const k = e.key, nk = e.target && e.target.closest && e.target.closest('.node-key'), g = nk ? nodeG(nk.dataset.node) : e.target && e.target.closest && e.target.closest('.node'); // a node's ring (svg.js): the node
     if (k === 'Escape' && cancelGesture()) return true; // Escape stops a gesture in progress before anything else
     if (story) { const r = storyKey(e); if (r != null) return r; } // a story's keys first (#69)
     if (k === 'Escape' && trip && trip.kind) { const was = trip.kind; endTrip(); say(was === 'replay' ? 'Replay stopped' : 'Tour stopped'); return true; } // Esc ends a tour or a replay first
@@ -452,7 +456,8 @@ export function render(container, model, options = {}) {
     if (e.altKey) return false;
     const lk = e.target && e.target.closest && e.target.closest('.line-key'), tk = e.target && e.target.closest && e.target.closest('.tab-key, .family [data-badge]');
     const ck = e.target && e.target.closest && e.target.closest('.chip-key'), card = ck && [...svg.querySelectorAll('.node')].find(x => x.dataset.id === ck.dataset.node);
-    if (k === 'Enter' && lk && geo.edges[+lk.dataset.i]) select(edgeRef(geo.edges[+lk.dataset.i]), { again: true }); // as a click on the line (#43)
+    const add = k === 'Enter' && e.shiftKey && sel && kinds().includes(sel.type) && typed(); // Shift + Enter: into the selection, or out of it
+    if (k === 'Enter' && lk && geo.edges[+lk.dataset.i]) add ? toggle(edgeRef(geo.edges[+lk.dataset.i])) : select(edgeRef(geo.edges[+lk.dataset.i]), { again: true }); // as a click on the line (#43)
     else if (k === 'Enter' && tk) { const fam = tk.closest('.family'), ref = badgeRef(tk.dataset.node, fam ? fam.dataset.family : null, +tk.dataset.badge); if (activate(ref, e)) select(ref); }
     else if (k === 'Enter' && card) { const ref = chipRef(card, +ck.dataset.chip); if (activate(ref, e)) select(ref); } // as a click on the chip
     else if (k === 'e' || k === 'E') return gesture(g ? g.dataset.id : sel && (sel.type === 'node' || sel.type === 'container') ? sel.id : null, 'key'); // unfold here, or fold back (#71)
@@ -462,11 +467,11 @@ export function render(container, model, options = {}) {
     else if (k === '1') cam.actual();
     else if (k === 'Enter' && (g || (sel && sel.type === 'node'))) { // a selected card opens its inner view; without one it is selected again, as a click does
       const id = g ? g.dataset.id : sel.id;
-      if (sel && sel.type === 'node' && sel.id === id && ctx.opensOf(id, cur)) open(id); else select(nodeRef(id), { again: true }); }
+      if (add) toggle(nodeRef(id)); else if (sel && sel.type === 'node' && sel.id === id && ctx.opensOf(id, cur)) open(id); else select(nodeRef(id), { again: true }); }
     else if (k === 'Escape' || k === 'Backspace') { if (sel) select(null); else up(); }
     else if ((k === 'f' || k === 'F') && !reducedMotion()) setFlow(!stage.classList.contains('flowing')); // under reduced motion no flow is drawn, and ≋ isn't offered
     else if (k.startsWith('Arrow') && g && geo.byId[g.dataset.id]) { const to = nearest(geo.byId[g.dataset.id], k); if (!to) return false;
-      const tg = svg.querySelector(`.node[data-id="${CSS.escape(to.id)}"]`); tg.focus({ preventScroll: true }); cam.reveal({ x: to.x, y: to.y, w: to.w, h: to.h }); }
+      (ringOf(to.id) || nodeG(to.id)).focus({ preventScroll: true }); cam.reveal({ x: to.x, y: to.y, w: to.w, h: to.h }); }
     else if (k.startsWith('Arrow')) { const d = 80, m = { ArrowLeft: [d, 0], ArrowRight: [-d, 0], ArrowUp: [0, d], ArrowDown: [0, -d] }[k]; if (!m) return false; cam.pan(m[0], m[1], true); }
     else return false;
     readerMoved(); // a key the map acted on: a story playing waits
@@ -611,7 +616,7 @@ export function render(container, model, options = {}) {
   ['pointerup', 'pointercancel'].forEach(t => stage.addEventListener(t, () => { pressed = false; }, true));
   function focusMap(ref = sel, reveal = true) {
     const line = ref && ref.type === 'edge' && svg && svg.querySelector(`.line-key[data-i="${edgeIndex(ref)}"]`); if (line) return line.focus({ preventScroll: true }); // a line (#43)
-    const id = ref && (ref.type === 'node' ? ref.id : ref.node), g = id && svg && [...svg.querySelectorAll('.node')].find(x => x.dataset.id === id); // no CSS.escape: jsdom has none
+    const id = ref && (ref.type === 'node' ? ref.id : ref.node), g = id && svg && (ringOf(id) || nodeG(id));
     if (!g) return stage.focus({ preventScroll: true });
     g.focus({ preventScroll: true }); const n = geo.byId[id]; if (n && reveal) cam.reveal({ x: n.x, y: n.y, w: n.w, h: n.h });
   }
@@ -647,7 +652,7 @@ export function render(container, model, options = {}) {
     if (stale) { stale = false; swallow = performance.now() + 400; return; } // the release of a gesture Escape or a new picture cancelled
     if (conn) { const c = conn; conn = null; if (c.path) c.path.remove(); swallow = performance.now() + 400;
       const g = root.elementFromPoint(e.clientX, e.clientY), t = g && g.closest && g.closest('.node');
-      if (t && t.dataset.id !== c.from && geo.byId[t.dataset.id]) typed() ? tx.connect(c.from, t.dataset.id) : change({ op: 'add', kind: 'edge', from: c.from, to: t.dataset.id });
+      if (t && geo.byId[t.dataset.id]) typed() ? tx.connect(c.from, t.dataset.id, e) : t.dataset.id !== c.from && change({ op: 'add', kind: 'edge', from: c.from, to: t.dataset.id }); // a typed view: maybe to itself (I.self, edit.js)
       return; }
     if (!drag) return;
     const d = drag; drag = null;
@@ -714,7 +719,7 @@ export function render(container, model, options = {}) {
     sub = null;
     if (ref) {
       if (!activate(ref, e)) return; // the host took the click (a chip as a link, say): the selection stays as it was
-      if (ref.type === 'node' && (e.shiftKey || e.metaKey || e.ctrlKey) && sel && sel.type === 'node') return toggle(ref.id); // several cards
+      if ((e.shiftKey || e.metaKey || e.ctrlKey) && sel && kinds().includes(ref.type) && kinds().includes(sel.type)) return toggle(ref); // several cards, and lines
       return select(ref, { again: ref.type === 'node' }); }
     select(null);
     if (P.onBackground) P.onBackground();
@@ -850,7 +855,7 @@ export function render(container, model, options = {}) {
     if (box) unfolded(box, true); // a card asked to unfold earlier: its box is selected
     else if (wantNew && use && p.op === 'add' && geo.byId[card]) select(nodeRef(card), { reveal: false }); // the card added, as the reader named it
     else { // the selection that is still drawn stays, and a select event comes only if it changed (unfolding: the caller says)
-      if (keep && exists(keep)) { sel = keep; more = keep.type === 'node' ? keepMore.filter(id => geo.byId[id]) : []; paint(); }
+      if (keep && exists(keep)) { sel = keep; more = keepMore.filter(exists); paint(); }
       if (!unfolding) emitSel(); }
     if (!relayout) easeIn(...prev); // a font that came in late moves nothing on purpose: no ease
     touch();

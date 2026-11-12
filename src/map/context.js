@@ -378,7 +378,7 @@ function mapContext(model, opts = {}) {
     if (T) { // the type's layout (registry.js), in the host's measure (R2)
       const L = T.layout, memo = memos[vid] ||= {}, k = !override && L.key ? L.key(D, v) : null;
       if (k != null && memo.runKey === k) return memo.runGeo;
-      const pos = override || (v.layout && L.pins !== false ? fillLayout(vid, v.layout) : (layoutCache[vid] ||= autoPos(vid)));
+      const pos = override || (L.pins === false ? {} : v.layout ? fillLayout(vid, v.layout) : (layoutCache[vid] ||= autoPos(vid))); // pins: false, no ranking either (notes/stage-3.md Q9)
       const g = L.run ? L.run(D, v, { measure: M, pos, memo }) : L({ model: D, view: v, pos, memo });
       if (k != null) Object.assign(memo, { runKey: k, runGeo: g });
       return g;

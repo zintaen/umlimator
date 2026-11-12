@@ -29,8 +29,8 @@ function registerDiagramType(name, def = {}) {
 const diagramOf = view => TYPES.get(view && view.diagram != null ? view.diagram : 'map') || null;
 
 /* What only a registered type's geometry uses, installed at load time by the files under src/typed/, which only
-   lib/umlimator-all.js holds (tools/build.mjs): rows, rooms and routes in layoutPass, a typed line's ends in svgOf. Empty in
-   umlimator.js, where no view is laid out but as a map (risks.md C5) */
+   lib/umlimator-all.js holds (tools/build.mjs): rows, rooms and routes in layoutPass, a typed line's ends in svgOf, the
+   gestures of edit.js it takes over (edit). Empty in umlimator.js, where no view is laid out but as a map (risks.md C5) */
 const TYPED = {};
 
 const propRefs = type => Object.assign({}, ...[...TYPES.values()].map(T => T.refs && Object.hasOwn(T.refs, type) && T.refs[type]));
