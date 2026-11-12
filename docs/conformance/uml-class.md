@@ -1,6 +1,6 @@
 # Conformance: the UML class diagram
 
-Release 0.18.0 (stage 1, `docs/diagrams/plan.md` §4). Support is claimed by level (decision D3): **render** and
+Release 0.18.0 (stage 1, `docs/diagrams/plan.md` §4), with packages drawn as nesting from 0.19.0 (stage 2). Support is claimed by level (decision D3): **render** and
 **edit** on the subset below; **interchange** with Mermaid's `classDiagram` (Mermaid 12.3.0) on the same subset. Not
 XMI, and no UML diagram interchange (`docs/diagrams/proposal.md` §8.1).
 
@@ -28,25 +28,28 @@ it as plain cards with a warning. The vocabulary is `docs/diagrams/model.md` §2
 | 7.7 Dependency, Usage | `uml.Dependency`, from the client; `props.stereotypes: ["use"]` | a dashed line, an open arrowhead, «use» as its label |
 | 7.2 Comment | `uml.Comment`, `uml.CommentLink` from the comment | a note with a folded corner; a dashed line with no ends |
 | 12.3 stereotype notation, as text | `props.stereotypes` on any element or line | «entity» over a name, before a line's label |
-| 12.2 Package | `uml.Package`; ownership is `parent` | a named box, its classes beside it, until 0.19.0 |
+| 12.2 Package | `uml.Package`; ownership is `parent` | from 0.19.0: a package owning something the view shows is a box holding it, its name in a tab; one owning nothing shown is a closed folder (`uml-package.md`). Names are qualified from the nearest shown owner, the view's `subject`, or the top (`sales::Order`). Until 0.19.0: a named box, its classes beside it |
 
 Rules, each `validate()` problem naming its `rule` and its elements (`docs/diagrams/proposal.md` §8.3):
 `member-names`, `classifier-names`, `multiplicity`, `generalization-cycle`, `generalization-kinds`, `realization-target`,
-`interface-composite`, `composite-multiplicity`, `member-kinds`, `comment-link`; ownership cycles and references that do
-not resolve are the core's checks.
+`interface-composite`, `composite-multiplicity`, `member-kinds`, `comment-link`; from 0.19.0, as class views draw boxes,
+`owner-kinds`, `line-inside` and `own-boxes` (warnings, `uml-package.md`); ownership cycles and references that do not
+resolve are the core's checks.
 
-A view may set `direction: "down"`, pins in `layout`, and per element in `present`: `collapsed` (compartments not
-drawn) and `rows` (at most n rows, then "+k more").
+A view may set `direction: "down"`, pins in `layout`, `subject` (names are qualified from it), and per element in
+`present`: `collapsed` (compartments not drawn) and `rows` (at most n rows, then "+k more"). A line between a package and
+something it holds is not drawn (`line-inside`).
 
 ## Left out
 
 - Templates and template bindings; association classes; n-ary associations; qualifiers; signals and receptions;
   constraints and OCL; generalization sets; nested classifiers (a class's `parent` is a package, never a class).
-- Object diagrams (stage 2); packages drawn with their contents inside them, and package import and merge (stage 2).
-  Until 0.19.0 a package is a named box, and the view draws its classes beside it. From 0.19.0 every class view draws
-  a package with something it owns shown as a box holding it (a package with nothing it owns shown stays closed), and
-  qualifies names (`sales::Order`), so this picture changes, by the maintainer's decision
-  (`docs/diagrams/notes/stage-2.md` §10.1).
+- Object diagrams and package import and merge: their own types from 0.19.0 (`uml-object.md`, `uml-package.md`).
+  Until 0.19.0 a package in a class view is a named box, and the view draws its classes beside it. From 0.19.0 every
+  class view draws a package with something it owns shown as a box holding it (a package with nothing it owns shown
+  stays closed), and qualifies names (`sales::Order`), so a 0.18.0 class picture with packages changes, by the
+  maintainer's decision (`docs/diagrams/notes/stage-2.md` §10.1). `examples/sales-classes.json` draws `sales` as a box
+  holding its nine classes, and its "Payments only" view names its classes plainly from its `subject`.
 - Notation the subset does not draw: property modifiers (`{readOnly}`, `{ordered}`, `{unique}`), derived unions,
   the association-end ownership dot, an association's name-direction triangle, end visibility, ball-and-socket
   interfaces (the component diagram's, stage 5), stereotype icons.
@@ -56,14 +59,16 @@ drawn) and `rows` (at most n rows, then "+k more").
 - A member held in the model whose label has a space, or whose type holds `=`, prints a line the member syntax does not
   read back (`docs/diagrams/README.md`, log of 1.9).
 - Lines cross where the layered layout finds no better order, more often past 40 elements. In `tests/class-stress.json`
-  the `edge-cases` view (13 elements, 15 lines) has 2 crossings, among the four lines between Order and Customer; the
-  `all` view (50 elements, 57 lines) has 29: 4 where those lines meet Order's line to Shipment, 25 elsewhere (Review's
-  and Shelf's lines to Book, generalizations to Entity across Customer's and Order's lines, and others).
+  (from 0.19.0 its packages `shop` and `catalog` are boxes, and it gained two classes so that 50 nodes are still laid
+  out) the `edge-cases` view (13 elements, 12 of them drawn as nodes and `shop` as a box, 15 lines) has 3 crossings, all
+  among the four lines between Order and Customer; the `all` view (52 elements, 50 drawn nodes and 2 boxes, 59 lines)
+  has 19: generalizations to Entity and Person across Customer's and Order's lines, Customer's line to Account across
+  Invoice's, Shipment's and Gift's, and others. Before 0.19.0 they were 2 and 29 on 13 and 50 elements.
   `tests/class-fixtures.test.mjs` pins both counts (`docs/diagrams/risks.md` L4).
 
 ## Writers: what each shows of a class diagram
 
-Measured on `examples/sales-classes.json` (0.18.0): `toSVG()` and `toPNG()` in Chrome, light and dark; `umlimator.py
+Measured on `examples/sales-classes.json` (0.18.0; its PDF tables and packages again on 0.19.0): `toSVG()` and `toPNG()` in Chrome, light and dark; `umlimator.py
 stills` and `umlimator.py pdf` on its rendered page. Each file was opened and looked at.
 
 | | SVG: `handle.toSVG()`, `umlimator.py stills` | PNG: `handle.toPNG()`, `umlimator.py stills` | PDF: `umlimator.py pdf` |
@@ -79,8 +84,8 @@ stills` and `umlimator.py pdf` on its rendered page. Each file was opened and lo
 | Accessible names | Each element's `aria-label` kept; the lines' `<title>` removed, as for maps | None | None |
 | Theme | The page's, light or dark, with every colour resolved (no CSS variables), so the file opens alone | The page's | `--theme`, light by default |
 | Views | One per call (`view`); `stills` writes every view | One per call; `stills` every view, at 2x | Every view (`--views` picks), each on its own page |
-| Packages | A named box, its classes beside it (until 0.19.0) | The same | The same |
-| Tables | None | None | The map's tables of cards and lines: every element's kind reads "Script" and a line with no label reads "calls"; members are not listed. The picture above them is right |
+| Packages | From 0.19.0 a box holding its classes, its name in a tab (until 0.19.0 a named box, its classes beside it) | The same | The same |
+| Tables | None | None | Per type from 0.19.0 (R8): each element's kind ("Class", "Data type"; an element with no type counts as a class) and its members as the type prints them; each line's kind ("Association", "Generalization"). Until 0.19.0 the map's tables: every kind read "Script", a line with no label "calls", and no members |
 
 The site builds every example's stills and PDF ([zintaen.github.io/umlimator](https://zintaen.github.io/umlimator/)),
 this one's among them.
@@ -96,6 +101,6 @@ editing gesture has a key (`docs/editing.md`).
 ## Tests
 
 `tests/class.test.mjs` and `tests/class.html` (the type, its rules, layout under three fonts and both themes, editing
-through `apply()`); `tests/class-fixtures.test.mjs` with `tests/class-minimal.json` and `tests/class-stress.json`
+through `apply()`, the `sales` box); `tests/package.test.mjs` (boxes and qualified names in class views); `tests/class-fixtures.test.mjs` with `tests/class-minimal.json` and `tests/class-stress.json`
 (`risks.md` G1, and P1's budget); `tests/mermaid-class.test.mjs` (interchange); `tests/class-editor.html` (the host
 page); `tests/cli.py` (render, check, stills and pdf).
