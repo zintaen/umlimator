@@ -19,8 +19,8 @@ Update this table in every pull request that belongs to the plan.
 | Before the split | 0.16.1 | `validate()` warns of a line from a card to itself (`risks.md` F1) | Released 11 Nov 2026 (8f0240f, GitHub and npm latest); map-repo pinned to it | #155, #156 |
 | 1a Foundation | 0.17.0 | Work packages 1.1 to 1.8 | Released 11 Nov 2026 (555bfdc, GitHub and npm latest); map-repo pinned to it | #154, #157, #158, #160, #161, #162, #163, #164, #165, #166, #167 |
 | 1b Class | 0.18.0 | Work packages 1.9 to 1.12 | 1.9 (#168), 1.10 (#169), 1.11 (#172) and 1.12's findings (#171) merged; the spike's changes in review (#173). Next: moving typed-only code out of the core (C5), then the 0.18.0 release | #168, #169, #171, #172, #173 |
-| 2 | 0.19.0 | Object, package | Not started | |
-| 3 | 0.20.0 | Sequence, communication | Not started | |
+| 2 | 0.19.0 | Object, package | Design note approved ([`notes/stage-2.md`](notes/stage-2.md)); work packages next | #174 |
+| 3 | 0.20.0 | Sequence, communication | Design note approved ([`notes/stage-3.md`](notes/stage-3.md)); work packages next | #174 |
 | 4 | 0.21.0 | Use case, activity, state machine, interaction overview | Not started | |
 | 5 | 0.22.0 | Component, deployment, composite structure | Not started | |
 | 6 | 0.23.0 | Profile, timing | Not started | |
@@ -60,7 +60,7 @@ All on 11 Nov 2026, by the maintainer. The options that were weighed are in `pro
 | [`risks.md`](risks.md) | Findings that changed the plan, risks, edge cases, and what to do about each |
 | [`ui-draft.html`](ui-draft.html) | A drawing of the editor: views, palette, canvas, properties, problems |
 | [`examples/`](examples/) | One target model per diagram type, `01-class.json` to `28-azure.json`, and `check.mjs`, which checks them against `model.md`; a type's file moves to [`../../examples/`](../../examples/) when it draws (`check.mjs` lists where: `01-class.json` is `examples/sales-classes.json`) |
-| [`notes/`](notes/) | Design notes, one per stage, written when the stage starts: [`stage-1.md`](notes/stage-1.md); the sequence spike's findings, [`spike-sequence.md`](notes/spike-sequence.md) |
+| [`notes/`](notes/) | Design notes, one per stage, written when the stage starts: [`stage-1.md`](notes/stage-1.md), [`stage-2.md`](notes/stage-2.md), [`stage-3.md`](notes/stage-3.md); the sequence spike's findings, [`spike-sequence.md`](notes/spike-sequence.md) |
 
 ## Picking up a work package
 
@@ -264,3 +264,7 @@ node docs/diagrams/examples/check.mjs         # the target examples match model.
   class example from `lib/umlimator-all.js`); the bench's geometry hashes match and `tests/class.html` passes.
   `lib/umlimator.js`: 182,603 B with `gzip -9`, 10.70% over 0.16.0 and 10.65% over 0.16.1 (189,745 B before);
   1,154 bytes above 10%. What more could leave the core changes what it does: see risks.md C5.
+- **12 Nov 2026 (notes 2 and 3).** The design notes for stages 2 and 3 were drafted in parallel, each critiqued by an
+  independent agent and revised; the maintainer approved them (#174), with stage 2's exception (S9): class views draw
+  packages as nesting from 0.19.0. Both assume the core's diet (C5) lands first, and stage 3's notes on order with stage
+  2.
