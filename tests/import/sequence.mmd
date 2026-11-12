@@ -1,0 +1,111 @@
+---
+title: Every construct on Mermaid's sequence diagram page
+config:
+  look: classic
+---
+%% Modelled on Mermaid 12.3.0's docs/syntax/sequenceDiagram.md (MIT), one block per section of that page.
+%% The pinned report of what is not read as written is in tests/mermaid-sequence.test.mjs.
+sequenceDiagram
+    accTitle: Every construct
+    accDescr {
+        A sequence diagram that uses each construct once
+    }
+    autonumber
+    %% Participants, actors, and the participant types
+    participant Alice
+    actor Bob
+    participant Boundary@{ "type" : "boundary" }
+    %% Aliases, external and inline
+    participant J as John
+    participant API@{ "type": "boundary" } as Public API
+    participant Auth@{ "type": "control", "alias": "Auth Service" }
+    participant api as api : ShopApi
+    %% Grouping
+    box Purple Alice & John
+    participant Carol
+    participant Dave
+    end
+    %% Messages: every arrow
+    Alice->J: Solid line without arrow
+    J-->Alice: Dotted line without arrow
+    Alice->>J: Solid line with arrowhead
+    J-->>Alice: Dotted line with arrowhead
+    Alice<<->>J: Both ways
+    Alice<<-->>J: Both ways, dotted
+    Alice-xJ: Solid with a cross
+    Alice--xJ: Dotted with a cross
+    Alice-)J: Solid, open arrow
+    Alice--)J: Dotted, open arrow
+    Alice-|\J: A half arrow
+    %% Central connections
+    Alice->>()J: Hello John
+    %% Activations, two ways
+    Alice->>J: Hello John, how are you?
+    activate J
+    J-->>Alice: Great!
+    deactivate J
+    Alice->>+J: John, can you hear me?
+    J-->>-Alice: Hi Alice, I can hear you!
+    Alice-)+J: See you later!
+    %% Creation and destruction
+    create participant Carl
+    Alice->>Carl: Hi Carl!
+    create actor D as Donald
+    Carl->>D: Hi!
+    destroy Carl
+    Alice-xCarl: We are too many
+    destroy Bob
+    Bob->>Alice: I agree
+    %% Notes, and an interaction use the writer marks
+    Note right of John: Text in note
+    Note over Alice,J: A typical interaction
+    %% use: welcome refersTo=greeting
+    Note over Alice,J: ref Say hello
+    %% Line breaks and entity codes
+    Alice->>J: Hello John,<br/>how are you?
+    Alice->>J: I #9829; you #35;1#59; truly
+    %% Loops, alt, opt
+    loop Every minute
+        J-->Alice: Great!
+    end
+    alt is sick
+        J->>Alice: Not so good :(
+    else is well
+        J->>Alice: Feeling fresh like a daisy
+    else
+        J->>Alice: Unsure
+    end
+    opt Extra response
+        J->>Alice: Thanks for asking
+    end
+    %% Parallel, nested
+    par Alice to Bob
+        Alice->>Carol: Go help John
+    and Alice to John
+        Alice->>J: I want this done today
+        par John to Charlie
+            J->>Carol: Can we do this today?
+        and John to Diana
+            J->>Dave: Can you help us today?
+        end
+    end
+    %% Critical region, break, background highlighting
+    critical Establish a connection to the DB
+        Alice-->Auth: connect
+    option Network timeout
+        Auth-->Auth: Log error
+    end
+    break when the booking process fails
+        API-->Alice: show failure
+    end
+    rect rgb(191, 223, 255)
+        Alice->>+API: Rect
+        API-->>-Alice: Done
+    end
+    %% Semicolons end a statement
+    Alice->>Dave: one; Dave->>Alice: two
+    %% Actor menus
+    link Alice: Dashboard @ https://dashboard.contoso.com/alice
+    links Alice: {"Wiki": "https://wiki.contoso.com/alice"}
+    else stray
+    end
