@@ -1,6 +1,6 @@
 <!doctype html>
 <!-- The sequence type (3.3, notes/stage-3.md §4, §5) in headless Chrome (tests/embed.py), from lib/umlimator-all.js:
-     docs/diagrams/examples/11-sequence.json drawn by render() in both themes and three fonts (no overlap, every text in its
+     examples/checkout-sequence.json drawn by render() in both themes and three fonts (no overlap, every text in its
      face or backing, no label on a bar, no line through a head, the names, the legend, contrast), its reading order, a
      click on a message's arrowhead and on a self-message's loop selecting the message, axe's rules for the pieces drawn as
      role="img" written out (the drawing a named group that holds the keys). Then every gesture of §5.2 on the canvas, by
@@ -23,7 +23,7 @@ import { render, apply, validate, layout, history } from '../lib/umlimator-all.j
 const out = { ok: [], fail: [] };
 const check = (name, cond, info) => { document.title = name; if (cond) out.ok.push(name); else out.fail.push(name + (info === undefined ? '' : ': ' + JSON.stringify(info))); };
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
-const MODEL = await (await fetch('../docs/diagrams/examples/11-sequence.json')).json();
+const MODEL = await (await fetch('../examples/checkout-sequence.json')).json();
 const el = document.getElementById('m');
 let sr, stage, ed = [];
 const pick = s => sr.querySelector(s), all = s => [...sr.querySelectorAll(s)];

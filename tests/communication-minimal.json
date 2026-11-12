@@ -1,0 +1,15 @@
+{ "schemaVersion": 2, "title": "Communication: the smallest view",
+  "nodes": [
+    {"id":"client","type":"uml.Lifeline","label":"client","props":{"represents":"Client"}},
+    {"id":"server","type":"uml.Lifeline","label":"server","props":{"represents":"Server"}}
+  ],
+  "edges": [
+    {"id":"client-server","type":"uml.Connector","from":"client","to":"server"},
+    {"id":"get","type":"uml.Message","from":"client","to":"server","label":"get(id)","props":{"sort":"call"}},
+    {"id":"got","type":"uml.Message","from":"server","to":"client","label":"item","props":{"sort":"reply","replyTo":"get"}}
+  ],
+  "views": [
+    {"id":"v","diagram":"uml.communication","title":"A call and its reply",
+      "nodeIds": ["client","server"],
+      "edges": ["client-server","get","got"] }
+  ] }

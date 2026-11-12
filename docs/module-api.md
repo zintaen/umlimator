@@ -3345,3 +3345,102 @@ What moves for a host that upgrades:
   164,954 B (the plan's budget is 15%), up from 182.6 kB in 0.18.0: 2.1's box code and 2.5's tables, and stage 3's
   canvas hook slot (3.4) and speed flags (#191). `lib/umlimator-all.js` is 276.8 kB, up from 211.5 kB in 0.18.0, with
   stage 3's types in it. The npm package is 512 kB, up from 441 kB.
+
+## 0.20.0: the sequence and communication diagrams
+
+Stage 3 of the plan for 28 diagram types (`docs/diagrams/notes/stage-3.md`). Everything here is additive: maps, class
+views and every earlier example draw as they did. The new code is in `lib/umlimator-all.js`, except what the canvas
+needs in the core (3.4, 3.8).
+
+- **Interaction semantics (3.1).** Both new types share one module, `src/uml/interaction.js`: the occurrences of a view
+  in time order, with their operands; activation bars derived by five rules from the messages (`notes/spike-sequence.md`
+  §2.3; a bar that opens on the row where another on the same lifeline closes only touches it, but a self-call there
+  nests); message numbers (S8: a message's place among those sent in the activation it is sent from, replies included);
+  the call a new reply answers; and the shared rules `reply-call`, `reply-once`, `create-once`, `delete-once` and `sort`.
+- **The time-axis layout and frames (3.2).** `layoutTimeAxis` places heads, stems, bars, frames, operands, interaction
+  uses and messages with no router, and gives the slots a new message can go into. A fragment whose `parent` is not an
+  operand, or lies inside the fragment itself, is one error on that fragment, which is still drawn, at the top.
+- **Sequence diagrams, `uml.sequence` (3.3).** A view of lifelines, with its messages (call, async, reply, create,
+  delete) and interaction uses inline in its `edges`, in time order, and its combined fragments (`alt`, `opt`, `loop`,
+  `par`, `break`) in its `fragments`. It is drawn on a time axis with frames, guards, activation bars and crosses under
+  the messages; every piece is named, and the view is read in time order (`geo.order`). Twelve rules check it;
+  `describe()` and the legend put it in words. Its edit hooks (`connect`, `moveTo`, `wrap`, `add`, `remove`) return the
+  commands for `apply()`, or `{ error }` when the change would break a rule. Adding a lifeline inside an interaction
+  use's range adds it to that use's `covers`; removing every operand of a fragment removes the fragment.
+  `docs/diagrams/examples/check.mjs` checks sequence examples with the real type.
+- **The sequence diagram's gestures on the canvas (3.3b).** Every gesture of `notes/stage-3.md` §5.2, by pointer and by
+  key (`docs/editing.md`). A head dragged sideways lands where it was dropped, in any font. A message drawn from a stem
+  and released over a fragment's tag, a guard or an interaction use on another lifeline's stem connects to that
+  lifeline. Double-clicking a selected lifeline's name renames it, as F2 does.
+- **Canvas hooks (3.4).** On a typed view, a type's `edits` hooks take over a gesture by pointer and by key; each
+  returns commands (one `edit` event), `null` to keep the default gesture, or `{ error }`, said on the hint line, with
+  nothing emitted. `connect` gets the slot nearest the release, or after `L` the slot after the selection. A typed view
+  can draw a line from an element to itself. A view's fragments are elements: they can be selected, removed (a view's
+  own fragment is deleted) and edited in the panel. In the core: typed lines get key rings (class views too), in
+  `geo.order` when the type gives one; Shift + click and Shift + Enter add lines to the selection beside cards; `L`
+  starts from a selected line when the type has `edits.connect`; `layout.pins: false` sets no pins. Without
+  `umlimator/all`, `lib/umlimator.js` keeps 0.17.0's typed editing.
+- **Speed flags for a typed layout (#191).** A diagram type's registry entry may say `layout.rank: false`, which gives its
+  layout only the view's pins with no ranking pass, and `layoutTyped`'s input may say `reroute: false`, which turns off
+  the rip-up and reroute of lines that had to cross. Maps lay out exactly as before.
+- **Communication diagrams, `uml.communication` (3.5).** Lifelines joined by connectors; each connector's messages are a
+  stack of numbered rows (1, 1.1, 1.1.2) on it, each row with an arrow toward its receiver: filled for a call or a
+  delete, open for async or create, dashed for a reply. Rules: `message-link` and the shared ones. `describe()`, names a
+  screen reader reads, a reading order of lifelines, connectors, then messages by number, and a legend. Its hooks
+  (`connect`, `moveTo`, `add`, `remove`) never return an edit that breaks a rule; deleting a connector from the model
+  takes the messages it carries in every communication view.
+- **Mermaid sequence diagrams (3.6).** `umlimator.py import` reads a `sequenceDiagram` (Mermaid 12.3.0) through Node into
+  one `uml.sequence` view, and reports what it skipped or approximated; it refuses text over 1,048,576 characters and never throws. The
+  writer (internal) writes a view back, with `%% id:`, `%% operand-id:`, `%% reply-to:`, `%% represents:` and
+  `%% use:` comments, and `%% not written:` for what Mermaid cannot carry; `read(write(model))` equals the model, ids
+  included. A participant's alias is read as its label, as Mermaid shows it.
+- **Helpers (3.7).** Internal, not in the public API: a numbered view as a `uml.sequence` view, a numbered or sequence
+  view as a `uml.communication` view (with the operand of each `alt` picked), and a trace as a sequence view. Each
+  returns a report of what it skipped or approximated. Derived ids never contain `->` and are unique among those one
+  call derives, with `~2`, `~3` added where one would repeat another.
+- **Fixtures, examples, the CLI and documents (3.8).** Examples 11 and 12 moved from `docs/diagrams/examples/` to
+  `examples/checkout-sequence.json` and `examples/checkout-communication.json`, unchanged: both are in the gallery (their
+  stills and PDFs on the site) and in CI, which renders and checks them and validates them against the JSON Schema;
+  `check.mjs` lists what moved. `umlimator.py` renders, checks, stills and prints both types: the copy of a model the
+  upstream engine checks leaves out a view's items with no ends (an interaction use; risks.md F3), and the layout check
+  counts a sequence's frames, operands and uses as holders, which may hold what they meet. `umlimator.py trace
+  --diagram uml.sequence` writes a trace as a UML sequence view, through the helper. `tests/sequence-minimal.json` and
+  `tests/sequence-stress.json` (every case of `notes/stage-3.md` §9, and 20 lifelines, 200 messages and 10 nested
+  fragments laid out and drawn in under 100 ms) are laid out clean in Node and in Chrome under three fonts and both
+  themes; the communication fixtures moved out of `tests/communication.html` into `tests/communication-minimal.json`
+  and `tests/communication-stress.json`. [`docs/conformance/uml-sequence.md`](conformance/uml-sequence.md) and
+  [`docs/conformance/uml-communication.md`](conformance/uml-communication.md) state each subset, UML 2.5.1's clauses,
+  what is left out and what the SVG, PNG and PDF writers show.
+- **Types and schema (3.8).** `lib/umlimator.d.ts` exports the two diagrams' vocabulary: `UmlSequenceElementType`,
+  `UmlSequenceMemberType`, `UmlSequenceLineType`, `UmlLifelineProps`, `UmlMessageSort`, `UmlMessageProps`,
+  `UmlInteractionUseProps`, `UmlInteractionOperator`, `UmlCombinedFragmentProps`, `UmlCommunicationElementType` and
+  `UmlCommunicationLineType`; a view's `edges` may hold an `Element` (an interaction use). `lib/umlimator.schema.json`
+  describes the same fields for editors, accepts an interaction use inline in a view's `edges`, and rejects nothing it
+  accepted before.
+
+What moves for a host that upgrades from 0.19.0 (which already carried 3.0 to 3.7, provisionally; from 0.18.0, add
+everything above):
+- **The two types are no longer provisional.** `umlimator/all` draws a version-2 view with `diagram: "uml.sequence"` or
+  `"uml.communication"` as 0.19.0 did; their schema, `.d.ts` types, fixtures, examples and conformance notes are new
+  (3.8). `lib/umlimator.js` still draws plain cards for them.
+- **The layout check** (`check()`, `umlimator.py check`) does not count a node marked `holder` (a sequence's frame,
+  operand or use) as overlapping a node it fully contains; a use over a lifeline head, or two crossing frames, are still
+  reported. No map node has the mark, so maps check as before.
+- **`umlimator.py`** leaves a sequence view's interaction uses, which have no ends, out of what the upstream engine
+  reads (F3), where 0.19.0 refused the model with "an unknown end"; any other line with no ends is still reported.
+  **`umlimator.py trace`** takes `--diagram uml.sequence`; without it, `trace` writes the numbered view, as before.
+- **The schema** accepts a sequence view's interaction use inline in its `edges` (a `uml.InteractionUse` with no ends)
+  and describes the new fields; it rejects nothing it accepted before. **`lib/umlimator.d.ts`** exports the two
+  diagrams' types, and `MapView.edges` takes an element too.
+- From 0.18.0, also: typed views on the canvas (class views too) give lines key rings in the Tab order, Shift + click
+  adds a line to the selection, and `L` may start from a selected line; a typed view's root `<svg>` is `role="group"`;
+  `umlimator.py import` reads a Mermaid `sequenceDiagram` (all in 0.19.0).
+- **Nothing is removed or renamed;** the registry, the Mermaid sequence reader and writer and the helpers stay internal.
+- **Left out** (`notes/stage-3.md` §13): gates, continuations, state invariants, time constraints, found and lost
+  messages, coregions, the seven other operators (drawn by name), an actor drawn as a figure, notes and `autonumber` in
+  a sequence view, hiding a message; concurrent numbers and multi-objects in a communication view; XMI. The `map-repo`
+  skill, the MCP server and the diff Action meet these types in one package after 0.20.0 (C10, S15).
+- **Size:** `lib/umlimator.js`, what a map host loads, is 186.9 kB (186,920 B) with `gzip -9`, 13.32% over 0.16.0
+  (the plan's budget is 15%); stage 3 added 835 B to it in 3.4, 107 B in #191 and 130 B in 3.8, the rest is stage 2's.
+  `lib/umlimator-all.js` is 276.9 kB (276,892 B), up from 211.5 kB in 0.18.0. The npm package is 515 kB, up from
+  512 kB in 0.19.0.

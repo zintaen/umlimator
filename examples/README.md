@@ -34,6 +34,8 @@ Action on it in a pull request; the site shows its stills and its PDF.
 | Model | Diagram | What it shows |
 |---|---|---|
 | [`sales-classes.json`](sales-classes.json) | UML class diagram (`uml.class`, 0.18.0) | A bookshop's sales domain: classes with attributes and operations, a stereotype, an abstract class and operation, static and derived attributes, an interface and its realization, an enumeration, a data type, a package, a note; associations with roles, multiplicities, composition, aggregation and navigable ends, a generalization and a «use» dependency; the view laid out top to bottom with one class pinned and a compartment collapsed, and a second view of the payments alone. What the class diagram covers, and what each export shows: [`docs/conformance/uml-class.md`](../docs/conformance/uml-class.md) |
+| [`checkout-sequence.json`](checkout-sequence.json) | UML sequence diagram (`uml.sequence`, 0.20.0) | The bookshop's checkout on a time axis: an actor and four lifelines; calls, a self-call, an async message, replies and a create; activation bars derived from them, one nested; an `alt` with two operands, an `opt` inside it and an interaction use. What the sequence diagram covers: [`docs/conformance/uml-sequence.md`](../docs/conformance/uml-sequence.md) |
+| [`checkout-communication.json`](checkout-communication.json) | UML communication diagram (`uml.communication`, 0.20.0) | The same checkout's paid branch as a communication diagram: lifelines joined by connectors, one from api to itself, and each link's messages a stack of numbered rows (1, 1.1, 1.1.2.1) with an arrow toward the receiver. What the communication diagram covers: [`docs/conformance/uml-communication.md`](../docs/conformance/uml-communication.md) |
 
 | [`order-objects.json`](order-objects.json) | UML object diagram (`uml.object`, 0.19.0) | One placed order of the same bookshop as instances of its classes: each head `name : Classifier`, underlined, its slots as `feature = value` rows; links with a name or with roles by their ends; laid out top to bottom. What the object diagram covers: [`docs/conformance/uml-object.md`](../docs/conformance/uml-object.md) |
 | [`bookshop-packages.json`](bookshop-packages.json) | UML package diagram (`uml.package`, 0.19.0) | The bookshop's packages, each a box holding the classes it owns, `card` inside `payments`; two classes named `Order` in two packages; «import», «access» (a private import), «merge» and a dependency between the boxes. What the package diagram covers: [`docs/conformance/uml-package.md`](../docs/conformance/uml-package.md) |
@@ -42,6 +44,8 @@ Action on it in a pull request; the site shows its stills and its PDF.
 
 [![The object diagram: order 1042, just placed](https://zintaen.github.io/umlimator/examples/stills/order-objects/snapshot.png)](https://zintaen.github.io/umlimator/examples/order-objects.html)
 [![The package diagram: the bookshop's packages](https://zintaen.github.io/umlimator/examples/stills/bookshop-packages/packages.png)](https://zintaen.github.io/umlimator/examples/bookshop-packages.html)
+[![The sequence diagram: checkout](https://zintaen.github.io/umlimator/examples/stills/checkout-sequence/checkout.png)](https://zintaen.github.io/umlimator/examples/checkout-sequence.html)
+[![The communication diagram: checkout, payment accepted](https://zintaen.github.io/umlimator/examples/stills/checkout-communication/checkout.png)](https://zintaen.github.io/umlimator/examples/checkout-communication.html)
 
 ## Host pages
 
@@ -110,13 +114,15 @@ The module embedded in a page, as an app would use it. Serve the repository over
 | Budgets (`latency`, `cost`): the slowest or costliest path (`critical()`) and what-if (`whatIf()`) | bike-share `trips`: the details panel's ⏱, ¤ and ⊘ (What if this goes down?) |
 | A story told step by step (`stories`, `play()`), its Stories menu and recording in the page, `umlimator.py record` | bike-share (`ride`: a ride from unlock to payment), on the site; pictured under Maps; states (`assistant`: a page tool, then the reader) |
 | Editing and undo (`editable`, `change`, `history()`) | `edit.html` |
-| A diagram type: a typed model in its own notation (`schemaVersion: 2`, a view's `diagram`), from `umlimator/all` | sales-classes (`uml.class`), order-objects (`uml.object`), bookshop-packages (`uml.package`) |
+| A diagram type: a typed model in its own notation (`schemaVersion: 2`, a view's `diagram`), from `umlimator/all` | sales-classes (`uml.class`), order-objects (`uml.object`), bookshop-packages (`uml.package`), checkout-sequence (`uml.sequence`), checkout-communication (`uml.communication`) |
 | A class diagram's parts: compartments, members as UML text, stereotypes, line ends, end labels, notes (`present.collapsed`, `direction: "down"`) | sales-classes `domain` and `payments` |
 | Ownership drawn as nesting: a package owning something the view shows is a box holding it, names qualified from the nearest shown owner or the view's `subject` (`parent`, `subject`, 0.19.0) | bookshop-packages, sales-classes `domain` (and `payments`, with its subject) |
 | An object diagram's parts: underlined heads, anonymous instances, slots as `feature = value`, links with names and roles | order-objects |
 | A package diagram's lines: «import», «access», «merge», dependency | bookshop-packages |
 | Editing a typed view (`edit` events, `apply()`, `history()`; the palette, the relationship picker, the properties and members as text, the problems, the outline) | `class-editor.html` |
 | A Mermaid `classDiagram`, imported (`umlimator.py import`) | [`tests/import/classes.mmd`](../tests/import/classes.mmd), which CI imports (`tests/import.py`) |
+| A sequence diagram's parts: messages of every sort, derived activation bars, frames with guards, an interaction use; a communication diagram's stacks of numbered messages | checkout-sequence, checkout-communication |
+| A Mermaid `sequenceDiagram`, imported (`umlimator.py import`); a trace as a sequence diagram (`umlimator.py trace --diagram uml.sequence`) | [`tests/import/sequence.mmd`](../tests/import/sequence.mmd), which CI imports (`tests/import.py`); bike-share's [`traces/ride-end.json`](traces/ride-end.json) (`tests/cli.py`) |
 | `layout()` in Node | `layout.mjs` |
 | The model's JSON Schema (`"$schema"`), `validate()` and `check()` | every model written by hand (`"$schema"`), `playground.html` |
 | The standalone page (`mountPage`) and the CLI's `render`, `check` and `stills` | every map on the site, built by CI |
@@ -138,6 +144,7 @@ Not shown: `repair: false`, a switch for debugging the router.
 Umlimator is growing from maps to 28 diagram types: UML's 14, SysML's four, ER, flowchart, data flow, C4, BPMN,
 mindmap, and AWS, GCP and Azure architecture. One target model per type is in
 [`docs/diagrams/examples/`](../docs/diagrams/examples/). Each moves here, into the gallery and CI, when its stage
-ships: the class diagram's is `sales-classes.json`, the object diagram's `order-objects.json` and the package
-diagram's `bookshop-packages.json`. [`docs/diagrams/README.md`](../docs/diagrams/README.md) says where
+ships: the class diagram's is `sales-classes.json`, the object diagram's `order-objects.json`, the package
+diagram's `bookshop-packages.json`, and the sequence and communication diagrams' `checkout-sequence.json` and
+`checkout-communication.json`. [`docs/diagrams/README.md`](../docs/diagrams/README.md) says where
 that work stands.

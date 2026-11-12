@@ -58,6 +58,16 @@ drill-down, a data pipeline, an AI agent's skills, and host pages for embedding,
   ([`examples/bookshop-packages.json`](examples/bookshop-packages.json), [what it covers](docs/conformance/uml-package.md)).
   Ownership is edited by dropping an element into a box, or with the Owner field; both are checked by their types'
   rules, and the PDF's tables list slots and element kinds.
+- **UML sequence and communication diagrams** (0.20.0): lifelines on a time axis with calls, async messages, replies,
+  creates and deletes, activation bars derived from the messages, `alt`, `opt`, `loop`, `par` and `break` frames with
+  their guards, and interaction uses ([`examples/checkout-sequence.json`](examples/checkout-sequence.json),
+  [what it covers](docs/conformance/uml-sequence.md)); the same interaction as lifelines joined by connectors, each
+  link's messages a stack of numbered rows (1, 1.1, 1.1.2) ([`examples/checkout-communication.json`](examples/checkout-communication.json),
+  [what it covers](docs/conformance/uml-communication.md)). Messages are inserted, moved in time, wrapped in a frame and
+  deleted on the canvas, by pointer and by key, each gesture an `edit` event; checked by the types' rules; a sequence
+  diagram is read from and written to Mermaid's `sequenceDiagram`, and an OpenTelemetry trace becomes one
+  (`umlimator.py trace --diagram uml.sequence`). The MCP server, the `map-repo` skill and the diff Action learn these
+  types in one package after 0.20.0; until then a reorder of a view's messages shows in a diff as changed, not moved.
 - **Export**: any view as a stand-alone SVG or PNG, in the browser or from the CLI; the whole map as one PDF to hand in
   for a review: a cover with the contents, each view with its legend and tables of its cards, lines and boxes, then the
   rules (`umlimator.py pdf`).
@@ -80,7 +90,7 @@ drill-down, a data pipeline, an AI agent's skills, and host pages for embedding,
 npm install umlimator
 ```
 
-Or from GitHub, at a tag or any commit: `"umlimator": "github:zintaen/umlimator#v0.19.0"`. npm 12 refuses git
+Or from GitHub, at a tag or any commit: `"umlimator": "github:zintaen/umlimator#v0.20.0"`. npm 12 refuses git
 dependencies unless the project opts in, so that also needs `allow-git=root` in the `.npmrc` next to `package.json`.
 
 ## Embed
@@ -129,7 +139,7 @@ function MapView({ model, onSelect }) {
   `map.shapes` reads the notation shown and sets another (`null`: each view's own again); the cards are drawn again from
   the geometry they have, with the camera, selection and marks kept, and nothing is laid out.
 - `editable: true` turns on editing gestures ([docs/editing.md](docs/editing.md); `examples/edit.html` is a working host).
-- `import { render, apply, history } from 'umlimator/all'` draws diagram types too: a class, object or package diagram, whose gestures emit
+- `import { render, apply, history } from 'umlimator/all'` draws diagram types too: a class, object, package, sequence or communication diagram, whose gestures emit
   `edit` transactions that `apply(model, e.commands)` turns into the next model (`examples/class-editor.html` is a
   working host). `umlimator` alone draws maps, and a typed view as plain cards with a warning.
 - `diff(before, after)` returns `after` with each card and line marked added, changed or removed, what changed in words,
@@ -208,8 +218,8 @@ path. The full schema is `engine/references/schema.md` (§ Map model); `examples
 A model file that starts with `"$schema": "<path to>/umlimator.schema.json"` (exported as `umlimator/schema.json`)
 gets completion and checks in editors, and `validate(model)` lists its errors and warnings, each with where it is.
 `"schemaVersion": 2` marks a model that may hold typed elements and typed views (`docs/diagrams/model.md`). A view whose
-`diagram` is `"uml.class"`, `"uml.object"` or `"uml.package"` is a UML class, object or package diagram, drawn by
-`umlimator/all` and the CLI; a type not drawn yet shows its
+`diagram` is `"uml.class"`, `"uml.object"`, `"uml.package"`, `"uml.sequence"` or `"uml.communication"` is a UML class, object,
+package, sequence or communication diagram, drawn by `umlimator/all` and the CLI; a type not drawn yet shows its
 nodes as plain cards, with a warning. A model with no `schemaVersion` is a map, as always, and a version newer than the
 module reads is an error.
 
@@ -264,6 +274,19 @@ In a version-2 model, a class diagram (`examples/sales-classes.json`; every fiel
 | view | `direction` | `"down"` lays it out top to bottom, the general class above (default `"right"`) |
 | view | `present` | per element: `collapsed` compartments, and at most `rows` rows each, then "+k more" |
 
+A sequence diagram (`examples/checkout-sequence.json`, [`docs/conformance/uml-sequence.md`](docs/conformance/uml-sequence.md))
+and a communication diagram (`examples/checkout-communication.json`,
+[`docs/conformance/uml-communication.md`](docs/conformance/uml-communication.md)), from 0.20.0:
+
+| On | Field | What it does |
+|---|---|---|
+| node | `type` | `uml.Lifeline`; its `props.represents` is what it is an instance of, drawn `name : Type` |
+| edge | `type` | `uml.Message`; on a communication view also `uml.Connector`, the link messages are sent along |
+| edge | `props` | a message's `sort` (`call`, `async`, `reply`, `create`, `delete`) and a reply's `replyTo`, the call it answers |
+| view | `diagram` | `"uml.sequence"` or `"uml.communication"` |
+| view | `edges` | a sequence view's messages and interaction uses (`uml.InteractionUse`, `props.covers`), inline and in time order; a communication view's connectors, then its messages, by id, in order. Bars and numbers are derived |
+| view | `fragments` | a sequence view's combined fragments (`uml.CombinedFragment`, `props.operator`), each with its operands as `members` (`label` the guard); a message's or fragment's `parent` is its operand |
+
 ## Command line
 
 ```bash
@@ -279,11 +302,13 @@ python3 umlimator.py check page.html --expand                          # also ea
 python3 umlimator.py record bike-share.html --story ride --out ride.png   # bike-share's story as an animated PNG, its tours riding
 python3 umlimator.py import workspace.dsl --out model.json            # a diagram you have already, as a model
 python3 umlimator.py import classes.mmd --out classes.json            # a Mermaid classDiagram, as a UML class diagram (needs Node)
+python3 umlimator.py import checkout.mmd --out checkout.json          # a Mermaid sequenceDiagram, as a UML sequence diagram (needs Node)
 python3 umlimator.py render examples/sales-classes.json --out classes.html   # a class diagram's page; stills, check and pdf take it too
 docker compose config --format json > compose.json && python3 umlimator.py import compose.json --out model.json
 kubectl get deploy,sts,svc,ing -A -o json > cluster.json && python3 umlimator.py import cluster.json --out model.json
 python3 umlimator.py pdf page.html --out map.pdf                       # every view in one PDF: a cover, each view with its tables, the rules
 python3 umlimator.py trace model.json trace.json --view ride-end --match match.json --out model.json   # an OTLP trace kept as a numbered view
+python3 umlimator.py trace model.json trace.json --view ride-end --match match.json --diagram uml.sequence --out traced.json  # ... as a UML sequence diagram, in a version-2 model
 python3 umlimator.py mcp model.json                                    # an MCP server over stdio, for an AI assistant (below)
 ```
 
@@ -291,7 +316,8 @@ python3 umlimator.py mcp model.json                                    # an MCP 
 
 `import` reads Structurizr DSL (people, systems, containers and components, their relationships, and the workspace's
 views), C4-PlantUML (its element, relationship and boundary macros), Mermaid (`flowchart` or `graph`, and `C4Context`,
-`C4Container` or `C4Component`; a `classDiagram` becomes a UML class diagram, read through Node), and the JSON of `docker compose config` (services, `depends_on`, networks) and of
+`C4Container` or `C4Component`; a `classDiagram` becomes a UML class diagram and a `sequenceDiagram` a UML sequence
+diagram, each read through Node), and the JSON of `docker compose config` (services, `depends_on`, networks) and of
 `kubectl get` (workloads, Services, Ingresses). It tells the format from the content, then the extension; `--format`
 decides. Groups, boundaries, subgraphs, networks and namespaces become boxes; Structurizr's views stay views, a card
 opening the view below it; `examples/clinic.json` is `examples/clinic.dsl`, imported. What each element becomes, and
@@ -342,7 +368,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: zintaen/umlimator@v0.19.0
+      - uses: zintaen/umlimator@v0.20.0
         with:
           models: "docs/*.json"   # optional: where the models are (default: every .json that is a map model)
 ```
