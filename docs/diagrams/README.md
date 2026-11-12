@@ -20,7 +20,7 @@ Update this table in every pull request that belongs to the plan.
 | 1a Foundation | 0.17.0 | Work packages 1.1 to 1.8 | Released 11 Nov 2026 (555bfdc, GitHub and npm latest); map-repo pinned to it | #154, #157, #158, #160, #161, #162, #163, #164, #165, #166, #167 |
 | 1b Class | 0.18.0 | Work packages 1.9 to 1.12 | 1.9 (#168), 1.10 (#169), 1.11 (#172) and 1.12's findings (#171) merged; the spike's changes in review (#173). Next: moving typed-only code out of the core (C5), then the 0.18.0 release | #168, #169, #171, #172, #173 |
 | 2 | 0.19.0 | Object, package | Design note approved ([`notes/stage-2.md`](notes/stage-2.md)); work packages next | #174 |
-| 3 | 0.20.0 | Sequence, communication | Design note approved ([`notes/stage-3.md`](notes/stage-3.md)). 3.0 (the seven sources, empty) in review: this PR | #174, (this PR) |
+| 3 | 0.20.0 | Sequence, communication | Design note approved ([`notes/stage-3.md`](notes/stage-3.md)). 3.0 (the seven sources, empty) in review: #177 | #174, #177 |
 | 4 | 0.21.0 | Use case, activity, state machine, interaction overview | Not started | |
 | 5 | 0.22.0 | Component, deployment, composite structure | Not started | |
 | 6 | 0.23.0 | Profile, timing | Not started | |
