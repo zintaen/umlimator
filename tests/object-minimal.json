@@ -1,0 +1,30 @@
+{
+  "$schema": "../lib/umlimator.schema.json",
+  "schemaVersion": 2,
+  "title": "A minimal object view (tests)",
+  "root": "v",
+  "nodes": [
+    {"id": "order-class", "type": "uml.Class", "label": "Order", "members": [{"id": "order-class.status", "type": "uml.Property", "label": "status", "props": {"valueType": "String"}}]},
+    {"id": "shop", "type": "uml.Package", "label": "shop"},
+    {"id": "o1", "type": "uml.InstanceSpecification", "label": "order1", "props": {"classifier": "Order"}, "parent": "shop",
+     "members": [{"id": "o1.status", "type": "uml.Slot", "label": "status", "props": {"value": "placed"}}, {"id": "o1.coupon", "type": "uml.Slot", "label": "coupon", "props": {"value": "SPRING"}}]},
+    {"id": "anon", "type": "uml.InstanceSpecification", "props": {"classifier": "Customer"},
+     "members": [{"id": "anon.nickname", "type": "uml.Slot", "label": "nickname"}]},
+    {"id": "bare", "type": "uml.InstanceSpecification", "label": "thing",
+     "members": [{"id": "bare.note", "type": "uml.Slot", "label": "note", "props": {"value": "a slot value long enough that the instance is cut to its widest, then the rest goes"}}]},
+    {"id": "empty", "type": "uml.InstanceSpecification", "label": "clerk", "props": {"classifier": "Employee"}},
+    {"id": "line", "type": "uml.InstanceSpecification", "label": "line1", "props": {"classifier": "OrderLine"},
+     "members": [{"id": "line.quantity", "type": "uml.Slot", "label": "quantity", "props": {"value": "2"}}]}
+  ],
+  "edges": [
+    {"id": "places", "type": "uml.Link", "from": "anon", "to": "o1", "label": "places", "props": {"ends": {"from": {"role": "buyer"}, "to": {"role": "orders"}}}},
+    {"id": "takes", "type": "uml.Link", "from": "empty", "to": "o1", "props": {"association": "Takes"}},
+    {"id": "has-1", "type": "uml.Link", "from": "o1", "to": "line", "props": {"ends": {"to": {"role": "lines"}}}},
+    {"id": "has-2", "type": "uml.Link", "from": "o1", "to": "line", "label": "again"},
+    {"id": "refers", "type": "uml.Link", "from": "bare", "to": "bare", "label": "refers"}
+  ],
+  "views": [
+    {"id": "v", "diagram": "uml.object", "title": "Minimal", "direction": "down",
+     "nodeIds": ["o1", "anon", "bare", "empty", "line"]}
+  ]
+}
