@@ -9,7 +9,10 @@ Agents build this. There are no time estimates: a work package is sized by what 
 ## 1. What 1.0.0 means
 
 - All 28 diagram types meet the definition of done below, on the subsets in `model.md` and `proposal.md` §8.5.
-- Every model that drew before draws the same. Nothing in the public API was removed.
+- Every model that drew before draws the same. Nothing in the public API was removed. One exception, approved by the
+  maintainer on 12 Nov 2026 (#174): from 0.19.0 a class view draws its packages as boxes holding what they own, and
+  qualifies names, so a class picture of 0.18.0 changes ([`notes/stage-2.md`](notes/stage-2.md) §10.1). Maps do not
+  change.
 - The API, the model's schema and each type's conformance note are frozen and documented.
 
 **Decided on 11 Nov 2026:** 1.0.0 comes after all 28 types, not after the 14 UML types.
@@ -89,7 +92,7 @@ Releases: 0.17.0 after 1.1 to 1.8 (nothing new is drawn, so it is a pure regress
 
 ```
 src/core/      model (ids, migrate, validate), registry, apply (commands), text (measuring)
-src/layout/    layered (today's), route (the router), later: compound, timeaxis, tree
+src/layout/    layered (today's), route (the router); timeaxis (stage 3, umlimator-all.js only); later: compound, tree
 src/draw/      svg, shapes, lines
 src/typed/     what only a registered type's geometry takes (0.18.0, risks.md C5): typed layout, the classifier, line ends and end labels
 src/canvas/    render (camera, selection, keyboard), edit (gestures), pieces (views list, palette, properties, problems, legend, hints)
@@ -120,8 +123,8 @@ for every type in it.
 
 | Stage | Types | New engine work | Type work, in order | Reader |
 |---|---|---|---|---|
-| 2 | Object, package | Ownership drawn as compound nodes (`parent`); qualified names (M6) | Package, then object | Mermaid class (namespaces) |
-| 3 | Sequence, communication | The time-axis strategy; order as meaning; operands by `parent`; activations derived; several messages on one link | Sequence, then communication; a helper from numbered views and from traces | Mermaid sequence |
+| 2 ([`notes/stage-2.md`](notes/stage-2.md)) | Object, package | Ownership drawn as compound nodes (`parent`); qualified names (M6) | Package, then object | Mermaid class (namespaces) |
+| 3 ([`notes/stage-3.md`](notes/stage-3.md)) | Sequence, communication | The time-axis strategy; order as meaning; operands by `parent`; activations derived; several messages on one link | Sequence, then communication; a helper from numbered views and from traces | Mermaid sequence |
 | 4 | Use case, activity, state machine, interaction overview | Shapes that are not boxes (L12); explicit nestable lanes; regions in compound nodes; the transition micro-syntax | Use case, activity, state machine, interaction overview | Mermaid state |
 | 5 | Component, deployment, composite structure | Ports on borders; ends through parts; deep nesting; a time-boxed trial of the own engine against ELK (L9) | Component, deployment, composite structure | None |
 | 6 | Profile, timing | Stereotype definitions and application checks across the model; the time-ruler strategy | Profile, timing | None |
@@ -160,6 +163,7 @@ Before M4a starts: read the terms inside each vendor's icon download (`proposal.
 
 - One work package, one branch, one pull request. Catch a branch up by merging `main`, not by rebasing.
 - CI stays green. Geometry hashes are rewritten only in a commit that says why (`risks.md` X3).
-- Nothing existing is removed or changed in behaviour, except a reproduced defect, noted in the release section.
+- Nothing existing is removed or changed in behaviour, except a reproduced defect, noted in the release section, and
+  the class view's packages drawn as boxes from 0.19.0 (§1), noted in 0.19.0's.
 - The maintainer approves each merge and each release by pull request number.
 - No host application's name appears in this repository.
