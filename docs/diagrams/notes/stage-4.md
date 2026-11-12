@@ -262,23 +262,40 @@ unchanged.
 
 ```js
 laneRows(pos, laneOf, lanes) -> pos'      // pos: { id: [col, row] } as ranked; laneOf: id -> its innermost lane, or null;
-                                          // lanes: [{ id, parent, order }] outermost first. pos': each lane a run of rows
-laneBands(g, lanes, laneOf, turned) -> { bands: [{ id, parent, depth, x, y, w, h, head }], shift }   // g is read, never written
+                                          // lanes: [{ id, parent, order }] outermost first, siblings by `order` (else list
+                                          // order). pos': a new object, each lane a run of whole rows from row 0
+laneBands(g, lanes, laneOf, turned) -> { bands: [{ id, parent, depth, x, y, w, h, head }], shift, bounds }   // g is read, never written
 ```
+
+(As built in 4.3: `laneBands` also returns `bounds`, `g.bounds` moved by `shift` and grown to hold the bands, since an empty
+lane at an end has a row the layout never placed; `shift` is `{ x, y }`, and the bands are where they lie after it. A
+lane's own nodes take the rows before its nested lanes'. A lane whose parent is no lane, or lies on a cycle of parents, is
+at the top. `laneBands` finds each lane's rows again from `g`'s nodes' `col` and `row`; its one other input is a fifth
+argument, `rgap`, the row gap the type laid out with, since `g` does not carry it and a loop's label or a line's label can
+widen a gap past it; without it the narrowest gap between two rows is taken. Siblings with an `order` come first, by it;
+those without one follow in list order.)
 
 - **Rows.** Within each column, the nodes keep their ranked order, sorted by lane (depth first, in `nodeIds` order). Lane
   `k` takes `rows_k` rows, the most of its nodes in any one column; lanes follow each other with no shared row. A nested
   lane's rows sit inside its parent's.
 - **A node in no lane** (L10) goes in rows after every lane, outside them, with the warning `in-lane`.
-- **An empty lane** keeps one row and a minimum width of 120 px.
+- **An empty lane** keeps one row and a minimum width of 120 px. (As built: the row holds no node, so the layout gives it
+  the view's node height; between two lanes its band is that row and one row gap, 128 px at the activity's `rgap` of 64,
+  and so 120 px at least for an `rgap` of 56 or more. At an end it takes a row past one row gap that leaves its band
+  120 px across: 80 px at an `rgap` of 64, and never under 64 px. Both hold laid out either way.)
 - **Pins.** A pin's column is kept; its row is taken as an order inside its lane, so a pin never moves a node to another
   lane. Changing lane is a change of owner (§9.4).
 - **Bands.** After the layout, each band spans the whole diagram along the flow, and across it from the divider before
-  its first row to the divider after its last. A header of 22 px per level of nesting is added at the start of the flow
+  its first row to the divider after its last. (As built in 4.3: along the flow
+  the bands start and end 16 px inside `g.bounds`, the header strips included, and the `bounds` returned hold them with 16 px
+  to spare.) A header of 22 px per level of nesting is added at the start of the flow
   (the top laid out down, the left laid out right); the type applies `shift` to its copy of the geometry (§2.4), never to
   what `layoutTyped` returned.
 - **Dividers.** A band's edge and its divider are one line, drawn 12 px off the gap's centre line toward the later lane,
-  since the router runs lines along the centre lines (`gapLinesY`). The activity type passes its own `rgap` of 64 px (the
+  since the router runs lines along the centre lines (`gapLinesY`); the outer edges of the first and last lanes lie 12 px
+  inside the gap's centre line, toward the lane (as built in 4.3). (As built: the router's lines lie `rgap / 2` from each
+  row, so they meet at the centre only when a gap is `rgap` wide; the divider is placed `rgap / 2 - 12` px before the later
+  row, which keeps it 12 px off the nearer line however wide the gap.) The activity type passes its own `rgap` of 64 px (the
   typed default `RG0` is 44 px), so 20 px are left between a divider and the nodes on its near side. 4.5's fixtures check
   that no line runs along a divider for more than 24 px; if one does, the fixture pins it and the conformance note states
   it (as L8 does for boxes).
