@@ -226,3 +226,16 @@ test('svgOf draws a box whose shape has a frame by it, in the group the canvas s
   assert.equal((plain.match(/class="family-box"/g) || []).length, 4);
   assert.match(plain, /data-o="C">«box» Gamma<\/text>/);
 });
+
+// 3.5's speed flag (risks.md P1): reroute false lays the view out with no rip-up and reroute pass. Four cards each side of a
+// middle column, every pair joined: the pass finds a better order (14 crossings, not 18); with the flag the first order stays
+test('reroute false: lines that had to cross are not routed again in a new order; the cards are where they were', () => {
+  const L = [0, 1, 2, 3].map(i => ({ id: 'l' + i, label: 'L' + i, col: 0, row: i })), R = [0, 1, 2, 3].map(i => ({ id: 'r' + i, label: 'R' + i, col: 2, row: i }));
+  const edges = L.flatMap(a => R.map(b => ({ id: a.id + b.id, from: a.id, to: b.id }))).concat([{ id: 'x', from: 'm', to: 'm2' }, { id: 'y', from: 'l0', to: 'm2' }, { id: 'z', from: 'r0', to: 'm2' }]);
+  const dg = { nodes: [...L, ...R, { id: 'm', label: 'M', col: 1, row: 0 }, { id: 'm2', label: 'M2', col: 1, row: 3 }], edges };
+  const a = layoutTyped(dg), b = layoutTyped({ ...dg, reroute: false });
+  assert.deepEqual([a.stats.cross, b.stats.cross], [14, 18], 'the pass is what finds the better order, and it is skipped');
+  assert.deepEqual(b.nodes.map(n => [n.x, n.y]), a.nodes.map(n => [n.x, n.y]));
+  b.edges.forEach(e => assert.ok(e.pts && e.pts.length >= 2, `line ${e.id} is routed`));
+  assert.notEqual(geometryKey(dg), geometryKey({ ...dg, reroute: false }), 'the flag is part of the geometry key');
+});

@@ -140,3 +140,15 @@ test('3.4: src/typed/edit.js fills TYPED.edit, which typedEditor calls when it i
   const lib = f => readFileSync(new URL('../lib/' + f, import.meta.url), 'utf8');
   assert.ok(!lib('umlimator.js').includes('TYPED.edit = ') && lib('umlimator-all.js').includes('TYPED.edit = '));
 });
+
+// 3.5 (risks.md P1): a type whose layout reads no ranked position gets the view's pins alone, and the view is never ranked
+test('3.5: a type with layout.rank false gets pos as the view\'s pins (or {}), and autoPos never runs; pins and all are kept', async () => {
+  const { mapContext } = await import('../src/map/context.js'), seen = [];
+  const run = (model, view, { pos }) => { seen.push(pos); return { nodes: [], edges: [], groups: [], byId: {}, bounds: { x: 0, y: 0, w: 10, h: 10 }, map: false }; };
+  registerDiagramType('test.norank', { layout: { run, rank: false } });
+  const m = { schemaVersion: 2, nodes: [{ id: 'a' }, { id: 'b' }], edges: [{ id: 'ab', from: 'a', to: 'b' }],
+    views: [{ id: 'n', diagram: 'test.norank', nodeIds: ['a', 'b'], layout: { a: [4, 4] } }, { id: 'e', diagram: 'test.norank', nodeIds: ['a', 'b'] }] };
+  const ctx = mapContext(m, {}); ctx.buildGeo('n'); ctx.buildGeo('e');
+  assert.deepEqual(seen, [{ a: [4, 4] }, {}], 'the pin as given, b not filled in by a ranking');
+  assert.equal(ctx.layoutCache.n, undefined); assert.equal(ctx.layoutCache.e, undefined, 'no ranking for rank false');
+});
