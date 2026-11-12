@@ -23,8 +23,13 @@ function project(m, viewId) {
 const byId = (a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
 const canon = m => ({ ...m, nodes: [...m.nodes].sort(byId), edges: [...m.edges].sort(byId), views: m.views.map(v => ({ ...v, nodeIds: [...v.nodeIds].sort() })) });
 const roundTrip = (m, viewId) => { const text = write(m, viewId), back = read(text); return { text, back }; };
-// the writer's line for each shown element whose owner the view does not show (notes/stage-2.md §11, option a)
-const hiddenOwners = (m, nodeIds) => { const ids = new Set(nodeIds); return m.nodes.filter(n => ids.has(n.id) && n.parent != null && !ids.has(n.parent)).map(n => `%% not written: ${n.id}: its parent ${n.parent}, which the view does not show`); };
+// the writer's line for each shown element whose owner the view does not show (notes/stage-2.md §11, option a); of a
+// namespace written whose id is that owner's dotted path, it says Mermaid draws the owner, as it splits the name
+const hiddenOwners = (m, nodeIds) => {
+  const ids = new Set(nodeIds), holds = id => m.nodes.some(n => ids.has(n.id) && n.parent === id && n.type !== 'uml.Comment' && (n.type !== 'uml.Package' || holds(n.id)));
+  return m.nodes.filter(n => ids.has(n.id) && n.parent != null && !ids.has(n.parent)).map(n => `%% not written: ${n.id}: its parent ${n.parent}, which the view does not show` +
+    (n.type === 'uml.Package' && String(n.id).startsWith(`${n.parent}.`) && holds(n.id) ? `, though Mermaid draws ${n.parent}, as it splits ${n.id} at its dots` : ''));
+};
 const notWritten = text => text.split('\n').filter(l => l.includes('%% not written:')).map(l => l.trim());
 
 test('read(write(model)) is the class example, view by view, less the owners a view does not show, which the text names', () => {
@@ -117,11 +122,11 @@ function generate(seed) {
 }
 
 test('read(write(model)) equals the model, less the owners the view does not show, for 500 generated models in the subset', () => {
-  let both = 0, hidden = 0, nested = 0, empty = 0, dots = 0, implied = 0;
+  let both = 0, hidden = 0, nested = 0, empty = 0, dots = 0, implied = 0, splits = 0;
   for (let seed = 1; seed <= 500; seed++) {
     const m = generate(seed), { text, back } = roundTrip(m), want = project(m, m.views[0].id), shown = new Set(m.views[0].nodeIds);
     // a hidden owner is left out, and the text names it on each element it held
-    for (const line of hiddenOwners(m, m.views[0].nodeIds)) { hidden++; assert.ok(text.includes(`  ${line}\n`), `seed ${seed}\n${line}\n${text}`); }
+    for (const line of hiddenOwners(m, m.views[0].nodeIds)) { hidden++; splits += line.includes('Mermaid draws'); assert.ok(text.includes(`  ${line}\n`), `seed ${seed}\n${line}\n${text}`); }
     // a namespace holding only dotted ones is written by them alone, and its label, unless the one they give, is not
     for (const [, id] of text.matchAll(/%% not written: (\S+): its label .*: it holds only namespaces, written by their dotted names\n/g)) {
       implied++; const p = want.nodes.find(n => n.id === id); p.label = id.slice(id.lastIndexOf('.') + 1);
@@ -144,7 +149,7 @@ test('read(write(model)) equals the model, less the owners the view does not sho
     assert.deepEqual(canon(back.model), canon(want), `seed ${seed}\n${text}`);
   }
   assert.ok(both > 0, 'the generator makes an end both navigable and with a diamond');
-  assert.ok(hidden > 100 && nested > 20 && empty > 20 && dots > 10 && implied > 0, `the generator hides owners (${hidden}), nests a class two shown packages deep (${nested}), leaves packages empty (${empty}), writes dotted ids (${dots}) and namespaces only they imply (${implied})`);
+  assert.ok(hidden > 100 && nested > 20 && empty > 20 && dots > 10 && implied > 0 && splits > 5, `the generator hides owners (${hidden}), nests a class two shown packages deep (${nested}), leaves packages empty (${empty}), writes dotted ids (${dots}), namespaces only they imply (${implied}) and a hidden owner's dotted path (${splits})`);
 });
 
 test('a file with every construct on Mermaid\'s class page gives the pinned report (R1, R4)', () => {
@@ -417,4 +422,34 @@ test('the writer names an owner it does not write: one the view does not show, o
   assert.deepEqual(notWritten(text), ['%% not written: q: its parent p, which the view does not show', '%% not written: B: its parent gone, which the model does not have',
     '%% not written: n1: its parent p, which the view does not show', '%% not written: n2: its parent q: a note is written outside namespaces']);
   assert.deepEqual(read(text).model.nodes.map(n => [n.id, n.parent]), [['q', undefined], ['A', 'q'], ['B', undefined], ['n1', undefined], ['n2', undefined]]);
+});
+
+// review of 2.4, each case checked against Mermaid 12.3.0's ClassDB (getNamespaces, getClasses) under jsdom
+test('a dotted namespace is written dotted beside a class or an unwritten namespace of its last part\'s name; its hidden owner is named as one Mermaid draws', () => {
+  const P = (id, parent) => ({ id, type: 'uml.Package', label: id.slice(id.lastIndexOf('.') + 1), ...(parent ? { parent } : {}) });
+  const C = (id, parent) => ({ id, type: 'uml.Class', label: id, parent });
+  // only a written namespace beside it has its name: a class X, or an empty namespace X, does not (Mermaid: P, P.X in P)
+  for (const nodes of [[P('P'), C('X', 'P'), P('P.X', 'P'), C('B', 'P.X')], [P('P'), C('A', 'P'), P('X', 'P'), P('P.X', 'P'), C('B', 'P.X')]]) {
+    const m = { schemaVersion: 2, nodes, views: [] }, text = write(m);
+    assert.ok(text.includes('\n  namespace P.X {\n    class B\n  }\n') && !text.includes('`'), text);
+    assert.deepEqual(read(text).model.nodes.filter(n => n.type === 'uml.Package').map(n => [n.id, n.parent]), [['P', undefined], ['P.X', 'P']], text);
+  }
+  // a hidden owner of a dotted id: Mermaid draws core, as it splits `core.io`; an empty one is not written, so no more is said
+  const nodes = [P('core'), P('core.io', 'core'), C('C', 'core.io')], v = nodeIds => ({ schemaVersion: 2, nodes, views: [{ id: 'v', diagram: 'uml.class', nodeIds }] });
+  assert.deepEqual(notWritten(write(v(['core.io', 'C']))), ['%% not written: core.io: its parent core, which the view does not show, though Mermaid draws core, as it splits core.io at its dots']);
+  assert.deepEqual(notWritten(write(v(['core.io']))), ['%% not written: core.io: its parent core, which the view does not show', '%% not written: core.io (uml.Package)']);
+});
+
+test('the writer is linear in a namespace\'s dotted children, and writes a model nested thousands deep (nothing throws)', () => {
+  const nodes = [{ id: 'P', type: 'uml.Package', label: 'P' }];
+  for (let k = 0; k < 40000; k++) nodes.push({ id: `P.c${k}`, type: 'uml.Package', label: `c${k}`, parent: 'P' }, { id: `K${k}`, type: 'uml.Class', label: `K${k}`, parent: `P.c${k}` });
+  const t0 = performance.now(), wide = write({ schemaVersion: 2, nodes, views: [] });
+  assert.ok(performance.now() - t0 < 1500, `${performance.now() - t0} ms`);
+  assert.ok(wide.includes('\n  namespace P.c39999 {\n'));
+  // one repeated name, 5000 deep: the reader keys each by its parent, so the model is 5000 deep; it is written, indented 32
+  // deep at most, and reads back as it was
+  const text = 'classDiagram\n' + 'namespace a {\n'.repeat(5000) + 'class C\n' + '}\n'.repeat(5000), m = read(text).model;
+  assert.equal(m.nodes.find(n => n.id === 'C').parent, 'a-5000');
+  const back = read(write(m));
+  assert.deepEqual([back.report, back.model.nodes], [[], m.nodes]);
 });
