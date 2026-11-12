@@ -125,7 +125,7 @@ test('a file with every construct on Mermaid\'s state page gives the pinned repo
     '104 skipped: Crash:::badBadEvent: a style class is not read',
     '105 skipped: class Still, Moving movement: styles are not read',
     '114 approximated: Placed : entry: a second entry replaces the first',
-    '117 approximated: Paid --> Placed: its text is not trigger [guard] / effect (an unbalanced (): it is kept as its trigger',
+    '117 approximated: Paid --> Placed: its text is not trigger [guard] / effect: the ( it opens is not closed: it is kept as its trigger',
     '127 skipped: hide empty description: not read',
     '128 skipped: scale 350 width: not read',
     '139 approximated: %% id: s1 is taken, so s1 --> s1 is s1-s1',

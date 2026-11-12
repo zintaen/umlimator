@@ -788,11 +788,12 @@ every file is read, each state in the composite and region the model gives it, e
 inside it, which it draws with no line. Before the `%% row:` form above, Mermaid refused three of the ten models (text on
 a composite beside its label). A note's side: `note right of` is read as written, `note left of` reported, the side not kept.
 
-4.8 started beside 4.2, so `mermaid-state.js` reads trigger [guard] / effect with its own `mtParse` and `mtPrint`, a
-stand-in for `transition.js` written to §7.1; when 4.2 merges, the reader imports `parseTransition` and
-`printTransition` and deletes the two (the writer checks each text reads back through whichever parser it has). The
-pinned report item for `state.mmd` line 117 (`tests/mermaid-state.test.mjs`, the every-construct test) quotes the
-stand-in's error text, "(an unbalanced ()", and takes 4.2's wording then.
+4.8 started beside 4.2 with its own stand-in for `transition.js`; since 4.2 merged, the swap is done: the reader
+imports `parseTransition`, `printTransition` and `trScan` from `src/uml/transition.js` and the stand-in is deleted.
+`mtPrint` keeps the writer's check that each text reads back as the very parts (untrimmed or empty parts are reported,
+not trimmed), and `mtLine` takes `trScan`'s `/` to tell `a /` from a description. The pinned report item for
+`state.mmd` line 117 (`tests/mermaid-state.test.mjs`) now quotes 4.2's wording: "its text is not trigger [guard] /
+effect: the ( it opens is not closed".
 
 | S22 option, crossings Mermaid does not support | For | Against |
 |---|---|---|
