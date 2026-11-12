@@ -1,0 +1,206 @@
+<!doctype html>
+<!-- The time-axis layout and its shapes (3.2, notes/stage-3.md §3.2, §4.2) in headless Chrome (tests/embed.py): every case
+     below (risks.md §6 T, notes/stage-3.md §9) laid out by layoutTimeAxis inside render()'s measure, through a stand-in type,
+     and drawn by svgOf with the lifeline, frame, operand and use shapes, in both themes and three fonts: no overlap, every text
+     inside its face or backing, no label on a bar, no line through a head; a click on a stem, a message, its arrowhead, a
+     loop, a guard, a frame's outline and a use lands on its element; contrast. tests/timeaxis.test.mjs lays the same cases
+     out in Node (it reads them from the JSON below). Imports src/ to register the stand-in type. -->
+<meta charset="utf-8">
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="../lib/umlimator-theme.css">
+<title>umlimator time axis test</title>
+<body style="margin:0">
+<div id="m" style="width:1180px;height:1000px"></div>
+<!-- each case: heads [id, label, stereotypes?]; rows [id, kind, a, b, label, parent?, sort?]; groups [id, operator, parent,
+     [[operand, guard]]]; bars [head, from row, to row, depth], as src/uml/interaction.js gives them; born and ends by row;
+     problems: the ids the layout reports -->
+<script type="application/json" id="cases">
+[
+  { "id": "minimal", "shows": "a call and its reply",
+    "heads": [["a", "a : Client"], ["b", "b : Server"]],
+    "rows": [["m1", "line", "a", "b", "get()"], ["m2", "line", "b", "a", "ok", null, "reply"]],
+    "bars": [["b", 0, 1, 1]] },
+  { "id": "self", "shows": "a self-message: a loop to a nested bar",
+    "heads": [["user", "user", ["actor"]], ["api", "api : ShopApi"]],
+    "rows": [["m1", "line", "user", "api", "place(order)"], ["m2", "self", "api", null, "validate(order)"], ["m3", "line", "api", "user", "result", null, "reply"]],
+    "bars": [["api", 0, 2, 1], ["api", 1, 1, 2]] },
+  { "id": "reentrant", "shows": "a call inside a call on one lifeline: a second bar inside the first",
+    "heads": [["a", "a : Client"], ["b", "b : Server"]],
+    "rows": [["m1", "line", "a", "b", "start()"], ["m2", "line", "b", "a", "ask()"], ["m3", "line", "a", "b", "detail()"],
+      ["m4", "line", "b", "a", "detail", null, "reply"], ["m5", "line", "a", "b", "answer", null, "reply"], ["m6", "line", "b", "a", "done", null, "reply"]],
+    "bars": [["b", 0, 5, 1], ["a", 1, 4, 1], ["b", 2, 3, 2]] },
+  { "id": "no-call", "shows": "a reply with no call: dashed, from the stem",
+    "heads": [["a", "a : Client"], ["b", "b : Server"]],
+    "rows": [["m1", "line", "b", "a", "late answer", null, "reply"]] },
+  { "id": "create", "shows": "a create: the head lowered to its arrow",
+    "heads": [["a", "a : Client"], ["b", "b : Shop"], ["c", "c : Receipt"]],
+    "rows": [["m1", "line", "a", "b", "make()"], ["m2", "line", "b", "c", "new(order)", null, "create"], ["m3", "line", "b", "c", "fill()"],
+      ["m4", "line", "c", "b", "filled", null, "reply"], ["m5", "line", "b", "a", "made", null, "reply"]],
+    "bars": [["b", 0, 4, 1], ["c", 2, 3, 1]], "born": { "c": 1 } },
+  { "id": "delete", "shows": "a delete: the stem ends in a cross",
+    "heads": [["a", "a : Client"], ["b", "b : Session"]],
+    "rows": [["m1", "line", "a", "b", "open()"], ["m2", "line", "b", "a", "opened", null, "reply"], ["m3", "line", "a", "b", "dispose()", null, "delete"]],
+    "bars": [["b", 0, 1, 1]], "ends": { "b": 2 } },
+  { "id": "empty-operand", "shows": "an operand with no messages: one empty row",
+    "heads": [["a", "a : Client"], ["b", "b : Catalog"]],
+    "groups": [["f1", "alt", null, [["f1-yes", "found"], ["f1-no", "else"]]]],
+    "rows": [["m1", "line", "a", "b", "find(id)"], ["m2", "line", "b", "a", "item", "f1-yes", "reply"]],
+    "bars": [["b", 0, 1, 1]] },
+  { "id": "nested", "shows": "a fragment inside a fragment: inset 10 px, tags clear of each other",
+    "heads": [["a", "a : Cart"], ["b", "b : Stock"], ["c", "c : Store"]],
+    "groups": [["f1", "loop", null, [["f1-each", "each item"]]], ["f2", "opt", "f1-each", [["f2-in", "in stock"]]]],
+    "rows": [["m1", "line", "a", "b", "reserve(i)", "f1-each"], ["m2", "line", "b", "c", "hold(i)", "f2-in"], ["m3", "line", "c", "b", "held", "f2-in", "reply"],
+      ["m4", "line", "b", "a", "reserved", "f1-each", "reply"]],
+    "bars": [["b", 0, 3, 1], ["c", 1, 2, 1]] },
+  { "id": "use", "shows": "an interaction use across two lifelines: its box over those two only",
+    "heads": [["a", "a : Client"], ["b", "b : Shop"], ["c", "c : Bank"]],
+    "rows": [["m1", "line", "a", "b", "pay()"], ["u1", "span", "b", "c", "Charge card"], ["m2", "line", "b", "a", "paid", null, "reply"]],
+    "bars": [["b", 0, 2, 1]] },
+  { "id": "untouched", "shows": "a lifeline no message touches: its stem at full height",
+    "heads": [["a", "a : Client"], ["idle", "idle : Spare"], ["b", "b : Server"]],
+    "rows": [["m1", "line", "a", "b", "ping()"], ["m2", "line", "b", "a", "pong", null, "reply"]],
+    "bars": [["b", 0, 1, 1]] },
+  { "id": "alt-replies", "shows": "replies to one call in two operands: the bar runs across the divider; a bar across a guard",
+    "heads": [["user", "user", ["actor"]], ["api", "api : ShopApi"], ["pay", "payments : PaymentProvider"]],
+    "groups": [["f1", "alt", null, [["f1-ok", "payment accepted"], ["f1-no", "else"]]]],
+    "rows": [["m1", "line", "user", "api", "buy()"], ["m2", "line", "api", "pay", "charge(total)"], ["m3", "line", "pay", "api", "paid", "f1-ok", "reply"],
+      ["m4", "line", "pay", "api", "declined", "f1-no", "reply"], ["m5", "line", "api", "user", "result", null, "reply"]],
+    "bars": [["api", 0, 4, 1], ["pay", 1, 3, 1]] },
+  { "id": "created-in-operand", "shows": "a lifeline created in one operand: its stem runs through the other",
+    "heads": [["a", "a : Client"], ["b", "b : Shop"], ["r", "r : Receipt"]],
+    "groups": [["f1", "alt", null, [["f1-a", "paid"], ["f1-b", "else"]]]],
+    "rows": [["m1", "line", "a", "b", "pay()"], ["m2", "line", "b", "r", "new()", "f1-a", "create"], ["m3", "line", "b", "a", "receipt", "f1-a", "reply"],
+      ["m4", "line", "b", "a", "failed", "f1-b", "reply"]],
+    "bars": [["b", 0, 3, 1]], "born": { "r": 1 } },
+  { "id": "long-name", "shows": "a long lifeline name: cut at 320 px",
+    "heads": [["a", "a : AVeryLongTypeNameThatGoesOnAndOnAndOnAndOnPastAnyReasonableWidthForOneHead"], ["b", "b : Server"]],
+    "rows": [["m1", "line", "a", "b", "call()"]],
+    "bars": [["b", 0, 0, 1]] },
+  { "id": "empty-fragment", "shows": "a fragment with nothing in it: a header and one empty row per operand at its parent's end, with a warning",
+    "heads": [["a", "a : Client"], ["b", "b : Server"]],
+    "groups": [["f1", "opt", null, [["f1-x", "never"]]], ["f2", "alt", null, [["f2-a", "yes"], ["f2-b", "no"]]], ["f3", "opt", "f2-b", [["f3-x", "maybe"]]]],
+    "rows": [["m1", "line", "a", "b", "go()"], ["m2", "line", "b", "a", "went", "f2-a", "reply"]],
+    "bars": [["b", 0, 1, 1]], "problems": ["f3", "f1"] },
+  { "id": "example-11", "shows": "docs/diagrams/examples/11-sequence.json, with 3.1's bars",
+    "heads": [["shopper", "shopper : Shopper", ["actor"]], ["storefront", "storefront : Storefront"], ["api", "api : ShopApi"], ["payments", "payments : PaymentProvider"], ["receipt", "receipt : Receipt"]],
+    "groups": [["f1", "alt", null, [["f1-paid", "payment accepted"], ["f1-declined", "else"]]], ["f2", "opt", "f1-paid", [["f2-notify", "shopper is still on the page"]]]],
+    "rows": [["m1", "line", "shopper", "storefront", "checkout()"], ["m2", "line", "storefront", "api", "place(order)"], ["m3", "self", "api", null, "validate(order)"],
+      ["m4", "line", "api", "payments", "charge(total)"], ["m5", "line", "payments", "api", "paid", "f1-paid", "reply"], ["m6", "line", "api", "receipt", "new(order)", "f1-paid", "create"],
+      ["m7", "line", "api", "storefront", "orderPlaced", "f2-notify", "async"], ["f3", "span", "api", "receipt", "Send receipt email", "f1-paid"],
+      ["m8", "line", "payments", "api", "declined", "f1-declined", "reply"], ["m9", "line", "api", "storefront", "result", null, "reply"], ["m10", "line", "storefront", "shopper", "confirmation page", null, "reply"]],
+    "bars": [["storefront", 0, 10, 1], ["api", 1, 9, 1], ["api", 2, 2, 2], ["payments", 3, 8, 1]], "born": { "receipt": 5 } }
+]
+</script>
+<script type="module">
+import { render } from '../src/canvas/render.js';
+import { registerDiagramType } from '../src/core/registry.js';
+import { textW } from '../src/core/text.js';
+import { SHAPE } from '../src/draw/shapes.js';
+import { layoutTimeAxis } from '../src/layout/timeaxis.js';
+import { frame, tagSize, guardSize, useSize } from '../src/uml/frame.js';
+const out = { ok: [], fail: [] };
+const check = (name, cond, info) => { document.title = name; if (cond) out.ok.push(name); else out.fail.push(name + (info === undefined ? '' : ': ' + JSON.stringify(info))); };
+const CASES = JSON.parse(document.getElementById('cases').textContent), BY = Object.fromEntries(CASES.map(c => [c.id, c]));
+// a case as layoutTimeAxis's input, measured (as tests/timeaxis.test.mjs does, in the font render() measures in here)
+const inputOf = c => ({
+  heads: c.heads.map(([id, label, st]) => ({ id, ...SHAPE.lifeline.size({ label, stereotypes: st }), born: (c.born || {})[id] ?? null, ends: (c.ends || {})[id] ?? null })),
+  rows: c.rows.map(([id, kind, a, b, label, parent]) => ({ id, kind, a, b, parent: parent ?? null, ...(kind === 'span' ? useSize(label) : { w: Math.ceil(textW(label, 10.5) + 12), h: 16 }) })),
+  groups: (c.groups || []).map(([id, op, parent, parts]) => ({ id, parent, tag: tagSize(op), parts: parts.map(([p, g]) => ({ id: p, guard: guardSize(g) })) })),
+  bars: (c.bars || []).map(([head, from, to, depth]) => ({ head, from, to, depth })) });
+const ENDS = { call: { to: 'arrow' }, async: { to: 'open' }, reply: { to: 'open', dashed: true }, create: { to: 'open', dashed: true }, delete: { to: 'arrow' } };
+const outs = {};
+// the stand-in for 3.3's type: layoutTimeAxis's output as svgOf's geometry, its outlines, stems and bars under the lines
+registerDiagramType('test.timeaxis', {
+  layout: { pins: false, run(model, view) { const c = BY[view.id], o = layoutTimeAxis(inputOf(c)); outs[c.id] = o;
+    const H = Object.fromEntries(c.heads.map(([id, label, st]) => [id, { label, st }]));
+    const heads = o.heads.map((h, j) => ({ ...h, shape: 'lifeline', type: 'uml.Lifeline', label: H[h.id].label, stereotypes: H[h.id].st, k: 'file', stem: o.stems[j] }));
+    const G = Object.fromEntries((c.groups || []).flatMap(([id, op, , parts]) => [[id, op], ...parts.map(([p, g]) => [p, g])]));
+    const nodes = [...heads, ...o.frames.flatMap(f => [{ id: f.id, shape: 'frame', label: G[f.id], k: 'file', x: f.x, y: f.y, w: f.w, h: f.h },
+      ...f.parts.map(p => ({ ...p, shape: 'operand', label: G[p.id], k: 'file' }))]),
+      ...o.spans.map(s => ({ ...s, shape: 'use', label: c.rows.find(r => r[0] === s.id)[4], k: 'file' }))];
+    const byId = Object.fromEntries(nodes.map(n => [n.id, n])), R = Object.fromEntries(c.rows.map(r => [r[0], r]));
+    const edges = o.lines.map(l => { const [, kind, a, b0, label, , sort] = R[l.id], b = kind === 'self' ? a : b0;
+      return { id: l.id, _id: l.id, from: a, to: b, s: byId[a], t: byId[b], pts: l.pts, end: ENDS[sort || 'call'], lbl: { ...l.lbl, text: label }, aria: `Message ${label}` }; });
+    return { nodes, edges, groups: [], byId, bounds: o.bounds, map: false, ta: o }; } },
+  draw(g) { const o = g.ta;
+    const under = o.frames.map(f => frame(f.x, f.y, f.w, f.h, f.dividers.map(d => d.y))).join('') + o.spans.map(s => frame(s.x, s.y, s.w, s.h)).join('')
+      + o.stems.map(s => `<path class="ta-stem" d="M${s.x} ${s.y1}V${s.y2}" stroke="var(--um-muted)" stroke-dasharray="4 4"/>`).join('')
+      + o.bars.map(b => `<rect class="ta-bar" x="${b.x}" y="${b.y}" width="${b.w}" height="${b.h}" fill="var(--um-stage-bg)" stroke="var(--um-text)"/>`).join('');
+    const over = o.stems.filter(s => s.cross).map(s => `<path class="ta-x" d="M${s.x - 8} ${s.y2 - 8}l16 16m0 -16l-16 16" stroke="var(--um-text)" stroke-width="2"/>`).join('');
+    return { under, over }; } });
+const ids = [...new Set(CASES.flatMap(c => c.heads.map(h => h[0])))];
+const MODEL = { schemaVersion: 2, nodes: ids.map(id => ({ id, type: 'test.Lifeline', label: id })), edges: [],
+  views: CASES.map(c => ({ id: c.id, diagram: 'test.timeaxis', title: c.shows, nodeIds: c.heads.map(h => h[0]), edges: [] })) };
+const el = document.getElementById('m');
+let sr;
+const pick = s => sr.querySelector(s), all = s => [...sr.querySelectorAll(s)];
+const mount = view => { el.innerHTML = ''; const h = render(el, MODEL, { view }); sr = el.querySelector('.umlimator').shadowRoot; return h; };
+const bb = x => { const r = x.getBBox(); return { x: r.x, y: r.y, w: r.width, h: r.height }; };
+const meets = (a, b, k = 0) => a.x + k < b.x + b.w && b.x + k < a.x + a.w && a.y + k < b.y + b.h && b.y + k < a.y + a.h;
+const inside = (a, b, k = .5) => a.x >= b.x - k && a.y >= b.y - k && a.x + a.w <= b.x + b.w + k && a.y + a.h <= b.y + b.h + k;
+const FONTS = { serif: 'serif', sans: 'sans-serif', wide: 'monospace' };
+const rgba = s => { let m = /rgba?\(([^)]+)\)/.exec(s); if (m) { const p = m[1].split(/[ ,/]+/).filter(Boolean).map(Number); return [p[0] / 255, p[1] / 255, p[2] / 255, p.length > 3 ? p[3] : 1]; }
+  m = /color\(srgb ([^)]+)\)/.exec(s); if (m) { const p = m[1].split(/[ /]+/).filter(Boolean).map(Number); return [p[0], p[1], p[2], p.length > 3 ? p[3] : 1]; } return null; };
+const blend = (top, bot) => [0, 1, 2].map(i => top[i] * top[3] + bot[i] * (1 - top[3])).concat(1);
+const lum = c => { const f = v => v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]); };
+const ratio = (fg, bg) => { const [x, y] = [lum(blend(fg, bg)), lum(bg)].sort((p, q) => q - p); return +((x + 0.05) / (y + 0.05)).toFixed(2); };
+// what is under a point of the drawing (svg coordinates): the element hit, by its node or its line
+const hit = (svg, x, y) => { const p = new DOMPoint(x, y).matrixTransform(svg.getScreenCTM()), e = sr.elementFromPoint(p.x, p.y);
+  const g = e && (e.closest('.edge-g') || e.closest('.node')); return g ? (g.classList.contains('edge-g') ? 'line ' + g.dataset.i : g.dataset.id) : null; };
+try {
+  const widths = {}, headW = {};
+  for (const theme of ['light', 'dark']) for (const [fname, family] of Object.entries(FONTS)) {
+    document.documentElement.dataset.theme = theme; el.style.setProperty('--um-sans', family);
+    for (const c of CASES) {
+      const tag = `${c.id}, ${theme}, ${fname}`, h = mount(c.id), svg = pick('.stage svg'), o = outs[c.id], bad = [];
+      const heads = all('.node.lifeline'), body = g => bb(g.querySelector('.n-body'));
+      if (c.id === 'long-name') widths[fname] = body(heads[0]).w;
+      // every text inside its face: a head's in its box, a label's in its backing, a tag's in its tag, a guard's and a use's name on theirs
+      heads.forEach(g => { const B = body(g); g.querySelectorAll('text').forEach(t => { if (!inside(bb(t), B, -1)) bad.push(`${g.dataset.id}: "${t.textContent}" out of its head`); }); });
+      all('.e-lab').forEach(g => { if (!inside(bb(g.querySelector('text')), bb(g.querySelector('rect')))) bad.push(`label "${g.textContent}" out of its backing`); });
+      all('.node.frame, .node.use').forEach(g => { const T = bb(g.querySelector('.f-tag')), t = g.querySelector('.f-tag + text'); if (!inside(bb(t), T)) bad.push(`${g.dataset.id}: tag "${t.textContent}" out of its tag`); });
+      all('.node.operand').forEach(g => { const t = g.querySelector('text'); if (t && !inside(bb(t), bb(g.querySelector('.f-guard')))) bad.push(`${g.dataset.id}: guard "${t.textContent}" out of its backing`); });
+      all('.node.use').forEach(g => { const t = g.querySelector('.f-name + text'), B = bb(g.querySelector('.f-hit'));
+        if (!inside(bb(t), bb(g.querySelector('.f-name'))) || !inside(bb(t), B)) bad.push(`${g.dataset.id}: "${t.textContent}" out of its box`);
+        if (meets(bb(g.querySelector('.f-name')), bb(g.querySelector('.f-tag')))) bad.push(`${g.dataset.id}: its name on its tag`); });
+      // no overlap among what holds text: heads, labels, tags, guards, a use's name; and no label on a bar
+      const solid = [...heads.map(g => [g.dataset.id, body(g)]), ...all('.e-lab rect').map(r => ['label ' + r.parentNode.textContent, bb(r)]),
+        ...all('.f-tag').map(t => ['tag of ' + t.closest('.node').dataset.id, bb(t)]), ...all('.node.operand').filter(g => g.querySelector('text')).map(g => ['guard of ' + g.dataset.id, bb(g.querySelector('.f-guard'))]),
+        ...all('.f-name').map(t => ['name of ' + t.closest('.node').dataset.id, bb(t)])];
+      solid.forEach(([a, p], i) => solid.slice(i + 1).forEach(([b, q]) => { if (meets(p, q, .5)) bad.push(`${a} meets ${b}`); }));
+      const bars = all('.ta-bar').map(bb);
+      all('.e-lab rect').forEach(r => { if (bars.some(b => meets(bb(r), b, .5))) bad.push(`label "${r.parentNode.textContent}" on a bar`); });
+      // no line through a head (a create's ends on its head's side)
+      all('.edge-g path.edge').forEach(p => { const n = p.getAttribute('d').match(/-?\d+(\.\d+)?/g).map(Number), g = p.closest('.edge-g');
+        for (let k = 2; k < n.length; k += 2) { const s = { x: Math.min(n[k - 2], n[k]), y: Math.min(n[k - 1], n[k + 1]), w: Math.abs(n[k] - n[k - 2]) || .01, h: Math.abs(n[k + 1] - n[k - 1]) || .01 };
+          heads.forEach(hd => { const B = body(hd); if (meets(s, { x: B.x + 1, y: B.y + 1, w: B.w - 2, h: B.h - 2 })) bad.push(`line ${g.dataset.from}>${g.dataset.to} through ${hd.dataset.id}`); }); } });
+      const wantProblems = (c.problems || []).join();
+      check(`${tag}: ${c.shows}; ${heads.length} heads, ${all('.edge-g').length} lines, ${all('.node.frame').length} frames drawn, no overlap, every text in its face, no label on a bar, no line through a head`,
+        heads.length === c.heads.length && all('.edge-g').length === c.rows.filter(r => r[1] !== 'span').length && !bad.length && o.problems.map(p => p.ids.join()).join() === wantProblems, bad.slice(0, 10));
+      // contrast: the texts of frames, operands and uses 4.5:1 on their backing; frame outlines 3:1 on the stage
+      const stageBg = rgba(getComputedStyle(pick('.stage')).backgroundColor), low = [];
+      all('.node.frame text, .node.operand text, .node.use text').forEach(t => { const r = ratio(rgba(getComputedStyle(t).fill), stageBg); if (r < 4.5) low.push([t.textContent, r]); });
+      all('.frame-box rect, .frame-box path').forEach(x => { const r = ratio(rgba(getComputedStyle(x).stroke), stageBg); if (r < 3) low.push(['outline', r]); });
+      if (all('.frame-box').length) check(`${tag}: contrast: frame, guard and use texts 4.5:1, outlines 3:1`, !low.length, low);
+      h.destroy();
+    }
+    // hit areas (S3), on example 11: a stem between rows, a message and its arrowhead, a self-message's loop, a guard, a frame's outline, a use
+    const h = mount('example-11'), svg = pick('.stage svg'), o = outs['example-11'], tagX = `${theme}, ${fname}`;
+    const stem = o.stems.find(s => s.head === 'storefront'), G = stem.gaps, k = G.findIndex((g, i) => G[i + 1] && G[i + 1].y1 - g.y2 > 12), free = (G[k].y2 + G[k + 1].y1) / 2;
+    headW[fname] = o.heads.find(x => x.id === 'storefront').w;
+    const L = id => o.lines.find(l => l.id === id), I = id => o.lines.findIndex(l => l.id === id), m4 = L('m4'), m3 = L('m3'), f1 = o.frames.find(f => f.id === 'f1'), part = f1.parts[1], use = o.spans[0];
+    const got = { stem: hit(svg, stem.x, free), stem2: hit(svg, stem.x + 9, free), message: hit(svg, (m4.pts[0][0] + m4.pts[1][0]) / 2, m4.pts[0][1]), head: hit(svg, m4.pts[1][0] - 3, m4.pts[1][1]),
+      loop: hit(svg, m3.pts[1][0], (m3.pts[1][1] + m3.pts[2][1]) / 2), guard: hit(svg, part.gx + 6, part.gy + 7), frame: hit(svg, f1.x, f1.y + f1.h / 2), use: hit(svg, use.x + use.w / 2, use.y + use.h - 4) };
+    check(`${tagX}: a click on a stem lands on its lifeline; on a message, its arrowhead or a loop on the message; on a guard, a frame's outline or a use on that element`,
+      JSON.stringify(got) === JSON.stringify({ stem: 'storefront', stem2: 'storefront', message: `line ${I('m4')}`, head: `line ${I('m4')}`, loop: `line ${I('m3')}`, guard: 'f1-declined', frame: 'f1', use: 'f3' }), got);
+    check(`${tagX}: the lifeline, frame, operand and use are named`, pick('.node[data-id="api"]').getAttribute('aria-label') === 'Lifeline api : ShopApi'
+      && pick('.node[data-id="shopper"]').getAttribute('aria-label') === 'Lifeline shopper : Shopper (actor)' && pick('.node[data-id="f1"]').getAttribute('aria-label') === 'Combined fragment alt'
+      && pick('.node[data-id="f1-paid"]').getAttribute('aria-label') === 'Operand payment accepted' && pick('.node[data-id="f3"]').getAttribute('aria-label') === 'Interaction use Send receipt email',
+      all('.node').map(g => g.getAttribute('aria-label')));
+    h.destroy();
+  }
+  check('the three fonts measure differently, and a long head is cut at 320 px in each', new Set(Object.values(headW)).size === 3 && Object.values(widths).every(w => w <= 320.5 && w > 300), [headW, widths]);
+} catch (x) { out.fail.push('threw: ' + (x && x.stack || x)); }
+document.documentElement.dataset.theme = 'light'; el.style.removeProperty('--um-sans');
+const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
+</script>
