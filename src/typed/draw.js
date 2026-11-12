@@ -1,7 +1,7 @@
 import { TYPED } from '../core/registry.js';
 import { esc, fit, textW } from '../core/text.js';
 import { trimLine } from '../draw/lines.js';
-import { SHAPE, boxOut, portsOn, r2 } from '../draw/shapes.js';
+import { SHAPE, boxOut, drawnPts, portsOn, r2 } from '../draw/shapes.js';
 import { hasKey } from '../map/kinds.js';
 
 /* What a typed view draws and a map never does (risks.md C5): the classifier shape, a typed line's ends and its end labels.
@@ -93,8 +93,14 @@ function endLabels(e, pts = e.pts, also = []) { // also: boxes to keep clear of 
 }
 
 // svgOf's typed lines (TYPED.lines): { id, edges, drawn, lstyle, MC } -> defs, the markers of the ends drawn; edge(e, i), a
-// line with ends: its style, its points trimmed for its flow, its markers; labels(i): its end labels' text
+// line with ends: its style, its points trimmed for its flow, its markers; labels(i): its end labels' text.
+// First each end on a node drawn by a typed shape with an inset (a circle, a diamond: notes/stage-4.md §4.2) is slid from
+// the node's box onto its outline, as a map's on its cards: drawn[i] becomes a copy (drawnPts), so the layout's points,
+// which a memo hands back (Q13), are never changed. Every typed shape with an inset gets the
+// copy, its ends rounded; where the inset is 0 (the classifier, a package, an object) the ends stay on the box
+const insetLook = n => { const S = n && hasKey(SHAPE, n.shape) ? SHAPE[n.shape] : null; return S && S.draw && S.inset ? { ...n, S } : null; };
 TYPED.lines = ({ id, edges, drawn, lstyle, MC }) => {
+  edges.forEach((e, i) => { if (e.pts) drawn[i] = drawnPts(e, insetLook); });
   const ends = [...new Set(edges.flatMap(e => e.end ? ['from', 'to'].map(w => endOf(e.end, w)).filter(Boolean).map(k => k + '-' + lstyle(e).m) : []))];
   const endMark = km => { const k = km.slice(0, km.lastIndexOf('-')), m = km.slice(k.length + 1), [L, H, p, fl] = ENDS[k];
     return `<marker id="${id}-${km}" markerWidth="${L}" markerHeight="${2 * H}" refX="${L}" refY="${H}" orient="auto-start-reverse" markerUnits="userSpaceOnUse" overflow="visible"><path d="${p}" fill="${fl === 'line' ? MC[m] : fl === 'hollow' ? 'var(--um-stage-bg)' : 'none'}" stroke="${MC[m]}" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/></marker>`; };
