@@ -1,0 +1,158 @@
+<!doctype html>
+<!-- The use case diagram (4.4) in headless Chrome (tests/embed.py), from lib/umlimator-all.js: docs/diagrams/examples/08-use-case.json
+     drawn by render() in both themes, three fonts and both directions (actors and ellipses, texts inside their shapes, the
+     subject's box holding its use cases, line ends on outlines, names, reading order, contrast, the legend), then edited
+     through the edit event and apply(), by pointer and by keyboard: the palette and N, F2, a line by L and the picker (an
+     association drawn from a use case starts at the actor), an extend's condition and points, extension points as member
+     rows, the Owner field, a drop into the subject's box, a pin, hide, delete and the problems list. -->
+<meta charset="utf-8">
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="../lib/umlimator-theme.css">
+<title>umlimator use case diagram test</title>
+<body style="margin:0">
+<div id="m" style="width:1200px;height:1000px"></div>
+<script type="module">
+import { render, apply, validate } from '../lib/umlimator-all.js';
+const out = { ok: [], fail: [] };
+const check = (name, cond, info) => { document.title = name; if (cond) out.ok.push(name); else out.fail.push(name + (info === undefined ? '' : ': ' + JSON.stringify(info))); };
+const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+const el = document.getElementById('m');
+let sr, stage, ed = [];
+const pick = s => sr.querySelector(s), all = s => [...sr.querySelectorAll(s)];
+const centre = s => { const r = pick(s).getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; };
+const ptr = (target, type, [x, y]) => target.dispatchEvent(new PointerEvent(type, { clientX: x, clientY: y, button: 0, pointerId: 7, pointerType: 'mouse', bubbles: true, composed: true }));
+const key = (k, extra = {}, target = stage) => target.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true, composed: true, cancelable: true, ...extra }));
+const click = s => { const g = pick(s), at = centre(s); ptr(g, 'pointerdown', at); ptr(g, 'pointerup', at); g.dispatchEvent(new MouseEvent('click', { clientX: at[0], clientY: at[1], bubbles: true, composed: true })); };
+const mount = (model, opts = {}) => { el.innerHTML = ''; ed = []; const h = render(el, model, { view: 'shopping', on: { edit: e => ed.push(e) }, ...opts }); sr = el.querySelector('.umlimator').shadowRoot; stage = pick('.stage'); return h; };
+const errors = m => validate(m).filter(p => p.level === 'error');
+const last = () => ed[ed.length - 1];
+const gives = (name, cmds, test, base, errs = 0) => { const e = last(); let m = null; try { m = e && apply(base, e.commands); } catch (x) { m = null; }
+  check(name, !!e && same(e.commands, cmds) && !!m && test(m) && errors(m).length === errs, [e, m && errors(m)]); return m; };
+const change = (t, v) => { t.value = v; t.dispatchEvent(new Event('change', { bubbles: true })); };
+const box = g => { const r = g.getBBox(); return { x: r.x, y: r.y, w: r.width, h: r.height }; };
+const inside = (a, b) => a.x >= b.x - .5 && a.y >= b.y - .5 && a.x + a.w <= b.x + b.w + .5 && a.y + a.h <= b.y + b.h + .5;
+// a text's box inside an ellipse: its four corners
+const inEllipse = (t, e) => [[t.x, t.y], [t.x + t.w, t.y], [t.x, t.y + t.h], [t.x + t.w, t.y + t.h]].every(([x, y]) => ((x - e.x - e.w / 2) / (e.w / 2)) ** 2 + ((y - e.y - e.h / 2) / (e.h / 2)) ** 2 <= 1.02);
+const FONTS = { serif: 'serif', sans: 'sans-serif', wide: 'monospace' };
+const rgba = s => { let m = /rgba?\(([^)]+)\)/.exec(s); if (m) { const p = m[1].split(/[ ,/]+/).filter(Boolean).map(Number); return [p[0] / 255, p[1] / 255, p[2] / 255, p.length > 3 ? p[3] : 1]; }
+  m = /color\(srgb ([^)]+)\)/.exec(s); if (m) { const p = m[1].split(/[ /]+/).filter(Boolean).map(Number); return [p[0], p[1], p[2], p.length > 3 ? p[3] : 1]; } return null; };
+const blend = (top, bot) => [0, 1, 2].map(i => top[i] * top[3] + bot[i] * (1 - top[3])).concat(1);
+const lum = c => { const f = v => v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]); };
+const ratio = (fg, bg) => { const [x, y] = [lum(blend(fg, bg)), lum(bg)].sort((p, q) => q - p); return +((x + 0.05) / (y + 0.05)).toFixed(2); };
+const css = (e, k) => rgba(getComputedStyle(e)[k]);
+const MODEL = await (await fetch('../docs/diagrams/examples/08-use-case.json')).json();
+try {
+  for (const theme of ['light', 'dark']) for (const [fname, family] of Object.entries(FONTS)) for (const direction of ['right', 'down']) {
+    document.documentElement.dataset.theme = theme; el.style.setProperty('--um-sans', family);
+    const M = structuredClone(MODEL); M.views[0].direction = direction;
+    const tag = `${theme}, ${fname}, ${direction}`, h = mount(M, { legend: true }), bad = [];
+    const nodes = all('.node');
+    check(`${tag}: three actors, eight use cases, ten lines, one subject box`, all('.node.actor').length === 3 && all('.node.usecase').length === 8 && all('.edge-g').length === 10 && all('.family[data-family="bookshop"]').length === 1,
+      [nodes.length, all('.edge-g').length]);
+    // every text in its shape: a use case's inside its ellipse, an actor's inside its box; no two nodes overlap
+    nodes.forEach(g => { const b = box(g.querySelector('.n-mask')), ell = g.classList.contains('usecase');
+      g.querySelectorAll('text').forEach(t => { const tb = box(t); if (!(ell ? inEllipse(tb, b) : inside(tb, b))) bad.push(`${g.dataset.id}: "${t.textContent}" spills`); }); });
+    const boxes = nodes.map(g => [g.dataset.id, box(g.querySelector('.n-mask'))]);
+    boxes.forEach(([a, p], i) => boxes.slice(i + 1).forEach(([b, q]) => { if (p.x < q.x + q.w && q.x < p.x + p.w && p.y < q.y + q.h && q.y < p.y + p.h) bad.push(`${a} and ${b} overlap`); }));
+    const frame = box(pick('.family[data-family="bookshop"] .family-box'));
+    all('.node.usecase').forEach(g => { if (!inside(box(g.querySelector('.n-mask')), frame)) bad.push(`${g.dataset.id} is outside the subject`); });
+    if (!inside(box(pick('.family[data-family="bookshop"] .family-title')), frame)) bad.push('the subject\'s title spills');
+    check(`${tag}: every text inside its shape, every use case inside the subject, none overlapping`, !bad.length, bad);
+    // line ends on outlines: each start (no marker there) on its node's ellipse or the actor's figure column, within 1 px
+    const offs = [];
+    all('.edge-g').forEach(g => { const v = g.querySelector('path.edge').getAttribute('d').match(/-?\d+(\.\d+)?/g).map(Number), [x, y] = v.slice(0, 2), n = pick(`.node[data-id="${g.dataset.from}"]`), b = box(n.querySelector('.n-mask'));
+      const d = n.classList.contains('usecase') ? Math.abs(Math.hypot((x - b.x - b.w / 2) / (b.w / 2), (y - b.y - b.h / 2) / (b.h / 2)) - 1) * Math.min(b.w, b.h) / 2
+        : Math.min(Math.abs(x - (b.x + b.w / 2 - 12)), Math.abs(x - (b.x + b.w / 2 + 12)), Math.abs(y - b.y), Math.abs(y - b.y - b.h));
+      if (d > 1) offs.push([g.dataset.from, g.dataset.to, +d.toFixed(2)]); });
+    check(`${tag}: each line starts on its shape's outline`, !offs.length, offs);
+    check(`${tag}: names a screen reader reads`, pick('.node[data-id="checkout"]').getAttribute('aria-label') === 'Use case Check out, in Online bookshop, 2 extension points'
+      && pick('.node[data-id="shopper"]').getAttribute('aria-label') === 'Actor Shopper' && pick('.family[data-family="bookshop"]').getAttribute('aria-label') === 'Subject Online bookshop, holding 8 use cases'
+      && pick('.edge-g[data-from="redeem-voucher"] title').textContent === 'Extend from Redeem a voucher to Check out, at payment, when the shopper has a voucher code');
+    const order = all('.keys .node-key').map(k => k.dataset.node);
+    check(`${tag}: reading order: actors, the subject's use cases, then the lines`, same(order.slice(0, 4), ['shopper', 'member', 'payment-provider', 'browse']) && all('.keys .um-key').length === 21, order);
+    check(`${tag}: extension points drawn under a divider`, same(all('.node[data-id="checkout"] .c-row').map(t => t.textContent), ['payment', 'extras']) && !!pick('.node[data-id="checkout"] .c-comp .n-det'));
+    const legend = all('.m-legend b').map(b => b.textContent);
+    check(`${tag}: the legend keys each line kind drawn`, same(legend, ['Association', 'Include', 'Extend', 'Generalization']), legend);
+    const stageBg = css(pick('.stage'), 'backgroundColor'), low = [];
+    nodes.forEach(g => { const body = g.querySelector('.n-body'), fill = g.classList.contains('usecase') ? css(body, 'fill') : null, bg = fill ? blend(fill, stageBg) : stageBg;
+      g.querySelectorAll('text').forEach(t => { const c = ratio(css(t, 'fill'), bg); if (c < 4.5) low.push([g.dataset.id, t.textContent, c]); }); });
+    const strokes = all('.node.usecase .n-body, .node.actor .n-body').map(b => ratio(css(b, 'stroke'), stageBg)).filter(c => c < 3);
+    check(`${tag}: contrast: texts 4.5:1, outlines 3:1`, !low.length && !strokes.length, [low, strokes]);
+    h.destroy();
+  }
+  document.documentElement.dataset.theme = 'light'; el.style.removeProperty('--um-sans');
+
+  // ---- editing (DoD 4), each gesture's commands applied with apply(). Track an order is in no subject, a package is there
+  const BASE = structuredClone(MODEL); delete BASE.nodes.find(n => n.id === 'track').parent; BASE.nodes.push({ id: 'pk', type: 'uml.Package', label: 'shop' });
+  let h = mount(BASE, { editable: true });
+  const panel = s => pick('.um-editor ' + s), row = id => panel(`[data-m="${id}"]`), enter = t => key('Enter', {}, t);
+  check('the palette: Actor, Use case, Subject, Comment; the lines listed', same(all('.um-editor .um-pal button').map(b => b.textContent), ['Actor', 'Use case', 'Subject', 'Comment'])
+    && /Association, Include, Extend, Generalization, Comment link/.test(panel('.um-pal .um-note').textContent), panel('.um-pal').textContent);
+  key('n'); pick('.um-rename').value = 'Courier'; key('Enter', {}, pick('.um-rename'));
+  let m1 = gives('N adds an actor, named, shown in the view', [{ op: 'add', element: { id: 'actor1', type: 'uml.Actor', label: 'Courier' }, view: 'shopping' }], m => m.views[0].nodeIds.includes('actor1'), BASE);
+  all('.um-editor .um-pal button')[1].click(); pick('.um-rename').value = 'Return a book'; key('Enter', {}, pick('.um-rename'));
+  gives('the palette\'s Use case button adds a use case', [{ op: 'add', element: { id: 'usecase1', type: 'uml.UseCase', label: 'Return a book' }, view: 'shopping' }], m => m.nodes.some(n => n.id === 'usecase1'), BASE);
+  h.update(m1);
+  check('after update() the actor is drawn as a figure with its name', pick('.node[data-id="actor1"].actor .c-name').textContent === 'Courier');
+  // F2 on a use case, by pointer then key
+  click('.node[data-id="browse"] .c-name'); key('F2');
+  check('F2 on a use case: a field holding its name', pick('.um-rename') && pick('.um-rename').value === 'Browse the catalog');
+  pick('.um-rename').value = 'Browse books'; key('Enter', {}, pick('.um-rename'));
+  const m2 = gives('F2: set its label', [{ op: 'set', id: 'browse', path: 'label', value: 'Browse books' }], m => m.nodes.find(n => n.id === 'browse').label === 'Browse books', m1);
+  h.update(m2);
+  check('after update() the ellipse reads the new name', pick('.node[data-id="browse"] .c-name').textContent === 'Browse books');
+  // an association drawn from a use case: L, a name, Enter, the picker; the hook starts it at the actor
+  click('.node[data-id="track"] .c-name'); key('l'); for (const c of 'courier') key(c); key('Enter');
+  const items = all('.um-pick button').map(b => b.textContent);
+  check('L, a name and Enter open the picker with the five lines', same(items, ['Association', 'Include', 'Extend', 'Generalization', 'Comment link']), items);
+  all('.um-pick button')[0].click();
+  const m3 = gives('an association drawn from a use case to an actor is added from the actor (edits.connect)', [{ op: 'add', element: { id: 'association1', type: 'uml.Association', from: 'actor1', to: 'track' }, view: 'shopping' }],
+    m => m.edges.some(e => e.id === 'association1'), m2);
+  // an extend: L from Browse books to Check out, Extend; it names no point yet (the problems list says so), then its condition and points in the panel
+  click('.node[data-id="browse"] .c-name'); key('l'); for (const c of 'check') key(c); key('Enter');
+  all('.um-pick button').find(b => b.textContent === 'Extend').click();
+  const m4 = gives('picking Extend: one add of a uml.Extend, which names no point yet', [{ op: 'add', element: { id: 'extend1', type: 'uml.Extend', from: 'browse', to: 'checkout' }, view: 'shopping' }],
+    m => m.edges.some(e => e.id === 'extend1'), m3, 1);
+  h.update(m4);
+  check('extend-points is listed in the problems panel, by its rule', all('.um-editor .um-probs button').some(b => /extend-points: extend1 names no extension point of "Check out"/.test(b.textContent)), all('.um-editor .um-probs button').map(b => b.textContent));
+  h.select({ type: 'edge', ids: ['extend1'], view: 'shopping' });
+  change(panel('[data-f="p:extensionPoints"]'), 'checkout.extras');
+  const m5 = gives('the extension points field sets the ids, a list', [{ op: 'set', id: 'extend1', path: 'props.extensionPoints', value: ['checkout.extras'] }], m => true, m4);
+  change(panel('[data-f="p:condition"]'), 'the shopper asks');
+  const m6 = gives('the condition field sets props.condition', [{ op: 'set', id: 'extend1', path: 'props.condition', value: 'the shopper asks' }], m => m.edges.find(e => e.id === 'extend1').props.condition === 'the shopper asks', m5);
+  h.update(m6);
+  check('after update() the extend reads its point by name and its condition', pick('.edge-g[data-from="browse"][data-to="checkout"] title').textContent === 'Extend from Browse books to Check out, at extras, when the shopper asks'
+    && all('.e-lab, .labels text').some(t => t.textContent.includes('«extend» (extras) [the shopper asks]')));
+  // extension points: member rows by name, renamed, added, moved
+  click('.node[data-id="checkout"] .c-name');
+  check('the properties panel lists the extension points by name', row('checkout.payment').value === 'payment' && row('checkout.extras').value === 'extras');
+  row('checkout.payment').value = 'pay'; enter(row('checkout.payment'));
+  gives('an extension point renamed in its row', [{ op: 'set', id: 'checkout.payment', path: 'label', value: 'pay' }], m => m.nodes.find(n => n.id === 'checkout').members[0].label === 'pay', m6);
+  const nw = panel('[data-new]'); nw.value = 'gift card'; enter(nw);
+  gives('a new extension point typed by name', [{ op: 'add', element: { id: 'extensionpoint1', type: 'uml.ExtensionPoint', label: 'gift card' }, owner: 'checkout' }], m => m.nodes.find(n => n.id === 'checkout').members.length === 3, m6);
+  key('ArrowDown', { altKey: true }, row('checkout.payment'));
+  gives('Alt + ↓ on an extension point: move it down', [{ op: 'move', id: 'checkout.payment', index: 1 }], m => m.nodes.find(n => n.id === 'checkout').members[1].id === 'checkout.payment', m6);
+  // the Owner field, by keyboard; a drop into the subject's box, by pointer
+  click('.node[data-id="browse"] .c-name');
+  const own = panel('[data-f="owner"]'), opts = [...own.options].map(o => o.textContent);
+  check('the Owner field of a use case: none, the subject and the package', same(opts, ['none', 'Online bookshop', 'shop']) && own.value === 'bookshop', opts);
+  change(own, 'pk');
+  gives('Owner: reparent the use case to the package', [{ op: 'reparent', id: 'browse', parent: 'pk' }], m => m.nodes.find(n => n.id === 'browse').parent === 'pk', m6);
+  const to = pick('.family[data-family="bookshop"] .family-box').getBoundingClientRect(), from = centre('.node[data-id="track"] .n-mask'), at = [to.right - 30, to.bottom - 20];
+  ptr(pick('.node[data-id="track"]'), 'pointerdown', from); for (let i = 1; i <= 4; i++) ptr(stage, 'pointermove', [from[0] + (at[0] - from[0]) * i / 4, from[1] + (at[1] - from[1]) * i / 4]); ptr(stage, 'pointerup', at);
+  const m7 = gives('a use case dropped into the subject\'s box: reparent', [{ op: 'reparent', id: 'track', parent: 'bookshop' }], m => m.nodes.find(n => n.id === 'track').parent === 'bookshop', m6);
+  h.update(m7);
+  check('after update() the subject\'s box holds it', inside(box(pick('.node[data-id="track"] .n-mask')), box(pick('.family[data-family="bookshop"] .family-box'))));
+  // a pin, hide, delete
+  click('.node[data-id="shopper"] .c-name'); key('ArrowDown', { altKey: true });
+  check('Alt + ↓ pins an actor', last().commands.length === 1 && last().commands[0].op === 'set' && same(last().commands[0].path, ['layout', 'shopper']), last());
+  click('.node[data-id="gift-wrap"] .c-name'); key('Delete');
+  gives('Delete: hide the use case from the view', [{ op: 'hide', id: 'gift-wrap', view: 'shopping' }], m => !m.views[0].nodeIds.includes('gift-wrap'), m7);
+  click('.node[data-id="gift-wrap"] .c-name'); key('Delete', { shiftKey: true });
+  gives('Shift + Delete: delete the use case and its extend', [{ op: 'delete', id: 'gift-wrap' }], m => !m.nodes.some(n => n.id === 'gift-wrap') && !m.edges.some(e => e.id === 'gift-wrap-extends-checkout'), m7);
+  h.select({ type: 'edge', ids: ['card-is-pay'], view: 'shopping' }); key('Delete', { shiftKey: true });
+  gives('Shift + Delete on a generalization: delete it', [{ op: 'delete', id: 'card-is-pay' }], m => !m.edges.some(e => e.id === 'card-is-pay'), m7);
+  h.destroy();
+} catch (e) { out.fail.push('threw: ' + (e && e.stack || e)); }
+const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
+</script>
