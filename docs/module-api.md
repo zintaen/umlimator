@@ -3218,6 +3218,8 @@ What moves for a host that upgrades:
   A view with no elements, which threw in `layout()`, `check()` and drawing, now lays out as an empty stage.
 - **A host that loads `umlimator/all`** draws a version-2 view with `diagram: "uml.class"` as a class diagram, where
   0.17.0 drew plain cards and warned; `lib/umlimator.js` still draws plain cards for it, with the warning.
+  A package in a class view is drawn as a named box beside its classes until 0.19.0, which draws its contents inside it
+  (`docs/diagrams/notes/stage-2.md` §10.1), so a class diagram's picture will change then.
 - **`apply()`:** `add` takes `in: 'view'`; `delete` of an element that owns lines or fragments gives them to the nearest
   owner that stays, where 0.17.0 left them with none. Nothing else in a command's result changes.
 - **New exports:** the class diagram's types in `lib/umlimator.d.ts`. Nothing is removed or renamed; the registry and
