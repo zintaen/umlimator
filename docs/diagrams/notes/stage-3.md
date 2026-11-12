@@ -184,7 +184,7 @@ A sequence's `geo.order`: heads left to right, then the occurrences in time orde
 Accessible names (A1):
 
 - A head: "Lifeline api : ShopApi".
-- A message: "Message 4 of 10: api to payments, charge(total), call, in alt, payment accepted".
+- A message: "Message 5 of 10: payments to api, paid, reply, in alt, payment accepted" (m5, the first in the alt; m4, sent before it, has no "in" part).
 - A fragment: "Combined fragment alt, 2 operands".
 - An operand: "Operand payment accepted of alt, 3 occurrences".
 - A use: "Interaction use Send receipt email, over api to receipt".
