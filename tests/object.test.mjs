@@ -87,6 +87,21 @@ test('the instance\'s look: an underlined head, name : Classifier, : Classifier 
   assert.ok(inside(n.inbox, g.families[0]));
 });
 
+test('a classifier the view shows (the outline\'s Show adds any model node) is drawn and named as the class view draws it, not as an instance', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'Order', type: 'uml.Class', label: 'Order', members: [{ id: 'Order.total', type: 'uml.Property', label: 'total' }] },
+    { id: 'Pay', type: 'uml.Interface', label: 'Pay' }, I('o', 'o', 'Order', [['total', '1']])],
+  views: [{ id: 'v', diagram: 'uml.object', nodeIds: ['Order', 'Pay', 'o'] }] };
+  const n = layout(m, 'v').byId;
+  assert.ok(!n.Order.underline && !n.Pay.underline, 'a classifier\'s name is not underlined');
+  assert.equal(n.Order.label, 'Order');
+  assert.deepEqual(n.Order.compartments.map(c => [c.name, c.members.map(x => x.label)]), [['attributes', ['total']], ['operations', []]]);
+  assert.deepEqual(n.Pay.stereotypes, ['interface']);
+  assert.equal(n.Order.aria, 'Class Order, 1 attribute, 0 operations');
+  assert.equal(n.Pay.aria, 'Interface Pay, 0 attributes, 0 operations');
+  assert.ok(n.o.underline && n.o.aria.startsWith('Instance specification o : Order'), 'the instance beside it is unchanged');
+  assert.match(describe(m, 'v'), /^Class Order, 1 attribute, 0 operations\.$/m);
+});
+
 test('links: no end marks, the name or else the association on the line, each role by its end; two links between one pair and a link to itself are drawn', () => {
   const g = layout(MIN, 'v'), e = Object.fromEntries(g.edges.map(x => [x.id, x]));
   assert.deepEqual(g.edges.map(x => x.id), ['named', 'assoc', 'roles', 'twin', 'self', 'in', 'cl']);
