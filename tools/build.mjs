@@ -41,7 +41,9 @@ function body(name) {
 // so is src/typed/, what only a registered type's geometry takes (the hooks in TYPED, registry.js: risks.md C5)
 const ALL = [...ORDER, 'typed/layout', 'typed/draw', 'typed/edit', 'uml/owners', 'uml/class', 'uml/package', 'uml/object', 'readers/mermaid-class',
   // stage 3 (notes/stage-3.md §11, 3.0): empty until their work packages fill them, in this load order
-  'layout/timeaxis', 'uml/frame', 'uml/interaction', 'uml/sequence', 'uml/communication', 'uml/convert', 'readers/mermaid-sequence'];
+  'layout/timeaxis', 'uml/frame', 'uml/interaction', 'uml/sequence', 'uml/communication', 'uml/convert', 'readers/mermaid-sequence',
+  // stage 4 (notes/stage-4.md §19, 4.0): empty until their work packages fill them, in this load order
+  'uml/transition', 'uml/flow', 'layout/lanes', 'uml/usecase', 'uml/activity', 'uml/state', 'uml/overview', 'readers/mermaid-state'];
 
 // every source is in ALL, and every name in ALL is a source: a file left out would be missing from lib/ silently
 const found = readdirSync(new URL('src/', root), { recursive: true }).filter(f => f.endsWith('.js')).map(f => f.replaceAll('\\', '/').slice(0, -3)).sort();
