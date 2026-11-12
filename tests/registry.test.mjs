@@ -93,3 +93,15 @@ test('a view whose diagram is "map" is checked as a map, and an id used twice is
   const twice = { schemaVersion: 2, nodes: [{ id: 'a', type: 'uml.Class' }, { id: 'a', type: 'uml.Class' }], views: [{ id: 'v', nodeIds: ['a'] }] };
   assert.deepEqual(validate(twice).map(p => `${p.level} ${p.path}`), ['error nodes[1].id']);
 });
+
+test('a type\'s boxes and owners (2.1, notes/stage-2.md §4.2, §8): kept on its definition; asked for a version-2 view of the type only', async () => {
+  const { layout: srcLayout } = await import('../src/map/api.js');
+  const asked = [], boxes = (m, v) => { asked.push(v.id); return [{ id: 'p', label: 'P', nodeIds: ['a'] }]; }, owners = () => [];
+  const T = registerDiagramType('test.boxed', { boxes, owners, layout: ({ view, pos }) => ({ nodes: view.nodeIds.filter(i => i !== 'p').map(id => ({ id, col: pos[id][0], row: pos[id][1] })), edges: [], families: [] }) });
+  assert.equal(T.boxes, boxes); assert.equal(T.owners, owners);
+  const m = { nodes: [{ id: 'p' }, { id: 'a', parent: 'p' }], views: [{ id: 'v', diagram: 'test.boxed', nodeIds: ['p', 'a'] }, { id: 'm', nodeIds: ['p', 'a'] }] };
+  srcLayout(m, 'v'); srcLayout({ ...m, schemaVersion: 2 }, 'm');
+  assert.deepEqual(asked, [], 'a version-1 model is a map, and a map view never asks');
+  assert.deepEqual(srcLayout({ ...m, schemaVersion: 2 }, 'v').nodes.map(n => [n.id, n.col, n.row]), [['a', 0, 0]], 'the box takes no slot');
+  assert.ok(asked.length && asked.every(v => v === 'v'));
+});

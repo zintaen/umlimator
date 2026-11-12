@@ -1,0 +1,64 @@
+%% Modelled on Mermaid 12.3.0's docs/syntax/classDiagram.md (MIT), its section "Define Namespace": each example of that
+%% section, as written there. The pinned report is in tests/mermaid-class.test.mjs.
+classDiagram
+%% Define Namespace
+namespace BaseShapes {
+    class Triangle
+    class Rectangle {
+      double width
+      double height
+    }
+}
+%% Namespace Labels
+    namespace Auth["Authentication Service"] {
+        class UserService {
+            +login()
+            +logout()
+        }
+    }
+%% Nested Namespaces: dot notation
+    namespace Company.Engineering.Backend {
+        class Developer {
+            +writeCode()
+        }
+    }
+    namespace Company.Engineering.Frontend {
+        class Designer {
+            +createMockup()
+        }
+    }
+    namespace Company.Engineering {
+        class TechLead {
+            +planSprint()
+        }
+    }
+    TechLead --> Developer : leads
+    TechLead --> Designer : leads
+%% Nested Namespaces: syntactic nesting (Platform.Auth to Mermaid, not the Auth above)
+    namespace Platform {
+        namespace Auth {
+            class UserService {
+                +login()
+                +logout()
+            }
+        }
+        namespace Data {
+            class Repository {
+                +find()
+                +save()
+            }
+        }
+        class Gateway {
+            +route()
+        }
+    }
+    Gateway --> UserService : delegates
+    Gateway --> Repository : delegates
+%% Compact rendering's example, less its front matter
+    namespace Company {
+        class CEO {
+            +makeDecisions()
+        }
+    }
+    CEO --> Developer : oversees
+    CEO --> Designer : oversees
