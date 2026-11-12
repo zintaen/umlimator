@@ -128,12 +128,12 @@ test('a file with every construct on Mermaid\'s state page gives the pinned repo
     '117 approximated: Paid --> Placed: its text is not trigger [guard] / effect (an unbalanced (): it is kept as its trigger',
     '127 skipped: hide empty description: not read',
     '128 skipped: scale 350 width: not read',
-    '131 approximated: %% id: s1 is taken, so s1 --> s1 is s1-s1',
-    '133 approximated: %% id: has->arrow: an id holds no "->", so it is has-arrow',
-    '134 skipped: a } that closes nothing',
-    '135 skipped: "s1 -> s2" is not understood',
-    '136 approximated: direction RL is drawn left to right',
-    '137 approximated: state Open { is never closed: read to the end',
+    '139 approximated: %% id: s1 is taken, so s1 --> s1 is s1-s1',
+    '141 approximated: %% id: has->arrow: an id holds no "->", so it is has-arrow',
+    '142 skipped: a } that closes nothing',
+    '143 skipped: "s1 -> s2" is not understood',
+    '144 approximated: direction RL is drawn left to right',
+    '145 approximated: state Open { is never closed: read to the end',
   ]);
   const v = model.views[0], node = id => model.nodes.find(n => n.id === id), edge = id => model.edges.find(e => e.id === id);
   const links = id => model.edges.filter(e => e.type === 'uml.CommentLink' && e.to === id).map(e => node(e.from));
@@ -173,6 +173,10 @@ test('a file with every construct on Mermaid\'s state page gives the pinned repo
   assert.deepEqual(node('s-long'), { id: 's-long', type: 'uml.State', label: 'Long name', members: [{ id: 'Long.left', type: 'uml.Region', label: 'Left side' }, { id: 's-long.r2', type: 'uml.Region' }] });
   assert.deepEqual(['l1', 'Long.left.end', 'l2'].map(id => node(id).parent), ['Long.left', 'Long.left', 's-long.r2']);
   assert.deepEqual([edge('s1-s1').from, edge('has-arrow').from], ['s1', 's2']);
+  // §13's collisions: Coll's [*] are the next free after its states Coll.start and Coll.end; p-q --> r and p --> q-r
+  assert.deepEqual(['Coll.start', 'Coll.end', 'Coll.start-2', 'Coll.end-2'].map(id => [node(id).type, node(id).parent]), [['uml.State', 'Coll'], ['uml.State', 'Coll'], ['uml.Pseudostate', 'Coll'], ['uml.FinalState', 'Coll']]);
+  assert.deepEqual(['Coll.start-2-Coll.start', 'Coll.start-Coll.end', 'Coll.end-Coll.end-2', 'p-q-r', 'p-q-r-2'].map(id => [edge(id).from, edge(id).to]),
+    [['Coll.start-2', 'Coll.start'], ['Coll.start', 'Coll.end'], ['Coll.end', 'Coll.end-2'], ['p-q', 'r'], ['p', 'q-r']]);
   assert.equal(node('o1').parent, 'Open');
 });
 
@@ -216,6 +220,7 @@ test('text over the size limit is refused with a report; hostile input reads in 
   const many = 'stateDiagram-v2\n' + Array.from({ length: 50000 }, (_, k) => `a${k % 300}-->b${k % 7}:[k>${k % 9}]/x`).join('\n');
   const hostile = [nested, names, many, 'stateDiagram-v2\n' + '}\n'.repeat(400000), 'stateDiagram-v2\n' + 'state A {\n--\n'.repeat(80000),
     'stateDiagram-v2\nnote right of a\n' + 'x\n'.repeat(400000), 'stateDiagram-v2\na : ' + '('.repeat(4000) + '\nb --> c : ' + '[a'.repeat(400000),
+    'stateDiagram-v2\nstate A {\n' + '--\n'.repeat(340000), 'stateDiagram-v2\n' + 'a : e / x\n'.repeat(100000), 'stateDiagram-v2\nstate A {\n' + '[*]-->a\n--\n'.repeat(90000),
     'stateDiagram-v2\n' + Array.from({ length: 30000 }, (_, k) => `state b${k} {\n  b${k + 1}\n}`).join('\n'), 'stateDiagram-v2\nconstructor --> __proto__\n__proto__ : entry / x\nstate hasOwnProperty {\n toString\n}\n'];
   for (const h of hostile) {
     assert.ok(h.length <= 1 << 20, `${h.length}`);
@@ -240,6 +245,16 @@ test('malformed input is reported, never thrown', () => {
     assert.ok(Array.isArray(r.report) && r.model.schemaVersion === 2, String(x));
   }
   assert.deepEqual(read('flowchart LR\nA-->B').report, [{ line: 1, status: 'skipped', message: 'not a Mermaid stateDiagram: nothing read' }]);
+  // only a state holds activities, internal transitions and a body; [*] is no state's name; the view's id holds no ->
+  const odd = read('stateDiagram-v2\n%% kind: final\nstate F {\n a\n}\nstate K <<fork>>\nK : entry / x\nK : ev / y\n%% kind: initial\ni\ni : do / z\n');
+  assert.deepEqual(odd.report.map(x => `${x.line} ${x.message}`), ['3 state F {: F is a final state, which holds nothing: what its body holds is read into the scope around it',
+    '7 K : entry: K is a fork pseudostate, which has no activity: not read', '8 K : ev / y: K is a fork pseudostate, which has no internal transition: not read',
+    '11 i : do: i is an initial pseudostate, which has no activity: not read']);
+  assert.deepEqual(odd.model.nodes.map(n => [n.id, n.parent ?? null, n.props ?? null, n.members ?? null]), [['F', null, null, null], ['a', null, null, null], ['K', null, { kind: 'fork' }, null], ['i', null, { kind: 'initial' }, null]]);
+  assert.deepEqual(validate(odd.model).filter(p => p.level === 'error'), []);
+  assert.deepEqual(read('stateDiagram-v2\nstate [*]\nnote right of [*] : x\n').report.map(x => x.message), ['state [*] is not understood', 'note right of [*] : x: names no state']);
+  const arrow = read('%% id: a->b\nstateDiagram-v2\n');
+  assert.deepEqual([arrow.model.views[0].id, arrow.report.map(x => `${x.line} ${x.message}`)], ['a-b', ['2 %% id: a->b: an id holds no "->", so the view is a-b']]);
   assert.deepEqual(read('stateDiagram-v2\nnote right of a\nnever ended').report, [{ line: 2, status: 'approximated', message: 'a note with no end note: read to the end' }]);
   // every prefix of the every-construct file, and the file with characters broken at random
   const r = rng(7);
@@ -255,6 +270,11 @@ test('malformed input is reported, never thrown', () => {
 });
 
 test('the writer names in comments what it cannot write, and the reader passes over them', () => {
+  // a title that is not text is written as text; a region's empty label is reported
+  const v = { id: 'v', diagram: 'uml.state-machine', nodeIds: [] };
+  assert.match(write({ schemaVersion: 2, title: 12, nodes: [], edges: [], views: [v] }), /^---\ntitle: 12\n---\n/);
+  const r2 = write({ schemaVersion: 2, nodes: [{ id: 'A', type: 'uml.State', label: 'A', members: [{ id: 'A.r1', type: 'uml.Region', label: '' }, { id: 'A.r2', type: 'uml.Region' }] }], edges: [], views: [{ ...v, nodeIds: ['A'] }] });
+  assert.match(r2, /%% not written: A\.r1: an empty label\n/);
   const S = (id, more) => ({ id, type: 'uml.State', label: id, ...more });
   const m = { schemaVersion: 2, nodes: [S('a', { props: { entry: ' padded ', stereotypes: ['x'] } }), S('b', { parent: 'nowhere' }), { id: 'k', type: 'uml.Class', label: 'K' },
     { id: 'f', type: 'uml.Pseudostate', label: 'F', props: { kind: 'fork' } }, { id: 'q', type: 'uml.Pseudostate', props: { kind: 'entryPoint' } },

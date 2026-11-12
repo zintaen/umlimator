@@ -107,7 +107,7 @@ function readMermaidState(text) {
   const empty = () => ({ model: { schemaVersion: 2, root: MT_VIEW, nodes: [], edges: [], views: [{ id: MT_VIEW, diagram: 'uml.state-machine', direction: 'down', nodeIds: [] }] }, report });
   if (typeof text !== 'string') { say(1, 'skipped', 'the input is not text: nothing read'); return empty(); }
   if (text.length > MT_LIMIT) { say(1, 'skipped', `the input is ${text.length} characters, over the limit of ${MT_LIMIT}: nothing read`); return empty(); }
-  const lines = text.replace(/^﻿/, '').split('\n').map(l => l.replace(/\r$/, ''));
+  const lines = text.replace(/^\uFEFF/, '').split('\n').map(l => l.replace(/\r$/, ''));
   let i = 0, title;
 
   // front matter: its title; Mermaid's configuration is not read
@@ -137,7 +137,7 @@ function readMermaidState(text) {
   const under = (s, rec) => { for (let n = 0; n < MT_WALK; n++) { if (s === top) return false; if (s.owner === rec) return true; s = up(s); } return true; }; // s is in rec's body
   const mention = (name, no) => {
     let rec = states.get(name);
-    if (!rec) { rec = { name, no, node: { type: 'uml.State', label: name }, body: null, parts: null, internal: 0 }; states.set(name, rec); order.push(rec); }
+    if (!rec) { rec = { name, no, node: { type: 'uml.State', label: name }, body: null, parts: null, internal: 0, acts: [] }; states.set(name, rec); order.push(rec); }
     const s = cur();
     if (s !== top && rec.body !== s) {
       if (!rec.body) { if (!under(s, rec)) rec.body = s; }
@@ -146,10 +146,11 @@ function readMermaidState(text) {
     return rec;
   };
   // a name as written: a style class after ::: is not read; null when it is not one word
-  const nameOf = (raw, no) => {
+  const nameOf = (raw, no, star) => { // star: [*] may stand for itself
     let s = raw.trim();
     const c = s.indexOf(':::');
     if (c >= 0) { say(no, 'skipped', `${s}: a style class is not read`); s = s.slice(0, c).trim(); }
+    if (s === '[*]') return star ? s : null;
     return s && !/[\s"{}]/.test(s) ? s : null;
   };
   const open = (rec, no) => {
@@ -159,7 +160,7 @@ function readMermaidState(text) {
       return;
     }
     if (rec.parts) say(no, 'approximated', `state ${rec.name} { is opened again: what it holds is read into its last region`);
-    else { rec.parts = [{ owner: rec, k: 1 }]; items.push({ kind: 'region', part: rec.parts[0] }); }
+    else { rec.parts = [{ owner: rec, k: 1 }]; rec.opened = no; items.push({ kind: 'region', part: rec.parts[0] }); }
     stack.push({ rec, cur: rec.parts.at(-1), no });
   };
   const kindOf = (rec, no) => {
@@ -206,7 +207,9 @@ function readMermaidState(text) {
     }
     if (!started) {
       if (!/^stateDiagram(-v2)?$/i.test(s)) { say(no, 'skipped', 'not a Mermaid stateDiagram: nothing read'); return empty(); }
-      started = true; viewId = hint.id; hint = {}; continue;
+      started = true; viewId = hint.id; hint = {};
+      if (viewId != null && mtId(viewId) !== viewId) { say(no, 'approximated', `%% id: ${viewId}: an id holds no "->", so the view is ${mtId(viewId)}`); viewId = mtId(viewId); }
+      continue;
     }
     const word = mtWord(s), rest = s.slice(word.length).trim(), arrow = s.indexOf('-->'), colon = s.indexOf(':');
     if (s.startsWith('}')) {
@@ -267,22 +270,22 @@ function readMermaidState(text) {
       let target = c < 0 ? after : after.slice(0, c);
       const pct = target.indexOf('%%');
       if (pct >= 0) target = target.slice(0, pct);
-      const a = left.trim() === '[*]' ? '[*]' : nameOf(left, no), b = target.trim() === '[*]' ? '[*]' : nameOf(target, no);
+      const a = nameOf(left, no, true), b = nameOf(target, no, true);
       if (!a || !b) { say(no, 'skipped', `"${s.length > 60 ? s.slice(0, 57) + '...' : s}" is not understood`); hint = {}; continue; }
       const from = a === '[*]' ? star(true, no) : mention(a, no), to = b === '[*]' ? star(false, no) : mention(b, no);
       items.push({ kind: 'trans', no, from, to, what: `${a} --> ${b}`, text: c < 0 ? '' : mtDecode(after.slice(c + 1).trim()), hint: hint.id });
     } else if (colon > 0) { // s1 : text
       const name = nameOf(s.slice(0, colon), no), rawText = s.slice(colon + 1).trim(), t = mtDecode(rawText);
-      if (!name || name === '[*]') { say(no, 'skipped', `"${s.length > 60 ? s.slice(0, 57) + '...' : s}" is not understood`); hint = {}; continue; }
+      if (!name) { say(no, 'skipped', `"${s.length > 60 ? s.slice(0, 57) + '...' : s}" is not understood`); hint = {}; continue; }
       const rec = mention(name, no), line = mtLine(t);
       if (line.activity) {
-        if (rec.node.props?.[line.activity] !== undefined) say(no, 'approximated', `${name} : ${line.activity}: a second ${line.activity} replaces the first`);
-        rec.node.props = { ...rec.node.props, [line.activity]: line.value };
-      } else if (line.internal) items.push({ kind: 'internal', rec, k: ++rec.internal, props: line.internal, hint: hint.id });
+        if (rec.acts.some(a => a.activity === line.activity)) say(no, 'approximated', `${name} : ${line.activity}: a second ${line.activity} replaces the first`);
+        rec.acts.push({ ...line, no });
+      } else if (line.internal) items.push({ kind: 'internal', rec, no, props: line.internal, hint: hint.id });
       else items.push({ kind: 'note', target: rec, no, hint: hint.id, link: hint.link, text: [rawText], desc: true });
     } else {
       const pct = s.indexOf('%%'), name = nameOf(pct < 0 ? s : s.slice(0, pct), no);
-      if (!name || name === '[*]') say(no, 'skipped', `"${s.length > 60 ? s.slice(0, 57) + '...' : s}" is not understood`);
+      if (!name) say(no, 'skipped', `"${s.length > 60 ? s.slice(0, 57) + '...' : s}" is not understood`);
       else { const rec = mention(name, no); declare(rec); kindOf(rec, no); }
     }
     hint = {};
@@ -290,6 +293,15 @@ function readMermaidState(text) {
   if (!started) { say(1, 'skipped', 'not a Mermaid stateDiagram: nothing read'); return empty(); }
   if (note) { say(note.no, 'approximated', 'a note with no end note: read to the end'); items.push(note); }
   for (const o of stack) if (!o.flat) say(o.no, 'approximated', `state ${o.rec.name} { is never closed: read to the end`);
+  // only a state holds activities, internal transitions and a body: on a pseudostate or a final state they are reported,
+  // and what its body holds is read into the scope around it
+  const isState = rec => rec.node.type === 'uml.State', what = rec => (rec.node.type === 'uml.FinalState' ? 'a final state' : `${/^[aeiou]/.test(rec.node.props.kind) ? 'an' : 'a'} ${rec.node.props.kind} pseudostate`);
+  for (const rec of order) {
+    if (isState(rec)) { for (const a of rec.acts) rec.node.props = { ...rec.node.props, [a.activity]: a.value }; continue; }
+    for (const a of rec.acts) say(a.no, 'approximated', `${rec.name} : ${a.activity}: ${rec.name} is ${what(rec)}, which has no activity: not read`);
+    if (rec.opened) say(rec.opened, 'approximated', `state ${rec.name} {: ${rec.name} is ${what(rec)}, which holds nothing: what its body holds is read into the scope around it`);
+  }
+  const real = s => { for (let n = 0; n < MT_WALK && s !== top && !isState(s.owner); n++) s = up(s); return s === top || isState(s.owner) ? s : top; }; // the scope a body of a non-state stands for
 
   // ids: states by their names first; then, in the order they come, regions, [*], transitions, internal transitions, notes
   const used = new Set(), next = new Map();
@@ -309,8 +321,8 @@ function readMermaidState(text) {
     rec.node.id = take(rec.hint, mtId(rec.name), rec.no, `state ${rec.name}`);
     if (rec.hint == null && rec.node.id !== rec.name) say(rec.no, 'approximated', `state ${rec.name}: ${mtId(rec.name) !== rec.name ? 'an id holds no "->"' : 'its name is another\'s id'}, so it is ${rec.node.id}`);
   }
-  const regioned = rec => rec.parts && (rec.parts.length > 1 || !!rec.parts[0].hint);
-  const scopeId = s => (s === top ? '' : regioned(s.owner) ? s.id : s.owner.node.id);
+  const regioned = rec => isState(rec) && rec.parts && (rec.parts.length > 1 || !!rec.parts[0].hint);
+  const scopeId = s => (s = real(s), s === top ? '' : regioned(s.owner) ? s.id : s.owner.node.id);
   const nodes = order.map(r => r.node), edges = [];
   let notes = 0;
   for (const x of items) {
@@ -318,7 +330,7 @@ function readMermaidState(text) {
       if (!regioned(x.part.owner)) continue;
       const p = x.part, o = p.owner.node;
       p.id = take(p.hint?.id, `${o.id}.r${p.k}`, p.owner.no, `a region of ${o.id}`);
-      o.members = [...(o.members || []), { id: p.id, type: 'uml.Region', ...(p.hint?.name ? { label: p.hint.name } : {}) }];
+      (o.members ||= []).push({ id: p.id, type: 'uml.Region', ...(p.hint?.name ? { label: p.hint.name } : {}) });
     } else if (x.kind === 'start' || x.kind === 'end') {
       const sid = scopeId(x.scope);
       x.node.id = take(x.hint, sid ? `${sid}.${x.kind}` : x.kind, x.no, `the ${x.kind === 'start' ? 'initial' : 'final'} state of ${sid || 'the top'}`);
@@ -334,14 +346,15 @@ function readMermaidState(text) {
       edges.push(e);
     } else if (x.kind === 'internal') {
       const o = x.rec.node;
-      o.members = [...(o.members || []), { id: take(x.hint, `${o.id}.t${x.k}`, x.rec.no, `an internal transition of ${o.id}`), type: 'uml.InternalTransition', props: x.props }];
+      if (!isState(x.rec)) { say(x.no, 'approximated', `${x.rec.name} : ${mtPrint(x.props) ?? 'an internal transition'}: ${x.rec.name} is ${what(x.rec)}, which has no internal transition: not read`); continue; }
+      (o.members ||= []).push({ id: take(x.hint, `${o.id}.t${++x.rec.internal}`, x.rec.no, `an internal transition of ${o.id}`), type: 'uml.InternalTransition', props: x.props });
     } else {
       const label = mtDecode(x.text.join('\n')), c = { id: take(x.hint, `note-${++notes}`, x.no, 'a note'), type: 'uml.Comment', ...(label ? { label } : {}), ...(x.desc ? { ext: { mermaid: { description: true } } } : {}) };
       nodes.push(c);
       edges.push({ id: take(x.link, `${c.id}-link`, x.no, "a note's line"), type: 'uml.CommentLink', from: c.id, to: x.target.node.id });
     }
   }
-  for (const rec of order) if (rec.body) rec.node.parent = scopeId(rec.body);
+  for (const rec of order) if (rec.body && scopeId(rec.body)) rec.node.parent = scopeId(rec.body);
   for (const n of nodes) if (n.members) n.members.sort((a, b) => (a.type === b.type ? 0 : a.type === 'uml.Region' ? -1 : 1)); // regions, then internal transitions
 
   const view = { id: viewId || MT_VIEW, diagram: 'uml.state-machine', ...(title ? { title } : {}), ...(direction === 'down' ? { direction } : {}), nodeIds: nodes.map(n => n.id) };
@@ -363,7 +376,7 @@ function writeMermaidState(model, viewId) {
   const enc = s => String(s).replace(/[#;:"<>\\]/g, ent).replace(/\r\n|\r|\n/g, '<br>').replace(/^\s|\s$/g, ent).replace(/(direction)(\s)/gi, (_, w, c) => w + ent(c));
   const okId = id => str(id) && id !== '' && id.trim() === id && !/[\r\n]/.test(id); // a hint keeps it
   const out = [], notWritten = [], skip = x => notWritten.push(`${flat(x.id)} (${flat(x.type)})`), lose = (id, what) => notWritten.push(`${flat(id)}: ${flat(what)}`);
-  const title = has(view.title) ? view.title : m.title;
+  const title = String(has(view.title) ? view.title : m.title ?? '');
   if (has(title)) out.push('---', `title: ${/^[\p{L}\p{N}][\p{L}\p{N} _.,()-]*$/u.test(title) && !title.endsWith(' ') ? title : JSON.stringify(String(title))}`, '---');
   if (view.id !== MT_VIEW) { if (/[\r\n]/.test(view.id)) lose(view.id, "the view's id, which has a line break"); else out.push(`%% id: ${view.id}`); }
   out.push('stateDiagram-v2', view.direction === 'down' ? '  direction TB' : '  direction LR');
@@ -501,6 +514,7 @@ function writeMermaidState(model, viewId) {
         rs.forEach((r, k) => {
           if (k) put(d + 1, '--');
           const h = idOf(r.id, `${n.id}.r${k + 1}`);
+          if (r.label === '') lose(r.id, 'an empty label');
           if (rs.length === 1 || h || has(r.label)) put(d + 1, `%% region: ${r.id}${has(r.label) ? ' ' + enc(r.label) : ''}`);
           writeScope(r.id, d + 1);
         });

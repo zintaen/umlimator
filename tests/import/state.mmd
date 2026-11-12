@@ -126,6 +126,14 @@ stateDiagram-v2
     }
     hide empty description
     scale 350 width
+    %% Collisions: states named as a scope's [*] would be, whose [*] takes the next free; two names that give one transition id
+    state Coll {
+        [*] --> Coll.start
+        Coll.start --> Coll.end
+        Coll.end --> [*]
+    }
+    p-q --> r
+    p --> q-r
     %% Broken input: an id taken, an id with an arrow, a stray }, a line not understood, a direction, a composite never closed
     %% id: s1
     s1 --> s1

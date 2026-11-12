@@ -36,7 +36,7 @@ transition micro-syntax. Its reader: Mermaid's `stateDiagram`.
 | S19 | A composite state's entry, do and exit | Not drawn on its box in 0.21.0; in its accessible name, `describe()`, the panel and the PDF | §10.1 |
 | S20 | The order of a state's regions in the picture | The order `blockPos` gives boxes of one rank (by their first line), not `members` order; the panel, the PDF and the accessible names keep `members` order | §6.2 |
 | S21 | How strict the control-node rules are | Where UML allows one (one incoming to a fork, one outgoing from a join or a merge, none into an initial node), more is an error; where UML wants two or more, fewer is a warning, since a diagram being drawn passes through it | §9.3, §10.2 |
-| S22 | Mermaid's unsupported crossings | A transition between substates of two composites, or from outside into a substate, is written as a transition with a `%% warning:` line above it; Mermaid 12.3.0's parser is run on the writer's output once in 4.8, from a scratch page, not as a dependency | §13 |
+| S22 | Mermaid's unsupported crossings | A transition between substates of two composites, or from outside into a substate, is written as a transition with a `%% warning:` line above it; Mermaid 12.3.0's parser is run on the writer's output once in 4.8, from its npm package in a scratch directory, not as a dependency (4.8, §13) | §13 |
 
 What is left out of the subsets is in §18.
 
@@ -755,7 +755,9 @@ a composite beside its label). A note's side: `note right of` is read as written
 
 4.8 started beside 4.2, so `mermaid-state.js` reads trigger [guard] / effect with its own `mtParse` and `mtPrint`, a
 stand-in for `transition.js` written to §7.1; when 4.2 merges, the reader imports `parseTransition` and
-`printTransition` and deletes the two (the writer checks each text reads back through whichever parser it has).
+`printTransition` and deletes the two (the writer checks each text reads back through whichever parser it has). The
+pinned report item for `state.mmd` line 117 (`tests/mermaid-state.test.mjs`, the every-construct test) quotes the
+stand-in's error text, "(an unbalanced ()", and takes 4.2's wording then.
 
 | S22 option, crossings Mermaid does not support | For | Against |
 |---|---|---|
