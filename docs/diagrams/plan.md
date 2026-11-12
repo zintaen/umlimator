@@ -170,6 +170,7 @@ When the maintainer says 1.0.0 is ready (13 Nov 2026: not straight after 0.27.0)
 - One work package, one branch, one pull request. Catch a branch up by merging `main`, not by rebasing.
 - CI stays green. Geometry hashes are rewritten only in a commit that says why (`risks.md` X3).
 - Nothing existing is removed or changed in behaviour, except a reproduced defect, noted in the release section, and
-  the class view's packages drawn as boxes from 0.19.0 (§1), noted in 0.19.0's.
+  the class view's packages drawn as boxes from 0.19.0 (§1), noted in 0.19.0's, and maps' one card-shape style from
+  0.21.0, which removes the `shapes` notations and their toggle (`README.md` log, 13 Nov 2026), noted in 0.21.0's.
 - The maintainer approves each merge and each release by pull request number.
 - No host application's name appears in this repository.

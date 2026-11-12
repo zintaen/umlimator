@@ -50,6 +50,7 @@ All on 11 Nov 2026, by the maintainer. The options that were weighed are in `pro
 | D12 | Mermaid is the first text notation |
 | | Agents build this: the plan has no time estimates |
 | | 1.0.0 comes after all 28 types, when the maintainer says it is ready; after 0.27.0 the work goes on in 0.28.0 and later (13 Nov 2026) |
+| | Maps draw in one card-shape style, the union of the c4 and uml notations; the `shapes` toggle and API are removed (13 Nov 2026, in 0.21.0) |
 
 ## What is in this folder
 
@@ -290,3 +291,11 @@ node docs/diagrams/examples/check.mjs         # the target examples match model.
 - **13 Nov 2026 (after 0.27.0).** The maintainer decided that 0.27.0 is not followed by 1.0.0 as a matter of course: the
   work goes on in 0.28.0, 0.29.0 and later, and 1.0.0 is released when the maintainer says it is ready (`plan.md` §1,
   §3, §6).
+- **13 Nov 2026 (one shape style).** The maintainer decided that maps draw in one card-shape style: the union of the c4
+  and uml notations (browser, phone, terminal, pipe, folder, node, person, robot, cylinder, document, hexagon), with a
+  rounded box where no shape says more. The box/c4/uml choice goes: the model's and views' `shapes`, `map.shapes`,
+  `#shapes=` and the page's toggle are removed, two stated exceptions to "draws exactly as now" (every map's picture
+  changes; its geometry does not, since a shape is drawn inside its card's box) and to "additive only". A card's own
+  `shape` stays. A model that still has `shapes` loads, as any unknown field does. Typed diagrams keep their own
+  notation (UML's shapes); later non-UML types reuse this shape set where their standard allows. It is its own work
+  package after 4.1 (both edit `src/canvas/render.js`), in 0.21.0.
