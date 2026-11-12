@@ -28,7 +28,7 @@ it as plain cards with a warning. The vocabulary is `docs/diagrams/model.md` §2
 | 7.7 Dependency, Usage | `uml.Dependency`, from the client; `props.stereotypes: ["use"]` | a dashed line, an open arrowhead, «use» as its label |
 | 7.2 Comment | `uml.Comment`, `uml.CommentLink` from the comment | a note with a folded corner; a dashed line with no ends |
 | 12.3 stereotype notation, as text | `props.stereotypes` on any element or line | «entity» over a name, before a line's label |
-| 12.2 Package | `uml.Package`; ownership is `parent` | a named box. Its contents drawn inside it come with stage 2 |
+| 12.2 Package | `uml.Package`; ownership is `parent` | a named box, its classes beside it, until 0.19.0 |
 
 Rules, each `validate()` problem naming its `rule` and its elements (`docs/diagrams/proposal.md` §8.3):
 `member-names`, `classifier-names`, `multiplicity`, `generalization-cycle`, `generalization-kinds`, `realization-target`,
@@ -43,7 +43,10 @@ drawn) and `rows` (at most n rows, then "+k more").
 - Templates and template bindings; association classes; n-ary associations; qualifiers; signals and receptions;
   constraints and OCL; generalization sets; nested classifiers (a class's `parent` is a package, never a class).
 - Object diagrams (stage 2); packages drawn with their contents inside them, and package import and merge (stage 2).
-  Until then a package is a named box, and the view draws its classes beside it.
+  Until 0.19.0 a package is a named box, and the view draws its classes beside it. From 0.19.0 every class view draws
+  a package with something it owns shown as a box holding it (a package with nothing it owns shown stays closed), and
+  qualifies names (`sales::Order`), so this picture changes, by the maintainer's decision
+  (`docs/diagrams/notes/stage-2.md` §10.1).
 - Notation the subset does not draw: property modifiers (`{readOnly}`, `{ordered}`, `{unique}`), derived unions,
   the association-end ownership dot, an association's name-direction triangle, end visibility, ball-and-socket
   interfaces (the component diagram's, stage 5), stereotype icons.
@@ -76,7 +79,7 @@ stills` and `umlimator.py pdf` on its rendered page. Each file was opened and lo
 | Accessible names | Each element's `aria-label` kept; the lines' `<title>` removed, as for maps | None | None |
 | Theme | The page's, light or dark, with every colour resolved (no CSS variables), so the file opens alone | The page's | `--theme`, light by default |
 | Views | One per call (`view`); `stills` writes every view | One per call; `stills` every view, at 2x | Every view (`--views` picks), each on its own page |
-| Packages | A named box, its classes beside it | The same | The same |
+| Packages | A named box, its classes beside it (until 0.19.0) | The same | The same |
 | Tables | None | None | The map's tables of cards and lines: every element's kind reads "Script" and a line with no label reads "calls"; members are not listed. The picture above them is right |
 
 The site builds every example's stills and PDF ([zintaen.github.io/umlimator](https://zintaen.github.io/umlimator/)),
