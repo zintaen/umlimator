@@ -54,7 +54,7 @@ test('the stress fixture holds every edge case of risks.md G1, so it cannot be t
   assert.ok(Object.values(pairs).some(k => k >= 4), 'four lines between two classes');
   assert.ok(STRESS.nodes.some(n => n.type === 'uml.Package' && N[n.parent] && N[n.parent].type === 'uml.Package'), 'a package holding a package');
   assert.ok(STRESS.nodes.some(n => n.type === 'uml.Enumeration' && !ms(n).length), 'an enumeration with no literals');
-  assert.ok(STRESS.views[0].nodeIds.length >= 50, 'a view of 50 elements or more (P1: a full layout of 50 nodes in 1 s)');
+  assert.ok(layout(STRESS, 'all').nodes.length >= 50, 'a view of 50 nodes or more, its open packages aside (P1: a full layout of 50 nodes in 1 s)');
   assert.deepEqual(validate(STRESS).filter(p => p.level === 'error'), []);
 });
 
@@ -65,8 +65,13 @@ test('the stress fixture lays out with no overlap, no line through a node and no
     assert.deepEqual(r.others, [], `${v.id}: check() finds nothing but lines that cross`);
     assert.ok(r.labels > 20 || v.id !== 'all', `${v.id}: ${r.labels} end labels`);
     console.log(`# ${v.id}: ${r.g.nodes.length} elements, ${r.g.edges.length} lines, ${r.crossings.length} crossings`);
-    // the counts docs/conformance/uml-class.md and risks.md L4 state: a change of layout that moves them updates both
-    assert.equal(r.crossings.length, { all: 29, 'edge-cases': 2 }[v.id], `${v.id}: the crossings the conformance note states`);
+    // the counts docs/conformance/uml-class.md and risks.md L4 state: a change of layout that moves them updates both. From
+    // 0.19.0 (2.2) shop and catalog are boxes, and the all view holds two classes more: 29 and 2 before
+    assert.equal(r.crossings.length, { all: 19, 'edge-cases': 3 }[v.id], `${v.id}: the crossings the conformance note states`);
+    // each box holds exactly the shown elements it owns, at any depth, and nothing else
+    const own = id => { const n = STRESS.nodes.find(x => x.id === id); return n && n.parent; }, holds = (b, id) => { for (let p = own(id); p; p = own(p)) if (p === b) return true; return false; };
+    r.g.families.forEach(f => r.g.nodes.forEach(n => assert.equal(n.x > f.x && n.y > f.y && n.x + n.w < f.x + f.w && n.y + n.h < f.y + f.h, holds(f.id, n.id), `${v.id}: ${f.id} and ${n.id}`)));
+    assert.deepEqual(r.g.families.map(f => f.id), v.id === 'all' ? ['shop', 'catalog'] : ['shop'], `${v.id}: catalog is closed where it shows nothing it owns`);
   }
   const a = layout(STRESS, 'edge-cases').nodes.find(n => n.id === 'person'), b = layout(STRESS, 'all').nodes.find(n => n.id === 'person');
   assert.ok(a.h < b.h / 4, 'present.person.rows: 8 caps the 60-member class in one view, which the other shows whole');

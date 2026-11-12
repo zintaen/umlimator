@@ -17,7 +17,7 @@ try {
   for (let i = 0; i < 100 && !(w.map && d.querySelector('.umlimator')); i++) await tick();
   const sr = d.querySelector('.umlimator').shadowRoot, pick = s => sr.querySelector(s), all = s => [...sr.querySelectorAll(s)];
   const rows = () => all('.node[data-id="order"] .c-row').map(x => x.textContent), log = () => [...d.querySelectorAll('#log li')].map(x => x.textContent);
-  check('the editor draws the class example: 11 elements, 8 lines, a legend', all('.node').length === 11 && all('.edge-g').length === 8 && !!pick('.m-legend'));
+  check('the editor draws the class example: 10 elements, the package sales as a box (2.2), 8 lines, a legend', all('.node').length === 10 && all('.family').length === 1 && all('.edge-g').length === 8 && !!pick('.m-legend'));
   const before = rows();
   w.map.select({ type: 'node', id: 'order', view: 'domain' });
   const row = pick('.um-editor [data-m="order.total"]');

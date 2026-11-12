@@ -277,6 +277,16 @@
       {"id": "bundle.code", "type": "uml.Property", "label": "code", "props": {"visibility": "private", "valueType": "String"}},
       {"id": "bundle.label", "type": "uml.Property", "label": "label", "props": {"visibility": "public", "valueType": "String"}},
       {"id": "bundle.describe", "type": "uml.Operation", "label": "describe", "props": {"visibility": "public", "returnType": "String"}}
+    ] },
+    {"id": "voucher", "type": "uml.Class", "label": "Voucher", "parent": "shop", "members": [
+      {"id": "voucher.code", "type": "uml.Property", "label": "code", "props": {"visibility": "private", "valueType": "String"}},
+      {"id": "voucher.label", "type": "uml.Property", "label": "label", "props": {"visibility": "public", "valueType": "String"}},
+      {"id": "voucher.describe", "type": "uml.Operation", "label": "describe", "props": {"visibility": "public", "returnType": "String"}}
+    ] },
+    {"id": "ledger", "type": "uml.Class", "label": "Ledger", "parent": "shop", "members": [
+      {"id": "ledger.code", "type": "uml.Property", "label": "code", "props": {"visibility": "private", "valueType": "String"}},
+      {"id": "ledger.label", "type": "uml.Property", "label": "label", "props": {"visibility": "public", "valueType": "String"}},
+      {"id": "ledger.describe", "type": "uml.Operation", "label": "describe", "props": {"visibility": "public", "returnType": "String"}}
     ] }
   ],
   "edges": [
@@ -337,10 +347,12 @@
     {"id": "shift-loyalty", "type": "uml.Association", "from": "shift", "to": "loyalty", "props": {"ends": {"from": {"multiplicity": "*"}, "to": {"multiplicity": "0..1", "navigable": true}}}},
     {"id": "promotion-banner", "type": "uml.Association", "from": "promotion", "to": "banner", "props": {"ends": {"from": {"multiplicity": "1"}, "to": {"multiplicity": "0..*", "navigable": true}}}},
     {"id": "banner-gift", "type": "uml.Association", "from": "banner", "to": "gift", "props": {"ends": {"from": {"multiplicity": "*"}, "to": {"multiplicity": "0..1", "navigable": true}}}},
-    {"id": "gift-bundle", "type": "uml.Association", "from": "gift", "to": "bundle", "props": {"ends": {"from": {"multiplicity": "*"}, "to": {"multiplicity": "1", "navigable": true}}}}
+    {"id": "gift-bundle", "type": "uml.Association", "from": "gift", "to": "bundle", "props": {"ends": {"from": {"multiplicity": "*"}, "to": {"multiplicity": "1", "navigable": true}}}},
+    {"id": "bundle-voucher", "type": "uml.Association", "from": "bundle", "to": "voucher", "props": {"ends": {"from": {"multiplicity": "*"}, "to": {"multiplicity": "0..1", "navigable": true}}}},
+    {"id": "voucher-ledger", "type": "uml.Association", "from": "voucher", "to": "ledger", "props": {"ends": {"from": {"multiplicity": "*"}, "to": {"multiplicity": "1", "navigable": true}}}}
   ],
   "views": [
-    {"id": "all", "diagram": "uml.class", "title": "Every element", "direction": "down", "nodeIds": ["shop", "catalog", "person", "empty", "kind", "base", "order", "customer", "payable", "money", "decimal", "status", "note", "book", "author", "publisher", "series", "edition", "format", "genre", "review", "rating", "shelf", "stock", "warehouse", "supplier", "price", "discount", "coupon", "cart", "cartitem", "wishlist", "invoice", "refund", "shipment", "parcel", "carrier", "address", "region", "taxrule", "currency", "account", "store", "staff", "shift", "loyalty", "promotion", "banner", "gift", "bundle"]},
+    {"id": "all", "diagram": "uml.class", "title": "Every element", "direction": "down", "nodeIds": ["shop", "catalog", "person", "empty", "kind", "base", "order", "customer", "payable", "money", "decimal", "status", "note", "book", "author", "publisher", "series", "edition", "format", "genre", "review", "rating", "shelf", "stock", "warehouse", "supplier", "price", "discount", "coupon", "cart", "cartitem", "wishlist", "invoice", "refund", "shipment", "parcel", "carrier", "address", "region", "taxrule", "currency", "account", "store", "staff", "shift", "loyalty", "promotion", "banner", "gift", "bundle", "voucher", "ledger"]},
     {"id": "edge-cases", "diagram": "uml.class", "title": "The edge cases, left to right, Person capped at 8 rows", "nodeIds": ["shop", "catalog", "person", "empty", "kind", "base", "order", "customer", "payable", "money", "decimal", "status", "note"], "present": {"person": {"rows": 8}}}
   ]
 }
