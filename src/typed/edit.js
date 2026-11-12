@@ -33,6 +33,7 @@ TYPED.edit = (I, c) => {
   const ran = (r, dflt) => { if (r == null) return dflt();
     if (isRec(r) && r.error != null) { api.status(String(r.error)); api.say(String(r.error)); return false; }
     return emit(arrOf(r)); };
+  I.ran = ran; // connect's result, read by the core's addLine
 
   I.connect = (from, to, ev, at) => base.connect(from, to, ev, at !== undefined ? at : ev ? near(...world(ev)) : keyAt());
   I.drop = (n, hint, into, from) => { const h = hook('moveTo'), dflt = () => base.drop(n, hint, into, from);

@@ -35,7 +35,7 @@ const MODEL = { schemaVersion: 2, nodes: [{ id: 'a', type: 'test.Box', label: 'A
 // 3.4's stand-in sequence: lifelines whose stems hold a 24 px hit strip (SHAPE.lifeline), messages one row each, a slot
 // between every two rows and at each end, a fragment beside them (SHAPE.frame), geo.order, and every hook of §5.1
 const calls = [], R0 = 160, RW = 70;
-registerDiagramType('test.seq', { title: 'stand-in sequence', elements: [{ type: 'test.Use', label: 'Use' }, { type: 'test.Head', label: 'Lifeline' }],
+const SEQDEF = { title: 'stand-in sequence', elements: [{ type: 'test.Use', label: 'Use' }, { type: 'test.Head', label: 'Lifeline' }],
   lines: [{ type: 'test.Msg', label: 'Call', props: { sort: 'call' } }, { type: 'test.Msg', label: 'Reply', props: { sort: 'reply' } }], wraps: ['alt', 'opt'],
   layout: { pins: false, run(model, view) {
     const rows = view.edges, heads = view.nodeIds.map((id, i) => { const x = 40 + i * 260;
@@ -50,6 +50,8 @@ registerDiagramType('test.seq', { title: 'stand-in sequence', elements: [{ type:
       order: [...heads, ...frags, ...edges].map(x => x.id) }; } },
   edits: {
     connect(model, view, from, to, at, line) { calls.push(['connect', from, to, at && at.index, line.label]);
+      if (from === 'a' && to === 'a') return { error: 'Alpha calls no one but others' };
+      if (from === 'c' && to === 'b') return null;
       return [{ op: 'add', element: { id: 'n1', type: line.type, from, to, props: { ...line.props } }, view: view.id, index: at.index, in: 'view' }]; },
     moveTo(model, view, id, at) { calls.push(['moveTo', id, at && (at.by || at.index)]);
       if (id === 'f1') return { error: 'A fragment moves with what it holds' };
@@ -58,7 +60,9 @@ registerDiagramType('test.seq', { title: 'stand-in sequence', elements: [{ type:
       return [{ op: 'move', id, view: view.id, index: to }]; },
     wrap(model, view, ids, kind) { calls.push(['wrap', ids, kind]); return [{ op: 'add', element: { id: 'f2', type: 'test.Frag', label: kind }, view: view.id }, ...ids.map(id => ({ op: 'reparent', id, parent: 'f2' }))]; },
     add(model, view, entry, label, at) { calls.push(['add', entry.type, label, at && at.index]); return entry.type === 'test.Head' ? null : [{ op: 'add', element: { id: 'u1', type: entry.type, label }, view: view.id, index: at.index, in: 'view' }]; },
-    remove(model, view, ids, fromModel) { calls.push(['remove', ids, fromModel]); return ids.includes('a') && !fromModel ? { error: 'A lifeline goes with its messages: Shift + Delete' } : ids.map(id => ({ op: 'delete', id })); } } });
+    remove(model, view, ids, fromModel) { calls.push(['remove', ids, fromModel]); return ids.includes('a') && !fromModel ? { error: 'A lifeline goes with its messages: Shift + Delete' } : ids.map(id => ({ op: 'delete', id })); } } };
+registerDiagramType('test.seq', SEQDEF);
+{ const { edits, ...bare } = SEQDEF; registerDiagramType('test.bare', bare); } // the same with no hooks
 const SEQ = { schemaVersion: 2, nodes: [['a', 'Alpha'], ['b', 'Beta'], ['c', 'Gamma']].map(([id, label]) => ({ id, type: 'test.Head', label })), edges: [],
   views: [{ id: 's', diagram: 'test.seq', nodeIds: ['a', 'b', 'c'],
     edges: [{ id: 'm1', type: 'test.Msg', from: 'a', to: 'b', label: 'ask' }, { id: 'm2', type: 'test.Msg', from: 'b', to: 'c', label: 'pass' }, { id: 'm3', type: 'test.Msg', from: 'c', to: 'a', label: 'tell' }],
@@ -131,6 +135,16 @@ try {
   check('connect by keyboard: the slot after the message selected', same(calls, [['connect', 'b', 'c', 1, 'Call']]), calls);
   calls.length = 0; card('c'); key('l'); key('g'); key('a'); key('m'); key('Enter'); key('Enter', {}, sr.activeElement);
   check('a line to itself by keyboard: its own name typed; from a lifeline, the last slot', same(calls, [['connect', 'c', 'c', 3, 'Call']]), calls);
+  // connect's { error }: said, nothing emitted, by pointer and by keyboard; its null: the default line
+  const live = () => sr.querySelector('.um-live').textContent;
+  calls.length = 0; n1 = n0(); card('a'); handleTo(110, 195); click(all('.um-pick button')[0]);
+  check('connect\'s { error } by pointer: no edit, said', same(calls, [['connect', 'a', 'a', 1, 'Call']]) && ed.length === n1 && live() === 'Alpha calls no one but others', [calls, live()]);
+  calls.length = 0; card('a'); key('l'); key('a'); key('l'); key('Enter'); key('Enter', {}, sr.activeElement);
+  check('connect\'s { error } by keyboard: no edit, said', same(calls, [['connect', 'a', 'a', 3, 'Call']]) && ed.length === n1 && live() === 'Alpha calls no one but others', [calls, live()]);
+  calls.length = 0; card('c'); key('l'); key('b'); key('Enter'); key('Enter', {}, sr.activeElement);
+  check('connect\'s null by keyboard: the default line', calls.length === 1 && ed.length === n1 + 1 && same(last().commands.map(c => [c.op, c.element.from, c.element.to, c.view]), [['add', 'c', 'b', 's']]), [calls, last()]);
+  calls.length = 0; card('c'); handleTo(370, 265); click(all('.um-pick button')[0]);
+  check('connect\'s null by pointer: the default line', calls.length === 1 && ed.length === n1 + 2 && same(last().commands.map(c => [c.op, c.element.from, c.element.to]), [['add', 'c', 'b']]), [calls, last()]);
 
   // moveTo, by pointer: a message dragged to a slot; a lifeline dragged (null: the default, and no pin with pins false); a fragment
   calls.length = 0; n1 = n0();
@@ -187,6 +201,12 @@ try {
   check('a fragment selected: its name and its members in the panel', !!f('label') && f('label').value === 'loop' && !!f('m:f1-a') && f('m:f1-a').value === 'each', pick('.um-props').innerHTML.slice(0, 300));
   f('new').value = 'else'; key('Enter', {}, f('new'));
   check('…and a member added to it', same(last().commands, [{ op: 'add', element: { id: 'op1', type: 'test.Op', label: 'else' }, owner: 'f1' }]), last());
+  h.destroy();
+
+  // a fragment of a view only, with no remove hook: Delete deletes it, as a card of that view only
+  const BARE = { ...SEQ, views: [{ ...SEQ.views[0], diagram: 'test.bare' }] };
+  h = mount('s', BARE); card('f1'); key('Delete');
+  check('no remove hook: Delete on a view\'s own fragment deletes it, which apply() takes', !!last() && same(last().commands, [{ op: 'delete', id: 'f1' }]) && !apply(BARE, last().commands).views[0].fragments.length, last());
   h.destroy();
 } catch (x) { out.fail.push('threw: ' + (x && x.stack || x)); }
 const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);

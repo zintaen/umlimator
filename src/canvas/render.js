@@ -269,7 +269,7 @@ export function render(container, model, options = {}) {
       stage.classList.add('focusing');
     } else if (sel.type === 'edge') {
       const e = geo.edges[edgeIndex(sel)];
-      svg.querySelectorAll('.node').forEach(g => g.classList.toggle('nb', g.dataset.id === e.from || g.dataset.id === e.to));
+      svg.querySelectorAll('.node').forEach(g => { g.classList.toggle('sel', ns.includes(g.dataset.id)); g.classList.toggle('nb', g.dataset.id === e.from || g.dataset.id === e.to); }); // a card selected before the line stays selected
       stage.classList.add('focusing');
     } else if (sel.type === 'container') {
       const f = svg.querySelector(`.family[data-family="${CSS.escape(sel.id)}"]`); if (f) f.classList.add('sel');

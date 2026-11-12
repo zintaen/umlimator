@@ -391,7 +391,9 @@ try {
   check('Shift + click on a line selected takes it out', same(ids(), ['ab']), ids());
   key('Escape'); kr(1).focus(); key('Enter', {}, kr(1)); kr(0).focus(); key('Enter', { shiftKey: true }, kr(0));
   check('Enter on a ring selects its line, Shift + Enter on another adds it', same(ids(), ['cd', 'ab']), ids());
-  card('a'); click(hit(1), { shiftKey: true }); key('Delete', { shiftKey: true });
+  card('a'); click(hit(1), { shiftKey: true });
+  check('a card, then a line by Shift + click: the card still shown selected', pick('.node[data-id="a"]').classList.contains('sel') && all('.node.sel').length === 1, all('.node.sel').map(g => g.dataset.id));
+  key('Delete', { shiftKey: true });
   gives('a card and a line in one selection: one transaction', [{ op: 'delete', id: 'a' }, { op: 'delete', id: 'cd' }], m => !node(m, 'a') && !m.edges.length);
   click(hit(0)); key('l');
   check('L on a line of a type with no edits.connect: nothing', h.state.gesture === 'idle');
