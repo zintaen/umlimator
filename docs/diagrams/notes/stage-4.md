@@ -237,7 +237,7 @@ point `drawn` is built, which is the core's (`svgOf`), at about 40 B within the 
 
 | File | Holds | Why there |
 |---|---|---|
-| `src/uml/flow.js` | `initial`, `final`, `flow-final`, `diamond`, `bar`, `rounded`; the flow rules shared by the activity and overview types (§9.3, §11.3); the flow label's print (`name [guard]`) | Three types draw them; one lane builds them before the types. `rounded` is here so that neither the activity file nor the state file imports the other |
+| `src/uml/flow.js` | `initial`, `final`, `flow-final`, `diamond`, `bar`, `rounded`; the flow rules shared by the activity and overview types (§9.3, §11.3); the flow label's print (`name [guard]`). As built in 4.2: `flowProblems(model, view, ends)` (`ends`: the node types a flow of the calling type may end on) checks the model's flows that touch a node the view shows and the control nodes it shows, with `FLOW_RULES` to spread into a type's `rules` and `FLOW_CONTROL`, the seven control node types; `flowText(name, guard)` draws a flow's label, `printFlow` is null where it would not read back, `parseFlow(text)` gives `{ name, guard }` or `{ error }`; `flowWrap(text, px, max, lines)` wraps a name. The bar reads `n.busy` (the lines on its busiest side) and `n.down` (the view laid out down) in `size`. A diamond's text is one line up to 80 px, else two balanced lines (`wrap2`), the diamond twice the text's box plus 12 px across and 4 px along; a rounded box's name is 12 px on 16 px lines, its stereotypes 11 px over it, at least 96 × 36 px | Three types draw them; one lane builds them before the types. `rounded` is here so that neither the activity file nor the state file imports the other |
 | `src/uml/activity.js` | `signal`; the action's and the call behaviour action's looks on `rounded` | The activity's own |
 | `src/uml/state.js` | `junction`, `history`, `terminate`; the state's look (`rounded` with a compartment of activities, and the decomposition indicator when closed); the state's and the region's frames | The state machine's own |
 | `src/uml/usecase.js` | `ellipse`, `actor`, the subject's frame | The use case's own |
@@ -357,8 +357,10 @@ asked only if neither works.
 UML's `trigger-list ['[' guard ']'] ['/' effect]`. In `src/uml/transition.js`:
 
 ```js
-parseTransition(text) -> { trigger, guard, effect } | { error }   // each part trimmed text, or undefined when absent
+parseTransition(text, form?) -> { trigger, guard, effect } | { error }   // each part trimmed text, or undefined when absent or empty;
+                                                                   // form: what the error says the text should be (a flow's, §7.2)
 printTransition({ trigger, guard, effect }) -> text | null          // null: it would not read back (below)
+transitionText({ trigger, guard, effect }) -> text                  // the parts joined as printed, whether or not they read back: the drawn label
 ```
 
 - The trigger runs to the first `[` or `/` outside brackets and parentheses, so a call trigger's parameters keep theirs
@@ -369,7 +371,8 @@ printTransition({ trigger, guard, effect }) -> text | null          // null: it 
 - The effect is everything after the first `/` outside the guard, trimmed; it may hold anything.
 - Absent parts are left out; an empty text is all three absent. `printTransition` writes `trigger [guard] / effect` with
   one space round each part, leaving out what is absent.
-- **Refused:** an unbalanced `[`, `]`, `(` or `)`; a second guard; a text over 4,096 characters. The text is kept as written in the
+- **Refused:** an unbalanced or crossed `[`, `]`, `(` or `)` in the trigger or the guard; a second guard, or any other text between
+  the guard's `]` and the `/` (4.2: `a [g] b` would not read back); a text over 4,096 characters. The effect is not checked. The text is kept as written in the
   field, nothing is applied, and the hint line says why (E3).
 - **Not printable:** a trigger that holds `[` or `/`, or a guard with unbalanced brackets, which only a host can write
   into the model. `printTransition` returns null; the line is drawn with its parts joined by spaces, warned of by
