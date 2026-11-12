@@ -29,7 +29,7 @@ transition micro-syntax. Its reader: Mermaid's `stateDiagram`.
 | S12 | The Mermaid state subset | §13's table, against Mermaid 12.3.0, with the limits of 3.6 (1 MiB, linear, never throws) and a nesting limit of 64; a state's plain description read as a linked comment; reserved and colliding ids suffixed | §13 |
 | S13 | The PDF's tables per type (R8, and R9, new) | A type may give `rows(model, view, id)`, the text `print.js` lists for an element in place of its members, and `word(model, id)`, its kind; typed tables are headed "Elements" | §15 |
 | S14 | The core's budget (C5) | Stage 4 spends at most 600 B of the 2,790 B left at 0.20.0; everything listed in §2.3 stays in family files | §2.3 |
-| S15 | P1 for the common edit | A transition's label, a flow's guard and a use case's name are laid out and drawn in under 100 ms on each stress fixture, as 3.5 did for messages. The four types pass `repair: false` and `reroute: false` always, as the communication type does: `reroute: false` alone measures 123 to 131 ms on a 52-node view (Q19). A spike in 4.1 measures it on a view with lanes and with composites three deep before the type lanes start | §17 |
+| S15 | P1 for the common edit | A transition's label, a flow's guard and a use case's name are laid out and drawn in under 100 ms on each stress fixture, as 3.5 did for messages. The four types pass `repair: false` and `reroute: false` always, as the communication type does: `reroute: false` alone measures 123 to 131 ms on a 52-node view (Q19). A spike in 4.1 measures it on a view with lanes and with composites three deep before the type lanes start. The maintainer's decision of 13 Nov 2026 on that spike: a normally wired state machine (50 states, 60 transitions, composites three deep) holds 100 ms for a label edit; the scattered worst case, most transitions across region borders (about 148 ms in 4.1, the cost in `gridRoute`), holds the 1 s budget of edits that move geometry, as 1.11 did | §17 |
 | S16 | C10 for the four types | Tested in 4.10 as 2.6 did (the MCP server, the diff Action), per-type `diff()` writers left to the package after 0.20.0 | §19.5 |
 | S17 | Order with stage 3 | 4.0 follows 3.8's merge (#198); 0.21.0 ships after 0.20.0 | §19.3 |
 | S18 | Choosing the view an interaction use or a call behaviour action opens | A picker of the model's views of the right kind when the element is added (the `add` hook's new `{ pick, then }` result), and again by `V` on the selected node, which emits `set opensView`. In `src/typed/edit.js`; no core byte, no new properties field | §12.2 |
@@ -605,6 +605,43 @@ a model UML forbids is an error; one that is only unfinished is a warning.
 - **Deleting a state** deletes its regions and everything under it, as `apply()` does (a state owns its substates, unlike a
   partition). Deleting a region from the member list deletes what it holds; the hint line says how many.
 
+### 10.4 As built in 4.6
+
+Where `src/uml/state.js` departs from §6, §10 and §17:
+
+- **The browser test is `tests/state-machine.html`**, not `tests/state.html`, which is the map's state machines (0.14.0)
+  and stays as it is. `tests/embed.py` does not list it yet: the lead adds it beside `tests/flow.html`.
+- **A row `entry / …` typed on a state.** The panel hands a member row to the type only through `member.add` and
+  `member.edit`, which give a member, not commands. So `state.js` extends `TYPED.edit` (`src/typed/edit.js`'s, which it
+  calls first) with one listener on the panel's New member field and member rows, on a state machine view only: a row
+  whose trigger is `entry`, `do` or `exit` sets that prop (and a row edited so is deleted), a second one replacing the
+  first and saying so; any other row goes to the panel as before. A member hook that may return commands, in
+  `src/canvas/edit.js`, would take its place; `member.add` refuses such a row on its own.
+- **Slots.** The geometry gives a slot on each node and box, `{ after, parent: null, x, y }`: `src/typed/edit.js` passes
+  the `add` hook an `at` holding `sel` only where the geometry has slots, and the Region entry reads the state selected
+  there. No default gesture of this type reads a slot.
+- **Gaps.** Columns 48 px apart and rows 40 px, not spread by the widest label as the class type does: with 280 px labels
+  that made `10-state-machine.json` 6,700 px wide, and the smaller grid routes a fifth faster (P1). Laid out right every
+  label is drawn; laid out down three are left to their tooltip and name.
+- **Regions.** After the layout, on a copy, a state's regions stacked on one axis are stretched across it (6 px inside its
+  border; laid out down, from under its header), and the dashed divider runs across the whole state in the middle of the
+  gap. Regions that part on both axes are not stretched, and get a divider across the two only where they part on one.
+  Unnamed regions draw no title; their accessible name numbers them ("Region 2 of Fulfilling").
+- **Names.** A composite's accessible name ends with its regions ("2 regions") or, with none, its substates ("4 states"),
+  and ", closed" when drawn closed; a region's counts what it shows as states, pseudostates included. A pseudostate's or
+  final state's name says its owner ("Initial pseudostate in Parcel").
+- **The compartment** is named `activities` for `present.collapsed`; `present.rows` cuts it as on a class.
+- **A self-transition on an open composite** is not drawn (the layout routes loops on nodes only); it is in the model, the
+  panel and `describe()`.
+- **The Owner field** lists every state and region by its names from the top, joined by " / " ("Fulfilling / Parcel").
+- **10-state-machine.json** lays out with no overlap and no line through a node, right and down; port repair off leaves two
+  crossings laid out right and five laid out down, pinned in `tests/state.test.mjs`.
+- **P1.** On 50 states and 60 transitions with composites three deep (two regions at each level), wired as a machine is
+  drawn, a label edit is laid out and drawn in 77 to 118 ms of CPU, best of seven after a warm-up, on a machine at a load
+  average of 11 to 17: 77 ms with `tests/state.test.mjs` alone, 118 ms with the whole of `node --test` beside it. Nearly
+  all of it is the engine's: routing (`gridRoute`) about two thirds, the host's ranking with boxes (`blockPos`) a fifth;
+  the type's own code is about 1 %. The scattered case: about 125 to 200 ms, within its 1 s.
+
 ## 11. The interaction overview type
 
 ### 11.1 Drawing
@@ -888,6 +925,11 @@ Each validator also has a passing and a failing case in its type's test. The fou
   between §20 #13's other options before 4.5 and 4.6 start.
 - If a type's common edit still misses 100 ms in its own package, the package does not merge until the maintainer
   decides.
+- **The maintainer's decision on 4.1's spike (13 Nov 2026).** A normally wired state machine, 50 states and 60
+  transitions with composites three deep, holds S15's 100 ms for the common edit (a label), `repair: false` and
+  `reroute: false`. The scattered worst case, most transitions across region borders, which 4.1 measured at about 148 ms
+  on a loaded machine with the cost in `gridRoute`, gets the 1 s budget of edits that move geometry, as 1.11 did. No new
+  routing code. `tests/state.test.mjs` holds both, in CPU time, best of N after a warm-up (4.6, §10.4).
 - Browser timings under headless virtual time prove nothing (1.11).
 
 | Option, P1 for the common edit | For | Against |
