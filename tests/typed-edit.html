@@ -330,6 +330,11 @@ try {
   gives('Owner of z, past w: P', [{ op: 'reparent', id: 'z', parent: 'P' }], m => owns(m, 'z', 'P'), NEST);
   after = apply(NEST, last().commands); h.update(after);
   held = holdsExactly(after); check('after a re-own with no pin, the view is laid out again: P holds z, and not w beside it', held === true, held);
+  h.destroy();
+  // the Owner field of a pinned card: reparent and the pin's removal, as a drop sends (2.6's finding), so the new box holds only its own
+  const PINZ = structuredClone(NEST), pv = PINZ.views[0]; pv.layout = { ...(pv.layout || {}), z: [0, 0] };
+  h = mount({ editable: true }, PINZ); card('z'); own().value = 'P'; own().dispatchEvent(new Event('change', { bubbles: true }));
+  gives('Owner of a pinned z: P, and its pin removed', [{ op: 'reparent', id: 'z', parent: 'P' }, { op: 'set', view: pv.id, path: ['layout', 'z'], value: undefined }], m => owns(m, 'z', 'P') && !Object.hasOwn(m.views[0].layout || {}, 'z'), PINZ);
   h.destroy(); h = mount({ editable: true }, NEST);
   // a box selected as a container: the panel, F2, Delete and Shift + Delete act on its element
   click('.family[data-family="Q"] .family-title');
