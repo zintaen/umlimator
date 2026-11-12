@@ -4,7 +4,9 @@
      each way on one link, a self-message on a self connector, six messages on one link, a lifeline with no connector, every
      sort; 20 lifelines, 30 connectors and 200 messages) drawn by render() in both themes and three fonts: no overlap, every
      text in its face, no connector through another element, line ends on the lifelines, names, the reading order of the
-     picture, the legend and contrast; then the gestures the canvas has before 3.4, each through the edit event and apply().
+     picture, the legend and contrast; then the gestures, by pointer and by keyboard, through the type's hooks as 3.4 calls them
+     (src/typed/edit.js), each through the edit event and apply(): Tab's key rings in geo.order, the refused connect's reason
+     on the hint line, N and the palette at an index, Delete and Shift + Delete of a connector taking its messages.
      tests/communication.test.mjs reads the fixtures from here and lays them out in Node. -->
 <meta charset="utf-8">
 <link rel="icon" href="data:,">
@@ -330,6 +332,8 @@ let sr, stage, ed = [], sel = [];
 const pick = s => sr.querySelector(s), all = s => [...sr.querySelectorAll(s)];
 const ptr = (target, type, [x, y]) => target.dispatchEvent(new PointerEvent(type, { clientX: x, clientY: y, button: 0, pointerId: 7, pointerType: 'mouse', bubbles: true, composed: true }));
 const key = (k, extra = {}, target = stage) => target.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true, composed: true, cancelable: true, ...extra }));
+const client = (x, y) => { const p = new DOMPoint(x, y).matrixTransform(pick('svg').getScreenCTM()); return [p.x, p.y]; }; // a point of the picture, on the screen
+const handleTo = (x, y) => { const c = pick('.um-handle circle'), r = c.getBoundingClientRect(), to = client(x, y); ptr(c, 'pointerdown', [r.x + r.width / 2, r.y + r.height / 2]); ptr(stage, 'pointermove', to); ptr(stage, 'pointerup', to); };
 const click = s => { const g = pick(s), r = g.getBoundingClientRect(), at = [r.x + r.width / 2, r.y + r.height / 2]; ptr(g, 'pointerdown', at); ptr(g, 'pointerup', at); g.dispatchEvent(new MouseEvent('click', { clientX: at[0], clientY: at[1], bubbles: true, composed: true })); };
 const mount = (model, opts = {}) => { el.innerHTML = ''; ed = []; sel = []; const h = render(el, model, { on: { edit: e => ed.push(e), select: e => sel.push(e) }, ...opts }); sr = el.querySelector('.umlimator').shadowRoot; stage = pick('.stage'); return h; };
 const errors = m => validate(m).filter(p => p.level === 'error');
@@ -408,8 +412,17 @@ try {
   document.documentElement.dataset.theme = 'light'; el.style.removeProperty('--um-sans');
   check('describe() writes the view in words', describe(EX, 'checkout').startsWith('Checkout: payment accepted: a communication diagram of 5 lifelines, 5 connectors and 9 messages.'));
 
-  // ---- the gestures the canvas has before 3.4, each through the edit event and apply()
+  // ---- the gestures, through the type's hooks (3.4), each through the edit event and apply()
   let model = EX, h = mount(model, { view: 'checkout', editable: true });
+  const ring = id => pick(`.node-key[data-node="${id}"]`), lineRing = name => all('.line-key').find(k => k.getAttribute('aria-label') === name);
+  const hint = () => pick('.um-live').textContent;
+  // Tab goes through the key rings, in geo.order: the lifelines left to right, the connectors, then the rows by number; the
+  // cards themselves are out of the tab order
+  { const keys = all('.keys > .um-key'), heads = all('.node.lifeline').map(g => g.dataset.id), rows = all('.node.message-row').map(g => g.dataset.id);
+    check('Tab follows geo.order: a ring for each lifeline left to right, each connector, then each row by number; no card is a tab stop',
+      same(keys.map(k => k.dataset.node ?? 'line'), [...heads, ...Array(5).fill('line'), ...rows]) && keys.every(k => k.tabIndex === 0)
+      && all('.node').every(g => g.tabIndex === -1) && ring('m4').getAttribute('aria-label') === 'Message 4 of 9, 1.1.2: api to payments, charge(total), call'
+      && !!lineRing('Connector between api and payments, 2 messages'), keys.map(k => k.dataset.node ?? k.getAttribute('aria-label'))); }
   const step = (what, want, then = () => true) => { const e = ed[ed.length - 1], next = e && apply(model, e.commands); if (next) h.update(next);
     check(what, ed.length === 1 && same(e.commands, want) && !errors(next).length && then(next), [ed.map(x => x.commands), next && errors(next)]); if (next) model = next; ed = []; };
   click('.node[data-id="m7"] .mr-back');
@@ -433,9 +446,10 @@ try {
   click('.node[data-id="payments"] .c-name'); key('l'); key('s'); key('t'); key('Enter'); all('.um-pick button')[3].click();
   step('a reply answers the latest unanswered call from its receiver to its sender', [{ op: 'add', element: { id: 'm12', type: 'uml.Message', from: 'payments', to: 'storefront', props: { sort: 'reply', replyTo: 'm11' } }, view: 'checkout', index: 17 }]);
   click('.node[data-id="storefront"] .c-name'); key('l'); key('a'); key('Enter'); all('.um-pick button')[0].click();
-  // the hook returns { error: 'storefront and api are linked already' } (tests/communication.test.mjs); today's canvas drops it
-  // (src/canvas/edit.js addLine, arrOf), so no reason reaches the hint line: 3.4 routes it to api.status
-  check('a second connector between two lifelines is refused: no event (its reason is not shown before 3.4)', ed.length === 0, ed);
+  // the hook returns { error }, which 3.4 says on the hint line (src/typed/edit.js ran)
+  check('a second connector between two lifelines is refused by keyboard: no event, and the reason said', ed.length === 0 && hint() === 'storefront and api are linked already', [ed, hint()]);
+  { const a = pick('.node[data-id="api"] .n-body').getBBox(); click('.node[data-id="storefront"] .c-name'); handleTo(a.x + a.width / 2, a.y + a.height / 2); click('.um-pick button'); } // the picker's first entry, Connector
+  check('…and by pointer, from the handle to the other lifeline', ed.length === 0 && hint() === 'storefront and api are linked already', [ed, hint()]);
   click('.node[data-id="receipt"] .c-name'); key('ArrowDown', { altKey: true });
   const pin = ed[0] && ed[0].commands[0];
   step('Alt + ↓ pins a lifeline a row down', pin ? [pin] : null, m => m.views[0].layout.receipt[1] === pin.value[1] && pin.path[1] === 'receipt');
@@ -446,12 +460,29 @@ try {
   step('Delete hides a message from the view', [{ op: 'hide', id: 'm12', view: 'checkout' }], () => !pick('.node[data-id="m12"]'));
   click('.node[data-id="m2"] .mr-back'); key('Delete', { shiftKey: true });
   step('Shift + Delete deletes a call, and its reply with it', [{ op: 'delete', id: 'm2' }], m => !m.edges.some(e => e.id === 'm8') && !pick('.node[data-id="m8"]'));
+  // N and the palette go through the type's add hook (3.4): the id from the name, after the selected lifeline (its slot),
+  // else last. Before 3.4 the canvas's default added it, as "lifeline1"
   key('n'); pick('.um-rename').value = 'audit'; key('Enter', {}, pick('.um-rename'));
-  step('N adds a lifeline from the palette', [{ op: 'add', element: { id: 'lifeline1', type: 'uml.Lifeline', label: 'audit' }, view: 'checkout' }], () => !!pick('.node.lifeline[data-id="lifeline1"]'));
-  // the keyboard reaches the messages: arrows go from a lifeline to the rows near it
-  const head = pick('.node[data-id="shopper"]'); head.focus(); key('ArrowRight', {}, head);
-  const to = sr.activeElement;
-  check('→ from a lifeline moves focus to the nearest node to its right, a message row, named', to && to.dataset.shape === 'message-row' && /^Message \d+ of \d+, [\d.]+: \w+ to \w+/.test(to.getAttribute('aria-label')), to && to.getAttribute('aria-label'));
+  step('N with no lifeline selected adds a lifeline last', [{ op: 'add', element: { id: 'audit', type: 'uml.Lifeline', label: 'audit' }, view: 'checkout' }], m => !!pick('.node.lifeline[data-id="audit"]') && m.views[0].nodeIds.at(-1) === 'audit');
+  let at = model.views[0].nodeIds.indexOf('storefront') + 1;
+  ring('storefront').focus(); key('Enter', {}, sr.activeElement); key('n'); pick('.um-rename').value = 'cache'; key('Enter', {}, pick('.um-rename'));
+  step('N on a lifeline selected from its ring adds the new one after it', [{ op: 'add', element: { id: 'cache', type: 'uml.Lifeline', label: 'cache' }, view: 'checkout', index: at }], m => m.views[0].nodeIds[at] === 'cache');
+  at = model.views[0].nodeIds.indexOf('api') + 1;
+  click('.node[data-id="api"] .c-name'); pick('.um-pal [data-add="0"]').click(); pick('.um-rename').value = 'log'; key('Enter', {}, pick('.um-rename'));
+  step('the palette, by pointer, adds a lifeline after the one clicked', [{ op: 'add', element: { id: 'log', type: 'uml.Lifeline', label: 'log' }, view: 'checkout', index: at }], m => m.views[0].nodeIds[at] === 'log');
+  // a connector goes with the messages it carries: Delete hides them from the view, Shift + Delete deletes them
+  click('.edge-g[data-from="api"][data-to="payments"] .hitline'); pick('.um-editor [data-hide]').click();
+  step('a connector clicked, then Remove from view: it and its messages leave the view', [{ op: 'hide', id: 'api-payments', view: 'checkout' }, { op: 'hide', id: 'm4', view: 'checkout' }, { op: 'hide', id: 'm5', view: 'checkout' }],
+    m => m.edges.some(e => e.id === 'm4') && !pick('.edge-g[data-from="api"][data-to="payments"]') && !pick('.node[data-id="m4"]') && !pick('.node[data-id="m5"]'));
+  lineRing('Connector between storefront and payments, 1 message').focus(); key('Enter', {}, sr.activeElement); key('Delete', { shiftKey: true }, sr.activeElement);
+  step('a connector\'s ring, Enter, Shift + Delete: it and its message are deleted from the model', [{ op: 'delete', id: 'storefront-payments' }, { op: 'delete', id: 'm11' }],
+    m => !m.edges.some(e => ['storefront-payments', 'm11', 'm12'].includes(e.id)) && !pick('.node[data-id="m11"]'));
+  // the keyboard reaches the messages: arrows go from a lifeline's ring to the ring of the nearest node, here a row. Before
+  // 3.4 the focus went to the row's card; 3.4 gives a typed view key rings (svg.js) and the arrows move the focus from ring to ring
+  const head = ring('shopper'); head.focus(); key('ArrowRight', {}, head);
+  const to = sr.activeElement, toG = to && to.dataset.node && pick(`.node[data-id="${to.dataset.node}"]`);
+  check('→ from a lifeline\'s ring moves focus to the ring of the nearest node to its right, a message row, named', !!toG && to.classList.contains('node-key') && toG.dataset.shape === 'message-row'
+    && to.getAttribute('aria-label') === toG.getAttribute('aria-label') && /^Message \d+ of \d+, [\d.]+: \w+ to \w+/.test(to.getAttribute('aria-label')), to && to.outerHTML.slice(0, 120));
   h.destroy();
 } catch (x) { out.fail.push('threw: ' + (x && x.stack || x)); }
 document.documentElement.dataset.theme = 'light'; el.style.removeProperty('--um-sans');

@@ -84,14 +84,18 @@ test('example 12: it validates, each connector with messages carries them as a s
     '1.2: storefront to shopper, confirmation page, reply to 1.'].join('\n'));
 });
 
-test('reading order (S13): geo.order is the lifelines left to right, then the message rows by number, and the nodes are drawn in it', () => {
-  const g = layout(EX, 'checkout');
-  assert.deepEqual(g.order, ['shopper', 'storefront', 'api', 'payments', 'receipt', 'm1', 'm2', 'm3', 'm4', 'm5', 'm6', 'm7', 'm8', 'm9']);
-  assert.deepEqual(g.nodes.map(n => n.id), g.order);
-  const s = layout(STRESS, 'all'), heads = s.order.slice(0, 20), nums = s.order.slice(20).map(id => s.byId[id].num.split('.').map(Number));
+test('reading order (S13): geo.order is the lifelines left to right, the connectors, then the message rows by number; the nodes are drawn in it', () => {
+  const g = layout(EX, 'checkout'), rows = ['m1', 'm2', 'm3', 'm4', 'm5', 'm6', 'm7', 'm8', 'm9'];
+  assert.deepEqual(g.order, ['shopper', 'storefront', 'api', 'payments', 'receipt', ...g.edges.map(e => e.id), ...rows]);
+  assert.deepEqual(g.edges.map(e => e.id).sort(), VIEW(EX).edges.filter(id => !rows.includes(id)).sort());
+  assert.deepEqual(g.nodes.map(n => n.id), g.order.filter(id => g.byId[id]));
+  // the slots: after each lifeline its index in nodeIds (N adds there), after each row its id (L adds after it)
+  assert.deepEqual(g.slots.map(s => [s.after, s.index ?? null, !!s.lifeline]), [...['shopper', 'storefront', 'api', 'payments', 'receipt'].map(id => [id, VIEW(EX).nodeIds.indexOf(id) + 1, true]), ...rows.map(id => [id, null, false])]);
+  assert.ok(g.slots.every(s => Number.isFinite(s.x) && Number.isFinite(s.y)));
+  const s = layout(STRESS, 'all'), heads = s.order.slice(0, 20), nums = s.order.slice(50).map(id => s.byId[id].num.split('.').map(Number));
   assert.ok(heads.every((id, i) => !i || s.byId[id].x >= s.byId[heads[i - 1]].x), 'lifelines left to right');
   assert.ok(nums.every((n, i) => !i || n.join('.') !== nums[i - 1].join('.') && (() => { const p = nums[i - 1]; for (let k = 0; k < Math.max(n.length, p.length); k++) if ((n[k] ?? -1) !== (p[k] ?? -1)) return (n[k] ?? -1) > (p[k] ?? -1); return false; })()), 'messages by number');
-  assert.equal(s.order.length, 220);
+  assert.equal(s.order.length, 250);
 });
 
 test('the fixtures (notes/stage-3.md §9) hold every case, validate, and lay out with no overlap and no connector through another element', () => {
@@ -262,6 +266,11 @@ test('moveTo: Alt + Up/Down moves a message one place in time, a drop onto a row
   assert.match(commConnect(EX, V, 'api', 'receipt', { after: 'm5' }, { type: 'uml.Message', props: { sort: 'call' } }).error, /^create-once: /, 'a message before its receiver\'s create');
   assert.equal(commMoveTo(EX, V, 'api', { by: [0, 1] }), null);
   assert.equal(commMoveTo(EX, V, 'api-payments', { by: [0, 1] }), null);
+  // the slots the canvas passes: a row's (by its id) takes that row's place, a lifeline's moves no message and starts no message
+  // anywhere but last
+  assert.deepEqual(commMoveTo(EX, V, 'm9', { after: 'm7', y: 0 }), commMoveTo(EX, V, 'm9', { id: 'm7' }));
+  assert.deepEqual(commMoveTo(EX, V, 'm9', { index: 2, after: 'api', lifeline: true, y: 0 }), []);
+  assert.equal(commConnect(EX, V, 'shopper', 'storefront', { index: 1, after: 'shopper', lifeline: true }, { type: 'uml.Message', props: { sort: 'call' } })[0].index, VIEW(EX).edges.length);
   const after = layout(run(EX, commMoveTo(EX, V, 'm7', { by: [0, -1] })), 'checkout');
   assert.deepEqual(['m4', 'm5', 'm7', 'm6'].map(id => after.byId[id].num), ['1.1.2', '1.1.2.1', '1.1.3', '1.1.4'], 'numbered again in the new order');
 });

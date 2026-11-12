@@ -143,7 +143,7 @@ function commGeo({ model, view, memo }) {
     Object.assign(b, Math.abs(r2 - r) < 1 ? { fromSide: 'top', toSide: 'top' } : { fromSide: down, toSide: far }); });
   // no port repair: on the stress fixture it saves a fifth of a layout, which a message edit pays (§10), for 13 crossings, not 11
   const g = layoutTyped({ nodes, edges, direction: view.direction === 'down' ? 'down' : 'right', gap: 64, rgap: 40, repair: false, reroute: false }, memo); // no rip-up pass: P1 on a shared CI runner
-  return cmFinish(g, I, stacks, nums);
+  return cmFinish(g, I, stacks, nums, view);
 }
 
 // a line's two runs crossing (not meeting end to end), axis-aligned
@@ -157,8 +157,8 @@ const cmSwapEnds = (P, side) => { const v = side === 'T' || side === 'B' ? 0 : 1
   Q[0][v] = Q[1][v] = y; Q[n - 1][v] = Q[n - 2][v] = x; return cmCrosses(Q) ? P : Q; };
 
 /* The laid-out graph as it is drawn, a new object (layoutTyped's memo keeps the one it returned): each stack replaced by its
-   rows, each connector's halves joined through its stack, geo.order and the legend */
-function cmFinish(g, I, stacks, nums) {
+   rows, each connector's halves joined through its stack, geo.order, the slots and the legend */
+function cmFinish(g, I, stacks, nums, view) {
   const byId = Object.create(null), order = [...I.ids];
   g.nodes.forEach(n => { if (n.id[0] !== CM_STACK) byId[n.id] = { ...n }; });
   const E = new Map(g.edges.map(e => [e.id, e])), edges = [], total = I.messages.filter(m => nums.has(m.id)).length, place = new Map(I.messages.map((m, k) => [m.id, k + 1]));
@@ -184,10 +184,17 @@ function cmFinish(g, I, stacks, nums) {
       byId[row.id] = row; });
   });
   // reading order (S13): lifelines in the layout's order, left to right and top to bottom, then the message rows by number.
-  // The nodes are drawn in it too, so a screen reader that reads the picture in document order reads it so
+  // The nodes are drawn in it too, so a screen reader that reads the picture in document order reads it so. geo.order, the
+  // key rings' order and so Tab's, has the connectors between the lifelines and the rows: a connector is selected by its ring
   order.sort((a, b) => byId[a].x - byId[b].x || byId[a].y - byId[b].y);
   order.push(...I.messages.filter(m => byId[m.id]).map(m => m.id).sort((a, b) => cmByNumber(nums.get(a), nums.get(b))));
-  return { ...g, nodes: order.map(id => byId[id]), edges, byId, order, legend: cmLegendOf(new Set(I.messages.filter(m => byId[m.id]).map(cmSortOf))) };
+  const heads = order.slice(0, I.ids.length), mid = n => ({ x: n.x + n.w / 2, y: n.y + n.h / 2 });
+  // the slots (src/typed/edit.js): one after each lifeline, its index in nodeIds (N adds there), and one after each row,
+  // named by `after` (L from a message adds after it; a row dropped on a row takes its place)
+  const slots = [...heads.map(id => ({ index: CM_ARR(view.nodeIds).indexOf(id) + 1, after: id, parent: null, lifeline: true, ...mid(byId[id]) })),
+    ...order.slice(I.ids.length).map(id => ({ after: id, parent: null, ...mid(byId[id]) }))];
+  return { ...g, nodes: order.map(id => byId[id]), edges, byId, order: [...heads, ...edges.map(e => e.id), ...order.slice(I.ids.length)], slots,
+    legend: cmLegendOf(new Set(I.messages.filter(m => byId[m.id]).map(cmSortOf))) };
 }
 
 /* ---- validators: message-link, and the rules both interaction types share (src/uml/interaction.js). Each problem:
@@ -225,10 +232,12 @@ function cmFreshId(model, base) {
   let k = 1; while (used.has(next(k))) k++;
   return next(k);
 }
-// where `at` puts a message in view.edges: { index }, { after: id }, or none (the end); never among the connectors
+// where `at` puts a message in view.edges: { index }, { after: id }, or none or a lifeline's slot (the end); never among the
+// connectors
 function cmMessageIndex(view, at) {
   const list = CM_ARR(view.edges), idOf = x => (typeof x === 'string' ? x : CM_OBJ(x) ? x.id : null);
   let i = list.length;
+  if (CM_OBJ(at) && at.lifeline) return i;
   if (CM_OBJ(at) && Number.isInteger(at.index)) i = at.index;
   else if (CM_OBJ(at) && at.after != null && list.some(x => idOf(x) === at.after)) i = list.findIndex(x => idOf(x) === at.after) + 1;
   return Math.max(0, Math.min(list.length, i));
@@ -263,14 +272,16 @@ function commConnect(model, view, from, to, at, line) {
 }
 
 /* moveTo(model, view, id, at): a message one place earlier or later in time ({ by: [dx, dy] }: Alt + Up/Down), or onto
-   another row ({ id }: the row it was dropped on, whose place it takes; or { index } in view.edges); { error } when the
-   new order breaks a rule. On a lifeline: null, and the gesture sets a pin as on a class view */
+   another row ({ id }, or a row's slot: the row it was dropped on, whose place it takes; or { index } in view.edges; a
+   lifeline's slot, nothing); { error } when the new order breaks a rule. On a lifeline: null, and the gesture sets a pin as on a class view */
 function commMoveTo(model, view, id, at) {
   if (!CM_OBJ(view)) return null;
   const I = commIndex(model, view), list = CM_ARR(view.edges), idOf = x => (typeof x === 'string' ? x : CM_OBJ(x) ? x.id : null);
   const ms = list.map((x, i) => [idOf(x), i]).filter(([x]) => I.messages.some(m => m.id === x)), k = ms.findIndex(([x]) => x === id);
   if (k < 0) return null;
   let to = k;
+  if (CM_OBJ(at) && at.lifeline) return [];
+  if (CM_OBJ(at) && at.after != null && at.id == null) at = { id: at.after }; // a row's slot
   if (CM_OBJ(at) && Array.isArray(at.by)) to = k + Math.sign(+at.by[1] || 0);
   else if (CM_OBJ(at) && at.id != null) to = ms.findIndex(([x]) => x === at.id);
   else if (CM_OBJ(at) && Number.isInteger(at.index)) { to = ms.filter(([, i]) => i < at.index).length; if (to > k) to--; }
@@ -278,7 +289,8 @@ function commMoveTo(model, view, id, at) {
   return cmGuard(model, view, [{ op: 'move', id, view: view.id, index: ms[to][1] }]); // a reply before its call, a create or delete out of its place
 }
 
-/* add(model, view, entry, label, at): the palette's lifeline, at `at.index` in nodeIds (after the selected one), else last */
+/* add(model, view, entry, label, at): the palette's lifeline, at `at.index` in nodeIds (a lifeline's slot: after the selected
+   lifeline), else last (no slot, or a row's, which has no index) */
 function commAdd(model, view, entry, label, at) {
   if (!CM_OBJ(view) || !CM_OBJ(entry) || entry.type !== 'uml.Lifeline') return null;
   const id = cmFreshId(model, String(label ?? '').trim().toLowerCase().replace(/[^\p{L}\p{N}_$-]+/gu, '-').replace(/^-+|-+$/g, '') || 'lifeline');
