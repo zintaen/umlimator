@@ -466,9 +466,13 @@ Where `src/uml/usecase.js` departs from §8.1 to §8.4 and §4.1:
 - **Actors first, by the type.** `rankFlip` sees a line only, not its ends' types, so it cannot turn an association drawn
   from a use case; and a generalization between two actors, turned, put the specialized actor in a column of its own
   between the actors and the subject (`08-use-case.json` then had a crossing in both directions). So the layout moves
-  every actor shown outside a box into the first column of the host's ranking (the top row laid out down), in the order of
-  the rows of the use cases it is associated with, a specialization after its general, and the rest one column on, on a
-  copy of `pos`. A view with any pin keeps the host's ranking as it is. `edits.connect` adds an association drawn from a
+  every actor shown outside a box into a column before the rest of the host's ranking (the top row laid out down), in the
+  order of the rows of the use cases it is associated with, a specialization after its general, on a copy of `pos`; the
+  rest keep the host's places. With pins too: a pin is read in the host's ranking, where the canvas wrote it from the
+  drawing, so it moves the pinned node alone (and what the host pushes off its slot); a pinned actor keeps its row. When
+  the host puts a node (a comment, say) in column 0, the actors are drawn in column -1 and say column 0, the canvas
+  pinning no column under 0; a drop then reads the two as one column, and an actor's pin can push that node down a row.
+  An association from an actor to a box counts only its ends that have a slot. `edits.connect` adds an association drawn from a
   use case to an actor from the actor, so the model says it the same way. `08-use-case.json` then lays out clean right and
   down, in Node and in Chrome.
 - **An extend's label is cut at 280 px** (S7's `cut`), as the state, activity and overview lines are: `«extend» (payment)

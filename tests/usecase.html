@@ -2,9 +2,10 @@
 <!-- The use case diagram (4.4) in headless Chrome (tests/embed.py), from lib/umlimator-all.js: docs/diagrams/examples/08-use-case.json
      drawn by render() in both themes, three fonts and both directions (actors and ellipses, texts inside their shapes, the
      subject's box holding its use cases, line ends on outlines, names, reading order, contrast, the legend), then edited
-     through the edit event and apply(), by pointer and by keyboard: the palette and N, F2, a line by L and the picker (an
-     association drawn from a use case starts at the actor), an extend's condition and points, extension points as member
-     rows, the Owner field, a drop into the subject's box, a pin, hide, delete and the problems list. -->
+     through the edit event and apply(), by pointer and by keyboard: the palette's four entries and N, F2, each line kind by L
+     and the picker (an association drawn from a use case starts at the actor), an extend's condition and points, extension
+     points as member rows, the Owner field of a use case and an actor, the stereotypes field, a drop into the subject's box,
+     a pin (the picture after it), hide, delete and the problems list. -->
 <meta charset="utf-8">
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="../lib/umlimator-theme.css">
@@ -92,6 +93,10 @@ try {
   let m1 = gives('N adds an actor, named, shown in the view', [{ op: 'add', element: { id: 'actor1', type: 'uml.Actor', label: 'Courier' }, view: 'shopping' }], m => m.views[0].nodeIds.includes('actor1'), BASE);
   all('.um-editor .um-pal button')[1].click(); pick('.um-rename').value = 'Return a book'; key('Enter', {}, pick('.um-rename'));
   gives('the palette\'s Use case button adds a use case', [{ op: 'add', element: { id: 'usecase1', type: 'uml.UseCase', label: 'Return a book' }, view: 'shopping' }], m => m.nodes.some(n => n.id === 'usecase1'), BASE);
+  all('.um-editor .um-pal button')[2].click(); pick('.um-rename').value = 'Back office'; key('Enter', {}, pick('.um-rename'));
+  gives('the palette\'s Subject button adds a subject', [{ op: 'add', element: { id: 'subject1', type: 'uml.Subject', label: 'Back office' }, view: 'shopping' }], m => m.nodes.some(n => n.id === 'subject1'), BASE);
+  all('.um-editor .um-pal button')[3].click(); if (pick('.um-rename')) { pick('.um-rename').value = 'Ask first'; key('Enter', {}, pick('.um-rename')); }
+  check('the palette\'s Comment button adds a comment', last().commands.length === 1 && last().commands[0].op === 'add' && last().commands[0].element.type === 'uml.Comment' && !errors(apply(BASE, last().commands)).length, last());
   h.update(m1);
   check('after update() the actor is drawn as a figure with its name', pick('.node[data-id="actor1"].actor .c-name').textContent === 'Courier');
   // F2 on a use case, by pointer then key
@@ -113,6 +118,12 @@ try {
   all('.um-pick button').find(b => b.textContent === 'Extend').click();
   const m4 = gives('picking Extend: one add of a uml.Extend, which names no point yet', [{ op: 'add', element: { id: 'extend1', type: 'uml.Extend', from: 'browse', to: 'checkout' }, view: 'shopping' }],
     m => m.edges.some(e => e.id === 'extend1'), m3, 1);
+  // the other line kinds, each by L and the picker
+  for (const [from, name, kind, to, id, type] of [['browse', 'sign', 'Include', 'sign-in', 'include1', 'Include'], ['actor1', 'shopper', 'Generalization', 'shopper', 'generalization1', 'Generalization'], ['track', 'courier', 'Comment link', 'actor1', 'commentlink1', 'CommentLink']]) {
+    click(`.node[data-id="${from}"] .c-name`); key('l'); for (const c of name) key(c); key('Enter');
+    all('.um-pick button').find(b => b.textContent === kind).click();
+    check(`picking ${kind}: one add of a uml.${type}`, same(last().commands, [{ op: 'add', element: { id, type: 'uml.' + type, from, to }, view: 'shopping' }]) && apply(m3, last().commands).edges.some(e => e.id === id), last());
+  }
   h.update(m4);
   check('extend-points is listed in the problems panel, by its rule', all('.um-editor .um-probs button').some(b => /extend-points: extend1 names no extension point of "Check out"/.test(b.textContent)), all('.um-editor .um-probs button').map(b => b.textContent));
   h.select({ type: 'edge', ids: ['extend1'], view: 'shopping' });
@@ -143,9 +154,23 @@ try {
   const m7 = gives('a use case dropped into the subject\'s box: reparent', [{ op: 'reparent', id: 'track', parent: 'bookshop' }], m => m.nodes.find(n => n.id === 'track').parent === 'bookshop', m6);
   h.update(m7);
   check('after update() the subject\'s box holds it', inside(box(pick('.node[data-id="track"] .n-mask')), box(pick('.family[data-family="bookshop"] .family-box'))));
-  // a pin, hide, delete
+  // an actor's Owner field and stereotypes
+  click('.node[data-id="shopper"] .c-name');
+  const aown = panel('[data-f="owner"]'), aopts = [...aown.options].map(o => o.textContent);
+  check('the Owner field of an actor: none and the package', same(aopts, ['none', 'shop']) && aown.value === '', aopts);
+  change(aown, 'pk');
+  gives('Owner: reparent the actor to the package', [{ op: 'reparent', id: 'shopper', parent: 'pk' }], m => m.nodes.find(n => n.id === 'shopper').parent === 'pk', m7);
+  click('.node[data-id="shopper"] .c-name'); change(panel('[data-f="p:stereotypes"]'), 'primary, human');
+  gives('the stereotypes field sets a list', [{ op: 'set', id: 'shopper', path: 'props.stereotypes', value: ['primary', 'human'] }], m => same(m.nodes.find(n => n.id === 'shopper').props.stereotypes, ['primary', 'human']), m7);
+  // a pin, hide, delete. The canvas keeps every place through a session, so the pin's picture is the saved model's, drawn fresh
+  h = mount(m7, { editable: true });
+  const was = id => box(pick(`.node[data-id="${id}"] .n-mask`)), before = Object.fromEntries(['shopper', 'browse', 'checkout', 'pay'].map(id => [id, was(id)]));
   click('.node[data-id="shopper"] .c-name'); key('ArrowDown', { altKey: true });
   check('Alt + ↓ pins an actor', last().commands.length === 1 && last().commands[0].op === 'set' && same(last().commands[0].path, ['layout', 'shopper']), last());
+  mount(apply(m7, last().commands));
+  check('the pinned model drawn fresh: the actor a row lower, the use cases where they were', was('shopper').y > before.shopper.y && was('shopper').x === before.shopper.x && ['browse', 'checkout', 'pay'].every(id => same(was(id), before[id])),
+    [before, ['shopper', 'browse', 'checkout', 'pay'].map(was)]);
+  h = mount(m7, { editable: true });
   click('.node[data-id="gift-wrap"] .c-name'); key('Delete');
   gives('Delete: hide the use case from the view', [{ op: 'hide', id: 'gift-wrap', view: 'shopping' }], m => !m.views[0].nodeIds.includes('gift-wrap'), m7);
   click('.node[data-id="gift-wrap"] .c-name'); key('Delete', { shiftKey: true });

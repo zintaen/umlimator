@@ -102,6 +102,26 @@ test('every line end is on its shape\'s outline within 1 px: the ellipse, the ac
   assert.equal(layout(m, 'shopping').byId.back.shape, 'classifier', 'a subject with nothing shown is a rectangle');
 });
 
+test('a pin moves the pinned node alone (§8.5): the actors are first with pins too, and a pin is read where it was drawn', () => {
+  const at = m => Object.fromEntries(layout(m, 'shopping').nodes.map(n => [n.id, [n.col, n.row]])), base = at(UC);
+  for (const [id, d] of [['gift-wrap', [0, 6]], ['shopper', [0, 6]], ['track', [2, 0]]]) {
+    const m = structuredClone(UC), to = [base[id][0] + d[0], base[id][1] + d[1]]; m.views[0].layout = { [id]: to };
+    const now = at(m); assert.deepEqual(now[id], to, id);
+    assert.deepEqual(Object.fromEntries(Object.entries(now).filter(([k]) => k !== id)), Object.fromEntries(Object.entries(base).filter(([k]) => k !== id)), `pinning ${id} moves nothing else`);
+  }
+  const stale = structuredClone(UC); stale.views[0].layout = { nowhere: [0, 0] };
+  assert.deepEqual(at(stale), base, 'a pin of a node not shown changes nothing');
+  // a comment in the host's column 0: the actor is drawn before it, and says column 0, which the canvas can pin
+  const c = { schemaVersion: 2, nodes: [A('a', 'A'), U('u', 'U'), { id: 'n', type: 'uml.Comment', label: 'note' }], edges: [L('e', 'Association', 'a', 'u'), L('c', 'CommentLink', 'n', 'u')], views: [{ id: 'v', diagram: 'uml.use-case', nodeIds: ['a', 'u', 'n'] }] }, g = layout(c, 'v');
+  assert.ok(g.byId.a.x < g.byId.n.x && g.byId.a.col === 0 && g.nodes.every(n => n.col >= 0), JSON.stringify(g.nodes.map(n => [n.id, n.col])));
+});
+
+test('an association from an actor to a box is drawn, and validate() says so (association-ends)', () => {
+  const m = structuredClone(UC); m.edges.push(L('z', 'Association', 'shopper', 'bookshop'));
+  assert.ok(layout(m, 'shopping').byId.shopper);
+  assert.ok(validate(m).some(p => p.rule === 'association-ends' && p.ids.includes('z')));
+});
+
 test('the layout is not edited after layoutTyped: drawn twice from one memo, the same markup (notes/stage-4.md §2.4)', () => {
   const memos = {}, unid = s => s.replace(/\bg\d+-/g, 'g-');
   const first = mapContext(UC, { memos }).buildView('shopping'), pts = JSON.stringify(memos.shopping.g.edges.map(e => e.pts)), second = mapContext(UC, { memos }).buildView('shopping');
@@ -216,8 +236,11 @@ test('save and reopen (DoD 6): a 30-step session undoes and redoes to byte-ident
   for (let i = 1; i <= 30; i++) assert.equal(JSON.stringify(h.redo()), seen[i], `redo to ${i}`);
   const reopened = steps.slice(15).reduce((m, s) => apply(m, s), JSON.parse(seen[15]));
   assert.equal(JSON.stringify(reopened), seen[30]);
-  const flat = g => JSON.stringify(g, (k, v) => (k === 'ms' ? undefined : v));
-  assert.equal(flat(layout(reopened, 'shopping')), flat(layout(JSON.parse(seen[30]), 'shopping')));
+  // the session's drawing, laid out again after each step from one memo, is the reopened model's, drawn fresh
+  const memos = {}, unid = s => s.replace(/\bg\d+-/g, 'g-'), draw = (m, o) => unid(mapContext(m, o).buildView('shopping').markup);
+  let session; for (let i = 1; i <= 30; i++) session = draw(JSON.parse(seen[i]), { memos });
+  assert.ok(memos.shopping.runs > 1);
+  assert.equal(session, draw(reopened));
   assert.equal(describe(reopened, 'shopping'), describe(JSON.parse(seen[30]), 'shopping'));
 });
 
@@ -240,5 +263,4 @@ test('P1 (S15): on 50 elements and 60 lines, a full layout under 1 s, and a use 
   const best = k => Math.min(...runs.map(r => r[k]));
   assert.ok(best('full') < 1000, `full layout ${best('full')} ms`);
   assert.ok(best('rename') < 100, `a rename ${best('rename')} ms`);
-  if (process.env.UC_TIMES) console.log(runs);
 });
