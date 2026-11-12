@@ -15,7 +15,7 @@ import { validate } from '../src/map/validate.js';
 import { check } from '../docs/diagrams/examples/check.mjs';
 
 
-const SEQ = JSON.parse(readFileSync(new URL('../docs/diagrams/examples/11-sequence.json', import.meta.url)));
+const SEQ = JSON.parse(readFileSync(new URL('../examples/checkout-sequence.json', import.meta.url)));
 const frozen = x => { if (x && typeof x === 'object') { Object.values(x).forEach(frozen); Object.freeze(x); } return x; };
 const run = c => apply(frozen(structuredClone(SEQ)), c);
 const V = m => m.views[0], ids = list => list.map(x => (typeof x === 'string' ? x : x.id)), byId = (m, id) => V(m).edges.find(e => e.id === id);

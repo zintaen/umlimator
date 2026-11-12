@@ -83,11 +83,11 @@ function sqRun(model, view) {
     ...o.heads.map((h, j) => { const n = H.get(h.id), st = sqStereo(n);
       return { ...h, shape: 'lifeline', type: 'uml.Lifeline', label: sqHeadText(n), stereotypes: st, k: 'file', stem: o.stems[j], aria: `Lifeline ${sqHeadText(n)}${st.length ? ` (${st.join(', ')})` : ''}` }; }),
     ...o.frames.flatMap(fr => { const f = X.F.get(fr.id), op = sqOperator(f), ms = SQ_ARR(f.members).filter(SQ_OBJ);
-      return [{ id: fr.id, shape: 'frame', type: 'uml.CombinedFragment', label: op, k: 'file', x: fr.x, y: fr.y, w: fr.w, h: fr.h, aria: `Combined fragment ${op}, ${ms.length} ${ms.length === 1 ? 'operand' : 'operands'}` },
+      return [{ id: fr.id, shape: 'frame', type: 'uml.CombinedFragment', label: op, k: 'file', holder: true, x: fr.x, y: fr.y, w: fr.w, h: fr.h, aria: `Combined fragment ${op}, ${ms.length} ${ms.length === 1 ? 'operand' : 'operands'}` },
         ...fr.parts.map(p => { const m = ms.find(x => x.id === p.id) || {}, k = direct(p.id);
-          return { ...p, shape: 'operand', type: 'uml.InteractionOperand', label: m.label, k: 'file', aria: `Operand ${SQ_HAS(m.label) ? m.label + ' ' : ''}of ${op}, ${k} ${k === 1 ? 'occurrence' : 'occurrences'}` }; })]; }),
+          return { ...p, shape: 'operand', type: 'uml.InteractionOperand', label: m.label, k: 'file', holder: true, aria: `Operand ${SQ_HAS(m.label) ? m.label + ' ' : ''}of ${op}, ${k} ${k === 1 ? 'occurrence' : 'occurrences'}` }; })]; }),
     ...o.spans.map(s => { const u = X.byId.get(s.id), cs = SQ_ARR(sqProps(u.el).covers).filter(id => H.has(id)), all = heads.map(n => n.id), ids = cs.length ? all.filter(id => cs.includes(id)) : all;
-      return { ...s, shape: 'use', type: 'uml.InteractionUse', label: String(u.el.label ?? ''), k: 'file',
+      return { ...s, shape: 'use', type: 'uml.InteractionUse', label: String(u.el.label ?? ''), k: 'file', holder: true,
         aria: `Interaction use ${u.el.label ?? ''}${ids.length ? `, over ${sqName(H.get(ids[0]))}${ids.length > 1 ? ' to ' + sqName(H.get(ids[ids.length - 1])) : ''}` : ''}` }; }),
   ];
   const byId = Object.fromEntries(nodes.map(n => [n.id, n]));

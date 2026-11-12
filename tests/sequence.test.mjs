@@ -16,7 +16,7 @@ import { tagSize, guardSize } from '../src/uml/frame.js';
 import { SEQ_TYPE, SQ_RULES, sqProblems, sqConnect, sqMoveTo, sqWrap, sqAdd, sqRemove } from '../src/uml/sequence.js';
 import { check } from '../docs/diagrams/examples/check.mjs';
 
-const SEQ = JSON.parse(readFileSync(new URL('../docs/diagrams/examples/11-sequence.json', import.meta.url)));
+const SEQ = JSON.parse(readFileSync(new URL('../examples/checkout-sequence.json', import.meta.url)));
 const V = m => m.views[0], ids = list => list.map(x => (typeof x === 'string' ? x : x.id)), at = (m, id) => V(m).edges.find(e => e.id === id);
 const errors = m => validate(m).filter(p => p.level === 'error');
 const rules = (m, level) => sqProblems(m, V(m)).filter(p => !level || p.level === level).map(p => [p.rule, p.ids]);

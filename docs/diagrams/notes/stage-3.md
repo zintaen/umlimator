@@ -460,6 +460,17 @@ These come from `risks.md` §6 T and G3, and from the spike. Each lives in `test
 
 Each validator also has a passing and a failing fixture in its test. "Timing changes at the same instant" belongs to stage 6. Examples 11 and 12 move to `examples/checkout-sequence.json` and `examples/checkout-communication.json`, and join the gallery and CI.
 
+As 3.8 built them: `tests/sequence-minimal.json` and `tests/sequence-stress.json` (views `edge-cases` and `all`) are
+laid out in Node (`tests/sequence-fixtures.test.mjs`, which asserts each T case above by its geometry) and in Chrome
+under three fonts and both themes (`tests/sequence-fixtures.html`). The communication fixtures were already drawn and
+tested by 3.5, inline in `tests/communication.html`; 3.8 moved them, unchanged, into `tests/communication-minimal.json`
+and `tests/communication-stress.json`, which that page and `tests/communication.test.mjs` now read. Two changes outside
+3.8's Owns made `check` pass on the sequence example: the layout check (`src/layout/audit.js`, in the core, 130 B with
+`gzip -9`) does not count a node marked `holder` as overlapping a node it holds (one crossing it still is), and leaves
+it out of its label checks; `src/uml/sequence.js` marks its frames, operands and uses so, as §4.2 says the overlap
+check should treat them. The PDF's tables leave out
+self-messages and list no fragments (`risks.md` R9); the conformance notes' fidelity tables state it.
+
 ## 10. Performance (P1)
 
 | Fixture | Budget, enforced in Node (best of three) |

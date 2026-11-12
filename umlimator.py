@@ -9,7 +9,7 @@
   umlimator.py diff BEFORE.json AFTER.json --out PAGE.html [--stills DIR]   # what changed, marked on one map, and in words
   umlimator.py diff --base REF --out DIR [--models 'docs/*.json']   # every model changed since a git ref (a pull request)
   umlimator.py drift MODEL.json OBSERVED.json --out PAGE.html [--match MATCH.json] [--stills DIR]   # drawn vs. traffic seen
-  umlimator.py trace MODEL.json TRACE.json --view ID --out OUT.json [--match MATCH.json] [--title T]   # a trace (OTLP JSON) kept as a numbered view
+  umlimator.py trace MODEL.json TRACE.json --view ID --out OUT.json [--match MATCH.json] [--title T] [--diagram uml.sequence]   # a trace (OTLP JSON) kept as a numbered view, or as a UML sequence diagram
   umlimator.py timelapse MODEL.json --out PAGE.html [--limit 20]   # the model's versions in git history, on a slider
   umlimator.py record PAGE.html --story ID --out STORY.png [--size 1160x740] [--scale 1] [--theme light|dark]   # a story as an animated PNG
   umlimator.py import FILE --out MODEL.json [--format structurizr|plantuml|mermaid|compose|kubernetes]   # a diagram you have, as a model
@@ -49,8 +49,10 @@ def visual_cmd(tmp, *args):
 
 def upstream_view(d):
     """The model as upstream's validate_map is shown it. umlimator allows two things that visual.py rejects: a card that
-    opens a view the host loads later (#47), and a line that ends on a container (#28). The copy it checks leaves out
-    such an opensView, and lists each container's id as a card's, so a line's other end is still checked (and named)."""
+    opens a view the host loads later (#47), and a line that ends on a container (#28); in schema version 2, also a line
+    that ends on a member and a sequence view's interaction use, which has no ends (F3). The copy it checks leaves out
+    such an opensView and such a use, and lists each container's and member's id as a card's, so a line's other end is
+    still checked (and named)."""
     d = json.loads(json.dumps(d))
     views = d.get("views") or []
     vids = {v.get("id") for v in views}
@@ -69,6 +71,11 @@ def upstream_view(d):
                 members.append(m["id"]); walk(m)
     for n in d.get("nodes", []) if d.get("schemaVersion") == 2 else []:
         if isinstance(n, dict): walk(n)
+    # and a sequence view's interaction uses (between its messages in `edges`, with no ends) are not lines: upstream would
+    # call each "an unknown end" (F3), so the copy leaves them out; any other line with no ends is still reported
+    for v in views if d.get("schemaVersion") == 2 else []:
+        if v.get("diagram") == "uml.sequence" and isinstance(v.get("edges"), list):
+            v["edges"] = [e for e in v["edges"] if not (isinstance(e, dict) and e.get("type") == "uml.InteractionUse")]
     # a member that shares a node's id stays listed, so upstream says the id is used twice, as validate() does
     d["nodes"] = [*d.get("nodes", []), *({"id": b} for b in sorted(boxes - ids)), *({"id": m} for m in members if m not in boxes)]
     return d
@@ -486,15 +493,27 @@ def cmd_drift(a):
 def cmd_trace(a):
     """A trace kept as a numbered view (#96): MODEL.json with a sequence view made from an OpenTelemetry trace in OTLP JSON,
     its calls between cards in time order, each labelled with its span's name and its duration; written to --out (which
-    may be MODEL.json itself). A view with that id is replaced. --match: {service name: card id} where names differ."""
+    may be MODEL.json itself). A view with that id is replaced. --match: {service name: card id} where names differ.
+    --diagram uml.sequence: the view is a UML sequence view, and the model written is a version-2 model (which releases
+    before 0.17.0 refuse); the summary printed adds `diagram` and the helper's `report`. It needs src/uml/convert.js, so
+    a full clone of the repository: without it trace exits with a message."""
     m, trace = (json.loads(Path(f).read_text(encoding="utf-8")) for f in (a.model, a.trace))
     opts = {"view": a.view, "match": json.loads(Path(a.match).read_text(encoding="utf-8")) if a.match else {}, **({"title": a.title} if a.title else {})}
-    out = js("sequenceFromTrace", m, js("otlpSpans", trace), opts)
+    report = None
+    if a.diagram:  # a UML sequence view (notes/stage-3.md §7): the numbered view through the internal helper, in src/uml/convert.js
+        helper = HERE / "src" / "uml" / "convert.js"
+        if not helper.is_file():
+            sys.exit(f"trace --diagram: its helper is src/uml/convert.js, which this copy of umlimator does not have: run it from a full clone of the repository")
+        r = js("sequenceFromSpans", m, js("otlpSpans", trace), opts, module=helper)
+        out, report = r["model"], r["report"]
+    else:
+        out = js("sequenceFromTrace", m, js("otlpSpans", trace), opts)
     v = next(x for x in out["views"] if x.get("id") == a.view)
     if not v["edges"]:
         sys.exit(f"trace: no call in {a.trace} runs between two cards of {a.model} (--match names a service's card)")
     write(a.out, json.dumps(out, indent=2, ensure_ascii=False) + "\n")
-    print(json.dumps({"out": a.out, "view": a.view, "steps": len(v["edges"]), "cards": len(v["nodeIds"]), "caption": v["caption"]}, indent=1))
+    print(json.dumps({"out": a.out, "view": a.view, "steps": len(v["edges"]), "cards": len(v["nodeIds"]), "caption": v.get("caption"),
+                      **({"diagram": a.diagram, "report": report} if a.diagram else {})}, indent=1))
 
 
 def cmd_timelapse(a):
@@ -837,6 +856,7 @@ def main():
     tr = sub.add_parser("trace", help="a trace (OTLP JSON) kept as a numbered view of the model"); tr.add_argument("model"); tr.add_argument("trace")
     tr.add_argument("--view", required=True, help="the new view's id (one with that id is replaced)"); tr.add_argument("--out", required=True, help="the model with the view: a .json file")
     tr.add_argument("--match", help="JSON: {service name: card id}"); tr.add_argument("--title", help="the view's title (default: its id)")
+    tr.add_argument("--diagram", choices=["uml.sequence"], help="the view as a UML sequence diagram (a version-2 model), not a numbered view")
     tr.set_defaults(f=cmd_trace)
     t = sub.add_parser("timelapse", help="the model's versions in git history on a slider"); t.add_argument("model"); t.add_argument("--out", required=True)
     t.add_argument("--limit", type=int, default=30, help="the latest N versions (default 30)"); t.set_defaults(f=cmd_timelapse)
