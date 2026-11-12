@@ -3098,7 +3098,9 @@ What moves for a host that upgrades:
   emit `change` as before.
 
 
-## 0.18.0: the class diagram (in progress)
+## 0.18.0: the class diagram, a Mermaid `classDiagram` reader and writer, and a smaller core
+
+Stage 1b of the plan for 28 diagram types (`docs/diagrams/`). Maps draw as they did.
 
 - **The class diagram, `uml.class` (1.9).** A view of a version-2 model whose `diagram` is `"uml.class"` draws as a UML class
   diagram, in `lib/umlimator-all.js` only (`lib/umlimator.js`, what a map host loads, does not carry it): classes,
@@ -3210,3 +3212,19 @@ What moves for a host that upgrades:
   `tests/core-diet.html` hold both files to what main gave before the move: `layout()`, `describe()`, `validate()` and an
   edit through `apply()` for the 29 version-2 examples, and `render()`'s markup of 11 views of three of them. `lib/umlimator.js` is 182,603 B with
   `gzip -9`, 10.70% over 0.16.0 (it was 189,745 B, 15.03%).
+
+What moves for a host that upgrades:
+- **Nothing is drawn differently.** Every map's geometry, every example's stills and every test of 0.17.0 are unchanged.
+  A view with no elements, which threw in `layout()`, `check()` and drawing, now lays out as an empty stage.
+- **A host that loads `umlimator/all`** draws a version-2 view with `diagram: "uml.class"` as a class diagram, where
+  0.17.0 drew plain cards and warned; `lib/umlimator.js` still draws plain cards for it, with the warning.
+  A package in a class view is drawn as a named box beside its classes until 0.19.0, which draws its contents inside it
+  (`docs/diagrams/notes/stage-2.md` §10.1), so a class diagram's picture will change then.
+- **`apply()`:** `add` takes `in: 'view'`; `delete` of an element that owns lines or fragments gives them to the nearest
+  owner that stays, where 0.17.0 left them with none. Nothing else in a command's result changes.
+- **New exports:** the class diagram's types in `lib/umlimator.d.ts`. Nothing is removed or renamed; the registry and
+  the Mermaid class reader stay internal.
+- **Size:** `lib/umlimator.js`, what a map host loads, is 182.6 kB gzipped, down from 187.4 kB in 0.17.0 and 10.7% over
+  0.16.0 (the plan's budget is 15%). `lib/umlimator-all.js` is 211.5 kB gzipped. The npm package grows from 417 kB to
+  441 kB.
+- **`umlimator.py import`** reads a Mermaid `classDiagram` through Node; every other format imports with Python alone.
