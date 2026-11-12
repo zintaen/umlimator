@@ -196,6 +196,18 @@ test('input the layout cannot draw: reported as problems with their ids, never t
   assert.deepEqual(layoutTimeAxis().lines, []);
 });
 
+test('a fragment whose parent is not an operand, or lies inside it, is reported once on the fragment and drawn at the top', () => {
+  const hd = [{ id: 'a', w: 80, h: 28 }, { id: 'b', w: 80, h: 28 }], tag = { w: 30, h: 17 }, gd = { w: 0, h: 0 };
+  const L = (id, parent) => ({ id, kind: 'line', a: 'a', b: 'b', w: 40, h: 16, parent });
+  const G = (id, parent) => ({ id, parent, tag, parts: [{ id: id + '-1', guard: gd }] });
+  const run = (rows, groups) => { const o = layoutTimeAxis({ heads: hd, rows, groups }); return [o.problems.map(p => [p.level, p.ids.join()]), o.frames.map(f => f.id)]; };
+  assert.deepEqual(run([L('m1', 'f-1'), L('m2', 'f-1'), L('m3', 'f-1')], [G('f', 'zz')]), [[['error', 'f']], ['f']]);
+  assert.deepEqual(run([L('m1')], [G('e', 'zz')]), [[['error', 'e'], ['warning', 'e']], ['e']]);
+  assert.deepEqual(run([L('m1')], [G('s', 's-1')]), [[['error', 's'], ['warning', 's']], ['s']]);
+  assert.deepEqual(run([L('m1')], [G('g1', 'g2-1'), G('g2', 'g1-1')]), [[['error', 'g1'], ['warning', 'g1'], ['warning', 'g2']], ['g1', 'g2']]);
+  assert.deepEqual(run([L('m1', 'g1-1')], [G('g1', 'g2-1'), G('g2', 'g1-1')]), [[['error', 'g1'], ['warning', 'g2']], ['g1', 'g2']]);
+});
+
 test('a fragment whose occurrences are not one run is drawn as two frames, with a warning', () => {
   const o = layoutTimeAxis({ heads: [{ id: 'a', w: 80, h: 28 }, { id: 'b', w: 80, h: 28 }],
     rows: ['f-1', null, 'f-1'].map((parent, i) => ({ id: 'm' + i, kind: 'line', a: 'a', b: 'b', w: 40, h: 16, parent })),

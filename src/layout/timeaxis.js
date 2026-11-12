@@ -46,14 +46,22 @@ function layoutTimeAxis(input = {}) {
   // operands: each one's fragment and place in it
   const opOf = new Map();
   groups.forEach(g => taArr(g.parts).forEach((p, k) => opOf.set(p.id, { g, k })));
+  // each fragment's parent, checked once: one that is not an operand, or that lies inside the fragment itself, is reported
+  // on the fragment, which is then drawn at the top
+  const upOf = new Map(groups.map(g => [g.id, g.parent ?? null]));
+  groups.forEach(g => { const p = upOf.get(g.id);
+    if (p != null && !opOf.has(p)) { say('error', `fragment ${g.id}: its parent ${p} is not an operand: drawn at the top`, [g.id]); upOf.set(g.id, null); } });
+  groups.forEach(g => { for (let p = upOf.get(g.id), n = 0; p != null && n <= groups.length; n++) { const o = opOf.get(p).g;
+    if (o === g) { say('error', `fragment ${g.id}: its parent ${g.parent} lies inside it: drawn at the top`, [g.id]); upOf.set(g.id, null); break; }
+    p = upOf.get(o.id); } });
   const chainOf = (parent, who) => { const out = [], seen = new Set();
     for (let p = parent; p != null;) { const o = opOf.get(p);
       if (!o) { say('error', `${who}: its parent ${p} is not an operand: drawn outside it`, [who]); break; }
-      if (seen.has(o.g.id)) break; seen.add(o.g.id); out.unshift(o); p = o.g.parent; }
+      if (seen.has(o.g.id)) break; seen.add(o.g.id); out.unshift(o); p = upOf.get(o.g.id); }
     return out; };
   // a fragment with content holds a row; one with none has no place in time and goes at the end of its parent's content
   const full = new Set();
-  rows.forEach(r => { for (let p = r.parent, n = 0; p != null && n < groups.length; n++) { const o = opOf.get(p); if (!o) break; full.add(o.g.id); p = o.g.parent; } });
+  rows.forEach(r => { for (let p = r.parent, n = 0; p != null && n < groups.length; n++) { const o = opOf.get(p); if (!o) break; full.add(o.g.id); p = upOf.get(o.g.id); } });
 
   // ---- down the page: rows, frames, slots
   const R = [], frames = [], slots = [], open = [], placed = new Set(), seenFrame = new Set();
@@ -79,7 +87,7 @@ function layoutTimeAxis(input = {}) {
   }
   function closeTop() { const L = open[open.length - 1]; advance(L, L.g.parts.length - 1); endPart(L); y += TA.close; L.fr.bottom = y; open.pop(); }
   function orphans(parent) { // the fragments of this operand (or of the top) with nothing in them: at its end, each with a warning
-    groups.filter(g => !full.has(g.id) && !placed.has(g.id) && taArr(g.parts).length && (g.parent === parent || (parent == null && (g.parent == null || !opOf.has(g.parent))))).forEach(g => {
+    groups.filter(g => !full.has(g.id) && !placed.has(g.id) && taArr(g.parts).length && upOf.get(g.id) === parent).forEach(g => {
       say('warning', `fragment ${g.id} holds no occurrence: it has no place in time, so it is drawn at the end of ${parent == null ? 'the interaction' : 'operand ' + parent}`, [g.id]);
       openFrag(g, 0); closeTop(); });
   }
