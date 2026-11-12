@@ -19,8 +19,8 @@ Update this table in every pull request that belongs to the plan.
 | Before the split | 0.16.1 | `validate()` warns of a line from a card to itself (`risks.md` F1) | Released 11 Nov 2026 (8f0240f, GitHub and npm latest); map-repo pinned to it | #155, #156 |
 | 1a Foundation | 0.17.0 | Work packages 1.1 to 1.8 | Released 11 Nov 2026 (555bfdc, GitHub and npm latest); map-repo pinned to it | #154, #157, #158, #160, #161, #162, #163, #164, #165, #166, #167 |
 | 1b Class | 0.18.0 | Work packages 1.9 to 1.12 | 1.9 (#168), 1.10 (#169), 1.11 (#172) and 1.12's findings (#171) merged; the spike's changes in review (#173). Next: moving typed-only code out of the core (C5), then the 0.18.0 release | #168, #169, #171, #172, #173 |
-| 2 | 0.19.0 | Object, package | Design note proposed ([`notes/stage-2.md`](notes/stage-2.md)); awaits approval | #174 |
-| 3 | 0.20.0 | Sequence, communication | Design note proposed ([`notes/stage-3.md`](notes/stage-3.md)); awaits approval | #174 |
+| 2 | 0.19.0 | Object, package | Design note approved ([`notes/stage-2.md`](notes/stage-2.md)); work packages next | #174 |
+| 3 | 0.20.0 | Sequence, communication | Design note approved ([`notes/stage-3.md`](notes/stage-3.md)); work packages next | #174 |
 | 4 | 0.21.0 | Use case, activity, state machine, interaction overview | Not started | |
 | 5 | 0.22.0 | Component, deployment, composite structure | Not started | |
 | 6 | 0.23.0 | Profile, timing | Not started | |
@@ -253,6 +253,18 @@ node docs/diagrams/examples/check.mjs         # the target examples match model.
   which pays for the fixes: the core is 52 bytes smaller (190,474 B, Node's zlib): 14.93% over 0.16.0, 112 bytes left;
   with `gzip -9`, 189,678 B, 14.99%, 19 bytes left; with `gzip` at its default, 190,014 B, 15.00%, 2 bytes left. The
   next change to the core has no budget: it pays for itself or goes to a family file.
+- **12 Nov 2026 (the core's diet).** The maintainer chose to move typed-only code out of the core before 0.18.0 (C5 was
+  at 15.03% with `gzip -9`). `src/typed/` (in `lib/umlimator-all.js` only) now holds `layoutTyped` and its geometry key,
+  `layoutPass`'s typed rows, loops and fanned lines, the classifier, the line-end table and the end labels; the core keeps
+  the `TYPED` slot (`src/core/registry.js`) they fill. Each moved piece is reached only through a registered type's
+  layout (`layoutGraph(…, false)`, `dg.typed`, a non-map geometry), which `lib/umlimator.js` never has.
+  `tests/core-diet.test.mjs` holds `layout()`, `describe()`, `validate()` and an `apply()` edit of the 28 targets and
+  `examples/sales-classes.json` with `lib/umlimator.js`, and of the class example with `lib/umlimator-all.js`, to main's
+  (9c1cf4f); `tests/core-diet.html` holds `render()`'s markup of 11 views (three examples from `lib/umlimator.js`, the
+  class example from `lib/umlimator-all.js`); the bench's geometry hashes match and `tests/class.html` passes.
+  `lib/umlimator.js`: 182,603 B with `gzip -9`, 10.70% over 0.16.0 and 10.65% over 0.16.1 (189,745 B before);
+  1,154 bytes above 10%. What more could leave the core changes what it does: see risks.md C5.
 - **12 Nov 2026 (notes 2 and 3).** The design notes for stages 2 and 3 were drafted in parallel, each critiqued by an
-  independent agent and revised; they are proposed for the maintainer's approval. Both assume the core's diet (C5) lands
-  first, and stage 3's notes on order with stage 2.
+  independent agent and revised; the maintainer approved them (#174), with stage 2's exception (S9): class views draw
+  packages as nesting from 0.19.0. Both assume the core's diet (C5) lands first, and stage 3's notes on order with stage
+  2.

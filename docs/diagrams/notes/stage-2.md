@@ -1,6 +1,6 @@
 # Stage 2 design note: object and package diagrams
 
-Status: **proposed** 12 Nov 2026, against `main` at 9c1cf4f (0.17.0 released; 1.9 to 1.12 merged; the core's diet, C5,
+Status: **approved** by the maintainer 12 Nov 2026 (#174); written against `main` at 9c1cf4f (0.17.0 released; 1.9 to 1.12 merged; the core's diet, C5,
 not started). The maintainer approves it before work package 2.1 starts. Symbols are named, not line numbers.
 
 Stage 2 ships release 0.19.0: the object diagram (`uml.object`) and the package diagram (`uml.package`), and the class

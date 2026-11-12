@@ -3199,3 +3199,14 @@ What moves for a host that upgrades:
   lifeline between the two it named (`covers: ["api", "payments", "receipt"]`), and `check.mjs` checks that `covers`
   names lifelines next to each other in `nodeIds`; a registered type that declares no `refs` is checked by its hand
   list again.
+- **Typed-only code out of the core (risks.md C5).** What only a registered diagram type's geometry takes moved from the
+  core's sources to `src/typed/`, which only `lib/umlimator-all.js` holds: `layoutTyped` and the geometry key
+  (`src/layout/typed.js` before), a typed view's rows, its loops (a line from a node to itself) and its fanned lines in
+  `layoutPass`, the classifier shape, the line-end table and the end labels. The core keeps a slot, `TYPED` in
+  `src/core/registry.js`, which these files fill as they load; in `lib/umlimator.js` it stays empty, as nothing there lays
+  a view out but as a map (no registered type, no `layoutGraph(…, false)`), so `lib/umlimator.js` behaves as before for
+  every input: its exports, maps, and version-2 models (plain cards for a type it does not draw, typed editing,
+  `apply()`, `references()`, `migrate()`, `validate()`, `describe()`). `tests/core-diet.test.mjs` and
+  `tests/core-diet.html` hold both files to what main gave before the move: `layout()`, `describe()`, `validate()` and an
+  edit through `apply()` for the 29 version-2 examples, and `render()`'s markup of 11 views of three of them. `lib/umlimator.js` is 182,603 B with
+  `gzip -9`, 10.70% over 0.16.0 (it was 189,745 B, 15.03%).

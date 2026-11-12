@@ -1,6 +1,6 @@
 # Stage 3 design note: sequence and communication
 
-Status: **proposed** 12 Nov 2026, against `main` at 9c1cf4f (stage 1b merged, 0.18.0 not yet released). The maintainer approves it before work package 3.0 starts. It adopts `notes/spike-sequence.md` §2.1 to §2.3, which the maintainer accepted on 12 Nov 2026. It settles what the spike's §1, §3 and §4 left as findings. Where it departs from the spike, it says so (§14).
+Status: **approved** by the maintainer 12 Nov 2026 (#174); written against `main` at 9c1cf4f (stage 1b merged, 0.18.0 not yet released). The maintainer approves it before work package 3.0 starts. It adopts `notes/spike-sequence.md` §2.1 to §2.3, which the maintainer accepted on 12 Nov 2026. It settles what the spike's §1, §3 and §4 left as findings. Where it departs from the spike, it says so (§14).
 
 ## 1. What this note settles
 

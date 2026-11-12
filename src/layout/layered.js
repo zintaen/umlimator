@@ -4,6 +4,7 @@ import { edgeRefIds } from '../map/api.js';
 import { badgesOf, mapNodeW, mapTabs, toneOf } from '../map/cards.js';
 import { warn } from '../core/warn.js';
 import { kindOf } from '../map/kinds.js';
+import { TYPED } from '../core/registry.js';
 
 const CHG = { added: ['green', 'NEW'], new: ['green', 'NEW'], modified: ['amber', 'CHANGED'], changed: ['amber', 'CHANGED'], removed: ['rose', 'REMOVED'], planned: ['cyan', 'PLANNED'] };
 const NW = 168, CG0 = 84, RG0 = 44;
@@ -193,29 +194,12 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
       gapAfter[c] = Math.max(gapAfter[c] || 0, w + 54 + box);
       [e.from, e.to].forEach(id => { const k = c + '|' + id, t = sum[k] ||= { w: -6, box: 0 }; t.w += w + 6; t.box = Math.max(t.box, box); gapAfter[c] = Math.max(gapAfter[c], t.w + 54 + t.box); }); }); }
   const extraX = { ...(room || {}).x }, extraY = { ...(room || {}).y }; // more room after a column (row): for lines with no route, and where a box would touch another box (below)
-  // A typed view's lines from a node to itself (risks.md F1) are loops round its top right corner, nested, the first innermost:
-  // each one's top run D px above the node, its label on that run clear of the node's stub room and of the loop inside; its
-  // right run R px right of the node, far enough for the top run to hold the label. out: how far each loop's port on the
-  // node's top lies left of its right side (0 before ports are known, for the room: above the node's row, right of its column)
-  const loopDims = (list, out) => { let D = 0, R = 0, half = 0;
-    return list.map((e, k) => { const lw = e.label || e.step != null ? labelW(e) : 0, [bw, bh] = dg.turned ? [lw && 18, lw] : [lw, lw && 18];
-      D = k ? D + half + bh / 2 + 10 : STUB + 6 + bh / 2; half = bh / 2;
-      R = Math.max(k ? R + 2 * SEP : STUB + 4, bw + 12 - out[k]); return { D, R, top: D + half }; }); };
-  const loops = Object.create(null); if (dg.typed && !dg.abs) (dg.edges || []).forEach(e => { if (e.from === e.to && byId[e.from]) (loops[e.from] ||= []).push(e); });
-  Object.entries(loops).forEach(([id, list]) => { const n = byId[id], d = loopDims(list, list.map(() => 0)).at(-1);
-    extraY[n.row - .5] = Math.max(extraY[n.row - .5] || 0, d.top + STUB + 7 - RG);
-    extraX[n.col] = Math.max(extraX[n.col] || 0, d.R + STUB + 6 - Math.max(CG, gapAfter[n.col] || 0)); });
-  // a typed view's rows (stage 1 note §4): each as tall as its tallest node, a node on a half row counting toward both rows, and
-  // NH with none. With every node NH tall, the pitch is a map's
-  const rowH = {}, rowTop = {}; if (dg.typed && !dg.abs && nodes.length) {
-    nodes.forEach(n => [Math.floor(n.row), Math.ceil(n.row)].forEach(k => { rowH[k] = Math.max(rowH[k] ?? 0, n.h); }));
-    const r0 = Math.min(...Object.keys(rowH).map(Number)), r1 = Math.max(...Object.keys(rowH).map(Number));
-    for (let k = r0, y = r0 * pitch; k <= r1 + 1; k++) { rowTop[k] = y; y += (rowH[k] ?? NH) + RG; } }
-  const rowAt = r => { const k = Math.floor(r), f = r - k; return rowTop[k] == null || rowTop[k + 1] == null ? r * pitch : rowTop[k] + f * (rowTop[k + 1] - rowTop[k]); };
-  const rowHt = r => Math.max(rowH[Math.floor(r)] ?? NH, rowH[Math.ceil(r)] ?? NH); // a typed row's height, a half row's the taller of its two
+  // a typed view's lines from a node to itself, drawn as loops (risks.md F1): the room they take, their ports and routes (src/typed/layout.js)
+  const loops = Object.create(null), LP = dg.typed && !dg.abs ? TYPED.loops(loops, dg, { byId, extraX, extraY, STUB, RG, CG, SEP, gapAfter }) : null;
+  const rows = dg.typed && TYPED.rows(dg, nodes, pitch, NH, RG); // a typed view's rows (src/typed/layout.js)
   const gap = c => Math.max(CG, gapAfter[c] || 0) + (extraX[c] || 0);
   const cx = c => Number.isInteger(c) ? colX[c] : colX[Math.floor(c)] + (c % 1) * ((colW[Math.floor(c)] || NW) + gap(Math.floor(c)));
-  const rowY = r => Object.keys(extraY).reduce((y, k) => +k < r ? y + extraY[k] : y, dg.typed ? rowAt(r) : r * pitch);
+  const rowY = r => Object.keys(extraY).reduce((y, k) => +k < r ? y + extraY[k] : y, rows ? rows.at(r) : r * pitch);
   const place = () => {
     x = 0; for (let c = Math.floor(cols[0] ?? 0); c <= Math.ceil(cols[cols.length - 1] ?? 0); c++) { colX[c] = x; x += (colW[c] || NW) + gap(c); }
     nodes.forEach(n => { n.x = cx(n.col) + ((colW[n.col] || n.w) - n.w) / 2; n.y = rowY(n.row); if (map && n.k === 'm-script') { n.h = NH - 22; n.y += 11; } });
@@ -330,7 +314,7 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
     if (near && !through([...pts, ...up], e)) { e.fixed = [...pts, ...up]; e.under = k + 1; }
     else if (!through([...pts, ...bottom], e)) { e.fixed = [...pts, ...bottom]; e.under = true; } // one that would cut through a card is left to the router
   });
-  edges.forEach(e => { if (e.s === e.t) Object.assign(e, { [OWN_ROUTE]: 'loop', fixed: true, fs: 'R', ts: 'T', stubs: [], how: 'self' }); }); // its loop is drawn once its ports are known
+  if (LP) LP.mark(edges);
   const free = edges.filter(e => !e.fixed);
   edges.filter(e => e.fixed && !e[OWN_ROUTE]).forEach(e => { e.pts = e.fixed; e.p1 = e.pts[0]; e.p2 = e.pts[e.pts.length - 1]; e.fs = 'R'; e.ts = e.under > 0 ? 'R' : e.under ? 'B' : 'L'; e.stubs = []; e.how = e.under ? 'under' : 'comb'; });
   const sides = {};
@@ -365,10 +349,7 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
   });
   free.forEach(e => { pushSide(e.s, e.fs, e, e.t); pushSide(e.t, e.ts, e, e.s); });
   edges.filter(e => e.under > 0).forEach(e => pushSide(e.t, 'R', e, e.s)); // a loop under the boxes takes its port with the side's other lines
-  // a loop from a node to itself takes the top port of its right side and the right port of its top, the inner loop the nearer the corner
-  const loopsOf = n => edges.filter(e => e[OWN_ROUTE] === 'loop' && e.s === n);
-  edges.filter(e => e[OWN_ROUTE] === 'loop').forEach(e => { const n = e.s, k = loopsOf(n).indexOf(e);
-    pushSide(n, 'R', e, { x: n.x + n.w, y: -1e6 + k, w: 0, h: 0 }); pushSide(n, 'T', e, { x: 1e6 - k, y: n.y, w: 0, h: 0 }); });
+  if (LP) LP.ports(pushSide);
   const portAt = (it, side, p) => { if (it.n === it.e.s && it.e.fs === side) it.e.p1 = p; else it.e.p2 = p; };
   Object.entries(sides).sort(([, a], [, b]) => !!a[0].n.box - !!b[0].n.box).forEach(([key, list]) => { // cards first: a box's port lines up with them
     const side = key.split('|').pop(), vertical = side === 'L' || side === 'R';
@@ -406,31 +387,8 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
     });
   });
   edges.filter(e => e.under > 0).forEach(e => { const P = e.fixed; e.pts = e.fixed = [...P.slice(0, 4), [P[3][0], e.p2[1]], e.p2]; });
-  // a loop from a node to itself: out of the right side, up, left, down into the top. Other routes keep SEP px off its corners
-  // (corners: obstacles to routes only), so none touches it or turns where it does
-  const corners = []; [...new Set(edges.filter(e => e[OWN_ROUTE] === 'loop').map(e => e.s))].forEach(n => { const list = loopsOf(n);
-    loopDims(list, list.map(e => n.x + n.w - e.p2[0])).forEach(({ D, R }, k) => { const e = list[k], x = n.x + n.w + R, y = n.y - D;
-      e.pts = e.fixed = [e.p1, [x, e.p1[1]], [x, y], [e.p2[0], y], e.p2];
-      e.pts.slice(1, 4).forEach(([px, py]) => corners.push({ x: px - SEP, y: py - SEP, w: 2 * SEP, h: 2 * SEP })); }); });
-  // A view laid out down (turned): the labels of lines between one pair are wider than the 16 px between the lines, so the
-  // lines fan out in the gap between the pair's columns, each to a lane of its own that holds its label. Above the middle, the
-  // outer line turns nearer each node, so none crosses another; a group the gap or another node leaves no room for goes to the router
-  if (dg.typed && dg.turned) { const pairs = new Map(), lr = e => e.fs === 'R' ? [e.p1, e.p2] : [e.p2, e.p1];
-    free.forEach(e => { const [l, r] = e.fs === 'R' ? [e.s, e.t] : [e.t, e.s], k = l.id + '\u0001' + r.id;
-      if (/^(RL|LR)$/.test(e.fs + e.ts) && l.x + l.w < r.x) pairs.set(k, [...(pairs.get(k) || []), e]); });
-    pairs.forEach(list => { if (list.length < 2 || !list.some(e => e.label || e.step != null)) return;
-      list.sort((a, b) => lr(a)[0][1] - lr(b)[0][1]); if (list.some((e, i) => i && lr(e)[1][1] <= lr(list[i - 1])[1][1])) return;
-      const bh = list.map(e => e.label || e.step != null ? labelW(e) : 0), gaps = bh.map((h, i) => i ? Math.max(SEP, (bh[i - 1] + h) / 2 + 6) : 0);
-      const mid = list.reduce((a, e) => a + lr(e)[0][1] + lr(e)[1][1], 0) / (2 * list.length), lanes = [];
-      gaps.reduce((y, g, i) => (lanes[i] = y + g), mid - gaps.reduce((a, g) => a + g, 0) / 2);
-      // each line's turn on each side: the k-th line turning towards its lane from the outside turns k SEP px past the stub
-      const turns = side => { const at = []; const up = list.map((e, i) => i).filter(i => lanes[i] < lr(list[i])[side][1]), down = list.map((e, i) => i).filter(i => lanes[i] >= lr(list[i])[side][1]).reverse();
-        [up, down].forEach(g => g.forEach((i, k) => { at[i] = lr(list[i])[side][0] + (side ? -1 : 1) * (STUB + k * SEP); })); return at; };
-      const xl = turns(0), xr = turns(1);
-      if (Math.min(...xr) - Math.max(...xl) < 18 + 16) return;
-      const pts = list.map((e, i) => { const [a, b] = lr(e), P = simplify([a, [xl[i], a[1]], [xl[i], lanes[i]], [xr[i], lanes[i]], [xr[i], b[1]], b]); return e.fs === 'R' ? P : P.reverse(); });
-      if (list.some((e, i) => through(pts[i], e))) return;
-      list.forEach((e, i) => { Object.assign(e, { [OWN_ROUTE]: 'fan', fixed: pts[i], pts: pts[i], stubs: [], how: 'fan' }); free.splice(free.indexOf(e), 1); }); }); }
+  const corners = LP ? LP.route() : []; // a loop's corners: obstacles to the other routes
+  if (dg.typed && dg.turned) TYPED.fan(free, { simplify, through, STUB, SEP }); // a view laid out down: lines between one pair fan out (src/typed/layout.js)
   const BEND = map ? 60 : 26, CROSS = 900; // maps: few bends
   const OUT = { R: [1, 0], L: [-1, 0], T: [0, -1], B: [0, 1] };
   const nodeRects = nodes.map(n => ({ x: n.x, y: n.y, w: n.w, h: n.h }));
@@ -440,7 +398,7 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
     nodes.forEach(n => gapLinesY.push(n.y - RG / 2, n.y + n.h + RG / 2));
   } else {
     Object.keys(colX).map(Number).forEach(c => gapLinesX.push(colX[c] - CG / 2, colX[c] + (colW[c] || NW) + CG / 2));
-    [...new Set(nodes.map(n => n.y))].forEach(y => gapLinesY.push(y - RG / 2, y + (dg.typed ? rowHt(nodes.find(n => n.y === y).row) : NH) + RG / 2));
+    [...new Set(nodes.map(n => n.y))].forEach(y => gapLinesY.push(y - RG / 2, y + (rows ? rows.ht(nodes.find(n => n.y === y).row) : NH) + RG / 2));
   }
   const routed = [], reserved = [];
   const inRect = (p, r) => p[0] > r.x && p[0] < r.x + r.w && p[1] > r.y && p[1] < r.y + r.h;
@@ -819,4 +777,4 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
   return { ms: __ms, ...(labelRoom ? { labelRoom } : {}), stats, nodes, edges, subAndChips: !!dg.subAndChips, groups, families, intake, tour: dg.tour || null, byId, map, hub: dg.hub || null, lanes: dg.lanes || [], blocks: dg.blocks || [], bounds: { x: minX, y: minY, w: Math.max(...xs) - minX + M, h: Math.max(...ys) - minY + M } };
 }
 
-export { CHG, NW, pillW, stepOrder, hit, untangle, pullSources, rowsFor, layoutGraph };
+export { CHG, NW, OWN_ROUTE, labelW, pillW, stepOrder, hit, untangle, pullSources, rowsFor, layoutGraph };

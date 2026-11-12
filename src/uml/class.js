@@ -1,14 +1,15 @@
 import { registerDiagramType } from '../core/registry.js';
 import { esc, fit, textW } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
-import { layoutTyped } from '../layout/typed.js';
+import '../typed/draw.js'; // SHAPE.classifier, which the note's outline and ports take
+import { layoutTyped } from '../typed/layout.js';
 
 /* ---------- the class diagram, uml.class (work package 1.9) ----------
    The subset of proposal.md §8.2: class, interface, enumeration with literals, data type, primitive type; attributes and
    operations in UML's text form; stereotypes as text; packages as owners (drawn as a node until stage 2 draws ownership);
    association with both ends, generalization, interface realization, dependency; comments. A view whose `diagram` is
-   'uml.class' is laid out by layoutTyped (src/layout/typed.js) and drawn with the classifier shape and the line-end table
-   (src/draw/). Ships in lib/umlimator-all.js only (stage 1 note §2.5). */
+   'uml.class' is laid out by layoutTyped (src/typed/layout.js) and drawn with the classifier shape and the line-end table
+   (src/typed/draw.js). Ships in lib/umlimator-all.js only (stage 1 note §2.5). */
 
 const UML_OBJ = x => x !== null && typeof x === 'object' && !Array.isArray(x), UML_ARR = x => (Array.isArray(x) ? x : []);
 const UML_HAS = x => x != null && x !== '';
@@ -137,7 +138,7 @@ const CLASS_DEF = {
   },
 };
 
-/* ---- drawing input: the classifier's and the note's (src/draw/shapes.js) ---- */
+/* ---- drawing input: the classifier's (src/typed/draw.js draws it) and the note's ---- */
 const COMPARTMENTS = { attributes: 'uml.Property', operations: 'uml.Operation', literals: 'uml.EnumerationLiteral' };
 function compartmentsOf(n) { // a class's attributes and operations; an enumeration's literals, then the others it has
   const c = name => ({ name, members: UML_ARR(n.members).filter(m => UML_OBJ(m) && m.type === COMPARTMENTS[name]) });
@@ -166,7 +167,7 @@ SHAPE.note = {
   },
 };
 
-/* ---- lines: how each kind is drawn (svg.js's ENDS), and its words ---- */
+/* ---- lines: how each kind is drawn (src/typed/draw.js's ENDS), and its words ---- */
 const endOfLine = (e, w) => { const at = ((UML_OBJ(e.props) && UML_OBJ(e.props.ends) ? e.props.ends : {})[w]) || {};
   return at.aggregation === 'composite' ? 'filled-diamond' : at.aggregation === 'shared' ? 'diamond' : at.navigable ? 'open' : 'none'; };
 const endsOf = e => (UML_OBJ(e.props) && UML_OBJ(e.props.ends) ? e.props.ends : {});
@@ -186,7 +187,7 @@ const lineLabel = e => [stereoText(e), e.label].filter(UML_HAS).join(' ');
 const LINE_WORDS = { 'uml.Association': ['Association', 'a link between instances'], 'uml.Generalization': ['Generalization', 'is a kind of the one it points to'],
   'uml.InterfaceRealization': ['Realization', 'implements the interface it points to'], 'uml.Dependency': ['Dependency', 'uses the one it points to'],
   'uml.CommentLink': ['Comment link', 'what a comment is about'] };
-const LEGEND_ENDS = { // small copies of svg.js's ends, pointing right with the tip at x 26
+const LEGEND_ENDS = { // small copies of src/typed/draw.js's ends, pointing right with the tip at x 26
   none: '', open: '<path d="M17 4L26 8L17 12" fill="none"/>', triangle: '<path d="M16 3L26 8L16 13Z" fill="var(--um-panel)"/>',
   diamond: '<path d="M12 8L19 4L26 8L19 12Z" fill="var(--um-panel)"/>', 'filled-diamond': '<path d="M12 8L19 4L26 8L19 12Z" fill="var(--um-muted)"/>' };
 const legendItem = (end, dashed, name, says) => `<span class="lgi" title="${esc(name + ' — ' + says)}"><svg class="lgs" viewBox="0 0 28 16" aria-hidden="true"><g stroke="var(--um-muted)" stroke-width="1.4" stroke-linejoin="round"><path d="M2 8H${end === 'none' ? 26 : end.includes('diamond') ? 12 : 17}"${dashed ? ' stroke-dasharray="3 2"' : ''}/>${LEGEND_ENDS[end]}</g></svg><b>${esc(name)}</b><span>${esc(says)}</span></span>`;
