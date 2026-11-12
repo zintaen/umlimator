@@ -77,7 +77,7 @@ What is left out of the subsets is in §18.
 | Q15 | The hooks and the picker (`src/typed/edit.js`) | A hook is a plain function of the model and never sees `c.picker`; only `wrap()` opens one. `I.addNode` asks for a name in `api.editor` before it calls `add` | §12 |
 | Q16 | `moveTo`'s `at` | `{ slot, pt, col }`: the drop point, no geometry | §9.4 |
 | Q17 | `blockPos` and `frameOf` | Boxes of one rank are sorted by `first()`, the index of their first line, not by any member order. Each box level adds 72 px along a right-laid flow (36 px a side), 44 px across it, and 24 px of header room (`frameOf`, `src/layout/layered.js`) | §6.2 |
-| Q18 | `nameBox` (`src/canvas/render.js`) | A node's rename field is `n.w - 58` px wide: negative for a diamond, a circle or a bar | §2.3 |
+| Q18 | `nameBox` (`src/canvas/render.js`) | A node's rename field is `n.w - 58` px wide: negative for a diamond, a circle or a bar. 4.1 found that `editor`'s `place` already draws every field `Math.max(120, box.w × k)` px wide, at any zoom, so F2 on a diamond opens a 120 px field with no change. The field starts at `n.x + 50`: beside a node narrower than 50 px (a 28 px diamond, a 20 px circle, a bar), not over it; kept as it is | §2.3 |
 | Q19 | `layoutTyped` on `tests/class-stress.json` (52 nodes, 59 lines), warm runs, two machines' measures | No flags 135 to 176 ms; `reroute: false` 123 to 145 ms; `repair: false` 48 to 53 ms; both 24 ms. Port repair is the cost. `viewKey` (`context.js`) holds labels, so a label edit also runs `autoPos` again (15 to 30 ms); `layoutGraph` runs `layoutPass` twice when `labelRoom` is set | §17 |
 
 ### 2.3 The core's budget (C5, S14)
@@ -105,10 +105,13 @@ What may touch the core, each change stating its bytes in its pull request:
 |---|---|---|---|
 | A typed line's `cut` (S7) | `src/layout/layered.js` | 4.1 | 40 B |
 | The slide where `drawn` is built, only if a consumer of `drawn` reads `e.pts` (§4.2) | `src/draw/svg.js` | 4.1 | 40 B |
-| The rename field at least 120 px wide (Q18): `Math.max(n.w - 58, 120)` | `src/canvas/render.js` | 4.1 | 20 B |
+| The rename field at least 120 px wide (Q18): `Math.max(n.w - 58, 120)`. Not needed, 0 B: `editor` already draws every field 120 px wide at least (4.1) | `src/canvas/render.js` | 4.1 | 20 B |
 | `rows` and `word` read by the PDF's tables; "Elements" for a typed view (S13) | `src/page/print.js` | 4.9 | 150 B |
-| A box whose id is a member's, if `blockPos`, `withPlaces` or the drop need it (§6.3) | `src/map/context.js`, `src/canvas/render.js` | 4.1 | 200 B |
+| A box whose id is a member's, if `blockPos`, `withPlaces` or the drop need it (§6.3). Not needed, 0 B: they take a member's id as they are (4.1) | `src/map/context.js`, `src/canvas/render.js` | 4.1 | 200 B |
 | The new registry fields documented | `src/core/registry.js` | 4.1 | 150 B: the build keeps comments, so they count |
+
+4.1 spent 132 B (186,907 B to 187,039 B): 11 B for `cut`, 121 B for the registry's comment,
+which documents 4.9's `rows` and `word` too. The `svgOf`, rename field and member-id box rows needed nothing.
 
 | Option | For | Against |
 |---|---|---|
@@ -121,8 +124,7 @@ other option would add about 30 B there and needs the maintainer.
 
 If (a) holds and a change goes over, the fallbacks are, in this order: S13 keeps the "Cards" heading and lists members only
 (the fidelity table states the gap); S7 keeps the 150 px cut; a member-id box falls back to §6.3's node form; the slide's
-`svgOf` change is replaced by the type drawing its own line paths. The rename field's 20 B has no fallback: without it F2
-on a decision draws a broken field.
+`svgOf` change is replaced by the type drawing its own line paths. The rename field's 20 B turned out not to be needed (Q18).
 
 ### 2.4 Rules every package keeps
 
@@ -232,6 +234,10 @@ How (a) behaves on each shape:
 
 4.1 checks every consumer of `drawn` in `svgOf` and `endLabels`. If one reads `e.pts` instead, the slide moves to the
 point `drawn` is built, which is the core's (`svgOf`), at about 40 B within the stage's share; so 4.1 owns `src/draw/svg.js`.
+4.1 found none that needs it: the path, the hit line, the key ring, the arrowhead's trim and the end labels read `drawn`;
+only a broken rule's mark and the edited dot read `e.pts`, and both sit on a segment the slide only lengthens, so they stay
+on the drawn line. `TYPED.lines` replaces `drawn[i]` for a node whose typed shape has both `draw` and `inset`; `svg.js` is
+unchanged.
 
 ### 4.3 Where the code goes
 
@@ -346,7 +352,7 @@ laneBands(g, lanes, laneOf, turned) -> { bands: [{ id, parent, depth, x, y, w, h
 A region is a member of its state, not a node: its id is not in `nodeIds` and `ownIndex` does not index it (Q12). 4.1 tests,
 with a test-only type, that a box whose id is a member's is placed by `blockPos`, kept by `withPlaces`, selected as a
 container, and receives a drop as `reparent { id, parent: <region> }`. Where one of them needs a change, it is made there,
-within §2.3's 200 B. If that cannot be done within it, the fallback is that a region's box takes a geometry id of its own,
+within §2.3's 200 B. (4.1: none needed one; `tests/typed-shapes.test.mjs` and `tests/type-hooks.html` hold all four.) If that cannot be done within it, the fallback is that a region's box takes a geometry id of its own,
 `<state>#<region>`, and the state type maps it back to the region in its `moveTo` and `rename` hooks. The maintainer is
 asked only if neither works.
 
@@ -421,7 +427,10 @@ A transition's label is the printed text. A flow's is `name [guard]`; a guard al
 
 ### 8.2 Subjects as boxes, with `ownersOn`'s options
 
-`ownersOn(model, view, look)` gains an optional `look`: `{ boxTypes, qualify, members }`. With none it is stage 2's
+`ownersOn(model, view, look)` gains an optional `look`: `{ boxTypes, qualify, members, shape, word }` (`shape(x)` and
+`word(x)` give a box's shape and the word its accessible name starts with, `'package'` and `'Package'` by default). A
+member of a `members` type is shown when its node is shown and it holds something shown, and is a box when its node has
+two or more in the model: §6.1's rules 2 and 3 are `ownersOn`'s, so the state type passes the look and nothing more. With none it is stage 2's
 (`['uml.Package']`, qualified names, nodes only), so the class, package and object views do not change. The use case type
 passes `{ boxTypes: ['uml.Subject', 'uml.Package'], qualify: false }`: a subject with a shown use case is a box, and a use
 case shown without its subject keeps its own name. The state type passes `{ boxTypes: ['uml.State'], qualify: false,
@@ -644,13 +653,18 @@ A hook is a plain function of the model and never sees the canvas (Q15), and `I.
 
 - **`{ pick, then }`.** Any hook may return `{ pick: [label, …], then: i => result }`: `src/typed/edit.js` opens
   `c.picker` with the labels under the element and hands the chosen index to `then`, whose result is read as a hook's. An
-  empty `pick` says so on the hint line and does nothing.
+  empty `pick` says so on the hint line and does nothing. (4.1: the picker opens under the selected node, else the view's
+  first node, once the gesture is over, since the name field closing takes the focus back; on a view with no node it
+  cannot open, which the overview's first element meets only if it is a use, not its initial node.)
 - **`name: false` on a palette entry.** `I.addNode` skips the name prompt and calls `add` with an empty label: control
-  nodes, pseudostates and regions have no name to ask for.
+  nodes, pseudostates and regions have no name to ask for. With no `add` hook, or its null, the element is added with no
+  label.
 - **`at.geo`.** `moveTo`'s `at` gains the canvas's geometry (`api.geo()`), so a type reads what it drew (the bands) without
-  keeping state of its own (§9.4).
+  keeping state of its own (§9.4). (4.1: for a card's drop and Alt + arrows; a line's drag and a member's move keep their
+  `at` as it was.)
 - **`V` on a selected node** whose palette entry names a diagram kind in `opens` (`opens: 'uml.sequence'`,
-  `'uml.activity'`): a picker of the model's views of that kind, then `set opensView` (S18).
+  `'uml.activity'`): a picker of the model's views of that kind, then `set opensView` (S18). It is allowed under
+  `rename`.
 
 ### 12.2 Choosing the view it opens (S18)
 
@@ -794,6 +808,13 @@ partition and an extend's points. That is new row **R9**.
 
 Under (a): a state's rows are its activities and internal transitions; a pseudostate's word is its kind; an action's rows
 its partition; a use case's its extension points; an extend's line label is its drawn label already.
+
+As built in 4.9: `view` is the view object, as `boxes(model, view)` takes it, and `model` the context's copy of the model;
+`rows` returning anything but a list lists the members as before, and an empty list lists nothing; `word` names a node's
+kind only, a line's kind staying its type word. Only the table's heading reads "Elements": its header row stays "Card, Kind,
+Members" (`tests/cli.py` reads it) and the page's header still counts cards. The tables are built by `tablesOf(ctx, view, g)`
+apart from `printDoc`, internal to `print.js`, so `tests/print-typed.test.mjs` reads them in Node. The core grows by 136 B
+(`/usr/bin/gzip -9` of `lib/umlimator.js`, 186,907 B to 187,043 B, measured before 4.1 merged).
 
 ## 16. Fixtures
 
