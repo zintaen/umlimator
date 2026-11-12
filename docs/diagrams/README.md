@@ -19,7 +19,7 @@ Update this table in every pull request that belongs to the plan.
 | Before the split | 0.16.1 | `validate()` warns of a line from a card to itself (`risks.md` F1) | Released 11 Nov 2026 (8f0240f, GitHub and npm latest); map-repo pinned to it | #155, #156 |
 | 1a Foundation | 0.17.0 | Work packages 1.1 to 1.8 | Released 11 Nov 2026 (555bfdc, GitHub and npm latest); map-repo pinned to it | #154, #157, #158, #160, #161, #162, #163, #164, #165, #166, #167 |
 | 1b Class | 0.18.0 | Work packages 1.9 to 1.12 | Released 12 Nov 2026 (1ffaaea, GitHub and npm latest); map-repo pinned to it | #168, #169, #171, #172, #173, #175, #176, (this PR) |
-| 2 | 0.19.0 | Object, package | Design note approved ([`notes/stage-2.md`](notes/stage-2.md)). In review: 2.1 (#183), 2.4 (#184), 2.5 (#185); then 2.2, 2.3 and 2.6 | #174, #183, #184, #185 |
+| 2 | 0.19.0 | Object, package | Design note approved ([`notes/stage-2.md`](notes/stage-2.md)). 2.1 merged (6981b9a). In review: 2.4 (#184), 2.5 (#185); then 2.2, 2.3 and 2.6 | #174, #183, #184, #185 |
 | 3 | 0.20.0 | Sequence, communication | Design note approved ([`notes/stage-3.md`](notes/stage-3.md)). 3.0 (b17b678), 3.1 (7117a2e), 3.2 (9ddd4a7) and 3.6 (417b4f1) merged, with the notes' changes elsewhere (b8e2315). 3.3 and 3.5 being built; 3.4 waits for 2.1 and a decision on `edit.js` (§2.3) | #174, #177, #179, #180, #181, #182 |
 | 4 | 0.21.0 | Use case, activity, state machine, interaction overview | Not started | |
 | 5 | 0.22.0 | Component, deployment, composite structure | Not started | |
