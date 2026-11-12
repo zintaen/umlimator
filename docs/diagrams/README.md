@@ -21,7 +21,7 @@ Update this table in every pull request that belongs to the plan.
 | 1b Class | 0.18.0 | Work packages 1.9 to 1.12 | Released 12 Nov 2026 (1ffaaea, GitHub and npm latest); map-repo pinned to it | #168, #169, #171, #172, #173, #175, #176, #178 |
 | 2 | 0.19.0 | Object, package | Design note approved ([`notes/stage-2.md`](notes/stage-2.md)). 2.1 (6981b9a), 2.2 (5d8ddbe), 2.3 (9cce0e4), 2.4 (313c2b1) and 2.5 (faf418f) and 2.6 (adc49b0) merged, with the Owner field's pin fix (1dc86f5). Releasing 0.19.0 (this PR); map-repo's pin does not move for it | #174, #183, #184, #185, #188, #190, #195, #196, (this PR) |
 | 3 | 0.20.0 | Sequence, communication | Design note approved ([`notes/stage-3.md`](notes/stage-3.md)). 3.0 (b17b678), 3.1 (7117a2e), 3.2 (9ddd4a7), 3.3 (b062d55, its gestures 3ab554d), 3.4 (a253447), 3.5 (d2ed722) and 3.6 (417b4f1) and 3.7 (f98e317) merged, with the notes' changes elsewhere (b8e2315) and the router's speed flags (110a494). Being built: 3.8; then the 0.20.0 release | #174, #177, #179, #180, #181, #182, #186, #187, #189, #191, #193, #194 |
-| 4 | 0.21.0 | Use case, activity, state machine, interaction overview | Not started | |
+| 4 | 0.21.0 | Use case, activity, state machine, interaction overview | Design note proposed ([`notes/stage-4.md`](notes/stage-4.md)); awaiting approval | (this PR) |
 | 5 | 0.22.0 | Component, deployment, composite structure | Not started | |
 | 6 | 0.23.0 | Profile, timing | Not started | |
 | Milestone 2 | 0.24.0 | ER, flowchart, data flow, information flow, C4 | Not started | |
