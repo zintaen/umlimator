@@ -281,7 +281,7 @@
   "umlimator.js docs/diagrams/examples/23-c4.json deployment": "cba791212106b858",
   "umlimator.js docs/diagrams/examples/09-activity.json fulfil": "e32f36e4f74bd8c7",
   "umlimator.js docs/diagrams/examples/09-activity.json take-payment": "fc54192e340a685c",
-  "umlimator-all.js examples/sales-classes.json domain": "6d8c382e2e7a54d8",
-  "umlimator-all.js examples/sales-classes.json payments": "73af97b5598f9843"
+  "umlimator-all.js examples/sales-classes.json domain": "33ea16428b40c8e0",
+  "umlimator-all.js examples/sales-classes.json payments": "827f45940f9ce75c"
  }
 }
