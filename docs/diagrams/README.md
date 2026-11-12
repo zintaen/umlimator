@@ -20,7 +20,7 @@ Update this table in every pull request that belongs to the plan.
 | 1a Foundation | 0.17.0 | Work packages 1.1 to 1.8 | Released 11 Nov 2026 (555bfdc, GitHub and npm latest); map-repo pinned to it | #154, #157, #158, #160, #161, #162, #163, #164, #165, #166, #167 |
 | 1b Class | 0.18.0 | Work packages 1.9 to 1.12 | Released 12 Nov 2026 (1ffaaea, GitHub and npm latest); map-repo pinned to it | #168, #169, #171, #172, #173, #175, #176, (this PR) |
 | 2 | 0.19.0 | Object, package | Design note approved ([`notes/stage-2.md`](notes/stage-2.md)). 2.1 (6981b9a), 2.2 (5d8ddbe), 2.4 (313c2b1) and 2.5 (faf418f) merged. Next: 2.3 (built), then 2.6 | #174, #183, #184, #185, #188 |
-| 3 | 0.20.0 | Sequence, communication | Design note approved ([`notes/stage-3.md`](notes/stage-3.md)). 3.0 (b17b678), 3.1 (7117a2e), 3.2 (9ddd4a7), 3.3 (b062d55) and 3.6 (417b4f1) merged, with the notes' changes elsewhere (b8e2315). In review: 3.4 (#189, by a hook slot), 3.5 (#187, waits for the router's speed flags); then the gestures of 3.3 and 3.5, 3.7 and 3.8 | #174, #177, #179, #180, #181, #182, #186, #187, #189 |
+| 3 | 0.20.0 | Sequence, communication | Design note approved ([`notes/stage-3.md`](notes/stage-3.md)). 3.0 (b17b678), 3.1 (7117a2e), 3.2 (9ddd4a7), 3.3 (b062d55), 3.4 (a253447) and 3.6 (417b4f1) merged, with the notes' changes elsewhere (b8e2315). In review: the router's speed flags (#191), then 3.5 (#187) opts in; then the gestures of 3.3 and 3.5, 3.7 and 3.8 | #174, #177, #179, #180, #181, #182, #186, #187, #189, #191 |
 | 4 | 0.21.0 | Use case, activity, state machine, interaction overview | Not started | |
 | 5 | 0.22.0 | Component, deployment, composite structure | Not started | |
 | 6 | 0.23.0 | Profile, timing | Not started | |
