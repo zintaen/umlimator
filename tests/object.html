@@ -1,0 +1,145 @@
+<!doctype html>
+<!-- The object diagram (2.3) in headless Chrome (tests/embed.py), from lib/umlimator-all.js: docs/diagrams/examples/02-object.json
+     drawn by render() in both themes, three fonts and both directions (heads underlined, slot rows inside their boxes, names,
+     contrast, the legend), an instance in a package's box, then edited through the edit event and apply(), by pointer and by
+     keyboard: the palette, an instance's name, its classifier, a slot as text (refused when it does not read), a new slot,
+     a slot moved, a link by the picker, its roles and association, the Owner field, a drop into a box, a pin, hide, delete. -->
+<meta charset="utf-8">
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="../lib/umlimator-theme.css">
+<title>umlimator object diagram test</title>
+<body style="margin:0">
+<div id="m" style="width:1200px;height:1000px"></div>
+<script type="module">
+import { render, apply, validate, describe } from '../lib/umlimator-all.js';
+const out = { ok: [], fail: [] };
+const check = (name, cond, info) => { document.title = name; if (cond) out.ok.push(name); else out.fail.push(name + (info === undefined ? '' : ': ' + JSON.stringify(info))); };
+const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+const el = document.getElementById('m');
+let sr, stage, ed = [];
+const pick = s => sr.querySelector(s), all = s => [...sr.querySelectorAll(s)];
+const centre = s => { const r = pick(s).getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; };
+const ptr = (target, type, [x, y]) => target.dispatchEvent(new PointerEvent(type, { clientX: x, clientY: y, button: 0, pointerId: 7, pointerType: 'mouse', bubbles: true, composed: true }));
+const key = (k, extra = {}, target = stage) => target.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true, composed: true, cancelable: true, ...extra }));
+const click = s => { const g = pick(s), at = centre(s); ptr(g, 'pointerdown', at); ptr(g, 'pointerup', at); g.dispatchEvent(new MouseEvent('click', { clientX: at[0], clientY: at[1], bubbles: true, composed: true })); };
+const mount = (model, opts = {}) => { el.innerHTML = ''; ed = []; const h = render(el, model, { view: 'snapshot', on: { edit: e => ed.push(e) }, ...opts }); sr = el.querySelector('.umlimator').shadowRoot; stage = pick('.stage'); return h; };
+const errors = m => validate(m).filter(p => p.level === 'error');
+const last = () => ed[ed.length - 1];
+const gives = (name, cmds, test, base) => { const e = last(); let m = null; try { m = e && apply(base, e.commands); } catch (x) { m = null; }
+  check(name, !!e && same(e.commands, cmds) && !!m && test(m) && !errors(m).length, e); return m; };
+const change = (t, v) => { t.value = v; t.dispatchEvent(new Event('change', { bubbles: true })); };
+const box = g => { const r = g.getBBox(); return { x: r.x, y: r.y, w: r.width, h: r.height }; };
+const inside = (a, b) => a.x >= b.x - .5 && a.y >= b.y - .5 && a.x + a.w <= b.x + b.w + .5 && a.y + a.h <= b.y + b.h + .5;
+const FONTS = { serif: 'serif', sans: 'sans-serif', wide: 'monospace' };
+const rgba = s => { let m = /rgba?\(([^)]+)\)/.exec(s); if (m) { const p = m[1].split(/[ ,/]+/).filter(Boolean).map(Number); return [p[0] / 255, p[1] / 255, p[2] / 255, p.length > 3 ? p[3] : 1]; }
+  m = /color\(srgb ([^)]+)\)/.exec(s); if (m) { const p = m[1].split(/[ /]+/).filter(Boolean).map(Number); return [p[0], p[1], p[2], p.length > 3 ? p[3] : 1]; } return null; };
+const blend = (top, bot) => [0, 1, 2].map(i => top[i] * top[3] + bot[i] * (1 - top[3])).concat(1);
+const lum = c => { const f = v => v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]); };
+const ratio = (fg, bg) => { const [x, y] = [lum(blend(fg, bg)), lum(bg)].sort((p, q) => q - p); return +((x + 0.05) / (y + 0.05)).toFixed(2); };
+const css = (e, k) => rgba(getComputedStyle(e)[k]);
+const MODEL = await (await fetch('../docs/diagrams/examples/02-object.json')).json();
+try {
+  for (const theme of ['light', 'dark']) for (const [fname, family] of Object.entries(FONTS)) for (const direction of ['down', 'right']) {
+    document.documentElement.dataset.theme = theme; el.style.setProperty('--um-sans', family);
+    const M = structuredClone(MODEL); M.views[0].direction = direction;
+    const tag = `${theme}, ${fname}, ${direction}`, h = mount(M, { legend: true }), bad = [];
+    const nodes = all('.node');
+    check(`${tag}: seven instances and six links`, nodes.length === 7 && all('.edge-g').length === 6, [nodes.length, all('.edge-g').length]);
+    nodes.forEach(g => { const b = box(g.querySelector('.n-body')), name = g.querySelector('.c-name');
+      if (getComputedStyle(name).textDecorationLine !== 'underline') bad.push(`${g.dataset.id}'s head is not underlined`);
+      [name, ...g.querySelectorAll('.c-row')].forEach(t => { if (!inside(box(t), b)) bad.push(`${g.dataset.id}: "${t.textContent}" spills`); }); });
+    const others = nodes.map(g => [g.dataset.id, box(g.querySelector('.n-body'))]);
+    others.forEach(([a, p], i) => others.slice(i + 1).forEach(([b, q]) => { if (p.x < q.x + q.w && q.x < p.x + p.w && p.y < q.y + q.h && q.y < p.y + p.h) bad.push(`${a} and ${b} overlap`); }));
+    check(`${tag}: every head underlined, every slot row inside its instance, none overlapping`, !bad.length, bad);
+    check(`${tag}: instances and links have names a screen reader reads`, pick('.node[data-id="order-1042"]').getAttribute('aria-label') === 'Instance specification order1042 : Order, 2 slots'
+      && pick('.edge-g[data-from="ada"] title').textContent === 'Link from ada : Customer to order1042 : Order (orders): places' && pick('.node[data-id="order-1042"] .c-name').textContent === 'order1042 : Order');
+    const rows = all('.node[data-id="order-1042"] .c-row').map(t => t.textContent), roles = all('text.end-lab').map(t => t.textContent);
+    check(`${tag}: slots as feature = value, roles by their ends`, same(rows, ['status = placed', 'total = 34.00 EUR']) && ['orders', 'lines', 'book', 'payments'].every(r => roles.includes(r)), [rows, roles]);
+    check(`${tag}: no end marks on a link`, all('.edge-g path.edge').every(p => !p.getAttribute('marker-end') && !p.getAttribute('marker-start')), all('.edge-g path.edge').map(p => p.getAttribute('marker-end')));
+    const legend = all('.m-legend b').map(b => b.textContent);
+    check(`${tag}: the legend keys the link`, same(legend, ['Link']), legend);
+    const stageBg = css(pick('.stage'), 'backgroundColor'), low = [];
+    nodes.forEach(g => { const bg = blend(css(g.querySelector('.n-body'), 'fill') || [0, 0, 0, 0], stageBg);
+      [g.querySelector('.c-name'), ...g.querySelectorAll('.c-row')].forEach(t => { const c = ratio(css(t, 'fill'), bg); if (c < 4.5) low.push([g.dataset.id, t.textContent, c]); }); });
+    check(`${tag}: contrast: heads and slots 4.5:1`, !low.length, low);
+    h.destroy();
+  }
+  document.documentElement.dataset.theme = 'light'; el.style.removeProperty('--um-sans');
+  check('describe() writes each instance with its slots and links', describe(MODEL, 'snapshot').split('\n')[1] === 'Instance specification ada : Customer, 1 slot: email = ada@example.org; linked to order1042 : Order (orders) ("places").');
+
+  // ---- editing (DoD 4), each gesture's commands applied with apply(). A package, payments, holds the card instance
+  const BASE = structuredClone(MODEL); BASE.nodes.push({ id: 'payments', type: 'uml.Package', label: 'payments' }, { id: 'archive', type: 'uml.Package', label: 'archive' });
+  BASE.nodes.find(n => n.id === 'card').parent = 'payments'; BASE.views[0].nodeIds.push('payments');
+  let h = mount(BASE, { editable: true });
+  const button = t => all('.um-editor button').find(b => b.textContent.trim() === t), panel = s => pick('.um-editor ' + s), row = id => panel(`[data-m="${id}"]`), enter = t => key('Enter', {}, t);
+  check('an instance in a shown package is drawn in its box', !!pick('.family[data-family="payments"]') && inside(box(pick('.node[data-id="card"] .n-body')), box(pick('.family[data-family="payments"] .family-box'))));
+  check('the palette: Instance and Comment; the lines, Link and Comment link', same(all('.um-editor .um-pal button').map(b => b.textContent), ['Instance', 'Comment']) && /Link, Comment link/.test(panel('.um-pal .um-note').textContent));
+  key('n'); pick('.um-rename').value = 'bob'; key('Enter', {}, pick('.um-rename'));
+  let m1 = gives('N adds an instance, named, shown in the view', [{ op: 'add', element: { id: 'instancespecification1', type: 'uml.InstanceSpecification', label: 'bob' }, view: 'snapshot' }], m => m.views[0].nodeIds.includes('instancespecification1'), BASE);
+  h.update(m1);
+  check('after update() an instance with no classifier is drawn by its name, underlined', pick('.node[data-id="instancespecification1"] .c-name').textContent === 'bob' && pick('.node[data-id="instancespecification1"] .c-name').getAttribute('text-decoration') === 'underline');
+  // the classifier, a property; F2 the name
+  h.select({ type: 'node', id: 'instancespecification1', view: 'snapshot' });
+  change(panel('[data-f="p:classifier"]'), 'Customer');
+  m1 = gives('the Classifier field sets props.classifier', [{ op: 'set', id: 'instancespecification1', path: 'props.classifier', value: 'Customer' }], m => m.nodes.find(n => n.id === 'instancespecification1').props.classifier === 'Customer', m1);
+  h.update(m1);
+  check('after update() the head reads name : Classifier', pick('.node[data-id="instancespecification1"] .c-name').textContent === 'bob : Customer');
+  click('.node[data-id="ada"] .c-name'); key('F2');
+  check('F2 on an instance: a field holding its name only (notes/stage-2.md §9.2)', pick('.um-rename') && pick('.um-rename').value === 'ada');
+  pick('.um-rename').value = 'adele'; key('Enter', {}, pick('.um-rename'));
+  gives('F2: set its label', [{ op: 'set', id: 'ada', path: 'label', value: 'adele' }], m => m.nodes.find(n => n.id === 'ada').label === 'adele', m1);
+  // a slot as text, refused when it does not read; a new slot; a slot moved
+  click('.node[data-id="order-1042"] .c-name');
+  check('the properties panel lists the slots as feature = value', row('order-1042.status').value === 'status = placed' && row('order-1042.total').value === 'total = 34.00 EUR');
+  row('order-1042.status').value = 'status = paid'; enter(row('order-1042.status'));
+  const m2 = gives('a slot edited as text: one transaction setting its label and props', [{ op: 'set', id: 'order-1042.status', path: 'label', value: 'status' }, { op: 'set', id: 'order-1042.status', path: 'props', value: { value: 'paid' } }],
+    m => m.nodes.find(n => n.id === 'order-1042').members[0].props.value === 'paid', m1);
+  const n0 = ed.length; row('order-1042.total').value = '= 3'; enter(row('order-1042.total'));
+  check('a slot with no name: no event, the text kept as written and marked invalid (E3)', ed.length === n0 && row('order-1042.total').value === '= 3' && row('order-1042.total').getAttribute('aria-invalid') === 'true');
+  key('Escape', {}, row('order-1042.total'));
+  const nw = panel('[data-new]'); nw.value = 'placedOn = 2026-11-12'; enter(nw);
+  gives('a new slot typed as text', [{ op: 'add', element: { id: 'slot1', type: 'uml.Slot', label: 'placedOn', props: { value: '2026-11-12' } }, owner: 'order-1042' }], m => m.nodes.find(n => n.id === 'order-1042').members.length === 3, m1);
+  key('ArrowDown', { altKey: true }, row('order-1042.status'));
+  gives('Alt + ↓ on a slot row: move it down', [{ op: 'move', id: 'order-1042.status', index: 1 }], m => m.nodes.find(n => n.id === 'order-1042').members[1].id === 'order-1042.status', m1);
+  h.update(m2);
+  check('after update() the slot is drawn as edited', all('.node[data-id="order-1042"] .c-row').some(t => t.textContent === 'status = paid'));
+  // a link: L, a name, Enter, then the picker; its roles and association in the panel
+  click('.node[data-id="instancespecification1"] .c-name'); key('l'); for (const c of 'order1042') key(c); key('Enter');
+  const items = all('.um-pick button').map(b => b.textContent);
+  check('L, a name and Enter open the picker with the object diagram\'s two lines', same(items, ['Link', 'Comment link']), items);
+  all('.um-pick button')[0].click();
+  const m3 = gives('picking Link: one add of a uml.Link', [{ op: 'add', element: { id: 'link1', type: 'uml.Link', from: 'instancespecification1', to: 'order-1042' }, view: 'snapshot' }], m => m.edges.some(e => e.id === 'link1'), m2);
+  h.update(m3); h.select({ type: 'edge', ids: ['link1'], view: 'snapshot' });
+  change(panel('[data-f="p:ends.to.role"]'), 'orders');
+  const m4 = gives('a link\'s role is set inside props.ends', [{ op: 'set', id: 'link1', path: ['props', 'ends', 'to', 'role'], value: 'orders' }], m => m.edges.find(e => e.id === 'link1').props.ends.to.role === 'orders', m3);
+  change(panel('[data-f="p:association"]'), 'Places');
+  const m5 = gives('a link\'s association is a property', [{ op: 'set', id: 'link1', path: 'props.association', value: 'Places' }], m => m.edges.find(e => e.id === 'link1').props.association === 'Places', m4);
+  h.update(m5);
+  check('after update() the link reads its association and role', pick('.edge-g[data-from="instancespecification1"] title').textContent === 'Link from bob : Customer to order1042 : Order (orders): Places' && all('text.end-lab').some(t => t.textContent === 'orders'));
+  // the Owner field, by keyboard; a drop into a box, by pointer
+  h.select({ type: 'node', id: 'ada', view: 'snapshot' });
+  const own = panel('[data-f="owner"]'), opts = [...own.options].map(o => o.textContent);
+  check('the Owner field: none and every package', same(opts, ['none', 'payments', 'archive']) && own.value === '', opts);
+  change(own, 'archive');
+  gives('Owner: reparent the instance', [{ op: 'reparent', id: 'ada', parent: 'archive' }], m => m.nodes.find(n => n.id === 'ada').parent === 'archive', m5);
+  const to = pick('.family[data-family="payments"] .family-box').getBoundingClientRect(), from = centre('.node[data-id="line-1"] .n-body'), at = [to.left + 14, to.bottom - 14];
+  ptr(pick('.node[data-id="line-1"]'), 'pointerdown', from); for (let i = 1; i <= 4; i++) ptr(stage, 'pointermove', [from[0] + (at[0] - from[0]) * i / 4, from[1] + (at[1] - from[1]) * i / 4]); ptr(stage, 'pointerup', at);
+  const m6 = gives('an instance dropped into a package\'s box: reparent', [{ op: 'reparent', id: 'line-1', parent: 'payments' }], m => m.nodes.find(n => n.id === 'line-1').parent === 'payments', m5);
+  h.update(m6);
+  check('after update() the box holds it', inside(box(pick('.node[data-id="line-1"] .n-body')), box(pick('.family[data-family="payments"] .family-box'))));
+  // a pin, hide, delete
+  click('.node[data-id="middlemarch"] .c-name'); key('ArrowDown', { altKey: true });
+  check('Alt + ↓ pins an instance', last().commands.length === 1 && last().commands[0].op === 'set' && same(last().commands[0].path, ['layout', 'middlemarch']), last());
+  click('.node[data-id="middlemarch"] .c-name'); key('Delete');
+  gives('Delete: hide the instance from the view', [{ op: 'hide', id: 'middlemarch', view: 'snapshot' }], m => !m.views[0].nodeIds.includes('middlemarch'), m6);
+  click('.node[data-id="middlemarch"] .c-name'); key('Delete', { shiftKey: true });
+  gives('Shift + Delete: delete the instance, its slots and its links', [{ op: 'delete', id: 'middlemarch' }], m => !m.nodes.some(n => n.id === 'middlemarch') && !m.edges.some(e => e.to === 'middlemarch'), m6);
+  h.select({ type: 'edge', ids: ['link1'], view: 'snapshot' }); key('Delete', { shiftKey: true });
+  gives('Shift + Delete on a link: delete it', [{ op: 'delete', id: 'link1' }], m => !m.edges.some(e => e.id === 'link1'), m6);
+  // a validator's problem in the problems list
+  h.update(apply(m6, [{ op: 'add', element: { id: 'Customer', type: 'uml.Class', label: 'Customer' } }]));
+  check('instance-of is listed in the problems panel, by its rule', all('.um-editor .um-probs button').some(b => /instance-of: "ada" is an instance of "Customer", which has no attribute "email"/.test(b.textContent)), all('.um-editor .um-probs button').map(b => b.textContent));
+  h.destroy();
+} catch (e) { out.fail.push('threw: ' + (e && e.stack || e)); }
+const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
+</script>
