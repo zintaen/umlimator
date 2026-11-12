@@ -1,7 +1,9 @@
 <!doctype html>
 <!-- Editing a typed view (1.7) in headless Chrome (tests/embed.py): each gesture, by pointer and by keyboard, emits one
      `edit` event whose commands are checked exactly and applied with apply(); the panels follow the type's definition;
-     a read-only embed has none of it; a map view keeps its `change` events. Imports src/ to register a test type. -->
+     a read-only embed has none of it; a map view keeps its `change` events. Imports src/ to register a test type.
+     Boxes on a typed view (2.1, notes/stage-2.md §8): a drop into, out of and between boxes, the Owner field, a box selected
+     as a container; after a re-own every box holds exactly its contents. A second test type gives boxes from `parent`. -->
 <meta charset="utf-8">
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="../lib/umlimator-theme.css">
@@ -13,6 +15,9 @@ import { render } from '../src/canvas/render.js';
 import { registerDiagramType } from '../src/core/registry.js';
 import { apply } from '../src/core/apply.js';
 import { validate } from '../src/map/validate.js';
+import { layoutTyped } from '../src/typed/layout.js';
+import { SHAPE } from '../src/draw/shapes.js';
+import { layout } from '../src/map/api.js';
 const out = { ok: [], fail: [] };
 const check = (name, cond, info) => { document.title = name; if (cond) out.ok.push(name); else out.fail.push(name + (info === undefined ? '' : ': ' + JSON.stringify(info))); };
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
@@ -215,6 +220,134 @@ try {
   check('a node whose type is 7: it draws, its properties and the outline show it', !!pick('.node[data-id="q"]') && f('label').value === 'Seven' && all('.um-editor .um-els [data-go]').some(b => b.dataset.go === 'q'));
   f('new').value = 'next'; key('Enter', {}, f('new'));
   check('a member added after one whose type is an object: no type copied', same(last().commands, [{ op: 'add', element: { id: 'member1', label: 'next' }, owner: 'q' }]), last());
+  h.destroy();
+
+  // ---- boxes (2.1): a test type whose boxes are the shown packages that own something shown (their nearest shown owner)
+  const ownIn = (m, v, n) => { let p = n.parent; for (let k = 0; p != null && !v.nodeIds.includes(p) && k < 64; k++) p = (m.nodes.find(x => x.id === p) || {}).parent; return p ?? null; };
+  const nestBoxes = (m, v) => { const ns = m.nodes.filter(n => v.nodeIds.includes(n.id)), isBox = n => ns.some(k => ownIn(m, v, k) === n.id);
+    return ns.filter(isBox).map(p => ({ id: p.id, label: p.label, title: p.label, nodeIds: ns.filter(n => ownIn(m, v, n) === p.id && !isBox(n)).map(n => n.id), ...(ownIn(m, v, p) != null ? { parent: ownIn(m, v, p) } : {}), shape: 'test-frame' })); };
+  // a box drawn by its shape's frame, which draws its border with class family-box, as svg.js asks
+  SHAPE['test-frame'] = { frame: f => `<rect class="family-box" x="${f.x}" y="${f.y}" width="${f.w}" height="${f.h}" stroke="var(--um-muted)"/><text class="family-title" x="${f.x + 12}" y="${f.y + 18}" data-t="ft" data-o="${f.id}">${f.title}</text>` };
+  registerDiagramType('test.nest', { title: 'nested boxes', elements: [{ type: 'test.Box', label: 'Box' }], lines: [{ type: 'test.Uses', label: 'Uses' }],
+    boxes: nestBoxes, owners: m => m.nodes.filter(n => n.type === 'test.Pkg').map(n => ({ id: n.id, label: n.label })),
+    layout: ({ model, view, pos, memo }) => { const bx = nestBoxes(model, view), skip = new Set(bx.map(b => b.id));
+      return layoutTyped({ nodes: view.nodeIds.filter(i => !skip.has(i)).map(id => ({ id, label: model.nodes.find(n => n.id === id).label, col: pos[id][0], row: pos[id][1], w: 140, h: 56 })),
+        edges: model.edges.filter(e => view.nodeIds.includes(e.from) && view.nodeIds.includes(e.to)).map(e => ({ ...e })), containers: bx, direction: view.direction }, memo); } });
+  // P holds Q and y; Q holds the hidden H, which owns x (drawn in Q); R is a package no view shows; w and z are in none, x calls w, w calls z
+  const NEST = { schemaVersion: 2,
+    nodes: [{ id: 'P', type: 'test.Pkg', label: 'Outer' }, { id: 'Q', type: 'test.Pkg', label: 'Inner', parent: 'P' }, { id: 'H', type: 'test.Pkg', label: 'Hidden', parent: 'Q' }, { id: 'R', type: 'test.Pkg', label: 'Root' },
+      { id: 'x', type: 'test.Box', label: 'Ex', parent: 'H' }, { id: 'y', type: 'test.Box', label: 'Why', parent: 'P' }, { id: 'w', type: 'test.Box', label: 'Wye' }, { id: 'z', type: 'test.Box', label: 'Zed' }],
+    edges: [{ id: 'xw', type: 'test.Uses', from: 'x', to: 'w' }, { id: 'wz', type: 'test.Uses', from: 'w', to: 'z' }],
+    views: [{ id: 'v', diagram: 'test.nest', nodeIds: ['P', 'Q', 'x', 'y', 'w', 'z'] }] };
+  const rectOf = s => pick(s).getBoundingClientRect(), mid = (a, b) => (a + b) / 2;
+  const within = (a, b) => a.left >= b.left && a.top >= b.top && a.right <= b.right && a.bottom <= b.bottom;
+  // every drawn box holds exactly the cards it owns on the picture, at any depth, and no other card
+  const holdsExactly = m => { const v = m.views[0], bad = [];
+    all('.family').forEach(f => { const b = f.dataset.family, box = f.querySelector('.family-box').getBoundingClientRect();
+      all('.node').forEach(g => { const id = g.dataset.id, n = m.nodes.find(x => x.id === id); let o = ownIn(m, v, n), mine = false; for (let k = 0; o != null && k < 64; k++) { if (o === b) mine = true; o = ownIn(m, v, m.nodes.find(x => x.id === o)); }
+        if (within(g.querySelector('.n-body').getBoundingClientRect(), box) !== mine) bad.push(`${b} ${mine ? 'lacks' : 'covers'} ${id}`); }); });
+    return bad.length ? bad : all('.family').length ? true : ['no box drawn']; };
+  const dragTo = (id, to) => { const from = centre(`.node[data-id="${id}"] .n-body`); ptr(pick(`.node[data-id="${id}"]`), 'pointerdown', from);
+    for (let i = 1; i <= 4; i++) ptr(stage, 'pointermove', [from[0] + (to[0] - from[0]) * i / 4, from[1] + (to[1] - from[1]) * i / 4]); ptr(stage, 'pointerup', to); };
+  const pinned = (c, id) => !!c && c.op === 'set' && c.view === 'v' && same(c.path, ['layout', id]) && Array.isArray(c.value) && c.value.length === 2 && c.value.every(Number.isFinite);
+  const owns = (m, id, p) => (m.nodes.find(n => n.id === id).parent ?? null) === p;
+  h = mount({ editable: true }, NEST);
+  let held = holdsExactly(NEST); check('boxes: P holds Q and y, Q holds x (its hidden owner\'s), w and z are in none', held === true, held);
+  check('boxes: a box\'s id is not a card', !pick('.node[data-id="P"]') && !pick('.node[data-id="Q"]') && !!pick('.family[data-family="Q"][data-parent="P"]'));
+  // into another box: x, drawn in Q, dropped in P's corner outside Q
+  let P = rectOf('.family[data-family="P"] .family-box'), Q = rectOf('.family[data-family="Q"] .family-box'); n1 = ed.length;
+  dragTo('x', [mid(P.left, Q.left), mid(P.top, Q.top)]);
+  let c = last().commands;
+  check('a drop into another box: one transaction, reparent to it, and no pin (the view is laid out again)', ed.length === n1 + 1 && same(c, [{ op: 'reparent', id: 'x', parent: 'P' }]), c);
+  let after = apply(NEST, c);
+  check('…which apply() takes', owns(after, 'x', 'P') && !errors(after).length, errors(after));
+  h.update(after);
+  held = holdsExactly(after); check('after the re-own every box holds exactly its contents (Q, holding nothing, is a card)', held === true && !!pick('.node[data-id="Q"]') && !pick('.family[data-family="Q"]'), held);
+  h.destroy();
+  // between boxes: y, in P, dropped in Q's corner, by x
+  h = mount({ editable: true }, NEST); Q = rectOf('.family[data-family="Q"] .family-box'); const X = rectOf('.node[data-id="x"] .n-body');
+  dragTo('y', [mid(Q.left, X.left), mid(Q.top, X.top)]); c = last().commands;
+  check('a drop between boxes: reparent to the box under the drop, no pin', same(c, [{ op: 'reparent', id: 'y', parent: 'Q' }]), c);
+  after = apply(NEST, c); h.update(after);
+  held = holdsExactly(after); check('…and after it, every box holds exactly its contents', held === true, held);
+  h.destroy();
+  // in the box it is drawn in: the pin only, though its owner is the hidden H
+  h = mount({ editable: true }, NEST); Q = rectOf('.family[data-family="Q"] .family-box'); n1 = ed.length;
+  dragTo('x', [mid(Q.left, rectOf('.node[data-id="x"] .n-body').left), mid(Q.top, rectOf('.node[data-id="x"] .n-body').top)]);
+  check('a drop in the box it is drawn in: no reparent, its pin at most', ed.slice(n1).every(e => e.commands.every(x => pinned(x, 'x'))), ed.slice(n1));
+  // out of every box: no subject, no owner; with the view's subject, the subject
+  P = rectOf('.family[data-family="P"] .family-box'); n1 = ed.length;
+  dragTo('x', [P.left - 40, P.bottom + 40]); c = last().commands;
+  check('a drop out of every box: reparent to none, no pin', ed.length === n1 + 1 && same(c, [{ op: 'reparent', id: 'x', parent: null }]), c);
+  h.destroy();
+  const SUB = structuredClone(NEST); SUB.views[0].subject = 'R';
+  h = mount({ editable: true }, SUB); P = rectOf('.family[data-family="P"] .family-box');
+  dragTo('x', [P.left - 40, P.bottom + 40]); c = last().commands;
+  check('…with the view\'s subject: reparent to the subject', same(c[0], { op: 'reparent', id: 'x', parent: 'R' }), c);
+  h.destroy();
+  // a pinned card dropped in P's header, above Q: a slot read off the picture before would land in Q after the new layout, so
+  // the pin goes; then every box holds exactly its contents
+  const PIN = structuredClone(NEST); PIN.views[0].layout = { x: [0, 0] };
+  h = mount({ editable: true }, PIN); P = rectOf('.family[data-family="P"] .family-box'); Q = rectOf('.family[data-family="Q"] .family-box');
+  dragTo('x', [mid(Q.left, Q.right), mid(P.top, Q.top)]); c = last().commands;
+  check('a pinned card dropped into another box: reparent, and its pin removed', same(c, [{ op: 'reparent', id: 'x', parent: 'P' }, { op: 'set', view: 'v', path: ['layout', 'x'] }]) && c[1].value === undefined, c);
+  after = apply(PIN, c); h.update(after);
+  held = holdsExactly(after); check('…and after it, every box holds exactly its contents', held === true && !('x' in after.views[0].layout), held);
+  h.destroy();
+  // a box drawn by a frame is outlined when selected, and while a card is dragged over it, by its .family-box
+  h = mount({ editable: true }, NEST);
+  const stroke = id => getComputedStyle(pick(`.family[data-family="${id}"] .family-box`));
+  const plainW = stroke('P').strokeWidth; click('.family[data-family="P"] .family-title');
+  check('a box drawn by a frame, selected: outlined', stroke('P').strokeWidth === '2px' && plainW !== '2px', [plainW, stroke('P').strokeWidth]);
+  const W0 = centre('.node[data-id="w"] .n-body'), Pr = rectOf('.family[data-family="P"] .family-box'); ptr(pick('.node[data-id="w"]'), 'pointerdown', W0);
+  ptr(stage, 'pointermove', [W0[0] + 20, W0[1]]); ptr(stage, 'pointermove', [Pr.left + 12, Pr.bottom - 12]);
+  check('…and the box under a drag highlighted', stroke('P').strokeDasharray.startsWith('6'), stroke('P').strokeDasharray);
+  ptr(stage, 'pointercancel', W0); h.destroy();
+  // hiding a card leaves every box's other contents and the cards in no box where they were (no relayout): w and z keep the
+  // places they had before the line between them went, though laid out again z would go to the row of cards with no line
+  const BOX = id => { const b = pick(`.node[data-id="${id}"] .n-body`).getBBox(); return [b.x, b.y]; };
+  h = mount({ editable: true }, NEST); const NOLINE = apply(NEST, [{ op: 'delete', id: 'wz' }]); h.update(NOLINE);
+  const kept = [BOX('w'), BOX('z')]; h.update(apply(NOLINE, [{ op: 'hide', id: 'y', view: 'v' }]));
+  check('hiding a card keeps the places of the cards whose box did not change', same([BOX('w'), BOX('z')], kept) && !pick('.node[data-id="y"]'), [kept, BOX('w'), BOX('z')]);
+  h.destroy();
+  // laid out down, a drop's slot is read along the turned axes: w dropped on z takes z's column and row
+  const DOWN = structuredClone(NEST); DOWN.views[0].direction = 'down'; const zs = layout(DOWN, 'v').byId.z;
+  h = mount({ editable: true }, DOWN); n1 = ed.length; dragTo('w', centre('.node[data-id="z"] .n-body'));
+  check('laid out down: a drop takes the column and row under it', ed.length === n1 + 1 && same(last().commands, [{ op: 'set', view: 'v', path: ['layout', 'w'], value: [zs.col, zs.row] }]), [last() && last().commands, zs.col, zs.row]);
+  h.destroy();
+  // the Owner field: every package the type offers, and none; it emits reparent
+  h = mount({ editable: true }, NEST); card('x');
+  const own = () => panel('[data-f="owner"]'), opts = () => [...own().options].map(o => o.value);
+  check('the Owner field: none and every package, its owner selected', !!own() && same(opts(), ['', 'P', 'Q', 'H', 'R']) && own().value === 'H', own() && [opts(), own().value]);
+  own().focus(); own().value = 'P'; own().dispatchEvent(new Event('change', { bubbles: true }));
+  gives('Owner: reparent to the package chosen', [{ op: 'reparent', id: 'x', parent: 'P' }], m => owns(m, 'x', 'P'), NEST);
+  own().value = ''; own().dispatchEvent(new Event('change', { bubbles: true }));
+  gives('Owner: none', [{ op: 'reparent', id: 'x', parent: null }], m => owns(m, 'x', null), NEST);
+  card('z'); own().value = 'P'; own().dispatchEvent(new Event('change', { bubbles: true }));
+  gives('Owner of z, past w: P', [{ op: 'reparent', id: 'z', parent: 'P' }], m => owns(m, 'z', 'P'), NEST);
+  after = apply(NEST, last().commands); h.update(after);
+  held = holdsExactly(after); check('after a re-own with no pin, the view is laid out again: P holds z, and not w beside it', held === true, held);
+  h.destroy(); h = mount({ editable: true }, NEST);
+  // a box selected as a container: the panel, F2, Delete and Shift + Delete act on its element
+  click('.family[data-family="Q"] .family-title');
+  check('a click on a box selects it as a container', same(h.selection && [h.selection.type, h.selection.id], ['container', 'Q']), h.selection);
+  check('its properties: its name, and an Owner field that offers neither it nor what it holds', f('label') && f('label').value === 'Inner' && same(opts(), ['', 'P', 'R']) && own().value === 'P', own() && opts());
+  key('F2'); check('F2 on a box: a field holding its name', !!pick('.um-rename') && pick('.um-rename').value === 'Inner');
+  pick('.um-rename').value = 'Core'; key('Enter', {}, pick('.um-rename'));
+  gives('F2 on a box: set its label', [{ op: 'set', id: 'Q', path: 'label', value: 'Core' }], m => m.nodes.find(n => n.id === 'Q').label === 'Core', NEST);
+  key('Delete'); gives('Delete on a box: hide it from this view', [{ op: 'hide', id: 'Q', view: 'v' }], m => !V(m).nodeIds.includes('Q'), NEST);
+  key('Delete', { shiftKey: true }); gives('Shift + Delete on a box: delete it, with what it owns', [{ op: 'delete', id: 'Q' }], m => !m.nodes.some(n => n.id === 'Q' || n.id === 'x'), NEST);
+  n1 = ed.length; key('ArrowDown', { altKey: true }); check('Alt + arrows on a box do nothing', ed.length === n1);
+  h.destroy();
+  h = mount({ editable: { rename: true } }, NEST); card('x');
+  check('without move, the Owner field is shown disabled', !!own() && own().disabled);
+  h.destroy();
+  // an owner the type does not offer (z owned by the card w): offered too, selected, and "none" moves it out
+  const INW = structuredClone(NEST); INW.nodes.find(n => n.id === 'z').parent = 'w';
+  h = mount({ editable: true }, INW); card('z');
+  check('an owner the type does not offer: in the field, selected', !!own() && same(opts(), ['', 'P', 'Q', 'H', 'R', 'w']) && own().value === 'w' && own().selectedOptions[0].textContent === 'Wye', own() && [opts(), own().value]);
+  own().value = ''; own().dispatchEvent(new Event('change', { bubbles: true }));
+  gives('…and none: reparent to none', [{ op: 'reparent', id: 'z', parent: null }], m => owns(m, 'z', null), INW);
   h.destroy();
 
   // ---- the panels and the picker, as axe checks them (written out), and every text 4.5:1 on what is under it, in both themes
