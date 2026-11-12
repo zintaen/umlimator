@@ -142,7 +142,7 @@ function commGeo({ model, view, memo }) {
     Object.assign(a, Math.abs(r2 - r) < 1 ? { fromSide: far, toSide: near } : { fromSide: up, toSide: near });
     Object.assign(b, Math.abs(r2 - r) < 1 ? { fromSide: 'top', toSide: 'top' } : { fromSide: down, toSide: far }); });
   // no port repair: on the stress fixture it saves a fifth of a layout, which a message edit pays (§10), for 13 crossings, not 11
-  const g = layoutTyped({ nodes, edges, direction: view.direction === 'down' ? 'down' : 'right', gap: 64, rgap: 40, repair: false }, memo);
+  const g = layoutTyped({ nodes, edges, direction: view.direction === 'down' ? 'down' : 'right', gap: 64, rgap: 40, repair: false, reroute: false }, memo); // no rip-up pass: P1 on a shared CI runner
   return cmFinish(g, I, stacks, nums);
 }
 
@@ -316,10 +316,10 @@ const COMM_TYPE = registerDiagramType('uml.communication', {
     'uml.Connector': [],
   },
   refs: { 'uml.Message': { 'props.replyTo': 'cascade' } }, // a reply goes with its call
-  layout: commGeo,
+  layout: Object.assign(commGeo, { rank: false }), // commGeo ranks its own lifelines: the host passes only the pins
   // the host ranks a typed view's lifelines before commGeo runs (context.js autoPos), and commGeo ranks its own, with the
   // stacks. Connectors turned round make the messages along them close cycles, which that ranking passes over: a third of
-  // its time on the stress fixture. ponytail: until 3.4 skips autoPos for a type that does not read `pos`
+  // its time on the stress fixture; layout.rank false (above) now skips that ranking
   rankFlip: e => e.type === 'uml.Connector',
   validate: commProblems,
   rules: CM_RULES,

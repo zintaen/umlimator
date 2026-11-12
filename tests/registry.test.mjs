@@ -105,3 +105,50 @@ test('a type\'s boxes and owners (2.1, notes/stage-2.md §4.2, §8): kept on its
   assert.deepEqual(srcLayout({ ...m, schemaVersion: 2 }, 'v').nodes.map(n => [n.id, n.col, n.row]), [['a', 0, 0]], 'the box takes no slot');
   assert.ok(asked.length && asked.every(v => v === 'v'));
 });
+
+// 3.4 (notes/stage-3.md §5.1, Q9): what the canvas hooks add to the core, and the slot src/typed/edit.js fills
+test('3.4: a type with layout.pins false is laid out with no pins and no ranking: its run gets pos {}, and autoPos never runs', async () => {
+  const { mapContext } = await import('../src/map/context.js'), seen = [];
+  const run = (model, view, { pos }) => { seen.push(pos); return { nodes: [], edges: [], groups: [], byId: {}, bounds: { x: 0, y: 0, w: 10, h: 10 }, map: false }; };
+  registerDiagramType('test.nopins', { layout: { run, pins: false } }); registerDiagramType('test.pins', { layout: { run } });
+  const m = { schemaVersion: 2, nodes: [{ id: 'a' }, { id: 'b' }], edges: [{ id: 'ab', from: 'a', to: 'b' }],
+    views: [{ id: 'n', diagram: 'test.nopins', nodeIds: ['a', 'b'], layout: { a: [4, 4] } }, { id: 'p', diagram: 'test.pins', nodeIds: ['a', 'b'] }] };
+  const ctx = mapContext(m, {}); ctx.buildGeo('n'); ctx.buildGeo('p');
+  assert.deepEqual(seen[0], {}); assert.equal(ctx.layoutCache.n, undefined, 'no ranking for pins false');
+  assert.deepEqual(Object.keys(seen[1]).sort(), ['a', 'b']); assert.ok(ctx.layoutCache.p, 'a type that takes pins is ranked, as before');
+});
+
+test('3.4: a class view\'s lines have key rings after its classes, each named by the type (e.aria); a map\'s are named as before', async () => {
+  await import('../src/uml/class.js');
+  const { mapContext } = await import('../src/map/context.js'), { esc } = await import('../src/core/text.js'), m = read('../examples/sales-classes.json');
+  for (const v of m.views) {
+    const { g, markup } = mapContext(m, {}).buildView(v.id), keys = markup.slice(markup.indexOf('<g class="keys">'));
+    const rings = [...keys.matchAll(/<g class="um-key line-key" data-i="(\d+)" tabindex="0" role="button" aria-pressed="false" aria-label="([^"]*)">/g)];
+    assert.ok(g.edges.length && !g.map, v.id);
+    assert.deepEqual(rings.map(r => [+r[1], r[2]]), g.edges.map((e, i) => [i, esc(e.aria)]), v.id);
+    assert.ok(markup.indexOf('<g class="nodes">') < markup.indexOf('<g class="keys">'), v.id);
+  }
+  const map = read('../examples/bookshop.json'), { markup } = mapContext(map, {}).buildView(map.views[0].id);
+  assert.match(markup, /aria-label="Line from [^"]+ to [^"]+"/);
+});
+
+test('3.4: src/typed/edit.js fills TYPED.edit, which typedEditor calls when it is there; only lib/umlimator-all.js holds it', async () => {
+  const { TYPED } = await import('../src/core/registry.js');
+  await import('../src/typed/edit.js');
+  assert.equal(typeof TYPED.edit, 'function');
+  assert.match(readFileSync(new URL('../src/canvas/edit.js', import.meta.url), 'utf8'), /if \(TYPED\.edit\) TYPED\.edit\(I, /);
+  const lib = f => readFileSync(new URL('../lib/' + f, import.meta.url), 'utf8');
+  assert.ok(!lib('umlimator.js').includes('TYPED.edit = ') && lib('umlimator-all.js').includes('TYPED.edit = '));
+});
+
+// 3.5 (risks.md P1): a type whose layout reads no ranked position gets the view's pins alone, and the view is never ranked
+test('3.5: a type with layout.rank false gets pos as the view\'s pins (or {}), and autoPos never runs; pins and all are kept', async () => {
+  const { mapContext } = await import('../src/map/context.js'), seen = [];
+  const run = (model, view, { pos }) => { seen.push(pos); return { nodes: [], edges: [], groups: [], byId: {}, bounds: { x: 0, y: 0, w: 10, h: 10 }, map: false }; };
+  registerDiagramType('test.norank', { layout: { run, rank: false } });
+  const m = { schemaVersion: 2, nodes: [{ id: 'a' }, { id: 'b' }], edges: [{ id: 'ab', from: 'a', to: 'b' }],
+    views: [{ id: 'n', diagram: 'test.norank', nodeIds: ['a', 'b'], layout: { a: [4, 4] } }, { id: 'e', diagram: 'test.norank', nodeIds: ['a', 'b'] }] };
+  const ctx = mapContext(m, {}); ctx.buildGeo('n'); ctx.buildGeo('e');
+  assert.deepEqual(seen, [{ a: [4, 4] }, {}], 'the pin as given, b not filled in by a ranking');
+  assert.equal(ctx.layoutCache.n, undefined); assert.equal(ctx.layoutCache.e, undefined, 'no ranking for rank false');
+});

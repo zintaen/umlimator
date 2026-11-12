@@ -9,7 +9,7 @@ import { hasKey } from '../map/kinds.js';
 
 // ---- the classifier (1.5). Its drawing input, on a typed view's node (not the model: 1.9 fills it from the model and the
 // view's present; a map never draws it): shape 'classifier'; label; type ('uml.Class', named in its accessible name);
-// stereotypes [text], shown «…» over the name; abstract (the name in italics); compartments [{ name, members }] in order
+// stereotypes [text], shown «…» over the name; abstract (the name in italics); underline (the name underlined: an instance, notes/stage-2.md §9.1); compartments [{ name, members }] in order
 // ('attributes', 'operations', 'literals'), each member in the model's envelope ({ type, label, props }); collapsed
 // [compartment names], hidden with no divider; rows: at most that many rows in a compartment, then "+k more" (stage 1 note §5)
 const CL = { pad: 8, name: 13, row: 11, st: 14, nl: 18, rl: 15, gap: 5, empty: 10, minW: 96, maxW: 320 };
@@ -41,7 +41,7 @@ function classSvg(n, c, f) { // its outline, its head, then each compartment und
   const out = [`<rect x="${x}" y="${y}" width="${w}" height="${h}" class="n-mask"/><rect x="${x}" y="${y}" width="${w}" height="${h}" class="n-body" fill="${f}" stroke="${c}"/>`];
   let ty = y + CL.gap; const hd = [];
   st.forEach(t => { hd.push(`<text x="${cx}" y="${r2(ty + 11)}" text-anchor="middle" class="c-st" fill="var(--um-muted)" ${font(CL.row, 400)}>${esc(fit(t, CL.row, max))}</text>`); ty += CL.st; });
-  hd.push(`<text x="${cx}" y="${r2(ty + 14)}" text-anchor="middle" class="c-name" fill="var(--um-text)" ${font(CL.name, 600, n.abstract)} data-o="${esc(n.id)}">${esc(fit(n.label ?? '', CL.name, max / slant))}</text>`);
+  hd.push(`<text x="${cx}" y="${r2(ty + 14)}" text-anchor="middle" class="c-name" fill="var(--um-text)" ${font(CL.name, 600, n.abstract)}${n.underline ? ' text-decoration="underline"' : ''} data-o="${esc(n.id)}">${esc(fit(n.label ?? '', CL.name, max / slant))}</text>`);
   out.push(`<g class="c-head" data-band="${r2(y)} ${r2(y + head)}">${hd.join('')}</g>`);
   let top = y + head;
   comps.forEach((C, i) => { const bh = i === comps.length - 1 ? Math.max(y + h - top, 0) : tall(C), at = j => top + CL.gap - 1 + j * CL.rl + 11.5;

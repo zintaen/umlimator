@@ -1,7 +1,8 @@
 // Checks the target examples against docs/diagrams/model.md: node docs/diagrams/examples/check.mjs
 // Structure only: the library's typed core checks (ids, types, ownership, ends), then what model.md says of each type
-// (diagram names, props that name elements, sequence and timing order). It draws nothing. An example whose type draws
-// moves to examples/ (plan.md §2, item 10) and is listed in MOVED, where it is checked as before.
+// (diagram names, props that name elements, timing order), then a registered type's own validators' errors (a sequence's
+// order is the type's: notes/spike-sequence.md risk 4.8). It draws nothing. An example whose type draws moves to examples/
+// (plan.md §2, item 10) and is listed in MOVED, where it is checked as before.
 // What a registered type's props
 // name comes from its own declaration (the registry's `refs`); model.md's hand list covers the types not registered yet.
 import { readdirSync, readFileSync } from 'node:fs';
@@ -9,6 +10,7 @@ import { fileURLToPath } from 'node:url';
 import { typedProblems } from '../../../src/core/model.js';
 import { diagramOf } from '../../../src/core/registry.js';
 import '../../../src/uml/class.js'; // registers uml.class
+import '../../../src/uml/sequence.js'; // registers uml.sequence
 
 const DIAGRAMS = ['uml.class', 'uml.object', 'uml.package', 'uml.composite-structure', 'uml.component', 'uml.deployment', 'uml.profile',
   'uml.use-case', 'uml.activity', 'uml.state-machine', 'uml.sequence', 'uml.communication', 'uml.interaction-overview', 'uml.timing',
@@ -50,16 +52,8 @@ export function check(model, expected) {
     const at = `view ${v.id}`, ok = expected === 'c4' ? C4.includes(v.diagram) : DIAGRAMS.includes(v.diagram) || C4.includes(v.diagram);
     if (!ok) say(`${at}: diagram ${JSON.stringify(v.diagram)} is not one of model.md's`);
     if (v.parent != null && !vids.has(v.parent)) say(`${at}: parent ${v.parent} is not a view`);
-    if (v.diagram === 'uml.sequence') { // an occurrence's parent is an operand, and an operand's occurrences (messages and
-      // interaction uses, one ordered list in edges) are next to each other in time
-      const ops = new Map(arr(v.fragments).flatMap(f => arr(f.members).map(o => [o.id, f]))), msgs = inline(v); // an operand's id, and its fragment
-      const inside = (m, o) => { for (let p = m.parent; p != null; p = (ops.get(p) || {}).parent) if (p === o) return true; return false; };
-      msgs.forEach(m => { if (m.parent != null && !ops.has(m.parent)) say(`${m.id}: its parent ${m.parent} is not an operand of ${at}`); });
-      ops.forEach((f, o) => { const i = msgs.map((m, k) => (inside(m, o) ? k : -1)).filter(k => k >= 0);
-        if (i.length && i[i.length - 1] - i[0] + 1 !== i.length) say(`operand ${o}: its occurrences are not next to each other in time`); });
-      msgs.forEach(m => { const c = arr((m.props || {}).covers).map(id => arr(v.nodeIds).indexOf(id)).sort((a, b) => a - b); // covers: lifelines next to each other
-        if (c.length && (c[0] < 0 || c[c.length - 1] - c[0] + 1 !== c.length)) say(`${m.id}: its covers are not lifelines next to each other in nodeIds`); });
-    }
+    const VT = diagramOf(v); // a registered type's rules: its errors (a sequence's operands, order and covers among them)
+    if (VT && VT.validate && VT.validate.length >= 2) VT.validate(model, v).forEach(p => { if (p.level === 'error') say(`${p.path}: ${p.message}`); });
     const t = v.timeline; // a timing view: each change is on a lifeline of the view, in one of its states, no earlier than the one before
     if (t) { const last = {}, changes = new Set(arr(t.changes).map(c => c.id));
       arr(t.changes).forEach(c => { const n = arr(v.nodeIds).includes(c.lifeline) && N.get(c.lifeline);

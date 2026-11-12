@@ -82,7 +82,7 @@
       "nodeIds": ["sales", "customer", "order", "line", "book", "payable", "payment", "card-payment", "status", "money", "note-total"],
       "layout": { "order": [1, 0] },
       "present": { "book": { "collapsed": ["operations"] } } },
-    { "id": "payments", "diagram": "uml.class", "title": "Payments only", "parent": "domain", "direction": "down",
+    { "id": "payments", "diagram": "uml.class", "title": "Payments only", "parent": "domain", "subject": "sales", "direction": "down",
       "nodeIds": ["order", "payable", "payment", "card-payment"],
       "present": { "order": { "collapsed": ["attributes", "operations"] } } }
   ]

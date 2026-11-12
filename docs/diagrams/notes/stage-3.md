@@ -73,6 +73,12 @@ S14, how the freed bytes are shared:
 | (b) First come, first served | Nothing to decide | A stage that merges later may find no room |
 | (c) Stage 3 adds no core code | No budget question | Key rings, line selection and the `autoPos` skip cannot be done, and definition of done items 4 and 8 fail |
 
+**The maintainer's decision, 12 Nov 2026 (amends the above).** `src/canvas/edit.js` stays in the core and keeps what it
+did in 0.17.0. 3.4's new editing code is in `src/typed/edit.js`, in `ALL` only, and fills a slot (`TYPED.edit`) as
+`src/typed/` fills the layout's; the core's `addLine` hands a hook's result to `I.ran`, which that file fills. 3.4 added
+836 B to the core (`gzip -9`), 12.93% over 0.16.0. A type whose layout reads no ranked positions may say so, and the
+router's rip-up may be skipped for it, so that 3.5 meets P1 on CI (the maintainer's choice, after 3.4).
+
 ## 3. The time-axis layout (S1)
 
 ### 3.1 Options
@@ -184,7 +190,7 @@ A sequence's `geo.order`: heads left to right, then the occurrences in time orde
 Accessible names (A1):
 
 - A head: "Lifeline api : ShopApi".
-- A message: "Message 4 of 10: api to payments, charge(total), call, in alt, payment accepted".
+- A message: "Message 5 of 10: payments to api, paid, reply, in alt, payment accepted" (m5, the first in the alt; m4, sent before it, has no "in" part).
 - A fragment: "Combined fragment alt, 2 operands".
 - An operand: "Operand payment accepted of alt, 3 occurrences".
 - A use: "Interaction use Send receipt email, over api to receipt".
