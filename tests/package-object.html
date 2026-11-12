@@ -44,6 +44,9 @@ try {
     const tabs = [...nodes.filter(g => g.querySelector('.n-det') && g.dataset.shape === 'package').map(g => [g.dataset.id, box(g.querySelector('.n-det'))]),
       ...all('.family').map(g => { const [x, y, r, t] = nums(g.querySelector('.pk-tab').getAttribute('d')); return [g.dataset.family, { x, y: t, w: r - x, h: y - t }]; })]; // M x y H r V t
     Object.entries(B).forEach(([a, p]) => Object.entries(B).forEach(([b, q]) => { if (a < b && meets(p, q)) bad.push(`${a}/${b} overlap`); }));
+    // text measured unhinted: fit into 1200 px, the right-hand stress view is drawn at a tenth of its size, and Linux's
+    // hinting at that pixel size doubles a name's getBBox height, a spill no reader at any zoom sees
+    svg.style.textRendering = 'geometricPrecision';
     nodes.forEach(g => { const n = B[g.dataset.id]; g.querySelectorAll('[data-band]').forEach(band => { const [t, b] = band.dataset.band.split(' ').map(Number);
       band.querySelectorAll('text').forEach(x => { const r = x.getBBox(); if (r.x < n.x + 1 || r.x + r.width > n.x + n.w - 1 || r.y < t - .5 || r.y + r.height > b + .5) bad.push(`${g.dataset.id}: "${x.textContent}" spills`); }); }); });
     Object.entries(F).forEach(([f, r]) => { Object.entries({ ...B, ...F }).forEach(([n, b]) => { if (n !== f && inside(b, r) !== holds(f, n)) bad.push(`${f} ${holds(f, n) ? 'lacks' : 'covers'} ${n}`); });
