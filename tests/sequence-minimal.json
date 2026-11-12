@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 2,
+  "title": "Sequence: the smallest view",
+  "root": "v",
+  "nodes": [
+    { "id": "client", "type": "uml.Lifeline", "label": "client", "props": { "represents": "Client" } },
+    { "id": "server", "type": "uml.Lifeline", "label": "server", "props": { "represents": "Server" } }
+  ],
+  "edges": [],
+  "views": [
+    { "id": "v", "diagram": "uml.sequence", "title": "A call and its reply", "parent": null,
+      "nodeIds": ["client", "server"],
+      "edges": [
+        { "id": "get", "type": "uml.Message", "from": "client", "to": "server", "label": "get(id)", "props": { "sort": "call" } },
+        { "id": "got", "type": "uml.Message", "from": "server", "to": "client", "label": "item", "props": { "sort": "reply", "replyTo": "get" } }
+      ] }
+  ]
+}

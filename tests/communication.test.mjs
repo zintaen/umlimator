@@ -1,7 +1,8 @@
 // The communication diagram, uml.communication (work package 3.5, notes/stage-3.md §6): its definition, the stacks of
 // messages on a link (S7) and their numbers (S8), the validators, describe(), the reading order, the editing hooks through
-// apply(), a session undone and redone, and §10's budgets. The fixtures live in tests/communication.html, which draws them
-// in Chrome in both themes and three fonts; here they are laid out with the monospace estimate (no measurer in Node).
+// apply(), a session undone and redone, and §10's budgets. The fixtures are tests/communication-minimal.json and
+// communication-stress.json; tests/communication.html draws them in Chrome in both themes and three fonts; here they
+// are laid out with the monospace estimate (no measurer in Node).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -15,8 +16,7 @@ import { validate } from '../src/map/validate.js';
 import { describe } from '../src/map/insight.js';
 import { commProblems, commConnect, commMoveTo, commAdd, commRemove } from '../src/uml/communication.js';
 
-const PAGE = readFileSync(new URL('./communication.html', import.meta.url), 'utf8');
-const block = id => JSON.parse(new RegExp(`<script type="application/json" id="${id}">([\\s\\S]*?)</script>`).exec(PAGE)[1]);
+const block = id => JSON.parse(readFileSync(new URL(`./communication-${id}.json`, import.meta.url), 'utf8'));
 const MINIMAL = block('minimal'), STRESS = block('stress');
 const EX = JSON.parse(readFileSync(new URL('../examples/checkout-communication.json', import.meta.url), 'utf8'));
 const VIEW = m => m.views[0], errors = m => validate(m).filter(p => p.level === 'error');
