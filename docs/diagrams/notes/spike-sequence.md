@@ -9,6 +9,15 @@ maintainer's to take.
 **Applied** 12 Nov 2026: the maintainer accepted §2.1 to §2.3; §5's items 1 to 3 are in `src/core/registry.js`,
 `model.md` and `src/core/apply.js`, with P4 to P11 as tests (`tests/spike-sequence.test.mjs`). Item 4 is stage 3's.
 
+**Where [`stage-3.md`](stage-3.md) departs from this note** (approved 12 Nov 2026, its §14):
+
+- `frame()` lives in `src/uml/frame.js`, and `kit` is unchanged (its S2);
+- `layout.directions` and `layout.bake` are dropped (its §4.1);
+- frames and stems are hit as nodes, and a stem's strip is cut around messages (its S2, S3);
+- `edits.add` and `edits.remove` are new hooks, and `wraps` is a new field (its §4.1);
+- slots gain `after`, and geometry gains `geo.order` (its §3.2, S13);
+- the refusal in §3 below waits for the reference store (D7), which no stage builds yet (its S5).
+
 ## 0. What was built, and what it showed
 
 - `spike/sequence.js` (about 170 lines): a time-axis layout, `layoutSequence(model, viewId)`, and a draw hook,

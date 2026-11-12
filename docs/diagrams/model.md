@@ -36,9 +36,13 @@ Check the examples against this page with `node docs/diagrams/examples/check.mjs
    model. Views keep their own, because a
    view may share a card's id on purpose (the card then opens it). Ids are opaque, chosen by the host or the reader,
    and never contain `->` (today's positional line ids do). Every typed edge has an id.
-6. **`parent`** is ownership, and nesting on the picture:
+6. **`parent`** is ownership:
    - on a node: the node or member that holds it (a package, a composite state or its region, a lane, a group);
    - on a message, an interaction use or a fragment in a sequence view: the operand it lies in.
+
+   A type draws a node's `parent` as nesting where it names boxes (stage 2's `boxes`,
+   [`notes/stage-2.md`](notes/stage-2.md) §4). A sequence view places its operands on the time axis, not as boxes
+   ([`notes/stage-3.md`](notes/stage-3.md) §4.2).
 7. **Edge ends.** Properties of an end live in `props.ends.from` and `props.ends.to` (role, multiplicity,
    aggregation, navigability). When the end is a port or parameter reached through a part, `props.ends.<end>.part`
    names the part, as UML's `partWithPort` does.
@@ -79,6 +83,12 @@ Check the examples against this page with `node docs/diagrams/examples/check.mjs
   "fragments": [ ], "timeline": { } }     // sections a diagram type declares (sequence, timing)
 ```
 
+On a class, package or object view, `subject` names the package whose inside the view shows. An element whose owners
+are not all shown is drawn with the hidden owners' names joined by `::`: from its owner on the picture (its nearest
+shown owner that may be a box); with none, from the `subject` when that is one of its owners, else from the top
+(`payments::card::CardPayment`). The `subject` is not drawn unless `nodeIds` lists it; then it is a box
+holding the rest ([`notes/stage-2.md`](notes/stage-2.md) §2, §6).
+
 ### The model
 
 ```jsonc
@@ -97,8 +107,8 @@ file is then updated with it.
 | # | `diagram` | Nodes | Members | Edges | Notes |
 |---|---|---|---|---|---|
 | 1 | `uml.class` | `uml.Class`, `uml.Interface`, `uml.Enumeration`, `uml.DataType`, `uml.PrimitiveType`, `uml.Package`, `uml.Comment` | `uml.Property`, `uml.Operation`, `uml.EnumerationLiteral` | `uml.Association`, `uml.Generalization`, `uml.InterfaceRealization`, `uml.Dependency`, `uml.CommentLink` | Class props: `isAbstract`, `stereotypes`. Property props: `visibility`, `valueType`, `multiplicity`, `default`, `isStatic`, `isDerived`. Operation props: `visibility`, `parameters` (`[{ name, valueType, direction }]`), `returnType`, `isStatic`, `isAbstract` |
-| 2 | `uml.object` | `uml.InstanceSpecification` | `uml.Slot` | `uml.Link` | Instance props: `classifier`. Slot: `label` is the feature, `props.value` its value, as text. A link may name its association in `props.association` |
-| 3 | `uml.package` | `uml.Package`, any classifier | | `uml.PackageImport`, `uml.PackageMerge`, `uml.Dependency` | Nesting is `parent`. PackageImport props: `visibility` |
+| 2 | `uml.object` | `uml.InstanceSpecification`, `uml.Comment` | `uml.Slot` | `uml.Link`, `uml.CommentLink` | Instance: `label` is its name and may be left out (an anonymous instance); `props.classifier`, text (M8); `props.stereotypes`. Slot: `label` is the feature, `props.value` its value as text, which may be left out. Link: `label` is its name; `props.association`, text; `props.ends.<end>.role`. An instance's owner is a package ([`notes/stage-2.md`](notes/stage-2.md) §2) |
+| 3 | `uml.package` | `uml.Package`, the classifiers of row 1, `uml.Comment` | | `uml.PackageImport`, `uml.PackageMerge`, `uml.Dependency`, `uml.CommentLink` | Nesting is `parent`. PackageImport `props.visibility`: `public` (the default, drawn «import») or `private` (drawn «access»). Package `props.stereotypes`. A classifier's or package's owner is a package ([`notes/stage-2.md`](notes/stage-2.md) §2) |
 | 4 | `uml.composite-structure` | `uml.Class` (the `subject`), `uml.Collaboration`, `uml.CollaborationUse` | `uml.Property` (a part, drawn as a box here), `uml.Port` | `uml.Connector`, `uml.RoleBinding` | Part props: `valueType`, `multiplicity`, `aggregation`. Connector ends may carry `part`. The `subject` is listed in `nodeIds`; the classes that type its parts are model nodes this view does not list. Collaboration use props: `collaboration`. A role binding runs from the part to the collaboration use, and its `label` is the role's name |
 | 5 | `uml.component` | `uml.Component`, `uml.Interface`, `uml.Artifact` | `uml.Port` | `uml.InterfaceRealization` (provided), `uml.Usage` (required), `uml.Connector` (`props.kind`: `assembly` or `delegation`), `uml.Dependency`, `uml.Manifestation` | `present.<interface>.as: "ball"` draws lollipop and socket. A provided or required interface may start at a component or at one of its ports |
 | 6 | `uml.deployment` | `uml.Node`, `uml.Device`, `uml.ExecutionEnvironment`, `uml.Artifact`, `uml.DeploymentSpecification`, `uml.Component` (what an artifact manifests) | | `uml.Deployment`, `uml.Manifestation`, `uml.CommunicationPath`, `uml.Dependency` | An artifact whose `parent` is a node is deployed on it |
@@ -106,8 +116,8 @@ file is then updated with it.
 | 8 | `uml.use-case` | `uml.Actor`, `uml.UseCase`, `uml.Subject` | `uml.ExtensionPoint` | `uml.Association`, `uml.Include`, `uml.Extend` (`props.extensionPoints`, `props.condition`), `uml.Generalization` | Use cases have the subject as `parent` |
 | 9 | `uml.activity` | `uml.InitialNode`, `uml.ActivityFinalNode`, `uml.FlowFinalNode`, `uml.Action`, `uml.CallBehaviorAction`, `uml.SendSignalAction`, `uml.AcceptEventAction`, `uml.DecisionNode`, `uml.MergeNode`, `uml.ForkNode`, `uml.JoinNode`, `uml.ObjectNode`, `uml.DataStoreNode`, `uml.ActivityPartition` | | `uml.ControlFlow`, `uml.ObjectFlow` | A flow's guard is `props.guard`. A node's partition is its `parent`. A call behaviour action opens a view |
 | 10 | `uml.state-machine` | `uml.State`, `uml.Pseudostate`, `uml.FinalState` | `uml.Region`, `uml.InternalTransition` | `uml.Transition` | State props: `entry`, `do`, `exit`. Pseudostate `props.kind`: `initial`, `choice`, `junction`, `fork`, `join`, `shallowHistory`, `deepHistory`, `terminate`. Transition and internal transition props: `trigger`, `guard`, `effect`. A substate's or pseudostate's `parent` is the state, or one of its regions; at the top it has none |
-| 11 | `uml.sequence` | `uml.Lifeline` | | `uml.Message` | `nodeIds` orders lifelines; `edges` orders the view's occurrences: its messages and interaction uses, inline, in time order. Lifeline props: `represents`. Message props, the same on rows 12 and 14: `sort` (`call`, `async`, `reply`, `create`, `delete`) and `replyTo`; several replies name one call only across the operands of one `alt`. `uml.InteractionUse` (in `edges`, not a line): `parent`, `props.refersTo`, `props.covers` (lifelines next to each other in `nodeIds`). `fragments`: `uml.CombinedFragment` (`props.operator`) with `uml.InteractionOperand` members (`label` is the guard), each taking its place from what it holds. An occurrence or a fragment in an operand has that operand as `parent`. A lifeline is created at most once and deleted at most once. Activations are derived (below) |
-| 12 | `uml.communication` | `uml.Lifeline` | | `uml.Connector`, `uml.Message` | Messages are model edges; the view's `edges` lists the connectors, then the messages in time order. Numbers are derived. A message is drawn on the connector that joins its two lifelines; a self message needs a connector from the lifeline to itself |
+| 11 | `uml.sequence` | `uml.Lifeline` | | `uml.Message` | `nodeIds` orders lifelines; `edges` orders the view's occurrences: its messages and interaction uses, inline, in time order. Lifeline props: `represents`. Message props, the same on rows 12 and 14: `sort` (`call`, `async`, `reply`, `create`, `delete`) and `replyTo`; several replies name one call only across the operands of one `alt`. `uml.InteractionUse` (in `edges`, not a line): `parent`, `props.refersTo`, `props.covers` (lifelines next to each other in `nodeIds`). `fragments`: `uml.CombinedFragment` (`props.operator`) with `uml.InteractionOperand` members (`label` is the guard), each taking its place from what it holds. An occurrence or a fragment in an operand has that operand as `parent`. A fragment's content, nested fragments' included, is one run in `edges`, operand by operand in `members` order. A lifeline is created at most once and deleted at most once. Activations are derived (below). Settled in [`notes/stage-3.md`](notes/stage-3.md) §4 |
+| 12 | `uml.communication` | `uml.Lifeline` | | `uml.Connector`, `uml.Message` | Messages are model edges; the view's `edges` lists the connectors, then the messages in time order. Only the messages' order means anything. Numbers are derived: a message's number is its place among the messages sent in the activation it is sent from, replies included (`1.1.2.1`). A message is drawn on the connector that joins its two lifelines; a self message needs a connector from the lifeline to itself. Settled in [`notes/stage-3.md`](notes/stage-3.md) §6 |
 | 13 | `uml.interaction-overview` | `uml.InitialNode`, `uml.ActivityFinalNode`, `uml.DecisionNode`, `uml.MergeNode`, `uml.ForkNode`, `uml.JoinNode`, `uml.InteractionUse`, `uml.Interaction` | | `uml.ControlFlow` | An interaction use or inline interaction names its sequence view in `opensView`; those views, with their lifelines and messages, are in the same model |
 | 14 | `uml.timing` | `uml.Lifeline` | | `uml.Message` | Lifeline `props.states`. `timeline`: `unit`, `changes` (`[{ id, lifeline, at, state }]`), `constraints` (`[{ id, type, from, to, label }]`, types `uml.DurationConstraint`, `uml.TimeConstraint`; a time constraint has `from` only). Messages are inline, as in a sequence view, with `sentAt` and `receivedAt` |
 
@@ -154,9 +164,10 @@ file is then updated with it.
 | Stage | Point |
 |---|---|
 | 1 | Settled in [`notes/stage-1.md`](notes/stage-1.md): row heights are per row (§4); `present.collapsed` hides a compartment and `present.<id>.rows` shows "+n more" (§5) |
-| 1 (spike), 3 | Settled by [`notes/spike-sequence.md`](notes/spike-sequence.md) §2.1, accepted 12 Nov 2026 (the stage 3 note adopts it): the order of things in a sequence that are not messages is one ordered list, `edges`, and `props.after` is gone; an empty operand keeps one empty row |
-| 3 | Settled by the same note, §2.2: a sequence view's messages are inline, and a communication view keeps its own (row 12) |
-| 3 | Settled by the same note, §2.3: activations nest by intervals (the five rules under the tables) |
+| 2 | Settled in [`notes/stage-2.md`](notes/stage-2.md): which shown package is a box (§4); qualified names and `subject` (§6); lines at a box (§7); class views draw packages as boxes from 0.19.0 (§10.1) |
+| 1 (spike), 3 | Settled by [`notes/spike-sequence.md`](notes/spike-sequence.md) §2.1, accepted 12 Nov 2026 and adopted by [`notes/stage-3.md`](notes/stage-3.md): the order of things in a sequence that are not messages is one ordered list, `edges`, and `props.after` is gone; an empty operand keeps one empty row |
+| 3 | Settled by the spike note, §2.2, adopted by [`notes/stage-3.md`](notes/stage-3.md): a sequence view's messages are inline, and a communication view keeps its own (row 12) |
+| 3 | Settled by the spike note, §2.3, adopted by [`notes/stage-3.md`](notes/stage-3.md): activations nest by intervals (the five rules under the tables) |
 | 4 | A transition that starts or ends on a region's border; entry and exit points are out of the subset |
 | 5 | Ports on parts: `ends.<end>.part` against a path form; where a port sits is `present.<port>.side` and its order on that side |
 | 5 | Whether a provided interface is always an `uml.Interface` node drawn as a ball, or may be a port's property |
