@@ -177,7 +177,7 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
   cols.forEach(c => { const ns = nodes.filter(n => n.col === c && !n.aside); if (ns.length) colW[c] = Math.max(...ns.map(n => n.w)); });
   // a labelled line between neighbouring columns gets a gap wide enough for its label and 27 px of line on each side (a
   // numbered line with no label: for its step mark). A typed view's too, so lines between one pair keep their own labels (risks.md F2)
-  const gapAfter = {}, colOf = {}, boxOf = id => ((dg.containers || []).filter(f => (f.nodeIds || []).includes(id)).pop() || {}).id; if ((map || dg.typed) && !dg.abs) { nodes.forEach(n => colOf[n.id] = n.col);
+  const gapAfter = {}, colOf = Object.create(null), boxOf = id => ((dg.containers || []).filter(f => (f.nodeIds || []).includes(id)).pop() || {}).id; if ((map || dg.typed) && !dg.abs) { nodes.forEach(n => colOf[n.id] = n.col);
     // labelled lines that leave (or reach) one card side by side run 16 px apart, too close for their pills to stack,
     // so the pills sit next to each other: the gap fits them all, with 6 px between pills
     const sum = {};
@@ -210,18 +210,23 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
   else place();
   // Family frames enclose ordinary cards, so clicks, ports and focus keep their existing owners.
   // Children contribute their entire frame to their parent's bounds, rather than just their cards.
-  const familyDefs = dg.containers || [], tagged = n => map && (n.author || n.k === 'm-ext'); // tagged: a name tag hangs under the card
-  const framesNow = () => { const cache = {};
+  // A typed view's boxes (notes/stage-2.md §3.2) take the same code as a map's: their title is the type's (`title`), and a box
+  // grows to hold it; laid out turned (direction down), the 24 px header room goes left, the side that becomes the top
+  const familyDefs = dg.containers || [], tagged = n => map && (n.author || n.k === 'm-ext'), TB = !map && dg.turned; // tagged: a name tag hangs under the card
+  const headW = f => textW(!map && f.title || f.label || f.id, 11) + 16; // a box's title, as the audit measures it
+  const framesNow = () => { const cache = Object.create(null); // a box may be named 'constructor'
     const frameOf = (f, trail = new Set()) => {
       if (cache[f.id]) return cache[f.id];
       if (trail.has(f.id)) return null;
       const next = new Set([...trail, f.id]);
       const children = familyDefs.filter(c => c.parent === f.id).map(c => frameOf(c, next)).filter(Boolean);
       const members = (f.nodeIds || []).map(id => byId[id]).filter(Boolean);
-      const rects = [...members.map(n => ({x:n.x - 36,y:n.y - 14,w:n.w + 72,h:n.h + 44 + (tagged(n) ? 14 : 0)})), ...children];
+      const rects = [...members.map(n => TB ? { x: n.x - 14, y: n.y - 36, w: n.w + 44, h: n.h + 72 } : {x:n.x - 36,y:n.y - 14,w:n.w + 72,h:n.h + 44 + (tagged(n) ? 14 : 0)}), ...children];
       if (!rects.length) return null;
-      const p = 12, x = Math.min(...rects.map(r => r.x)) - p, y = Math.min(...rects.map(r => r.y)) - p - 24;
-      return cache[f.id] = {...f, x, y, w:Math.max(...rects.map(r => r.x+r.w)) + p - x, h:Math.max(...rects.map(r => r.y+r.h)) + p - y};
+      const p = 12, x = Math.min(...rects.map(r => r.x)) - p - (TB ? 24 : 0), y = Math.min(...rects.map(r => r.y)) - p - (TB ? 0 : 24);
+      const b = {...f, x, y, w:Math.max(...rects.map(r => r.x+r.w)) + p - x, h:Math.max(...rects.map(r => r.y+r.h)) + p - y};
+      if (!map) b[TB ? 'h' : 'w'] = Math.max(b[TB ? 'h' : 'w'], headW(f) + 16);
+      return cache[f.id] = b;
     };
     const out = familyDefs.map(f => frameOf(f)).filter(Boolean);
     if (map) out.forEach(f => { // the box fits its title and its badges, which are tabs on its top border, at the right
@@ -232,17 +237,19 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
   };
   // Boxes keep apart: a column (row) gap widens wherever a box would come within 32 px of another box, or of a card outside
   // it, so their borders never touch and a line can run between them. Frames are measured again until nothing is too close.
-  if (map && !dg.abs && familyDefs.length) for (let pass = 0, BOXGAP = 32; pass < 4; pass++) {
+  if (!dg.abs && familyDefs.length) for (let pass = 0, BOXGAP = 32; pass < 4; pass++) {
     const within = (a, b) => a.x >= b.x && a.y >= b.y && a.x + a.w <= b.x + b.w && a.y + a.h <= b.y + b.h;
     const span = ns => ns.length ? { c0: Math.min(...ns.map(n => n.col)), c1: Math.max(...ns.map(n => n.col)), r0: Math.min(...ns.map(n => n.row)), r1: Math.max(...ns.map(n => n.row)) } : null;
     const fr = framesNow().map(f => ({ ...f, s: span(nodes.filter(n => within(n, f))) })).filter(f => f.s);
     const cards = nodes.map(n => ({ x: n.x, y: n.y, w: n.w, h: n.h + (tagged(n) ? 14 : 0), s: span([n]) }));
     const wantX = {}, wantY = {}, want = (o, k, v) => { if (v > 0) o[k] = Math.max(o[k] || 0, Math.ceil(v)); };
+    const at = v => map ? Math.floor(v) : v; // the room goes after that row; a typed view's: after a half row too, so a card on row .5 leaves a box on 1.5
+    // a column's room goes after a whole column k (gap(k) reads no other), and moves a column c in (k, k + 1) by c - k of it
     fr.forEach((A, i) => [...fr.slice(i + 1), ...cards].forEach(B => {
       if (within(A, B) || within(B, A) || !hit(A, B, BOXGAP)) return;
       const a = A.s, b = B.s;
-      if (a.c1 < b.c0 || b.c1 < a.c0) { const [L, R] = a.c1 < b.c0 ? [A, B] : [B, A]; want(wantX, Math.floor(L.s.c1), L.x + L.w + BOXGAP - R.x); }
-      else if (a.r1 < b.r0 || b.r1 < a.r0) { const [T, U] = a.r1 < b.r0 ? [A, B] : [B, A]; want(wantY, Math.floor(T.s.r1), T.y + T.h + BOXGAP - U.y); }
+      if (a.c1 < b.c0 || b.c1 < a.c0) { const [L, R] = a.c1 < b.c0 ? [A, B] : [B, A], k = Math.floor(L.s.c1); want(wantX, k, (L.x + L.w + BOXGAP - R.x) / (Math.min(1, R.s.c0 - k) - L.s.c1 + k)); }
+      else if (a.r1 < b.r0 || b.r1 < a.r0) { const [T, U] = a.r1 < b.r0 ? [A, B] : [B, A]; want(wantY, at(T.s.r1), T.y + T.h + BOXGAP - U.y); }
     }));
     if (!Object.keys(wantX).length && !Object.keys(wantY).length) break;
     Object.entries(wantX).forEach(([k, v]) => { extraX[k] = (extraX[k] || 0) + v; }); Object.entries(wantY).forEach(([k, v]) => { extraY[k] = (extraY[k] || 0) + v; });
@@ -287,9 +294,10 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
      route exists; earlier labels are obstacles, so later routes keep clear of them. */
   // an end may be a container: the line ends on its box's border, whose title the ports keep clear of (not a box and
   // something inside it: that has no line)
-  const boxEnd = map ? Object.fromEntries(families.map(f => [f.id, { id: f.id, label: f.label || f.id, box: true, x: f.x, y: f.y, w: f.w, h: f.h,
-    decoT: [[f.x + 8, Math.min(f.w - 16, textW(f.label || f.id, 11) + 16)], ...(f.tabs || []).map(t => [t.x - 6, t.w + 12])], decoB: [] }])) : {};
-  const end = id => byId[id] || boxEnd[id], holds = (b, n) => b.box && n !== b && n.x >= b.x && n.y >= b.y && n.x + n.w <= b.x + b.w && n.y + n.h <= b.y + b.h;
+  const headOf = f => Math.min((TB ? f.h : f.w) - 16, headW(f)); // the length of a box's title along its header
+  const boxEnd = Object.fromEntries(families.map(f => [f.id, { id: f.id, label: f.label || f.id, box: true, x: f.x, y: f.y, w: f.w, h: f.h, hd: TB ? headOf(f) : 0,
+    decoT: TB ? [] : [[f.x + 8, headOf(f)], ...(f.tabs || []).map(t => [t.x - 6, t.w + 12])], decoB: [] }]));
+  const endOf = Object.assign(Object.create(null), boxEnd, byId), end = id => endOf[id], holds = (b, n) => b.box && n !== b && n.x >= b.x && n.y >= b.y && n.x + n.w <= b.x + b.w && n.y + n.h <= b.y + b.h;
   const edges = (dg.edges || []).filter(e => { const s = end(e.from), t = end(e.to); if (!s || !t || (e.from === e.to && !loops[e.from])) return false;
     if (holds(s, t) || holds(t, s)) { warn(`no line for edge ${e.id ?? e.from + '->' + e.to}: it joins the box "${(holds(s, t) ? s : t).id}" and something inside it`); return false; }
     return true; }).map(e => ({ ...e, s: end(e.from), t: end(e.to) }));
@@ -357,8 +365,10 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
     if (n.box) { // each port in line with its line's other end where the border allows (a straight line): below the title on
       // a side, off the title, tabs and corners on top or bottom; in that order, 16 (26) px apart
       const want = it => { const q = it.e.s === n ? it.e.p2 : it.e.p1, o = it.other; return q ? q[vertical ? 1 : 0] : vertical ? o.y + o.h / 2 : o.x + o.w / 2; };
-      const sp = vertical ? [n.y + 40, n.y + n.h - 16] : sideSpan(n, side) || [n.x, n.x + n.w];
-      let lo = vertical ? sp[0] : Math.max(sp[0], n.x + 20), hi = vertical ? sp[1] : Math.min(sp[1], n.x + n.w - 20); if (hi < lo) lo = hi = (lo + hi) / 2;
+      // (turned: the title runs down the left side, and the sides across the header room are the top and bottom)
+      const across = TB ? !vertical : vertical, a0 = vertical ? n.y : n.x, len = vertical ? n.h : n.w;
+      const sp = across ? [a0 + 40, a0 + len - 16] : TB ? [side === 'L' ? n.y + n.hd + 16 : n.y, n.y + n.h] : sideSpan(n, side) || [n.x, n.x + n.w];
+      let lo = across ? sp[0] : Math.max(sp[0], a0 + 20), hi = across ? sp[1] : Math.min(sp[1], a0 + len - 20); if (hi < lo) lo = hi = (lo + hi) / 2;
       const ws = list.map(want), order = list.map((_, i) => i).sort((a, b) => ws[a] - ws[b]), gap = Math.min(vertical ? 16 : 26, (hi - lo) * 0.84 / list.length);
       const v = order.map(i => Math.min(hi, Math.max(lo, ws[i])));
       for (let k = 1; k < v.length; k++) v[k] = Math.max(v[k], v[k - 1] + gap);
@@ -432,9 +442,9 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
     const keep = new Set([st[0], en[0], st[1], en[1]]);
     avoid.forEach(([a, b]) => { if (a[0] === b[0]) keep.add(a[0]); else keep.add(a[1]); }); // a route's own line is never merged away
     const co = vals => vals.filter(v => !W || keep.has(v) || true).sort((a, b) => a - b).filter((v, i, s) => i === 0 || keep.has(v) || v - s[i - 1] >= 5);
-    if (map) families.forEach(f => { xs.add(f.x - 16); xs.add(f.x + f.w + 16); ys.add(f.y - 16); ys.add(f.y + f.h + 16); });
+    families.forEach(f => { xs.add(f.x - 16); xs.add(f.x + f.w + 16); ys.add(f.y - 16); ys.add(f.y + f.h + 16); });
     let X = co([...xs]), Y = co([...ys]);
-    if (map) { const far = (v, bs) => keep.has(v) || bs.every(u => Math.abs(v - u) >= 8);
+    if (families.length) { const far = (v, bs) => keep.has(v) || bs.every(u => Math.abs(v - u) >= 8);
       X = X.filter(v => far(v, families.flatMap(f => [f.x, f.x + f.w]))); Y = Y.filter(v => far(v, families.flatMap(f => [f.y, f.y + f.h]))); }
     if (W) { X = X.filter(v => keep.has(v) || (v >= W.x && v <= W.x2)); Y = Y.filter(v => keep.has(v) || (v >= W.y && v <= W.y2)); }
     const nx = X.length, ny = Y.length, N = nx * ny;
@@ -618,7 +628,7 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
   const runRouting = order => {
     routed.length = 0; reserved.length = 0; placed.length = 0; stats = {};
     (dg.blocks || []).forEach(b => { reserved.push(b); placed.push(b); });
-    if (map) families.forEach(f => { const h = { x: f.x + 8, y: f.y + 3, w: Math.min(f.w - 16, textW(f.label || f.id, 11) + 16), h: 22 }; reserved.push(h); placed.push(h);
+    families.forEach(f => { const h = TB ? { x: f.x + 3, y: f.y + 8, w: 22, h: headOf(f) } : { x: f.x + 8, y: f.y + 3, w: headOf(f), h: 22 }; reserved.push(h); placed.push(h);
       placed.push(...[{ x: f.x, y: f.y - 3, w: f.w, h: 6 }, { x: f.x, y: f.y + f.h - 3, w: f.w, h: 6 }, { x: f.x - 3, y: f.y, w: 6, h: f.h }, { x: f.x + f.w - 3, y: f.y, w: 6, h: f.h }].map(r => ({ ...r, band: true }))); }); // lane headers and arrows stay clear
     edges.filter(e => e.fixed).forEach(e => { routed.push(e); if (e.under || e[OWN_ROUTE]) { placeLabel(e); stats[e.how] = (stats[e.how] || 0) + 1; return; } if (e.lbl) { placed.push(e.lbl); reserved.push({ x: e.lbl.x - 3, y: e.lbl.y - 3, w: e.lbl.w + 6, h: e.lbl.h + 6 }); } stats.comb = (stats.comb || 0) + 1; });
     order.forEach(e => {

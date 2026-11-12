@@ -11,7 +11,9 @@ import { arrOf, validate } from '../map/validate.js';
    core.Node and core.Line: a typed view's lines are typed, or validate() refuses them.
 
    Keys on a typed view: F2 renames, N adds the palette's first element, L connects (arrows or type a name, Enter),
-   Alt + arrows move the card's pin, Delete hides it from this view, Shift + Delete deletes it from the model. */
+   Alt + arrows move the card's pin, Delete hides it from this view, Shift + Delete deletes it from the model. A box the type
+   gives (registry.js boxes) is selected as a container and takes F2, Delete and the panel as a card does; a card dropped in
+   another box, or the Owner field, gives it a new owner (reparent). */
 
 const GENERIC_NODE = { type: 'core.Node', label: 'Node' }, GENERIC_LINE = { type: 'core.Line', label: 'Line' };
 const isRec = x => x !== null && typeof x === 'object' && !Array.isArray(x);
@@ -53,14 +55,19 @@ function typedEditor(api) {
     const b = String(base).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'el'; let k = 1; while (used.has(b + k)) k++; return b + k; };
   const typeOf = x => typeof x.type === 'string' && x.type ? x.type : null; // a model may hold anything in type
   const typed = (t, base) => { const ty = typeOf(t); return { id: newId(ty ? ty.split('.').pop() : base), ...(ty ? { type: ty } : {}) }; };
-  const idsOf = r => !r ? [] : r.type === 'node' ? [r.id] : r.type === 'edge' ? arrOf(r.ids).filter(x => !String(x).includes('->')) : []; // not a positional line id
+  const idsOf = r => !r ? [] : r.type === 'node' || r.type === 'container' && elementsOf(model()).has(r.id) ? [r.id] : r.type === 'edge' ? arrOf(r.ids).filter(x => !String(x).includes('->')) : []; // not a positional line id
   const selId = (at = elementsOf(model())) => { const id = idsOf(api.sel())[0]; return id && at.has(id) ? id : null; };
   const top = (id, at = elementsOf(model())) => { let e = at.get(id); while (e && e.owner) e = at.get(e.owner.id); return e ? e.x.id : id; }; // a member: its node
 
   /* the gestures */
   const label = (ref, value) => { const at = elementsOf(model()), id = idsOf(ref).find(x => at.has(x)); if (id && can('rename')) emit([{ op: 'set', id, path: 'label', value }]); };
   const pin = (id, c, r) => can('move') && Number.isFinite(c) && Number.isFinite(r) && c >= 0 && r >= 0 && emit([{ op: 'set', view: api.view(), path: ['layout', id], value: [c, r] }]);
-  const drop = (n, hint) => (hint.col !== n.col || hint.row !== n.row) && pin(n.id, hint.col, hint.row);
+  // a drop (notes/stage-2.md §8): in the box it is drawn in, its pin; into another box, or out of every box, a new owner (the
+  // box's, else the view's subject or none), in one transaction. The view is then laid out again (§3.2), so a slot read off the
+  // picture before would land elsewhere and stretch a box over cards it does not hold: no pin, and a pin it had is removed.
+  // into, from: the box under the drop, the box it was in
+  const drop = (n, hint, into = null, from = null) => { const L = view().layout; return into === from ? (hint.col !== n.col || hint.row !== n.row) && pin(n.id, hint.col, hint.row)
+    : can('move') && emit([{ op: 'reparent', id: n.id, parent: into ?? view().subject ?? null }, ...(isRec(L) && Object.hasOwn(L, n.id) ? [{ op: 'set', view: api.view(), path: ['layout', n.id], value: undefined }] : [])]); };
   function remove(fromModel) { // Delete: out of this view; Shift + Delete: out of the model (risks.md E5). One transaction for the selection (E2)
     const ids = [...new Set(api.picked().flatMap(idsOf))]; if (!can('delete') || !ids.length) return false;
     if (fromModel) return emit(ids.map(id => ({ op: 'delete', id })));
@@ -165,6 +172,12 @@ function typedEditor(api) {
       if (f.kind === 'bool') h += `<label class="um-check"><input type="checkbox" data-f="p:${esc(f.key)}"${key}${v ? ' checked' : ''}${off}>${esc(name)}</label>`;
       else if (f.kind === 'enum') h += `<label>${esc(name)}<select data-f="p:${esc(f.key)}"${key}${off}>${['', ...arrOf(f.options)].map(o => `<option value="${esc(o)}"${o === v ? ' selected' : ''}>${esc(o)}</option>`).join('')}</select></label>`;
       else h += text('p:' + f.key, f.kind === 'list' ? arrOf(v).join(', ') : v ?? '', name, key + (f.kind === 'list' ? ' data-list' : '')); });
+    // the Owner field (notes/stage-2.md §8): the owners the type offers, less the element and what it holds, and none
+    const O = def().owners, os = e.kind !== 'member' && typeof O === 'function' ? O(model(), x) : null, under = id => { for (let k = 0, p = id; p != null && k < 64; k++, p = (at.get(p) || { x: {} }).x.parent) if (p === x.id) return true; return false; };
+    // its owner is offered too when the type does not offer it (a class in a class), so the field says it and "none" is a change
+    const offer = Array.isArray(os) && [{ id: '', label: 'none' }, ...os.filter(o => isRec(o) && o.id != null && !under(o.id))];
+    if (offer && x.parent != null && !offer.some(o => o.id === x.parent)) offer.push({ id: x.parent, label: (at.get(x.parent) || { x: {} }).x.label });
+    if (offer) h += `<label>Owner<select data-f="owner" data-owner${can('move') ? '' : ' disabled'}>${offer.map(o => `<option value="${esc(o.id)}"${o.id === (x.parent ?? '') ? ' selected' : ''}>${esc(o.label ?? o.id)}</option>`).join('')}</select></label>`;
     const rest = schema.length ? [] : Object.entries(P); // no schema: what it holds, to read
     if (rest.length) h += '<dl>' + rest.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(typeof v === 'string' ? v : JSON.stringify(v))}</dd>`).join('') + '</dl>';
     const M = def().member;
@@ -203,6 +216,7 @@ function typedEditor(api) {
       const r = M && M.add(value, x.x); if (r && r.error) return bad(r.error);
       const prev = arrOf(x.x.members).filter(isRec).pop(); t.value = ''; t.removeAttribute('aria-invalid');
       return emit([{ op: 'add', element: r ? { ...typed(r, 'member'), label: r.label, ...(Object.keys(r.props).length ? { props: r.props } : {}) } : { ...typed(prev || {}, 'member'), label: value }, owner: id }]); }
+    if (d.owner != null) { const p = t.value || null; return id && can('move') && p !== (at.get(id).x.parent ?? null) && emit([{ op: 'reparent', id, parent: p }]); }
     if (!can('rename') || (!id && d.m == null)) return;
     let value = t.type === 'checkbox' ? t.checked : t.value.trim();
     if (t.type !== 'checkbox') { if (t.value === d.was) return;

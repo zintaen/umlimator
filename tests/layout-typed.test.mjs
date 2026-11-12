@@ -6,6 +6,7 @@ import { readFileSync } from 'node:fs';
 import { VIEW_GEO, VIEW_PAINT, geometryKey, layoutTyped } from '../src/typed/layout.js';
 import { routeAudit, overlapIssues } from '../src/layout/audit.js';
 import { layout } from '../src/map/api.js';
+import { textW } from '../src/core/text.js';
 
 // routeAudit lets lines with a set route (a hub's comb) share and cross one another; a typed view's loops and fans are audited as any line
 const clean = g => { assert.deepEqual(overlapIssues(g, ''), []); assert.deepEqual(routeAudit({ ...g, edges: g.edges.map(e => ({ ...e, fixed: undefined })) }, ''), []); };
@@ -125,4 +126,103 @@ test('the geometry key holds every field of the view the layout reads that is no
   const read = new Set(['../src/layout/layered.js', '../src/typed/layout.js'].flatMap(f => [...readFileSync(new URL(f, import.meta.url), 'utf8').matchAll(/\bdg\.(\w+)/g)].map(m => m[1])));
   ['nodes', 'edges', ...VIEW_GEO, ...VIEW_PAINT].forEach(k => read.delete(k));
   assert.deepEqual([...read], []);
+});
+
+// ---- boxes on typed views (work package 2.1, notes/stage-2.md §3 to §5), with a test-only type that depends on no UML code:
+// a shown node that a shown node names as `parent` is a box holding the shown nodes it owns that are not boxes themselves
+import { registerDiagramType } from '../src/core/registry.js';
+import { SHAPE } from '../src/draw/shapes.js';
+import { svgOf } from '../src/draw/svg.js';
+const nestBoxes = (m, v) => { const shown = new Set(v.nodeIds), ns = m.nodes.filter(n => shown.has(n.id)), isBox = n => ns.some(k => k.parent === n.id);
+  return ns.filter(isBox).map(p => ({ id: p.id, label: p.label, title: `«box» ${p.label}`, nodeIds: ns.filter(n => n.parent === p.id && !isBox(n)).map(n => n.id),
+    ...(shown.has(p.parent) ? { parent: p.parent } : {}), shape: 'test-frame', aria: `Box ${p.label}` })); };
+registerDiagramType('test.nest', { title: 'nested boxes',
+  boxes: nestBoxes,
+  layout: ({ model, view, pos, memo }) => { const bx = nestBoxes(model, view), skip = new Set(bx.map(b => b.id)), shown = new Set(view.nodeIds);
+    const nodes = view.nodeIds.filter(id => !skip.has(id)).map(id => ({ id, label: model.nodes.find(n => n.id === id).label, col: pos[id][0], row: pos[id][1], w: 132, h: 56 }));
+    const edges = model.edges.filter(e => shown.has(e.from) && shown.has(e.to)).map(e => ({ ...e }));
+    return layoutTyped({ nodes, edges, containers: bx, direction: view.direction }, memo); } });
+SHAPE['test-frame'] = { frame: f => `<rect class="family-box test-frame" x="${f.x}" y="${f.y}" width="${f.w}" height="${f.h}"/><text class="family-title" data-t="ft" data-o="${f.id}">${f.title}</text>` };
+// three levels of boxes, A holding B holding C; c1 at depth 3 has a line to t0 at depth 0, one to c2 in its own box, and one in from
+// b1 a box out; a1 calls t1, and t1 a box's border (B); D, a box beside A with no line, whose title is wider than its card
+const NEST = (extra = {}) => ({ schemaVersion: 2,
+  nodes: [{ id: 'A', label: 'Alpha' }, { id: 'B', label: 'Beta', parent: 'A' }, { id: 'C', label: 'Gamma', parent: 'B' },
+    { id: 'c1', label: 'Deep', parent: 'C' }, { id: 'c2', label: 'Deeper', parent: 'C' }, { id: 'b1', label: 'Middle', parent: 'B' }, { id: 'a1', label: 'Outer', parent: 'A' },
+    { id: 't0', label: 'Top' }, { id: 't1', label: 'Side' }, { id: 'D', label: 'Delta, a box whose title is longer than what it holds' }, { id: 'd1', label: 'Lone', parent: 'D' }],
+  edges: [{ id: 'far', from: 'c1', to: 't0', label: 'reaches' }, { id: 'in', from: 'c1', to: 'c2' }, { id: 'down', from: 'b1', to: 'c1' }, { id: 'out', from: 'a1', to: 't1' }, { id: 'box', from: 't1', to: 'B', label: 'uses' }],
+  views: [{ id: 'v', diagram: 'test.nest', nodeIds: ['A', 'B', 'C', 'c1', 'c2', 'b1', 'a1', 't0', 't1', 'D', 'd1'], ...extra }] });
+const fam = g => Object.fromEntries(g.families.map(f => [f.id, f]));
+const within = (o, f) => o.x > f.x && o.y > f.y && o.x + o.w < f.x + f.w && o.y + o.h < f.y + f.h;
+// boxes that do not nest, and a box and a card outside it, keep 32 px apart
+const apart = (g, why) => g.families.forEach(f => [...g.families.filter(o => o !== f && !within(o, f) && !within(f, o)), ...g.nodes.filter(n => !within(n, f))]
+  .forEach(o => assert.ok(!hit(f, o, 32 - 1), `${why}: ${f.id} within 32 px of ${o.id}`)));
+
+test('three levels of boxes, a line from depth 3 to depth 0: laid out clean, right and down; each box holds exactly its contents', () => {
+  for (const direction of ['right', 'down']) {
+    const g = layout(NEST({ direction }), 'v'), F = fam(g);
+    clean(g);
+    assert.deepEqual(g.nodes.map(n => n.id).sort(), ['a1', 'b1', 'c1', 'c2', 'd1', 't0', 't1'], `${direction}: a box's id is not a card`);
+    assert.deepEqual(g.families.map(f => [f.id, f.parent ?? null, f.nodeIds]), [['A', null, ['a1']], ['B', 'A', ['b1']], ['C', 'B', ['c1', 'c2']], ['D', null, ['d1']]], direction);
+    // each box holds its cards and its boxes, and no card it does not hold
+    const holds = { A: ['a1', 'b1', 'c1', 'c2'], B: ['b1', 'c1', 'c2'], C: ['c1', 'c2'] };
+    Object.entries(holds).forEach(([b, ids]) => g.nodes.forEach(n => assert.equal(within(n, F[b]), ids.includes(n.id), `${direction}: ${b} and ${n.id}`)));
+    assert.ok(within(F.C, F.B) && within(F.B, F.A), `${direction}: C in B in A`);
+    // the far line crosses the three borders: it leaves C, B and A, and ends on t0
+    const far = g.edges.find(e => e.id === 'far'), end = g.byId.t0;
+    assert.ok(within({ x: far.pts[0][0] - 1, y: far.pts[0][1] - 1, w: 2, h: 2 }, F.C) && !within(end, F.A), direction);
+    // the line to a box ends on its border, off its title (the header room: at the top, after the transpose too)
+    const b = g.edges.find(e => e.id === 'box'), p = b.p2, B = F.B;
+    assert.ok([B.x, B.x + B.w].includes(p[0]) || [B.y, B.y + B.h].includes(p[1]), `${direction}: ends on B's border at ${p}`);
+    assert.ok(!(p[1] === B.y && p[0] < B.x + 8 + textW('«box» Beta', 11) + 16 + 8), `${direction}: off B's title`);
+    g.nodes.forEach(n => [F.A, F.B, F.C].forEach(f => { if (within(n, f)) assert.ok(n.y >= f.y + 24 + 12, `${direction}: ${n.id} under ${f.id}'s header room`); }));
+    // each box fits its title, at the top left, which no line or label crosses; boxes that do not nest, and a box and a card
+    // outside it, keep 32 px apart (the audit checks the rest: contains, sticks out, a run along a border)
+    g.families.forEach(f => { const t = { x: f.x + 8, y: f.y + 3, w: textW(f.title, 11) + 16, h: 22 };
+      assert.ok(t.x + t.w <= f.x + f.w - 8, `${direction}: ${f.id} fits its title`);
+      g.edges.forEach(e => { assert.ok(!e.pts.slice(1).some((q, i) => hit(t, { x: Math.min(q[0], e.pts[i][0]), y: Math.min(q[1], e.pts[i][1]), w: Math.abs(q[0] - e.pts[i][0]), h: Math.abs(q[1] - e.pts[i][1]) })), `${direction}: ${e.id} crosses ${f.id}'s title`);
+        assert.ok(!e.lbl || !hit(t, e.lbl), `${direction}: ${e.id}'s label on ${f.id}'s title`); });
+    });
+    apart(g, direction);
+  }
+});
+
+test('a pin on a half column or a half row: every box still keeps 32 px from other boxes and cards (the room goes after the whole column)', () => {
+  for (const pin of [{ t1: [0.5, 0.5] }, { t1: [0.5, 0] }, { t0: [3.5, 2] }]) apart(layout(NEST({ layout: pin }), 'v'), JSON.stringify(pin));
+});
+
+test('a box named as a member every object inherits (constructor, __proto__, toString) is laid out as any other name', () => {
+  const as = name => JSON.stringify({ ...layout(JSON.parse(JSON.stringify(NEST()).replaceAll('"B"', JSON.stringify(name))), 'v'), ms: 0 }).replaceAll(JSON.stringify(name), '"B"');
+  ['constructor', '__proto__', 'toString'].forEach(name => assert.equal(as(name), as('B'), name));
+  const map = layout({ nodes: [{ id: 'a', label: 'A' }], views: [{ id: 'm', nodeIds: ['a'], containers: [{ id: 'constructor', label: 'K', nodeIds: ['a'] }] }] }, 'm'); // a map's box too
+  assert.deepEqual(map.families.map(f => [f.id, Number.isFinite(f.w)]), [['constructor', true]]);
+});
+
+test('a box\'s pin takes no slot: pins on box ids alone lay the view out as no pins do', () => {
+  const at = g => g.nodes.map(n => [n.id, n.col, n.row]);
+  assert.deepEqual(at(layout(NEST({ layout: { A: [0, 0], B: [0, 0], C: [0, 0] } }), 'v')), at(layout(NEST(), 'v')));
+});
+
+test('after a re-own every box holds exactly its contents: c2 moved to A lays the view out again', () => {
+  const m = NEST(); m.nodes.find(n => n.id === 'c2').parent = 'A';
+  const g = layout(m, 'v'), F = fam(g);
+  clean(g);
+  assert.deepEqual(F.A.nodeIds, ['c2', 'a1']); assert.deepEqual(F.C.nodeIds, ['c1']);
+  g.nodes.forEach(n => assert.equal(within(n, F.C), n.id === 'c1', n.id));
+  assert.ok(within(g.byId.c2, F.A) && !within(g.byId.c2, F.B));
+});
+
+test('a typed view\'s boxes take the type\'s, not the view\'s own containers; a map view of the model is laid out as before', () => {
+  const g = layout(NEST({ containers: [{ id: 'own', label: 'Own', nodeIds: ['t0', 't1'] }] }), 'v');
+  assert.deepEqual(g.families.map(f => f.id), ['A', 'B', 'C', 'D']);
+  const m = NEST(), map = { id: 'm', nodeIds: ['c1', 't0'] }, alone = JSON.stringify(layout({ ...m, views: [map] }, 'm').nodes);
+  assert.equal(JSON.stringify(layout({ ...m, views: [...m.views, map] }, 'm').nodes), alone);
+});
+
+test('svgOf draws a box whose shape has a frame by it, in the group the canvas selects, named; without one, as a map\'s box with its title', () => {
+  const g = layout(NEST(), 'v'), s = svgOf(g);
+  assert.match(s, /<g class="family" data-family="B" data-parent="A" role="img" aria-label="Box Beta"><rect class="family-box test-frame" [^>]*\/><text class="family-title" data-t="ft" data-o="B">«box» Beta<\/text><\/g>/);
+  assert.equal((s.match(/class="family-box test-frame"/g) || []).length, 4); // the frame's own markup, with the class the canvas outlines a box by
+  const plain = svgOf({ ...g, families: g.families.map(({ shape, ...f }) => f) });
+  assert.equal((plain.match(/class="family-box"/g) || []).length, 4);
+  assert.match(plain, /data-o="C">«box» Gamma<\/text>/);
 });
