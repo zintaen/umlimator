@@ -12,8 +12,9 @@
    writeMermaidClass(model, viewId?) -> text: one class view as Mermaid. What Mermaid cannot carry is kept in its comments:
    an id the reader would not derive, as `%% id: <id>` (and `%% link-id:` for a note's line) above its statement; an
    element the subset leaves out, as `%% not written: <id> (<type>)`, and a property of one Mermaid has no place for, as
-   `%% not written: <id>: <what>` (navigable on an end with a diamond, a class's parent that is not a namespace, an
-   unknown visibility, a stereotype the reader would read as something else). A member whose text has a line break is not
+   `%% not written: <id>: <what>` (navigable on an end with a diamond, a parent the view does not show or that is not a
+   namespace, a note's parent, an unknown visibility, a stereotype the reader would read as something else). A namespace
+   with no class in it is not written, as Mermaid reads no empty one. A member whose text has a line break is not
    written, nor a line that ends on a member. A model with views is written through its uml.class view; with none of them,
    the text is one `%% not written:` line. A view's layout and present are not written.
 
@@ -30,9 +31,14 @@
      are the multiplicity *, reported;
    - a member named twice in one class (an operation with the same parameters' types) is read once, the other reported;
      an interface that realizes another specializes it, reported;
-   - namespaces are packages, notes comments, `note for` a comment with its line; `direction TB` is down (the default),
+   - namespaces are packages, dotted (`A.B`) or nested by braces. Mermaid 12.3.0 draws nested braces as nested
+     namespaces (docs/syntax/classDiagram.md, "Nested Namespaces (v11.15.0+)"; ClassDB.addNamespace, which names one
+     inside P as P.<name>), so a namespace is known by its parent and its name here too. The writer nests by braces, and
+     writes dotted, at the top, a namespace whose id is its parent's dotted path (what the reader makes of `A.B`);
+   - notes are comments, `note for` a comment with its line; `direction TB` is down (the default),
      `LR` right; a %%{ ... }%% directive, on one line or several, is passed over. */
 const MC_LIMIT = 1 << 20; // characters; a class diagram a person writes is a few kilobytes
+const MC_DOTS = 32; // a dotted namespace name's parts: each is a namespace whose id is its path, so a name of n parts costs n * n (R2)
 const mcTable = o => Object.assign(Object.create(null), o); // a lookup table: "constructor" or "__proto__" finds nothing in it
 const MC_VIS = mcTable({ '+': 'public', '-': 'private', '#': 'protected', '~': 'package' });
 const MC_TYPES = mcTable({ interface: 'uml.Interface', enumeration: 'uml.Enumeration', enum: 'uml.Enumeration', datatype: 'uml.DataType', primitive: 'uml.PrimitiveType', primitivetype: 'uml.PrimitiveType' });
@@ -216,7 +222,7 @@ function readMermaidClass(text) {
     i = j + 1;
   }
 
-  const classes = new Map(), packages = new Map(), order = [], relations = [], notes = [], stack = [];
+  const classes = new Map(), packages = [], topNs = new Map(), order = [], relations = [], notes = [], stack = [];
   let viewId, direction = 'down', started = false, hint = {}, block = null;
   // classes and namespaces by their names, their ids given once all are read (a name that is not an id needs the others)
   const cls = (name, no) => {
@@ -293,16 +299,20 @@ function readMermaidClass(text) {
       if (!n) { say(no, 'skipped', 'a namespace with no name'); hint = {}; continue; }
       let k = mcSkip(s, n[1]), label;
       if (s.startsWith('["', k)) { const q = mcQuoted(s, k + 1); if (q && s[q[1]] === ']') { label = mcText(q[0]); k = mcSkip(s, q[1] + 1); } }
-      const segs = n[2] ? [n[0]] : n[0].split('.');
-      let parent = where();
-      segs.forEach((seg, j) => {
-        const path = segs.slice(0, j + 1).join('.');
-        if (!packages.has(path)) {
+      let segs = n[2] ? [n[0]] : n[0].split('.');
+      if (segs.length > MC_DOTS) { say(no, 'approximated', `namespace ${n[0]}: over ${MC_DOTS} dotted parts, so read as one name`); segs = [n[0]]; }
+      // a namespace is known by its parent and its name, as Mermaid's own qualified id (A inside P is P.A); its id is
+      // the name as written, a dotted path from its first part
+      let parent = where(), path = '';
+      for (const seg of segs) {
+        path = path ? `${path}.${seg}` : seg;
+        const kids = parent ? (parent.kids ??= new Map()) : topNs;
+        if (!kids.has(seg)) {
           const rec = { kind: 'package', name: path, no, pkg: parent, node: { id: undefined, type: 'uml.Package', label: seg } };
-          packages.set(path, rec); order.push(rec);
+          kids.set(seg, rec); packages.push(rec); order.push(rec);
         }
-        parent = packages.get(path);
-      });
+        parent = kids.get(seg);
+      }
       if (label) parent.node.label = label;
       if (s[k] === '{') { if (s.slice(k + 1).trim() !== '}') stack.push(parent); }
       else say(no, 'skipped', `namespace ${n[0]} has no {: what follows is not inside it`);
@@ -311,7 +321,11 @@ function readMermaidClass(text) {
       if (s.startsWith('for ', k)) { const n = mcName(s, mcSkip(s, k + 4)); if (n) { target = cls(n[0], no); k = mcSkip(s, n[1]); } }
       const q = mcQuoted(s, k);
       if (!q) say(no, 'skipped', 'a note with no "text"');
-      else { const rec = { kind: 'note', node: { type: 'uml.Comment', label: mcText(q[0]) }, target, hint: hint.id, linkHint: hint.link }; notes.push(rec); order.push(rec); }
+      else {
+        if (where()) say(no, 'approximated', `a note in namespace ${where().name} is read outside it`);
+        const rec = { kind: 'note', node: { type: 'uml.Comment', label: mcText(q[0]) }, target, hint: hint.id, linkHint: hint.link };
+        notes.push(rec); order.push(rec);
+      }
     } else if (s.startsWith('<<')) {
       const e = s.indexOf('>>'), n = e < 0 ? null : mcName(s, mcSkip(s, e + 2));
       if (n) annotate(cls(n[0], no), s); else say(no, 'skipped', `${s}: an annotation names no class`);
@@ -333,15 +347,17 @@ function readMermaidClass(text) {
   if (!started) { say(1, 'skipped', 'not a Mermaid classDiagram: nothing read'); return empty(); }
   for (const open of stack) say(lines.length, 'approximated', `${open.kind === 'class' ? 'class ' + open.rec.name : 'namespace ' + open.name} is never closed: read to the end`);
 
-  // ids: a class's name, then a namespace's; a namespace with a class's name is <name>-namespace, and a name the id rule
-  // changes (no "->") is made unique, both reported. Later members, relations and notes, in the order they come, made unique
+  // ids: a class's name, then a namespace's; a namespace with a class's name is <name>-namespace, and one with another
+  // namespace's name (inside another parent) or a name the id rule changes (no "->") is made unique, each reported. Later
+  // members, relations and notes, in the order they come, made unique
   const used = new Set(), next = new Map(), uniq = name => { const id = mcFree(used, next, mcId(name)); used.add(id); return id; };
-  const named = [...classes.values(), ...packages.values()];
+  const named = [...classes.values(), ...packages];
   for (const rec of named) if (mcId(rec.name) === rec.name && !used.has(rec.name)) { rec.node.id = rec.name; used.add(rec.name); }
   for (const rec of named) if (rec.node.id === undefined) {
-    const kept = mcId(rec.name) === rec.name, what = `${rec.kind === 'class' ? 'class' : 'namespace'} ${rec.name}`;
-    rec.node.id = uniq(kept ? rec.name + '-namespace' : rec.name);
-    say(rec.no, 'approximated', kept ? `${what} has a class's name: it is ${rec.node.id}` : `${what}: an id holds no "->", so it is ${rec.node.id}`);
+    const kept = mcId(rec.name) === rec.name, cls = kept && classes.has(rec.name);
+    const what = rec.kind === 'class' ? `class ${rec.name}` : `namespace ${rec.name}${rec.pkg ? ' in ' + rec.pkg.node.id : ''}`;
+    rec.node.id = uniq(cls ? rec.name + '-namespace' : rec.name);
+    say(rec.no, 'approximated', cls ? `${what} has a class's name: it is ${rec.node.id}` : kept ? `${what} has another namespace's name: it is ${rec.node.id}` : `${what}: an id holds no "->", so it is ${rec.node.id}`);
   }
   for (const rec of named) if (rec.pkg) rec.node.parent = rec.pkg.node.id;
 
@@ -465,17 +481,26 @@ function writeMermaidClass(model, viewId) {
   const kids = new Map(), roots = [], notes = [], tree = [], boxes = [];
   for (const id of shown) {
     const n = byId.get(id), up = shownSet.has(n.parent) ? byId.get(n.parent) : null;
-    if (n.type === 'uml.Comment') { if (nl(n.id)) skip(n); else notes.push(n); }
-    else if ((!isPkg(n) && !(n.type in KIND)) || nl(n.id) || String(n.id).includes('`')) skip(n); // a name is one line, in `...` at most
+    // an owner the view does not show is not written, and the element is written at the top (notes/stage-2.md §11)
+    const hidden = has(n.parent) && !up && `its parent ${n.parent}, which the ${byId.has(n.parent) ? 'view does not show' : 'model does not have'}`;
+    if (n.type === 'uml.Comment') {
+      if (nl(n.id)) skip(n);
+      else { notes.push(n); if (has(n.parent)) lose(n.id, hidden || `its parent ${n.parent}: a note is written outside namespaces`); }
+    } else if ((!isPkg(n) && !(n.type in KIND)) || nl(n.id) || String(n.id).includes('`')) skip(n); // a name is one line, in `...` at most
     else if (up && isPkg(up)) { boxes.push(n); if (!kids.has(n.parent)) kids.set(n.parent, []); kids.get(n.parent).push(n); }
-    else { if (up) lose(n.id, `its parent ${n.parent}, a ${up.type}, which only a namespace can be`); roots.push(n); }
+    else { if (up || hidden) lose(n.id, hidden || `its parent ${n.parent}, a ${up.type}, which only a namespace can be`); roots.push(n); }
   }
   const walk = n => { tree.push(n); for (const k of kids.get(n.id) || []) walk(k); };
   roots.forEach(walk);
   const inTree = new Set(tree);
   for (const n of boxes) if (!inTree.has(n)) skip(n); // under a namespace that is not written, or in a cycle of parents
+  // Mermaid reads no empty namespace (its grammar wants a statement between the braces): one with no class in it, at any
+  // depth, is not written. The tree is parents first, so read backwards a namespace's contents come before it
+  const full = new Set();
+  for (let k = tree.length - 1; k >= 0; k--) if (!isPkg(tree[k]) || full.has(tree[k].id)) full.add(tree[k].parent);
+  for (const n of tree) if (isPkg(n) && !full.has(n.id)) skip(n);
   const written = new Set(tree.filter(n => !isPkg(n)).map(n => n.id));
-  const used = new Set(tree.map(n => n.id)), next = new Map();
+  const used = new Set(tree.filter(n => !isPkg(n) || full.has(n.id)).map(n => n.id)), next = new Map();
   const idOf = (id, base) => { const d = mcFree(used, next, mcId(base)); used.add(id); return d === id ? null : id; }; // the hint, if one is needed
 
   const heads = new Map(); // a class's annotations and member rows
@@ -536,11 +561,24 @@ function writeMermaidClass(model, viewId) {
   });
   links.filter(e => !notes.some(n => n.id === e.from)).forEach(skip);
 
-  const labelled = n => (has(n.label) && n.label !== n.id ? `["${enc(n.label)}"]` : '');
+  const labelled = (n, as = n.id) => (has(n.label) && n.label !== as ? `["${enc(n.label)}"]` : '');
+  // Mermaid names a namespace inside P as P.<name>, and splits a name at its dots, in backticks too. So a namespace whose
+  // id is its parent's, a dot and a plain name, under a parent written so too or plain at the top, is written at the top
+  // by that dotted id, which Mermaid and the reader both read as that nesting with those ids; and one whose block would
+  // hold only such namespaces is written by them alone
+  const plain = id => /^[\p{L}\p{N}_]+(-[\p{L}\p{N}_]+)*$/u.test(id), top = new Set(roots), dotted = new Set();
+  for (const n of tree) if (isPkg(n) && full.has(n.id) && !top.has(n)) {
+    const id = String(n.id), up = String(n.parent), seg = id.slice(up.length + 1), parts = id.split('.').length; // the reader reads MC_DOTS at most
+    if (id === `${up}.${seg}` && plain(seg) && parts <= MC_DOTS && (dotted.has(n.parent) || (top.has(byId.get(n.parent)) && plain(up))) && !kids.get(n.parent).some(k => k.id === seg)) dotted.add(n.id);
+  }
   const emit = (n, pad) => {
     if (isPkg(n)) {
-      out.push(`${pad}namespace ${name(n.id)}${labelled(n)} {`);
-      for (const k of kids.get(n.id) || []) emit(k, pad + '  ');
+      const inner = (kids.get(n.id) || []).filter(k => !isPkg(k) || (full.has(k.id) && !dotted.has(k.id)));
+      const as = dotted.has(n.id) ? String(n.id).slice(String(n.parent).length + 1) : n.id; // the name the reader gives its label
+      if (!full.has(n.id)) return;
+      if (!inner.length) { if (has(n.label) && n.label !== as) lose(n.id, `its label ${n.label}: it holds only namespaces, written by their dotted names`); return; }
+      out.push(`${pad}namespace ${dotted.has(n.id) ? n.id : name(n.id)}${labelled(n, as)} {`);
+      for (const k of inner) emit(k, pad + '  ');
       return out.push(`${pad}}`);
     }
     const [anns, rows] = heads.get(n.id), head = `${pad}class ${name(n.id)}${labelled(n)}`;
@@ -550,6 +588,7 @@ function writeMermaidClass(model, viewId) {
     out.push(`${pad}}`);
   };
   roots.forEach(n => emit(n, '  '));
+  for (const n of tree) if (dotted.has(n.id)) emit(n, '  ');
   for (const [hint, text] of relations) out.push(...(hint ? [`  %% id: ${hint}`] : []), `  ${text}`);
   for (const [hint, link, text] of noteLines) out.push(...(hint ? [`  %% id: ${hint}`] : []), ...(link ? [`  %% link-id: ${link}`] : []), `  ${text}`);
   for (const x of notWritten) out.push(`  %% not written: ${x}`);
