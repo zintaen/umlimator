@@ -39,7 +39,9 @@ function body(name) {
 // two whole files from the same sources (stage 1 note §2.5): the core and the map, for hosts that draw maps; and every
 // diagram family too, which the standalone page inlines. A family's files are listed here only, so umlimator.js does not grow;
 // so is src/typed/, what only a registered type's geometry takes (the hooks in TYPED, registry.js: risks.md C5)
-const ALL = [...ORDER, 'typed/layout', 'typed/draw', 'uml/class', 'readers/mermaid-class'];
+const ALL = [...ORDER, 'typed/layout', 'typed/draw', 'uml/class', 'readers/mermaid-class',
+  // stage 3 (notes/stage-3.md §11, 3.0): empty until their work packages fill them, in this load order
+  'layout/timeaxis', 'uml/frame', 'uml/interaction', 'uml/sequence', 'uml/communication', 'uml/convert', 'readers/mermaid-sequence'];
 
 // every source is in ALL, and every name in ALL is a source: a file left out would be missing from lib/ silently
 const found = readdirSync(new URL('src/', root), { recursive: true }).filter(f => f.endsWith('.js')).map(f => f.replaceAll('\\', '/').slice(0, -3)).sort();
