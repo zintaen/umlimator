@@ -105,6 +105,14 @@ try {
   document.documentElement.dataset.theme = 'light'; el.style.removeProperty('--um-sans');
   check('describe() writes the view in words', describe(EX, 'fulfil').startsWith('Fulfilling an order: an activity diagram of 17 nodes, 19 flows and 3 partitions.\nPartition Order worker, 5 nodes.'));
 
+  // §9.1, Q11: the selected call behaviour action opens the view it calls, as a card opens its inner view (Enter, a double-click)
+  const opened = async go => { const seen = [], h0 = mount(EX, { on: { viewchange: e => seen.push(e.view) } }); click('.node[data-id="pay"] .n-body'); go();
+    for (let i = 0; i < 100 && !seen.length; i++) await new Promise(r => setTimeout(r, 20)); h0.destroy(); return seen; };
+  let seen = await opened(() => key('Enter'));
+  check('Enter on the selected call behaviour action opens the view it calls', same(seen, ['take-payment']), seen);
+  seen = await opened(() => { const b = pick('.node[data-id="pay"] .n-body'), [x, y] = centre('.node[data-id="pay"] .n-body'); b.dispatchEvent(new MouseEvent('dblclick', { clientX: x, clientY: y, bubbles: true, composed: true, cancelable: true })); });
+  check('…and so does a double-click on it', same(seen, ['take-payment']), seen);
+
   // ---- the gestures (DoD 4), through the type's hooks, each through the edit event and apply()
   const h = mount(EX, { editable: true }), hint = () => pick('.um-live').textContent, last = () => ed[ed.length - 1];
   const button = t => all('.um-editor .um-pal button').find(b => b.textContent.trim() === t), panel = s => pick('.um-editor ' + s);

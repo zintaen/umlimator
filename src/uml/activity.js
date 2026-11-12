@@ -75,12 +75,14 @@ function actIndex(model, view) {
   const isPart = id => N.has(id) && N.get(id).type === 'uml.ActivityPartition', parts = ids.filter(isPart), lanes = new Set(parts);
   // the nearest shown partition above an element (§9.2), or null; a cycle of owners stops where it closes
   const up = id => { const seen = new Set([id]); for (let p = (N.get(id) || {}).parent; p != null && N.has(p) && !seen.has(p); p = N.get(p).parent) { if (lanes.has(p)) return p; seen.add(p); } return null; };
+  // a lane's own owner lane, or null at the top: a lane whose chain of shown owners comes back to it is at the top (laneRows')
+  const outer = id => { const seen = new Set(); for (let l = up(id); l != null && !seen.has(l); l = up(l)) { if (l === id) return null; seen.add(l); } return up(id); };
   const laneOf = id => (lanes.has(id) ? null : up(id)), drawn = ids.filter(id => !lanes.has(id)), on = new Set(drawn);
   const list = Array.isArray(view && view.edges) ? view.edges.map(x => (typeof x === 'string' ? E.get(x) : x)) : [...E.values()].filter(e => AC_LINES.includes(e.type));
   const lines = list.filter(e => AC_OBJ(e) && typeof e.id === 'string' && on.has(e.from) && on.has(e.to));
-  const under = p => drawn.filter(id => { for (let l = laneOf(id); l != null; l = up(l)) if (l === p) return true; return false; });
+  const under = p => drawn.filter(id => { for (let l = laneOf(id); l != null; l = outer(l)) if (l === p) return true; return false; });
   return { N, E, path, ids, shown, parts, drawn, lines, up, laneOf, isPart, under,
-    lanes: parts.map((id, order) => ({ id, parent: up(id), order })) };
+    lanes: parts.map((id, order) => ({ id, parent: outer(id), order })) };
 }
 const acName = x => String(x.label ?? x.id);
 const acProps = x => (AC_OBJ(x && x.props) ? x.props : {});
@@ -152,9 +154,9 @@ function acFinish(model, g, I, down) {
     bands = L.bands.map(b => ({ ...back(b), head: back(b.head) })); bounds = back(L.bounds); }
   // a header is aside, off the columns, at the first node's column and row: the canvas reads a drop's column and row from the
   // nodes when every one has them (render.js gridView, hintAt)
-  const byId = { ...g.byId }, { k, col = 0, row = 0 } = g.nodes[0] || {};
-  const heads = bands.map(b => { const x = I.N.get(b.id);
-    return (byId[b.id] = { id: b.id, label: acName(x), type: x.type, kind: 'file', ...(k != null ? { k } : {}), shape: 'partition', aside: true, col, row, aria: acNodeName(model, I, x, I.lines), ...b.head }); });
+  const byId = { ...g.byId }, { col = 0, row = 0 } = g.nodes[0] || {};
+  const heads = bands.map(b => { const x = I.N.get(b.id); // k: the 'file' kind's, as layoutTyped gives the nodes, so a view of partitions only draws
+    return (byId[b.id] = { id: b.id, label: acName(x), type: x.type, kind: 'file', k: 'file', shape: 'partition', aside: true, col, row, aria: acNodeName(model, I, x, I.lines), ...b.head }); });
   // reading order (§14): a partition, then its nested partitions, then its own nodes by rank; then the nodes in no lane by
   // rank; then the lines. The nodes are drawn in it, then the headers, so the canvas's first node is a laid-out one
   const rank = (a, b) => byId[a].col - byId[b].col || byId[a].row - byId[b].row, order = [];
@@ -164,8 +166,8 @@ function acFinish(model, g, I, down) {
   const mid = n => ({ x: n.x + n.w / 2, y: n.y + n.h / 2 });
   const types = new Set([...g.edges.map(e => e.type), ...I.drawn.map(id => I.N.get(id).type)]);
   return { ...g, nodes: [...order.filter(id => !I.isPart(id)), ...I.parts].map(id => byId[id]), byId, bounds, bands, partitions: heads.map(h => h.id), order: [...order, ...g.edges.map(e => e.id)],
-    // the slots (src/typed/edit.js): one per node, so the palette's add hears what is selected (at.sel)
-    slots: I.drawn.map(id => ({ after: id, parent: I.laneOf(id), ...mid(byId[id]) })), legend: acLegend(types) };
+    // the slots (src/typed/edit.js): one per node and one per partition's header, so the palette's add hears what is selected
+    slots: [...I.drawn.map(id => ({ after: id, parent: I.laneOf(id), ...mid(byId[id]) })), ...heads.map(h => ({ after: h.id, parent: h.id, ...mid(h) }))], legend: acLegend(types) };
 }
 
 /* the bands (§5.3), under the lines: each band's outline and the line closing its header strip */
@@ -246,6 +248,7 @@ function actConnect(model, view, from, to, at, line) {
 function actMoveTo(model, view, id, at) {
   if (!AC_OBJ(view)) return null;
   const I = actIndex(model, view); if (I.isPart(id)) return [];
+  if ((I.N.get(id) || {}).type === 'uml.Comment') return null; // a comment is in no lane (add, in-lane): a pin
   const bands = AC_ARR(AC_OBJ(at) && AC_OBJ(at.geo) ? at.geo.bands : null);
   if (!I.shown.has(id) || !Array.isArray(at && at.pt) || !bands.length) return null;
   const [x, y] = at.pt, hit = bands.filter(b => x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h).sort((a, b) => b.depth - a.depth)[0], to = hit ? hit.id : null;
@@ -253,11 +256,12 @@ function actMoveTo(model, view, id, at) {
   const L = view.layout;
   return [{ op: 'reparent', id, parent: to }, ...(AC_OBJ(L) && Object.hasOwn(L, id) ? [{ op: 'set', view: view.id, path: ['layout', id], value: undefined }] : [])];
 }
-// add: a node in the partition selected; a call behaviour action asks which activity view it opens (S18)
+// add: a node in the partition selected, else in the lane of the node selected (its slot's parent); a call behaviour action asks which activity view it opens (S18)
 function actAdd(model, view, entry, label, at) {
   if (!AC_OBJ(view) || !AC_OBJ(entry) || !Object.hasOwn(AC_LOOK, entry.type)) return null;
   const N = new Map(AC_ARR(model.nodes).filter(AC_OBJ).map(n => [n.id, n])), part = AC_ARR(AC_OBJ(at) ? at.sel : null).find(id => (N.get(id) || {}).type === 'uml.ActivityPartition');
-  const t = AC_PART(label), el = { id: acFreshId(model, t || AC_LOOK[entry.type][1]), type: entry.type, ...(t ? { label: t } : {}), ...(part != null && entry.type !== 'uml.Comment' ? { parent: part } : {}) };
+  const lane = part ?? (AC_OBJ(at) && at.parent != null && AC_ARR(at.sel).includes(at.after) ? at.parent : null);
+  const t = AC_PART(label), el = { id: acFreshId(model, t || AC_LOOK[entry.type][1]), type: entry.type, ...(t ? { label: t } : {}), ...(lane != null && entry.type !== 'uml.Comment' ? { parent: lane } : {}) };
   const make = opens => [{ op: 'add', element: { ...el, ...(opens != null ? { opensView: opens } : {}) }, view: view.id }];
   if (entry.type !== 'uml.CallBehaviorAction') return make();
   const vs = AC_ARR(model.views).filter(v => AC_OBJ(v) && v.diagram === 'uml.activity');

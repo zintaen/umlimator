@@ -172,6 +172,17 @@ test('lanes (§5, §9.2): nested two deep, a node in no lane after the lanes (wa
 
 // ---- validators: each rule a passing case (example 9, above, and the cases here) and a failing one
 const rulesOf = m => validate(m).map(p => [p.level, p.rule]);
+test('a view of partitions only draws, and a node added with one selected goes in it; a cycle of partition owners in loaded JSON lays out every node, each partition on it at the top', () => {
+  const m = one([N('p', 'ActivityPartition', 'P')], []), g = layout(m, 'v');
+  assert.match(mapContext(m).buildView('v').markup, /data-shape="partition"/);
+  const s = g.slots.find(x => x.after === 'p');
+  assert.equal(s.parent, 'p', 'a slot per partition header');
+  assert.equal(actAdd(m, V(m, 'v'), { type: 'uml.Action' }, 'A', { ...s, sel: ['p'] })[0].element.parent, 'p');
+  const cyc = more => one([N('p', 'ActivityPartition', 'P', { parent: 'q' }), N('q', 'ActivityPartition', 'Q', { parent: 'p' }), ...more, N('a', 'Action', 'A', { parent: 'p' })], []);
+  for (const c of [cyc([N('r', 'ActivityPartition', 'R')]), cyc([])]) { const h = layout(c, 'v');
+    assert.ok(h.nodes.some(n => n.id === 'a') && h.order.includes('a'), 'a node in a lane on the cycle is laid out and read');
+    assert.equal(h.byId.p.aria, 'Partition P, 1 node'); }
+});
 test('the shared flow rules (flow.js) run under this type: each passes on example 9 and fails here, at S21\'s levels', () => {
   const base = [N('i', 'InitialNode'), N('a', 'Action', 'A'), N('b', 'Action', 'B'), N('f', 'ActivityFinalNode')];
   const cases = {
@@ -217,6 +228,8 @@ test('moveTo: a drop in another band changes lane and drops the pin, in one tran
   assert.deepEqual(actMoveTo(EX, V(EX), 'pick', at('pick', [g.bounds.x + g.bounds.w + 400, 0])), [{ op: 'reparent', id: 'pick', parent: null }], 'out of every band: no lane');
   assert.equal(actMoveTo(EX, V(EX), 'pick', { by: [0, 1], geo: g }), null, 'Alt + arrows: a pin, its row an order in its lane');
   for (const a of [at('x', mid(em)), { by: [1, 0], geo: g }, null]) assert.deepEqual(actMoveTo(EX, V(EX), 'lane-warehouse', a), [], 'a partition\'s header: nothing, and no pin');
+  const noted = apply(EX, [{ op: 'add', element: N('note', 'Comment', 'Why'), view: 'fulfil' }]);
+  assert.equal(actMoveTo(noted, V(noted), 'note', at('note', mid(wh))), null, 'a comment is in no lane: a drop pins it');
   assert.equal(actMoveTo(EX, V(EX, 'take-payment'), 'charge', { pt: [0, 0], geo: layout(EX, 'take-payment') }), null, 'no bands: a pin');
   // the pin it then gets is an order inside its lane: it never takes the node to another lane (§5.2)
   const p2 = apply(EX, { op: 'set', view: 'fulfil', path: ['layout', 'tell-shopper'], value: [0, 0] }), r = clean(dir(p2, 'right'), 'fulfil');
@@ -257,10 +270,12 @@ test('connect: a flow of the kind picked; a decision\'s second exit gets else; a
   assert.equal(actConnect(EX, V(EX), 'start', 'ship', null, { type: 'uml.CommentLink' }), null, 'a comment link is the default\'s');
   assert.equal(actConnect(apply(EX, { op: 'add', element: F('start-pick', 'start', 'pick') }), V(EX), 'pick', 'ship', null, CF)[0].element.id, 'pick-ship');
 });
-test('add: a node in the partition selected; control nodes with no label; a call behaviour action asks which activity view it opens', () => {
-  const at = sel => ({ after: 'pick', sel });
+test('add: a node in the partition selected, or in the lane of the node selected; control nodes with no label; a call behaviour action asks which activity view it opens', () => {
+  const at = sel => ({ after: 'pick', parent: 'lane-warehouse', sel });
   assert.deepEqual(actAdd(EX, V(EX), { type: 'uml.Action' }, 'Wrap the books', at(['lane-warehouse'])), [{ op: 'add', element: { id: 'wrap-the-books', type: 'uml.Action', label: 'Wrap the books', parent: 'lane-warehouse' }, view: 'fulfil' }]);
-  assert.deepEqual(actAdd(EX, V(EX), { type: 'uml.ForkNode' }, '', at(['pick'])), [{ op: 'add', element: { id: 'fork', type: 'uml.ForkNode' }, view: 'fulfil' }], 'a node selected is not a partition');
+  assert.deepEqual(actAdd(EX, V(EX), { type: 'uml.ForkNode' }, '', at(['pick'])), [{ op: 'add', element: { id: 'fork', type: 'uml.ForkNode', parent: 'lane-warehouse' }, view: 'fulfil' }], 'a node selected: in its lane');
+  assert.equal(actAdd(EX, V(EX), { type: 'uml.ForkNode' }, '', at([]))[0].element.parent, undefined, 'nothing selected: the last slot\'s lane is not taken');
+  assert.equal(actAdd(EX, V(EX), { type: 'uml.Comment' }, 'Why', at(['pick']))[0].element.parent, undefined, 'a comment: in no lane');
   assert.deepEqual(actAdd(EX, V(EX), { type: 'uml.ActivityPartition' }, 'Packing', at(['lane-warehouse']))[0].element, { id: 'packing', type: 'uml.ActivityPartition', label: 'Packing', parent: 'lane-warehouse' });
   const r = actAdd(EX, V(EX), { type: 'uml.CallBehaviorAction' }, 'Refund', null);
   assert.deepEqual(r.pick, ['Fulfilling an order', 'Take payment']);

@@ -555,8 +555,14 @@ a model UML forbids is an error; one that is only unfinished is a warning.
   64 px example 9's two guards had no spot. With a labelled flow the gap grows by the widest label and 40 px laid out
   right (as the class type does with boxes), by 48 px laid out down. One gap for every column: a gap per column needs
   `labelRoom` for typed views, the core's.
-- **Slots.** The geometry gives one slot per node (`{ after, parent, x, y }`): `I.addNode` hands `add` the selection
-  (`at.sel`) only with a slot, which "a node in the partition selected" needs.
+- **Slots.** The geometry gives one slot per node and one per partition's header (`{ after, parent, x, y }`): `I.addNode`
+  hands `add` the selection (`at.sel`) only with a slot, which "a node in the partition selected" needs, on a view of
+  partitions only too. With a node selected and no partition, `add` puts the new node in that node's lane (its slot's
+  `parent`). A comment is in no lane: `add` never parents one and `moveTo` pins one dropped in a band.
+- **Opening the called view** (Q11) is the canvas's, as a card opens its inner view: Enter on the selected call behaviour
+  action, or a double-click on it; a second plain click selects it again.
+- **Owner cycles** in loaded JSON (`apply()` refuses them): a partition whose chain of shown owners comes back to it is
+  at the top, as `laneRows` takes it.
 - **Reading order,** read literally from §9.2: a partition, then its nested partitions (each with what it holds), then
   its own nodes by column and row; then the nodes in no lane; then the flows.
 - **Names.** Every node in a lane ends ", in <partition>", a call behaviour action's too ("Call behaviour action Take
