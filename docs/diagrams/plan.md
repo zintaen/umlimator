@@ -126,7 +126,7 @@ for every type in it.
 |---|---|---|---|---|
 | 2 ([`notes/stage-2.md`](notes/stage-2.md)) | Object, package | Ownership drawn as compound nodes (`parent`); qualified names (M6) | Package, then object | Mermaid class (namespaces) |
 | 3 ([`notes/stage-3.md`](notes/stage-3.md)) | Sequence, communication | The time-axis strategy; order as meaning; operands by `parent`; activations derived; several messages on one link | Sequence, then communication; a helper from numbered views and from traces | Mermaid sequence |
-| 4 | Use case, activity, state machine, interaction overview | Shapes that are not boxes (L12); explicit nestable lanes; regions in compound nodes; the transition micro-syntax | Use case, activity, state machine, interaction overview | Mermaid state |
+| 4 ([`notes/stage-4.md`](notes/stage-4.md)) | Use case, activity, state machine, interaction overview | Shapes that are not boxes (L12); explicit nestable lanes; regions in compound nodes; the transition micro-syntax | Use case, activity, state machine, interaction overview | Mermaid state |
 | 5 | Component, deployment, composite structure | Ports on borders; ends through parts; deep nesting; a time-boxed trial of the own engine against ELK (L9) | Component, deployment, composite structure | None |
 | 6 | Profile, timing | Stereotype definitions and application checks across the model; the time-ruler strategy | Profile, timing | None |
 | M2 | ER, flowchart, data flow, information flow, C4 | Line-end skins; per-view scope rules; levels on drill-down | ER, flowchart, data flow, information flow, C4 (typed elements, dynamic, deployment) | Mermaid ER and flowchart (ported), Structurizr JSON, DBML as an optional adapter |
