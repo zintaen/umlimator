@@ -57,7 +57,7 @@ test('the definition: uml.interaction-overview is registered with its palette, l
   assert.deepEqual(T.lines, [{ type: 'uml.ControlFlow', label: 'Control flow' }, { type: 'uml.CommentLink', label: 'Comment link' }]);
   assert.deepEqual(T.props['uml.ControlFlow'].map(f => f.key), ['guard', 'stereotypes']);
   assert.ok(T.elements.every(e => T.props[e.type].some(f => f.key === 'stereotypes')), 'stereotypes on every element');
-  assert.deepEqual(Object.keys(T.rules), [...Object.keys(FLOW_RULES), 'opens-sequence', 'overview-kinds', 'inline-size']);
+  assert.deepEqual(Object.keys(T.rules), [...Object.keys(FLOW_RULES), 'opens-sequence', 'overview-kinds', 'comment-link', 'inline-size']);
   assert.deepEqual(Object.keys(T.edits).sort(), ['add', 'rename']);
   for (const k of ['layout', 'validate', 'describe']) assert.equal(typeof T[k], 'function', k);
 });
@@ -78,7 +78,8 @@ test('example 13 validates, lays out clean down and right, and names every node 
   assert.deepEqual([g.byId.split.w, g.byId.split.h], [48, 6], 'laid out down: across');
   g.edges.filter(e => e.from === 'split').forEach(e => assert.equal(e.fromSide, 'right'));
   g.edges.filter(e => e.to === 'both-done').forEach(e => assert.equal(e.toSide, 'left'));
-  assert.equal(g.legend.length, 5, 'control flow, initial, final, decision or merge, fork or join: what the view draws');
+  assert.deepEqual(g.legend.map(x => x.match(/<b>([^<]*)<\/b>/)[1]), ['Control flow', 'Initial node', 'Activity final', 'Decision', 'Merge', 'Fork', 'Join'],
+    'what the view draws, each glyph keyed on its own (§14)');
 });
 
 test('reading order (§14): geo.order is the nodes by rank, then the flows; the nodes are drawn in it', () => {
@@ -93,8 +94,10 @@ test('describe() writes the view in sentences, from the initial node along the f
   assert.equal(describe(EX, 'buy-book'), ['Buying a book: an interaction overview diagram of 10 nodes and 11 flows.', 'Initial node; then Find a book.',
     'Interaction use Find a book, opens Find a book; then merge.', 'Merge, 2 entries; then Check out.', 'Interaction use Check out, opens Check out; then Payment accepted?.',
     'Decision Payment accepted?, 2 exits; then fork [payment accepted], merge [else].', 'Fork, 2 branches; then Email the receipt, Queue the order.',
-    'Interaction use Email the receipt, opens Email the receipt; then join.', 'Join, 2 branches; then activity final.', 'Activity final.',
-    'Inline interaction Queue the order, 3 lifelines, 3 messages; then join.'].join('\n'));
+    'Interaction use Email the receipt, opens Email the receipt; then join.', 'Inline interaction Queue the order, 3 lifelines, 3 messages; then join.',
+    'Join, 2 branches; then activity final.', 'Activity final.'].join('\n'), 'breadth first: the fork\'s branches before the join');
+  const named = structuredClone(EX); named.edges.find(e => e.props && e.props.guard === 'else').label = 'retry';
+  assert.match(describe(named, 'buy-book'), /; then fork \[payment accepted\], merge by retry \[else\]\.$/m, 'a flow by its name and guard');
 });
 
 // the inline view of example 13 with a fragment (an alt with two guards) and an interaction use in it (§16's edge case)
@@ -169,6 +172,14 @@ test('opens-sequence, overview-kinds and inline-size: the overview\'s own rules'
   assert.equal(g.byId.act.shape, 'rounded', 'drawn as an action');
   assert.deepEqual(clean(odd, 'buy-book').bad, []);
   assert.deepEqual(rules(plus([N('note', 'Comment', { label: 'Paid by card' })], [{ id: 'cl', type: 'uml.CommentLink', from: 'note', to: 'ref-checkout' }])), [], 'a comment and its link');
+  // comment-link: a link with no comment at either end
+  assert.deepEqual(rules(plus([], [{ id: 'cl', type: 'uml.CommentLink', from: 'start', to: 'done' }])), ['warning comment-link cl,start,done']);
+  // overview-kinds on a line: a view's edges list naming a line this diagram does not draw; it is warned of and not drawn
+  const of = structuredClone(EX); of.edges.push({ id: 'of', type: 'uml.ObjectFlow', from: 'ref-find', to: 'ref-checkout' });
+  VIEW(of).edges = [...EX.edges.filter(e => e.type === 'uml.ControlFlow').map(e => e.id), 'of'];
+  const ofp = ovProblems(of, VIEW(of)).filter(x => x.rule === 'overview-kinds');
+  assert.deepEqual(ofp.map(x => [x.level, x.path, x.ids]), [['warning', `views[0].edges[${VIEW(of).edges.length - 1}]`, ['of']]]);
+  assert.equal(layout(of, 'buy-book').byId.of, undefined); assert.ok(!layout(of, 'buy-book').edges.some(e => e.id === 'of'), 'not drawn');
   // inline-size: 20 messages pass, 21 do not
   const many = k => { const m = structuredClone(EX), q = m.views.find(v => v.id === 'queue-order');
     q.edges = Array.from({ length: k }, (_, i) => ({ id: 'q' + i, type: 'uml.Message', from: 'queue', to: 'worker', label: 'tick', props: { sort: 'async' } })); return m; };

@@ -99,7 +99,7 @@ try {
     all('.m-legend b, .m-legend .lgi > span').forEach(x => { const r = ratio(css(x, 'color'), lgBg); if (r < 4.5) low.push(['legend', x.textContent, r]); });
     check(`${tag}: contrast: texts 4.5:1, outlines and lines 3:1`, !low.length, low.slice(0, 8));
     if (name === 'example 13' && d === 'down') { const legend = all('.m-legend b').map(b => b.textContent);
-      check(`${tag}: the legend keys the flow and the glyphs the view draws`, same(legend, ['Control flow', 'Initial node', 'Activity final', 'Decision or merge', 'Fork or join']), legend); }
+      check(`${tag}: the legend keys the flow and the glyphs the view draws`, same(legend, ['Control flow', 'Initial node', 'Activity final', 'Decision', 'Merge', 'Fork', 'Join']), legend); }
     h.destroy();
   }
   check('the three fonts measure differently', new Set(Object.values(widths)).size === 3, widths);

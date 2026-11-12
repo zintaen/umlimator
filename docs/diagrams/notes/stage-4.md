@@ -652,20 +652,29 @@ As built in 4.7 (`src/uml/overview.js`):
 
 - **Shapes.** The use's look is `SHAPE['ov-use']`: `SHAPE.use`'s drawing with a border added, `useSize`, a box outline and
   `inset` 0. The inline interaction is `SHAPE['ov-inline']`: its size is the time axis's bounds, 10 px a side and the tag's
-  17 px row; the sequence's markup is built when the view is laid out and rides on the node into what `layoutTyped`
-  returns, so a memo hit draws it again with no `sqRun`. Its inner `n-body` and `n-mask` are renamed so the node's hover and
+  17 px row; the sequence is laid out (`sqRun`) and drawn each time the view is, memo hit or not, and its markup rides on the
+  node into what `layoutTyped` returns, so a memo hit repaints it onto the kept geometry: the memo saves only the layout and
+  routing. A rule or `describe()` counts the inline view's lifelines and messages with no `sqRun`. Its inner `n-body` and `n-mask` are renamed so the node's hover and
   selection styles do not reach them. Frame only (above S11's limits, or with no sequence view), it is `useSize` with an
   "sd" tag.
 - **Labels.** A typed view gets no `labelRoom` (it is a map's), and a row's nodes share its top, so a flow between two nodes
   of different heights jogs halfway across the gap. With a labelled flow the gap between columns is twice the widest label
   and 26 px (laid out down, twice the label's 18 px height and 26 px), so each guard finds a run of its own clear of the
-  stubs; with none it is 64 px. Example 13 draws both its guards whole either way.
+  stubs; with none it is 64 px. Example 13 draws both its guards whole either way. The gap is one for every column, so one
+  long guard widens them all (example 13 laid out right: 3503 px wide, 6191 px with a 60-character guard; laid out down,
+  1243 px high either way); less than twice the label drops guards, so making room only where a labelled flow runs waits for
+  an additive per-column gap option in `layoutGraph` (it holds `gapAfter` inside, with no option for it).
 - **Palette.** Initial, Final, Flow final, Merge, Fork and Join carry `name: false`; Decision asks for its question (S8).
   A use or an inline interaction added with no name takes its view's title.
 - **Opening.** The canvas opens a typed node's view by Enter on it selected or a double-click (Q11's "click" is the map's
   ⤢ badge, which a typed node does not draw); both are tested on example 13.
 - **No `remove` hook:** Delete hides and Shift + Delete deletes, the canvas's default.
-- **`describe()`** starts at each initial node and follows the flows, each node once, then what no flow reaches.
+- **`describe()`** starts at the initial nodes and follows the flows breadth first (a fork's branches before their join),
+  each node once, each flow by "name [guard]", then what no flow reaches.
+- **Legend.** Decision, merge, fork and join are keyed one by one, though a decision and a merge share the diamond and a
+  fork and a join the bar.
+- **Lines.** A view whose `edges` list names a line other than a control flow or a comment link does not draw it and warns
+  under `overview-kinds`; a comment link with no comment at either end is a `comment-link` warning.
 - **The stress view** of §17 is generated in `tests/overview.test.mjs` (40 nodes, 50 flows, 10 inline interactions of 6
   lifelines and 12 messages): a full layout and SVG about 20 ms, a guard edited 12 to 16 ms, one inline time axis 0.03 ms
   (CPU, best of three after a warm-up, on a laptop). 4.10's `overview-stress.json` replaces it.

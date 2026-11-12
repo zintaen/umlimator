@@ -15,7 +15,7 @@ import { sqDraw, sqRun } from './sequence.js';
    uses (stage 3's SHAPE.use, "ref", with a look that gives it a size and a border) and inline interactions (a frame "sd
    name" holding its sequence view drawn at full size, read only, from sqRun and sqDraw, S11), joined by control flows drawn
    "name [guard]" and cut at 280 px; comments. Each use and inline interaction names its uml.sequence view in opensView,
-   which a click on it when selected opens (Q11), and V changes (S18). Laid out by layoutTyped from the host's ranking, with
+   which Enter on it selected, or a double-click, opens (Q11; notes §11.3 as built), and V changes (S18). Laid out by layoutTyped from the host's ranking, with
    repair and reroute off (§17); a view with no `edges` list draws control flows and comment links. Ships in
    lib/umlimator-all.js only. */
 
@@ -44,21 +44,24 @@ function ovIndex(model, view) {
   OV_ARR(model && model.views).forEach(v => { if (OV_OBJ(v) && typeof v.id === 'string' && !V.has(v.id)) V.set(v.id, v); });
   const ids = [...new Set(OV_ARR(view && view.nodeIds).filter(id => N.has(id)))], shown = new Set(ids);
   const list = Array.isArray(view && view.edges) ? view.edges.map(x => (typeof x === 'string' ? E.get(x) : x)) : [...E.values()].filter(e => OV_LINES.includes(e.type));
-  const lines = list.filter(e => OV_OBJ(e) && typeof e.id === 'string' && shown.has(e.from) && shown.has(e.to));
+  const both = list.filter(e => OV_OBJ(e) && typeof e.id === 'string' && shown.has(e.from) && shown.has(e.to));
+  const lines = both.filter(e => OV_LINES.includes(e.type)), stray = both.filter(e => !OV_LINES.includes(e.type)); // stray: not drawn, warned of
   const el = id => (N.get(id) || [])[0];
-  return { N, V, ids, shown, lines, el, flows: lines.filter(e => e.type === 'uml.ControlFlow') };
+  return { N, V, ids, shown, lines, stray, el, flows: lines.filter(e => e.type === 'uml.ControlFlow') };
 }
 // a node in a sentence: its name, else its kind ("merge", "initial node")
 const ovNm = (I, id) => { const x = I.el(id); return x && OV_HAS(x.label) ? String(x.label) : x ? ovWordOf(x.type).toLowerCase() : String(id); };
 
 /* ---- the inline interaction (S11): its sequence view, counted, and laid out by the sequence type's own sqRun when it is
-   small enough; { view, heads, messages, run } (run null when it is drawn as its frame only), or null with no sequence view */
-function ovInline(model, I, n) {
+   small enough; { view, heads, messages, small, run } (run null when it is drawn as its frame only, or when lay is false: a
+   rule or a sentence needs the counts only), or null with no sequence view */
+function ovInline(model, I, n, lay = true) {
   const sv = I.V.get(n.opensView);
   if (!sv || sv.diagram !== 'uml.sequence') return null;
   const own = new Set(OV_ARR(sv.nodes).filter(OV_OBJ).map(x => x.id)), heads = OV_ARR(sv.nodeIds).filter(id => I.N.has(id) || own.has(id)).length;
   const messages = interactionWalk(model, sv).occ.filter(o => o.message).length;
-  return { view: sv, heads, messages, run: heads <= OV_MAX.heads && messages <= OV_MAX.messages ? sqRun(model, sv) : null };
+  const small = heads <= OV_MAX.heads && messages <= OV_MAX.messages;
+  return { view: sv, heads, messages, small, run: small && lay ? sqRun(model, sv) : null };
 }
 
 /* ---- shapes: an interaction use's look over stage 3's SHAPE.use (its border and a size, useSize), and the inline frame ---- */
@@ -109,7 +112,7 @@ function ovNodeName(model, I, x, ins, outs, sd) {
     case 'uml.ForkNode': return `${nm}, ${ovPlural(outs, 'branch', 'branches')}`;
     case 'uml.JoinNode': return `${nm}, ${ovPlural(ins, 'branch', 'branches')}`;
     case 'uml.InteractionUse': return nm + opens();
-    case 'uml.Interaction': return !sd ? nm + opens() : `${nm}, ${ovPlural(sd.heads, 'lifeline')}, ${ovPlural(sd.messages, 'message')}${sd.run ? '' : ', drawn as its frame only'}`;
+    case 'uml.Interaction': return !sd ? nm + opens() : `${nm}, ${ovPlural(sd.heads, 'lifeline')}, ${ovPlural(sd.messages, 'message')}${sd.small ? '' : ', drawn as its frame only'}`;
     default: return nm;
   }
 }
@@ -117,25 +120,27 @@ const ovFlowName = (I, e) => { const g = OV_PROPS(e).guard;
   return e.type === 'uml.CommentLink' ? `Comment link from ${ovNm(I, e.from)} to ${ovNm(I, e.to)}`
     : `Control flow from ${ovNm(I, e.from)} to ${ovNm(I, e.to)}${OV_HAS(e.label) ? ', ' + e.label : ''}${OV_HAS(g) ? ', guard ' + g : ''}`; };
 
-/* ---- the legend: each line kind drawn, then each control glyph (§14) ---- */
+/* ---- the legend: each line kind drawn, then each control glyph, by its node type (§14) ---- */
 const ovLegendItem = (svg, name, says) => `<span class="lgi" title="${esc(name + ' — ' + says)}"><svg class="lgs" viewBox="0 0 28 16" aria-hidden="true">${svg}</svg><b>${esc(name)}</b><span>${esc(says)}</span></span>`;
+const OV_DIAMOND = '<path d="M14 1L21 8L14 15L7 8Z" fill="var(--um-stage-bg)" stroke="var(--um-muted)" stroke-width="1.4"/>', OV_BAR = '<rect x="11.5" y="1" width="5" height="14" fill="var(--um-text)"/>';
 const OV_LEGEND = [
   ['uml.ControlFlow', '<g stroke="var(--um-muted)" stroke-width="1.4" stroke-linejoin="round" fill="none"><path d="M2 8H26"/><path d="M17 3L26 8L17 13"/></g>', 'Control flow', 'what runs next'],
   ['uml.CommentLink', '<path d="M2 8H26" stroke="var(--um-muted)" stroke-width="1.4" stroke-dasharray="3 2"/>', 'Comment link', 'what a comment is about'],
-  ['initial', '<circle cx="14" cy="8" r="6" fill="var(--um-text)"/>', 'Initial node', 'where the flow starts'],
-  ['final', '<circle cx="14" cy="8" r="6.5" fill="var(--um-stage-bg)" stroke="var(--um-muted)" stroke-width="1.4"/><circle cx="14" cy="8" r="3.5" fill="var(--um-text)"/>', 'Activity final', 'ends the whole flow'],
-  ['flow-final', '<circle cx="14" cy="8" r="6.5" fill="var(--um-stage-bg)" stroke="var(--um-muted)" stroke-width="1.4"/><path d="M9.4 3.4L18.6 12.6M18.6 3.4L9.4 12.6" stroke="var(--um-muted)" stroke-width="1.4"/>', 'Flow final', 'ends one branch'],
-  ['diamond', '<path d="M14 1L21 8L14 15L7 8Z" fill="var(--um-stage-bg)" stroke="var(--um-muted)" stroke-width="1.4"/>', 'Decision or merge', 'one way out by its guards, or ways that meet'],
-  ['bar', '<rect x="11.5" y="1" width="5" height="14" fill="var(--um-text)"/>', 'Fork or join', 'splits into branches that run together, or waits for all of them'],
+  ['uml.InitialNode', '<circle cx="14" cy="8" r="6" fill="var(--um-text)"/>', 'Initial node', 'where the flow starts'],
+  ['uml.ActivityFinalNode', '<circle cx="14" cy="8" r="6.5" fill="var(--um-stage-bg)" stroke="var(--um-muted)" stroke-width="1.4"/><circle cx="14" cy="8" r="3.5" fill="var(--um-text)"/>', 'Activity final', 'ends the whole flow'],
+  ['uml.FlowFinalNode', '<circle cx="14" cy="8" r="6.5" fill="var(--um-stage-bg)" stroke="var(--um-muted)" stroke-width="1.4"/><path d="M9.4 3.4L18.6 12.6M18.6 3.4L9.4 12.6" stroke="var(--um-muted)" stroke-width="1.4"/>', 'Flow final', 'ends one branch'],
+  ...[['uml.DecisionNode', 'Decision', 'one way out, by its guards'], ['uml.MergeNode', 'Merge', 'where ways meet']].map(([k, name, says]) => [k, OV_DIAMOND, name, says]),
+  ...[['uml.ForkNode', 'Fork', 'splits into branches that run together'], ['uml.JoinNode', 'Join', 'waits for all its branches']].map(([k, name, says]) => [k, OV_BAR, name, says]),
 ];
-const ovLegendOf = (edges, nodes) => { const has = new Set([...edges.map(e => e.type), ...nodes.map(n => n.shape)]);
+const ovLegendOf = (edges, nodes) => { const has = new Set([...edges.map(e => e.type), ...nodes.map(n => n.type)]);
   return OV_LEGEND.filter(([k]) => has.has(k)).map(([, svg, name, says]) => ovLegendItem(svg, name, says)); };
 
 /* ---- the view laid out: { model, view, pos, memo } ----
    Each node by its shape, sized before the layout: a bar by the lines on its busier side, every line of a bar on its long
    side (the router reads no shape, §4.1); an inline interaction by its sequence's bounds under the "sd" tag. The inline
-   view is laid out here, so its markup rides on the node (n.sd) into what layoutTyped returns and the memo keeps; nothing
-   after layoutTyped edits what it returned (§2.4): the result is a new object, its nodes a new array in reading order */
+   view is laid out (sqRun) and drawn here on every call, memo hit or not, so it is never stale; its markup rides on the node
+   (n.sd), and a memo hit repaints it onto the kept geometry, saving only layoutTyped's layout and routing. Nothing after
+   layoutTyped edits what it returned (§2.4): the result is a new object, its nodes a new array in reading order */
 function ovGeo({ model, view, pos, memo }) {
   const I = ovIndex(model, view), down = view.direction === 'down', at = id => ovOwn(pos || {}, id) || [0, 0];
   const ins = new Map(), outs = new Map(), bump = (m, id) => m.set(id, (m.get(id) || 0) + 1);
@@ -154,7 +159,9 @@ function ovGeo({ model, view, pos, memo }) {
       : { end: { from: 'none', to: 'open' }, label: flowText(e.label, OV_PROPS(e).guard) || undefined, cut: 280, ...(bar(e.from) ? { fromSide: 'right' } : {}), ...(bar(e.to) ? { toSide: 'left' } : {}) }) }));
   // a typed view makes no room for a label (layoutGraph's labelRoom is a map's). A row's nodes share its top, not their middle,
   // so a flow between two of different heights jogs halfway across the gap, and its label sits on one half, clear of the
-  // nodes' stubs (22 px): the gap is twice that and the widest label laid out right, its 18 px height laid out down
+  // nodes' stubs (22 px): the gap is twice that and the widest label laid out right, its 18 px height laid out down.
+  // ponytail: one gap for every column, so one long guard widens them all (to ~612 px at the 280 px cut); room only where a
+  // labelled flow runs needs a per-column gap from layoutGraph (it has gapAfter inside, no option for it). Less than twice drops guards
   const wide = Math.max(0, ...edges.filter(e => e.label).map(labelW)), gap = wide ? Math.ceil(Math.max(64, 2 * ((down ? 18 : wide) + OV_GAP))) : 64;
   const g = layoutTyped({ nodes, edges, direction: down ? 'down' : 'right', gap, rgap: 56, repair: false, reroute: false }, memo); // P1 on a shared CI runner (§17)
   // reading order (§14): by rank (the layout's column, then its row), then the lines
@@ -168,6 +175,7 @@ const OV_RULES = {
   ...FLOW_RULES,
   'opens-sequence': 'an interaction use or an inline interaction opens a sequence view of the model',
   'overview-kinds': 'an interaction overview shows control nodes, interaction uses, inline interactions and comments only',
+  'comment-link': 'a comment link has a comment at one end',
   'inline-size': `an inline interaction's view has at most ${OV_MAX.heads} lifelines and ${OV_MAX.messages} messages, else it is drawn as its frame only`,
 };
 function ovProblems(model, view) {
@@ -179,22 +187,27 @@ function ovProblems(model, view) {
     if (x.type !== 'uml.InteractionUse' && x.type !== 'uml.Interaction') return;
     const v = I.V.get(x.opensView);
     if (!v || v.diagram !== 'uml.sequence') return say('error', 'opens-sequence', `${path}.opensView`, [id], `${nm} opens ${x.opensView == null ? 'no view' : !v ? `${JSON.stringify(x.opensView)}, which is not a view of the model` : `view ${v.id}, a ${v.diagram || 'map'}, not a sequence`}`);
-    const sd = x.type === 'uml.Interaction' && ovInline(model, I, x);
-    if (sd && !sd.run) say('warning', 'inline-size', `${path}.opensView`, [id, v.id], `${nm} shows view ${v.id}, of ${ovPlural(sd.heads, 'lifeline')} and ${ovPlural(sd.messages, 'message')}: over ${OV_MAX.heads} lifelines or ${OV_MAX.messages} messages it is drawn as its frame only`); });
+    const sd = x.type === 'uml.Interaction' && ovInline(model, I, x, false);
+    if (sd && !sd.small) say('warning', 'inline-size', `${path}.opensView`, [id, v.id], `${nm} shows view ${v.id}, of ${ovPlural(sd.heads, 'lifeline')} and ${ovPlural(sd.messages, 'message')}: over ${OV_MAX.heads} lifelines or ${OV_MAX.messages} messages it is drawn as its frame only`); });
+  const eIdx = e => OV_ARR(view.edges).findIndex(x => x === e || x === e.id), ePath = e => (Array.isArray(view.edges) ? `views[${vi}].edges[${eIdx(e)}]` : `edges[${OV_ARR(model.edges).indexOf(e)}]`);
+  I.stray.forEach(e => say('warning', 'overview-kinds', ePath(e), [e.id], `view ${view.id} shows ${ovWordOf(e.type).toLowerCase()} ${e.id}, a line an interaction overview does not draw: not drawn`));
+  I.lines.filter(e => e.type === 'uml.CommentLink' && ![e.from, e.to].some(id => I.el(id).type === 'uml.Comment'))
+    .forEach(e => say('warning', 'comment-link', ePath(e), [e.id, e.from, e.to], `${e.id} joins ${ovNm(I, e.from)} and ${ovNm(I, e.to)}, neither a comment`));
   return out;
 }
 
-/* ---- describe(): the view in words: from each initial node along the flows, each node once by its accessible name and
-   where its flows go; then what no flow reaches; then the comments' links ---- */
+/* ---- describe(): the view in words: from the initial nodes along the flows, breadth first (a fork's branches side by side),
+   each node once by its accessible name and where its flows go, each by "name [guard]"; then what no flow reaches; then the
+   comments' links ---- */
 function ovDescribe(model, viewId) {
   const v = OV_ARR(model && model.views).find(x => OV_OBJ(x) && x.id === viewId); if (!v) throw new Error(`umlimator: no view ${JSON.stringify(viewId)}`);
   const I = ovIndex(model, v), seen = new Set(), walk = [], out = I.flows.reduce((m, e) => m.set(e.from, [...(m.get(e.from) || []), e]), new Map());
-  const visit = id => { if (seen.has(id)) return; seen.add(id); walk.push(id); (out.get(id) || []).forEach(e => visit(e.to)); };
-  I.ids.filter(id => I.el(id).type === 'uml.InitialNode').forEach(visit); I.ids.forEach(visit);
+  const visit = (...q) => { for (const id of q) if (!seen.has(id)) { seen.add(id); walk.push(id); q.push(...(out.get(id) || []).map(e => e.to)); } };
+  visit(...I.ids.filter(id => I.el(id).type === 'uml.InitialNode')); I.ids.forEach(id => visit(id));
   const count = id => I.flows.filter(e => e.to === id).length;
   const lines = [`${v.title || v.id}: an interaction overview diagram of ${ovPlural(I.ids.length, 'node')} and ${ovPlural(I.flows.length, 'flow')}.`];
-  walk.forEach(id => { const x = I.el(id), next = (out.get(id) || []).map(e => { const g = OV_PROPS(e).guard; return `${ovNm(I, e.to)}${OV_HAS(g) ? ` [${g}]` : ''}`; });
-    lines.push(`${ovNodeName(model, I, x, count(id), (out.get(id) || []).length, x.type === 'uml.Interaction' ? ovInline(model, I, x) : null)}${next.length ? '; then ' + next.join(', ') : ''}.`); });
+  walk.forEach(id => { const x = I.el(id), next = (out.get(id) || []).map(e => { const t = flowText(e.label, OV_PROPS(e).guard); return `${ovNm(I, e.to)}${!t ? '' : OV_HAS(e.label) ? ' by ' + t : ' ' + t}`; });
+    lines.push(`${ovNodeName(model, I, x, count(id), (out.get(id) || []).length, x.type === 'uml.Interaction' ? ovInline(model, I, x, false) : null)}${next.length ? '; then ' + next.join(', ') : ''}.`); });
   I.lines.filter(e => e.type === 'uml.CommentLink').forEach(e => lines.push(ovFlowName(I, e) + '.'));
   return lines.join('\n');
 }
