@@ -101,17 +101,17 @@ function sqRun(model, view) {
   return { nodes, edges, groups: [], byId, bounds: o.bounds, map: false, order, slots: o.slots, problems: o.problems, ta: o, legend: sqLegend(edges) };
 }
 
-/* draw: under the lines, frame outlines and dividers, then the stems, then each use's box (filled, so stems pass behind it),
-   then the bars, deepest last; over the nodes, a deleted lifeline's cross */
+/* draw, all under the lines (notes/stage-3.md §4.2): frame outlines and dividers, then the stems, then each use's box
+   (filled, so stems pass behind it), then the bars, deepest last, then a deleted lifeline's cross */
 function sqDraw(g, kit) {
   const o = g.ta, r2 = kit.r2;
   if (!o) return { under: '', over: '' };
   const under = '<g class="seq-under">' + o.frames.map(f => frame(f.x, f.y, f.w, f.h, f.dividers.map(d => d.y))).join('')
     + o.stems.map(s => `<path class="seq-stem" d="M${r2(s.x)} ${r2(s.y1)}V${r2(s.y2)}" stroke="var(--um-muted)" stroke-width="1.2" stroke-dasharray="5 4"/>`).join('')
     + o.spans.map(s => `<rect class="seq-use" x="${r2(s.x)}" y="${r2(s.y)}" width="${r2(s.w)}" height="${r2(s.h)}" fill="var(--um-stage-bg)"/>${frame(s.x, s.y, s.w, s.h)}`).join('')
-    + o.bars.map(b => `<rect class="seq-bar" x="${r2(b.x)}" y="${r2(b.y)}" width="${r2(b.w)}" height="${r2(b.h)}" fill="var(--um-stage-bg)" stroke="var(--um-text)" stroke-width="1.2"/>`).join('') + '</g>';
-  const over = o.stems.filter(s => s.cross).map(s => `<path class="seq-cross" d="M${r2(s.x - 8)} ${r2(s.y2 - 8)}l16 16m0 -16l-16 16" stroke="var(--um-text)" stroke-width="2"/>`).join('');
-  return { under, over: over ? `<g class="seq-over">${over}</g>` : '' };
+    + o.bars.map(b => `<rect class="seq-bar" x="${r2(b.x)}" y="${r2(b.y)}" width="${r2(b.w)}" height="${r2(b.h)}" fill="var(--um-stage-bg)" stroke="var(--um-text)" stroke-width="1.2"/>`).join('')
+    + o.stems.filter(s => s.cross).map(s => `<path class="seq-cross" d="M${r2(s.x - 8)} ${r2(s.y2 - 8)}l16 16m0 -16l-16 16" stroke="var(--um-text)" stroke-width="2"/>`).join('') + '</g>';
+  return { under, over: '' };
 }
 
 /* the legend (pieces.js shows it): each sort of message the view draws */
@@ -260,7 +260,7 @@ function sqMoveTo(model, view, id, at) {
   const by = Array.isArray(at.by) ? at.by : null, ids = SQ_ARR(V.nodeIds);
   if (ids.includes(id)) { const i = ids.indexOf(id), j = by ? (by[1] ? null : i + Math.sign(by[0])) : Number.isInteger(at.index) ? at.index : null;
     if (j == null) return null; if (j < 0 || j >= ids.length || j === i) return [];
-    return [{ op: 'move', id, view: V.id, index: j }]; }
+    return sqGuard(model, V, [{ op: 'move', id, view: V.id, index: j }]); }
   const X = sqIndex(model, V);
   if (X.opOf.has(id)) { // an operand among its fragment's operands: { by: [0, ±1] } or { index }; edges follows (contiguous)
     const f = X.opOf.get(id), ops = SQ_ARR(f.members).filter(SQ_OBJ).map(o => o.id), k = ops.indexOf(id);
@@ -278,8 +278,15 @@ function sqMoveTo(model, view, id, at) {
   let slot = at;
   if (by) { if (!by[1] || by[0]) return null; // sideways: nothing for an occurrence
     if (R.lo == null) return sqErr(`fragment ${id} holds nothing: it has no place in time to move from`);
-    const out = sqSlots(model, V, X).filter(s => !R.inside.has(s.parent)), above = out.reduce((k, s, j) => (s.index <= R.lo ? j : k), -1), below = out.findIndex(s => s.index > R.hi);
-    slot = by[1] < 0 ? out[above - 1] : below < 0 ? undefined : out[below + 1];
+    // from the run's own slot in its parent (before it going up, after it going down) to the next one that is another place.
+    // A fragment that holds nothing but the run is skipped: once the run leaves, it has no place in time (it is drawn at
+    // its parent's end), so stepping into it would only step back out
+    const all = sqSlots(model, V, X), P = R.parent, mine = new Set(R.ids), gone = new Set();
+    X.frags.forEach(f => { if ((X.block.get(f.id) || []).every(o => mine.has(o.id))) SQ_ARR(f.members).forEach(m => SQ_OBJ(m) && gone.add(m.id)); });
+    const here = by[1] < 0 ? R.lo : R.hi + 1, k = by[1] < 0 ? all.findIndex(s => s.parent === P && s.index === here) : all.findLastIndex(s => s.parent === P && s.index === here);
+    slot = undefined; if (k < 0) return [];
+    for (let j = k + Math.sign(by[1]); j >= 0 && j < all.length; j += Math.sign(by[1])) { const s = all[j];
+      if (!gone.has(s.parent) && !(s.parent === P && s.index === here)) { slot = s; break; } }
     if (!slot) return []; }
   return sqGuard(model, V, sqPut(V, id, R, slot, el));
 }
@@ -306,12 +313,15 @@ function sqWrap(model, view, ids, kind) {
 }
 
 /* add(model, view, entry, label, at): the palette. A lifeline is a model node, placed after the lifeline `at.after` names
-   (the selected one), else last; an interaction use goes in the view at the slot `at`, covering `at.covers` or every lifeline */
+   (the selected one), else last, and each use that covers both lifelines beside it covers it too; an interaction use goes in the view at the slot `at`, covering `at.covers` or every lifeline */
 function sqAdd(model, view, entry, label, at) {
   const V = sqView(model, view), type = SQ_OBJ(entry) ? entry.type : null; if (!V) return null;
   const ids = SQ_ARR(V.nodeIds), t = SQ_HAS(label) ? String(label) : null;
-  if (type === 'uml.Lifeline') { const i = SQ_OBJ(at) ? ids.indexOf(at.after) : -1;
-    return sqGuard(model, V, [{ op: 'add', element: { id: sqNewId(model, t || 'lifeline'), type, ...(t ? { label: t } : {}) }, view: V.id, index: i < 0 ? ids.length : i + 1 }]); }
+  if (type === 'uml.Lifeline') { const i = SQ_OBJ(at) ? ids.indexOf(at.after) : -1, id = sqNewId(model, t || 'lifeline');
+    // a use that covers both its neighbours covers it too, so covers stays next to each other
+    const grow = i < 0 || i + 1 >= ids.length ? [] : sqIndex(model, V).occ.filter(o => !o.message && [ids[i], ids[i + 1]].every(x => SQ_ARR(sqProps(o.el).covers).includes(x)))
+      .map(o => ({ op: 'set', id: o.id, path: 'props.covers', value: sqProps(o.el).covers.flatMap(x => (x === ids[i] ? [x, id] : [x])) }));
+    return sqGuard(model, V, [{ op: 'add', element: { id, type, ...(t ? { label: t } : {}) }, view: V.id, index: i < 0 ? ids.length : i + 1 }, ...grow]); }
   if (type === 'uml.InteractionUse') { const slot = SQ_OBJ(at) && Number.isInteger(at.index) ? at : { index: SQ_ARR(V.edges).length, parent: null };
     const covers = SQ_ARR(SQ_OBJ(at) && at.covers).length ? [...at.covers] : [...ids];
     return sqGuard(model, V, [{ op: 'add', element: { id: sqNewId(model, 'ref'), type, ...(t ? { label: t } : {}), ...(slot.parent != null ? { parent: slot.parent } : {}), props: { covers } }, view: V.id, index: slot.index, in: 'view' }]); }
@@ -321,11 +331,14 @@ function sqAdd(model, view, entry, label, at) {
 /* remove(model, view, ids, fromModel): Delete (fromModel false) takes a lifeline out of this view (hide, which takes its
    messages with it, after a set that drops it from each use's covers); Shift + Delete deletes it from the model. A message,
    a use or a fragment lives in the view: either deletes it (a call's replies go with it; a fragment's content stays). An
-   operand's content moves to just after its fragment before it goes (S6); the last operand takes its fragment */
+   operand's content moves to just after its fragment before it goes (S6); the last operand, or all of them at once, takes
+   its fragment */
 function sqRemove(model, view, ids, fromModel) {
   const V = sqView(model, view); if (!V) return null;
-  const X = sqIndex(model, V), lifelines = SQ_ARR(V.nodeIds), out = [];
-  for (const id of [...new Set(SQ_ARR(ids))]) {
+  const X = sqIndex(model, V), lifelines = SQ_ARR(V.nodeIds), out = [], sel = new Set(SQ_ARR(ids));
+  // every operand of a fragment selected: the fragment goes instead (its content stays, as an unwrap)
+  const whole = id => { const f = X.opOf.get(id); return f && SQ_ARR(f.members).filter(SQ_OBJ).every(m => sel.has(m.id)) ? f.id : id; };
+  for (const id of new Set([...sel].map(whole))) {
     if (lifelines.includes(id) && !fromModel && !SQ_ARR(V.nodes).some(n => SQ_OBJ(n) && n.id === id)) { // one of the view's own goes by delete
       X.occ.filter(o => !o.message && SQ_ARR(sqProps(o.el).covers).includes(id)).forEach(o => out.push({ op: 'set', id: o.id, path: 'props.covers', value: sqProps(o.el).covers.filter(x => x !== id) }));
       out.push({ op: 'hide', id, view: V.id }); continue; }

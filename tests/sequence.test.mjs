@@ -89,11 +89,11 @@ test('accessible names (A1): heads, messages with their place and operand, fragm
   assert.equal(name('f3'), 'Interaction use Send receipt email, over api to receipt');
 });
 
-test('draw: outlines, stems, the use\'s box and the bars under the lines, in that order; a deleted lifeline\'s cross over the nodes', () => {
+test('draw: outlines, stems, the use\'s box, the bars and a deleted lifeline\'s cross under the lines, in that order (§4.2)', () => {
   const m = seq([M('a', 'A', 'B', 'call'), M('d', 'A', 'B', 'delete'), { id: 'u', type: 'uml.InteractionUse', label: 'More', props: { covers: ['A', 'B'] } }], [], {});
   const { markup } = mapContext(m, {}).buildView('v'), pos = s => markup.indexOf(s);
   assert.ok(pos('class="seq-stem"') < pos('class="seq-use"') && pos('class="seq-use"') < pos('class="seq-bar"') && pos('class="seq-bar"') < pos('<g class="edges">'), markup.slice(0, 2000));
-  assert.ok(pos('<g class="nodes">') < pos('class="seq-cross"'));
+  assert.ok(pos('class="seq-bar"') < pos('class="seq-cross"') && pos('class="seq-cross"') < pos('<g class="edges">') && pos('class="seq-over"') < 0);
   assert.ok(pos('data-shape="lifeline"') > 0 && pos('data-shape="use"') > 0);
   const { markup: ex } = mapContext(SEQ, {}).buildView('checkout');
   assert.equal((ex.match(/class="frame-box"/g) || []).length, 3); // f1, f2 and the use's outline
@@ -198,6 +198,14 @@ test('moveTo: a message to a slot across operands (E9) is a move then a reparent
   // a reply moved above its call, or the first message moved up: refused, or nothing
   assert.match(sqMoveTo(SEQ, V(SEQ), 'm5', { index: 3, parent: null }).error, /^reply-call: /);
   assert.deepEqual(sqMoveTo(SEQ, V(SEQ), 'm1', { by: [0, -1] }), []);
+  // the only content of a fragment: Alt + Down steps out past it and on to the end, never back into the empty fragment
+  const walk = (m, id, dy) => { const seen = []; for (let k = 0; k < 30; k++) { const c = sqMoveTo(m, V(m), id, { by: [0, dy] }); if (!c.length) return [m, seen];
+    m = run(m, c); const e = at(m, id); seen.push([V(m).edges.indexOf(e), e.parent ?? null]); } assert.fail(`${id} never reached the end: ${JSON.stringify(seen)}`); };
+  const one = seq([M('a', 'A', 'B', 'async'), M('b', 'A', 'B', 'async', { parent: 'o' })], [FR('f', 'opt', null, 'o')]);
+  assert.deepEqual(walk(one, 'b', 1)[1], [[1, null]]);
+  const [end, down] = walk(SEQ, 'm7', 1);
+  assert.deepEqual(down, [[6, 'f1-paid'], [7, 'f1-paid'], [7, 'f1-declined'], [8, 'f1-declined'], [8, null], [9, null], [10, null]]);
+  assert.deepEqual(walk(end, 'm7', -1)[1].at(-1), [0, null]); // and all the way back up
   assert.equal(sqMoveTo(SEQ, V(SEQ), 'm1', { by: [1, 0] }), null); // sideways: not the type's
 });
 test('moveTo: a fragment moves with everything it holds, one move per occurrence in order, then a reparent; never into itself', () => {
@@ -214,11 +222,13 @@ test('moveTo: a fragment moves with everything it holds, one move per occurrence
   assert.match(sqMoveTo(SEQ, V(SEQ), 'f1', { index: 6, parent: 'f2-notify' }).error, /into itself/);
   assert.match(sqMoveTo(SEQ, V(SEQ), 'f1', { index: 6, parent: null }).error, /into itself/);
 });
-test('moveTo: a lifeline one place left or right (Alt + Left/Right), or to its place in nodeIds (a drag)', () => {
+test('moveTo: a lifeline one place left or right (Alt + Left/Right), or to its place in nodeIds (a drag); never apart from what a use covers', () => {
   assert.deepEqual(sqMoveTo(SEQ, V(SEQ), 'api', { by: [1, 0] }), [{ op: 'move', id: 'api', view: 'checkout', index: 3 }]);
-  assert.deepEqual(V(apply(SEQ, sqMoveTo(SEQ, V(SEQ), 'api', { by: [-1, 0] }))).nodeIds, ['shopper', 'api', 'storefront', 'payments', 'receipt']);
+  assert.deepEqual(V(run(SEQ, sqMoveTo(SEQ, V(SEQ), 'storefront', { by: [-1, 0] }))).nodeIds, ['storefront', 'shopper', 'api', 'payments', 'receipt']);
   assert.deepEqual(sqMoveTo(SEQ, V(SEQ), 'receipt', { by: [1, 0] }), []);
-  assert.deepEqual(sqMoveTo(SEQ, V(SEQ), 'api', { index: 0 }), [{ op: 'move', id: 'api', view: 'checkout', index: 0 }]);
+  assert.deepEqual(V(run(SEQ, sqMoveTo(SEQ, V(SEQ), 'storefront', { index: 0 }))).nodeIds[0], 'storefront');
+  // f3 covers api, payments and receipt: a move that takes one of them away, or puts another between, is refused
+  for (const [id, to] of [['api', { by: [-1, 0] }], ['api', { index: 0 }], ['shopper', { index: 3 }]]) assert.match(sqMoveTo(SEQ, V(SEQ), id, to).error, /^covers: /, `${id} ${JSON.stringify(to)}`);
   assert.equal(sqMoveTo(SEQ, V(SEQ), 'api', { by: [0, 1] }), null); // up or down: nothing (pins: false)
 });
 test('moveTo: an operand up or down among its fragment\'s (the member list), and what it holds moves with it; the member hook adds and renames', () => {
@@ -251,7 +261,11 @@ test('add: a lifeline after the selected one (a model node), an interaction use 
   assert.deepEqual(l, [{ op: 'add', element: { id: 'audit1', type: 'uml.Lifeline', label: 'audit' }, view: 'checkout', index: 2 }]);
   const m = run(SEQ, l);
   assert.deepEqual([V(m).nodeIds[2], m.nodes.length], ['audit1', 6]);
-  assert.match(sqAdd(SEQ, V(SEQ), { type: 'uml.Lifeline' }, 'audit', { after: 'api' }).error, /^covers: /); // between what f3 covers
+  // between two lifelines f3 covers: f3 covers it too
+  const c = sqAdd(SEQ, V(SEQ), { type: 'uml.Lifeline' }, 'Api', { after: 'api' });
+  assert.deepEqual(c[1], { op: 'set', id: 'f3', path: 'props.covers', value: ['api', 'api1', 'payments', 'receipt'] });
+  assert.deepEqual(V(run(SEQ, c)).nodeIds, ['shopper', 'storefront', 'api', 'api1', 'payments', 'receipt']);
+  assert.equal(sqAdd(SEQ, V(SEQ), { type: 'uml.Lifeline' }, 'x', { after: 'receipt' }).length, 1); // after the last f3 covers: f3 stays
   assert.equal(sqAdd(SEQ, V(SEQ), { type: 'uml.Lifeline' }, null, null)[0].index, 5); // last
   const u = sqAdd(SEQ, V(SEQ), { type: 'uml.InteractionUse' }, 'Log in', { index: 1, parent: null });
   assert.deepEqual(u[0], { op: 'add', element: { id: 'ref1', type: 'uml.InteractionUse', label: 'Log in', props: { covers: ['shopper', 'storefront', 'api', 'payments', 'receipt'] } }, view: 'checkout', index: 1, in: 'view' });
@@ -276,6 +290,9 @@ test('remove: an operand\'s content moves to just after its fragment, then the o
   assert.deepEqual([ids(V(n).edges), at(n, 'a').parent, V(n).fragments[0].members.map(o => o.id)], [['c', 'a', 'b', 'd'], undefined, ['o2']]);
   assert.deepEqual(sqRemove(n, V(n), ['o2'], false), [{ op: 'delete', id: 'f' }]);
   assert.deepEqual(sqRemove(m, V(m), ['o2'], true), [{ op: 'delete', id: 'o2' }]); // the last in order: its content is after the fragment already
+  // every operand at once: the fragment goes, and what they held stays where it is, at the top level
+  const both = run(m, sqRemove(m, V(m), ['o1', 'o2'], false));
+  assert.deepEqual([V(both).fragments, ids(V(both).edges), V(both).edges.map(e => e.parent ?? null)], [[], ['a', 'b', 'c', 'd'], [null, null, null, null]]);
   // example 11's paid operand: its reply would then answer charge beside the declined one, outside the alt: refused
   assert.match(sqRemove(SEQ, V(SEQ), ['f1-paid'], false).error, /^reply-once: /);
 });

@@ -2,8 +2,9 @@
 <!-- The sequence type (3.3, notes/stage-3.md §4, §5) in headless Chrome (tests/embed.py), from lib/umlimator-all.js:
      docs/diagrams/examples/11-sequence.json drawn by render() in both themes and three fonts (no overlap, every text in its
      face or backing, no label on a bar, no line through a head, the names, the legend, contrast), its reading order, a
-     click on a message's arrowhead and on a self-message's loop selecting the message, and the gestures the canvas already
-     carries to the type: a message by L and by the handle (edits.connect), applied with apply() and drawn again. -->
+     click on a message's arrowhead and on a self-message's loop selecting the message, axe's rules for the pieces drawn as
+     role="img" written out, and the gestures the canvas already carries to the type: a message by L and by the handle
+     (edits.connect), F2 on a lifeline and a message, and a field of the properties panel, applied with apply(). -->
 <meta charset="utf-8">
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="../lib/umlimator-theme.css">
@@ -70,6 +71,13 @@ try {
     all('.node.frame text, .node.operand text, .node.use text, .node.lifeline text, .e-lab text').forEach(t => { const r = ratio(rgba(getComputedStyle(t).fill), bg); if (r < 4.5) low.push([t.textContent, r]); });
     all('.frame-box rect, .frame-box path, .seq-stem, .seq-bar, .edge-g path.edge').forEach(x => { const r = ratio(rgba(getComputedStyle(x).stroke), bg); if (r < 3) low.push([x.getAttribute('class'), r]); });
     check(`${tag}: contrast: texts 4.5:1, outlines, stems, bars and messages 3:1`, !low.length, low.slice(0, 6));
+    // axe-core 4.14's rules for what is drawn as role="img", written out: svg-img-alt and role-img-alt (each has a name),
+    // nested-interactive (nothing inside one is a tab stop). label-content-name-mismatch asks only of widgets, and these are not
+    const imgs = [...(pick('.stage svg[role="img"]') ? [pick('.stage svg')] : []), ...all('.stage svg [role="img"]')], noAlt = [], nested = [];
+    imgs.forEach(x => { if (!(x.getAttribute('aria-label') || '').trim()) noAlt.push(x.dataset.id || x.localName);
+      x.querySelectorAll('[tabindex], a[href], button, input, select, textarea').forEach(c => { if (c.tabIndex >= 0) nested.push(`${x.dataset.id || 'svg'} holds ${c.getAttribute('class') || c.localName}`); }); });
+    check(`${tag}: axe, written out: the drawing and its ${all('.stage svg [role="img"]').length} pieces (heads, frames, operands, the use) are named images with no tab stop inside`,
+      imgs.length === 12 && !noAlt.length && !nested.length, [imgs.length, noAlt, nested.slice(0, 6)]);
     h.destroy();
   }
   document.documentElement.dataset.theme = 'light'; el.style.removeProperty('--um-sans');
@@ -114,6 +122,18 @@ try {
   const n = ed.length; click('.node[data-id="api"] .n-body'); key('l'); key('r'); key('Enter'); key('ArrowDown', {}, sr.activeElement); key('ArrowDown', {}, sr.activeElement); key('ArrowDown', {}, sr.activeElement);
   const chosen = sr.activeElement && sr.activeElement.textContent; key('Enter', {}, sr.activeElement);
   check('a create to receipt, which m6 creates already: the type refuses it, and no event', chosen === 'Create' && ed.length === n, [chosen, ed.slice(n)]);
+  h.destroy();
+
+  // ---- rename by F2 and a field in the properties panel (§5.2), which the canvas already gives a typed view's nodes and
+  // lines. A guard (an operand is a member of a fragment in the view, which the canvas does not look in) waits for 3.4
+  h = mount(MODEL, { editable: true });
+  const rename = (select, text) => { select(); key('F2'); const f = pick('.um-rename'); if (!f) return null; f.value = text; key('Enter', {}, f); return ed[ed.length - 1]; };
+  const ren = [rename(() => click('.node[data-id="api"] .n-body'), 'API'), rename(() => clickAt(screen(m4[m4.length - 1][0] - 3, m4[m4.length - 1][1])), 'charge(amount)')].map(e => e && e.commands);
+  click('.node[data-id="api"] .n-body'); const rep = pick('.um-props [data-f="p:represents"]');
+  if (rep) { rep.value = 'Gateway'; rep.dispatchEvent(new Event('change', { bubbles: true })); ren.push(ed[ed.length - 1].commands); }
+  const renamed = ren.length === 3 && ren.every(Boolean) && ren.reduce((m, c) => apply(m, c), MODEL);
+  check('F2 then Enter on api and on m4, and api\'s Represents in the properties panel: one set each, which validates', same(ren, [[{ op: 'set', id: 'api', path: 'label', value: 'API' }],
+    [{ op: 'set', id: 'm4', path: 'label', value: 'charge(amount)' }], [{ op: 'set', id: 'api', path: 'props.represents', value: 'Gateway' }]]) && !errors(renamed).length, ren);
   h.destroy();
 } catch (x) { out.fail.push('threw: ' + (x && x.stack || x)); }
 document.documentElement.dataset.theme = 'light'; el.style.removeProperty('--um-sans');
