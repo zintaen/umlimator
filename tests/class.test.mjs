@@ -24,8 +24,8 @@ test('the definition: uml.class is registered with its palette, its lines, a pro
   for (const t of [...T.elements, ...T.lines]) assert.ok(Array.isArray(T.props[t.type]) || t.type === 'uml.Comment', t.type);
   assert.deepEqual(T.props['uml.Association'].filter(f => f.path).map(f => f.path.join('.')), ['ends.from.role', 'ends.from.multiplicity', 'ends.from.aggregation', 'ends.from.navigable',
     'ends.to.role', 'ends.to.multiplicity', 'ends.to.aggregation', 'ends.to.navigable']);
-  for (const k of ['layout', 'validate', 'describe', 'rankFlip']) assert.equal(typeof T[k], 'function', k);
-  assert.equal(Object.keys(T.rules).length, 10);
+  for (const k of ['layout', 'validate', 'describe', 'rankFlip', 'boxes', 'owners']) assert.equal(typeof T[k], 'function', k);
+  assert.equal(Object.keys(T.rules).length, 13, 'its ten, and owner-kinds, line-inside and own-boxes, since a class view draws packages as boxes (2.2)');
 });
 
 // ---- the member micro-syntax (risks.md E3, E4)
@@ -117,9 +117,14 @@ const breaks = {
   'composite-multiplicity': m => { m.edges[0].props.ends.from.multiplicity = '0..*'; return ['ab', 'a']; },
   'member-kinds': m => { m.nodes[1].members.push({ id: 'a.lit', type: 'uml.EnumerationLiteral', label: 'TWO' }); return ['a', 'a.lit']; },
   'comment-link': m => { m.edges[4].from = 'd'; return ['na', 'd']; },
+  'owner-kinds': m => { m.nodes[3].parent = 'a'; return ['i', 'a']; },
+  'line-inside': m => { m.edges.push({ id: 'pa', type: 'uml.Dependency', from: 'pkg', to: 'a' }); return ['pa', 'pkg', 'a']; },
+  'own-boxes': m => { m.views[0].containers = [{ id: 'k', label: 'K', nodeIds: ['i'] }]; return ['v']; },
 };
+const WARNS = ['owner-kinds', 'line-inside', 'own-boxes']; // a class view's rules about owners and boxes (2.2) are warnings
 test('validators: the base model breaks no rule, and validate() reports no error in it', () => {
   assert.deepEqual(classProblems(BASE), []);
+  assert.deepEqual(diagramOf({ diagram: 'uml.class' }).validate(BASE, BASE.views[0]), []);
   assert.deepEqual(validate(BASE).filter(p => p.level === 'error'), []);
   assert.deepEqual(classProblems(CLASS), [], 'the target example');
 });
@@ -127,10 +132,10 @@ test('validators: each rule fails on a model that breaks it; the problem names i
   const T = diagramOf({ diagram: 'uml.class' });
   assert.deepEqual(Object.keys(breaks).sort(), Object.keys(T.rules).sort(), 'a failing fixture for every rule');
   for (const [rule, broke] of Object.entries(breaks)) {
-    const m = structuredClone(BASE), ids = broke(m), got = classProblems(m);
+    const m = structuredClone(BASE), ids = broke(m), got = T.validate(m, m.views[0]);
     assert.equal(got.length, 1, `${rule}: ${JSON.stringify(got)}`);
     const [p] = got;
-    assert.equal(p.rule, rule); assert.equal(p.level, 'error'); assert.match(p.message, new RegExp('^' + rule + ': '));
+    assert.equal(p.rule, rule); assert.equal(p.level, WARNS.includes(rule) ? 'warning' : 'error'); assert.match(p.message, new RegExp('^' + rule + ': '));
     assert.deepEqual([...new Set(p.ids)].sort(), [...new Set(ids)].sort(), rule);
     assert.ok(validate(m).some(q => q.rule === rule && q.path === p.path), `${rule}: in validate()`);
   }
@@ -144,11 +149,14 @@ test('validators: a model with no class view is not checked by the class type', 
 test('describe(): the class view in words, each element with its members counted and its lines', () => {
   const d = describe(CLASS, 'domain').split('\n');
   assert.equal(d[0], 'Sales domain: a class diagram of 11 elements and 8 lines.');
+  assert.equal(d[1], 'Package sales, holding 9 elements.', 'a box, then what it holds (2.2)');
   assert.ok(d.includes('Class Order (entity), 5 attributes, 3 operations; associated with Customer (1) ("places"); composed of OrderLine (lines, 1..*); aggregates Payment (payments, 0..*); realizes Payable; depends on Money «use».'), d.join('\n'));
   assert.ok(d.includes('Class OrderLine, 2 attributes, 0 operations; part of Order (1); associated with Book (book, 1).'), d.join('\n'));
   assert.ok(d.includes('Class CardPayment, 1 attribute, 1 operation; a kind of Payment.'));
   assert.ok(d.includes('Enumeration OrderStatus, 4 literals.'));
-  assert.equal(describe(CLASS, 'payments').split('\n').length, 5);
+  const p = describe(CLASS, 'payments').split('\n');
+  assert.equal(p.length, 5);
+  assert.equal(p[1], 'Class Order (entity), 5 attributes, 3 operations; aggregates Payment (payments, 0..*); realizes Payable.', 'the view\'s subject, sales, keeps the names plain');
 });
 
 const noOverlap = g => { for (const a of g.nodes) for (const b of g.nodes) if (a !== b) assert.ok(a.x + a.w <= b.x || b.x + b.w <= a.x || a.y + a.h <= b.y || b.y + b.h <= a.y, `${a.id} and ${b.id} overlap`); };
@@ -158,6 +166,7 @@ test('the target example lays out clean: classifiers at their size, notes, the l
     noOverlap(g);
     assert.deepEqual(check(CLASS, v.id), [], v.id);
     assert.ok(g.nodes.every(n => n.shape === (n.type === 'uml.Comment' ? 'note' : 'classifier')), v.id);
+    assert.deepEqual(g.families.map(f => [f.id, f.nodeIds.length]), v.id === 'domain' ? [['sales', 9]] : [], `${v.id}: sales, shown, is a box holding its classes (2.2)`);
     assert.ok(at.payment.y + at.payment.h < at['card-payment'].y, 'a generalization points up in a view laid out down');
     assert.ok(Array.isArray(g.legend) && g.legend.length, 'a legend of the line ends');
   }
@@ -207,6 +216,7 @@ test('the classifier graphs\' edge cases (risks.md G1) lay out clean: 60 members
     const g = layout(m, v); noOverlap(g);
     assert.deepEqual(check(m, v), [], v);
     assert.deepEqual(g.edges.map(e => e.id).sort(), ['g', 'self', 'w1', 'w2', 'w3', 'w4'], 'every line drawn, each on its own');
+    assert.deepEqual([g.families.map(f => [f.id, f.nodeIds]), g.nodes.find(n => n.id === 'q').shape], [[['p', ['q']]], 'package'], 'outer is a box holding inner, a closed folder (2.2)');
   }
   assert.ok(layout(m, 'd').nodes.find(n => n.id === 'a').h < layout(m, 'v').nodes.find(n => n.id === 'a').h, 'rows: 8 caps the long class');
 });
@@ -284,4 +294,16 @@ test('save and reopen (DoD 6): a 30-step class session undoes and redoes to byte
   const reopened = steps.slice(15).reduce((m, s) => apply(m, s), JSON.parse(seen[15])); // saved as JSON at step 15, read back, continued
   assert.equal(JSON.stringify(reopened), seen[30]);
   assert.equal(JSON.stringify(layout(reopened, 'domain'), (k, v) => (k === 'ms' ? undefined : v)), JSON.stringify(layout(JSON.parse(seen[30]), 'domain'), (k, v) => (k === 'ms' ? undefined : v)));
+});
+
+// ---- 2.2: a class view draws packages as nesting and qualifies names (notes/stage-2.md §10.1, approved: plan.md §1)
+test('a class view draws a shown package owning something shown as a box, and names an element by the owners it does not show', () => {
+  const g = layout(CLASS, 'domain'), F = g.families[0];
+  assert.deepEqual([F.id, F.title, F.shape, F.aria], ['sales', 'sales', 'package', 'Package sales, holding 9 elements']);
+  g.nodes.forEach(n => assert.equal(n.x > F.x && n.y > F.y && n.x + n.w < F.x + F.w && n.y + n.h < F.y + F.h, n.id !== 'note-total', n.id));
+  assert.ok(!g.nodes.some(n => n.id === 'sales'), 'a box takes no slot');
+  const bare = structuredClone(CLASS); delete bare.views[1].subject;
+  assert.deepEqual(layout(bare, 'payments').nodes.map(n => n.label), ['sales::Order', 'sales::Payable', 'sales::Payment', 'sales::CardPayment'], 'with no subject, from the top');
+  assert.deepEqual(layout(CLASS, 'payments').nodes.map(n => n.label), ['Order', 'Payable', 'Payment', 'CardPayment'], 'from the subject');
+  assert.equal(layout(bare, 'payments').nodes[0].aria, 'Class sales::Order (entity), 5 attributes, 3 operations');
 });
