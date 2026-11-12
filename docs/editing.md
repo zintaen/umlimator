@@ -230,7 +230,7 @@ it (`docs/diagrams/notes/stage-2.md` §4). Ownership is `parent`, and it is edit
 
 | Edit | Pointer | Keyboard | Commands |
 |---|---|---|---|
-| put an element in a package, or take it out | drop its card into a package's box, into another box, or outside every box (the box under the drag is highlighted) | the **Owner** field in the properties panel: "none" and every package by its qualified name (`payments::card`); the element's own owner is always listed | `reparent` to that package (outside every box: the view's `subject`, or none), and a `set` that removes the card's pin when it had one, in one transaction |
+| put an element in a package, or take it out | drop its card into a package's box, into another box, or outside every box (the box under the drag is highlighted) | the **Owner** field in the properties panel: "none" and every package by its qualified name (`payments::card`); the element's own owner is always listed | `reparent` to that package (outside every box: the view's `subject`, or none); a drop also sends a `set` that removes the card's pin when it had one, in the same transaction, while the Owner field sends the `reparent` alone, so a pin stays |
 | select a package drawn as a box | a click on its border or its title | the outline of elements | a container selection: F2, Delete, Shift + Delete and the properties panel act on the package |
 | rename it | F2 on the box | `F2`, Enter | `set label`: the package's own name, not the qualified one |
 | hide it from the view | Remove from view (properties) | `Delete` | `hide`: what it held stays on the picture, its names qualified (`sales::Order`) |

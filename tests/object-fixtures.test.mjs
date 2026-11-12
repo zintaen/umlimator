@@ -1,6 +1,6 @@
 // The object diagram's fixtures (work package 2.6, notes/stage-2.md §15): tests/object-minimal.json, the edge cases of an
 // object view, and tests/object-stress.json, 50 instances and 60 links laid out within P1's budget. Each lays out with no
-// overlap, no line through a node and no role on a node, in both directions. tests/fixtures.html draws both in a browser,
+// overlap, no line through a node and no role on a node, in both directions. tests/package-object.html draws both in a browser,
 // in both themes and three fonts.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';

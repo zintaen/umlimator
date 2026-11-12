@@ -1,7 +1,7 @@
 // The package diagram's fixtures (work package 2.6, notes/stage-2.md §15): tests/package-minimal.json, risks.md G1's package
 // cases, L8 and M6 in a few views, and tests/package-stress.json, packages over three levels with 50 nodes and 60 lines,
 // laid out within P1's budget. Each lays out with no overlap, no line through a node, along a box's border or through a
-// tab, and every box holds exactly what it owns on the picture, in both directions. tests/fixtures.html draws both in a
+// tab, and every box holds exactly what it owns on the picture, in both directions. tests/package-object.html draws both in a
 // browser, in both themes and three fonts.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';

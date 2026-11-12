@@ -283,6 +283,7 @@ for f, view, refs, first, cards, boxes in (("order-objects", "snapshot", ["order
         tab, sid = chrome.open(url + "/")
         drawn = until(lambda: (lambda s: s if s and s["view"] == view and len(s["lit"]) == cards else None)(chrome.eval(sid, LOOK)))
         ok(f"C10 · {f}: the page draws the diagram: {cards} elements, {boxes} of its packages as boxes", drawn and chrome.eval(sid, BOXES) == boxes, (drawn, chrome.eval(sid, BOXES)))
+        until(lambda: state()["pages"][0].get("state"))  # the page's event stream is connected, so the tool waits for it to show
         said = tool("highlight", refs=refs, view=view)
         got = until(lambda: (lambda s: s if s and "mcp" in s["overlays"] and s["lit"] == sorted(refs) else None)(chrome.eval(sid, LOOK)))
         ok(f"C10 · {f}: highlight is shown on the diagram, the rest dimmed, and the tool says so once it is", said.startswith(f"Shown on 1 page at {url}, on view {view}")
