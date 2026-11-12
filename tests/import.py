@@ -211,8 +211,8 @@ with tempfile.TemporaryDirectory() as tmp:
 # view, and its report on stderr. tests/mermaid-class.test.mjs pins the reader's report and its round trip
 name = "tests/import/classes.mmd"
 ok("mermaid · a classDiagram is known by its content, and the Python reader leaves it to the module's",
-   imp.detect("x", "%% a\nclassDiagram\n") == "mermaid" and imp.mermaid_class("---\ntitle: t\n---\nclassDiagram\n")
-   and not imp.mermaid_class("flowchart LR\n") and imp.mermaid_class('%%{\n  init: {\n    "theme": "dark"\n  }\n}%%\nclassDiagram\n') and "module's reader" in imp.read("mermaid", "classDiagram\nA --> B\n", "x")[1][0][1])
+   imp.detect("x", "%% a\nclassDiagram\n") == "mermaid" and imp.mermaid_typed("---\ntitle: t\n---\nclassDiagram\n") == "classDiagram"
+   and not imp.mermaid_typed("flowchart LR\n") and imp.mermaid_typed('%%{\n  init: {\n    "theme": "dark"\n  }\n}%%\nclassDiagram\n') == "classDiagram" and "module's reader" in imp.read("mermaid", "classDiagram\nA --> B\n", "x")[1][0][1])
 with tempfile.TemporaryDirectory() as tmp:
     t = Path(tmp)
     r = run("import", str(ROOT / name), "--out", str(t / "classes.json"))
@@ -248,4 +248,33 @@ with tempfile.TemporaryDirectory() as tmp:
     r = subprocess.run([sys.executable, str(bare / "umlimator.py"), "import", str(ROOT / name), "--out", str(t / "z.json")], capture_output=True, text=True)
     ok("with no src/, a classDiagram's import says it needs a full clone", r.returncode == 1 and "full clone" in r.stderr
        and "ERR_MODULE_NOT_FOUND" not in r.stderr and not (t / "z.json").exists(), r.stderr)
+
+# A Mermaid sequenceDiagram is read by the module's reader too (notes/stage-3.md §8, 3.6): one uml.sequence view.
+# tests/mermaid-sequence.test.mjs pins the reader's report and its round trip
+name = "tests/import/sequence.mmd"
+ok("mermaid · a sequenceDiagram is known by its content, and the Python reader leaves it to the module's",
+   imp.detect("x", "%% a\nsequenceDiagram\n") == "mermaid" and imp.mermaid_typed("---\ntitle: t\n---\nsequenceDiagram\n") == "sequenceDiagram"
+   and imp.mermaid_typed("sequenceDiagramX\n") is None and "a sequenceDiagram is read by the module's reader" in imp.read("mermaid", "sequenceDiagram\nA->>B: x\n", "x")[1][0][1])
+with tempfile.TemporaryDirectory() as tmp:
+    t = Path(tmp)
+    r = run("import", str(ROOT / name), "--out", str(t / "sequence.json"))
+    said = json.loads(r.stdout) if r.returncode == 0 else {}
+    m = json.loads((t / "sequence.json").read_text(encoding="utf-8")) if r.returncode == 0 else {"nodes": [], "edges": [], "views": [{}]}
+    v = m["views"][0]
+    ok(f"{name} · read by the module's reader as one uml.sequence view of a version-2 model, its messages counted",
+       said.get("format") == "mermaid" and said.get("views") == ["sequence-diagram"] and m.get("schemaVersion") == 2 and v.get("diagram") == "uml.sequence"
+       and said.get("cards") == 11 and said.get("lines") == len(v.get("edges", [])) == 39, r.stdout + r.stderr)
+    got = [l[len(str(ROOT / name)):].split(" ", 1)[0] for l in r.stderr.splitlines()]
+    ok(f"{name} · lists what it skips or approximates, each with its line",
+       got == [f":{n}:" for n in (3, 9, 10, 13, 17, 20, 21, 24, 29, 30, 33, 34, 34, 35, 36, 38, 39, 41, 49, 57, 60, 61, 69, 93, 94, 94, 95, 96, 96, 99, 99, 101, 108, 109, 110, 111)]
+       and said.get("unread") == 36, r.stderr)
+    ok(f"{name} · lifelines, each sort of message, fragments",
+       {e["props"].get("sort") for e in v.get("edges", []) if e["type"] == "uml.Message"} == {"call", "async", "reply", "create", "delete"}
+       and [f["props"]["operator"] for f in v.get("fragments", [])] == ["loop", "alt", "opt", "par", "par", "break"], v)
+    problems = [p for p in u.js("validate", m) if p["level"] == "error"]
+    ok(f"{name} · validate() finds no error", problems == [], problems)
+    bare = dict(__import__("os").environ, PATH=tmp)
+    r = subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "import", str(ROOT / name), "--out", str(t / "x.json")], capture_output=True, text=True, env=bare)
+    ok("without Node, a sequenceDiagram's import says it needs Node", r.returncode == 1 and "Mermaid sequenceDiagram" in r.stderr and "Node.js 18" in r.stderr
+       and not (t / "x.json").exists(), r.stderr)
 sys.exit(1 if failed else 0)

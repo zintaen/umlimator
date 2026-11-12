@@ -6,8 +6,8 @@
   plantuml      C4-PlantUML: Person, System, Container, Component (with Db, Queue and _Ext), Rel, Rel_*, BiRel, and
                 *_Boundary(alias, label) { ... } as boxes
   mermaid       flowchart and graph (nodes, labelled links, subgraphs as boxes), and C4Context, C4Container and
-                C4Component, whose macros are C4-PlantUML's (a classDiagram is the module's to read: umlimator.py
-                import runs src/readers/mermaid-class.js in Node)
+                C4Component, whose macros are C4-PlantUML's (a classDiagram or a sequenceDiagram is the module's to
+                read: umlimator.py import runs src/readers/mermaid-class.js or mermaid-sequence.js in Node)
   compose       `docker compose config --format json`: services, depends_on and links, networks as boxes
   kubernetes    `kubectl get ... -o json` (a List or one object): Deployments, StatefulSets, DaemonSets, Services (to the
                 workloads their selector picks), Ingresses (to their Services), and env values that name a Service
@@ -21,7 +21,8 @@ from pathlib import Path
 FORMATS = ["structurizr", "plantuml", "mermaid", "compose", "kubernetes"]
 EXT = {".dsl": "structurizr", ".puml": "plantuml", ".plantuml": "plantuml", ".pu": "plantuml", ".iuml": "plantuml",
        ".mmd": "mermaid", ".mermaid": "mermaid"}
-MERMAID = re.compile(r"(flowchart|graph|C4Context|C4Container|C4Component|classDiagram)\b")
+MERMAID = re.compile(r"(flowchart|graph|C4Context|C4Container|C4Component|classDiagram|sequenceDiagram)\b")
+TYPED = ("classDiagram", "sequenceDiagram")  # the diagrams the module's readers read, in Node (src/readers/)
 
 # ponytail: a keyword guess over names, technologies, tags and images, the first match winning; a source's own type
 # (a cylinder, ContainerDb, _Ext, a StatefulSet) comes first. Add words when a common stack lands on the wrong colour.
@@ -137,9 +138,9 @@ def detect(path, text):
     return EXT.get(Path(path).suffix.lower())
 
 
-def mermaid_class(text):
-    """Whether Mermaid text is a classDiagram, which the module's reader reads (src/readers/mermaid-class.js, through Node):
-    this file reads Mermaid's flowcharts and C4 diagrams only."""
+def mermaid_typed(text):
+    """The Mermaid diagram the module's readers read (src/readers/, through Node), classDiagram or sequenceDiagram, or
+    None: this file reads Mermaid's flowcharts and C4 diagrams only."""
     directive = False  # a %%{ ... }%% directive may run over several lines
     for s in (l.strip() for l in front(text)[1].splitlines()):
         if directive:
@@ -147,8 +148,8 @@ def mermaid_class(text):
         elif s.startswith("%%"):
             directive = s[2:].strip().startswith("{") and "}%%" not in s
         elif s:
-            return s.startswith("classDiagram")
-    return False
+            return next((t for t in TYPED if re.match(t + r"\b", s)), None)
+    return None
 
 
 def front(text):
@@ -551,8 +552,8 @@ def mermaid(text, name):
     m = Model(title or name)
     lines = [(no, s) for no, s in ((no, l.strip()) for no, l in enumerate(body.splitlines(), 1)) if s and not s.startswith("%%")]
     head = MERMAID.match(lines[0][1]) if lines else None
-    if not head or head.group(1) == "classDiagram":
-        m.say(lines[0][0] if lines else 1, "a classDiagram is read by the module's reader, in Node (umlimator.py import): nothing imported here"
+    if not head or head.group(1) in TYPED:
+        m.say(lines[0][0] if lines else 1, f"a {head.group(1)} is read by the module's reader, in Node (umlimator.py import): nothing imported here"
               if head else "not a flowchart, graph or C4 diagram: nothing imported")
         return m
     rest = re.sub(r"^\s*(TB|TD|BT|RL|LR)?\s*;?", "", lines[0][1][head.end():])
