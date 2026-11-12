@@ -19,7 +19,7 @@ import { ownersOn, readingOrder, ownerChoices } from '../src/uml/owners.js';
 import '../src/uml/package.js';
 
 const read = p => JSON.parse(readFileSync(new URL(p, import.meta.url)));
-const PKG = read('../docs/diagrams/examples/03-package.json');
+const PKG = read('../examples/bookshop-packages.json');
 const T = diagramOf({ diagram: 'uml.package' });
 const N = (id, type, label, parent, more = {}) => ({ id, type: 'uml.' + type, label, ...(parent ? { parent } : {}), ...more });
 const meets = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
