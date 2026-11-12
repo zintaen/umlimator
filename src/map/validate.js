@@ -1,8 +1,8 @@
 import { typedProblems, versionProblem } from '../core/model.js';
 import { diagramOf } from '../core/registry.js';
-import { SHAPE_NAMES, noteOf, shapeOf } from '../draw/shapes.js';
+import { SHAPE_NAMES, shapeOf } from '../draw/shapes.js';
 import { mapContext } from './context.js';
-import { ALIAS, KIND, MAPK, NOTATIONS, hasKey, kindOf } from './kinds.js';
+import { ALIAS, KIND, MAPK, hasKey, kindOf } from './kinds.js';
 
 const WIRE_KINDS = ['calls', 'feeds', 'triggers', 'state', 'guard'], SIDES = ['left', 'right', 'top', 'bottom'];
 /** A model's own problems, before anything is drawn: errors draw as holes or not at all (ids that are missing,
@@ -25,20 +25,19 @@ export function validate(model) {
     if (n.owner != null && typeof n.owner !== 'string') warn(at + '.owner', 'an owner is a name: ignored');
     shapeIs(n, at);
   };
-  const shapeIs = (n, at) => { if (n && n.shape != null && !SHAPE_NAMES.includes(String(n.shape).toLowerCase())) warn(at + '.shape', `unknown shape "${n.shape}": the notation draws it by its kind (the shapes: ${SHAPE_NAMES.join(', ')})`); };
-  const notation = (x, at) => { if (x != null && !noteOf(x)) warn(at, `"${x}" is not a notation (${NOTATIONS.join(', ')}): drawn as box`); }; // card shapes (0.15.0)
-  notation(m.shapes, 'shapes');
+  const shapeIs = (n, at) => { if (n && n.shape != null && !SHAPE_NAMES.includes(String(n.shape).toLowerCase())) warn(at + '.shape', `unknown shape "${n.shape}": drawn by its kind (the shapes: ${SHAPE_NAMES.join(', ')})`); };
+  const gone = (x, at) => { if (x && x.shapes !== undefined) warn(at + 'shapes', 'shapes is no longer read: maps draw in one style'); }; // the box/c4/uml choice, removed in 0.21.0
+  gone(m, '');
   arr(m.nodes).forEach((n, i) => card(n, `nodes[${i}]`));
   views.forEach((v, i) => arr(v.nodes).forEach((n, j) => card(n, `views[${i}].nodes[${j}]`)));
   views.forEach((v, i) => { if (typeof v.id !== 'string' || !v.id) err(`views[${i}].id`, 'a view needs an id'); else if (vids.has(v.id)) err(`views[${i}].id`, `view id "${v.id}" is used twice`); else vids.add(v.id); });
   if (m.root != null && !vids.has(m.root)) err('root', `root "${m.root}" is not a view`);
   const later = (x, at) => { if (x && x.opensView && !vids.has(x.opensView)) warn(at + '.opensView', `opens "${x.opensView}", a view the model does not have: fine if the host loads it when it is opened`); };
   arr(m.nodes).forEach((n, i) => later(n, `nodes[${i}]`));
-  views.forEach((v, i) => notation(v.shapes, `views[${i}].shapes`));
-  // c4 draws a frontend card as a browser: a person's icon on one says the model means a person (0.15.0)
-  const inC4 = new Set(views.filter(v => (noteOf(v.shapes) || noteOf(m.shapes)) === 'c4').flatMap(v => arr(v.nodeIds)));
-  arr(m.nodes).forEach((n, i) => { if (!n || !inC4.has(n.id) || n.shape != null || !['user', 'users', 'usercheck'].includes(n.icon)) return;
-    if (shapeOf({ ...n, k: kindOf(n.kind, true) }, 'c4') === 'browser') warn(`nodes[${i}].kind`, `"${n.label || n.id}" has a person's icon, but c4 draws a ${n.kind} card as a browser: kind "person" (or shape "person") draws a person`); });
+  views.forEach((v, i) => gone(v, `views[${i}].`));
+  // a frontend card is drawn as a browser: a person's icon on one says the model means a person (0.15.0)
+  arr(m.nodes).forEach((n, i) => { if (!n || n.shape != null || !['user', 'users', 'usercheck'].includes(n.icon)) return;
+    if (shapeOf({ ...n, k: kindOf(n.kind, true) }) === 'browser') warn(`nodes[${i}].kind`, `"${n.label || n.id}" has a person's icon, but a ${n.kind} card is drawn as a browser: kind "person" (or shape "person") draws a person`); });
   const line = (e, at, ends) => {
     if (!e || typeof e !== 'object') return err(at, 'a line is an object with from and to');
     ['from', 'to'].forEach(k => { if (!ends.has(e[k])) err(`${at}.${k}`, `"${e[k]}" is neither a card nor a box`); });

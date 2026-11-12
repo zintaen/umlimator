@@ -45,11 +45,11 @@ def guess(words, default="backend"):
     return next((k for k, rx in GUESS if re.search(rx, t)), default)
 
 
-# a C4 source's app that runs on a phone: a mobile card, which the c4 notation draws as a phone (0.15.0)
+# a C4 source's app that runs on a phone: a mobile card, which a map draws as a phone (0.15.0)
 MOBILE = r"\bmobile\b|android|\bios\b|iphone|ipad|xamarin|flutter|react.?native|swiftui"
 
 
-# the kinds the c4 notation draws as a tool (NOTED.c4 in lib/umlimator.js): a browser, a phone, a cylinder, a pipe, a page.
+# the kinds a map draws as one of C4's tools (NOTED in lib/umlimator.js): a browser, a phone, a cylinder, a pipe, a page.
 # Structurizr and C4-PlantUML draw only a container in a tool's shape by its words, so a software system or component that
 # guesses one keeps its kind (its colour) and is drawn a box (0.15.0)
 TOOL_KINDS = ("frontend", "mobile", "database", "queue", "file")
@@ -74,7 +74,6 @@ def ident(s):
 class Model:
     def __init__(self, title):
         self.title, self.nodes, self.edges, self.views, self.unread, self.ids = title, {}, [], [], [], set()
-        self.shapes = None  # the notation a C4 source's cards are drawn in (0.15.0)
 
     def say(self, where, msg):
         self.unread.append((where, msg))
@@ -112,7 +111,7 @@ class Model:
 
     def model(self):
         root = next((v["id"] for v in self.views if not v.get("parent")), None)
-        return {"title": self.title, **({"root": root} if root else {}), **({"shapes": self.shapes} if self.shapes else {}),
+        return {"title": self.title, **({"root": root} if root else {}),
                 "nodes": list(self.nodes.values()), "edges": self.edges, "views": self.views}
 
 
@@ -188,7 +187,6 @@ SZ_SHAPE = {"box": "box", "roundedbox": "box", "person": "person", "robot": "rob
 
 def structurizr(text, name):
     m = Model(name)
-    m.shapes = "c4"
     els, ref, path, rels, specs, stack, groups, styles = {}, {}, {}, [], [], [], [], []
     implied, comment, opened = "any", 0, []  # comment: the line a /* ... */ opened on; opened: each open block's line and text
     for no, raw in enumerate(text.splitlines(), 1):
@@ -457,9 +455,8 @@ def call_args(s):
 
 
 def c4(lines, m):
-    """Macro calls, one per line: elements, boundaries ({ ... } boxes), relationships. One view, in the c4 notation."""
+    """Macro calls, one per line: elements, boundaries ({ ... } boxes), relationships. One view."""
     boxes, stack, rels, bases, people, opened = [], [], [], set(), set(), []
-    m.shapes = "c4"
     for no, s in lines:
         if s == "}":
             if stack:

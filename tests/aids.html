@@ -114,19 +114,12 @@ try {
   }
   document.documentElement.dataset.theme = 'light';
 
-  // in c4 every box is a boundary, dashed; box and uml dash only a box with a tone; the minimap and the SVG carry the dashes
+  // only a box with a tone is dashed (c4's dashed boundaries went with the notations, 0.21.0); the minimap and the SVG carry the dashes
   const dashes = () => ['front', 'store'].map(id => cs(box(id).querySelector('.family-box'), 'strokeDasharray'));
   const miniDashed = () => [...sr.querySelectorAll('.minimap svg rect:not(.vp)')].filter(r => r.getAttribute('stroke-dasharray')).length;
-  const seen = {};
-  for (const nt of ['c4', 'uml', 'box']) {
-    h.shapes = nt;
-    const doc = new DOMParser().parseFromString(h.toSVG(), 'image/svg+xml');
-    seen[nt] = [h.shapes, ...dashes(), miniDashed(), doc.querySelector('.family[data-family="store"] .family-box').style.strokeDasharray || 'none'];
-    if (nt === 'c4') check('c4: the minimap\'s boundary of a box in a tone the theme does not have is drawn, in slate', (r => !!r && near(rgba(cs(r, 'stroke')), theme('slate')))(miniRg().find(r => /--um-nope/.test(r.getAttribute('style')))), miniRg().map(r => cs(r, 'stroke')));
-  }
-  check('in c4 every box is dashed, a box with a tone as in any notation; box and uml leave a plain box solid', JSON.stringify(seen) === JSON.stringify({
-    c4: ['c4', '7px, 5px', '7px, 5px', 4, '7px, 5px'], uml: ['uml', '7px, 5px', 'none', 3, 'none'], box: ['box', '7px, 5px', 'none', 3, 'none'] }), seen);
-  h.shapes = null;
+  const doc = new DOMParser().parseFromString(h.toSVG(), 'image/svg+xml'), seen = [...dashes(), miniDashed(), doc.querySelector('.family[data-family="store"] .family-box').style.strokeDasharray || 'none'];
+  check('a box with a tone is dashed, a plain box solid, in the picture, the minimap and the SVG', JSON.stringify(seen) === JSON.stringify(['7px, 5px', 'none', 3, 'none']), seen);
+  check('the minimap\'s region of a box in a tone the theme does not have is drawn, in slate', (r => !!r && near(rgba(cs(r, 'stroke')), theme('slate')))(miniRg().find(r => /--um-nope/.test(r.getAttribute('style')))), miniRg().map(r => cs(r, 'stroke')));
 
   h.update({ ...MODEL, views: [{ ...MODEL.views[0], containers: MODEL.views[0].containers.map(({ tone, ...c }) => c) }, MODEL.views[1]] });
   check('update() without the tones draws plain boxes again', !sr.querySelector('.family.toned') && !sr.querySelector('.minimap svg rect[fill-opacity=".14"]'), sr.querySelectorAll('.family.toned').length);

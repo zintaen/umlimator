@@ -1,8 +1,7 @@
 <!doctype html>
-<!-- Card shapes (0.15.0): each shape in each notation (box, c4, uml), drawn inside its card's box with its ports on its
-     outline and its text in its face; a change of notation that draws the cards again and lays nothing out; the notation in
-     render(), handle.shapes, MapState, the state event, <umlimator-map shapes>, the page's toggle, link and memory; exports,
-     the minimap, rings and the legend. tests/embed.py opens this in headless Chrome under reduced motion and reads
+<!-- Card shapes (0.15.0; one style since 0.21.0): each shape drawn inside its card's box with its ports on its outline and
+     its text in its face; a card's own shape; a model, render() option, element attribute or link that still names a notation
+     (box, c4, uml, all removed in 0.21.0) draws the one style and lays out the same; exports, the minimap, rings and the legend. tests/embed.py opens this in headless Chrome under reduced motion and reads
      <pre id="result">; tests/motion.html checks the shapes' motion with motion on. -->
 <meta charset="utf-8">
 <link rel="icon" href="data:,">
@@ -10,7 +9,7 @@
 <body style="margin:0">
 <div id="a" style="width:1300px;height:760px"></div>
 <div id="page" style="width:1200px;height:800px"></div>
-<umlimator-map id="el" src="../examples/shapes.json" shapes="uml" height="420"></umlimator-map>
+<umlimator-map id="el" src="../examples/shapes.json" shapes="box" height="420"></umlimator-map>
 <script type="module">
 import { render, mountPage, validate } from '../lib/umlimator.js';
 import '../lib/umlimator-element.js';
@@ -26,22 +25,19 @@ let h = null, sr = null;
 const mount = (model, opts = {}) => { if (h) h.destroy(); el.innerHTML = ''; h = render(el, model, opts); sr = el.querySelector('.umlimator').shadowRoot; return h; };
 const inner = x => x[Object.getOwnPropertySymbols(x)[0]];
 const drawn = () => Object.fromEntries([...sr.querySelectorAll('.node')].map(g => [g.dataset.id, g.dataset.shape || 'box']));
-// what each notation draws in shapes.json (docs/module-api.md, 0.15.0): the box notation's only shape is the desk's own
-const WANT = {
-  box: { desk: 'window' },
-  c4: { shoppers: 'person', staff: 'person', storefront: 'browser', app: 'mobile', desk: 'window', cli: 'terminal', agent: 'robot', orders: 'cylinder', queue: 'pipe', policies: 'document', fraud: 'hexagon' },
-  uml: { shoppers: 'person', staff: 'person', desk: 'window', agent: 'robot', orders: 'cylinder', policies: 'document', pricing: 'folder', hosts: 'node', fraud: 'hexagon' },
-};
+// what the one style draws in shapes.json (docs/module-api.md, 0.21.0): the union of what c4 and uml drew; the rest a box
+const WANT = { shoppers: 'person', staff: 'person', storefront: 'browser', app: 'mobile', desk: 'window', cli: 'terminal', agent: 'robot', orders: 'cylinder',
+  queue: 'pipe', policies: 'document', pricing: 'folder', hosts: 'node', fraud: 'hexagon' };
+const sorted = o => JSON.stringify(Object.entries(o).sort()), wanted = Object.fromEntries(SHAPES.nodes.map(n => [n.id, WANT[n.id] || 'box']));
 const pt = (svg, x, y) => { const p = svg.createSVGPoint(); p.x = x; p.y = y; return p; };
 try {
-  // ---- each shape in each notation: inside its box, ports on its outline, text in its face
+  // ---- each shape: inside its box, ports on its outline, text in its face
   const seen = new Set();
-  for (const nt of ['box', 'c4', 'uml']) {
-    mount(SHAPES, { shapes: nt });
-    const want = Object.fromEntries(SHAPES.nodes.map(n => [n.id, WANT[nt][n.id] || 'box'])), got = drawn();
-    const sorted = o => JSON.stringify(Object.entries(o).sort());
-    check(`${nt}: each card is the shape the notation draws for it`, sorted(got) === sorted(want), got);
-    check(`${nt}: handle.shapes and MapState say the notation`, h.shapes === nt && h.state.shapes === nt, [h.shapes, h.state.shapes]);
+  { const nt = 'one style';
+    mount(SHAPES);
+    const want = wanted, got = drawn();
+    check(`${nt}: each card is the shape its kind (or its own shape) draws`, sorted(got) === sorted(want), got);
+    check(`${nt}: the handle and MapState have no shapes (removed in 0.21.0)`, !('shapes' in h) && !('shapes' in h.state), [h.shapes, h.state.shapes]);
     Object.values(got).forEach(s => seen.add(s));
     const geo = inner(h).geo(), svg = sr.querySelector('svg.map-svg'), shaped = [...sr.querySelectorAll('.node[data-shape]')];
     const outside = shaped.filter(g => { const n = geo.byId[g.dataset.id], b = g.querySelector('.n-mask').getBBox();
@@ -61,101 +57,73 @@ try {
       s.style.strokeWidth = '3px'; const on = s.isPointInStroke(pt(svg, +m[1], +m[2])); s.style.strokeWidth = ''; return !on; }).map(e => e.dataset.from + '>' + e.dataset.to);
     check(`${nt}: a line leaves a shape from its outline`, !lines.length, lines);
   }
-  check('the three notations draw all 13 shapes between them', ['box', 'person', 'browser', 'mobile', 'cylinder', 'pipe', 'document', 'hexagon', 'robot', 'terminal', 'window', 'folder', 'node'].every(s => seen.has(s)), [...seen]);
-  check('uml marks a box with the component icon; c4 keeps the kind\'s own mark', (() => { mount(SHAPES, { shapes: 'uml' }); const u = sr.querySelector('.node[data-id="api"] .n-sigil').innerHTML;
-    mount(SHAPES, { shapes: 'c4' }); return u.includes('M4.5 4.5') && !sr.querySelector('.node[data-id="api"] .n-sigil').innerHTML.includes('M4.5 4.5'); })());
-  check('c4 and uml dash an external card; box draws it as before, solid',
-    (() => { mount(SHAPES, { shapes: 'c4' }); const c = !!sr.querySelector('.node[data-id="payments"] .n-body[stroke-dasharray]'); mount(SHAPES, { shapes: 'box' }); return c && !sr.querySelector('.node[data-id="payments"] .n-body[stroke-dasharray]'); })());
+  check('the shapes example draws all 13 shapes', ['box', 'person', 'browser', 'mobile', 'cylinder', 'pipe', 'document', 'hexagon', 'robot', 'terminal', 'window', 'folder', 'node'].every(s => seen.has(s)), [...seen]);
+  check('a box keeps its kind\'s own mark (no UML component icon)', !sr.querySelector('.node[data-id="api"] .n-sigil').innerHTML.includes('M4.5 4.5'));
+  check('an external card is dashed', !!sr.querySelector('.node[data-id="payments"] .n-body[stroke-dasharray]'));
+  check('a box is not dashed (c4 dashed every box)', (() => { mount({ nodes: [{ id: 'a', kind: 'backend' }, { id: 'b', kind: 'database' }], edges: [{ from: 'a', to: 'b' }], views: [{ id: 'v', nodeIds: ['a', 'b'], containers: [{ id: 'g', label: 'G', nodeIds: ['a', 'b'] }] }] }); return sr.querySelector('.family-box') && !sr.querySelector('.family-box[stroke-dasharray]'); })());
 
-  // ---- the notation changes: the cards are drawn again from the same geometry, the camera, selection and marks kept
-  const states = [];
-  mount(SHAPES, { shapes: 'c4', minimap: true, on: { state: e => states.push(e) } });
-  h.select({ type: 'node', id: 'orders', view: 'shapes' }); h.overlay('t', { nodes: { orders: { tone: 'rose' } } });
-  await wait(60); states.length = 0;
-  const g0 = inner(h).geo(), cam0 = JSON.stringify(h.state.camera), svg0 = sr.querySelector('svg.map-svg');
-  h.shapes = 'uml'; await wait(60);
-  check('handle.shapes = uml draws the cards again with nothing laid out: the same geometry, camera and selection',
-    inner(h).geo() === g0 && JSON.stringify(h.state.camera) === cam0 && h.selection && h.selection.id === 'orders' && sr.querySelector('svg.map-svg') !== svg0 && drawn().pricing === 'folder',
-    [inner(h).geo() === g0, h.state.camera, h.selection]);
-  check('…and says so: the state event names shapes, with MapState.shapes uml', states.some(e => e.changed.includes('shapes') && e.state.shapes === 'uml'), states.map(e => e.changed));
-  check('…a ring follows the shape\'s outline, 5 px out', sr.querySelector('.um-rings path.um-ring') && !sr.querySelector('.um-rings rect.um-ring'));
+  // ---- a model and render() that still name a notation (removed in 0.21.0): the one style, laid out the same; rings and the minimap
+  mount(SHAPES, { minimap: true }); const places = () => JSON.stringify(inner(h).geo().nodes.map(n => [n.id, n.x, n.y, n.w, n.h])), p0 = places();
+  h.select({ type: 'node', id: 'orders', view: 'shapes' }); h.overlay('t', { nodes: { orders: { tone: 'rose' } } }); await wait(60);
+  check('a ring follows the shape\'s outline, 5 px out', sr.querySelector('.um-rings path.um-ring') && !sr.querySelector('.um-rings rect.um-ring'));
   check('…and the minimap draws each shape\'s outline', sr.querySelectorAll('.minimap path').length === sr.querySelectorAll('.node[data-shape]').length);
-  h.shapes = null; await wait(30);
-  check('handle.shapes = null: each view\'s own again (the model\'s c4)', h.shapes === 'c4' && drawn().storefront === 'browser' && inner(h).geo() === g0);
-  warned.length = 0; h.shapes = 'sketch';
-  check('a notation that is not one changes nothing, and warns with the three', h.shapes === 'c4' && warned.some(w => /box, c4, uml/.test(w)), warned);
-  warned.length = 0; mount(SHAPES, { shapes: 'blocks' });
-  check('render(…, { shapes }) that is not a notation warns, and each view draws its own', h.shapes === 'c4' && warned.some(w => /blocks/.test(w)), warned);
-  const places = () => JSON.stringify(inner(h).geo().nodes.map(n => [n.id, n.x, n.y, n.w, n.h]));
-  const M2 = structuredClone(SHAPES); M2.shapes = 'uml'; const p1 = places(); h.update(M2); await wait(30);
-  check('update() with the model\'s notation changed draws it, every card where it was', h.shapes === 'uml' && drawn().hosts === 'node' && places() === p1);
-  const M3 = structuredClone(M2); M3.views[0].shapes = 'box'; const g1 = inner(h).geo(); h.update(M3); await wait(30);
-  check('…and a view\'s own notation wins over the model\'s, drawn from the same geometry', h.shapes === 'box' && drawn().hosts === 'box' && inner(h).geo() === g1);
+  const OLD = structuredClone(SHAPES); OLD.shapes = 'box'; OLD.views[0].shapes = 'uml';
+  warned.length = 0; mount(OLD, { shapes: 'box' }); await wait(30);
+  check('a model with shapes and render(…, { shapes }) draw the one style, every card where it was, with no warning', sorted(drawn()) === sorted(wanted) && places() === p0 && !warned.length, [drawn(), warned]);
+  h.shapes = 'box'; await wait(30);
+  check('…and setting handle.shapes draws nothing again', sorted(drawn()) === sorted(wanted));
+  h.update(structuredClone(OLD)); await wait(30);
+  check('…and update() with it keeps every card where it was', sorted(drawn()) === sorted(wanted) && places() === p0);
 
   // ---- exports draw the shapes, at rest
-  mount(SHAPES, { shapes: 'c4' });
+  mount(SHAPES);
   const file = h.toSVG(), png = await h.toPNG();
   check('toSVG() draws the shapes, their outlines and details', /data-shape="cylinder"/.test(file) && /class="n-body"/.test(file) && /n-accent/.test(file) && !/n-floor[^>]*animation/.test(file));
   check('toPNG() draws them too', png instanceof Blob && png.size > 1000, png && png.size);
-  check('another view\'s export draws in that view\'s notation', (() => { const m = structuredClone(SHAPES); m.views.push({ ...m.views[0], id: 'boxes', shapes: 'box' }); mount(m, { view: 'shapes' }); return /data-shape/.test(h.toSVG({ view: 'shapes' })) && !/data-shape="person"/.test(h.toSVG({ view: 'boxes' })); })());
+  check('another view\'s export draws the shapes too', (() => { const m = structuredClone(SHAPES); m.views.push({ ...m.views[0], id: 'again' }); mount(m, { view: 'shapes' }); return /data-shape="person"/.test(h.toSVG({ view: 'again' })); })());
 
-  // ---- the legend shows the shapes in use; an external card's key is dashed only where the cards are
+  // ---- the legend shows the shapes in use; an external card's key is dashed, as its cards are
   const names = () => [...sr.querySelectorAll('.lgi b')].map(b => b.textContent), dashedExt = () => [...sr.querySelectorAll('.lgi')].some(l => l.querySelector('b').textContent === 'External' && l.querySelector('i.d, svg [stroke-dasharray]'));
-  mount(SHAPES, { shapes: 'c4', legend: true });
+  mount(SHAPES, { legend: true });
   const keyed = name => [...sr.querySelectorAll('.lgi')].some(l => l.querySelector('b').textContent === name && l.querySelector('svg.lgs'));
-  check('c4: the legend names the shapes the kinds\' keys don\'t show (a person, a browser app, a phone, a terminal, a window)', ['Person', 'Browser app', 'Mobile app', 'Command line', 'Desktop app'].every(n => names().includes(n)) && !names().includes('Agent'), names());
-  check('c4: a kind drawn in one shape has that shape as its key (data stores, queues, agents, files)', ['Data store', 'Queue / Event', 'Agent / AI', 'File / Doc'].every(keyed));
-  check('c4: the External key is dashed, as its cards are', dashedExt());
-  h.shapes = 'box'; await wait(30);
-  check('box: no shape keys, and the External key is solid, as its cards are (it was dashed while they were solid)', !names().includes('Person') && !dashedExt(), names());
-  h.shapes = 'uml'; await wait(30);
-  check('uml: the legend names the folder and UML\'s component, and the hosts\' key is a node', ['Package', 'Component'].every(n => names().includes(n)) && keyed('Infra / Cloud'), names());
+  check('the legend names the shapes the kinds\' keys don\'t show (a person, a browser app, a phone, a terminal, a window, a package)', ['Person', 'Browser app', 'Mobile app', 'Command line', 'Desktop app', 'Package'].every(n => names().includes(n)) && !names().includes('Agent') && !names().includes('Component'), names());
+  check('a kind drawn in one shape has that shape as its key (data stores, queues, agents, files, hosts)', ['Data store', 'Queue / Event', 'Agent / AI', 'File / Doc', 'Infra / Cloud'].every(keyed));
+  check('the External key is dashed, as its cards are', dashedExt());
   mount(BOOK, { legend: true });
-  check('a model without a notation draws as before: no shapes, the same legend', !sr.querySelector('.node[data-shape]') && h.shapes === 'box' && !names().includes('Person'), names());
+  check('the bookshop draws its kinds\' shapes, with no UML component mark or key', sr.querySelector('.node[data-shape]') && !sr.querySelector('.node .n-sigil path[d^="M4.5 4.5"]') && !names().includes('Component'), names());
 
   // ---- reduced motion: no accent flash, no moving floor (tests/motion.html has them moving)
-  mount(SHAPES, { shapes: 'c4', flow: true });
+  mount(SHAPES, { flow: true });
   inner(h).flash('orders'); await wait(30);
   const acc = sr.querySelector('.node[data-id="orders"] .n-accent'), floor = sr.querySelector('.node[data-id="queue"] .n-floor');
   check('under reduced motion an arriving card\'s accent does not move, and a queue\'s floor is still', getComputedStyle(acc).animationName === 'none' && getComputedStyle(floor).animationName === 'none' && getComputedStyle(floor).opacity === '0',
     [getComputedStyle(acc).animationName, getComputedStyle(floor).animationName, getComputedStyle(floor).opacity]);
 
-  // ---- validate(): unknown shapes and notations, and the hint for a person drawn as a browser
+  // ---- validate(): unknown shapes, a shapes field no longer read, and the hint for a person drawn as a browser
   const V = validate({ shapes: 'c4', nodes: [{ id: 'r', label: 'Riders', kind: 'frontend', icon: 'users' }, { id: 'x', shape: 'blob' }], views: [{ id: 'v', shapes: 'nope', nodeIds: ['r', 'x'] }] });
-  check('validate() warns about an unknown shape and notation, and hints that c4 draws a frontend card with a person\'s icon as a browser',
-    ['nodes[1].shape', 'views[0].shapes', 'nodes[0].kind'].every(p => V.some(x => x.path === p && x.level === 'warning')) && /kind "person"/.test((V.find(x => x.path === 'nodes[0].kind') || {}).message), V);
+  check('validate() warns about an unknown shape and a shapes field, and hints that a frontend card with a person\'s icon is drawn as a browser',
+    ['nodes[1].shape', 'shapes', 'views[0].shapes', 'nodes[0].kind'].every(p => V.some(x => x.path === p && x.level === 'warning')) && /kind "person"/.test((V.find(x => x.path === 'nodes[0].kind') || {}).message)
+    && /no longer read/.test((V.find(x => x.path === 'shapes') || {}).message), V);
 
-  // ---- <umlimator-map shapes>: the notation from the attribute, and a new one without a new draw
+  // ---- <umlimator-map shapes="box">: the attribute is not read (0.21.0): the one style, and a change draws nothing again
   const me = document.getElementById('el');
   await until(() => me.map && me.map.view);
-  const em = me.map, eg = inner(em).geo();
-  check('<umlimator-map shapes="uml"> draws in uml', em.shapes === 'uml' && em.state.shapes === 'uml');
+  const em = me.map;
+  check('<umlimator-map shapes="box"> draws the one style', !!me.shadowRoot.querySelector('.umlimator').shadowRoot.querySelector('.node[data-id="storefront"][data-shape="browser"]'));
   me.setAttribute('shapes', 'c4'); await wait(60);
-  check('…and shapes="c4" draws its cards again in the same map: nothing loads or lays out again', me.map === em && em.shapes === 'c4' && inner(em).geo() === eg);
-  me.removeAttribute('shapes'); await wait(60);
-  check('…and no attribute: the model\'s own notation', me.map === em && em.shapes === 'c4');
+  check('…and a new shapes attribute draws nothing again', me.map === em && !customElements.get('umlimator-map').observedAttributes.includes('shapes'));
 
-  // ---- the standalone page: its toggle, the link and the reader's choice kept
+  // ---- the standalone page: no ⬡ toggle; a link with shapes draws the one style, and the link it writes drops it
   const box = document.getElementById('page'), key = 'visual-shapes:' + location.pathname;
   try { localStorage.removeItem(key); } catch (_) {}
-  history.replaceState(null, '', location.pathname + '#view=shapes&shapes=uml');
-  let pg = mountPage(box, SHAPES, { instant: true });
-  await until(() => pg.view && document.querySelector('#m-canvas .umlimator')); await wait(60);
-  const btn = () => document.getElementById('m-shapes'), link = () => new URLSearchParams(location.hash.slice(1));
-  check('the page draws the link\'s notation, and its toggle says it', pg.shapes === 'uml' && /uml/.test(btn().textContent) && /Card shapes: uml/.test(btn().getAttribute('aria-label')), [pg.shapes, btn().textContent]);
-  btn().click(); await wait(80);
-  check('the toggle goes on to the next notation, writes it into the link and keeps it for this page', pg.shapes === 'box' && link().get('shapes') === 'box' && localStorage.getItem(key) === 'box' && /box/.test(btn().textContent), [pg.shapes, location.hash, localStorage.getItem(key)]);
-  btn().click(); await wait(80);
-  check('…and again: c4', pg.shapes === 'c4' && link().get('shapes') === 'c4');
+  history.replaceState(null, '', location.pathname + '#view=shapes&shapes=box');
+  const pg = mountPage(box, SHAPES, { instant: true });
+  await until(() => pg.view && document.querySelector('#m-canvas .umlimator')); await wait(200);
+  const link = () => new URLSearchParams(location.hash.slice(1)), pgDrawn = () => document.querySelector('#m-canvas .umlimator').shadowRoot.querySelector('.node[data-id="storefront"]').dataset.shape;
+  check('the page has no card shapes toggle', !document.getElementById('m-shapes'));
+  check('a link with shapes=box draws the one style, and the link the page writes has no shapes', pgDrawn() === 'browser' && !link().has('shapes') && link().get('view') === 'shapes', [pgDrawn(), location.hash]);
+  check('…and nothing is kept for this page', (() => { try { return localStorage.getItem(key) === null; } catch (_) { return true; } })());
   pg.destroy(); box.innerHTML = '';
-  history.replaceState(null, '', location.pathname + '#view=shapes');
-  pg = mountPage(box, SHAPES, { instant: true });
-  await until(() => pg.view && document.querySelector('#m-canvas .umlimator')); await wait(60);
-  check('a page opened again draws the notation the reader kept for it', pg.shapes === 'c4' && pg.state.shapes === 'c4');
-  history.pushState(null, '', location.pathname + '#view=shapes&shapes=uml'); dispatchEvent(new PopStateEvent('popstate'));
-  await until(() => pg.shapes === 'uml' && /uml/.test(btn().textContent), 3000);
-  check('an edited link (or Back) takes the map to the link\'s notation', pg.shapes === 'uml' && /uml/.test(btn().textContent));
-  pg.destroy(); box.innerHTML = ''; try { localStorage.removeItem(key); } catch (_) {}
   history.replaceState(null, '', location.pathname);
 
   // ---- what sits on a shape's top, and what meets its outline (the 0.15.0 review's fixes)
@@ -166,7 +134,7 @@ try {
       { id: 'steps', render: 'process', nodeIds: ['p', 'r', 'api'] }] };
   const rectOf = r => r ? ['x', 'y', 'width', 'height'].map(k => +r.getAttribute(k)) : [];
   const onOutline = (id, x, y) => { const b = sr.querySelector(`.node[data-id="${id}"] .n-body`); b.style.strokeWidth = '3px'; const on = b.isPointInStroke(pt(sr.querySelector('svg.map-svg'), x, y)); b.style.strokeWidth = ''; return on; };
-  mount(FIX, { shapes: 'uml', on: { click() {} } }); await wait(60);
+  mount(FIX, { on: { click() {} } }); await wait(60);
   const fg = inner(h).geo().byId;
   h.overlay('m', { nodes: { p: { badge: 'hot' }, r: { badge: 'new' }, f: { badge: 'xx' } } });
   const otab = t => rectOf(([...sr.querySelectorAll('.um-tab')].find(g => g.textContent === t) || {}).firstChild), own = id => rectOf(sr.querySelector(`.node[data-id="${id}"] .pub-tab rect`));
@@ -184,11 +152,9 @@ try {
   const pill = id => { const g = sr.querySelector(`.node[data-id="${id}"]`), r = rectOf(g.querySelector('.step rect')), b = g.querySelector('.n-body'), svg = sr.querySelector('svg.map-svg'); let hit = 0;
     for (let i = 0; i <= 20; i++) for (let j = 0; j <= 20; j++) if (b.isPointInFill(pt(svg, r[0] + r[2] * i / 20, r[1] + r[3] * j / 20))) hit++; return hit; };
   check('a step\'s number sits on a person\'s and a robot\'s shoulder, not in the air above it', pill('p') > 0 && pill('r') > 0, [pill('p'), pill('r')]);
-  mount(BOOK, { shapes: 'uml', legend: true });
-  check('uml: the legend names UML\'s component where a card\'s icon is not in the icon table, so the card shows the component mark', sr.querySelector('.node .n-sigil path[d^="M4.5 4.5"]') && names().includes('Component'), names());
-  const OWN = structuredClone(SHAPES); OWN.nodes.find(n => n.id === 'orders').shape = 'cylinder';
-  mount(OWN, { shapes: 'box', minimap: true }); h.overlay('t', { nodes: { orders: { tone: 'rose' } } }); await wait(30);
-  check('box: a card\'s own shape has its ring on its outline, and the minimap draws it', sr.querySelector('.um-rings path.um-ring') && !sr.querySelector('.um-rings rect.um-ring') && sr.querySelectorAll('.minimap path').length === 2, sr.querySelectorAll('.minimap path').length);
+  const OWN = structuredClone(SHAPES); OWN.nodes.find(n => n.id === 'orders').shape = 'box'; OWN.nodes.find(n => n.id === 'api').shape = 'cylinder';
+  mount(OWN, { minimap: true }); h.overlay('t', { nodes: { api: { tone: 'rose' } } }); await wait(30);
+  check('a card\'s own shape wins over its kind\'s (a box database, a cylinder API), its ring on its outline', drawn().orders === 'box' && drawn().api === 'cylinder' && sr.querySelector('.um-rings path.um-ring') && !sr.querySelector('.um-rings rect.um-ring'), drawn());
 
   // ---- the second review: an overlay's tab clear of a head, ears and a folder's tab; every line and feed end on a person's or
   // robot's outline, wherever layout put it; a step's number clear of the arrows into a card's left side
@@ -198,8 +164,8 @@ try {
     { id: 'sr', label: 'Short robot', kind: 'script', shape: 'robot' }, { id: 'f2', label: 'Folder tabs', kind: 'module', shape: 'folder', badges: ['beta'] }, { id: 'api', label: 'API', kind: 'backend' }],
     edges: [{ from: 'p', to: 'api' }, { from: 'p2', to: 'api' }, { from: 'r', to: 'api' }, { from: 'sr', to: 'api' }, { from: 'f2', to: 'api' }],
     views: [{ id: 'v', nodeIds: ['p', 'p2', 'r', 'sr', 'f2', 'api'] }] };
-  for (const nt of ['c4', 'uml']) {
-    mount(HEADS, { shapes: nt }); await wait(40);
+  { const nt = 'one style';
+    mount(HEADS); await wait(40);
     const hg = inner(h).geo().byId, words = { p: 'hot', p2: 'blocked', r: 'new', sr: 'hotsr', f2: 'xx' };
     h.overlay('m', { nodes: Object.fromEntries(Object.entries(words).map(([id, b]) => [id, { badge: b }])) });
     const bad = Object.entries(words).flatMap(([id, b]) => { const n = hg[id], r = rectOf(([...sr.querySelectorAll('.um-tab')].find(g => g.textContent === b) || {}).firstChild); if (!r.length) return [`${id}: no tab`];
@@ -215,8 +181,8 @@ try {
     edges: [{ from: 'n7', to: 'n2' }, { from: 'n7', to: 'n6' }, { from: 'n1', to: 'n8' }, { from: 'n3', to: 'n8' }, { from: 'n7', to: 'n1' }, { from: 'n2', to: 'n3' }, { from: 'h', to: 'n6' }, { from: 'a', to: 'n6' }, { from: 'hs', to: 'n6' }, { from: 'rs2', to: 'n6' }],
     views: [{ id: 'v', nodeIds: ['n1', 'n2', 'n3', 'n6', 'n7', 'n8', 'h', 'a', 'hs', 'rs2'],
       intake: [...['h', 'a'].flatMap(to => [1, 2, 3, 4].map(i => ({ to, label: to + i }))), ...['hs', 'rs2'].flatMap(to => [1, 2, 3].map(i => ({ to, label: to + i })))] }] };
-  for (const nt of ['box', 'c4', 'uml']) {
-    mount(AIR, { shapes: nt }); await wait(40);
+  { const nt = 'one style';
+    mount(AIR); await wait(40);
     const ag = inner(h).geo(), n2 = ag.byId.n2, e72 = ag.edges.find(e => e.from === 'n7' && e.to === 'n2');
     const ports = ['n2', 'n8'].flatMap(id => [...sr.querySelectorAll(`.node[data-id="${id}"] .n-port`)].map(c => [id, +c.getAttribute('cx'), +c.getAttribute('cy')]));
     const ends = [...sr.querySelectorAll('.intake > path.edge')].map((p, i) => { const q = p.getPointAtLength(p.getTotalLength()); return [ag.intake[i].to, q.x, q.y]; });
@@ -229,8 +195,8 @@ try {
     { id: 'fd', label: 'Billing', kind: 'module', shape: 'folder', badges: ['beta'] }, { id: 'fa', label: 'API', kind: 'backend' }],
     edges: [...[0, 1, 2, 3, 4, 5].map(i => ({ from: 't', to: 'o' + i })), { from: 'fd', to: 'fa' }],
     views: [{ id: 'v', nodeIds: ['t', 'o0', 'o1', 'o2', 'o3', 'o4', 'o5', 'fd', 'fa'], intake: [1, 2, 3, 4].map(i => ({ to: 'fd', label: 'src' + i })) }] };
-  for (const nt of ['box', 'c4', 'uml']) {
-    mount(ROOF, { shapes: nt }); await wait(40);
+  { const nt = 'one style';
+    mount(ROOF); await wait(40);
     const rg = inner(h).geo(), tops = rg.edges.filter(e => e.from === 't' && e.fs === 'T').map(e => ['t', ...e.pts[0]]);
     const starts = [...sr.querySelectorAll('.edge-g')].filter(e => e.dataset.from === 't').map(e => ['t', ...e.querySelector('.edge').getAttribute('d').match(/^M ([\d.]+) ([\d.]+)/).slice(1).map(Number)]);
     const fends = [...sr.querySelectorAll('.intake > path.edge')].map(p => { const q = p.getPointAtLength(p.getTotalLength()); return ['fd', q.x, q.y]; });
@@ -240,8 +206,8 @@ try {
   const STEPS = { nodes: [...['s1', 's2', 's3', 'hb'].map(id => ({ id, label: id.toUpperCase(), kind: 'backend' })), { id: 'p', label: 'Person', kind: 'person' }, { id: 'r', label: 'Robot', kind: 'agent' }],
     edges: [...['s1', 's2', 's3'].flatMap(s => [{ from: s, to: 'p' }, { from: s, to: 'r' }]), { from: 'p', to: 'hb' }, { from: 'r', to: 'hb' }],
     views: [{ id: 'cs', nodeIds: ['s1', 's2', 's3', 'p', 'r', 'hb'], cardSteps: { p: '1', r: '2', s1: '3' } }] };
-  for (const nt of ['c4', 'uml']) {
-    mount(STEPS, { shapes: nt }); await wait(40);
+  { const nt = 'one style';
+    mount(STEPS); await wait(40);
     const sg = inner(h).geo(), hidden = [];
     sg.edges.forEach((e, i) => { if (!['p', 'r'].includes(e.to) || e.ts !== 'L') return; const r = rectOf(sr.querySelector(`.node[data-id="${e.to}"] .step rect`)), path = sr.querySelector(`.edge-g[data-i="${i}"] .edge`), q = path.getPointAtLength(path.getTotalLength());
       // the arrowhead: 10 px back from the end, 4 px either side
@@ -254,7 +220,7 @@ try {
   }
   // a shape or kind named like an object's own key is not a shape: the card is drawn by its kind
   errors.length = 0;
-  mount({ shapes: 'c4', nodes: [{ id: 'db', label: 'DB', kind: 'database', shape: 'constructor' }, { id: 'api', label: 'API', kind: 'constructor', shape: '__proto__' }], edges: [{ from: 'api', to: 'db' }],
+  mount({ nodes: [{ id: 'db', label: 'DB', kind: 'database', shape: 'constructor' }, { id: 'api', label: 'API', kind: 'constructor', shape: '__proto__' }], edges: [{ from: 'api', to: 'db' }],
     views: [{ id: 'v', nodeIds: ['db', 'api'] }] }); await wait(40);
   check('a shape "constructor" or "__proto__" draws the card by its kind, with no error', JSON.stringify(drawn()) === JSON.stringify({ db: 'cylinder', api: 'box' }) && !errors.length, [drawn(), errors]);
 
