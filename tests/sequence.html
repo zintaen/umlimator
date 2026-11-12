@@ -3,7 +3,7 @@
      docs/diagrams/examples/11-sequence.json drawn by render() in both themes and three fonts (no overlap, every text in its
      face or backing, no label on a bar, no line through a head, the names, the legend, contrast), its reading order, a
      click on a message's arrowhead and on a self-message's loop selecting the message, axe's rules for the pieces drawn as
-     role="img" written out, and the gestures the canvas already carries to the type: a message by L and by the handle
+     role="img" written out (the drawing a named group that holds the keys), and the gestures the canvas already carries to the type: a message by L and by the handle
      (edits.connect), F2 on a lifeline and a message, and a field of the properties panel, applied with apply(). -->
 <meta charset="utf-8">
 <link rel="icon" href="data:,">
@@ -72,12 +72,13 @@ try {
     all('.frame-box rect, .frame-box path, .seq-stem, .seq-bar, .edge-g path.edge').forEach(x => { const r = ratio(rgba(getComputedStyle(x).stroke), bg); if (r < 3) low.push([x.getAttribute('class'), r]); });
     check(`${tag}: contrast: texts 4.5:1, outlines, stems, bars and messages 3:1`, !low.length, low.slice(0, 6));
     // axe-core 4.14's rules for what is drawn as role="img", written out: svg-img-alt and role-img-alt (each has a name),
-    // nested-interactive (nothing inside one is a tab stop). label-content-name-mismatch asks only of widgets, and these are not
-    const imgs = [...(pick('.stage svg[role="img"]') ? [pick('.stage svg')] : []), ...all('.stage svg [role="img"]')], noAlt = [], nested = [];
+    // nested-interactive (nothing inside one is a tab stop). label-content-name-mismatch asks only of widgets, and these are not.
+    // The drawing itself is a named group, as a map is (tests/embed.html): it holds 3.4's keys, and an image would hide them
+    const svgEl = pick('.stage svg'), imgs = all('.stage svg [role="img"]'), noAlt = [], nested = [];
     imgs.forEach(x => { if (!(x.getAttribute('aria-label') || '').trim()) noAlt.push(x.dataset.id || x.localName);
       x.querySelectorAll('[tabindex], a[href], button, input, select, textarea').forEach(c => { if (c.tabIndex >= 0) nested.push(`${x.dataset.id || 'svg'} holds ${c.getAttribute('class') || c.localName}`); }); });
-    check(`${tag}: axe, written out: the drawing and its ${all('.stage svg [role="img"]').length} pieces (heads, frames, operands, the use) are named images with no tab stop inside`,
-      imgs.length === 12 && !noAlt.length && !nested.length, [imgs.length, noAlt, nested.slice(0, 6)]);
+    check(`${tag}: axe, written out: the drawing is a named group and its ${imgs.length} pieces (heads, frames, operands, the use) are named images with no tab stop inside`,
+      svgEl.getAttribute('role') === 'group' && !!(svgEl.getAttribute('aria-label') || '').trim() && imgs.length === 11 && !noAlt.length && !nested.length, [svgEl.getAttribute('role'), imgs.length, noAlt, nested.slice(0, 6)]);
     h.destroy();
   }
   document.documentElement.dataset.theme = 'light'; el.style.removeProperty('--um-sans');
@@ -113,7 +114,9 @@ try {
   h.update(next);
   check('drawn again: 11 messages', all('.edge-g').length === 11);
   click('.node[data-id="payments"] .n-body');
-  const hp = centre('.um-handle circle'); ptr(pick('.um-handle circle'), 'pointerdown', hp); ptr(stage, 'pointermove', centre('.node[data-id="api"] .n-body')); ptr(stage, 'pointerup', centre('.node[data-id="api"] .n-body'));
+  // released on api's stem past the last message: 3.4 puts a line drawn by pointer at the slot nearest the release (notes/stage-3.md §5.1), so on the head it would be the first
+  const hp = centre('.um-handle circle'), low = (r => [r.x + r.width / 2, r.bottom - 4])(pick('.node[data-id="api"] .ll-hit').getBoundingClientRect());
+  ptr(pick('.um-handle circle'), 'pointerdown', hp); ptr(stage, 'pointermove', low); ptr(stage, 'pointerup', low);
   click('.um-pick button:nth-child(3)'); // Reply
   e = ed[ed.length - 1]; const after = e && apply(next, e.commands);
   check('by the handle, then Reply: a reply at the end that answers the new call, which validates', !!e && same(e.commands[0].element, { id: 'm12', type: 'uml.Message', from: 'payments', to: 'api', props: { sort: 'reply', replyTo: 'm11' } })
