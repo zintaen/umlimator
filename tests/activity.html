@@ -1,0 +1,191 @@
+<!doctype html>
+<!-- The activity diagram (4.5, notes/stage-4.md §9) in headless Chrome (tests/embed.py), from lib/umlimator-all.js:
+     docs/diagrams/examples/09-activity.json drawn by render() in both themes, three fonts and both directions: no overlap,
+     every text in its shape, every line end on its shape's outline, no line through a node, the bands under the lines with
+     each node in its own, names, the reading order of the picture, the legend and contrast; then the gestures, by pointer
+     and by keyboard, through the type's hooks (src/typed/edit.js), each through the edit event and apply(): N and the
+     palette into the selected partition, a control node with no name field, a call behaviour action's view picked and
+     changed by V, F2 and a double-click on a flow through edits.rename (and a text it refuses), its guard in the panel, L and
+     the handle, a drag across lanes and one inside a lane, a partition's header dragged and moved by Alt + arrows (nothing),
+     the Owner field, Shift + Delete on a partition keeping its nodes, Delete hiding a node, Tab's rings in reading order.
+     tests/activity.test.mjs lays the same example out in Node. -->
+<meta charset="utf-8">
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="../lib/umlimator-theme.css">
+<title>umlimator activity diagram test</title>
+<body style="margin:0">
+<div id="m" style="width:1400px;height:1000px"></div>
+<script type="module">
+import { render, apply, validate, describe } from '../lib/umlimator-all.js';
+const out = { ok: [], fail: [] };
+const check = (name, cond, info) => { document.title = name; if (cond) out.ok.push(name); else out.fail.push(name + (info === undefined ? '' : ': ' + JSON.stringify(info))); };
+const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+const el = document.getElementById('m');
+let sr, stage, ed = [];
+const pick = s => sr.querySelector(s), all = s => [...sr.querySelectorAll(s)];
+const tick = () => new Promise(r => setTimeout(r, 0));
+const ptr = (target, type, [x, y]) => target.dispatchEvent(new PointerEvent(type, { clientX: x, clientY: y, button: 0, pointerId: 7, pointerType: 'mouse', bubbles: true, composed: true }));
+const key = (k, extra = {}, target = stage) => target.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true, composed: true, cancelable: true, ...extra }));
+const rect = x => { const r = x.getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width, h: r.height }; };
+const centre = s => { const r = rect(pick(s)); return [r.x + r.w / 2, r.y + r.h / 2]; };
+const click = s => { const g = pick(s), at = centre(s); ptr(g, 'pointerdown', at); ptr(g, 'pointerup', at); g.dispatchEvent(new MouseEvent('click', { clientX: at[0], clientY: at[1], bubbles: true, composed: true })); };
+const drag = (s, to) => { const g = pick(s), from = centre(s); ptr(g, 'pointerdown', from); for (let i = 1; i <= 4; i++) ptr(stage, 'pointermove', [from[0] + (to[0] - from[0]) * i / 4, from[1] + (to[1] - from[1]) * i / 4]); ptr(stage, 'pointerup', to); };
+const client = (x, y) => { const p = new DOMPoint(x, y).matrixTransform(pick('svg').getScreenCTM()); return [p.x, p.y]; };
+const handleTo = ([x, y]) => { const c = pick('.um-handle circle'), r = c.getBoundingClientRect(); ptr(c, 'pointerdown', [r.x + r.width / 2, r.y + r.height / 2]); ptr(stage, 'pointermove', [x, y]); ptr(stage, 'pointerup', [x, y]); };
+const mount = (model, opts = {}) => { el.innerHTML = ''; ed = []; const h = render(el, model, { view: 'fulfil', on: { edit: e => ed.push(e) }, ...opts }); sr = el.querySelector('.umlimator').shadowRoot; stage = pick('.stage'); return h; };
+const errors = m => validate(m).filter(p => p.level === 'error');
+const meets = (a, b, k = 0) => a.x + k < b.x + b.w && b.x + k < a.x + a.w && a.y + k < b.y + b.h && b.y + k < a.y + a.h;
+const inside = (a, b, k = 1) => a.x >= b.x - k && a.y >= b.y - k && a.x + a.w <= b.x + b.w + k && a.y + a.h <= b.y + b.h + k;
+const ptsOf = d => { const n = d.match(/-?\d+(\.\d+)?/g).map(Number), p = []; for (let i = 0; i < n.length; i += 2) p.push([n[i], n[i + 1]]); return p; };
+const segs = p => p.slice(1).map((q, k) => ({ x: Math.min(p[k][0], q[0]), y: Math.min(p[k][1], q[1]), w: Math.abs(q[0] - p[k][0]) || .01, h: Math.abs(q[1] - p[k][1]) || .01 }));
+const bb = x => { const r = x.getBBox(); return { x: r.x, y: r.y, w: r.width, h: r.height }; };
+const FONTS = { serif: 'serif', sans: 'sans-serif', wide: 'monospace' };
+const rgba = s => { let m = /rgba?\(([^)]+)\)/.exec(s); if (m) { const p = m[1].split(/[ ,/]+/).filter(Boolean).map(Number); return [p[0] / 255, p[1] / 255, p[2] / 255, p.length > 3 ? p[3] : 1]; }
+  m = /color\(srgb ([^)]+)\)/.exec(s); if (m) { const p = m[1].split(/[ /]+/).filter(Boolean).map(Number); return [p[0], p[1], p[2], p.length > 3 ? p[3] : 1]; } return null; };
+const blend = (top, bot) => [0, 1, 2].map(i => top[i] * top[3] + bot[i] * (1 - top[3])).concat(1);
+const lum = c => { const f = v => v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]); };
+const ratio = (fg, bg) => { const [x, y] = [lum(blend(fg, bg)), lum(bg)].sort((p, q) => q - p); return +((x + 0.05) / (y + 0.05)).toFixed(2); };
+const css = (x, k) => rgba(getComputedStyle(x)[k]);
+const EX = await (await fetch('../docs/diagrams/examples/09-activity.json')).json();
+const dir = d => ({ ...EX, views: EX.views.map(v => ({ ...v, direction: d })) });
+const LANE = { 'lane-worker': ['start', 'take-order', 'order', 'split', 'pay'], 'lane-email': ['tell-shopper', 'told'] };
+const laneOf = id => Object.keys(LANE).find(l => LANE[l].includes(id)) || 'lane-warehouse';
+try {
+  const widths = {};
+  for (const theme of ['light', 'dark']) for (const [fname, family] of Object.entries(FONTS)) for (const d of ['down', 'right']) {
+    document.documentElement.dataset.theme = theme; el.style.setProperty('--um-sans', family);
+    const tag = `example 9, ${d}, ${theme}, ${fname}`, h = mount(dir(d), { legend: true }), bad = [];
+    const nodes = all('.node:not(.partition)'), heads = all('.node.partition'), lines = all('.edge-g');
+    const B = new Map(nodes.map(g => [g.dataset.id, rect(g.querySelector('.n-body'))]));
+    if (d === 'down') widths[fname] = B.get('take-order').w;
+    const ids = [...B.keys()];
+    ids.forEach((a, i) => ids.slice(i + 1).forEach(b => { if (meets(B.get(a), B.get(b), .5)) bad.push(`${a} and ${b} overlap`); }));
+    nodes.forEach(g => g.querySelectorAll('text').forEach(t => { if (!inside(rect(t), B.get(g.dataset.id))) bad.push(`${g.dataset.id}: "${t.textContent}" out of its shape`); }));
+    // each node inside its own band, past its header; each header's name inside it
+    const bands = all('.ac-lanes .frame-box rect').map(rect), H = new Map(heads.map((g, i) => [g.dataset.id, rect(g.querySelector('.fl-hit'))]));
+    heads.forEach(g => { const t = g.querySelector('text'); if (!inside(rect(t), H.get(g.dataset.id))) bad.push(`${g.dataset.id}: its name out of its header`); });
+    const bandOf = id => bands[heads.findIndex(g => g.dataset.id === id)];
+    nodes.forEach(g => { const l = laneOf(g.dataset.id), n = B.get(g.dataset.id); if (!inside(n, bandOf(l), 0) || meets(n, H.get(l))) bad.push(`${g.dataset.id} is not in ${l}'s band`); });
+    // no line through a node or a header but its own two ends, and each end on its node's outline
+    const svg = pick('.stage svg');
+    lines.forEach(g => { const from = g.dataset.from, to = g.dataset.to, p = ptsOf(g.querySelector('path.edge').getAttribute('d')), cm = pick('svg').getScreenCTM();
+      const S = segs(p.map(([x, y]) => { const q = new DOMPoint(x, y).matrixTransform(cm); return [q.x, q.y]; }));
+      S.forEach(s => { B.forEach((b, id) => { if (id !== from && id !== to && meets(s, { x: b.x + 1, y: b.y + 1, w: b.w - 2, h: b.h - 2 })) bad.push(`${from}>${to} runs through ${id}`); });
+        H.forEach((b, id) => { if (meets(s, b)) bad.push(`${from}>${to} runs through ${id}'s header`); }); });
+      [[p[0], from], [p.at(-1), to]].forEach(([q, id]) => { const body = pick(`.node[data-id="${id}"] .n-body`); body.style.strokeWidth = '3px';
+        const o = svg.createSVGPoint(); [o.x, o.y] = q; if (!body.isPointInStroke(o)) bad.push(`${from}>${to} ends off ${id}'s outline at ${q}`); body.style.strokeWidth = ''; }); });
+    check(`${tag}: ${nodes.length} nodes, ${heads.length} partitions and ${lines.length} flows drawn; no overlap, texts inside, each node in its band, no line through a node or a header, every end on its outline`,
+      nodes.length === 17 && heads.length === 3 && bands.length === 3 && lines.length === 19 && !bad.length, bad.slice(0, 12));
+    // the picture reads in order: each partition, then what it holds; the nodes drawn so
+    const drawn = all('.node').map(g => g.dataset.id);
+    check(`${tag}: the picture draws the nodes lane by lane, then the headers`, same(drawn.slice(0, 5).sort(), LANE['lane-worker'].slice().sort()) && same(drawn.slice(-5, -3).sort(), LANE['lane-email'].slice().sort()) && same(drawn.slice(-3), ['lane-worker', 'lane-warehouse', 'lane-email']), drawn);
+    // contrast: texts 4.5:1 on what is under them, lines, outlines and dividers 3:1 on the stage
+    const stageBg = css(pick('.stage'), 'backgroundColor'), low = [];
+    nodes.forEach(g => { const body = g.querySelector('.n-body'), bg = blend(css(body, 'fill'), stageBg);
+      g.querySelectorAll('text').forEach(x => { const r = ratio(css(x, 'fill'), bg); if (r < 4.5) low.push([g.dataset.id, x.textContent, r]); });
+      const k = ratio(css(body, 'stroke'), stageBg); if (k < 3) low.push([g.dataset.id, 'outline', k]); });
+    heads.forEach(g => { const r = ratio(css(g.querySelector('text'), 'fill'), stageBg); if (r < 4.5) low.push([g.dataset.id, 'name', r]); });
+    all('.ac-lanes rect, .ac-lanes .ac-head').forEach(x => { const r = ratio(css(x, 'stroke'), stageBg); if (r < 3) low.push(['band', r]); });
+    lines.forEach(g => { const r = ratio(css(g.querySelector('path.edge'), 'stroke'), stageBg); if (r < 3) low.push(['line', g.dataset.from, r]); });
+    all('.e-lab').forEach(x => { const r = ratio(css(x.querySelector('text'), 'fill'), blend(css(x.querySelector('rect'), 'fill'), stageBg)); if (r < 4.5) low.push(['label', x.textContent, r]); });
+    check(`${tag}: contrast: texts 4.5:1, lines, outlines and dividers 3:1`, !low.length, low.slice(0, 8));
+    if (theme === 'light' && fname === 'sans') {
+      const aria = id => pick(`.node[data-id="${id}"]`).getAttribute('aria-label');
+      check(`${tag}: nodes, partitions and flows have names a screen reader reads`, aria('in-stock') === 'Decision All books in stock?, 2 exits, in Warehouse' && aria('lane-email') === 'Partition Email service, 2 nodes'
+        && aria('pay') === 'Call behaviour action Take payment, opens Take payment, in Order worker' && aria('split') === 'Fork, 3 branches, in Order worker'
+        && pick('.edge-g[data-from="in-stock"][data-to="stock-ready"] title').textContent === 'Control flow from All books in stock? to merge, guard all books in stock', [aria('in-stock'), aria('pay')]);
+      check(`${tag}: a guard is drawn [guard], a data store «datastore»`, all('.e-label').map(t => t.textContent).sort().join('|') === '[all books in stock]|[else]'
+        && [...pick('.node[data-id="stock"]').querySelectorAll('text')].map(t => t.textContent).join(' ') === '«datastore» Stock levels', [all('.e-label').map(t => t.textContent), [...pick('.node[data-id="stock"]').querySelectorAll('text')].map(t => t.textContent)]);
+      const legend = all('.m-legend b').map(b => b.textContent);
+      check(`${tag}: the legend keys each line kind and control glyph drawn`, same(legend, ['Control flow', 'Object flow', 'Initial node', 'Activity final', 'Flow final', 'Fork', 'Join', 'Decision', 'Merge']), legend);
+    }
+    h.destroy();
+  }
+  check('the three fonts measure differently', new Set(Object.values(widths)).size === 3, widths);
+  document.documentElement.dataset.theme = 'light'; el.style.removeProperty('--um-sans');
+  check('describe() writes the view in words', describe(EX, 'fulfil').startsWith('Fulfilling an order: an activity diagram of 17 nodes, 19 flows and 3 partitions.\nPartition Order worker, 5 nodes.'));
+
+  // ---- the gestures (DoD 4), through the type's hooks, each through the edit event and apply()
+  const h = mount(EX, { editable: true }), hint = () => pick('.um-live').textContent, last = () => ed[ed.length - 1];
+  const button = t => all('.um-editor .um-pal button').find(b => b.textContent.trim() === t), panel = s => pick('.um-editor ' + s);
+  const gives = (name, cmds, test = () => true) => { const e = last(); let m = null; try { m = e && apply(EX, e.commands); } catch (x) { m = null; }
+    check(name, ed.length === 1 && same(e.commands, cmds) && !!m && test(m) && !errors(m).length, [ed.map(x => x.commands), m && errors(m)]); ed = []; return m; };
+  const ring = id => pick(`.node-key[data-node="${id}"]`), lineRing = name => all('.line-key').find(k => k.getAttribute('aria-label') === name);
+  check('the palette: row 9\'s elements, a partition and a comment', same(all('.um-editor .um-pal button').map(b => b.textContent.trim()), ['Action', 'Initial', 'Activity final', 'Flow final', 'Decision', 'Merge', 'Fork', 'Join',
+    'Call behaviour', 'Send signal', 'Accept event', 'Object node', 'Data store', 'Partition', 'Comment']));
+  // Tab: rings in reading order, a partition's before its nodes'
+  const keys = all('.keys > .um-key').map(k => k.dataset.node ?? 'line');
+  check('Tab follows geo.order: each partition\'s ring, then its nodes\', then the flows\'', keys[0] === 'lane-worker' && keys[6] === 'lane-warehouse' && keys.filter(k => k === 'line').length === 19 && keys.at(-1) === 'line', keys.slice(0, 8));
+  // N with a partition selected: the node is added in it
+  click('.node[data-id="lane-warehouse"] .fl-hit'); key('n'); pick('.um-rename').value = 'Wrap the books'; key('Enter', {}, pick('.um-rename'));
+  gives('N with a partition selected adds an action in it', [{ op: 'add', element: { id: 'wrap-the-books', type: 'uml.Action', label: 'Wrap the books', parent: 'lane-warehouse' }, view: 'fulfil' }]);
+  click('.node[data-id="lane-email"] .fl-hit'); button('Flow final').click();
+  check('the palette\'s Flow final asks for no name', !pick('.um-rename'));
+  gives('…and is added in the partition selected, with no label', [{ op: 'add', element: { id: 'flow-final', type: 'uml.FlowFinalNode', parent: 'lane-email' }, view: 'fulfil' }]);
+  button('Call behaviour').click(); pick('.um-rename').value = 'Refund'; key('Enter', {}, pick('.um-rename')); await tick();
+  const views = all('.um-pick button').map(b => b.textContent);
+  check('a call behaviour action asks which activity view it opens: a picker of the model\'s', same(views, ['Fulfilling an order', 'Take payment']) && pick('.um-pick').getAttribute('aria-label') === 'Choose' && !ed.length, views);
+  all('.um-pick button')[1].click();
+  gives('…the view picked is its opensView', [{ op: 'add', element: { id: 'refund', type: 'uml.CallBehaviorAction', label: 'Refund', parent: 'lane-email', opensView: 'take-payment' }, view: 'fulfil' }]);
+  click('.node[data-id="pay"] .n-body'); key('v'); await tick();
+  check('V on a call behaviour action opens the picker of activity views', same(all('.um-pick button').map(b => b.textContent), ['Fulfilling an order', 'Take payment']));
+  all('.um-pick button')[0].click();
+  gives('…and sets the view it opens', [{ op: 'set', id: 'pay', path: 'opensView', value: 'fulfil' }]);
+  // F2 on a flow, from its ring, through edits.rename: "name [guard]"
+  const FLOW = 'Control flow from All books in stock? to merge, guard all books in stock';
+  lineRing(FLOW).focus(); key('Enter', {}, sr.activeElement); key('F2');
+  check('F2 on a flow: a field holding its drawn label', pick('.um-rename') && pick('.um-rename').value === '[all books in stock]', pick('.um-rename') && pick('.um-rename').value);
+  pick('.um-rename').value = 'in stock [every book]'; key('Enter', {}, pick('.um-rename'));
+  gives('…Enter sets its name and its guard', [{ op: 'set', id: 'f-in-stock', path: 'label', value: 'in stock' }, { op: 'set', id: 'f-in-stock', path: 'props.guard', value: 'every book' }],
+    m => m.edges.find(e => e.id === 'f-in-stock').props.guard === 'every book');
+  key('F2'); pick('.um-rename').value = 'in stock / ship'; key('Enter', {}, pick('.um-rename'));
+  check('…a text the parser refuses: nothing emitted, the reason on the hint line', !ed.length && /it has an effect/.test(hint()), [ed, hint()]);
+  const lab = pick('.edge-g[data-from="in-stock"][data-to="stock-ready"] .hitline'), at = rect(lab);
+  lab.dispatchEvent(new MouseEvent('dblclick', { clientX: at.x + at.w / 2, clientY: at.y + at.h / 2, bubbles: true, composed: true, cancelable: true }));
+  check('a double-click on the selected flow opens the same field', pick('.um-rename') && pick('.um-rename').value === '[all books in stock]');
+  pick('.um-rename').value = '[some missing]'; key('Enter', {}, pick('.um-rename'));
+  gives('…and sets its guard', [{ op: 'set', id: 'f-in-stock', path: 'props.guard', value: 'some missing' }]);
+  const g = panel('[data-f="p:guard"]'); g.value = 'all here'; g.dispatchEvent(new Event('change', { bubbles: true }));
+  gives('the guard in the properties panel', [{ op: 'set', id: 'f-in-stock', path: 'props.guard', value: 'all here' }]);
+  // L by keyboard, the handle by pointer: the picker of the three lines, then the type's connect
+  click('.node[data-id="pick"] .n-body'); key('l'); for (const c of 'hand') key(c); key('Enter');
+  const kinds = all('.um-pick button').map(b => b.textContent);
+  check('L, a name and Enter open the picker of the activity\'s lines', same(kinds, ['Control flow', 'Object flow', 'Comment link']), kinds);
+  all('.um-pick button')[0].click();
+  gives('picking Control flow adds it through edits.connect', [{ op: 'add', element: { id: 'pick-ship', type: 'uml.ControlFlow', from: 'pick', to: 'ship' }, view: 'fulfil' }]);
+  // the picker after a pointer gesture: its button pressed by pointer (a bare click right after a release is the canvas's to swallow)
+  click('.node[data-id="take-order"] .n-body'); handleTo(centre('.node[data-id="start"] .n-body')); click('.um-pick button');
+  check('the handle to the initial node: refused, with its rule on the hint line', !ed.length && /^initial-flows: /.test(hint()), [ed, hint()]);
+  click('.node[data-id="tell-shopper"] .n-body'); handleTo(centre('.node[data-id="done"] .n-body')); click('.um-pick button');
+  gives('the handle to another node adds a flow', [{ op: 'add', element: { id: 'tell-shopper-done', type: 'uml.ControlFlow', from: 'tell-shopper', to: 'done' }, view: 'fulfil' }]);
+  // a drag across lanes changes lane; one inside its own lane pins it; a partition's header moves nothing
+  const email = rect(pick('.node[data-id="lane-email"] .fl-hit')), mine = centre('.node[data-id="check-stock"] .n-body');
+  drag('.node[data-id="check-stock"] .n-body', [email.x + email.w / 2, mine[1]]);
+  gives('a node dragged into another lane: reparent to its partition, in one transaction', [{ op: 'reparent', id: 'check-stock', parent: 'lane-email' }], m => m.nodes.find(n => n.id === 'check-stock').parent === 'lane-email');
+  drag('.node[data-id="check-stock"] .n-body', [mine[0] + 6, mine[1] + 160]);
+  check('a node dragged inside its own lane: a pin', ed.length === 1 && ed[0].commands.length === 1 && same(ed[0].commands[0].path, ['layout', 'check-stock']), ed.map(e => e.commands)); ed = [];
+  drag('.node[data-id="lane-warehouse"] .fl-hit', [email.x + email.w / 2, email.y + 300]);
+  check('a partition\'s header dragged: no edit, no pin', !ed.length, ed.map(e => e.commands));
+  click('.node[data-id="lane-warehouse"] .fl-hit'); key('ArrowRight', { altKey: true }); key('ArrowDown', { altKey: true });
+  check('…nor by Alt + arrows', !ed.length, ed.map(e => e.commands));
+  click('.node[data-id="ship"] .n-body'); key('ArrowDown', { altKey: true });
+  check('Alt + ↓ on a node: a pin, its row an order inside its lane', ed.length === 1 && same(ed[0].commands[0].path, ['layout', 'ship']), ed.map(e => e.commands)); ed = [];
+  // the Owner field, by keyboard
+  const own = panel('[data-f="owner"]'), opts = own && [...own.options].map(o => o.textContent);
+  check('the Owner field: none and every partition', same(opts, ['none', 'Order worker', 'Warehouse', 'Email service']) && own.value === 'lane-warehouse', opts);
+  own.value = 'lane-email'; own.dispatchEvent(new Event('change', { bubbles: true }));
+  gives('Owner: another lane, in one transaction', [{ op: 'reparent', id: 'ship', parent: 'lane-email' }], m => m.nodes.find(n => n.id === 'ship').parent === 'lane-email');
+  // Delete hides; Shift + Delete on a partition keeps what it holds
+  click('.node[data-id="order"] .n-body'); key('Delete');
+  gives('Delete hides a node from the view', [{ op: 'hide', id: 'order', view: 'fulfil' }], m => !m.views[0].nodeIds.includes('order'));
+  ring('lane-email').focus(); key('Enter', {}, sr.activeElement); key('Delete', { shiftKey: true }, sr.activeElement);
+  const kept = gives('Shift + Delete on a partition: its nodes go to its owner, then it goes', [{ op: 'reparent', id: 'tell-shopper', parent: null }, { op: 'reparent', id: 'told', parent: null }, { op: 'delete', id: 'lane-email' }],
+    m => ['tell-shopper', 'told'].every(id => m.nodes.some(n => n.id === id)));
+  h.update(kept);
+  check('after update() its nodes are drawn after the lanes, outside every band', all('.node.partition').length === 2 && !!pick('.node[data-id="told"]')
+    && rect(pick('.node[data-id="told"] .n-body')).x > Math.max(...all('.ac-lanes .frame-box rect').map(r => rect(r).x + rect(r).w)) - 1);
+  h.destroy();
+} catch (x) { out.fail.push('threw: ' + (x && x.stack || x)); }
+document.documentElement.dataset.theme = 'light'; el.style.removeProperty('--um-sans');
+const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
+</script>
