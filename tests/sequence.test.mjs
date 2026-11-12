@@ -26,8 +26,9 @@ const seq = (edges, fragments = [], more = {}) => ({ schemaVersion: 2, nodes: ['
   views: [{ id: 'v', diagram: 'uml.sequence', nodeIds: ['A', 'B', 'C'], edges, fragments, ...more }] });
 const ALT = (id, ...ops) => ({ id, type: 'uml.CombinedFragment', props: { operator: 'alt' }, members: ops.map(o => ({ id: o, type: 'uml.InteractionOperand', label: o })) });
 const FR = (id, op, parent, ...ops) => ({ id, type: 'uml.CombinedFragment', ...(parent ? { parent } : {}), props: { operator: op }, members: ops.map(o => ({ id: o, type: 'uml.InteractionOperand', label: o })) });
-// a hook's commands applied: the model, and it adds no error
-const run = (m, cmds) => { assert.ok(Array.isArray(cmds) && cmds.length, JSON.stringify(cmds)); const n = apply(m, cmds); assert.deepEqual(errors(n), []); return n; };
+// a hook's commands ({ commands, say } too: remove with a lifeline) applied: the model, and it adds no error
+const cmdsOf = r => (r && Array.isArray(r.commands) ? r.commands : r);
+const run = (m, r) => { const cmds = cmdsOf(r); assert.ok(Array.isArray(cmds) && cmds.length, JSON.stringify(r)); const n = apply(m, cmds); assert.deepEqual(errors(n), []); return n; };
 
 test('the definition: palette, lines with their sorts, items, wraps, refs, a layout of its own with no pins and no key, the hooks', () => {
   const T = diagramOf({ diagram: 'uml.sequence' });
@@ -230,6 +231,14 @@ test('moveTo: a lifeline one place left or right (Alt + Left/Right), or to its p
   // f3 covers api, payments and receipt: a move that takes one of them away, or puts another between, is refused
   for (const [id, to] of [['api', { by: [-1, 0] }], ['api', { index: 0 }], ['shopper', { index: 3 }]]) assert.match(sqMoveTo(SEQ, V(SEQ), id, to).error, /^covers: /, `${id} ${JSON.stringify(to)}`);
   assert.equal(sqMoveTo(SEQ, V(SEQ), 'api', { by: [0, 1] }), null); // up or down: nothing (pins: false)
+  // a head dropped (the canvas's slot and the drop's point): its place among the heads as laid out, never the slot's index
+  const xs = layout(SEQ, 'checkout').nodes.filter(n => n.shape === 'lifeline').map(n => n.x + n.w / 2);
+  assert.deepEqual(sqMoveTo(SEQ, V(SEQ), 'shopper', { index: 4, y: 300, parent: null, pt: [(xs[1] + xs[2]) / 2, 60] }), [{ op: 'move', id: 'shopper', view: 'checkout', index: 1 }]);
+  assert.deepEqual(sqMoveTo(SEQ, V(SEQ), 'shopper', { index: 4, y: 300, parent: null, pt: [xs[0] + 20, 60] }), []); // back where it was
+  assert.equal(sqMoveTo(SEQ, V(SEQ), 'storefront', { index: 0, y: 300, parent: null }), null); // a slot with no point: not a place in nodeIds
+  // the canvas's col (the heads it draws left of the drop, in the host's font) wins over pt measured again here
+  assert.deepEqual(sqMoveTo(SEQ, V(SEQ), 'shopper', { index: 4, y: 300, parent: null, pt: [xs[0] + 20, 60], col: 1 }), [{ op: 'move', id: 'shopper', view: 'checkout', index: 1 }]);
+  assert.match(sqMoveTo(SEQ, V(SEQ), 'shopper', { index: 4, y: 300, parent: null, pt: [xs[0] + 20, 60], col: 2 }).error, /^covers: /);
 });
 test('moveTo: an operand up or down among its fragment\'s (the member list), and what it holds moves with it; the member hook adds and renames', () => {
   const c = sqMoveTo(SEQ, V(SEQ), 'f1-declined', { by: [0, -1] });
@@ -241,6 +250,7 @@ test('moveTo: an operand up or down among its fragment\'s (the member list), and
   const k = run(SEQ, [{ op: 'add', element: { id: 'f1-late', type: 'uml.InteractionOperand', ...SEQ_TYPE.member.add(' late ') }, owner: 'f1' }]);
   assert.deepEqual([V(k).fragments[0].members[2].label, rules(k, 'warning')], ['late', [['empty', ['f1-late', 'f1']]]]);
   assert.deepEqual(sqMoveTo(k, V(k), 'f1-late', { index: 0 }), [{ op: 'move', id: 'f1-late', index: 0 }]); // an empty operand moves alone
+  assert.equal(sqMoveTo(SEQ, V(SEQ), 'f1-declined', { index: 0, y: 200, parent: null, pt: [300, 200] }), null); // an operand dropped: not a reorder
   assert.equal(SEQ_TYPE.member.print(V(SEQ).fragments[0].members[0]), 'payment accepted');
 });
 test('wrap: a run of one parent becomes a fragment\'s first operand (an alt gets an else); a run with a gap, two parents or no operator is refused', () => {
@@ -271,13 +281,17 @@ test('add: a lifeline after the selected one (a model node), an interaction use 
   assert.deepEqual(u[0], { op: 'add', element: { id: 'ref1', type: 'uml.InteractionUse', label: 'Log in', props: { covers: ['shopper', 'storefront', 'api', 'payments', 'receipt'] } }, view: 'checkout', index: 1, in: 'view' });
   assert.deepEqual(ids(V(run(SEQ, u)).edges).slice(0, 3), ['m1', 'ref1', 'm2']);
   assert.equal(sqAdd(SEQ, V(SEQ), { type: 'uml.Message' }, 'x', null), null); // not the palette's
+  // from the canvas: the selection (at.sel) places a lifeline after the selected one, and a use over the selected lifelines
+  assert.equal(sqAdd(SEQ, V(SEQ), { type: 'uml.Lifeline' }, 'audit', { index: 11, y: 900, parent: null, sel: ['storefront'] })[0].index, 2);
+  assert.deepEqual(sqAdd(SEQ, V(SEQ), { type: 'uml.InteractionUse' }, 'Pay', { index: 11, parent: null, sel: ['payments', 'storefront'] })[0].element.props.covers, ['storefront', 'api', 'payments']);
 });
 test('remove: Delete takes a lifeline out of the view with its messages and out of each covers; Shift + Delete deletes it; a message or a fragment is deleted', () => {
   const h = sqRemove(SEQ, V(SEQ), ['receipt'], false);
-  assert.deepEqual(h, [{ op: 'set', id: 'f3', path: 'props.covers', value: ['api', 'payments'] }, { op: 'hide', id: 'receipt', view: 'checkout' }]);
+  assert.deepEqual(h, { commands: [{ op: 'set', id: 'f3', path: 'props.covers', value: ['api', 'payments'] }, { op: 'hide', id: 'receipt', view: 'checkout' }], say: 'Removed receipt from the view, and 1 message with it' });
   const m = run(SEQ, h);
   assert.deepEqual([V(m).nodeIds.includes('receipt'), !!at(m, 'm6'), m.nodes.length], [false, false, 5]);
-  assert.deepEqual(sqRemove(SEQ, V(SEQ), ['receipt'], true), [{ op: 'delete', id: 'receipt' }]);
+  assert.deepEqual(sqRemove(SEQ, V(SEQ), ['receipt'], true), { commands: [{ op: 'delete', id: 'receipt' }], say: 'Deleted receipt, and 1 message with it' });
+  assert.equal(sqRemove(SEQ, V(SEQ), ['api'], false).say, 'Removed api from the view, and 8 messages with it');
   assert.deepEqual(ids(V(run(SEQ, sqRemove(SEQ, V(SEQ), ['m4'], false))).edges), ['m1', 'm2', 'm3', 'm6', 'm7', 'f3', 'm9', 'm10']); // a call takes its replies
   const u = run(SEQ, sqRemove(SEQ, V(SEQ), ['f2'], false)); // unwrap: m7 stays, in f1-paid
   assert.deepEqual([ids(V(u).fragments), at(u, 'm7').parent], [['f1'], 'f1-paid']);
@@ -333,7 +347,7 @@ const STEPS = [
 test('a 30-step session through the hooks: each step a transaction that adds no error; undone, redone and reopened, byte-identical', () => {
   assert.equal(STEPS.length, 30);
   const h = history(SEQ), seen = [JSON.stringify(SEQ)];
-  STEPS.forEach((step, k) => { const c = step(h.model); assert.ok(Array.isArray(c) && c.length, `step ${k + 1}: ${JSON.stringify(c)}`);
+  STEPS.forEach((step, k) => { const c = cmdsOf(step(h.model)); assert.ok(Array.isArray(c) && c.length, `step ${k + 1}: ${JSON.stringify(c)}`);
     h.push(run(h.model, c)); seen.push(JSON.stringify(h.model)); });
   const end = seen[30];
   assert.notEqual(end, seen[0]);
@@ -341,7 +355,7 @@ test('a 30-step session through the hooks: each step a transaction that adds no 
   for (let k = 1; k <= 30; k++) assert.equal(JSON.stringify(h.redo()), seen[k], `redo to ${k}`);
   // saved as JSON after step 15, reopened, and the rest of the session run on what was read
   let m = JSON.parse(seen[15]);
-  STEPS.slice(15).forEach(step => { m = apply(m, step(m)); });
+  STEPS.slice(15).forEach(step => { m = apply(m, cmdsOf(step(m))); });
   assert.equal(JSON.stringify(m), end);
   // deleting audit took its messages, so the opt round them is empty: a warning, drawn at the end, and no error
   assert.deepEqual([errors(m), layout(m, 'checkout').problems.map(p => [p.level, p.ids])], [[], [['warning', ['f4']]]]);

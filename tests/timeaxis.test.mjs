@@ -215,7 +215,7 @@ test('a fragment whose occurrences are not one run is drawn as two frames, with 
   assert.deepEqual([o.frames.map(f => f.id), o.problems.map(p => p.ids.join())], [['f', 'f'], ['f']]);
 });
 
-test('200 rows lay out in under 5 ms (best of three): 20 lifelines, 10 nested fragments, clean', () => {
+test('200 rows lay out in under 5 ms (best of seven, after a warm-up): 20 lifelines, 10 nested fragments, clean', () => {
   const heads = Array.from({ length: 20 }, (_, j) => ({ id: 'h' + j, ...SHAPE.lifeline.size({ label: `h${j} : Type${j}` }) }));
   const groups = Array.from({ length: 10 }, (_, k) => ({ id: 'f' + k, parent: k ? `f${k - 1}-a` : null, tag: tagSize(['alt', 'loop', 'opt', 'par', 'break'][k % 5]),
     parts: [{ id: `f${k}-a`, guard: guardSize('guard ' + k) }, { id: `f${k}-b`, guard: guardSize('else') }] }));
@@ -226,8 +226,9 @@ test('200 rows lay out in under 5 ms (best of three): 20 lifelines, 10 nested fr
   const bars = rows.flatMap((r, i) => (r.kind === 'line' && i % 3 === 0 ? [{ head: r.b, from: i, to: Math.min(i + 1, 199), depth: 1 }] : []));
   const inp = { heads, rows, groups, bars };
   let best = Infinity, o;
-  for (let k = 0; k < 3; k++) { const t = performance.now(); o = layoutTimeAxis(inp); best = Math.min(best, performance.now() - t); }
-  assert.ok(best < 5, `best of three: ${best.toFixed(2)} ms`);
+  layoutTimeAxis(inp); // a warm-up: the first call compiles, and a busy CI runner pauses at random
+  for (let k = 0; k < 7; k++) { const t = performance.now(); o = layoutTimeAxis(inp); best = Math.min(best, performance.now() - t); }
+  assert.ok(best < 5, `best of seven: ${best.toFixed(2)} ms`);
   assert.deepEqual(o.problems, []);
   assert.deepEqual(clean(o, inp), []);
   assert.equal(o.slots.length, slotsWanted(inp));

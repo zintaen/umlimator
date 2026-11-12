@@ -187,8 +187,9 @@ test('ownersOn groups a view by owner once: a view of 8,800 elements reads its b
   const big = P => { const nodes = []; for (let i = 0; i < P; i++) { nodes.push(N('p' + i, 'Package', 'p' + i)); for (let j = 0; j < 10; j++) nodes.push(N(`c${i}_${j}`, 'Class', 'C' + j, 'p' + i)); }
     return { schemaVersion: 2, nodes, edges: [], views: [{ id: 'v', diagram: 'uml.package', nodeIds: nodes.map(n => n.id) }] }; };
   const time = m => { const t = performance.now(); const pic = ownersOn(m, m.views[0]); assert.equal(readingOrder(pic).length, m.nodes.length); return performance.now() - t; };
-  const [small, large] = [big(200), big(800)]; time(small);
-  assert.ok(time(large) < 10 * Math.max(2, time(small)), 'about 4x the time for 4x the elements, not 16x or more');
+  // the best of five runs of each, after a warm-up, so a busy CI runner's pause does not read as quadratic time
+  const [small, large] = [big(200), big(800)], best = m => Math.min(...Array.from({ length: 5 }, () => time(m))); time(small); time(large);
+  assert.ok(best(large) < 10 * Math.max(2, best(small)), 'about 4x the time for 4x the elements, not 16x or more');
 });
 
 // ---- validators: each with a passing and a failing case
