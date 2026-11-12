@@ -295,7 +295,7 @@ with tempfile.TemporaryDirectory() as tmp:
        and m.get("title") == "Every construct on Mermaid's state diagram page" and said.get("cards") == 64 and said.get("lines") == 52, r.stdout + r.stderr)
     got = [l[len(str(ROOT / name)):].split(" ", 1)[0] for l in r.stderr.splitlines()]
     ok(f"{name} · lists what it skips or approximates, each with its line",
-       got == [f":{n}:" for n in (3, 10, 11, 70, 87, 93, 94, 95, 96, 97, 106, 109, 119, 120, 123, 125, 126, 127, 128, 129)] and said.get("unread") == 20, r.stderr)
+       got == [f":{n}:" for n in (3, 18, 19, 78, 95, 101, 102, 103, 104, 105, 114, 117, 127, 128, 131, 133, 134, 135, 136, 137)] and said.get("unread") == 20, r.stderr)
     kinds = {n["id"]: (n["type"], (n.get("props") or {}).get("kind")) for n in m["nodes"]}
     ok(f"{name} · states, composites with regions, pseudostates and final states, transitions and notes",
        [kinds.get(i) for i in ("Active", "if_state", "fork_state", "hist", "start", "end")] == [("uml.State", None), ("uml.Pseudostate", "choice"),

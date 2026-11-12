@@ -6,6 +6,14 @@ config:
 %% Modelled on Mermaid 12.3.0's docs/syntax/stateDiagram.md (MIT), one block per section of that page, then the
 %% constructs this reader adds (activities, internal transitions, the %% hints) and broken input. The file starts with
 %% a byte-order mark and the Notes block has CRLF line ends. The pinned report is in tests/mermaid-state.test.mjs.
+%%
+%% Mermaid 12.3.0 itself on the writer's output (4.8, 13 Nov 2026, once, from the npm package in a scratch directory,
+%% not a dependency): for docs/diagrams/examples/10-state-machine.json and ten generated models (seeds 1 to 10 of
+%% tests/mermaid-state.test.mjs) its parser reads every file, puts each state in the composite and region the model
+%% gives it, and keeps every transition and note (the seven crossings of example 10 included); Chrome draws them all,
+%% but for one: seed 9, whose four transitions join a composite and a state inside it, is drawn with no line at all.
+%% Before the writer put a composite's text under %% row:, Mermaid refused three of the ten ("Group nodes can only have
+%% label"). Mermaid refuses this file itself: its byte-order mark, and the broken lines at its end.
 stateDiagram-v2
     accTitle: Every construct
     accDescr {
