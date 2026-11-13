@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 2,
+  "title": "Timing, minimal",
+  "nodes": [
+    {"id":"lamp","type":"uml.Lifeline","label":"lamp","props":{"states":["Off","On"]}}
+  ],
+  "edges": [
+
+  ],
+  "views": [
+    {"id":"v","diagram":"uml.timing","nodeIds":["lamp"],"timeline":{"unit":"s","changes":[
+      {"id":"off","lifeline":"lamp","at":0,"state":"Off"},
+      {"id":"on","lifeline":"lamp","at":10,"state":"On"}
+    ],"constraints":[
+
+    ]}}
+  ]
+}

@@ -28,6 +28,11 @@ none, drawn across all of them) (errors); `operator`, `sort`, `empty`, `view` (w
 operator or sort is drawn by its name or as a call; an empty operand or fragment; pins, or a direction other than down).
 The shared ones live in `src/uml/interaction.js` and the communication diagram runs them too.
 
+Deleting an alt, or one of its operands, that would leave two replies to one call outside different operands is refused,
+said on the hint line (`reply-once: …`): the type's remove hook checks what is left (`sqGuard`), so no single delete leaves a
+`reply-once` error (`tests/delete-cascade.test.mjs`); delete one of the replies first. A bare `apply()` delete is not
+refused, and may leave one.
+
 ## Left out
 
 - Gates; continuations; state invariants; time and duration constraints (stage 6); found and lost messages; general

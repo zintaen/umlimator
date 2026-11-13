@@ -44,7 +44,7 @@ export interface MapNode {
 /** A typed element in schema version 2's envelope (docs/diagrams/model.md §1): a node, a member, a typed edge, a
  *  fragment. Nodes, edges, members and fragments share one id space; an id never contains "->". A typed edge is an
  *  Element with `from` and `to`, which may name a member. A typed view is a MapView with `diagram` (uml.class), and may
- *  have `subject`, `direction` ('right' | 'down'), `notation`, `present`, `fragments` and `timeline`. umlimator/all draws `uml.class` (0.18.0), `uml.object` and `uml.package` (0.19.0), `uml.sequence` and `uml.communication` (0.20.0), `uml.use-case`, `uml.activity`, `uml.state-machine` and `uml.interaction-overview` (0.21.0), `uml.component`, `uml.deployment` and `uml.composite-structure` (0.22.0); other types draw as plain cards.
+ *  have `subject`, `direction` ('right' | 'down'), `notation`, `present`, `fragments` and `timeline`. umlimator/all draws `uml.class` (0.18.0), `uml.object` and `uml.package` (0.19.0), `uml.sequence` and `uml.communication` (0.20.0), `uml.use-case`, `uml.activity`, `uml.state-machine` and `uml.interaction-overview` (0.21.0), `uml.component`, `uml.deployment` and `uml.composite-structure` (0.22.0), `uml.profile` and `uml.timing` (0.23.0); other types draw as plain cards.
  *  From 0.19.0 the class, object and package types draw a shown package that owns something the view shows as a box holding it (`parent`), and
  *  qualify names (`sales::Order`) from the nearest shown owner, the view's `subject`, or the top. */
 export interface Element {
@@ -194,6 +194,45 @@ export type UmlCompositeStructureLineType = 'uml.Connector' | 'uml.RoleBinding' 
 export interface UmlPartProps { valueType?: string; multiplicity?: string; aggregation?: 'composite' | 'shared'; stereotypes?: string[]; [key: string]: unknown }
 /** A collaboration use's props: the collaboration it uses, by label. */
 export interface UmlCollaborationUseProps { collaboration?: string; stereotypes?: string[]; [key: string]: unknown }
+/** Any UML element's tagged values (0.23.0): by stereotype (as written in `stereotypes`, `Profile::name` when qualified, or
+ *  a required stereotype's name), then by tag name, each value as text. Checked against the profiles applied to the
+ *  element's packages (docs/conformance/uml-profile.md); edited in the properties panel on every typed view. */
+export type UmlTags = Record<string, Record<string, string>>;
+/** The props any UML element may hold from 0.23.0: its stereotypes (a name, or `Profile::name`) and their tags. */
+export interface UmlStereotypedProps { stereotypes?: string[]; tags?: UmlTags; [key: string]: unknown }
+/** The profile diagram's vocabulary (a view with `diagram: 'uml.profile'`, umlimator/all from 0.23.0;
+ *  docs/conformance/uml-profile.md). A stereotype's and a metaclass reference's `parent` is a profile; an enumeration's
+ *  (a tag's type) may be. A metaclass reference's `label` names a UML metaclass (Class, Property, Classifier, …). A
+ *  stereotype's tag definitions are `uml.Property` members (`name : Type [multiplicity] = default`). Any element that
+ *  applies a stereotype may be shown, with a compartment of tags for each stereotype it has. */
+export type UmlProfileElementType = 'uml.Profile' | 'uml.Stereotype' | 'uml.MetaclassReference' | 'uml.Enumeration' | 'uml.Package' | 'uml.Comment';
+export type UmlProfileMemberType = 'uml.Property' | 'uml.EnumerationLiteral';
+/** An extension from a stereotype to a metaclass reference; a profile application from a package to a profile; a
+ *  generalization between stereotypes. */
+export type UmlProfileLineType = 'uml.Extension' | 'uml.ProfileApplication' | 'uml.Generalization' | 'uml.CommentLink';
+/** A stereotype's props: abstract (applied through a specialization). */
+export interface UmlStereotypeProps { isAbstract?: boolean; [key: string]: unknown }
+/** An extension's props: required (the stereotype is applied to every element of the metaclass in its profile's scope). */
+export interface UmlExtensionProps { isRequired?: boolean; [key: string]: unknown }
+/** The timing diagram's vocabulary (a view with `diagram: 'uml.timing'`, umlimator/all from 0.23.0;
+ *  docs/conformance/uml-timing.md). Lifelines are model nodes the view lists in `nodeIds`, top to bottom; messages are inline
+ *  in the view's `edges`; changes and constraints are in its `timeline`. `present.<lifeline>.as: 'values'` draws a value
+ *  lifeline. The scale is derived, never stored. */
+export type UmlTimingElementType = 'uml.Lifeline';
+export type UmlTimingLineType = 'uml.Message';
+/** A timing lifeline's props: what it represents, and its states, top to bottom (ignored by the sequence and
+ *  communication types). */
+export interface UmlTimingLifelineProps { represents?: string; states?: string[]; stereotypes?: string[]; tags?: UmlTags; [key: string]: unknown }
+/** A timing message's props: a sort of call, async or reply, and when it is sent and received, in the view's unit. */
+export interface UmlTimingMessageProps { sort?: 'call' | 'async' | 'reply'; replyTo?: string; sentAt?: number; receivedAt?: number; [key: string]: unknown }
+/** A change of state on a lifeline at a time; an element of the model's id space, drawn by `at`. */
+export interface UmlTimingChange { id: string; lifeline: string; at: number; state: string }
+/** A duration constraint from one change to a later one, or a time constraint on one change. */
+export interface UmlTimingConstraint { id: string; type: 'uml.DurationConstraint' | 'uml.TimeConstraint'; from: string; to?: string; label?: string }
+/** A timing view's `timeline`: the ruler's unit (optional), its changes in any order, its constraints. */
+export interface UmlTimeline { unit?: string; changes?: UmlTimingChange[]; constraints?: UmlTimingConstraint[] }
+/** What a timing view shows of a lifeline, in its `present`: drawn as a value lifeline. */
+export interface UmlTimingPresent { as?: 'values' }
 /** What a line means, drawn as its colour: calls (the default), feeds (hands work on), triggers (suggests, offers, fires),
  *  state (reads or writes a file, board or config: a thinner line, a muted label, no flow) and guard (a hook steps in).
  *  Colours are --um-w-<kind>. An edge's `style` (emphasis, dashed, security) wins over its kind's colour. */

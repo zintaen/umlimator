@@ -1,4 +1,4 @@
-// The Bookshop atlas (0.21.0): examples/bookshop-atlas.json is what tools/atlas.mjs builds from the Bookshop examples and
+// The Bookshop atlas (0.21.0; the 14 UML types since 0.23.0): examples/bookshop-atlas.json is what tools/atlas.mjs builds from the Bookshop examples and
 // tools/atlas-links.json, byte for byte, so it cannot drift from them. It validates with no core error, every view lays
 // out as in its own file, and every drill-down opens a view of the atlas: each link of the links file, the files' own, and
 // no other. From the map a reader reaches every view. An element is shared by id: the files that have it agree on it, or
@@ -12,7 +12,7 @@ import '../src/typed/draw.js';
 import '../src/uml/class.js';
 import '../src/uml/object.js';
 import '../src/uml/package.js';
-import '../src/uml/sequence.js';
+import { sqRemove } from '../src/uml/sequence.js';
 import '../src/uml/communication.js';
 import '../src/uml/usecase.js';
 import '../src/uml/activity.js';
@@ -21,9 +21,15 @@ import '../src/uml/overview.js';
 import '../src/uml/component.js';
 import '../src/uml/deployment.js';
 import '../src/uml/composite.js';
+import '../src/uml/profile.js';
+import '../src/uml/timing.js';
 import { layout, check } from '../src/map/api.js';
 import { mapContext } from '../src/map/context.js';
 import { validate } from '../src/map/validate.js';
+import { describe } from '../src/map/insight.js';
+import { tablesOf } from '../src/page/print.js';
+import { apply } from '../src/core/apply.js';
+import { appliedOf } from '../src/uml/stereotypes.js';
 import { build } from '../tools/atlas.mjs';
 
 const LINKS = JSON.parse(readFileSync(new URL('../tools/atlas-links.json', import.meta.url), 'utf8'));
@@ -36,17 +42,19 @@ test('the committed atlas is what tools/atlas.mjs builds, byte for byte', () => 
   assert.deepEqual(build().text, text); // the same on every run
   // one Order, one package sales: the class and package files' 14 elements, and the 5 lifelines the sequence,
   // communication and overview files share; one Shop API, its jar and where the jar runs: the component and deployment
-  // files' 6 (0.22.0)
-  assert.deepEqual(shared.map(x => x.id), ['sales', 'shared', 'catalog', 'payments-package', 'card', 'customer', 'order', 'line', 'book',
-    'payable', 'payment', 'card-payment', 'status', 'money', 'lifeline-shopper', 'lifeline-storefront', 'lifeline-api', 'lifeline-payments', 'receipt',
-    'shop-api', 'order-worker', 'shop-api-jar', 'app-server', 'jvm', 'api-jar-manifests-api']);
+  // files' 6 (0.22.0); the profile file's sales, Order and its placedAt, the profile and its application the package file
+  // shows, and the timing file's two lifelines, the overview's worker and the sequence's payments (0.23.0)
+  assert.deepEqual(shared.map(x => x.id), ['sales', 'shared', 'catalog', 'payments-package', 'card', 'customer', 'order', 'order.placedAt', 'line',
+    'book', 'payable', 'payment', 'card-payment', 'status', 'money', 'conventions', 'sales-applies-conventions', 'lifeline-shopper',
+    'lifeline-storefront', 'lifeline-api', 'lifeline-payments', 'receipt', 'lifeline-worker', 'shop-api', 'order-worker', 'shop-api-jar', 'app-server',
+    'jvm', 'api-jar-manifests-api']);
   const ids = [...M.nodes, ...M.edges, ...M.views.flatMap(v => [...(v.edges || []).filter(e => typeof e === 'object'), ...(v.fragments || [])])].map(x => x.id);
   assert.equal(new Set(ids).size, ids.length, 'every element id once');
   assert.equal(new Set(M.views.map(v => v.id)).size, M.views.length, 'every view id once');
 });
 
 test('the atlas validates with no core error; the UML rules find only what two files in one model raise', () => {
-  const said = validate(M);
+  const said = validate(M); // with a profile in the model, no stereotype rule speaks: not on a stored keyword (order-uses-money's «use»)
   assert.deepEqual(said.filter(p => p.level === 'error' && !p.rule), []);
   // the class type's rules run on the whole model: a generalization between two actors or two use cases is not one
   // between classifiers to them (the decision in docs/module-api.md's 0.21.0 section); nor is an interface realization from
@@ -95,6 +103,36 @@ test('every drill-down opens a view of the atlas: the links file\'s, the files\'
   step('overview', 'domain'); step('domain', 'order-life');
   step('overview', 'shopping'); step('shopping', 'take-payment'); step('take-payment', 'checkout-sequence');
   step('overview', 'production'); step('production', 'components'); step('components', 'internals');
+  // the package view's profile opens the profile view; Take payment's "Record the payment" the timing view (0.23.0)
+  step('overview', 'packages'); step('packages', 'profile'); step('take-payment', 'one-charge');
+});
+
+test('the atlas holds a view of each of the 14 UML diagram kinds; describe() and the PDF\'s tables read every view', () => {
+  assert.deepEqual([...new Set(M.views.map(v => v.diagram).filter(d => d?.startsWith('uml.')))].sort(), ['uml.activity', 'uml.class',
+    'uml.communication', 'uml.component', 'uml.composite-structure', 'uml.deployment', 'uml.interaction-overview', 'uml.object', 'uml.package',
+    'uml.profile', 'uml.sequence', 'uml.state-machine', 'uml.timing', 'uml.use-case']);
+  const ctx = mapContext(M);
+  for (const v of M.views) { assert.ok(describe(M, v.id).length, v.id); assert.ok(tablesOf(ctx, ctx.V[v.id], ctx.buildGeo(v.id)).length, v.id); }
+});
+
+test('the profile in the atlas: «owned», required on Class, is supplied to exactly the classes of sales; placedAt\'s «column» and tags are the model\'s, and the class view reads as its own file', () => {
+  const all = M.nodes.flatMap(n => [n, ...(n.members || [])]);
+  assert.deepEqual(all.filter(n => appliedOf(M, n.id).some(e => e.key === 'owned')).map(n => n.id), ['customer', 'order', 'line']);
+  const placedAt = M.nodes.find(n => n.id === 'order').members.find(m => m.id === 'order.placedAt');
+  assert.deepEqual([placedAt.props.stereotypes, placedAt.props.tags], [['column'], { column: { name: 'placed_at', indexed: 'true' } }]);
+  // the class view leaves member stereotypes undrawn, so its describe() and PDF rows are the class file's
+  const S = JSON.parse(readFileSync(new URL('../examples/sales-classes.json', import.meta.url), 'utf8'));
+  const rows = m => { const c = mapContext(m); return tablesOf(c, c.V.domain, c.buildGeo('domain')); };
+  assert.equal(describe(M, 'domain'), describe(S, 'domain'));
+  assert.deepEqual(rows(M), rows(S));
+});
+
+test('deleting lifeline-worker from the sequence view (Shift + Delete) takes its timing changes and their constraints', () => {
+  const r = sqRemove(M, M.views.find(v => v.id === 'queue-order'), ['lifeline-worker'], true);
+  const n = apply(M, Array.isArray(r) ? r : r.commands), tl = n.views.find(v => v.id === 'one-charge').timeline;
+  assert.deepEqual(validate(n).filter(p => p.level === 'error' && !p.rule), []);
+  assert.deepEqual([tl.changes.map(c => c.lifeline), tl.constraints], [Array(4).fill('lifeline-payments'), []]);
+  assert.ok(!n.nodes.some(x => x.id === 'lifeline-worker'));
 });
 
 test('every view lays out in the atlas as in its own file: the same boxes, and lines through the same points', () => {
@@ -123,4 +161,9 @@ test('the build stops where the files disagree on an element, naming it, the fil
   assert.throws(() => two([order()], [{ id: 'order', type: 'uml.ObjectNode' }]), /disagree on its type: "uml.Class" against "uml.ObjectNode"/);
   assert.throws(() => two([], [{ id: 'v', type: 'uml.Class' }]), /node v in b would open a's view v/);
   assert.throws(() => two([{ id: 'a', props: { owner: 'a' } }], []), /owner/); // a field the atlas does not know
+  // a timing view's changes and constraints are the view's own elements, with their own fields (0.23.0)
+  const timed = timeline => build({ title: 't', root: 'a/v', sources: ['a', 'b'], links: [] },
+    name => ({ a: { nodes: [order()], views: [{ id: 'v', nodeIds: [] }] }, b: { views: [{ id: 'w', nodeIds: [], timeline }] } })[name]);
+  assert.throws(() => timed({ changes: [{ id: 'order', lifeline: 'x', at: 0 }] }), /order is a node in a and in view w in b/);
+  assert.throws(() => timed({ scale: 2 }), /scale/);
 });

@@ -281,27 +281,30 @@ test('add: the palette\'s lifeline, last or at an index; remove: a connector tak
   assert.deepEqual(VIEW(m).nodeIds.slice(0, 3), ['lifeline-shopper', 'lifeline-storefront', 'audit-log']);
   assert.deepEqual(commAdd(m, VIEW(m), { type: 'uml.Lifeline' }, 'Audit log')[0].element, { id: 'audit-log-2', type: 'uml.Lifeline', label: 'Audit log' });
   assert.equal(commAdd(EX, V, { type: 'uml.Message' }, 'x'), null);
-  assert.deepEqual(commRemove(EX, V, ['api-payments'], false), [{ op: 'hide', id: 'api-payments', view: 'checkout-communication' }, { op: 'hide', id: 'cm4', view: 'checkout-communication' }, { op: 'hide', id: 'cm5', view: 'checkout-communication' }]);
-  m = run(EX, commRemove(EX, V, ['api-payments'], false));
+  assert.deepEqual(commRemove(EX, V, ['api-payments'], false), { commands: [{ op: 'hide', id: 'api-payments', view: 'checkout-communication' }, { op: 'hide', id: 'cm4', view: 'checkout-communication' }, { op: 'hide', id: 'cm5', view: 'checkout-communication' }],
+    say: 'Hid connector "api–payments" and its 2 messages: "charge(total)", "paid"' });
+  assert.equal(commRemove(EX, V, ['api-payments'], true).say, 'Deleted connector "api–payments" and its 2 messages: "charge(total)", "paid"');
+  assert.equal(commRemove(EX, V, ['lifeline-payments'], false).say, 'Hid lifeline "payments" and its 2 messages: "charge(total)", "paid"', 'a lifeline\'s messages, taken by apply(), said');
+  m = run(EX, commRemove(EX, V, ['api-payments'], false).commands);
   assert.ok(m.edges.some(e => e.id === 'cm4'), 'hidden, still in the model');
-  m = run(EX, commRemove(EX, V, ['api-payments'], true));
+  m = run(EX, commRemove(EX, V, ['api-payments'], true).commands);
   assert.ok(!m.edges.some(e => ['api-payments', 'cm4', 'cm5'].includes(e.id)));
   assert.deepEqual(commRemove(EX, V, ['cm2'], false).map(c => c.id), ['cm2', 'cm8'], 'a call hidden takes its reply');
   run(EX, commRemove(EX, V, ['cm2'], false));
   m = run(EX, commRemove(EX, V, ['cm2'], true));
   assert.ok(!m.edges.some(e => e.id === 'cm8'), 'a call deleted takes its reply (refs)');
-  m = run(EX, commRemove(EX, V, ['lifeline-payments'], false));
+  m = run(EX, commRemove(EX, V, ['lifeline-payments'], false).commands);
   assert.ok(!VIEW(m).edges.some(id => ['api-payments', 'cm4', 'cm5'].includes(id)), 'a lifeline hidden takes its connectors and messages');
-  run(EX, commRemove(EX, V, ['lifeline-payments', 'api-payments', 'cm4'], true));
+  run(EX, commRemove(EX, V, ['lifeline-payments', 'api-payments', 'cm4'], true).commands);
   // a connector deleted from the model takes the messages another view carries on it, and none another connector carries there
   const two = { schemaVersion: 2, nodes: [{ id: 'a', type: 'uml.Lifeline' }, { id: 'b', type: 'uml.Lifeline' }],
     edges: [{ id: 'c', type: 'uml.Connector', from: 'a', to: 'b' }, { id: 'c2', type: 'uml.Connector', from: 'b', to: 'a' }, msg('m1', 'a', 'b', 'call'), msg('m2', 'a', 'b', 'async'), msg('m3', 'b', 'a', 'async')],
     views: [{ id: 'v1', diagram: 'uml.communication', nodeIds: ['a', 'b'], edges: ['c', 'm1'] }, { id: 'v2', diagram: 'uml.communication', nodeIds: ['a', 'b'], edges: ['c', 'm2'] },
       { id: 'v3', diagram: 'uml.communication', nodeIds: ['a', 'b'], edges: ['c', 'c2', 'm3'] }] };
   assert.deepEqual(validate(two), []);
-  assert.deepEqual(commRemove(two, two.views[0], ['c'], true), [{ op: 'delete', id: 'c' }, { op: 'delete', id: 'm1' }, { op: 'delete', id: 'm2' }], 'm3 stays on c2 in v3');
-  run(two, commRemove(two, two.views[0], ['c'], true));
-  assert.deepEqual(commRemove(two, two.views[0], ['c'], false), [{ op: 'hide', id: 'c', view: 'v1' }, { op: 'hide', id: 'm1', view: 'v1' }]);
+  assert.deepEqual(commRemove(two, two.views[0], ['c'], true), { commands: [{ op: 'delete', id: 'c' }, { op: 'delete', id: 'm1' }, { op: 'delete', id: 'm2' }], say: 'Deleted connector "a–b" and its 2 messages: "m1", "m2"' }, 'm3 stays on c2 in v3');
+  run(two, commRemove(two, two.views[0], ['c'], true).commands);
+  assert.deepEqual(commRemove(two, two.views[0], ['c'], false), { commands: [{ op: 'hide', id: 'c', view: 'v1' }, { op: 'hide', id: 'm1', view: 'v1' }], say: 'Hid connector "a–b" and its 1 message: "m1"' });
 });
 
 test('save and reopen (DoD 6): a 30-step communication session undoes and redoes to byte-identical models, and reopening its saved JSON midway ends where the session does', () => {
@@ -321,7 +324,7 @@ test('save and reopen (DoD 6): a 30-step communication session undoes and redoes
   ];
   assert.equal(steps.length, 30);
   const h = history(EX), seen = [JSON.stringify(h.model)], cmds = [];
-  for (const s of steps) { const c = s(h.model); assert.ok(Array.isArray(c) && c.length, `step ${seen.length}: ${JSON.stringify(c)}`); cmds.push(c);
+  for (const s of steps) { const r = s(h.model), c = Array.isArray(r) ? r : r && r.commands; assert.ok(Array.isArray(c) && c.length, `step ${seen.length}: ${JSON.stringify(c)}`); cmds.push(c);
     h.push(apply(h.model, c)); seen.push(JSON.stringify(h.model)); assert.deepEqual(errors(h.model), [], `step ${seen.length - 1}`); }
   for (let i = 29; i >= 0; i--) assert.equal(JSON.stringify(h.undo()), seen[i], `undo to ${i}`);
   for (let i = 1; i <= 30; i++) assert.equal(JSON.stringify(h.redo()), seen[i], `redo to ${i}`);

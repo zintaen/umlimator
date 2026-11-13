@@ -2,9 +2,9 @@
  "about": "The Bookshop atlas (examples/bookshop-atlas.json), as tools/atlas.mjs builds it: the per-type examples it joins, in this order (an element two of them have, by its id, is one element, and the files must agree on it), and which element opens which view, each as \"<file>/<id>\".",
  "title": "Bookshop atlas",
  "root": "bookshop/overview",
- "sources": ["bookshop", "sales-classes", "order-objects", "bookshop-packages", "checkout-sequence", "checkout-communication",
+ "sources": ["bookshop", "sales-classes", "bookshop-profile", "order-objects", "bookshop-packages", "checkout-sequence", "checkout-communication",
   "shopping-use-cases", "fulfil-activity", "order-states", "buy-book-overview",
-  "bookshop-components", "bookshop-deployment", "order-service-structure"],
+  "bookshop-components", "bookshop-deployment", "order-service-structure", "bookshop-timing"],
  "links": [
   { "element": "bookshop/shoppers", "opens": "shopping-use-cases/shopping" },
   { "element": "bookshop/storefront", "opens": "buy-book-overview/buy-book" },
@@ -23,6 +23,8 @@
   { "element": "fulfil-activity/charge", "opens": "checkout-sequence/checkout-sequence" },
   { "element": "bookshop/hosts", "opens": "bookshop-deployment/production" },
   { "element": "bookshop-deployment/jvm", "opens": "bookshop-components/components" },
-  { "element": "bookshop-components/shop-api", "opens": "order-service-structure/internals" }
+  { "element": "bookshop-components/shop-api", "opens": "order-service-structure/internals" },
+  { "element": "bookshop-packages/conventions", "opens": "bookshop-profile/profile" },
+  { "element": "fulfil-activity/record", "opens": "bookshop-timing/one-charge" }
  ]
 }
