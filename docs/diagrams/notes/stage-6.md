@@ -446,6 +446,24 @@ the model and is warned (`tag-defined`), not shown as a field.
 | **(a) On the profile view (§4.1); elsewhere stereotypes as now, tags in the panel, `describe()` and the PDF rows of the profile view (recommended)** | No picture of another type changes; no other type file is touched | A class view does not show `{table = orders}` |
 | (b) Every type draws tags in braces under the name | UML's other notation | Twelve type files and their pictures change; boxes grow |
 
+### 5.9 As built (6.2)
+
+Where `src/uml/stereotypes.js` departs from or settles what §5 left open:
+
+- **The metaclass table** keeps UML 2.5.1's abstract metaclasses between a row and `Element` (`Namespace`, `Type`,
+  `RedefinableElement`, `TypedElement`, `PackageableElement`, `ConnectableElement`, `StructuralFeature`, …), where §5.4's
+  last row put `Classifier`, `Package` and the rest straight under `Element`: what fits is the same for every row §5.4
+  names, and a stereotype on `NamedElement` or `Namespace` fits what UML says it does. `tests/stereotypes.test.mjs` holds
+  that every general is a row.
+- **A stereotype applied outside its profile's scope** (`stereotype-applied`, qualified or not) is not one the element
+  has: no tags, no required extension met by it; tags stored under it are `tag-defined`.
+- **The keywords** (§5.3, 3) add `actor` and `datastore`, the stored spellings of two types' own keywords, to Annex C's.
+- **`appliedOf`** entries carry `key` too, the name `props.tags` keys them by (as written in `stereotypes`, or a required
+  one's label); `stereotype` and `profile` are the elements. `required` is true for a required stereotype whether supplied
+  or stored.
+- **The rules' table** is exported as `STY_RULES`, for the profile type's `rules` (6.3), so the problems list and
+  `rules()` name them.
+
 ## 6. The time ruler (S10 to S14)
 
 ### 6.1 A strategy of its own
