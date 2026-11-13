@@ -2,6 +2,7 @@ name: check
 
 on:
   push:
+    branches: [main]  # a branch runs once, as its pull request; main for the site and the release
   pull_request:
   schedule:
     - cron: "0 6 * * 1"  # weekly: a logo source that changed shows up here, not in someone's picture
@@ -11,10 +12,18 @@ env:
   SD: https://raw.githubusercontent.com/caru-ini/stack-diagram/30cbbb7/skills/stack-diagram/scripts
 
 jobs:
-  check:
+  # The checks, in four jobs that run side by side; the job `check` below passes only when all four did, so branch
+  # protection's required check and the jobs that need it (site, release) are as they were.
+  # lib/ is what src/ builds; layout() in Node, the timed tests, and the examples render and check clean (about 4 min)
+  node:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - uses: actions/cache@v4  # the logos this job's renders download, kept per job and per pin: a changed pin misses it, and icon_bytes checks a cached logo's sha256 on every read
+        with:
+          path: ~/.cache/umlimator/icons
+          key: icons-${{ github.job }}-${{ hashFiles('icons/manifest.json') }}
 
       - uses: actions/setup-python@v5
         with:
@@ -23,14 +32,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24  # --test-skip-pattern (22.1+) in the node --test steps; the runner's own Node is whatever its image ships
-
-      - name: The copied files are upstream's, unmodified (the template became lib/umlimator.js, umlimator's own)
-        run: |
-          curl -fsSL "$SB/scripts/visual.py" -o engine/scripts/visual.py
-          curl -fsSL "$SB/references/schema.md" -o engine/references/schema.md
-          curl -fsSL "$SB/references/sections.md" -o engine/references/sections.md
-          curl -fsSL "$SD/fetch_icons.py" -o tools/fetch_icons.py
-          git diff --exit-code engine/scripts engine/references tools
 
       - name: lib/umlimator.js is what src/ builds, and each source imports every name it uses from another (a compiler fetched for CI only, never in the module)
         run: |
@@ -59,65 +60,6 @@ jobs:
         if: ${{ !cancelled() }}   # still runs when the step above fails, so a failing test does not hide the budgets
         run: node --test --test-concurrency=1 --test-name-pattern='\(timed\)'
 
-      - name: render() embedded in a plain page reports its events and follows update() and destroy()
-        run: python3 tests/embed.py
-
-      - name: The MCP server's page in headless Chrome says what it shows, and a tool says shown only once it did
-        run: python3 tests/mcp.py
-
-      - name: The CLI's diff, drift and timelapse write their pages, diff --base a pull request's summary, mcp answers an MCP client, and pdf an example's PDF
-        run: python3 tests/cli.py
-
-      - name: When something goes wrong, the CLI says so and leaves the previous output (Chrome failing, --views, render, pdf, stills, diff --base, icons, mcp)
-        run: python3 tests/outcomes.py
-
-      - name: The CLI's import reads a sample of each format into a model that validates, renders and checks clean
-        run: python3 tests/import.py
-
-      - name: The diff Action's comment step, the release job's steps and map-repo's CLI, run against stand-ins for GitHub, git and npm
-        run: python3 tests/steps.py
-
-      - name: The imported example is what import writes from its Structurizr source, so the two can't drift apart
-        run: |
-          python3 umlimator.py import examples/clinic.dsl --out /tmp/clinic.json
-          diff examples/clinic.json /tmp/clinic.json \
-            || { echo "::error::examples/clinic.json is not what import writes from examples/clinic.dsl: import it again and commit it"; exit 1; }
-
-      - name: The diff Action pictures what a pull request changes in the example models (a dry run, without a comment)
-        if: github.event_name == 'pull_request'
-        uses: ./
-        with:
-          models: examples/*.json
-          comment: false
-
-      - name: Upstream changed a copied file since its pin (a warning, time to sync)
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          moved() { gh api "repos/$1/compare/$2...HEAD" --jq '.files[].filename' | grep -xE "$3" || true; }
-          for f in $(moved EricTechPro/super-board d0b7d5a 'skills/visual/(assets/template.html|scripts/visual.py|references/.*)'; moved caru-ini/stack-diagram 30cbbb7 'skills/stack-diagram/scripts/fetch_icons.py'); do
-            echo "::warning::upstream changed $f since its pin"
-          done
-
-      - name: Every brand logo still downloads and matches its pinned sha256
-        run: |
-          python3 -I - <<'PY'
-          import importlib.util, json, sys
-          spec = importlib.util.spec_from_file_location("u", "umlimator.py"); u = importlib.util.module_from_spec(spec); spec.loader.exec_module(u)
-          man = json.load(open("icons/manifest.json"))
-          bad = [k for k, e in man.items() if e["source"] != "lucide" and u.icon_bytes(e) is None]
-          print(f"{sum(1 for e in man.values() if e['source'] != 'lucide') - len(bad)} logos ok; failed: {bad}")
-          sys.exit(1 if bad else 0)
-          PY
-
-      - name: The benchmark models lay out as recorded, the same on every run, and in time
-        # m50's time is checked on a developer machine (about 1.6 s since 0.6.0, which lays a view
-        # out again when some of its lines find no route); a CI runner takes about 3x as long and gets 5x headroom,
-        # which the engine before patches 31-35 never met (m50 did not finish in 30 min: bench/results/2026-11-06-ab8daa1-m50.json).
-        # b26 takes about 0.4 s here and took 0.78-1.36 s on a runner (1.36 s on 0.9.0, with its layout unchanged): 3 s keeps
-        # a slow runner from failing a PR on time alone
-        run: python3 bench/bench.py --runs 2 --timeout 300 --check-determinism --expect bench/expected.json --max-ms m50=8000,b26=3000
-
       - name: The example renders as committed and its layout check is clean
         run: |
           python3 umlimator.py render examples/bookshop.json --out examples/bookshop.html --no-check
@@ -138,6 +80,26 @@ jobs:
           done
           node examples/layout.mjs
 
+  # render() and the MCP server's page in headless Chrome; the schema and the plugin (about 4 min)
+  browser:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24  # --test-skip-pattern (22.1+) in the node --test steps; the runner's own Node is whatever its image ships
+
+      - name: render() embedded in a plain page reports its events and follows update() and destroy()
+        run: python3 tests/embed.py
+
+      - name: The MCP server's page in headless Chrome says what it shows, and a tool says shown only once it did
+        run: python3 tests/mcp.py
+
       - name: Every example model is valid under the model's JSON Schema (a validator fetched for CI only, never in the module)
         run: npx --yes ajv-cli@5 validate --spec=draft2020 --all-errors -s lib/umlimator.schema.json -d "examples/*.json"
 
@@ -156,6 +118,110 @@ jobs:
           print(f"{len(market['plugins'])} plugin(s), manifests and skills ok")
           PY
           python3 plugins/umlimator/skills/map-repo/scripts/cli.py --help > /dev/null   # clones the pinned tag and checks its commit
+
+  # The CLI's diff, drift, timelapse, mcp and pdf, and the diff Action's dry run (about 4.5 min)
+  cli:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24  # --test-skip-pattern (22.1+) in the node --test steps; the runner's own Node is whatever its image ships
+
+      - name: The CLI's diff, drift and timelapse write their pages, diff --base a pull request's summary, mcp answers an MCP client, and pdf an example's PDF
+        run: python3 tests/cli.py
+
+      - name: The imported example is what import writes from its Structurizr source, so the two can't drift apart
+        run: |
+          python3 umlimator.py import examples/clinic.dsl --out /tmp/clinic.json
+          diff examples/clinic.json /tmp/clinic.json \
+            || { echo "::error::examples/clinic.json is not what import writes from examples/clinic.dsl: import it again and commit it"; exit 1; }
+
+      - name: The diff Action pictures what a pull request changes in the example models (a dry run, without a comment)
+        if: github.event_name == 'pull_request'
+        uses: ./
+        with:
+          models: examples/*.json
+          comment: false
+
+  # The upstream copies, the CLI's error cases, import, the release steps, the logos and the bench (about 4.5 min)
+  bench:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/cache@v4  # the logos this job's renders download, kept per job and per pin: a changed pin misses it, and icon_bytes checks a cached logo's sha256 on every read
+        with:
+          path: ~/.cache/umlimator/icons
+          key: icons-${{ github.job }}-${{ hashFiles('icons/manifest.json') }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24  # --test-skip-pattern (22.1+) in the node --test steps; the runner's own Node is whatever its image ships
+
+      - name: The copied files are upstream's, unmodified (the template became lib/umlimator.js, umlimator's own)
+        run: |
+          curl -fsSL "$SB/scripts/visual.py" -o engine/scripts/visual.py
+          curl -fsSL "$SB/references/schema.md" -o engine/references/schema.md
+          curl -fsSL "$SB/references/sections.md" -o engine/references/sections.md
+          curl -fsSL "$SD/fetch_icons.py" -o tools/fetch_icons.py
+          git diff --exit-code engine/scripts engine/references tools
+
+      - name: When something goes wrong, the CLI says so and leaves the previous output (Chrome failing, --views, render, pdf, stills, diff --base, icons, mcp)
+        run: python3 tests/outcomes.py
+
+      - name: The CLI's import reads a sample of each format into a model that validates, renders and checks clean
+        run: python3 tests/import.py
+
+      - name: The diff Action's comment step, the release job's steps and map-repo's CLI, run against stand-ins for GitHub, git and npm
+        run: python3 tests/steps.py
+
+      - name: Upstream changed a copied file since its pin (a warning, time to sync)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          moved() { gh api "repos/$1/compare/$2...HEAD" --jq '.files[].filename' | grep -xE "$3" || true; }
+          for f in $(moved EricTechPro/super-board d0b7d5a 'skills/visual/(assets/template.html|scripts/visual.py|references/.*)'; moved caru-ini/stack-diagram 30cbbb7 'skills/stack-diagram/scripts/fetch_icons.py'); do
+            echo "::warning::upstream changed $f since its pin"
+          done
+
+      - name: Every brand logo still downloads and matches its pinned sha256
+        run: |
+          export UMLIMATOR_ICON_CACHE="$RUNNER_TEMP/icons-fresh"   # an empty cache, not the job's: every logo comes from its source
+          python3 -I - <<'PY'
+          import importlib.util, json, sys
+          spec = importlib.util.spec_from_file_location("u", "umlimator.py"); u = importlib.util.module_from_spec(spec); spec.loader.exec_module(u)
+          man = json.load(open("icons/manifest.json"))
+          bad = [k for k, e in man.items() if e["source"] != "lucide" and u.icon_bytes(e) is None]
+          print(f"{sum(1 for e in man.values() if e['source'] != 'lucide') - len(bad)} logos ok; failed: {bad}")
+          sys.exit(1 if bad else 0)
+          PY
+
+      - name: The benchmark models lay out as recorded, the same on every run, and in time
+        # m50's time is checked on a developer machine (about 1.6 s since 0.6.0, which lays a view
+        # out again when some of its lines find no route); a CI runner takes about 3x as long and gets 5x headroom,
+        # which the engine before patches 31-35 never met (m50 did not finish in 30 min: bench/results/2026-11-06-ab8daa1-m50.json).
+        # b26 takes about 0.4 s here and took 0.78-1.36 s on a runner (1.36 s on 0.9.0, with its layout unchanged): 3 s keeps
+        # a slow runner from failing a PR on time alone
+        run: python3 bench/bench.py --runs 2 --timeout 300 --check-determinism --expect bench/expected.json --max-ms m50=8000,b26=3000
+
+  check:
+    needs: [node, browser, cli, bench]
+    if: always()   # runs when one of them fails or is cancelled, to fail rather than be skipped (a skipped required check passes)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Every check job succeeded
+        run: |
+          for r in ${{ join(needs.*.result, ' ') }}; do [ "$r" = success ] || { echo "::error::a check job ended: $r"; exit 1; }; done
 
   # The examples, live: on each push to main that passes the checks, every model's page and pictures are built and
   # published with the host pages and the module on GitHub Pages (zintaen.github.io/umlimator).

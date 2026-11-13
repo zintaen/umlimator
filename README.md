@@ -65,8 +65,8 @@ drill-down, a data pipeline, an AI agent's skills, and host pages for embedding,
   [what it covers](docs/conformance/uml-communication.md)). Messages are inserted, moved in time, wrapped in a frame and
   deleted on the canvas, by pointer and by key, each gesture an `edit` event; checked by the types' rules; a sequence
   diagram is read from and written to Mermaid's `sequenceDiagram`, and an OpenTelemetry trace becomes one
-  (`umlimator.py trace --diagram uml.sequence`). The MCP server, the `map-repo` skill and the diff Action learn these
-  types in one package after 0.20.0; until then a reorder of a view's messages shows in a diff as changed, not moved.
+  (`umlimator.py trace --diagram uml.sequence`). A diff says "moves" for a reordered message, and `paths()` on a
+  sequence view runs in time order (0.22.0).
 - **UML use case, activity, state machine and interaction overview diagrams** (0.21.0): actors as stick figures, use
   cases as ellipses with their extension points, a subject as a box holding its use cases, include, extend and
   generalization ([`examples/shopping-use-cases.json`](examples/shopping-use-cases.json),
@@ -118,7 +118,7 @@ drill-down, a data pipeline, an AI agent's skills, and host pages for embedding,
 npm install umlimator
 ```
 
-Or from GitHub, at a tag or any commit: `"umlimator": "github:zintaen/umlimator#v0.21.0"`. npm 12 refuses git
+Or from GitHub, at a tag or any commit: `"umlimator": "github:zintaen/umlimator#v0.22.0"`. npm 12 refuses git
 dependencies unless the project opts in, so that also needs `allow-git=root` in the `.npmrc` next to `package.json`.
 
 ## Embed
@@ -168,9 +168,10 @@ function MapView({ model, onSelect }) {
   `edit` transactions that `apply(model, e.commands)` turns into the next model (`examples/class-editor.html` is a
   working host). `umlimator` alone draws maps, and a typed view as plain cards with a warning.
 - `diff(before, after)` returns `after` with each card and line marked added, changed or removed, what changed in words,
-  and the views that show it; `drift(model, observed)` marks the lines traffic ran on that nobody drew, and the drawn ones
-  that carried nothing. Both are models to draw, in Node too. `update()` eases into the next model (`examples/timelapse.html`);
-  the option `ease: false` draws it at once.
+  and the views that show it (on a typed diagram, a reordered member or message reads "moves");
+  `drift(model, observed)` marks the lines traffic ran on that nobody drew, and the drawn ones that carried nothing. Both
+  are models to draw, in Node too. `update()` eases into the next model (`examples/timelapse.html`); the option
+  `ease: false` draws it at once.
 - `mountPage` is the whole standalone viewer that the CLI writes. `render()` can draw its pieces too, each on its own or
   any mix, inside the map's element; the host keeps its own header:
 
@@ -413,9 +414,9 @@ ffmpeg -f apng -i ride.png -vf "split[a][b];[a]palettegen[p];[b][p]paletteuse" r
 ffmpeg -f apng -i ride.png -vf "scale=trunc(iw/2)*2:trunc(ih/2)*2" -pix_fmt yuv420p ride.mp4
 ```
 
-On pull requests, the diff Action posts what they change in your maps: one comment with the summary and a sketch, and
-the pictures as the run's artifact. The comment names the commit it describes, only the run for the pull request's
-latest commit writes it, and it says so when the diff fails.
+On pull requests, the diff Action posts what they change in your maps and UML diagrams (every type above): one comment
+with the summary and a sketch, and the pictures as the run's artifact. The comment names the commit it describes, only
+the run for the pull request's latest commit writes it, and it says so when the diff fails.
 
 ```yaml
 on: pull_request
@@ -426,7 +427,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: zintaen/umlimator@v0.21.0
+      - uses: zintaen/umlimator@v0.22.0
         with:
           models: "docs/*.json"   # optional: where the models are (default: every .json that is a map model)
 ```
@@ -444,7 +445,7 @@ claude mcp add umlimator -- python3 /path/to/umlimator.py mcp /path/to/model.jso
 |---|---|
 | `list_views()` | the views (id, title, parent, number of cards) and the stories |
 | `describe_view(view)` | the view in sentences (`describe()`), then each card's id |
-| `paths(view, from, to)` | every card and line on a path from one card to another (`paths()`), as Refs for `highlight` |
+| `paths(view, from, to)` | every card and line on a path from one card to another (`paths()`; on a sequence view, in time order), as Refs for `highlight` |
 | `reach(view, card, backward?, depth?)` | what a card leads to, or what leads to it, with the distance of each (`reach()`) |
 | `broken_rules()`, `validate()` | each break of the model's `rules` (`rules()`), and its own problems (`validate()`) |
 | `diff(other_model_path)` | what changed from another model file to this one, in words, and the views that show it (`diff()`) |

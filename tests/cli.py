@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """The CLI's change commands end to end (#66, #67, #68): diff of two files, diff --base in a git repository (what the
-diff Action runs on a pull request; on an object and a package model as the Action's step runs it, 2.6, and on a use case, an activity, a state machine and an interaction overview model, 4.10, and a component, a deployment and a composite structure model, 5.8), drift and timelapse; trace (#96; as a UML sequence view, 3.8); and pdf (#93; the stage 4 types' tables, 4.10, and stage 5's, 5.8), read back with the standard
+diff Action runs on a pull request; on an object and a package model as the Action's step runs it, 2.6, and on a use case, an activity, a state machine and an interaction overview model, 4.10, and a component, a deployment and a composite structure model, 5.8, and on every other typed type, a reorder reading "moves", C10); map-repo's CLI rendering each typed model (C10); drift and timelapse; trace (#96; as a UML sequence view, 3.8); and pdf (#93; the stage 4 types' tables, 4.10, and stage 5's, 5.8), read back with the standard
 library. Pages only for the rest: stills (Chrome) are covered by `stills` itself. And the MCP server (#91), driven
 through its pipes as an MCP client drives it, with a page's event stream.
 
@@ -9,7 +9,7 @@ through its pipes as an MCP client drives it, with a page's event stream.
 Needs Node (diff, drift, trace and the MCP server's read tools run the module's own functions), git, and Chrome or
 Chromium (pdf).
 """
-import http.client, json, re, subprocess, sys, tempfile, threading, time, zlib
+import http.client, json, os, re, subprocess, sys, tempfile, threading, time, zlib
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -227,6 +227,62 @@ with tempfile.TemporaryDirectory() as tmp:
         ok(f"diff --base, as the Action runs it · {f}: what changed in words, its view, a page and a still",
            x.get("summary") == [said] and x.get("views") == [view] and (t / "action5-out" / f"examples-{f}.html").is_file() and all(Path(s).is_file() for s in x.get("stills", [None]))
            and f"**`examples/{f}.json`**: {view}" in md and f"- {said}" in md, x)
+
+    # C10's package (0.22.0): the Action's step on one model of each type left, each changed in a pull request; where order
+    # means something (a class's members, a sequence's or a communication's messages, a component's ports) a reorder reads
+    # "moves"
+    def members(m, nid):
+        n = next(x for x in m["nodes"] if x["id"] == nid); n["members"][:2] = n["members"][1::-1]
+    def messages(m, first):
+        E = m["views"][0]["edges"]  # a sequence view's own lines, or a communication view's message ids (they number them)
+        i = next(k for k, e in enumerate(E) if (e.get("id") if isinstance(e, dict) else e) == first); E[i], E[i + 1] = E[i + 1], E[i]
+    def rename(m, nid, label):
+        next(x for x in m["nodes"] if x["id"] == nid)["label"] = label
+    SIX = {"sales-classes": (lambda m: members(m, "customer"), "domain", "moves email after name in Customer"),
+           "checkout-sequence": (lambda m: messages(m, "m3"), "checkout-sequence", "moves validate(order) after charge(total)"),
+           "checkout-communication": (lambda m: messages(m, "cm3"), "checkout-communication", "moves validate(order) after charge(total)"),
+           "bookshop-components": (lambda m: members(m, "shop-api"), "components", "moves orders after payments in Shop API"),
+           "bookshop-deployment": (lambda m: rename(m, "browser", "Browser"), "production", "renames Web browser to Browser"),
+           "order-service-structure": (lambda m: members(m, "order-service"), "internals", "moves api after payments in OrderService")}
+    c = t / "action-c10"; (c / "examples").mkdir(parents=True)
+    cgit = lambda *x: subprocess.run(["git", "-C", str(c), "-c", "user.name=test", "-c", "user.email=test@example.invalid", *x], capture_output=True, text=True, check=True)
+    cgit("init", "-q")
+    for f in SIX:
+        (c / "examples" / f"{f}.json").write_text((ROOT / "examples" / f"{f}.json").read_text(encoding="utf-8"), encoding="utf-8")
+    cgit("add", "examples"); cgit("commit", "-q", "-m", "base")
+    for f, (change, _, _) in SIX.items():
+        m = json.loads((c / "examples" / f"{f}.json").read_text()); change(m)
+        (c / "examples" / f"{f}.json").write_text(json.dumps(m, indent=1))
+    cgit("commit", "-q", "-am", "the pull request")
+    r = cli("diff", "--base", "HEAD^1", "--out", str(t / "action-c10-out"), "--models", "examples/*.json", cwd=c) or []
+    by = {x["file"]: x for x in r}
+    md = (t / "action-c10-out" / "summary.md").read_text(encoding="utf-8") if (t / "action-c10-out" / "summary.md").is_file() else ""
+    for f, (_, view, said) in SIX.items():
+        x = by.get(f"examples/{f}.json", {})
+        ok(f"diff --base, as the Action runs it (C10) · {f}: what changed in words, its view, a page and a still",
+           x.get("summary") == [said] and view in (x.get("views") or []) and (t / "action-c10-out" / f"examples-{f}.html").is_file() and all(Path(s).is_file() for s in x.get("stills", [None]))
+           and f"- {said}" in md, x)
+
+    # map-repo's CLI (C10): the skill writes maps only, and renders a typed model it is given, every type on main. Its
+    # launcher runs a release from its cache; this checkout stands in for one (UMLIMATOR_REF, an empty UMLIMATOR_SHA)
+    (t / "skill-cache").mkdir()
+    (t / "skill-cache" / "local").symlink_to(ROOT, target_is_directory=True)
+    skill_env = {**os.environ, "UMLIMATOR_CLI_CACHE": str(t / "skill-cache"), "UMLIMATOR_REF": "local", "UMLIMATOR_SHA": ""}
+    TYPED = [ROOT / "examples" / f"{n}.json" for n in ("sales-classes", "order-objects", "bookshop-packages", "checkout-sequence", "checkout-communication",
+                                                       "shopping-use-cases", "fulfil-activity", "order-states", "buy-book-overview",
+                                                       "bookshop-components", "bookshop-deployment", "order-service-structure")]
+    for path in TYPED:
+        p = subprocess.run([sys.executable, str(ROOT / "plugins" / "umlimator" / "skills" / "map-repo" / "scripts" / "cli.py"), "render", str(path),
+                            "--out", str(t / f"skill-{path.stem}.html")], capture_output=True, text=True, env=skill_env)
+        try:
+            r = json.loads(p.stdout)
+        except ValueError:
+            r = None
+        # the pinned crossings of examples 9 and 10, as render's own check above (stage 5's three are clean since decision 22)
+        said = {"fulfil-activity": ["cross"] * 2, "order-states": ["cross"] * 2}.get(path.stem, [])
+        ok(f"map-repo's cli.py · renders a typed model it is given ({path.stem}): the page, and its check" + (f" ({len(said)} {said[0]}s, stated)" if said else " clean"),
+           p.returncode == 0 and r is not None and not r.get("errors") and [q.rsplit(" ", 1)[-1] for q in r.get("problems") or []] == said
+           and (t / f"skill-{path.stem}.html").is_file(), (p.returncode, p.stdout[-400:], p.stderr[-400:]))
 
     # pdf (#93): the bike share as a document for a review; its words are text. A cover with the contents; each view from a
     # page of its own, under its path, with its legend and tables of its cards, lines and boxes; the rules as a table. The
