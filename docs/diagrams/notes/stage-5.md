@@ -63,7 +63,7 @@ What is left out of the subsets is in §17.
 
 | # | What was read | What it says | Where it is handled |
 |---|---|---|---|
-| Q1 | `layoutPass`'s ends on a card (`pushSide`, the per-side loop) | Every line gets its own end. A card's side takes at most `max(1, ⌊length × 0.84 / 14⌋)`; the extras on the left and right go to the top and bottom, whatever their `fromSide` or `toSide` (the cap loop runs after those are applied). Ends are ordered by where the far end lies and spread 16 px apart on a left or right side, 26 px on a top or bottom. Between pushing the ends and spreading them, a typed view's `LP.ports(pushSide)` (`TYPED.loops`) already runs | S2, S3, §4.4 |
+| Q1 | `layoutPass`'s ends on a card (`pushSide`, the per-side loop) | Every line gets its own end. A card's side takes at most `max(1, ⌊length × 0.84 / 14⌋)`; the extras on the left and right go to the top and bottom, whatever their `fromSide` or `toSide` (the cap loop runs after those are applied). Ends are ordered by where the far end lies and spread 16 px apart on a left or right side, 26 px on a top or bottom. Between pushing the ends and spreading them, a typed view's `LP.ports(pushSide)` (`TYPED.loops`) already runs (5.1: `LP.ports(pushSide, sides)`, §4.4) | S2, S3, §4.4 |
 | Q2 | The same loop on a box (`n.box`) | Each end lies in line with its far end where the border allows: on a left or right side 40 px below the top (the title) and 16 px above the bottom, 20 px off the corners on the top and bottom, 16 (26) px apart | §4.4 |
 | Q3 | `layoutPass`'s `holds` | A line between a box and something inside it is refused with a warning ("it joins the box … and something inside it"); stage 2's `line-inside` rule says so for packages | S6 |
 | Q4 | `gridRoute` and `restub` | A line leaves its end along `OUT[side]`, the side it ends on. An end with the opposite side leaves the other way: the change S6 needs is where its point is put, not the search | §5 |
@@ -105,11 +105,11 @@ What may touch the core, each change stating its bytes in its pull request. Each
 |---|---|---|---|
 | `LP.ports(pushSide)` becomes `LP.ports(pushSide, sides)`; the hook places port ends and deletes the entries it placed (S5) | `src/layout/layered.js` | 5.1 | 6 B |
 | ~~The side cap leaves an end with a port on its side (§4.2)~~ Built in the port hook instead (5.1): it puts a port's end back on the side the type gave, so the cap needs no skip | `src/typed/layout.js` | 5.1 | 0 B |
-| An `inner` line passes `holds` (S6); its point is placed by the port hook | `src/layout/layered.js` | 5.1 | 15 B |
+| An `inner` line passes `holds` (S6) when it names a port at its inner end (`fromPort` for `from`, `toPort` for `to`); its point is placed by the port hook | `src/layout/layered.js` | 5.1 | 15 B |
 | `frameOf` asks a typed view's `TYPED.frame(b)` for the padding and the round frame (S8, S12); `b` is the frame as measured, carrying the box's `pad` and `round` | `src/layout/layered.js` | 5.1 | 45 B |
 | The jog repair reads a side the port hook may have emptied and deleted (`sides[…]?.length`) | `src/layout/layered.js` | 5.1 | 1 B |
 | The registry's pointer line to the fields' documentation | `src/core/registry.js` | 5.1 | 40 B |
-| | | | **126 B** (built: 92 B, 184,984 B to 185,076 B) |
+| | | | **126 B** (built: 116 B, 184,984 B to 185,100 B) |
 | Only if decision 9 takes `labelGaps`: `tight` reads `map \|\| dg.labelGaps`, column gaps only | `src/layout/layered.js` | 5.1 | 25 B |
 
 | Option | For | Against |
@@ -215,7 +215,8 @@ and on a box, and the box's case is pinned and stated.
   its `fromSide` or `toSide`. The side cap (Q1) runs after those are applied and would move a busy port's extras to the top
   or bottom (one port with four lines needs a 66 px side, whose cap is 3), so the cap loop skips an end with a port
   (`e.fromPort` on its `from` end, `e.toPort` on its `to` end; about 20 B, §2.3): the router never moves a port's line to
-  another side.
+  another side. (As built, 5.1: the cap has no skip; the port hook puts each port's end back on the side the type gave,
+  0 B; §4.4.)
 - **Order.** By where the port's lines go: the mean of their far ends' centres along the side, as the router orders ends
   now; ties, and ports with no line, by `members` order. Nothing is stored (rule 9).
 
@@ -265,12 +266,19 @@ its side and before the per-side spread (Q1). Port placement goes inside it; the
 **As built (5.1).** Where the build departs from the above:
 
 - The side cap is not taught to skip port ends (§2.3): the hook takes every end that names a port off the side the cap left it
-  on and puts it back on the side the type gave (`fromSide`, `toSide`), so it costs no core byte.
+  on and puts it back on the side the type gave (`fromSide`, `toSide`), so it costs no core byte. A port's side is held only
+  when the type gives `fromSide` or `toSide`: an end with neither keeps the side the cap left it on. The cap still counts
+  port ends, so a side can keep more ends than its cap.
+- Ports that still leave their side at 4 px apart (past a node's ends, or a box's free span) are reported with a warning
+  (`warn`), as step 3 says; the type grows the node.
+- An `inner` line passes `holds` only when it names a port at its inner end; one without is refused with the usual warning.
 - The hook deletes a side it has emptied; layoutPass's jog repair reads such a side with `?.` (1 B). A view with ports passes
   `repair: false`, as the three types do (§14): port repair would swap a port's end with another line's.
 - `portRank` is a number, or `[from, to]` for a line with a port at each end.
 - A port with `k` lines on one face takes room beside its node: the column (row) gap it faces widens to `k × 10 + 2 × STUB +
-  8` px, in `TYPED.loops` (no core byte). Without it the four-line port's lines crossed in a 48 px gap.
+  8` px, in `TYPED.loops` (no core byte). Without it the four-line port's lines crossed in a 48 px gap. A box's port takes
+  the same room beside the column (row) of its cards its border faces, plus its pad.
+- A node's self-loop keeps its ends apart from a port's on one side: its `from` end is the one the loop pushed on the right.
 - An end with no port on a side that holds a port is a group of one, 2 px long; ports' ends sit on the border (the square's
   middle), and each end's port box is its own copy (`e.fpb`, `e.tpb`).
 - Known limit: lines into one side of a node are routed nearest first (`into`, layoutPass); a line of a port into a side that
@@ -711,7 +719,7 @@ proposes its row in its pull request's description and writes its release notes 
 | # | Work package | Owns | Depends on | Done when |
 |---|---|---|---|---|
 | 5.0 | **List the files** (the lead). The stage's four sources as empty files, in `ALL` after stage 4's, in load order: `uml/structure`, `uml/component`, `uml/deployment`, `uml/composite` | `tools/build.mjs`, the four empty files | This note | `lib/umlimator-all.js` changes by blank lines only; `lib/umlimator.js` not at all; no other stage 5 lane edits `ALL` |
-| 5.1 | **The router for ports and inner lines.** Port placement in `LP.ports` and its `sides` argument (§4.4); the side cap's skip of port ends (§4.2); `fromPort`, `toPort`, `inner`, `portRank` in `EDGE_GEO`; inner ends (§5); `TYPED.frame` for a box's `pad` and `round` (§7, §9.3); `labelGaps` only if decision 9 takes it (§8); the `socket` end in `ENDS` (§9.2); the registry fields documented in `src/typed/*.js` with one pointer line in the registry, 5.2's hooks too. §14's spike, reported in the pull request before 5.4 and 5.5 start. Tested with a test-only type: ports on nodes and boxes, a port with four lines on one face, ports pinned to each side, an inner line from a box's port at each of three levels, a round box, a long label | `src/layout/layered.js`, `src/typed/layout.js`, `src/typed/draw.js`, `src/core/registry.js`, `tests/typed-ports.test.mjs` (new), `tests/typed-ports.html` (new), `tests/embed.py` (appends its page) | 5.0 | Maps unchanged (geometry hashes, stills, `tests/edit.html`); `tests/core-diet.html`, `tests/core-diet.json` and every typed type's tests unchanged; on the test type every line of a port ends on its square within 1 px, no port leaves its side (the four-line port included), an inner line enters its box only at its port, nested boxes' ports do not touch, in Node and in Chrome under three fonts (`tests/typed-ports.html` run by `tests/embed.py`); a view laid out twice from one memo draws byte-identical markup; `tests/layout-typed.test.mjs`'s geometry key test passes unchanged; a reorder of members lays out again; the spike's timings in the pull request; the core's bytes before and after, within §2.3 |
+| 5.1 | **The router for ports and inner lines.** Port placement in `LP.ports` and its `sides` argument (§4.4); the side cap's skip of port ends (§4.2; as built, the port hook puts them back, §4.4); `fromPort`, `toPort`, `inner`, `portRank` in `EDGE_GEO`; inner ends (§5); `TYPED.frame` for a box's `pad` and `round` (§7, §9.3); `labelGaps` only if decision 9 takes it (§8); the `socket` end in `ENDS` (§9.2); the registry fields documented in `src/typed/*.js` with one pointer line in the registry, 5.2's hooks too. §14's spike, reported in the pull request before 5.4 and 5.5 start. Tested with a test-only type: ports on nodes and boxes, a port with four lines on one face, ports pinned to each side, an inner line from a box's port at each of three levels, a round box, a long label | `src/layout/layered.js`, `src/typed/layout.js`, `src/typed/draw.js`, `src/core/registry.js`, `tests/typed-ports.test.mjs` (new), `tests/typed-ports.html` (new), `tests/embed.py` (appends its page) | 5.0 | Maps unchanged (geometry hashes, stills, `tests/edit.html`); `tests/core-diet.html`, `tests/core-diet.json` and every typed type's tests unchanged; on the test type every line of a port ends on its square within 1 px, no port leaves its side (the four-line port included), an inner line enters its box only at its port, nested boxes' ports do not touch, in Node and in Chrome under three fonts (`tests/typed-ports.html` run by `tests/embed.py`); a view laid out twice from one memo draws byte-identical markup; `tests/layout-typed.test.mjs`'s geometry key test passes unchanged; a reorder of members lays out again; the spike's timings in the pull request; the core's bytes before and after, within §2.3 |
 | 5.2 | **The member and key hooks.** `edits.member`, `edits.key` (§12.1); 4.6's wrap in `src/uml/state.js` moved onto `edits.member`; a node whose id holds `->` selected, renamed and deleted through hooks (§6) | `src/typed/edit.js`, `src/uml/state.js` (its wrap only), `tests/type-hooks.html`, `tests/typed-edit.html` | 5.0; 4.6 merged | On a test-only type each hook's result is emitted, said or refused, by pointer and by key; a null falls back to the panel; `tests/state.test.mjs` and `tests/state-machine.html` pass unchanged; no core byte |
 | 5.3 | **Structure notation.** `src/uml/structure.js`: the `port`, `component`, `ball` and `artifact` shapes; the sides chosen before the layout (§4.2); the ports with no line, the port nodes added back and the port names (§4.3, §4.5), on a copy; the shared rules (`port-owner`, `manifest-ends`); the looks' accessible names | `src/uml/structure.js`, `tests/structure.test.mjs` (new), `tests/structure.html` (new), `tests/embed.py` (appends its page) | 5.0; 5.1 for its browser test's line ends | Each shape's size, outline and inset agree in Node; drawn in both themes and three fonts with no text overflow; on hand-built geometry, ports with no line keep 8 px apart and names keep off lines and nodes; the sides chosen match a table of rankings; each shared rule has a passing and a failing case |
 | 5.4 | **The component type.** §10.1: definition, boxes, ports, delegations, ball and socket, rules, `describe()`, names, legend, `rows` and `word`, hooks (`connect`, `moveTo`, `add`, `member`, `key`) | `src/uml/component.js`, `tests/component.test.mjs`, `tests/component.html` (new), `tests/embed.py` (appends its page) | 5.1 (and its spike), 5.2, 5.3 | Definition of done 2, 4, 5, 6 and 8 on row 5's subset; every gesture by pointer and by key through `apply()`; a 30-step session undone, redone and reopened to byte-identical models; `05-component.json` lays out clean, right and down; `tests/cli.py`'s case for it passes unchanged |

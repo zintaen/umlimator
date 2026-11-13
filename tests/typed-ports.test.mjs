@@ -10,6 +10,7 @@ import '../src/typed/draw.js';
 import { layout } from '../src/map/api.js';
 import { svgOf } from '../src/draw/svg.js';
 import { routeAudit, overlapIssues } from '../src/layout/audit.js';
+import { held } from '../src/core/warn.js';
 
 const OPP = { L: 'R', R: 'L', T: 'B', B: 'T' };
 const LONG = 'replicates every order to the warehouse ledger, nightly and on demand';
@@ -79,6 +80,11 @@ for (const direction of ['right', 'down']) {
       assert.ok(inside(p0, e.fpb, 1), `${id} starts on its port`);
       e.pts.slice(1).forEach(p => assert.ok(p[0] > f.x + .5 && p[0] < f.x + f.w - .5 && p[1] > f.y + .5 && p[1] < f.y + f.h - .5, `${id}: ${p} is not inside ${box}`));
       assert.ok((p1[0] - p0[0]) * (f.x + f.w / 2 - p0[0]) + (p1[1] - p0[1]) * (f.y + f.h / 2 - p0[1]) > 0, `${id} leaves ${box}'s border inward`);
+      // nor does it cut through the box (card) it ends on: every point along it, sampled each px, is outside that one's inside
+      const t = ownerOf(g, e.to);
+      e.pts.slice(1).forEach((b, i) => { const a = e.pts[i], n = Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]));
+        for (let j = 0; j <= n; j++) { const x = a[0] + (b[0] - a[0]) * j / n, y = a[1] + (b[1] - a[1]) * j / n;
+          assert.ok(!(x > t.x + .5 && x < t.x + t.w - .5 && y > t.y + .5 && y < t.y + t.h - .5), `${id} enters ${t.id} at ${x}, ${y}`); } });
     }
     // a box with ports has 48 px of padding: each nested box and card sits 48 px in from its owner's border, its header past that
     for (const [outer, inner] of [['A', F.B], ['B', F.C], ['C', g.byId.c1]]) assert.ok(inner.x - F[outer].x >= 48 - .01 && F[outer].x + F[outer].w - inner.x - inner.w >= 48 - .01, `${outer}'s padding`);
@@ -104,12 +110,36 @@ test('two ports with lines to one node keep their members\' order (portRank); a 
   for (const k of ['fromPort', 'toPort', 'inner']) { const d = FIX(); d.edges[0] = { ...d.edges[0], [k]: 'x' }; assert.notEqual(geometryKey(d), geometryKey(FIX()), k); }
 });
 
-test('a view laid out twice from one memo draws byte-identical markup, and drawing its ports on a copy leaves the memo\'s geometry as it was', () => {
+test('a view laid out twice, from one memo and afresh, draws byte-identical markup; drawing leaves the memo\'s geometry as it was', () => {
   const memo = {}, g = layoutTyped(FIX(), memo), before = JSON.stringify(g.edges.map(e => [e.pts, e.fpb, e.tpb]));
   const draw = geo => { const c = { ...geo, nodes: [...geo.nodes, ...portEnds(geo).map(x => ({ id: `${x.n.id}->${x.port}`, label: x.port, k: 'file', ...x.box }))] }; c.byId = Object.fromEntries(c.nodes.map(n => [n.id, n])); return svgOf(c); };
-  const unid = t => t.replace(/\bg\d+-/g, 'g-'), a = unid(draw(g)), b = unid(draw(layoutTyped(FIX(), memo))); // svgOf numbers each picture's marker ids
-  assert.equal(memo.runs, 1); assert.equal(a, b);
+  const unid = t => t.replace(/\bg\d+-/g, 'g-'), a = unid(draw(g)), b = unid(draw(layoutTyped(FIX(), memo))), fresh = layoutTyped(FIX()); // svgOf numbers each picture's marker ids
+  assert.equal(memo.runs, 1); assert.equal(a, b); assert.notEqual(fresh, g, 'laid out again, not the memo\'s');
+  assert.equal(unid(draw(fresh)), a);
   assert.equal(JSON.stringify(memo.g.edges.map(e => [e.pts, e.fpb, e.tpb])), before);
+});
+
+// the review's edge cases (5.1): small cards, minimal views
+const N = (id, col, row, w = 120, h = 64) => ({ id, label: id, col, row, w, h }), clean = g => [...overlapIssues(g, ''), ...routeAudit(g, '')];
+test('a self-loop beside a port on its node\'s top, and a self-loop with a port of its own, lay out clean', () => {
+  for (const edges of [[{ id: 'l', from: 'a', to: 'a' }, { id: 'x', from: 'a', to: 'b', fromPort: 'p', fromSide: 'top' }], [{ id: 'l', from: 'a', to: 'a', fromPort: 'p', fromSide: 'right' }]]) {
+    const g = layoutTyped({ repair: false, reroute: false, nodes: [N('a', 0, 1), N('b', 0, 0), N('c', 1, 1)], edges }), l = g.edges.find(e => e.id === 'l');
+    assert.ok(l.p1 && l.p2 && l.pts.length === 5, JSON.stringify(l.pts)); assert.deepEqual(clean(g), []); }
+});
+test('ports that cannot fit their side are warned of; the fixture\'s fit', () => {
+  const five = layoutTyped => layoutTyped({ repair: false, reroute: false, nodes: [N('a', 0, 2, 120, 40), ...[0, 1, 2, 3, 4].map(k => N('t' + k, 1, k))],
+    edges: [0, 1, 2, 3, 4].map(k => ({ id: 'e' + k, from: 'a', to: 't' + k, fromPort: 'p' + k, fromSide: 'right' })) });
+  assert.deepEqual(held(() => five(layoutTyped))[1], ['the ports on the right side of "a" do not fit it: they need 76 px, it has 40']);
+  for (const direction of ['right', 'down']) assert.deepEqual(held(() => layoutTyped(FIX({ direction })))[1], [], direction);
+});
+test('a box\'s port with four lines on one face takes room beside the box: its lines do not cross', () => {
+  const g = layoutTyped({ repair: false, reroute: false, nodes: [N('a', 0, 1), ...[0, 1, 2, 3].map(k => N('t' + k, 1, k))], containers: [{ id: 'K', label: 'K', title: 'K', nodeIds: ['a'], pad: 48 }],
+    edges: [0, 1, 2, 3].map(k => ({ id: 'e' + k, from: 'K', to: 't' + k, fromPort: 'p', fromSide: 'right' })) });
+  assert.deepEqual([clean(g), g.stats], [[], { grid: 4 }]);
+});
+test('an inner line with no port at its inner end is refused, as any line between a box and what it holds', () => {
+  const [g, said] = held(() => layoutTyped({ repair: false, reroute: false, nodes: [N('a', 1, 0)], containers: [{ id: 'K', label: 'K', title: 'K', nodeIds: ['a'], pad: 48 }], edges: [{ id: 'd', from: 'K', to: 'a', inner: 'from', toPort: 'q' }] }));
+  assert.equal(g.edges.length, 0); assert.match(said.join(), /no line for edge d/);
 });
 
 test('a round box grows by √2 about its centre: the ellipse drawn in it holds every node it holds', () => {

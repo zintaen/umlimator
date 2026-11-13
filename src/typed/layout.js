@@ -1,4 +1,5 @@
 import { TYPED } from '../core/registry.js';
+import { warn } from '../core/warn.js';
 import { NW, OWN_ROUTE, labelW, layoutGraph } from '../layout/layered.js';
 
 /* A typed view's layout (work package 1.4): layoutGraph's plain layout with what a typed view needs, none of it on a map.
@@ -66,15 +67,16 @@ function layoutTyped(dg, memo) {
    placePorts(sides, turned), from LP.ports: every end that names a port leaves its side's list for the border its port is on,
    with the other ends on that border, each a group of one; the groups are ordered by the mean of their far ends along the
    border, ties by portRank, and spread over the border's free span (a box's: below its title, off its corners, as layoutPass
-   spreads a box's ends), 8 px apart (down to 4 where they do not fit), centred; a port's ends 10 px apart on each face */
+   spreads a box's ends), 8 px apart (down to 4 where they do not fit, and a warning where they still leave the side),
+   centred; a port's ends 10 px apart on each face */
 const PORT_SIDE = { left: 'L', right: 'R', top: 'T', bottom: 'B' }, PORT_OPP = { L: 'R', R: 'L', T: 'B', B: 'T' };
 function placePorts(sides, turned) {
   const hot = new Map(), at = (n, side) => { const k = n.id + '|' + side; if (!hot.has(k)) hot.set(k, { n, side, ends: [] }); return hot.get(k).ends; };
-  Object.entries(sides).forEach(([key, list]) => { sides[key] = list.filter(it => { const { e, n } = it, from = n === e.s, port = from ? e.fromPort : e.toPort;
+  Object.entries(sides).forEach(([key, list]) => { sides[key] = list.filter(it => { const { e, n } = it, from = n === e.s && (e.s !== e.t || key.endsWith('|R')), port = from ? e.fromPort : e.toPort;
     if (port == null) return true;
     const leave = PORT_SIDE[from ? e.fromSide : e.toSide] || key.slice(-1), inner = e.inner === (from ? 'from' : 'to');
     e[from ? 'fs' : 'ts'] = leave; at(n, inner ? PORT_OPP[leave] : leave).push({ ...it, from, port, inner }); return false; }); });
-  hot.forEach((H, k) => { (sides[k] || []).forEach(it => H.ends.push({ ...it, from: it.n === it.e.s })); delete sides[k]; });
+  hot.forEach((H, k) => { (sides[k] || []).forEach(it => H.ends.push({ ...it, from: it.n === it.e.s && (it.e.s !== it.e.t || k.endsWith('|R')) })); delete sides[k]; });
   Object.keys(sides).forEach(k => { if (!sides[k].length) delete sides[k]; });
   hot.forEach(H => spreadPorts(H, turned));
 }
@@ -90,6 +92,7 @@ function spreadPorts({ n, side, ends }, turned) {
     lo = across ? a0 + 40 : Math.max(a0 + 20, turned && side === 'L' ? n.y + n.hd + 16 : -Infinity, ...(side === 'T' ? n.decoT : []).map(([x, w]) => x + w + 8));
     hi = a0 + len - (across ? 16 : 20); }
   const sum = groups.reduce((a, g) => a + g.L, 0), k = groups.length - 1, gap = k ? Math.max(4, Math.min(8, (hi - lo - sum) / k)) : 0;
+  if (sum + gap * k > (n.box ? hi - lo : len)) warn(`the ports on the ${Object.keys(PORT_SIDE).find(w => PORT_SIDE[w] === (turned ? SIDE_T[side] : side))} side of "${n.id}" do not fit it: they need ${Math.ceil(sum + gap * k)} px, it has ${Math.floor(n.box ? hi - lo : len)}`);
   const B = side === 'L' ? n.x : side === 'R' ? n.x + n.w : side === 'T' ? n.y : n.y + n.h;
   let s = (lo + hi - sum - gap * k) / 2;
   groups.forEach(g => { const box = v ? { x: B - 6, y: s, w: 12, h: g.L } : { x: s, y: B - 6, w: g.L, h: 12 };
@@ -112,20 +115,25 @@ const loopDims = (dg, STUB, SEP) => (list, out) => { let D = 0, R = 0, half = 0;
     R = Math.max(k ? R + 2 * SEP : STUB + 4, bw + 12 - out[k]); return { D, R, top: D + half }; }); };
 // layoutPass's loops (LP): fills loops (by node id, the lines from it to itself) and makes room for them; then mark(edges),
 // each such line routed here, not by the router; ports(pushSide, sides): the top port of the node's right side and the right port
-// of its top, the inner loop the nearer the corner, then the ends of lines that name a port (placePorts, below); route(): each loop out of the right side, up, left and down into the
-// top, and its corners, which the other routes keep SEP px off, so none touches it or turns where it does
+// of its top, the inner loop the nearer the corner, then the ends of lines that name a port (placePorts, above); route(): each
+// loop out of the right side, up, left and down into the top, and its corners, which the other routes keep SEP px off, so none
+// touches it or turns where it does
 TYPED.loops = (loops, dg, { byId, extraX, extraY, STUB, RG, CG, SEP, gapAfter }) => {
   const dims = loopDims(dg, STUB, SEP); let edges = [];
   (dg.edges || []).forEach(e => { if (e.from === e.to && byId[e.from]) (loops[e.from] ||= []).push(e); });
   Object.entries(loops).forEach(([id, list]) => { const n = byId[id], d = dims(list, list.map(() => 0)).at(-1);
     extraY[n.row - .5] = Math.max(extraY[n.row - .5] || 0, d.top + STUB + 7 - RG);
     extraX[n.col] = Math.max(extraX[n.col] || 0, d.R + STUB + 6 - Math.max(CG, gapAfter[n.col] || 0)); });
-  // a port with k lines on one face (5.1) needs k tracks between its stubs and the next column's (row's): room beside it
+  // a port with k lines on one face (5.1) needs k tracks between its stubs and the next column's (row's): room beside it. A
+  // box's port: beside the column (row) of its cards its border faces, and its pad more
+  const boxes = dg.containers || [], inBox = (id, seen = new Set()) => seen.has(id) ? [] : (seen.add(id), boxes.filter(f => f.id === id)
+    .flatMap(f => [...(f.nodeIds || []).map(i => byId[i]).filter(Boolean), ...boxes.filter(c => c.parent === id).flatMap(c => inBox(c.id, seen))]));
   const busy = {}; (dg.edges || []).forEach(e => [[e.from, e.fromPort, e.fromSide, 'from'], [e.to, e.toPort, e.toSide, 'to']].forEach(([id, p, side, end]) => {
-    if (p != null && byId[id] && e.inner !== end && PORT_SIDE[side]) { const k = id + '|' + PORT_SIDE[side] + '|' + p; busy[k] = (busy[k] || 0) + 1; } }));
-  Object.entries(busy).forEach(([k, m]) => { const [id, side] = k.split('|'), n = byId[id], need = m * SEP + 2 * STUB + 8; if (m < 2) return;
-    if (side === 'R' || side === 'L') { const c = side === 'R' ? Math.floor(n.col) : Math.ceil(n.col) - 1; extraX[c] = Math.max(extraX[c] || 0, need - Math.max(CG, gapAfter[c] || 0)); }
-    else { const r = n.row + (side === 'B' ? .5 : -.5); extraY[r] = Math.max(extraY[r] || 0, need - RG); } });
+    if (p != null && e.inner !== end && PORT_SIDE[side]) { const k = id + '|' + PORT_SIDE[side] + '|' + p; busy[k] = (busy[k] || 0) + 1; } }));
+  Object.entries(busy).forEach(([k, m]) => { const [id, side] = k.split('|'), ns = byId[id] ? [byId[id]] : inBox(id); if (m < 2 || !ns.length) return;
+    const need = m * SEP + 2 * STUB + 8 + (byId[id] ? 0 : Math.max(12, ...boxes.filter(f => f.id === id).map(f => f.pad || 0))), at = x => ns.map(n => n[x]);
+    if (side === 'R' || side === 'L') { const c = side === 'R' ? Math.floor(Math.max(...at('col'))) : Math.ceil(Math.min(...at('col'))) - 1; extraX[c] = Math.max(extraX[c] || 0, need - Math.max(CG, gapAfter[c] || 0)); }
+    else { const r = side === 'B' ? Math.max(...at('row')) + .5 : Math.min(...at('row')) - .5; extraY[r] = Math.max(extraY[r] || 0, need - RG); } });
   const loopsOf = n => edges.filter(e => e[OWN_ROUTE] === 'loop' && e.s === n);
   return {
     mark(all) { edges = all; edges.forEach(e => { if (e.s === e.t) Object.assign(e, { [OWN_ROUTE]: 'loop', fixed: true, fs: 'R', ts: 'T', stubs: [], how: 'self' }); }); }, // its loop is drawn once its ports are known
