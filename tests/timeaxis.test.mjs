@@ -215,7 +215,7 @@ test('a fragment whose occurrences are not one run is drawn as two frames, with 
   assert.deepEqual([o.frames.map(f => f.id), o.problems.map(p => p.ids.join())], [['f', 'f'], ['f']]);
 });
 
-test('200 rows lay out in under 5 ms (best of seven, after a warm-up): 20 lifelines, 10 nested fragments, clean', () => {
+test('200 rows lay out in under 5 ms (best of seven, after a warm-up): 20 lifelines, 10 nested fragments, clean (timed)', () => {
   const heads = Array.from({ length: 20 }, (_, j) => ({ id: 'h' + j, ...SHAPE.lifeline.size({ label: `h${j} : Type${j}` }) }));
   const groups = Array.from({ length: 10 }, (_, k) => ({ id: 'f' + k, parent: k ? `f${k - 1}-a` : null, tag: tagSize(['alt', 'loop', 'opt', 'par', 'break'][k % 5]),
     parts: [{ id: `f${k}-a`, guard: guardSize('guard ' + k) }, { id: `f${k}-b`, guard: guardSize('else') }] }));

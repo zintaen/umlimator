@@ -190,7 +190,7 @@ test('an edit that moves nothing lays nothing out again; one that grows a class 
   assert.equal(memos.domain.runs, 2);
 });
 
-test('performance (risks.md P1): a 40-element class view lays out once in well under a second, and an edit that moves nothing in a few ms', () => {
+test('performance (risks.md P1): a 40-element class view lays out once in well under a second, and an edit that moves nothing in a few ms (timed)', () => {
   const nodes = [], edges = [];
   for (let i = 0; i < 40; i++) nodes.push({ id: 'c' + i, type: 'uml.Class', label: 'Class' + i, members: [P(`c${i}.a`, 'a', { valueType: 'Int' }), P(`c${i}.b`, 'b', { valueType: 'String' })] });
   for (let i = 1; i < 40; i++) edges.push(i % 3 ? { id: 'e' + i, type: 'uml.Association', from: 'c' + Math.floor((i - 1) / 2), to: 'c' + i, props: { ends: { to: { multiplicity: '*' } } } } : { id: 'e' + i, type: 'uml.Generalization', from: 'c' + i, to: 'c' + Math.floor((i - 1) / 2) });

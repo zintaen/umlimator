@@ -102,7 +102,7 @@ test('the stress fixture lays out clean, right and down; its crossings are the o
   }
 });
 
-test('performance (risks.md P1): the stress fixture lays out in under 1 s, and an edit that moves nothing is laid out and drawn (SVG markup) in under 100 ms', () => {
+test('performance (risks.md P1): the stress fixture lays out in under 1 s, and an edit that moves nothing is laid out and drawn (SVG markup) in under 100 ms (timed)', () => {
   const runs = [], id = STRESS.nodes.find(n => n.label === 'Book').id;
   for (let i = 0; i < 3; i++) { // the first run is cold (the JIT warms up on it); a page lays out warm after its first draw
     const memos = {}, t0 = performance.now(); mapContext(STRESS, { memos }).buildGeo('all'); const full = performance.now() - t0;

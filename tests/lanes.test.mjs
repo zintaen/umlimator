@@ -139,7 +139,7 @@ test('laid out twice from one memo, the bands are the same and the memo\'s geome
   assert.equal(JSON.stringify(g2), key); assert.equal(JSON.stringify(laneBands(g2, LANES, laneOf, false)), a);
 });
 
-test('200 nodes in 10 lanes: rows and bands in under 5 ms (best of three)', () => {
+test('200 nodes in 10 lanes: rows and bands in under 5 ms (best of three) (timed)', () => {
   const lanes = Array.from({ length: 10 }, (_, k) => ({ id: 'L' + k, parent: k % 3 === 2 ? 'L' + (k - 1) : null })), pos = {}, lane = {};
   for (let i = 0; i < 200; i++) { pos['n' + i] = [i % 20, (i * 7) % 13]; lane['n' + i] = 'L' + (i % 10); }
   const of = id => lane[id];

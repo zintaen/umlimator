@@ -186,7 +186,7 @@ test('a line\'s accessible name qualifies a member\'s owner as it is drawn', () 
   assert.deepEqual(layout(m, 'v').edges.map(e => e.aria), ['Dependency from Report to sales::Order.total', 'Dependency from Report to wholesale::Order.total', 'Dependency from Report to wholesale::Order']);
 });
 
-test('ownersOn groups a view by owner once: a view of 8,800 elements reads its boxes and order in linear time', () => {
+test('ownersOn groups a view by owner once: a view of 8,800 elements reads its boxes and order in linear time (timed)', () => {
   const big = P => { const nodes = []; for (let i = 0; i < P; i++) { nodes.push(N('p' + i, 'Package', 'p' + i)); for (let j = 0; j < 10; j++) nodes.push(N(`c${i}_${j}`, 'Class', 'C' + j, 'p' + i)); }
     return { schemaVersion: 2, nodes, edges: [], views: [{ id: 'v', diagram: 'uml.package', nodeIds: nodes.map(n => n.id) }] }; };
   const time = m => { const t = performance.now(); const pic = ownersOn(m, m.views[0]); assert.equal(readingOrder(pic).length, m.nodes.length); return performance.now() - t; };

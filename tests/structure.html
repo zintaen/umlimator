@@ -1,0 +1,113 @@
+<!doctype html>
+<!-- Structure notation (5.3, notes/stage-5.md §4, §9.1) in headless Chrome (tests/embed.py): the port, component, ball and
+     artifact shapes of src/uml/structure.js, sized by size() inside render()'s measure through a stand-in type and drawn by
+     svgOf, with a component box's frame and ports with no line on a node and on the box placed by portsDrawn on a copy of
+     hand-built geometry, in both themes and three fonts: each shape drawn the size it gave and named; every text inside its
+     shape and its icon in the top band; a box's title clear of its icon; each port centred on its owner's border, 8 px from
+     the next; each port's name clear of every node, port and other name, outside its owner; a click 11 px from a ball's
+     middle, or from a port's across its border, lands on it; outlines 3:1 and texts 4.5:1 on the stage. Where a line ends
+     on a port is 5.1's router hook: those checks join this page once 5.1 is merged; this page draws no lines. tests/structure.test.mjs checks the same in
+     Node, with lines. Imports src/ to register the stand-in type. -->
+<meta charset="utf-8">
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="../lib/umlimator-theme.css">
+<title>umlimator structure notation test</title>
+<body style="margin:0">
+<div id="m" style="width:1180px;height:900px"></div>
+<script type="module">
+import { render } from '../src/canvas/render.js';
+import { registerDiagramType } from '../src/core/registry.js';
+import { SHAPE } from '../src/draw/shapes.js';
+import { portFit, portsDrawn } from '../src/uml/structure.js';
+const out = { ok: [], fail: [] };
+const check = (name, cond, info) => { document.title = name; if (cond) out.ok.push(name); else out.fail.push(name + (info === undefined ? '' : ': ' + JSON.stringify(info))); };
+const LONG = 'Order fulfilment and warehouse coordination service for every regional store';
+// each case: [id, shape, its input]
+const CASES = [['c', 'component', { label: 'Shop API' }], ['ck', 'component', { label: 'Checkout', keyword: true, stereotypes: ['service'] }], ['cl', 'component', { label: LONG }], ['cm', 'component', { label: 'Warehouse coordination service' }],
+  ['a', 'artifact', { label: 'shop-api.jar' }], ['ds', 'artifact', { label: 'deploy.yaml', type: 'uml.DeploymentSpecification' }],
+  ['b', 'ball', { label: 'Orders' }], ['b0', 'ball', {}], ['bl', 'ball', { label: LONG }], ['p', 'port', {}]];
+// ports with no line: on a node (three left, two right, one on top, one under) and on a box (two left, one on top)
+const PORTS = [['host', 'L', 'requests', 'OrderApi'], ['host', 'L', 'a forty character port name for the tests'], ['host', 'L', 'x'], ['host', 'R', 'audit'], ['host', 'R', 'events'],
+  ['host', 'T', 'admin'], ['host', 'B', 'health'], ['shop', 'L', 'orders'], ['shop', 'L', 'metrics'], ['shop', 'T', 'ops']].map(([owner, side, label, valueType], i) => ({ id: `${owner}.${i}`, owner, side, label, valueType, lines: 0 }));
+let geo = null;
+registerDiagramType('test.structure', {
+  layout: { pins: false, run() { let x = 40, y = 40, row = 0;
+    const nodes = CASES.map(([id, shape, input]) => { const n = { id, shape, k: 'file', aria: `${shape} ${id}`, ...input, ...SHAPE[shape].size(input) };
+      if (x + n.w > 1100) { x = 40; y += row + 50; row = 0; } Object.assign(n, { x, y }); x += n.w + 50; row = Math.max(row, n.h); return n; });
+    const fit = portFit(PORTS, Object.fromEntries(PORTS.map(p => [p.id, p.side]))).host, top = y + row + 120;
+    const host = { id: 'host', shape: 'component', k: 'file', aria: 'component host', label: 'Host', ...SHAPE.component.size({ label: 'Host' }) };
+    Object.assign(host, { x: 260, y: top, w: Math.max(host.w, fit.w), h: Math.max(host.h, fit.h) });
+    const inner = { id: 'inner', shape: 'component', k: 'file', aria: 'component inner', label: 'Inner', ...SHAPE.component.size({ label: 'Inner' }), x: 760, y: top + 60 };
+    const fam = { id: 'shop', label: 'Shop', shape: 'component', nodeIds: ['inner'], x: 712, y: top, w: inner.w + 96, h: inner.h + 108, aria: 'Component Shop, holding 1 component' };
+    const g = { nodes: [...nodes, host, inner], edges: [], groups: [], families: [fam], byId: Object.fromEntries([...nodes, host, inner].map(n => [n.id, n])), bounds: { x: 0, y: 0, w: 1140, h: top + 300 }, map: false };
+    geo = portsDrawn(g, PORTS); return geo; } } });
+const MODEL = { schemaVersion: 2, nodes: [...CASES.map(([id]) => ({ id, type: 'test.Node' })), { id: 'host', type: 'test.Node' }, { id: 'inner', type: 'test.Node' }, { id: 'shop', type: 'test.Node' }], edges: [],
+  views: [{ id: 'v', diagram: 'test.structure', nodeIds: [...CASES.map(c => c[0]), 'host', 'inner', 'shop'] }] };
+const el = document.getElementById('m');
+let sr;
+const pick = s => sr.querySelector(s), all = s => [...sr.querySelectorAll(s)];
+const bb = x => { const r = x.getBBox(); return { x: r.x, y: r.y, w: r.width, h: r.height }; };
+const meets = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+const FONTS = { serif: 'serif', sans: 'sans-serif', wide: 'monospace' };
+const rgba = s => { let m = /rgba?\(([^)]+)\)/.exec(s); if (m) { const p = m[1].split(/[ ,/]+/).filter(Boolean).map(Number); return [p[0] / 255, p[1] / 255, p[2] / 255, p.length > 3 ? p[3] : 1]; }
+  m = /color\(srgb ([^)]+)\)/.exec(s); if (m) { const p = m[1].split(/[ /]+/).filter(Boolean).map(Number); return [p[0], p[1], p[2], p.length > 3 ? p[3] : 1]; } return null; };
+const blend = (top, bot) => [0, 1, 2].map(i => top[i] * top[3] + bot[i] * (1 - top[3])).concat(1);
+const lum = c => { const f = v => v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]); };
+const ratio = (fg, bg) => { const [x, y] = [lum(blend(fg, bg)), lum(bg)].sort((p, q) => q - p); return +((x + 0.05) / (y + 0.05)).toFixed(2); };
+const hit = (svg, x, y) => { const p = new DOMPoint(x, y).matrixTransform(svg.getScreenCTM()), e = sr.elementFromPoint(p.x, p.y), g = e && e.closest('.node'); return g ? g.dataset.id : null; };
+try {
+  const wide = {};
+  for (const theme of ['light', 'dark']) for (const [fname, family] of Object.entries(FONTS)) {
+    document.documentElement.dataset.theme = theme; el.style.setProperty('--um-sans', family);
+    el.innerHTML = ''; const h = render(el, MODEL, { view: 'v' }); sr = el.querySelector('.umlimator').shadowRoot;
+    const svg = pick('.stage svg'), tag = `${theme}, ${fname}`, bad = [], texts = [], hits = {}, low = [];
+    const stageBg = rgba(getComputedStyle(pick('.stage')).backgroundColor);
+    for (const n of geo.nodes) { const g = pick(`.node[data-id="${n.id}"]`);
+      if (!g) { bad.push(`${n.id} not drawn`); continue; }
+      if (g.dataset.shape !== n.shape || g.getAttribute('aria-label') !== n.aria) bad.push(`${n.id}: shape ${g.dataset.shape}, named ${g.getAttribute('aria-label')}`);
+      const body = g.querySelector('.n-body'), B = bb(body), want = n.shape === 'ball' ? { x: n.x + n.w / 2 - 8, y: n.y, w: 16, h: 16 } : n;
+      if ([B.x - want.x, B.y - want.y, B.w - want.w, B.h - want.h].some(v => Math.abs(v) > 1)) bad.push(`${n.id}: drawn ${JSON.stringify(B)}, laid out ${[want.x, want.y, want.w, want.h]}`);
+      // every text inside its shape: under the icon's band, within the padding; a ball's name under its circle; a port's name is checked below
+      g.querySelectorAll('text:not(.port-name)').forEach(tx => { const T = bb(tx); texts.push(tx.textContent);
+        const pad = n.shape === 'ball' ? 0 : 8, top = n.shape === 'ball' ? 16 : 24;
+        if (!(T.x >= n.x + pad - .5 && T.x + T.w <= n.x + n.w - pad + .5 && T.y >= n.y + top - .5 && T.y + T.h <= n.y + n.h + .5)) bad.push(`${n.id}: "${tx.textContent}" out of its shape ${JSON.stringify(T)}`);
+        const r = ratio(rgba(getComputedStyle(tx).fill), stageBg); if (r < 4.5) low.push([n.id, tx.textContent, r]); });
+      g.querySelectorAll('.sn-icon').forEach(ic => { const I = bb(ic); if (!(I.x >= n.x + 4 && I.x + I.w <= n.x + n.w - 4 && I.y >= n.y + 4 && I.y + I.h <= n.y + 22)) bad.push(`${n.id}: its icon at ${JSON.stringify(I)}`); });
+      const r = ratio(rgba(getComputedStyle(body).stroke), stageBg); if (r < 3) low.push([n.id, 'outline', r]);
+      const cx = n.x + n.w / 2, cy = n.shape === 'ball' ? n.y + 8 : n.y + n.h / 2;
+      // across a port's border, out and in (along a crowded side two ports' 24 px areas overlap by 4 px: the 8 px between them, §4.1)
+      if (n.shape === 'port') hits[n.id] = n.side === 'T' || n.side === 'B' ? [hit(svg, cx, cy - 11), hit(svg, cx, cy + 11)] : [hit(svg, cx - 11, cy), hit(svg, cx + 11, cy)];
+      if (n.shape === 'ball') hits[n.id] = [hit(svg, cx - 11, cy), hit(svg, cx, cy + 11)];
+      if (n.id === 'cm') wide[fname] = n.w;
+    }
+    check(`${tag}: ${geo.nodes.length} shapes and ports drawn the size they gave and named; every text inside its shape, every icon in its top band`, !bad.length && geo.nodes.length === CASES.length + 2 + PORTS.length, bad.slice(0, 10));
+    check(`${tag}: outlines 3:1, texts 4.5:1 on the stage`, !low.length, low);
+    check(`${tag}: a click 11 px from a ball's middle, or from a port's across its border, lands on it (24 px hit areas)`, Object.entries(hits).every(([id, got]) => got.every(x => x === id)), hits);
+    check(`${tag}: «component» and a stereotype over a name when asked, «artifact» and «deployment spec» always; a long name cut`,
+      ['«component»', '«service»', '«artifact»', '«deployment spec»'].every(t => texts.includes(t)) && !pick('.node[data-id="c"]').textContent.includes('«') && texts.some(t => t.endsWith('…')), texts);
+    // the box: drawn by the component's frame, its title in its header room and clear of its icon
+    const fam = pick('.family[data-family="shop"]'), F = geo.families[0], title = fam && bb(fam.querySelector('.family-title')), icon = fam && bb(fam.querySelector('.sn-icon'));
+    check(`${tag}: the component box's frame: its title in the header room, left of its icon, the icon inside the box`, !!fam && fam.getAttribute('aria-label') === F.aria && title.x >= F.x + 8 && title.y >= F.y && title.y + title.h <= F.y + 26
+      && title.x + title.w < icon.x && icon.x + icon.w <= F.x + F.w - 4 && icon.y >= F.y + 4 && icon.y + icon.h <= F.y + 24, { title, icon, F });
+    // ports: centred on their owner's border, 8 px apart along a side; names clear of every node, port and other name, outside the owner
+    const own = { host: geo.byId.host, shop: F }, ports = geo.nodes.filter(n => n.type === 'uml.Port').map(n => n.id).map(id => ({ id, n: geo.byId[id], B: bb(pick(`.node[data-id="${CSS.escape(id)}"] .n-body`)) })), pb = [];
+    ports.forEach(({ id, n, B }) => { const o = own[n.owner], cx = B.x + B.w / 2, cy = B.y + B.h / 2;
+      const ok = { L: Math.abs(cx - o.x) < 1, R: Math.abs(cx - o.x - o.w) < 1, T: Math.abs(cy - o.y) < 1, B: Math.abs(cy - o.y - o.h) < 1 }[n.side];
+      if (!ok || Math.abs(B.w - 12) > 1 || Math.abs(B.h - 12) > 1) pb.push(`${id} at ${JSON.stringify(B)} on ${n.side}`);
+      ports.forEach(q => { if (q.id <= id || q.n.owner !== n.owner || q.n.side !== n.side) return; const v = n.side === 'L' || n.side === 'R';
+        const gap = v ? Math.max(q.B.y - B.y - B.h, B.y - q.B.y - q.B.h) : Math.max(q.B.x - B.x - B.w, B.x - q.B.x - q.B.w); if (gap < 8 - .5) pb.push(`${id} and ${q.id} ${gap} px apart`); }); });
+    check(`${tag}: ${ports.length} ports with no line centred on their owner's border, 12 px square, 8 px apart`, ports.length === PORTS.length && !pb.length, pb);
+    const bodies = all('.node .n-body').map(b => ({ id: b.closest('.node').dataset.id, ...bb(b) })), names = all('.port-name').map(t => ({ id: t.closest('.node').dataset.id, t: t.textContent, ...bb(t) })), nb = [];
+    names.forEach((a, i) => { const o = own[geo.byId[a.id].owner];
+      if (meets(a, o)) nb.push(`${a.id}: "${a.t}" inside its owner`);
+      bodies.forEach(b => { if (meets(a, b)) nb.push(`${a.id}: "${a.t}" over ${b.id}`); });
+      names.slice(i + 1).forEach(c => { if (meets(a, c)) nb.push(`${a.id}: "${a.t}" over ${c.id}'s name`); });
+      const r = ratio(rgba(getComputedStyle(all('.port-name')[i]).fill), stageBg); if (r < 4.5) nb.push(`${a.id}: name ${r}:1`); });
+    check(`${tag}: ${names.length} port names, each 4.5:1 and clear of every node, port and other name, outside its owner`, names.length === PORTS.length && names.some(a => a.t === 'requests : OrderApi') && !nb.length, nb.slice(0, 10));
+    h.destroy();
+  }
+  check('the three fonts measure differently, and the long component name is 320 px or less in each', new Set(Object.values(wide)).size === 3 && geo.byId.cl.w <= 320, wide);
+} catch (x) { out.fail.push('threw: ' + (x && x.stack || x)); }
+document.documentElement.dataset.theme = 'light'; el.style.removeProperty('--um-sans');
+const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
+</script>
