@@ -13,25 +13,27 @@ Mermaid has no component, deployment or composite structure diagram.
 
 | # | Point | Decision (recommended) | Section |
 |---|---|---|---|
-| S1 | The vocabulary of `model.md` rows 4, 5 and 6 | Kept, with refinements: a port may carry `valueType`; a connector end through a part keeps `ends.<end>.part` (UML's `partWithPort`); a provided or required interface is always an `uml.Interface` node; a usage drawn to a ball is a socket; an execution environment nests in a node, a device or another execution environment | §3 |
-| S2 | Where a port is drawn | A 12 px square centred on its owner's border, node or box. Its side is `present.<port>.side` when the view gives one, else the side facing most of its lines' far ends, chosen from the ranking before the layout. The router ends each of its lines on the square; a port with several lines on one face grows along the border by 10 px a line, so each line keeps its own end, as stage 4's bar does | §4.1 |
+| S1 | The vocabulary of `model.md` rows 4, 5 and 6 | Kept, with refinements: a port may carry `valueType`; a connector end through a part keeps `ends.<end>.part` (UML's `partWithPort`); a provided or required interface is always an `uml.Interface` node; a usage drawn to a ball is a socket; any node kind nests in any node kind (UML's `nestedNode`), the unusual pairs warned; the subject is a class, a component or a collaboration; row 5 gains `uml.Package` and `uml.ComponentRealization` | §3 |
+| S2 | Where a port is drawn | A 12 px square centred on its owner's border, node or box. Its side is `present.<port>.side` when the view gives one, else the side facing most of its lines' far ends, chosen from the ranking before the layout. The router ends each of its lines on the square; a port with several lines on one face grows along the border by 10 px a line, so each line keeps its own end, as stage 4's bar does. A box with ports takes a wider padding (S8) | §4.1 |
 | S3 | The order of ports on a side | By where their lines go, as the router orders ends now (fewest crossings at the border); `members` order breaks ties and places ports with no line. No order is stored (rule 9) | §4.2 |
 | S4 | A port's name | Outside its owner, beside the square, placed by the end labels' search (`endLabels`, `src/typed/draw.js`), which keeps clear of lines, nodes and labels placed before it | §4.3 |
-| S5 | How the router learns ports | One hook, `TYPED.ports`, called by `layoutPass` for a typed view before it spreads ends along each side; it places the ends of lines that name a port (`fromPort`, `toPort`) and leaves the rest to the router as now. The hook and its port groups live in `src/typed/layout.js` | §4.4 |
-| S6 | A line from a box's port to something inside the box (delegation; a connector from a structured class's port to a part) | The router learns inner ends: a line marked `inner` may join a box and something it holds; its end on the box leaves the border inward. About 100 B in `src/layout/layered.js` | §5 |
-| S7 | Ends through parts | A part is a member drawn as a node in its structured classifier's box. A port on a part is drawn under the geometry id `<part>-><port>`, which no element id can be (`model.md` rule 5); the composite type maps it back in its hooks. The ports drawn on a part are the ones its connectors name, and every port of the class its `valueType` names by label (M8) | §6 |
-| S8 | Deep nesting | Stage 2's boxes, unchanged: 72 px a level along a right-laid flow (Q14). Tested to six levels, with a line from the deepest to the top level (L8); the width is pinned and stated | §7 |
-| S9 | The per-column gap for typed views (`labelRoom` for typed views) | Stage 5 takes it, opt in: a typed view's `labelGaps` lets the layout widen only the gaps a label needs, as a map's does. The deployment and component types set it; the class, state, activity and overview types keep their one gap, so their pictures do not move. About 25 B | §8 |
+| S5 | How the router learns ports | The hook that already runs there: `LP.ports` (`TYPED.loops`'s, `src/typed/layout.js`), which `layoutPass` calls after it pushes every end to its side and before it spreads them, is passed `sides` too and places the ends of lines that name a port (`fromPort`, `toPort`), leaving the rest to the router as now. The side cap leaves a port's lines on their side. About 26 B in the core | §4.4 |
+| S6 | A line from a box's port to something inside the box (delegation; a connector from a structured class's port to a part) | The router learns inner ends: a line marked `inner` may join a box and something it holds; its end on the box leaves the border inward, placed by the port hook. About 15 B in `src/layout/layered.js` (the `holds` bypass) | §5 |
+| S7 | Ends through parts | A part is a member drawn as a node in its structured classifier's box. A port on a part is drawn under the geometry id `<part>-><port>`, which no element id can be (`model.md` rule 5); the composite type maps it back in its hooks; its side is `present.<part>.ports.<port>.side`. The ports drawn on a part are the ones its connectors name, and every port of the classifier (class or component) its `valueType` names by label (M8) | §6 |
+| S8 | Deep nesting | Stage 2's boxes, with a box's padding widened to 48 px where it or a box it holds has a port with lines, through one hook slot in `frameOf` (`TYPED.frame`, which also grows a round box, S12): stage 2's 12 px leaves no room for a port on each of two nested borders. Tested to six levels, with a line from the deepest to the top level (L8); the width is pinned and stated | §7 |
+| S9 | Room for labels | The deployment and component types set a small `gap` and take the per-column widening every typed view already has (`gapAfter`), with no core byte; `labelGaps` (a typed view's `labelRoom`, column gaps only, about 25 B) is built only if 5.1's spike shows labels left with no spot | §8 |
 | S10 | The ball and socket | `present.<interface>.as: "ball"` draws the interface as a 16 px circle with its name under it; a realization to it is a plain solid line; a usage to it ends in a socket, a new line end in `src/typed/draw.js`'s table | §9.2 |
 | S11 | Changing an interface between ball and rectangle (DoD 4) | `B` on a selected interface, through a new hook `edits.key`, emits `set` of `present`; the palette's `add` offers the choice with `{ pick, then }` | §12 |
-| S12 | The open collaboration | A dashed ellipse round its roles: a box may carry `round: true`, which `frameOf` grows by √2 about its centre so the ellipse holds the rectangle of its contents. About 40 B | §9.3 |
+| S12 | The open collaboration | A dashed ellipse round its roles: a box may carry `round: true`, which the `TYPED.frame` hook grows by √2 about its centre so the ellipse holds the rectangle of its contents. No byte beyond S8's hook slot | §9.3 |
 | S13 | The member hook | `edits.member(model, view, owner, id, text)`, called by `src/typed/edit.js` on the panel's member rows before the panel commits them; null leaves the row to the panel. 4.6's own wrap of `TYPED.edit` in `src/uml/state.js` moves onto it. No core byte | §12.1 |
 | S14 | Deleting a part | The connectors through it go with it: the composite type declares `refs` on `uml.Connector`'s `props.ends.from.part` and `props.ends.to.part` that cascade. No core byte | §10.4 |
-| S15 | The core's budget (C5) | Stage 5 spends at most 600 B of the 4,713 B left at 50b3294; everything listed in §2.3 stays in family files | §2.3 |
-| S16 | P1 | `repair: false` and `reroute: false` on every layout of the three types, as stage 4's types do. CI holds the 1 s ceiling and prints each common edit against the 100 ms target, best of seven in CPU time after a warm-up (`tests/state.test.mjs`'s P1 test). A spike in 5.1 measures a view with ports, inner lines, label gaps and six levels of boxes before the type lanes start | §14 |
-| S17 | The ELK trial (L9) | A spike package, 5.7, boxed by scope: a fixed list of fixtures and measures, one ELK configuration and one revision. Its outcome is a written recommendation, `notes/spike-elk.md`. No dependency is added: the module, `package.json` and its lock do not change | §15 |
+| S15 | The core's budget (C5) | Stage 5 spends at most 300 B of the 4,713 B left at 50b3294 (targets: 126 B, 151 B with `labelGaps`); everything listed in §2.3 stays in family files, the registry's comments included | §2.3 |
+| S16 | P1 | `repair: false` and `reroute: false` on every layout of the three types, as stage 4's types do. CI holds the 1 s ceiling and prints each common edit against the 100 ms target, best of seven in CPU time after a warm-up (`tests/state.test.mjs`'s P1 test). A spike in 5.1 measures a view with ports, inner lines, long labels and six levels of boxes before the type lanes start | §14 |
+| S17 | The ELK trial (L9) | A spike package, 5.7, boxed by scope: a fixed list of fixtures and measures, one ELK configuration and one revision. Its outcome is a written recommendation, `notes/spike-elk.md`. No dependency is added: the module, `package.json` and its lock do not change. Its ELK column starts on approval, its own engine's column on 5.1's view after 5.1 and on the three examples after 5.4 to 5.6 | §15 |
 | S18 | C10 for the three types | Tested in 5.8 as 4.10 does (the MCP server, the diff Action) | §16.5 |
 | S19 | Order with stage 4 | 5.0, 5.1, 5.3 and 5.7 start when this note is approved; 5.2 after 4.6 merges; 0.22.0 after 0.21.0 | §16.3 |
+| S20 | Hiding a port, part or role (DoD 4) | Members cannot be hidden, as stage 3's messages (P12): Delete on one deletes it from the model, the hint line says so, and the conformance notes say so under item 4 | §12.2 |
+| S21 | Departures from UML | Stated in §17: the delegation's arrow; a realization or usage drawn from a port; the narrowings of the subsets | §17 |
 
 What is left out of the subsets is in §17.
 
@@ -61,20 +63,20 @@ What is left out of the subsets is in §17.
 
 | # | What was read | What it says | Where it is handled |
 |---|---|---|---|
-| Q1 | `layoutPass`'s ends on a card (`pushSide`, the per-side loop) | Every line gets its own end. A card's side takes at most `max(1, ⌊length × 0.84 / 14⌋)`; the extras on the left and right go to the top and bottom. Ends are ordered by where the far end lies and spread 16 px apart on a left or right side, 26 px on a top or bottom | S2, S3, §4.4 |
+| Q1 | `layoutPass`'s ends on a card (`pushSide`, the per-side loop) | Every line gets its own end. A card's side takes at most `max(1, ⌊length × 0.84 / 14⌋)`; the extras on the left and right go to the top and bottom, whatever their `fromSide` or `toSide` (the cap loop runs after those are applied). Ends are ordered by where the far end lies and spread 16 px apart on a left or right side, 26 px on a top or bottom. Between pushing the ends and spreading them, a typed view's `LP.ports(pushSide)` (`TYPED.loops`) already runs | S2, S3, §4.4 |
 | Q2 | The same loop on a box (`n.box`) | Each end lies in line with its far end where the border allows: on a left or right side 40 px below the top (the title) and 16 px above the bottom, 20 px off the corners on the top and bottom, 16 (26) px apart | §4.4 |
 | Q3 | `layoutPass`'s `holds` | A line between a box and something inside it is refused with a warning ("it joins the box … and something inside it"); stage 2's `line-inside` rule says so for packages | S6 |
 | Q4 | `gridRoute` and `restub` | A line leaves its end along `OUT[side]`, the side it ends on. An end with the opposite side leaves the other way: the change S6 needs is where its point is put, not the search | §5 |
 | Q5 | `drawnLines` and `typeGeo` (`src/uml/class.js`) | A line that ends on a member is drawn to the member's owner: today a port is its owner's box | §4 |
-| Q6 | `frameOf` (`layoutPass`) | A box is the rectangle round its contents (each 36 px to the side and 14 px above and below, 24 px of header room, 12 px of padding): 72 px a level along a right-laid flow, 44 across, plus 24. Boxes keep 32 px apart (`BOXGAP`) | S8, S12 |
-| Q7 | `labelRoom` (`layoutPass`, `layoutGraph`) | Only a map asks for room for a label that found no spot (`tight` reads `map`); a typed view takes one gap for every column: the class type 96 px plus its widest label and 40 with boxes, the state type 48 px, the activity type its widest label and 40 (stage 4 §9.1) | S9 |
+| Q6 | `frameOf` (`layoutPass`) | A box is the rectangle round its contents with 12 px of padding and 24 px of header room. A member card takes 36 px to each side, 14 above and 30 below; a child box goes in as its raw frame. So a box of cards is 96 px wider and 92 px taller than its cards; each box round a box adds only 24 along a right-laid flow and 48 across, and the two borders lie 12 px apart. Boxes keep 32 px apart (`BOXGAP`) | S8, S12 |
+| Q7 | `labelRoom` and `gapAfter` (`layoutPass`, `layoutGraph`) | Only a map asks for room for a label that found no spot (`tight` reads `map`, and measures a row gap as `rowY(r) + NH`, not a typed row's height). Every typed view already widens the gap between neighbouring columns for a labelled line (`gapAfter`, by `labelW`, which honours `cut`), plus 48 px where it crosses a box's border. The one wide gap is each type's own `gap`: the class type 96 px plus its widest label and 40 with boxes, the state type 48 px, the activity type its widest label and 40 (stage 4 §9.1) | S9 |
 | Q8 | The panel's member rows (`commit`, `src/canvas/edit.js`) | A new row goes to `member.add(text, owner)`, which gives a member or `{ error }`; an edited one to `member.edit(member, text)`, which gives `{ commands }`. No hook sees the view, and `member.add` cannot give commands. 4.6 reads `entry / …` rows by wrapping `TYPED.edit` in `src/uml/state.js` with listeners of its own, marked as waiting for a member hook | S13 |
 | Q9 | `apply()`'s `delete` | A reference of kind `part` (`props.ends.<end>.part`) is dropped: the connector stays, its `part` gone. A type's `refs` may make a reference cascade instead (`propRefs`) | S14 |
 | Q10 | `set { view, path }` | Sets any field of a view, `present.<id>.side` and `present.<id>.as` included | S2, S11 |
 | Q11 | `autoPos` (`src/map/context.js`) | Ranks the view's `nodeIds` only. A member drawn as a node (a part) takes no rank: its type ranks it, as the communication type ranks its stacks (`rowsFor`, `untangle`) | §10.2 |
 | Q12 | `validate()` (`src/core/model.js`) | An id that contains `->` is an error ("names lines by position"), so `<part>-><port>` can never be an element's id | S7 |
 | Q13 | `upstream_view()` (`umlimator.py`, F3) | Shows members as cards, so a line that ends on a port passes upstream's check; `tests/cli.py` renders, checks, stills and prints `05-component.json` today, drawn as plain cards | §16.2 |
-| Q14 | Stage 4's Q17, measured again | Unchanged: each box level is 72 px along, 44 across, plus 24 of header room | S8 |
+| Q14 | Stage 4's Q17, measured again (`layoutTyped`, a 120 × 60 card in nested boxes, laid out right) | One box: 216 × 152 px; two: 240 × 200; six: 336 × 392. Each level past the first adds 24 px along and 48 across. Stage 4's "72 along, 44 across" counted the card's margins only | S8 |
 | Q15 | `SHAPE.node` (`src/draw/shapes.js`) | Maps' node is UML's cube drawn inside the card's box (7 px of depth); its `out` and `inset` are geometry only, its `det` paints in the card's kind | §9.1 |
 | Q16 | The core's size | `gzip -9 < lib/umlimator.js \| wc -c`: 184,984 B at 50b3294 and at 1312a3a (stage 4's open lanes change no core file). The cap is 189,697 B (0.16.0's 164,954 B plus 15%): 4,713 B left | S15 |
 
@@ -86,46 +88,50 @@ milestone 4b's boundary events attach to a border as a port does and reuse this 
 
 What stays out of the core, in files listed in `tools/build.mjs`'s `ALL` only:
 
-- the port groups, their order and their ends (`TYPED.ports`, `src/typed/layout.js`);
+- the port groups, their order and their ends (`LP.ports`, `TYPED.loops`'s, `src/typed/layout.js`);
+- a box's padding and its round frame (`TYPED.frame`, `src/typed/layout.js`);
 - the socket end (`src/typed/draw.js`'s `ENDS`);
 - every shape and look: port, ball, component, artifact, node, device, execution environment, deployment
   specification, part, collaboration, collaboration use (`src/uml/structure.js` and the type files);
 - the ports drawn on parts, the ports with no line, the port names;
 - `edits.member` and `edits.key` (`src/typed/edit.js`);
+- the new registry fields' documentation: in `src/typed/layout.js` and `src/typed/edit.js`, beside the code that reads
+  them, with one pointer line in `src/core/registry.js` (C5: typed-only code and its comments leave the core);
 - every type's definition, rules, `describe()`, names, legend and hooks.
 
-What may touch the core, each change stating its bytes in its pull request:
+What may touch the core, each change stating its bytes in its pull request. Each is a hook slot or a guard, as C5 asks:
 
 | Change | File | Lane | Target |
 |---|---|---|---|
-| The call to `TYPED.ports` before the per-side spread, which removes the sides it placed (S5) | `src/layout/layered.js` | 5.1 | 70 B |
-| An `inner` line passes `holds`; its end on the box is put on the border its side faces away from (S6) | `src/layout/layered.js` | 5.1 | 100 B |
-| `labelGaps` opens `tight` to a typed view (S9) | `src/layout/layered.js` | 5.1 | 25 B |
-| A box's `round` grows its frame by √2 about its centre (S12) | `src/layout/layered.js` | 5.1 | 40 B |
-| The new registry fields documented | `src/core/registry.js` | 5.1 | 250 B: the build keeps comments, so they count |
-| | | | **485 B** |
+| `LP.ports(pushSide)` becomes `LP.ports(pushSide, sides)`; the hook places port ends and deletes the entries it placed (S5) | `src/layout/layered.js` | 5.1 | 6 B |
+| The side cap leaves an end with a port (`e.fromPort` on its `from` end, `e.toPort` on its `to` end) on its side (§4.2) | `src/layout/layered.js` | 5.1 | 20 B |
+| An `inner` line passes `holds` (S6); its point is placed by the port hook | `src/layout/layered.js` | 5.1 | 15 B |
+| `frameOf` asks a typed view's `TYPED.frame(f, b, rects)` for the padding and the round frame (S8, S12) | `src/layout/layered.js` | 5.1 | 45 B |
+| The registry's pointer line to the fields' documentation | `src/core/registry.js` | 5.1 | 40 B |
+| | | | **126 B** |
+| Only if decision 9 takes `labelGaps`: `tight` reads `map \|\| dg.labelGaps`, column gaps only | `src/layout/layered.js` | 5.1 | 25 B |
 
 | Option | For | Against |
 |---|---|---|
-| **(a) Stage 5 spends at most 600 B; anything over waits for the maintainer (recommended)** | 115 B of slack over the targets; leaves 4,113 B for stage 6 and the milestones | The fallbacks below are worse pictures |
+| **(a) Stage 5 spends at most 300 B; anything over waits for the maintainer (recommended)** | 174 B of slack over the targets (149 B with `labelGaps`); leaves 4,413 B for stage 6 and the milestones | The fallbacks below are worse pictures |
 | (b) First come, first served | Nothing to decide | Milestone 4b's boundary events and M2's scope rules may find no room |
 | (c) Raise C5 | No wait | The maintainer's call; maps' hosts pay for UML |
 
 If a change goes over, the fallbacks are, in this order: the open collaboration draws a dashed stadium (S12's option b);
-the registry's comment shrinks to a pointer to this note's §4 and §5, as 1.12b did; a delegation is drawn by the type as
-an elbow after the layout (S6's option b). The port hook has no fallback: without it a port is its owner's box (Q5).
+a delegation is drawn by the type as an elbow after the layout (S6's option b). The port hook has no fallback: without it
+a port is its owner's box (Q5).
 
 ### 2.4 Rules every package keeps
 
 - **Maps draw exactly as now.** The geometry hashes (`bench/expected.json`), the examples' stills and every map test are
   unchanged in every pull request (C1). Every new branch in `layoutPass` is reached only through a field no map sets
-  (`dg.typed` with `fromPort`, `toPort`, `inner`, `labelGaps`, `round`).
+  (`dg.typed` with `fromPort`, `toPort`, `inner`, `portRank`, a box's `pad` or `round`, and `labelGaps` if decision 9 takes it).
 - **Every typed example draws exactly as now.** The class, package, object, sequence, communication, use case, activity,
   state and overview examples' markup is held by `tests/core-diet.html`, `tests/core-diet.json` and each type's own
   tests. None of them sets a field above.
 - **The API is additive only** (C2). The three types and their helpers are internal, in `lib/umlimator-all.js`; the new
-  registry fields (`edits.member`, `edits.key`, a line's `fromPort`, `toPort` and `inner`, a view's `labelGaps`, a box's
-  `round`) are optional and provisional.
+  registry fields (`edits.member`, `edits.key`, a line's `fromPort`, `toPort`, `inner` and `portRank`, a box's `pad` and
+  `round`, and a view's `labelGaps` if decision 9 takes it) are optional and provisional.
 - **Nothing after `layoutTyped` edits what it returned** (stage 4 §2.4): the ports with no line, the port nodes added
   back for selection and the port names are put on a copy of the geometry. A test lays each type's view out twice from
   one memo and checks the two pictures are byte-identical.
@@ -137,9 +143,9 @@ The rows of `model.md`, refined. `uml.Comment`, `uml.CommentLink` and `props.ste
 
 | # | `diagram` | Nodes | Members | Edges | Notes |
 |---|---|---|---|---|---|
-| 4 | `uml.composite-structure` | `uml.Class` (the `subject`), `uml.Collaboration`, `uml.CollaborationUse`, `uml.Comment` | `uml.Property` (a part of the subject, or a role of a collaboration), `uml.Port` | `uml.Connector`, `uml.RoleBinding`, `uml.CommentLink` | Part props: `valueType` (text, M8), `multiplicity`, `aggregation` (`composite`, the default, or `shared`; a shared part is drawn dashed). Port props: `valueType`. A connector's end is a part, a port of the subject, or a port reached through a part (`ends.<end>.part`). The `subject` is listed in `nodeIds`; its parts are drawn inside it, and the classes that type them are model nodes this view does not list. A collaboration use's `parent` is the subject; `props.collaboration` names a collaboration by label. A role binding runs from a part to a collaboration use; its `label` is the role's name |
-| 5 | `uml.component` | `uml.Component`, `uml.Interface`, `uml.Artifact`, `uml.Comment` | `uml.Port` | `uml.InterfaceRealization` (provided), `uml.Usage` (required), `uml.Connector` (`props.kind`: `assembly` or `delegation`), `uml.Dependency`, `uml.Manifestation`, `uml.CommentLink` | A component's `parent` is a component (drawn nested) or a package. A provided or required interface starts at a component or at one of its ports. `present.<interface>.as: "ball"` draws the ball; a usage to a ball ends in a socket, else it is a dashed «use» arrow |
-| 6 | `uml.deployment` | `uml.Node`, `uml.Device`, `uml.ExecutionEnvironment`, `uml.Artifact`, `uml.DeploymentSpecification`, `uml.Component`, `uml.Comment` | | `uml.Deployment`, `uml.Manifestation`, `uml.CommunicationPath`, `uml.Dependency`, `uml.CommentLink` | An artifact or deployment specification whose `parent` is a node, device or execution environment is deployed on it; a `uml.Deployment` line from it to one is the other form (G2). An execution environment's `parent` is a node, device or execution environment; a device's a node or device; a node's a node |
+| 4 | `uml.composite-structure` | `uml.Class`, `uml.Component` or `uml.Collaboration` (the `subject`), `uml.Collaboration`, `uml.CollaborationUse`, `uml.Comment` | `uml.Property` (a part of the subject, or a role of a collaboration), `uml.Port` | `uml.Connector`, `uml.RoleBinding`, `uml.CommentLink` | Part props: `valueType` (text, M8), `multiplicity`, `aggregation` (`composite`, the default, or `shared`; a shared part is drawn dashed). Port props: `valueType`. A connector's end is a part, a port of the subject, or a port reached through a part (`ends.<end>.part`). The `subject` is listed in `nodeIds`; its parts are drawn inside it, and the classes that type them are model nodes this view does not list. A collaboration use's `parent` is the subject; `props.collaboration` names a collaboration by label. A role binding runs from a part to a collaboration use; its `label` is the role's name |
+| 5 | `uml.component` | `uml.Component`, `uml.Interface`, `uml.Artifact`, `uml.Package`, `uml.Comment` | `uml.Port` | `uml.InterfaceRealization` (provided), `uml.Usage` (required), `uml.ComponentRealization`, `uml.Connector` (`props.kind`: `assembly` or `delegation`), `uml.Dependency`, `uml.Manifestation`, `uml.CommentLink` | A component's `parent` is a component (drawn nested) or a package. A provided or required interface starts at a component or at one of its ports. `present.<interface>.as: "ball"` draws the ball; a usage to a ball ends in a socket, else it is a dashed «use» arrow |
+| 6 | `uml.deployment` | `uml.Node`, `uml.Device`, `uml.ExecutionEnvironment`, `uml.Artifact`, `uml.DeploymentSpecification`, `uml.Component`, `uml.Comment` | | `uml.Deployment`, `uml.Manifestation`, `uml.CommunicationPath`, `uml.Dependency`, `uml.CommentLink` | An artifact or deployment specification whose `parent` is a node, device or execution environment is deployed on it; a `uml.Deployment` line from it to one is the other form (G2). A node, device or execution environment's `parent` may be any of the three (UML's `nestedNode` is `Node[*]`); the usual pairs are an execution environment in any of them, a device in a node or device, a node in a node, and the others are warned |
 
 What changed against `model.md`:
 
@@ -164,7 +170,18 @@ What changed against `model.md`:
 - **A shared part is drawn dashed**, as UML draws a property that is not composite.
 - **A usage to an interface drawn as a ball ends in a socket.** Elsewhere it is a dashed open arrow with «use».
 - **Execution environments nest.** UML allows an execution environment inside one (a container runtime in a virtual
-  machine); `06-deployment.json` does not, the stress fixture does.
+  machine); `06-deployment.json` does not, the stress fixture does. Any node kind may nest in any node kind; only the
+  unusual pairs (a node in an execution environment, say) are warned (`nest-kinds`).
+- **The subject is any structured classifier the subsets have:** a class, a component or a collaboration, and a part's
+  ports are those of the class or component its `valueType` names.
+- **A package may hold components** (`model.md` row 5 gains `uml.Package`, already a box type there, §7).
+- **A component realization** (`uml.ComponentRealization`, UML 11.6): `proposal.md` §8.5's "realization" in row 5 covers
+  both the interface realization and this one.
+
+  | Option | For | Against |
+  |---|---|---|
+  | **(a) Add `uml.ComponentRealization`: a dashed line with a hollow triangle from the realizing classifier to the component, the class type's look, with a `component-realization-ends` rule and a palette entry (recommended)** | The subset as `proposal.md` §8.5 wrote it; no core byte; the look exists | One more line kind to test |
+  | (b) "Realization" means the interface realization only, stated in §3 and in `proposal.md` §8.5 | Nothing to build | A narrowing of the written subset |
 
 The three example files keep their shapes. `check.mjs` gains no hand rule for them: each type's `validate` runs there.
 
@@ -178,7 +195,10 @@ border, so each line keeps its own end at the router's separation (`SEP`, 10 px)
 the same way. A port's hit area is a transparent 24 px square (E8).
 
 A node is sized so its ports fit: on each side, `16 + Σ (port length + 8)` px at least, above its shape's own size. The
-type computes it before the layout, from the sides it has chosen (§4.2).
+type computes it before the layout, from the sides it has chosen (§4.2). A box is not sized by the type: its size comes
+from its contents only (`frameOf`). Where a box's side cannot hold its ports, the hook narrows their spacing to 4 px
+(§4.4, step 3), and the layout check reports what still does not fit; the fixtures' ten ports on one side are on a node
+and on a box, and the box's case is pinned and stated.
 
 | Option | For | Against |
 |---|---|---|
@@ -191,8 +211,10 @@ type computes it before the layout, from the sides it has chosen (§4.2).
 - **Side.** `present.<port>.side` (`left`, `right`, `top`, `bottom`) when the view gives it. Otherwise the type picks it
   before the layout, from the ranking it is given (`pos`): the side facing most of the port's lines' far ends, by column,
   then by row; a port with no line takes the side with fewest ports, left first. Every line of a port gets that side as
-  its `fromSide` or `toSide`, so the router never moves it to another (Q1's extras go to the top or bottom only for lines
-  with no side).
+  its `fromSide` or `toSide`. The side cap (Q1) runs after those are applied and would move a busy port's extras to the top
+  or bottom (one port with four lines needs a 66 px side, whose cap is 3), so the cap loop skips an end with a port
+  (`e.fromPort` on its `from` end, `e.toPort` on its `to` end; about 20 B, §2.3): the router never moves a port's line to
+  another side.
 - **Order.** By where the port's lines go: the mean of their far ends' centres along the side, as the router orders ends
   now; ties, and ports with no line, by `members` order. Nothing is stored (rule 9).
 
@@ -218,24 +240,31 @@ straight out would have.
 ### 4.4 The router's hook (S5)
 
 ```js
-TYPED.ports(sides, portAt, { byId, SEP }) -> void   // sides: { 'id|side': [{ e, other, n }] }, as layoutPass builds them;
-                                                     // places the ends of every line with e.fromPort or e.toPort (by portAt),
-                                                     // deletes those sides' entries, and leaves the rest to the router
+// src/typed/layout.js: TYPED.loops(...) returns { mark, ports, route }; ports grows a second argument
+LP.ports(pushSide, sides) -> void   // sides: { 'id|side': [{ e, other, n }] }, as layoutPass builds them; pushes the
+                                    // loops' ends as now, then places the ends of every line with e.fromPort or e.toPort,
+                                    // setting e.p1 / e.p2 itself, and deletes the entries it placed
 ```
 
-`layoutPass` calls it once, for a typed view, after it has pushed every end to its side and before the per-side spread
-(about 70 B). On each side that holds a port's line, the hook:
+The hook point already exists: `layoutPass` calls `LP.ports(pushSide)` for a typed view after it has pushed every end to
+its side and before the per-side spread (Q1). Port placement goes inside it; the core's change is the second argument
+(about 6 B), and the spread then sees only the ends no port names. On each side that holds a port's line, the hook:
 
-1. groups the side's ends by port (an end with no port is a group of one, as the router would place it);
-2. orders the groups by the mean of their far ends, ties by `members` order (a field the type passes on each line);
+1. groups the ends by the border they sit on and by port: an inner line's end on a box is grouped on the border its port
+   is on, not under its `fs` or `ts` (§5), and that side's other ends are spread without it; an end with no port is a
+   group of one, as the router would place it;
+2. orders the groups by the mean of their far ends, ties by `members` order (`portRank`, a number the type puts on each
+   line that names a port);
 3. spreads them along the side's free span (Q1 for a node, Q2 for a box, below the title), 8 px between ports and 10 px
    between the ends of one port, centred on the span; a side that cannot hold them all keeps the order and narrows the
    spacing down to 4 px, then is reported by the layout check;
-4. for each line, sets its end's point on the border at its place in its port (`portAt`), and records each port's
+4. for each line, sets its end's point (`e.p1` or `e.p2`) on the border at its place in its port, and records each port's
    rectangle in `e.fpb` and `e.tpb` (the port's box on that end), which the type reads to draw it.
 
-`fromPort`, `toPort` and `inner` join `EDGE_GEO` (`src/typed/layout.js`), so a change of port lays the view out again.
-Nothing here reads a map's lines: a map never sets them.
+`fromPort`, `toPort`, `inner` and `portRank` join `EDGE_GEO` (`src/typed/layout.js`), so a change of port, or a reorder of
+the members, lays the view out again; a box's `pad` and `round` are inside `containers`, already in `VIEW_GEO`. If
+decision 9 takes `labelGaps`, it joins `VIEW_GEO` (`tests/layout-typed.test.mjs` checks every `dg` field the layout reads
+is there). Nothing here reads a map's lines: a map never sets them.
 
 ### 4.5 Drawing, selecting and editing a port
 
@@ -249,7 +278,7 @@ After the layout, on its copy (§2.4), the type:
   (stage 4 §5.3's partitions are the precedent). Its id is the port's own, or `<part>-><port>` on a part (§6).
 
 A drag of a port, or Alt + arrows on it, goes to the type's `moveTo`: the side nearest the drop point, or the side in
-the arrow's direction, as `set { view, path: ['present', port, 'side'] }`. Alt + arrow along the port's own side does
+the arrow's direction, as `set { view, path: ['present', port, 'side'] }` (on a part, `['present', part, 'ports', port, 'side']`, §6). Alt + arrow along the port's own side does
 nothing (order is not stored, S3), and the hint line says so.
 
 ## 5. Lines from a box's port inward (S6)
@@ -259,30 +288,35 @@ subject's port to a part's port. Both join a box and something it holds, which t
 
 | Option | For | Against |
 |---|---|---|
-| **(a) The router learns inner ends: a line with `inner: 'from'` or `inner: 'to'` passes `holds`, and that end, on the box's border, leaves the border inward (recommended)** | The router routes it among the box's contents like any line, with its bends, crossings and labels; the search does not change: the type gives the end the side it leaves by (a port on the box's left border gets `R`), and the hook puts its point on the left border (Q4). About 100 B | Core bytes; the box's border is crossed at the port only, which the fixtures check |
+| **(a) The router learns inner ends: a line with `inner: 'from'` or `inner: 'to'` passes `holds`, and that end, on the box's border, leaves the border inward (recommended)** | The router routes it among the box's contents like any line, with its bends, crossings and labels; the search does not change: the type gives the box's end the side it leaves by (a port on the box's left border gets `R`), and the port hook puts its point on the left border (Q4). The core's change is the `holds` bypass, about 15 B | Core bytes; the box's border is crossed at the port only, which the fixtures check |
 | (b) The type draws an elbow after the layout, from the port inward to the inner end | No core byte | Routed by nothing: it may cross a node or another line inside the box, which the layout check reports and cannot avoid |
 | (c) Not drawn; the delegation is in the accessible name and the PDF only | Nothing to build | Delegation is what a component diagram's nesting is for (`05-component.json` has two) |
 
-Under (a): the type marks a line inner when one end's node is a box that holds the other end; it gives the inner end the
-side opposite the port's (the direction the line leaves), and `TYPED.ports` places that end on the port's own border, on
-the square's inner face. A line from a box's port to a node outside it is an ordinary line to a box (Q2), with its port.
+Under (a): the type marks a line inner when one end's node is a box that holds the other end; it gives the box's end the
+side opposite the port's (the direction the line leaves), and the port hook (`LP.ports`, §4.4) places the box's end on the
+port's own border, on the square's inner face, grouped with that border's ends, not with those of the side it leaves by.
+The end inside the box is an ordinary end. A line from a box's port to a node outside it is an ordinary line to a box
+(Q2), with its port. A box with a port whose line runs inward takes the 48 px padding of §7, so the stub inward and the
+nested box's port both fit.
 
 ## 6. Ends through parts (S7, G2)
 
 A part is a member of its structured classifier (a `uml.Property` of the subject) and is drawn as a node inside the
 subject's box: its id is the member's (4.1 tested member ids as boxes; a member-id node is placed the same way). Its
-ports are the ports of its type, the class its `valueType` names; two parts of one type each show that type's ports
+ports are the ports of its type, the class or component its `valueType` names; two parts of one type each show that type's ports
 (G2), so a port's drawn id must say which part it is on.
 
 - **The ports drawn on a part:** every port its connectors name through it (`ends.<end>.part`), and every port of the
-  class whose label equals its `valueType` (text, M8; with none, or several, only the connectors' ports, and the rule
-  `part-type` warns).
+  class or component whose label equals its `valueType` (text, M8; with none, or several, only the connectors' ports, and
+  the rule `part-type` warns).
 - **Their geometry ids:** `<part>-><port>`. No element id contains `->` (Q12), so it can never meet a model id. The
   composite type's hooks (`rename`, `remove`, `moveTo`, `connect`) map it back: a rename renames the class's port, for
   every part of that type, and the hint line says so; Delete on it removes the connectors through that part to that port
   (Delete from the model, Shift + Delete, deletes the class's port); a connect from it gives a connector whose end is the
   port with `ends.<end>.part` the part.
-- **Their side** is `present['<part>-><port>'].side`, or chosen as in §4.2.
+- **Their side** is `present.<part>.ports.<port>.side`, or chosen as in §4.2. The key under `present` is the part's id, an
+  element `validate()` knows and `references()` follows, so it neither warns "is not an element" nor goes stale when the
+  part is deleted; a port deleted from its class leaves a `ports` entry the type ignores.
 - **The properties panel** shows a port selected on a part as nothing: its properties are its class's, edited where the
   class's own port is drawn (its composite structure or component view). Stated in the conformance note. 5.2 tests that
   a node whose id holds `->` is selected, renamed through the hook and deleted through the hook; if a consumer reads it
@@ -296,9 +330,17 @@ ports are the ports of its type, the class its `valueType` names; two parts of o
 
 ## 7. Deep nesting (S8, L8)
 
-Nesting is stage 2's boxes, unchanged. A component holds components; a node holds devices, execution environments and
-artifacts; a subject holds its parts and collaboration uses. Each level costs 72 px along a right-laid flow and 44 across,
-plus 24 px of header room (Q14): six levels add about 430 px.
+Nesting is stage 2's boxes. A component holds components; a node holds devices, execution environments and artifacts; a
+subject holds its parts and collaboration uses. Measured (Q14): one box round its cards adds 96 px along a right-laid flow
+and 92 across; each box round a box adds 24 along and 48 across, so six levels round a 120 × 60 card make a 336 × 392 px
+box.
+
+Those 12 px between a box's border and its child box's border cannot take a port on each: two 12 px squares centred on
+the borders touch (6 + 6 px), and a line's stub (`STUB`, 18 px for a typed view) does not fit between them. So a box whose
+ports have lines, or that holds a box whose ports have lines, takes a padding of 48 px (2 × `STUB` and the square). The
+type sets it as the box's `pad`; `frameOf` reads it through the hook slot `TYPED.frame` (§2.3), which also grows a round
+box (§9.3). With it, each level that has ports adds 96 px along and 120 across; the composite and component fixtures'
+three-deep delegations take it, a deployment view (no ports) keeps stage 2's 12 px.
 
 - `ownersOn` builds the boxes, with `look.boxTypes` the type's (component: `uml.Component`, `uml.Package`; deployment:
   `uml.Node`, `uml.Device`, `uml.ExecutionEnvironment`), `qualify: false` (a deployment's names are not qualified;
@@ -310,24 +352,27 @@ plus 24 px of header room (Q14): six levels add about 430 px.
 
 | Option | For | Against |
 |---|---|---|
-| **(a) Stage 2's padding, measured and stated (recommended)** | No core byte; every box type draws alike | Deep views grow wide: about 430 px for six levels |
-| (b) A box's padding per type or per level (`pad` on a box, read by `frameOf`) | Tighter deployment views | About 30 B in the core; a padding tighter than the router's stub and clearance (16 + 12 px) lets lines run along borders |
+| **(a) A box's `pad`, 48 px where it or a box it holds has ports with lines, else stage 2's 12 px, through `TYPED.frame` (recommended)** | The §13 fixture of a delegation at each of three levels can be laid out; views with no ports draw as now; about 45 B in the core, shared with S12's round frame | Deep component views grow: 96 px a level along where ports are |
+| (b) Stage 2's padding unchanged | No core byte | A port on a box and a port on the box inside it touch, and a line between them has no room for its stubs: a delegation from an outer port to an inner port cannot be laid out |
+| (c) A `pad` the view sets for all its boxes | One number per view | Every level pays for the busiest one |
 
 ## 8. Room for labels (S9)
 
 A deployment's communication paths carry long labels ("PostgreSQL wire protocol"), and a component view's boxes take 48 px
-of each column gap (Q7). One gap for every column, set by the widest label, makes the whole view as wide as its widest
-gap times its columns; `10-state-machine.json` was 6,700 px wide that way (stage 4 §10.4).
+of each column gap (Q7). Every typed view already widens the gap between neighbouring columns for a labelled line
+(`gapAfter`, by `labelW`, which honours a line's `cut`): the one wide gap of the class, state and activity types is their
+own `gap`, set by their widest label, which made `10-state-machine.json` 6,700 px wide (stage 4 §10.4). A type that sets
+a small `gap` gets the per-column widening with no core byte. What it does not get is room for a label on a line that
+spans more than one column, or that found no spot: that is the map's `labelRoom` (`tight`).
 
 | Option | For | Against |
 |---|---|---|
-| **(a) Opt in: a typed view's `labelGaps` lets `layoutPass` ask for room for a label with no spot, as a map does; `layoutGraph` lays it out again with that room and keeps it if better (recommended)** | Only the gaps that need it widen; about 25 B (`tight` reads `map \|\| dg.labelGaps`); no other type's picture moves | A second `layoutPass` when a label is tight (Q19 of stage 4: a layout pass is about 24 ms on 52 nodes with both flags off); measured in 5.1's spike |
-| (b) Every typed view takes it now | One rule | The class, package, object, use case, state, activity and overview pictures all change: each a maintainer's exception |
-| (c) Not in stage 5; one gap, as the class type | No core byte | Deployment views as wide as their widest label times their columns |
+| **(a) A small `gap` (48 px) for the deployment and component types, with `gapAfter`'s per-column widening and `cut: 280`; `labelGaps` only if 5.1's spike shows labels left with no spot, for the maintainer then (recommended)** | No core byte; no second `layoutPass` for P1; only the gaps that hold a label widen | A label on a line across two or more columns may find no spot; the layout check reports it and the fixtures pin it |
+| (b) `labelGaps` now: a typed view's opt in to `tight`, for column gaps only (`tight` measures a row gap as `rowY(r) + NH`, wrong for typed rows of mixed height, `rows.ht`) | Room for every tight label | About 25 B; a second `layoutPass` when a label is tight (stage 4 Q19: about 24 ms on 52 nodes with both flags off); `labelGaps` joins `VIEW_GEO` |
+| (c) One gap set by the widest label, as the class type | Nothing new | Deployment views as wide as their widest gap times their columns |
 
-Under (a) the deployment and component types set `labelGaps` and the `cut` of 280 px stage 4 gave long labels; the
-composite type's connectors carry no label. Moving the class, state, activity and overview types to it is later work, one
-package each, each a picture change for the maintainer.
+The composite type's connectors carry no label. Moving the class, state, activity and overview types to a small `gap` is
+later work, one package each, each a picture change for the maintainer.
 
 ## 9. Shapes and looks
 
@@ -358,7 +403,9 @@ with `fit`, strokes `--um-muted`, fills the stage's background or `--um-text` (T
 - An assembly connector is a plain solid line between two ports or components. A delegation is a solid line with an
   open arrow at its `to` end, so it points the way the model's line runs: inward from a port that provides
   (`05-component.json`'s `orders-to-checkout`), outward to a port that requires (`checkout-to-payments`). UML 2.5.1
-  needs no arrow on a delegation; the arrow says which way it delegates, and its accessible name says "Delegation".
+  needs no arrow on a delegation; the arrow says which way it delegates, and its accessible name says "Delegation". The
+  arrow is a departure, listed in §17 and decision 20.
+- A component realization is the class type's realization: a dashed line with a hollow triangle at the component.
 
 ### 9.3 The open collaboration (S12)
 
@@ -367,29 +414,51 @@ over a dashed line inside the top. Its box is laid out as stage 2's, and the ell
 
 | Option | For | Against |
 |---|---|---|
-| **(a) A box's `round: true` grows its frame by √2 about its centre in `frameOf`, so the ellipse inscribed in the frame holds the rectangle of its contents (recommended)** | UML's dashed ellipse; the boxes keep 32 px apart around the grown frame, as any box does; about 40 B | Core bytes; a wide collaboration takes about 40% more room than its rectangle |
+| **(a) A box's `round: true` grows its frame by √2 about its centre in `TYPED.frame`, the hook slot `frameOf` calls (§2.3, §7), so the ellipse inscribed in the frame holds the rectangle of its contents (recommended)** | UML's dashed ellipse; the boxes keep 32 px apart around the grown frame, as any box does; no byte beyond the hook slot | A wide collaboration takes about 40% more room than its rectangle |
 | (b) A dashed stadium (a rectangle with corners of half its short side) round the plain frame | No core byte | Not UML's ellipse (a deviation, stated) |
 | (c) Closed only: its roles as rows in a compartment, its connectors not drawn | Nothing new | `04-composite-structure.json` shows the roles and their connector |
+
+### 9.4 The lines
+
+Every line kind of rows 4 to 6, for the legends, `tests/notation.html` and the types' "shapes agree" checks:
+
+| Line | Row | Stroke | End | Keyword or label |
+|---|---|---|---|---|
+| `uml.InterfaceRealization` to a ball | 5 | solid | none (the stem) | |
+| `uml.InterfaceRealization` to a rectangle | 5 | dashed | hollow triangle at the interface | |
+| `uml.ComponentRealization` | 5 | dashed | hollow triangle at the component | |
+| `uml.Usage` to a ball | 5 | solid | socket at the ball | |
+| `uml.Usage` to a rectangle | 5 | dashed | open arrow at the interface | «use» |
+| `uml.Connector`, assembly | 5 | solid | none | |
+| `uml.Connector`, delegation | 5 | solid | open arrow at its `to` end (§9.2, decision 20) | |
+| `uml.Connector` (composite structure) | 4 | solid | none | |
+| `uml.RoleBinding` | 4 | dashed | none | the role's name, next to the bound part's end |
+| `uml.Deployment` | 6 | dashed | open arrow at the target | «deploy» |
+| `uml.Manifestation` | 5, 6 | dashed | open arrow at the component | «manifest» |
+| `uml.CommunicationPath` | 6 | solid | none | its label |
+| `uml.Dependency` | 5, 6 | dashed | open arrow | its stereotype, if any |
+| `uml.CommentLink` | 4 to 6 | dashed | none | |
 
 ## 10. The three types
 
 ### 10.1 Component
 
 Laid out by `layoutTyped` from the host's ranking, right by default, with `repair: false`, `reroute: false` (§14),
-`labelGaps` (§8) and `rgap: 56`. Components that hold components are boxes (`ownersOn`). Ports, inner lines (delegations)
+`gap: 48` with `gapAfter`'s widening (§8) and `rgap: 56`. Boxes with ports take §7's padding. Components that hold components are boxes (`ownersOn`). Ports, inner lines (delegations)
 and ends as §4 to §6. Interfaces drawn as balls or rectangles (§9.2). Artifacts with their manifestations.
 
 Validators, each with a passing and a failing case:
 
 | Rule | Level | Says |
 |---|---|---|
-| `port-owner` | error | a port is a member of a component, a class or a collaboration |
+| `port-owner` | error | a port is a member of a component or a class (UML: only an encapsulated classifier owns ports; a collaboration is not one) |
 | `provided-ends` | error | a realization runs from a component, a class or a port to an interface |
 | `required-ends` | warning | a usage drawn as a socket runs to an interface (another usage is drawn as «use») |
 | `ball-interface` | warning | `as: "ball"` is on an interface; elsewhere it is ignored |
 | `delegation-ends` | error | a delegation joins a component or its port with a component or port inside it, at any depth |
 | `assembly-ends` | error | an assembly joins two components or their ports, neither inside the other |
-| `manifest-ends` | error | a manifestation runs from an artifact |
+| `manifest-ends` | error | a manifestation runs from an artifact; a warning when it runs to anything but a component (§17) |
+| `component-realization-ends` | error | a component realization runs from a class or a component to a component |
 | `component-owner` | warning | a component's owner is a component or a package |
 
 Accessible names: "Component Shop API, 2 ports, holding 1 component"; "Port orders of Shop API, provides Orders";
@@ -408,18 +477,19 @@ and §6; a connector from the subject's port to a part is inner (§5).
 
 | Rule | Level | Says |
 |---|---|---|
-| `subject-shown` | error | the view's `subject` is a class or a collaboration listed in `nodeIds` |
-| `part-type` | warning | a part's `valueType` names exactly one class of the model by label (M8) |
+| `subject-shown` | error | the view's `subject` is a class, a component or a collaboration listed in `nodeIds` |
+| `part-type` | warning | a part's `valueType` names exactly one class or component of the model by label (M8) |
 | `connector-part` | error | an end's `part` is a part of the subject, and the end is a port of that part's type |
 | `connector-scope` | error | a connector's ends lie in one structure: the subject, its ports and its parts; or one collaboration's roles |
-| `binding-ends` | error | a role binding runs from a part of the subject to a collaboration use of it |
+| `binding-ends` | error | a role binding runs from a part of the subject to a collaboration use of it (UML also binds a port; left out, §17) |
 | `binding-role` | warning | a role binding's label names a role of the collaboration its use names |
 | `collaboration-named` | warning | a collaboration use's `collaboration` names a collaboration of the model |
 | `part-port-id` | warning | only under §6's fallback: a model id equals a port's id on a part |
 
 ### 10.3 Deployment
 
-Laid out by `layoutTyped` from the host's ranking, with `labelGaps` and `cut: 280` on communication paths. Nodes,
+Laid out by `layoutTyped` from the host's ranking, with `gap: 48` and `gapAfter`'s widening (§8), and `cut: 280` on
+communication paths. Nodes,
 devices and execution environments that hold something shown are boxes drawn as cubes (§9.1); artifacts and
 deployment specifications are `artifact`s; components (what an artifact manifests) the component look.
 
@@ -427,9 +497,9 @@ deployment specifications are `artifact`s; components (what an artifact manifest
 |---|---|---|
 | `deploy-ends` | error | a deployment runs from an artifact or deployment specification to a node, device or execution environment |
 | `deployed-twice` | warning | an artifact nested in one target is also deployed by a line to another |
-| `nest-kinds` | error | the owners of §3's row 6 |
+| `nest-kinds` | error, warning | an error when a node, device or execution environment's owner is not one of the three; a warning for the unusual pairs of §3's row 6 (a node in an execution environment, say) |
 | `path-ends` | error | a communication path joins two nodes, devices or execution environments |
-| `manifest-ends` | error | a manifestation runs from an artifact (shared with the component type) |
+| `manifest-ends` | error | a manifestation runs from an artifact, a warning to anything but a component (shared with the component type) |
 
 Accessible names: "Device Application server, holding 1 execution environment"; "Execution environment Java 21 runtime, in
 Application server, 3 artifacts deployed"; "Artifact shop-api.jar, on Java 21 runtime, manifests Shop API";
@@ -474,10 +544,10 @@ Contrast: lines, outlines and ports `--um-muted` (5.95:1 light, 7.05:1 dark); a 
 |---|---|---|
 | `connect` | Connect, by pointer and `L` | Component: between a port and something inside its owner, a delegation; between two outside each other, an assembly; to an interface, a realization from a provider or a usage, by `{ pick, then }` when both fit. Composite: a connector with `ends.<end>.part` from a port on a part; a role binding from a part to a collaboration use, its role by `{ pick, then }`. Deployment: artifact to node, a deployment |
 | `moveTo` | A drop, Alt + arrows | A port's side (§4.5); otherwise null: a pin, or a drop into a box (stage 2), which deploys an artifact by nesting |
-| `add` | Palette, `N` | A port, into the selected component, class or part (a part's goes to its type, said); a part, into the subject; an interface, ball or rectangle by `{ pick, then }`. With nothing to hold a port selected, `{ error }` |
+| `add` | Palette, `N` | A port, into the selected component, class or part (a part's goes to its type, said); a part, into the subject; a role, into the selected collaboration; an interface, ball or rectangle by `{ pick, then }`. With nothing to hold a port selected, `{ error }` |
 | `remove` | Delete, Shift + Delete | Composite: a port on a part (§6) |
 | `rename` | F2 | Composite: a port on a part renames the class's port; a part's row `name : Type [mult]` sets `valueType` and `multiplicity` |
-| **`member(model, view, owner, id, text)` (new)** | Enter or a change on the panel's member rows: the New member field (`id` null) or a row | Component: a row `name` or `name : Type` is a port. Composite: on the subject a row `name : Type [mult]` is a part and `port name` a port. State machine: 4.6's `entry / …` rows. Null: the panel's `member.add` or `member.edit`, as now |
+| **`member(model, view, owner, id, text)` (new)** | Enter or a change on the panel's member rows: the New member field (`id` null) or a row | Component: a row `name` or `name : Type` is a port. Composite: on the subject a row `name : Type [mult]` is a part and `port name` a port; on a collaboration a row `name : Type [mult]` is a role (a `uml.Property`), added or edited. State machine: 4.6's `entry / …` rows. Null: the panel's `member.add` or `member.edit`, as now |
 | **`key(model, view, ids, key)` (new)** | A key on a selection, before the canvas's own | Component: `B` on an interface, `set { view, path: ['present', id, 'as'] }` to `ball` or removed. Null: the canvas's |
 
 Both new hooks are in `src/typed/edit.js` only, with no core byte, and return what the others return. `member` is the
@@ -498,13 +568,24 @@ Both new hooks are in `src/typed/edit.js` only, with no core byte, and return wh
 
 ### 12.2 Gestures and their commands
 
-Palettes: component (Component, Interface, Artifact, Port, Comment; lines Realization, Usage, Assembly, Delegation,
-Dependency, Manifestation, Comment link); deployment (Node, Device, Execution environment, Artifact, Deployment
+Palettes: component (Component, Interface, Artifact, Package, Port, Comment; lines Realization, Component realization,
+Usage, Assembly, Delegation, Dependency, Manifestation, Comment link); deployment (Node, Device, Execution environment, Artifact, Deployment
 specification, Component, Comment; lines Deployment, Manifestation, Communication path, Dependency, Comment link);
-composite (Part, Port, Collaboration use, Collaboration, Comment; lines Connector, Role binding, Comment link).
+composite (Part, Port, Role, Collaboration use, Collaboration, Comment; lines Connector, Role binding, Comment link).
 Properties: a part's `valueType`, `multiplicity`, `aggregation` (enum); a port's `valueType`; a connector's `kind`
 (enum, component views); a collaboration use's `collaboration`; stereotypes on each. Every gesture has a key; each is
 tested by pointer and by key through `apply()`.
+
+Hiding (DoD 4). A node of a view is hidden by Delete (it leaves `nodeIds`) and deleted by Shift + Delete. A port, a part
+or a role is a member: it is drawn because its owner is, and cannot leave `nodeIds`.
+
+| Option | For | Against |
+|---|---|---|
+| **(a) Members cannot be hidden: Delete on a port, part or role deletes it from the model, as Shift + Delete does, and the hint line says so before it goes; the conformance notes say so under item 4, as stage 3 did for messages (P12) (recommended)** | Stage 3's precedent; no new `present` key; nothing to keep in step | A view cannot show a component without one of its ports |
+| (b) A per-member `present.<id>.hidden`, or `present.<owner>.collapsed: ["ports"]`, set by Delete; Shift + Delete deletes | Views can leave out detail, as UML tools do | A new `present` key, its `references()` and its tests; a hidden port's lines need a rule too (hidden with it, or drawn to its owner) |
+
+5.4 to 5.6 test the chosen behaviour for each member kind (port on a component, port on a class, port on a part, part,
+role), by pointer and by key.
 
 ## 13. Fixtures
 
@@ -523,7 +604,7 @@ themes, right and down, with no overlap, no text overflow, no line through a nod
 | `composite-minimal.json` | A subject with one port and one part, a connector from the port to the part's port (inner) |
 | `composite-stress.json`, view `edge-cases` | Two parts of one type, each with the same port and its own connector (G2); a shared part (dashed); a part whose `valueType` names no class (warned); a connector through a part to a port of another type (error); an open collaboration with three roles and two connectors; two collaboration uses with role bindings; a port on the subject with a line inside and one outside |
 | `composite-stress.json`, view `all` | 30 parts, 50 connectors, 20 ports on parts (P1) |
-| `tests/notation.html` | Its arrowhead checks gain the socket, the delegation's arrow and the manifestation's |
+| `tests/notation.html` | Its arrowhead checks gain the socket, the delegation's arrow, the manifestation's, the «deploy» line and the role binding (§9.4) |
 
 The three target examples move to `examples/bookshop-components.json`, `examples/bookshop-deployment.json` and
 `examples/order-service-structure.json`, and join the gallery and CI.
@@ -538,10 +619,11 @@ The three target examples move to `examples/bookshop-components.json`, `examples
 
 - The three types pass `repair: false` and `reroute: false` on every layout, as stage 4's do: one picture whether laid
   out fresh or after an edit (DoD 6). The fixtures pin the crossings left; each conformance note states them.
-- `labelGaps` adds a `layoutPass` when a label is tight. **5.1's spike**, on a test-only view of 50 nodes, 60 lines,
-  40 ports and boxes six deep with inner lines, measures the common edit with and without it before the type lanes
-  start; if the edit is over 100 ms on an idle machine, the maintainer decides between `labelGaps` off for the type and
-  P1's other options (stage 4 §17) before 5.4 and 5.5 start.
+- **5.1's spike**, on a test-only view of 50 nodes, 60 lines with long labels, 40 ports and boxes six deep with inner
+  lines, measures the common edit before the type lanes start, and counts the labels left with no spot under §8's small
+  gap. If labels are left, the maintainer decides on `labelGaps` (decision 9, which adds a `layoutPass` when a label is
+  tight, measured with and without); if the edit is over 100 ms on an idle machine, the maintainer decides among P1's other
+  options (stage 4 §17) before 5.4 and 5.5 start.
 - Browser timings under headless virtual time prove nothing (1.11): budgets are enforced in Node.
 
 | Option | For | Against |
@@ -563,9 +645,10 @@ The only file it merges is `docs/diagrams/notes/spike-elk.md`.
 1. **Fixtures:** `04-composite-structure.json`, `05-component.json`, `06-deployment.json`, and 5.1's test-only view
    (§14). Nothing else.
 2. **One ELK configuration:** `layered`, `hierarchyHandling: INCLUDE_CHILDREN`, orthogonal routing, ports
-   `FIXED_SIDE` from §4.2's sides, port labels outside, node sizes from the shapes' `size()`. One revision of it is
+   `FIXED_SIDE` from §4.2's sides (5.3's), port labels outside, node sizes from the shapes' `size()` (5.3's). One revision of it is
    allowed, after the first table, with the reason written down.
-3. **The measures, for both engines** (the own engine as 5.1 and 5.3 build it): the layout check's issues (overlap, a
+3. **The measures, for both engines** (the own engine on 5.1's view as 5.1 builds it, and on the three examples as 5.4 to
+   5.6 lay them out: before those types merge the examples are plain cards with no ports, sides or sizes): the layout check's issues (overlap, a
    line through a node, a port off its side, a label over a node); crossings; bends per line; area and aspect; layout time
    (CPU, best of seven after a warm-up); the same layout twice (determinism); how many nodes move after a label edit;
    the size added (gzip of the bundle); the licence.
@@ -586,7 +669,7 @@ across the four fixtures; otherwise the own engine alone. The outcome is one of:
 
 | Option | For | Against |
 |---|---|---|
-| **(a) A spike, boxed by scope, recommendation only, no dependency (recommended)** | L9's question answered with numbers; the core stays MIT and dependency-free (D8); runs beside the type lanes | Its own side needs 5.1 merged before the table is complete |
+| **(a) A spike, boxed by scope, recommendation only, no dependency (recommended)** | L9's question answered with numbers; the core stays MIT and dependency-free (D8); runs beside the type lanes | Its own engine's column needs 5.1 for the test view and 5.4 to 5.6 for the three examples before the table is complete |
 | (b) No trial; the own engine only | Less work | L9 stays open; the proposal's fallback is never tested |
 | (c) Build the ELK adapter in stage 5 | Hosts get it now | A copyleft peer and an asynchronous path before anyone has shown the own engine fails |
 
@@ -607,18 +690,19 @@ proposes its row in its pull request's description and writes its release notes 
 | # | Work package | Owns | Depends on | Done when |
 |---|---|---|---|---|
 | 5.0 | **List the files** (the lead). The stage's four sources as empty files, in `ALL` after stage 4's, in load order: `uml/structure`, `uml/component`, `uml/deployment`, `uml/composite` | `tools/build.mjs`, the four empty files | This note | `lib/umlimator-all.js` changes by blank lines only; `lib/umlimator.js` not at all; no other stage 5 lane edits `ALL` |
-| 5.1 | **The router for ports and inner lines.** `TYPED.ports` and its call (§4.4); `fromPort`, `toPort`, `inner` in `EDGE_GEO`; inner ends (§5); `labelGaps` (§8); a box's `round` (§9.3); the `socket` end in `ENDS` (§9.2); the registry fields documented, 5.2's hooks too. §14's spike, reported in the pull request before 5.4 and 5.5 start. Tested with a test-only type: ports on nodes and boxes, a port with three lines, ports pinned to each side, an inner line from a box's port three levels down, a round box, a tight label | `src/layout/layered.js`, `src/typed/layout.js`, `src/typed/draw.js`, `src/core/registry.js`, `tests/typed-ports.test.mjs` (new), `tests/typed-ports.html` (new) | 5.0 | Maps unchanged (geometry hashes, stills, `tests/edit.html`); `tests/core-diet.html`, `tests/core-diet.json` and every typed type's tests unchanged; on the test type every line of a port ends on its square within 1 px, no port leaves its side, an inner line enters its box only at its port, in Node and in Chrome under three fonts; a view laid out twice from one memo draws byte-identical markup; with `labelGaps` a tight label's column alone widens; the spike's timings in the pull request; the core's bytes before and after, within §2.3 |
+| 5.1 | **The router for ports and inner lines.** Port placement in `LP.ports` and its `sides` argument (§4.4); the side cap's skip of port ends (§4.2); `fromPort`, `toPort`, `inner`, `portRank` in `EDGE_GEO`; inner ends (§5); `TYPED.frame` for a box's `pad` and `round` (§7, §9.3); `labelGaps` only if decision 9 takes it (§8); the `socket` end in `ENDS` (§9.2); the registry fields documented in `src/typed/*.js` with one pointer line in the registry, 5.2's hooks too. §14's spike, reported in the pull request before 5.4 and 5.5 start. Tested with a test-only type: ports on nodes and boxes, a port with four lines on one face, ports pinned to each side, an inner line from a box's port at each of three levels, a round box, a long label | `src/layout/layered.js`, `src/typed/layout.js`, `src/typed/draw.js`, `src/core/registry.js`, `tests/typed-ports.test.mjs` (new), `tests/typed-ports.html` (new), `tests/embed.py` (appends its page) | 5.0 | Maps unchanged (geometry hashes, stills, `tests/edit.html`); `tests/core-diet.html`, `tests/core-diet.json` and every typed type's tests unchanged; on the test type every line of a port ends on its square within 1 px, no port leaves its side (the four-line port included), an inner line enters its box only at its port, nested boxes' ports do not touch, in Node and in Chrome under three fonts (`tests/typed-ports.html` run by `tests/embed.py`); a view laid out twice from one memo draws byte-identical markup; `tests/layout-typed.test.mjs`'s geometry key test passes unchanged; a reorder of members lays out again; the spike's timings in the pull request; the core's bytes before and after, within §2.3 |
 | 5.2 | **The member and key hooks.** `edits.member`, `edits.key` (§12.1); 4.6's wrap in `src/uml/state.js` moved onto `edits.member`; a node whose id holds `->` selected, renamed and deleted through hooks (§6) | `src/typed/edit.js`, `src/uml/state.js` (its wrap only), `tests/type-hooks.html`, `tests/typed-edit.html` | 5.0; 4.6 merged | On a test-only type each hook's result is emitted, said or refused, by pointer and by key; a null falls back to the panel; `tests/state.test.mjs` and `tests/state-machine.html` pass unchanged; no core byte |
-| 5.3 | **Structure notation.** `src/uml/structure.js`: the `port`, `component`, `ball` and `artifact` shapes; the sides chosen before the layout (§4.2); the ports with no line, the port nodes added back and the port names (§4.3, §4.5), on a copy; the shared rules (`port-owner`, `manifest-ends`); the looks' accessible names | `src/uml/structure.js`, `tests/structure.test.mjs` (new), `tests/structure.html` (new) | 5.0; 5.1 for its browser test's line ends | Each shape's size, outline and inset agree in Node; drawn in both themes and three fonts with no text overflow; on hand-built geometry, ports with no line keep 8 px apart and names keep off lines and nodes; the sides chosen match a table of rankings; each shared rule has a passing and a failing case |
-| 5.4 | **The component type.** §10.1: definition, boxes, ports, delegations, ball and socket, rules, `describe()`, names, legend, `rows` and `word`, hooks (`connect`, `moveTo`, `add`, `member`, `key`) | `src/uml/component.js`, `tests/component.test.mjs`, `tests/component.html` (new) | 5.1 (and its spike), 5.2, 5.3 | Definition of done 2, 4, 5, 6 and 8 on row 5's subset; every gesture by pointer and by key through `apply()`; a 30-step session undone, redone and reopened to byte-identical models; `05-component.json` lays out clean, right and down; `tests/cli.py`'s case for it passes unchanged |
-| 5.5 | **The deployment type.** §10.3: the cube, boxes six deep, artifacts, paths with `labelGaps`, rules, `describe()`, names, legend, `rows` and `word`, hooks | `src/uml/deployment.js`, `tests/deployment.test.mjs`, `tests/deployment.html` (new) | 5.1 (and its spike), 5.3 | As 5.4 on row 6; a drop of an artifact into a node and the Owner field each emit their transaction; `06-deployment.json` lays out clean, right and down |
-| 5.6 | **The composite structure type.** §6 and §10.2: its own ranking, the subject's box, parts, ports on parts, inner connectors, collaborations (`round`), collaboration uses, role bindings, `refs` (S14), rules, `describe()`, names, legend, `rows` and `word`, hooks (`connect`, `moveTo`, `add`, `remove`, `rename`, `member`) | `src/uml/composite.js`, `tests/composite.test.mjs`, `tests/composite.html` (new) | 5.1, 5.2, 5.3 | As 5.4 on row 4; two parts of one type each draw the type's port with their own connectors; deleting a part deletes its connectors; `04-composite-structure.json` lays out clean, right and down |
-| 5.7 | **The ELK trial.** §15 | `docs/diagrams/notes/spike-elk.md` (new); the scratch branch `stage5-elk-trial`, never merged | 5.0 for its fixtures; 5.1 merged for the own engine's column | The table of §15's measures filled for the four fixtures; the recommendation by §15's rule; `package.json`, its lock and `lib/` unchanged on `main` |
-| 5.8 | **Fixtures, examples, docs, CLI.** §13's files and their tests (`tests/stage5-fixtures.test.mjs`, `tests/stage5.html`); the three examples moved, with `check.mjs`'s `MOVED`; `render`, `check`, `stills` and `pdf` on each; the schema and `.d.ts`; C10's tests; every document of `plan.md` §7; `docs/conformance/uml-component.md`, `uml-deployment.md`, `uml-composite-structure.md`; the lanes' release notes gathered into `docs/module-api.md` | `examples/`, `tests/*-minimal.json` and `tests/*-stress.json` of the three types, `tests/stage5-fixtures.test.mjs`, `tests/stage5.html`, `tests/notation.html`, `tests/cli.py`, `tests/mcp.py`, `tests/embed.py`, `lib/umlimator.d.ts`, `lib/umlimator.schema.json`, `docs/diagrams/examples/check.mjs`, `docs/` (but the status table) | 5.4 to 5.7 | Definition of done 1, 3, 7, 9, 10, 11 and 12 for all three types; §14's budgets in CI; each PDF lists §11's rows; the three examples in the gallery and CI; the stress fixtures' crossings and the six-level width pinned and stated; L9 closed or re-stated by 5.7's outcome |
+| 5.3 | **Structure notation.** `src/uml/structure.js`: the `port`, `component`, `ball` and `artifact` shapes; the sides chosen before the layout (§4.2); the ports with no line, the port nodes added back and the port names (§4.3, §4.5), on a copy; the shared rules (`port-owner`, `manifest-ends`); the looks' accessible names | `src/uml/structure.js`, `tests/structure.test.mjs` (new), `tests/structure.html` (new), `tests/embed.py` (appends its page) | 5.0; 5.1 for its browser test's line ends | Each shape's size, outline and inset agree in Node; drawn in both themes and three fonts with no text overflow; on hand-built geometry, ports with no line keep 8 px apart and names keep off lines and nodes; the sides chosen match a table of rankings; each shared rule has a passing and a failing case |
+| 5.4 | **The component type.** §10.1: definition, boxes, ports, delegations, ball and socket, rules, `describe()`, names, legend, `rows` and `word`, hooks (`connect`, `moveTo`, `add`, `member`, `key`) | `src/uml/component.js`, `tests/component.test.mjs`, `tests/component.html` (new), `tests/embed.py` (appends its page) | 5.1 (and its spike), 5.2, 5.3 | Definition of done 2, 4, 5, 6 and 8 on row 5's subset; every gesture by pointer and by key through `apply()`; a 30-step session undone, redone and reopened to byte-identical models; `05-component.json` lays out clean, right and down; `tests/cli.py`'s case for it passes unchanged |
+| 5.5 | **The deployment type.** §10.3: the cube, boxes six deep, artifacts, paths with §8's small gap and `cut`, rules, `describe()`, names, legend, `rows` and `word`, hooks | `src/uml/deployment.js`, `tests/deployment.test.mjs`, `tests/deployment.html` (new), `tests/embed.py` (appends its page) | 5.1 (and its spike), 5.3 | As 5.4 on row 6; a drop of an artifact into a node and the Owner field each emit their transaction; `06-deployment.json` lays out clean, right and down |
+| 5.6 | **The composite structure type.** §6 and §10.2: its own ranking, the subject's box, parts, ports on parts, inner connectors, collaborations (`round`), collaboration uses, role bindings, `refs` (S14), rules, `describe()`, names, legend, `rows` and `word`, hooks (`connect`, `moveTo`, `add`, `remove`, `rename`, `member`) | `src/uml/composite.js`, `tests/composite.test.mjs`, `tests/composite.html` (new), `tests/embed.py` (appends its page) | 5.1, 5.2, 5.3 | As 5.4 on row 4; two parts of one type each draw the type's port with their own connectors; deleting a part deletes its connectors; `04-composite-structure.json` lays out clean, right and down |
+| 5.7 | **The ELK trial.** §15 | `docs/diagrams/notes/spike-elk.md` (new); the scratch branch `stage5-elk-trial`, never merged | 5.0 for its ELK column; 5.1 for the own engine's column on 5.1's view; 5.4 to 5.6 for it on the three examples | The table of §15's measures filled for the four fixtures; the recommendation by §15's rule; `package.json`, its lock and `lib/` unchanged on `main` |
+| 5.8 | **Fixtures, examples, docs, CLI.** §13's files and their tests (`tests/stage5-fixtures.test.mjs`, `tests/stage5.html`); the three examples moved, with `check.mjs`'s `MOVED`; `render`, `check`, `stills` and `pdf` on each; the schema and `.d.ts`; C10's tests; every document of `plan.md` §7; `docs/conformance/uml-component.md`, `uml-deployment.md`, `uml-composite-structure.md`; the lanes' release notes gathered into `docs/module-api.md` | `examples/`, `tests/*-minimal.json` and `tests/*-stress.json` of the three types, `tests/stage5-fixtures.test.mjs`, `tests/stage5.html`, `tests/notation.html`, `tests/cli.py`, `tests/mcp.py`, `tests/embed.py` (appends `tests/stage5.html`), `lib/umlimator.d.ts`, `lib/umlimator.schema.json`, `docs/diagrams/examples/check.mjs`, `docs/` (but the status table) | 5.4 to 5.7 | Definition of done 1, 3, 7, 9, 10, 11 and 12 for all three types; §14's budgets in CI; each PDF lists §11's rows; the three examples in the gallery and CI; the stress fixtures' crossings and the six-level width pinned and stated; L9 closed or re-stated by 5.7's outcome |
 
 Existing tests a package edits, and why: 5.8 points `tests/cli.py`'s `05-component` case at the moved example and adds the
-other two (the files move, `plan.md` §2's item 10); `tests/notation.html` gains the new ends; `tests/embed.py` lists the new
-browser pages; `check.mjs`'s `MOVED` gains three rows. 5.2 edits `tests/type-hooks.html` and `tests/typed-edit.html` only by
+other two (the files move, `plan.md` §2's item 10); `tests/notation.html` gains the new ends; `tests/embed.py` gains each new
+browser page from the package that adds it (5.1, 5.3 to 5.6, 5.8), so each page runs in CI from its own merge, as stage 4's
+lanes added theirs; `check.mjs`'s `MOVED` gains three rows. 5.2 edits `tests/type-hooks.html` and `tests/typed-edit.html` only by
 adding cases. No other existing test changes.
 
 ### 16.3 What runs at the same time (S19)
@@ -627,7 +711,7 @@ adding cases. No other existing test changes.
 approved ─▶ 5.0 ──┬─▶ 5.1 router: ports, inner lines ──┬──────────────┬──▶ 5.5 deployment ──────┐
                   ├─▶ 5.3 structure notation ──────────┤              ├──▶ 5.4 component ───────┤
      4.6 merged ──┼─▶ 5.2 member and key hooks ────────┴──────────────┴──▶ 5.6 composite ───────┼─▶ 5.8 ─▶ 0.22.0
-                  └─▶ 5.7 ELK trial (its own engine's column after 5.1) ────────────────────────┘
+                  └─▶ 5.7 ELK trial (ELK column now; own engine's after 5.1, and 5.4 to 5.6) ───┘
 ```
 
 - Four lanes once 5.0 has merged: 5.1, 5.3 and 5.7 at once, 5.2 once 4.6 has merged; each in its own worktree.
@@ -653,7 +737,8 @@ approved ─▶ 5.0 ──┬─▶ 5.1 router: ports, inner lines ──┬─�
 | `src/typed/edit.js`, `src/uml/state.js` | 5.2 | Read only by 5.4 and 5.6 |
 | `src/uml/structure.js` | 5.3 | Read only by 5.4 to 5.6 |
 | `src/uml/owners.js`, `class.js`, `usecase.js` | Read only | No stage 5 package edits them |
-| `tests/cli.py`, `tests/embed.py`, `check.mjs`, `docs/module-api.md` | 5.8 only | |
+| `tests/embed.py` | 5.1, 5.3, 5.4, 5.5, 5.6, 5.8: each appends its page to the list (and its line to the header), nothing else; the second of two open branches rehearses the merge (X2) | |
+| `tests/cli.py`, `check.mjs`, `docs/module-api.md` | 5.8 only | |
 
 ### 16.5 The release
 
@@ -661,7 +746,7 @@ approved ─▶ 5.0 ──┬─▶ 5.1 router: ports, inner lines ──┬─�
 maintainer approves that pull request by number. Its notes say:
 
 - new: the component, deployment and composite structure diagrams; ports on borders; lines from a box's port inward;
-  ends through parts; the ball and socket; room for labels where a typed view asks; the member and key hooks;
+  ends through parts; the ball and socket; port padding for nested boxes; the member and key hooks;
 - the ELK trial's outcome (5.7);
 - left out: §17.
 
@@ -678,10 +763,19 @@ The `map-repo` skill's pin does not move: it writes none of the three types.
 
 | Type | Left out |
 |---|---|
-| Component | Connector multiplicities (`proposal.md` §8.5); component realizations; «subsystem» and «specification»; a component's parts drawn inside it as a composite structure (nested components only); the black-box compartments («provided interfaces», «required interfaces», «realizations», «artifacts»); a port's multiplicity; behaviour, service and conjugated ports (`~`); provided and required interfaces as a port's own props (S1); a ball and socket joined with no interface node; the ball's stem kept short (it is a line the layout places, stated) |
+| Component | Connector multiplicities (`proposal.md` §8.5); «subsystem» and «specification»; a component's parts drawn inside it as a composite structure (nested components only); the black-box compartments («provided interfaces», «required interfaces», «realizations», «artifacts»); provided and required interfaces as a port's own props (S1); a ball and socket joined with no interface node; the ball's stem kept short (it is a line the layout places, stated) |
 | Deployment | Instance-level deployment (`proposal.md` §8.5): node and artifact instances `name : Type`; a deployment specification attached to a deployment line; nested artifacts; communication path multiplicities; device icons; «manifest» of anything but a component; per-target deployment specification properties |
-| Composite structure | Connector multiplicities and end names; a part's own inner structure (shown in its type's view); ports on a collaboration's roles; a part's multiplicity drawn in its corner (it is in its name); «represents» and occurrences; role bindings with several role names; the properties of a port selected on a part (§6) |
-| All three | XMI (R6); copy and paste (E7); per-type `diff()` writers; a reader (Mermaid has none); storing a port's order (S3); ELK in the module (§15) |
+| Composite structure | Connector multiplicities and end names; a part's own inner structure (shown in its type's view); ports on a collaboration's roles; a role binding to a port of the subject (UML binds any connectable element; `binding-ends` takes a part only); a part's multiplicity drawn in its corner (it is in its name); «represents» and occurrences; role bindings with several role names; the properties of a port selected on a part (§6) |
+| All three | A port's multiplicity; behaviour, service and conjugated ports (`~`); XMI (R6); copy and paste (E7); per-type `diff()` writers; a reader (Mermaid has none); storing a port's order (S3); ELK in the module (§15) |
+
+Departures from UML 2.5.1, which 5.8's conformance notes carry in a "Departures" line:
+
+- **The delegation's arrow** (§9.2): UML 2.5.1 does not require an arrowhead on a delegation connector; an open arrow on a
+  solid line is also its look for a navigable association. Kept to show the direction (decision 20).
+- **A realization or usage drawn from a port** (§3, `provided-ends`): in the metamodel a port's provided and required
+  interfaces are derived from its type; a port does not realize or use an interface. The model stores the line from the
+  port, as UML tools draw the lollipop on a port; a reader of the model must know it.
+- **«manifest» to a component only** (`manifest-ends` warns on other targets), and the narrowings in the table above.
 
 ## 18. The decisions for the maintainer
 
@@ -689,34 +783,43 @@ Each is set out with its options and trade-offs in the section named; the recomm
 
 | # | Question | Recommended | Other options | Section |
 |---|---|---|---|---|
-| 1 | How much of the core's 4,713 B stage 5 may spend | At most 600 B, fallbacks named | First come; raise C5 | §2.3 |
+| 1 | How much of the core's 4,713 B stage 5 may spend | At most 300 B (targets 126 B, 151 B with `labelGaps`), fallbacks named | First come; raise C5 | §2.3 |
 | 2 | How a port with several lines is drawn | A square that grows 10 px along the border for each further line on a face | Every line at one point (a bundle in the router's search, core); a port as a node of the layered layout | §4.1 |
-| 3 | A port's side and order | Side by `present` or by the ranking; order by the far ends, `members` breaking ties; nothing stored | `present.<port>.order` as well; `members` order always | §4.2 |
+| 3 | A port's side and order | Side by `present` or by the ranking, kept by the side cap; order by the far ends, `members` breaking ties; nothing stored | `present.<port>.order` as well; `members` order always | §4.2 |
 | 4 | Where a port's name goes | Outside, by the end labels' search | Inside the owner; not drawn | §4.3 |
-| 5 | Lines from a box's port inward (delegation) | The router learns inner ends, about 100 B | The type draws an elbow after the layout; not drawn | §5 |
-| 6 | Ends through parts (`model.md` §3) | `ends.<end>.part`, as rule 7; a part's ports are its type's, drawn as `<part>-><port>` | A path form in `from`/`to`; parts own copies of ports | §3, §6 |
+| 5 | Lines from a box's port inward (delegation) | The router learns inner ends: the `holds` bypass, about 15 B, the point placed by the port hook | The type draws an elbow after the layout; not drawn | §5 |
+| 6 | Ends through parts (`model.md` §3) | `ends.<end>.part`, as rule 7; a part's ports are its type's, drawn as `<part>-><port>`, their side under `present.<part>.ports` | A path form in `from`/`to`; parts own copies of ports | §3, §6 |
 | 7 | Provided interfaces (`model.md` §3) | Always an `uml.Interface` node, a ball by `present.as` | Also a port's `provided` and `required` props | §3 |
-| 8 | Deep nesting | Stage 2's padding, measured to six levels and stated | A box's `pad` per type (core) | §7 |
-| 9 | The per-column gap (`labelRoom`) for typed views | Opt in by `labelGaps`, taken by the deployment and component types; the other types later, each a picture change | Every typed view now; not in stage 5 | §8 |
-| 10 | The open collaboration | A dashed ellipse, by a box's `round` (about 40 B) | A dashed stadium (a deviation); closed only | §9.3 |
+| 8 | Deep nesting | A box's `pad`, 48 px where it or a box it holds has ports with lines, through `TYPED.frame` (about 45 B with the round frame) | Stage 2's 12 px (a delegation between nested ports cannot be laid out); one `pad` per view | §7 |
+| 9 | Room for labels | A small `gap` and `gapAfter`'s per-column widening for the deployment and component types, no core byte; `labelGaps` only if 5.1's spike leaves labels with no spot | `labelGaps` now (25 B, column gaps only, a second `layoutPass`); one gap set by the widest label | §8 |
+| 10 | The open collaboration | A dashed ellipse, by a box's `round`, in `TYPED.frame` | A dashed stadium (a deviation); closed only | §9.3 |
 | 11 | Deleting a part | Its connectors go with it, by `refs` | `apply()`'s default: the `part` dropped | §10.4 |
 | 12 | The member hook | `edits.member` in `src/typed/edit.js`; 4.6's wrap moves onto it | `member.add` returning commands (core); a wrap per type | §12.1 |
 | 13 | Ball or rectangle (DoD 4) | `B` by a new `edits.key`, and a pick on add | A properties field kind writing `present` (core); derived | §12.1 |
 | 14 | P1 | Both flags off on every layout, 1 s in CI with 100 ms printed, 5.1's spike first | Keep port repair | §14 |
-| 15 | The ELK trial (L9) | Spike 5.7, boxed by scope, its rule written first, a recommendation and no dependency | No trial; build the adapter now | §15 |
+| 15 | The ELK trial (L9) | Spike 5.7, boxed by scope, its rule written first, a recommendation and no dependency; its own engine's column on 5.1's view after 5.1 and on the examples after 5.4 to 5.6 | No trial; build the adapter now | §15 |
 | 16 | Order with stage 4 | 5.0, 5.1, 5.3, 5.7 on approval; 5.2 after 4.6; 0.22.0 after 0.21.0 | Start after 0.21.0 is released | §16.3 |
 | 17 | C10 for the three types | Tested in 5.8 | Folded into the package after 0.20.0 | §16.5 |
+| 18 | Component realization (`proposal.md` §8.5's "realization") | Add `uml.ComponentRealization` to row 5, the class type's look, no core byte | "Realization" means interface realization only, stated | §3 |
+| 19 | Hiding a port, part or role (DoD 4) | Members cannot be hidden; Delete deletes from the model, said first, as stage 3's P12 | A `present` key that hides a member | §12.2 |
+| 20 | The delegation's look | A solid line with an open arrow at its `to` end, listed as a departure: it shows which way the port delegates | UML's plain solid line (direction in the accessible name only); a plain line with «delegate» | §9.2, §17 |
+
+Decision 20's trade-offs: the arrow shows direction at a glance but is UML's navigable-association look and not required
+by UML 2.5.1; the plain line is UML's own and costs nothing, but a reader cannot tell an assembly from a delegation except
+by the nesting; «delegate» says it in words, as UML 2.0's tools did, and adds a keyword to place on a short line.
 
 ## 19. What this note changes elsewhere
 
-- **`model.md`.** Rows 4, 5 and 6 as §3; §3's two stage 5 rows are settled: a port end through a part is `ends.<end>.part`,
-  a port's side is `present.<port>.side` and its order is derived (no stored order); a provided interface is always an
+- **`model.md`.** Rows 4, 5 and 6 as §3 (row 4's subject a class, component or collaboration; row 5 gains `uml.Package` and,
+  by decision 18, `uml.ComponentRealization`; row 6's nesting); §3's two stage 5 rows are settled: a port end through a part is `ends.<end>.part`,
+  a port's side is `present.<port>.side` (on a part, `present.<part>.ports.<port>.side`) and its order is derived (no stored
+  order); a provided interface is always an
   `uml.Interface` node; a stage 5 row points here.
 - **`risks.md`.** L9 points to §4, §6 and §15, and closes or is re-stated with 5.7's outcome; L8 gains the six-level
-  fixture (§13); G2's three cases point to §13; C5 records stage 5's share (§2.3); P1 gains §14's common edits; C10
+  fixture (§13); G2's three cases point to §13; C5 records stage 5's share (§2.3) and the `LP.ports` and `TYPED.frame` hook slots; P1 gains §14's common edits; C10
   records stage 5's tests (S18); a new row for the ball's stem placed by the layout (§17).
 - **`plan.md`.** §5's stage 5 row points here (done with this note); §4.3 lists `src/uml/structure.js`.
-- **`proposal.md`.** §8.5's subsets for the three types point to §17.
+- **`proposal.md`.** §8.5's subsets for the three types point to §17; row 5's "realization" is read as decision 18 settles.
 - **`notes/stage-4.md`.** §10.4's member-row wrap points to §12.1 when 5.2 moves it.
 - **`README.md` in this folder.** The status table shows this note and, once approved, stage 5's work packages; the log
   records the decisions taken. (The lead's.)
