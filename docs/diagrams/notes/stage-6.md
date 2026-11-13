@@ -655,12 +655,26 @@ As built (6.5), `src/uml/timing.js`, where it departs or settles what the sectio
   change into a state the lifeline does not list adds it to `states` in the same transaction, said, as `add` does.
 - **`connect` from a change to a lifeline** (either way) is a message at the change's time and the slot's; two changes
   give their two times.
-- **Levels:** `sort` is a warning, as the sequence type's; `reply-call` an error, against the reply's raw `sort`.
+- **Levels:** `sort` is a warning, as the sequence type's; `reply-call` an error. Both `reply-call` and `connect` judge
+  the call's `sort` as it is drawn: a message with no `sort`, or one not listed, is a call.
 - **What the hint line says** comes with the transaction (`{ commands, say }`, as the sequence type's lifelines):
-  "Hid worker; deleted its 2 messages; its changes stay in the timeline", "Deleted worker, 4 changes and 2 messages",
-  "… a change, a message or a constraint is deleted, not hidden".
+  "Hid worker; deleted its 2 messages; its changes stay in the timeline", "Deleted worker, 4 changes, 2 messages and 2
+  constraints", "Deleted 2 messages: a change, a message or a constraint is deleted, not hidden". The counts are read off
+  the model after the transaction, so a call's reply and a change's constraints, which the core's cascade takes with
+  them, are counted, and so is a change deleted beside a lifeline hidden ("…; deleted its 2 messages, and 1 change; …").
+- **One change at an instant:** `add` puts a change at the first minor tick its lifeline has free (on a selected
+  lifeline, from the ruler's start); a drop, Alt + ←/→ or F2's `@` that would put a change on another's instant is
+  refused, the guard holding `change-instant` as it holds an error, since only one of the two would be drawn.
+- **Alt + ↑/↓ on a change in a state its lifeline does not list** goes from the extra row at the bottom: ↑ to the
+  last listed state, ↓ nothing. On a message, Alt + ↑/↓ does nothing and is used up.
+- **Lanes are `uml.Lifeline` nodes only;** any other node in `nodeIds` is not drawn. A state listed twice is one row.
+- **F2's times are decimal numbers** (`-2.5`, `1e3`; not `0x10`). `name : Type` is read the same by `add` and F2:
+  `a : B : C` is `a`, representing `B:C`.
+- **The ruler's name** gives the span of the times drawn ("Time ruler, 0 to 900 ms, a tick every 200 ms" for row
+  14's example), not the room the ruler runs on past the last.
 - **L by name:** the canvas finds a node no view lists (a change) by its id, so `L` then typing reaches a change by
-  `w-waiting`, not by its state; arrows reach it as any node.
+  `w-waiting`, not by its state; arrows reach it as any node. Whether the canvas's `nameOf` should fall back to the
+  geometry node's label is decision 25, below.
 
 ### 8.3 Hiding (S17)
 
@@ -950,6 +964,7 @@ Each is set out with its options and trade-offs in the section named; the recomm
 | 22 | An abstract required stereotype | Met by any concrete specialization the element applies; `stereotype-required` (warning) when none: UML's reading for a required stereotype with subclasses; one more rule | A definition-time error `extension-required-abstract`: simple, but refuses a profile UML allows | §5.5 |
 | 23 | A hidden timing lifeline's messages | Stated: they leave the view with it (the core's `hide` drops the view's own lines), said first with their count, as on a sequence view; no code, but showing the lifeline again does not bring them back (undo does) | The type's `remove` hook hides by `set` of `nodeIds` only, keeping the messages undrawn and `message-ends` skipping hidden lifelines: comes back whole, but a second way to hide | §8.3 |
 | 24 | Comments on a timing view (raised by 6.5) | Left out, as built: row 14 lists none, and the view lays out lanes only | Add them: a row of notes under the ruler and their links drawn straight to a lane or a change (a placement of their own, its tests and fixtures) | §8.2 |
+| 25 | How the hint line and L's typed search name a change (raised by 6.5) | By its id, as built: the canvas's `nameOf` reads the model's elements, and a change is none; no core bytes | The canvas's `nameOf` falls back to the geometry node's label, so a change reads "Waiting for payment @ 100" and L finds it by its state: kinder, but a core change (bytes from stage 6's share) touching every typed view's names | §8.2 |
 
 The maintainer's question of 13 Nov 2026, whether stages 5 and 6 can run in parallel, is decision 19: yes, for everything
 but stage 6's documents, examples and atlas (6.6, 6.7), which wait for 5.8 because they own the same files

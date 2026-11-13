@@ -114,7 +114,7 @@ test('names (A1), reading order (lanes, each with its rows and changes in time, 
   assert.equal(aria('m-charge'), 'Call charge(total) from worker at 100 ms to payments at 140 ms');
   assert.equal(aria('c-wait'), 'Duration constraint {<= 800 ms} on worker from 100 ms to 760 ms');
   assert.equal(aria('c-finished'), 'Time constraint {<= 1000 ms} on worker at 900 ms');
-  assert.equal(aria(TM_RULER), 'Time ruler, 0 to 1000 ms, a tick every 200 ms');
+  assert.equal(aria(TM_RULER), 'Time ruler, 0 to 900 ms, a tick every 200 ms');
   assert.equal(aria(tmRowId('payments', 'Capturing')), 'State Capturing of payments');
   assert.deepEqual(g.order, ['worker', ...['Idle', 'Waiting for payment', 'Recording payment'].map(s => tmRowId('worker', s)), 'w-idle', 'w-waiting', 'w-recording', 'w-done',
     'payments', ...['Idle', 'Authorising', 'Capturing'].map(s => tmRowId('payments', s)), 'p-idle', 'p-authorising', 'p-capturing', 'p-done', 'm-charge', 'm-paid', 'c-wait', 'c-finished', TM_RULER]);
@@ -151,7 +151,7 @@ test('validators: the example breaks no rule; each rule fails on a model that br
   bad(m => { ch(m, 'w-done').at = 760; }, [['warning', 'change-instant', ['w-recording', 'w-done']]]);
   bad(m => { msg(m, 'm-charge').to = 'nobody'; }, [['error', 'message-ends', ['m-charge', 'nobody']], ['error', 'reply-call', ['m-paid', 'm-charge']]]);
   bad(m => { msg(m, 'm-paid').props.receivedAt = 700; }, [['error', 'message-times', ['m-paid']]]);
-  bad(m => { msg(m, 'm-charge').props.sort = 'create'; }, [['warning', 'sort', ['m-charge']], ['error', 'reply-call', ['m-paid', 'm-charge']]]);
+  bad(m => { msg(m, 'm-charge').props.sort = 'create'; }, [['warning', 'sort', ['m-charge']]]); // drawn as a call, so m-paid still answers a call
   bad(m => { msg(m, 'm-paid').props.replyTo = 'nothing'; }, [['error', 'reply-call', ['m-paid']]]);
   bad(m => { TL(m).constraints[0].to = 'ghost'; }, [['error', 'constraint-ends', ['c-wait']]]);
   bad(m => { TL(m).constraints[1].to = 'w-idle'; }, [['error', 'constraint-ends', ['c-finished']]]);
@@ -204,7 +204,7 @@ test('rename (F2): a change, a message, a constraint, a lifeline with `name : Ty
   n = run(m, tmRename(m, V0, TM_RULER, '')); assert.ok(!('unit' in TL(n)));
 });
 
-test('add: a lifeline; a change a minor tick after the one selected, on a selected lifeline at the ruler\'s start (a new state added, said), at a slot; a time constraint; each new id unused', () => {
+test('add: a lifeline; a change a minor tick after the one selected, on a selected lifeline at the first free minor tick from the ruler\'s start (a new state added, said), at a slot; a time constraint; each new id unused', () => {
   const m = EX(), V0 = V(m);
   let n = run(m, tmAdd(m, V0, ENTRY('uml.Lifeline'), 'bank : Bank', null));
   assert.deepEqual([n.nodes[2], V(n).nodeIds.at(-1)], [{ id: 'bank1', type: 'uml.Lifeline', label: 'bank', props: { represents: 'Bank' } }, 'bank1']);
@@ -212,7 +212,7 @@ test('add: a lifeline; a change a minor tick after the one selected, on a select
   assert.deepEqual(TL(n).changes.at(-1), { id: 'change1', lifeline: 'worker', at: 120, state: 'Recording payment' }, 'the next minor tick (a fifth of 200) after 100');
   const r = tmAdd(m, V0, ENTRY('uml.StateInvariant'), 'Retrying', { sel: ['payments'] });
   assert.match(r.say, /added state Retrying to payments/); n = run(m, r);
-  assert.deepEqual([TL(n).changes.at(-1).at, TL(n).changes.at(-1).lifeline, n.nodes[1].props.states.at(-1)], [0, 'payments', 'Retrying']);
+  assert.deepEqual([TL(n).changes.at(-1).at, TL(n).changes.at(-1).lifeline, n.nodes[1].props.states.at(-1)], [40, 'payments', 'Retrying']); // p-idle holds 0: the first free minor tick
   n = run(m, tmAdd(m, V0, ENTRY('uml.StateInvariant'), 'Idle', { parent: 'worker', t: 960, index: 4, sel: [] }));
   assert.deepEqual(TL(n).changes.at(-1), { id: 'change1', lifeline: 'worker', at: 960, state: 'Idle' });
   assert.ok(tmAdd(m, V0, ENTRY('uml.StateInvariant'), 'Idle', { sel: [] }).error && tmAdd(m, V0, ENTRY('uml.StateInvariant'), '', { sel: ['worker'] }).error);
@@ -271,10 +271,53 @@ test('remove (S17): a change, a message or a constraint is deleted, said; Delete
   assert.equal(r.say, 'Hid worker; deleted its 2 messages; its changes stay in the timeline');
   let n = run(m, r);
   assert.deepEqual([V(n).nodeIds, V(n).edges, TL(n)], [['payments'], [], TL(m)]);
-  r = tmRemove(m, V0, ['worker'], true); assert.equal(r.say, 'Deleted worker, 4 changes and 2 messages');
+  r = tmRemove(m, V0, ['worker'], true); assert.equal(r.say, 'Deleted worker, 4 changes, 2 messages and 2 constraints');
   n = run(m, r);
   assert.deepEqual([TL(n).changes.map(c => c.lifeline), TL(n).constraints], [Array(4).fill('payments'), []]);
   assert.ok(tmRemove(m, V0, [tmRowId('worker', 'Idle')], false).error && tmRemove(m, V0, [TM_RULER], true).error);
+});
+
+test('the review of 6.5: a change never lands unseen on another\'s instant; an unlisted state\'s row is the lowest; a state listed twice is one row; a reply to a call with no sort; lanes are lifelines only; the hint line counts the cascade; rows as drawn; decimal times; name : Type read one way; the ruler named by its times', () => {
+  const m = EX(), V0 = V(m);
+  // a change added on a lifeline goes at the first free minor tick from the ruler's start (p-idle holds 0)
+  let n = run(m, tmAdd(m, V0, ENTRY('uml.StateInvariant'), 'Capturing', { sel: ['payments'] }));
+  assert.deepEqual(TL(n).changes.at(-1), { id: 'change1', lifeline: 'payments', at: 40, state: 'Capturing' });
+  assert.ok(layout(n, 'charge').byId.change1, 'drawn'); assert.deepEqual(rules(n), []);
+  // dropped, stepped or typed onto another change's instant: refused, said
+  for (const r of [tmMoveTo(m, V0, 'w-waiting', { t: 0 }), tmRename(m, V0, 'w-waiting', 'Waiting for payment @ 760')]) assert.match(r.error, /^change-instant/);
+  // Alt + Up/Down on a change in an unlisted state: its row is below the listed ones
+  const u = apply(EX(), [{ op: 'set', id: 'w-waiting', path: 'state', value: 'Zzz' }]);
+  assert.deepEqual(tmMoveTo(u, V(u), 'w-waiting', { by: [0, 1] }), []);
+  assert.equal(ch(run(u, tmMoveTo(u, V(u), 'w-waiting', { by: [0, -1] })), 'w-waiting').state, 'Recording payment');
+  // a message: Alt + Up/Down is used up
+  assert.deepEqual(tmMoveTo(m, V0, 'm-charge', { by: [0, 1] }), []);
+  // a state listed twice is one row
+  const d = apply(EX(), [{ op: 'set', id: 'worker', path: 'props.states', value: ['Idle', 'Idle', 'Waiting for payment', 'Recording payment'] }]);
+  const ids = layout(d, 'charge').nodes.map(x => x.id); assert.equal(ids.length, new Set(ids).size);
+  // a reply connected to a call with no sort (drawn as a call) is accepted
+  const ns = EX(); delete msg(ns, 'm-charge').props.sort;
+  const rp = cmdsOf(tmConnect(ns, V(ns), 'payments', 'worker', { t: 800 }, { type: 'uml.Message', props: { sort: 'reply' } }));
+  assert.ok(Array.isArray(rp), JSON.stringify(rp)); assert.equal(rp[0].element.props.replyTo, 'm-charge');
+  // a node that is no lifeline in nodeIds is no lane
+  const cm = EX(); cm.nodes.push({ id: 'note', type: 'uml.Comment', label: 'note' }); V(cm).nodeIds.push('note');
+  assert.ok(!layout(cm, 'charge').byId.note);
+  // the hint line counts what the cascade takes
+  assert.equal(tmRemove(m, V0, ['m-charge'], false).say, 'Deleted 2 messages: a change, a message or a constraint is deleted, not hidden');
+  assert.equal(tmRemove(m, V0, ['w-waiting'], false).say, 'Deleted 1 change and 1 constraint: a change, a message or a constraint is deleted, not hidden');
+  assert.equal(tmRemove(m, V0, ['worker', 'p-idle'], false).say, 'Hid worker; deleted its 2 messages, and 1 change; its changes stay in the timeline');
+  // the PDF's rows leave out a constraint on a hidden lifeline's change, as describe() does
+  const hc = EX(); TL(hc).constraints.push({ id: 'x', type: 'uml.DurationConstraint', from: 'w-waiting', to: 'p-capturing' });
+  const hh = apply(hc, { op: 'hide', id: 'payments', view: 'charge' });
+  assert.ok(!TM_TYPE.rows(hh, V(hh), 'worker').some(t => /payments/.test(t)));
+  // times are decimal numbers
+  for (const t of ['a @ 0x10', 'a @ 0b11', 'a @ 0o7', 'a @ Infinity']) assert.deepEqual(tmParse(t).times, [], t);
+  assert.deepEqual(tmParse('a @ -.5e2').times, [-50]);
+  // name : Type: add and F2 read `a : B : C` the same
+  assert.equal(cmdsOf(tmAdd(m, V0, ENTRY('uml.Lifeline'), 'a : B : C', {}))[0].element.props.represents, 'B:C');
+  assert.equal(cmdsOf(tmRename(m, V0, 'worker', 'a : B : C'))[1].value, 'B:C');
+  // the ruler is named by the span of the times, not the room after
+  const late = apply(EX(), [{ op: 'set', id: 'w-done', path: 'at', value: 913 }]);
+  assert.match(layout(late, 'charge').byId[TM_RULER].aria, /^Time ruler, 0 to 913 ms/);
 });
 
 test('key: S on a lifeline turns its values form on and off; any other key, or S on what is not a lifeline, is the canvas\'s', () => {

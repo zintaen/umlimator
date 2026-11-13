@@ -29,7 +29,8 @@ const tmView = (model, view) => (TM_OBJ(view) ? view : TM_ARR(model && model.vie
 const tmProps = x => (TM_OBJ(x && x.props) ? x.props : {});
 const tmName = n => String(n.label ?? n.id);
 const tmHead = n => tmName(n) + (TM_HAS(tmProps(n).represents) ? ' : ' + tmProps(n).represents : ''); // "worker : OrderWorker"
-const tmStates = n => TM_ARR(tmProps(n).states).filter(TM_HAS).map(String);
+const tmStates = n => [...new Set(TM_ARR(tmProps(n).states).filter(TM_HAS).map(String))]; // a state listed twice is one row
+const tmNameType = s => { const [name, ...rest] = s.split(/\s*:\s*/); return [name, rest.join(':').trim()]; }; // `a : B : C` is a, represents B:C
 const tmLabel = x => (TM_HAS(x.label) ? String(x.label) : '');
 const tmPlural = (k, w) => `${k} ${k === 1 ? w : w + 's'}`;
 
@@ -39,7 +40,7 @@ function tmIndex(model, V) {
   const N = new Map(); [...TM_ARR(V.nodes), ...TM_ARR(model && model.nodes)].forEach(n => { if (TM_OBJ(n) && typeof n.id === 'string' && !N.has(n.id)) N.set(n.id, n); });
   const TL = TM_OBJ(V.timeline) ? V.timeline : {}, item = x => TM_OBJ(x) && typeof x.id === 'string';
   const changes = TM_ARR(TL.changes).filter(item), cons = TM_ARR(TL.constraints).filter(item), msgs = TM_ARR(V.edges).filter(e => item(e) && e.type === 'uml.Message');
-  const heads = TM_ARR(V.nodeIds).filter(id => N.has(id)).map(id => N.get(id)), P = TM_OBJ(V.present) ? V.present : {};
+  const heads = TM_ARR(V.nodeIds).filter(id => N.has(id) && N.get(id).type === 'uml.Lifeline').map(id => N.get(id)), P = TM_OBJ(V.present) ? V.present : {};
   const unit = TM_HAS(TL.unit) ? String(TL.unit) : null, t = x => `${x}${unit ? ' ' + unit : ''}`;
   const name = id => (N.has(id) ? tmName(N.get(id)) : String(id)), C = new Map(changes.map(c => [c.id, c]));
   const H = new Map(heads.map(n => [n.id, n])), hid = id => C.has(id) && !H.has(C.get(id).lifeline); // a change of a hidden lifeline
@@ -62,7 +63,7 @@ const tmConSaid = (X, c) => { const a = X.C.get(c.from), b = X.C.get(c.to), t = 
 function tmParse(text) {
   const s = String(text ?? '').trim(), m = /^(.*?)\s*@\s*([^@]*)$/.exec(s);
   const ts = m ? m[2].split(/\s*(?:→|->)\s*/).map(x => x.trim()) : [];
-  if (!m || ts.length > 2 || ts.some(x => x === '' || !Number.isFinite(Number(x)))) return { text: s, times: [] };
+  if (!m || ts.length > 2 || ts.some(x => !/^[-+]?(?:\d+\.?\d*|\.\d+)(?:e[-+]?\d+)?$/i.test(x) || !Number.isFinite(Number(x)))) return { text: s, times: [] };
   return { text: m[1].trim(), times: ts.map(Number) };
 }
 const tmPrint = (text, ...times) => `${text ?? ''}${times.length ? ' @ ' + times.join(' → ') : ''}`;
@@ -99,10 +100,11 @@ function tmRun(model, view) {
   const byCon = new Map(X.cons.map(c => [c.id, c]));
   o.marks.forEach(mk => { const c = byCon.get(mk.id), b = mk.lbl.w ? mk.lbl : { x: mk.pts[1][0] - 6, y: mk.pts[1][1] - 6, w: 12, h: 12 }; // a label-less one: round its line's middle
     nodes.push({ id: c.id, shape: 'tm-mark', kind: mk.kind, pts: mk.pts, lbl: mk.lbl, label: tmLabel(c), k: 'file', x: b.x, y: b.y, w: b.w, h: b.h, aria: tmConSaid(X, c) }); });
-  const R = o.ruler, rw = Math.max(R.x1 - x0, 1), s = o.scale;
+  const R = o.ruler, rw = Math.max(R.x1 - x0, 1), s = o.scale, M = new Map(X.msgs.map(m => [m.id, m]));
+  const last = [...o.changes.map(h => X.C.get(h.id).at), ...o.lines.flatMap(l => [tmProps(M.get(l.id)).sentAt, tmProps(M.get(l.id)).receivedAt])].reduce((a, t) => (tmNum(t) && t > a ? t : a), s.t0); // the span of the times, not the room after
   nodes.push({ id: TM_RULER, shape: 'tm-ruler', label: X.unit ?? '', k: 'file', x: x0, y: R.y, w: rw, h: TR.ruler, ticks: R.ticks, unit: R.unit,
-    aria: `Time ruler, ${s.t0} to ${X.t(s.t1)}, a tick every ${X.t(s.step)}` });
-  const byId = Object.fromEntries(nodes.map(n => [n.id, n])), M = new Map(X.msgs.map(m => [m.id, m]));
+    aria: `Time ruler, ${s.t0} to ${X.t(last)}, a tick every ${X.t(s.step)}` });
+  const byId = Object.fromEntries(nodes.map(n => [n.id, n]));
   const edges = o.lines.map(l => { const m = M.get(l.id), p = tmProps(m), t = tmLabel(m), sort = tmSort(m);
     return { id: m.id, _id: m.id, type: 'uml.Message', from: m.from, to: m.to, s: byId[m.from], t: byId[m.to], pts: l.pts, end: TM_END[sort], sort,
       label: tmPrint(t, p.sentAt, p.receivedAt), ...(t ? { lbl: { ...l.lbl, text: t } } : {}), aria: tmMsgSaid(X, m) }; });
@@ -188,7 +190,7 @@ function tmProblems(model, view) {
     else if (p.receivedAt < p.sentAt) say('message-times', ePath(m) + '.props.receivedAt', [m.id], `${m.id} is received at ${X.t(p.receivedAt)}, before it is sent at ${X.t(p.sentAt)}`);
     if (!TM_SORTS.includes(p.sort)) say('sort', ePath(m) + '.props.sort', [m.id], `${m.id} has ${p.sort === undefined ? 'no sort' : `sort ${JSON.stringify(p.sort)}`}, not one of ${TM_SORTS.join(', ')}: it is drawn as a call`, 'warning');
     else if (p.sort === 'reply') { const c = X.msgs.find(x => x.id === p.replyTo);
-      if (!c || tmProps(c).sort !== 'call' || c.from !== m.to || c.to !== m.from || !(tmProps(c).sentAt <= p.sentAt)) say('reply-call', ePath(m) + '.props.replyTo', [m.id, c && c.id], `${m.id} answers ${JSON.stringify(p.replyTo)}, which is not a call of this view from ${m.to} to ${m.from} sent no later`); } });
+      if (!c || tmSort(c) !== 'call' || c.from !== m.to || c.to !== m.from || !(tmProps(c).sentAt <= p.sentAt)) say('reply-call', ePath(m) + '.props.replyTo', [m.id, c && c.id], `${m.id} answers ${JSON.stringify(p.replyTo)}, which is not a call of this view from ${m.to} to ${m.from} sent no later`); } });
   X.cons.forEach(c => { const kind = TM_KIND[c.type], a = X.C.get(c.from), b = X.C.get(c.to);
     if (kind === 'time' ? !a || c.to != null : !a || !b) return say('constraint-ends', kPath(c), [c.id], kind === 'time' ? `time constraint ${c.id} needs a change of the view in from, and no to` : kind ? `duration constraint ${c.id} needs two changes of the view in from and to` : `${c.id} is a ${JSON.stringify(c.type)}, not a duration or time constraint`);
     if (kind === 'duration' && tmNum(a.at) && tmNum(b.at) && b.at < a.at) say('constraint-order', kPath(c) + '.to', [c.id, c.from, c.to], `${c.id} runs from ${X.t(a.at)} back to ${X.t(b.at)}`, 'warning'); });
@@ -212,23 +214,23 @@ function tmRows(model, view, id) {
   const mine = X.mine(id), ids = new Set(mine.map(c => c.id));
   return [...mine.map(c => `${X.t(c.at)}: ${c.state ?? ''}`),
     ...X.msgs.filter(m => m.from === id).map(m => { const p = tmProps(m); return `${tmLabel(m) || tmSort(m)} to ${X.name(m.to)} at ${X.t(p.sentAt)} → ${X.t(p.receivedAt)}`; }),
-    ...X.cons.filter(c => ids.has(c.from) || ids.has(c.to)).map(c => tmConSaid(X, c))];
+    ...X.shown.filter(c => ids.has(c.from) || ids.has(c.to)).map(c => tmConSaid(X, c))];
 }
 
 /* ---- the gesture hooks (§8.1). Each takes the model and the view (or its id) and returns the commands of one transaction,
    { commands, say }, null to leave the gesture to the canvas's default, or { error } for the hint line. A transaction that
-   would add an error the model did not have is never returned: { error } names the rule ---- */
+   would add an error the model did not have, or a change on another's instant, is never returned: { error } names the rule ---- */
 function tmNewId(model, base) { // the base and the first number free in the model, time items and members included
   const used = new Set(); JSON.stringify(model, (k, v) => { if (k === 'id' && typeof v === 'string') used.add(v); return v; });
   const b = String(base).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'el'; let k = 1; while (used.has(b + k)) k++; return b + k;
 }
 const tmErr = error => ({ error });
-const tmKeyOf = p => `${p.rule}|${[...p.ids].sort().join()}`;
+const tmKeyOf = p => `${p.rule}|${[...p.ids].sort().join()}`, tmBad = p => p.level === 'error' || p.rule === 'change-instant'; // a change put on another's instant would not be drawn
 function tmGuard(model, V, commands) {
   if (!Array.isArray(commands) || !commands.length) return commands;
   let next; try { next = apply(model, commands); } catch (x) { return tmErr(String(x && x.message || x)); }
-  const was = new Set(tmProblems(model, V).filter(p => p.level === 'error').map(tmKeyOf));
-  const bad = tmProblems(next, tmView(next, V.id)).find(p => p.level === 'error' && !was.has(tmKeyOf(p)));
+  const was = new Set(tmProblems(model, V).filter(tmBad).map(tmKeyOf));
+  const bad = tmProblems(next, tmView(next, V.id)).find(p => tmBad(p) && !was.has(tmKeyOf(p)));
   return bad ? tmErr(bad.message) : commands;
 }
 // a new time item, by set of the whole list (the core's add would put it in nodes or edges, §8.1), its id unused in the model
@@ -250,12 +252,13 @@ const tmSaid = (r, say) => (Array.isArray(r) && say ? { commands: r, say } : r);
 
 /* add(model, view, entry, label, at): a lifeline (name, or `name : Type`) at the end of nodeIds; a change (its state or
    value typed) after the change selected, a minor tick on, else on the lifeline selected at the ruler's start, else at the
-   slot `at` (its lane and t); a time constraint on the change selected */
+   slot `at` (its lane and t), moved on a minor tick at a time past its lifeline's changes; a time constraint on the change
+   selected */
 function tmAdd(model, view, entry, label, at) {
   const V = tmView(model, view), type = TM_OBJ(entry) ? entry.type : null; if (!V) return null;
   const X = tmIndex(model, V), text = String(label ?? '').trim(), sel = TM_ARR(TM_OBJ(at) && at.sel);
   const change = [...sel].reverse().map(id => X.C.get(id)).find(Boolean), lane = [...sel].reverse().find(id => X.H.has(id));
-  if (type === 'uml.Lifeline') { const [name, rep] = text.split(/\s*:\s*/, 2);
+  if (type === 'uml.Lifeline') { const [name, rep] = tmNameType(text);
     const element = { id: tmNewId(model, name || 'lifeline'), type, ...(name ? { label: name } : {}), ...(TM_HAS(rep) ? { props: { represents: rep } } : {}) };
     return tmGuard(model, V, [{ op: 'add', element, view: V.id }]); }
   if (type === 'uml.StateInvariant') {
@@ -263,6 +266,7 @@ function tmAdd(model, view, entry, label, at) {
     const minor = tmMinor(model, V), where = change && X.H.has(change.lifeline) ? { lane: change.lifeline, t: tmSnap(change.at, minor, 1) }
       : lane ? { lane, t: layoutTimeRuler(tmInput(model, V, X)).scale.t0 } : TM_OBJ(at) && X.H.has(at.parent) && Number.isFinite(at.t) ? { lane: at.parent, t: at.t } : null;
     if (!where) return tmErr('select a lifeline or a change first');
+    const taken = new Set(X.changes.filter(c => c.lifeline === where.lane).map(c => c.at)); while (taken.has(where.t)) where.t = tmSnap(where.t, minor, 1); // the first free minor tick
     const s = tmState(X, where.lane, text), put = tmPut(model, V, 'changes', { id: tmNewId(model, 'change'), lifeline: where.lane, at: where.t, state: text }); if (put.error) return put;
     return tmSaid(tmGuard(model, V, [...s.cmds, put]), s.said && `Added the change; ${s.said}`); }
   if (type === 'uml.TimeConstraint') {
@@ -301,10 +305,11 @@ function tmMoveTo(model, view, id, at) {
     return j < 0 || j >= ids.length ? [] : [{ op: 'move', id, view: V.id, index: j }]; }
   if (c) {
     if (by && by[1] && !by[0]) { const n = X.N.get(c.lifeline); if (!n || X.values(c.lifeline)) return [];
-      const ss = tmStates(n), k = ss.indexOf(String(c.state)) + Math.sign(by[1]); return k < 0 || k >= ss.length ? [] : tmGuard(model, V, [{ op: 'set', id, path: 'state', value: ss[k] }]); }
+      const ss = tmStates(n), i = ss.indexOf(String(c.state)), k = (i < 0 ? ss.length : i) + Math.sign(by[1]); // an unlisted state: the extra row below
+      return k < 0 || k >= ss.length ? [] : tmGuard(model, V, [{ op: 'set', id, path: 'state', value: ss[k] }]); }
     const t = by ? (by[0] ? tmSnap(c.at, tmMinor(model, V), by[0]) : null) : Number.isFinite(at.t) ? at.t : null;
     return t == null ? null : t === c.at ? [] : tmGuard(model, V, [{ op: 'set', id, path: 'at', value: t }]); }
-  if (m) { const p = tmProps(m), d = by ? (by[0] && !by[1] ? Math.sign(by[0]) * tmMinor(model, V) : null) : Number.isFinite(at.t) ? at.t - p.sentAt : null;
+  if (m) { const p = tmProps(m), d = by ? (by[0] && !by[1] ? Math.sign(by[0]) * tmMinor(model, V) : 0) : Number.isFinite(at.t) ? at.t - p.sentAt : null;
     if (d == null) return null; if (!d) return [];
     const nice = x => Number((x + d).toPrecision(12));
     return tmGuard(model, V, [{ op: 'set', id, path: 'props.sentAt', value: nice(p.sentAt) }, { op: 'set', id, path: 'props.receivedAt', value: nice(p.receivedAt) }]); }
@@ -326,7 +331,7 @@ function tmRename(model, view, id, text) {
   if (m) { const r = tmParse(s), [t1, t2] = r.times.length === 1 ? [r.times[0], r.times[0]] : r.times;
     return tmGuard(model, V, [{ op: 'set', id, path: 'label', value: r.text || undefined }, ...(r.times.length ? [{ op: 'set', id, path: 'props.sentAt', value: t1 }, { op: 'set', id, path: 'props.receivedAt', value: t2 }] : [])]); }
   if (X.cons.some(k => k.id === id)) return [{ op: 'set', id, path: 'label', value: s || undefined }];
-  if (X.H.has(id)) { const [name, ...rest] = s.split(/\s*:\s*/), rep = rest.join(':').trim();
+  if (X.H.has(id)) { const [name, rep] = tmNameType(s);
     if (!name) return tmErr('a lifeline needs a name');
     return [{ op: 'set', id, path: 'label', value: name }, ...(s.includes(':') ? [{ op: 'set', id, path: 'props.represents', value: rep || undefined }] : [])]; }
   const k = String(id).indexOf('->'), lane = k > 0 ? String(id).slice(0, k) : null, was = k > 0 ? String(id).slice(k + 2) : null;
@@ -343,18 +348,23 @@ function tmRename(model, view, id, text) {
    the ruler is not deleted on its own */
 function tmRemove(model, view, ids, fromModel) {
   const V = tmView(model, view); if (!V) return null;
-  const X = tmIndex(model, V), out = [], gone = { lane: [], item: 0 };
+  const X = tmIndex(model, V), out = [], gone = { lane: [] };
   for (const id of new Set(TM_ARR(ids))) {
     if (id === TM_RULER || String(id).includes('->')) return tmErr('a state\'s row and the ruler go with their lifeline or view: rename a state with F2, or edit the lifeline\'s states');
     if (X.H.has(id)) { gone.lane.push(id); out.push(fromModel || TM_ARR(V.nodes).some(n => TM_OBJ(n) && n.id === id) ? { op: 'delete', id } : { op: 'hide', id, view: V.id }); continue; }
-    if (X.C.has(id) || X.msgs.some(m => m.id === id) || X.cons.some(c => c.id === id)) { gone.item++; out.push({ op: 'delete', id }); continue; }
+    if (X.C.has(id) || X.msgs.some(m => m.id === id) || X.cons.some(c => c.id === id)) { out.push({ op: 'delete', id }); continue; }
     return null;
   }
   const r = tmGuard(model, V, out); if (!Array.isArray(r) || !r.length) return r;
-  const lanes = new Set(gone.lane), n = X.msgs.filter(m => lanes.has(m.from) || lanes.has(m.to)).length, k = X.changes.filter(c => lanes.has(c.lifeline)).length;
-  const who = gone.lane.map(X.name).join(', '), one = gone.lane.length === 1, msgs = n ? tmPlural(n, 'message') : 'no message';
-  const say = gone.lane.length ? (fromModel ? `Deleted ${who}, ${tmPlural(k, 'change')} and ${msgs}` : `Hid ${who}; deleted ${one ? 'its' : 'their'} ${msgs}; ${one ? 'its' : 'their'} ${k === 1 ? 'change stays' : 'changes stay'} in the timeline`)
-    : `Deleted ${tmPlural(gone.item, 'item')}: a change, a message or a constraint is deleted, not hidden`;
+  // what goes, read off the model after: the core's cascade takes a call's reply and a change's constraints too
+  const next = apply(model, r), Y = tmIndex(next, tmView(next, V.id)), left = new Set([...Y.changes, ...Y.msgs, ...Y.cons].map(x => x.id));
+  const lanes = new Set(gone.lane), theirs = new Set(X.msgs.filter(m => lanes.has(m.from) || lanes.has(m.to)).map(m => m.id)), n = theirs.size;
+  const k = X.changes.filter(c => lanes.has(c.lifeline) && left.has(c.id)).length;
+  const list = (skip = new Set()) => [[X.changes, 'change'], [X.msgs, 'message'], [X.cons, 'constraint']].map(([xs, w]) => [xs.filter(x => !left.has(x.id) && !skip.has(x.id)).length, w])
+    .filter(([c]) => c).map(([c, w]) => tmPlural(c, w)).join(', ').replace(/, ([^,]*)$/, ' and $1'); // "1 change, 2 messages and 1 constraint"
+  const who = gone.lane.map(X.name).join(', '), one = gone.lane.length === 1, msgs = n ? tmPlural(n, 'message') : 'no message', more = list(theirs), all = list();
+  const say = gone.lane.length ? (fromModel ? `Deleted ${who}${all ? ', ' + all : ''}` : `Hid ${who}; deleted ${one ? 'its' : 'their'} ${msgs}${more ? `, and ${more}` : ''}; ${one ? 'its' : 'their'} ${k === 1 ? 'change stays' : 'changes stay'} in the timeline`)
+    : `Deleted ${all}: a change, a message or a constraint is deleted, not hidden`;
   return { commands: r, say };
 }
 

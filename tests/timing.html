@@ -74,7 +74,7 @@ try {
     check(`${tag}: names a screen reader reads`, pick('.node[data-id="w-waiting"]').getAttribute('aria-label') === 'worker: Waiting for payment from 100 ms'
       && pick('.edge-g[data-i="0"] title').textContent === 'Call charge(total) from worker at 100 ms to payments at 140 ms'
       && pick('.node[data-id="c-wait"]').getAttribute('aria-label') === 'Duration constraint {<= 800 ms} on worker from 100 ms to 760 ms'
-      && pick('.node[data-id="->ruler"]').getAttribute('aria-label') === 'Time ruler, 0 to 1000 ms, a tick every 200 ms', pick('.node[data-id="->ruler"]').getAttribute('aria-label'));
+      && pick('.node[data-id="->ruler"]').getAttribute('aria-label') === 'Time ruler, 0 to 900 ms, a tick every 200 ms', pick('.node[data-id="->ruler"]').getAttribute('aria-label'));
     const order = all('.keys .um-key').map(k => k.dataset.node ?? k.dataset.i);
     check(`${tag}: reading order: each lane, its rows, its changes in time; messages; constraints; the ruler`, same(order, [...ORDER.filter(id => form === 'states' || !id.startsWith('payments->')), '0', '1', 'c-wait', 'c-finished', '->ruler']), order);
     const legend = all('.m-legend b').map(b => b.textContent);
@@ -98,8 +98,8 @@ try {
   gives('the palette\'s Change with a change selected: a minor tick after it, by set of the timeline', [{ op: 'set', view: 'charge', path: ['timeline', 'changes'], value: plus(changes, { id: 'change1', lifeline: 'worker', at: 120, state: 'Recording payment' }) }],
     m => m.views[0].timeline.changes.length === 9, BASE);
   click('.node[data-id="payments"] .c-name'); all('.um-editor .um-pal button')[1].click(); name('Retrying');
-  gives('the palette\'s Change on a lifeline: at the ruler\'s start, a new state added', [{ op: 'set', id: 'payments', path: 'props.states', value: ['Idle', 'Authorising', 'Capturing', 'Retrying'] },
-    { op: 'set', view: 'charge', path: ['timeline', 'changes'], value: plus(changes, { id: 'change1', lifeline: 'payments', at: 0, state: 'Retrying' }) }], m => m.nodes[1].props.states.length === 4, BASE);
+  gives('the palette\'s Change on a lifeline: at the first free minor tick from the ruler\'s start (p-idle holds 0), a new state added', [{ op: 'set', id: 'payments', path: 'props.states', value: ['Idle', 'Authorising', 'Capturing', 'Retrying'] },
+    { op: 'set', view: 'charge', path: ['timeline', 'changes'], value: plus(changes, { id: 'change1', lifeline: 'payments', at: 40, state: 'Retrying' }) }], m => m.nodes[1].props.states.length === 4, BASE);
   check('… and the hint line says the state was added', /added state Retrying to payments/.test(sr.textContent));
   click('.node[data-id="w-done"] rect'); all('.um-editor .um-pal button')[2].click(); name('{t <= 950 ms}');
   gives('the palette\'s Time constraint on the change selected', [{ op: 'set', view: 'charge', path: ['timeline', 'constraints'], value: [...BASE.views[0].timeline.constraints, { id: 'time1', type: 'uml.TimeConstraint', from: 'w-done', label: '{t <= 950 ms}' }] }],
