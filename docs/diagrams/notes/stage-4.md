@@ -1144,7 +1144,7 @@ Where 4.10 departs from row 4.10 and from §15 to §17:
   the crossings that port repair off leaves (§9.5, §10.4), so for those two files the loop asks that every finding is a
   crossing and counts them over both passes (each view, then each stacked card unfolded): 4 for `fulfil-activity`
   (2 on the plain pass, 2 more unfolded) and 2 for `order-states`. `tests/cli.py` pins the plain pass's 2 each. A new
-  crossing fails CI. `.github/workflows/check.yml` is outside row 4.10's Owns: decision 19 (§20). The options:
+  crossing fails CI. `.github/workflows/check.yml` is outside row 4.10's Owns: decision 19 (§20).
   Decision 19 (§20), taken: the first option, the maintainer's decision of 13 Nov 2026; the options were:
   - *Accept the edit as it is* (recommended): CI checks the examples as drawn, and a change in their crossings fails it;
     the cost is a per-file count in the workflow to update when a layout change moves them.
