@@ -686,6 +686,9 @@ Where `src/uml/state.js` departs from §6, §10 and §17:
   first and saying so; any other row goes to the panel as before. A member hook that may return commands, in
   `src/canvas/edit.js`, would take its place; `member.add` refuses such a row on its own. **The maintainer's decision
   (13 Nov 2026):** the wrap is kept for 0.21.0; a proper member hook comes with stage 5.
+  As built in stage 5 (5.2, [`notes/stage-5.md`](stage-5.md) §12.1): the wrap is gone; `edits.member` in
+  `src/typed/edit.js` reads these rows, before the panel, with the same behaviour (`tests/state.test.mjs` and
+  `tests/state-machine.html` pass unchanged); the state type's `member` is a non-enumerable property.
 - **Slots.** The geometry gives a slot on each node and box, `{ after, parent: null, x, y }`: `src/typed/edit.js` passes
   the `add` hook an `at` holding `sel` only where the geometry has slots, and the Region entry reads the state selected
   there. No default gesture of this type reads a slot.
