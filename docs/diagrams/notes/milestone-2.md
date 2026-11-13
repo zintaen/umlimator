@@ -666,6 +666,16 @@ each ref as an `er.Relationship` from its `1` end to its `*` end (`1` to `0..*`,
 `references` on the referring columns, identifying when they lie in the child's key. Enums, notes, table groups, other
 indexes, defaults and several schemas' names reported.
 
+As built (M2.11), where the build is more exact than the paragraph above: a column is `nullable` when it is neither
+`not null` nor a key, as SQL has it, and a relationship's parent end is `0..1` when a referring column is nullable (an
+optional parent, as `20-entity-relationship.json`'s self-reference), else `1`; a one-to-one (`-`, both ends `1`) takes its
+second end as the referenced one, as `>` writes it; a many-to-many (`<>`) is one relationship `0..*` to `0..*` with no
+foreign key, reported as approximated. A parsed object keeps no line numbers, so a report item's `line` is its path in
+the Database (`schemas[0].tables[2].fields[1]`), as the CLI names a JSON source's items. The adapter reads a `Database`
+or its `export()` (the same fields); `tests/import/dbml.json` holds `@dbml/core` 11.0.0's
+`Parser.parse(dbml, 'dbmlv2').export()` and the text. DBML nests nothing the adapter follows (schemas, tables, fields at
+a fixed depth), so §8's 64-deep limit has nothing to cut: a deep or circular object is walked once.
+
 | Option | For | Against |
 |---|---|---|
 | **(a) The adapter reads `@dbml/core`'s parsed `Database` and imports nothing; a host parses with `@dbml/core`, which it installs; `umlimator.py import x.dbml` runs it through Node when `@dbml/core` resolves there, else says how to install it (recommended)** | No dependency or peer in `package.json` (D8); in `lib/umlimator-all.js` like any reader; tested against a `Database` captured once from a pinned `@dbml/core` into `tests/import/` | A host calls two functions, not one; the captured fixture must be renewed when `@dbml/core` changes its model |
