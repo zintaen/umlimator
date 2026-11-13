@@ -5,6 +5,10 @@
   "root": "domain",
   "nodes": [
     { "id": "sales", "type": "uml.Package", "label": "sales" },
+    { "id": "shared", "type": "uml.Package", "label": "shared" },
+    { "id": "catalog", "type": "uml.Package", "label": "catalog" },
+    { "id": "payments-package", "type": "uml.Package", "label": "payments" },
+    { "id": "card", "type": "uml.Package", "label": "card", "parent": "payments-package" },
     { "id": "customer", "type": "uml.Class", "label": "Customer", "parent": "sales",
       "members": [
         { "id": "customer.email", "type": "uml.Property", "label": "email", "props": { "visibility": "private", "valueType": "String" } },
@@ -28,23 +32,23 @@
         { "id": "line.quantity", "type": "uml.Property", "label": "quantity", "props": { "visibility": "private", "valueType": "Integer", "default": "1" } },
         { "id": "line.unitPrice", "type": "uml.Property", "label": "unitPrice", "props": { "visibility": "private", "valueType": "Money" } }
       ] },
-    { "id": "book", "type": "uml.Class", "label": "Book", "parent": "sales",
+    { "id": "book", "type": "uml.Class", "label": "Book", "parent": "catalog",
       "members": [
         { "id": "book.isbn", "type": "uml.Property", "label": "isbn", "props": { "visibility": "public", "valueType": "String" } },
         { "id": "book.title", "type": "uml.Property", "label": "title", "props": { "visibility": "public", "valueType": "String" } },
         { "id": "book.price", "type": "uml.Property", "label": "price", "props": { "visibility": "public", "valueType": "Money" } }
       ] },
-    { "id": "payable", "type": "uml.Interface", "label": "Payable", "parent": "sales",
+    { "id": "payable", "type": "uml.Interface", "label": "Payable", "parent": "payments-package",
       "members": [
         { "id": "payable.amountDue", "type": "uml.Operation", "label": "amountDue", "props": { "visibility": "public", "returnType": "Money" } }
       ] },
-    { "id": "payment", "type": "uml.Class", "label": "Payment", "parent": "sales",
+    { "id": "payment", "type": "uml.Class", "label": "Payment", "parent": "payments-package",
       "props": { "isAbstract": true },
       "members": [
         { "id": "payment.amount", "type": "uml.Property", "label": "amount", "props": { "visibility": "protected", "valueType": "Money" } },
         { "id": "payment.settle", "type": "uml.Operation", "label": "settle", "props": { "visibility": "public", "isAbstract": true } }
       ] },
-    { "id": "card-payment", "type": "uml.Class", "label": "CardPayment", "parent": "sales",
+    { "id": "card-payment", "type": "uml.Class", "label": "CardPayment", "parent": "card",
       "members": [
         { "id": "card-payment.last4", "type": "uml.Property", "label": "last4", "props": { "visibility": "private", "valueType": "String" } },
         { "id": "card-payment.settle", "type": "uml.Operation", "label": "settle", "props": { "visibility": "public" } }
@@ -56,7 +60,7 @@
         { "id": "status.shipped", "type": "uml.EnumerationLiteral", "label": "shipped" },
         { "id": "status.cancelled", "type": "uml.EnumerationLiteral", "label": "cancelled" }
       ] },
-    { "id": "money", "type": "uml.DataType", "label": "Money", "parent": "sales",
+    { "id": "money", "type": "uml.DataType", "label": "Money", "parent": "shared",
       "members": [
         { "id": "money.amount", "type": "uml.Property", "label": "amount", "props": { "visibility": "public", "valueType": "Decimal" } },
         { "id": "money.currency", "type": "uml.Property", "label": "currency", "props": { "visibility": "public", "valueType": "String" } }
@@ -82,7 +86,7 @@
       "nodeIds": ["sales", "customer", "order", "line", "book", "payable", "payment", "card-payment", "status", "money", "note-total"],
       "layout": { "order": [1, 0] },
       "present": { "book": { "collapsed": ["operations"] } } },
-    { "id": "payments", "diagram": "uml.class", "title": "Payments only", "parent": "domain", "subject": "sales", "direction": "down",
+    { "id": "payments-only", "diagram": "uml.class", "title": "Payments only", "parent": "domain", "subject": "sales", "direction": "down",
       "nodeIds": ["order", "payable", "payment", "card-payment"],
       "present": { "order": { "collapsed": ["attributes", "operations"] } } }
   ]

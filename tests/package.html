@@ -38,7 +38,7 @@ const ratio = (fg, bg) => { const [x, y] = [lum(blend(fg, bg)), lum(bg)].sort((p
 const css = (e, k) => rgba(getComputedStyle(e)[k]);
 const MODEL = await (await fetch('../examples/bookshop-packages.json')).json();
 // what each box holds on the picture, at any depth (notes/stage-2.md §4.1): its classes and the boxes in it
-const HOLDS = { shared: ['money'], catalog: ['book'], sales: ['customer', 'order', 'line', 'status'], payments: ['payable', 'payment', 'card-payment'], card: ['card-payment'], wholesale: ['wholesale-order'] };
+const HOLDS = { shared: ['money'], catalog: ['book'], sales: ['customer', 'order', 'line', 'status'], 'payments-package': ['payable', 'payment', 'card-payment'], card: ['card-payment'], wholesale: ['wholesale-order'] };
 try {
   for (const theme of ['light', 'dark']) for (const [fname, family] of Object.entries(FONTS)) for (const direction of ['down', 'right']) {
     document.documentElement.dataset.theme = theme; el.style.setProperty('--um-sans', family);
@@ -53,8 +53,8 @@ try {
     check(`${tag}: each box holds exactly what it owns on the picture, its title in its header, every line ending on a box's border`, !bad.length, bad);
     const keys = all('.edge-g text, .edge-g .e-label, text.e-label').map(x => x.textContent).filter(t => /«/.test(t));
     check(`${tag}: the keywords «import», «access» and «merge» are drawn`, ['«import»', '«access»', '«merge»'].every(k => keys.includes(k)), keys);
-    check(`${tag}: boxes and lines have names a screen reader reads`, pick('.family[data-family="payments"]').getAttribute('aria-label') === 'Package payments, holding 3 elements'
-      && pick('.node[data-id="wholesale-order"]').getAttribute('aria-label') === 'Class Order' && pick('.edge-g[data-from="payments"] title').textContent === 'Package import from payments to shared: «access»');
+    check(`${tag}: boxes and lines have names a screen reader reads`, pick('.family[data-family="payments-package"]').getAttribute('aria-label') === 'Package payments, holding 3 elements'
+      && pick('.node[data-id="wholesale-order"]').getAttribute('aria-label') === 'Class Order' && pick('.edge-g[data-from="payments-package"] title').textContent === 'Package import from payments to shared: «access»');
     const legend = all('.m-legend b').map(b => b.textContent);
     check(`${tag}: the legend keys the import, the merge and the dependency`, same(legend, ['Dependency', 'Package import', 'Package merge']), legend);
     const stageBg = css(pick('.stage'), 'backgroundColor'), low = [];
@@ -66,7 +66,7 @@ try {
   }
   document.documentElement.dataset.theme = 'light'; el.style.removeProperty('--um-sans');
   // a closed package: a folder, named, with its lines on its body
-  const CLOSED = { ...MODEL, views: [{ id: 'packages', diagram: 'uml.package', title: 'Two', nodeIds: ['sales', 'payments', 'card-payment'] }] };
+  const CLOSED = { ...MODEL, views: [{ id: 'packages', diagram: 'uml.package', title: 'Two', nodeIds: ['sales', 'payments-package', 'card-payment'] }] };
   let h = mount(CLOSED);
   const fold = pick('.node[data-id="sales"]'), body = box(fold.querySelector('.n-body')), tab = box(fold.querySelector('.n-det'));
   check('a closed package is a folder: its tab over its body, its name inside, named "(closed)"', fold.dataset.shape === 'package' && fold.getAttribute('aria-label') === 'Package sales (closed)'

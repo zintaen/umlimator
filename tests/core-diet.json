@@ -1,29 +1,29 @@
 {
  "core": {
   "01-class.json": {
-   "layout domain": "f99f62a842c0005e",
+   "layout domain": "4d5b4a428667ca5f",
    "describe domain": "4c005fc83694fe1c",
-   "layout payments": "d9f3592e93c031c4",
-   "describe payments": "a178ff45a4dcdc2a",
+   "layout payments-only": "381011e96916ea09",
+   "describe payments-only": "a178ff45a4dcdc2a",
    "validate": "4878f0dc5df1125a",
-   "edit": "9ceac429fa63b932",
-   "edited layout domain": "1444dacb47688a12",
+   "edit": "b44ba8a9f8e15e68",
+   "edited layout domain": "88422b80904ec796",
    "edited validate": "4878f0dc5df1125a"
   },
   "02-object.json": {
-   "layout snapshot": "182a5a58106b3e93",
+   "layout snapshot": "e3d531f9f0e55c71",
    "describe snapshot": "c56c3c84340b34f2",
    "validate": "cab32711b2db1840",
-   "edit": "dd07b6a0211d079d",
-   "edited layout snapshot": "ff71ca739b4d5e48",
+   "edit": "4c8c291a580dcf7d",
+   "edited layout snapshot": "622491cd4b9da37f",
    "edited validate": "cab32711b2db1840"
   },
   "03-package.json": {
-   "layout packages": "91454ac689648dc4",
+   "layout packages": "428b91d38d31da8d",
    "describe packages": "d20a05df72974e5a",
    "validate": "120c89b39ffa15db",
-   "edit": "f04391b607d8fdf6",
-   "edited layout packages": "1a201368b694b365",
+   "edit": "d63c17ead1ca3b29",
+   "edited layout packages": "d6e3e1f2d2ea9073",
    "edited validate": "120c89b39ffa15db"
   },
   "04-composite-structure.json": {
@@ -59,21 +59,21 @@
    "edited validate": "404406d891846b91"
   },
   "08-use-case.json": {
-   "layout shopping": "1e558abd73cc70b8",
+   "layout shopping": "857351fe3d939192",
    "describe shopping": "5259358ce4b20952",
    "validate": "3e26030a38d3c0fd",
-   "edit": "c5c2e3d05c3a3a34",
-   "edited layout shopping": "d015ddb8de5f109e",
+   "edit": "80701d69123d3bf6",
+   "edited layout shopping": "6111e9994a6e0e71",
    "edited validate": "3e26030a38d3c0fd"
   },
   "09-activity.json": {
-   "layout fulfil": "5ee69b9ce93a566c",
+   "layout fulfil": "a3fc0b06f70df1d3",
    "describe fulfil": "8b911ab000160c24",
    "layout take-payment": "67fd75967408bf98",
    "describe take-payment": "9a41a849b1bc507d",
    "validate": "f39e7fc55d1bfb14",
-   "edit": "f61e5af8d7461d26",
-   "edited layout fulfil": "a86e3b50eae1efb7",
+   "edit": "a27fa8b14c2d35e2",
+   "edited layout fulfil": "d58c7456760df626",
    "edited validate": "f39e7fc55d1bfb14"
   },
   "10-state-machine.json": {
@@ -85,35 +85,35 @@
    "edited validate": "b40ef156fb4f53d9"
   },
   "11-sequence.json": {
-   "layout checkout": "12d8a195960b3da0",
-   "describe checkout": "50e5368f367f6f2c",
+   "layout checkout-sequence": "2ec8fb34facd6168",
+   "describe checkout-sequence": "50e5368f367f6f2c",
    "validate": "341df7b05404ef6b",
-   "edit": "b37b377882ba00da",
-   "edited layout checkout": "2b78515c90411267",
+   "edit": "5f5e632c6f37b73b",
+   "edited layout checkout-sequence": "0ce245e19ec13f8c",
    "edited validate": "341df7b05404ef6b"
   },
   "12-communication.json": {
-   "layout checkout": "78ef2300a20ae7f3",
-   "describe checkout": "58cfaf8289517fad",
+   "layout checkout-communication": "abf134900f29ff87",
+   "describe checkout-communication": "58cfaf8289517fad",
    "validate": "5fafafbd2641045a",
-   "edit": "907ac46cee46553a",
-   "edited layout checkout": "204292c9623d7b0e",
+   "edit": "0026f41b3b5671d7",
+   "edited layout checkout-communication": "160e8fcdc6ec9bb7",
    "edited validate": "5fafafbd2641045a"
   },
   "13-interaction-overview.json": {
-   "layout buy-book": "5da76e5783cd414d",
-   "describe buy-book": "60f329bcc4588c07",
-   "layout find-book": "2db131f40127cbb1",
+   "layout buy-book": "141115846a4033c6",
+   "describe buy-book": "94ec53d32332c7c0",
+   "layout find-book": "e89bd716af899616",
    "describe find-book": "94f07a377d1a77fb",
-   "layout checkout": "2b7bcef2953cfcf7",
-   "describe checkout": "97fbf6b862fffb23",
-   "layout email-receipt": "72e1cc0f80f0cf39",
+   "layout buy-checkout": "eaaab1c1008c15db",
+   "describe buy-checkout": "97fbf6b862fffb23",
+   "layout email-receipt": "ab60c303482706fd",
    "describe email-receipt": "03786a8cc81775fc",
-   "layout queue-order": "425337a23df09361",
+   "layout queue-order": "de8d3fa67369eccf",
    "describe queue-order": "7449099c00fc275a",
    "validate": "7c46e575833c33ea",
-   "edit": "013c2cf9545ded56",
-   "edited layout buy-book": "8e33f098c3fc707c",
+   "edit": "c0aa8cf3f914bf8a",
+   "edited layout buy-book": "db868267950cf7c0",
    "edited validate": "7c46e575833c33ea"
   },
   "14-timing.json": {
@@ -249,39 +249,39 @@
    "edited validate": "404236670800e847"
   },
   "examples/sales-classes.json": {
-   "layout domain": "2fd63f01f9be46bc",
+   "layout domain": "2c7fd792800b7da9",
    "describe domain": "4c005fc83694fe1c",
-   "layout payments": "d9f3592e93c031c4",
-   "describe payments": "a178ff45a4dcdc2a",
+   "layout payments-only": "381011e96916ea09",
+   "describe payments-only": "a178ff45a4dcdc2a",
    "validate": "4878f0dc5df1125a",
-   "edit": "9ceac429fa63b932",
-   "edited layout domain": "1444dacb47688a12",
+   "edit": "b44ba8a9f8e15e68",
+   "edited layout domain": "88422b80904ec796",
    "edited validate": "4878f0dc5df1125a"
   }
  },
  "all": {
   "examples/sales-classes.json": {
-   "layout domain": "43190ae8baae9614",
-   "describe domain": "ec67e2b45dd6f57c",
-   "layout payments": "3d029673eb078ecf",
-   "describe payments": "c9f3531df4f8c1f7",
+   "layout domain": "5d847f7c43fde285",
+   "describe domain": "6895f2f5bfbdd8d8",
+   "layout payments-only": "ac182aef5ab1f8b0",
+   "describe payments-only": "18a817b76e2956a0",
    "validate": "643d5437104296e2",
-   "edit": "9ceac429fa63b932",
-   "edited layout domain": "d54b02969b57d23e",
+   "edit": "b44ba8a9f8e15e68",
+   "edited layout domain": "e59e054456db6f11",
    "edited validate": "643d5437104296e2"
   }
  },
  "markup": {
   "umlimator.js examples/sales-classes.json domain": "696d921a36f1dec5",
-  "umlimator.js examples/sales-classes.json payments": "20b80251a9bb6baa",
+  "umlimator.js examples/sales-classes.json payments-only": "20b80251a9bb6baa",
   "umlimator.js docs/diagrams/examples/23-c4.json context": "a787b2af45c91ccc",
   "umlimator.js docs/diagrams/examples/23-c4.json containers": "f5d3f06fe20edac5",
   "umlimator.js docs/diagrams/examples/23-c4.json components": "8b6a53a013239160",
   "umlimator.js docs/diagrams/examples/23-c4.json placing-an-order": "2f4573bd6b7ca683",
   "umlimator.js docs/diagrams/examples/23-c4.json deployment": "cba791212106b858",
-  "umlimator.js examples/fulfil-activity.json fulfil": "e32f36e4f74bd8c7",
+  "umlimator.js examples/fulfil-activity.json fulfil": "7574fa3f729c7092",
   "umlimator.js examples/fulfil-activity.json take-payment": "fc54192e340a685c",
-  "umlimator-all.js examples/sales-classes.json domain": "a662af901a0104e3",
-  "umlimator-all.js examples/sales-classes.json payments": "827f45940f9ce75c"
+  "umlimator-all.js examples/sales-classes.json domain": "f80c70c1547a0d64",
+  "umlimator-all.js examples/sales-classes.json payments-only": "6cc69cc000bae6ab"
  }
 }
