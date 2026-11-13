@@ -1,4 +1,5 @@
 {
+  "$schema": "../lib/umlimator.schema.json",
   "schemaVersion": 2,
   "title": "Bookshop: modelling conventions",
   "root": "profile",
@@ -16,7 +17,7 @@
       ] },
     { "id": "owned", "type": "uml.Stereotype", "label": "owned", "parent": "conventions",
       "members": [
-        { "id": "owned.team", "type": "uml.Property", "label": "team", "props": { "valueType": "String" } }
+        { "id": "owned.team", "type": "uml.Property", "label": "team", "props": { "valueType": "String", "multiplicity": "0..1" } }
       ] },
     { "id": "column", "type": "uml.Stereotype", "label": "column", "parent": "conventions",
       "members": [
@@ -25,10 +26,10 @@
       ] },
     { "id": "sales", "type": "uml.Package", "label": "sales" },
     { "id": "order", "type": "uml.Class", "label": "Order", "parent": "sales",
-      "props": { "stereotypes": ["aggregateRoot", "owned"], "tags": { "table": "orders", "boundedContext": "sales", "team": "checkout" } },
+      "props": { "stereotypes": ["entity"], "tags": { "entity": { "table": "orders" }, "owned": { "team": "checkout" } } },
       "members": [
         { "id": "order.placedAt", "type": "uml.Property", "label": "placedAt",
-          "props": { "visibility": "private", "valueType": "Instant", "stereotypes": ["column"], "tags": { "name": "placed_at", "indexed": "true" } } }
+          "props": { "visibility": "private", "valueType": "Instant", "multiplicity": "0..1", "stereotypes": ["column"], "tags": { "column": { "name": "placed_at", "indexed": "true" } } } }
       ] }
   ],
   "edges": [
