@@ -3637,7 +3637,7 @@ the map's three views and the fifteen typed views of `sales-classes`, `order-obj
   Schema and pictured and printed for the site as the others are; the check loop counts its 6 crossings, the activity's
   4 and the state machine's 2.
 
-## 0.22.0 (in progress)
+## 0.22.0: the component, deployment and composite structure diagrams; diff(), the MCP server, the diff Action and map-repo meet every typed diagram
 
 ### The component, deployment and composite structure diagrams
 
@@ -3779,3 +3779,16 @@ and walk as before.
   it.
 - **Core**: +183 B gzipped (`gzip -9`: 185,246 B with 5.8 to 185,429 B, 12.41% over 0.16.0), from the reserve (about 567 B of
   its ~750 B left): the two hook calls in `diff()`, the `paths` hook in `paths()`, and the registry's comment.
+
+### Also on `main`, provisional until 0.23.0: stage 6's types
+
+Stage 6's 6.0 to 6.5 (`docs/diagrams/notes/stage-6.md`) are on `main`, so this release carries them, as 0.19.0 carried
+stage 3's: `umlimator/all` draws `uml.profile` and `uml.timing` views; `validate()` runs a type's `TYPED.across(model)`
+once on the whole model (stereotypes checked where profiles apply), the properties panel takes a type's
+`TYPED.fields`, and deleting a timing lifeline or change takes its changes and constraints. Their fixtures, examples,
+schema, `.d.ts` and conformance notes come in 0.23.0 (6.6, 6.7), whose section says what they do.
+
+- **Size at release:** `lib/umlimator.js` is 185.6 kB (185,613 B) with `gzip -9`, 12.52% over 0.16.0 (the budget is 15%):
+  stage 5's 248 B and C10's 183 B above, and stage 6's 6.1 (180 B) on `main`. `lib/umlimator-all.js` is 412.0 kB
+  (412,030 B) with stage 6's types in it. The npm package is 655 kB.
+
