@@ -5,7 +5,11 @@
      stage's background and filled ends the line's colour. And stage 4's open arrowheads (4.10, D1): every flow of the
      activity and interaction overview examples, every transition of the state machine example, and the use case example's
      includes and extends end in an open arrowhead whose tip is the line's end, on the outline of the shape it points to (a
-     circle, a diamond, a bar, a rounded box, an ellipse, a state's frame), with its generalizations' triangles. tests/embed.py
+     circle, a diamond, a bar, a rounded box, an ellipse, a state's frame), with its generalizations' triangles. And stage 5's
+     line ends (5.8, notes/stage-5.md §9.4): on the component, deployment and composite structure examples and the stress
+     fixtures' edge cases, each line kind ends as the table says (the socket, the delegation's open arrow, the
+     manifestation's and the «deploy» line's, a realization's triangle or a ball's plain stem, the role binding's none),
+     dashed where it says, an arrowhead's tip on the outline or the port it points to. tests/embed.py
      opens this in headless Chrome and reads <pre id="result">. -->
 <meta charset="utf-8">
 <link rel="icon" href="data:,">
@@ -24,6 +28,9 @@ import '../src/uml/usecase.js';
 import '../src/uml/activity.js';
 import '../src/uml/state.js';
 import '../src/uml/overview.js';
+import '../src/uml/component.js';
+import '../src/uml/deployment.js';
+import '../src/uml/composite.js';
 import { layout } from '../src/map/api.js';
 import { mapContext } from '../src/map/context.js';
 const out = { ok: [], fail: [] };
@@ -157,6 +164,44 @@ try {
     }
     check(`${f}: its open arrowheads end ${[...opens].sort().join(', ')}`, opens.size > 0, [...opens]);
   }
+  // ---- stage 5's line ends (5.8, §9.4): each kind's end and dash, by what it points to (a ball or a rectangle)
+  const EX5 = [['../examples/bookshop-components.json', 'components'], ['../examples/bookshop-deployment.json', 'production'], ['../examples/order-service-structure.json', 'internals'],
+    ['component-stress.json', 'edge-cases'], ['deployment-stress.json', 'edge-cases'], ['composite-stress.json', 'edge-cases']];
+  // [end at `to`, dashed]; a function: by the shape it points to
+  const WANT = { 'uml.InterfaceRealization': s => (s === 'ball' ? ['none', false] : ['triangle', true]), 'uml.ComponentRealization': () => ['triangle', true],
+    'uml.Usage': s => (s === 'ball' ? ['socket', false] : ['open', true]), 'uml.Connector': (s, e) => [(e.props || {}).kind === 'delegation' ? 'open' : 'none', false],
+    'uml.RoleBinding': () => ['none', true], 'uml.Deployment': () => ['open', true], 'uml.Manifestation': () => ['open', true], 'uml.CommunicationPath': () => ['none', false],
+    'uml.Dependency': () => ['open', true], 'uml.CommentLink': () => ['none', true] };
+  const seen5 = new Set();
+  for (const [path, vid] of EX5) {
+    const f = `${path.split('/').pop().slice(0, -5)} ${vid}`, model = await (await fetch(path)).json(), g = layout(model, vid);
+    for (const theme of ['light', 'dark']) for (const [fname, family] of Object.entries(FONTS)) {
+      document.documentElement.dataset.theme = theme; el.style.setProperty('--um-sans', family);
+      el.innerHTML = measured(hostMeasure(el), () => mapContext(model).buildView(vid).markup); const svg = el.querySelector('svg'), off = [];
+      const squares = [...svg.querySelectorAll('.node.port .n-body')].map(x => x.getBBox());
+      svg.querySelectorAll('.edge-g').forEach(gr => { const ge = g.edges[+gr.dataset.i], e = model.edges.find(x => x.id === ge.id) || {}, path = gr.querySelector('path.edge');
+        const to = g.byId[ge.toPort || ge.to], rule = WANT[e.type], name = `${e.type} ${ge.id}`;
+        if (!rule) { off.push(`${name}: a line of no stage 5 kind`); return; }
+        const [want, dashed] = rule(to && to.shape, e), ref = path.getAttribute('marker-end'), mk = ref && svg.querySelector(ref.slice(4, -1));
+        const kind = mk ? mk.id.replace(/^g\d+-/, '').replace(/-d$/, '') : 'none'; seen5.add(`${e.type} ${kind}`);
+        if (path.getAttribute('marker-start')) off.push(`${name}: a marker at its start`);
+        if (kind !== want) { off.push(`${name}: ends in ${kind}, not ${want}`); return; }
+        if (!!path.getAttribute('stroke-dasharray') !== dashed) off.push(`${name}: ${dashed ? 'not dashed' : 'dashed'}`);
+        if (want !== 'open' && want !== 'triangle') return;
+        const r = mk.querySelector('path').getBBox();
+        if (Math.abs(r.x + r.width - +mk.getAttribute('refX')) > .01 || Math.abs(r.y + r.height / 2 - +mk.getAttribute('refY')) > .01) off.push(`${name}: its ${kind}'s tip is not its end`);
+        if (kind === 'open' && getComputedStyle(mk.querySelector('path')).fill !== 'none') off.push(`${name}: its open arrowhead is filled`);
+        const d = path.getAttribute('d').match(/-?\d+(\.\d+)?/g).map(Number), q = pt(svg, d.at(-2), d.at(-1));
+        if (squares.some(b => Math.max(b.x - q.x, q.x - b.x - b.width, b.y - q.y, q.y - b.y - b.height, 0) <= 1)) return; // on the port it points to
+        const n = svg.querySelector(`.node[data-id="${CSS.escape(gr.dataset.to)}"]`), fam = svg.querySelector(`.family[data-family="${CSS.escape(gr.dataset.to)}"]`);
+        const b = n ? [n.querySelector(':scope > .n-body'), n.querySelector(':scope > .n-mask')] : fam ? [...fam.querySelectorAll('.family-box, .dp-face')] : [];
+        if (!b.some(x => { if (!x || !x.isPointInStroke) return false; x.style.strokeWidth = '3px'; const on = x.isPointInStroke(q); x.style.strokeWidth = ''; return on; })) off.push(`${name}: its tip is off ${gr.dataset.to}'s outline`); });
+      check(`${f}, ${theme}, ${fname}: each line ends as §9.4 says, dashed where it says, an arrowhead's tip on what it points to`, svg.querySelectorAll('.edge-g').length === g.edges.length && !off.length, off.slice(0, 8));
+    }
+  }
+  const ends5 = [...seen5].sort();
+  check('stage 5: the socket, the delegation\'s open arrow, the manifestation\'s and the «deploy» line\'s, a realization\'s triangle and a ball\'s stem, the role binding\'s none, each drawn',
+    ['uml.Usage socket', 'uml.Connector open', 'uml.Manifestation open', 'uml.Deployment open', 'uml.InterfaceRealization triangle', 'uml.InterfaceRealization none', 'uml.RoleBinding none'].every(k => ends5.includes(k)), ends5);
   document.documentElement.dataset.theme = 'light'; el.style.removeProperty('--um-sans');
 } catch (e) { out.fail.push('threw: ' + (e && e.stack || e)); }
 const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
