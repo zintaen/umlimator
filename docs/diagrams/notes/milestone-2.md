@@ -616,6 +616,41 @@ Where `src/c4/c4.js` departs from §5.2 and §7.5, each choice taken by the lead
   repaint); a container's technology, §11's named edit, which keeps the node's size here and moves nothing, 46 to 49 ms.
   A technology long enough to widen its node lays the view out again, as a description does. The common edit is over the 100 ms target and under CI's 1 s ceiling; the test prints it.
 
+#### 7.5.5 Amended in M2.7's build
+
+Where `src/c4/views.js` departs from §5.1, §7.5, §7.5.2 and §7.5.3, each choice taken by the lead under the maintainer's
+standing approval (14 Nov 2026), the note's recommended direction kept:
+
+- **A step's number is the layout's step.** A step is drawn "k · description [technology]", the typed layout's own step
+  label, not "k. description": a label that finds no room keeps its number ("3") instead of vanishing. Laid out down in
+  Chrome's serif font, `23-c4.json`'s dynamic view had three labels with no spot when the number was part of the text. The
+  PDF's lines table and the step's accessible name ("Step 3: Relationship from Shop API to Payment provider: …") say the
+  same number. With repair and reroute off, the dynamic view keeps 2 crossings laid out right, and 4 crossings and 2 labels
+  on a line laid out down; the deployment view 1 crossing each way: pinned in `tests/c4-views.test.mjs`.
+- **Only steps are drawn on a dynamic view.** No line is implied (§5.2 is the static views'); a step whose end is not shown,
+  or is drawn as the subject's boundary, is not drawn, and `c4-steps` says which. `c4-steps` is also an error for a step
+  written in the view (an inline relationship) and for a relationship listed twice (S13's "each once").
+- **A dynamic view with no subject** is checked at the landscape view's level (people and software systems), as the context
+  view is without its `c4-subject` warning, which asks for a subject the dynamic view may leave out (§5.1).
+- **A step by connect.** L or the handle between two shown elements a relationship already joins adds that relationship as
+  the last step (`set` of the view's `edges`); otherwise the canvas adds a new relationship, listed last.
+- **F2 on a step** holds the line's text, "description [technology]"; `edits.rename` sets the description, leaving out the
+  technology when it is unchanged and a number typed before it. A static view's F2 commits the bracketed technology into the
+  label (`src/c4/c4.js`, M2.6's): a later package's.
+- **Deployment nodes.** A node holding something shown is a solid box (dashed is a boundary) titled on two lines, its name
+  over "[Deployment Node: technology]", in the deployment type's header room so the layout makes the box as wide as its
+  title; one holding nothing shown is drawn as the map's node shape with C4's three lines. Their descriptions and
+  technologies are not asked for by `c4-description` and `c4-technology` (`23-c4.json`'s browser and Docker Compose have
+  none). An instance's relationship whose far instance is not shown is lifted to that instance's node, as §5.2 lifts
+  (implied, dashed); none is derived from the containers' relationships.
+- **An instance's container.** The properties panel's choices are fixed per type, so the container is a text field holding
+  its id, and T on a selected instance picks it among the model's containers (T is free on the deployment view: no
+  element there takes C4's type picker). The palette's Container instance asks no name, picks its container, and puts the
+  instance in the view's first deployment node that holds no other: the add hook hears no selection on a layered view (no
+  slots); the Owner field (every deployment node) or a drop into a box moves it.
+- **`refs`** (`c4.ContainerInstance`'s `props.container`, `cascade`) is declared on the deployment view's type; the core
+  reads every registered type's, so deleting a container from any view deletes its instances and their relationships.
+
 ## 8. Readers (S15, S16)
 
 Each in `src/readers/`, in `lib/umlimator-all.js` only: hand-written and linear, a report of `skipped` and
