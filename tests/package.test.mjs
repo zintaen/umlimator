@@ -19,7 +19,11 @@ import { ownersOn, readingOrder, ownerChoices } from '../src/uml/owners.js';
 import '../src/uml/package.js';
 
 const read = p => JSON.parse(readFileSync(new URL(p, import.meta.url)));
-const PKG = read('../examples/bookshop-packages.json');
+const EX = read('../examples/bookshop-packages.json');
+// the example as stage 2 made it, without the profile and its application 6.7 added for the Bookshop atlas (the last
+// test draws those)
+const PKG = { ...EX, nodes: EX.nodes.filter(n => n.id !== 'conventions'), edges: EX.edges.filter(e => e.id !== 'sales-applies-conventions'),
+  views: [{ ...EX.views[0], nodeIds: EX.views[0].nodeIds.filter(id => id !== 'conventions'), edges: EX.views[0].edges.filter(id => id !== 'sales-applies-conventions') }] };
 // the example lists its view's lines (so in the Bookshop atlas the class file's Order → Money «use» stays out of it); these
 // tests add lines to the model and draw them by the package diagram's line types: the view with no edges list
 const unlisted = () => { const m = structuredClone(PKG); delete m.views[0].edges; return m; };
@@ -284,4 +288,21 @@ test('save and reopen (DoD 6): a 30-step session on 03-package.json undoes and r
   assert.equal(flat(layout(reopened, 'packages')), flat(layout(JSON.parse(seen[30]), 'packages')));
   assert.equal(describe(reopened, 'packages'), describe(JSON.parse(seen[30]), 'packages'));
   assert.deepEqual(check(reopened, 'packages'), []);
+});
+
+test('the example as 6.7 made it (the Bookshop atlas, decision 18): sales applies the profile BookshopConventions, a closed «profile» folder, by an «apply» line; clean right and down, every keyword drawn', () => {
+  assert.deepEqual(validate(EX), []);
+  for (const direction of ['down', 'right']) {
+    const m = structuredClone(EX); if (direction === 'right') delete m.views[0].direction;
+    const g = layout(m, 'packages'), p = g.nodes.find(n => n.id === 'conventions'), e = g.edges.find(x => x.id === 'sales-applies-conventions');
+    assert.deepEqual(check(m, 'packages'), [], direction);
+    // the view lists the «apply» line third: listed last, catalog's «import» went undrawn (down), and check() said nothing
+    assert.ok(g.edges.filter(x => x.label).every(x => x.lbl), `${direction}: every keyword is drawn`);
+    assert.deepEqual([p.shape, p.stereotypes, p.aria], ['package', ['profile'], 'Profile BookshopConventions (closed)']);
+    assert.deepEqual([e.label, e.end, e.aria, !!e.lbl], ['«apply»', { from: 'none', to: 'open', dashed: true }, 'Profile application from sales to BookshopConventions: «apply»', true]);
+    assert.deepEqual(g.legend.map(l => /<b>([^<]+)<\/b>/.exec(l)[1]), ['Dependency', 'Package import', 'Package merge', 'Profile application']);
+  }
+  const d = describe(EX, 'packages').split('\n');
+  assert.deepEqual([d[0], d[5], d.at(-1)], ['Bookshop packages: a package diagram of 17 elements and 6 lines.',
+    'Package sales, holding 4 elements; imports catalog; applies BookshopConventions; depends on payments.', 'Profile BookshopConventions (closed).']);
 });

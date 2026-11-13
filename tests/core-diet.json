@@ -19,11 +19,11 @@
    "edited validate": "cab32711b2db1840"
   },
   "03-package.json": {
-   "layout packages": "428b91d38d31da8d",
-   "describe packages": "d20a05df72974e5a",
+   "layout packages": "1e9d4bc313516597",
+   "describe packages": "7a74eae2e844bfb4",
    "validate": "120c89b39ffa15db",
-   "edit": "d63c17ead1ca3b29",
-   "edited layout packages": "d6e3e1f2d2ea9073",
+   "edit": "e943079bc415efc0",
+   "edited layout packages": "f35ee9f4d11129af",
    "edited validate": "120c89b39ffa15db"
   },
   "04-composite-structure.json": {

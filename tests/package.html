@@ -36,7 +36,11 @@ const blend = (top, bot) => [0, 1, 2].map(i => top[i] * top[3] + bot[i] * (1 - t
 const lum = c => { const f = v => v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]); };
 const ratio = (fg, bg) => { const [x, y] = [lum(blend(fg, bg)), lum(bg)].sort((p, q) => q - p); return +((x + 0.05) / (y + 0.05)).toFixed(2); };
 const css = (e, k) => rgba(getComputedStyle(e)[k]);
-const MODEL = await (await fetch('../examples/bookshop-packages.json')).json();
+// the example as stage 2 made it, without the profile and its application 6.7 added for the Bookshop atlas
+// (tests/package.test.mjs draws those)
+const EX = await (await fetch('../examples/bookshop-packages.json')).json();
+const MODEL = { ...EX, nodes: EX.nodes.filter(n => n.id !== 'conventions'), edges: EX.edges.filter(e => e.id !== 'sales-applies-conventions'),
+  views: [{ ...EX.views[0], nodeIds: EX.views[0].nodeIds.filter(id => id !== 'conventions'), edges: EX.views[0].edges.filter(id => id !== 'sales-applies-conventions') }] };
 // what each box holds on the picture, at any depth (notes/stage-2.md §4.1): its classes and the boxes in it
 const HOLDS = { shared: ['money'], catalog: ['book'], sales: ['customer', 'order', 'line', 'status'], 'payments-package': ['payable', 'payment', 'card-payment'], card: ['card-payment'], wholesale: ['wholesale-order'] };
 try {
