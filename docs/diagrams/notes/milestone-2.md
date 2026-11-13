@@ -153,7 +153,7 @@ What may touch the core, each change stating its bytes in its pull request:
 | Change | File | Lane | Target |
 |---|---|---|---|
 | `addView { view, index? }` and its line in the header comment (S7) | `src/core/apply.js` | M2.1 | 160 B |
-| A card of a typed view unfolds in place only when its type says `unfolds` (S8): `unfoldable` also refuses when `v.diagram && !(diagramOf(v) \|\| {}).unfolds` (`diagramOf` is imported there already) | `src/map/context.js` | M2.1 | 13 B (measured) |
+| A card of a typed view unfolds in place only when its type says `unfolds` (S8): `unfoldable` also refuses when `v.diagram && v.diagram != 'map' && !(diagramOf(v) \|\| {}).unfolds` (`diagramOf` is imported there already; a view saying `diagram: 'map'` is a map, amended in M2.1's review, §6.3) | `src/map/context.js` | M2.1 | 13 B (measured), about 20 B with the `'map'` clause |
 | The PDF's lines table asks a type's `text(model, view, id)` before `label` (S17) | `src/page/print.js` | M2.1 | 30 B |
 | The registry's pointer line names the new fields (`text`, `unfolds`; `ENDS` open to families), after 6.1's line in the comment above `const TYPED = {}` | `src/core/registry.js` | M2.1 | 50 B |
 | | | | **253 B** |
@@ -380,6 +380,14 @@ zoom would be the first typed views to meet the wrong case often. M2.1 makes `un
 does not say `unfolds: true`, and sets it on the activity type (13 B of core, measured on a scratch build; one field in `src/uml/activity.js`),
 stated in 0.24.0's release section as a reproduced defect (`plan.md` §8).
 
+**Amended in M2.1's review.** The guard as first written, `v.diagram && !(diagramOf(v) || {}).unfolds`, refused every card of
+a view that says `diagram: 'map'`, which the codebase reads as a map (`src/core/model.js`, `src/map/validate.js`,
+`src/canvas/edit.js`, `print.js`): `'map'` is truthy and the map's registration has no `unfolds`. Of the two fixes, a
+`'map'` clause in the guard (`v.diagram && v.diagram != 'map' && …`, inside M2.1's Owns, and right in `lib/umlimator.js`,
+where no type is registered) and `unfolds: true` on the map's registration in `src/map/typed.js` (outside M2.1's Owns),
+the guard's clause is taken by the lead under the maintainer's standing approval (14 Nov 2026). `tests/unfold.test.mjs`
+holds it: u21 with every view saying `diagram: 'map'` unfolds `orders` in the core and with the types.
+
 | Option | For | Against |
 |---|---|---|
 | **(a) A typed card opens unless its type says `unfolds: true`; the activity type says it (recommended)** | The defect fixed for every type that does not draw unfolding; the activity's working, tested unfolding kept; CI's counts unchanged; a later type opts in by one field | A registry field (provisional, like `text`); 13 B; M2.1 edits `src/uml/activity.js` (no open branch owns it) |
@@ -596,13 +604,24 @@ Against Mermaid 12.3.0's entity relationship page. `readMermaidEr(text)`, `write
 | The word forms of an end: `only one`, `1`; `zero or one`, `one or zero`; `one or more`, `one or many`, `many(1)`, `1+`; `zero or more`, `zero or many`, `many(0)`, `0+` | the same four multiplicities as the symbols |
 | `--` and `..`, and their word forms `to` and `optionally to` | identifying and non-identifying |
 | `p[Person]`, quoted names | label `Person`, id from the alias |
-| `direction` | the view's `direction` |
-| styles, classes, `accTitle` | skipped |
+| `string? name` (v11.16.0+), `string *name`, `` `double precision` name ``, `List~T~ name` | `nullable`; `primaryKey`; a type or name in backticks or with `~` taken as written |
+| What the lexer reads and the page does not show: `one`, `many`, `.-` and `-.`, `u` | `1`, `0..*`, non-identifying; `u` (a parent marker) approximated as `1` |
+| `direction` | the view's `direction`: `TB` down, `LR` right left unset (core's default, so `right` reads back unset and draws the same; taken by the lead under the maintainer's standing approval (14 Nov 2026), over a hint for it); `BT` and `RL` approximated |
+| `subgraph … end` (v11.17.0+) | its entities read; the group skipped, and a relationship with a group skipped (row 20 has none) |
+| styles, classes, `:::`, `accTitle`, `accDescr` | skipped |
 
 Mermaid says nothing of which column a foreign key references: `references` is left out and reported once per file
-(`fk-flag` warns of each). The writer keeps it as `%% references: order.customer_id customer.id`, and an id the reader
-would not derive as `%% id:`. `read(write(model))` equals the model for `20-entity-relationship.json` and 500 generated
-models.
+(`fk-flag` warns of each). The writer keeps it as `%% references: customer.id` above the column's row (built so: one
+id, the rest of the line, so an id with a space is kept; the first draft's two-label form named the referring column
+twice), and an id the reader would not derive as `%% id:`; an entity whose id Mermaid cannot write as a name (a `"`, a
+`%`, a keyword of its lexer first) is written as `entity`, `entity-2` … under its `%% id:`. A comment is kept as
+`ext.mermaid.comment`. The view's `notation` `idef1x` is not written (Mermaid draws crow's foot), named in a
+`%% not written:` line. `read(write(model))` equals the model for `20-entity-relationship.json` and 500 generated
+models. A view's node or line listed twice is written once and named; a column whose type or name holds a line break
+is named, not written (a row is one line); a title YAML would read as other than text (`null`, `yes`, `123`) is
+quoted. Mermaid 12.3.0's own parser read the writer's text for example 20 and 200 of them with the same entities,
+columns, keys and ends: a one-off check at M2.8, not a dependency and not repeated by the tests. §8's object counts and 64-deep nesting are for the parsed-object
+readers: a subgraph's depth here is a counter, read flat (90,000 deep in under a second, tested).
 
 ### 8.2 Mermaid flowchart (`src/readers/mermaid-flowchart.js`), ported
 
@@ -623,14 +642,25 @@ or inline, subgraphs, `;`), in JavaScript, against Mermaid 12.3.0's flowchart pa
 | `@{ shape: delay }` | `flow.Delay` |
 | `((text))`, `@{ shape: circle }` | `flow.Connector` |
 | `{{ }}`, `[/ \]`, `[\ /]`, `>]`, `(((`, other `@{ shape }` | `flow.Process`, approximated |
-| `-->`, `---`, `-.->`, `==>`, `<-->` | a flow; a line with no arrow, dotted or thick approximated; `<-->` two flows |
+| `-->`, `---`, `-.->`, `==>`, `<-->` | a flow; a line with no arrow, dotted or thick approximated; `<-->`, `o--o`, `x--x` two flows |
 | `subgraph … end` | its nodes read; the group skipped (row 21 has none) |
 | `TB`, `TD`, `LR`; `RL`, `BT` | `direction` `down`, `right`; the last two approximated |
 | `classDef`, `class`, `style`, `linkStyle`, `click`, `~~~` | skipped |
 
-The writer writes Mermaid 12.3.0's `@{ shape: … }` for the four shapes the bracket forms lack. `read(write(model))`
-equals the model for `21-flowchart.json` and 500 generated models. The Python importer keeps its own grammar for maps
-(S16); both are tested on one shared file of every construct, so they read the same nodes and links.
+The writer writes Mermaid 12.3.0's `@{ shape: … }` for the three shapes the bracket forms lack (`doc`, `manual-input`,
+`delay`). `read(write(model))` equals the model for `21-flowchart.json` and 500 generated models. The Python importer keeps
+its own grammar for maps (S16); both are tested on one shared file of every construct, so they read the same nodes and links.
+
+As built (M2.9): the shared file's check runs the importer through `python3` from `tests/mermaid-flowchart.test.mjs`, since
+`tests/import.py` is M2.12's; the reader is given the file without its `%% id:` lines, which the importer does not read, and
+every node and link the importer reads has the importer's id, but the importer's two lines to a subgraph's box, which the
+reader reports. The reader also reads Mermaid's edge ids (`A e1@--> B`, the link's id; `e1@{ animate: true }` reported) and
+the shape aliases of Mermaid's `shapes.ts`; `direction` outside a subgraph is reported, not read (Mermaid documents it in
+subgraphs only); links past 100,000 (a product of `&` groups) are not read, reported once. A comment (`uml.Comment`) is
+not written: Mermaid's flowchart has no note. A link whose tail is `<`, `o` or `x` (`<-->`, `o--o`, `x--x`) is read as
+two flows, approximated. An `%% id:` the statement below it does not take (a style line, a subgraph, a line not read) is
+reported and goes no further. `e1@{ … }` above its link is a node `e1`, as Mermaid draws it, and the link's id is reported
+as taken. A quoted link text in pipes may hold `|` (`-->|"a|b"|`), which the importer does not read.
 
 ### 8.3 Structurizr JSON (`src/readers/structurizr.js`)
 
@@ -748,7 +778,9 @@ accessible names, a legend, `word` and `rows`:
 
 **The lines table.** It shows a line's `label` (Q11), which is not where these types keep what a line says: information
 flow's conveyed elements, ER's multiplicities and identifying, C4's technology. A type may give `text(model, view, id)`,
-which `src/page/print.js` shows in place of `label` when it returns text (about 30 B).
+which `src/page/print.js` shows in place of `label` when it returns text (about 30 B). The `id` is the line's id; a
+view's own line with none is passed its drawn key, `from->to#n` (`src/map/context.js`), which names no model element, so a
+type finds nothing by it and the row shows `label` (noted in M2.1's review).
 
 | Option | For | Against |
 |---|---|---|
@@ -824,7 +856,7 @@ package proposes its row and writes its release notes in its pull request's desc
 | M2.6 | **C4 elements and static views.** §5.1, §5.2, §6.1, §6.5, §7.5, §7.5.1: the element on the map's shapes, boundaries, implied lines, scope rules, `D`, the key; `c4.landscape`, `c4.context`, `c4.container`, `c4.component`. Its P1 view measured first (§11) | `src/c4/c4.js`, `tests/c4.test.mjs`, `tests/c4.html`, `tests/embed.py` (appends) | M2.1 | As M2.2 on row 23's four static views; the implied lines of G3 drawn and refused for editing; maps' geometry hashes and stills unchanged (the shapes are read only) |
 | M2.7 | **C4 dynamic and deployment views.** §7.5.2, §7.5.3 | `src/c4/views.js`, `tests/c4-views.test.mjs`, `tests/c4-views.html`, `tests/embed.py` (appends) | M2.6 | As M2.2 on the two views; steps reordered by key; deleting a container deletes its instances (`refs`) |
 | M2.8 | **Mermaid ER reader and writer.** §8.1 | `src/readers/mermaid-er.js`, `tests/mermaid-er.test.mjs`, `tests/import/er.mmd` | M2.0 | `read(write(model))` equals the model on the subset; the construct file's report pinned; §8's limits each by a test |
-| M2.9 | **Mermaid flowchart reader and writer, ported.** §8.2 | `src/readers/mermaid-flowchart.js`, `tests/mermaid-flowchart.test.mjs`, `tests/import/flowchart.mmd` | M2.0 | As M2.8; on the shared construct file it reads the nodes and links the Python importer reads (`tests/import.py` runs both) |
+| M2.9 | **Mermaid flowchart reader and writer, ported.** §8.2 | `src/readers/mermaid-flowchart.js`, `tests/mermaid-flowchart.test.mjs`, `tests/import/flowchart.mmd` | M2.0 | As M2.8; on the shared construct file it reads the nodes and links the Python importer reads (as built, its test runs both: §8.2) |
 | M2.10 | **Structurizr JSON reader.** §8.3 | `src/readers/structurizr.js`, `tests/structurizr.test.mjs`, `tests/import/structurizr.json` (a workspace exported from `examples/clinic.dsl` and one with every view kind; as built, written in the export's form, §8.3) | M2.0 | The workspace reads into views that pass `check.mjs`'s structural checks (the C4 type's `validate` is M2.14's check); ids stable across two reads; the report pinned; §8's limits each by a test (a deep nest, a count over the limit, a `__proto__` name) |
 | M2.11 | **DBML adapter.** §8.4 | `src/readers/dbml.js`, `tests/dbml.test.mjs`, `tests/import/dbml.json` (a `Database` captured from a pinned `@dbml/core`, with the DBML it came from) | M2.0 | The captured file reads into a model that `check.mjs` passes; the report pinned; `package.json` unchanged; §8's limits each by a test |
 | M2.12 | **The CLI.** §8.5: `erDiagram`, `--typed` flowcharts, Structurizr JSON, `.dbml` | `umlimator.py` (`cmd_import`), `umlimator_import.py` (`detect`, `mermaid_typed`), `tests/import.py` (adds cases) | M2.8 to M2.11 | Every row of §8.5's table by a test. CI installs no `@dbml/core`, so the `.dbml` row is tested twice: as CI has it (the install message, nothing written), and with a stub `node_modules/@dbml/core` written into a scratch folder that the test runs the CLI from, whose parser returns M2.11's captured `Database`; a file over 1 MiB refused before parsing; every earlier import test unchanged |

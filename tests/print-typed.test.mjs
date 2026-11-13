@@ -57,3 +57,15 @@ test('maps\' tables are unchanged; a class, object or package view\'s are unchan
   }
   assert.deepEqual(got, PINNED);
 });
+
+// The lines table (milestone 2 §9, S17): a type's text(model, view, id) is what a line says, shown before its label
+const said = [];
+registerDiagramType('test.printtext', { text: (model, view, id) => { said.push([model.title, view.id, id]); return { go: 'conveys <Order>', back: '' }[id]; } });
+test('a type\'s text is a line\'s Label cell, escaped; with none from it, the line\'s label; a type without text shows label', () => {
+  const m = structuredClone(M); m.edges.push({ id: 'back', type: 'test.Transition', from: 'plain', to: 'placed', label: 'refund' }, { id: 'none', type: 'test.Transition', from: 'empty', to: 'nil', label: 'ship' });
+  m.views[0].edges.push('back', 'none'); m.views.push({ ...m.views[0], id: 'sm2', diagram: 'test.printtext' });
+  const ctx = mapContext(m), label = v => tablesOf(ctx, ctx.V[v], NONE)[1].rows.map(r => cells(r)[1]);
+  assert.deepEqual(label('sm2'), ['conveys &lt;Order&gt;', 'refund', 'ship']);
+  assert.deepEqual(said, [['print test', 'sm2', 'go'], ['print test', 'sm2', 'back'], ['print test', 'sm2', 'none']]);
+  assert.deepEqual(label('sm'), ['pay', 'refund', 'ship']); // test.print gives no text
+});
