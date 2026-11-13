@@ -1,7 +1,157 @@
 <!doctype html>
+<!-- The timing diagram (6.5) in headless Chrome (tests/embed.py), from lib/umlimator-all.js: an inline copy of
+     docs/diagrams/examples/14-timing.json drawn by render() in both themes and three fonts, in the states form and with a
+     value lifeline (lanes, state rows, step lines and bands inside their lanes, every message's ends on its lanes' levels,
+     texts inside their lanes, names, reading order, contrast, the legend), then edited through the edit event and apply(),
+     by pointer and by keyboard: N and the palette (a lifeline, a change, a time constraint), F2 on a change, a message, a
+     state's row and the ruler, L from a change to a change (a duration constraint, picked), a change dragged and moved by
+     Alt + arrows, a message dragged, S on a lifeline, Delete on a change and on a lifeline, Shift + Delete on a lifeline. -->
 <meta charset="utf-8">
-<title>timing: placeholder (stage 6, 6.0)</title>
-<!-- notes/stage-6.md 6.0: a placeholder that reports ok, so tests/embed.py lists the page once and the work package that
-     owns it (6.3 profile, 6.5 timing, 6.6 stage6) fills it without editing tests/embed.py -->
-<pre id="result"></pre>
-<script>document.getElementById('result').textContent = JSON.stringify({ ok: ['the placeholder page loads (filled by its work package)'], fail: [] });</script>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="../lib/umlimator-theme.css">
+<title>umlimator timing diagram test</title>
+<body style="margin:0">
+<div id="m" style="width:1400px;height:900px"></div>
+<script type="module">
+import { render, apply, validate } from '../lib/umlimator-all.js';
+const out = { ok: [], fail: [] };
+const check = (name, cond, info) => { document.title = name; if (cond) out.ok.push(name); else out.fail.push(name + (info === undefined ? '' : ': ' + JSON.stringify(info))); };
+const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+const el = document.getElementById('m');
+let sr, stage, ed = [];
+const pick = s => sr.querySelector(s), all = s => [...sr.querySelectorAll(s)];
+const centre = s => { const r = pick(s).getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; };
+const ptr = (target, type, [x, y]) => target.dispatchEvent(new PointerEvent(type, { clientX: x, clientY: y, button: 0, pointerId: 7, pointerType: 'mouse', bubbles: true, composed: true }));
+const key = (k, extra = {}, target = stage) => target.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true, composed: true, cancelable: true, ...extra }));
+const click = s => { const g = pick(s), at = centre(s); ptr(g, 'pointerdown', at); ptr(g, 'pointerup', at); g.dispatchEvent(new MouseEvent('click', { clientX: at[0], clientY: at[1], bubbles: true, composed: true })); };
+const drag = (s, to) => { const g = pick(s), from = centre(s); ptr(g, 'pointerdown', from); for (let i = 1; i <= 4; i++) ptr(stage, 'pointermove', [from[0] + (to[0] - from[0]) * i / 4, from[1] + (to[1] - from[1]) * i / 4]); ptr(stage, 'pointerup', to); };
+const mount = (model, opts = {}) => { el.innerHTML = ''; ed = []; const h = render(el, model, { view: 'charge', on: { edit: e => ed.push(e) }, ...opts }); sr = el.querySelector('.umlimator').shadowRoot; stage = pick('.stage'); return h; };
+const errors = m => validate(m).filter(p => p.level === 'error');
+const last = () => ed[ed.length - 1];
+const gives = (name, cmds, test, base) => { const e = last(); let m = null; try { m = e && apply(base, e.commands); } catch (x) { m = null; }
+  check(name, !!e && same(e.commands, cmds) && !!m && test(m) && !errors(m).length, [e, m && errors(m)]); return m; };
+const box = g => { const r = g.getBBox(); return { x: r.x, y: r.y, w: r.width, h: r.height }; };
+const inside = (a, b) => a.x >= b.x - .5 && a.y >= b.y - .5 && a.x + a.w <= b.x + b.w + .5 && a.y + a.h <= b.y + b.h + .5;
+const FONTS = { serif: 'serif', sans: 'sans-serif', wide: 'monospace' };
+const rgba = s => { let m = /rgba?\(([^)]+)\)/.exec(s); if (m) { const p = m[1].split(/[ ,/]+/).filter(Boolean).map(Number); return [p[0] / 255, p[1] / 255, p[2] / 255, p.length > 3 ? p[3] : 1]; }
+  m = /color\(srgb ([^)]+)\)/.exec(s); if (m) { const p = m[1].split(/[ /]+/).filter(Boolean).map(Number); return [p[0], p[1], p[2], p.length > 3 ? p[3] : 1]; } return null; };
+const blend = (top, bot) => [0, 1, 2].map(i => top[i] * top[3] + bot[i] * (1 - top[3])).concat(1);
+const lum = c => { const f = v => v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]); };
+const ratio = (fg, bg) => { const [x, y] = [lum(blend(fg, bg)), lum(bg)].sort((p, q) => q - p); return +((x + 0.05) / (y + 0.05)).toFixed(2); };
+const css = (e, k) => rgba(getComputedStyle(e)[k]);
+// an inline copy of 14-timing.json (6.6 moves and revises the file)
+const MODEL = { schemaVersion: 2, title: 'Bookshop: one charge', root: 'charge',
+  nodes: [{ id: 'worker', type: 'uml.Lifeline', label: 'worker', props: { represents: 'OrderWorker', states: ['Idle', 'Waiting for payment', 'Recording payment'] } },
+    { id: 'payments', type: 'uml.Lifeline', label: 'payments', props: { represents: 'PaymentProvider', states: ['Idle', 'Authorising', 'Capturing'] } }],
+  edges: [],
+  views: [{ id: 'charge', diagram: 'uml.timing', title: 'One charge', parent: null, nodeIds: ['worker', 'payments'],
+    edges: [{ id: 'm-charge', type: 'uml.Message', from: 'worker', to: 'payments', label: 'charge(total)', props: { sort: 'call', sentAt: 100, receivedAt: 140 } },
+      { id: 'm-paid', type: 'uml.Message', from: 'payments', to: 'worker', label: 'paid', props: { sort: 'reply', replyTo: 'm-charge', sentAt: 720, receivedAt: 760 } }],
+    timeline: { unit: 'ms', changes: [['w-idle', 'worker', 0, 'Idle'], ['w-waiting', 'worker', 100, 'Waiting for payment'], ['w-recording', 'worker', 760, 'Recording payment'], ['w-done', 'worker', 900, 'Idle'],
+      ['p-idle', 'payments', 0, 'Idle'], ['p-authorising', 'payments', 140, 'Authorising'], ['p-capturing', 'payments', 480, 'Capturing'], ['p-done', 'payments', 720, 'Idle']].map(([id, lifeline, at, state]) => ({ id, lifeline, at, state })),
+      constraints: [{ id: 'c-wait', type: 'uml.DurationConstraint', from: 'w-waiting', to: 'w-recording', label: '{<= 800 ms}' }, { id: 'c-finished', type: 'uml.TimeConstraint', from: 'w-done', label: '{<= 1000 ms}' }] } }] };
+const ORDER = ['worker', 'worker->Idle', 'worker->Waiting for payment', 'worker->Recording payment', 'w-idle', 'w-waiting', 'w-recording', 'w-done',
+  'payments', 'payments->Idle', 'payments->Authorising', 'payments->Capturing', 'p-idle', 'p-authorising', 'p-capturing', 'p-done'];
+try {
+  for (const theme of ['light', 'dark']) for (const [fname, family] of Object.entries(FONTS)) for (const form of ['states', 'values']) {
+    document.documentElement.dataset.theme = theme; el.style.setProperty('--um-sans', family);
+    const M = structuredClone(MODEL); if (form === 'values') M.views[0].present = { payments: { as: 'values' } };
+    const tag = `${theme}, ${fname}, ${form}`, h = mount(M, { legend: true }), bad = [];
+    const lanes = all('.node.tm-lane'), L = Object.fromEntries(lanes.map(g => [g.dataset.id, box(g.querySelector('rect'))]));
+    check(`${tag}: two lanes, their rows, the changes, two constraints, the ruler, two messages, the step lines and bands`, same(lanes.map(g => g.dataset.id), ['worker', 'payments'])
+      && all('.node.tm-row').length === (form === 'values' ? 3 : 6) && all('.node.tm-change').length === 8 && all('.node.tm-mark').length === 2 && all('.node.tm-ruler').length === 1
+      && all('.edge-g').length === 2 && all('.tm-step').length === (form === 'values' ? 1 : 2) && all('.tm-band').length === (form === 'values' ? 4 : 0), all('.node').map(g => g.dataset.id));
+    // texts inside their lanes; step lines and bands inside them; the lanes apart
+    all('.node.tm-lane text, .node.tm-row text').forEach(t => { const id = t.closest('.node').dataset.id.split('->')[0]; if (!inside(box(t), L[id])) bad.push(`"${t.textContent}" leaves ${id}`); });
+    all('.tm-step, .tm-band').forEach((p, i) => { const b = box(p); if (!Object.values(L).some(l => inside(b, l))) bad.push(`line ${i} in no lane`); });
+    all('.tm-value').forEach(t => { if (!inside(box(t), L.payments)) bad.push(`value ${t.textContent} leaves its lane`); });
+    if (L.worker.y + L.worker.h > L.payments.y + .5) bad.push('the lanes meet');
+    check(`${tag}: texts, steps and bands inside their lanes, lanes apart`, !bad.length, bad);
+    // every message's ends on its lanes' levels: a state row's middle, the band's middle
+    const lvl = (lane, state) => form === 'values' && lane === 'payments' ? L.payments.y + L.payments.h / 2 : (b => b.y + b.h / 2)(box(pick(`.node[data-id="${CSS.escape(lane + '->' + state)}"] rect`)));
+    const ends = all('.edge-g path.edge').map(p => p.getAttribute('d').match(/-?\d+(\.\d+)?/g).map(Number)), want = [[lvl('worker', 'Waiting for payment'), lvl('payments', 'Authorising')], [lvl('payments', 'Idle'), lvl('worker', 'Recording payment')]];
+    check(`${tag}: each message from the sender's level to the receiver's, within 1 px`, ends.every((v, i) => Math.abs(v[1] - want[i][0]) <= 1 && Math.abs(v[v.length - 1] - want[i][1]) <= 1), [ends, want]);
+    check(`${tag}: names a screen reader reads`, pick('.node[data-id="w-waiting"]').getAttribute('aria-label') === 'worker: Waiting for payment from 100 ms'
+      && pick('.edge-g[data-i="0"] title').textContent === 'Call charge(total) from worker at 100 ms to payments at 140 ms'
+      && pick('.node[data-id="c-wait"]').getAttribute('aria-label') === 'Duration constraint {<= 800 ms} on worker from 100 ms to 760 ms'
+      && pick('.node[data-id="->ruler"]').getAttribute('aria-label') === 'Time ruler, 0 to 1000 ms, a tick every 200 ms', pick('.node[data-id="->ruler"]').getAttribute('aria-label'));
+    const order = all('.keys .um-key').map(k => k.dataset.node ?? k.dataset.i);
+    check(`${tag}: reading order: each lane, its rows, its changes in time; messages; constraints; the ruler`, same(order, [...ORDER.filter(id => form === 'states' || !id.startsWith('payments->')), '0', '1', 'c-wait', 'c-finished', '->ruler']), order);
+    const legend = all('.m-legend b').map(b => b.textContent);
+    check(`${tag}: the legend keys what the view draws`, same(legend, ['Call', 'Reply', 'Duration constraint', 'Time constraint', 'States', ...(form === 'values' ? ['Values'] : [])]), legend);
+    const bg = css(pick('.stage'), 'backgroundColor'), low = all('.node text, .tm-value').map(t => [t.textContent, ratio(css(t, 'fill'), bg)]).filter(([, c]) => c < 4.5);
+    const lines = all('.tm-step, .tm-band, .node.tm-mark path, .node.tm-ruler path, .edge-g path.edge').map(p => ratio(css(p, 'stroke'), bg)).filter(c => c < 3);
+    check(`${tag}: contrast: texts 4.5:1, lines 3:1`, !low.length && !lines.length, [low, lines]);
+    h.destroy();
+  }
+  document.documentElement.dataset.theme = 'light'; el.style.removeProperty('--um-sans');
+
+  // ---- editing (DoD 4), each gesture's commands applied with apply()
+  const BASE = MODEL, panel = s => pick('.um-editor ' + s), name = t => { pick('.um-rename').value = t; key('Enter', {}, pick('.um-rename')); };
+  let h = mount(BASE, { editable: true });
+  check('the palette: Lifeline, Change, Time constraint; the lines listed', same(all('.um-editor .um-pal button').map(b => b.textContent), ['Lifeline', 'Change', 'Time constraint'])
+    && /Call, Async, Reply, Duration constraint/.test(panel('.um-pal .um-note').textContent), panel('.um-pal') && panel('.um-pal').textContent);
+  key('n'); name('bank : Bank');
+  gives('N adds a lifeline, read as name : Type', [{ op: 'add', element: { id: 'bank1', type: 'uml.Lifeline', label: 'bank', props: { represents: 'Bank' } }, view: 'charge' }], m => m.views[0].nodeIds.at(-1) === 'bank1', BASE);
+  const changes = BASE.views[0].timeline.changes, plus = (list, x) => [...list, x];
+  click('.node[data-id="w-waiting"] rect'); all('.um-editor .um-pal button')[1].click(); name('Recording payment');
+  gives('the palette\'s Change with a change selected: a minor tick after it, by set of the timeline', [{ op: 'set', view: 'charge', path: ['timeline', 'changes'], value: plus(changes, { id: 'change1', lifeline: 'worker', at: 120, state: 'Recording payment' }) }],
+    m => m.views[0].timeline.changes.length === 9, BASE);
+  click('.node[data-id="payments"] .c-name'); all('.um-editor .um-pal button')[1].click(); name('Retrying');
+  gives('the palette\'s Change on a lifeline: at the ruler\'s start, a new state added', [{ op: 'set', id: 'payments', path: 'props.states', value: ['Idle', 'Authorising', 'Capturing', 'Retrying'] },
+    { op: 'set', view: 'charge', path: ['timeline', 'changes'], value: plus(changes, { id: 'change1', lifeline: 'payments', at: 0, state: 'Retrying' }) }], m => m.nodes[1].props.states.length === 4, BASE);
+  check('… and the hint line says the state was added', /added state Retrying to payments/.test(sr.textContent));
+  click('.node[data-id="w-done"] rect'); all('.um-editor .um-pal button')[2].click(); name('{t <= 950 ms}');
+  gives('the palette\'s Time constraint on the change selected', [{ op: 'set', view: 'charge', path: ['timeline', 'constraints'], value: [...BASE.views[0].timeline.constraints, { id: 'time1', type: 'uml.TimeConstraint', from: 'w-done', label: '{t <= 950 ms}' }] }],
+    m => m.views[0].timeline.constraints.length === 3, BASE);
+  // F2: a change, a message, a state's row, the ruler
+  click('.node[data-id="w-waiting"] rect'); key('F2');
+  check('F2 on a change: a field holding state @ time', pick('.um-rename') && pick('.um-rename').value === 'Waiting for payment @ 100', pick('.um-rename') && pick('.um-rename').value);
+  name('Waiting for payment @ 120');
+  gives('F2 on a change: its state and time set', [{ op: 'set', id: 'w-waiting', path: 'state', value: 'Waiting for payment' }, { op: 'set', id: 'w-waiting', path: 'at', value: 120 }], m => m.views[0].timeline.changes[1].at === 120, BASE);
+  const lk = pick('.line-key[data-i="0"]'); lk.focus(); key('Enter', {}, lk); key('F2');
+  check('F2 on a message: a field holding label @ sent → received', pick('.um-rename') && pick('.um-rename').value === 'charge(total) @ 100 → 140', pick('.um-rename') && pick('.um-rename').value);
+  name('charge(sum) @ 100 -> 160');
+  gives('F2 on a message: its label and both times', [{ op: 'set', id: 'm-charge', path: 'label', value: 'charge(sum)' }, { op: 'set', id: 'm-charge', path: 'props.sentAt', value: 100 }, { op: 'set', id: 'm-charge', path: 'props.receivedAt', value: 160 }],
+    m => m.views[0].edges[0].props.receivedAt === 160, BASE);
+  click('.node[data-id="worker->Idle"] rect'); key('F2'); name('Ready');
+  gives('F2 on a state\'s row: the state renamed in states and in each change in it', [{ op: 'set', id: 'worker', path: 'props.states', value: ['Ready', 'Waiting for payment', 'Recording payment'] },
+    { op: 'set', id: 'w-idle', path: 'state', value: 'Ready' }, { op: 'set', id: 'w-done', path: 'state', value: 'Ready' }], m => m.views[0].timeline.changes[3].state === 'Ready', BASE);
+  click('.node[data-id="->ruler"] rect'); key('F2'); name('s');
+  gives('F2 on the ruler: the timeline\'s unit', [{ op: 'set', view: 'charge', path: ['timeline', 'unit'], value: 's' }], m => m.views[0].timeline.unit === 's', BASE);
+  // L from a change to another, typed by name, the picker's Duration constraint
+  click('.node[data-id="p-authorising"] rect'); key('l'); for (const c of 'p-capt') key(c); key('Enter'); // a change is found by its id (the canvas names a node no view lists by it)
+  check('L from a change to a change opens the picker of the four lines', same(all('.um-pick button').map(b => b.textContent), ['Call', 'Async', 'Reply', 'Duration constraint']), all('.um-pick button').map(b => b.textContent));
+  all('.um-pick button')[3].click();
+  gives('Duration constraint: between the two changes, in time order', [{ op: 'set', view: 'charge', path: ['timeline', 'constraints'], value: [...BASE.views[0].timeline.constraints, { id: 'duration1', type: 'uml.DurationConstraint', from: 'p-authorising', to: 'p-capturing' }] }],
+    m => m.views[0].timeline.constraints.length === 3, BASE);
+  // moves: a change dragged along its lane, Alt + → and Alt + ↓; a message dragged
+  click('.node[data-id="w-waiting"] rect'); key('ArrowRight', { altKey: true });
+  gives('Alt + → on a change: a minor tick later', [{ op: 'set', id: 'w-waiting', path: 'at', value: 120 }], m => m.views[0].timeline.changes[1].at === 120, BASE);
+  key('ArrowDown', { altKey: true });
+  gives('Alt + ↓ on a change: the state below', [{ op: 'set', id: 'w-waiting', path: 'state', value: 'Recording payment' }], m => m.views[0].timeline.changes[1].state === 'Recording payment', BASE);
+  // the screen point of time t (0 to 1000 ms: the ruler's span) on a lane's middle
+  const tick = (t, lane) => { const r = pick('.node[data-id="->ruler"] rect').getBoundingClientRect();
+    const ln = pick(`.node[data-id="${lane}"] rect`).getBoundingClientRect(); return [r.x + t * r.width / 1000, ln.y + ln.height / 2]; };
+  drag('.node[data-id="w-waiting"] rect', tick(320, 'worker'));
+  gives('a change dragged along its lane: its time, at the slot it is dropped on', [{ op: 'set', id: 'w-waiting', path: 'at', value: 320 }], m => m.views[0].timeline.changes[1].at === 320, BASE);
+  { const p = pick('.edge-g[data-i="0"] path.hitline'), d = p.getAttribute('d').match(/-?\d+(\.\d+)?/g).map(Number), g = pick('.node[data-id="->ruler"] rect'), r = g.getBoundingClientRect(), bb = g.getBBox(), k = r.width / bb.width;
+    const at = [r.x + ((d[0] + d[2]) / 2 - bb.x) * k, r.y + ((d[1] + d[3]) / 2 - bb.y) * k], to = tick(300, 'worker');
+    const g0 = pick('.edge-g[data-i="0"]'); ptr(g0.querySelector('.hitline'), 'pointerdown', at); for (let i = 1; i <= 4; i++) ptr(stage, 'pointermove', [at[0] + (to[0] - at[0]) * i / 4, at[1] + (to[1] - at[1]) * i / 4]); ptr(stage, 'pointerup', to); }
+  { const e = last(), c = e && e.commands, m = c && apply(BASE, c);
+    check('a message dragged: both its times by the same amount', !!c && c.length === 2 && c[0].path === 'props.sentAt' && c[1].path === 'props.receivedAt' && c[1].value - c[0].value === 40 && c[0].value !== 100 && !errors(m).length, e); }
+  // S, Delete, Shift + Delete
+  click('.node[data-id="payments"] .c-name'); key('S');
+  gives('S on a lifeline: its values form', [{ op: 'set', view: 'charge', path: ['present', 'payments', 'as'], value: 'values' }], m => m.views[0].present.payments.as === 'values', BASE);
+  click('.node[data-id="w-waiting"] rect'); key('Delete');
+  gives('Delete on a change: deleted, its constraints with it', [{ op: 'delete', id: 'w-waiting' }], m => !m.views[0].timeline.constraints.some(c => c.id === 'c-wait'), BASE);
+  check('… and the hint line says it is deleted, not hidden', /deleted, not hidden/.test(sr.textContent));
+  click('.node[data-id="worker"] .c-name'); key('Delete');
+  gives('Delete on a lifeline: hidden, its messages with it, its changes kept', [{ op: 'hide', id: 'worker', view: 'charge' }], m => !m.views[0].edges.length && m.views[0].timeline.changes.length === 8, BASE);
+  check('… said first with the count', /Hid worker; deleted its 2 messages/.test(sr.textContent));
+  click('.node[data-id="worker"] .c-name'); key('Delete', { shiftKey: true });
+  gives('Shift + Delete on a lifeline: deleted with its changes and their constraints', [{ op: 'delete', id: 'worker' }], m => m.views[0].timeline.changes.length === 4 && !m.views[0].timeline.constraints.length, BASE);
+  h.destroy();
+} catch (e) { out.fail.push('threw: ' + (e && e.stack || e)); }
+const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
+</script>
