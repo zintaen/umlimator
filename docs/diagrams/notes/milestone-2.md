@@ -628,9 +628,17 @@ or inline, subgraphs, `;`), in JavaScript, against Mermaid 12.3.0's flowchart pa
 | `TB`, `TD`, `LR`; `RL`, `BT` | `direction` `down`, `right`; the last two approximated |
 | `classDef`, `class`, `style`, `linkStyle`, `click`, `~~~` | skipped |
 
-The writer writes Mermaid 12.3.0's `@{ shape: … }` for the four shapes the bracket forms lack. `read(write(model))`
-equals the model for `21-flowchart.json` and 500 generated models. The Python importer keeps its own grammar for maps
-(S16); both are tested on one shared file of every construct, so they read the same nodes and links.
+The writer writes Mermaid 12.3.0's `@{ shape: … }` for the three shapes the bracket forms lack (`doc`, `manual-input`,
+`delay`). `read(write(model))` equals the model for `21-flowchart.json` and 500 generated models. The Python importer keeps
+its own grammar for maps (S16); both are tested on one shared file of every construct, so they read the same nodes and links.
+
+As built (M2.9): the shared file's check runs the importer through `python3` from `tests/mermaid-flowchart.test.mjs`, since
+`tests/import.py` is M2.12's; the reader is given the file without its `%% id:` lines, which the importer does not read, and
+every node and link the importer reads has the importer's id, but the importer's two lines to a subgraph's box, which the
+reader reports. The reader also reads Mermaid's edge ids (`A e1@--> B`, the link's id; `e1@{ animate: true }` reported) and
+the shape aliases of Mermaid's `shapes.ts`; `direction` outside a subgraph is reported, not read (Mermaid documents it in
+subgraphs only); links past 100,000 (a product of `&` groups) are not read, reported once. A comment (`uml.Comment`) is
+not written: Mermaid's flowchart has no note.
 
 ### 8.3 Structurizr JSON (`src/readers/structurizr.js`)
 
@@ -781,7 +789,7 @@ package proposes its row and writes its release notes in its pull request's desc
 | M2.6 | **C4 elements and static views.** §5.1, §5.2, §6.1, §6.5, §7.5, §7.5.1: the element on the map's shapes, boundaries, implied lines, scope rules, `D`, the key; `c4.landscape`, `c4.context`, `c4.container`, `c4.component`. Its P1 view measured first (§11) | `src/c4/c4.js`, `tests/c4.test.mjs`, `tests/c4.html`, `tests/embed.py` (appends) | M2.1 | As M2.2 on row 23's four static views; the implied lines of G3 drawn and refused for editing; maps' geometry hashes and stills unchanged (the shapes are read only) |
 | M2.7 | **C4 dynamic and deployment views.** §7.5.2, §7.5.3 | `src/c4/views.js`, `tests/c4-views.test.mjs`, `tests/c4-views.html`, `tests/embed.py` (appends) | M2.6 | As M2.2 on the two views; steps reordered by key; deleting a container deletes its instances (`refs`) |
 | M2.8 | **Mermaid ER reader and writer.** §8.1 | `src/readers/mermaid-er.js`, `tests/mermaid-er.test.mjs`, `tests/import/er.mmd` | M2.0 | `read(write(model))` equals the model on the subset; the construct file's report pinned; §8's limits each by a test |
-| M2.9 | **Mermaid flowchart reader and writer, ported.** §8.2 | `src/readers/mermaid-flowchart.js`, `tests/mermaid-flowchart.test.mjs`, `tests/import/flowchart.mmd` | M2.0 | As M2.8; on the shared construct file it reads the nodes and links the Python importer reads (`tests/import.py` runs both) |
+| M2.9 | **Mermaid flowchart reader and writer, ported.** §8.2 | `src/readers/mermaid-flowchart.js`, `tests/mermaid-flowchart.test.mjs`, `tests/import/flowchart.mmd` | M2.0 | As M2.8; on the shared construct file it reads the nodes and links the Python importer reads (as built, its test runs both: §8.2) |
 | M2.10 | **Structurizr JSON reader.** §8.3 | `src/readers/structurizr.js`, `tests/structurizr.test.mjs`, `tests/import/structurizr.json` (a workspace exported from `examples/clinic.dsl` and one with every view kind) | M2.0 | The workspace reads into views that pass `check.mjs`'s structural checks (the C4 type's `validate` is M2.14's check); ids stable across two reads; the report pinned; §8's limits each by a test (a deep nest, a count over the limit, a `__proto__` name) |
 | M2.11 | **DBML adapter.** §8.4 | `src/readers/dbml.js`, `tests/dbml.test.mjs`, `tests/import/dbml.json` (a `Database` captured from a pinned `@dbml/core`, with the DBML it came from) | M2.0 | The captured file reads into a model that `check.mjs` passes; the report pinned; `package.json` unchanged; §8's limits each by a test |
 | M2.12 | **The CLI.** §8.5: `erDiagram`, `--typed` flowcharts, Structurizr JSON, `.dbml` | `umlimator.py` (`cmd_import`), `umlimator_import.py` (`detect`, `mermaid_typed`), `tests/import.py` (adds cases) | M2.8 to M2.11 | Every row of §8.5's table by a test. CI installs no `@dbml/core`, so the `.dbml` row is tested twice: as CI has it (the install message, nothing written), and with a stub `node_modules/@dbml/core` written into a scratch folder that the test runs the CLI from, whose parser returns M2.11's captured `Database`; a file over 1 MiB refused before parsing; every earlier import test unchanged |
