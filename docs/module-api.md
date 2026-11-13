@@ -3792,3 +3792,117 @@ schema, `.d.ts` and conformance notes come in 0.23.0 (6.6, 6.7), whose section s
   stage 5's 248 B and C10's 183 B above, and stage 6's 6.1 (180 B) on `main`. `lib/umlimator-all.js` is 412.0 kB
   (412,030 B) with stage 6's types in it. The npm package is 655 kB.
 
+## 0.23.0 (in progress)
+
+### The profile and timing diagrams
+
+Stage 6 of the plan for 28 diagram types (`docs/diagrams/notes/stage-6.md`): the last two of UML's 14. 0.22.0 carried
+its 6.0 to 6.5 provisionally (the last part of its section); this section says what they do, what 6.6 and 6.7 add, and
+what moves from 0.22.0. Everything is additive: maps, every typed view released before and every earlier example but two
+draw as they did in 0.22.0 (`bench/expected.json`, `tests/core-diet.json`'s fingerprints of every view drawn by
+`lib/umlimator.js`, the examples' stills). The two are the package example, which gains the profile, and the Bookshop
+atlas, whose packages view gains it too and which gains the profile and timing views (below). A model with no
+`uml.Profile` gets no new problem. The new code is in `lib/umlimator-all.js`, except the core's 180 B for 6.1's slots
+(below).
+
+- **The note and the files (#230, 6.0, #231).** The approved design note, every recommendation of its §16 taken (13 Nov
+  2026); the four sources `src/uml/stereotypes.js`, `src/uml/profile.js`, `src/layout/timeruler.js` and
+  `src/uml/timing.js`, listed in `tools/build.mjs`'s `ALL` only.
+- **The core's slots (6.1, #237).** `validate()` runs `TYPED.across(model)` once on a version-2 model, after the typed
+  checks, and says its problems once with the types' own (a result that is not a list says nothing). The properties panel
+  adds `TYPED.fields(model, element)`'s fields after the type's own, each committed as `set` of its `path`. Both slots are
+  empty in `lib/umlimator.js`. A timing view's timeline joins `references()` and `delete`: a change's `lifeline` and a
+  constraint's `from` and `to` are references of kind `end`, so deleting a lifeline deletes its changes and their
+  constraints, from any view, deleting a change deletes its constraints, and hiding a lifeline keeps them.
+- **Stereotypes across the model (6.2, #238).** `src/uml/stereotypes.js` fills both slots: on a model holding a
+  `uml.Profile`, every applied stereotype is checked where a profile is applied to the element's packages (the applying
+  package included: the nearest-package rule, the maintainer's decision of 13 Nov 2026), against a table of UML 2.5.1's
+  metaclasses checked against OMG's `UML.xmi`; the standard profile and Annex C's keywords stay free keywords; required
+  stereotypes are supplied by the tool; tags are keyed by stereotype (`props.tags.<stereotype>.<tag>`) and checked by
+  definition, type and multiplicity; one field per tag in the panel on every typed view. Nine rules, all warnings but
+  `stereotype-abstract`.
+- **The time ruler (6.4, #239).** `layoutTimeRuler`, `src/layout/timeruler.js`: one linear time base for every lane,
+  derived, 480 to 4,800 px of plot, ticks a 1, 2 or 5 step with minor ticks a fifth of it; constraints in strips under
+  the lanes, on levels; message labels kept off steps, values and other labels or reported (`timing-label`); hostile
+  times reported, not drawn (`change-time`, `constraint-kind`); changes too close at the 4,800 px cap drawn on one
+  unit, their values cut, and reported (`timing-dense`, a warning).
+- **Profile diagrams, `uml.profile` (6.3, #240).** Profiles as packages and boxes, stereotypes with their tag
+  definitions, «metaclass» references, extensions with a filled triangle and `{required}`, «apply», generalizations
+  between stereotypes; an element's tags in a compartment per stereotype; five rules of its own and the class type's
+  `generalization-kinds`, which now takes a generalization between two stereotypes. The class type's tables gain the
+  keywords and the two lines, its package-like tests count a profile, `src/typed/draw.js`'s `ENDS` a `filled-triangle`.
+- **Timing diagrams, `uml.timing` (6.5, #241).** Lifelines as lanes on the ruler, each a step line over its states or a
+  band of values (`present.<id>.as: "values"`, `S`); call, async and reply messages at their times; duration and time
+  constraints; ten rules; changes added, moved and renamed by pointer, Alt + arrows and F2's `state @ t` and
+  `label @ t1 → t2`, snapped to minor ticks, never onto another change's instant; Delete hides a lifeline (its changes
+  stay), Shift + Delete deletes it with them, counted on the hint line.
+- **Fixtures, examples, documents (6.6).** `tests/profile-` and `timing-minimal.json` and `-stress.json`
+  (`notes/stage-6.md` §11) with `tests/stage6-fixtures.test.mjs` and `tests/stage6.html`; the two examples, moved from
+  `docs/diagrams/examples/` (`check.mjs`'s `MOVED`, its hand timing rule gone, the timing type's rules running there):
+  `examples/bookshop-profile.json` and `bookshop-timing.json`, in the gallery and CI (render, check, stills, pdf, ajv, the
+  diff Action's dry run); the JSON Schema and `.d.ts`; `docs/conformance/uml-profile.md` and `uml-timing.md`; the MCP
+  server and the diff Action tested on each (C10). A timing lane is a holder (`holder: true` on its geometry), so the
+  layout check does not report its own rows, changes and labels as overlaps; nor, in the browser's text checks
+  (`auditSvg`), any text, header or line label over a lane, its own or not: the timing views are held to §11's
+  predicate in `tests/stage6-fixtures.test.mjs` instead.
+- **The Bookshop atlas, full pass (6.7).** The atlas holds a view of each of UML's 14 diagram kinds: the profile and
+  timing examples join it (`tools/atlas-links.json`'s sources), and both are reached from the map by drill-down. The
+  package example shows the profile `BookshopConventions` and `sales`' «apply» line to it, and the profile opens the
+  profile view; `fulfil-activity`'s "Record the payment on the order" opens the timing view (decision 18).
+  `tools/atlas.mjs` carries the new fields (`tags`, `states`, `sentAt`, `receivedAt`, `isRequired`, a view's `timeline`,
+  whose changes and constraints are the view's own elements). Twenty-nine elements are now shared by several files, four
+  more than 0.22.0's 25: `order.placedAt` (gaining «column» and its tags in the atlas, which the class view does not
+  draw), the profile and its application, and `lifeline-worker`. `tests/atlas.test.mjs` pins them, the three classes
+  of `sales` that get the required «owned», and that deleting `lifeline-worker` from the sequence view takes its timing
+  changes and their constraints.
+
+What moves for a host that upgrades from 0.22.0:
+
+- **Nothing a map or an earlier type draws.** The slots (`TYPED.across`, `TYPED.fields`) are empty in `lib/umlimator.js`
+  and provisional; a model with no `uml.Profile` validates as before.
+- **Two behaviours change, both on purpose** (0.22.0 carried them provisionally; 0.21.0 had neither): a generalization
+  between two stereotypes is no longer an error of the class type's; deleting a lifeline (on any view) deletes its
+  timing changes and their constraints, and deleting a change its constraints, where 0.21.0 left them naming nothing.
+  `references()` lists them.
+- **Stereotypes may now be warned** (as 0.22.0 did provisionally) in a model that holds a profile: inside a package that
+  applies it, a name the profile does not define (and that is neither a standard stereotype nor a keyword), one that
+  does not fit its element, tags that are undefined, mistyped or missing. Outside every applied profile a name is a
+  keyword, as before.
+- **New in the JSON Schema and `lib/umlimator.d.ts`:** the two types' element, member and line types and props
+  (`UmlProfileElementType` … `UmlTimingPresent`), `props.tags` keyed by stereotype (`UmlTags`), a lifeline's `states`, an
+  extension's `isRequired`, a message's `sentAt` and `receivedAt`, a timing view's `timeline` (`UmlTimeline`), `present`'s
+  `as: "values"`; nothing accepted before is rejected.
+- **The examples moved.** `docs/diagrams/examples/07-profile.json` and `14-timing.json` are
+  `examples/bookshop-profile.json` and `bookshop-timing.json`, revised so the Bookshop atlas can hold them (elements
+  merge by id): Order applies «entity», as the class example has it, its tags keyed by stereotype; «owned»'s `team` tag
+  and `placedAt` are `0..1`; the timing file's lifelines take the overview's and the sequence's ids, `lifeline-worker`
+  and `lifeline-payments`, and its view is `one-charge` (`charge` is an action of the activity example).
+- **The package example's picture changes** (decision 18, as DoD 12 allows): `examples/bookshop-packages.json` gains the
+  profile `conventions` (a closed «profile» folder) and `sales-applies-conventions` («apply»), listed third among the
+  view's lines (listed last, catalog's «import» to shared went undrawn on the down layout, with no check finding). Its
+  stills, `describe()` (17 elements and 6 lines) and PDF rows change; the package type's tests keep the example as
+  stage 2 made it, and one test draws the new one. The atlas changes with it: its packages view draws the profile and
+  the «apply» line, it gains the views `profile` and `one-charge`, and its stills and PDF on the site change.
+- **Known gap** (6.1's finding; a follow-up package after stage 6, the maintainer's decision of 13 Nov 2026): with every
+  type's rules, deleting an element can leave a model that fails `validate()` under four earlier types' rules
+  (`extend-points`, `message-link`, `reply-once`, `subject-shown`): 29 of 1,495 deletes over the examples and targets
+  (`risks.md` M15). No stage 6 delete leaves a change or constraint naming what is gone.
+- **Decisions of 13 Nov 2026:** every recommendation of the note's §16; no comments on a timing view (decision 24); a
+  change is named by its id on the hint line and in `L`'s search, with no core bytes (decision 25).
+- **Left out** (`notes/stage-6.md` §15): stereotype icons and custom shapes, a profile's imports, `isStrict`, OCL
+  constraints, stereotype operations and associations, list-valued tags, nested profiles, `sysml.` types against
+  metaclasses, tags drawn on other types' views, XMI profiles; continuous timelines, message events as constraint ends,
+  found and lost messages, destruction, observations, gates, create and delete messages, ruler breaks, a stored scale, an
+  `sd` frame, comments on a timing view; copy and paste, per-type `diff()` writers, a reader (Mermaid has neither type).
+- **Layout limits** (each conformance note): the profile stress view's generated `all` crosses 17 times right and 30
+  down (repair and rerouting off); the timing stress view's `all` has five crowded message labels the ruler does not
+  count; a long member row of tags, a lifeline's name over 160 px and a value in a short segment are cut, whole in the
+  accessible names and the PDF.
+- **P1.** On the stress views (CPU, best of seven, a loaded laptop): profile, a full layout 73 to 82 ms, a tag value
+  14 to 28 ms, a stereotype added 73 to 81 ms; timing, a full layout and every common edit under 6 ms; the cross-model
+  check alone on 2,000 elements 11 ms against 10 ms, held linear. CI holds 1 s and prints the figures.
+- **Size:** `lib/umlimator.js`, what a map host loads, is 185,613 B with this machine's `gzip -9`, as in 0.22.0, which
+  carried 6.1's bytes: 12.52% over 0.16.0 (the budget is 15%). Stage 6 spent 180 B of its 300 B, all in 6.1 (the two
+  slots and the registry's pointer line 111 B, the timeline in `references()` and `delete` 69 B); 6.2 to 6.7 none.
+  `lib/umlimator-all.js` is 412.0 kB gzipped (412,038 B), 8 B over 0.22.0's 412,030 B. The npm package is 658 kB, up
+  from 655 kB.
