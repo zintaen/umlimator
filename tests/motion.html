@@ -219,7 +219,7 @@ try {
   // ---- card shapes (0.15.0), with motion: what arrives lights a shape's accent, and a queue's floor moves with the flow
   const SH = await (await fetch('../examples/shapes.json')).json(), sbox = document.createElement('div');
   sbox.style.cssText = 'width:1200px;height:700px'; document.body.appendChild(sbox);
-  const hs = render(sbox, SH, { shapes: 'c4', flow: true }), ss = sbox.querySelector('.umlimator').shadowRoot;
+  const hs = render(sbox, SH, { flow: true }), ss = sbox.querySelector('.umlimator').shadowRoot;
   await wait(50); hs[Object.getOwnPropertySymbols(hs)[0]].flash('orders'); await wait(30);
   const lid = ss.querySelector('.node[data-id="orders"] .n-accent'), floor = ss.querySelector('.node[data-id="queue"] .n-floor');
   check('shapes: an arriving card lights its accent (the lid of a database)', getComputedStyle(lid).animationName === 'accent', getComputedStyle(lid).animationName);

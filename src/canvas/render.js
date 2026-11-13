@@ -3,7 +3,7 @@ import { typedEditor } from './edit.js';
 import { hintHTML, hinter, pieces } from './pieces.js';
 import { STYLES } from './styles.js';
 import { esc, hostMeasure, sansW } from '../core/text.js';
-import { cardLook, drawnPts, noteOf, sidePorts, tabAfter, tabLine } from '../draw/shapes.js';
+import { cardLook, drawnPts, sidePorts, tabAfter, tabLine } from '../draw/shapes.js';
 import { hit } from '../layout/layered.js';
 import { edgeRefIds } from '../map/api.js';
 import { badgesOf, mapTabs, toneOf } from '../map/cards.js';
@@ -12,7 +12,7 @@ import { diagramOf } from '../core/registry.js';
 import { mapContext } from '../map/context.js';
 import { canon } from '../map/diff.js';
 import { cardMatcher, msText } from '../map/insight.js';
-import { KIND, NOTATIONS } from '../map/kinds.js';
+import { KIND } from '../map/kinds.js';
 import { lensOf } from '../map/lens.js';
 import { arrOf } from '../map/validate.js';
 
@@ -75,7 +75,7 @@ export function render(container, model, options = {}) {
      event says which of its keys changed, once a frame at most (on a 16 ms timer, so a page in a hidden tab still says it).
      The camera is the exception: a pan, zoom, glide or drag is one state event, once it comes to rest; until then the
      event's camera is where it last rested (handle.state reads it live) */
-  const KEYS = ['view', 'navigating', 'selection', 'expanded', 'lens', 'overlays', 'story', 'tour', 'replay', 'paused', 'camera', 'flow', 'shapes', 'motion', 'gesture', 'destroyed'];
+  const KEYS = ['view', 'navigating', 'selection', 'expanded', 'lens', 'overlays', 'story', 'tour', 'replay', 'paused', 'camera', 'flow', 'motion', 'gesture', 'destroyed'];
   let lastState = null, stateT = 0, camRest = null, restT = 0; // the last state event's snapshot and the flush to come; the camera at rest, and its check to come
   const listensState = () => !!((options.on || {}).state || (subs.state || []).length);
   function touch() { if (!stateT && !dead && listensState()) stateT = setTimeout(flushState, 16); }
@@ -86,18 +86,10 @@ export function render(container, model, options = {}) {
   function camMoved() { clearTimeout(restT); restT = !dead && listensState() ? setTimeout(rested, 150) : 0; }
   function rested() { restT = 0; if (dead) return; if (cam && (cam.anim || cam.ptrs.size) || nav) return camMoved(); camRest = camNow(); touch(); }
   let cam = null, geo = null, svg = null, cur = null, sel = null, more = [], busy = false, paused = false, dead = false;
-  // the notation (0.15.0): the host's (render()'s shapes, then handle.shapes) for every view, else each view's own
-  if (options.shapes != null && !noteOf(options.shapes)) warn(`render(…, { shapes: ${JSON.stringify(options.shapes)} }): the notations are ${NOTATIONS.join(', ')}; each view draws its own`);
-  let shapesSet = noteOf(options.shapes);
-  const noteFor = vid => shapesSet || ctx.notationOf(vid);
-  const pic = vid => { // a view's picture in its notation: laid out once, drawn again only when the notation changes
-    const want = noteFor(vid), o = { tour: P.tour !== false, openHint: P.openHint !== false, shapes: want };
-    let c = ctx.geoCache[vid]; if (!c) c = ctx.geoCache[vid] = ctx.buildView(vid, o); else if (c.shapes !== want) Object.assign(c, ctx.drawView(vid, c.g, o));
-    return c; };
-  // each card's look in the notation shown, for what is drawn over the picture: rings, the minimap, a tour's or replay's dot
-  // (in box too: a card's own shape is drawn there)
-  const lookIn = (nt, g) => { const m = new Map(), ports = sidePorts(g); return n => { if (!m.has(n)) m.set(n, cardLook(n, nt, !!(n.kids || n.opens) && P.openHint !== false, ports.get(n))); return m.get(n); }; };
-  const looker = () => lookIn(noteFor(cur), geo);
+  const pic = vid => ctx.geoCache[vid] ||= ctx.buildView(vid, { tour: P.tour !== false, openHint: P.openHint !== false }); // a view's picture: laid out once
+  // each card's look, for what is drawn over the picture: rings, the minimap, a tour's or replay's dot
+  const lookIn = g => { const m = new Map(), ports = sidePorts(g); return n => { if (!m.has(n)) m.set(n, g.map ? cardLook(n, true, !!(n.kids || n.opens) && P.openHint !== false, ports.get(n)) : cardLook(n, false, false, null)); return m.get(n); }; };
+  const looker = () => lookIn(geo);
   const timers = new Set(), later = (f, ms) => { const t = setTimeout(() => { timers.delete(t); if (!dead) f(); }, ms); timers.add(t); return t; };
   const sleeping = new Set(); // a sleep resolves on its own, or when the map is destroyed: nothing that awaits one is left pending
   const sleep = ms => new Promise(r => { if (dead) return r(); const wake = () => { sleeping.delete(wake); r(); }; sleeping.add(wake); later(wake, still() ? 0 : ms); });
@@ -201,9 +193,9 @@ export function render(container, model, options = {}) {
   /* minimap */
   const mini = {};
   function buildMini() {
-    const b = geo.bounds, el = q('.minimap'), bw = Math.max(2, b.w / 300), c4 = noteFor(cur) === 'c4';
-    // a box's tone, as its region; and a box dashed in the picture (any box in c4, a toned box in any notation) dashed here
-    const rg = (geo.families || []).filter(f => f.tone || c4).map(f => `<rect x="${f.x}" y="${f.y}" width="${f.w}" height="${f.h}" rx="14" ${f.tone ? `style="--um-tone:${toneOf(f)}" ` : ''}fill="${f.tone ? 'var(--um-tone, var(--um-slate))' : 'none'}" fill-opacity=".14" stroke="${f.tone ? 'var(--um-tone, var(--um-slate))' : 'var(--um-border-2)'}" stroke-width="${bw}" stroke-dasharray="${bw * 4} ${bw * 3}"/>`).join('');
+    const b = geo.bounds, el = q('.minimap'), bw = Math.max(2, b.w / 300);
+    // a box's tone, as its region, dashed as in the picture
+    const rg = (geo.families || []).filter(f => f.tone).map(f => `<rect x="${f.x}" y="${f.y}" width="${f.w}" height="${f.h}" rx="14" style="--um-tone:${toneOf(f)}" fill="var(--um-tone, var(--um-slate))" fill-opacity=".14" stroke="var(--um-tone, var(--um-slate))" stroke-width="${bw}" stroke-dasharray="${bw * 4} ${bw * 3}"/>`).join('');
     const ln = (geo.lanes || []).map(l => `<rect x="${l.x}" y="${l.y}" width="${l.w}" height="${l.h}" rx="14" fill="none" stroke="var(--um-border-2)" stroke-width="${Math.max(2, b.w / 300)}"/>`).join('');
     const look = looker(), r = geo.nodes.map(n => { const L = look(n), paint = `fill="var(--um-${KIND[n.k][0]})" opacity="${n.k === 'm-public' ? .95 : .55}"`;
       return L ? `<path d="${L.S.out(L)}" ${paint}/>` : `<rect x="${n.x}" y="${n.y}" width="${n.w}" height="${n.h}" rx="8" ${paint}/>`; }).join('');
@@ -421,21 +413,6 @@ export function render(container, model, options = {}) {
     return true;
   }
   function flash(nid) { const g = svg.querySelector(`.node[data-id="${CSS.escape(nid)}"]`); if (!g) return; g.classList.add('flash'); later(() => g.classList.remove('flash'), 1400); }
-  /* the notation every view is drawn in (0.15.0): the host's, a reader's (the page's toggle and link), or null for each
-     view's own. The view shown is drawn again from the geometry it has, with its camera, selection, lens and marks, and
-     nothing is laid out. False for a notation that isn't one (with a warning). */
-  function setShapes(x) {
-    if (dead) return false;
-    const want = x == null ? null : noteOf(x);
-    if (x != null && !want) { warn(`shapes = ${JSON.stringify(x)}: the notations are ${NOTATIONS.join(', ')}`); return false; }
-    shapesSet = want;
-    if (cur && ctx.geoCache[cur] && ctx.geoCache[cur].shapes !== noteFor(cur)) {
-      const keep = sel, keepMore = more, touched = cam.touched;
-      mount(cur); cam.set({}); cam.touched = touched;
-      if (keep && exists(keep)) { sel = keep; more = keepMore.filter(exists); paint(); }
-      emitSel(); }
-    touch(); return true;
-  }
   function setFlow(on, save = true) { // save: the page keeps it as the reader's choice
     stage.classList.toggle('flowing', on);
     const b = q('[data-z="flow"]'); if (b) { b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); }
@@ -844,7 +821,7 @@ export function render(container, model, options = {}) {
       return; }
     if (!ctx.V[cur]) { // the view shown is gone: the root, or the empty card of a model with no views
       const from = cur; mount(ctx.rootId ?? null); cam.set(startView()); cam.touched = false; emitSel(); if (cur) emit('viewchange', { view: cur, from }); return; }
-    if (ctx.geoCache[cur] && keys[cur] === ctx.viewKey(cur) && ctx.geoCache[cur].shapes === noteFor(cur)) { if (lensId != null) { relens(); drawMarks(); } if (pc) pc.chrome(); if (P.onMount) P.onMount(inner); return; } // this view's picture did not change (its lens or the views may have; the page reads the new model, issue 133)
+    if (ctx.geoCache[cur] && keys[cur] === ctx.viewKey(cur)) { if (lensId != null) { relens(); drawMarks(); } if (pc) pc.chrome(); if (P.onMount) P.onMount(inner); return; } // this view's picture did not change (its lens or the views may have; the page reads the new model, issue 133)
     const keep = sel, keepMore = more, touched = cam.touched, prev = [geo, svg];
     mount(cur);
     if (touched) cam.set({}); else cam.set(startView());
@@ -910,7 +887,7 @@ export function render(container, model, options = {}) {
     const tone = t => 'var(--um-' + String(t || 'accent').replace(/[^\w-]/g, '') + ')', op = m => m.level < 1 ? ` opacity="${m.level}"` : '';
     const cards = Object.fromEntries([...s.querySelectorAll('.node')].map(x => [x.dataset.id, x]));
     let under = '', over = '';
-    const look = lookIn(noteFor(vid), g);
+    const look = lookIn(g);
     g.nodes.forEach(n => { const m = markOf2(L => (L.nodes || {})[n.id]), el = cards[n.id]; if (!m || !el) return;
       if (m.level < 1) el.setAttribute('opacity', m.level);
       const sh = (m.tone || m.pulse) && look(n); // a shape's ring: its outline, 5 px out (0.15.0)
@@ -1221,7 +1198,7 @@ export function render(container, model, options = {}) {
 
   const inner = { ctx: () => ctx, geo: () => geo, cam: () => cam, svg: () => svg, stage, host, go, open, up, flash, setFlow, pause, key, startView, standalone, play,
     select, busy: () => busy, flowing: () => stage.classList.contains('flowing'), view: () => cur, unfold: gesture, lens: setLens,
-    highlight, overlay, focus: focusMap, editable: !!E, shapes: () => shapesNow(), setShapes, override: () => shapesSet }; // a story's pointer is the pieces' own, from the story event (0.14.0)
+    highlight, overlay, focus: focusMap, editable: !!E }; // a story's pointer is the pieces' own, from the story event (0.14.0)
 
   // the pieces a host asked for (#99): they follow the map's selection and views, and take their keys wherever the focus is
   // in the map (Enter and Space press their buttons; the map's other keys reach the canvas, as in the page)
@@ -1233,13 +1210,12 @@ export function render(container, model, options = {}) {
     if (options.nav) { q('.um-navbtn').addEventListener('click', () => pc.setTree(!frame.classList.contains('tree-open'))); pc.setTree(ctx.views.length > 1); }
   }
   const motionOf = () => instant ? 'instant' : reducedMotion() ? 'reduced' : 'full';
-  const shapesNow = () => cur ? noteFor(cur) : shapesSet || noteOf(ctx.D.shapes) || 'box';
   const camNow = () => { const r = (x, d) => Math.round(x * d) / d; return cam ? { x: r(cam.s.cx, 10), y: r(cam.s.cy, 10), zoom: r(cam.s.k, 1000) } : { x: 0, y: 0, zoom: 1 }; };
   function snapshot(event = false) { // MapState: built fresh on every read, frozen all the way down, plain JSON; event: the camera at rest
     const deep = o => { Object.values(o).forEach(v => v && typeof v === 'object' && deep(v)); return Object.freeze(o); }, st = story, t = trip;
     return deep({ view: cur, navigating: nav ? nav.to : null, selection: picked(), expanded: [...(expanded[cur] || [])], lens: lensId, overlays: [...layers.keys()],
       story: st ? { id: st.s.id, step: st.at, steps: st.steps.length, playing: !!st.auto } : null, tour: !!(t && t.kind === 'tour'), replay: t && t.kind === 'replay' ? { playing: !t.paused } : null, paused: !!paused,
-      camera: event && camRest ? { ...camRest } : camNow(), flow: stage.classList.contains('flowing'), shapes: shapesNow(), motion: motionOf(), gesture: gestureNow(), destroyed: dead });
+      camera: event && camRest ? { ...camRest } : camNow(), flow: stage.classList.contains('flowing'), motion: motionOf(), gesture: gestureNow(), destroyed: dead });
   }
   const first = () => {
     if (dead) return;
@@ -1278,8 +1254,6 @@ export function render(container, model, options = {}) {
     get destroyed() { return dead; },
     get flow() { return stage.classList.contains('flowing'); }, // the animated flow along lines (≋, F)
     set flow(on) { if (!dead) setFlow(!!on, false); }, // a host's choice, not the reader's: the page saves only ≋ and F
-    get shapes() { return shapesNow(); }, // the notation the view shown is drawn in: 'box', 'c4' or 'uml' (0.15.0)
-    set shapes(x) { setShapes(x); }, // every view in this one (null: each view's own); the cards are drawn again, nothing is laid out
     get motion() { return motionOf(); }, // 'instant' (the page's #check, #still, #shot), 'reduced' (the reader's setting), else 'full'
     get story() { return story ? story.ctl : null; }, // the player of the story shown (play()'s, the page menu's or a link's), else null
     overlay: (name, layer) => overlay(name, layer),

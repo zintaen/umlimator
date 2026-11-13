@@ -18,7 +18,8 @@ try {
   const el = document.getElementById('a'), h = render(el, BIKE, { view: 'trips' }), sr = el.querySelector('.umlimator').shadowRoot;
   const card = id => sr.querySelector(`.node[data-id="${id}"]`), line = (a, b) => sr.querySelector(`.edge-g[data-from="${a}"][data-to="${b}"]`);
   const places = () => [...sr.querySelectorAll('.node .n-mask')].map(r => [r.closest('.node').dataset.id, r.getAttribute('x'), r.getAttribute('y')]).join(' ');
-  const ringOf = id => { const r = card(id).querySelector('.n-mask'); return [...sr.querySelectorAll('.um-ring')].find(x => +x.getAttribute('x') === +r.getAttribute('x') - 5 && +x.getAttribute('y') === +r.getAttribute('y') - 5); };
+  // a card's ring: 5 px out from its outline, a box's or a shape's (one card-shape style, 0.21.0)
+  const ringOf = id => { const r = card(id).querySelector('.n-mask').getBBox(); return [...sr.querySelectorAll('.um-ring')].find(x => { const b = x.getBBox(); return Math.abs(b.x - r.x + 5) < 1 && Math.abs(b.y - r.y + 5) < 1; }); };
   const tone = id => ringOf(id) && ringOf(id).getAttribute('stroke'), legend = () => sr.querySelector('.um-lens');
   const before = places();
   check('lens() with a lens the model does not have: false, and nothing changes', h.lens('nope') === false && !sr.querySelector('[opacity]'));

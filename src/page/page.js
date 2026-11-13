@@ -1,9 +1,8 @@
 import { hintHTML, hinter, pieces, shortT } from '../canvas/pieces.js';
 import { pngOf, reducedMotion, render } from '../canvas/render.js';
 import { esc, inline } from '../core/text.js';
-import { noteOf } from '../draw/shapes.js';
 import { mapContext } from '../map/context.js';
-import { KIND, NOTATIONS, kindOf } from '../map/kinds.js';
+import { KIND, kindOf } from '../map/kinds.js';
 import { arrOf } from '../map/validate.js';
 import { printDoc } from './print.js';
 
@@ -55,7 +54,7 @@ export function mountPage(container, model, options = {}) {
       <span class="mbrand"><i></i><span>${esc(D.title || 'Map')}</span></span>
       <nav class="crumbs" id="m-crumbs" aria-label="Breadcrumb"></nav>
       <button class="findbtn" id="m-find" type="button" aria-label="Search nodes and views (${modK})"><span aria-hidden="true">⌕</span><span class="ft">Find a node or view…</span><span class="kbd">${modK}</span></button>
-      <button class="ibtn" id="m-theme" title="Light / dark" aria-label="Dark theme" aria-pressed="false">◐</button><button class="ibtn txt" id="m-shapes" type="button" title="Card shapes: box, c4 or uml">⬡<span class="lbl"></span></button>${(D.stories || []).length ? `
+      <button class="ibtn" id="m-theme" title="Light / dark" aria-label="Dark theme" aria-pressed="false">◐</button>${(D.stories || []).length ? `
       <div class="menu"><button class="ibtn txt" id="m-stories" aria-haspopup="true" aria-expanded="false" title="Stories: walk-throughs of this map">▶<span class="lbl"> Stories</span></button>
         <div class="menu-pop" id="m-stories-pop" hidden>${D.stories.map(s => `<button data-story="${esc(s && s.id)}">${esc((s && (s.title || s.id)) || '')}</button>`).join('')}</div></div>` : ''}${arrOf(D.lenses).some(l => l && l.id) ? `
       <div class="menu"><button class="ibtn txt" id="m-lenses" aria-haspopup="true" aria-expanded="false" title="Lenses: ways to look at this map">◎<span class="lbl"> Lenses</span></button>
@@ -120,7 +119,6 @@ export function mountPage(container, model, options = {}) {
     const p = new URLSearchParams(); p.set('view', cur); if (sel) p.set('node', sel);
     if (told) { p.set('story', told.id); p.set('step', told.step + 1); } // the story shown, at its step (#69)
     if (lensOn) p.set('lens', lensOn); // the lens on the map (#94)
-    if (X.override()) p.set('shapes', X.override()); // the notation a reader or the link picked (0.15.0)
     if (Q.get('theme')) p.set('theme', document.documentElement.dataset.theme || Q.get('theme'));
     if (Q.get('reader')) p.set('reader', Q.get('reader')); // check, shot and still describe one run: never in the link a reader shares (issue 136)
     const h = '#' + p.toString();
@@ -133,8 +131,6 @@ export function mountPage(container, model, options = {}) {
   const idle = () => new Promise(r => { const t = () => X.busy() ? setTimeout(t, 30) : r(); t(); }); // once no move is under way
   async function follow(load = false) {
     const p = new URLSearchParams(location.hash.slice(1)), my = ++follows, lacks = [], stories = arrOf(D.stories);
-    if (noteOf(p.get('shapes')) && noteOf(p.get('shapes')) !== handle.shapes) handle.shapes = p.get('shapes'); // the link's card shapes (0.15.0)
-    else if (p.get('shapes') && !noteOf(p.get('shapes'))) lacks.push(`no card shapes “${p.get('shapes')}”`);
     const lens = p.get('lens') || null, sid = p.get('story'), at = Math.max(1, Math.floor(+p.get('step')) || 1) - 1;
     const def = sid ? stories.find(s => s && s.id === sid) : null, steps = def ? arrOf(def.steps).filter(s => s && typeof s === 'object') : [], step = steps[Math.min(at, steps.length - 1)];
     linking = { view: null };
@@ -365,10 +361,8 @@ export function mountPage(container, model, options = {}) {
   let flowPref = null; try { flowPref = reducedMotion() ? null : localStorage.getItem('visual-flow'); } catch (_) {} // the reader's ≋ and F; under reduced motion no flow is drawn
   const p0 = new URLSearchParams(location.hash.slice(1));
   const v0 = V[p0.get('view')] ? p0.get('view') : rootId;
-  const shapesKey = 'visual-shapes:' + location.pathname; // the reader's notation, kept for this page (0.15.0)
-  const shapes0 = noteOf(p0.get('shapes')) || (() => { try { return noteOf(localStorage.getItem(shapesKey)); } catch (_) { return null; } })() || noteOf(options.shapes);
   const handle = render($('m-canvas'), model, {
-    view: v0, minimap: true, flow: flowPref ? flowPref === '1' : undefined, shapes: shapes0 || undefined,
+    view: v0, minimap: true, flow: flowPref ? flowPref === '1' : undefined,
     on: { story: e => { told = e.step == null ? null : { id: e.story, step: e.step }; app.classList.toggle('story', !!told); pc.story(e);
       const sv = told && stepView(told); if (X && !X.busy() && (!sv || sv === cur || !V[sv])) write(); } }, // a step on another view: in that view's entry, once it shows (#69)
     _page: {
@@ -395,13 +389,6 @@ export function mountPage(container, model, options = {}) {
     if (linking && linking.view === e.view) return; // a link's own move: its entry, written once the link has settled
     linking = null; write(true); }); // a new view, a new entry (a move the reader started while a link was followed, too)
   handle.on('lens', e => { lensOn = e.lens; showLens(); write(); });
-  // the header's card shapes (0.15.0): box, c4 and uml in turn, for every view; the page keeps the reader's choice
-  const showShapes = () => { const b = $('m-shapes'), n = handle.shapes, next = NOTATIONS[(NOTATIONS.indexOf(n) + 1) % NOTATIONS.length];
-    b.querySelector('.lbl').textContent = ' ' + n; b.setAttribute('aria-label', `Card shapes: ${n}. Show them as ${next}`); };
-  $('m-shapes').addEventListener('click', () => { const next = NOTATIONS[(NOTATIONS.indexOf(handle.shapes) + 1) % NOTATIONS.length];
-    handle.shapes = next; try { localStorage.setItem(shapesKey, next); } catch (_) {} showShapes(); write(); status(`Card shapes: ${next}`); });
-  handle.on('state', e => { if (e.changed.includes('shapes')) showShapes(); });
-  showShapes();
   // #pdf=1 (umlimator.py pdf, #93): the page becomes a document for Chrome to print (printDoc), once the fonts are in,
   // after the map's own redraw for them
   if (Q.get('pdf')) (document.fonts ? document.fonts.ready : Promise.resolve()).then(() => printDoc(X, model, Q));
