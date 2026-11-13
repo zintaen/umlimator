@@ -1,0 +1,146 @@
+﻿---
+title: Every construct on Mermaid's state diagram page
+config:
+  look: classic
+---
+%% Modelled on Mermaid 12.3.0's docs/syntax/stateDiagram.md (MIT), one block per section of that page, then the
+%% constructs this reader adds (activities, internal transitions, the %% hints) and broken input. The file starts with
+%% a byte-order mark and the Notes block has CRLF line ends. The pinned report is in tests/mermaid-state.test.mjs.
+%%
+%% Mermaid 12.3.0 itself on the writer's output (4.8, 13 Nov 2026, once, from the npm package in a scratch directory,
+%% not a dependency): for docs/diagrams/examples/10-state-machine.json and ten generated models (seeds 1 to 10 of
+%% tests/mermaid-state.test.mjs) its parser reads every file, puts each state in the composite and region the model
+%% gives it, and keeps every transition and note (the seven crossings of example 10 included); Chrome draws them all,
+%% but for one: seed 9, whose four transitions join a composite and a state inside it, is drawn with no line at all.
+%% Before the writer put a composite's text under %% row:, Mermaid refused three of the ten ("Group nodes can only have
+%% label"). Mermaid refuses this file itself: its byte-order mark, and the broken lines at its end.
+stateDiagram-v2
+    accTitle: Every construct
+    accDescr {
+        A state diagram that uses each construct once
+    }
+    direction TB
+    %% States: a name, a description, a text after a colon
+    stateId
+    state "This is a state description" as s2
+    s3 : This is a state description
+    %% Transitions
+    s1 --> s2
+    s1 --> s3: A transition
+    %% Start and End
+    [*] --> s1
+    s3 --> [*]
+    %% Composite states, nested, each with its own start and end
+    state First {
+        [*] --> second
+        second --> [*]
+    }
+    NamedComposite: Another Composite
+    state NamedComposite {
+        [*] --> namedSimple
+        namedSimple --> [*]
+        namedSimple: Another simple
+        state Second {
+            [*] --> deeper
+            deeper --> Third
+            state Third {
+                [*] --> third
+                third --> [*]
+            }
+        }
+    }
+    First --> NamedComposite
+    %% Between substates of two composites, which Mermaid's page says it cannot draw
+    second --> namedSimple
+    %% Choice
+    state if_state <<choice>>
+    s1 --> IsPositive
+    IsPositive --> if_state
+    if_state --> False: if n < 0
+    if_state --> True : if n >= 0
+    %% Forks
+    state fork_state <<fork>>
+    True --> fork_state
+    fork_state --> State2
+    fork_state --> State3
+    state join_state <<join>>
+    State2 --> join_state
+    State3 --> join_state
+    join_state --> State4
+    State4 --> [*]
+    %% Notes
+    State1: The state with a note
+    note right of State1
+        Important information! You can write
+        notes.
+    end note
+    State1 --> State2
+    note left of State2 : This is the note to the left.
+    %% Concurrency
+    state Active {
+        [*] --> NumLockOff
+        NumLockOff --> NumLockOn : EvNumLockPressed
+        NumLockOn --> NumLockOff : EvNumLockPressed
+        --
+        [*] --> CapsLockOff
+        CapsLockOff --> CapsLockOn : EvCapsLockPressed
+        CapsLockOn --> CapsLockOff : EvCapsLockPressed
+        --
+        [*] --> ScrollLockOff
+        ScrollLockOff --> ScrollLockOn : EvScrollLockPressed
+        ScrollLockOn --> ScrollLockOff : EvScrollLockPressed
+    }
+    %% Setting the direction: inside a composite it is not kept
+    state B {
+        direction LR
+        a --> b
+    }
+    %% Comments
+    Still --> Moving %% another comment
+    %% Styling with classDefs
+    classDef movement font-style:italic
+    classDef badBadEvent fill:#f00,color:white,font-weight:bold
+    Moving --> Crash:::movement
+    Crash:::badBadEvent --> [*]
+    class Still, Moving movement
+    %% Spaces in state names
+    yswsii: Your state with spaces in it
+    [*] --> yswsii
+    %% This reader's own: activities, an internal transition, a second entry, a text the parser refuses
+    Placed : entry / reserve the books
+    Placed : do / poll the payment provider
+    Placed : exit / log the payment result
+    Placed : address changed [not shipped] / update the address
+    Placed : entry / reserve them again
+    %% id: t-pay
+    Placed --> Paid : payment [ok] / send the receipt
+    Paid --> Placed : refund (pending
+    %% kind: shallowHistory
+    state "H" as hist
+    %% id: s-long
+    state "Long name" as Long {
+        %% region: Long.left Left side
+        l1 --> [*]
+        --
+        l2
+    }
+    hide empty description
+    scale 350 width
+    %% Collisions: states named as a scope's [*] would be, whose [*] takes the next free; two names that give one transition id
+    state Coll {
+        [*] --> Coll.start
+        Coll.start --> Coll.end
+        Coll.end --> [*]
+    }
+    p-q --> r
+    p --> q-r
+    %% Broken input: an id taken, an id with an arrow, a stray }, a line not understood, a direction, a composite never closed
+    %% id: s1
+    s1 --> s1
+    %% id: has->arrow
+    s2 --> s1
+    }
+    s1 -> s2
+    direction RL
+    state Open {
+        o1
