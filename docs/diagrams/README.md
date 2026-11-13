@@ -25,7 +25,7 @@ Update this table in every pull request that belongs to the plan.
 | 5 | 0.22.0 | Component, deployment, composite structure | Design note approved ([`notes/stage-5.md`](notes/stage-5.md)), every recommendation of §18 taken. 5.0 (5ca0790), 5.1 (278dc56), 5.2 (7b6e214), 5.3 (a35933b), 5.4 (2684c27), 5.5 (1d0d23a), 5.6 (f9a5555) and the follow-ups (5216441) merged. In review: 5.8 and the ELK trial's note (5.7: own engine only, L9 closed); then the 0.22.0 release | #215, #216, #218, #219, #220, #223, #224, #225, #227, and the lanes' pull requests |
 | 6 | 0.23.0 | Profile, timing | Design note approved ([`notes/stage-6.md`](notes/stage-6.md)), every recommendation of §16 taken. 6.0 (ddc1272) merged. In review: 6.1, 6.2, 6.3, 6.4 and 6.5 | #230, #231, and the lanes' pull requests |
 | Milestone 2 | 0.24.0 | ER, flowchart, data flow, information flow, C4 | Not started | |
-| Milestone 3 | 0.25.0 | SysML v1.7's four diagrams | Not started | |
+| Milestone 3 | 0.25.0 | SysML v1.7's four diagrams | Design note proposed ([`notes/milestone-3.md`](notes/milestone-3.md)); awaiting approval | (this PR) |
 | Milestone 4 | 0.26.0, 0.27.0 | AWS, GCP, Azure, mindmap; BPMN | Not started | |
 | After the 28 types | 0.28.0 and later | What the maintainer asks for next | Not started | |
 | Stabilization | 1.0.0 | Frozen API and schema, conformance notes; when the maintainer says it is ready | Not started | |
