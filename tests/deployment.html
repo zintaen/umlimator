@@ -179,7 +179,7 @@ try {
   gives('Shift + Delete on a box: it, what it holds and their lines go (edits.remove)', [{ op: 'delete', id: 'app-server' }],
     m => !m.nodes.some(n => ['app-server', 'jvm', 'shop-api-jar', 'shop-api-config'].includes(n.id)) && !m.edges.some(e => e.id === 'edge-to-app'), BASE);
   check('…and the hint line counts what went with it', hint() === 'Deleted device Application server and the 4 elements it held', hint());
-  h.select({ type: 'edge-node', ids: ['edge-to-app'], view: 'production' }); key('Delete', { shiftKey: true });
+  h.select({ type: 'edge', ids: ['edge-to-app'], view: 'production' }); key('Delete', { shiftKey: true });
   gives('Shift + Delete on a communication path: delete it', [{ op: 'delete', id: 'edge-to-app' }], m => !m.edges.some(e => e.id === 'edge-to-app'), BASE);
   h.destroy();
 } catch (e) { out.fail.push('threw: ' + (e && e.stack || e)); }

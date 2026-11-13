@@ -100,8 +100,8 @@ try {
   h.update(m1);
   check('after update() the part is drawn in the subject\'s box', !!pick('.node.part[data-id="order-service.audit"]') && inside(box(pick('.node[data-id="order-service.audit"] .n-mask')), box(pick('.family[data-family="order-service"] .family-box'))));
   click('.node[data-id="order-service.checkout"] .c-name'); all('.um-editor .um-pal button')[1].click(); name('admin');
-  gives('the palette\'s Port with a part selected: the port goes to its type, said', [{ op: 'add', element: { id: 'checkout.admin', type: 'uml.Port', label: 'admin', props: {} }, owner: 'checkout-class' }],
-    m => m.nodes.find(n => n.id === 'checkout-class').members.some(x => x.id === 'checkout.admin'), m1);
+  gives('the palette\'s Port with a part selected: the port goes to its type, said', [{ op: 'add', element: { id: 'checkout-class.admin', type: 'uml.Port', label: 'admin', props: {} }, owner: 'checkout-class' }],
+    m => m.nodes.find(n => n.id === 'checkout-class').members.some(x => x.id === 'checkout-class.admin'), m1);
   check('… and the hint line says where it went', /Added the port to CheckoutFlow, the type of checkout/.test(sr.textContent));
   click('.node[data-id="publish-subscribe.publisher"] .c-name'); h.select({ type: 'container', id: 'publish-subscribe', view: 'internals' });
   all('.um-editor .um-pal button')[2].click(); name('broker : Broker');
