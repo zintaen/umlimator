@@ -50,6 +50,7 @@ All on 11 Nov 2026, by the maintainer. The options that were weighed are in `pro
 | D12 | Mermaid is the first text notation |
 | | Agents build this: the plan has no time estimates |
 | | 1.0.0 comes after all 28 types, when the maintainer says it is ready; after 0.27.0 the work goes on in 0.28.0 and later (13 Nov 2026) |
+| | Examples: one small example per type is the reference (gallery, fixtures, conformance); one linked Bookshop atlas is built from them (13 Nov 2026) |
 | | Maps draw in one card-shape style, the union of the c4 and uml notations; the `shapes` toggle and API are removed (13 Nov 2026, in 0.21.0) |
 
 ## What is in this folder
@@ -299,3 +300,10 @@ node docs/diagrams/examples/check.mjs         # the target examples match model.
   `shape` stays. A model that still has `shapes` loads, as any unknown field does. Typed diagrams keep their own
   notation (UML's shapes); later non-UML types reuse this shape set where their standard allows. It is its own work
   package after 4.1 (both edit `src/canvas/render.js`), in 0.21.0.
+- **13 Nov 2026 (examples).** The maintainer decided how the types' examples show: both. One small example per type
+  stays the gallery card, the CI fixture and the conformance reference, mostly the Bookshop, with a type taking its own
+  domain where the Bookshop is a stretch (SysML's e-bike). One flagship, the Bookshop atlas, is a single model whose
+  views are the Bookshop examples linked by drill-down (`opensView`): from C4 to components, deployment, classes and an
+  order's state machine; from the use cases to the activity and the sequence. It is assembled from the per-type files,
+  which share ids, with a check that it matches them. It grows with each release, with a full pass at 0.23.0 (the 14 UML
+  types) and after milestone 2 (`plan.md` §7).
