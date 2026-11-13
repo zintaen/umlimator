@@ -18,6 +18,7 @@ import { mapContext } from '../src/map/context.js';
 import { validate } from '../src/map/validate.js';
 import { describe } from '../src/map/insight.js';
 import { appliedOf } from '../src/uml/stereotypes.js';
+import { diagramOf } from '../src/core/registry.js';
 import '../src/uml/profile.js';
 import { TM_TYPE, tmMoveTo, tmRename, tmAdd } from '../src/uml/timing.js';
 
@@ -156,6 +157,22 @@ test('the views all: §11\'s sizes, every element shown', () => {
   const t = FIX['timing-stress'], tv = V(t, 'all');
   assert.deepEqual([tv.nodeIds.length, tv.timeline.changes.length, tv.edges.length, tv.timeline.constraints.length], [12, 400, 100, 40]);
   assert.deepEqual([layout(p, 'all').nodes.length + layout(p, 'all').families.length, layout(t, 'all').tr.changes.length], [96, 400]);
+});
+
+test('DoD 1: the registry holds both types, and the JSON Schema and the types name their vocabulary', () => {
+  const schema = readFileSync(new URL('../lib/umlimator.schema.json', import.meta.url), 'utf8'), dts = readFileSync(new URL('../lib/umlimator.d.ts', import.meta.url), 'utf8');
+  const S = JSON.parse(schema).$defs;
+  for (const name of ['uml.profile', 'uml.timing']) {
+    const T = diagramOf({ diagram: name });
+    assert.equal(T && T.name, name);
+    assert.ok(S.view.properties.diagram.examples.includes(name), `the schema's view.diagram names ${name}`);
+    // the timing palette's Change is the entry uml.StateInvariant, which writes a timeline item, never a node of that type (§8.2)
+    for (const t of [...T.elements, ...T.lines].map(x => x.type).filter(t => t !== 'uml.StateInvariant')) assert.ok(schema.includes(t) && dts.includes(`'${t}'`), `${name}: ${t}`);
+    for (const [t, fields] of Object.entries(T.props)) for (const f of fields) assert.ok(schema.includes(`"${f.key.split('.')[0]}"`), `${name}: ${t}'s ${f.key} in the schema`);
+  }
+  const np = S.node.properties.props.anyOf[0].properties;
+  assert.ok(np.tags && np.states && S.edge.properties.props.anyOf[0].properties.sentAt && S.view.properties.timeline.anyOf[0].properties.changes, 'tags, states, sentAt and the timeline described');
+  assert.ok(['UmlProfileElementType', 'UmlTags', 'UmlStereotypedProps', 'UmlExtensionProps', 'UmlTimingElementType', 'UmlTimeline', 'UmlTimingPresent'].every(k => new RegExp(`export (type|interface) ${k} `).test(dts)));
 });
 
 // ---- §12: budgets, in this process's CPU time, best of seven after a warm-up
