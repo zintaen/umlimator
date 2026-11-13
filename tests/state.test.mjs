@@ -381,7 +381,7 @@ function timeEdit(M, N) {
     assert.equal(memos.all.runs, was + 1, 'a label edit lays the view out again'); return r; });
   return k => Math.min(...runs.map(r => r[k]));
 }
-test(`P1 (S15): a state machine of 50 states, 60 transitions, composites three deep, wired as drawn: a label edit laid out and drawn and a full layout each under 1 s in CI, the label edit's time against S15's 100 ms printed (CPU, best of seven after a warm-up; the maintainer's decision of 13 Nov 2026)`, () => {
+test(`P1 (S15): a state machine of 50 states, 60 transitions, composites three deep, wired as drawn: a label edit laid out and drawn and a full layout each under 1 s in CI, the label edit's time against S15's 100 ms printed (CPU, best of seven after a warm-up; the maintainer's decision of 13 Nov 2026) (timed)`, () => {
   const M = machine(false);
   assert.equal(M.nodes.length, 50); assert.equal(M.edges.length, 60); assert.equal(T.boxes(M, M.views[0]).length, 21, '7 composite states and 14 regions are boxes');
   const best = timeEdit(M, 7);
@@ -391,7 +391,7 @@ test(`P1 (S15): a state machine of 50 states, 60 transitions, composites three d
   assert.ok(best('label') < 1000, `a label edit ${best('label')} ms`);
   console.log(`# P1 wired: a label edit ${best('label').toFixed(1)} ms (target 100 ms), full layout ${best('full').toFixed(1)} ms`);
 });
-test('P1 (the maintainer\'s decision, 13 Nov 2026): the scattered worst case, most transitions across region borders, holds the 1 s budget of edits that move geometry', () => {
+test('P1 (the maintainer\'s decision, 13 Nov 2026): the scattered worst case, most transitions across region borders, holds the 1 s budget of edits that move geometry (timed)', () => {
   const M = machine(true), best = timeEdit(M, 3);
   assert.ok(best('label') < 1000, `a label edit ${best('label')} ms`);
   assert.ok(best('full') < 1000, `full layout ${best('full')} ms`);

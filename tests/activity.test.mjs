@@ -344,7 +344,7 @@ function stress() {
   for (let k = 0; edges.length < 60; k++) { const a = 2 + 10 * (k % 5), b = a + 2 + (k % 3) * 10; edges.push(F('x' + k, 'n' + a, 'n' + Math.min(48, b), { props: { guard: 'no ' + k } })); }
   return { schemaVersion: 2, nodes, edges, views: [{ id: 'all', diagram: 'uml.activity', nodeIds: nodes.map(n => n.id) }] };
 }
-test('performance (§17, risks.md P1): 50 nodes, 60 flows, four lanes: a full layout under 1 s; a guard, a stereotype or a lane change laid out and drawn under 100 ms', () => {
+test('performance (§17, risks.md P1): 50 nodes, 60 flows, four lanes: a full layout under 1 s; a guard, a stereotype or a lane change laid out and drawn under 100 ms (timed)', () => {
   const M = stress(); assert.deepEqual([M.nodes.length - 4, M.edges.length], [50, 60]);
   const g0 = layout(M, 'all'); assert.equal(g0.bands.length, 4);
   const edits = { guard: actRename(M, V(M, 'all'), 'x0', '[no stock at all]'), stereotype: [{ op: 'set', id: 'n5', path: 'props.stereotypes', value: ['manual'] }],

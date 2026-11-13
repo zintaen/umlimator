@@ -371,7 +371,7 @@ function stress() {
   return { schemaVersion: 2, nodes: L.map(id => ({ id, type: 'uml.Lifeline', label: id, props: { represents: 'Service' } })), edges: [],
     views: [{ id: 'all', diagram: 'uml.sequence', nodeIds: L, edges, fragments: frags }] };
 }
-test('P1: a stress view of 20 lifelines, 200 messages and 10 nested fragments lays out and draws as SVG markup in under 100 ms (best of three)', () => {
+test('P1: a stress view of 20 lifelines, 200 messages and 10 nested fragments lays out and draws as SVG markup in under 100 ms (best of three) (timed)', () => {
   const m = stress();
   assert.deepEqual(sqProblems(m, V(m)).filter(p => p.level === 'error'), []);
   const best = Math.min(...[0, 1, 2].map(() => { const t = performance.now(); mapContext(m, {}).buildView('all'); return performance.now() - t; }));

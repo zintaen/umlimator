@@ -218,7 +218,7 @@ test('the same source read twice gives the same ids (R3)', () => {
   assert.deepEqual(b.edges.map(e => e.id), ['X-Y', 'A-B', 'A-B-2', 'C-D']);
 });
 
-test('text over the size limit is refused with a report; a large file under it reads in linear time (R2)', () => {
+test('text over the size limit is refused with a report; a large file under it reads in linear time (R2) (timed)', () => {
   const big = read('classDiagram\n' + 'x'.repeat(1 << 20));
   assert.deepEqual([big.model.nodes, big.report.map(x => x.status)], [[], ['skipped']]);
   assert.match(big.report[0].message, /over the limit/);
@@ -401,7 +401,7 @@ test('a namespace is known by its parent and its name, as Mermaid qualifies one 
   assert.deepEqual(read('classDiagram\nnamespace A {\nnote "n"\n}').report, [{ line: 3, status: 'approximated', message: 'a note in namespace A is read outside it' }]);
 });
 
-test('deep namespaces read in linear time: braces at any depth, a dotted name of over 32 parts as one name (R2)', () => {
+test('deep namespaces read in linear time: braces at any depth, a dotted name of over 32 parts as one name (R2) (timed)', () => {
   const dots = 'a.'.repeat(32) + 'a', d = read(`classDiagram\nnamespace ${dots} {\nclass C\n}`);
   assert.deepEqual([d.model.nodes.map(n => [n.id, n.parent]), d.report.map(x => x.message)], [[[dots, undefined], ['C', dots]], [`namespace ${dots}: over 32 dotted parts, so read as one name`]]);
   assert.equal(read(`classDiagram\nnamespace ${'a.'.repeat(31)}a {\n}`).model.nodes.length, 32);
@@ -440,7 +440,7 @@ test('a dotted namespace is written dotted beside a class or an unwritten namesp
   assert.deepEqual(notWritten(write(v(['core.io']))), ['%% not written: core.io: its parent core, which the view does not show', '%% not written: core.io (uml.Package)']);
 });
 
-test('the writer is linear in a namespace\'s dotted children, and writes a model nested thousands deep (nothing throws)', () => {
+test('the writer is linear in a namespace\'s dotted children, and writes a model nested thousands deep (nothing throws) (timed)', () => {
   const nodes = [{ id: 'P', type: 'uml.Package', label: 'P' }];
   for (let k = 0; k < 40000; k++) nodes.push({ id: `P.c${k}`, type: 'uml.Package', label: `c${k}`, parent: 'P' }, { id: `K${k}`, type: 'uml.Class', label: `K${k}`, parent: `P.c${k}` });
   const t0 = performance.now(), wide = write({ schemaVersion: 2, nodes, views: [] });

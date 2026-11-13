@@ -166,7 +166,7 @@ test('validate: each typed view\'s type rules, a problem said once however many 
   assert.deepEqual(validate(RUN).filter(p => p.path.startsWith('views')).map(p => `${p.path} ${p.message}`), ['views said once', 'views.v per view', 'views.w per view']);
 });
 
-test('delete: a node with many lines goes about as fast as a leaf (each line is taken without a scan of the model)', () => {
+test('delete: a node with many lines goes about as fast as a leaf (each line is taken without a scan of the model) (timed)', () => {
   const nodes = Array.from({ length: 2000 }, (_, i) => ({ id: 'n' + i })), m = { nodes, views: [{ id: 'v', nodeIds: nodes.map(n => n.id) }],
     edges: Array.from({ length: 4000 }, (_, i) => ({ id: 'e' + i, from: 'n0', to: 'n' + (1 + (i % 1999)) })) };
   const best = id => Math.min(...Array.from({ length: 5 }, () => { const t = performance.now(); apply(m, { op: 'delete', id }); return performance.now() - t; }));
