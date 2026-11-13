@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """The CLI's change commands end to end (#66, #67, #68): diff of two files, diff --base in a git repository (what the
-diff Action runs on a pull request; on an object and a package model as the Action's step runs it, 2.6, and on a use case, an activity, a state machine and an interaction overview model, 4.10, and a component, a deployment and a composite structure model, 5.8), drift and timelapse; trace (#96; as a UML sequence view, 3.8); and pdf (#93; the stage 4 types' tables, 4.10, and stage 5's, 5.8), read back with the standard
+diff Action runs on a pull request; on an object and a package model as the Action's step runs it, 2.6, and on a use case, an activity, a state machine and an interaction overview model, 4.10, and a component, a deployment and a composite structure model, 5.8, and a profile and a timing model, 6.6), drift and timelapse; trace (#96; as a UML sequence view, 3.8); and pdf (#93; the stage 4 types' tables, 4.10, stage 5's, 5.8, and stage 6's, 6.6), read back with the standard
 library. Pages only for the rest: stills (Chrome) are covered by `stills` itself. And the MCP server (#91), driven
 through its pipes as an MCP client drives it, with a page's event stream.
 
@@ -228,6 +228,28 @@ with tempfile.TemporaryDirectory() as tmp:
            x.get("summary") == [said] and x.get("views") == [view] and (t / "action5-out" / f"examples-{f}.html").is_file() and all(Path(s).is_file() for s in x.get("stills", [None]))
            and f"**`examples/{f}.json`**: {view}" in md and f"- {said}" in md, x)
 
+    # C10 for stage 6 (6.6): the Action's step on a profile and a timing model, each changed in a pull request
+    b = t / "action6"; (b / "examples").mkdir(parents=True)
+    bgit = lambda *x: subprocess.run(["git", "-C", str(b), "-c", "user.name=test", "-c", "user.email=test@example.invalid", *x], capture_output=True, text=True, check=True)
+    bgit("init", "-q")
+    TWO = {"bookshop-profile": ("conventions", "label", "ShopConventions", "profile", "renames BookshopConventions to ShopConventions"),
+           "bookshop-timing": ("lifeline-payments", "label", "provider", "one-charge", "renames payments to provider")}
+    for f in TWO:
+        (b / "examples" / f"{f}.json").write_text((ROOT / "examples" / f"{f}.json").read_text(encoding="utf-8"), encoding="utf-8")
+    bgit("add", "examples"); bgit("commit", "-q", "-m", "base")
+    for f, (nid, k, v, _, _) in TWO.items():
+        m = json.loads((b / "examples" / f"{f}.json").read_text()); next(n for n in m["nodes"] if n["id"] == nid)[k] = v
+        (b / "examples" / f"{f}.json").write_text(json.dumps(m, indent=1))
+    bgit("commit", "-q", "-am", "the pull request")
+    r = cli("diff", "--base", "HEAD^1", "--out", str(t / "action6-out"), "--models", "examples/*.json", cwd=b) or []
+    by = {x["file"]: x for x in r}
+    md = (t / "action6-out" / "summary.md").read_text(encoding="utf-8") if (t / "action6-out" / "summary.md").is_file() else ""
+    for f, (_, _, _, view, said) in TWO.items():
+        x = by.get(f"examples/{f}.json", {})
+        ok(f"diff --base, as the Action runs it · {f}: what changed in words, its view, a page and a still",
+           x.get("summary") == [said] and x.get("views") == [view] and (t / "action6-out" / f"examples-{f}.html").is_file() and all(Path(s).is_file() for s in x.get("stills", [None]))
+           and f"**`examples/{f}.json`**: {view}" in md and f"- {said}" in md, x)
+
     # pdf (#93): the bike share as a document for a review; its words are text. A cover with the contents; each view from a
     # page of its own, under its path, with its legend and tables of its cards, lines and boxes; the rules as a table. The
     # words are compared without spaces: a PDF's text keeps none where a line wraps or between two runs of text, and where
@@ -272,7 +294,9 @@ with tempfile.TemporaryDirectory() as tmp:
                        # 4.10: the use case, activity, state machine and interaction overview examples; 5.8: the component example
                        # (its case points at the moved file) and the deployment and composite structure examples
                        *((n, ROOT / "examples" / f"{n}.json") for n in ("shopping-use-cases", "fulfil-activity", "order-states", "buy-book-overview",
-                                                                       "bookshop-components", "bookshop-deployment", "order-service-structure"))):
+                                                                       "bookshop-components", "bookshop-deployment", "order-service-structure",
+                                                                       # 6.6: the profile and timing examples
+                                                                       "bookshop-profile", "bookshop-timing"))):
         src = json.loads(path.read_text())
         r = cli("render", str(path), "--out", str(t / f"{name}.html"))
         # 4.10: the crossings that turning port repair off leaves in examples 9 and 10 (notes/stage-4.md §17), pinned in their
@@ -354,6 +378,21 @@ with tempfile.TemporaryDirectory() as tmp:
        all(flat(s) in txt for s in ["OrderServiceClassport apiport payments", "checkout : CheckoutFlow [1], composite", "listeners : OrderListener [0..*], shared",
                                     "Connector from api of OrderService to requests of checkout", "orderEventsCollaboration usePublishSubscribepublisher ← checkoutsubscriber ← listeners",
                                     "PublishSubscribeCollaborationpublisher : EventSource [1]subscriber : EventListener [0..*]Connector from publisher to subscriber"]), txt[:800])
+    # 6.6: the two stage 6 types' tables (notes/stage-6.md §9): a profile's stereotypes and metaclasses and the packages it is
+    # applied to, a metaclass's extensions, a stereotype's extension, generals and tags, an element's stereotypes with their
+    # tags (a required one marked), a member's; a lifeline's changes in time order, the messages it sends and the
+    # constraints on its changes
+    txt = "".join(read("bookshop-profile.pdf"))
+    ok("pdf · bookshop-profile: its tables list the profile's stereotypes and metaclasses and where it is applied, each metaclass's extensions, each stereotype's extension and tags, Order's stereotypes with their tags and placedAt's, each line's kind",
+       all(flat(s) in txt for s in ["BookshopConventionsProfilemetaclass Classmetaclass Property«entity»«aggregateRoot»«owned»«column»applied to sales", "ClassMetaclassextended by «entity»extended by «owned»",
+                                    "ownedStereotypeextends Class {required}team: String [0..1]", "aggregateRootStereotypea kind of «entity»boundedContext: String",
+                                    "OrderClass«entity» table = orders«owned» required team = checkout- placedAt: Instant [0..1]: «column» name = placed_at, indexed = true",
+                                    "From → toLabelKind", "entity → ClassExtension", "sales → BookshopConventionsProfile application"]), txt[:800])
+    txt = "".join(read("bookshop-timing.pdf"))
+    ok("pdf · bookshop-timing: its tables list each lifeline's changes in time order, the messages it sends and the constraints on its changes, each message's kind",
+       all(flat(s) in txt for s in ["workerLifeline0 ms: Idle100 ms: Waiting for payment760 ms: Recording payment900 ms: Idlecharge(total) to payments at 100 ms → 140 ms",
+                                    "Duration constraint {<= 800 ms} on worker from 100 ms to 760 msTime constraint {<= 1000 ms} on worker at 900 ms", "paymentsLifeline0 ms: Idle140 ms: Authorising",
+                                    "paid to worker at 720 ms → 760 ms", "worker → paymentscharge(total)Message"]), txt[:800])
     # an element with no type is drawn as a class, and its row says so
     bare = json.loads((ROOT / "examples" / "sales-classes.json").read_text()); next(n for n in bare["nodes"] if n["id"] == "order").pop("type")
     (t / "bare.json").write_text(json.dumps(bare))
