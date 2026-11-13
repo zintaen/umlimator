@@ -1,0 +1,1453 @@
+{
+ "clinic": {
+  "id": 0,
+  "name": "Clinic bookings",
+  "description": "Online appointments for a group of clinics",
+  "lastModifiedDate": "2026-11-14T09:00:00Z",
+  "properties": {
+   "structurizr.dsl": "(the DSL's base64 text is left out)"
+  },
+  "configuration": {},
+  "model": {
+   "people": [
+    {
+     "id": "1",
+     "tags": "Element,Person",
+     "name": "Patient",
+     "description": "Books and moves appointments.",
+     "properties": {
+      "structurizr.dsl.identifier": "patient"
+     },
+     "relationships": [
+      {
+       "id": "16",
+       "tags": "Relationship",
+       "sourceId": "1",
+       "destinationId": "4",
+       "description": "Books appointments",
+       "technology": "HTTPS"
+      },
+      {
+       "id": "17",
+       "sourceId": "1",
+       "destinationId": "3",
+       "description": "Books appointments",
+       "linkedRelationshipId": "16",
+       "technology": "HTTPS"
+      }
+     ]
+    },
+    {
+     "id": "2",
+     "tags": "Element,Person",
+     "name": "Receptionist",
+     "description": "Runs a clinic's front desk.",
+     "properties": {
+      "structurizr.dsl.identifier": "reception"
+     },
+     "relationships": [
+      {
+       "id": "18",
+       "tags": "Relationship",
+       "sourceId": "2",
+       "destinationId": "5",
+       "description": "Runs the day",
+       "technology": "HTTPS"
+      },
+      {
+       "id": "19",
+       "sourceId": "2",
+       "destinationId": "3",
+       "description": "Runs the day",
+       "linkedRelationshipId": "18",
+       "technology": "HTTPS"
+      }
+     ],
+     "group": "Clinic staff"
+    }
+   ],
+   "softwareSystems": [
+    {
+     "id": "3",
+     "tags": "Element,Software System",
+     "name": "Clinic bookings",
+     "description": "Appointments for every clinic in the group.",
+     "properties": {
+      "structurizr.dsl.identifier": "bookings"
+     },
+     "relationships": [
+      {
+       "id": "30",
+       "sourceId": "3",
+       "destinationId": "15",
+       "description": "Checks the patient",
+       "linkedRelationshipId": "28",
+       "technology": "FHIR"
+      },
+      {
+       "id": "37",
+       "sourceId": "3",
+       "destinationId": "14",
+       "description": "Sends texts",
+       "linkedRelationshipId": "36",
+       "technology": "HTTPS"
+      }
+     ],
+     "containers": [
+      {
+       "id": "4",
+       "tags": "Element,Container,Web Browser",
+       "name": "Booking site",
+       "description": "Where patients book.",
+       "technology": "React",
+       "properties": {
+        "structurizr.dsl.identifier": "bookings.web"
+       },
+       "relationships": [
+        {
+         "id": "20",
+         "tags": "Relationship",
+         "sourceId": "4",
+         "destinationId": "8",
+         "description": "Books",
+         "technology": "JSON/HTTPS"
+        },
+        {
+         "id": "21",
+         "sourceId": "4",
+         "destinationId": "6",
+         "description": "Books",
+         "linkedRelationshipId": "20",
+         "technology": "JSON/HTTPS"
+        }
+       ]
+      },
+      {
+       "id": "5",
+       "tags": "Element,Container,Web Browser",
+       "name": "Front desk app",
+       "description": "Reception's view of the day.",
+       "technology": "React",
+       "properties": {
+        "structurizr.dsl.identifier": "bookings.desk"
+       },
+       "relationships": [
+        {
+         "id": "22",
+         "tags": "Relationship",
+         "sourceId": "5",
+         "destinationId": "8",
+         "description": "Moves and cancels",
+         "technology": "JSON/HTTPS"
+        },
+        {
+         "id": "23",
+         "sourceId": "5",
+         "destinationId": "6",
+         "description": "Moves and cancels",
+         "linkedRelationshipId": "22",
+         "technology": "JSON/HTTPS"
+        }
+       ]
+      },
+      {
+       "id": "6",
+       "tags": "Element,Container",
+       "name": "Booking API",
+       "description": "Slots, bookings and changes.",
+       "technology": "Go",
+       "properties": {
+        "structurizr.dsl.identifier": "bookings.api"
+       },
+       "relationships": [
+        {
+         "id": "29",
+         "sourceId": "6",
+         "destinationId": "15",
+         "description": "Checks the patient",
+         "linkedRelationshipId": "28",
+         "technology": "FHIR"
+        },
+        {
+         "id": "32",
+         "sourceId": "6",
+         "destinationId": "11",
+         "description": "Reads and writes",
+         "linkedRelationshipId": "31",
+         "technology": "SQL"
+        },
+        {
+         "id": "34",
+         "sourceId": "6",
+         "destinationId": "12",
+         "description": "Queues reminders",
+         "linkedRelationshipId": "33",
+         "technology": "AMQP"
+        }
+       ],
+       "components": [
+        {
+         "id": "7",
+         "tags": "Element,Component",
+         "name": "Slot finder",
+         "description": "Free slots per clinician.",
+         "technology": "Go",
+         "properties": {
+          "structurizr.dsl.identifier": "bookings.api.slots"
+         },
+         "relationships": [
+          {
+           "id": "25",
+           "tags": "Relationship",
+           "sourceId": "7",
+           "destinationId": "10",
+           "description": "Reads slots"
+          }
+         ]
+        },
+        {
+         "id": "8",
+         "tags": "Element,Component",
+         "name": "Booking handler",
+         "description": "Books, moves and cancels.",
+         "technology": "Go",
+         "properties": {
+          "structurizr.dsl.identifier": "bookings.api.book"
+         },
+         "relationships": [
+          {
+           "id": "24",
+           "tags": "Relationship",
+           "sourceId": "8",
+           "destinationId": "7",
+           "description": "Finds a free slot"
+          },
+          {
+           "id": "26",
+           "tags": "Relationship",
+           "sourceId": "8",
+           "destinationId": "10",
+           "description": "Saves bookings"
+          },
+          {
+           "id": "27",
+           "tags": "Relationship",
+           "sourceId": "8",
+           "destinationId": "9",
+           "description": "Booked"
+          },
+          {
+           "id": "28",
+           "tags": "Relationship",
+           "sourceId": "8",
+           "destinationId": "15",
+           "description": "Checks the patient",
+           "technology": "FHIR"
+          }
+         ]
+        },
+        {
+         "id": "9",
+         "tags": "Element,Component",
+         "name": "Reminder scheduler",
+         "description": "Queues a reminder a day ahead.",
+         "technology": "Go",
+         "properties": {
+          "structurizr.dsl.identifier": "bookings.api.remind"
+         },
+         "relationships": [
+          {
+           "id": "33",
+           "tags": "Relationship",
+           "sourceId": "9",
+           "destinationId": "12",
+           "description": "Queues reminders",
+           "technology": "AMQP"
+          }
+         ]
+        },
+        {
+         "id": "10",
+         "tags": "Element,Component",
+         "name": "Booking repository",
+         "description": "Reads and writes bookings.",
+         "technology": "Go, pgx",
+         "properties": {
+          "structurizr.dsl.identifier": "bookings.api.store"
+         },
+         "relationships": [
+          {
+           "id": "31",
+           "tags": "Relationship",
+           "sourceId": "10",
+           "destinationId": "11",
+           "description": "Reads and writes",
+           "technology": "SQL"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "11",
+       "tags": "Element,Container,Database",
+       "name": "Bookings database",
+       "description": "Clinicians, slots and bookings.",
+       "technology": "PostgreSQL",
+       "properties": {
+        "structurizr.dsl.identifier": "bookings.db"
+       }
+      },
+      {
+       "id": "12",
+       "tags": "Element,Container,Queue",
+       "name": "Job queue",
+       "description": "Reminders waiting to be sent.",
+       "technology": "RabbitMQ",
+       "properties": {
+        "structurizr.dsl.identifier": "bookings.jobs"
+       }
+      },
+      {
+       "id": "13",
+       "tags": "Element,Container",
+       "name": "Reminder sender",
+       "description": "Sends each reminder.",
+       "technology": "Python",
+       "properties": {
+        "structurizr.dsl.identifier": "bookings.sender"
+       },
+       "relationships": [
+        {
+         "id": "35",
+         "tags": "Relationship",
+         "sourceId": "13",
+         "destinationId": "12",
+         "description": "Takes reminders",
+         "technology": "AMQP"
+        },
+        {
+         "id": "36",
+         "tags": "Relationship",
+         "sourceId": "13",
+         "destinationId": "14",
+         "description": "Sends texts",
+         "technology": "HTTPS"
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": "14",
+     "tags": "Element,Software System,External",
+     "name": "SMS gateway",
+     "description": "Delivers text messages.",
+     "properties": {
+      "structurizr.dsl.identifier": "sms"
+     },
+     "relationships": [
+      {
+       "id": "38",
+       "tags": "Relationship",
+       "sourceId": "14",
+       "destinationId": "1",
+       "description": "Texts a reminder"
+      }
+     ]
+    },
+    {
+     "id": "15",
+     "tags": "Element,Software System,External",
+     "name": "Patient records",
+     "description": "The group's medical records.",
+     "properties": {
+      "structurizr.dsl.identifier": "records"
+     }
+    }
+   ],
+   "deploymentNodes": [
+    {
+     "id": "40",
+     "tags": "Element,Deployment Node",
+     "name": "Cloud",
+     "environment": "Live",
+     "instances": "1",
+     "properties": {
+      "structurizr.dsl.identifier": "a7c04e2b-91f3-4d6a-b8e5-2c9d17f0e46b"
+     },
+     "containerInstances": [
+      {
+       "id": "39",
+       "tags": "Container Instance",
+       "containerId": "6",
+       "environment": "Live",
+       "instanceId": 1,
+       "properties": {
+        "structurizr.dsl.identifier": "3f2a9c1e-7b4d-4e8a-9c51-0d6e2b7f8a13"
+       }
+      }
+     ]
+    }
+   ]
+  },
+  "documentation": {},
+  "views": {
+   "systemContextViews": [
+    {
+     "key": "context",
+     "order": 1,
+     "description": "Who books, and what the bookings system leans on.",
+     "softwareSystemId": "3",
+     "automaticLayout": {
+      "implementation": "Graphviz",
+      "rankDirection": "LeftRight",
+      "rankSeparation": 300,
+      "nodeSeparation": 300,
+      "edgeSeparation": 0,
+      "vertices": false
+     },
+     "elements": [
+      {
+       "id": "1",
+       "x": 0,
+       "y": 0
+      },
+      {
+       "id": "2",
+       "x": 0,
+       "y": 0
+      },
+      {
+       "id": "3",
+       "x": 0,
+       "y": 0
+      },
+      {
+       "id": "14",
+       "x": 0,
+       "y": 0
+      },
+      {
+       "id": "15",
+       "x": 0,
+       "y": 0
+      }
+     ],
+     "relationships": [
+      {
+       "id": "17"
+      },
+      {
+       "id": "19"
+      },
+      {
+       "id": "30"
+      },
+      {
+       "id": "37"
+      },
+      {
+       "id": "38"
+      }
+     ]
+    }
+   ],
+   "containerViews": [
+    {
+     "key": "containers",
+     "order": 2,
+     "description": "The apps, the API, and where bookings and reminders wait.",
+     "softwareSystemId": "3",
+     "automaticLayout": {
+      "implementation": "Graphviz",
+      "rankDirection": "LeftRight",
+      "rankSeparation": 300,
+      "nodeSeparation": 300,
+      "edgeSeparation": 0,
+      "vertices": false
+     },
+     "elements": [
+      {
+       "id": "1",
+       "x": 0,
+       "y": 0
+      },
+      {
+       "id": "2",
+       "x": 0,
+       "y": 0
+      },
+      {
+       "id": "4",
+       "x": 0,
+       "y": 0
+      },
+      {
+       "id": "5",
+       "x": 0,
+       "y": 0
+      },
+      {
+       "id": "6",
+       "x": 0,
+       "y": 0
+      },
+      {
+       "id": "11",
+       "x": 0,
+       "y": 0
+      },
+      {
+       "id": "12",
+       "x": 0,
+       "y": 0
+      },
+      {
+       "id": "13",
+       "x": 0,
+       "y": 0
+      },
+      {
+       "id": "14",
+       "x": 0,
+       "y": 0
+      },
+      {
+       "id": "15",
+       "x": 0,
+       "y": 0
+      }
+     ],
+     "relationships": [
+      {
+       "id": "16"
+      },
+      {
+       "id": "18"
+      },
+      {
+       "id": "21"
+      },
+      {
+       "id": "23"
+      },
+      {
+       "id": "29"
+      },
+      {
+       "id": "32"
+      },
+      {
+       "id": "34"
+      },
+      {
+       "id": "35"
+      },
+      {
+       "id": "36"
+      },
+      {
+       "id": "38"
+      }
+     ]
+    }
+   ],
+   "componentViews": [
+    {
+     "key": "api",
+     "order": 3,
+     "description": "Inside the booking API.",
+     "containerId": "6",
+     "automaticLayout": {
+      "implementation": "Graphviz",
+      "rankDirection": "LeftRight",
+      "rankSeparation": 300,
+      "nodeSeparation": 300,
+      "edgeSeparation": 0,
+      "vertices": false
+     },
+     "elements": [
+      {
+       "id": "7",
+       "x": 0,
+       "y": 0
+      },
+      {
+       "id": "8",
+       "x": 0,
+       "y": 0
+      },
+      {
+       "id": "9",
+       "x": 0,
+       "y": 0
+      },
+      {
+       "id": "10",
+       "x": 0,
+       "y": 0
+      },
+      {
+       "id": "4",
+       "x": 0,
+       "y": 0
+      },
+      {
+       "id": "5",
+       "x": 0,
+       "y": 0
+      },
+      {
+       "id": "11",
+       "x": 0,
+       "y": 0
+      },
+      {
+       "id": "12",
+       "x": 0,
+       "y": 0
+      },
+      {
+       "id": "15",
+       "x": 0,
+       "y": 0
+      }
+     ],
+     "relationships": [
+      {
+       "id": "20"
+      },
+      {
+       "id": "22"
+      },
+      {
+       "id": "24"
+      },
+      {
+       "id": "25"
+      },
+      {
+       "id": "26"
+      },
+      {
+       "id": "27"
+      },
+      {
+       "id": "28"
+      },
+      {
+       "id": "31"
+      },
+      {
+       "id": "33"
+      }
+     ]
+    }
+   ],
+   "configuration": {
+    "branding": {},
+    "styles": {
+     "elements": [
+      {
+       "tag": "Person",
+       "shape": "Person"
+      },
+      {
+       "tag": "Database",
+       "shape": "Cylinder"
+      }
+     ]
+    },
+    "themes": [
+     "https://static.structurizr.com/themes/default/theme.json"
+    ],
+    "terminology": {}
+   }
+  }
+ },
+ "every": {
+  "id": 0,
+  "name": "Every view kind",
+  "description": "One workspace holding each of Structurizr's view kinds and each element shape",
+  "model": {
+   "people": [
+    {
+     "id": "1",
+     "tags": "Element,Person",
+     "name": "Customer",
+     "description": "Buys things.",
+     "location": "External",
+     "properties": {
+      "structurizr.dsl.identifier": "customer"
+     },
+     "relationships": [
+      {
+       "id": "30",
+       "tags": "Relationship",
+       "sourceId": "1",
+       "destinationId": "4",
+       "description": "Shops in",
+       "technology": "HTTPS",
+       "properties": {
+        "structurizr.dsl.identifier": "shops"
+       }
+      },
+      {
+       "id": "31",
+       "sourceId": "1",
+       "destinationId": "3",
+       "description": "Shops in",
+       "technology": "HTTPS",
+       "linkedRelationshipId": "30"
+      }
+     ]
+    },
+    {
+     "id": "2",
+     "tags": "Element,Person,Bot",
+     "name": "Stock robot",
+     "description": "Counts the stock every night.",
+     "properties": {
+      "structurizr.dsl.identifier": "robot"
+     },
+     "relationships": [
+      {
+       "id": "32",
+       "tags": "Relationship",
+       "sourceId": "2",
+       "destinationId": "9",
+       "description": "Updates stock in",
+       "technology": "SQL"
+      }
+     ]
+    }
+   ],
+   "softwareSystems": [
+    {
+     "id": "3",
+     "tags": "Element,Software System",
+     "name": "Shop",
+     "description": "Sells things online.",
+     "properties": {
+      "structurizr.dsl.identifier": "shop"
+     },
+     "documentation": {
+      "sections": [
+       {
+        "title": "Overview",
+        "content": "## Overview",
+        "format": "Markdown",
+        "order": 1
+       }
+      ]
+     },
+     "containers": [
+      {
+       "id": "4",
+       "tags": "Element,Container,Browser",
+       "name": "Web app",
+       "description": "The shop in a browser.",
+       "technology": "TypeScript",
+       "properties": {
+        "structurizr.dsl.identifier": "shop.web"
+       },
+       "relationships": [
+        {
+         "id": "33",
+         "tags": "Relationship",
+         "sourceId": "4",
+         "destinationId": "11",
+         "description": "Places orders through",
+         "technology": "JSON/HTTPS"
+        },
+        {
+         "id": "34",
+         "sourceId": "4",
+         "destinationId": "10",
+         "description": "Places orders through",
+         "technology": "JSON/HTTPS",
+         "linkedRelationshipId": "33"
+        }
+       ]
+      },
+      {
+       "id": "5",
+       "tags": "Element,Container,Phone",
+       "name": "Mobile app",
+       "description": "The shop on a phone.",
+       "technology": "Kotlin",
+       "properties": {
+        "structurizr.dsl.identifier": "shop.mobile"
+       }
+      },
+      {
+       "id": "6",
+       "tags": "Element,Container,Desktop",
+       "name": "Back office",
+       "description": "Staff's own app.",
+       "technology": "C#",
+       "properties": {
+        "structurizr.dsl.identifier": "shop.office"
+       },
+       "group": "Staff tools"
+      },
+      {
+       "id": "7",
+       "tags": "Element,Container,Console",
+       "name": "Admin shell",
+       "description": "Scripts for the night shift.",
+       "technology": "Bash",
+       "properties": {
+        "structurizr.dsl.identifier": "shop.shell"
+       },
+       "group": "Staff tools"
+      },
+      {
+       "id": "8",
+       "tags": "Element,Container,Store",
+       "name": "Media store",
+       "description": "Product pictures.",
+       "technology": "S3",
+       "properties": {
+        "structurizr.dsl.identifier": "shop.media"
+       }
+      },
+      {
+       "id": "9",
+       "tags": "Element,Container,Database",
+       "name": "Database",
+       "description": "Products and orders.",
+       "technology": "PostgreSQL",
+       "properties": {
+        "structurizr.dsl.identifier": "shop.db",
+        "owner": "Data team"
+       },
+       "perspectives": [
+        {
+         "name": "Security",
+         "description": "Encrypted at rest."
+        }
+       ]
+      },
+      {
+       "id": "10",
+       "tags": "Element,Container,Service",
+       "name": "API",
+       "description": "Orders and catalogue.",
+       "technology": "Java",
+       "properties": {
+        "structurizr.dsl.identifier": "shop.api"
+       },
+       "relationships": [
+        {
+         "id": "35",
+         "sourceId": "10",
+         "destinationId": "9",
+         "description": "Reads and writes",
+         "technology": "JDBC",
+         "linkedRelationshipId": "36"
+        },
+        {
+         "id": "39",
+         "sourceId": "10",
+         "destinationId": "15",
+         "description": "Charges cards with",
+         "technology": "HTTPS",
+         "linkedRelationshipId": "38"
+        },
+        {
+         "id": "41",
+         "tags": "Relationship",
+         "sourceId": "10",
+         "destinationId": "14",
+         "description": "Sends events to",
+         "technology": "AMQP"
+        }
+       ],
+       "components": [
+        {
+         "id": "11",
+         "tags": "Element,Component",
+         "name": "Orders",
+         "description": "Takes orders.",
+         "technology": "Spring MVC",
+         "properties": {
+          "structurizr.dsl.identifier": "shop.api.orders"
+         },
+         "relationships": [
+          {
+           "id": "37",
+           "tags": "Relationship",
+           "sourceId": "11",
+           "destinationId": "12",
+           "description": "Saves orders with"
+          },
+          {
+           "id": "38",
+           "tags": "Relationship",
+           "sourceId": "11",
+           "destinationId": "15",
+           "description": "Charges cards with",
+           "technology": "HTTPS"
+          }
+         ]
+        },
+        {
+         "id": "12",
+         "tags": "Element,Component,Round",
+         "name": "Order store",
+         "description": "Orders in the database.",
+         "technology": "JPA",
+         "properties": {
+          "structurizr.dsl.identifier": "shop.api.store"
+         },
+         "relationships": [
+          {
+           "id": "36",
+           "tags": "Relationship",
+           "sourceId": "12",
+           "destinationId": "9",
+           "description": "Reads and writes",
+           "technology": "JDBC"
+          }
+         ]
+        },
+        {
+         "id": "13",
+         "tags": "Element,Component,Plugin",
+         "name": "Search",
+         "description": "Finds products.",
+         "technology": "Lucene",
+         "properties": {
+          "structurizr.dsl.identifier": "shop.api.search"
+         }
+        }
+       ]
+      },
+      {
+       "id": "14",
+       "tags": "Element,Container,Queue",
+       "name": "Event bus",
+       "description": "Order events.",
+       "technology": "RabbitMQ",
+       "properties": {
+        "structurizr.dsl.identifier": "shop.bus"
+       }
+      }
+     ]
+    },
+    {
+     "id": "15",
+     "tags": "Element,Software System,External",
+     "name": "Payments",
+     "description": "Takes card payments.",
+     "properties": {
+      "structurizr.dsl.identifier": "payments"
+     }
+    },
+    {
+     "id": "16",
+     "tags": "Element,Software System,Hub",
+     "name": "Warehouse",
+     "description": "Packs and ships orders.",
+     "location": "Internal",
+     "properties": {
+      "structurizr.dsl.identifier": "warehouse"
+     }
+    }
+   ],
+   "deploymentNodes": [
+    {
+     "id": "17",
+     "tags": "Element,Deployment Node",
+     "name": "Data centre",
+     "environment": "Live",
+     "technology": "Region eu-west",
+     "properties": {
+      "structurizr.dsl.identifier": "live.dc"
+     },
+     "children": [
+      {
+       "id": "18",
+       "tags": "Element,Deployment Node",
+       "name": "Server",
+       "environment": "Live",
+       "technology": "Ubuntu 24.04",
+       "instances": "3",
+       "properties": {
+        "structurizr.dsl.identifier": "live.dc.server"
+       },
+       "infrastructureNodes": [
+        {
+         "id": "19",
+         "tags": "Element,Infrastructure Node",
+         "name": "Load balancer",
+         "environment": "Live",
+         "relationships": [
+          {
+           "id": "42",
+           "tags": "Relationship",
+           "sourceId": "19",
+           "destinationId": "20",
+           "description": "Forwards to"
+          }
+         ]
+        }
+       ],
+       "containerInstances": [
+        {
+         "id": "20",
+         "tags": "Container Instance",
+         "containerId": "10",
+         "environment": "Live",
+         "instanceId": 1,
+         "relationships": [
+          {
+           "id": "43",
+           "sourceId": "20",
+           "destinationId": "22",
+           "description": "Reads and writes",
+           "technology": "JDBC",
+           "linkedRelationshipId": "35"
+          }
+         ]
+        },
+        {
+         "id": "21",
+         "tags": "Container Instance",
+         "containerId": "10",
+         "environment": "Live",
+         "instanceId": 2
+        }
+       ]
+      },
+      {
+       "id": "23",
+       "tags": "Element,Deployment Node",
+       "name": "Database server",
+       "environment": "Live",
+       "technology": "PostgreSQL 16",
+       "properties": {
+        "structurizr.dsl.identifier": "live.dc.dbs"
+       },
+       "containerInstances": [
+        {
+         "id": "22",
+         "tags": "Container Instance",
+         "containerId": "9",
+         "environment": "Live",
+         "instanceId": 1
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": "24",
+     "tags": "Element,Deployment Node",
+     "name": "Payments cloud",
+     "environment": "Live",
+     "softwareSystemInstances": [
+      {
+       "id": "25",
+       "tags": "Software System Instance",
+       "softwareSystemId": "15",
+       "environment": "Live",
+       "instanceId": 1
+      }
+     ]
+    }
+   ]
+  },
+  "documentation": {
+   "decisions": [
+    {
+     "id": "1",
+     "title": "Use PostgreSQL",
+     "status": "Accepted",
+     "content": "...",
+     "format": "Markdown"
+    }
+   ]
+  },
+  "views": {
+   "systemLandscapeViews": [
+    {
+     "key": "landscape",
+     "order": 1,
+     "title": "Shop: everything at once",
+     "elements": [
+      {
+       "id": "1"
+      },
+      {
+       "id": "2"
+      },
+      {
+       "id": "3"
+      },
+      {
+       "id": "15"
+      },
+      {
+       "id": "16"
+      }
+     ],
+     "relationships": [
+      {
+       "id": "31"
+      }
+     ],
+     "animations": [
+      {
+       "order": 1,
+       "elements": [
+        "3"
+       ]
+      }
+     ]
+    }
+   ],
+   "systemContextViews": [
+    {
+     "key": "context",
+     "order": 2,
+     "softwareSystemId": "3",
+     "elements": [
+      {
+       "id": "1"
+      },
+      {
+       "id": "2"
+      },
+      {
+       "id": "3"
+      },
+      {
+       "id": "15"
+      }
+     ],
+     "relationships": [
+      {
+       "id": "31"
+      }
+     ]
+    }
+   ],
+   "containerViews": [
+    {
+     "key": "containers",
+     "order": 3,
+     "softwareSystemId": "3",
+     "automaticLayout": {
+      "rankDirection": "TopBottom"
+     },
+     "elements": [
+      {
+       "id": "1"
+      },
+      {
+       "id": "2"
+      },
+      {
+       "id": "4"
+      },
+      {
+       "id": "5"
+      },
+      {
+       "id": "6"
+      },
+      {
+       "id": "7"
+      },
+      {
+       "id": "8"
+      },
+      {
+       "id": "9"
+      },
+      {
+       "id": "10"
+      },
+      {
+       "id": "14"
+      },
+      {
+       "id": "15"
+      }
+     ],
+     "relationships": [
+      {
+       "id": "30"
+      },
+      {
+       "id": "32"
+      },
+      {
+       "id": "34"
+      },
+      {
+       "id": "35"
+      },
+      {
+       "id": "39"
+      },
+      {
+       "id": "41"
+      }
+     ]
+    }
+   ],
+   "componentViews": [
+    {
+     "key": "components",
+     "order": 4,
+     "containerId": "10",
+     "automaticLayout": {
+      "rankDirection": "BottomTop"
+     },
+     "elements": [
+      {
+       "id": "4"
+      },
+      {
+       "id": "9"
+      },
+      {
+       "id": "11"
+      },
+      {
+       "id": "12"
+      },
+      {
+       "id": "13"
+      },
+      {
+       "id": "15"
+      }
+     ],
+     "relationships": [
+      {
+       "id": "33"
+      },
+      {
+       "id": "36"
+      },
+      {
+       "id": "37"
+      },
+      {
+       "id": "38"
+      }
+     ]
+    }
+   ],
+   "dynamicViews": [
+    {
+     "key": "Placing an order",
+     "order": 5,
+     "elementId": "3",
+     "description": "A customer places an order.",
+     "elements": [
+      {
+       "id": "1"
+      },
+      {
+       "id": "4"
+      },
+      {
+       "id": "10"
+      },
+      {
+       "id": "9"
+      },
+      {
+       "id": "15"
+      },
+      {
+       "id": "14"
+      }
+     ],
+     "relationships": [
+      {
+       "id": "41",
+       "order": "10",
+       "description": "Sends events to"
+      },
+      {
+       "id": "30",
+       "order": "1",
+       "description": "Shops in"
+      },
+      {
+       "id": "34",
+       "order": "2",
+       "description": "Places orders through"
+      },
+      {
+       "id": "35",
+       "order": "3",
+       "description": "Saves the order in"
+      },
+      {
+       "id": "39",
+       "order": "4"
+      },
+      {
+       "id": "34",
+       "order": "5",
+       "description": "Places orders through",
+       "response": true
+      },
+      {
+       "id": "33",
+       "order": "6",
+       "response": true
+      },
+      {
+       "id": "99",
+       "order": "7"
+      }
+     ]
+    }
+   ],
+   "deploymentViews": [
+    {
+     "key": "live",
+     "order": 6,
+     "softwareSystemId": "3",
+     "environment": "Live",
+     "elements": [
+      {
+       "id": "17"
+      },
+      {
+       "id": "18"
+      },
+      {
+       "id": "19"
+      },
+      {
+       "id": "20"
+      },
+      {
+       "id": "21"
+      },
+      {
+       "id": "23"
+      },
+      {
+       "id": "22"
+      },
+      {
+       "id": "24"
+      },
+      {
+       "id": "25"
+      }
+     ],
+     "relationships": [
+      {
+       "id": "42"
+      },
+      {
+       "id": "43"
+      }
+     ]
+    }
+   ],
+   "filteredViews": [
+    {
+     "key": "internal-only",
+     "baseViewKey": "landscape",
+     "mode": "Exclude",
+     "tags": [
+      "External"
+     ]
+    }
+   ],
+   "customViews": [
+    {
+     "key": "sketch",
+     "title": "A sketch",
+     "elements": []
+    }
+   ],
+   "imageViews": [
+    {
+     "key": "photo",
+     "title": "Whiteboard"
+    }
+   ],
+   "configuration": {
+    "styles": {
+     "elements": [
+      {
+       "tag": "Element",
+       "background": "#1168bd",
+       "color": "#ffffff"
+      },
+      {
+       "tag": "Person",
+       "shape": "Person"
+      },
+      {
+       "tag": "Bot",
+       "shape": "Robot"
+      },
+      {
+       "tag": "Browser",
+       "shape": "WebBrowser"
+      },
+      {
+       "tag": "Phone",
+       "shape": "MobileDevicePortrait"
+      },
+      {
+       "tag": "Desktop",
+       "shape": "Window"
+      },
+      {
+       "tag": "Console",
+       "shape": "Shell"
+      },
+      {
+       "tag": "Store",
+       "shape": "Folder"
+      },
+      {
+       "tag": "Database",
+       "shape": "Cylinder"
+      },
+      {
+       "tag": "Service",
+       "shape": "Hexagon"
+      },
+      {
+       "tag": "Queue",
+       "shape": "Pipe"
+      },
+      {
+       "tag": "Round",
+       "shape": "Ellipse"
+      },
+      {
+       "tag": "Plugin",
+       "shape": "Component"
+      },
+      {
+       "tag": "Hub",
+       "shape": "RoundedBox"
+      },
+      {
+       "tag": "Hub",
+       "shape": "Circle"
+      }
+     ]
+    }
+   }
+  }
+ }
+}
