@@ -3588,9 +3588,9 @@ What moves for a host that upgrades from 0.20.0 (beside the one card-shape style
   all four, XMI, copy and paste and per-type `diff()` writers. Found in 4.10 (`docs/diagrams/risks.md` R9): the PDF's
   line tables list a line's `label` only, so a transition's parts, a flow's guard and an extend's points are missing,
   and the state machine type gave no `word` or `rows` until decision 18 (13 Nov 2026) added both in `src/uml/state.js`.
-- **Size:** `lib/umlimator.js`, what a map host loads, is 185.0 kB (184,984 B) with `gzip -9`, 12.14% over 0.16.0 (the
-  plan's budget is 15%): stage 4 added 268 B (4.1, 4.9) and the one card-shape style removed more. `lib/umlimator-all.js`
-  is 335.9 kB (335,875 B), up from 276.9 kB in 0.20.0. The npm package is 574 kB, up from 515 kB.
+- **Size:** `lib/umlimator.js`, what a map host loads, is 185.0 kB (185,023 B) with `gzip -9`, 12.17% over 0.16.0 (the
+  plan's budget is 15%): stage 4 added 307 B (4.1, 4.9 and the atlas's 39 B) and the one card-shape style removed more.
+  `lib/umlimator-all.js` is 336.2 kB (336,164 B), up from 276.9 kB in 0.20.0. The npm package is 574 kB, up from 515 kB.
 
 ### The Bookshop atlas
 
@@ -3605,13 +3605,15 @@ the map's three views and the fifteen typed views of `sales-classes`, `order-obj
 - **Assembled, not copied.** `node tools/atlas.mjs` builds it from the example files and `tools/atlas-links.json`, which
   lists the files in order and which element opens which view (each link is the element's `opensView`). An id an
   earlier file already uses, as an element's or a view's, is renamed `<file>.<id>` with every reference to it in its
-  file, and the tool prints what it renamed (48 ids, such as the lifelines named `api`, three of the four views named `checkout` and the communication diagram's `m1`). Labels are kept.
-  `tests/atlas.test.mjs` builds it again and compares it with the committed file byte for byte; it also asks for no
-  core error from `validate()`, every view laid out, and every drill-down opening a view of the atlas, with no id of
-  one file opening another file's view by accident.
+  file, and the tool prints what it renamed (48 ids, such as the lifelines named `api`, three of the four views named
+  `checkout` and the communication diagram's `m1`). Labels are kept. A field the tool does not know how to rename (a
+  view's, an element's or a prop) stops the build. `tests/atlas.test.mjs` builds it again and compares it with the
+  committed file byte for byte; it also asks for no core error from `validate()`, every view laid out as in its own file
+  (the same boxes, lines through the same points), and every drill-down opening a view of the atlas, with no id of one
+  file opening another file's view by accident.
 - **A map and typed views share one model.** A view with no `diagram` is a map, drawn as before, in a
   `schemaVersion: 2` model too (`model.md` §1, rule 1); nothing had to be left out.
-- **Another kind of diagram opens, never unfolds in place** (`src/map/context.js`, 78 B in the core): a card whose inner
+- **Another kind of diagram opens, never unfolds in place** (`src/map/context.js`, 39 B in the core): a card whose inner
   view is a different diagram (a map card opening a use case diagram, a class opening its state machine, an interaction
   use opening its sequence) switches to that view; unfolding it would draw one notation's elements as another's cards.
   A map card and an activity's call behaviour action still unfold as before.

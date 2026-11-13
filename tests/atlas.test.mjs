@@ -20,7 +20,7 @@ import '../src/uml/overview.js';
 import { layout, check } from '../src/map/api.js';
 import { mapContext } from '../src/map/context.js';
 import { validate } from '../src/map/validate.js';
-import { build } from '../tools/atlas.mjs';
+import { build, renamed } from '../tools/atlas.mjs';
 
 const LINKS = JSON.parse(readFileSync(new URL('../tools/atlas-links.json', import.meta.url), 'utf8'));
 const { model: M, renames, text } = build();
@@ -84,4 +84,22 @@ test('every drill-down opens a view of the atlas: the links file\'s, the files\'
   const step = (a, b) => assert.ok(next.get(a).has(b), `${a} opens ${b}`);
   step('overview', 'domain'); step('domain', 'order-life');
   step('overview', 'shopping'); step('shopping', 'take-payment'); step('take-payment', 'checkout-sequence.checkout');
+});
+
+test('every view lays out in the atlas as in its own file: the same boxes, and lines through the same points', () => {
+  for (const name of LINKS.sources) {
+    const src = JSON.parse(readFileSync(new URL(`../examples/${name}.json`, import.meta.url), 'utf8'));
+    const R = new Map(renames.filter(r => r.file === name).map(r => [r.from, r.to])), r = x => R.get(x) ?? x;
+    const pic = (g, f) => ({ nodes: g.nodes.map(n => [f(n.id), n.x, n.y, n.w, n.h]), edges: g.edges.map(e => [f(e.from), f(e.to), e.pts]) });
+    for (const v of src.views) assert.deepEqual(pic(layout(M, r(v.id)), x => x), pic(layout(src, v.id), r), `${name} view ${v.id}`);
+  }
+});
+
+test('the tool renames an id everywhere a file refers to it, and stops on a field it does not know', () => {
+  const m = { nodes: [{ id: 'a', type: 't', props: { ends: { x: { part: 'a' } }, covers: ['a'], replyTo: 'a' } }],
+    views: [{ id: 'v', subject: 'a', nodeIds: ['a'], tour: ['a'], layout: { a: {} }, present: { a: {} }, lanes: [{ nodeIds: ['a'] }] }] };
+  const out = renamed(m, 'f', new Map([['a', 'f.a']]));
+  assert.deepEqual(JSON.stringify(out).match(/"a"/g), null, JSON.stringify(out));
+  assert.throws(() => renamed({ nodes: [{ id: 'a', props: { owner: 'a' } }] }, 'f', new Map()), /owner/);
+  assert.throws(() => renamed({ views: [{ id: 'v', owner: 'a' }] }, 'f', new Map()), /owner/);
 });

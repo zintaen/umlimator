@@ -23,6 +23,10 @@ const KEYS = {
     'badges', 'style'],
   edge: ['id', 'type', 'from', 'to', 'label', 'parent', 'props', 'style', 'step', 'weight', 'sublabel'],
   container: ['id', 'label', 'tone', 'nodeIds', 'parent', 'badges'],
+  // an element's props: the four that hold ids (renamed below) and the plain values the Bookshop files use
+  props: ['replyTo', 'covers', 'extensionPoints', 'ends', 'classifier', 'condition', 'default', 'do', 'effect', 'entry', 'exit',
+    'guard', 'isAbstract', 'isDerived', 'isStatic', 'kind', 'multiplicity', 'operator', 'parameters', 'represents', 'returnType',
+    'sort', 'stereotypes', 'trigger', 'value', 'valueType', 'visibility'],
 };
 function known(x, kind, where) {
   const odd = Object.keys(x).filter(k => !KEYS[kind].includes(k));
@@ -43,7 +47,7 @@ function idsOf(m) {
 }
 
 // the file with each id in `R` renamed, its references too
-function renamed(m, name, R) {
+export function renamed(m, name, R) {
   const r = id => (R.has(id) ? R.get(id) : id), rs = a => a && a.map(r);
   const keys = o => o && Object.fromEntries(Object.entries(o).map(([k, v]) => [r(k), v]));
   const el = (x, kind, where) => {
@@ -53,6 +57,7 @@ function renamed(m, name, R) {
     if (x.members) y.members = x.members.map(c => el(c, 'node', `${where} member ${c.id}`));
     if (x.nodeIds) y.nodeIds = rs(x.nodeIds);
     if (isObj(x.props)) {
+      known(x.props, 'props', `${where} props`);
       const p = y.props = { ...x.props };
       if ('replyTo' in p) p.replyTo = r(p.replyTo);
       for (const k of ['covers', 'extensionPoints']) if (k in p) p[k] = rs(p[k]);
@@ -71,6 +76,7 @@ function renamed(m, name, R) {
       for (const k of ['parent', 'subject']) if (v[k] != null) w[k] = r(v[k]);
       for (const k of ['nodeIds', 'tour']) if (v[k]) w[k] = rs(v[k]);
       for (const k of ['layout', 'present']) if (v[k]) w[k] = keys(v[k]);
+      if (Array.isArray(v.lanes)) w.lanes = v.lanes.map(l => (isObj(l) ? { ...l, nodeIds: rs(l.nodeIds) } : l));
       if (v.edges) w.edges = v.edges.map(e => (isObj(e) ? el(e, 'edge', `${at} edge ${e.id}`) : r(e)));
       if (v.fragments) w.fragments = v.fragments.map(f => el(f, 'node', `${at} fragment ${f.id}`));
       if (v.containers) w.containers = v.containers.map(c => el(c, 'container', `${at} box ${c.id}`));
