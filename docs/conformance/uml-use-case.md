@@ -28,8 +28,8 @@ least), `generalization-kinds`, `include-cycle` (UML's `cannot_include_self`), `
 (errors); `use-case-owner`, `point-names` (warnings).
 
 Deleting an extension point (Shift + Delete, or the member list's ✕) takes every extend left naming no other point of
-its use case, in the same transaction, and the hint line names them (`Deleted, with it, the extend from "Redeem voucher",
-which named no other extension point`); an extend naming another point keeps it, the point dropped from its list. So no
+its use case, in the same transaction, and the hint line names them (`Deleted extension point "payment" and the extend
+from "Redeem voucher", which named no other extension point`); an extend naming another point keeps it, the point dropped from its list. So no
 single delete leaves an `extend-points` error (`tests/delete-cascade.test.mjs`). A bare `apply()` delete (a host's own
 store) drops the point from the list as before, and may leave one.
 

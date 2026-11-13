@@ -239,7 +239,7 @@ const CS_RULES = {
   'connector-part': 'an end\'s part is a part of the subject, and the end is a port of that part\'s type',
   'connector-scope': 'a connector\'s ends lie in one structure: the subject\'s ports and parts; or one collaboration\'s roles',
   'connector-drawn': 'a connector between two ports of the subject is not drawn: the box has no line to itself',
-  'binding-ends': 'a role binding runs from a part of the subject to a collaboration use of it',
+  'binding-ends': 'a role binding runs from a part of the subject to a collaboration use of it (a view with no subject: a warning)',
   'binding-role': 'a role binding\'s label names a role of the collaboration its use names',
   'collaboration-named': 'a collaboration use\'s collaboration names a collaboration of the model',
   ...STRUCT_RULES,
@@ -275,7 +275,7 @@ function csProblems(model, view) {
     if (e.type === 'uml.RoleBinding' && (P.at.get(e.to) || {}).type === 'uml.CollaborationUse' && P.ids.includes(e.to) || e.type === 'uml.RoleBinding' && S && owner(e.from) === S) {
       const u = P.at.get(e.to);
       if (!(S && owner(e.from) === S && P.mem.get(e.from).m.type === 'uml.Property' && u && u.type === 'uml.CollaborationUse' && u.parent === S.id))
-        return say('error', 'binding-ends', path, [e.id, e.from, e.to], `${e.id} runs from ${q(e.from)} to ${q(e.to)}: a role binding runs from a part of the subject to a collaboration use of it`);
+        return say(S || view.subject != null ? 'error' : 'warning', 'binding-ends', path, [e.id, e.from, e.to], `${e.id} runs from ${q(e.from)} to ${q(e.to)}: a role binding runs from a part of the subject to a collaboration use of it`);
       const C = csCollab(P, u);
       if (C && !P.kids(C, 'uml.Property').some(m => m.label === e.label)) say('warning', 'binding-role', `${path}.label`, [e.id, C.id], `${e.id} binds ${JSON.stringify(e.label ?? null)}, not a role of ${q(C.id)}`);
     } });

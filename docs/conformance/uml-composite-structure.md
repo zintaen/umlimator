@@ -22,16 +22,18 @@ example is [`examples/order-service-structure.json`](../../examples/order-servic
 | 11.7 role binding | `uml.RoleBinding`, from a part to a collaboration use, its `label` the role | dashed, no end, its role as the line's label |
 | 7.8 Comment | `uml.Comment`, `uml.CommentLink` (to a node or a port) | a note, a dashed line |
 
-Rules (`notes/stage-5.md` §10.2): `subject-shown`, `connector-part` (an end's part is a part of the subject and the end a
+Rules (`notes/stage-5.md` §10.2): `subject-shown` (a warning for a view with no subject), `connector-part` (an end's part is a part of the subject and the end a
 port of its type), `connector-scope` (a connector's ends lie in one structure; an end on the subject itself breaks it),
-`binding-ends` (errors); `part-type` (a part's type names exactly one class or component), `binding-role`,
+`binding-ends` (a warning for a view with no subject) (errors); `part-type` (a part's type names exactly one class or component), `binding-role`,
 `collaboration-named`, `connector-drawn` (a connector between two ports of the subject is not drawn) (warnings); and the
 shared `port-owner` and `manifest-ends`. Deleting a part deletes the connectors through it (the type's `refs` cascade).
 `subject-shown` is a warning for a view with no subject at all, as deleting its subject, or hiding it from the view,
 leaves it: the view draws its other cards (collaborations, comments) and no structure until a subject is set; a subject
-set to something else, or not listed in `nodeIds`, stays an error. So no single delete leaves a `subject-shown` error
-(`tests/delete-cascade.test.mjs`); deleting the view with its subject was not taken, as the view and what else it shows
-are the author's.
+set to something else, or not listed in `nodeIds`, stays an error. Hiding the subject (Delete) keeps its parts and their
+role bindings in the model, with no subject to bind into, so `binding-ends` is a warning in such a view too (Shift +
+Delete takes the parts, and so the bindings). So no single delete or hide leaves a `subject-shown` or `binding-ends`
+error (`tests/delete-cascade.test.mjs`); deleting the view with its subject was not taken, as the view and what else it
+shows are the author's.
 
 **Departures from UML 2.5.1:** a role binding's role is drawn as its line's label, not as an end label at the part's
 end (the end labels are placed after the port names and do not see them); a binding to a port is left out (below).

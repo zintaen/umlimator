@@ -1,6 +1,6 @@
 // Every single delete over every example (the atlas among them) and every target (docs/diagrams/examples): Shift + Delete
 // on an element, through the remove hook of each view that draws it (the canvas's default, a bare delete, where a view's
-// type has none), leaves no new validate() error with every type's rules loaded (notes/stage-6.md 6.1, closed by the
+// type has none), and Delete (out of the view) in each view that draws it, leaves no new validate() error with every type's rules loaded (notes/stage-6.md 6.1, closed by the
 // follow-up). Ids are found by label where a case is named, so a rename in the examples breaks only that case.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -29,16 +29,22 @@ function drawn(m) {
     return [v, s]; });
 }
 const hookOf = v => { const T = diagramOf(v), h = T && T.edits && T.edits.remove; return typeof h === 'function' ? h : null; };
-// Shift + Delete on id in view v (null: no view draws it, or one with no hook): the commands, or null when refused
-function gesture(m, v, id) {
-  let r = v && hookOf(v) ? hookOf(v)(m, v, [id], true) : null;
+// the canvas's Delete (src/canvas/edit.js remove): what the view owns goes from the model, a listed line or a card is hidden
+function hideOf(v, id, m) {
+  if ([...arr(v.nodes), ...arr(v.edges), ...arr(v.fragments)].some(x => x && x.id === id)) return [{ op: 'delete', id }];
+  const line = arr(m.edges).some(e => e.id === id); // a member is not hidden (apply() refuses it, so nothing changes)
+  return line && !Array.isArray(v.edges) || !line && !arr(m.nodes).some(n => n.id === id) ? null : [{ op: 'hide', id, view: v.id }];
+}
+// Shift + Delete (fromModel), or Delete, on id in view v (null: no view draws it, or one with no hook): the commands, or null when refused
+function gesture(m, v, id, fromModel = true) {
+  let r = v && hookOf(v) ? hookOf(v)(m, v, [id], fromModel) : null;
   if (r != null && Array.isArray(r.pick)) r = r.then(0);
-  if (r == null) return { commands: [{ op: 'delete', id }] };
+  if (r == null) { const c = fromModel ? [{ op: 'delete', id }] : hideOf(v, id, m); return c && { commands: c }; }
   return r.error != null ? null : Array.isArray(r) ? { commands: r } : r;
 }
 const errors = m => validate(m).filter(p => p.level === 'error').map(p => p.message);
 
-test('no single delete of any element of any example, target or the atlas leaves a new validate() error', () => {
+test('no single delete or hide of any element of any example, target or the atlas leaves a new validate() error', () => {
   const bad = []; let n = 0;
   for (const [name, m] of files()) {
     const was = new Set(errors(m)), views = drawn(m), ids = new Set();
@@ -46,11 +52,11 @@ test('no single delete of any element of any example, target or the atlas leaves
     for (const id of ids) {
       const on = views.filter(([, s]) => s.has(id)).map(([v]) => v), ways = on.filter(hookOf);
       if (ways.length < on.length || !on.length) ways.push(null);
-      for (const v of ways) { const g = gesture(m, v, id); if (!g) continue;
-        let after; try { after = apply(m, g.commands); } catch { continue; } // an id apply() does not delete (a view's, a story's)
-        n++; errors(after).filter(e => !was.has(e)).forEach(e => bad.push(`${name}: ${id}${v ? ` in ${v.id}` : ''}: ${e}`)); } }
+      for (const [v, fromModel] of [...ways.map(v => [v, true]), ...on.map(v => [v, false])]) { const g = gesture(m, v, id, fromModel); if (!g) continue;
+        let after; try { after = apply(m, g.commands); } catch (err) { if (v || !/is not an element/.test(err.message)) throw err; continue; } // a bare delete of an id apply() does not delete (a view's, a story's)
+        n++; errors(after).filter(e => !was.has(e)).forEach(e => bad.push(`${name}: ${id}${v ? ` in ${v.id}` : ''}${fromModel ? '' : ' (Delete)'}: ${e}`)); } }
   }
-  assert.ok(n > 1500, `${n} deletes`);
+  assert.ok(n > 2500, `${n} deletes`);
   assert.deepEqual(bad, []);
 });
 
@@ -63,7 +69,7 @@ test('use case: deleting the last extension point an extend names takes the exte
   const ext = m.edges.filter(e => e.type === 'uml.Extend' && arr(e.props.extensionPoints).includes(pay.id));
   const r = hookOf(v)(m, v, [pay.id], true);
   assert.deepEqual(r.commands, [pay.id, ...ext.map(e => e.id)].map(id => ({ op: 'delete', id })));
-  assert.match(r.say, /^Deleted, with it, the extend from ".+", which named no other extension point$/);
+  assert.match(r.say, /^Deleted extension point ".+" and the extend from ".+", which named no other extension point$/);
   ext[0].props.extensionPoints.push(arr(uc.members).find(p => p.id !== pay.id).id); // now it names another
   assert.equal(hookOf(v)(m, v, [pay.id], true), null, 'the default: the point alone');
   assert.equal(hookOf(v)(m, v, [pay.id], false), null, 'Delete: the default');
