@@ -1,0 +1,146 @@
+---
+title: Every construct on Mermaid's ER page
+config:
+  layout: dagre
+---
+%% Modelled on Mermaid 12.3.0's docs/syntax/entityRelationshipDiagram.md (MIT), one block per section of that page, an
+%% entity's attribute block written once where the page repeats it, then the forms Mermaid's lexer reads that the page
+%% does not show, the constructs this reader adds (the %% hints) and broken input. The pinned report is in
+%% tests/mermaid-er.test.mjs. Mermaid refuses this file itself: the broken lines at its end.
+erDiagram
+    accTitle: Every construct
+    accDescr {
+        An ER diagram that uses each construct once
+    }
+    %% The order example
+    CUSTOMER ||--o{ ORDER : places
+    ORDER ||--|{ LINE-ITEM : contains
+    CUSTOMER }|..|{ DELIVERY-ADDRESS : uses
+    %% Attributes
+    CUSTOMER {
+        string name
+        string custNumber
+        string sector
+    }
+    ORDER {
+        int orderNumber
+        string deliveryAddress
+    }
+    LINE-ITEM {
+        string productCode
+        int quantity
+        float pricePerUnit
+    }
+    %% Default theme: a label in quotes
+    PRODUCT ||--o{ LINE-ITEM : "appears in"
+    %% Unicode and Markdown
+    "This ❤ Unicode"
+    "This **is** _Markdown_"
+    %% Identification, and the word forms of the ends
+    CAR ||--o{ NAMED-DRIVER : allows
+    PERSON }o..o{ NAMED-DRIVER : is
+    CAR 1 to zero or more NAMED-DRIVER : allows
+    PERSON many(0) optionally to 0+ NAMED-DRIVER : is
+    %% Attribute keys and comments
+    CAR {
+        string registrationNumber PK
+        string make
+        string model
+        string[] parts
+    }
+    PERSON {
+        string driversLicense PK "The license #"
+        string(99) firstName "Only 99 characters are allowed"
+        string lastName
+        string phone UK
+        int age
+    }
+    NAMED-DRIVER {
+        string carRegistrationNumber PK, FK
+        string driverLicence PK, FK
+    }
+    MANUFACTURER only one to zero or more CAR : makes
+    %% Optional attribute types
+    PASSENGER {
+        string firstName
+        string? middleName
+        string lastName
+    }
+    %% Entity name aliases
+    p[Person] {
+        string firstName
+        string lastName
+    }
+    a["Customer Account"] {
+        string email
+    }
+    p ||--o| a : has
+    %% Direction
+    direction TB
+    direction LR
+    %% Subgraphs: an id, a title in quotes, an explicit id, a relationship with a group, a direction inside
+    subgraph title1
+        CLIENT
+        CLIENT {
+            string name
+        }
+    end
+    subgraph title2
+        HOUSE ||--o{ ROOM : has
+        subgraph title3
+            direction TB
+            OWNER
+        end
+    end
+    subgraph "Client Domain"
+        INVOICE
+    end
+    subgraph id1 [title 1]
+        RECEIPT
+    end
+    title1 ||--|| title2 : links
+    title2 ||--|| ROOM : links
+    %% Styling a node, classes, the ::: form
+    id1x||--||id2x : label
+    style id1x fill:#f9f,stroke:#333,stroke-width:4px
+    classDef someclass fill:#f96
+    class id1x,id2x someclass
+    BOAT:::someclass {
+        string hull
+    }
+    PERSON:::foo ||--|| BOAT : owns
+    classDef default fill:#f9f,stroke-width:4px
+    %% What Mermaid's lexer reads that the page does not show: one, many, .- and -., u, a * key, a generic type
+    SHIP one--many HARBOUR : visits
+    SHIP }o.-|| FLEET : joins
+    SHIP |o-.|| FLAG : flies
+    SHIP u--|| YARD : built
+    HARBOUR {
+        string *code
+        List~string~ names
+        `double precision` depth
+    }
+    %% This reader's hints: an entity's, a column's id and references, a relationship's id
+    %% id: dock
+    DOCK["Dock"] {
+        %% id: dock-key
+        int id PK
+        %% references: HARBOUR.code
+        string harbour FK
+    }
+    %% id: docked-at
+    DOCK }o--|| HARBOUR : "docked at"
+    %% Broken input: a hint taken, a column twice, a second alias, a row not read, a line not understood, an end with no
+    %% subgraph, a relationship with no label, a direction BT, a block never closed
+    %% id: dock
+    DOCK ||--|| SHIP : moors
+    DOCK["Quay"] {
+        int id
+        ?? broken
+    }
+    SHIP -> DOCK
+    end
+    SHIP ||--|| DOCK
+    direction BT
+    OPEN {
+        int id
