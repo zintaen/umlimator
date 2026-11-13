@@ -54,6 +54,11 @@ test('with TYPED.across empty or returning nothing, validate() of every example 
   }
 });
 
+test('a TYPED.across that returns no list says nothing, and validate() still answers', () => {
+  const m = TYPED_MODEL(), before = JSON.stringify(validate(m));
+  for (const r of [undefined, null, {}]) { const done = fill('across', () => r); try { assert.equal(JSON.stringify(validate(m)), before, String(r)); } finally { done(); } }
+});
+
 // ---- the timeline in refs() and delete (§7.3, S15)
 const timing = () => { const [, url] = targets().find(([f]) => /^14-/.test(f)), m = read(url), v = m.views.find(x => x.diagram === 'uml.timing'), t = v.timeline;
   const lifeline = label => m.nodes.find(n => n.type === 'uml.Lifeline' && n.label === label).id;

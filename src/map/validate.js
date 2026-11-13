@@ -138,7 +138,7 @@ export function validate(model) {
     const once = new Set(), say = p => { const k = JSON.stringify([p.level, p.path, p.message]); if (!once.has(k)) { once.add(k); out.push(p); } };
     // each view's type's rules, a problem once; a validate(model) that takes no view, once a type
     views.filter(typedView).forEach(v => { const T = diagramOf(v); if (!T || !T.validate || once.has(T)) return; if (T.validate.length < 2) once.add(T); T.validate(m, v).forEach(say); });
-    if (TYPED.across) TYPED.across(m).forEach(say);
+    if (TYPED.across) arrOf(TYPED.across(m)).forEach(say);
   }
   return out;
 }

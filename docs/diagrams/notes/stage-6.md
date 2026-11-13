@@ -111,7 +111,7 @@ What touches the core, each change stating its bytes in its pull request:
 | The registry's pointer line, above `const TYPED = {}`, names `TYPED.across` and `TYPED.fields` | `src/core/registry.js` | 6.1 | 40 B |
 | | | | **about 150 B** (measured on a scratch copy of the built file: the first three lines 99 B before the delete loop's) |
 
-As built (6.1): 178 B, `gzip -9 < lib/umlimator.js` from 185,246 B to 185,424 B: the two slots and the pointer line 109 B,
+As built (6.1): 180 B, `gzip -9 < lib/umlimator.js` from 185,246 B to 185,426 B: the two slots and the pointer line 111 B,
 the timeline in `refs()` and `delete` 69 B.
 
 | Option | For | Against |
@@ -741,9 +741,25 @@ proposes its row and writes its release notes in its pull request's description,
 
 6.1's "deleting any element of any example or target leaves a model that validates" is held, as `tests/apply.test.mjs`
 holds it, with `lib/umlimator.js`'s `validate()` and, since no type checks a timeline before 6.5, a check that no change
-or constraint names what is gone. With every type's rules it does not hold today, for a reason outside stage 6: the use
-case type's `refs` drop a deleted extension point from an extend's list, and an extend left with none is an error
-(`extend-points`; the atlas's `checkout.payment`).
+or constraint names what is gone. With every type's rules (`lib/umlimator-all.js`'s `validate()`) it does not hold
+today, for reasons outside stage 6 (none touches a timeline). Of 1,495 deletes over the examples and targets, 29 raise a
+new error under four rules:
+
+| Rule | Deletes | Example |
+|---|---|---|
+| `extend-points` | 4 | the atlas and `shopping-use-cases.json`: deleting `checkout.payment` or `checkout.extras` leaves an extend naming no extension point (the use case type's `refs` drop it from the list) |
+| `message-link` | 18 | the atlas: deleting the connector `shopper-storefront` leaves `cm1` and `cm9` with no connector of their communication view |
+| `reply-once` | 6 | the atlas: deleting fragment `f1` or one of its operands leaves `m5` and `m8` both answering `m4` outside an alt |
+| `subject-shown` | 1 | `04-composite-structure.json`: deleting `order-service` leaves view `internals` with subject null |
+
+A use case cascade (an extend left with no point goes with it) would close only the first; each of the others needs its
+own type's delete to cascade or its rule to accept what a delete leaves. That is the maintainer's to decide, after stage 6.
+
+Two smaller choices as built. With no field list for its type, the panel shows a slot's fields to edit and still lists
+every prop to read, `tags` among them as JSON, as before the slot (`tests/typed-edit.html` asserts it). The delete
+cascade walks every element once a level of the chain, so a chain stored in reverse order is quadratic (2,000 changes
+each naming the one before, about 0.4 s); a timeline is two levels deep (lifeline, change, constraint), and lines
+cascade the same way already.
 
 Existing tests a package edits, and why: 6.0 lists the stage's three pages in `tests/embed.py`; 6.1 adds cases to
 `tests/typed-edit.html` (the fields slot) and none elsewhere; 6.6 adds the two examples to `tests/cli.py` and
