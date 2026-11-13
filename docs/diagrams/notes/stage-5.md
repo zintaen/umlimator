@@ -602,6 +602,43 @@ and §6; a connector from the subject's port to a part is inner (§5).
 | `binding-role` | warning | a role binding's label names a role of the collaboration its use names |
 | `collaboration-named` | warning | a collaboration use's `collaboration` names a collaboration of the model |
 | `part-port-id` | warning | only under §6's fallback: a model id equals a port's id on a part |
+| `connector-drawn` | warning | as built (5.6): a connector between two ports of the subject is not drawn |
+
+**As built (5.6)** (`src/uml/composite.js`). Where the build departs from the above, or says what the note left open:
+
+- `part-port-id` is not built: §6's fallback id was not needed (5.2 pinned `->` ids through the hooks). The shared
+  `port-owner` and `manifest-ends` (5.3) run with the type's rules.
+- **A role binding's role is its line's label**, not an end label at the part's end (§9.4): the end labels are placed when
+  drawn (`TYPED.lines`) and do not see the port names (§4.5, as built in 5.3), while a line's label is placed by the router
+  and the port names keep clear of it (`portsDrawn`). So the type sets **`labelGaps: true`** (decision 9's opt in) and
+  `gap: 64`, `rgap: 56`: without it both role names on `04-composite-structure.json` found no spot, one laid out each way.
+- **The layout check and ports on parts.** `overlapIssues` reports each port against the part it sits on (half inside by
+  design, §4.1); a port on the subject's box is not a node pair and is not reported. The tests drop exactly those reports
+  (a port's `owner`); the rest is clean right and down on the example, with no crossing. How the check should pass is
+  decision 22.
+- **The ranking** (`layout.rank: false`): the subject's parts and collaboration uses are ranked as the communication type
+  ranks its lifelines (longest path over connectors and role bindings, `untangle`, `rowsFor`), then each open
+  collaboration's roles, then the rest (comments, a closed collaboration, a subject with nothing inside), block after block
+  to the right. A pin (`layout.<id>`) is a column and row of the whole picture, as the canvas writes it, kept to its own
+  block's first column at least; the next block starts past the furthest column the block holds, pins counted, so no box
+  reaches over another's. A pin on a cell taken goes down a row, as an unpinned id does.
+- **Sides:** a part's port whose line runs to the subject's port counts toward a place just past the subject's border on
+  that port's side, so it faces it; the subject's ports are chosen first. Pins as §6 (`present.<part>.ports.<port>.side`).
+- A line between a box and something it holds that names no port at the box is not drawn (the router would refuse it),
+  as stage 2's `line-inside`; a subject with no part and no collaboration use is a node, not a box. A connector with the
+  subject itself as an end (no port) breaks `connector-scope` (UML 2.5.1: an end is a part or a port). A connector between
+  two ports of the subject's box is not drawn (no line from a box to itself) and not described; the type's own
+  `connector-drawn` warning says so.
+- A class or component shown in the view but not its subject is drawn without its ports: they belong to the subject's
+  structure only, and no connector of this view reaches them. Left out; its own composite structure view shows them.
+- Delete on a selection mixing members and lines: a line is hidden where the view lists its lines, else left and said (as
+  the canvas); hides come before deletes in the transaction.
+- The geometry has `slots` (one per node and box, as the state type's), so the palette's add hears the selection.
+- **L by name** cannot reach a part or a port: the canvas names a member by its owner's label (`nameOf`), so L then a part's
+  name finds the subject's first part. L then an arrow, or the pointer, reaches them. Left to the canvas's owner.
+- `word` names a part, a role, a port and a collaboration use; the subject, as before.
+- Measured (§14's common edit, `tests/composite.test.mjs`, 30 parts, about 50 connectors, 20 ports on parts, CPU best of
+  seven after a warm-up, on a loaded laptop): a part's type changed, laid out and drawn, 18 to 24 ms; a full layout 20 to 26 ms.
 
 ### 10.3 Deployment
 
@@ -993,7 +1030,7 @@ Each is set out with its options and trade-offs in the section named; the recomm
 | 19 | Hiding a port, part or role (DoD 4) | Members cannot be hidden; Delete deletes from the model, said first, as stage 3's P12 | A `present` key that hides a member | §12.2 |
 | 20 | The delegation's look | A solid line with an open arrow at its `to` end, listed as a departure: it shows which way the port delegates | UML's plain solid line (direction in the accessible name only); a plain line with «delegate» | §9.2, §17 |
 | 21 | `labelGaps` on a view laid out down | Taken, the maintainer's decision of 13 Nov 2026: Accept that a view laid out down gains less (the spike: 19 to 12 labels with no spot, against 12 to none laid out right); 5.5 states what `06-deployment.json` keeps laid out down | Let a turned view widen its row gaps as well, measured with `rows.ht`, and prefer them for a label beside a line across the ranks (core bytes, a change in `tight`'s choice of gap) | §8 |
-| 22 | How a type's layout check passes ports on nodes (5.3's open point) | `overlapIssues` skips a node against the one its `owner` names (core, about 20 B in `src/layout/audit.js`), ports back as nodes: a selected node no longer marks its ports | As built in 5.4: ports on a node drawn in its group, out of the picture's `nodes` (no core byte); selecting the node marks its ports too | §10.1 |
+| 22 | How a type's layout check passes ports on their owners (5.3's open point; 5.4 and 5.6 as built) | Taken, the maintainer's decision of 13 Nov 2026: `overlapIssues` skips a node against the node its `owner` names (core, about 20 B); ports are nodes again, so selecting an element no longer marks its ports | Keep ports drawn in their owner's group (0 B; a selected node marks its ports; the tests filter the overlap) | §10.1, §10.2 |
 
 Decision 9 is taken: the spike left 12 labels with no spot, and `labelGaps` is built in 5.1 and set by the component and
 deployment types, the maintainer's decision of 13 Nov 2026 (§8, "As built").
