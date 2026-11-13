@@ -18,7 +18,7 @@ import { describe } from '../src/map/insight.js';
 import { svgOf } from '../src/draw/svg.js';
 import '../src/uml/usecase.js';
 
-const UC = JSON.parse(readFileSync(new URL('../docs/diagrams/examples/08-use-case.json', import.meta.url)));
+const UC = JSON.parse(readFileSync(new URL('../examples/shopping-use-cases.json', import.meta.url)));
 const T = diagramOf({ diagram: 'uml.use-case' });
 const meets = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
 const inside = (o, f) => o.x >= f.x && o.y >= f.y && o.x + o.w <= f.x + f.w && o.y + o.h <= f.y + f.h;
@@ -66,7 +66,7 @@ test('the shapes: an ellipse holds its text block at its corners; its inset puts
   assert.match(SHAPE.subject.frame({ id: 's', x: 0, y: 0, w: 200, h: 100, title: '«system» Shop' }), /class="family-box"[^]*class="family-title"[^]*>«system» Shop</);
 });
 
-test('08-use-case.json draws: actors, ellipses, the subject a box holding its use cases, lines by kind, laid out clean right and down', () => {
+test('shopping-use-cases.json (example 8) draws: actors, ellipses, the subject a box holding its use cases, lines by kind, laid out clean right and down', () => {
   assert.deepEqual(validate(UC), []);
   for (const direction of ['right', 'down']) {
     const m = withDir(UC, direction), g = layout(m, 'shopping'), by = g.byId;
@@ -174,7 +174,7 @@ const BREAKS = {
   named: m => { m.nodes.find(n => n.id === 'sign-in').label = ' '; return ['sign-in']; },
   'point-names': m => { m.nodes.find(n => n.id === 'checkout').members[1].label = 'payment'; return ['checkout', 'checkout.payment', 'checkout.extras']; },
 };
-test('validators: 08-use-case.json breaks no rule; each rule fails on a model that breaks it, naming its rule and its elements, at its level', () => {
+test('validators: shopping-use-cases.json (example 8) breaks no rule; each rule fails on a model that breaks it, naming its rule and its elements, at its level', () => {
   assert.deepEqual(T.validate(UC), []);
   for (const [rule, broke] of Object.entries(BREAKS)) {
     const m = structuredClone(UC), ids = broke(m), got = T.validate(m);
@@ -244,7 +244,7 @@ test('save and reopen (DoD 6): a 30-step session undoes and redoes to byte-ident
   assert.equal(describe(reopened, 'shopping'), describe(JSON.parse(seen[30]), 'shopping'));
 });
 
-test('P1 (S15): on 50 elements and 60 lines, a full layout under 1 s, and a use case renamed laid out and drawn under 100 ms (CPU, best of five)', () => {
+test('P1 (S15): on 50 elements and 60 lines, a full layout under 1 s, and a use case renamed laid out and drawn under 100 ms (CPU, best of five) (timed)', () => {
   const nodes = [{ id: 'sys', type: 'uml.Subject', label: 'Shop' }], edges = [];
   for (let i = 0; i < 8; i++) nodes.push(A(`a${i}`, `Actor ${i}`));
   for (let i = 0; i < 41; i++) nodes.push(U(`u${i}`, `Use case number ${i}`, { parent: 'sys', ...(i % 5 ? {} : { members: [{ id: `u${i}.p`, type: 'uml.ExtensionPoint', label: 'point' }] }) }));

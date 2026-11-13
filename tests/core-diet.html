@@ -16,7 +16,7 @@ const out = { ok: [], fail: [] };
 const check = (name, cond, info) => { document.title = name; if (cond) out.ok.push(name); else out.fail.push(name + (info === undefined ? '' : ': ' + JSON.stringify(info))); };
 const hex = async s => [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s)))].map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 16);
 const el = document.getElementById('m');
-const CASES = [['umlimator.js', 'examples/sales-classes.json'], ['umlimator.js', 'docs/diagrams/examples/23-c4.json'], ['umlimator.js', 'docs/diagrams/examples/09-activity.json'],
+const CASES = [['umlimator.js', 'examples/sales-classes.json'], ['umlimator.js', 'docs/diagrams/examples/23-c4.json'], ['umlimator.js', 'examples/fulfil-activity.json'],
   ['umlimator-all.js', 'examples/sales-classes.json']];
 try {
   const prints = {};

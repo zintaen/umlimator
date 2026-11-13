@@ -46,7 +46,7 @@ test('not printable (§7.1): parts a host wrote that would read back otherwise g
 
 test('every transition, internal transition and guard of the target examples 09, 10 and 13 prints and reads back; print(parse(x)) is stable on each', () => {
   let n = 0;
-  for (const f of ['09-activity', '10-state-machine', '13-interaction-overview']) { const m = read(`../docs/diagrams/examples/${f}.json`);
+  for (const f of ['fulfil-activity', 'order-states', 'buy-book-overview']) { const m = read(`../examples/${f}.json`);
     const parts = [...m.edges, ...m.nodes.flatMap(x => x.members || [])].map(x => x.props || {}).filter(p => ['trigger', 'guard', 'effect'].some(k => k in p));
     for (const p of parts) { const want = P(p.trigger, p.guard, p.effect), t = print(want);
       assert.notEqual(t, null, JSON.stringify(p)); assert.deepEqual(parse(t), want, t); assert.equal(print(parse(t)), t, t); n++; } }
@@ -87,7 +87,7 @@ test('print(parse(x)) is stable for 500 generated texts; each is read or refused
   assert.ok(read > 100 && refused > 100, `${read} read, ${refused} refused`);
 });
 
-test('linear: 4,096 characters of nested brackets and of slashes read in a few milliseconds; no regular expression in the parser', () => {
+test('linear: 4,096 characters of nested brackets and of slashes read in a few milliseconds; no regular expression in the parser (timed)', () => {
   const deep = `t [${'('.repeat(2045)}${')'.repeat(2045)}]`, wide = 'a('.repeat(1000) + '/'.repeat(2000), flat = '[]'.repeat(2048);
   for (const x of [deep, wide, flat]) { let best = Infinity;
     for (let k = 0; k < 3; k++) { const t0 = performance.now(); parse(x); best = Math.min(best, performance.now() - t0); }

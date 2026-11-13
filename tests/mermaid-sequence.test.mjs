@@ -195,7 +195,7 @@ test('participants: an alias name : Type under %% represents:, a colon in a plai
   assert.deepEqual(v.fragments, [{ id: 'f', type: 'uml.CombinedFragment', props: { operator: 'alt' }, members: [{ id: 'f-yes', type: 'uml.InteractionOperand', label: 'yes' }, { id: 'f-no', type: 'uml.InteractionOperand', label: 'no' }] }]);
 });
 
-test('text over the size limit is refused with a report; a large file under it reads in linear time (R2)', () => {
+test('text over the size limit is refused with a report; a large file under it reads in linear time (R2) (timed)', () => {
   const big = read('sequenceDiagram\n' + 'x'.repeat(1 << 20));
   assert.deepEqual([big.model.nodes, big.report.map(x => x.status)], [[], ['skipped']]);
   assert.match(big.report[0].message, /over the limit/);

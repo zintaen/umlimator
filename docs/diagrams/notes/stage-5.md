@@ -579,6 +579,17 @@ Both new hooks are in `src/typed/edit.js` only, with no core byte, and return wh
 "member hook that may return commands" 4.6's wrap waits for (Q8): 5.2 moves `src/uml/state.js`'s listeners onto it, and
 `tests/state.test.mjs` and `tests/state-machine.html` pass unchanged.
 
+As built (5.2): `member` hears the row's text trimmed; an `{ error }` also marks the row invalid, and a row the hook read is
+cleared (New member) or kept as typed, after a pick's choice when the result is a `{ pick, then }`; an empty row is not
+asked (the panel adds nothing and puts a row back). `key` hears `e.key` only, Escape, Tab, Enter and the arrows included,
+so a hook returns null for the keys it does not own. `key` is asked for a key with no Alt, Ctrl or Meta, and only when the host offers
+`rename` (the editable flag F2 and V take). The state type's `edits.member` is a non-enumerable property, so
+`Object.keys(edits)` stays 4.6's four and `tests/state.test.mjs` passes unchanged; the editor reads it as any hook. A node
+whose id holds `->` needed no engine change: selection, F2 and Delete already hand its geometry id to `rename` and `remove`,
+which `tests/type-hooks.html` now pins. Any copy of a type's `edits` (`{ ...edits }`, `Object.assign`) drops the state
+type's `member`; a host wrapping `edits` copies it by name. stage-4.md §10.4's text on the state type's own listener is
+left to 5.8, whose Owns covers `docs/`.
+
 | Option, the member hook | For | Against |
 |---|---|---|
 | **(a) `edits.member` in `src/typed/edit.js`, read before the panel; 4.6's wrap moves onto it (recommended)** | No core byte; every type's rows go through one path; the state type loses its own listeners | Two places read a member row: the hook, then the panel's `member` |
@@ -662,7 +673,7 @@ The three target examples move to `examples/bookshop-components.json`, `examples
 elkjs (EPL-2.0 or GPL-3.0-or-later, about 477 KB) as a strategy the host passes in, never bundled. 5.7 is that trial.
 
 **What it is.** A spike on a scratch branch (`stage5-elk-trial`), never merged, as 1.12 was. elkjs is installed at one
-pinned version into a scratch folder outside the repository; `package.json`, `package-lock.json` and `lib/` do not change.
+pinned version into a scratch folder outside the repository; `package.json` and `lib/` do not change (the repository has no lock file; corrected 13 Nov 2026).
 The only file it merges is `docs/diagrams/notes/spike-elk.md`.
 
 **Its box, by scope:**

@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- The state machine diagram (4.6) in headless Chrome (tests/embed.py), from lib/umlimator-all.js: docs/diagrams/examples/10-state-machine.json
+<!-- The state machine diagram (4.6) in headless Chrome (tests/embed.py), from lib/umlimator-all.js: examples/order-states.json
      drawn by render() in both themes, three fonts and both directions (states with their compartments, pseudostates by kind,
      composites as boxes, regions with a divider across their state, texts inside their shapes, line ends on outlines, names,
      reading order, contrast, the legend), then edited through the edit event and apply(), by pointer and by keyboard: a
@@ -45,7 +45,7 @@ const offOutline = (g, [x, y]) => { const b = box(g.querySelector('.n-mask')), s
   if (['initial', 'final', 'junction', 'history'].includes(s)) return Math.abs(Math.hypot(x - cx, y - cy) - b.w / 2);
   if (s === 'diamond') return Math.abs(Math.abs(x - cx) / (b.w / 2) + Math.abs(y - cy) / (b.h / 2) - 1) * b.w / 2 / Math.SQRT2;
   const d = Math.min(Math.abs(x - b.x), Math.abs(x - b.x - b.w), Math.abs(y - b.y), Math.abs(y - b.y - b.h)); return s === 'state' ? Math.max(0, d - 3) : d; };
-const MODEL = await (await fetch('../docs/diagrams/examples/10-state-machine.json')).json();
+const MODEL = await (await fetch('../examples/order-states.json')).json();
 try {
   for (const theme of ['light', 'dark']) for (const [fname, family] of Object.entries(FONTS)) for (const direction of ['right', 'down']) {
     document.documentElement.dataset.theme = theme; el.style.setProperty('--um-sans', family);
