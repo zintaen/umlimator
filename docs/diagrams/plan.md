@@ -164,6 +164,7 @@ When the maintainer says 1.0.0 is ready (13 Nov 2026: not straight after 0.27.0)
 | `docs/diagrams/README.md` | The status table, in every pull request |
 | `docs/diagrams/model.md`, `risks.md` | What the stage's design note changed; risks closed or found |
 | Per type | A conformance note: subset, clauses, what is left out, the fidelity table |
+| `examples/` | Each type's small example (the reference: gallery, fixtures, conformance), and the Bookshop atlas: the release's Bookshop views joined to it by drill-down, checked against the small files (13 Nov 2026) |
 
 ## 8. Working rules
 
