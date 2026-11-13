@@ -200,7 +200,7 @@ What changed against `model.md`:
 
   | Option | For | Against |
   |---|---|---|
-  | **(a) `name type [PK] [FK table.column] [UK] [NULL]`, flags in any order, case ignored; `FK` names the referenced column by its entity's and its own labels, resolved to its id when the row is read (recommended)** | Reads like DDL and DBML (`customer_id bigint FK customer.id`); the drawn row is the same text; `print(parse(x))` stable (E3) | A table or column label holding a space or a dot cannot be named after `FK` in a row: the panel's field sets it (stated) |
+  | **(a) `name type [PK] [FK table.column] [UK] [NULL]`, flags in any order, case ignored; `FK` names the referenced column by its entity's and its own labels, resolved to its id when the row is read (recommended)** | Reads like DDL and DBML (`customer_id bigint FK customer.id`); the drawn row is the same text; `print(parse(x))` stable (E3) | A table or column label holding a space or a dot cannot be named after `FK` in a row: the row names its id (stated; M2.2 prints a name holding a space in double quotes and reads a type of several words, §7.1) |
   | (b) Mermaid's order, `type name PK, FK "comment"` | The Mermaid reader's own text | Type first reads oddly in a database tool; no place for the referenced column |
   | (c) The panel's fields only | Nothing to parse | A column takes five fields to add; slower by keyboard |
 
@@ -241,7 +241,7 @@ is read by `multBounds` (Q16) into a lower bound (0 or more) and an upper bound 
 | `1..*` (any upper above 1) | `cf-one-many`: a bar and a crow's foot | a dot with `P`, at either end |
 | `0..*` | `cf-zero-many`: a ring and a crow's foot | a dot, at either end |
 | `2..5`, `3` and other bounds | the nearest of the four by its bounds, with the multiplicity written as an end label | a dot with the multiplicity as its label |
-| Unreadable | none, the text as an end label, and `relationship-ends` warns | the same |
+| Unreadable | none, the text as an end label, and `relationship-ends` fails (an error, §7.1's level; this row said "warns", amended in M2.2) | the same |
 
 Each crow's foot end is 18 px long with the crow's toes on the entity's outline; a ring is hollow (the stage's
 background, T2). IDEF1X's dot is a filled 6 px circle on the child's outline and its letters are end labels (Q4). A
@@ -450,11 +450,48 @@ the type in `--um-muted`; 120 to 320 px wide, text cut with `fit`; `present.<id>
 | `identifying-key` | error | an identifying relationship's foreign key columns are part of the child's primary key |
 | `identifying-parent` | error | an identifying relationship's parent end is `1`: a key column cannot be null, so the parent is neither optional nor many |
 | `relationship-ends` | error, warning | each end's multiplicity is readable (`multBounds`); a warning where it is not one of the four forms (drawn as the nearest, with its text) |
+| `relationship-tables` | error | a relationship joins two tables (added in M2.2: `connect` refuses one from or to a comment, but a model, an import or `apply()` can hold it) |
+| `notation` | warning | an `er` view's `notation` is `crowsfoot` or `idef1x` (added in M2.2: any other is drawn as crow's foot) |
 
 Hooks: `member` reads a row (S9); `connect` adds a relationship from the selected entity to the one dropped on, `1` to
 `0..*`, non-identifying; `rename` on a relationship sets its label. Properties: a column's flags, type and references; a
 relationship's `identifying` and its two multiplicities. Accessible names: "Table order_line, key order_id and line_no,
 4 columns"; "Identifying relationship contains from order (exactly one) to order_line (one or more)".
+
+**As built in M2.2** (`src/er/er.js`; `tests/er.test.mjs`, `tests/er.html`), where it departs from or settles what is above:
+
+- `relationship-ends` fails a multiplicity that is missing, unreadable, or whose upper bound is 0 or below its lower: an
+  error, as this section's table says (§4.1's last row and §10 said "warns" and were amended). One readable but none of the
+  four forms is the warning.
+- `identifying-key`: the model does not say which foreign key columns are which relationship's. When a non-identifying
+  relationship joins the same pair, a column out of the child's key may be that one's, so one column in the key will do;
+  with no such relationship every referencing column must be in the key.
+- `connect`: the palette's relationship entry carries `1` to `0..*`, non-identifying, which the canvas's own add copies
+  onto the new line; the hook only refuses a relationship from or to anything but a table. `rename` needs no hook: F2 on a
+  relationship sets its `label`, as the canvas does.
+- A column's flags, type and references are changed through its row (S9), in the panel's Members, by keyboard: the canvas
+  selects no member, so the column's declared fields (`props['er.Column']`) are for a host's own panel.
+- The view's `notation` has no gesture of its own: a host sets it with `set { view, path: 'notation' }` (§4.3); no key is
+  taken for it.
+- IDEF1X's dependent entity, drawn with rounded corners, is the child of an identifying relationship.
+- The panel's row text names a referenced column by its table's and its own labels, read from the model the panel last
+  read: a type's `member.print` is given the column alone, so the type's `owners` hook, which the panel asks with the live
+  model just before it prints the rows, reads that model and returns null (no Owner field). A column never read names the
+  id it references. Labels are printed only where they name that column alone; else the id. A row's `FK` tries the labels
+  first, then an id: an id (`<entity id>.<label>`) can read as another column's labels once a table is renamed.
+- A row's type is every word between its name and its first flag (`double precision`, `timestamp with time zone`); a
+  name holding a space is printed and read in double quotes (`"unit price" numeric(10, 2)`); a row whose brackets do not
+  pair is refused (`a numeric(10 PK` would otherwise swallow its flags).
+- The legend keys IDEF1X's rounded corners ("Dependent entity") where a dependent entity is drawn.
+- DoD 4 (`plan.md` §2) on the canvas, taken by the lead under the maintainer's standing approval (14 Nov 2026), in the
+  direction this note already takes for `notation` (a host's `set`) and for member rows (S9): three things have no canvas
+  gesture of their own, and each is a command through `apply()`, tested: deleting a column (`delete` by its id; the
+  panel puts back an emptied row, as for every type's members), switching `notation` (`set { view, path: 'notation' }`),
+  and a column's flags as fields (they are changed by retyping the row; `props['er.Column']` declares the fields for a
+  host's panel). Each wants a change to `src/canvas/edit.js`, outside M2.2's Owns: a member the canvas can select. The
+  rule changes above (`relationship-ends` an error, `identifying-key` with a shared pair) are taken the same way.
+- The PDF's `text` for a relationship: `places: 1 to 0..*, non-identifying`, its label first when it has one.
+- A line's end is on the entity's box, and each end's marker has its tip there (its `refX` is its length).
 
 ### 7.2 Flowchart (`src/flowchart/flowchart.js`)
 
@@ -487,6 +524,40 @@ Each shape gives `size`, `out`, `inset` (ends slid onto it, stage 4 §4.2), `fac
 Hooks: `connect` labels a decision's second exit `no` when its first is `yes` and neither has a label; `rename` on a flow
 sets its label. Accessible names: "Decision Fit for resale?, exits yes to Refund the payment, no to Rejection letter".
 
+**Amended in M2.3's build.** Where the build departs from the above, or settles what it left open:
+
+- **`rename` is the default.** F2 on a flow sets its label, which the canvas does with no hook; the type has none.
+- **`connect`** refuses a flow with an end that is not a flowchart node (`flow-ends`, said on the hint line), so no
+  gesture brings that error. A decision's second exit answers its first: `no` after `yes`, `yes` after `no`; an
+  unlabelled first exit becomes `yes` and the new one `no`, in one transaction. A third exit, or a first labelled
+  otherwise, is the default.
+- **A view with no `direction` is laid out down, and `moveTo` reads its drops.** The canvas reads a typed view's drop as
+  laid out down only when the view says `down` (`render.js`, `hintAt`), so on a flowchart view with no `direction` a
+  drop pinned the node by the wrong axes (found in the page's test: `[42, 0]` for a drop on the node at column 6, row
+  0). The type's `moveTo` reads such a drop with the axes turned, as `hintAt` does, and leaves every other drop, and an
+  arrow key with Alt, to the canvas. A view that says its direction is unchanged; a direction neither `right` nor `down`
+  is drawn right, as the core's warning says and `hintAt` reads it. No core byte; a later core change could read a
+  type's default direction instead.
+- **A flow is not dragged.** Having `moveTo` makes the canvas start a line drag on a flow (`typed/edit.js`); `moveTo`
+  refuses it, and Alt + arrows on a flow, with "A flow follows its nodes: move a node instead" on the hint line.
+- **The database** is drawn over the map cylinder's outline (`out`, `face`, `inset`) with its lid's front edge drawn by
+  the type in the typed line colour: the cylinder's `det` tints the lid by a map kind. `SHAPE.cylinder` is read, not
+  changed. The connector's circle is `SHAPE.initial`'s outline and inset, read only.
+- **The rules, as built:** `terminator-flows` warns of a start with no flow out or more than one (a lone terminator is a
+  start) and of a terminator with flows both in and out (an end has none out); `reachable` is not said on a view with no
+  start, where `start-end` is. A decision's `decision-exits` names each of its three cases (fewer than two exits, an
+  exit with no label, two exits with one label, compared as `connect` reads them: trimmed, case aside). A node of
+  another type in a flowchart view is drawn as a process with no rule, as the activity and state types do.
+- **`text`** (the PDF's lines table, §9) says "an exit of `<decision>` with no label" for a decision's unlabelled exit;
+  every other line shows its `label`. A flowchart keeps what a line says in its label, so this is the one text it adds.
+- **The legend** keys the flow, the comment link, each of the ten symbols and the comment the view draws. **The reading
+  order** is from the start along the flows, depth first, one exit's branch read to its end before the next; then the
+  lines in the model's order.
+- **Each symbol's text box**: the parallelogram's slant (14 px) and the predefined process's inner lines (8 px) on each
+  side; the delay's round end (half its height) on the right; the terminator's round ends (a quarter of its height) on
+  each side; the document's wave (10 px), the database's lid (12 px over, 6 px under) and the manual input's slope (12
+  px) over or under its text. The connector grows with its label to 40 px across at most; a longer label is cut.
+
 ### 7.3 Data flow (`src/dfd/dfd.js`)
 
 Shapes per §4.3, one geometry, two skins; a process's number on its own line above its name (Yourdon) or in its top band
@@ -504,6 +575,44 @@ cut at 280.
 
 Hooks: `key` (`D`, §6.1); `add` numbers a new process under the view's parent process; `connect`; `rename` on a flow sets
 its label. Properties: a process's or a store's `number` (`set`, checked by `dfd-numbers`). Accessible names: "Process 1 Take order, opens level 1 Take order, 2 flows in, 2 out".
+
+**Amended in M2.4's build.** Where the build departs from the above, each taken by the lead under the maintainer's
+standing approval (14 Nov 2026):
+
+- **The gap is 64 px, not 48.** With 48, `22-data-flow.json` laid out down put a label on a line (level 1's "order
+  confirmation" on Ship order → Customer, level 2's "checked lines" on Customer → Check the basket); with 64 neither
+  level has a finding but crossings, in either direction or notation. `rgap` is 56, as the stage 5 types'.
+- **"Clean" is the activity type's (stage 4): `check()` finds nothing but crossings, and they are pinned.** Level 1 of
+  `22-data-flow.json` has 2 in each direction and notation (right: Books → Take order with Take payment → Ship order,
+  and the pair Take payment ⇄ Payment provider; down: Books → Take order with Take order → Orders, and Take order →
+  Customer with Ship order → Customer); level 2 has none. The host's ranking places them (a store read by process 1 and
+  written by process 3; the customer both source and sink); a rank flip on store or entity flows was tried and drew no
+  fewer. A level made by `D` draws clean but for a crossing pair to an entity, as level 1 does: `D` on Take payment
+  gives Take payment ⇄ Payment provider crossing, right, in either notation, and none down.
+- **No `text` and no `connect` or `rename` hook.** A flow's label is all it says, which the PDF's lines table shows
+  already (§9); the canvas's own connect adds a flow of the kind picked and F2's default sets a flow's label. The hooks
+  are `add` (numbers) and `key` (`D`).
+- **The rules run once on the whole model** (`validate(model)`, as the use case type's): a level's balancing reads two
+  views, so a per-view pass would say each problem twice. `dfd-numbers` checks a level's own processes (shown on the
+  level and not on its parent view) under their parent's number, and numbers used twice; a top level's numbers and a
+  process with no number are not checked.
+- **A level draws its own flows, and balances on what the two views draw.** With no `edges` list, a level (a view a
+  process opens) does not draw a flow with both ends on its parent view: such a flow is the parent level's (between two
+  context elements, or the parent process's), and reaches the level only through its processes. `dfd-balance` compares
+  the process's flows drawn on the parent view with the flows drawn on the level across its processes' edge, so a flow
+  hidden or left off a level's list counts as removed. On the level, every far end counts but a store the parent view does
+  not show (a local store): an entity the parent view does not show is no local element.
+- **`dfd-level` also warns** of a level a second process opens (the first is its process, named too; the second's numbers
+  and balancing are not checked), of a view that is its own parent, and of a level that shows its own process. Labels
+  are compared exactly, case and all, after trimming (option (a) of §6.4: by label).
+- **A number is cut at 160 px**, as a name wraps there, so a long one does not widen its box.
+- **`D`'s ids**: the child process numbered `<n>.1`, or the next free under `<n>` (`<n>.2` when a `<n>.1` is taken), so
+  the level checks clean; with no number the next free top number. Its id `<id>-<its number>`, the next free with `-2`,
+  `-3`; the view `<id>-level`, the same way; each copied flow `<flow id>-<its number>`. `D` copies the flows the view
+  draws. The level takes its parent view's `notation` and
+  `direction`. On a process that opens a view already, `D` says so on the hint line and emits nothing.
+- **The palette's process entry has `opens: 'dfd'`**, so V picks the level a process opens among the model's dfd views
+  (stage 4's S18).
 
 ### 7.4 Information flow (`src/uml/information.js`)
 
@@ -857,7 +966,7 @@ outline within 1 px, and no label over a node.
 | Fixture | Holds |
 |---|---|
 | `er-minimal.json` | Two entities, one key each, one non-identifying relationship |
-| `er-stress.json`, view `edge-cases` | A composite key; a self-reference; a many-to-many through a junction; a many-to-many drawn directly (IDEF1X's non-specific relationship); an identifying relationship with an optional parent (`identifying-parent`, error); a foreign key in the primary key (identifying); a nullable foreign key (IDEF1X's diamond); each of the four crow's foot ends and a `2..5`; two relationships between one pair; an entity of 40 columns with `rows: 8`; an unreadable multiplicity (warned); a second view of the same in `idef1x` |
+| `er-stress.json`, view `edge-cases` | A composite key; a self-reference; a many-to-many through a junction; a many-to-many drawn directly (IDEF1X's non-specific relationship); an identifying relationship with an optional parent (`identifying-parent`, error); a foreign key in the primary key (identifying); a nullable foreign key (IDEF1X's diamond); each of the four crow's foot ends and a `2..5`; two relationships between one pair; an entity of 40 columns with `rows: 8`; an unreadable multiplicity (an error, §7.1; amended in M2.2); a second view of the same in `idef1x` |
 | `er-stress.json`, view `all` | 50 entities, 60 relationships (P1) |
 | `flowchart-minimal.json` | A start, a process, an end |
 | `flowchart-stress.json`, view `edge-cases` | Every symbol; two starts (warned); a decision with three exits; a loop back to an earlier node; a connector as a junction; a 120-character label; a node no start reaches (warned) |
