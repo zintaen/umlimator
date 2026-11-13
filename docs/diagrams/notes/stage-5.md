@@ -648,7 +648,7 @@ The three target examples move to `examples/bookshop-components.json`, `examples
 elkjs (EPL-2.0 or GPL-3.0-or-later, about 477 KB) as a strategy the host passes in, never bundled. 5.7 is that trial.
 
 **What it is.** A spike on a scratch branch (`stage5-elk-trial`), never merged, as 1.12 was. elkjs is installed at one
-pinned version into a scratch folder outside the repository; `package.json`, `package-lock.json` and `lib/` do not change.
+pinned version into a scratch folder outside the repository; `package.json` and `lib/` do not change (the repository has no lock file; corrected 13 Nov 2026).
 The only file it merges is `docs/diagrams/notes/spike-elk.md`.
 
 **Its box, by scope:**
