@@ -28,7 +28,7 @@ const KEYS = {
   edge: ['id', 'type', 'from', 'to', 'label', 'parent', 'props', 'style', 'step', 'weight', 'sublabel'],
   container: ['id', 'label', 'tone', 'nodeIds', 'parent', 'badges'],
   // an element's props, as the Bookshop files use them
-  props: ['replyTo', 'covers', 'extensionPoints', 'ends', 'classifier', 'condition', 'default', 'do', 'effect', 'entry', 'exit',
+  props: ['replyTo', 'covers', 'extensionPoints', 'ends', 'aggregation', 'classifier', 'collaboration', 'condition', 'default', 'do', 'effect', 'entry', 'exit',
     'guard', 'isAbstract', 'isDerived', 'isStatic', 'kind', 'multiplicity', 'operator', 'parameters', 'represents', 'returnType',
     'sort', 'stereotypes', 'trigger', 'value', 'valueType', 'visibility'],
 };

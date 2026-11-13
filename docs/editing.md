@@ -373,3 +373,67 @@ The **interaction overview diagram** (`uml.interaction-overview`, `examples/buy-
 | hide, delete | Remove from view, Delete from model | `Delete`, `Shift + Delete` | `hide`, `delete` |
 
 An inline interaction is drawn read only: its lifelines and messages are edited in its own sequence view.
+
+## The component, deployment and composite structure diagrams' gestures (0.22.0)
+
+Stage 5 (`docs/diagrams/notes/stage-5.md` §12) adds two hooks, both in `lib/umlimator-all.js` and provisional:
+
+- `edits.member(model, view, owner, id, text)`, asked on Enter or a change in a member row of the properties panel (the
+  New member field has `id` null) before the panel's own `member.add` or `member.edit`. It hears the row's text trimmed
+  (an empty row is never asked) and returns commands, `{ error }` (the row is marked invalid), `{ pick, then }` (the row
+  is settled after the choice; a cancelled pick keeps the text as typed) or null (the panel's own reading, as before).
+  The state machine's `entry / …`, `do / …` and `exit / …` rows now go through it; nothing changes for a reader. The
+  state type's `member` is a non-enumerable property: a host that copies a type's `edits` copies `member` by name.
+- `edits.key(model, view, ids, key)`, asked for a key with no Alt, Ctrl or Meta on a selection, before the canvas's own
+  keys, when the host offers rename. It hears `e.key` only and returns null for a key it does not own.
+
+A member drawn as a node (a port, a part, a role) is drawn because its owner is, so it cannot be hidden: Delete on one
+deletes it from the model, as Shift + Delete does, and the hint line says so before it goes (stage 3's precedent for
+messages). A port on a part is drawn under the geometry id `<part>-><port>`; the hooks map it back.
+
+The **component diagram** (`uml.component`, `examples/bookshop-components.json`):
+
+| Edit | Pointer | Keyboard | Commands |
+|---|---|---|---|
+| add a component, an interface, an artifact, a package, a comment | the palette (Interface asks ball or rectangle, a picker) | `N` (a component) | `add` with `view`; a ball also `set` of `present.<id>.as` |
+| add a port | the palette's Port with a component or class selected (or a port, for its owner) | | `add` with `owner`; with nothing to hold it, refused and said |
+| add or edit a port as a row | the component's member rows: `name` or `name : Type` | Enter | the member hook: `add` with `owner`, or `set label` and `set props.valueType` |
+| add a line | the handle or a drag, then its kind (Realization, Component realization, Usage, Assembly, Delegation, Dependency, Manifestation, Comment link) | `L`, the other end, Enter, the kind | `add`; a connector's kind is set by nesting (a box's port to what it holds: a delegation, else an assembly); a line to an interface is the picker's Realization or Usage; a connector from an element to itself or its own port, or a delegation whose box end is not a port, is refused and said |
+| an interface as a ball or a rectangle | | `B` on a selected interface | `set` of `present.<id>.as` to `ball`, or removed |
+| a port's side | drag it to another side of its owner | `Alt + arrows` across its side | `set` of `present.<port>.side`; `Alt + arrows` along its side does nothing and the hint line says why (its order follows its lines) |
+| a connector's kind, a port's type, stereotypes | the properties panel | Enter | `set props.kind`, `set props.valueType`, `set props.stereotypes` |
+| nest a component | drop it into a component's or package's box | the Owner field (the element and what it holds are left out) | `reparent` |
+| rename | double-click once selected | `F2` | `set label` |
+| hide, delete | Remove from view, Delete from model | `Delete`, `Shift + Delete` | `hide`, `delete`; Delete on a port deletes it, with its lines, as said; in a mixed selection the rest is hidden |
+
+The **deployment diagram** (`uml.deployment`, `examples/bookshop-deployment.json`):
+
+| Edit | Pointer | Keyboard | Commands |
+|---|---|---|---|
+| add a node, a device, an execution environment, an artifact, a deployment specification, a component, a comment | the palette | `N` (a node) | `add` with `view` |
+| deploy an artifact by nesting | drop it into a target's box | the Owner field (every target) | `reparent` |
+| add a line | the handle or a drag, then Deployment, Manifestation, Communication path, Dependency or Comment link | `L`, the other end, Enter, the kind | `add`; a deployment drawn from a target to an artifact, or a manifestation from a component to an artifact, is added the other way round; a deployment or a path between ends that cannot hold one, and any line between a box and what it holds, at any depth, is refused and said |
+| nest a target | drop it into another target's box | the Owner field | `reparent`; an unusual pair (a node in an execution environment) is warned (`nest-kinds`) |
+| a path's label | double-click once selected | `F2` | `set label` |
+| rename | double-click once selected | `F2` | `set label` |
+| hide, delete | Remove from view, Delete from model | `Delete`, `Shift + Delete` | `hide`, `delete`; Shift + Delete on a target says how many elements it takes with it |
+
+The **composite structure diagram** (`uml.composite-structure`, `examples/order-service-structure.json`):
+
+| Edit | Pointer | Keyboard | Commands |
+|---|---|---|---|
+| add a part, a port, a role, a collaboration use, a collaboration, a comment | the palette: a part goes into the subject; a port into the selected subject or class (a part's goes to its type, said); a role into the selected collaboration | `N` | `add` with `owner` or `view` |
+| add a part or a port as a row | the subject's member rows: `name : Type [multiplicity]` is a part, `port name` or `port name : Type` a port; a collaboration's rows are roles | Enter | the member hook: `add` with `owner`, or a `set` per part that changed |
+| a part's text | double-click once selected | `F2`: `name : Type [multiplicity]` | `set label`, `set props.valueType`, `set props.multiplicity` |
+| rename a port on a part | double-click once selected | `F2` | `set label` on its class's port: every part of that type shows it, as the hint line says |
+| add a connector | the handle or a drag from a port, a part or a port on a part | `L`, the other end, Enter | `add`; an end through a part keeps `props.ends.<end>.part` |
+| add a role binding | the handle or a drag from a part to a collaboration use | `L`, the other end, Enter, then the role (a picker of the collaboration's roles) | `add`, its `label` the role |
+| a port's side | drag it to another side | `Alt + arrows` | `set` of `present.<port>.side`; on a part, `present.<part>.ports.<port>.side` |
+| a part's aggregation, a collaboration use's collaboration, stereotypes | the properties panel | Enter | `set props.aggregation`, `set props.collaboration`, `set props.stereotypes` |
+| delete a part | | `Delete` (said first), `Shift + Delete` | `delete`: its connectors go with it (the type's `refs` cascade), its role bindings by `delete`'s rule |
+| delete a port on a part | | `Delete` | the connectors through that part to that port; `Shift + Delete` deletes the class's port |
+| hide, delete anything else | Remove from view, Delete from model | `Delete`, `Shift + Delete` | `hide`, `delete`; where the view lists its lines, a line is hidden, else left and said |
+
+`L` then a name cannot reach a part or a port (the canvas names a member by its owner's label): `L` then an arrow, or the
+pointer, reaches them. A port selected on a part shows no properties: they are its class's, edited where the class's own
+port is drawn.
