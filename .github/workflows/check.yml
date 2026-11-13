@@ -2,6 +2,7 @@ name: check
 
 on:
   push:
+    branches: [main]  # a branch runs once, as its pull request; main for the site and the release
   pull_request:
   schedule:
     - cron: "0 6 * * 1"  # weekly: a logo source that changed shows up here, not in someone's picture
@@ -11,7 +12,10 @@ env:
   SD: https://raw.githubusercontent.com/caru-ini/stack-diagram/30cbbb7/skills/stack-diagram/scripts
 
 jobs:
-  check:
+  # The checks, in four jobs that run side by side; the job `check` below passes only when all four did, so branch
+  # protection's required check and the jobs that need it (site, release) are as they were.
+  # lib/ is what src/ builds; layout() in Node, the timed tests, and the examples render and check clean (about 4.5 min)
+  node:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -23,14 +27,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24  # --test-skip-pattern (22.1+) in the node --test steps; the runner's own Node is whatever its image ships
-
-      - name: The copied files are upstream's, unmodified (the template became lib/umlimator.js, umlimator's own)
-        run: |
-          curl -fsSL "$SB/scripts/visual.py" -o engine/scripts/visual.py
-          curl -fsSL "$SB/references/schema.md" -o engine/references/schema.md
-          curl -fsSL "$SB/references/sections.md" -o engine/references/sections.md
-          curl -fsSL "$SD/fetch_icons.py" -o tools/fetch_icons.py
-          git diff --exit-code engine/scripts engine/references tools
 
       - name: lib/umlimator.js is what src/ builds, and each source imports every name it uses from another (a compiler fetched for CI only, never in the module)
         run: |
@@ -59,23 +55,81 @@ jobs:
         if: ${{ !cancelled() }}   # still runs when the step above fails, so a failing test does not hide the budgets
         run: node --test --test-concurrency=1 --test-name-pattern='\(timed\)'
 
+      - name: The example renders as committed and its layout check is clean
+        run: |
+          python3 umlimator.py render examples/bookshop.json --out examples/bookshop.html --no-check
+          t='s/"generated": "[^"]*"//'  # the render time is the only difference allowed
+          diff -q <(git show HEAD:examples/bookshop.html | sed "$t") <(sed "$t" examples/bookshop.html) \
+            || { echo "::error::examples/bookshop.html is stale: render it again and commit it"; exit 1; }
+          python3 umlimator.py check examples/bookshop.html | tee /tmp/check.json
+          python3 -I -c "import json; s = open('/tmp/check.json').read(); d = json.loads(s[s.find('{'):]); assert not d['problems'] and not d['errors'], (d['problems'], d['errors'])"
+
+      - name: The other examples render and their layout checks are clean, in the browser and in Node (the site shows them)
+        run: |
+          for m in examples/*.json; do
+            n=$(basename "$m" .json); [ "$n" = bookshop ] && continue   # checked above, with its committed page
+            python3 umlimator.py render "$m" --out "/tmp/$n.html" --no-check
+            x=0; case "$n" in fulfil-activity) x=4;; order-states) x=2;; bookshop-atlas) x=6;; esac   # the crossings port repair off leaves (notes/stage-4.md §17), counted over both passes; pinned in tests/cli.py and the types' tests; the atlas keeps both files' (tests/atlas.test.mjs)
+            python3 umlimator.py check "/tmp/$n.html" --expand > "/tmp/$n.json"   # every view, and again with each stacked card unfolded in place (#71)
+            python3 -I -c "import json, sys; s = open(sys.argv[1]).read(); d = json.loads(s[s.find('{'):]); p = d['problems']; assert d['checked'] and not d['errors'] and all(q.endswith(' cross') for q in p) and len(p) == int(sys.argv[2]), (sys.argv[1], p, d['errors'])" "/tmp/$n.json" "$x"
+          done
+          node examples/layout.mjs
+
+  # render() and the MCP server's page in headless Chrome; the schema and the plugin (about 4 min)
+  browser:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24  # --test-skip-pattern (22.1+) in the node --test steps; the runner's own Node is whatever its image ships
+
       - name: render() embedded in a plain page reports its events and follows update() and destroy()
         run: python3 tests/embed.py
 
       - name: The MCP server's page in headless Chrome says what it shows, and a tool says shown only once it did
         run: python3 tests/mcp.py
 
+      - name: Every example model is valid under the model's JSON Schema (a validator fetched for CI only, never in the module)
+        run: npx --yes ajv-cli@5 validate --spec=draft2020 --all-errors -s lib/umlimator.schema.json -d "examples/*.json"
+
+      - name: The Claude Code plugin's manifests parse, its skills name and describe themselves, and map-repo's CLI runs from its pinned release
+        run: |
+          python3 -I - <<'PY'
+          import json, pathlib, re, sys
+          market = json.load(open(".claude-plugin/marketplace.json"))
+          for p in market["plugins"]:
+              json.load(open(pathlib.Path(p["source"]) / ".claude-plugin" / "plugin.json"))
+          for s in pathlib.Path("plugins").glob("*/skills/*/SKILL.md"):
+              m = re.match(r"---\n(.*?)\n---\n", s.read_text(encoding="utf-8"), re.S)
+              meta = dict(line.split(":", 1) for line in (m.group(1).splitlines() if m else []) if ":" in line)
+              if not (meta.get("name", "").strip() and meta.get("description", "").strip()):
+                  sys.exit(f"{s}: its frontmatter needs a name and a description")
+          print(f"{len(market['plugins'])} plugin(s), manifests and skills ok")
+          PY
+          python3 plugins/umlimator/skills/map-repo/scripts/cli.py --help > /dev/null   # clones the pinned tag and checks its commit
+
+  # The CLI's diff, drift, timelapse, mcp and pdf, and the diff Action's dry run (about 4.5 min)
+  cli:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24  # --test-skip-pattern (22.1+) in the node --test steps; the runner's own Node is whatever its image ships
+
       - name: The CLI's diff, drift and timelapse write their pages, diff --base a pull request's summary, mcp answers an MCP client, and pdf an example's PDF
         run: python3 tests/cli.py
-
-      - name: When something goes wrong, the CLI says so and leaves the previous output (Chrome failing, --views, render, pdf, stills, diff --base, icons, mcp)
-        run: python3 tests/outcomes.py
-
-      - name: The CLI's import reads a sample of each format into a model that validates, renders and checks clean
-        run: python3 tests/import.py
-
-      - name: The diff Action's comment step, the release job's steps and map-repo's CLI, run against stand-ins for GitHub, git and npm
-        run: python3 tests/steps.py
 
       - name: The imported example is what import writes from its Structurizr source, so the two can't drift apart
         run: |
@@ -89,6 +143,37 @@ jobs:
         with:
           models: examples/*.json
           comment: false
+
+  # The upstream copies, the CLI's error cases, import, the release steps, the logos and the bench (about 4.5 min)
+  bench:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24  # --test-skip-pattern (22.1+) in the node --test steps; the runner's own Node is whatever its image ships
+
+      - name: The copied files are upstream's, unmodified (the template became lib/umlimator.js, umlimator's own)
+        run: |
+          curl -fsSL "$SB/scripts/visual.py" -o engine/scripts/visual.py
+          curl -fsSL "$SB/references/schema.md" -o engine/references/schema.md
+          curl -fsSL "$SB/references/sections.md" -o engine/references/sections.md
+          curl -fsSL "$SD/fetch_icons.py" -o tools/fetch_icons.py
+          git diff --exit-code engine/scripts engine/references tools
+
+      - name: When something goes wrong, the CLI says so and leaves the previous output (Chrome failing, --views, render, pdf, stills, diff --base, icons, mcp)
+        run: python3 tests/outcomes.py
+
+      - name: The CLI's import reads a sample of each format into a model that validates, renders and checks clean
+        run: python3 tests/import.py
+
+      - name: The diff Action's comment step, the release job's steps and map-repo's CLI, run against stand-ins for GitHub, git and npm
+        run: python3 tests/steps.py
 
       - name: Upstream changed a copied file since its pin (a warning, time to sync)
         env:
@@ -118,44 +203,14 @@ jobs:
         # a slow runner from failing a PR on time alone
         run: python3 bench/bench.py --runs 2 --timeout 300 --check-determinism --expect bench/expected.json --max-ms m50=8000,b26=3000
 
-      - name: The example renders as committed and its layout check is clean
+  check:
+    needs: [node, browser, cli, bench]
+    if: always()   # runs when one of them fails or is cancelled, to fail rather than be skipped (a skipped required check passes)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Every check job succeeded
         run: |
-          python3 umlimator.py render examples/bookshop.json --out examples/bookshop.html --no-check
-          t='s/"generated": "[^"]*"//'  # the render time is the only difference allowed
-          diff -q <(git show HEAD:examples/bookshop.html | sed "$t") <(sed "$t" examples/bookshop.html) \
-            || { echo "::error::examples/bookshop.html is stale: render it again and commit it"; exit 1; }
-          python3 umlimator.py check examples/bookshop.html | tee /tmp/check.json
-          python3 -I -c "import json; s = open('/tmp/check.json').read(); d = json.loads(s[s.find('{'):]); assert not d['problems'] and not d['errors'], (d['problems'], d['errors'])"
-
-      - name: The other examples render and their layout checks are clean, in the browser and in Node (the site shows them)
-        run: |
-          for m in examples/*.json; do
-            n=$(basename "$m" .json); [ "$n" = bookshop ] && continue   # checked above, with its committed page
-            python3 umlimator.py render "$m" --out "/tmp/$n.html" --no-check
-            x=0; case "$n" in fulfil-activity) x=4;; order-states) x=2;; bookshop-atlas) x=6;; esac   # the crossings port repair off leaves (notes/stage-4.md §17), counted over both passes; pinned in tests/cli.py and the types' tests; the atlas keeps both files' (tests/atlas.test.mjs)
-            python3 umlimator.py check "/tmp/$n.html" --expand > "/tmp/$n.json"   # every view, and again with each stacked card unfolded in place (#71)
-            python3 -I -c "import json, sys; s = open(sys.argv[1]).read(); d = json.loads(s[s.find('{'):]); p = d['problems']; assert d['checked'] and not d['errors'] and all(q.endswith(' cross') for q in p) and len(p) == int(sys.argv[2]), (sys.argv[1], p, d['errors'])" "/tmp/$n.json" "$x"
-          done
-          node examples/layout.mjs
-
-      - name: Every example model is valid under the model's JSON Schema (a validator fetched for CI only, never in the module)
-        run: npx --yes ajv-cli@5 validate --spec=draft2020 --all-errors -s lib/umlimator.schema.json -d "examples/*.json"
-
-      - name: The Claude Code plugin's manifests parse, its skills name and describe themselves, and map-repo's CLI runs from its pinned release
-        run: |
-          python3 -I - <<'PY'
-          import json, pathlib, re, sys
-          market = json.load(open(".claude-plugin/marketplace.json"))
-          for p in market["plugins"]:
-              json.load(open(pathlib.Path(p["source"]) / ".claude-plugin" / "plugin.json"))
-          for s in pathlib.Path("plugins").glob("*/skills/*/SKILL.md"):
-              m = re.match(r"---\n(.*?)\n---\n", s.read_text(encoding="utf-8"), re.S)
-              meta = dict(line.split(":", 1) for line in (m.group(1).splitlines() if m else []) if ":" in line)
-              if not (meta.get("name", "").strip() and meta.get("description", "").strip()):
-                  sys.exit(f"{s}: its frontmatter needs a name and a description")
-          print(f"{len(market['plugins'])} plugin(s), manifests and skills ok")
-          PY
-          python3 plugins/umlimator/skills/map-repo/scripts/cli.py --help > /dev/null   # clones the pinned tag and checks its commit
+          for r in ${{ join(needs.*.result, ' ') }}; do [ "$r" = success ] || { echo "::error::a check job ended: $r"; exit 1; }; done
 
   # The examples, live: on each push to main that passes the checks, every model's page and pictures are built and
   # published with the host pages and the module on GitHub Pages (zintaen.github.io/umlimator).
