@@ -1,0 +1,169 @@
+<!doctype html>
+<!-- The interaction overview diagram (4.7, notes/stage-4.md §11) in headless Chrome (tests/embed.py), from lib/umlimator-all.js:
+     docs/diagrams/examples/13-interaction-overview.json, and the same with a fragment and an interaction use in its inline
+     interaction, drawn by render() in both themes, three fonts and both directions: no overlap, every text in its face, no
+     line through a node, every line's ends on its nodes' outlines, the inline interaction's markup holding no .node, .ll-hit
+     or .f-hit but its own and drawing its fragment's tag, guards, use and message labels, names, axe's rules written out,
+     contrast and the legend; then the gestures, by pointer and by keyboard, through the type's hooks (src/typed/edit.js),
+     each through the edit event and apply(): Tab's key rings in geo.order; the palette's use, its view picked; N adding an
+     initial node with no name field; V changing a use's view; F2 on a flow's ring setting its name and guard, a refused text
+     said on the hint line; the guard in the properties panel; L adding a control flow; Delete and Shift + Delete; and a
+     use and an inline interaction opening their sequence view, by Enter and by a double-click. tests/overview.test.mjs lays the same out in Node. -->
+<meta charset="utf-8">
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="../lib/umlimator-theme.css">
+<title>umlimator interaction overview test</title>
+<body style="margin:0">
+<div id="m" style="width:1400px;height:1000px"></div>
+<script type="module">
+import { render, apply, validate, describe } from '../lib/umlimator-all.js';
+const out = { ok: [], fail: [] };
+const check = (name, cond, info) => { document.title = name; if (cond) out.ok.push(name); else out.fail.push(name + (info === undefined ? '' : ': ' + JSON.stringify(info))); };
+const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+const el = document.getElementById('m');
+let sr, stage, ed = [];
+const pick = s => sr.querySelector(s), all = s => [...sr.querySelectorAll(s)];
+const ptr = (target, type, [x, y]) => target.dispatchEvent(new PointerEvent(type, { clientX: x, clientY: y, button: 0, pointerId: 7, pointerType: 'mouse', bubbles: true, composed: true }));
+const key = (k, extra = {}, target = stage) => target.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true, composed: true, cancelable: true, ...extra }));
+const click = s => { const g = typeof s === 'string' ? pick(s) : s, r = g.getBoundingClientRect(), at = [r.x + r.width / 2, r.y + r.height / 2]; ptr(g, 'pointerdown', at); ptr(g, 'pointerup', at); g.dispatchEvent(new MouseEvent('click', { clientX: at[0], clientY: at[1], bubbles: true, composed: true })); };
+const mount = (model, opts = {}) => { el.innerHTML = ''; ed = []; const h = render(el, model, { on: { edit: e => ed.push(e) }, ...opts }); sr = el.querySelector('.umlimator').shadowRoot; stage = pick('.stage'); return h; };
+const tick = () => new Promise(r => setTimeout(r, 30));
+const errors = m => validate(m).filter(p => p.level === 'error');
+const bb = x => { const r = x.getBBox(); return { x: r.x, y: r.y, w: r.width, h: r.height }; };
+const meets = (a, b, k = 0) => a.x + k < b.x + b.w && b.x + k < a.x + a.w && a.y + k < b.y + b.h && b.y + k < a.y + a.h;
+const inside = (a, b, k = .5) => a.x >= b.x - k && a.y >= b.y - k && a.x + a.w <= b.x + b.w + k && a.y + a.h <= b.y + b.h + k;
+const ptsOf = d => { const n = d.match(/-?\d+(\.\d+)?/g).map(Number), p = []; for (let i = 0; i < n.length; i += 2) p.push([n[i], n[i + 1]]); return p; };
+const segs = p => p.slice(1).map((q, k) => ({ x: Math.min(p[k][0], q[0]), y: Math.min(p[k][1], q[1]), w: Math.abs(q[0] - p[k][0]) || .01, h: Math.abs(q[1] - p[k][1]) || .01 }));
+const FONTS = { serif: 'serif', sans: 'sans-serif', wide: 'monospace' };
+// contrast (DoD 8), as tests/contrast.html measures it: a computed colour as [r, g, b, a], blended over what is under it
+const rgba = s => { let m = /rgba?\(([^)]+)\)/.exec(s); if (m) { const p = m[1].split(/[ ,/]+/).filter(Boolean).map(Number); return [p[0] / 255, p[1] / 255, p[2] / 255, p.length > 3 ? p[3] : 1]; }
+  m = /color\(srgb ([^)]+)\)/.exec(s); if (m) { const p = m[1].split(/[ /]+/).filter(Boolean).map(Number); return [p[0], p[1], p[2], p.length > 3 ? p[3] : 1]; } return null; };
+const blend = (top, bot) => [0, 1, 2].map(i => top[i] * top[3] + bot[i] * (1 - top[3])).concat(1);
+const lum = c => { const f = v => v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]); };
+const ratio = (fg, bg) => { const [x, y] = [lum(blend(fg, bg)), lum(bg)].sort((p, q) => q - p); return +((x + 0.05) / (y + 0.05)).toFixed(2); };
+const css = (x, k) => rgba(getComputedStyle(x)[k]);
+const EX = await (await fetch('../docs/diagrams/examples/13-interaction-overview.json')).json();
+// the inline view with a fragment (an alt, two guards) and an interaction use in it, as tests/overview.test.mjs builds it
+const RICH = structuredClone(EX), Q = RICH.views.find(v => v.id === 'queue-order');
+Q.edges.splice(2, 0, { id: 'queue-use', type: 'uml.InteractionUse', label: 'Audit', parent: 'qa.1', props: { covers: ['api', 'queue'] } });
+Q.edges[1].parent = 'qa.1'; Q.edges[3].parent = 'qa.2';
+Q.fragments = [{ id: 'qa', type: 'uml.CombinedFragment', props: { operator: 'alt' }, members: [{ id: 'qa.1', type: 'uml.InteractionOperand', label: 'in stock' }, { id: 'qa.2', type: 'uml.InteractionOperand', label: 'else' }] }];
+const dir = (m, d) => { const c = structuredClone(m); c.views[0].direction = d; return c; };
+try {
+  check('the inline view with a fragment and a use is a valid model', !errors(RICH).length, errors(RICH));
+  const widths = {};
+  for (const theme of ['light', 'dark']) for (const [fname, family] of Object.entries(FONTS)) for (const [name, M0] of [['example 13', EX], ['with a fragment', RICH]]) for (const d of ['down', 'right']) {
+    document.documentElement.dataset.theme = theme; el.style.setProperty('--um-sans', family);
+    const M = dir(M0, d), tag = `${name}, ${d}, ${theme}, ${fname}`, h = mount(M, { view: 'buy-book', legend: true }), svg = pick('.stage svg'), bad = [];
+    const nodes = all('.stage svg .node'), lines = all('.edge-g'), B = new Map(nodes.map(g => [g.dataset.id, bb(g.querySelector('.n-body'))]));
+    if (name === 'example 13' && d === 'down') widths[fname] = B.get('ref-find').w;
+    const ids = [...B.keys()];
+    ids.forEach((a, i) => ids.slice(i + 1).forEach(b => { if (meets(B.get(a), B.get(b), .5)) bad.push(`${a} and ${b} overlap`); }));
+    const cr = x => { const r = x.getBoundingClientRect(), k = svg.getScreenCTM().a; return { x: r.x / k, y: r.y / k, w: r.width / k, h: r.height / k }; }; // on the screen, the inline view's translate in it
+    nodes.forEach(g => g.querySelectorAll('text').forEach(t => { if (t.textContent && !inside(cr(t), cr(g.querySelector('.n-body')), 1)) bad.push(`${g.dataset.id}: "${t.textContent}" out of its face`); }));
+    // no line through a node but its own two; both its ends on their outlines (the drawn line, slid onto a circle or a diamond)
+    lines.forEach(g => { const p = ptsOf(g.querySelector('path.edge').getAttribute('d')), f = g.dataset.from, t = g.dataset.to;
+      segs(p).forEach(s => B.forEach((b, id) => { if (id !== f && id !== t && meets(s, { x: b.x + 1, y: b.y + 1, w: b.w - 2, h: b.h - 2 })) bad.push(`${f}>${t} runs through ${id}`); }));
+      [[p[0], f], [p[p.length - 1], t]].forEach(([q, id]) => { const body = pick(`.node[data-id="${id}"] .n-body`); body.style.strokeWidth = '3px';
+        const o = svg.createSVGPoint(); [o.x, o.y] = q; if (!body.isPointInStroke(o)) bad.push(`${f}>${t} ends off ${id}`); body.style.strokeWidth = ''; }); });
+    check(`${tag}: ${nodes.length} nodes and ${lines.length} flows drawn; no overlap, every text in its face, no line through a node, every end on its node's outline`,
+      nodes.length === 10 && lines.length === 11 && !bad.length, bad.slice(0, 12));
+    // the inline interaction (S11): read only, nothing in it the canvas takes for its own
+    const io = pick('.node.ov-inline'), inner = io.querySelector('.ov-sd'), texts = [...inner.querySelectorAll('text')].map(t => t.textContent);
+    const want = ['api : ShopApi', 'queue : OrderQueue', 'worker : OrderWorker', 'enqueue(order)', 'queued', 'orderPlaced', ...(name === 'example 13' ? [] : ['alt', '[in stock]', '[else]', 'ref', 'Audit'])];
+    check(`${tag}: the inline interaction draws its view inside "sd Queue the order", holding no .node, .ll-hit or .f-hit, and its ${want.length} texts`,
+      !inner.querySelector('.node, .ll-hit, .f-hit, [data-id], [tabindex], [role]') && io.querySelectorAll('.node').length === 0 && want.every(t => texts.includes(t))
+      && io.querySelector('.f-tag + text').textContent === 'sd Queue the order', [texts, want.filter(t => !texts.includes(t))]);
+    // names: every node a named image, every flow a title; axe's rules written out: svg-img-alt and role-img-alt, nested-interactive
+    const imgs = all('.stage svg [role="img"]'), noAlt = [], nested = [];
+    imgs.forEach(x => { if (!(x.getAttribute('aria-label') || '').trim()) noAlt.push(x.dataset.id || x.localName);
+      x.querySelectorAll('[tabindex], a[href], button, input, select, textarea').forEach(c => { if (c.tabIndex >= 0) nested.push(`${x.dataset.id} holds ${c.getAttribute('class') || c.localName}`); }); });
+    check(`${tag}: axe, written out: the drawing is a named group and its 10 nodes are named images with no tab stop inside`,
+      svg.getAttribute('role') === 'group' && !!(svg.getAttribute('aria-label') || '').trim() && imgs.length === 10 && !noAlt.length && !nested.length, [imgs.length, noAlt, nested.slice(0, 4)]);
+    if (name === 'example 13') {
+      const aria = id => pick(`.node[data-id="${id}"]`).getAttribute('aria-label'), title = (f, t) => pick(`.edge-g[data-from="${f}"][data-to="${t}"] title`).textContent;
+      check(`${tag}: nodes and flows have the names §14 gives`, aria('ref-find') === 'Interaction use Find a book, opens Find a book' && aria('payment-ok') === 'Decision Payment accepted?, 2 exits'
+        && aria('sd-queue') === 'Inline interaction Queue the order, 3 lifelines, 3 messages' && aria('split') === 'Fork, 2 branches' && aria('try-payment') === 'Merge, 2 entries'
+        && title('payment-ok', 'split') === 'Control flow from Payment accepted? to fork, guard payment accepted', [aria('ref-find'), aria('payment-ok'), title('payment-ok', 'split')]);
+      const labs = all('.e-lab text').map(t => t.textContent).sort();
+      check(`${tag}: the guards are drawn whole`, same(labs, ['[else]', '[payment accepted]']), labs);
+    }
+    // contrast: texts 4.5:1 on what is under them, outlines and lines 3:1 on the stage
+    const stageBg = css(pick('.stage'), 'backgroundColor'), low = [];
+    nodes.forEach(g => { const body = g.querySelector('.n-body'), under = blend(css(body, 'fill') || [0, 0, 0, 0], blend(css(g.querySelector('.n-mask'), 'fill') || [0, 0, 0, 0], stageBg));
+      if (ratio(css(body, 'stroke'), stageBg) < 3) low.push([g.dataset.id, 'outline']);
+      g.querySelectorAll('text').forEach(x => { const r = ratio(css(x, 'fill'), under); if (r < 4.5) low.push([g.dataset.id, x.textContent, r]); }); });
+    lines.forEach(g => { const r = ratio(css(g.querySelector('path.edge'), 'stroke'), stageBg); if (r < 3) low.push(['line', g.dataset.from, r]); });
+    all('.ov-msg path, .seq-stem').forEach(x => { const r = ratio(css(x, 'stroke'), stageBg); if (r < 3) low.push(['inline', x.getAttribute('class'), r]); });
+    const lgBg = blend(css(pick('.m-legend'), 'backgroundColor'), stageBg);
+    all('.m-legend b, .m-legend .lgi > span').forEach(x => { const r = ratio(css(x, 'color'), lgBg); if (r < 4.5) low.push(['legend', x.textContent, r]); });
+    check(`${tag}: contrast: texts 4.5:1, outlines and lines 3:1`, !low.length, low.slice(0, 8));
+    if (name === 'example 13' && d === 'down') { const legend = all('.m-legend b').map(b => b.textContent);
+      check(`${tag}: the legend keys the flow and the glyphs the view draws`, same(legend, ['Control flow', 'Initial node', 'Activity final', 'Decision', 'Merge', 'Fork', 'Join']), legend); }
+    h.destroy();
+  }
+  check('the three fonts measure differently', new Set(Object.values(widths)).size === 3, widths);
+  document.documentElement.dataset.theme = 'light'; el.style.removeProperty('--um-sans');
+  check('describe() writes the view in words', describe(EX, 'buy-book').startsWith('Buying a book: an interaction overview diagram of 10 nodes and 11 flows.\nInitial node; then Find a book.'));
+
+  // ---- the gestures, through the type's hooks (4.1's protocol), each through the edit event and apply()
+  let model = EX; const h = mount(model, { view: 'buy-book', editable: true });
+  const ring = id => pick(`.node-key[data-node="${id}"]`), lineRing = name => all('.line-key').find(k => k.getAttribute('aria-label') === name), hint = () => pick('.um-live').textContent;
+  { const keys = all('.keys > .um-key'), order = all('.stage svg .node').map(g => g.dataset.id);
+    check('Tab follows geo.order: a ring for each node by rank, then each flow; no node is a tab stop', same(keys.map(k => k.dataset.node ?? 'line'), [...order, ...Array(11).fill('line')])
+      && order[0] === 'start' && order.at(-1) === 'done' && all('.stage svg .node').every(g => g.tabIndex === -1), keys.map(k => k.dataset.node ?? k.getAttribute('aria-label'))); }
+  const step = (what, want, then = () => true) => { const e = ed[ed.length - 1], next = e && apply(model, e.commands); if (next) h.update(next);
+    check(what, ed.length === 1 && (want === null || same(e.commands, want)) && !errors(next).length && then(next), [ed.map(x => x.commands), next && errors(next)]); if (next) model = next; ed = []; };
+  // the palette's interaction use, by pointer: its name, then the picker of the sequence views (S18)
+  [...sr.querySelectorAll('.um-pal button')].find(b => b.textContent === 'Interaction use').click(); pick('.um-rename').value = 'Browse'; key('Enter', {}, pick('.um-rename')); await tick();
+  const views = all('.um-pick button').map(b => b.textContent);
+  check('the palette\'s interaction use, named: a picker of the model\'s sequence views', same(views, ['Find a book', 'Check out', 'Email the receipt', 'Queue the order']), views);
+  click(all('.um-pick button')[1]);
+  step('…the one picked is the view it opens', [{ op: 'add', element: { id: 'browse', type: 'uml.InteractionUse', label: 'Browse', opensView: 'checkout' }, view: 'buy-book' }],
+    () => pick('.node[data-id="browse"]').getAttribute('aria-label') === 'Interaction use Browse, opens Check out');
+  // N: the first entry, an initial node, added with no name field (name: false)
+  h.select(null); key('n'); await tick();
+  step('N adds an initial node with no name field', [{ op: 'add', element: { id: 'initial-node', type: 'uml.InitialNode' }, view: 'buy-book' }], () => !pick('.um-rename') && !!pick('.node.initial[data-id="initial-node"]'));
+  // V on a use selected from its ring: the picker, then set opensView
+  ring('browse').focus(); key('Enter', {}, sr.activeElement); key('v'); await tick();
+  check('V on a selected use opens the picker of sequence views', all('.um-pick button').length === 4 && pick('.um-pick').getAttribute('aria-label') === 'Opens view');
+  click(all('.um-pick button')[0]);
+  step('…and sets the view it opens', [{ op: 'set', id: 'browse', path: 'opensView', value: 'find-book' }], () => pick('.node[data-id="browse"]').getAttribute('aria-label') === 'Interaction use Browse, opens Find a book');
+  // F2 on a flow's ring: "name [guard]", through edits.rename
+  lineRing('Control flow from Payment accepted? to fork, guard payment accepted').focus(); key('Enter', {}, sr.activeElement); key('F2');
+  check('F2 on a flow opens its drawn label', pick('.um-rename') && pick('.um-rename').value === '[payment accepted]', pick('.um-rename') && pick('.um-rename').value);
+  pick('.um-rename').value = 'ship [card ok]'; key('Enter', {}, pick('.um-rename'));
+  step('…Enter sets its name and guard', [{ op: 'set', id: 'f-accepted', path: 'label', value: 'ship' }, { op: 'set', id: 'f-accepted', path: 'props.guard', value: 'card ok' }],
+    () => all('.e-lab text').some(t => t.textContent === 'ship [card ok]'));
+  lineRing('Control flow from Payment accepted? to fork, ship, guard card ok').focus(); key('Enter', {}, sr.activeElement); key('F2'); pick('.um-rename').value = 'ship / email'; key('Enter', {}, pick('.um-rename'));
+  check('a text the flow\'s syntax refuses: no edit, and the reason on the hint line', ed.length === 0 && /^a flow is name \[guard\]: it has an effect/.test(hint()), [ed, hint()]);
+  key('Escape', {}, pick('.um-rename') || stage);
+  // the guard in the properties panel, the flow clicked
+  click(pick('.edge-g[data-from="payment-ok"][data-to="try-payment"] .hitline'));
+  const g = pick('.um-editor [data-f="p:guard"]');
+  check('a flow\'s properties: its guard', !!g && g.value === 'else', g && g.value);
+  g.value = 'declined'; g.dispatchEvent(new Event('change', { bubbles: true }));
+  step('the guard, set in the properties panel', [{ op: 'set', id: 'f-declined', path: 'props.guard', value: 'declined' }], () => all('.e-lab text').some(t => t.textContent === '[declined]'));
+  // L from the new initial node to the use: the picker of lines, a control flow
+  ring('initial-node').focus(); key('Enter', {}, sr.activeElement); key('l'); for (const c of 'Browse') key(c); key('Enter'); await tick();
+  const kinds = all('.um-pick button').map(b => b.textContent);
+  check('L, a name and Enter: a picker of the type\'s lines', same(kinds, ['Control flow', 'Comment link']), kinds);
+  click(all('.um-pick button')[0]);
+  step('…a control flow added between them', null, m => { const e = m.edges.at(-1); return e.type === 'uml.ControlFlow' && e.from === 'initial-node' && e.to === 'browse' && all('.edge-g').length === 12; });
+  // Delete hides, Shift + Delete deletes
+  ring('browse').focus(); key('Enter', {}, sr.activeElement); key('Delete', {}, sr.activeElement);
+  step('Delete hides a use from the view', [{ op: 'hide', id: 'browse', view: 'buy-book' }], m => m.nodes.some(n => n.id === 'browse') && !pick('.node[data-id="browse"]'));
+  ring('initial-node').focus(); key('Enter', {}, sr.activeElement); key('Delete', { shiftKey: true }, sr.activeElement);
+  step('Shift + Delete deletes a node from the model', [{ op: 'delete', id: 'initial-node' }], m => !m.nodes.some(n => n.id === 'initial-node'));
+  // a use opens its sequence view (Q11): Enter on it selected, and a double-click
+  ring('ref-find').focus(); key('Enter', {}, sr.activeElement); key('Enter', {}, sr.activeElement); await tick();
+  check('Enter on a selected interaction use opens its sequence view', h.view === 'find-book' && all('.node.lifeline').length === 3, [h.view, all('.node').length]);
+  h.destroy();
+  const h2 = mount(EX, { view: 'buy-book' }), io = pick('.node[data-id="sd-queue"] .n-body'), r = io.getBoundingClientRect();
+  io.dispatchEvent(new MouseEvent('dblclick', { clientX: r.x + 8, clientY: r.y + r.height - 8, bubbles: true, composed: true })); await tick();
+  check('a double-click on an inline interaction opens its sequence view', h2.view === 'queue-order' && all('.node.lifeline').length === 3, [h2.view, all('.node').length]);
+  h2.destroy();
+} catch (x) { out.fail.push('threw: ' + (x && x.stack || x)); }
+document.documentElement.dataset.theme = 'light'; el.style.removeProperty('--um-sans');
+const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
+</script>
