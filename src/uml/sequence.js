@@ -201,7 +201,8 @@ function sqDescribe(model, viewId) {
 function sqPaths(model, viewId, from, to) {
   const V = SQ_ARR(model && model.views).find(x => SQ_OBJ(x) && x.id === viewId); if (!V) throw new Error(`umlimator: no view ${JSON.stringify(viewId)}`);
   const ids = sqHeads(model, V).map(h => h.id), ms = sqIndex(model, V).occ.filter(o => o.message && o.from !== o.to);
-  if (from === to || !ids.includes(from) || !ids.includes(to)) return [];
+  if (!ids.includes(from) || !ids.includes(to)) return [];
+  if (from === to) return [{ type: 'node', id: from, view: viewId }]; // the card alone, as paths() on a map gives it
   const got = new Map([[from, -1]]), left = new Map([[to, Infinity]]);
   ms.forEach((m, i) => { if (got.has(m.from) && !got.has(m.to)) got.set(m.to, i); }); // when each lifeline is first reached
   for (let i = ms.length - 1; i >= 0; i--) { const m = ms[i]; if (left.has(m.to) && !left.has(m.from)) left.set(m.from, i); } // its last chance to reach `to`

@@ -33,11 +33,17 @@ test('a sequence view: a message into or out of an operand, and its combined fra
   assert.deepEqual(all.diff(seq, back).summary, ['moves orderPlaced into payment accepted', 'removes the opt fragment']);
 });
 
-test('a communication model: a reorder of its messages (their numbers) reads "moves", on the views that draw them', () => {
-  const d = all.diff(comm, edit(comm, m => { const i = m.edges.findIndex(e => e.id === 'cm3'); swap(m.edges, i, i + 1); }));
+test('a communication view: a reorder of its messages (the view\'s edges, which number them) reads "moves", on that view', () => {
+  const s = m => { const E = m.views[0].edges, i = E.indexOf('cm3'); swap(E, i, i + 1); }, b = edit(comm, s);
+  assert.notEqual(all.describe(comm, 'checkout-communication'), all.describe(b, 'checkout-communication')); // the numbers change
+  const d = all.diff(comm, b);
   assert.deepEqual([d.summary, d.views], [['moves validate(order) after charge(total)'], ['checkout-communication']]);
-  // its connectors' order means nothing, as before
-  assert.deepEqual(all.diff(comm, edit(comm, m => swap(m.edges, 0, 1))).summary, []);
+  assert.deepEqual(d.model.edges.filter(e => e.edited).map(e => e.id), ['cm3']);
+  // the model's edges order draws nothing, and reads nothing; nor does its connectors' order in the view
+  const k = edit(comm, m => { const i = m.edges.findIndex(e => e.id === 'cm3'); swap(m.edges, i, i + 1); });
+  assert.equal(all.describe(comm, 'checkout-communication'), all.describe(k, 'checkout-communication'));
+  assert.deepEqual(all.diff(comm, k).summary, []);
+  assert.deepEqual(all.diff(comm, edit(comm, m => swap(m.views[0].edges, 0, 1))).summary, []);
 });
 
 test('an element\'s members reordered read "moves" on every type with members; edited too, "changes" as before', () => {
@@ -58,6 +64,10 @@ test('an element\'s members reordered read "moves" on every type with members; e
   }
   const k = load('examples/sales-classes.json');
   assert.deepEqual(all.diff(k, edit(k, m => { const c = m.nodes.find(x => x.id === 'customer'); c.members.reverse(); c.members[0].label = 'fullName'; })).summary, ['changes Customer (members)']);
+  // members with no ids: no move can be found, so "changes" as before, as lib/umlimator.js says
+  const noIds = edit(k, m => m.nodes.find(x => x.id === 'customer').members.forEach(x => delete x.id)), rev = edit(noIds, m => m.nodes.find(x => x.id === 'customer').members.reverse());
+  assert.deepEqual(all.diff(noIds, rev).summary, ['changes Customer (members)']);
+  assert.deepEqual(all.diff(noIds, rev).summary, core.diff(noIds, rev).summary);
 });
 
 test('maps diff as before, and lib/umlimator.js (no typed words) says what it said', () => {
@@ -73,7 +83,7 @@ test('paths() on a sequence view runs in time order; on other views as before', 
   assert.deepEqual(ids(all.paths(seq, 'checkout-sequence', 'lifeline-shopper', 'receipt')),
     ['lifeline-shopper', 'lifeline-storefront', 'lifeline-api', 'lifeline-payments', 'receipt', 'm1', 'm2', 'm4', 'm5', 'm6']);
   assert.deepEqual(all.paths(seq, 'checkout-sequence', 'receipt', 'lifeline-shopper'), []); // receipt sends nothing
-  assert.deepEqual(all.paths(seq, 'checkout-sequence', 'lifeline-api', 'lifeline-api'), []);
+  assert.deepEqual(all.paths(seq, 'checkout-sequence', 'lifeline-api', 'lifeline-api'), [{ type: 'node', id: 'lifeline-api', view: 'checkout-sequence' }]); // as on a map
   const bike = load('examples/bike-share.json'), v = bike.views[0], [a, b] = v.nodeIds;
   assert.deepEqual(all.paths(bike, v.id, a, b), core.paths(bike, v.id, a, b));
 });

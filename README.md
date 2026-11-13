@@ -154,9 +154,10 @@ function MapView({ model, onSelect }) {
   `edit` transactions that `apply(model, e.commands)` turns into the next model (`examples/class-editor.html` is a
   working host). `umlimator` alone draws maps, and a typed view as plain cards with a warning.
 - `diff(before, after)` returns `after` with each card and line marked added, changed or removed, what changed in words,
-  and the views that show it (on a typed diagram, a reordered member or message reads "moves"); `drift(model, observed)` marks the lines traffic ran on that nobody drew, and the drawn ones
-  that carried nothing. Both are models to draw, in Node too. `update()` eases into the next model (`examples/timelapse.html`);
-  the option `ease: false` draws it at once.
+  and the views that show it (on a typed diagram, a reordered member or message reads "moves");
+  `drift(model, observed)` marks the lines traffic ran on that nobody drew, and the drawn ones that carried nothing. Both
+  are models to draw, in Node too. `update()` eases into the next model (`examples/timelapse.html`); the option
+  `ease: false` draws it at once.
 - `mountPage` is the whole standalone viewer that the CLI writes. `render()` can draw its pieces too, each on its own or
   any mix, inside the map's element; the host keeps its own header:
 
@@ -382,9 +383,9 @@ ffmpeg -f apng -i ride.png -vf "split[a][b];[a]palettegen[p];[b][p]paletteuse" r
 ffmpeg -f apng -i ride.png -vf "scale=trunc(iw/2)*2:trunc(ih/2)*2" -pix_fmt yuv420p ride.mp4
 ```
 
-On pull requests, the diff Action posts what they change in your maps and UML diagrams (every type above): one comment with the summary and a sketch, and
-the pictures as the run's artifact. The comment names the commit it describes, only the run for the pull request's
-latest commit writes it, and it says so when the diff fails.
+On pull requests, the diff Action posts what they change in your maps and UML diagrams (every type above): one comment
+with the summary and a sketch, and the pictures as the run's artifact. The comment names the commit it describes, only
+the run for the pull request's latest commit writes it, and it says so when the diff fails.
 
 ```yaml
 on: pull_request

@@ -3650,20 +3650,23 @@ and walk as before.
   Action and the MCP server run it), from `src/uml/diff.js` through two hook slots, `TYPED.diff` and `TYPED.order`:
   - a reorder of an element's members (a class's attributes and operations, an object's slots, a state's internal
     transitions, a component's or a structured class's ports and parts): "moves email after name in Customer", or "… to
-    the top in …". Members both reordered and edited still read "changes Customer (members)";
-  - a reorder of a sequence view's messages and interaction uses, or of a communication model's messages (their
-    numbers): "moves validate(order) after charge(total)", or "… to the start". The moved line is marked changed (its
-    edited dot) and its view is among `views`. Before, a reorder read nothing at all;
+    the top in …". Members both reordered and edited, or with no ids to tell a move by, still read "changes Customer
+    (members)";
+  - a reorder of a sequence view's messages and interaction uses, or of a communication view's message ids in its `edges`
+    (they give the numbers): "moves validate(order) after charge(total)", or "… to the start". The moved line is marked
+    changed (its edited dot) and its view is among `views`. Before, a reorder read nothing at all. The order of the
+    model's `edges` draws nothing and reads nothing;
   - a message moved into or out of an operand: "moves orderPlaced into else", as a re-own reads;
   - a sequence view's combined fragments: "adds the par fragment", "removes the opt fragment", "changes the opt fragment
-    (props)". Before, they read nothing. The fragments themselves are not marked on the picture.
+    (props)". Before, they read nothing. The fragments themselves are not marked on the picture, and a reorder of a
+    view's `fragments` (drawing order only) reads nothing.
 
   The moved items are those off one longest run kept in their old order, so a swap of two reads as one move.
   `lib/umlimator.js`, which draws no typed view, says what it said in 0.21.0.
 - **`paths()` on a sequence view runs in time order**: a path is a run of messages, each later than the one before and
   sent from the lifeline it reached; the type's own `paths` (registry), as `describe` is. Before, every message was a line
   of a graph with no time, so replies made almost everything a path. Messages in different operands of one `alt` may
-  still chain. `reach()` is unchanged.
+  still chain. From a lifeline to itself it gives that lifeline alone, as on a map. `reach()` is unchanged.
 - **Tested on every type**: `tests/mcp.py` serves one model of each to the MCP server (its read tools in the type's own
   words, a highlight shown on the diagram the page draws; `paths` in time order on the sequence); `tests/cli.py` runs the
   diff Action's step as CI runs it on one model of each (a reorder reads "moves" on the class, sequence, communication,
@@ -3671,5 +3674,5 @@ and walk as before.
   `tests/typed-diff.test.mjs` pins the words. Stage 5's three examples are read from `docs/diagrams/examples/` until 5.8
   moves them. The skill still writes maps only; its pin (v0.20.0) moves at a release, and renders a type only from the
   release that has it.
-- **Core**: +62 B gzipped (`gzip -9`: 185,246 B to 185,308 B, 12.34% over 0.16.0), from the reserve: the two hook calls in `diff()`, the `paths` hook in `paths()`,
-  and the registry's comment.
+- **Core**: +172 B gzipped (`gzip -9`: 185,136 B to 185,308 B, 12.34% over 0.16.0), from the reserve (about 578 B of
+  its ~750 B left): the two hook calls in `diff()`, the `paths` hook in `paths()`, and the registry's comment.

@@ -4,7 +4,8 @@ import { canon } from '../map/diff.js';
 /* ---------- diff()'s words for typed models (C10, risks.md M11) ----------
    Only lib/umlimator-all.js holds this file: it fills TYPED.diff and TYPED.order (registry.js), which diff() (src/map/diff.js)
    asks. Where order means something, a reorder reads "moves": a member of an element (an attribute, a slot, a port), a
-   message or an interaction use among a sequence view's lines, a message among a communication model's lines. A line that
+   message or an interaction use among a sequence view's lines, a message among a communication view's `edges` (its ids, which
+   number the messages; the model's `edges` order means nothing). A line that
    only changes its operand reads "moves … into …" (or "out of …"), as a re-own does. A sequence view's combined fragments
    read added, removed and changed. Maps have none of these, and are diffed as before. */
 const UD_ARR = x => (Array.isArray(x) ? x : []), UD_OBJ = x => x !== null && typeof x === 'object' && !Array.isArray(x);
@@ -27,7 +28,8 @@ TYPED.diff = (o, x, name, models) => {
   const keys = [...new Set([...Object.keys(o), ...Object.keys(x)])].filter(k => canon(o[k]) !== canon(x[k]));
   if (keys.join() === 'members') { const a = UD_ARR(o.members).filter(UD_OBJ), b = UD_ARR(x.members).filter(UD_OBJ);
     const same = a.length === b.length && canon([...a].map(canon).sort()) === canon([...b].map(canon).sort());
-    if (same) return udMoved(a, b).map(([m, p]) => `moves ${UD_WHAT(m, name)} ${p ? 'after ' + UD_WHAT(p, name) : 'to the top'} in ${name(x.id)}`); }
+    const r = same ? udMoved(a, b).map(([m, p]) => `moves ${UD_WHAT(m, name)} ${p ? 'after ' + UD_WHAT(p, name) : 'to the top'} in ${name(x.id)}`) : [];
+    if (r.length) return r; } // no move found (members with no ids, or the same id twice): "changes X (members)" as before
   if (keys.join() === 'parent' && UD_ORDERED.has(x.type) && x.from != null) { // a message into or out of an operand
     const ops = new Map(models.flatMap(m => UD_ARR(m && m.views)).flatMap(v => UD_ARR(v && v.fragments)).flatMap(f => UD_ARR(f && f.members)).filter(UD_OBJ).map(op => [op.id, op]));
     const op = id => String((ops.get(id) || {}).label ?? id);
@@ -40,10 +42,11 @@ TYPED.order = (A, out, views, V0, said, touched, name) => {
   const lines = (old, now, v) => { const f = l => UD_ARR(l).filter(e => UD_OBJ(e) && UD_ORDERED.has(e.type) && e.change !== 'removed');
     udMoved(f(old), f(now)).forEach(([e, p]) => { said.push(`moves ${UD_WHAT(e, name)} ${p ? 'after ' + UD_WHAT(p, name) : 'to the start'}`);
       Object.assign(e, { change: 'changed', edited: true });
-      views.forEach(w => { if (w && (w === v || !v && UD_ARR(w.nodeIds).includes(e.from) && UD_ARR(w.nodeIds).includes(e.to))) touched.add(w.id); }); }); };
-  lines(A.edges, out.edges, null);
+      touched.add(v.id); }); };
+  const E0 = new Map(UD_ARR(A.edges).filter(UD_OBJ).map(e => [e.id, e])), E1 = new Map(UD_ARR(out.edges).filter(UD_OBJ).map(e => [e.id, e]));
+  const own = (l, E) => UD_ARR(l).map(e => (typeof e === 'string' ? E.get(e) : e)); // a view's model lines by id (a communication view's messages)
   views.forEach(v => { const o = v && V0.get(v.id); if (!o) return;
-    if (Array.isArray(v.edges)) lines(o.edges, v.edges, v);
+    if (Array.isArray(v.edges)) lines(own(o.edges, E0), own(v.edges, E1), v);
     const F0 = new Map(UD_ARR(o.fragments).filter(UD_OBJ).map(f => [f.id, f])), F1 = new Map(UD_ARR(v.fragments).filter(UD_OBJ).map(f => [f.id, f]));
     const op = f => `the ${(f.props && f.props.operator) || 'combined'} fragment`;
     F1.forEach((f, id) => { const g = F0.get(id); if (g && canon(g) === canon(f)) return;

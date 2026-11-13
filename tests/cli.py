@@ -211,8 +211,8 @@ with tempfile.TemporaryDirectory() as tmp:
     def members(m, nid):
         n = next(x for x in m["nodes"] if x["id"] == nid); n["members"][:2] = n["members"][1::-1]
     def messages(m, first):
-        E = m["views"][0]["edges"] if any(isinstance(e, dict) and e.get("id") == first for e in m["views"][0].get("edges") or []) else m["edges"]
-        i = next(k for k, e in enumerate(E) if isinstance(e, dict) and e.get("id") == first); E[i], E[i + 1] = E[i + 1], E[i]
+        E = m["views"][0]["edges"]  # a sequence view's own lines, or a communication view's message ids (they number them)
+        i = next(k for k, e in enumerate(E) if (e.get("id") if isinstance(e, dict) else e) == first); E[i], E[i + 1] = E[i + 1], E[i]
     def rename(m, nid, label):
         next(x for x in m["nodes"] if x["id"] == nid)["label"] = label
     SIX = {"sales-classes": (lambda m: members(m, "customer"), "domain", "moves email after name in Customer"),
