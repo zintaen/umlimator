@@ -2,7 +2,7 @@
 // the information item (a classifier with a filled triangle), 15-information-flow.json laid out clean right and down, line
 // ends on outlines, the layout not edited after layoutTyped, accessible names, the reading order, the legend, describe(), the
 // PDF's tables and line text (S17), the validators each with a passing and a failing case, conveyed as a declared reference,
-// the editing hooks, a 30-step session saved and reopened, and the common edit's time (§11). tests/information-flow.html draws
+// the editing hooks (connect, rename, remove), a 30-step session saved and reopened, and the common edit's time (§11). tests/information-flow.html draws
 // it in a browser and edits it by pointer and keyboard. Imports src/ to reach the internals; lib/umlimator-all.js holds the same code.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -44,7 +44,7 @@ test('the definition: uml.information-flow is registered with its palette, its t
   assert.deepEqual(T.refs, { 'uml.InformationFlow': { 'props.conveyed': 'drop' } });
   for (const k of ['layout', 'validate', 'describe', 'word', 'rows', 'text']) assert.equal(typeof T[k], 'function', k);
   assert.equal(T.validate.length, 1, 'validate(model): run once, not once a view');
-  assert.deepEqual(Object.keys(T.edits), ['connect', 'rename']);
+  assert.deepEqual(Object.keys(T.edits), ['connect', 'rename', 'remove']);
   assert.deepEqual(Object.keys(T.rules), ['conveyed-some', 'conveyed-kind', 'flow-ends']);
 });
 
@@ -203,6 +203,18 @@ test('conveyed is a declared reference: deleting an item drops it from every flo
 });
 
 // ---- §7.4: editing
+test('remove: Shift + Delete on an item takes the flows it leaves conveying nothing, said; a flow conveying more keeps it; Delete, the default', () => {
+  const v = IF.views[0], r = T.edits.remove(IF, v, ['order-info'], true);
+  assert.deepEqual(r.commands, ['order-info', 'flow-storefront-api', 'api-warehouse'].map(id => ({ op: 'delete', id })));
+  assert.equal(r.say, 'Deleted "Order" and the 2 flows that conveyed nothing else: Storefront → Shop API, Shop API → Warehouse');
+  const m = apply(IF, r.commands);
+  assert.deepEqual(validate(m), [], 'no flow left conveying nothing');
+  assert.deepEqual(flow(m, 'api-email').props.conveyed, ['receipt-info'], 'one conveying more keeps the rest');
+  assert.equal(T.edits.remove(IF, v, ['order-info'], false), null, 'Delete hides: the default');
+  assert.equal(T.edits.remove(IF, v, ['shop-api'], true), null, 'a component: its flows go by their ends, the default');
+  assert.equal(T.edits.remove(IF, v, ['api-email'], true), null);
+});
+
 test('connect: a flow between two classifiers or actors asks what it conveys, items first; other ends refused; rename sets what it conveys by name', () => {
   const v = IF.views[0], line = { type: 'uml.InformationFlow' };
   const r = T.edits.connect(IF, v, 'shopper', 'shop-api', null, line);

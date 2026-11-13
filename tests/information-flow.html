@@ -156,8 +156,9 @@ try {
   click('.node[data-id="stock-info"] .c-name'); key('Delete');
   gives('Delete: hide the item from the view; the flows still name it', [{ op: 'hide', id: 'stock-info', view: V }], m => !m.views[0].nodeIds.includes('stock-info') && m.edges.find(e => e.id === 'warehouse-api').props.conveyed[0] === 'stock-info', BASE);
   click('.node[data-id="card-details"] .c-name'); key('Delete', { shiftKey: true });
-  gives('Shift + Delete on an item: deleted, and dropped from every flow that conveyed it', [{ op: 'delete', id: 'card-details' }],
-    m => !m.nodes.some(n => n.id === 'card-details') && same(m.edges.find(e => e.id === 'flow-shopper-storefront').props.conveyed, ['order-info']) && m.edges.length === BASE.edges.length, BASE, 1);
+  gives('Shift + Delete on an item: deleted, dropped from every flow that conveyed it, and the flow left conveying nothing goes too (edits.remove)', [{ op: 'delete', id: 'card-details' }, { op: 'delete', id: 'storefront-payments' }],
+    m => !m.nodes.some(n => n.id === 'card-details') && same(m.edges.find(e => e.id === 'flow-shopper-storefront').props.conveyed, ['order-info']) && m.edges.length === BASE.edges.length - 1, BASE);
+  check('…said on the hint line', hint() === 'Deleted "Card details" and the 1 flow that conveyed nothing else: Storefront → Payment provider', hint());
   h.select({ type: 'edge', ids: ['api-email'], view: V }); key('Delete', { shiftKey: true });
   gives('Shift + Delete on a flow: delete it', [{ op: 'delete', id: 'api-email' }], m => !m.edges.some(e => e.id === 'api-email'), BASE);
   h.destroy();
