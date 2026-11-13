@@ -42,7 +42,10 @@ function timingClean(o, inp) {
     if (Math.abs(p[1] - levelAt(inp, o, m.from, m.sentAt)) > 1) bad.push(`${l.id} starts off ${m.from}'s level`);
     if (Math.abs(q[1] - levelAt(inp, o, m.to, m.receivedAt)) > 1) bad.push(`${l.id} ends off ${m.to}'s level`); });
   o.marks.forEach(m => { const ys = m.pts.map(p => p[1]), dim = m.kind === 'duration' ? ys[1] : (ys[0] + ys[1]) / 2;
-    if (!o.lanes.some(L => dim >= L.strip.y && dim <= L.strip.y + L.strip.h)) bad.push(`constraint ${m.id} not in a strip`); });
+    const L = o.lanes.find(L => dim >= L.strip.y && dim <= L.strip.y + L.strip.h);
+    if (!L) bad.push(`constraint ${m.id} not in a strip`);
+    else if (m.lbl.y < L.strip.y - .01 || m.lbl.y + m.lbl.h > L.strip.y + L.strip.h + .01) bad.push(`constraint ${m.id}'s label out of its strip`); });
+  o.marks.forEach((m, i) => o.marks.slice(0, i).forEach(n => { if (meets(m.lbl, n.lbl)) bad.push(`constraint ${m.id}'s label meets ${n.id}'s`); }));
   const B = o.bounds;
   [...o.lanes, ...o.lines.map(l => l.lbl), ...o.marks.map(m => m.lbl), ...o.changes].forEach(b => { if (!within(b, B)) bad.push(`out of bounds: ${JSON.stringify(b)}`); });
   return bad;
@@ -56,7 +59,7 @@ function scaleOk(o) {
   const m = step / 10 ** Math.floor(Math.log10(step) + 1e-9); if (![1, 2, 5].some(x => near(m, x))) bad.push(`step ${step} is not 1, 2 or 5 × 10ⁿ`);
   if (step * k < TR.tick - 1e-6) bad.push(`majors ${step * k} px apart`);
   const less = near(m, 1) ? step / 2 : near(m, 2) ? step / 2 : step / 2.5; if (less * k >= TR.tick) bad.push(`step ${less} would do`);
-  if (!near(o.ruler.x0 + (t1 - t0) * k, o.ruler.x1)) bad.push('x1 is not x(t1)');
+  if (Math.abs(o.ruler.x0 + (t1 - t0) * k - o.ruler.x1) > .01) bad.push('x1 is not x(t1)'); // x0 and x1 rounded to 2 places
   const T = o.ruler.ticks; if (!T.length) bad.push('no ticks');
   if (T[0].t < t0 - 1e-9 || T[0].t - step / 5 >= t0 - 1e-9) bad.push(`first tick ${T[0].t}`);
   T.forEach((tk, i) => { if (Math.abs(tk.x - (o.ruler.x0 + (tk.t - t0) * k)) > .01) bad.push(`tick ${tk.t} off x(t)`);
@@ -157,11 +160,25 @@ test('constraints: durations on levels 20 px apart in the strip of their lower l
   assert.equal(M('across').pts[0][1], A.rows[1].y, 'its extension line reaches the upper change'); assert.equal(M('across').pts[3][1], B.rows[0].y);
   assert.ok(M('back').pts[0][0] < M('back').pts[3][0], 'drawn in time order whatever from and to say');
   assert.equal(M('t1').pts[1][1] - M('t1').pts[0][1], TR.mark);
+  assert.equal(M('t1').lbl.x, M('t1').pts[0][0] + TR.mark / 2 + TR.lift, 'a time constraint\'s label to its tick\'s right');
+  assert.equal(M('t1').lbl.y + M('t1').lbl.h, M('t1').pts[1][1], 'bottoms level');
+  assert.equal(M('d1').lbl.y + M('d1').lbl.h, M('d1').pts[1][1], 'a duration\'s label on its line');
   assert.equal(o.lanes[2].strip.h, 0); assert.ok(A.strip.h >= 3 * TR.level);
   assert.equal(B.y, A.strip.y + A.strip.h, 'the next lane starts under the strip');
   assert.deepEqual(timingClean(o, inp), []);
-  const bad = layoutTimeRuler({ lanes: inp.lanes, constraints: [dur('x', 'a0', 'nope')] });
-  assert.deepEqual(bad.problems.map(p => [p.rule, p.ids.join()]), [['constraint-ends', 'x']]); assert.equal(bad.marks.length, 0);
+  const bad = layoutTimeRuler({ lanes: inp.lanes, constraints: [dur('x', 'a0', 'nope'), { ...dur('y', 'a0', 'a1'), kind: 'span' }] });
+  assert.deepEqual(bad.problems.map(p => [p.rule, p.ids.join()]), [['constraint-ends', 'x'], ['constraint-kind', 'y']]); assert.equal(bad.marks.length, 0);
+  // labels taller than a level: the level grows to hold them, each inside the strip and clear of the other
+  const tall = { lanes: [lane('a', 'states', ['x', 'y'], [['a0', 0, 'x'], ['a1', 100, 'y'], ['a2', 200, 'x']])],
+    constraints: [{ ...dur('d1', 'a0', 'a2'), h: 40 }, { ...dur('d2', 'a1', 'a2'), h: 40 }, { ...tim('t', 'a1'), h: 40 }] };
+  const t = layoutTimeRuler(tall); assert.deepEqual(timingClean(t, tall), []);
+  assert.equal(t.lanes[0].strip.h, 3 * (40 + TR.lift) + TR.lift);
+  // on a change skipped at its instant: on the change drawn there (b in z skipped for c in y; a ghost state gets no row)
+  for (const st of ['z', 'ghost']) {
+    const sk = { lanes: [lane('a', 'states', ['x', 'y', 'z'], [['a0', 0, 'x'], ['b', 10, st], ['c', 10, 'y'], ['d', 50, 'x']])], constraints: [dur('k', 'b', 'd'), tim('t', 'b')] };
+    const so = layoutTimeRuler(sk), Y = so.lanes[0].rows.find(r => r.state === 'y').y;
+    assert.equal(so.marks[0].pts[0][1], Y, `${st}: the extension line reaches c's level`); assert.equal(so.lanes[0].rows.length, 3);
+    assert.deepEqual(timingClean(so, sk), [], st); }
 });
 
 test('message labels clear of steps, values and each other within the lane\'s height, else timing-label', () => {
@@ -182,6 +199,15 @@ test('message labels clear of steps, values and each other within the lane\'s he
   assert.equal(so.lines[1].pts[0][0], so.lines[1].pts[1][0], 'equal times: upright');
   const bad = layoutTimeRuler({ lanes: s.lanes, messages: [msg('x', 'a', 'z', 0, 1), msg('y', 'a', 'a', 0, NaN)] });
   assert.deepEqual(bad.problems.map(p => [p.rule, p.ids.join()]), [['message-ends', 'x'], ['change-time', 'y']]); assert.equal(bad.lines.length, 0);
+});
+
+test('times at a number\'s edges: past ±1e300 not drawn and reported, a span under 1e-90 one unit; nothing hangs or throws', () => {
+  const two = (a, b) => ({ lanes: [lane('a', 'states', ['x'], [['p', a, 'x'], ['q', b, 'x']])], messages: [msg('m', 'a', 'a', a, b)] });
+  for (const [a, b, said] of [[-1e308, 1e308, ['change-time:p', 'change-time:q', 'change-time:m']], [0, 1.7e308, ['change-time:q', 'change-time:m']],
+    [0, 1e-120, ['timing-dense:q']], [0, 5e-324, ['timing-dense:q']], [-1e300, 1e300, []]]) {
+    const inp = two(a, b), o = layoutTimeRuler(inp);
+    assert.deepEqual(o.problems.map(p => `${p.rule}:${p.ids}`), said, `${a} to ${b}`);
+    assert.deepEqual(scaleOk(o), [], `${a} to ${b}`); }
 });
 
 test('slots: on every lane one at every minor tick, after the change before it', () => {
@@ -217,6 +243,8 @@ test('the stress fixture\'s size: 400 changes, 100 messages, 40 constraints laid
   const o = layoutTimeRuler(inp);
   assert.deepEqual(scaleOk(o), []); assert.deepEqual(timingClean(o, inp), []);
   assert.equal(o.lines.length, 100); assert.equal(o.marks.length, 40);
+  // timingClean passes the labels timing-label names; their number is pinned so that more do not pass unseen
+  assert.deepEqual(o.problems.map(p => p.rule), Array(8).fill('timing-label'));
   const timed = f => { const c = process.cpuUsage(); f(); const u = process.cpuUsage(c); return (u.user + u.system) / 1000; };
   const best = Math.min(...Array.from({ length: 7 }, () => timed(() => layoutTimeRuler(inp))));
   assert.ok(best < 1000, `${best} ms`);

@@ -481,8 +481,13 @@ are `[a, b, c, d]`, up the extension line at its earlier change, along the dimen
 other; a time mark's are its 6 px tick; a band segment's `text` is null under 16 px and `cut` when its text (cut at 160
 px) and 12 px do not fit; a state a lane does not list gets a row at the bottom, as wide as the change's `w`; a slot's
 `index` counts the lane's drawn changes at or before its `t`. The tick labels are measured by the ruler itself with the
-core's `textW` at 10 px (they are numbers it makes). With every time at one instant the ruler runs one unit from `t0`.
-Constraints are placed before messages, so a message label keeps off theirs too; a label moves up only.
+core's `textW` at 10 px (they are numbers it makes). With every time at one instant, or within 1e-90 of one another
+(finer than a tick label's 100 digits), the ruler runs one unit from `t0`, and the changes it cannot part are `timing-dense`; a time past ±1e300 is an item it cannot place
+(`change-time`), as the span and a step past it are no number. Constraints are placed before messages, so a message label
+keeps off theirs too; a label moves up only. A change skipped at its instant has no hit box (one per drawn change), and
+a constraint on it is drawn on the change drawn at that instant. A constraint whose `kind` is neither is not drawn
+(`constraint-kind`). A duration's label sits on its dimension line; a time constraint's sits to its tick's right, their
+bottoms level; a strip's level is 20 px, or its tallest label and 4 px.
 
 ### 6.3 Scale and ticks (S11)
 
@@ -494,8 +499,8 @@ Constraints are placed before messages, so a message label keeps off theirs too;
   (`fit`) and reported once, naming the changes (`timing-dense`, a layout problem).
 - **Ticks:** the step is the smallest of 1, 2 or 5 × 10ⁿ units whose ticks lie at least 64 px apart and whose labels fit
   with 12 px between; minor ticks at a fifth of a step, whatever the step (one rule, the snap of S16 and §6.7). The ruler is drawn under the last lane,
-  labels under the major ticks, the unit after the last label. Ticks start at the first multiple of the step at or after
-  `t0`.
+  labels under the major ticks, the unit after the last label. Ticks start at the first minor tick (a multiple of a fifth
+  of the step) at or after `t0`, and so do the slots (as built, 6.4).
 - Derived, never stored (rule 9): the canvas's zoom is the way to look closer.
 
 | Option | For | Against |
@@ -525,7 +530,7 @@ A message is a straight line from `(x(sentAt), the sender's level at sentAt)` to
 at receivedAt)`: a state's row in the states form, the band's middle in the values form; at a time before the lane's
 first change, or on a lane with no change, the lane's middle. Equal times draw it upright.
 Its sort draws its ends as the sequence type does (`SQ_END`: a call filled, async open, a reply dashed and open); create
-and delete are not timing sorts (§15). Its label sits at the line's middle, 4 px above it, moved away 4 px at a time, at most the lane's height,
+and delete are not timing sorts (§15). Its label sits at the line's middle, 4 px above it, moved away 4 px at a time, at most the sender's lane's height,
 until it meets no label, step or band text placed before it; one still meeting something is reported in the ruler's own
 `problems` (`timing-label`). The layout check (`routeAudit`, `src/layout/audit.js`) is not used: it treats every
 segment as upright or across, so two slanted messages fall into its "parallel" branch (false shares, missed crossings),

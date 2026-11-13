@@ -21,13 +21,16 @@ import { r2 } from '../draw/shapes.js';
            scale: { t0, t1, k, step }, bounds, problems }
    A lane's rows: its states', then one per state its changes name that the lane does not list (drawn at the bottom; the
    type's change-state says it). Changes are drawn by `at`; two on one lane at one instant: the one whose id sorts last
-   (the type's change-instant says it). A step line starts at a lane's first change; a band segment's text is null under
-   16 px, and `cut` when the text (cut at 160 px) and 12 px do not fit it: the type fits it to x1 - x0 - 12. A duration
-   mark's pts run up the extension line at its earlier change, along the dimension line, up the other: [a, b, c, d], the
-   arrows on b and c; a time mark's are its 6 px tick. Slots: on each lane one at every minor tick (a fifth of the step);
-   index: how many of the lane's drawn changes are at or before t, after: the last of them. Problems: { level, rule,
-   message, ids }: timing-dense (the plot at its 4,800 px cap and changes still under 12 px apart, or values cut),
-   timing-label (a message label that meets a step, a value or a label within its lane's height), and an item not drawn. */
+   (the type's change-instant says it); the other gets no hit box, and a constraint on it is on the one drawn. A step
+   line starts at a lane's first change; a band segment's text is null under 16 px, and `cut` when the text (cut at
+   160 px) and 12 px do not fit it: the type fits it to x1 - x0 - 12. A duration mark's pts run up the extension line at
+   its earlier change, along the dimension line, up the other: [a, b, c, d], the arrows on b and c, its label on the
+   line; a time mark's are its 6 px tick, its label to the right, bottoms level. A strip's level is 20 px, or its tallest
+   label and 4 px. Ticks start at the first minor tick at or after t0. Slots: on each lane one at every minor tick (a
+   fifth of the step); index: how many of the lane's drawn changes are at or before t, after: the last of them.
+   Problems: { level, rule, message, ids }: timing-dense (the plot at its 4,800 px cap and changes still under 12 px
+   apart, or values cut), timing-label (a message label that meets a step, a value or a label within its sender's lane's
+   height), and an item not drawn (a time past ±1e300, an end that is not here, a constraint kind not known). */
 
 const TR = {
   edge: 16, pad: 8, cut: 160, // the margin; a column's padding each side; the widest name and value text
@@ -39,6 +42,7 @@ const TR = {
 
 const trArr = x => (Array.isArray(x) ? x : []);
 const trNum = x => (Number.isFinite(x) ? x : 0);
+const trTime = t => Number.isFinite(t) && Math.abs(t) <= 1e300; // past it the span, a step or t1 + a step is no number
 const trNice = x => Number(x.toPrecision(12));
 const trFmt = (t, s) => (Math.round(t / s) * s).toFixed(Math.max(0, -Math.floor(Math.log10(s) + 1e-9)));
 const trMeets = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
@@ -49,15 +53,15 @@ function layoutTimeRuler(input = {}) {
 
   // ---- each lane's changes in time order, one per instant (§7.2's change-instant): the id that sorts last
   const byId = new Map(), lanes = trArr(input.lanes).map((ln, j) => {
-    const all = trArr(ln.changes).filter(c => Number.isFinite(c.at) || (say('error', 'change-time', `change ${c.id}: its time is not a number: not drawn`, [c.id]), false))
+    const all = trArr(ln.changes).filter(c => trTime(c.at) || (say('error', 'change-time', `change ${c.id}: its time is not a number within ±1e300: not drawn`, [c.id]), false))
       .sort((a, b) => a.at - b.at || (String(a.id) < String(b.id) ? -1 : String(a.id) > String(b.id) ? 1 : 0));
     const cs = all.filter((c, i) => !(all[i + 1] && all[i + 1].at === c.at)), L = { ln, j, form: ln.form === 'values' ? 'values' : 'states', cs };
-    all.forEach(c => byId.set(c.id, { L, c }));
+    for (let i = all.length - 1, d; i >= 0; i--) { if (!all[i + 1] || all[i + 1].at !== all[i].at) d = all[i]; byId.set(all[i].id, { L, c: d }); } // a skipped id: the change drawn at its instant
     return L; });
   const laneOf = new Map(lanes.map(L => [L.ln.id, L]));
   const msgs = trArr(input.messages).filter(m => {
     if (!laneOf.has(m.from) || !laneOf.has(m.to)) say('error', 'message-ends', `message ${m.id}: ${laneOf.has(m.from) ? m.to : m.from} is not a lifeline here: not drawn`, [m.id]);
-    else if (!Number.isFinite(m.sentAt) || !Number.isFinite(m.receivedAt)) say('error', 'change-time', `message ${m.id}: its times are not numbers: not drawn`, [m.id]);
+    else if (!trTime(m.sentAt) || !trTime(m.receivedAt)) say('error', 'change-time', `message ${m.id}: its times are not numbers within ±1e300: not drawn`, [m.id]);
     else return true;
     return false; });
 
@@ -66,7 +70,7 @@ function layoutTimeRuler(input = {}) {
   let t0 = 0, tMax = 0;
   const time = t => { if (t < t0) t0 = t; if (t > tMax) tMax = t; };
   lanes.forEach(L => L.cs.forEach(c => time(c.at))); msgs.forEach(m => { time(m.sentAt); time(m.receivedAt); });
-  const vw = c => Math.min(TR.cut, trNum(c.w)) + TR.room, top = tMax > t0 ? tMax : t0 + 1; // all at one instant: one unit
+  const vw = c => Math.min(TR.cut, trNum(c.w)) + TR.room, top = tMax - t0 >= 1e-90 ? tMax : t0 + 1; // all at one instant (or within 1e-90, past toFixed's digits): one unit
   let need = 0;
   lanes.forEach(L => L.cs.forEach((c, i) => { const n = L.cs[i + 1]; if (n) need = Math.max(need, TR.gap / (n.at - c.at), L.form === 'values' ? vw(c) / (n.at - c.at) : 0); }));
   const stepOf = k => { const wide = s => Math.max(textW(trFmt(t0, s), TR.font), textW(trFmt(tMax + s, s), TR.font)) + TR.gap;
@@ -86,11 +90,12 @@ function layoutTimeRuler(input = {}) {
     L.cs.forEach(c => { if (L.form === 'states' && !listed.has(c.state)) { listed.add(c.state); L.rows.push({ state: c.state, w: trNum(c.w) }); } });
     const nh = trNum((L.ln.name || {}).h) + 2 * TR.pad;
     L.h = Math.max(nh, L.form === 'values' ? TR.band + 2 * TR.above : Math.max(1, L.rows.length) * TR.row);
-    L.levels = []; L.marks = []; });
+    L.levels = []; L.lh = []; L.marks = []; });
   const states = Math.max(0, ...lanes.flatMap(L => L.rows.map(r => r.w)));
   const X0 = TR.edge + name + (states ? states + 2 * TR.pad : 0), xOf = t => X0 + (t - t0) * k, X1 = xOf(t1);
 
   const marks = trArr(input.constraints).filter(c => {
+    if (c.kind !== 'time' && c.kind !== 'duration') { say('error', 'constraint-kind', `constraint ${c.id}: its kind ${c.kind} is not duration or time: not drawn`, [c.id]); return false; }
     const a = byId.get(c.from), b = c.kind === 'time' ? a : byId.get(c.to);
     if (!a || !b) { say('error', 'constraint-ends', `constraint ${c.id}: ${a ? c.to : c.from} is not a change here: not drawn`, [c.id]); return false; }
     const lo = a.c.at <= b.c.at ? a : b, hi = lo === a ? b : a, L = a.L.j >= b.L.j ? a.L : b.L, w = trNum(c.w), h = trNum(c.h);
@@ -99,11 +104,12 @@ function layoutTimeRuler(input = {}) {
     L.marks.push(it); return true; });
   lanes.forEach(L => L.marks.slice().sort((p, q) => p.x0 - q.x0 || (String(p.c.id) < String(q.c.id) ? -1 : 1)).forEach(it => { // greedy, by start
     let v = L.levels.findIndex(end => end + TR.mark <= it.x0); if (v < 0) { v = L.levels.length; L.levels.push(0); }
-    L.levels[v] = it.x1; it.v = v; }));
+    L.levels[v] = it.x1; L.lh[v] = Math.max(L.lh[v] || TR.level, trNum(it.h) + TR.lift); it.v = v; })); // a level as tall as its labels, 20 px at least
 
   // ---- down the page: lanes, their strips, the ruler
   let y = TR.edge;
-  lanes.forEach(L => { L.y = y; L.mid = y + L.h / 2; y += L.h; L.sy = y; L.sh = L.levels.length ? L.levels.length * TR.level + TR.lift : 0; y += L.sh; });
+  lanes.forEach(L => { L.y = y; L.mid = y + L.h / 2; y += L.h; L.sy = y;
+    L.top = L.lh.map((h, v) => L.lh.slice(0, v).reduce((s, x) => s + x, 0)); L.sh = L.lh.length ? L.lh.reduce((s, x) => s + x, 0) + TR.lift : 0; y += L.sh; });
   const rulerY = y + TR.pad;
   const rowY = (L, s) => L.y + TR.above + L.rows.findIndex(r => r.state === s) * TR.row;
   const lvl = (L, c) => (L.form === 'values' ? L.mid : rowY(L, c.state));
@@ -133,11 +139,11 @@ function layoutTimeRuler(input = {}) {
 
   // ---- constraints in their strips (§6.6), placed before the messages, whose labels then keep off theirs
   const outMarks = lanes.flatMap(L => L.marks.map(it => {
-    const yl = L.sy + it.v * TR.level + TR.level - TR.lift;
+    const yl = L.sy + L.top[it.v] + L.lh[it.v] - TR.lift; // the dimension line, or the tick's middle; its label on it
     if (it.c.kind === 'time') { const x = xOf(it.a.c.at);
-      return { id: it.c.id, kind: 'time', pts: [[x, yl - TR.mark / 2], [x, yl + TR.mark / 2]], lbl: { x: x + TR.mark / 2 + TR.lift, y: yl - it.h / 2, w: it.w, h: it.h } }; }
+      return { id: it.c.id, kind: 'time', pts: [[x, yl - TR.mark / 2], [x, yl + TR.mark / 2]], lbl: { x: x + TR.mark / 2 + TR.lift, y: yl + TR.mark / 2 - it.h, w: it.w, h: it.h } }; }
     const xa = xOf(it.a.c.at), xb = xOf(it.b.c.at);
-    return { id: it.c.id, kind: 'duration', pts: [[xa, lvl(it.a.L, it.a.c)], [xa, yl], [xb, yl], [xb, lvl(it.b.L, it.b.c)]], lbl: { x: (xa + xb) / 2 - it.w / 2, y: yl - 2 - it.h, w: it.w, h: it.h } }; }))
+    return { id: it.c.id, kind: 'duration', pts: [[xa, lvl(it.a.L, it.a.c)], [xa, yl], [xb, yl], [xb, lvl(it.b.L, it.b.c)]], lbl: { x: (xa + xb) / 2 - it.w / 2, y: yl - it.h, w: it.w, h: it.h } }; }))
     .map(o => ({ ...o, pts: o.pts.map(p => p.map(r2)), lbl: { x: r2(o.lbl.x), y: r2(o.lbl.y), w: r2(o.lbl.w), h: r2(o.lbl.h) } }));
   outMarks.forEach(o => obst.push(o.lbl));
 
