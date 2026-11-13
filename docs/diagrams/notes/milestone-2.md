@@ -535,9 +535,20 @@ Storefront, conveys Order and Card details".
   as the use case type takes an extend left naming no extension point: `tests/delete-cascade.test.mjs` holds that no single
   delete gesture leaves a new error, and `conveyed-some` would be one. `apply()`'s delete alone still only drops the id
   (`refs`), and `conveyed-some` then says what conveys nothing.
-- **What may be conveyed**: information items, the four end kinds, and data types, enumerations and primitive types (a
-  `Money` carried by a flow). Classes and interfaces are drawn as the classifier with their name only (an interface
-  «interface»), named by the type's accessible name (`if-classifier`).
+- **What may be conveyed**: UML 2.5.1's `convey_classifiers` (§20.2.4), not any classifier: an information item, a class,
+  an interface, a component or a signal; never an actor, a data type, an enumeration or a primitive type (`conveyed-kind`
+  says so). Taken by the lead under the maintainer's standing approval (14 Nov 2026). Classes and interfaces are drawn as
+  the classifier with their name only (an interface «interface»), named by the type's accessible name (`if-classifier`);
+  any other kind a view shows is drawn as the classifier under its own keyword («signal», «dataType», «useCase»), so none
+  passes for a class. A conveyed element's PDF row lists the flows that convey it, an information item's always.
+- **`conveyed-once`** (error): a flow conveys each element once (UML: `conveyed` is a set); F2 keeps each element once.
+- **F2's text read whole**: a name may hold `:` or `,` (`Billing::Receipt`, `Name, address`), and so may a flow's own name.
+  The text is read with no name first, then named at each `:` in turn, each list entry the longest run of parts that names
+  an element; the reading that leaves the flow as it is wins (the text as drawn, entered again, changes nothing), else the
+  first that names elements throughout. Text that reads both ways, a name and a list or one element's name, is ambiguous as
+  drawn; the reading with no name is taken.
+- **A flow from an element to itself** is allowed (UML does not forbid it), and the PDF's lines table leaves it out, as it
+  does every type's: `tablesOf` (core) drops a line whose ends are one element. Left to the core.
 - **A flow back over two columns or more** (a reply closing a loop) leaves its source's bottom and comes into its target's
   bottom, in the layout's axes: with both flags off (S19), `15-information-flow.json`'s reply from the email service to the
   shopper otherwise crosses the line into the email service, right and down. A fixed side, not a search (`ponytail:` in the

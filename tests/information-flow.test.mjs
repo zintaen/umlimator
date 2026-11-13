@@ -45,7 +45,7 @@ test('the definition: uml.information-flow is registered with its palette, its t
   for (const k of ['layout', 'validate', 'describe', 'word', 'rows', 'text']) assert.equal(typeof T[k], 'function', k);
   assert.equal(T.validate.length, 1, 'validate(model): run once, not once a view');
   assert.deepEqual(Object.keys(T.edits), ['connect', 'rename', 'remove']);
-  assert.deepEqual(Object.keys(T.rules), ['conveyed-some', 'conveyed-kind', 'flow-ends']);
+  assert.deepEqual(Object.keys(T.rules), ['conveyed-some', 'conveyed-kind', 'conveyed-once', 'flow-ends']);
 });
 
 test('the information item: the classifier 32 px wider, a filled triangle at its top right, its name kept clear of it and named by its accessible name', () => {
@@ -95,7 +95,10 @@ test('a class, an interface and a comment: the classifier (name only, «interfac
   assert.match(s, /data-shape="classifier" tabindex="-1" role="img" aria-label="Interface Payments"[^]*?>«interface»<\/text>/);
   assert.equal(g.edges[0].label, '«flow» pay: Order, Money', 'its name, then what it conveys');
   assert.deepEqual(g.edges[1].end, { from: 'none', to: 'none', dashed: true });
-  assert.equal(g.edges[1].label, undefined);
+  assert.equal(g.edges[1].label, undefined);  // any other kind a view shows carries its keyword, so none passes for a class
+  const o = model([N('d', 'DataType', 'Money'), N('e', 'Enumeration', 'Status'), N('p', 'PrimitiveType', 'Cents'), N('u', 'UseCase', 'Buy')], []), og = layout(o, 'v');
+  assert.deepEqual(['d', 'e', 'p', 'u'].map(id => og.byId[id].stereotypes), [['dataType'], ['enumeration'], ['primitive'], ['useCase']]);
+  assert.deepEqual(g.byId.a.stereotypes, [], 'a class: its name only');
 });
 
 test('every line end is on its outline within 1 px: a component\'s box, an actor\'s figure', () => {
@@ -149,6 +152,8 @@ test('the PDF (§9, S17): each element\'s kind; an item\'s rows, the flows that 
   assert.deepEqual(['shopper', 'shop-api', 'order-info', 'nowhere'].map(id => T.word(IF, id)), ['Actor', 'Component', 'Information item', null]);
   assert.deepEqual(T.rows(IF, v, 'card-details'), ['Shopper → Storefront', 'Storefront → Payment provider']);
   assert.equal(T.rows(IF, v, 'shop-api'), null);
+  const cv = structuredClone(IF); flow(cv, 'api-email').props.conveyed.push('warehouse');
+  assert.deepEqual(T.rows(cv, v, 'warehouse'), ['Shop API → Email service'], 'a conveyed component: the flows that convey it');
   assert.equal(T.text(IF, v, 'api-email'), 'Order, Receipt');
   const ctx = mapContext(IF), [els, lines] = tablesOf(ctx, ctx.V[V], { nodes: [], edges: [] }), cells = r => [...r.matchAll(/<td>(.*?)<\/td>/g)].map(x => x[1]);
   assert.deepEqual(lines.rows.map(r => cells(r)[1]), ['Order, Card details', 'Card details', 'Order', 'Order', 'Stock level', 'Stock level', 'Order, Receipt', 'Receipt']);
@@ -163,6 +168,7 @@ test('the PDF (§9, S17): each element\'s kind; an item\'s rows, the flows that 
 const BREAKS = {
   'conveyed-some': m => { flow(m, 'api-warehouse').props.conveyed = []; return ['api-warehouse']; },
   'conveyed-kind': m => { m.nodes.push(N('n1', 'Comment', 'a note')); flow(m, 'api-warehouse').props.conveyed.push('n1'); return ['api-warehouse', 'n1']; },
+  'conveyed-once': m => { flow(m, 'api-warehouse').props.conveyed.push('order-info'); return ['api-warehouse', 'order-info']; },
   'flow-ends': m => { m.edges.push(F('bad', 'order-info', 'shop-api', ['card-details'])); return ['bad', 'order-info', 'shop-api']; },
 };
 test('validators: 15-information-flow.json breaks no rule; each rule fails on a model that breaks it, naming its rule and its elements', () => {
@@ -181,8 +187,19 @@ test('validators: 15-information-flow.json breaks no rule; each rule fails on a 
   assert.deepEqual(T.validate(gone).map(p => [p.rule, p.path, p.message]), [['conveyed-kind', 'edges[3].props.conveyed[1]', 'conveyed-kind: api-warehouse conveys "parcel", which the model does not hold']]);
   const none = structuredClone(IF); delete flow(none, 'api-warehouse').props;
   assert.deepEqual(T.validate(none).map(p => p.rule), ['conveyed-some']);
-  const hidden = structuredClone(IF); hidden.views[0].nodeIds = hidden.views[0].nodeIds.filter(id => id !== 'stock-info'); flow(hidden, 'api-warehouse').props.conveyed.push('shopper');
-  assert.deepEqual(T.validate(hidden), [], 'an item not shown and a classifier may be conveyed');
+  const hidden = structuredClone(IF); hidden.views[0].nodeIds = hidden.views[0].nodeIds.filter(id => id !== 'stock-info'); flow(hidden, 'api-warehouse').props.conveyed.push('warehouse', 'stock-info');
+  assert.deepEqual(T.validate(hidden), [], 'an item not shown and a component may be conveyed');
+  // UML 2.5.1's convey_classifiers: an actor, a data type, an enumeration or a primitive type is never conveyed
+  for (const t of ['Actor', 'DataType', 'Enumeration', 'PrimitiveType']) {
+    const m = structuredClone(IF); m.nodes.push(N('k', t, 'K')); flow(m, 'api-warehouse').props.conveyed.push('k');
+    assert.deepEqual(T.validate(m).map(p => p.rule), ['conveyed-kind'], t);
+  }
+  // a type named like an Object member is a kind like any other, never a crash
+  for (const t of ['constructor', 'toString', '__proto__']) {
+    const m = structuredClone(IF); m.nodes.push({ id: 'x', type: t, label: 'X' }); flow(m, 'api-warehouse').props.conveyed.push('x'); m.edges.push(F('xf', 'x', 'shop-api', ['order-info']));
+    assert.deepEqual(T.validate(m).map(p => p.rule), ['conveyed-kind', 'flow-ends'], t);
+    assert.match(T.validate(m)[0].message, new RegExp(`a ${t.toLowerCase()}:`));
+  }
   const toComment = structuredClone(IF); toComment.nodes.push(N('n1', 'Comment', 'x')); toComment.edges.push(F('c', 'shopper', 'n1', ['order-info']));
   assert.equal(T.validate(toComment)[0].message, 'flow-ends: c runs from "Shopper" (actor) to "x" (comment): a flow joins two classes, interfaces, components or actors');
 });
@@ -213,18 +230,19 @@ test('remove: Shift + Delete on an item takes the flows it leaves conveying noth
   assert.equal(T.edits.remove(IF, v, ['order-info'], false), null, 'Delete hides: the default');
   assert.equal(T.edits.remove(IF, v, ['shop-api'], true), null, 'a component: its flows go by their ends, the default');
   assert.equal(T.edits.remove(IF, v, ['api-email'], true), null);
+  assert.equal(T.edits.remove(IF, v, ['order-info', 'api-email'], true).say, 'Deleted "Order", the line Shop API → Email service and the 2 flows that conveyed nothing else: Storefront → Shop API, Shop API → Warehouse', 'a line by its ends');
 });
 
 test('connect: a flow between two classifiers or actors asks what it conveys, items first; other ends refused; rename sets what it conveys by name', () => {
   const v = IF.views[0], line = { type: 'uml.InformationFlow' };
   const r = T.edits.connect(IF, v, 'shopper', 'shop-api', null, line);
-  assert.deepEqual(r.pick, ['Order', 'Card details', 'Receipt', 'Stock level', 'Shopper', 'Storefront', 'Shop API', 'Payment provider', 'Warehouse', 'Email service']);
+  assert.deepEqual(r.pick, ['Order', 'Card details', 'Receipt', 'Stock level', 'Storefront', 'Shop API', 'Payment provider', 'Warehouse', 'Email service'], 'no actor (convey_classifiers)');
   assert.deepEqual(r.then(2), [{ op: 'add', element: { id: 'flow1', type: 'uml.InformationFlow', from: 'shopper', to: 'shop-api', props: { conveyed: ['receipt-info'] } }, view: V }]);
   assert.deepEqual(validate(apply(IF, r.then(2))), []);
   assert.deepEqual(T.edits.connect(IF, v, 'order-info', 'shop-api', null, line), { error: 'An information flow joins two classes, interfaces, components or actors' });
   assert.equal(T.edits.connect(IF, v, 'shopper', 'shop-api', null, { type: 'uml.CommentLink' }), null, 'a comment link: the default');
   const bare = structuredClone(IF); bare.nodes = bare.nodes.filter(n => n.type === 'uml.Actor'); bare.nodes.push(N('c', 'Comment', 'x'));
-  assert.ok(T.edits.connect(bare, v, 'shopper', 'shopper', null, line).pick.length === 1, 'an actor may be conveyed too');
+  assert.deepEqual(T.edits.connect(bare, v, 'shopper', 'shopper', null, line), { error: 'Add an information item for the flow to convey first' }, 'an actor is never conveyed');
   // rename: the text as drawn, «flow» or not, `[name:] names`; each by its name, else its id
   assert.deepEqual(T.edits.rename(IF, v, 'api-email', '«flow» Order, Receipt'), [], 'unchanged: nothing');
   assert.deepEqual(T.edits.rename(IF, v, 'api-email', 'Receipt, Stock level'), [{ op: 'set', id: 'api-email', path: 'props.conveyed', value: ['receipt-info', 'stock-info'] }]);
@@ -234,6 +252,15 @@ test('connect: a flow between two classifiers or actors asks what it conveys, it
   assert.deepEqual(T.edits.rename(IF, v, 'api-email', 'Order, Parcel'), { error: 'No information item or classifier is named Parcel' });
   assert.deepEqual(T.edits.rename(IF, v, 'api-email', '«flow» '), { error: 'A flow conveys one element at least' });
   assert.equal(T.edits.rename(IF, v, 'shopper', 'Buyer'), null, 'an element: the default');
+  assert.deepEqual(T.edits.rename(IF, v, 'api-email', 'Order, Order, Receipt'), [], 'each element once');
+  // names holding `:` or `,`, and a flow's name holding `:`: the text as drawn comes back unchanged, and each reads right
+  const odd = structuredClone(IF); odd.nodes.push(N('q', 'InformationItem', 'Billing::Receipt'), N('pdf', 'InformationItem', 'Receipt: PDF'), N('na', 'InformationItem', 'Name, address'), N('p2', 'InformationItem', 'PDF'));
+  flow(odd, 'api-email').props.conveyed = ['q', 'pdf', 'na']; flow(odd, 'api-email').label = 'step 1: confirm';
+  const drawn = layout(odd, V).edges.find(e => e.id === 'api-email').label;
+  assert.equal(drawn, '«flow» step 1: confirm: Billing::Receipt, Receipt: PDF, Name, address');
+  assert.deepEqual(T.edits.rename(odd, v, 'api-email', drawn), [], 'Enter on the text as drawn: nothing');
+  assert.deepEqual(T.edits.rename(odd, v, 'api-email', 'Receipt: PDF'), [{ op: 'set', id: 'api-email', path: 'props.conveyed', value: ['pdf'] }, { op: 'set', id: 'api-email', path: 'label', value: undefined }], 'the whole text names an element: no name');
+  assert.deepEqual(T.edits.rename(odd, v, 'api-email', 'step 2: Name, address, PDF'), [{ op: 'set', id: 'api-email', path: 'props.conveyed', value: ['na', 'p2'] }, { op: 'set', id: 'api-email', path: 'label', value: 'step 2' }]);
 });
 
 test('save and reopen (DoD 6): a 30-step session undoes and redoes to byte-identical models, and reopening its saved JSON midway ends where the session does', () => {

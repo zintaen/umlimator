@@ -60,11 +60,12 @@ try {
     const boxes = nodes.map(g => [g.dataset.id, box(g.querySelector('.n-mask'))]);
     boxes.forEach(([a, p], i) => boxes.slice(i + 1).forEach(([b, q]) => { if (p.x < q.x + q.w && q.x < p.x + p.w && p.y < q.y + q.h && q.y < p.y + p.h) bad.push(`${a} and ${b} overlap`); }));
     check(`${tag}: every text inside its shape, none overlapping, the triangle clear of the name`, !bad.length, bad);
-    // line ends: each start on its node's box (an actor's: its figure's 24 px column), within 1 px
+    // line ends: each end on its node's box (an actor's: its figure's 24 px column), within 1 px
     const offs = [];
-    all('.edge-g').forEach(g => { const v = g.querySelector('path.edge').getAttribute('d').match(/-?\d+(\.\d+)?/g).map(Number), n = pick(`.node[data-id="${g.dataset.from}"]`), b = box(n.querySelector('.n-mask'));
-      const o = n.classList.contains('actor') ? { x: b.x + (b.w - 24) / 2, y: b.y, w: 24, h: b.h } : b, d = rectOff(o, v.slice(0, 2)); if (d > 1) offs.push([g.dataset.from, g.dataset.to, +d.toFixed(2)]); });
-    check(`${tag}: each line starts on its shape's outline`, !offs.length, offs);
+    all('.edge-g').forEach(g => { const v = g.querySelector('path.edge').getAttribute('d').match(/-?\d+(\.\d+)?/g).map(Number);
+      [[g.dataset.from, v.slice(0, 2)], [g.dataset.to, v.slice(-2)]].forEach(([id, pt]) => { const n = pick(`.node[data-id="${id}"]`), b = box(n.querySelector('.n-mask'));
+        const o = n.classList.contains('actor') ? { x: b.x + (b.w - 24) / 2, y: b.y, w: 24, h: b.h } : b, d = rectOff(o, pt); if (d > 1) offs.push([g.dataset.from, g.dataset.to, id, +d.toFixed(2)]); }); });
+    check(`${tag}: each line starts and ends on its shapes' outlines`, !offs.length, offs);
     check(`${tag}: each flow dashed with an open arrow`, all('.edge-g path.edge').every(p => p.getAttribute('stroke-dasharray') === '6 4' && /open/.test(p.getAttribute('marker-end'))));
     check(`${tag}: names a screen reader reads`, pick('.node[data-id="order-info"]').getAttribute('aria-label') === 'Information item Order, conveyed by 4 flows'
       && pick('.node[data-id="shopper"]').getAttribute('aria-label') === 'Actor Shopper'
@@ -117,7 +118,7 @@ try {
   check('L, a name and Enter open the picker with the two lines', same(items, ['Information flow', 'Comment link']), items);
   all('.um-pick button')[0].click(); await tick();
   const what = all('.um-pick button').map(b => b.textContent);
-  check('then a picker of what it conveys: the items first, then the classifiers', same(what.slice(0, 4), ['Order details', 'Card details', 'Receipt', 'Stock level']) && what.at(-1) === 'Ledger' && what.length === 11 && pick('.um-pick').getAttribute('aria-label') === 'Choose', what);
+  check('then a picker of what it conveys: the items first, then the classes, interfaces and components, no actor', same(what.slice(0, 4), ['Order details', 'Card details', 'Receipt', 'Stock level']) && what.at(-1) === 'Ledger' && what.length === 10 && !what.includes('Shopper') && pick('.um-pick').getAttribute('aria-label') === 'Choose', what);
   all('.um-pick button')[3].click();
   const m3 = gives('picking Stock level: one add of a flow conveying it (edits.connect)', [{ op: 'add', element: { id: 'flow1', type: 'uml.InformationFlow', from: 'class1', to: 'warehouse', props: { conveyed: ['stock-info'] } }, view: V }],
     m => m.edges.some(e => e.id === 'flow1'), m2);
