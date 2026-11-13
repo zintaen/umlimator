@@ -712,7 +712,7 @@ from, or settles what is not said above:
   `labelGaps`, two after): CPU, best of seven after a warm-up, on a laptop loaded by other jobs (load average 9), a path's
   label 144 to 193 ms, an artifact moved into another node 144 to 188 ms, a full layout 150 to 207 ms, against 26 to 40 ms
   for stage 4's types' edits in the same run; after the review's fixes, at load average 3 to 7, a path's label 101 to 118 ms,
-  an artifact moved 93 to 125 ms, a stereotype (an edit that moves nothing) 103 to 124 ms, a full layout 95 to 118 ms.
+  an artifact moved 93 to 125 ms, a stereotype (it grows a header, so the view lays out again) 103 to 124 ms, a full layout 95 to 118 ms.
   Under CI's 1 s ceiling; at or over the 100 ms target on that machine. Of a layout's time (102 ms) the second `layoutPass`
   that `labelGaps` runs is 44 ms (58 ms without it). The view itself routes less cleanly than the spike's (60 `grid`):
   laid out right, 31 `grid`, 17 `cross`, 2 `fallback` and 24 `check()` issues (crossings); down, 39, 9, 2 and 21. Decision
@@ -963,9 +963,19 @@ adding cases. No other existing test changes.
   `src/uml/structure.js` keeps a port with no line off the end of a plain line on its side (the composite fixture's
   connector to a shared part ended under one).
 - **The fixtures' `all` views** are the generators the types' P1 tests time, written out: the component one has 54 ports
-  (§13 asks 40). The six-level outer box is 488 × 574 px, right and down. Each view's crossings and other findings are
+  (§13 asks 40). The six-level outer box is 488 × 574 px, right and down: the fixture's own six levels, narrower than
+  §10.3's test view (609 px), which 5.5's test pins. Each view's crossings and other findings are
   pinned in `tests/stage5-fixtures.test.mjs`; on `edge-cases`, the box with ten ports on one side holds five at its span's
   start (`over`), as §4.1 allows.
+- **What the fixtures keep against §13's list** (no overlap, no line along a box's border, no port name over a node or a
+  line), pinned in `tests/stage5-fixtures.test.mjs` and stated in each conformance note, for the maintainer to accept as
+  limits: on component `edge-cases`, the ten-port side's five held ports overlapping (15 pairs, both ways); on the
+  generated `all` views, lines sharing a line (component both ways, deployment down), lines along a box's border
+  (component down, deployment right), two box headers crossed and a ball's name under a port (component right), two
+  labels on a line (deployment down), and nine port names over lines and once over a sibling component (component right).
+  In Chrome, `tests/stage5.html` accepts `risks.md` L17 under its monospace font only.
+- **P1's edit that moves nothing** is a colour (§14; `risks.md` F7), checked to lay out nothing again; the stereotype each
+  test also times grows a header (on a component or deployment view) and lays out again.
 - **L9** stays open: 5.7 has not reported, and its outcome closes or re-states it.
 
 ### 16.3 What runs at the same time (S19)

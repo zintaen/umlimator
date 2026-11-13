@@ -65,9 +65,10 @@ try {
           B.forEach((b, id) => { if (!ends.includes(id) && meets(s, { x: b.x + 1, y: b.y + 1, w: b.w - 2, h: b.h - 2 })) bad.push(`${from}>${to} runs through ${id}`); }); });
         [[p[0], from], [p.at(-1), to]].forEach(([q, id]) => { const n = own(id), f = !n && fam(id);
           if (squares.some(b => near(q, b))) return;
-          // known, on the generated view all only (docs/conformance/uml-component.md): where a font wider than the layout's
-          // widens a ball's node, two lines that come in from below end on its node's bottom beside the circle
-          if (v.id === 'all' && n && n.classList.contains('ball') && near(q, bb(n.querySelector(':scope > .n-mask') || n), 16)) return;
+          // known (risks.md L17), on the generated view all under the monospace font only: it widens a ball's node, and two
+          // lines that come in from below end on the node's bottom beside the circle, 2.4 px off it in this Chrome (4 kept)
+          const next = q === p[0] ? p[1] : p.at(-2);
+          if (v.id === 'all' && fname === 'wide' && n && n.classList.contains('ball') && next[1] > q[1] && near(q, bb(n.querySelector(':scope > .n-mask') || n), 4)) return;
           const shapes = n ? [n.querySelector(':scope > .n-body'), n.querySelector(':scope > .n-mask')] : f ? [f.querySelector('.family-box'), f.querySelector('.dp-face'), ...f.querySelectorAll('.family-box ~ *')] : [];
           if (!shapes.some(x => onStroke(svg, x, q))) bad.push(`${from}>${to} ends off ${id}'s outline at ${q}`); }); });
       // every piece named (A1)

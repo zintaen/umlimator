@@ -3645,7 +3645,7 @@ Stage 5 of the plan for 28 diagram types (`docs/diagrams/notes/stage-5.md`). 0.2
 (its section's "Also on `main`"); this section says what they do and what changes from 0.21.0. Everything is additive:
 maps, every typed view released before and every earlier example draw as they did in 0.21.0 (`bench/expected.json`,
 `tests/core-diet.json`'s fingerprints of every view drawn by `lib/umlimator.js`, the examples' stills). The new code is
-in `lib/umlimator-all.js`, except 248 B in the core (5.1 and the follow-ups, below).
+in `lib/umlimator-all.js`, except the core's 110 B more than 0.21.0 (the follow-ups; stage 5 in all: 248 B, below).
 
 - **The four sources (5.0).** `src/uml/structure.js`, `component.js`, `deployment.js` and `composite.js`, listed in
   `tools/build.mjs`'s `ALL`, so they ship in `lib/umlimator-all.js` only.
@@ -3728,7 +3728,12 @@ What moves for a host that upgrades from 0.21.0:
   a role binding to a port; a port's multiplicity; behaviour, service and conjugated ports; XMI; copy and paste;
   per-type `diff()` writers; ELK in the module. The ELK trial (5.7) has not reported: its outcome closes or re-states
   `risks.md` L9.
-- **P1.** On the stress views (CPU, best of seven, a loaded laptop): the composite structure's edits 9 to 10 ms; the
+- **Layout limits** (`notes/stage-5.md` §13's "As built", each conformance note): the fixtures pin, not clear, part of
+  §13's list. On the generated stress views, lines sharing a line or along a box's border, box headers crossed, labels
+  on a line, a ball's name under a port and port names over lines (once over a sibling component); on the component
+  edge case of ten ports on one side of a box, five held ports overlapping. In Chrome, `risks.md` L17.
+- **P1.** On the stress views (CPU, best of seven, a loaded laptop): an edit that moves nothing (a colour) 1 to 37 ms;
+  the composite structure's edits 9 to 10 ms; the
   component's and deployment's full layouts and most edits 110 to 140 ms, over the 100 ms target and under CI's 1 s;
   each conformance note has its figures.
 - **Size:** `lib/umlimator.js`, what a map host loads, is 185,246 B with this machine's `gzip -9` (0.21.0's measures

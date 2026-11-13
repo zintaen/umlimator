@@ -82,8 +82,8 @@ artifact into a node and the Owner field each deploy it by nesting.
 
 `tests/stage5-fixtures.test.mjs` on `tests/deployment-stress.json`'s `all` view (50 nodes and artifacts, 50 lines, boxes
 five deep), CPU time, best of seven after a warm-up, on an Apple laptop at a load average of 3 to 8 (13 Nov 2026): a full
-layout and its SVG 128 ms; a path's label 125 ms; an artifact moved into another node 112 ms; a stereotype set (an edit
-that moves nothing) 133 ms, against the 100 ms target. CI holds 1 s and prints the figures. Over the target on this
+layout and its SVG 128 ms; a path's label 125 ms; an artifact moved into another node 112 ms; a stereotype set (it grows
+a header, so the view lays out again) 133 ms; a colour (an edit that moves nothing) 37 ms, against the 100 ms target. CI holds 1 s and prints the figures. Over the target on this
 machine; of a layout's time the second `layoutPass` that `labelGaps` runs is about 40% (5.5's measure).
 
 ## Tests

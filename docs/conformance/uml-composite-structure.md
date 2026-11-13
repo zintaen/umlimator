@@ -87,8 +87,8 @@ collaboration and its roles, then the lines. Text reads at 4.5:1 and lines and o
 
 `tests/stage5-fixtures.test.mjs` on `tests/composite-stress.json`'s `all` view (30 parts, 50 connectors, 20 ports on
 parts), CPU time, best of seven after a warm-up, on an Apple laptop at a load average of 3 to 8 (13 Nov 2026): a full
-layout and its SVG 15 ms; a part's type changed, laid out and drawn, 9 ms; a stereotype set 10 ms, against the 100 ms
-target. CI holds 1 s and prints the figures.
+layout and its SVG 15 ms; a part's type changed, laid out and drawn, 9 ms; a stereotype set 10 ms; a colour (an edit
+that moves nothing) 1 ms, against the 100 ms target. CI holds 1 s and prints the figures.
 
 ## Tests
 

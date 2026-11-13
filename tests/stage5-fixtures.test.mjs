@@ -50,11 +50,13 @@ function clean(m, vid) {
   return { g, bad, crossings, other: found.filter(p => !/ cross$/.test(p)) };
 }
 
-// what each view keeps, laid out right and down: [crossings, check()'s other findings, what clean() calls wrong]. Port repair
-// is off for the three types (§14). The stress views' all are generated: there the crowding leaves lines sharing a line or
-// along a box's border, a port's name over lines (the layout keeps no room for names, §4.3, L5) and, in the component
-// view, a ball's name under a port. On edge-cases: ten ports on one side of a box, which cannot grow (§4.1), five held at
-// its span's start (over)
+// what each view keeps, laid out right and down: [crossings, check()'s other findings, what clean() calls wrong]. Not §13's
+// "no overlap, no line along a box's border, no port name over a node or a line": these are limits, stated in the type's
+// conformance note and notes/stage-5.md §13's "As built". Port repair is off for the three types (§14). The stress views'
+// all are generated: there the crowding leaves lines sharing a line or along a box's border, box headers crossed, a
+// label on a line (deployment, down), and in the component view a ball's name under a port (Api0 and in) and port names
+// over lines and, once, over a sibling component (c0.b over c4; the layout keeps no room for names, §4.3, L5). On
+// edge-cases: ten ports on one side of a box, which cannot grow (§4.1), five held at its span's start (over), 15 pairs
 const PINNED = {
   'component-minimal': {
     'v': {
@@ -91,7 +93,7 @@ const PINNED = {
       down: [5,[],[]] } },
 };
 
-test('every view of the six fixtures lays out clean right and down: no line through a node, every port line ending on its square, every port on its owner\'s border, no port name over a node or a line, check() finding only what is pinned', () => {
+test('every view of the six fixtures, right and down: line through a node, port line off its square, port off its owner\'s border, port name over a node or a line and check()\'s findings each only as pinned (the stated limits)', () => {
   const seen = {};
   for (const [f, m] of Object.entries(FIX)) for (const v of m.views) for (const d of ['right', 'down']) {
     const r = clean(turned(m, v.id, d), v.id);
@@ -184,12 +186,15 @@ test('the component type names an element by its components and packages only: a
 
 // ---- §14: budgets, in this process's CPU time, best of seven after a warm-up
 const cpu = f => { const c = process.cpuUsage(), out = f(), u = process.cpuUsage(c); return [out, (u.user + u.system) / 1000]; };
+// each edit set's first is a colour, the edit that moves nothing (§14; risks.md F7), checked to lay out nothing again
+const colour = id => i => [{ op: 'set', id, path: 'color', value: ['red', 'blue'][i % 2] }];
 function budgets(f, edits) {
   const m = FIX[f], runs = [];
   for (let i = 0; i < 8; i++) { // the first is a warm-up
     const memos = {}, t = {};
     [, t.full] = cpu(() => mapContext(m, { memos }).buildView('all').markup);
-    for (const [k, c] of Object.entries(edits)) { const e = apply(m, typeof c === 'function' ? c(i) : c); let out; [out, t[k]] = cpu(() => mapContext(e, { memos }).buildView('all').markup); assert.match(out, /^<svg /, k); }
+    for (const [k, c] of Object.entries(edits)) { const e = apply(m, typeof c === 'function' ? c(i) : c), was = memos.all.runs; let out; [out, t[k]] = cpu(() => mapContext(e, { memos }).buildView('all').markup); assert.match(out, /^<svg /, k);
+      if (k === 'colour') assert.equal(memos.all.runs, was, 'a colour lays out nothing again (F7)'); }
     if (i) runs.push(t);
   }
   const best = k => Math.min(...runs.map(t => t[k]));
@@ -199,17 +204,17 @@ function budgets(f, edits) {
   for (const k of Object.keys(edits)) assert.ok(best(k) < 1000, `${k} ${best(k)} ms`);
 }
 
-test('P1 (§14): component-stress.json all: a full layout under 1 s; a port renamed, a component renamed and a stereotype, laid out and drawn, printed against 100 ms (timed)', () => {
-  budgets('component-stress', { port: i => [{ op: 'set', id: 'c5.a', path: 'label', value: 'p'.repeat(3 + i) }], component: i => [{ op: 'set', id: 'c7', path: 'label', value: `Renamed ${'x'.repeat(i)}` }],
+test('P1 (§14): component-stress.json all: a full layout under 1 s; a colour (moving nothing), a port renamed, a component renamed and a stereotype (a header grown, laid out again), laid out and drawn, printed against 100 ms (timed)', () => {
+  budgets('component-stress', { colour: colour('c9'), port: i => [{ op: 'set', id: 'c5.a', path: 'label', value: 'p'.repeat(3 + i) }], component: i => [{ op: 'set', id: 'c7', path: 'label', value: `Renamed ${'x'.repeat(i)}` }],
     stereotype: i => [{ op: 'set', id: 'c9', path: 'props.stereotypes', value: [`v${i}`] }] });
 });
 
-test('P1 (§14): deployment-stress.json all: a full layout under 1 s; a path\'s label, an artifact moved into another node and a stereotype, laid out and drawn, printed against 100 ms (timed)', () => {
-  budgets('deployment-stress', { label: i => [{ op: 'set', id: 'p1-2', path: 'label', value: `TCP ${'x'.repeat(4 + 3 * i)}` }], move: i => [{ op: 'reparent', id: 's0a4', parent: `s${1 + i % 4}t${i % 5}` }],
+test('P1 (§14): deployment-stress.json all: a full layout under 1 s; a colour (moving nothing), a path\'s label, an artifact moved into another node and a stereotype (a header grown, laid out again), laid out and drawn, printed against 100 ms (timed)', () => {
+  budgets('deployment-stress', { colour: colour('s2a1'), label: i => [{ op: 'set', id: 'p1-2', path: 'label', value: `TCP ${'x'.repeat(4 + 3 * i)}` }], move: i => [{ op: 'reparent', id: 's0a4', parent: `s${1 + i % 4}t${i % 5}` }],
     stereotype: i => [{ op: 'set', id: 's2a1', path: 'props.stereotypes', value: [`v${i}`] }] });
 });
 
-test('P1 (§14): composite-stress.json all: a full layout under 1 s; a part\'s type and a stereotype, laid out and drawn, printed against 100 ms (timed)', () => {
+test('P1 (§14): composite-stress.json all: a full layout under 1 s; a colour (moving nothing), a part\'s type and a stereotype, laid out and drawn, printed against 100 ms (timed)', () => {
   // each run's value its own, so no run reuses a layout an earlier one made
-  budgets('composite-stress', { type: i => [{ op: 'set', id: 's.p12', path: 'props.valueType', value: 'Plain' + 'x'.repeat(i + 1) }], stereotype: i => [{ op: 'set', id: 's.p13', path: 'props.stereotypes', value: [`v${i}`] }] });
+  budgets('composite-stress', { colour: colour('s.p13'), type: i => [{ op: 'set', id: 's.p12', path: 'props.valueType', value: 'Plain' + 'x'.repeat(i + 1) }], stereotype: i => [{ op: 'set', id: 's.p13', path: 'props.stereotypes', value: [`v${i}`] }] });
 });

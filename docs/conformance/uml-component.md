@@ -67,11 +67,13 @@ Layout limits, measured on `examples/bookshop-components.json` and `tests/compon
   side's free span, marked `over`, and `check()` reports them overlapping (15 pairs); ten on one side of a node: the node
   grows and every port fits. A port with no line and a 40-character name: the name is drawn whole, but on a crowded side
   the end labels' search may place it far from its port (L5). Its generated `all` view (50 elements, 60 lines, 54 ports
-  in boxes three deep): 126 crossings right and 128 down, two pairs of lines sharing a line, two box headers crossed and a
-  ball's name under a port; a port's name can land over lines there (nine cases laid out right), since the layout keeps
-  no room for names (§4.3).
-- Found in 5.8 (`tests/stage5.html`): in the browser under a font wider than the layout's estimate, two of the `all`
-  view's usages that come into a ball from below end on its node's bottom beside the circle, not on the circle
+  in boxes three deep): 126 crossings right and 128 down. Laid out right: two pairs of lines sharing a line, two box
+  headers crossed, a ball's name under a port (`check()`: nodes "Api0" and "in" overlap), and a port's name over lines
+  in eight cases and over a sibling component in one (`c0.b` over `c4`), since the layout keeps no room for names (§4.3).
+  Laid out down: one pair of lines sharing a line and one line along a box's border. These are stated limits, not §13's
+  "no overlap, no line along a box's border, no port name over a node or a line".
+- Found in 5.8 (`tests/stage5.html`): in the browser under a font wider than the layout's estimate (the page's monospace
+  font, laid out right), two of the `all` view's usages that come into a ball from below end on its node's bottom beside the circle, not on the circle
   (`risks.md` L17).
 - A line's end labels and a port's name are placed apart from each other only as far as the end labels' search sees
   (§4.5, as built in 5.3).
@@ -108,8 +110,9 @@ back; `Alt + arrows` moves a port to another side.
 
 `tests/stage5-fixtures.test.mjs` on `tests/component-stress.json`'s `all` view (50 elements, 60 lines, 54 ports in boxes
 three deep), CPU time, best of seven after a warm-up, on an Apple laptop at a load average of 3 to 8 (13 Nov 2026): a
-full layout and its SVG 131 ms; a port renamed 5.5 ms (no layout); a component renamed 139 ms; a stereotype set 136 ms,
-against the 100 ms target. CI holds 1 s and prints the figures (the maintainer's decision of 13 Nov 2026). The layout
+full layout and its SVG 131 ms; a colour (an edit that moves nothing) 5.4 ms; a port renamed 5.5 ms (no layout); a
+component renamed 139 ms; a stereotype set (it grows the header, so the view lays out again) 136 ms, against the 100 ms
+target. CI holds 1 s and prints the figures (the maintainer's decision of 13 Nov 2026). The layout
 is over the target on this view: the router's cost (5.4 measured 124 ms without `labelGaps`).
 
 ## Tests

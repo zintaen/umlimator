@@ -23,7 +23,8 @@ tests/page-motion.html, with motion on: the page's history through moves: Back a
 tests/shapes.html: card shapes (0.15.0; one style since 0.21.0): each shape, ports on outlines, a card's own shape, a stale shapes field, option, attribute or link that changes nothing, exports, legend.
 tests/aids.html: the reading aids (0.15.0): a box's tone, a step on a line in any view, --um-tint; light and dark, the minimap and the SVG.
 tests/typed-edit.html: editing a typed view (1.7): each gesture's edit event, by pointer and keyboard, applied with apply(); the panels; none of it read-only.
-tests/notation.html: notation (1.5): a classifier, every line end and end labels from svgOf, in both themes and three fonts: text in its face, ends on outlines.
+tests/notation.html: notation (1.5): a classifier, every line end and end labels from svgOf, in both themes and three fonts: text in its face, ends on outlines;
+  stage 5's line ends (5.8, §9.4) on the three stage 5 examples and the stress fixtures' edge-cases views, each kind's end and dash.
 tests/class.html: the class diagram (1.9): examples/sales-classes.json drawn in both themes and three fonts, edited as text and by the picker through apply(), an edit to paint on 40 classes; the fixtures tests/class-minimal.json and
   tests/class-stress.json in both themes and three fonts, an edit to paint on the stress fixture.
 tests/package.html: the package diagram (2.2): examples/bookshop-packages.json in both themes, three fonts and both directions (boxes hold exactly their contents, titles, ends, names, contrast,

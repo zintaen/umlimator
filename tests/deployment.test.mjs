@@ -347,7 +347,7 @@ test('a cube box\'s faces, in its frame: no line runs inside a face, no line\'s 
     const g = layout(withDir(m, direction), v); assert.ok(g.families.length > 0); assert.deepEqual(faceIssues(g), [], `${name} ${direction}`); }
 });
 
-test('P1 (§14): on 50 nodes and artifacts, 50 lines and boxes five deep, a full layout, a path\'s label, an artifact moved into another node and a stereotype (moving nothing), laid out and drawn under CI\'s 1 s ceiling, the 100 ms target printed (CPU, best of seven) (timed)', () => {
+test('P1 (§14): on 50 nodes and artifacts, 50 lines and boxes five deep, a full layout, a path\'s label, an artifact moved into another node and a stereotype (a header grown, laid out again), laid out and drawn under CI\'s 1 s ceiling, the 100 ms target printed (CPU, best of seven) (timed)', () => {
   assert.equal(STRESS.nodes.length, 50); assert.equal(STRESS.edges.length, 50); assert.deepEqual(validate(STRESS), []);
   const timed = f => { const c = process.cpuUsage(); f(); const u = process.cpuUsage(c); return (u.user + u.system) / 1000; };
   const memos = {}, draw = m => mapContext(m, { memos }).buildView('v');
