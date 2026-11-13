@@ -641,6 +641,27 @@ Duration constraint, Comment link). Properties: a lifeline's `represents`, `stat
 `sort` (enum), `replyTo`; an extension's `isRequired`; a stereotype's `isAbstract`; tags on every element (§5.7). Every
 gesture has a key; each is tested by pointer and by key through `apply()`.
 
+As built (6.5), `src/uml/timing.js`, where it departs or settles what the sections above left open:
+
+- **No Comment and no Comment link on the timing palette.** Row 14's vocabulary (§3) has neither; the timing view lays
+  out lanes only, so a comment listed in `nodeIds` would need a place of its own beside the ruler. Left out (§15), for
+  the maintainer to ask for (decision 24, below).
+- **The palette's Change is the entry `uml.StateInvariant`** (a palette entry needs a type; a change in the model has
+  none, §3): `add` writes `{ id, lifeline, at, state }` into the timeline, never a node of that type.
+- **Geometry ids:** a state's row is `<lifeline>-><state>`, the ruler `->ruler`. Delete on either is refused, said.
+- **A constraint on a hidden lifeline's change** stays in the timeline and is not drawn, nor counted by `describe()`,
+  as its change is not (§7.2).
+- **F2's `@`:** a text whose part after its last `@` is not one or two numbers is all text (`mail me@home`). Renaming a
+  change into a state the lifeline does not list adds it to `states` in the same transaction, said, as `add` does.
+- **`connect` from a change to a lifeline** (either way) is a message at the change's time and the slot's; two changes
+  give their two times.
+- **Levels:** `sort` is a warning, as the sequence type's; `reply-call` an error, against the reply's raw `sort`.
+- **What the hint line says** comes with the transaction (`{ commands, say }`, as the sequence type's lifelines):
+  "Hid worker; deleted its 2 messages; its changes stay in the timeline", "Deleted worker, 4 changes and 2 messages",
+  "… a change, a message or a constraint is deleted, not hidden".
+- **L by name:** the canvas finds a node no view lists (a change) by its id, so `L` then typing reaches a change by
+  `w-waiting`, not by its state; arrows reach it as any node.
+
 ### 8.3 Hiding (S17)
 
 | Option | For | Against |
@@ -883,7 +904,7 @@ other tags rewritten the same way); «aggregateRoot» stays defined, a specializ
 | Type | Left out |
 |---|---|
 | Profile | Stereotype icons and custom shapes (`proposal.md` §8.5); stereotypes shown in a comment symbol (12.3.4's third form); a profile's metamodel references and imports; ProfileApplication's `isStrict`; constraints owned by stereotypes (OCL); stereotype operations; a tag's list value; a tag whose type is a metaclass (a reference to a model element: its value passes as any text); a stereotype's associations; nested profiles; the `sysml.` types checked against metaclasses (milestone 3); tags drawn on other types' views (§5.8); XMI profiles (R6) |
-| Timing | Continuous timelines (`proposal.md` §8.5); message events as constraint ends; message labels (the lettered connectors that split a long message); found and lost messages; lifeline destruction (the X at a timeline's end); a duration constraint on a single element and `firstEvent`; time observations (`t = now`); duration observations; general orderings; gates; create and delete messages; lifelines decomposed; ruler breaks; a stored scale (`proposal.md` §8's "set the scale", §6.3); an `sd` frame and its name |
+| Timing | Continuous timelines (`proposal.md` §8.5); message events as constraint ends; message labels (the lettered connectors that split a long message); found and lost messages; lifeline destruction (the X at a timeline's end); a duration constraint on a single element and `firstEvent`; time observations (`t = now`); duration observations; general orderings; gates; create and delete messages; lifelines decomposed; ruler breaks; a stored scale (`proposal.md` §8's "set the scale", §6.3); an `sd` frame and its name; comments and comment links on the view (as built, 6.5, §8.2; decision 24) |
 | Both | Copy and paste (E7); per-type `diff()` writers; a reader (§10) |
 
 Departures from UML 2.5.1, which 6.6's conformance notes carry in a "Departures" line:
@@ -928,6 +949,7 @@ Each is set out with its options and trade-offs in the section named; the recomm
 | 21 | The shape of `props.tags` | Keyed by stereotype, then tag (`{ "column": { "name": "placed_at" } }`): UML's per-application values, no clash between two stereotypes' `name`; costs one JSON level against `model.md` row 7 | A flat map plus a definition-time `tag-clash` error: `model.md`'s shape, but refuses profiles UML allows and clashes between two authors' profiles no user can fix | §5.6 |
 | 22 | An abstract required stereotype | Met by any concrete specialization the element applies; `stereotype-required` (warning) when none: UML's reading for a required stereotype with subclasses; one more rule | A definition-time error `extension-required-abstract`: simple, but refuses a profile UML allows | §5.5 |
 | 23 | A hidden timing lifeline's messages | Stated: they leave the view with it (the core's `hide` drops the view's own lines), said first with their count, as on a sequence view; no code, but showing the lifeline again does not bring them back (undo does) | The type's `remove` hook hides by `set` of `nodeIds` only, keeping the messages undrawn and `message-ends` skipping hidden lifelines: comes back whole, but a second way to hide | §8.3 |
+| 24 | Comments on a timing view (raised by 6.5) | Left out, as built: row 14 lists none, and the view lays out lanes only | Add them: a row of notes under the ruler and their links drawn straight to a lane or a change (a placement of their own, its tests and fixtures) | §8.2 |
 
 The maintainer's question of 13 Nov 2026, whether stages 5 and 6 can run in parallel, is decision 19: yes, for everything
 but stage 6's documents, examples and atlas (6.6, 6.7), which wait for 5.8 because they own the same files
