@@ -2,7 +2,8 @@
 
 Status: **proposed**, for the maintainer's approval before work package 4b.0 starts. Written against `main` at 5f20041
 (0.21.0's release merged, #228; stage 5's 5.0 to 5.6 merged, 5.7's trial and 5.8 open, `stage5-followups` open; stage 6's
-note being drafted). Symbols are named, not line numbers.
+note being drafted). Symbols are named, not line numbers. Revised after two reviews (13 Nov 2026): decisions 21 to 24
+added.
 
 Milestone 4b ships release 0.27.0: the BPMN diagram (`bpmn`, `model.md` row 24) at the elements of BPMN 2.0.2's
 Descriptive conformance sub-class (`plan.md` §5, row M4b). Its new engine work: boundary events on an activity's border;
@@ -18,25 +19,25 @@ what a Process Modeling claim requires besides (Q12).
 
 | # | Point | Decision (recommended) | Section |
 |---|---|---|---|
-| S1 | What 0.27.0 claims | Table 2.1's 24 rows, every listed attribute, plus five rows of Table 2.2 the plan and the example already use (catching and throwing message intermediate events, catching timer intermediate event, interrupting and non-interrupting message and timer boundary events). The conformance note says "based on BPMN 2.0" until every row of Table 2.1 has its test; then "Descriptive conformance sub-class (BPMN 2.0.2, 2.2.2, Table 2.1)". Never "Analytic" | §3 |
+| S1 | What 0.27.0 claims | Table 2.1's 24 rows, every listed attribute, plus the Table 2.2 rows the plan and the example already use: the message intermediate catch event, the message intermediate throw event, the timer intermediate catch event, the message boundary event and the timer boundary event, each boundary event interrupting and non-interrupting. Counted here as five rows; the conformance note (4b.5) names each by Table 2.2's own row name, and if the table splits them differently every count of "five" in this note follows the table. The none intermediate throw event is decision 21 (§3.2). The conformance note says "based on BPMN 2.0" until every row of Table 2.1 has its test; then "Descriptive conformance sub-class (BPMN 2.0.2, 2.2.2, Table 2.1)". Never "Analytic" | §3 |
 | S2 | The vocabulary of `model.md` row 24 | Kept, with what Table 2.1 asks and the row lacks: `props.documentation` on every element; nested lanes (a lane member's `parent` names a lane of its pool); `props.direction` on an association; `props.dataStoreRef` on a data store reference; `props.processRef` on a pool, kept for the round trip; the event definitions each event kind may take | §3 |
-| S3 | Pools and lanes | Stage 4's bands (`src/layout/lanes.js`): a pool is a top-level lane, its lanes nested lanes. An empty row between two pools keeps them apart; each pool's outer edges lie outside the router's lines next to it. `laneBands` gains an optional `runs` (each lane's rows as the type placed them) and counts a box's frame in its rows. No core byte | §5 |
-| S4 | Boundary events | Stage 5's port hook (`LP.ports`, `placePorts` in `src/typed/layout.js`): a boundary event is drawn as a port of its activity, a 32 px circle centred on the border; its lines name it as `fromPort`. A line's new `portMin` gives the port's box its least length along the border, so two boundary events on one side keep apart. Default side: the far side across the flow (bottom, laid out right); a boundary event with a message flow faces that flow's pool; `present.<id>.side` pins it. No core byte | §6 |
+| S3 | Pools and lanes | Stage 4's bands (`src/layout/lanes.js`): a pool is a top-level lane, its lanes nested lanes. An empty row between two pools keeps them apart; each pool's outer edges lie outside the router's lines next to it. `laneBands` gains an optional `runs` (each lane's rows as the type placed them) and counts a box's frame in its rows. The rows themselves come from the type's own lane pass, which keeps a box's block and pins whole (`laneRows` re-rows node by node and would split them, §8.1). Data objects, stores and annotations are drawn in a lane (decision 23). No core byte | §5 |
+| S4 | Boundary events | Stage 5's port hook (`LP.ports`, `placePorts` in `src/typed/layout.js`): a boundary event is drawn as a port of its activity, a 32 px circle centred on the border; its lines name it as `fromPort`. A line's new `portMin` gives the port's box its least length along the border, so two boundary events on one side keep apart. The router does not know the 16 px of circle outside the border, so the type gives the layout the activity grown by 16 px on each side that has boundary events and draws it at its own size on the copy (§6.2). Default side: the far side across the flow (bottom, laid out right); a boundary event with a message flow faces that flow's pool; `present.<id>.side` pins it. No core byte | §6 |
 | S5 | Message flows to a pool's border, a black-box pool's included | The type puts an invisible anchor node in the empty row beside the target pool, one per column a message flow arrives from, removed from the drawn copy; the line's end is slid onto the pool's border on the copy. No core byte | §7.2 |
-| S6 | The two flow kinds' scope rules | Errors in validation, refusals in `connect`: a sequence flow joins two flow nodes of one process at one level (both at a pool's top, or both directly in one sub-process); a message flow joins two different pools, at a pool, an activity, or an event with a message definition that sends (source) or receives (target). `connect` picks the kind from the ends, with no picker | §7 |
-| S7 | Ranking | The type ranks itself (`layout.rank: false`), as the component type does: `cpRank` and `cpPlace` (`src/uml/component.js`, exported by 4b.1) over sequence flows, with boundary events merged into their activity and message flows as ranking links where they close no cycle; lanes then take their rows (§5) | §8.1 |
+| S6 | The two flow kinds' scope rules | Errors in validation, refusals in `connect`: a sequence flow joins two flow nodes of one process at one level (both at a pool's top, or both directly in one sub-process); a message flow joins two different pools, at a pool, an activity, or an event with a message definition that sends (source) or receives (target). A data association keeps BPMN's direction: from a catch event to data, from data to a throw event, either way for an activity. `connect` picks the kind from the ends, with no picker | §7 |
+| S7 | Ranking | The type ranks itself (`layout.rank: false`), as the component type does: `cpRank` and `cpPlace` (`src/uml/component.js`, exported by 4b.1) over sequence flows, with boundary events merged into their activity and message flows as ranking links where they close no cycle; lanes then take their rows by the type's own pass, a block and a pin kept whole (§8.1) | §8.1 |
 | S8 | Expanded and collapsed sub-processes | Both, as Table 2.1 asks: a sub-process is drawn expanded, as a box holding its flow (stage 2's `boxes`), when the view lists something it holds; else collapsed, with the `+` marker, opening its own view (`opensView`, the view's `subject`). The stage 4 rule for composite states | §8.2 |
-| S9 | Labels of events, gateways and data | Outside the shape, under it by default, placed after the layout by the end labels' search (`endLabels`, `src/typed/draw.js`), which keeps clear of lines, nodes and labels placed before; 2.2.3 lets text positions vary. Wrapped to two lines of 120 px | §9.2 |
+| S9 | Labels of events, gateways and data | Outside the shape, under it by default, placed after the layout by a search of the type's own in `src/bpmn/notation.js` (4b.2), modelled on the end labels' search (`endLabels`, `src/typed/draw.js`: stepping outwards until clear of lines, nodes and labels placed before). `endLabels` itself cannot be reused: it reads `e.end.labels`, places one-line 10 px text at a line's end and runs inside `TYPED.lines`. 2.2.3 lets text positions vary. Wrapped to two lines of 120 px | §9.2 |
 | S10 | Which map shapes BPMN reuses (the maintainer's rule of 13 Nov 2026) | The data store reuses the map's `cylinder` outline and inset with the typed look's own paint. The data object does not reuse `document`: its rounded bottom corners are a change of shape 2.2.3 forbids; BPMN's own page is drawn. Every other BPMN shape is BPMN's | §9.1 |
 | S11 | Groups | Drawn after the layout, under everything, as a dashed rounded rectangle round the nodes that name it (`props.categoryValueRef`), 16 px out; added back as a node on its border and title for selection. Not a box: a group crosses pools and lanes | §9.3 |
-| S12 | Editing | Hooks only, no core byte: `connect` (the kind by scope, S6), `moveTo` (a lane or pool by drop, a boundary event's side by Alt + arrows or a drop on another activity's border), `add`, `remove`, `rename`, `key` (`A` attaches a boundary event by a picker of activities; `E` expands or collapses a sub-process in the view), `owners`. Lanes are members: Delete deletes one and moves what it held to its parent, as stage 4's partitions | §11 |
-| S13 | The BPMN XML adapter | `src/readers/bpmn-xml.js`, internal as every reader: `readBpmnXml(xml, moddle)` and `writeBpmnXml(model, viewId, geo, moddle)`, where `moddle` is a `bpmn-moddle` instance the caller made. The module never imports it; `package.json` gains no dependency of any kind. `umlimator.py import` routes `.bpmn` to it and a new `umlimator.py export --format bpmn` writes it, both through Node with `bpmn-moddle` resolved from the user's folder, or a message naming `npm install bpmn-moddle@10.3.1`. CI installs that pinned version with `--no-save` in a scratch folder | §12 |
-| S14 | What the reader keeps | Positions are not kept (`risks.md` R5), said once per file; an element outside S1's subset is reported and kept under `ext.bpmn` as moddle's JSON, not written back; an id that is not an XML name is written escaped, with the model's id in an `umlimator:id` attribute the reader reads back | §12 |
+| S12 | Editing | Hooks only, no core byte: `connect` (the kind by scope, S6), `moveTo` (a lane or pool by drop, a boundary event's side by Alt + arrows or a drop on another activity's border), `add`, `remove`, `rename`, `key` (`A` attaches a boundary event by a picker of activities; `X` expands or collapses a sub-process in the view, since `E` is the canvas's unfold, #71: decision 22), `owners`. Lanes are members: Delete deletes one and moves what it held to its parent, as stage 4's partitions | §11 |
+| S13 | The BPMN XML adapter | `src/readers/bpmn-xml.js`, internal as every reader: `readBpmnXml(xml, moddle)` and `writeBpmnXml(model, viewId, geo, moddle)`, where `moddle` is a `bpmn-moddle` instance the caller made. The module never imports it; `package.json` gains no dependency of any kind. `umlimator.py import` routes `.bpmn` to it and a new `umlimator.py export --format bpmn` writes it, both through Node with `bpmn-moddle` resolved from the user's folder, or a message naming `npm install bpmn-moddle@10.3.1`. CI installs it with `--no-save` in a scratch folder and passes that folder to the tests and the CLI by an environment variable (Node's `import` ignores `NODE_PATH`); how the whole dependency tree is pinned is decision 24. The reader parses through moddle, not by hand: a departure from `risks.md` R2, stated (§12.2, §16) | §12 |
+| S14 | What the reader keeps | Positions are not kept (`risks.md` R5), said once per file; a conditional or default sequence flow is read as a plain one and a send or receive task as a plain task, the rest kept under `ext.bpmn` and reported as weakened; any other element outside S1's subset is reported and kept under `ext.bpmn` as moddle's JSON, not written back; an id that is not an XML name is written escaped, with the model's id in an `umlimator:id` attribute the reader reads back | §12 |
 | S15 | The core's budget (C5) | Milestone 4b's share is 700 B (the maintainer's split of 13 Nov 2026). The plan spends none: everything is in family files. A byte the spike shows is needed is stated in its pull request against that share | §2.3 |
 | S16 | P1 | `repair: false` and `reroute: false` on every layout; CPU, best of N after a warm-up; CI holds a 1 s ceiling and prints each common edit against the 100 ms target; the timed tests are titled " (timed)" and run serially. 4b.1's spike measures a view of 60 flow nodes, three pools, six lanes, ten boundary events and two expanded sub-processes before 4b.3 draws | §14 |
-| S17 | The Bookshop atlas | The example joins the atlas (the maintainer's rule of 13 Nov 2026) with its 15 colliding ids renamed (Q10), and the use case "Track order" opens it | §13 |
-| S18 | Order with stages 5 and 6 and the other milestones | Code starts when this note is approved and stage 6's code lanes are scheduled, within the project's four to five open code lanes: 4b.2 and 4b.4 first (they share no file with stage 6), 4b.1 after `stage5-followups` and 5.8 merge; 0.27.0 after 0.26.0 | §15.3 |
-| S19 | Departures | Stated in §16: a gateway or event label's place; the data object's paint; a message flow drawn into a pool's border at the column it comes from; anchors | §16 |
+| S17 | The Bookshop atlas | The example joins the atlas (the maintainer's rule of 13 Nov 2026) with its 15 colliding ids renamed, every reference to them with them (Q10, §13), and the use case "Track order" opens it | §13 |
+| S18 | Order with stages 5 and 6 and the other milestones | Code starts when this note is approved and stage 6's code lanes are scheduled, within the project's four to five open code lanes: 4b.4 first (it shares no file with stage 6), 4b.2 beside it (it shares only `tests/embed.py`'s append with 6.3, 6.5 and 6.6, rehearsed by X2), 4b.1 after `stage5-followups` and 5.8 merge (it shares `src/typed/draw.js`'s `ENDS` with 6.3, rehearsed); 0.27.0 after 0.26.0 | §15.3 |
+| S19 | Departures | Stated in §16: a gateway or event label's place; the data object's paint; a message flow drawn into a pool's border at the column it comes from; anchors; the reader's parser (R2) | §16 |
 
 What is left out is in §16.
 
@@ -68,27 +69,30 @@ the narrowing to 4 px and the warning, the copy after the layout) holds for boun
 
 | # | What was read | What it says | Where it is handled |
 |---|---|---|---|
-| Q1 | `laneRows`, `laneBands`, `laneRuns` (`src/layout/lanes.js`) | A lane list `[{ id, parent, order }]` nests any depth; an empty lane keeps one row; a lane's own nodes take rows before its nested lanes'. `laneBands` finds each lane's rows again by counting `g.nodes` per column (`laneRuns`), and measures each row's extent from nodes only: a box's frame (`g.families`) is not seen | S3, §5 |
+| Q1 | `laneRows`, `laneBands`, `laneRuns` (`src/layout/lanes.js`) | A lane list `[{ id, parent, order }]` nests any depth; an empty lane keeps one row; a lane's own nodes take rows before its nested lanes'. `laneBands` finds each lane's rows again by counting `g.nodes` per column (`laneRuns`), and measures each row's extent from nodes only: a box's frame (`g.families`) is not seen. `laneRows` re-rows each column node by node, sorted by lane segment: it would split a box's block and move a pin's row. `laneRuns` puts a node in no lane in a segment after every lane, below all pools | S3, §5, §8.1 |
 | Q2 | The activity type (`actGeo`, `acFinish`, `src/uml/activity.js`) | Ranked by the host (`autoPos`), lanes by `laneRows`, partitions left out of the layout and added back as header nodes (`aside: true`), the header room made by moving the bands back by `shift` | §5.3 |
-| Q3 | `placePorts` and `spreadPorts` (`src/typed/layout.js`) | An end with `fromPort` or `toPort` is placed on the side the type gave (`fromSide`, `toSide`); a port's box is 12 px across and `2 + 10 k` along for `k` lines on a face, 8 px between ports (down to 4, then a warning). It works on a node and on a box | S4, §6 |
+| Q3 | `placePorts` and `spreadPorts` (`src/typed/layout.js`) | An end with `fromPort` or `toPort` is placed on the side the type gave (`fromSide`, `toSide`); a port's box is 12 px across and `2 + 10 k` along for `k` lines on a face, 8 px between ports (down to 4, then a warning). It works on a node and on a box. It runs after the router: the router routes to the node's border and never sees a port's box (`e.fpb`, `e.tpb`) | S4, §6 |
 | Q4 | `overlapIssues` (`src/layout/audit.js`) | On `main` a port over its owner is reported. `stage5-followups` adds the skip of a node against the node its `owner` names (decision 22 of stage 5), about 20 B, open | §6, §15.3 |
 | Q5 | `ENDS` and `TYPED.lines` (`src/typed/draw.js`) | `none`, `arrow` (filled), `open`, `triangle` (hollow), `diamond`, `filled-diamond`, `socket`. No open circle. `e.end.dashed` is a boolean, drawn `6 4`: no dotted line | §10 |
 | Q6 | `SHAPE` (`src/draw/shapes.js`) | The map's 13 shapes. `cylinder` is BPMN's data store. `document` has 10 px rounded bottom corners and a folded top right: BPMN's data object has square corners | S10 |
 | Q7 | `cpRank`, `cpPlace` (`src/uml/component.js`) | A self-ranking with boxes as blocks, pins kept and a node a pin would cover moved down. Neither is exported (`export { CP_TYPE, … }`) | S7 |
 | Q8 | The readers and the adapters | The three Mermaid readers are synchronous, internal, in `lib/umlimator-all.js`; `umlimator.py import` routes a Mermaid source by its kind (`mermaid_typed`) through Node. `lib/umlimator-markdown-it.js` takes the host's markdown-it (`md.use`), importing nothing: the precedent for an injected library. `package.json` has no `dependencies`, `peerDependencies` or `devDependencies`, and the repository no lock file | S13 |
-| Q9 | `bpmn-moddle` on npm (`npm view`, 13 Nov 2026) | 10.3.1, published 21 Sep 2026, MIT, an ES module; depends on `moddle`, `moddle-xml`, `min-dash`. `fromXML` returns a promise | S13, §12 |
+| Q9 | `bpmn-moddle` on npm (`npm view`, 13 Nov 2026) | 10.3.1, published 21 Sep 2026, MIT, an ES module; depends on `moddle ^8.2.1`, `moddle-xml ^12.3.1`, `min-dash ^5.1.0` by caret ranges, and `moddle-xml` on `saxen ^11.2.0`: five packages. `moddle-xml` 12.3.2 (30 Oct 2026) already differs from the 12.3.1 named. `fromXML` returns a promise | S13, §12 |
 | Q10 | The atlas against `24-bpmn.json` (`tools/atlas.mjs`, `examples/bookshop-atlas.json`) | 14 of the example's ids are other elements there: `shopper` and `payment-provider` (`uml.Actor`), `bookshop` (`uml.Subject`), `sales` (`uml.Package`), `order` (`uml.Class`), `stock` (`uml.DataStoreNode`), `ship` (`uml.Action`), and seven flows (`f-charged`, `f-paid`, `f-declined`, `f-to-pick`, `f-packed`, `f-wait`, `f-done`, `uml.ControlFlow`); and `take-payment` is a view's id there. The build would stop on each | S17 |
 | Q11 | The core's size | `gzip -9 < lib/umlimator.js \| wc -c`: 185,136 B at 5f20041. The cap is 189,697 B | §2.3 |
 | Q12 | BPMN 2.0.2, clause 2.2 | Table 2.1 (Descriptive): participant (pool), laneSet, unconditional sequence flow, message flow, exclusive and parallel gateway, task (None), user task, service task, sub-process expanded and collapsed, call activity, data object, text annotation, association and data association, data store reference, none start and end events, message start and end events, timer start event, terminate end event, documentation, group. Boundary events and intermediate events are Table 2.2's (Analytic). 2.2.3: the standard's shapes and markers, with flexibility in size, colour, line style and text position; an extension shall not change a shape (rounded corners to square). 2.2.6: every mandatory attribute can be created and displayed. 2.2.8: interchange "should" be supported | S1, S9, S10, §12 |
 | Q13 | `model.md` row 24 against Table 2.1 | The row lacks documentation, nested lanes, an association's direction, a data store's `dataStoreRef`, a pool's `processRef`; it has five rows of Table 2.2 | S1, S2 |
 | Q14 | `frameOf` and the lanes' dividers | A box takes 38 px above its cards (14 and the 24 px title) and 30 below; a divider lies `rgap / 2 - 12` px before a lane's first row, 44 px past the row before at an `rgap` of 64. One level of box fits a lane; a box in a box (12 px more) nearly touches; deeper ones cross | §5.2, §8.2 |
-| Q15 | The hooks (`src/typed/edit.js`) | `key` hears a key with no modifier before the canvas, only where the host offers `rename`; `moveTo` gets `at.geo`; `{ pick, then }` opens a picker | §11 |
+| Q15 | The hooks (`src/typed/edit.js`) | `key` hears a key with no modifier before the canvas, only where the host offers `rename`; `moveTo` gets `at.geo`; `{ pick, then }` opens a picker. The canvas (`src/canvas/render.js`) binds `E` to "unfold here, or fold back" (#71) in every mode; the letters the canvas and the typed editor bind are `E F L N O P V W`, so `A` and `X` are free | §11 |
 | Q16 | `umlimator.py` | `import` reads Structurizr, PlantUML, Mermaid, Compose and Kubernetes; there is no `export` command | S13 |
 
 ### 2.3 The core's budget (C5, S15)
 
-The cap is 189,697 B (0.16.0's 164,954 B plus 15%). Of the 4,451 B left when the maintainer split it (13 Nov 2026),
-milestone 4b's share is 700 B. Nothing in this note needs the core:
+The cap is 189,697 B (0.16.0's 164,954 B plus 15%). Measured at 5f20041 the core is 185,136 B, so 4,561 B are left (the
+figure `stage-6.md` uses). The maintainer split 4,451 B of it on 13 Nov 2026 (stage 6 400 B, M2 1,400 B, M3 500 B, M4a
+700 B, M4b 700 B, a reserve of about 750 B); that split is given in the maintainer's instructions and recorded in no
+document on this branch, so §18 asks the lead to log it in `docs/diagrams/README.md`. Milestone 4b's share is 700 B.
+Nothing in this note needs the core:
 
 - the boundary events' placement is `placePorts` (`src/typed/layout.js`), with one more line field;
 - the circle end and the dotted line are `src/typed/draw.js`'s;
@@ -157,8 +161,16 @@ Table 2.1's rows, and where each is in the model:
 | Start event | `none`, `message`, `timer` | 2.1 |
 | End event | `none`, `message`, `terminate` | 2.1 |
 | Intermediate catch event | `message`, `timer` | 2.2 |
-| Intermediate throw event | `message` (`none` too, the full class's; kept since the reader meets it) | 2.2 |
+| Intermediate throw event | `message`; `none` only if decision 21 takes it | 2.2 |
 | Boundary event | `message`, `timer`; `cancelActivity` false is non-interrupting | 2.2 |
+
+The none intermediate throw event (a milestone marker, met in real files) is outside S1's five rows. Allowing it, as the
+first draft did, would create and write an element outside the stated claim.
+
+| Option, the none intermediate throw event (decision 21) | For | Against |
+|---|---|---|
+| **(a) A sixth extra, named in S1, §15.5, §16 and the release notes (recommended)** | Files that mark milestones with it read whole; drawing it costs nothing (a double ring with no marker) | The claim names one more extra |
+| (b) Left out: `event-definition` refuses it, the reader reports it skipped and keeps it under `ext.bpmn` | The claim stays at five extras | Such a file loses its milestones and the sequence flows through them, so the process reads broken (`flow-start` warns) |
 
 | Option, the claim (S1) | For | Against |
 |---|---|---|
@@ -188,7 +200,7 @@ Rules, each with a passing and a failing fixture; a model BPMN forbids is an err
 | `gateway-flows` | warning | A gateway with one incoming and one outgoing flow does nothing (`risks.md` §6's "a gateway with one exit"); a diverging exclusive gateway's flows out each carry a name |
 | `lane-owner` | error | A lane's `parent` is a lane of the same participant; a flow node's `parent` is a lane, a participant, a sub-process or none; a data object's or store's a participant or none |
 | `in-lane` | warning | In a pool that has lanes, every flow node is in one |
-| `data-ends` | error | A data association joins a data object or data store reference with an activity or an event; an association has a text annotation at one end at least |
+| `data-ends` | error | A data association joins a data object or data store reference with an activity or an event, in BPMN's direction: a catch event (start, intermediate catch, boundary) has data outputs only, so its line goes event to data; a throw event (end, intermediate throw) has data inputs only, so its line goes data to event; an activity either way. Failing fixtures: data to a start event; an end event to data. An association has a text annotation at one end at least |
 | `group-ref` | warning | Every `categoryValueRef` names a `bpmn.Group` |
 | `opens-view` | warning | A collapsed sub-process's or a call activity's `opensView` names a `bpmn` view; a sub-process's own view names it as `subject` |
 
@@ -213,6 +225,19 @@ dependency.
 - **Boxes in the rows.** When `g.families` is not empty, a box's frame counts toward the extent of its first and last
   content row, so a divider is never drawn across an expanded sub-process (Q14). The activity type has no boxes.
 - The empty row between two pools is a run of its own in `runs`, with no band; the type draws no band for it.
+- The rows in `runs` are the type's (§8.1), never `laneRuns`' count, so an item in no lane is never put below every pool.
+
+### 5.2a Data objects, stores and annotations in a pool with lanes (decision 23)
+
+In the model they sit in a pool, in no lane (§3.1). `laneRuns` would put them in the segment after every lane, below all
+pools, and `cpPlace` packs items no sequence flow reaches under its block; either way they leave their pool's band. The
+type decides their drawn lane (its `laneOf`); their `parent` does not change.
+
+| Option | For | Against |
+|---|---|---|
+| **(a) Drawn in the lane of the first flow node they are associated with (by the lines' order), in that column's next free row; with no association, in a run of the pool's own after its lanes (recommended)** | Data sits beside the activity that reads or writes it, as BPMN tools draw it; nothing leaves its pool | A data object shared by two lanes is drawn in the first one's |
+| (b) Always in a run of the pool's own after its lanes | One rule | Data drawn far from its activities; association lines cross every lane between |
+
 - A pool's band is grown on its outer edges to 12 px outside the router's line in the gap beside it (laneBands' own
   edges lie 12 px inside it): a sequence flow running along that line stays inside its pool. Done by the type on its copy,
   where the empty row leaves room; the fixtures check that no sequence flow leaves its pool's band (§13).
@@ -252,6 +277,12 @@ of one empty row, 120 px across at least (stage 4's empty lane), its name in its
   facing the other end's pool. Every line of it gets that side; the hook never moves it (5.1).
 - **Size.** The activity is sized so its boundary events fit: on each side, `16 + Σ (32 + 8)` px at least, as stage 5
   sizes a node for its ports (§4.1 there).
+- **Room for the circle.** `portMin` sets the port's box along the border only; across it the box stays 12 px, and the
+  router never reads port boxes anyway (Q3), while the circle reaches 16 px outside the activity. So the type gives the
+  layout the activity grown by 16 px on each side that holds a boundary event, and on the copy draws the activity at its
+  own size inside that box: the router keeps its lines off the whole circle, and the lines' ends already lie on the
+  circle's outer side. No engine field. 4b.1's spike counts lines that cross a boundary circle (§14); the fixtures'
+  "no line through a node" covers the circles, which are on the copy's `nodes`.
 - **Drawn** on the copy: a 32 px circle centred on the port's box, double ring, dashed when non-interrupting
   (`cancelActivity: false`), with its definition's marker; its lines' ends slid onto its outer face; its label by S9's
   search. One with no line is placed on its side's free span by its place among its activity's boundary events, as 5.3
@@ -271,8 +302,9 @@ emits:
 - both ends in one pool and one level: a sequence flow;
 - ends in two pools: a message flow, if `message-ends` allows its ends, else refused ("A message flow cannot start at a
   start event");
-- a data object or data store at one end: a data association, the other end an activity or event; a text annotation at
-  one end: an association;
+- a data object or data store at one end: a data association, the other end an activity or event, if `data-ends`'
+  direction allows it, else refused ("A start event only gives data: draw the line from the event to the data"); a text
+  annotation at one end: an association;
 - anything else refused with the rule's words ("A sequence flow cannot leave its pool: use a message flow between
   Bookshop and Shopper's pools", `risks.md` §6's "a flow that would leave its pool (refused)").
 
@@ -307,19 +339,37 @@ a message flow may cross lane dividers and sequence flows on its way; the fixtur
 
 | Option | For | Against |
 |---|---|---|
-| **(a) The type ranks itself (`layout.rank: false`): `cpRank` and `cpPlace` over sequence flows, a boundary event's flows counted from its activity, message flows as links where they close no cycle, an expanded sub-process a block; then each lane takes the rows its items need in each column, pools apart by an empty row, and the type gives `runs` to `laneBands` (recommended)** | The component type's code (5.4), exported, not copied; pins kept; message flows pull the pools' columns into line; one ranking for blocks and lanes | Two exports added to `src/uml/component.js` (4b.1, one line) |
+| **(a) The type ranks itself (`layout.rank: false`): `cpRank` and `cpPlace` over sequence flows, a boundary event's flows counted from its activity, message flows as links where they close no cycle, an expanded sub-process a block; then each lane takes the rows its items need in each column, pools apart by an empty row, and the type gives `runs` to `laneBands` (recommended)** | The component type's code (5.4), exported, not copied; pins kept; message flows pull the pools' columns into line; one ranking for blocks and lanes | Two exports added to `src/uml/component.js` (4b.1, one line); a lane pass of the type's own (below) |
 | (b) The host's ranking (`autoPos`), as the activity type | No ranking code | `autoPos` ranks `nodeIds` by the lines between them (stage 5 Q11): pools and boundary events would be ranked as nodes, a black-box pool as a card |
+
+The lane pass is the type's own (`src/bpmn/process.js`, 4b.3), not `laneRows`. `laneRows` re-sorts each column node by
+node by lane segment: it would split an expanded sub-process's block, put other nodes of its lane between the block's
+contents (the frame then overlaps them), and move a pin's row. The type's pass works on `cpPlace`'s top-level items:
+
+- a block (an expanded sub-process) is one item, `h` rows tall in every column it spans; its contents keep their rows
+  relative to its first row;
+- in each lane, the items keep `cpPlace`'s order and relative rows; the lane is moved as a whole to its run, after the
+  runs of the lanes before it (nested lanes as `laneOrder` gives them), and its run is as many rows as its items need in
+  its fullest column;
+- a pin in a pool with lanes is an order inside its lane, as stage 4 §5.2 rules for the activity type; a pin in a view
+  with no lanes keeps its row;
+- data objects, stores and annotations take the lane decision 23 gives them;
+- the result is `runs` for `laneBands` (§5.2).
+
+4b.3 tests it: a block in a lane with another node of that lane in the block's columns, both directions, the frame
+overlapping nothing; a pinned node in a lane; a data object in a pool with lanes inside its pool's band.
 
 ### 8.2 Expanded and collapsed sub-processes (S8)
 
 | Option | For | Against |
 |---|---|---|
-| **(a) Expanded, a box, when the view lists something it holds; else collapsed, with `+`, opening its view (recommended)** | Table 2.1 lists both; the stage 4 rule for composite states; nothing new stored; `E` toggles it by changing the view's `nodeIds` | A box in a lane: one level fits a band, deeper ones are checked (Q14) |
+| **(a) Expanded, a box, when the view lists something it holds; else collapsed, with `+`, opening its view (recommended)** | Table 2.1 lists both; the stage 4 rule for composite states; nothing new stored; a key toggles it by changing the view's `nodeIds` (decision 22) | A box in a lane: one level fits a band, deeper ones are checked (Q14) |
 | (b) `present.<id>.expanded` | Explicit | A second way to say what `nodeIds` says |
 | (c) Collapsed only, its inside in its own view | No box in a lane | Table 2.1's "subProcess (expanded)" missing: no Descriptive claim |
 
 A box in a band keeps to its lane: its contents are in its lane by rule (a flow node in a sub-process is in the
-sub-process's lane), the box is one block in `cpPlace`, and `laneBands` counts its frame (§5.2). A boundary event on an
+sub-process's lane), the box is one block in `cpPlace` and in the type's lane pass (§8.1), and `laneBands` counts its
+frame (§5.2). A boundary event on an
 expanded sub-process is a port on its box. Its contents' sequence flows stay inside it (`sequence-scope`).
 
 ## 9. Notation
@@ -345,7 +395,7 @@ least, strokes `--um-muted`, fills the stage's background; text cut with `fit`.
 
 | Option | For | Against |
 |---|---|---|
-| **(a) Events, gateways, data objects and stores carry their name outside, under the shape, moved by the end labels' search where it meets a line, a node or a label (recommended)** | BPMN's habit, allowed by 2.2.3; the shapes stay their standard size; the search exists | The layout keeps no room for the label (stage 5's ball name); a dense row gap may push it aside |
+| **(a) Events, gateways, data objects and stores carry their name outside, under the shape, moved by a search of the type's own where it meets a line, a node or a label (recommended)** | BPMN's habit, allowed by 2.2.3; the shapes stay their standard size; the search is `endLabels`' stepping loop rewritten for a node's two-line, 120 px label in `src/bpmn/notation.js` (4b.2), no core byte | The layout keeps no room for the label (stage 5's ball name); a dense row gap may push it aside |
 | (b) The node's box holds the shape and its label, the line ends slid to the shape (the actor's precedent) | Room reserved | A line ending on the bottom of the box crosses the label to reach the shape |
 | (c) Inside, as UML's diamond (stage 4's S8) | Never meets a line | Grows a 40 px gateway and a 32 px event to their text: not BPMN's look |
 
@@ -367,7 +417,8 @@ A group naming nothing shown is not drawn, and `describe()` says so.
   a message flow's start.
 - `e.end.dashed: 'dot'`: a dotted line (`2 3`); `true` stays `6 4`.
 
-Both are `src/typed/draw.js`'s, which milestone 2's line-end skins (crow's feet, IDEF1X) also extend (§15.4).
+Both are `src/typed/draw.js`'s, which stage 6's 6.3 (a filled triangle in `ENDS`) and milestone 2's line-end skins
+(crow's feet, IDEF1X) also extend (§15.4).
 
 ## 11. Editing (S12)
 
@@ -378,7 +429,7 @@ Both are `src/typed/draw.js`'s, which milestone 2's line-end skins (crow's feet,
 | `add` | Palette, `N` | Into the lane, pool or expanded sub-process selected; a boundary event onto the activity selected (refused with none); events and gateways with `name: false` |
 | `remove` | Delete, Shift + Delete | A lane (a member): deleted, its flow nodes and nested lanes moved to its parent (stage 4's S10); a pool: what it owns goes with it (`apply()`'s cascade), the hint line counting it; an activity: its boundary events with it, by `refs` (`'bpmn.BoundaryEvent': { 'props.attachedTo': 'cascade' }`); a group: the `categoryValueRef` entries naming it dropped, by `refs` |
 | `rename` | F2 | A flow's name; an annotation's text |
-| `key` | A key on a selection | `A` on a boundary event: a picker of the activities of its pool, then `set props.attachedTo`. `E` on a sub-process: expand (add what it holds to `nodeIds`) or collapse (remove it), one `set` of the view's `nodeIds` |
+| `key` | A key on a selection | `A` on a boundary event: a picker of the activities of its pool, then `set props.attachedTo`. `X` on a sub-process: expand (add what it holds to `nodeIds`) or collapse (remove it), one `set` of the view's `nodeIds` (decision 22). Every other key returns null, so the canvas's own keys (`E`, #71, among them) reach every other node unchanged |
 | `owners` | The Owner field | A flow node's lanes, pools and sub-processes; a lane's lanes of its pool |
 
 Palette: Pool, Lane, Task, User task, Service task, Sub-process, Call activity, Start, Message start, Timer start,
@@ -392,6 +443,16 @@ hint: `connect` picks). Properties: `documentation` on every element; `taskType`
 | **(a) `A` and a picker, through `edits.key` (recommended)** | Stage 5's `B` precedent; no core byte | The panel shows `attachedTo` as text, read only |
 | (b) A properties field listing the activities | In the panel | The panel's enums are static (stage 4 Q9): a dynamic one is the core's `src/canvas/edit.js` |
 
+`E` is taken: `src/canvas/render.js` binds `e`/`E` to "unfold here, or fold back" (#71), and the type's `key` hook runs
+before it only where `rename` is offered (`src/typed/edit.js`). With `E` as the type's key, the same key would expand a
+sub-process in the view while editing and unfold its drill-down when read only, and would hide #71 on sub-processes.
+
+| Option, the key that expands a sub-process (decision 22) | For | Against |
+|---|---|---|
+| **(a) `X` (free), through `edits.key`; `E` stays #71's everywhere (recommended)** | One meaning per key in every mode; no core byte | A letter to learn; the hint line and the keyboard help name it |
+| (b) `E` through `edits.key` on sub-processes only | One key for "open here" | It means two things by mode, and #71 is unreachable on a sub-process while editing |
+| (c) No key: expand by the view's list in the panel | Nothing to learn | The definition of done's keyboard path gets longer (open the panel, edit the list) |
+
 Hiding: a node leaves the view by Delete and the model by Shift + Delete. A lane is a member and cannot be hidden: Delete
 deletes it from the model, said on the hint line first (stage 5's S20).
 
@@ -401,14 +462,41 @@ deletes it from the model, said on the hint line first (stage 5's S20).
 
 | Option | For | Against |
 |---|---|---|
-| **(a) The caller passes a `bpmn-moddle` instance: `readBpmnXml(xml, moddle)` (a promise of `{ model, report }`) and `writeBpmnXml(model, viewId, geo, moddle)` (a promise of the XML), internal in `lib/umlimator-all.js` as every reader; the CLI resolves `bpmn-moddle` from the user's folder; CI installs 10.3.1 with `--no-save` in a scratch folder (recommended)** | The module imports nothing and `package.json` does not change (D8); the markdown-it plugin's precedent (Q8); a host passes the version it has | The CLI's user installs it once; the reader is asynchronous where the others are not |
+| **(a) The caller passes a `bpmn-moddle` instance: `readBpmnXml(xml, moddle)` (a promise of `{ model, report }`) and `writeBpmnXml(model, viewId, geo, moddle)` (a promise of the XML), internal in `lib/umlimator-all.js` as every reader; the CLI resolves `bpmn-moddle` from the user's folder; CI installs it with `--no-save` in a scratch folder, pinned by decision 24 (recommended)** | The module imports nothing and `package.json` does not change (D8); the markdown-it plugin's precedent (Q8); a host passes the version it has | The CLI's user installs it once; the reader is asynchronous where the others are not |
 | (b) An optional `peerDependency` and a dynamic `import('bpmn-moddle')` | One call | `package.json` gains a dependency entry; bundlers warn on a missing optional peer |
 | (c) A `devDependency` for the tests | Tests run with `npm test` alone | A dependency all the same, with a lock file question the repository has avoided |
+
+How the tests and the CLI find it. Node's `import` ignores `NODE_PATH`, so a package in a scratch folder is found only
+by an explicit path:
+
+- the tests and the CLI read `UMLIMATOR_BPMN_MODDLE`, a folder; they resolve `bpmn-moddle` from it with
+  `createRequire(path.join(folder, 'x')).resolve('bpmn-moddle')` and import that file by `pathToFileURL`. With no
+  variable they resolve from the working folder, then the CLI's `--moddle PATH`;
+- 4b.4 therefore edits `.github/workflows/check.yml` in three places: the install step, and the variable on the two
+  existing `node --test` steps (the main run and the serial " (timed)" run).
+
+`bpmn-moddle@10.3.1` pins only the top package: its four dependencies are caret ranges, and `moddle-xml` has already
+moved past the 12.3.1 named (Q9). With no lock file CI is not reproducible.
+
+| Option, pinning CI's install (decision 24) | For | Against |
+|---|---|---|
+| **(a) Pin all five packages exactly on the install line: `npm install --no-save --prefix "$RUNNER_TEMP/moddle" bpmn-moddle@10.3.1 moddle@8.2.1 moddle-xml@12.3.2 min-dash@5.1.0 saxen@11.2.0` (recommended)** | Reproducible with no lock file in the repository: npm satisfies the caret ranges with the exact top-level copies; one line | The five versions are moved by hand, together; a new dependency in a later `bpmn-moddle` would float until added |
+| (b) A lock file for that folder only (`tests/moddle/package.json` and `package-lock.json`, installed with `npm ci`) | Exact to the byte, integrity hashes included | The repository's first lock file, kept up to date by hand |
+| (c) The top package only, as first drafted | Shortest | Not reproducible: a `moddle-xml` release can change CI's result with no commit |
+
+The `risks.md` row for version drift says which option was taken and that the CLI's user gets whatever their own install
+resolves.
 
 ### 12.2 Reading
 
 - Text over 1 MiB is refused (R2); moddle's errors and warnings become report items; the reader never throws (R1). A
   hostile file (deep nesting, entity expansion, many references) is read or refused in under 1 s each.
+- **A departure from R2.** R2's safeguard is "hand-written, linear readers" (stage 4 restates it); this reader parses
+  through moddle's parser (`saxen`) and moddle's handlers. What holds instead: the 1 MiB limit bounds the element count;
+  every moddle call (`fromXML`, `toXML`) and the reader's own walk are inside one `try`, so a `RangeError` (a stack
+  overflow in moddle's handlers at depth) or any other throw becomes a report item, never a throw; the reader's walk over
+  moddle's tree is iterative; the hostile fixtures (§13), a many-references file among them, each finish under 1 s. Stated
+  in §16 and in `risks.md` R2 (§18).
 - One model; one `bpmn` view per `BPMNDiagram`, its `nodeIds` the plane's shapes; a sub-process's own plane is a view
   with it as `subject`, and the sub-process `opensView` it. Elements with no shape go to the first view.
 - Mapping by Table 2.1 (§3.1). A pool's process: its lanes become members, `flowNodeRef` sets `parent`; a data object
@@ -416,8 +504,14 @@ deletes it from the model, said on the hint line first (stage 5's S20).
   has none); a category value becomes the group's own id in `categoryValueRef`.
 - Ids are kept (R3). An `umlimator:id` attribute, written by the writer, gives the model's id back.
 - Positions, sizes, label bounds and colours from DI are not kept (D1, R5): one report item per file says so.
-- An element outside S1's subset (a conditional flow, a send task, a signal event…) is reported `skipped` and kept
-  under the model's `ext.bpmn` as moddle's JSON with its parent's id (`model.md` rule 12); its flows are reported too.
+- **Weakened, not skipped.** Nearly every file with an exclusive gateway puts a `conditionExpression` on the flows
+  leaving it and a `default` on the gateway; skipping them would leave the gateway with no flows out and fire
+  `gateway-flows` and `flow-start` on a sound file. So a conditional or default sequence flow is read as a plain
+  `bpmn.SequenceFlow`, its condition (and the gateway's `default`) kept under `ext.bpmn` keyed by the flow's (gateway's)
+  id; a send or receive task is read as a `bpmn.Task` with `taskType: none`, its kind kept under `ext.bpmn`. Each is one
+  report item, `weakened`. The writer writes them plain, and its report says what was dropped (§12.3).
+- Any other element outside S1's subset (a signal event, an inclusive gateway…) is reported `skipped` and kept under the
+  model's `ext.bpmn` as moddle's JSON with its parent's id (`model.md` rule 12); its flows are reported too.
 
 ### 12.3 Writing
 
@@ -430,6 +524,10 @@ deletes it from the model, said on the hint line first (stage 5's S20).
 - An id that is not an XML name is written as one (`_` and the code points) with `umlimator:id` holding the model's.
 - What `ext.bpmn` holds is not written back, and the report says so.
 - `read(write(model))` equals the model for the example and 500 generated models, ids included.
+- Its limits, for the fidelity table (definition of done 7, 4b.5): positions and sizes come from the type's layout, not
+  from any file read before; label bounds are not written; `ext.bpmn` (skipped elements, and weakened flows' conditions,
+  defaults and task kinds) is not written back; an id that is not an XML name is escaped, the model's id in
+  `umlimator:id`.
 
 | Option, what the reader cannot map | For | Against |
 |---|---|---|
@@ -441,8 +539,8 @@ deletes it from the model, said on the hint line first (stage 5's S20).
 
 `umlimator.py import order.bpmn --out model.json` (the format by the `.bpmn` extension or `--format bpmn`) and
 `umlimator.py export model.json --view ID --format bpmn --out order.bpmn` run Node with `bpmn-moddle` resolved from the
-working folder (`--moddle PATH` to name another). Without it, both exit with: "BPMN needs bpmn-moddle: npm install
-bpmn-moddle@10.3.1". `export` is a new command; it writes BPMN only in 0.27.0.
+working folder (`--moddle PATH` or `UMLIMATOR_BPMN_MODDLE` to name another, §12.1). Without it, both exit with: "BPMN
+needs bpmn-moddle: npm install bpmn-moddle@10.3.1". `export` is a new command; it writes BPMN only in 0.27.0.
 
 ## 13. Fixtures, examples and the atlas
 
@@ -455,12 +553,16 @@ pool's band, no line end off its outline or boundary circle (1 px).
 | `bpmn-minimal.json` | One pool: a start event, a task, an end event |
 | `bpmn-stress.json`, view `edge-cases` | A boundary event that moves with its task (the task pinned, then the pin moved); two boundary events on one side (timer interrupting, message non-interrupting); a boundary event on an expanded sub-process; a message flow to and from a black-box pool, two from one column; a gateway with one exit (warned); a sub-process shown closed in one view and open in another; a sequence flow across pools (an error in JSON, refused by `connect`); lanes three deep; an empty lane; a flow node in a pool with lanes but in none (warned); a group across two pools; an annotation with an association; a data object and a data store with associations both ways; 40-character labels on an event and a gateway; every row of Table 2.1 |
 | `bpmn-stress.json`, view `all` | 60 flow nodes, three pools, six lanes, ten boundary events, ten message flows, two expanded sub-processes (P1) |
-| `tests/import/descriptive.bpmn` | A file with every Table 2.1 row and the five extras, with DI; the report pinned |
-| `tests/import/hostile/*.bpmn` | Over 1 MiB; entity expansion; 10,000 levels of nesting; a reference to nothing; no DI; an unknown namespace. Each read or refused in under 1 s, never thrown |
+| `tests/import/descriptive.bpmn` | A file with every Table 2.1 row and the extras (S1, decision 21), with DI; the report pinned |
+| `tests/import/hostile/*.bpmn` | Over 1 MiB; entity expansion; 10,000 levels of nesting; many references (just under 1 MiB of sequence flows, every one with `sourceRef` and `targetRef` on one pair of tasks); a reference to nothing; no DI; an unknown namespace. Each read or refused in under 1 s, never thrown; the nesting file's stack overflow, if moddle has one, is a report item |
+| `tests/import/weakened.bpmn` | An exclusive gateway with conditional flows and a default, a send and a receive task: read as plain flows and tasks, each reported `weakened`, `gateway-flows` and `flow-start` silent |
 
 The example moves to `examples/bookshop-order-to-shipment.json` and joins the gallery and CI. Its 14 ids that are other
 types in the atlas and `take-payment` (a view there) are renamed with a `bp-` start (`bp-shopper`, `bp-order`,
-`bp-take-payment`, `bp-f-paid`…, Q10), so `tools/atlas.mjs` merges it without a disagreement.
+`bp-take-payment`, `bp-f-paid`…, Q10), so `tools/atlas.mjs` merges it without a disagreement. Every reference to a
+renamed id is renamed with it: views' `nodeIds`, lines' `from` and `to`, `props.attachedTo` (`payment-timeout` names
+`take-payment`), `parent` (the `sales` lane's members), `subject` and `opensView`. 4b.5 checks the renamed file: the
+atlas builds, `check.mjs` passes, and the example validates with the same problems as before the rename.
 
 | Option, joining the atlas (S17) | For | Against |
 |---|---|---|
@@ -482,8 +584,9 @@ types in the atlas and `take-payment` (a view there) are renamed with a `bp-` st
 - Both flags off on every layout (stage 4 §17, decision 13): one picture fresh or after an edit (DoD 6).
 - Timed tests are titled " (timed)" and run serially (`package.json`'s `test`).
 - **4b.1's spike**, before 4b.3 draws: on a test-only view of the `all` fixture's size, with a test-only type, the common
-  edits laid out and drawn; and the count of sequence flows routed outside their pool's band. Over 100 ms on an idle
-  machine, or a flow outside its pool, goes to the maintainer with options before 4b.3 draws.
+  edits laid out and drawn; the count of sequence flows routed outside their pool's band; and the count of lines that
+  cross a boundary circle (with the activities grown by 16 px, §6.2). Over 100 ms on an idle machine, a flow outside its
+  pool, or a line through a circle, goes to the maintainer with options before 4b.3 draws.
 
 ## 15. Work packages
 
@@ -492,7 +595,7 @@ types in the atlas and `take-payment` (a view there) are renamed with a `bp-` st
 - This note is approved; `model.md` row 24 and `risks.md` take §17's changes with it.
 - Stage 6's code lanes are scheduled, and no more than four or five code lanes are open across the project.
 - `stage5-followups` (the overlap check's owner skip, `src/typed/layout.js`) and 5.8 (the atlas, `check.mjs`, the
-  schema) have merged before 4b.1 and 4b.5.
+  schema, and 26 lines of `src/uml/component.js`) have merged before 4b.1 and 4b.5.
 
 ### 15.2 The packages
 
@@ -504,11 +607,11 @@ row and writes its release notes in its pull request for 4b.5 to gather.
 | # | Work package | Owns | Depends on | Done when |
 |---|---|---|---|---|
 | 4b.0 | **List the files** (the lead). `bpmn/notation`, `bpmn/process`, `readers/bpmn-xml` as empty files, in `ALL` after the last stage's listed, in that load order | `tools/build.mjs`, the three empty files | This note; stage 6's lanes scheduled | `lib/umlimator-all.js` changes by blank lines only; `lib/umlimator.js` not at all; no other 4b lane edits `ALL` |
-| 4b.1 | **Engine.** `portMin` in `spreadPorts` and `EDGE_GEO` (§6.2); `ENDS.circle` and `dashed: 'dot'` (§10); `laneBands`' `runs` and boxes (§5.2); `cpRank` and `cpPlace` exported from `src/uml/component.js`. §14's spike, reported in the pull request. Tested with a test-only type: a port of 32 px with one line and two on one side, on a node and a box; pools in bands with `runs`, a box in a lane | `src/typed/layout.js`, `src/typed/draw.js`, `src/layout/lanes.js`, `src/uml/component.js` (its export line), `tests/bpmn-engine.test.mjs` (new), `tests/bpmn-engine.html` (new), `tests/embed.py` (appends its page) | 4b.0; `stage5-followups` merged | Maps unchanged (geometry hashes, stills); `tests/core-diet.*`, `tests/lanes.test.mjs`, `tests/typed-ports.test.mjs` and every typed type's tests unchanged; a port with `portMin` keeps its length and its neighbour 8 px off; bands with `runs` cover their rows and a box's frame, both directions; the spike's figures; the core byte-identical |
-| 4b.2 | **Notation.** §9.1's shapes, the markers, the labels outside (§9.2), the group's frame, accessible names of the looks | `src/bpmn/notation.js`, `tests/bpmn-notation.test.mjs` (new), `tests/bpmn-notation.html` (new), `tests/embed.py` (appends its page) | 4b.0; 4b.1 for its browser test's ends | Each shape's size, outline and inset agree (a point slid by `inset` lies on `out`); both themes, three fonts, no text overflow; every marker drawn; on hand-built geometry a label outside keeps off lines and nodes |
-| 4b.3 | **The BPMN type.** §4 to §8, §11: definition, ranking, pools, lanes, anchors, boundary events, expanded sub-processes, groups, rules, `describe()`, names, legend, `rows` and `word`, `refs`, hooks | `src/bpmn/process.js`, `tests/bpmn.test.mjs` (new), `tests/bpmn.html` (new), `tests/embed.py` (appends its page) | 4b.1 (and its spike), 4b.2 | Definition of done 2, 4, 5, 6 and 8 on row 24's subset; every gesture by pointer and by key through `apply()`; a 30-step session undone, redone and reopened to byte-identical models; `24-bpmn.json` lays out clean, right and down, no sequence flow outside its pool |
-| 4b.4 | **BPMN XML reader and writer.** §12: the adapter, the CLI's `import` routing and `export` command, CI's pinned install | `src/readers/bpmn-xml.js`, `tests/bpmn-xml.test.mjs` (new), `tests/import/descriptive.bpmn`, `tests/import/hostile/`, `umlimator.py`, `umlimator_import.py`, `tests/import.py`, `.github/workflows/check.yml` (one install step) | 4b.0; `model.md` row 24 (it starts beside 4b.1 and 4b.2) | `read(write(model))` equals the model for the example and 500 generated models; the report pinned; hostile files under 1 s each, never thrown; the DI written from given geometry read back by moddle; without `bpmn-moddle` the CLI says how to install it and the test says it skipped, except in CI, where it fails |
-| 4b.5 | **Fixtures, examples, atlas, docs.** §13's files and tests (`tests/m4b-fixtures.test.mjs`, `tests/m4b.html`); the example moved and renamed, with `check.mjs`'s `MOVED`; the atlas's link and `KEYS`; `render`, `check`, `stills`, `pdf`, `import` and `export` on it; the schema and `.d.ts`; C10's tests (the MCP server, the diff Action); every document of `plan.md` §7; `docs/conformance/bpmn.md` with Table 2.1 row by row; the lanes' release notes gathered | `examples/`, `tests/bpmn-minimal.json`, `tests/bpmn-stress.json`, `tests/m4b-fixtures.test.mjs`, `tests/m4b.html`, `tests/notation.html`, `tests/cli.py`, `tests/mcp.py`, `tests/embed.py` (appends), `tools/atlas.mjs` (`KEYS`), `tools/atlas-links.json`, `lib/umlimator.d.ts`, `lib/umlimator.schema.json`, `docs/diagrams/examples/check.mjs`, `docs/` (but the status table) | 4b.1 to 4b.4; 5.8 merged | Definition of done 1, 3, 7, 9, 10, 11 and 12; §14's budgets in CI; the PDF lists each element's word and rows; the example in the gallery, CI and the atlas; the stress fixture's crossings pinned; the conformance note claims Descriptive only if every Table 2.1 row has its passing test |
+| 4b.1 | **Engine.** `portMin` in `spreadPorts` and `EDGE_GEO` (§6.2); `ENDS.circle` and `dashed: 'dot'` (§10); `laneBands`' `runs` and boxes (§5.2); `cpRank` and `cpPlace` exported from `src/uml/component.js`. §14's spike, reported in the pull request. Tested with a test-only type: a port of 32 px with one line and two on one side, on a node and a box; pools in bands with `runs`, a box in a lane | `src/typed/layout.js`, `src/typed/draw.js`, `src/layout/lanes.js`, `src/uml/component.js` (its export line), `tests/bpmn-engine.test.mjs` (new), `tests/bpmn-engine.html` (new), `tests/embed.py` (appends its page) | 4b.0; `stage5-followups` and 5.8 merged | Maps unchanged (geometry hashes, stills); `tests/core-diet.*`, `tests/lanes.test.mjs`, `tests/typed-ports.test.mjs` and every typed type's tests unchanged; a port with `portMin` keeps its length and its neighbour 8 px off; bands with `runs` cover their rows and a box's frame, both directions; the spike's figures, lines through boundary circles counted; the core byte-identical |
+| 4b.2 | **Notation.** §9.1's shapes, the markers, the labels outside with their own search (§9.2, not `endLabels`), the group's frame, accessible names of the looks | `src/bpmn/notation.js`, `tests/bpmn-notation.test.mjs` (new), `tests/bpmn-notation.html` (new), `tests/embed.py` (appends its page) | 4b.0; 4b.1 for its browser test's ends | Each shape's size, outline and inset agree (a point slid by `inset` lies on `out`); both themes, three fonts, no text overflow; every marker drawn; on hand-built geometry a label outside keeps off lines and nodes |
+| 4b.3 | **The BPMN type.** §4 to §8, §11: definition, ranking, the lane pass (§8.1) and data in lanes (§5.2a), pools, lanes, anchors, boundary events grown for their circles (§6.2), boundary events, expanded sub-processes, groups, rules, `describe()`, names, legend, `rows` and `word`, `refs`, hooks | `src/bpmn/process.js`, `tests/bpmn.test.mjs` (new), `tests/bpmn.html` (new), `tests/embed.py` (appends its page) | 4b.1 (and its spike), 4b.2 | Definition of done 2, 4, 5, 6 and 8 on row 24's subset; every gesture by pointer and by key through `apply()`; a 30-step session undone, redone and reopened to byte-identical models; `24-bpmn.json` lays out clean, right and down, no sequence flow outside its pool |
+| 4b.4 | **BPMN XML reader and writer.** §12: the adapter, the CLI's `import` routing and `export` command, CI's pinned install | `src/readers/bpmn-xml.js`, `tests/bpmn-xml.test.mjs` (new), `tests/import/descriptive.bpmn`, `tests/import/hostile/`, `tests/import/weakened.bpmn`, `umlimator.py`, `umlimator_import.py`, `tests/import.py`, `.github/workflows/check.yml` (the install step, pinned by decision 24, and `UMLIMATOR_BPMN_MODDLE` on the two `node --test` steps) | 4b.0; `model.md` row 24 (it starts beside 4b.1 and 4b.2) | `read(write(model))` equals the model for the example and 500 generated models; the report pinned, weakened items included; hostile files, many references among them, under 1 s each, never thrown; the DI written from given geometry read back by moddle; without `bpmn-moddle` the CLI says how to install it and the test says it skipped, except in CI, where it fails |
+| 4b.5 | **Fixtures, examples, atlas, docs.** §13's files and tests (`tests/m4b-fixtures.test.mjs`, `tests/m4b.html`); the example moved and renamed, with `check.mjs`'s `MOVED`; the atlas's link and `KEYS`; `render`, `check`, `stills`, `pdf`, `import` and `export` on it; the schema and `.d.ts`; C10's tests (the MCP server, the diff Action); every document of `plan.md` §7; `docs/conformance/bpmn.md` with Table 2.1 row by row; the lanes' release notes gathered | `examples/`, `tests/bpmn-minimal.json`, `tests/bpmn-stress.json`, `tests/m4b-fixtures.test.mjs`, `tests/m4b.html`, `tests/notation.html`, `tests/cli.py`, `tests/mcp.py`, `tests/embed.py` (appends), `tools/atlas.mjs` (`KEYS`), `tools/atlas-links.json`, `lib/umlimator.d.ts`, `lib/umlimator.schema.json`, `docs/diagrams/examples/check.mjs`, `docs/` (but the status table) | 4b.1 to 4b.4; 5.8 merged | Definition of done 1, 3, 7, 9, 10, 11 and 12, the fidelity table's BPMN XML writer row included (§12.3's limits); §14's budgets in CI; the PDF lists each element's word and rows; the example in the gallery, CI and the atlas, renamed with every reference (§13), the atlas building, `check.mjs` passing and the example's problems unchanged; the stress fixture's crossings pinned; the conformance note claims Descriptive only if every Table 2.1 row has its passing test |
 
 Existing tests a package edits: none, but by appending (`tests/embed.py`, `tests/notation.html`, `tests/cli.py`,
 `tests/mcp.py`, `tests/import.py`, `check.mjs`'s `MOVED`, `atlas.mjs`'s `KEYS`).
@@ -523,7 +626,11 @@ approved, stage 6 scheduled ─▶ 4b.0 ──┬─▶ 4b.2 notation ───�
 ```
 
 - Three lanes at most at once (4b.1, 4b.2, 4b.4), then one (4b.3), then 4b.5. Within the project's four to five open code
-  lanes: 4b.2 and 4b.4 first, since they share no file with stage 6's lanes; 4b.1 when `stage5-followups` has merged.
+  lanes: 4b.4 first, since it shares no file with stage 6's lanes or with 4b.1 and 4b.2; 4b.2 beside it, since its only
+  shared file is `tests/embed.py`, which it appends to as 4b.1, 4b.3, 4b.5, 5.8, 6.3, 6.5 and 6.6 do; 4b.1 when
+  `stage5-followups` and 5.8 have merged, sharing `src/typed/draw.js`'s `ENDS` with 6.3 and `tests/embed.py` with 4b.2.
+  The three-lane window's Owns are therefore disjoint but for `tests/embed.py`; each pair that shares a file rehearses its
+  merge (X2).
 - 4b.3 may write its definition, rules and `describe()` against the contracts above before its needs merge, and draws
   once 4b.1's spike is reported.
 - No package touches the core.
@@ -543,20 +650,21 @@ approved, stage 6 scheduled ─▶ 4b.0 ──┬─▶ 4b.2 notation ───�
 |---|---|---|
 | `tools/build.mjs` (`ALL`) | 6.0, M2's, M3's, M4a's first packages | Each appends its list; the later merges `main` and keeps the stages' order |
 | `src/typed/layout.js` | `stage5-followups` (open) | `stage5-followups` first; 4b.1 after |
-| `src/typed/draw.js` (`ENDS`) | M2's line-end skins | Whichever first; both append to `ENDS`; the second rehearses the merge |
+| `src/typed/draw.js` (`ENDS`) | Stage 6's 6.3 (a filled triangle); M2's line-end skins | Whichever first; each appends to `ENDS`; the second rehearses the merge. `stage-6.md` says of this file "No other package": it needs 4b.1's row (the lead's, on `stage6-note`) |
 | `src/layout/lanes.js` | Read by the activity type; M2's flowchart may use lanes (its note decides) | 4b.1 owns it while open; an M2 lane on it waits or rehearses |
-| `src/uml/component.js` | 5.8 and `stage5-followups` edit it | Both first; 4b.1 changes its export line only |
+| `src/uml/component.js` | 5.8 (26 lines) and `stage5-followups` edit it | Both first (4b.1's Depends says so); 4b.1 changes its export line only |
 | `src/layout/audit.js` | `stage5-followups` (decision 22) | Read only by 4b; it must merge first |
 | `umlimator.py`, `umlimator_import.py`, `tests/import.py` | M2's readers (Mermaid ER and flowchart, Structurizr JSON, DBML), M4a's Mermaid mindmap | Each adds its route; the second rehearses |
 | `.github/workflows/check.yml` | M2's DBML adapter, if it installs a pinned package the same way | The first writes one step for optional adapters; the other adds its package to it |
 | `tools/atlas.mjs`, `tools/atlas-links.json`, `examples/bookshop-atlas.json` | 5.8 (open), stage 6, M2, M3, M4a | Appends; the atlas rebuilt after merging `main` |
-| `docs/diagrams/examples/check.mjs`, `lib/umlimator.d.ts`, `lib/umlimator.schema.json`, `tests/embed.py`, `tests/notation.html`, `tests/cli.py`, `tests/mcp.py`, `docs/module-api.md` | Every stage's fixtures package | Appends; 4b.5 last |
+| `tests/embed.py` | 4b.1, 4b.2, 4b.3, 4b.5; 5.8; 6.3, 6.5, 6.6 | Each appends its page and header line; the second of two open branches rehearses the merge (X2) |
+| `docs/diagrams/examples/check.mjs`, `lib/umlimator.d.ts`, `lib/umlimator.schema.json`, `tests/notation.html`, `tests/cli.py`, `tests/mcp.py`, `docs/module-api.md` | Every stage's fixtures package | Appends; 4b.5 last |
 
 ### 15.5 The release
 
 0.27.0 after 4b.0 to 4b.5, and after 0.26.0, by the repository's rule: `package.json`, `## 0.27.0:` in
 `docs/module-api.md`, merged when the maintainer approves that pull request by number. Its notes say: new, the BPMN
-diagram (Table 2.1 and the five extras), boundary events, pools, message flows, the BPMN XML reader and writer through a
+diagram (Table 2.1 and the extras S1 and decision 21 name), boundary events, pools, message flows, the BPMN XML reader and writer through a
 `bpmn-moddle` the caller provides, `umlimator.py export`; left out, §16. The `map-repo` skill's pin does not move.
 
 | Option, C10 | For | Against |
@@ -572,6 +680,7 @@ diagram (Table 2.1 and the five extras), boundary events, pools, message flows, 
 | Conversations, choreographies, event sub-processes, transactions, ad hoc sub-processes, compensation | Outside Process Modeling's sub-classes or Table 2.2 |
 | Messages as elements (the envelope on a message flow), data inputs and outputs, the collection marker | Table 2.2 and beyond |
 | Positions, sizes, colours and label bounds from a file's DI | D1; R5 |
+| Conditions and defaults on sequence flows, send and receive task kinds | Read as plain flows and tasks, kept under `ext.bpmn`, reported `weakened` (§12.2); not written back |
 | Execution semantics (clause 13), the Common Executable sub-class | 2.2.5's note: not expected of a modeling tool |
 | A Mermaid reader | Mermaid has no BPMN |
 | Resizing a pool or lane by hand; a lane's order other than `members` order | As stage 4's lanes |
@@ -579,7 +688,8 @@ diagram (Table 2.1 and the five extras), boundary events, pools, message flows, 
 
 Departures, in the conformance note: the label of an event, gateway or data element is under it, moved aside where a
 line passes (2.2.3 allows it); the data store's cylinder is the map's outline; a message flow to a pool ends on its border
-at the column it comes from; a boundary event is 32 px.
+at the column it comes from; a boundary event is 32 px; the BPMN XML reader parses through `bpmn-moddle`, not a
+hand-written linear reader (a departure from `risks.md` R2, with §12.2's safeguards).
 
 ## 17. The decisions for the maintainer
 
@@ -596,8 +706,8 @@ Each is set out with its options and trade-offs in the section named; the recomm
 | 7 | A message flow to a pool's border | Anchors in the gap row, slid to the border | Drawn by the type, unrouted; a pool as a node | §7.2 |
 | 8 | Choosing a flow's kind | By its ends, no picker | A picker every time | §7.1 |
 | 9 | Ranking | The type's own, `cpRank` and `cpPlace` exported | The host's | §8.1 |
-| 10 | Expanded and collapsed sub-processes | Expanded when the view lists its contents; `E` toggles | A `present` flag; collapsed only | §8.2 |
-| 11 | Labels of events, gateways and data | Outside, by the end labels' search | In a box with the shape; inside | §9.2 |
+| 10 | Expanded and collapsed sub-processes | Expanded when the view lists its contents; a key toggles (decision 22) | A `present` flag; collapsed only | §8.2 |
+| 11 | Labels of events, gateways and data | Outside, by the type's own search modelled on `endLabels` | In a box with the shape; inside | §9.2 |
 | 12 | Groups | Drawn after the layout round their members | A box | §9.3 |
 | 13 | Attaching a boundary event by keyboard | `A` and a picker | A dynamic panel field (core) | §11 |
 | 14 | The adapter's packaging | An injected `bpmn-moddle`; CI's pinned `--no-save` install; no `package.json` change | Optional peer; devDependency | §12.1 |
@@ -607,15 +717,24 @@ Each is set out with its options and trade-offs in the section named; the recomm
 | 18 | P1 | Both flags off; 1 s in CI, 100 ms printed; timed tests serial; 4b.1's spike first | | §14 |
 | 19 | Order with stage 6 and the milestones | Start once stage 6's lanes are scheduled, 4b.2 and 4b.4 first, within the lane cap; 0.27.0 after 0.26.0 | Start after 0.26.0 | §15.3 |
 | 20 | C10 | Tested in 4b.5 | Left to the package after 0.20.0 | §15.5 |
+| 21 | The none intermediate throw event | A sixth extra, named in the claim | Left out: refused, the reader skips it | §3.2 |
+| 22 | The key that expands a sub-process | `X`; `E` stays #71's | `E` on sub-processes only; no key | §11 |
+| 23 | Data objects, stores and annotations in a pool with lanes | Drawn in the lane of the first flow node they are associated with, else a run of the pool's own | Always the pool's own run | §5.2a |
+| 24 | Pinning CI's `bpmn-moddle` install | All five packages exact on the install line | A lock file for that folder; the top package only | §12.1 |
 
 ## 18. What this note changes elsewhere
 
 - **`model.md`.** Row 24 as §3.1, the definitions of §3.2, and a pointer here.
 - **`risks.md`.** R5 points to §12; §6's BPMN row points to §13; C5 records milestone 4b's share and its spend; P1 gains
-  §14's common edits; R2 gains the hostile XML files; a new row for a sequence flow routed outside its pool's band (§5.2,
-  §14), and one for `bpmn-moddle`'s version drift (pinned in CI, named in the CLI's message).
+  §14's common edits; R2 gains the hostile XML files and states the BPMN reader's departure (a library parser, §12.2's
+  safeguards instead); a new row for a sequence flow routed outside its pool's band (§5.2, §14), and one for
+  `bpmn-moddle`'s version drift: `@10.3.1` pins only the top package, its dependencies are caret ranges, so CI pins the
+  whole tree as decision 24 says, and the CLI's user gets what their own install resolves.
 - **`plan.md`.** §5's M4b row points here (done with this note); §4.3 lists `src/bpmn/`.
 - **`proposal.md`.** §3.4's BPMN row: "24 rows" is Table 2.1's, read; §8.5's BPMN subset points to §16.
 - **`notes/stage-4.md`.** §5.2's `laneBands` contract gains `runs` and boxes when 4b.1 merges.
 - **`README.md` in this folder.** The status table shows this note and, once approved, its work packages; the log
-  records the decisions. (The lead's.)
+  records the decisions, and the core budget split of 13 Nov 2026 (4,451 B: stage 6 400, M2 1,400, M3 500, M4a 700, M4b
+  700, reserve about 750), which no document records yet (§2.3). (The lead's.)
+- **`notes/stage-6.md`** (on `stage6-note`). Its file table's `src/typed/draw.js` row ("No other package") gains 4b.1
+  (`ENDS`, `circle`), and its `tests/embed.py` row gains 4b.1, 4b.2, 4b.3 and 4b.5. (The lead's.)
