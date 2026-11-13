@@ -33,6 +33,8 @@ const IF_IT = { pad: 8, name: 13, more: 32 };
 // the classifier's own markup, named by n.aria (A1) and by its shape
 const ifClassifier = (n, c, f, shape = 'classifier') => SHAPE.classifier.draw(n, c, f).replace(/data-shape="classifier" tabindex="-1" role="img" aria-label="[^"]*"/,
   `data-shape="${shape}" tabindex="-1" role="img" aria-label="${esc(n.aria || n.label || '')}"`);
+// a class or an interface: the classifier, named by its accessible name rather than the classifier's own («interface» twice)
+SHAPE['if-classifier'] = { ...SHAPE.classifier, draw: (n, c, f) => ifClassifier(n, c, f) };
 SHAPE['information-item'] = { ...SHAPE.classifier,
   size: n => { const s = SHAPE.classifier.size(n); return { w: s.w + IF_IT.more, h: s.h }; },
   draw(n, c, f) { const x = n.x + n.w - 16, y = n.y + 6, tri = `<path d="M${r2(x)} ${r2(y)}L${r2(x + 10)} ${r2(y + 5)}L${r2(x)} ${r2(y + 10)}Z" class="if-icon" fill="${c}" stroke="${c}" stroke-linejoin="round"/>`;
@@ -85,7 +87,7 @@ function ifGeo({ model, view, pos, memo }) {
   const I = ifIndex(model), ids = ifShown(I, view), lines = ifLines(I, view, new Set(ids)), P = id => (IF_OBJ(pos) && Object.hasOwn(pos, id) ? pos[id] : [0, 0]);
   const nodes = ids.map(id => { const n = I.at.get(id), st = ifStereo(n), pr = IF_OBJ(n.props) ? n.props : {};
     const look = n.type === 'uml.Comment' ? { shape: 'note' } : n.type === 'uml.Actor' ? { shape: 'actor', stereotypes: st } : n.type === 'uml.Component' ? { shape: 'component', stereotypes: st, keyword: !!pr.keyword }
-      : n.type === 'uml.InformationItem' ? { shape: 'information-item', stereotypes: st, compartments: [] } : { shape: 'classifier', stereotypes: [...(n.type === 'uml.Interface' ? ['interface'] : []), ...st], compartments: [] };
+      : n.type === 'uml.InformationItem' ? { shape: 'information-item', stereotypes: st, compartments: [] } : { shape: 'if-classifier', stereotypes: [...(n.type === 'uml.Interface' ? ['interface'] : []), ...st], compartments: [] };
     const d = { id, label: ifName(n), type: n.type || 'uml.Class', kind: 'file', ...look, aria: ifNodeName(I, n), col: P(id)[0], row: P(id)[1] };
     return { ...d, ...SHAPE[d.shape].size(d) }; });
   const edges = lines.map(e => { const flow = e.type === 'uml.InformationFlow', label = flow ? '«flow» ' + ifSays(I, e) : e.label;
