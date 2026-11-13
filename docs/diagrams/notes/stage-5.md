@@ -622,6 +622,53 @@ Accessible names: "Device Application server, holding 1 execution environment"; 
 Application server, 3 artifacts deployed"; "Artifact shop-api.jar, on Java 21 runtime, manifests Shop API";
 "Communication path HTTPS from Shopper's device to Edge proxy".
 
+**As built (5.5)** (`src/uml/deployment.js`, `tests/deployment.test.mjs`, `tests/deployment.html`). Where the build departs
+from, or settles what is not said above:
+
+- `layoutTyped` with `gap: 48`, `rgap: 56` (the component type's, §10.1; not stated for this type), `labelGaps: true`,
+  `cut: 280` on communication paths only, `repair: false`, `reroute: false`, and stage 2's 12 px padding (no ports, §7).
+- The cube box: unlike §9.1's table, its frame holds its faces, as a closed cube's does. Its pad is 22 (10 px more than
+  stage 2's 12, on every side, as `TYPED.frame` grows a box), the front face is the frame less 10 px at the top and right,
+  and the top and right faces lie inside the frame. Drawn outside it, in the gap between boxes, the faces were unknown to the
+  router, the label placer and `check()`: on the P1 view lines ran up to 75 px inside a face and labels sat on a face's line.
+  The cost is 10 px more on the left and bottom of each box, 20 px a level (six levels: 120 px each way). A line's end on
+  a slanted corner of the outline is moved in on to it, on a copy (§2.4), as `SHAPE.cube.inset` does for a closed cube (only
+  ever lengthening its last run). A label the core leaves over the front face's top or right line, in the box's padding, slides
+  along its line inward, clear of it, on a copy. Its title is one line in the 24 px header room under the top face, `«device»
+  name` or `«executionEnvironment» name` with the stereotypes after the keyword, cut to the front face's width as a
+  package's title is (`06-deployment.json`'s "«executionEnvironment» Web brow…"): the box is as wide as its contents, not
+  its title.
+- `nest-kinds`' error covers any owner that is not a target (a package or a component too). `deployed-twice` warns of a
+  line to another target only; a «deploy» line to the target that also nests the artifact is drawn nowhere (a line from a
+  box to what it holds is left out) and warned by neither rule (`connect` refuses to draw one). `path-ends` also fails a path
+  between a target and one it holds, at any depth, which is drawn nowhere. Of the shared rules the type runs `manifest-ends` alone:
+  `port-owner` is the component type's.
+- Hooks: `connect` adds a deployment drawn from a target to an artifact, or a manifestation from a component to an artifact,
+  the other way round (as the use case type starts an association at its actor), and refuses a deployment or a communication
+  path between ends that cannot hold it, and any line between a box and what it holds, at any depth ("shop-api.jar is
+  already deployed on Java 21 runtime by nesting", "A communication path cannot join a node and what it holds") (`{ error }`,
+  said on the hint line); `remove` with Shift + Delete on a target that
+  owns something says how many elements go with it (§10.4). `owners`: an artifact's, a deployment specification's or a
+  target's Owner field lists every target. No `moveTo`, `add`, `member` or `key`: the type has no ports, no members and no
+  `present` field; a drop into a box and the Owner field emit stage 2's `reparent`, tested by pointer and by key.
+- Decision 21, what `06-deployment.json` keeps: its 7 labels all find a spot and none is cut short, laid out right (1,512 ×
+  756 px) and down (961 × 1,011 px), every line routed clean (8 `grid`). Laid out down without `labelGaps`, one label
+  (`edge-to-app`, "HTTP") has no spot and the view is 993 px high: `labelGaps` gives it its spot for 18 px. Laid out right,
+  `labelGaps` changes nothing. Both runs pinned and printed in `tests/deployment.test.mjs` (the one without by
+  `layoutTyped` on the type's own input with `labelGaps: false`).
+- Six levels (§7, L8): node, node, device, device, execution environment, execution environment, an artifact in the
+  deepest, a communication path from the deepest to a node at the top: laid out clean both ways; the outer box 609 × 514 px
+  laid out right and 609 × 638 px down (printed; 5.8's fixture pins its own).
+- P1 (§14), on a test view of 50 nodes and artifacts, 50 lines and boxes five deep (ten paths left with no spot before
+  `labelGaps`, two after): CPU, best of seven after a warm-up, on a laptop loaded by other jobs (load average 9), a path's
+  label 144 to 193 ms, an artifact moved into another node 144 to 188 ms, a full layout 150 to 207 ms, against 26 to 40 ms
+  for stage 4's types' edits in the same run; after the review's fixes, at load average 3 to 7, a path's label 101 to 118 ms,
+  an artifact moved 93 to 125 ms, a stereotype (an edit that moves nothing) 103 to 124 ms, a full layout 95 to 118 ms.
+  Under CI's 1 s ceiling; at or over the 100 ms target on that machine. Of a layout's time (102 ms) the second `layoutPass`
+  that `labelGaps` runs is 44 ms (58 ms without it). The view itself routes less cleanly than the spike's (60 `grid`):
+  laid out right, 31 `grid`, 17 `cross`, 2 `fallback` and 24 `check()` issues (crossings); down, 39, 9, 2 and 21. Decision
+  for the maintainer.
+
 ### 10.4 Deleting (S14)
 
 - **A part:** the connectors through it go with it, by the composite type's `refs` (`'uml.Connector': {
