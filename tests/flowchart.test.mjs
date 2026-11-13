@@ -69,6 +69,8 @@ test('the shapes: each grows with its text to three lines, then cuts; its paddin
   // the connector: a circle, 28 px, wider for a wider label
   assert.deepEqual(SHAPE.connector.size({ label: 'A' }), { w: 28, h: 28 });
   assert.ok(SHAPE.connector.size({ label: 'WWW' }).w > 28);
+  assert.deepEqual(SHAPE.connector.size({ label: 'x'.repeat(33) }), { w: 40, h: 40 }, 'a long label: 40 px at most, the label cut');
+  assert.match(SHAPE.connector.draw({ id: 'c', label: 'x'.repeat(33), x: 0, y: 0, w: 40, h: 40 }), /…<\/text>/);
   assert.match(SHAPE.connector.draw({ id: 'c', label: 'A', x: 0, y: 0, w: 28, h: 28 }), /aria-label="Connector A"[^]*>A<\/text>/);
   // the map's shapes are read, not changed: the cylinder has no draw of its own
   assert.equal(SHAPE.cylinder.draw, undefined);
@@ -90,6 +92,9 @@ test('21-flowchart.json draws: every symbol in its shape, flows with a filled ar
   }
   assert.equal(geo['no direction'], geo.down, 'a flowchart view with no direction is laid out down (model.md row 21)');
   assert.notEqual(geo.right, geo.down);
+  const up = withDir(EX, 'up');
+  assert.equal(JSON.stringify(layout(up, 'returns').nodes.map(n => [n.id, n.x, n.y])), geo.right, 'a direction neither right nor down: drawn right, as the core warns');
+  assert.ok(validate(up).some(p => /direction "up" is not right or down: drawn right/.test(p.message)));
   const g = layout(EX, 'returns');
   assert.ok(g.byId['return-arrives'].y < g.byId.slip.y && g.byId.slip.y < g.byId.inspect.y, 'down: the start on top');
 });
@@ -137,6 +142,8 @@ test('names, reading order and legend (A1): a decision names its exits, a termin
   assert.deepEqual(g.legend.map(l => /<b>([^<]+)<\/b>/.exec(l)[1]), ['Flow', 'Terminator', 'Process', 'Decision', 'Input/output', 'Predefined process', 'Document', 'Database', 'Manual input', 'Delay', 'Connector']);
   const lone = one([N('a', 'Process', 'A'), N('b', 'Process', 'B')], [F('ab', 'a', 'b')]);
   assert.deepEqual(layout(lone, 'v').legend.map(l => /<b>([^<]+)<\/b>/.exec(l)[1]), ['Flow', 'Process'], 'only what is drawn');
+  const noted = one([N('a', 'Process', 'A'), { id: 'n', type: 'uml.Comment', label: 'x' }], [{ id: 'l', type: 'uml.CommentLink', from: 'n', to: 'a' }]);
+  assert.deepEqual(layout(noted, 'v').legend.map(l => /<b>([^<]+)<\/b>/.exec(l)[1]), ['Comment link', 'Process', 'Comment'], 'a comment keyed');
 });
 
 test('describe(): the view, each node in reading order, then each line by its accessible name', () => {
@@ -175,6 +182,10 @@ test('validators: 21-flowchart.json breaks no rule; each rule fails on a model t
   const lone = structuredClone(EX); lone.edges = lone.edges.filter(e => e.id !== 'resaleable-no'); lone.edges.find(e => e.id === 'resaleable-yes').label = '';
   assert.deepEqual(v(lone).filter(x => x.startsWith('decision')), ['decision-exits: resaleable ("Fit for resale?") has 1 exit; a decision wants two or more',
     'decision-exits: 1 exit of resaleable ("Fit for resale?") has no label (resaleable-yes)']);
+  const cased = structuredClone(EX); cased.edges.find(e => e.id === 'resaleable-yes').label = 'Yes'; cased.edges.find(e => e.id === 'resaleable-no').label = 'yes ';
+  assert.deepEqual(v(cased), ['decision-exits: exits of resaleable ("Fit for resale?") share a label (resaleable-yes, resaleable-no)'], 'labels read as connect reads them, case and spaces aside');
+  const alone = one([N('t', 'Terminator', 'Alone')], []);
+  assert.deepEqual(T.validate(alone, alone.views[0]).map(p => p.message), ['terminator-flows: the start t ("Alone") has no flow out; it wants one']);
   // a flow of another type's, and a comment link to a comment, are not the flowchart's
   const cl = structuredClone(EX); cl.nodes.push({ id: 'n1', type: 'uml.Comment', label: 'x' }); cl.views[0].nodeIds.push('n1'); cl.edges.push({ id: 'c', type: 'uml.CommentLink', from: 'n1', to: 'inspect' });
   assert.deepEqual(validate(cl), []);
@@ -217,6 +228,7 @@ test('moveTo: on a view with no direction (laid out down) a drop pins by the tur
   assert.deepEqual(T.edits.moveTo(m, m.views[0], 'letter', { pt: [n.x + n.w / 2, n.y + n.h / 2], geo: g }), [], 'dropped where it is: nothing');
   assert.equal(T.edits.moveTo(EX, EX.views[0], 'letter', { pt: [0, 0], geo: g }), null, 'direction down: the canvas reads it');
   assert.equal(T.edits.moveTo(m, m.views[0], 'letter', { by: [0, 1], geo: g }), null, 'Alt + arrows: the default');
+  for (const v of [m.views[0], EX.views[0]]) assert.match(T.edits.moveTo(m, v, 'resaleable-no', null).error, /^A flow follows its nodes/, 'a flow dragged: said, not a ghost that vanishes');
   // the pin is where it was dropped: laid out again, letter is in wait's column and row
   const pinned = apply(m, T.edits.moveTo(m, m.views[0], 'letter', { pt: [to.x + to.w / 2, to.y + to.h / 2], geo: g })), h = layout(pinned, 'returns');
   assert.deepEqual([h.byId.letter.col, h.byId.letter.row], [to.col, to.row]);
@@ -224,14 +236,15 @@ test('moveTo: on a view with no direction (laid out down) a drop pins by the tur
 
 test('save and reopen (DoD 6): a 30-step session undoes and redoes to byte-identical models, and reopening its saved JSON midway ends where the session does', () => {
   const steps = [];
-  for (let i = 0; i < 5; i++) steps.push(
+  let cur = EX; const push = (...ss) => ss.forEach(s => { steps.push(s); cur = apply(cur, s); });
+  for (let i = 0; i < 5; i++) { push(
     [{ op: 'add', element: N(`d${i}`, 'Decision', `Question ${i}?`), view: 'returns' }],
     [{ op: 'add', element: F(`in${i}`, 'inspect', `d${i}`), view: 'returns' }],
-    [{ op: 'add', element: F(`y${i}`, `d${i}`, 'refund', 'yes'), view: 'returns' }],
-    T.edits.connect({ edges: [F(`y${i}`, `d${i}`, 'refund', 'yes')], nodes: [N(`d${i}`, 'Decision'), N('letter', 'Document')] }, { id: 'returns' }, `d${i}`, 'letter', null, { type: 'flow.Flow' })
-      .map(c => ({ ...c, element: { ...c.element, id: `n${i}` } })),
-    [[{ op: 'set', id: `d${i}`, path: 'label', value: `Asked ${i}?` }], [{ op: 'add', element: N(`p${i}`, 'Process', `Step ${i}`), view: 'returns' }], [{ op: 'set', id: `n${i}`, path: 'label', value: 'nope' }]][i % 3],
-    [[{ op: 'hide', id: `d${i}`, view: 'returns' }], [{ op: 'delete', id: `d${i}` }], [{ op: 'set', view: 'returns', path: ['layout', `d${i}`], value: [3, i] }]][i % 3]);
+    [{ op: 'add', element: F(`y${i}`, `d${i}`, 'refund', 'yes'), view: 'returns' }]);
+    const c = T.edits.connect(cur, cur.views[0], `d${i}`, 'letter', null, { type: 'flow.Flow' }), id = c[0].element.id; // connect names the flow against the model as it is
+    assert.ok(!JSON.stringify(cur).includes(`"${id}"`), `a fresh id: ${id}`); push(c);
+    push([[{ op: 'set', id: `d${i}`, path: 'label', value: `Asked ${i}?` }], [{ op: 'add', element: N(`p${i}`, 'Process', `Step ${i}`), view: 'returns' }], [{ op: 'set', id, path: 'label', value: 'nope' }]][i % 3],
+      [[{ op: 'hide', id: `d${i}`, view: 'returns' }], [{ op: 'delete', id: `d${i}` }], [{ op: 'set', view: 'returns', path: ['layout', `d${i}`], value: [3, i] }]][i % 3]); }
   assert.equal(steps.length, 30);
   const h = history(EX), seen = [JSON.stringify(h.model)];
   for (const s of steps) { h.push(apply(h.model, s)); seen.push(JSON.stringify(h.model)); assert.deepEqual(validate(h.model).filter(p => p.level === 'error'), [], `step ${seen.length - 1}`); }
@@ -264,4 +277,9 @@ test('P1 (S19): on 60 nodes and 70 flows, a full layout under 1 s, and a decisio
   // CI holds the 1 s ceiling and prints the edit against §11's 100 ms
   assert.ok(best('label') < 1000, `a decision's label ${best('label')} ms`);
   console.log(`# P1 target 100 ms: ${best('label')} a decision's label ${best('label')} ms; full ${best('full')} ms`);
+});
+
+test('the type ships in lib/umlimator-all.js only (risks.md C5)', () => {
+  const all = readFileSync(new URL('../lib/umlimator-all.js', import.meta.url), 'utf8'), core = readFileSync(new URL('../lib/umlimator.js', import.meta.url), 'utf8');
+  for (const k of ["registerDiagramType('flowchart'", 'SHAPE.connector = ']) { assert.ok(all.includes(k), k); assert.ok(!core.includes(k), k); }
 });
