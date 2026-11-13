@@ -43,9 +43,11 @@ Action on it in a pull request; the site shows its stills and its PDF.
 | [`bookshop-components.json`](bookshop-components.json) | UML component diagram (`uml.component`, 0.22.0) | The bookshop's components: Shop API a box holding Checkout, ports on both borders, a delegation in and one out between them, an assembly to the payment provider's port; Orders provided as a ball and required by a socket, SignIn as a rectangle with «use» lines; a dependency and an artifact's manifestation. What the component diagram covers: [`docs/conformance/uml-component.md`](../docs/conformance/uml-component.md) |
 | [`bookshop-deployment.json`](bookshop-deployment.json) | UML deployment diagram (`uml.deployment`, 0.22.0) | The bookshop in production: devices, execution environments and nodes as cubes, nested two deep; artifacts deployed by nesting and one by a «deploy» line; a deployment specification and its dependency; manifestations of the components; communication paths with their protocols. What the deployment diagram covers: [`docs/conformance/uml-deployment.md`](../docs/conformance/uml-deployment.md) |
 | [`order-service-structure.json`](order-service-structure.json) | UML composite structure diagram (`uml.composite-structure`, 0.22.0) | Inside the order service: its ports on its border, four parts (one shared, dashed), the two whose classes the model holds showing their type's ports (`check` warns of the other two, `part-type`), connectors from the subject's ports in to a part's and out, an open collaboration as a dashed ellipse with its roles, and a collaboration use binding two parts to its roles. What the composite structure diagram covers: [`docs/conformance/uml-composite-structure.md`](../docs/conformance/uml-composite-structure.md) |
+| [`bookshop-profile.json`](bookshop-profile.json) | UML profile diagram (`uml.profile`, 0.23.0) | The bookshop's modelling conventions, laid out down: a profile holding two metaclasses and four stereotypes with their tag definitions, an extension marked `{required}` (every class of `sales` gets «owned»), a stereotype specializing another, tags of String and Boolean with a default; `sales` applies the profile by «apply», and Order shows a compartment of tags for each stereotype it has, its `placedAt` its «column» tags in braces. What the profile diagram covers: [`docs/conformance/uml-profile.md`](../docs/conformance/uml-profile.md) |
+| [`bookshop-timing.json`](bookshop-timing.json) | UML timing diagram (`uml.timing`, 0.23.0) | One charge on a time ruler in ms: the order worker and the payment provider, the overview's and the sequence example's lifelines, each a step line through its states; a call and its reply at their times, slanted between their senders' and receivers' states; a duration constraint `{<= 800 ms}` under the worker's lane and a time constraint on its last change. What the timing diagram covers: [`docs/conformance/uml-timing.md`](../docs/conformance/uml-timing.md) |
 
 | [`order-objects.json`](order-objects.json) | UML object diagram (`uml.object`, 0.19.0) | One placed order of the same bookshop as instances of its classes: each head `name : Classifier`, underlined, its slots as `feature = value` rows; links with a name or with roles by their ends; laid out top to bottom. What the object diagram covers: [`docs/conformance/uml-object.md`](../docs/conformance/uml-object.md) |
-| [`bookshop-packages.json`](bookshop-packages.json) | UML package diagram (`uml.package`, 0.19.0) | The bookshop's packages, each a box holding the classes it owns, `card` inside `payments`; two classes named `Order` in two packages; «import», «access» (a private import), «merge» and a dependency between the boxes. What the package diagram covers: [`docs/conformance/uml-package.md`](../docs/conformance/uml-package.md) |
+| [`bookshop-packages.json`](bookshop-packages.json) | UML package diagram (`uml.package`, 0.19.0) | The bookshop's packages, each a box holding the classes it owns, `card` inside `payments`; two classes named `Order` in two packages; «import», «access» (a private import), «merge» and a dependency between the boxes; the profile `BookshopConventions`, a closed «profile» folder, applied by `sales` («apply»). What the package diagram covers: [`docs/conformance/uml-package.md`](../docs/conformance/uml-package.md) |
 
 [![The class diagram's domain view](https://zintaen.github.io/umlimator/examples/stills/sales-classes/domain.png)](https://zintaen.github.io/umlimator/examples/sales-classes.html)
 
@@ -60,28 +62,32 @@ Action on it in a pull request; the site shows its stills and its PDF.
 [![The component diagram: the bookshop's components](https://zintaen.github.io/umlimator/examples/stills/bookshop-components/components.png)](https://zintaen.github.io/umlimator/examples/bookshop-components.html)
 [![The deployment diagram: production](https://zintaen.github.io/umlimator/examples/stills/bookshop-deployment/production.png)](https://zintaen.github.io/umlimator/examples/bookshop-deployment.html)
 [![The composite structure diagram: inside the order service](https://zintaen.github.io/umlimator/examples/stills/order-service-structure/internals.png)](https://zintaen.github.io/umlimator/examples/order-service-structure.html)
+[![The profile diagram: the bookshop's conventions](https://zintaen.github.io/umlimator/examples/stills/bookshop-profile/profile.png)](https://zintaen.github.io/umlimator/examples/bookshop-profile.html)
+[![The timing diagram: one charge](https://zintaen.github.io/umlimator/examples/stills/bookshop-timing/one-charge.png)](https://zintaen.github.io/umlimator/examples/bookshop-timing.html)
 
 ## The Bookshop atlas
 
 [`bookshop-atlas.json`](bookshop-atlas.json) is the Bookshop examples above in one model (`"schemaVersion": 2`): the
-map's three views and the eighteen views of the twelve diagram files, joined by drill-down. Double-click a card to open
-what it leads to:
+map's three views and the twenty views of the fourteen diagram files, one of each of UML's 14 diagram kinds, joined by
+drill-down. Double-click a card to open what it leads to:
 
 | From | Card | Opens |
 |---|---|---|
 | The map (`overview`) | Shoppers, Storefront, Database, Order queue, Order worker, Payment provider, GitHub | the use cases, buying a book, the sales classes, order 1042, fulfilling an order, the communication diagram, the packages |
 | Sales domain, order 1042 | Order, order1042 | an order's life (state machine) |
-| Bookshop packages | sales | the sales domain |
+| Bookshop packages | sales, BookshopConventions | the sales domain, the conventions profile |
 | Shopping (use cases) | Browse the catalog, Check out, Pay for the order | find a book, buying a book, take payment (activity) |
-| Fulfilling an order, take payment | Take the next order from the queue, Charge the shopper's card | queue the order, the checkout (sequences) |
+| Fulfilling an order, take payment | Take the next order from the queue, Charge the shopper's card, Record the payment on the order | queue the order, the checkout (sequences), one charge (timing) |
 | The map (`overview`), production, the components | Hosts, Java 21 runtime, Shop API | production (deployment), the components, inside the order service (composite structure) |
 
 It is built, not written: `node tools/atlas.mjs` reads the example files and [`../tools/atlas-links.json`](../tools/atlas-links.json)
 (the files, in order, and which card opens which view) and writes the model. Elements are shared by id: one Order,
 one package `sales`, one `api` lifeline for the sequence, communication and overview files, one Shop API, its jar and the
-runtime it is deployed on for the component and deployment files. Where two files have an id,
-they must agree on it (a field one leaves out is the other's, a class's members are the union of theirs); where they
-disagree, the build stops and names the id, the files and the field, and the example files are what gets fixed.
+runtime it is deployed on for the component and deployment files; Order, its `placedAt` and the profile for the
+class, package and profile files, and the `worker` and `payments` lifelines for the overview, sequence and timing
+files. Where two files have an id, they must agree on it (a field one leaves out is the other's, a class's members are
+the union of theirs); where they disagree, the build stops and names the id, the files and the field, and the example
+files are what gets fixed.
 `tests/atlas.test.mjs` fails when the committed atlas is not what it writes. A card that opens another kind of diagram does not unfold in place (E): it opens.
 
 ## Host pages

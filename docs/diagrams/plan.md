@@ -96,13 +96,13 @@ Releases: 0.17.0 after 1.1 to 1.8 (nothing new is drawn, so it is a pure regress
 
 ```
 src/core/      model (ids, migrate, validate), registry, apply (commands), text (measuring)
-src/layout/    layered (today's), route (the router); timeaxis (stage 3, umlimator-all.js only); later: compound, tree
+src/layout/    layered (today's), route (the router); timeaxis (stage 3), lanes (stage 4) and timeruler (stage 6, a timing view's linear time ruler), umlimator-all.js only; later: compound, tree
 src/draw/      svg, shapes, lines
 src/typed/     what only a registered type's geometry takes (0.18.0, risks.md C5): typed layout, the classifier, line ends and end labels
 src/canvas/    render (camera, selection, keyboard), edit (gestures), pieces (views list, palette, properties, problems, legend, hints)
 src/page/      the standalone page, print
 src/map/       the map type: kinds, lanes, hubs, numbered views
-src/uml/ ...   one folder per family: definitions, validators, describe writers
+src/uml/ ...   one folder per family: definitions, validators, describe writers; stereotypes.js (stage 6) checks applied stereotypes and their tags across the model
 src/readers/   one file per source language and diagram
 lib/           built and committed: umlimator.js (core and map), umlimator-<family>.js, umlimator-all.js
 ```
@@ -134,7 +134,7 @@ for every type in it.
 | 6 ([`notes/stage-6.md`](notes/stage-6.md)) | Profile, timing | Stereotype definitions and application checks across the model; the time-ruler strategy | Profile, timing | None |
 | M2 ([`notes/milestone-2.md`](notes/milestone-2.md)) | ER, flowchart, data flow, information flow, C4 | Line-end skins; per-view scope rules; levels on drill-down | ER, flowchart, data flow, information flow, C4 (typed elements, dynamic, deployment) | Mermaid ER and flowchart (ported), Structurizr JSON, DBML as an optional adapter |
 | M3 ([`notes/milestone-3.md`](notes/milestone-3.md)) | Requirement, block definition, internal block, parametric | Frames; SysML's types as stereotyped UML types | Requirement, block definition, internal block, parametric | Mermaid requirement |
-| M4a | AWS, GCP, Azure; mindmap | Icon packs as data, fetched and pinned; the tree strategy | AWS, then GCP and Azure; mindmap | Mermaid mindmap |
+| M4a ([`notes/milestone-4a.md`](notes/milestone-4a.md)) | AWS, GCP, Azure; mindmap | Icon packs as data, fetched and pinned; the tree strategy | AWS, then GCP and Azure; mindmap | Mermaid mindmap |
 | M4b ([`notes/milestone-4b.md`](notes/milestone-4b.md)) | BPMN | Boundary events; two flow kinds with scope rules | BPMN, the Descriptive sub-class's elements | BPMN XML through `bpmn-moddle`, as an optional adapter |
 
 Before M4a starts: read the terms inside each vendor's icon download (`proposal.md` §6.5).

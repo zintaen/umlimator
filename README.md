@@ -96,6 +96,19 @@ drill-down, a data pipeline, an AI agent's skills, and host pages for embedding,
   pinned by a drag or Alt + arrows; `B` turns an interface into a ball and back; a port or a part is added as a row of
   its owner. The MCP server's read tools and the diff Action are tested on all three, and the Bookshop atlas opens them
   from the map's Hosts.
+- **UML profile and timing diagrams** (0.23.0), the last two of UML's 14: a profile's stereotypes with their tag
+  definitions, extending metaclasses (a filled triangle, `{required}`), specializing one another, and applied to a package
+  by «apply» ([`examples/bookshop-profile.json`](examples/bookshop-profile.json),
+  [what it covers](docs/conformance/uml-profile.md)). A stereotype applied anywhere in the model is checked against the
+  profiles applied to the element's packages (unknown, ambiguous, abstract, not fitting its metaclass; its tags defined,
+  of their type, present when required), whichever views the model has, and its tags are edited in the properties panel
+  on every UML view. Lifelines on one linear time ruler, each a step line through its states or a band of values, with
+  messages between them at their times and duration and time constraints in a strip under each lane
+  ([`examples/bookshop-timing.json`](examples/bookshop-timing.json), [what it covers](docs/conformance/uml-timing.md)).
+  Times move by a minor tick with a drag or Alt + arrows and are typed exactly with F2 (`Waiting @ 140`); `S` turns a
+  lifeline into a value lifeline; deleting a lifeline deletes its changes and their constraints. The MCP server's read
+  tools and the diff Action are tested on both, and the Bookshop atlas, now with a view of each of UML's 14 diagram
+  kinds, opens them from the package view's profile and from the activity's "Record the payment on the order".
 - **Export**: any view as a stand-alone SVG or PNG, in the browser or from the CLI; the whole map as one PDF to hand in
   for a review: a cover with the contents, each view with its legend and tables of its cards, lines and boxes, then the
   rules (`umlimator.py pdf`).
@@ -118,7 +131,7 @@ drill-down, a data pipeline, an AI agent's skills, and host pages for embedding,
 npm install umlimator
 ```
 
-Or from GitHub, at a tag or any commit: `"umlimator": "github:zintaen/umlimator#v0.21.0"`. npm 12 refuses git
+Or from GitHub, at a tag or any commit: `"umlimator": "github:zintaen/umlimator#v0.22.0"`. npm 12 refuses git
 dependencies unless the project opts in, so that also needs `allow-git=root` in the `.npmrc` next to `package.json`.
 
 ## Embed
@@ -164,7 +177,7 @@ function MapView({ model, onSelect }) {
   or costliest path, `whatIf(model, view, { remove })` what loses its way when cards go down, and
   `sequenceFromTrace(model, spans, { view, match })` keeps a trace as a numbered view; all three in Node too.
 - `editable: true` turns on editing gestures ([docs/editing.md](docs/editing.md); `examples/edit.html` is a working host).
-- `import { render, apply, history } from 'umlimator/all'` draws diagram types too: a class, object, package, sequence, communication, use case, activity, state machine, interaction overview, component, deployment or composite structure diagram, whose gestures emit
+- `import { render, apply, history } from 'umlimator/all'` draws diagram types too: a class, object, package, sequence, communication, use case, activity, state machine, interaction overview, component, deployment, composite structure, profile or timing diagram, whose gestures emit
   `edit` transactions that `apply(model, e.commands)` turns into the next model (`examples/class-editor.html` is a
   working host). `umlimator` alone draws maps, and a typed view as plain cards with a warning.
 - `diff(before, after)` returns `after` with each card and line marked added, changed or removed, what changed in words,
@@ -244,9 +257,10 @@ A model file that starts with `"$schema": "<path to>/umlimator.schema.json"` (ex
 gets completion and checks in editors, and `validate(model)` lists its errors and warnings, each with where it is.
 `"schemaVersion": 2` marks a model that may hold typed elements and typed views (`docs/diagrams/model.md`). A view whose
 `diagram` is `"uml.class"`, `"uml.object"`, `"uml.package"`, `"uml.sequence"`, `"uml.communication"`, `"uml.use-case"`,
-`"uml.activity"`, `"uml.state-machine"`, `"uml.interaction-overview"`, `"uml.component"`, `"uml.deployment"` or
-`"uml.composite-structure"` is a UML class, object, package, sequence, communication, use case, activity, state machine,
-interaction overview, component, deployment or composite structure diagram, drawn by `umlimator/all` and the CLI; a type not drawn yet shows its
+`"uml.activity"`, `"uml.state-machine"`, `"uml.interaction-overview"`, `"uml.component"`, `"uml.deployment"`,
+`"uml.composite-structure"`, `"uml.profile"` or `"uml.timing"` is a UML class, object, package, sequence, communication,
+use case, activity, state machine, interaction overview, component, deployment, composite structure, profile or timing
+diagram, drawn by `umlimator/all` and the CLI; a type not drawn yet shows its
 nodes as plain cards, with a warning. A model with no `schemaVersion` is a map, as always, and a version newer than the
 module reads is an error.
 
@@ -345,6 +359,19 @@ A component diagram, a deployment diagram and a composite structure diagram (`ex
 | view | `present` | an interface drawn as a ball (`{ "as": "ball" }`); a port's side (`{ "side": "left" }`); on a part, `{ "ports": { "<port>": { "side": "top" } } }` |
 | view | `diagram` | `"uml.component"`, `"uml.deployment"` or `"uml.composite-structure"` |
 
+A profile diagram and a timing diagram (`examples/bookshop-profile.json` and `bookshop-timing.json`; each type's note in
+[`docs/conformance/`](docs/conformance/)), from 0.23.0:
+
+| On | Field | What it does |
+|---|---|---|
+| node, member, edge | `type` | profile: `uml.Profile`, `uml.Stereotype` (members `uml.Property`, its tag definitions), `uml.MetaclassReference` (its `label` a UML metaclass: `Class`, `Property`, `Classifier`, …), `uml.Enumeration` (a tag's type); lines `uml.Extension`, `uml.ProfileApplication` (from a package), `uml.Generalization` |
+| node | `parent` | a stereotype's or metaclass reference's profile; an enumeration's may be one |
+| node, member, edge | `props` | on any UML element, `stereotypes` (a name, or `Profile::name` where two applied profiles share it) and `tags`, by stereotype then tag, each value as text: `{ "column": { "name": "placed_at" } }`; a stereotype's `isAbstract`; an extension's `isRequired` (the tool applies the stereotype to every element of that metaclass where the profile is applied) |
+| node, edge | `type` | timing: `uml.Lifeline` (`props.states`, top to bottom); `uml.Message` inline in the view's `edges`, with `props.sentAt` and `props.receivedAt` (numbers) and `sort` `call`, `async` or `reply` |
+| view | `timeline` | `unit` (optional); `changes`, `[{ id, lifeline, at, state }]` in any order (drawn by `at`); `constraints`, `[{ id, type: "uml.DurationConstraint" \| "uml.TimeConstraint", from, to, label }]`, whose ends are changes |
+| view | `present` | a lifeline drawn as a value lifeline (`{ "as": "values" }`) |
+| view | `diagram` | `"uml.profile"` or `"uml.timing"` |
+
 ## Command line
 
 ```bash
@@ -427,7 +454,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: zintaen/umlimator@v0.21.0
+      - uses: zintaen/umlimator@v0.22.0
         with:
           models: "docs/*.json"   # optional: where the models are (default: every .json that is a map model)
 ```

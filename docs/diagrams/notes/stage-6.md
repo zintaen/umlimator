@@ -508,7 +508,7 @@ Where `src/uml/stereotypes.js` departs from or settles what §5 left open:
   `dataStore`, `deploymentSpec`, `else`, `from` and `when`, which models still store.
 - **The package that applies a profile is in its scope** (§5.2 says "everything the package owns"): `sales` may store
   «boundedContext» on itself, as UML tools allow (Eclipse UML2's nearest package of a package is itself). A required
-  stereotype on `Package` reaches it too. *For the maintainer to confirm.*
+  stereotype on `Package` reaches it too. Accepted by the maintainer, 13 Nov 2026 (the nearest-package rule).
 - **A profile's own definitions** (the profile and what it owns, at any depth) are not reached by a required extension,
   so a profile inside the package that applies it does not get its own required «owned» on its stereotypes.
 - **Two profiles in scope with a required stereotype of one name**: each is keyed `Profile::name` in `props.tags` and the
@@ -872,7 +872,8 @@ proposes its row and writes its release notes in its pull request's description,
 holds it, with `lib/umlimator.js`'s `validate()` and, since no type checks a timeline before 6.5, a check that no change
 or constraint names what is gone. With every type's rules (`lib/umlimator-all.js`'s `validate()`) it does not hold
 today, for reasons outside stage 6 (none touches a timeline). Of 1,495 deletes over the examples and targets, 29 raise a
-new error under four rules:
+new error under four rules (counted when written; on current main 30 over 1,564, `subject-shown` 2, as the atlas has the
+`internals` view too):
 
 | Rule | Deletes | Example |
 |---|---|---|
@@ -882,7 +883,21 @@ new error under four rules:
 | `subject-shown` | 1 | `04-composite-structure.json`: deleting `order-service` leaves view `internals` with subject null |
 
 A use case cascade (an extend left with no point goes with it) would close only the first; each of the others needs its
-own type's delete to cascade or its rule to accept what a delete leaves. That is the maintainer's to decide, after stage 6.
+own type's delete to cascade or its rule to accept what a delete leaves. The maintainer's decision of 13 Nov 2026: a
+follow-up package after stage 6, the gap stated until then (`risks.md` M15).
+
+Closed by the follow-up (approved 13 Nov 2026), without core bytes: a delete is Shift + Delete through the remove hook of
+each view that draws the element (a bare delete where the view's type has none), or Delete (out of the view) in each view
+that draws it, and `tests/delete-cascade.test.mjs` runs every such single delete over every example, the atlas and every
+target (2,671) and finds no new error. `extend-points`:
+the use case type gains a remove hook, and an extend left naming no other point goes with the point, named on the hint
+line. `message-link`: the communication type's hook already took a connector's messages. `reply-once`: the sequence
+type's hook already refused, said, a delete of the alt or an operand that leaves two replies side by side (its tests pin
+it). `subject-shown`: the rule accepts what the delete leaves, a warning for a view with no subject (it draws its other
+cards), as hiding the subject leaves it too; a subject set but not shown stays an error. Hiding the subject keeps its
+parts and their role bindings, so `binding-ends` is a warning in a view with no subject as well (it was an error there on
+main too). A bare `apply()` delete still
+leaves the four, as it does a host's own store's: closing those is a core slot, left out.
 
 Two smaller choices as built. With no field list for its type, the panel shows a slot's fields to edit and still lists
 every prop to read, `tags` among them as JSON, as before the slot (`tests/typed-edit.html` asserts it). The delete
@@ -993,6 +1008,63 @@ other tags rewritten the same way); «aggregateRoot» stays defined, a specializ
   | **(a) The package view (`bookshop-packages.json`) shows the profile `conventions` and `sales`' application of it, drawn by §4.1's entries, and `conventions` opens the profile view; `fulfil-activity`'s `record` ("Record the payment on the order") opens the timing view (recommended)** | UML shows profile application on package diagrams (12.3.4); both elements have no link yet; the worker's "Recording payment" state is that action | The package example's picture changes (two elements and a line): its stills are for the maintainer |
   | (b) The two views are reached from the views list only; the atlas test names them as exceptions | No example's picture changes | Two views the drill-down never reaches |
 
+### 14.1 As built (6.6)
+
+- **The examples.** `examples/bookshop-profile.json` as above. `examples/bookshop-timing.json` takes the overview's and
+  the sequence's lifeline ids, and its view is `one-charge`, not `charge`: `charge` is an action of
+  `fulfil-activity.json`, and the atlas stops on a node whose id is another file's view. Both validate clean with every
+  type's rules; `check.mjs` registers the profile and timing types and its hand timing rule is gone.
+- **A timing lane is a holder** (`holder: true` on its geometry, one field in `src/uml/timing.js`): the layout check
+  (`overlapIssues`, the CLI's `check`) called each lane's own rows and changes overlaps of it, and the message labels in it
+  labels on a node (16 findings on the example). A holder may hold what it meets, as a sequence's fragment does. The
+  browser's text checks (`auditSvg`, `src/layout/audit.js`) leave holders out altogether, so no text, header or line
+  label is checked against a lane, its own or another's; the timing views are held to §11's predicate instead. Nothing
+  else reads the flag, so no picture changes.
+- **`tests/profile.html`** fetched `07-profile.json`; it keeps its own copy of the file as 6.3 had it (Order applying
+  «aggregateRoot» and «owned»), so the move breaks none of its checks.
+- **The fixtures.** §11's "a view from 0 to 1,000,000" is `timing-stress.json`'s view `dense`, of its own, so the case
+  is asserted on its own; the edge-cases view's 40-character value takes its ruler to the cap and is cut
+  (`timing-dense`, one change). The generated views are pinned, not clean: the profile `all` view's crossings (17 right,
+  30 down; repair and rerouting off), the timing `all` view's 43 `timing-label` reports and five more crowded labels the
+  ruler does not count (three over the state column's names, two over a step). Both stated in the conformance notes.
+- **The clause's words** (§5.5) were not quoted: the specification's PDF was not checked in 6.6, so the conformance note
+  cites the clauses and states the departure without quoting.
+- **The package view's palette** stays as 6.3 left it (§4.4); 6.7 adds the profile and its application to the package
+  example.
+
+### 14.2 As built (6.7)
+
+- **The atlas joins both files** (`tools/atlas-links.json`): `bookshop-profile` third, after the class file, so the
+  profile view's lines come in its own file's order (listed after the package file, `sales-applies-conventions` came
+  first and the view's lines were drawn in another order); `bookshop-timing` last. `tools/atlas.mjs` knows `tags`,
+  `states`, `sentAt`, `receivedAt` and `isRequired` among props, and a view's `timeline`, whose changes and constraints
+  are the view's own elements (an id there and anywhere else stops the build). The build met no clash: 6.6's revisions
+  made the files agree. 29 ids are shared, four more than 0.22.0's: `order.placedAt`, `conventions`,
+  `sales-applies-conventions`, `lifeline-worker`.
+- **Decision 18, option (a).** `bookshop-packages.json` gains `conventions` and `sales-applies-conventions`, as the
+  profile file has them; the package view draws the profile as a closed «profile» folder under `sales`, with its «apply»
+  line. The line is listed third in the view's `edges`: listed last, the down layout left catalog's «import» to shared
+  undrawn and the layout check found nothing (a limit of the label placement, not this lane's to fix). The package
+  type's tests (`tests/package.test.mjs`, `tests/package.html`) and `tests/mermaid-class.test.mjs` keep the example as
+  stage 2 made it, the two elements taken out when read; a new test in `tests/package.test.mjs` draws the example as it
+  is. `tests/print-typed.test.mjs`'s hash of the package file's tables and `tests/core-diet.json`'s four package
+  fingerprints are recorded again. These are the existing tests 6.7 edits besides `tests/atlas.test.mjs`; §13.2 expected
+  none.
+- **The documents 6.7 edits outside its Owns** (§13.2 lists none; `docs/` was 6.6's): `README.md`, `docs/module-api.md`,
+  `examples/README.md`, `examples/index.html` (the atlas's and the package example's cards),
+  `docs/diagrams/notes/stage-6.md` (this section), `docs/conformance/uml-package.md` and `docs/diagrams/risks.md` L8
+  (2.6's known limit, a line through `payments`' box, is now stated on the example as stage 2 made it: with the profile
+  the line goes round `catalog`'s right side), and `tests/embed.py`'s line for `tests/package.html`.
+- **The links.** `bookshop-packages/conventions` opens `profile`; `fulfil-activity/record` opens `one-charge`. From the
+  map: overview → packages → profile, and overview → shopping → take-payment → one-charge.
+- **What `tests/atlas.test.mjs` pins:** the 14 kinds; `describe()` and the PDF's tables of every view; «owned» supplied
+  to exactly `customer`, `order` and `line`; the merged `placedAt`'s «column» and tags, with the class view's
+  `describe()` and PDF rows equal to the class file's (it does not draw member stereotypes); the problem list unchanged,
+  six problems as before 6.7 (the class rule's two `generalization-kinds`, the two `realization-target` and the two
+  `part-type`, where §13.2's done-when says only "the class rule's two"; none from a stored keyword such as
+  `order-uses-money`'s «use»); Shift + Delete of `lifeline-worker` on `queue-order` taking its four changes and both
+  constraints.
+
 ## 15. Left out of the subsets
 
 | Type | Left out |
@@ -1045,6 +1117,12 @@ Each is set out with its options and trade-offs in the section named; the recomm
 | 23 | A hidden timing lifeline's messages | Stated: they leave the view with it (the core's `hide` drops the view's own lines), said first with their count, as on a sequence view; no code, but showing the lifeline again does not bring them back (undo does) | The type's `remove` hook hides by `set` of `nodeIds` only, keeping the messages undrawn and `message-ends` skipping hidden lifelines: comes back whole, but a second way to hide | §8.3 |
 | 24 | Comments on a timing view (raised by 6.5) | Left out, as built: row 14 lists none, and the view lays out lanes only | Add them: a row of notes under the ruler and their links drawn straight to a lane or a change (a placement of their own, its tests and fixtures) | §8.2 |
 | 25 | How the hint line and L's typed search name a change (raised by 6.5) | By its id, as built: the canvas's `nameOf` reads the model's elements, and a change is none; no core bytes | The canvas's `nameOf` falls back to the geometry node's label, so a change reads "Waiting for payment @ 100" and L finds it by its state: kinder, but a core change (bytes from stage 6's share) touching every typed view's names | §8.2 |
+
+The maintainer's decisions of 13 Nov 2026: every recommendation above taken, decisions 24 and 25 included (no comments on
+a timing view; a change named by its id on the hint line and in `L`'s search, with no core bytes); 6.2's nearest-package
+rule accepted (a package applying a profile may carry that profile's stereotypes, §5.9); 6.1's finding (a delete can leave
+a model failing `validate()` under four earlier types' rules, §13.2) a follow-up package after stage 6, stated as a known
+gap until then.
 
 The maintainer's question of 13 Nov 2026, whether stages 5 and 6 can run in parallel, is decision 19: yes, for everything
 but stage 6's documents, examples and atlas (6.6, 6.7), which wait for 5.8 because they own the same files

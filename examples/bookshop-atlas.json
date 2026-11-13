@@ -205,7 +205,15 @@
    "props": {
     "stereotypes": [
      "entity"
-    ]
+    ],
+    "tags": {
+     "entity": {
+      "table": "orders"
+     },
+     "owned": {
+      "team": "checkout"
+     }
+    }
    },
    "members": [
     {
@@ -224,7 +232,16 @@
      "props": {
       "visibility": "private",
       "valueType": "Instant",
-      "multiplicity": "0..1"
+      "multiplicity": "0..1",
+      "stereotypes": [
+       "column"
+      ],
+      "tags": {
+       "column": {
+        "name": "placed_at",
+        "indexed": "true"
+       }
+      }
      }
     },
     {
@@ -488,6 +505,99 @@
    "label": "total is the sum of the lines' unit price times quantity"
   },
   {
+   "id": "conventions",
+   "type": "uml.Profile",
+   "label": "BookshopConventions",
+   "opensView": "profile"
+  },
+  {
+   "id": "mc-class",
+   "type": "uml.MetaclassReference",
+   "label": "Class",
+   "parent": "conventions"
+  },
+  {
+   "id": "mc-property",
+   "type": "uml.MetaclassReference",
+   "label": "Property",
+   "parent": "conventions"
+  },
+  {
+   "id": "entity",
+   "type": "uml.Stereotype",
+   "label": "entity",
+   "parent": "conventions",
+   "members": [
+    {
+     "id": "entity.table",
+     "type": "uml.Property",
+     "label": "table",
+     "props": {
+      "valueType": "String"
+     }
+    }
+   ]
+  },
+  {
+   "id": "aggregate-root",
+   "type": "uml.Stereotype",
+   "label": "aggregateRoot",
+   "parent": "conventions",
+   "members": [
+    {
+     "id": "aggregate-root.boundedContext",
+     "type": "uml.Property",
+     "label": "boundedContext",
+     "props": {
+      "valueType": "String"
+     }
+    }
+   ]
+  },
+  {
+   "id": "owned",
+   "type": "uml.Stereotype",
+   "label": "owned",
+   "parent": "conventions",
+   "members": [
+    {
+     "id": "owned.team",
+     "type": "uml.Property",
+     "label": "team",
+     "props": {
+      "valueType": "String",
+      "multiplicity": "0..1"
+     }
+    }
+   ]
+  },
+  {
+   "id": "column",
+   "type": "uml.Stereotype",
+   "label": "column",
+   "parent": "conventions",
+   "members": [
+    {
+     "id": "column.name",
+     "type": "uml.Property",
+     "label": "name",
+     "props": {
+      "valueType": "String",
+      "multiplicity": "0..1"
+     }
+    },
+    {
+     "id": "column.indexed",
+     "type": "uml.Property",
+     "label": "indexed",
+     "props": {
+      "valueType": "Boolean",
+      "default": "false"
+     }
+    }
+   ]
+  },
+  {
    "id": "ada",
    "type": "uml.InstanceSpecification",
    "label": "ada",
@@ -689,7 +799,12 @@
    "type": "uml.Lifeline",
    "label": "payments",
    "props": {
-    "represents": "PaymentProvider"
+    "represents": "PaymentProvider",
+    "states": [
+     "Idle",
+     "Authorising",
+     "Capturing"
+    ]
    }
   },
   {
@@ -909,7 +1024,8 @@
   {
    "id": "record",
    "type": "uml.Action",
-   "label": "Record the payment on the order"
+   "label": "Record the payment on the order",
+   "opensView": "one-charge"
   },
   {
    "id": "pay-done",
@@ -1166,7 +1282,12 @@
    "type": "uml.Lifeline",
    "label": "worker",
    "props": {
-    "represents": "OrderWorker"
+    "represents": "OrderWorker",
+    "states": [
+     "Idle",
+     "Waiting for payment",
+     "Recording payment"
+    ]
    }
   },
   {
@@ -1606,6 +1727,39 @@
    "type": "uml.CommentLink",
    "from": "note-total",
    "to": "order"
+  },
+  {
+   "id": "entity-extends-class",
+   "type": "uml.Extension",
+   "from": "entity",
+   "to": "mc-class"
+  },
+  {
+   "id": "owned-extends-class",
+   "type": "uml.Extension",
+   "from": "owned",
+   "to": "mc-class",
+   "props": {
+    "isRequired": true
+   }
+  },
+  {
+   "id": "column-extends-property",
+   "type": "uml.Extension",
+   "from": "column",
+   "to": "mc-property"
+  },
+  {
+   "id": "root-is-entity",
+   "type": "uml.Generalization",
+   "from": "aggregate-root",
+   "to": "entity"
+  },
+  {
+   "id": "sales-applies-conventions",
+   "type": "uml.ProfileApplication",
+   "from": "sales",
+   "to": "conventions"
   },
   {
    "id": "ada-places-order",
@@ -2752,6 +2906,24 @@
    }
   },
   {
+   "id": "profile",
+   "diagram": "uml.profile",
+   "title": "Bookshop conventions profile",
+   "parent": null,
+   "direction": "down",
+   "nodeIds": [
+    "conventions",
+    "mc-class",
+    "mc-property",
+    "entity",
+    "aggregate-root",
+    "owned",
+    "column",
+    "sales",
+    "order"
+   ]
+  },
+  {
    "id": "snapshot",
    "diagram": "uml.object",
    "title": "Order 1042, just placed",
@@ -2789,11 +2961,13 @@
     "card",
     "card-payment",
     "wholesale",
-    "wholesale-order"
+    "wholesale-order",
+    "conventions"
    ],
    "edges": [
     "catalog-imports-shared",
     "sales-imports-catalog",
+    "sales-applies-conventions",
     "payments-accesses-shared",
     "wholesale-merges-sales",
     "sales-needs-payments"
@@ -3362,6 +3536,111 @@
     "order-events",
     "publish-subscribe"
    ]
+  },
+  {
+   "id": "one-charge",
+   "diagram": "uml.timing",
+   "title": "One charge",
+   "parent": null,
+   "nodeIds": [
+    "lifeline-worker",
+    "lifeline-payments"
+   ],
+   "edges": [
+    {
+     "id": "m-charge",
+     "type": "uml.Message",
+     "from": "lifeline-worker",
+     "to": "lifeline-payments",
+     "label": "charge(total)",
+     "props": {
+      "sort": "call",
+      "sentAt": 100,
+      "receivedAt": 140
+     }
+    },
+    {
+     "id": "m-paid",
+     "type": "uml.Message",
+     "from": "lifeline-payments",
+     "to": "lifeline-worker",
+     "label": "paid",
+     "props": {
+      "sort": "reply",
+      "replyTo": "m-charge",
+      "sentAt": 720,
+      "receivedAt": 760
+     }
+    }
+   ],
+   "timeline": {
+    "unit": "ms",
+    "changes": [
+     {
+      "id": "w-idle",
+      "lifeline": "lifeline-worker",
+      "at": 0,
+      "state": "Idle"
+     },
+     {
+      "id": "w-waiting",
+      "lifeline": "lifeline-worker",
+      "at": 100,
+      "state": "Waiting for payment"
+     },
+     {
+      "id": "w-recording",
+      "lifeline": "lifeline-worker",
+      "at": 760,
+      "state": "Recording payment"
+     },
+     {
+      "id": "w-done",
+      "lifeline": "lifeline-worker",
+      "at": 900,
+      "state": "Idle"
+     },
+     {
+      "id": "p-idle",
+      "lifeline": "lifeline-payments",
+      "at": 0,
+      "state": "Idle"
+     },
+     {
+      "id": "p-authorising",
+      "lifeline": "lifeline-payments",
+      "at": 140,
+      "state": "Authorising"
+     },
+     {
+      "id": "p-capturing",
+      "lifeline": "lifeline-payments",
+      "at": 480,
+      "state": "Capturing"
+     },
+     {
+      "id": "p-done",
+      "lifeline": "lifeline-payments",
+      "at": 720,
+      "state": "Idle"
+     }
+    ],
+    "constraints": [
+     {
+      "id": "c-wait",
+      "type": "uml.DurationConstraint",
+      "from": "w-waiting",
+      "to": "w-recording",
+      "label": "{<= 800 ms}"
+     },
+     {
+      "id": "c-finished",
+      "type": "uml.TimeConstraint",
+      "from": "w-done",
+      "label": "{<= 1000 ms}"
+     }
+    ]
+   }
   }
  ]
 }

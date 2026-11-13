@@ -1,7 +1,81 @@
 <!doctype html>
+<!-- Stage 6's fixtures (6.6, notes/stage-6.md §11) in headless Chrome (tests/embed.py), from lib/umlimator-all.js: every
+     view of tests/profile-*.json and timing-*.json, each drawn by render() in both themes and three fonts, a profile view
+     in both directions. A profile view: every node and line drawn, no two nodes overlapping, every text inside its node,
+     every node inside its box, no line through a node but its own two ends. A timing view: every lane, change, row and
+     message drawn, the texts of a lane and its rows inside the lane, every step and band inside a lane, the lanes apart.
+     Both: every node and line named, texts at 4.5:1 and lines and outlines at 3:1. tests/stage6-fixtures.test.mjs holds the
+     same in Node, with §11's timing predicate, what check() finds pinned and §12's budgets. -->
 <meta charset="utf-8">
-<title>stage6: placeholder (stage 6, 6.0)</title>
-<!-- notes/stage-6.md 6.0: a placeholder that reports ok, so tests/embed.py lists the page once and the work package that
-     owns it (6.3 profile, 6.5 timing, 6.6 stage6) fills it without editing tests/embed.py -->
-<pre id="result"></pre>
-<script>document.getElementById('result').textContent = JSON.stringify({ ok: ['the placeholder page loads (filled by its work package)'], fail: [] });</script>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="../lib/umlimator-theme.css">
+<title>umlimator stage 6 fixtures test</title>
+<body style="margin:0">
+<div id="m" style="width:1200px;height:900px"></div>
+<script type="module">
+import { render, layout } from '../lib/umlimator-all.js';
+const out = { ok: [], fail: [] };
+const check = (name, cond, info) => { document.title = name; if (cond) out.ok.push(name); else out.fail.push(name + (info === undefined ? '' : ': ' + JSON.stringify(info))); };
+const el = document.getElementById('m');
+let sr;
+const pick = s => sr.querySelector(s), all = s => [...sr.querySelectorAll(s)];
+const bb = x => { const r = x.getBBox(); return { x: r.x, y: r.y, w: r.width, h: r.height }; };
+const meets = (a, b, k = 0) => a.x + k < b.x + b.w && b.x + k < a.x + a.w && a.y + k < b.y + b.h && b.y + k < a.y + a.h;
+const inside = (a, b, k = 1) => a.x >= b.x - k && a.y >= b.y - k && a.x + a.w <= b.x + b.w + k && a.y + a.h <= b.y + b.h + k;
+const ptsOf = d => { const n = d.match(/-?\d+(\.\d+)?/g).map(Number), p = []; for (let i = 0; i < n.length; i += 2) p.push([n[i], n[i + 1]]); return p; };
+const FONTS = { serif: 'serif', sans: 'sans-serif', wide: 'monospace' };
+const rgba = s => { let m = /rgba?\(([^)]+)\)/.exec(s); if (m) { const p = m[1].split(/[ ,/]+/).filter(Boolean).map(Number); return [p[0] / 255, p[1] / 255, p[2] / 255, p.length > 3 ? p[3] : 1]; }
+  m = /color\(srgb ([^)]+)\)/.exec(s); if (m) { const p = m[1].split(/[ /]+/).filter(Boolean).map(Number); return [p[0], p[1], p[2], p.length > 3 ? p[3] : 1]; } return null; };
+const blend = (top, bot) => [0, 1, 2].map(i => top[i] * top[3] + bot[i] * (1 - top[3])).concat(1);
+const lum = c => { const f = v => v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]); };
+const ratio = (fg, bg) => { const [x, y] = [lum(blend(fg, bg)), lum(bg)].sort((p, q) => q - p); return +((x + 0.05) / (y + 0.05)).toFixed(2); };
+const css = (x, k) => rgba(getComputedStyle(x)[k]);
+const FIX = {};
+for (const t of ['profile', 'timing']) for (const k of ['minimal', 'stress']) FIX[`${t}-${k}`] = await (await fetch(`${t}-${k}.json`)).json();
+
+function profileView(g, bad) {
+  const nodes = all('.stage svg .node[data-id]'), B = new Map(nodes.map(n => [n.dataset.id, bb(n.querySelector('.n-mask') || n)]));
+  const missing = g.nodes.filter(n => !B.has(n.id)).map(n => n.id); if (missing.length) bad.push(`not drawn: ${missing.join(', ')}`);
+  const list = [...B]; list.forEach(([a, p], i) => list.slice(i + 1).forEach(([b, q]) => { if (meets(p, q, .5)) bad.push(`${a} and ${b} overlap`); }));
+  nodes.forEach(n => n.querySelectorAll('text').forEach(t => { if (t.textContent.trim() && !inside(bb(t), B.get(n.dataset.id))) bad.push(`${n.dataset.id}: "${t.textContent}" out of its shape`); }));
+  (g.families || []).forEach(f => { const box = pick(`.family[data-family="${CSS.escape(f.id)}"] .family-box`); if (!box) return bad.push(`box ${f.id} not drawn`);
+    g.nodes.filter(n => n.parent === f.id || (g.byId[n.id] && g.byId[n.id].family === f.id)).forEach(n => { if (B.has(n.id) && !inside(B.get(n.id), bb(box))) bad.push(`${n.id} outside ${f.id}`); }); });
+  all('.edge-g').forEach(e => { const from = e.dataset.from, to = e.dataset.to, p = ptsOf(e.querySelector('path.edge').getAttribute('d'));
+    p.slice(1).forEach((q, k) => { const s = { x: Math.min(p[k][0], q[0]), y: Math.min(p[k][1], q[1]), w: Math.abs(q[0] - p[k][0]) || .01, h: Math.abs(q[1] - p[k][1]) || .01 };
+      B.forEach((b, id) => { if (id !== from && id !== to && meets(s, { x: b.x + 1, y: b.y + 1, w: b.w - 2, h: b.h - 2 })) bad.push(`${from}>${to} runs through ${id}`); }); }); });
+  return nodes;
+}
+function timingView(g, bad) {
+  const lanes = all('.node.tm-lane'), L = Object.fromEntries(lanes.map(n => [n.dataset.id, bb(n.querySelector('rect'))]));
+  const want = { lanes: g.tr.lanes.length, changes: g.tr.changes.length, rows: g.nodes.filter(n => n.shape === 'tm-row').length, lines: g.tr.lines.length };
+  const got = { lanes: lanes.length, changes: all('.node.tm-change').length, rows: all('.node.tm-row').length, lines: all('.edge-g').length };
+  if (JSON.stringify(want) !== JSON.stringify(got)) bad.push(`drawn ${JSON.stringify(got)}, laid out ${JSON.stringify(want)}`);
+  all('.node.tm-lane text, .node.tm-row text').forEach(t => { const id = t.closest('.node').dataset.id.split('->')[0]; if (!inside(bb(t), L[id])) bad.push(`"${t.textContent}" leaves ${id}`); });
+  all('.tm-step, .tm-band').forEach((p, i) => { if (!Object.values(L).some(l => inside(bb(p), l))) bad.push(`step or band ${i} in no lane`); });
+  const ls = Object.entries(L); ls.forEach(([a, p], i) => ls.slice(i + 1).forEach(([b, q]) => { if (meets(p, q, .5)) bad.push(`lanes ${a} and ${b} meet`); }));
+  return all('.stage svg .node[data-id]');
+}
+try {
+  for (const [fx, MODEL] of Object.entries(FIX)) for (const v of MODEL.views) for (const d of fx.startsWith('profile') ? ['right', 'down'] : [null])
+    for (const theme of ['light', 'dark']) for (const [fname, family] of Object.entries(FONTS)) {
+      document.documentElement.dataset.theme = theme; el.style.setProperty('--um-sans', family);
+      const M = d ? { ...MODEL, views: MODEL.views.map(w => (w.id === v.id ? { ...w, direction: d } : w)) } : MODEL, g = layout(M, v.id);
+      el.innerHTML = ''; const h = render(el, M, { view: v.id }); sr = el.querySelector('.umlimator').shadowRoot;
+      const tag = `${fx} ${v.id}${d ? ', ' + d : ''}, ${theme}, ${fname}`, svg = pick('.stage svg'), bad = [];
+      svg.style.textRendering = 'geometricPrecision'; // measured unhinted, as tests/stage5.html does
+      const nodes = d ? profileView(g, bad) : timingView(g, bad), lines = all('.edge-g');
+      nodes.forEach(n => { if (!(n.getAttribute('aria-label') || '').trim()) bad.push(`${n.dataset.id} has no name`); });
+      lines.forEach(e => { if (!(e.querySelector(':scope > title') || {}).textContent) bad.push(`a line from ${e.dataset.from} has no name`); });
+      const stageBg = css(pick('.stage'), 'backgroundColor'), low = [];
+      nodes.forEach(n => { const body = n.querySelector(':scope > .n-body'), fill = body && css(body, 'fill'), bg = fill && fill[3] ? blend(fill, stageBg) : stageBg;
+        n.querySelectorAll('text').forEach(t => { if (!t.textContent.trim()) return; const r = ratio(css(t, 'fill'), bg); if (r < 4.5) low.push([n.dataset.id, t.textContent, r]); });
+        if (body && css(body, 'stroke') && css(body, 'stroke')[3]) { const k = ratio(css(body, 'stroke'), stageBg); if (k < 3) low.push([n.dataset.id, 'outline', k]); } });
+      all('.edge-g path.edge, .tm-step, .tm-band').forEach(p => { const r = ratio(css(p, 'stroke'), stageBg); if (r < 3) low.push(['line', r]); });
+      check(`${tag}: ${g.nodes.length} nodes and ${g.edges.length} lines drawn; ${d ? 'no overlap, texts inside, inside their boxes, no line through a node' : 'lane and row texts, steps and bands inside their lanes, lanes apart'}, every piece named, contrast`,
+        lines.length === g.edges.length && !bad.length && !low.length, [lines.length, g.edges.length, bad.slice(0, 10), low.slice(0, 6)]);
+      h.destroy();
+    }
+  document.documentElement.dataset.theme = 'light'; el.style.removeProperty('--um-sans');
+} catch (e) { out.fail.push('threw: ' + (e && e.stack || e)); }
+const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
+</script>

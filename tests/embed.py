@@ -26,7 +26,7 @@ tests/typed-edit.html: editing a typed view (1.7): each gesture's edit event, by
 tests/notation.html: notation (1.5): a classifier, every line end and end labels from svgOf, in both themes and three fonts: text in its face, ends on outlines.
 tests/class.html: the class diagram (1.9): examples/sales-classes.json drawn in both themes and three fonts, edited as text and by the picker through apply(), an edit to paint on 40 classes; the fixtures tests/class-minimal.json and
   tests/class-stress.json in both themes and three fonts, an edit to paint on the stress fixture.
-tests/package.html: the package diagram (2.2): examples/bookshop-packages.json in both themes, three fonts and both directions (boxes hold exactly their contents, titles, ends, names, contrast,
+tests/package.html: the package diagram (2.2): examples/bookshop-packages.json as stage 2 made it (6.7's profile and «apply» line taken out) in both themes, three fonts and both directions (boxes hold exactly their contents, titles, ends, names, contrast,
   legend), a closed package, and each gesture by pointer and keyboard (palette, import by the picker, visibility, Owner, a drop into a box, a box's name, hide, delete).
 tests/object.html: the object diagram (2.3): examples/order-objects.json in both themes, three fonts and both directions (underlined heads, slot rows, names, roles,
   contrast, legend), an instance in a box, and each gesture by pointer and keyboard (palette, name, classifier, a slot as text, link, roles, Owner, drop, pin, hide, delete).

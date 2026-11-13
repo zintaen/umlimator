@@ -437,3 +437,51 @@ The **composite structure diagram** (`uml.composite-structure`, `examples/order-
 `L` then a name cannot reach a part or a port (the canvas names a member by its owner's label): `L` then an arrow, or the
 pointer, reaches them. A port selected on a part shows no properties: they are its class's, edited where the class's own
 port is drawn.
+
+## The profile and timing diagrams' gestures, and tags on every view (0.23.0)
+
+Stage 6 (`docs/diagrams/notes/stage-6.md` §4.3, §5.7, §8) adds one slot to the properties panel, in
+`lib/umlimator-all.js` and provisional: after a type's own fields, the panel lists `TYPED.fields(model, element)`'s, one
+field per tag of each stereotype the element has (its own, a general's, and a required one the tool supplies), on every
+typed view. A field's key is `p:<stereotype>:<tag>` and its `path` is `['tags', stereotype, tag]`, so a field commits
+`set` of `props.tags.<stereotype>.<tag>` (the missing objects made on the way); an empty value removes the tag. A Boolean
+or an enumeration tag is a choice, any other a text field. A tag stored under no stereotype the element has stays in the
+model, is warned (`tag-defined`) and is not a field. With no field list for its type, the panel still lists every prop to
+read, `tags` among them.
+
+The **profile diagram** (`uml.profile`, `examples/bookshop-profile.json`):
+
+| Edit | Pointer | Keyboard | Commands |
+|---|---|---|---|
+| add a profile, a stereotype, a metaclass, an enumeration, a package, a comment | the palette; a stereotype, metaclass or enumeration goes into the profile selected, else the profile holding what is selected, else the view's first; with none, refused ("add a profile first") | `N` (a profile, the palette's first) | `add` with `view` (and `parent`); a metaclass name not in UML's table opens a picker of the nearest names, then adds what was picked; a metaclass with no name is added unnamed and warned (`metaclass-known`) |
+| add a line | the handle or a drag, then Extension, Generalization, Profile application or Comment link | `L`, the other end, Enter, the kind | `add`; an extension from a stereotype to a metaclass, an application from a package to a profile (not a profile to itself), a generalization between two stereotypes; anything else is refused and said with the rule's words |
+| a stereotype's tag definitions | the stereotype's member rows, the class type's text (`name : Type [mult] = default`) | Enter | the class type's member hook |
+| required, abstract | the properties panel: Required on an extension, Abstract on a stereotype (checkboxes) | | `set props.isRequired`, `set props.isAbstract` |
+| show an element of the model here, to apply a stereotype | Show (the outline), Enter on it | | `set` of the view's `nodeIds` |
+| apply a stereotype, set a tag | the Stereotypes list and the tag fields, on this view or any other | Enter | `set props.stereotypes`, `set props.tags.<stereotype>.<tag>` |
+| rename | double-click once selected | `F2` | `set label`; a renamed or deleted stereotype does not rewrite the elements that name it: they are warned (`stereotype-unknown`) |
+| hide, delete | Remove from view, Delete from model | `Delete`, `Shift + Delete` | `hide`, `delete`; a stereotype's compartment or a tag row is not hidden on its own: the element's whole node is |
+
+The **timing diagram** (`uml.timing`, `examples/bookshop-timing.json`). Times snap to a minor tick (a fifth of the
+ruler's step) by pointer and Alt + arrows; F2's `@` sets them exactly. A change, a message and a constraint cannot be
+hidden: Delete deletes it, and the hint line says so first.
+
+| Edit | Pointer | Keyboard | Commands |
+|---|---|---|---|
+| add a lifeline | the palette's Lifeline | `N`, then `name` or `name : Type` | `add` into `nodeIds` at the end |
+| add a change | the palette's Change, on the slot of a lane at a time | the selected change's lane a minor tick after it; on a selected lifeline, its first free minor tick from the ruler's start | `set` of the view's `timeline.changes` (a state the lifeline does not list is added to `states` in the same transaction, said); never on another change's instant |
+| add a time constraint | the palette's Time constraint, with a change selected | | `set` of `timeline.constraints`; with no change selected, refused and said |
+| add a message | the handle from a lifeline or a change to another (or the same), then Call, Async or Reply | `L`, the other end, Enter, the sort | `add` inline in the view's `edges`, sent and received at the release slot's time, or at the two changes' times |
+| add a duration constraint | the handle from a change to another change, then Duration constraint | `L`, the other change, Enter | `set` of `timeline.constraints`, in time order |
+| move a change in time | drag it along its lane | `Alt + ←/→`: one minor tick | `set` of its `at`; refused onto another change's instant (`change-instant`) |
+| a change's state | | `Alt + ↑/↓` on a states-form change: the state above or below (from the extra row of an unlisted state, ↑ goes to the last listed one) | `set` of its `state` |
+| move a message in time | drag it | `Alt + ←/→`: both times by one minor tick | `set` of `sentAt` and `receivedAt`; Alt + ↑/↓ on a message does nothing |
+| reorder lifelines | | `Alt + ↑/↓` on a lifeline | `set` of `nodeIds` |
+| a value lifeline | | `S` on a lifeline | `set` of `present.<id>.as` to `values`, or removed |
+| rename | double-click once selected | `F2`: a change `state` or `state @ t`; a message `label`, `label @ t` or `label @ t1 → t2` (`->` too); a constraint its label; a lifeline `name` or `name : Type`; a state's row its name (rewriting `states` and every change of that lifeline in it); the ruler the view's unit (empty removes it) | `set`; a text whose part after its last `@` is not one or two decimal numbers is all text; a message's ends and a constraint's are not re-attached (delete and connect again, as the hint line says) |
+| hide a lifeline | Remove from view | `Delete` | `hide`: its changes and constraints stay in the timeline, not drawn; its messages go with it (the view's own lines), counted on the hint line first |
+| delete | Delete from model | `Delete` on a change, a message or a constraint; `Shift + Delete` on a lifeline | `delete`: a lifeline takes its changes, their constraints and its messages, from every view (the core's cascade); the hint line counts them ("Deleted worker, 4 changes, 2 messages and 2 constraints") |
+
+`L` then typing reaches a change by its id (`w-waiting`), not its state: the canvas names a node no view lists by its id
+(decision 25). A state's row (`<lifeline>-><state>`) and the ruler (`->ruler`) are drawn under geometry ids; Delete on
+either is refused, said.

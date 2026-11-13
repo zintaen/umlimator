@@ -50,7 +50,9 @@ const ALL = [...ORDER, 'typed/layout', 'typed/draw', 'typed/edit', 'uml/owners',
   'uml/stereotypes', 'uml/profile', 'layout/timeruler', 'uml/timing',
   // milestone 2 (notes/milestone-2.md §12.2, M2.0): empty until their work packages fill them, in this load order
   'er/er', 'flowchart/flowchart', 'dfd/dfd', 'uml/information', 'c4/c4', 'c4/views',
-  'readers/mermaid-er', 'readers/mermaid-flowchart', 'readers/structurizr', 'readers/dbml'];
+  'readers/mermaid-er', 'readers/mermaid-flowchart', 'readers/structurizr', 'readers/dbml',
+  // milestone 4b (notes/milestone-4b.md §15.2, 4b.0): empty until their work packages fill them, in this load order
+  'bpmn/notation', 'bpmn/process', 'readers/bpmn-xml'];
 
 // every source is in ALL, and every name in ALL is a source: a file left out would be missing from lib/ silently
 const found = readdirSync(new URL('src/', root), { recursive: true }).filter(f => f.endsWith('.js')).map(f => f.replaceAll('\\', '/').slice(0, -3)).sort();

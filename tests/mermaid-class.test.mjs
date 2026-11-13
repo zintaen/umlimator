@@ -45,7 +45,9 @@ test('read(write(model)) is the class example, view by view, less the owners a v
 });
 
 test('read(write(model)) is 03-package.json\'s classes in a class view, less the owners the view does not show and the packages\' lines, which the text names', () => {
-  const m = json('../examples/bookshop-packages.json'), pkg = new Set(m.nodes.filter(n => n.type === 'uml.Package').map(n => n.id));
+  // less the profile and its application 6.7 added for the Bookshop atlas: Mermaid's class diagram has neither
+  const m = json('../examples/bookshop-packages.json'); m.nodes = m.nodes.filter(n => n.type !== 'uml.Profile'); m.edges = m.edges.filter(e => e.type !== 'uml.ProfileApplication');
+  const pkg = new Set(m.nodes.filter(n => n.type === 'uml.Package').map(n => n.id));
   const views = {
     all: m.nodes.map(n => n.id), // payments holds card, which holds card-payment: nested braces
     classes: m.nodes.filter(n => !pkg.has(n.id)).map(n => n.id), // every owner hidden
