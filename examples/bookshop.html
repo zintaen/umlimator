@@ -602,6 +602,7 @@ function refs(m, ids, only) {
     arr(v.nodes).forEach((n, j) => element(n, [...at, 'nodes', j], false));
     arr(v.edges).forEach((e, j) => { if (has(e)) say([...at, 'edges', j], 'view'); else element(e, [...at, 'edges', j], true); });
     arr(v.fragments).forEach((f, j) => element(f, [...at, 'fragments', j], false));
+    ['changes', 'constraints'].forEach(k => arr(isObj(v.timeline) && v.timeline[k]).forEach((c, j) => isObj(c) && ['lifeline', 'from', 'to'].forEach(f => { if (has(c[f])) say([...at, 'timeline', k, j, f], 'end'); })));
     [['layout', 'pin'], ['present', 'present'], ['nodeOverrides', 'override']].forEach(([k, kind]) => Object.keys(isObj(v[k]) ? v[k] : {}).forEach(id => { if (has(id)) say([...at, k, id], kind); }));
     if (has(v.subject)) say([...at, 'subject'], 'subject');
     if (!only) ['parent', 'node'].forEach(k => { if (has(v[k])) say([...at, k], 'parent'); }); // a view opened from a card
@@ -728,9 +729,9 @@ function run(m, c, gone) {
       const take = id => { const r = at.get(id); if (!r || now.has(id)) return; now.add(id);
         arr(r.x.members).forEach(y => isObj(y) && take(y.id)); arr(kids.get(id)).forEach(take); }; // what it owns goes with it
       take(c.id);
-      // lines to what is gone go too, lines to those lines, and what a type's refs cascade (a reply with its call)
+      // lines to what is gone go too, lines to those lines, a timeline's items, and what a type's refs cascade (a reply with its call)
       const cascade = x => Object.entries(propRefs(x.type)).some(([p, how]) => how === 'cascade' && [].concat(dig(x, p)).some(id => now.has(id)));
-      for (let more = true; more;) { more = false; for (const [k, o] of at) if (!now.has(k) && (o.kind === 'edge' && (now.has(o.x.from) || now.has(o.x.to)) || cascade(o.x))) { take(k); more = true; } }
+      for (let more = true; more;) { more = false; for (const [k, o] of at) if (!now.has(k) && (o.kind === 'edge' && (now.has(o.x.from) || now.has(o.x.to)) || o.kind === 'time' && [o.x.lifeline, o.x.from, o.x.to].some(i => now.has(i)) || cascade(o.x))) { take(k); more = true; } }
       // what stays in something gone goes to its nearest owner left; an operand's messages to its fragment's parent
       const above = id => { const r = at.get(id); return r && (r.x.parent ?? (r.owner && above(r.owner.id))); };
       for (const [k, o] of at) if (!now.has(k) && now.has(o.x.parent)) { let p = o.x.parent;
