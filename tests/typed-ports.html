@@ -1,0 +1,86 @@
+<!doctype html>
+<!-- The router for ports and inner lines (5.1, notes/stage-5.md §4, §5, §7, §9.3) in headless Chrome (tests/embed.py): a
+     stand-in type lays out tests/typed-ports.test.mjs's fixture through render(), its nodes sized in the host's font, and
+     draws each port's square from the layout's e.fpb and e.tpb; under three fonts, right and down: every line as drawn ends
+     on its port's square within 1 px; no port leaves its owner's side, the four-line port included; an inner line enters
+     its box only at its port, at each of three levels; nested boxes' ports do not touch; the view laid out clean.
+     Imports src/ to register the stand-in type. -->
+<meta charset="utf-8">
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="../lib/umlimator-theme.css">
+<title>umlimator typed ports test</title>
+<body style="margin:0">
+<div id="m" style="width:1180px;height:900px"></div>
+<script type="module">
+import { render } from '../src/canvas/render.js';
+import { registerDiagramType } from '../src/core/registry.js';
+import { layoutTyped } from '../src/typed/layout.js';
+import { textW } from '../src/core/text.js';
+import { routeAudit, overlapIssues } from '../src/layout/audit.js';
+import '../src/typed/draw.js';
+const out = { ok: [], fail: [] };
+const check = (name, cond, info) => { document.title = name; if (cond) out.ok.push(name); else out.fail.push(name + (info === undefined ? '' : ': ' + JSON.stringify(info))); };
+const OPP = { L: 'R', R: 'L', T: 'B', B: 'T' }, LONG = 'replicates every order to the warehouse ledger, nightly and on demand';
+// tests/typed-ports.test.mjs's FIX, each node as wide as its name in the host's font
+function FIX(direction) {
+  const N = (id, col, row, w = 120, h = 64) => ({ id, label: id.toUpperCase() + ' service node', col, row, w: Math.max(w, Math.ceil(textW(id.toUpperCase() + ' service node', 13)) + 40), h });
+  const L = (id, from, to, more) => ({ id, from, to, ...more });
+  return { direction, repair: false, reroute: false, gap: 48,
+    nodes: [N('ext', 0, 1), N('c1', 1, 1), N('c2', 2, 1), N('b1', 1, 2.5), N('a1', 1, 4), N('hub', 4, 0), ...[1, 2, 3, 4].map(k => N('t' + k, 5, k - 1)),
+      N('sq', 4, 3.5, 140, 90), N('up', 4, 5), N('lo', 4, 6.5), N('rt', 5, 4.5), N('two', 6, 0), N('far', 7, 0), N('r1', 6, 5.5), N('r2', 7, 5.5)],
+    containers: [{ id: 'A', label: 'Alpha', title: 'Alpha', nodeIds: ['a1'], pad: 48 }, { id: 'B', label: 'Beta', title: 'Beta', nodeIds: ['b1'], parent: 'A', pad: 48 },
+      { id: 'C', label: 'Gamma', title: 'Gamma', nodeIds: ['c1', 'c2'], parent: 'B', pad: 48 }, { id: 'R', label: 'Round', title: 'Round', nodeIds: ['r1', 'r2'], round: true }],
+    edges: [L('in', 'ext', 'A', { toPort: 'pA', toSide: 'left', label: 'orders' }),
+      L('dA', 'A', 'B', { fromPort: 'pA', toPort: 'pB', inner: 'from', fromSide: 'right', toSide: 'left' }),
+      L('dB', 'B', 'C', { fromPort: 'pB', toPort: 'pC', inner: 'from', fromSide: 'right', toSide: 'left' }),
+      L('dC', 'C', 'c1', { fromPort: 'pC', toPort: 'q', inner: 'from', fromSide: 'right', toSide: 'left' }),
+      L('cc', 'c1', 'c2'), L('cs', 'c2', 'sq', { toPort: 'pL', toSide: 'left' }),
+      ...[1, 2, 3, 4].map(k => L('h' + k, 'hub', 't' + k, { fromPort: 'h4', fromSide: 'right' })),
+      L('sT', 'sq', 'hub', { fromPort: 'pT', fromSide: 'top', toSide: 'bottom' }), L('sR', 'sq', 'rt', { fromPort: 'pR', fromSide: 'right' }),
+      L('sB', 'sq', 'up', { fromPort: 'pB', fromSide: 'bottom', toSide: 'top' }), L('ul', 'up', 'lo'),
+      L('pa', 'two', 'far', { fromPort: 'pa', fromSide: 'right', portRank: 0 }), L('pb', 'two', 'far', { fromPort: 'pb', fromSide: 'right', portRank: 1 }),
+      L('long', 't4', 'r1', { label: LONG, cut: 280 }), L('rr', 'r1', 'r2', { label: 'syncs' })] };
+}
+const IDS = ['ext', 'c1', 'c2', 'b1', 'a1', 'hub', 't1', 't2', 't3', 't4', 'sq', 'up', 'lo', 'rt', 'two', 'far', 'r1', 'r2'];
+// each port end: its line, end, port, owner id and border, as the layout gave them
+const portEnds = g => g.edges.flatMap((e, i) => [['from', e.fromPort, e.from, e.fs, e.fpb, e.inner === 'from'], ['to', e.toPort, e.to, e.ts, e.tpb, e.inner === 'to']]
+  .filter(x => x[1] != null).map(([end, port, id, side, box, inner]) => ({ e, i, end, port, id, side: inner ? OPP[side] : side, box })));
+let geo = null;
+registerDiagramType('test.ports', {
+  layout: { pins: false, run: (D, v, { memo }) => (geo = layoutTyped(FIX(v.direction), memo)) },
+  // each port's square, once per port (its ends share it), on the layout's copy of nothing: the geometry is only read
+  draw: g => ({ over: [...new Map(portEnds(g).map(x => [`${x.id}->${x.port}`, x.box])).entries()].map(([k, b]) => `<rect class="t-port" data-port="${k}" x="${b.x}" y="${b.y}" width="${b.w}" height="${b.h}" fill="var(--um-stage-bg)" stroke="var(--um-muted)"/>`).join('') }) });
+const MODEL = d => ({ schemaVersion: 2, nodes: IDS.map(id => ({ id, type: 'test.Node', label: id })), edges: [], views: [{ id: 'v', diagram: 'test.ports', direction: d, nodeIds: IDS }] });
+const el = document.getElementById('m');
+const FONTS = { serif: 'serif', sans: 'sans-serif', wide: 'monospace' };
+const inside = (p, r, m = 0) => p.x >= r.x - m && p.x <= r.x + r.width + m && p.y >= r.y - m && p.y <= r.y + r.height + m;
+const touch = (a, b) => a.x <= b.x + b.width && b.x <= a.x + a.width && a.y <= b.y + b.height && b.y <= a.y + a.height;
+try {
+  const widths = {};
+  for (const [fname, family] of Object.entries(FONTS)) for (const d of ['right', 'down']) {
+    el.style.setProperty('--um-sans', family); el.innerHTML = '';
+    const h = render(el, MODEL(d), { view: 'v' }), sr = el.querySelector('.umlimator').shadowRoot, tag = `${fname}, ${d}`;
+    const g = geo, F = Object.fromEntries(g.families.map(f => [f.id, f])), own = id => g.byId[id] || F[id], ends = portEnds(g), off = [], out = [];
+    widths[fname] = g.byId.hub.w;
+    const sq = k => sr.querySelector(`.t-port[data-port="${k}"]`).getBBox(), path = i => sr.querySelector(`.edge-g[data-i="${i}"] path.edge`);
+    ends.forEach(x => { const P = path(x.i), p = P.getPointAtLength(x.end === 'from' ? 0 : P.getTotalLength()), r = sq(`${x.id}->${x.port}`), n = own(x.id), v = x.side === 'L' || x.side === 'R';
+      if (!inside(p, r, 1)) off.push(`${x.e.id} ${x.end}: drawn end ${Math.round(p.x)},${Math.round(p.y)} off ${x.port}'s square`);
+      const B = x.side === 'L' ? n.x : x.side === 'R' ? n.x + n.w : x.side === 'T' ? n.y : n.y + n.h, mid = v ? r.x + r.width / 2 : r.y + r.height / 2;
+      if (Math.abs(mid - B) > .5 || (v ? r.y < n.y || r.y + r.height > n.y + n.h : r.x < n.x || r.x + r.width > n.x + n.w)) out.push(`${x.port} on ${x.id} ${x.side}`); });
+    check(`${tag}: every line of a port ends on its drawn square within 1 px (${ends.length} ends)`, ends.length === 17 && !off.length, off);
+    check(`${tag}: every port's square is centred on its owner's border and within its side, the four-line port too`, !out.length && ends.filter(x => x.port === 'h4').every(x => x.side === (d === 'right' ? 'R' : 'B')), out);
+    // an inner line, as drawn, starts on its box's border and runs inside it after that
+    const leak = [];
+    [['dA', 'A'], ['dB', 'B'], ['dC', 'C']].forEach(([id, b]) => { const i = g.edges.findIndex(e => e.id === id), P = path(i), f = F[b], L = P.getTotalLength();
+      for (let s = 2; s <= L; s += 2) { const p = P.getPointAtLength(s); if (!(p.x > f.x + .5 && p.x < f.x + f.w - .5 && p.y > f.y + .5 && p.y < f.y + f.h - .5)) { leak.push(`${id} at ${Math.round(p.x)},${Math.round(p.y)}`); break; } } });
+    check(`${tag}: an inner line enters its box only at its port, at each of three levels`, !leak.length, leak);
+    const nested = ['A->pA', 'B->pB', 'C->pC'].map(sq);
+    check(`${tag}: nested boxes' ports do not touch`, nested.every((a, i) => nested.slice(i + 1).every(b => !touch(a, b))), nested);
+    check(`${tag}: laid out clean`, !overlapIssues(g, '').length && !routeAudit(g, '').length, [...overlapIssues(g, ''), ...routeAudit(g, '')].slice(0, 6));
+    h.destroy();
+  }
+  check('the three fonts measure differently', new Set(Object.values(widths)).size === 3, widths);
+} catch (x) { out.fail.push('threw: ' + (x && x.stack || x)); }
+el.style.removeProperty('--um-sans');
+const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
+</script>

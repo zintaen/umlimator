@@ -226,7 +226,7 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
       const p = 12, x = Math.min(...rects.map(r => r.x)) - p - (TB ? 24 : 0), y = Math.min(...rects.map(r => r.y)) - p - (TB ? 0 : 24);
       const b = {...f, x, y, w:Math.max(...rects.map(r => r.x+r.w)) + p - x, h:Math.max(...rects.map(r => r.y+r.h)) + p - y};
       if (!map) b[TB ? 'h' : 'w'] = Math.max(b[TB ? 'h' : 'w'], headW(f) + 16);
-      return cache[f.id] = b;
+      return cache[f.id] = dg.typed ? TYPED.frame(b) : b;
     };
     const out = familyDefs.map(f => frameOf(f)).filter(Boolean);
     if (map) out.forEach(f => { // the box fits its title and its badges, which are tabs on its top border, at the right
@@ -293,13 +293,13 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
      bend penalty. Earlier routes may never be overlapped and are crossed only when no clean
      route exists; earlier labels are obstacles, so later routes keep clear of them. */
   // an end may be a container: the line ends on its box's border, whose title the ports keep clear of (not a box and
-  // something inside it: that has no line)
+  // something inside it: that has no line, but a typed view's inner line)
   const headOf = f => Math.min((TB ? f.h : f.w) - 16, headW(f)); // the length of a box's title along its header
   const boxEnd = Object.fromEntries(families.map(f => [f.id, { id: f.id, label: f.label || f.id, box: true, x: f.x, y: f.y, w: f.w, h: f.h, hd: TB ? headOf(f) : 0,
     decoT: TB ? [] : [[f.x + 8, headOf(f)], ...(f.tabs || []).map(t => [t.x - 6, t.w + 12])], decoB: [] }]));
   const endOf = Object.assign(Object.create(null), boxEnd, byId), end = id => endOf[id], holds = (b, n) => b.box && n !== b && n.x >= b.x && n.y >= b.y && n.x + n.w <= b.x + b.w && n.y + n.h <= b.y + b.h;
   const edges = (dg.edges || []).filter(e => { const s = end(e.from), t = end(e.to); if (!s || !t || (e.from === e.to && !loops[e.from])) return false;
-    if (holds(s, t) || holds(t, s)) { warn(`no line for edge ${e.id ?? e.from + '->' + e.to}: it joins the box "${(holds(s, t) ? s : t).id}" and something inside it`); return false; }
+    if (!(LP && e[e.inner + 'Port'] != null) && (holds(s, t) || holds(t, s))) { warn(`no line for edge ${e.id ?? e.from + '->' + e.to}: it joins the box "${(holds(s, t) ? s : t).id}" and something inside it`); return false; }
     return true; }).map(e => ({ ...e, s: end(e.from), t: end(e.to) }));
   const segsOf = pts => pts.slice(0, -1).map((a, i) => [a, pts[i + 1]]);
   const segHitsRect = (a, b, r) => { const x1 = Math.min(a[0], b[0]), x2 = Math.max(a[0], b[0]), y1 = Math.min(a[1], b[1]), y2 = Math.max(a[1], b[1]); return x2 > r.x && x1 < r.x + r.w && y2 > r.y && y1 < r.y + r.h; };
@@ -357,7 +357,7 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
   });
   free.forEach(e => { pushSide(e.s, e.fs, e, e.t); pushSide(e.t, e.ts, e, e.s); });
   edges.filter(e => e.under > 0).forEach(e => pushSide(e.t, 'R', e, e.s)); // a loop under the boxes takes its port with the side's other lines
-  if (LP) LP.ports(pushSide);
+  if (LP) LP.ports(pushSide, sides);
   const portAt = (it, side, p) => { if (it.n === it.e.s && it.e.fs === side) it.e.p1 = p; else it.e.p2 = p; };
   Object.entries(sides).sort(([, a], [, b]) => !!a[0].n.box - !!b[0].n.box).forEach(([key, list]) => { // cards first: a box's port lines up with them
     const side = key.split('|').pop(), vertical = side === 'L' || side === 'R';
@@ -742,7 +742,7 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
   if ((map || dg.typed) && dg.repair !== false) free.forEach(e => {
     const P = e.pts, ax = e.fs === 'L' || e.fs === 'R' ? 1 : 0, d = P[P.length - 1][ax] - P[0][ax];
     if (P.length !== 4 || !d || Math.abs(d) > 16 || OUT[e.fs][1 - ax] !== -OUT[e.ts][1 - ax]) return;
-    const lone = (n, side) => !n.box && sides[n.id + '|' + side].length === 1, [k, n, side, v] = lone(e.t, e.ts) ? ['p2', e.t, e.ts, P[0][ax]] : lone(e.s, e.fs) ? ['p1', e.s, e.fs, P[3][ax]] : [];
+    const lone = (n, side) => !n.box && sides[n.id + '|' + side]?.length === 1, [k, n, side, v] = lone(e.t, e.ts) ? ['p2', e.t, e.ts, P[0][ax]] : lone(e.s, e.fs) ? ['p1', e.s, e.fs, P[3][ax]] : [];
     const sp = n && (ax ? [n.y + n.h * .08, n.y + n.h * .92] : sideSpan(n, side) || [n.x + n.w * .08, n.x + n.w * .92]);
     if (!k || v < sp[0] || v > sp[1]) return;
     const was = e[k], before = issueCount(new Set([e])), snap = [e.pts, e.lbl, e.how], snapR = [routed.slice(), reserved.slice(), placed.slice()];
@@ -760,11 +760,11 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
   // the label's width, else the row gap by its height and 14 px; a label in neither, or with no spot, the gap its line's longest
   // run crosses, a column's first. layoutGraph lays the view out again with it, and keeps that layout if it is better
   let labelRoom = null;
-  const tight = !last && !dg.quick && map && !dg.abs ? free.filter(e => (e.label || e.step != null) && (!e.lbl || e.lbl.short || families.some(f => onBorder(e.lbl, f)))) : [];
+  const tight = !last && !dg.quick && (map || dg.labelGaps) && !dg.abs ? free.filter(e => (e.label || e.step != null) && (!e.lbl || e.lbl.short || families.some(f => onBorder(e.lbl, f)))) : [];
   if (tight.length) {
     const cs = Object.keys(colX).map(Number), rs = nodes.map(n => n.row), r0 = Math.floor(Math.min(...rs)), r1 = Math.ceil(Math.max(...rs)), need = { x: {}, y: {} };
     const gaps = [...cs.filter(c => colX[c + 1] != null).map(c => ['x', c, colX[c] + (colW[c] || NW), colX[c + 1]]),
-      ...Array.from({ length: Math.max(0, r1 - r0) }, (_, k) => ['y', r0 + k, rowY(r0 + k) + NH, rowY(r0 + k + 1)])];
+      ...Array.from({ length: map && r1 - r0 }, (_, k) => ['y', r0 + k, rowY(r0 + k) + NH, rowY(r0 + k + 1)])];
     tight.forEach(e => { const { w, hgt: h } = sizeOf(e, fullOf(e)), L = e.lbl, c = L && { x: L.x + L.w / 2, y: L.y + L.h / 2 };
       let best = c && ['x', 'y'].map(k => gaps.find(([gk, g, p, q]) => gk === k && c[k] >= p && c[k] <= q)).find(Boolean);
       if (!best) segsOf(e.pts).forEach(([a, b]) => { const k = a[1] === b[1] ? 'x' : 'y', i = k === 'x' ? 0 : 1, lo = Math.min(a[i], b[i]), hi = Math.max(a[i], b[i]);
