@@ -107,7 +107,7 @@ function printDoc(X, model, Q) {
     const up = chain(v.id).slice(0, -1).map(id => `<span class="up">${T(V[id])} › </span>`).join('');
     const head = more => `<header>${more ? `<div class="h2">${up}${T(v)} <span class="up">(continued)</span></div>` : `<h2>${up}${T(v)}</h2>`}<span class="meta">${[count(ids.length, 'card'), count(es.length, 'line'), ...(held.length ? [count(held.length, 'box', 'boxes')] : [])].join(' · ')}</span></header>${!more && v.caption ? `<p class="cap">${esc(v.caption)}</p>` : ''}`;
     const body = sheet(head(false), vi);
-    body.insertAdjacentHTML('beforeend', `<figure>${svg}</figure><div class="lg"><b>Legend</b>${legendItems([g], 'opens a view of its own', [geoCache[v.id].shapes], D.icons).join('')}</div>`);
+    body.insertAdjacentHTML('beforeend', `<figure>${svg}</figure><div class="lg"><b>Legend</b>${legendItems([g], 'opens a view of its own').join('')}</div>`);
     // the picture as large as the page allows, never larger than drawn: below it the legend, then two columns of tables;
     // one too tall for that keeps the page's height, with the legend and one column beside it. Smaller (down to 70%, and
     // to a scale of 0.6 at least) when that keeps the tables on its page; else they go on over the next pages.

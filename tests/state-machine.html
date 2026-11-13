@@ -1,0 +1,170 @@
+<!doctype html>
+<!-- The state machine diagram (4.6) in headless Chrome (tests/embed.py), from lib/umlimator-all.js: docs/diagrams/examples/10-state-machine.json
+     drawn by render() in both themes, three fonts and both directions (states with their compartments, pseudostates by kind,
+     composites as boxes, regions with a divider across their state, texts inside their shapes, line ends on outlines, names,
+     reading order, contrast, the legend), then edited through the edit event and apply(), by pointer and by keyboard: a
+     pseudostate from the palette with no name field, F2 and a double-click on a transition (edits.rename), a row
+     `entry / …` typed on a state, an internal transition row, a pseudostate's kind in the panel, a region added to the
+     selected state, a drop into a one-region state, the Owner field, hide and delete. (tests/state.html is the map's state
+     machines, 0.14.0.) -->
+<meta charset="utf-8">
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="../lib/umlimator-theme.css">
+<title>umlimator state machine diagram test</title>
+<body style="margin:0">
+<div id="m" style="width:1400px;height:1100px"></div>
+<script type="module">
+import { render, apply, validate } from '../lib/umlimator-all.js';
+const out = { ok: [], fail: [] };
+const check = (name, cond, info) => { document.title = name; if (cond) out.ok.push(name); else out.fail.push(name + (info === undefined ? '' : ': ' + JSON.stringify(info))); };
+const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+const el = document.getElementById('m');
+let sr, stage, ed = [];
+const pick = s => sr.querySelector(s), all = s => [...sr.querySelectorAll(s)];
+const centre = s => { const r = pick(s).getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; };
+const ptr = (target, type, [x, y]) => target.dispatchEvent(new PointerEvent(type, { clientX: x, clientY: y, button: 0, pointerId: 7, pointerType: 'mouse', bubbles: true, composed: true }));
+const key = (k, extra = {}, target = stage) => target.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true, composed: true, cancelable: true, ...extra }));
+const click = s => { const g = pick(s), at = centre(s); ptr(g, 'pointerdown', at); ptr(g, 'pointerup', at); g.dispatchEvent(new MouseEvent('click', { clientX: at[0], clientY: at[1], bubbles: true, composed: true })); };
+const mount = (model, opts = {}) => { el.innerHTML = ''; ed = []; const h = render(el, model, { view: 'order-life', on: { edit: e => ed.push(e) }, ...opts }); sr = el.querySelector('.umlimator').shadowRoot; stage = pick('.stage'); return h; };
+const errors = m => validate(m).filter(p => p.level === 'error');
+const last = () => ed[ed.length - 1];
+const gives = (name, cmds, test, base, errs = 0) => { const e = last(); let m = null; try { m = e && apply(base, e.commands); } catch (x) { m = null; }
+  check(name, !!e && same(e.commands, cmds) && !!m && test(m) && errors(m).length === errs, [e, m && errors(m)]); return m; };
+const change = (t, v) => { t.value = v; t.dispatchEvent(new Event('change', { bubbles: true })); };
+const box = g => { const r = g.getBBox(); return { x: r.x, y: r.y, w: r.width, h: r.height }; };
+const inside = (a, b, k = .5) => a.x >= b.x - k && a.y >= b.y - k && a.x + a.w <= b.x + b.w + k && a.y + a.h <= b.y + b.h + k;
+const FONTS = { serif: 'serif', sans: 'sans-serif', wide: 'monospace' };
+const rgba = s => { let m = /rgba?\(([^)]+)\)/.exec(s); if (m) { const p = m[1].split(/[ ,/]+/).filter(Boolean).map(Number); return [p[0] / 255, p[1] / 255, p[2] / 255, p.length > 3 ? p[3] : 1]; }
+  m = /color\(srgb ([^)]+)\)/.exec(s); if (m) { const p = m[1].split(/[ /]+/).filter(Boolean).map(Number); return [p[0], p[1], p[2], p.length > 3 ? p[3] : 1]; } return null; };
+const blend = (top, bot) => [0, 1, 2].map(i => top[i] * top[3] + bot[i] * (1 - top[3])).concat(1);
+const lum = c => { const f = v => v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]); };
+const ratio = (fg, bg) => { const [x, y] = [lum(blend(fg, bg)), lum(bg)].sort((p, q) => q - p); return +((x + 0.05) / (y + 0.05)).toFixed(2); };
+const css = (e, k) => rgba(getComputedStyle(e)[k]);
+// a point's distance from a node's outline: a circle, a diamond, else its box (a state's 10 px corners: within 3 px)
+const offOutline = (g, [x, y]) => { const b = box(g.querySelector('.n-mask')), s = g.dataset.shape, cx = b.x + b.w / 2, cy = b.y + b.h / 2;
+  if (['initial', 'final', 'junction', 'history'].includes(s)) return Math.abs(Math.hypot(x - cx, y - cy) - b.w / 2);
+  if (s === 'diamond') return Math.abs(Math.abs(x - cx) / (b.w / 2) + Math.abs(y - cy) / (b.h / 2) - 1) * b.w / 2 / Math.SQRT2;
+  const d = Math.min(Math.abs(x - b.x), Math.abs(x - b.x - b.w), Math.abs(y - b.y), Math.abs(y - b.y - b.h)); return s === 'state' ? Math.max(0, d - 3) : d; };
+const MODEL = await (await fetch('../docs/diagrams/examples/10-state-machine.json')).json();
+try {
+  for (const theme of ['light', 'dark']) for (const [fname, family] of Object.entries(FONTS)) for (const direction of ['right', 'down']) {
+    document.documentElement.dataset.theme = theme; el.style.setProperty('--um-sans', family);
+    const M = structuredClone(MODEL); M.views[0].direction = direction;
+    const tag = `${theme}, ${fname}, ${direction}`, h = mount(M, { legend: true }), bad = [];
+    const nodes = all('.node');
+    check(`${tag}: eleven states, ten pseudostates and a final state by their shapes, 23 transitions, two composites and two regions`,
+      all('.node.state').length === 9 && all('.node.initial').length === 4 && all('.node.bar').length === 2 && all('.node.diamond').length === 1 && all('.node.history').length === 1
+      && all('.node.terminate').length === 1 && all('.node.final').length === 1 && all('.edge-g').length === 23 && all('.family').length === 4, [nodes.length, all('.edge-g').length, all('.family').length]);
+    // every text in its shape; no two nodes overlap; every node of a region inside it, the regions inside their state
+    nodes.forEach(g => { const b = box(g.querySelector('.n-mask')); g.querySelectorAll('text').forEach(t => { if (!inside(box(t), b)) bad.push(`${g.dataset.id}: "${t.textContent}" spills`); }); });
+    const boxes = nodes.map(g => [g.dataset.id, box(g.querySelector('.n-mask'))]);
+    boxes.forEach(([a, p], i) => boxes.slice(i + 1).forEach(([b, q]) => { if (p.x < q.x + q.w && q.x < p.x + p.w && p.y < q.y + q.h && q.y < p.y + p.h) bad.push(`${a} and ${b} overlap`); }));
+    const fam = id => box(pick(`.family[data-family="${id}"] .family-box`));
+    [['fulfilling.parcel', ['parcel-start', 'picking', 'packed']], ['fulfilling.payment', ['payment-start', 'capturing', 'captured']], ['delivery', ['delivery-start', 'in-transit', 'out-for-delivery', 'delivery-history']]]
+      .forEach(([f, ids]) => ids.forEach(id => { if (!inside(box(pick(`.node[data-id="${id}"] .n-mask`)), fam(f))) bad.push(`${id} is outside ${f}`); }));
+    ['fulfilling.parcel', 'fulfilling.payment'].forEach(r => { if (!inside(fam(r), fam('fulfilling'))) bad.push(`${r} is outside its state`); });
+    ['fulfilling', 'delivery'].forEach(f => { if (!inside(box(pick(`.family[data-family="${f}"] .family-title`)), fam(f))) bad.push(`${f}'s title spills`); });
+    check(`${tag}: every text inside its shape, every substate inside its region or state, none overlapping`, !bad.length, bad);
+    // one dashed divider, across the state, between its two regions
+    const dv = all('.st-div'), S = fam('fulfilling'), d = dv[0] && box(dv[0]), [p, q] = ['fulfilling.parcel', 'fulfilling.payment'].map(fam).sort((a, b) => (direction === 'right' ? a.y - b.y : a.x - b.x));
+    check(`${tag}: one dashed divider across Fulfilling, in the gap between its regions`, dv.length === 1 && (direction === 'right'
+      ? Math.abs(d.w - S.w) < 1 && d.y > p.y + p.h && d.y < q.y : d.x > p.x + p.w && d.x < q.x && d.h > S.h - 30), [d, S, p, q]);
+    // line ends on outlines: each start on its node's outline within 1 px (a start on a box's border: a composite's)
+    const offs = [];
+    all('.edge-g').forEach(g => { const v = g.querySelector('path.edge').getAttribute('d').match(/-?\d+(\.\d+)?/g).map(Number), n = pick(`.node[data-id="${g.dataset.from}"]`);
+      if (!n) return; const o = offOutline(n, v.slice(0, 2)); if (o > 1) offs.push([g.dataset.from, g.dataset.to, +o.toFixed(2)]); });
+    check(`${tag}: each line starts on its shape's outline`, !offs.length, offs);
+    check(`${tag}: names a screen reader reads`, pick('.node[data-id="placed"]').getAttribute('aria-label') === 'State Placed, entry reserve the books, do poll the payment provider, exit log the payment result, 1 internal transition'
+      && pick('.family[data-family="fulfilling"]').getAttribute('aria-label') === 'Composite state Fulfilling, 2 regions' && pick('.family[data-family="fulfilling.parcel"]').getAttribute('aria-label') === 'Region Parcel of Fulfilling, 3 states'
+      && pick('.node[data-id="parcel-start"]').getAttribute('aria-label') === 'Initial pseudostate in Parcel'
+      && pick('.edge-g[data-from="capturing"][data-to="capturing"] title').textContent === 'Transition from Capturing payment to itself: capture failed [attempts < 3] / count the attempt');
+    const order = all('.keys .node-key').map(k => k.dataset.node);
+    check(`${tag}: reading order: the top initial, then each box and what it holds, then the transitions`, same(order.slice(0, 5), ['created', 'placed', 'payment-outcome', 'prepaid', 'parcel-start']) && all('.keys .um-key').length === 19 + 23, [order, all('.keys .um-key').length]);
+    check(`${tag}: a state's compartment lists entry, do, exit, then its internal transitions`, same(all('.node[data-id="placed"] .c-row').map(t => t.textContent),
+      ['entry / reserve the books', 'do / poll the payment provider', 'exit / log the payment result', 'address changed / update the delivery address']) && !!pick('.node[data-id="placed"] .c-comp .n-det'));
+    const legend = all('.m-legend b').map(b => b.textContent);
+    check(`${tag}: the legend keys the transition and each glyph drawn`, same(legend, ['Transition', 'Initial', 'Final state', 'Choice', 'Fork or join', 'History', 'Terminate']), legend);
+    const stageBg = css(pick('.stage'), 'backgroundColor'), low = [];
+    all('.node.state').forEach(g => g.querySelectorAll('text').forEach(t => { const c = ratio(css(t, 'fill'), stageBg); if (c < 4.5) low.push([g.dataset.id, t.textContent, c]); }));
+    all('.family-title').forEach(t => { const c = ratio(css(t, 'fill'), stageBg); if (c < 4.5) low.push([t.textContent, c]); });
+    const strokes = [...all('.node.state .n-body, .node.diamond .n-body, .node.history .n-body, .node.final .n-body'), ...all('.st-div')].map(b => ratio(css(b, 'stroke'), stageBg)).filter(c => c < 3);
+    check(`${tag}: contrast: texts 4.5:1, outlines and the divider 3:1`, !low.length && !strokes.length, [low, strokes]);
+    h.destroy();
+  }
+  document.documentElement.dataset.theme = 'light'; el.style.removeProperty('--um-sans');
+
+  // ---- editing (DoD 4), each gesture's commands applied with apply()
+  const BASE = structuredClone(MODEL);
+  let h = mount(BASE, { editable: true });
+  const panel = s => pick('.um-editor ' + s), row = id => panel(`[data-m="${id}"]`), enter = t => key('Enter', {}, t), palette = l => all('.um-editor .um-pal button').find(b => b.textContent === l);
+  check('the palette: State, the pseudostates by kind, Final state, Region, Comment; the lines listed', same(all('.um-editor .um-pal button').map(b => b.textContent),
+    ['State', 'Initial', 'Final state', 'Choice', 'Junction', 'Fork', 'Join', 'Shallow history', 'Deep history', 'Terminate', 'Region', 'Comment']) && /Transition, Comment link/.test(panel('.um-pal .um-note').textContent), panel('.um-pal').textContent);
+  // a pseudostate: no name field, its kind written by the add hook
+  palette('Choice').click(); await new Promise(r => setTimeout(r, 0));
+  check('a pseudostate is added with no name field', !pick('.um-rename'));
+  gives('Choice: one add of a pseudostate with kind choice', [{ op: 'add', element: { id: 'choice1', type: 'uml.Pseudostate', props: { kind: 'choice' } }, view: 'order-life' }], m => m.views[0].nodeIds.includes('choice1'), BASE);
+  key('n'); pick('.um-rename').value = 'Returned'; key('Enter', {}, pick('.um-rename'));
+  const m1 = gives('N adds a state, named', [{ op: 'add', element: { id: 'state1', type: 'uml.State', label: 'Returned' }, view: 'order-life' }], m => m.views[0].nodeIds.includes('state1'), BASE);
+  // a region: with no state selected, said; with one, added to it
+  const n0 = ed.length; h.select(null); palette('Region').click(); await new Promise(r => setTimeout(r, 0));
+  check('Region with no state selected: nothing emitted, the hint line says why', ed.length === n0 && sr.textContent.includes('Select a state to add a region to'));
+  h.update(m1);
+  click('.node[data-id="state1"] .c-name'); palette('Region').click(); await new Promise(r => setTimeout(r, 0));
+  const m2 = gives('Region with a state selected: a region member of it', [{ op: 'add', element: { id: 'state1.region1', type: 'uml.Region' }, owner: 'state1' }], m => m.nodes.find(n => n.id === 'state1').members.length === 1, m1);
+  // F2 on a transition, by key and by a double-click: the parsed parts
+  h.update(BASE);
+  h.select({ type: 'edge', ids: ['t-picked'], view: 'order-life' }); key('F2');
+  check('F2 on a transition: a field holding its printed text', pick('.um-rename') && pick('.um-rename').value === 'all books picked', pick('.um-rename') && pick('.um-rename').value);
+  pick('.um-rename').value = 'all books picked [none missing] / print the slip'; key('Enter', {}, pick('.um-rename'));
+  const m3 = gives('F2: the guard and the effect set, the trigger kept', [{ op: 'set', id: 't-picked', path: 'props.guard', value: 'none missing' }, { op: 'set', id: 't-picked', path: 'props.effect', value: 'print the slip' }],
+    m => m.edges.find(e => e.id === 't-picked').props.guard === 'none missing', BASE);
+  h.update(m3);
+  check('after update() the line reads its new text', pick('.edge-g[data-from="picking"][data-to="packed"] title').textContent === 'Transition from Picking to Packed: all books picked [none missing] / print the slip');
+  h.select({ type: 'edge', ids: ['t-created'], view: 'order-life' }); const lab = pick('.edge-g[data-from="created"]');
+  lab.dispatchEvent(new MouseEvent('dblclick', { bubbles: true, composed: true, cancelable: true }));
+  check('a double-click on the selected transition opens the same field', !!pick('.um-rename'));
+  const n1 = ed.length; pick('.um-rename').value = 'go [x'; key('Enter', {}, pick('.um-rename'));
+  check('a text the parser refuses: nothing emitted, the hint line says why', ed.length === n1 && sr.textContent.includes('is not closed'));
+  key('Escape', {}, pick('.um-rename') || stage);
+  // a row `entry / …` typed on a state sets the prop; any other row is an internal transition
+  h.update(BASE); click('.node[data-id="cancelled"] .c-name');
+  let nw = panel('[data-new]'); nw.value = 'exit / log the cancellation'; enter(nw);
+  gives('a row exit / … typed on a state sets its exit', [{ op: 'set', id: 'cancelled', path: 'props.exit', value: 'log the cancellation' }], m => m.nodes.find(n => n.id === 'cancelled').props.exit === 'log the cancellation' && !m.nodes.find(n => n.id === 'cancelled').members, BASE);
+  nw = panel('[data-new]'); nw.value = 'refund failed / alert finance'; enter(nw);
+  gives('any other row: an internal transition', [{ op: 'add', element: { id: 'internaltransition1', type: 'uml.InternalTransition', props: { trigger: 'refund failed', effect: 'alert finance' } }, owner: 'cancelled' }],
+    m => m.nodes.find(n => n.id === 'cancelled').members.length === 1, BASE);
+  click('.node[data-id="placed"] .c-name'); nw = panel('[data-new]'); nw.value = 'entry / hold the books'; enter(nw);
+  gives('a second entry row replaces the first', [{ op: 'set', id: 'placed', path: 'props.entry', value: 'hold the books' }], m => m.nodes.find(n => n.id === 'placed').props.entry === 'hold the books', BASE);
+  check('and the hint line says so', sr.textContent.includes('entry / hold the books replaces entry / reserve the books'));
+  row('placed.address').value = 'address changed [not shipped] / update it'; enter(row('placed.address'));
+  gives('an internal transition row edited: its parts set', [{ op: 'set', id: 'placed.address', path: 'props.guard', value: 'not shipped' }, { op: 'set', id: 'placed.address', path: 'props.effect', value: 'update it' }], m => true, BASE);
+  // the properties: a state's do, a pseudostate's kind redrawn
+  change(panel('[data-f="p:do"]'), 'poll every minute');
+  gives('the Do field sets props.do', [{ op: 'set', id: 'placed', path: 'props.do', value: 'poll every minute' }], m => true, BASE);
+  click('.node[data-id="payment-outcome"]'); const kind = panel('[data-f="p:kind"]');
+  check('a pseudostate\'s Kind is a select of the eight', kind && [...kind.options].length === 9 && kind.value === 'choice');
+  change(kind, 'junction');
+  const m4 = gives('Kind: set props.kind', [{ op: 'set', id: 'payment-outcome', path: 'props.kind', value: 'junction' }], m => true, BASE);
+  h.update(m4);
+  check('after update() the pseudostate is drawn as a junction', !!pick('.node[data-id="payment-outcome"][data-shape="junction"]'));
+  // a drop into a state with one region goes to the region; the Owner field lists states and regions
+  const ONE = structuredClone(BASE); ONE.nodes.find(n => n.id === 'delivery').members = [{ id: 'delivery.main', type: 'uml.Region' }];
+  ONE.nodes.filter(n => n.parent === 'delivery').forEach(n => { n.parent = 'delivery.main'; });
+  h.update(ONE);
+  const to = pick('.family[data-family="delivery"] .family-box').getBoundingClientRect(), from = centre('.node[data-id="enquiry"] .n-mask'), at = [to.left + 30, to.bottom - 12];
+  ptr(pick('.node[data-id="enquiry"]'), 'pointerdown', from); for (let i = 1; i <= 4; i++) ptr(stage, 'pointermove', [from[0] + (at[0] - from[0]) * i / 4, from[1] + (at[1] - from[1]) * i / 4]); ptr(stage, 'pointerup', at);
+  gives('a state dropped into a one-region state\'s box: reparent to its region (moveTo)', [{ op: 'reparent', id: 'enquiry', parent: 'delivery.main' }], m => m.nodes.find(n => n.id === 'enquiry').parent === 'delivery.main', ONE);
+  click('.node[data-id="cancelled"] .c-name');
+  const own = panel('[data-f="owner"]'), opts = [...own.options].map(o => o.textContent);
+  check('the Owner field: none, then each state and region by its name from the top', opts[0] === 'none' && opts.includes('Fulfilling / Parcel') && opts.includes('In delivery / delivery.main'), opts);
+  change(own, 'fulfilling.payment');
+  gives('Owner: reparent the state to a region', [{ op: 'reparent', id: 'cancelled', parent: 'fulfilling.payment' }], m => m.nodes.find(n => n.id === 'cancelled').parent === 'fulfilling.payment', ONE, 0);
+  // hide, delete
+  h.update(BASE); click('.node[data-id="enquiry"] .c-name'); key('Delete');
+  gives('Delete: hide the state from the view', [{ op: 'hide', id: 'enquiry', view: 'order-life' }], m => !m.views[0].nodeIds.includes('enquiry'), BASE);
+  h.select({ type: 'container', id: 'delivery', view: 'order-life' }); key('Delete', { shiftKey: true });
+  gives('Shift + Delete on a composite: it, its substates and their transitions go', [{ op: 'delete', id: 'delivery' }], m => !m.nodes.some(n => ['delivery', 'in-transit', 'delivery-history'].includes(n.id)) && !m.edges.some(e => e.id === 't-at-depot'), BASE);
+  h.destroy();
+} catch (e) { out.fail.push('threw: ' + (e && e.stack || e)); }
+const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
+</script>

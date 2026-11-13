@@ -1,6 +1,6 @@
 import { h } from './render.js';
 import { esc, inline } from '../core/text.js';
-import { SHAPE, SHAPE_NAMES, noteOf, shapeOf } from '../draw/shapes.js';
+import { SHAPE, SHAPE_NAMES, shapeOf } from '../draw/shapes.js';
 import { WIRES, badgesOf } from '../map/cards.js';
 import { critical, msText, paths, reach, whatIf } from '../map/insight.js';
 import { KIND, SIGIL, kindOf } from '../map/kinds.js';
@@ -43,26 +43,22 @@ function detailBullets(body) {
 const SHAPE_SAYS = { person: ['Person', 'someone who uses it'], browser: ['Browser app', 'runs in a web browser'], mobile: ['Mobile app', 'runs on a phone'],
   cylinder: ['Data store', 'a database or a store'], pipe: ['Queue', 'hands work on, in order'], document: ['File', 'a document or a config'],
   hexagon: ['Hexagon', 'a guard or a service'], robot: ['Agent', 'an AI agent'], terminal: ['Command line', 'a CLI or a script'],
-  window: ['Desktop app', 'runs in a window'], folder: ['Package', 'a module or a folder of code'], node: ['Host', 'a machine or runtime it runs on'],
-  component: ['Component', 'a part that runs (UML)'] };
+  window: ['Desktop app', 'runs in a window'], folder: ['Package', 'a module or a folder of code'], node: ['Host', 'a machine or runtime it runs on'] };
 const swatchOf = (sh, k, c, f, dashed) => { const n = { x: 0, y: 0, w: 100, h: 64 }, S = SHAPE[sh]; // a legend's key: the card's outline, small
   return `<svg class="lgs" viewBox="-4 -4 108 72" aria-hidden="true"><path d="${S.out(n)}" fill="${f}" stroke="${c}"${dashed ? ' stroke-dasharray="3 2"' : ''}/>${S.det ? S.det(n, c, k) : ''}</svg>`; };
-function legendItems(gs, opens = 'double-click to open', notes = [], icons = {}) { // what these pictures draw, each with what it means: the view's legend, and the PDF's (#93). notes: each picture's notation (0.15.0)
+function legendItems(gs, opens = 'double-click to open') { // what these pictures draw, each with what it means: the view's legend, and the PDF's (#93)
   const typedKeys = [...new Set(gs.flatMap(g => g.legend || []))]; // a typed view's type writes its own keys (1.9); its cards and lines are not a map's
   const ns = gs.flatMap(g => g.legend ? [] : g.nodes), es = gs.flatMap(g => g.legend ? [] : g.edges), used = [...new Set(ns.map(n => n.k))];
-  // each card as its picture's notation draws it: its shape, its dash and its mark (the legend draws what the map draws)
-  const cards = gs.flatMap((g, i) => { if (g.legend) return []; const nt = g.map ? noteOf(notes[i]) || 'box' : 'box';
-    return g.nodes.map(n => { const sh = shapeOf(n, nt), I = (icons || {})[n.icon]; // an icon the table lacks leaves the card the component mark, as svgOf draws it
-      return { k: n.k, sh, dash: nt !== 'box' && n.k === 'external', comp: nt === 'uml' && sh === 'box' && !(I && (I.src || I.g)) && !String(n.k).startsWith('m-') }; }); });
+  // each card as its picture draws it: its shape and its dash (the legend draws what the map draws)
+  const cards = gs.flatMap(g => g.legend ? [] : g.nodes.map(n => ({ k: n.k, sh: shapeOf(n, !!g.map), dash: !!g.map && n.k === 'external' })));
   const kindShape = k => { const s = [...new Set(cards.filter(d => d.k === k).map(d => d.sh))]; return s.length === 1 && s[0] !== 'box' && !(k === 'm-hook' && s[0] === 'hexagon') ? s[0] : null; };
   const dashOf = k => k === 'm-ext' || cards.some(d => d.k === k && d.dash); // an external card is dashed only where it is drawn so
   const order = ['m-public', 'm-step', 'm-lane', 'm-ext', 'm-verb', 'm-board', 'm-hook', 'm-script', 'frontend', 'backend', 'ai', 'queue', 'database', 'security', 'cloud', 'external', 'file'];
   const shape = k => k === 'm-verb' ? 'p' : dashOf(k) ? 'd' : k === 'm-hook' ? 'h' : '';
   const kinds = order.filter(k => used.includes(k)), own = new Set(kinds.map(kindShape).filter(Boolean)), tone = k => `var(--um-${KIND[k][0]})`;
-  // a shape the kinds' keys don't show already: in a neutral outline, as colour is the kinds' (and UML's component mark)
+  // a shape the kinds' keys don't show already: in a neutral outline, as colour is the kinds'
   const shapes = SHAPE_NAMES.filter(sh => sh !== 'box' && !own.has(sh) && cards.some(d => d.sh === sh && !(sh === 'hexagon' && d.k === 'm-hook')))
-    .map(sh => `<span class="lgi" title="${esc(SHAPE_SAYS[sh].join(' — '))}">${swatchOf(sh, 'file', 'var(--um-muted)', 'var(--um-panel)')}<b>${SHAPE_SAYS[sh][0]}</b><span>${SHAPE_SAYS[sh][1]}</span></span>`)
-    .concat(cards.some(d => d.comp) ? [`<span class="lgi" title="${esc(SHAPE_SAYS.component.join(' — '))}"><svg class="lgs" viewBox="0 0 16 16" aria-hidden="true"><g fill="none" stroke="var(--um-muted)" stroke-linecap="round" stroke-linejoin="round">${SIGIL.component}</g></svg><b>${SHAPE_SAYS.component[0]}</b><span>${SHAPE_SAYS.component[1]}</span></span>`] : []);
+    .map(sh => `<span class="lgi" title="${esc(SHAPE_SAYS[sh].join(' — '))}">${swatchOf(sh, 'file', 'var(--um-muted)', 'var(--um-panel)')}<b>${SHAPE_SAYS[sh][0]}</b><span>${SHAPE_SAYS[sh][1]}</span></span>`);
   return kinds.map(k => `<span class="lgi" title="${esc(KIND[k][1] + ' — ' + KIND[k][2])}">${kindShape(k) ? swatchOf(kindShape(k), k, tone(k), `var(--um-${KIND[k][0]}-f)`, dashOf(k)) : `<i class="${shape(k)}" style="border-color:${tone(k)};background:var(--um-${KIND[k][0]}-f)${k === 'm-hook' ? `;background:${tone(k)}` : ''}"></i>`}<b>${KIND[k][1]}</b><span>${KIND[k][2]}</span></span>`)
     .concat(shapes)
     .concat(ns.some(n => n.kids || n.opens) ? [`<span class="lgi"><i class="s"></i><b>⤢ Stacked</b><span>${opens}</span></span>`] : [])
@@ -81,7 +77,7 @@ function pieces(X, el, o) {
 
   /* the legend: the kinds of cards and lines the view draws, in a box that folds away */
   function legend() {
-    const items = legendItems([X().geo()], undefined, [X().shapes ? X().shapes() : 'box'], X().ctx().D.icons), back = el.legend.contains(el.legend.getRootNode().activeElement);
+    const items = legendItems([X().geo()]), back = el.legend.contains(el.legend.getRootNode().activeElement);
     el.legend.hidden = !items.length;
     el.legend.classList.toggle('folded', folded);
     el.legend.innerHTML = `<div class="t"><span>LEGEND</span><button type="button" id="m-lfold" aria-label="${folded ? 'Show' : 'Hide'} legend" aria-expanded="${!folded}">${folded ? '+' : '–'}</button></div>${items.join('')}`;

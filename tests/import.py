@@ -50,7 +50,7 @@ EXPECT = {
          (card(m, "bookings").get("opensView"), card(m, "api").get("opensView")) == ("containers", "api-components")),
         ("kinds: people, tags (Database, Queue, External), technology",
          [card(m, i)["kind"] for i in ("patient", "db", "jobs", "sms", "web", "sender")] == ["person", "database", "queue", "external", "frontend", "backend"]),
-        ("a C4 source is drawn in the c4 notation (0.15.0)", m.get("shapes") == "c4"),
+        ("no shapes field: maps draw in one style (0.21.0)", "shapes" not in m),
         ("its styles' shapes are the cards' (0.15.0)", [card(m, i).get("shape") for i in ("patient", "reception", "db", "web")] == ["person", "person", "cylinder", None]),
         ("a line to a person is the view's loop back", (line(m, "sms", "patient") or {}).get("loop") is True),
         ("description and technology are the label and the second line",
@@ -61,19 +61,19 @@ EXPECT = {
         ("BiRel is a line each way", line(m, "tracker", "db") and line(m, "db", "tracker") or False),
         ("kinds: Db, Queue, _Ext, Person (person, and user outside), technology",
          [card(m, i)["kind"] for i in ("billing", "scans", "courier", "maps", "shipper", "web")] == ["database", "queue", "user", "external", "person", "frontend"]),
-        ("a C4 source is drawn in the c4 notation (0.15.0)", m.get("shapes") == "c4")]),
+        ("no shapes field: maps draw in one style (0.21.0)", "shapes" not in m)]),
     "tests/import/checkout.mmd": ("mermaid", ["flowchart"], [], lambda m: [
         ("the front matter's title", m["title"] == "Checkout, as the payments team drew it"),
         ("subgraphs are boxes of the nodes first named in them", [box(m, "flowchart", b).get("nodeIds") for b in ("core", "after")] == [["api", "orders"], ["mailer", "stock"]]),
         ("a cylinder is a database", card(m, "orders")["kind"] == "database"),
-        ("a flowchart keeps the box notation", "shapes" not in m),
+        ("no shapes field (0.21.0)", "shapes" not in m),
         ("labels, dotted (async) and thick (heavier) links, and a & b",
          [(line(m, *p) or {}).get(k) for p, k in ((("web", "api"), "label"), (("api", "bus"), "style"), (("api", "psp"), "weight"))] == ["POST /orders", "async", 2]
          and line(m, "bus", "mailer") and line(m, "bus", "stock") or False)]),
     "tests/import/meals.mmd": ("mermaid", ["context"], [], lambda m: [
         ("Mermaid's C4 boundary is a box", box(m, "context", "company").get("nodeIds") == ["planner", "recipes"]),
         ("kinds: Person_Ext, SystemDb, SystemQueue_Ext", [card(m, i)["kind"] for i in ("guest", "recipes", "mail")] == ["user", "database", "queue"]),
-        ("Mermaid's C4 is drawn in the c4 notation (0.15.0)", m.get("shapes") == "c4")]),
+        ("Mermaid's C4: no shapes field, maps draw in one style (0.21.0)", "shapes" not in m)]),
     "tests/import/compose.json": ("compose", ["services"], [":volumes:"], lambda m: [
         ("networks are boxes; a service on both stays between them",
          [box(m, "services", b).get("nodeIds") for b in ("network-edge", "network-data")] == [["proxy", "web"], ["cache", "db", "mailer", "queue", "worker"]]),
@@ -144,6 +144,13 @@ m, un = imp.read("structurizr", tools, "x")
 ok("structurizr · a software system or component its words make a store, a queue or a file keeps that colour, drawn a box; a container takes the shape",
    [(card(m, i).get("kind"), card(m, i).get("shape")) for i in ("dw", "bus", "dms", "st", "fx", "db")]
    == [("database", "box"), ("queue", "box"), ("file", "box"), ("database", "box"), ("file", "box"), ("database", None)], m["nodes"])
+gw = ('workspace {\n model {\n  gw = softwareSystem "API Gateway"\n  s = softwareSystem "Shop" {\n   edge = container "Edge" "" "nginx" {\n'
+      '    lb = component "Load balancer" "" "HAProxy"\n   }\n  }\n }\n}\n')
+m, un = imp.read("structurizr", gw, "x")
+ok("structurizr · a system, container or component its words make cloud keeps that colour, drawn a box, never a node (0.21.0)",
+   [(card(m, i).get("kind"), card(m, i).get("shape")) for i in ("gw", "edge", "lb")] == [("cloud", "box")] * 3, m["nodes"])
+m, un = imp.read("plantuml", '@startuml\nContainer(edge, "Edge", "nginx")\nComponent(lb, "Load balancer", "HAProxy")\n@enduml\n', "x")
+ok("C4 · a container or component its words make cloud is drawn a box (0.21.0)", [(card(m, i).get("kind"), card(m, i).get("shape")) for i in ("edge", "lb")] == [("cloud", "box")] * 2, m["nodes"])
 m, un = imp.read("plantuml", '@startuml\nComponent(st, "Orders Store", "JPA")\nComponentDb(cdb, "Ledger")\n@enduml\n', "x")
 ok("C4 · a component its words make a store is drawn a box; a ComponentDb is a cylinder", [(card(m, i).get("kind"), card(m, i).get("shape")) for i in ("st", "cdb")] == [("database", "box"), ("database", None)], m["nodes"])
 m, un = imp.read("plantuml", '@startuml\nComponent(mc, "Mobile Controller", "Spring MVC")\nContainer(app, "Mobile App", "Xamarin")\n@enduml\n', "x")
