@@ -1,3 +1,4 @@
+import { TYPED } from '../core/registry.js';
 import { andList } from './validate.js';
 
 /* ---------- change: diff (#66) and drift (#68) ----------
@@ -82,14 +83,16 @@ export function diff(before, after) {
     if (h === 'removed') said.push(`removes ${name(n.id)}`);
     if (h === 'changed') { const [o, x] = was.get(n), keys = diffKeys([o, x]), rest = keys.filter(k => k !== 'label'), p0 = o.parent ?? null, p1 = x.parent ?? null;
       if (keys.join() === 'parent' && p0 !== p1 && A.schemaVersion === 2 && out.schemaVersion === 2) return said.push(`moves ${name(n.id)} ${p1 != null ? 'into ' + name(p1) : 'out of ' + name(p0)}`); // a re-own (schema version 2; absent or null is no owner)
+      const t = TYPED.diff && TYPED.diff(o, x, name, [A, out]); if (t) return said.push(...t); // a typed element's own words (src/uml/diff.js)
       said.push((keys.includes('label') ? `renames ${o.label || o.id} to ${x.label || x.id}` : `changes ${name(n.id)}`) + (rest.length ? ` (${rest.join(', ')})` : '')); } });
   lines.forEach(e => { const h = how.get(e); if (!h || cardHow.get(e.from) === h && h !== 'changed' || cardHow.get(e.to) === h && h !== 'changed') return;
     const ends = `${name(e.from)} to ${name(e.to)}`, lab = e.label ? ` (${e.label})` : '';
     if (h === 'added') said.push(`adds a line from ${ends}${lab}`);
     if (h === 'removed') said.push(`removes the line from ${ends}${lab}`);
-    if (h === 'changed') { const [o, x] = was.get(e);
+    if (h === 'changed') { const [o, x] = was.get(e), t = TYPED.diff && TYPED.diff(o, x, name, [A, out]); if (t) return said.push(...t);
       said.push(`changes the line from ${ends} (${diffKeys([o, x]).map(k => k === 'label' ? `label ${o.label ?? '-'} → ${x.label ?? '-'}` : k).join(', ')})`); } });
   moved.forEach(([verb, id, v]) => said.push(`${verb} ${name(id)} ${verb === 'puts' ? 'in' : 'out of'} the view ${v.title || v.id}`));
+  if (TYPED.order) TYPED.order(A, out, views, V0, said, touched, name);
 
   // the views that show a change: a card or line the diff marks, or a card it put in or took out
   const changed = views.filter(v => v && (touched.has(v.id) || arr(v.nodeIds).some(id => cardHow.has(id)) || linesOf(out, v).some(e => how.has(e)))).map(v => v.id);

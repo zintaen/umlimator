@@ -195,6 +195,21 @@ function sqDescribe(model, viewId) {
   return out.join('\n');
 }
 
+/* ---- paths(): in time order (C10). A path from one lifeline to another is a run of messages, each later than the one
+   before and sent from the lifeline it reached; a line is on one when `from` reaches its sender before it and its receiver
+   reaches `to` after it. Self-messages are left out, as paths() leaves them ---- */
+function sqPaths(model, viewId, from, to) {
+  const V = SQ_ARR(model && model.views).find(x => SQ_OBJ(x) && x.id === viewId); if (!V) throw new Error(`umlimator: no view ${JSON.stringify(viewId)}`);
+  const ids = sqHeads(model, V).map(h => h.id), ms = sqIndex(model, V).occ.filter(o => o.message && o.from !== o.to);
+  if (!ids.includes(from) || !ids.includes(to)) return [];
+  if (from === to) return [{ type: 'node', id: from, view: viewId }]; // the card alone, as paths() on a map gives it
+  const got = new Map([[from, -1]]), left = new Map([[to, Infinity]]);
+  ms.forEach((m, i) => { if (got.has(m.from) && !got.has(m.to)) got.set(m.to, i); }); // when each lifeline is first reached
+  for (let i = ms.length - 1; i >= 0; i--) { const m = ms[i]; if (left.has(m.to) && !left.has(m.from)) left.set(m.from, i); } // its last chance to reach `to`
+  const on = ms.filter((m, i) => got.get(m.from) < i && left.get(m.to) > i), at = new Set(on.flatMap(m => [m.from, m.to]));
+  return on.length ? [...ids.filter(id => at.has(id)).map(id => ({ type: 'node', id, view: viewId })), ...on.map(m => ({ type: 'edge', ids: [m.id], view: viewId }))] : [];
+}
+
 /* ---- the gesture hooks (notes/stage-3.md §5.1, §5.2). Each takes the model and the view (or its id) and returns the
    commands of one transaction, null to leave the gesture to the canvas's default, or { error } for the hint line. A
    transaction that would add an error the model did not have is never returned: { error } names the rule (S5) ---- */
@@ -392,8 +407,9 @@ const SEQ_TYPE = registerDiagramType('uml.sequence', {
   validate: sqProblems,
   rules: SQ_RULES,
   describe: sqDescribe,
+  paths: sqPaths,
   member: SQ_MEMBER,
   edits: { connect: sqConnect, moveTo: sqMoveTo, wrap: sqWrap, add: sqAdd, remove: sqRemove },
 });
 
-export { SEQ_TYPE, SQ_RULES, sqInput, sqRun, sqDraw, sqProblems, sqDescribe, sqConnect, sqMoveTo, sqWrap, sqAdd, sqRemove };
+export { SEQ_TYPE, SQ_RULES, sqInput, sqRun, sqDraw, sqProblems, sqDescribe, sqPaths, sqConnect, sqMoveTo, sqWrap, sqAdd, sqRemove };

@@ -23,8 +23,8 @@ Update this table in every pull request that belongs to the plan.
 | 3 | 0.20.0 | Sequence, communication | Design note approved ([`notes/stage-3.md`](notes/stage-3.md)). 3.0 (b17b678), 3.1 (7117a2e), 3.2 (9ddd4a7), 3.3 (b062d55, its gestures 3ab554d), 3.4 (a253447), 3.5 (d2ed722), 3.6 (417b4f1) and 3.7 (f98e317) merged, with the notes' changes elsewhere (b8e2315) and the router's speed flags (110a494). 3.8 (5e569b4) merged. Released 12 Nov 2026 (5fa66e9, GitHub and npm latest); map-repo pinned to it | #174, #177, #179, #180, #181, #182, #186, #187, #189, #191, #193, #194, #198, #199, #200 |
 | 4 | 0.21.0 | Use case, activity, state machine, interaction overview | Design note approved ([`notes/stage-4.md`](notes/stage-4.md)), every recommendation of §20 taken. 4.0 (857c5a0), 4.1 (6254765), 4.2 (436b9d9), 4.3 (01fc120), 4.4 (50b3294), 4.5 (798025c), 4.6 (c3d73cb), 4.7 (042721e), 4.8 (d1e7840) and 4.9 (79dcefa) merged, with maps' one card-shape style (c7fd8c4). 4.10 (c62d356), the Bookshop atlas (5a2a917) and the timed-test sweep (dac35fd) merged. Released 13 Nov 2026 (5f20041, GitHub and npm latest); map-repo pinned to it | #201, #202, #204, #205, #206, #207, #208, #209, #210, #211, #212, #213, #217, #222, #226, #228, (this PR) |
 | 5 | 0.22.0 | Component, deployment, composite structure | Design note approved ([`notes/stage-5.md`](notes/stage-5.md)), every recommendation of §18 taken. 5.0 (5ca0790), 5.1 (278dc56), 5.2 (7b6e214), 5.3 (a35933b), 5.4 (2684c27), 5.5 (1d0d23a), 5.6 (f9a5555) and the follow-ups (5216441) merged. In review: 5.8 and the ELK trial's note (5.7: own engine only, L9 closed); then the 0.22.0 release | #215, #216, #218, #219, #220, #223, #224, #225, #227, and the lanes' pull requests |
-| 6 | 0.23.0 | Profile, timing | Design note approved ([`notes/stage-6.md`](notes/stage-6.md)), every recommendation of §16 taken. In review: 6.0 (this PR) | #230, (this PR) |
-| Milestone 2 | 0.24.0 | ER, flowchart, data flow, information flow, C4 | Design note approved ([`notes/milestone-2.md`](notes/milestone-2.md)), every recommendation taken but decision 18 (five code lanes at most); M2.0 after stage 6's lanes free up | (this PR) |
+| 6 | 0.23.0 | Profile, timing | Design note approved ([`notes/stage-6.md`](notes/stage-6.md)), every recommendation of §16 taken. 6.0 (ddc1272) merged. In review: 6.1, 6.2, 6.3, 6.4 and 6.5 | #230, #231, and the lanes' pull requests |
+| Milestone 2 | 0.24.0 | ER, flowchart, data flow, information flow, C4 | Not started | |
 | Milestone 3 | 0.25.0 | SysML v1.7's four diagrams | Not started | |
 | Milestone 4 | 0.26.0, 0.27.0 | AWS, GCP, Azure, mindmap; BPMN | Not started | |
 | After the 28 types | 0.28.0 and later | What the maintainer asks for next | Not started | |
@@ -312,6 +312,3 @@ node docs/diagrams/examples/check.mjs         # the target examples match model.
   5.6, which are on `main`, provisional until 0.22.0. `lib/umlimator.js` is 185,149 B with `gzip -9`, 12.24% over 0.16.0.
 - **13 Nov 2026 (0.21.0).** 0.21.0 released (#228, 5f20041): GitHub Release and npm latest. map-repo's pin moved to
   v0.21.0, plugin 0.1.12, so the skill's maps draw in the one card-shape style; it still writes maps only.
-- **13 Nov 2026 (core budget split).** The maintainer split the core's remaining budget (4,451 B under the 15% cap
-  after #227): stage 6 400 B, milestone 2 1,400 B, milestone 3 500 B, milestone 4a 700 B, milestone 4b 700 B, a
-  reserve of about 750 B (C10 took 172 B of it). A stage that needs more asks the maintainer.
