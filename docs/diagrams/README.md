@@ -26,7 +26,7 @@ Update this table in every pull request that belongs to the plan.
 | 6 | 0.23.0 | Profile, timing | Design note approved ([`notes/stage-6.md`](notes/stage-6.md)), every recommendation of §16 taken. 6.0 (ddc1272) merged. In review: 6.1, 6.2, 6.3, 6.4 and 6.5 | #230, #231, and the lanes' pull requests |
 | Milestone 2 | 0.24.0 | ER, flowchart, data flow, information flow, C4 | Not started | |
 | Milestone 3 | 0.25.0 | SysML v1.7's four diagrams | Not started | |
-| Milestone 4 | 0.26.0, 0.27.0 | AWS, GCP, Azure, mindmap; BPMN | Not started | |
+| Milestone 4 | 0.26.0, 0.27.0 | AWS, GCP, Azure, mindmap; BPMN | BPMN (4b) design note approved ([`notes/milestone-4b.md`](notes/milestone-4b.md)), every recommendation taken. 4a: the icon terms answered (13 Nov 2026); AWS waits on the maintainer's confirmation with AWS | (this PR) |
 | After the 28 types | 0.28.0 and later | What the maintainer asks for next | Not started | |
 | Stabilization | 1.0.0 | Frozen API and schema, conformance notes; when the maintainer says it is ready | Not started | |
 
