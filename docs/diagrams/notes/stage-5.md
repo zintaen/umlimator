@@ -1,6 +1,6 @@
 # Stage 5 design note: component, deployment and composite structure
 
-Status: **proposed**, for the maintainer's approval before work package 5.0 starts. Written against `main` at 50b3294
+Status: **approved** by the maintainer 13 Nov 2026, with every recommendation of §18 taken; the maintainer approves it before work package 5.0 starts. Written against `main` at 50b3294
 (stage 4's 4.0 to 4.4 and 4.9 merged, and maps' one card-shape style, #210); stage 4's 4.5 to 4.8, in review, were read
 on their branches as gathered at 1312a3a (`stage4-docs`). Symbols are named, not line numbers.
 
