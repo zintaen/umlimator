@@ -587,6 +587,39 @@ Accessible names: "Device Application server, holding 1 execution environment"; 
 Application server, 3 artifacts deployed"; "Artifact shop-api.jar, on Java 21 runtime, manifests Shop API";
 "Communication path HTTPS from Shopper's device to Edge proxy".
 
+**As built (5.5)** (`src/uml/deployment.js`, `tests/deployment.test.mjs`, `tests/deployment.html`). Where the build departs
+from, or settles what is not said above:
+
+- `layoutTyped` with `gap: 48`, `rgap: 56` (the component type's, §10.1; not stated for this type), `labelGaps: true`,
+  `cut: 280` on communication paths only, `repair: false`, `reroute: false`, and stage 2's 12 px padding (no ports, §7).
+- The cube box: its border is the front face, its top and right faces 10 px outside it. A line that ends on its top or right
+  side is drawn on, on a copy (§2.4), to the faces' outline, so its arrowhead does not sit under a face. Its title is one line
+  in the 24 px header room, `«device» name` or `«executionEnvironment» name` with the stereotypes after the keyword, cut to
+  the box's width as a package's title is (`06-deployment.json`'s "«executionEnvironment» Web brow…"): the box is as wide as
+  its contents, not its title.
+- `nest-kinds`' error covers any owner that is not a target (a package or a component too). `deployed-twice` warns of a
+  line to another target only; a «deploy» line to the target that also nests the artifact is drawn nowhere (a line from a
+  box to what it holds is left out) and warned by neither rule. Of the shared rules the type runs `manifest-ends` alone:
+  `port-owner` is the component type's.
+- Hooks: `connect` adds a deployment drawn from a target to an artifact, or a manifestation from a component to an artifact,
+  the other way round (as the use case type starts an association at its actor), and refuses a deployment or a communication
+  path between ends that cannot hold it (`{ error }`, said on the hint line); `remove` with Shift + Delete on a target that
+  owns something says how many elements go with it (§10.4). `owners`: an artifact's, a deployment specification's or a
+  target's Owner field lists every target. No `moveTo`, `add`, `member` or `key`: the type has no ports, no members and no
+  `present` field; a drop into a box and the Owner field emit stage 2's `reparent`, tested by pointer and by key.
+- Decision 21, what `06-deployment.json` keeps: its 7 labels all find a spot and none is cut short, laid out right (1,492 ×
+  696 px) and down (901 × 985 px), every line routed clean (8 `grid`). Laid out down without `labelGaps`, one label
+  (`edge-to-app`, "HTTP") has no spot and the view is 967 px high: `labelGaps` gives it its spot for 18 px. Laid out right,
+  `labelGaps` changes nothing. Pinned and printed in `tests/deployment.test.mjs`.
+- Six levels (§7, L8): node, node, device, device, execution environment, execution environment, an artifact in the
+  deepest, a communication path from the deepest to a node at the top: laid out clean both ways; the outer box 489 × 394 px
+  laid out right and 489 × 518 px down (printed; 5.8's fixture pins its own).
+- P1 (§14), on a test view of 50 nodes and artifacts, 50 lines and boxes five deep (ten paths left with no spot before
+  `labelGaps`, two after): CPU, best of seven after a warm-up, on a laptop loaded by other jobs (load average 9), a path's
+  label 144 to 193 ms, an artifact moved into another node 144 to 188 ms, a full layout 150 to 207 ms, against 26 to 40 ms
+  for stage 4's types' edits in the same run. Under CI's 1 s ceiling; over the 100 ms target on that machine. Of a layout's
+  time (102 ms) the second `layoutPass` that `labelGaps` runs is 44 ms (58 ms without it). Decision for the maintainer.
+
 ### 10.4 Deleting (S14)
 
 - **A part:** the connectors through it go with it, by the composite type's `refs` (`'uml.Connector': {
