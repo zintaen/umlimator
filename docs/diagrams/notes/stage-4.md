@@ -1145,6 +1145,7 @@ Where 4.10 departs from row 4.10 and from §15 to §17:
   crossing and counts them over both passes (each view, then each stacked card unfolded): 4 for `fulfil-activity`
   (2 on the plain pass, 2 more unfolded) and 2 for `order-states`. `tests/cli.py` pins the plain pass's 2 each. A new
   crossing fails CI. `.github/workflows/check.yml` is outside row 4.10's Owns: decision 19 (§20). The options:
+  Decision 19 (§20), taken: the first option, the maintainer's decision of 13 Nov 2026; the options were:
   - *Accept the edit as it is* (recommended): CI checks the examples as drawn, and a change in their crossings fails it;
     the cost is a per-file count in the workflow to update when a layout change moves them.
   - *Move the examples off their crossings* (edit examples 9 and 10 until `check` finds nothing): the loop needs no
@@ -1155,8 +1156,12 @@ Where 4.10 departs from row 4.10 and from §15 to §17:
   row reads its `label` only, so a transition's trigger, guard and effect, a flow's guard and an extend's points and
   condition are missing. The first is a family-file change in `src/uml/state.js` (4.6's), the second needs a line's
   printed text in `print.js` (the core's, about 40 B, or a type's own row for its lines). 4.10 owns neither; the
-  conformance notes state both, and `tests/cli.py` pins the gap ("createdPseudostate") with a comment naming it. Row
-  4.10's "each PDF lists what §15 says" is not met until it is closed: decision 18 (§20). The options:
+  conformance notes state both. Decision 18 (§20), taken: the first option, the maintainer's decision of 13 Nov 2026.
+  `src/uml/state.js` gives `word` (a pseudostate's kind, "Final state", "State" or "Composite state") and `rows` (a
+  state's `entry / …`, `do / …` and `exit / …`, then its members as the panel prints them: each internal transition's
+  `trigger [guard] / effect`, each region), with no core bytes (`lib/umlimator.js` byte-identical); `tests/cli.py` reads
+  "createdInitial pseudostate" and a state's activities, `tests/state.test.mjs` the example's rows and words. The line
+  rows (a transition's trigger, guard and effect in the Lines table) stay the stated gap of R9. The options were:
   - *State first, by 4.6's owner or with the lead's leave* (recommended): in `src/uml/state.js`, `word` returns
     `ST_KIND_WORD[kind]` for a pseudostate (as `activity.js` does) and `rows` lists `entry / …`, `do / …`, `exit / …` and
     the internal transitions with the type's own row builder. No core bytes; the PDF's state table becomes §15's. The
@@ -1266,8 +1271,8 @@ Each is set out with its options and trade-offs in the section named; the recomm
 | 15 | C10 for the four types | Tested in 4.10 | Folded into the package after 0.20.0 | §19.5 |
 | 16 | The order of a state's regions in the picture (S20) | First-line order, as `blockPos` gives; `members` order everywhere else | Member order drawn, about 30 B in `context.js` | §6.2 |
 | 17 | Transitions Mermaid does not support (S22) | Written as transitions with a `%% warning:` line | Written as `%% not written:` (example 10's round trip breaks) | §13 |
-| 18 | The PDF's gaps found in 4.10 (R9): the state type's `word` and `rows`, and a line's printed text | The state type's `word` and `rows` in `src/uml/state.js` (4.6's owner, or the lead's leave), no core bytes | Line rows too (`print.js`, about 40 B, or each type's own); release with the gaps stated | §19.2.1 |
-| 19 | CI's example loop and the crossings of examples 9 and 10 (`.github/workflows/check.yml`, outside 4.10's Owns) | Accept the edit: every finding a crossing, counted over both passes (4 and 2) | Move the examples off their crossings; drop the two from the loop | §19.2.1 |
+| 18 | The PDF's gaps found in 4.10 (R9): the state type's `word` and `rows`, and a line's printed text | The state type's `word` and `rows` in `src/uml/state.js` (4.6's owner, or the lead's leave), no core bytes. **Taken: the maintainer's decision of 13 Nov 2026**; the line rows stay a stated gap | Line rows too (`print.js`, about 40 B, or each type's own); release with the gaps stated | §19.2.1 |
+| 19 | CI's example loop and the crossings of examples 9 and 10 (`.github/workflows/check.yml`, outside 4.10's Owns) | Accept the edit: every finding a crossing, counted over both passes (4 and 2). **Taken: the maintainer's decision of 13 Nov 2026** | Move the examples off their crossings; drop the two from the loop | §19.2.1 |
 
 ## 21. What this note changes elsewhere
 

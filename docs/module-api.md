@@ -3587,7 +3587,7 @@ What moves for a host that upgrades from 0.20.0 (beside the one card-shape style
   protocol state machines, a composite state's activities drawn on its box; editing an inline interaction in place; for
   all four, XMI, copy and paste and per-type `diff()` writers. Found in 4.10 (`docs/diagrams/risks.md` R9): the PDF's
   line tables list a line's `label` only, so a transition's parts, a flow's guard and an extend's points are missing,
-  and the state machine type gives no `word` or `rows`.
+  and the state machine type gave no `word` or `rows` until decision 18 (13 Nov 2026) added both in `src/uml/state.js`.
 - **Size:** `lib/umlimator.js`, what a map host loads, is 185.0 kB (184,984 B) with `gzip -9`, 12.14% over 0.16.0 (the
   plan's budget is 15%): stage 4 added 268 B (4.1, 4.9) and the one card-shape style removed more. `lib/umlimator-all.js`
   is 335.9 kB (335,875 B), up from 276.9 kB in 0.20.0. The npm package is 574 kB, up from 515 kB.

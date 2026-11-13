@@ -303,10 +303,9 @@ with tempfile.TemporaryDirectory() as tmp:
        all(flat(s) in txt for s in ["Order workerPartition", "All books in stock?Decisionin Warehouse", "Stock levelsData storein Warehouse", "Take paymentCall behaviour actionin Order worker",
                                     "toldFlow finalin Email service", "pay-startInitial node", "Control flow", "Object flow"]), txt[:800])
     txt = "".join(read("order-states.pdf"))
-    ok("pdf · order-states: its tables list each state, pseudostate and final state, a state's internal transitions, a composite's regions, each transition",
-       # "createdPseudostate" is R9's gap (notes/stage-4.md §19.2.1, decision 18): once the state type gives `word`, the
-       # pseudostate reads its kind ("createdInitial pseudostate") and this expectation changes with it
-       all(flat(s) in txt for s in ["PlacedStateaddress changed / update the deliveryaddress", "FulfillingStateregion Parcelregion Payment", "createdPseudostate", "deliveredFinal state",
+    ok("pdf · order-states: its tables list each element's kind (a pseudostate's), a state's entry, do and exit and internal transitions, a composite's regions, each transition",
+       # the state type's `word` and `rows` (notes/stage-4.md §15, decision 18): a pseudostate by its kind, a state's activities
+       all(flat(s) in txt for s in ["PlacedStateentry / reserve the books", "address changed / update the deliveryaddress", "FulfillingComposite stateregion Parcelregion Payment", "createdInitial pseudostate", "payment-outcomeChoice", "deliveredFinal state",
                                     "created → PlacedTransition", "Capturing payment → CancelledTransition"]), txt[:800])
     txt = "".join(read("buy-book-overview.pdf"))
     ok("pdf · buy-book-overview: its tables list each node's kind and each flow, then each sequence view it opens",

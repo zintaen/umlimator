@@ -90,7 +90,7 @@ rendered page. Each file was opened and looked at.
 | Text | Text, in the page's font family; the font is not embedded unless `fontCSS` is given | Pixels | Selectable text |
 | Accessible names | Each state's, pseudostate's, composite's and region's `aria-label` kept; the transitions' `<title>` removed, as for maps | None | None |
 | Theme | The page's, every colour resolved | The page's | `--theme`, light by default |
-| Tables | None | None | "Elements": each state, pseudostate and final state, a state's internal transitions and a composite's regions as its members; "Lines": each transition from → to and its kind. **Gaps** (`risks.md` R9): the type gives no `word` or `rows` (`notes/stage-4.md` §15), so a pseudostate reads "Pseudostate", not its kind, and a state's entry, do and exit are not listed; a transition's trigger, guard and effect are not in its row (the table reads a line's `label`, which a transition leaves empty) |
+| Tables | None | None | "Elements": each element by its kind (a pseudostate's own: "Initial pseudostate", "Choice", …; "Final state", "State", "Composite state"), a state's entry, do and exit, then its internal transitions (`trigger [guard] / effect`) and a composite's regions (the type's `word` and `rows`, `notes/stage-4.md` §15, decision 18); "Lines": each transition from → to and its kind. **Gap** (`risks.md` R9): a transition's trigger, guard and effect are not in its row (the table reads a line's `label`, which a transition leaves empty) |
 
 ## Accessibility
 

@@ -17,6 +17,7 @@ import { mapContext } from '../src/map/context.js';
 import { validate } from '../src/map/validate.js';
 import { describe } from '../src/map/insight.js';
 import { svgOf } from '../src/draw/svg.js';
+import { tablesOf } from '../src/page/print.js';
 import { stActivityRow } from '../src/uml/state.js';
 
 const SM = JSON.parse(readFileSync(new URL('../examples/order-states.json', import.meta.url)));
@@ -395,4 +396,23 @@ test('P1 (the maintainer\'s decision, 13 Nov 2026): the scattered worst case, mo
   assert.ok(best('label') < 1000, `a label edit ${best('label')} ms`);
   assert.ok(best('full') < 1000, `full layout ${best('full')} ms`);
   if (process.env.ST_TIMES) console.log(`# scattered: full ${best('full')} ms, a label ${best('label')} ms`);
+});
+
+test('the PDF\'s tables (§15, decision 18): each element\'s kind by word, a state\'s entry, do and exit, then its internal transitions and regions', () => {
+  const ctx = mapContext(SM), [els] = tablesOf(ctx, ctx.V[V.id], ctx.buildGeo(V.id));
+  const row = Object.fromEntries(els.rows.map(r => { const [n, k, m] = [...r.matchAll(/<td>(.*?)<\/td>/g)].map(x => x[1]);
+    return [n.replace(/<[^>]+>|\s*⤢/g, ''), [k, [...m.matchAll(/<p>(.*?)<\/p>/g)].map(x => x[1])]]; }));
+  assert.deepEqual(row.created, ['Initial pseudostate', []]);
+  assert.deepEqual(row['payment-outcome'], ['Choice', []]);
+  assert.deepEqual(row.prepaid, ['Fork', []]);
+  assert.deepEqual(row['delivery-history'], ['Shallow history', []]);
+  assert.deepEqual(row.erased, ['Terminate', []]);
+  assert.deepEqual(row.delivered, ['Final state', []]);
+  assert.deepEqual(row.Placed, ['State', ['entry / reserve the books', 'do / poll the payment provider', 'exit / log the payment result', 'address changed / update the delivery address']]);
+  assert.deepEqual(row.Fulfilling, ['Composite state', ['region Parcel', 'region Payment']]);
+  assert.deepEqual(row['In delivery'], ['Composite state', []]);
+  // a member with a guard reads back whole: trigger [guard] / effect
+  const m = structuredClone(SM); node(m, 'placed').members = [{ id: 'it', type: 'uml.InternalTransition', props: { trigger: 'nudge', guard: 'unpaid', effect: 'remind' } }];
+  assert.deepEqual(T.rows(m, m.views[0], 'placed').slice(-1), ['nudge [unpaid] / remind']);
+  assert.equal(T.word(m, 'nope'), null);
 });
