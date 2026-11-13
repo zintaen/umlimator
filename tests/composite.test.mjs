@@ -24,13 +24,16 @@ const T = diagramOf({ diagram: 'uml.composite-structure' }), V = CS.views[0];
 const meets = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
 const inside = (o, f) => o.x >= f.x - .01 && o.y >= f.y - .01 && o.x + o.w <= f.x + f.w + .01 && o.y + o.h <= f.y + f.h + .01;
 const withDir = (m, direction) => { const c = structuredClone(m); c.views[0].direction = direction; return c; };
-const ownerOf = (g, id) => g.byId[id] || g.families.find(f => f.id === id);
-// the layout check, less what it says of a port on its own owner, which sits half inside it by design (§4.1; decision for the maintainer)
-const issues = (m, vid) => { const g = layout(m, vid), own = new Set(g.nodes.filter(n => n.owner != null).flatMap(n => [`"${n.label}" and "${ownerOf(g, n.owner).label}"`, `"${ownerOf(g, n.owner).label}" and "${n.label}"`]));
-  return check(m, vid).map(x => x.message).filter(s => ![...own].some(k => s.includes(`nodes ${k} overlap`))); };
+// the layout check, less what it says of a port on its own owner, which sits half inside it by design (§4.1; decision 22): a
+// report is dropped only when no other pair of nodes with those labels overlaps (the check's own test, src/layout/audit.js)
+const hit1 = (a, b) => a.x < b.x + b.w - 1 && b.x < a.x + a.w - 1 && a.y < b.y + b.h - 1 && b.y < a.y + a.h - 1;
+const issues = (m, vid) => { const N = layout(m, vid).nodes, mine = (a, b) => a.owner === b.id || b.owner === a.id;
+  return check(m, vid).map(x => x.message).filter(s => { const k = /nodes "(.*)" and "(.*)" overlap$/.exec(s);
+    return !k || N.some(a => a.label === k[1] && N.some(b => b !== a && b.label === k[2] && hit1(a, b) && !mine(a, b))); }); };
 const P = (id, label, more = {}) => ({ id, type: 'uml.Property', label, ...more });
 const port = (id, label = id.split('.').pop(), props) => ({ id, type: 'uml.Port', label, ...(props ? { props } : {}) });
 const con = (id, from, to, ends) => ({ id, type: 'uml.Connector', from, to, ...(ends ? { props: { ends } } : {}) });
+const ownerOf = (g, id) => g.byId[id] || g.families.find(f => f.id === id);
 const node = (m, id) => m.nodes.find(n => n.id === id);
 const mem = (m, id) => m.nodes.flatMap(n => n.members || []).find(x => x.id === id);
 // G2: two parts of one type, each with its own connector to the type's port
@@ -55,7 +58,7 @@ test('the definition: uml.composite-structure with its palette, three lines, §1
   for (const k of ['layout', 'validate', 'describe', 'word', 'rows']) assert.equal(typeof T[k], 'function', k);
   assert.deepEqual(Object.keys(T.edits).sort(), ['add', 'connect', 'member', 'moveTo', 'remove', 'rename']);
   assert.deepEqual(['uml.Class', 'uml.Component', 'uml.Collaboration', 'uml.Interface'].map(t => T.member.holds({ type: t })), [true, true, true, false]);
-  assert.deepEqual(Object.keys(T.rules), ['subject-shown', 'part-type', 'connector-part', 'connector-scope', 'binding-ends', 'binding-role', 'collaboration-named', 'port-owner', 'manifest-ends']);
+  assert.deepEqual(Object.keys(T.rules), ['subject-shown', 'part-type', 'connector-part', 'connector-scope', 'connector-drawn', 'binding-ends', 'binding-role', 'collaboration-named', 'port-owner', 'manifest-ends']);
 });
 
 test('the shapes: a part (dashed when shared), a collaboration use (a dashed ellipse), an open collaboration\'s frame', () => {
@@ -130,6 +133,16 @@ test('two parts of one type each draw the type\'s ports, each with its own conne
   assert.deepEqual(validate(m).filter(p => p.rule === 'connector-part').map(p => p.ids), [['odd', 'store.put', 'shop.a']]);
 });
 
+test('pins (layout.<id>) stay in their own block\'s columns: a part pinned right, a role pinned left and two pins on one cell overlap nothing', () => {
+  for (const [why, pins] of [['a part right', { 'order-service.orders': [6, 0] }], ['a role left', { 'publish-subscribe.publisher': [0, 0] }],
+    ['one cell', { 'order-service.pricing': [0, 0], 'order-service.orders': [0, 0] }]]) {
+    const m = structuredClone(CS); m.views[0].layout = pins; const g = layout(m, 'internals');
+    assert.deepEqual(issues(m, 'internals').filter(s => / overlap$/.test(s)), [], why);
+    const [S, C] = ['order-service', 'publish-subscribe'].map(id => g.families.find(f => f.id === id)); assert.ok(S.x + S.w <= C.x, why); }
+  const m = structuredClone(CS); m.views[0].layout = { 'order-service.orders': [6, 0] }; const by = layout(m, 'internals').byId;
+  assert.ok(by['order-service.orders'].x > Math.max(...['checkout', 'pricing', 'listeners'].map(k => by['order-service.' + k].x)), 'the part pinned right is right of the others');
+});
+
 test('present pins a port\'s side, on the subject and on a part; the sides chosen face the far ends; a reorder of the type\'s ports lays out again', () => {
   const m = twins(); m.views[0].present = { 'shop.in': { side: 'bottom' }, 'shop.a': { ports: { 'worker.job': { side: 'top' } } } };
   const g = layout(m, 'v');
@@ -178,6 +191,7 @@ const RULE_CASES = {
   'part-type': m => { mem(m, 'order-service.pricing').props.valueType = 'Nobody'; },
   'connector-part': m => { m.edges[0].props.ends.to.part = 'order-service.pricing'; },
   'connector-scope': m => { m.edges.push(con('across', 'order-service.checkout', 'publish-subscribe.publisher')); },
+  'connector-drawn': m => { m.edges.push(con('loop', 'order-service.api', 'order-service.payments')); },
   'binding-ends': m => { m.edges.push({ id: 'bad-binding', type: 'uml.RoleBinding', from: 'publish-subscribe.publisher', to: 'order-events', label: 'publisher' }); },
   'binding-role': m => { m.edges.find(e => e.id === 'checkout-is-publisher').label = 'nobody'; },
   'collaboration-named': m => { node(m, 'order-events').props.collaboration = 'Gone'; },
@@ -186,13 +200,19 @@ const RULE_CASES = {
 test('validators: each rule passes the example and fails on a model that breaks it, naming its rule and its elements, at its level', () => {
   const base = validate(CS).map(p => p.rule);
   assert.deepEqual(base, ['part-type', 'part-type'], 'the example\'s two parts typed by classes it does not hold');
-  const LEVEL = { 'part-type': 'warning', 'binding-role': 'warning', 'collaboration-named': 'warning' };
+  const LEVEL = { 'part-type': 'warning', 'connector-drawn': 'warning', 'binding-role': 'warning', 'collaboration-named': 'warning' };
   for (const [rule, breakIt] of Object.entries(RULE_CASES)) { const m = structuredClone(CS); breakIt(m);
     const got = validate(m).filter(p => p.rule === rule && (rule !== 'part-type' || p.ids[0] === 'order-service.pricing'));
     assert.equal(got.length, 1, `${rule}: ${JSON.stringify(validate(m))}`); assert.equal(got[0].level, LEVEL[rule] || 'error', rule);
     assert.ok(got[0].message.startsWith(rule + ': ') && got[0].ids.length, rule); }
   assert.deepEqual(Object.keys(RULE_CASES).filter(r => r !== 'port-owner').sort(), Object.keys(T.rules).filter(r => !['port-owner', 'manifest-ends'].includes(r)).sort());
   assert.deepEqual(validate(twins()), [], 'the G2 model is clean');
+  assert.match(validate(CS)[0].message, /names no class or component, so it shows only the ports its connectors reach through it$/);
+  // a connector's end is a part or a port, never the subject itself (UML 2.5.1 §11.2); one between two of its ports is not drawn, nor described
+  const bare = structuredClone(CS); bare.edges.push(con('bare', 'order-service', 'order-service.pricing'));
+  assert.deepEqual(validate(bare).filter(p => p.rule === 'connector-scope').map(p => [p.path, p.ids]), [['edges[8].from', ['bare', 'order-service']]]);
+  const loop = structuredClone(CS); RULE_CASES['connector-drawn'](loop);
+  assert.ok(!layout(loop, 'internals').edges.some(e => e.id === 'loop')); assert.doesNotMatch(describe(loop, 'internals'), /from api of OrderService to payments/);
   // a communication view's connectors between lifelines are no structure's: not checked
   const m = twins(); m.nodes.push({ id: 'l1', type: 'uml.Lifeline' }, { id: 'l2', type: 'uml.Lifeline' }); m.edges.push(con('talk', 'l1', 'l2'));
   assert.deepEqual(validate(m).filter(p => p.rule === 'connector-scope'), []);
@@ -259,8 +279,21 @@ test('remove: a part goes from the model with its connectors (refs cascade), sai
   assert.match(r.say, /the 1 connector through checkout to its port quotes; Shift \+ Delete deletes the port from Checkout/);
   assert.deepEqual(T.edits.remove(CS, V, ['order-service.checkout->checkout.quotes'], true).commands, [{ op: 'delete', id: 'checkout.quotes' }]);
   assert.ok(T.edits.remove(run(CS, r), V, ['order-service.checkout->checkout.quotes'], false).error, 'no connector left to delete');
-  assert.deepEqual(T.edits.remove(CS, V, ['order-service.api', 'publish-subscribe'], false).commands, [{ op: 'delete', id: 'order-service.api' }, { op: 'hide', id: 'publish-subscribe', view: 'internals' }]);
+  assert.deepEqual(T.edits.remove(CS, V, ['order-service.api', 'publish-subscribe'], false).commands, [{ op: 'hide', id: 'publish-subscribe', view: 'internals' }, { op: 'delete', id: 'order-service.api' }]);
   assert.equal(T.edits.remove(CS, V, ['publish-subscribe'], false), null, 'a node alone: the default');
+  // a line selected with a part: hidden where the view lists its lines, said where it shows them all (as the canvas); hidden first
+  r = T.edits.remove(CS, V, ['order-service.pricing', 'publisher-to-subscriber'], false);
+  assert.deepEqual(r.commands, [{ op: 'delete', id: 'order-service.pricing' }]);
+  assert.match(r.say, /; not the line publisher-to-subscriber: this view shows every line between its cards, and Shift \+ Delete deletes it$/);
+  const listed = structuredClone(CS); listed.views[0].edges = listed.edges.map(e => e.id);
+  r = T.edits.remove(listed, listed.views[0], ['order-service.pricing', 'checkout-to-pricing', 'publisher-to-subscriber'], false);
+  assert.deepEqual(r.commands, [{ op: 'hide', id: 'checkout-to-pricing', view: 'internals' }, { op: 'hide', id: 'publisher-to-subscriber', view: 'internals' }, { op: 'delete', id: 'order-service.pricing' }]);
+  assert.deepEqual(run(listed, r).views[0].edges, listed.views[0].edges.filter(id => !['checkout-to-pricing', 'publisher-to-subscriber'].includes(id)));
+  r = T.edits.remove(listed, listed.views[0], ['order-service.pricing->price-calculator.quotes', 'publisher-to-subscriber'], false);
+  assert.deepEqual(r.commands, [{ op: 'hide', id: 'publisher-to-subscriber', view: 'internals' }, { op: 'delete', id: 'checkout-to-pricing' }], 'a port\'s connectors and the line');
+  const tw = twins(); tw.views[0].edges = ['in-a', 'in-b', 'b-c'];
+  assert.deepEqual(T.edits.remove(tw, tw.views[0], ['shop.a->worker.idle', 'b-c'], false).commands, [{ op: 'hide', id: 'b-c', view: 'v' }], 'a port with no connector and a line: the line');
+  assert.deepEqual(T.edits.remove(CS, V, ['order-service.pricing', 'publisher-to-subscriber'], true).commands.map(c => c.id), ['order-service.pricing', 'publisher-to-subscriber']);
 });
 
 test('rename: F2 on a port on a part renames its class\'s port (said), keeping its type; on a part, its row sets name, type and multiplicity', () => {
