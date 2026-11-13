@@ -1,0 +1,853 @@
+{
+ "core": "@dbml/core 11.0.0",
+ "dbml": "Project bookshop {\n  database_type: 'PostgreSQL'\n  Note: 'The bookshop schema'\n}\n\nEnum order_status {\n  placed\n  paid\n  shipped [note: 'left the warehouse']\n}\n\nTable customer as C [headercolor: #3498DB] {\n  id bigint [pk, increment]\n  email varchar(255) [unique, not null]\n  referred_by bigint [ref: > C.id]\n  created_at timestamptz [default: `now()`]\n  Note: 'A person who buys'\n}\n\nTable \"order\" {\n  id bigint [pk]\n  customer_id bigint [not null]\n  status order_status [default: 'placed']\n  placed_at timestamptz\n}\n\nTable order_line {\n  order_id bigint [not null]\n  line_no integer [not null]\n  book_id bigint [not null]\n  quantity integer [not null, note: 'at least one']\n\n  indexes {\n    (order_id, line_no) [pk]\n    book_id\n  }\n}\n\nTable book {\n  id bigint [pk]\n  isbn char(13) [unique, not null]\n  title varchar(255) [not null]\n}\n\nTable author {\n  id bigint [pk]\n  name varchar(120) [not null]\n}\n\nTable book_author {\n  book_id bigint [ref: > book.id]\n  author_id bigint [ref: > author.id]\n  indexes {\n    (book_id, author_id) [pk]\n  }\n}\n\nTable payment {\n  id bigint [pk]\n  order_id bigint [unique, not null]\n  amount \"numeric(10,2)\" [not null]\n}\n\nTable shipment {\n  order_id bigint\n  line_no integer\n  carrier varchar\n}\n\nTable tag {\n  id int [pk]\n}\n\nTable warehouse.stock {\n  book_id bigint [pk]\n  on_hand integer [not null, default: 0]\n}\n\nRef: \"order\".customer_id > customer.id [delete: cascade]\nRef: order_line.order_id > \"order\".id\nRef fk_line_book: order_line.book_id > book.id\nRef: payment.order_id - \"order\".id\nRef: shipment.(order_id, line_no) > order_line.(order_id, line_no)\nRef: book.id <> tag.id\nRef: warehouse.stock.book_id - book.id\n\nTableGroup sales {\n  customer\n  \"order\"\n  order_line\n}\n\n\nNote stock_policy {\n  'Stock is counted nightly'\n}\n",
+ "database": {
+  "schemas": [
+   {
+    "name": "public",
+    "note": "Default Public Schema",
+    "tables": [
+     {
+      "name": "customer",
+      "alias": "C",
+      "note": "A person who buys",
+      "headerColor": "#3498DB",
+      "partials": [],
+      "recordIds": [],
+      "metadata": {},
+      "fields": [
+       {
+        "name": "id",
+        "type": {
+         "schemaName": null,
+         "type_name": "bigint",
+         "args": null
+        },
+        "unique": false,
+        "pk": true,
+        "note": null,
+        "increment": true,
+        "injectedPartialId": null,
+        "checkIds": [],
+        "metadata": {}
+       },
+       {
+        "name": "email",
+        "type": {
+         "schemaName": null,
+         "type_name": "varchar(255)",
+         "args": "255"
+        },
+        "unique": true,
+        "pk": false,
+        "not_null": true,
+        "note": null,
+        "injectedPartialId": null,
+        "checkIds": [],
+        "metadata": {}
+       },
+       {
+        "name": "referred_by",
+        "type": {
+         "schemaName": null,
+         "type_name": "bigint",
+         "args": null
+        },
+        "unique": false,
+        "pk": false,
+        "note": null,
+        "injectedPartialId": null,
+        "checkIds": [],
+        "metadata": {}
+       },
+       {
+        "name": "created_at",
+        "type": {
+         "schemaName": null,
+         "type_name": "timestamptz",
+         "args": null
+        },
+        "unique": false,
+        "pk": false,
+        "note": null,
+        "dbdefault": {
+         "value": "now()",
+         "type": "expression"
+        },
+        "injectedPartialId": null,
+        "checkIds": [],
+        "metadata": {}
+       }
+      ],
+      "indexes": []
+     },
+     {
+      "name": "order",
+      "alias": null,
+      "note": null,
+      "partials": [],
+      "recordIds": [],
+      "metadata": {},
+      "fields": [
+       {
+        "name": "id",
+        "type": {
+         "schemaName": null,
+         "type_name": "bigint",
+         "args": null
+        },
+        "unique": false,
+        "pk": true,
+        "note": null,
+        "injectedPartialId": null,
+        "checkIds": [],
+        "metadata": {}
+       },
+       {
+        "name": "customer_id",
+        "type": {
+         "schemaName": null,
+         "type_name": "bigint",
+         "args": null
+        },
+        "unique": false,
+        "pk": false,
+        "not_null": true,
+        "note": null,
+        "injectedPartialId": null,
+        "checkIds": [],
+        "metadata": {}
+       },
+       {
+        "name": "status",
+        "type": {
+         "schemaName": null,
+         "type_name": "order_status",
+         "args": null
+        },
+        "unique": false,
+        "pk": false,
+        "note": null,
+        "dbdefault": {
+         "value": "placed",
+         "type": "string"
+        },
+        "injectedPartialId": null,
+        "checkIds": [],
+        "metadata": {}
+       },
+       {
+        "name": "placed_at",
+        "type": {
+         "schemaName": null,
+         "type_name": "timestamptz",
+         "args": null
+        },
+        "unique": false,
+        "pk": false,
+        "note": null,
+        "injectedPartialId": null,
+        "checkIds": [],
+        "metadata": {}
+       }
+      ],
+      "indexes": []
+     },
+     {
+      "name": "order_line",
+      "alias": null,
+      "note": null,
+      "partials": [],
+      "recordIds": [],
+      "metadata": {},
+      "fields": [
+       {
+        "name": "order_id",
+        "type": {
+         "schemaName": null,
+         "type_name": "bigint",
+         "args": null
+        },
+        "unique": false,
+        "pk": false,
+        "not_null": true,
+        "note": null,
+        "injectedPartialId": null,
+        "checkIds": [],
+        "metadata": {}
+       },
+       {
+        "name": "line_no",
+        "type": {
+         "schemaName": null,
+         "type_name": "integer",
+         "args": null
+        },
+        "unique": false,
+        "pk": false,
+        "not_null": true,
+        "note": null,
+        "injectedPartialId": null,
+        "checkIds": [],
+        "metadata": {}
+       },
+       {
+        "name": "book_id",
+        "type": {
+         "schemaName": null,
+         "type_name": "bigint",
+         "args": null
+        },
+        "unique": false,
+        "pk": false,
+        "not_null": true,
+        "note": null,
+        "injectedPartialId": null,
+        "checkIds": [],
+        "metadata": {}
+       },
+       {
+        "name": "quantity",
+        "type": {
+         "schemaName": null,
+         "type_name": "integer",
+         "args": null
+        },
+        "unique": false,
+        "pk": false,
+        "not_null": true,
+        "note": "at least one",
+        "injectedPartialId": null,
+        "checkIds": [],
+        "metadata": {}
+       }
+      ],
+      "indexes": [
+       {
+        "pk": true,
+        "note": null,
+        "columns": [
+         {
+          "type": "column",
+          "value": "order_id"
+         },
+         {
+          "type": "column",
+          "value": "line_no"
+         }
+        ]
+       },
+       {
+        "note": null,
+        "columns": [
+         {
+          "type": "column",
+          "value": "book_id"
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "name": "book",
+      "alias": null,
+      "note": null,
+      "partials": [],
+      "recordIds": [],
+      "metadata": {},
+      "fields": [
+       {
+        "name": "id",
+        "type": {
+         "schemaName": null,
+         "type_name": "bigint",
+         "args": null
+        },
+        "unique": false,
+        "pk": true,
+        "note": null,
+        "injectedPartialId": null,
+        "checkIds": [],
+        "metadata": {}
+       },
+       {
+        "name": "isbn",
+        "type": {
+         "schemaName": null,
+         "type_name": "char(13)",
+         "args": "13"
+        },
+        "unique": true,
+        "pk": false,
+        "not_null": true,
+        "note": null,
+        "injectedPartialId": null,
+        "checkIds": [],
+        "metadata": {}
+       },
+       {
+        "name": "title",
+        "type": {
+         "schemaName": null,
+         "type_name": "varchar(255)",
+         "args": "255"
+        },
+        "unique": false,
+        "pk": false,
+        "not_null": true,
+        "note": null,
+        "injectedPartialId": null,
+        "checkIds": [],
+        "metadata": {}
+       }
+      ],
+      "indexes": []
+     },
+     {
+      "name": "author",
+      "alias": null,
+      "note": null,
+      "partials": [],
+      "recordIds": [],
+      "metadata": {},
+      "fields": [
+       {
+        "name": "id",
+        "type": {
+         "schemaName": null,
+         "type_name": "bigint",
+         "args": null
+        },
+        "unique": false,
+        "pk": true,
+        "note": null,
+        "injectedPartialId": null,
+        "checkIds": [],
+        "metadata": {}
+       },
+       {
+        "name": "name",
+        "type": {
+         "schemaName": null,
+         "type_name": "varchar(120)",
+         "args": "120"
+        },
+        "unique": false,
+        "pk": false,
+        "not_null": true,
+        "note": null,
+        "injectedPartialId": null,
+        "checkIds": [],
+        "metadata": {}
+       }
+      ],
+      "indexes": []
+     },
+     {
+      "name": "book_author",
+      "alias": null,
+      "note": null,
+      "partials": [],
+      "recordIds": [],
+      "metadata": {},
+      "fields": [
+       {
+        "name": "book_id",
+        "type": {
+         "schemaName": null,
+         "type_name": "bigint",
+         "args": null
+        },
+        "unique": false,
+        "pk": false,
+        "note": null,
+        "injectedPartialId": null,
+        "checkIds": [],
+        "metadata": {}
+       },
+       {
+        "name": "author_id",
+        "type": {
+         "schemaName": null,
+         "type_name": "bigint",
+         "args": null
+        },
+        "unique": false,
+        "pk": false,
+        "note": null,
+        "injectedPartialId": null,
+        "checkIds": [],
+        "metadata": {}
+       }
+      ],
+      "indexes": [
+       {
+        "pk": true,
+        "note": null,
+        "columns": [
+         {
+          "type": "column",
+          "value": "book_id"
+         },
+         {
+          "type": "column",
+          "value": "author_id"
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "name": "payment",
+      "alias": null,
+      "note": null,
+      "partials": [],
+      "recordIds": [],
+      "metadata": {},
+      "fields": [
+       {
+        "name": "id",
+        "type": {
+         "schemaName": null,
+         "type_name": "bigint",
+         "args": null
+        },
+        "unique": false,
+        "pk": true,
+        "note": null,
+        "injectedPartialId": null,
+        "checkIds": [],
+        "metadata": {}
+       },
+       {
+        "name": "order_id",
+        "type": {
+         "schemaName": null,
+         "type_name": "bigint",
+         "args": null
+        },
+        "unique": true,
+        "pk": false,
+        "not_null": true,
+        "note": null,
+        "injectedPartialId": null,
+        "checkIds": [],
+        "metadata": {}
+       },
+       {
+        "name": "amount",
+        "type": {
+         "schemaName": null,
+         "type_name": "numeric(10,2)",
+         "args": null
+        },
+        "unique": false,
+        "pk": false,
+        "not_null": true,
+        "note": null,
+        "injectedPartialId": null,
+        "checkIds": [],
+        "metadata": {}
+       }
+      ],
+      "indexes": []
+     },
+     {
+      "name": "shipment",
+      "alias": null,
+      "note": null,
+      "partials": [],
+      "recordIds": [],
+      "metadata": {},
+      "fields": [
+       {
+        "name": "order_id",
+        "type": {
+         "schemaName": null,
+         "type_name": "bigint",
+         "args": null
+        },
+        "unique": false,
+        "pk": false,
+        "note": null,
+        "injectedPartialId": null,
+        "checkIds": [],
+        "metadata": {}
+       },
+       {
+        "name": "line_no",
+        "type": {
+         "schemaName": null,
+         "type_name": "integer",
+         "args": null
+        },
+        "unique": false,
+        "pk": false,
+        "note": null,
+        "injectedPartialId": null,
+        "checkIds": [],
+        "metadata": {}
+       },
+       {
+        "name": "carrier",
+        "type": {
+         "schemaName": null,
+         "type_name": "varchar",
+         "args": null
+        },
+        "unique": false,
+        "pk": false,
+        "note": null,
+        "injectedPartialId": null,
+        "checkIds": [],
+        "metadata": {}
+       }
+      ],
+      "indexes": []
+     },
+     {
+      "name": "tag",
+      "alias": null,
+      "note": null,
+      "partials": [],
+      "recordIds": [],
+      "metadata": {},
+      "fields": [
+       {
+        "name": "id",
+        "type": {
+         "schemaName": null,
+         "type_name": "int",
+         "args": null
+        },
+        "unique": false,
+        "pk": true,
+        "note": null,
+        "injectedPartialId": null,
+        "checkIds": [],
+        "metadata": {}
+       }
+      ],
+      "indexes": []
+     }
+    ],
+    "enums": [
+     {
+      "name": "order_status",
+      "note": null,
+      "values": [
+       {
+        "name": "placed",
+        "note": null
+       },
+       {
+        "name": "paid",
+        "note": null
+       },
+       {
+        "name": "shipped",
+        "note": "left the warehouse"
+       }
+      ]
+     }
+    ],
+    "tableGroups": [
+     {
+      "name": "sales",
+      "note": null,
+      "metadata": {},
+      "tables": [
+       {
+        "tableName": "customer",
+        "schemaName": "public"
+       },
+       {
+        "tableName": "order",
+        "schemaName": "public"
+       },
+       {
+        "tableName": "order_line",
+        "schemaName": "public"
+       }
+      ]
+     }
+    ],
+    "refs": [
+     {
+      "endpoints": [
+       {
+        "schemaName": null,
+        "tableName": "customer",
+        "fieldNames": [
+         "id"
+        ],
+        "relation": "1"
+       },
+       {
+        "schemaName": null,
+        "tableName": "customer",
+        "fieldNames": [
+         "referred_by"
+        ],
+        "relation": "*"
+       }
+      ]
+     },
+     {
+      "endpoints": [
+       {
+        "schemaName": null,
+        "tableName": "book",
+        "fieldNames": [
+         "id"
+        ],
+        "relation": "1"
+       },
+       {
+        "schemaName": null,
+        "tableName": "book_author",
+        "fieldNames": [
+         "book_id"
+        ],
+        "relation": "*"
+       }
+      ]
+     },
+     {
+      "endpoints": [
+       {
+        "schemaName": null,
+        "tableName": "author",
+        "fieldNames": [
+         "id"
+        ],
+        "relation": "1"
+       },
+       {
+        "schemaName": null,
+        "tableName": "book_author",
+        "fieldNames": [
+         "author_id"
+        ],
+        "relation": "*"
+       }
+      ]
+     },
+     {
+      "name": null,
+      "onDelete": "cascade",
+      "endpoints": [
+       {
+        "schemaName": null,
+        "tableName": "order",
+        "fieldNames": [
+         "customer_id"
+        ],
+        "relation": "*"
+       },
+       {
+        "schemaName": null,
+        "tableName": "customer",
+        "fieldNames": [
+         "id"
+        ],
+        "relation": "1"
+       }
+      ]
+     },
+     {
+      "name": null,
+      "endpoints": [
+       {
+        "schemaName": null,
+        "tableName": "order_line",
+        "fieldNames": [
+         "order_id"
+        ],
+        "relation": "*"
+       },
+       {
+        "schemaName": null,
+        "tableName": "order",
+        "fieldNames": [
+         "id"
+        ],
+        "relation": "1"
+       }
+      ]
+     },
+     {
+      "name": "fk_line_book",
+      "endpoints": [
+       {
+        "schemaName": null,
+        "tableName": "order_line",
+        "fieldNames": [
+         "book_id"
+        ],
+        "relation": "*"
+       },
+       {
+        "schemaName": null,
+        "tableName": "book",
+        "fieldNames": [
+         "id"
+        ],
+        "relation": "1"
+       }
+      ]
+     },
+     {
+      "name": null,
+      "endpoints": [
+       {
+        "schemaName": null,
+        "tableName": "payment",
+        "fieldNames": [
+         "order_id"
+        ],
+        "relation": "1"
+       },
+       {
+        "schemaName": null,
+        "tableName": "order",
+        "fieldNames": [
+         "id"
+        ],
+        "relation": "1"
+       }
+      ]
+     },
+     {
+      "name": null,
+      "endpoints": [
+       {
+        "schemaName": null,
+        "tableName": "shipment",
+        "fieldNames": [
+         "order_id",
+         "line_no"
+        ],
+        "relation": "*"
+       },
+       {
+        "schemaName": null,
+        "tableName": "order_line",
+        "fieldNames": [
+         "order_id",
+         "line_no"
+        ],
+        "relation": "1"
+       }
+      ]
+     },
+     {
+      "name": null,
+      "endpoints": [
+       {
+        "schemaName": null,
+        "tableName": "book",
+        "fieldNames": [
+         "id"
+        ],
+        "relation": "*"
+       },
+       {
+        "schemaName": null,
+        "tableName": "tag",
+        "fieldNames": [
+         "id"
+        ],
+        "relation": "*"
+       }
+      ]
+     },
+     {
+      "name": null,
+      "endpoints": [
+       {
+        "schemaName": "warehouse",
+        "tableName": "stock",
+        "fieldNames": [
+         "book_id"
+        ],
+        "relation": "1"
+       },
+       {
+        "schemaName": null,
+        "tableName": "book",
+        "fieldNames": [
+         "id"
+        ],
+        "relation": "1"
+       }
+      ]
+     }
+    ],
+    "deps": []
+   },
+   {
+    "name": "warehouse",
+    "note": null,
+    "tables": [
+     {
+      "name": "stock",
+      "alias": null,
+      "note": null,
+      "partials": [],
+      "recordIds": [],
+      "metadata": {},
+      "fields": [
+       {
+        "name": "book_id",
+        "type": {
+         "schemaName": null,
+         "type_name": "bigint",
+         "args": null
+        },
+        "unique": false,
+        "pk": true,
+        "note": null,
+        "injectedPartialId": null,
+        "checkIds": [],
+        "metadata": {}
+       },
+       {
+        "name": "on_hand",
+        "type": {
+         "schemaName": null,
+         "type_name": "integer",
+         "args": null
+        },
+        "unique": false,
+        "pk": false,
+        "not_null": true,
+        "note": null,
+        "dbdefault": {
+         "type": "number",
+         "value": 0
+        },
+        "injectedPartialId": null,
+        "checkIds": [],
+        "metadata": {}
+       }
+      ],
+      "indexes": []
+     }
+    ],
+    "enums": [],
+    "tableGroups": [],
+    "refs": [],
+    "deps": []
+   }
+  ],
+  "notes": [
+   {
+    "name": "stock_policy",
+    "content": "Stock is counted nightly",
+    "metadata": {}
+   }
+  ],
+  "records": []
+ }
+}
