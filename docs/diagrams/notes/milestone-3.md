@@ -1,6 +1,6 @@
 # Milestone 3 design note: SysML v1.7
 
-Status: **proposed**, for the maintainer's approval before work package M3.0 starts. Written against `main` at fcb953b
+Status: **approved** by the maintainer 14 Nov 2026, with every recommendation taken. Written against `main` at fcb953b
 (stage 6's 6.0, 6.1 and 6.2 merged, #231, #237, #238; 6.3 and 6.5 open as #240 and #241, carrying 6.4; the C10 package
 open as #236). The approved notes of milestone 2 (#234, `milestone-2`, e4577cc) and milestone 4b (#235, `milestone-4b`,
 c27c264) were read on their branches for what they touch. Symbols are named, not line numbers.
