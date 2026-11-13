@@ -111,6 +111,10 @@ What may touch the core, each change stating its bytes in its pull request. Each
 | The registry's pointer line to the fields' documentation | `src/core/registry.js` | 5.1 | 40 B |
 | | | | **126 B** (built: 116 B, 184,984 B to 185,100 B) |
 | ~~Only if decision 9 takes `labelGaps`~~ Decision 9 taken (the maintainer's decision of 13 Nov 2026): `tight` reads `map \|\| dg.labelGaps`; a row gap is a candidate only on a map (`length: map && r1 - r0`), so a typed view's room is column gaps only; the registry's pointer line names the field | `src/layout/layered.js`, `src/core/registry.js` | 5.1 | 25 B (built: 22 B, 185,100 B to 185,122 B; stage 5 so far 138 B) |
+| Decision 22 taken (the maintainer's decision of 13 Nov 2026): `overlapIssues` skips a node against the node its `owner` names, either way round (`(a.owner \|\| 0) === b.id`, so two nodes with neither an owner nor an id are still measured), not on a map: a map card's `owner` is its team's name, which may be another card's id | `src/layout/audit.js` | follow-ups | 20 B (built: 37 B, 185,109 B to 185,146 B by `/usr/bin/gzip -9` on this machine, where 5.1's 185,122 B measures 185,109 B; stage 5 so far 175 B) |
+| A box's title on two lines, its keyword above its name (UML 2.5.1; the maintainer's decision of 13 Nov 2026): `frameOf` passes `TB` to `TYPED.frame`, which grows the header room by the box's `head` on its title's side; the router's reserve over a box's title (`runRouting`) and the layout check's header test (`routeAudit`) are `head` px deeper, not on a map; the registry's pointer line names `head` | `src/layout/layered.js`, `src/layout/audit.js`, `src/core/registry.js` | follow-ups | (built: 37 B, 185,146 B to 185,183 B) |
+| From the follow-ups' review: a box with a `head` has its title measured at 12 px (`headW`), so a short keyword over a long name no longer cuts the name; the canvas says a selected box by all its title lines, and F2's field over a box sits `head` px lower | `src/layout/layered.js`, `src/canvas/render.js` | follow-ups | (built: 36 B, 185,183 B to 185,219 B: `headW` 19 B, the canvas 17 B) |
+| | | | **Follow-ups: 110 B** (185,109 B at eaba18e to 185,219 B; stage 5 so far 248 B of its 300 B) |
 
 | Option | For | Against |
 |---|---|---|
@@ -314,9 +318,10 @@ nothing (order is not stored, S3), and the hint line says so.
   centre to centre, past any port with lines they would come within 8 px of; a side too short for them narrows the gaps
   down to 4 px (§4.4, step 3), and those that still do not fit are held at the span's start, on the border, with
   `over: true` on their port node.
-- A port node carries `owner` (its owner's id). The layout check (`overlapIssues`, `src/layout/audit.js`) reports every
-  port against its own owner, since a port sits half inside it by design (§4.1); 5.3 owns neither the check nor the
-  types, so how a type's check passes is the maintainer's decision, open for 5.4 to 5.6.
+- A port node carries `owner` (its owner's id). The layout check (`overlapIssues`, `src/layout/audit.js`) reported every
+  port against its own owner, since a port sits half inside it by design (§4.1); 5.3 owned neither the check nor the
+  types, so how a type's check passes was the maintainer's decision, open for 5.4 to 5.6. Decision 22, taken: the check
+  skips a node against the node its `owner` names (§2.3), so a port on its owner is no overlap; a port on another node is.
 - A port's name keeps off every box's border and 24 px header room. A line's end labels (`TYPED.lines`,
   `src/typed/draw.js`) are placed later and do not see the port names: 5.4 to 5.6 keep them apart.
 - Model ids such as `__proto__` and `constructor` are safe as port and owner ids; a port id seen before, or a node's
@@ -557,12 +562,10 @@ ball and socket.
   `rowsFor`; a pin wins and a node it would cover moves down. A usage of a ball is turned (provider, ball, requirer from left
   to right); a usage of a rectangle is not. What no line reaches is packed by size in rows under the lined columns, a box
   as wide and tall as its contents.
-- **Ports on a node are drawn in the node's group** (a node of shape `ported`, its shape's look with its ports' nodes after
-  it), not as nodes of the picture: the layout check (`overlapIssues`) measures every node against every other and took each
-  such port for an overlap of its owner (5.3's open point). They stay in `byId`, so a click, F2, L, Delete, Alt + arrows and
-  the reading order's keys reach them. Ports on a box are nodes of the picture, as 5.3 drew them. Decision 22 (§18).
-  A known limit while it stands: selecting such a node also marks its ports as selected (the group's style reaches them),
-  though they are not in the selection; ports on a box do not.
+- **Every port is a node of the picture**, on a node as on a box, as 5.3 drew them: decision 22 (§18), as built in the
+  follow-ups, has the layout check skip a port against its own owner (§2.3). 5.4 had drawn the ports on a node in the node's
+  group (a node of shape `ported`) so the check would not take them for overlaps; selecting such a node marked its ports as
+  selected too. That workaround is gone: selecting a node marks none of its ports (`tests/component.html`).
 - **A ball is laid out as its 16 px circle**, its name hanging under it in the row gap, so the router ends its lines level
   with the circle. A ball's lines take its left or right by the ranking; the layout keeps no room for the name, which a line
   passing under the ball may cross. Laid out down, a line from before the ball comes in above it and one from after it on
@@ -612,10 +615,10 @@ and §6; a connector from the subject's port to a part is inner (§5).
   drawn (`TYPED.lines`) and do not see the port names (§4.5, as built in 5.3), while a line's label is placed by the router
   and the port names keep clear of it (`portsDrawn`). So the type sets **`labelGaps: true`** (decision 9's opt in) and
   `gap: 64`, `rgap: 56`: without it both role names on `04-composite-structure.json` found no spot, one laid out each way.
-- **The layout check and ports on parts.** `overlapIssues` reports each port against the part it sits on (half inside by
-  design, §4.1); a port on the subject's box is not a node pair and is not reported. The tests drop exactly those reports
-  (a port's `owner`); the rest is clean right and down on the example, with no crossing. How the check should pass is
-  decision 22.
+- **The layout check and ports on parts.** `overlapIssues` reported each port against the part it sits on (half inside by
+  design, §4.1), and the tests dropped exactly those reports. Decision 22, as built in the follow-ups: the check skips a
+  port against its own owner (§2.3), so the example is clean right and down as the check gives it, with no filter and no
+  crossing; `check()` on `04-composite-structure.json` went from 4 issues to none, its picture unchanged.
 - **The ranking** (`layout.rank: false`): the subject's parts and collaboration uses are ranked as the communication type
   ranks its lifelines (longest path over connectors and role bindings, `untangle`, `rowsFor`), then each open
   collaboration's roles, then the rest (comments, a closed collaboration, a subject with nothing inside), block after block
@@ -671,10 +674,17 @@ from, or settles what is not said above:
   The cost is 10 px more on the left and bottom of each box, 20 px a level (six levels: 120 px each way). A line's end on
   a slanted corner of the outline is moved in on to it, on a copy (§2.4), as `SHAPE.cube.inset` does for a closed cube (only
   ever lengthening its last run). A label the core leaves over the front face's top or right line, in the box's padding, slides
-  along its line inward, clear of it, on a copy. Its title is one line in the 24 px header room under the top face, `«device»
-  name` or `«executionEnvironment» name` with the stereotypes after the keyword, cut to the front face's width as a
-  package's title is (`06-deployment.json`'s "«executionEnvironment» Web brow…"): the box is as wide as its contents, not
-  its title.
+  along its line inward, clear of it, on a copy. Its title, under the top face: as built in the follow-ups (the
+  maintainer's decision of 13 Nov 2026), a box with a keyword or stereotypes draws them on a line above its name, as
+  UML 2.5.1 draws a keyword, `«device»` or `«executionEnvironment»` with the stereotypes after it, in 15 px more header room
+  (the box's `head`, §2.3); a node with neither has its name alone in the 24 px, as before. Each line is cut to the front
+  face's width; the core keeps a box with a `head` as wide as its title on one line measured at the lines' 12 px (`headW`;
+  at 11 px, a short keyword over a long name, `«k»` over 80 characters, cut the name), so every name is drawn whole, as
+  `06-deployment.json`'s "Web browser" is (5.5 drew one line, "«executionEnvironment» Web brow…"). The box is wider than
+  its longer line by the keyword's width (measuring each line alone would cost about 20 B more). The router's reserve over a
+  box's title and the layout check's header test take the `head` too, so no line runs through the name. Selected, the box
+  is said by both lines ("Box «executionEnvironment» Web browser, selected": the canvas joins a box's `.family-title`s,
+  where it said the first), and F2's field sits over the name, `head` px lower (`nameBox`).
 - `nest-kinds`' error covers any owner that is not a target (a package or a component too). `deployed-twice` warns of a
   line to another target only; a «deploy» line to the target that also nests the artifact is drawn nowhere (a line from a
   box to what it holds is left out) and warned by neither rule (`connect` refuses to draw one). `path-ends` also fails a path
@@ -689,13 +699,15 @@ from, or settles what is not said above:
   target's Owner field lists every target. No `moveTo`, `add`, `member` or `key`: the type has no ports, no members and no
   `present` field; a drop into a box and the Owner field emit stage 2's `reparent`, tested by pointer and by key.
 - Decision 21, what `06-deployment.json` keeps: its 7 labels all find a spot and none is cut short, laid out right (1,512 ×
-  756 px) and down (961 × 1,011 px), every line routed clean (8 `grid`). Laid out down without `labelGaps`, one label
-  (`edge-to-app`, "HTTP") has no spot and the view is 993 px high: `labelGaps` gives it its spot for 18 px. Laid out right,
+  816 px) and down (961 × 1,071 px), every line routed clean (8 `grid`). Laid out down without `labelGaps`, one label
+  (`edge-to-app`, "HTTP") has no spot and the view is 1,053 px high: `labelGaps` gives it its spot for 18 px. (5.5 measured
+  756 and 1,011 px high, and 993 without `labelGaps`; the two-line titles add the 60 px.) Laid out right,
   `labelGaps` changes nothing. Both runs pinned and printed in `tests/deployment.test.mjs` (the one without by
   `layoutTyped` on the type's own input with `labelGaps: false`).
 - Six levels (§7, L8): node, node, device, device, execution environment, execution environment, an artifact in the
-  deepest, a communication path from the deepest to a node at the top: laid out clean both ways; the outer box 609 × 514 px
-  laid out right and 609 × 638 px down (printed; 5.8's fixture pins its own).
+  deepest, a communication path from the deepest to a node at the top: laid out clean both ways; the outer box 609 × 574 px
+  laid out right and 609 × 698 px down (printed; 5.8's fixture pins its own; 5.5 measured 514 and 638 px, before the
+  four keyworded boxes' second title line).
 - P1 (§14), on a test view of 50 nodes and artifacts, 50 lines and boxes five deep (ten paths left with no spot before
   `labelGaps`, two after): CPU, best of seven after a warm-up, on a laptop loaded by other jobs (load average 9), a path's
   label 144 to 193 ms, an artifact moved into another node 144 to 188 ms, a full layout 150 to 207 ms, against 26 to 40 ms

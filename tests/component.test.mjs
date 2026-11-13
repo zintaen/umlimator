@@ -1,6 +1,6 @@
 // The component diagram, uml.component (work package 5.4, notes/stage-5.md §10.1): the type's definition, docs/diagrams/
 // examples/05-component.json drawn (its own ranking, boxes, ports on borders, delegations inward, ball and socket), laid out
-// clean right and down, line ends on their ports' squares, the ports on a node drawn in its group, a memo's picture the
+// clean right and down, line ends on their ports' squares, every port a node of its own (decision 22), a memo's picture the
 // same as a fresh one; accessible names, reading order, describe(), the legend, the PDF's rows and words; the validators;
 // the editing hooks; a 30-step session saved and reopened; the common edit's time. tests/component.html draws it in a
 // browser and edits it by pointer and keyboard. Imports src/ to reach the internals; lib/umlimator-all.js holds the same code.
@@ -51,9 +51,8 @@ for (const direction of ['right', 'down']) test(`05-component.json (${direction}
   assert.deepEqual(g.families.map(f => [f.id, f.shape]), [['shop-api', 'component']]);
   assert.ok(g.byId.checkout.x - g.families[0].x >= 48 - .01, 'a box with ports has 48 px of padding');
   assert.deepEqual(['storefront', 'accounts', 'order-worker', 'i-orders', 'i-sign-in', 'shop-api-jar'].map(id => g.byId[id].shape), ['component', 'component', 'component', 'ball', 'classifier', 'artifact']);
-  // the ports on a node are drawn in its group (shape 'ported'), not as nodes of their own: the check does not take them for overlaps
-  assert.deepEqual(g.nodes.filter(n => n.shape === 'ported').map(n => [n.id, n.base, n.held.map(p => p.id)]), [['checkout', 'component', ['checkout.orders', 'checkout.payments']], ['payment-provider', 'component', ['payment-provider.charges']]]);
-  assert.deepEqual(g.nodes.filter(n => n.shape === 'port').map(n => n.id), ['shop-api.orders', 'shop-api.payments'], 'a box\'s ports are nodes');
+  // every port is a node of the picture, on a node as on a box, carrying its owner, which the check passes (decision 22)
+  assert.deepEqual(g.nodes.filter(n => n.shape === 'port').map(n => [n.id, n.owner]), [['shop-api.orders', 'shop-api'], ['shop-api.payments', 'shop-api'], ['checkout.orders', 'checkout'], ['checkout.payments', 'checkout'], ['payment-provider.charges', 'payment-provider']]);
   const ps = ports(g); assert.equal(ps.length, 5);
   ps.forEach(p => { const o = ownerOf(g, p.owner), v = p.side === 'L' || p.side === 'R', b = p.side === 'L' ? o.x : p.side === 'R' ? o.x + o.w : p.side === 'T' ? o.y : o.y + o.h;
     assert.ok(Math.abs((v ? p.x : p.y) + 6 - b) < .01, `${p.id} centred on ${o.id}'s border`); });
@@ -71,9 +70,15 @@ for (const direction of ['right', 'down']) test(`05-component.json (${direction}
   assert.deepEqual(g.edges.filter(e => e.to === 'i-orders').map(e => [e.id, e.end.to, !!e.end.dashed]), [['api-provides-orders', 'none', false], ['storefront-requires-orders', 'socket', false]], 'stem and socket');
 });
 
-test('drawn: ports in their owner\'s group with names; markup laid out from a memo is a fresh layout\'s, and drawing leaves the memo as it was', () => {
+// a node's group in the markup, from its opening tag to the </g> that closes it
+const groupOf = (s, id) => { const i = s.indexOf(`data-id="${id}"`), a = s.lastIndexOf('<g', i), re = /<g[\s>]|<\/g>/g; re.lastIndex = a;
+  for (let d = 0, m; (m = re.exec(s));) if ((d += m[0] === '</g>' ? -1 : 1) === 0) return s.slice(a, re.lastIndex); return null; };
+test('drawn: each port a group of its own, after its owner\'s and outside it, so selecting the owner marks none of its ports (decision 22), with names; markup laid out from a memo is a fresh layout\'s, and drawing leaves the memo as it was', () => {
   const s = svgOf(layout(CM, V));
-  assert.match(s, /<g class="node component" data-id="checkout"[^>]*>.*<g class="node port" data-id="checkout.orders"[^>]*aria-label="Port orders of Checkout"/);
+  assert.match(s, /<g class="node port" data-id="checkout.orders"[^>]*aria-label="Port orders of Checkout"/);
+  for (const [o, p] of [['checkout', 'checkout.orders'], ['checkout', 'checkout.payments'], ['payment-provider', 'payment-provider.charges']]) {
+    const own = groupOf(s, o); assert.ok(own && own.startsWith('<g class="node component"'), o); assert.ok(!own.includes(`data-id="${p}"`), `${p} is not drawn in ${o}'s group`);
+    assert.ok(s.indexOf(`data-id="${p}"`) > s.indexOf(own) + own.length, `${p} after ${o}`); }
   assert.match(s, /class="port-name"[^>]*>charges</);
   assert.match(s, /marker-end="url\(#[^)]*-socket-/);
   const memos = {}, draw = m => unid(mapContext(m, { memos }).buildView(V).markup), a = draw(CM), was = JSON.stringify(memos[V].g.edges.map(e => e.pts));

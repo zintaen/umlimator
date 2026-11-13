@@ -80,7 +80,7 @@ function routeAudit(geo, where, only, refs) { // only: a set of edges; counts ju
     if (f.parent && (!parent || !inside(parent,f))) say(`${where}: family "${f.label}" sticks out of its parent`, f);
     (f.nodeIds || []).forEach(id => { const n = geo.byId[id]; if (n && !inside(f,n)) say(`${where}: family "${f.label}" does not contain "${n.label}"`, f, n); });
     families.filter(g => g !== f && g.parent === f.parent && g.id > f.id).forEach(g => { if (hit(f,g,-1)) say(`${where}: families "${f.label}" and "${g.label}" overlap`, f, g); });
-    geo.edges.forEach((e,i) => { if (segHit({x:f.x+8,y:f.y+3,w:Math.min(f.w-16,textW(f.label || f.id,11)+16),h:22},i)) say(`${where}: family "${f.label}": header crossed by edge ${name(e)}`, f, e); });
+    geo.edges.forEach((e,i) => { if (segHit({x:f.x+8,y:f.y+3,w:Math.min(f.w-16,textW(f.label || f.id,11)+16),h:22+(!geo.map&&f.head||0)},i)) say(`${where}: family "${f.label}": header crossed by edge ${name(e)}`, f, e); });
     geo.edges.forEach((e,i) => { if (segs[i].some(([a,b]) => { const v = a[0] === b[0], c = v ? a[0] : a[1], p = v ? [a[1], b[1]] : [a[0], b[0]];
       const lo = Math.max(Math.min(...p), v ? f.y : f.x), hi = Math.min(Math.max(...p), v ? f.y + f.h : f.x + f.w);
       return hi - lo > 40 && (v ? [f.x, f.x + f.w] : [f.y, f.y + f.h]).some(u => Math.abs(c - u) < 8); })) say(`${where}: edge ${name(e)} runs along the border of family "${f.label}"`, e, f); });
@@ -95,7 +95,7 @@ const box = n => ({ x: n.x, y: n.y, w: n.w, h: n.h });
 function overlapIssues(geo, where, refs) {
   const issues = [], nodes = geo.nodes, say = teller(issues, refs);
   const inside = (a, b) => a.x >= b.x - 1 && a.y >= b.y - 1 && a.x + a.w <= b.x + b.w + 1 && a.y + a.h <= b.y + b.h + 1;
-  const holds = (a, b) => (a.holder && inside(b, a)) || (b.holder && inside(a, b)); // a holder (a sequence's frame) may hold what it meets, not cross it
+  const holds = (a, b) => (a.holder && inside(b, a)) || (b.holder && inside(a, b)) || !geo.map && ((a.owner || 0) === b.id || (b.owner || 0) === a.id); // a holder (a sequence's frame) may hold what it meets, not cross it; a port its owner
   for (let i = 0; i < nodes.length; i++) for (let j = i + 1; j < nodes.length; j++) if (hit(box(nodes[i]), box(nodes[j]), -1) && !holds(nodes[i], nodes[j])) say(`${where}: nodes "${nodes[i].label}" and "${nodes[j].label}" overlap`, nodes[i], nodes[j]);
   return issues;
 }

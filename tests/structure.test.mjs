@@ -250,10 +250,10 @@ test('portsDrawn: a name keeps off every box\'s border and header room', () => {
   assert.ok(b && strips.every(r => !meets(b, r)), JSON.stringify(b));
 });
 
-test('the layout check (overlapIssues) on portsDrawn\'s copy: every overlap it reports is a port on its own owner, half inside by design (§4.1)', () => {
-  const out = portsDrawn(geometry(), PORTS), byLabel = new Map(out.nodes.map(n => [n.label, n]));
-  const said = overlapIssues(out, 'v'), own = said.filter(m => { const [, x, y] = m.match(/nodes "(.*)" and "(.*)" overlap/), p = byLabel.get(x), q = byLabel.get(y); return p.owner === q.id || q.owner === p.id; });
-  assert.ok(said.length > 0); assert.deepEqual(said, own);
+test('the layout check (overlapIssues) on portsDrawn\'s copy: a port half inside its own owner (§4.1) is no overlap (decision 22)', () => {
+  const out = portsDrawn(geometry(), PORTS), over = (a, b) => a.x < b.x + b.w - 1 && b.x < a.x + a.w - 1 && a.y < b.y + b.h - 1 && b.y < a.y + a.h - 1;
+  assert.ok(out.nodes.some(p => p.owner && out.byId[p.owner] !== p && out.nodes.includes(out.byId[p.owner]) && over(p, out.byId[p.owner])), 'a port on a node of the copy, half inside it');
+  assert.deepEqual(overlapIssues(out, 'v'), []);
 });
 
 /* ---- the shared rules (§10.1, §10.3) ---- */
