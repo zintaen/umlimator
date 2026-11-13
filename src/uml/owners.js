@@ -8,7 +8,7 @@ import '../typed/draw.js'; // SHAPE.classifier, whose ports the closed package t
    boxes (§7, §10.3). Only lib/umlimator-all.js holds this file. */
 
 const OWN_OBJ = x => x !== null && typeof x === 'object' && !Array.isArray(x), OWN_ARR = x => (Array.isArray(x) ? x : []);
-const OWN_BOXES = ['uml.Package']; // the node types that may be a box (§4.1, 1)
+const OWN_BOXES = ['uml.Package', 'uml.Profile']; // the node types that may be a box (§4.1, 1); a profile is a package (notes/stage-6.md §4.1)
 // the types of rows 1 to 3 whose owner is a package (rule owner-kinds); comments are not checked
 const OWNED = ['uml.Class', 'uml.Interface', 'uml.Enumeration', 'uml.DataType', 'uml.PrimitiveType', 'uml.Package', 'uml.InstanceSpecification'];
 const ownName = x => String(x.label ?? x.id);
@@ -38,7 +38,7 @@ function ownIndex(model, members = []) {
    its node is and it holds something shown, and is a box when its node has two or more in the model (with one, what it
    holds sits in the node's box); shape(x) and word(x), a box's shape and the word its accessible name starts with ('package', 'Package') */
 function ownersOn(model, view, look = {}) {
-  const { boxTypes = OWN_BOXES, qualify = true, members = [], shape = () => 'package', word = () => 'Package' } = look;
+  const { boxTypes = OWN_BOXES, qualify = true, members = [], shape = () => 'package', word = x => (x.type === 'uml.Profile' ? 'Profile' : 'Package') } = look;
   const { at, chain, up, mems } = ownIndex(model, members), ids = OWN_ARR(OWN_OBJ(view) ? view.nodeIds : null).filter(id => at.has(id) && !mems.has(id)), seen = new Set(ids);
   const live = new Set(ids.flatMap(id => chain(id).filter(p => mems.has(p) && seen.has(up.get(p))))), place = m => OWN_ARR(at.get(up.get(m)).members).indexOf(at.get(m)); // members holding something shown
   const many = m => OWN_ARR(at.get(up.get(m)).members).filter(x => OWN_OBJ(x) && members.includes(x.type)).length > 1; // §6.1, 2: two or more in the model
@@ -50,7 +50,7 @@ function ownersOn(model, view, look = {}) {
   const by = new Map(); all.forEach(id => { const o = owner(id); if (!by.has(o)) by.set(o, []); by.get(o).push(id); }); // grouped once: a view of 10,000 elements
   const holds = o => by.get(o) || [], open = new Set([...by.keys()].filter(x => x != null));
   const boxes = all.filter(id => open.has(id)).map(id => { const p = at.get(id), st = stereoOf(p), held = holds(id), o = owner(id), nm = name(id);
-    return { id, label: ownName(p), title: [...st.map(t => `«${t}»`), nm].join(' '), nodeIds: held.filter(x => !open.has(x)), ...(o != null ? { parent: o } : {}), shape: shape(p),
+    return { id, label: ownName(p), title: [...(p.type === 'uml.Profile' ? ['«profile»'] : []), ...st.map(t => `«${t}»`), nm].join(' '), nodeIds: held.filter(x => !open.has(x)), ...(o != null ? { parent: o } : {}), shape: shape(p),
       aria: `${word(p)} ${nm}${st.length ? ` (${st.join(', ')})` : ''}, holding ${held.length} element${held.length === 1 ? '' : 's'}` }; });
   return { ids, owner, holds, boxes, name, full, open, chain, at };
 }
@@ -63,13 +63,15 @@ function readingOrder(pic) {
 }
 
 // a line between a package and something it holds, at any depth, or from a box to itself (§7): a, b node ids
-const holdsLine = (pic, a, b) => (a === b && pic.open.has(a)) || [[a, b], [b, a]].some(([p, x]) => (pic.at.get(p) || {}).type === 'uml.Package' && pic.chain(x).includes(p));
+const holdsLine = (pic, a, b) => (a === b && pic.open.has(a)) || [[a, b], [b, a]].some(([p, x]) => OWN_BOXES.includes((pic.at.get(p) || {}).type) && pic.chain(x).includes(p));
 
-// the Owner field (registry.js owners): every package of the model by its name from the top, for an element a package may own
+// the Owner field (registry.js owners): every package and profile of the model by its name from the top, for an element a
+// package may own; a stereotype's and a metaclass's: every profile (notes/stage-6.md §4.2)
 function ownerChoices(model, x) {
-  if (!OWN_OBJ(x) || !(OWNED.includes(x.type) || x.type === 'uml.Comment') || x.from != null) return null;
+  const def = OWN_OBJ(x) && (x.type === 'uml.Stereotype' || x.type === 'uml.MetaclassReference');
+  if (!OWN_OBJ(x) || !(OWNED.includes(x.type) || x.type === 'uml.Comment' || def) || x.from != null) return null;
   const { at, chain } = ownIndex(model), full = id => [...chain(id).reverse(), id].map(k => ownName(at.get(k))).join('::');
-  return [...at.values()].filter(n => n.type === 'uml.Package').map(n => ({ id: n.id, label: full(n.id) }));
+  return [...at.values()].filter(n => (def ? n.type === 'uml.Profile' : OWN_BOXES.includes(n.type))).map(n => ({ id: n.id, label: full(n.id) }));
 }
 
 /* ---- the rules about owners and boxes (§9.3, §10.3). Each problem: { level, rule, path, message, ids } ---- */
@@ -85,7 +87,7 @@ function ownerProblems(model, view, lines) {
   const all = new Map(), put = (x, kind) => { if (OWN_OBJ(x) && typeof x.id === 'string' && !all.has(x.id)) { all.set(x.id, { x, kind }); OWN_ARR(x.members).forEach(m => put(m, 'member')); } };
   OWN_ARR(model.nodes).forEach(n => put(n, 'node')); const q = id => JSON.stringify(ownName((all.get(id) || { x: { id } }).x));
   OWN_ARR(model.nodes).forEach((n, i) => { if (!OWN_OBJ(n) || !OWNED.includes(n.type) || n.parent == null || !all.has(n.parent)) return;
-    const p = all.get(n.parent).x; if (p.type !== 'uml.Package') say('owner-kinds', `nodes[${i}].parent`, [n.id, p.id], `${q(n.id)} is owned by ${q(p.id)}, a ${String(p.type).split('.').pop()}, not a package`); });
+    const p = all.get(n.parent).x; if (!OWN_BOXES.includes(p.type)) say('owner-kinds', `nodes[${i}].parent`, [n.id, p.id], `${q(n.id)} is owned by ${q(p.id)}, a ${String(p.type).split('.').pop()}, not a package`); });
   if (!view) return out;
   const vi = OWN_ARR(model.views).indexOf(view), pic = ownersOn(model, view);
   lines.forEach(({ e, from, to }) => { if (holdsLine(pic, from, to)) say('line-inside', `views[${vi}]`, from === to ? [e.id, from] : [e.id, from, to],

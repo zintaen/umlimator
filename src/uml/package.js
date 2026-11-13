@@ -8,7 +8,8 @@ import { OWNER_RULES, ownerChoices, ownerProblems, ownersOn } from './owners.js'
    merges («merge») and dependencies, dashed with an open arrow; comments. A view with no `edges` list draws these line
    types only. Ships in lib/umlimator-all.js only. */
 
-const PACKAGE_LINES = ['uml.PackageImport', 'uml.PackageMerge', 'uml.Dependency', 'uml.CommentLink'];
+// a profile application too, drawn where a view shows a package and a profile (notes/stage-6.md §14); its palette is the profile view's
+const PACKAGE_LINES = ['uml.PackageImport', 'uml.PackageMerge', 'uml.Dependency', 'uml.CommentLink', 'uml.ProfileApplication'];
 const PACKAGE_LOOK = { members: false, own: PACKAGE_LINES, word: 'package diagram' };
 const PACKAGE_RULES = {
   'import-ends': 'a package import or a package merge runs from a package to another package',
