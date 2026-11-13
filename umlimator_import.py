@@ -6,8 +6,9 @@
   plantuml      C4-PlantUML: Person, System, Container, Component (with Db, Queue and _Ext), Rel, Rel_*, BiRel, and
                 *_Boundary(alias, label) { ... } as boxes
   mermaid       flowchart and graph (nodes, labelled links, subgraphs as boxes), and C4Context, C4Container and
-                C4Component, whose macros are C4-PlantUML's (a classDiagram or a sequenceDiagram is the module's to
-                read: umlimator.py import runs src/readers/mermaid-class.js or mermaid-sequence.js in Node)
+                C4Component, whose macros are C4-PlantUML's (a classDiagram, a sequenceDiagram or a stateDiagram is the
+                module's to read: umlimator.py import runs src/readers/mermaid-class.js, mermaid-sequence.js or
+                mermaid-state.js in Node)
   compose       `docker compose config --format json`: services, depends_on and links, networks as boxes
   kubernetes    `kubectl get ... -o json` (a List or one object): Deployments, StatefulSets, DaemonSets, Services (to the
                 workloads their selector picks), Ingresses (to their Services), and env values that name a Service
@@ -21,8 +22,8 @@ from pathlib import Path
 FORMATS = ["structurizr", "plantuml", "mermaid", "compose", "kubernetes"]
 EXT = {".dsl": "structurizr", ".puml": "plantuml", ".plantuml": "plantuml", ".pu": "plantuml", ".iuml": "plantuml",
        ".mmd": "mermaid", ".mermaid": "mermaid"}
-MERMAID = re.compile(r"(flowchart|graph|C4Context|C4Container|C4Component|classDiagram|sequenceDiagram)\b")
-TYPED = ("classDiagram", "sequenceDiagram")  # the diagrams the module's readers read, in Node (src/readers/)
+MERMAID = re.compile(r"(flowchart|graph|C4Context|C4Container|C4Component|classDiagram|sequenceDiagram|stateDiagram)\b")
+TYPED = ("classDiagram", "sequenceDiagram", "stateDiagram")  # the diagrams the module's readers read, in Node (src/readers/)
 
 # ponytail: a keyword guess over names, technologies, tags and images, the first match winning; a source's own type
 # (a cylinder, ContainerDb, _Ext, a StatefulSet) comes first. Add words when a common stack lands on the wrong colour.
@@ -139,8 +140,8 @@ def detect(path, text):
 
 
 def mermaid_typed(text):
-    """The Mermaid diagram the module's readers read (src/readers/, through Node), classDiagram or sequenceDiagram, or
-    None: this file reads Mermaid's flowcharts and C4 diagrams only."""
+    """The Mermaid diagram the module's readers read (src/readers/, through Node), classDiagram, sequenceDiagram or
+    stateDiagram (stateDiagram-v2 too), or None: this file reads Mermaid's flowcharts and C4 diagrams only."""
     directive = False  # a %%{ ... }%% directive may run over several lines
     for s in (l.strip() for l in front(text)[1].splitlines()):
         if directive:

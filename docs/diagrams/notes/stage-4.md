@@ -29,14 +29,14 @@ transition micro-syntax. Its reader: Mermaid's `stateDiagram`.
 | S12 | The Mermaid state subset | §13's table, against Mermaid 12.3.0, with the limits of 3.6 (1 MiB, linear, never throws) and a nesting limit of 64; a state's plain description read as a linked comment; reserved and colliding ids suffixed | §13 |
 | S13 | The PDF's tables per type (R8, and R9, new) | A type may give `rows(model, view, id)`, the text `print.js` lists for an element in place of its members, and `word(model, id)`, its kind; typed tables are headed "Elements" | §15 |
 | S14 | The core's budget (C5) | Stage 4 spends at most 600 B of the 2,790 B left at 0.20.0; everything listed in §2.3 stays in family files | §2.3 |
-| S15 | P1 for the common edit | A transition's label, a flow's guard and a use case's name are laid out and drawn in under 100 ms on each stress fixture, as 3.5 did for messages. The four types pass `repair: false` and `reroute: false` always, as the communication type does: `reroute: false` alone measures 123 to 131 ms on a 52-node view (Q19). A spike in 4.1 measures it on a view with lanes and with composites three deep before the type lanes start | §17 |
+| S15 | P1 for the common edit | A transition's label, a flow's guard and a use case's name are laid out and drawn in under 100 ms on each stress fixture, as 3.5 did for messages. The four types pass `repair: false` and `reroute: false` always, as the communication type does: `reroute: false` alone measures 123 to 131 ms on a 52-node view (Q19). A spike in 4.1 measures it on a view with lanes and with composites three deep before the type lanes start. The maintainer's decision of 13 Nov 2026 on that spike: a normally wired state machine (50 states, 60 transitions, composites three deep) holds 100 ms for a label edit; the scattered worst case, most transitions across region borders (about 148 ms in 4.1, the cost in `gridRoute`), holds the 1 s budget of edits that move geometry, as 1.11 did | §17 |
 | S16 | C10 for the four types | Tested in 4.10 as 2.6 did (the MCP server, the diff Action), per-type `diff()` writers left to the package after 0.20.0 | §19.5 |
 | S17 | Order with stage 3 | 4.0 follows 3.8's merge (#198); 0.21.0 ships after 0.20.0 | §19.3 |
 | S18 | Choosing the view an interaction use or a call behaviour action opens | A picker of the model's views of the right kind when the element is added (the `add` hook's new `{ pick, then }` result), and again by `V` on the selected node, which emits `set opensView`. In `src/typed/edit.js`; no core byte, no new properties field | §12.2 |
 | S19 | A composite state's entry, do and exit | Not drawn on its box in 0.21.0; in its accessible name, `describe()`, the panel and the PDF | §10.1 |
 | S20 | The order of a state's regions in the picture | The order `blockPos` gives boxes of one rank (by their first line), not `members` order; the panel, the PDF and the accessible names keep `members` order | §6.2 |
 | S21 | How strict the control-node rules are | Where UML allows one (one incoming to a fork, one outgoing from a join or a merge, none into an initial node), more is an error; where UML wants two or more, fewer is a warning, since a diagram being drawn passes through it | §9.3, §10.2 |
-| S22 | Mermaid's unsupported crossings | A transition between substates of two composites, or from outside into a substate, is written as a transition with a `%% warning:` line above it; Mermaid 12.3.0's parser is run on the writer's output once in 4.8, from a scratch page, not as a dependency | §13 |
+| S22 | Mermaid's unsupported crossings | A transition between substates of two composites, or from outside into a substate, is written as a transition with a `%% warning:` line above it; Mermaid 12.3.0's parser is run on the writer's output once in 4.8, from its npm package in a scratch directory, not as a dependency (4.8, §13) | §13 |
 
 What is left out of the subsets is in §18.
 
@@ -672,6 +672,53 @@ a model UML forbids is an error; one that is only unfinished is a warning.
 - **Deleting a state** deletes its regions and everything under it, as `apply()` does (a state owns its substates, unlike a
   partition). Deleting a region from the member list deletes what it holds; the hint line says how many.
 
+### 10.4 As built in 4.6
+
+Where `src/uml/state.js` departs from §6, §10 and §17:
+
+- **The browser test is `tests/state-machine.html`**, not `tests/state.html`, which is the map's state machines (0.14.0)
+  and stays as it is. `tests/embed.py` does not list it yet: the lead adds it beside `tests/flow.html`.
+- **A row `entry / …` typed on a state.** The panel hands a member row to the type only through `member.add` and
+  `member.edit`, which give a member, not commands. So `state.js` extends `TYPED.edit` (`src/typed/edit.js`'s, which it
+  calls first) with one listener on the panel's New member field and member rows, on a state machine view only: a row
+  whose trigger is `entry`, `do` or `exit` sets that prop (and a row edited so is deleted), a second one replacing the
+  first and saying so; any other row goes to the panel as before. A member hook that may return commands, in
+  `src/canvas/edit.js`, would take its place; `member.add` refuses such a row on its own.
+- **Slots.** The geometry gives a slot on each node and box, `{ after, parent: null, x, y }`: `src/typed/edit.js` passes
+  the `add` hook an `at` holding `sel` only where the geometry has slots, and the Region entry reads the state selected
+  there. No default gesture of this type reads a slot.
+- **Gaps.** Columns 48 px apart and rows 40 px, not spread by the widest label as the class type does: with 280 px labels
+  that made `10-state-machine.json` 6,700 px wide, and the smaller grid routes a fifth faster (P1). Laid out right every
+  label is drawn; laid out down three are left to their tooltip and name.
+- **Regions.** After the layout, on a copy, a state's regions stacked on one axis are stretched across it (6 px inside its
+  border; laid out down, from under its header), and the dashed divider runs across the whole state in the middle of the
+  gap. Regions that part on both axes are not stretched, and get a divider across the two only where they part on one.
+  Unnamed regions draw no title; their accessible name numbers them ("Region 2 of Fulfilling").
+- **Names.** A composite's accessible name ends with its regions ("2 regions") or, with none, its substates ("4 states"),
+  and ", closed" when drawn closed; a region's counts what it shows as states, pseudostates included. A pseudostate's or
+  final state's name says its owner ("Initial pseudostate in Parcel").
+- **The compartment** is named `activities` for `present.collapsed`; `present.rows` cuts it as on a class.
+- **A self-transition on an open composite** is not drawn (the layout routes loops on nodes only); it is in the model, the
+  panel and `describe()`.
+- **The Owner field** lists every state and region by its names from the top, joined by " / " ("Fulfilling / Parcel"),
+  but the element itself and what lies under it, through its regions too (the host's filter stops at a region, a member).
+- **Deleting a region** from the model (Shift + Delete on its box, the member list's ✕) goes through an `edits.remove`
+  hook, which deletes it as the default would and says on the hint line how many elements it held.
+- **A state with both regions and direct substates** (the warning `region-mixed`) draws the direct ones in its box beside
+  the regions, with no divider before them, not in §3's implicit region before the others.
+- **10-state-machine.json** lays out with no overlap and no line through a node, right and down; port repair off leaves two
+  crossings laid out right and five laid out down, pinned in `tests/state.test.mjs`.
+- **P1.** On 50 states and 60 transitions with composites three deep (two regions at each level), wired as a machine is
+  drawn, a label edit is laid out and drawn in 77 to 118 ms of CPU, best of seven after a warm-up, on a machine at a load
+  average of 10 to 17: 77 to 104 ms with `tests/state.test.mjs` alone, 118 ms with the whole of `node --test` beside it.
+  **The 100 ms test is not met reliably**, alone or beside the suite, and a CI runner is slower still: a full layout costs
+  about the same as the label edit (the memo saves nothing on it), and gaps of 40 and 32 or 36 and 28 px measure no faster.
+  **The maintainer's decision (13 Nov 2026):** CI holds the wired case to a 1 s ceiling and prints the label edit's time
+  against S15's 100 ms on every run; the conformance note records the figure on an idle machine. A routing speed-up
+  that brings it back under 100 ms on CI is later work. Nearly
+  all of it is the engine's: routing (`gridRoute`) about two thirds, the host's ranking with boxes (`blockPos`) a fifth;
+  the type's own code is about 1 %. The scattered case: about 125 to 200 ms, within its 1 s.
+
 ## 11. The interaction overview type
 
 ### 11.1 Drawing
@@ -714,6 +761,37 @@ counted in the node's accessible name, not read one by one.
   F2 (§7.2).
 - **Properties** (DoD 4): a flow's name and guard (text); an interaction use's or inline interaction's view (`V`);
   stereotypes. Hiding as in the activity type.
+
+As built in 4.7 (`src/uml/overview.js`):
+
+- **Shapes.** The use's look is `SHAPE['ov-use']`: `SHAPE.use`'s drawing with a border added, `useSize`, a box outline and
+  `inset` 0. The inline interaction is `SHAPE['ov-inline']`: its size is the time axis's bounds, 10 px a side and the tag's
+  17 px row; the sequence is laid out (`sqRun`) and drawn each time the view is, memo hit or not, and its markup rides on the
+  node into what `layoutTyped` returns, so a memo hit repaints it onto the kept geometry: the memo saves only the layout and
+  routing. A rule or `describe()` counts the inline view's lifelines and messages with no `sqRun`. Its inner `n-body` and `n-mask` are renamed so the node's hover and
+  selection styles do not reach them. Frame only (above S11's limits, or with no sequence view), it is `useSize` with an
+  "sd" tag.
+- **Labels.** A typed view gets no `labelRoom` (it is a map's), and a row's nodes share its top, so a flow between two nodes
+  of different heights jogs halfway across the gap. With a labelled flow the gap between columns is twice the widest label
+  and 26 px (laid out down, twice the label's 18 px height and 26 px), so each guard finds a run of its own clear of the
+  stubs; with none it is 64 px. Example 13 draws both its guards whole either way. The gap is one for every column, so one
+  long guard widens them all (example 13 laid out right: 3503 px wide, 6191 px with a 60-character guard; laid out down,
+  1243 px high either way); less than twice the label drops guards, so making room only where a labelled flow runs waits for
+  an additive per-column gap option in `layoutGraph` (it holds `gapAfter` inside, with no option for it).
+- **Palette.** Initial, Final, Flow final, Merge, Fork and Join carry `name: false`; Decision asks for its question (S8).
+  A use or an inline interaction added with no name takes its view's title.
+- **Opening.** The canvas opens a typed node's view by Enter on it selected or a double-click (Q11's "click" is the map's
+  ⤢ badge, which a typed node does not draw); both are tested on example 13.
+- **No `remove` hook:** Delete hides and Shift + Delete deletes, the canvas's default.
+- **`describe()`** starts at the initial nodes and follows the flows breadth first (a fork's branches before their join),
+  each node once, each flow by "name [guard]", then what no flow reaches.
+- **Legend.** Decision, merge, fork and join are keyed one by one, though a decision and a merge share the diamond and a
+  fork and a join the bar.
+- **Lines.** A view whose `edges` list names a line other than a control flow or a comment link does not draw it and warns
+  under `overview-kinds`; a comment link with no comment at either end is a `comment-link` warning.
+- **The stress view** of §17 is generated in `tests/overview.test.mjs` (40 nodes, 50 flows, 10 inline interactions of 6
+  lifelines and 12 messages): a full layout and SVG about 20 ms, a guard edited 12 to 16 ms, one inline time axis 0.03 ms
+  (CPU, best of three after a warm-up, on a laptop). 4.10's `overview-stress.json` replaces it.
 
 ## 12. Editing through the canvas hooks
 
@@ -782,7 +860,7 @@ since the readers share one scope in `lib/umlimator-all.js`.
 | `direction LR`, `TB` | The view's `direction`: `right`, `down` | approximated for `RL`, `BT`, and a `direction` inside a composite |
 | `classDef`, `class`, `:::`, `style`, `hide empty description`, `scale`, `accTitle`, `accDescr`, `%%{init}%%` | Not read | skipped |
 | `title`, or `title` in front matter | The view's title | |
-| `%% id: <id>` above a statement; `%% kind: <kind>` above a state; `%% region: <id> <name>` before a region | That element's id; a junction, history or terminate pseudostate; a region's id and name | |
+| `%% id: <id>` above a statement (`%% link-id:` a note's line); `%% start-id:`, `%% end-id:` above the first line that names a scope's `[*]`; `%% kind: <kind>` above a state; `%% region: <id> <name>` before a region; `%% row: s1 : text` | That element's id (4.8: the transition's own id is `%% id:`, so its `[*]` ends take their own hints); a junction, history or terminate pseudostate, or an initial pseudostate or final state that is not its scope's `[*]` (`initial`, `final`); a region's id and name; the line it holds, for a composite state's text (below) | |
 | A line the reader does not know | Not read | skipped |
 | CRLF line ends, a byte-order mark | Read as LF, the mark dropped | |
 
@@ -790,7 +868,8 @@ Ids and limits:
 
 - A state's id is its Mermaid name; an initial pseudostate's `<scope>.start` (the top's `start`, a region's
   `<state>.r1.start`), a final state's `<scope>.end`; a transition's `<from>-<to>`, then `-2`, `-3` for each pair, so
-  inserting one renames only the later transitions of its own pair. Reading the same text twice gives the same ids.
+  inserting one renames only the later transitions of its own pair; an internal transition's `<state>.t<k>`, a note's
+  `note-<n>` and its line's `<note>-link` (4.8). Reading the same text twice gives the same ids.
 - **Collisions.** States take their names first (a first pass over the text), then pseudostates and transitions their
   derived ids; a derived id already taken takes the next free `-2`, `-3`, … So a user state named `start` or `end` keeps
   its name and the initial pseudostate becomes `start-2`, and `a-b --> c` against `a --> b-c` gives `a-b-c` and `a-b-c-2`.
@@ -813,26 +892,53 @@ Ids and limits:
 The writer:
 
 - writes one state machine view, `direction LR` for a view laid out right (Mermaid's default is down);
+- names a state by its id where Mermaid's lexer reads the id as one name (`[^:\n\s\-\{]+`: no `-`), else by a name made
+  of it (`payment_outcome`) under `%% id:`; the reader still reads a name with `-`, as §13's collisions need (4.8);
+- writes each transition in the innermost scope around both its ends (one with a `[*]` end in that `[*]`'s scope), so
+  the line names no state inside a body that is not around the state's own (4.8);
 - writes `state "label" as id` where the label is not the id; `entry`, `do`, `exit` and internal transitions as `id : …`
-  lines, printed by §7;
+  lines, printed by §7 (an internal transition with no effect as `trigger [guard] /`). A composite state's lines are
+  written `%% row: id : …`: Mermaid 12.3.0 refuses any text on a composite beside its label ("Group nodes can only have
+  label"), and S19 draws none on its box either (4.8);
 - writes composites nested with `--` between regions, and a region's id and name as `%% region:` when the reader would not
   derive them;
 - writes choice, fork and join as `<<…>>`; junction, shallow and deep history and terminate as a plain state under a
   `%% kind:` comment, labelled `●`, `H`, `H*` and `×` so Mermaid shows something near UML;
-- writes each transition with its printed label; an initial pseudostate or final state as `[*]`, with `%% id:` above its
-  first transition when its id is not the one the reader derives;
+- writes each transition with its printed label; an initial pseudostate or final state as `[*]`, with `%% start-id:` or
+  `%% end-id:` above its first transition when its id is not the one the reader derives. One that `[*]` cannot carry (a
+  second in its scope, one with a label, a line the wrong way, or a line to a state outside its scope, which `[*]` there
+  would move into the scope) is written as a state under `%% kind: initial` or `%% kind: final`, labelled ● or ◉ (4.8);
 - writes a comment marked `ext.mermaid.description` as `s1 : text`; any other comment linked to one state as a
   `note right of`; any other as `%% not written:`;
-- writes a second final state in one scope as one `[*]`, and says so in `%% not written:`, since Mermaid merges them;
+- (4.8: a second final state in one scope is written under `%% kind: final`, above, so the round trip keeps it, where
+  this note first had it merged into one `[*]` and named in `%% not written:`);
 - writes a transition between substates of two different composites, or from outside a composite into a substate (both
   in `10-state-machine.json`: its fork into two regions), as a transition, with `%% warning: Mermaid may not draw this`
-  above it (S22): Mermaid's page says such transitions are not supported, and our reader reads them back.
+  above it (S22): Mermaid's page says such transitions are not supported, and our reader reads them back. 4.8 warns of
+  every transition whose ends lie in different scopes, out of a composite too;
+- writes text with Mermaid's entities for `; : # " < > \`, `<br>` for a line break, an entity for a space at either end
+  and for the space after `direction`, which Mermaid's lexer reads as a statement anywhere in a line (4.8).
 
 `read(write(model))` equals the model on the subset, ids included, for `10-state-machine.json` and 500 generated models.
 `tests/import/state.mmd` holds every construct on Mermaid's page and pins the report (R4). Once, in 4.8, the writer's
 output for `10-state-machine.json` and for ten generated models is parsed by Mermaid 12.3.0 itself, from a scratch page
 in Chrome that loads it from a CDN (not a dependency of the repository); what it refuses or draws wrongly is recorded in
 the conformance note's fidelity table and in `state.mmd`'s header.
+
+4.8 ran it from Mermaid 12.3.0's npm package in a scratch directory instead (its parser and its layout data in Node,
+under jsdom, and its `render()` in headless Chrome from a page served there), which reads more than a parse: each state's
+composite and region, each transition. Result, in `state.mmd`'s header, for 4.10 to copy into the conformance note:
+every file is read, each state in the composite and region the model gives it, every transition and note kept (example
+10's seven crossings included); Chrome draws them all but one model's four transitions between a composite and a state
+inside it, which it draws with no line. Before the `%% row:` form above, Mermaid refused three of the ten models (text on
+a composite beside its label). A note's side: `note right of` is read as written, `note left of` reported, the side not kept.
+
+4.8 started beside 4.2 with its own stand-in for `transition.js`; since 4.2 merged, the swap is done: the reader
+imports `parseTransition`, `printTransition` and `trScan` from `src/uml/transition.js` and the stand-in is deleted.
+`mtPrint` keeps the writer's check that each text reads back as the very parts (untrimmed or empty parts are reported,
+not trimmed), and `mtLine` takes `trScan`'s `/` to tell `a /` from a description. The pinned report item for
+`state.mmd` line 117 (`tests/mermaid-state.test.mjs`) now quotes 4.2's wording: "its text is not trigger [guard] /
+effect: the ( it opens is not closed".
 
 | S22 option, crossings Mermaid does not support | For | Against |
 |---|---|---|
@@ -955,6 +1061,11 @@ Each validator also has a passing and a failing case in its type's test. The fou
   between §20 #13's other options before 4.5 and 4.6 start.
 - If a type's common edit still misses 100 ms in its own package, the package does not merge until the maintainer
   decides.
+- **The maintainer's decision on 4.1's spike (13 Nov 2026).** A normally wired state machine, 50 states and 60
+  transitions with composites three deep, holds S15's 100 ms for the common edit (a label), `repair: false` and
+  `reroute: false`. The scattered worst case, most transitions across region borders, which 4.1 measured at about 148 ms
+  on a loaded machine with the cost in `gridRoute`, gets the 1 s budget of edits that move geometry, as 1.11 did. No new
+  routing code. `tests/state.test.mjs` holds both, in CPU time, best of N after a warm-up (4.6, §10.4).
 - Browser timings under headless virtual time prove nothing (1.11).
 
 | Option, P1 for the common edit | For | Against |
@@ -996,7 +1107,7 @@ proposes its row in its pull request's description, and writes its release notes
 | 4.3 | **Lanes.** §5.2's `laneRows` and `laneBands` | `src/layout/lanes.js`, `tests/lanes.test.mjs` (new) | 4.0 | On hand-built positions: lanes in order, nested lanes inside their parents, no two lanes share a row, pins kept in their lane, a node in no lane after the lanes, an empty lane kept; bands cover their nodes in both directions; 200 nodes in 10 lanes in under 5 ms |
 | 4.4 | **The use case type.** §8: shapes, definition, `boxes`, rules, `describe()`, names, legend, `geo.order`, hooks | `src/uml/usecase.js`, `tests/usecase.test.mjs`, `tests/usecase.html` (new) | 4.1 | Definition of done 2, 4, 5, 6 and 8 on row 8's subset; every gesture by pointer and by key through `apply()`; a 30-step session undone, redone and reopened to byte-identical models; `08-use-case.json` lays out clean |
 | 4.5 | **The activity type.** §9: shapes, lanes, partitions added after the layout, definition, rules, `describe()`, names, legend, hooks (`moveTo`, `remove`, `add`, `rename`, `connect`), §9.4's properties | `src/uml/activity.js`, `tests/activity.test.mjs`, `tests/activity.html` (new) | 4.1 (and its spike), 4.2, 4.3 | As 4.4 on row 9; each shared flow rule's passing and failing case run under this type; a drop across lanes and the Owner field each emit their transaction; a drag on a partition's header sets no pin; deleting a partition keeps its nodes; `09-activity.json` lays out clean, down and right; no line runs along a divider for over 24 px in it |
-| 4.6 | **The state machine type.** §6 and §10: the state's look and frame, the decomposition indicator, regions, pseudostates, definition, rules, `describe()`, names, legend, hooks (`add`, `rename`, `member`, `moveTo`), §10.3's properties | `src/uml/state.js`, `tests/state.test.mjs`, `tests/state.html` (new) | 4.1 (and its spike), 4.2 | As 4.4 on row 10; F2 on a transition round-trips its parts; a row `entry / x` sets the prop; a pseudostate's kind changed in the panel redraws its shape; regions stack with dividers across their state; `10-state-machine.json` lays out clean, right and down |
+| 4.6 | **The state machine type.** §6 and §10: the state's look and frame, the decomposition indicator, regions, pseudostates, definition, rules, `describe()`, names, legend, hooks (`add`, `rename`, `member`, `moveTo`), §10.3's properties | `src/uml/state.js`, `tests/state.test.mjs`, `tests/state-machine.html` (new; §10.4) | 4.1 (and its spike), 4.2 | As 4.4 on row 10; F2 on a transition round-trips its parts; a row `entry / x` sets the prop; a pseudostate's kind changed in the panel redraws its shape; regions stack with dividers across their state; `10-state-machine.json` lays out clean, right and down |
 | 4.7 | **The interaction overview type.** §11: definition, the interaction use's look, the inline interaction, rules, `describe()`, names, legend, hooks (`add`, `rename`), §11.3's properties | `src/uml/overview.js`, `tests/overview.test.mjs`, `tests/overview.html` (new) | 4.1, 4.2 | As 4.4 on row 13; each shared flow rule's passing and failing case run under this type; `13-interaction-overview.json` lays out clean, its inline interaction's markup holds no `.node`, `.ll-hit` or `.f-hit` but its own, and draws its fragments' tags, guards, uses and message labels; opening a use shows its sequence view |
 | 4.8 | **Mermaid state reader and writer.** §13, with `import` routing `stateDiagram` to it | `src/readers/mermaid-state.js`, `tests/mermaid-state.test.mjs`, `tests/import/state.mmd`, `umlimator.py`, `umlimator_import.py`, `tests/import.py` | 4.0; 4.2's `transition.js` to merge (it may start beside 4.2); `model.md` row 10 only | `read(write(model))` equals the model, ids included, for example 10 and 500 generated models; the report pinned; the same source read twice gives the same ids; §13's collisions give the ids it states; §13's hostile inputs read in under 1 s each and never throw; the writer's output for example 10 and ten generated models parsed once by Mermaid 12.3.0, the result recorded (§13) |
 | 4.9 | **The PDF's tables per type (R9).** §15's `rows` and `word`, "Elements" for a typed view | `src/page/print.js`, `tests/print-typed.test.mjs` (new) | 4.0; 4.1 for the fields' documentation | With a test-only type, the tables list its rows and words; maps' tables unchanged; class, object and package PDFs' tables unchanged but for the heading. The core's bytes before and after, within §2.3 |

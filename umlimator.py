@@ -20,7 +20,7 @@
 MODEL.json is the map model in engine/references/schema.md (nodes, edges, views), plus umlimator's `badge` field on a
 node (PROPOSED, TARGET, OFF ...). `stills` needs Google Chrome or Chromium; the PNGs are what a document that cannot
 run the page (a wiki such as Confluence) shows. `diff`, `drift`, `trace` and `mcp` run the module's own functions in Node,
-and so does `import` of a Mermaid classDiagram or sequenceDiagram (their readers are the module's, in src/readers/).
+and so does `import` of a Mermaid classDiagram, sequenceDiagram or stateDiagram (their readers are the module's, in src/readers/).
 """
 import argparse, atexit, base64, contextlib, hashlib, html, io, json, os, re, shutil, signal, struct, subprocess, sys, tempfile, urllib.parse, urllib.request, zipfile, zlib
 from pathlib import Path
@@ -773,12 +773,13 @@ def cmd_record(a):
 
 def cmd_import(a):
     """A diagram a team has already, as a model (#90): Structurizr DSL, C4-PlantUML, Mermaid, or the JSON of `docker
-    compose config` or `kubectl get`. umlimator_import.py reads them, but for a Mermaid classDiagram or sequenceDiagram,
-    which the module's readers read in Node into a typed model (schema version 2, one uml.class or uml.sequence view);
+    compose config` or `kubectl get`. umlimator_import.py reads them, but for a Mermaid classDiagram, sequenceDiagram or
+    stateDiagram, which the module's readers read in Node into a typed model (schema version 2, one uml.class,
+    uml.sequence or uml.state-machine view);
     what it does not import is listed on stderr, each with its line (in JSON, its path)."""
     sys.path.insert(0, str(HERE))
     import umlimator_import as imp
-    text = Path(a.file).read_text(encoding="utf-8")
+    text = Path(a.file).read_text(encoding="utf-8-sig")  # a byte-order mark is not the diagram's
     fmt = a.format or imp.detect(a.file, text)
     if not fmt and text.lstrip()[:1] in ("{", "["):  # JSON that does not parse (cut short?) is not a format it can't tell
         try:
@@ -787,8 +788,9 @@ def cmd_import(a):
             sys.exit(f"import: {a.file} is not valid JSON ({e}): is it cut short? (give --format if it is not JSON)")
     fmt = fmt or sys.exit(f"import: cannot tell the format of {a.file}: give --format ({', '.join(imp.FORMATS)})")
     kind = fmt == "mermaid" and imp.mermaid_typed(text)
-    if kind:  # a classDiagram or a sequenceDiagram: the module's reader, in Node (risks.md R7)
-        name, fn = {"classDiagram": ("mermaid-class.js", "readMermaidClass"), "sequenceDiagram": ("mermaid-sequence.js", "readMermaidSequence")}[kind]
+    if kind:  # a classDiagram, a sequenceDiagram or a stateDiagram: the module's reader, in Node (risks.md R7)
+        name, fn = {"classDiagram": ("mermaid-class.js", "readMermaidClass"), "sequenceDiagram": ("mermaid-sequence.js", "readMermaidSequence"),
+                    "stateDiagram": ("mermaid-state.js", "readMermaidState")}[kind]
         reader = HERE / "src" / "readers" / name
         if not shutil.which("node"):
             sys.exit(f"import: {a.file} is a Mermaid {kind}, which the module's reader reads in Node.js 18 or later; "
