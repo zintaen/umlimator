@@ -51,6 +51,8 @@ const ALL = [...ORDER, 'typed/layout', 'typed/draw', 'typed/edit', 'uml/owners',
   // milestone 2 (notes/milestone-2.md §12.2, M2.0): empty until their work packages fill them, in this load order
   'er/er', 'flowchart/flowchart', 'dfd/dfd', 'uml/information', 'c4/c4', 'c4/views',
   'readers/mermaid-er', 'readers/mermaid-flowchart', 'readers/structurizr', 'readers/dbml',
+  // milestone 3 (notes/milestone-3.md §16.2, M3.0): empty until their work packages fill them, in this load order
+  'sysml/sysml', 'sysml/requirement', 'sysml/blocks', 'sysml/internal', 'sysml/parametric', 'readers/mermaid-requirement',
   // milestone 4b (notes/milestone-4b.md §15.2, 4b.0): empty until their work packages fill them, in this load order
   'bpmn/notation', 'bpmn/process', 'readers/bpmn-xml'];
 
