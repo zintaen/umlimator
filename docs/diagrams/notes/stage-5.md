@@ -111,6 +111,7 @@ What may touch the core, each change stating its bytes in its pull request. Each
 | The registry's pointer line to the fields' documentation | `src/core/registry.js` | 5.1 | 40 B |
 | | | | **126 B** (built: 116 B, 184,984 B to 185,100 B) |
 | ~~Only if decision 9 takes `labelGaps`~~ Decision 9 taken (the maintainer's decision of 13 Nov 2026): `tight` reads `map \|\| dg.labelGaps`; a row gap is a candidate only on a map (`length: map && r1 - r0`), so a typed view's room is column gaps only; the registry's pointer line names the field | `src/layout/layered.js`, `src/core/registry.js` | 5.1 | 25 B (built: 22 B, 185,100 B to 185,122 B; stage 5 so far 138 B) |
+| Decision 22 taken (the maintainer's decision of 13 Nov 2026): `overlapIssues` skips a node against the node its `owner` names, either way round (`(a.owner \|\| 0) === b.id`, so two nodes with neither an owner nor an id are still measured), not on a map: a map card's `owner` is its team's name, which may be another card's id | `src/layout/audit.js` | follow-ups | 20 B (built: 37 B, 185,109 B to 185,146 B by `/usr/bin/gzip -9` on this machine, where 5.1's 185,122 B measures 185,109 B; stage 5 so far 175 B) |
 
 | Option | For | Against |
 |---|---|---|
@@ -314,9 +315,10 @@ nothing (order is not stored, S3), and the hint line says so.
   centre to centre, past any port with lines they would come within 8 px of; a side too short for them narrows the gaps
   down to 4 px (§4.4, step 3), and those that still do not fit are held at the span's start, on the border, with
   `over: true` on their port node.
-- A port node carries `owner` (its owner's id). The layout check (`overlapIssues`, `src/layout/audit.js`) reports every
-  port against its own owner, since a port sits half inside it by design (§4.1); 5.3 owns neither the check nor the
-  types, so how a type's check passes is the maintainer's decision, open for 5.4 to 5.6.
+- A port node carries `owner` (its owner's id). The layout check (`overlapIssues`, `src/layout/audit.js`) reported every
+  port against its own owner, since a port sits half inside it by design (§4.1); 5.3 owned neither the check nor the
+  types, so how a type's check passes was the maintainer's decision, open for 5.4 to 5.6. Decision 22, taken: the check
+  skips a node against the node its `owner` names (§2.3), so a port on its owner is no overlap; a port on another node is.
 - A port's name keeps off every box's border and 24 px header room. A line's end labels (`TYPED.lines`,
   `src/typed/draw.js`) are placed later and do not see the port names: 5.4 to 5.6 keep them apart.
 - Model ids such as `__proto__` and `constructor` are safe as port and owner ids; a port id seen before, or a node's
@@ -557,12 +559,10 @@ ball and socket.
   `rowsFor`; a pin wins and a node it would cover moves down. A usage of a ball is turned (provider, ball, requirer from left
   to right); a usage of a rectangle is not. What no line reaches is packed by size in rows under the lined columns, a box
   as wide and tall as its contents.
-- **Ports on a node are drawn in the node's group** (a node of shape `ported`, its shape's look with its ports' nodes after
-  it), not as nodes of the picture: the layout check (`overlapIssues`) measures every node against every other and took each
-  such port for an overlap of its owner (5.3's open point). They stay in `byId`, so a click, F2, L, Delete, Alt + arrows and
-  the reading order's keys reach them. Ports on a box are nodes of the picture, as 5.3 drew them. Decision 22 (§18).
-  A known limit while it stands: selecting such a node also marks its ports as selected (the group's style reaches them),
-  though they are not in the selection; ports on a box do not.
+- **Every port is a node of the picture**, on a node as on a box, as 5.3 drew them: decision 22 (§18), as built in the
+  follow-ups, has the layout check skip a port against its own owner (§2.3). 5.4 had drawn the ports on a node in the node's
+  group (a node of shape `ported`) so the check would not take them for overlaps; selecting such a node marked its ports as
+  selected too. That workaround is gone: selecting a node marks none of its ports (`tests/component.html`).
 - **A ball is laid out as its 16 px circle**, its name hanging under it in the row gap, so the router ends its lines level
   with the circle. A ball's lines take its left or right by the ranking; the layout keeps no room for the name, which a line
   passing under the ball may cross. Laid out down, a line from before the ball comes in above it and one from after it on
@@ -612,10 +612,10 @@ and §6; a connector from the subject's port to a part is inner (§5).
   drawn (`TYPED.lines`) and do not see the port names (§4.5, as built in 5.3), while a line's label is placed by the router
   and the port names keep clear of it (`portsDrawn`). So the type sets **`labelGaps: true`** (decision 9's opt in) and
   `gap: 64`, `rgap: 56`: without it both role names on `04-composite-structure.json` found no spot, one laid out each way.
-- **The layout check and ports on parts.** `overlapIssues` reports each port against the part it sits on (half inside by
-  design, §4.1); a port on the subject's box is not a node pair and is not reported. The tests drop exactly those reports
-  (a port's `owner`); the rest is clean right and down on the example, with no crossing. How the check should pass is
-  decision 22.
+- **The layout check and ports on parts.** `overlapIssues` reported each port against the part it sits on (half inside by
+  design, §4.1), and the tests dropped exactly those reports. Decision 22, as built in the follow-ups: the check skips a
+  port against its own owner (§2.3), so the example is clean right and down as the check gives it, with no filter and no
+  crossing; `check()` on `04-composite-structure.json` went from 4 issues to none, its picture unchanged.
 - **The ranking** (`layout.rank: false`): the subject's parts and collaboration uses are ranked as the communication type
   ranks its lifelines (longest path over connectors and role bindings, `untangle`, `rowsFor`), then each open
   collaboration's roles, then the rest (comments, a closed collaboration, a subject with nothing inside), block after block

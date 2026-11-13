@@ -243,3 +243,11 @@ test('labelGaps is opt-in: a typed view without it lays out as before, and turni
   layoutTyped({ ...dg, labelGaps: true }, memo);
   assert.equal(memo.runs, 2);
 });
+
+test('the layout check passes a port half inside the node its owner names, and nothing else (decision 22); a map card\'s owner is a name and passes nothing', () => {
+  const N = (id, x, more) => ({ id, label: id, x, y: 0, w: 100, h: 60, ...more }), msgs = geo => overlapIssues(geo, 'v');
+  const nodes = [N('c', 0), N('c.p', 94, { w: 12, h: 12, owner: 'c' }), N('d', 100, { w: 40 })];
+  assert.deepEqual(msgs({ nodes }), ['v: nodes "c.p" and "d" overlap'], 'the port on its owner passes; the same port on another node is reported');
+  assert.deepEqual(msgs({ nodes: [nodes[1], nodes[0]] }), [], 'in either order');
+  assert.deepEqual(msgs({ map: true, nodes: [N('ops', 0), N('api', 50, { owner: 'ops' })] }), ['v: nodes "ops" and "api" overlap'], 'a map: two cards overlap however they are owned');
+});
