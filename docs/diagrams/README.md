@@ -312,9 +312,6 @@ node docs/diagrams/examples/check.mjs         # the target examples match model.
   5.6, which are on `main`, provisional until 0.22.0. `lib/umlimator.js` is 185,149 B with `gzip -9`, 12.24% over 0.16.0.
 - **13 Nov 2026 (0.21.0).** 0.21.0 released (#228, 5f20041): GitHub Release and npm latest. map-repo's pin moved to
   v0.21.0, plugin 0.1.12, so the skill's maps draw in the one card-shape style; it still writes maps only.
-- **14 Nov 2026 (stage 5 complete).** 5.0 to 5.8, decision 22 and the two-line title, the ELK trial's outcome (#233:
-  the own engine only, L9 closed) and C10 (#236) merged; 0.22.0's release pull request follows. It also carries stage
-  6's 6.0 to 6.5, on `main`, provisional until 0.23.0. `lib/umlimator.js` is 185,613 B with `gzip -9`, 12.52% over 0.16.0.
 - **13 Nov 2026 (core budget split).** The maintainer split the core's remaining budget (4,451 B under the 15% cap
   after #227): stage 6 400 B, milestone 2 1,400 B, milestone 3 500 B, milestone 4a 700 B, milestone 4b 700 B, a
   reserve of about 750 B (C10 took 183 B of it). A stage that needs more asks the maintainer.
