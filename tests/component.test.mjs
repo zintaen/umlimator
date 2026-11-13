@@ -26,6 +26,7 @@ const inside = (p, r, m = 0) => p[0] >= r.x - m && p[0] <= r.x + r.w + m && p[1]
 const ports = g => Object.values(g.byId).filter(n => n.shape === 'port');
 const ownerOf = (g, id) => g.byId[id] || g.families.find(f => f.id === id);
 const unid = s => s.replace(/\bg\d+-/g, 'g-');
+const E = (id, type, from, to, props) => ({ id, type: 'uml.' + type, from, to, ...(props ? { props } : {}) });
 
 test('the definition: uml.component is registered with its palette, its eight lines, its properties, its own ranking and its hooks', () => {
   assert.equal(T.name, 'uml.component');
@@ -60,11 +61,13 @@ for (const direction of ['right', 'down']) test(`05-component.json (${direction}
   const sq = Object.fromEntries(ps.map(p => [p.id, p]));
   g.edges.forEach(e => [[e.fromPort, e.pts[0]], [e.toPort, e.pts.at(-1)]].forEach(([id, pt]) => { if (id) assert.ok(inside(pt, sq[id], 1), `${e.id} ends on ${id}: ${pt}`); }));
   assert.deepEqual(g.edges.filter(e => e.inner).map(e => [e.id, e.inner]), [['orders-to-checkout', 'from'], ['checkout-to-payments', 'to']]);
-  // each delegation runs straight in: its two ports on one side; the ball's lines end on its circle (radius 8), level with it
+  // each delegation runs straight in: its two ports on one side; the ball's lines end on its circle (radius 8), right on its
+  // left and right, laid out down the stem above it and the socket beside it, so neither crosses the name under it
   for (const [a, b] of [['shop-api.orders', 'checkout.orders'], ['shop-api.payments', 'checkout.payments']]) assert.equal(sq[a].side, sq[b].side);
   const ball = g.byId['i-orders'];
   g.edges.filter(e => e.to === 'i-orders').forEach(e => { const [x, y] = drawnPts(e, n => (n && SHAPE[n.shape] ? { ...n, S: SHAPE[n.shape] } : null)).at(-1); // slid onto the circle, as drawn
-    assert.ok(Math.abs(Math.hypot(x - ball.x - ball.w / 2, y - ball.y - 8) - 8) < 1 && Math.abs(y - ball.y - 8) < 8, `${e.id} ends on the ball's circle: ${x}, ${y}`); });
+    assert.ok(Math.abs(Math.hypot(x - ball.x - ball.w / 2, y - ball.y - 8) - 8) < 1 && y < ball.y + 16, `${e.id} ends on the ball's circle: ${x}, ${y}`); });
+  assert.deepEqual(g.edges.filter(e => e.to === 'i-orders').map(e => e.toSide), direction === 'down' ? ['left', 'top'] : ['left', 'right'], 'as laid out: down, the stem above and the socket on the left');
   assert.deepEqual(g.edges.filter(e => e.to === 'i-orders').map(e => [e.id, e.end.to, !!e.end.dashed]), [['api-provides-orders', 'none', false], ['storefront-requires-orders', 'socket', false]], 'stem and socket');
 });
 
@@ -101,6 +104,29 @@ test('names, reading order, describe(), the legend, and the PDF\'s words and row
   assert.deepEqual(T.rows(typed, typed.views[0], 'shop-api')[0], 'orders : OrderApi, provides Orders');
 });
 
+test('a class on a component view is drawn as a classifier, with no «component»', () => {
+  const m = structuredClone(CM); m.nodes.push({ id: 'k', type: 'uml.Class', label: 'OrderService' }); m.edges.push(E('kr', 'ComponentRealization', 'k', 'accounts')); m.views[0].nodeIds.push('k');
+  assert.deepEqual(T.validate(m, m.views[0]), []);
+  const k = layout(m, V).byId.k; assert.equal(k.shape, 'classifier'); assert.deepEqual(k.stereotypes, []);
+});
+
+// what no line reaches: packed by size under the lined columns, so a box and a card beside it never overlap, right and down
+const LC = (id, extra) => ({ id, type: 'uml.Component', label: id.toUpperCase(), ...extra });
+const VIEWS = {
+  'a box of two and a card, no line': [[LC('a'), LC('a1', { parent: 'a' }), LC('a2', { parent: 'a' }), LC('b')], []],
+  'a box of three, two cards and a lined pair': [[LC('a'), LC('a1', { parent: 'a' }), LC('a2', { parent: 'a' }), LC('a3', { parent: 'a' }), LC('b'), LC('c'), LC('x'), LC('y')], [E('xy', 'Dependency', 'x', 'y')]],
+  'three packages each holding a line, none between them': [['p1', 'p2', 'p3'].flatMap(p => [{ id: p, type: 'uml.Package', label: p }, LC(p + 'a', { parent: p }), LC(p + 'b', { parent: p })]), ['p1', 'p2', 'p3'].map(p => E(p + 'd', 'Dependency', p + 'a', p + 'b'))],
+  'a ball with one provider and three requirers': [[LC('a'), LC('b'), LC('c'), LC('d'), { id: 'i', type: 'uml.Interface', label: 'Orders' }], [E('r', 'InterfaceRealization', 'a', 'i'), ...['b', 'c', 'd'].map(x => E('u' + x, 'Usage', x, 'i'))]],
+};
+for (const [name, [nodes, edges]] of Object.entries(VIEWS)) for (const direction of ['right', 'down']) test(`${name} (${direction}) lays out clean`, () => {
+  const m = { schemaVersion: 2, nodes, edges, views: [{ id: 'v', diagram: 'uml.component', direction, nodeIds: nodes.map(n => n.id), present: { i: { as: 'ball' } } }] };
+  assert.deepEqual(check(m, 'v'), []);
+  if (!edges.some(e => e.to === 'i')) return;
+  // the provider's stem and the requirers' sockets come into the ball from different sides
+  const g = layout(m, 'v'), side = id => g.edges.find(e => e.id === id).toSide;
+  assert.ok(['ub', 'uc', 'ud'].every(id => side(id) !== side('r')), JSON.stringify(g.edges.map(e => [e.id, e.toSide])));
+});
+
 test('pins: a pinned node keeps its place and a node it would cover moves down; present.<port>.side pins a port', () => {
   const m = structuredClone(CM), g0 = layout(m, V); m.views[0].layout = { accounts: [g0.byId.storefront.col, g0.byId.storefront.row] };
   const g = layout(m, V); assert.deepEqual([g.byId.accounts.col, g.byId.accounts.row], m.views[0].layout.accounts); assert.ok(g.byId.storefront.row > g.byId.accounts.row);
@@ -109,7 +135,6 @@ test('pins: a pinned node keeps its place and a node it would cover moves down; 
 });
 
 // ---- validators, each with a passing and a failing case
-const E = (id, type, from, to, props) => ({ id, type: 'uml.' + type, from, to, ...(props ? { props } : {}) });
 const BREAKS = {
   'port-owner': m => { m.nodes.find(n => n.id === 'i-orders').members = [{ id: 'bad', type: 'uml.Port', label: 'x' }]; return ['bad', 'i-orders']; },
   'provided-ends': m => { m.edges.push(E('bad', 'InterfaceRealization', 'shop-api-jar', 'i-orders')); return ['bad', 'shop-api-jar', 'i-orders']; },
@@ -133,6 +158,17 @@ test('validators: 05-component.json breaks no rule; each rule fails on a model t
   // a view checks what it shows: a broken line between elements it does not show is another view's
   const m = structuredClone(CM); m.nodes.push({ id: 'x', type: 'uml.Component', label: 'X' }, { id: 'y', type: 'uml.Component', label: 'Y' }); m.edges.push(E('xy', 'Connector', 'x', 'y', { kind: 'delegation' }));
   assert.deepEqual(T.validate(m, m.views[0]), []); assert.deepEqual(T.validate(m).map(p => p.rule), ['delegation-ends']);
+  // a view that lists its lines checks only those
+  const listed = structuredClone(CM); listed.edges.push(E('bad', 'Connector', 'storefront', 'accounts', { kind: 'delegation' })); listed.views[0].edges = ['api-provides-orders'];
+  assert.deepEqual(T.validate(listed, listed.views[0]), []); assert.deepEqual(T.validate(listed).map(p => p.rule), ['delegation-ends']);
+  const rules = edit => { const k = structuredClone(CM); edit(k); return T.validate(k, k.views[0]).map(p => p.rule); };
+  // a connector with no kind is drawn as an assembly and checked as one
+  assert.deepEqual(rules(k => k.edges.push(E('bad', 'Connector', 'shop-api.orders', 'checkout.payments'))), ['assembly-ends']);
+  assert.deepEqual(rules(k => k.edges.push(E('bad', 'Connector', 'storefront', 'i-orders'))), ['assembly-ends']);
+  // a delegation from a box with no port at its end is not drawn, so it is flagged
+  assert.deepEqual(rules(k => k.edges.push(E('bad', 'Connector', 'shop-api', 'checkout', { kind: 'delegation' }))), ['delegation-ends']);
+  // a usage with no to: the host's dangling end alone
+  assert.deepEqual(rules(k => k.edges.push({ id: 'bad', type: 'uml.Usage', from: 'storefront' })), []);
 });
 
 // ---- editing (§12)
@@ -142,6 +178,10 @@ test('connect: a connector to something inside the other\'s owner is a delegatio
   assert.equal(T.edits.connect(CM, v, 'storefront', 'payment-provider.charges', null, C)[0].element.props.kind, 'assembly');
   assert.equal(T.edits.connect(CM, v, 'storefront', 'i-orders', null, { type: 'uml.Usage' }), null);
   assert.deepEqual(validate(apply(CM, T.edits.connect(CM, v, 'checkout.orders', 'shop-api.orders', null, C))), []);
+  // refused, not added unseen: an element to itself or its own port, two ports of one element, a box to what it holds by no port
+  for (const [a, b, says] of [['storefront', 'storefront', /two elements/], ['checkout.orders', 'checkout.payments', /two elements/], ['checkout', 'checkout.orders', /two elements/], ['shop-api', 'checkout', /port of the box/], ['checkout', 'shop-api', /port of the box/]])
+    assert.match(T.edits.connect(CM, v, a, b, null, C).error, says, `${a} to ${b}`);
+  assert.equal(T.edits.connect(CM, v, 'shop-api.orders', 'checkout', null, C)[0].element.props.kind, 'delegation', 'a box\'s port to what it holds');
 });
 
 test('moveTo: a port\'s side by Alt + arrows across it or a drop by a border; along its side nothing, as said; anything else the default', () => {
@@ -173,6 +213,7 @@ test('member rows: on a component a row is a port, name or name : Type; refused 
   assert.deepEqual(T.edits.member(CM, v, 'checkout', null, 'events : EventApi'), [{ op: 'add', element: { id: 'port1', type: 'uml.Port', label: 'events', props: { valueType: 'EventApi' } }, owner: 'checkout' }]);
   assert.deepEqual(T.edits.member(CM, v, 'checkout', 'checkout.orders', 'requests'), [{ op: 'set', id: 'checkout.orders', path: 'label', value: 'requests' }, { op: 'set', id: 'checkout.orders', path: 'props.valueType', value: undefined }]);
   assert.ok(T.edits.member(CM, v, 'checkout', null, ': Type').error);
+  assert.deepEqual(T.edits.member(CM, v, 'checkout', null, 'a : Map<K : V>')[0].element, { id: 'port1', type: 'uml.Port', label: 'a', props: { valueType: 'Map<K : V>' } }, 'the type is all after the first colon');
   assert.equal(T.edits.member(CM, v, 'i-orders', null, 'list(): Order'), null, 'the panel\'s own');
   assert.equal(T.member.print({ type: 'uml.Port', label: 'orders', props: { valueType: 'OrderApi' } }), 'orders : OrderApi');
   assert.equal(T.member.add('+ list(): Order').type, 'uml.Operation');
@@ -190,7 +231,12 @@ test('B on an interface: a ball, and back; other keys and elements are the canva
   assert.deepEqual(r.commands, [{ op: 'delete', id: 'payment-provider.charges' }]); assert.match(r.say, /Deleted port charges from the model: a port is not hidden/);
   assert.ok(!apply(CM, r.commands).edges.some(e => e.id === 'api-to-provider'), 'its lines go with it');
   assert.equal(T.edits.remove(CM, v, ['storefront'], false), null);
-  assert.deepEqual(T.owners(CM, CM.nodes.find(n => n.id === 'checkout')).map(o => o.id), ['storefront', 'shop-api', 'checkout', 'accounts', 'payment-provider', 'order-worker']);
+  assert.deepEqual(T.owners(CM, CM.nodes.find(n => n.id === 'checkout')).map(o => o.id), ['storefront', 'shop-api', 'accounts', 'payment-provider', 'order-worker'], 'not itself');
+  assert.ok(!T.owners(CM, CM.nodes.find(n => n.id === 'shop-api')).some(o => ['shop-api', 'checkout'].includes(o.id)), 'nor what it holds');
+  // a selection of a port and more: the port deleted, the rest hidden (Delete) or deleted (Shift + Delete), both said
+  const mix = T.edits.remove(CM, v, ['shop-api.orders', 'storefront'], false);
+  assert.deepEqual(mix.commands, [{ op: 'delete', id: 'shop-api.orders' }, { op: 'hide', id: 'storefront', view: V }]); assert.match(mix.say, /^Deleted port orders from the model: a port is not hidden from a view; hid 1 element$/);
+  assert.deepEqual(T.edits.remove(CM, v, ['shop-api.orders', 'storefront'], true).commands, [{ op: 'delete', id: 'shop-api.orders' }, { op: 'delete', id: 'storefront' }]);
   assert.equal(T.owners(CM, CM.edges[0]), null);
 });
 
@@ -217,7 +263,7 @@ test('save and reopen (DoD 6): a 30-step session undoes and redoes to byte-ident
   assert.equal(describe(reopened, V), describe(JSON.parse(seen[30]), V));
 });
 
-test('P1 (§14): on 50 elements, 60 lines and 40 ports in boxes three deep, a full layout, a port renamed and a component renamed, laid out and drawn, under CI\'s 1 s (CPU, best of seven) (timed)', () => {
+test('P1 (§14): on 50 elements, 60 lines and 54 ports in boxes three deep, a full layout, a port renamed and a component renamed, laid out and drawn, under CI\'s 1 s (CPU, best of seven) (timed)', () => {
   const nodes = [], edges = [];
   for (let b = 0; b < 4; b++) { nodes.push({ id: `b${b}`, type: 'uml.Component', label: `Box ${b}`, members: [{ id: `b${b}.p`, type: 'uml.Port', label: 'in' }] },
     { id: `b${b}i`, type: 'uml.Component', label: `Inner ${b}`, parent: `b${b}`, members: [{ id: `b${b}i.p`, type: 'uml.Port', label: 'in' }] });
@@ -230,7 +276,7 @@ test('P1 (§14): on 50 elements, 60 lines and 40 ports in boxes three deep, a fu
   for (let i = 0; i < 22; i++) edges.push(E(`u${i}`, 'Usage', `c${(i * 5 + 3) % 34}`, `i${(i + 3) % 8}`));
   assert.equal(edges.length, 60);
   const M = { schemaVersion: 2, nodes, edges, views: [{ id: 'all', diagram: 'uml.component', nodeIds: nodes.map(n => n.id), present: { i0: { as: 'ball' }, i1: { as: 'ball' } } }] };
-  assert.ok(ports.length >= 40, `${ports.length} ports`);
+  assert.equal(ports.length, 54);
   assert.deepEqual(validate(M).filter(p => p.level === 'error'), []);
   const timed = f => { const c = process.cpuUsage(); f(); const u = process.cpuUsage(c); return (u.user + u.system) / 1000; };
   const memos = {}, draw = m => mapContext(m, { memos }).buildView('all');
