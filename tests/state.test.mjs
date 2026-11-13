@@ -370,7 +370,7 @@ function machine(scattered) {
   }
   return { schemaVersion: 2, nodes, edges, views: [{ id: 'all', diagram: 'uml.state-machine', nodeIds: nodes.map(n => n.id) }] };
 }
-// CPU time, best of N after a warm-up: node --test runs the suites side by side, and CI runners are several times slower
+// CPU time, best of N after a warm-up: CI runs the timed tests one file at a time in their own step, and CI runners are several times slower
 // than a laptop (tests/communication.test.mjs)
 const cpu = f => { const c = process.cpuUsage(); f(); const u = process.cpuUsage(c); return (u.user + u.system) / 1000; };
 function timeEdit(M, N) {

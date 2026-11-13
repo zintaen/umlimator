@@ -254,7 +254,7 @@ test('P1 (S15): on 50 elements and 60 lines, a full layout under 1 s, and a use 
   for (let i = 0; i < 7; i++) edges.push(L(`ex${i}`, 'Extend', `u${i * 5 + 1}`, `u${i * 5}`, { extensionPoints: [`u${i * 5}.p`] }));
   const M = { schemaVersion: 2, nodes, edges, views: [{ id: 'all', diagram: 'uml.use-case', nodeIds: nodes.map(n => n.id) }] };
   assert.equal(nodes.length, 50); assert.equal(edges.length, 60); assert.deepEqual(validate(M), []);
-  // CPU time, best of five after a warm-up: node --test runs the suites side by side (tests/communication.test.mjs)
+  // CPU time, best of five after a warm-up: CI runs the timed tests one file at a time in their own step (tests/communication.test.mjs)
   const timed = f => { const c = process.cpuUsage(); f(); const u = process.cpuUsage(c); return (u.user + u.system) / 1000; };
   const memos = {}, draw = m => mapContext(m, { memos }).buildView('all');
   draw(M);

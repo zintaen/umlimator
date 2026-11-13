@@ -279,7 +279,7 @@ test('performance (§17, risks.md P1): 40 nodes, 50 flows and 10 inline interact
   const edits = { guard: ovRename(S, V, 'f2', '[in stock and paid]'), property: [{ op: 'set', id: 'u3', path: 'props.stereotypes', value: ['audit'] }] };
   const cpu = f => { const c = process.cpuUsage(), out = f(), u = process.cpuUsage(c); return [out, (u.user + u.system) / 1000]; };
   const runs = [];
-  for (let i = 0; i < 4; i++) { // best of three after a warm-up, in this process's CPU time (node --test runs suites side by side)
+  for (let i = 0; i < 4; i++) { // best of three after a warm-up, in this process's CPU time (CI runs the timed tests one file at a time in their own step)
     const memos = {}, t = {};
     [, t.full] = cpu(() => mapContext(S, { memos }).buildView('all').markup);
     for (const [k, c] of Object.entries(edits)) { const m = apply(S, c); let out; [out, t[k]] = cpu(() => mapContext(m, { memos }).buildView('all').markup); assert.match(out, /^<svg /); }
