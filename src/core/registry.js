@@ -28,8 +28,8 @@ function registerDiagramType(name, def = {}) {
      reroute is no registry field: reroute: false goes in the dg the type's own layout passes to layoutTyped (src/typed/layout.js).
    Stage 4's (notes/stage-4.md §12.1, §15): edits.rename(model, view, id, text); a hook's { pick, then }; name: false and
    opens on a palette entry; a line's cut, its label's width (150); rows(model, view, id) and word(model, id), the PDF's.
-   Stage 5's: a line's fromPort, toPort, inner, portRank and a box's pad, round (src/typed/layout.js); edits.member,
-   edits.key (src/typed/edit.js). */
+   Stage 5's: a line's fromPort, toPort, inner, portRank, a box's pad, round, a view's labelGaps (src/typed/layout.js);
+   edits.member, edits.key (src/typed/edit.js). */
 
 /* A view's type: the map for a view with no diagram, the registered type, or null for one this release does not draw */
 const diagramOf = view => TYPES.get(view && view.diagram != null ? view.diagram : 'map') || null;

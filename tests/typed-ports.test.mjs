@@ -212,4 +212,20 @@ test('5.1\'s spike (§14): 50 nodes, 60 lines with long labels, 40 ports, boxes 
   assert.ok(best('label') < 1000, `a label edit ${best('label')} ms`);
   const labelled = g0.edges.filter(e => e.label), none = labelled.filter(e => !e.lbl).length, cutShort = labelled.filter(e => e.lbl && e.lbl.short).length;
   console.log(`# 5.1 spike: a label edit ${best('label').toFixed(1)} ms (target 100 ms), full layout ${best('full').toFixed(1)} ms; ${labelled.length} labels, ${none} with no spot, ${cutShort} cut to fit; routes ${JSON.stringify(g0.stats)}`);
+  // labelGaps (§8, decision 9): the view laid out once more with the column gaps its tight labels need; rows do not move
+  const lg = d => ({ ...d, labelGaps: true }), g1 = layoutTyped(lg(dg)), l1 = g1.edges.filter(e => e.label), none1 = l1.filter(e => !e.lbl).length;
+  assert.ok(none1 < none, `labelGaps leaves ${none1} labels with no spot, against ${none}`);
+  assert.deepEqual(g1.nodes.map(n => n.y), g0.nodes.map(n => n.y), 'column gaps only');
+  const m1 = {}; draw(lg(dg), m1); draw(lg(SPIKE('warm ')), m1);
+  const runs1 = Array.from({ length: 7 }, (_, k) => ({ full: cpu(() => layoutTyped(lg(dg))), label: cpu(() => draw(lg(SPIKE('x'.repeat(k + 1) + ' ')), m1)) }));
+  const best1 = k => Math.min(...runs1.map(r => r[k]));
+  assert.ok(best1('full') < 1000 && best1('label') < 1000, `with labelGaps: full ${best1('full')} ms, label ${best1('label')} ms`);
+  console.log(`# 5.1 spike with labelGaps: a label edit ${best1('label').toFixed(1)} ms, full layout ${best1('full').toFixed(1)} ms; ${none1} with no spot, ${l1.filter(e => e.lbl && e.lbl.short).length} cut to fit; ${Math.round(g1.bounds.w)} px wide (${Math.round(g0.bounds.w)} without); routes ${JSON.stringify(g1.stats)}`);
+});
+
+test('labelGaps is opt-in: a typed view without it lays out as before, and turning it on lays the view out again', () => {
+  const dg = SPIKE(), memo = {}, svg = (d, m) => svgOf(layoutTyped(d, m)).replace(/\bg\d+-/g, ''); // each drawing numbers its markers
+  assert.equal(svg({ ...dg, labelGaps: false }), svg(dg, memo));
+  layoutTyped({ ...dg, labelGaps: true }, memo);
+  assert.equal(memo.runs, 2);
 });

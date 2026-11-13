@@ -11,7 +11,7 @@ import { NW, OWN_ROUTE, labelW, layoutGraph } from '../layout/layered.js';
 
 // what moves a typed view's geometry: every field of the view layoutGraph reads but VIEW_PAINT (a test holds the two lists to
 // layered.js), and these of a node and a line. Anything else (a colour, a `props` field) only repaints
-const VIEW_GEO = ['abs', 'authors', 'blocks', 'containers', 'direction', 'fan', 'flipped', 'gap', 'groups', 'hub', 'intake', 'laneGap', 'lanes', 'mainSteps', 'nodeH', 'quick', 'repair', 'reroute', 'rgap', 'turned', 'typed'];
+const VIEW_GEO = ['abs', 'authors', 'blocks', 'containers', 'direction', 'fan', 'flipped', 'gap', 'groups', 'hub', 'intake', 'labelGaps', 'laneGap', 'lanes', 'mainSteps', 'nodeH', 'quick', 'repair', 'reroute', 'rgap', 'turned', 'typed'];
 const VIEW_PAINT = ['tour', 'subAndChips'], NODE_GEO = ['id', 'col', 'row', 'w', 'h', 'ax', 'ay'], EDGE_GEO = ['id', 'from', 'to', 'label', 'step', 'fromSide', 'toSide', 'back', 'fixed', 'sublabel', 'cut', 'fromPort', 'toPort', 'inner', 'portRank'];
 const geometryKey = dg => JSON.stringify([VIEW_GEO.map(k => dg[k]), (dg.nodes || []).map(n => NODE_GEO.map(k => n[k])), (dg.edges || []).map(e => EDGE_GEO.map(k => e[k]))]);
 
@@ -61,6 +61,10 @@ function layoutTyped(dg, memo) {
      or [from, to] for a line with a port at each end
    - a box's pad: its padding in px where it is more than stage 2's 12 (48 where it or a box it holds has ports with lines, §7);
      a box's round: true grows its frame by √2 about its centre, so the ellipse drawn in it holds its contents (§9.3)
+   - a view's labelGaps: true lays the view out once more where a line's label found no spot, was cut short or sits on a box's
+     border, with the column gap it needs widened by the label's width (a map's labelRoom, layered.js; column gaps only, as a
+     typed view's rows are of mixed height); kept if it has fewer issues and labels cut short (§8). The component and
+     deployment types set it (5.4, 5.5); a view without it lays out as before
    Out of the layout, each line with a port has e.fpb and e.tpb, its port's box at each end: 12 px across the border, centred
    on it, and 12 + 10 (k - 1) px along it for k lines on one face. A view with ports passes repair: false (risks.md P1): port
    repair would swap a port's end with another line's.

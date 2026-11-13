@@ -760,11 +760,11 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
   // the label's width, else the row gap by its height and 14 px; a label in neither, or with no spot, the gap its line's longest
   // run crosses, a column's first. layoutGraph lays the view out again with it, and keeps that layout if it is better
   let labelRoom = null;
-  const tight = !last && !dg.quick && map && !dg.abs ? free.filter(e => (e.label || e.step != null) && (!e.lbl || e.lbl.short || families.some(f => onBorder(e.lbl, f)))) : [];
+  const tight = !last && !dg.quick && (map || dg.labelGaps) && !dg.abs ? free.filter(e => (e.label || e.step != null) && (!e.lbl || e.lbl.short || families.some(f => onBorder(e.lbl, f)))) : [];
   if (tight.length) {
     const cs = Object.keys(colX).map(Number), rs = nodes.map(n => n.row), r0 = Math.floor(Math.min(...rs)), r1 = Math.ceil(Math.max(...rs)), need = { x: {}, y: {} };
     const gaps = [...cs.filter(c => colX[c + 1] != null).map(c => ['x', c, colX[c] + (colW[c] || NW), colX[c + 1]]),
-      ...Array.from({ length: Math.max(0, r1 - r0) }, (_, k) => ['y', r0 + k, rowY(r0 + k) + NH, rowY(r0 + k + 1)])];
+      ...Array.from({ length: map && r1 - r0 }, (_, k) => ['y', r0 + k, rowY(r0 + k) + NH, rowY(r0 + k + 1)])];
     tight.forEach(e => { const { w, hgt: h } = sizeOf(e, fullOf(e)), L = e.lbl, c = L && { x: L.x + L.w / 2, y: L.y + L.h / 2 };
       let best = c && ['x', 'y'].map(k => gaps.find(([gk, g, p, q]) => gk === k && c[k] >= p && c[k] <= q)).find(Boolean);
       if (!best) segsOf(e.pts).forEach(([a, b]) => { const k = a[1] === b[1] ? 'x' : 'y', i = k === 'x' ? 0 : 1, lo = Math.min(a[i], b[i]), hi = Math.max(a[i], b[i]);
