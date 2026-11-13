@@ -62,13 +62,20 @@ function prNode(d, n, model, pic) {
   const I = prIndex(model), aria = prAria(model, n, pic.name(n.id), I);
   if (d.shape !== 'classifier') return { ...d, aria };
   if (n.type === 'uml.Stereotype') return { ...d, shape: 'profiled', aria, compartments: d.compartments.filter(c => c.name === 'attributes') };
-  if (n.type === 'uml.MetaclassReference' || n.type === 'uml.Enumeration') return { ...d, shape: 'profiled', aria };
-  const tags = appliedOf(model, n.id).map(e => ({ name: `«${e.key}»`, members: [row(`«${e.key}»`), ...prTags(e).map(row)] }));
-  const ms = PR_ARR(n.members).filter(m => PR_OBJ(m) && appliedOf(model, m.id).length).map(m => { const A = appliedOf(model, m.id), t = A.flatMap(prTags);
-    return row(`${A.map(e => `«${e.key}»`).join(' ')} ${printMember(m)}${t.length ? ` {${t.join(', ')}}` : ''}`); });
+  const tags = appliedOf(model, n.id).map(e => ({ name: `«${e.key}»`, members: [row(`«${e.key}»`), ...prTags(e).map(row)] })), has = m => PR_OBJ(m) && appliedOf(model, m.id).length > 0;
+  const mrow = m => { const A = appliedOf(model, m.id), t = A.flatMap(prTags); return row(`${A.map(e => `«${e.key}»`).join(' ')} ${printMember(m)}${t.length ? ` {${t.join(', ')}}` : ''}`); };
+  // a metaclass and an enumeration keep their own compartments (none; the literals), the tag compartments over them
+  if (n.type === 'uml.MetaclassReference' || n.type === 'uml.Enumeration') return { ...d, shape: 'profiled', aria, compartments: [...tags, ...d.compartments.map(c => ({ ...c, members: c.members.map(m => (has(m) ? mrow(m) : m)) }))] };
+  const ms = PR_ARR(n.members).filter(has).map(mrow);
   return { ...d, shape: 'profiled', aria, compartments: [...tags, ...(ms.length ? [{ name: 'members', members: ms }] : [])] };
 }
-const PR_LOOK = { members: true, own: null, word: 'profile diagram', node: prNode, dg: { repair: false, reroute: false } };
+// an open package's or profile's box: over its name the stereotypes it has, the required ones too; its tags in its accessible name
+function prBox(b, model, pic) {
+  const x = pic.at.get(b.id), A = appliedOf(model, b.id); if (!A.length) return b;
+  const st = PR_ARR(PR_OBJ(x.props) ? x.props.stereotypes : null).filter(t => t != null && t !== '').map(String), all = [...st, ...A.map(e => e.key).filter(k => !st.includes(k))];
+  return { ...b, title: [...(x.type === 'uml.Profile' ? ['«profile»'] : []), ...all.map(t => `«${t}»`), pic.name(b.id)].join(' '), aria: `${b.aria}: ${A.map(prSay).join('; ')}` };
+}
+const PR_LOOK = { members: true, own: null, word: 'profile diagram', node: prNode, box: prBox, dg: { repair: false, reroute: false } };
 const prGeo0 = typeGeo(PR_LOOK);
 // down unless the view says right; slots at each node and box, so the palette's add hears what is selected (composite.js's)
 function prGeo(a) {
@@ -82,7 +89,7 @@ const PR_RULES = {
   'profile-owns': 'a stereotype\'s and a metaclass reference\'s owner is a profile',
   'stereotype-names': 'stereotypes in one profile have different names, the first letter in either case; profiles have different names',
   'extension-ends': 'an extension runs from a stereotype to a metaclass reference',
-  'application-ends': 'a profile application runs from a package to a profile',
+  'application-ends': 'a profile application runs from a package to a profile, not from a profile to itself',
   'metaclass-known': 'a metaclass reference names a UML metaclass',
 };
 function prProblems(model) {
@@ -93,9 +100,9 @@ function prProblems(model) {
     if (n.type === 'uml.Stereotype' && I.ty(n.parent) === 'uml.Profile') names(`s\u0000${n.parent}\u0000${styKey(prName(n))}`, n.id, path, `in ${q(n.parent)}`);
     if (n.type === 'uml.Profile') names(`p\u0000${prName(n)}`, n.id, path, 'for two profiles');
     if (n.type === 'uml.MetaclassReference' && !metaKnown(prName(n))) say('metaclass-known', path, [n.id], `${q(n.id)} is no UML metaclass`, 'warning'); });
-  PR_ARR(model && model.edges).forEach((e, i) => { if (!PR_OBJ(e)) return; const path = `edges[${i}]`, ends = [e.id, e.from, e.to], k = id => (I.at.has(id) ? prWord(I.ty(id)).toLowerCase() : 'nothing');
+  PR_ARR(model && model.edges).forEach((e, i) => { if (!PR_OBJ(e)) return; const path = `edges[${i}]`, ends = [...new Set([e.id, e.from, e.to])], k = id => (I.at.has(id) ? prWord(I.ty(id)).toLowerCase() : 'nothing');
     if (e.type === 'uml.Extension' && (I.ty(e.from) !== 'uml.Stereotype' || I.ty(e.to) !== 'uml.MetaclassReference')) say('extension-ends', path, ends, `${e.id} runs from ${q(e.from)} (${k(e.from)}) to ${q(e.to)} (${k(e.to)}): from a stereotype to a metaclass`);
-    if (e.type === 'uml.ProfileApplication' && (!OWN_BOXES.includes(I.ty(e.from)) || I.ty(e.to) !== 'uml.Profile')) say('application-ends', path, ends, `${e.id} runs from ${q(e.from)} (${k(e.from)}) to ${q(e.to)} (${k(e.to)}): from a package to a profile`); });
+    if (e.type === 'uml.ProfileApplication' && (!OWN_BOXES.includes(I.ty(e.from)) || I.ty(e.to) !== 'uml.Profile' || e.from === e.to)) say('application-ends', path, ends, `${e.id} runs from ${q(e.from)} (${k(e.from)}) to ${q(e.to)} (${k(e.to)}): from a package to a profile${e.from === e.to ? ' other than itself' : ''}`); });
   return out;
 }
 
@@ -103,7 +110,7 @@ function prProblems(model) {
 function prDescribe(model, viewId) {
   const v = PR_ARR(model && model.views).find(x => PR_OBJ(x) && x.id === viewId); if (!v) throw new Error(`umlimator: no view ${JSON.stringify(viewId)}`);
   const { at, pic, lines: all } = drawnLines(model, v, null), lines = all.filter(({ from, to }) => !holdsLine(pic, from, to)), I = prIndex(model), ids = readingOrder(pic);
-  const pl = (k, w) => `${k} ${k === 1 ? w : w + 's'}`, box = new Map(pic.boxes.map(b => [b.id, b.aria]));
+  const pl = (k, w) => `${k} ${k === 1 ? w : w + 's'}`, box = new Map(pic.boxes.map(b => [b.id, prBox(b, model, pic).aria]));
   const said = id => { const x = at.get(id).x; return box.get(id) ?? (x.type === 'uml.Comment' ? 'Comment: ' + prName(x) : prAria(model, x, pic.name(id), I)); };
   return [`${v.title || v.id}: a profile diagram of ${pl(ids.length, 'element')} and ${pl(lines.length, 'line')}.`, ...ids.map(id => said(id) + '.'), ...lines.map(({ e }) => lineName(e, at, pic) + '.')].join('\n');
 }
@@ -125,8 +132,9 @@ function prAdd(model, view, entry, label, at) {
   const p = PR_ARR(at && at.sel).map(prof).find(x => x) ?? PR_ARR(view.nodeIds).map(id => (I.ty(id) === 'uml.Profile' ? id : null)).find(x => x);
   if (!p) return { error: 'Add a profile first' };
   const add = name => [{ op: 'add', element: { id: prNewId(model, { 'uml.Stereotype': 'stereotype', 'uml.MetaclassReference': 'metaclass', 'uml.Enumeration': 'enumeration' }[entry.type]), type: entry.type, ...(name ? { label: name } : {}), parent: p }, view: view.id }];
-  if (entry.type !== 'uml.MetaclassReference' || metaKnown(label)) return add(label);
-  const near = Object.keys(UML_META).sort((a, b) => prDist(label.toLowerCase(), a.toLowerCase()) - prDist(label.toLowerCase(), b.toLowerCase()) || a.localeCompare(b)).slice(0, 6);
+  const nm = String(label ?? ''), lo = nm.toLowerCase(); // a metaclass with no name is added unnamed (metaclass-known then warns)
+  if (entry.type !== 'uml.MetaclassReference' || !nm || metaKnown(nm)) return add(nm);
+  const near = Object.keys(UML_META).sort((a, b) => prDist(lo, a.toLowerCase()) - prDist(lo, b.toLowerCase()) || a.localeCompare(b)).slice(0, 6);
   return { pick: near, then: i => add(near[i]) };
 }
 // connect: an extension from a stereotype to a metaclass, an application from a package to a profile, a generalization
@@ -134,7 +142,7 @@ function prAdd(model, view, entry, label, at) {
 function prConnect(model, view, from, to, at, line) {
   const I = prIndex(model), t = PR_OBJ(line) ? line.type : null;
   if (t === 'uml.Extension' && (I.ty(from) !== 'uml.Stereotype' || I.ty(to) !== 'uml.MetaclassReference')) return { error: 'An extension runs from a stereotype to a metaclass' };
-  if (t === 'uml.ProfileApplication' && (!OWN_BOXES.includes(I.ty(from)) || I.ty(to) !== 'uml.Profile')) return { error: 'A profile application runs from a package to a profile' };
+  if (t === 'uml.ProfileApplication' && (!OWN_BOXES.includes(I.ty(from)) || I.ty(to) !== 'uml.Profile' || from === to)) return { error: `A profile application runs from a package to a profile${from === to ? ' other than itself' : ''}` };
   if (t === 'uml.Generalization' && (I.ty(from) !== 'uml.Stereotype' || I.ty(to) !== 'uml.Stereotype')) return { error: 'A generalization here joins two stereotypes' };
   return null;
 }
@@ -150,7 +158,7 @@ const PR_TYPE = registerDiagramType('uml.profile', {
   // the metaclass ranks first, above the stereotypes that extend it, as a general is above its specializations (§4.1)
   rankFlip: e => e.type === 'uml.Generalization' || e.type === 'uml.InterfaceRealization' || e.type === 'uml.Extension',
   layout: prGeo,
-  boxes: (model, view) => ownersOn(model, view).boxes,
+  boxes: (model, view) => { const pic = ownersOn(model, view); return pic.boxes.map(b => prBox(b, model, pic)); },
   owners: ownerChoices,
   // a stereotype's rows are its tag definitions, in the class type's member syntax; an enumeration's its literals
   member: { ...CLASS_TYPE.member, holds: n => n.type === 'uml.Stereotype' || n.type === 'uml.Enumeration' },

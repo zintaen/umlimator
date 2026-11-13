@@ -94,6 +94,7 @@ test('drawing (§4.1): a profile a box with «profile»; stereotypes «stereotyp
   assert.deepEqual(edge('sales-applies-conventions').end, { from: 'none', to: 'open', dashed: true }); assert.equal(edge('sales-applies-conventions').label, '«apply»');
   assert.match(s, /<marker id="[^"]*-filled-triangle-[^"]*"[^>]*><path d="M0 0L13 7L0 14Z" fill="(?!var\(--um-stage-bg\))/, 'the triangle filled with the line\'s colour');
   assert.deepEqual(g.legend.map(l => /<b>([^<]+)<\/b>/.exec(l)[1]), ['Generalization', 'Extension', 'Profile application']);
+  assert.match(g.legend[1], /<path d="M16 3L26 8L16 13Z" fill="var\(--um-muted\)"\/><\/g><\/svg><b>Extension</, 'the extension\'s glyph, a filled triangle');
   // a default drawn, a required tag missing as ?, an optional one unset left out; a required stereotype supplied by the tool gets a compartment
   const m = structuredClone(PROFILE); by(m, 'order').props.tags = { aggregateRoot: { boundedContext: 'sales' } }; delete by(m, 'order').members[0].props.tags;
   m.nodes.push(N('line', 'Class', 'OrderLine', 'sales')); m.views[0].nodeIds.push('line');
@@ -120,6 +121,23 @@ test('names (A1), the reading order and describe(): each stereotype\'s extension
   assert.equal(d.length, 1 + 9 + 5);
   const ab = structuredClone(PROFILE); by(ab, 'entity').props = { isAbstract: true }; delete ab.views[0].nodeIds.splice(ab.views[0].nodeIds.indexOf('order'), 1);
   assert.equal(layout(ab, 'profile').byId.entity.aria, 'Stereotype entity (abstract), extends Class, table: String');
+});
+
+test('an open package\'s and an enumeration\'s stereotypes and tags (§4.1, §4.4): a box\'s title over its name, the required ones too, its tags in its name and describe(); an enumeration\'s tag compartments over its literals, drawn as said', () => {
+  const m = structuredClone(PROFILE);
+  m.nodes.push(N('layer', 'Stereotype', 'layer', 'conventions', { members: [P('layer.tier', 'tier', 'String')] }), N('mc-package', 'MetaclassReference', 'Package', 'conventions'),
+    N('coded', 'Stereotype', 'coded', 'conventions', { members: [P('coded.code', 'code', 'String')] }), N('mc-enum', 'MetaclassReference', 'Enumeration', 'conventions'),
+    N('tier', 'Enumeration', 'Tier', 'sales', { props: { stereotypes: ['coded'], tags: { coded: { code: 'T' } } }, members: [N('tier.a', 'EnumerationLiteral', 'A')] }));
+  m.edges.push(L('layer-ext', 'Extension', 'layer', 'mc-package', { props: { isRequired: true } }), L('coded-ext', 'Extension', 'coded', 'mc-enum'));
+  by(m, 'sales').props = { tags: { layer: { tier: 'web' } } }; m.views[0].nodeIds.push('layer', 'mc-package', 'coded', 'mc-enum', 'tier');
+  const g = layout(m, 'profile'), sales = g.families.find(f => f.id === 'sales'), want = 'Package sales, holding 2 elements: «layer» required tier = web';
+  assert.equal(sales.title, '«layer» sales', 'the required «layer», supplied, over the name'); assert.equal(sales.aria, want);
+  assert.equal(T.boxes(m, m.views[0]).find(b => b.id === 'sales').aria, want);
+  assert.ok(describe(m, 'profile').split('\n').includes(want + '.'));
+  assert.deepEqual(g.byId.tier.compartments.map(c => c.members.map(x => x.label)), [['«coded»', 'code = T'], ['A']]);
+  assert.equal(g.byId.tier.aria, 'Enumeration Tier: «coded» code = T');
+  assert.match(svgOf(g), /class="c-row"[^>]*>code = T<\/text>/, 'the compartment the name says is drawn');
+  assert.deepEqual(validate(m), []);
 });
 
 test('the PDF\'s tables (§9): a profile\'s, a stereotype\'s and a metaclass\'s word and rows; any element\'s stereotypes and tags; null where the class rows serve', () => {
@@ -158,8 +176,11 @@ test('validators (§4.2): the example breaks none; each rule fails on a model th
   assert.deepEqual(prProblems(two).map(p => [p.rule, p.ids]), [['stereotype-names', ['conventions', 'p2']]]);
   const ok = structuredClone(PROFILE); ok.nodes.push(N('p2', 'Profile', 'Other'), N('e2', 'Stereotype', 'entity', 'p2')); assert.deepEqual(prProblems(ok), []);
   // a metaclass reference with no owner; an application from a profile (a package) passes; extension-ends names "nothing" for a lost end
-  const lost = structuredClone(PROFILE); delete by(lost, 'mc-property').parent; lost.edges.push(L('pp', 'ProfileApplication', 'conventions', 'conventions'), L('x', 'Extension', 'entity', 'gone'));
+  const lost = structuredClone(PROFILE); delete by(lost, 'mc-property').parent; lost.nodes.push(N('p2', 'Profile', 'Other')); lost.edges.push(L('pp', 'ProfileApplication', 'p2', 'conventions'), L('x', 'Extension', 'entity', 'gone'));
   assert.deepEqual(prProblems(lost).map(p => p.message), ['profile-owns: metaclass "Property" is owned by no profile', 'extension-ends: x runs from "entity" (stereotype) to "gone" (nothing): from a stereotype to a metaclass']);
+  // a profile applying itself
+  const self = structuredClone(PROFILE); self.edges.push(L('pp', 'ProfileApplication', 'conventions', 'conventions'));
+  assert.deepEqual(prProblems(self).map(p => [p.message, p.ids]), [['application-ends: pp runs from "BookshopConventions" (profile) to "BookshopConventions" (profile): from a package to a profile other than itself', ['pp', 'conventions']]]);
   // the abstract metaclasses of the table are known
   for (const name of ['Classifier', 'Element', 'NamedElement', 'Component', 'Lifeline']) { const m = structuredClone(PROFILE); by(m, 'mc-property').label = name; by(m, 'order').members[0].props.stereotypes = []; delete by(m, 'order').members[0].props.tags;
     assert.deepEqual(prProblems(m), [], name); }
@@ -216,6 +237,7 @@ test('add (§4.3): a stereotype, a metaclass or an enumeration goes into the pro
   assert.deepEqual(r.then(0), [{ op: 'add', element: { id: 'metaclass1', type: 'uml.MetaclassReference', label: 'Class', parent: 'p2' }, view: 'profile' }]);
   assert.equal(T.edits.add(m, m.views[0], E('MetaclassReference'), 'operation', null).pick[0], 'Operation', 'either case');
   for (const t of ['Profile', 'Package', 'Comment']) assert.equal(T.edits.add(m, m.views[0], E(t), 'x', null), null, t);
+  for (const no of [undefined, '']) assert.deepEqual(T.edits.add(m, m.views[0], E('MetaclassReference'), no, null), [{ op: 'add', element: { id: 'metaclass1', type: 'uml.MetaclassReference', parent: 'conventions' }, view: 'profile' }], 'no name: added unnamed');
   const none = { schemaVersion: 2, nodes: [N('s', 'Package', 's')], edges: [], views: [{ id: 'v', diagram: 'uml.profile', nodeIds: ['s'] }] };
   assert.deepEqual(T.edits.add(none, none.views[0], E('Stereotype'), 'x', null), { error: 'Add a profile first' });
   // what add gives applies and validates, and is drawn in the profile's box
@@ -226,7 +248,9 @@ test('add (§4.3): a stereotype, a metaclass or an enumeration goes into the pro
 test('connect (§4.3): an extension from a stereotype to a metaclass, an application from a package to a profile, a generalization between stereotypes; any other is refused in the rule\'s words', () => {
   const c = (from, to, t) => T.edits.connect(PROFILE, V, from, to, null, { type: 'uml.' + t });
   assert.equal(c('column', 'mc-class', 'Extension'), null); assert.equal(c('sales', 'conventions', 'ProfileApplication'), null);
-  assert.equal(c('conventions', 'conventions', 'ProfileApplication'), null, 'a profile is a package');
+  assert.deepEqual(c('conventions', 'conventions', 'ProfileApplication'), { error: 'A profile application runs from a package to a profile other than itself' });
+  const two = structuredClone(PROFILE); two.nodes.push(N('p2', 'Profile', 'Other'));
+  assert.equal(T.edits.connect(two, V, 'p2', 'conventions', null, { type: 'uml.ProfileApplication' }), null, 'a profile is a package');
   assert.equal(c('owned', 'entity', 'Generalization'), null); assert.equal(c('order', 'entity', 'CommentLink'), null);
   assert.deepEqual(c('mc-class', 'column', 'Extension'), { error: 'An extension runs from a stereotype to a metaclass' });
   assert.deepEqual(c('column', 'order', 'Extension'), { error: 'An extension runs from a stereotype to a metaclass' });

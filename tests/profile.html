@@ -78,6 +78,14 @@ try {
     [...nodes, ...all('.family')].forEach(g => g.querySelectorAll('text').forEach(t => { const c = ratio(css(t, 'fill'), stageBg); if (c < 4.5) low.push([g.dataset.id || g.dataset.family, t.textContent, c]); }));
     const strokes = all('.node .n-body, .family .family-box, .edge-g path.edge').map(b => ratio(css(b, 'stroke'), stageBg)).filter(c => c < 3);
     check(`${tag}: contrast: texts 4.5:1, outlines and lines 3:1`, !low.length && !strokes.length, [low, strokes]);
+    // axe-core 4.14's rules for what is drawn as role="img", written out: svg-img-alt and role-img-alt (each has a name),
+    // nested-interactive (nothing inside one is a tab stop); SHAPE.profiled's aria-label is the one the classifier wrote, replaced
+    const svg = pick('.stage svg'), imgs = all('.stage svg [role="img"]'), noAlt = [], nested = [];
+    imgs.forEach(x => { if (!(x.getAttribute('aria-label') || '').trim()) noAlt.push(x.dataset.id || x.dataset.family || x.localName);
+      x.querySelectorAll('[tabindex], a[href], button, input, select, textarea').forEach(c => { if (c.tabIndex >= 0) nested.push(`${x.dataset.id || x.dataset.family} holds ${c.getAttribute('class') || c.localName}`); }); });
+    const labels = all('.node.classifier').map(g => g.querySelectorAll('[aria-label]').length);
+    check(`${tag}: axe, written out: the drawing a named group, its 7 nodes and 2 boxes named images with no tab stop and no other name inside`,
+      svg.getAttribute('role') === 'group' && !!(svg.getAttribute('aria-label') || '').trim() && imgs.length === 9 && !noAlt.length && !nested.length && labels.every(k => k === 0), [imgs.length, noAlt, nested.slice(0, 4), labels]);
     h.destroy();
   }
   document.documentElement.dataset.theme = 'light'; el.style.removeProperty('--um-sans');

@@ -260,9 +260,10 @@ function drawnLines(model, view, own) {
    pins), memo, direction }. A line that ends on a member is drawn to the member's owner; a line between two nodes the view
    does not both show is not drawn. An open package is a box (its id takes no slot), passed to layoutTyped as a container.
    A look may also give node(d, n, model, pic), a node's drawing input before it is sized (the profile's tag compartments), and
-   dg, more of layoutTyped's input (repair, reroute: notes/stage-6.md §4.1) */
+   dg, more of layoutTyped's input (repair, reroute: notes/stage-6.md §4.1), and box(b, model, pic), a box as drawn (its title
+   and accessible name) */
 const typeGeo = look => ({ model, view, pos, memo }) => {
-  const { at, pic, lines } = drawnLines(model, view, look.own), present = UML_OBJ(view.present) ? view.present : {};
+  const { at, pic, lines } = drawnLines(model, view, look.own), present = UML_OBJ(view.present) ? view.present : {}, boxes = look.box ? pic.boxes.map(b => look.box(b, model, pic)) : pic.boxes;
   const nodes = pic.ids.filter(id => !pic.open.has(id)).map(id => { const n = at.get(id).x, pr = UML_OBJ(UML_OWN(present, id)) ? present[id] : {}, p = UML_OBJ(n.props) ? n.props : {};
     const st = UML_ARR(p.stereotypes).filter(UML_HAS);
     const shape = n.type === 'uml.Comment' ? { shape: 'note' } : OWN_BOXES.includes(n.type) ? { shape: 'package', stereotypes: [...(UML_OWN(IMPLIED, n.type) ? [IMPLIED[n.type]] : []), ...st] }
@@ -276,8 +277,8 @@ const typeGeo = look => ({ model, view, pos, memo }) => {
   // a box's border and padding take 48 px of each side of the gap between columns, so a line from box to box has none left for
   // its label, which is then not drawn: laid out left to right, a view with boxes and labelled lines spreads its columns by its
   // widest label and 40 px for its stubs (laid out down, a label sits across its line, in the gap between rows)
-  const down = view.direction === 'down', wide = !down && pic.boxes.length ? Math.max(0, ...edges.filter(e => e.label).map(labelW)) : 0;
-  const g = layoutTyped({ nodes, edges, ...(pic.boxes.length ? { containers: pic.boxes } : {}), direction: down ? 'down' : 'right', gap: 96 + (wide ? Math.ceil(wide) + 40 : 0), rgap: 56, ...look.dg }, memo);
+  const down = view.direction === 'down', wide = !down && boxes.length ? Math.max(0, ...edges.filter(e => e.label).map(labelW)) : 0;
+  const g = layoutTyped({ nodes, edges, ...(boxes.length ? { containers: boxes } : {}), direction: down ? 'down' : 'right', gap: 96 + (wide ? Math.ceil(wide) + 40 : 0), rgap: 56, ...look.dg }, memo);
   g.legend = legendOf(g.edges);
   return placeTabs(g);
 };
