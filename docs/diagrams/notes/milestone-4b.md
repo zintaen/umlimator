@@ -1,6 +1,6 @@
 # Milestone 4b design note: BPMN
 
-Status: **proposed**, for the maintainer's approval before work package 4b.0 starts. Written against `main` at 5f20041
+Status: **approved** by the maintainer 13 Nov 2026, with every recommendation taken; the maintainer approves it before work package 4b.0 starts. Written against `main` at 5f20041
 (0.21.0's release merged, #228; stage 5's 5.0 to 5.6 merged, 5.7's trial and 5.8 open, `stage5-followups` open; stage 6's
 note being drafted). Symbols are named, not line numbers. Revised after two reviews (13 Nov 2026): decisions 21 to 24
 added.
