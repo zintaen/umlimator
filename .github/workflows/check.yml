@@ -125,11 +125,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/cache@v4  # the logos this job's renders download, kept per job and per pin: a changed pin misses it, and icon_bytes checks a cached logo's sha256 on every read
-        with:
-          path: ~/.cache/umlimator/icons
-          key: icons-${{ github.job }}-${{ hashFiles('icons/manifest.json') }}
-
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
