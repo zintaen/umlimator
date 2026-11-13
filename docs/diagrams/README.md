@@ -23,7 +23,7 @@ Update this table in every pull request that belongs to the plan.
 | 3 | 0.20.0 | Sequence, communication | Design note approved ([`notes/stage-3.md`](notes/stage-3.md)). 3.0 (b17b678), 3.1 (7117a2e), 3.2 (9ddd4a7), 3.3 (b062d55, its gestures 3ab554d), 3.4 (a253447), 3.5 (d2ed722), 3.6 (417b4f1) and 3.7 (f98e317) merged, with the notes' changes elsewhere (b8e2315) and the router's speed flags (110a494). 3.8 (5e569b4) merged. Released 12 Nov 2026 (5fa66e9, GitHub and npm latest); map-repo pinned to it | #174, #177, #179, #180, #181, #182, #186, #187, #189, #191, #193, #194, #198, #199, #200 |
 | 4 | 0.21.0 | Use case, activity, state machine, interaction overview | Design note approved ([`notes/stage-4.md`](notes/stage-4.md)), every recommendation of §20 taken. 4.0 (857c5a0), 4.1 (6254765), 4.2 (436b9d9), 4.3 (01fc120), 4.4 (50b3294), 4.5 (798025c), 4.6 (c3d73cb), 4.7 (042721e), 4.8 (d1e7840) and 4.9 (79dcefa) merged, with maps' one card-shape style (c7fd8c4). 4.10 (c62d356), the Bookshop atlas (5a2a917) and the timed-test sweep (dac35fd) merged. Released 13 Nov 2026 (5f20041, GitHub and npm latest); map-repo pinned to it | #201, #202, #204, #205, #206, #207, #208, #209, #210, #211, #212, #213, #217, #222, #226, #228, (this PR) |
 | 5 | 0.22.0 | Component, deployment, composite structure | Design note approved ([`notes/stage-5.md`](notes/stage-5.md)), every recommendation of §18 taken. 5.0 (5ca0790), 5.1 (278dc56), 5.2 (7b6e214), 5.3 (a35933b), 5.4 (2684c27), 5.5 (1d0d23a), 5.6 (f9a5555) and the follow-ups (5216441) merged. In review: 5.8 and the ELK trial's note (5.7: own engine only, L9 closed); then the 0.22.0 release | #215, #216, #218, #219, #220, #223, #224, #225, #227, and the lanes' pull requests |
-| 6 | 0.23.0 | Profile, timing | Not started | |
+| 6 | 0.23.0 | Profile, timing | Design note approved ([`notes/stage-6.md`](notes/stage-6.md)), every recommendation of §16 taken. In review: 6.0 (this PR) | #230, (this PR) |
 | Milestone 2 | 0.24.0 | ER, flowchart, data flow, information flow, C4 | Not started | |
 | Milestone 3 | 0.25.0 | SysML v1.7's four diagrams | Not started | |
 | Milestone 4 | 0.26.0, 0.27.0 | AWS, GCP, Azure, mindmap; BPMN | Not started | |
@@ -77,7 +77,7 @@ All on 11 Nov 2026, by the maintainer. The options that were weighed are in `pro
 ## Checks
 
 ```bash
-npm test                                      # layout and the model, in Node; the "(timed)" tests apart, one file at a time
+node --test                                   # layout and the model, in Node
 python3 tests/embed.py                        # the canvas, in headless Chrome
 python3 bench/bench.py --check-determinism --expect bench/expected.json   # existing pictures are unchanged
 node docs/diagrams/examples/check.mjs         # the target examples match model.md

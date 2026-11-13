@@ -23,8 +23,7 @@ tests/page-motion.html, with motion on: the page's history through moves: Back a
 tests/shapes.html: card shapes (0.15.0; one style since 0.21.0): each shape, ports on outlines, a card's own shape, a stale shapes field, option, attribute or link that changes nothing, exports, legend.
 tests/aids.html: the reading aids (0.15.0): a box's tone, a step on a line in any view, --um-tint; light and dark, the minimap and the SVG.
 tests/typed-edit.html: editing a typed view (1.7): each gesture's edit event, by pointer and keyboard, applied with apply(); the panels; none of it read-only.
-tests/notation.html: notation (1.5): a classifier, every line end and end labels from svgOf, in both themes and three fonts: text in its face, ends on outlines;
-  stage 5's line ends (5.8, §9.4) on the three stage 5 examples and the stress fixtures' edge-cases views, each kind's end and dash.
+tests/notation.html: notation (1.5): a classifier, every line end and end labels from svgOf, in both themes and three fonts: text in its face, ends on outlines.
 tests/class.html: the class diagram (1.9): examples/sales-classes.json drawn in both themes and three fonts, edited as text and by the picker through apply(), an edit to paint on 40 classes; the fixtures tests/class-minimal.json and
   tests/class-stress.json in both themes and three fonts, an edit to paint on the stress fixture.
 tests/package.html: the package diagram (2.2): examples/bookshop-packages.json in both themes, three fonts and both directions (boxes hold exactly their contents, titles, ends, names, contrast,
@@ -39,10 +38,10 @@ tests/timeaxis.html: the time-axis layout and its shapes (3.2): each T case in b
 tests/sequence.html: the sequence type (3.3): examples/checkout-sequence.json in both themes and three fonts, laid out clean and named; its reading order; a click on an arrowhead or a loop selects the message; a message by L and by the handle through edits.connect.
 tests/sequence-fixtures.html: the sequence fixtures (3.8): tests/sequence-*.json, every view in both themes and three fonts, laid out clean, named, contrast.
 tests/communication.html: the communication diagram (3.5): examples/checkout-communication.json and the fixtures (tests/communication-*.json) in both themes and three fonts, laid out clean, named, in reading order; its gestures by pointer and keyboard on 3.4's canvas, through apply().
-tests/component.html: the component diagram (5.4): examples/bookshop-components.json in both themes, three fonts and both directions (ports on borders, line ends on ports,
+tests/profile.html, tests/timing.html, tests/stage6.html: stage 6's pages (notes/stage-6.md 6.0), placeholders that report ok
+  until 6.3 (profile), 6.5 (timing) and 6.6 (the fixtures) fill them.
+tests/component.html: the component diagram (5.4): docs/diagrams/examples/05-component.json in both themes, three fonts and both directions (ports on borders, line ends on ports,
   ball and socket, names, reading order, contrast, legend), and each gesture by pointer and keyboard through apply().
-tests/stage5.html: stage 5's fixtures (5.8): tests/component-*.json, deployment-*.json and composite-*.json, every view in both themes, three fonts and
-  both directions: every node and line drawn, no overlap but a port on its owner, texts inside, no line through a node, ends on outlines or port squares, named, contrast.
 tests/core-diet.html: the markup render() draws from lib/umlimator.js (three version-2 examples) and lib/umlimator-all.js (the class example), as main drew it before src/typed/ left the core (0.18.0).
 examples/edit.html, embed.html, live.html, playground.html, ask.html, replay.html, timelapse.html, drift.html, element.html, notations.html: the host pages load and draw.
 Each test page reports in <pre id="result">{"ok": [...], "fail": [...]}</pre>.
@@ -104,7 +103,7 @@ def dom(path, done, wait=60, motion=False):
 
 failed = False
 # the motion pass: tests/motion.html runs with motion on, so a bug in what animates can't hide behind reduced motion
-for page, motion in [(p, False) for p in ("tests/embed.html", "tests/edit.html", "tests/typed-edit.html", "tests/contrast.html", "tests/rules.html", "tests/marks.html", "tests/change.html", "tests/unfold.html", "tests/unfold-page.html", "tests/stories.html", "tests/insight.html", "tests/page-handle.html", "tests/element.html", "tests/pieces.html", "tests/state.html", "tests/page-state.html", "tests/shapes.html", "tests/aids.html", "tests/notation.html", "tests/class.html", "tests/class-editor.html", "tests/package.html", "tests/object.html", "tests/package-object.html", "tests/type-hooks.html", "tests/core-diet.html", "tests/timeaxis.html", "tests/sequence.html", "tests/sequence-fixtures.html", "tests/communication.html", "tests/flow.html", "tests/composite.html", "tests/deployment.html", "tests/typed-ports.html", "tests/structure.html", "tests/stage4.html", "tests/state-machine.html", "tests/overview.html", "tests/activity.html", "tests/usecase.html", "tests/component.html", "tests/stage5.html")] + [("tests/motion.html", True), ("tests/page-motion.html", True)]:
+for page, motion in [(p, False) for p in ("tests/embed.html", "tests/edit.html", "tests/typed-edit.html", "tests/contrast.html", "tests/rules.html", "tests/marks.html", "tests/change.html", "tests/unfold.html", "tests/unfold-page.html", "tests/stories.html", "tests/insight.html", "tests/page-handle.html", "tests/element.html", "tests/pieces.html", "tests/state.html", "tests/page-state.html", "tests/shapes.html", "tests/aids.html", "tests/notation.html", "tests/class.html", "tests/class-editor.html", "tests/package.html", "tests/object.html", "tests/package-object.html", "tests/type-hooks.html", "tests/core-diet.html", "tests/timeaxis.html", "tests/sequence.html", "tests/sequence-fixtures.html", "tests/communication.html", "tests/flow.html", "tests/stage5.html", "tests/composite.html", "tests/deployment.html", "tests/typed-ports.html", "tests/structure.html", "tests/stage4.html", "tests/state-machine.html", "tests/overview.html", "tests/activity.html", "tests/usecase.html", "tests/component.html", "tests/profile.html", "tests/timing.html", "tests/stage6.html")] + [("tests/motion.html", True), ("tests/page-motion.html", True)]:
     t = dom(page, lambda t: 'id="result"' in t, motion=motion)
     m = re.search(r'<pre id="result">(.*?)</pre>', t, re.S)
     if not m:  # each check names itself in the page title: say where it stopped
