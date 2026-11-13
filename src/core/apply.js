@@ -24,7 +24,8 @@ import { diagramOf, propRefs } from './registry.js';
                                              What it held and stays goes to its nearest owner left
      reparent  { id, parent }                a new owner by `parent`, or none with parent null
      addView   { view, index? }              a view, added to views at index (else at the end); refused when its id is
-                                             a view's already (notes/milestone-2.md §6.2). validate() says what it lacks
+                                             a view's already, or it is not an object with a string id. Nothing else is
+                                             checked: validate() says what it lacks (notes/milestone-2.md §6.2)
    An element is a node, a member, a model line or a view's own line or item with an id, or a fragment (schema version 2's
    id space). */
 

@@ -39,7 +39,8 @@ const diagramOf = view => TYPES.get(view && view.diagram != null ? view.diagram 
    gestures of edit.js it takes over (edit), diff()'s words for typed models (diff, order: src/uml/diff.js). Empty in
    umlimator.js, where no view is laid out but as a map (risks.md C5).
    Stage 6's: across(model), validate()'s rules on the whole model; fields(model, x), more panel fields (notes/stage-6.md §5)
-   Milestone 2's (notes/milestone-2.md §6.3, §9): unfolds; text(model, view, id), the PDF's line text; ENDS open to families */
+   Milestone 2's (notes/milestone-2.md §6.3, §9): unfolds; text(model, view, id), the PDF's line text; ENDS open to
+   families */
 const TYPED = {};
 
 const propRefs = type => Object.assign({}, ...[...TYPES.values()].map(T => T.refs && Object.hasOwn(T.refs, type) && T.refs[type]));

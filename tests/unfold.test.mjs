@@ -158,6 +158,18 @@ test('a class card opening a class view opens and never unfolds; a call behaviou
   assert.equal(mapContext(a).unfoldable('call-payment', 'fulfil'), 'take-payment');
   const inner = a.views.find(v => v.id === 'take-payment').nodeIds.filter(id => u.nodes.some(n => n.id === id));
   assert.ok(inner.length, 'its activity\'s nodes are drawn in the box');
-  inner.forEach(id => assert.ok(u.nodes.find(n => n.id === id).shape, `${id} keeps its shape`));
+  const own = typedLayout(a, 'take-payment'); // each drawn as its own view draws it, not as a map's box
+  inner.forEach(id => assert.equal(u.nodes.find(n => n.id === id).shape, own.nodes.find(n => n.id === id).shape, `${id} keeps its shape`));
   assert.ok(plain.nodes.some(n => n.id === 'call-payment'));
+});
+
+// A view that says diagram: 'map' is a map (src/core/model.js), so its cards unfold as they do with no diagram field
+test("a map whose views say diagram: 'map' unfolds as one that says nothing, in the core and with the types", async () => {
+  const m = { ...structuredClone(SHOP), schemaVersion: 2 }; m.views.forEach(v => { v.diagram = 'map'; });
+  const plain = { ...structuredClone(SHOP), schemaVersion: 2 };
+  assert.deepEqual(layout(plain, 'shop', { expand: ['orders'] }).unfolded, ['orders']);
+  assert.deepEqual(layout(m, 'shop', { expand: ['orders'] }).unfolded, ['orders']);
+  for (const f of ['map/typed', 'typed/layout', 'typed/draw']) await import(`../src/${f}.js`);
+  const { layout: typedLayout } = await import('../src/map/api.js');
+  assert.deepEqual(typedLayout(m, 'shop', { expand: ['orders'] }).unfolded, ['orders']);
 });
