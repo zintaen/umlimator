@@ -241,7 +241,7 @@ is read by `multBounds` (Q16) into a lower bound (0 or more) and an upper bound 
 | `1..*` (any upper above 1) | `cf-one-many`: a bar and a crow's foot | a dot with `P`, at either end |
 | `0..*` | `cf-zero-many`: a ring and a crow's foot | a dot, at either end |
 | `2..5`, `3` and other bounds | the nearest of the four by its bounds, with the multiplicity written as an end label | a dot with the multiplicity as its label |
-| Unreadable | none, the text as an end label, and `relationship-ends` warns | the same |
+| Unreadable | none, the text as an end label, and `relationship-ends` fails (an error, §7.1's level; this row said "warns", amended in M2.2) | the same |
 
 Each crow's foot end is 18 px long with the crow's toes on the entity's outline; a ring is hollow (the stage's
 background, T2). IDEF1X's dot is a filled 6 px circle on the child's outline and its letters are end labels (Q4). A
@@ -455,6 +455,27 @@ Hooks: `member` reads a row (S9); `connect` adds a relationship from the selecte
 `0..*`, non-identifying; `rename` on a relationship sets its label. Properties: a column's flags, type and references; a
 relationship's `identifying` and its two multiplicities. Accessible names: "Table order_line, key order_id and line_no,
 4 columns"; "Identifying relationship contains from order (exactly one) to order_line (one or more)".
+
+**As built in M2.2** (`src/er/er.js`; `tests/er.test.mjs`, `tests/er.html`), where it departs from or settles what is above:
+
+- `relationship-ends` fails a multiplicity that is missing, unreadable, or whose upper bound is 0 or below its lower: an
+  error, as this section's table says (§4.1's last row and §10 said "warns" and were amended). One readable but none of the
+  four forms is the warning.
+- `identifying-key`: the model does not say which foreign key columns are which relationship's. When a non-identifying
+  relationship joins the same pair, a column out of the child's key may be that one's, so one column in the key will do;
+  with no such relationship every referencing column must be in the key.
+- `connect`: the palette's relationship entry carries `1` to `0..*`, non-identifying, which the canvas's own add copies
+  onto the new line; the hook only refuses a relationship from or to anything but a table. `rename` needs no hook: F2 on a
+  relationship sets its `label`, as the canvas does.
+- A column's flags, type and references are changed through its row (S9), in the panel's Members, by keyboard: the canvas
+  selects no member, so the column's declared fields (`props['er.Column']`) are for a host's own panel.
+- The view's `notation` has no gesture of its own: a host sets it with `set { view, path: 'notation' }` (§4.3); no key is
+  taken for it.
+- IDEF1X's dependent entity, drawn with rounded corners, is the child of an identifying relationship.
+- The panel's row text names a referenced column by its table's and its own labels, read from the model the column was
+  last read in (a type's `member.print` is given the column alone); a column never read names the id it references.
+- The PDF's `text` for a relationship: `places: 1 to 0..*, non-identifying`, its label first when it has one.
+- A line's end is on the entity's box, and each end's marker has its tip there (its `refX` is its length).
 
 ### 7.2 Flowchart (`src/flowchart/flowchart.js`)
 
@@ -732,7 +753,7 @@ outline within 1 px, and no label over a node.
 | Fixture | Holds |
 |---|---|
 | `er-minimal.json` | Two entities, one key each, one non-identifying relationship |
-| `er-stress.json`, view `edge-cases` | A composite key; a self-reference; a many-to-many through a junction; a many-to-many drawn directly (IDEF1X's non-specific relationship); an identifying relationship with an optional parent (`identifying-parent`, error); a foreign key in the primary key (identifying); a nullable foreign key (IDEF1X's diamond); each of the four crow's foot ends and a `2..5`; two relationships between one pair; an entity of 40 columns with `rows: 8`; an unreadable multiplicity (warned); a second view of the same in `idef1x` |
+| `er-stress.json`, view `edge-cases` | A composite key; a self-reference; a many-to-many through a junction; a many-to-many drawn directly (IDEF1X's non-specific relationship); an identifying relationship with an optional parent (`identifying-parent`, error); a foreign key in the primary key (identifying); a nullable foreign key (IDEF1X's diamond); each of the four crow's foot ends and a `2..5`; two relationships between one pair; an entity of 40 columns with `rows: 8`; an unreadable multiplicity (an error, §7.1; amended in M2.2); a second view of the same in `idef1x` |
 | `er-stress.json`, view `all` | 50 entities, 60 relationships (P1) |
 | `flowchart-minimal.json` | A start, a process, an end |
 | `flowchart-stress.json`, view `edge-cases` | Every symbol; two starts (warned); a decision with three exits; a loop back to an earlier node; a connector as a junction; a 120-character label; a node no start reaches (warned) |
