@@ -107,7 +107,8 @@ drill-down, a data pipeline, an AI agent's skills, and host pages for embedding,
   ([`examples/bookshop-timing.json`](examples/bookshop-timing.json), [what it covers](docs/conformance/uml-timing.md)).
   Times move by a minor tick with a drag or Alt + arrows and are typed exactly with F2 (`Waiting @ 140`); `S` turns a
   lifeline into a value lifeline; deleting a lifeline deletes its changes and their constraints. The MCP server's read
-  tools and the diff Action are tested on both.
+  tools and the diff Action are tested on both, and the Bookshop atlas, now with a view of each of UML's 14 diagram
+  kinds, opens them from the package view's profile and from the activity's "Record the payment on the order".
 - **Export**: any view as a stand-alone SVG or PNG, in the browser or from the CLI; the whole map as one PDF to hand in
   for a review: a cover with the contents, each view with its legend and tables of its cards, lines and boxes, then the
   rules (`umlimator.py pdf`).

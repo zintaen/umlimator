@@ -68,22 +68,23 @@ Action on it in a pull request; the site shows its stills and its PDF.
 ## The Bookshop atlas
 
 [`bookshop-atlas.json`](bookshop-atlas.json) is the Bookshop examples above in one model (`"schemaVersion": 2`): the
-map's three views and the eighteen views of the twelve diagram files, joined by drill-down. Double-click a card to open
+map's three views and the twenty views of the fourteen diagram files, one of each of UML's 14 diagram kinds, joined by drill-down. Double-click a card to open
 what it leads to:
 
 | From | Card | Opens |
 |---|---|---|
 | The map (`overview`) | Shoppers, Storefront, Database, Order queue, Order worker, Payment provider, GitHub | the use cases, buying a book, the sales classes, order 1042, fulfilling an order, the communication diagram, the packages |
 | Sales domain, order 1042 | Order, order1042 | an order's life (state machine) |
-| Bookshop packages | sales | the sales domain |
+| Bookshop packages | sales, BookshopConventions | the sales domain, the conventions profile |
 | Shopping (use cases) | Browse the catalog, Check out, Pay for the order | find a book, buying a book, take payment (activity) |
-| Fulfilling an order, take payment | Take the next order from the queue, Charge the shopper's card | queue the order, the checkout (sequences) |
+| Fulfilling an order, take payment | Take the next order from the queue, Charge the shopper's card, Record the payment on the order | queue the order, the checkout (sequences), one charge (timing) |
 | The map (`overview`), production, the components | Hosts, Java 21 runtime, Shop API | production (deployment), the components, inside the order service (composite structure) |
 
 It is built, not written: `node tools/atlas.mjs` reads the example files and [`../tools/atlas-links.json`](../tools/atlas-links.json)
 (the files, in order, and which card opens which view) and writes the model. Elements are shared by id: one Order,
 one package `sales`, one `api` lifeline for the sequence, communication and overview files, one Shop API, its jar and the
-runtime it is deployed on for the component and deployment files. Where two files have an id,
+runtime it is deployed on for the component and deployment files; Order, its `placedAt` and the profile for the
+class, package and profile files, and the `worker` and `payments` lifelines for the overview, sequence and timing files. Where two files have an id,
 they must agree on it (a field one leaves out is the other's, a class's members are the union of theirs); where they
 disagree, the build stops and names the id, the files and the field, and the example files are what gets fixed.
 `tests/atlas.test.mjs` fails when the committed atlas is not what it writes. A card that opens another kind of diagram does not unfold in place (E): it opens.

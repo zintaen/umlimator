@@ -1018,6 +1018,33 @@ other tags rewritten the same way); «aggregateRoot» stays defined, a specializ
 - **The package view's palette** stays as 6.3 left it (§4.4); 6.7 adds the profile and its application to the package
   example.
 
+### 14.2 As built (6.7)
+
+- **The atlas joins both files** (`tools/atlas-links.json`): `bookshop-profile` third, after the class file, so the
+  profile view's lines come in its own file's order (listed after the package file, `sales-applies-conventions` came
+  first and the view's lines were drawn in another order); `bookshop-timing` last. `tools/atlas.mjs` knows `tags`,
+  `states`, `sentAt`, `receivedAt` and `isRequired` among props, and a view's `timeline`, whose changes and constraints
+  are the view's own elements (an id there and anywhere else stops the build). The build met no clash: 6.6's revisions
+  made the files agree. 29 ids are shared, four more than 0.22.0's: `order.placedAt`, `conventions`,
+  `sales-applies-conventions`, `lifeline-worker`.
+- **Decision 18, option (a).** `bookshop-packages.json` gains `conventions` and `sales-applies-conventions`, as the profile
+  file has them; the package view draws the profile as a closed «profile» folder under `sales`, with its «apply» line.
+  The line is listed third in the view's `edges`: listed last, the down layout left catalog's «import» to shared
+  undrawn and the layout check found nothing (a limit of the label placement, not this lane's to fix). The package
+  type's tests (`tests/package.test.mjs`, `tests/package.html`) and `tests/mermaid-class.test.mjs` keep the example as
+  stage 2 made it, the two elements taken out when read; a new test in `tests/package.test.mjs` draws the example as it
+  is. `tests/print-typed.test.mjs`'s hash of the package file's tables and `tests/core-diet.json`'s four package
+  fingerprints are recorded again. These are the existing tests 6.7 edits besides `tests/atlas.test.mjs`; §13.2 expected
+  none.
+- **The links.** `bookshop-packages/conventions` opens `profile`; `fulfil-activity/record` opens `one-charge`. From the
+  map: overview → packages → profile, and overview → shopping → take-payment → one-charge.
+- **What `tests/atlas.test.mjs` pins:** the 14 kinds; `describe()` and the PDF's tables of every view; «owned» supplied to
+  exactly `customer`, `order` and `line`; the merged `placedAt`'s «column» and tags, with the class view's `describe()`
+  and PDF rows equal to the class file's (it does not draw member stereotypes); the problem list unchanged (the class
+  rule's two `generalization-kinds`, the two `realization-target`, the two `part-type`; none from a stored keyword such
+  as `order-uses-money`'s «use»); Shift + Delete of `lifeline-worker` on `queue-order` taking its four changes and both
+  constraints.
+
 ## 15. Left out of the subsets
 
 | Type | Left out |

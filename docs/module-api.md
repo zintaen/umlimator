@@ -3749,7 +3749,7 @@ What moves for a host that upgrades from 0.21.0:
 Stage 6 of the plan for 28 diagram types (`docs/diagrams/notes/stage-6.md`): the last two of UML's 14. If 0.22.0 is
 released before stage 6 merges, its notes say that stage 6's code rode along provisionally; this section says what it
 does and what changes from 0.22.0. Everything is additive: maps, every typed view released before and every earlier
-example draw as they did in 0.22.0 (`bench/expected.json`, `tests/core-diet.json`'s fingerprints of every view drawn by
+example but the package example (which gains the profile, below) draw as they did in 0.22.0 (`bench/expected.json`, `tests/core-diet.json`'s fingerprints of every view drawn by
 `lib/umlimator.js`, the examples' stills); a model with no `uml.Profile` gets no new problem. The new code is in
 `lib/umlimator-all.js`, except the core's 180 B for 6.1's slots (below).
 
@@ -3793,6 +3793,16 @@ example draw as they did in 0.22.0 (`bench/expected.json`, `tests/core-diet.json
   layout check does not report its own rows, changes and labels as overlaps; nor, in the browser's text checks
   (`auditSvg`), any text, header or line label over a lane, its own or not: the timing views are held to §11's
   predicate in `tests/stage6-fixtures.test.mjs` instead.
+- **The Bookshop atlas, full pass (6.7).** The atlas holds a view of each of UML's 14 diagram kinds: the profile and
+  timing examples join it (`tools/atlas-links.json`'s sources), and both are reached from the map by drill-down. The
+  package example shows the profile `BookshopConventions` and `sales`' «apply» line to it, and the profile opens the
+  profile view; `fulfil-activity`'s "Record the payment on the order" opens the timing view (decision 18).
+  `tools/atlas.mjs` carries the new fields (`tags`, `states`, `sentAt`, `receivedAt`, `isRequired`, a view's `timeline`,
+  whose changes and constraints are the view's own elements). Twenty-nine elements are now shared by several files, four
+  more than 0.22.0's 25: `order.placedAt` (gaining «column» and its tags in the atlas, which the class view does not
+  draw), the profile and its application, and `lifeline-worker`. `tests/atlas.test.mjs` pins them, the three classes
+  of `sales` that get the required «owned», and that deleting `lifeline-worker` from the sequence view takes its timing
+  changes and their constraints.
 
 What moves for a host that upgrades from 0.22.0:
 
@@ -3813,6 +3823,11 @@ What moves for a host that upgrades from 0.22.0:
   merge by id): Order applies «entity», as the class example has it, its tags keyed by stereotype; «owned»'s `team` tag
   and `placedAt` are `0..1`; the timing file's lifelines take the overview's and the sequence's ids, `lifeline-worker`
   and `lifeline-payments`, and its view is `one-charge` (`charge` is an action of the activity example).
+- **The package example's picture changes** (decision 18, as DoD 12 allows): `examples/bookshop-packages.json` gains the
+  profile `conventions` (a closed «profile» folder) and `sales-applies-conventions` («apply»), listed third among the
+  view's lines (listed last, catalog's «import» to shared went undrawn on the down layout, with no check finding). Its
+  stills, `describe()` (17 elements and 6 lines) and PDF rows change; the package type's tests keep the example as
+  stage 2 made it, and one test draws the new one.
 - **Known gap** (6.1's finding; a follow-up package after stage 6, the maintainer's decision of 13 Nov 2026): with every
   type's rules, deleting an element can leave a model that fails `validate()` under four earlier types' rules
   (`extend-points`, `message-link`, `reply-once`, `subject-shown`): 29 of 1,495 deletes over the examples and targets
