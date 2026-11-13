@@ -6,7 +6,7 @@
     { "id": "shopper-device", "type": "uml.Device", "label": "Shopper's device" },
     { "id": "browser", "type": "uml.ExecutionEnvironment", "label": "Web browser", "parent": "shopper-device" },
     { "id": "storefront-bundle", "type": "uml.Artifact", "label": "storefront.js", "parent": "browser" },
-    { "id": "edge", "type": "uml.Node", "label": "Edge proxy" },
+    { "id": "edge-node", "type": "uml.Node", "label": "Edge proxy" },
     { "id": "edge-routes", "type": "uml.Artifact", "label": "routes.conf" },
     { "id": "app-server", "type": "uml.Device", "label": "Application server" },
     { "id": "jvm", "type": "uml.ExecutionEnvironment", "label": "Java 21 runtime", "parent": "app-server" },
@@ -14,23 +14,24 @@
     { "id": "order-worker-jar", "type": "uml.Artifact", "label": "order-worker.jar", "parent": "jvm" },
     { "id": "shop-api-config", "type": "uml.DeploymentSpecification", "label": "shop-api.yaml", "parent": "jvm" },
     { "id": "database", "type": "uml.Node", "label": "Database" },
-    { "id": "queue", "type": "uml.Node", "label": "Order queue" },
+    { "id": "queue-node", "type": "uml.Node", "label": "Order queue" },
     { "id": "shop-api", "type": "uml.Component", "label": "Shop API" },
     { "id": "order-worker", "type": "uml.Component", "label": "Order worker" }
   ],
   "edges": [
-    { "id": "routes-on-edge", "type": "uml.Deployment", "from": "edge-routes", "to": "edge" },
+    { "id": "routes-on-edge", "type": "uml.Deployment", "from": "edge-routes", "to": "edge-node" },
     { "id": "api-jar-manifests-api", "type": "uml.Manifestation", "from": "shop-api-jar", "to": "shop-api" },
     { "id": "worker-jar-manifests-worker", "type": "uml.Manifestation", "from": "order-worker-jar", "to": "order-worker" },
     { "id": "config-for-api-jar", "type": "uml.Dependency", "from": "shop-api-config", "to": "shop-api-jar" },
-    { "id": "device-to-edge", "type": "uml.CommunicationPath", "from": "shopper-device", "to": "edge", "label": "HTTPS" },
-    { "id": "edge-to-app", "type": "uml.CommunicationPath", "from": "edge", "to": "app-server", "label": "HTTP" },
+    { "id": "device-to-edge", "type": "uml.CommunicationPath", "from": "shopper-device", "to": "edge-node", "label": "HTTPS" },
+    { "id": "edge-to-app", "type": "uml.CommunicationPath", "from": "edge-node", "to": "app-server", "label": "HTTP" },
     { "id": "app-to-database", "type": "uml.CommunicationPath", "from": "app-server", "to": "database", "label": "PostgreSQL wire protocol" },
-    { "id": "app-to-queue", "type": "uml.CommunicationPath", "from": "app-server", "to": "queue", "label": "AMQP" }
+    { "id": "app-to-queue", "type": "uml.CommunicationPath", "from": "app-server", "to": "queue-node", "label": "AMQP" }
   ],
   "views": [
     { "id": "production", "diagram": "uml.deployment", "title": "Production", "parent": null,
-      "nodeIds": ["shopper-device", "browser", "storefront-bundle", "edge", "edge-routes", "app-server", "jvm", "shop-api-jar", "order-worker-jar", "shop-api-config",
-        "database", "queue", "shop-api", "order-worker"] }
+      "nodeIds": ["shopper-device", "browser", "storefront-bundle", "edge-node", "edge-routes", "app-server", "jvm", "shop-api-jar", "order-worker-jar", "shop-api-config",
+        "database", "queue-node", "shop-api", "order-worker"],
+      "edges": ["routes-on-edge", "api-jar-manifests-api", "worker-jar-manifests-worker", "config-for-api-jar", "device-to-edge", "edge-to-app", "app-to-database", "app-to-queue"] }
   ]
 }

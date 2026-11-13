@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 2,
+  "title": "Deployment, minimal",
+  "nodes": [
+    {"id":"server","type":"uml.Device","label":"Server"},
+    {"id":"runtime","type":"uml.ExecutionEnvironment","label":"Runtime","parent":"server"},
+    {"id":"app","type":"uml.Artifact","label":"app.jar","parent":"runtime"}
+  ],
+  "edges": [
+
+  ],
+  "views": [
+    {"id":"v","diagram":"uml.deployment","nodeIds":["server","runtime","app"]}
+  ]
+}

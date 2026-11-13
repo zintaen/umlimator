@@ -137,6 +137,8 @@ const csEndName = (P, x) => (x.part != null ? `${csName(P.mem.get(x.id).m)} of $
 const CS_LINE_WORD = { 'uml.Connector': 'Connector', 'uml.RoleBinding': 'Role binding', 'uml.CommentLink': 'Comment link' };
 const csLineName = (P, { e, f, t }) => e.type === 'uml.RoleBinding' ? `Role binding from ${csEndName(P, f)} to ${csEndName(P, t)}${CS_HAS(e.label) ? ', as ' + e.label : ''}`
   : `${CS_LINE_WORD[e.type] || 'Line'} from ${csEndName(P, f)} to ${csEndName(P, t)}${CS_HAS(e.label) ? ': ' + e.label : ''}`;
+// the structure a connector is drawn in: its from end's part's or role's, else its from end's owner (a port of the subject)
+const csStructOf = (P, e) => { const p = (CS_PROPS(e).ends || {}).from, k = CS_OBJ(p) && p.part != null ? p.part : e.from; return P.partOf.get(k) || (P.mem.get(k) || {}).owner; };
 // the subject and its ports, each part and its ports, the collaboration uses, each open collaboration and its roles, the rest; then the lines
 function csOrder(P) {
   const out = [], part = m => { out.push(m.id); P.partPorts.get(m.id).forEach(q => out.push(csPortId(m.id, q.id))); };
@@ -409,7 +411,12 @@ const CS_TYPE = registerDiagramType('uml.composite-structure', {
     return x.type === 'uml.Property' ? (q.owner.type === 'uml.Collaboration' ? 'Role' : 'Part') : x.type === 'uml.Port' ? 'Port' : x.type === 'uml.CollaborationUse' ? 'Collaboration use' : null; },
   rows: (model, view, id) => { const P = csPic(model, view), q = P.mem.get(id);
     if (q && q.m.type === 'uml.Property') return [csPartText(q.m), CS_PROPS(q.m).aggregation === 'shared' ? 'shared' : 'composite'];
-    const u = P.at.get(id); if (!u || u.type !== 'uml.CollaborationUse') return null;
+    const u = P.at.get(id); if (!u) return null;
+    // the subject or an open collaboration (0.22.0): its members, a part or role with its aggregation, then the connectors
+    // among them, which the Lines table leaves out (their ends are members, not cards)
+    if (id === P.sid && P.S || P.collabs.some(c => c.x.id === id)) return [...CS_ARR(u.members).filter(CS_OBJ).map(m => CS_MEMBER.print(m) + (m.type === 'uml.Property' && id === P.sid ? `, ${CS_PROPS(m).aggregation === 'shared' ? 'shared' : 'composite'}` : '')),
+      ...P.lines.filter(l => l.e.type === 'uml.Connector' && csStructOf(P, l.e) === u).map(l => csLineName(P, l))];
+    if (u.type !== 'uml.CollaborationUse') return null;
     return [...(CS_HAS(CS_PROPS(u).collaboration) ? [String(CS_PROPS(u).collaboration)] : []),
       ...CS_ARR(model.edges).filter(e => CS_OBJ(e) && e.type === 'uml.RoleBinding' && e.to === id).map(e => `${e.label ?? '?'} ← ${csName(P.el(e.from) || { id: e.from })}`)]; },
   edits: { connect: csConnect, moveTo: csMoveTo, add: csAdd, remove: csRemove, rename: csRename, member: csMember },

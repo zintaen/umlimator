@@ -18,6 +18,9 @@ import '../src/uml/usecase.js';
 import '../src/uml/activity.js';
 import '../src/uml/state.js';
 import '../src/uml/overview.js';
+import '../src/uml/component.js';
+import '../src/uml/deployment.js';
+import '../src/uml/composite.js';
 import { layout, check } from '../src/map/api.js';
 import { mapContext } from '../src/map/context.js';
 import { validate } from '../src/map/validate.js';
@@ -32,9 +35,11 @@ test('the committed atlas is what tools/atlas.mjs builds, byte for byte', () => 
     'examples/bookshop-atlas.json is stale: run node tools/atlas.mjs and commit it');
   assert.deepEqual(build().text, text); // the same on every run
   // one Order, one package sales: the class and package files' 14 elements, and the 5 lifelines the sequence,
-  // communication and overview files share
+  // communication and overview files share; one Shop API, its jar and where the jar runs: the component and deployment
+  // files' 6 (0.22.0)
   assert.deepEqual(shared.map(x => x.id), ['sales', 'shared', 'catalog', 'payments-package', 'card', 'customer', 'order', 'line', 'book',
-    'payable', 'payment', 'card-payment', 'status', 'money', 'lifeline-shopper', 'lifeline-storefront', 'lifeline-api', 'lifeline-payments', 'receipt']);
+    'payable', 'payment', 'card-payment', 'status', 'money', 'lifeline-shopper', 'lifeline-storefront', 'lifeline-api', 'lifeline-payments', 'receipt',
+    'shop-api', 'order-worker', 'shop-api-jar', 'app-server', 'jvm', 'api-jar-manifests-api']);
   const ids = [...M.nodes, ...M.edges, ...M.views.flatMap(v => [...(v.edges || []).filter(e => typeof e === 'object'), ...(v.fragments || [])])].map(x => x.id);
   assert.equal(new Set(ids).size, ids.length, 'every element id once');
   assert.equal(new Set(M.views.map(v => v.id)).size, M.views.length, 'every view id once');
@@ -44,10 +49,15 @@ test('the atlas validates with no core error; the UML rules find only what two f
   const said = validate(M);
   assert.deepEqual(said.filter(p => p.level === 'error' && !p.rule), []);
   // the class type's rules run on the whole model: a generalization between two actors or two use cases is not one
-  // between classifiers to them (the decision in docs/module-api.md's 0.21.0 section)
+  // between classifiers to them (the decision in docs/module-api.md's 0.21.0 section); nor is an interface realization from
+  // a component or a port (realization-target, the class type's rule; the component type's provided-ends allows both, 0.22.0)
   assert.deepEqual(said.map(p => [p.level, p.rule, p.ids]), [
     ['error', 'generalization-kinds', ['member-is-shopper', 'member', 'shopper']],
-    ['error', 'generalization-kinds', ['card-is-pay', 'pay-by-card', 'pay']]]);
+    ['error', 'generalization-kinds', ['card-is-pay', 'pay-by-card', 'pay']],
+    ['error', 'realization-target', ['api-provides-orders', 'shop-api.orders', 'i-orders']],
+    ['error', 'realization-target', ['accounts-provides-sign-in', 'accounts-component', 'i-sign-in']],
+    // as in examples/order-service-structure.json alone: two parts typed by classes the model does not hold
+    ['warning', 'part-type', ['order-service.orders', 'order-service']], ['warning', 'part-type', ['order-service.listeners', 'order-service']]]);
 });
 
 test('every view lays out; check() finds only the crossings its own file keeps', () => {
@@ -79,10 +89,12 @@ test('every drill-down opens a view of the atlas: the links file\'s, the files\'
   const next = new Map(M.views.map(v => [v.id, new Set([...opens.filter(x => x[0] === v.id).map(x => x[2]), ...M.views.filter(w => w.parent === v.id).map(w => w.id)])]));
   const reach = from => { const seen = new Set([from]); for (const v of seen) next.get(v).forEach(w => seen.add(w)); return seen; };
   assert.deepEqual([...reach(M.root)].sort(), M.views.map(v => v.id).sort());
-  // the journeys the gallery names: map → classes → an order's state machine; use cases → activity → sequence
+  // the journeys the gallery names: map → classes → an order's state machine; use cases → activity → sequence; map's hosts
+  // → deployment → components → the order service's structure (0.22.0)
   const step = (a, b) => assert.ok(next.get(a).has(b), `${a} opens ${b}`);
   step('overview', 'domain'); step('domain', 'order-life');
   step('overview', 'shopping'); step('shopping', 'take-payment'); step('take-payment', 'checkout-sequence');
+  step('overview', 'production'); step('production', 'components'); step('components', 'internals');
 });
 
 test('every view lays out in the atlas as in its own file: the same boxes, and lines through the same points', () => {
