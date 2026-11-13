@@ -1,7 +1,8 @@
 // Stereotypes applied across the model (work package 6.2, notes/stage-6.md §5): scope by ownership, names, the metaclass
 // table, required extensions, tags keyed by stereotype, the rules of §5.3 to §5.6, appliedOf, and the two slots of the core
 // it fills (TYPED.across, TYPED.fields). Imports src/ to reach the internals; lib/umlimator-all.js holds the same code. The
-// cases that run through validate() and the panel need 6.1's slots in the core: they are skipped until it merges.
+// case that runs through validate() needs 6.1's slot in the core: it is skipped until it merges. The panel's fields are
+// tested through their path and apply(), as the panel commits them; 6.1's tests/typed-edit.html renders the slot.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
@@ -9,7 +10,7 @@ import { TYPED, diagramOf } from '../src/core/registry.js';
 import { apply } from '../src/core/apply.js';
 import '../src/map/typed.js';
 import { validate } from '../src/map/validate.js';
-import { targets } from '../docs/diagrams/examples/check.mjs';
+import { targets, MOVED } from '../docs/diagrams/examples/check.mjs';
 import { STY_RULES, UML_META, UML_AS, metaOf, metaUp, stereoProblems, appliedOf, tagFields } from '../src/uml/stereotypes.js';
 
 const here = new URL('./', import.meta.url), read = url => JSON.parse(readFileSync(url));
@@ -112,6 +113,9 @@ test('scope (§5.2): by ownership at any depth; a member by its element, a line 
 test('metaclasses (§5.4): a stereotype on Classifier fits a component, a general\'s extension counts, the five registry types that are no metaclass map as stated, a sysml. element is not checked', () => {
   assert.ok(metaUp('Component').has('Classifier') && metaUp('DataStoreNode').has('ActivityNode') && metaUp('Port').has('Property') && metaUp('Profile').has('Package'));
   assert.ok(!metaUp('Interface').has('Class') && !metaUp('Dependency').has('Classifier'));
+  // generals OMG's UML.xmi (20161101) lists beyond the first
+  for (const [a, g] of [['Node', 'DeploymentTarget'], ['Device', 'DeploymentTarget'], ['Artifact', 'DeployedArtifact'], ['Operation', 'TemplateableElement'], ['Operation', 'ParameterableElement'],
+    ['InformationFlow', 'PackageableElement'], ['ObjectNode', 'TypedElement'], ['Class', 'ParameterableElement'], ['Pseudostate', 'RedefinableElement']]) assert.ok(metaUp(a).has(g), `${a} ${g}`);
   assert.equal(metaOf({ type: 'uml.CommentLink' }), null); assert.equal(metaOf({ type: 'uml.InternalTransition' }), 'Transition'); assert.equal(metaOf({ type: 'sysml.Block' }), undefined);
   const m = base(); m.nodes.push(N('sub', 'Stereotype', 'sub', 'conv'), N('blk', 'sysml.Block', 'Blk', 'sales'), N('weird', 'MetaclassReference', 'Gizmo', 'conv'), N('gz', 'Stereotype', 'gz', 'conv'));
   m.nodes.find(n => n.id === 'blk').type = 'sysml.Block';
@@ -203,8 +207,10 @@ test('no example, target or fixture without a uml.Profile gets a problem from th
   assert.ok(some > 40, `${some} models`);
 });
 
+// once 6.6 moves and revises it (check.mjs's MOVED), the revised one gets none
 test('the current 07-profile.json gets only the problems its present form earns: its flat tags (decision 21 keys them by stereotype) and the required tags it leaves unset', () => {
   const [[, url]] = targets().filter(([f]) => f === '07-profile.json'), m = read(url);
+  if (Object.hasOwn(MOVED, '07-profile.json')) return assert.deepEqual(stereoProblems(m), []);
   const at = id => { const i = m.nodes.findIndex(n => n.label === id); return `nodes[${i}]`; }, o = at('Order');
   assert.deepEqual(stereoProblems(m).map(p => [p.rule, p.path, p.message]), [
     ...['table', 'boundedContext', 'team'].map(k => ['tag-defined', `${o}.props.tags`, `tag-defined: "Order" keeps tags under "${k}", which is no stereotype it has`]),
@@ -225,6 +231,44 @@ test('the check reads the model and leaves it as it was; appliedOf answers from 
   assert.deepEqual(stereoProblems(null), []); assert.deepEqual(stereoProblems({ schemaVersion: 2, nodes: 'x', edges: {}, views: [null] }), []);
 });
 
+test('edge cases: the applying package and a profile\'s own definitions, two profiles in scope with one required name, redefinitions said once, values that are no text, keywords of Annex C', () => {
+  const msgs = m => stereoProblems(m).map(p => p.message);
+  // the package that applies a profile is in its scope; Annex C's flow, substitute, bind and two-word keywords are free
+  let m = base(); m.nodes.push(N('mc-package', 'MetaclassReference', 'Package', 'conv'), N('bc', 'Stereotype', 'boundedContext', 'conv'));
+  m.edges.push(E('bc-package', 'Extension', 'bc', 'mc-package'));
+  by(m, 'sales').props = { stereotypes: ['boundedContext'] }; by(m, 'billing').props.stereotypes.push('flow', 'substitute', 'bind', 'element import');
+  assert.deepEqual(msgs(m), []);
+  // a profile inside the package applying it: its required stereotype does not reach the profile's own definitions
+  m = base(); by(m, 'conv').parent = 'sales'; m.nodes.push(N('owned', 'Stereotype', 'owned', 'conv', { members: [P('owned.team', 'team', 'String', { default: 'core' })] }));
+  m.edges.push(E('owned-class', 'Extension', 'owned', 'mc-class', { props: { isRequired: true } }));
+  assert.deepEqual(msgs(m), []); assert.deepEqual(appliedOf(m, 'entity'), []); assert.deepEqual(appliedOf(m, 'order').map(e => e.key), ['entity', 'owned']);
+  // two profiles in scope, each with a required «owned»: keyed Profile::owned, each checked against its own tags
+  m = base(); m.nodes.push(N('q', 'Profile', 'Q'), N('q-class', 'MetaclassReference', 'Class', 'q'), N('owned', 'Stereotype', 'owned', 'conv', { members: [P('owned.team', 'team', 'String', { default: 'core' })] }),
+    N('q-owned', 'Stereotype', 'owned', 'q', { members: [P('q-owned.team', 'team', 'Integer', { default: '0' })] }));
+  m.edges.push(E('owned-class', 'Extension', 'owned', 'mc-class', { props: { isRequired: true } }), E('q-owned-class', 'Extension', 'q-owned', 'q-class', { props: { isRequired: true } }), E('sales-q', 'ProfileApplication', 'sales', 'q'));
+  by(m, 'order').props.tags['Q::owned'] = { team: 'x' };
+  assert.deepEqual(msgs(m), ['tag-value: «Q::owned» team = "x" on "Order" is not a whole number']);
+  assert.deepEqual(tagFields(m, by(m, 'order')).map(f => f.key), ['p:entity:table', 'p:Conv::owned:team', 'p:Q::owned:team']);
+  // two profiles of one label: Profile::name is the applied one's
+  m = base(); m.nodes.push(N('conv2', 'Profile', 'Conv'), N('extra', 'Stereotype', 'extra', 'conv2'), N('c2-class', 'MetaclassReference', 'Class', 'conv2'));
+  m.edges.push(E('extra-class', 'Extension', 'extra', 'c2-class'), E('sales-conv2', 'ProfileApplication', 'sales', 'conv2')); by(m, 'order').props.stereotypes.push('Conv::extra');
+  assert.deepEqual(msgs(m), []);
+  // a chain a -> b -> c -> d, b redefining t: said once; c of two unrelated generals with t of two types: said on c
+  m = base(); m.nodes.push(N('sa', 'Stereotype', 'sa', 'conv', { members: [P('sa.t', 't', 'String')] }), N('sb', 'Stereotype', 'sb', 'conv', { members: [P('sb.t', 't', 'Integer')] }),
+    N('sc', 'Stereotype', 'sc', 'conv'), N('sd', 'Stereotype', 'sd', 'conv'), N('sx', 'Stereotype', 'sx', 'conv', { members: [P('sx.t', 't', 'Boolean')] }), N('sy', 'Stereotype', 'sy', 'conv'));
+  m.edges.push(E('g1', 'Generalization', 'sb', 'sa'), E('g2', 'Generalization', 'sc', 'sb'), E('g3', 'Generalization', 'sd', 'sc'), E('g4', 'Generalization', 'sy', 'sa'), E('g5', 'Generalization', 'sy', 'sx'));
+  assert.deepEqual(msgs(m), ['tag-defined: «sb» redefines tag "t" of «sa» as Integer, not String', 'tag-defined: «sy» inherits tag "t" from «sa» as String and from «sx» as Boolean: redefine it']);
+  // a tag named after an Object.prototype member reads only what is stored; a list or a map is no value
+  m = base(); by(m, 'entity').members.push(P('entity.ts', 'toString', 'String'));
+  assert.deepEqual(msgs(m), ['tag-required: «entity» toString on "Order" has no value and no default']);
+  assert.equal(appliedOf(m, 'order')[0].tags.find(t => t.name === 'toString').value, undefined);
+  m = base(); by(m, 'billing').props.tags.tracked.size = [1]; by(m, 'order').props.tags.entity.table = { x: 1 };
+  assert.deepEqual(msgs(m), ['tag-value: «entity» table = {"x":1} on "Order" is not text', 'tag-value: «tracked» size = [1] on "Billing" is not a whole number']);
+  // a stereotype applied twice: its tags under the second name are pointed to the first
+  m = base(); by(m, 'order').props.stereotypes.push('Conv::entity'); by(m, 'order').props.tags['Conv::entity'] = { table: 'x' };
+  assert.deepEqual(msgs(m), ['tag-defined: "Order" keeps tags under "Conv::entity", which is no stereotype it has: it names «entity» again, whose tags are under "entity"']);
+});
+
 // 6.1's slots in the core: these run once validate() calls TYPED.across and the panel TYPED.fields (notes/stage-6.md §2.3)
 const wired = readFileSync(new URL('../src/map/validate.js', here), 'utf8').includes('TYPED.across');
 test('end to end, once 6.1 merges: validate() says each problem of the check once, on a model with no profile view; a model with no profile validates as before', { skip: !wired && 'waits for 6.1 (TYPED.across in validate())' }, () => {
@@ -235,14 +279,15 @@ test('end to end, once 6.1 merges: validate() says each problem of the check onc
   assert.ok(!validate(plain).some(p => Object.hasOwn(STY_RULES, p.rule)));
 });
 
-/* §12: 2,000 elements under 3 applied profiles. n packages, each applying one of three profiles and holding classes that
-   apply a stereotype with a tag, a member with one, and a line between two of them */
+/* §12: 2,000 elements under 3 applied profiles. Chains of seven packages, the first applying one of three profiles, each
+   holding classes that apply a stereotype with a tag, a member with one, and a line between two of them */
 function big(n) {
   const nodes = [], edges = [];
   for (let k = 0; k < 3; k++) { nodes.push(N(`p${k}`, 'Profile', `P${k}`), N(`p${k}.mc`, 'MetaclassReference', 'Classifier', `p${k}`), N(`p${k}.mp`, 'MetaclassReference', 'Property', `p${k}`));
-    for (let s = 0; s < 10; s++) { nodes.push(N(`p${k}.s${s}`, 'Stereotype', `s${s}`, `p${k}`, { members: [P(`p${k}.s${s}.t`, 't', 'Integer', { default: '0' })] })); edges.push(E(`p${k}.e${s}`, 'Extension', `p${k}.s${s}`, s % 2 ? `p${k}.mp` : `p${k}.mc`)); }
+    // s0 required on Classifier, met by s8 through eight generals; each sN redefines t
+    for (let s = 0; s < 10; s++) { nodes.push(N(`p${k}.s${s}`, 'Stereotype', `s${s}`, `p${k}`, { members: [P(`p${k}.s${s}.t`, 't', 'Integer', { default: '0' })] })); edges.push(E(`p${k}.e${s}`, 'Extension', `p${k}.s${s}`, s % 2 ? `p${k}.mp` : `p${k}.mc`, s ? {} : { props: { isRequired: true } })); }
     for (let s = 1; s < 10; s++) edges.push(E(`p${k}.g${s}`, 'Generalization', `p${k}.s${s}`, `p${k}.s${s - 1}`)); }
-  for (let i = 0; nodes.length < n; i++) { const pk = `k${i}`; nodes.push(N(pk, 'Package', pk, i % 7 ? `k${i - (i % 7)}` : null)); if (i % 7 === 0) edges.push(E(`a${i}`, 'ProfileApplication', pk, `p${(i / 7) % 3}`));
+  for (let i = 0; nodes.length < n; i++) { const pk = `k${i}`; nodes.push(N(pk, 'Package', pk, i % 7 ? `k${i - 1}` : null)); if (i % 7 === 0) edges.push(E(`a${i}`, 'ProfileApplication', pk, `p${(i / 7) % 3}`)); // seven deep under each applying one
     for (let j = 0; j < 6; j++) { const id = `c${i}_${j}`; nodes.push(N(id, 'Class', 'C' + j, pk, { props: { stereotypes: ['s8', 'utility'], tags: { s8: { t: String(j) } } },
       members: [N(id + '.a', 'Property', 'a', null, { props: { stereotypes: ['s9'], tags: { s9: { t: '1' } } } })] }));
       if (j) edges.push(E(`d${i}_${j}`, 'Dependency', id, `c${i}_${j - 1}`, { props: { stereotypes: ['use'] } })); } }

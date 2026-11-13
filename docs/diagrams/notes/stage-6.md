@@ -453,16 +453,38 @@ Where `src/uml/stereotypes.js` departs from or settles what §5 left open:
 - **The metaclass table** keeps UML 2.5.1's abstract metaclasses between a row and `Element` (`Namespace`, `Type`,
   `RedefinableElement`, `TypedElement`, `PackageableElement`, `ConnectableElement`, `StructuralFeature`, …), where §5.4's
   last row put `Classifier`, `Package` and the rest straight under `Element`: what fits is the same for every row §5.4
-  names, and a stereotype on `NamedElement` or `Namespace` fits what UML says it does. `tests/stereotypes.test.mjs` holds
-  that every general is a row.
+  names, and a stereotype on `NamedElement` or `Namespace` fits what UML says it does. Each row's generals are all those
+  OMG's `UML.xmi` (20161101) lists, not only the first: `Node` is also a `DeploymentTarget`, `Artifact` a
+  `DeployedArtifact`, `Operation` a `TemplateableElement` and `ParameterableElement`, `InformationFlow` a
+  `PackageableElement`, `ObjectNode` a `TypedElement`, `PackageableElement` a `ParameterableElement`, `Vertex` a
+  `RedefinableElement`. `tests/stereotypes.test.mjs` holds that every general is a row.
 - **A stereotype applied outside its profile's scope** (`stereotype-applied`, qualified or not) is not one the element
   has: no tags, no required extension met by it; tags stored under it are `tag-defined`.
-- **The keywords** (§5.3, 3) add `actor` and `datastore`, the stored spellings of two types' own keywords, to Annex C's.
+- **The keywords** (§5.3, 3) are UML 2.5.1's Table 22.1 and Table C.1 in full (`actor` and `datastore` among them; three
+  are two words, `deployment spec`, `element access`, `element import`), with earlier UML's `after`, `all`, `at`,
+  `dataStore`, `deploymentSpec`, `else`, `from` and `when`, which models still store.
+- **The package that applies a profile is in its scope** (§5.2 says "everything the package owns"): `sales` may store
+  «boundedContext» on itself, as UML tools allow (Eclipse UML2's nearest package of a package is itself). A required
+  stereotype on `Package` reaches it too. *For the maintainer to confirm.*
+- **A profile's own definitions** (the profile and what it owns, at any depth) are not reached by a required extension,
+  so a profile inside the package that applies it does not get its own required «owned» on its stereotypes.
+- **Two profiles in scope with a required stereotype of one name**: each is keyed `Profile::name` in `props.tags` and the
+  fields, as §5.3 would write a stored one, so neither hides the other.
+- **`Profile::name` with two profiles of that label**: the one applied in the element's scope that defines the name, else
+  the first that does. Two profiles of one label, like two stereotypes whose names meet (`Entity`, `entity`), are 6.3's
+  definition rules to refuse; `styKey` is exported so `stereotype-names` compares names as §5.3 meets them.
+- **`tag-defined` on the profile** is said once, by the stereotype that redefines (not by each specialization below it),
+  and also when a stereotype inherits one tag name with two types from two unrelated generals ("redefine it").
+- **A stereotype applied twice** (`entity` and `Conv::entity`) is one application; tags stored under the second name are
+  `tag-defined`, pointing to the first name.
+- **A tag's value** is text (a number or a boolean read as its text); a list or a map fits no type (`tag-value`, "is not
+  text" for a String).
 - **`appliedOf`** entries carry `key` too, the name `props.tags` keys them by (as written in `stereotypes`, or a required
   one's label); `stereotype` and `profile` are the elements. `required` is true for a required stereotype whether supplied
   or stored.
 - **The rules' table** is exported as `STY_RULES`, for the profile type's `rules` (6.3), so the problems list and
-  `rules()` name them.
+  `rules()` name them. The table (`UML_META`, `UML_AS`, `metaOf`, `metaUp`, `metaKnown`) is exported for 6.3's
+  `metaclass-known` and its pick of the closest names, and `styKey` for `stereotype-names`.
 
 ## 6. The time ruler (S10 to S14)
 

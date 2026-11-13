@@ -15,21 +15,25 @@ const STY_OBJ = x => x !== null && typeof x === 'object' && !Array.isArray(x), S
 const styKey = s => s.charAt(0).toLowerCase() + s.slice(1); // names meet with the first letter in either case (§5.3): Entity is «entity»
 const styName = x => String(x.label ?? x.id), styQ = x => JSON.stringify(styName(x));
 
-/* UML 2.5.1's metaclasses (§5.4), each with its generals, nearest first: a row "A B: C D" says A and B specialize C, then D.
+/* UML 2.5.1's metaclasses (§5.4), each with its generals as OMG's UML.xmi (20161101) lists them: a row "A B: C D" says A and B specialize C, then D.
    A row for every uml.* type a registered type uses (tests/stereotypes.test.mjs holds it), and the abstract ones between */
 const UML_META = {};
 `Element:
 NamedElement MultiplicityElement TemplateableElement ParameterableElement Comment Slot Relationship: Element
-Namespace RedefinableElement TypedElement PackageableElement DeploymentTarget DeployedArtifact Vertex ActivityGroup InteractionFragment Lifeline Message CollaborationUse: NamedElement
+Namespace RedefinableElement TypedElement DeploymentTarget DeployedArtifact ActivityGroup InteractionFragment Lifeline Message CollaborationUse: NamedElement
+PackageableElement: NamedElement ParameterableElement
+Vertex: NamedElement RedefinableElement
 Type Constraint: PackageableElement
 IntervalConstraint: Constraint
 DurationConstraint TimeConstraint: IntervalConstraint
 ConnectableElement: TypedElement ParameterableElement
 Classifier: Namespace Type RedefinableElement TemplateableElement
-StructuredClassifier BehavioredClassifier Interface DataType Artifact InformationItem Signal: Classifier
+StructuredClassifier BehavioredClassifier Interface DataType InformationItem Signal: Classifier
+Artifact: Classifier DeployedArtifact
 EncapsulatedClassifier: StructuredClassifier
 Class: EncapsulatedClassifier BehavioredClassifier
-Component Node Stereotype Behavior: Class
+Component Stereotype Behavior: Class
+Node: Class DeploymentTarget
 Activity StateMachine: Behavior
 Interaction: Behavior InteractionFragment
 Device ExecutionEnvironment: Node
@@ -46,7 +50,7 @@ StructuralFeature: TypedElement MultiplicityElement Feature
 Property: StructuralFeature ConnectableElement DeploymentTarget
 Port: Property
 BehavioralFeature: Feature Namespace
-Operation: BehavioralFeature
+Operation: BehavioralFeature TemplateableElement ParameterableElement
 Connector: Feature
 InstanceSpecification: PackageableElement DeploymentTarget DeployedArtifact
 EnumerationLiteral: InstanceSpecification
@@ -55,11 +59,13 @@ Dependency: DirectedRelationship PackageableElement
 Usage Abstraction Deployment: Dependency
 Realization Manifestation: Abstraction
 InterfaceRealization ComponentRealization: Realization
-Generalization PackageImport PackageMerge ProfileApplication InformationFlow ElementImport: DirectedRelationship
+Generalization PackageImport PackageMerge ProfileApplication ElementImport: DirectedRelationship
+InformationFlow: DirectedRelationship PackageableElement
 Include Extend: DirectedRelationship NamedElement
 MetaclassReference: ElementImport
 ActivityNode ActivityEdge Region Transition ExtensionPoint: RedefinableElement
-ExecutableNode ControlNode ObjectNode: ActivityNode
+ExecutableNode ControlNode: ActivityNode
+ObjectNode: ActivityNode TypedElement
 Action: ExecutableNode
 InvocationAction AcceptEventAction: Action
 CallAction SendSignalAction: InvocationAction
@@ -70,7 +76,7 @@ CentralBufferNode: ObjectNode
 DataStoreNode: CentralBufferNode
 ControlFlow ObjectFlow: ActivityEdge
 ActivityPartition: ActivityGroup
-State: Namespace Vertex RedefinableElement
+State: Namespace Vertex
 Pseudostate: Vertex
 FinalState: State
 CombinedFragment InteractionUse: InteractionFragment
@@ -88,13 +94,15 @@ function metaUp(name) {
 }
 const metaKnown = name => Object.hasOwn(UML_META, name);
 
-// UML's standard profile (clause 22) and UML's keywords (Annex C): free keywords inside an applied profile (§5.3, 3)
+// UML 2.5.1's standard profile (Table 22.1) and keywords (Table C.1, three of them two words), and earlier UML's that
+// models still store (after, all, at, dataStore, deploymentSpec, else, from, when): free keywords inside an applied profile (§5.3, 3)
 const STY_FREE = new Set(('auxiliary buildComponent call create derive destroy document entity executable file focus framework implement implementationClass instantiate library metaclass '
-  + 'modelLibrary process realization refine responsibility script send service source specification subsystem systemModel trace type utility '
-  + 'access activity actor after all apply artifact at centralBuffer component dataStore datastore dataType decisionInput deploy deploymentSpec device else enumeration '
-  + 'executionEnvironment extend external from import include information interface iterative localPostcondition localPrecondition manifest merge metamodel model '
-  + 'multicast multireceive occurrence parallel postcondition precondition primitive profile representation selection signal statemachine stereotype stream structured '
-  + 'transformation use when').split(' ').map(styKey));
+  + 'metamodel modelLibrary process realization refine responsibility script send service source specification subsystem systemModel trace type utility '
+  + 'abstraction access activity actor apply artifact centralBuffer bind collaboration component datastore dataType decisionInput decisionInputFlow deploy device '
+  + 'enumeration executionEnvironment extend extended external final flow import include information interface iterative localPostcondition localPrecondition '
+  + 'manifest merge model multicast multireceive occurrence parallel postcondition protocol precondition primitive profile reference representation selection signal '
+  + 'singleExecution statemachine stream stereotype strict structured substitute transformation use '
+  + 'after all at dataStore deploymentSpec else from when').split(' ').concat('deployment spec', 'element access', 'element import').map(styKey));
 
 const STY_RULES = {
   'stereotype-unknown': 'a stereotype applied inside an applied profile\'s scope is one of its stereotypes, a standard one or a UML keyword',
@@ -126,7 +134,7 @@ function styIndex(model) {
   const isT = (id, t) => (at.get(id) || {}).type === t, profiles = [...at.values()].filter(x => x.type === 'uml.Profile');
   const I = { at, rec, els, profiles, byProfile: new Map(), byName: new Map(), byLabel: new Map(), enums: new Map(), applied: new Map(), gens: new Map(), ext: new Map(), req: new Map(), memo: new Map(), cache: new Map(), defsOf: new Map(), upOf: new Map(), probs: [] };
   if (!profiles.length) return I;
-  profiles.forEach(p => { I.byProfile.set(p.id, new Map()); I.enums.set(p.id, new Map()); if (!I.byLabel.has(styName(p))) I.byLabel.set(styName(p), p); });
+  profiles.forEach(p => { I.byProfile.set(p.id, new Map()); I.enums.set(p.id, new Map()); if (!I.byLabel.has(styName(p))) I.byLabel.set(styName(p), []); I.byLabel.get(styName(p)).push(p); });
   [...at.values()].forEach(x => { if (!I.byProfile.has(x.parent) || up.get(x.id) !== x.parent) return; const k = styKey(styName(x));
     if (x.type === 'uml.Stereotype' && !I.byProfile.get(x.parent).has(k)) { I.byProfile.get(x.parent).set(k, x); if (!I.byName.has(k)) I.byName.set(k, []); I.byName.get(k).push(at.get(x.parent)); }
     if (x.type === 'uml.Enumeration') I.enums.get(x.parent).set(styName(x), STY_ARR(x.members).filter(m => STY_OBJ(m) && m.type === 'uml.EnumerationLiteral').map(styName)); });
@@ -139,6 +147,8 @@ function styIndex(model) {
   // the profiles applied to an owner and its owners: memoised per owner, so no element walks its chain on its own
   I.scope = id => { if (id == null || !at.has(id)) return []; if (I.memo.has(id)) return I.memo.get(id); I.memo.set(id, []); // a cycle (the core's error) ends here
     const above = I.scope(up.get(id)), mine = (I.applied.get(id) || []).filter(p => !above.includes(p)), s = mine.length ? [...above, ...mine] : above; I.memo.set(id, s); return s; };
+  // an owner inside a profile, or the profile: its own definitions, which its required stereotypes do not reach (§5.5)
+  const inP = new Map(); I.inProf = id => { if (id == null || !at.has(id)) return false; if (!inP.has(id)) { inP.set(id, false); inP.set(id, at.get(id).type === 'uml.Profile' || I.inProf(up.get(id))); } return inP.get(id); };
   return I;
 }
 const styOf = model => { if (!STY_SEEN.has(model)) STY_SEEN.set(model, styIndex(model)); return STY_SEEN.get(model); };
@@ -150,13 +160,18 @@ function styGenerals(I, st) {
   for (let i = 0, q = [st.id]; i < q.length; i++) STY_ARR(I.gens.get(q[i])).forEach(g => { if (!seen.has(g)) { seen.add(g); q.push(g); out.push(I.at.get(g)); } });
   I.upOf.set(st.id, out); return out;
 }
-// its tag definitions, its generals' first, a specialization's redefining a general's of one name (§5.6): name -> { def, st }
+/* its tag definitions, its generals' first, a specialization's redefining a general's of one name (§5.6): name -> { def, st }.
+   Each stereotype says only its own: a redefinition of another type, or two unrelated generals' tags of one name and two types */
 function styDefs(I, st) {
   if (I.defsOf.has(st.id)) return I.defsOf.get(st.id);
-  const out = new Map(); I.defsOf.set(st.id, out);
-  [...styGenerals(I, st)].reverse().concat(st).forEach(s => STY_ARR(s.members).forEach(d => { if (!STY_OBJ(d) || d.type !== 'uml.Property') return; const was = out.get(styName(d)), t = x => STY_OBJ(x.props) ? x.props.valueType ?? 'String' : 'String';
-    if (was && was.st !== s && t(was.def) !== t(d)) I.probs.push(stySay('tag-defined', 'warning', styPath(I, d), [d.id, was.def.id], `«${styName(s)}» redefines tag "${styName(d)}" of «${styName(was.st)}» as ${t(d)}, not ${t(was.def)}`));
-    out.set(styName(d), { def: d, st: s }); }));
+  const out = new Map(), clash = new Map(), t = x => STY_OBJ(x.props) ? x.props.valueType ?? 'String' : 'String'; I.defsOf.set(st.id, out); // a cycle (6.3's error) ends here
+  STY_ARR(I.gens.get(st.id)).forEach(g => styDefs(I, I.at.get(g)).forEach((e, n) => { const was = out.get(n);
+    if (!was || styGenerals(I, e.st).includes(was.st)) return out.set(n, e); // e redefines it
+    if (was.def !== e.def && !styGenerals(I, was.st).includes(e.st) && t(was.def) !== t(e.def)) clash.set(n, [was, e]); }));
+  STY_ARR(st.members).forEach(d => { if (!STY_OBJ(d) || d.type !== 'uml.Property') return; const n = styName(d), was = out.get(n); clash.delete(n);
+    if (was && t(was.def) !== t(d)) I.probs.push(stySay('tag-defined', 'warning', styPath(I, d), [d.id, was.def.id], `«${styName(st)}» redefines tag "${n}" of «${styName(was.st)}» as ${t(d)}, not ${t(was.def)}`));
+    out.set(n, { def: d, st }); });
+  clash.forEach(([a, b], n) => I.probs.push(stySay('tag-defined', 'warning', styPath(I, st), [st.id, a.def.id, b.def.id], `«${styName(st)}» inherits tag "${n}" from «${styName(a.st)}» as ${t(a.def)} and from «${styName(b.st)}» as ${t(b.def)}: redefine it`)));
   return out;
 }
 const styFits = (I, st, meta) => [st, ...styGenerals(I, st)].some(s => STY_ARR(I.ext.get(s.id)).some(m => metaUp(meta).has(m)));
@@ -165,23 +180,24 @@ const styPath = (I, x) => I.rec.get(x.id).path;
 
 // a tag's value against its type (§5.6): Boolean, Integer, Real, UnlimitedNatural, an enumeration of the profile, else any text
 function styTagFits(I, def, prof, v) {
-  const t = STY_OBJ(def.props) ? def.props.valueType : null, s = String(v);
-  if (t === 'Boolean') return s === 'true' || s === 'false' || 'true or false';
-  if (t === 'Integer') return /^-?\d+$/.test(s) || 'a whole number';
-  if (t === 'Real') return /^-?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?$/.test(s) || 'a number';
-  if (t === 'UnlimitedNatural') return /^(\d+|\*)$/.test(s) || 'a whole number or *';
+  const t = STY_OBJ(def.props) ? def.props.valueType : null, s = typeof v === 'object' ? null : String(v), re = (x, say) => (s !== null && x.test(s)) || say; // a list or a map is no value
+  if (t === 'Boolean') return re(/^(true|false)$/, 'true or false');
+  if (t === 'Integer') return re(/^-?\d+$/, 'a whole number');
+  if (t === 'Real') return re(/^-?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?$/, 'a number');
+  if (t === 'UnlimitedNatural') return re(/^(\d+|\*)$/, 'a whole number or *');
   const lits = prof && I.enums.get(prof.id).get(t);
-  return !lits || lits.includes(s) || `one of ${lits.join(', ')}`;
+  return lits ? (s !== null && lits.includes(s)) || `one of ${lits.join(', ')}` : s !== null || 'text';
 }
 
 /* One element's stereotypes, resolved by §5.3, with the required ones its scope supplies (§5.5) and their tags (§5.6):
    [{ stereotype, profile, key, required, tags: [{ name, def, value }] }], key the name props.tags keys it by. say: problems */
 function styResolve(I, r, say) {
-  const { x, path } = r, P = STY_OBJ(x.props) ? x.props : {}, scope = I.scope(r.own), meta = metaOf(x);
-  const names = p => p.map(styName).join(' and '), owner = I.at.get(r.own), out = [];
+  const { x, path } = r, P = STY_OBJ(x.props) ? x.props : {}, scope = I.scope(I.applied.has(x.id) && I.rec.get(x.id) === r ? x.id : r.own), meta = metaOf(x); // a package applying a profile is in its scope
+  const names = p => p.map(styName).join(' and '), owner = I.at.get(r.own), out = [], again = new Map();
   STY_ARR(P.stereotypes).forEach((s, k) => { if (typeof s !== 'string' || !s) return; const at = `${path}.props.stereotypes[${k}]`, q = s.indexOf('::');
     let hit = null;
-    if (q > 0) { const p = I.byLabel.get(s.slice(0, q)), st = p && I.byProfile.get(p.id).get(styKey(s.slice(q + 2)));
+    if (q > 0) { const ps = I.byLabel.get(s.slice(0, q)) || [], k2 = styKey(s.slice(q + 2)), has = p => I.byProfile.get(p.id).has(k2); // two of one label: the one applied here
+      const p = ps.find(p => has(p) && scope.includes(p.id)) || ps.find(has) || ps[0], st = p && I.byProfile.get(p.id).get(k2);
       if (!st) return say(stySay('stereotype-unknown', 'warning', at, [x.id], `«${s}» on ${styQ(x)}: ${p ? `profile ${styName(p)} defines no stereotype ${s.slice(q + 2)}` : `no profile is named ${s.slice(0, q)}`}`));
       hit = { st, p }; }
     else { const k2 = styKey(s), here = scope.map(id => I.at.get(id)).filter(p => I.byProfile.get(p.id).has(k2));
@@ -191,30 +207,31 @@ function styResolve(I, r, say) {
       else if (scope.length) return say(stySay('stereotype-unknown', 'warning', at, [x.id], `«${s}» on ${styQ(x)} is no stereotype of ${names(scope.map(id => I.at.get(id)))}, applied here, and no standard one`));
       else if (I.byName.has(k2)) { const ps = I.byName.get(k2); return say(stySay('stereotype-applied', 'warning', at, [x.id, ...ps.map(p => p.id)], `«${s}» is a stereotype of ${names(ps)}, which is not applied to ${owner ? `${styName(owner)} or its owners` : `any owner of ${styQ(x)}`}`)); }
       else return; }
-    if (out.some(e => e.stereotype === hit.st)) return;
+    const twice = out.find(e => e.stereotype === hit.st); if (twice) return void again.set(s, twice.key);
     if (!scope.includes(hit.p.id)) return say(stySay('stereotype-applied', 'warning', at, [x.id, hit.p.id], `«${s}» is a stereotype of ${styName(hit.p)}, which is not applied to ${owner ? `${styName(owner)} or its owners` : `any owner of ${styQ(x)}`}`));
     if (meta !== undefined && !(meta && styFits(I, hit.st, meta))) say(stySay('stereotype-extends', 'warning', at, [x.id, hit.st.id], `«${s}» on ${styQ(x)} extends ${[...new Set([hit.st, ...styGenerals(I, hit.st)].flatMap(t => STY_ARR(I.ext.get(t.id))))].join(', ') || 'no metaclass'}, which a ${meta || String(x.type).slice(4)} is not`));
     if (STY_OBJ(hit.st.props) && hit.st.props.isAbstract === true) say(stySay('stereotype-abstract', 'error', at, [x.id, hit.st.id], `«${s}» on ${styQ(x)} is abstract: apply one of its specializations`));
     out.push({ stereotype: hit.st, profile: hit.p, key: s, required: false }); });
   // required extensions of the profiles in scope, on an element of their metaclass: met by the stereotype or a specialization the
   // element applies; else supplied by the tool, or warned when abstract (decision 22)
-  if (meta) scope.forEach(pid => STY_ARR(I.req.get(pid)).forEach(({ st, meta: m }) => { if (!metaUp(meta).has(m)) return;
+  if (meta && !(x.type === 'uml.Profile' || I.inProf(r.own))) scope.forEach(pid => STY_ARR(I.req.get(pid)).forEach(({ st, meta: m }) => { if (!metaUp(meta).has(m)) return;
     const met = out.filter(e => e.stereotype === st || styGenerals(I, e.stereotype).includes(st)); if (met.length) return met.forEach(e => { e.required = true; });
     if (STY_OBJ(st.props) && st.props.isAbstract === true) return say(stySay('stereotype-required', 'warning', path, [x.id, st.id], `${styQ(x)} applies no specialization of «${styName(st)}», abstract and required on ${m} by ${styName(I.at.get(pid))}`));
-    if (!out.some(e => e.stereotype === st)) out.push({ stereotype: st, profile: I.at.get(pid), key: styName(st), required: true }); }));
+    if (!out.some(e => e.stereotype === st)) { const two = scope.filter(id => I.byProfile.get(id).has(styKey(styName(st)))).length > 1; // the key as §5.3 would write it
+      out.push({ stereotype: st, profile: I.at.get(pid), key: two ? `${styName(I.at.get(pid))}::${styName(st)}` : styName(st), required: true }); } }));
   // tags, keyed by stereotype then tag
   const T = P.tags, tp = `${path}.props.tags`;
   if (T != null && !STY_OBJ(T)) say(stySay('tag-defined', 'warning', tp, [x.id], `the tags of ${styQ(x)} are a map from each stereotype to its tags`));
   else if (T) Object.keys(T).forEach(k => { const e = out.find(o => o.key === k), inner = T[k];
-    if (!e) return say(stySay('tag-defined', 'warning', tp, [x.id], `${styQ(x)} keeps tags under "${k}", which is no stereotype it has`));
+    if (!e) return say(stySay('tag-defined', 'warning', tp, [x.id], `${styQ(x)} keeps tags under "${k}", which is no stereotype it has${again.has(k) ? `: it names «${again.get(k)}» again, whose tags are under "${again.get(k)}"` : ''}`));
     if (!STY_OBJ(inner)) return say(stySay('tag-defined', 'warning', tp, [x.id], `the tags of ${styQ(x)} under «${k}» are a map from each tag to its value`));
     const D = styDefs(I, e.stereotype);
     Object.keys(inner).forEach(n => { const d = D.get(n), v = inner[n];
       if (!d) return say(stySay('tag-defined', 'warning', tp, [x.id, e.stereotype.id], `«${k}» on ${styQ(x)} has no tag "${n}"`));
       const ok = v == null || styTagFits(I, d.def, I.at.get(d.st.parent), v);
-      if (ok !== true) say(stySay('tag-value', 'warning', tp, [x.id, d.def.id], `«${k}» ${n} = ${JSON.stringify(String(v))} on ${styQ(x)} is not ${ok}`)); }); });
-  out.forEach(e => { const inner = STY_OBJ(T) && STY_OBJ(T[e.key]) ? T[e.key] : {};
-    e.tags = [...styDefs(I, e.stereotype)].map(([name, { def }]) => ({ name, def, value: inner[name] ?? undefined }));
+      if (ok !== true) say(stySay('tag-value', 'warning', tp, [x.id, d.def.id], `«${k}» ${n} = ${JSON.stringify(v)} on ${styQ(x)} is not ${ok}`)); }); });
+  out.forEach(e => { const inner = STY_OBJ(T) && Object.hasOwn(T, e.key) && STY_OBJ(T[e.key]) ? T[e.key] : {};
+    e.tags = [...styDefs(I, e.stereotype)].map(([name, { def }]) => ({ name, def, value: Object.hasOwn(inner, name) ? inner[name] : undefined }));
     e.tags.forEach(({ name, def, value }) => { const dp = STY_OBJ(def.props) ? def.props : {};
       if ((value == null || value === '') && dp.default == null && (multBounds(dp.multiplicity ?? '1') || { lower: 1 }).lower >= 1) say(stySay('tag-required', 'warning', tp, [x.id, def.id], `«${e.key}» ${name} on ${styQ(x)} has no value and no default`)); }); });
   return out;
@@ -250,4 +267,4 @@ function tagFields(model, x) {
 TYPED.across = stereoProblems;
 TYPED.fields = tagFields;
 
-export { STY_RULES, UML_META, UML_AS, metaOf, metaUp, metaKnown, stereoProblems, appliedOf, tagFields };
+export { styKey, STY_RULES, UML_META, UML_AS, metaOf, metaUp, metaKnown, stereoProblems, appliedOf, tagFields };
