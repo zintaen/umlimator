@@ -82,11 +82,11 @@ PNG was looked at, the SVG read, the PDF's text read back (`tests/cli.py` reads 
 | Profile and package boxes, «stereotype» and «metaclass» classifiers, tag definitions | Yes | Yes | Yes, in vectors |
 | Tag compartments | Yes; a long member row cut with an ellipsis | Yes, cut alike | Yes, cut alike in the picture; whole in the tables |
 | Extensions (filled triangle, `{required}`), «apply», generalizations | Yes | Yes | Yes |
-| The legend of line kinds | No: the legend is a piece of the page | No | Yes, under the picture; its last explanation ("the package may use the profile") cut at the legend's width |
+| The legend of line kinds | No: the legend is a piece of the page | No | Yes, under the picture; its two longest explanations (the extension's "… the metaclass it points to" and the profile application's "… the package may use the profile's stereotypes") cut at the legend's width |
 | Text | Text, in the page's font family; not embedded unless `fontCSS` is given | Pixels | Selectable text |
 | Accessible names | Each node's `aria-label` kept ("Stereotype owned, extends Class {required}, team: String [0..1]"); the lines' `<title>` removed | None | None |
 | Theme | The page's | The page's | `--theme`, light by default |
-| Tables | None | None | "Elements": a profile's stereotypes and metaclasses and where it is applied; a metaclass's extensions; a stereotype's extension, generals and tags; an element's stereotypes with their tags (a required one marked), each member's. "Lines": every line, from → to, its label and kind |
+| Tables | None | None | "Elements": a profile's stereotypes and metaclasses and where it is applied; a metaclass's extensions; a stereotype's extension, generals and tags; an element's stereotypes with their tags (a required one marked), each member's. "Lines": every line, from → to, its label and kind (empty for an extension and an application: their `{required}` and «apply» are drawn from the line, not stored as a label) |
 
 ## Accessibility
 

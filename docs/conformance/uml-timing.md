@@ -46,9 +46,10 @@ element and `firstEvent`; time and duration observations; general orderings; gat
 decomposed lifelines; ruler breaks; a stored scale; an `sd` frame; comments and comment links on the view (decision 24,
 the maintainer's of 13 Nov 2026). And copy and paste, per-type `diff()` writers and a reader.
 
-Layout limits, measured on `examples/bookshop-timing.json` and `tests/timing-stress.json`. The layout check
-(`check()`, the CLI's `check`) treats a lane as a holder, so its own rows, changes and labels inside it are not overlaps;
-the timing views are held to §11's own predicate in `tests/stage6-fixtures.test.mjs` instead:
+Layout limits, measured on `examples/bookshop-timing.json` and `tests/timing-stress.json`. The layout check (`check()`,
+the CLI's `check`) treats a lane as a holder, so its own rows, changes and labels inside it are not overlaps, and the
+browser's text checks leave lanes out altogether (no text, header or line label is checked against a lane, its own or
+another's); the timing views are held to §11's own predicate in `tests/stage6-fixtures.test.mjs` instead:
 
 - The example lays out clean: `check()` finds nothing, and the predicate holds (every step and row in its lane, every
   message's ends on its lanes' levels within 1 px, no label over a step, a row, a value or another label).

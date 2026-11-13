@@ -3767,12 +3767,13 @@ example draw as they did in 0.22.0 (`bench/expected.json`, `tests/core-diet.json
   package included: the nearest-package rule, the maintainer's decision of 13 Nov 2026), against a table of UML 2.5.1's
   metaclasses checked against OMG's `UML.xmi`; the standard profile and Annex C's keywords stay free keywords; required
   stereotypes are supplied by the tool; tags are keyed by stereotype (`props.tags.<stereotype>.<tag>`) and checked by
-  definition, type and multiplicity; one field per tag in the panel on every typed view. Ten rules, all warnings but
+  definition, type and multiplicity; one field per tag in the panel on every typed view. Nine rules, all warnings but
   `stereotype-abstract`.
 - **The time ruler (6.4, #239).** `layoutTimeRuler`, `src/layout/timeruler.js`: one linear time base for every lane,
   derived, 480 to 4,800 px of plot, ticks a 1, 2 or 5 step with minor ticks a fifth of it; constraints in strips under
   the lanes, on levels; message labels kept off steps, values and other labels or reported (`timing-label`); hostile
-  times reported, not drawn (`change-time`, `timing-dense`, `constraint-kind`).
+  times reported, not drawn (`change-time`, `constraint-kind`); changes too close at the 4,800 px cap drawn on one
+  unit, their values cut, and reported (`timing-dense`, a warning).
 - **Profile diagrams, `uml.profile` (6.3, #240).** Profiles as packages and boxes, stereotypes with their tag
   definitions, «metaclass» references, extensions with a filled triangle and `{required}`, «apply», generalizations
   between stereotypes; an element's tags in a compartment per stereotype; five rules of its own and the class type's
@@ -3789,7 +3790,9 @@ example draw as they did in 0.22.0 (`bench/expected.json`, `tests/core-diet.json
   `examples/bookshop-profile.json` and `bookshop-timing.json`, in the gallery and CI (render, check, stills, pdf, ajv, the
   diff Action's dry run); the JSON Schema and `.d.ts`; `docs/conformance/uml-profile.md` and `uml-timing.md`; the MCP
   server and the diff Action tested on each (C10). A timing lane is a holder (`holder: true` on its geometry), so the
-  layout check does not report its own rows, changes and labels as overlaps.
+  layout check does not report its own rows, changes and labels as overlaps; nor, in the browser's text checks
+  (`auditSvg`), any text, header or line label over a lane, its own or not: the timing views are held to §11's
+  predicate in `tests/stage6-fixtures.test.mjs` instead.
 
 What moves for a host that upgrades from 0.22.0:
 
@@ -3806,10 +3809,10 @@ What moves for a host that upgrades from 0.22.0:
   extension's `isRequired`, a message's `sentAt` and `receivedAt`, a timing view's `timeline` (`UmlTimeline`), `present`'s
   `as: "values"`; nothing accepted before is rejected.
 - **The examples moved.** `docs/diagrams/examples/07-profile.json` and `14-timing.json` are
-  `examples/bookshop-profile.json` and `bookshop-timing.json`, revised so the Bookshop atlas can hold them (elements merge
-  by id): Order applies «entity», as the class example has it, its tags keyed by stereotype; «owned»'s `team` tag and
-  `placedAt` are `0..1`; the timing file's lifelines are the sequence's `lifeline-worker` and `lifeline-payments`, and its
-  view is `one-charge` (`charge` is an action of the activity example).
+  `examples/bookshop-profile.json` and `bookshop-timing.json`, revised so the Bookshop atlas can hold them (elements
+  merge by id): Order applies «entity», as the class example has it, its tags keyed by stereotype; «owned»'s `team` tag
+  and `placedAt` are `0..1`; the timing file's lifelines take the overview's and the sequence's ids, `lifeline-worker`
+  and `lifeline-payments`, and its view is `one-charge` (`charge` is an action of the activity example).
 - **Known gap** (6.1's finding; a follow-up package after stage 6, the maintainer's decision of 13 Nov 2026): with every
   type's rules, deleting an element can leave a model that fails `validate()` under four earlier types' rules
   (`extend-points`, `message-link`, `reply-once`, `subject-shown`): 29 of 1,495 deletes over the examples and targets

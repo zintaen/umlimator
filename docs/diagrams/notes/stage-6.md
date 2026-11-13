@@ -996,18 +996,20 @@ other tags rewritten the same way); «aggregateRoot» stays defined, a specializ
 
 ### 14.1 As built (6.6)
 
-- **The examples.** `examples/bookshop-profile.json` as above. `examples/bookshop-timing.json` takes the sequence's lifeline
-  ids, and its view is `one-charge`, not `charge`: `charge` is an action of `fulfil-activity.json`, and the atlas stops on
-  a node whose id is another file's view. Both validate clean with every type's rules; `check.mjs` registers the profile
-  and timing types and its hand timing rule is gone.
+- **The examples.** `examples/bookshop-profile.json` as above. `examples/bookshop-timing.json` takes the overview's and
+  the sequence's lifeline ids, and its view is `one-charge`, not `charge`: `charge` is an action of
+  `fulfil-activity.json`, and the atlas stops on a node whose id is another file's view. Both validate clean with every
+  type's rules; `check.mjs` registers the profile and timing types and its hand timing rule is gone.
 - **A timing lane is a holder** (`holder: true` on its geometry, one field in `src/uml/timing.js`): the layout check
   (`overlapIssues`, the CLI's `check`) called each lane's own rows and changes overlaps of it, and the message labels in it
-  labels on a node (16 findings on the example). A holder may hold what it meets, as a sequence's fragment does; nothing
+  labels on a node (16 findings on the example). A holder may hold what it meets, as a sequence's fragment does. The
+  browser's text checks (`auditSvg`, `src/layout/audit.js`) leave holders out altogether, so no text, header or line
+  label is checked against a lane, its own or another's; the timing views are held to §11's predicate instead. Nothing
   else reads the flag, so no picture changes.
 - **`tests/profile.html`** fetched `07-profile.json`; it keeps its own copy of the file as 6.3 had it (Order applying
   «aggregateRoot» and «owned»), so the move breaks none of its checks.
-- **The fixtures.** §11's "a view from 0 to 1,000,000" is `timing-stress.json`'s view `dense`, of its own, so the cap
-  does not squeeze the other cases; the edge-cases view's 40-character value takes its ruler to the cap and is cut
+- **The fixtures.** §11's "a view from 0 to 1,000,000" is `timing-stress.json`'s view `dense`, of its own, so the case
+  is asserted on its own; the edge-cases view's 40-character value takes its ruler to the cap and is cut
   (`timing-dense`, one change). The generated views are pinned, not clean: the profile `all` view's crossings (17 right,
   30 down; repair and rerouting off), the timing `all` view's 43 `timing-label` reports and five more crowded labels the
   ruler does not count (three over the state column's names, two over a step). Both stated in the conformance notes.
