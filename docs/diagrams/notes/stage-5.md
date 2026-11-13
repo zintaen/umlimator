@@ -943,6 +943,31 @@ browser page from the package that adds it (5.1, 5.3 to 5.6, 5.8), so each page 
 lanes added theirs; `check.mjs`'s `MOVED` gains three rows. 5.2 edits `tests/type-hooks.html` and `tests/typed-edit.html` only by
 adding cases. No other existing test changes.
 
+**As built (5.8).** Where the build departs from the above, or settles what is not said:
+
+- **The examples' ids.** The atlas merges elements by id and stops on a disagreement, so the three files were edited to
+  agree with it (`docs/module-api.md`'s 0.22.0 section lists each edit): `-component`, `-node` and `-class` ids where the
+  map's cards, a use case actor, the map's view `checkout` or the other stage 5 file had the id; the composite file's
+  class is labelled `CheckoutFlow`, since a class and a component both labelled Checkout would make the part's type
+  ambiguous (`part-type`); the component file's `shop-api.jar` is deployed on the deployment file's Java 21 runtime,
+  which its model holds and its view does not list; the deployment view lists its lines. The atlas's links: the map's
+  Hosts opens production, the Java 21 runtime the components, Shop API the order service's structure.
+- **Existing tests edited**, beyond §16.2's list: the three types' tests and pages follow the moved files and new ids;
+  `tests/core-diet.json` records the three examples' new fingerprints (nothing else moved); `tests/atlas.test.mjs` gains
+  the three files; `tests/component.test.mjs` and `tests/composite.test.mjs` pin the PDF's new rows; `tests/structure.test.mjs`
+  reads the moved files.
+- **Type files edited** (no core byte): `src/uml/component.js` qualifies a name by components and packages only (in the
+  atlas, `shop-api.jar` was "Application server::Java 21 runtime::shop-api.jar") and its `rows` add the connectors from a
+  component's ports; `src/uml/composite.js`'s `rows` give the subject's and an open collaboration's members (a part with its
+  aggregation, §11) and connectors: the PDF's Lines table lists only lines between cards (`risks.md` R10);
+  `src/uml/structure.js` keeps a port with no line off the end of a plain line on its side (the composite fixture's
+  connector to a shared part ended under one).
+- **The fixtures' `all` views** are the generators the types' P1 tests time, written out: the component one has 54 ports
+  (§13 asks 40). The six-level outer box is 488 × 574 px, right and down. Each view's crossings and other findings are
+  pinned in `tests/stage5-fixtures.test.mjs`; on `edge-cases`, the box with ten ports on one side holds five at its span's
+  start (`over`), as §4.1 allows.
+- **L9** stays open: 5.7 has not reported, and its outcome closes or re-states it.
+
 ### 16.3 What runs at the same time (S19)
 
 ```

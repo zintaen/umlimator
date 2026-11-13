@@ -40,6 +40,9 @@ Action on it in a pull request; the site shows its stills and its PDF.
 | [`fulfil-activity.json`](fulfil-activity.json) | UML activity diagram (`uml.activity`, 0.21.0) | Fulfilling an order in three lanes, laid out down: an object node, a data store, send and accept actions, a decision with its guards and a merge, a fork and a join, a branch that ends in a flow final, and a call behaviour action that opens its own activity (`take-payment`). What the activity diagram covers: [`docs/conformance/uml-activity.md`](../docs/conformance/uml-activity.md) |
 | [`order-states.json`](order-states.json) | UML state machine diagram (`uml.state-machine`, 0.21.0) | An order's life: states with entry, do and exit activities and an internal transition, a choice, a fork into the two regions of Fulfilling and a join out, a composite with a shallow history, a self-transition, a terminate, transitions written `trigger [guard] / effect`. What the state machine diagram covers: [`docs/conformance/uml-state-machine.md`](../docs/conformance/uml-state-machine.md) |
 | [`buy-book-overview.json`](buy-book-overview.json) | UML interaction overview diagram (`uml.interaction-overview`, 0.21.0) | Buying a book, laid out down: interaction uses that open their sequence views, a decision looping back through a merge, a fork and a join, and an inline interaction drawn with its sequence diagram inside. What the interaction overview diagram covers: [`docs/conformance/uml-interaction-overview.md`](../docs/conformance/uml-interaction-overview.md) |
+| [`bookshop-components.json`](bookshop-components.json) | UML component diagram (`uml.component`, 0.22.0) | The bookshop's components: Shop API a box holding Checkout, ports on both borders, a delegation in and one out between them, an assembly to the payment provider's port; Orders provided as a ball and required by a socket, SignIn as a rectangle with «use» lines; a dependency and an artifact's manifestation. What the component diagram covers: [`docs/conformance/uml-component.md`](../docs/conformance/uml-component.md) |
+| [`bookshop-deployment.json`](bookshop-deployment.json) | UML deployment diagram (`uml.deployment`, 0.22.0) | The bookshop in production: devices, execution environments and nodes as cubes, nested two deep; artifacts deployed by nesting and one by a «deploy» line; a deployment specification and its dependency; manifestations of the components; communication paths with their protocols. What the deployment diagram covers: [`docs/conformance/uml-deployment.md`](../docs/conformance/uml-deployment.md) |
+| [`order-service-structure.json`](order-service-structure.json) | UML composite structure diagram (`uml.composite-structure`, 0.22.0) | Inside the order service: its ports on its border, four parts (one shared, dashed), each showing its type's ports, connectors from the subject's ports in to a part's and out, an open collaboration as a dashed ellipse with its roles, and a collaboration use binding two parts to its roles. What the composite structure diagram covers: [`docs/conformance/uml-composite-structure.md`](../docs/conformance/uml-composite-structure.md) |
 
 | [`order-objects.json`](order-objects.json) | UML object diagram (`uml.object`, 0.19.0) | One placed order of the same bookshop as instances of its classes: each head `name : Classifier`, underlined, its slots as `feature = value` rows; links with a name or with roles by their ends; laid out top to bottom. What the object diagram covers: [`docs/conformance/uml-object.md`](../docs/conformance/uml-object.md) |
 | [`bookshop-packages.json`](bookshop-packages.json) | UML package diagram (`uml.package`, 0.19.0) | The bookshop's packages, each a box holding the classes it owns, `card` inside `payments`; two classes named `Order` in two packages; «import», «access» (a private import), «merge» and a dependency between the boxes. What the package diagram covers: [`docs/conformance/uml-package.md`](../docs/conformance/uml-package.md) |
@@ -54,11 +57,14 @@ Action on it in a pull request; the site shows its stills and its PDF.
 [![The activity diagram: fulfilling an order](https://zintaen.github.io/umlimator/examples/stills/fulfil-activity/fulfil.png)](https://zintaen.github.io/umlimator/examples/fulfil-activity.html)
 [![The state machine diagram: an order's life](https://zintaen.github.io/umlimator/examples/stills/order-states/order-life.png)](https://zintaen.github.io/umlimator/examples/order-states.html)
 [![The interaction overview diagram: buying a book](https://zintaen.github.io/umlimator/examples/stills/buy-book-overview/buy-book.png)](https://zintaen.github.io/umlimator/examples/buy-book-overview.html)
+[![The component diagram: the bookshop's components](https://zintaen.github.io/umlimator/examples/stills/bookshop-components/components.png)](https://zintaen.github.io/umlimator/examples/bookshop-components.html)
+[![The deployment diagram: production](https://zintaen.github.io/umlimator/examples/stills/bookshop-deployment/production.png)](https://zintaen.github.io/umlimator/examples/bookshop-deployment.html)
+[![The composite structure diagram: inside the order service](https://zintaen.github.io/umlimator/examples/stills/order-service-structure/internals.png)](https://zintaen.github.io/umlimator/examples/order-service-structure.html)
 
 ## The Bookshop atlas
 
 [`bookshop-atlas.json`](bookshop-atlas.json) is the Bookshop examples above in one model (`"schemaVersion": 2`): the
-map's three views and the fifteen views of the nine diagram files, joined by drill-down. Double-click a card to open
+map's three views and the eighteen views of the twelve diagram files, joined by drill-down. Double-click a card to open
 what it leads to:
 
 | From | Card | Opens |
@@ -68,10 +74,12 @@ what it leads to:
 | Bookshop packages | sales | the sales domain |
 | Shopping (use cases) | Browse the catalog, Check out, Pay for the order | find a book, buying a book, take payment (activity) |
 | Fulfilling an order, take payment | Take the next order from the queue, Charge the shopper's card | queue the order, the checkout (sequences) |
+| The map (`overview`), production, the components | Hosts, Java 21 runtime, Shop API | production (deployment), the components, inside the order service (composite structure) |
 
 It is built, not written: `node tools/atlas.mjs` reads the example files and [`../tools/atlas-links.json`](../tools/atlas-links.json)
 (the files, in order, and which card opens which view) and writes the model. Elements are shared by id: one Order,
-one package `sales`, one `api` lifeline for the sequence, communication and overview files. Where two files have an id,
+one package `sales`, one `api` lifeline for the sequence, communication and overview files, one Shop API, its jar and the
+runtime it is deployed on for the component and deployment files. Where two files have an id,
 they must agree on it (a field one leaves out is the other's, a class's members are the union of theirs); where they
 disagree, the build stops and names the id, the files and the field, and the example files are what gets fixed.
 `tests/atlas.test.mjs` fails when the committed atlas is not what it writes. A card that opens another kind of diagram does not unfold in place (E): it opens.
@@ -143,7 +151,7 @@ The module embedded in a page, as an app would use it. Serve the repository over
 | Budgets (`latency`, `cost`): the slowest or costliest path (`critical()`) and what-if (`whatIf()`) | bike-share `trips`: the details panel's ⏱, ¤ and ⊘ (What if this goes down?) |
 | A story told step by step (`stories`, `play()`), its Stories menu and recording in the page, `umlimator.py record` | bike-share (`ride`: a ride from unlock to payment), on the site; pictured under Maps; states (`assistant`: a page tool, then the reader) |
 | Editing and undo (`editable`, `change`, `history()`) | `edit.html` |
-| A diagram type: a typed model in its own notation (`schemaVersion: 2`, a view's `diagram`), from `umlimator/all` | sales-classes (`uml.class`), order-objects (`uml.object`), bookshop-packages (`uml.package`), checkout-sequence (`uml.sequence`), checkout-communication (`uml.communication`), shopping-use-cases (`uml.use-case`), fulfil-activity (`uml.activity`), order-states (`uml.state-machine`), buy-book-overview (`uml.interaction-overview`) |
+| A diagram type: a typed model in its own notation (`schemaVersion: 2`, a view's `diagram`), from `umlimator/all` | sales-classes (`uml.class`), order-objects (`uml.object`), bookshop-packages (`uml.package`), checkout-sequence (`uml.sequence`), checkout-communication (`uml.communication`), shopping-use-cases (`uml.use-case`), fulfil-activity (`uml.activity`), order-states (`uml.state-machine`), buy-book-overview (`uml.interaction-overview`), bookshop-components (`uml.component`), bookshop-deployment (`uml.deployment`), order-service-structure (`uml.composite-structure`) |
 | A class diagram's parts: compartments, members as UML text, stereotypes, line ends, end labels, notes (`present.collapsed`, `direction: "down"`) | sales-classes `domain` and `payments` |
 | Ownership drawn as nesting: a package owning something the view shows is a box holding it, names qualified from the nearest shown owner or the view's `subject` (`parent`, `subject`, 0.19.0) | bookshop-packages, sales-classes `domain` (and `payments`, with its subject) |
 | An object diagram's parts: underlined heads, anonymous instances, slots as `feature = value`, links with names and roles | order-objects |
@@ -156,6 +164,10 @@ The module embedded in a page, as an app would use it. Serve the repository over
 | Lanes (partitions, nested), a node's lane changed by a drop; a call behaviour action that opens its activity | fulfil-activity |
 | Regions in a composite state, the transition micro-syntax `trigger [guard] / effect`, pseudostates by kind | order-states |
 | An inline interaction drawn with its sequence diagram inside; interaction uses that open their views | buy-book-overview |
+| Ports on borders, each on the side its lines go; lines from a box's port inward (a delegation, a connector to a part's port); boxes nested with room for their ports | bookshop-components, order-service-structure |
+| A provided interface as a ball and a required one as a socket (`present.<id>.as: "ball"`, `B`) | bookshop-components |
+| Nodes, devices and execution environments as cubes, nested; deployment by nesting or by a «deploy» line; a keyword over a box's name | bookshop-deployment |
+| A part showing its type's ports (`ends.<end>.part`), a shared part, an open collaboration as a dashed ellipse, a collaboration use's role bindings | order-service-structure |
 | A Mermaid `stateDiagram`, imported (`umlimator.py import`) | [`tests/import/state.mmd`](../tests/import/state.mmd), which CI imports (`tests/import.py`) |
 | `layout()` in Node | `layout.mjs` |
 | The model's JSON Schema (`"$schema"`), `validate()` and `check()` | every model written by hand (`"$schema"`), `playground.html` |
