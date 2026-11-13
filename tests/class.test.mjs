@@ -149,14 +149,14 @@ test('validators: a model with no class view is not checked by the class type', 
 test('describe(): the class view in words, each element with its members counted and its lines', () => {
   const d = describe(CLASS, 'domain').split('\n');
   assert.equal(d[0], 'Sales domain: a class diagram of 11 elements and 8 lines.');
-  assert.equal(d[1], 'Package sales, holding 9 elements.', 'a box, then what it holds (2.2)');
-  assert.ok(d.includes('Class Order (entity), 5 attributes, 3 operations; associated with Customer (1) ("places"); composed of OrderLine (lines, 1..*); aggregates Payment (payments, 0..*); realizes Payable; depends on Money «use».'), d.join('\n'));
-  assert.ok(d.includes('Class OrderLine, 2 attributes, 0 operations; part of Order (1); associated with Book (book, 1).'), d.join('\n'));
-  assert.ok(d.includes('Class CardPayment, 1 attribute, 1 operation; a kind of Payment.'));
+  assert.equal(d[1], 'Package sales, holding 4 elements.', 'a box, then what it holds (2.2)');
+  assert.ok(d.includes('Class Order (entity), 5 attributes, 3 operations; associated with Customer (1) ("places"); composed of OrderLine (lines, 1..*); aggregates payments::Payment (payments, 0..*); realizes payments::Payable; depends on shared::Money «use».'), d.join('\n'));
+  assert.ok(d.includes('Class OrderLine, 2 attributes, 0 operations; part of Order (1); associated with catalog::Book (book, 1).'), d.join('\n'));
+  assert.ok(d.includes('Class payments::card::CardPayment, 1 attribute, 1 operation; a kind of payments::Payment.'));
   assert.ok(d.includes('Enumeration OrderStatus, 4 literals.'));
-  const p = describe(CLASS, 'payments').split('\n');
+  const p = describe(CLASS, 'payments-only').split('\n');
   assert.equal(p.length, 5);
-  assert.equal(p[1], 'Class Order (entity), 5 attributes, 3 operations; aggregates Payment (payments, 0..*); realizes Payable.', 'the view\'s subject, sales, keeps the names plain');
+  assert.equal(p[1], 'Class Order (entity), 5 attributes, 3 operations; aggregates payments::Payment (payments, 0..*); realizes payments::Payable.', 'the view\'s subject, sales, keeps its own names plain');
 });
 
 const noOverlap = g => { for (const a of g.nodes) for (const b of g.nodes) if (a !== b) assert.ok(a.x + a.w <= b.x || b.x + b.w <= a.x || a.y + a.h <= b.y || b.y + b.h <= a.y, `${a.id} and ${b.id} overlap`); };
@@ -166,7 +166,7 @@ test('the target example lays out clean: classifiers at their size, notes, the l
     noOverlap(g);
     assert.deepEqual(check(CLASS, v.id), [], v.id);
     assert.ok(g.nodes.every(n => n.shape === (n.type === 'uml.Comment' ? 'note' : 'classifier')), v.id);
-    assert.deepEqual(g.families.map(f => [f.id, f.nodeIds.length]), v.id === 'domain' ? [['sales', 9]] : [], `${v.id}: sales, shown, is a box holding its classes (2.2)`);
+    assert.deepEqual(g.families.map(f => [f.id, f.nodeIds.length]), v.id === 'domain' ? [['sales', 4]] : [], `${v.id}: sales, shown, is a box holding its classes (2.2)`);
     assert.ok(at.payment.y + at.payment.h < at['card-payment'].y, 'a generalization points up in a view laid out down');
     assert.ok(Array.isArray(g.legend) && g.legend.length, 'a legend of the line ends');
   }
@@ -299,11 +299,11 @@ test('save and reopen (DoD 6): a 30-step class session undoes and redoes to byte
 // ---- 2.2: a class view draws packages as nesting and qualifies names (notes/stage-2.md §10.1, approved: plan.md §1)
 test('a class view draws a shown package owning something shown as a box, and names an element by the owners it does not show', () => {
   const g = layout(CLASS, 'domain'), F = g.families[0];
-  assert.deepEqual([F.id, F.title, F.shape, F.aria], ['sales', 'sales', 'package', 'Package sales, holding 9 elements']);
-  g.nodes.forEach(n => assert.equal(n.x > F.x && n.y > F.y && n.x + n.w < F.x + F.w && n.y + n.h < F.y + F.h, n.id !== 'note-total', n.id));
+  assert.deepEqual([F.id, F.title, F.shape, F.aria], ['sales', 'sales', 'package', 'Package sales, holding 4 elements']);
+  g.nodes.forEach(n => assert.equal(n.x > F.x && n.y > F.y && n.x + n.w < F.x + F.w && n.y + n.h < F.y + F.h, ['customer', 'order', 'line', 'status'].includes(n.id), n.id));
   assert.ok(!g.nodes.some(n => n.id === 'sales'), 'a box takes no slot');
   const bare = structuredClone(CLASS); delete bare.views[1].subject;
-  assert.deepEqual(layout(bare, 'payments').nodes.map(n => n.label), ['sales::Order', 'sales::Payable', 'sales::Payment', 'sales::CardPayment'], 'with no subject, from the top');
-  assert.deepEqual(layout(CLASS, 'payments').nodes.map(n => n.label), ['Order', 'Payable', 'Payment', 'CardPayment'], 'from the subject');
-  assert.equal(layout(bare, 'payments').nodes[0].aria, 'Class sales::Order (entity), 5 attributes, 3 operations');
+  assert.deepEqual(layout(bare, 'payments-only').nodes.map(n => n.label), ['sales::Order', 'payments::Payable', 'payments::Payment', 'payments::card::CardPayment'], 'with no subject, from the top');
+  assert.deepEqual(layout(CLASS, 'payments-only').nodes.map(n => n.label), ['Order', 'payments::Payable', 'payments::Payment', 'payments::card::CardPayment'], 'from the subject');
+  assert.equal(layout(bare, 'payments-only').nodes[0].aria, 'Class sales::Order (entity), 5 attributes, 3 operations');
 });

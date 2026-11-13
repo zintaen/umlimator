@@ -266,12 +266,12 @@ finally:
     shutil.rmtree(work, ignore_errors=True)
 # C10 (2.6): an object model and a package model served the same way. The read tools answer with the type's own words, and
 # a page tool's highlight is shown on the diagram the page draws (umlimator/all: a typed view), boxes and all
-for f, view, refs, first, cards, boxes in (("order-objects", "snapshot", ["order-1042", "card"], "Order 1042, just placed: an object diagram of 7 elements and 6 lines.", 7, 0),
+for f, view, refs, first, cards, boxes in (("order-objects", "snapshot", ["order-1042", "card-1"], "Order 1042, just placed: an object diagram of 7 elements and 6 lines.", 7, 0),
                                           ("bookshop-packages", "packages", ["order", "payment"], "Bookshop packages: a package diagram of 16 elements and 5 lines.", 10, 6),
                                           # C10 for stage 4 (S16, 4.10): a use case, an activity, a state machine and an interaction overview
                                           # model; a subject, an open composite state and its regions are boxes, a partition is a node
-                                          ("shopping-use-cases", "shopping", ["checkout", "shopper"], "Shopping: a use case diagram of 12 elements and 10 lines.", 11, 1),
-                                          ("fulfil-activity", "fulfil", ["in-stock", "pay"], "Fulfilling an order: an activity diagram of 17 nodes, 19 flows and 3 partitions.", 20, 0),
+                                          ("shopping-use-cases", "shopping", ["check-out", "shopper"], "Shopping: a use case diagram of 12 elements and 10 lines.", 11, 1),
+                                          ("fulfil-activity", "fulfil", ["in-stock", "call-payment"], "Fulfilling an order: an activity diagram of 17 nodes, 19 flows and 3 partitions.", 20, 0),
                                           ("order-states", "order-life", ["placed", "cancelled"], "An order's life: a state machine diagram of 21 elements and 23 transitions.", 19, 4),
                                           ("buy-book-overview", "buy-book", ["ref-find", "sd-queue"], "Buying a book: an interaction overview diagram of 10 nodes and 11 flows.", 10, 0)):
     m = json.loads((ROOT / "examples" / f"{f}.json").read_text(encoding="utf-8"))

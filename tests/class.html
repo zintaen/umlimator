@@ -41,11 +41,12 @@ try {
     document.documentElement.dataset.theme = theme; el.style.setProperty('--um-sans', family);
     const tag = `${theme}, ${fname}`, h = mount(MODEL, { legend: true }), svg = pick('svg.um-svg, .stage svg'), nodes = all('.node');
     const B = Object.fromEntries(nodes.map(g => [g.dataset.id, box(g)])); widths[fname] = B.order.w;
-    // from 0.19.0 (2.2) the package sales is a box holding the nine classes it owns, not a node (notes/stage-2.md §10.1)
+    // from 0.19.0 (2.2) the package sales is a box holding the classes it owns, not a node (notes/stage-2.md §10.1); the
+    // classes the other packages own (catalog::Book and the rest) are drawn outside it
     const sales = pick('.family[data-family="sales"]'), held = sales && (r => ({ x: r.x, y: r.y, w: r.width, h: r.height }))(sales.querySelector('.family-box').getBBox());
-    check(`${tag}: every element of the view is drawn, classes as classifiers in the package sales's box and the comment as a note outside it`, nodes.length === 10
+    check(`${tag}: every element of the view is drawn, sales's classes as classifiers in its box, the other packages' and the comment outside it`, nodes.length === 10
       && nodes.filter(g => g.dataset.shape === 'classifier').length === 9 && pick('.node[data-id="note-total"]').dataset.shape === 'note' && !!held
-      && sales.getAttribute('aria-label') === 'Package sales, holding 9 elements' && nodes.every(g => { const b = box(g), at = b.x >= held.x && b.y >= held.y && b.x + b.w <= held.x + held.w && b.y + b.h <= held.y + held.h; return at === (g.dataset.id !== 'note-total'); }), nodes.map(g => g.dataset.id));
+      && sales.getAttribute('aria-label') === 'Package sales, holding 4 elements' && nodes.every(g => { const b = box(g), at = b.x >= held.x && b.y >= held.y && b.x + b.w <= held.x + held.w && b.y + b.h <= held.y + held.h; return at === ['customer', 'order', 'line', 'status'].includes(g.dataset.id); }), nodes.map(g => g.dataset.id));
     const over = []; Object.entries(B).forEach(([a, p]) => Object.entries(B).forEach(([b, q]) => { if (a < b && meets(p, q)) over.push(a + '/' + b); }));
     check(`${tag}: no two elements overlap`, !over.length, over);
     const spill = [];

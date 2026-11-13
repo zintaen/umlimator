@@ -59,23 +59,23 @@ test('the definition: uml.communication is registered with its palette, its line
 
 test('example 12: it validates, each connector with messages carries them as a stack of rows numbered as §6.3 says, and describe() reads it', () => {
   assert.deepEqual(validate(EX), []);
-  const g = layout(EX, 'checkout'), row = id => g.byId[id];
-  assert.deepEqual(['m1', 'm2', 'm3', 'm4', 'm5', 'm6', 'm7', 'm8', 'm9'].map(id => row(id).num), ['1', '1.1', '1.1.1', '1.1.2', '1.1.2.1', '1.1.3', '1.1.4', '1.1.5', '1.2']);
-  assert.deepEqual(['m6', 'm8'].map(id => row(id).label), ['1.1.3: «create» new(order)', '1.1.5: result']);
-  assert.deepEqual(g.edges.map(e => [e.id, e.stack || []]), [['shopper-storefront', ['m1', 'm9']], ['storefront-api', ['m2', 'm7', 'm8']], ['api-self', ['m3']], ['api-payments', ['m4', 'm5']], ['api-receipt', ['m6']]]);
+  const g = layout(EX, 'checkout-communication'), row = id => g.byId[id];
+  assert.deepEqual(['cm1', 'cm2', 'cm3', 'cm4', 'cm5', 'cm6', 'cm7', 'cm8', 'cm9'].map(id => row(id).num), ['1', '1.1', '1.1.1', '1.1.2', '1.1.2.1', '1.1.3', '1.1.4', '1.1.5', '1.2']);
+  assert.deepEqual(['cm6', 'cm8'].map(id => row(id).label), ['1.1.3: «create» new(order)', '1.1.5: result']);
+  assert.deepEqual(g.edges.map(e => [e.id, e.stack || []]), [['shopper-storefront', ['cm1', 'cm9']], ['storefront-api', ['cm2', 'cm7', 'cm8']], ['api-self', ['cm3']], ['api-payments', ['cm4', 'cm5']], ['api-receipt', ['cm6']]]);
   for (const e of g.edges) e.stack.forEach((id, k) => { const r = row(id), first = row(e.stack[0]); // a stack: one under another, as wide as its widest
     assert.deepEqual([r.x, r.y, r.w, r.h], [first.x, first.y + 16 * k, first.w, 16], id); });
   assert.deepEqual(g.edges.map(e => e.end), g.edges.map(() => ({ from: 'none', to: 'none' })), 'connectors have no arrows');
   // each row's arrow points the way the connector leaves the stack toward its receiver: storefront is right of shopper
-  assert.ok(g.byId.storefront.x > g.byId.shopper.x);
-  assert.deepEqual(['m1', 'm9', 'm2', 'm7', 'm8'].map(id => row(id).dir), ['right', 'left', 'right', 'left', 'left']);
-  assert.equal(row('m4').aria, 'Message 4 of 9, 1.1.2: api to payments, charge(total), call');
-  assert.equal(row('m5').aria, 'Message 5 of 9, 1.1.2.1: payments to api, paid, reply to 1.1.2');
-  assert.equal(g.byId.shopper.aria, 'Lifeline shopper : Shopper (actor)');
+  assert.ok(g.byId['lifeline-storefront'].x > g.byId['lifeline-shopper'].x);
+  assert.deepEqual(['cm1', 'cm9', 'cm2', 'cm7', 'cm8'].map(id => row(id).dir), ['right', 'left', 'right', 'left', 'left']);
+  assert.equal(row('cm4').aria, 'Message 4 of 9, 1.1.2: api to payments, charge(total), call');
+  assert.equal(row('cm5').aria, 'Message 5 of 9, 1.1.2.1: payments to api, paid, reply to 1.1.2');
+  assert.equal(g.byId['lifeline-shopper'].aria, 'Lifeline shopper : Shopper (actor)');
   assert.deepEqual(g.edges.map(e => e.aria), ['Connector between shopper and storefront, 2 messages', 'Connector between storefront and api, 3 messages', 'Connector from api to itself, 1 message',
     'Connector between api and payments, 2 messages', 'Connector between api and receipt, 1 message']);
   assert.equal(g.legend.length, 5, 'the connector, then call, async, reply and create: the sorts drawn');
-  assert.equal(describe(EX, 'checkout'), [
+  assert.equal(describe(EX, 'checkout-communication'), [
     'Checkout: payment accepted: a communication diagram of 5 lifelines, 5 connectors and 9 messages.',
     'Lifeline shopper : Shopper (actor); linked to storefront.', 'Lifeline storefront : Storefront; linked to shopper, api.',
     'Lifeline api : ShopApi; linked to storefront, itself, payments, receipt.', 'Lifeline payments : PaymentProvider; linked to api.', 'Lifeline receipt : Receipt; linked to api.',
@@ -85,12 +85,12 @@ test('example 12: it validates, each connector with messages carries them as a s
 });
 
 test('reading order (S13): geo.order is the lifelines left to right, the connectors, then the message rows by number; the nodes are drawn in it', () => {
-  const g = layout(EX, 'checkout'), rows = ['m1', 'm2', 'm3', 'm4', 'm5', 'm6', 'm7', 'm8', 'm9'];
-  assert.deepEqual(g.order, ['shopper', 'storefront', 'api', 'payments', 'receipt', ...g.edges.map(e => e.id), ...rows]);
+  const g = layout(EX, 'checkout-communication'), rows = ['cm1', 'cm2', 'cm3', 'cm4', 'cm5', 'cm6', 'cm7', 'cm8', 'cm9'];
+  assert.deepEqual(g.order, ['lifeline-shopper', 'lifeline-storefront', 'lifeline-api', 'lifeline-payments', 'receipt', ...g.edges.map(e => e.id), ...rows]);
   assert.deepEqual(g.edges.map(e => e.id).sort(), VIEW(EX).edges.filter(id => !rows.includes(id)).sort());
   assert.deepEqual(g.nodes.map(n => n.id), g.order.filter(id => g.byId[id]));
   // the slots: after each lifeline its index in nodeIds (N adds there), after each row its id (L adds after it)
-  assert.deepEqual(g.slots.map(s => [s.after, s.index ?? null, !!s.lifeline]), [...['shopper', 'storefront', 'api', 'payments', 'receipt'].map(id => [id, VIEW(EX).nodeIds.indexOf(id) + 1, true]), ...rows.map(id => [id, null, false])]);
+  assert.deepEqual(g.slots.map(s => [s.after, s.index ?? null, !!s.lifeline]), [...['lifeline-shopper', 'lifeline-storefront', 'lifeline-api', 'lifeline-payments', 'receipt'].map(id => [id, VIEW(EX).nodeIds.indexOf(id) + 1, true]), ...rows.map(id => [id, null, false])]);
   assert.ok(g.slots.every(s => Number.isFinite(s.x) && Number.isFinite(s.y)));
   const s = layout(STRESS, 'all'), heads = s.order.slice(0, 20), nums = s.order.slice(50).map(id => s.byId[id].num.split('.').map(Number));
   assert.ok(heads.every((id, i) => !i || s.byId[id].x >= s.byId[heads[i - 1]].x), 'lifelines left to right');
@@ -110,7 +110,7 @@ test('the fixtures (notes/stage-3.md §9) hold every case, validate, and lay out
   assert.deepEqual([all.nodeIds.length, all.edges.filter(id => E.get(id).type === 'uml.Connector').length, all.edges.filter(id => E.get(id).type === 'uml.Message').length], [20, 30, 200]);
   assert.deepEqual(validate(MINIMAL), []);
   assert.deepEqual(validate(STRESS), []);
-  for (const [m, vid, crossings] of [[MINIMAL, 'v', 0], [EX, 'checkout', 0], [STRESS, 'edge-cases', 0], [STRESS, 'all', 13]]) {
+  for (const [m, vid, crossings] of [[MINIMAL, 'v', 0], [EX, 'checkout-communication', 0], [STRESS, 'edge-cases', 0], [STRESS, 'all', 13]]) {
     const r = clean(m, vid);
     assert.deepEqual(r.bad, [], vid);
     assert.deepEqual(r.others, [], `${vid}: check() finds nothing but connectors that cross`);
@@ -119,8 +119,8 @@ test('the fixtures (notes/stage-3.md §9) hold every case, validate, and lay out
   }
   // laid out down, and with a lifeline pinned: as clean
   const down = structuredClone(EX); VIEW(down).direction = 'down';
-  assert.deepEqual(clean(down, 'checkout').bad, []);
-  const pinned = apply(EX, { op: 'set', view: 'checkout', path: ['layout', 'receipt'], value: [0, 3] }), r = clean(pinned, 'checkout'), g0 = layout(EX, 'checkout');
+  assert.deepEqual(clean(down, 'checkout-communication').bad, []);
+  const pinned = apply(EX, { op: 'set', view: 'checkout-communication', path: ['layout', 'receipt'], value: [0, 3] }), r = clean(pinned, 'checkout-communication'), g0 = layout(EX, 'checkout-communication');
   assert.deepEqual(r.bad, []);
   assert.deepEqual([r.g.byId.receipt.col, r.g.byId.receipt.row], [0, 3], 'the pin is the lifeline\'s place, in the columns and rows a drag or Alt + arrows reads');
   assert.ok(r.g.byId.receipt.y > g0.byId.receipt.y && r.g.byId.receipt.x < g0.byId.receipt.x);
@@ -220,79 +220,79 @@ const run = (m, cs) => { assert.ok(Array.isArray(cs), JSON.stringify(cs)); const
 const order = m => VIEW(m).edges;
 test('connect: a connector among the connectors; a message at the end or after one, with its connector when none joins its lifelines', () => {
   const V = VIEW(EX), CALL = { type: 'uml.Message', label: 'Call', props: { sort: 'call' } };
-  assert.deepEqual(commConnect(EX, V, 'shopper', 'api', null, { type: 'uml.Connector' }), [{ op: 'add', element: { id: 'shopper-api', type: 'uml.Connector', from: 'shopper', to: 'api' }, view: 'checkout', index: 5 }]);
-  assert.deepEqual(commConnect(EX, V, 'api', 'storefront', null, { type: 'uml.Connector' }), { error: 'api and storefront are linked already' });
-  assert.deepEqual(commConnect(EX, V, 'api', 'api', null, { type: 'uml.Connector' }), { error: 'api is linked to itself already' });
-  assert.ok(commConnect(EX, V, 'api', 'nobody', null, CALL).error);
-  let m = run(EX, commConnect(EX, V, 'shopper', 'storefront', null, CALL));
-  assert.deepEqual(order(m).slice(-2), ['m9', 'm10']);
-  assert.equal(layout(m, 'checkout').byId.m10.num, '2');
-  m = run(EX, commConnect(EX, V, 'api', 'payments', { after: 'm4' }, { ...CALL, props: { sort: 'async' } }));
-  assert.deepEqual(order(m).slice(8, 11), ['m4', 'm10', 'm5']);
-  assert.equal(layout(m, 'checkout').byId.m10.num, '1.1.3', 'numbered in its place: sent from api\'s activation, after m4');
-  m = run(EX, commConnect(EX, V, 'payments', 'payments', { index: 0 }, CALL)); // a self-message, with its self connector; never among the connectors
-  assert.deepEqual([order(m)[5], order(m)[6]], ['payments-self', 'm10']);
-  m = run(EX, commConnect(EX, V, 'storefront', 'receipt', null, { ...CALL, props: { sort: 'reply' } }));
-  assert.deepEqual(m.edges.find(e => e.id === 'm10').props, { sort: 'reply' }, 'no call from receipt to storefront to answer: a reply with no replyTo, which warns');
-  m = run(EX, commConnect(EX, V, 'payments', 'api', { after: 'm5' }, { ...CALL, props: { sort: 'reply' } }));
-  assert.deepEqual(m.edges.find(e => e.id === 'm10').props, { sort: 'reply' }, 'm4 is answered already');
-  const n = apply(EX, { op: 'delete', id: 'm5' });
-  m = run(n, commConnect(n, VIEW(n), 'payments', 'api', { after: 'm4' }, { ...CALL, props: { sort: 'reply' } }));
-  assert.deepEqual(m.edges.at(-1).props, { sort: 'reply', replyTo: 'm4' }, 'the latest unanswered call from its receiver to its sender');
+  assert.deepEqual(commConnect(EX, V, 'lifeline-shopper', 'lifeline-api', null, { type: 'uml.Connector' }), [{ op: 'add', element: { id: 'lifeline-shopper-lifeline-api', type: 'uml.Connector', from: 'lifeline-shopper', to: 'lifeline-api' }, view: 'checkout-communication', index: 5 }]);
+  assert.deepEqual(commConnect(EX, V, 'lifeline-api', 'lifeline-storefront', null, { type: 'uml.Connector' }), { error: 'lifeline-api and lifeline-storefront are linked already' });
+  assert.deepEqual(commConnect(EX, V, 'lifeline-api', 'lifeline-api', null, { type: 'uml.Connector' }), { error: 'lifeline-api is linked to itself already' });
+  assert.ok(commConnect(EX, V, 'lifeline-api', 'nobody', null, CALL).error);
+  let m = run(EX, commConnect(EX, V, 'lifeline-shopper', 'lifeline-storefront', null, CALL));
+  assert.deepEqual(order(m).slice(-2), ['cm9', 'm1']);
+  assert.equal(layout(m, 'checkout-communication').byId.m1.num, '2');
+  m = run(EX, commConnect(EX, V, 'lifeline-api', 'lifeline-payments', { after: 'cm4' }, { ...CALL, props: { sort: 'async' } }));
+  assert.deepEqual(order(m).slice(8, 11), ['cm4', 'm1', 'cm5']);
+  assert.equal(layout(m, 'checkout-communication').byId.m1.num, '1.1.3', 'numbered in its place: sent from api\'s activation, after cm4');
+  m = run(EX, commConnect(EX, V, 'lifeline-payments', 'lifeline-payments', { index: 0 }, CALL)); // a self-message, with its self connector; never among the connectors
+  assert.deepEqual([order(m)[5], order(m)[6]], ['lifeline-payments-self', 'm1']);
+  m = run(EX, commConnect(EX, V, 'lifeline-storefront', 'receipt', null, { ...CALL, props: { sort: 'reply' } }));
+  assert.deepEqual(m.edges.find(e => e.id === 'm1').props, { sort: 'reply' }, 'no call from receipt to storefront to answer: a reply with no replyTo, which warns');
+  m = run(EX, commConnect(EX, V, 'lifeline-payments', 'lifeline-api', { after: 'cm5' }, { ...CALL, props: { sort: 'reply' } }));
+  assert.deepEqual(m.edges.find(e => e.id === 'm1').props, { sort: 'reply' }, 'cm4 is answered already');
+  const n = apply(EX, { op: 'delete', id: 'cm5' });
+  m = run(n, commConnect(n, VIEW(n), 'lifeline-payments', 'lifeline-api', { after: 'cm4' }, { ...CALL, props: { sort: 'reply' } }));
+  assert.deepEqual(m.edges.at(-1).props, { sort: 'reply', replyTo: 'cm4' }, 'the latest unanswered call from its receiver to its sender');
 });
 
 test('moveTo: Alt + Up/Down moves a message one place in time, a drop onto a row takes that row\'s place; a lifeline is left to the pin', () => {
   const V = VIEW(EX), at = (m, id) => order(m).indexOf(id);
-  let m = run(EX, commMoveTo(EX, V, 'm7', { by: [0, -1] }));
-  assert.deepEqual(order(m).slice(8, 12), ['m4', 'm5', 'm7', 'm6']);
-  m = run(EX, commMoveTo(EX, V, 'm7', { by: [0, 1] }));
-  assert.ok(at(m, 'm7') === at(m, 'm8') + 1);
-  m = run(EX, commMoveTo(EX, V, 'm9', { id: 'm7' }));
-  assert.deepEqual(order(m).slice(-4), ['m6', 'm9', 'm7', 'm8']);
-  m = run(EX, commMoveTo(EX, V, 'm6', { id: 'm8' }));
-  assert.deepEqual(order(m).slice(-4), ['m7', 'm8', 'm6', 'm9'], 'down: after the row it was dropped on');
-  m = run(EX, commMoveTo(EX, V, 'm9', { index: 11 })); // a slot: before the entry at that index of view.edges, m7's
-  assert.deepEqual(order(m).slice(-5), ['m5', 'm6', 'm9', 'm7', 'm8']);
-  m = run(EX, commMoveTo(EX, V, 'm2', { index: 11 }));
-  assert.deepEqual(order(m).slice(5), ['m1', 'm3', 'm4', 'm5', 'm6', 'm2', 'm7', 'm8', 'm9']);
-  assert.deepEqual(commMoveTo(EX, V, 'm1', { by: [0, -1] }), [], 'the first message goes no earlier');
-  assert.deepEqual(commMoveTo(EX, V, 'm9', { by: [0, 1] }), []);
-  assert.deepEqual(commMoveTo(EX, V, 'm4', { by: [1, 0] }), [], 'sideways moves no message');
+  let m = run(EX, commMoveTo(EX, V, 'cm7', { by: [0, -1] }));
+  assert.deepEqual(order(m).slice(8, 12), ['cm4', 'cm5', 'cm7', 'cm6']);
+  m = run(EX, commMoveTo(EX, V, 'cm7', { by: [0, 1] }));
+  assert.ok(at(m, 'cm7') === at(m, 'cm8') + 1);
+  m = run(EX, commMoveTo(EX, V, 'cm9', { id: 'cm7' }));
+  assert.deepEqual(order(m).slice(-4), ['cm6', 'cm9', 'cm7', 'cm8']);
+  m = run(EX, commMoveTo(EX, V, 'cm6', { id: 'cm8' }));
+  assert.deepEqual(order(m).slice(-4), ['cm7', 'cm8', 'cm6', 'cm9'], 'down: after the row it was dropped on');
+  m = run(EX, commMoveTo(EX, V, 'cm9', { index: 11 })); // a slot: before the entry at that index of view.edges, m7's
+  assert.deepEqual(order(m).slice(-5), ['cm5', 'cm6', 'cm9', 'cm7', 'cm8']);
+  m = run(EX, commMoveTo(EX, V, 'cm2', { index: 11 }));
+  assert.deepEqual(order(m).slice(5), ['cm1', 'cm3', 'cm4', 'cm5', 'cm6', 'cm2', 'cm7', 'cm8', 'cm9']);
+  assert.deepEqual(commMoveTo(EX, V, 'cm1', { by: [0, -1] }), [], 'the first message goes no earlier');
+  assert.deepEqual(commMoveTo(EX, V, 'cm9', { by: [0, 1] }), []);
+  assert.deepEqual(commMoveTo(EX, V, 'cm4', { by: [1, 0] }), [], 'sideways moves no message');
   // never a transaction that breaks a rule (S5): { error } for the hint line, naming it
-  assert.match(commMoveTo(EX, V, 'm5', { by: [0, -1] }).error, /^reply-call: m5 \("paid"\) answers "m4", which is not an earlier call/);
-  assert.match(commMoveTo(EX, V, 'm1', { id: 'm9' }).error, /^reply-call: m9/, 'a call moved after its reply');
-  const fill = run(EX, commConnect(EX, V, 'api', 'receipt', { after: 'm6' }, { type: 'uml.Message', props: { sort: 'call' } }));
-  assert.match(commMoveTo(fill, VIEW(fill), 'm6', { by: [0, 1] }).error, /^create-once: m6 \("new\(order\)"\) creates receipt, but m10 reaches it first/);
-  assert.match(commConnect(EX, V, 'api', 'receipt', { after: 'm5' }, { type: 'uml.Message', props: { sort: 'call' } }).error, /^create-once: /, 'a message before its receiver\'s create');
-  assert.equal(commMoveTo(EX, V, 'api', { by: [0, 1] }), null);
+  assert.match(commMoveTo(EX, V, 'cm5', { by: [0, -1] }).error, /^reply-call: cm5 \("paid"\) answers "cm4", which is not an earlier call/);
+  assert.match(commMoveTo(EX, V, 'cm1', { id: 'cm9' }).error, /^reply-call: cm9/, 'a call moved after its reply');
+  const fill = run(EX, commConnect(EX, V, 'lifeline-api', 'receipt', { after: 'cm6' }, { type: 'uml.Message', props: { sort: 'call' } }));
+  assert.match(commMoveTo(fill, VIEW(fill), 'cm6', { by: [0, 1] }).error, /^create-once: cm6 \("new\(order\)"\) creates receipt, but m1 reaches it first/);
+  assert.match(commConnect(EX, V, 'lifeline-api', 'receipt', { after: 'cm5' }, { type: 'uml.Message', props: { sort: 'call' } }).error, /^create-once: /, 'a message before its receiver\'s create');
+  assert.equal(commMoveTo(EX, V, 'lifeline-api', { by: [0, 1] }), null);
   assert.equal(commMoveTo(EX, V, 'api-payments', { by: [0, 1] }), null);
   // the slots the canvas passes: a row's (by its id) takes that row's place, a lifeline's moves no message and starts no message
   // anywhere but last
-  assert.deepEqual(commMoveTo(EX, V, 'm9', { after: 'm7', y: 0 }), commMoveTo(EX, V, 'm9', { id: 'm7' }));
-  assert.deepEqual(commMoveTo(EX, V, 'm9', { index: 2, after: 'api', lifeline: true, y: 0 }), []);
-  assert.equal(commConnect(EX, V, 'shopper', 'storefront', { index: 1, after: 'shopper', lifeline: true }, { type: 'uml.Message', props: { sort: 'call' } })[0].index, VIEW(EX).edges.length);
-  const after = layout(run(EX, commMoveTo(EX, V, 'm7', { by: [0, -1] })), 'checkout');
-  assert.deepEqual(['m4', 'm5', 'm7', 'm6'].map(id => after.byId[id].num), ['1.1.2', '1.1.2.1', '1.1.3', '1.1.4'], 'numbered again in the new order');
+  assert.deepEqual(commMoveTo(EX, V, 'cm9', { after: 'cm7', y: 0 }), commMoveTo(EX, V, 'cm9', { id: 'cm7' }));
+  assert.deepEqual(commMoveTo(EX, V, 'cm9', { index: 2, after: 'lifeline-api', lifeline: true, y: 0 }), []);
+  assert.equal(commConnect(EX, V, 'lifeline-shopper', 'lifeline-storefront', { index: 1, after: 'lifeline-shopper', lifeline: true }, { type: 'uml.Message', props: { sort: 'call' } })[0].index, VIEW(EX).edges.length);
+  const after = layout(run(EX, commMoveTo(EX, V, 'cm7', { by: [0, -1] })), 'checkout-communication');
+  assert.deepEqual(['cm4', 'cm5', 'cm7', 'cm6'].map(id => after.byId[id].num), ['1.1.2', '1.1.2.1', '1.1.3', '1.1.4'], 'numbered again in the new order');
 });
 
 test('add: the palette\'s lifeline, last or at an index; remove: a connector takes its messages, a hidden call its replies', () => {
   const V = VIEW(EX);
   let m = run(EX, commAdd(EX, V, { type: 'uml.Lifeline' }, 'Audit log', { index: 2 }));
-  assert.deepEqual(VIEW(m).nodeIds.slice(0, 3), ['shopper', 'storefront', 'audit-log']);
+  assert.deepEqual(VIEW(m).nodeIds.slice(0, 3), ['lifeline-shopper', 'lifeline-storefront', 'audit-log']);
   assert.deepEqual(commAdd(m, VIEW(m), { type: 'uml.Lifeline' }, 'Audit log')[0].element, { id: 'audit-log-2', type: 'uml.Lifeline', label: 'Audit log' });
   assert.equal(commAdd(EX, V, { type: 'uml.Message' }, 'x'), null);
-  assert.deepEqual(commRemove(EX, V, ['api-payments'], false), [{ op: 'hide', id: 'api-payments', view: 'checkout' }, { op: 'hide', id: 'm4', view: 'checkout' }, { op: 'hide', id: 'm5', view: 'checkout' }]);
+  assert.deepEqual(commRemove(EX, V, ['api-payments'], false), [{ op: 'hide', id: 'api-payments', view: 'checkout-communication' }, { op: 'hide', id: 'cm4', view: 'checkout-communication' }, { op: 'hide', id: 'cm5', view: 'checkout-communication' }]);
   m = run(EX, commRemove(EX, V, ['api-payments'], false));
-  assert.ok(m.edges.some(e => e.id === 'm4'), 'hidden, still in the model');
+  assert.ok(m.edges.some(e => e.id === 'cm4'), 'hidden, still in the model');
   m = run(EX, commRemove(EX, V, ['api-payments'], true));
-  assert.ok(!m.edges.some(e => ['api-payments', 'm4', 'm5'].includes(e.id)));
-  assert.deepEqual(commRemove(EX, V, ['m2'], false).map(c => c.id), ['m2', 'm8'], 'a call hidden takes its reply');
-  run(EX, commRemove(EX, V, ['m2'], false));
-  m = run(EX, commRemove(EX, V, ['m2'], true));
-  assert.ok(!m.edges.some(e => e.id === 'm8'), 'a call deleted takes its reply (refs)');
-  m = run(EX, commRemove(EX, V, ['payments'], false));
-  assert.ok(!VIEW(m).edges.some(id => ['api-payments', 'm4', 'm5'].includes(id)), 'a lifeline hidden takes its connectors and messages');
-  run(EX, commRemove(EX, V, ['payments', 'api-payments', 'm4'], true));
+  assert.ok(!m.edges.some(e => ['api-payments', 'cm4', 'cm5'].includes(e.id)));
+  assert.deepEqual(commRemove(EX, V, ['cm2'], false).map(c => c.id), ['cm2', 'cm8'], 'a call hidden takes its reply');
+  run(EX, commRemove(EX, V, ['cm2'], false));
+  m = run(EX, commRemove(EX, V, ['cm2'], true));
+  assert.ok(!m.edges.some(e => e.id === 'cm8'), 'a call deleted takes its reply (refs)');
+  m = run(EX, commRemove(EX, V, ['lifeline-payments'], false));
+  assert.ok(!VIEW(m).edges.some(id => ['api-payments', 'cm4', 'cm5'].includes(id)), 'a lifeline hidden takes its connectors and messages');
+  run(EX, commRemove(EX, V, ['lifeline-payments', 'api-payments', 'cm4'], true));
   // a connector deleted from the model takes the messages another view carries on it, and none another connector carries there
   const two = { schemaVersion: 2, nodes: [{ id: 'a', type: 'uml.Lifeline' }, { id: 'b', type: 'uml.Lifeline' }],
     edges: [{ id: 'c', type: 'uml.Connector', from: 'a', to: 'b' }, { id: 'c2', type: 'uml.Connector', from: 'b', to: 'a' }, msg('m1', 'a', 'b', 'call'), msg('m2', 'a', 'b', 'async'), msg('m3', 'b', 'a', 'async')],
@@ -307,17 +307,17 @@ test('add: the palette\'s lifeline, last or at an index; remove: a connector tak
 test('save and reopen (DoD 6): a 30-step communication session undoes and redoes to byte-identical models, and reopening its saved JSON midway ends where the session does', () => {
   const T = diagramOf({ diagram: 'uml.communication' }), E = T.edits, CALL = { type: 'uml.Message', props: { sort: 'call' } }, REPLY = { type: 'uml.Message', props: { sort: 'reply' } };
   const steps = [
-    m => E.add(m, VIEW(m), { type: 'uml.Lifeline' }, 'Audit'), m => E.connect(m, VIEW(m), 'api', 'audit', { after: 'm5' }, CALL), m => [{ op: 'set', id: 'm10', path: 'label', value: 'record(payment)' }],
-    m => E.connect(m, VIEW(m), 'audit', 'api', { after: 'm10' }, REPLY), m => E.moveTo(m, VIEW(m), 'm11', { by: [0, 1] }), m => E.moveTo(m, VIEW(m), 'm11', { by: [0, -1] }),
-    m => [{ op: 'set', id: 'audit', path: 'props.represents', value: 'AuditLog' }], m => E.connect(m, VIEW(m), 'audit', 'audit', null, CALL), m => [{ op: 'set', id: 'm12', path: 'label', value: 'flush()' }],
-    m => E.moveTo(m, VIEW(m), 'm12', { id: 'm11' }), m => E.remove(m, VIEW(m), ['m12'], false), m => E.connect(m, VIEW(m), 'shopper', 'storefront', null, CALL),
-    m => [{ op: 'set', id: 'm13', path: 'label', value: 'track()' }], m => E.connect(m, VIEW(m), 'storefront', 'shopper', null, REPLY), m => [{ op: 'set', id: 'm7', path: 'props.sort', value: 'call' }],
-    m => E.moveTo(m, VIEW(m), 'm7', { by: [0, -1] }), m => E.remove(m, VIEW(m), ['m13'], true), m => [{ op: 'set', view: 'checkout', path: ['layout', 'receipt'], value: [6, 2] }],
-    m => E.connect(m, VIEW(m), 'api', 'receipt', { after: 'm6' }, { type: 'uml.Message', props: { sort: 'delete' } }), m => E.moveTo(m, VIEW(m), 'm13', { by: [0, 1] }), // m13 again: deleted at step 17, with its reply
+    m => E.add(m, VIEW(m), { type: 'uml.Lifeline' }, 'Audit'), m => E.connect(m, VIEW(m), 'lifeline-api', 'audit', { after: 'cm5' }, CALL), m => [{ op: 'set', id: 'm1', path: 'label', value: 'record(payment)' }],
+    m => E.connect(m, VIEW(m), 'audit', 'lifeline-api', { after: 'm1' }, REPLY), m => E.moveTo(m, VIEW(m), 'm2', { by: [0, 1] }), m => E.moveTo(m, VIEW(m), 'm2', { by: [0, -1] }),
+    m => [{ op: 'set', id: 'audit', path: 'props.represents', value: 'AuditLog' }], m => E.connect(m, VIEW(m), 'audit', 'audit', null, CALL), m => [{ op: 'set', id: 'm3', path: 'label', value: 'flush()' }],
+    m => E.moveTo(m, VIEW(m), 'm3', { id: 'm2' }), m => E.remove(m, VIEW(m), ['m3'], false), m => E.connect(m, VIEW(m), 'lifeline-shopper', 'lifeline-storefront', null, CALL),
+    m => [{ op: 'set', id: 'm4', path: 'label', value: 'track()' }], m => E.connect(m, VIEW(m), 'lifeline-storefront', 'lifeline-shopper', null, REPLY), m => [{ op: 'set', id: 'cm7', path: 'props.sort', value: 'call' }],
+    m => E.moveTo(m, VIEW(m), 'cm7', { by: [0, -1] }), m => E.remove(m, VIEW(m), ['m4'], true), m => [{ op: 'set', view: 'checkout-communication', path: ['layout', 'receipt'], value: [6, 2] }],
+    m => E.connect(m, VIEW(m), 'lifeline-api', 'receipt', { after: 'cm6' }, { type: 'uml.Message', props: { sort: 'delete' } }), m => E.moveTo(m, VIEW(m), 'm4', { by: [0, 1] }), // m4 again: deleted at step 17, with its reply
     m => E.add(m, VIEW(m), { type: 'uml.Lifeline' }, 'Spare'), m => E.connect(m, VIEW(m), 'spare', 'audit', null, { type: 'uml.Connector' }), m => E.remove(m, VIEW(m), ['spare-audit'], true),
-    m => [{ op: 'set', id: 'spare', path: 'props.stereotypes', value: ['actor'] }], m => E.remove(m, VIEW(m), ['spare'], false), m => E.moveTo(m, VIEW(m), 'm3', { by: [0, 1] }),
-    m => E.connect(m, VIEW(m), 'api', 'payments', { after: 'm5' }, { type: 'uml.Message', props: { sort: 'async' } }), m => [{ op: 'set', id: 'm14', path: 'label', value: 'audit()' }],
-    m => E.remove(m, VIEW(m), ['api-receipt'], false), m => E.moveTo(m, VIEW(m), 'm14', { id: 'm1' }),
+    m => [{ op: 'set', id: 'spare', path: 'props.stereotypes', value: ['actor'] }], m => E.remove(m, VIEW(m), ['spare'], false), m => E.moveTo(m, VIEW(m), 'cm3', { by: [0, 1] }),
+    m => E.connect(m, VIEW(m), 'lifeline-api', 'lifeline-payments', { after: 'cm5' }, { type: 'uml.Message', props: { sort: 'async' } }), m => [{ op: 'set', id: 'm5', path: 'label', value: 'audit()' }],
+    m => E.remove(m, VIEW(m), ['api-receipt'], false), m => E.moveTo(m, VIEW(m), 'm5', { id: 'cm1' }),
   ];
   assert.equal(steps.length, 30);
   const h = history(EX), seen = [JSON.stringify(h.model)], cmds = [];
@@ -327,9 +327,9 @@ test('save and reopen (DoD 6): a 30-step communication session undoes and redoes
   for (let i = 1; i <= 30; i++) assert.equal(JSON.stringify(h.redo()), seen[i], `redo to ${i}`);
   const reopened = cmds.slice(15).reduce((m, c) => apply(m, c), JSON.parse(seen[15]));
   assert.equal(JSON.stringify(reopened), seen[30]);
-  const geo = m => JSON.stringify(layout(m, 'checkout'), (k, v) => (k === 'ms' || k === 's' || k === 't' ? undefined : v));
+  const geo = m => JSON.stringify(layout(m, 'checkout-communication'), (k, v) => (k === 'ms' || k === 's' || k === 't' ? undefined : v));
   assert.equal(geo(reopened), geo(JSON.parse(seen[30])));
-  assert.deepEqual(clean(reopened, 'checkout').bad, []);
+  assert.deepEqual(clean(reopened, 'checkout-communication').bad, []);
 });
 
 test('performance (§10, risks.md P1): the stress view lays out in under 1 s, and a message added, renamed or reordered is laid out again and drawn (SVG markup) in under 100 ms (timed)', () => {
