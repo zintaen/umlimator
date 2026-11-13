@@ -213,3 +213,33 @@ test('a 30-step script of every command undoes and redoes, through history(), to
   assert.deepEqual(errors(h.model), []);
   assert.equal(JSON.stringify(apply(base(), steps)), seen[30]); // one transaction of all 30 gives the same bytes
 });
+
+test('addView adds a view at the end or at an index, a copy of the one given; validate() says what it lacks (milestone 2 §6.2)', () => {
+  const v = { id: 'level', diagram: 'uml.class', nodeIds: ['order'], parent: 'd', title: 'Order' };
+  let m = run(base(), { op: 'addView', view: v });
+  assert.deepEqual(m.views.map(x => x.id), ['d', 'map', 'level']);
+  assert.deepEqual(m.views[2], v); assert.notEqual(m.views[2], v);
+  m = run(base(), { op: 'addView', view: { id: 'first' }, index: 0 });
+  assert.deepEqual(m.views.map(x => x.id), ['first', 'd', 'map']);
+  assert.deepEqual(run({ schemaVersion: 2, nodes: [] }, { op: 'addView', view: { id: 'only' } }).views, [{ id: 'only' }]); // a model with no views gains its list
+  assert.deepEqual(errors(run(base(), { op: 'addView', view: v })), []);
+});
+
+test('addView refuses a view whose id is taken, or that is not an object with a string id; the transaction with it goes', () => {
+  assert.throws(() => run(base(), { op: 'addView', view: { id: 'map' } }), /addView: view "map" is there already/);
+  for (const view of [undefined, null, 'level', [], { id: 3 }, {}]) assert.throws(() => run(base(), { op: 'addView', view }), /addView: a view is an object with a string id/);
+  assert.throws(() => run(base(), [{ op: 'addView', view: { id: 'level' } }, { op: 'addView', view: { id: 'level' } }]), /"level" is there already/);
+  assert.throws(() => run(base(), { op: 'addView', view: { id: 'x' }, index: 1.5 }), /not a whole number/);
+  assert.throws(() => run(base(), { op: 'addViews' }), /\(set, add, move, hide, delete, reparent, addView\)/);
+});
+
+test('a level made in one transaction (addView, add, set opensView) undoes and redoes, through history(), to byte-identical models', () => {
+  const h = history(base()), before = JSON.stringify(h.model);
+  h.push(run(h.model, [{ op: 'addView', view: { id: 'order-level', diagram: 'uml.class', parent: 'd', title: 'Order' } },
+    { op: 'add', element: { id: 'order-part', type: 'uml.Class', label: 'Part' }, view: 'order-level' },
+    { op: 'set', id: 'order', path: 'opensView', value: 'order-level' }]));
+  const after = JSON.stringify(h.model);
+  assert.deepEqual(h.model.views[2].nodeIds, ['order-part']);
+  assert.equal(JSON.stringify(h.undo()), before);
+  assert.equal(JSON.stringify(h.redo()), after);
+});
