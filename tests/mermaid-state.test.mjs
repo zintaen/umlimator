@@ -231,7 +231,9 @@ test('text over the size limit is refused with a report; hostile input reads in 
     const [r, readMs] = best(() => read(h));
     assert.ok(readMs < 1000, `${h.slice(16, 40)}: read ${readMs} ms`);
     const writeMs = best(() => write(r.model))[1];
-    assert.ok(writeMs < 1000, `${h.slice(16, 40)}: write ${writeMs} ms`);
+    // §13 bounds the read; the write is held to 3 s, linear in the input (about 0.3 s idle, four times that on a CI runner),
+    // which a quadratic writer would pass by a hundredfold
+    assert.ok(writeMs < 3000, `${h.slice(16, 40)}: write ${writeMs} ms`);
   }
   const deep = read(names), at = id => deep.model.nodes.find(n => n.id === id);
   assert.deepEqual(deep.report.filter(x => !/never closed/.test(x.message)).map(x => `${x.line} ${x.message}`), ['66 state n64 is nested over 64 deep: what it holds is read flat from there']);
