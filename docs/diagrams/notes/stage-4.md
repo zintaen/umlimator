@@ -573,6 +573,41 @@ a model UML forbids is an error; one that is only unfinished is a warning.
   call behaviour action's view (`V`, §12.2); stereotypes on every element.
 - **Hiding:** an element leaves the view by Delete and the model by Shift + Delete (the `remove` hook's `fromModel`).
 
+### 9.5 As built in 4.5
+
+`src/uml/activity.js`, tested by `tests/activity.test.mjs` and `tests/activity.html`. Where it departs from the above:
+
+- **The header room.** `laneBands`' `shift` is applied by moving the bands, their headers and the bounds back by it, not
+  the nodes and lines forward: the same picture, and nothing `layoutTyped` returned is copied or changed (§2.4).
+- **The partitions' nodes** are drawn after the laid-out nodes, not before them, and carry `aside: true` and the first
+  node's `col` and `row`: the canvas reads a drop's column and row from `geo.nodes` only when every node has them, and
+  takes the first node as its measure (`render.js` `gridView`, `hintAt`). `geo.order` (Tab) still lists each partition
+  before what it holds. A partition's header hit area is 24 px across, 1 px past its 22 px strip on each side.
+- **Room for guards.** A typed view's router makes no room for a label (`labelRoom` is a map's), and at a column gap of
+  64 px example 9's two guards had no spot. With a labelled flow the gap grows by the widest label and 40 px laid out
+  right (as the class type does with boxes), by 48 px laid out down. One gap for every column: a gap per column needs
+  `labelRoom` for typed views, the core's.
+- **Slots.** The geometry gives one slot per node and one per partition's header (`{ after, parent, x, y }`): `I.addNode`
+  hands `add` the selection (`at.sel`) only with a slot, which "a node in the partition selected" needs, on a view of
+  partitions only too. With a node selected and no partition, `add` puts the new node in that node's lane (its slot's
+  `parent`). A comment is in no lane: `add` never parents one and `moveTo` pins one dropped in a band.
+- **Opening the called view** (Q11) is the canvas's, as a card opens its inner view: Enter on the selected call behaviour
+  action, or a double-click on it; a second plain click selects it again.
+- **Owner cycles** in loaded JSON (`apply()` refuses them): a partition whose chain of shown owners comes back to it is
+  at the top, as `laneRows` takes it.
+- **Reading order,** read literally from §9.2: a partition, then its nested partitions (each with what it holds), then
+  its own nodes by column and row; then the nodes in no lane; then the flows.
+- **Names.** Every node in a lane ends ", in <partition>", a call behaviour action's too ("Call behaviour action Take
+  payment, opens Take payment, in Order worker"); a partition counts the shown nodes in it at any depth ("Partition
+  Warehouse, 10 nodes" in example 9). An object node is "Object node Order", a data store "Data store Stock levels".
+- **Shapes** `send`, `accept`, `object` and `call` are looks over flow.js's `rounded`; `partition` draws a header only.
+- **`connect`** refuses a flow that brings an error the view did not have (S5): into an initial node, out of a final
+  node, onto a partition. `in-lane`'s path is the view's `nodeIds`.
+- **The PDF** (§15): `word` gives a node's kind, `rows` its partition ("in Warehouse").
+- **Example 9** lays out with 2 crossings down and none right (no port repair, §17), each guard drawn whole, and no
+  line along a divider for more than 24 px either way, so none is pinned. On 50 nodes, 60 flows and four lanes the
+  common edit (a guard, a stereotype, a lane change) is 25 to 60 ms of CPU, laid out and drawn.
+
 ## 10. The state machine type
 
 ### 10.1 Drawing
@@ -679,6 +714,37 @@ counted in the node's accessible name, not read one by one.
   F2 (§7.2).
 - **Properties** (DoD 4): a flow's name and guard (text); an interaction use's or inline interaction's view (`V`);
   stereotypes. Hiding as in the activity type.
+
+As built in 4.7 (`src/uml/overview.js`):
+
+- **Shapes.** The use's look is `SHAPE['ov-use']`: `SHAPE.use`'s drawing with a border added, `useSize`, a box outline and
+  `inset` 0. The inline interaction is `SHAPE['ov-inline']`: its size is the time axis's bounds, 10 px a side and the tag's
+  17 px row; the sequence is laid out (`sqRun`) and drawn each time the view is, memo hit or not, and its markup rides on the
+  node into what `layoutTyped` returns, so a memo hit repaints it onto the kept geometry: the memo saves only the layout and
+  routing. A rule or `describe()` counts the inline view's lifelines and messages with no `sqRun`. Its inner `n-body` and `n-mask` are renamed so the node's hover and
+  selection styles do not reach them. Frame only (above S11's limits, or with no sequence view), it is `useSize` with an
+  "sd" tag.
+- **Labels.** A typed view gets no `labelRoom` (it is a map's), and a row's nodes share its top, so a flow between two nodes
+  of different heights jogs halfway across the gap. With a labelled flow the gap between columns is twice the widest label
+  and 26 px (laid out down, twice the label's 18 px height and 26 px), so each guard finds a run of its own clear of the
+  stubs; with none it is 64 px. Example 13 draws both its guards whole either way. The gap is one for every column, so one
+  long guard widens them all (example 13 laid out right: 3503 px wide, 6191 px with a 60-character guard; laid out down,
+  1243 px high either way); less than twice the label drops guards, so making room only where a labelled flow runs waits for
+  an additive per-column gap option in `layoutGraph` (it holds `gapAfter` inside, with no option for it).
+- **Palette.** Initial, Final, Flow final, Merge, Fork and Join carry `name: false`; Decision asks for its question (S8).
+  A use or an inline interaction added with no name takes its view's title.
+- **Opening.** The canvas opens a typed node's view by Enter on it selected or a double-click (Q11's "click" is the map's
+  ⤢ badge, which a typed node does not draw); both are tested on example 13.
+- **No `remove` hook:** Delete hides and Shift + Delete deletes, the canvas's default.
+- **`describe()`** starts at the initial nodes and follows the flows breadth first (a fork's branches before their join),
+  each node once, each flow by "name [guard]", then what no flow reaches.
+- **Legend.** Decision, merge, fork and join are keyed one by one, though a decision and a merge share the diamond and a
+  fork and a join the bar.
+- **Lines.** A view whose `edges` list names a line other than a control flow or a comment link does not draw it and warns
+  under `overview-kinds`; a comment link with no comment at either end is a `comment-link` warning.
+- **The stress view** of §17 is generated in `tests/overview.test.mjs` (40 nodes, 50 flows, 10 inline interactions of 6
+  lifelines and 12 messages): a full layout and SVG about 20 ms, a guard edited 12 to 16 ms, one inline time axis 0.03 ms
+  (CPU, best of three after a warm-up, on a laptop). 4.10's `overview-stress.json` replaces it.
 
 ## 12. Editing through the canvas hooks
 
