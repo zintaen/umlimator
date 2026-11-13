@@ -22,15 +22,18 @@ const stop = msg => { throw new Error(`tools/atlas.mjs: ${msg}`); };
 const KEYS = {
   file: ['$schema', 'schemaVersion', 'title', 'root', 'meta', 'nodes', 'edges', 'views'],
   view: ['id', 'diagram', 'title', 'caption', 'parent', 'nodeIds', 'edges', 'fragments', 'subject', 'direction', 'notation',
-    'layout', 'present', 'tour', 'containers', 'render', 'lanes', 'gap', 'rgap'],
+    'layout', 'present', 'tour', 'containers', 'render', 'lanes', 'gap', 'rgap', 'timeline'],
   node: ['id', 'type', 'label', 'parent', 'props', 'members', 'opensView', 'kind', 'icon', 'sublabel', 'what', 'when', 'how', 'badge',
     'badges', 'style'],
   edge: ['id', 'type', 'from', 'to', 'label', 'parent', 'props', 'style', 'step', 'weight', 'sublabel'],
   container: ['id', 'label', 'tone', 'nodeIds', 'parent', 'badges'],
+  // a timing view's timeline: its unit, changes and constraints, each a view's own element
+  timeline: ['unit', 'changes', 'constraints'],
+  time: ['id', 'type', 'lifeline', 'at', 'state', 'from', 'to', 'label'],
   // an element's props, as the Bookshop files use them
   props: ['replyTo', 'covers', 'extensionPoints', 'ends', 'aggregation', 'classifier', 'collaboration', 'condition', 'default', 'do', 'effect', 'entry', 'exit',
     'guard', 'isAbstract', 'isDerived', 'isStatic', 'kind', 'multiplicity', 'operator', 'parameters', 'represents', 'returnType',
-    'sort', 'stereotypes', 'trigger', 'value', 'valueType', 'visibility'],
+    'sort', 'stereotypes', 'trigger', 'value', 'valueType', 'visibility', 'tags', 'states', 'sentAt', 'receivedAt', 'isRequired'],
 };
 function known(x, kind, where) {
   const odd = Object.keys(x).filter(k => !KEYS[kind].includes(k));
@@ -79,6 +82,8 @@ export function build(links = read(new URL('atlas-links.json', import.meta.url))
       views.set(v.id, { file: name, v });
       for (const [list, kind] of [['edges', 'edge'], ['fragments', 'node'], ['containers', 'container']])
         (v[list] || []).filter(isObj).forEach(x => { known(x, kind, `${name} view ${v.id} ${x.id}`); mark(x, `in view ${v.id}`, name); });
+      if (isObj(v.timeline)) { known(v.timeline, 'timeline', `${name} view ${v.id} timeline`);
+        for (const list of ['changes', 'constraints']) (v.timeline[list] || []).filter(isObj).forEach(x => { known(x, 'time', `${name} view ${v.id} ${x.id}`); mark(x, `in view ${v.id}`, name); }); }
     }
   }
   for (const id of els.nodes.keys()) if (views.has(id) && !files.get(id).includes(views.get(id).file))
