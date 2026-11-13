@@ -112,6 +112,8 @@ What may touch the core, each change stating its bytes in its pull request. Each
 | | | | **126 B** (built: 116 B, 184,984 B to 185,100 B) |
 | ~~Only if decision 9 takes `labelGaps`~~ Decision 9 taken (the maintainer's decision of 13 Nov 2026): `tight` reads `map \|\| dg.labelGaps`; a row gap is a candidate only on a map (`length: map && r1 - r0`), so a typed view's room is column gaps only; the registry's pointer line names the field | `src/layout/layered.js`, `src/core/registry.js` | 5.1 | 25 B (built: 22 B, 185,100 B to 185,122 B; stage 5 so far 138 B) |
 | Decision 22 taken (the maintainer's decision of 13 Nov 2026): `overlapIssues` skips a node against the node its `owner` names, either way round (`(a.owner \|\| 0) === b.id`, so two nodes with neither an owner nor an id are still measured), not on a map: a map card's `owner` is its team's name, which may be another card's id | `src/layout/audit.js` | follow-ups | 20 B (built: 37 B, 185,109 B to 185,146 B by `/usr/bin/gzip -9` on this machine, where 5.1's 185,122 B measures 185,109 B; stage 5 so far 175 B) |
+| A box's title on two lines, its keyword above its name (UML 2.5.1; the maintainer's decision of 13 Nov 2026): `frameOf` passes `TB` to `TYPED.frame`, which grows the header room by the box's `head` on its title's side; the router's reserve over a box's title (`runRouting`) and the layout check's header test (`routeAudit`) are `head` px deeper, not on a map; the registry's pointer line names `head` | `src/layout/layered.js`, `src/layout/audit.js`, `src/core/registry.js` | follow-ups | (built: 37 B, 185,146 B to 185,183 B) |
+| | | | **Follow-ups: 74 B** (185,109 B at eaba18e to 185,183 B; stage 5 so far 212 B of its 300 B) |
 
 | Option | For | Against |
 |---|---|---|
@@ -671,10 +673,13 @@ from, or settles what is not said above:
   The cost is 10 px more on the left and bottom of each box, 20 px a level (six levels: 120 px each way). A line's end on
   a slanted corner of the outline is moved in on to it, on a copy (§2.4), as `SHAPE.cube.inset` does for a closed cube (only
   ever lengthening its last run). A label the core leaves over the front face's top or right line, in the box's padding, slides
-  along its line inward, clear of it, on a copy. Its title is one line in the 24 px header room under the top face, `«device»
-  name` or `«executionEnvironment» name` with the stereotypes after the keyword, cut to the front face's width as a
-  package's title is (`06-deployment.json`'s "«executionEnvironment» Web brow…"): the box is as wide as its contents, not
-  its title.
+  along its line inward, clear of it, on a copy. Its title, under the top face: as built in the follow-ups (the
+  maintainer's decision of 13 Nov 2026), a box with a keyword or stereotypes draws them on a line above its name, as
+  UML 2.5.1 draws a keyword, `«device»` or `«executionEnvironment»` with the stereotypes after it, in 15 px more header room
+  (the box's `head`, §2.3); a node with neither has its name alone in the 24 px, as before. Each line is cut to the front
+  face's width; the core keeps a box as wide as its title on one line (`headW`), so `06-deployment.json`'s "Web browser" is
+  drawn whole (5.5 drew one line, "«executionEnvironment» Web brow…"). The router's reserve over a box's title and the
+  layout check's header test take the `head` too, so no line runs through the name.
 - `nest-kinds`' error covers any owner that is not a target (a package or a component too). `deployed-twice` warns of a
   line to another target only; a «deploy» line to the target that also nests the artifact is drawn nowhere (a line from a
   box to what it holds is left out) and warned by neither rule (`connect` refuses to draw one). `path-ends` also fails a path
@@ -689,13 +694,15 @@ from, or settles what is not said above:
   target's Owner field lists every target. No `moveTo`, `add`, `member` or `key`: the type has no ports, no members and no
   `present` field; a drop into a box and the Owner field emit stage 2's `reparent`, tested by pointer and by key.
 - Decision 21, what `06-deployment.json` keeps: its 7 labels all find a spot and none is cut short, laid out right (1,512 ×
-  756 px) and down (961 × 1,011 px), every line routed clean (8 `grid`). Laid out down without `labelGaps`, one label
-  (`edge-to-app`, "HTTP") has no spot and the view is 993 px high: `labelGaps` gives it its spot for 18 px. Laid out right,
+  816 px) and down (961 × 1,071 px), every line routed clean (8 `grid`). Laid out down without `labelGaps`, one label
+  (`edge-to-app`, "HTTP") has no spot and the view is 1,053 px high: `labelGaps` gives it its spot for 18 px. (5.5 measured
+  756 and 1,011 px high, and 993 without `labelGaps`; the two-line titles add the 60 px.) Laid out right,
   `labelGaps` changes nothing. Both runs pinned and printed in `tests/deployment.test.mjs` (the one without by
   `layoutTyped` on the type's own input with `labelGaps: false`).
 - Six levels (§7, L8): node, node, device, device, execution environment, execution environment, an artifact in the
-  deepest, a communication path from the deepest to a node at the top: laid out clean both ways; the outer box 609 × 514 px
-  laid out right and 609 × 638 px down (printed; 5.8's fixture pins its own).
+  deepest, a communication path from the deepest to a node at the top: laid out clean both ways; the outer box 609 × 574 px
+  laid out right and 609 × 698 px down (printed; 5.8's fixture pins its own; 5.5 measured 514 and 638 px, before the
+  four keyworded boxes' second title line).
 - P1 (§14), on a test view of 50 nodes and artifacts, 50 lines and boxes five deep (ten paths left with no spot before
   `labelGaps`, two after): CPU, best of seven after a warm-up, on a laptop loaded by other jobs (load average 9), a path's
   label 144 to 193 ms, an artifact moved into another node 144 to 188 ms, a full layout 150 to 207 ms, against 26 to 40 ms

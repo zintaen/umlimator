@@ -64,7 +64,10 @@ test('the cube: as wide as its widest text and 10 px of depth, its keyword over 
   const f = SHAPE.cube.frame({ id: 'b', x: 100, y: 100, w: 300, h: 120, title: '«device» Application server' });
   assert.match(f, /class="family-box" x="100" y="110" width="290" height="110"/, 'the front face');
   assert.match(f, /d="M100 110L110 100H400V210L390 220M390 110L400 100" class="dp-face"/, 'the outline and the faces\' edge, inside the frame');
-  assert.match(f, /class="family-title"[^>]*>«device» Application server</);
+  assert.match(f, /class="family-title" x="112" y="127"[^>]*>«device» Application server</, 'no keyword line: the title on one line, as before');
+  // a keyword (and stereotypes) on a line above the name, as UML 2.5.1 draws them (decision of 13 Nov 2026): the name whole
+  const two = SHAPE.cube.frame({ id: 'b', x: 100, y: 100, w: 220, h: 135, title: '«executionEnvironment» Web browser', kw: '«executionEnvironment»', name: 'Web browser', head: 15 });
+  assert.deepEqual([...two.matchAll(/class="family-title" x="(\d+)" y="(\d+)"[^>]*>([^<]*)</g)].map(m => m.slice(1)), [['112', '127', '«executionEnvironment»'], ['112', '142', 'Web browser']]);
 });
 
 test('06-deployment.json draws: cubes, boxes nested by parent, artifacts, components, lines by kind; laid out clean right and down', () => {
@@ -81,6 +84,13 @@ test('06-deployment.json draws: cubes, boxes nested by parent, artifacts, compon
     assert.equal(fam.jvm.parent, 'app-server'); assert.ok(inside(fam.jvm, fam['app-server']));
     ['shop-api-jar', 'order-worker-jar', 'shop-api-config'].forEach(id => assert.ok(inside(by[id], fam.jvm), `${direction}: ${id} in the runtime`));
     assert.equal(fam.jvm.title, '«executionEnvironment» Java 21 runtime'); assert.equal(fam['app-server'].title, '«device» Application server');
+    // each box's keyword on a line above its name, in 15 px more header room: what it holds keeps its 12 + 14 px under it
+    assert.deepEqual(['browser', 'jvm', 'shopper-device', 'app-server'].map(id => [fam[id].kw, fam[id].name, fam[id].head]), [['«executionEnvironment»', 'Web browser', 15],
+      ['«executionEnvironment»', 'Java 21 runtime', 15], ['«device»', 'Shopper\'s device', 15], ['«device»', 'Application server', 15]]);
+    assert.ok(by['storefront-bundle'].y - fam.browser.y >= 10 + 24 + 15 + 12 + 14 - .01, `${direction}: storefront.js under the browser's two-line title`);
+    const svg = svgOf(g);
+    assert.match(svg, /data-o="browser">«executionEnvironment»<\/text><text class="family-title"[^>]*data-o="browser">Web browser</, `${direction}: the name whole, under the keyword`);
+    assert.doesNotMatch(svg, /class="family-title"[^>]*>[^<]*…</, `${direction}: no title cut`);
     const e = Object.fromEntries(g.edges.map(x => [x.id, x]));
     assert.deepEqual(e['routes-on-edge'].end, { from: 'none', to: 'open', dashed: true }); assert.equal(e['routes-on-edge'].label, '«deploy»');
     assert.deepEqual(e['api-jar-manifests-api'].end, { from: 'none', to: 'open', dashed: true }); assert.equal(e['api-jar-manifests-api'].label, '«manifest»');

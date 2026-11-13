@@ -61,6 +61,8 @@ function layoutTyped(dg, memo) {
      or [from, to] for a line with a port at each end
    - a box's pad: its padding in px where it is more than stage 2's 12 (48 where it or a box it holds has ports with lines, §7);
      a box's round: true grows its frame by √2 about its centre, so the ellipse drawn in it holds its contents (§9.3)
+   - a box's head: px of header room over stage 2's 24, on the side its title is on (the top; laid out down, the left, which
+     becomes the top): a second line of title, a keyword above the name (the deployment type's, decision of 13 Nov 2026)
    - a view's labelGaps: true lays the view out once more where a line's label found no spot, was cut short or sits on a box's
      border, with the column gap it needs widened by the label's width (a map's labelRoom, layered.js; column gaps only, as a
      typed view's rows are of mixed height; laid out down, the picture's row gaps, by the label's height, so fewer labels
@@ -105,9 +107,12 @@ function spreadPorts({ n, side, ends }, turned) {
       x.e[x.from ? 'p1' : 'p2'] = v ? [B, c] : [c, B]; if (g.port != null) x.e[x.from ? 'fpb' : 'tpb'] = { ...box }; }));
     s += g.L + gap; });
 }
-// A typed view's box as frameOf measured it with stage 2's 12 px of padding: its pad widens that on every side, and round
-// grows it by √2 about its centre (above). Neither: the box as it was
-TYPED.frame = b => { const d = b.pad > 12 ? b.pad - 12 : 0, k = b.round ? Math.SQRT2 : 1; if (!d && k === 1) return b;
+// A typed view's box as frameOf measured it with stage 2's 12 px of padding and 24 px of header room: its head grows the
+// header room (turned: laid out down), its pad widens the padding on every side, and round grows it by √2 about its centre
+// (above). None of them: the box as it was
+TYPED.frame = (b, turned) => { const d = b.pad > 12 ? b.pad - 12 : 0, k = b.round ? Math.SQRT2 : 1, t = b.head > 0 ? b.head : 0;
+  if (t) Object.assign(b, turned ? { x: b.x - t, w: b.w + t } : { y: b.y - t, h: b.h + t });
+  if (!d && k === 1) return b;
   const w = (b.w + 2 * d) * k, h = (b.h + 2 * d) * k; return Object.assign(b, { x: b.x + (b.w - w) / 2, y: b.y + (b.h - h) / 2, w, h }); };
 
 // A typed view's lines from a node to itself (risks.md F1) are loops round its top right corner, nested, the first innermost:

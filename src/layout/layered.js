@@ -226,7 +226,7 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
       const p = 12, x = Math.min(...rects.map(r => r.x)) - p - (TB ? 24 : 0), y = Math.min(...rects.map(r => r.y)) - p - (TB ? 0 : 24);
       const b = {...f, x, y, w:Math.max(...rects.map(r => r.x+r.w)) + p - x, h:Math.max(...rects.map(r => r.y+r.h)) + p - y};
       if (!map) b[TB ? 'h' : 'w'] = Math.max(b[TB ? 'h' : 'w'], headW(f) + 16);
-      return cache[f.id] = dg.typed ? TYPED.frame(b) : b;
+      return cache[f.id] = dg.typed ? TYPED.frame(b, TB) : b;
     };
     const out = familyDefs.map(f => frameOf(f)).filter(Boolean);
     if (map) out.forEach(f => { // the box fits its title and its badges, which are tabs on its top border, at the right
@@ -628,7 +628,7 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
   const runRouting = order => {
     routed.length = 0; reserved.length = 0; placed.length = 0; stats = {};
     (dg.blocks || []).forEach(b => { reserved.push(b); placed.push(b); });
-    families.forEach(f => { const h = TB ? { x: f.x + 3, y: f.y + 8, w: 22, h: headOf(f) } : { x: f.x + 8, y: f.y + 3, w: headOf(f), h: 22 }; reserved.push(h); placed.push(h);
+    families.forEach(f => { const t = 22 + (!map && f.head || 0), h = TB ? { x: f.x + 3, y: f.y + 8, w: t, h: headOf(f) } : { x: f.x + 8, y: f.y + 3, w: headOf(f), h: t }; reserved.push(h); placed.push(h);
       placed.push(...[{ x: f.x, y: f.y - 3, w: f.w, h: 6 }, { x: f.x, y: f.y + f.h - 3, w: f.w, h: 6 }, { x: f.x - 3, y: f.y, w: 6, h: f.h }, { x: f.x + f.w - 3, y: f.y, w: 6, h: f.h }].map(r => ({ ...r, band: true }))); }); // lane headers and arrows stay clear
     edges.filter(e => e.fixed).forEach(e => { routed.push(e); if (e.under || e[OWN_ROUTE]) { placeLabel(e); stats[e.how] = (stats[e.how] || 0) + 1; return; } if (e.lbl) { placed.push(e.lbl); reserved.push({ x: e.lbl.x - 3, y: e.lbl.y - 3, w: e.lbl.w + 6, h: e.lbl.h + 6 }); } stats.comb = (stats.comb || 0) + 1; });
     order.forEach(e => {
