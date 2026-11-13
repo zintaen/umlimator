@@ -1,5 +1,5 @@
 import { typedProblems, versionProblem } from '../core/model.js';
-import { diagramOf } from '../core/registry.js';
+import { TYPED, diagramOf } from '../core/registry.js';
 import { SHAPE_NAMES, shapeOf } from '../draw/shapes.js';
 import { mapContext } from './context.js';
 import { ALIAS, KIND, MAPK, hasKey, kindOf } from './kinds.js';
@@ -135,9 +135,10 @@ export function validate(model) {
     out.push(...typedProblems(m).filter(p => !(p.level === 'error' && said.has(p.path))));
     views.forEach((v, i) => { const at = `views[${i}].diagram`; // a well-formed name of a type this release does not draw (M13)
       if (typedView(v) && !diagramOf(v) && !out.some(p => p.path === at)) warn(at, `diagram "${v.diagram}" is not drawn by this release: its nodes are drawn as plain cards`); });
-    const once = new Set(); // each view's type's rules, a problem once; a validate(model) that takes no view, once a type
-    views.filter(typedView).forEach(v => { const T = diagramOf(v); if (!T || !T.validate || once.has(T)) return; if (T.validate.length < 2) once.add(T);
-      T.validate(m, v).forEach(p => { const k = JSON.stringify([p.level, p.path, p.message]); if (!once.has(k)) { once.add(k); out.push(p); } }); });
+    const once = new Set(), say = p => { const k = JSON.stringify([p.level, p.path, p.message]); if (!once.has(k)) { once.add(k); out.push(p); } };
+    // each view's type's rules, a problem once; a validate(model) that takes no view, once a type
+    views.filter(typedView).forEach(v => { const T = diagramOf(v); if (!T || !T.validate || once.has(T)) return; if (T.validate.length < 2) once.add(T); T.validate(m, v).forEach(say); });
+    if (TYPED.across) TYPED.across(m).forEach(say);
   }
   return out;
 }
