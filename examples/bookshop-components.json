@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 2,
+  "title": "Bookshop: components",
+  "root": "components",
+  "nodes": [
+    { "id": "storefront-component", "type": "uml.Component", "label": "Storefront" },
+    { "id": "shop-api", "type": "uml.Component", "label": "Shop API",
+      "members": [
+        { "id": "shop-api.orders", "type": "uml.Port", "label": "orders" },
+        { "id": "shop-api.payments", "type": "uml.Port", "label": "payments" }
+      ] },
+    { "id": "checkout-component", "type": "uml.Component", "label": "Checkout", "parent": "shop-api",
+      "members": [
+        { "id": "checkout-component.orders", "type": "uml.Port", "label": "orders" },
+        { "id": "checkout-component.payments", "type": "uml.Port", "label": "payments" }
+      ] },
+    { "id": "accounts-component", "type": "uml.Component", "label": "Accounts and sign-in" },
+    { "id": "payment-provider-component", "type": "uml.Component", "label": "Payment provider",
+      "members": [
+        { "id": "payment-provider-component.charges", "type": "uml.Port", "label": "charges" }
+      ] },
+    { "id": "order-worker", "type": "uml.Component", "label": "Order worker" },
+    { "id": "i-orders", "type": "uml.Interface", "label": "Orders" },
+    { "id": "i-sign-in", "type": "uml.Interface", "label": "SignIn" },
+    { "id": "shop-api-jar", "type": "uml.Artifact", "label": "shop-api.jar", "parent": "jvm" },
+    { "id": "app-server", "type": "uml.Device", "label": "Application server" },
+    { "id": "jvm", "type": "uml.ExecutionEnvironment", "label": "Java 21 runtime", "parent": "app-server" }
+  ],
+  "edges": [
+    { "id": "api-provides-orders", "type": "uml.InterfaceRealization", "from": "shop-api.orders", "to": "i-orders" },
+    { "id": "storefront-requires-orders", "type": "uml.Usage", "from": "storefront-component", "to": "i-orders" },
+    { "id": "accounts-provides-sign-in", "type": "uml.InterfaceRealization", "from": "accounts-component", "to": "i-sign-in" },
+    { "id": "storefront-requires-sign-in", "type": "uml.Usage", "from": "storefront-component", "to": "i-sign-in" },
+    { "id": "api-requires-sign-in", "type": "uml.Usage", "from": "shop-api", "to": "i-sign-in" },
+    { "id": "orders-to-checkout", "type": "uml.Connector", "from": "shop-api.orders", "to": "checkout-component.orders", "props": { "kind": "delegation" } },
+    { "id": "checkout-payments-out", "type": "uml.Connector", "from": "checkout-component.payments", "to": "shop-api.payments", "props": { "kind": "delegation" } },
+    { "id": "api-to-provider", "type": "uml.Connector", "from": "shop-api.payments", "to": "payment-provider-component.charges", "props": { "kind": "assembly" } },
+    { "id": "worker-needs-api", "type": "uml.Dependency", "from": "order-worker", "to": "shop-api" },
+    { "id": "api-jar-manifests-api", "type": "uml.Manifestation", "from": "shop-api-jar", "to": "shop-api" }
+  ],
+  "views": [
+    { "id": "components", "diagram": "uml.component", "title": "Bookshop components", "parent": null,
+      "nodeIds": ["storefront-component", "shop-api", "checkout-component", "accounts-component", "payment-provider-component", "order-worker", "i-orders", "i-sign-in", "shop-api-jar"],
+      "present": { "i-orders": { "as": "ball" } } }
+  ]
+}

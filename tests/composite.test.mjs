@@ -19,7 +19,7 @@ import { describe } from '../src/map/insight.js';
 import { tablesOf } from '../src/page/print.js';
 import { csParse, csRow } from '../src/uml/composite.js';
 
-const CS = JSON.parse(readFileSync(new URL('../docs/diagrams/examples/04-composite-structure.json', import.meta.url)));
+const CS = JSON.parse(readFileSync(new URL('../examples/order-service-structure.json', import.meta.url)));
 const T = diagramOf({ diagram: 'uml.composite-structure' }), V = CS.views[0];
 const meets = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
 const inside = (o, f) => o.x >= f.x - .01 && o.y >= f.y - .01 && o.x + o.w <= f.x + f.w + .01 && o.y + o.h <= f.y + f.h + .01;
@@ -58,13 +58,13 @@ test('the definition: uml.composite-structure with its palette, three lines, §1
 });
 
 test('the shapes: a part (dashed when shared), a collaboration use (a dashed ellipse), an open collaboration\'s frame', () => {
-  const p = { id: 'p', label: 'checkout : Checkout [1]' }, s = SHAPE.part.size(p);
+  const p = { id: 'p', label: 'checkout : CheckoutFlow [1]' }, s = SHAPE.part.size(p);
   assert.equal(s.h, 48); assert.ok(s.w >= 96 && s.w <= 320);
   assert.equal(SHAPE.part.size({ label: 'x'.repeat(200) }).w, 320, 'a long text is cut');
   const d = SHAPE.part.draw({ ...p, ...s, x: 0, y: 0, shared: true }, 'var(--um-muted)', 'var(--um-panel)');
-  assert.match(d, /^<g class="node part" data-id="p" data-shape="part"[^>]*aria-label="Part checkout : Checkout \[1\]">/);
+  assert.match(d, /^<g class="node part" data-id="p" data-shape="part"[^>]*aria-label="Part checkout : CheckoutFlow \[1\]">/);
   assert.match(d, /class="n-body"[^>]*stroke-dasharray="6 4"/); assert.doesNotMatch(SHAPE.part.draw({ ...p, ...s, x: 0, y: 0 }, 'c', 'f'), /dasharray/);
-  assert.match(d, /data-o="p">checkout : Checkout \[1\]</, 'renamed in place');
+  assert.match(d, /data-o="p">checkout : CheckoutFlow \[1\]</, 'renamed in place');
   const u = SHAPE['collab-use'].draw({ id: 'u', label: 'events : PubSub', x: 0, y: 0, ...SHAPE['collab-use'].size({ label: 'events : PubSub' }) }, 'c', 'f');
   assert.match(u, /^<g class="node collab-use"/); assert.match(u, /class="n-body" stroke-dasharray="6 4"/);
   const f = SHAPE.collaboration.frame({ id: 'c', title: 'PublishSubscribe', x: 0, y: 0, w: 400, h: 200 });
@@ -74,7 +74,7 @@ test('the shapes: a part (dashed when shared), a collaboration use (a dashed ell
 });
 
 test('a part\'s text, `name : Type [multiplicity]`, both ways; a member row is a port, a part or a role by its owner', () => {
-  assert.deepEqual(csParse('checkout : Checkout [1]'), { label: 'checkout', valueType: 'Checkout', multiplicity: '1' });
+  assert.deepEqual(csParse('checkout : CheckoutFlow [1]'), { label: 'checkout', valueType: 'CheckoutFlow', multiplicity: '1' });
   assert.deepEqual(csParse(' listeners:OrderListener[0..*] '), { label: 'listeners', valueType: 'OrderListener', multiplicity: '0..*' });
   assert.deepEqual(csParse('x'), { label: 'x', valueType: undefined, multiplicity: undefined });
   assert.ok(csParse(': T').error && csParse('a : b : c').error);
@@ -82,7 +82,7 @@ test('a part\'s text, `name : Type [multiplicity]`, both ways; a member row is a
   assert.deepEqual(csRow({ type: 'uml.Collaboration' }, 'port x'), { type: 'uml.Property', label: 'port x', props: {} }, 'a collaboration owns no port: a role');
   assert.ok(csRow({ type: 'uml.Class' }, 'port api [2]').error, 'a port takes no multiplicity');
   assert.deepEqual(csRow({ type: 'uml.Class' }, 'pricing : PriceCalculator [1]'), { type: 'uml.Property', label: 'pricing', props: { valueType: 'PriceCalculator', multiplicity: '1' } });
-  assert.deepEqual(CS.nodes[0].members.map(T.member.print), ['port api', 'port payments', 'checkout : Checkout [1]', 'pricing : PriceCalculator [1]', 'orders : OrderRepository [1]', 'listeners : OrderListener [0..*]']);
+  assert.deepEqual(CS.nodes[0].members.map(T.member.print), ['port api', 'port payments', 'checkout : CheckoutFlow [1]', 'pricing : PriceCalculator [1]', 'orders : OrderRepository [1]', 'listeners : OrderListener [0..*]']);
 });
 
 test('04-composite-structure.json draws: the subject\'s box with its ports, parts with their types\' ports, an inner connector each way, an open collaboration; laid out clean right and down', () => {
@@ -96,7 +96,7 @@ test('04-composite-structure.json draws: the subject\'s box with its ports, part
     ['publish-subscribe.publisher', 'publish-subscribe.subscriber'].forEach(id => assert.ok(inside(by[id], F['publish-subscribe']), `${tag}: ${id} in its collaboration`));
     assert.deepEqual(['order-service.checkout', 'order-service.listeners', 'order-events', 'publish-subscribe.publisher'].map(id => [by[id].shape, !!by[id].shared]), [['part', false], ['part', true], ['collab-use', false], ['part', false]]);
     const ports = g.nodes.filter(n => n.shape === 'port').map(n => n.id);
-    assert.deepEqual(ports, ['order-service.api', 'order-service.payments', 'order-service.checkout->checkout.requests', 'order-service.checkout->checkout.quotes', 'order-service.checkout->checkout.charges', 'order-service.pricing->price-calculator.quotes']);
+    assert.deepEqual(ports, ['order-service.api', 'order-service.payments', 'order-service.checkout->checkout-class.requests', 'order-service.checkout->checkout-class.quotes', 'order-service.checkout->checkout-class.charges', 'order-service.pricing->price-calculator.quotes']);
     // each port centred on its owner's border, on its side, and every line of a port ends on its square within 1 px
     ports.forEach(id => { const n = by[id], o = ownerOf(g, n.owner), cx = n.x + n.w / 2, cy = n.y + n.h / 2;
       const on = { L: Math.abs(cx - o.x), R: Math.abs(cx - o.x - o.w), T: Math.abs(cy - o.y), B: Math.abs(cy - o.y - o.h) }[n.side];
@@ -164,15 +164,15 @@ test('names, reading order, legend and describe() (§10.2, §11, A1)', () => {
   const g = layout(CS, 'internals'), by = g.byId, F = g.families.find(f => f.id === 'order-service');
   assert.equal(F.aria, 'Class OrderService, 2 ports, holding 4 parts, 1 collaboration use');
   assert.equal(g.families.find(f => f.id === 'publish-subscribe').aria, 'Collaboration PublishSubscribe, holding 2 roles');
-  assert.equal(by['order-service.checkout'].aria, 'Part checkout : Checkout [1], in OrderService, 3 ports');
+  assert.equal(by['order-service.checkout'].aria, 'Part checkout : CheckoutFlow [1], in OrderService, 3 ports');
   assert.equal(by['order-service.listeners'].aria, 'Part listeners : OrderListener [0..*], shared, in OrderService');
   assert.equal(by['publish-subscribe.publisher'].aria, 'Role publisher : EventSource [1], in PublishSubscribe');
   assert.equal(by['order-events'].aria, 'Collaboration use orderEvents : PublishSubscribe, binding publisher to checkout, subscriber to listeners');
-  assert.equal(by['order-service.api'].aria, 'Port api of OrderService'); assert.equal(by['order-service.checkout->checkout.quotes'].aria, 'Port quotes of checkout');
+  assert.equal(by['order-service.api'].aria, 'Port api of OrderService'); assert.equal(by['order-service.checkout->checkout-class.quotes'].aria, 'Port quotes of checkout');
   const E = Object.fromEntries(g.edges.map(e => [e.id, e.aria]));
   assert.equal(E['api-to-checkout'], 'Connector from api of OrderService to requests of checkout');
   assert.equal(E['checkout-is-publisher'], 'Role binding from checkout to orderEvents, as publisher');
-  assert.deepEqual(g.order.slice(0, 7), ['order-service', 'order-service.api', 'order-service.payments', 'order-service.checkout', 'order-service.checkout->checkout.requests', 'order-service.checkout->checkout.quotes', 'order-service.checkout->checkout.charges']);
+  assert.deepEqual(g.order.slice(0, 7), ['order-service', 'order-service.api', 'order-service.payments', 'order-service.checkout', 'order-service.checkout->checkout-class.requests', 'order-service.checkout->checkout-class.quotes', 'order-service.checkout->checkout-class.charges']);
   assert.equal(g.order.length, 15 + 8); assert.deepEqual(g.order.slice(-8), CS.edges.map(e => e.id));
   assert.deepEqual(g.legend.map(s => s.match(/<b>(.*?)<\/b>/)[1]), ['Connector', 'Role binding']);
   const said = describe(CS, 'internals').split('\n');
@@ -183,7 +183,7 @@ test('names, reading order, legend and describe() (§10.2, §11, A1)', () => {
 
 /* ---- validators: each rule's failing case; the example breaks none at error level ---- */
 const RULE_CASES = {
-  'subject-shown': m => { m.views[0].subject = 'checkout'; },
+  'subject-shown': m => { m.views[0].subject = 'checkout-class'; },
   'part-type': m => { mem(m, 'order-service.pricing').props.valueType = 'Nobody'; },
   'connector-part': m => { m.edges[0].props.ends.to.part = 'order-service.pricing'; },
   'connector-scope': m => { m.edges.push(con('across', 'order-service.checkout', 'publish-subscribe.publisher')); },
@@ -217,20 +217,20 @@ test('validators: each rule passes the example and fails on a model that breaks 
 /* ---- editing (§6, §12) ---- */
 const run = (m, r) => apply(m, Array.isArray(r) ? r : r.commands);
 test('connect: a connector from a port on a part keeps the part (ends.<end>.part); a role binding\'s role is picked; a part\'s port joins nothing else', () => {
-  const r = T.edits.connect(CS, V, 'order-service.checkout->checkout.quotes', 'order-service.api', null, { type: 'uml.Connector' });
-  assert.deepEqual(r, [{ op: 'add', element: { id: 'connector', type: 'uml.Connector', from: 'checkout.quotes', to: 'order-service.api', props: { ends: { from: { part: 'order-service.checkout' } } } }, view: 'internals' }]);
+  const r = T.edits.connect(CS, V, 'order-service.checkout->checkout-class.quotes', 'order-service.api', null, { type: 'uml.Connector' });
+  assert.deepEqual(r, [{ op: 'add', element: { id: 'connector', type: 'uml.Connector', from: 'checkout-class.quotes', to: 'order-service.api', props: { ends: { from: { part: 'order-service.checkout' } } } }, view: 'internals' }]);
   const m = run(CS, r); assert.deepEqual(validate(m).filter(p => p.level === 'error'), []);
   assert.equal(T.edits.connect(CS, V, 'order-service.orders', 'order-service.pricing', null, { type: 'uml.Connector' }), null, 'part to part: the default');
   const pick = T.edits.connect(CS, V, 'order-events', 'order-service.pricing', null, { type: 'uml.RoleBinding' });
   assert.deepEqual(pick.pick, ['publisher', 'subscriber']);
   assert.deepEqual(pick.then(1), [{ op: 'add', element: { id: 'binding', type: 'uml.RoleBinding', from: 'order-service.pricing', to: 'order-events', label: 'subscriber' }, view: 'internals' }], 'drawn from the use: turned to run from the part');
   assert.ok(T.edits.connect(CS, V, 'order-service.pricing', 'order-service.orders', null, { type: 'uml.RoleBinding' }).error);
-  assert.ok(T.edits.connect(CS, V, 'order-service.checkout->checkout.quotes', 'order-events', null, { type: 'uml.CommentLink', label: 'Comment link' }).error);
+  assert.ok(T.edits.connect(CS, V, 'order-service.checkout->checkout-class.quotes', 'order-events', null, { type: 'uml.CommentLink', label: 'Comment link' }).error);
 });
 
 test('moveTo: a port dropped goes to the side nearest the drop, Alt + an arrow across its side moves it; along its side, said; a part, or a panel row\'s ↑ ↓, the default', () => {
-  const geo = layout(CS, 'internals'), p = geo.byId['order-service.checkout->checkout.quotes'], o = geo.byId['order-service.checkout'];
-  assert.deepEqual(T.edits.moveTo(CS, V, p.id, { pt: [o.x + o.w / 2, o.y - 2], geo }), [{ op: 'set', view: 'internals', path: ['present', 'order-service.checkout', 'ports', 'checkout.quotes', 'side'], value: 'top' }]);
+  const geo = layout(CS, 'internals'), p = geo.byId['order-service.checkout->checkout-class.quotes'], o = geo.byId['order-service.checkout'];
+  assert.deepEqual(T.edits.moveTo(CS, V, p.id, { pt: [o.x + o.w / 2, o.y - 2], geo }), [{ op: 'set', view: 'internals', path: ['present', 'order-service.checkout', 'ports', 'checkout-class.quotes', 'side'], value: 'top' }]);
   const s = geo.byId['order-service.api'];
   assert.deepEqual(T.edits.moveTo(CS, V, s.id, { by: [0, 1], geo }), { error: 'A port\'s place along its side follows its lines and is not stored: Alt + an arrow across the side moves it to another side' });
   assert.deepEqual(T.edits.moveTo(CS, V, s.id, { by: [1, 0], geo }), [{ op: 'set', view: 'internals', path: ['present', 'order-service.api', 'side'], value: 'right' }]);
@@ -250,9 +250,9 @@ test('add: a part into the subject; a port into the subject, or a selected part\
   assert.ok(layout(run(CS, r), 'internals').byId['order-service.audit'], 'drawn in the subject');
   r = T.edits.add(CS, V, E('Port'), 'admin : AdminApi', { sel: ['order-service'] });
   assert.deepEqual(r, [{ op: 'add', element: { id: 'order-service.admin', type: 'uml.Port', label: 'admin', props: { valueType: 'AdminApi' } }, owner: 'order-service' }]);
-  r = T.edits.add(CS, V, E('Port'), 'audit', { sel: ['order-service.checkout->checkout.quotes'] });
-  assert.equal(r.say, 'Added the port to Checkout, the type of checkout: every part of that type shows it'); assert.equal(r.commands[0].owner, 'checkout');
-  assert.ok(layout(run(CS, r), 'internals').byId['order-service.checkout->checkout.audit']);
+  r = T.edits.add(CS, V, E('Port'), 'audit', { sel: ['order-service.checkout->checkout-class.quotes'] });
+  assert.equal(r.say, 'Added the port to CheckoutFlow, the type of checkout: every part of that type shows it'); assert.equal(r.commands[0].owner, 'checkout-class');
+  assert.ok(layout(run(CS, r), 'internals').byId['order-service.checkout->checkout-class.audit']);
   assert.ok(T.edits.add(CS, V, E('Port'), 'x', { sel: ['order-service.orders'] }).error, 'its type names no class');
   assert.ok(T.edits.add(CS, V, E('Port'), 'x', { sel: [] }).error); assert.ok(T.edits.add(CS, V, E('Port'), 'x', { sel: ['publish-subscribe'] }).error);
   r = T.edits.add(CS, V, E('Role'), 'broker : Broker', { sel: ['publish-subscribe'] }); assert.equal(r[0].owner, 'publish-subscribe');
@@ -270,11 +270,11 @@ test('remove: a part goes from the model with its connectors (refs cascade), sai
   const m = run(CS, r);
   assert.deepEqual(m.edges.map(e => e.id), ['publisher-to-subscriber', 'listeners-are-subscribers'], 'its connectors, through it or to it, and its role binding go with it');
   assert.deepEqual(validate(m).filter(p => p.level === 'error'), []);
-  r = T.edits.remove(CS, V, ['order-service.checkout->checkout.quotes'], false);
+  r = T.edits.remove(CS, V, ['order-service.checkout->checkout-class.quotes'], false);
   assert.deepEqual(r.commands, [{ op: 'delete', id: 'checkout-to-pricing' }]);
-  assert.match(r.say, /the 1 connector through checkout to its port quotes; Shift \+ Delete deletes the port from Checkout/);
-  assert.deepEqual(T.edits.remove(CS, V, ['order-service.checkout->checkout.quotes'], true).commands, [{ op: 'delete', id: 'checkout.quotes' }]);
-  assert.ok(T.edits.remove(run(CS, r), V, ['order-service.checkout->checkout.quotes'], false).error, 'no connector left to delete');
+  assert.match(r.say, /the 1 connector through checkout to its port quotes; Shift \+ Delete deletes the port from CheckoutFlow/);
+  assert.deepEqual(T.edits.remove(CS, V, ['order-service.checkout->checkout-class.quotes'], true).commands, [{ op: 'delete', id: 'checkout-class.quotes' }]);
+  assert.ok(T.edits.remove(run(CS, r), V, ['order-service.checkout->checkout-class.quotes'], false).error, 'no connector left to delete');
   assert.deepEqual(T.edits.remove(CS, V, ['order-service.api', 'publish-subscribe'], false).commands, [{ op: 'hide', id: 'publish-subscribe', view: 'internals' }, { op: 'delete', id: 'order-service.api' }]);
   assert.equal(T.edits.remove(CS, V, ['publish-subscribe'], false), null, 'a node alone: the default');
   // a line selected with a part: hidden where the view lists its lines, said where it shows them all (as the canvas); hidden first
@@ -293,9 +293,9 @@ test('remove: a part goes from the model with its connectors (refs cascade), sai
 });
 
 test('rename: F2 on a port on a part renames its class\'s port (said), keeping its type; on a part, its row sets name, type and multiplicity', () => {
-  const m = structuredClone(CS); mem(m, 'checkout.quotes').props = { valueType: 'Quotes' };
-  const r = T.edits.rename(m, m.views[0], 'order-service.checkout->checkout.quotes', 'prices');
-  assert.deepEqual(r, { commands: [{ op: 'set', id: 'checkout.quotes', path: 'label', value: 'prices' }], say: 'Renamed Checkout\'s port: every part of that type shows it' });
+  const m = structuredClone(CS); mem(m, 'checkout-class.quotes').props = { valueType: 'Quotes' };
+  const r = T.edits.rename(m, m.views[0], 'order-service.checkout->checkout-class.quotes', 'prices');
+  assert.deepEqual(r, { commands: [{ op: 'set', id: 'checkout-class.quotes', path: 'label', value: 'prices' }], say: 'Renamed CheckoutFlow\'s port: every part of that type shows it' });
   assert.deepEqual(T.edits.rename(CS, V, 'order-service.pricing', 'pricer : PriceCalculator [0..1]'), [{ op: 'set', id: 'order-service.pricing', path: 'label', value: 'pricer' }, { op: 'set', id: 'order-service.pricing', path: 'props.multiplicity', value: '0..1' }]);
   assert.ok(T.edits.rename(CS, V, 'order-service.pricing', ': x').error);
   assert.equal(T.edits.rename(CS, V, 'order-events', 'x'), null);
@@ -315,10 +315,10 @@ test('member rows (edits.member): on the subject `port name : Type` is a port an
 test('save and reopen (DoD 6): a 30-step session undoes and redoes to byte-identical models, and reopening its saved JSON midway ends where the session does', () => {
   const E = l => T.elements.find(e => e.label === l), steps = [];
   for (let i = 0; i < 5; i++) { const w = steps.reduce((m, s) => apply(m, s), CS), v = w.views[0];
-    const part = T.edits.add(w, v, E('Part'), `p${i} : Checkout [1]`, null), pid = part[0].element.id, w2 = apply(w, part);
-    const c = T.edits.connect(w2, w2.views[0], `${pid}->checkout.requests`, 'order-service.api', null, { type: 'uml.Connector' }).map(x => ({ ...x, element: { ...x.element, id: `c${i}` } }));
+    const part = T.edits.add(w, v, E('Part'), `p${i} : CheckoutFlow [1]`, null), pid = part[0].element.id, w2 = apply(w, part);
+    const c = T.edits.connect(w2, w2.views[0], `${pid}->checkout-class.requests`, 'order-service.api', null, { type: 'uml.Connector' }).map(x => ({ ...x, element: { ...x.element, id: `c${i}` } }));
     steps.push(part, c, T.edits.member(w2, w2.views[0], 'order-service', null, `port q${i}`),
-      T.edits.rename(w2, w2.views[0], pid, `r${i} : Checkout [0..1]`),
+      T.edits.rename(w2, w2.views[0], pid, `r${i} : CheckoutFlow [0..1]`),
       T.edits.moveTo(w2, w2.views[0], 'order-service.api', { by: [0, i % 2 ? 1 : -1] }) || [{ op: 'set', view: 'internals', path: ['present', 'order-service.api', 'side'], value: i % 2 ? 'bottom' : 'top' }],
       i % 2 ? T.edits.remove(w2, w2.views[0], [pid], false).commands : [{ op: 'set', id: pid, path: 'props.aggregation', value: 'shared' }]);
   }
@@ -338,7 +338,12 @@ test('the PDF\'s tables (§11): a part\'s and a role\'s kind and rows, a collabo
   assert.deepEqual(['order-service.checkout', 'publish-subscribe.publisher', 'order-service.api', 'order-events', 'order-service', 'nope'].map(id => T.word(CS, id)), ['Part', 'Role', 'Port', 'Collaboration use', null, null]);
   assert.deepEqual(T.rows(CS, V, 'order-service.listeners'), ['listeners : OrderListener [0..*]', 'shared']);
   assert.deepEqual(T.rows(CS, V, 'order-events'), ['PublishSubscribe', 'publisher ← checkout', 'subscriber ← listeners']);
-  assert.equal(T.rows(CS, V, 'order-service'), null);
+  // 0.22.0 (5.8): the subject's and an open collaboration's rows, each part with its aggregation and the connectors the
+  // Lines table leaves out (their ends are members); a closed element has none
+  assert.deepEqual(T.rows(CS, V, 'order-service'), ['port api', 'port payments', 'checkout : CheckoutFlow [1], composite', 'pricing : PriceCalculator [1], composite', 'orders : OrderRepository [1], composite',
+    'listeners : OrderListener [0..*], shared', 'Connector from api of OrderService to requests of checkout', 'Connector from quotes of checkout to quotes of pricing',
+    'Connector from charges of checkout to payments of OrderService', 'Connector from checkout to orders', 'Connector from checkout to listeners']);
+  assert.deepEqual(T.rows(CS, V, 'publish-subscribe'), ['publisher : EventSource [1]', 'subscriber : EventListener [0..*]', 'Connector from publisher to subscriber']);
   const ctx = mapContext(CS), [els] = tablesOf(ctx, ctx.V[V.id], ctx.buildGeo(V.id));
   assert.ok(els.rows.some(r => /Collaboration use/.test(r) && /publisher ← checkout/.test(r)), els.rows.join('\n'));
 });

@@ -40,8 +40,8 @@ const blend = (top, bot) => [0, 1, 2].map(i => top[i] * top[3] + bot[i] * (1 - t
 const lum = c => { const f = v => v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]); };
 const ratio = (fg, bg) => { const [x, y] = [lum(blend(fg, bg)), lum(bg)].sort((p, q) => q - p); return +((x + 0.05) / (y + 0.05)).toFixed(2); };
 const css = (e, k) => rgba(getComputedStyle(e)[k]);
-const MODEL = await (await fetch('../docs/diagrams/examples/05-component.json')).json();
-const PORTS = ['shop-api.orders', 'shop-api.payments', 'checkout.orders', 'checkout.payments', 'payment-provider.charges'];
+const MODEL = await (await fetch('../examples/bookshop-components.json')).json();
+const PORTS = ['shop-api.orders', 'shop-api.payments', 'checkout-component.orders', 'checkout-component.payments', 'payment-provider-component.charges'];
 try {
   for (const theme of ['light', 'dark']) for (const [fname, family] of Object.entries(FONTS)) for (const direction of ['right', 'down']) {
     document.documentElement.dataset.theme = theme; el.style.setProperty('--um-sans', family);
@@ -55,25 +55,25 @@ try {
     all('.node.component, .node.artifact, .node.classifier').forEach(g => g.querySelectorAll('text').forEach(t => { if (t.closest('.node') !== g) return; if (!inside(box(t), mask(g), 1)) bad.push(`${g.dataset.id}: "${t.textContent}" spills`); }));
     const top = all('.node').filter(g => !g.classList.contains('port') && !g.parentElement.closest('.node'));
     top.forEach((a, i) => top.slice(i + 1).forEach(b => { const p = box(a.querySelector('.n-mask') || a), q = box(b.querySelector('.n-mask') || b); if (p.x < q.x + q.w && q.x < p.x + p.w && p.y < q.y + q.h && q.y < p.y + p.h) bad.push(`${a.dataset.id} and ${b.dataset.id} overlap`); }));
-    if (!inside(mask(pick('.node[data-id="checkout"]')), box(pick('.family[data-family="shop-api"] .family-box')))) bad.push('checkout is outside Shop API');
+    if (!inside(mask(pick('.node[data-id="checkout-component"]')), box(pick('.family[data-family="shop-api"] .family-box')))) bad.push('checkout-component is outside Shop API');
     check(`${tag}: every text inside its shape, Checkout inside Shop API, no nodes overlapping`, !bad.length, bad);
     // each port's square straddles its owner's border; every line from or to a port ends on its square within 1 px
     let seen = 0; const offs = [], sq = id => box(pick(`.node.port[data-id="${id}"] .n-body`));
     PORTS.forEach(id => { const s = sq(id), o = id.startsWith('shop-api') ? box(pick('.family[data-family="shop-api"] .family-box')) : mask(pick(`.node[data-id="${id.split('.')[0]}"]`)), cx = s.x + s.w / 2, cy = s.y + s.h / 2;
       if (![o.x, o.x + o.w].some(b => Math.abs(cx - b) < 1) && ![o.y, o.y + o.h].some(b => Math.abs(cy - b) < 1)) offs.push([id, 'off its border']); });
-    const lines = { 'Delegation from orders of Shop API to orders of Checkout': ['shop-api.orders', 'checkout.orders'], 'Delegation from payments of Checkout to payments of Shop API': ['checkout.payments', 'shop-api.payments'],
-      'Assembly from payments of Shop API to charges of Payment provider': ['shop-api.payments', 'payment-provider.charges'], 'Realization from orders of Shop API to Orders': ['shop-api.orders', null] };
+    const lines = { 'Delegation from orders of Shop API to orders of Checkout': ['shop-api.orders', 'checkout-component.orders'], 'Delegation from payments of Checkout to payments of Shop API': ['checkout-component.payments', 'shop-api.payments'],
+      'Assembly from payments of Shop API to charges of Payment provider': ['shop-api.payments', 'payment-provider-component.charges'], 'Realization from orders of Shop API to Orders': ['shop-api.orders', null] };
     all('.edge-g').forEach(g => { const t = g.querySelector('title').textContent, d = g.querySelector('path.edge').getAttribute('d').match(/-?\d+(\.\d+)?/g).map(Number), ends = [d.slice(0, 2), d.slice(-2)];
       const id = Object.hasOwn(lines, t) ? t : null; if (!id) return; seen++;
       lines[id].forEach((p, k) => { if (!p) return; const s = sq(p), [x, y] = ends[k], dd = Math.max(s.x - x, x - s.x - s.w, s.y - y, y - s.y - s.h, 0);
         if (dd > 1.5) offs.push([id, p, +dd.toFixed(2)]); }); }); // a marker's cut (the delegation's open arrow) at most its length off: its tip, not drawn, is on the square
     check(`${tag}: each port on its owner's border, each port line ending on its square`, !offs.length && seen === 4, [offs, seen]);
-    check(`${tag}: the ball and the socket: a circle, and a usage ending in the socket marker`, !!pick('.node.ball circle.fl-hit') && /socket/.test(pick('.edge-g[data-from="storefront"][data-to="i-orders"] path.edge').getAttribute('marker-end') || ''));
+    check(`${tag}: the ball and the socket: a circle, and a usage ending in the socket marker`, !!pick('.node.ball circle.fl-hit') && /socket/.test(pick('.edge-g[data-from="storefront-component"][data-to="i-orders"] path.edge').getAttribute('marker-end') || ''));
     check(`${tag}: names a screen reader reads`, pick('.node[data-id="shop-api.orders"]').getAttribute('aria-label') === 'Port orders of Shop API, provides Orders'
       && pick('.family[data-family="shop-api"]').getAttribute('aria-label') === 'Component Shop API, 2 ports, holding 1 component'
       && pick('.node[data-id="i-orders"]').getAttribute('aria-label') === 'Interface Orders, as a ball, provided by Shop API, required by Storefront');
     const order = all('.keys .um-key').map(k => k.dataset.node ?? 'line');
-    check(`${tag}: reading order: each element, its ports after it, then the lines`, same(order.slice(0, 6), ['storefront', 'shop-api.orders', 'shop-api.payments', 'checkout', 'checkout.orders', 'checkout.payments']) && order.length === 23, order); // a box is read by its frame, not a key
+    check(`${tag}: reading order: each element, its ports after it, then the lines`, same(order.slice(0, 6), ['storefront-component', 'shop-api.orders', 'shop-api.payments', 'checkout-component', 'checkout-component.orders', 'checkout-component.payments']) && order.length === 23, order); // a box is read by its frame, not a key
     const legend = all('.m-legend b').map(b => b.textContent);
     check(`${tag}: the legend keys each line kind drawn`, same(legend, ['Realization', 'Usage', 'Realization', 'Usage', 'Assembly', 'Delegation', 'Dependency', 'Manifestation']), legend);
     const stageBg = css(pick('.stage'), 'backgroundColor'), low = [];
@@ -92,14 +92,14 @@ try {
     && /Realization, Component realization, Usage, Assembly, Delegation, Dependency, Manifestation, Comment link/.test(panel('.um-pal .um-note').textContent), panel('.um-pal').textContent);
   key('n'); pick('.um-rename').value = 'Search'; key('Enter', {}, pick('.um-rename'));
   const m1 = gives('N adds a component, named, shown in the view', [{ op: 'add', element: { id: 'component1', type: 'uml.Component', label: 'Search' }, view: 'components' }], m => m.views[0].nodeIds.includes('component1'), BASE);
-  click('.node[data-id="storefront"] .c-name'); all('.um-editor .um-pal button')[4].click(); pick('.um-rename').value = 'events'; key('Enter', {}, pick('.um-rename'));
-  const m2 = gives('the palette\'s Port, Storefront selected: a port into it', [{ op: 'add', element: { id: 'port1', type: 'uml.Port', label: 'events' }, owner: 'storefront' }], m => m.nodes.find(n => n.id === 'storefront').members.length === 1, BASE);
+  click('.node[data-id="storefront-component"] .c-name'); all('.um-editor .um-pal button')[4].click(); pick('.um-rename').value = 'events'; key('Enter', {}, pick('.um-rename'));
+  const m2 = gives('the palette\'s Port, Storefront selected: a port into it', [{ op: 'add', element: { id: 'port1', type: 'uml.Port', label: 'events' }, owner: 'storefront-component' }], m => m.nodes.find(n => n.id === 'storefront-component').members.length === 1, BASE);
   h.update(m2);
-  { const o = box(pick('.node[data-id="storefront"] > .n-mask')), q = box(pick('.node.port[data-id="port1"] .n-body')), cx = q.x + q.w / 2, cy = q.y + q.h / 2;
-    check('after update() the new port is drawn on Storefront\'s border, a node of its own (decision 22)', !pick('.node[data-id="storefront"] .node.port')
+  { const o = box(pick('.node[data-id="storefront-component"] > .n-mask')), q = box(pick('.node.port[data-id="port1"] .n-body')), cx = q.x + q.w / 2, cy = q.y + q.h / 2;
+    check('after update() the new port is drawn on Storefront\'s border, a node of its own (decision 22)', !pick('.node[data-id="storefront-component"] .node.port')
       && ([o.x, o.x + o.w].some(b => Math.abs(cx - b) < 1) || [o.y, o.y + o.h].some(b => Math.abs(cy - b) < 1)), [o, q]); }
-  click('.node[data-id="storefront"] .c-name');
-  check('Storefront selected: its port is not marked selected (decision 22)', pick('.node[data-id="storefront"]').classList.contains('sel') && !pick('.node.port[data-id="port1"]').classList.contains('sel') && !pick('.node.sel .node.port'));
+  click('.node[data-id="storefront-component"] .c-name');
+  check('Storefront selected: its port is not marked selected (decision 22)', pick('.node[data-id="storefront-component"]').classList.contains('sel') && !pick('.node.port[data-id="port1"]').classList.contains('sel') && !pick('.node.sel .node.port'));
   click('.node[data-id="i-sign-in"] .c-name'); const n0 = ed.length;
   all('.um-editor .um-pal button')[4].click(); if (pick('.um-rename')) { pick('.um-rename').value = 'x'; key('Enter', {}, pick('.um-rename')); }
   check('the palette\'s Port with an interface selected: refused, said, nothing emitted', ed.length === n0 && /Select a component to add a port to/.test(sr.textContent));
@@ -110,10 +110,10 @@ try {
   all('.um-pick button')[0].click();
   gives('picking Ball: the interface added and drawn as a ball', [{ op: 'add', element: { id: 'interface1', type: 'uml.Interface', label: 'Stock' }, view: 'components' }, { op: 'set', view: 'components', path: ['present', 'interface1', 'as'], value: 'ball' }], m => m.views[0].present.interface1.as === 'ball', m2);
   // F2 on a port, by pointer then key
-  click('.node[data-id="checkout.orders"]'); key('F2');
+  click('.node[data-id="checkout-component.orders"]'); key('F2');
   check('F2 on a port: a field holding its name', pick('.um-rename') && pick('.um-rename').value === 'orders');
   pick('.um-rename').value = 'requests'; key('Enter', {}, pick('.um-rename'));
-  gives('F2: set the port\'s label', [{ op: 'set', id: 'checkout.orders', path: 'label', value: 'requests' }], m => m.nodes.find(n => n.id === 'checkout').members[0].label === 'requests', m2);
+  gives('F2: set the port\'s label', [{ op: 'set', id: 'checkout-component.orders', path: 'label', value: 'requests' }], m => m.nodes.find(n => n.id === 'checkout-component').members[0].label === 'requests', m2);
   // a connector by L from a port: to a port inside its owner a delegation, to one outside an assembly (edits.connect)
   click('.node[data-id="shop-api.payments"]'); key('l'); for (const c of 'pay') key(c); key('Enter');
   const items = all('.um-pick button').map(b => b.textContent);
@@ -121,37 +121,37 @@ try {
   all('.um-pick button')[3].click();
   const c1 = last().commands[0];
   check('a connector by L from Shop API\'s port to one named pay…: its kind by nesting (edits.connect)', c1.op === 'add' && c1.element.type === 'uml.Connector' && c1.element.from === 'shop-api.payments'
-    && c1.element.props.kind === (c1.element.to === 'checkout.payments' ? 'delegation' : 'assembly') && !errors(apply(m2, last().commands)).length, last());
+    && c1.element.props.kind === (c1.element.to === 'checkout-component.payments' ? 'delegation' : 'assembly') && !errors(apply(m2, last().commands)).length, last());
   // B on an interface, by key
   click('.node[data-id="i-sign-in"] .c-name'); key('b');
   gives('B on an interface: a ball (edits.key)', [{ op: 'set', view: 'components', path: ['present', 'i-sign-in', 'as'], value: 'ball' }], m => m.views[0].present['i-sign-in'].as === 'ball', m2);
   click('.node[data-id="i-orders"]'); key('B');
   gives('B on a ball: back to a rectangle', [{ op: 'set', view: 'components', path: ['present', 'i-orders', 'as'], value: undefined }], m => !m.views[0].present['i-orders'].as, m2);
   // Alt + arrows on a port: across its side moves it, along it is said and does nothing (edits.moveTo)
-  click('.node[data-id="payment-provider.charges"]'); const was = ed.length; key('ArrowDown', { altKey: true });
+  click('.node[data-id="payment-provider-component.charges"]'); const was = ed.length; key('ArrowDown', { altKey: true });
   check('Alt + ↓ along a port\'s side: nothing emitted', ed.length === was);
   key('ArrowRight', { altKey: true });
-  const m3 = gives('Alt + → on a port on the left: present.side right', [{ op: 'set', view: 'components', path: ['present', 'payment-provider.charges', 'side'], value: 'right' }], m => true, m2);
+  const m3 = gives('Alt + → on a port on the left: present.side right', [{ op: 'set', view: 'components', path: ['present', 'payment-provider-component.charges', 'side'], value: 'right' }], m => true, m2);
   h.update(m3);
-  const pp = box(pick('.node[data-id="payment-provider"] > .n-mask')), cs = box(pick('.node[data-id="payment-provider.charges"] .n-body'));
+  const pp = box(pick('.node[data-id="payment-provider-component"] > .n-mask')), cs = box(pick('.node[data-id="payment-provider-component.charges"] .n-body'));
   check('after update() the port is on its owner\'s right border', Math.abs(cs.x + cs.w / 2 - pp.x - pp.w) < 1, [pp, cs]);
   // a port as a member row (edits.member)
-  click('.node[data-id="checkout"] .c-name');
+  click('.node[data-id="checkout-component"] .c-name');
   const nw = panel('[data-new]'); nw.value = 'events : EventApi'; enter(nw);
-  gives('a member row on a component is a port, name : Type (edits.member)', [{ op: 'add', element: { id: 'port2', type: 'uml.Port', label: 'events', props: { valueType: 'EventApi' } }, owner: 'checkout' }], m => m.nodes.find(n => n.id === 'checkout').members.length === 3, m3);
+  gives('a member row on a component is a port, name : Type (edits.member)', [{ op: 'add', element: { id: 'port2', type: 'uml.Port', label: 'events', props: { valueType: 'EventApi' } }, owner: 'checkout-component' }], m => m.nodes.find(n => n.id === 'checkout-component').members.length === 3, m3);
   // the Owner field; a drop into a box
-  click('.node[data-id="accounts"] .c-name');
+  click('.node[data-id="accounts-component"] .c-name');
   const own = panel('[data-f="owner"]'), opts = [...own.options].map(o => o.textContent);
   check('the Owner field of a component: none, the components and the package', opts[0] === 'none' && opts.includes('Shop API') && opts.includes('shop'), opts);
   change(own, 'pk');
-  gives('Owner: reparent the component to the package', [{ op: 'reparent', id: 'accounts', parent: 'pk' }], m => m.nodes.find(n => n.id === 'accounts').parent === 'pk', m3);
+  gives('Owner: reparent the component to the package', [{ op: 'reparent', id: 'accounts-component', parent: 'pk' }], m => m.nodes.find(n => n.id === 'accounts-component').parent === 'pk', m3);
   const fb = pick('.family[data-family="shop-api"] .family-box').getBoundingClientRect(), from = centre('.node[data-id="order-worker"] > .n-mask'), at = [fb.left + 40, fb.bottom - 20];
   ptr(pick('.node[data-id="order-worker"]'), 'pointerdown', from); for (let i = 1; i <= 4; i++) ptr(stage, 'pointermove', [from[0] + (at[0] - from[0]) * i / 4, from[1] + (at[1] - from[1]) * i / 4]); ptr(stage, 'pointerup', at);
   gives('a component dropped into Shop API\'s box: reparent', [{ op: 'reparent', id: 'order-worker', parent: 'shop-api' }], m => m.nodes.find(n => n.id === 'order-worker').parent === 'shop-api', m3);
   // Delete on a port deletes it, as said; Delete on a component hides it; Shift + Delete deletes it
   h = mount(m3, { editable: true });
-  click('.node[data-id="payment-provider.charges"]'); key('Delete');
-  gives('Delete on a port: deleted from the model with its lines (edits.remove)', [{ op: 'delete', id: 'payment-provider.charges' }], m => !m.edges.some(e => e.id === 'api-to-provider'), m3);
+  click('.node[data-id="payment-provider-component.charges"]'); key('Delete');
+  gives('Delete on a port: deleted from the model with its lines (edits.remove)', [{ op: 'delete', id: 'payment-provider-component.charges' }], m => !m.edges.some(e => e.id === 'api-to-provider'), m3);
   check('the hint line says a port is deleted, not hidden', /a port is not hidden/.test(sr.textContent), sr.textContent.slice(-300));
   click('.node[data-id="order-worker"] .c-name'); key('Delete');
   gives('Delete on a component: hide it', [{ op: 'hide', id: 'order-worker', view: 'components' }], m => !m.views[0].nodeIds.includes('order-worker'), m3);

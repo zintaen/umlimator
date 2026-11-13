@@ -19,7 +19,7 @@ import { svgOf } from '../src/draw/svg.js';
 import { SHAPE, drawnPts } from '../src/draw/shapes.js';
 import '../src/uml/component.js';
 
-const CM = JSON.parse(readFileSync(new URL('../docs/diagrams/examples/05-component.json', import.meta.url)));
+const CM = JSON.parse(readFileSync(new URL('../examples/bookshop-components.json', import.meta.url)));
 const T = diagramOf({ diagram: 'uml.component' }), V = 'components';
 const withDir = (m, direction) => { const c = structuredClone(m); c.views[0].direction = direction; return c; };
 const inside = (p, r, m = 0) => p[0] >= r.x - m && p[0] <= r.x + r.w + m && p[1] >= r.y - m && p[1] <= r.y + r.h + m;
@@ -49,20 +49,20 @@ for (const direction of ['right', 'down']) test(`05-component.json (${direction}
   assert.deepEqual(check(m, V), [], 'no overlap (a port is not its owner\'s), no crossing, no line through a node');
   assert.deepEqual(g.stats, { grid: 10 });
   assert.deepEqual(g.families.map(f => [f.id, f.shape]), [['shop-api', 'component']]);
-  assert.ok(g.byId.checkout.x - g.families[0].x >= 48 - .01, 'a box with ports has 48 px of padding');
-  assert.deepEqual(['storefront', 'accounts', 'order-worker', 'i-orders', 'i-sign-in', 'shop-api-jar'].map(id => g.byId[id].shape), ['component', 'component', 'component', 'ball', 'classifier', 'artifact']);
+  assert.ok(g.byId['checkout-component'].x - g.families[0].x >= 48 - .01, 'a box with ports has 48 px of padding');
+  assert.deepEqual(['storefront-component', 'accounts-component', 'order-worker', 'i-orders', 'i-sign-in', 'shop-api-jar'].map(id => g.byId[id].shape), ['component', 'component', 'component', 'ball', 'classifier', 'artifact']);
   // every port is a node of the picture, on a node as on a box, carrying its owner, which the check passes (decision 22)
-  assert.deepEqual(g.nodes.filter(n => n.shape === 'port').map(n => [n.id, n.owner]), [['shop-api.orders', 'shop-api'], ['shop-api.payments', 'shop-api'], ['checkout.orders', 'checkout'], ['checkout.payments', 'checkout'], ['payment-provider.charges', 'payment-provider']]);
+  assert.deepEqual(g.nodes.filter(n => n.shape === 'port').map(n => [n.id, n.owner]), [['shop-api.orders', 'shop-api'], ['shop-api.payments', 'shop-api'], ['checkout-component.orders', 'checkout-component'], ['checkout-component.payments', 'checkout-component'], ['payment-provider-component.charges', 'payment-provider-component']]);
   const ps = ports(g); assert.equal(ps.length, 5);
   ps.forEach(p => { const o = ownerOf(g, p.owner), v = p.side === 'L' || p.side === 'R', b = p.side === 'L' ? o.x : p.side === 'R' ? o.x + o.w : p.side === 'T' ? o.y : o.y + o.h;
     assert.ok(Math.abs((v ? p.x : p.y) + 6 - b) < .01, `${p.id} centred on ${o.id}'s border`); });
   // every line from or to a port ends on the square's face within 1 px; a delegation enters its box only at the port
   const sq = Object.fromEntries(ps.map(p => [p.id, p]));
   g.edges.forEach(e => [[e.fromPort, e.pts[0]], [e.toPort, e.pts.at(-1)]].forEach(([id, pt]) => { if (id) assert.ok(inside(pt, sq[id], 1), `${e.id} ends on ${id}: ${pt}`); }));
-  assert.deepEqual(g.edges.filter(e => e.inner).map(e => [e.id, e.inner]), [['orders-to-checkout', 'from'], ['checkout-to-payments', 'to']]);
+  assert.deepEqual(g.edges.filter(e => e.inner).map(e => [e.id, e.inner]), [['orders-to-checkout', 'from'], ['checkout-payments-out', 'to']]);
   // each delegation runs straight in: its two ports on one side; the ball's lines end on its circle (radius 8), right on its
   // left and right, laid out down the stem above it and the socket beside it, so neither crosses the name under it
-  for (const [a, b] of [['shop-api.orders', 'checkout.orders'], ['shop-api.payments', 'checkout.payments']]) assert.equal(sq[a].side, sq[b].side);
+  for (const [a, b] of [['shop-api.orders', 'checkout-component.orders'], ['shop-api.payments', 'checkout-component.payments']]) assert.equal(sq[a].side, sq[b].side);
   const ball = g.byId['i-orders'];
   g.edges.filter(e => e.to === 'i-orders').forEach(e => { const [x, y] = drawnPts(e, n => (n && SHAPE[n.shape] ? { ...n, S: SHAPE[n.shape] } : null)).at(-1); // slid onto the circle, as drawn
     assert.ok(Math.abs(Math.hypot(x - ball.x - ball.w / 2, y - ball.y - 8) - 8) < 1 && y < ball.y + 16, `${e.id} ends on the ball's circle: ${x}, ${y}`); });
@@ -75,8 +75,8 @@ const groupOf = (s, id) => { const i = s.indexOf(`data-id="${id}"`), a = s.lastI
   for (let d = 0, m; (m = re.exec(s));) if ((d += m[0] === '</g>' ? -1 : 1) === 0) return s.slice(a, re.lastIndex); return null; };
 test('drawn: each port a group of its own, after its owner\'s and outside it, so selecting the owner marks none of its ports (decision 22), with names; markup laid out from a memo is a fresh layout\'s, and drawing leaves the memo as it was', () => {
   const s = svgOf(layout(CM, V));
-  assert.match(s, /<g class="node port" data-id="checkout.orders"[^>]*aria-label="Port orders of Checkout"/);
-  for (const [o, p] of [['checkout', 'checkout.orders'], ['checkout', 'checkout.payments'], ['payment-provider', 'payment-provider.charges']]) {
+  assert.match(s, /<g class="node port" data-id="checkout-component.orders"[^>]*aria-label="Port orders of Checkout"/);
+  for (const [o, p] of [['checkout-component', 'checkout-component.orders'], ['checkout-component', 'checkout-component.payments'], ['payment-provider-component', 'payment-provider-component.charges']]) {
     const own = groupOf(s, o); assert.ok(own && own.startsWith('<g class="node component"'), o); assert.ok(!own.includes(`data-id="${p}"`), `${p} is not drawn in ${o}'s group`);
     assert.ok(s.indexOf(`data-id="${p}"`) > s.indexOf(own) + own.length, `${p} after ${o}`); }
   assert.match(s, /class="port-name"[^>]*>charges</);
@@ -94,7 +94,7 @@ test('names, reading order, describe(), the legend, and the PDF\'s words and row
   assert.equal(by['i-orders'].aria, 'Interface Orders, as a ball, provided by Shop API, required by Storefront');
   assert.equal(by['shop-api-jar'].aria, 'Artifact shop-api.jar, manifests Shop API');
   assert.equal(g.edges.find(e => e.id === 'orders-to-checkout').aria, 'Delegation from orders of Shop API to orders of Checkout');
-  assert.deepEqual(g.order.slice(0, 7), ['storefront', 'shop-api', 'shop-api.orders', 'shop-api.payments', 'checkout', 'checkout.orders', 'checkout.payments']);
+  assert.deepEqual(g.order.slice(0, 7), ['storefront-component', 'shop-api', 'shop-api.orders', 'shop-api.payments', 'checkout-component', 'checkout-component.orders', 'checkout-component.payments']);
   assert.equal(g.order.length, 9 + 5 + 10);
   const d = describe(CM, V).split('\n');
   assert.equal(d[0], 'Bookshop components: a component diagram of 9 elements and 10 lines.');
@@ -103,14 +103,15 @@ test('names, reading order, describe(), the legend, and the PDF\'s words and row
   const legend = g.legend.map(x => x.match(/<b>([^<]*)/)[1]);
   assert.deepEqual(legend, ['Realization', 'Usage', 'Realization', 'Usage', 'Assembly', 'Delegation', 'Dependency', 'Manifestation'], 'stem, socket, then the rectangle\'s');
   assert.deepEqual([T.word(CM, 'shop-api'), T.word(CM, 'i-orders'), T.word(CM, 'shop-api.orders')], ['Component', 'Interface', null]);
-  assert.deepEqual(T.rows(CM, CM.views[0], 'shop-api'), ['orders, provides Orders', 'payments']);
+  // 0.22.0 (5.8): then the connectors from its ports, which the Lines table leaves out
+  assert.deepEqual(T.rows(CM, CM.views[0], 'shop-api'), ['orders, provides Orders', 'payments', 'Delegation from orders of Shop API to orders of Checkout', 'Assembly from payments of Shop API to charges of Payment provider']);
   assert.deepEqual(T.rows(CM, CM.views[0], 'shop-api-jar'), ['manifests Shop API']);
   const typed = structuredClone(CM); typed.nodes[1].members[0].props = { valueType: 'OrderApi' };
   assert.deepEqual(T.rows(typed, typed.views[0], 'shop-api')[0], 'orders : OrderApi, provides Orders');
 });
 
 test('a class on a component view is drawn as a classifier, with no «component»', () => {
-  const m = structuredClone(CM); m.nodes.push({ id: 'k', type: 'uml.Class', label: 'OrderService' }); m.edges.push(E('kr', 'ComponentRealization', 'k', 'accounts')); m.views[0].nodeIds.push('k');
+  const m = structuredClone(CM); m.nodes.push({ id: 'k', type: 'uml.Class', label: 'OrderService' }); m.edges.push(E('kr', 'ComponentRealization', 'k', 'accounts-component')); m.views[0].nodeIds.push('k');
   assert.deepEqual(T.validate(m, m.views[0]), []);
   const k = layout(m, V).byId.k; assert.equal(k.shape, 'classifier'); assert.deepEqual(k.stereotypes, []);
 });
@@ -133,23 +134,23 @@ for (const [name, [nodes, edges]] of Object.entries(VIEWS)) for (const direction
 });
 
 test('pins: a pinned node keeps its place and a node it would cover moves down; present.<port>.side pins a port', () => {
-  const m = structuredClone(CM), g0 = layout(m, V); m.views[0].layout = { accounts: [g0.byId.storefront.col, g0.byId.storefront.row] };
-  const g = layout(m, V); assert.deepEqual([g.byId.accounts.col, g.byId.accounts.row], m.views[0].layout.accounts); assert.ok(g.byId.storefront.row > g.byId.accounts.row);
-  m.views[0].present['payment-provider.charges'] = { side: 'bottom' };
-  assert.equal(layout(m, V).byId['payment-provider.charges'].side, 'B');
+  const m = structuredClone(CM), g0 = layout(m, V); m.views[0].layout = { 'accounts-component': [g0.byId['storefront-component'].col, g0.byId['storefront-component'].row] };
+  const g = layout(m, V); assert.deepEqual([g.byId['accounts-component'].col, g.byId['accounts-component'].row], m.views[0].layout['accounts-component']); assert.ok(g.byId['storefront-component'].row > g.byId['accounts-component'].row);
+  m.views[0].present['payment-provider-component.charges'] = { side: 'bottom' };
+  assert.equal(layout(m, V).byId['payment-provider-component.charges'].side, 'B');
 });
 
 // ---- validators, each with a passing and a failing case
 const BREAKS = {
   'port-owner': m => { m.nodes.find(n => n.id === 'i-orders').members = [{ id: 'bad', type: 'uml.Port', label: 'x' }]; return ['bad', 'i-orders']; },
   'provided-ends': m => { m.edges.push(E('bad', 'InterfaceRealization', 'shop-api-jar', 'i-orders')); return ['bad', 'shop-api-jar', 'i-orders']; },
-  'required-ends': m => { m.edges.push(E('bad', 'Usage', 'storefront', 'accounts')); return ['bad', 'storefront', 'accounts']; },
-  'ball-interface': m => { m.views[0].present.storefront = { as: 'ball' }; return ['storefront']; },
-  'delegation-ends': m => { m.edges.push(E('bad', 'Connector', 'storefront', 'accounts', { kind: 'delegation' })); return ['bad', 'storefront', 'accounts']; },
-  'assembly-ends': m => { m.edges.push(E('bad', 'Connector', 'shop-api.orders', 'checkout.orders', { kind: 'assembly' })); return ['bad', 'shop-api.orders', 'checkout.orders']; },
-  'manifest-ends': m => { m.edges.push(E('bad', 'Manifestation', 'storefront', 'accounts')); return ['bad', 'storefront']; },
-  'component-realization-ends': m => { m.edges.push(E('bad', 'ComponentRealization', 'storefront', 'i-orders')); return ['bad', 'storefront', 'i-orders']; },
-  'component-owner': m => { m.nodes.find(n => n.id === 'accounts').parent = 'shop-api-jar'; return ['accounts', 'shop-api-jar']; },
+  'required-ends': m => { m.edges.push(E('bad', 'Usage', 'storefront-component', 'accounts-component')); return ['bad', 'storefront-component', 'accounts-component']; },
+  'ball-interface': m => { m.views[0].present['storefront-component'] = { as: 'ball' }; return ['storefront-component']; },
+  'delegation-ends': m => { m.edges.push(E('bad', 'Connector', 'storefront-component', 'accounts-component', { kind: 'delegation' })); return ['bad', 'storefront-component', 'accounts-component']; },
+  'assembly-ends': m => { m.edges.push(E('bad', 'Connector', 'shop-api.orders', 'checkout-component.orders', { kind: 'assembly' })); return ['bad', 'shop-api.orders', 'checkout-component.orders']; },
+  'manifest-ends': m => { m.edges.push(E('bad', 'Manifestation', 'storefront-component', 'accounts-component')); return ['bad', 'storefront-component']; },
+  'component-realization-ends': m => { m.edges.push(E('bad', 'ComponentRealization', 'storefront-component', 'i-orders')); return ['bad', 'storefront-component', 'i-orders']; },
+  'component-owner': m => { m.nodes.find(n => n.id === 'accounts-component').parent = 'shop-api-jar'; return ['accounts-component', 'shop-api-jar']; },
 };
 test('validators: 05-component.json breaks no rule; each rule fails on a model that breaks it, naming its rule and its elements, at its level', () => {
   assert.deepEqual(T.validate(CM, CM.views[0]), []);
@@ -164,47 +165,47 @@ test('validators: 05-component.json breaks no rule; each rule fails on a model t
   const m = structuredClone(CM); m.nodes.push({ id: 'x', type: 'uml.Component', label: 'X' }, { id: 'y', type: 'uml.Component', label: 'Y' }); m.edges.push(E('xy', 'Connector', 'x', 'y', { kind: 'delegation' }));
   assert.deepEqual(T.validate(m, m.views[0]), []); assert.deepEqual(T.validate(m).map(p => p.rule), ['delegation-ends']);
   // a view that lists its lines checks only those
-  const listed = structuredClone(CM); listed.edges.push(E('bad', 'Connector', 'storefront', 'accounts', { kind: 'delegation' })); listed.views[0].edges = ['api-provides-orders'];
+  const listed = structuredClone(CM); listed.edges.push(E('bad', 'Connector', 'storefront-component', 'accounts-component', { kind: 'delegation' })); listed.views[0].edges = ['api-provides-orders'];
   assert.deepEqual(T.validate(listed, listed.views[0]), []); assert.deepEqual(T.validate(listed).map(p => p.rule), ['delegation-ends']);
   const rules = edit => { const k = structuredClone(CM); edit(k); return T.validate(k, k.views[0]).map(p => p.rule); };
   // a connector with no kind is drawn as an assembly and checked as one
-  assert.deepEqual(rules(k => k.edges.push(E('bad', 'Connector', 'shop-api.orders', 'checkout.payments'))), ['assembly-ends']);
-  assert.deepEqual(rules(k => k.edges.push(E('bad', 'Connector', 'storefront', 'i-orders'))), ['assembly-ends']);
+  assert.deepEqual(rules(k => k.edges.push(E('bad', 'Connector', 'shop-api.orders', 'checkout-component.payments'))), ['assembly-ends']);
+  assert.deepEqual(rules(k => k.edges.push(E('bad', 'Connector', 'storefront-component', 'i-orders'))), ['assembly-ends']);
   // a delegation from a box with no port at its end is not drawn, so it is flagged
-  assert.deepEqual(rules(k => k.edges.push(E('bad', 'Connector', 'shop-api', 'checkout', { kind: 'delegation' }))), ['delegation-ends']);
+  assert.deepEqual(rules(k => k.edges.push(E('bad', 'Connector', 'shop-api', 'checkout-component', { kind: 'delegation' }))), ['delegation-ends']);
   // a usage with no to: the host's dangling end alone
-  assert.deepEqual(rules(k => k.edges.push({ id: 'bad', type: 'uml.Usage', from: 'storefront' })), []);
+  assert.deepEqual(rules(k => k.edges.push({ id: 'bad', type: 'uml.Usage', from: 'storefront-component' })), []);
 });
 
 // ---- editing (§12)
 test('connect: a connector to something inside the other\'s owner is a delegation, else an assembly; other lines are the default', () => {
   const v = CM.views[0], C = { type: 'uml.Connector', label: 'Assembly', props: { kind: 'assembly' } };
-  assert.deepEqual(T.edits.connect(CM, v, 'shop-api.orders', 'checkout.orders', null, C), [{ op: 'add', element: { id: 'connector1', type: 'uml.Connector', from: 'shop-api.orders', to: 'checkout.orders', props: { kind: 'delegation' } }, view: V }]);
-  assert.equal(T.edits.connect(CM, v, 'storefront', 'payment-provider.charges', null, C)[0].element.props.kind, 'assembly');
-  assert.equal(T.edits.connect(CM, v, 'storefront', 'i-orders', null, { type: 'uml.Usage' }), null);
-  assert.deepEqual(validate(apply(CM, T.edits.connect(CM, v, 'checkout.orders', 'shop-api.orders', null, C))), []);
+  assert.deepEqual(T.edits.connect(CM, v, 'shop-api.orders', 'checkout-component.orders', null, C), [{ op: 'add', element: { id: 'connector1', type: 'uml.Connector', from: 'shop-api.orders', to: 'checkout-component.orders', props: { kind: 'delegation' } }, view: V }]);
+  assert.equal(T.edits.connect(CM, v, 'storefront-component', 'payment-provider-component.charges', null, C)[0].element.props.kind, 'assembly');
+  assert.equal(T.edits.connect(CM, v, 'storefront-component', 'i-orders', null, { type: 'uml.Usage' }), null);
+  assert.deepEqual(validate(apply(CM, T.edits.connect(CM, v, 'checkout-component.orders', 'shop-api.orders', null, C))), []);
   // refused, not added unseen: an element to itself or its own port, two ports of one element, a box to what it holds by no port
-  for (const [a, b, says] of [['storefront', 'storefront', /two elements/], ['checkout.orders', 'checkout.payments', /two elements/], ['checkout', 'checkout.orders', /two elements/], ['shop-api', 'checkout', /port of the box/], ['checkout', 'shop-api', /port of the box/]])
+  for (const [a, b, says] of [['storefront-component', 'storefront-component', /two elements/], ['checkout-component.orders', 'checkout-component.payments', /two elements/], ['checkout-component', 'checkout-component.orders', /two elements/], ['shop-api', 'checkout-component', /port of the box/], ['checkout-component', 'shop-api', /port of the box/]])
     assert.match(T.edits.connect(CM, v, a, b, null, C).error, says, `${a} to ${b}`);
-  assert.equal(T.edits.connect(CM, v, 'shop-api.orders', 'checkout', null, C)[0].element.props.kind, 'delegation', 'a box\'s port to what it holds');
+  assert.equal(T.edits.connect(CM, v, 'shop-api.orders', 'checkout-component', null, C)[0].element.props.kind, 'delegation', 'a box\'s port to what it holds');
 });
 
 test('moveTo: a port\'s side by Alt + arrows across it or a drop by a border; along its side nothing, as said; anything else the default', () => {
-  const v = CM.views[0], geo = layout(CM, V), side = geo.byId['payment-provider.charges'].side;
+  const v = CM.views[0], geo = layout(CM, V), side = geo.byId['payment-provider-component.charges'].side;
   assert.equal(side, 'L');
-  assert.deepEqual(T.edits.moveTo(CM, v, 'payment-provider.charges', { by: [1, 0], geo }), [{ op: 'set', view: V, path: ['present', 'payment-provider.charges', 'side'], value: 'right' }]);
-  const r = T.edits.moveTo(CM, v, 'payment-provider.charges', { by: [0, 1], geo }); assert.deepEqual(r.commands, []); assert.match(r.say, /order along its side follows its lines/);
-  const o = geo.byId['payment-provider'];
-  assert.equal(T.edits.moveTo(CM, v, 'payment-provider.charges', { pt: [o.x + o.w / 2, o.y + o.h + 3], geo })[0].value, 'bottom');
-  assert.equal(T.edits.moveTo(CM, v, 'storefront', { by: [1, 0], geo }), null);
-  const m = apply(CM, T.edits.moveTo(CM, v, 'payment-provider.charges', { by: [1, 0], geo }));
-  assert.equal(layout(m, V).byId['payment-provider.charges'].side, 'R');
+  assert.deepEqual(T.edits.moveTo(CM, v, 'payment-provider-component.charges', { by: [1, 0], geo }), [{ op: 'set', view: V, path: ['present', 'payment-provider-component.charges', 'side'], value: 'right' }]);
+  const r = T.edits.moveTo(CM, v, 'payment-provider-component.charges', { by: [0, 1], geo }); assert.deepEqual(r.commands, []); assert.match(r.say, /order along its side follows its lines/);
+  const o = geo.byId['payment-provider-component'];
+  assert.equal(T.edits.moveTo(CM, v, 'payment-provider-component.charges', { pt: [o.x + o.w / 2, o.y + o.h + 3], geo })[0].value, 'bottom');
+  assert.equal(T.edits.moveTo(CM, v, 'storefront-component', { by: [1, 0], geo }), null);
+  const m = apply(CM, T.edits.moveTo(CM, v, 'payment-provider-component.charges', { by: [1, 0], geo }));
+  assert.equal(layout(m, V).byId['payment-provider-component.charges'].side, 'R');
 });
 
 test('add: a port into the selected component (or a port\'s owner), refused with none; an interface as a ball or a rectangle, picked', () => {
   const v = CM.views[0], P = { type: 'uml.Port', label: 'Port' };
-  assert.deepEqual(T.edits.add(CM, v, P, 'events', { sel: ['checkout'] }), [{ op: 'add', element: { id: 'port1', type: 'uml.Port', label: 'events' }, owner: 'checkout' }]);
-  assert.equal(T.edits.add(CM, v, P, 'x', { sel: ['checkout.orders'] })[0].owner, 'checkout');
+  assert.deepEqual(T.edits.add(CM, v, P, 'events', { sel: ['checkout-component'] }), [{ op: 'add', element: { id: 'port1', type: 'uml.Port', label: 'events' }, owner: 'checkout-component' }]);
+  assert.equal(T.edits.add(CM, v, P, 'x', { sel: ['checkout-component.orders'] })[0].owner, 'checkout-component');
   assert.ok(T.edits.add(CM, v, P, 'x', { sel: ['i-orders'] }).error);
   const r = T.edits.add(CM, v, { type: 'uml.Interface' }, 'Stock', null);
   assert.deepEqual(r.pick, ['Ball', 'Rectangle']);
@@ -215,14 +216,14 @@ test('add: a port into the selected component (or a port\'s owner), refused with
 
 test('member rows: on a component a row is a port, name or name : Type; refused when empty of a name; an interface\'s rows are the class type\'s', () => {
   const v = CM.views[0];
-  assert.deepEqual(T.edits.member(CM, v, 'checkout', null, 'events : EventApi'), [{ op: 'add', element: { id: 'port1', type: 'uml.Port', label: 'events', props: { valueType: 'EventApi' } }, owner: 'checkout' }]);
-  assert.deepEqual(T.edits.member(CM, v, 'checkout', 'checkout.orders', 'requests'), [{ op: 'set', id: 'checkout.orders', path: 'label', value: 'requests' }, { op: 'set', id: 'checkout.orders', path: 'props.valueType', value: undefined }]);
-  assert.ok(T.edits.member(CM, v, 'checkout', null, ': Type').error);
-  assert.deepEqual(T.edits.member(CM, v, 'checkout', null, 'a : Map<K : V>')[0].element, { id: 'port1', type: 'uml.Port', label: 'a', props: { valueType: 'Map<K : V>' } }, 'the type is all after the first colon');
+  assert.deepEqual(T.edits.member(CM, v, 'checkout-component', null, 'events : EventApi'), [{ op: 'add', element: { id: 'port1', type: 'uml.Port', label: 'events', props: { valueType: 'EventApi' } }, owner: 'checkout-component' }]);
+  assert.deepEqual(T.edits.member(CM, v, 'checkout-component', 'checkout-component.orders', 'requests'), [{ op: 'set', id: 'checkout-component.orders', path: 'label', value: 'requests' }, { op: 'set', id: 'checkout-component.orders', path: 'props.valueType', value: undefined }]);
+  assert.ok(T.edits.member(CM, v, 'checkout-component', null, ': Type').error);
+  assert.deepEqual(T.edits.member(CM, v, 'checkout-component', null, 'a : Map<K : V>')[0].element, { id: 'port1', type: 'uml.Port', label: 'a', props: { valueType: 'Map<K : V>' } }, 'the type is all after the first colon');
   assert.equal(T.edits.member(CM, v, 'i-orders', null, 'list(): Order'), null, 'the panel\'s own');
   assert.equal(T.member.print({ type: 'uml.Port', label: 'orders', props: { valueType: 'OrderApi' } }), 'orders : OrderApi');
   assert.equal(T.member.add('+ list(): Order').type, 'uml.Operation');
-  const m = apply(CM, T.edits.member(CM, v, 'checkout', null, 'events : EventApi'));
+  const m = apply(CM, T.edits.member(CM, v, 'checkout-component', null, 'events : EventApi'));
   assert.equal(layout(m, V).byId.port1.aria, 'Port events : EventApi of Checkout');
 });
 
@@ -230,18 +231,18 @@ test('B on an interface: a ball, and back; other keys and elements are the canva
   const v = CM.views[0];
   assert.deepEqual(T.edits.key(CM, v, ['i-orders'], 'b'), [{ op: 'set', view: V, path: ['present', 'i-orders', 'as'], value: undefined }]);
   assert.deepEqual(T.edits.key(CM, v, ['i-sign-in'], 'B'), [{ op: 'set', view: V, path: ['present', 'i-sign-in', 'as'], value: 'ball' }]);
-  assert.equal(T.edits.key(CM, v, ['storefront'], 'b'), null); assert.equal(T.edits.key(CM, v, ['i-orders'], 'x'), null);
+  assert.equal(T.edits.key(CM, v, ['storefront-component'], 'b'), null); assert.equal(T.edits.key(CM, v, ['i-orders'], 'x'), null);
   assert.equal(layout(apply(CM, T.edits.key(CM, v, ['i-orders'], 'b')), V).byId['i-orders'].shape, 'classifier');
-  const r = T.edits.remove(CM, v, ['payment-provider.charges'], false);
-  assert.deepEqual(r.commands, [{ op: 'delete', id: 'payment-provider.charges' }]); assert.match(r.say, /Deleted port charges from the model: a port is not hidden/);
+  const r = T.edits.remove(CM, v, ['payment-provider-component.charges'], false);
+  assert.deepEqual(r.commands, [{ op: 'delete', id: 'payment-provider-component.charges' }]); assert.match(r.say, /Deleted port charges from the model: a port is not hidden/);
   assert.ok(!apply(CM, r.commands).edges.some(e => e.id === 'api-to-provider'), 'its lines go with it');
-  assert.equal(T.edits.remove(CM, v, ['storefront'], false), null);
-  assert.deepEqual(T.owners(CM, CM.nodes.find(n => n.id === 'checkout')).map(o => o.id), ['storefront', 'shop-api', 'accounts', 'payment-provider', 'order-worker'], 'not itself');
-  assert.ok(!T.owners(CM, CM.nodes.find(n => n.id === 'shop-api')).some(o => ['shop-api', 'checkout'].includes(o.id)), 'nor what it holds');
+  assert.equal(T.edits.remove(CM, v, ['storefront-component'], false), null);
+  assert.deepEqual(T.owners(CM, CM.nodes.find(n => n.id === 'checkout-component')).map(o => o.id), ['storefront-component', 'shop-api', 'accounts-component', 'payment-provider-component', 'order-worker'], 'not itself');
+  assert.ok(!T.owners(CM, CM.nodes.find(n => n.id === 'shop-api')).some(o => ['shop-api', 'checkout-component'].includes(o.id)), 'nor what it holds');
   // a selection of a port and more: the port deleted, the rest hidden (Delete) or deleted (Shift + Delete), both said
-  const mix = T.edits.remove(CM, v, ['shop-api.orders', 'storefront'], false);
-  assert.deepEqual(mix.commands, [{ op: 'delete', id: 'shop-api.orders' }, { op: 'hide', id: 'storefront', view: V }]); assert.match(mix.say, /^Deleted port orders from the model: a port is not hidden from a view; hid 1 element$/);
-  assert.deepEqual(T.edits.remove(CM, v, ['shop-api.orders', 'storefront'], true).commands, [{ op: 'delete', id: 'shop-api.orders' }, { op: 'delete', id: 'storefront' }]);
+  const mix = T.edits.remove(CM, v, ['shop-api.orders', 'storefront-component'], false);
+  assert.deepEqual(mix.commands, [{ op: 'delete', id: 'shop-api.orders' }, { op: 'hide', id: 'storefront-component', view: V }]); assert.match(mix.say, /^Deleted port orders from the model: a port is not hidden from a view; hid 1 element$/);
+  assert.deepEqual(T.edits.remove(CM, v, ['shop-api.orders', 'storefront-component'], true).commands, [{ op: 'delete', id: 'shop-api.orders' }, { op: 'delete', id: 'storefront-component' }]);
   assert.equal(T.owners(CM, CM.edges[0]), null);
 });
 
@@ -250,7 +251,7 @@ test('save and reopen (DoD 6): a 30-step session undoes and redoes to byte-ident
   for (let i = 0; i < 5; i++) steps.push(
     [{ op: 'add', element: { id: `c${i}`, type: 'uml.Component', label: `Part ${i}` }, view: V }],
     [{ op: 'add', element: { id: `c${i}.p`, type: 'uml.Port', label: 'in' }, owner: `c${i}` }],
-    [{ op: 'add', element: E(`a${i}`, 'Connector', `c${i}.p`, 'payment-provider.charges', { kind: 'assembly' }), view: V }],
+    [{ op: 'add', element: E(`a${i}`, 'Connector', `c${i}.p`, 'payment-provider-component.charges', { kind: 'assembly' }), view: V }],
     [{ op: 'set', view: V, path: ['present', `c${i}.p`, 'side'], value: 'right' }],
     [[{ op: 'reparent', id: `c${i}`, parent: 'shop-api' }], [{ op: 'set', view: V, path: ['present', 'i-sign-in', 'as'], value: i % 2 ? undefined : 'ball' }], [{ op: 'set', id: `c${i}.p`, path: 'props.valueType', value: 'Api' }]][i % 3],
     [[{ op: 'hide', id: `c${i}`, view: V }], [{ op: 'delete', id: `c${i}.p` }], [{ op: 'set', id: `c${i}`, path: 'label', value: `Renamed ${i}` }]][i % 3]);

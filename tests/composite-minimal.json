@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 2,
+  "title": "Composite structure, minimal",
+  "nodes": [
+    {"id":"s","type":"uml.Class","label":"Service","members":[{"id":"s.in","type":"uml.Port","label":"in"},{"id":"s.p","type":"uml.Property","label":"engine","props":{"valueType":"Engine","multiplicity":"1"}}]},
+    {"id":"t","type":"uml.Class","label":"Engine","members":[{"id":"t.in","type":"uml.Port","label":"in"}]}
+  ],
+  "edges": [
+    {"id":"c","type":"uml.Connector","from":"s.in","to":"t.in","props":{"ends":{"to":{"part":"s.p"}}}}
+  ],
+  "views": [
+    {"id":"v","diagram":"uml.composite-structure","subject":"s","nodeIds":["s"]}
+  ]
+}
