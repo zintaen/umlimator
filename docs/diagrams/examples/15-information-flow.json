@@ -4,28 +4,28 @@
   "root": "order-flows",
   "nodes": [
     { "id": "shopper", "type": "uml.Actor", "label": "Shopper" },
-    { "id": "storefront", "type": "uml.Component", "label": "Storefront" },
-    { "id": "api", "type": "uml.Component", "label": "Shop API" },
-    { "id": "payments", "type": "uml.Component", "label": "Payment provider" },
+    { "id": "storefront-component", "type": "uml.Component", "label": "Storefront" },
+    { "id": "shop-api", "type": "uml.Component", "label": "Shop API" },
+    { "id": "payment-provider-component", "type": "uml.Component", "label": "Payment provider" },
     { "id": "warehouse", "type": "uml.Component", "label": "Warehouse" },
-    { "id": "email", "type": "uml.Component", "label": "Email service" },
-    { "id": "order", "type": "uml.InformationItem", "label": "Order" },
-    { "id": "card", "type": "uml.InformationItem", "label": "Card details" },
-    { "id": "receipt", "type": "uml.InformationItem", "label": "Receipt" },
-    { "id": "stock", "type": "uml.InformationItem", "label": "Stock level" }
+    { "id": "email-service", "type": "uml.Component", "label": "Email service" },
+    { "id": "order-info", "type": "uml.InformationItem", "label": "Order" },
+    { "id": "card-details", "type": "uml.InformationItem", "label": "Card details" },
+    { "id": "receipt-info", "type": "uml.InformationItem", "label": "Receipt" },
+    { "id": "stock-info", "type": "uml.InformationItem", "label": "Stock level" }
   ],
   "edges": [
-    { "id": "shopper-storefront", "type": "uml.InformationFlow", "from": "shopper", "to": "storefront", "props": { "conveyed": ["order", "card"] } },
-    { "id": "storefront-payments", "type": "uml.InformationFlow", "from": "storefront", "to": "payments", "props": { "conveyed": ["card"] } },
-    { "id": "storefront-api", "type": "uml.InformationFlow", "from": "storefront", "to": "api", "props": { "conveyed": ["order"] } },
-    { "id": "api-warehouse", "type": "uml.InformationFlow", "from": "api", "to": "warehouse", "props": { "conveyed": ["order"] } },
-    { "id": "warehouse-api", "type": "uml.InformationFlow", "from": "warehouse", "to": "api", "props": { "conveyed": ["stock"] } },
-    { "id": "api-storefront", "type": "uml.InformationFlow", "from": "api", "to": "storefront", "props": { "conveyed": ["stock"] } },
-    { "id": "api-email", "type": "uml.InformationFlow", "from": "api", "to": "email", "props": { "conveyed": ["order", "receipt"] } },
-    { "id": "email-shopper", "type": "uml.InformationFlow", "from": "email", "to": "shopper", "props": { "conveyed": ["receipt"] } }
+    { "id": "flow-shopper-storefront", "type": "uml.InformationFlow", "from": "shopper", "to": "storefront-component", "props": { "conveyed": ["order-info", "card-details"] } },
+    { "id": "storefront-payments", "type": "uml.InformationFlow", "from": "storefront-component", "to": "payment-provider-component", "props": { "conveyed": ["card-details"] } },
+    { "id": "flow-storefront-api", "type": "uml.InformationFlow", "from": "storefront-component", "to": "shop-api", "props": { "conveyed": ["order-info"] } },
+    { "id": "api-warehouse", "type": "uml.InformationFlow", "from": "shop-api", "to": "warehouse", "props": { "conveyed": ["order-info"] } },
+    { "id": "warehouse-api", "type": "uml.InformationFlow", "from": "warehouse", "to": "shop-api", "props": { "conveyed": ["stock-info"] } },
+    { "id": "api-storefront", "type": "uml.InformationFlow", "from": "shop-api", "to": "storefront-component", "props": { "conveyed": ["stock-info"] } },
+    { "id": "api-email", "type": "uml.InformationFlow", "from": "shop-api", "to": "email-service", "props": { "conveyed": ["order-info", "receipt-info"] } },
+    { "id": "email-shopper", "type": "uml.InformationFlow", "from": "email-service", "to": "shopper", "props": { "conveyed": ["receipt-info"] } }
   ],
   "views": [
     { "id": "order-flows", "diagram": "uml.information-flow", "title": "What travels with an order", "parent": null,
-      "nodeIds": ["shopper", "storefront", "api", "payments", "warehouse", "email", "order", "card", "receipt", "stock"] }
+      "nodeIds": ["shopper", "storefront-component", "shop-api", "payment-provider-component", "warehouse", "email-service", "order-info", "card-details", "receipt-info", "stock-info"] }
   ]
 }
