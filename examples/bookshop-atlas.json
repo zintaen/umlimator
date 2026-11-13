@@ -118,7 +118,8 @@
    "sublabel": "Docker Compose, two servers",
    "what": "Where it all runs.",
    "when": "Always.",
-   "how": "One server for the web tier, one for the database."
+   "how": "One server for the web tier, one for the database.",
+   "opensView": "production"
   },
   {
    "id": "github",
@@ -1167,6 +1168,271 @@
    "props": {
     "represents": "OrderWorker"
    }
+  },
+  {
+   "id": "storefront-component",
+   "type": "uml.Component",
+   "label": "Storefront"
+  },
+  {
+   "id": "shop-api",
+   "type": "uml.Component",
+   "label": "Shop API",
+   "members": [
+    {
+     "id": "shop-api.orders",
+     "type": "uml.Port",
+     "label": "orders"
+    },
+    {
+     "id": "shop-api.payments",
+     "type": "uml.Port",
+     "label": "payments"
+    }
+   ],
+   "opensView": "internals"
+  },
+  {
+   "id": "checkout-component",
+   "type": "uml.Component",
+   "label": "Checkout",
+   "parent": "shop-api",
+   "members": [
+    {
+     "id": "checkout-component.orders",
+     "type": "uml.Port",
+     "label": "orders"
+    },
+    {
+     "id": "checkout-component.payments",
+     "type": "uml.Port",
+     "label": "payments"
+    }
+   ]
+  },
+  {
+   "id": "accounts-component",
+   "type": "uml.Component",
+   "label": "Accounts and sign-in"
+  },
+  {
+   "id": "payment-provider-component",
+   "type": "uml.Component",
+   "label": "Payment provider",
+   "members": [
+    {
+     "id": "payment-provider-component.charges",
+     "type": "uml.Port",
+     "label": "charges"
+    }
+   ]
+  },
+  {
+   "id": "order-worker",
+   "type": "uml.Component",
+   "label": "Order worker"
+  },
+  {
+   "id": "i-orders",
+   "type": "uml.Interface",
+   "label": "Orders"
+  },
+  {
+   "id": "i-sign-in",
+   "type": "uml.Interface",
+   "label": "SignIn"
+  },
+  {
+   "id": "shop-api-jar",
+   "type": "uml.Artifact",
+   "label": "shop-api.jar",
+   "parent": "jvm"
+  },
+  {
+   "id": "app-server",
+   "type": "uml.Device",
+   "label": "Application server"
+  },
+  {
+   "id": "jvm",
+   "type": "uml.ExecutionEnvironment",
+   "label": "Java 21 runtime",
+   "parent": "app-server",
+   "opensView": "components"
+  },
+  {
+   "id": "shopper-device",
+   "type": "uml.Device",
+   "label": "Shopper's device"
+  },
+  {
+   "id": "browser",
+   "type": "uml.ExecutionEnvironment",
+   "label": "Web browser",
+   "parent": "shopper-device"
+  },
+  {
+   "id": "storefront-bundle",
+   "type": "uml.Artifact",
+   "label": "storefront.js",
+   "parent": "browser"
+  },
+  {
+   "id": "edge-node",
+   "type": "uml.Node",
+   "label": "Edge proxy"
+  },
+  {
+   "id": "edge-routes",
+   "type": "uml.Artifact",
+   "label": "routes.conf"
+  },
+  {
+   "id": "order-worker-jar",
+   "type": "uml.Artifact",
+   "label": "order-worker.jar",
+   "parent": "jvm"
+  },
+  {
+   "id": "shop-api-config",
+   "type": "uml.DeploymentSpecification",
+   "label": "shop-api.yaml",
+   "parent": "jvm"
+  },
+  {
+   "id": "database",
+   "type": "uml.Node",
+   "label": "Database"
+  },
+  {
+   "id": "queue-node",
+   "type": "uml.Node",
+   "label": "Order queue"
+  },
+  {
+   "id": "order-service",
+   "type": "uml.Class",
+   "label": "OrderService",
+   "members": [
+    {
+     "id": "order-service.api",
+     "type": "uml.Port",
+     "label": "api"
+    },
+    {
+     "id": "order-service.payments",
+     "type": "uml.Port",
+     "label": "payments"
+    },
+    {
+     "id": "order-service.checkout",
+     "type": "uml.Property",
+     "label": "checkout",
+     "props": {
+      "valueType": "CheckoutFlow",
+      "multiplicity": "1",
+      "aggregation": "composite"
+     }
+    },
+    {
+     "id": "order-service.pricing",
+     "type": "uml.Property",
+     "label": "pricing",
+     "props": {
+      "valueType": "PriceCalculator",
+      "multiplicity": "1",
+      "aggregation": "composite"
+     }
+    },
+    {
+     "id": "order-service.orders",
+     "type": "uml.Property",
+     "label": "orders",
+     "props": {
+      "valueType": "OrderRepository",
+      "multiplicity": "1",
+      "aggregation": "composite"
+     }
+    },
+    {
+     "id": "order-service.listeners",
+     "type": "uml.Property",
+     "label": "listeners",
+     "props": {
+      "valueType": "OrderListener",
+      "multiplicity": "0..*",
+      "aggregation": "shared"
+     }
+    }
+   ]
+  },
+  {
+   "id": "checkout-class",
+   "type": "uml.Class",
+   "label": "CheckoutFlow",
+   "members": [
+    {
+     "id": "checkout-class.requests",
+     "type": "uml.Port",
+     "label": "requests"
+    },
+    {
+     "id": "checkout-class.quotes",
+     "type": "uml.Port",
+     "label": "quotes"
+    },
+    {
+     "id": "checkout-class.charges",
+     "type": "uml.Port",
+     "label": "charges"
+    }
+   ]
+  },
+  {
+   "id": "price-calculator",
+   "type": "uml.Class",
+   "label": "PriceCalculator",
+   "members": [
+    {
+     "id": "price-calculator.quotes",
+     "type": "uml.Port",
+     "label": "quotes"
+    }
+   ]
+  },
+  {
+   "id": "order-events",
+   "type": "uml.CollaborationUse",
+   "label": "orderEvents",
+   "parent": "order-service",
+   "props": {
+    "collaboration": "PublishSubscribe"
+   }
+  },
+  {
+   "id": "publish-subscribe",
+   "type": "uml.Collaboration",
+   "label": "PublishSubscribe",
+   "members": [
+    {
+     "id": "publish-subscribe.publisher",
+     "type": "uml.Property",
+     "label": "publisher",
+     "props": {
+      "valueType": "EventSource",
+      "multiplicity": "1"
+     }
+    },
+    {
+     "id": "publish-subscribe.subscriber",
+     "type": "uml.Property",
+     "label": "subscriber",
+     "props": {
+      "valueType": "EventListener",
+      "multiplicity": "0..*"
+     }
+    }
+   ]
   }
  ],
  "edges": [
@@ -2053,6 +2319,195 @@
    "type": "uml.ControlFlow",
    "from": "both-done",
    "to": "buy-done"
+  },
+  {
+   "id": "api-provides-orders",
+   "type": "uml.InterfaceRealization",
+   "from": "shop-api.orders",
+   "to": "i-orders"
+  },
+  {
+   "id": "storefront-requires-orders",
+   "type": "uml.Usage",
+   "from": "storefront-component",
+   "to": "i-orders"
+  },
+  {
+   "id": "accounts-provides-sign-in",
+   "type": "uml.InterfaceRealization",
+   "from": "accounts-component",
+   "to": "i-sign-in"
+  },
+  {
+   "id": "storefront-requires-sign-in",
+   "type": "uml.Usage",
+   "from": "storefront-component",
+   "to": "i-sign-in"
+  },
+  {
+   "id": "api-requires-sign-in",
+   "type": "uml.Usage",
+   "from": "shop-api",
+   "to": "i-sign-in"
+  },
+  {
+   "id": "orders-to-checkout",
+   "type": "uml.Connector",
+   "from": "shop-api.orders",
+   "to": "checkout-component.orders",
+   "props": {
+    "kind": "delegation"
+   }
+  },
+  {
+   "id": "checkout-payments-out",
+   "type": "uml.Connector",
+   "from": "checkout-component.payments",
+   "to": "shop-api.payments",
+   "props": {
+    "kind": "delegation"
+   }
+  },
+  {
+   "id": "api-to-provider",
+   "type": "uml.Connector",
+   "from": "shop-api.payments",
+   "to": "payment-provider-component.charges",
+   "props": {
+    "kind": "assembly"
+   }
+  },
+  {
+   "id": "worker-needs-api",
+   "type": "uml.Dependency",
+   "from": "order-worker",
+   "to": "shop-api"
+  },
+  {
+   "id": "api-jar-manifests-api",
+   "type": "uml.Manifestation",
+   "from": "shop-api-jar",
+   "to": "shop-api"
+  },
+  {
+   "id": "routes-on-edge",
+   "type": "uml.Deployment",
+   "from": "edge-routes",
+   "to": "edge-node"
+  },
+  {
+   "id": "worker-jar-manifests-worker",
+   "type": "uml.Manifestation",
+   "from": "order-worker-jar",
+   "to": "order-worker"
+  },
+  {
+   "id": "config-for-api-jar",
+   "type": "uml.Dependency",
+   "from": "shop-api-config",
+   "to": "shop-api-jar"
+  },
+  {
+   "id": "device-to-edge",
+   "type": "uml.CommunicationPath",
+   "from": "shopper-device",
+   "to": "edge-node",
+   "label": "HTTPS"
+  },
+  {
+   "id": "edge-to-app",
+   "type": "uml.CommunicationPath",
+   "from": "edge-node",
+   "to": "app-server",
+   "label": "HTTP"
+  },
+  {
+   "id": "app-to-database",
+   "type": "uml.CommunicationPath",
+   "from": "app-server",
+   "to": "database",
+   "label": "PostgreSQL wire protocol"
+  },
+  {
+   "id": "app-to-queue",
+   "type": "uml.CommunicationPath",
+   "from": "app-server",
+   "to": "queue-node",
+   "label": "AMQP"
+  },
+  {
+   "id": "api-to-checkout",
+   "type": "uml.Connector",
+   "from": "order-service.api",
+   "to": "checkout-class.requests",
+   "props": {
+    "ends": {
+     "to": {
+      "part": "order-service.checkout"
+     }
+    }
+   }
+  },
+  {
+   "id": "checkout-to-pricing",
+   "type": "uml.Connector",
+   "from": "checkout-class.quotes",
+   "to": "price-calculator.quotes",
+   "props": {
+    "ends": {
+     "from": {
+      "part": "order-service.checkout"
+     },
+     "to": {
+      "part": "order-service.pricing"
+     }
+    }
+   }
+  },
+  {
+   "id": "checkout-to-payments",
+   "type": "uml.Connector",
+   "from": "checkout-class.charges",
+   "to": "order-service.payments",
+   "props": {
+    "ends": {
+     "from": {
+      "part": "order-service.checkout"
+     }
+    }
+   }
+  },
+  {
+   "id": "checkout-to-orders",
+   "type": "uml.Connector",
+   "from": "order-service.checkout",
+   "to": "order-service.orders"
+  },
+  {
+   "id": "checkout-to-listeners",
+   "type": "uml.Connector",
+   "from": "order-service.checkout",
+   "to": "order-service.listeners"
+  },
+  {
+   "id": "publisher-to-subscriber",
+   "type": "uml.Connector",
+   "from": "publish-subscribe.publisher",
+   "to": "publish-subscribe.subscriber"
+  },
+  {
+   "id": "checkout-is-publisher",
+   "type": "uml.RoleBinding",
+   "from": "order-service.checkout",
+   "to": "order-events",
+   "label": "publisher"
+  },
+  {
+   "id": "listeners-are-subscribers",
+   "type": "uml.RoleBinding",
+   "from": "order-service.listeners",
+   "to": "order-events",
+   "label": "subscriber"
   }
  ],
  "views": [
@@ -2840,6 +3295,72 @@
       "sort": "async"
      }
     }
+   ]
+  },
+  {
+   "id": "components",
+   "diagram": "uml.component",
+   "title": "Bookshop components",
+   "parent": null,
+   "nodeIds": [
+    "storefront-component",
+    "shop-api",
+    "checkout-component",
+    "accounts-component",
+    "payment-provider-component",
+    "order-worker",
+    "i-orders",
+    "i-sign-in",
+    "shop-api-jar"
+   ],
+   "present": {
+    "i-orders": {
+     "as": "ball"
+    }
+   }
+  },
+  {
+   "id": "production",
+   "diagram": "uml.deployment",
+   "title": "Production",
+   "parent": null,
+   "nodeIds": [
+    "shopper-device",
+    "browser",
+    "storefront-bundle",
+    "edge-node",
+    "edge-routes",
+    "app-server",
+    "jvm",
+    "shop-api-jar",
+    "order-worker-jar",
+    "shop-api-config",
+    "database",
+    "queue-node",
+    "shop-api",
+    "order-worker"
+   ],
+   "edges": [
+    "routes-on-edge",
+    "api-jar-manifests-api",
+    "worker-jar-manifests-worker",
+    "config-for-api-jar",
+    "device-to-edge",
+    "edge-to-app",
+    "app-to-database",
+    "app-to-queue"
+   ]
+  },
+  {
+   "id": "internals",
+   "diagram": "uml.composite-structure",
+   "title": "Inside OrderService",
+   "parent": null,
+   "subject": "order-service",
+   "nodeIds": [
+    "order-service",
+    "order-events",
+    "publish-subscribe"
    ]
   }
  ]

@@ -1,6 +1,6 @@
 <!doctype html>
 <!-- The composite structure diagram (5.6) in headless Chrome (tests/embed.py), from lib/umlimator-all.js:
-     docs/diagrams/examples/04-composite-structure.json drawn by render() in both themes, three fonts and both directions (the
+     examples/order-service-structure.json drawn by render() in both themes, three fonts and both directions (the
      subject's box with its ports, parts with their types' ports, the open collaboration's dashed ellipse, texts inside their
      shapes, no overlap but a port on its own owner, every line end on a port's square or its node's outline, port names clear
      of nodes, names, reading order, contrast, the legend), then edited through the edit event and apply(), by pointer and by
@@ -43,8 +43,8 @@ const blend = (top, bot) => [0, 1, 2].map(i => top[i] * top[3] + bot[i] * (1 - t
 const lum = c => { const f = v => v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]); };
 const ratio = (fg, bg) => { const [x, y] = [lum(blend(fg, bg)), lum(bg)].sort((p, q) => q - p); return +((x + 0.05) / (y + 0.05)).toFixed(2); };
 const css = (e, k) => rgba(getComputedStyle(e)[k]);
-const MODEL = await (await fetch('../docs/diagrams/examples/04-composite-structure.json')).json();
-const PORTS = ['order-service.api', 'order-service.payments', 'order-service.checkout->checkout.requests', 'order-service.checkout->checkout.quotes', 'order-service.checkout->checkout.charges', 'order-service.pricing->price-calculator.quotes'];
+const MODEL = await (await fetch('../examples/order-service-structure.json')).json();
+const PORTS = ['order-service.api', 'order-service.payments', 'order-service.checkout->checkout-class.requests', 'order-service.checkout->checkout-class.quotes', 'order-service.checkout->checkout-class.charges', 'order-service.pricing->price-calculator.quotes'];
 try {
   for (const theme of ['light', 'dark']) for (const [fname, family] of Object.entries(FONTS)) for (const direction of ['right', 'down']) {
     document.documentElement.dataset.theme = theme; el.style.setProperty('--um-sans', family);
@@ -71,12 +71,12 @@ try {
       [v.slice(0, 2), v.slice(-2)].forEach(p => { const d = Math.min(...targets.map(([, b, f]) => f(p, b))); if (d > 1) offs.push([g.dataset.from, g.dataset.to, p, +d.toFixed(2)]); }); });
     check(`${tag}: each line ends on a port's square or an outline`, !offs.length, offs);
     check(`${tag}: names a screen reader reads`, pick('.family[data-family="order-service"]').getAttribute('aria-label') === 'Class OrderService, 2 ports, holding 4 parts, 1 collaboration use'
-      && pick('.node[data-id="order-service.checkout"]').getAttribute('aria-label') === 'Part checkout : Checkout [1], in OrderService, 3 ports'
-      && pick('.node[data-id="order-service.checkout->checkout.quotes"]').getAttribute('aria-label') === 'Port quotes of checkout'
+      && pick('.node[data-id="order-service.checkout"]').getAttribute('aria-label') === 'Part checkout : CheckoutFlow [1], in OrderService, 3 ports'
+      && pick('.node[data-id="order-service.checkout->checkout-class.quotes"]').getAttribute('aria-label') === 'Port quotes of checkout'
       && pick('.edge-g[data-from="order-service.checkout"][data-to="order-events"] title').textContent === 'Role binding from checkout to orderEvents, as publisher',
     [pick('.node[data-id="order-service.checkout"]').getAttribute('aria-label')]);
     const order = all('.keys .um-key').map(k => k.dataset.node ?? k.dataset.edge ?? k.textContent);
-    check(`${tag}: reading order: each part after the subject's ports, its own ports after it`, all('.keys .node-key').slice(0, 4).map(k => k.dataset.node).join() === 'order-service.api,order-service.payments,order-service.checkout,order-service.checkout->checkout.requests', order);
+    check(`${tag}: reading order: each part after the subject's ports, its own ports after it`, all('.keys .node-key').slice(0, 4).map(k => k.dataset.node).join() === 'order-service.api,order-service.payments,order-service.checkout,order-service.checkout->checkout-class.requests', order);
     const legend = all('.m-legend b').map(b => b.textContent);
     check(`${tag}: the legend keys each line kind drawn`, same(legend, ['Connector', 'Role binding']), legend);
     const stageBg = css(pick('.stage'), 'backgroundColor'), low = [];
@@ -100,9 +100,9 @@ try {
   h.update(m1);
   check('after update() the part is drawn in the subject\'s box', !!pick('.node.part[data-id="order-service.audit"]') && inside(box(pick('.node[data-id="order-service.audit"] .n-mask')), box(pick('.family[data-family="order-service"] .family-box'))));
   click('.node[data-id="order-service.checkout"] .c-name'); all('.um-editor .um-pal button')[1].click(); name('admin');
-  gives('the palette\'s Port with a part selected: the port goes to its type, said', [{ op: 'add', element: { id: 'checkout.admin', type: 'uml.Port', label: 'admin', props: {} }, owner: 'checkout' }],
-    m => m.nodes.find(n => n.id === 'checkout').members.some(x => x.id === 'checkout.admin'), m1);
-  check('… and the hint line says where it went', /Added the port to Checkout, the type of checkout/.test(sr.textContent));
+  gives('the palette\'s Port with a part selected: the port goes to its type, said', [{ op: 'add', element: { id: 'checkout.admin', type: 'uml.Port', label: 'admin', props: {} }, owner: 'checkout-class' }],
+    m => m.nodes.find(n => n.id === 'checkout-class').members.some(x => x.id === 'checkout.admin'), m1);
+  check('… and the hint line says where it went', /Added the port to CheckoutFlow, the type of checkout/.test(sr.textContent));
   click('.node[data-id="publish-subscribe.publisher"] .c-name'); h.select({ type: 'container', id: 'publish-subscribe', view: 'internals' });
   all('.um-editor .um-pal button')[2].click(); name('broker : Broker');
   gives('the palette\'s Role with the collaboration selected: a role', [{ op: 'add', element: { id: 'publish-subscribe.broker', type: 'uml.Property', label: 'broker', props: { valueType: 'Broker' } }, owner: 'publish-subscribe' }],
@@ -117,17 +117,17 @@ try {
   const m2 = gives('F2 on a part: its name and multiplicity set', [{ op: 'set', id: 'order-service.pricing', path: 'label', value: 'pricer' }, { op: 'set', id: 'order-service.pricing', path: 'props.multiplicity', value: '0..1' }],
     m => m.nodes[0].members.find(x => x.id === 'order-service.pricing').label === 'pricer', m1);
   h.update(m2);
-  click('.node[data-id="order-service.checkout->checkout.quotes"] .n-mask'); key('F2');
+  click('.node[data-id="order-service.checkout->checkout-class.quotes"] .n-mask'); key('F2');
   check('F2 on a port on a part: a field holding its name', pick('.um-rename') && pick('.um-rename').value === 'quotes', pick('.um-rename') && pick('.um-rename').value);
   name('prices');
-  gives('F2 on a port on a part renames its class\'s port', [{ op: 'set', id: 'checkout.quotes', path: 'label', value: 'prices' }], m => m.nodes.find(n => n.id === 'checkout').members[1].label === 'prices', m2);
+  gives('F2 on a port on a part renames its class\'s port', [{ op: 'set', id: 'checkout-class.quotes', path: 'label', value: 'prices' }], m => m.nodes.find(n => n.id === 'checkout-class').members[1].label === 'prices', m2);
   // a connector from a port on a part by L, the picker; a role binding by L, its role picked
   // L then an arrow: the nearest element that way (a part or a port is not found by its name: the canvas names a member by its owner)
-  click('.node[data-id="order-service.checkout->checkout.quotes"] .n-mask'); key('l'); key('ArrowRight'); key('Enter');
+  click('.node[data-id="order-service.checkout->checkout-class.quotes"] .n-mask'); key('l'); key('ArrowRight'); key('Enter');
   check('L from a port on a part, an arrow and Enter open the picker with the three lines', same(all('.um-pick button').map(b => b.textContent), ['Connector', 'Role binding', 'Comment link']), all('.um-pick button').map(b => b.textContent));
   all('.um-pick button')[0].click();
   { const e = last(), c = e && e.commands[0], m = c && apply(m2, e.commands);
-    check('Connector: from the port on the part, ends.from.part kept (edits.connect)', e.commands.length === 1 && c.op === 'add' && c.element.type === 'uml.Connector' && c.element.from === 'checkout.quotes'
+    check('Connector: from the port on the part, ends.from.part kept (edits.connect)', e.commands.length === 1 && c.op === 'add' && c.element.type === 'uml.Connector' && c.element.from === 'checkout-class.quotes'
       && same(c.element.props.ends.from, { part: 'order-service.checkout' }) && !errors(m).length && m.edges.some(x => x.id === c.element.id), [e, m && errors(m)]); }
   click('.node[data-id="order-service.orders"] .c-name'); key('l'); for (const c of 'orderevents') key(c); key('Enter');
   all('.um-pick button').find(b => b.textContent === 'Role binding').click();
@@ -141,17 +141,17 @@ try {
   gives('Alt + → on the subject\'s port: its side', [{ op: 'set', view: 'internals', path: ['present', 'order-service.api', 'side'], value: 'right' }], m => m.views[0].present['order-service.api'].side === 'right', m2);
   const n0 = ed.length; key('ArrowDown', { altKey: true });
   check('Alt + ↓ along its side: nothing emitted, said', ed.length === n0 && /follows its lines/.test(sr.textContent), [ed.length - n0, pick('.um-live') && pick('.um-live').textContent]);
-  const part = pick('.node[data-id="order-service.checkout"] .n-mask').getBoundingClientRect(), from = centre('.node[data-id="order-service.checkout->checkout.quotes"] .n-mask'), at = [part.x + part.width / 2, part.y + 2];
-  ptr(pick('.node[data-id="order-service.checkout->checkout.quotes"]'), 'pointerdown', from); for (let i = 1; i <= 4; i++) ptr(stage, 'pointermove', [from[0] + (at[0] - from[0]) * i / 4, from[1] + (at[1] - from[1]) * i / 4]); ptr(stage, 'pointerup', at);
-  const m3 = gives('a port on a part dragged to its top: present.<part>.ports.<port>.side', [{ op: 'set', view: 'internals', path: ['present', 'order-service.checkout', 'ports', 'checkout.quotes', 'side'], value: 'top' }],
-    m => m.views[0].present['order-service.checkout'].ports['checkout.quotes'].side === 'top', m2);
+  const part = pick('.node[data-id="order-service.checkout"] .n-mask').getBoundingClientRect(), from = centre('.node[data-id="order-service.checkout->checkout-class.quotes"] .n-mask'), at = [part.x + part.width / 2, part.y + 2];
+  ptr(pick('.node[data-id="order-service.checkout->checkout-class.quotes"]'), 'pointerdown', from); for (let i = 1; i <= 4; i++) ptr(stage, 'pointermove', [from[0] + (at[0] - from[0]) * i / 4, from[1] + (at[1] - from[1]) * i / 4]); ptr(stage, 'pointerup', at);
+  const m3 = gives('a port on a part dragged to its top: present.<part>.ports.<port>.side', [{ op: 'set', view: 'internals', path: ['present', 'order-service.checkout', 'ports', 'checkout-class.quotes', 'side'], value: 'top' }],
+    m => m.views[0].present['order-service.checkout'].ports['checkout-class.quotes'].side === 'top', m2);
   h.update(m3);
-  { const p = box(pick('.node[data-id="order-service.checkout->checkout.quotes"] .n-mask')), o = box(pick('.node[data-id="order-service.checkout"] .n-mask'));
+  { const p = box(pick('.node[data-id="order-service.checkout->checkout-class.quotes"] .n-mask')), o = box(pick('.node[data-id="order-service.checkout"] .n-mask'));
     check('after update() the port sits on its part\'s top', Math.abs(p.y + p.h / 2 - o.y) < 1, [p, o]); }
   // a member row on the subject
   h.select({ type: 'container', id: 'order-service', view: 'internals' });
   const nw = panel('[data-new]');
-  check('the subject\'s members listed by their rows', !!nw && panel('[data-m="order-service.api"]').value === 'port api' && panel('[data-m="order-service.checkout"]').value === 'checkout : Checkout [1]',
+  check('the subject\'s members listed by their rows', !!nw && panel('[data-m="order-service.api"]').value === 'port api' && panel('[data-m="order-service.checkout"]').value === 'checkout : CheckoutFlow [1]',
     nw && all('.um-editor [data-m]').map(i => i.value));
   if (nw) { nw.value = 'port admin : AdminApi'; enter(nw);
     gives('a member row `port name : Type`: a port of the subject (edits.member)', [{ op: 'add', element: { id: 'order-service.admin', type: 'uml.Port', label: 'admin', props: { valueType: 'AdminApi' } }, owner: 'order-service' }],

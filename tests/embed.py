@@ -38,7 +38,7 @@ tests/timeaxis.html: the time-axis layout and its shapes (3.2): each T case in b
 tests/sequence.html: the sequence type (3.3): examples/checkout-sequence.json in both themes and three fonts, laid out clean and named; its reading order; a click on an arrowhead or a loop selects the message; a message by L and by the handle through edits.connect.
 tests/sequence-fixtures.html: the sequence fixtures (3.8): tests/sequence-*.json, every view in both themes and three fonts, laid out clean, named, contrast.
 tests/communication.html: the communication diagram (3.5): examples/checkout-communication.json and the fixtures (tests/communication-*.json) in both themes and three fonts, laid out clean, named, in reading order; its gestures by pointer and keyboard on 3.4's canvas, through apply().
-tests/component.html: the component diagram (5.4): docs/diagrams/examples/05-component.json in both themes, three fonts and both directions (ports on borders, line ends on ports,
+tests/component.html: the component diagram (5.4): examples/bookshop-components.json in both themes, three fonts and both directions (ports on borders, line ends on ports,
   ball and socket, names, reading order, contrast, legend), and each gesture by pointer and keyboard through apply().
 tests/core-diet.html: the markup render() draws from lib/umlimator.js (three version-2 examples) and lib/umlimator-all.js (the class example), as main drew it before src/typed/ left the core (0.18.0).
 examples/edit.html, embed.html, live.html, playground.html, ask.html, replay.html, timelapse.html, drift.html, element.html, notations.html: the host pages load and draw.
