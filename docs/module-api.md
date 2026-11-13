@@ -3446,7 +3446,7 @@ everything above):
   `lib/umlimator-all.js` is 276.9 kB (276,892 B), up from 211.5 kB in 0.18.0. The npm package is 515 kB, up from
   512 kB in 0.19.0.
 
-## 0.21.0 (in progress)
+## 0.21.0: maps in one card-shape style; the use case, activity, state machine and interaction overview diagrams; the Bookshop atlas
 
 ### One card-shape style for maps
 
@@ -3588,9 +3588,18 @@ What moves for a host that upgrades from 0.20.0 (beside the one card-shape style
   all four, XMI, copy and paste and per-type `diff()` writers. Found in 4.10 (`docs/diagrams/risks.md` R9): the PDF's
   line tables list a line's `label` only, so a transition's parts, a flow's guard and an extend's points are missing,
   and the state machine type gave no `word` or `rows` until decision 18 (13 Nov 2026) added both in `src/uml/state.js`.
-- **Size:** `lib/umlimator.js`, what a map host loads, is 185.0 kB (185,023 B) with `gzip -9`, 12.17% over 0.16.0 (the
-  plan's budget is 15%): stage 4 added 307 B (4.1, 4.9 and the atlas's 39 B) and the one card-shape style removed more.
-  `lib/umlimator-all.js` is 336.2 kB (336,164 B), up from 276.9 kB in 0.20.0. The npm package is 574 kB, up from 515 kB.
+- **Size:** `lib/umlimator.js`, what a map host loads, is 185.1 kB (185,149 B) with `gzip -9`, 12.24% over 0.16.0 (the
+  plan's budget is 15%): stage 4 added 307 B (4.1, 4.9 and the atlas's 39 B), stage 5's work on `main` 126 B more, and
+  the one card-shape style removed 2,176 B. `lib/umlimator-all.js` is 377.6 kB (377,648 B), up from 276.9 kB in 0.20.0,
+  with stage 5's types in it. The npm package is 617 kB, up from 515 kB.
+
+### Also on `main`, provisional until 0.22.0: stage 5's first packages
+
+Stage 5's 5.0 to 5.6 (`docs/diagrams/notes/stage-5.md`) are on `main`, so this release carries them, as 0.19.0 carried
+stage 3's: `umlimator/all` draws a version-2 view with `diagram: "uml.component"`, `"uml.deployment"` or
+`"uml.composite-structure"`, with ports on borders, delegation lines to inner ports and `labelGaps`; the typed edit
+hooks `edits.member` and `edits.key` are in. Their schema, `.d.ts` types, fixtures, examples and conformance notes come
+in 0.22.0 (5.8), whose section says what they do. Maps, and the types released before, draw as described above.
 
 ### The Bookshop atlas
 
