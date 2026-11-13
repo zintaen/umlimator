@@ -685,6 +685,49 @@ The workspace JSON (Structurizr's published schema): `model.people`, `softwareSy
   instances and infrastructure nodes, groups, filtered, custom and image views, perspectives, element properties other than
   the identifier, documentation and decisions, `animations`, element positions (D1, as R5 for BPMN).
 
+As built (M2.10), where the reader departs from or adds to the above:
+
+- **Shapes** follow Structurizr's own precedence (`Styles.findElementStyle`, as `umlimator_import.py` does for the DSL):
+  an element's tags in order, a later tag's shape winning over an earlier one, not the first style with a shape. The
+  styles are the workspace's `views.configuration.styles.elements`. `Terminal` and `Shell` are `terminal` (the map has
+  it); every shape the map lacks (`Component`, `Ellipse`, `Circle`, `Diamond`, `Bucket`) is a box, approximated.
+  `props.shape` is written only when it is not the type's own (a person's `person`, the rest's `box`). Themes are
+  reported, not fetched.
+- **Ids**: an identifier that holds a UUID (the DSL's made-up identifier for an unnamed element) is not used, so the
+  name is; a container instance is `<container>-<instanceId>`.
+- **Relationships**: a `linkedRelationshipId` on a static element's relationship marks it implied (skipped, counted in
+  one report line); on a container instance's it marks one replicated from its container's, which is read (§7.5.3).
+  A dynamic view's step naming an implied relationship becomes the relationship it is implied by, approximated; a
+  step marked `response` is drawn the relationship's way, approximated. A deployment node's `instances` over one is
+  drawn once, approximated. A static view's own `relationships` list (its excludes) is not read: the type draws a
+  view's lines from the model.
+- **Views**: a dynamic view scoped to a software system or container lists its subject, as a container or component
+  view does (§3's table: a dynamic view is drawn "at the subject's level, as the container or component view"), so its
+  boundary is drawn. A `rankDirection` that is not one of Structurizr's four is reported and gives no `direction`.
+  A view with no `title` is titled `<subject or workspace>: <kind>` (`Clinic bookings: containers`); a
+  deployment view's environment follows (`Shop: deployment, Live`). `automaticLayout.rankDirection` gives `direction`.
+  A workspace with no view read gets one landscape view of its people and software systems, reported.
+- **The report**: each item is `{ path, status, message }`, `path` where in the workspace (`model.people[1].group`),
+  since a parsed object has no lines. M2.12 prints `path` where the Mermaid readers print `line`.
+- **Input**: the parsed workspace, or its text (over 1 MiB refused, as the Mermaid readers). Deployment nodes are read
+  by a stack, never recursion; the counts also stop an object a host built that holds itself. A host's object can hold
+  one list or string in many places, which parsed JSON cannot, so the counts alone do not bound the work: every list
+  entry walked is counted against 500,000 and every character of text read against 16 Mi, a shared one each time it
+  is reached; past either nothing more is read, reported once. A getter that throws, or a revoked proxy, is caught:
+  nothing read, reported. A deployment node nested 64 deep keeps its own container instances; only the nodes it holds
+  are read flat.
+- **Reported, beyond the list above**: custom elements (`model.customElements`), an element's or relationship's `url`,
+  an asynchronous relationship (`interactionStyle`, approximated: drawn as any other), relationship styles, element
+  style fields other than `shape` (one line naming them), a deployment node's shape from a style, a container
+  instance's own tags. A relationship's tags are not reported: they draw nothing but through relationship styles, which
+  are.
+- **The fixture** (`tests/import/structurizr.json`, `clinic` and `every`): the Structurizr CLI was not run where M2.10
+  was built, so `clinic` is written in the export's form from `examples/clinic.dsl` (the DSL's ids in creation order,
+  hierarchical identifiers, the nine relationships its default strategy implies, the styles and theme). Regenerating it
+  with `structurizr-cli export -f json` should change no line of its read model; the report's line count may differ,
+  and so may the order of deployment nodes and implied relationships and the deployment node's UUID identifier. One CLI
+  export before the pull request is still open: the tests and fixture say "written in the export's form" until then.
+
 ### 8.4 DBML (`src/readers/dbml.js`)
 
 `@dbml/core` (Apache-2.0, `proposal.md` §6.4) parses DBML into a `Database`: schemas, tables with fields (`name`,
@@ -814,7 +857,7 @@ package proposes its row and writes its release notes in its pull request's desc
 | M2.7 | **C4 dynamic and deployment views.** §7.5.2, §7.5.3 | `src/c4/views.js`, `tests/c4-views.test.mjs`, `tests/c4-views.html`, `tests/embed.py` (appends) | M2.6 | As M2.2 on the two views; steps reordered by key; deleting a container deletes its instances (`refs`) |
 | M2.8 | **Mermaid ER reader and writer.** §8.1 | `src/readers/mermaid-er.js`, `tests/mermaid-er.test.mjs`, `tests/import/er.mmd` | M2.0 | `read(write(model))` equals the model on the subset; the construct file's report pinned; §8's limits each by a test |
 | M2.9 | **Mermaid flowchart reader and writer, ported.** §8.2 | `src/readers/mermaid-flowchart.js`, `tests/mermaid-flowchart.test.mjs`, `tests/import/flowchart.mmd` | M2.0 | As M2.8; on the shared construct file it reads the nodes and links the Python importer reads (as built, its test runs both: §8.2) |
-| M2.10 | **Structurizr JSON reader.** §8.3 | `src/readers/structurizr.js`, `tests/structurizr.test.mjs`, `tests/import/structurizr.json` (a workspace exported from `examples/clinic.dsl` and one with every view kind) | M2.0 | The workspace reads into views that pass `check.mjs`'s structural checks (the C4 type's `validate` is M2.14's check); ids stable across two reads; the report pinned; §8's limits each by a test (a deep nest, a count over the limit, a `__proto__` name) |
+| M2.10 | **Structurizr JSON reader.** §8.3 | `src/readers/structurizr.js`, `tests/structurizr.test.mjs`, `tests/import/structurizr.json` (a workspace exported from `examples/clinic.dsl` and one with every view kind; as built, written in the export's form, §8.3) | M2.0 | The workspace reads into views that pass `check.mjs`'s structural checks (the C4 type's `validate` is M2.14's check); ids stable across two reads; the report pinned; §8's limits each by a test (a deep nest, a count over the limit, a `__proto__` name) |
 | M2.11 | **DBML adapter.** §8.4 | `src/readers/dbml.js`, `tests/dbml.test.mjs`, `tests/import/dbml.json` (a `Database` captured from a pinned `@dbml/core`, with the DBML it came from) | M2.0 | The captured file reads into a model that `check.mjs` passes; the report pinned; `package.json` unchanged; §8's limits each by a test |
 | M2.12 | **The CLI.** §8.5: `erDiagram`, `--typed` flowcharts, Structurizr JSON, `.dbml` | `umlimator.py` (`cmd_import`), `umlimator_import.py` (`detect`, `mermaid_typed`), `tests/import.py` (adds cases) | M2.8 to M2.11 | Every row of §8.5's table by a test. CI installs no `@dbml/core`, so the `.dbml` row is tested twice: as CI has it (the install message, nothing written), and with a stub `node_modules/@dbml/core` written into a scratch folder that the test runs the CLI from, whose parser returns M2.11's captured `Database`; a file over 1 MiB refused before parsing; every earlier import test unchanged |
 | M2.13 | **The Bookshop atlas.** §12.5: the five examples moved and joined | `examples/bookshop-schema.json`, `returns-flowchart.json`, `bookshop-data-flow.json`, `order-information-flow.json`, `bookshop-c4.json` (new), `docs/diagrams/examples/check.mjs` (`MOVED`), `tools/atlas.mjs` (`KEYS.props`), `tools/atlas-links.json`, `examples/bookshop-atlas.json`, `tests/atlas.test.mjs` (adds cases) | M2.2 to M2.7; 5.8 and stage 6's 6.7 merged | The atlas builds and its test passes (if stage 6's merged examples clash with an id M2.0 set, M2.13 renames it in its moved file and lists it in its pull request); each link opens its view in `examples/bookshop-atlas.json`'s page; the five files pass their types' `validate` |
