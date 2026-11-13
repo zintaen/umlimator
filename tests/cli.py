@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """The CLI's change commands end to end (#66, #67, #68): diff of two files, diff --base in a git repository (what the
-diff Action runs on a pull request; on an object and a package model as the Action's step runs it, 2.6), drift and timelapse; trace (#96; as a UML sequence view, 3.8); and pdf (#93), read back with the standard
+diff Action runs on a pull request; on an object and a package model as the Action's step runs it, 2.6, and on a use case, an activity, a state machine and an interaction overview model, 4.10), drift and timelapse; trace (#96; as a UML sequence view, 3.8); and pdf (#93; the stage 4 types' tables, 4.10), read back with the standard
 library. Pages only for the rest: stills (Chrome) are covered by `stills` itself. And the MCP server (#91), driven
 through its pipes as an MCP client drives it, with a page's event stream.
 
@@ -181,6 +181,30 @@ with tempfile.TemporaryDirectory() as tmp:
        md.startswith("<!-- umlimator-diff -->") and "**`examples/order-objects.json`**: snapshot" in md and "- renames order1042 to order1043" in md
        and "**`examples/bookshop-packages.json`**: packages" in md and "- moves Book into sales" in md and md.count("```mermaid") == 2, md[:800])
 
+    # C10 for stage 4 (S16, as 2.6 did): the Action's step on one model of each of the four types, each changed in a pull request
+    b = t / "action4"; (b / "examples").mkdir(parents=True)
+    bgit = lambda *x: subprocess.run(["git", "-C", str(b), "-c", "user.name=test", "-c", "user.email=test@example.invalid", *x], capture_output=True, text=True, check=True)
+    bgit("init", "-q")
+    FOUR = {"shopping-use-cases": ("track", "label", "Track a parcel", "shopping", "renames Track an order to Track a parcel"),
+            "fulfil-activity": ("told", "parent", "lane-warehouse", "fulfil", "moves told into Warehouse"),
+            "order-states": ("picking", "label", "Picking the books", "order-life", "renames Picking to Picking the books"),
+            "buy-book-overview": ("ref-receipt", "label", "Email a receipt", "buy-book", "renames Email the receipt to Email a receipt")}
+    for f in FOUR:
+        (b / "examples" / f"{f}.json").write_text((ROOT / "examples" / f"{f}.json").read_text(encoding="utf-8"), encoding="utf-8")
+    bgit("add", "examples"); bgit("commit", "-q", "-m", "base")
+    for f, (nid, k, v, _, _) in FOUR.items():
+        m = json.loads((b / "examples" / f"{f}.json").read_text()); next(n for n in m["nodes"] if n["id"] == nid)[k] = v
+        (b / "examples" / f"{f}.json").write_text(json.dumps(m, indent=1))
+    bgit("commit", "-q", "-am", "the pull request")
+    r = cli("diff", "--base", "HEAD^1", "--out", str(t / "action4-out"), "--models", "examples/*.json", cwd=b) or []
+    by = {x["file"]: x for x in r}
+    md = (t / "action4-out" / "summary.md").read_text(encoding="utf-8") if (t / "action4-out" / "summary.md").is_file() else ""
+    for f, (_, _, _, view, said) in FOUR.items():
+        x = by.get(f"examples/{f}.json", {})
+        ok(f"diff --base, as the Action runs it · {f}: what changed in words, its view, a page and a still",
+           x.get("summary") == [said] and x.get("views") == [view] and (t / "action4-out" / f"examples-{f}.html").is_file() and all(Path(s).is_file() for s in x.get("stills", [None]))
+           and f"**`examples/{f}.json`**: {view}" in md and f"- {said}" in md, x)
+
     # pdf (#93): the bike share as a document for a review; its words are text. A cover with the contents; each view from a
     # page of its own, under its path, with its legend and tables of its cards, lines and boxes; the rules as a table. The
     # words are compared without spaces: a PDF's text keeps none where a line wraps or between two runs of text, and where
@@ -221,18 +245,24 @@ with tempfile.TemporaryDirectory() as tmp:
     # upstream checks leaves it out (F3: it was "an unknown end")
     for name, path in (("sales-classes", ROOT / "examples" / "sales-classes.json"), ("order-objects", ROOT / "examples" / "order-objects.json"),
                        ("bookshop-packages", ROOT / "examples" / "bookshop-packages.json"), ("checkout-sequence", ROOT / "examples" / "checkout-sequence.json"),
-                       ("checkout-communication", ROOT / "examples" / "checkout-communication.json"), ("05-component", ROOT / "docs" / "diagrams" / "examples" / "05-component.json")):
+                       ("checkout-communication", ROOT / "examples" / "checkout-communication.json"), ("05-component", ROOT / "docs" / "diagrams" / "examples" / "05-component.json"),
+                       # 4.10: the use case, activity, state machine and interaction overview examples
+                       *((n, ROOT / "examples" / f"{n}.json") for n in ("shopping-use-cases", "fulfil-activity", "order-states", "buy-book-overview"))):
         src = json.loads(path.read_text())
         r = cli("render", str(path), "--out", str(t / f"{name}.html"))
-        ok(f"render · a typed model ({name}): the engine accepts lines that end on members, and the check is clean",
-           r is not None and not r.get("problems") and not r.get("errors"), r)
+        # 4.10: the crossings that turning port repair off leaves in examples 9 and 10 (notes/stage-4.md §17), pinned in their
+        # types' tests and stated in their conformance notes; nothing else
+        crossings = {"fulfil-activity": 2, "order-states": 2}.get(name, 0)
+        ok(f"render · a typed model ({name}): the engine accepts lines that end on members, and the check is clean" + (f" but its {crossings} pinned crossings" if crossings else ""),
+           r is not None and len(r.get("problems") or []) == crossings and all(p.endswith(" cross") for p in r.get("problems") or []) and not r.get("errors"), r)
         page = (t / f"{name}.html").read_text(encoding="utf-8") if r else ""
         data = re.search(r'<script[^>]*id="visual-data"[^>]*>(.*?)</script>', page, re.S)
         views = json.loads(data.group(1))["views"] if data else []
         ok(f"render · {name}: no layout is baked into a typed view; one the model gives is kept",
            views and all(("layout" in v) == ("layout" in w) for v, w in zip(views, src["views"])), [(v["id"], "layout" in v) for v in views])
         c = cli("check", str(t / f"{name}.html"))
-        ok(f"check · {name}: every view checked, nothing wrong", c is not None and c.get("checked") and not c["problems"] and not c["errors"], c)
+        ok(f"check · {name}: every view checked, nothing wrong" + (f" but its {crossings} pinned crossings" if crossings else ""), c is not None and c.get("checked")
+           and len(c["problems"]) == crossings and all(p.endswith(" cross") for p in c["problems"]) and not c["errors"], c)
         st = cli("stills", str(t / f"{name}.html"), "--out", str(t / f"stills-{name}"))
         ok(f"stills · {name}: a picture of every view", st is not None and len(list((t / f"stills-{name}").glob("*.png"))) == len(src["views"]), st)
         pd = cli("pdf", str(t / f"{name}.html"), "--out", str(t / f"{name}.pdf"))
@@ -261,6 +291,25 @@ with tempfile.TemporaryDirectory() as tmp:
     ok("pdf · checkout-communication: its tables list each lifeline, each connector and each message, by kind",
        all(flat(s) in txt for s in ["apiLifeline", "api → paymentsConnector", "api → paymentscharge(total)Message", "1.1.2.1: paid"])
        and "Script" not in txt and "calls" not in txt, txt[:800])
+    # 4.10: the four stage 4 types' tables (notes/stage-4.md §15): a use case's extension points, an activity node's kind and
+    # its partition, a state's internal transitions and a composite's regions, an overview node's kind; each line's kind
+    txt = "".join(read("shopping-use-cases.pdf"))
+    ok("pdf · shopping-use-cases: its tables list each actor, subject and use case by kind, a use case's extension points, each line's kind",
+       all(flat(s) in txt for s in ["Elements", "CardKindMembers", "ShopperActor", "Online bookshopSubject", "Check outUse casepaymentextras",
+                                    "From → toLabelKind", "Shopper → Browse the catalogAssociation", "Check out → Pay for the orderInclude", "Redeem a voucher → Check outExtend",
+                                    "Member → ShopperGeneralization"]), txt[:800])
+    txt = "".join(read("fulfil-activity.pdf"))
+    ok("pdf · fulfil-activity: its tables list each node's kind and its partition (rows), each partition, each flow's kind",
+       all(flat(s) in txt for s in ["Order workerPartition", "All books in stock?Decisionin Warehouse", "Stock levelsData storein Warehouse", "Take paymentCall behaviour actionin Order worker",
+                                    "toldFlow finalin Email service", "pay-startInitial node", "Control flow", "Object flow"]), txt[:800])
+    txt = "".join(read("order-states.pdf"))
+    ok("pdf · order-states: its tables list each state, pseudostate and final state, a state's internal transitions, a composite's regions, each transition",
+       all(flat(s) in txt for s in ["PlacedStateaddress changed / update the deliveryaddress", "FulfillingStateregion Parcelregion Payment", "createdPseudostate", "deliveredFinal state",
+                                    "created → PlacedTransition", "Capturing payment → CancelledTransition"]), txt[:800])
+    txt = "".join(read("buy-book-overview.pdf"))
+    ok("pdf · buy-book-overview: its tables list each node's kind and each flow, then each sequence view it opens",
+       all(flat(s) in txt for s in ["Find a bookInteraction use", "Queue the orderInteraction", "Payment accepted?Decision node", "splitFork node", "Payment accepted? → splitControl flow",
+                                    "storefront → apifindBooks(title)Message"]), txt[:800])
     # an element with no type is drawn as a class, and its row says so
     bare = json.loads((ROOT / "examples" / "sales-classes.json").read_text()); next(n for n in bare["nodes"] if n["id"] == "order").pop("type")
     (t / "bare.json").write_text(json.dumps(bare))
