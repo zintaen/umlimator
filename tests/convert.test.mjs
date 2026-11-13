@@ -19,20 +19,21 @@ const view = (m, id) => m.views.find(v => v.id === id);
 const allIds = m => [...m.nodes, ...m.edges, ...m.views.flatMap(v => [v, ...(v.nodes || []), ...(v.edges || []).filter(e => typeof e === 'object')])].map(x => x.id).filter(id => id != null);
 
 test('example 11 with { f1: "f1-paid" } gives example 12, except for ids', () => {
-  const before = structuredClone(EX11), { model, report } = communicationFromView(EX11, 'checkout', { operands: { f1: 'f1-paid' }, view: 'checkout' });
+  const before = structuredClone(EX11), { model, report } = communicationFromView(EX11, 'checkout-sequence', { operands: { f1: 'f1-paid' }, view: 'checkout-communication' });
   assert.deepEqual(EX11, before, 'the model passed in is not changed');
   assert.deepEqual(report, [{ id: 'f3', status: 'skipped', message: 'interaction use f3 is left out' }]);
-  // ids: a message by its place, a connector by its ends (example 12 names a self connector <a>-self)
-  const name = new Map(EX12.edges.map(e => [e.type === 'uml.Message' ? `checkout.${e.id}` : `checkout.${e.from}-${e.to}`, e.id]));
+  // ids: a message by its place (example 12's cm<n>), a connector by its ends (example 12 names a self connector <a>-self)
+  const P = 'checkout-communication.', name = new Map(EX12.edges.map(e => [e.type === 'uml.Message' ? `${P}m${e.id.slice(2)}` : `${P}${e.from}-${e.to}`, e.id]));
   const back = x => name.get(x) ?? x, un = e => ({ ...e, id: back(e.id), ...(e.props && e.props.replyTo ? { props: { ...e.props, replyTo: back(e.props.replyTo) } } : {}) });
   assert.equal(name.size, EX12.edges.length);
   assert.deepEqual(model.edges.map(un), EX12.edges);
   assert.deepEqual(model.nodes, EX12.nodes);
-  assert.deepEqual(model.views.map(v => ({ ...v, edges: v.edges.map(back) })), EX12.views);
+  assert.deepEqual(model.views[0], EX11.views[0], 'the sequence view stays, the communication view comes after it');
+  assert.deepEqual(model.views.slice(1).map(v => ({ ...v, edges: v.edges.map(back) })), EX12.views);
   // model.md row 12, structurally (the type itself is 3.5's): no error, every message on a connector joining its ends,
   // the shared rules clean, and §6.3's numbers
   assert.deepEqual(errors(model), []);
-  const v = model.views[0], byId = new Map(model.edges.map(e => [e.id, e])), listed = v.edges.map(id => byId.get(id));
+  const v = model.views[1], byId = new Map(model.edges.map(e => [e.id, e])), listed = v.edges.map(id => byId.get(id));
   const links = listed.filter(e => e.type === 'uml.Connector'), msgs = listed.filter(e => e.type === 'uml.Message');
   assert.equal(listed.findIndex(e => e.type === 'uml.Message'), links.length, 'connectors first, then messages');
   msgs.forEach(m => assert.ok(links.some(c => (c.from === m.from && c.to === m.to) || (c.from === m.to && c.to === m.from)), `${m.id} has a connector`));
@@ -42,20 +43,20 @@ test('example 11 with { f1: "f1-paid" } gives example 12, except for ids', () =>
 });
 
 test('a sequence view: the first operand by default, another by options.operands, par and a missing operand reported', () => {
-  const dflt = communicationFromView(EX11, 'checkout', { view: 'checkout' }).model;
-  assert.deepEqual(dflt, communicationFromView(EX11, 'checkout', { operands: { f1: 'f1-paid' }, view: 'checkout' }).model);
-  const { model, report } = communicationFromView(EX11, 'checkout', { operands: { f1: 'f1-declined' } }), v = view(model, 'checkout.communication');
+  const dflt = communicationFromView(EX11, 'checkout-sequence', { view: 'checkout-sequence' }).model;
+  assert.deepEqual(dflt, communicationFromView(EX11, 'checkout-sequence', { operands: { f1: 'f1-paid' }, view: 'checkout-sequence' }).model);
+  const { model, report } = communicationFromView(EX11, 'checkout-sequence', { operands: { f1: 'f1-declined' } }), v = view(model, 'checkout-sequence.communication');
   assert.equal(model.views.length, 2, 'a new id: the view comes last');
   assert.equal(v.title, 'Checkout: else');
   assert.deepEqual(v.edges.filter(id => /\.m\d+$/.test(id)).map(id => model.edges.find(e => e.id === id).label), ['checkout()', 'place(order)', 'validate(order)', 'charge(total)', 'declined', 'result', 'confirmation page']);
   assert.deepEqual(report, []);
   assert.deepEqual(errors(model), []);
-  assert.deepEqual(communicationFromView(EX11, 'checkout', { operands: { f1: 'nope' } }).report[0],
+  assert.deepEqual(communicationFromView(EX11, 'checkout-sequence', { operands: { f1: 'nope' } }).report[0],
     { id: 'f1', status: 'approximated', message: 'alt f1 has no operand "nope": its first is taken' });
   const par = structuredClone(EX11); par.views[0].fragments[0].props.operator = 'par';
-  const p = communicationFromView(par, 'checkout');
+  const p = communicationFromView(par, 'checkout-sequence');
   assert.deepEqual(p.report.map(r => [r.id, r.status]), [['f1', 'approximated'], ['f3', 'skipped']]);
-  assert.equal(view(p.model, 'checkout.communication').edges.filter(id => /\.m\d+$/.test(id)).length, 10, "par: both operands' messages, one after another");
+  assert.equal(view(p.model, 'checkout-sequence.communication').edges.filter(id => /\.m\d+$/.test(id)).length, 10, "par: both operands' messages, one after another");
 });
 
 test("the numbered view in examples/bookshop.json gives a sequence view and a communication view that validate with no error", () => {
@@ -111,7 +112,7 @@ test('running a helper again with the same options.view replaces that view and t
   assert.deepEqual(other.edges.map(e => e.id), ['e1', 'e2', 'out.b-c', 'out.m1']);
   assert.deepEqual(errors(other), []);
   assert.throws(() => sequenceFromView(m, 'nope'), /no view "nope"/);
-  assert.throws(() => sequenceFromView(EX11, 'checkout'), /not a numbered view/);
+  assert.throws(() => sequenceFromView(EX11, 'checkout-sequence'), /not a numbered view/);
 });
 
 test('derived ids stay unique: cards with "-", a card m<n>, cards "a->b" and "a-b"; guards of untaken alts and inherited keys', () => {
@@ -123,7 +124,7 @@ test('derived ids stay unique: cards with "-", a card m<n>, cards "a->b" and "a-
   cv.fragments.push({ id: 'f4', type: 'uml.CombinedFragment', parent: 'f1-declined', props: { operator: 'alt' },
     members: [{ id: 'retry', type: 'uml.InteractionOperand', label: 'retry' }, { id: 'give-up', type: 'uml.InteractionOperand', label: 'give up' }] });
   cv.edges.push({ ...msg, id: 'm99', parent: 'retry', props: { sort: 'call' } });
-  assert.equal(view(communicationFromView(ex, 'checkout', { operands: { f1: 'f1-paid' } }).model, 'checkout.communication').title, 'Checkout: payment accepted');
+  assert.equal(view(communicationFromView(ex, 'checkout-sequence', { operands: { f1: 'f1-paid' } }).model, 'checkout-sequence.communication').title, 'Checkout: payment accepted');
   const proto = structuredClone(EX11); proto.views[0].fragments.find(f => f.id === 'f1').id = '__proto__';
-  assert.deepEqual(communicationFromView(proto, 'checkout').report.filter(r => r.id === '__proto__'), []);
+  assert.deepEqual(communicationFromView(proto, 'checkout-sequence').report.filter(r => r.id === '__proto__'), []);
 });

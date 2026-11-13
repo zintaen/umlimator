@@ -48,8 +48,8 @@ Action on it in a pull request; the site shows its stills and its PDF.
 
 [![The object diagram: order 1042, just placed](https://zintaen.github.io/umlimator/examples/stills/order-objects/snapshot.png)](https://zintaen.github.io/umlimator/examples/order-objects.html)
 [![The package diagram: the bookshop's packages](https://zintaen.github.io/umlimator/examples/stills/bookshop-packages/packages.png)](https://zintaen.github.io/umlimator/examples/bookshop-packages.html)
-[![The sequence diagram: checkout](https://zintaen.github.io/umlimator/examples/stills/checkout-sequence/checkout.png)](https://zintaen.github.io/umlimator/examples/checkout-sequence.html)
-[![The communication diagram: checkout, payment accepted](https://zintaen.github.io/umlimator/examples/stills/checkout-communication/checkout.png)](https://zintaen.github.io/umlimator/examples/checkout-communication.html)
+[![The sequence diagram: checkout](https://zintaen.github.io/umlimator/examples/stills/checkout-sequence/checkout-sequence.png)](https://zintaen.github.io/umlimator/examples/checkout-sequence.html)
+[![The communication diagram: checkout, payment accepted](https://zintaen.github.io/umlimator/examples/stills/checkout-communication/checkout-communication.png)](https://zintaen.github.io/umlimator/examples/checkout-communication.html)
 [![The use case diagram: shopping](https://zintaen.github.io/umlimator/examples/stills/shopping-use-cases/shopping.png)](https://zintaen.github.io/umlimator/examples/shopping-use-cases.html)
 [![The activity diagram: fulfilling an order](https://zintaen.github.io/umlimator/examples/stills/fulfil-activity/fulfil.png)](https://zintaen.github.io/umlimator/examples/fulfil-activity.html)
 [![The state machine diagram: an order's life](https://zintaen.github.io/umlimator/examples/stills/order-states/order-life.png)](https://zintaen.github.io/umlimator/examples/order-states.html)
@@ -70,9 +70,11 @@ what it leads to:
 | Fulfilling an order, take payment | Take the next order from the queue, Charge the shopper's card | queue the order, the checkout (sequences) |
 
 It is built, not written: `node tools/atlas.mjs` reads the example files and [`../tools/atlas-links.json`](../tools/atlas-links.json)
-(the files, in order, and which card opens which view) and writes the model. An id an earlier file already has is
-renamed `<file>.<id>` in the later file, and the tool lists each one; `tests/atlas.test.mjs` fails when the committed
-atlas is not what it writes. A card that opens another kind of diagram does not unfold in place (E): it opens.
+(the files, in order, and which card opens which view) and writes the model. Elements are shared by id: one Order,
+one package `sales`, one `api` lifeline for the sequence, communication and overview files. Where two files have an id,
+they must agree on it (a field one leaves out is the other's, a class's members are the union of theirs); where they
+disagree, the build stops and names the id, the files and the field, and the example files are what gets fixed.
+`tests/atlas.test.mjs` fails when the committed atlas is not what it writes. A card that opens another kind of diagram does not unfold in place (E): it opens.
 
 ## Host pages
 

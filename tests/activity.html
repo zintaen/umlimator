@@ -48,7 +48,7 @@ const ratio = (fg, bg) => { const [x, y] = [lum(blend(fg, bg)), lum(bg)].sort((p
 const css = (x, k) => rgba(getComputedStyle(x)[k]);
 const EX = await (await fetch('../examples/fulfil-activity.json')).json();
 const dir = d => ({ ...EX, views: EX.views.map(v => ({ ...v, direction: d })) });
-const LANE = { 'lane-worker': ['start', 'take-order', 'order', 'split', 'pay'], 'lane-email': ['tell-shopper', 'told'] };
+const LANE = { 'lane-worker': ['start', 'take-order', 'order-object', 'split', 'call-payment'], 'lane-email': ['tell-shopper', 'told'] };
 const laneOf = id => Object.keys(LANE).find(l => LANE[l].includes(id)) || 'lane-warehouse';
 try {
   const widths = {};
@@ -92,8 +92,8 @@ try {
     if (theme === 'light' && fname === 'sans') {
       const aria = id => pick(`.node[data-id="${id}"]`).getAttribute('aria-label');
       check(`${tag}: nodes, partitions and flows have names a screen reader reads`, aria('in-stock') === 'Decision All books in stock?, 2 exits, in Warehouse' && aria('lane-email') === 'Partition Email service, 2 nodes'
-        && aria('pay') === 'Call behaviour action Take payment, opens Take payment, in Order worker' && aria('split') === 'Fork, 3 branches, in Order worker'
-        && pick('.edge-g[data-from="in-stock"][data-to="stock-ready"] title').textContent === 'Control flow from All books in stock? to merge, guard all books in stock', [aria('in-stock'), aria('pay')]);
+        && aria('call-payment') === 'Call behaviour action Take payment, opens Take payment, in Order worker' && aria('split') === 'Fork, 3 branches, in Order worker'
+        && pick('.edge-g[data-from="in-stock"][data-to="stock-ready"] title').textContent === 'Control flow from All books in stock? to merge, guard all books in stock', [aria('in-stock'), aria('call-payment')]);
       check(`${tag}: a guard is drawn [guard], a data store «datastore»`, all('.e-label').map(t => t.textContent).sort().join('|') === '[all books in stock]|[else]'
         && [...pick('.node[data-id="stock"]').querySelectorAll('text')].map(t => t.textContent).join(' ') === '«datastore» Stock levels', [all('.e-label').map(t => t.textContent), [...pick('.node[data-id="stock"]').querySelectorAll('text')].map(t => t.textContent)]);
       const legend = all('.m-legend b').map(b => b.textContent);
@@ -106,11 +106,11 @@ try {
   check('describe() writes the view in words', describe(EX, 'fulfil').startsWith('Fulfilling an order: an activity diagram of 17 nodes, 19 flows and 3 partitions.\nPartition Order worker, 5 nodes.'));
 
   // §9.1, Q11: the selected call behaviour action opens the view it calls, as a card opens its inner view (Enter, a double-click)
-  const opened = async go => { const seen = [], h0 = mount(EX, { on: { viewchange: e => seen.push(e.view) } }); click('.node[data-id="pay"] .n-body'); go();
+  const opened = async go => { const seen = [], h0 = mount(EX, { on: { viewchange: e => seen.push(e.view) } }); click('.node[data-id="call-payment"] .n-body'); go();
     for (let i = 0; i < 100 && !seen.length; i++) await new Promise(r => setTimeout(r, 20)); h0.destroy(); return seen; };
   let seen = await opened(() => key('Enter'));
   check('Enter on the selected call behaviour action opens the view it calls', same(seen, ['take-payment']), seen);
-  seen = await opened(() => { const b = pick('.node[data-id="pay"] .n-body'), [x, y] = centre('.node[data-id="pay"] .n-body'); b.dispatchEvent(new MouseEvent('dblclick', { clientX: x, clientY: y, bubbles: true, composed: true, cancelable: true })); });
+  seen = await opened(() => { const b = pick('.node[data-id="call-payment"] .n-body'), [x, y] = centre('.node[data-id="call-payment"] .n-body'); b.dispatchEvent(new MouseEvent('dblclick', { clientX: x, clientY: y, bubbles: true, composed: true, cancelable: true })); });
   check('…and so does a double-click on it', same(seen, ['take-payment']), seen);
 
   // ---- the gestures (DoD 4), through the type's hooks, each through the edit event and apply()
@@ -135,10 +135,10 @@ try {
   check('a call behaviour action asks which activity view it opens: a picker of the model\'s', same(views, ['Fulfilling an order', 'Take payment']) && pick('.um-pick').getAttribute('aria-label') === 'Choose' && !ed.length, views);
   all('.um-pick button')[1].click();
   gives('…the view picked is its opensView', [{ op: 'add', element: { id: 'refund', type: 'uml.CallBehaviorAction', label: 'Refund', parent: 'lane-email', opensView: 'take-payment' }, view: 'fulfil' }]);
-  click('.node[data-id="pay"] .n-body'); key('v'); await tick();
+  click('.node[data-id="call-payment"] .n-body'); key('v'); await tick();
   check('V on a call behaviour action opens the picker of activity views', same(all('.um-pick button').map(b => b.textContent), ['Fulfilling an order', 'Take payment']));
   all('.um-pick button')[0].click();
-  gives('…and sets the view it opens', [{ op: 'set', id: 'pay', path: 'opensView', value: 'fulfil' }]);
+  gives('…and sets the view it opens', [{ op: 'set', id: 'call-payment', path: 'opensView', value: 'fulfil' }]);
   // F2 on a flow, from its ring, through edits.rename: "name [guard]"
   const FLOW = 'Control flow from All books in stock? to merge, guard all books in stock';
   lineRing(FLOW).focus(); key('Enter', {}, sr.activeElement); key('F2');
@@ -184,8 +184,8 @@ try {
   own.value = 'lane-email'; own.dispatchEvent(new Event('change', { bubbles: true }));
   gives('Owner: another lane, in one transaction', [{ op: 'reparent', id: 'ship', parent: 'lane-email' }], m => m.nodes.find(n => n.id === 'ship').parent === 'lane-email');
   // Delete hides; Shift + Delete on a partition keeps what it holds
-  click('.node[data-id="order"] .n-body'); key('Delete');
-  gives('Delete hides a node from the view', [{ op: 'hide', id: 'order', view: 'fulfil' }], m => !m.views[0].nodeIds.includes('order'));
+  click('.node[data-id="order-object"] .n-body'); key('Delete');
+  gives('Delete hides a node from the view', [{ op: 'hide', id: 'order-object', view: 'fulfil' }], m => !m.views[0].nodeIds.includes('order-object'));
   ring('lane-email').focus(); key('Enter', {}, sr.activeElement); key('Delete', { shiftKey: true }, sr.activeElement);
   const kept = gives('Shift + Delete on a partition: its nodes go to its owner, then it goes', [{ op: 'reparent', id: 'tell-shopper', parent: null }, { op: 'reparent', id: 'told', parent: null }, { op: 'delete', id: 'lane-email' }],
     m => ['tell-shopper', 'told'].every(id => m.nodes.some(n => n.id === id)));

@@ -3603,23 +3603,27 @@ the map's three views and the fifteen typed views of `sales-classes`, `order-obj
 (Charge the shopper's card); every view is reached from the map.
 
 - **Assembled, not copied.** `node tools/atlas.mjs` builds it from the example files and `tools/atlas-links.json`, which
-  lists the files in order and which element opens which view (each link is the element's `opensView`). An id an
-  earlier file already uses, as an element's or a view's, is renamed `<file>.<id>` with every reference to it in its
-  file, and the tool prints what it renamed (48 ids, such as the lifelines named `api`, three of the four views named
-  `checkout` and the communication diagram's `m1`). Labels are kept. A field the tool does not know how to rename (a
-  view's, an element's or a prop) stops the build. `tests/atlas.test.mjs` builds it again and compares it with the
-  committed file byte for byte; it also asks for no core error from `validate()`, every view laid out as in its own file
-  (the same boxes, lines through the same points), and every drill-down opening a view of the atlas, with no id of one
-  file opening another file's view by accident.
+  lists the files in order and which element opens which view (each link is the element's `opensView`). One model,
+  many views: an element (a node, a member, an edge) whose id is in several files is one element, written once (19 are:
+  the class and package files' Order, `sales` and the rest, and the lifelines the sequence, communication and overview
+  files share). The files must agree on it: the same type, parent and ends, and any field both set equal; a field one
+  leaves out is the other's, a class's members are the union of theirs. A disagreement stops the build, naming the id,
+  the files and the field, and the example files are fixed, not the atlas: ids that were different things got their
+  own (the lifelines `lifeline-api` and the rest, beside the map's `api`), and the class file's Book, Payable, Payment,
+  CardPayment and Money moved into the package file's packages. So does an id that is a view's own element in one file
+  and anything in another, a view id in two files, and a node whose id is another file's view (it would open it); a
+  field the tool does not know stops it too. `tests/atlas.test.mjs` builds it again and compares it with the committed
+  file byte for byte; it also asks for no core error from `validate()`, every view laid out as in its own file (the
+  same boxes, lines through the same points), and every drill-down opening a view of the atlas.
 - **A map and typed views share one model.** A view with no `diagram` is a map, drawn as before, in a
   `schemaVersion: 2` model too (`model.md` §1, rule 1); nothing had to be left out.
 - **Another kind of diagram opens, never unfolds in place** (`src/map/context.js`, 39 B in the core): a card whose inner
   view is a different diagram (a map card opening a use case diagram, a class opening its state machine, an interaction
   use opening its sequence) switches to that view; unfolding it would draw one notation's elements as another's cards.
   A map card and an activity's call behaviour action still unfold as before.
-- **What `validate()` says.** Three errors from UML rules, none from the core: the class type's rules run on the whole
-  model, so the use case file's generalizations (an actor's, a use case's) are not between classifiers to them, and the
-  class file and the package file each have a package `sales` (`package-names`). `tests/atlas.test.mjs` pins the three.
+- **What `validate()` says.** Two errors from UML rules, none from the core: the class type's rules run on the whole
+  model, so the use case file's generalizations (an actor's, a use case's) are not between classifiers to them.
+  `tests/atlas.test.mjs` pins the two.
 - **CI.** The atlas is one of `examples/*.json`, so it is rendered, checked with `--expand`, validated against the JSON
   Schema and pictured and printed for the site as the others are; the check loop counts its 6 crossings, the activity's
   4 and the state machine's 2.

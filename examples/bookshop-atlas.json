@@ -98,7 +98,7 @@
    "what": "Takes the money.",
    "when": "Checkout and refunds.",
    "how": "The Shop API redirects to it and reads the result.",
-   "opensView": "checkout-communication.checkout"
+   "opensView": "checkout-communication"
   },
   {
    "id": "mail",
@@ -145,7 +145,29 @@
   {
    "id": "sales",
    "type": "uml.Package",
-   "label": "sales"
+   "label": "sales",
+   "opensView": "domain"
+  },
+  {
+   "id": "shared",
+   "type": "uml.Package",
+   "label": "shared"
+  },
+  {
+   "id": "catalog",
+   "type": "uml.Package",
+   "label": "catalog"
+  },
+  {
+   "id": "payments-package",
+   "type": "uml.Package",
+   "label": "payments"
+  },
+  {
+   "id": "card",
+   "type": "uml.Package",
+   "label": "card",
+   "parent": "payments-package"
   },
   {
    "id": "customer",
@@ -303,7 +325,7 @@
    "id": "book",
    "type": "uml.Class",
    "label": "Book",
-   "parent": "sales",
+   "parent": "catalog",
    "members": [
     {
      "id": "book.isbn",
@@ -338,7 +360,7 @@
    "id": "payable",
    "type": "uml.Interface",
    "label": "Payable",
-   "parent": "sales",
+   "parent": "payments-package",
    "members": [
     {
      "id": "payable.amountDue",
@@ -355,7 +377,7 @@
    "id": "payment",
    "type": "uml.Class",
    "label": "Payment",
-   "parent": "sales",
+   "parent": "payments-package",
    "props": {
     "isAbstract": true
    },
@@ -384,7 +406,7 @@
    "id": "card-payment",
    "type": "uml.Class",
    "label": "CardPayment",
-   "parent": "sales",
+   "parent": "card",
    "members": [
     {
      "id": "card-payment.last4",
@@ -437,7 +459,7 @@
    "id": "money",
    "type": "uml.DataType",
    "label": "Money",
-   "parent": "sales",
+   "parent": "shared",
    "members": [
     {
      "id": "money.amount",
@@ -598,7 +620,7 @@
    ]
   },
   {
-   "id": "card",
+   "id": "card-1",
    "type": "uml.InstanceSpecification",
    "label": "card",
    "props": {
@@ -624,87 +646,6 @@
    ]
   },
   {
-   "id": "shared",
-   "type": "uml.Package",
-   "label": "shared"
-  },
-  {
-   "id": "bookshop-packages.money",
-   "type": "uml.DataType",
-   "label": "Money",
-   "parent": "shared"
-  },
-  {
-   "id": "catalog",
-   "type": "uml.Package",
-   "label": "catalog"
-  },
-  {
-   "id": "bookshop-packages.book",
-   "type": "uml.Class",
-   "label": "Book",
-   "parent": "catalog"
-  },
-  {
-   "id": "bookshop-packages.sales",
-   "type": "uml.Package",
-   "label": "sales",
-   "opensView": "domain"
-  },
-  {
-   "id": "bookshop-packages.customer",
-   "type": "uml.Class",
-   "label": "Customer",
-   "parent": "bookshop-packages.sales"
-  },
-  {
-   "id": "bookshop-packages.order",
-   "type": "uml.Class",
-   "label": "Order",
-   "parent": "bookshop-packages.sales"
-  },
-  {
-   "id": "bookshop-packages.line",
-   "type": "uml.Class",
-   "label": "OrderLine",
-   "parent": "bookshop-packages.sales"
-  },
-  {
-   "id": "bookshop-packages.status",
-   "type": "uml.Enumeration",
-   "label": "OrderStatus",
-   "parent": "bookshop-packages.sales"
-  },
-  {
-   "id": "bookshop-packages.payments",
-   "type": "uml.Package",
-   "label": "payments"
-  },
-  {
-   "id": "bookshop-packages.payable",
-   "type": "uml.Interface",
-   "label": "Payable",
-   "parent": "bookshop-packages.payments"
-  },
-  {
-   "id": "bookshop-packages.payment",
-   "type": "uml.Class",
-   "label": "Payment",
-   "parent": "bookshop-packages.payments"
-  },
-  {
-   "id": "bookshop-packages.card",
-   "type": "uml.Package",
-   "label": "card",
-   "parent": "bookshop-packages.payments"
-  },
-  {
-   "id": "bookshop-packages.card-payment",
-   "type": "uml.Class",
-   "label": "CardPayment",
-   "parent": "bookshop-packages.card"
-  },
-  {
    "id": "wholesale",
    "type": "uml.Package",
    "label": "wholesale"
@@ -716,7 +657,7 @@
    "parent": "wholesale"
   },
   {
-   "id": "shopper",
+   "id": "lifeline-shopper",
    "type": "uml.Lifeline",
    "label": "shopper",
    "props": {
@@ -727,7 +668,7 @@
    }
   },
   {
-   "id": "checkout-sequence.storefront",
+   "id": "lifeline-storefront",
    "type": "uml.Lifeline",
    "label": "storefront",
    "props": {
@@ -735,7 +676,7 @@
    }
   },
   {
-   "id": "checkout-sequence.api",
+   "id": "lifeline-api",
    "type": "uml.Lifeline",
    "label": "api",
    "props": {
@@ -743,7 +684,7 @@
    }
   },
   {
-   "id": "checkout-sequence.payments",
+   "id": "lifeline-payments",
    "type": "uml.Lifeline",
    "label": "payments",
    "props": {
@@ -759,50 +700,7 @@
    }
   },
   {
-   "id": "checkout-communication.shopper",
-   "type": "uml.Lifeline",
-   "label": "shopper",
-   "props": {
-    "represents": "Shopper",
-    "stereotypes": [
-     "actor"
-    ]
-   }
-  },
-  {
-   "id": "checkout-communication.storefront",
-   "type": "uml.Lifeline",
-   "label": "storefront",
-   "props": {
-    "represents": "Storefront"
-   }
-  },
-  {
-   "id": "checkout-communication.api",
-   "type": "uml.Lifeline",
-   "label": "api",
-   "props": {
-    "represents": "ShopApi"
-   }
-  },
-  {
-   "id": "checkout-communication.payments",
-   "type": "uml.Lifeline",
-   "label": "payments",
-   "props": {
-    "represents": "PaymentProvider"
-   }
-  },
-  {
-   "id": "checkout-communication.receipt",
-   "type": "uml.Lifeline",
-   "label": "receipt",
-   "props": {
-    "represents": "Receipt"
-   }
-  },
-  {
-   "id": "shopping-use-cases.shopper",
+   "id": "shopper",
    "type": "uml.Actor",
    "label": "Shopper"
   },
@@ -829,7 +727,7 @@
    "opensView": "find-book"
   },
   {
-   "id": "shopping-use-cases.checkout",
+   "id": "check-out",
    "type": "uml.UseCase",
    "label": "Check out",
    "parent": "bookshop",
@@ -912,7 +810,7 @@
    "opensView": "queue-order"
   },
   {
-   "id": "fulfil-activity.order",
+   "id": "order-object",
    "type": "uml.ObjectNode",
    "label": "Order",
    "parent": "lane-worker"
@@ -958,7 +856,7 @@
    "parent": "lane-worker"
   },
   {
-   "id": "fulfil-activity.pay",
+   "id": "call-payment",
    "type": "uml.CallBehaviorAction",
    "label": "Take payment",
    "parent": "lane-worker",
@@ -1005,7 +903,7 @@
    "id": "charge",
    "type": "uml.Action",
    "label": "Charge the shopper's card",
-   "opensView": "checkout-sequence.checkout"
+   "opensView": "checkout-sequence"
   },
   {
    "id": "record",
@@ -1198,7 +1096,7 @@
    "type": "uml.FinalState"
   },
   {
-   "id": "buy-book-overview.start",
+   "id": "buy-start",
    "type": "uml.InitialNode"
   },
   {
@@ -1215,7 +1113,7 @@
    "id": "ref-checkout",
    "type": "uml.InteractionUse",
    "label": "Check out",
-   "opensView": "buy-book-overview.checkout"
+   "opensView": "buy-checkout"
   },
   {
    "id": "payment-ok",
@@ -1223,7 +1121,7 @@
    "label": "Payment accepted?"
   },
   {
-   "id": "buy-book-overview.split",
+   "id": "buy-split",
    "type": "uml.ForkNode"
   },
   {
@@ -1243,43 +1141,8 @@
    "type": "uml.JoinNode"
   },
   {
-   "id": "buy-book-overview.done",
+   "id": "buy-done",
    "type": "uml.ActivityFinalNode"
-  },
-  {
-   "id": "buy-book-overview.shopper",
-   "type": "uml.Lifeline",
-   "label": "shopper",
-   "props": {
-    "represents": "Shopper",
-    "stereotypes": [
-     "actor"
-    ]
-   }
-  },
-  {
-   "id": "buy-book-overview.storefront",
-   "type": "uml.Lifeline",
-   "label": "storefront",
-   "props": {
-    "represents": "Storefront"
-   }
-  },
-  {
-   "id": "buy-book-overview.api",
-   "type": "uml.Lifeline",
-   "label": "api",
-   "props": {
-    "represents": "ShopApi"
-   }
-  },
-  {
-   "id": "buy-book-overview.payments",
-   "type": "uml.Lifeline",
-   "label": "payments",
-   "props": {
-    "represents": "PaymentProvider"
-   }
   },
   {
    "id": "email",
@@ -1290,7 +1153,7 @@
    }
   },
   {
-   "id": "buy-book-overview.queue",
+   "id": "lifeline-queue",
    "type": "uml.Lifeline",
    "label": "queue",
    "props": {
@@ -1298,7 +1161,7 @@
    }
   },
   {
-   "id": "buy-book-overview.worker",
+   "id": "lifeline-worker",
    "type": "uml.Lifeline",
    "label": "worker",
    "props": {
@@ -1548,7 +1411,7 @@
    "id": "order-paid-by-card",
    "type": "uml.Link",
    "from": "order-1042",
-   "to": "card",
+   "to": "card-1",
    "props": {
     "ends": {
      "to": {
@@ -1569,7 +1432,7 @@
   {
    "id": "sales-imports-catalog",
    "type": "uml.PackageImport",
-   "from": "bookshop-packages.sales",
+   "from": "sales",
    "to": "catalog",
    "props": {
     "visibility": "public"
@@ -1578,7 +1441,7 @@
   {
    "id": "payments-accesses-shared",
    "type": "uml.PackageImport",
-   "from": "bookshop-packages.payments",
+   "from": "payments-package",
    "to": "shared",
    "props": {
     "visibility": "private"
@@ -1588,154 +1451,154 @@
    "id": "wholesale-merges-sales",
    "type": "uml.PackageMerge",
    "from": "wholesale",
-   "to": "bookshop-packages.sales"
+   "to": "sales"
   },
   {
    "id": "sales-needs-payments",
    "type": "uml.Dependency",
-   "from": "bookshop-packages.sales",
-   "to": "bookshop-packages.payments"
+   "from": "sales",
+   "to": "payments-package"
   },
   {
    "id": "shopper-storefront",
    "type": "uml.Connector",
-   "from": "checkout-communication.shopper",
-   "to": "checkout-communication.storefront"
+   "from": "lifeline-shopper",
+   "to": "lifeline-storefront"
   },
   {
    "id": "storefront-api",
    "type": "uml.Connector",
-   "from": "checkout-communication.storefront",
-   "to": "checkout-communication.api"
+   "from": "lifeline-storefront",
+   "to": "lifeline-api"
   },
   {
    "id": "api-self",
    "type": "uml.Connector",
-   "from": "checkout-communication.api",
-   "to": "checkout-communication.api"
+   "from": "lifeline-api",
+   "to": "lifeline-api"
   },
   {
    "id": "api-payments",
    "type": "uml.Connector",
-   "from": "checkout-communication.api",
-   "to": "checkout-communication.payments"
+   "from": "lifeline-api",
+   "to": "lifeline-payments"
   },
   {
    "id": "api-receipt",
    "type": "uml.Connector",
-   "from": "checkout-communication.api",
-   "to": "checkout-communication.receipt"
+   "from": "lifeline-api",
+   "to": "receipt"
   },
   {
-   "id": "checkout-communication.m1",
+   "id": "cm1",
    "type": "uml.Message",
-   "from": "checkout-communication.shopper",
-   "to": "checkout-communication.storefront",
+   "from": "lifeline-shopper",
+   "to": "lifeline-storefront",
    "label": "checkout()",
    "props": {
     "sort": "call"
    }
   },
   {
-   "id": "checkout-communication.m2",
+   "id": "cm2",
    "type": "uml.Message",
-   "from": "checkout-communication.storefront",
-   "to": "checkout-communication.api",
+   "from": "lifeline-storefront",
+   "to": "lifeline-api",
    "label": "place(order)",
    "props": {
     "sort": "call"
    }
   },
   {
-   "id": "checkout-communication.m3",
+   "id": "cm3",
    "type": "uml.Message",
-   "from": "checkout-communication.api",
-   "to": "checkout-communication.api",
+   "from": "lifeline-api",
+   "to": "lifeline-api",
    "label": "validate(order)",
    "props": {
     "sort": "call"
    }
   },
   {
-   "id": "checkout-communication.m4",
+   "id": "cm4",
    "type": "uml.Message",
-   "from": "checkout-communication.api",
-   "to": "checkout-communication.payments",
+   "from": "lifeline-api",
+   "to": "lifeline-payments",
    "label": "charge(total)",
    "props": {
     "sort": "call"
    }
   },
   {
-   "id": "checkout-communication.m5",
+   "id": "cm5",
    "type": "uml.Message",
-   "from": "checkout-communication.payments",
-   "to": "checkout-communication.api",
+   "from": "lifeline-payments",
+   "to": "lifeline-api",
    "label": "paid",
    "props": {
     "sort": "reply",
-    "replyTo": "checkout-communication.m4"
+    "replyTo": "cm4"
    }
   },
   {
-   "id": "checkout-communication.m6",
+   "id": "cm6",
    "type": "uml.Message",
-   "from": "checkout-communication.api",
-   "to": "checkout-communication.receipt",
+   "from": "lifeline-api",
+   "to": "receipt",
    "label": "new(order)",
    "props": {
     "sort": "create"
    }
   },
   {
-   "id": "checkout-communication.m7",
+   "id": "cm7",
    "type": "uml.Message",
-   "from": "checkout-communication.api",
-   "to": "checkout-communication.storefront",
+   "from": "lifeline-api",
+   "to": "lifeline-storefront",
    "label": "orderPlaced",
    "props": {
     "sort": "async"
    }
   },
   {
-   "id": "checkout-communication.m8",
+   "id": "cm8",
    "type": "uml.Message",
-   "from": "checkout-communication.api",
-   "to": "checkout-communication.storefront",
+   "from": "lifeline-api",
+   "to": "lifeline-storefront",
    "label": "result",
    "props": {
     "sort": "reply",
-    "replyTo": "checkout-communication.m2"
+    "replyTo": "cm2"
    }
   },
   {
-   "id": "checkout-communication.m9",
+   "id": "cm9",
    "type": "uml.Message",
-   "from": "checkout-communication.storefront",
-   "to": "checkout-communication.shopper",
+   "from": "lifeline-storefront",
+   "to": "lifeline-shopper",
    "label": "confirmation page",
    "props": {
     "sort": "reply",
-    "replyTo": "checkout-communication.m1"
+    "replyTo": "cm1"
    }
   },
   {
    "id": "member-is-shopper",
    "type": "uml.Generalization",
    "from": "member",
-   "to": "shopping-use-cases.shopper"
+   "to": "shopper"
   },
   {
    "id": "shopper-browses",
    "type": "uml.Association",
-   "from": "shopping-use-cases.shopper",
+   "from": "shopper",
    "to": "browse"
   },
   {
    "id": "shopper-checks-out",
    "type": "uml.Association",
-   "from": "shopping-use-cases.shopper",
-   "to": "shopping-use-cases.checkout"
+   "from": "shopper",
+   "to": "check-out"
   },
   {
    "id": "member-tracks",
@@ -1752,7 +1615,7 @@
   {
    "id": "checkout-includes-pay",
    "type": "uml.Include",
-   "from": "shopping-use-cases.checkout",
+   "from": "check-out",
    "to": "pay"
   },
   {
@@ -1771,7 +1634,7 @@
    "id": "voucher-extends-checkout",
    "type": "uml.Extend",
    "from": "redeem-voucher",
-   "to": "shopping-use-cases.checkout",
+   "to": "check-out",
    "props": {
     "extensionPoints": [
      "checkout.payment"
@@ -1783,7 +1646,7 @@
    "id": "gift-wrap-extends-checkout",
    "type": "uml.Extend",
    "from": "gift-wrap",
-   "to": "shopping-use-cases.checkout",
+   "to": "check-out",
    "props": {
     "extensionPoints": [
      "checkout.extras"
@@ -1801,12 +1664,12 @@
    "id": "f-order-out",
    "type": "uml.ObjectFlow",
    "from": "take-order",
-   "to": "fulfil-activity.order"
+   "to": "order-object"
   },
   {
    "id": "f-order-in",
    "type": "uml.ObjectFlow",
-   "from": "fulfil-activity.order",
+   "from": "order-object",
    "to": "check-stock"
   },
   {
@@ -1861,7 +1724,7 @@
    "id": "f-to-pay",
    "type": "uml.ControlFlow",
    "from": "split",
-   "to": "fulfil-activity.pay"
+   "to": "call-payment"
   },
   {
    "id": "f-to-pick",
@@ -1890,7 +1753,7 @@
   {
    "id": "f-paid",
    "type": "uml.ControlFlow",
-   "from": "fulfil-activity.pay",
+   "from": "call-payment",
    "to": "packed-and-paid"
   },
   {
@@ -2120,9 +1983,9 @@
    }
   },
   {
-   "id": "buy-book-overview.f-start",
+   "id": "f-buy-start",
    "type": "uml.ControlFlow",
-   "from": "buy-book-overview.start",
+   "from": "buy-start",
    "to": "ref-find"
   },
   {
@@ -2147,7 +2010,7 @@
    "id": "f-accepted",
    "type": "uml.ControlFlow",
    "from": "payment-ok",
-   "to": "buy-book-overview.split",
+   "to": "buy-split",
    "props": {
     "guard": "payment accepted"
    }
@@ -2164,13 +2027,13 @@
   {
    "id": "f-to-receipt",
    "type": "uml.ControlFlow",
-   "from": "buy-book-overview.split",
+   "from": "buy-split",
    "to": "ref-receipt"
   },
   {
    "id": "f-to-queue",
    "type": "uml.ControlFlow",
-   "from": "buy-book-overview.split",
+   "from": "buy-split",
    "to": "sd-queue"
   },
   {
@@ -2186,10 +2049,10 @@
    "to": "both-done"
   },
   {
-   "id": "buy-book-overview.f-done",
+   "id": "f-buy-done",
    "type": "uml.ControlFlow",
    "from": "both-done",
-   "to": "buy-book-overview.done"
+   "to": "buy-done"
   }
  ],
  "views": [
@@ -2412,7 +2275,7 @@
    }
   },
   {
-   "id": "sales-classes.payments",
+   "id": "payments-only",
    "diagram": "uml.class",
    "title": "Payments only",
    "parent": "domain",
@@ -2446,7 +2309,7 @@
     "line-2",
     "middlemarch",
     "frankenstein",
-    "card"
+    "card-1"
    ]
   },
   {
@@ -2457,41 +2320,48 @@
    "direction": "down",
    "nodeIds": [
     "shared",
-    "bookshop-packages.money",
+    "money",
     "catalog",
-    "bookshop-packages.book",
-    "bookshop-packages.sales",
-    "bookshop-packages.customer",
-    "bookshop-packages.order",
-    "bookshop-packages.line",
-    "bookshop-packages.status",
-    "bookshop-packages.payments",
-    "bookshop-packages.payable",
-    "bookshop-packages.payment",
-    "bookshop-packages.card",
-    "bookshop-packages.card-payment",
+    "book",
+    "sales",
+    "customer",
+    "order",
+    "line",
+    "status",
+    "payments-package",
+    "payable",
+    "payment",
+    "card",
+    "card-payment",
     "wholesale",
     "wholesale-order"
+   ],
+   "edges": [
+    "catalog-imports-shared",
+    "sales-imports-catalog",
+    "payments-accesses-shared",
+    "wholesale-merges-sales",
+    "sales-needs-payments"
    ]
   },
   {
-   "id": "checkout-sequence.checkout",
+   "id": "checkout-sequence",
    "diagram": "uml.sequence",
    "title": "Checkout",
    "parent": null,
    "nodeIds": [
-    "shopper",
-    "checkout-sequence.storefront",
-    "checkout-sequence.api",
-    "checkout-sequence.payments",
+    "lifeline-shopper",
+    "lifeline-storefront",
+    "lifeline-api",
+    "lifeline-payments",
     "receipt"
    ],
    "edges": [
     {
      "id": "m1",
      "type": "uml.Message",
-     "from": "shopper",
-     "to": "checkout-sequence.storefront",
+     "from": "lifeline-shopper",
+     "to": "lifeline-storefront",
      "label": "checkout()",
      "props": {
       "sort": "call"
@@ -2500,8 +2370,8 @@
     {
      "id": "m2",
      "type": "uml.Message",
-     "from": "checkout-sequence.storefront",
-     "to": "checkout-sequence.api",
+     "from": "lifeline-storefront",
+     "to": "lifeline-api",
      "label": "place(order)",
      "props": {
       "sort": "call"
@@ -2510,8 +2380,8 @@
     {
      "id": "m3",
      "type": "uml.Message",
-     "from": "checkout-sequence.api",
-     "to": "checkout-sequence.api",
+     "from": "lifeline-api",
+     "to": "lifeline-api",
      "label": "validate(order)",
      "props": {
       "sort": "call"
@@ -2520,8 +2390,8 @@
     {
      "id": "m4",
      "type": "uml.Message",
-     "from": "checkout-sequence.api",
-     "to": "checkout-sequence.payments",
+     "from": "lifeline-api",
+     "to": "lifeline-payments",
      "label": "charge(total)",
      "props": {
       "sort": "call"
@@ -2530,8 +2400,8 @@
     {
      "id": "m5",
      "type": "uml.Message",
-     "from": "checkout-sequence.payments",
-     "to": "checkout-sequence.api",
+     "from": "lifeline-payments",
+     "to": "lifeline-api",
      "label": "paid",
      "parent": "f1-paid",
      "props": {
@@ -2542,7 +2412,7 @@
     {
      "id": "m6",
      "type": "uml.Message",
-     "from": "checkout-sequence.api",
+     "from": "lifeline-api",
      "to": "receipt",
      "label": "new(order)",
      "parent": "f1-paid",
@@ -2553,8 +2423,8 @@
     {
      "id": "m7",
      "type": "uml.Message",
-     "from": "checkout-sequence.api",
-     "to": "checkout-sequence.storefront",
+     "from": "lifeline-api",
+     "to": "lifeline-storefront",
      "label": "orderPlaced",
      "parent": "f2-notify",
      "props": {
@@ -2568,8 +2438,8 @@
      "parent": "f1-paid",
      "props": {
       "covers": [
-       "checkout-sequence.api",
-       "checkout-sequence.payments",
+       "lifeline-api",
+       "lifeline-payments",
        "receipt"
       ]
      }
@@ -2577,8 +2447,8 @@
     {
      "id": "m8",
      "type": "uml.Message",
-     "from": "checkout-sequence.payments",
-     "to": "checkout-sequence.api",
+     "from": "lifeline-payments",
+     "to": "lifeline-api",
      "label": "declined",
      "parent": "f1-declined",
      "props": {
@@ -2589,8 +2459,8 @@
     {
      "id": "m9",
      "type": "uml.Message",
-     "from": "checkout-sequence.api",
-     "to": "checkout-sequence.storefront",
+     "from": "lifeline-api",
+     "to": "lifeline-storefront",
      "label": "result",
      "props": {
       "sort": "reply",
@@ -2600,8 +2470,8 @@
     {
      "id": "m10",
      "type": "uml.Message",
-     "from": "checkout-sequence.storefront",
-     "to": "shopper",
+     "from": "lifeline-storefront",
+     "to": "lifeline-shopper",
      "label": "confirmation page",
      "props": {
       "sort": "reply",
@@ -2647,16 +2517,16 @@
    ]
   },
   {
-   "id": "checkout-communication.checkout",
+   "id": "checkout-communication",
    "diagram": "uml.communication",
    "title": "Checkout: payment accepted",
    "parent": null,
    "nodeIds": [
-    "checkout-communication.shopper",
-    "checkout-communication.storefront",
-    "checkout-communication.api",
-    "checkout-communication.payments",
-    "checkout-communication.receipt"
+    "lifeline-shopper",
+    "lifeline-storefront",
+    "lifeline-api",
+    "lifeline-payments",
+    "receipt"
    ],
    "edges": [
     "shopper-storefront",
@@ -2664,15 +2534,15 @@
     "api-self",
     "api-payments",
     "api-receipt",
-    "checkout-communication.m1",
-    "checkout-communication.m2",
-    "checkout-communication.m3",
-    "checkout-communication.m4",
-    "checkout-communication.m5",
-    "checkout-communication.m6",
-    "checkout-communication.m7",
-    "checkout-communication.m8",
-    "checkout-communication.m9"
+    "cm1",
+    "cm2",
+    "cm3",
+    "cm4",
+    "cm5",
+    "cm6",
+    "cm7",
+    "cm8",
+    "cm9"
    ]
   },
   {
@@ -2681,12 +2551,12 @@
    "title": "Shopping",
    "parent": null,
    "nodeIds": [
-    "shopping-use-cases.shopper",
+    "shopper",
     "member",
     "payment-provider",
     "bookshop",
     "browse",
-    "shopping-use-cases.checkout",
+    "check-out",
     "pay",
     "pay-by-card",
     "redeem-voucher",
@@ -2707,7 +2577,7 @@
     "lane-email",
     "start",
     "take-order",
-    "fulfil-activity.order",
+    "order-object",
     "check-stock",
     "stock",
     "in-stock",
@@ -2715,7 +2585,7 @@
     "books-arrive",
     "stock-ready",
     "split",
-    "fulfil-activity.pay",
+    "call-payment",
     "pick",
     "tell-shopper",
     "told",
@@ -2773,16 +2643,16 @@
    "parent": null,
    "direction": "down",
    "nodeIds": [
-    "buy-book-overview.start",
+    "buy-start",
     "ref-find",
     "try-payment",
     "ref-checkout",
     "payment-ok",
-    "buy-book-overview.split",
+    "buy-split",
     "ref-receipt",
     "sd-queue",
     "both-done",
-    "buy-book-overview.done"
+    "buy-done"
    ]
   },
   {
@@ -2791,16 +2661,16 @@
    "title": "Find a book",
    "parent": "buy-book",
    "nodeIds": [
-    "buy-book-overview.shopper",
-    "buy-book-overview.storefront",
-    "buy-book-overview.api"
+    "lifeline-shopper",
+    "lifeline-storefront",
+    "lifeline-api"
    ],
    "edges": [
     {
      "id": "find-1",
      "type": "uml.Message",
-     "from": "buy-book-overview.shopper",
-     "to": "buy-book-overview.storefront",
+     "from": "lifeline-shopper",
+     "to": "lifeline-storefront",
      "label": "search(title)",
      "props": {
       "sort": "call"
@@ -2809,8 +2679,8 @@
     {
      "id": "find-2",
      "type": "uml.Message",
-     "from": "buy-book-overview.storefront",
-     "to": "buy-book-overview.api",
+     "from": "lifeline-storefront",
+     "to": "lifeline-api",
      "label": "findBooks(title)",
      "props": {
       "sort": "call"
@@ -2819,8 +2689,8 @@
     {
      "id": "find-3",
      "type": "uml.Message",
-     "from": "buy-book-overview.api",
-     "to": "buy-book-overview.storefront",
+     "from": "lifeline-api",
+     "to": "lifeline-storefront",
      "label": "books",
      "props": {
       "sort": "reply",
@@ -2830,8 +2700,8 @@
     {
      "id": "find-4",
      "type": "uml.Message",
-     "from": "buy-book-overview.storefront",
-     "to": "buy-book-overview.shopper",
+     "from": "lifeline-storefront",
+     "to": "lifeline-shopper",
      "label": "results page",
      "props": {
       "sort": "reply",
@@ -2841,21 +2711,21 @@
    ]
   },
   {
-   "id": "buy-book-overview.checkout",
+   "id": "buy-checkout",
    "diagram": "uml.sequence",
    "title": "Check out",
    "parent": "buy-book",
    "nodeIds": [
-    "buy-book-overview.storefront",
-    "buy-book-overview.api",
-    "buy-book-overview.payments"
+    "lifeline-storefront",
+    "lifeline-api",
+    "lifeline-payments"
    ],
    "edges": [
     {
      "id": "pay-1",
      "type": "uml.Message",
-     "from": "buy-book-overview.storefront",
-     "to": "buy-book-overview.api",
+     "from": "lifeline-storefront",
+     "to": "lifeline-api",
      "label": "place(order)",
      "props": {
       "sort": "call"
@@ -2864,8 +2734,8 @@
     {
      "id": "pay-2",
      "type": "uml.Message",
-     "from": "buy-book-overview.api",
-     "to": "buy-book-overview.payments",
+     "from": "lifeline-api",
+     "to": "lifeline-payments",
      "label": "charge(total)",
      "props": {
       "sort": "call"
@@ -2874,8 +2744,8 @@
     {
      "id": "pay-3",
      "type": "uml.Message",
-     "from": "buy-book-overview.payments",
-     "to": "buy-book-overview.api",
+     "from": "lifeline-payments",
+     "to": "lifeline-api",
      "label": "accepted or declined",
      "props": {
       "sort": "reply",
@@ -2885,8 +2755,8 @@
     {
      "id": "pay-4",
      "type": "uml.Message",
-     "from": "buy-book-overview.api",
-     "to": "buy-book-overview.storefront",
+     "from": "lifeline-api",
+     "to": "lifeline-storefront",
      "label": "result",
      "props": {
       "sort": "reply",
@@ -2901,15 +2771,15 @@
    "title": "Email the receipt",
    "parent": "buy-book",
    "nodeIds": [
-    "buy-book-overview.api",
+    "lifeline-api",
     "email",
-    "buy-book-overview.shopper"
+    "lifeline-shopper"
    ],
    "edges": [
     {
      "id": "mail-1",
      "type": "uml.Message",
-     "from": "buy-book-overview.api",
+     "from": "lifeline-api",
      "to": "email",
      "label": "send(receipt)",
      "props": {
@@ -2920,7 +2790,7 @@
      "id": "mail-2",
      "type": "uml.Message",
      "from": "email",
-     "to": "buy-book-overview.shopper",
+     "to": "lifeline-shopper",
      "label": "receipt email",
      "props": {
       "sort": "async"
@@ -2934,16 +2804,16 @@
    "title": "Queue the order",
    "parent": "buy-book",
    "nodeIds": [
-    "buy-book-overview.api",
-    "buy-book-overview.queue",
-    "buy-book-overview.worker"
+    "lifeline-api",
+    "lifeline-queue",
+    "lifeline-worker"
    ],
    "edges": [
     {
      "id": "queue-1",
      "type": "uml.Message",
-     "from": "buy-book-overview.api",
-     "to": "buy-book-overview.queue",
+     "from": "lifeline-api",
+     "to": "lifeline-queue",
      "label": "enqueue(order)",
      "props": {
       "sort": "call"
@@ -2952,8 +2822,8 @@
     {
      "id": "queue-2",
      "type": "uml.Message",
-     "from": "buy-book-overview.queue",
-     "to": "buy-book-overview.api",
+     "from": "lifeline-queue",
+     "to": "lifeline-api",
      "label": "queued",
      "props": {
       "sort": "reply",
@@ -2963,8 +2833,8 @@
     {
      "id": "queue-3",
      "type": "uml.Message",
-     "from": "buy-book-overview.queue",
-     "to": "buy-book-overview.worker",
+     "from": "lifeline-queue",
+     "to": "lifeline-worker",
      "label": "orderPlaced",
      "props": {
       "sort": "async"

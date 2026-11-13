@@ -69,14 +69,14 @@ test('example 13 validates, lays out clean down and right, and names every node 
     assert.deepEqual(r.g.edges.filter(e => e.label).map(e => [e.id, e.label, !!e.lbl && !e.lbl.short]), [['f-accepted', '[payment accepted]', true], ['f-declined', '[else]', true]], `${d}: the guards drawn whole`);
     assert.ok(r.g.edges.every(e => e.cut === 280 && e.end.to === 'open'), 'flows cut at 280 px, an open arrow'); }
   const g = layout(EX, 'buy-book'), aria = id => g.byId[id].aria;
-  assert.deepEqual(['start', 'ref-find', 'try-payment', 'payment-ok', 'split', 'sd-queue', 'both-done', 'done'].map(aria), ['Initial node', 'Interaction use Find a book, opens Find a book',
+  assert.deepEqual(['buy-start', 'ref-find', 'try-payment', 'payment-ok', 'buy-split', 'sd-queue', 'both-done', 'buy-done'].map(aria), ['Initial node', 'Interaction use Find a book, opens Find a book',
     'Merge, 2 entries', 'Decision Payment accepted?, 2 exits', 'Fork, 2 branches', 'Inline interaction Queue the order, 3 lifelines, 3 messages', 'Join, 2 branches', 'Activity final']);
-  assert.deepEqual(['f-accepted', 'f-declined', 'f-start'].map(id => g.edges.find(e => e.id === id).aria), ['Control flow from Payment accepted? to fork, guard payment accepted',
+  assert.deepEqual(['f-accepted', 'f-declined', 'f-buy-start'].map(id => g.edges.find(e => e.id === id).aria), ['Control flow from Payment accepted? to fork, guard payment accepted',
     'Control flow from Payment accepted? to merge, guard else', 'Control flow from initial node to Find a book']);
   assert.deepEqual(g.nodes.map(n => n.shape), ['initial', 'ov-use', 'diamond', 'ov-use', 'diamond', 'bar', 'ov-use', 'ov-inline', 'bar', 'final']);
   // a bar lies across the flow, as long as its busier side needs, every line on its long sides
-  assert.deepEqual([g.byId.split.w, g.byId.split.h], [48, 6], 'laid out down: across');
-  g.edges.filter(e => e.from === 'split').forEach(e => assert.equal(e.fromSide, 'right'));
+  assert.deepEqual([g.byId['buy-split'].w, g.byId['buy-split'].h], [48, 6], 'laid out down: across');
+  g.edges.filter(e => e.from === 'buy-split').forEach(e => assert.equal(e.fromSide, 'right'));
   g.edges.filter(e => e.to === 'both-done').forEach(e => assert.equal(e.toSide, 'left'));
   assert.deepEqual(g.legend.map(x => x.match(/<b>([^<]*)<\/b>/)[1]), ['Control flow', 'Initial node', 'Activity final', 'Decision', 'Merge', 'Fork', 'Join'],
     'what the view draws, each glyph keyed on its own (§14)');
@@ -87,7 +87,7 @@ test('reading order (§14): geo.order is the nodes by rank, then the flows; the 
   assert.deepEqual(g.order.slice(nodes.length), g.edges.map(e => e.id));
   assert.deepEqual(g.nodes.map(n => n.id), nodes);
   assert.ok(nodes.every((id, i) => !i || g.byId[id].col > g.byId[nodes[i - 1]].col || (g.byId[id].col === g.byId[nodes[i - 1]].col && g.byId[id].row >= g.byId[nodes[i - 1]].row)));
-  assert.deepEqual([nodes[0], nodes.at(-1)], ['start', 'done']);
+  assert.deepEqual([nodes[0], nodes.at(-1)], ['buy-start', 'buy-done']);
 });
 
 test('describe() writes the view in sentences, from the initial node along the flows', () => {
@@ -102,7 +102,7 @@ test('describe() writes the view in sentences, from the initial node along the f
 
 // the inline view of example 13 with a fragment (an alt with two guards) and an interaction use in it (§16's edge case)
 const RICH = (() => { const m = structuredClone(EX), q = m.views.find(v => v.id === 'queue-order');
-  q.edges.splice(2, 0, { id: 'queue-use', type: 'uml.InteractionUse', label: 'Audit', parent: 'qa.1', props: { covers: ['api', 'queue'] } });
+  q.edges.splice(2, 0, { id: 'queue-use', type: 'uml.InteractionUse', label: 'Audit', parent: 'qa.1', props: { covers: ['lifeline-api', 'lifeline-queue'] } });
   q.edges[1].parent = 'qa.1'; q.edges[3].parent = 'qa.2';
   q.fragments = [{ id: 'qa', type: 'uml.CombinedFragment', props: { operator: 'alt' }, members: [{ id: 'qa.1', type: 'uml.InteractionOperand', label: 'in stock' }, { id: 'qa.2', type: 'uml.InteractionOperand', label: 'else' }] }];
   return m; })();
@@ -133,7 +133,7 @@ test('the inline interaction (S11): its view at full size inside an "sd" frame, 
 
 test('opening (Q11): a use and an inline interaction open their sequence view; a laid-out view drawn twice from one memo draws the same markup (§2.4)', () => {
   const ctx = mapContext(EX);
-  assert.deepEqual(['ref-find', 'sd-queue', 'split'].map(id => ctx.opensOf(id, 'buy-book')), ['find-book', 'queue-order', null]);
+  assert.deepEqual(['ref-find', 'sd-queue', 'buy-split'].map(id => ctx.opensOf(id, 'buy-book')), ['find-book', 'queue-order', null]);
   const memos = {}, a = mapContext(RICH, { memos }).buildView('buy-book').markup, runs = memos['buy-book'].runs, b = mapContext(RICH, { memos }).buildView('buy-book').markup;
   assert.equal(memos['buy-book'].runs, runs, 'the second drawing laid nothing out');
   const ids = x => x.replace(/\bg\d+-/g, 'g-'); // each drawing numbers its markers' ids
@@ -147,16 +147,16 @@ const plus = (nodes, edges, m = EX) => ({ ...m, nodes: [...m.nodes, ...nodes], e
 const rules = m => validate(m).map(p => `${p.level} ${p.rule} ${p.ids.join(',')}`);
 test('the shared flow rules (src/uml/flow.js) fail and pass under this type, at S21\'s levels', () => {
   assert.deepEqual(rules(plus([N('note', 'Comment', { label: 'n' })], [F('x1', 'note', 'ref-find')])), ['error flow-ends x1,note'], 'a comment is no flow\'s end');
-  assert.deepEqual(rules(plus([], [F('x2', 'ref-find', 'start')])), ['error initial-flows start,x2']);
+  assert.deepEqual(rules(plus([], [F('x2', 'ref-find', 'buy-start')])), ['error initial-flows buy-start,x2']);
   assert.deepEqual(rules(plus([N('start2', 'InitialNode')], [])), ['warning initial-flows start2']);
-  assert.deepEqual(rules(plus([], [F('x3', 'done', 'ref-find')])), ['error final-flows done,x3']);
+  assert.deepEqual(rules(plus([], [F('x3', 'buy-done', 'ref-find')])), ['error final-flows buy-done,x3']);
   assert.deepEqual(rules(plus([N('ff', 'FlowFinalNode')], [F('x4', 'ff', 'ref-find'), F('x5', 'ref-receipt', 'ff')])), ['error final-flows ff,x4']);
-  assert.deepEqual(rules(plus([], [F('x6', 'ref-find', 'split')])), ['error fork-join split,f-accepted,x6']);
-  assert.deepEqual(rules(plus([N('j2', 'JoinNode')], [F('x7', 'ref-find', 'j2'), F('x8', 'j2', 'done')])), ['warning fork-join j2,x7']);
+  assert.deepEqual(rules(plus([], [F('x6', 'ref-find', 'buy-split')])), ['error fork-join buy-split,f-accepted,x6']);
+  assert.deepEqual(rules(plus([N('j2', 'JoinNode')], [F('x7', 'ref-find', 'j2'), F('x8', 'j2', 'buy-done')])), ['warning fork-join j2,x7']);
   assert.deepEqual(rules(plus([], [F('x9', 'ref-find', 'payment-ok')])), ['error decision-merge payment-ok,f-result,x9']);
-  assert.deepEqual(rules(plus([N('m2', 'MergeNode')], [F('y1', 'ref-find', 'm2'), F('y2', 'm2', 'done')])), ['warning decision-merge m2,y1']);
-  assert.deepEqual(rules(plus([], [F('y3', 'payment-ok', 'done')])), ['warning decision-guards payment-ok,y3']);
-  assert.deepEqual(rules(plus([], [F('y4', 'payment-ok', 'done', 'else')])), ['warning decision-guards payment-ok,f-declined,y4']);
+  assert.deepEqual(rules(plus([N('m2', 'MergeNode')], [F('y1', 'ref-find', 'm2'), F('y2', 'm2', 'buy-done')])), ['warning decision-merge m2,y1']);
+  assert.deepEqual(rules(plus([], [F('y3', 'payment-ok', 'buy-done')])), ['warning decision-guards payment-ok,y3']);
+  assert.deepEqual(rules(plus([], [F('y4', 'payment-ok', 'buy-done', 'else')])), ['warning decision-guards payment-ok,f-declined,y4']);
   assert.deepEqual(rules(plus([N('ff', 'FlowFinalNode')], [F('y5', 'payment-ok', 'ff', 'no stock')])), [], 'a third exit, guarded, into a flow final: clean');
 });
 test('opens-sequence, overview-kinds and inline-size: the overview\'s own rules', () => {
@@ -173,7 +173,7 @@ test('opens-sequence, overview-kinds and inline-size: the overview\'s own rules'
   assert.deepEqual(clean(odd, 'buy-book').bad, []);
   assert.deepEqual(rules(plus([N('note', 'Comment', { label: 'Paid by card' })], [{ id: 'cl', type: 'uml.CommentLink', from: 'note', to: 'ref-checkout' }])), [], 'a comment and its link');
   // comment-link: a link with no comment at either end
-  assert.deepEqual(rules(plus([], [{ id: 'cl', type: 'uml.CommentLink', from: 'start', to: 'done' }])), ['warning comment-link cl,start,done']);
+  assert.deepEqual(rules(plus([], [{ id: 'cl', type: 'uml.CommentLink', from: 'buy-start', to: 'buy-done' }])), ['warning comment-link cl,buy-start,buy-done']);
   // overview-kinds on a line: a view's edges list naming a line this diagram does not draw; it is warned of and not drawn
   const of = structuredClone(EX); of.edges.push({ id: 'of', type: 'uml.ObjectFlow', from: 'ref-find', to: 'ref-checkout' });
   VIEW(of).edges = [...EX.edges.filter(e => e.type === 'uml.ControlFlow').map(e => e.id), 'of'];
@@ -182,7 +182,7 @@ test('opens-sequence, overview-kinds and inline-size: the overview\'s own rules'
   assert.equal(layout(of, 'buy-book').byId.of, undefined); assert.ok(!layout(of, 'buy-book').edges.some(e => e.id === 'of'), 'not drawn');
   // inline-size: 20 messages pass, 21 do not
   const many = k => { const m = structuredClone(EX), q = m.views.find(v => v.id === 'queue-order');
-    q.edges = Array.from({ length: k }, (_, i) => ({ id: 'q' + i, type: 'uml.Message', from: 'queue', to: 'worker', label: 'tick', props: { sort: 'async' } })); return m; };
+    q.edges = Array.from({ length: k }, (_, i) => ({ id: 'q' + i, type: 'uml.Message', from: 'lifeline-queue', to: 'lifeline-worker', label: 'tick', props: { sort: 'async' } })); return m; };
   assert.deepEqual(rules(many(20)), []);
   assert.deepEqual(rules(many(21)), ['warning inline-size sd-queue,queue-order']);
 });
@@ -196,7 +196,7 @@ test('add: a control node with no name; a use or an inline interaction asks for 
   assert.deepEqual(ovAdd(EX, VIEW(EX), entry('DecisionNode'), 'In stock?')[0].element, { id: 'in-stock', type: 'uml.DecisionNode', label: 'In stock?' });
   const r = ovAdd(EX, VIEW(EX), entry('InteractionUse'), '');
   assert.deepEqual(r.pick, ['Find a book', 'Check out', 'Email the receipt', 'Queue the order']);
-  assert.deepEqual(r.then(1), [{ op: 'add', element: { id: 'check-out', type: 'uml.InteractionUse', label: 'Check out', opensView: 'checkout' }, view: 'buy-book' }]);
+  assert.deepEqual(r.then(1), [{ op: 'add', element: { id: 'check-out', type: 'uml.InteractionUse', label: 'Check out', opensView: 'buy-checkout' }, view: 'buy-book' }]);
   assert.deepEqual(ovAdd(EX, VIEW(EX), entry('Interaction'), 'Ship it').then(3)[0].element, { id: 'ship-it', type: 'uml.Interaction', label: 'Ship it', opensView: 'queue-order' });
   assert.deepEqual(r.then(9), []);
   const m = run(EX, r.then(0));

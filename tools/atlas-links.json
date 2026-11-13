@@ -1,5 +1,5 @@
 {
- "about": "The Bookshop atlas (examples/bookshop-atlas.json), as tools/atlas.mjs builds it: the per-type examples it joins, in this order (an id two of them use stays the earlier one's, and the later one's is renamed <file>.<id>), and which element opens which view. Each id here is as its own file writes it: \"<file>/<id>\".",
+ "about": "The Bookshop atlas (examples/bookshop-atlas.json), as tools/atlas.mjs builds it: the per-type examples it joins, in this order (an element two of them have, by its id, is one element, and the files must agree on it), and which element opens which view, each as \"<file>/<id>\".",
  "title": "Bookshop atlas",
  "root": "bookshop/overview",
  "sources": ["bookshop", "sales-classes", "order-objects", "bookshop-packages", "checkout-sequence", "checkout-communication",
@@ -10,15 +10,15 @@
   { "element": "bookshop/db", "opens": "sales-classes/domain" },
   { "element": "bookshop/queue", "opens": "order-objects/snapshot" },
   { "element": "bookshop/worker", "opens": "fulfil-activity/fulfil" },
-  { "element": "bookshop/payments", "opens": "checkout-communication/checkout" },
+  { "element": "bookshop/payments", "opens": "checkout-communication/checkout-communication" },
   { "element": "bookshop/github", "opens": "bookshop-packages/packages" },
   { "element": "sales-classes/order", "opens": "order-states/order-life" },
   { "element": "order-objects/order-1042", "opens": "order-states/order-life" },
   { "element": "bookshop-packages/sales", "opens": "sales-classes/domain" },
   { "element": "shopping-use-cases/browse", "opens": "buy-book-overview/find-book" },
-  { "element": "shopping-use-cases/checkout", "opens": "buy-book-overview/buy-book" },
+  { "element": "shopping-use-cases/check-out", "opens": "buy-book-overview/buy-book" },
   { "element": "shopping-use-cases/pay", "opens": "fulfil-activity/take-payment" },
   { "element": "fulfil-activity/take-order", "opens": "buy-book-overview/queue-order" },
-  { "element": "fulfil-activity/charge", "opens": "checkout-sequence/checkout" }
+  { "element": "fulfil-activity/charge", "opens": "checkout-sequence/checkout-sequence" }
  ]
 }

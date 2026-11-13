@@ -30,8 +30,8 @@ test('the sequence example: one ordered list of occurrences, f3 among the messag
   const m = structuredClone(SEQ), f3 = V(m).edges.splice(7, 1)[0]; V(m).edges.push(f3);
   assert.deepEqual(check(m, 'uml.sequence'), ['views[0].fragments[0]: contiguous: fragment f1\'s occurrences (m5, m6, m7, m8, f3) are not one run in edges']);
   // covers names lifelines next to each other in nodeIds (model.md row 11): f3 over api and receipt only skips payments
-  const gap = structuredClone(SEQ); V(gap).edges.find(e => e.id === 'f3').props.covers = ['api', 'receipt'];
-  assert.deepEqual(check(gap, 'uml.sequence'), ['views[0].edges[7].props.covers: covers: f3 covers api, receipt, which are not next to each other in nodeIds']);
+  const gap = structuredClone(SEQ); V(gap).edges.find(e => e.id === 'f3').props.covers = ['lifeline-api', 'receipt'];
+  assert.deepEqual(check(gap, 'uml.sequence'), ['views[0].edges[7].props.covers: covers: f3 covers lifeline-api, receipt, which are not next to each other in nodeIds']);
 });
 
 test('check.mjs: a registered type that declares no refs is still checked by the hand list', () => {
@@ -42,17 +42,17 @@ test('check.mjs: a registered type that declares no refs is still checked by the
 });
 
 test('P4: add with in "view" puts a message into the view\'s edges at its index, not into the model', () => {
-  const msg = { id: 'm11', type: 'uml.Message', from: 'api', to: 'api', label: 'log()', parent: 'f1-paid', props: { sort: 'call' } };
-  const m = run({ op: 'add', element: msg, view: 'checkout', index: 7, in: 'view' });
+  const msg = { id: 'm11', type: 'uml.Message', from: 'lifeline-api', to: 'lifeline-api', label: 'log()', parent: 'f1-paid', props: { sort: 'call' } };
+  const m = run({ op: 'add', element: msg, view: 'checkout-sequence', index: 7, in: 'view' });
   assert.deepEqual(m.edges, []);
   assert.deepEqual(ids(V(m).edges).slice(6, 9), ['m7', 'm11', 'f3']);
   assert.deepEqual(byId(m, 'm11'), msg);
   assert.deepEqual(errors(m), []);
-  assert.deepEqual(run({ op: 'add', element: msg, view: 'checkout', index: 7, in: 'model' }).edges, [msg]); // the default, as before
+  assert.deepEqual(run({ op: 'add', element: msg, view: 'checkout-sequence', index: 7, in: 'model' }).edges, [msg]); // the default, as before
 });
 
 test('P5: a message moved across an operand takes nothing with it; the operands stay whole', () => {
-  const m = run([{ op: 'move', id: 'm7', view: 'checkout', index: 7 }, { op: 'reparent', id: 'm7', parent: 'f1-declined' }]);
+  const m = run([{ op: 'move', id: 'm7', view: 'checkout-sequence', index: 7 }, { op: 'reparent', id: 'm7', parent: 'f1-declined' }]);
   assert.deepEqual(ids(V(m).edges), ['m1', 'm2', 'm3', 'm4', 'm5', 'm6', 'f3', 'm7', 'm8', 'm9', 'm10']);
   assert.equal(byId(m, 'f3').parent, 'f1-paid');
   assert.deepEqual(check(m, 'uml.sequence'), []); // f1-paid's occurrences (m5, m6, f3) and f1-declined's (m7, m8) each in one run
@@ -72,7 +72,7 @@ test('P7: a type\'s refs: deleting a call takes its replies (cascade), and refer
   assert.deepEqual(ids(V(m).edges), ['m1', 'm2', 'm3', 'm6', 'm7', 'f3', 'm9', 'm10']);
   assert.deepEqual(errors(m), []);
   // hide keeps what props name: the model keeps the element
-  assert.deepEqual(run({ op: 'hide', id: 'receipt', view: 'checkout' }).views[0].edges.find(e => e.id === 'f3').props.covers, ['api', 'payments', 'receipt']);
+  assert.deepEqual(run({ op: 'hide', id: 'receipt', view: 'checkout-sequence' }).views[0].edges.find(e => e.id === 'f3').props.covers, ['lifeline-api', 'lifeline-payments', 'receipt']);
 });
 
 test('P8: unwrapping a fragment re-homes what it held into the fragment\'s own operand, not to the top', () => {
@@ -96,29 +96,29 @@ test('P8: unwrapping a fragment re-homes what it held into the fragment\'s own o
 test('P9: deleting a lifeline takes its messages and drops it from what covers it; references() says so', () => {
   assert.deepEqual(references(SEQ, 'receipt').filter(r => r.kind === 'prop').map(r => r.path.join('/')), ['views/0/edges/7/props/covers/2']);
   const m = run({ op: 'delete', id: 'receipt' });
-  assert.deepEqual(byId(m, 'f3').props.covers, ['api', 'payments']);
+  assert.deepEqual(byId(m, 'f3').props.covers, ['lifeline-api', 'lifeline-payments']);
   assert.ok(!byId(m, 'm6'));
   assert.deepEqual(errors(m), []);
 });
 
 test('P10: a fragment added in "view" goes into the view\'s fragments; a node into its own nodes and nodeIds', () => {
   const f = { id: 'f4', type: 'uml.CombinedFragment', props: { operator: 'loop' }, members: [{ id: 'f4-op', type: 'uml.InteractionOperand', label: 'each book' }] };
-  const m = run([{ op: 'add', element: f, view: 'checkout', in: 'view' }, { op: 'reparent', id: 'm3', parent: 'f4-op' }]);
+  const m = run([{ op: 'add', element: f, view: 'checkout-sequence', in: 'view' }, { op: 'reparent', id: 'm3', parent: 'f4-op' }]);
   assert.deepEqual([ids(V(m).fragments), m.nodes.length, V(m).nodeIds.length, byId(m, 'm3').parent], [['f1', 'f2', 'f4'], 5, 5, 'f4-op']);
   assert.deepEqual(errors(m), []);
-  const l = run({ op: 'add', element: { id: 'audit', type: 'uml.Lifeline', label: 'audit' }, view: 'checkout', index: 1, in: 'view' });
-  assert.deepEqual([V(l).nodes, V(l).nodeIds.slice(0, 3), l.nodes.length], [[{ id: 'audit', type: 'uml.Lifeline', label: 'audit' }], ['shopper', 'audit', 'storefront'], 5]);
+  const l = run({ op: 'add', element: { id: 'audit', type: 'uml.Lifeline', label: 'audit' }, view: 'checkout-sequence', index: 1, in: 'view' });
+  assert.deepEqual([V(l).nodes, V(l).nodeIds.slice(0, 3), l.nodes.length], [[{ id: 'audit', type: 'uml.Lifeline', label: 'audit' }], ['lifeline-shopper', 'audit', 'lifeline-storefront'], 5]);
   assert.deepEqual(errors(l), []);
   // refusals: an unknown `in`; `in: 'view'` with no view or with an owner; a line into a view that shows every model line
-  assert.throws(() => run({ op: 'add', element: f, view: 'checkout', in: 'views' }), /in is 'view' or 'model'/);
+  assert.throws(() => run({ op: 'add', element: f, view: 'checkout-sequence', in: 'views' }), /in is 'view' or 'model'/);
   assert.throws(() => run({ op: 'add', element: f, in: 'view' }), /needs a view, and no owner/);
-  assert.throws(() => run({ op: 'add', element: { id: 'x', type: 'uml.Property' }, owner: 'api', view: 'checkout', in: 'view' }), /needs a view, and no owner/);
+  assert.throws(() => run({ op: 'add', element: { id: 'x', type: 'uml.Property' }, owner: 'lifeline-api', view: 'checkout-sequence', in: 'view' }), /needs a view, and no owner/);
   const all = { schemaVersion: 2, nodes: [{ id: 'a', type: 'uml.Class' }, { id: 'b', type: 'uml.Class' }], edges: [{ id: 'ab', type: 'uml.Dependency', from: 'a', to: 'b' }], views: [{ id: 'v', diagram: 'uml.class', nodeIds: ['a', 'b'] }] };
   assert.throws(() => apply(all, { op: 'add', element: { id: 'ba', type: 'uml.Dependency', from: 'b', to: 'a' }, view: 'v', in: 'view' }), /shows every line between its cards/);
 });
 
 test('P11: an interaction use moves in time like a message', () => {
-  const m = run({ op: 'move', id: 'f3', view: 'checkout', index: 2 });
+  const m = run({ op: 'move', id: 'f3', view: 'checkout-sequence', index: 2 });
   assert.deepEqual(ids(V(m).edges).slice(0, 4), ['m1', 'm2', 'f3', 'm3']);
 });
 
