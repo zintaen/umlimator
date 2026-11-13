@@ -29,8 +29,9 @@
      `--` and `to` identifying, `..` `.-` `-.` and `optionally to` not; Mermaid's `u` (a parent marker its page does not
      show) approximated as 1. Mermaid says nothing of which column a foreign key references: `references` is left out,
      reported once (the ER type's fk-flag warns of each);
-   - `direction TB` (Mermaid's default) is down, `LR` right; BT and RL approximated; subgraphs are not read, the entities
-     in them are, and a relationship with a subgraph is skipped; styles, classes and accessibility text are skipped. */
+   - `direction TB` (Mermaid's default) is down, `LR` right (left unset: core's default, so a view's `right` reads back
+     unset, drawn the same); BT and RL approximated; subgraphs are not read, the entities in them are, and a
+     relationship with a subgraph is skipped; styles, classes and accessibility text are skipped. */
 const ME_LIMIT = 1 << 20; // characters; an ER diagram a person writes is a few kilobytes
 const ME_VIEW = 'er-diagram'; // the view's id when the source does not name it
 const meTable = o => Object.assign(Object.create(null), o); // a lookup table: "constructor" or "__proto__" finds nothing in it
@@ -334,8 +335,9 @@ function writeMermaidEr(model, viewId) {
   if (views.length && !view) return '%% not written: the model, which has no er view\n';
   if (view && view.diagram !== 'er') return `%% not written: view ${flat(view.id)}, a ${flat(view.diagram)} view, not an er one\n`;
   const byId = new Map(arr(m.nodes).filter(isObj).map(n => [n.id, n]));
-  const shown = (view ? arr(view.nodeIds) : [...byId.keys()]).filter(id => byId.has(id)), shownSet = new Set(shown);
   const out = [], notWritten = [], skip = x => notWritten.push(`${flat(x.id)} (${flat(x.type)})`), lose = (id, what) => notWritten.push(`${flat(id)}: ${flat(what)}`);
+  const once = (seen, id) => { if (!seen.has(id)) return seen.add(id); lose(id, 'listed twice in the view, written once'); return false; };
+  const shownSet = new Set(), shown = (view ? arr(view.nodeIds) : [...byId.keys()]).filter(id => byId.has(id) && once(shownSet, id));
   // an id the reader keeps as it is: a string of one line, trimmed (as a hint is read), with no ->
   const keeps = id => typeof id === 'string' && id !== '' && !nl(id) && id.trim() === id && meId(id) === id;
   const derives = id => typeof id === 'string' && id !== '' && !nl(id) && meId(id) === id; // an id the reader may derive, needing no hint
@@ -347,7 +349,9 @@ function writeMermaidEr(model, viewId) {
     }
   };
   const title = view && has(view.title) ? view.title : m.title;
-  if (has(title)) out.push('---', `title: ${/^[\p{L}\p{N}][\p{L}\p{N} _.,()-]*$/u.test(title) && !title.endsWith(' ') ? title : JSON.stringify(String(title))}`, '---');
+  // as it is only when YAML reads it as text: a letter first, and not one of YAML's null or boolean words
+  const plain = t => /^\p{L}[\p{L}\p{N} _.,()-]*$/u.test(t) && !t.endsWith(' ') && !/^(null|true|false|yes|no|on|off|y|n)$/i.test(t);
+  if (has(title)) out.push('---', `title: ${plain(title) ? title : JSON.stringify(String(title))}`, '---');
   if (view && view.id !== ME_VIEW) { if (keeps(view.id)) out.push(`%% id: ${view.id}`); else lose(view.id, "the view's id, which the reader would not keep"); }
   out.push('erDiagram', view && view.direction === 'down' ? '  direction TB' : '  direction LR');
   if (view && has(view.notation) && view.notation !== 'crowsfoot') lose(view.id, `notation ${view.notation}: Mermaid draws crow's foot`);
@@ -382,7 +386,9 @@ function writeMermaidEr(model, viewId) {
       const want = JSON.stringify(Object.entries({ dataType: p.dataType, ...Object.fromEntries(['primaryKey', 'foreignKey', 'unique', 'nullable'].filter(f => p[f] === true).map(f => [f, true])) }).sort());
       // the type and the name as they are, else in backticks (and a ? apart, which a generic type's word would take in):
       // the first row the reader reads back as the column is written
+      // (a row is one line: a type or name in backticks holding a line break would be read as two)
       const row = [[0, 0, ''], [1, 0, ''], [0, 1, ''], [1, 1, ''], [0, 0, ' '], [0, 1, ' ']].map(([q, r, sp]) => `${q ? '`' + p.dataType + '`' : p.dataType}${p.nullable === true ? sp + '?' : ''} ${r ? '`' + x.label + '`' : x.label}${keys.length ? ' ' + keys.join(', ') : ''}${comment !== undefined ? ` "${meEncode(comment)}"` : ''}`).find(row => {
+        if (nl(row)) return false;
         const r = meRow(row, 0), c = r.cols.length === 1 && r.bad === undefined && r.end === row.length ? meColumn(r.cols[0]) : null;
         return c && c.label === x.label && c.comment === comment && JSON.stringify(Object.entries(c.props).sort()) === want;
       });
@@ -405,7 +411,9 @@ function writeMermaidEr(model, viewId) {
 
   const edgeOf = e => (typeof e === 'string' ? arr(m.edges).find(x => isObj(x) && x.id === e) : e);
   const lines = (view && Array.isArray(view.edges) ? view.edges.map(edgeOf) : arr(m.edges).filter(e => isObj(e) && shownSet.has(e.from) && shownSet.has(e.to))).filter(isObj);
+  const seenEdges = new Set();
   for (const e of lines) {
+    if (view && Array.isArray(view.edges) && !once(seenEdges, e.id)) continue;
     const hint = e.type === 'er.Relationship' && derives(e.id) && names.has(e.from) && names.has(e.to) ? idOf(e.id, `${e.from}-${e.to}`) : undefined;
     if (hint === undefined) { skip(e); continue; }
     const p = isObj(e.props) ? e.props : {}, ends = isObj(p.ends) ? p.ends : {};

@@ -598,7 +598,7 @@ Against Mermaid 12.3.0's entity relationship page. `readMermaidEr(text)`, `write
 | `p[Person]`, quoted names | label `Person`, id from the alias |
 | `string? name` (v11.16.0+), `string *name`, `` `double precision` name ``, `List~T~ name` | `nullable`; `primaryKey`; a type or name in backticks or with `~` taken as written |
 | What the lexer reads and the page does not show: `one`, `many`, `.-` and `-.`, `u` | `1`, `0..*`, non-identifying; `u` (a parent marker) approximated as `1` |
-| `direction` | the view's `direction`; `BT` and `RL` approximated |
+| `direction` | the view's `direction`: `TB` down, `LR` right left unset (core's default, so `right` reads back unset and draws the same; taken by the lead under the maintainer's standing approval (14 Nov 2026), over a hint for it); `BT` and `RL` approximated |
 | `subgraph … end` (v11.17.0+) | its entities read; the group skipped, and a relationship with a group skipped (row 20 has none) |
 | styles, classes, `:::`, `accTitle`, `accDescr` | skipped |
 
@@ -609,8 +609,10 @@ twice), and an id the reader would not derive as `%% id:`; an entity whose id Me
 `%`, a keyword of its lexer first) is written as `entity`, `entity-2` … under its `%% id:`. A comment is kept as
 `ext.mermaid.comment`. The view's `notation` `idef1x` is not written (Mermaid draws crow's foot), named in a
 `%% not written:` line. `read(write(model))` equals the model for `20-entity-relationship.json` and 500 generated
-models; Mermaid 12.3.0's own parser reads the writer's text for example 20 and 200 of them with the same entities,
-columns, keys and ends (M2.8, once, not a dependency). §8's object counts and 64-deep nesting are for the parsed-object
+models. A view's node or line listed twice is written once and named; a column whose type or name holds a line break
+is named, not written (a row is one line); a title YAML would read as other than text (`null`, `yes`, `123`) is
+quoted. Mermaid 12.3.0's own parser read the writer's text for example 20 and 200 of them with the same entities,
+columns, keys and ends: a one-off check at M2.8, not a dependency and not repeated by the tests. §8's object counts and 64-deep nesting are for the parsed-object
 readers: a subgraph's depth here is a counter, read flat (90,000 deep in under a second, tested).
 
 ### 8.2 Mermaid flowchart (`src/readers/mermaid-flowchart.js`), ported

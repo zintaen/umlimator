@@ -75,9 +75,29 @@ function generate(seed) {
   return clean({ schemaVersion: 2, title, root: view.id, nodes: nodes.sort(() => r() - 0.5), edges, views: [view] });
 }
 
-// Mermaid 12.3.0 itself on the writer's output (M2.8, 14 Nov 2026, once, from the npm package in a scratch folder, not a
-// dependency): for example 20 and seeds 1 to 200 its parser reads every text, with the same entities in the same order,
-// each one's attributes (type, name, keys) and every relationship's two ends and identifying, as the reader does
+// Mermaid 12.3.0 itself on the writer's output was checked once at M2.8 (14 Nov 2026, from the npm package in a scratch
+// folder, not a dependency), outside these tests: for example 20 and seeds 1 to 200 its parser read every text, with the
+// same entities in the same order, each one's attributes (type, name, keys) and every relationship's two ends and
+// identifying, as the reader does. The test below checks this reader only.
+test('the writer names what it cannot write as one line or once, and quotes a title YAML would not read as text', () => {
+  const col = (label, dataType) => ({ id: `A.${label}`, type: 'er.Column', label, props: { dataType } });
+  const m = { nodes: [{ id: 'A', type: 'er.Entity', label: 'A', members: [col('a', 'int\nx'), col('b\nc', 'int'), col('d', 'int')] },
+    { id: 'B', type: 'er.Entity', label: 'B' }],
+  edges: [{ id: 'r', type: 'er.Relationship', from: 'A', to: 'B', props: { identifying: true, ends: { from: { multiplicity: '1' }, to: { multiplicity: '0..*' } } } }],
+  views: [{ id: 'er-diagram', diagram: 'er', title: 'null', nodeIds: ['A', 'B', 'A'], edges: ['r', 'r'] }] };
+  const text = write(m), back = read(text);
+  assert.match(text, /^---\ntitle: "null"\n---\n/);
+  for (const s of ['A.a (er.Column)', 'A.b\\nc (er.Column)', 'A: listed twice in the view, written once', 'r: listed twice in the view, written once'])
+    assert.ok(text.includes(`%% not written: ${s}\n`), `${s}\n${text}`);
+  assert.deepEqual(back.report.filter(x => !ONCE.test(x.message)), [], text);
+  assert.equal(back.model.title, 'null');
+  assert.deepEqual(back.model.views[0].nodeIds, ['A', 'B']);
+  assert.deepEqual(back.model.edges.map(e => e.id), ['r']);
+  assert.deepEqual(back.model.nodes[0].members.map(c => c.label), ['d']);
+  for (const t of ['yes', 'True', '123', '1.5']) assert.equal(read(write({ ...m, views: [{ ...m.views[0], title: t }] })).model.title, t);
+  assert.match(write({ ...m, views: [{ ...m.views[0], title: 'Orders (v2)' }] }), /\ntitle: Orders \(v2\)\n/);
+});
+
 test('read(write(model)) equals the model, for 500 generated models in the subset', () => {
   let hints = 0, made = 0, refs = 0, ticks = 0, comments = 0;
   for (let seed = 1; seed <= 500; seed++) {
