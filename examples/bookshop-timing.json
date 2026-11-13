@@ -1,0 +1,34 @@
+{
+  "$schema": "../lib/umlimator.schema.json",
+  "schemaVersion": 2,
+  "title": "Bookshop: one charge",
+  "root": "one-charge",
+  "nodes": [
+    { "id": "lifeline-worker", "type": "uml.Lifeline", "label": "worker", "props": { "represents": "OrderWorker", "states": ["Idle", "Waiting for payment", "Recording payment"] } },
+    { "id": "lifeline-payments", "type": "uml.Lifeline", "label": "payments", "props": { "represents": "PaymentProvider", "states": ["Idle", "Authorising", "Capturing"] } }
+  ],
+  "edges": [],
+  "views": [
+    { "id": "one-charge", "diagram": "uml.timing", "title": "One charge", "parent": null,
+      "nodeIds": ["lifeline-worker", "lifeline-payments"],
+      "edges": [
+        { "id": "m-charge", "type": "uml.Message", "from": "lifeline-worker", "to": "lifeline-payments", "label": "charge(total)", "props": { "sort": "call", "sentAt": 100, "receivedAt": 140 } },
+        { "id": "m-paid", "type": "uml.Message", "from": "lifeline-payments", "to": "lifeline-worker", "label": "paid", "props": { "sort": "reply", "replyTo": "m-charge", "sentAt": 720, "receivedAt": 760 } }
+      ],
+      "timeline": { "unit": "ms",
+        "changes": [
+          { "id": "w-idle", "lifeline": "lifeline-worker", "at": 0, "state": "Idle" },
+          { "id": "w-waiting", "lifeline": "lifeline-worker", "at": 100, "state": "Waiting for payment" },
+          { "id": "w-recording", "lifeline": "lifeline-worker", "at": 760, "state": "Recording payment" },
+          { "id": "w-done", "lifeline": "lifeline-worker", "at": 900, "state": "Idle" },
+          { "id": "p-idle", "lifeline": "lifeline-payments", "at": 0, "state": "Idle" },
+          { "id": "p-authorising", "lifeline": "lifeline-payments", "at": 140, "state": "Authorising" },
+          { "id": "p-capturing", "lifeline": "lifeline-payments", "at": 480, "state": "Capturing" },
+          { "id": "p-done", "lifeline": "lifeline-payments", "at": 720, "state": "Idle" }
+        ],
+        "constraints": [
+          { "id": "c-wait", "type": "uml.DurationConstraint", "from": "w-waiting", "to": "w-recording", "label": "{<= 800 ms}" },
+          { "id": "c-finished", "type": "uml.TimeConstraint", "from": "w-done", "label": "{<= 1000 ms}" }
+        ] } }
+  ]
+}

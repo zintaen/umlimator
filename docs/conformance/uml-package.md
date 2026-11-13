@@ -56,9 +56,11 @@ when it is closed; a box takes its place from what it holds.
   clean; a pin far outside its box is a known limit (`docs/diagrams/risks.md` L15).
 - A change of owner lays the view out again, so the picture moves on that edit (`notes/stage-2.md` §3.2).
 - A known limit found by 2.6: the router may take a line through a box that holds neither of its ends. In
-  `examples/bookshop-packages.json`, laid out down, the import from `catalog` to `shared` leaves `catalog`'s bottom,
-  turns up into `payments`' box and runs along inside it before it goes down to `shared`. No element is crossed and the
-  layout check is clean, but the line reads as if it passed through `payments`.
+  `examples/bookshop-packages.json` as stage 2 made it (without 6.7's profile, as `tests/package.html` draws it), laid
+  out down, the import from `catalog` to `shared` leaves `catalog`'s bottom, turns up into `payments`' box and runs
+  along inside it before it goes down to `shared`. No element is crossed and the layout check is clean, but the line
+  reads as if it passed through `payments`. With the profile, the example's layout moves and the line goes round
+  `catalog`'s right side to `shared`, outside `payments`; the limit stands.
 - XMI and UML diagram interchange; a reader of its own.
 - Lines cross where the layered layout finds no better order. `tests/package-stress.json` (50 nodes in 10 boxes over three
   levels of packages, 60 lines) has none laid out down and 1 laid out right; `tests/package-fixtures.test.mjs` pins both
