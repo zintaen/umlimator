@@ -1153,7 +1153,8 @@ Where 4.10 departs from row 4.10 and from §15 to §17:
   named them), `tests/core-diet.html`'s third case and its `markup` keys in `tests/core-diet.json` (the same
   fingerprints under the new path), `tests/import/state.mmd`'s header, `tests/transition.test.mjs`'s list; the existing
   assertions of `tests/cli.py` (render and check of a typed example) and `tests/mcp.py` (list_views, a box's wording)
-  take the four examples.
+  take the four examples; `tests/import.py`'s state.mmd case asks for no core error, as `tests/mermaid-state.test.mjs`
+  does since 4.8 (it failed on the integration base before 4.10).
 
 ### 19.3 What runs at the same time (S17)
 
