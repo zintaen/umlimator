@@ -77,7 +77,7 @@ All on 11 Nov 2026, by the maintainer. The options that were weighed are in `pro
 ## Checks
 
 ```bash
-node --test                                   # layout and the model, in Node
+npm test                                      # layout and the model, in Node; the "(timed)" tests apart, one file at a time
 python3 tests/embed.py                        # the canvas, in headless Chrome
 python3 bench/bench.py --check-determinism --expect bench/expected.json   # existing pictures are unchanged
 node docs/diagrams/examples/check.mjs         # the target examples match model.md
