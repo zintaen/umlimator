@@ -568,6 +568,34 @@ and §6; a connector from the subject's port to a part is inner (§5).
 | `collaboration-named` | warning | a collaboration use's `collaboration` names a collaboration of the model |
 | `part-port-id` | warning | only under §6's fallback: a model id equals a port's id on a part |
 
+**As built (5.6)** (`src/uml/composite.js`). Where the build departs from the above, or says what the note left open:
+
+- `part-port-id` is not built: §6's fallback id was not needed (5.2 pinned `->` ids through the hooks). The shared
+  `port-owner` and `manifest-ends` (5.3) run with the type's rules.
+- **A role binding's role is its line's label**, not an end label at the part's end (§9.4): the end labels are placed when
+  drawn (`TYPED.lines`) and do not see the port names (§4.5, as built in 5.3), while a line's label is placed by the router
+  and the port names keep clear of it (`portsDrawn`). So the type sets **`labelGaps: true`** (decision 9's opt in) and
+  `gap: 64`, `rgap: 56`: without it both role names on `04-composite-structure.json` found no spot, one laid out each way.
+- **The layout check and ports on parts.** `overlapIssues` reports each port against the part it sits on (half inside by
+  design, §4.1); a port on the subject's box is not a node pair and is not reported. The tests drop exactly those reports
+  (a port's `owner`); the rest is clean right and down on the example, with no crossing. How the check should pass is
+  decision 22.
+- **The ranking** (`layout.rank: false`): the subject's parts and collaboration uses are ranked as the communication type
+  ranks its lifelines (longest path over connectors and role bindings, `untangle`, `rowsFor`), then each open
+  collaboration's roles, then the rest (comments, a closed collaboration, a subject with nothing inside), block after block
+  to the right. A pin (`layout.<id>`) is a column and row of the whole picture, as the canvas writes it; ponytail: a pin
+  into another block's columns stretches its box over it.
+- **Sides:** a part's port whose line runs to the subject's port counts toward a place just past the subject's border on
+  that port's side, so it faces it; the subject's ports are chosen first. Pins as §6 (`present.<part>.ports.<port>.side`).
+- A line between a box and something it holds that names no port at the box is not drawn (the router would refuse it),
+  as stage 2's `line-inside`; a subject with no part and no collaboration use is a node, not a box.
+- The geometry has `slots` (one per node and box, as the state type's), so the palette's add hears the selection.
+- **L by name** cannot reach a part or a port: the canvas names a member by its owner's label (`nameOf`), so L then a part's
+  name finds the subject's first part. L then an arrow, or the pointer, reaches them. Left to the canvas's owner.
+- `word` names a part, a role, a port and a collaboration use; the subject, as before.
+- Measured (§14's common edit, `tests/composite.test.mjs`, 30 parts, about 50 connectors, 20 ports on parts, CPU best of
+  seven after a warm-up, on a loaded laptop): a part's type changed, laid out and drawn, 18 to 24 ms; a full layout 20 to 26 ms.
+
 ### 10.3 Deployment
 
 Laid out by `layoutTyped` from the host's ranking, with `gap: 48`, `gapAfter`'s widening and `labelGaps` (§8), and `cut: 280` on
@@ -911,6 +939,8 @@ Each is set out with its options and trade-offs in the section named; the recomm
 | 19 | Hiding a port, part or role (DoD 4) | Members cannot be hidden; Delete deletes from the model, said first, as stage 3's P12 | A `present` key that hides a member | §12.2 |
 | 20 | The delegation's look | A solid line with an open arrow at its `to` end, listed as a departure: it shows which way the port delegates | UML's plain solid line (direction in the accessible name only); a plain line with «delegate» | §9.2, §17 |
 | 21 | `labelGaps` on a view laid out down | Taken, the maintainer's decision of 13 Nov 2026: Accept that a view laid out down gains less (the spike: 19 to 12 labels with no spot, against 12 to none laid out right); 5.5 states what `06-deployment.json` keeps laid out down | Let a turned view widen its row gaps as well, measured with `rows.ht`, and prefer them for a label beside a line across the ranks (core bytes, a change in `tight`'s choice of gap) | §8 |
+
+| 22 | How a type's layout check passes with ports on parts (5.6, §10.2 as built) | Teach `overlapIssues` to pass over a node whose `owner` is the other node of the pair (a few core bytes, `src/layout/audit.js`, a later package) | Keep the reports and have each type's tests and conformance note drop them (as 5.6 does now); draw a part's ports as non-nodes (they could no longer be selected) | §10.2 |
 
 Decision 9 is taken: the spike left 12 labels with no spot, and `labelGaps` is built in 5.1 and set by the component and
 deployment types, the maintainer's decision of 13 Nov 2026 (§8, "As built").
