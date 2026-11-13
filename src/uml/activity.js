@@ -305,6 +305,7 @@ const ACT_TYPE = registerDiagramType('uml.activity', {
   validate: actProblems,
   rules: ACT_RULES,
   describe: actDescribe,
+  unfolds: true, // a call behaviour action unfolds its activity in place (notes/milestone-2.md §6.3)
   edits: { connect: actConnect, moveTo: actMoveTo, add: actAdd, remove: actRemove, rename: actRename },
   // the PDF's tables (§15): a node's kind, and its partition
   word: (model, id) => { const x = AC_ARR(model && model.nodes).find(n => AC_OBJ(n) && n.id === id); return x && Object.hasOwn(AC_LOOK, x.type) ? AC_LOOK[x.type][1] : null; },
