@@ -131,11 +131,13 @@ try {
   check('a static member is underlined; an abstract class and operation are in italics; stereotypes sit over the name',
     rows[2].getAttribute('text-decoration') === 'underline' && !rows[0].getAttribute('text-decoration') && getComputedStyle(rows[4]).fontStyle === 'italic' && getComputedStyle(rows[3]).fontStyle === 'normal'
     && getComputedStyle(ord.querySelector('.c-name')).fontStyle === 'italic' && ord.querySelector('.c-st').textContent === '«entity»' && ord.querySelector('.c-st').getBBox().y < ord.querySelector('.c-name').getBBox().y);
-  // ---- stage 4's open arrowheads (4.10, D1): each example's lines in both themes and three fonts
-  const EX = { 'shopping-use-cases': 'shopping', 'fulfil-activity': 'fulfil', 'order-states': 'order-life', 'buy-book-overview': 'buy-book' };
+  // ---- stage 4's open arrowheads (4.10, D1): each example's lines, and the state and activity fixtures' edge cases (§16:
+  // junction, choice, history, fork, join, exception handlers), in both themes and three fonts
+  const EX = [['../examples/shopping-use-cases.json', 'shopping'], ['../examples/fulfil-activity.json', 'fulfil'], ['../examples/order-states.json', 'order-life'], ['../examples/buy-book-overview.json', 'buy-book'],
+    ['state-stress.json', 'edge-cases'], ['activity-stress.json', 'edge-cases']];
   const END = { 'uml.ControlFlow': 'open', 'uml.ObjectFlow': 'open', 'uml.Transition': 'open', 'uml.Include': 'open', 'uml.Extend': 'open', 'uml.Generalization': 'triangle', 'uml.Association': null, 'uml.CommentLink': null };
-  for (const [f, vid] of Object.entries(EX)) {
-    const model = await (await fetch(`../examples/${f}.json`)).json(), types = layout(model, vid).edges.map(e => (model.edges.find(x => x.id === e.id) || {}).type), opens = new Set();
+  for (const [path, vid] of EX) {
+    const f = `${path.split('/').pop().slice(0, -5)} ${vid}`, model = await (await fetch(path)).json(), types = layout(model, vid).edges.map(e => (model.edges.find(x => x.id === e.id) || {}).type), opens = new Set();
     for (const theme of ['light', 'dark']) for (const [fname, family] of Object.entries(FONTS)) {
       document.documentElement.dataset.theme = theme; el.style.setProperty('--um-sans', family);
       el.innerHTML = measured(hostMeasure(el), () => mapContext(model).buildView(vid).markup); const svg = el.querySelector('svg'), off = [];

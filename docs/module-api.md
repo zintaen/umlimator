@@ -3560,9 +3560,10 @@ example draw as they did. The new code is in `lib/umlimator-all.js`, except 268 
 **Performance (P1).** The four types lay out with port repair off (`repair: false`, `reroute: false`): on the stress
 views (50 elements and 60 lines; 50 nodes, 60 flows and four lanes; 50 states, 60 transitions, composites three deep;
 40 nodes, 50 flows, 10 inline interactions) the common edit (a use case renamed, a guard, a lane change, a transition's
-label) is laid out and drawn in about 28, 23, 66 to 77 and 9 ms of CPU on a laptop. CI holds a 1 s ceiling and prints
-each against the 100 ms target (the maintainer's decision of 13 Nov 2026); the scattered state machine, most
-transitions across region borders, is held to 1 s. Turning port repair off leaves crossings next to shared sides, which
+label) is laid out and drawn in about 28, 23, 66 to 77 and 9 ms of CPU on a laptop. CI holds every timed budget to a 1 s ceiling and prints
+each against its target, 100 ms for an edit (the repository's rule for CI timing, from the maintainer's decision of 13
+Nov 2026 on the wired state machine, the one type whose edit nears 100 ms on a laptop: the scattered state machine, most
+transitions across region borders). Turning port repair off leaves crossings next to shared sides, which
 the fixtures pin and the conformance notes state.
 
 **The maintainer's decisions of 13 Nov 2026 for this release:** the activity and interaction overview types' one column

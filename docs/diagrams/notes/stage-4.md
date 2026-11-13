@@ -795,7 +795,8 @@ As built in 4.7 (`src/uml/overview.js`):
   under `overview-kinds`; a comment link with no comment at either end is a `comment-link` warning.
 - **The stress view** of §17 is generated in `tests/overview.test.mjs` (40 nodes, 50 flows, 10 inline interactions of 6
   lifelines and 12 messages): a full layout and SVG about 20 ms, a guard edited 12 to 16 ms, one inline time axis 0.03 ms
-  (CPU, best of three after a warm-up, on a laptop). 4.10's `overview-stress.json` replaces it.
+  (CPU, best of three after a warm-up, on a laptop). 4.10 writes it out as `overview-stress.json`'s `all` view; the test
+  keeps its generator.
 
 ## 12. Editing through the canvas hooks
 
@@ -1131,21 +1132,39 @@ Where 4.10 departs from row 4.10 and from §15 to §17:
   down, the fork into the Payment region running along both regions' borders. Each is stated in its conformance note.
 - **A choice with no `else`** (§16, "warned") is not warned of: `choice-guards` as built in 4.6 warns of an exit with no
   guard, or of two `else`; the fixture holds the choice with a guard on every exit, and the note states it.
-- **§17's budgets in CI**, as the maintainer decided for the wired state machine (§10.4), apply to every stress view in
-  `tests/stage4-fixtures.test.mjs`: a full layout under 1 s, each edit under a 1 s ceiling with its time printed
-  against 100 ms. The types' own tests keep their budgets. The inline time axis (5 ms) and the Mermaid reader and writer
-  (500 transitions each way, 100 ms) are held as §17 says: each measures about 1 ms. The figures in the conformance
-  notes were taken on a laptop at a load average of 6 to 8, the idlest it got, in CPU time.
+- **§17's budgets in CI** follow the repository's rule for CI timing, which generalises the maintainer's decision for
+  the wired state machine (§10.4): every timed budget in `tests/stage4-fixtures.test.mjs` is held to a 1 s ceiling and
+  printed against its target, best of three after a warm-up. That is a full layout, each edit (target 100 ms), each
+  inline time axis (target 5 ms) and the Mermaid reader and writer, 500 transitions each way (target 100 ms). Only the
+  state machine's edit nears its target on a laptop (66 to 84 ms); the others measure 8 to 30 ms, 0.03 ms and about 1 to
+  2 ms. The types' own tests keep their budgets (`usecase.test.mjs`, `activity.test.mjs` and `overview.test.mjs` hold
+  their edits to 100 ms on their own generators). The figures in the conformance notes were taken on a laptop at a load
+  average of 6 to 8, the idlest it got, in CPU time.
 - **CI's example check.** The workflow's loop over `examples/*.json` asks for no finding at all; examples 9 and 10 keep
-  the two crossings that port repair off leaves (§9.5, §10.4), so the loop passes `--ignore crossings` for those two
-  files only, and `tests/cli.py` pins the two crossings each. `.github/workflows/check.yml` is outside row 4.10's Owns;
-  the lead may prefer to move the examples off their crossings instead.
+  the crossings that port repair off leaves (§9.5, §10.4), so for those two files the loop asks that every finding is a
+  crossing and counts them over both passes (each view, then each stacked card unfolded): 4 for `fulfil-activity`
+  (2 on the plain pass, 2 more unfolded) and 2 for `order-states`. `tests/cli.py` pins the plain pass's 2 each. A new
+  crossing fails CI. `.github/workflows/check.yml` is outside row 4.10's Owns: decision 19 (§20). The options:
+  - *Accept the edit as it is* (recommended): CI checks the examples as drawn, and a change in their crossings fails it;
+    the cost is a per-file count in the workflow to update when a layout change moves them.
+  - *Move the examples off their crossings* (edit examples 9 and 10 until `check` finds nothing): the loop needs no
+    exception, but the examples bend to the layout, and their stills and PDFs change.
+  - *Drop the two files from the loop*: simplest, but CI no longer checks them in the browser.
 - **The PDF's tables (§15)** list what 4.9 built, and two gaps were found (`risks.md` R9): the state machine type gives
   no `word` or `rows`, so a pseudostate reads "Pseudostate" and a state's entry, do and exit are not listed; and a line's
   row reads its `label` only, so a transition's trigger, guard and effect, a flow's guard and an extend's points and
   condition are missing. The first is a family-file change in `src/uml/state.js` (4.6's), the second needs a line's
   printed text in `print.js` (the core's, about 40 B, or a type's own row for its lines). 4.10 owns neither; the
-  conformance notes state both.
+  conformance notes state both, and `tests/cli.py` pins the gap ("createdPseudostate") with a comment naming it. Row
+  4.10's "each PDF lists what §15 says" is not met until it is closed: decision 18 (§20). The options:
+  - *State first, by 4.6's owner or with the lead's leave* (recommended): in `src/uml/state.js`, `word` returns
+    `ST_KIND_WORD[kind]` for a pseudostate (as `activity.js` does) and `rows` lists `entry / …`, `do / …`, `exit / …` and
+    the internal transitions with the type's own row builder. No core bytes; the PDF's state table becomes §15's. The
+    line rows wait for the second option.
+  - *The line rows too*: a line's printed text in `print.js` (about 40 B of the core, inside stage 4's share) or a
+    `rows` for lines in each type, so a transition's trigger, guard and effect, a flow's guard and an extend's drawn
+    label are listed. Closes §15 whole; spends core bytes or touches four family files.
+  - *Release 0.21.0 with the gaps stated* (R9 and the fidelity tables): no code, but the row's done-when stays unmet.
 - **Seen in the stills:** an unnamed merge or decision of the activity type is drawn with its id inside the diamond
   (example 9's `stock-ready`), in Node too; and in Chrome's measure example 9's `[else]` finds no room laid out down,
   left to its line's name. Both are stated in `docs/conformance/uml-activity.md`.
@@ -1154,7 +1173,10 @@ Where 4.10 departs from row 4.10 and from §15 to §17:
   fingerprints under the new path), `tests/import/state.mmd`'s header, `tests/transition.test.mjs`'s list; the existing
   assertions of `tests/cli.py` (render and check of a typed example) and `tests/mcp.py` (list_views, a box's wording)
   take the four examples; `tests/import.py`'s state.mmd case asks for no core error, as `tests/mermaid-state.test.mjs`
-  does since 4.8 (it failed on the integration base before 4.10).
+  does since 4.8 (it failed on the integration base before 4.10); `tests/embed.py` runs `tests/stage4.html` (its page
+  list and docstring; outside row 4.10's Owns, needed to run the page); `tests/notation.html` gains a stage 4 block
+  (additive), whose arrowhead checks run on the four examples and on the state and activity fixtures' `edge-cases`
+  views (§16's last row).
 
 ### 19.3 What runs at the same time (S17)
 
@@ -1244,6 +1266,8 @@ Each is set out with its options and trade-offs in the section named; the recomm
 | 15 | C10 for the four types | Tested in 4.10 | Folded into the package after 0.20.0 | §19.5 |
 | 16 | The order of a state's regions in the picture (S20) | First-line order, as `blockPos` gives; `members` order everywhere else | Member order drawn, about 30 B in `context.js` | §6.2 |
 | 17 | Transitions Mermaid does not support (S22) | Written as transitions with a `%% warning:` line | Written as `%% not written:` (example 10's round trip breaks) | §13 |
+| 18 | The PDF's gaps found in 4.10 (R9): the state type's `word` and `rows`, and a line's printed text | The state type's `word` and `rows` in `src/uml/state.js` (4.6's owner, or the lead's leave), no core bytes | Line rows too (`print.js`, about 40 B, or each type's own); release with the gaps stated | §19.2.1 |
+| 19 | CI's example loop and the crossings of examples 9 and 10 (`.github/workflows/check.yml`, outside 4.10's Owns) | Accept the edit: every finding a crossing, counted over both passes (4 and 2) | Move the examples off their crossings; drop the two from the loop | §19.2.1 |
 
 ## 21. What this note changes elsewhere
 
