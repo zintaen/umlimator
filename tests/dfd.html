@@ -1,0 +1,177 @@
+<!doctype html>
+<!-- The data flow diagram (M2.4) in headless Chrome (tests/embed.py), from lib/umlimator-all.js: docs/diagrams/examples/22-data-flow.json
+     drawn by render() in both themes, three fonts, both directions and both notations (each symbol in its skin, texts inside
+     their shapes, none overlapping, line ends on outlines, names, reading order, axe's rules written out, contrast, the
+     legend), then edited through the edit event and apply(), by pointer and by keyboard: the palette's four entries and N
+     (a process numbered under the level's parent), F2 on a node and on a flow, a flow by L and the picker and by the handle,
+     the number field, D making a balanced level (and refused on a process that opens one), V picking the view a process
+     opens, hide and delete. -->
+<meta charset="utf-8">
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="../lib/umlimator-theme.css">
+<title>umlimator data flow diagram test</title>
+<body style="margin:0">
+<div id="m" style="width:1600px;height:1000px"></div>
+<script type="module">
+import { render, apply, validate } from '../lib/umlimator-all.js';
+const out = { ok: [], fail: [] };
+const check = (name, cond, info) => { document.title = name; if (cond) out.ok.push(name); else out.fail.push(name + (info === undefined ? '' : ': ' + JSON.stringify(info))); };
+const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+const el = document.getElementById('m');
+let sr, stage, ed = [];
+const pick = s => sr.querySelector(s), all = s => [...sr.querySelectorAll(s)];
+const centre = s => { const r = pick(s).getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; };
+const ptr = (target, type, [x, y]) => target.dispatchEvent(new PointerEvent(type, { clientX: x, clientY: y, button: 0, pointerId: 7, pointerType: 'mouse', bubbles: true, composed: true }));
+const key = (k, extra = {}, target = stage) => target.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true, composed: true, cancelable: true, ...extra }));
+const handleTo = ([x, y]) => { const c = pick('.um-handle circle'), r = c.getBoundingClientRect(); ptr(c, 'pointerdown', [r.x + r.width / 2, r.y + r.height / 2]); ptr(stage, 'pointermove', [x, y]); ptr(stage, 'pointerup', [x, y]); };
+const press = b => { const r = b.getBoundingClientRect(), at = [r.x + r.width / 2, r.y + r.height / 2]; ptr(b, 'pointerdown', at); ptr(b, 'pointerup', at); b.click(); };
+const hint = () => pick('.um-live').textContent;
+const click = s => { const g = pick(s), at = centre(s); ptr(g, 'pointerdown', at); ptr(g, 'pointerup', at); g.dispatchEvent(new MouseEvent('click', { clientX: at[0], clientY: at[1], bubbles: true, composed: true })); };
+const mount = (model, opts = {}) => { el.innerHTML = ''; ed = []; const h = render(el, model, { view: 'dfd-level-1', on: { edit: e => ed.push(e) }, ...opts }); sr = el.querySelector('.umlimator').shadowRoot; stage = pick('.stage'); return h; };
+const errors = m => validate(m).filter(p => p.level === 'error');
+const last = () => ed[ed.length - 1];
+const gives = (name, cmds, test, base, errs = 0) => { const e = last(); let m = null; try { m = e && apply(base, e.commands); } catch (x) { m = null; }
+  check(name, !!e && same(e.commands, cmds) && !!m && test(m) && errors(m).length === errs, [e, m && errors(m)]); return m; };
+const change = (t, v) => { t.value = v; t.dispatchEvent(new Event('change', { bubbles: true })); };
+const box = g => { const r = g.getBBox(); return { x: r.x, y: r.y, w: r.width, h: r.height }; };
+const inside = (a, b) => a.x >= b.x - .5 && a.y >= b.y - .5 && a.x + a.w <= b.x + b.w + .5 && a.y + a.h <= b.y + b.h + .5;
+// a point's distance from a node's outline: Yourdon's process an ellipse, Gane and Sarson's a rectangle with 10 px corners, the rest their box
+const off = (shape, n, [x, y]) => {
+  if (shape === 'dfd-process-yourdon') return Math.abs(Math.hypot((x - n.x - n.w / 2) / (n.w / 2), (y - n.y - n.h / 2) / (n.h / 2)) - 1) * Math.min(n.w, n.h) / 2;
+  const r = shape === 'dfd-process-gane-sarson' ? 10 : 0, cx = Math.max(n.x + r, Math.min(x, n.x + n.w - r)), cy = Math.max(n.y + r, Math.min(y, n.y + n.h - r));
+  return x > n.x + r && x < n.x + n.w - r && y > n.y + r && y < n.y + n.h - r ? Math.min(x - n.x, n.x + n.w - x, y - n.y, n.y + n.h - y) : Math.abs(Math.hypot(x - cx, y - cy) - r); };
+const FONTS = { serif: 'serif', sans: 'sans-serif', wide: 'monospace' };
+const rgba = s => { let m = /rgba?\(([^)]+)\)/.exec(s); if (m) { const p = m[1].split(/[ ,/]+/).filter(Boolean).map(Number); return [p[0] / 255, p[1] / 255, p[2] / 255, p.length > 3 ? p[3] : 1]; }
+  m = /color\(srgb ([^)]+)\)/.exec(s); if (m) { const p = m[1].split(/[ /]+/).filter(Boolean).map(Number); return [p[0], p[1], p[2], p.length > 3 ? p[3] : 1]; } return null; };
+const blend = (top, bot) => [0, 1, 2].map(i => top[i] * top[3] + bot[i] * (1 - top[3])).concat(1);
+const lum = c => { const f = v => v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]); };
+const ratio = (fg, bg) => { const [x, y] = [lum(blend(fg, bg)), lum(bg)].sort((p, q) => q - p); return +((x + 0.05) / (y + 0.05)).toFixed(2); };
+const css = (e, k) => rgba(getComputedStyle(e)[k]);
+const MODEL = await (await fetch('../docs/diagrams/examples/22-data-flow.json')).json();
+const LABELS = ['basket', 'price and stock', 'new order', 'order confirmation', 'amount due', 'charge request', 'charge result', 'paid order', 'stock change', 'shipping label', 'shipping notice'];
+try {
+  for (const theme of ['light', 'dark']) for (const [fname, family] of Object.entries(FONTS)) for (const direction of ['right', 'down']) for (const notation of ['yourdon', 'gane-sarson']) {
+    document.documentElement.dataset.theme = theme; el.style.setProperty('--um-sans', family);
+    const M = structuredClone(MODEL); M.views.forEach(v => { v.direction = direction; v.notation = notation; });
+    const tag = `${theme}, ${fname}, ${direction}, ${notation}`, h = mount(M, { legend: true }), bad = [], nodes = all('.node');
+    check(`${tag}: three processes, two stores, three entities in the ${notation} skin; eleven flows`, all(`.node.dfd-process[data-shape="dfd-process-${notation}"]`).length === 3 && all(`.node.dfd-store[data-shape="dfd-store-${notation}"]`).length === 2
+      && all(`.node.dfd-entity[data-shape="dfd-entity-${notation}"]`).length === 3 && nodes.length === 8 && all('.edge-g').length === 11, [nodes.map(g => g.dataset.shape), all('.edge-g').length]);
+    // every text in its box (in Gane and Sarson's entity, clear of its shadow); no two nodes overlap
+    nodes.forEach(g => { const b = box(g.querySelector('.n-mask')), face = g.dataset.shape === 'dfd-entity-gane-sarson' ? { ...b, w: b.w - 4, h: b.h - 4 } : b;
+      g.querySelectorAll('text').forEach(t => { if (!inside(box(t), face)) bad.push(`${g.dataset.id}: "${t.textContent}" spills`); }); });
+    const boxes = nodes.map(g => [g.dataset.id, box(g.querySelector('.n-mask'))]);
+    boxes.forEach(([a, p], i) => boxes.slice(i + 1).forEach(([b, q]) => { if (p.x < q.x + q.w && q.x < p.x + p.w && p.y < q.y + q.h && q.y < p.y + p.h) bad.push(`${a} and ${b} overlap`); }));
+    check(`${tag}: every text inside its shape, none overlapping`, !bad.length, bad);
+    // a process's number over its name (in its band in Gane and Sarson), a store's beside it
+    const proc = pick('.node[data-id="dfd-take-order"]'), num = [...proc.querySelectorAll('.c-st')].map(t => t.textContent), nm = proc.querySelector('.c-name');
+    const store = pick('.node[data-id="dfd-books"]'), sn = box(store.querySelector('.c-st')), sname = box(store.querySelector('.c-name'));
+    check(`${tag}: a process's number above its name, a store's left of its name`, same(num, ['1']) && box(proc.querySelector('.c-st')).y + box(proc.querySelector('.c-st')).h <= box(nm).y + .5 && nm.textContent === 'Take order' && sn.x + sn.w <= sname.x, [num, nm.textContent]);
+    // line ends: each start (no marker there) on its node's outline within 1 px
+    const offs = [];
+    all('.edge-g').forEach(g => { const v = g.querySelector('path.edge').getAttribute('d').match(/-?\d+(\.\d+)?/g).map(Number), n = pick(`.node[data-id="${g.dataset.from}"]`), d = off(n.dataset.shape, box(n.querySelector('.n-mask')), v.slice(0, 2));
+      if (d > 1) offs.push([g.dataset.from, g.dataset.to, +d.toFixed(2)]); });
+    check(`${tag}: each line starts on its shape's outline`, !offs.length, offs);
+    check(`${tag}: names a screen reader reads`, proc.getAttribute('aria-label') === 'Process 1 Take order, opens level 1 Take order, 2 flows in, 2 out'
+      && store.getAttribute('aria-label') === 'Data store D1 Books, 1 flow in, 1 out' && pick('.node[data-id="dfd-courier"]').getAttribute('aria-label') === 'External entity Courier, 1 flow in, 0 out'
+      && pick('.edge-g[data-from="dfd-customer"][data-to="dfd-take-order"] title').textContent === 'Data flow basket from Customer to 1 Take order');
+    const order = all('.keys .node-key').map(k => k.dataset.node);
+    check(`${tag}: reading order: processes by number, stores, entities, then the lines`, same(order, ['dfd-take-order', 'dfd-take-payment', 'dfd-ship-order', 'dfd-books', 'dfd-orders', 'dfd-customer', 'dfd-provider', 'dfd-courier']) && all('.keys .um-key').length === 19, order);
+    const said = [...new Set(all('.e-lab, .labels text').map(t => t.textContent))].sort();
+    check(`${tag}: every flow's label drawn whole`, same(said, [...LABELS].sort()), said);
+    const legend = all('.m-legend b').map(b => b.textContent);
+    check(`${tag}: the legend keys each symbol in its skin and the flow`, same(legend, ['Process', 'Data store', 'External entity', 'Data flow']) && !!pick(notation === 'yourdon' ? '.m-legend ellipse' : '.m-legend rect[rx="3"]'), legend);
+    const stageBg = css(pick('.stage'), 'backgroundColor'), low = [];
+    nodes.forEach(g => g.querySelectorAll('text').forEach(t => { const c = ratio(css(t, 'fill'), stageBg); if (c < 4.5) low.push([g.dataset.id, t.textContent, c]); }));
+    const strokes = all('.node .n-body, .edge-g path.edge').map(b => ratio(css(b, 'stroke'), stageBg)).filter(c => c < 3);
+    check(`${tag}: contrast: texts 4.5:1, outlines and lines 3:1`, !low.length && !strokes.length, [low, strokes]);
+    // axe-core 4.14's rules for what is drawn as role="img", written out: svg-img-alt and role-img-alt (each has a name),
+    // nested-interactive (nothing inside one is a tab stop), and no other name inside a node
+    const svg = pick('.stage svg'), imgs = all('.stage svg [role="img"]'), noAlt = [], nested = [];
+    imgs.forEach(x => { if (!(x.getAttribute('aria-label') || '').trim()) noAlt.push(x.dataset.id || x.localName);
+      x.querySelectorAll('[tabindex], a[href], button, input, select, textarea').forEach(c => { if (c.tabIndex >= 0) nested.push(`${x.dataset.id} holds ${c.getAttribute('class') || c.localName}`); }); });
+    check(`${tag}: axe, written out: the drawing a named group, its 8 nodes named images with no tab stop and no other name inside`,
+      svg.getAttribute('role') === 'group' && !!(svg.getAttribute('aria-label') || '').trim() && imgs.length === 8 && !noAlt.length && !nested.length && nodes.every(g => !g.querySelector('[aria-label]')), [imgs.length, noAlt, nested.slice(0, 4)]);
+    h.destroy();
+  }
+  document.documentElement.dataset.theme = 'light'; el.style.removeProperty('--um-sans');
+
+  // ---- editing (DoD 4), each gesture's commands applied with apply(). A comment is there for the comment link
+  const BASE = structuredClone(MODEL); BASE.nodes.push({ id: 'n1', type: 'uml.Comment', label: 'nightly' }); BASE.views[0].nodeIds.push('n1');
+  let h = mount(BASE, { editable: true });
+  const panel = s => pick('.um-editor ' + s);
+  const PAL = ['Process', 'Data store', 'External entity', 'Comment'];
+  check('the palette: its four elements; the lines listed', same(all('.um-editor .um-pal button').map(b => b.textContent), PAL)
+    && /Data flow, Comment link/.test(panel('.um-pal .um-note').textContent), panel('.um-pal').textContent);
+  key('n'); pick('.um-rename').value = 'Refund'; key('Enter', {}, pick('.um-rename'));
+  const m1 = gives('N adds a process, numbered next at the top level, shown in the view (edits.add)', [{ op: 'add', element: { id: 'process1', type: 'dfd.Process', label: 'Refund', props: { number: '4' } }, view: 'dfd-level-1' }], m => m.views[0].nodeIds.includes('process1'), BASE);
+  [['dfd.DataStore', 'store1', { props: { number: 'D3' } }], ['dfd.ExternalEntity'], ['uml.Comment']].forEach(([t, id, more], i) => {
+    all('.um-editor .um-pal button')[i + 1].click(); pick('.um-rename').value = 'x' + i; key('Enter', {}, pick('.um-rename'));
+    const c = last().commands[0];
+    check(`the palette's ${PAL[i + 1]} button adds a ${t}`, last().commands.length === 1 && c.op === 'add' && c.element.type === t && c.element.label === 'x' + i && (!id || (c.element.id === id && same(c.element.props, more.props))) && !errors(apply(BASE, last().commands)).length, last()); });
+  h.update(m1);
+  check('after update() the process is drawn as an ellipse with its number and name', pick('.node[data-id="process1"][data-shape="dfd-process-yourdon"] .c-name').textContent === 'Refund' && pick('.node[data-id="process1"] .c-st').textContent === '4');
+  // F2 on a process, by pointer then key
+  click('.node[data-id="dfd-ship-order"] .c-name'); key('F2');
+  check('F2 on a process: a field holding its name', pick('.um-rename') && pick('.um-rename').value === 'Ship order');
+  pick('.um-rename').value = 'Ship the order'; key('Enter', {}, pick('.um-rename'));
+  const m2 = gives('F2: set its label', [{ op: 'set', id: 'dfd-ship-order', path: 'label', value: 'Ship the order' }], m => m.nodes.find(n => n.id === 'dfd-ship-order').label === 'Ship the order', m1);
+  h.update(m2);
+  check('after update() the process reads its new name', pick('.node[data-id="dfd-ship-order"] .c-name').textContent === 'Ship the order');
+  // the number field
+  click('.node[data-id="process1"] .c-name'); change(panel('[data-f="p:number"]'), '5');
+  const m3 = gives('the number field sets props.number', [{ op: 'set', id: 'process1', path: 'props.number', value: '5' }], m => m.nodes.find(n => n.id === 'process1').props.number === '5', m2);
+  h.update(m3);
+  check('after update() the process shows its number', pick('.node[data-id="process1"] .c-st').textContent === '5');
+  // a flow by L, a name and the picker; then a comment link
+  click('.node[data-id="dfd-customer"] .c-name'); key('l'); for (const c of 'refund') key(c); key('Enter');
+  const items = all('.um-pick button').map(b => b.textContent);
+  check('L, a name and Enter open the picker with the two lines', same(items, ['Data flow', 'Comment link']), items);
+  all('.um-pick button')[0].click();
+  const lf = last() && last().commands[0], m4 = gives('picking Data flow: one add of a dfd.DataFlow from the entity to the process', [{ op: 'add', element: { ...(lf && lf.element), type: 'dfd.DataFlow', from: 'dfd-customer', to: 'process1' }, view: 'dfd-level-1' }],
+    m => m.edges.some(e => e.type === 'dfd.DataFlow' && e.from === 'dfd-customer' && e.to === 'process1'), m3);
+  const fid = lf && lf.element.id;
+  click('.node[data-id="n1"] text'); key('l'); for (const c of 'books') key(c); key('Enter'); all('.um-pick button').find(b => b.textContent === 'Comment link').click();
+  check('picking Comment link: one add of a uml.CommentLink', last().commands.length === 1 && last().commands[0].element.type === 'uml.CommentLink' && last().commands[0].element.to === 'dfd-books' && !errors(apply(m3, last().commands)).length, last());
+  h.update(m4);
+  check('after update() the new flow is drawn with no label, and validate() asks for one', !!pick(`.edge-g[data-from="dfd-customer"][data-to="process1"]`) && validate(m4).some(p => p.rule === 'dfd-flow-label' && p.ids.includes(fid)));
+  // F2 on the flow: its label
+  h.select({ type: 'edge', ids: [fid], view: 'dfd-level-1' }); key('F2'); const lab = pick('.um-rename');
+  check('F2 on a flow: a field for its label', !!lab, hint());
+  if (lab) { lab.value = 'refund request'; key('Enter', {}, lab); }
+  const m5 = gives('F2 on a flow: set its label', [{ op: 'set', id: fid, path: 'label', value: 'refund request' }], m => m.edges.find(e => e.id === fid).label === 'refund request', m4);
+  h.update(m5);
+  check('after update() the flow\'s label is drawn', all('.e-lab, .labels text').some(t => t.textContent === 'refund request'));
+  // the handle, by pointer: a flow from a process to a store
+  click('.node[data-id="process1"] .c-name'); handleTo(centre('.node[data-id="dfd-orders"] .n-mask')); press(all('.um-pick button').find(b => b.textContent === 'Data flow'));
+  check('the handle from a process to a store, Data flow: one add', last().commands.length === 1 && last().commands[0].element.type === 'dfd.DataFlow' && last().commands[0].element.from === 'process1' && last().commands[0].element.to === 'dfd-orders' && !errors(apply(m5, last().commands)).length, last());
+  // D: the level of a process that opens none, in one transaction; it balances; refused on one that opens a level
+  click('.node[data-id="dfd-take-payment"] .c-name'); key('d');
+  const L = last(), lv = L && L.commands[0], mD = L && apply(m5, L.commands);
+  check('D on a process: one transaction that adds its level, its child process, its copied flows, and sets opensView', !!L && lv.op === 'addView' && lv.view.id === 'dfd-take-payment-level' && L.commands.length === 7
+    && L.commands.at(-1).value === 'dfd-take-payment-level' && /^Made level 2 Take payment, balanced with 4 flows/.test(hint()), [L, hint()]);
+  check('…and the level balances: validate() says nothing of it', !!mD && !validate(mD).some(p => p.rule === 'dfd-balance' || p.level === 'error'), mD && validate(mD));
+  h.update(mD);
+  h.setView('dfd-take-payment-level');
+  check('the level made draws its process and its context', same(all('.node').map(g => g.dataset.id).sort(), ['dfd-orders', 'dfd-provider', 'dfd-ship-order', 'dfd-take-payment-2.1']) && all('.edge-g').length === 4, all('.node').map(g => g.dataset.id));
+  h.setView('dfd-level-1');
+  const n0 = ed.length; click('.node[data-id="dfd-take-order"] .c-name'); key('D');
+  check('D on a process that opens a level: nothing emitted, said on the hint line', ed.length === n0 && /opens "dfd-level-2-take-order" already/.test(hint()), [ed.slice(n0), hint()]);
+  // V: the dfd views the process may open
+  click('.node[data-id="process1"] .c-name'); key('v'); await new Promise(r => setTimeout(r)); // the picker opens once the gesture is over
+  const vs = all('.um-pick button').map(b => b.textContent);
+  check('V on a process: a picker of the dfd views', vs.includes('1 Take order') && vs.includes('2 Take payment'), vs);
+  all('.um-pick button').find(b => b.textContent === '2 Take payment').click();
+  gives('V: set opensView; another process\'s level does not balance with it, and dfd-balance says so', [{ op: 'set', id: 'process1', path: 'opensView', value: 'dfd-take-payment-level' }],
+    m => m.nodes.find(n => n.id === 'process1').opensView === 'dfd-take-payment-level' && errors(m)[0].rule === 'dfd-balance', mD, 1);
+  // hide, delete
+  h = mount(BASE, { editable: true });
+  click('.node[data-id="dfd-courier"] .c-name'); key('Delete');
+  gives('Delete: hide the entity from the view', [{ op: 'hide', id: 'dfd-courier', view: 'dfd-level-1' }], m => !m.views[0].nodeIds.includes('dfd-courier'), BASE);
+  click('.node[data-id="dfd-books"] .c-name'); key('Delete', { shiftKey: true });
+  gives('Shift + Delete: delete the store and its flows, at every level', [{ op: 'delete', id: 'dfd-books' }], m => !m.nodes.some(n => n.id === 'dfd-books') && !m.edges.some(e => /price-and-stock|stock-change/.test(e.id)), BASE);
+  h.select({ type: 'edge', ids: ['dfd-shipping-label'], view: 'dfd-level-1' }); key('Delete', { shiftKey: true });
+  gives('Shift + Delete on a flow: delete it', [{ op: 'delete', id: 'dfd-shipping-label' }], m => !m.edges.some(e => e.id === 'dfd-shipping-label'), BASE);
+  h.destroy();
+} catch (e) { out.fail.push('threw: ' + (e && e.stack || e)); }
+const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
+</script>
