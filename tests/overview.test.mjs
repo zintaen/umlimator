@@ -21,7 +21,7 @@ import { FLOW_RULES } from '../src/uml/flow.js';
 import { sqInput } from '../src/uml/sequence.js';
 import { ovProblems, ovAdd, ovRename } from '../src/uml/overview.js';
 
-const EX = JSON.parse(readFileSync(new URL('../docs/diagrams/examples/13-interaction-overview.json', import.meta.url), 'utf8'));
+const EX = JSON.parse(readFileSync(new URL('../examples/buy-book-overview.json', import.meta.url), 'utf8'));
 const VIEW = m => m.views[0], errors = m => validate(m).filter(p => p.level === 'error');
 const meets = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
 const dir = (m, d) => { const c = structuredClone(m); VIEW(c).direction = d; return c; };

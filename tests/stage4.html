@@ -1,0 +1,85 @@
+<!doctype html>
+<!-- Stage 4's fixtures (4.10, notes/stage-4.md §16) in headless Chrome (tests/embed.py), from lib/umlimator-all.js: every
+     view of tests/usecase-*.json, activity-*.json, state-*.json and overview-*.json (the sequence views an overview opens are
+     drawn inside it), each drawn by render() in both themes, three fonts and both directions: every node and line drawn, no
+     two nodes overlapping, every text inside its node, no line through a node or a lane's header but its own two ends, every
+     line end on its shape's outline, every node and line named, texts at 4.5:1 and lines and outlines at 3:1.
+     tests/stage4-fixtures.test.mjs holds the same in Node, with what check() finds pinned and §17's budgets. -->
+<meta charset="utf-8">
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="../lib/umlimator-theme.css">
+<title>umlimator stage 4 fixtures test</title>
+<body style="margin:0">
+<div id="m" style="width:1200px;height:900px"></div>
+<script type="module">
+import { render, layout } from '../lib/umlimator-all.js';
+const out = { ok: [], fail: [] };
+const check = (name, cond, info) => { document.title = name; if (cond) out.ok.push(name); else out.fail.push(name + (info === undefined ? '' : ': ' + JSON.stringify(info))); };
+const el = document.getElementById('m');
+let sr;
+const pick = s => sr.querySelector(s), all = s => [...sr.querySelectorAll(s)];
+const bb = x => { const r = x.getBBox(); return { x: r.x, y: r.y, w: r.width, h: r.height }; };
+const meets = (a, b, k = 0) => a.x + k < b.x + b.w && b.x + k < a.x + a.w && a.y + k < b.y + b.h && b.y + k < a.y + a.h;
+const inside = (a, b, k = 1) => a.x >= b.x - k && a.y >= b.y - k && a.x + a.w <= b.x + b.w + k && a.y + a.h <= b.y + b.h + k;
+const ptsOf = d => { const n = d.match(/-?\d+(\.\d+)?/g).map(Number), p = []; for (let i = 0; i < n.length; i += 2) p.push([n[i], n[i + 1]]); return p; };
+const FONTS = { serif: 'serif', sans: 'sans-serif', wide: 'monospace' };
+const rgba = s => { let m = /rgba?\(([^)]+)\)/.exec(s); if (m) { const p = m[1].split(/[ ,/]+/).filter(Boolean).map(Number); return [p[0] / 255, p[1] / 255, p[2] / 255, p.length > 3 ? p[3] : 1]; }
+  m = /color\(srgb ([^)]+)\)/.exec(s); if (m) { const p = m[1].split(/[ /]+/).filter(Boolean).map(Number); return [p[0], p[1], p[2], p.length > 3 ? p[3] : 1]; } return null; };
+const blend = (top, bot) => [0, 1, 2].map(i => top[i] * top[3] + bot[i] * (1 - top[3])).concat(1);
+const lum = c => { const f = v => v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]); };
+const ratio = (fg, bg) => { const [x, y] = [lum(blend(fg, bg)), lum(bg)].sort((p, q) => q - p); return +((x + 0.05) / (y + 0.05)).toFixed(2); };
+const css = (x, k) => rgba(getComputedStyle(x)[k]);
+const FIX = {};
+for (const t of ['usecase', 'activity', 'state', 'overview']) for (const k of ['minimal', 'stress']) FIX[`${t}-${k}`] = await (await fetch(`${t}-${k}.json`)).json();
+// is a point on an element's outline, within 1.5 px: in the stroke when it is drawn 3 px wide
+const onStroke = (svg, x, [px, py]) => { if (!x || !x.isPointInStroke) return false; const was = x.style.strokeWidth; x.style.strokeWidth = '3px';
+  const p = svg.createSVGPoint(); p.x = px; p.y = py; const r = x.isPointInStroke(p); x.style.strokeWidth = was; return r; };
+try {
+  for (const [fx, MODEL] of Object.entries(FIX)) for (const v of MODEL.views.filter(v => v.diagram !== 'uml.sequence')) for (const d of ['right', 'down'])
+    for (const theme of ['light', 'dark']) for (const [fname, family] of Object.entries(FONTS)) {
+      document.documentElement.dataset.theme = theme; el.style.setProperty('--um-sans', family);
+      const M = { ...MODEL, views: MODEL.views.map(w => (w.id === v.id ? { ...w, direction: d } : w)) }, g = layout(M, v.id);
+      el.innerHTML = ''; const h = render(el, M, { view: v.id }); sr = el.querySelector('.umlimator').shadowRoot;
+      const tag = `${fx} ${v.id}, ${d}, ${theme}, ${fname}`, svg = pick('.stage svg'), bad = [];
+      // text measured unhinted, as tests/sequence-fixtures.html does: a view fit into the page is drawn small
+      svg.style.textRendering = 'geometricPrecision';
+      const nodes = all('.stage svg .node[data-id]'), lines = all('.edge-g');
+      const own = id => pick(`.node[data-id="${CSS.escape(id)}"]`), fam = id => pick(`.family[data-family="${CSS.escape(id)}"]`);
+      const shapeOf = n => n.querySelector(':scope > .n-mask') || n.querySelector(':scope > .n-body') || n.querySelector(':scope > .fl-hit') || n.querySelector(':scope > g > .n-mask, :scope > g > .n-body');
+      const missing = g.nodes.filter(n => !own(n.id)).map(n => n.id);
+      if (missing.length) bad.push(`not drawn: ${missing.join(', ')}`);
+      const B = new Map(nodes.filter(n => shapeOf(n)).map(n => [n.dataset.id, bb(shapeOf(n))]));
+      const solid = [...B].filter(([id]) => !own(id).classList.contains('partition'));
+      solid.forEach(([a, p], i) => solid.slice(i + 1).forEach(([b, q]) => { if (meets(p, q, .5)) bad.push(`${a} and ${b} overlap`); }));
+      // a lane's name laid out right is turned: compared on the screen
+      const cr = x => { const r = x.getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width, h: r.height }; };
+      nodes.forEach(n => { const turned = n.classList.contains('partition'), box = turned ? cr(shapeOf(n)) : B.get(n.dataset.id);
+        n.querySelectorAll(':scope > text, :scope > g > text').forEach(t => { if (t.textContent.trim() && !inside(turned ? cr(t) : bb(t), box)) bad.push(`${n.dataset.id}: "${t.textContent}" out of its shape`); }); });
+      // no line through a node or a header but its own two ends; each end on its node's outline (an actor's: its figure's
+      // column; a box's: its frame)
+      lines.forEach(e => { const from = e.dataset.from, to = e.dataset.to, p = ptsOf(e.querySelector('path.edge').getAttribute('d'));
+        p.slice(1).forEach((q, k) => { const s = { x: Math.min(p[k][0], q[0]), y: Math.min(p[k][1], q[1]), w: Math.abs(q[0] - p[k][0]) || .01, h: Math.abs(q[1] - p[k][1]) || .01 };
+          B.forEach((b, id) => { if (id !== from && id !== to && meets(s, { x: b.x + 1, y: b.y + 1, w: b.w - 2, h: b.h - 2 })) bad.push(`${from}>${to} runs through ${id}`); }); });
+        [[p[0], from], [p.at(-1), to]].forEach(([q, id]) => { const n = own(id), f = !n && fam(id);
+          if (n && n.classList.contains('actor')) { const b = B.get(id), cx = b.x + b.w / 2;
+            if (!(Math.min(Math.abs(q[0] - cx + 12), Math.abs(q[0] - cx - 12)) <= 1.5 || Math.min(Math.abs(q[1] - b.y), Math.abs(q[1] - b.y - b.h)) <= 1.5)) bad.push(`${from}>${to} ends off the figure of ${id}`); return; }
+          const shapes = n ? [n.querySelector(':scope > .n-body'), n.querySelector(':scope > .n-mask')] : f ? [f.querySelector('.family-box')] : [];
+          if (!shapes.some(x => onStroke(svg, x, q))) bad.push(`${from}>${to} ends off ${id}'s outline at ${q}`); }); });
+      // every piece named (A1)
+      nodes.forEach(n => { if (!(n.getAttribute('aria-label') || '').trim()) bad.push(`${n.dataset.id} has no name`); });
+      lines.forEach(e => { if (!(e.querySelector(':scope > title') || {}).textContent) bad.push(`a line from ${e.dataset.from} has no name`); });
+      // contrast: texts 4.5:1 on what is under them, lines and outlines 3:1 on the stage
+      const stageBg = css(pick('.stage'), 'backgroundColor'), low = [];
+      nodes.forEach(n => { const body = n.querySelector(':scope > .n-body'), fill = body && css(body, 'fill'), bg = fill && fill[3] && !n.classList.contains('partition') ? blend(fill, stageBg) : stageBg;
+        n.querySelectorAll(':scope > text, :scope > g > text').forEach(t => { if (!t.textContent.trim()) return; const r = ratio(css(t, 'fill'), bg); if (r < 4.5) low.push([n.dataset.id, t.textContent, r]); });
+        if (body && css(body, 'stroke') && css(body, 'stroke')[3]) { const k = ratio(css(body, 'stroke'), stageBg); if (k < 3) low.push([n.dataset.id, 'outline', k]); } });
+      lines.forEach(e => { const r = ratio(css(e.querySelector('path.edge'), 'stroke'), stageBg); if (r < 3) low.push(['line', e.dataset.from, e.dataset.to, r]); });
+      all('.e-lab').forEach(x => { const r = ratio(css(x.querySelector('text'), 'fill'), blend(css(x.querySelector('rect'), 'fill'), stageBg)); if (r < 4.5) low.push(['label', x.textContent, r]); });
+      check(`${tag}: ${g.nodes.length} nodes and ${g.edges.length} lines drawn; no overlap, texts inside, no line through a node, ends on outlines, every piece named, contrast`,
+        lines.length === g.edges.length && !bad.length && !low.length, [lines.length, bad.slice(0, 10), low.slice(0, 6)]);
+      h.destroy();
+    }
+  document.documentElement.dataset.theme = 'light'; el.style.removeProperty('--um-sans');
+} catch (e) { out.fail.push('threw: ' + (e && e.stack || e)); }
+const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
+</script>

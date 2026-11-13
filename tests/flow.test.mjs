@@ -102,7 +102,7 @@ const plus = (m, nodes, edges) => ({ ...m, nodes: [...m.nodes, ...nodes], edges:
 test('the shared rules pass a clean activity and the target examples 09 and 13, and name what they check', () => {
   assert.deepEqual(Object.keys(FLOW_RULES), ['flow-ends', 'initial-flows', 'final-flows', 'fork-join', 'decision-merge', 'decision-guards']);
   assert.deepEqual(run(CLEAN()), []);
-  const ex = read('../docs/diagrams/examples/09-activity.json'), ov = read('../docs/diagrams/examples/13-interaction-overview.json');
+  const ex = read('../examples/fulfil-activity.json'), ov = read('../examples/buy-book-overview.json');
   const act = [...FLOW_CONTROL, 'uml.Action', 'uml.CallBehaviorAction', 'uml.SendSignalAction', 'uml.AcceptEventAction', 'uml.ObjectNode', 'uml.DataStoreNode'];
   ex.views.forEach(v => assert.deepEqual(flowProblems(ex, v, act), [], v.id));
   assert.deepEqual(flowProblems(ov, ov.views.find(v => v.diagram === 'uml.interaction-overview'), [...FLOW_CONTROL, 'uml.InteractionUse', 'uml.Interaction']), []);

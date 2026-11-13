@@ -1,6 +1,6 @@
 <!doctype html>
 <!-- The interaction overview diagram (4.7, notes/stage-4.md §11) in headless Chrome (tests/embed.py), from lib/umlimator-all.js:
-     docs/diagrams/examples/13-interaction-overview.json, and the same with a fragment and an interaction use in its inline
+     examples/buy-book-overview.json, and the same with a fragment and an interaction use in its inline
      interaction, drawn by render() in both themes, three fonts and both directions: no overlap, every text in its face, no
      line through a node, every line's ends on its nodes' outlines, the inline interaction's markup holding no .node, .ll-hit
      or .f-hit but its own and drawing its fragment's tag, guards, use and message labels, names, axe's rules written out,
@@ -42,7 +42,7 @@ const blend = (top, bot) => [0, 1, 2].map(i => top[i] * top[3] + bot[i] * (1 - t
 const lum = c => { const f = v => v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]); };
 const ratio = (fg, bg) => { const [x, y] = [lum(blend(fg, bg)), lum(bg)].sort((p, q) => q - p); return +((x + 0.05) / (y + 0.05)).toFixed(2); };
 const css = (x, k) => rgba(getComputedStyle(x)[k]);
-const EX = await (await fetch('../docs/diagrams/examples/13-interaction-overview.json')).json();
+const EX = await (await fetch('../examples/buy-book-overview.json')).json();
 // the inline view with a fragment (an alt, two guards) and an interaction use in it, as tests/overview.test.mjs builds it
 const RICH = structuredClone(EX), Q = RICH.views.find(v => v.id === 'queue-order');
 Q.edges.splice(2, 0, { id: 'queue-use', type: 'uml.InteractionUse', label: 'Audit', parent: 'qa.1', props: { covers: ['api', 'queue'] } });

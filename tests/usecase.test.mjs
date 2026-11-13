@@ -18,7 +18,7 @@ import { describe } from '../src/map/insight.js';
 import { svgOf } from '../src/draw/svg.js';
 import '../src/uml/usecase.js';
 
-const UC = JSON.parse(readFileSync(new URL('../docs/diagrams/examples/08-use-case.json', import.meta.url)));
+const UC = JSON.parse(readFileSync(new URL('../examples/shopping-use-cases.json', import.meta.url)));
 const T = diagramOf({ diagram: 'uml.use-case' });
 const meets = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
 const inside = (o, f) => o.x >= f.x && o.y >= f.y && o.x + o.w <= f.x + f.w && o.y + o.h <= f.y + f.h;
@@ -66,7 +66,7 @@ test('the shapes: an ellipse holds its text block at its corners; its inset puts
   assert.match(SHAPE.subject.frame({ id: 's', x: 0, y: 0, w: 200, h: 100, title: '«system» Shop' }), /class="family-box"[^]*class="family-title"[^]*>«system» Shop</);
 });
 
-test('08-use-case.json draws: actors, ellipses, the subject a box holding its use cases, lines by kind, laid out clean right and down', () => {
+test('shopping-use-cases.json (example 8) draws: actors, ellipses, the subject a box holding its use cases, lines by kind, laid out clean right and down', () => {
   assert.deepEqual(validate(UC), []);
   for (const direction of ['right', 'down']) {
     const m = withDir(UC, direction), g = layout(m, 'shopping'), by = g.byId;
@@ -174,7 +174,7 @@ const BREAKS = {
   named: m => { m.nodes.find(n => n.id === 'sign-in').label = ' '; return ['sign-in']; },
   'point-names': m => { m.nodes.find(n => n.id === 'checkout').members[1].label = 'payment'; return ['checkout', 'checkout.payment', 'checkout.extras']; },
 };
-test('validators: 08-use-case.json breaks no rule; each rule fails on a model that breaks it, naming its rule and its elements, at its level', () => {
+test('validators: shopping-use-cases.json (example 8) breaks no rule; each rule fails on a model that breaks it, naming its rule and its elements, at its level', () => {
   assert.deepEqual(T.validate(UC), []);
   for (const [rule, broke] of Object.entries(BREAKS)) {
     const m = structuredClone(UC), ids = broke(m), got = T.validate(m);

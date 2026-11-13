@@ -1,6 +1,6 @@
 // The activity diagram, uml.activity (work package 4.5, notes/stage-4.md §9): its definition; its shapes (signal, object
 // node, call behaviour action, partition); lanes from partitions, nested, with a node in no lane and an empty lane, and the
-// partitions added back after the layout on their headers; docs/diagrams/examples/09-activity.json laid out clean, down and
+// partitions added back after the layout on their headers; examples/fulfil-activity.json laid out clean, down and
 // right, no line along a divider for over 24 px; the validators, the shared flow rules run under this type; describe(),
 // names, the reading order and the legend; the hooks through apply(); a 30-step session undone, redone and reopened; §17's
 // budgets. tests/activity.html draws the example in Chrome in both themes and three fonts and drives the gestures. Imports
@@ -20,7 +20,7 @@ import { describe } from '../src/map/insight.js';
 import { FLOW_RULES } from '../src/uml/flow.js';
 import { actProblems, actConnect, actMoveTo, actAdd, actRemove, actRename, actOwners } from '../src/uml/activity.js';
 
-const EX = JSON.parse(readFileSync(new URL('../docs/diagrams/examples/09-activity.json', import.meta.url), 'utf8'));
+const EX = JSON.parse(readFileSync(new URL('../examples/fulfil-activity.json', import.meta.url), 'utf8'));
 const T = diagramOf({ diagram: 'uml.activity' }), V = (m, id = 'fulfil') => m.views.find(v => v.id === id);
 const dir = (m, direction) => ({ ...m, views: m.views.map(v => ({ ...v, direction })) });
 const errors = m => validate(m).filter(p => p.level === 'error');

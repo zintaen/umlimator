@@ -17,9 +17,10 @@ import { mapContext } from '../src/map/context.js';
 import { validate } from '../src/map/validate.js';
 import { describe } from '../src/map/insight.js';
 import { svgOf } from '../src/draw/svg.js';
+import { tablesOf } from '../src/page/print.js';
 import { stActivityRow } from '../src/uml/state.js';
 
-const SM = JSON.parse(readFileSync(new URL('../docs/diagrams/examples/10-state-machine.json', import.meta.url)));
+const SM = JSON.parse(readFileSync(new URL('../examples/order-states.json', import.meta.url)));
 const T = diagramOf({ diagram: 'uml.state-machine' }), V = SM.views[0];
 const meets = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
 const inside = (o, f) => o.x >= f.x && o.y >= f.y && o.x + o.w <= f.x + f.w && o.y + o.h <= f.y + f.h;
@@ -80,7 +81,7 @@ const PINNED = {
   down: ['view order-life: edges →Fulfilling and →Payment captured cross', 'view order-life: edges →Cancelled and →Payment captured cross', 'view order-life: edges →Cancelled and Payment captured→ cross',
     'view order-life: edges →Cancelled and Fulfilling→Cancelled cross', 'view order-life: edges Capturing payment→Cancelled and Capturing payment→Payment captured cross'],
 };
-test('10-state-machine.json draws: shapes by kind, composites as boxes, regions stacked with dividers across their state, laid out clean right and down', () => {
+test('order-states.json (example 10) draws: shapes by kind, composites as boxes, regions stacked with dividers across their state, laid out clean right and down', () => {
   assert.deepEqual(validate(SM), []);
   for (const direction of ['right', 'down']) {
     const m = withDir(SM, direction), g = layout(m, 'order-life'), by = g.byId, fam = id => g.families.find(f => f.id === id);
@@ -189,7 +190,7 @@ const BREAKS = {
   'label-syntax': m => { m.edges.find(e => e.id === 't-picked').props.trigger = 'all [books'; return ['t-picked']; },
 };
 const WARNS = ['choice-guards', 'composite-entry', 'region-mixed', 'region-cross', 'internal-trigger', 'pseudo-kind', 'label-syntax'];
-test('validators: 10-state-machine.json breaks no rule; each rule fails on a model that breaks it, naming its rule and its elements, at its level', () => {
+test('validators: order-states.json (example 10) breaks no rule; each rule fails on a model that breaks it, naming its rule and its elements, at its level', () => {
   assert.deepEqual(T.validate(SM), []);
   assert.deepEqual(Object.keys(BREAKS).sort(), Object.keys(T.rules).sort());
   for (const [rule, broke] of Object.entries(BREAKS)) {
@@ -395,4 +396,23 @@ test('P1 (the maintainer\'s decision, 13 Nov 2026): the scattered worst case, mo
   assert.ok(best('label') < 1000, `a label edit ${best('label')} ms`);
   assert.ok(best('full') < 1000, `full layout ${best('full')} ms`);
   if (process.env.ST_TIMES) console.log(`# scattered: full ${best('full')} ms, a label ${best('label')} ms`);
+});
+
+test('the PDF\'s tables (§15, decision 18): each element\'s kind by word, a state\'s entry, do and exit, then its internal transitions and regions', () => {
+  const ctx = mapContext(SM), [els] = tablesOf(ctx, ctx.V[V.id], ctx.buildGeo(V.id));
+  const row = Object.fromEntries(els.rows.map(r => { const [n, k, m] = [...r.matchAll(/<td>(.*?)<\/td>/g)].map(x => x[1]);
+    return [n.replace(/<[^>]+>|\s*⤢/g, ''), [k, [...m.matchAll(/<p>(.*?)<\/p>/g)].map(x => x[1])]]; }));
+  assert.deepEqual(row.created, ['Initial pseudostate', []]);
+  assert.deepEqual(row['payment-outcome'], ['Choice', []]);
+  assert.deepEqual(row.prepaid, ['Fork', []]);
+  assert.deepEqual(row['delivery-history'], ['Shallow history', []]);
+  assert.deepEqual(row.erased, ['Terminate', []]);
+  assert.deepEqual(row.delivered, ['Final state', []]);
+  assert.deepEqual(row.Placed, ['State', ['entry / reserve the books', 'do / poll the payment provider', 'exit / log the payment result', 'address changed / update the delivery address']]);
+  assert.deepEqual(row.Fulfilling, ['Composite state', ['region Parcel', 'region Payment']]);
+  assert.deepEqual(row['In delivery'], ['Composite state', []]);
+  // a member with a guard reads back whole: trigger [guard] / effect
+  const m = structuredClone(SM); node(m, 'placed').members = [{ id: 'it', type: 'uml.InternalTransition', props: { trigger: 'nudge', guard: 'unpaid', effect: 'remind' } }];
+  assert.deepEqual(T.rows(m, m.views[0], 'placed').slice(-1), ['nudge [unpaid] / remind']);
+  assert.equal(T.word(m, 'nope'), null);
 });

@@ -2,8 +2,11 @@
 <!-- Notation (1.5): a classifier, every line end and end labels, drawn by svgOf from hand-built geometry (no diagram type
      registers a class view until 1.9), in both themes and three fonts. Text stays inside its face and its compartment,
      line ends meet the outlines, end labels keep to their boxes clear of the nodes and the line, hollow ends are the
-     stage's background and filled ends the line's colour. tests/embed.py opens this in headless Chrome and reads
-     <pre id="result">. -->
+     stage's background and filled ends the line's colour. And stage 4's open arrowheads (4.10, D1): every flow of the
+     activity and interaction overview examples, every transition of the state machine example, and the use case example's
+     includes and extends end in an open arrowhead whose tip is the line's end, on the outline of the shape it points to (a
+     circle, a diamond, a bar, a rounded box, an ellipse, a state's frame), with its generalizations' triangles. tests/embed.py
+     opens this in headless Chrome and reads <pre id="result">. -->
 <meta charset="utf-8">
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="../lib/umlimator-theme.css">
@@ -16,6 +19,13 @@ import { endLabels } from '../src/typed/draw.js';
 import { svgOf } from '../src/draw/svg.js';
 import { hostMeasure, measured } from '../src/core/text.js';
 import { STYLES } from '../src/canvas/styles.js';
+import '../src/map/typed.js';
+import '../src/uml/usecase.js';
+import '../src/uml/activity.js';
+import '../src/uml/state.js';
+import '../src/uml/overview.js';
+import { layout } from '../src/map/api.js';
+import { mapContext } from '../src/map/context.js';
 const out = { ok: [], fail: [] };
 const check = (name, cond, info) => { document.title = name; if (cond) out.ok.push(name); else out.fail.push(name + (info === undefined ? '' : ': ' + JSON.stringify(info))); };
 document.head.insertAdjacentHTML('beforeend', `<style>${STYLES}</style>`);
@@ -121,6 +131,33 @@ try {
   check('a static member is underlined; an abstract class and operation are in italics; stereotypes sit over the name',
     rows[2].getAttribute('text-decoration') === 'underline' && !rows[0].getAttribute('text-decoration') && getComputedStyle(rows[4]).fontStyle === 'italic' && getComputedStyle(rows[3]).fontStyle === 'normal'
     && getComputedStyle(ord.querySelector('.c-name')).fontStyle === 'italic' && ord.querySelector('.c-st').textContent === '«entity»' && ord.querySelector('.c-st').getBBox().y < ord.querySelector('.c-name').getBBox().y);
+  // ---- stage 4's open arrowheads (4.10, D1): each example's lines, and the state and activity fixtures' edge cases (§16:
+  // junction, choice, history, fork, join, exception handlers), in both themes and three fonts
+  const EX = [['../examples/shopping-use-cases.json', 'shopping'], ['../examples/fulfil-activity.json', 'fulfil'], ['../examples/order-states.json', 'order-life'], ['../examples/buy-book-overview.json', 'buy-book'],
+    ['state-stress.json', 'edge-cases'], ['activity-stress.json', 'edge-cases']];
+  const END = { 'uml.ControlFlow': 'open', 'uml.ObjectFlow': 'open', 'uml.Transition': 'open', 'uml.Include': 'open', 'uml.Extend': 'open', 'uml.Generalization': 'triangle', 'uml.Association': null, 'uml.CommentLink': null };
+  for (const [path, vid] of EX) {
+    const f = `${path.split('/').pop().slice(0, -5)} ${vid}`, model = await (await fetch(path)).json(), types = layout(model, vid).edges.map(e => (model.edges.find(x => x.id === e.id) || {}).type), opens = new Set();
+    for (const theme of ['light', 'dark']) for (const [fname, family] of Object.entries(FONTS)) {
+      document.documentElement.dataset.theme = theme; el.style.setProperty('--um-sans', family);
+      el.innerHTML = measured(hostMeasure(el), () => mapContext(model).buildView(vid).markup); const svg = el.querySelector('svg'), off = [];
+      svg.querySelectorAll('.edge-g').forEach(g => { const i = +g.dataset.i, path = g.querySelector('path.edge'), want = END[types[i]], ref = path.getAttribute('marker-end'), mk = ref && svg.querySelector(ref.slice(4, -1));
+        const kind = mk && mk.id.replace(/^g\d+-/, '').replace(/-d$/, ''), name = `${types[i]} ${g.dataset.from}>${g.dataset.to}`;
+        if (path.getAttribute('marker-start')) off.push(`${name}: a marker at its start`);
+        if (want === undefined) off.push(`${name}: a line of no stage 4 kind`);
+        if ((kind || null) !== (want || null)) { off.push(`${name}: ends in ${kind || 'nothing'}, not ${want || 'nothing'}`); return; }
+        if (!mk) return;
+        const r = mk.querySelector('path').getBBox(); // the marker's tip, in its own space, is its reference point: where the line ends
+        if (Math.abs(r.x + r.width - +mk.getAttribute('refX')) > .01 || Math.abs(r.y + r.height / 2 - +mk.getAttribute('refY')) > .01) off.push(`${name}: its ${kind}'s tip is not its end`);
+        if (kind === 'open') { opens.add(types[i]); if (getComputedStyle(mk.querySelector('path')).fill !== 'none') off.push(`${name}: its open arrowhead is filled`); }
+        const n = svg.querySelector(`.node[data-id="${g.dataset.to}"]`), b = n ? [n.querySelector(':scope > .n-body'), n.querySelector(':scope > .n-mask')] : [svg.querySelector(`.family[data-family="${g.dataset.to}"] .family-box`)];
+        const d = path.getAttribute('d').match(/-?\d+(\.\d+)?/g).map(Number), q = pt(svg, d.at(-2), d.at(-1));
+        if (!b.some(x => { if (!x || !x.isPointInStroke) return false; x.style.strokeWidth = '3px'; const on = x.isPointInStroke(q); x.style.strokeWidth = ''; return on; })) off.push(`${name}: its tip is off ${g.dataset.to}'s outline`); });
+      check(`${f}, ${theme}, ${fname}: each flow, transition, include and extend ends in an open arrowhead, each generalization in a triangle, the tip on the outline it points to`, svg.querySelectorAll('.edge-g').length === types.length && !off.length, off.slice(0, 8));
+    }
+    check(`${f}: its open arrowheads end ${[...opens].sort().join(', ')}`, opens.size > 0, [...opens]);
+  }
+  document.documentElement.dataset.theme = 'light'; el.style.removeProperty('--um-sans');
 } catch (e) { out.fail.push('threw: ' + (e && e.stack || e)); }
 const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
 </script>

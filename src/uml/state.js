@@ -1,8 +1,8 @@
-import { TYPED, registerDiagramType } from '../core/registry.js';
+import { registerDiagramType } from '../core/registry.js';
 import { esc, fit, textW } from '../core/text.js';
 import { SHAPE, portsOn, r2 } from '../draw/shapes.js';
 import { layoutTyped } from '../typed/layout.js';
-import '../typed/edit.js'; // TYPED.edit, which the activity rows below extend
+import '../typed/edit.js'; // TYPED.edit, which asks edits.member for the activity rows below
 import './class.js'; // SHAPE.note, a comment's look
 import { flowWrap } from './flow.js'; // SHAPE.initial, final, diamond and bar too
 import { ownersOn, readingOrder } from './owners.js';
@@ -398,24 +398,9 @@ function stRemove(model, view, ids, fromModel) {
   return { commands: ids.map(id => ({ op: 'delete', id })), say: `Deleted ${rs.length === 1 ? 'region ' + (ST_HAS(x.label) ? x.label : x.id) : stPlural(rs.length, 'region')} and the ${stPlural(held, 'element')} ${rs.length === 1 ? 'it' : 'they'} held` };
 }
 
-/* The panel's member rows reach a type only through member.add and member.edit, which give a member, not commands; so a
-   row `entry / …` typed on a selected state is read here first, before the panel commits it (§7.2, §10.3).
-   ponytail: a type's own extension of TYPED.edit; a member hook that may return commands (src/canvas/edit.js) would take
-   its place */
-const stTypedEdit = TYPED.edit;
-TYPED.edit = (I, c) => {
-  if (stTypedEdit) stTypedEdit(I, c);
-  const row = e => { const t = e.target, d = t && t.dataset, v = c.view(), s = c.api.sel();
-    if (!d || (d.new == null && d.m == null) || !t.closest || !t.closest('.um-editor') || !v || v.diagram !== 'uml.state-machine' || !s || !c.api.can(d.new != null ? 'add' : 'rename')) return;
-    if (d.m != null && t.value === d.was) return;
-    const r = stActivityRow(c.model(), s.id, t.value, d.m ?? null); if (!r) return;
-    e.preventDefault(); e.stopPropagation();
-    if (r.error) { t.setAttribute('aria-invalid', 'true'); c.api.status(r.error); return; }
-    t.removeAttribute('aria-invalid'); if (d.new != null) t.value = ''; else d.was = t.value;
-    I.ran(r); };
-  c.api.root.addEventListener('keydown', e => { if (e.key === 'Enter') row(e); }, true);
-  c.api.root.addEventListener('change', row, true);
-};
+/* the panel's member rows (edits.member, src/typed/edit.js; notes/stage-5.md §12.1): a row `entry / …` typed on a selected
+   state is read here first, before the panel commits it (§7.2, §10.3); any other row is the panel's (ST_MEMBER) */
+const stMemberRow = (model, view, owner, id, text) => stActivityRow(model, owner, text, id);
 
 /* ---- the type ---- */
 const ST_STEREO = { key: 'stereotypes', label: 'Stereotypes', kind: 'list' };
@@ -440,7 +425,15 @@ const ST_TYPE = registerDiagramType('uml.state-machine', {
   validate: stProblems,
   rules: ST_RULES,
   describe: stDescribe,
-  edits: { add: stAdd, rename: stRename, moveTo: stMoveTo, remove: stRemove },
+  // the PDF's tables (§15, decision 18): an element's kind, and a state's rows: entry, do and exit, then its members as the
+  // panel prints them (each internal transition's `trigger [guard] / effect`, each region); null: its members as before
+  word: (model, id) => { const I = stIndex(model), x = (I.N.get(id) || {}).x; if (!x) return null;
+    return x.type === 'uml.Pseudostate' ? ST_OWN(ST_KIND_WORD, stKind(x)) || 'Pseudostate' : x.type === 'uml.FinalState' ? 'Final state'
+      : x.type === 'uml.State' ? (I.subs(id).length || stMembers(x, 'uml.Region').length ? 'Composite state' : 'State') : null; },
+  rows: (model, view, id) => { const x = (stIndex(model).N.get(id) || {}).x;
+    return x && x.type === 'uml.State' ? [...stActs(x).map(([k, t]) => `${k} / ${t}`), ...ST_ARR(x.members).filter(ST_OBJ).map(ST_MEMBER.print)] : null; },
+  // member is not enumerable: Object.keys(edits) stays 4.6's four (tests/state.test.mjs), as notes/stage-5.md §12.1 (as built) says
+  edits: Object.defineProperty({ add: stAdd, rename: stRename, moveTo: stMoveTo, remove: stRemove }, 'member', { value: stMemberRow }),
 });
 
 export { ST_TYPE, ST_RULES, stGeo, stProblems, stDescribe, stAdd, stRename, stMoveTo, stActivityRow, stOwners, stRemove, ST_MEMBER };
