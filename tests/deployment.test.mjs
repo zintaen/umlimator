@@ -20,7 +20,7 @@ import { svgOf } from '../src/draw/svg.js';
 import { layoutTyped } from '../src/typed/layout.js';
 import '../src/uml/deployment.js';
 
-const DEP = JSON.parse(readFileSync(new URL('../docs/diagrams/examples/06-deployment.json', import.meta.url)));
+const DEP = JSON.parse(readFileSync(new URL('../examples/bookshop-deployment.json', import.meta.url)));
 const T = diagramOf({ diagram: 'uml.deployment' });
 const meets = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
 const inside = (o, f) => o.x >= f.x && o.y >= f.y && o.x + o.w <= f.x + f.w && o.y + o.h <= f.y + f.h;
@@ -86,7 +86,7 @@ test('06-deployment.json draws: cubes, boxes nested by parent, artifacts, compon
     const m = withDir(DEP, direction), g = layout(m, 'production'), by = g.byId, fam = Object.fromEntries(g.families.map(f => [f.id, f]));
     assert.deepEqual(check(m, 'production'), [], direction);
     for (const p of g.nodes) for (const q of g.nodes) assert.ok(p === q || !meets(p, q), `${direction}: ${p.id} and ${q.id} overlap`);
-    assert.deepEqual(['edge', 'database', 'queue'].map(id => by[id].shape), ['cube', 'cube', 'cube'], 'a target holding nothing shown is a closed cube');
+    assert.deepEqual(['edge-node', 'database', 'queue-node'].map(id => by[id].shape), ['cube', 'cube', 'cube'], 'a target holding nothing shown is a closed cube');
     assert.deepEqual(['storefront-bundle', 'edge-routes', 'shop-api-jar', 'shop-api-config'].map(id => by[id].shape), ['artifact', 'artifact', 'artifact', 'artifact']);
     assert.deepEqual(['shop-api', 'order-worker'].map(id => by[id].shape), ['component', 'component']);
     assert.deepEqual(Object.keys(fam).sort(), ['app-server', 'browser', 'jvm', 'shopper-device']);
@@ -197,7 +197,7 @@ test('names, reading order and legend (A1): each box and what it holds, then the
   assert.equal(g.byId['shop-api-jar'].aria, 'Artifact shop-api.jar, on Java 21 runtime, manifests Shop API');
   assert.equal(g.byId['shop-api-config'].aria, 'Deployment specification shop-api.yaml, on Java 21 runtime');
   assert.equal(g.byId['edge-routes'].aria, 'Artifact routes.conf, on Edge proxy', 'deployed by a line');
-  assert.equal(g.byId.edge.aria, 'Node Edge proxy, 1 artifact deployed');
+  assert.equal(g.byId['edge-node'].aria, 'Node Edge proxy, 1 artifact deployed');
   assert.equal(g.byId.database.aria, 'Node Database');
   assert.equal(g.byId['shop-api'].aria, 'Component Shop API');
   const e = id => g.edges.find(x => x.id === id).aria;
@@ -206,7 +206,7 @@ test('names, reading order and legend (A1): each box and what it holds, then the
   assert.equal(e('api-jar-manifests-api'), 'Manifestation from shop-api.jar to Shop API');
   assert.match(s, /data-shape="cube" tabindex="-1" role="img" aria-label="Node Edge proxy, 1 artifact deployed"/);
   assert.match(s, /role="img" aria-label="Execution environment Java 21 runtime, in Application server, 3 artifacts deployed"/);
-  assert.deepEqual(g.order.slice(0, 7), ['shopper-device', 'browser', 'storefront-bundle', 'edge', 'edge-routes', 'app-server', 'jvm']);
+  assert.deepEqual(g.order.slice(0, 7), ['shopper-device', 'browser', 'storefront-bundle', 'edge-node', 'edge-routes', 'app-server', 'jvm']);
   assert.deepEqual(g.order.slice(14), DEP.edges.map(x => x.id), 'then every line');
   assert.deepEqual(g.legend.map(l => /<b>([^<]+)<\/b>/.exec(l)[1]), ['Deployment', 'Manifestation', 'Communication path', 'Dependency']);
   // stereotypes: over a cube's name, in a box's title and names
@@ -226,25 +226,25 @@ test('describe(): the view in sentences, each element in reading order, then eac
 
 test('the PDF\'s tables (§11): a target\'s kind and what is deployed on it, by nesting or by a line; an artifact\'s, what it manifests', () => {
   const v = DEP.views[0];
-  assert.deepEqual(['jvm', 'app-server', 'edge', 'shop-api-config', 'shop-api', 'nowhere'].map(id => T.word(DEP, id)), ['Execution environment', 'Device', 'Node', 'Deployment specification', 'Component', null]);
+  assert.deepEqual(['jvm', 'app-server', 'edge-node', 'shop-api-config', 'shop-api', 'nowhere'].map(id => T.word(DEP, id)), ['Execution environment', 'Device', 'Node', 'Deployment specification', 'Component', null]);
   assert.deepEqual(T.rows(DEP, v, 'jvm'), ['shop-api.jar', 'order-worker.jar', 'shop-api.yaml']);
-  assert.deepEqual(T.rows(DEP, v, 'edge'), ['routes.conf, by «deploy»']);
+  assert.deepEqual(T.rows(DEP, v, 'edge-node'), ['routes.conf, by «deploy»']);
   assert.deepEqual(T.rows(DEP, v, 'database'), []);
   assert.deepEqual(T.rows(DEP, v, 'shop-api-jar'), ['manifests Shop API']);
   assert.equal(T.rows(DEP, v, 'shop-api'), null);
   // a «deploy» line from what is no artifact (deploy-ends' error) is no artifact deployed
-  const bad = structuredClone(DEP); bad.edges.push(L('bad', 'Deployment', 'database', 'edge'));
-  assert.deepEqual(T.rows(bad, v, 'edge'), ['routes.conf, by «deploy»']);
-  assert.equal(layout(bad, 'production').byId.edge.aria, 'Node Edge proxy, 1 artifact deployed');
+  const bad = structuredClone(DEP); bad.edges.push(L('bad', 'Deployment', 'database', 'edge-node'));
+  assert.deepEqual(T.rows(bad, v, 'edge-node'), ['routes.conf, by «deploy»']);
+  assert.equal(layout(bad, 'production').byId['edge-node'].aria, 'Node Edge proxy, 1 artifact deployed');
 });
 
 // ---- §10.3: validators, each with a passing and a failing case
 const BREAKS = {
-  'deploy-ends': m => { m.edges.push(L('bad', 'Deployment', 'edge', 'database')); return ['bad', 'edge', 'database']; },
+  'deploy-ends': m => { m.edges.push(L('bad', 'Deployment', 'edge-node', 'database')); return ['bad', 'edge-node', 'database']; },
   'deployed-twice': m => { m.edges.push(L('twice', 'Deployment', 'shop-api-jar', 'database')); return ['twice', 'shop-api-jar', 'jvm', 'database']; },
   'nest-kinds': m => { m.nodes.find(n => n.id === 'database').parent = 'shop-api'; return ['database', 'shop-api']; },
-  'path-ends': m => { m.edges.push(L('bad', 'CommunicationPath', 'edge', 'shop-api-jar')); return ['bad', 'edge', 'shop-api-jar']; },
-  'manifest-ends': m => { m.edges.push(L('bad', 'Manifestation', 'edge', 'shop-api')); return ['bad', 'edge']; },
+  'path-ends': m => { m.edges.push(L('bad', 'CommunicationPath', 'edge-node', 'shop-api-jar')); return ['bad', 'edge-node', 'shop-api-jar']; },
+  'manifest-ends': m => { m.edges.push(L('bad', 'Manifestation', 'edge-node', 'shop-api')); return ['bad', 'edge-node']; },
 };
 test('validators: 06-deployment.json breaks no rule; each rule fails on a model that breaks it, naming its rule and its elements, at its level', () => {
   assert.deepEqual(T.validate(DEP, DEP.views[0]), []);
@@ -266,7 +266,7 @@ test('validators: 06-deployment.json breaks no rule; each rule fails on a model 
   assert.equal(T.validate(model([N('o', 'Node', 'O'), N('i', 'Device', 'I', 'o'), N('a', 'Artifact', 'a')], [L('x', 'Manifestation', 'a', 'o')]))[0].message, 'manifest-ends: x runs to node o ("O"): «manifest» is drawn to a component only');
   // an artifact nested and deployed by a line to its own target is said once, by neither rule; a path from a node to itself is not one
   const own = structuredClone(DEP); own.edges.push(L('again', 'Deployment', 'shop-api-jar', 'jvm')); assert.deepEqual(T.validate(own), []);
-  const loop = structuredClone(DEP); loop.edges.push(L('loop', 'CommunicationPath', 'edge', 'edge')); assert.deepEqual(T.validate(loop).map(p => p.rule), ['path-ends']);
+  const loop = structuredClone(DEP); loop.edges.push(L('loop', 'CommunicationPath', 'edge-node', 'edge-node')); assert.deepEqual(T.validate(loop).map(p => p.rule), ['path-ends']);
   // nor is one from a target to what it holds, at any depth (never drawn)
   for (const [a, b] of [['jvm', 'app-server'], ['app-server', 'jvm'], ['shopper-device', 'browser']]) { const m = structuredClone(DEP); m.edges.push(L('in', 'CommunicationPath', a, b));
     assert.deepEqual(T.validate(m).map(p => p.rule), ['path-ends'], `${a} to ${b}`); }
@@ -274,7 +274,7 @@ test('validators: 06-deployment.json breaks no rule; each rule fails on a model 
 
 // ---- §12: editing
 test('the Owner field, connect and remove: targets own artifacts and targets; a deployment or manifestation drawn backwards starts at the artifact; ends no path can join are refused; a target deleted says what it held', () => {
-  const art = DEP.nodes.find(n => n.id === 'shop-api-jar'), targets = ['shopper-device', 'browser', 'edge', 'app-server', 'jvm', 'database', 'queue'];
+  const art = DEP.nodes.find(n => n.id === 'shop-api-jar'), targets = ['shopper-device', 'browser', 'edge-node', 'app-server', 'jvm', 'database', 'queue-node'];
   assert.deepEqual(T.owners(DEP, art).map(o => o.id), targets);
   assert.deepEqual(T.owners(DEP, DEP.nodes.find(n => n.id === 'jvm')).map(o => o.label), ['Shopper\'s device', 'Web browser', 'Edge proxy', 'Application server', 'Java 21 runtime', 'Database', 'Order queue']);
   assert.equal(T.owners(DEP, DEP.nodes.find(n => n.id === 'shop-api')), null); assert.equal(T.owners(DEP, DEP.edges[0]), null);
@@ -282,11 +282,11 @@ test('the Owner field, connect and remove: targets own artifacts and targets; a 
   assert.deepEqual(T.edits.connect(DEP, v, 'database', 'edge-routes', null, line('Deployment')), [{ op: 'add', element: { id: 'deployment1', type: 'uml.Deployment', from: 'edge-routes', to: 'database' }, view: 'production' }]);
   assert.deepEqual(T.edits.connect(DEP, v, 'shop-api', 'shop-api-jar', null, line('Manifestation')), [{ op: 'add', element: { id: 'manifestation1', type: 'uml.Manifestation', from: 'shop-api-jar', to: 'shop-api' }, view: 'production' }]);
   assert.equal(T.edits.connect(DEP, v, 'edge-routes', 'database', null, line('Deployment')), null, 'from the artifact: the default');
-  assert.equal(T.edits.connect(DEP, v, 'edge', 'database', null, line('CommunicationPath')), null);
-  assert.equal(T.edits.connect(DEP, v, 'edge', 'shop-api', null, line('Dependency')), null);
-  assert.match(T.edits.connect(DEP, v, 'edge', 'database', null, line('Deployment')).error, /^A deployment runs from an artifact/);
-  assert.match(T.edits.connect(DEP, v, 'edge', 'shop-api-jar', null, line('CommunicationPath')).error, /^A communication path joins two/);
-  assert.match(T.edits.connect(DEP, v, 'edge', 'edge', null, line('CommunicationPath')).error, /^A communication path joins two/, 'not to itself');
+  assert.equal(T.edits.connect(DEP, v, 'edge-node', 'database', null, line('CommunicationPath')), null);
+  assert.equal(T.edits.connect(DEP, v, 'edge-node', 'shop-api', null, line('Dependency')), null);
+  assert.match(T.edits.connect(DEP, v, 'edge-node', 'database', null, line('Deployment')).error, /^A deployment runs from an artifact/);
+  assert.match(T.edits.connect(DEP, v, 'edge-node', 'shop-api-jar', null, line('CommunicationPath')).error, /^A communication path joins two/);
+  assert.match(T.edits.connect(DEP, v, 'edge-node', 'edge-node', null, line('CommunicationPath')).error, /^A communication path joins two/, 'not to itself');
   // a line between a box and what it holds is never drawn (a line from a box to what it holds is left out): refused, either way, at any depth
   assert.deepEqual(T.edits.connect(DEP, v, 'jvm', 'shop-api-jar', null, line('Deployment')), { error: 'shop-api.jar is already deployed on Java 21 runtime by nesting' });
   assert.deepEqual(T.edits.connect(DEP, v, 'shop-api-jar', 'app-server', null, line('Deployment')), { error: 'shop-api.jar is already deployed on Application server by nesting' });
@@ -304,8 +304,8 @@ test('the Owner field, connect and remove: targets own artifacts and targets; a 
   assert.ok(!gone.edges.some(e => ['api-jar-manifests-api', 'edge-to-app'].includes(e.id)), 'and the lines to them');
   assert.deepEqual(validate(gone), []);
   // a drop into a box and the Owner field emit reparent (stage 2's): the artifact is then deployed by nesting
-  const moved = apply(DEP, [{ op: 'reparent', id: 'edge-routes', parent: 'edge' }]), g = layout(moved, 'production');
-  assert.ok(g.families.some(f => f.id === 'edge' && f.nodeIds.includes('edge-routes')) && !g.edges.some(e => e.id === 'routes-on-edge'), 'the edge proxy is a box now; the line from it to what it holds is left out');
+  const moved = apply(DEP, [{ op: 'reparent', id: 'edge-routes', parent: 'edge-node' }]), g = layout(moved, 'production');
+  assert.ok(g.families.some(f => f.id === 'edge-node' && f.nodeIds.includes('edge-routes')) && !g.edges.some(e => e.id === 'routes-on-edge'), 'the edge proxy is a box now; the line from it to what it holds is left out');
   assert.equal(g.byId['edge-routes'].aria, 'Artifact routes.conf, on Edge proxy');
 });
 
@@ -347,7 +347,7 @@ test('a cube box\'s faces, in its frame: no line runs inside a face, no line\'s 
     const g = layout(withDir(m, direction), v); assert.ok(g.families.length > 0); assert.deepEqual(faceIssues(g), [], `${name} ${direction}`); }
 });
 
-test('P1 (§14): on 50 nodes and artifacts, 50 lines and boxes five deep, a full layout, a path\'s label, an artifact moved into another node and a stereotype (moving nothing), laid out and drawn under CI\'s 1 s ceiling, the 100 ms target printed (CPU, best of seven) (timed)', () => {
+test('P1 (§14): on 50 nodes and artifacts, 50 lines and boxes five deep, a full layout, a path\'s label, an artifact moved into another node and a stereotype (a header grown, laid out again), laid out and drawn under CI\'s 1 s ceiling, the 100 ms target printed (CPU, best of seven) (timed)', () => {
   assert.equal(STRESS.nodes.length, 50); assert.equal(STRESS.edges.length, 50); assert.deepEqual(validate(STRESS), []);
   const timed = f => { const c = process.cpuUsage(); f(); const u = process.cpuUsage(c); return (u.user + u.system) / 1000; };
   const memos = {}, draw = m => mapContext(m, { memos }).buildView('v');
