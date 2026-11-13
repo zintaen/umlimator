@@ -1,7 +1,7 @@
 import { TYPED } from '../core/registry.js';
 import { clauseFit, esc, fit, measureText, sansW, textW, wrap2 } from '../core/text.js';
 import { roundPath, trimLine } from './lines.js';
-import { SHAPE, cardLook, drawnPts, noteOf, r2, sidePorts, tabLine } from './shapes.js';
+import { SHAPE, cardLook, drawnPts, r2, sidePorts, tabLine } from './shapes.js';
 import { CHG } from '../layout/layered.js';
 import { WIRES, badgesOf, mapTabs, toneOf } from '../map/cards.js';
 import { KIND, SIGIL, hasKey } from '../map/kinds.js';
@@ -30,23 +30,23 @@ function svgOf(geo, opts = {}) {
   const marker = (n, c, k = 1) => `<marker id="${id}-${n}" markerWidth="${10 * k}" markerHeight="${8 * k}" refX="${9 * k}" refY="${4 * k}" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M0 0 L${10 * k} ${4 * k} L0 ${8 * k} Z" fill="${c}"/></marker>`;
   const MC = { d: LINE, g: 'var(--um-green)', r: 'var(--um-rose)', v: 'var(--um-violet)', h: 'var(--um-cyan)', ...Object.fromEntries(WIRES.map(w => [w[0], `var(--um-w-${w[0]})`])) };
   const heavy = [...new Set(edges.filter(e => e.weight > 1).map(e => lstyle(e).m + '-w' + e.weight))]; // a heavier line's arrowhead grows with it
-  // the notation (0.15.0): each card's look, and each line as drawn, its ends on the cards' outlines (a map's cards only)
-  const notation = map ? noteOf(opts.shapes) || 'box' : 'box', kidsOf = n => n.kids != null ? n.kids : opts.childCount ? opts.childCount(n.id) : 0;
+  // each card's look (0.15.0), and each line as drawn, its ends on the cards' outlines (a map's cards only)
+  const kidsOf = n => n.kids != null ? n.kids : opts.childCount ? opts.childCount(n.id) : 0;
   // another view's node is drawn in its own shape, when it names one (1.5): its lines end where its ports() put them, on
   // its outline already, so they are drawn as given
-  const ports = map ? sidePorts(geo) : null, looks = new Map(map ? nodes.map(n => [n, cardLook(n, notation, !!(kidsOf(n) || n.opens) && opts.openHint !== false, ports.get(n))])
-    : nodes.map(n => [n, n.shape != null && cardLook(n, 'box', false, null)]).filter(x => x[1]));
+  const ports = map ? sidePorts(geo) : null, looks = new Map(map ? nodes.map(n => [n, cardLook(n, true, !!(kidsOf(n) || n.opens) && opts.openHint !== false, ports.get(n))])
+    : nodes.map(n => [n, n.shape != null && cardLook(n, false, false, null)]).filter(x => x[1]));
   const drawn = edges.map(e => map && looks.size ? drawnPts(e, n => looks.get(n) || null) : e.pts);
   const T = !map && TYPED.lines ? TYPED.lines({ id, edges, drawn, lstyle, MC }) : null; // a typed view's line ends and end labels (src/typed/draw.js)
   let s = `<svg viewBox="${B.x} ${B.y} ${B.w} ${B.h}" data-w="${B.w}" data-h="${B.h}" role="group" aria-label="${esc(opts.title || 'Diagram')}" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">
     <defs>${marker('d', LINE)}${marker('g', 'var(--um-green)')}${marker('r', 'var(--um-rose)')}${marker('v', 'var(--um-violet)')}${marker('h', 'var(--um-cyan)')}${map ? WIRES.map(w => marker(w[0], `var(--um-w-${w[0]})`)).join('') : ''}${heavy.map(m => { const [c, k] = m.split('-w'); return marker(m, MC[c], 1 + (k - 1) * .35); }).join('')}${T ? T.defs : ''}</defs>`;
   const families = geo.families || [], familyDepth = f => f.parent ? 1 + familyDepth(families.find(p => p.id === f.parent) || {}) : 0;
-  families.slice().sort((a,b) => familyDepth(a)-familyDepth(b)).forEach(f => { // in c4 every box is a boundary, dashed as Structurizr draws one (a toned box is dashed in any notation)
+  families.slice().sort((a,b) => familyDepth(a)-familyDepth(b)).forEach(f => {
     // a typed view's box whose shape draws a frame (notes/stage-2.md §5): the shape's markup, in the group the canvas selects. It keeps
     // .family-title (the audit, the canvas's "Box …, selected") and draws its border with class family-box: the canvas outlines a
     // selected box and the box under a drag by .family-box alone (src/canvas/styles.js)
     if (!map && hasKey(SHAPE, f.shape) && SHAPE[f.shape].frame) { s += `<g class="family" data-family="${esc(f.id)}"${f.parent ? ` data-parent="${esc(f.parent)}"` : ''}${f.aria ? ` role="img" aria-label="${esc(f.aria)}"` : ''}>${SHAPE[f.shape].frame(f)}</g>`; return; }
-    s += `<g class="family${f.tone ? ' toned' : ''}" data-family="${esc(f.id)}"${f.parent ? ` data-parent="${esc(f.parent)}"` : ''}${f.tone ? ` style="--um-tone:${toneOf(f)}"` : ''}><rect class="family-box" x="${f.x}" y="${f.y}" width="${f.w}" height="${f.h}" rx="14" stroke="var(--um-${familyDepth(f) ? 'cyan' : 'border-2'})"${notation === 'c4' ? ' stroke-dasharray="7 5"' : ''}/>
+    s += `<g class="family${f.tone ? ' toned' : ''}" data-family="${esc(f.id)}"${f.parent ? ` data-parent="${esc(f.parent)}"` : ''}${f.tone ? ` style="--um-tone:${toneOf(f)}"` : ''}><rect class="family-box" x="${f.x}" y="${f.y}" width="${f.w}" height="${f.h}" rx="14" stroke="var(--um-${familyDepth(f) ? 'cyan' : 'border-2'})"/>
       <text class="family-title" x="${f.x+12}" y="${f.y+18}" fill="var(--um-muted)" data-t="ft" data-o="${esc(f.id)}">${esc(!map && f.title || f.label || f.id)}</text>${(f.tabs || []).map(t => t.fold ? `
       <g class="fold-hint"><title>Fold back into one card (E, or Alt + click a card in it)</title><rect x="${t.x}" y="${f.y - 8}" width="${t.w}" height="16" rx="8" class="n-mask" stroke="var(--um-accent)"/><text x="${t.x + t.w / 2}" y="${f.y + 4}" text-anchor="middle" class="badge-tx" fill="var(--um-accent)">⤡</text></g>` : `
       <g class="pub-tab" data-badge="${t.badge}"><rect x="${t.x}" y="${f.y - 8}" width="${t.w}" height="15" rx="4" fill="${t.fill}"/><text x="${t.x + t.w / 2}" y="${f.y + 3}" text-anchor="middle" class="tab-tx">${esc(t.text)}</text></g>`).join('')}</g>`;
@@ -107,8 +107,8 @@ function svgOf(geo, opts = {}) {
     if (!map && hasKey(SHAPE, n.shape) && SHAPE[n.shape].draw) { s += SHAPE[n.shape].draw(n, col(n.k), fill(n.k)); return; } // a typed view's own shape: a class box (1.5), a note (1.9)
     const c = col(n.k), f = fill(n.k), removed = n.change === 'removed', planned = n.change === 'planned';
     const L = looks.get(n) || null, S = L && L.S; // a shaped card (0.15.0); null: a box, drawn as before
-    const pub = map && n.k === 'm-public', priv = map && n.k === 'm-script', ext = map && n.k === 'm-ext', verb = map && n.k === 'm-verb', hook = map && n.k === 'm-hook' && String(n.shape ?? '').toLowerCase() !== 'box';
-    const dash = removed || ext || planned || (map && notation !== 'box' && n.k === 'external'); // an external card is dashed where a notation draws types (the legend says so in every notation)
+    const pub = map && n.k === 'm-public', priv = map && n.k === 'm-script', ext = map && n.k === 'm-ext', verb = map && n.k === 'm-verb';
+    const dash = removed || ext || planned || (map && n.k === 'external'); // an external card is dashed (the legend says so)
     const rx = verb ? n.h / 2 : map ? 10 : 9;
     const kids = kidsOf(n), stacked = !!(kids || n.opens); // opens a view, loaded or not (#47)
     const subject = opts.subject === n.id;
@@ -145,13 +145,11 @@ function svgOf(geo, opts = {}) {
     else {
       if (stacked) parts.push(`<rect x="${n.x + 8}" y="${n.y + 8}" width="${n.w}" height="${n.h}" rx="${rx}" class="n-stack" stroke="${c}"/><rect x="${n.x + 4}" y="${n.y + 4}" width="${n.w}" height="${n.h}" rx="${rx}" class="n-stack" stroke="${c}"/>`);
       if (pub) parts.push(`<rect x="${n.x - 4}" y="${n.y - 4}" width="${n.w + 8}" height="${n.h + 8}" rx="14" class="n-ring" stroke="${c}"/>`);
-      if (hook) { const hx = Math.min(16, n.h / 3), pts = `${n.x + hx},${n.y} ${n.x + n.w - hx},${n.y} ${n.x + n.w},${n.y + n.h / 2} ${n.x + n.w - hx},${n.y + n.h} ${n.x + hx},${n.y + n.h} ${n.x},${n.y + n.h / 2}`;
-        parts.push(`<polygon points="${pts}" class="n-mask"/><polygon points="${pts}" class="n-body" fill="${f}" stroke="${c}" stroke-linejoin="round"/>`); }
-      else parts.push(`<rect x="${n.x}" y="${n.y}" width="${n.w}" height="${n.h}" rx="${rx}" class="n-mask"/>
+      parts.push(`<rect x="${n.x}" y="${n.y}" width="${n.w}" height="${n.h}" rx="${rx}" class="n-mask"/>
       <rect x="${n.x}" y="${n.y}" width="${n.w}" height="${n.h}" rx="${rx}" class="n-body" fill="${f}" stroke="${c}" ${dash ? 'stroke-dasharray="6 4"' : ''} ${removed ? 'opacity=".6"' : ''}/>`); }
-    // the mark, centred on the face; in the uml notation a box's own sigil gives way to UML's component icon
-    const glyph = L && SIGIL[L.sh] ? L.sh : notation === 'uml' && !L && !String(n.k).startsWith('m-') ? 'component' : n.k; // a person's, robot's, phone's, terminal's, folder's or node's own mark
-    parts.push((() => { const I = (opts.icons || {})[n.icon], x = map ? n.x + 14 : n.x + (verb ? 14 : hook ? 17 : 9), y = map ? fy - 14 : n.y + (priv ? 8 : 11), M = map ? 28 : 16;  // map: one 28 px mark, left, centred
+    // the mark, centred on the face
+    const glyph = L && SIGIL[L.sh] ? L.sh : n.k; // a person's, robot's, phone's, terminal's, folder's or node's own mark
+    parts.push((() => { const I = (opts.icons || {})[n.icon], x = map ? n.x + 14 : n.x + (verb ? 14 : 9), y = map ? fy - 14 : n.y + (priv ? 8 : 11), M = map ? 28 : 16;  // map: one 28 px mark, left, centred
 return I && I.src ? `<rect x="${x - M * 3 / 28}" y="${y - M * 3 / 28}" width="${M * 34 / 28}" height="${M * 34 / 28}" rx="${M / 4}" class="n-logo${I.dark ? ' dark' : ''}"/><image href="${I.src}" x="${x}" y="${y}" width="${M}" height="${M}"/>`
   : I && I.g ? `<g transform="translate(${x} ${y}) scale(${M / 24})" class="n-sigil" fill="none" stroke="${c}" stroke-width="${1.75 * 24 / M}" stroke-linecap="round" stroke-linejoin="round">${I.g}</g>`
   : `<g transform="translate(${x} ${y}) scale(${M / 16})" class="n-sigil" fill="none" stroke="${c}" stroke-width="${1.75 * 16 / M}" stroke-linecap="round" stroke-linejoin="round">${SIGIL[glyph]}</g>`; })());

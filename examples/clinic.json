@@ -1,7 +1,6 @@
 {
   "title": "Clinic bookings",
   "root": "context",
-  "shapes": "c4",
   "nodes": [
     {
       "id": "patient",
