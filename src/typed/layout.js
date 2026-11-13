@@ -12,7 +12,7 @@ import { NW, OWN_ROUTE, labelW, layoutGraph } from '../layout/layered.js';
 // what moves a typed view's geometry: every field of the view layoutGraph reads but VIEW_PAINT (a test holds the two lists to
 // layered.js), and these of a node and a line. Anything else (a colour, a `props` field) only repaints
 const VIEW_GEO = ['abs', 'authors', 'blocks', 'containers', 'direction', 'fan', 'flipped', 'gap', 'groups', 'hub', 'intake', 'labelGaps', 'laneGap', 'lanes', 'mainSteps', 'nodeH', 'quick', 'repair', 'reroute', 'rgap', 'turned', 'typed'];
-const VIEW_PAINT = ['tour', 'subAndChips'], NODE_GEO = ['id', 'col', 'row', 'w', 'h', 'ax', 'ay'], EDGE_GEO = ['id', 'from', 'to', 'label', 'step', 'fromSide', 'toSide', 'back', 'fixed', 'sublabel', 'cut', 'fromPort', 'toPort', 'inner', 'portRank'];
+const VIEW_PAINT = ['tour', 'subAndChips'], NODE_GEO = ['id', 'col', 'row', 'w', 'h', 'ax', 'ay'], EDGE_GEO = ['id', 'from', 'to', 'label', 'step', 'fromSide', 'toSide', 'back', 'fixed', 'sublabel', 'cut', 'fromPort', 'toPort', 'inner', 'portRank', 'portMin'];
 const geometryKey = dg => JSON.stringify([VIEW_GEO.map(k => dg[k]), (dg.nodes || []).map(n => NODE_GEO.map(k => n[k])), (dg.edges || []).map(e => EDGE_GEO.map(k => e[k]))]);
 
 // direction "down": laid out left to right with every box turned, then turned back, x for y and the sides L for T, R for B
@@ -59,6 +59,8 @@ function layoutTyped(dg, memo) {
      leaves (a port on the left border leaves right) and its point is on the port's own border
    - a line's portRank: the port's place in its owner's members, breaking ties in the order of ports along a side; a number,
      or [from, to] for a line with a port at each end
+   - a line's portMin: the least length in px of its port's box along the border (milestone 4b's boundary event, a 32 px
+     circle: notes/milestone-4b.md §6.2), its ends centred in it; a number, or [from, to] as portRank. None: 2 + 10 k px
    - a box's pad: its padding in px where it is more than stage 2's 12 (48 where it or a box it holds has ports with lines, §7);
      a box's round: true grows its frame by √2 about its centre, so the ellipse drawn in it holds its contents (§9.3)
    - a box's head: px of header room over stage 2's 24, on the side its title is on (the top; laid out down, the left, which
@@ -90,10 +92,12 @@ function placePorts(sides, turned) {
 }
 function spreadPorts({ n, side, ends }, turned) {
   const v = side === 'L' || side === 'R', a0 = v ? n.y : n.x, len = v ? n.h : n.w, far = x => v ? x.other.y + x.other.h / 2 : x.other.x + x.other.w / 2;
-  const rank = x => { const r = x.e.portRank; return (Array.isArray(r) ? r[x.from ? 0 : 1] : r) ?? 1e9; }, byFar = (a, b) => far(a) - far(b), groups = [];
+  const per = (x, r) => Array.isArray(r) ? r[x.from ? 0 : 1] : r, least = x => { const m = per(x, x.e.portMin); return Number.isFinite(m) ? m : 0; };
+  const rank = x => per(x, x.e.portRank) ?? 1e9, byFar = (a, b) => far(a) - far(b), groups = [];
   ends.forEach(x => { const g = x.port != null && groups.find(o => o.port === x.port); if (g) g.ends.push(x); else groups.push({ port: x.port, ends: [x] }); });
   groups.forEach(g => { g.faces = [g.ends.filter(x => !x.inner).sort(byFar), g.ends.filter(x => x.inner).sort(byFar)];
-    g.at = g.ends.reduce((a, x) => a + far(x), 0) / g.ends.length; g.L = g.port == null ? 2 : 2 + 10 * Math.max(...g.faces.map(f => f.length)); });
+    g.at = g.ends.reduce((a, x) => a + far(x), 0) / g.ends.length; g.need = g.port == null ? 2 : 2 + 10 * Math.max(...g.faces.map(f => f.length));
+    g.L = g.port == null ? 2 : Math.max(g.need, ...g.ends.map(least)); });
   groups.sort((a, b) => a.at - b.at || rank(a.ends[0]) - rank(b.ends[0]));
   let lo = a0 + 8, hi = a0 + len - 8;
   if (n.box) { const across = turned ? !v : v; // as layoutPass spreads a box's ends: below the title on a side, off the title and corners elsewhere
@@ -104,7 +108,7 @@ function spreadPorts({ n, side, ends }, turned) {
   const B = side === 'L' ? n.x : side === 'R' ? n.x + n.w : side === 'T' ? n.y : n.y + n.h;
   let s = (lo + hi - sum - gap * k) / 2;
   groups.forEach(g => { const box = v ? { x: B - 6, y: s, w: 12, h: g.L } : { x: s, y: B - 6, w: g.L, h: 12 };
-    g.faces.forEach(face => face.forEach((x, j) => { const c = g.port == null ? s + 1 : s + 6 + 10 * j;
+    g.faces.forEach(face => face.forEach((x, j) => { const c = g.port == null ? s + 1 : s + (g.L - g.need) / 2 + 6 + 10 * j;
       x.e[x.from ? 'p1' : 'p2'] = v ? [B, c] : [c, B]; if (g.port != null) x.e[x.from ? 'fpb' : 'tpb'] = { ...box }; }));
     s += g.L + gap; });
 }
