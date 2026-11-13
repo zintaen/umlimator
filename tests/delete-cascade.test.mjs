@@ -81,8 +81,9 @@ test('sequence and communication: their hooks already keep the rules, by refusin
   const cm = ex('checkout-communication.json'), w = cm.views.find(x => x.diagram === 'uml.communication');
   const c = cm.edges.find(e => e.type === 'uml.Connector' && (w.edges || []).includes(e.id)) || cm.edges.find(e => e.type === 'uml.Connector');
   const out = hookOf(w)(cm, w, [c.id], true);
-  assert.ok(out.length > 1, 'the connector takes the messages it carries');
-  assert.deepEqual(errors(apply(cm, out)).filter(e => e.includes('message-link')), []);
+  assert.ok(out.commands.length > 1, 'the connector takes the messages it carries');
+  assert.match(out.say, /^Deleted connector ".+" and its \d+ messages?: ".+"$/, 'and says which');
+  assert.deepEqual(errors(apply(cm, out.commands)).filter(e => e.includes('message-link')), []);
 });
 
 test('composite structure: a view whose subject is deleted is a warning, not an error; a subject not listed is still an error', () => {
