@@ -646,8 +646,9 @@ Where `src/uml/state.js` departs from §6, §10 and §17:
   average of 10 to 17: 77 to 104 ms with `tests/state.test.mjs` alone, 118 ms with the whole of `node --test` beside it.
   **The 100 ms test is not met reliably**, alone or beside the suite, and a CI runner is slower still: a full layout costs
   about the same as the label edit (the memo saves nothing on it), and gaps of 40 and 32 or 36 and 28 px measure no faster.
-  Under §17 the package waits on the maintainer's decision: accept the miss for this fixture or scale its budget for CI,
-  hold the wired case to 1 s too, or keep 100 ms and wait for routing work. Nearly
+  **The maintainer's decision (13 Nov 2026):** CI holds the wired case to a 1 s ceiling and prints the label edit's time
+  against S15's 100 ms on every run; the conformance note records the figure on an idle machine. A routing speed-up
+  that brings it back under 100 ms on CI is later work. Nearly
   all of it is the engine's: routing (`gridRoute`) about two thirds, the host's ranking with boxes (`blockPos`) a fifth;
   the type's own code is about 1 %. The scattered case: about 125 to 200 ms, within its 1 s.
 
