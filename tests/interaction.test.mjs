@@ -29,13 +29,13 @@ test('the walk: example 11\'s occurrences in time order, with their operands; ex
   assert.deepEqual([...w.ops.keys()], ['f1-paid', 'f1-declined', 'f2-notify']);
   assert.equal(w.ops.get('f2-notify').fragment.parent, 'f1-paid');
   const c = on(interactionWalk, COM);
-  assert.deepEqual(c.occ.map(o => o.id), ['m1', 'm2', 'm3', 'm4', 'm5', 'm6', 'm7', 'm8', 'm9']);
+  assert.deepEqual(c.occ.map(o => o.id), ['cm1', 'cm2', 'cm3', 'cm4', 'cm5', 'cm6', 'cm7', 'cm8', 'cm9']);
   assert.deepEqual(c.occ.map(o => [o.i, o.path]).slice(0, 2), [[5, 'edges[5]'], [6, 'edges[6]']]);
   assert.deepEqual(on(interactionWalk, { views: [{}] }), { occ: [], ops: new Map() }); // a view with nothing in it
 });
 
 test('example 11 gives exactly its bars: storefront m1 to m10; api m2 to m9; api m3 at depth 2, one short step; payments m4 to m8, across the divider', () => {
-  assert.deepEqual(bars(SEQ), [['storefront', 'm1', 'm10', 1], ['api', 'm2', 'm9', 1], ['api', 'm3', 'm3', 2], ['payments', 'm4', 'm8', 1]]);
+  assert.deepEqual(bars(SEQ), [['lifeline-storefront', 'm1', 'm10', 1], ['lifeline-api', 'm2', 'm9', 1], ['lifeline-api', 'm3', 'm3', 2], ['lifeline-payments', 'm4', 'm8', 1]]);
 });
 
 test('rule 1: a call opens an activation on its receiver at its own row, never on its caller; a self-call on itself', () => {
@@ -86,7 +86,7 @@ test('rule 5: an activation inside another of its lifeline is one level deeper (
 
 test('message numbers (S8): example 12 gives §6.3\'s table, replies included', () => {
   assert.deepEqual(Object.fromEntries(on(messageNumbers, COM)),
-    { m1: '1', m2: '1.1', m3: '1.1.1', m4: '1.1.2', m5: '1.1.2.1', m6: '1.1.3', m7: '1.1.4', m8: '1.1.5', m9: '1.2' });
+    { cm1: '1', cm2: '1.1', cm3: '1.1.1', cm4: '1.1.2', cm5: '1.1.2.1', cm6: '1.1.3', cm7: '1.1.4', cm8: '1.1.5', cm9: '1.2' });
   // an interaction use has no number, and both replies of an alt take their place in the activation they are sent from
   const n = on(messageNumbers, SEQ);
   assert.equal(n.has('f3'), false);
@@ -97,15 +97,15 @@ test('message numbers (S8): example 12 gives §6.3\'s table, replies included', 
 
 test('reply matching (§5.2): the latest unanswered call from the reply\'s receiver to its sender; a call answered only in another operand of an alt is unanswered', () => {
   // f1-paid already answers m4 (m5); f1-declined does too (m8), and without m8 it does not
-  assert.equal(on(replyCallFor, SEQ, 'payments', 'api', { index: 4, parent: 'f1-paid' }), null);
-  assert.equal(on(replyCallFor, SEQ, 'payments', 'api', { index: 9, parent: 'f1-declined' }), null);
+  assert.equal(on(replyCallFor, SEQ, 'lifeline-payments', 'lifeline-api', { index: 4, parent: 'f1-paid' }), null);
+  assert.equal(on(replyCallFor, SEQ, 'lifeline-payments', 'lifeline-api', { index: 9, parent: 'f1-declined' }), null);
   const noM8 = copy(SEQ); noM8.views[0].edges.splice(8, 1);
-  assert.equal(on(replyCallFor, noM8, 'payments', 'api', { index: 8, parent: 'f1-declined' }), 'm4');
-  assert.equal(on(replyCallFor, noM8, 'payments', 'api', { index: 8, parent: null }), null, 'after the alt, m5 answers it');
+  assert.equal(on(replyCallFor, noM8, 'lifeline-payments', 'lifeline-api', { index: 8, parent: 'f1-declined' }), 'm4');
+  assert.equal(on(replyCallFor, noM8, 'lifeline-payments', 'lifeline-api', { index: 8, parent: null }), null, 'after the alt, m5 answers it');
   // at the end (no slot): m2 is answered by m9; without m9 it is the one
-  assert.equal(on(replyCallFor, SEQ, 'api', 'storefront'), null);
+  assert.equal(on(replyCallFor, SEQ, 'lifeline-api', 'lifeline-storefront'), null);
   const noM9 = copy(SEQ); noM9.views[0].edges.splice(9, 1);
-  assert.equal(on(replyCallFor, noM9, 'api', 'storefront'), 'm2');
+  assert.equal(on(replyCallFor, noM9, 'lifeline-api', 'lifeline-storefront'), 'm2');
   // the latest of two, the earlier once the latest is answered, and only calls before the slot
   const two = seq([M('c1', 'A', 'B', 'call'), M('c2', 'A', 'B', 'call')]);
   assert.equal(on(replyCallFor, two, 'B', 'A'), 'c2');
@@ -157,9 +157,9 @@ test('reply-once: two replies to one call lie in different operands of one alt, 
   for (const c of [M('c', 'A', 'B', 'async'), M('c', 'A', 'B', 'reply')]) assert.deepEqual(on(interactionProblems, seq([c, r('r1'), r('r2')])).filter(p => p.level === 'error').map(p => [p.rule, p.ids]), [['reply-call', ['r1', 'c']], ['reply-call', ['r2', 'c']]]);
   assert.deepEqual(on(interactionProblems, seq([r('r1'), r('r2'), M('c', 'A', 'B', 'call')])).map(p => p.rule), ['reply-call', 'reply-call']);
   // a communication view has no operands: one reply to a call
-  const m = copy(COM); m.edges.push({ ...m.edges.find(e => e.id === 'm5'), id: 'm5b' }); m.views[0].edges.push('m5b');
+  const m = copy(COM); m.edges.push({ ...m.edges.find(e => e.id === 'cm5'), id: 'cm5b' }); m.views[0].edges.push('cm5b');
   const [p] = on(interactionProblems, m);
-  assert.deepEqual([p.rule, p.ids, p.path], ['reply-once', ['m4', 'm5', 'm5b'], `edges[${m.edges.length - 1}].props.replyTo`]);
+  assert.deepEqual([p.rule, p.ids, p.path], ['reply-once', ['cm4', 'cm5', 'cm5b'], `edges[${m.edges.length - 1}].props.replyTo`]);
 });
 
 test('create-once: a lifeline is created at most once, by the first message to or from it', () => {

@@ -468,7 +468,7 @@ With `UMLIMATOR_OFFLINE=1` the CLI fetches nothing: a logo not in the cache keep
 
 ```bash
 npm run build               # src/ into lib/umlimator.js and lib/umlimator-all.js: edit the sources, commit all three
-node --test                 # layout() in Node: the bench views' geometry and the layout rules
+node --test                 # layout() in Node: the bench views' geometry and the layout rules; npm test runs the "(timed)" tests apart, one file at a time
 python3 tests/embed.py      # render() in headless Chrome: events, keyboard, colours, contrast, editing, the element
 python3 bench/bench.py --check-determinism --expect bench/expected.json --max-ms m50=2000
 ```

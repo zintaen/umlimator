@@ -110,7 +110,7 @@ test('example 9: it validates and lays out clean down and right: lanes as bands,
     assert.deepEqual(g.partitions, ['lane-worker', 'lane-warehouse', 'lane-email']);
     g.bands.forEach(b => { const n = g.byId[b.id]; assert.deepEqual([n.shape, n.x, n.y, n.w, n.h], ['partition', b.head.x, b.head.y, b.head.w, b.head.h]); });
     assert.equal(g.byId['lane-warehouse'].aria, 'Partition Warehouse, 10 nodes');
-    assert.deepEqual(g.order.slice(0, 7), ['lane-worker', 'start', 'take-order', 'order', 'split', 'pay', 'lane-warehouse']);
+    assert.deepEqual(g.order.slice(0, 7), ['lane-worker', 'start', 'take-order', 'order-object', 'split', 'call-payment', 'lane-warehouse']);
     assert.deepEqual(g.nodes.map(n => n.id), [...g.order.filter(id => g.byId[id] && g.byId[id].shape !== 'partition'), ...g.partitions], 'the nodes are drawn in reading order, then the headers');
     // a bar lies across the flow; its lines enter on one long side and leave on the other
     const split = g.byId.split; assert.deepEqual(d === 'down' ? [split.h, split.w >= 48] : [split.w, split.h >= 48], [6, true]);
@@ -118,7 +118,7 @@ test('example 9: it validates and lays out clean down and right: lanes as bands,
     assert.equal(g.edges.find(e => e.to === 'split').ts, d === 'down' ? 'T' : 'L');
   }
   const g = layout(EX, 'fulfil'), aria = id => g.byId[id].aria, line = id => g.edges.find(e => e.id === id);
-  assert.deepEqual(['start', 'take-order', 'pay', 'in-stock', 'stock-ready', 'split', 'packed-and-paid', 'told', 'stock'].map(aria), ['Initial node, in Order worker',
+  assert.deepEqual(['start', 'take-order', 'call-payment', 'in-stock', 'stock-ready', 'split', 'packed-and-paid', 'told', 'stock'].map(aria), ['Initial node, in Order worker',
     'Action Take the next order from the queue, in Order worker', 'Call behaviour action Take payment, opens Take payment, in Order worker', 'Decision All books in stock?, 2 exits, in Warehouse',
     'Merge, 2 entries, in Warehouse', 'Fork, 3 branches, in Order worker', 'Join, 2 branches, in Warehouse', 'Flow final, in Email service', 'Data store Stock levels, in Warehouse']);
   assert.equal(line('f-in-stock').aria, 'Control flow from All books in stock? to merge, guard all books in stock');
