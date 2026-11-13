@@ -2,7 +2,7 @@ import { esc, fit, measured, sansW, textW } from '../core/text.js';
 import { migrate } from '../core/model.js';
 import { diagramOf } from '../core/registry.js';
 import { held, warn } from '../core/warn.js';
-import { noteOf, r2 } from '../draw/shapes.js';
+import { r2 } from '../draw/shapes.js';
 import { svgOf } from '../draw/svg.js';
 import { leaveIssues, routeAudit } from '../layout/audit.js';
 import { layoutGraph, pillW, pullSources, rowsFor, untangle } from '../layout/layered.js';
@@ -327,16 +327,9 @@ function mapContext(model, opts = {}) {
     return pos;
   }
 
-  function buildView(vid, opts = {}) {
-    const g = buildGeo(vid);
-    return { g, ...drawView(vid, g, opts) };
-  }
-  // a view's notation (0.15.0): its own `shapes`, else the model's, else box; drawView: the picture of a geometry in one,
-  // with no layout (a change of notation draws the cards again and nothing else)
-  const notationOf = vid => noteOf((V[vid] || {}).shapes) || noteOf(D.shapes) || 'box';
-  function drawView(vid, g, opts = {}) {
-    const v = V[vid], shapes = noteOf(opts.shapes) || notationOf(vid), T = ownLayout(vid), L = T && T.draw && T.draw(g, { esc, r2, textW }); // its two layers only
-    return { markup: svgOf(g, { title: v.title, subject: subjectOf(v), icons: D.icons, broken: brokenIn(vid), ...opts, shapes, ...(L && { under: L.under, over: L.over }) }), shapes };
+  function buildView(vid, opts = {}) { // a view's geometry and its picture
+    const g = buildGeo(vid), v = V[vid], T = ownLayout(vid), L = T && T.draw && T.draw(g, { esc, r2, textW }); // its two layers only
+    return { g, markup: svgOf(g, { title: v.title, subject: subjectOf(v), icons: D.icons, broken: brokenIn(vid), ...opts, ...(L && { under: L.under, over: L.over }) }) };
   }
   // the rules a view's lines break (#70), by model edge id: svgOf draws such a line rose, with a mark that names them
   let ruled = null;
@@ -503,7 +496,7 @@ function mapContext(model, opts = {}) {
   const viewKey = vid => {
     const v = V[vid], ids = (v.nodeIds || []).filter(i => N[i]), ns = ids.map(i => nodeIn(i, vid));
     const icons = [...new Set(ns.map(n => n.icon).filter(Boolean))].map(k => (D.icons || {})[k]), who = [...new Set(ns.map(n => n.author).filter(Boolean))].map(k => (D.authors || {})[k]);
-    return JSON.stringify([{ ...v, shapes: undefined }, ns, viewEdges(v), ids.map(i => [kidCount(i, vid), opensOf(i, vid)]), icons, who, boxesOf(vid)]); // a view's notation lays nothing out; a type's boxes do
+    return JSON.stringify([v, ns, viewEdges(v), ids.map(i => [kidCount(i, vid), opensOf(i, vid)]), icons, who, boxesOf(vid)]); // a type's boxes lay it out
   };
   /* ---------- unfolding in place (#71): a stacked card opens into a box on the view it is on ----------
      The card becomes a box with its id and name, holding its inner view's own cards: those not on this view already (the
@@ -625,7 +618,7 @@ function mapContext(model, opts = {}) {
     for (let more = true; more && todo.length;) { more = false; todo = todo.filter(nid => { if (!unfold(vid, nid)) return true; (unfolded[vid] ||= []).push(nid); return !(more = true); }); } }))();
   const geoCache = {};
   return { D, views, nodes, N, V, rootId, nodeIn, childOf, opensOf, subjectOf, viewsWith, kidsOf, chain, viewEdges, isState, planOf: withM(planOf), planCache,
-    layoutCache, geoCache, memos, buildGeo: withM(buildGeo), buildView: withM(buildView), drawView: withM(drawView), notationOf, optimize: withM(optimize), flowPos, kidCount, viewKey, brokenIn, unfoldable, unfolded };
+    layoutCache, geoCache, memos, buildGeo: withM(buildGeo), buildView: withM(buildView), optimize: withM(optimize), flowPos, kidCount, viewKey, brokenIn, unfoldable, unfolded };
 }
 
 export { mapContext };

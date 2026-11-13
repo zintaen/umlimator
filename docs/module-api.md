@@ -272,7 +272,6 @@ sent or compared as it is.
 | `paused` | boolean | the standalone page's ❚❚ holds every clock: a tour's or a replay's dot, a story's step and the flow. It leaves `story`, `tour`, `replay` and `flow` as they are, so `playing: true` with `paused: true` is a story or a replay that would play, held by the page (0.15.0) |
 | `camera` | `{ x, y, zoom }` | the centre in map units, to a tenth, and the zoom (1 is actual size), to a thousandth |
 | `flow` | boolean | the lines flow (≋, F) |
-| `shapes` | `'box'`, `'c4'` or `'uml'` | the notation the view shown is drawn in (0.15.0) |
 | `motion` | `'full'`, `'reduced'` or `'instant'` | how this map moves |
 | `gesture` | `'idle'`, `'dragging'`, `'connecting'` or `'naming'` | an edit in progress, on an editable map |
 | `destroyed` | boolean | `destroy()` has run |
@@ -292,8 +291,7 @@ The other events are as they were. Two are focused on one machine: `story` on ev
 
 **Getters beside it:** `navigating`, `destroyed`, `motion`, `story` (the `StoryPlayer` of the story shown, whoever
 started it), and `flow`, which a host can also set (`handle.flow = false`); the page saves only what the reader sets with
-≋ or F. `shapes` (0.15.0) a host can set too (`handle.shapes = 'c4'`, or `null` for each view's own); the page keeps what
-the reader picks with its toggle.
+≋ or F. (`shapes`, from 0.15.0, went in 0.21.0: maps draw in one card-shape style.)
 
 **Where it is read:**
 - `handle.state` on any `render()` or `mountPage()` handle;
@@ -2446,6 +2444,9 @@ Nothing is removed. Every type, option, field, fragment, event and command is as
 
 ### Card shapes: box, c4 and uml
 
+> Since 0.21.0 maps draw in one card-shape style, the union of `c4` and `uml`, and the choice below is gone: see
+> [0.21.0](#0210-in-progress). This section is kept as 0.15.0 shipped it.
+
 A notation draws each card as a shape. Every shape is drawn inside its card's own box, so the layout, the routes, the
 widths, the layout check and the bench hashes are the same in all three. Switching the notation draws the cards again
 and lays nothing out.
@@ -3444,3 +3445,56 @@ everything above):
   (the plan's budget is 15%); stage 3 added 835 B to it in 3.4, 107 B in #191 and 130 B in 3.8, the rest is stage 2's.
   `lib/umlimator-all.js` is 276.9 kB (276,892 B), up from 211.5 kB in 0.18.0. The npm package is 515 kB, up from
   512 kB in 0.19.0.
+
+## 0.21.0 (in progress)
+
+### One card-shape style for maps
+
+The maintainer's decision of 13 Nov 2026 (`docs/diagrams/README.md`): maps draw in one card-shape style, and the
+`box`/`c4`/`uml` choice of 0.15.0 is removed. Two stated exceptions: to "every map draws exactly as now" (every map's
+picture changes) and to "additive only" (the choice's API goes).
+
+**What a map draws.** The union of what `c4` and `uml` drew, by the kind word the model wrote, then by the kind it means:
+
+| Card | Shape |
+|---|---|
+| `person`, `user`, `human` | a person |
+| `agent` | a robot (UML's non-human actor) |
+| `frontend` (and its words: `web`, `ui`, `app` ...) | a browser app |
+| `mobile` | a phone |
+| `cli` | a terminal |
+| `queue` (and its words) | a pipe |
+| `module`, `package` | a folder (UML's package) |
+| `cloud` (and its words: `host`, `cdn`, `deploy` ...) | a node (UML's node) |
+| `database` (and its words) | a cylinder |
+| `file` (and its words) | a document (UML's artifact) |
+| a hook | a hexagon |
+| anything else | a rounded box, with its kind's own mark |
+
+- A box keeps its kind's own mark: UML's component icon on a box is not kept.
+- An `external` card is dashed (both notations dashed it). A box (container) is solid unless it has a `tone`: `c4`'s
+  dashed boundaries, and the minimap's copy of them, are gone.
+- **A card's own `shape`** stays, with its validation: it wins over its kind, as before.
+- **The geometry does not change.** Every shape is drawn inside its card's box, so the layout, the routes, the layout
+  check and the bench hashes are what they were (`bench/expected.json` is unchanged).
+- **Typed diagrams** (class, object, package, sequence, communication) keep UML's own notation; the map's table never
+  applies to them.
+
+**What moves for a host:**
+
+- **Removed:** the model's and a view's `shapes`; `render()`'s `shapes` option; `handle.shapes`; `MapState.shapes` (and
+  `shapes` in a `state` event's `changed`); the `Notation` type in `umlimator.d.ts`; `<umlimator-map shapes>`; the
+  page's ⬡ toggle next to ◐, its `#shapes=` link parameter and the choice it kept in `localStorage`; `shapes` in the
+  JSON Schema.
+- **Still loads:** a model that has `shapes` loads and draws in the one style, as any unknown field does; `validate()`
+  warns where it is, `shapes is no longer read: maps draw in one style` (at `shapes`, or `views[i].shapes`). An unknown
+  `render()` option, an element attribute or a link parameter named `shapes` is ignored: nothing is drawn again.
+- **Changed pictures:** every map's cards (and so its stills, PDFs and exports) draw in the one style; a map that named
+  no notation, which drew every card as a box, now draws shapes. Its layout is the same.
+- `validate()`'s hint for a `frontend` card with a person's icon (`user`, `users`, `usercheck`) now holds in every map
+  view, not only in `c4` ones: such a card is drawn as a browser. A card only typed views hold is not told.
+- `umlimator.py import` no longer writes `"shapes": "c4"`; a Structurizr style's shape still becomes the card's own
+  `shape`. A C4 source's element its words make `cloud` (a gateway, a proxy, a monitor), which C4 draws as a box and a
+  map would draw as a node, is written with `shape: "box"`, whatever its type.
+- `examples/shapes.json` is the one style's gallery, `examples/notations.html` shows it light and dark, and
+  `examples/clinic.json` is imported again without `shapes`.

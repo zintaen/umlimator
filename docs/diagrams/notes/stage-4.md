@@ -477,6 +477,38 @@ Each problem is `{ level, rule, path, message, ids }`, as in `class.js`.
   from every extend that names it (`refs: { 'uml.Extend': { 'props.extensionPoints': 'drop' } }`).
 - A use case dropped into a subject's box, or the Owner field, reparents it (stage 2's gestures, through `owners`).
 
+### 8.5 As built in 4.4
+
+Where `src/uml/usecase.js` departs from §8.1 to §8.4 and §4.1:
+
+- **The ellipse is 1.42 times its text block, not 1.3.** A box 1.3 times as wide and as tall does not fit inside its
+  ellipse at the corners ((1/1.3)² × 2 = 1.18 > 1); about √2 does, so a long first or last line never leaves the ellipse.
+  It is 96 × 44 px at least.
+- **Actors first, by the type.** `rankFlip` sees a line only, not its ends' types, so it cannot turn an association drawn
+  from a use case; and a generalization between two actors, turned, put the specialized actor in a column of its own
+  between the actors and the subject (`08-use-case.json` then had a crossing in both directions). So the layout moves
+  every actor shown outside a box into a column before the rest of the host's ranking (the top row laid out down), in the
+  order of the rows of the use cases it is associated with, a specialization after its general, on a copy of `pos`; the
+  rest keep the host's places. With pins too: a pin is read in the host's ranking, where the canvas wrote it from the
+  drawing, so it moves the pinned node alone (and what the host pushes off its slot); a pinned actor keeps its row. When
+  the host puts a node (a comment, say) in column 0, the actors are drawn in column -1 and say column 0, the canvas
+  pinning no column under 0; a drop then reads the two as one column, and an actor's pin can push that node down a row.
+  An association from an actor to a box counts only its ends that have a slot. `edits.connect` adds an association drawn from a
+  use case to an actor from the actor, so the model says it the same way. `08-use-case.json` then lays out clean right and
+  down, in Node and in Chrome.
+- **An extend's label is cut at 280 px** (S7's `cut`), as the state, activity and overview lines are: `«extend» (payment)
+  [the shopper has a voucher code]` is about 260 px. Other use case lines keep 150 px.
+- **Stereotypes** are drawn over a use case's name and under an actor's figure, and on a subject's header line before its
+  name (its 24 px header room holds one line), as the box's title already is.
+- **A closed subject** is the classifier shape with its name only ("Subject Online bookshop").
+- **The Owner field** offers a use case every subject and package, and an actor, a subject or a comment every package, by
+  its name.
+- **An extension point is deleted** by the command (`delete`), which drops it from every extend; the canvas has no gesture
+  that deletes a member row, for any type (the class type's members neither): a canvas change, outside this package.
+- **P1:** on a generated view of 50 elements and 60 lines (eight actors, a subject holding 41 use cases) a use case renamed
+  is laid out and drawn in 31 to 60 ms of CPU, best of five, a full layout in 35 to 90 ms; `tests/usecase.test.mjs`
+  holds the budgets.
+
 ## 9. The activity type
 
 ### 9.1 Drawing
@@ -540,6 +572,41 @@ a model UML forbids is an error; one that is only unfinished is a warning.
 - **Properties** (DoD 4): a flow's name and guard (text; F2 edits both, §7.2); an object node's and a data store's name; a
   call behaviour action's view (`V`, §12.2); stereotypes on every element.
 - **Hiding:** an element leaves the view by Delete and the model by Shift + Delete (the `remove` hook's `fromModel`).
+
+### 9.5 As built in 4.5
+
+`src/uml/activity.js`, tested by `tests/activity.test.mjs` and `tests/activity.html`. Where it departs from the above:
+
+- **The header room.** `laneBands`' `shift` is applied by moving the bands, their headers and the bounds back by it, not
+  the nodes and lines forward: the same picture, and nothing `layoutTyped` returned is copied or changed (§2.4).
+- **The partitions' nodes** are drawn after the laid-out nodes, not before them, and carry `aside: true` and the first
+  node's `col` and `row`: the canvas reads a drop's column and row from `geo.nodes` only when every node has them, and
+  takes the first node as its measure (`render.js` `gridView`, `hintAt`). `geo.order` (Tab) still lists each partition
+  before what it holds. A partition's header hit area is 24 px across, 1 px past its 22 px strip on each side.
+- **Room for guards.** A typed view's router makes no room for a label (`labelRoom` is a map's), and at a column gap of
+  64 px example 9's two guards had no spot. With a labelled flow the gap grows by the widest label and 40 px laid out
+  right (as the class type does with boxes), by 48 px laid out down. One gap for every column: a gap per column needs
+  `labelRoom` for typed views, the core's.
+- **Slots.** The geometry gives one slot per node and one per partition's header (`{ after, parent, x, y }`): `I.addNode`
+  hands `add` the selection (`at.sel`) only with a slot, which "a node in the partition selected" needs, on a view of
+  partitions only too. With a node selected and no partition, `add` puts the new node in that node's lane (its slot's
+  `parent`). A comment is in no lane: `add` never parents one and `moveTo` pins one dropped in a band.
+- **Opening the called view** (Q11) is the canvas's, as a card opens its inner view: Enter on the selected call behaviour
+  action, or a double-click on it; a second plain click selects it again.
+- **Owner cycles** in loaded JSON (`apply()` refuses them): a partition whose chain of shown owners comes back to it is
+  at the top, as `laneRows` takes it.
+- **Reading order,** read literally from §9.2: a partition, then its nested partitions (each with what it holds), then
+  its own nodes by column and row; then the nodes in no lane; then the flows.
+- **Names.** Every node in a lane ends ", in <partition>", a call behaviour action's too ("Call behaviour action Take
+  payment, opens Take payment, in Order worker"); a partition counts the shown nodes in it at any depth ("Partition
+  Warehouse, 10 nodes" in example 9). An object node is "Object node Order", a data store "Data store Stock levels".
+- **Shapes** `send`, `accept`, `object` and `call` are looks over flow.js's `rounded`; `partition` draws a header only.
+- **`connect`** refuses a flow that brings an error the view did not have (S5): into an initial node, out of a final
+  node, onto a partition. `in-lane`'s path is the view's `nodeIds`.
+- **The PDF** (§15): `word` gives a node's kind, `rows` its partition ("in Warehouse").
+- **Example 9** lays out with 2 crossings down and none right (no port repair, §17), each guard drawn whole, and no
+  line along a divider for more than 24 px either way, so none is pinned. On 50 nodes, 60 flows and four lanes the
+  common edit (a guard, a stereotype, a lane change) is 25 to 60 ms of CPU, laid out and drawn.
 
 ## 10. The state machine type
 

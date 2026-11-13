@@ -25,7 +25,7 @@ const key = (k, extra = {}, target = stage) => target.dispatchEvent(new Keyboard
 const click = (s, extra = {}) => { const g = pick(s), at = centre(s); ptr(g, 'pointerdown', at); ptr(g, 'pointerup', at); g.dispatchEvent(new MouseEvent('click', { clientX: at[0], clientY: at[1], bubbles: true, composed: true, ...extra })); }; // as a press, then a click
 const drag = (from, to) => { const g = pick(from); ptr(g, 'pointerdown', centre(from)); const a = centre(from);
   for (let i = 1; i <= 4; i++) ptr(stage, 'pointermove', [a[0] + (to[0] - a[0]) * i / 4, a[1] + (to[1] - a[1]) * i / 4]); ptr(stage, 'pointerup', to); };
-const bodyAt = id => ['x', 'y'].map(k => +pick(`.node[data-id="${id}"] .n-body`).getAttribute(k));
+const bodyAt = id => { const b = pick(`.node[data-id="${id}"] .n-body`).getBBox(); return [b.x, b.y]; }; // a box's or a shape's (0.21.0: a frontend card is a browser)
 const last = () => ev[ev.length - 1];
 const strip = c => { const { id, ...rest } = c; return rest; };
 const mount = (opts, model = MODEL) => { el.innerHTML = ''; ev = []; const h = render(el, model, { on: { change: c => ev.push(c) }, ...opts }); sr = el.querySelector('.umlimator').shadowRoot; stage = pick('.stage'); return h; };
