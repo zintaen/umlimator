@@ -21,7 +21,7 @@ Mermaid has no component, deployment or composite structure diagram.
 | S6 | A line from a box's port to something inside the box (delegation; a connector from a structured class's port to a part) | The router learns inner ends: a line marked `inner` may join a box and something it holds; its end on the box leaves the border inward, placed by the port hook. About 15 B in `src/layout/layered.js` (the `holds` bypass) | §5 |
 | S7 | Ends through parts | A part is a member drawn as a node in its structured classifier's box. A port on a part is drawn under the geometry id `<part>-><port>`, which no element id can be (`model.md` rule 5); the composite type maps it back in its hooks; its side is `present.<part>.ports.<port>.side`. The ports drawn on a part are the ones its connectors name, and every port of the classifier (class or component) its `valueType` names by label (M8) | §6 |
 | S8 | Deep nesting | Stage 2's boxes, with a box's padding widened to 48 px where it or a box it holds has a port with lines, through one hook slot in `frameOf` (`TYPED.frame`, which also grows a round box, S12): stage 2's 12 px leaves no room for a port on each of two nested borders. Tested to six levels, with a line from the deepest to the top level (L8); the width is pinned and stated | §7 |
-| S9 | Room for labels | The deployment and component types set a small `gap` and take the per-column widening every typed view already has (`gapAfter`), with no core byte; `labelGaps` (a typed view's `labelRoom`, column gaps only, about 25 B) is built only if 5.1's spike shows labels left with no spot | §8 |
+| S9 | Room for labels | The deployment and component types set a small `gap` and take the per-column widening every typed view already has (`gapAfter`), with no core byte; `labelGaps` (a typed view's `labelRoom`, column gaps only, about 25 B) is built only if 5.1's spike shows labels left with no spot. As built: the spike left 12; decision 9 taken (the maintainer's decision of 13 Nov 2026), `labelGaps` built in 5.1 (22 B) and set by the deployment and component types | §8 |
 | S10 | The ball and socket | `present.<interface>.as: "ball"` draws the interface as a 16 px circle with its name under it; a realization to it is a plain solid line; a usage to it ends in a socket, a new line end in `src/typed/draw.js`'s table | §9.2 |
 | S11 | Changing an interface between ball and rectangle (DoD 4) | `B` on a selected interface, through a new hook `edits.key`, emits `set` of `present`; the palette's `add` offers the choice with `{ pick, then }` | §12 |
 | S12 | The open collaboration | A dashed ellipse round its roles: a box may carry `round: true`, which the `TYPED.frame` hook grows by √2 about its centre so the ellipse holds the rectangle of its contents. No byte beyond S8's hook slot | §9.3 |
@@ -110,7 +110,7 @@ What may touch the core, each change stating its bytes in its pull request. Each
 | The jog repair reads a side the port hook may have emptied and deleted (`sides[…]?.length`) | `src/layout/layered.js` | 5.1 | 1 B |
 | The registry's pointer line to the fields' documentation | `src/core/registry.js` | 5.1 | 40 B |
 | | | | **126 B** (built: 116 B, 184,984 B to 185,100 B) |
-| Only if decision 9 takes `labelGaps`: `tight` reads `map \|\| dg.labelGaps`, column gaps only | `src/layout/layered.js` | 5.1 | 25 B |
+| ~~Only if decision 9 takes `labelGaps`~~ Decision 9 taken (the maintainer's decision of 13 Nov 2026): `tight` reads `map \|\| dg.labelGaps`; a row gap is a candidate only on a map (`length: map && r1 - r0`), so a typed view's room is column gaps only; the registry's pointer line names the field | `src/layout/layered.js`, `src/core/registry.js` | 5.1 | 25 B (built: 22 B, 185,100 B to 185,122 B; stage 5 so far 138 B) |
 
 | Option | For | Against |
 |---|---|---|
@@ -126,13 +126,13 @@ a port is its owner's box (Q5).
 
 - **Maps draw exactly as now.** The geometry hashes (`bench/expected.json`), the examples' stills and every map test are
   unchanged in every pull request (C1). Every new branch in `layoutPass` is reached only through a field no map sets
-  (`dg.typed` with `fromPort`, `toPort`, `inner`, `portRank`, a box's `pad` or `round`, and `labelGaps` if decision 9 takes it).
+  (`dg.typed` with `fromPort`, `toPort`, `inner`, `portRank`, a box's `pad` or `round`, and a view's `labelGaps`, decision 9).
 - **Every typed example draws exactly as now.** The class, package, object, sequence, communication, use case, activity,
   state and overview examples' markup is held by `tests/core-diet.html`, `tests/core-diet.json` and each type's own
   tests. None of them sets a field above.
 - **The API is additive only** (C2). The three types and their helpers are internal, in `lib/umlimator-all.js`; the new
   registry fields (`edits.member`, `edits.key`, a line's `fromPort`, `toPort`, `inner` and `portRank`, a box's `pad` and
-  `round`, and a view's `labelGaps` if decision 9 takes it) are optional and provisional.
+  `round`, and a view's `labelGaps`, decision 9) are optional and provisional.
 - **Nothing after `layoutTyped` edits what it returned** (stage 4 §2.4): the ports with no line, the port nodes added
   back for selection and the port names are put on a copy of the geometry. A test lays each type's view out twice from
   one memo and checks the two pictures are byte-identical.
@@ -286,8 +286,8 @@ its side and before the per-side spread (Q1). Port placement goes inside it; the
   pin what is left.
 
 `fromPort`, `toPort`, `inner` and `portRank` join `EDGE_GEO` (`src/typed/layout.js`), so a change of port, or a reorder of
-the members, lays the view out again; a box's `pad` and `round` are inside `containers`, already in `VIEW_GEO`. If
-decision 9 takes `labelGaps`, it joins `VIEW_GEO` (`tests/layout-typed.test.mjs` checks every `dg` field the layout reads
+the members, lays the view out again; a box's `pad` and `round` are inside `containers`, already in `VIEW_GEO`. With decision
+9 taken, `labelGaps` joins `VIEW_GEO` in 5.1 (`tests/layout-typed.test.mjs` checks every `dg` field the layout reads
 is there). Nothing here reads a map's lines: a map never sets them.
 
 ### 4.5 Drawing, selecting and editing a port
@@ -398,6 +398,32 @@ spans more than one column, or that found no spot: that is the map's `labelRoom`
 The composite type's connectors carry no label. Moving the class, state, activity and overview types to a small `gap` is
 later work, one package each, each a picture change for the maintainer.
 
+**As built (5.1).** 5.1's spike left 12 of 54 labels with no spot under option (a) (§14), so decision 9 is taken: options
+(a) and (b) together, the maintainer's decision of 13 Nov 2026. The component and deployment types set `gap: 48`, `cut: 280`
+and `labelGaps: true` (5.4, 5.5); every other typed view leaves `labelGaps` unset and lays out as before.
+
+- `labelGaps` is a typed view's opt in to the map's `labelRoom` (`tight`, `layoutPass`): a label with no spot, cut short,
+  or on a box's border asks for room in the column gap it sits in, else in the column gap its line's longest run crosses;
+  `layoutGraph` lays the view out once more with those gaps widened by the labels' widths, and keeps that layout if it has
+  fewer issues and labels cut short. The second `layoutPass` runs only when a label is tight.
+- Column gaps only: a row gap is a candidate on a map alone (`Array.from({ length: map && r1 - r0 })`, the same rows as
+  `Math.max(0, r1 - r0)` on a map), as `tight` measures a row gap as `rowY(r) + NH`, wrong for typed rows of mixed height.
+  Laid out down, a typed view is laid out turned, so its columns are the picture's rows: the gaps widened are those between
+  the ranks either way.
+- `labelGaps` joins `VIEW_GEO`, so turning it on or off lays the view out again (§4.4). Its documentation is beside the
+  other typed fields in `src/typed/layout.js`; the registry's pointer line names it. Core +22 B (§2.3).
+- Tested in `tests/typed-ports.test.mjs`: on the spike's view, with `labelGaps` fewer labels are left with no spot than
+  without (none, against 12) and no node moves up or down (column gaps only); the edit and the full layout stay under CI's
+  1 s, both printed; a view with `labelGaps: false` draws the same markup as one without it, and turning it on lays the view
+  out again. Maps (`bench/expected.json`) and every existing typed view (`tests/core-diet.json`, each type's tests) are
+  unchanged.
+- The activity and overview types (4.5, 4.7) keep their uniform column gap, accepted for 0.21.0. Either could opt in later
+  as the moves above: a small `gap` with `gapAfter`'s widening and `labelGaps` for what is left. Each is a picture change for
+  the maintainer and a second `layoutPass` on an edit with a tight label, to be measured against that type's P1 test. The
+  overview's flows jog halfway across their gap with the label on one half (4.7), which `gapAfter`'s `w + 54` does not
+  plan for, so it needs its own check that no label sits on a jog; the activity type's partitions are drawn from the layout
+  after it (`laneBands`), so widened columns only widen the lanes they cross.
+
 ## 9. Shapes and looks
 
 ### 9.1 The shapes
@@ -468,7 +494,7 @@ Every line kind of rows 4 to 6, for the legends, `tests/notation.html` and the t
 ### 10.1 Component
 
 Laid out by `layoutTyped` from the host's ranking, right by default, with `repair: false`, `reroute: false` (§14),
-`gap: 48` with `gapAfter`'s widening (§8) and `rgap: 56`. Boxes with ports take §7's padding. Components that hold components are boxes (`ownersOn`). Ports, inner lines (delegations)
+`gap: 48` with `gapAfter`'s widening and `labelGaps` (§8) and `rgap: 56`. Boxes with ports take §7's padding. Components that hold components are boxes (`ownersOn`). Ports, inner lines (delegations)
 and ends as §4 to §6. Interfaces drawn as balls or rectangles (§9.2). Artifacts with their manifestations.
 
 Validators, each with a passing and a failing case:
@@ -512,7 +538,7 @@ and §6; a connector from the subject's port to a part is inner (§5).
 
 ### 10.3 Deployment
 
-Laid out by `layoutTyped` from the host's ranking, with `gap: 48` and `gapAfter`'s widening (§8), and `cut: 280` on
+Laid out by `layoutTyped` from the host's ranking, with `gap: 48`, `gapAfter`'s widening and `labelGaps` (§8), and `cut: 280` on
 communication paths. Nodes,
 devices and execution environments that hold something shown are boxes drawn as cubes (§9.1); artifacts and
 deployment specifications are `artifact`s; components (what an artifact manifests) the component look.
@@ -654,6 +680,11 @@ The three target examples move to `examples/bookshop-components.json`, `examples
   laptop): a label edit laid out and drawn 24 to 28 ms, a full layout 24 to 34 ms; every line routed clean (60 `grid`). Of 54
   labels, 12 found no spot under §8's small gap. With `labelGaps` tried on a scratch copy (column gaps only): none left, the
   view 7,435 px wide instead of 4,339, the edit 27 ms. `labelGaps` is not built: decision 9 goes back to the maintainer.
+- **5.1's spike, run again with `labelGaps` built** (decision 9 taken, the maintainer's decision of 13 Nov 2026; the test
+  prints both runs): without it, 12 of 54 labels with no spot, a label edit 17 to 22 ms, a full layout 17 to 33 ms; with it,
+  none with no spot and none cut short, the view 7,435 px wide instead of 4,339, a label edit 28 to 31 ms and a full layout
+  28 to 29 ms (the second `layoutPass`); every line routed clean (60 `grid`) both ways. CPU, best of seven after a warm-up,
+  on a laptop loaded by other jobs.
 
 | Option | For | Against |
 |---|---|---|
@@ -719,11 +750,11 @@ proposes its row in its pull request's description and writes its release notes 
 | # | Work package | Owns | Depends on | Done when |
 |---|---|---|---|---|
 | 5.0 | **List the files** (the lead). The stage's four sources as empty files, in `ALL` after stage 4's, in load order: `uml/structure`, `uml/component`, `uml/deployment`, `uml/composite` | `tools/build.mjs`, the four empty files | This note | `lib/umlimator-all.js` changes by blank lines only; `lib/umlimator.js` not at all; no other stage 5 lane edits `ALL` |
-| 5.1 | **The router for ports and inner lines.** Port placement in `LP.ports` and its `sides` argument (§4.4); the side cap's skip of port ends (§4.2; as built, the port hook puts them back, §4.4); `fromPort`, `toPort`, `inner`, `portRank` in `EDGE_GEO`; inner ends (§5); `TYPED.frame` for a box's `pad` and `round` (§7, §9.3); `labelGaps` only if decision 9 takes it (§8); the `socket` end in `ENDS` (§9.2); the registry fields documented in `src/typed/*.js` with one pointer line in the registry, 5.2's hooks too. §14's spike, reported in the pull request before 5.4 and 5.5 start. Tested with a test-only type: ports on nodes and boxes, a port with four lines on one face, ports pinned to each side, an inner line from a box's port at each of three levels, a round box, a long label | `src/layout/layered.js`, `src/typed/layout.js`, `src/typed/draw.js`, `src/core/registry.js`, `tests/typed-ports.test.mjs` (new), `tests/typed-ports.html` (new), `tests/embed.py` (appends its page) | 5.0 | Maps unchanged (geometry hashes, stills, `tests/edit.html`); `tests/core-diet.html`, `tests/core-diet.json` and every typed type's tests unchanged; on the test type every line of a port ends on its square within 1 px, no port leaves its side (the four-line port included), an inner line enters its box only at its port, nested boxes' ports do not touch, in Node and in Chrome under three fonts (`tests/typed-ports.html` run by `tests/embed.py`); a view laid out twice from one memo draws byte-identical markup; `tests/layout-typed.test.mjs`'s geometry key test passes unchanged; a reorder of members lays out again; the spike's timings in the pull request; the core's bytes before and after, within §2.3 |
+| 5.1 | **The router for ports and inner lines.** Port placement in `LP.ports` and its `sides` argument (§4.4); the side cap's skip of port ends (§4.2; as built, the port hook puts them back, §4.4); `fromPort`, `toPort`, `inner`, `portRank` in `EDGE_GEO`; inner ends (§5); `TYPED.frame` for a box's `pad` and `round` (§7, §9.3); `labelGaps`, decision 9 taken (§8, as built); the `socket` end in `ENDS` (§9.2); the registry fields documented in `src/typed/*.js` with one pointer line in the registry, 5.2's hooks too. §14's spike, reported in the pull request before 5.4 and 5.5 start. Tested with a test-only type: ports on nodes and boxes, a port with four lines on one face, ports pinned to each side, an inner line from a box's port at each of three levels, a round box, a long label | `src/layout/layered.js`, `src/typed/layout.js`, `src/typed/draw.js`, `src/core/registry.js`, `tests/typed-ports.test.mjs` (new), `tests/typed-ports.html` (new), `tests/embed.py` (appends its page) | 5.0 | Maps unchanged (geometry hashes, stills, `tests/edit.html`); `tests/core-diet.html`, `tests/core-diet.json` and every typed type's tests unchanged; on the test type every line of a port ends on its square within 1 px, no port leaves its side (the four-line port included), an inner line enters its box only at its port, nested boxes' ports do not touch, in Node and in Chrome under three fonts (`tests/typed-ports.html` run by `tests/embed.py`); a view laid out twice from one memo draws byte-identical markup; `tests/layout-typed.test.mjs`'s geometry key test passes unchanged; a reorder of members lays out again; the spike's timings in the pull request; the core's bytes before and after, within §2.3 |
 | 5.2 | **The member and key hooks.** `edits.member`, `edits.key` (§12.1); 4.6's wrap in `src/uml/state.js` moved onto `edits.member`; a node whose id holds `->` selected, renamed and deleted through hooks (§6) | `src/typed/edit.js`, `src/uml/state.js` (its wrap only), `tests/type-hooks.html`, `tests/typed-edit.html` | 5.0; 4.6 merged | On a test-only type each hook's result is emitted, said or refused, by pointer and by key; a null falls back to the panel; `tests/state.test.mjs` and `tests/state-machine.html` pass unchanged; no core byte |
 | 5.3 | **Structure notation.** `src/uml/structure.js`: the `port`, `component`, `ball` and `artifact` shapes; the sides chosen before the layout (§4.2); the ports with no line, the port nodes added back and the port names (§4.3, §4.5), on a copy; the shared rules (`port-owner`, `manifest-ends`); the looks' accessible names | `src/uml/structure.js`, `tests/structure.test.mjs` (new), `tests/structure.html` (new), `tests/embed.py` (appends its page) | 5.0; 5.1 for its browser test's line ends | Each shape's size, outline and inset agree in Node; drawn in both themes and three fonts with no text overflow; on hand-built geometry, ports with no line keep 8 px apart and names keep off lines and nodes; the sides chosen match a table of rankings; each shared rule has a passing and a failing case |
 | 5.4 | **The component type.** §10.1: definition, boxes, ports, delegations, ball and socket, rules, `describe()`, names, legend, `rows` and `word`, hooks (`connect`, `moveTo`, `add`, `member`, `key`) | `src/uml/component.js`, `tests/component.test.mjs`, `tests/component.html` (new), `tests/embed.py` (appends its page) | 5.1 (and its spike), 5.2, 5.3 | Definition of done 2, 4, 5, 6 and 8 on row 5's subset; every gesture by pointer and by key through `apply()`; a 30-step session undone, redone and reopened to byte-identical models; `05-component.json` lays out clean, right and down; `tests/cli.py`'s case for it passes unchanged |
-| 5.5 | **The deployment type.** §10.3: the cube, boxes six deep, artifacts, paths with §8's small gap and `cut`, rules, `describe()`, names, legend, `rows` and `word`, hooks | `src/uml/deployment.js`, `tests/deployment.test.mjs`, `tests/deployment.html` (new), `tests/embed.py` (appends its page) | 5.1 (and its spike), 5.3 | As 5.4 on row 6; a drop of an artifact into a node and the Owner field each emit their transaction; `06-deployment.json` lays out clean, right and down |
+| 5.5 | **The deployment type.** §10.3: the cube, boxes six deep, artifacts, paths with §8's small gap, `labelGaps` and `cut`, rules, `describe()`, names, legend, `rows` and `word`, hooks | `src/uml/deployment.js`, `tests/deployment.test.mjs`, `tests/deployment.html` (new), `tests/embed.py` (appends its page) | 5.1 (and its spike), 5.3 | As 5.4 on row 6; a drop of an artifact into a node and the Owner field each emit their transaction; `06-deployment.json` lays out clean, right and down |
 | 5.6 | **The composite structure type.** §6 and §10.2: its own ranking, the subject's box, parts, ports on parts, inner connectors, collaborations (`round`), collaboration uses, role bindings, `refs` (S14), rules, `describe()`, names, legend, `rows` and `word`, hooks (`connect`, `moveTo`, `add`, `remove`, `rename`, `member`) | `src/uml/composite.js`, `tests/composite.test.mjs`, `tests/composite.html` (new), `tests/embed.py` (appends its page) | 5.1, 5.2, 5.3 | As 5.4 on row 4; two parts of one type each draw the type's port with their own connectors; deleting a part deletes its connectors; `04-composite-structure.json` lays out clean, right and down |
 | 5.7 | **The ELK trial.** §15 | `docs/diagrams/notes/spike-elk.md` (new); the scratch branch `stage5-elk-trial`, never merged | 5.0 for its ELK column; 5.1 for the own engine's column on 5.1's view; 5.4 to 5.6 for it on the three examples | The table of §15's measures filled for the four fixtures; the recommendation by §15's rule; `package.json`, its lock and `lib/` unchanged on `main` |
 | 5.8 | **Fixtures, examples, docs, CLI.** The three types' Bookshop examples join the Bookshop atlas by drill-down (the maintainer's decision of 13 Nov 2026: one small example per type is the reference, and the atlas is built from them and checked against them; `plan.md` §7). §13's files and their tests (`tests/stage5-fixtures.test.mjs`, `tests/stage5.html`); the three examples moved, with `check.mjs`'s `MOVED`; `render`, `check`, `stills` and `pdf` on each; the schema and `.d.ts`; C10's tests; every document of `plan.md` §7; `docs/conformance/uml-component.md`, `uml-deployment.md`, `uml-composite-structure.md`; the lanes' release notes gathered into `docs/module-api.md` | `examples/`, `tests/*-minimal.json` and `tests/*-stress.json` of the three types, `tests/stage5-fixtures.test.mjs`, `tests/stage5.html`, `tests/notation.html`, `tests/cli.py`, `tests/mcp.py`, `tests/embed.py` (appends `tests/stage5.html`), `lib/umlimator.d.ts`, `lib/umlimator.schema.json`, `docs/diagrams/examples/check.mjs`, `docs/` (but the status table) | 5.4 to 5.7 | Definition of done 1, 3, 7, 9, 10, 11 and 12 for all three types; §14's budgets in CI; each PDF lists §11's rows; the three examples in the gallery and CI; the stress fixtures' crossings and the six-level width pinned and stated; L9 closed or re-stated by 5.7's outcome |
@@ -821,6 +852,9 @@ Each is set out with its options and trade-offs in the section named; the recomm
 | 7 | Provided interfaces (`model.md` §3) | Always an `uml.Interface` node, a ball by `present.as` | Also a port's `provided` and `required` props | §3 |
 | 8 | Deep nesting | A box's `pad`, 48 px where it or a box it holds has ports with lines, through `TYPED.frame` (about 45 B with the round frame) | Stage 2's 12 px (a delegation between nested ports cannot be laid out); one `pad` per view | §7 |
 | 9 | Room for labels | A small `gap` and `gapAfter`'s per-column widening for the deployment and component types, no core byte; `labelGaps` only if 5.1's spike leaves labels with no spot | `labelGaps` now (25 B, column gaps only, a second `layoutPass`); one gap set by the widest label | §8 |
+
+Decision 9 is taken: the spike left 12 labels with no spot, and `labelGaps` is built in 5.1 and set by the component and
+deployment types, the maintainer's decision of 13 Nov 2026 (§8, "As built").
 | 10 | The open collaboration | A dashed ellipse, by a box's `round`, in `TYPED.frame` | A dashed stadium (a deviation); closed only | §9.3 |
 | 11 | Deleting a part | Its connectors go with it, by `refs` | `apply()`'s default: the `part` dropped | §10.4 |
 | 12 | The member hook | `edits.member` in `src/typed/edit.js`; 4.6's wrap moves onto it | `member.add` returning commands (core); a wrap per type | §12.1 |
