@@ -14,7 +14,7 @@ env:
 jobs:
   # The checks, in four jobs that run side by side; the job `check` below passes only when all four did, so branch
   # protection's required check and the jobs that need it (site, release) are as they were.
-  # lib/ is what src/ builds; layout() in Node, the timed tests, and the examples render and check clean (about 4.5 min)
+  # lib/ is what src/ builds; layout() in Node, the timed tests, and the examples render and check clean (about 4 min)
   node:
     runs-on: ubuntu-latest
     steps:
