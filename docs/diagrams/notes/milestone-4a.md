@@ -1,6 +1,6 @@
 # Milestone 4a design note: cloud architecture diagrams and the mindmap
 
-Status: **proposed**, for the maintainer's approval before work package 4a.0 starts. Written against `main` at fcb953b
+Status: **approved** by the maintainer 14 Nov 2026, with every recommendation taken. Written against `main` at fcb953b
 (stage 5 complete on `main`, 5.8 merged as #232; stage 6's 6.0, 6.1 and 6.2 merged, #237 and #238; 6.3 to 6.7 open or to
 come). The approved notes of milestone 2 (`origin/milestone-2`, e4577cc) and milestone 4b (`origin/milestone-4b`,
 c27c264) were read on their branches for the files they share with this one. Milestone 3's note is not written yet.
