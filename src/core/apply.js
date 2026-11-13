@@ -23,6 +23,8 @@ import { diagramOf, propRefs } from './registry.js';
                                              transaction is passed over, so a selection deletes in one transaction (E2).
                                              What it held and stays goes to its nearest owner left
      reparent  { id, parent }                a new owner by `parent`, or none with parent null
+     addView   { view, index? }              a view, added to views at index (else at the end); refused when its id is
+                                             a view's already (notes/milestone-2.md §6.2). validate() says what it lacks
    An element is a node, a member, a model line or a view's own line or item with an id, or a fragment (schema version 2's
    id space). */
 
@@ -215,7 +217,14 @@ function run(m, c, gone) {
       e.x.parent = c.parent;
       return;
     }
-    default: throw new Error(`${JSON.stringify(c.op)} is not a command (set, add, move, hide, delete, reparent)`);
+    case 'addView': {
+      const v = c.view, list = (m.views ||= []);
+      if (!isObj(v) || typeof v.id !== 'string') throw new Error('addView: a view is an object with a string id');
+      if (list.some(x => isObj(x) && x.id === v.id)) throw new Error(`addView: view "${v.id}" is there already`);
+      list.splice(place(list, c.index), 0, structuredClone(v));
+      return;
+    }
+    default: throw new Error(`${JSON.stringify(c.op)} is not a command (set, add, move, hide, delete, reparent, addView)`);
   }
 }
 
