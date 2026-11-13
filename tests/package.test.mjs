@@ -20,6 +20,9 @@ import '../src/uml/package.js';
 
 const read = p => JSON.parse(readFileSync(new URL(p, import.meta.url)));
 const PKG = read('../examples/bookshop-packages.json');
+// the example lists its view's lines (so in the Bookshop atlas the class file's Order → Money «use» stays out of it); these
+// tests add lines to the model and draw them by the package diagram's line types: the view with no edges list
+const unlisted = () => { const m = structuredClone(PKG); delete m.views[0].edges; return m; };
 const T = diagramOf({ diagram: 'uml.package' });
 const N = (id, type, label, parent, more = {}) => ({ id, type: 'uml.' + type, label, ...(parent ? { parent } : {}), ...more });
 const meets = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
@@ -88,8 +91,8 @@ test('03-package.json draws: open packages as boxes holding their classes, impor
     assert.deepEqual(check(m, 'packages'), [], direction);
     for (const a of g.nodes) for (const b of g.nodes) assert.ok(a === b || !meets(a, b), `${direction}: ${a.id} and ${b.id} overlap`);
     assert.deepEqual(g.families.map(f => [f.id, f.parent ?? null, f.nodeIds, f.title]), [['shared', null, ['money'], 'shared'], ['catalog', null, ['book'], 'catalog'],
-      ['sales', null, ['customer', 'order', 'line', 'status'], 'sales'], ['payments', null, ['payable', 'payment'], 'payments'], ['card', 'payments', ['card-payment'], 'card'], ['wholesale', null, ['wholesale-order'], 'wholesale']]);
-    assert.ok(inside(F.card, F.payments));
+      ['sales', null, ['customer', 'order', 'line', 'status'], 'sales'], ['payments-package', null, ['payable', 'payment'], 'payments'], ['card', 'payments-package', ['card-payment'], 'card'], ['wholesale', null, ['wholesale-order'], 'wholesale']]);
+    assert.ok(inside(F.card, F['payments-package']));
     assert.ok(g.nodes.every(n => n.shape === 'classifier' && !n.compartments.length), 'classifiers by their names only');
     const e = Object.fromEntries(g.edges.map(x => [x.id, x]));
     assert.deepEqual(['catalog-imports-shared', 'payments-accesses-shared', 'wholesale-merges-sales', 'sales-needs-payments'].map(k => [e[k].label, e[k].end]),
@@ -105,16 +108,16 @@ test('03-package.json draws: open packages as boxes holding their classes, impor
 test('describe(): the package view in words, each box then what it holds, with its imports, access, merge and dependency', () => {
   assert.deepEqual(describe(PKG, 'packages').split('\n'), ['Bookshop packages: a package diagram of 16 elements and 5 lines.',
     'Package shared, holding 1 element.', 'Data type Money.', 'Package catalog, holding 1 element; imports shared.', 'Class Book.',
-    'Package sales, holding 4 elements; imports catalog; depends on payments.', 'Class Customer.', 'Class Order.', 'Class OrderLine.', 'Enumeration OrderStatus.',
+    'Package sales, holding 4 elements; imports catalog; depends on payments.', 'Class Customer.', 'Class Order (entity).', 'Class OrderLine.', 'Enumeration OrderStatus.',
     'Package payments, holding 3 elements; accesses shared.', 'Interface Payable.', 'Class Payment.', 'Package card, holding 1 element.', 'Class CardPayment.',
     'Package wholesale, holding 1 element; merges sales.', 'Class Order.']);
-  const closed = { ...PKG, views: [{ id: 'v', diagram: 'uml.package', title: 'Two', nodeIds: ['sales', 'payments', 'card-payment'] }] };
+  const closed = { ...PKG, views: [{ id: 'v', diagram: 'uml.package', title: 'Two', nodeIds: ['sales', 'payments-package', 'card-payment'] }] };
   assert.deepEqual(describe(closed, 'v').split('\n'), ['Two: a package diagram of 3 elements and 1 line.', 'Package sales (closed); depends on payments.',
     'Package payments, holding 1 element.', 'Class card::CardPayment.']);
 });
 
 test('a view with no edges list draws the package diagram\'s line types only; a line it lists of another type is drawn', () => {
-  const m = structuredClone(PKG); m.edges.push({ id: 'gen', type: 'uml.Generalization', from: 'card-payment', to: 'payment' });
+  const m = unlisted(); m.edges.push({ id: 'gen', type: 'uml.Generalization', from: 'card-payment', to: 'payment' });
   assert.ok(!layout(m, 'packages').edges.some(e => e.id === 'gen'));
   m.views[0].edges = ['gen', 'sales-needs-payments'];
   assert.deepEqual(layout(m, 'packages').edges.map(e => [e.id, e.end.to]), [['gen', 'triangle'], ['sales-needs-payments', 'open']]);
@@ -138,7 +141,7 @@ test('§7: a line between a package and something it holds is not drawn, and war
 });
 
 test('§7: a line from an open package to itself is not drawn, and warned of, and describe() leaves it out; on a closed one it is a loop', () => {
-  const m = structuredClone(PKG); m.edges.push({ id: 'self', type: 'uml.Dependency', from: 'sales', to: 'sales' });
+  const m = unlisted(); m.edges.push({ id: 'self', type: 'uml.Dependency', from: 'sales', to: 'sales' });
   assert.ok(!layout(m, 'packages').edges.some(e => e.id === 'self'));
   assert.deepEqual(validate(m).filter(p => p.rule === 'line-inside').map(p => [p.ids, p.message]), [[['self', 'sales'], 'line-inside: self, from "sales" to itself, a box, is not drawn in view "packages"']]);
   const d = describe(m, 'packages');
@@ -197,13 +200,13 @@ const BREAKS = {
   'import-ends': m => { m.edges.push({ id: 'bad', type: 'uml.PackageImport', from: 'sales', to: 'book' }); return ['bad', 'sales', 'book']; },
   'package-names': m => { m.nodes.push(N('sales2', 'Package', 'sales')); return ['sales', 'sales2']; },
   'owner-kinds': m => { m.nodes.find(n => n.id === 'line').parent = 'order'; return ['line', 'order']; },
-  'line-inside': m => { m.edges.push({ id: 'in', type: 'uml.Dependency', from: 'payments', to: 'card-payment' }); return ['in', 'payments', 'card-payment']; },
+  'line-inside': m => { m.edges.push({ id: 'in', type: 'uml.Dependency', from: 'payments-package', to: 'card-payment' }); return ['in', 'payments-package', 'card-payment']; },
   'own-boxes': m => { m.views[0].containers = [{ id: 'k', label: 'K', nodeIds: ['money'] }]; return ['packages']; },
 };
 test('validators: 03-package.json breaks no rule; each rule fails on a model that breaks it, naming its rule and its elements, at its level', () => {
   assert.deepEqual(T.validate(PKG, PKG.views[0]), []);
   for (const [rule, broke] of Object.entries(BREAKS)) {
-    const m = structuredClone(PKG), ids = broke(m), got = T.validate(m, m.views[0]);
+    const m = unlisted(), ids = broke(m), got = T.validate(m, m.views[0]);
     assert.deepEqual(got.map(p => p.rule), [rule], `${rule}: ${JSON.stringify(got)}`);
     const [p] = got;
     assert.match(p.message, new RegExp('^' + rule + ': '));
@@ -213,7 +216,7 @@ test('validators: 03-package.json breaks no rule; each rule fails on a model tha
   }
   // an import to itself (on a box, not drawn either); a merge from a class; a package and a class may share a name in one owner
   for (const [e, rules] of [[{ id: 'self', type: 'uml.PackageImport', from: 'sales', to: 'sales' }, ['import-ends', 'line-inside']], [{ id: 'cm', type: 'uml.PackageMerge', from: 'book', to: 'sales' }, ['import-ends']]]) {
-    const m = structuredClone(PKG); m.edges.push(e); assert.deepEqual(T.validate(m, m.views[0]).map(p => p.rule), rules, e.id); }
+    const m = unlisted(); m.edges.push(e); assert.deepEqual(T.validate(m, m.views[0]).map(p => p.rule), rules, e.id); }
   const m = structuredClone(PKG); m.nodes.push(N('c2', 'Class', 'sales')); assert.deepEqual(T.validate(m, m.views[0]), []);
   // the class type warns of owners and boxes too; the classifier rules run on a model with only a package view
   const c = structuredClone(PKG); BREAKS['owner-kinds'](c); BREAKS['own-boxes'](c); c.views[0].diagram = 'uml.class';
@@ -224,7 +227,7 @@ test('validators: 03-package.json breaks no rule; each rule fails on a model tha
 
 // ---- the Owner field and the frame
 test('the Owner field lists every package by its name from the top, for an element a package may own; a line or member has none', () => {
-  assert.deepEqual(ownerChoices(PKG, PKG.nodes.find(n => n.id === 'book')).map(o => `${o.id}=${o.label}`), ['shared=shared', 'catalog=catalog', 'sales=sales', 'payments=payments', 'card=payments::card', 'wholesale=wholesale']);
+  assert.deepEqual(ownerChoices(PKG, PKG.nodes.find(n => n.id === 'book')).map(o => `${o.id}=${o.label}`), ['shared=shared', 'catalog=catalog', 'sales=sales', 'payments-package=payments', 'card=payments::card', 'wholesale=wholesale']);
   assert.equal(ownerChoices(PKG, PKG.edges[0]), null);
   assert.equal(ownerChoices(PKG, { id: 'm', type: 'uml.Property' }), null);
   assert.equal(T.owners, diagramOf({ diagram: 'uml.class' }).owners);
@@ -232,7 +235,7 @@ test('the Owner field lists every package by its name from the top, for an eleme
 
 test('SHAPE.package: an open package\'s frame draws its border with class family-box and its title as family-title; a closed one is a folder, named', () => {
   const g = layout(PKG, 'packages'), s = svgOf(g);
-  assert.match(s, /<g class="family" data-family="card" data-parent="payments" role="img" aria-label="Package card, holding 1 element"><rect class="family-box" [^>]*stroke="var\(--um-muted\)"\/><path [^>]*class="pk-tab"[^>]*\/><text class="family-title" [^>]*data-t="ft" data-o="card">card<\/text><\/g>/);
+  assert.match(s, /<g class="family" data-family="card" data-parent="payments-package" role="img" aria-label="Package card, holding 1 element"><rect class="family-box" [^>]*stroke="var\(--um-muted\)"\/><path [^>]*class="pk-tab"[^>]*\/><text class="family-title" [^>]*data-t="ft" data-o="card">card<\/text><\/g>/);
   assert.equal((s.match(/class="family-box"/g) || []).length, 6);
   const f = { id: 'p', x: 0, y: 0, w: 60, h: 80, title: '«subsystem» a very long name indeed' };
   assert.match(SHAPE.package.frame(f), /data-o="p">«subs…<\/text>$/, 'cut to the box');
@@ -246,7 +249,7 @@ test('SHAPE.package: an open package\'s frame draws its border with class family
 test('a pinned class in a box stays in it (a pin far outside its box is §4.3\'s known limit, which the check reports); renaming an open package lays the view out again, a closed one\'s rename is a node\'s', () => {
   const m = structuredClone(PKG); m.views[0].layout = { payment: [2, 4] }; // past CardPayment's box, in its own column
   const g = layout(m, 'packages'), F = Object.fromEntries(g.families.map(f => [f.id, f]));
-  assert.ok(inside(g.byId.payment, F.payments) && !inside(g.byId.payment, F.card)); assert.deepEqual(check(m, 'packages'), []);
+  assert.ok(inside(g.byId.payment, F['payments-package']) && !inside(g.byId.payment, F.card)); assert.deepEqual(check(m, 'packages'), []);
   m.views[0].layout = { payment: [3, 3] }; // in shared's column: payments grows over it
   assert.deepEqual(check(m, 'packages').map(p => p.message), ['view packages: families "payments" and "shared" overlap']);
   const memos = {}, run = x => mapContext(x, { memos }).buildGeo('packages');
@@ -264,7 +267,7 @@ test('a pinned class in a box stays in it (a pin far outside its box is §4.3\'s
 test('save and reopen (DoD 6): a 30-step session on 03-package.json undoes and redoes to byte-identical models, and reopening its saved JSON midway ends where the session does', () => {
   const steps = [];
   for (let i = 0; i < 5; i++) steps.push(
-    [{ op: 'add', element: N(`p${i}`, 'Package', `pack${i}`, i % 2 ? 'payments' : null), view: 'packages' }],
+    [{ op: 'add', element: N(`p${i}`, 'Package', `pack${i}`, i % 2 ? 'payments-package' : null), view: 'packages' }],
     [{ op: 'add', element: N(`c${i}`, 'Class', `Thing${i}`, `p${i}`), view: 'packages' }],
     [{ op: 'add', element: { id: `i${i}`, type: 'uml.PackageImport', from: `p${i}`, to: 'shared' }, view: 'packages' }],
     [{ op: 'set', id: `i${i}`, path: ['props', 'visibility'], value: i % 2 ? 'private' : 'public' }],

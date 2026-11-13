@@ -74,7 +74,7 @@ test('shopping-use-cases.json (example 8) draws: actors, ellipses, the subject a
     for (const p of g.nodes) for (const q of g.nodes) assert.ok(p === q || !meets(p, q), `${direction}: ${p.id} and ${q.id} overlap`);
     assert.deepEqual(['shopper', 'member', 'payment-provider'].map(id => by[id].shape), ['actor', 'actor', 'actor']);
     assert.ok(g.nodes.filter(n => n.type === 'uml.UseCase').every(n => n.shape === 'ellipse'));
-    assert.deepEqual(by.checkout.points, ['payment', 'extras']);
+    assert.deepEqual(by['check-out'].points, ['payment', 'extras']);
     const [box] = g.families; assert.equal(box.id, 'bookshop'); assert.equal(box.shape, 'subject');
     assert.equal(box.nodeIds.length, 8); box.nodeIds.forEach(id => assert.ok(inside(by[id], box), `${direction}: ${id} in the subject`));
     // actors first: before every use case along the flow
@@ -133,7 +133,7 @@ test('the layout is not edited after layoutTyped: drawn twice from one memo, the
 test('names, reading order and legend (A1, L13): actors, then the subject and its use cases, then the lines; each kind keyed', () => {
   const g = layout(UC, 'shopping'), s = svgOf(g);
   assert.equal(g.byId.shopper.aria, 'Actor Shopper');
-  assert.equal(g.byId.checkout.aria, 'Use case Check out, in Online bookshop, 2 extension points');
+  assert.equal(g.byId['check-out'].aria, 'Use case Check out, in Online bookshop, 2 extension points');
   assert.equal(g.families[0].aria, 'Subject Online bookshop, holding 8 use cases');
   assert.equal(g.edges.find(e => e.id === 'voucher-extends-checkout').aria, 'Extend from Redeem a voucher to Check out, at payment, when the shopper has a voucher code');
   assert.equal(g.edges.find(e => e.id === 'member-is-shopper').aria, 'Generalization from Member to Shopper');
@@ -166,13 +166,13 @@ test('describe(): the view in sentences, each element in reading order, then eac
 const BREAKS = {
   'association-ends': m => { m.edges.push(L('bad', 'Association', 'shopper', 'member')); return ['bad', 'shopper', 'member']; },
   'include-ends': m => { m.edges.push(L('bad', 'Include', 'shopper', 'pay')); return ['bad', 'shopper', 'pay']; },
-  'extend-ends': m => { m.edges.push(L('bad', 'Extend', 'checkout', 'checkout', { extensionPoints: ['checkout.payment'] })); return ['bad', 'checkout', 'checkout']; },
-  'extend-points': m => { m.edges.find(e => e.id === 'voucher-extends-checkout').props.extensionPoints = ['checkout.payment', 'nowhere']; return ['voucher-extends-checkout', 'checkout', 'nowhere']; },
+  'extend-ends': m => { m.edges.push(L('bad', 'Extend', 'check-out', 'check-out', { extensionPoints: ['checkout.payment'] })); return ['bad', 'check-out', 'check-out']; },
+  'extend-points': m => { m.edges.find(e => e.id === 'voucher-extends-checkout').props.extensionPoints = ['checkout.payment', 'nowhere']; return ['voucher-extends-checkout', 'check-out', 'nowhere']; },
   'generalization-kinds': m => { m.edges.push(L('bad', 'Generalization', 'member', 'pay')); return ['bad', 'member', 'pay']; },
   'use-case-owner': m => { m.nodes.find(n => n.id === 'shopper').parent = 'bookshop'; return ['shopper', 'bookshop']; },
-  'include-cycle': m => { m.edges.push(L('back', 'Include', 'pay', 'checkout')); return ['checkout', 'pay', 'back']; },
+  'include-cycle': m => { m.edges.push(L('back', 'Include', 'pay', 'check-out')); return ['check-out', 'pay', 'back']; },
   named: m => { m.nodes.find(n => n.id === 'sign-in').label = ' '; return ['sign-in']; },
-  'point-names': m => { m.nodes.find(n => n.id === 'checkout').members[1].label = 'payment'; return ['checkout', 'checkout.payment', 'checkout.extras']; },
+  'point-names': m => { m.nodes.find(n => n.id === 'check-out').members[1].label = 'payment'; return ['check-out', 'checkout.payment', 'checkout.extras']; },
 };
 test('validators: shopping-use-cases.json (example 8) breaks no rule; each rule fails on a model that breaks it, naming its rule and its elements, at its level', () => {
   assert.deepEqual(T.validate(UC), []);
@@ -210,7 +210,7 @@ test('extension points are member rows by name; deleting one drops it from every
 
 test('the Owner field and connect: subjects and packages for a use case, packages for an actor; an association drawn from a use case starts at the actor', () => {
   const m = structuredClone(UC); m.nodes.push({ id: 'pk', type: 'uml.Package', label: 'shop' });
-  assert.deepEqual(T.owners(m, m.nodes.find(n => n.id === 'checkout')), [{ id: 'bookshop', label: 'Online bookshop' }, { id: 'pk', label: 'shop' }]);
+  assert.deepEqual(T.owners(m, m.nodes.find(n => n.id === 'check-out')), [{ id: 'bookshop', label: 'Online bookshop' }, { id: 'pk', label: 'shop' }]);
   assert.deepEqual(T.owners(m, m.nodes[0]), [{ id: 'pk', label: 'shop' }]);
   assert.equal(T.owners(m, m.edges[0]), null);
   const v = UC.views[0], line = t => ({ type: 'uml.' + t });
@@ -254,7 +254,8 @@ test('P1 (S15): on 50 elements and 60 lines, a full layout under 1 s, and a use 
   for (let i = 0; i < 7; i++) edges.push(L(`ex${i}`, 'Extend', `u${i * 5 + 1}`, `u${i * 5}`, { extensionPoints: [`u${i * 5}.p`] }));
   const M = { schemaVersion: 2, nodes, edges, views: [{ id: 'all', diagram: 'uml.use-case', nodeIds: nodes.map(n => n.id) }] };
   assert.equal(nodes.length, 50); assert.equal(edges.length, 60); assert.deepEqual(validate(M), []);
-  // CPU time, best of five after a warm-up: node --test runs the suites side by side (tests/communication.test.mjs)
+  // CPU time, best of five after a warm-up: CI runs the timed tests one file at a time in their own step
+  // (tests/communication.test.mjs)
   const timed = f => { const c = process.cpuUsage(); f(); const u = process.cpuUsage(c); return (u.user + u.system) / 1000; };
   const memos = {}, draw = m => mapContext(m, { memos }).buildView('all');
   draw(M);

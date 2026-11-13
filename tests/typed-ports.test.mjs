@@ -218,7 +218,7 @@ function SPIKE(label = '') {
   return { repair: false, reroute: false, gap: 48, nodes, edges, containers };
 }
 const cpu = f => { const c = process.cpuUsage(); f(); const u = process.cpuUsage(c); return (u.user + u.system) / 1000; };
-test('5.1\'s spike (§14): 50 nodes, 60 lines with long labels, 40 ports, boxes six deep with inner lines: a label edit and a full layout under 1 s in CI, the edit against 100 ms printed (CPU, best of seven after a warm-up)', () => {
+test('5.1\'s spike (§14): 50 nodes, 60 lines with long labels, 40 ports, boxes six deep with inner lines: a label edit and a full layout under 1 s in CI, the edit against 100 ms printed (CPU, best of seven after a warm-up) (timed)', () => {
   const dg = SPIKE(), g0 = layoutTyped(dg);
   assert.equal(g0.nodes.length, 50); assert.equal(g0.families.length, 6);
   assert.equal(portEnds(g0).length, 52, '40 lines from ports, and the six inner lines\' twelve ends');

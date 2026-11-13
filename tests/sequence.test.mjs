@@ -59,11 +59,11 @@ function unclean(g, model) {
 }
 
 test('example 11 lays out clean: five heads, ten messages, two frames and a use; 3.1\'s bars; no problem', () => {
-  const g = layout(SEQ, 'checkout');
+  const g = layout(SEQ, 'checkout-sequence');
   assert.deepEqual(unclean(g, SEQ), []);
   assert.deepEqual([g.map, g.nodes.filter(n => n.shape === 'lifeline').length, g.edges.length, g.ta.frames.map(f => f.id), g.ta.spans.map(s => s.id)], [false, 5, 10, ['f1', 'f2'], ['f3']]);
-  assert.deepEqual(g.ta.bars.map(b => [b.head, b.depth]), [['storefront', 1], ['api', 1], ['payments', 1], ['api', 2]]);
-  assert.equal(g.ta.heads.find(h => h.id === 'receipt').y > g.ta.heads.find(h => h.id === 'api').y, true); // created by m6: lowered to its arrow
+  assert.deepEqual(g.ta.bars.map(b => [b.head, b.depth]), [['lifeline-storefront', 1], ['lifeline-api', 1], ['lifeline-payments', 1], ['lifeline-api', 2]]);
+  assert.equal(g.ta.heads.find(h => h.id === 'receipt').y > g.ta.heads.find(h => h.id === 'lifeline-api').y, true); // created by m6: lowered to its arrow
   // the ends each sort draws (src/typed/draw.js's table), the labels, and a slot per gap and per operand end
   assert.deepEqual(Object.fromEntries(g.edges.map(e => [e.id, [e.end.to, !!e.end.dashed]])), { m1: ['arrow', false], m2: ['arrow', false], m3: ['arrow', false], m4: ['arrow', false],
     m5: ['open', true], m6: ['open', true], m7: ['open', false], m8: ['open', true], m9: ['open', true], m10: ['open', true] });
@@ -73,16 +73,16 @@ test('example 11 lays out clean: five heads, ten messages, two frames and a use;
 });
 
 test('reading order (S13): heads left to right, then each fragment before its first operand, each operand before what it holds, in time order', () => {
-  assert.deepEqual(layout(SEQ, 'checkout').order, ['shopper', 'storefront', 'api', 'payments', 'receipt', 'm1', 'm2', 'm3', 'm4', 'f1', 'f1-paid', 'm5', 'm6', 'f2', 'f2-notify', 'm7', 'f3', 'f1-declined', 'm8', 'm9', 'm10']);
+  assert.deepEqual(layout(SEQ, 'checkout-sequence').order, ['lifeline-shopper', 'lifeline-storefront', 'lifeline-api', 'lifeline-payments', 'receipt', 'm1', 'm2', 'm3', 'm4', 'f1', 'f1-paid', 'm5', 'm6', 'f2', 'f2-notify', 'm7', 'f3', 'f1-declined', 'm8', 'm9', 'm10']);
   // an empty fragment, drawn at its parent's end, is read there
   const m = seq([M('a', 'A', 'B', 'call')], [FR('e', 'opt', null, 'e1')]);
   assert.deepEqual(layout(m, 'v').order, ['A', 'B', 'C', 'a', 'e', 'e1']);
 });
 
 test('accessible names (A1): heads, messages with their place and operand, fragments, operands, uses', () => {
-  const g = layout(SEQ, 'checkout'), name = id => (g.byId[id] || g.edges.find(e => e.id === id)).aria;
-  assert.equal(name('api'), 'Lifeline api : ShopApi');
-  assert.equal(name('shopper'), 'Lifeline shopper : Shopper (actor)');
+  const g = layout(SEQ, 'checkout-sequence'), name = id => (g.byId[id] || g.edges.find(e => e.id === id)).aria;
+  assert.equal(name('lifeline-api'), 'Lifeline api : ShopApi');
+  assert.equal(name('lifeline-shopper'), 'Lifeline shopper : Shopper (actor)');
   assert.equal(name('m4'), 'Message 4 of 10: api to payments, charge(total), call');
   assert.equal(name('m5'), 'Message 5 of 10: payments to api, paid, reply, in alt, payment accepted');
   assert.equal(name('f1'), 'Combined fragment alt, 2 operands');
@@ -96,13 +96,13 @@ test('draw: outlines, stems, the use\'s box, the bars and a deleted lifeline\'s 
   assert.ok(pos('class="seq-stem"') < pos('class="seq-use"') && pos('class="seq-use"') < pos('class="seq-bar"') && pos('class="seq-bar"') < pos('<g class="edges">'), markup.slice(0, 2000));
   assert.ok(pos('class="seq-bar"') < pos('class="seq-cross"') && pos('class="seq-cross"') < pos('<g class="edges">') && pos('class="seq-over"') < 0);
   assert.ok(pos('data-shape="lifeline"') > 0 && pos('data-shape="use"') > 0);
-  const { markup: ex } = mapContext(SEQ, {}).buildView('checkout');
+  const { markup: ex } = mapContext(SEQ, {}).buildView('checkout-sequence');
   assert.equal((ex.match(/class="frame-box"/g) || []).length, 3); // f1, f2 and the use's outline
   assert.equal((ex.match(/class="seq-bar"/g) || []).length, 4);
 });
 
 test('describe(): the view in words, in time order, nested as drawn', () => {
-  const d = describeView(SEQ, 'checkout').split('\n');
+  const d = describeView(SEQ, 'checkout-sequence').split('\n');
   assert.equal(d[0], 'Checkout: a sequence diagram of 5 lifelines, 10 messages, 1 interaction use and 2 combined fragments.');
   assert.ok(d.includes('3. api calls itself: validate(order).'), d);
   assert.ok(d.includes('alt [payment accepted]:') && d.includes('  5. payments replies to api (answers 4): paid.') && d.includes('    7. api sends to storefront: orderPlaced.'), d);
@@ -111,7 +111,7 @@ test('describe(): the view in words, in time order, nested as drawn', () => {
 });
 
 test('the legend: each sort of message the view draws, in the order of the palette', () => {
-  const g = layout(SEQ, 'checkout');
+  const g = layout(SEQ, 'checkout-sequence');
   assert.deepEqual(g.legend.map(h => /<b>([^<]+)<\/b>/.exec(h)[1]), ['Call', 'Async', 'Reply', 'Create']);
   assert.ok(g.legend[2].includes('stroke-dasharray'));
 });
@@ -167,28 +167,28 @@ test('every rule has a failing fixture above, and check.mjs reports the type\'s 
 /* ---- the gesture hooks (notes/stage-3.md §5.1, §5.2) ---- */
 const LINE = sort => SEQ_TYPE.lines.find(l => l.props.sort === sort);
 test('connect: a new message at the end with no slot (L from a lifeline), at a slot with its operand, a reply with its call, a self-message', () => {
-  const c = sqConnect(SEQ, V(SEQ), 'shopper', 'storefront', null, LINE('async'));
-  assert.deepEqual(c, [{ op: 'add', element: { id: 'm11', type: 'uml.Message', from: 'shopper', to: 'storefront', props: { sort: 'async' } }, view: 'checkout', index: 11, in: 'view' }]);
+  const c = sqConnect(SEQ, V(SEQ), 'lifeline-shopper', 'lifeline-storefront', null, LINE('async'));
+  assert.deepEqual(c, [{ op: 'add', element: { id: 'm11', type: 'uml.Message', from: 'lifeline-shopper', to: 'lifeline-storefront', props: { sort: 'async' } }, view: 'checkout-sequence', index: 11, in: 'view' }]);
   assert.equal(V(run(SEQ, c)).edges[11].id, 'm11');
   // into the declined operand, just before m8, at its slot
-  const r = sqConnect(SEQ, V(SEQ), 'api', 'payments', { index: 8, parent: 'f1-declined' }, LINE('async'));
-  assert.deepEqual(r[0].element, { id: 'm11', type: 'uml.Message', from: 'api', to: 'payments', parent: 'f1-declined', props: { sort: 'async' } });
+  const r = sqConnect(SEQ, V(SEQ), 'lifeline-api', 'lifeline-payments', { index: 8, parent: 'f1-declined' }, LINE('async'));
+  assert.deepEqual(r[0].element, { id: 'm11', type: 'uml.Message', from: 'lifeline-api', to: 'lifeline-payments', parent: 'f1-declined', props: { sort: 'async' } });
   assert.deepEqual(ids(V(run(SEQ, r)).edges).slice(7, 10), ['f3', 'm11', 'm8']);
   // a reply answers the latest call back along it that nothing answers
-  const c2 = run(SEQ, sqConnect(SEQ, V(SEQ), 'api', 'payments', null, LINE('call'))), r2 = sqConnect(c2, V(c2), 'payments', 'api', null, LINE('reply'));
+  const c2 = run(SEQ, sqConnect(SEQ, V(SEQ), 'lifeline-api', 'lifeline-payments', null, LINE('call'))), r2 = sqConnect(c2, V(c2), 'lifeline-payments', 'lifeline-api', null, LINE('reply'));
   assert.deepEqual(r2[0].element.props, { sort: 'reply', replyTo: 'm11' });
-  const s = sqConnect(SEQ, V(SEQ), 'api', 'api', { index: 3, parent: null }, LINE('call'));
+  const s = sqConnect(SEQ, V(SEQ), 'lifeline-api', 'lifeline-api', { index: 3, parent: null }, LINE('call'));
   assert.deepEqual(ids(V(run(SEQ, s)).edges).slice(2, 5), ['m3', 'm11', 'm4']);
 });
 test('connect refuses what breaks a rule, with the reason for the hint line: a create after the first message, a self-delete, an end off the view', () => {
-  assert.match(sqConnect(SEQ, V(SEQ), 'api', 'payments', null, LINE('create')).error, /^create-once: /);
-  assert.match(sqConnect(SEQ, V(SEQ), 'api', 'payments', { index: 2, parent: null }, LINE('delete')).error, /^delete-once: /);
-  assert.match(sqConnect(SEQ, V(SEQ), 'api', 'api', null, LINE('delete')).error, /does not delete itself/);
-  assert.match(sqConnect(SEQ, V(SEQ), 'api', 'nobody', null, LINE('call')).error, /two lifelines/);
+  assert.match(sqConnect(SEQ, V(SEQ), 'lifeline-api', 'lifeline-payments', null, LINE('create')).error, /^create-once: /);
+  assert.match(sqConnect(SEQ, V(SEQ), 'lifeline-api', 'lifeline-payments', { index: 2, parent: null }, LINE('delete')).error, /^delete-once: /);
+  assert.match(sqConnect(SEQ, V(SEQ), 'lifeline-api', 'lifeline-api', null, LINE('delete')).error, /does not delete itself/);
+  assert.match(sqConnect(SEQ, V(SEQ), 'lifeline-api', 'nobody', null, LINE('call')).error, /two lifelines/);
 });
 test('moveTo: a message to a slot across operands (E9) is a move then a reparent; one slot by Alt + Up/Down; nothing moves with it', () => {
   const c = sqMoveTo(SEQ, V(SEQ), 'm7', { index: 9, parent: 'f1-declined' });
-  assert.deepEqual(c, [{ op: 'move', id: 'm7', view: 'checkout', index: 8 }, { op: 'reparent', id: 'm7', parent: 'f1-declined' }]);
+  assert.deepEqual(c, [{ op: 'move', id: 'm7', view: 'checkout-sequence', index: 8 }, { op: 'reparent', id: 'm7', parent: 'f1-declined' }]);
   const m = run(SEQ, c);
   assert.deepEqual(ids(V(m).edges), ['m1', 'm2', 'm3', 'm4', 'm5', 'm6', 'f3', 'm8', 'm7', 'm9', 'm10']);
   // Alt + Down from m6 (the end of f1-paid's own messages): into f2's operand, first; Alt + Up back out
@@ -211,10 +211,10 @@ test('moveTo: a message to a slot across operands (E9) is a move then a reparent
 });
 test('moveTo: a fragment moves with everything it holds, one move per occurrence in order, then a reparent; never into itself', () => {
   const c = sqMoveTo(SEQ, V(SEQ), 'f2', { by: [0, -1] }); // up one slot: above m6, still in f1-paid
-  assert.deepEqual(c, [{ op: 'move', id: 'm7', view: 'checkout', index: 5 }]);
+  assert.deepEqual(c, [{ op: 'move', id: 'm7', view: 'checkout-sequence', index: 5 }]);
   assert.deepEqual(ids(V(run(SEQ, c)).edges).slice(4, 8), ['m5', 'm7', 'm6', 'f3']);
   const out = sqMoveTo(SEQ, V(SEQ), 'f2', { index: 10, parent: null }); // after m9, at the top level
-  assert.deepEqual(out, [{ op: 'move', id: 'm7', view: 'checkout', index: 9 }, { op: 'reparent', id: 'f2', parent: null }]);
+  assert.deepEqual(out, [{ op: 'move', id: 'm7', view: 'checkout-sequence', index: 9 }, { op: 'reparent', id: 'f2', parent: null }]);
   assert.deepEqual(ids(V(run(SEQ, out)).edges).slice(7, 11), ['m8', 'm9', 'm7', 'm10']);
   const f1 = sqMoveTo(SEQ, V(SEQ), 'f1', { index: 10, parent: null }); // the alt after m9: five moves
   assert.deepEqual(f1.map(x => [x.id, x.index]), [['m5', 9], ['m6', 9], ['m7', 9], ['f3', 9], ['m8', 9]]);
@@ -224,25 +224,25 @@ test('moveTo: a fragment moves with everything it holds, one move per occurrence
   assert.match(sqMoveTo(SEQ, V(SEQ), 'f1', { index: 6, parent: null }).error, /into itself/);
 });
 test('moveTo: a lifeline one place left or right (Alt + Left/Right), or to its place in nodeIds (a drag); never apart from what a use covers', () => {
-  assert.deepEqual(sqMoveTo(SEQ, V(SEQ), 'api', { by: [1, 0] }), [{ op: 'move', id: 'api', view: 'checkout', index: 3 }]);
-  assert.deepEqual(V(run(SEQ, sqMoveTo(SEQ, V(SEQ), 'storefront', { by: [-1, 0] }))).nodeIds, ['storefront', 'shopper', 'api', 'payments', 'receipt']);
+  assert.deepEqual(sqMoveTo(SEQ, V(SEQ), 'lifeline-api', { by: [1, 0] }), [{ op: 'move', id: 'lifeline-api', view: 'checkout-sequence', index: 3 }]);
+  assert.deepEqual(V(run(SEQ, sqMoveTo(SEQ, V(SEQ), 'lifeline-storefront', { by: [-1, 0] }))).nodeIds, ['lifeline-storefront', 'lifeline-shopper', 'lifeline-api', 'lifeline-payments', 'receipt']);
   assert.deepEqual(sqMoveTo(SEQ, V(SEQ), 'receipt', { by: [1, 0] }), []);
-  assert.deepEqual(V(run(SEQ, sqMoveTo(SEQ, V(SEQ), 'storefront', { index: 0 }))).nodeIds[0], 'storefront');
+  assert.deepEqual(V(run(SEQ, sqMoveTo(SEQ, V(SEQ), 'lifeline-storefront', { index: 0 }))).nodeIds[0], 'lifeline-storefront');
   // f3 covers api, payments and receipt: a move that takes one of them away, or puts another between, is refused
-  for (const [id, to] of [['api', { by: [-1, 0] }], ['api', { index: 0 }], ['shopper', { index: 3 }]]) assert.match(sqMoveTo(SEQ, V(SEQ), id, to).error, /^covers: /, `${id} ${JSON.stringify(to)}`);
-  assert.equal(sqMoveTo(SEQ, V(SEQ), 'api', { by: [0, 1] }), null); // up or down: nothing (pins: false)
+  for (const [id, to] of [['lifeline-api', { by: [-1, 0] }], ['lifeline-api', { index: 0 }], ['lifeline-shopper', { index: 3 }]]) assert.match(sqMoveTo(SEQ, V(SEQ), id, to).error, /^covers: /, `${id} ${JSON.stringify(to)}`);
+  assert.equal(sqMoveTo(SEQ, V(SEQ), 'lifeline-api', { by: [0, 1] }), null); // up or down: nothing (pins: false)
   // a head dropped (the canvas's slot and the drop's point): its place among the heads as laid out, never the slot's index
-  const xs = layout(SEQ, 'checkout').nodes.filter(n => n.shape === 'lifeline').map(n => n.x + n.w / 2);
-  assert.deepEqual(sqMoveTo(SEQ, V(SEQ), 'shopper', { index: 4, y: 300, parent: null, pt: [(xs[1] + xs[2]) / 2, 60] }), [{ op: 'move', id: 'shopper', view: 'checkout', index: 1 }]);
-  assert.deepEqual(sqMoveTo(SEQ, V(SEQ), 'shopper', { index: 4, y: 300, parent: null, pt: [xs[0] + 20, 60] }), []); // back where it was
-  assert.equal(sqMoveTo(SEQ, V(SEQ), 'storefront', { index: 0, y: 300, parent: null }), null); // a slot with no point: not a place in nodeIds
+  const xs = layout(SEQ, 'checkout-sequence').nodes.filter(n => n.shape === 'lifeline').map(n => n.x + n.w / 2);
+  assert.deepEqual(sqMoveTo(SEQ, V(SEQ), 'lifeline-shopper', { index: 4, y: 300, parent: null, pt: [(xs[1] + xs[2]) / 2, 60] }), [{ op: 'move', id: 'lifeline-shopper', view: 'checkout-sequence', index: 1 }]);
+  assert.deepEqual(sqMoveTo(SEQ, V(SEQ), 'lifeline-shopper', { index: 4, y: 300, parent: null, pt: [xs[0] + 20, 60] }), []); // back where it was
+  assert.equal(sqMoveTo(SEQ, V(SEQ), 'lifeline-storefront', { index: 0, y: 300, parent: null }), null); // a slot with no point: not a place in nodeIds
   // the canvas's col (the heads it draws left of the drop, in the host's font) wins over pt measured again here
-  assert.deepEqual(sqMoveTo(SEQ, V(SEQ), 'shopper', { index: 4, y: 300, parent: null, pt: [xs[0] + 20, 60], col: 1 }), [{ op: 'move', id: 'shopper', view: 'checkout', index: 1 }]);
-  assert.match(sqMoveTo(SEQ, V(SEQ), 'shopper', { index: 4, y: 300, parent: null, pt: [xs[0] + 20, 60], col: 2 }).error, /^covers: /);
+  assert.deepEqual(sqMoveTo(SEQ, V(SEQ), 'lifeline-shopper', { index: 4, y: 300, parent: null, pt: [xs[0] + 20, 60], col: 1 }), [{ op: 'move', id: 'lifeline-shopper', view: 'checkout-sequence', index: 1 }]);
+  assert.match(sqMoveTo(SEQ, V(SEQ), 'lifeline-shopper', { index: 4, y: 300, parent: null, pt: [xs[0] + 20, 60], col: 2 }).error, /^covers: /);
 });
 test('moveTo: an operand up or down among its fragment\'s (the member list), and what it holds moves with it; the member hook adds and renames', () => {
   const c = sqMoveTo(SEQ, V(SEQ), 'f1-declined', { by: [0, -1] });
-  assert.deepEqual(c, [{ op: 'move', id: 'f1-declined', index: 0 }, { op: 'move', id: 'm8', view: 'checkout', index: 4 }]);
+  assert.deepEqual(c, [{ op: 'move', id: 'f1-declined', index: 0 }, { op: 'move', id: 'm8', view: 'checkout-sequence', index: 4 }]);
   const m = run(SEQ, c);
   assert.deepEqual([ids(V(m).edges), V(m).fragments[0].members.map(o => o.id)], [['m1', 'm2', 'm3', 'm4', 'm8', 'm5', 'm6', 'm7', 'f3', 'm9', 'm10'], ['f1-declined', 'f1-paid']]);
   assert.equal(JSON.stringify(run(m, sqMoveTo(m, V(m), 'f1-declined', { by: [0, 1] }))), JSON.stringify(SEQ)); // and back down
@@ -255,43 +255,43 @@ test('moveTo: an operand up or down among its fragment\'s (the member list), and
 });
 test('wrap: a run of one parent becomes a fragment\'s first operand (an alt gets an else); a run with a gap, two parents or no operator is refused', () => {
   const c = sqWrap(SEQ, V(SEQ), ['m9', 'm10'], 'loop');
-  assert.deepEqual(c, [{ op: 'add', element: { id: 'f4', type: 'uml.CombinedFragment', props: { operator: 'loop' }, members: [{ id: 'f4.1', type: 'uml.InteractionOperand' }] }, view: 'checkout', in: 'view' },
+  assert.deepEqual(c, [{ op: 'add', element: { id: 'f4', type: 'uml.CombinedFragment', props: { operator: 'loop' }, members: [{ id: 'f4.1', type: 'uml.InteractionOperand' }] }, view: 'checkout-sequence', in: 'view' },
     { op: 'reparent', id: 'm9', parent: 'f4.1' }, { op: 'reparent', id: 'm10', parent: 'f4.1' }]);
   assert.deepEqual(ids(V(run(SEQ, c)).fragments), ['f1', 'f2', 'f4']);
   const a = run(SEQ, sqWrap(SEQ, V(SEQ), ['m6', 'f2', 'f3'], 'alt')); // in f1-paid, round the opt
   assert.deepEqual([V(a).fragments[2].parent, V(a).fragments[2].members.map(o => o.label), V(a).fragments[1].parent, at(a, 'm6').parent], ['f1-paid', [undefined, 'else'], 'f4.1', 'f4.1']);
-  assert.deepEqual(layout(a, 'checkout').problems, []);
+  assert.deepEqual(layout(a, 'checkout-sequence').problems, []);
   assert.match(sqWrap(SEQ, V(SEQ), ['m1', 'm3'], 'opt').error, /m2 lies between/);
   assert.match(sqWrap(SEQ, V(SEQ), ['m4', 'm5'], 'opt').error, /different operands/);
   assert.match(sqWrap(SEQ, V(SEQ), ['m1'], 'neg').error, /operator is one of/);
   assert.match(sqWrap(SEQ, V(SEQ), ['m6', 'm7'], 'opt').error, /different operands/);
 });
 test('add: a lifeline after the selected one (a model node), an interaction use at a slot covering every lifeline', () => {
-  const l = sqAdd(SEQ, V(SEQ), { type: 'uml.Lifeline' }, 'audit', { after: 'storefront' });
-  assert.deepEqual(l, [{ op: 'add', element: { id: 'audit1', type: 'uml.Lifeline', label: 'audit' }, view: 'checkout', index: 2 }]);
+  const l = sqAdd(SEQ, V(SEQ), { type: 'uml.Lifeline' }, 'audit', { after: 'lifeline-storefront' });
+  assert.deepEqual(l, [{ op: 'add', element: { id: 'audit1', type: 'uml.Lifeline', label: 'audit' }, view: 'checkout-sequence', index: 2 }]);
   const m = run(SEQ, l);
   assert.deepEqual([V(m).nodeIds[2], m.nodes.length], ['audit1', 6]);
   // between two lifelines f3 covers: f3 covers it too
-  const c = sqAdd(SEQ, V(SEQ), { type: 'uml.Lifeline' }, 'Api', { after: 'api' });
-  assert.deepEqual(c[1], { op: 'set', id: 'f3', path: 'props.covers', value: ['api', 'api1', 'payments', 'receipt'] });
-  assert.deepEqual(V(run(SEQ, c)).nodeIds, ['shopper', 'storefront', 'api', 'api1', 'payments', 'receipt']);
+  const c = sqAdd(SEQ, V(SEQ), { type: 'uml.Lifeline' }, 'Api', { after: 'lifeline-api' });
+  assert.deepEqual(c[1], { op: 'set', id: 'f3', path: 'props.covers', value: ['lifeline-api', 'api1', 'lifeline-payments', 'receipt'] });
+  assert.deepEqual(V(run(SEQ, c)).nodeIds, ['lifeline-shopper', 'lifeline-storefront', 'lifeline-api', 'api1', 'lifeline-payments', 'receipt']);
   assert.equal(sqAdd(SEQ, V(SEQ), { type: 'uml.Lifeline' }, 'x', { after: 'receipt' }).length, 1); // after the last f3 covers: f3 stays
   assert.equal(sqAdd(SEQ, V(SEQ), { type: 'uml.Lifeline' }, null, null)[0].index, 5); // last
   const u = sqAdd(SEQ, V(SEQ), { type: 'uml.InteractionUse' }, 'Log in', { index: 1, parent: null });
-  assert.deepEqual(u[0], { op: 'add', element: { id: 'ref1', type: 'uml.InteractionUse', label: 'Log in', props: { covers: ['shopper', 'storefront', 'api', 'payments', 'receipt'] } }, view: 'checkout', index: 1, in: 'view' });
+  assert.deepEqual(u[0], { op: 'add', element: { id: 'ref1', type: 'uml.InteractionUse', label: 'Log in', props: { covers: ['lifeline-shopper', 'lifeline-storefront', 'lifeline-api', 'lifeline-payments', 'receipt'] } }, view: 'checkout-sequence', index: 1, in: 'view' });
   assert.deepEqual(ids(V(run(SEQ, u)).edges).slice(0, 3), ['m1', 'ref1', 'm2']);
   assert.equal(sqAdd(SEQ, V(SEQ), { type: 'uml.Message' }, 'x', null), null); // not the palette's
   // from the canvas: the selection (at.sel) places a lifeline after the selected one, and a use over the selected lifelines
-  assert.equal(sqAdd(SEQ, V(SEQ), { type: 'uml.Lifeline' }, 'audit', { index: 11, y: 900, parent: null, sel: ['storefront'] })[0].index, 2);
-  assert.deepEqual(sqAdd(SEQ, V(SEQ), { type: 'uml.InteractionUse' }, 'Pay', { index: 11, parent: null, sel: ['payments', 'storefront'] })[0].element.props.covers, ['storefront', 'api', 'payments']);
+  assert.equal(sqAdd(SEQ, V(SEQ), { type: 'uml.Lifeline' }, 'audit', { index: 11, y: 900, parent: null, sel: ['lifeline-storefront'] })[0].index, 2);
+  assert.deepEqual(sqAdd(SEQ, V(SEQ), { type: 'uml.InteractionUse' }, 'Pay', { index: 11, parent: null, sel: ['lifeline-payments', 'lifeline-storefront'] })[0].element.props.covers, ['lifeline-storefront', 'lifeline-api', 'lifeline-payments']);
 });
 test('remove: Delete takes a lifeline out of the view with its messages and out of each covers; Shift + Delete deletes it; a message or a fragment is deleted', () => {
   const h = sqRemove(SEQ, V(SEQ), ['receipt'], false);
-  assert.deepEqual(h, { commands: [{ op: 'set', id: 'f3', path: 'props.covers', value: ['api', 'payments'] }, { op: 'hide', id: 'receipt', view: 'checkout' }], say: 'Removed receipt from the view, and 1 message with it' });
+  assert.deepEqual(h, { commands: [{ op: 'set', id: 'f3', path: 'props.covers', value: ['lifeline-api', 'lifeline-payments'] }, { op: 'hide', id: 'receipt', view: 'checkout-sequence' }], say: 'Removed receipt from the view, and 1 message with it' });
   const m = run(SEQ, h);
   assert.deepEqual([V(m).nodeIds.includes('receipt'), !!at(m, 'm6'), m.nodes.length], [false, false, 5]);
   assert.deepEqual(sqRemove(SEQ, V(SEQ), ['receipt'], true), { commands: [{ op: 'delete', id: 'receipt' }], say: 'Deleted receipt, and 1 message with it' });
-  assert.equal(sqRemove(SEQ, V(SEQ), ['api'], false).say, 'Removed api from the view, and 8 messages with it');
+  assert.equal(sqRemove(SEQ, V(SEQ), ['lifeline-api'], false).say, 'Removed api from the view, and 8 messages with it');
   assert.deepEqual(ids(V(run(SEQ, sqRemove(SEQ, V(SEQ), ['m4'], false))).edges), ['m1', 'm2', 'm3', 'm6', 'm7', 'f3', 'm9', 'm10']); // a call takes its replies
   const u = run(SEQ, sqRemove(SEQ, V(SEQ), ['f2'], false)); // unwrap: m7 stays, in f1-paid
   assert.deepEqual([ids(V(u).fragments), at(u, 'm7').parent], [['f1'], 'f1-paid']);
@@ -313,10 +313,10 @@ test('remove: an operand\'s content moves to just after its fragment, then the o
 
 /* ---- definition of done 6: a 30-step session through the hooks and apply(), undone, redone, and reopened midway ---- */
 const STEPS = [
-  m => sqAdd(m, V(m), { type: 'uml.Lifeline' }, 'audit', { after: 'storefront' }),
-  m => sqConnect(m, V(m), 'api', 'audit1', null, LINE('call')),
+  m => sqAdd(m, V(m), { type: 'uml.Lifeline' }, 'audit', { after: 'lifeline-storefront' }),
+  m => sqConnect(m, V(m), 'lifeline-api', 'audit1', null, LINE('call')),
   m => [{ op: 'set', id: 'm11', path: 'label', value: 'record(order)' }],
-  m => sqConnect(m, V(m), 'audit1', 'api', null, LINE('reply')),
+  m => sqConnect(m, V(m), 'audit1', 'lifeline-api', null, LINE('reply')),
   m => sqMoveTo(m, V(m), 'm3', { by: [0, 1] }),
   m => sqMoveTo(m, V(m), 'm3', { by: [0, -1] }),
   m => sqWrap(m, V(m), ['m11', 'm12'], 'opt'),
@@ -326,21 +326,21 @@ const STEPS = [
   m => sqMoveTo(m, V(m), 'f2', { by: [0, -1] }),
   m => sqMoveTo(m, V(m), 'f2', { by: [0, 1] }),
   m => [{ op: 'set', id: 'm7', path: 'label', value: 'orderPlaced(id)' }],
-  m => sqMoveTo(m, V(m), 'api', { by: [1, 0] }),
-  m => sqMoveTo(m, V(m), 'api', { by: [-1, 0] }),
+  m => sqMoveTo(m, V(m), 'lifeline-api', { by: [1, 0] }),
+  m => sqMoveTo(m, V(m), 'lifeline-api', { by: [-1, 0] }),
   m => sqRemove(m, V(m), ['ref1'], false),
-  m => sqConnect(m, V(m), 'shopper', 'storefront', null, LINE('async')),
+  m => sqConnect(m, V(m), 'lifeline-shopper', 'lifeline-storefront', null, LINE('async')),
   m => sqRemove(m, V(m), ['m13'], false),
   m => sqWrap(m, V(m), ['m7'], 'loop'),
   m => sqRemove(m, V(m), ['f5'], false),
   m => sqAdd(m, V(m), { type: 'uml.Lifeline' }, 'cache', null),
-  m => sqConnect(m, V(m), 'api', 'cache1', null, LINE('create')),
+  m => sqConnect(m, V(m), 'lifeline-api', 'cache1', null, LINE('create')),
   m => sqRemove(m, V(m), ['cache1'], false),
   m => sqMoveTo(m, V(m), 'm6', { by: [0, 1] }),
   m => [{ op: 'set', id: 'f1-declined', path: 'label', value: 'payment declined' }],
-  m => sqConnect(m, V(m), 'storefront', 'storefront', null, LINE('call')),
+  m => sqConnect(m, V(m), 'lifeline-storefront', 'lifeline-storefront', null, LINE('call')),
   m => sqRemove(m, V(m), ['audit1'], true),
-  m => [{ op: 'set', view: 'checkout', path: 'title', value: 'Checkout, edited' }],
+  m => [{ op: 'set', view: 'checkout-sequence', path: 'title', value: 'Checkout, edited' }],
   m => sqMoveTo(m, V(m), 'm1', { by: [0, 1] }),
   m => sqMoveTo(m, V(m), 'm1', { by: [0, -1] }),
 ];
@@ -358,7 +358,7 @@ test('a 30-step session through the hooks: each step a transaction that adds no 
   STEPS.slice(15).forEach(step => { m = apply(m, cmdsOf(step(m))); });
   assert.equal(JSON.stringify(m), end);
   // deleting audit took its messages, so the opt round them is empty: a warning, drawn at the end, and no error
-  assert.deepEqual([errors(m), layout(m, 'checkout').problems.map(p => [p.level, p.ids])], [[], [['warning', ['f4']]]]);
+  assert.deepEqual([errors(m), layout(m, 'checkout-sequence').problems.map(p => [p.level, p.ids])], [[], [['warning', ['f4']]]]);
 });
 
 /* ---- P1: a stress view (20 lifelines, 200 messages, 10 nested fragments) laid out and drawn as SVG markup under 100 ms ---- */

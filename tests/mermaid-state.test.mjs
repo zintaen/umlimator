@@ -226,8 +226,9 @@ test('text over the size limit is refused with a report; hostile input reads in 
     'stateDiagram-v2\nnote right of a\n' + 'x\n'.repeat(400000), 'stateDiagram-v2\na : ' + '('.repeat(4000) + '\nb --> c : ' + '[a'.repeat(400000),
     'stateDiagram-v2\nstate A {\n' + '--\n'.repeat(340000), 'stateDiagram-v2\n' + 'a : e / x\n'.repeat(100000), 'stateDiagram-v2\nstate A {\n' + '[*]-->a\n--\n'.repeat(90000),
     'stateDiagram-v2\n' + Array.from({ length: 30000 }, (_, k) => `state b${k} {\n  b${k + 1}\n}`).join('\n'), 'stateDiagram-v2\nconstructor --> __proto__\n__proto__ : entry / x\nstate hasOwnProperty {\n toString\n}\n'];
-  // in this process's CPU time, and a slow run tried twice more, its best kept: node --test runs the suites side by side,
-  // and a cold or busy CI runner is several times slower than the work (the writer is linear: 90k regions in about 0.3 s)
+  // in this process's CPU time, and a slow run tried twice more, its best kept: even though CI runs the timed tests one file
+  // at a time in their own step, a cold or busy CI runner is several times slower than the work (the writer is linear: 90k
+  // regions in about 0.3 s)
   const cpu = f => { const c = process.cpuUsage(), out = f(), u = process.cpuUsage(c); return [out, (u.user + u.system) / 1000]; };
   const best = f => { let [out, ms] = cpu(f); for (let i = 0; i < 2 && ms >= 1000; i++) ms = Math.min(ms, cpu(f)[1]); return [out, ms]; };
   for (const h of hostile) {
