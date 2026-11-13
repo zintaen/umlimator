@@ -44,7 +44,7 @@ export interface MapNode {
 /** A typed element in schema version 2's envelope (docs/diagrams/model.md §1): a node, a member, a typed edge, a
  *  fragment. Nodes, edges, members and fragments share one id space; an id never contains "->". A typed edge is an
  *  Element with `from` and `to`, which may name a member. A typed view is a MapView with `diagram` (uml.class), and may
- *  have `subject`, `direction` ('right' | 'down'), `notation`, `present`, `fragments` and `timeline`. umlimator/all draws `uml.class` (0.18.0), `uml.object` and `uml.package` (0.19.0), `uml.sequence` and `uml.communication` (0.20.0); other types draw as plain cards.
+ *  have `subject`, `direction` ('right' | 'down'), `notation`, `present`, `fragments` and `timeline`. umlimator/all draws `uml.class` (0.18.0), `uml.object` and `uml.package` (0.19.0), `uml.sequence` and `uml.communication` (0.20.0), `uml.use-case`, `uml.activity`, `uml.state-machine` and `uml.interaction-overview` (0.21.0); other types draw as plain cards.
  *  From 0.19.0 the class, object and package types draw a shown package that owns something the view shows as a box holding it (`parent`), and
  *  qualify names (`sales::Order`) from the nearest shown owner, the view's `subject`, or the top. */
 export interface Element {
@@ -94,7 +94,7 @@ export type UmlPackageLineType = 'uml.PackageImport' | 'uml.PackageMerge' | 'uml
 export interface UmlPackageImportProps { visibility?: 'public' | 'private'; stereotypes?: string[]; [key: string]: unknown }
 /** What a typed view shows of one element, in its `present` by the element's id: compartments not drawn, divider and
  *  all, and at most `rows` rows in each, then "+k more". */
-export interface UmlPresent { collapsed?: ('attributes' | 'operations' | 'literals')[]; rows?: number }
+export interface UmlPresent { collapsed?: ('attributes' | 'operations' | 'literals' | 'activities')[]; rows?: number }
 /** The sequence diagram's vocabulary (a view with `diagram: 'uml.sequence'`, umlimator/all from 0.20.0;
  *  docs/conformance/uml-sequence.md). Lifelines are model nodes the view lists in `nodeIds`, left to right. Messages and
  *  interaction uses are inline in the view's `edges`, in time order; a fragment's content is one run there, operand by
@@ -122,6 +122,41 @@ export interface UmlCombinedFragmentProps { operator?: UmlInteractionOperator; [
  *  props are UmlMessageProps; a message needs a connector between its two lifelines. */
 export type UmlCommunicationElementType = 'uml.Lifeline';
 export type UmlCommunicationLineType = 'uml.Connector' | 'uml.Message';
+/** The use case diagram's vocabulary (a view with `diagram: 'uml.use-case'`, umlimator/all from 0.21.0;
+ *  docs/conformance/uml-use-case.md). A use case's `parent` is a subject (drawn as a box holding it) or a package. An
+ *  extend runs from the extending use case to the one it extends; an include from the including one. */
+export type UmlUseCaseElementType = 'uml.Actor' | 'uml.UseCase' | 'uml.Subject' | 'uml.Comment';
+export type UmlUseCaseMemberType = 'uml.ExtensionPoint';
+export type UmlUseCaseLineType = 'uml.Association' | 'uml.Include' | 'uml.Extend' | 'uml.Generalization' | 'uml.CommentLink';
+/** An extend's props: the ids of the extended use case's extension points (one at least), and its condition, as text. */
+export interface UmlExtendProps { extensionPoints?: string[]; condition?: string; stereotypes?: string[]; [key: string]: unknown }
+/** The activity diagram's vocabulary (a view with `diagram: 'uml.activity'`, umlimator/all from 0.21.0;
+ *  docs/conformance/uml-activity.md). A node's `parent` is its partition, drawn as a lane; a partition's is the
+ *  partition it is nested in. A call behaviour action's `opensView` names an activity view. */
+export type UmlActivityElementType = 'uml.InitialNode' | 'uml.ActivityFinalNode' | 'uml.FlowFinalNode' | 'uml.Action' | 'uml.CallBehaviorAction'
+  | 'uml.SendSignalAction' | 'uml.AcceptEventAction' | 'uml.DecisionNode' | 'uml.MergeNode' | 'uml.ForkNode' | 'uml.JoinNode'
+  | 'uml.ObjectNode' | 'uml.DataStoreNode' | 'uml.ActivityPartition' | 'uml.Comment';
+export type UmlActivityLineType = 'uml.ControlFlow' | 'uml.ObjectFlow' | 'uml.CommentLink';
+/** A flow's props (activity and interaction overview): its guard, as text, drawn `name [guard]`; its label is its name. */
+export interface UmlFlowProps { guard?: string; stereotypes?: string[]; [key: string]: unknown }
+/** The state machine diagram's vocabulary (a view with `diagram: 'uml.state-machine'`, umlimator/all from 0.21.0;
+ *  docs/conformance/uml-state-machine.md). A substate's or pseudostate's `parent` is a state, or a region (a member) of
+ *  one; a state with shown substates is drawn as a box, each region that holds something shown as a box inside it. */
+export type UmlStateMachineElementType = 'uml.State' | 'uml.Pseudostate' | 'uml.FinalState' | 'uml.Comment';
+export type UmlStateMachineMemberType = 'uml.Region' | 'uml.InternalTransition';
+export type UmlStateMachineLineType = 'uml.Transition' | 'uml.CommentLink';
+export interface UmlStateProps { entry?: string; do?: string; exit?: string; stereotypes?: string[]; [key: string]: unknown }
+export type UmlPseudostateKind = 'initial' | 'choice' | 'junction' | 'fork' | 'join' | 'shallowHistory' | 'deepHistory' | 'terminate';
+export interface UmlPseudostateProps { kind?: UmlPseudostateKind; stereotypes?: string[]; [key: string]: unknown }
+/** A transition's or an internal transition's props, each text, drawn `trigger [guard] / effect`. */
+export interface UmlTransitionProps { trigger?: string; guard?: string; effect?: string; stereotypes?: string[]; [key: string]: unknown }
+/** The interaction overview diagram's vocabulary (a view with `diagram: 'uml.interaction-overview'`, umlimator/all from
+ *  0.21.0; docs/conformance/uml-interaction-overview.md): the activity's control nodes and flows (UmlFlowProps), and
+ *  interaction uses (drawn `ref`) and inline interactions (drawn `sd` with their content), whose `opensView` names a
+ *  `uml.sequence` view of the same model. */
+export type UmlInteractionOverviewElementType = 'uml.InitialNode' | 'uml.ActivityFinalNode' | 'uml.FlowFinalNode' | 'uml.DecisionNode'
+  | 'uml.MergeNode' | 'uml.ForkNode' | 'uml.JoinNode' | 'uml.InteractionUse' | 'uml.Interaction' | 'uml.Comment';
+export type UmlInteractionOverviewLineType = 'uml.ControlFlow' | 'uml.CommentLink';
 /** What a line means, drawn as its colour: calls (the default), feeds (hands work on), triggers (suggests, offers, fires),
  *  state (reads or writes a file, board or config: a thinner line, a muted label, no flow) and guard (a hook steps in).
  *  Colours are --um-w-<kind>. An edge's `style` (emphasis, dashed, security) wins over its kind's colour. */

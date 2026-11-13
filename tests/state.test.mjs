@@ -19,7 +19,7 @@ import { describe } from '../src/map/insight.js';
 import { svgOf } from '../src/draw/svg.js';
 import { stActivityRow } from '../src/uml/state.js';
 
-const SM = JSON.parse(readFileSync(new URL('../docs/diagrams/examples/10-state-machine.json', import.meta.url)));
+const SM = JSON.parse(readFileSync(new URL('../examples/order-states.json', import.meta.url)));
 const T = diagramOf({ diagram: 'uml.state-machine' }), V = SM.views[0];
 const meets = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
 const inside = (o, f) => o.x >= f.x && o.y >= f.y && o.x + o.w <= f.x + f.w && o.y + o.h <= f.y + f.h;
@@ -80,7 +80,7 @@ const PINNED = {
   down: ['view order-life: edges →Fulfilling and →Payment captured cross', 'view order-life: edges →Cancelled and →Payment captured cross', 'view order-life: edges →Cancelled and Payment captured→ cross',
     'view order-life: edges →Cancelled and Fulfilling→Cancelled cross', 'view order-life: edges Capturing payment→Cancelled and Capturing payment→Payment captured cross'],
 };
-test('10-state-machine.json draws: shapes by kind, composites as boxes, regions stacked with dividers across their state, laid out clean right and down', () => {
+test('order-states.json (example 10) draws: shapes by kind, composites as boxes, regions stacked with dividers across their state, laid out clean right and down', () => {
   assert.deepEqual(validate(SM), []);
   for (const direction of ['right', 'down']) {
     const m = withDir(SM, direction), g = layout(m, 'order-life'), by = g.byId, fam = id => g.families.find(f => f.id === id);
@@ -189,7 +189,7 @@ const BREAKS = {
   'label-syntax': m => { m.edges.find(e => e.id === 't-picked').props.trigger = 'all [books'; return ['t-picked']; },
 };
 const WARNS = ['choice-guards', 'composite-entry', 'region-mixed', 'region-cross', 'internal-trigger', 'pseudo-kind', 'label-syntax'];
-test('validators: 10-state-machine.json breaks no rule; each rule fails on a model that breaks it, naming its rule and its elements, at its level', () => {
+test('validators: order-states.json (example 10) breaks no rule; each rule fails on a model that breaks it, naming its rule and its elements, at its level', () => {
   assert.deepEqual(T.validate(SM), []);
   assert.deepEqual(Object.keys(BREAKS).sort(), Object.keys(T.rules).sort());
   for (const [rule, broke] of Object.entries(BREAKS)) {
