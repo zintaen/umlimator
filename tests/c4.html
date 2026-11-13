@@ -1,0 +1,202 @@
+<!doctype html>
+<!-- C4's static views (M2.6) in headless Chrome (tests/embed.py), from lib/umlimator-all.js: docs/diagrams/examples/23-c4.json's
+     context, container and component views, and a context view with an implied line, drawn by render() in both themes, three
+     fonts and both directions (each element in its map shape with its three lines inside it, no two overlapping, the subject a
+     dashed boundary holding what it owns, every line end on its element's outline within 1 px, names, reading order, contrast
+     on the stage and on each element's fill, the key, axe's rules written out), then edited through the edit event and
+     apply(), by pointer and by keyboard: the palette's five entries and N, a container added into the subject, F2, a
+     relationship by L and by the handle, the properties (description, technology, external, shape), the Owner field, D (a
+     container view made and opened), T (the type picked), hide and delete; an implied line selected, named, and refused by
+     F2, Delete and L, nothing emitted. -->
+<meta charset="utf-8">
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="../lib/umlimator-theme.css">
+<title>umlimator C4 static views test</title>
+<body style="margin:0">
+<div id="m" style="width:1600px;height:1000px"></div>
+<script type="module">
+import { render, apply, validate } from '../lib/umlimator-all.js';
+const out = { ok: [], fail: [] };
+const check = (name, cond, info) => { document.title = name; if (cond) out.ok.push(name); else out.fail.push(name + (info === undefined ? '' : ': ' + JSON.stringify(info))); };
+const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+const el = document.getElementById('m');
+let sr, stage, ed = [];
+const pick = s => sr.querySelector(s), all = s => [...sr.querySelectorAll(s)];
+const centre = s => { const r = pick(s).getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; };
+const ptr = (target, type, [x, y]) => target.dispatchEvent(new PointerEvent(type, { clientX: x, clientY: y, button: 0, pointerId: 7, pointerType: 'mouse', bubbles: true, composed: true }));
+const key = (k, extra = {}, target = stage) => target.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true, composed: true, cancelable: true, ...extra }));
+const handleTo = ([x, y]) => { const c = pick('.um-handle circle'), r = c.getBoundingClientRect(); ptr(c, 'pointerdown', [r.x + r.width / 2, r.y + r.height / 2]); ptr(stage, 'pointermove', [x, y]); ptr(stage, 'pointerup', [x, y]); };
+const press = b => { const r = b.getBoundingClientRect(), at = [r.x + r.width / 2, r.y + r.height / 2]; ptr(b, 'pointerdown', at); ptr(b, 'pointerup', at); b.click(); };
+const hint = () => pick('.um-live').textContent;
+const tick = () => new Promise(r => setTimeout(r, 0)); // a picker opens once the gesture is over (src/typed/edit.js)
+const click = s => { const g = pick(s), at = centre(s); ptr(g, 'pointerdown', at); ptr(g, 'pointerup', at); g.dispatchEvent(new MouseEvent('click', { clientX: at[0], clientY: at[1], bubbles: true, composed: true })); };
+const mount = (model, view, opts = {}) => { el.innerHTML = ''; ed = []; const h = render(el, model, { view, on: { edit: e => ed.push(e) }, ...opts }); sr = el.querySelector('.umlimator').shadowRoot; stage = pick('.stage'); return h; };
+const errors = m => validate(m).filter(p => p.level === 'error');
+const last = () => ed[ed.length - 1];
+const gives = (name, cmds, test, base, errs = 0) => { const e = last(); let m = null; try { m = e && apply(base, e.commands); } catch (x) { m = null; }
+  check(name, !!e && same(e.commands, cmds) && !!m && test(m) && errors(m).length === errs, [e, m && errors(m)]); return m; };
+const change = (t, v) => { t.value = v; t.dispatchEvent(new Event('change', { bubbles: true })); };
+const box = g => { const r = g.getBBox(); return { x: r.x, y: r.y, w: r.width, h: r.height }; };
+const inside = (a, b, m = .5) => a.x >= b.x - m && a.y >= b.y - m && a.x + a.w <= b.x + b.w + m && a.y + a.h <= b.y + b.h + m;
+// a point within 1 px of a shape's outline: of eight points 1 px round it, some are in its fill and some are not
+const onOutline = (path, [x, y]) => { const svg = path.ownerSVGElement, p = svg.createSVGPoint(), hits = [];
+  for (let k = 0; k < 8; k++) { p.x = x + Math.cos(k * Math.PI / 4); p.y = y + Math.sin(k * Math.PI / 4); hits.push(path.isPointInFill(p)); }
+  return hits.includes(true) && hits.includes(false); };
+const FONTS = { serif: 'serif', sans: 'sans-serif', wide: 'monospace' };
+const rgba = s => { let m = /rgba?\(([^)]+)\)/.exec(s); if (m) { const p = m[1].split(/[ ,/]+/).filter(Boolean).map(Number); return [p[0] / 255, p[1] / 255, p[2] / 255, p.length > 3 ? p[3] : 1]; }
+  m = /color\(srgb ([^)]+)\)/.exec(s); if (m) { const p = m[1].split(/[ /]+/).filter(Boolean).map(Number); return [p[0], p[1], p[2], p.length > 3 ? p[3] : 1]; } return null; };
+const blend = (top, bot) => [0, 1, 2].map(i => top[i] * top[3] + bot[i] * (1 - top[3])).concat(1);
+const lum = c => { const f = v => v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]); };
+const ratio = (fg, bg) => { const [x, y] = [lum(blend(fg, bg)), lum(bg)].sort((p, q) => q - p); return +((x + 0.05) / (y + 0.05)).toFixed(2); };
+const css = (e, k) => rgba(getComputedStyle(e)[k]);
+const MODEL = await (await fetch('../docs/diagrams/examples/23-c4.json')).json();
+// a context view of the model with the system's own line to the payment provider gone: its containers' lines are implied (G3)
+const G3 = structuredClone(MODEL); G3.edges = G3.edges.filter(e => e.id !== 'c4-bookshop-payments');
+G3.views.push({ id: 'ctx', diagram: 'c4.context', title: 'Implied', subject: 'c4-bookshop', nodeIds: ['c4-shopper', 'c4-bookshop', 'c4-payments', 'c4-courier', 'c4-mail'] });
+const VIEWS = { 'c4-context': [6, 0, 6], 'c4-containers': [10, 1, 11], 'c4-components': [9, 1, 10], ctx: [5, 0, 5] }; // elements, boundaries, lines
+try {
+  for (const theme of ['light', 'dark']) for (const [fname, family] of Object.entries(FONTS)) for (const direction of ['right', 'down']) for (const [vid, [kN, kB, kE]] of Object.entries(VIEWS)) {
+    document.documentElement.dataset.theme = theme; el.style.setProperty('--um-sans', family);
+    const M = structuredClone(G3); M.views.find(v => v.id === vid).direction = direction;
+    const tag = `${theme}, ${fname}, ${direction}, ${vid}`, h = mount(M, vid, { legend: true }), bad = [];
+    const nodes = all('.node.c4');
+    check(`${tag}: ${kN} elements, ${kB} boundary, ${kE} lines`, nodes.length === kN && all('.family').length === kB && all('.edge-g').length === kE, [nodes.length, all('.family').length, all('.edge-g').length]);
+    // every text in its element's face (under a person's head, a browser's bar), no two overlapping, a boundary holding what it owns
+    nodes.forEach(g => { const b = box(g.querySelector('.n-mask'));
+      g.querySelectorAll('.c-head text').forEach(t => { if (!inside(box(t), b)) bad.push(`${g.dataset.id}: "${t.textContent}" spills`); }); });
+    const boxes = nodes.map(g => [g.dataset.id, box(g.querySelector('.n-mask'))]);
+    boxes.forEach(([a, p], i) => boxes.slice(i + 1).forEach(([b, q]) => { if (p.x < q.x + q.w && q.x < p.x + p.w && p.y < q.y + q.h && q.y < p.y + p.h) bad.push(`${a} and ${b} overlap`); }));
+    all('.family').forEach(f => { const fb = box(f.querySelector('.family-box')), own = M.nodes.filter(n => n.parent === f.dataset.family).map(n => n.id);
+      nodes.filter(g => own.includes(g.dataset.id)).forEach(g => { if (!inside(box(g.querySelector('.n-mask')), fb)) bad.push(`${g.dataset.id} outside ${f.dataset.family}`); });
+      if (f.querySelector('.family-box').getAttribute('stroke-dasharray') !== '6 4') bad.push(`${f.dataset.family} not dashed`); });
+    check(`${tag}: every text inside its element, none overlapping, the boundary dashed and holding what it owns`, !bad.length, bad);
+    // line ends: each end (a marker's tip at the far one) on its element's outline within 1 px
+    const offs = [];
+    all('.edge-g').forEach(g => { const v = g.querySelector('path.edge').getAttribute('d').match(/-?\d+(\.\d+)?/g).map(Number);
+      [[g.dataset.from, v.slice(0, 2)], [g.dataset.to, v.slice(-2)]].forEach(([id, p]) => { const n = pick(`.node[data-id="${id}"] .n-body`); if (!n || !onOutline(n, p)) offs.push([id, p]); }); });
+    check(`${tag}: each line ends on its element's outline`, !offs.length, offs);
+    const stageBg = css(pick('.stage'), 'backgroundColor'), low = [];
+    nodes.forEach(g => { const fill = blend(css(g.querySelector('.n-body'), 'fill'), stageBg);
+      g.querySelectorAll('.c-head text').forEach(t => { const c = Math.min(ratio(css(t, 'fill'), stageBg), ratio(css(t, 'fill'), fill)); if (c < 4.5) low.push([g.dataset.id, t.textContent, c]); }); });
+    all('.family-title').forEach(t => { const c = ratio(css(t, 'fill'), stageBg); if (c < 4.5) low.push(['boundary', t.textContent, c]); });
+    const strokes = all('.node.c4 .n-body, .family .family-box, .edge-g path.edge').map(b => ratio(css(b, 'stroke'), stageBg)).filter(c => c < 3);
+    check(`${tag}: contrast: texts 4.5:1 on the stage and on their element's fill, outlines and lines 3:1`, !low.length && !strokes.length, [low, strokes]);
+    // axe-core 4.14's rules for what is drawn as role="img", written out: svg-img-alt and role-img-alt (each has a name),
+    // nested-interactive (nothing inside one is a tab stop)
+    const svg = pick('.stage svg'), imgs = all('.stage svg [role="img"]'), noAlt = [], nested = [];
+    imgs.forEach(x => { if (!(x.getAttribute('aria-label') || '').trim()) noAlt.push(x.dataset.id || x.dataset.family || x.localName);
+      x.querySelectorAll('[tabindex], a[href], button, input, select, textarea').forEach(c => { if (c.tabIndex >= 0) nested.push(`${x.dataset.id || x.dataset.family} holds ${c.getAttribute('class') || c.localName}`); }); });
+    check(`${tag}: axe, written out: the drawing a named group, its elements and boundaries named images with no tab stop inside`,
+      svg.getAttribute('role') === 'group' && !!(svg.getAttribute('aria-label') || '').trim() && imgs.length === kN + kB && !noAlt.length && !nested.length, [imgs.length, noAlt, nested.slice(0, 4)]);
+    check(`${tag}: a key for every element and line`, all('.keys .um-key').length === kN + kE, all('.keys .um-key').length);
+    const legend = all('.m-legend b').map(b => b.textContent), implied = vid === 'ctx' || vid === 'c4-context'; // the system's own line to the payment provider is gone from G3
+    check(`${tag}: the key names each element type drawn, external, the relationship${implied ? ' and the implied line' : ''}`, legend.includes('Person') === (vid !== 'c4-components') && legend.includes('External software system')
+      && legend.includes('Relationship') && legend.includes('Implied relationship') === implied, legend);
+    if (vid === 'c4-containers') check(`${tag}: names a screen reader reads`, pick('.node[data-id="c4-api"]').getAttribute('aria-label') === 'Container Shop API, Python, FastAPI: Catalogue, basket, checkout and accounts as a JSON API.'
+      && pick('.family[data-family="c4-bookshop"]').getAttribute('aria-label') === 'Software system Bookshop, a boundary holding 5 containers'
+      && pick('.edge-g[data-from="c4-storefront"][data-to="c4-api"] title').textContent === 'Relationship from Storefront to Shop API: Reads the catalogue and places orders through [JSON over HTTPS]'
+      && pick('.family[data-family="c4-bookshop"] .family-title').textContent === 'Bookshop [Software System]');
+    if (vid === 'ctx') check(`${tag}: the implied line dashed, with its label`, pick('.edge-g[data-from="c4-bookshop"][data-to="c4-payments"] path.edge').getAttribute('stroke-dasharray') === '6 4'
+      && all('.e-lab, .labels text').some(t => t.textContent === 'Charges cards with [+1]'), all('.e-lab, .labels text').map(t => t.textContent));
+    h.destroy();
+  }
+  document.documentElement.dataset.theme = 'light'; el.style.removeProperty('--um-sans');
+
+  // ---- editing (DoD 4), each gesture's commands applied with apply()
+  const BASE = structuredClone(MODEL);
+  let h = mount(BASE, 'c4-containers', { editable: true });
+  const panel = s => pick('.um-editor ' + s);
+  const LABELS = ['Person', 'Software system', 'Container', 'Component', 'Comment'];
+  check('the palette: its five elements; the lines listed', same(all('.um-editor .um-pal button').map(b => b.textContent), LABELS) && /Relationship, Comment link/.test(panel('.um-pal .um-note').textContent), panel('.um-pal').textContent);
+  key('n'); pick('.um-rename').value = 'Clerk'; key('Enter', {}, pick('.um-rename'));
+  gives('N adds a person, named, shown in the view', [{ op: 'add', element: { id: 'person1', type: 'c4.Person', label: 'Clerk' }, view: 'c4-containers' }], m => m.views[1].nodeIds.includes('person1'), BASE);
+  all('.um-editor .um-pal button')[2].click(); pick('.um-rename').value = 'Cache'; key('Enter', {}, pick('.um-rename'));
+  const m1 = gives('the palette\'s Container on a container view: added into its subject (edits.add)', [{ op: 'add', element: { id: 'container1', type: 'c4.Container', label: 'Cache', parent: 'c4-bookshop' }, view: 'c4-containers' }],
+    m => m.views[1].nodeIds.includes('container1'), BASE);
+  h.update(m1);
+  check('after update() the container is drawn inside the boundary', inside(box(pick('.node[data-id="container1"] .n-mask')), box(pick('.family[data-family="c4-bookshop"] .family-box'))));
+  click('.node[data-id="c4-db"] .c-name'); key('F2');
+  check('F2 on an element: a field holding its name', pick('.um-rename') && pick('.um-rename').value === 'Database');
+  pick('.um-rename').value = 'Main database'; key('Enter', {}, pick('.um-rename'));
+  const m2 = gives('F2: set its label', [{ op: 'set', id: 'c4-db', path: 'label', value: 'Main database' }], m => m.nodes.find(n => n.id === 'c4-db').label === 'Main database', m1);
+  h.update(m2);
+  // a relationship by L: a name typed, Enter, the picker
+  click('.node[data-id="container1"] .c-name'); key('l'); for (const c of 'main') key(c); key('Enter');
+  const items = all('.um-pick button').map(b => b.textContent);
+  check('L, a name and Enter open the picker with the two lines', same(items, ['Relationship', 'Comment link']), items);
+  all('.um-pick button')[0].click();
+  gives('picking Relationship: one add', [{ op: 'add', element: { id: 'relationship1', type: 'c4.Relationship', from: 'container1', to: 'c4-db' }, view: 'c4-containers' }], m => m.edges.some(e => e.id === 'relationship1'), m2);
+  // and by the handle
+  click('.node[data-id="c4-worker"] .c-name'); handleTo(centre('.node[data-id="container1"] .n-mask')); press(all('.um-pick button').find(b => b.textContent === 'Relationship'));
+  gives('the handle from one container to another, Relationship: one add', [{ op: 'add', element: { id: 'relationship1', type: 'c4.Relationship', from: 'c4-worker', to: 'container1' }, view: 'c4-containers' }], m => m.edges.some(e => e.id === 'relationship1'), m2);
+  // the properties: description, technology, external, shape, by keyboard into the panel's fields
+  click('.node[data-id="container1"] .c-name');
+  change(panel('[data-f="p:description"]'), 'Keeps hot pages.');
+  const m3 = gives('the description field', [{ op: 'set', id: 'container1', path: 'props.description', value: 'Keeps hot pages.' }], m => m.nodes.find(n => n.id === 'container1').props.description === 'Keeps hot pages.', m2);
+  change(panel('[data-f="p:technology"]'), 'Redis');
+  gives('the technology field', [{ op: 'set', id: 'container1', path: 'props.technology', value: 'Redis' }], m => m.nodes.find(n => n.id === 'container1').props.technology === 'Redis', m3);
+  const shp = panel('[data-f="p:shape"]'), shapes = [...shp.options].map(o => o.value).filter(Boolean);
+  check('the shape field lists the map\'s twelve shapes', shapes.length === 12 && shapes.includes('cylinder') && !shapes.includes('node'), shapes);
+  change(shp, 'cylinder');
+  const m4 = gives('the shape field', [{ op: 'set', id: 'container1', path: 'props.shape', value: 'cylinder' }], m => m.nodes.find(n => n.id === 'container1').props.shape === 'cylinder', m3);
+  const ext = panel('[data-f="p:external"]'); ext.checked = true; ext.dispatchEvent(new Event('change', { bubbles: true }));
+  check('the external box', same(last().commands, [{ op: 'set', id: 'container1', path: 'props.external', value: true }]), last());
+  h.update(m4);
+  check('after update() the container is a cylinder with its three lines', pick('.node[data-id="container1"]').dataset.c4 === 'cylinder' && pick('.node[data-id="container1"] .c-st').textContent === '[Container]'
+    && pick('.node[data-id="container1"] .c-desc').textContent === 'Keeps hot pages.');
+  // the relationship's technology and its description by F2
+  h.select({ type: 'edge', ids: ['c4-api-db'], view: 'c4-containers' });
+  change(panel('[data-f="p:technology"]'), 'SQL over TLS');
+  gives('a relationship\'s technology field', [{ op: 'set', id: 'c4-api-db', path: 'props.technology', value: 'SQL over TLS' }], m => m.edges.find(e => e.id === 'c4-api-db').props.technology === 'SQL over TLS', m4);
+  key('F2'); pick('.um-rename').value = 'Reads from'; key('Enter', {}, pick('.um-rename'));
+  gives('F2 on a relationship: its description', [{ op: 'set', id: 'c4-api-db', path: 'label', value: 'Reads from' }], m => m.edges.find(e => e.id === 'c4-api-db').label === 'Reads from', m4);
+  // the Owner field: a container's software systems
+  click('.node[data-id="c4-worker"] .c-name');
+  const own = panel('[data-f="owner"]'), opts = [...own.options].map(o => o.textContent);
+  check('the Owner field of a container: none and every software system', same(opts, ['none', 'Bookshop', 'Payment provider', 'Email service', 'Courier']) && own.value === 'c4-bookshop', opts);
+  change(own, 'c4-payments');
+  gives('Owner: reparent the container (it leaves the boundary; c4-owner holds)', [{ op: 'reparent', id: 'c4-worker', parent: 'c4-payments' }], m => m.nodes.find(n => n.id === 'c4-worker').parent === 'c4-payments', m4);
+  // T: the type, picked
+  click('.node[data-id="c4-queue"] .c-name'); key('t'); await tick();
+  const types = all('.um-pick button').map(b => b.textContent);
+  check('T opens a picker of the four types', same(types, ['Person', 'Software system', 'Container', 'Component']), types);
+  press(all('.um-pick button')[1]);
+  gives('picking Software system: set its type (c4-instance then says its instance no longer fits)', [{ op: 'set', id: 'c4-queue', path: 'type', value: 'c4.SoftwareSystem' }], m => m.nodes.find(n => n.id === 'c4-queue').type === 'c4.SoftwareSystem', m4, 1);
+  // hide, delete
+  click('.node[data-id="c4-db"] .c-name'); key('Delete');
+  gives('Delete: hide the element from the view', [{ op: 'hide', id: 'c4-db', view: 'c4-containers' }], m => !m.views[1].nodeIds.includes('c4-db'), m4);
+  click('.node[data-id="c4-storefront"] .c-name'); key('Delete', { shiftKey: true });
+  gives('Shift + Delete: delete it and its relationships from the model (its instance\'s container then names nothing: c4-instance)', [{ op: 'delete', id: 'c4-storefront' }], m => !m.nodes.some(n => n.id === 'c4-storefront') && !m.edges.some(e => e.to === 'c4-storefront' || e.from === 'c4-storefront'), m4, 1);
+  click('.node[data-id="container1"] .c-name'); key('Delete', { shiftKey: true });
+  gives('Shift + Delete on a container with no instance: no error left', [{ op: 'delete', id: 'container1' }], m => !m.nodes.some(n => n.id === 'container1'), m4);
+  h.destroy();
+
+  // ---- D (§6.1): on a system that opens no view, its container view is made, then Enter opens it
+  const NOZ = structuredClone(MODEL); delete NOZ.nodes.find(n => n.id === 'c4-bookshop').opensView;
+  h = mount(NOZ, 'c4-context', { editable: true });
+  click('.node[data-id="c4-bookshop"] .c-name'); key('d');
+  const z = last(), zm = z && apply(NOZ, z.commands);
+  check('D on a software system: addView and its opensView, one transaction', !!z && z.commands.length === 2 && z.commands[0].op === 'addView' && z.commands[0].view.id === 'c4-bookshop-containers'
+    && same(z.commands[1], { op: 'set', id: 'c4-bookshop', path: 'opensView', value: 'c4-bookshop-containers' }) && !errors(zm).length, z);
+  check('…and the hint line says so', hint() === 'Made the view Bookshop: containers: Enter opens it', hint());
+  h.update(zm); click('.node[data-id="c4-bookshop"] .c-name'); key('Enter');
+  check('Enter opens the new view: its boundary and containers drawn', h.view === 'c4-bookshop-containers' || (!!pick('.family[data-family="c4-bookshop"]') && all('.node.c4').length === 10), [h.view, all('.node.c4').length]);
+  const n0 = ed.length; h.setView && h.setView('c4-context'); click('.node[data-id="c4-shopper"] .c-name'); key('d');
+  check('D on a person: nothing', ed.length === n0, ed.slice(n0));
+  h.destroy();
+
+  // ---- an implied line (§5.2): selected and named; F2, Delete and L refused, nothing emitted
+  h = mount(G3, 'ctx', { editable: true });
+  const sel = '.edge-g[data-from="c4-bookshop"][data-to="c4-payments"]';
+  h.select({ type: 'edge', ids: ['c4-bookshop->c4-payments'], view: 'ctx' });
+  check('an implied line selected: the hint line says it', hint() === 'Line from Bookshop to Payment provider, selected', hint());
+  check('its focus key names what it stands for', /^Implied relationship from Bookshop to Payment provider, standing for 2 relationships/.test((all('.keys .line-key').find(k => /^Implied/.test(k.getAttribute('aria-label') || '')) || { getAttribute: () => '' }).getAttribute('aria-label'))
+    && /standing for 2 relationships/.test(pick(sel + ' title').textContent));
+  const n1 = ed.length;
+  key('F2'); if (pick('.um-rename')) { pick('.um-rename').value = 'Pays'; key('Enter', {}, pick('.um-rename')); }
+  key('Delete'); key('Delete', { shiftKey: true }); key('l'); key('Escape');
+  check('F2, Delete, Shift + Delete and L on an implied line: refused, nothing emitted', ed.length === n1, ed.slice(n1));
+  h.destroy();
+} catch (e) { out.fail.push('threw: ' + (e && e.stack || e)); }
+const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
+</script>
