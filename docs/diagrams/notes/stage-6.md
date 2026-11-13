@@ -872,7 +872,8 @@ proposes its row and writes its release notes in its pull request's description,
 holds it, with `lib/umlimator.js`'s `validate()` and, since no type checks a timeline before 6.5, a check that no change
 or constraint names what is gone. With every type's rules (`lib/umlimator-all.js`'s `validate()`) it does not hold
 today, for reasons outside stage 6 (none touches a timeline). Of 1,495 deletes over the examples and targets, 29 raise a
-new error under four rules:
+new error under four rules (counted when written; on current main 30 over 1,564, `subject-shown` 2, as the atlas has the
+`internals` view too):
 
 | Rule | Deletes | Example |
 |---|---|---|
@@ -884,6 +885,19 @@ new error under four rules:
 A use case cascade (an extend left with no point goes with it) would close only the first; each of the others needs its
 own type's delete to cascade or its rule to accept what a delete leaves. The maintainer's decision of 13 Nov 2026: a
 follow-up package after stage 6, the gap stated until then (`risks.md` M15).
+
+Closed by the follow-up (approved 13 Nov 2026), without core bytes: a delete is Shift + Delete through the remove hook of
+each view that draws the element (a bare delete where the view's type has none), or Delete (out of the view) in each view
+that draws it, and `tests/delete-cascade.test.mjs` runs every such single delete over every example, the atlas and every
+target (2,671) and finds no new error. `extend-points`:
+the use case type gains a remove hook, and an extend left naming no other point goes with the point, named on the hint
+line. `message-link`: the communication type's hook already took a connector's messages. `reply-once`: the sequence
+type's hook already refused, said, a delete of the alt or an operand that leaves two replies side by side (its tests pin
+it). `subject-shown`: the rule accepts what the delete leaves, a warning for a view with no subject (it draws its other
+cards), as hiding the subject leaves it too; a subject set but not shown stays an error. Hiding the subject keeps its
+parts and their role bindings, so `binding-ends` is a warning in a view with no subject as well (it was an error there on
+main too). A bare `apply()` delete still
+leaves the four, as it does a host's own store's: closing those is a core slot, left out.
 
 Two smaller choices as built. With no field list for its type, the panel shows a slot's fields to edit and still lists
 every prop to read, `tags` among them as JSON, as before the slot (`tests/typed-edit.html` asserts it). The delete
