@@ -1,7 +1,157 @@
 <!doctype html>
+<!-- The profile diagram (6.3, notes/stage-6.md §4) in headless Chrome (tests/embed.py), from lib/umlimator-all.js: an inline
+     copy of docs/diagrams/examples/07-profile.json (tags keyed by stereotype) drawn by render() in both themes, three fonts
+     and both directions (the profile and the package as boxes holding their own, texts inside their shapes, the extension's
+     filled triangle, {required} and «apply», tag compartments, names, reading order, contrast, the legend), then edited
+     through the edit event and apply(), by pointer and by keyboard: the palette and N, a stereotype added into the profile
+     selected, a metaclass by the picker of the nearest names, an extension by L and by the handle (one refused, its reason
+     on the hint line), F2, the Required and Abstract fields, a tag field, a tag definition as a member row, hide and delete. -->
 <meta charset="utf-8">
-<title>profile: placeholder (stage 6, 6.0)</title>
-<!-- notes/stage-6.md 6.0: a placeholder that reports ok, so tests/embed.py lists the page once and the work package that
-     owns it (6.3 profile, 6.5 timing, 6.6 stage6) fills it without editing tests/embed.py -->
-<pre id="result"></pre>
-<script>document.getElementById('result').textContent = JSON.stringify({ ok: ['the placeholder page loads (filled by its work package)'], fail: [] });</script>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="../lib/umlimator-theme.css">
+<title>umlimator profile diagram test</title>
+<body style="margin:0">
+<div id="m" style="width:1600px;height:1100px"></div>
+<script type="module">
+import { render, apply, validate } from '../lib/umlimator-all.js';
+const out = { ok: [], fail: [] };
+const check = (name, cond, info) => { document.title = name; if (cond) out.ok.push(name); else out.fail.push(name + (info === undefined ? '' : ': ' + JSON.stringify(info))); };
+const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+const el = document.getElementById('m');
+let sr, stage, ed = [];
+const pick = s => sr.querySelector(s), all = s => [...sr.querySelectorAll(s)];
+const centre = s => { const r = pick(s).getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; };
+const ptr = (target, type, [x, y]) => target.dispatchEvent(new PointerEvent(type, { clientX: x, clientY: y, button: 0, pointerId: 7, pointerType: 'mouse', bubbles: true, composed: true }));
+const key = (k, extra = {}, target = stage) => target.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true, composed: true, cancelable: true, ...extra }));
+const handleTo = ([x, y]) => { const c = pick('.um-handle circle'), r = c.getBoundingClientRect(); ptr(c, 'pointerdown', [r.x + r.width / 2, r.y + r.height / 2]); ptr(stage, 'pointermove', [x, y]); ptr(stage, 'pointerup', [x, y]); };
+const press = b => { const r = b.getBoundingClientRect(), at = [r.x + r.width / 2, r.y + r.height / 2]; ptr(b, 'pointerdown', at); ptr(b, 'pointerup', at); b.click(); };
+const hint = () => pick('.um-live').textContent;
+const click = s => { const g = pick(s), at = centre(s); ptr(g, 'pointerdown', at); ptr(g, 'pointerup', at); g.dispatchEvent(new MouseEvent('click', { clientX: at[0], clientY: at[1], bubbles: true, composed: true })); };
+const mount = (model, opts = {}) => { el.innerHTML = ''; ed = []; const h = render(el, model, { view: 'profile', on: { edit: e => ed.push(e) }, ...opts }); sr = el.querySelector('.umlimator').shadowRoot; stage = pick('.stage'); return h; };
+const errors = m => validate(m).filter(p => p.level === 'error');
+const last = () => ed[ed.length - 1];
+const gives = (name, cmds, test, base, errs = 0) => { const e = last(); let m = null; try { m = e && apply(base, e.commands); } catch (x) { m = null; }
+  check(name, !!e && same(e.commands, cmds) && !!m && test(m) && errors(m).length === errs, [e, m && errors(m)]); return m; };
+const change = (t, v) => { if (t.type === 'checkbox') t.checked = v; else t.value = v; t.dispatchEvent(new Event('change', { bubbles: true })); };
+const box = g => { const r = g.getBBox(); return { x: r.x, y: r.y, w: r.width, h: r.height }; };
+const inside = (a, b) => a.x >= b.x - .5 && a.y >= b.y - .5 && a.x + a.w <= b.x + b.w + .5 && a.y + a.h <= b.y + b.h + .5;
+const FONTS = { serif: 'serif', sans: 'sans-serif', wide: 'monospace' };
+const rgba = s => { let m = /rgba?\(([^)]+)\)/.exec(s); if (m) { const p = m[1].split(/[ ,/]+/).filter(Boolean).map(Number); return [p[0] / 255, p[1] / 255, p[2] / 255, p.length > 3 ? p[3] : 1]; }
+  m = /color\(srgb ([^)]+)\)/.exec(s); if (m) { const p = m[1].split(/[ /]+/).filter(Boolean).map(Number); return [p[0], p[1], p[2], p.length > 3 ? p[3] : 1]; } return null; };
+const blend = (top, bot) => [0, 1, 2].map(i => top[i] * top[3] + bot[i] * (1 - top[3])).concat(1);
+const lum = c => { const f = v => v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]); };
+const ratio = (fg, bg) => { const [x, y] = [lum(blend(fg, bg)), lum(bg)].sort((p, q) => q - p); return +((x + 0.05) / (y + 0.05)).toFixed(2); };
+const css = (e, k) => rgba(getComputedStyle(e)[k]);
+const MODEL = await (await fetch('../docs/diagrams/examples/07-profile.json')).json();
+{ const o = MODEL.nodes.find(n => n.id === 'order'); o.props.tags = { aggregateRoot: { table: 'orders', boundedContext: 'sales' }, owned: { team: 'checkout' } }; o.members[0].props.tags = { column: { name: 'placed_at', indexed: 'true' } }; }
+const HOLDS = { conventions: ['mc-class', 'mc-property', 'entity', 'aggregate-root', 'owned', 'column'], sales: ['order'] };
+try {
+  check('the inline example validates clean', same(validate(MODEL), []), validate(MODEL));
+  for (const theme of ['light', 'dark']) for (const [fname, family] of Object.entries(FONTS)) for (const direction of ['down', 'right']) {
+    document.documentElement.dataset.theme = theme; el.style.setProperty('--um-sans', family);
+    const M = structuredClone(MODEL); M.views[0].direction = direction;
+    const tag = `${theme}, ${fname}, ${direction}`, h = mount(M, { legend: true }), bad = [], nodes = all('.node');
+    check(`${tag}: seven classifiers, two boxes, five lines`, all('.node.classifier').length === 7 && all('.family').length === 2 && all('.edge-g').length === 5, [nodes.length, all('.family').length, all('.edge-g').length]);
+    nodes.forEach(g => { const b = box(g.querySelector('.n-mask')); g.querySelectorAll('text').forEach(t => { if (!inside(box(t), b)) bad.push(`${g.dataset.id}: "${t.textContent}" spills`); }); });
+    const boxes = nodes.map(g => [g.dataset.id, box(g.querySelector('.n-mask'))]);
+    boxes.forEach(([a, p], i) => boxes.slice(i + 1).forEach(([b, q]) => { if (p.x < q.x + q.w && q.x < p.x + p.w && p.y < q.y + q.h && q.y < p.y + p.h) bad.push(`${a} and ${b} overlap`); }));
+    const frame = id => box(pick(`.family[data-family="${id}"] .family-box`));
+    Object.entries(HOLDS).forEach(([f, ids]) => ids.forEach(id => { if (!inside(box(pick(`.node[data-id="${id}"] .n-mask`)), frame(f))) bad.push(`${id} is outside ${f}`); }));
+    check(`${tag}: every text inside its shape, every element inside its box, none overlapping`, !bad.length, bad);
+    check(`${tag}: the profile's box titled «profile»`, pick('.family[data-family="conventions"] .family-title').textContent === '«profile» BookshopConventions');
+    const heads = id => all(`.node[data-id="${id}"] .c-st`).map(t => t.textContent);
+    check(`${tag}: «stereotype» and «metaclass» over their names`, same(heads('entity'), ['«stereotype»']) && same(heads('mc-class'), ['«metaclass»']), [heads('entity'), heads('mc-class')]);
+    const rows = all('.node[data-id="order"] .c-row').map(t => t.textContent);
+    check(`${tag}: Order's tag compartments, each headed by its stereotype`, same(rows.slice(0, 5), ['«aggregateRoot»', 'table = orders', 'boundedContext = sales', '«owned»', 'team = checkout']), rows);
+    const ext = pick('.edge-g[data-from="entity"][data-to="mc-class"] path.edge'), mk = ext && /url\(#([^)]+)\)/.exec(ext.getAttribute('marker-end') || ''), mp = mk && sr.getElementById(mk[1]);
+    check(`${tag}: an extension ends in a triangle filled with its line's colour`, !!mp && mp.querySelector('path').getAttribute('d') === 'M0 0L13 7L0 14Z' && same(css(mp.querySelector('path'), 'fill'), css(mp.querySelector('path'), 'stroke')), mk && mk[1]);
+    const labs = [...new Set(all('.e-lab, .labels text').map(t => t.textContent))].sort();
+    check(`${tag}: {required} and «apply» drawn`, same(labs, ['{required}', '«apply»']), labs);
+    check(`${tag}: names a screen reader reads`, pick('.node[data-id="owned"]').getAttribute('aria-label') === 'Stereotype owned, extends Class {required}, team: String'
+      && pick('.family[data-family="conventions"]').getAttribute('aria-label') === 'Profile BookshopConventions, holding 6 elements'
+      && pick('.edge-g[data-from="sales"] title').textContent === 'Profile application from sales to BookshopConventions: «apply»', pick('.node[data-id="owned"]').getAttribute('aria-label'));
+    const order = all('.keys .um-key').map(k => k.dataset.node || k.dataset.edge || k.textContent);
+    check(`${tag}: a key for every element and line, in reading order`, all('.keys .um-key').length === 12 && same(all('.keys .node-key').map(k => k.dataset.node), HOLDS.conventions.concat(HOLDS.sales)), order);
+    const legend = all('.m-legend b').map(b => b.textContent);
+    check(`${tag}: the legend keys each line kind drawn`, same(legend, ['Generalization', 'Extension', 'Profile application']), legend);
+    const stageBg = css(pick('.stage'), 'backgroundColor'), low = [];
+    [...nodes, ...all('.family')].forEach(g => g.querySelectorAll('text').forEach(t => { const c = ratio(css(t, 'fill'), stageBg); if (c < 4.5) low.push([g.dataset.id || g.dataset.family, t.textContent, c]); }));
+    const strokes = all('.node .n-body, .family .family-box, .edge-g path.edge').map(b => ratio(css(b, 'stroke'), stageBg)).filter(c => c < 3);
+    check(`${tag}: contrast: texts 4.5:1, outlines and lines 3:1`, !low.length && !strokes.length, [low, strokes]);
+    h.destroy();
+  }
+  document.documentElement.dataset.theme = 'light'; el.style.removeProperty('--um-sans');
+
+  // ---- editing (DoD 4), each gesture's commands applied with apply()
+  const BASE = structuredClone(MODEL);
+  let h = mount(BASE, { editable: true });
+  const panel = s => pick('.um-editor ' + s);
+  const LABELS = ['Profile', 'Stereotype', 'Metaclass', 'Enumeration', 'Package', 'Comment'];
+  check('the palette: its six elements; the lines listed', same(all('.um-editor .um-pal button').map(b => b.textContent), LABELS)
+    && /Extension, Generalization, Profile application, Comment link/.test(panel('.um-pal .um-note').textContent), panel('.um-pal').textContent);
+  key('n'); pick('.um-rename').value = 'Audit'; key('Enter', {}, pick('.um-rename'));
+  gives('N adds a profile, named, shown in the view', [{ op: 'add', element: { id: 'profile1', type: 'uml.Profile', label: 'Audit' }, view: 'profile' }], m => m.views[0].nodeIds.includes('profile1'), BASE);
+  // a stereotype into the profile selected: the box selected, then the palette's button (edits.add)
+  h.select({ type: 'container', id: 'conventions', view: 'profile' });
+  all('.um-editor .um-pal button')[1].click(); pick('.um-rename').value = 'audited'; key('Enter', {}, pick('.um-rename'));
+  const m1 = gives('the palette\'s Stereotype with the profile selected: added into it', [{ op: 'add', element: { id: 'stereotype1', type: 'uml.Stereotype', label: 'audited', parent: 'conventions' }, view: 'profile' }],
+    m => m.nodes.find(n => n.id === 'stereotype1').parent === 'conventions', BASE);
+  // a metaclass not in the table: the picker of the nearest names, the first picked
+  click('.node[data-id="entity"] .c-name'); all('.um-editor .um-pal button')[2].click(); pick('.um-rename').value = 'Opration'; key('Enter', {}, pick('.um-rename'));
+  await new Promise(r => setTimeout(r, 0));
+  const near = all('.um-pick button').map(b => b.textContent);
+  check('a metaclass not in the table: a picker of the nearest names', near.length === 6 && near[0] === 'Operation', near);
+  if (near.length) all('.um-pick button')[0].click();
+  gives('…and the name picked is added, into the profile of the stereotype selected', [{ op: 'add', element: { id: 'metaclass1', type: 'uml.MetaclassReference', label: 'Operation', parent: 'conventions' }, view: 'profile' }],
+    m => m.nodes.some(n => n.id === 'metaclass1'), BASE);
+  h.update(m1);
+  check('after update() the stereotype is drawn in the profile\'s box', inside(box(pick('.node[data-id="stereotype1"] .n-mask')), box(pick('.family[data-family="conventions"] .family-box'))));
+  // an extension by L and the picker; one from a metaclass refused, its reason on the hint line
+  click('.node[data-id="stereotype1"] .c-name'); key('l'); for (const c of 'Class') key(c); key('Enter');
+  const kinds = all('.um-pick button').map(b => b.textContent);
+  check('L, a name and Enter open the picker with the four lines', same(kinds, ['Extension', 'Generalization', 'Profile application', 'Comment link']), kinds);
+  all('.um-pick button')[0].click();
+  const m2 = gives('L, Extension: added from the stereotype to the metaclass', [{ op: 'add', element: { id: 'extension1', type: 'uml.Extension', from: 'stereotype1', to: 'mc-class' }, view: 'profile' }], m => m.edges.some(e => e.id === 'extension1'), m1);
+  const n0 = ed.length; click('.node[data-id="mc-class"] .c-name'); key('l'); for (const c of 'column') key(c); key('Enter');
+  all('.um-pick button').find(b => b.textContent === 'Extension').click();
+  check('an extension from a metaclass is refused, nothing emitted, its reason on the hint line', ed.length === n0 && hint() === 'An extension runs from a stereotype to a metaclass', [ed.slice(n0), hint()]);
+  // the handle, by pointer: a generalization between two stereotypes; one from a class refused
+  h.update(m2);
+  click('.node[data-id="stereotype1"] .c-name'); handleTo(centre('.node[data-id="entity"] .n-mask')); press(all('.um-pick button').find(b => b.textContent === 'Generalization'));
+  gives('the handle from a stereotype to a stereotype, Generalization: added', [{ op: 'add', element: { id: 'generalization1', type: 'uml.Generalization', from: 'stereotype1', to: 'entity' }, view: 'profile' }], m => m.edges.some(e => e.id === 'generalization1'), m2);
+  const n1 = ed.length; click('.node[data-id="order"] .c-name'); handleTo(centre('.node[data-id="entity"] .n-mask')); press(all('.um-pick button').find(b => b.textContent === 'Generalization'));
+  check('the handle from a class to a stereotype, Generalization: refused, its reason on the hint line', ed.length === n1 && hint() === 'A generalization here joins two stereotypes', [ed.slice(n1), hint()]);
+  // F2 on a stereotype
+  click('.node[data-id="entity"] .c-name'); key('F2');
+  check('F2 on a stereotype: a field holding its name', pick('.um-rename') && pick('.um-rename').value === 'entity');
+  pick('.um-rename').value = 'persistent'; key('Enter', {}, pick('.um-rename'));
+  gives('F2: set its label (Order\'s «aggregateRoot» still specializes it)', [{ op: 'set', id: 'entity', path: 'label', value: 'persistent' }], m => m.nodes.find(n => n.id === 'entity').label === 'persistent', m2);
+  // the panel: Abstract on a stereotype, Required on an extension, a tag field on Order, a tag definition as a member row
+  click('.node[data-id="column"] .c-name'); change(panel('[data-f="p:isAbstract"]'), true);
+  gives('the Abstract field sets isAbstract (placedAt applying it is then an error, stereotype-abstract)', [{ op: 'set', id: 'column', path: 'props.isAbstract', value: true }],
+    m => m.nodes.find(n => n.id === 'column').props.isAbstract === true && errors(m)[0].rule === 'stereotype-abstract', m2, 1);
+  h.select({ type: 'edge', ids: ['entity-extends-class'], view: 'profile' }); change(panel('[data-f="p:isRequired"]'), true);
+  gives('the Required field sets isRequired', [{ op: 'set', id: 'entity-extends-class', path: 'props.isRequired', value: true }], m => m.edges.find(e => e.id === 'entity-extends-class').props.isRequired === true, m2);
+  click('.node[data-id="order"] .c-name');
+  const tagF = panel('[data-f="p:p:owned:team"]');
+  check('Order\'s panel: a field for each tag of its stereotypes', !!tagF && tagF.value === 'checkout' && all('.um-editor [data-f^="p:p:"]').length === 3, all('.um-editor [data-f^="p:p:"]').map(f => f.dataset.f));
+  if (tagF) { change(tagF, 'fulfilment');
+    gives('a tag field sets the tag by its path', [{ op: 'set', id: 'order', path: ['props', 'tags', 'owned', 'team'], value: 'fulfilment' }], m => m.nodes.find(n => n.id === 'order').props.tags.owned.team === 'fulfilment', m2); }
+  click('.node[data-id="entity"] .c-name'); const nm = panel('[data-new]');
+  check('a stereotype\'s panel offers its tag definitions as member rows', !!nm && all('.um-editor [data-m]').map(x => x.value).join() === 'table: String', all('.um-editor [data-m]').map(x => x.value));
+  if (nm) { nm.value = 'schema: String [0..1]'; key('Enter', {}, nm);
+    const c = last().commands[0];
+    check('New member: a tag definition added to the stereotype', last().commands.length === 1 && c.op === 'add' && c.owner === 'entity' && c.element.type === 'uml.Property' && c.element.label === 'schema' && same(c.element.props, { valueType: 'String', multiplicity: '0..1' }) && !errors(apply(m2, last().commands)).length, last()); }
+  // hide, delete
+  h = mount(BASE, { editable: true });
+  click('.node[data-id="column"] .c-name'); key('Delete');
+  gives('Delete: hide the stereotype from the view', [{ op: 'hide', id: 'column', view: 'profile' }], m => !m.views[0].nodeIds.includes('column'), BASE);
+  click('.node[data-id="column"] .c-name'); key('Delete', { shiftKey: true });
+  gives('Shift + Delete: delete the stereotype and its extension (Order\'s placedAt then warned, not rewritten)', [{ op: 'delete', id: 'column' }],
+    m => !m.nodes.some(n => n.id === 'column') && !m.edges.some(e => e.id === 'column-extends-property') && validate(m).some(p => p.rule === 'stereotype-unknown'), BASE);
+  h.select({ type: 'edge', ids: ['owned-extends-class'], view: 'profile' }); key('Delete', { shiftKey: true });
+  gives('Shift + Delete on an extension: delete it', [{ op: 'delete', id: 'owned-extends-class' }], m => !m.edges.some(e => e.id === 'owned-extends-class'), BASE);
+  h.destroy();
+} catch (e) { out.fail.push('threw: ' + (e && e.stack || e)); }
+const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
+</script>
