@@ -516,7 +516,8 @@ standing approval (14 Nov 2026):
   and the pair Take payment ⇄ Payment provider; down: Books → Take order with Take order → Orders, and Take order →
   Customer with Ship order → Customer); level 2 has none. The host's ranking places them (a store read by process 1 and
   written by process 3; the customer both source and sink); a rank flip on store or entity flows was tried and drew no
-  fewer. A level made by `D` draws clean but for a crossing pair to an entity, as level 1 does.
+  fewer. A level made by `D` draws clean but for a crossing pair to an entity, as level 1 does: `D` on Take payment
+  gives Take payment ⇄ Payment provider crossing, right, in either notation, and none down.
 - **No `text` and no `connect` or `rename` hook.** A flow's label is all it says, which the PDF's lines table shows
   already (§9); the canvas's own connect adds a flow of the kind picked and F2's default sets a flow's label. The hooks
   are `add` (numbers) and `key` (`D`).
@@ -524,8 +525,20 @@ standing approval (14 Nov 2026):
   views, so a per-view pass would say each problem twice. `dfd-numbers` checks a level's own processes (shown on the
   level and not on its parent view) under their parent's number, and numbers used twice; a top level's numbers and a
   process with no number are not checked.
-- **`D`'s ids**: the child process `<id>-<n>.1` (or `<id>-1` with no number), the next free with `-2`, `-3`; the view
-  `<id>-level`, the same way; each copied flow `<flow id>-<n>.1`. The level takes its parent view's `notation` and
+- **A level draws its own flows, and balances on what the two views draw.** With no `edges` list, a level (a view a
+  process opens) does not draw a flow with both ends on its parent view: such a flow is the parent level's (between two
+  context elements, or the parent process's), and reaches the level only through its processes. `dfd-balance` compares
+  the process's flows drawn on the parent view with the flows drawn on the level across its processes' edge, so a flow
+  hidden or left off a level's list counts as removed. On the level, every far end counts but a store the parent view does
+  not show (a local store): an entity the parent view does not show is no local element.
+- **`dfd-level` also warns** of a level a second process opens (the first is its process, named too; the second's numbers
+  and balancing are not checked), of a view that is its own parent, and of a level that shows its own process. Labels
+  are compared exactly, case and all, after trimming (option (a) of §6.4: by label).
+- **A number is cut at 160 px**, as a name wraps there, so a long one does not widen its box.
+- **`D`'s ids**: the child process numbered `<n>.1`, or the next free under `<n>` (`<n>.2` when a `<n>.1` is taken), so
+  the level checks clean; with no number the next free top number. Its id `<id>-<its number>`, the next free with `-2`,
+  `-3`; the view `<id>-level`, the same way; each copied flow `<flow id>-<its number>`. `D` copies the flows the view
+  draws. The level takes its parent view's `notation` and
   `direction`. On a process that opens a view already, `D` says so on the hint line and emits nothing.
 - **The palette's process entry has `opens: 'dfd'`**, so V picks the level a process opens among the model's dfd views
   (stage 4's S18).

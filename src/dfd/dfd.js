@@ -39,7 +39,7 @@ const dfdNameSvg = (n, ls, cx, y0, y1, max) => { const y = (y0 + y1) / 2 - ls.le
 
 // a process: Yourdon's ellipse round its number over its name (the text block 1.42 times, so its corners fit inside it), or
 // Gane and Sarson's rounded rectangle with the number in a band across its top
-const dfdProcParts = n => { const num = String(n.number ?? ''), ls = dfdName(n.label, 3), tw = Math.max(dfdTextW(ls), num ? textW(num, DF.num) : 0), th = (num ? DF.numh : 0) + ls.length * DF.lh;
+const dfdProcParts = n => { const num = String(n.number ?? ''), ls = dfdName(n.label, 3), tw = Math.max(dfdTextW(ls), num ? Math.min(DF.nmax, textW(num, DF.num)) : 0), th = (num ? DF.numh : 0) + ls.length * DF.lh;
   return { num, ls, w: Math.ceil(Math.max(DF.minW, tw * DF.k + 16, tw + 2 * DF.pad)), h: Math.ceil(Math.max(56, th * DF.k + 12, DF.band + ls.length * DF.lh + 2 * DF.pad)) }; };
 const dfdProcess = skin => ({
   size: n => { const p = dfdProcParts(n); return { w: p.w, h: p.h }; },
@@ -56,7 +56,7 @@ const dfdProcess = skin => ({
 });
 // a data store: Yourdon's two lines with the number before the name, or Gane and Sarson's rectangle open on the right,
 // its number in an id box on the left
-const dfdStoreParts = n => { const num = String(n.number ?? ''), ls = dfdName(n.label, 2), nw = num ? textW(num, DF.num) : 0, ib = Math.max(28, Math.ceil(nw) + 12), tw = dfdTextW(ls);
+const dfdStoreParts = n => { const num = String(n.number ?? ''), ls = dfdName(n.label, 2), nw = num ? Math.min(DF.nmax, textW(num, DF.num)) : 0, ib = Math.max(28, Math.ceil(nw) + 12), tw = dfdTextW(ls);
   return { num, ls, nw, ib, w: Math.ceil(Math.max(DF.minW, ib + tw + 2 * DF.pad, nw + 8 + tw + 2 * DF.pad)), h: Math.max(36, ls.length * DF.lh + 16) }; };
 const dfdStore = skin => ({
   size: n => { const p = dfdStoreParts(n); return { w: p.w, h: p.h }; },
@@ -100,11 +100,15 @@ function dfdIndex(model) {
   const parentOf = vid => [...at.values()].find(x => x.type === 'dfd.Process' && x.opensView === vid) || null; // the process a view is the level of
   return { at, path, views, flows, ty, proc, name, q, level, parentOf };
 }
-// the lines drawn: those the view lists, or with no list the model's of this type's kinds, between two nodes it shows
+// the lines drawn: those the view lists, or with no list the model's of this type's kinds, between two nodes it shows; on a
+// level (a view a process opens) with no list, not those with both ends on its parent view: they are the parent level's,
+// and reach the level only through its own processes (Yourdon and DeMarco's levelling)
 function dfdLines(model, view) {
   const E = new Map(); DFD_ARR(model.edges).forEach(e => { if (DFD_OBJ(e) && typeof e.id === 'string' && !E.has(e.id)) E.set(e.id, e); });
-  const shown = new Set(DFD_ARR(view.nodeIds)), list = Array.isArray(view.edges) ? view.edges.map(x => (typeof x === 'string' ? E.get(x) : x)) : [...E.values()].filter(e => DFD_LINES.includes(e.type));
-  return list.filter(e => DFD_OBJ(e) && typeof e.id === 'string' && shown.has(e.from) && shown.has(e.to));
+  const shown = new Set(DFD_ARR(view.nodeIds)), listed = Array.isArray(view.edges), list = listed ? view.edges.map(x => (typeof x === 'string' ? E.get(x) : x)) : [...E.values()].filter(e => DFD_LINES.includes(e.type));
+  const lv = !listed && view.parent !== view.id && DFD_ARR(model.nodes).some(x => DFD_OBJ(x) && x.type === 'dfd.Process' && x.opensView === view.id);
+  const up = new Set(lv ? DFD_ARR((DFD_ARR(model.views).find(v => DFD_OBJ(v) && v.id === view.parent) || {}).nodeIds) : []);
+  return list.filter(e => DFD_OBJ(e) && typeof e.id === 'string' && shown.has(e.from) && shown.has(e.to) && !(up.has(e.from) && up.has(e.to)));
 }
 // accessible names (A1): "Process 1 Take order, opens level 1 Take order, 2 flows in, 2 out"; a flow: "Data flow basket from Customer to 1 Take order"
 function dfdNodeName(I, id, lines) {
@@ -156,7 +160,7 @@ const DFD_RULES = {
   'dfd-flow-label': 'a flow to or from a process has a label',
   'dfd-numbers': 'a level\'s processes are numbered under their parent process\'s (1.1, 1.2 under 1); no number is used twice',
   'dfd-balance': 'the flows between a process and the rest of its level match its level\'s flows across the level\'s edge, by label, far end and direction',
-  'dfd-level': 'a process opens a dfd view whose parent is a view showing the process',
+  'dfd-level': 'a process opens a dfd view whose parent is a view showing the process; the level is that process\'s alone and does not show it',
 };
 function dfdProblems(model) {
   const I = dfdIndex(model), out = [], say = (level, rule, path, ids, msg) => out.push({ level, rule, path, ids: ids.filter(x => x != null), message: `${rule}: ${msg}` });
@@ -169,16 +173,21 @@ function dfdProblems(model) {
   // numbers: none used twice among processes, nor among stores; a level's processes under their parent's
   for (const t of ['dfd.Process', 'dfd.DataStore']) { const by = new Map(); [...I.at.values()].filter(x => x.type === t && dfdNum(x)).forEach(x => by.set(dfdNum(x), [...(by.get(dfdNum(x)) || []), x.id]));
     by.forEach((list, k) => { if (list.length > 1) say('warning', 'dfd-numbers', I.path.get(list[1]), list, `${list.length} ${t === 'dfd.Process' ? 'processes' : 'stores'} are numbered ${k}: ${list.map(id => JSON.stringify(String(I.at.get(id).label ?? id))).join(', ')}`); }); }
-  procs.forEach(p => { const L = I.level(p.id), n = dfdNum(p); if (!L || L.v.diagram !== 'dfd' || !n) return;
+  procs.forEach(p => { const L = I.level(p.id), n = dfdNum(p); if (!L || L.v.diagram !== 'dfd' || !n || I.parentOf(L.v.id) !== p) return;
     L.kids.filter(id => !new RegExp(`^${n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\.\\d+$`).test(dfdNum(I.at.get(id)))).forEach(id =>
       say('warning', 'dfd-numbers', I.path.get(id), [id, p.id], `${I.q(id)}, on the level of ${I.q(p.id)}, is numbered ${dfdNum(I.at.get(id)) || 'nothing'}: its number is ${n}.1, ${n}.2, …`)); });
   // a level: a dfd view whose parent shows the process; then balanced (§6.4), each pair by label, far end and direction
   procs.filter(p => p.opensView != null).forEach(p => { const L = I.level(p.id), path = I.path.get(p.id);
-    if (!L || L.v.diagram !== 'dfd' || !L.up.has(p.id)) return say('warning', 'dfd-level', path, [p.id], !L ? `${I.q(p.id)} opens "${p.opensView}", which is no view`
-      : L.v.diagram !== 'dfd' ? `${I.q(p.id)} opens "${L.v.id}", a ${L.v.diagram || 'map'} view, not a level` : `${I.q(p.id)} opens "${L.v.id}", whose parent view ${L.pv ? `"${L.pv.id}" does not show it` : `is ${L.v.parent == null ? 'not given' : `"${L.v.parent}", which is no view`}`}`);
+    const first = L && I.parentOf(L.v.id), bad = !L ? `opens "${p.opensView}", which is no view` : L.v.diagram !== 'dfd' ? `opens "${L.v.id}", a ${L.v.diagram || 'map'} view, not a level`
+      : L.v === L.pv ? `opens "${L.v.id}", whose parent view is itself` : !L.up.has(p.id) ? `opens "${L.v.id}", whose parent view ${L.pv ? `"${L.pv.id}" does not show it` : `is ${L.v.parent == null ? 'not given' : `"${L.v.parent}", which is no view`}`}`
+        : first !== p ? `opens "${L.v.id}", which ${I.q(first.id)} opens already: a level is one process's` : DFD_ARR(L.v.nodeIds).includes(p.id) ? `opens "${L.v.id}", which shows the process itself: its level shows its parts` : '';
+    if (bad) return say('warning', 'dfd-level', path, [p.id, ...(first && first !== p ? [first.id] : [])], `${I.q(p.id)} ${bad}`);
+    // the flows each view draws: the process's on its parent view; on the level, those across the edge of its own processes,
+    // but to a store the parent view does not show (a local store)
     const kids = new Set(L.kids), key = (e, mine) => { const o = e.from === mine ? e.to : e.from; return [e.from === mine ? 'out' : 'in', o, String(e.label ?? '').trim()]; };
-    const outer = I.flows.map(([e]) => e).filter(e => (e.from === p.id) !== (e.to === p.id) && L.up.has(e.from === p.id ? e.to : e.from)).map(e => [e, key(e, p.id)]);
-    const inner = I.flows.map(([e]) => e).filter(e => kids.has(e.from) !== kids.has(e.to) && ![e.from, e.to].includes(p.id) && L.up.has(kids.has(e.from) ? e.to : e.from)).map(e => [e, key(e, kids.has(e.from) ? e.from : e.to)]);
+    const drawn = v => dfdLines(model, v).filter(e => e.type === 'dfd.DataFlow');
+    const outer = drawn(L.pv).filter(e => (e.from === p.id) !== (e.to === p.id)).map(e => [e, key(e, p.id)]);
+    const inner = drawn(L.v).filter(e => { const o = kids.has(e.from) ? e.to : e.from; return kids.has(e.from) !== kids.has(e.to) && o !== p.id && (L.up.has(o) || I.ty(o) !== 'dfd.DataStore'); }).map(e => [e, key(e, kids.has(e.from) ? e.from : e.to)]);
     const left = [...inner], miss = outer.filter(([, k]) => { const i = left.findIndex(([, j]) => j.join('\u0001') === k.join('\u0001')); if (i < 0) return true; left.splice(i, 1); return false; });
     if (!miss.length && !left.length) return;
     const said = ([e, [dir, o, l]]) => `"${l}" ${dir === 'in' ? 'in from' : 'out to'} ${I.q(o)} (${e.id})`, lv = `level "${L.v.title || L.v.id}"`;
@@ -200,10 +209,12 @@ function dfdDescribe(model, viewId) {
 const dfdUsed = model => { const used = new Set(); JSON.stringify(model, (k, v) => { if (k === 'id' && typeof v === 'string') used.add(v); return v; }); return used; };
 // a free id: base, else base-2, base-3, …; numbered (the palette's): base1, base2, …. Taken once given
 const dfdFree = (used, base, numbered) => { let k = 1, id = numbered ? base + 1 : base; while (used.has(id)) id = base + (numbered ? '' : '-') + ++k; used.add(id); return id; };
+// the next free number of a type after pre: pre1, pre2, …
+const dfdFreeNum = (I, type, pre) => { const taken = new Set([...I.at.values()].filter(x => x.type === type).map(dfdNum)); let k = 1; while (taken.has(pre + k)) k++; return pre + k; };
 // the next free number: under the view's parent process (1.1, 1.2 under 1), else 1, 2, …; a store's D1, D2, …
 function dfdNextNumber(model, view, type) {
-  const I = dfdIndex(model), taken = new Set([...I.at.values()].filter(x => x.type === type).map(dfdNum)), up = type === 'dfd.Process' && I.parentOf(view.id), pre = type === 'dfd.DataStore' ? 'D' : up && dfdNum(up) ? dfdNum(up) + '.' : '';
-  let k = 1; while (taken.has(pre + k)) k++; return pre + k;
+  const I = dfdIndex(model), up = type === 'dfd.Process' && I.parentOf(view.id);
+  return dfdFreeNum(I, type, type === 'dfd.DataStore' ? 'D' : up && dfdNum(up) ? dfdNum(up) + '.' : '');
 }
 // the palette's add: a process or a store with the next free number
 function dfdAdd(model, view, entry, label) {
@@ -212,14 +223,14 @@ function dfdAdd(model, view, entry, label) {
   return [{ op: 'add', element: { id, type: entry.type, ...(label ? { label } : {}), props: { number: dfdNextNumber(model, view, entry.type) } }, view: view.id }];
 }
 /* D on a selected process that opens no view (§6.1): its level, in one transaction. The new view (<id>-level, the next
-   free) shows the far ends of the process's flows on this view and one child process, numbered <n>.1 and named as its
-   parent; each of those flows is copied with the process's end moved to the child, so the level balances from the start */
+   free) shows the far ends of the process's flows drawn on this view and one child process, numbered <n>.1 (the next
+   free under <n>) and named as its parent; each of those flows is copied with the process's end moved to the child, so the level balances from the start */
 function dfdKey(model, view, ids, key) {
   if (key !== 'd' && key !== 'D') return null;
   const I = dfdIndex(model), p = ids.length === 1 && I.proc(ids[0]) ? I.at.get(ids[0]) : null; if (!p) return null;
   if (p.opensView != null) return { error: `${I.q(p.id)} opens "${p.opensView}" already: Enter opens it` };
-  const used = dfdUsed(model), shown = new Set(DFD_ARR(view.nodeIds)), n = dfdNum(p), kn = n ? n + '.1' : '1';
-  const flows = I.flows.map(([e]) => e).filter(e => (e.from === p.id) !== (e.to === p.id) && shown.has(e.from === p.id ? e.to : e.from));
+  const used = dfdUsed(model), n = dfdNum(p), kn = dfdFreeNum(I, 'dfd.Process', n ? n + '.' : '');
+  const flows = dfdLines(model, view).filter(e => e.type === 'dfd.DataFlow' && (e.from === p.id) !== (e.to === p.id));
   const vid = dfdFree(new Set(DFD_ARR(model.views).filter(DFD_OBJ).map(v => v.id)), p.id + '-level'), kid = dfdFree(used, `${p.id}-${kn}`), title = `${n ? n + ' ' : ''}${p.label ?? p.id}`;
   return { commands: [
     { op: 'addView', view: { id: vid, diagram: 'dfd', title, parent: view.id, ...(view.notation != null ? { notation: view.notation } : {}), ...(view.direction != null ? { direction: view.direction } : {}),

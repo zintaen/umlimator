@@ -4,8 +4,9 @@
      their shapes, none overlapping, line ends on outlines, names, reading order, axe's rules written out, contrast, the
      legend), then edited through the edit event and apply(), by pointer and by keyboard: the palette's four entries and N
      (a process numbered under the level's parent), F2 on a node and on a flow, a flow by L and the picker and by the handle,
-     the number field, D making a balanced level (and refused on a process that opens one), V picking the view a process
-     opens, hide and delete. -->
+     the number field on a process and a store, F2 on an entity, D making a balanced level (and refused on a process that
+     opens one) that Enter or a double-click then opens, V picking the view a process opens, hide and delete by key, by the
+     panel's buttons and by the outline's ✕. -->
 <meta charset="utf-8">
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="../lib/umlimator-theme.css">
@@ -150,10 +151,16 @@ try {
   check('D on a process: one transaction that adds its level, its child process, its copied flows, and sets opensView', !!L && lv.op === 'addView' && lv.view.id === 'dfd-take-payment-level' && L.commands.length === 7
     && L.commands.at(-1).value === 'dfd-take-payment-level' && /^Made level 2 Take payment, balanced with 4 flows/.test(hint()), [L, hint()]);
   check('…and the level balances: validate() says nothing of it', !!mD && !validate(mD).some(p => p.rule === 'dfd-balance' || p.level === 'error'), mD && validate(mD));
-  h.update(mD);
-  h.setView('dfd-take-payment-level');
+  // §6.1: the level made, Enter or a double-click on its process then opens it, as the hint line says
+  const opened = async go => { const seen = [], h0 = mount(mD, { editable: true, on: { edit: e => ed.push(e), viewchange: e => seen.push(e.view) } }); click('.node[data-id="dfd-take-payment"] .c-name'); go();
+    for (let i = 0; i < 100 && !seen.length; i++) await new Promise(r => setTimeout(r, 20)); return [seen, h0]; };
+  let [seen, h1] = await opened(() => key('Enter'));
+  check('Enter on the process opens the level D made', same(seen, ['dfd-take-payment-level']), seen);
   check('the level made draws its process and its context', same(all('.node').map(g => g.dataset.id).sort(), ['dfd-orders', 'dfd-provider', 'dfd-ship-order', 'dfd-take-payment-2.1']) && all('.edge-g').length === 4, all('.node').map(g => g.dataset.id));
-  h.setView('dfd-level-1');
+  h1.destroy();
+  [seen, h1] = await opened(() => { const b = pick('.node[data-id="dfd-take-payment"] .n-body'), [x, y] = centre('.node[data-id="dfd-take-payment"] .n-body'); b.dispatchEvent(new MouseEvent('dblclick', { clientX: x, clientY: y, bubbles: true, composed: true, cancelable: true })); });
+  check('…and so does a double-click on it', same(seen, ['dfd-take-payment-level']), seen);
+  h1.destroy(); h = mount(mD, { editable: true });
   const n0 = ed.length; click('.node[data-id="dfd-take-order"] .c-name'); key('D');
   check('D on a process that opens a level: nothing emitted, said on the hint line', ed.length === n0 && /opens "dfd-level-2-take-order" already/.test(hint()), [ed.slice(n0), hint()]);
   // V: the dfd views the process may open
@@ -161,10 +168,21 @@ try {
   const vs = all('.um-pick button').map(b => b.textContent);
   check('V on a process: a picker of the dfd views', vs.includes('1 Take order') && vs.includes('2 Take payment'), vs);
   all('.um-pick button').find(b => b.textContent === '2 Take payment').click();
-  gives('V: set opensView; another process\'s level does not balance with it, and dfd-balance says so', [{ op: 'set', id: 'process1', path: 'opensView', value: 'dfd-take-payment-level' }],
-    m => m.nodes.find(n => n.id === 'process1').opensView === 'dfd-take-payment-level' && errors(m)[0].rule === 'dfd-balance', mD, 1);
-  // hide, delete
+  gives('V: set opensView; another process\'s level is not its, and dfd-level says so', [{ op: 'set', id: 'process1', path: 'opensView', value: 'dfd-take-payment-level' }],
+    m => m.nodes.find(n => n.id === 'process1').opensView === 'dfd-take-payment-level' && validate(m).some(p => p.rule === 'dfd-level' && p.ids.includes('process1') && p.ids.includes('dfd-take-payment')), mD);
+  // hide, delete; a store's number and an entity's name
   h = mount(BASE, { editable: true });
+  click('.node[data-id="dfd-orders"] .c-name'); change(panel('[data-f="p:number"]'), 'D7');
+  gives('the number field on a store sets props.number', [{ op: 'set', id: 'dfd-orders', path: 'props.number', value: 'D7' }], m => m.nodes.find(n => n.id === 'dfd-orders').props.number === 'D7', BASE);
+  click('.node[data-id="dfd-courier"] .c-name'); key('F2'); pick('.um-rename').value = 'Carrier'; key('Enter', {}, pick('.um-rename'));
+  gives('F2 on an external entity: set its label', [{ op: 'set', id: 'dfd-courier', path: 'label', value: 'Carrier' }], m => m.nodes.find(n => n.id === 'dfd-courier').label === 'Carrier', BASE);
+  const button = t => all('.um-editor button').find(b => b.textContent.trim() === t);
+  click('.node[data-id="dfd-courier"] .c-name'); button('Remove from view').click();
+  gives('Remove from view, in the properties panel: hide the entity', [{ op: 'hide', id: 'dfd-courier', view: 'dfd-level-1' }], m => !m.views[0].nodeIds.includes('dfd-courier'), BASE);
+  click('.node[data-id="dfd-books"] .c-name'); button('Delete from model').click();
+  gives('Delete from model, in the properties panel: the store and its flows', [{ op: 'delete', id: 'dfd-books' }], m => !m.nodes.some(n => n.id === 'dfd-books'), BASE);
+  key('Enter', {}, panel('[data-del="dfd-courier"]'));
+  gives('✕ in the outline, by Enter: delete the entity from the model', [{ op: 'delete', id: 'dfd-courier' }], m => !m.nodes.some(n => n.id === 'dfd-courier'), BASE);
   click('.node[data-id="dfd-courier"] .c-name'); key('Delete');
   gives('Delete: hide the entity from the view', [{ op: 'hide', id: 'dfd-courier', view: 'dfd-level-1' }], m => !m.views[0].nodeIds.includes('dfd-courier'), BASE);
   click('.node[data-id="dfd-books"] .c-name'); key('Delete', { shiftKey: true });

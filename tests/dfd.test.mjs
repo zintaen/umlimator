@@ -55,7 +55,12 @@ test('the shapes (§4.3): each symbol one size in both skins, its text inside; Y
     const y = SHAPE[`dfd-${k}-yourdon`].size(n), g = SHAPE[`dfd-${k}-gane-sarson`].size(n);
     assert.deepEqual(y, g, `${k} ${n.label}`); assert.ok(y.w >= 96 && y.h >= 36, `${k}: ${JSON.stringify(y)}`); }
   const n = { label: 'Check the basket against the price list', number: '1.1' }, { w, h } = SHAPE['dfd-process-yourdon'].size(n), box = { ...n, x: 0, y: 0, w, h, shape: 'dfd-process-yourdon' };
-  assert.ok(h >= 22 + SHAPE['dfd-process-yourdon'].draw({ ...n, id: 'p', x: 0, y: 0, w, h, shape: 'dfd-process-yourdon' }, '', '').split('c-name').length * 16, 'the band and the name fit the Gane and Sarson box');
+  // Gane and Sarson: the number in the band (above y 22), each name line's box (its baseline less 12, 16 high) below it and inside the box
+  const gsys = cls => [...SHAPE['dfd-process-gane-sarson'].draw({ ...n, id: 'p', x: 0, y: 0, w, h, shape: 'dfd-process-gane-sarson' }, '', '').matchAll(new RegExp(`<text x="[^"]*" y="([^"]*)"[^>]*class="${cls}"`, 'g'))].map(m => +m[1]);
+  assert.ok(gsys('c-st').length === 1 && gsys('c-st')[0] < 22, `the number in the band: ${gsys('c-st')}`);
+  assert.ok(gsys('c-name').length >= 2 && gsys('c-name').every(y => y - 12 >= 22 && y + 4 <= h), `the name below the band, inside the box: ${gsys('c-name')} in ${h}`);
+  // a long number is cut, as a name is wrapped, at 160: the box does not grow with it
+  for (const k of ['process', 'store']) assert.ok(SHAPE[`dfd-${k}-yourdon`].size({ label: 'x', number: '9'.repeat(200) }).w <= 260, k);
   for (const [s, ts] of [['L', [h / 4, h / 2]], ['R', [3, h / 2]], ['T', [w / 3, w / 2]], ['B', [w / 5]]]) for (const t of ts) {
     const d = SHAPE['dfd-process-yourdon'].inset(box, s, t), p = s === 'L' ? [d, t] : s === 'R' ? [w - d, t] : s === 'T' ? [t, d] : [t, h - d];
     assert.ok(off(box, p) < 0.01, `${s} ${t}`); }
@@ -130,6 +135,11 @@ test('names, reading order and legend (A1): processes by number, stores, entitie
   assert.deepEqual(legend(g), ['Process', 'Data store', 'External entity', 'Data flow']);
   assert.match(g.legend[0], /<ellipse/); assert.match(layout(look(DF, null, 'gane-sarson'), L1).legend[0], /<rect[^>]*rx="3"/);
   const kids = layout(DF, L2); assert.equal(kids.byId['dfd-check-basket'].aria, 'Process 1.1 Check the basket, 2 flows in, 1 out');
+  // a level draws its own flows only: one between two of its context elements, or its parent process's, is the parent level's
+  const ctx = structuredClone(DF); ctx.edges.push(F('dfd-books-2', 'dfd-orders', 'dfd-take-order', 'old order')); ctx.views[1].nodeIds.push('dfd-take-order');
+  assert.deepEqual(layout(ctx, L2).edges.map(e => e.id), DF.edges.filter(e => e.id.startsWith('dfd-l2-')).map(e => e.id));
+  assert.equal(layout(ctx, L1).edges.length, 12, 'the parent view draws it');
+  const listedCtx = structuredClone(ctx); listedCtx.views[1].edges = ['dfd-books-2']; assert.deepEqual(layout(listedCtx, L2).edges.map(e => e.id), ['dfd-books-2'], 'a view\'s own list is drawn as it is');
   const loose = structuredClone(DF); loose.views[1].nodeIds = ['dfd-check-basket']; assert.deepEqual(legend(layout(loose, L2)), ['Process']);
 });
 
@@ -167,6 +177,14 @@ test('validators: 22-data-flow.json breaks no rule; each rule fails on a model t
   assert.deepEqual(T.validate(twice).map(p => [p.rule, p.ids]), [['dfd-numbers', ['dfd-take-payment', 'dfd-ship-order']]]);
   const nowhere = structuredClone(DF); nowhere.nodes[3].opensView = 'nowhere'; assert.match(T.validate(nowhere)[0].message, /opens "nowhere", which is no view/);
   const map = structuredClone(DF); map.views[1].diagram = 'map'; assert.deepEqual(T.validate(map).map(p => p.rule), ['dfd-level']);
+  // a level is one process's: opened by two, its own parent, or showing its own process
+  const two = structuredClone(DF); two.nodes.find(n => n.id === 'dfd-take-payment').opensView = L2;
+  assert.deepEqual(T.validate(two).map(p => [p.rule, p.ids]), [['dfd-level', ['dfd-take-payment', 'dfd-take-order']]]);
+  assert.match(T.validate(two)[0].message, /opens "dfd-level-2-take-order", which process "1 Take order" opens already/);
+  const self = structuredClone(DF); self.views[1].parent = L2; self.views[1].nodeIds.push('dfd-take-order');
+  assert.deepEqual(T.validate(self).map(p => p.message), ['dfd-level: process "1 Take order" opens "dfd-level-2-take-order", whose parent view is itself']);
+  const own = structuredClone(DF); own.views[1].nodeIds.push('dfd-take-order');
+  assert.deepEqual(T.validate(own).map(p => p.message), ['dfd-level: process "1 Take order" opens "dfd-level-2-take-order", which shows the process itself: its level shows its parts']);
   const es = structuredClone(DF); es.edges.push(F('es', 'dfd-customer', 'dfd-books', 'wish list')); assert.deepEqual(T.validate(es).map(p => p.rule), ['dfd-flow-process']);
 });
 
@@ -182,6 +200,12 @@ test('balancing (§6.4): one flow removed from level 2 fails dfd-balance naming 
   const far = structuredClone(DF); far.edges.find(e => e.id === 'dfd-l2-price-and-stock').from = 'dfd-orders';
   assert.deepEqual(T.validate(far).map(q => q.rule), ['dfd-balance'], 'the far end counts');
   // a store the level shows and its parent view does not: its flows are inside the level
+  // what a level draws counts, not what the model holds: a flow left off the level's list, a context element hidden on
+  // either view
+  const listed = structuredClone(DF); listed.views[1].edges = DF.edges.filter(e => e.id.startsWith('dfd-l2-') && e.id !== 'dfd-l2-basket').map(e => e.id);
+  assert.deepEqual(T.validate(listed).map(q => q.ids), [['dfd-take-order', 'dfd-basket']], 'a flow the level does not list');
+  assert.deepEqual(T.validate(apply(DF, [{ op: 'hide', id: 'dfd-customer', view: L2 }])).map(q => q.ids), [['dfd-take-order', 'dfd-basket', 'dfd-confirmation']], 'its far end hidden on the level');
+  assert.deepEqual(T.validate(apply(DF, [{ op: 'hide', id: 'dfd-customer', view: L1 }])).map(q => q.ids), [['dfd-take-order', 'dfd-l2-basket', 'dfd-l2-confirmation']], 'its far end hidden on the parent view');
   const local = structuredClone(DF); local.nodes.push(S('dfd-baskets', 'Baskets', 'D3')); local.views[1].nodeIds.push('dfd-baskets');
   local.edges.push(F('l-keep', 'dfd-check-basket', 'dfd-baskets', 'held basket'), F('l-read', 'dfd-baskets', 'dfd-total-order', 'held basket'));
   assert.deepEqual(T.validate(local), []);
@@ -199,7 +223,9 @@ test('D on a process that opens no view makes its level in one transaction, bala
   assert.deepEqual(r.commands.at(-1), { op: 'set', id: 'dfd-take-payment', path: 'opensView', value: 'dfd-take-payment-level' });
   const h = history(DF); h.push(apply(DF, r.commands)); const m = h.model;
   assert.deepEqual(validate(m), [], 'it balances, and its numbers sit under 2');
-  assert.deepEqual(check(m, 'dfd-take-payment-level').filter(p => !/ cross$/.test(p.message)), []);
+  // clean but for a crossing pair to an entity, right, as level 1; none down; in both notations
+  for (const direction of ['right', 'down']) for (const notation of ['yourdon', 'gane-sarson'])
+    assert.deepEqual(check(look(m, direction, notation), 'dfd-take-payment-level').map(p => p.message), direction === 'right' ? ['view dfd-take-payment-level: edges Take payment→Payment provider and Payment provider→Take payment cross'] : [], `${direction}, ${notation}`);
   assert.equal(layout(m, L1).byId['dfd-take-payment'].aria, 'Process 2 Take payment, opens level 2 Take payment, 2 flows in, 2 out');
   assert.equal(JSON.stringify(h.undo()), JSON.stringify(DF), 'one undo takes it all back');
   // the level made is a level: split its process and balancing still holds while the flows stay at the edge
@@ -210,7 +236,15 @@ test('D on a process that opens no view makes its level in one transaction, bala
   const r2 = T.edits.key(again, again.views[0], ['dfd-take-payment'], 'd');
   assert.equal(r2.commands[0].view.id, 'dfd-take-payment-level-2'); assert.equal(r2.commands[1].element.id, 'dfd-take-payment-2.1-2');
   const bare = structuredClone(DF); delete bare.nodes.find(n => n.id === 'dfd-ship-order').props;
-  const r3 = T.edits.key(bare, bare.views[0], ['dfd-ship-order'], 'D'); assert.equal(r3.commands[0].view.title, 'Ship order'); assert.equal(r3.commands[1].element.props.number, '1');
+  const r3 = T.edits.key(bare, bare.views[0], ['dfd-ship-order'], 'D'); assert.equal(r3.commands[0].view.title, 'Ship order'); assert.equal(r3.commands[1].element.props.number, '3', 'the next free');
+  // the child's number the next free under the process's: with a 2.1 taken, 2.2, and the level checks clean
+  const t21 = structuredClone(DF); t21.nodes.push(P('x21', 'Elsewhere', '2.1')); const r4 = T.edits.key(t21, t21.views[0], ['dfd-take-payment'], 'D');
+  assert.deepEqual([r4.commands[1].element.id, r4.commands[1].element.props.number, r4.commands[2].element.id], ['dfd-take-payment-2.2', '2.2', 'dfd-amount-due-2.2']);
+  assert.deepEqual(T.validate(apply(t21, r4.commands)).filter(p => p.rule !== 'dfd-process-io'), []);
+  // the level copies the flows the view draws: not one between two of its context elements
+  const ctx = structuredClone(DF); ctx.edges.push(F('z2', 'dfd-ship-order', 'dfd-provider', 'pickup'));
+  const r5 = T.edits.key(ctx, ctx.views[0], ['dfd-take-payment'], 'D'), m5 = apply(ctx, r5.commands);
+  assert.equal(layout(m5, 'dfd-take-payment-level').edges.length, 4); assert.deepEqual(T.validate(m5), []);
   assert.deepEqual(T.edits.key(DF, v, ['dfd-take-order'], 'D'), { error: 'process "1 Take order" opens "dfd-level-2-take-order" already: Enter opens it' });
   for (const [ids, k] of [[['dfd-books'], 'D'], [['dfd-take-payment', 'dfd-ship-order'], 'D'], [['dfd-take-payment'], 'x'], [[], 'D']]) assert.equal(T.edits.key(DF, v, ids, k), null, `${ids} ${k}`);
   // laid out down in Gane and Sarson: the level keeps both
@@ -277,5 +311,5 @@ test('P1 (S19): on 50 nodes and 60 flows, a full layout under 1 s, and a flow\'s
   assert.ok(best('full') < 1000, `full layout ${best('full')} ms`);
   // CI holds the 1 s ceiling and prints the edit against S19's 100 ms (the maintainer's decision of 13 Nov 2026)
   assert.ok(best('label') < 1000, `a flow's label ${best('label')} ms`);
-  console.log(`# P1 target 100 ms: ${best('label')} a flow's label ${best('label')} ms; full layout ${best('full')} ms`);
+  console.log(`# P1 target 100 ms: a flow's label ${best('label')} ms; full layout ${best('full')} ms`);
 });
