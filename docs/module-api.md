@@ -1,7 +1,7 @@
 # Module API (step 3 design note, for approval)
 
 Status: approved and built, 6 Nov 2026 (step 3). Steps 4–6 are listed only where they shape this API. Types:
-`lib/umlimator.d.ts`. Tests: `node --test` (layout) and `python3 tests/embed.py` (render in headless Chrome).
+`lib/umlimator.d.ts`. Tests: `node --test` (layout; `npm test` runs the "(timed)" tests apart, one file at a time) and `python3 tests/embed.py` (render in headless Chrome).
 
 ## Goal
 
