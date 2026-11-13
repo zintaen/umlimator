@@ -20,6 +20,10 @@ jobs:
         with:
           python-version: "3.12"
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24  # --test-skip-pattern (22.1+) in the node --test steps; the runner's own Node is whatever its image ships
+
       - name: The copied files are upstream's, unmodified (the template became lib/umlimator.js, umlimator's own)
         run: |
           curl -fsSL "$SB/scripts/visual.py" -o engine/scripts/visual.py
@@ -47,7 +51,13 @@ jobs:
           PY
 
       - name: layout() draws the benchmark views as recorded, with no DOM (Node)
-        run: node --test
+        run: node --test --test-skip-pattern='\(timed\)'
+
+      # the tests whose titles end "(timed)" assert a CPU or wall time (P1, linear time): one file at a time, so the
+      # rest of the suite running beside them cannot push a 1 s ceiling over (the maintainer's decision of 13 Nov 2026)
+      - name: The timed tests hold their budgets, run one file at a time
+        if: ${{ !cancelled() }}   # still runs when the step above fails, so a failing test does not hide the budgets
+        run: node --test --test-concurrency=1 --test-name-pattern='\(timed\)'
 
       - name: render() embedded in a plain page reports its events and follows update() and destroy()
         run: python3 tests/embed.py
@@ -122,8 +132,9 @@ jobs:
           for m in examples/*.json; do
             n=$(basename "$m" .json); [ "$n" = bookshop ] && continue   # checked above, with its committed page
             python3 umlimator.py render "$m" --out "/tmp/$n.html" --no-check
+            x=0; case "$n" in fulfil-activity) x=4;; order-states) x=2;; esac   # the crossings port repair off leaves (notes/stage-4.md §17), counted over both passes; pinned in tests/cli.py and the types' tests
             python3 umlimator.py check "/tmp/$n.html" --expand > "/tmp/$n.json"   # every view, and again with each stacked card unfolded in place (#71)
-            python3 -I -c "import json, sys; s = open(sys.argv[1]).read(); d = json.loads(s[s.find('{'):]); assert d['checked'] and not d['problems'] and not d['errors'], (sys.argv[1], d['problems'], d['errors'])" "/tmp/$n.json"
+            python3 -I -c "import json, sys; s = open(sys.argv[1]).read(); d = json.loads(s[s.find('{'):]); p = d['problems']; assert d['checked'] and not d['errors'] and all(q.endswith(' cross') for q in p) and len(p) == int(sys.argv[2]), (sys.argv[1], p, d['errors'])" "/tmp/$n.json" "$x"
           done
           node examples/layout.mjs
 

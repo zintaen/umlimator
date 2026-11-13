@@ -219,7 +219,7 @@ function spike(M, edits) {
   }
   return { best: k => Math.min(...runs.map(r => r[k])), ms: k => runs.map(r => Math.round(r[k])).join(', ') };
 }
-test('§17\'s spike: the common edit on 50 nodes in four lanes and on 50 states three composites deep, repair and reroute off', () => {
+test('§17\'s spike: the common edit on 50 nodes in four lanes and on 50 states three composites deep, repair and reroute off (timed)', () => {
   const L = spikeLanes(), S = spikeStates();
   assert.equal(S.nodes.length, 50); assert.equal(S.edges.length, 60);
   assert.equal(ownersOn(S, S.views[0], LOOK).boxes.length, 21, '7 composite states and 14 regions are boxes');

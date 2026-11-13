@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- The use case diagram (4.4) in headless Chrome (tests/embed.py), from lib/umlimator-all.js: docs/diagrams/examples/08-use-case.json
+<!-- The use case diagram (4.4) in headless Chrome (tests/embed.py), from lib/umlimator-all.js: examples/shopping-use-cases.json
      drawn by render() in both themes, three fonts and both directions (actors and ellipses, texts inside their shapes, the
      subject's box holding its use cases, line ends on outlines, names, reading order, contrast, the legend), then edited
      through the edit event and apply(), by pointer and by keyboard: the palette's four entries and N, F2, each line kind by L
@@ -41,7 +41,7 @@ const blend = (top, bot) => [0, 1, 2].map(i => top[i] * top[3] + bot[i] * (1 - t
 const lum = c => { const f = v => v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]); };
 const ratio = (fg, bg) => { const [x, y] = [lum(blend(fg, bg)), lum(bg)].sort((p, q) => q - p); return +((x + 0.05) / (y + 0.05)).toFixed(2); };
 const css = (e, k) => rgba(getComputedStyle(e)[k]);
-const MODEL = await (await fetch('../docs/diagrams/examples/08-use-case.json')).json();
+const MODEL = await (await fetch('../examples/shopping-use-cases.json')).json();
 try {
   for (const theme of ['light', 'dark']) for (const [fname, family] of Object.entries(FONTS)) for (const direction of ['right', 'down']) {
     document.documentElement.dataset.theme = theme; el.style.setProperty('--um-sans', family);

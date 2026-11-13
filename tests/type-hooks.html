@@ -10,7 +10,10 @@
      line calls edits.rename by key and by a double-click; F2 on a diamond opens a field 120 px wide at least; a region box
      is selected as a container, and a drop into it emits reparent to the region; a hook's { pick, then } opens the picker
      and applies the choice; a name: false entry is added with no name field; V emits set opensView; moveTo's at holds
-     geo. Imports src/ to register test types. -->
+     geo. 5.2 (notes/stage-5.md §12.1, §6), on a stand-in type: edits.member on the panel's member rows by Enter and by a
+     change, edits.key on a selection by pointer and by its ring, each result emitted, said, refused or picked, a null left to
+     the panel's member.add and member.edit or the canvas's own key; a node whose id holds "->" selected, renamed and deleted
+     through rename and remove. Imports src/ to register test types. -->
 <meta charset="utf-8">
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="../lib/umlimator-theme.css">
@@ -331,6 +334,94 @@ try {
   h.update({ ...SHP, edges: SHP.edges.map(({ id, ...e }) => id === 'e2' ? e : { id, ...e }) }); said.length = 0;
   clickLine(lineI()); key('F2'); pick('.um-rename').value = 'in stock'; key('Enter', {}, pick('.um-rename'));
   check('4.1 F2 on a line with no id: rename not asked with its positional id', !said.some(s => s[0] === 'rename'), said);
+  h.destroy();
+
+  // ---- 5.2 (notes/stage-5.md §12.1, §6): edits.member and edits.key on a stand-in type, and a node drawn under a geometry id
+  // no element has (a port on a part, part1->port), selected, renamed and deleted through the hooks
+  const heard = [], set = (id, k, value) => ({ op: 'set', id, path: 'props.' + k, value });
+  registerDiagramType('test.rows', { title: 'rows stand-in', elements: [{ type: 'test.Box', label: 'Box' }], lines: [{ type: 'test.Flow', label: 'Flow' }],
+    member: { print: m => m.label ?? '', add(text) { heard.push(['member.add', text]); return { type: 'test.Item', label: text, props: {} }; },
+      edit(m, text) { heard.push(['member.edit', m.id, text]); return { commands: [{ op: 'set', id: m.id, path: 'label', value: text }] }; } },
+    layout: { run(model, view) { const sq = id => id.includes('->');
+      const nodes = [...view.nodeIds, 'part1->port'].map((id, i) => ({ id, label: sq(id) ? 'port' : model.nodes.find(n => n.id === id).label, x: 40 + i * 200, y: 60, w: sq(id) ? 12 : 120, h: sq(id) ? 12 : 40, k: 'file', col: i, row: 0, aria: id }));
+      return { nodes, edges: [], groups: [], bounds: { x: 0, y: 0, w: 700, h: 200 }, byId: Object.fromEntries(nodes.map(n => [n.id, n])), map: false, order: nodes.map(n => n.id) }; } },
+    edits: {
+      member(model, view, owner, id, text) { heard.push(['member', owner, id, text]);
+        if (text.startsWith('note ')) return [set(owner, 'note', text.slice(5))];
+        if (text === 'loud') return { commands: [set(owner, 'note', 'loud')], say: 'Noted aloud' };
+        if (text === 'bad row') return { error: 'Not a row this type reads' };
+        if (text === 'which') return { pick: ['first', 'second'], then: i => [set(owner, 'note', ['first', 'second'][i])] };
+        if (text === 'which bad') return { pick: ['only'], then: () => ({ error: 'No such row' }) };
+        return null; },
+      key(model, view, ids, key) { heard.push(['key', ids, key]);
+        if (key === 'b' || key === 'B') return ids.includes('iface') ? [{ op: 'set', view: view.id, path: ['present', 'iface', 'as'], value: 'ball' }] : { error: 'B: only an interface is a ball' };
+        if (key === 'y') return { commands: [set(ids[0], 'seen', true)], say: 'Seen' };
+        return null; },
+      rename(model, view, id, text) { heard.push(['rename', id, text]); return id.includes('->') ? [{ op: 'set', id: id.split('->')[1], path: 'label', value: text }] : null; },
+      remove(model, view, ids, fromModel) { heard.push(['remove', ids, fromModel]); return ids.some(i => i.includes('->')) ? { commands: [{ op: 'delete', id: 'c1' }], say: 'Deleted its connector' } : null; } } });
+  const ROWS = { schemaVersion: 2, nodes: [{ id: 'a', type: 'test.Box', label: 'Alpha', members: [{ id: 'a.i1', type: 'test.Item', label: 'one' }] }, { id: 'iface', type: 'test.Box', label: 'Orders' },
+    { id: 'port', type: 'test.Box', label: 'requests' }], edges: [{ id: 'c1', type: 'test.Flow', from: 'a', to: 'iface' }], views: [{ id: 'r', diagram: 'test.rows', nodeIds: ['a', 'iface'] }] };
+  h = mount('r', ROWS);
+  const row = s => pick(`.um-editor ${s}`), live2 = () => sr.querySelector('.um-live').textContent, k1 = () => ed.length;
+  const change = (t, v) => { t.value = v; t.dispatchEvent(new Event('change', { bubbles: true })); }, type = (t, v) => { t.value = v; key('Enter', {}, t); };
+  // edits.member: by key (Enter) and by pointer (a change, as when the field loses the focus to a click)
+  card('a'); heard.length = 0; let n2 = k1();
+  type(row('[data-new]'), 'note hi');
+  check('5.2 member by key: asked with the owner, no id and the text; its commands emitted; the field cleared', same(heard, [['member', 'a', null, 'note hi']]) && ed.length === n2 + 1 && same(last().commands, [set('a', 'note', 'hi')]) && row('[data-new]').value === '', [heard, last()]);
+  heard.length = 0; change(row('[data-m="a.i1"]'), '  note there ');
+  check('5.2 member by pointer: a row changed, asked with its id and the text trimmed', same(heard, [['member', 'a', 'a.i1', 'note there']]) && same(last().commands, [set('a', 'note', 'there')]), [heard, last()]);
+  heard.length = 0; n2 = k1(); type(row('[data-new]'), 'loud');
+  check('5.2 member\'s { commands, say }: emitted and said', same(last().commands, [set('a', 'note', 'loud')]) && ed.length === n2 + 1 && live2() === 'Noted aloud', [last(), live2()]);
+  heard.length = 0; n2 = k1(); type(row('[data-new]'), 'bad row');
+  check('5.2 member\'s { error } by key: nothing emitted, said, the row marked invalid and kept', ed.length === n2 && live2() === 'Not a row this type reads' && row('[data-new]').getAttribute('aria-invalid') === 'true' && row('[data-new]').value === 'bad row' && !heard.some(x => x[0] === 'member.add'), [heard, live2()]);
+  heard.length = 0; change(row('[data-m="a.i1"]'), 'bad row');
+  check('5.2 member\'s { error } by pointer: nothing emitted, the panel\'s edit not asked', ed.length === n2 && row('[data-m="a.i1"]').getAttribute('aria-invalid') === 'true' && same(heard, [['member', 'a', 'a.i1', 'bad row']]), heard);
+  key('Escape', {}, row('[data-m="a.i1"]'));
+  heard.length = 0; type(row('[data-new]'), 'plain');
+  check('5.2 member\'s null by key: the panel\'s member.add, as before', same(heard, [['member', 'a', null, 'plain'], ['member.add', 'plain']]) && same(last().commands, [{ op: 'add', element: { id: 'item1', type: 'test.Item', label: 'plain' }, owner: 'a' }]) && !row('[data-new]').hasAttribute('aria-invalid'), [heard, last()]);
+  heard.length = 0; change(row('[data-m="a.i1"]'), 'two');
+  check('5.2 member\'s null by pointer: the panel\'s member.edit, as before', same(heard, [['member', 'a', 'a.i1', 'two'], ['member.edit', 'a.i1', 'two']]) && same(last().commands, [{ op: 'set', id: 'a.i1', path: 'label', value: 'two' }]), [heard, last()]);
+  type(row('[data-new]'), 'which'); await Promise.resolve();
+  check('5.2 member\'s { pick, then }: the picker opens', same(all('.um-pick button').map(b => b.textContent), ['first', 'second']), all('.um-pick button').map(b => b.textContent));
+  if (pick('.um-pick')) click(all('.um-pick button')[1]);
+  check('5.2 …and the choice is emitted', same(last().commands, [set('a', 'note', 'second')]), last());
+  check('5.2 …and the field cleared after the choice', row('[data-new]').value === '', row('[data-new]').value);
+  type(row('[data-new]'), 'which'); await Promise.resolve(); n2 = k1();
+  if (pick('.um-pick')) key('Escape', {}, all('.um-pick button')[0]);
+  check('5.2 member\'s pick cancelled: nothing emitted, the row kept as typed', !pick('.um-pick') && ed.length === n2 && row('[data-new]').value === 'which', [ed.length - n2, row('[data-new]').value]);
+  type(row('[data-new]'), 'which bad'); await Promise.resolve();
+  if (pick('.um-pick')) click(all('.um-pick button')[0]);
+  check('5.2 member\'s pick then { error }: nothing emitted, said, the row marked invalid and kept', ed.length === n2 && live2() === 'No such row' && row('[data-new]').getAttribute('aria-invalid') === 'true' && row('[data-new]').value === 'which bad', [live2(), row('[data-new]').value]);
+  key('Escape', {}, row('[data-new]'));
+  heard.length = 0; type(row('[data-new]'), '   '); change(row('[data-m="a.i1"]'), ' ');
+  check('5.2 member not asked for an empty row: the panel\'s own (nothing added, the row put back)', !heard.length && ed.length === n2 && row('[data-m="a.i1"]').value === 'two' && !row('[data-new]').hasAttribute('aria-invalid'), [heard, ed.length - n2, row('[data-m="a.i1"]').value]);
+  // edits.key: by pointer (a card clicked) and by keyboard (its ring), before the canvas's own
+  heard.length = 0; n2 = k1(); card('iface'); key('B');
+  check('5.2 key on a selection by pointer: asked with the ids and the key, its commands emitted', same(heard, [['key', ['iface'], 'B']]) && ed.length === n2 + 1 && same(last().commands, [{ op: 'set', view: 'r', path: ['present', 'iface', 'as'], value: 'ball' }]), [heard, last()]);
+  check('5.2 …which apply() takes', apply(ROWS, last().commands).views[0].present?.iface?.as === 'ball');
+  select(null); pick('.node-key[data-node="a"]').focus(); key('Enter', {}, sr.activeElement); heard.length = 0; n2 = k1(); key('b', {}, sr.activeElement);
+  check('5.2 key by keyboard (the ring): its { error } said, nothing emitted', same(heard, [['key', ['a'], 'b']]) && ed.length === n2 && live2() === 'B: only an interface is a ball', [heard, live2()]);
+  key('y', {}, sr.activeElement);
+  check('5.2 key\'s { commands, say }: emitted and said', same(last().commands, [set('a', 'seen', true)]) && live2() === 'Seen', [last(), live2()]);
+  heard.length = 0; card('a'); key('n');
+  check('5.2 key\'s null: the canvas\'s own (N opens the name field)', same(heard, [['key', ['a'], 'n']]) && !!pick('.um-rename'), heard);
+  key('Escape', {}, pick('.um-rename'));
+  heard.length = 0; card('a'); key('b', { altKey: true }); key('b', { ctrlKey: true }); key('b', { metaKey: true });
+  check('5.2 key with Alt, Ctrl or Meta: not asked', !heard.some(x => x[0] === 'key'), heard);
+  // a node whose geometry id holds "->": selected, renamed and deleted through the hooks
+  heard.length = 0; card('part1->port');
+  check('5.2 a node whose id holds "->" is selected', !!h.selection && h.selection.type === 'node' && h.selection.id === 'part1->port', h.selection);
+  key('F2'); pick('.um-rename').value = 'orders'; key('Enter', {}, pick('.um-rename'));
+  check('5.2 …renamed through rename, with its geometry id; its commands emitted', same(heard.filter(x => x[0] === 'rename'), [['rename', 'part1->port', 'orders']]) && same(last().commands, [{ op: 'set', id: 'port', path: 'label', value: 'orders' }]), [heard, last()]);
+  heard.length = 0; card('part1->port'); key('Delete');
+  check('5.2 …deleted through remove: asked with its geometry id, emitted and said', same(heard.filter(x => x[0] === 'remove'), [['remove', ['part1->port'], false]]) && same(last().commands, [{ op: 'delete', id: 'c1' }]) && live2() === 'Deleted its connector', [heard, last()]);
+  heard.length = 0; pick('.node-key[data-node="part1->port"]').focus(); key('Enter', {}, sr.activeElement); key('Delete', { shiftKey: true }, sr.activeElement);
+  check('5.2 …selected by its ring and deleted by key: the same', h.selection && h.selection.id === 'part1->port' && same(heard.filter(x => x[0] === 'remove'), [['remove', ['part1->port'], true]]), [heard, h.selection]);
+  h.destroy();
+  // read-only for renames: key is not asked
+  el.innerHTML = ''; ed = []; h = hh = render(el, ROWS, { view: 'r', editable: { add: true, move: true, delete: true }, on: { edit: e => ed.push(e) } }); sr = el.querySelector('.umlimator').shadowRoot; stage = pick('.stage');
+  heard.length = 0; card('iface'); key('B');
+  check('5.2 with rename not offered, key is not asked', !heard.length && !ed.length, heard);
   h.destroy();
 } catch (x) { out.fail.push('threw: ' + (x && x.stack || x)); }
 const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);

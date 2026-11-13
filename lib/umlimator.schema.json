@@ -311,7 +311,7 @@
     },
     "opensView": {
      "type": "string",
-     "description": "The view the card opens. It may name a view the host loads only when it is opened."
+     "description": "The view the card opens. It may name a view the host loads only when it is opened. Schema version 2: the view a call behaviour action (an activity view), an interaction use or an inline interaction (a uml.sequence view) opens (0.21.0)."
     },
     "opensCount": {
      "type": "integer",
@@ -411,7 +411,7 @@
      }
     },
     "type": {
-     "description": "Schema version 2: the element's type, <notation>.<Name> (uml.Class). validate() checks typed fields only in a model with schemaVersion 2. The class diagram (uml.class, 0.18.0): uml.Class, uml.Interface, uml.Enumeration, uml.DataType, uml.PrimitiveType, uml.Package and uml.Comment; their members uml.Property, uml.Operation and uml.EnumerationLiteral. The object diagram (uml.object, 0.19.0): uml.InstanceSpecification and uml.Comment; an instance's members uml.Slot. The package diagram (uml.package, 0.19.0): uml.Package and the class diagram's classifiers, and uml.Comment. The sequence and communication diagrams (uml.sequence, uml.communication, 0.20.0): uml.Lifeline.",
+     "description": "Schema version 2: the element's type, <notation>.<Name> (uml.Class). validate() checks typed fields only in a model with schemaVersion 2. The class diagram (uml.class, 0.18.0): uml.Class, uml.Interface, uml.Enumeration, uml.DataType, uml.PrimitiveType, uml.Package and uml.Comment; their members uml.Property, uml.Operation and uml.EnumerationLiteral. The object diagram (uml.object, 0.19.0): uml.InstanceSpecification and uml.Comment; an instance's members uml.Slot. The package diagram (uml.package, 0.19.0): uml.Package and the class diagram's classifiers, and uml.Comment. The sequence and communication diagrams (uml.sequence, uml.communication, 0.20.0): uml.Lifeline. The use case diagram (uml.use-case, 0.21.0): uml.Actor, uml.UseCase, uml.Subject and uml.Comment; a use case's members uml.ExtensionPoint. The activity diagram (uml.activity, 0.21.0): uml.InitialNode, uml.ActivityFinalNode, uml.FlowFinalNode, uml.Action, uml.CallBehaviorAction, uml.SendSignalAction, uml.AcceptEventAction, uml.DecisionNode, uml.MergeNode, uml.ForkNode, uml.JoinNode, uml.ObjectNode, uml.DataStoreNode, uml.ActivityPartition and uml.Comment. The state machine diagram (uml.state-machine, 0.21.0): uml.State, uml.Pseudostate, uml.FinalState and uml.Comment; a state's members uml.Region and uml.InternalTransition. The interaction overview diagram (uml.interaction-overview, 0.21.0): the activity's control nodes, uml.InteractionUse, uml.Interaction (an inline interaction) and uml.Comment.",
      "examples": [
       "uml.Class",
       "uml.Interface",
@@ -421,14 +421,25 @@
       "uml.Package",
       "uml.Comment",
       "uml.InstanceSpecification",
-      "uml.Lifeline"
+      "uml.Lifeline",
+      "uml.Actor",
+      "uml.UseCase",
+      "uml.Subject",
+      "uml.Action",
+      "uml.DecisionNode",
+      "uml.ActivityPartition",
+      "uml.State",
+      "uml.Pseudostate",
+      "uml.FinalState",
+      "uml.InteractionUse",
+      "uml.Interaction"
      ]
     },
     "parent": {
-     "description": "Schema version 2: the element that owns it (a package, a composite state, a lane). From 0.19.0 a class, object or package view draws a shown package that owns something it shows as a box holding it."
+     "description": "Schema version 2: the element that owns it (a package, a composite state, a lane). From 0.19.0 a class, object or package view draws a shown package that owns something it shows as a box holding it. A use case's: a subject or a package. An activity node's: its partition (lane); a partition's: the partition it is nested in. A substate's or pseudostate's: a state, or a region (a member) of one."
     },
     "props": {
-     "description": "Schema version 2: the type's own properties. The class diagram (uml.class, 0.18.0): isAbstract and stereotypes on a classifier; on a member, the fields of its UML text (docs/conformance/uml-class.md). The object diagram (uml.object, 0.19.0): an instance's classifier and stereotypes; a slot's value (docs/conformance/uml-object.md). The sequence and communication diagrams (uml.sequence, uml.communication, 0.20.0): a lifeline's represents, and stereotypes (actor draws «actor» over its name).",
+     "description": "Schema version 2: the type's own properties. The class diagram (uml.class, 0.18.0): isAbstract and stereotypes on a classifier; on a member, the fields of its UML text (docs/conformance/uml-class.md). The object diagram (uml.object, 0.19.0): an instance's classifier and stereotypes; a slot's value (docs/conformance/uml-object.md). The sequence and communication diagrams (uml.sequence, uml.communication, 0.20.0): a lifeline's represents, and stereotypes (actor draws «actor» over its name). The state machine diagram (uml.state-machine, 0.21.0): a state's entry, do and exit, a pseudostate's kind (docs/conformance/uml-state-machine.md).",
      "anyOf": [
       {
        "type": "object",
@@ -444,6 +455,28 @@
         },
         "represents": {
          "description": "uml.Lifeline: what it is an instance of, by name, as text; drawn name : Type (docs/diagrams/risks.md M8)."
+        },
+        "entry": {
+         "description": "uml.State: its entry activity, as text; drawn as the row entry / text."
+        },
+        "do": {
+         "description": "uml.State: its do activity, as text; drawn as the row do / text."
+        },
+        "exit": {
+         "description": "uml.State: its exit activity, as text; drawn as the row exit / text."
+        },
+        "kind": {
+         "description": "uml.Pseudostate: which pseudostate it is; any other is drawn as a junction, with a warning.",
+         "examples": [
+          "initial",
+          "choice",
+          "junction",
+          "fork",
+          "join",
+          "shallowHistory",
+          "deepHistory",
+          "terminate"
+         ]
         }
        }
       },
@@ -451,7 +484,7 @@
      ]
     },
     "members": {
-     "description": "Schema version 2: owned parts, in display order (attributes, ports, regions, lanes), each a typed element. The class diagram (uml.class, 0.18.0): a classifier's attributes (uml.Property) and operations (uml.Operation), an enumeration's literals (uml.EnumerationLiteral). The object diagram (uml.object, 0.19.0): an instance's slots (uml.Slot), each a feature = value row.",
+     "description": "Schema version 2: owned parts, in display order (attributes, ports, regions, lanes), each a typed element. The class diagram (uml.class, 0.18.0): a classifier's attributes (uml.Property) and operations (uml.Operation), an enumeration's literals (uml.EnumerationLiteral). The object diagram (uml.object, 0.19.0): an instance's slots (uml.Slot), each a feature = value row. The use case diagram (uml.use-case, 0.21.0): a use case's extension points (uml.ExtensionPoint, by name). The state machine diagram (uml.state-machine, 0.21.0): a state's regions (uml.Region, by name) and internal transitions (uml.InternalTransition, trigger [guard] / effect).",
      "anyOf": [
       {
        "type": "array",
@@ -465,7 +498,7 @@
             "description": "Unique among every node, edge and member of the model."
            },
            "type": {
-            "description": "uml.Property, uml.Operation or uml.EnumerationLiteral in a class diagram; uml.Slot in an object diagram."
+            "description": "uml.Property, uml.Operation or uml.EnumerationLiteral in a class diagram; uml.Slot in an object diagram. uml.ExtensionPoint in a use case diagram; uml.Region or uml.InternalTransition in a state machine diagram."
            },
            "label": {
             "description": "The member's name (a slot's: the feature it gives a value); the rest of its UML text is in props."
@@ -508,6 +541,15 @@
                },
                "value": {
                 "description": "uml.Slot: its value, as text (34.00 EUR); left out, the slot is drawn by its feature's name."
+               },
+               "trigger": {
+                "description": "uml.InternalTransition: what triggers it, as text (a trigger list, after 30 days)."
+               },
+               "guard": {
+                "description": "uml.InternalTransition: its guard, as text, drawn [in brackets]."
+               },
+               "effect": {
+                "description": "uml.InternalTransition: its effect, as text, drawn after /."
                }
               }
              },
@@ -810,7 +852,7 @@
      "description": "When the line is used."
     },
     "type": {
-     "description": "Schema version 2: the element's type, <notation>.<Name> (uml.Class). The class diagram (uml.class, 0.18.0): uml.Association, uml.Generalization (from the specific to the general), uml.InterfaceRealization (to the interface), uml.Dependency (from the client) and uml.CommentLink (from the comment). The object diagram (uml.object, 0.19.0): uml.Link and uml.CommentLink. The package diagram (uml.package, 0.19.0): uml.PackageImport and uml.PackageMerge (from the importing or merging package), uml.Dependency and uml.CommentLink. The sequence diagram (uml.sequence, 0.20.0): uml.Message, inline in its view's edges, in time order. The communication diagram (uml.communication, 0.20.0): uml.Connector and uml.Message, model lines its view lists, connectors first; only the messages' order means anything.",
+     "description": "Schema version 2: the element's type, <notation>.<Name> (uml.Class). The class diagram (uml.class, 0.18.0): uml.Association, uml.Generalization (from the specific to the general), uml.InterfaceRealization (to the interface), uml.Dependency (from the client) and uml.CommentLink (from the comment). The object diagram (uml.object, 0.19.0): uml.Link and uml.CommentLink. The package diagram (uml.package, 0.19.0): uml.PackageImport and uml.PackageMerge (from the importing or merging package), uml.Dependency and uml.CommentLink. The sequence diagram (uml.sequence, 0.20.0): uml.Message, inline in its view's edges, in time order. The communication diagram (uml.communication, 0.20.0): uml.Connector and uml.Message, model lines its view lists, connectors first; only the messages' order means anything. The use case diagram (uml.use-case, 0.21.0): uml.Association (an actor and a use case), uml.Include and uml.Extend (from the including or extending use case), uml.Generalization (from the specific to the general) and uml.CommentLink. The activity diagram (uml.activity, 0.21.0): uml.ControlFlow, uml.ObjectFlow and uml.CommentLink. The state machine diagram (uml.state-machine, 0.21.0): uml.Transition and uml.CommentLink. The interaction overview diagram (uml.interaction-overview, 0.21.0): uml.ControlFlow and uml.CommentLink.",
      "examples": [
       "uml.Association",
       "uml.Generalization",
@@ -821,14 +863,19 @@
       "uml.PackageImport",
       "uml.PackageMerge",
       "uml.Message",
-      "uml.Connector"
+      "uml.Connector",
+      "uml.Include",
+      "uml.Extend",
+      "uml.ControlFlow",
+      "uml.ObjectFlow",
+      "uml.Transition"
      ]
     },
     "parent": {
      "description": "Schema version 2: the element that owns it (a package, a composite state, a lane). In a sequence view: the operand (uml.InteractionOperand) of one of its fragments that holds the message; none at the top level."
     },
     "props": {
-     "description": "Schema version 2: the type's own properties. The class diagram (uml.class, 0.18.0): an association's ends, and stereotypes on any line («use» on a dependency). The object diagram (uml.object, 0.19.0): a link's association and the roles at its ends. The package diagram (uml.package, 0.19.0): a package import's visibility. The sequence and communication diagrams (0.20.0): a message's sort and replyTo.",
+     "description": "Schema version 2: the type's own properties. The class diagram (uml.class, 0.18.0): an association's ends, and stereotypes on any line («use» on a dependency). The object diagram (uml.object, 0.19.0): a link's association and the roles at its ends. The package diagram (uml.package, 0.19.0): a package import's visibility. The sequence and communication diagrams (0.20.0): a message's sort and replyTo. The use case diagram (0.21.0): an extend's extensionPoints and condition. The activity and interaction overview diagrams (0.21.0): a flow's guard (its label is its name). The state machine diagram (0.21.0): a transition's trigger, guard and effect, drawn trigger [guard] / effect.",
      "anyOf": [
       {
        "type": "object",
@@ -911,6 +958,21 @@
         },
         "replyTo": {
          "description": "uml.Message, a reply: the id of the earlier call it answers, which it goes back along."
+        },
+        "extensionPoints": {
+         "description": "uml.Extend: the ids of the extension points (uml.ExtensionPoint members) of the use case it extends, at least one; drawn by name."
+        },
+        "condition": {
+         "description": "uml.Extend: when it extends, as text; drawn [in brackets] after its points."
+        },
+        "guard": {
+         "description": "uml.ControlFlow, uml.ObjectFlow, uml.Transition: its guard, as text, drawn [in brackets]; else is drawn [else]."
+        },
+        "trigger": {
+         "description": "uml.Transition: what triggers it, as text (M8: no event is parsed)."
+        },
+        "effect": {
+         "description": "uml.Transition: its effect, as text, drawn after /."
         }
        }
       },
@@ -1192,13 +1254,17 @@
      "description": "Guess a line's kind from its label's words when its edges name none (render() and layout(); the standalone page always does)."
     },
     "diagram": {
-     "description": "Schema version 2: the view's diagram type; without it the view is a map. uml.class draws a class diagram (0.18.0, lib/umlimator-all.js), uml.object an object diagram and uml.package a package diagram (0.19.0), uml.sequence a sequence diagram and uml.communication a communication diagram (0.20.0); a type this release does not draw is drawn as plain cards, with a warning.",
+     "description": "Schema version 2: the view's diagram type; without it the view is a map. uml.class draws a class diagram (0.18.0, lib/umlimator-all.js), uml.object an object diagram and uml.package a package diagram (0.19.0), uml.sequence a sequence diagram and uml.communication a communication diagram (0.20.0), uml.use-case a use case diagram, uml.activity an activity diagram, uml.state-machine a state machine diagram and uml.interaction-overview an interaction overview diagram (0.21.0); a type this release does not draw is drawn as plain cards, with a warning.",
      "examples": [
       "uml.class",
       "uml.object",
       "uml.package",
       "uml.sequence",
-      "uml.communication"
+      "uml.communication",
+      "uml.use-case",
+      "uml.activity",
+      "uml.state-machine",
+      "uml.interaction-overview"
      ]
     },
     "subject": {
@@ -1222,7 +1288,7 @@
           "type": "object",
           "properties": {
            "collapsed": {
-            "description": "Compartments not drawn, divider and all: ['attributes', 'operations'] (an enumeration's: 'literals')."
+            "description": "Compartments not drawn, divider and all: ['attributes', 'operations'] (an enumeration's: 'literals'); a state's: 'activities' (its entry, do and exit and internal transitions, 0.21.0)."
            },
            "rows": {
             "description": "At most this many rows in each compartment, then \"+k more\"."

@@ -79,7 +79,7 @@ test('both views of the stress fixture lay out clean: nothing that holds text me
   assert.deepEqual([all.g.edges.length, all.g.ta.frames.length, all.g.ta.heads.length], [200, 10, 20]);
 });
 
-test('performance (risks.md P1, notes/stage-3.md §10): the view all lays out and draws as SVG markup in under 100 ms (best of three)', () => {
+test('performance (risks.md P1, notes/stage-3.md §10): the view all lays out and draws as SVG markup in under 100 ms (best of three) (timed)', () => {
   const runs = [0, 1, 2].map(() => { const t = performance.now(); mapContext(STRESS, {}).buildView('all'); return performance.now() - t; });
   console.log(`# 20 lifelines, 200 messages, 10 fragments: laid out and drawn in ${runs.map(t => t.toFixed(1)).join(', ')} ms`);
   assert.ok(Math.min(...runs) < 100, `${Math.min(...runs)} ms`);
