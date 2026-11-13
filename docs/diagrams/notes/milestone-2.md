@@ -200,7 +200,7 @@ What changed against `model.md`:
 
   | Option | For | Against |
   |---|---|---|
-  | **(a) `name type [PK] [FK table.column] [UK] [NULL]`, flags in any order, case ignored; `FK` names the referenced column by its entity's and its own labels, resolved to its id when the row is read (recommended)** | Reads like DDL and DBML (`customer_id bigint FK customer.id`); the drawn row is the same text; `print(parse(x))` stable (E3) | A table or column label holding a space or a dot cannot be named after `FK` in a row: the panel's field sets it (stated) |
+  | **(a) `name type [PK] [FK table.column] [UK] [NULL]`, flags in any order, case ignored; `FK` names the referenced column by its entity's and its own labels, resolved to its id when the row is read (recommended)** | Reads like DDL and DBML (`customer_id bigint FK customer.id`); the drawn row is the same text; `print(parse(x))` stable (E3) | A table or column label holding a space or a dot cannot be named after `FK` in a row: the row names its id (stated; M2.2 prints a name holding a space in double quotes and reads a type of several words, §7.1) |
   | (b) Mermaid's order, `type name PK, FK "comment"` | The Mermaid reader's own text | Type first reads oddly in a database tool; no place for the referenced column |
   | (c) The panel's fields only | Nothing to parse | A column takes five fields to add; slower by keyboard |
 
@@ -450,6 +450,8 @@ the type in `--um-muted`; 120 to 320 px wide, text cut with `fit`; `present.<id>
 | `identifying-key` | error | an identifying relationship's foreign key columns are part of the child's primary key |
 | `identifying-parent` | error | an identifying relationship's parent end is `1`: a key column cannot be null, so the parent is neither optional nor many |
 | `relationship-ends` | error, warning | each end's multiplicity is readable (`multBounds`); a warning where it is not one of the four forms (drawn as the nearest, with its text) |
+| `relationship-tables` | error | a relationship joins two tables (added in M2.2: `connect` refuses one from or to a comment, but a model, an import or `apply()` can hold it) |
+| `notation` | warning | an `er` view's `notation` is `crowsfoot` or `idef1x` (added in M2.2: any other is drawn as crow's foot) |
 
 Hooks: `member` reads a row (S9); `connect` adds a relationship from the selected entity to the one dropped on, `1` to
 `0..*`, non-identifying; `rename` on a relationship sets its label. Properties: a column's flags, type and references; a
@@ -472,8 +474,22 @@ relationship's `identifying` and its two multiplicities. Accessible names: "Tabl
 - The view's `notation` has no gesture of its own: a host sets it with `set { view, path: 'notation' }` (§4.3); no key is
   taken for it.
 - IDEF1X's dependent entity, drawn with rounded corners, is the child of an identifying relationship.
-- The panel's row text names a referenced column by its table's and its own labels, read from the model the column was
-  last read in (a type's `member.print` is given the column alone); a column never read names the id it references.
+- The panel's row text names a referenced column by its table's and its own labels, read from the model the panel last
+  read: a type's `member.print` is given the column alone, so the type's `owners` hook, which the panel asks with the live
+  model just before it prints the rows, reads that model and returns null (no Owner field). A column never read names the
+  id it references. Labels are printed only where they name that column alone; else the id. A row's `FK` tries the labels
+  first, then an id: an id (`<entity id>.<label>`) can read as another column's labels once a table is renamed.
+- A row's type is every word between its name and its first flag (`double precision`, `timestamp with time zone`); a
+  name holding a space is printed and read in double quotes (`"unit price" numeric(10, 2)`); a row whose brackets do not
+  pair is refused (`a numeric(10 PK` would otherwise swallow its flags).
+- The legend keys IDEF1X's rounded corners ("Dependent entity") where a dependent entity is drawn.
+- DoD 4 (`plan.md` §2) on the canvas, taken by the lead under the maintainer's standing approval (14 Nov 2026), in the
+  direction this note already takes for `notation` (a host's `set`) and for member rows (S9): three things have no canvas
+  gesture of their own, and each is a command through `apply()`, tested: deleting a column (`delete` by its id; the
+  panel puts back an emptied row, as for every type's members), switching `notation` (`set { view, path: 'notation' }`),
+  and a column's flags as fields (they are changed by retyping the row; `props['er.Column']` declares the fields for a
+  host's panel). Each wants a change to `src/canvas/edit.js`, outside M2.2's Owns: a member the canvas can select. The
+  rule changes above (`relationship-ends` an error, `identifying-key` with a shared pair) are taken the same way.
 - The PDF's `text` for a relationship: `places: 1 to 0..*, non-identifying`, its label first when it has one.
 - A line's end is on the entity's box, and each end's marker has its tip there (its `refX` is its length).
 

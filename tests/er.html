@@ -6,7 +6,8 @@
      names, reading order, contrast, the legend, axe's rules written out), then edited through the edit event and apply(), by
      pointer and by keyboard: the palette and N, a relationship by L and by the handle (one from a comment refused, its reason on
      the hint line), F2 on a table and on a relationship, the Identifying and multiplicity fields, a column's flags,
-     type and references as a row read as S9's (a canvas selects no member; a bad row marked), hide and delete. -->
+     type and references as a row read as S9's (a canvas selects no member; a bad row marked), a comment link by L, hide (a
+     table; a relationship where the view lists its lines, said where it does not) and delete. -->
 <meta charset="utf-8">
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="../lib/umlimator-theme.css">
@@ -89,7 +90,7 @@ try {
     const order = all('.keys .um-key').map(k => k.dataset.node || k.dataset.edge || k.textContent);
     check(`${tag}: a key for every entity and line, in reading order`, all('.keys .um-key').length === 14 && same(all('.keys .node-key').map(k => k.dataset.node), IDS), order);
     const legend = all('.m-legend b').map(b => b.textContent);
-    check(`${tag}: the legend keys each line look and end drawn`, same(legend, ['Identifying', 'Non-identifying', ...(notation === 'idef1x' ? ['Child end', 'Optional parent'] : ['Exactly one', 'Zero or one', 'One or more', 'Zero or more'])]), legend);
+    check(`${tag}: the legend keys each line look and end drawn`, same(legend, ['Identifying', 'Non-identifying', ...(notation === 'idef1x' ? ['Child end', 'Optional parent', 'Dependent entity'] : ['Exactly one', 'Zero or one', 'One or more', 'Zero or more'])]), legend);
     const stageBg = css(pick('.stage'), 'backgroundColor'), low = [];
     nodes.forEach(g => g.querySelectorAll('text').forEach(t => { const c = ratio(css(t, 'fill'), stageBg); if (c < 4.5) low.push([g.dataset.id, t.textContent, c]); }));
     all('.end-lab').forEach(t => { const c = ratio(css(t, 'fill'), stageBg); if (c < 4.5) low.push(['end', t.textContent, c]); });
@@ -128,7 +129,12 @@ try {
   const n0 = ed.length; click('.node[data-id="comment1"] .c-row'); key('l'); for (const c of 'payment') key(c); key('Enter');
   all('.um-pick button').find(b => b.textContent === 'Relationship').click();
   check('a relationship from a comment is refused, nothing emitted, its reason on the hint line', ed.length === n0 && hint() === 'A relationship joins two tables', [ed.slice(n0), hint()]);
-  // the handle, by pointer: a self-reference
+  h.update(m0); click('.node[data-id="comment1"] .c-row'); key('l'); for (const c of 'payment') key(c); key('Enter');
+  all('.um-pick button').find(b => b.textContent === 'Comment link').click();
+  gives('L from a comment, Comment link: added to the table', [{ op: 'add', element: { id: 'commentlink1', type: 'uml.CommentLink', from: 'comment1', to: 'er-payment' }, view: 'er-schema' }],
+    m => m.edges.some(e => e.id === 'commentlink1' && e.type === 'uml.CommentLink'), m0);
+  h.update(m0);
+  // the handle, by pointer: from one table to another
   click('.node[data-id="er-book"] .c-name'); handleTo(centre('.node[data-id="er-author"] .n-mask')); press(all('.um-pick button').find(b => b.textContent === 'Relationship'));
   gives('the handle from a table to another, Relationship: added', [{ op: 'add', element: { id: 'relationship1', type: 'er.Relationship', from: 'er-book', to: 'er-author', props: REL }, view: 'er-schema' }], m => m.edges.some(e => e.id === 'relationship1'), m0);
   // F2 on a table and on a relationship
@@ -170,8 +176,14 @@ try {
   gives('Delete: hide the table from the view', [{ op: 'hide', id: 'er-payment', view: 'er-schema' }], m => !m.views[0].nodeIds.includes('er-payment'), BASE);
   click('.node[data-id="er-payment"] .c-name'); key('Delete', { shiftKey: true });
   gives('Shift + Delete: delete the table and its relationship', [{ op: 'delete', id: 'er-payment' }], m => !m.nodes.some(n => n.id === 'er-payment') && !m.edges.some(e => e.id === 'er-order-payment'), BASE);
+  const n2 = ed.length; h.select({ type: 'edge', ids: ['er-book-lines'], view: 'er-schema' }); key('Delete');
+  check('Delete on a relationship in a view that lists no lines: nothing emitted, Shift + Delete said', ed.length === n2 && /Shift \+ Delete deletes the line/.test(hint()), [ed.slice(n2), hint()]);
   h.select({ type: 'edge', ids: ['er-book-lines'], view: 'er-schema' }); key('Delete', { shiftKey: true });
   gives('Shift + Delete on a relationship: delete it (book_id then warns: relationship-fk is the line\'s, fk-target holds)', [{ op: 'delete', id: 'er-book-lines' }], m => !m.edges.some(e => e.id === 'er-book-lines'), BASE);
+  h.destroy();
+  const LISTED = structuredClone(BASE); LISTED.views[0].edges = [...LINES];
+  h = mount(LISTED, { editable: true }); h.select({ type: 'edge', ids: ['er-book-lines'], view: 'er-schema' }); key('Delete');
+  gives('Delete on a relationship in a view that lists its lines: hidden from the view', [{ op: 'hide', id: 'er-book-lines', view: 'er-schema' }], m => !m.views[0].edges.includes('er-book-lines') && m.edges.some(e => e.id === 'er-book-lines'), LISTED);
   h.destroy();
 } catch (e) { out.fail.push('threw: ' + (e && e.stack || e)); }
 function by(m, id) { return m.nodes.find(n => n.id === id); }

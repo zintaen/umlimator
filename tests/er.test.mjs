@@ -40,7 +40,7 @@ test('the definition: er is registered with its palette, its two lines, its prop
   assert.deepEqual(T.props['er.Relationship'].map(f => [f.key, f.path, f.kind]), [['identifying', undefined, 'bool'], ['ends.from.multiplicity', ['ends', 'from', 'multiplicity'], 'text'], ['ends.to.multiplicity', ['ends', 'to', 'multiplicity'], 'text']]);
   for (const k of ['layout', 'validate', 'describe', 'word', 'rows', 'text']) assert.equal(typeof T[k], 'function', k);
   assert.deepEqual(Object.keys(T.edits), ['member', 'connect']);
-  assert.deepEqual(Object.keys(T.rules), ['pk-exists', 'column-names', 'fk-target', 'fk-flag', 'relationship-fk', 'identifying-key', 'identifying-parent', 'relationship-ends']);
+  assert.deepEqual(Object.keys(T.rules), ['pk-exists', 'column-names', 'fk-target', 'fk-flag', 'relationship-fk', 'identifying-key', 'identifying-parent', 'relationship-ends', 'relationship-tables', 'notation']);
   assert.deepEqual(T.refs, { 'er.Column': { 'props.references': 'drop' } });
   assert.deepEqual(['er.Entity', 'uml.Comment'].map(t => T.member.holds({ type: t })), [true, false]);
   for (const k of ['cf-one', 'cf-zero-one', 'cf-one-many', 'cf-zero-many', 'idef-dot', 'idef-diamond']) assert.ok(Object.hasOwn(ENDS, k) && ENDS[k].length === 4, k);
@@ -124,7 +124,7 @@ test('names (A1), the reading order, describe() and the legend', () => {
   assert.equal(d.length, 1 + 7 + 7);
   assert.deepEqual(g.legend.map(l => /<b>([^<]+)<\/b>/.exec(l)[1]), ['Identifying', 'Non-identifying', 'Exactly one', 'Zero or one', 'One or more', 'Zero or more']);
   assert.match(g.legend[1], /stroke-dasharray="3 2"/); assert.doesNotMatch(g.legend[0], /stroke-dasharray/);
-  assert.deepEqual(layout(withView(EX, { notation: 'idef1x' }), VID).legend.map(l => /<b>([^<]+)<\/b>/.exec(l)[1]), ['Identifying', 'Non-identifying', 'Child end', 'Optional parent']);
+  assert.deepEqual(layout(withView(EX, { notation: 'idef1x' }), VID).legend.map(l => /<b>([^<]+)<\/b>/.exec(l)[1]), ['Identifying', 'Non-identifying', 'Child end', 'Optional parent', 'Dependent entity'], 'IDEF1X keys its rounded corners');
   // a comment and its link
   const m = structuredClone(EX); m.nodes.push({ id: 'note', type: 'uml.Comment', label: 'Money in cents' }); m.edges.push({ id: 'about', type: 'uml.CommentLink', from: 'note', to: 'er-payment' }); m.views[0].nodeIds.push('note');
   const h = layout(m, VID); assert.equal(h.byId.note.shape, 'note'); assert.equal(h.edges.find(e => e.id === 'about').aria, 'Comment link from Money in cents to payment');
@@ -149,12 +149,24 @@ test('a column\'s row (S9): name type [PK] [FK table.column] [UK] [NULL], flags 
   assert.deepEqual(parseColumn('ref FK er-book.id PK', I), { label: 'ref', props: { foreignKey: true, references: 'er-book.id', primaryKey: true } }, 'by id; no type');
   assert.deepEqual(parseColumn('x int FK', I), { label: 'x', props: { dataType: 'int', foreignKey: true } }, 'FK alone (fk-flag then warns)');
   assert.deepEqual(parseColumn('id', I), { label: 'id', props: {} });
-  for (const [t, why] of [['', 'it is empty'], ['id int PK pk', 'PK is written twice'], ['id int extra', '"extra" is left over: write name type [PK] [FK table.column] [UK] [NULL]'], ['x int FK customer.nope', 'FK customer.nope names no column (table.column)']])
+  for (const [t, why] of [['', 'it is empty'], ['id int PK pk', 'PK is written twice'], ['id int PK extra', '"extra" is left over: write name type [PK] [FK table.column] [UK] [NULL]'], ['x int FK customer.nope', 'FK customer.nope names no column (table.column)'],
+    ['a numeric(10 PK', 'its brackets do not pair'], ['a int) PK', 'its brackets do not pair'], ['"" int', 'it is empty']])
     assert.deepEqual(parseColumn(t, I), { error: `"${t}" is not a column: ${why}` }, t);
-  for (const t of ['id bigint PK', 'customer_id bigint FK customer.id', 'order_id bigint PK FK order.id', 'note text UK NULL', 'x FK'])
+  assert.deepEqual(parseColumn('t timestamp with time zone NULL', I), { label: 't', props: { dataType: 'timestamp with time zone', nullable: true } }, 'a type of several words');
+  assert.deepEqual(parseColumn('"unit price" numeric(10, 2)', I), { label: 'unit price', props: { dataType: 'numeric(10, 2)' } }, 'a name with a space, in quotes');
+  for (const t of ['id bigint PK', 'customer_id bigint FK customer.id', 'order_id bigint PK FK order.id', 'note text UK NULL', 'x FK', 'amount double precision NULL', '"unit price" numeric(10, 2)'])
     assert.equal(printColumn(parseColumn(t, I), I), t, t);
   assert.equal(printColumn(col(EX, 'er-order_line.order_id'), { col: I.col }), 'order_id bigint PK FK order.id');
-  layout(EX, VID); assert.equal(T.member.print(col(EX, 'er-order.customer_id')), 'customer_id bigint FK customer.id', 'the panel\'s print, from the model the column was last read in');
+  // the panel asks owners (null: no Owner field) with the live model just before it prints the rows: a fresh copy, read nowhere else
+  const live = structuredClone(EX); assert.equal(T.owners(live, by(live, 'er-order')), null);
+  assert.equal(T.member.print(col(live, 'er-order.customer_id')), 'customer_id bigint FK customer.id', 'the panel\'s print, from the model the panel read');
+  // a renamed table: labels first, so a row sent back unchanged keeps its reference; labels two tables share: the id printed
+  const ren = { schemaVersion: 2, nodes: [{ id: 'order', type: 'er.Entity', label: 'purchase', members: [C('order.id', 'id', { primaryKey: true })] }, { id: 'order-2', type: 'er.Entity', label: 'order', members: [C('order-2.id', 'id', { primaryKey: true })] },
+    { id: 'line', type: 'er.Entity', label: 'line', members: [C('line.oid', 'oid', { dataType: 'bigint', foreignKey: true, references: 'order-2.id' })] }], edges: [], views: [] };
+  T.owners(ren, ren.nodes[2]); const row = T.member.print(ren.nodes[2].members[0]);
+  assert.equal(row, 'oid bigint FK order.id'); assert.equal(T.edits.member(ren, null, 'line', 'line.oid', row.replace('oid', 'order_id'))[1].value.references, 'order-2.id');
+  ren.nodes[0].label = 'order'; T.owners(ren, ren.nodes[2]);
+  assert.equal(T.member.print(ren.nodes[2].members[0]), 'oid bigint FK order-2.id', 'two tables labelled order: the id');
   assert.equal(T.member.print(C('loose', 'x', { references: 'er-customer.id' })), 'x FK er-customer.id', 'a column never read: the id it references');
 });
 
@@ -206,6 +218,8 @@ const BREAKS = [
   ['relationship-ends', 'error', m => { edge(m, 'er-book-lines').props.ends.to.multiplicity = 'many'; return ['er-book-lines']; }],
   ['relationship-ends', 'error', m => { delete edge(m, 'er-book-lines').props.ends; return ['er-book-lines']; }, 2], // both ends
   ['relationship-ends', 'warning', m => { edge(m, 'er-book-lines').props.ends.to.multiplicity = '2..5'; return ['er-book-lines']; }],
+  ['relationship-tables', 'error', m => { m.nodes.push({ id: 'note', type: 'uml.Comment', label: 'Money in cents' }); m.edges.push(R('r', 'note', 'er-payment', '1', '0..*')); return ['r', 'note']; }],
+  ['notation', 'warning', m => { m.views[0].notation = 'IDEF1X'; return ['er-schema']; }],
 ];
 test('validators (§7.1): the example breaks none; each rule fails on a model that breaks it, naming its rule and its elements, at its level, through validate() too', () => {
   assert.deepEqual(erProblems(EX), []); assert.deepEqual(T.validate(EX, V), []);
@@ -226,8 +240,9 @@ test('validators (§7.1): the example breaks none; each rule fails on a model th
   assert.deepEqual(msg(idp), ['identifying-parent: er-order-lines is identifying, so its parent end at "order" is 1, not "0..1"']);
   const idk = structuredClone(EX); edge(idk, 'er-order-payment').props.identifying = true;
   assert.deepEqual(msg(idk), ['identifying-key: er-order-payment is identifying, but order_id of "payment" is not in its primary key']);
-  // the cases that pass: a key referenced through a unique column; a self-reference; a nullable foreign key; 1..1 at the parent
-  const ok = structuredClone(EX); by(ok, 'er-order').members.push(C('er-order.isbn', 'isbn', { dataType: 'char(13)', foreignKey: true, references: 'er-book.isbn', nullable: true }));
+  // the cases that pass: a key referenced through a unique column; a self-reference; a nullable foreign key; 1..1 at the parent;
+  // a comment's link to a table; the notation idef1x
+  const ok = withView(EX, { notation: 'idef1x' }); ok.nodes.push({ id: 'note', type: 'uml.Comment', label: 'Money in cents' }); ok.edges.push({ id: 'about', type: 'uml.CommentLink', from: 'note', to: 'er-payment' }); by(ok, 'er-order').members.push(C('er-order.isbn', 'isbn', { dataType: 'char(13)', foreignKey: true, references: 'er-book.isbn', nullable: true }));
   ok.edges.push(R('r', 'er-book', 'er-order', '0..1', '0..*'));
   assert.deepEqual(erProblems(ok), []);
 });
@@ -263,7 +278,7 @@ const STRESS = (() => {
     edges.push(R(`r${i}`, `e${parent}`, `e${child}`, '1', M[i % 4], { identifying: key })); edges[i].label = `has ${i}`; }
   return { schemaVersion: 2, nodes, edges, views: [{ id: 'all', diagram: 'er', nodeIds: nodes.map(n => n.id) }] };
 })();
-test('P1 (§11): on 50 entities and 60 relationships, a full layout and markup, a column\'s type set (moves nothing) and a column added (its entity grows), laid out and drawn under CI\'s 1 s, the 100 ms target printed; a notation switch lays nothing out (CPU, best of seven after a warm-up) (timed)', () => {
+test('P1 (§11): on 50 entities and 60 relationships, a full layout and markup, a column\'s type set (no other entity moves) and a column added (its entity grows), laid out and drawn under CI\'s 1 s, the 100 ms target printed; a notation switch lays nothing out (CPU, best of seven after a warm-up) (timed)', () => {
   assert.equal(STRESS.nodes.length, 50); assert.equal(STRESS.edges.length, 60); assert.deepEqual(validate(STRESS), []);
   assert.deepEqual(check(STRESS, 'all').filter(p => p.level === 'error'), []);
   const timed = f => { const c = process.cpuUsage(); f(); const u = process.cpuUsage(c); return (u.user + u.system) / 1000; };
@@ -275,6 +290,8 @@ test('P1 (§11): on 50 entities and 60 relationships, a full layout and markup, 
   const best = k => Math.min(...runs.map(r => r[k]));
   for (const k of ['full', 'type', 'added']) assert.ok(best(k) < 1000, `${k} ${best(k)} ms`);
   draw(STRESS); const before = memos.all.runs;
+  const at = g => Object.fromEntries(g.nodes.map(n => [n.id, [n.x, n.y, n.w, n.h]])), a = at(layout(STRESS, 'all')), b = at(layout(apply(STRESS, [{ op: 'set', id: 'e7.name', path: 'props.dataType', value: 'text0' }]), 'all'));
+  assert.deepEqual(Object.keys(a).filter(id => id !== 'e7' && String(a[id]) !== String(b[id])), [], 'a column\'s type set: no other entity moves');
   const sw = timed(() => draw(apply(STRESS, [{ op: 'set', view: 'all', path: 'notation', value: 'idef1x' }])));
   assert.equal(memos.all.runs, before, 'the switch repaints'); assert.ok(sw < 1000);
   console.log(`# P1 target 100 ms: a column's type ${best('type').toFixed(1)} ms, a column added ${best('added').toFixed(1)} ms, the notation switched ${sw.toFixed(1)} ms; full layout and markup ${best('full').toFixed(1)} ms`);
