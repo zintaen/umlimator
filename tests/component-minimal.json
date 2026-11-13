@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 2,
+  "title": "Component, minimal",
+  "nodes": [
+    {"id":"provider","type":"uml.Component","label":"Provider","members":[{"id":"provider.api","type":"uml.Port","label":"api"}]},
+    {"id":"api","type":"uml.Interface","label":"Api"},
+    {"id":"client","type":"uml.Component","label":"Client"}
+  ],
+  "edges": [
+    {"id":"provides","type":"uml.InterfaceRealization","from":"provider.api","to":"api"},
+    {"id":"requires","type":"uml.Usage","from":"client","to":"api"}
+  ],
+  "views": [
+    {"id":"v","diagram":"uml.component","nodeIds":["provider","api","client"],"present":{"api":{"as":"ball"}}}
+  ]
+}

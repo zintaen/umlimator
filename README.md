@@ -82,6 +82,20 @@ drill-down, a data pipeline, an AI agent's skills, and host pages for embedding,
   bar or an ellipse. F2 edits a transition's or a flow's label through its parts; a drop changes a node's lane or a
   state's region. A state machine is read from and written to Mermaid's `stateDiagram`. The MCP server's read tools and
   the diff Action are tested on all four.
+- **UML component, deployment and composite structure diagrams** (0.22.0): components nested in components and
+  packages, ports on their borders, provided and required interfaces as a ball and socket or as a rectangle, assembly
+  and delegation connectors (a delegation runs from a box's port inward to the port of what it holds), artifacts and
+  their manifestations ([`examples/bookshop-components.json`](examples/bookshop-components.json),
+  [what it covers](docs/conformance/uml-component.md)); nodes, devices and execution environments drawn as cubes and
+  nested to any depth, artifacts deployed in them or by a «deploy» line, deployment specifications and communication
+  paths ([`examples/bookshop-deployment.json`](examples/bookshop-deployment.json),
+  [what it covers](docs/conformance/uml-deployment.md)); a class's parts and ports, each part showing its type's ports,
+  connectors through parts, open collaborations as dashed ellipses and collaboration uses with their role bindings
+  ([`examples/order-service-structure.json`](examples/order-service-structure.json),
+  [what it covers](docs/conformance/uml-composite-structure.md)). A port's side is chosen from where its lines go, or
+  pinned by a drag or Alt + arrows; `B` turns an interface into a ball and back; a port or a part is added as a row of
+  its owner. The MCP server's read tools and the diff Action are tested on all three, and the Bookshop atlas opens them
+  from the map's Hosts.
 - **Export**: any view as a stand-alone SVG or PNG, in the browser or from the CLI; the whole map as one PDF to hand in
   for a review: a cover with the contents, each view with its legend and tables of its cards, lines and boxes, then the
   rules (`umlimator.py pdf`).
@@ -150,7 +164,7 @@ function MapView({ model, onSelect }) {
   or costliest path, `whatIf(model, view, { remove })` what loses its way when cards go down, and
   `sequenceFromTrace(model, spans, { view, match })` keeps a trace as a numbered view; all three in Node too.
 - `editable: true` turns on editing gestures ([docs/editing.md](docs/editing.md); `examples/edit.html` is a working host).
-- `import { render, apply, history } from 'umlimator/all'` draws diagram types too: a class, object, package, sequence, communication, use case, activity, state machine or interaction overview diagram, whose gestures emit
+- `import { render, apply, history } from 'umlimator/all'` draws diagram types too: a class, object, package, sequence, communication, use case, activity, state machine, interaction overview, component, deployment or composite structure diagram, whose gestures emit
   `edit` transactions that `apply(model, e.commands)` turns into the next model (`examples/class-editor.html` is a
   working host). `umlimator` alone draws maps, and a typed view as plain cards with a warning.
 - `diff(before, after)` returns `after` with each card and line marked added, changed or removed, what changed in words,
@@ -230,8 +244,9 @@ A model file that starts with `"$schema": "<path to>/umlimator.schema.json"` (ex
 gets completion and checks in editors, and `validate(model)` lists its errors and warnings, each with where it is.
 `"schemaVersion": 2` marks a model that may hold typed elements and typed views (`docs/diagrams/model.md`). A view whose
 `diagram` is `"uml.class"`, `"uml.object"`, `"uml.package"`, `"uml.sequence"`, `"uml.communication"`, `"uml.use-case"`,
-`"uml.activity"`, `"uml.state-machine"` or `"uml.interaction-overview"` is a UML class, object, package, sequence,
-communication, use case, activity, state machine or interaction overview diagram, drawn by `umlimator/all` and the CLI; a type not drawn yet shows its
+`"uml.activity"`, `"uml.state-machine"`, `"uml.interaction-overview"`, `"uml.component"`, `"uml.deployment"` or
+`"uml.composite-structure"` is a UML class, object, package, sequence, communication, use case, activity, state machine,
+interaction overview, component, deployment or composite structure diagram, drawn by `umlimator/all` and the CLI; a type not drawn yet shows its
 nodes as plain cards, with a warning. A model with no `schemaVersion` is a map, as always, and a version newer than the
 module reads is an error.
 
@@ -313,6 +328,22 @@ type's note in [`docs/conformance/`](docs/conformance/)), from 0.21.0:
 | node | `props` | a state's `entry`, `do`, `exit`; a pseudostate's `kind` (`initial`, `choice`, `junction`, `fork`, `join`, `shallowHistory`, `deepHistory`, `terminate`) |
 | edge, member | `props` | an extend's `extensionPoints` (ids) and `condition`; a flow's `guard` (its `label` is its name); a transition's or internal transition's `trigger`, `guard` and `effect`, drawn `trigger [guard] / effect` |
 | view | `diagram` | `"uml.use-case"`, `"uml.activity"`, `"uml.state-machine"` or `"uml.interaction-overview"` |
+
+A component diagram, a deployment diagram and a composite structure diagram (`examples/bookshop-components.json`,
+`bookshop-deployment.json` and `order-service-structure.json`; each type's note in
+[`docs/conformance/`](docs/conformance/)), from 0.22.0:
+
+| On | Field | What it does |
+|---|---|---|
+| node, member, edge | `type` | component: `uml.Component` (members `uml.Port`), `uml.Interface`, `uml.Artifact`, `uml.Package`; lines `uml.InterfaceRealization`, `uml.Usage`, `uml.ComponentRealization`, `uml.Connector`, `uml.Dependency`, `uml.Manifestation` |
+| node, edge | `type` | deployment: `uml.Node`, `uml.Device`, `uml.ExecutionEnvironment`, `uml.Artifact`, `uml.DeploymentSpecification`, `uml.Component`; lines `uml.Deployment`, `uml.Manifestation`, `uml.CommunicationPath`, `uml.Dependency` |
+| node, member, edge | `type` | composite structure: the subject (`uml.Class`, `uml.Component` or `uml.Collaboration`) with its parts (`uml.Property`) and ports (`uml.Port`), `uml.Collaboration` (its roles `uml.Property`), `uml.CollaborationUse`; lines `uml.Connector`, `uml.RoleBinding` (its `label` the role) |
+| node | `parent` | a component's component or package; an artifact's target (deployed by nesting); a target's target (any depth); a collaboration use's subject |
+| node, member | `props` | a port's `valueType`; a part's `valueType` (the class or component whose ports it shows, by label), `multiplicity` and `aggregation` (`shared` is dashed); a collaboration use's `collaboration` |
+| edge | `props` | a connector's `kind` (`assembly`, `delegation`); an end through a part, `ends.from.part` or `ends.to.part` (UML's `partWithPort`) |
+| view | `subject` | a composite structure view's class, component or collaboration, listed in `nodeIds` |
+| view | `present` | an interface drawn as a ball (`{ "as": "ball" }`); a port's side (`{ "side": "left" }`); on a part, `{ "ports": { "<port>": { "side": "top" } } }` |
+| view | `diagram` | `"uml.component"`, `"uml.deployment"` or `"uml.composite-structure"` |
 
 ## Command line
 

@@ -27,27 +27,27 @@
    "edited validate": "120c89b39ffa15db"
   },
   "04-composite-structure.json": {
-   "layout internals": "529f8c9edabd2f4b",
+   "layout internals": "597c77c174c4483a",
    "describe internals": "73562a4cba22a31d",
    "validate": "ef0d9527a1cff1d1",
-   "edit": "cdf620926c03fccf",
-   "edited layout internals": "a323cfad04832dfe",
+   "edit": "c16d3e9388ab2639",
+   "edited layout internals": "cec4e48ef45cca04",
    "edited validate": "ef0d9527a1cff1d1"
   },
   "05-component.json": {
-   "layout components": "b712e626688d837e",
+   "layout components": "e009bd213c541819",
    "describe components": "ded335757f6e411b",
    "validate": "67ddb7c01be29dae",
-   "edit": "bc94220a6e2ff5a9",
-   "edited layout components": "6a93c9721bb05173",
+   "edit": "e695b1384cb427bd",
+   "edited layout components": "f731d7fce601e537",
    "edited validate": "67ddb7c01be29dae"
   },
   "06-deployment.json": {
-   "layout production": "68b391a0c6e5c3a8",
+   "layout production": "1c1f462f990af864",
    "describe production": "97de455e61920fba",
    "validate": "188677cf11fda0f2",
-   "edit": "e14c5096ae22f7c7",
-   "edited layout production": "73b8f0ce28cfb530",
+   "edit": "8300a83271a1a373",
+   "edited layout production": "3692d51e34010ee5",
    "edited validate": "188677cf11fda0f2"
   },
   "07-profile.json": {

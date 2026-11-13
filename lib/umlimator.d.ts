@@ -44,7 +44,7 @@ export interface MapNode {
 /** A typed element in schema version 2's envelope (docs/diagrams/model.md §1): a node, a member, a typed edge, a
  *  fragment. Nodes, edges, members and fragments share one id space; an id never contains "->". A typed edge is an
  *  Element with `from` and `to`, which may name a member. A typed view is a MapView with `diagram` (uml.class), and may
- *  have `subject`, `direction` ('right' | 'down'), `notation`, `present`, `fragments` and `timeline`. umlimator/all draws `uml.class` (0.18.0), `uml.object` and `uml.package` (0.19.0), `uml.sequence` and `uml.communication` (0.20.0), `uml.use-case`, `uml.activity`, `uml.state-machine` and `uml.interaction-overview` (0.21.0); other types draw as plain cards.
+ *  have `subject`, `direction` ('right' | 'down'), `notation`, `present`, `fragments` and `timeline`. umlimator/all draws `uml.class` (0.18.0), `uml.object` and `uml.package` (0.19.0), `uml.sequence` and `uml.communication` (0.20.0), `uml.use-case`, `uml.activity`, `uml.state-machine` and `uml.interaction-overview` (0.21.0), `uml.component`, `uml.deployment` and `uml.composite-structure` (0.22.0); other types draw as plain cards.
  *  From 0.19.0 the class, object and package types draw a shown package that owns something the view shows as a box holding it (`parent`), and
  *  qualify names (`sales::Order`) from the nearest shown owner, the view's `subject`, or the top. */
 export interface Element {
@@ -157,6 +157,43 @@ export interface UmlTransitionProps { trigger?: string; guard?: string; effect?:
 export type UmlInteractionOverviewElementType = 'uml.InitialNode' | 'uml.ActivityFinalNode' | 'uml.FlowFinalNode' | 'uml.DecisionNode'
   | 'uml.MergeNode' | 'uml.ForkNode' | 'uml.JoinNode' | 'uml.InteractionUse' | 'uml.Interaction' | 'uml.Comment';
 export type UmlInteractionOverviewLineType = 'uml.ControlFlow' | 'uml.CommentLink';
+/** The component diagram's vocabulary (a view with `diagram: 'uml.component'`, umlimator/all from 0.22.0;
+ *  docs/conformance/uml-component.md). A component's `parent` is a component (drawn nested, a box) or a package; its
+ *  ports (a class's too) are members, drawn on its border. A provided interface is always an `uml.Interface` node, joined
+ *  to its provider (a component, a class or a port) by a realization and to its requirers by usages; `present.<id>.as:
+ *  'ball'` draws it as a ball, a usage to it ending in a socket. */
+export type UmlComponentElementType = 'uml.Component' | 'uml.Interface' | 'uml.Artifact' | 'uml.Package' | 'uml.Comment';
+export type UmlComponentMemberType = 'uml.Port';
+export type UmlComponentLineType = 'uml.InterfaceRealization' | 'uml.ComponentRealization' | 'uml.Usage' | 'uml.Connector' | 'uml.Dependency'
+  | 'uml.Manifestation' | 'uml.CommentLink';
+/** A port's props: its type, drawn `name : Type` beside it. */
+export interface UmlPortProps { valueType?: string; stereotypes?: string[]; [key: string]: unknown }
+/** A connector's props: in a component view its kind (an assembly when left out); in a composite structure view, an end
+ *  through a part (UML's partWithPort): `ends.from.part` or `ends.to.part` names the part, `from` or `to` the port of its type. */
+export interface UmlConnectorProps { kind?: 'assembly' | 'delegation'; ends?: { from?: { part?: string }; to?: { part?: string } }; stereotypes?: string[]; [key: string]: unknown }
+/** What a component or composite structure view shows of one element, beside UmlPresent: an interface as a ball; a port's
+ *  side; on a part, each of its type's ports' sides. */
+export interface UmlStructurePresent { as?: 'ball'; side?: 'left' | 'right' | 'top' | 'bottom'; ports?: Record<string, { side?: 'left' | 'right' | 'top' | 'bottom' }> }
+/** The deployment diagram's vocabulary (a view with `diagram: 'uml.deployment'`, umlimator/all from 0.22.0;
+ *  docs/conformance/uml-deployment.md). A node, device or execution environment that holds something shown is a box drawn
+ *  as a cube; an artifact or deployment specification whose `parent` is one is deployed on it, a `uml.Deployment` line
+ *  from it to one is the other form. */
+export type UmlDeploymentElementType = 'uml.Node' | 'uml.Device' | 'uml.ExecutionEnvironment' | 'uml.Artifact' | 'uml.DeploymentSpecification'
+  | 'uml.Component' | 'uml.Comment';
+export type UmlDeploymentLineType = 'uml.Deployment' | 'uml.Manifestation' | 'uml.CommunicationPath' | 'uml.Dependency' | 'uml.CommentLink';
+/** The composite structure diagram's vocabulary (a view with `diagram: 'uml.composite-structure'`, umlimator/all from
+ *  0.22.0; docs/conformance/uml-composite-structure.md). The view's `subject` (a class, component or collaboration, listed
+ *  in `nodeIds`) is drawn as a box holding its parts (`uml.Property` members) and collaboration uses (`parent` the
+ *  subject); a part shows the ports of the class or component its `valueType` names by label, each drawn under the id
+ *  `<part>-><port>`. An open collaboration (listed in `nodeIds`) is a dashed ellipse round its roles. A role binding runs
+ *  from a part to a collaboration use, its `label` the role. */
+export type UmlCompositeStructureElementType = 'uml.Class' | 'uml.Component' | 'uml.Collaboration' | 'uml.CollaborationUse' | 'uml.Comment';
+export type UmlCompositeStructureMemberType = 'uml.Property' | 'uml.Port';
+export type UmlCompositeStructureLineType = 'uml.Connector' | 'uml.RoleBinding' | 'uml.CommentLink';
+/** A part's (or role's) props: the class or component it is, by label; its multiplicity; shared parts are drawn dashed. */
+export interface UmlPartProps { valueType?: string; multiplicity?: string; aggregation?: 'composite' | 'shared'; stereotypes?: string[]; [key: string]: unknown }
+/** A collaboration use's props: the collaboration it uses, by label. */
+export interface UmlCollaborationUseProps { collaboration?: string; stereotypes?: string[]; [key: string]: unknown }
 /** What a line means, drawn as its colour: calls (the default), feeds (hands work on), triggers (suggests, offers, fires),
  *  state (reads or writes a file, board or config: a thinner line, a muted label, no flow) and guard (a hook steps in).
  *  Colours are --um-w-<kind>. An edge's `style` (emphasis, dashed, security) wins over its kind's colour. */

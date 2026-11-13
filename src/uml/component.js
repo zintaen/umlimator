@@ -65,6 +65,11 @@ const CP_BOX = { boxTypes: ['uml.Component', 'uml.Package'], shape: x => (x.type
 const CP_WORD = { 'uml.Component': 'component', 'uml.Interface': 'interface', 'uml.Artifact': 'artifact', 'uml.Package': 'package', 'uml.Comment': 'comment', 'uml.Port': 'port' };
 function cpPic(model, view) {
   const I = cpIndex(model), pic = ownersOn(model, view, CP_BOX), shown = new Set(pic.ids);
+  // a name is qualified by its components and packages only: an artifact nested in a node (deployed on it, as the
+  // deployment view draws it) is not named by the node here (0.22.0, the Bookshop atlas)
+  const qual = pic.name; pic.name = id => { const c = pic.chain(id), k = c.findIndex(p => !CP_BOX.boxTypes.includes((pic.at.get(p) || {}).type));
+    if (k < 0) return qual(id); const up = c.slice(0, k), o = up.indexOf(pic.owner(id));
+    return [...up.slice(0, o < 0 ? k : o).reverse(), id].map(x => String(pic.at.get(x).label ?? x)).join('::'); };
   // each line the view lists (or with no list each of this type's kinds) whose ends, a port taken to its owner, it shows
   const E = new Map(); CP_ARR(model && model.edges).forEach(e => { if (CP_OBJ(e) && typeof e.id === 'string' && !E.has(e.id)) E.set(e.id, e); });
   const list = Array.isArray(view.edges) ? view.edges.map(x => (typeof x === 'string' ? E.get(x) : x)) : [...E.values()].filter(e => CP_LINES.includes(e.type));
@@ -327,7 +332,9 @@ const CP_TYPE = registerDiagramType('uml.component', {
   // the PDF's tables (§11): a component's ports, each with what it provides and requires; an interface's operations; what an artifact manifests
   word: (model, id) => { const x = cpIndex(model).N.get(id); return x ? ({ 'uml.Component': 'Component', 'uml.Interface': 'Interface', 'uml.Artifact': 'Artifact', 'uml.Package': 'Package', 'uml.Comment': 'Comment' }[x.type] || null) : null; },
   rows: (model, view, id) => { const pic = cpPic(model, view), x = pic.I.N.get(id); if (!x) return null;
-    if (x.type === 'uml.Component') return cpPortsOf(x).map(p => cpNodeName(model, view, pic, p.id).replace(/^Port /, '').replace(` of ${pic.name(id)}`, ''));
+    // then the connectors from its ports (0.22.0), which the Lines table leaves out: a port is no card
+    if (x.type === 'uml.Component') return [...cpPortsOf(x).map(p => cpNodeName(model, view, pic, p.id).replace(/^Port /, '').replace(` of ${pic.name(id)}`, '')),
+      ...pic.lines.filter(l => l.e.type === 'uml.Connector' && (pic.I.P.get(l.e.from) || {}).owner === id).map(l => cpLineName(pic, l))];
     if (x.type === 'uml.Interface') return CP_ARR(x.members).filter(CP_OBJ).map(printMember);
     if (x.type === 'uml.Artifact') return pic.lines.filter(l => l.e.type === 'uml.Manifestation' && l.e.from === id).map(l => `manifests ${pic.name(l.e.to)}`);
     return null; },

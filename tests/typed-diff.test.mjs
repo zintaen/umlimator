@@ -51,8 +51,8 @@ test('an element\'s members reordered read "moves" on every type with members; e
     ['examples/sales-classes.json', 'customer', 'moves email after name in Customer'],
     ['examples/order-objects.json', 'order-1042', null],
     ['examples/order-states.json', 'placed', null],
-    ['docs/diagrams/examples/05-component.json', 'shop-api', 'moves orders after payments in Shop API'],
-    ['docs/diagrams/examples/04-composite-structure.json', 'order-service', null],
+    ['examples/bookshop-components.json', 'shop-api', 'moves orders after payments in Shop API'],
+    ['examples/order-service-structure.json', 'order-service', null],
   ];
   for (const [f, id, said] of cases) {
     const m = load(f), n = m.nodes.find(x => x.id === id);

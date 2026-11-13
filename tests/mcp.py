@@ -12,7 +12,8 @@ audit's repros (tooling.json's mcp machines), which failed before:
 - clear() takes the assistant's story off, and leaves a story the reader started.
 And C10 (2.6): an object model and a package model, served the same way, answer its read tools in their own words and show a
 highlight on the diagram the page draws; and so do a use case, an activity, a state machine and an interaction overview model
-(4.10), and a class, a sequence, a communication, a component, a deployment and a composite structure model (C10's package).
+(4.10), a component, a deployment and a composite structure model (5.8), and a class, a sequence and a communication model
+(C10's package).
 
   python3 tests/mcp.py
 
@@ -274,17 +275,18 @@ for f, view, refs, first, cards, boxes in (("order-objects", "snapshot", ["order
                                           ("fulfil-activity", "fulfil", ["in-stock", "call-payment"], "Fulfilling an order: an activity diagram of 17 nodes, 19 flows and 3 partitions.", 20, 0),
                                           ("order-states", "order-life", ["placed", "cancelled"], "An order's life: a state machine diagram of 21 elements and 23 transitions.", 19, 4),
                                           ("buy-book-overview", "buy-book", ["ref-find", "sd-queue"], "Buying a book: an interaction overview diagram of 10 nodes and 11 flows.", 10, 0),
-                                          # C10's package (0.22.0): the class, sequence and communication types, and stage 5's three from
-                                          # docs/diagrams/examples/ until 5.8 moves them to examples/
+                                          # C10's package (0.22.0): the class, sequence and communication types
                                           ("sales-classes", "domain", ["customer", "order"], "Sales domain: a class diagram of 11 elements and 8 lines.", 10, 1),
                                           ("checkout-sequence", "checkout-sequence", ["lifeline-api", "receipt"], "Checkout: a sequence diagram of 5 lifelines, 10 messages, 1 interaction use and 2 combined fragments.", 11, 0),
                                           ("checkout-communication", "checkout-communication", ["lifeline-api", "receipt"], "Checkout: payment accepted: a communication diagram of 5 lifelines, 5 connectors and 9 messages.", 14, 0),
-                                          ("05-component", "components", ["storefront", "accounts"], "Bookshop components: a component diagram of 9 elements and 10 lines.", 13, 1),
-                                          ("06-deployment", "production", ["edge", "database"], "Production: a deployment diagram of 14 elements and 8 lines.", 10, 4),
-                                          ("04-composite-structure", "internals", ["order-events"], "Inside OrderService: a composite structure diagram of 15 elements and 8 lines.", 13, 2)):
-    path = next(p for p in (ROOT / "examples" / f"{f}.json", ROOT / "docs" / "diagrams" / "examples" / f"{f}.json") if p.is_file())
-    m = json.loads(path.read_text(encoding="utf-8"))
-    srv = subprocess.Popen([sys.executable, str(ROOT / "umlimator.py"), "mcp", str(path), "--port", "0"], stdin=subprocess.PIPE,
+                                          # C10 for stage 5 (S18, 5.8): a component, a deployment and a composite structure model; a
+                                          # component holding a component, a target holding what is deployed on it, the subject and an
+                                          # open collaboration are boxes, a port and a part are nodes
+                                          ("bookshop-components", "components", ["storefront-component", "i-orders"], "Bookshop components: a component diagram of 9 elements and 10 lines.", 13, 1),
+                                          ("bookshop-deployment", "production", ["database", "edge-node"], "Production: a deployment diagram of 14 elements and 8 lines.", 10, 4),
+                                          ("order-service-structure", "internals", ["order-events"], "Inside OrderService: a composite structure diagram of 15 elements and 8 lines.", 13, 2)):
+    m = json.loads((ROOT / "examples" / f"{f}.json").read_text(encoding="utf-8"))
+    srv = subprocess.Popen([sys.executable, str(ROOT / "umlimator.py"), "mcp", str(ROOT / "examples" / f"{f}.json"), "--port", "0"], stdin=subprocess.PIPE,
                            stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
     stop = threading.Timer(300, srv.kill); stop.daemon = True; stop.start()
     chrome = Chrome()
@@ -295,23 +297,20 @@ for f, view, refs, first, cards, boxes in (("order-objects", "snapshot", ["order
         said = tool("describe_view", view=view)
         ok(f"C10 · {f}: list_views and describe_view answer in the diagram's own words, then its element ids",
            [v["id"] for v in views.get("views", [])] == [x["id"] for x in m["views"]] and said.startswith(first) and f"\nCard ids: {m['views'][0]['nodeIds'][0]} (" in said, (views, said[:300]))
-        warned = [p.get("rule") for p in json.loads(tool("validate"))]
-        ok(f"C10 · {f}: validate finds no problem (the composite example: its two parts typed by no class, warnings it states)",
-           warned == (["part-type", "part-type"] if f == "04-composite-structure" else []), warned)
+        # the composite structure example's two parts typed by classes the model does not hold: its own warnings (part-type)
+        warned = {"order-service-structure": ["part-type", "part-type"]}.get(f, [])
+        ok(f"C10 · {f}: validate finds no problem" + (f" but its {len(warned)} warnings" if warned else ""), (lambda v: [p.get("rule") for p in v] == warned and all(p.get("level") == "warning" for p in v))(json.loads(tool("validate"))))
         if f == "checkout-sequence":  # paths() in time order (C10): the messages that carry the shopper's checkout on to the receipt
             got = [r.get("id") or r["ids"][0] for r in json.loads(tool("paths", view=view, **{"from": "lifeline-shopper", "to": "receipt"}))]
             ok("C10 · checkout-sequence: paths runs in time order, message after message", got[5:] == ["m1", "m2", "m4", "m5", "m6"], got)
         tab, sid = chrome.open(url + "/")
         drawn = until(lambda: (lambda s: s if s and s["view"] == view and len(s["lit"]) == cards else None)(chrome.eval(sid, LOOK)))
-        ok(f"C10 · {f}: the page draws the diagram: {cards} elements and {boxes} boxes (packages, a subject, composite states and their regions)", drawn and chrome.eval(sid, BOXES) == boxes, (drawn, chrome.eval(sid, BOXES)))
+        ok(f"C10 · {f}: the page draws the diagram: {cards} elements and {boxes} boxes (packages, a subject, composite states and their regions, components, nodes, a collaboration)", drawn and chrome.eval(sid, BOXES) == boxes, (drawn, chrome.eval(sid, BOXES)))
         until(lambda: state()["pages"][0].get("state"))  # the page's event stream is connected, so the tool waits for it to show
         said = tool("highlight", refs=refs, view=view)
-        # 05-component: the three ports of the components inside Shop API stay lit whatever is highlighted (a gap of stage 5's
-        # drawing, stated for 5.8), so they are left out of what is compared there
-        lit = lambda s: [i for i in s["lit"] if f != "05-component" or i not in ("checkout.orders", "checkout.payments", "payment-provider.charges")]
-        got = until(lambda: (lambda s: s if s and "mcp" in s["overlays"] and lit(s) == sorted(refs) else None)(chrome.eval(sid, LOOK)))
+        got = until(lambda: (lambda s: s if s and "mcp" in s["overlays"] and s["lit"] == sorted(refs) else None)(chrome.eval(sid, LOOK)))
         ok(f"C10 · {f}: highlight is shown on the diagram, the rest dimmed, and the tool says so once it is", said.startswith(f"Shown on 1 page at {url}, on view {view}")
-           and got and got["dimmed"] == cards - len(got["lit"]), (said, got))
+           and got and got["dimmed"] == cards - len(refs), (said, got))
     finally:
         chrome.quit()
         srv.stdin.close()

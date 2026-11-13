@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """The CLI's change commands end to end (#66, #67, #68): diff of two files, diff --base in a git repository (what the
-diff Action runs on a pull request; on an object and a package model as the Action's step runs it, 2.6, and on a use case, an activity, a state machine and an interaction overview model, 4.10, and on every other typed type, a reorder reading "moves", C10); map-repo's CLI rendering each typed model (C10); drift and timelapse; trace (#96; as a UML sequence view, 3.8); and pdf (#93; the stage 4 types' tables, 4.10), read back with the standard
+diff Action runs on a pull request; on an object and a package model as the Action's step runs it, 2.6, and on a use case, an activity, a state machine and an interaction overview model, 4.10, and a component, a deployment and a composite structure model, 5.8, and on every other typed type, a reorder reading "moves", C10); map-repo's CLI rendering each typed model (C10); drift and timelapse; trace (#96; as a UML sequence view, 3.8); and pdf (#93; the stage 4 types' tables, 4.10, and stage 5's, 5.8), read back with the standard
 library. Pages only for the rest: stills (Chrome) are covered by `stills` itself. And the MCP server (#91), driven
 through its pipes as an MCP client drives it, with a page's event stream.
 
@@ -205,9 +205,32 @@ with tempfile.TemporaryDirectory() as tmp:
            x.get("summary") == [said] and x.get("views") == [view] and (t / "action4-out" / f"examples-{f}.html").is_file() and all(Path(s).is_file() for s in x.get("stills", [None]))
            and f"**`examples/{f}.json`**: {view}" in md and f"- {said}" in md, x)
 
+    # C10 for stage 5 (S18, 5.8): the Action's step on one model of each of the three types, each changed in a pull request
+    b = t / "action5"; (b / "examples").mkdir(parents=True)
+    bgit = lambda *x: subprocess.run(["git", "-C", str(b), "-c", "user.name=test", "-c", "user.email=test@example.invalid", *x], capture_output=True, text=True, check=True)
+    bgit("init", "-q")
+    THREE = {"bookshop-components": ("order-worker", "label", "Order processor", "components", "renames Order worker to Order processor"),
+             "bookshop-deployment": ("database", "label", "Primary database", "production", "renames Database to Primary database"),
+             "order-service-structure": ("order-events", "label", "orderFlow", "internals", "renames orderEvents to orderFlow")}
+    for f in THREE:
+        (b / "examples" / f"{f}.json").write_text((ROOT / "examples" / f"{f}.json").read_text(encoding="utf-8"), encoding="utf-8")
+    bgit("add", "examples"); bgit("commit", "-q", "-m", "base")
+    for f, (nid, k, v, _, _) in THREE.items():
+        m = json.loads((b / "examples" / f"{f}.json").read_text()); next(n for n in m["nodes"] if n["id"] == nid)[k] = v
+        (b / "examples" / f"{f}.json").write_text(json.dumps(m, indent=1))
+    bgit("commit", "-q", "-am", "the pull request")
+    r = cli("diff", "--base", "HEAD^1", "--out", str(t / "action5-out"), "--models", "examples/*.json", cwd=b) or []
+    by = {x["file"]: x for x in r}
+    md = (t / "action5-out" / "summary.md").read_text(encoding="utf-8") if (t / "action5-out" / "summary.md").is_file() else ""
+    for f, (_, _, _, view, said) in THREE.items():
+        x = by.get(f"examples/{f}.json", {})
+        ok(f"diff --base, as the Action runs it · {f}: what changed in words, its view, a page and a still",
+           x.get("summary") == [said] and x.get("views") == [view] and (t / "action5-out" / f"examples-{f}.html").is_file() and all(Path(s).is_file() for s in x.get("stills", [None]))
+           and f"**`examples/{f}.json`**: {view}" in md and f"- {said}" in md, x)
+
     # C10's package (0.22.0): the Action's step on one model of each type left, each changed in a pull request; where order
     # means something (a class's members, a sequence's or a communication's messages, a component's ports) a reorder reads
-    # "moves". Stage 5's three come from docs/diagrams/examples/ until 5.8 moves them, put in examples/ as the repository would
+    # "moves"
     def members(m, nid):
         n = next(x for x in m["nodes"] if x["id"] == nid); n["members"][:2] = n["members"][1::-1]
     def messages(m, first):
@@ -218,15 +241,14 @@ with tempfile.TemporaryDirectory() as tmp:
     SIX = {"sales-classes": (lambda m: members(m, "customer"), "domain", "moves email after name in Customer"),
            "checkout-sequence": (lambda m: messages(m, "m3"), "checkout-sequence", "moves validate(order) after charge(total)"),
            "checkout-communication": (lambda m: messages(m, "cm3"), "checkout-communication", "moves validate(order) after charge(total)"),
-           "05-component": (lambda m: members(m, "shop-api"), "components", "moves orders after payments in Shop API"),
-           "06-deployment": (lambda m: rename(m, "browser", "Browser"), "production", "renames Web browser to Browser"),
-           "04-composite-structure": (lambda m: members(m, "order-service"), "internals", "moves api after payments in OrderService")}
+           "bookshop-components": (lambda m: members(m, "shop-api"), "components", "moves orders after payments in Shop API"),
+           "bookshop-deployment": (lambda m: rename(m, "browser", "Browser"), "production", "renames Web browser to Browser"),
+           "order-service-structure": (lambda m: members(m, "order-service"), "internals", "moves api after payments in OrderService")}
     c = t / "action-c10"; (c / "examples").mkdir(parents=True)
     cgit = lambda *x: subprocess.run(["git", "-C", str(c), "-c", "user.name=test", "-c", "user.email=test@example.invalid", *x], capture_output=True, text=True, check=True)
     cgit("init", "-q")
     for f in SIX:
-        src = next(p for p in (ROOT / "examples" / f"{f}.json", ROOT / "docs" / "diagrams" / "examples" / f"{f}.json") if p.is_file())
-        (c / "examples" / f"{f}.json").write_text(src.read_text(encoding="utf-8"), encoding="utf-8")
+        (c / "examples" / f"{f}.json").write_text((ROOT / "examples" / f"{f}.json").read_text(encoding="utf-8"), encoding="utf-8")
     cgit("add", "examples"); cgit("commit", "-q", "-m", "base")
     for f, (change, _, _) in SIX.items():
         m = json.loads((c / "examples" / f"{f}.json").read_text()); change(m)
@@ -246,9 +268,9 @@ with tempfile.TemporaryDirectory() as tmp:
     (t / "skill-cache").mkdir()
     (t / "skill-cache" / "local").symlink_to(ROOT, target_is_directory=True)
     skill_env = {**os.environ, "UMLIMATOR_CLI_CACHE": str(t / "skill-cache"), "UMLIMATOR_REF": "local", "UMLIMATOR_SHA": ""}
-    TYPED = [*(ROOT / "examples" / f"{n}.json" for n in ("sales-classes", "order-objects", "bookshop-packages", "checkout-sequence", "checkout-communication",
-                                                          "shopping-use-cases", "fulfil-activity", "order-states", "buy-book-overview")),
-             *(ROOT / "docs" / "diagrams" / "examples" / f"{n}.json" for n in ("05-component", "06-deployment", "04-composite-structure"))]
+    TYPED = [ROOT / "examples" / f"{n}.json" for n in ("sales-classes", "order-objects", "bookshop-packages", "checkout-sequence", "checkout-communication",
+                                                       "shopping-use-cases", "fulfil-activity", "order-states", "buy-book-overview",
+                                                       "bookshop-components", "bookshop-deployment", "order-service-structure")]
     for path in TYPED:
         p = subprocess.run([sys.executable, str(ROOT / "plugins" / "umlimator" / "skills" / "map-repo" / "scripts" / "cli.py"), "render", str(path),
                             "--out", str(t / f"skill-{path.stem}.html")], capture_output=True, text=True, env=skill_env)
@@ -256,9 +278,8 @@ with tempfile.TemporaryDirectory() as tmp:
             r = json.loads(p.stdout)
         except ValueError:
             r = None
-        # the pinned crossings of examples 9 and 10, as render's own check above; the composite example's four overlaps of a
-        # part's ports with another part, stage 5's (5.8) to clear or pin
-        said = {"fulfil-activity": ["cross"] * 2, "order-states": ["cross"] * 2, "04-composite-structure": ["overlap"] * 4}.get(path.stem, [])
+        # the pinned crossings of examples 9 and 10, as render's own check above (stage 5's three are clean since decision 22)
+        said = {"fulfil-activity": ["cross"] * 2, "order-states": ["cross"] * 2}.get(path.stem, [])
         ok(f"map-repo's cli.py · renders a typed model it is given ({path.stem}): the page, and its check" + (f" ({len(said)} {said[0]}s, stated)" if said else " clean"),
            p.returncode == 0 and r is not None and not r.get("errors") and [q.rsplit(" ", 1)[-1] for q in r.get("problems") or []] == said
            and (t / f"skill-{path.stem}.html").is_file(), (p.returncode, p.stdout[-400:], p.stderr[-400:]))
@@ -303,9 +324,11 @@ with tempfile.TemporaryDirectory() as tmp:
     # upstream checks leaves it out (F3: it was "an unknown end")
     for name, path in (("sales-classes", ROOT / "examples" / "sales-classes.json"), ("order-objects", ROOT / "examples" / "order-objects.json"),
                        ("bookshop-packages", ROOT / "examples" / "bookshop-packages.json"), ("checkout-sequence", ROOT / "examples" / "checkout-sequence.json"),
-                       ("checkout-communication", ROOT / "examples" / "checkout-communication.json"), ("05-component", ROOT / "docs" / "diagrams" / "examples" / "05-component.json"),
-                       # 4.10: the use case, activity, state machine and interaction overview examples
-                       *((n, ROOT / "examples" / f"{n}.json") for n in ("shopping-use-cases", "fulfil-activity", "order-states", "buy-book-overview"))):
+                       ("checkout-communication", ROOT / "examples" / "checkout-communication.json"),
+                       # 4.10: the use case, activity, state machine and interaction overview examples; 5.8: the component example
+                       # (its case points at the moved file) and the deployment and composite structure examples
+                       *((n, ROOT / "examples" / f"{n}.json") for n in ("shopping-use-cases", "fulfil-activity", "order-states", "buy-book-overview",
+                                                                       "bookshop-components", "bookshop-deployment", "order-service-structure"))):
         src = json.loads(path.read_text())
         r = cli("render", str(path), "--out", str(t / f"{name}.html"))
         # 4.10: the crossings that turning port repair off leaves in examples 9 and 10 (notes/stage-4.md §17), pinned in their
@@ -369,6 +392,24 @@ with tempfile.TemporaryDirectory() as tmp:
     ok("pdf · buy-book-overview: its tables list each node's kind and each flow, then each sequence view it opens",
        all(flat(s) in txt for s in ["Find a bookInteraction use", "Queue the orderInteraction", "Payment accepted?Decision node", "buy-splitFork node", "Payment accepted? → buy-splitControl flow",
                                     "storefront → apifindBooks(title)Message"]), txt[:800])
+    # 5.8: the three stage 5 types' tables (notes/stage-5.md §11): a component's ports with what they provide and the
+    # connectors from them, an interface's kind, what an artifact manifests; a target's kind and what is deployed on it; the
+    # subject's parts with their aggregation and its connectors, a collaboration use's collaboration and bindings
+    txt = "".join(read("bookshop-components.pdf"))
+    ok("pdf · bookshop-components: its tables list each component's ports and what they provide, the connectors from them, each interface and artifact by kind, each line between elements",
+       all(flat(s) in txt for s in ["Elements", "Shop APIComponentorders, provides Orderspayments", "Delegation from orders of Shop API to orders of Checkout",
+                                    "Assembly from payments of Shop API to charges of Payment provider", "OrdersInterface", "shop-api.jarArtifactmanifests Shop API",
+                                    "From → toLabelKind", "Storefront → OrdersUsage", "shop-api.jar → Shop APIManifestation"]), txt[:800])
+    txt = "".join(read("bookshop-deployment.pdf"))
+    ok("pdf · bookshop-deployment: its tables list each target's kind and what is deployed on it (by nesting or a line), each artifact's manifestation, each path",
+       all(flat(s) in txt for s in ["Shopper's deviceDevice", "Java 21 runtimeExecution environmentshop-api.jarorder-worker.jarshop-api.yaml", "Edge proxyNoderoutes.conf, by «deploy»",
+                                    "shop-api.yamlDeployment specification", "order-worker.jarArtifactmanifests Order worker",
+                                    "Edge proxy → Application serverHTTPCommunication path", "routes.conf → Edge proxyDeployment"]), txt[:800])
+    txt = "".join(read("order-service-structure.pdf"))
+    ok("pdf · order-service-structure: its tables list the subject's ports and parts, each part shared or composite, its connectors, the collaboration use's collaboration and bindings, the collaboration's roles",
+       all(flat(s) in txt for s in ["OrderServiceClassport apiport payments", "checkout : CheckoutFlow [1], composite", "listeners : OrderListener [0..*], shared",
+                                    "Connector from api of OrderService to requests of checkout", "orderEventsCollaboration usePublishSubscribepublisher ← checkoutsubscriber ← listeners",
+                                    "PublishSubscribeCollaborationpublisher : EventSource [1]subscriber : EventListener [0..*]Connector from publisher to subscriber"]), txt[:800])
     # an element with no type is drawn as a class, and its row says so
     bare = json.loads((ROOT / "examples" / "sales-classes.json").read_text()); next(n for n in bare["nodes"] if n["id"] == "order").pop("type")
     (t / "bare.json").write_text(json.dumps(bare))
