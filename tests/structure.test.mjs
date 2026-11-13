@@ -11,6 +11,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { textW } from '../src/core/text.js';
 import { SHAPE, drawnPts } from '../src/draw/shapes.js';
+import { overlapIssues } from '../src/layout/audit.js';
 import { SN_SAY, STRUCT_RULES, portFit, portLen, portSides, portsDrawn, structProblems } from '../src/uml/structure.js';
 
 const LONG = 'Order fulfilment and warehouse coordination service for every regional store';
@@ -64,13 +65,13 @@ test('drawn: a node of the shape it names, its accessible name, a hit area 24 px
   for (const n of NODES) { const s = SHAPE[n.shape].draw({ ...n, aria: `Name of ${n.id}` });
     assert.match(s, new RegExp(`^<g class="node ${n.shape}" data-id="${n.id}" data-shape="${n.shape}" tabindex="-1" role="img" aria-label="Name of ${n.id}">`));
     for (const [, k, v] of s.matchAll(/ (stroke|fill)="([^"]*)"/g)) assert.ok(k === 'stroke' ? v === 'var(--um-muted)' : ['var(--um-stage-bg)', 'var(--um-text)', 'var(--um-muted)', 'transparent'].includes(v), `${n.id}: ${k} ${v}`);
-    if (n.shape === 'port') assert.match(s, /width="24" height="(24|32)" class="st-hit"/, `${n.id}: 24 px to hit, or its length`);
-    if (n.shape === 'ball') assert.match(s, /r="12" class="st-hit"/);
+    if (n.shape === 'port') assert.match(s, /width="24" height="(24|32)" class="fl-hit"/, `${n.id}: 24 px to hit, or its length`);
+    if (n.shape === 'ball') assert.match(s, /r="12" class="fl-hit"/);
     // each text's estimated box inside the node, less its padding; under the icon's band (24 px) on a component or an artifact
     for (const [, x, y, px, t] of s.matchAll(/<text x="([\d.]+)" y="([\d.]+)" text-anchor="middle" class="[^"]*" fill="[^"]*" style="font:\d+ ([\d.]+)px var\(--um-sans\)">([^<]*)<\/text>/g)) {
       const w = textW(t.replace(/&#39;/g, "'").replace(/&amp;/g, '&'), +px), x0 = +x - w / 2, x1 = +x + w / 2, y0 = +y - +px, y1 = +y + 3, pad = n.shape === 'ball' ? 1.9 : 9.9;
       assert.ok(x0 >= n.x + pad && x1 <= n.x + n.w - pad && y0 >= n.y + (n.shape === 'ball' ? 16 : 24) && y1 <= n.y + n.h, `${n.id}: "${t}" inside`); }
-    for (const [, d] of s.matchAll(/<path d="([^"]*)" class="n-det st-icon"/g)) { const segs = outline(d.replace(/ M/g, 'M')), xs = segs.flatMap(q => [q[0], q[2]]), ys = segs.flatMap(q => [q[1], q[3]]);
+    for (const [, d] of s.matchAll(/<path d="([^"]*)" class="n-det sn-icon"/g)) { const segs = outline(d.replace(/ M/g, 'M')), xs = segs.flatMap(q => [q[0], q[2]]), ys = segs.flatMap(q => [q[1], q[3]]);
       assert.ok(Math.min(...xs) >= n.x + 4 && Math.max(...xs) <= n.x + n.w - 4 && Math.min(...ys) >= n.y + 4 && Math.max(...ys) <= n.y + 22, `${n.id}: its icon in the top right band`); }
   }
   assert.match(SHAPE.component.draw(NODES[2]), /aria-label="Component Shop API"/, 'a name of its own with no aria');
@@ -88,7 +89,7 @@ test('drawn: a node of the shape it names, its accessible name, a hit area 24 px
 test('the component\'s frame (§9.1): its border, its name in the header room cut to the box, its icon at the top right', () => {
   const f = { id: 'shop', label: 'Shop', x: 10, y: 20, w: 200, h: 120 }, s = SHAPE.component.frame(f);
   assert.match(s, /^<rect class="family-box" x="10" y="20" width="200" height="120" stroke="var\(--um-muted\)"\/><text class="family-title" x="22" y="37"[^>]*data-o="shop">Shop<\/text>/);
-  const [, d] = s.match(/<path d="([^"]*)" class="n-det st-icon"/), segs = outline(d.replace(/ M/g, 'M')), xs = segs.flatMap(q => [q[0], q[2]]), ys = segs.flatMap(q => [q[1], q[3]]);
+  const [, d] = s.match(/<path d="([^"]*)" class="n-det sn-icon"/), segs = outline(d.replace(/ M/g, 'M')), xs = segs.flatMap(q => [q[0], q[2]]), ys = segs.flatMap(q => [q[1], q[3]]);
   assert.ok(Math.max(...xs) <= f.x + f.w - 8 && Math.min(...ys) >= f.y + 4 && Math.max(...ys) <= f.y + 24);
   const t = SHAPE.component.frame({ ...f, w: 120, title: LONG }).match(/>([^<]*)<\/text>/)[1];
   assert.ok(t.endsWith('…') && textW(t, 12) <= 120 - 44, 'a long title stops short of the icon');
@@ -157,14 +158,15 @@ function geometry() {
 const PORTS = [['a.p1', 'a', 'R', 'requests', 'OrderApi'], ['a.p2', 'a', 'R', 'audit'], ['a.p3', 'a', 'B', 'events'], ['a.p4', 'a', 'L', 'x'], ['a.p5', 'a', 'L', 'a forty character port name for the tests'], ['a.p6', 'a', 'L', 'z'],
   ['f.q', 'f', 'L', 'orders'], ['f.r', 'f', 'T', 'admin'], ['f.s', 'f', 'L', 'metrics'], ['ghost', 'nobody', 'L', 'gone'], ['bad', 'a', 'X', 'no side'],
   ...Array.from({ length: 10 }, (_, i) => [`d.${i}`, 'd', 'R', `p${i}`])].map(([id, owner, side, label, valueType]) => ({ id, owner, side, label, valueType }));
+const portIds = g => g.nodes.filter(n => n.shape === 'port').map(n => n.id);
 
 test('portsDrawn: a copy, never the layout\'s geometry; each port a node of it, on its side of its owner\'s border', () => {
   const g = geometry(), before = JSON.stringify(g), out = portsDrawn(g, PORTS);
   assert.equal(JSON.stringify(g), before, 'what the layout returned is not edited (§2.4)');
   assert.notEqual(out, g); assert.deepEqual(out.nodes.slice(0, 4), g.nodes, 'the layout\'s nodes kept');
-  assert.deepEqual(out.ports, PORTS.filter(p => !['ghost', 'bad'].includes(p.id)).map(p => p.id), 'a port of no owner drawn, or of no side, is left out');
+  assert.deepEqual(portIds(out), PORTS.filter(p => !['ghost', 'bad'].includes(p.id)).map(p => p.id), 'a port of no owner drawn, or of no side, is left out');
   const by = out.byId, own = { ...g.byId, f: g.families[0] };
-  for (const id of out.ports) { const n = by[id], o = own[n.owner], cx = n.x + n.w / 2, cy = n.y + n.h / 2;
+  for (const id of portIds(out)) { const n = by[id], o = own[n.owner], cx = n.x + n.w / 2, cy = n.y + n.h / 2;
     assert.equal(n.shape, 'port'); assert.ok(out.nodes.includes(n));
     const onBorder = { L: Math.abs(cx - o.x) < .01 && cy > o.y && cy < o.y + o.h, R: Math.abs(cx - o.x - o.w) < .01 && cy > o.y && cy < o.y + o.h,
       T: Math.abs(cy - o.y) < .01 && cx > o.x && cx < o.x + o.w, B: Math.abs(cy - o.y - o.h) < .01 && cx > o.x && cx < o.x + o.w }[n.side];
@@ -175,12 +177,12 @@ test('portsDrawn: a copy, never the layout\'s geometry; each port a node of it, 
   assert.equal(portsDrawn(g, [{ ...PORTS[0], aria: 'Said by the type' }]).byId['a.p1'].aria, 'Said by the type');
   for (const n of out.nodes.slice(4)) assert.ok(n.x >= out.bounds.x && n.y >= out.bounds.y && n.x + n.w <= out.bounds.x + out.bounds.w && n.y + n.h <= out.bounds.y + out.bounds.h, `${n.id} in the bounds`);
   assert.deepEqual(portsDrawn(g, []).nodes, g.nodes); assert.equal(portsDrawn(g, []).edges.length, 5);
-  assert.deepEqual(portsDrawn({ nodes: [], edges: [] }, PORTS), { nodes: [], edges: [], byId: {}, ports: [] }, 'an empty view');
+  assert.deepEqual(portsDrawn({ nodes: [], edges: [] }, PORTS), { nodes: [], edges: [], byId: {} }, 'an empty view');
 });
 
 test('portsDrawn: ports with no line keep 8 px apart, and from the ports with lines, within their side\'s free span', () => {
   const out = portsDrawn(geometry(), PORTS), by = out.byId, gap = (p, q, v) => v ? Math.max(q.y - p.y - p.h, p.y - q.y - q.h) : Math.max(q.x - p.x - p.w, p.x - q.x - q.w);
-  const groups = {}; out.ports.forEach(id => (groups[by[id].owner + by[id].side] ||= []).push(by[id]));
+  const groups = {}; portIds(out).forEach(id => (groups[by[id].owner + by[id].side] ||= []).push(by[id]));
   for (const [k, list] of Object.entries(groups)) { const v = /[LR]$/.test(k);
     list.forEach((p, i) => list.slice(i + 1).forEach(q => assert.ok(gap(p, q, v) >= 8 - .01, `${k}: ${p.id} and ${q.id} ${gap(p, q, v)} px apart`))); }
   const f = { x: 600, y: 60, w: 300, h: 260 };
@@ -207,19 +209,51 @@ test('portsDrawn: each port\'s line ends move 6 px onto its square\'s outer face
 test('portsDrawn: each name `name : Type` beside its port, outside its owner, clear of every line, node, port, line label and other name', () => {
   const out = portsDrawn(geometry(), PORTS), by = out.byId, own = { ...geometry().byId, f: geometry().families[0] };
   const segs = out.edges.flatMap(e => e.pts.slice(1).map((q, k) => { const p = e.pts[k]; return { id: e.id, x: Math.min(p[0], q[0]) - .5, y: Math.min(p[1], q[1]) - .5, w: Math.abs(q[0] - p[0]) + 1, h: Math.abs(q[1] - p[1]) + 1 }; }));
-  const names = out.ports.map(id => by[id].nameBox);
+  const ids = portIds(out), names = ids.map(id => by[id].nameBox);
   assert.equal(by['a.p1'].nameBox.text, 'requests : OrderApi'); assert.equal(by['a.p5'].nameBox.text, 'a forty character port name for the tests');
-  out.ports.forEach((id, i) => { const b = by[id].nameBox, o = own[by[id].owner], p = by[id];
+  ids.forEach((id, i) => { const b = by[id].nameBox, o = own[by[id].owner], p = by[id];
     assert.ok(b && b.w === Math.round((textW(b.text, 10) + 6) * 100) / 100 && b.h === 14, `${id}: named`);
     assert.ok(!meets(b, o), `${id}: its name outside its owner`);
     out.nodes.forEach(n => assert.ok(!meets(b, n), `${id}: its name ${JSON.stringify(b)} over ${n.id}`));
     segs.forEach(s => assert.ok(!meets(b, s), `${id}: its name ${JSON.stringify(b)} over line ${s.id}`));
     assert.ok(!meets(b, out.edges[0].lbl), `${id}: over e1's label`);
-    names.slice(i + 1).forEach((c, j) => assert.ok(!meets(b, c), `${id}: its name over ${out.ports[i + 1 + j]}'s`));
+    names.slice(i + 1).forEach((c, j) => assert.ok(!meets(b, c), `${id}: its name over ${ids[i + 1 + j]}'s`));
     const far = Math.max(b.x - p.x - p.w, p.x - b.x - b.w, b.y - p.y - p.h, p.y - b.y - b.h); assert.ok(far <= 60, `${id}: its name ${far} px from its port`); });
   // beside its first line out: a.p1's name above e1, starting 4 px out from the square
   assert.ok(by['a.p1'].nameBox.x >= 226 + 4 - .01 && by['a.p1'].nameBox.y + 14 <= 150);
   assert.equal(portsDrawn(geometry(), [{ ...PORTS[1], label: ' ' }]).byId['a.p2'].nameBox, undefined, 'no name, none drawn');
+});
+
+test('portsDrawn: a side too short for its ports narrows their gaps to 4 px, then holds the rest at the span\'s start, marked over; every port touches its owner', () => {
+  const n = N('n', 100, 100, 96, 100), lined = { x: 94, y: 112, w: 12, h: 12 }, g = () => ({ nodes: [n], edges: [{ id: 'e', from: 'n', to: 'm', fromPort: 'n.l', fs: 'L', ts: 'R', pts: [[100, 118], [40, 118]], fpb: lined }], byId: { n } });
+  const narrow = portsDrawn(g(), Array.from({ length: 4 }, (_, i) => ({ id: `n.${i}`, owner: 'n', side: 'L' })).concat({ id: 'n.l', owner: 'n', side: 'L' })), sq = narrow.nodes.slice(1).sort((p, q) => p.y - q.y);
+  sq.slice(1).forEach((q, i) => { const gap = q.y - sq[i].y - sq[i].h; assert.ok(gap >= 4 - .01 && gap < 8, `${sq[i].id} and ${q.id} ${gap} px apart`); });
+  assert.ok(sq.every(p => !p.over && p.y >= 108 - .01 && p.y + p.h <= 192 + .01), 'within the span, none over');
+  const full = portsDrawn({ ...g(), nodes: [{ ...n, h: 48 }], byId: { n: { ...n, h: 48 } } }, Array.from({ length: 6 }, (_, i) => ({ id: `n.${i}`, owner: 'n', side: 'L' })).concat({ id: 'n.l', owner: 'n', side: 'L' }));
+  full.nodes.slice(1).forEach(p => assert.ok(p.y + p.h / 2 > 100 && p.y + p.h / 2 < 148, `${p.id} on its owner's border, ${p.y}`));
+  assert.ok(full.nodes.some(p => p.over), 'what does not fit is marked');
+});
+
+test('portsDrawn: model ids such as __proto__ and constructor touch no prototype and keep their ports; a repeated id, or a node\'s, is drawn once', () => {
+  const sides = portSides([{ id: '__proto__', owner: 'constructor', far: [] }, { id: 'toString', owner: '__proto__', far: [] }], {});
+  assert.deepEqual(Object.entries(sides), [['__proto__', 'L'], ['toString', 'L']]); assert.equal(Object.prototype.L, undefined);
+  assert.deepEqual(portFit([{ id: '__proto__', owner: 'constructor', lines: 1 }, { id: 'toString', owner: '__proto__', lines: 1 }], sides), JSON.parse('{"constructor":{"w":16,"h":36},"__proto__":{"w":16,"h":36}}'));
+  const n = N('constructor', 100, 100, 96, 48), out = portsDrawn({ nodes: [n], edges: [], byId: { constructor: n } }, [{ id: '__proto__', owner: 'constructor', side: 'L' }, { id: 'toString', owner: 'hasOwnProperty', side: 'L' }]);
+  assert.deepEqual(portIds(out), ['__proto__']); assert.equal(Object.prototype.L, undefined);
+  const g = geometry(), dup = portsDrawn(g, [{ id: 'q', owner: 'a', side: 'L' }, { id: 'q', owner: 'a', side: 'R' }, { id: 'b', owner: 'a', side: 'T' }]);
+  assert.deepEqual(portIds(dup), ['q']); assert.equal(dup.byId.b, g.byId.b, 'a node keeps its id');
+});
+
+test('portsDrawn: a name keeps off every box\'s border and header room', () => {
+  const c = N('c', 648, 108, 96, 48), f = { id: 'f', label: 'F', x: 600, y: 60, w: 300, h: 200 }, out = portsDrawn({ nodes: [c], edges: [], families: [f], byId: { c } }, [{ id: 'c.o', owner: 'c', side: 'T', label: 'orders', valueType: 'OrderApi' }]);
+  const b = out.byId['c.o'].nameBox, strips = [{ x: f.x - 1, y: f.y, w: 2, h: f.h }, { x: f.x + f.w - 1, y: f.y, w: 2, h: f.h }, { x: f.x, y: f.y, w: f.w, h: 24 }, { x: f.x, y: f.y + f.h - 1, w: f.w, h: 2 }];
+  assert.ok(b && strips.every(r => !meets(b, r)), JSON.stringify(b));
+});
+
+test('the layout check (overlapIssues) on portsDrawn\'s copy: every overlap it reports is a port on its own owner, half inside by design (§4.1)', () => {
+  const out = portsDrawn(geometry(), PORTS), byLabel = new Map(out.nodes.map(n => [n.label, n]));
+  const said = overlapIssues(out, 'v'), own = said.filter(m => { const [, x, y] = m.match(/nodes "(.*)" and "(.*)" overlap/), p = byLabel.get(x), q = byLabel.get(y); return p.owner === q.id || q.owner === p.id; });
+  assert.ok(said.length > 0); assert.deepEqual(said, own);
 });
 
 /* ---- the shared rules (§10.1, §10.3) ---- */

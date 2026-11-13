@@ -72,7 +72,7 @@ try {
         const pad = n.shape === 'ball' ? 0 : 8, top = n.shape === 'ball' ? 16 : 24;
         if (!(T.x >= n.x + pad - .5 && T.x + T.w <= n.x + n.w - pad + .5 && T.y >= n.y + top - .5 && T.y + T.h <= n.y + n.h + .5)) bad.push(`${n.id}: "${tx.textContent}" out of its shape ${JSON.stringify(T)}`);
         const r = ratio(rgba(getComputedStyle(tx).fill), stageBg); if (r < 4.5) low.push([n.id, tx.textContent, r]); });
-      g.querySelectorAll('.st-icon').forEach(ic => { const I = bb(ic); if (!(I.x >= n.x + 4 && I.x + I.w <= n.x + n.w - 4 && I.y >= n.y + 4 && I.y + I.h <= n.y + 22)) bad.push(`${n.id}: its icon at ${JSON.stringify(I)}`); });
+      g.querySelectorAll('.sn-icon').forEach(ic => { const I = bb(ic); if (!(I.x >= n.x + 4 && I.x + I.w <= n.x + n.w - 4 && I.y >= n.y + 4 && I.y + I.h <= n.y + 22)) bad.push(`${n.id}: its icon at ${JSON.stringify(I)}`); });
       const r = ratio(rgba(getComputedStyle(body).stroke), stageBg); if (r < 3) low.push([n.id, 'outline', r]);
       const cx = n.x + n.w / 2, cy = n.shape === 'ball' ? n.y + 8 : n.y + n.h / 2;
       // across a port's border, out and in (along a crowded side two ports' 24 px areas overlap by 4 px: the 8 px between them, §4.1)
@@ -86,11 +86,11 @@ try {
     check(`${tag}: «component» and a stereotype over a name when asked, «artifact» and «deployment spec» always; a long name cut`,
       ['«component»', '«service»', '«artifact»', '«deployment spec»'].every(t => texts.includes(t)) && !pick('.node[data-id="c"]').textContent.includes('«') && texts.some(t => t.endsWith('…')), texts);
     // the box: drawn by the component's frame, its title in its header room and clear of its icon
-    const fam = pick('.family[data-family="shop"]'), F = geo.families[0], title = fam && bb(fam.querySelector('.family-title')), icon = fam && bb(fam.querySelector('.st-icon'));
+    const fam = pick('.family[data-family="shop"]'), F = geo.families[0], title = fam && bb(fam.querySelector('.family-title')), icon = fam && bb(fam.querySelector('.sn-icon'));
     check(`${tag}: the component box's frame: its title in the header room, left of its icon, the icon inside the box`, !!fam && fam.getAttribute('aria-label') === F.aria && title.x >= F.x + 8 && title.y >= F.y && title.y + title.h <= F.y + 26
       && title.x + title.w < icon.x && icon.x + icon.w <= F.x + F.w - 4 && icon.y >= F.y + 4 && icon.y + icon.h <= F.y + 24, { title, icon, F });
     // ports: centred on their owner's border, 8 px apart along a side; names clear of every node, port and other name, outside the owner
-    const own = { host: geo.byId.host, shop: F }, ports = geo.ports.map(id => ({ id, n: geo.byId[id], B: bb(pick(`.node[data-id="${CSS.escape(id)}"] .n-body`)) })), pb = [];
+    const own = { host: geo.byId.host, shop: F }, ports = geo.nodes.filter(n => n.type === 'uml.Port').map(n => n.id).map(id => ({ id, n: geo.byId[id], B: bb(pick(`.node[data-id="${CSS.escape(id)}"] .n-body`)) })), pb = [];
     ports.forEach(({ id, n, B }) => { const o = own[n.owner], cx = B.x + B.w / 2, cy = B.y + B.h / 2;
       const ok = { L: Math.abs(cx - o.x) < 1, R: Math.abs(cx - o.x - o.w) < 1, T: Math.abs(cy - o.y) < 1, B: Math.abs(cy - o.y - o.h) < 1 }[n.side];
       if (!ok || Math.abs(B.w - 12) > 1 || Math.abs(B.h - 12) > 1) pb.push(`${id} at ${JSON.stringify(B)} on ${n.side}`);

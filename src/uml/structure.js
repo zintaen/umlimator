@@ -24,7 +24,7 @@ const snPlural = (k, w) => `${k} ${k === 1 ? w : w + 's'}`;
 const snNode = (n, shape, said, inner) => `<g class="node ${shape}" data-id="${esc(n.id)}" data-shape="${shape}" tabindex="-1" role="img" aria-label="${esc(n.aria || said)}">${inner}</g>`;
 const snText = (x, y, t, px, wt, fill, cls) => `<text x="${r2(x)}" y="${r2(y)}" text-anchor="middle" class="${cls}" fill="${fill}" style="font:${wt} ${px}px var(--um-sans)">${esc(t)}</text>`;
 const snBody = d => `<path d="${d}" class="n-mask"/><path d="${d}" class="n-body" fill="${SN.bg}" stroke="${SN.line}"/>`;
-const snHit = (x, y, w, h) => `<rect x="${r2(x)}" y="${r2(y)}" width="${r2(w)}" height="${r2(h)}" class="st-hit" fill="transparent"/>`;
+const snHit = (x, y, w, h) => `<rect x="${r2(x)}" y="${r2(y)}" width="${r2(w)}" height="${r2(h)}" class="fl-hit" fill="transparent"/>`;
 const snRect = boxOut(0);
 
 /* ---- the accessible names (§10.1, §10.3): each look's, which the types write into n.aria ---- */
@@ -48,7 +48,7 @@ SHAPE.port = {
   size: () => ({ w: SN.port, h: SN.port }), out: snRect, inset: () => 0,
   draw(n) { const w = Math.max(24, n.w), h = Math.max(24, n.h), b = n.nameBox;
     return snNode(n, 'port', SN_SAY.port(n.label), snHit(n.x + n.w / 2 - w / 2, n.y + n.h / 2 - h / 2, w, h) + snBody(snRect(n))
-      + (b ? `<text x="${r2(b.x + b.w / 2)}" y="${r2(b.y + 10.5)}" text-anchor="middle" class="port-name" data-box="${b.x} ${b.y} ${b.w} ${b.h}" fill="${SN.line}" style="font:500 10px var(--um-sans)">${esc(b.text)}</text>` : '')); },
+      + (b ? `<text x="${r2(b.x + b.w / 2)}" y="${r2(b.y + 10.5)}" text-anchor="middle" class="port-name" data-box="${r2(b.x)} ${r2(b.y)} ${r2(b.w)} ${r2(b.h)}" fill="${SN.line}" style="font:500 10px var(--um-sans)">${esc(b.text)}</text>` : '')); },
 };
 
 /* ---- the component and the artifact: an icon's band at the top, then the keywords and stereotypes, then the name ---- */
@@ -58,8 +58,8 @@ const snParts = (n, kw) => { const st = [...(kw ? [kw] : []), ...SN_ARR(n.stereo
     h: Math.max(SN.minH, snIconBand + st.length * SN.sth + SN.nlh + 8) }; };
 const snKeyword = n => (n.shape === 'artifact' ? (n.type === 'uml.DeploymentSpecification' ? 'deployment spec' : 'artifact') : n.keyword ? 'component' : null);
 // UML's component icon: a rectangle with two small tabs on its left; the document icon: a page with its corner folded
-const snCompIcon = (x, y) => `<path d="M${r2(x + 3)} ${r2(y)}H${r2(x + 16)}V${r2(y + 12)}H${r2(x + 3)}Z M${r2(x)} ${r2(y + 2)}H${r2(x + 6)}V${r2(y + 5)}H${r2(x)}Z M${r2(x)} ${r2(y + 7)}H${r2(x + 6)}V${r2(y + 10)}H${r2(x)}Z" class="n-det st-icon" fill="${SN.bg}" stroke="${SN.line}"/>`;
-const snDocIcon = (x, y) => `<path d="M${r2(x)} ${r2(y)}H${r2(x + 8)}L${r2(x + 12)} ${r2(y + 4)}V${r2(y + 14)}H${r2(x)}Z M${r2(x + 8)} ${r2(y)}V${r2(y + 4)}H${r2(x + 12)}" class="n-det st-icon" fill="${SN.bg}" stroke="${SN.line}"/>`;
+const snCompIcon = (x, y) => `<path d="M${r2(x + 3)} ${r2(y)}H${r2(x + 16)}V${r2(y + 12)}H${r2(x + 3)}Z M${r2(x)} ${r2(y + 2)}H${r2(x + 6)}V${r2(y + 5)}H${r2(x)}Z M${r2(x)} ${r2(y + 7)}H${r2(x + 6)}V${r2(y + 10)}H${r2(x)}Z" class="n-det sn-icon" fill="${SN.bg}" stroke="${SN.line}"/>`;
+const snDocIcon = (x, y) => `<path d="M${r2(x)} ${r2(y)}H${r2(x + 8)}L${r2(x + 12)} ${r2(y + 4)}V${r2(y + 14)}H${r2(x)}Z M${r2(x + 8)} ${r2(y)}V${r2(y + 4)}H${r2(x + 12)}" class="n-det sn-icon" fill="${SN.bg}" stroke="${SN.line}"/>`;
 function snClassifier(shape, said, icon) {
   const S = {
     size: n => { const p = snParts(n, snKeyword({ ...n, shape })); return { w: p.w, h: p.h }; },
@@ -95,7 +95,7 @@ SHAPE.ball = {
   inset(n, s, t) { const b = snBallBox(n); return (s === 'L' ? b.x - n.x : s === 'R' ? n.x + n.w - b.x - b.w : s === 'B' ? n.y + n.h - b.y - b.h : 0) + snCircleIn(b, s, t); },
   ports: (n, side, k = 1) => portsOn(SN_CIRCLE, snBallBox(n), side, k),
   draw(n) { const b = snBallBox(n), t = snBallName(n), cx = n.x + n.w / 2;
-    return snNode(n, 'ball', SN_SAY.iface(n.label, { ball: true }), `<circle cx="${r2(cx)}" cy="${r2(b.y + 8)}" r="12" class="st-hit" fill="transparent"/>` + snBody(snCircle(b))
+    return snNode(n, 'ball', SN_SAY.iface(n.label, { ball: true }), `<circle cx="${r2(cx)}" cy="${r2(b.y + 8)}" r="12" class="fl-hit" fill="transparent"/>` + snBody(snCircle(b))
       + (t ? snText(cx, b.y + SN.ball + 4 + 11, t, SN.bpx, 500, SN.ink, 'c-name') : '')); },
 };
 for (const k of ['port', 'component', 'artifact']) { const S = SHAPE[k]; S.face = n => [n.y, n.y + n.h]; S.ports = (n, side, j = 1) => portsOn(S, n, side, j); }
@@ -109,7 +109,7 @@ const portLen = k => SN.port + 10 * (Math.max(1, k || 1) - 1); // a port with k 
    A pinned port takes its pin; else the side facing most far ends, by column, then by row (down: a later column is below);
    a port with none takes its owner's side with fewest ports, left first. Returns { id: 'L' | 'R' | 'T' | 'B' } */
 function portSides(ports, pos, down = false) {
-  const out = {}, count = {}, P = id => (SN_OBJ(pos) && Object.hasOwn(pos, id) && Array.isArray(pos[id]) ? pos[id] : null), later = [];
+  const out = Object.create(null), count = Object.create(null), P = id => (SN_OBJ(pos) && Object.hasOwn(pos, id) && Array.isArray(pos[id]) ? pos[id] : null), later = [];
   const put = (p, s) => { out[p.id] = s; (count[p.owner] ||= { L: 0, R: 0, T: 0, B: 0 })[s]++; };
   SN_ARR(ports).forEach(p => { if (Object.hasOwn(SN_PIN, p.pin)) return put(p, SN_PIN[p.pin]);
     const o = P(p.owner), votes = { L: 0, R: 0, T: 0, B: 0 };
@@ -118,11 +118,11 @@ function portSides(ports, pos, down = false) {
     const best = SN_SIDES.reduce((a, s) => (votes[s] > votes[a] ? s : a), 'L');
     if (votes[best]) put(p, best); else later.push(p); });
   later.forEach(p => { const c = count[p.owner] || { L: 0, R: 0, T: 0, B: 0 }; put(p, SN_SIDES.reduce((a, s) => (c[s] < c[a] ? s : a), 'L')); });
-  return out;
+  return { ...out };
 }
 // the least size of each port's owner (a node, not a box): on each side 16 + Σ (port length + 8) px; ports: [{ id, owner, lines }]
 function portFit(ports, sides) {
-  const sum = {}; SN_ARR(ports).forEach(p => { const s = sides[p.id]; if (s) (sum[p.owner] ||= { L: 16, R: 16, T: 16, B: 16 })[s] += portLen(p.lines) + 8; });
+  const sum = Object.create(null); SN_ARR(ports).forEach(p => { const s = SN_OBJ(sides) && Object.hasOwn(sides, p.id) && sides[p.id]; if (Object.hasOwn(SN_OUT, s)) (sum[p.owner] ||= { L: 16, R: 16, T: 16, B: 16 })[s] += portLen(p.lines) + 8; });
   return Object.fromEntries(Object.entries(sum).map(([o, k]) => [o, { w: Math.max(k.T, k.B), h: Math.max(k.L, k.R) }]));
 }
 
@@ -137,7 +137,7 @@ function portFit(ports, sides) {
    of the copy (shape 'port'), with its name `name : Type` placed by the end labels' search (endLabels) beside its first
    line out, or where a line straight out would be: clear of lines, nodes, ports, line labels and the names before it */
 function portsDrawn(g, ports) {
-  const fams = SN_ARR(g.families), owner = id => (g.byId && g.byId[id]) || fams.find(f => f.id === id), isBox = id => !(g.byId && g.byId[id]);
+  const fams = SN_ARR(g.families), has = id => SN_OBJ(g.byId) && Object.hasOwn(g.byId, id), owner = id => (has(id) ? g.byId[id] : fams.find(f => f.id === id)), isBox = id => !has(id);
   const slide = (p, s) => [r2(p[0] + 6 * SN_OUT[s][0]), r2(p[1] + 6 * SN_OUT[s][1])];
   const edges = SN_ARR(g.edges).map(e => { if (!e.pts || !(e.fromPort || e.toPort)) return e; const pts = e.pts.map(p => p.slice());
     if (e.fromPort && SN_OUT[e.fs]) pts[0] = slide(pts[0], e.fs); if (e.toPort && SN_OUT[e.ts]) pts[pts.length - 1] = slide(pts[pts.length - 1], e.ts); return { ...e, pts }; });
@@ -147,22 +147,29 @@ function portsDrawn(g, ports) {
       const q = id !== p.id ? null : SN_OBJ(b) ? b : end ? { x: end[0] - 6, y: end[1] - 6, w: 12, h: 12 } : null; if (q) r = r ? union(r, q) : { ...q }; }));
     return r; };
   const at = new Map(), onSide = new Map(), boxesOn = (o, s) => onSide.get(o + '|' + s) || onSide.set(o + '|' + s, []).get(o + '|' + s); // a port's box; each owner's side's
-  const list = SN_ARR(ports).filter(p => owner(p.owner) && SN_OUT[p.side]);
+  const seen = new Set(SN_OBJ(g.byId) ? Object.keys(g.byId) : []), list = SN_ARR(ports).filter(p => SN_OBJ(p) && owner(p.owner) && Object.hasOwn(SN_OUT, p.side) && !seen.has(p.id) && seen.add(p.id));
   list.forEach(p => { const r = lined(p); if (r) { at.set(p.id, r); boxesOn(p.owner, p.side).push(r); } });
   // the ports with no line, side by side: evenly over the span in members order, then pushed forwards and, at the span's end,
-  // back, 20 px centre to centre (12 + 8), each past a port with lines it would come within 8 px of
+  // back, 20 px centre to centre (12 + 8), each past a port with lines it would come within 8 px of; a side too short for them
+  // narrows the gaps down to 4 px (§4.4, step 3), and what still does not fit is held at the span's start, marked over
   [...new Set(list.filter(p => !at.has(p.id)).map(p => p.owner + '|' + p.side))].forEach(key => {
     const mine = list.filter(p => !at.has(p.id) && p.owner + '|' + p.side === key), o = owner(mine[0].owner), s = mine[0].side, v = s === 'L' || s === 'R', held = boxesOn(mine[0].owner, s);
     const [a, b] = isBox(mine[0].owner) ? (v ? [o.y + 40, o.y + o.h - 16] : [o.x + 20, o.x + o.w - 20]) : (v ? [o.y + 8, o.y + o.h - 8] : [o.x + 8, o.x + o.w - 8]);
-    const hit = t => held.find(r => { const lo = v ? r.y : r.x, hi = lo + (v ? r.h : r.w); return t + 14 > lo + .01 && t - 14 < hi - .01; }), end = r => (v ? r.y + r.h : r.x + r.w);
-    const ts = []; mine.forEach((p, i) => { let t = Math.max(a + (b - a) * (i + 1) / (mine.length + 1), a + 6, i ? ts[i - 1] + 20 : -Infinity), r; while ((r = hit(t))) t = end(r) + 14; ts.push(t); });
-    for (let i = mine.length - 1; i >= 0; i--) { let t = Math.min(ts[i], b - 6, i < mine.length - 1 ? ts[i + 1] - 20 : Infinity), r; while ((r = hit(t))) t = (v ? r.y : r.x) - 14; ts[i] = t; }
+    const end = r => (v ? r.y + r.h : r.x + r.w);
+    let ts = [];
+    for (let gap = 8; gap >= 4; gap--) { const d = 12 + gap, m = 6 + gap, hit = t => held.find(r => { const lo = v ? r.y : r.x, hi = lo + (v ? r.h : r.w); return t + m > lo + .01 && t - m < hi - .01; });
+      ts = []; mine.forEach((p, i) => { let t = Math.max(a + (b - a) * (i + 1) / (mine.length + 1), a + 6, i ? ts[i - 1] + d : -Infinity), r; while ((r = hit(t))) t = end(r) + m; ts.push(t); });
+      for (let i = mine.length - 1; i >= 0; i--) { let t = Math.min(ts[i], b - 6, i < mine.length - 1 ? ts[i + 1] - d : Infinity), r; while ((r = hit(t))) t = (v ? r.y : r.x) - m; ts[i] = t; }
+      if (ts[0] >= a + 6 - .01) break; }
     const edge = s === 'L' ? o.x : s === 'R' ? o.x + o.w : s === 'T' ? o.y : o.y + o.h;
-    mine.forEach((p, i) => { const t = ts[i], r = v ? { x: r2(edge - 6), y: r2(t - 6), w: 12, h: 12 } : { x: r2(t - 6), y: r2(edge - 6), w: 12, h: 12 }; at.set(p.id, r); held.push(r); });
+    mine.forEach((p, i) => { const t = Math.max(ts[i], a + 6), r = v ? { x: r2(edge - 6), y: r2(t - 6), w: 12, h: 12 } : { x: r2(t - 6), y: r2(edge - 6), w: 12, h: 12 };
+      if (t > ts[i]) r.over = true; at.set(p.id, r); held.push(r); });
   });
-  // the names: obstacles are the nodes, the ports, every line's segments and labels, and the names placed before
+  // the names: obstacles are the nodes, the ports, every box's border and 24 px header room, every line's segments and labels,
+  // and the names placed before
   const segs = edges.filter(e => e.pts).flatMap(e => e.pts.slice(1).map((q, k) => { const p = e.pts[k]; return { x: Math.min(p[0], q[0]) - 3, y: Math.min(p[1], q[1]) - 3, w: Math.abs(q[0] - p[0]) + 6, h: Math.abs(q[1] - p[1]) + 6 }; }));
-  const keep = [...SN_ARR(g.nodes).map(n => ({ x: n.x - 2, y: n.y - 2, w: n.w + 4, h: n.h + 4 })), ...[...at.values()].map(r => ({ x: r.x - 2, y: r.y - 2, w: r.w + 4, h: r.h + 4 })), ...segs, ...edges.filter(e => e.lbl).map(e => e.lbl)];
+  const keep = [...SN_ARR(g.nodes).map(n => ({ x: n.x - 2, y: n.y - 2, w: n.w + 4, h: n.h + 4 })), ...[...at.values()].map(r => ({ x: r.x - 2, y: r.y - 2, w: r.w + 4, h: r.h + 4 })), ...segs, ...edges.filter(e => e.lbl).map(e => e.lbl),
+    ...fams.flatMap(f => [{ x: f.x - 2, y: f.y - 2, w: f.w + 4, h: 26 }, { x: f.x - 2, y: f.y, w: 4, h: f.h }, { x: f.x + f.w - 2, y: f.y, w: 4, h: f.h }, { x: f.x - 2, y: f.y + f.h - 2, w: f.w + 4, h: 4 }])];
   const nodes = list.map(p => { const r = at.get(p.id), o = owner(p.owner), s = p.side, text = `${p.label ?? ''}${p.valueType ? ' : ' + p.valueType : ''}`;
     const out = edges.find(e => e.pts && ((e.fromPort === p.id && e.fs === s) || (e.toPort === p.id && e.ts === s)));
     const v = s === 'L' || s === 'R', face = [r.x + r.w / 2 + (v ? r.w / 2 * SN_OUT[s][0] : 0), r.y + r.h / 2 + (v ? 0 : r.h / 2 * SN_OUT[s][1])];
@@ -171,7 +178,7 @@ function portsDrawn(g, ports) {
     if (nameBox) keep.push(nameBox);
     return { id: p.id, label: p.label, type: 'uml.Port', shape: 'port', kind: 'file', k: 'file', owner: p.owner, side: s, col: o.col ?? 0, row: o.row ?? 0, ...r, aria: p.aria || SN_SAY.port(p.label, o.label, { valueType: p.valueType }), ...(nameBox ? { nameBox } : {}) }; });
   const all = [g.bounds, ...nodes, ...nodes.map(n => n.nameBox)].filter(Boolean);
-  return { ...g, nodes: [...SN_ARR(g.nodes), ...nodes], byId: { ...g.byId, ...Object.fromEntries(nodes.map(n => [n.id, n])) }, edges, ports: nodes.map(n => n.id), ...(all.length ? { bounds: all.reduce(union) } : {}) };
+  return { ...g, nodes: [...SN_ARR(g.nodes), ...nodes], byId: { ...g.byId, ...Object.fromEntries(nodes.map(n => [n.id, n])) }, edges, ...(all.length ? { bounds: all.reduce(union) } : {}) };
 }
 
 /* ---- the shared rules (§10.1, §10.3): each problem { level, rule, path, message, ids }, as src/uml/flow.js's; with a view,
