@@ -259,6 +259,17 @@ function ucConnect(model, view, from, to, at, line) {
   return [{ op: 'add', element: { id: 'association' + k, type: 'uml.Association', from: to, to: from }, view: view.id }];
 }
 
+/* remove: Shift + Delete on extension points (the member list's ✕) takes every extend left naming none of its use case's
+   (extend-points), in the same transaction, said on the hint line; an extend naming another point keeps it. Else the default */
+function ucRemove(model, view, ids, fromModel) {
+  const gone = new Set(UC_ARR(ids)), ext = fromModel ? UC_ARR(model && model.edges).filter(e => UC_OBJ(e) && e.type === 'uml.Extend' && ![e.id, e.from, e.to].some(x => gone.has(x))
+    && UC_ARR(UC_PROPS(e).extensionPoints).length && UC_ARR(UC_PROPS(e).extensionPoints).every(p => gone.has(p))) : [];
+  if (!ext.length) return null;
+  const nm = id => JSON.stringify(ucName(UC_ARR(model.nodes).find(n => UC_OBJ(n) && n.id === id) || { id }));
+  return { commands: [...gone, ...ext.map(e => e.id)].map(id => ({ op: 'delete', id })),
+    say: `Deleted, with ${gone.size > 1 ? 'them' : 'it'}, ${ext.length > 1 ? 'the extends' : 'the extend'} from ${ext.map(e => nm(e.from)).join(', ')}, which named no other extension point` };
+}
+
 const UC_STEREO = { key: 'stereotypes', label: 'Stereotypes', kind: 'list' };
 const UC_TYPE = registerDiagramType('uml.use-case', {
   title: 'use case diagram',
@@ -278,7 +289,7 @@ const UC_TYPE = registerDiagramType('uml.use-case', {
   validate: ucProblems,
   rules: UC_RULES,
   describe: ucDescribe,
-  edits: { connect: ucConnect },
+  edits: { connect: ucConnect, remove: ucRemove },
 });
 
-export { UC_TYPE, UC_RULES, ucGeo, ucProblems, ucDescribe, ucConnect };
+export { UC_TYPE, UC_RULES, ucGeo, ucProblems, ucDescribe, ucConnect, ucRemove };

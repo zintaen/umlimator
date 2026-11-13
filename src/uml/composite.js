@@ -234,7 +234,7 @@ function csGeo({ model, view, pos: pins, memo }) {
 
 /* ---- validators (§10.2). Each problem: { level, rule, path, message, ids }; the shared port-owner and manifest-ends too ---- */
 const CS_RULES = {
-  'subject-shown': 'the view\'s subject is a class, a component or a collaboration listed in nodeIds',
+  'subject-shown': 'the view\'s subject is a class, a component or a collaboration listed in nodeIds (a view with none: a warning)',
   'part-type': 'a part\'s valueType names exactly one class or component of the model by label',
   'connector-part': 'an end\'s part is a part of the subject, and the end is a port of that part\'s type',
   'connector-scope': 'a connector\'s ends lie in one structure: the subject\'s ports and parts; or one collaboration\'s roles',
@@ -249,7 +249,9 @@ function csProblems(model, view) {
   const out = [], P = csPic(model, view || {}), vi = CS_ARR(model && model.views).indexOf(view), S = P.S, say = (level, rule, path, ids, msg) => out.push({ level, rule, path, ids: ids.filter(x => x != null), message: `${rule}: ${msg}` });
   const q = id => JSON.stringify(P.el(id) ? csName(P.el(id)) : String(id));
   if (!view) return structProblems(model);
-  if (!S) say('error', 'subject-shown', `views[${vi}].subject`, [view.id, view.subject], `view ${JSON.stringify(view.id)}'s subject ${JSON.stringify(view.subject ?? null)} is not a class, a component or a collaboration it lists in nodeIds`);
+  // a view with no subject at all (its subject deleted, or hidden from it, takes it: apply()) draws its other cards: a warning
+  if (!S && view.subject == null) say('warning', 'subject-shown', `views[${vi}]`, [view.id], `view ${JSON.stringify(view.id)} has no subject (deleted, or hidden from it): it draws its other cards, and no structure until one is set`);
+  else if (!S) say('error', 'subject-shown', `views[${vi}].subject`, [view.id, view.subject], `view ${JSON.stringify(view.id)}'s subject ${JSON.stringify(view.subject ?? null)} is not a class, a component or a collaboration it lists in nodeIds`);
   const nodeAt = id => CS_ARR(model.nodes).indexOf(P.at.get(id)), memPath = id => { const o = P.mem.get(id).owner; return `nodes[${nodeAt(o.id)}].members[${o.members.indexOf(P.mem.get(id).m)}]`; };
   if (S && S.type !== 'uml.Collaboration') P.parts.forEach(m => { if (!P.typeOf(m)) say('warning', 'part-type', memPath(m.id) + '.props.valueType', [m.id, S.id],
     `part ${q(m.id)} of ${q(S.id)} is typed ${JSON.stringify(CS_PROPS(m).valueType ?? null)}, which names ${[...P.at.values()].some(n => CS_TYPED.includes(n.type) && CS_HAS(n.label) && n.label === CS_PROPS(m).valueType) ? 'more than one' : 'no'} class or component, so it shows only the ports its connectors reach through it`); });
