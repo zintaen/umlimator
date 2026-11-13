@@ -1,6 +1,6 @@
 import { CHG } from '../layout/layered.js';
 import { mapNodeW, mapTabs } from '../map/cards.js';
-import { KIND, NOTATIONS, NOTED, hasKey } from '../map/kinds.js';
+import { KIND, NOTED, hasKey } from '../map/kinds.js';
 
 const r2 = v => Math.round(v * 100) / 100;
 function rrect(x, y, w, h, r) { // a rounded rect's path; r: one radius, or [top left, top right, bottom right, bottom left]
@@ -120,14 +120,13 @@ const SHAPE = {
 // src/typed/draw.js: from its text), and ports(n, side, k), k line ends spread evenly along a side ('L', 'R', 'T', 'B'), each on the outline
 for (const S of Object.values(SHAPE)) { S.size ||= n => ({ w: mapNodeW(n), h: 64 }); S.ports = (n, side, k = 1) => portsOn(S, n, side, k); }
 const SHAPE_NAMES = ['box', 'person', 'browser', 'mobile', 'cylinder', 'pipe', 'document', 'hexagon', 'robot', 'terminal', 'window', 'folder', 'node']; // all 13
-// a card's shape in a notation: its own `shape` first; box draws every card as before (a hook stays a hexagon there too)
-const shapeOf = (n, notation) => { const sh = String(n.shape ?? '').toLowerCase(); if (SHAPE_NAMES.includes(sh)) return sh;
-  const T = hasKey(NOTED, notation) && NOTED[notation], k = String(n.kind ?? '').toLowerCase(); return T ? (hasKey(T, k) && T[k]) || (hasKey(T, n.k) && T[n.k]) || 'box' : 'box'; };
-const noteOf = x => NOTATIONS.includes(x) ? x : null;
-// a card as its notation draws it (null for a box): its shape, and where its head, folder tab and title bar go, clear of its
+// a card's shape: its own `shape` first, then (a map's card: byKind) the one its kind draws, else a box
+const shapeOf = (n, byKind = true) => { const sh = String(n.shape ?? '').toLowerCase(); if (SHAPE_NAMES.includes(sh)) return sh;
+  const k = String(n.kind ?? '').toLowerCase(); return byKind && ((hasKey(NOTED, k) && NOTED[k]) || (hasKey(NOTED, n.k) && NOTED[n.k])) || 'box'; };
+// a card as it is drawn (null for a box): its shape, and where its head, folder tab and title bar go, clear of its
 // tabs, ⤢ and change badge. Drawing only: layout never sees it. ports: the card's highest line ends on its sides (sidePorts)
-function cardLook(n, notation, hint, ports) {
-  const sh = shapeOf(n, notation); if (sh === 'box') return null;
+function cardLook(n, byKind, hint, ports) {
+  const sh = shapeOf(n, byKind); if (sh === 'box') return null;
   const S = SHAPE[sh], L = { ...n, sh, S, portTop: ports ? Math.min(ports.L, ports.R) : Infinity, portL: ports ? ports.L : Infinity }, tabs = mapTabs(n), spans = []; let tx = n.x + 12;
   // a step keeps 16 px above the highest line into the left side (svgOf): where that is above a person's or robot's shoulder,
   // the shoulder comes up under it, 5 px below its middle (it floated 4 px above the shoulder)
@@ -177,4 +176,4 @@ function drawnPts(e, look) {
   return pts;
 }
 
-export { r2, boxOut, portsOn, sidePorts, SHAPE, SHAPE_NAMES, shapeOf, noteOf, cardLook, tabAfter, tabLine, drawnPts };
+export { r2, boxOut, portsOn, sidePorts, SHAPE, SHAPE_NAMES, shapeOf, cardLook, tabAfter, tabLine, drawnPts };
