@@ -161,12 +161,31 @@ test('the long label is cut at the line\'s cut and placed; a box with neither pa
   assert.deepEqual(TYPED.frame({ x: 0, y: 0, w: 10, h: 20, pad: 48 }), { x: -36, y: -36, w: 82, h: 92, pad: 48 });
 });
 
-test('a map\'s lines and boxes with the typed fields lay out as without them: no port, no inner line, no padding', () => {
+test('a box\'s head grows its header room on its title\'s side, the top (laid out down, the left, which becomes the top), before its pad; the layout check sees a line across it', () => {
+  assert.deepEqual(TYPED.frame({ x: 0, y: 0, w: 10, h: 20, head: 15 }), { x: 0, y: -15, w: 10, h: 35, head: 15 });
+  assert.deepEqual(TYPED.frame({ x: 0, y: 0, w: 10, h: 20, head: 15 }, true), { x: -15, y: 0, w: 25, h: 20, head: 15 });
+  assert.deepEqual(TYPED.frame({ x: 0, y: 0, w: 10, h: 20, head: 15, pad: 22 }), { x: -10, y: -25, w: 30, h: 55, head: 15, pad: 22 });
+  // laid out right and down: the box is 15 px taller on its title's side, and what it holds as far under its header room
+  const dg = head => ({ nodes: [{ id: 'a', label: 'A', w: 120, h: 60 }, { id: 'b', label: 'B', w: 120, h: 60 }], edges: [{ id: 'ab', from: 'a', to: 'b' }],
+    containers: [{ id: 'K', label: 'K', title: '«executionEnvironment» K', nodeIds: ['b'], ...(head ? { head } : {}) }], repair: false });
+  for (const direction of ['right', 'down']) {
+    const [g, p] = [15, 0].map(h => layoutTyped({ ...dg(h), direction })), K = g.families[0], P = p.families[0], r = x => Math.round(x * 100) / 100;
+    assert.deepEqual([K.w, K.h], [P.w, P.h + 15], direction);
+    assert.equal(r(g.byId.b.y - K.y), r(p.byId.b.y - P.y + 15), `${direction}: B as far under the header as without it, 15 px further from the top`);
+  }
+  // the layout check: a line across the header, 30 px under the box's top, crosses its title's second line (a map's box has none)
+  const fam = { id: 'K', label: 'K', x: 0, y: 0, w: 200, h: 120 }, A = { label: 'A' }, edge = { s: A, t: A, pts: [[-50, 30], [250, 30]] };
+  const says = (f, map) => routeAudit({ map, nodes: [], edges: [edge], families: [f], byId: {} }, 'v').filter(x => /header/.test(x));
+  assert.deepEqual(says({ ...fam, head: 15 }), ['v: family "K": header crossed by edge A→A']);
+  assert.deepEqual([says(fam), says({ ...fam, head: 15 }, true)], [[], []]);
+});
+
+test('a map\'s lines and boxes with the typed fields lay out as without them: no port, no inner line, no padding, no taller header', () => {
   const m = extra => ({ nodes: ['a', 'b', 'c'].map(id => ({ id, label: id.toUpperCase() })),
     views: [{ id: 'v', nodeIds: ['a', 'b', 'c'], containers: [{ id: 'K', label: 'K', nodeIds: ['b', 'c'], ...extra.box }] }],
     edges: [{ id: 'e1', from: 'a', to: 'b', label: 'calls', ...extra.line }, { id: 'e2', from: 'K', to: 'c', ...extra.line }, { id: 'e3', from: 'a', to: 'c', ...extra.line }] });
   const geo = x => { const g = layout(m(x), 'v'); return JSON.stringify([g.nodes.map(n => [n.id, n.x, n.y, n.w, n.h]), g.edges.map(e => [e.id, e.pts]), g.families.map(f => [f.x, f.y, f.w, f.h]), g.bounds]); };
-  assert.equal(geo({ line: { fromPort: 'p', toPort: 'q', inner: 'from', portRank: 1, fromSide: 'right' }, box: { pad: 48, round: true } }), geo({ line: { fromSide: 'right' }, box: {} }));
+  assert.equal(geo({ line: { fromPort: 'p', toPort: 'q', inner: 'from', portRank: 1, fromSide: 'right' }, box: { pad: 48, round: true, head: 15 } }), geo({ line: { fromSide: 'right' }, box: {} }));
 });
 
 test('the socket: a half circle of radius 11 round the ball, its middle 3 px before the line\'s end, its centre 8 px past it', () => {
@@ -242,4 +261,14 @@ test('labelGaps is opt-in: a typed view without it lays out as before, and turni
   assert.equal(svg({ ...dg, labelGaps: false }), svg(dg, memo));
   layoutTyped({ ...dg, labelGaps: true }, memo);
   assert.equal(memo.runs, 2);
+});
+
+test('the layout check passes a port half inside the node its owner names, and nothing else (decision 22); a map card\'s owner is a name and passes nothing', () => {
+  const N = (id, x, more) => ({ id, label: id, x, y: 0, w: 100, h: 60, ...more }), msgs = geo => overlapIssues(geo, 'v');
+  const nodes = [N('c', 0), N('c.p', 94, { w: 12, h: 12, owner: 'c' }), N('d', 100, { w: 40 })];
+  assert.deepEqual(msgs({ nodes }), ['v: nodes "c.p" and "d" overlap'], 'the port on its owner passes; the same port on another node is reported');
+  assert.deepEqual(msgs({ nodes: [nodes[1], nodes[0]] }), [], 'in either order');
+  assert.deepEqual(msgs({ nodes: [N('a', 0), N('b', 50)] }), ['v: nodes "a" and "b" overlap'], 'two parts with no owner overlap');
+  assert.deepEqual(msgs({ nodes: [nodes[0], nodes[1], N('c.q', 100, { w: 12, h: 12, owner: 'c' })] }), ['v: nodes "c.p" and "c.q" overlap'], 'two ports of one owner overlap each other');
+  assert.deepEqual(msgs({ map: true, nodes: [N('ops', 0), N('api', 50, { owner: 'ops' })] }), ['v: nodes "ops" and "api" overlap'], 'a map: two cards overlap however they are owned');
 });
