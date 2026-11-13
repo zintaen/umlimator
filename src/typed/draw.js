@@ -68,7 +68,8 @@ SHAPE.classifier = CLASSIFIER;
 // (notes/stage-5.md §9.2) is a usage's end on an interface drawn as a 16 px ball: a half circle of radius 11 open towards the
 // ball, its middle on the line 3 px before the end (the ball's outline), its centre 8 px past it (the ball's)
 const ENDS = { none: null, arrow: [10, 4, 'M0 0L10 4L0 8Z', 'line'], open: [10, 5, 'M0 0L10 5L0 10', 'none'], triangle: [13, 7, 'M0 0L13 7L0 14Z', 'hollow'],
-  diamond: [16, 6, 'M0 6L8 0L16 6L8 12Z', 'hollow'], 'filled-diamond': [16, 6, 'M0 6L8 0L16 6L8 12Z', 'line'], socket: [3, 11, 'M11 0A11 11 0 0 0 11 22', 'none'] };
+  diamond: [16, 6, 'M0 6L8 0L16 6L8 12Z', 'hollow'], 'filled-diamond': [16, 6, 'M0 6L8 0L16 6L8 12Z', 'line'], socket: [3, 11, 'M11 0A11 11 0 0 0 11 22', 'none'],
+  'filled-triangle': [13, 7, 'M0 0L13 7L0 14Z', 'line'] }; // an extension's, at the metaclass (notes/stage-6.md §4.1)
 const endOf = (E, w) => hasKey(ENDS, E[w]) && ENDS[E[w]] ? E[w] : null;
 
 // a typed line's end labels (1.5): each end's role and multiplicity (e.end.labels: { from: { role, mult }, to: { role, mult } }),
