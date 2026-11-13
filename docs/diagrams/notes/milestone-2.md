@@ -603,10 +603,18 @@ Where `src/c4/c4.js` departs from §5.2 and §7.5, each choice taken by the lead
   2, and laid out down one label ("Saves the paid order with") on another line, pinned in `tests/c4.test.mjs` as the
   activity type's are.
 - **External elements** take the map's external tone (slate) for fill and outline, as `KIND.external` draws it.
+- **Only the subject is a boundary.** `ownersOn` boxes any listed owner, so a view listing an element with an owner
+  other than its subject would draw that owner as a boundary and drop the relationships lifted onto it. `c4-level`
+  refuses such a view instead ("is listed with its owner …, which is not the view's subject"), so a valid view draws
+  only its subject as a dashed box, as §7.5.1 says. `c4-owner` also refuses a `parent` on a person or software system,
+  which T can leave behind and the Owner field does not offer to clear.
+- **Inline relationships.** A relationship written in a view's `edges` (model.md) is checked by `c4-relationship` and
+  `c4-label` at its own path (`views[i].edges[k]`), and the PDF reads its technology.
 - **P1, measured first (§11).** On `tests/c4.test.mjs`'s 50 elements and 70 relationships (a container view, a third of
   its containers cylinders), CPU best of seven on a loaded laptop: an element's description, which grows its node and
-  lays the view out again, 135 to 191 ms; a full layout 132 to 201 ms; `external`, which moves nothing, 32 to 42 ms (a
-  repaint). The common edit is over the 100 ms target and under CI's 1 s ceiling; the test prints it.
+  lays the view out again, 135 to 191 ms; a full layout 132 to 201 ms; `external`, which moves nothing, 32 to 44 ms (a
+  repaint); a container's technology, §11's named edit, which keeps the node's size here and moves nothing, 46 to 49 ms.
+  A technology long enough to widen its node lays the view out again, as a description does. The common edit is over the 100 ms target and under CI's 1 s ceiling; the test prints it.
 
 ## 8. Readers (S15, S16)
 

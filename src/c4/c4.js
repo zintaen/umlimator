@@ -135,7 +135,7 @@ function c4Legend(nodes, edges) {
   const line = dashed => `<g stroke="var(--um-muted)" stroke-width="1.4" stroke-linejoin="round" fill="none"><path d="M2 8H25"${dashed ? ' stroke-dasharray="3 2"' : ''}/><path d="M17 4L26 8L17 12"/></g>`;
   return [...els.map(n => item(`${n.ext ? 'External ' + c4Word(n).toLowerCase() : c4Word(n)}${n.sh !== 'box' && !(n.sh === 'person' && n.type === 'c4.Person') ? ', ' + n.sh : ''}`,
     n.ext ? 'outside the system, drawn grey' : `a ${c4Word(n).toLowerCase()}`, swatch(n))),
-  ...(edges.some(e => e.type === 'c4.Relationship') ? [item('Relationship', 'uses, with its technology in brackets', line(false))] : []),
+  ...(edges.some(e => e.type === 'c4.Relationship' && !e.implied) ? [item('Relationship', 'uses, with its technology in brackets', line(false))] : []),
   ...(edges.some(e => e.implied) ? [item('Implied relationship', 'stands for relationships between what the two hold', line(true))] : [])];
 }
 
@@ -164,9 +164,9 @@ function c4Geo({ model, view, pos, memo }) {
 
 /* ---- validators (§5.1, §6.5). Each problem: { level, rule, path, message, ids } ---- */
 const C4_RULES = {
-  'c4-level': 'a view shows only what its level draws: a landscape or context view people and software systems; a container view containers too; a component view the components of its subject',
+  'c4-level': 'a view shows only what its level draws: a landscape or context view people and software systems; a container view containers too; a component view the components of its subject; an element is not listed with its owner unless that owner is the view\'s subject',
   'c4-subject': 'a context or container view zooms into a software system, a component view into a container; a context view shows its subject',
-  'c4-owner': 'a container is owned by a software system, a component by a container, a container instance by a deployment node',
+  'c4-owner': 'a container is owned by a software system, a component by a container, a container instance by a deployment node; a person or software system by nothing',
   'c4-instance': 'a container instance names a container',
   'c4-relationship': 'a relationship joins two static elements or two deployment elements, never an element and its own owner',
   'c4-zoom': 'a software system opens a view whose subject is that system, a container one whose subject is that container',
@@ -190,6 +190,8 @@ function c4Problems(model, view) {
   C4_ARR(model && model.nodes).forEach((n, i) => { if (!C4_OBJ(n)) return;
     if (Object.hasOwn(C4_OWNER, n.type) && (I.at.get(n.parent) || {}).type !== C4_OWNER[n.type])
       say('error', 'c4-owner', `nodes[${i}].parent`, [n.id, n.parent], `${q(n.id)}, ${c4A(kind(n.id))}, is owned by ${n.parent != null && I.at.has(n.parent) ? `${q(n.parent)}, ${c4A(kind(n.parent))}` : 'nothing'}: its owner is ${c4A(C4_WORD[C4_OWNER[n.type]].toLowerCase())}`);
+    if ((n.type === 'c4.Person' || n.type === 'c4.SoftwareSystem') && n.parent != null)
+      say('error', 'c4-owner', `nodes[${i}].parent`, [n.id, n.parent], `${q(n.id)}, ${c4A(kind(n.id))}, is owned by ${q(n.parent)}${I.at.has(n.parent) ? `, ${c4A(kind(n.parent))}` : ''}: it is owned by nothing`);
     if (n.type === 'c4.DeploymentNode' && n.parent != null && (I.at.get(n.parent) || {}).type !== 'c4.DeploymentNode')
       say('error', 'c4-owner', `nodes[${i}].parent`, [n.id, n.parent], `${q(n.id)}, a deployment node, is owned by ${q(n.parent)}, ${c4A(kind(n.parent))}: its owner is a deployment node or none`);
     if (n.type === 'c4.ContainerInstance' && (I.at.get(C4_P(n).container) || {}).type !== 'c4.Container')
@@ -198,10 +200,12 @@ function c4Problems(model, view) {
     const ov = (n.type === 'c4.SoftwareSystem' || n.type === 'c4.Container') && n.opensView != null && views.find(v => C4_OBJ(v) && v.id === n.opensView);
     if (ov && /^c4\./.test(String(ov.diagram)) && ov.subject !== n.id)
       say('warning', 'c4-zoom', `nodes[${i}].opensView`, [n.id, ov.subject], `${q(n.id)} opens view ${JSON.stringify(ov.title || ov.id)}, whose subject is ${ov.subject != null ? q(ov.subject) : 'none'}: it zooms into ${q(n.id)}`); });
-  C4_ARR(model && model.edges).forEach((e, i) => { if (!C4_OBJ(e) || e.type !== 'c4.Relationship') return;
-    const a = I.at.get(e.from), b = I.at.get(e.to), st = x => x && C4_STATIC.includes(x.type), dp = x => x && C4_DEPLOY.includes(x.type);
-    if ((st(a) && dp(b)) || (dp(a) && st(b))) say('error', 'c4-relationship', `edges[${i}]`, [e.id, e.from, e.to], `${e.id} joins ${q(e.from)}, ${c4A(kind(e.from))}, and ${q(e.to)}, ${c4A(kind(e.to))}: a static element and a deployment one`);
-    else if (a && b && (I.chain(e.from).includes(e.to) || I.chain(e.to).includes(e.from))) say('error', 'c4-relationship', `edges[${i}]`, [e.id, e.from, e.to], `${e.id} joins ${q(e.from)} and its own owner or part ${q(e.to)}`); });
+  // a relationship by its path: the model's, else written inline in the view's edges (model.md)
+  const vEdges = C4_OBJ(view) ? C4_ARR(view.edges) : [], pathOf = e => { const i = C4_ARR(model && model.edges).indexOf(e); return i >= 0 ? `edges[${i}]` : `${at}.edges[${vEdges.indexOf(e)}]`; };
+  [...C4_ARR(model && model.edges), ...vEdges.filter(e => C4_OBJ(e) && !C4_ARR(model && model.edges).includes(e))].forEach(e => { if (!C4_OBJ(e) || e.type !== 'c4.Relationship') return;
+    const i = pathOf(e), a = I.at.get(e.from), b = I.at.get(e.to), st = x => x && C4_STATIC.includes(x.type), dp = x => x && C4_DEPLOY.includes(x.type);
+    if ((st(a) && dp(b)) || (dp(a) && st(b))) say('error', 'c4-relationship', i, [e.id, e.from, e.to], `${e.id} joins ${q(e.from)}, ${c4A(kind(e.from))}, and ${q(e.to)}, ${c4A(kind(e.to))}: a static element and a deployment one`);
+    else if (a && b && (I.chain(e.from).includes(e.to) || I.chain(e.to).includes(e.from))) say('error', 'c4-relationship', i, [e.id, e.from, e.to], `${e.id} joins ${q(e.from)} and its own owner or part ${q(e.to)}`); });
   if (!K) return out;
   // the view's rules (§5.1)
   const ids = C4_ARR(view.nodeIds), S = C4_SUBJECT[K], subj = view.subject != null ? I.at.get(view.subject) : null;
@@ -212,12 +216,15 @@ function c4Problems(model, view) {
   ids.forEach((id, k) => { const x = I.at.get(id); if (!x || x.type === 'uml.Comment') return;
     const ok = C4_SHOWS[K].includes(x.type) && !(K === 'component' && x.type === 'c4.Component' && x.parent !== view.subject);
     if (!ok) say('error', 'c4-level', `${at}.nodeIds[${k}]`, [id], `${q(id)}, ${c4A(kind(id))}${x.type === 'c4.Component' && K === 'component' ? ` of ${q(x.parent)}` : ''}, is not drawn in a ${K} view`);
+    // §7.5.1: only the subject is a boundary; any other listed owner would box this element and drop the lines lifted onto it
+    const o = I.chain(id).find(y => ids.includes(y));
+    if (ok && o != null && o !== view.subject) say('error', 'c4-level', `${at}.nodeIds[${k}]`, [id, o], `${q(id)} is listed with its owner ${q(o)}, which is not the view's subject: only the subject is drawn as a boundary`);
     const P = C4_P(x), j = C4_ARR(model.nodes).indexOf(x);
     if (C4_STATIC.includes(x.type) && !C4_HAS(P.description)) say('warning', 'c4-description', `nodes[${j}].props.description`, [id], `${q(id)} has no description`);
     if ((x.type === 'c4.Container' || x.type === 'c4.Component') && !C4_HAS(P.technology)) say('warning', 'c4-technology', `nodes[${j}].props.technology`, [id], `${q(id)}, ${c4A(kind(id))}, has no technology`); });
   const pic = c4Pic(model, view);
-  c4Lines(model, view, pic).own.forEach(e => { const j = C4_ARR(model.edges).indexOf(e);
-    if (e.type === 'c4.Relationship' && !C4_HAS(e.label)) say('warning', 'c4-label', `edges[${j}].label`, [e.id, e.from, e.to], `${e.id}, from ${q(e.from)} to ${q(e.to)}, has no description`); });
+  c4Lines(model, view, pic).own.forEach(e => {
+    if (e.type === 'c4.Relationship' && !C4_HAS(e.label)) say('warning', 'c4-label', `${pathOf(e)}.label`, [e.id, e.from, e.to], `${e.id}, from ${q(e.from)} to ${q(e.to)}, has no description`); });
   if (!C4_HAS(view.title)) say('warning', 'c4-title', `${at}.title`, [], `view ${JSON.stringify(view.id)} has no title`);
   return out;
 }
@@ -292,7 +299,7 @@ const C4_DEF = {
   word: (model, id) => { const x = c4Index(model).at.get(id); return x && Object.hasOwn(C4_WORD, x.type) ? C4_WORD[x.type] : null; },
   rows: (model, view, id) => { const x = c4Index(model).at.get(id); if (!x || !C4_STATIC.includes(x.type)) return null; const P = C4_P(x);
     return [...(C4_HAS(P.technology) ? [P.technology] : []), ...(C4_HAS(P.description) ? [P.description] : []), ...(c4Ext(x) ? ['external'] : [])]; },
-  text: (model, view, id) => { const e = c4Index(model).rels.find(r => r.id === id); return e ? c4LineLabel(e) || null : null; },
+  text: (model, view, id) => { const e = c4Index(model).rels.find(r => r.id === id) || (C4_OBJ(view) ? C4_ARR(view.edges) : []).find(r => C4_OBJ(r) && r.id === id && r.type === 'c4.Relationship'); return e ? c4LineLabel(e) || null : null; },
   edits: { add: c4Add, key: c4Key },
 };
 const C4_TYPES = Object.keys(C4_KIND).map(name => registerDiagramType(name, C4_DEF));

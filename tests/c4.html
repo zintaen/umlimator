@@ -155,13 +155,13 @@ try {
   const own = panel('[data-f="owner"]'), opts = [...own.options].map(o => o.textContent);
   check('the Owner field of a container: none and every software system', same(opts, ['none', 'Bookshop', 'Payment provider', 'Email service', 'Courier']) && own.value === 'c4-bookshop', opts);
   change(own, 'c4-payments');
-  gives('Owner: reparent the container (it leaves the boundary; c4-owner holds)', [{ op: 'reparent', id: 'c4-worker', parent: 'c4-payments' }], m => m.nodes.find(n => n.id === 'c4-worker').parent === 'c4-payments', m4);
+  gives('Owner: reparent the container (it leaves the boundary; c4-owner holds; c4-level says the view lists it with its new owner, not the subject)', [{ op: 'reparent', id: 'c4-worker', parent: 'c4-payments' }], m => m.nodes.find(n => n.id === 'c4-worker').parent === 'c4-payments', m4, 1);
   // T: the type, picked
   click('.node[data-id="c4-queue"] .c-name'); key('t'); await tick();
   const types = all('.um-pick button').map(b => b.textContent);
   check('T opens a picker of the four types', same(types, ['Person', 'Software system', 'Container', 'Component']), types);
   press(all('.um-pick button')[1]);
-  gives('picking Software system: set its type (c4-instance then says its instance no longer fits)', [{ op: 'set', id: 'c4-queue', path: 'type', value: 'c4.SoftwareSystem' }], m => m.nodes.find(n => n.id === 'c4-queue').type === 'c4.SoftwareSystem', m4, 1);
+  gives('picking Software system: set its type (c4-owner then says a software system has no owner, c4-instance that its instance no longer fits)', [{ op: 'set', id: 'c4-queue', path: 'type', value: 'c4.SoftwareSystem' }], m => m.nodes.find(n => n.id === 'c4-queue').type === 'c4.SoftwareSystem', m4, 2);
   // hide, delete
   click('.node[data-id="c4-db"] .c-name'); key('Delete');
   gives('Delete: hide the element from the view', [{ op: 'hide', id: 'c4-db', view: 'c4-containers' }], m => !m.views[1].nodeIds.includes('c4-db'), m4);

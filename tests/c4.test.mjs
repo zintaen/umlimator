@@ -159,11 +159,13 @@ test('implied lines (§5.2, G3): one dashed line a pair for what the view does n
   assert.deepEqual(G3.edges.filter(e => String(e.id).includes('->')), []);
 });
 
-test('an implied line is refused for editing: no element has its id, so no command can name it, and the canvas leaves a positional id out of every gesture', () => {
-  const id = 'c4-bookshop->c4-payments';
+test('an implied line is refused for editing: no element has its id, so no command can name it, no hook acts on it, and the canvas leaves a positional id out of every gesture', () => {
+  const id = 'c4-bookshop->c4-payments', ctx = G3.views.find(v => v.id === 'ctx');
+  assert.ok(layout(G3, 'ctx').edges.some(e => e.id === id && e.implied), 'the implied line is drawn');
+  for (const k of ['T', 'D']) assert.equal(T.edits.key(G3, ctx, [id], k), null, `${k} on an implied line`);
+  assert.equal(T.text(G3, ctx, id), null);
   for (const c of [{ op: 'set', id, path: 'label', value: 'x' }, { op: 'delete', id }, { op: 'hide', id, view: 'ctx' }]) assert.throws(() => apply(G3, c), new RegExp(id.replace(/[->]/g, '.')));
   // what the canvas's selection of it holds (src/canvas/edit.js idsOf): a line id holding '->' is no element's, left out
-  assert.ok(!validate(G3).some(p => p.level === 'error'));
   const src = readFileSync(new URL('../src/canvas/edit.js', import.meta.url), 'utf8');
   assert.match(src, /r\.type === 'edge' \? arrOf\(r\.ids\)\.filter\(x => !String\(x\)\.includes\('->'\)\)/, 'the canvas refuses a positional line id (tests/c4.html drives the gestures)');
 });
@@ -189,6 +191,9 @@ test('names, reading order and the key (A1, §7.5): each element by type, techno
   assert.deepEqual(g.order.slice(0, 6), ['c4-bookshop', 'c4-storefront', 'c4-api', 'c4-worker', 'c4-db', 'c4-queue']);
   assert.equal(g.order.length, 11 + 11);
   assert.deepEqual(g.legend.map(l => /<b>([^<]+)<\/b>/.exec(l)[1]), ['Person', 'Container', 'External software system', 'Relationship']);
+  assert.deepEqual(layout(G3, 'ctx').legend.map(l => /<b>([^<]+)<\/b>/.exec(l)[1]).filter(w => /elationship/.test(w)), G3.views.find(v => v.id === 'ctx').nodeIds.length && layout(G3, 'ctx').edges.some(e => !e.implied) ? ['Relationship', 'Implied relationship'] : ['Implied relationship']);
+  const only = structuredClone(G3); only.views.find(v => v.id === 'ctx').nodeIds = ['c4-bookshop', 'c4-payments'];
+  assert.deepEqual(layout(only, 'ctx').legend.map(l => /<b>([^<]+)<\/b>/.exec(l)[1]), ['Software system', 'External software system', 'Implied relationship'], 'only implied lines: no solid line keyed');
   const shaped = structuredClone(C4); shaped.nodes.find(n => n.id === 'c4-db').props.shape = 'cylinder';
   assert.ok(layout(shaped, 'c4-containers').legend.some(l => /<b>Container, cylinder<\/b>/.test(l)));
   assert.equal(layout(shaped, 'c4-containers').byId['c4-db'].sh, 'cylinder');
@@ -220,7 +225,7 @@ const V = id => C4.views.findIndex(v => v.id === id);
 const BREAKS = {
   'c4-level': [m => { m.views[V('c4-containers')].nodeIds.push('c4-catalogue'); return ['c4-catalogue']; }, 'error'],
   'c4-subject': [m => { m.views.push({ id: 'x', diagram: 'c4.container', title: 'X', subject: 'c4-api', nodeIds: ['c4-shopper'] }); return ['c4-api']; }, 'error'],
-  'c4-owner': [m => { m.nodes.find(n => n.id === 'c4-worker').parent = 'c4-api'; return ['c4-worker', 'c4-api']; }, 'error'],
+  'c4-owner': [m => { m.nodes.find(n => n.id === 'c4-browser').parent = 'c4-api'; return ['c4-browser', 'c4-api']; }, 'error'],
   'c4-instance': [m => { m.nodes.find(n => n.id === 'c4-db-1').props.container = 'c4-catalogue'; return ['c4-db-1', 'c4-catalogue']; }, 'error'],
   'c4-relationship': [m => { m.edges.push(Rel('bad', 'c4-api', 'c4-db-1', 'Writes')); return ['bad', 'c4-api', 'c4-db-1']; }, 'error'],
   'c4-zoom': [m => { m.nodes.find(n => n.id === 'c4-api').opensView = 'c4-containers'; return ['c4-api', 'c4-bookshop']; }, 'warning'],
@@ -252,6 +257,16 @@ test('validators: 23-c4.json breaks no rule; each rule fails on a model that bre
   assert.deepEqual(msg(m => { delete m.nodes.find(n => n.id === 'c4-api').parent; }), ['c4-owner: "Shop API", a container, is owned by nothing: its owner is a software system']);
   assert.deepEqual(msg(m => { m.nodes.find(n => n.id === 'c4-browser').parent = 'c4-api'; }), ['c4-owner: "Web browser", a deployment node, is owned by "Shop API", a container: its owner is a deployment node or none']);
   assert.deepEqual(msg(m => { m.edges.push(Rel('own', 'c4-catalogue', 'c4-api', 'Lives in')); }), ['c4-relationship: own joins "Catalogue" and its own owner or part "Shop API"']);
+  // §7.5.1: only the subject is a boundary; an element listed with any other owner is an error (it would be boxed, its lines dropped)
+  assert.deepEqual(msg(m => { m.views[V('c4-components')].nodeIds.push('c4-bookshop'); }), ['Shop API', 'Storefront', 'Database', 'Order queue'].map(x => `c4-level: "${x}" is listed with its owner "Bookshop", which is not the view's subject: only the subject is drawn as a boundary`));
+  assert.deepEqual(msg(m => { m.nodes.push(El('pc', 'Container', 'Gateway', { technology: 'Go' }, 'c4-payments')); m.views[V('c4-containers')].nodeIds.push('pc'); }), ['c4-level: "Gateway" is listed with its owner "Payment provider", which is not the view\'s subject: only the subject is drawn as a boundary']);
+  // a person or software system is owned by nothing (T can leave a parent on one)
+  assert.deepEqual(msg(m => { m.nodes.find(n => n.id === 'c4-staff').parent = 'c4-payments'; }), ['c4-owner: "Shop staff", a person, is owned by "Payment provider", a software system: it is owned by nothing',
+    ...[0, 1].map(() => 'c4-level: "Shop staff" is listed with its owner "Payment provider", which is not the view\'s subject: only the subject is drawn as a boundary')], 'in the context and the container view');
+  // a relationship written inline in the view's edges is checked and named by its own path
+  const inl = structuredClone(C4), cv = inl.views[V('c4-containers')]; cv.edges = [...inl.edges.filter(e => cv.nodeIds.includes(e.from) && cv.nodeIds.includes(e.to)).map(e => e.id), { id: 'il', type: 'c4.Relationship', from: 'c4-worker', to: 'c4-courier', props: { technology: 'HTTPS' } }, Rel('ib', 'c4-api', 'c4-db-1', 'Writes')];
+  assert.deepEqual(ours(inl).map(p => [p.rule, p.path]), [['c4-relationship', `views[${V('c4-containers')}].edges[${cv.edges.length - 1}]`], ['c4-label', `views[${V('c4-containers')}].edges[${cv.edges.length - 2}].label`]]);
+  assert.equal(T.text(inl, cv, 'il'), '[HTTPS]', 'the PDF reads an inline relationship\'s technology');
   // the landscape view: a container is an error; the model's rules are said once whatever the number of views
   const land = structuredClone(C4); land.views.push({ id: 'land', diagram: 'c4.landscape', title: 'All', nodeIds: ['c4-shopper', 'c4-bookshop', 'c4-api'] });
   assert.deepEqual(ours(land).map(p => p.message), ['c4-level: "Shop API", a container, is not drawn in a landscape view']);
@@ -342,7 +357,7 @@ const STRESS = (() => {
   for (let i = 0; i < 22; i++) rel(`c${(i * 7) % 30}`, `c${(i * 11 + 3) % 30}`, 'Reads from');
   return { schemaVersion: 2, nodes, edges, views: [{ id: 'all', diagram: 'c4.container', title: 'All', subject: 'sys', nodeIds: nodes.map(n => n.id) }] };
 })();
-test('P1 (§11), C4\'s view measured first: on 50 elements and 70 relationships, a full layout, an element\'s description (its node grows) and an edit that moves nothing (external), laid out and drawn under CI\'s 1 s ceiling, the 100 ms target printed (CPU, best of seven) (timed)', () => {
+test('P1 (§11), C4\'s view measured first: on 50 elements and 70 relationships, a full layout, an element\'s description (its node grows) and the edits that move nothing (external; §11\'s technology), laid out and drawn under CI\'s 1 s ceiling, the 100 ms target printed (CPU, best of seven) (timed)', () => {
   assert.equal(STRESS.nodes.length, 50); assert.equal(STRESS.edges.length, 70); assert.deepEqual(validate(STRESS), []);
   const timed = f => { const c = process.cpuUsage(); f(); const u = process.cpuUsage(c); return (u.user + u.system) / 1000; };
   const memos = {}, draw = m => mapContext(m, { memos }).buildView('all');
@@ -353,9 +368,10 @@ test('P1 (§11), C4\'s view measured first: on 50 elements and 70 relationships,
     assert.equal(memos.all.runs, was + 1, 'a description that grows its node lays the view out again');
     r.still = timed(() => draw(apply(grown, [{ op: 'set', id: 'c5', path: 'props.external', value: true }])));
     assert.equal(memos.all.runs, was + 1, 'external repaints: nothing laid out');
+    r.tech = timed(() => draw(apply(grown, [{ op: 'set', id: 'c5', path: 'props.technology', value: 'Rust' }]))); assert.equal(memos.all.runs, was + 1, 'a technology that keeps the node\'s size repaints: nothing laid out');
     draw(STRESS); return r; })[0]);
   const best = k => Math.min(...runs.map(r => r[k]));
   assert.ok(best('full') < 1000, `full layout ${best('full')} ms`);
-  assert.ok(best('desc') < 1000, `a description ${best('desc')} ms`); assert.ok(best('still') < 1000, `external ${best('still')} ms`);
-  console.log(`# P1 target 100 ms (C4, M2.6): an element's description ${best('desc').toFixed(1)} ms, external (moves nothing) ${best('still').toFixed(1)} ms; full layout ${best('full').toFixed(1)} ms; routes ${JSON.stringify(said(() => layout(STRESS, 'all'))[0].stats)}`);
+  assert.ok(best('desc') < 1000, `a description ${best('desc')} ms`); assert.ok(best('still') < 1000, `external ${best('still')} ms`); assert.ok(best('tech') < 1000, `technology ${best('tech')} ms`);
+  console.log(`# P1 target 100 ms (C4, M2.6): an element's description ${best('desc').toFixed(1)} ms, external (moves nothing) ${best('still').toFixed(1)} ms, a container's technology (§11's named edit, moves nothing) ${best('tech').toFixed(1)} ms; full layout ${best('full').toFixed(1)} ms; routes ${JSON.stringify(said(() => layout(STRESS, 'all'))[0].stats)}`);
 });
