@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 2,
+  "title": "Use case, minimal: an actor, a use case in a subject, an association",
+  "nodes": [
+    {"id":"shopper","type":"uml.Actor","label":"Shopper"},
+    {"id":"shop","type":"uml.Subject","label":"Online bookshop"},
+    {"id":"browse","type":"uml.UseCase","label":"Browse the catalogue","parent":"shop"}
+  ],
+  "edges": [
+    {"id":"uses","type":"uml.Association","from":"shopper","to":"browse"}
+  ],
+  "views": [
+    {"id":"v","diagram":"uml.use-case","title":"Minimal","nodeIds":["shopper","shop","browse"]}
+  ]
+}

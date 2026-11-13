@@ -1,6 +1,6 @@
 <!doctype html>
 <!-- The activity diagram (4.5, notes/stage-4.md §9) in headless Chrome (tests/embed.py), from lib/umlimator-all.js:
-     docs/diagrams/examples/09-activity.json drawn by render() in both themes, three fonts and both directions: no overlap,
+     examples/fulfil-activity.json drawn by render() in both themes, three fonts and both directions: no overlap,
      every text in its shape, every line end on its shape's outline, no line through a node, the bands under the lines with
      each node in its own, names, the reading order of the picture, the legend and contrast; then the gestures, by pointer
      and by keyboard, through the type's hooks (src/typed/edit.js), each through the edit event and apply(): N and the
@@ -46,7 +46,7 @@ const blend = (top, bot) => [0, 1, 2].map(i => top[i] * top[3] + bot[i] * (1 - t
 const lum = c => { const f = v => v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]); };
 const ratio = (fg, bg) => { const [x, y] = [lum(blend(fg, bg)), lum(bg)].sort((p, q) => q - p); return +((x + 0.05) / (y + 0.05)).toFixed(2); };
 const css = (x, k) => rgba(getComputedStyle(x)[k]);
-const EX = await (await fetch('../docs/diagrams/examples/09-activity.json')).json();
+const EX = await (await fetch('../examples/fulfil-activity.json')).json();
 const dir = d => ({ ...EX, views: EX.views.map(v => ({ ...v, direction: d })) });
 const LANE = { 'lane-worker': ['start', 'take-order', 'order', 'split', 'pay'], 'lane-email': ['tell-shopper', 'told'] };
 const laneOf = id => Object.keys(LANE).find(l => LANE[l].includes(id)) || 'lane-warehouse';

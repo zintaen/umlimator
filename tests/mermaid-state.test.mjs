@@ -25,7 +25,7 @@ const canon = m => ({ ...m, nodes: [...m.nodes].sort(byId).map(n => (n.members ?
   edges: [...m.edges].sort(byId), views: m.views.map(v => ({ ...v, nodeIds: [...v.nodeIds].sort() })) });
 
 test('read(write(model)) is example 10, ids included, and nothing is reported', () => {
-  const m = json('../docs/diagrams/examples/10-state-machine.json'), text = write(m), back = read(text);
+  const m = json('../examples/order-states.json'), text = write(m), back = read(text);
   assert.deepEqual(back.report, [], text);
   assert.deepEqual(canon(back.model), canon(project(m, 'order-life')), text);
   assert.doesNotMatch(text, /not written/);

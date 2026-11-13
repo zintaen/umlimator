@@ -308,3 +308,68 @@ layout, as a class diagram:
 Numbers are derived, so a move renumbers. `tests/sequence.html` and `tests/communication.html` test each gesture by
 pointer and by key; the conformance notes (`docs/conformance/uml-sequence.md`, `uml-communication.md`) list what is left
 out.
+
+## The use case, activity, state machine and interaction overview diagrams' gestures (0.21.0)
+
+Stage 4 (`docs/diagrams/notes/stage-4.md` §12) adds one hook, `edits.rename(model, view, id, text)`, which F2 (or a
+double-click on a selected element) calls: a type reads the text into its parts and emits a `set` per part that changed,
+or returns `{ error }`, said on the hint line, with the text kept in the field. A hook may also return
+`{ pick: [labels], then }`: a picker opens under the element and the choice is handed back. A palette entry with
+`name: false` (a control node, a pseudostate, a region) is added with no name prompt. `V` on a selected call behaviour
+action, interaction use or inline interaction opens a picker of the model's views of the kind it opens, then emits
+`set opensView`; Enter, or a double-click, on one opens that view.
+
+The **use case diagram** (`uml.use-case`, `examples/shopping-use-cases.json`):
+
+| Edit | Pointer | Keyboard | Commands |
+|---|---|---|---|
+| add an actor, a use case, a subject, a comment | the palette | `N` (an actor) | `add` with `view` |
+| add an association, include, extend, generalization, comment link | the handle or a drag, then the line's kind | `L`, the other end, Enter, the kind | `add`; an association drawn from a use case to an actor is added from the actor |
+| an extend's condition and extension points | the properties panel | Enter | `set props.condition`, `set props.extensionPoints` (ids) |
+| add, rename, reorder an extension point | the use case's member rows | F2, Enter; `Alt + ↑ / ↓` in a row | the member hook; deleting one drops it from every extend that names it |
+| put a use case in a subject | drop it into the subject's box | the Owner field | `reparent` |
+| rename | double-click once selected | `F2` | `set label` |
+| hide, delete | Remove from view, Delete from model | `Delete`, `Shift + Delete` | `hide`, `delete` |
+
+The **activity diagram** (`uml.activity`, `examples/fulfil-activity.json`), laid out in lanes:
+
+| Edit | Pointer | Keyboard | Commands |
+|---|---|---|---|
+| add a node | the palette (every node of the subset, Partition, Comment); a node goes into the selected partition, or the selected node's lane | `N` | `add`, then `reparent` to the lane; a call behaviour action asks for the activity view it calls (a picker) |
+| add a flow | the handle or a drag, then Control flow or Object flow | `L`, the other end, Enter | `add`; the second unguarded exit of a decision gets the guard `else`; a flow into an initial node, out of a final node or onto a partition is refused |
+| a flow's name and guard | double-click once selected | `F2`: `name [guard]`; an effect or a `/` outside brackets is refused | `set label`, `set props.guard` |
+| change a node's lane | drag it into another band (outside every band: no lane) | the Owner field | `reparent`, and its pin removed, in one transaction |
+| move a node within its lane | drag | `Alt + arrows` | a pin (its row is an order inside the lane) |
+| nest a partition | | the Owner field | `reparent` |
+| move a lane | not by hand: a drag on a partition's header changes nothing | | (the lane's order is the view's `nodeIds` order) |
+| delete a partition | | `Shift + Delete` | a `reparent` of what it held to its own parent, then `delete` |
+| hide, delete anything else | Remove from view, Delete from model | `Delete`, `Shift + Delete` | `hide`, `delete` |
+
+The **state machine diagram** (`uml.state-machine`, `examples/order-states.json`):
+
+| Edit | Pointer | Keyboard | Commands |
+|---|---|---|---|
+| add a state, a pseudostate, a final state, a comment | the palette (State, Initial, Final state, Choice, Junction, Fork, Join, Shallow history, Deep history, Terminate, Comment) | `N` | `add`; a pseudostate's `props.kind` comes from its entry |
+| add a region | the palette's Region with a state selected | | `add` of a `uml.Region` member; with no state selected the hint line says so |
+| add a transition | the handle or a drag (to its own state: a self-transition) | `L`, the other end (or the state's own name), Enter | `add` |
+| a transition's text | double-click once selected | `F2`: `trigger [guard] / effect` | one `set` per part that changed (`undefined` clears one); a text the parser refuses is kept, with why |
+| an activity, an internal transition | the state's member rows: a row `entry / …`, `do / …` or `exit / …` sets that activity | F2, Enter | `set props.entry` …, or the member hook |
+| a pseudostate's kind | the properties panel | Enter | `set props.kind`: its shape is drawn again |
+| nest a state | drop it into an open state's box or a region's (a one-region state's drop goes to its region) | the Owner field: states and regions by their path, " / " between | `reparent` |
+| reorder regions | the state's member rows | `Alt + ↑ / ↓` | the member order: the panel, the PDF and the reading order, not the picture |
+| delete a region | its member row's ✕, or `Shift + Delete` on its box | | `delete`, with what it holds; the hint line says how many |
+| hide a compartment | `present.collapsed: ['activities']`, `present.rows` | | (in the view) |
+| hide, delete | Remove from view, Delete from model | `Delete`, `Shift + Delete` | `hide`, `delete`; a state takes its regions and substates with it |
+
+The **interaction overview diagram** (`uml.interaction-overview`, `examples/buy-book-overview.json`):
+
+| Edit | Pointer | Keyboard | Commands |
+|---|---|---|---|
+| add a control node, an interaction use, an inline interaction, a comment | the palette | `N` | `add`; a use or an inline interaction asks for its sequence view (a picker), and with no name takes the view's title |
+| change the view it opens | | `V`, then the picker | `set opensView` |
+| open its view | double-click it once selected | `Enter` | (the canvas opens the view) |
+| add a flow | the handle or a drag | `L`, the other end, Enter | `add` |
+| a flow's name and guard | double-click once selected | `F2`: `name [guard]` | `set label`, `set props.guard` |
+| hide, delete | Remove from view, Delete from model | `Delete`, `Shift + Delete` | `hide`, `delete` |
+
+An inline interaction is drawn read only: its lifelines and messages are edited in its own sequence view.

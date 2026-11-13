@@ -46,7 +46,7 @@ test('not printable (§7.1): parts a host wrote that would read back otherwise g
 
 test('every transition, internal transition and guard of the target examples 09, 10 and 13 prints and reads back; print(parse(x)) is stable on each', () => {
   let n = 0;
-  for (const f of ['09-activity', '10-state-machine', '13-interaction-overview']) { const m = read(`../docs/diagrams/examples/${f}.json`);
+  for (const f of ['fulfil-activity', 'order-states', 'buy-book-overview']) { const m = read(`../examples/${f}.json`);
     const parts = [...m.edges, ...m.nodes.flatMap(x => x.members || [])].map(x => x.props || {}).filter(p => ['trigger', 'guard', 'effect'].some(k => k in p));
     for (const p of parts) { const want = P(p.trigger, p.guard, p.effect), t = print(want);
       assert.notEqual(t, null, JSON.stringify(p)); assert.deepEqual(parse(t), want, t); assert.equal(print(parse(t)), t, t); n++; } }

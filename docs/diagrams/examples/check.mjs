@@ -11,6 +11,10 @@ import { typedProblems } from '../../../src/core/model.js';
 import { diagramOf } from '../../../src/core/registry.js';
 import '../../../src/uml/class.js'; // registers uml.class
 import '../../../src/uml/sequence.js'; // registers uml.sequence
+import '../../../src/uml/usecase.js'; // registers uml.use-case
+import '../../../src/uml/activity.js'; // registers uml.activity
+import '../../../src/uml/state.js'; // registers uml.state-machine
+import '../../../src/uml/overview.js'; // registers uml.interaction-overview
 
 const DIAGRAMS = ['uml.class', 'uml.object', 'uml.package', 'uml.composite-structure', 'uml.component', 'uml.deployment', 'uml.profile',
   'uml.use-case', 'uml.activity', 'uml.state-machine', 'uml.sequence', 'uml.communication', 'uml.interaction-overview', 'uml.timing',
@@ -21,7 +25,9 @@ const TYPE = /^[a-z0-9]+\.[A-Z][A-Za-z0-9]*$/; // in the examples every element 
 const REF = ['replyTo', 'attachedTo', 'references', 'container'], REFS = ['conveyed', 'covers', 'extensionPoints', 'categoryValueRef']; // props that name elements
 
 // the target examples that moved to examples/ when their type drew: the name they had here, and where they are now
-export const MOVED = { '01-class.json': '../../../examples/sales-classes.json', '02-object.json': '../../../examples/order-objects.json', '03-package.json': '../../../examples/bookshop-packages.json', '11-sequence.json': '../../../examples/checkout-sequence.json', '12-communication.json': '../../../examples/checkout-communication.json' };
+export const MOVED = { '01-class.json': '../../../examples/sales-classes.json', '02-object.json': '../../../examples/order-objects.json', '03-package.json': '../../../examples/bookshop-packages.json', '11-sequence.json': '../../../examples/checkout-sequence.json', '12-communication.json': '../../../examples/checkout-communication.json',
+  '08-use-case.json': '../../../examples/shopping-use-cases.json', '09-activity.json': '../../../examples/fulfil-activity.json', '10-state-machine.json': '../../../examples/order-states.json',
+  '13-interaction-overview.json': '../../../examples/buy-book-overview.json' };
 
 // all 28 target examples, those still here and those that moved, in file order: [name, its URL]
 export function targets() {
