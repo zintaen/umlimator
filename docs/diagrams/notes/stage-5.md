@@ -104,11 +104,12 @@ What may touch the core, each change stating its bytes in its pull request. Each
 | Change | File | Lane | Target |
 |---|---|---|---|
 | `LP.ports(pushSide)` becomes `LP.ports(pushSide, sides)`; the hook places port ends and deletes the entries it placed (S5) | `src/layout/layered.js` | 5.1 | 6 B |
-| The side cap leaves an end with a port (`e.fromPort` on its `from` end, `e.toPort` on its `to` end) on its side (§4.2) | `src/layout/layered.js` | 5.1 | 20 B |
+| ~~The side cap leaves an end with a port on its side (§4.2)~~ Built in the port hook instead (5.1): it puts a port's end back on the side the type gave, so the cap needs no skip | `src/typed/layout.js` | 5.1 | 0 B |
 | An `inner` line passes `holds` (S6); its point is placed by the port hook | `src/layout/layered.js` | 5.1 | 15 B |
-| `frameOf` asks a typed view's `TYPED.frame(f, b, rects)` for the padding and the round frame (S8, S12) | `src/layout/layered.js` | 5.1 | 45 B |
+| `frameOf` asks a typed view's `TYPED.frame(b)` for the padding and the round frame (S8, S12); `b` is the frame as measured, carrying the box's `pad` and `round` | `src/layout/layered.js` | 5.1 | 45 B |
+| The jog repair reads a side the port hook may have emptied and deleted (`sides[…]?.length`) | `src/layout/layered.js` | 5.1 | 1 B |
 | The registry's pointer line to the fields' documentation | `src/core/registry.js` | 5.1 | 40 B |
-| | | | **126 B** |
+| | | | **126 B** (built: 92 B, 184,984 B to 185,076 B) |
 | Only if decision 9 takes `labelGaps`: `tight` reads `map \|\| dg.labelGaps`, column gaps only | `src/layout/layered.js` | 5.1 | 25 B |
 
 | Option | For | Against |
@@ -260,6 +261,21 @@ its side and before the per-side spread (Q1). Port placement goes inside it; the
    spacing down to 4 px, then is reported by the layout check;
 4. for each line, sets its end's point (`e.p1` or `e.p2`) on the border at its place in its port, and records each port's
    rectangle in `e.fpb` and `e.tpb` (the port's box on that end), which the type reads to draw it.
+
+**As built (5.1).** Where the build departs from the above:
+
+- The side cap is not taught to skip port ends (§2.3): the hook takes every end that names a port off the side the cap left it
+  on and puts it back on the side the type gave (`fromSide`, `toSide`), so it costs no core byte.
+- The hook deletes a side it has emptied; layoutPass's jog repair reads such a side with `?.` (1 B). A view with ports passes
+  `repair: false`, as the three types do (§14): port repair would swap a port's end with another line's.
+- `portRank` is a number, or `[from, to]` for a line with a port at each end.
+- A port with `k` lines on one face takes room beside its node: the column (row) gap it faces widens to `k × 10 + 2 × STUB +
+  8` px, in `TYPED.loops` (no core byte). Without it the four-line port's lines crossed in a 48 px gap.
+- An end with no port on a side that holds a port is a group of one, 2 px long; ports' ends sit on the border (the square's
+  middle), and each end's port box is its own copy (`e.fpb`, `e.tpb`).
+- Known limit: lines into one side of a node are routed nearest first (`into`, layoutPass); a line of a port into a side that
+  another line also comes into can be routed before its port's other lines and cross them. The fixture has none; 5.4 to 5.6
+  pin what is left.
 
 `fromPort`, `toPort`, `inner` and `portRank` join `EDGE_GEO` (`src/typed/layout.js`), so a change of port, or a reorder of
 the members, lays the view out again; a box's `pad` and `round` are inside `containers`, already in `VIEW_GEO`. If
@@ -625,6 +641,11 @@ The three target examples move to `examples/bookshop-components.json`, `examples
   tight, measured with and without); if the edit is over 100 ms on an idle machine, the maintainer decides among P1's other
   options (stage 4 §17) before 5.4 and 5.5 start.
 - Browser timings under headless virtual time prove nothing (1.11): budgets are enforced in Node.
+- **5.1's spike, as run** (`tests/typed-ports.test.mjs`, 50 nodes, 60 lines with labels of up to 44 characters cut at 280 px,
+  40 lines from ports and six inner lines, boxes six deep with 48 px padding; CPU, best of seven after a warm-up, on this
+  laptop): a label edit laid out and drawn 24 to 28 ms, a full layout 24 to 34 ms; every line routed clean (60 `grid`). Of 54
+  labels, 12 found no spot under §8's small gap. With `labelGaps` tried on a scratch copy (column gaps only): none left, the
+  view 7,435 px wide instead of 4,339, the edit 27 ms. `labelGaps` is not built: decision 9 goes back to the maintainer.
 
 | Option | For | Against |
 |---|---|---|
