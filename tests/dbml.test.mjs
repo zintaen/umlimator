@@ -18,28 +18,37 @@ test('the captured Database reads into a model check.mjs passes, with the pinned
   assert.equal(captured.core, '@dbml/core 11.0.0');
   const { model, report } = read(captured.database);
   assert.deepEqual(check(model, 'er'), []);
-  assert.deepEqual(model.views, [{ id: 'schema', diagram: 'er', nodeIds: ['customer', 'order', 'order_line', 'book', 'author', 'book_author', 'payment', 'shipment', 'tag', 'stock'] }]);
+  assert.deepEqual(model.views, [{ id: 'schema', diagram: 'er', nodeIds: ['customer', 'order', 'order_line', 'book', 'author',
+    'book_author', 'payment', 'shipment', 'tag', 'review', 'profile', 'stock'] }]);
   // each ref from its referenced end to its referring one; identifying when the foreign key is in the child's key; an
   // optional parent where the foreign key is nullable; one-to-one `0..1`; a many-to-many with no foreign key
   assert.deepEqual(model.edges.map(rel), [
     ['customer-customer', 'customer', 'customer', false, '0..1', '0..*'], // inline, through the alias C
     ['book-book_author', 'book', 'book_author', true, '1', '0..*'],
     ['author-book_author', 'author', 'book_author', true, '1', '0..*'],
+    ['customer-profile', 'customer', 'profile', true, '1', '0..1'], // inline one-to-one: its referenced end first
     ['customer-order', 'customer', 'order', false, '1', '0..*'],
     ['order-order_line', 'order', 'order_line', true, '1', '0..*'],
     ['book-order_line', 'book', 'order_line', false, '1', '0..*'],
     ['order-payment', 'order', 'payment', false, '1', '0..1'],
     ['order_line-shipment', 'order_line', 'shipment', false, '0..1', '0..*'], // a composite foreign key, nullable
     ['book-tag', 'book', 'tag', false, '0..*', '0..*'],
-    ['book-stock', 'book', 'stock', true, '1', '0..1']]); // across schemas, its key a foreign key
+    ['book-stock', 'book', 'stock', true, '1', '0..1'], // across schemas, its key a foreign key
+    ['book-review', 'book', 'review', false, '1', '0..*']]); // `<`
   const col = id => model.nodes.flatMap(n => n.members || []).find(c => c.id === id);
   assert.deepEqual(col('order_line.order_id'), { id: 'order_line.order_id', type: 'er.Column', label: 'order_id', props: { dataType: 'bigint', primaryKey: true, foreignKey: true, references: 'order.id' } });
   assert.deepEqual(col('shipment.line_no').props, { dataType: 'integer', nullable: true, foreignKey: true, references: 'order_line.line_no' });
   assert.deepEqual(col('customer.email').props, { dataType: 'varchar(255)', unique: true });
   assert.deepEqual(col('payment.amount').props, { dataType: 'numeric(10,2)' });
   assert.deepEqual(col('order.status').props, { dataType: 'order_status', nullable: true });
+  assert.deepEqual(col('profile.customer_id').props, { dataType: 'bigint', primaryKey: true, foreignKey: true, references: 'customer.id' });
+  assert.deepEqual(col('profile.bio').props, { dataType: 'text', nullable: true }); // `[null]`
+  assert.deepEqual(col('profile.updated_at').props, { dataType: 'timestamptz', nullable: true }); // from the partial
+  // export() drops the project (its name, note and database type), the diagram view and profile's `checks {}`, so the
+  // report cannot name them; a Database has them (the next test)
   assert.deepEqual(report, [
     skip('', 'the database: its sticky notes are not read'),
+    skip('', 'the database: its records are not read'),
     skip('schemas[0].enums[0]', 'enum order_status: not read'),
     skip('schemas[0].tableGroups[0]', 'table group sales: not read'),
     skip('schemas[0].tables[0]', 'table customer: its note is not read'),
@@ -49,11 +58,15 @@ test('the captured Database reads into a model check.mjs passes, with the pinned
     skip('schemas[0].tables[1].fields[2]', 'order.status: its default is not read'),
     skip('schemas[0].tables[2].fields[3]', 'order_line.quantity: its note is not read'),
     skip('schemas[0].tables[2].indexes[1]', 'table order_line: an index is not read'),
+    skip('schemas[0].tables[9].fields[2]', 'review.rating: its checks are not read'),
+    approx('schemas[0].tables[10]', "table profile: its partials' fields are read as its own"),
     approx('schemas[1].tables[0]', 'table warehouse.stock: its schema is not kept, so it is read as stock'),
     skip('schemas[1].tables[0].fields[1]', 'stock.on_hand: its default is not read'),
-    skip('schemas[0].refs[3]', 'ref order.(customer_id) -> customer.(id): its delete action is not read'),
-    skip('schemas[0].refs[5]', 'ref order_line.(book_id) -> book.(id): its name is not read'),
-    approx('schemas[0].refs[8]', 'ref book.(id) -> tag.(id): a many-to-many is one relationship with no foreign key')]);
+    skip('schemas[0].refs[4]', 'ref order.(customer_id) -> customer.(id): its delete action is not read'),
+    skip('schemas[0].refs[6]', 'ref order_line.(book_id) -> book.(id): its name is not read'),
+    approx('schemas[0].refs[9]', 'ref book.(id) -> tag.(id): a many-to-many is one relationship with no foreign key'),
+    skip('schemas[0].refs[11]', 'ref review.(book_id) -> book.(id): its update action is not read'),
+    skip('schemas[0].refs[11]', 'ref review.(book_id) -> book.(id): its colour is not read')]);
   // same Database, same ids and model (R3); the input is not changed
   const before = JSON.stringify(captured.database);
   assert.deepEqual(read(JSON.parse(before)), { model, report });
@@ -106,6 +119,25 @@ test('input that is not a Database, and fields of the wrong kind, are skipped an
   const trap = db([table('t'), table('u', [{ name: 'id', type: { type_name: 'int' } }, boom]), table('v')]);
   assert.equal(read(Object.defineProperty({}, 'schemas', { get() { throw new Error('boom'); } })).report.length, 1);
   assert.deepEqual(read({ ...db([]), name: 'Bookshop' }).model.title, 'Bookshop');
+  // what a Database has and its export() drops: the project, diagram views, a table's `checks {}`, a ref's note (12.0.0)
+  const full = { ...db([table('a', [{ name: 'id', type: { type_name: 'int' }, pk: true, checks: [{}] }], { checks: [{}] })],
+    [{ ...ref('a', 'a'), name: null, note: 'n' }]), name: 'Bookshop', note: 'n', databaseType: 'PostgreSQL', diagramViews: [{}] };
+  assert.deepEqual([read(full).model.title, read(full).report], ['Bookshop', [
+    skip('', 'the database: its note is not read'), skip('', 'the database: its database type is not read'),
+    skip('', 'the database: its diagram views are not read'), skip('schemas[0].tables[0]', 'table a: its checks are not read'),
+    skip('schemas[0].tables[0].fields[0]', 'a.id: its checks are not read'),
+    skip('schemas[0].refs[0]', 'ref a.(id) -> a.(id): its note is not read')]]);
+  // a thrown object whose message is not text, or whose message getter throws again
+  for (const e of [{ message: Symbol('x') }, { get message() { throw 1; } }, null])
+    assert.deepEqual(read({ get schemas() { throw e; } }).report, [skip('', 'the Database could not be read to its end (an error): the rest is not read')]);
+  // a one-to-one: a standalone ref (a name key, null when unnamed) writes its referring end first, an inline one (none) second
+  const one = [table('a'), table('b', [{ name: 'a_id', type: { type_name: 'int' }, unique: true, not_null: true }])];
+  const fk = r => r.model.nodes.flatMap(n => n.members).filter(c => c.props.foreignKey).map(c => `${c.id} ${c.props.references}`);
+  assert.deepEqual(fk(read(db(one, [{ ...ref('b', 'a', '1', '1', ['a_id']), name: null }]))), ['b.a_id a.id']);
+  assert.deepEqual(fk(read(db(one, [ref('a', 'b', '1', '1', ['id'], ['a_id'])]))), ['b.a_id a.id']);
+  // a schema name that is not text is not read as `public`
+  assert.deepEqual(read(db([table('a')], [{ endpoints: [{ schemaName: 5, tableName: 'a', fieldNames: ['id'], relation: '*' },
+    { tableName: 'a', fieldNames: ['id'], relation: '1' }] }])).report, [skip('schemas[0].refs[0]', 'a ref whose ends are not two columns of tables read: not read')]);
   const r = read(trap);
   assert.deepEqual([r.model.nodes.map(n => [n.id, (n.members || []).map(c => c.id)]), r.report], [[['t', ['t.id']], ['u', ['u.id']]], [skip('', 'the Database could not be read to its end (boom): the rest is not read')]]);
 });
@@ -142,8 +174,13 @@ test('counts over the limit: 10,000 tables, columns and refs read, the rest repo
   assert.equal(refs.model.edges.length, N);
   assert.equal(refs.model.edges.at(-1).id, `a-b-${N}`);
   assert.deepEqual(refs.report, [skip(`schemas[0].refs[${N}]`, `over ${N} refs: the rest are not read`)]);
+  const names = read(db([table('a'), table('b')], Array(N).fill(ref('b', 'a', '*', '1', Array(20).fill('id'), Array(20).fill('id')))));
+  assert.deepEqual([names.model.edges.length, names.report.at(-1)], [2500, skip('schemas[0].refs[2500]', `over ${10 * N} column names in refs and keys: the rest are not read`)]);
+  const said = read({ schemas: [{ enums: Array(N + 7).fill({ name: 'e' }) }] }).report;
+  assert.deepEqual([said.length, said.at(-1)], [N + 1, skip('', '7 more items like these: not listed')]);
 
   let deep = { type_name: 'int' }; for (let k = 0; k < 200000; k++) deep = { type_name: 'int', args: deep }; // nesting is never followed
+  const wide = Array(200000).fill({ type: 'column', value: 'id' });
   let note = 'x'; for (let k = 0; k < 200000; k++) note = { note };
   const hostile = [
     db(many(200000)), // tables over the limit
@@ -151,7 +188,10 @@ test('counts over the limit: 10,000 tables, columns and refs read, the rest repo
     db(many(N), Array.from({ length: 200000 }, (_, k) => ref(`t${k % N}`, `t${(k * 7) % N}`))), // refs over the limit
     db(many(N), Array.from({ length: 200000 }, (_, k) => ref(`t${k % 3}`, 't0', '*', '*'))), // many-to-many between few pairs: ids
     { schemas: Array.from({ length: 200000 }, (_, k) => ({ name: `s${k}`, tables: [table('__proto__')], enums: [{ name: 'e' }] })) }, // schemas, names taken
-    db([table('w', [{ name: 'id', type: { type_name: 'int' } }], { indexes: Array.from({ length: 200000 }, () => ({ pk: true, columns: Array.from({ length: 5 }, () => ({ type: 'column', value: 'id' })) })) })])];
+    db([table('w', [{ name: 'id', type: { type_name: 'int' } }], { indexes: Array.from({ length: 200000 }, () => ({ pk: true, columns: Array.from({ length: 5 }, () => ({ type: 'column', value: 'id' })) })) })]),
+    db(many(N), Array(N).fill(ref('t0', 't1', '*', '1', Array(200000).fill('id'), Array(200000).fill('id')))), // long column lists, shared
+    db(many(N).map(t => ({ ...t, indexes: [{ pk: true, columns: wide }] }))), // a long key index, shared
+    { schemas: [{ enums: Array(200000).fill({ name: 'e' }), tables: Array(200000).fill(null) }] }]; // a report of 400,000 items
   // in this process's CPU time, a slow run tried twice more, its best kept (a cold or busy runner is several times slower)
   const cpu = f => { const c = process.cpuUsage(), out = f(), u = process.cpuUsage(c); return [out, (u.user + u.system) / 1000]; };
   const best = f => { let [out, ms] = cpu(f); for (let i = 0; i < 2 && ms >= 1000; i++) ms = Math.min(ms, cpu(f)[1]); return [out, ms]; };
@@ -159,6 +199,6 @@ test('counts over the limit: 10,000 tables, columns and refs read, the rest repo
     const [r, ms] = best(() => read(h));
     console.log(`hostile input ${k}: ${ms.toFixed(0)} ms CPU (target and ceiling 1000 ms)`);
     assert.ok(ms < 1000, `hostile input ${k}: ${ms} ms`);
-    assert.ok(r.model.nodes.length <= N && r.model.edges.length <= N);
+    assert.ok(r.model.nodes.length <= N && r.model.edges.length <= N && r.report.length <= N + 1);
   });
 });
