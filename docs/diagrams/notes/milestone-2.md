@@ -1,6 +1,6 @@
 # Milestone 2 design note: ER, flowchart, data flow, information flow and C4
 
-Status: **proposed**, for the maintainer's approval before work package M2.0 starts. Written against `main` at 5f20041
+Status: **approved** by the maintainer 13 Nov 2026, with every recommendation of §17 taken except decision 18, where the maintainer chose (b): five code lanes at most across the project, stage 6 included; the maintainer approves it before work package M2.0 starts. Written against `main` at 5f20041
 (0.21.0 released, #228; stage 5's 5.0 to 5.6 merged); stage 5's 5.8 was read on its branch (`stage5-docs`, 21f3bda) for
 the Bookshop atlas and its examples. Stage 6's note (profile, timing) was read on its branch (`stage6-note`, ac34e6b and
 its revision 2e72c6b, both from 5f20041): where this note depends on it, it names its packages (Q17). Symbols are named,
@@ -970,7 +970,7 @@ Each is set out with its options and trade-offs in the section named; the recomm
 | 15 | A Mermaid flowchart's import | A map by default, `--typed` for the typed reader | Typed by default, a stated exception | §8.5 |
 | 16 | The PDF's line rows (R9) | A registry field `text`, about 30 B | A derived label on a copy; R9 left open | §9 |
 | 17 | P1 | Both flags off; 1 s in CI with 100 ms printed; C4's view measured first | | §11 |
-| 18 | Order and lanes | No cap across the project (disjoint Owns and rehearsed merges, as stage 6); readers beside stage 6 once M2.0 merges; M2.1 after 6.1, M2.2 after 6.3 | Five lanes at most, stage 6 adopting it; five lanes for M2 only, the readers after stage 6's code; after 0.23.0 | §12.3 |
+| 18 | Order and lanes | Taken, the maintainer's decision of 13 Nov 2026: five code lanes at most across the project, stage 6 included (option b); M2's readers start as stage 6's lanes free up. Was: No cap across the project (disjoint Owns and rehearsed merges, as stage 6); readers beside stage 6 once M2.0 merges; M2.1 after 6.1, M2.2 after 6.3 | Five lanes at most, stage 6 adopting it; five lanes for M2 only, the readers after stage 6's code; after 0.23.0 | §12.3 |
 | 19 | The atlas's ids | Prefixes for ER, DFD and C4; renames for the flowchart; sharing stage 5's components in the information flow | Namespaced by the builder; C4 sharing the map's cards | §12.5 |
 | 20 | The atlas's root | The C4 context | The map's overview | §12.5 |
 | 21 | C10 | Tested in M2.14; the skill's pin does not move | The skill writes typed C4 | §12.6 |
