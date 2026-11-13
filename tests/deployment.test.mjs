@@ -17,6 +17,7 @@ import { mapContext } from '../src/map/context.js';
 import { validate } from '../src/map/validate.js';
 import { describe } from '../src/map/insight.js';
 import { svgOf } from '../src/draw/svg.js';
+import { layoutTyped } from '../src/typed/layout.js';
 import '../src/uml/deployment.js';
 
 const DEP = JSON.parse(readFileSync(new URL('../docs/diagrams/examples/06-deployment.json', import.meta.url)));
@@ -31,11 +32,9 @@ const said = f => { const w = [], keep = console.warn; console.warn = m => w.pus
 // each line's drawn path's two ends, from the markup (tests/usecase.test.mjs)
 const ends = markup => [...markup.matchAll(/<g class="edge-g[^"]*" data-from="([^"]*)" data-to="([^"]*)" data-i="(\d+)">[\s\S]*?<path d="([^"]*)" class="edge/g)]
   .map(([, from, to, i, d]) => { const v = d.match(/-?\d+(\.\d+)?/g).map(Number); return { from, to, i: +i, a: v.slice(0, 2), b: v.slice(-2) }; });
-// a point's distance from a closed cube's outline (SHAPE.node's, 10 px deep), or from a cube box's: its border on the left
-// and bottom, its faces 10 px outside it on the top and right
-const cubeOff = (n, [x, y], box) => {
-  const p = 10, poly = box ? [[n.x, n.y], [n.x + p, n.y - p], [n.x + n.w + p, n.y - p], [n.x + n.w + p, n.y + n.h - p], [n.x + n.w, n.y + n.h], [n.x, n.y + n.h]]
-    : [[n.x, n.y + p], [n.x + p, n.y], [n.x + n.w, n.y], [n.x + n.w, n.y + n.h - p], [n.x + n.w - p, n.y + n.h], [n.x, n.y + n.h]];
+// a point's distance from a cube's outline (SHAPE.node's, 10 px deep), closed or a box's: the frame holds the faces
+const cubeOff = (n, [x, y]) => {
+  const p = 10, poly = [[n.x, n.y + p], [n.x + p, n.y], [n.x + n.w, n.y], [n.x + n.w, n.y + n.h - p], [n.x + n.w - p, n.y + n.h], [n.x, n.y + n.h]];
   return Math.min(...poly.map((a, i) => { const b = poly[(i + 1) % poly.length], dx = b[0] - a[0], dy = b[1] - a[1], t = Math.max(0, Math.min(1, ((x - a[0]) * dx + (y - a[1]) * dy) / (dx * dx + dy * dy)));
     return Math.hypot(x - a[0] - t * dx, y - a[1] - t * dy); })); };
 const boxOff = (n, [x, y]) => { const dx = Math.max(n.x - x, 0, x - n.x - n.w), dy = Math.max(n.y - y, 0, y - n.y - n.h); return dx || dy ? Math.hypot(dx, dy) : Math.min(x - n.x, n.x + n.w - x, y - n.y, n.y + n.h - y); };
@@ -50,7 +49,7 @@ test('the definition: uml.deployment is registered with its palette, its five li
   assert.deepEqual(Object.keys(T.rules), ['deploy-ends', 'deployed-twice', 'nest-kinds', 'path-ends', 'manifest-ends']);
 });
 
-test('the cube: as wide as its widest text and 10 px of depth, its keyword over the name; its inset puts a slid point on its outline; open, its faces lie outside the border', () => {
+test('the cube: as wide as its widest text and 10 px of depth, its keyword over the name; its inset puts a slid point on its outline; open, its frame holds its faces', () => {
   const C = SHAPE.cube, n = { type: 'uml.ExecutionEnvironment', label: 'Java 21 runtime', stereotypes: ['jvm'] }, { w, h } = C.size(n), box = { ...n, x: 0, y: 0, w, h };
   assert.ok(w >= 130 && w <= 330 && h >= 60, `${w} × ${h}`);
   assert.ok(C.size({ type: 'uml.Node', label: 'A' }).w === 130 && C.size({ type: 'uml.Node', label: 'A' }).h === 60, 'the smallest cube');
@@ -63,8 +62,8 @@ test('the cube: as wide as its widest text and 10 px of depth, its keyword over 
   assert.match(svg, /data-shape="cube" tabindex="-1" role="img" aria-label="Execution environment Java 21 runtime"/);
   assert.match(svg, /class="c-st"[^>]*>«executionEnvironment»<\/text>[^]*class="c-st"[^>]*>«jvm»<\/text>[^]*class="c-name" data-o="jvm"[^>]*>Java 21 runtime</);
   const f = SHAPE.cube.frame({ id: 'b', x: 100, y: 100, w: 300, h: 120, title: '«device» Application server' });
-  assert.match(f, /class="family-box" x="100" y="100" width="300" height="120"/);
-  assert.match(f, /d="M100 100L110 90H410V210L400 220M400 100L410 90" class="dp-face"/, 'the top and right faces, 10 px outside');
+  assert.match(f, /class="family-box" x="100" y="110" width="290" height="110"/, 'the front face');
+  assert.match(f, /d="M100 110L110 100H400V210L390 220M390 110L400 100" class="dp-face"/, 'the outline and the faces\' edge, inside the frame');
   assert.match(f, /class="family-title"[^>]*>«device» Application server</);
 });
 
@@ -95,22 +94,27 @@ test('06-deployment.json draws: cubes, boxes nested by parent, artifacts, compon
   assert.deepEqual({ gap, rgap, labelGaps, repair, reroute }, { gap: 48, rgap: 56, labelGaps: true, repair: false, reroute: false });
 });
 
-test('decision 21: what 06-deployment.json keeps laid out down, pinned: no label with no spot and none cut short, right and down', () => {
-  const out = {};
-  for (const direction of ['right', 'down']) { const g = layout(withDir(DEP, direction), 'production'), lab = g.edges.filter(e => e.label);
-    out[direction] = { labels: lab.length, noSpot: lab.filter(e => !e.lbl).map(e => e.id), cut: lab.filter(e => e.lbl && e.lbl.short).map(e => e.id), w: Math.round(g.bounds.w), h: Math.round(g.bounds.h), routes: g.stats }; }
+test('decision 21: what 06-deployment.json keeps laid out down, pinned: no label with no spot and none cut short, right and down; without labelGaps, one with no spot down', () => {
+  const out = {}, sum = g => { const lab = g.edges.filter(e => e.label);
+    return { labels: lab.length, noSpot: lab.filter(e => !e.lbl).map(e => e.id), cut: lab.filter(e => e.lbl && e.lbl.short).map(e => e.id), w: Math.round(g.bounds.w), h: Math.round(g.bounds.h), routes: g.stats }; };
+  for (const direction of ['right', 'down']) { const memos = {}, m = withDir(DEP, direction); mapContext(m, { memos }).buildView('production');
+    out[direction] = sum(layout(m, 'production'));
+    out[direction + ' without labelGaps'] = sum(layoutTyped({ ...structuredClone(memos.production.dg), labelGaps: false })); }
   console.log(`# 5.5 decision 21: 06-deployment.json ${JSON.stringify(out)}`);
   for (const d of ['right', 'down']) assert.deepEqual([out[d].labels, out[d].noSpot, out[d].cut], [7, [], []], d);
+  assert.deepEqual(out['right without labelGaps'].noSpot, [], 'laid out right, labelGaps changes nothing');
+  assert.deepEqual(out['down without labelGaps'].noSpot, ['edge-to-app'], 'laid out down, labelGaps gives "HTTP" its spot');
+  assert.ok(out.down.h > out['down without labelGaps'].h, 'for some height');
 });
 
-test('every line end is on its outline within 1 px: a closed cube\'s, an artifact\'s and a component\'s box, a cube box\'s border or the face outside it', () => {
+test('every line end is on its outline within 1 px: a closed cube\'s, an artifact\'s and a component\'s box, a cube box\'s', () => {
   for (const direction of ['right', 'down']) {
     const { g, markup } = mapContext(withDir(DEP, direction)).buildView('production'), E = ends(markup);
     assert.equal(E.length, g.edges.length);
     let faces = 0;
     E.forEach(({ from, to, i, a, b }) => [[from, a], [to, b]].forEach(([id, p]) => { const n = g.byId[id], f = !n && g.families.find(x => x.id === id);
-      const d = n ? (n.shape === 'cube' ? cubeOff(n, p, false) : boxOff(n, p)) : cubeOff(f, p, true);
-      if (f && (p[1] < f.y - 1 || p[0] > f.x + f.w + 1)) faces++;
+      const d = n ? (n.shape === 'cube' ? cubeOff(n, p) : boxOff(n, p)) : cubeOff(f, p);
+      if (f && (p[1] < f.y + 1 || p[0] > f.x + f.w - 1)) faces++;
       assert.ok(d <= 1, `${direction}: ${g.edges[i].id} ends ${d.toFixed(2)} px off ${id}`); }));
     assert.ok(faces > 0, `${direction}: some line ends on a box's face`);
   }
@@ -139,6 +143,24 @@ test('boxes six deep (§7, L8): each inside the one before, a path from the deep
   }
   console.log(`# 5.5 six levels: the outer box ${JSON.stringify(sizes)} (w × h, right and down)`);
 });
+
+// a cube box's faces: its top strip and its right strip, 10 px deep, inside its frame; their lines, the front face's top and
+// right and the slanted edges
+const faceStrips = f => [{ x: f.x + 10, y: f.y, w: f.w - 10, h: 10, along: 0 }, { x: f.x + f.w - 10, y: f.y + 10, w: 10, h: f.h - 10, along: 1 }];
+const faceLines = ({ x, y, w, h }) => [[[x, y + 10], [x + w - 10, y + 10]], [[x + w - 10, y + 10], [x + w - 10, y + h]], [[x, y + 10], [x + 10, y]], [[x + w - 10, y + 10], [x + w, y]], [[x + w, y + h - 10], [x + w - 10, y + h]]];
+const crosses = (L, [a, b]) => { for (let t = 0; t <= 1; t += 0.01) { const x = a[0] + (b[0] - a[0]) * t, y = a[1] + (b[1] - a[1]) * t; if (x > L.x + 1 && x < L.x + L.w - 1 && y > L.y + 1 && y < L.y + L.h - 1) return true; } return false; };
+function faceIssues(g) {
+  const out = [], F = new Set(g.families.map(f => f.id));
+  for (const f of g.families) {
+    for (const e of g.edges) for (let i = 0; i + 1 < e.pts.length; i++) { const [a, b] = [e.pts[i], e.pts[i + 1]];
+      for (const s of faceStrips(f)) { const k = s.along, o = 1 - k, lo0 = [s.x, s.y][o], d = [s.w, s.h][o]; // a run along the strip, inside it
+        if (Math.abs(a[o] - b[o]) < .5 && a[o] > lo0 + .5 && a[o] < lo0 + d - .5) { const lo = Math.max(Math.min(a[k], b[k]), [s.x, s.y][k]), hi = Math.min(Math.max(a[k], b[k]), [s.x, s.y][k] + [s.w, s.h][k]); if (hi - lo > 12) out.push(`${e.id} runs ${Math.round(hi - lo)} px in ${f.id}'s face`); } } }
+    for (const e of g.edges) if (e.lbl && faceLines(f).some(l => crosses(e.lbl, l))) out.push(`${e.id}'s label "${e.lbl.text}" on ${f.id}'s face`);
+  }
+  // a line's end on a box: its last run long enough for an arrowhead (about 9 px)
+  for (const e of g.edges) [[e.from, e.pts[0], e.pts[1]], [e.to, e.pts.at(-1), e.pts.at(-2)]].forEach(([id, p, q]) => { if (F.has(id) && Math.hypot(p[0] - q[0], p[1] - q[1]) < 12) out.push(`${e.id}'s end on ${id}: ${Math.hypot(p[0] - q[0], p[1] - q[1]).toFixed(1)} px`); });
+  return out;
+}
 
 test('the layout is not edited after layoutTyped: drawn twice from one memo, the same markup (notes/stage-5.md §2.4)', () => {
   const memos = {}, unid = s => s.replace(/\bg\d+-/g, 'g-');
@@ -190,6 +212,10 @@ test('the PDF\'s tables (§11): a target\'s kind and what is deployed on it, by 
   assert.deepEqual(T.rows(DEP, v, 'database'), []);
   assert.deepEqual(T.rows(DEP, v, 'shop-api-jar'), ['manifests Shop API']);
   assert.equal(T.rows(DEP, v, 'shop-api'), null);
+  // a «deploy» line from what is no artifact (deploy-ends' error) is no artifact deployed
+  const bad = structuredClone(DEP); bad.edges.push(L('bad', 'Deployment', 'database', 'edge'));
+  assert.deepEqual(T.rows(bad, v, 'edge'), ['routes.conf, by «deploy»']);
+  assert.equal(layout(bad, 'production').byId.edge.aria, 'Node Edge proxy, 1 artifact deployed');
 });
 
 // ---- §10.3: validators, each with a passing and a failing case
@@ -215,10 +241,15 @@ test('validators: 06-deployment.json breaks no rule; each rule fails on a model 
   const pair = (k, up) => T.validate(model([N('o', up, 'O'), N('i', k, 'I', 'o')], [])).map(p => `${p.level} ${p.rule}`);
   for (const [k, up] of [['ExecutionEnvironment', 'Node'], ['ExecutionEnvironment', 'Device'], ['ExecutionEnvironment', 'ExecutionEnvironment'], ['Device', 'Node'], ['Device', 'Device'], ['Node', 'Node']]) assert.deepEqual(pair(k, up), [], `${k} in ${up}`);
   for (const [k, up] of [['Node', 'Device'], ['Node', 'ExecutionEnvironment'], ['Device', 'ExecutionEnvironment']]) assert.deepEqual(pair(k, up), ['warning nest-kinds'], `${k} in ${up}`);
+  assert.equal(T.validate(model([N('o', 'ExecutionEnvironment', 'O'), N('i', 'Node', 'I', 'o')], []))[0].message, 'nest-kinds: "I", a node, is in "O", an execution environment: an unusual pair');
+  assert.equal(T.validate(model([N('a', 'Artifact', 'A'), N('n', 'Node', 'N', 'a')], []))[0].message, 'nest-kinds: "N", a node, is owned by "A", an artifact: its owner is a node, a device or an execution environment');
   assert.equal(T.validate(model([N('o', 'Node', 'O'), N('i', 'Device', 'I', 'o'), N('a', 'Artifact', 'a')], [L('x', 'Manifestation', 'a', 'o')]))[0].message, 'manifest-ends: x runs to node o ("O"): «manifest» is drawn to a component only');
   // an artifact nested and deployed by a line to its own target is said once, by neither rule; a path from a node to itself is not one
   const own = structuredClone(DEP); own.edges.push(L('again', 'Deployment', 'shop-api-jar', 'jvm')); assert.deepEqual(T.validate(own), []);
   const loop = structuredClone(DEP); loop.edges.push(L('loop', 'CommunicationPath', 'edge', 'edge')); assert.deepEqual(T.validate(loop).map(p => p.rule), ['path-ends']);
+  // nor is one from a target to what it holds, at any depth (never drawn)
+  for (const [a, b] of [['jvm', 'app-server'], ['app-server', 'jvm'], ['shopper-device', 'browser']]) { const m = structuredClone(DEP); m.edges.push(L('in', 'CommunicationPath', a, b));
+    assert.deepEqual(T.validate(m).map(p => p.rule), ['path-ends'], `${a} to ${b}`); }
 });
 
 // ---- §12: editing
@@ -235,6 +266,12 @@ test('the Owner field, connect and remove: targets own artifacts and targets; a 
   assert.equal(T.edits.connect(DEP, v, 'edge', 'shop-api', null, line('Dependency')), null);
   assert.match(T.edits.connect(DEP, v, 'edge', 'database', null, line('Deployment')).error, /^A deployment runs from an artifact/);
   assert.match(T.edits.connect(DEP, v, 'edge', 'shop-api-jar', null, line('CommunicationPath')).error, /^A communication path joins two/);
+  assert.match(T.edits.connect(DEP, v, 'edge', 'edge', null, line('CommunicationPath')).error, /^A communication path joins two/, 'not to itself');
+  // a line between a box and what it holds is never drawn (a line from a box to what it holds is left out): refused, either way, at any depth
+  assert.deepEqual(T.edits.connect(DEP, v, 'jvm', 'shop-api-jar', null, line('Deployment')), { error: 'shop-api.jar is already deployed on Java 21 runtime by nesting' });
+  assert.deepEqual(T.edits.connect(DEP, v, 'shop-api-jar', 'app-server', null, line('Deployment')), { error: 'shop-api.jar is already deployed on Application server by nesting' });
+  assert.deepEqual(T.edits.connect(DEP, v, 'jvm', 'app-server', null, line('CommunicationPath')), { error: 'A communication path cannot join a node and what it holds' });
+  assert.deepEqual(T.edits.connect(DEP, v, 'shopper-device', 'storefront-bundle', null, line('Dependency')), { error: 'A dependency cannot join a node and what it holds' });
   assert.deepEqual(validate(apply(DEP, T.edits.connect(DEP, v, 'database', 'edge-routes', null, line('Deployment')))), []);
   // Shift + Delete on a target that holds something: what goes is counted; on anything else, or Delete, the default
   assert.deepEqual(T.edits.remove(DEP, v, ['app-server'], true), { commands: [{ op: 'delete', id: 'app-server' }], say: 'Deleted device Application server and the 4 elements it held' });
@@ -285,18 +322,24 @@ const STRESS = (() => {
   for (let s = 0; s < 5; s++) edges.push(L(`x${s}`, 'CommunicationPath', `s${s}t4`, `s${(s + 2) % 5}t0`, 'AMQP'), L(`y${s}`, 'Dependency', `s${s}a0`, `s${(s + 1) % 5}a4`));
   return model(nodes, edges);
 })();
-test('P1 (§14): on 50 nodes and artifacts, 50 lines and boxes five deep, a full layout under 1 s, and a path\'s label and an artifact moved into another node laid out and drawn under 100 ms (CPU, best of seven) (timed)', () => {
+test('a cube box\'s faces, in its frame: no line runs inside a face, no line\'s last run on a box is shorter than 12 px, no label on a face\'s line; 06, six levels and the stress view, right and down', () => {
+  for (const [name, m, v] of [['06', DEP, 'production'], ['six levels', DEEP, 'v'], ['stress', STRESS, 'v']]) for (const direction of ['right', 'down']) {
+    const g = layout(withDir(m, direction), v); assert.ok(g.families.length > 0); assert.deepEqual(faceIssues(g), [], `${name} ${direction}`); }
+});
+
+test('P1 (§14): on 50 nodes and artifacts, 50 lines and boxes five deep, a full layout, a path\'s label, an artifact moved into another node and a stereotype (moving nothing), laid out and drawn under CI\'s 1 s ceiling, the 100 ms target printed (CPU, best of seven) (timed)', () => {
   assert.equal(STRESS.nodes.length, 50); assert.equal(STRESS.edges.length, 50); assert.deepEqual(validate(STRESS), []);
   const timed = f => { const c = process.cpuUsage(); f(); const u = process.cpuUsage(c); return (u.user + u.system) / 1000; };
   const memos = {}, draw = m => mapContext(m, { memos }).buildView('v');
   draw(STRESS);
   const runs = [0, 1, 2, 3, 4, 5, 6].map(k => { const was = memos.v.runs, r = { full: timed(() => mapContext(STRESS).buildView('v')),
     label: timed(() => draw(apply(STRESS, [{ op: 'set', id: 'p1-2', path: 'label', value: `TCP ${'x'.repeat(4 + 3 * k)}` }]))),
-    move: timed(() => draw(apply(STRESS, [{ op: 'reparent', id: 's0a4', parent: `s${1 + k % 4}t${k % 5}` }]))) };
-    assert.equal(memos.v.runs, was + 2, 'each edit lays the view out again'); return r; });
+    move: timed(() => draw(apply(STRESS, [{ op: 'reparent', id: 's0a4', parent: `s${1 + k % 4}t${k % 5}` }]))),
+    stereo: timed(() => draw(apply(STRESS, [{ op: 'set', id: 's2a1', path: 'props.stereotypes', value: [`v${k}`] }]))) };
+    assert.equal(memos.v.runs, was + 3, 'each edit lays the view out again'); return r; });
   const best = k => Math.min(...runs.map(r => r[k]));
   assert.ok(best('full') < 1000, `full layout ${best('full')} ms`);
   // CI holds the 1 s ceiling and prints the edits against the 100 ms target (the maintainer's decision of 13 Nov 2026)
-  assert.ok(best('label') < 1000, `a path's label ${best('label')} ms`); assert.ok(best('move') < 1000, `an artifact moved ${best('move')} ms`);
-  console.log(`# P1 target 100 ms: a path's label ${best('label').toFixed(1)} ms, an artifact moved into another node ${best('move').toFixed(1)} ms; full layout ${best('full').toFixed(1)} ms`);
+  assert.ok(best('label') < 1000, `a path's label ${best('label')} ms`); assert.ok(best('move') < 1000, `an artifact moved ${best('move')} ms`); assert.ok(best('stereo') < 1000, `a stereotype ${best('stereo')} ms`);
+  console.log(`# P1 target 100 ms: a path's label ${best('label').toFixed(1)} ms, an artifact moved into another node ${best('move').toFixed(1)} ms, a stereotype ${best('stereo').toFixed(1)} ms; full layout ${best('full').toFixed(1)} ms; routes ${JSON.stringify(layout(STRESS, 'v').stats)}`);
 });

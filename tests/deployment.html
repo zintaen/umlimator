@@ -3,9 +3,9 @@
      drawn by render() in both themes, three fonts and both directions (closed cubes, cube boxes holding their contents, nested,
      texts inside their shapes, line ends on outlines and on a box's faces, names, reading order, contrast, the legend), then
      edited through the edit event and apply(), by pointer and by keyboard: the palette's seven entries and N, F2, each line
-     kind by L and the picker (a deployment drawn from its target starts at the artifact; a communication path to an artifact
-     is refused), the Owner field of an artifact and of a node, a drop of an artifact into a node's box, the stereotypes field,
-     hide and delete (a box with what it holds). -->
+     kind by L and the picker, and by the handle (a deployment drawn from its target starts at the artifact; a communication
+     path to an artifact is refused, its reason on the hint line), the Owner field of an artifact and of a node, a drop of an artifact into a node's box, the stereotypes field,
+     hide and delete (a box with what it holds, counted on the hint line). -->
 <meta charset="utf-8">
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="../lib/umlimator-theme.css">
@@ -23,6 +23,9 @@ const pick = s => sr.querySelector(s), all = s => [...sr.querySelectorAll(s)];
 const centre = s => { const r = pick(s).getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; };
 const ptr = (target, type, [x, y]) => target.dispatchEvent(new PointerEvent(type, { clientX: x, clientY: y, button: 0, pointerId: 7, pointerType: 'mouse', bubbles: true, composed: true }));
 const key = (k, extra = {}, target = stage) => target.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true, composed: true, cancelable: true, ...extra }));
+const handleTo = ([x, y]) => { const c = pick('.um-handle circle'), r = c.getBoundingClientRect(); ptr(c, 'pointerdown', [r.x + r.width / 2, r.y + r.height / 2]); ptr(stage, 'pointermove', [x, y]); ptr(stage, 'pointerup', [x, y]); };
+const press = b => { const r = b.getBoundingClientRect(), at = [r.x + r.width / 2, r.y + r.height / 2]; ptr(b, 'pointerdown', at); ptr(b, 'pointerup', at); b.click(); };
+const hint = () => pick('.um-live').textContent;
 const click = s => { const g = pick(s), at = centre(s); ptr(g, 'pointerdown', at); ptr(g, 'pointerup', at); g.dispatchEvent(new MouseEvent('click', { clientX: at[0], clientY: at[1], bubbles: true, composed: true })); };
 const mount = (model, opts = {}) => { el.innerHTML = ''; ed = []; const h = render(el, model, { view: 'production', on: { edit: e => ed.push(e) }, ...opts }); sr = el.querySelector('.umlimator').shadowRoot; stage = pick('.stage'); return h; };
 const errors = m => validate(m).filter(p => p.level === 'error');
@@ -120,7 +123,7 @@ try {
   // a communication path to an artifact is refused: nothing emitted
   const n0 = ed.length; click('.node[data-id="edge"] .c-name'); key('l'); for (const c of 'routes') key(c); key('Enter');
   all('.um-pick button').find(b => b.textContent === 'Communication path').click();
-  check('a communication path from a node to an artifact is refused, nothing emitted', ed.length === n0, ed.slice(n0));
+  check('a communication path from a node to an artifact is refused, nothing emitted, its reason on the hint line', ed.length === n0 && /^A communication path joins two nodes/.test(hint()), [ed.slice(n0), hint()]);
   // the other line kinds, each by L and the picker
   for (const [from, name, kind, to, id, type] of [['edge-routes', 'cache', 'Deployment', 'node1', 'deployment1', 'Deployment'], ['order-worker-jar', 'shop api', 'Manifestation', 'shop-api', 'manifestation1', 'Manifestation'],
     ['node1', 'primary', 'Communication path', 'database', 'communicationpath1', 'CommunicationPath'], ['edge-routes', 'storefront', 'Dependency', 'storefront-bundle', 'dependency1', 'Dependency'], ['n1', 'edge', 'Comment link', 'edge', 'commentlink1', 'CommentLink']]) {
@@ -148,6 +151,13 @@ try {
   check('after update() the runtime\'s box holds it, and the browser is a closed cube', inside(box(pick('.node[data-id="storefront-bundle"] .n-mask')), box(pick('.family[data-family="jvm"] .family-box'))) && !!pick('.node[data-id="browser"].cube'));
   click('.node[data-id="browser"] .c-name'); change(panel('[data-f="p:stereotypes"]'), 'chromium');
   gives('the stereotypes field sets a list', [{ op: 'set', id: 'browser', path: 'props.stereotypes', value: ['chromium'] }], m => same(m.nodes.find(n => n.id === 'browser').props.stereotypes, ['chromium']), m5);
+  // the handle, by pointer: a deployment drawn from its target starts at the artifact; a communication path to an artifact is refused
+  h = mount(BASE, { editable: true });
+  click('.node[data-id="database"] .c-name'); handleTo(centre('.node[data-id="edge-routes"] .n-mask')); press(all('.um-pick button').find(b => b.textContent === 'Deployment'));
+  gives('the handle from a node to an artifact, Deployment: added from the artifact (edits.connect)', [{ op: 'add', element: { id: 'deployment1', type: 'uml.Deployment', from: 'edge-routes', to: 'database' }, view: 'production' }],
+    m => m.edges.some(e => e.id === 'deployment1'), BASE);
+  const n1 = ed.length; click('.node[data-id="edge"] .c-name'); handleTo(centre('.node[data-id="edge-routes"] .n-mask')); press(all('.um-pick button').find(b => b.textContent === 'Communication path'));
+  check('the handle from a node to an artifact, Communication path: refused, its reason on the hint line', ed.length === n1 && /^A communication path joins two nodes/.test(hint()), [ed.slice(n1), hint()]);
   // hide, delete
   h = mount(BASE, { editable: true });
   click('.node[data-id="database"] .c-name'); key('Delete');
@@ -157,6 +167,7 @@ try {
   h.select({ type: 'container', id: 'app-server', view: 'production' }); key('Delete', { shiftKey: true });
   gives('Shift + Delete on a box: it, what it holds and their lines go (edits.remove)', [{ op: 'delete', id: 'app-server' }],
     m => !m.nodes.some(n => ['app-server', 'jvm', 'shop-api-jar', 'shop-api-config'].includes(n.id)) && !m.edges.some(e => e.id === 'edge-to-app'), BASE);
+  check('…and the hint line counts what went with it', hint() === 'Deleted device Application server and the 4 elements it held', hint());
   h.select({ type: 'edge', ids: ['edge-to-app'], view: 'production' }); key('Delete', { shiftKey: true });
   gives('Shift + Delete on a communication path: delete it', [{ op: 'delete', id: 'edge-to-app' }], m => !m.edges.some(e => e.id === 'edge-to-app'), BASE);
   h.destroy();

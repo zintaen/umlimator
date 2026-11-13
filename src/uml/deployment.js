@@ -11,9 +11,9 @@ import { SN_SAY, structProblems } from './structure.js'; // SHAPE.artifact and S
    when it holds something shown, nested to any depth; artifacts and deployment specifications (src/uml/structure.js's
    artifact), deployed by nesting or by a «deploy» line; components, what an artifact manifests (the component look);
    communication paths with their labels, dependencies and comments. Laid out by layoutTyped from the host's ranking with a
-   small gap, gapAfter's per-column widening, labelGaps and paths cut at 280 px (§8); repair and reroute off (§14). A line
-   ending on a cube box's top or right side is drawn on to the face outside its border, on a copy (§2.4). Ships in
-   lib/umlimator-all.js only. */
+   small gap, gapAfter's per-column widening, labelGaps and paths cut at 280 px (§8); repair and reroute off (§14). A cube
+   box's frame holds its faces (10 px more padding), so the layout and check() see them; a line ending on its outline's
+   slanted corner is drawn on to it, on a copy (§2.4). Ships in lib/umlimator-all.js only. */
 
 const DP_OBJ = x => x !== null && typeof x === 'object' && !Array.isArray(x), DP_ARR = x => (Array.isArray(x) ? x : []);
 const DP_HAS = x => x != null && x !== '';
@@ -49,15 +49,13 @@ SHAPE.cube = {
       + `<path d="M${r2(x)} ${r2(y + p)}H${r2(x + w - p)}V${r2(y + h)}M${r2(x + w - p)} ${r2(y + p)}L${r2(x + w)} ${r2(y)}" class="n-det" fill="none" stroke="var(--um-muted)"/>`
       + `<g class="c-head" data-band="${r2(y + p)} ${r2(y + h)}">${tx.join('')}</g></g>`;
   },
-  // open: the box's border is the front face; the top and right faces lie outside it, in the 32 px between boxes, and the
-  // keyword, stereotypes and name (the box's title) sit at the top left of its 24 px header room
+  // open: the frame holds the cube as a closed one does (its pad is 10 px more, dpPic), the front face its rect, the top and
+  // right faces inside the frame; the keyword, stereotypes and name (the box's title) at the top left of its 24 px header room
   frame: f => { const p = DP.d, { x, y, w, h } = f;
-    return `<rect class="family-box" x="${x}" y="${y}" width="${w}" height="${h}" stroke="var(--um-muted)"/>`
-      + `<path d="M${r2(x)} ${r2(y)}L${r2(x + p)} ${r2(y - p)}H${r2(x + w + p)}V${r2(y + h - p)}L${r2(x + w)} ${r2(y + h)}M${r2(x + w)} ${r2(y)}L${r2(x + w + p)} ${r2(y - p)}" class="dp-face" fill="none" stroke="var(--um-muted)"/>`
-      + `<text class="family-title" x="${r2(x + 12)}" y="${r2(y + 17)}" fill="var(--um-text)" style="font:600 12px var(--um-sans)" data-t="ft" data-o="${esc(f.id)}">${esc(fit(f.title ?? f.label ?? f.id, 12, w - 24))}</text>`; },
+    return `<rect class="family-box" x="${x}" y="${r2(y + p)}" width="${r2(w - p)}" height="${r2(h - p)}" stroke="var(--um-muted)"/>`
+      + `<path d="M${r2(x)} ${r2(y + p)}L${r2(x + p)} ${r2(y)}H${r2(x + w)}V${r2(y + h - p)}L${r2(x + w - p)} ${r2(y + h)}M${r2(x + w - p)} ${r2(y + p)}L${r2(x + w)} ${r2(y)}" class="dp-face" fill="none" stroke="var(--um-muted)"/>`
+      + `<text class="family-title" x="${r2(x + 12)}" y="${r2(y + p + 17)}" fill="var(--um-text)" style="font:600 12px var(--um-sans)" data-t="ft" data-o="${esc(f.id)}">${esc(fit(f.title ?? f.label ?? f.id, 12, w - p - 24))}</text>`; },
 };
-// how far a line's end on a cube box's side lies inside the faces' outline, at t along the side (only the top and right have faces)
-const dpFaceAt = (f, s, t) => (s === 'T' ? Math.min(DP.d, Math.max(0, t - f.x)) : s === 'R' ? Math.min(DP.d, Math.max(0, f.y + f.h - t)) : 0);
 
 /* ---- the view read: its boxes (§7), its lines, and every element's words ---- */
 const DP_LOOK = { boxTypes: DP_TARGETS, qualify: false, shape: () => 'cube', word: dpWord };
@@ -66,13 +64,15 @@ function dpIndex(model) {
   const E = DP_ARR(model && model.edges).filter(e => DP_OBJ(e) && typeof e.id === 'string');
   const into = (t, id) => E.filter(e => e.type === t && e.to === id), outOf = (t, id) => E.filter(e => e.type === t && e.from === id);
   // what is deployed on a target: the artifacts it owns, then those a «deploy» line brings, each once
-  const deployed = id => [...new Set([...[...at.values()].filter(n => n.parent === id && DP_ARTIFACTS.includes(n.type)).map(n => n.id), ...into('uml.Deployment', id).map(e => e.from).filter(x => at.has(x))])];
-  return { at, E, into, outOf, deployed };
+  const deployed = id => [...new Set([...[...at.values()].filter(n => n.parent === id && DP_ARTIFACTS.includes(n.type)).map(n => n.id), ...into('uml.Deployment', id).map(e => e.from).filter(x => at.has(x) && DP_ARTIFACTS.includes(at.get(x).type))])];
+  // does a hold b, at any depth
+  const holds = (a, b) => { for (let p = (at.get(b) || {}).parent, seen = new Set(); p != null && !seen.has(p); p = (at.get(p) || {}).parent) { if (p === a) return true; seen.add(p); } return false; };
+  return { at, E, into, outOf, deployed, holds };
 }
 // the view's boxes, each titled with its keyword and stereotypes and named as §10.3 says
 function dpPic(model, view) {
   const pic = ownersOn(model, view, DP_LOOK), I = dpIndex(model);
-  const boxes = pic.boxes.map(b => { const x = pic.at.get(b.id); return { ...b, title: [...[...(DP_KW[x.type] ? [DP_KW[x.type]] : []), ...dpStereo(x)].map(t => `«${t}»`), dpName(x)].join(' '), aria: dpNodeName(x, pic, I) }; });
+  const boxes = pic.boxes.map(b => { const x = pic.at.get(b.id); return { ...b, title: [...[...(DP_KW[x.type] ? [DP_KW[x.type]] : []), ...dpStereo(x)].map(t => `«${t}»`), dpName(x)].join(' '), aria: dpNodeName(x, pic, I), pad: 12 + DP.d }; });
   return { ...pic, I, boxes };
 }
 // the lines drawn: those the view lists, or with no list the model's of this type's kinds, between two elements it shows; a
@@ -118,6 +118,20 @@ const dpLegend = edges => DP_LINES.filter(t => edges.some(e => e.type === t)).ma
   return `<span class="lgi" title="${esc(name + ' — ' + says)}"><svg class="lgs" viewBox="0 0 28 16" aria-hidden="true"><g stroke="var(--um-muted)" stroke-width="1.4" stroke-linejoin="round"><path d="M2 8H${L.to === 'none' ? 26 : 17}"${L.dashed ? ' stroke-dasharray="3 2"' : ''}/>${DP_ENDS[L.to]}</g></svg><b>${esc(name)}</b><span>${esc(says)}</span></span>`; });
 
 /* ---- the view laid out (§10.3) ---- */
+// on a copy: a label left over a cube box's front face's top or right line (in the box's padding, where check() does not
+// look) slides along its line inward, clear of it, if its line runs on that far; families come outermost first
+function dpOffFace(e, fams) {
+  if (!e.lbl || !e.pts) return e;
+  let L = e.lbl;
+  for (const f of fams) for (const k of [1, 0]) { // 1: the top line, y = f.y + 10; 0: the right line, x = f.x + f.w - 10
+    const at = k ? f.y + DP.d : f.x + f.w - DP.d, o = 1 - k, lo = [L.x, L.y][k], len = [L.w, L.h][k], c = [L.x + L.w / 2, L.y + L.h / 2];
+    if (!(lo < at && at < lo + len) || c[o] < (o ? f.y + DP.d : f.x) || c[o] > (o ? f.y + f.h : f.x + f.w - DP.d)) continue;
+    const to = k ? at + 2 : at - 2 - len, nc = to + len / 2; // the label's new start along its line, and its centre
+    const run = e.pts.slice(1).some((q, i) => { const p = e.pts[i]; return Math.abs(p[o] - c[o]) < .5 && Math.abs(q[o] - c[o]) < .5 && Math.min(p[k], q[k]) <= Math.min(c[k], nc) && Math.max(p[k], q[k]) >= Math.max(c[k], nc); });
+    if (run) L = { ...L, [k ? 'y' : 'x']: to };
+  }
+  return L === e.lbl ? e : { ...e, lbl: L };
+}
 function dpGeo({ model, view, pos, memo }) {
   const pic = dpPic(model, view), lines = dpLines(model, view, pic), P = id => (DP_OBJ(pos) && Object.hasOwn(pos, id) ? pos[id] : [0, 0]);
   const nodes = pic.ids.filter(id => !pic.open.has(id)).map(id => { const n = pic.at.get(id), st = dpStereo(n);
@@ -131,12 +145,12 @@ function dpGeo({ model, view, pos, memo }) {
   // a deployment view has no ports (§7)
   const g = layoutTyped({ nodes, edges, ...(pic.boxes.length ? { containers: pic.boxes } : {}), direction: view.direction === 'down' ? 'down' : 'right',
     gap: 48, rgap: 56, labelGaps: true, repair: false, reroute: false }, memo);
-  // on a copy: a line's end on a cube box's top or right side goes on to the face drawn outside the border
-  const fams = new Map((g.families || []).map(f => [f.id, f]));
-  const out = g.edges.map(e => { const a = fams.get(e.from), b = fams.get(e.to), da = a && e.pts && dpFaceAt(a, e.fs, e.fs === 'T' ? e.pts[0][0] : e.pts[0][1]), db = b && e.pts && dpFaceAt(b, e.ts, e.ts === 'T' ? e.pts.at(-1)[0] : e.pts.at(-1)[1]);
+  // on a copy: a line's end on a cube box's slanted corner goes in on to it, as SHAPE.cube.inset does for a closed cube
+  const fams = new Map((g.families || []).map(f => [f.id, f])), at = (f, s, p) => (f && s ? SHAPE.cube.inset(f, s, s === 'T' || s === 'B' ? p[0] : p[1]) : 0);
+  const out = g.edges.map(e => { const da = e.pts && at(fams.get(e.from), e.fs, e.pts[0]), db = e.pts && at(fams.get(e.to), e.ts, e.pts.at(-1));
     if (!da && !db) return e;
-    const pts = e.pts.map(p => p.slice()), mv = (p, s, k) => { if (s === 'T') p[1] -= k; else p[0] += k; };
-    if (da) mv(pts[0], e.fs, da); if (db) mv(pts[pts.length - 1], e.ts, db); return { ...e, pts }; });
+    const pts = e.pts.map(p => p.slice()), mv = (p, s, k) => { p[s === 'T' || s === 'B' ? 1 : 0] += s === 'T' || s === 'L' ? k : -k; };
+    if (da) mv(pts[0], e.fs, da); if (db) mv(pts[pts.length - 1], e.ts, db); return { ...e, pts }; }).map(e => dpOffFace(e, g.families || []));
   return { ...g, edges: out, legend: dpLegend(g.edges), order: [...readingOrder(pic), ...lines.map(e => e.id)] }; // a new object: what layoutTyped returned is never edited (§2.4)
 }
 
@@ -145,23 +159,24 @@ const DP_RULES = {
   'deploy-ends': 'a deployment runs from an artifact or deployment specification to a node, device or execution environment',
   'deployed-twice': 'an artifact nested in one target is not also deployed by a line to another',
   'nest-kinds': 'a node, device or execution environment is owned by one of the three (an error), in a usual pair (a warning): an execution environment in any, a device in a node or a device, a node in a node',
-  'path-ends': 'a communication path joins two nodes, devices or execution environments',
+  'path-ends': 'a communication path joins two nodes, devices or execution environments, neither holding the other',
   'manifest-ends': 'a manifestation runs from an artifact (an error), to a component (a warning)',
 };
 const DP_USUAL = { 'uml.ExecutionEnvironment': DP_TARGETS, 'uml.Device': ['uml.Node', 'uml.Device'], 'uml.Node': ['uml.Node'] };
 function dpProblems(model, view) {
   const out = [], I = dpIndex(model), say = (level, rule, path, ids, msg) => out.push({ level, rule, path, ids: ids.filter(x => x != null), message: `${rule}: ${msg}` });
   const ty = id => (I.at.get(id) || {}).type, q = id => JSON.stringify(I.at.has(id) ? dpName(I.at.get(id)) : String(id)), kind = id => (I.at.has(id) ? dpWord(I.at.get(id)).toLowerCase() : 'nothing');
+  const a = id => (/^[aeiou]/.test(kind(id)) ? 'an ' : 'a ') + kind(id);
   DP_ARR(model && model.nodes).forEach((n, i) => { if (!DP_OBJ(n) || !DP_TARGETS.includes(n.type) || n.parent == null || !I.at.has(n.parent)) return;
     const p = I.at.get(n.parent);
-    if (!DP_TARGETS.includes(p.type)) say('error', 'nest-kinds', `nodes[${i}].parent`, [n.id, p.id], `${q(n.id)}, a ${kind(n.id)}, is owned by ${q(p.id)}, a ${kind(p.id)}: its owner is a node, a device or an execution environment`);
-    else if (!DP_USUAL[n.type].includes(p.type)) say('warning', 'nest-kinds', `nodes[${i}].parent`, [n.id, p.id], `${q(n.id)}, a ${kind(n.id)}, is in ${q(p.id)}, a ${kind(p.id)}: an unusual pair`); });
+    if (!DP_TARGETS.includes(p.type)) say('error', 'nest-kinds', `nodes[${i}].parent`, [n.id, p.id], `${q(n.id)}, ${a(n.id)}, is owned by ${q(p.id)}, ${a(p.id)}: its owner is a node, a device or an execution environment`);
+    else if (!DP_USUAL[n.type].includes(p.type)) say('warning', 'nest-kinds', `nodes[${i}].parent`, [n.id, p.id], `${q(n.id)}, ${a(n.id)}, is in ${q(p.id)}, ${a(p.id)}: an unusual pair`); });
   DP_ARR(model && model.edges).forEach((e, i) => { if (!DP_OBJ(e)) return; const path = `edges[${i}]`, ends = [e.id, e.from, e.to];
     if (e.type === 'uml.Deployment') {
       if (!DP_ARTIFACTS.includes(ty(e.from)) || !DP_TARGETS.includes(ty(e.to))) say('error', 'deploy-ends', path, ends, `${e.id} runs from ${q(e.from)} (${kind(e.from)}) to ${q(e.to)} (${kind(e.to)}): from an artifact or deployment specification to a node, device or execution environment`);
       else { const a = I.at.get(e.from); if (a.parent != null && DP_TARGETS.includes(ty(a.parent)) && a.parent !== e.to)
         say('warning', 'deployed-twice', path, [e.id, e.from, a.parent, e.to], `${q(e.from)} is nested in ${q(a.parent)} and deployed by ${e.id} to ${q(e.to)} as well`); } }
-    if (e.type === 'uml.CommunicationPath' && (!DP_TARGETS.includes(ty(e.from)) || !DP_TARGETS.includes(ty(e.to)) || e.from === e.to))
+    if (e.type === 'uml.CommunicationPath' && (!DP_TARGETS.includes(ty(e.from)) || !DP_TARGETS.includes(ty(e.to)) || e.from === e.to || I.holds(e.from, e.to) || I.holds(e.to, e.from)))
       say('error', 'path-ends', path, ends, `${e.id} joins ${q(e.from)} (${kind(e.from)}) and ${q(e.to)} (${kind(e.to)}): a communication path joins two nodes, devices or execution environments`); });
   return [...out, ...structProblems(model, view).filter(p => p.rule === 'manifest-ends')];
 }
@@ -182,9 +197,12 @@ function dpOwners(model, x) {
   return DP_ARR(model.nodes).filter(n => DP_OBJ(n) && DP_TARGETS.includes(n.type)).map(n => ({ id: n.id, label: dpName(n) }));
 }
 // connect: a deployment drawn from a target to an artifact, or a manifestation from a component to an artifact, is added from
-// the artifact; a deployment or a communication path between ends it cannot join is refused, said on the hint line
+// the artifact; a deployment or a communication path between ends it cannot join, or any line between a box and what it holds
+// (never drawn, dpLines), is refused, said on the hint line
 function dpConnect(model, view, from, to, at, line) {
-  const ty = id => (DP_ARR(model.nodes).find(n => DP_OBJ(n) && n.id === id) || {}).type, t = DP_OBJ(line) ? line.type : null;
+  const I = dpIndex(model), ty = id => (I.at.get(id) || {}).type, t = DP_OBJ(line) ? line.type : null;
+  if (I.holds(from, to) || I.holds(to, from)) { const [o, x] = I.holds(from, to) ? [from, to] : [to, from], nm = id => dpName(I.at.get(id));
+    return { error: t === 'uml.Deployment' && DP_ARTIFACTS.includes(ty(x)) ? `${nm(x)} is already deployed on ${nm(o)} by nesting` : `A ${(DP_LINE_WORD[t] || 'line').toLowerCase()} cannot join a node and what it holds` }; }
   const flip = (t === 'uml.Deployment' && DP_TARGETS.includes(ty(from)) && DP_ARTIFACTS.includes(ty(to))) || (t === 'uml.Manifestation' && ty(from) === 'uml.Component' && DP_ARTIFACTS.includes(ty(to)));
   if (t === 'uml.Deployment' && !flip && !(DP_ARTIFACTS.includes(ty(from)) && DP_TARGETS.includes(ty(to)))) return { error: 'A deployment runs from an artifact to a node, a device or an execution environment' };
   if (t === 'uml.CommunicationPath' && (!DP_TARGETS.includes(ty(from)) || !DP_TARGETS.includes(ty(to)) || from === to)) return { error: 'A communication path joins two nodes, devices or execution environments' };
