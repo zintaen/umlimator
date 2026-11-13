@@ -3636,3 +3636,146 @@ the map's three views and the fifteen typed views of `sales-classes`, `order-obj
 - **CI.** The atlas is one of `examples/*.json`, so it is rendered, checked with `--expand`, validated against the JSON
   Schema and pictured and printed for the site as the others are; the check loop counts its 6 crossings, the activity's
   4 and the state machine's 2.
+
+## 0.22.0 (in progress)
+
+### The component, deployment and composite structure diagrams
+
+Stage 5 of the plan for 28 diagram types (`docs/diagrams/notes/stage-5.md`). 0.21.0 carried 5.0 to 5.6, provisional
+(its section's "Also on `main`"); this section says what they do and what changes from 0.21.0. Everything is additive:
+maps, every typed view released before and every earlier example draw as they did in 0.21.0 (`bench/expected.json`,
+`tests/core-diet.json`'s fingerprints of every view drawn by `lib/umlimator.js`, the examples' stills). The new code is
+in `lib/umlimator-all.js`, except the core's 110 B more than 0.21.0 (the follow-ups; stage 5 in all: 248 B, below).
+
+- **The four sources (5.0).** `src/uml/structure.js`, `component.js`, `deployment.js` and `composite.js`, listed in
+  `tools/build.mjs`'s `ALL`, so they ship in `lib/umlimator-all.js` only.
+- **Ports on borders and lines from a box's port inward (5.1).** Through the hook the router already had,
+  `LP.ports(pushSide, sides)` (`TYPED.loops`, `src/typed/layout.js`): a typed line may name `fromPort` or `toPort`, and its
+  end is placed on that port's square, on the side the type gives (`fromSide`, `toSide`), ordered along it by the far
+  ends (`portRank` breaks ties); a port with several lines on one face grows by 10 px a line; ports that still leave their
+  side at 4 px apart are warned. A line marked `inner` joins a box and something it holds, entering at the box's port
+  (the `holds` bypass), and only when it names a port at its inner end. `TYPED.frame` gives a box its `pad` (48 px where
+  ports have lines) and `round` (an ellipse round its contents). `labelGaps` (decision 9), a typed view's opt in to the
+  map's room for labels, column gaps only: a label with no spot widens its column gap in a second layout pass, kept when
+  it leaves fewer issues. `fromPort`, `toPort`, `inner` and `portRank` join the edges' geometry key, `labelGaps` the
+  view's. A `socket` line end. All of it is reached only through fields no map and no earlier type sets.
+- **The member and key hooks (5.2).** `edits.member(model, view, owner, id, text)`, asked on a member row before the
+  panel's own reading; `edits.key(model, view, ids, key)`, asked for a key with no Alt, Ctrl or Meta before the canvas's
+  own (`docs/editing.md`). The state machine's activity rows (`entry / …`) go through `edits.member`, with the same
+  behaviour; the state type's `member` is a non-enumerable property, so a host copying a type's `edits` copies it by name.
+  A node drawn under a geometry id holding `->` is selected, renamed and deleted through the `rename` and `remove` hooks.
+- **The structure notation (5.3).** The port, component, ball and artifact shapes and the cube; each port's side chosen
+  from the ranking; the ports with no line, the port nodes added back after the layout and the port names, on a copy of
+  the geometry; the shared rules `port-owner` and `manifest-ends`.
+- **Component diagrams, `uml.component` (5.4).** Components nested in components and packages, ports on borders,
+  interfaces as a ball and socket (`present.<id>.as: "ball"`, `B`) or a rectangle, realizations, component realizations,
+  usages, assembly and delegation connectors (a delegation with an open arrow at its `to` end, a departure stated in the
+  conformance note), artifacts and manifestations; the type ranks its own view; nine rules; a port added as a member row.
+- **Deployment diagrams, `uml.deployment` (5.5).** Nodes, devices and execution environments as cubes, nested to any
+  depth, their faces inside their frame; artifacts and deployment specifications deployed by nesting or by «deploy»;
+  communication paths cut at 280 px; five rules; a drop of an artifact into a node deploys it.
+- **Composite structure diagrams, `uml.composite-structure` (5.6).** The subject's box with its ports, parts showing
+  their type's ports (drawn under `<part>-><port>`, their side under `present.<part>.ports`), connectors through parts
+  (`ends.<end>.part`), open collaborations as dashed ellipses, collaboration uses with role bindings; deleting a part
+  deletes its connectors (the type's `refs`); ten rules.
+- **A port is not an overlap on its owner (decision 22), and a box's title on two lines (the follow-ups).** The layout
+  check (`overlapIssues`, core) passes a typed node against the node its `owner` names, never on a map (where `owner` is
+  a team's name); every port is a node of its own again, so selecting a component no longer marks its ports. A device's,
+  execution environment's or stereotyped node's box draws its keyword on a line above its name, in 15 px more header
+  room (a box's `head`, optional and provisional), measured at 12 px (`headW`), so a long name is not cut; the router's
+  reserve over a title and the check's header test take the `head`; the canvas says a selected box by all its title
+  lines and F2's field sits over the name.
+- **Fixtures, examples, documents (5.8).** `tests/component-`, `deployment-` and `composite-minimal.json` and
+  `-stress.json` (`notes/stage-5.md` §13) with `tests/stage5-fixtures.test.mjs` and `tests/stage5.html`; the three
+  examples, moved from `docs/diagrams/examples/` (`check.mjs`'s `MOVED`): `examples/bookshop-components.json`,
+  `bookshop-deployment.json` and `order-service-structure.json`, in the gallery and CI (render, check, stills, pdf, ajv,
+  the diff Action's dry run) and in the Bookshop atlas; the JSON Schema and `.d.ts`; `docs/conformance/uml-component.md`,
+  `uml-deployment.md` and `uml-composite-structure.md`; the MCP server and the diff Action tested on each (C10).
+
+What moves for a host that upgrades from 0.21.0:
+
+- **Nothing a map or an earlier type does.** The new registry fields (`edits.member`, `edits.key`, a line's `fromPort`,
+  `toPort`, `inner` and `portRank`, a box's `pad`, `round` and `head`, a view's `labelGaps`) are optional and
+  provisional, read only where a type sets them.
+- **The three views now draw as stage 5 designed them, not as 5.0 to 5.6 left them in 0.21.0.** Changed pictures of
+  0.21.0's provisional types: a component view's ports are nodes of their own (decision 22); a deployment view's
+  keyworded boxes are 15 px taller, their keyword over their name; a composite structure view with ports on parts is
+  clean under `check()` (it reported each port against its part); a port with no line keeps off a plain line's end on
+  its side (5.8, `src/uml/structure.js`); a component view names an element by its components and packages only, not by
+  a node it is deployed on (5.8). The PDF's tables gain rows: a component's connectors from its ports, the subject's
+  parts with their aggregation and its connectors, an open collaboration's roles and connectors (the Lines table lists
+  only lines between cards, `risks.md` R10).
+- **New in the JSON Schema and `lib/umlimator.d.ts`:** the three types' element, member and line types and props
+  (`UmlComponentElementType` … `UmlCollaborationUseProps`), a connector's `kind` and `ends.<end>.part`, a part's
+  `aggregation`, a collaboration use's `collaboration`, `present`'s `as`, `side` and `ports`; nothing accepted before is
+  rejected.
+- **The examples moved.** `docs/diagrams/examples/04-composite-structure.json`, `05-component.json` and
+  `06-deployment.json` are `examples/order-service-structure.json`, `bookshop-components.json` and
+  `bookshop-deployment.json`, with ids changed so the Bookshop atlas can hold them beside the map (elements merge by id):
+  the component file's `storefront`, `accounts`, `payment-provider` and `checkout` take a `-component` suffix (their
+  ports too), its delegation `checkout-to-payments` is `checkout-payments-out`, its manifestation the deployment file's
+  `api-jar-manifests-api`, and its `shop-api.jar` is deployed on the deployment file's Java 21 runtime (`app-server` and
+  `jvm` are nodes of its model its view does not list); the deployment file's `edge` and `queue` are `edge-node` and
+  `queue-node`, and its view lists its lines; the composite file's class `checkout` is `checkout-class`, labelled
+  `CheckoutFlow` (its part is typed `CheckoutFlow`), since a second element labelled Checkout would make the part's type
+  ambiguous.
+- **The Bookshop atlas** gains the three views: the map's Hosts opens production (deployment), the Java 21 runtime opens
+  the components, Shop API the order service's structure. In the atlas's one model the class type's
+  `realization-target` calls the component file's two interface realizations (from a port, from a component) wrong;
+  `tests/atlas.test.mjs` pins them beside 0.21.0's two `generalization-kinds` (`risks.md` M14).
+- **Left out** (`notes/stage-5.md` §17): connector multiplicities; «subsystem» and «specification»; a component's parts as
+  a composite structure; black-box compartments; instance-level deployment; a part's own inner structure; ports on roles;
+  a role binding to a port; a port's multiplicity; behaviour, service and conjugated ports; XMI; copy and paste;
+  ELK in the module. The ELK trial (5.7) has not reported: its outcome closes or re-states
+  `risks.md` L9.
+- **Layout limits** (`notes/stage-5.md` §13's "As built", each conformance note): the fixtures pin, not clear, part of
+  §13's list. On the generated stress views, lines sharing a line or along a box's border, box headers crossed, labels
+  on a line, a ball's name under a port and port names over lines (once over a sibling component); on the component
+  edge case of ten ports on one side of a box, five held ports overlapping. In Chrome, `risks.md` L17.
+- **P1.** On the stress views (CPU, best of seven, a loaded laptop): an edit that moves nothing (a colour) 1 to 37 ms;
+  the composite structure's edits 9 to 10 ms; the
+  component's and deployment's full layouts and most edits 110 to 140 ms, over the 100 ms target and under CI's 1 s;
+  each conformance note has its figures.
+- **Size:** `lib/umlimator.js`, what a map host loads, is 185,246 B with this machine's `gzip -9` (0.21.0's measures
+  185,136 B on it), 12.30% over 0.16.0 (the budget is 15%): stage 5 spent 248 B of its 300 B (5.1's 138 B: the port hook's
+  argument, the `holds` bypass, `TYPED.frame`, the jog repair's guard, `labelGaps`, the registry's pointer lines; the
+  follow-ups' 110 B: decision 22's owner skip, the two-line title, `headW` and the canvas's title lines), and 5.8 none.
+  `lib/umlimator-all.js` is 378.5 kB (378,464 B), up from 377.6 kB in 0.21.0. The npm package is 620 kB, up from 617 kB.
+
+### C10: the MCP server, the diff Action and the map-repo skill meet every typed diagram
+
+The package after 0.20.0 that stage 3 deferred (`docs/diagrams/notes/stage-3.md` §12, S15), with stage 4's and stage 5's
+types folded in (`notes/stage-4.md` §19.5, `notes/stage-5.md` §16.5): class, object, package, sequence, communication, use
+case, activity, state machine, interaction overview, component, deployment and composite structure. Additive; maps diff
+and walk as before.
+
+- **`diff()` says "moves" where order means something** (risks.md M11), in `lib/umlimator-all.js` (the CLI, the diff
+  Action and the MCP server run it), from `src/uml/diff.js` through two hook slots, `TYPED.diff` and `TYPED.order`:
+  - a reorder of an element's members (a class's attributes and operations, an object's slots, a state's internal
+    transitions, a component's or a structured class's ports and parts): "moves email after name in Customer", or "… to
+    the top in …". Members both reordered and edited, or with no ids to tell a move by, still read "changes Customer
+    (members)";
+  - a reorder of a sequence view's messages and interaction uses, or of a communication view's message ids in its `edges`
+    (they give the numbers): "moves validate(order) after charge(total)", or "… to the start". The moved line is marked
+    changed (its edited dot) and its view is among `views`. Before, a reorder read nothing at all. The order of the
+    model's `edges` draws nothing and reads nothing;
+  - a message moved into or out of an operand: "moves orderPlaced into else", as a re-own reads;
+  - a sequence view's combined fragments: "adds the par fragment", "removes the opt fragment", "changes the opt fragment
+    (props)". Before, they read nothing. The fragments themselves are not marked on the picture, and a reorder of a
+    view's `fragments` (drawing order only) reads nothing.
+
+  The moved items are those off one longest run kept in their old order, so a swap of two reads as one move.
+  `lib/umlimator.js`, which draws no typed view, says what it said in 0.21.0.
+- **`paths()` on a sequence view runs in time order**: a path is a run of messages, each later than the one before and
+  sent from the lifeline it reached; the type's own `paths` (registry), as `describe` is. Before, every message was a line
+  of a graph with no time, so replies made almost everything a path. Messages in different operands of one `alt` may
+  still chain. From a lifeline to itself it gives that lifeline alone, as on a map. `reach()` is unchanged.
+- **Tested on every type**: `tests/mcp.py` serves one model of each to the MCP server (its read tools in the type's own
+  words, a highlight shown on the diagram the page draws; `paths` in time order on the sequence); `tests/cli.py` runs the
+  diff Action's step as CI runs it on one model of each (a reorder reads "moves" on the class, sequence, communication,
+  component and composite structure models), and the `map-repo` skill's `cli.py` renders each typed model it is given;
+  `tests/typed-diff.test.mjs` pins the words. Stage 5's three are its examples as 5.8 moved them to `examples/`. The
+  skill still writes maps only; its pin (v0.20.0) moves at a release, and renders a type only from the release that has
+  it.
+- **Core**: +183 B gzipped (`gzip -9`: 185,246 B with 5.8 to 185,429 B, 12.41% over 0.16.0), from the reserve (about 567 B of
+  its ~750 B left): the two hook calls in `diff()`, the `paths` hook in `paths()`, and the registry's comment.

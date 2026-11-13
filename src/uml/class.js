@@ -4,7 +4,7 @@ import { SHAPE, r2 } from '../draw/shapes.js';
 import '../typed/draw.js'; // SHAPE.classifier, which the note's outline and ports take
 import { labelW } from '../layout/layered.js';
 import { layoutTyped } from '../typed/layout.js';
-import { OWNER_RULES, holdsLine, ownerChoices, ownerProblems, ownersOn, placeTabs, readingOrder } from './owners.js';
+import { OWN_BOXES, OWNER_RULES, holdsLine, ownerChoices, ownerProblems, ownersOn, placeTabs, readingOrder } from './owners.js';
 
 /* ---------- the class diagram, uml.class (work package 1.9) ----------
    The subset of proposal.md §8.2: class, interface, enumeration with literals, data type, primitive type; attributes and
@@ -122,8 +122,8 @@ function memberAdd(text, owner) {
 }
 
 /* ---- the vocabulary (model.md, uml.class) ---- */
-const CLASSIFIERS = ['uml.Class', 'uml.Interface', 'uml.Enumeration', 'uml.DataType', 'uml.PrimitiveType'];
-const IMPLIED = { 'uml.Interface': 'interface', 'uml.Enumeration': 'enumeration', 'uml.DataType': 'dataType', 'uml.PrimitiveType': 'primitive' }; // shown «…» over the name
+const CLASSIFIERS = ['uml.Class', 'uml.Interface', 'uml.Enumeration', 'uml.DataType', 'uml.PrimitiveType', 'uml.Stereotype']; // a stereotype specializes a stereotype (notes/stage-6.md §4.2)
+const IMPLIED = { 'uml.Interface': 'interface', 'uml.Enumeration': 'enumeration', 'uml.DataType': 'dataType', 'uml.PrimitiveType': 'primitive', 'uml.Stereotype': 'stereotype', 'uml.MetaclassReference': 'metaclass', 'uml.Profile': 'profile' }; // shown «…» over the name
 const STEREO = { key: 'stereotypes', label: 'Stereotypes', kind: 'list' };
 const endFields = w => [['role', 'text'], ['multiplicity', 'text'], ['aggregation', 'enum', ['none', 'shared', 'composite']], ['navigable', 'bool']]
   .map(([k, kind, options]) => ({ key: `ends.${w}.${k}`, path: ['ends', w, k], label: `${w === 'from' ? 'From' : 'To'} ${k}`, kind, ...(options ? { options } : {}) }));
@@ -145,7 +145,7 @@ const CLASS_DEF = {
 const COMPARTMENTS = { attributes: 'uml.Property', operations: 'uml.Operation', literals: 'uml.EnumerationLiteral' };
 function compartmentsOf(n) { // a class's attributes and operations; an enumeration's literals, then the others it has
   const c = name => ({ name, members: UML_ARR(n.members).filter(m => UML_OBJ(m) && m.type === COMPARTMENTS[name]) });
-  if (n.type === 'uml.Package' || n.type === 'uml.Comment') return [];
+  if (OWN_BOXES.includes(n.type) || n.type === 'uml.Comment' || n.type === 'uml.MetaclassReference') return []; // a package or a profile; a metaclass has no compartment (notes/stage-6.md §4.1)
   return n.type === 'uml.Enumeration' ? [c('literals'), ...[c('attributes'), c('operations')].filter(x => x.members.length)] : [c('attributes'), c('operations')];
 }
 
@@ -180,7 +180,8 @@ function lineLook(e) {
     case 'uml.InterfaceRealization': return { from: 'none', to: 'triangle', dashed: true };
     case 'uml.Dependency': return { from: 'none', to: 'open', dashed: true };
     case 'uml.CommentLink': return { from: 'none', to: 'none', dashed: true };
-    case 'uml.PackageImport': case 'uml.PackageMerge': return { from: 'none', to: 'open', dashed: true };
+    case 'uml.PackageImport': case 'uml.PackageMerge': case 'uml.ProfileApplication': return { from: 'none', to: 'open', dashed: true };
+    case 'uml.Extension': return { from: 'none', to: 'filled-triangle' }; // to the metaclass (notes/stage-6.md §4.1)
     case 'uml.Association': { const E = endsOf(e), lab = w => ({ role: (E[w] || {}).role, mult: (E[w] || {}).multiplicity });
       return { from: endOfLine(e, 'from'), to: endOfLine(e, 'to'), labels: { from: lab('from'), to: lab('to') } }; }
     default: return { from: 'none', to: 'arrow' };
@@ -188,15 +189,19 @@ function lineLook(e) {
 }
 const stereoText = x => UML_ARR(UML_OBJ(x.props) ? x.props.stereotypes : null).filter(UML_HAS).map(t => `«${t}»`).join(' ');
 // a package import says «import», or «access» when private; a merge «merge» (notes/stage-2.md §10.2)
-const keyword = e => e.type === 'uml.PackageImport' ? ((UML_OBJ(e.props) ? e.props.visibility : null) === 'private' ? '«access»' : '«import»') : e.type === 'uml.PackageMerge' ? '«merge»' : '';
+// a profile application «apply», a required extension {required} (notes/stage-6.md §4.1)
+const keyword = e => e.type === 'uml.PackageImport' ? ((UML_OBJ(e.props) ? e.props.visibility : null) === 'private' ? '«access»' : '«import»') : e.type === 'uml.PackageMerge' ? '«merge»'
+  : e.type === 'uml.ProfileApplication' ? '«apply»' : e.type === 'uml.Extension' && UML_OBJ(e.props) && e.props.isRequired === true ? '{required}' : '';
 const lineLabel = e => [keyword(e), stereoText(e), e.label].filter(UML_HAS).join(' ');
 const LINE_WORDS = { 'uml.Association': ['Association', 'a link between instances'], 'uml.Generalization': ['Generalization', 'is a kind of the one it points to'],
   'uml.InterfaceRealization': ['Realization', 'implements the interface it points to'], 'uml.Dependency': ['Dependency', 'uses the one it points to'],
   'uml.CommentLink': ['Comment link', 'what a comment is about'], 'uml.PackageImport': ['Package import', 'sees the names of the one it points to: «import», or «access» kept private'],
-  'uml.PackageMerge': ['Package merge', 'takes in what the one it points to holds'] };
+  'uml.PackageMerge': ['Package merge', 'takes in what the one it points to holds'], 'uml.Extension': ['Extension', 'the stereotype extends the metaclass it points to'],
+  'uml.ProfileApplication': ['Profile application', '«apply»: the package may use the profile\'s stereotypes'] };
 const LEGEND_ENDS = { // small copies of src/typed/draw.js's ends, pointing right with the tip at x 26
   none: '', open: '<path d="M17 4L26 8L17 12" fill="none"/>', triangle: '<path d="M16 3L26 8L16 13Z" fill="var(--um-panel)"/>',
-  diamond: '<path d="M12 8L19 4L26 8L19 12Z" fill="var(--um-panel)"/>', 'filled-diamond': '<path d="M12 8L19 4L26 8L19 12Z" fill="var(--um-muted)"/>' };
+  diamond: '<path d="M12 8L19 4L26 8L19 12Z" fill="var(--um-panel)"/>', 'filled-diamond': '<path d="M12 8L19 4L26 8L19 12Z" fill="var(--um-muted)"/>',
+  'filled-triangle': '<path d="M16 3L26 8L16 13Z" fill="var(--um-muted)"/>' };
 const legendItem = (end, dashed, name, says) => `<span class="lgi" title="${esc(name + ' — ' + says)}"><svg class="lgs" viewBox="0 0 28 16" aria-hidden="true"><g stroke="var(--um-muted)" stroke-width="1.4" stroke-linejoin="round"><path d="M2 8H${end === 'none' ? 26 : end.includes('diamond') ? 12 : 17}"${dashed ? ' stroke-dasharray="3 2"' : ''}/>${LEGEND_ENDS[end]}</g></svg><b>${esc(name)}</b><span>${esc(says)}</span></span>`;
 // the legend of a view's lines (pieces.js shows it): each kind drawn, then the association's ends it shows
 function legendOf(edges) {
@@ -228,7 +233,7 @@ const CLASS_LOOK = { members: true, own: null, word: 'class diagram' };
 function nodeName(n, pic, look = CLASS_LOOK) {
   if (n.type === 'uml.Comment') return 'Comment: ' + nameOfEl(n);
   const p = UML_OBJ(n.props) ? n.props : {}, why = [...UML_ARR(p.stereotypes).filter(UML_HAS), ...(p.isAbstract ? ['abstract'] : [])], nm = pic ? pic.name(n.id) : nameOfEl(n);
-  if (n.type === 'uml.Package') { const b = pic && pic.boxes.find(x => x.id === n.id); return b ? b.aria : `Package ${nm} (${[...why, 'closed'].join(', ')})`; }
+  if (OWN_BOXES.includes(n.type)) { const b = pic && pic.boxes.find(x => x.id === n.id); return b ? b.aria : `${typeWord(n.type)} ${nm} (${[...why, 'closed'].join(', ')})`; }
   const counts = look.members ? compartmentsOf(n).map(c => plural(c.members.length, c.name.replace(/s$/, ''))) : [];
   return [`${typeWord(n.type)} ${nm}${why.length ? ` (${why.join(', ')})` : ''}`, ...counts].join(', ');
 }
@@ -253,23 +258,27 @@ function drawnLines(model, view, own) {
 
 /* the view's geometry, for a type's look: { model, view, pos (col, row by id, the layered layout's ranking or the view's
    pins), memo, direction }. A line that ends on a member is drawn to the member's owner; a line between two nodes the view
-   does not both show is not drawn. An open package is a box (its id takes no slot), passed to layoutTyped as a container */
+   does not both show is not drawn. An open package is a box (its id takes no slot), passed to layoutTyped as a container.
+   A look may also give node(d, n, model, pic), a node's drawing input before it is sized (the profile's tag compartments), and
+   dg, more of layoutTyped's input (repair, reroute: notes/stage-6.md §4.1), and box(b, model, pic), a box as drawn (its title
+   and accessible name) */
 const typeGeo = look => ({ model, view, pos, memo }) => {
-  const { at, pic, lines } = drawnLines(model, view, look.own), present = UML_OBJ(view.present) ? view.present : {};
+  const { at, pic, lines } = drawnLines(model, view, look.own), present = UML_OBJ(view.present) ? view.present : {}, boxes = look.box ? pic.boxes.map(b => look.box(b, model, pic)) : pic.boxes;
   const nodes = pic.ids.filter(id => !pic.open.has(id)).map(id => { const n = at.get(id).x, pr = UML_OBJ(UML_OWN(present, id)) ? present[id] : {}, p = UML_OBJ(n.props) ? n.props : {};
     const st = UML_ARR(p.stereotypes).filter(UML_HAS);
-    const shape = n.type === 'uml.Comment' ? { shape: 'note' } : n.type === 'uml.Package' ? { shape: 'package', stereotypes: st }
+    const shape = n.type === 'uml.Comment' ? { shape: 'note' } : OWN_BOXES.includes(n.type) ? { shape: 'package', stereotypes: [...(UML_OWN(IMPLIED, n.type) ? [IMPLIED[n.type]] : []), ...st] }
       : { shape: 'classifier', stereotypes: [...(UML_OWN(IMPLIED, n.type) ? [IMPLIED[n.type]] : []), ...st], abstract: !!p.isAbstract, compartments: look.members ? compartmentsOf(n) : [],
         collapsed: UML_ARR(pr.collapsed), ...(Number.isFinite(pr.rows) ? { rows: pr.rows } : {}) };
-    const d = { id, label: n.type === 'uml.Comment' ? nameOfEl(n) : pic.name(id), type: n.type || 'uml.Class', kind: 'file', ...shape, aria: nodeName(n, pic, look), col: (UML_OWN(pos, id) || [0, 0])[0], row: (UML_OWN(pos, id) || [0, 0])[1] };
+    const d0 = { id, label: n.type === 'uml.Comment' ? nameOfEl(n) : pic.name(id), type: n.type || 'uml.Class', kind: 'file', ...shape, aria: nodeName(n, pic, look), col: (UML_OWN(pos, id) || [0, 0])[0], row: (UML_OWN(pos, id) || [0, 0])[1] };
+    const d = look.node ? look.node(d0, n, model, pic) : d0;
     return { ...d, ...SHAPE[d.shape].size(d) }; });
   const edges = lines.filter(({ from, to }) => !holdsLine(pic, from, to))
     .map(({ e, from, to }) => ({ id: e.id, _id: e.id, type: e.type, from, to, label: lineLabel(e) || undefined, end: lineLook(e), aria: lineName(e, at, pic), ...(UML_OBJ(e.style) || typeof e.style === 'string' ? { style: e.style } : {}) }));
   // a box's border and padding take 48 px of each side of the gap between columns, so a line from box to box has none left for
   // its label, which is then not drawn: laid out left to right, a view with boxes and labelled lines spreads its columns by its
   // widest label and 40 px for its stubs (laid out down, a label sits across its line, in the gap between rows)
-  const down = view.direction === 'down', wide = !down && pic.boxes.length ? Math.max(0, ...edges.filter(e => e.label).map(labelW)) : 0;
-  const g = layoutTyped({ nodes, edges, ...(pic.boxes.length ? { containers: pic.boxes } : {}), direction: down ? 'down' : 'right', gap: 96 + (wide ? Math.ceil(wide) + 40 : 0), rgap: 56 }, memo);
+  const down = view.direction === 'down', wide = !down && boxes.length ? Math.max(0, ...edges.filter(e => e.label).map(labelW)) : 0;
+  const g = layoutTyped({ nodes, edges, ...(boxes.length ? { containers: boxes } : {}), direction: down ? 'down' : 'right', gap: 96 + (wide ? Math.ceil(wide) + 40 : 0), rgap: 56, ...look.dg }, memo);
   g.legend = legendOf(g.edges);
   return placeTabs(g);
 };
@@ -354,6 +363,7 @@ const describeAs = look => (model, viewId) => {
       else if (e.type === 'uml.Dependency') said.push(`depends on ${nm(t)}${stereoText(e) ? ' ' + stereoText(e) : ''}`);
       else if (e.type === 'uml.PackageImport') said.push(`${keyword(e) === '«access»' ? 'accesses' : 'imports'} ${nm(t)}`);
       else if (e.type === 'uml.PackageMerge') said.push(`merges ${nm(t)}`);
+      else if (e.type === 'uml.ProfileApplication') said.push(`applies ${nm(t)}`);
       else if (e.type === 'uml.CommentLink') said.push(`about ${nm(t)}`); });
     out.push(nodeName(at.get(id).x, pic, look) + (said.length ? '; ' + said.join('; ') : '') + '.'); });
   return out.join('\n');
@@ -376,4 +386,4 @@ const CLASS_TYPE = registerDiagramType('uml.class', {
   describe: classDescribe,
 });
 
-export { CLASS_TYPE, CLASS_DEF, RULES, multBounds, parseMember, printMember, memberEdit, classProblems, classDescribe, classGeo, typeGeo, describeAs, drawnLines };
+export { CLASS_TYPE, CLASS_DEF, RULES, lineName, multBounds, parseMember, printMember, memberEdit, classProblems, classDescribe, classGeo, typeGeo, describeAs, drawnLines };
