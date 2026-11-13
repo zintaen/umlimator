@@ -549,6 +549,31 @@ of Checkout"; "Artifact shop-api.jar, manifests Shop API". Reading order: each b
 each node's ports after it in their drawn order, then the lines. The legend names each line kind and end drawn, and the
 ball and socket.
 
+**As built (5.4)** (`src/uml/component.js`). Where the build departs from the above:
+
+- **Its own ranking, not the host's.** The host ranks only lines between the view's nodes (Q11), so none from a port: a view
+  joined by assemblies was ranked as loose cards. The type ranks itself (`layout.rank: false`, `cpPlace`), as the host ranks a
+  view with boxes (`blockPos`) in one pass: each box's contents, then the top, by longest paths, columns by `untangle`, rows by
+  `rowsFor`; a pin wins and a node it would cover moves down. A usage of a ball is turned (provider, ball, requirer from left
+  to right); a usage of a rectangle is not.
+- **Ports on a node are drawn in the node's group** (a node of shape `ported`, its shape's look with its ports' nodes after
+  it), not as nodes of the picture: the layout check (`overlapIssues`) measures every node against every other and took each
+  such port for an overlap of its owner (5.3's open point). They stay in `byId`, so a click, F2, L, Delete, Alt + arrows and
+  the reading order's keys reach them. Ports on a box are nodes of the picture, as 5.3 drew them. Decision 22 (§18).
+- **A ball is laid out as its 16 px circle**, its name hanging under it in the row gap, so the router ends its lines level
+  with the circle. A ball's lines take its left or right by the ranking; the layout keeps no room for the name, which a line
+  passing under the ball may cross.
+- A port that faces only its owner's owner's ports (a delegation's inner end) takes that port's side, and orders by its far
+  ends (`portRank`), so a delegation runs straight in without crossing its neighbour.
+- The geometry carries a slot after each element (`slots`), so the palette's `add` hears the selection (`at.sel`): a port is
+  added into the selected component (or a selected port's owner), else refused.
+- `connect` sets a connector's kind by nesting; a line to an interface is the picker's Realization or Usage (no second pick).
+- `edits.remove`: Delete on a port deletes it from the model, said on the hint line (§12.2).
+- `05-component.json` lays out clean right and down (no crossing), and `tests/cli.py`'s case passes unchanged.
+- P1, on a 50-element, 60-line, 54-port test view in boxes three deep (CPU, best of seven, a loaded laptop): a port renamed
+  17 to 25 ms (no layout), a component renamed and a full layout 117 to 157 ms, over the 100 ms target and under CI's 1 s;
+  without `labelGaps` the same edit is 124 ms, so the cost is the router's, not the second pass.
+
 ### 10.2 Composite structure
 
 Laid out by the type's own ranking (Q11): `layout.rank: false`, so the host passes the pins alone; the type ranks the
@@ -911,6 +936,7 @@ Each is set out with its options and trade-offs in the section named; the recomm
 | 19 | Hiding a port, part or role (DoD 4) | Members cannot be hidden; Delete deletes from the model, said first, as stage 3's P12 | A `present` key that hides a member | §12.2 |
 | 20 | The delegation's look | A solid line with an open arrow at its `to` end, listed as a departure: it shows which way the port delegates | UML's plain solid line (direction in the accessible name only); a plain line with «delegate» | §9.2, §17 |
 | 21 | `labelGaps` on a view laid out down | Taken, the maintainer's decision of 13 Nov 2026: Accept that a view laid out down gains less (the spike: 19 to 12 labels with no spot, against 12 to none laid out right); 5.5 states what `06-deployment.json` keeps laid out down | Let a turned view widen its row gaps as well, measured with `rows.ht`, and prefer them for a label beside a line across the ranks (core bytes, a change in `tight`'s choice of gap) | §8 |
+| 22 | How a type's layout check passes ports on nodes (5.3's open point) | As built in 5.4: ports on a node drawn in its group, out of the picture's `nodes` (no core byte) | `overlapIssues` skips a node against the one its `owner` names (core, about 20 B in `src/layout/audit.js`), ports back as nodes | §10.1 |
 
 Decision 9 is taken: the spike left 12 labels with no spot, and `labelGaps` is built in 5.1 and set by the component and
 deployment types, the maintainer's decision of 13 Nov 2026 (§8, "As built").
