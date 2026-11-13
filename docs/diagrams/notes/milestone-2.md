@@ -596,13 +596,22 @@ Against Mermaid 12.3.0's entity relationship page. `readMermaidEr(text)`, `write
 | The word forms of an end: `only one`, `1`; `zero or one`, `one or zero`; `one or more`, `one or many`, `many(1)`, `1+`; `zero or more`, `zero or many`, `many(0)`, `0+` | the same four multiplicities as the symbols |
 | `--` and `..`, and their word forms `to` and `optionally to` | identifying and non-identifying |
 | `p[Person]`, quoted names | label `Person`, id from the alias |
-| `direction` | the view's `direction` |
-| styles, classes, `accTitle` | skipped |
+| `string? name` (v11.16.0+), `string *name`, `` `double precision` name ``, `List~T~ name` | `nullable`; `primaryKey`; a type or name in backticks or with `~` taken as written |
+| What the lexer reads and the page does not show: `one`, `many`, `.-` and `-.`, `u` | `1`, `0..*`, non-identifying; `u` (a parent marker) approximated as `1` |
+| `direction` | the view's `direction`; `BT` and `RL` approximated |
+| `subgraph … end` (v11.17.0+) | its entities read; the group skipped, and a relationship with a group skipped (row 20 has none) |
+| styles, classes, `:::`, `accTitle`, `accDescr` | skipped |
 
 Mermaid says nothing of which column a foreign key references: `references` is left out and reported once per file
-(`fk-flag` warns of each). The writer keeps it as `%% references: order.customer_id customer.id`, and an id the reader
-would not derive as `%% id:`. `read(write(model))` equals the model for `20-entity-relationship.json` and 500 generated
-models.
+(`fk-flag` warns of each). The writer keeps it as `%% references: customer.id` above the column's row (built so: one
+id, the rest of the line, so an id with a space is kept; the first draft's two-label form named the referring column
+twice), and an id the reader would not derive as `%% id:`; an entity whose id Mermaid cannot write as a name (a `"`, a
+`%`, a keyword of its lexer first) is written as `entity`, `entity-2` … under its `%% id:`. A comment is kept as
+`ext.mermaid.comment`. The view's `notation` `idef1x` is not written (Mermaid draws crow's foot), named in a
+`%% not written:` line. `read(write(model))` equals the model for `20-entity-relationship.json` and 500 generated
+models; Mermaid 12.3.0's own parser reads the writer's text for example 20 and 200 of them with the same entities,
+columns, keys and ends (M2.8, once, not a dependency). §8's object counts and 64-deep nesting are for the parsed-object
+readers: a subgraph's depth here is a counter, read flat (90,000 deep in under a second, tested).
 
 ### 8.2 Mermaid flowchart (`src/readers/mermaid-flowchart.js`), ported
 
