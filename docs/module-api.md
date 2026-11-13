@@ -3498,3 +3498,95 @@ picture changes) and to "additive only" (the choice's API goes).
   map would draw as a node, is written with `shape: "box"`, whatever its type.
 - `examples/shapes.json` is the one style's gallery, `examples/notations.html` shows it light and dark, and
   `examples/clinic.json` is imported again without `shapes`.
+
+### The use case, activity, state machine and interaction overview diagrams
+
+Stage 4 of the plan for 28 diagram types (`docs/diagrams/notes/stage-4.md`). Beside the one card-shape style above,
+everything here is additive: maps, the class, object, package, sequence and communication diagrams and every earlier
+example draw as they did. The new code is in `lib/umlimator-all.js`, except 268 B in the core (4.1, 4.9).
+
+- **Shapes that are not boxes, and renames (4.1).** A typed line ends on the outline of a circle, a diamond, a bar or an
+  ellipse: the router still ends it on the node's box, and the typed line drawer slides each end along the side's
+  normal by the shape's `inset`, on a copy, so a laid-out view drawn twice from one memo is the same markup. A typed line
+  may carry `cut`, the width its label is cut at (150 px without it; the state, activity and overview lines, and an
+  extend, 280 px). A type may give `edits.rename(model, view, id, text)`, which F2 and a double-click call; a hook may
+  return `{ pick: [labels], then }` to open a picker; a palette entry with `name: false` is added with no prompt; `V` on
+  a node whose entry `opens` a diagram kind picks the view it opens (`set opensView`); `moveTo`'s `at` carries the
+  canvas's geometry (`at.geo`). `ownersOn` takes a `look`, so a box may be a member (a state's region).
+- **Control nodes and the transition micro-syntax (4.2).** The initial, final and flow final circles, the diamond (it
+  grows to hold a decision's question), the bar and the rounded box, shared by three types; the shared flow rules; one
+  parser and printer for `trigger [guard] / effect` and a flow's `name [guard]`, brackets and parentheses balanced,
+  `print(parse(x))` stable, a text it cannot read refused and kept as written.
+- **Lanes (4.3).** `laneRows` and `laneBands` (`src/layout/lanes.js`): each lane, and each lane nested in it, a run of
+  rows; bands as long as the diagram, divided 12 px off the router's lines; an empty lane keeps a band; a node in no lane
+  goes after them.
+- **Use case diagrams, `uml.use-case` (4.4).** Actors as stick figures placed first, use cases as ellipses with their
+  extension points, a subject as a box holding its use cases, include, extend (its points by name and its condition),
+  generalization; nine rules, `describe()`, names, a legend, keyboard editing; extension points as member rows.
+- **Activity diagrams, `uml.activity` (4.5).** Actions, call behaviour actions (Enter opens the activity they call),
+  send and accept actions, object nodes, data stores, the control nodes, flows labelled `name [guard]`; partitions as
+  lanes, nested, added back after the layout as header strips; a node's lane changed by a drop or the Owner field;
+  deleting a partition keeps what it held; ten rules, the PDF's rows ("in Warehouse").
+- **State machine diagrams, `uml.state-machine` (4.6).** States with their activities and internal transitions,
+  composite states as boxes with the decomposition indicator when closed, orthogonal regions stacked with dashed
+  dividers, every pseudostate kind, transitions written `trigger [guard] / effect` and edited by F2 through its parts;
+  a row `entry / …` sets that activity; regions as member rows; 17 rules.
+- **Interaction overview diagrams, `uml.interaction-overview` (4.7).** Interaction uses and inline interactions as nodes,
+  joined by the activity's control nodes and flows; an inline interaction drawn read only at full size from the
+  sequence type's own geometry (its frame only above 8 lifelines or 20 messages); Enter opens a use's view.
+- **Mermaid state diagrams (4.8).** `umlimator.py import` reads a `stateDiagram` or `stateDiagram-v2` (Mermaid 12.3.0)
+  through Node into one `uml.state-machine` view and reports what it skipped or approximated; the writer (internal)
+  writes junction, history and terminate under `%% kind:` and crossings Mermaid may not draw under `%% warning:`;
+  `read(write(model))` equals the model, ids included. Over 1 MiB is refused; it never throws.
+- **The PDF's tables per type (4.9).** A typed view's first table is headed "Elements"; a type may give `word(model,
+  id)`, an element's kind, and `rows(model, view, id)`, what is listed in place of its members.
+- **Fixtures, examples, the CLI and documents (4.10).** Examples 8, 9, 10 and 13 moved from `docs/diagrams/examples/`
+  to `examples/shopping-use-cases.json`, `fulfil-activity.json`, `order-states.json` and `buy-book-overview.json`,
+  unchanged: in the gallery and in CI, which renders, checks and validates them against the JSON Schema; `check.mjs`
+  lists what moved and runs the four types' rules. `tests/<type>-minimal.json` and `tests/<type>-stress.json` for each
+  type (`notes/stage-4.md` §16) lay out clean in Node and in Chrome under three fonts, both themes and both directions,
+  with every line end on its outline. `tests/cli.py` renders, checks, stills and prints the four examples and runs the
+  diff Action's step on each; `tests/mcp.py` serves each to the MCP server (C10). Conformance notes:
+  [`uml-use-case.md`](conformance/uml-use-case.md), [`uml-activity.md`](conformance/uml-activity.md),
+  [`uml-state-machine.md`](conformance/uml-state-machine.md),
+  [`uml-interaction-overview.md`](conformance/uml-interaction-overview.md).
+- **Types and schema (4.10).** `lib/umlimator.d.ts` exports the four diagrams' vocabulary: `UmlUseCaseElementType`,
+  `UmlUseCaseMemberType`, `UmlUseCaseLineType`, `UmlExtendProps`, `UmlActivityElementType`, `UmlActivityLineType`,
+  `UmlFlowProps`, `UmlStateMachineElementType`, `UmlStateMachineMemberType`, `UmlStateMachineLineType`,
+  `UmlStateProps`, `UmlPseudostateKind`, `UmlPseudostateProps`, `UmlTransitionProps`,
+  `UmlInteractionOverviewElementType` and `UmlInteractionOverviewLineType`; `UmlPresent.collapsed` takes
+  `'activities'`. `lib/umlimator.schema.json` describes the same fields and rejects nothing it accepted before.
+
+**Performance (P1).** The four types lay out with port repair off (`repair: false`, `reroute: false`): on the stress
+views (50 elements and 60 lines; 50 nodes, 60 flows and four lanes; 50 states, 60 transitions, composites three deep;
+40 nodes, 50 flows, 10 inline interactions) the common edit (a use case renamed, a guard, a lane change, a transition's
+label) is laid out and drawn in about 28, 23, 66 to 77 and 9 ms of CPU on a laptop. CI holds a 1 s ceiling and prints
+each against the 100 ms target (the maintainer's decision of 13 Nov 2026); the scattered state machine, most
+transitions across region borders, is held to 1 s. Turning port repair off leaves crossings next to shared sides, which
+the fixtures pin and the conformance notes state.
+
+**The maintainer's decisions of 13 Nov 2026 for this release:** the activity and interaction overview types' one column
+gap for every column (one long guard widens them all) is accepted for 0.21.0, and a per-column gap option is later work;
+the state machine type's wrap of `TYPED.edit`, which reads a member row `entry / …` as the activity, is kept for 0.21.0,
+and a member hook that may return commands comes with stage 5.
+
+What moves for a host that upgrades from 0.20.0 (beside the one card-shape style, above):
+
+- **Four new diagram types** in `umlimator/all`: a version-2 view with `diagram: "uml.use-case"`, `"uml.activity"`,
+  `"uml.state-machine"` or `"uml.interaction-overview"`, which 0.20.0 drew as plain cards with a warning, is now drawn in
+  its notation and edited on the canvas. `lib/umlimator.js` still draws plain cards for them.
+- **A typed view's PDF** heads its first table "Elements", not "Cards"; its header row stays "Card, Kind, Members".
+- **The registry** (internal) gains optional fields: `edits.rename`, `{ pick, then }` results, `name: false` and `opens`
+  on palette entries, a line's `cut`, `rows` and `word`; a type without them behaves as before.
+- **`umlimator.py import`** reads a Mermaid `stateDiagram`.
+- **The schema and `.d.ts`** gain the four types' descriptions and types, additively.
+- **Nothing else is removed or renamed;** the types, the parser, the lanes and the Mermaid state reader stay internal.
+- **Left out** (`notes/stage-4.md` §18): use-case descriptions, several subjects per use case; pins, exception handlers,
+  interruptible, expansion and structured regions, time events in activities; entry and exit points, submachine and
+  protocol state machines, a composite state's activities drawn on its box; editing an inline interaction in place; for
+  all four, XMI, copy and paste and per-type `diff()` writers. Found in 4.10 (`docs/diagrams/risks.md` R9): the PDF's
+  line tables list a line's `label` only, so a transition's parts, a flow's guard and an extend's points are missing,
+  and the state machine type gives no `word` or `rows`.
+- **Size:** `lib/umlimator.js`, what a map host loads, is 185.0 kB (184,984 B) with `gzip -9`, 12.14% over 0.16.0 (the
+  plan's budget is 15%): stage 4 added 268 B (4.1, 4.9) and the one card-shape style removed more. `lib/umlimator-all.js`
+  is 335.9 kB (335,875 B), up from 276.9 kB in 0.20.0. The npm package is 574 kB, up from 515 kB.
