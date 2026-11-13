@@ -139,7 +139,11 @@ test('a file with every construct on Mermaid\'s state page gives the pinned repo
   const links = id => model.edges.filter(e => e.type === 'uml.CommentLink' && e.to === id).map(e => node(e.from));
   assert.equal(model.title, "Every construct on Mermaid's state diagram page");
   assert.equal(v.direction, undefined); // direction RL, read as LR, is the last
-  assert.deepEqual(validate(model).filter(p => p.level === 'error'), []);
+  // Mermaid's own fork example forks into plain states; UML's fork-join rule (the state type, 4.6) wants different regions
+  // of one state, so validate() names the fork and the join, as the source wrote them. No other error
+  const typeOnly = new Set(['fork-join']), errs = m => validate(m).filter(p => p.level === 'error');
+  assert.deepEqual(errs(model).filter(p => !typeOnly.has(p.rule)), []);
+  if (errs(model).some(p => typeOnly.has(p.rule))) assert.deepEqual(errs(model).filter(p => typeOnly.has(p.rule)).map(p => p.ids[0]), ['fork_state', 'join_state']);
   // states: a name, a description as the label, a text after a colon as a description comment
   assert.deepEqual([node('stateId').label, node('s2').label, node('s3').label], ['stateId', 'This is a state description', 's3']);
   assert.deepEqual(links('s3'), [{ id: 'note-1', type: 'uml.Comment', label: 'This is a state description', ext: { mermaid: { description: true } } }]);
@@ -270,7 +274,7 @@ test('malformed input is reported, never thrown', () => {
     for (let j = 0; j < 20; j++) chars[Math.floor(r() * chars.length)] = pick(r, ['{', '}', '"', ';', '#', ':', '\n', '-->', '[*]', '--', '%%', ' as ', 'end note\n', 'state ', '<<fork>>', ':::', '<br>', '[', '/', '(', '']);
     const out = read(chars.join(''));
     assert.ok(Array.isArray(out.report));
-    assert.deepEqual(validate(out.model).filter(p => p.level === 'error'), [], chars.join(''));
+    assert.deepEqual(validate(out.model).filter(p => p.level === 'error' && p.rule !== 'fork-join'), [], chars.join('')); // fork-join: the source's own fork (above)
     write(out.model);
   }
 });
