@@ -28,7 +28,7 @@ const dpWord = x => (Object.hasOwn(DP_WORD, x.type) ? DP_WORD[x.type] : String(x
 const DP_KW = { 'uml.Device': 'device', 'uml.ExecutionEnvironment': 'executionEnvironment' };
 
 /* ---- the cube (§9.1): SHAPE.node's outline and inset, 10 px deep, in the typed look's paint; closed a node, open a frame ---- */
-const DP = { d: 10, pad: 10, name: 12, nlh: 16, st: 11, sth: 14, minW: 120, maxW: 320, minH: 60 };
+const DP = { d: 10, head: 15, pad: 10, name: 12, nlh: 16, st: 11, sth: 14, minW: 120, maxW: 320, minH: 60 };
 const dpParts = n => { const st = [...(DP_KW[n.type] ? [DP_KW[n.type]] : []), ...DP_ARR(n.stereotypes)].map(t => `«${t}»`), name = String(n.label ?? '');
   return { st, name, w: Math.ceil(Math.min(DP.maxW, Math.max(DP.minW, ...st.map(t => textW(t, DP.st) + 2 * DP.pad), textW(name, DP.name) + 2 * DP.pad)) + DP.d),
     h: Math.max(DP.minH, DP.d + 16 + st.length * DP.sth + DP.nlh) }; };
@@ -50,11 +50,12 @@ SHAPE.cube = {
       + `<g class="c-head" data-band="${r2(y + p)} ${r2(y + h)}">${tx.join('')}</g></g>`;
   },
   // open: the frame holds the cube as a closed one does (its pad is 10 px more, dpPic), the front face its rect, the top and
-  // right faces inside the frame; the keyword, stereotypes and name (the box's title) at the top left of its 24 px header room
-  frame: f => { const p = DP.d, { x, y, w, h } = f;
+  // right faces inside the frame; the box's title at the top left of its header room: the keyword and stereotypes (f.kw) on
+  // a line above the name, as UML 2.5.1 draws them, in 24 px and the box's head more (dpPic); with neither, the name alone
+  frame: f => { const p = DP.d, { x, y, w, h } = f, line = (t, dy) => `<text class="family-title" x="${r2(x + 12)}" y="${r2(y + p + dy)}" fill="var(--um-text)" style="font:600 12px var(--um-sans)" data-t="ft" data-o="${esc(f.id)}">${esc(fit(t, 12, w - p - 24))}</text>`;
     return `<rect class="family-box" x="${x}" y="${r2(y + p)}" width="${r2(w - p)}" height="${r2(h - p)}" stroke="var(--um-muted)"/>`
       + `<path d="M${r2(x)} ${r2(y + p)}L${r2(x + p)} ${r2(y)}H${r2(x + w)}V${r2(y + h - p)}L${r2(x + w - p)} ${r2(y + h)}M${r2(x + w - p)} ${r2(y + p)}L${r2(x + w)} ${r2(y)}" class="dp-face" fill="none" stroke="var(--um-muted)"/>`
-      + `<text class="family-title" x="${r2(x + 12)}" y="${r2(y + p + 17)}" fill="var(--um-text)" style="font:600 12px var(--um-sans)" data-t="ft" data-o="${esc(f.id)}">${esc(fit(f.title ?? f.label ?? f.id, 12, w - p - 24))}</text>`; },
+      + (f.kw ? line(f.kw, 17) + line(f.name, 17 + DP.head) : line(f.title ?? f.label ?? f.id, 17)); },
 };
 
 /* ---- the view read: its boxes (§7), its lines, and every element's words ---- */
@@ -72,7 +73,9 @@ function dpIndex(model) {
 // the view's boxes, each titled with its keyword and stereotypes and named as §10.3 says
 function dpPic(model, view) {
   const pic = ownersOn(model, view, DP_LOOK), I = dpIndex(model);
-  const boxes = pic.boxes.map(b => { const x = pic.at.get(b.id); return { ...b, title: [...[...(DP_KW[x.type] ? [DP_KW[x.type]] : []), ...dpStereo(x)].map(t => `«${t}»`), dpName(x)].join(' '), aria: dpNodeName(x, pic, I), pad: 12 + DP.d }; });
+  // a box with a keyword or stereotypes: they go on a line above its name (the frame's f.kw, f.name), in DP.head more header room
+  const boxes = pic.boxes.map(b => { const x = pic.at.get(b.id), kw = [...(DP_KW[x.type] ? [DP_KW[x.type]] : []), ...dpStereo(x)].map(t => `«${t}»`).join(' ');
+    return { ...b, title: kw ? kw + ' ' + dpName(x) : dpName(x), ...(kw ? { kw, name: dpName(x), head: DP.head } : {}), aria: dpNodeName(x, pic, I), pad: 12 + DP.d }; });
   return { ...pic, I, boxes };
 }
 // the lines drawn: those the view lists, or with no list the model's of this type's kinds, between two elements it shows; a
