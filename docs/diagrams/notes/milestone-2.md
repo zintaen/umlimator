@@ -490,31 +490,32 @@ sets its label. Accessible names: "Decision Fit for resale?, exits yes to Refund
 **Amended in M2.3's build.** Where the build departs from the above, or settles what it left open:
 
 - **`rename` is the default.** F2 on a flow sets its label, which the canvas does with no hook; the type has none.
-- **`connect`** refuses a flow with an end that is not a flowchart node (`flow-ends`, said on the hint line), so no gesture
-  brings that error. A decision's second exit answers its first: `no` after `yes`, `yes` after `no`; an unlabelled first
-  exit becomes `yes` and the new one `no`, in one transaction. A third exit, or a first labelled otherwise, is the default.
+- **`connect`** refuses a flow with an end that is not a flowchart node (`flow-ends`, said on the hint line), so no
+  gesture brings that error. A decision's second exit answers its first: `no` after `yes`, `yes` after `no`; an
+  unlabelled first exit becomes `yes` and the new one `no`, in one transaction. A third exit, or a first labelled
+  otherwise, is the default.
 - **A view with no `direction` is laid out down, and `moveTo` reads its drops.** The canvas reads a typed view's drop as
-  laid out down only when the view says `down` (`render.js`, `hintAt`), so on a flowchart view with no `direction` a drop
-  pinned the node by the wrong axes (found in the page's test: `[42, 0]` for a drop on the node at column 6, row 0). The type's
-  `moveTo` reads such a drop with the axes turned, as `hintAt` does, and leaves every other drop, and Alt + arrows, to the
-  canvas. A view that says its direction is unchanged. No core byte; a later core change could read a type's default
-  direction instead.
-- **The database** is drawn over the map cylinder's outline (`out`, `face`, `inset`) with its lid's front edge drawn by the
-  type in the typed line colour: the cylinder's `det` tints the lid by a map kind. `SHAPE.cylinder` is read, not changed.
-  The connector's circle is `SHAPE.initial`'s outline and inset, read only.
-- **The rules, as built:** `terminator-flows` warns of a start with more than one flow out and of a terminator with flows
-  both in and out (an end has none out); `reachable` is not said on a view with no start, where `start-end` is. A
+  laid out down only when the view says `down` (`render.js`, `hintAt`), so on a flowchart view with no `direction` a
+  drop pinned the node by the wrong axes (found in the page's test: `[42, 0]` for a drop on the node at column 6, row
+  0). The type's `moveTo` reads such a drop with the axes turned, as `hintAt` does, and leaves every other drop, and an
+  arrow key with Alt, to the canvas. A view that says its direction is unchanged. No core byte; a later core change
+  could read a type's default direction instead.
+- **The database** is drawn over the map cylinder's outline (`out`, `face`, `inset`) with its lid's front edge drawn by
+  the type in the typed line colour: the cylinder's `det` tints the lid by a map kind. `SHAPE.cylinder` is read, not
+  changed. The connector's circle is `SHAPE.initial`'s outline and inset, read only.
+- **The rules, as built:** `terminator-flows` warns of a start with more than one flow out and of a terminator with
+  flows both in and out (an end has none out); `reachable` is not said on a view with no start, where `start-end` is. A
   decision's `decision-exits` names each of its three cases (fewer than two exits, an exit with no label, two exits with
   one label).
-- **`text`** (the PDF's lines table, §9) says "an exit of `<decision>` with no label" for a decision's unlabelled exit; every
-  other line shows its `label`. A flowchart keeps what a line says in its label, so this is the one text it adds.
-- **The legend** keys the flow, the comment link and each of the ten symbols the view draws. **The reading order** is from
-  the start along the flows, depth first, one exit's branch read to its end before the next; then the lines in the model's
-  order.
+- **`text`** (the PDF's lines table, §9) says "an exit of `<decision>` with no label" for a decision's unlabelled exit;
+  every other line shows its `label`. A flowchart keeps what a line says in its label, so this is the one text it adds.
+- **The legend** keys the flow, the comment link and each of the ten symbols the view draws. **The reading order** is
+  from the start along the flows, depth first, one exit's branch read to its end before the next; then the lines in the
+  model's order.
 - **Each symbol's text box**: the parallelogram's slant (14 px) and the predefined process's inner lines (8 px) on each
   side; the delay's round end (half its height) on the right; the terminator's round ends (a quarter of its height) on
-  each side; the document's wave (10 px), the database's lid (12 px over, 6 px under) and the manual input's slope (12 px)
-  over or under its text.
+  each side; the document's wave (10 px), the database's lid (12 px over, 6 px under) and the manual input's slope (12
+  px) over or under its text.
 
 ### 7.3 Data flow (`src/dfd/dfd.js`)
 
