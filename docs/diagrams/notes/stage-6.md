@@ -475,6 +475,15 @@ layoutTimeRuler({
         bounds, problems }
 ```
 
+As built (6.4), within that contract: a problem is `{ level, rule, message, ids }` (`timing-dense`, `timing-label`, and
+`change-time`, `message-ends`, `constraint-ends` for an item it cannot place, which is not drawn); a duration mark's `pts`
+are `[a, b, c, d]`, up the extension line at its earlier change, along the dimension line (arrows on `b` and `c`), up the
+other; a time mark's are its 6 px tick; a band segment's `text` is null under 16 px and `cut` when its text (cut at 160
+px) and 12 px do not fit; a state a lane does not list gets a row at the bottom, as wide as the change's `w`; a slot's
+`index` counts the lane's drawn changes at or before its `t`. The tick labels are measured by the ruler itself with the
+core's `textW` at 10 px (they are numbers it makes). With every time at one instant the ruler runs one unit from `t0`.
+Constraints are placed before messages, so a message label keeps off theirs too; a label moves up only.
+
 ### 6.3 Scale and ticks (S11)
 
 - **One time base** for every lane of the view (UML draws one), from `t0 = min(0, every time)` to `t1`, the latest time
