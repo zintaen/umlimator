@@ -3637,212 +3637,6 @@ the map's three views and the fifteen typed views of `sales-classes`, `order-obj
   Schema and pictured and printed for the site as the others are; the check loop counts its 6 crossings, the activity's
   4 and the state machine's 2.
 
-
-
-### Also on `main`, provisional until 0.23.0: stage 6's types
-
-Stage 6's 6.0 to 6.5 (`docs/diagrams/notes/stage-6.md`) are on `main`, so this release carries them, as 0.19.0 carried
-stage 3's: `umlimator/all` draws `uml.profile` and `uml.timing` views; `validate()` runs a type's `TYPED.across(model)`
-once on the whole model (stereotypes checked where profiles apply), the properties panel takes a type's
-`TYPED.fields`, and deleting a timing lifeline or change takes its changes and constraints. Their fixtures, examples,
-schema, `.d.ts` and conformance notes come in 0.23.0 (6.6, 6.7), whose section says what they do.
-
-- **Size at release:** `lib/umlimator.js` is 185.6 kB (185,613 B) with `gzip -9`, 12.52% over 0.16.0 (the budget is 15%):
-  stage 5's 248 B and C10's 183 B above, and stage 6's 6.1 (180 B) on `main`. `lib/umlimator-all.js` is 412.0 kB
-  (412,030 B) with stage 6's types in it. The npm package is 655 kB.
-
-
-## 0.21.0: maps in one card-shape style; the use case, activity, state machine and interaction overview diagrams; the Bookshop atlas
-
-### One card-shape style for maps
-
-The maintainer's decision of 13 Nov 2026 (`docs/diagrams/README.md`): maps draw in one card-shape style, and the
-`box`/`c4`/`uml` choice of 0.15.0 is removed. Two stated exceptions: to "every map draws exactly as now" (every map's
-picture changes) and to "additive only" (the choice's API goes).
-
-**What a map draws.** The union of what `c4` and `uml` drew, by the kind word the model wrote, then by the kind it means:
-
-| Card | Shape |
-|---|---|
-| `person`, `user`, `human` | a person |
-| `agent` | a robot (UML's non-human actor) |
-| `frontend` (and its words: `web`, `ui`, `app` ...) | a browser app |
-| `mobile` | a phone |
-| `cli` | a terminal |
-| `queue` (and its words) | a pipe |
-| `module`, `package` | a folder (UML's package) |
-| `cloud` (and its words: `host`, `cdn`, `deploy` ...) | a node (UML's node) |
-| `database` (and its words) | a cylinder |
-| `file` (and its words) | a document (UML's artifact) |
-| a hook | a hexagon |
-| anything else | a rounded box, with its kind's own mark |
-
-- A box keeps its kind's own mark: UML's component icon on a box is not kept.
-- An `external` card is dashed (both notations dashed it). A box (container) is solid unless it has a `tone`: `c4`'s
-  dashed boundaries, and the minimap's copy of them, are gone.
-- **A card's own `shape`** stays, with its validation: it wins over its kind, as before.
-- **The geometry does not change.** Every shape is drawn inside its card's box, so the layout, the routes, the layout
-  check and the bench hashes are what they were (`bench/expected.json` is unchanged).
-- **Typed diagrams** (class, object, package, sequence, communication) keep UML's own notation; the map's table never
-  applies to them.
-
-**What moves for a host:**
-
-- **Removed:** the model's and a view's `shapes`; `render()`'s `shapes` option; `handle.shapes`; `MapState.shapes` (and
-  `shapes` in a `state` event's `changed`); the `Notation` type in `umlimator.d.ts`; `<umlimator-map shapes>`; the
-  page's ⬡ toggle next to ◐, its `#shapes=` link parameter and the choice it kept in `localStorage`; `shapes` in the
-  JSON Schema.
-- **Still loads:** a model that has `shapes` loads and draws in the one style, as any unknown field does; `validate()`
-  warns where it is, `shapes is no longer read: maps draw in one style` (at `shapes`, or `views[i].shapes`). An unknown
-  `render()` option, an element attribute or a link parameter named `shapes` is ignored: nothing is drawn again.
-- **Changed pictures:** every map's cards (and so its stills, PDFs and exports) draw in the one style; a map that named
-  no notation, which drew every card as a box, now draws shapes. Its layout is the same.
-- `validate()`'s hint for a `frontend` card with a person's icon (`user`, `users`, `usercheck`) now holds in every map
-  view, not only in `c4` ones: such a card is drawn as a browser. A card only typed views hold is not told.
-- `umlimator.py import` no longer writes `"shapes": "c4"`; a Structurizr style's shape still becomes the card's own
-  `shape`. A C4 source's element its words make `cloud` (a gateway, a proxy, a monitor), which C4 draws as a box and a
-  map would draw as a node, is written with `shape: "box"`, whatever its type.
-- `examples/shapes.json` is the one style's gallery, `examples/notations.html` shows it light and dark, and
-  `examples/clinic.json` is imported again without `shapes`.
-
-### The use case, activity, state machine and interaction overview diagrams
-
-Stage 4 of the plan for 28 diagram types (`docs/diagrams/notes/stage-4.md`). Beside the one card-shape style above,
-everything here is additive: maps, the class, object, package, sequence and communication diagrams and every earlier
-example draw as they did. The new code is in `lib/umlimator-all.js`, except 268 B in the core (4.1, 4.9).
-
-- **Shapes that are not boxes, and renames (4.1).** A typed line ends on the outline of a circle, a diamond, a bar or an
-  ellipse: the router still ends it on the node's box, and the typed line drawer slides each end along the side's
-  normal by the shape's `inset`, on a copy, so a laid-out view drawn twice from one memo is the same markup. A typed line
-  may carry `cut`, the width its label is cut at (150 px without it; the state, activity and overview lines, and an
-  extend, 280 px). A type may give `edits.rename(model, view, id, text)`, which F2 and a double-click call; a hook may
-  return `{ pick: [labels], then }` to open a picker; a palette entry with `name: false` is added with no prompt; `V` on
-  a node whose entry `opens` a diagram kind picks the view it opens (`set opensView`); `moveTo`'s `at` carries the
-  canvas's geometry (`at.geo`). `ownersOn` takes a `look`, so a box may be a member (a state's region).
-- **Control nodes and the transition micro-syntax (4.2).** The initial, final and flow final circles, the diamond (it
-  grows to hold a decision's question), the bar and the rounded box, shared by three types; the shared flow rules; one
-  parser and printer for `trigger [guard] / effect` and a flow's `name [guard]`, brackets and parentheses balanced,
-  `print(parse(x))` stable, a text it cannot read refused and kept as written.
-- **Lanes (4.3).** `laneRows` and `laneBands` (`src/layout/lanes.js`): each lane, and each lane nested in it, a run of
-  rows; bands as long as the diagram, divided 12 px off the router's lines; an empty lane keeps a band; a node in no lane
-  goes after them.
-- **Use case diagrams, `uml.use-case` (4.4).** Actors as stick figures placed first, use cases as ellipses with their
-  extension points, a subject as a box holding its use cases, include, extend (its points by name and its condition),
-  generalization; nine rules, `describe()`, names, a legend, keyboard editing; extension points as member rows.
-- **Activity diagrams, `uml.activity` (4.5).** Actions, call behaviour actions (Enter opens the activity they call),
-  send and accept actions, object nodes, data stores, the control nodes, flows labelled `name [guard]`; partitions as
-  lanes, nested, added back after the layout as header strips; a node's lane changed by a drop or the Owner field;
-  deleting a partition keeps what it held; ten rules, the PDF's rows ("in Warehouse").
-- **State machine diagrams, `uml.state-machine` (4.6).** States with their activities and internal transitions,
-  composite states as boxes with the decomposition indicator when closed, orthogonal regions stacked with dashed
-  dividers, every pseudostate kind, transitions written `trigger [guard] / effect` and edited by F2 through its parts;
-  a row `entry / …` sets that activity; regions as member rows; 17 rules.
-- **Interaction overview diagrams, `uml.interaction-overview` (4.7).** Interaction uses and inline interactions as nodes,
-  joined by the activity's control nodes and flows; an inline interaction drawn read only at full size from the
-  sequence type's own geometry (its frame only above 8 lifelines or 20 messages); Enter opens a use's view.
-- **Mermaid state diagrams (4.8).** `umlimator.py import` reads a `stateDiagram` or `stateDiagram-v2` (Mermaid 12.3.0)
-  through Node into one `uml.state-machine` view and reports what it skipped or approximated; the writer (internal)
-  writes junction, history and terminate under `%% kind:` and crossings Mermaid may not draw under `%% warning:`;
-  `read(write(model))` equals the model, ids included. Over 1 MiB is refused; it never throws.
-- **The PDF's tables per type (4.9).** A typed view's first table is headed "Elements"; a type may give `word(model,
-  id)`, an element's kind, and `rows(model, view, id)`, what is listed in place of its members.
-- **Fixtures, examples, the CLI and documents (4.10).** Examples 8, 9, 10 and 13 moved from `docs/diagrams/examples/`
-  to `examples/shopping-use-cases.json`, `fulfil-activity.json`, `order-states.json` and `buy-book-overview.json`,
-  unchanged: in the gallery and in CI, which renders, checks and validates them against the JSON Schema; `check.mjs`
-  lists what moved and runs the four types' rules. `tests/<type>-minimal.json` and `tests/<type>-stress.json` for each
-  type (`notes/stage-4.md` §16) lay out clean in Node and in Chrome under three fonts, both themes and both directions,
-  with every line end on its outline. `tests/cli.py` renders, checks, stills and prints the four examples and runs the
-  diff Action's step on each; `tests/mcp.py` serves each to the MCP server (C10). Conformance notes:
-  [`uml-use-case.md`](conformance/uml-use-case.md), [`uml-activity.md`](conformance/uml-activity.md),
-  [`uml-state-machine.md`](conformance/uml-state-machine.md),
-  [`uml-interaction-overview.md`](conformance/uml-interaction-overview.md).
-- **Types and schema (4.10).** `lib/umlimator.d.ts` exports the four diagrams' vocabulary: `UmlUseCaseElementType`,
-  `UmlUseCaseMemberType`, `UmlUseCaseLineType`, `UmlExtendProps`, `UmlActivityElementType`, `UmlActivityLineType`,
-  `UmlFlowProps`, `UmlStateMachineElementType`, `UmlStateMachineMemberType`, `UmlStateMachineLineType`,
-  `UmlStateProps`, `UmlPseudostateKind`, `UmlPseudostateProps`, `UmlTransitionProps`,
-  `UmlInteractionOverviewElementType` and `UmlInteractionOverviewLineType`; `UmlPresent.collapsed` takes
-  `'activities'`. `lib/umlimator.schema.json` describes the same fields and rejects nothing it accepted before.
-
-**Performance (P1).** The four types lay out with port repair off (`repair: false`, `reroute: false`): on the stress
-views (50 elements and 60 lines; 50 nodes, 60 flows and four lanes; 50 states, 60 transitions, composites three deep;
-40 nodes, 50 flows, 10 inline interactions) the common edit (a use case renamed, a guard, a lane change, a transition's
-label) is laid out and drawn in about 28, 23, 66 to 77 and 9 ms of CPU on a laptop. CI holds every timed budget to a 1 s ceiling and prints
-each against its target, 100 ms for an edit (the repository's rule for CI timing, from the maintainer's decision of 13
-Nov 2026 on the wired state machine, the one type whose edit nears 100 ms on a laptop: the scattered state machine, most
-transitions across region borders). Turning port repair off leaves crossings next to shared sides, which
-the fixtures pin and the conformance notes state.
-
-**The maintainer's decisions of 13 Nov 2026 for this release:** the activity and interaction overview types' one column
-gap for every column (one long guard widens them all) is accepted for 0.21.0, and a per-column gap option is later work;
-the state machine type's wrap of `TYPED.edit`, which reads a member row `entry / …` as the activity, is kept for 0.21.0,
-and a member hook that may return commands comes with stage 5.
-
-What moves for a host that upgrades from 0.20.0 (beside the one card-shape style, above):
-
-- **Four new diagram types** in `umlimator/all`: a version-2 view with `diagram: "uml.use-case"`, `"uml.activity"`,
-  `"uml.state-machine"` or `"uml.interaction-overview"`, which 0.20.0 drew as plain cards with a warning, is now drawn in
-  its notation and edited on the canvas. `lib/umlimator.js` still draws plain cards for them.
-- **A typed view's PDF** heads its first table "Elements", not "Cards"; its header row stays "Card, Kind, Members".
-- **The registry** (internal) gains optional fields: `edits.rename`, `{ pick, then }` results, `name: false` and `opens`
-  on palette entries, a line's `cut`, `rows` and `word`; a type without them behaves as before.
-- **`umlimator.py import`** reads a Mermaid `stateDiagram`.
-- **The schema and `.d.ts`** gain the four types' descriptions and types, additively.
-- **Nothing else is removed or renamed;** the types, the parser, the lanes and the Mermaid state reader stay internal.
-- **Left out** (`notes/stage-4.md` §18): use-case descriptions, several subjects per use case; pins, exception handlers,
-  interruptible, expansion and structured regions, time events in activities; entry and exit points, submachine and
-  protocol state machines, a composite state's activities drawn on its box; editing an inline interaction in place; for
-  all four, XMI, copy and paste and per-type `diff()` writers. Found in 4.10 (`docs/diagrams/risks.md` R9): the PDF's
-  line tables list a line's `label` only, so a transition's parts, a flow's guard and an extend's points are missing,
-  and the state machine type gave no `word` or `rows` until decision 18 (13 Nov 2026) added both in `src/uml/state.js`.
-- **Size:** `lib/umlimator.js`, what a map host loads, is 185.1 kB (185,149 B) with `gzip -9`, 12.24% over 0.16.0 (the
-  plan's budget is 15%): stage 4 added 307 B (4.1, 4.9 and the atlas's 39 B), stage 5's work on `main` 126 B more, and
-  the one card-shape style removed 2,176 B. `lib/umlimator-all.js` is 377.6 kB (377,648 B), up from 276.9 kB in 0.20.0,
-  with stage 5's types in it. The npm package is 617 kB, up from 515 kB.
-
-### Also on `main`, provisional until 0.22.0: stage 5's first packages
-
-Stage 5's 5.0 to 5.6 (`docs/diagrams/notes/stage-5.md`) are on `main`, so this release carries them, as 0.19.0 carried
-stage 3's: `umlimator/all` draws a version-2 view with `diagram: "uml.component"`, `"uml.deployment"` or
-`"uml.composite-structure"`, with ports on borders, delegation lines to inner ports and `labelGaps`; the typed edit
-hooks `edits.member` and `edits.key` are in. Their schema, `.d.ts` types, fixtures, examples and conformance notes come
-in 0.22.0 (5.8), whose section says what they do. Maps, and the types released before, draw as described above.
-
-### The Bookshop atlas
-
-The maintainer's decision of 13 Nov 2026 (`docs/diagrams/README.md`'s log, `plan.md` §7). The per-type examples stay
-the reference; `examples/bookshop-atlas.json` is one model of the Bookshop that holds all of them, joined by drill-down:
-the map's three views and the fifteen typed views of `sales-classes`, `order-objects`, `bookshop-packages`,
-`checkout-sequence`, `checkout-communication`, `shopping-use-cases`, `fulfil-activity`, `order-states` and
-`buy-book-overview`. A reader goes from the map to the sales classes (Database) and on to an order's state machine
-(Order), or to what shoppers do (Shoppers), the payment activity (Pay for the order) and the checkout's sequence
-(Charge the shopper's card); every view is reached from the map.
-
-- **Assembled, not copied.** `node tools/atlas.mjs` builds it from the example files and `tools/atlas-links.json`, which
-  lists the files in order and which element opens which view (each link is the element's `opensView`). One model,
-  many views: an element (a node, a member, an edge) whose id is in several files is one element, written once (19 are:
-  the class and package files' Order, `sales` and the rest, and the lifelines the sequence, communication and overview
-  files share). The files must agree on it: the same type, parent and ends, and any field both set equal; a field one
-  leaves out is the other's, a class's members are the union of theirs. A disagreement stops the build, naming the id,
-  the files and the field, and the example files are fixed, not the atlas: ids that were different things got their
-  own (the lifelines `lifeline-api` and the rest, beside the map's `api`), and the class file's Book, Payable, Payment,
-  CardPayment and Money moved into the package file's packages. So does an id that is a view's own element in one file
-  and anything in another, a view id in two files, and a node whose id is another file's view (it would open it); a
-  field the tool does not know stops it too. `tests/atlas.test.mjs` builds it again and compares it with the committed
-  file byte for byte; it also asks for no core error from `validate()`, every view laid out as in its own file (the
-  same boxes, lines through the same points), and every drill-down opening a view of the atlas.
-- **A map and typed views share one model.** A view with no `diagram` is a map, drawn as before, in a
-  `schemaVersion: 2` model too (`model.md` §1, rule 1); nothing had to be left out.
-- **Another kind of diagram opens, never unfolds in place** (`src/map/context.js`, 39 B in the core): a card whose inner
-  view is a different diagram (a map card opening a use case diagram, a class opening its state machine, an interaction
-  use opening its sequence) switches to that view; unfolding it would draw one notation's elements as another's cards.
-  A map card and an activity's call behaviour action still unfold as before.
-- **What `validate()` says.** Two errors from UML rules, none from the core: the class type's rules run on the whole
-  model, so the use case file's generalizations (an actor's, a use case's) are not between classifiers to them.
-  `tests/atlas.test.mjs` pins the two.
-- **CI.** The atlas is one of `examples/*.json`, so it is rendered, checked with `--expand`, validated against the JSON
-  Schema and pictured and printed for the site as the others are; the check loop counts its 6 crossings, the activity's
-  4 and the state machine's 2.
-
 ## 0.22.0: the component, deployment and composite structure diagrams; diff(), the MCP server, the diff Action and map-repo meet every typed diagram
 
 ### The component, deployment and composite structure diagrams
@@ -3985,3 +3779,16 @@ and walk as before.
   it.
 - **Core**: +183 B gzipped (`gzip -9`: 185,246 B with 5.8 to 185,429 B, 12.41% over 0.16.0), from the reserve (about 567 B of
   its ~750 B left): the two hook calls in `diff()`, the `paths` hook in `paths()`, and the registry's comment.
+
+### Also on `main`, provisional until 0.23.0: stage 6's types
+
+Stage 6's 6.0 to 6.5 (`docs/diagrams/notes/stage-6.md`) are on `main`, so this release carries them, as 0.19.0 carried
+stage 3's: `umlimator/all` draws `uml.profile` and `uml.timing` views; `validate()` runs a type's `TYPED.across(model)`
+once on the whole model (stereotypes checked where profiles apply), the properties panel takes a type's
+`TYPED.fields`, and deleting a timing lifeline or change takes its changes and constraints. Their fixtures, examples,
+schema, `.d.ts` and conformance notes come in 0.23.0 (6.6, 6.7), whose section says what they do.
+
+- **Size at release:** `lib/umlimator.js` is 185.6 kB (185,613 B) with `gzip -9`, 12.52% over 0.16.0 (the budget is 15%):
+  stage 5's 248 B and C10's 183 B above, and stage 6's 6.1 (180 B) on `main`. `lib/umlimator-all.js` is 412.0 kB
+  (412,030 B) with stage 6's types in it. The npm package is 655 kB.
+
