@@ -111,6 +111,9 @@ What touches the core, each change stating its bytes in its pull request:
 | The registry's pointer line, above `const TYPED = {}`, names `TYPED.across` and `TYPED.fields` | `src/core/registry.js` | 6.1 | 40 B |
 | | | | **about 150 B** (measured on a scratch copy of the built file: the first three lines 99 B before the delete loop's) |
 
+As built (6.1): 180 B, `gzip -9 < lib/umlimator.js` from 185,246 B to 185,426 B: the two slots and the pointer line 111 B,
+the timeline in `refs()` and `delete` 69 B.
+
 | Option | For | Against |
 |---|---|---|
 | **(a) Stage 6 spends at most 300 B; over that waits for the maintainer (recommended)** | 150 B of slack; leaves over 4,100 B for milestones 2 to 4 | The fallbacks below are worse |
@@ -749,6 +752,28 @@ proposes its row and writes its release notes in its pull request's description,
 | 6.5 | **The timing type.** §7 and §8 for timing: input, drawing, change nodes, slots, rules, `describe()`, names, legend, `rows` and `word`, hooks (`add` and `connect` writing time items by `set` of the timeline path, `moveTo`, `rename` with the state row and the ruler's unit, `remove`, `key`) | `src/uml/timing.js`, `tests/timing.test.mjs` (new), `tests/timing.html` (replaces 6.0's placeholder) | 6.4; 6.1 for the delete cascade's gesture tests | As 6.3 on row 14; an inline copy of `14-timing.json` lays out clean; F2's `@` forms parse and print back; a new time item's id checked unused; the sequence type's tests unchanged, and its panel and `describe()` ignore a lifeline's `states` (asserted) |
 | 6.6 | **Fixtures, examples, docs, CLI.** §11's files and their tests (`tests/stage6-fixtures.test.mjs`, `tests/stage6.html`); the two examples revised (§14) and moved, with `check.mjs`'s `MOVED` (and its hand timing rule dropped); `tests/core-diet.json` re-recorded for the two moved and revised targets (as 5.8 did for 04 to 06); `render`, `check`, `stills` and `pdf` on each; the schema and `.d.ts`; C10's tests; every document of `plan.md` §7; `docs/conformance/uml-profile.md` and `uml-timing.md`, each with its departures and a fidelity table of every writer's limits (SVG, PNG, PDF: value text cut in short segments, constraint labels overflowing their span, tag rows cut, …); `model.md` and `risks.md` (§17); the lanes' release notes gathered into `docs/module-api.md` | `examples/` but the atlas's files and `bookshop-packages.json`, `tests/profile-*.json`, `tests/timing-*.json`, `tests/stage6-fixtures.test.mjs`, `tests/stage6.html` (replaces 6.0's placeholder), `tests/notation.html`, `tests/cli.py`, `tests/mcp.py`, `tests/core-diet.json`, `lib/umlimator.d.ts`, `lib/umlimator.schema.json`, `docs/diagrams/examples/check.mjs`, `docs/` (but the status table) | 6.2 to 6.5; 5.8 merged | Definition of done 1, 3, 7 (the fidelity tables), 9, 10, 11 and 12 for both types; the revised `bookshop-profile.json` gets no problem; §12's budgets in CI; each PDF lists §9's rows; both examples in the gallery and CI |
 | 6.7 | **The Bookshop atlas, full pass** (`plan.md` §7: the 14 UML types). The two examples join by drill-down (§14); `tools/atlas.mjs`'s `KEYS.props` gain `tags`, `states`, `sentAt`, `receivedAt` and `isRequired`, and a view's `timeline`; the package example shows the profile and its application; a test that the atlas holds a view of each of the 14 UML diagram kinds, each reached from the map, each laid out as in its own file, `describe()` and the PDF of the whole atlas succeeding | `examples/bookshop-atlas.json`, `examples/bookshop-packages.json`, `tools/atlas.mjs`, `tools/atlas-links.json`, `tests/atlas.test.mjs` | 6.6 (the moved examples); 6.3 for the package view's profile | `node tools/atlas.mjs` builds with no clash; `tests/atlas.test.mjs`'s pinned problems stay the class rule's two (none from `order-uses-money`'s «use» or any other stored keyword); exactly the elements that get «owned» pinned (§5.5); deleting `lifeline-worker` from the sequence view takes its timing changes; the atlas's class view's `describe()` and PDF rows checked for `placedAt`'s new stereotype and tags; the package example's new stills in the pull request for the maintainer |
+
+6.1's "deleting any element of any example or target leaves a model that validates" is held, as `tests/apply.test.mjs`
+holds it, with `lib/umlimator.js`'s `validate()` and, since no type checks a timeline before 6.5, a check that no change
+or constraint names what is gone. With every type's rules (`lib/umlimator-all.js`'s `validate()`) it does not hold
+today, for reasons outside stage 6 (none touches a timeline). Of 1,495 deletes over the examples and targets, 29 raise a
+new error under four rules:
+
+| Rule | Deletes | Example |
+|---|---|---|
+| `extend-points` | 4 | the atlas and `shopping-use-cases.json`: deleting `checkout.payment` or `checkout.extras` leaves an extend naming no extension point (the use case type's `refs` drop it from the list) |
+| `message-link` | 18 | the atlas: deleting the connector `shopper-storefront` leaves `cm1` and `cm9` with no connector of their communication view |
+| `reply-once` | 6 | the atlas: deleting fragment `f1` or one of its operands leaves `m5` and `m8` both answering `m4` outside an alt |
+| `subject-shown` | 1 | `04-composite-structure.json`: deleting `order-service` leaves view `internals` with subject null |
+
+A use case cascade (an extend left with no point goes with it) would close only the first; each of the others needs its
+own type's delete to cascade or its rule to accept what a delete leaves. That is the maintainer's to decide, after stage 6.
+
+Two smaller choices as built. With no field list for its type, the panel shows a slot's fields to edit and still lists
+every prop to read, `tags` among them as JSON, as before the slot (`tests/typed-edit.html` asserts it). The delete
+cascade walks every element once a level of the chain, so a chain stored in reverse order is quadratic (2,000 changes
+each naming the one before, about 0.4 s); a timeline is two levels deep (lifeline, change, constraint), and lines
+cascade the same way already.
 
 Existing tests a package edits, and why: 6.0 lists the stage's three pages in `tests/embed.py`; 6.1 adds cases to
 `tests/typed-edit.html` (the fields slot) and none elsewhere; 6.6 adds the two examples to `tests/cli.py` and
