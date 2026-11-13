@@ -655,6 +655,34 @@ The workspace JSON (Structurizr's published schema): `model.people`, `softwareSy
   instances and infrastructure nodes, groups, filtered, custom and image views, perspectives, element properties other than
   the identifier, documentation and decisions, `animations`, element positions (D1, as R5 for BPMN).
 
+As built (M2.10), where the reader departs from or adds to the above:
+
+- **Shapes** follow Structurizr's own precedence (`Styles.findElementStyle`, as `umlimator_import.py` does for the DSL):
+  an element's tags in order, a later tag's shape winning over an earlier one, not the first style with a shape. The
+  styles are the workspace's `views.configuration.styles.elements`. `Terminal` and `Shell` are `terminal` (the map has
+  it); every shape the map lacks (`Component`, `Ellipse`, `Circle`, `Diamond`, `Bucket`) is a box, approximated.
+  `props.shape` is written only when it is not the type's own (a person's `person`, the rest's `box`). Themes are
+  reported, not fetched.
+- **Ids**: an identifier that holds a UUID (the DSL's made-up identifier for an unnamed element) is not used, so the
+  name is; a container instance is `<container>-<instanceId>`.
+- **Relationships**: a `linkedRelationshipId` on a static element's relationship marks it implied (skipped, counted in
+  one report line); on a container instance's it marks one replicated from its container's, which is read (§7.5.3).
+  A dynamic view's step naming an implied relationship becomes the relationship it is implied by, approximated; a
+  step marked `response` is drawn the relationship's way, approximated. A deployment node's `instances` over one is
+  drawn once, approximated. A static view's own `relationships` list (its excludes) is not read: the type draws a
+  view's lines from the model.
+- **Views**: a view with no `title` is titled `<subject or workspace>: <kind>` (`Clinic bookings: containers`); a
+  deployment view's environment follows (`Shop: deployment, Live`). `automaticLayout.rankDirection` gives `direction`.
+  A workspace with no view read gets one landscape view of its people and software systems, reported.
+- **The report**: each item is `{ path, status, message }`, `path` where in the workspace (`model.people[1].group`),
+  since a parsed object has no lines. M2.12 prints `path` where the Mermaid readers print `line`.
+- **Input**: the parsed workspace, or its text (over 1 MiB refused, as the Mermaid readers). Deployment nodes are read
+  by a stack, never recursion; the counts also stop an object a host built that holds itself.
+- **The fixture** (`tests/import/structurizr.json`, `clinic` and `every`): the Structurizr CLI was not run where M2.10
+  was built, so `clinic` is written in the export's form from `examples/clinic.dsl` (the DSL's ids in creation order,
+  hierarchical identifiers, the nine relationships its default strategy implies, the styles and theme). Regenerating it
+  with `structurizr-cli export -f json` should change no line of its read model; the report's line count may differ.
+
 ### 8.4 DBML (`src/readers/dbml.js`)
 
 `@dbml/core` (Apache-2.0, `proposal.md` §6.4) parses DBML into a `Database`: schemas, tables with fields (`name`,
