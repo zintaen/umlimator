@@ -221,6 +221,20 @@ test('5.1\'s spike (§14): 50 nodes, 60 lines with long labels, 40 ports, boxes 
   const best1 = k => Math.min(...runs1.map(r => r[k]));
   assert.ok(best1('full') < 1000 && best1('label') < 1000, `with labelGaps: full ${best1('full')} ms, label ${best1('label')} ms`);
   console.log(`# 5.1 spike with labelGaps: a label edit ${best1('label').toFixed(1)} ms, full layout ${best1('full').toFixed(1)} ms; ${none1} with no spot, ${l1.filter(e => e.lbl && e.lbl.short).length} cut to fit; ${Math.round(g1.bounds.w)} px wide (${Math.round(g0.bounds.w)} without); routes ${JSON.stringify(g1.stats)}`);
+  // laid out down, the view is laid out turned: its column gaps are the picture's row gaps, widened by each label's height, so
+  // labelGaps gains less (§8, decision 21); printed, and it must not leave more labels with no spot
+  const dn = d => layoutTyped({ ...d, direction: 'down' }), noSpot = g => g.edges.filter(e => e.label && !e.lbl).length, d0 = dn(dg), d1 = dn(lg(dg));
+  assert.ok(noSpot(d1) <= noSpot(d0), `laid out down, labelGaps leaves ${noSpot(d1)} labels with no spot, against ${noSpot(d0)}`);
+  console.log(`# 5.1 spike laid out down: ${noSpot(d0)} with no spot, ${Math.round(d0.bounds.h)} px high, routes ${JSON.stringify(d0.stats)}; with labelGaps ${noSpot(d1)}, ${Math.round(d1.bounds.h)} px high, routes ${JSON.stringify(d1.stats)}`);
+});
+
+test('labelGaps widens column gaps only: a tight label between two cards of one column moves no card up or down', () => {
+  // one column, so no column gap: the old candidate list (a row gap on a typed view too) moved b and c down by 32 and 64 px
+  const dg = { repair: false, reroute: false, nodes: ['a', 'b', 'c'].map((id, row) => ({ id, label: id.toUpperCase(), col: 0, row })),
+    edges: [['a', 'b'], ['b', 'c']].map(([from, to]) => ({ id: from + to, from, to, label: LONG, fromSide: 'bottom', toSide: 'top' })) };
+  const g0 = layoutTyped(dg), g1 = layoutTyped({ ...dg, labelGaps: true });
+  assert.ok(g0.edges.some(e => !e.lbl), 'the fixture keeps a label with no spot');
+  assert.deepEqual(g1.nodes.map(n => n.y), g0.nodes.map(n => n.y));
 });
 
 test('labelGaps is opt-in: a typed view without it lays out as before, and turning it on lays the view out again', () => {

@@ -63,7 +63,8 @@ function layoutTyped(dg, memo) {
      a box's round: true grows its frame by √2 about its centre, so the ellipse drawn in it holds its contents (§9.3)
    - a view's labelGaps: true lays the view out once more where a line's label found no spot, was cut short or sits on a box's
      border, with the column gap it needs widened by the label's width (a map's labelRoom, layered.js; column gaps only, as a
-     typed view's rows are of mixed height); kept if it has fewer issues and labels cut short (§8). The component and
+     typed view's rows are of mixed height; laid out down, the picture's row gaps, by the label's height, so fewer labels
+     gain room); kept if it has fewer issues and labels cut short (§8). The component and
      deployment types set it (5.4, 5.5); a view without it lays out as before
    Out of the layout, each line with a port has e.fpb and e.tpb, its port's box at each end: 12 px across the border, centred
    on it, and 12 + 10 (k - 1) px along it for k lines on one face. A view with ports passes repair: false (risks.md P1): port

@@ -409,11 +409,18 @@ and `labelGaps: true` (5.4, 5.5); every other typed view leaves `labelGaps` unse
 - Column gaps only: a row gap is a candidate on a map alone (`Array.from({ length: map && r1 - r0 })`, the same rows as
   `Math.max(0, r1 - r0)` on a map), as `tight` measures a row gap as `rowY(r) + NH`, wrong for typed rows of mixed height.
   Laid out down, a typed view is laid out turned, so its columns are the picture's rows: the gaps widened are those between
-  the ranks either way.
+  the ranks either way, but not to the same effect. Laid out down, a gap grows by the label's height (`sizeOf` swaps a
+  turned label's size), and a horizontal label beside a line across the ranks needs the picture's column gaps, the turned
+  view's row gaps, which are never candidates. On the spike, laid out down, 12 of 54 labels keep no spot with `labelGaps`,
+  against 19 without (§14); laid out right, none against 12. Whether a turned view should also widen its row gaps is
+  decision 21. A scratch run with row gaps as candidates on a turned view too left the same 12: `tight` takes a column gap
+  first, so that option is more than the length change.
 - `labelGaps` joins `VIEW_GEO`, so turning it on or off lays the view out again (§4.4). Its documentation is beside the
   other typed fields in `src/typed/layout.js`; the registry's pointer line names it. Core +22 B (§2.3).
 - Tested in `tests/typed-ports.test.mjs`: on the spike's view, with `labelGaps` fewer labels are left with no spot than
-  without (none, against 12) and no node moves up or down (column gaps only); the edit and the full layout stay under CI's
+  without (none, against 12) and no node moves up or down; laid out down, no more are left (12, against 19), printed; on a
+  view of one column whose tight labels sit in row gaps, no card moves up or down (column gaps only: the test fails if a
+  typed view's row gaps are candidates); the edit and the full layout stay under CI's
   1 s, both printed; a view with `labelGaps: false` draws the same markup as one without it, and turning it on lays the view
   out again. Maps (`bench/expected.json`) and every existing typed view (`tests/core-diet.json`, each type's tests) are
   unchanged.
@@ -671,7 +678,7 @@ The three target examples move to `examples/bookshop-components.json`, `examples
   out fresh or after an edit (DoD 6). The fixtures pin the crossings left; each conformance note states them.
 - **5.1's spike**, on a test-only view of 50 nodes, 60 lines with long labels, 40 ports and boxes six deep with inner
   lines, measures the common edit before the type lanes start, and counts the labels left with no spot under §8's small
-  gap. If labels are left, the maintainer decides on `labelGaps` (decision 9, which adds a `layoutPass` when a label is
+  gap. If labels are left, the maintainer decides on `labelGaps` (superseded: decision 9 taken, below; decision 9, which adds a `layoutPass` when a label is
   tight, measured with and without); if the edit is over 100 ms on an idle machine, the maintainer decides among P1's other
   options (stage 4 §17) before 5.4 and 5.5 start.
 - Browser timings under headless virtual time prove nothing (1.11): budgets are enforced in Node.
@@ -679,12 +686,16 @@ The three target examples move to `examples/bookshop-components.json`, `examples
   40 lines from ports and six inner lines, boxes six deep with 48 px padding; CPU, best of seven after a warm-up, on this
   laptop): a label edit laid out and drawn 24 to 28 ms, a full layout 24 to 34 ms; every line routed clean (60 `grid`). Of 54
   labels, 12 found no spot under §8's small gap. With `labelGaps` tried on a scratch copy (column gaps only): none left, the
-  view 7,435 px wide instead of 4,339, the edit 27 ms. `labelGaps` is not built: decision 9 goes back to the maintainer.
+  view 7,435 px wide instead of 4,339, the edit 27 ms. `labelGaps` was not built then; decision 9 went back to the maintainer (taken since, below).
 - **5.1's spike, run again with `labelGaps` built** (decision 9 taken, the maintainer's decision of 13 Nov 2026; the test
   prints both runs): without it, 12 of 54 labels with no spot, a label edit 17 to 22 ms, a full layout 17 to 33 ms; with it,
   none with no spot and none cut short, the view 7,435 px wide instead of 4,339, a label edit 28 to 31 ms and a full layout
   28 to 29 ms (the second `layoutPass`); every line routed clean (60 `grid`) both ways. CPU, best of seven after a warm-up,
-  on a laptop loaded by other jobs.
+  on a laptop loaded by other jobs. These figures are the view laid out right.
+- **The same spike laid out down** (the test prints it): without `labelGaps`, 19 of 54 labels with no spot, 1,967 px high,
+  routes `{"grid":54,"cross":5,"fallback":1}`; with it, 12 of 54, 2,309 px high, routes `{"grid":53,"cross":7}`. Laid out
+  down, `labelGaps` widens the picture's row gaps, each by a label's height, while a horizontal label beside a line across
+  the ranks needs the picture's column gaps, which are the turned view's row gaps and never candidates (§8; decision 21).
 
 | Option | For | Against |
 |---|---|---|
@@ -851,10 +862,7 @@ Each is set out with its options and trade-offs in the section named; the recomm
 | 6 | Ends through parts (`model.md` §3) | `ends.<end>.part`, as rule 7; a part's ports are its type's, drawn as `<part>-><port>`, their side under `present.<part>.ports` | A path form in `from`/`to`; parts own copies of ports | §3, §6 |
 | 7 | Provided interfaces (`model.md` §3) | Always an `uml.Interface` node, a ball by `present.as` | Also a port's `provided` and `required` props | §3 |
 | 8 | Deep nesting | A box's `pad`, 48 px where it or a box it holds has ports with lines, through `TYPED.frame` (about 45 B with the round frame) | Stage 2's 12 px (a delegation between nested ports cannot be laid out); one `pad` per view | §7 |
-| 9 | Room for labels | A small `gap` and `gapAfter`'s per-column widening for the deployment and component types, no core byte; `labelGaps` only if 5.1's spike leaves labels with no spot | `labelGaps` now (25 B, column gaps only, a second `layoutPass`); one gap set by the widest label | §8 |
-
-Decision 9 is taken: the spike left 12 labels with no spot, and `labelGaps` is built in 5.1 and set by the component and
-deployment types, the maintainer's decision of 13 Nov 2026 (§8, "As built").
+| 9 | Room for labels | Taken, the maintainer's decision of 13 Nov 2026 (§8, "As built"). Was: a small `gap` and `gapAfter`'s per-column widening for the deployment and component types, no core byte; `labelGaps` only if 5.1's spike leaves labels with no spot | `labelGaps` now (25 B, column gaps only, a second `layoutPass`); one gap set by the widest label | §8 |
 | 10 | The open collaboration | A dashed ellipse, by a box's `round`, in `TYPED.frame` | A dashed stadium (a deviation); closed only | §9.3 |
 | 11 | Deleting a part | Its connectors go with it, by `refs` | `apply()`'s default: the `part` dropped | §10.4 |
 | 12 | The member hook | `edits.member` in `src/typed/edit.js`; 4.6's wrap moves onto it | `member.add` returning commands (core); a wrap per type | §12.1 |
@@ -866,6 +874,10 @@ deployment types, the maintainer's decision of 13 Nov 2026 (§8, "As built").
 | 18 | Component realization (`proposal.md` §8.5's "realization") | Add `uml.ComponentRealization` to row 5, the class type's look, no core byte | "Realization" means interface realization only, stated | §3 |
 | 19 | Hiding a port, part or role (DoD 4) | Members cannot be hidden; Delete deletes from the model, said first, as stage 3's P12 | A `present` key that hides a member | §12.2 |
 | 20 | The delegation's look | A solid line with an open arrow at its `to` end, listed as a departure: it shows which way the port delegates | UML's plain solid line (direction in the accessible name only); a plain line with «delegate» | §9.2, §17 |
+| 21 | `labelGaps` on a view laid out down | Accept that a view laid out down gains less (the spike: 19 to 12 labels with no spot, against 12 to none laid out right); 5.5 states what `06-deployment.json` keeps laid out down | Let a turned view widen its row gaps as well, measured with `rows.ht`, and prefer them for a label beside a line across the ranks (core bytes, a change in `tight`'s choice of gap) | §8 |
+
+Decision 9 is taken: the spike left 12 labels with no spot, and `labelGaps` is built in 5.1 and set by the component and
+deployment types, the maintainer's decision of 13 Nov 2026 (§8, "As built").
 
 Decision 20's trade-offs: the arrow shows direction at a glance but is UML's navigable-association look and not required
 by UML 2.5.1; the plain line is UML's own and costs nothing, but a reader cannot tell an assembly from a delegation except
