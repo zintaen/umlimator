@@ -41,7 +41,7 @@ test('read(write(model)) is the class example, view by view, less the owners a v
     assert.deepEqual(notWritten(text), hiddenOwners(m, v.nodeIds), text);
   }
   // "Payments only" shows four classes of sales without sales
-  assert.deepEqual(hiddenOwners(m, m.views.find(v => v.id === 'payments').nodeIds).length, 4);
+  assert.deepEqual(hiddenOwners(m, m.views.find(v => v.id === 'payments-only').nodeIds).length, 4);
 });
 
 test('read(write(model)) is 03-package.json\'s classes in a class view, less the owners the view does not show and the packages\' lines, which the text names', () => {
@@ -49,7 +49,7 @@ test('read(write(model)) is 03-package.json\'s classes in a class view, less the
   const views = {
     all: m.nodes.map(n => n.id), // payments holds card, which holds card-payment: nested braces
     classes: m.nodes.filter(n => !pkg.has(n.id)).map(n => n.id), // every owner hidden
-    some: ['payments', 'payable', 'card-payment', 'sales', 'order', 'wholesale-order'], // card and wholesale hidden
+    some: ['payments-package', 'payable', 'card-payment', 'sales', 'order', 'wholesale-order'], // card and wholesale hidden
   };
   const lines = { all: m.edges.map(e => `%% not written: ${e.id} (${e.type})`), classes: [], some: ['%% not written: sales-needs-payments (uml.Dependency)'] };
   for (const [id, nodeIds] of Object.entries(views)) {
@@ -61,7 +61,7 @@ test('read(write(model)) is 03-package.json\'s classes in a class view, less the
     // with every owner hidden, the two Orders of two packages read back as two classes of one name: option (a)'s cost
     assert.deepEqual(validate(back.model).filter(p => p.level === 'error').map(p => p.rule), id === 'classes' ? ['classifier-names'] : [], text);
   }
-  assert.ok(write({ ...m, views: [{ id: 'v', diagram: 'uml.class', nodeIds: views.all }] }).includes(['  namespace payments {', '    class payable["Payable"] {',
+  assert.ok(write({ ...m, views: [{ id: 'v', diagram: 'uml.class', nodeIds: views.all }] }).includes(['  namespace payments-package["payments"] {', '    class payable["Payable"] {',
     '      <<interface>>', '    }', '    class payment["Payment"]', '    namespace card {', '      class card-payment["CardPayment"]', '    }', '  }', ''].join('\n')));
 });
 

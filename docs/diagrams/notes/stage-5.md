@@ -537,7 +537,7 @@ Validators, each with a passing and a failing case:
 | `provided-ends` | error | a realization runs from a component, a class or a port to an interface |
 | `required-ends` | warning | a usage drawn as a socket runs to an interface (another usage is drawn as «use») |
 | `ball-interface` | warning | `as: "ball"` is on an interface; elsewhere it is ignored |
-| `delegation-ends` | error | a delegation joins a component or its port with a component or port inside it, at any depth |
+| `delegation-ends` | error | a delegation joins a component's port with a component or port inside it, at any depth (as built: the outer end a port, the only one drawn) |
 | `assembly-ends` | error | an assembly joins two components or their ports, neither inside the other |
 | `manifest-ends` | error | a manifestation runs from an artifact; a warning when it runs to anything but a component (§17) |
 | `component-realization-ends` | error | a component realization runs from a class or a component to a component |
@@ -548,6 +548,41 @@ Accessible names: "Component Shop API, 2 ports, holding 1 component"; "Port orde
 of Checkout"; "Artifact shop-api.jar, manifests Shop API". Reading order: each box and what it holds (`readingOrder`),
 each node's ports after it in their drawn order, then the lines. The legend names each line kind and end drawn, and the
 ball and socket.
+
+**As built (5.4)** (`src/uml/component.js`). Where the build departs from the above:
+
+- **Its own ranking, not the host's.** The host ranks only lines between the view's nodes (Q11), so none from a port: a view
+  joined by assemblies was ranked as loose cards. The type ranks itself (`layout.rank: false`, `cpPlace`), as the host ranks a
+  view with boxes (`blockPos`) in one pass: each box's contents, then the top, by longest paths, columns by `untangle`, rows by
+  `rowsFor`; a pin wins and a node it would cover moves down. A usage of a ball is turned (provider, ball, requirer from left
+  to right); a usage of a rectangle is not. What no line reaches is packed by size in rows under the lined columns, a box
+  as wide and tall as its contents.
+- **Ports on a node are drawn in the node's group** (a node of shape `ported`, its shape's look with its ports' nodes after
+  it), not as nodes of the picture: the layout check (`overlapIssues`) measures every node against every other and took each
+  such port for an overlap of its owner (5.3's open point). They stay in `byId`, so a click, F2, L, Delete, Alt + arrows and
+  the reading order's keys reach them. Ports on a box are nodes of the picture, as 5.3 drew them. Decision 22 (§18).
+  A known limit while it stands: selecting such a node also marks its ports as selected (the group's style reaches them),
+  though they are not in the selection; ports on a box do not.
+- **A ball is laid out as its 16 px circle**, its name hanging under it in the row gap, so the router ends its lines level
+  with the circle. A ball's lines take its left or right by the ranking; the layout keeps no room for the name, which a line
+  passing under the ball may cross. Laid out down, a line from before the ball comes in above it and one from after it on
+  the left or right it comes from, so none runs up through the name.
+- A port that faces only its owner's owner's ports (a delegation's inner end) takes that port's side, and orders by its far
+  ends (`portRank`), so a delegation runs straight in without crossing its neighbour.
+- The geometry carries a slot after each element (`slots`), so the palette's `add` hears the selection (`at.sel`): a port is
+  added into the selected component (or a selected port's owner), else refused.
+- `connect` sets a connector's kind by nesting; a line to an interface is the picker's Realization or Usage (no second pick).
+  It refuses a connector from an element to itself or its own port, and a delegation whose box end is not a port (it would
+  not be drawn). A connector with no kind is drawn and checked as an assembly.
+- A class on a component view is drawn as the class type's rectangle with its stereotypes. A class's ports are added from
+  the palette; its member rows are not ports.
+- `edits.remove`: Delete on a port deletes it from the model, said on the hint line (§12.2); in a mixed selection the rest
+  is hidden (Delete) or deleted (Shift + Delete), as the canvas's default.
+- A view that lists its lines (`edges`) is checked on those lines only.
+- `05-component.json` lays out clean right and down (no crossing), and `tests/cli.py`'s case passes unchanged.
+- P1, on a 50-element, 60-line, 54-port test view in boxes three deep (CPU, best of seven, a loaded laptop): a port renamed
+  17 to 25 ms (no layout), a component renamed and a full layout 117 to 157 ms, over the 100 ms target and under CI's 1 s;
+  without `labelGaps` the same edit is 124 ms, so the cost is the router's, not the second pass.
 
 ### 10.2 Composite structure
 
@@ -623,6 +658,53 @@ deployment specifications are `artifact`s; components (what an artifact manifest
 Accessible names: "Device Application server, holding 1 execution environment"; "Execution environment Java 21 runtime, in
 Application server, 3 artifacts deployed"; "Artifact shop-api.jar, on Java 21 runtime, manifests Shop API";
 "Communication path HTTPS from Shopper's device to Edge proxy".
+
+**As built (5.5)** (`src/uml/deployment.js`, `tests/deployment.test.mjs`, `tests/deployment.html`). Where the build departs
+from, or settles what is not said above:
+
+- `layoutTyped` with `gap: 48`, `rgap: 56` (the component type's, §10.1; not stated for this type), `labelGaps: true`,
+  `cut: 280` on communication paths only, `repair: false`, `reroute: false`, and stage 2's 12 px padding (no ports, §7).
+- The cube box: unlike §9.1's table, its frame holds its faces, as a closed cube's does. Its pad is 22 (10 px more than
+  stage 2's 12, on every side, as `TYPED.frame` grows a box), the front face is the frame less 10 px at the top and right,
+  and the top and right faces lie inside the frame. Drawn outside it, in the gap between boxes, the faces were unknown to the
+  router, the label placer and `check()`: on the P1 view lines ran up to 75 px inside a face and labels sat on a face's line.
+  The cost is 10 px more on the left and bottom of each box, 20 px a level (six levels: 120 px each way). A line's end on
+  a slanted corner of the outline is moved in on to it, on a copy (§2.4), as `SHAPE.cube.inset` does for a closed cube (only
+  ever lengthening its last run). A label the core leaves over the front face's top or right line, in the box's padding, slides
+  along its line inward, clear of it, on a copy. Its title is one line in the 24 px header room under the top face, `«device»
+  name` or `«executionEnvironment» name` with the stereotypes after the keyword, cut to the front face's width as a
+  package's title is (`06-deployment.json`'s "«executionEnvironment» Web brow…"): the box is as wide as its contents, not
+  its title.
+- `nest-kinds`' error covers any owner that is not a target (a package or a component too). `deployed-twice` warns of a
+  line to another target only; a «deploy» line to the target that also nests the artifact is drawn nowhere (a line from a
+  box to what it holds is left out) and warned by neither rule (`connect` refuses to draw one). `path-ends` also fails a path
+  between a target and one it holds, at any depth, which is drawn nowhere. Of the shared rules the type runs `manifest-ends` alone:
+  `port-owner` is the component type's.
+- Hooks: `connect` adds a deployment drawn from a target to an artifact, or a manifestation from a component to an artifact,
+  the other way round (as the use case type starts an association at its actor), and refuses a deployment or a communication
+  path between ends that cannot hold it, and any line between a box and what it holds, at any depth ("shop-api.jar is
+  already deployed on Java 21 runtime by nesting", "A communication path cannot join a node and what it holds") (`{ error }`,
+  said on the hint line); `remove` with Shift + Delete on a target that
+  owns something says how many elements go with it (§10.4). `owners`: an artifact's, a deployment specification's or a
+  target's Owner field lists every target. No `moveTo`, `add`, `member` or `key`: the type has no ports, no members and no
+  `present` field; a drop into a box and the Owner field emit stage 2's `reparent`, tested by pointer and by key.
+- Decision 21, what `06-deployment.json` keeps: its 7 labels all find a spot and none is cut short, laid out right (1,512 ×
+  756 px) and down (961 × 1,011 px), every line routed clean (8 `grid`). Laid out down without `labelGaps`, one label
+  (`edge-to-app`, "HTTP") has no spot and the view is 993 px high: `labelGaps` gives it its spot for 18 px. Laid out right,
+  `labelGaps` changes nothing. Both runs pinned and printed in `tests/deployment.test.mjs` (the one without by
+  `layoutTyped` on the type's own input with `labelGaps: false`).
+- Six levels (§7, L8): node, node, device, device, execution environment, execution environment, an artifact in the
+  deepest, a communication path from the deepest to a node at the top: laid out clean both ways; the outer box 609 × 514 px
+  laid out right and 609 × 638 px down (printed; 5.8's fixture pins its own).
+- P1 (§14), on a test view of 50 nodes and artifacts, 50 lines and boxes five deep (ten paths left with no spot before
+  `labelGaps`, two after): CPU, best of seven after a warm-up, on a laptop loaded by other jobs (load average 9), a path's
+  label 144 to 193 ms, an artifact moved into another node 144 to 188 ms, a full layout 150 to 207 ms, against 26 to 40 ms
+  for stage 4's types' edits in the same run; after the review's fixes, at load average 3 to 7, a path's label 101 to 118 ms,
+  an artifact moved 93 to 125 ms, a stereotype (an edit that moves nothing) 103 to 124 ms, a full layout 95 to 118 ms.
+  Under CI's 1 s ceiling; at or over the 100 ms target on that machine. Of a layout's time (102 ms) the second `layoutPass`
+  that `labelGaps` runs is 44 ms (58 ms without it). The view itself routes less cleanly than the spike's (60 `grid`):
+  laid out right, 31 `grid`, 17 `cross`, 2 `fallback` and 24 `check()` issues (crossings); down, 39, 9, 2 and 21. Decision
+  for the maintainer.
 
 ### 10.4 Deleting (S14)
 
@@ -948,7 +1030,7 @@ Each is set out with its options and trade-offs in the section named; the recomm
 | 19 | Hiding a port, part or role (DoD 4) | Members cannot be hidden; Delete deletes from the model, said first, as stage 3's P12 | A `present` key that hides a member | §12.2 |
 | 20 | The delegation's look | A solid line with an open arrow at its `to` end, listed as a departure: it shows which way the port delegates | UML's plain solid line (direction in the accessible name only); a plain line with «delegate» | §9.2, §17 |
 | 21 | `labelGaps` on a view laid out down | Taken, the maintainer's decision of 13 Nov 2026: Accept that a view laid out down gains less (the spike: 19 to 12 labels with no spot, against 12 to none laid out right); 5.5 states what `06-deployment.json` keeps laid out down | Let a turned view widen its row gaps as well, measured with `rows.ht`, and prefer them for a label beside a line across the ranks (core bytes, a change in `tight`'s choice of gap) | §8 |
-| 22 | How a type's layout check passes with ports on parts (5.6, §10.2 as built) | Teach `overlapIssues` to pass over a node whose `owner` is the other node of the pair (a few core bytes, `src/layout/audit.js`, a later package) | Keep the reports and have each type's tests and conformance note drop them (as 5.6 does now); draw a part's ports as non-nodes (they could no longer be selected) | §10.2 |
+| 22 | How a type's layout check passes ports on their owners (5.3's open point; 5.4 and 5.6 as built) | Taken, the maintainer's decision of 13 Nov 2026: `overlapIssues` skips a node against the node its `owner` names (core, about 20 B); ports are nodes again, so selecting an element no longer marks its ports | Keep ports drawn in their owner's group (0 B; a selected node marks its ports; the tests filter the overlap) | §10.1, §10.2 |
 
 Decision 9 is taken: the spike left 12 labels with no spot, and `labelGaps` is built in 5.1 and set by the component and
 deployment types, the maintainer's decision of 13 Nov 2026 (§8, "As built").

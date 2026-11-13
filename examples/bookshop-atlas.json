@@ -1,0 +1,2846 @@
+{
+ "$schema": "../lib/umlimator.schema.json",
+ "schemaVersion": 2,
+ "title": "Bookshop atlas",
+ "root": "overview",
+ "nodes": [
+  {
+   "id": "shoppers",
+   "label": "Shoppers",
+   "kind": "person",
+   "icon": "users",
+   "sublabel": "browse, buy, track orders",
+   "what": "People who buy books on the site.",
+   "when": "Every visit.",
+   "how": "They use the storefront in a browser.",
+   "opensView": "shopping"
+  },
+  {
+   "id": "storefront",
+   "label": "Storefront",
+   "kind": "frontend",
+   "icon": "react",
+   "sublabel": "React single-page app",
+   "what": "The shop's web app.",
+   "when": "Whenever a shopper browses or checks out.",
+   "how": "A static build served by the edge proxy; it calls the Shop API.",
+   "opensView": "buy-book"
+  },
+  {
+   "id": "edge",
+   "label": "Edge proxy",
+   "kind": "backend",
+   "icon": "caddy",
+   "sublabel": "Caddy, TLS",
+   "what": "Terminates TLS and routes requests.",
+   "when": "Every request.",
+   "how": "Serves the storefront and forwards /api to the Shop API."
+  },
+  {
+   "id": "api",
+   "label": "Shop API",
+   "kind": "backend",
+   "icon": "fastapi",
+   "sublabel": "FastAPI",
+   "what": "Catalogue, basket, checkout.",
+   "when": "Every page that shows data.",
+   "how": "Reads and writes the database; puts paid orders on the order queue."
+  },
+  {
+   "id": "accounts",
+   "label": "Accounts and sign-in",
+   "kind": "security",
+   "icon": "key",
+   "sublabel": "passwords hashed, sessions",
+   "what": "Who a shopper is.",
+   "when": "Sign-in and checkout.",
+   "how": "Part of the Shop API; keeps hashed passwords and session tokens."
+  },
+  {
+   "id": "db",
+   "label": "Database",
+   "kind": "database",
+   "icon": "postgresql",
+   "sublabel": "PostgreSQL",
+   "what": "Books, baskets, orders, accounts.",
+   "when": "Always.",
+   "how": "One schema; nightly backups.",
+   "opensView": "domain"
+  },
+  {
+   "id": "queue",
+   "label": "Order queue",
+   "kind": "queue",
+   "icon": "queue",
+   "sublabel": "paid orders, in order",
+   "what": "Orders waiting to be fulfilled.",
+   "when": "After a payment succeeds.",
+   "how": "A table the worker claims from.",
+   "opensView": "snapshot"
+  },
+  {
+   "id": "worker",
+   "label": "Order worker",
+   "kind": "backend",
+   "icon": "box",
+   "sublabel": "same image as the API",
+   "what": "Fulfils orders.",
+   "when": "Each paid order.",
+   "how": "Claims an order, books the delivery and sends the confirmation.",
+   "opensView": "fulfil"
+  },
+  {
+   "id": "payments",
+   "label": "Payment provider",
+   "kind": "external",
+   "icon": "building",
+   "sublabel": "cards, refunds",
+   "what": "Takes the money.",
+   "when": "Checkout and refunds.",
+   "how": "The Shop API redirects to it and reads the result.",
+   "opensView": "checkout-communication"
+  },
+  {
+   "id": "mail",
+   "label": "Email service",
+   "kind": "external",
+   "icon": "alert",
+   "sublabel": "order confirmations",
+   "what": "Sends emails.",
+   "when": "Each fulfilled order.",
+   "how": "The worker calls its API."
+  },
+  {
+   "id": "hosts",
+   "label": "Hosts",
+   "kind": "cloud",
+   "icon": "docker",
+   "sublabel": "Docker Compose, two servers",
+   "what": "Where it all runs.",
+   "when": "Always.",
+   "how": "One server for the web tier, one for the database."
+  },
+  {
+   "id": "github",
+   "label": "GitHub",
+   "kind": "external",
+   "icon": "github",
+   "sublabel": "code, CI, deploys",
+   "what": "Source and pipelines.",
+   "when": "Every merge.",
+   "how": "A merge to main builds the image and deploys it to the hosts.",
+   "opensView": "packages"
+  },
+  {
+   "id": "grafana",
+   "label": "Dashboards",
+   "kind": "cloud",
+   "icon": "grafana",
+   "sublabel": "Grafana",
+   "badge": "PROPOSED",
+   "what": "Metrics and logs in one place.",
+   "when": "Not yet built.",
+   "how": "Would read the API's and worker's metrics."
+  },
+  {
+   "id": "sales",
+   "type": "uml.Package",
+   "label": "sales",
+   "opensView": "domain"
+  },
+  {
+   "id": "shared",
+   "type": "uml.Package",
+   "label": "shared"
+  },
+  {
+   "id": "catalog",
+   "type": "uml.Package",
+   "label": "catalog"
+  },
+  {
+   "id": "payments-package",
+   "type": "uml.Package",
+   "label": "payments"
+  },
+  {
+   "id": "card",
+   "type": "uml.Package",
+   "label": "card",
+   "parent": "payments-package"
+  },
+  {
+   "id": "customer",
+   "type": "uml.Class",
+   "label": "Customer",
+   "parent": "sales",
+   "members": [
+    {
+     "id": "customer.email",
+     "type": "uml.Property",
+     "label": "email",
+     "props": {
+      "visibility": "private",
+      "valueType": "String"
+     }
+    },
+    {
+     "id": "customer.name",
+     "type": "uml.Property",
+     "label": "name",
+     "props": {
+      "visibility": "private",
+      "valueType": "String",
+      "multiplicity": "0..1"
+     }
+    }
+   ]
+  },
+  {
+   "id": "order",
+   "type": "uml.Class",
+   "label": "Order",
+   "parent": "sales",
+   "props": {
+    "stereotypes": [
+     "entity"
+    ]
+   },
+   "members": [
+    {
+     "id": "order.id",
+     "type": "uml.Property",
+     "label": "id",
+     "props": {
+      "visibility": "private",
+      "valueType": "UUID"
+     }
+    },
+    {
+     "id": "order.placedAt",
+     "type": "uml.Property",
+     "label": "placedAt",
+     "props": {
+      "visibility": "private",
+      "valueType": "Instant",
+      "multiplicity": "0..1"
+     }
+    },
+    {
+     "id": "order.status",
+     "type": "uml.Property",
+     "label": "status",
+     "props": {
+      "visibility": "private",
+      "valueType": "OrderStatus",
+      "default": "draft"
+     }
+    },
+    {
+     "id": "order.total",
+     "type": "uml.Property",
+     "label": "total",
+     "props": {
+      "visibility": "public",
+      "valueType": "Money",
+      "isDerived": true
+     }
+    },
+    {
+     "id": "order.count",
+     "type": "uml.Property",
+     "label": "count",
+     "props": {
+      "visibility": "public",
+      "valueType": "Integer",
+      "isStatic": true
+     }
+    },
+    {
+     "id": "order.place",
+     "type": "uml.Operation",
+     "label": "place",
+     "props": {
+      "visibility": "public",
+      "returnType": "Receipt"
+     }
+    },
+    {
+     "id": "order.add",
+     "type": "uml.Operation",
+     "label": "add",
+     "props": {
+      "visibility": "public",
+      "parameters": [
+       {
+        "name": "book",
+        "valueType": "Book"
+       },
+       {
+        "name": "quantity",
+        "valueType": "Integer"
+       }
+      ]
+     }
+    },
+    {
+     "id": "order.cancel",
+     "type": "uml.Operation",
+     "label": "cancel",
+     "props": {
+      "visibility": "public"
+     }
+    }
+   ],
+   "opensView": "order-life"
+  },
+  {
+   "id": "line",
+   "type": "uml.Class",
+   "label": "OrderLine",
+   "parent": "sales",
+   "members": [
+    {
+     "id": "line.quantity",
+     "type": "uml.Property",
+     "label": "quantity",
+     "props": {
+      "visibility": "private",
+      "valueType": "Integer",
+      "default": "1"
+     }
+    },
+    {
+     "id": "line.unitPrice",
+     "type": "uml.Property",
+     "label": "unitPrice",
+     "props": {
+      "visibility": "private",
+      "valueType": "Money"
+     }
+    }
+   ]
+  },
+  {
+   "id": "book",
+   "type": "uml.Class",
+   "label": "Book",
+   "parent": "catalog",
+   "members": [
+    {
+     "id": "book.isbn",
+     "type": "uml.Property",
+     "label": "isbn",
+     "props": {
+      "visibility": "public",
+      "valueType": "String"
+     }
+    },
+    {
+     "id": "book.title",
+     "type": "uml.Property",
+     "label": "title",
+     "props": {
+      "visibility": "public",
+      "valueType": "String"
+     }
+    },
+    {
+     "id": "book.price",
+     "type": "uml.Property",
+     "label": "price",
+     "props": {
+      "visibility": "public",
+      "valueType": "Money"
+     }
+    }
+   ]
+  },
+  {
+   "id": "payable",
+   "type": "uml.Interface",
+   "label": "Payable",
+   "parent": "payments-package",
+   "members": [
+    {
+     "id": "payable.amountDue",
+     "type": "uml.Operation",
+     "label": "amountDue",
+     "props": {
+      "visibility": "public",
+      "returnType": "Money"
+     }
+    }
+   ]
+  },
+  {
+   "id": "payment",
+   "type": "uml.Class",
+   "label": "Payment",
+   "parent": "payments-package",
+   "props": {
+    "isAbstract": true
+   },
+   "members": [
+    {
+     "id": "payment.amount",
+     "type": "uml.Property",
+     "label": "amount",
+     "props": {
+      "visibility": "protected",
+      "valueType": "Money"
+     }
+    },
+    {
+     "id": "payment.settle",
+     "type": "uml.Operation",
+     "label": "settle",
+     "props": {
+      "visibility": "public",
+      "isAbstract": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "card-payment",
+   "type": "uml.Class",
+   "label": "CardPayment",
+   "parent": "card",
+   "members": [
+    {
+     "id": "card-payment.last4",
+     "type": "uml.Property",
+     "label": "last4",
+     "props": {
+      "visibility": "private",
+      "valueType": "String"
+     }
+    },
+    {
+     "id": "card-payment.settle",
+     "type": "uml.Operation",
+     "label": "settle",
+     "props": {
+      "visibility": "public"
+     }
+    }
+   ]
+  },
+  {
+   "id": "status",
+   "type": "uml.Enumeration",
+   "label": "OrderStatus",
+   "parent": "sales",
+   "members": [
+    {
+     "id": "status.draft",
+     "type": "uml.EnumerationLiteral",
+     "label": "draft"
+    },
+    {
+     "id": "status.placed",
+     "type": "uml.EnumerationLiteral",
+     "label": "placed"
+    },
+    {
+     "id": "status.shipped",
+     "type": "uml.EnumerationLiteral",
+     "label": "shipped"
+    },
+    {
+     "id": "status.cancelled",
+     "type": "uml.EnumerationLiteral",
+     "label": "cancelled"
+    }
+   ]
+  },
+  {
+   "id": "money",
+   "type": "uml.DataType",
+   "label": "Money",
+   "parent": "shared",
+   "members": [
+    {
+     "id": "money.amount",
+     "type": "uml.Property",
+     "label": "amount",
+     "props": {
+      "visibility": "public",
+      "valueType": "Decimal"
+     }
+    },
+    {
+     "id": "money.currency",
+     "type": "uml.Property",
+     "label": "currency",
+     "props": {
+      "visibility": "public",
+      "valueType": "String"
+     }
+    }
+   ]
+  },
+  {
+   "id": "note-total",
+   "type": "uml.Comment",
+   "label": "total is the sum of the lines' unit price times quantity"
+  },
+  {
+   "id": "ada",
+   "type": "uml.InstanceSpecification",
+   "label": "ada",
+   "props": {
+    "classifier": "Customer"
+   },
+   "members": [
+    {
+     "id": "ada.email",
+     "type": "uml.Slot",
+     "label": "email",
+     "props": {
+      "value": "ada@example.org"
+     }
+    }
+   ]
+  },
+  {
+   "id": "order-1042",
+   "type": "uml.InstanceSpecification",
+   "label": "order1042",
+   "props": {
+    "classifier": "Order"
+   },
+   "members": [
+    {
+     "id": "order-1042.status",
+     "type": "uml.Slot",
+     "label": "status",
+     "props": {
+      "value": "placed"
+     }
+    },
+    {
+     "id": "order-1042.total",
+     "type": "uml.Slot",
+     "label": "total",
+     "props": {
+      "value": "34.00 EUR"
+     }
+    }
+   ],
+   "opensView": "order-life"
+  },
+  {
+   "id": "line-1",
+   "type": "uml.InstanceSpecification",
+   "label": "line1",
+   "props": {
+    "classifier": "OrderLine"
+   },
+   "members": [
+    {
+     "id": "line-1.quantity",
+     "type": "uml.Slot",
+     "label": "quantity",
+     "props": {
+      "value": "2"
+     }
+    }
+   ]
+  },
+  {
+   "id": "line-2",
+   "type": "uml.InstanceSpecification",
+   "label": "line2",
+   "props": {
+    "classifier": "OrderLine"
+   },
+   "members": [
+    {
+     "id": "line-2.quantity",
+     "type": "uml.Slot",
+     "label": "quantity",
+     "props": {
+      "value": "1"
+     }
+    }
+   ]
+  },
+  {
+   "id": "middlemarch",
+   "type": "uml.InstanceSpecification",
+   "label": "middlemarch",
+   "props": {
+    "classifier": "Book"
+   },
+   "members": [
+    {
+     "id": "middlemarch.title",
+     "type": "uml.Slot",
+     "label": "title",
+     "props": {
+      "value": "Middlemarch"
+     }
+    },
+    {
+     "id": "middlemarch.price",
+     "type": "uml.Slot",
+     "label": "price",
+     "props": {
+      "value": "12.50 EUR"
+     }
+    }
+   ]
+  },
+  {
+   "id": "frankenstein",
+   "type": "uml.InstanceSpecification",
+   "label": "frankenstein",
+   "props": {
+    "classifier": "Book"
+   },
+   "members": [
+    {
+     "id": "frankenstein.title",
+     "type": "uml.Slot",
+     "label": "title",
+     "props": {
+      "value": "Frankenstein"
+     }
+    },
+    {
+     "id": "frankenstein.price",
+     "type": "uml.Slot",
+     "label": "price",
+     "props": {
+      "value": "9.00 EUR"
+     }
+    }
+   ]
+  },
+  {
+   "id": "card-1",
+   "type": "uml.InstanceSpecification",
+   "label": "card",
+   "props": {
+    "classifier": "CardPayment"
+   },
+   "members": [
+    {
+     "id": "card.amount",
+     "type": "uml.Slot",
+     "label": "amount",
+     "props": {
+      "value": "34.00 EUR"
+     }
+    },
+    {
+     "id": "card.last4",
+     "type": "uml.Slot",
+     "label": "last4",
+     "props": {
+      "value": "4242"
+     }
+    }
+   ]
+  },
+  {
+   "id": "wholesale",
+   "type": "uml.Package",
+   "label": "wholesale"
+  },
+  {
+   "id": "wholesale-order",
+   "type": "uml.Class",
+   "label": "Order",
+   "parent": "wholesale"
+  },
+  {
+   "id": "lifeline-shopper",
+   "type": "uml.Lifeline",
+   "label": "shopper",
+   "props": {
+    "represents": "Shopper",
+    "stereotypes": [
+     "actor"
+    ]
+   }
+  },
+  {
+   "id": "lifeline-storefront",
+   "type": "uml.Lifeline",
+   "label": "storefront",
+   "props": {
+    "represents": "Storefront"
+   }
+  },
+  {
+   "id": "lifeline-api",
+   "type": "uml.Lifeline",
+   "label": "api",
+   "props": {
+    "represents": "ShopApi"
+   }
+  },
+  {
+   "id": "lifeline-payments",
+   "type": "uml.Lifeline",
+   "label": "payments",
+   "props": {
+    "represents": "PaymentProvider"
+   }
+  },
+  {
+   "id": "receipt",
+   "type": "uml.Lifeline",
+   "label": "receipt",
+   "props": {
+    "represents": "Receipt"
+   }
+  },
+  {
+   "id": "shopper",
+   "type": "uml.Actor",
+   "label": "Shopper"
+  },
+  {
+   "id": "member",
+   "type": "uml.Actor",
+   "label": "Member"
+  },
+  {
+   "id": "payment-provider",
+   "type": "uml.Actor",
+   "label": "Payment provider"
+  },
+  {
+   "id": "bookshop",
+   "type": "uml.Subject",
+   "label": "Online bookshop"
+  },
+  {
+   "id": "browse",
+   "type": "uml.UseCase",
+   "label": "Browse the catalog",
+   "parent": "bookshop",
+   "opensView": "find-book"
+  },
+  {
+   "id": "check-out",
+   "type": "uml.UseCase",
+   "label": "Check out",
+   "parent": "bookshop",
+   "members": [
+    {
+     "id": "checkout.payment",
+     "type": "uml.ExtensionPoint",
+     "label": "payment"
+    },
+    {
+     "id": "checkout.extras",
+     "type": "uml.ExtensionPoint",
+     "label": "extras"
+    }
+   ],
+   "opensView": "buy-book"
+  },
+  {
+   "id": "pay",
+   "type": "uml.UseCase",
+   "label": "Pay for the order",
+   "parent": "bookshop",
+   "opensView": "take-payment"
+  },
+  {
+   "id": "pay-by-card",
+   "type": "uml.UseCase",
+   "label": "Pay by card",
+   "parent": "bookshop"
+  },
+  {
+   "id": "redeem-voucher",
+   "type": "uml.UseCase",
+   "label": "Redeem a voucher",
+   "parent": "bookshop"
+  },
+  {
+   "id": "gift-wrap",
+   "type": "uml.UseCase",
+   "label": "Add gift wrapping",
+   "parent": "bookshop"
+  },
+  {
+   "id": "sign-in",
+   "type": "uml.UseCase",
+   "label": "Sign in",
+   "parent": "bookshop"
+  },
+  {
+   "id": "track",
+   "type": "uml.UseCase",
+   "label": "Track an order",
+   "parent": "bookshop"
+  },
+  {
+   "id": "lane-worker",
+   "type": "uml.ActivityPartition",
+   "label": "Order worker"
+  },
+  {
+   "id": "lane-warehouse",
+   "type": "uml.ActivityPartition",
+   "label": "Warehouse"
+  },
+  {
+   "id": "lane-email",
+   "type": "uml.ActivityPartition",
+   "label": "Email service"
+  },
+  {
+   "id": "start",
+   "type": "uml.InitialNode",
+   "parent": "lane-worker"
+  },
+  {
+   "id": "take-order",
+   "type": "uml.Action",
+   "label": "Take the next order from the queue",
+   "parent": "lane-worker",
+   "opensView": "queue-order"
+  },
+  {
+   "id": "order-object",
+   "type": "uml.ObjectNode",
+   "label": "Order",
+   "parent": "lane-worker"
+  },
+  {
+   "id": "check-stock",
+   "type": "uml.Action",
+   "label": "Check the stock of each book",
+   "parent": "lane-warehouse"
+  },
+  {
+   "id": "stock",
+   "type": "uml.DataStoreNode",
+   "label": "Stock levels",
+   "parent": "lane-warehouse"
+  },
+  {
+   "id": "in-stock",
+   "type": "uml.DecisionNode",
+   "label": "All books in stock?",
+   "parent": "lane-warehouse"
+  },
+  {
+   "id": "ask-restock",
+   "type": "uml.SendSignalAction",
+   "label": "Restock request",
+   "parent": "lane-warehouse"
+  },
+  {
+   "id": "books-arrive",
+   "type": "uml.AcceptEventAction",
+   "label": "Books delivered",
+   "parent": "lane-warehouse"
+  },
+  {
+   "id": "stock-ready",
+   "type": "uml.MergeNode",
+   "parent": "lane-warehouse"
+  },
+  {
+   "id": "split",
+   "type": "uml.ForkNode",
+   "parent": "lane-worker"
+  },
+  {
+   "id": "call-payment",
+   "type": "uml.CallBehaviorAction",
+   "label": "Take payment",
+   "parent": "lane-worker",
+   "opensView": "take-payment"
+  },
+  {
+   "id": "pick",
+   "type": "uml.Action",
+   "label": "Pick and pack the books",
+   "parent": "lane-warehouse"
+  },
+  {
+   "id": "tell-shopper",
+   "type": "uml.Action",
+   "label": "Email \"your order is being packed\"",
+   "parent": "lane-email"
+  },
+  {
+   "id": "told",
+   "type": "uml.FlowFinalNode",
+   "parent": "lane-email"
+  },
+  {
+   "id": "packed-and-paid",
+   "type": "uml.JoinNode",
+   "parent": "lane-warehouse"
+  },
+  {
+   "id": "ship",
+   "type": "uml.Action",
+   "label": "Hand the parcel to the carrier",
+   "parent": "lane-warehouse"
+  },
+  {
+   "id": "done",
+   "type": "uml.ActivityFinalNode",
+   "parent": "lane-warehouse"
+  },
+  {
+   "id": "pay-start",
+   "type": "uml.InitialNode"
+  },
+  {
+   "id": "charge",
+   "type": "uml.Action",
+   "label": "Charge the shopper's card",
+   "opensView": "checkout-sequence"
+  },
+  {
+   "id": "record",
+   "type": "uml.Action",
+   "label": "Record the payment on the order"
+  },
+  {
+   "id": "pay-done",
+   "type": "uml.ActivityFinalNode"
+  },
+  {
+   "id": "created",
+   "type": "uml.Pseudostate",
+   "props": {
+    "kind": "initial"
+   }
+  },
+  {
+   "id": "placed",
+   "type": "uml.State",
+   "label": "Placed",
+   "props": {
+    "entry": "reserve the books",
+    "do": "poll the payment provider",
+    "exit": "log the payment result"
+   },
+   "members": [
+    {
+     "id": "placed.address",
+     "type": "uml.InternalTransition",
+     "props": {
+      "trigger": "address changed",
+      "effect": "update the delivery address"
+     }
+    }
+   ]
+  },
+  {
+   "id": "payment-outcome",
+   "type": "uml.Pseudostate",
+   "props": {
+    "kind": "choice"
+   }
+  },
+  {
+   "id": "prepaid",
+   "type": "uml.Pseudostate",
+   "props": {
+    "kind": "fork"
+   }
+  },
+  {
+   "id": "fulfilling",
+   "type": "uml.State",
+   "label": "Fulfilling",
+   "members": [
+    {
+     "id": "fulfilling.parcel",
+     "type": "uml.Region",
+     "label": "Parcel"
+    },
+    {
+     "id": "fulfilling.payment",
+     "type": "uml.Region",
+     "label": "Payment"
+    }
+   ]
+  },
+  {
+   "id": "parcel-start",
+   "type": "uml.Pseudostate",
+   "parent": "fulfilling.parcel",
+   "props": {
+    "kind": "initial"
+   }
+  },
+  {
+   "id": "picking",
+   "type": "uml.State",
+   "label": "Picking",
+   "parent": "fulfilling.parcel",
+   "props": {
+    "do": "collect the books from the shelves"
+   }
+  },
+  {
+   "id": "packed",
+   "type": "uml.State",
+   "label": "Packed",
+   "parent": "fulfilling.parcel",
+   "props": {
+    "entry": "print the address label"
+   }
+  },
+  {
+   "id": "payment-start",
+   "type": "uml.Pseudostate",
+   "parent": "fulfilling.payment",
+   "props": {
+    "kind": "initial"
+   }
+  },
+  {
+   "id": "capturing",
+   "type": "uml.State",
+   "label": "Capturing payment",
+   "parent": "fulfilling.payment",
+   "props": {
+    "entry": "ask the payment provider to capture"
+   }
+  },
+  {
+   "id": "captured",
+   "type": "uml.State",
+   "label": "Payment captured",
+   "parent": "fulfilling.payment"
+  },
+  {
+   "id": "ready",
+   "type": "uml.Pseudostate",
+   "props": {
+    "kind": "join"
+   }
+  },
+  {
+   "id": "delivery",
+   "type": "uml.State",
+   "label": "In delivery"
+  },
+  {
+   "id": "delivery-start",
+   "type": "uml.Pseudostate",
+   "parent": "delivery",
+   "props": {
+    "kind": "initial"
+   }
+  },
+  {
+   "id": "in-transit",
+   "type": "uml.State",
+   "label": "In transit",
+   "parent": "delivery",
+   "props": {
+    "do": "follow the carrier's tracking"
+   }
+  },
+  {
+   "id": "out-for-delivery",
+   "type": "uml.State",
+   "label": "Out for delivery",
+   "parent": "delivery",
+   "props": {
+    "entry": "text the shopper a delivery window"
+   }
+  },
+  {
+   "id": "delivery-history",
+   "type": "uml.Pseudostate",
+   "parent": "delivery",
+   "props": {
+    "kind": "shallowHistory"
+   }
+  },
+  {
+   "id": "enquiry",
+   "type": "uml.State",
+   "label": "Under enquiry",
+   "props": {
+    "entry": "open a case with the carrier",
+    "exit": "close the case"
+   }
+  },
+  {
+   "id": "cancelled",
+   "type": "uml.State",
+   "label": "Cancelled",
+   "props": {
+    "entry": "release the reserved books"
+   }
+  },
+  {
+   "id": "erased",
+   "type": "uml.Pseudostate",
+   "props": {
+    "kind": "terminate"
+   }
+  },
+  {
+   "id": "delivered",
+   "type": "uml.FinalState"
+  },
+  {
+   "id": "buy-start",
+   "type": "uml.InitialNode"
+  },
+  {
+   "id": "ref-find",
+   "type": "uml.InteractionUse",
+   "label": "Find a book",
+   "opensView": "find-book"
+  },
+  {
+   "id": "try-payment",
+   "type": "uml.MergeNode"
+  },
+  {
+   "id": "ref-checkout",
+   "type": "uml.InteractionUse",
+   "label": "Check out",
+   "opensView": "buy-checkout"
+  },
+  {
+   "id": "payment-ok",
+   "type": "uml.DecisionNode",
+   "label": "Payment accepted?"
+  },
+  {
+   "id": "buy-split",
+   "type": "uml.ForkNode"
+  },
+  {
+   "id": "ref-receipt",
+   "type": "uml.InteractionUse",
+   "label": "Email the receipt",
+   "opensView": "email-receipt"
+  },
+  {
+   "id": "sd-queue",
+   "type": "uml.Interaction",
+   "label": "Queue the order",
+   "opensView": "queue-order"
+  },
+  {
+   "id": "both-done",
+   "type": "uml.JoinNode"
+  },
+  {
+   "id": "buy-done",
+   "type": "uml.ActivityFinalNode"
+  },
+  {
+   "id": "email",
+   "type": "uml.Lifeline",
+   "label": "email",
+   "props": {
+    "represents": "EmailService"
+   }
+  },
+  {
+   "id": "lifeline-queue",
+   "type": "uml.Lifeline",
+   "label": "queue",
+   "props": {
+    "represents": "OrderQueue"
+   }
+  },
+  {
+   "id": "lifeline-worker",
+   "type": "uml.Lifeline",
+   "label": "worker",
+   "props": {
+    "represents": "OrderWorker"
+   }
+  }
+ ],
+ "edges": [
+  {
+   "id": "e1",
+   "from": "shoppers",
+   "to": "edge",
+   "label": "HTTPS"
+  },
+  {
+   "id": "e2",
+   "from": "edge",
+   "to": "storefront",
+   "label": "serves"
+  },
+  {
+   "id": "e3",
+   "from": "edge",
+   "to": "api",
+   "label": "/api"
+  },
+  {
+   "id": "e4",
+   "from": "api",
+   "to": "accounts",
+   "label": "checks sessions"
+  },
+  {
+   "id": "e5",
+   "from": "api",
+   "to": "db",
+   "label": "SQL"
+  },
+  {
+   "id": "e6",
+   "from": "api",
+   "to": "payments",
+   "label": "checkout"
+  },
+  {
+   "id": "e7",
+   "from": "api",
+   "to": "queue",
+   "label": "paid order"
+  },
+  {
+   "id": "e8",
+   "from": "worker",
+   "to": "queue",
+   "label": "claims"
+  },
+  {
+   "id": "e9",
+   "from": "worker",
+   "to": "mail",
+   "label": "confirmation"
+  },
+  {
+   "id": "e10",
+   "from": "github",
+   "to": "hosts",
+   "label": "deploys",
+   "style": "dashed"
+  },
+  {
+   "id": "e11",
+   "from": "grafana",
+   "to": "api",
+   "label": "reads metrics",
+   "style": "dashed"
+  },
+  {
+   "id": "customer-orders",
+   "type": "uml.Association",
+   "from": "customer",
+   "to": "order",
+   "label": "places",
+   "props": {
+    "ends": {
+     "from": {
+      "multiplicity": "1"
+     },
+     "to": {
+      "role": "orders",
+      "multiplicity": "0..*",
+      "navigable": true
+     }
+    }
+   }
+  },
+  {
+   "id": "order-lines",
+   "type": "uml.Association",
+   "from": "order",
+   "to": "line",
+   "props": {
+    "ends": {
+     "from": {
+      "aggregation": "composite",
+      "multiplicity": "1"
+     },
+     "to": {
+      "role": "lines",
+      "multiplicity": "1..*",
+      "navigable": true
+     }
+    }
+   }
+  },
+  {
+   "id": "line-book",
+   "type": "uml.Association",
+   "from": "line",
+   "to": "book",
+   "props": {
+    "ends": {
+     "from": {
+      "multiplicity": "0..*"
+     },
+     "to": {
+      "role": "book",
+      "multiplicity": "1",
+      "navigable": true
+     }
+    }
+   }
+  },
+  {
+   "id": "order-payment",
+   "type": "uml.Association",
+   "from": "order",
+   "to": "payment",
+   "props": {
+    "ends": {
+     "from": {
+      "aggregation": "shared",
+      "multiplicity": "1"
+     },
+     "to": {
+      "role": "payments",
+      "multiplicity": "0..*"
+     }
+    }
+   }
+  },
+  {
+   "id": "order-payable",
+   "type": "uml.InterfaceRealization",
+   "from": "order",
+   "to": "payable"
+  },
+  {
+   "id": "card-is-payment",
+   "type": "uml.Generalization",
+   "from": "card-payment",
+   "to": "payment"
+  },
+  {
+   "id": "order-uses-money",
+   "type": "uml.Dependency",
+   "from": "order",
+   "to": "money",
+   "props": {
+    "stereotypes": [
+     "use"
+    ]
+   }
+  },
+  {
+   "id": "note-total-link",
+   "type": "uml.CommentLink",
+   "from": "note-total",
+   "to": "order"
+  },
+  {
+   "id": "ada-places-order",
+   "type": "uml.Link",
+   "from": "ada",
+   "to": "order-1042",
+   "label": "places",
+   "props": {
+    "ends": {
+     "to": {
+      "role": "orders"
+     }
+    }
+   }
+  },
+  {
+   "id": "order-has-line-1",
+   "type": "uml.Link",
+   "from": "order-1042",
+   "to": "line-1",
+   "props": {
+    "ends": {
+     "to": {
+      "role": "lines"
+     }
+    }
+   }
+  },
+  {
+   "id": "order-has-line-2",
+   "type": "uml.Link",
+   "from": "order-1042",
+   "to": "line-2",
+   "props": {
+    "ends": {
+     "to": {
+      "role": "lines"
+     }
+    }
+   }
+  },
+  {
+   "id": "line-1-is-for",
+   "type": "uml.Link",
+   "from": "line-1",
+   "to": "middlemarch",
+   "props": {
+    "ends": {
+     "to": {
+      "role": "book"
+     }
+    }
+   }
+  },
+  {
+   "id": "line-2-is-for",
+   "type": "uml.Link",
+   "from": "line-2",
+   "to": "frankenstein",
+   "props": {
+    "ends": {
+     "to": {
+      "role": "book"
+     }
+    }
+   }
+  },
+  {
+   "id": "order-paid-by-card",
+   "type": "uml.Link",
+   "from": "order-1042",
+   "to": "card-1",
+   "props": {
+    "ends": {
+     "to": {
+      "role": "payments"
+     }
+    }
+   }
+  },
+  {
+   "id": "catalog-imports-shared",
+   "type": "uml.PackageImport",
+   "from": "catalog",
+   "to": "shared",
+   "props": {
+    "visibility": "public"
+   }
+  },
+  {
+   "id": "sales-imports-catalog",
+   "type": "uml.PackageImport",
+   "from": "sales",
+   "to": "catalog",
+   "props": {
+    "visibility": "public"
+   }
+  },
+  {
+   "id": "payments-accesses-shared",
+   "type": "uml.PackageImport",
+   "from": "payments-package",
+   "to": "shared",
+   "props": {
+    "visibility": "private"
+   }
+  },
+  {
+   "id": "wholesale-merges-sales",
+   "type": "uml.PackageMerge",
+   "from": "wholesale",
+   "to": "sales"
+  },
+  {
+   "id": "sales-needs-payments",
+   "type": "uml.Dependency",
+   "from": "sales",
+   "to": "payments-package"
+  },
+  {
+   "id": "shopper-storefront",
+   "type": "uml.Connector",
+   "from": "lifeline-shopper",
+   "to": "lifeline-storefront"
+  },
+  {
+   "id": "storefront-api",
+   "type": "uml.Connector",
+   "from": "lifeline-storefront",
+   "to": "lifeline-api"
+  },
+  {
+   "id": "api-self",
+   "type": "uml.Connector",
+   "from": "lifeline-api",
+   "to": "lifeline-api"
+  },
+  {
+   "id": "api-payments",
+   "type": "uml.Connector",
+   "from": "lifeline-api",
+   "to": "lifeline-payments"
+  },
+  {
+   "id": "api-receipt",
+   "type": "uml.Connector",
+   "from": "lifeline-api",
+   "to": "receipt"
+  },
+  {
+   "id": "cm1",
+   "type": "uml.Message",
+   "from": "lifeline-shopper",
+   "to": "lifeline-storefront",
+   "label": "checkout()",
+   "props": {
+    "sort": "call"
+   }
+  },
+  {
+   "id": "cm2",
+   "type": "uml.Message",
+   "from": "lifeline-storefront",
+   "to": "lifeline-api",
+   "label": "place(order)",
+   "props": {
+    "sort": "call"
+   }
+  },
+  {
+   "id": "cm3",
+   "type": "uml.Message",
+   "from": "lifeline-api",
+   "to": "lifeline-api",
+   "label": "validate(order)",
+   "props": {
+    "sort": "call"
+   }
+  },
+  {
+   "id": "cm4",
+   "type": "uml.Message",
+   "from": "lifeline-api",
+   "to": "lifeline-payments",
+   "label": "charge(total)",
+   "props": {
+    "sort": "call"
+   }
+  },
+  {
+   "id": "cm5",
+   "type": "uml.Message",
+   "from": "lifeline-payments",
+   "to": "lifeline-api",
+   "label": "paid",
+   "props": {
+    "sort": "reply",
+    "replyTo": "cm4"
+   }
+  },
+  {
+   "id": "cm6",
+   "type": "uml.Message",
+   "from": "lifeline-api",
+   "to": "receipt",
+   "label": "new(order)",
+   "props": {
+    "sort": "create"
+   }
+  },
+  {
+   "id": "cm7",
+   "type": "uml.Message",
+   "from": "lifeline-api",
+   "to": "lifeline-storefront",
+   "label": "orderPlaced",
+   "props": {
+    "sort": "async"
+   }
+  },
+  {
+   "id": "cm8",
+   "type": "uml.Message",
+   "from": "lifeline-api",
+   "to": "lifeline-storefront",
+   "label": "result",
+   "props": {
+    "sort": "reply",
+    "replyTo": "cm2"
+   }
+  },
+  {
+   "id": "cm9",
+   "type": "uml.Message",
+   "from": "lifeline-storefront",
+   "to": "lifeline-shopper",
+   "label": "confirmation page",
+   "props": {
+    "sort": "reply",
+    "replyTo": "cm1"
+   }
+  },
+  {
+   "id": "member-is-shopper",
+   "type": "uml.Generalization",
+   "from": "member",
+   "to": "shopper"
+  },
+  {
+   "id": "shopper-browses",
+   "type": "uml.Association",
+   "from": "shopper",
+   "to": "browse"
+  },
+  {
+   "id": "shopper-checks-out",
+   "type": "uml.Association",
+   "from": "shopper",
+   "to": "check-out"
+  },
+  {
+   "id": "member-tracks",
+   "type": "uml.Association",
+   "from": "member",
+   "to": "track"
+  },
+  {
+   "id": "provider-takes-card",
+   "type": "uml.Association",
+   "from": "payment-provider",
+   "to": "pay-by-card"
+  },
+  {
+   "id": "checkout-includes-pay",
+   "type": "uml.Include",
+   "from": "check-out",
+   "to": "pay"
+  },
+  {
+   "id": "track-includes-sign-in",
+   "type": "uml.Include",
+   "from": "track",
+   "to": "sign-in"
+  },
+  {
+   "id": "card-is-pay",
+   "type": "uml.Generalization",
+   "from": "pay-by-card",
+   "to": "pay"
+  },
+  {
+   "id": "voucher-extends-checkout",
+   "type": "uml.Extend",
+   "from": "redeem-voucher",
+   "to": "check-out",
+   "props": {
+    "extensionPoints": [
+     "checkout.payment"
+    ],
+    "condition": "the shopper has a voucher code"
+   }
+  },
+  {
+   "id": "gift-wrap-extends-checkout",
+   "type": "uml.Extend",
+   "from": "gift-wrap",
+   "to": "check-out",
+   "props": {
+    "extensionPoints": [
+     "checkout.extras"
+    ],
+    "condition": "the order is a gift"
+   }
+  },
+  {
+   "id": "f-start",
+   "type": "uml.ControlFlow",
+   "from": "start",
+   "to": "take-order"
+  },
+  {
+   "id": "f-order-out",
+   "type": "uml.ObjectFlow",
+   "from": "take-order",
+   "to": "order-object"
+  },
+  {
+   "id": "f-order-in",
+   "type": "uml.ObjectFlow",
+   "from": "order-object",
+   "to": "check-stock"
+  },
+  {
+   "id": "f-stock-read",
+   "type": "uml.ObjectFlow",
+   "from": "stock",
+   "to": "check-stock"
+  },
+  {
+   "id": "f-checked",
+   "type": "uml.ControlFlow",
+   "from": "check-stock",
+   "to": "in-stock"
+  },
+  {
+   "id": "f-in-stock",
+   "type": "uml.ControlFlow",
+   "from": "in-stock",
+   "to": "stock-ready",
+   "props": {
+    "guard": "all books in stock"
+   }
+  },
+  {
+   "id": "f-short",
+   "type": "uml.ControlFlow",
+   "from": "in-stock",
+   "to": "ask-restock",
+   "props": {
+    "guard": "else"
+   }
+  },
+  {
+   "id": "f-wait",
+   "type": "uml.ControlFlow",
+   "from": "ask-restock",
+   "to": "books-arrive"
+  },
+  {
+   "id": "f-arrived",
+   "type": "uml.ControlFlow",
+   "from": "books-arrive",
+   "to": "stock-ready"
+  },
+  {
+   "id": "f-ready",
+   "type": "uml.ControlFlow",
+   "from": "stock-ready",
+   "to": "split"
+  },
+  {
+   "id": "f-to-pay",
+   "type": "uml.ControlFlow",
+   "from": "split",
+   "to": "call-payment"
+  },
+  {
+   "id": "f-to-pick",
+   "type": "uml.ControlFlow",
+   "from": "split",
+   "to": "pick"
+  },
+  {
+   "id": "f-to-tell",
+   "type": "uml.ControlFlow",
+   "from": "split",
+   "to": "tell-shopper"
+  },
+  {
+   "id": "f-told",
+   "type": "uml.ControlFlow",
+   "from": "tell-shopper",
+   "to": "told"
+  },
+  {
+   "id": "f-stock-write",
+   "type": "uml.ObjectFlow",
+   "from": "pick",
+   "to": "stock"
+  },
+  {
+   "id": "f-paid",
+   "type": "uml.ControlFlow",
+   "from": "call-payment",
+   "to": "packed-and-paid"
+  },
+  {
+   "id": "f-packed",
+   "type": "uml.ControlFlow",
+   "from": "pick",
+   "to": "packed-and-paid"
+  },
+  {
+   "id": "f-ship",
+   "type": "uml.ControlFlow",
+   "from": "packed-and-paid",
+   "to": "ship"
+  },
+  {
+   "id": "f-done",
+   "type": "uml.ControlFlow",
+   "from": "ship",
+   "to": "done"
+  },
+  {
+   "id": "f-pay-start",
+   "type": "uml.ControlFlow",
+   "from": "pay-start",
+   "to": "charge"
+  },
+  {
+   "id": "f-charged",
+   "type": "uml.ControlFlow",
+   "from": "charge",
+   "to": "record"
+  },
+  {
+   "id": "f-recorded",
+   "type": "uml.ControlFlow",
+   "from": "record",
+   "to": "pay-done"
+  },
+  {
+   "id": "t-created",
+   "type": "uml.Transition",
+   "from": "created",
+   "to": "placed"
+  },
+  {
+   "id": "t-payment-result",
+   "type": "uml.Transition",
+   "from": "placed",
+   "to": "payment-outcome",
+   "props": {
+    "trigger": "payment result"
+   }
+  },
+  {
+   "id": "t-authorised",
+   "type": "uml.Transition",
+   "from": "payment-outcome",
+   "to": "fulfilling",
+   "props": {
+    "guard": "card authorised"
+   }
+  },
+  {
+   "id": "t-prepaid",
+   "type": "uml.Transition",
+   "from": "payment-outcome",
+   "to": "prepaid",
+   "props": {
+    "guard": "paid in full by gift card"
+   }
+  },
+  {
+   "id": "t-declined",
+   "type": "uml.Transition",
+   "from": "payment-outcome",
+   "to": "cancelled",
+   "props": {
+    "guard": "else",
+    "effect": "email the shopper"
+   }
+  },
+  {
+   "id": "t-prepaid-picking",
+   "type": "uml.Transition",
+   "from": "prepaid",
+   "to": "picking"
+  },
+  {
+   "id": "t-prepaid-captured",
+   "type": "uml.Transition",
+   "from": "prepaid",
+   "to": "captured"
+  },
+  {
+   "id": "t-parcel-start",
+   "type": "uml.Transition",
+   "from": "parcel-start",
+   "to": "picking"
+  },
+  {
+   "id": "t-picked",
+   "type": "uml.Transition",
+   "from": "picking",
+   "to": "packed",
+   "props": {
+    "trigger": "all books picked"
+   }
+  },
+  {
+   "id": "t-payment-start",
+   "type": "uml.Transition",
+   "from": "payment-start",
+   "to": "capturing"
+  },
+  {
+   "id": "t-capture-retry",
+   "type": "uml.Transition",
+   "from": "capturing",
+   "to": "capturing",
+   "props": {
+    "trigger": "capture failed",
+    "guard": "attempts < 3",
+    "effect": "count the attempt"
+   }
+  },
+  {
+   "id": "t-capture-given-up",
+   "type": "uml.Transition",
+   "from": "capturing",
+   "to": "cancelled",
+   "props": {
+    "trigger": "capture failed",
+    "guard": "attempts >= 3"
+   }
+  },
+  {
+   "id": "t-captured",
+   "type": "uml.Transition",
+   "from": "capturing",
+   "to": "captured",
+   "props": {
+    "trigger": "capture confirmed"
+   }
+  },
+  {
+   "id": "t-packed-ready",
+   "type": "uml.Transition",
+   "from": "packed",
+   "to": "ready"
+  },
+  {
+   "id": "t-captured-ready",
+   "type": "uml.Transition",
+   "from": "captured",
+   "to": "ready"
+  },
+  {
+   "id": "t-handed-over",
+   "type": "uml.Transition",
+   "from": "ready",
+   "to": "delivery",
+   "props": {
+    "effect": "hand the parcel to the carrier"
+   }
+  },
+  {
+   "id": "t-delivery-start",
+   "type": "uml.Transition",
+   "from": "delivery-start",
+   "to": "in-transit"
+  },
+  {
+   "id": "t-at-depot",
+   "type": "uml.Transition",
+   "from": "in-transit",
+   "to": "out-for-delivery",
+   "props": {
+    "trigger": "reached the local depot"
+   }
+  },
+  {
+   "id": "t-delivered",
+   "type": "uml.Transition",
+   "from": "out-for-delivery",
+   "to": "delivered",
+   "props": {
+    "trigger": "parcel signed for",
+    "effect": "email the receipt"
+   }
+  },
+  {
+   "id": "t-problem",
+   "type": "uml.Transition",
+   "from": "delivery",
+   "to": "enquiry",
+   "props": {
+    "trigger": "problem reported"
+   }
+  },
+  {
+   "id": "t-resolved",
+   "type": "uml.Transition",
+   "from": "enquiry",
+   "to": "delivery-history",
+   "props": {
+    "trigger": "problem resolved"
+   }
+  },
+  {
+   "id": "t-cancel",
+   "type": "uml.Transition",
+   "from": "fulfilling",
+   "to": "cancelled",
+   "props": {
+    "trigger": "cancel requested",
+    "effect": "refund the payment"
+   }
+  },
+  {
+   "id": "t-erase",
+   "type": "uml.Transition",
+   "from": "cancelled",
+   "to": "erased",
+   "props": {
+    "trigger": "after 30 days",
+    "effect": "erase the shopper's details"
+   }
+  },
+  {
+   "id": "f-buy-start",
+   "type": "uml.ControlFlow",
+   "from": "buy-start",
+   "to": "ref-find"
+  },
+  {
+   "id": "f-found",
+   "type": "uml.ControlFlow",
+   "from": "ref-find",
+   "to": "try-payment"
+  },
+  {
+   "id": "f-pay",
+   "type": "uml.ControlFlow",
+   "from": "try-payment",
+   "to": "ref-checkout"
+  },
+  {
+   "id": "f-result",
+   "type": "uml.ControlFlow",
+   "from": "ref-checkout",
+   "to": "payment-ok"
+  },
+  {
+   "id": "f-accepted",
+   "type": "uml.ControlFlow",
+   "from": "payment-ok",
+   "to": "buy-split",
+   "props": {
+    "guard": "payment accepted"
+   }
+  },
+  {
+   "id": "f-declined",
+   "type": "uml.ControlFlow",
+   "from": "payment-ok",
+   "to": "try-payment",
+   "props": {
+    "guard": "else"
+   }
+  },
+  {
+   "id": "f-to-receipt",
+   "type": "uml.ControlFlow",
+   "from": "buy-split",
+   "to": "ref-receipt"
+  },
+  {
+   "id": "f-to-queue",
+   "type": "uml.ControlFlow",
+   "from": "buy-split",
+   "to": "sd-queue"
+  },
+  {
+   "id": "f-receipt-sent",
+   "type": "uml.ControlFlow",
+   "from": "ref-receipt",
+   "to": "both-done"
+  },
+  {
+   "id": "f-queued",
+   "type": "uml.ControlFlow",
+   "from": "sd-queue",
+   "to": "both-done"
+  },
+  {
+   "id": "f-buy-done",
+   "type": "uml.ControlFlow",
+   "from": "both-done",
+   "to": "buy-done"
+  }
+ ],
+ "views": [
+  {
+   "id": "overview",
+   "parent": null,
+   "title": "Bookshop",
+   "caption": "Everything that runs, with its technology. Double-click Shop API for the order flow.",
+   "nodeIds": [
+    "shoppers",
+    "edge",
+    "storefront",
+    "api",
+    "accounts",
+    "db",
+    "queue",
+    "worker",
+    "payments",
+    "mail",
+    "hosts",
+    "github",
+    "grafana"
+   ]
+  },
+  {
+   "id": "api",
+   "parent": "overview",
+   "title": "An order, step by step",
+   "caption": "From checkout to the confirmation email.",
+   "render": "sequence",
+   "lanes": false,
+   "nodeIds": [
+    "shoppers",
+    "api",
+    "payments",
+    "queue",
+    "worker",
+    "mail"
+   ],
+   "edges": [
+    {
+     "id": "s1",
+     "from": "shoppers",
+     "to": "api",
+     "label": "checks out"
+    },
+    "e6",
+    "e7",
+    {
+     "id": "s2",
+     "from": "queue",
+     "to": "worker",
+     "label": "claimed by"
+    },
+    "e9"
+   ],
+   "tour": [
+    "shoppers",
+    "api",
+    "queue",
+    "worker",
+    "mail"
+   ]
+  },
+  {
+   "id": "checkout",
+   "parent": "overview",
+   "title": "Checkout, at a glance",
+   "caption": "An order's way in six numbered steps: the main path drawn heavier, the web tier and the order handling as tinted boxes.",
+   "nodeIds": [
+    "shoppers",
+    "storefront",
+    "api",
+    "payments",
+    "queue",
+    "worker",
+    "mail"
+   ],
+   "containers": [
+    {
+     "id": "web",
+     "label": "Web",
+     "tone": "cyan",
+     "nodeIds": [
+      "storefront",
+      "api"
+     ]
+    },
+    {
+     "id": "orders",
+     "label": "Orders",
+     "tone": "orange",
+     "nodeIds": [
+      "queue",
+      "worker"
+     ]
+    }
+   ],
+   "edges": [
+    {
+     "id": "c1",
+     "from": "shoppers",
+     "to": "storefront",
+     "label": "browse, buy",
+     "step": 1,
+     "weight": 2
+    },
+    {
+     "id": "c2",
+     "from": "storefront",
+     "to": "api",
+     "label": "checkout",
+     "sublabel": "JSON over HTTPS",
+     "step": 2,
+     "weight": 2
+    },
+    {
+     "id": "c3",
+     "from": "api",
+     "to": "payments",
+     "label": "charge the card",
+     "step": 3
+    },
+    {
+     "id": "c4",
+     "from": "api",
+     "to": "queue",
+     "label": "paid order",
+     "step": 4,
+     "weight": 2
+    },
+    {
+     "id": "c5",
+     "from": "queue",
+     "to": "worker",
+     "label": "next order",
+     "step": 5,
+     "weight": 2
+    },
+    {
+     "id": "c6",
+     "from": "worker",
+     "to": "mail",
+     "label": "confirmation",
+     "step": 6,
+     "weight": 2
+    }
+   ],
+   "tour": [
+    "shoppers",
+    "storefront",
+    "api",
+    "queue",
+    "worker",
+    "mail"
+   ],
+   "layout": {
+    "shoppers": [
+     0,
+     0
+    ],
+    "storefront": [
+     1,
+     0
+    ],
+    "api": [
+     2,
+     0
+    ],
+    "payments": [
+     3,
+     1
+    ],
+    "queue": [
+     4,
+     0
+    ],
+    "worker": [
+     5,
+     0
+    ],
+    "mail": [
+     6,
+     0
+    ]
+   },
+   "rgap": 104
+  },
+  {
+   "id": "domain",
+   "diagram": "uml.class",
+   "title": "Sales domain",
+   "parent": null,
+   "direction": "down",
+   "nodeIds": [
+    "sales",
+    "customer",
+    "order",
+    "line",
+    "book",
+    "payable",
+    "payment",
+    "card-payment",
+    "status",
+    "money",
+    "note-total"
+   ],
+   "layout": {
+    "order": [
+     1,
+     0
+    ]
+   },
+   "present": {
+    "book": {
+     "collapsed": [
+      "operations"
+     ]
+    }
+   }
+  },
+  {
+   "id": "payments-only",
+   "diagram": "uml.class",
+   "title": "Payments only",
+   "parent": "domain",
+   "subject": "sales",
+   "direction": "down",
+   "nodeIds": [
+    "order",
+    "payable",
+    "payment",
+    "card-payment"
+   ],
+   "present": {
+    "order": {
+     "collapsed": [
+      "attributes",
+      "operations"
+     ]
+    }
+   }
+  },
+  {
+   "id": "snapshot",
+   "diagram": "uml.object",
+   "title": "Order 1042, just placed",
+   "parent": null,
+   "direction": "down",
+   "nodeIds": [
+    "ada",
+    "order-1042",
+    "line-1",
+    "line-2",
+    "middlemarch",
+    "frankenstein",
+    "card-1"
+   ]
+  },
+  {
+   "id": "packages",
+   "diagram": "uml.package",
+   "title": "Bookshop packages",
+   "parent": null,
+   "direction": "down",
+   "nodeIds": [
+    "shared",
+    "money",
+    "catalog",
+    "book",
+    "sales",
+    "customer",
+    "order",
+    "line",
+    "status",
+    "payments-package",
+    "payable",
+    "payment",
+    "card",
+    "card-payment",
+    "wholesale",
+    "wholesale-order"
+   ],
+   "edges": [
+    "catalog-imports-shared",
+    "sales-imports-catalog",
+    "payments-accesses-shared",
+    "wholesale-merges-sales",
+    "sales-needs-payments"
+   ]
+  },
+  {
+   "id": "checkout-sequence",
+   "diagram": "uml.sequence",
+   "title": "Checkout",
+   "parent": null,
+   "nodeIds": [
+    "lifeline-shopper",
+    "lifeline-storefront",
+    "lifeline-api",
+    "lifeline-payments",
+    "receipt"
+   ],
+   "edges": [
+    {
+     "id": "m1",
+     "type": "uml.Message",
+     "from": "lifeline-shopper",
+     "to": "lifeline-storefront",
+     "label": "checkout()",
+     "props": {
+      "sort": "call"
+     }
+    },
+    {
+     "id": "m2",
+     "type": "uml.Message",
+     "from": "lifeline-storefront",
+     "to": "lifeline-api",
+     "label": "place(order)",
+     "props": {
+      "sort": "call"
+     }
+    },
+    {
+     "id": "m3",
+     "type": "uml.Message",
+     "from": "lifeline-api",
+     "to": "lifeline-api",
+     "label": "validate(order)",
+     "props": {
+      "sort": "call"
+     }
+    },
+    {
+     "id": "m4",
+     "type": "uml.Message",
+     "from": "lifeline-api",
+     "to": "lifeline-payments",
+     "label": "charge(total)",
+     "props": {
+      "sort": "call"
+     }
+    },
+    {
+     "id": "m5",
+     "type": "uml.Message",
+     "from": "lifeline-payments",
+     "to": "lifeline-api",
+     "label": "paid",
+     "parent": "f1-paid",
+     "props": {
+      "sort": "reply",
+      "replyTo": "m4"
+     }
+    },
+    {
+     "id": "m6",
+     "type": "uml.Message",
+     "from": "lifeline-api",
+     "to": "receipt",
+     "label": "new(order)",
+     "parent": "f1-paid",
+     "props": {
+      "sort": "create"
+     }
+    },
+    {
+     "id": "m7",
+     "type": "uml.Message",
+     "from": "lifeline-api",
+     "to": "lifeline-storefront",
+     "label": "orderPlaced",
+     "parent": "f2-notify",
+     "props": {
+      "sort": "async"
+     }
+    },
+    {
+     "id": "f3",
+     "type": "uml.InteractionUse",
+     "label": "Send receipt email",
+     "parent": "f1-paid",
+     "props": {
+      "covers": [
+       "lifeline-api",
+       "lifeline-payments",
+       "receipt"
+      ]
+     }
+    },
+    {
+     "id": "m8",
+     "type": "uml.Message",
+     "from": "lifeline-payments",
+     "to": "lifeline-api",
+     "label": "declined",
+     "parent": "f1-declined",
+     "props": {
+      "sort": "reply",
+      "replyTo": "m4"
+     }
+    },
+    {
+     "id": "m9",
+     "type": "uml.Message",
+     "from": "lifeline-api",
+     "to": "lifeline-storefront",
+     "label": "result",
+     "props": {
+      "sort": "reply",
+      "replyTo": "m2"
+     }
+    },
+    {
+     "id": "m10",
+     "type": "uml.Message",
+     "from": "lifeline-storefront",
+     "to": "lifeline-shopper",
+     "label": "confirmation page",
+     "props": {
+      "sort": "reply",
+      "replyTo": "m1"
+     }
+    }
+   ],
+   "fragments": [
+    {
+     "id": "f1",
+     "type": "uml.CombinedFragment",
+     "props": {
+      "operator": "alt"
+     },
+     "members": [
+      {
+       "id": "f1-paid",
+       "type": "uml.InteractionOperand",
+       "label": "payment accepted"
+      },
+      {
+       "id": "f1-declined",
+       "type": "uml.InteractionOperand",
+       "label": "else"
+      }
+     ]
+    },
+    {
+     "id": "f2",
+     "type": "uml.CombinedFragment",
+     "parent": "f1-paid",
+     "props": {
+      "operator": "opt"
+     },
+     "members": [
+      {
+       "id": "f2-notify",
+       "type": "uml.InteractionOperand",
+       "label": "shopper is still on the page"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "checkout-communication",
+   "diagram": "uml.communication",
+   "title": "Checkout: payment accepted",
+   "parent": null,
+   "nodeIds": [
+    "lifeline-shopper",
+    "lifeline-storefront",
+    "lifeline-api",
+    "lifeline-payments",
+    "receipt"
+   ],
+   "edges": [
+    "shopper-storefront",
+    "storefront-api",
+    "api-self",
+    "api-payments",
+    "api-receipt",
+    "cm1",
+    "cm2",
+    "cm3",
+    "cm4",
+    "cm5",
+    "cm6",
+    "cm7",
+    "cm8",
+    "cm9"
+   ]
+  },
+  {
+   "id": "shopping",
+   "diagram": "uml.use-case",
+   "title": "Shopping",
+   "parent": null,
+   "nodeIds": [
+    "shopper",
+    "member",
+    "payment-provider",
+    "bookshop",
+    "browse",
+    "check-out",
+    "pay",
+    "pay-by-card",
+    "redeem-voucher",
+    "gift-wrap",
+    "sign-in",
+    "track"
+   ]
+  },
+  {
+   "id": "fulfil",
+   "diagram": "uml.activity",
+   "title": "Fulfilling an order",
+   "parent": null,
+   "direction": "down",
+   "nodeIds": [
+    "lane-worker",
+    "lane-warehouse",
+    "lane-email",
+    "start",
+    "take-order",
+    "order-object",
+    "check-stock",
+    "stock",
+    "in-stock",
+    "ask-restock",
+    "books-arrive",
+    "stock-ready",
+    "split",
+    "call-payment",
+    "pick",
+    "tell-shopper",
+    "told",
+    "packed-and-paid",
+    "ship",
+    "done"
+   ]
+  },
+  {
+   "id": "take-payment",
+   "diagram": "uml.activity",
+   "title": "Take payment",
+   "parent": "fulfil",
+   "direction": "down",
+   "nodeIds": [
+    "pay-start",
+    "charge",
+    "record",
+    "pay-done"
+   ]
+  },
+  {
+   "id": "order-life",
+   "diagram": "uml.state-machine",
+   "title": "An order's life",
+   "parent": null,
+   "nodeIds": [
+    "created",
+    "placed",
+    "payment-outcome",
+    "prepaid",
+    "fulfilling",
+    "parcel-start",
+    "picking",
+    "packed",
+    "payment-start",
+    "capturing",
+    "captured",
+    "ready",
+    "delivery",
+    "delivery-start",
+    "in-transit",
+    "out-for-delivery",
+    "delivery-history",
+    "enquiry",
+    "cancelled",
+    "erased",
+    "delivered"
+   ]
+  },
+  {
+   "id": "buy-book",
+   "diagram": "uml.interaction-overview",
+   "title": "Buying a book",
+   "parent": null,
+   "direction": "down",
+   "nodeIds": [
+    "buy-start",
+    "ref-find",
+    "try-payment",
+    "ref-checkout",
+    "payment-ok",
+    "buy-split",
+    "ref-receipt",
+    "sd-queue",
+    "both-done",
+    "buy-done"
+   ]
+  },
+  {
+   "id": "find-book",
+   "diagram": "uml.sequence",
+   "title": "Find a book",
+   "parent": "buy-book",
+   "nodeIds": [
+    "lifeline-shopper",
+    "lifeline-storefront",
+    "lifeline-api"
+   ],
+   "edges": [
+    {
+     "id": "find-1",
+     "type": "uml.Message",
+     "from": "lifeline-shopper",
+     "to": "lifeline-storefront",
+     "label": "search(title)",
+     "props": {
+      "sort": "call"
+     }
+    },
+    {
+     "id": "find-2",
+     "type": "uml.Message",
+     "from": "lifeline-storefront",
+     "to": "lifeline-api",
+     "label": "findBooks(title)",
+     "props": {
+      "sort": "call"
+     }
+    },
+    {
+     "id": "find-3",
+     "type": "uml.Message",
+     "from": "lifeline-api",
+     "to": "lifeline-storefront",
+     "label": "books",
+     "props": {
+      "sort": "reply",
+      "replyTo": "find-2"
+     }
+    },
+    {
+     "id": "find-4",
+     "type": "uml.Message",
+     "from": "lifeline-storefront",
+     "to": "lifeline-shopper",
+     "label": "results page",
+     "props": {
+      "sort": "reply",
+      "replyTo": "find-1"
+     }
+    }
+   ]
+  },
+  {
+   "id": "buy-checkout",
+   "diagram": "uml.sequence",
+   "title": "Check out",
+   "parent": "buy-book",
+   "nodeIds": [
+    "lifeline-storefront",
+    "lifeline-api",
+    "lifeline-payments"
+   ],
+   "edges": [
+    {
+     "id": "pay-1",
+     "type": "uml.Message",
+     "from": "lifeline-storefront",
+     "to": "lifeline-api",
+     "label": "place(order)",
+     "props": {
+      "sort": "call"
+     }
+    },
+    {
+     "id": "pay-2",
+     "type": "uml.Message",
+     "from": "lifeline-api",
+     "to": "lifeline-payments",
+     "label": "charge(total)",
+     "props": {
+      "sort": "call"
+     }
+    },
+    {
+     "id": "pay-3",
+     "type": "uml.Message",
+     "from": "lifeline-payments",
+     "to": "lifeline-api",
+     "label": "accepted or declined",
+     "props": {
+      "sort": "reply",
+      "replyTo": "pay-2"
+     }
+    },
+    {
+     "id": "pay-4",
+     "type": "uml.Message",
+     "from": "lifeline-api",
+     "to": "lifeline-storefront",
+     "label": "result",
+     "props": {
+      "sort": "reply",
+      "replyTo": "pay-1"
+     }
+    }
+   ]
+  },
+  {
+   "id": "email-receipt",
+   "diagram": "uml.sequence",
+   "title": "Email the receipt",
+   "parent": "buy-book",
+   "nodeIds": [
+    "lifeline-api",
+    "email",
+    "lifeline-shopper"
+   ],
+   "edges": [
+    {
+     "id": "mail-1",
+     "type": "uml.Message",
+     "from": "lifeline-api",
+     "to": "email",
+     "label": "send(receipt)",
+     "props": {
+      "sort": "async"
+     }
+    },
+    {
+     "id": "mail-2",
+     "type": "uml.Message",
+     "from": "email",
+     "to": "lifeline-shopper",
+     "label": "receipt email",
+     "props": {
+      "sort": "async"
+     }
+    }
+   ]
+  },
+  {
+   "id": "queue-order",
+   "diagram": "uml.sequence",
+   "title": "Queue the order",
+   "parent": "buy-book",
+   "nodeIds": [
+    "lifeline-api",
+    "lifeline-queue",
+    "lifeline-worker"
+   ],
+   "edges": [
+    {
+     "id": "queue-1",
+     "type": "uml.Message",
+     "from": "lifeline-api",
+     "to": "lifeline-queue",
+     "label": "enqueue(order)",
+     "props": {
+      "sort": "call"
+     }
+    },
+    {
+     "id": "queue-2",
+     "type": "uml.Message",
+     "from": "lifeline-queue",
+     "to": "lifeline-api",
+     "label": "queued",
+     "props": {
+      "sort": "reply",
+      "replyTo": "queue-1"
+     }
+    },
+    {
+     "id": "queue-3",
+     "type": "uml.Message",
+     "from": "lifeline-queue",
+     "to": "lifeline-worker",
+     "label": "orderPlaced",
+     "props": {
+      "sort": "async"
+     }
+    }
+   ]
+  }
+ ]
+}
