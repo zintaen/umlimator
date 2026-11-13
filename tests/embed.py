@@ -20,7 +20,7 @@ tests/state.html: the map's state machines (0.14.0): truthful setView(), lifecyc
 tests/motion.html, with motion on (no --force-prefers-reduced-motion): a press, a second setView(), update() or destroy() during a move, a selection mid-ease.
 tests/page-state.html: the standalone page's state (0.14.0): its keys, the link it keeps, stories in the history, the details panel, menus, #still and check.
 tests/page-motion.html, with motion on: the page's history through moves: Back and Forward, a story's steps on other views, the reader's own move.
-tests/shapes.html: card shapes (0.15.0): each shape in each notation, ports on outlines, a notation change that lays nothing out, the toggle, link, exports, legend.
+tests/shapes.html: card shapes (0.15.0; one style since 0.21.0): each shape, ports on outlines, a card's own shape, a stale shapes field, option, attribute or link that changes nothing, exports, legend.
 tests/aids.html: the reading aids (0.15.0): a box's tone, a step on a line in any view, --um-tint; light and dark, the minimap and the SVG.
 tests/typed-edit.html: editing a typed view (1.7): each gesture's edit event, by pointer and keyboard, applied with apply(); the panels; none of it read-only.
 tests/notation.html: notation (1.5): a classifier, every line end and end labels from svgOf, in both themes and three fonts: text in its face, ends on outlines.
@@ -119,9 +119,9 @@ for page, what in (("examples/edit.html", "the editing demo"), ("examples/embed.
 demo = dom("examples/element.html", lambda t: "Drawn: " in t)  # the map is in the element's shadow root: the page says when it is drawn
 print(("ok  " if "Drawn: " in demo else "FAIL"), "examples/element.html · the element page draws its map")
 failed |= "Drawn: " not in demo
-demo = dom("examples/notations.html", lambda t: "Drawn: 6 maps" in t)  # six elements: the page says when all have drawn
-print(("ok  " if "Drawn: 6 maps" in demo else "FAIL"), "examples/notations.html · the card shapes gallery draws its six maps")
-failed |= "Drawn: 6 maps" not in demo
+demo = dom("examples/notations.html", lambda t: "Drawn: 2 maps" in t)  # two elements, light and dark: the page says when both have drawn
+print(("ok  " if "Drawn: 2 maps" in demo else "FAIL"), "examples/notations.html · the card shapes gallery draws its two maps")
+failed |= "Drawn: 2 maps" not in demo
 # the standalone page (mountPage) shows a legend, so it still names line kinds from label words: "reads metrics" is state
 
 

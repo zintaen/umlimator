@@ -276,11 +276,11 @@ with tempfile.TemporaryDirectory() as tmp:
         (t / f"{name}.json").write_text(json.dumps(m))
         r = subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "render", str(t / f"{name}.json"), "--out", str(t / f"{name}.html"), "--no-check"], capture_output=True, text=True)
         ok(f"render · {name}: refused, as validate() refuses it", r.returncode != 0 and ("unknown end" in r.stderr + r.stdout or "duplicate" in (r.stderr + r.stdout).lower()), (r.returncode, (r.stderr + r.stdout)[-300:]))
-    # card shapes (0.15.0): a model in the c4 notation prints its shapes, and its legend keys them
+    # card shapes (0.15.0; one style since 0.21.0): the shapes example prints its shapes, and its legend keys them
     cli("render", str(ROOT / "examples" / "shapes.json"), "--out", str(t / "shapes.html"), "--no-check")
     shp = read("shapes.pdf") if cli("pdf", str(t / "shapes.html"), "--out", str(t / "shapes.pdf")) else []
-    ok("pdf · a model in the c4 notation: its legend keys the shapes it draws (a person, a browser app, a phone)",
-       shp and all(flat(k) in "".join(shp) for k in ("Personsomeone who uses it", "Browser appruns in a web browser", "Mobile appruns on a phone")), [p[:200] for p in shp[1:2]])
+    ok("pdf · the shapes example: its legend keys the shapes it draws (a person, a browser app, a phone, a package)",
+       shp and all(flat(k) in "".join(shp) for k in ("Personsomeone who uses it", "Browser appruns in a web browser", "Mobile appruns on a phone", "Packagea module or a folder of code")), [p[:200] for p in shp[1:2]])
     # a view of forty cards: its tables go on over the pages after its picture, under their heading and header row again,
     # never a row cut; and a model with no rules has no rules section
     (t / "long.json").write_text(json.dumps({"title": "Forty parts", "views": [{"id": "all", "title": "All parts", "nodeIds": [f"p{i}" for i in range(40)]}],

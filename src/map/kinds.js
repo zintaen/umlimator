@@ -22,7 +22,7 @@ const ALIAS = { client: 'frontend', ui: 'frontend', web: 'frontend', page: 'fron
   user: 'external', human: 'external', thirdparty: 'external', vendor: 'external',
   doc: 'file', config: 'file', skill: 'file', md: 'file', template: 'file', output: 'file',
   agent: 'ai', llm: 'ai', model: 'ai' };
-const hasKey = (o, k) => Object.hasOwn(o, k); // a table's own key: "constructor" or "__proto__" is no kind, shape or notation
+const hasKey = (o, k) => Object.hasOwn(o, k); // a table's own key: "constructor" or "__proto__" is no kind or shape
 const kindOf = (k, map) => { k = String(k || '').toLowerCase(); if (map && hasKey(MAPK, k)) return MAPK[k]; return hasKey(KIND, k) ? k : hasKey(ALIAS, k) ? ALIAS[k] : map ? 'm-script' : 'backend'; };
 const SIGIL = {
   frontend: '<rect x="2" y="3" width="12" height="8.5" rx="1.2"/><path d="M5.5 14h5M8 11.5V14"/>',
@@ -49,24 +49,16 @@ const SIGIL = {
   terminal: '<rect x="1.8" y="2.6" width="12.4" height="10.8" rx="1.6"/><path d="m4.6 6.2 2 1.8-2 1.8M8.4 10.2h3"/>',
   folder: '<path d="M2 4.3c0-.7.5-1.2 1.2-1.2h3l1.4 1.6h5.2c.7 0 1.2.5 1.2 1.2v6.2c0 .7-.5 1.2-1.2 1.2H3.2C2.5 13.3 2 12.8 2 12.1Z"/>',
   node: '<path d="M2.4 5.6 5 3h8.6v7.4L11 13H2.4Z"/><path d="M2.4 5.6H11V13M11 5.6 13.6 3"/>',
-  // UML's component icon (§11.6.4): a box's mark in the uml notation
-  component: '<path d="M4.5 4.5V2.3a.8.8 0 0 1 .8-.8h7.9a.8.8 0 0 1 .8.8v11.4a.8.8 0 0 1-.8.8H5.3a.8.8 0 0 1-.8-.8v-2.2M4.5 7v2"/><rect x="2" y="4.5" width="5" height="2.5" rx=".6"/><rect x="2" y="9" width="5" height="2.5" rx=".6"/>',
 };
-/* ================= card shapes (0.15.0) =================
-   A notation draws each card as a shape: box (the default: every card a rounded box, as before), c4 (people, browser apps,
-   phones, databases, queues and files as the C4 model's tools draw them) or uml (UML 2.5's actor, node, artifact, package
-   and data store, and the component icon as a box's mark). A card's own `shape` wins in any notation. Each shape is drawn
-   inside its card's own box, so layout, routing, widths and the layout check never see it: an outline (for the mask, the
-   body, the stack, rings, the minimap and the glow), a face (the rows its mark and text use), details drawn over the body
-   (one of them its accent, which lights as something arrives) and inset(side, t), how far inside the box's side the
-   outline runs at t, which slides a line's end from the box onto the outline. */
-const NOTATIONS = ['box', 'c4', 'uml'];
-// what a notation draws: by the kind word the model wrote, then by the kind it means (docs/module-api.md, 0.15.0)
-const NOTED = {
-  c4: { person: 'person', user: 'person', human: 'person', mobile: 'mobile', agent: 'robot', cli: 'terminal',
-    frontend: 'browser', database: 'cylinder', queue: 'pipe', file: 'document', 'm-hook': 'hexagon' },
-  uml: { person: 'person', user: 'person', human: 'person', agent: 'robot', module: 'folder', package: 'folder',
-    cloud: 'node', database: 'cylinder', file: 'document', 'm-hook': 'hexagon' },
-};
+/* ================= card shapes (0.15.0; one style since 0.21.0) =================
+   Maps draw each card as a shape (the union of what the C4 model's tools and UML 2.5 draw): people, browser apps, phones,
+   terminals, queues, packages, hosts, robots, data stores, files and hooks, and a rounded box where no shape says more. A
+   card's own `shape` wins. Each shape is drawn inside its card's own box, so layout, routing, widths and the layout check
+   never see it: an outline (for the mask, the body, the stack, rings, the minimap and the glow), a face (the rows its mark
+   and text use), details drawn over the body (one of them its accent, which lights as something arrives) and
+   inset(side, t), how far inside the box's side the outline runs at t, which slides a line's end from the box onto the outline. */
+// the shape a card is drawn as: by the kind word the model wrote, then by the kind it means (docs/module-api.md)
+const NOTED = { person: 'person', user: 'person', human: 'person', agent: 'robot', mobile: 'mobile', cli: 'terminal', frontend: 'browser',
+  queue: 'pipe', module: 'folder', package: 'folder', cloud: 'node', database: 'cylinder', file: 'document', 'm-hook': 'hexagon' };
 
-export { KIND, MAPK, ALIAS, hasKey, kindOf, SIGIL, NOTATIONS, NOTED };
+export { KIND, MAPK, ALIAS, hasKey, kindOf, SIGIL, NOTED };
