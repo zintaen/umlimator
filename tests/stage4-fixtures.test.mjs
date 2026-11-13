@@ -215,22 +215,22 @@ function budgets(f, edits) {
   for (const k of Object.keys(edits)) assert.ok(best(k) < 1000, `${k} ${best(k)} ms`);
 }
 
-test('P1 (§17): usecase-stress.json all: a full layout under 1 s; a use case renamed and a stereotype set, laid out and drawn, printed against 100 ms', () => {
+test('P1 (§17): usecase-stress.json all: a full layout under 1 s; a use case renamed and a stereotype set, laid out and drawn, printed against 100 ms (timed)', () => {
   budgets('usecase-stress', { rename: [{ op: 'set', id: 'u7', path: 'label', value: 'Case renamed' }], stereotype: [{ op: 'set', id: 'u9', path: 'props.stereotypes', value: ['manual'] }] });
 });
 
-test('P1 (§17): activity-stress.json all: a full layout under 1 s; a guard, a lane change and a stereotype, laid out and drawn, printed against 100 ms', () => {
+test('P1 (§17): activity-stress.json all: a full layout under 1 s; a guard, a lane change and a stereotype, laid out and drawn, printed against 100 ms (timed)', () => {
   const m = FIX['activity-stress'], v = V(m, 'all'), g = layout(m, 'all'), b = g.bands[3];
   const lane = actMoveTo(m, v, 'n5', { pt: [b.x + b.w / 2, b.y + b.h / 2], geo: g });
   assert.deepEqual(lane, [{ op: 'reparent', id: 'n5', parent: 'l3' }]);
   budgets('activity-stress', { guard: actRename(m, v, 'x0', '[no stock at all]'), lane, stereotype: [{ op: 'set', id: 'n5', path: 'props.stereotypes', value: ['manual'] }] });
 });
 
-test('P1 (§17): state-stress.json all: a full layout under 1 s; a transition\'s label and a stereotype, laid out and drawn, printed against 100 ms', () => {
+test('P1 (§17): state-stress.json all: a full layout under 1 s; a transition\'s label and a stereotype, laid out and drawn, printed against 100 ms (timed)', () => {
   budgets('state-stress', { label: [{ op: 'set', id: 't1', path: 'props.trigger', value: 'capture failed' }], stereotype: [{ op: 'set', id: 's3', path: 'props.stereotypes', value: ['manual'] }] });
 });
 
-test('P1 (§17): overview-stress.json all: a full layout under 1 s; a guard and a stereotype printed against 100 ms; each inline time axis under a 1 s ceiling, printed against 5 ms', () => {
+test('P1 (§17): overview-stress.json all: a full layout under 1 s; a guard and a stereotype printed against 100 ms; each inline time axis under a 1 s ceiling, printed against 5 ms (timed)', () => {
   const m = FIX['overview-stress'];
   budgets('overview-stress', { guard: ovRename(m, V(m, 'all'), 'f2', '[in stock and paid]'), stereotype: [{ op: 'set', id: 'u3', path: 'props.stereotypes', value: ['audit'] }] });
   const sq = V(m, 'all').nodeIds.filter(id => node(m, id).type === 'uml.Interaction').map(id => sqInput(m, V(m, node(m, id).opensView)));
@@ -240,7 +240,7 @@ test('P1 (§17): overview-stress.json all: a full layout under 1 s; a guard and 
   assert.ok(axis < 1000, `${axis} ms`);
 });
 
-test('P1 (§17): the Mermaid state reader and writer, 500 transitions each way, under a 1 s ceiling, printed against 100 ms', () => {
+test('P1 (§17): the Mermaid state reader and writer, 500 transitions each way, under a 1 s ceiling, printed against 100 ms (timed)', () => {
   const nodes = Array.from({ length: 50 }, (_, k) => ({ id: 's' + k, type: 'uml.State', label: 's' + k }));
   const edges = Array.from({ length: 500 }, (_, k) => ({ id: `t${k}`, type: 'uml.Transition', from: 's' + (k % 50), to: 's' + ((k * 7 + 1) % 50), props: { trigger: 'e' + k, guard: `x > ${k}`, effect: 'act' } }));
   const m = { schemaVersion: 2, nodes, edges, views: [{ id: 'v', diagram: 'uml.state-machine', nodeIds: nodes.map(n => n.id) }] };

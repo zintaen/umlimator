@@ -69,10 +69,10 @@ try {
 
   // ---- editing (DoD 4), each gesture's commands applied with apply(). A package, payments, holds the card instance
   const BASE = structuredClone(MODEL); BASE.nodes.push({ id: 'payments', type: 'uml.Package', label: 'payments' }, { id: 'archive', type: 'uml.Package', label: 'archive' });
-  BASE.nodes.find(n => n.id === 'card').parent = 'payments'; BASE.views[0].nodeIds.push('payments');
+  BASE.nodes.find(n => n.id === 'card-1').parent = 'payments'; BASE.views[0].nodeIds.push('payments');
   let h = mount(BASE, { editable: true });
   const button = t => all('.um-editor button').find(b => b.textContent.trim() === t), panel = s => pick('.um-editor ' + s), row = id => panel(`[data-m="${id}"]`), enter = t => key('Enter', {}, t);
-  check('an instance in a shown package is drawn in its box', !!pick('.family[data-family="payments"]') && inside(box(pick('.node[data-id="card"] .n-body')), box(pick('.family[data-family="payments"] .family-box'))));
+  check('an instance in a shown package is drawn in its box', !!pick('.family[data-family="payments"]') && inside(box(pick('.node[data-id="card-1"] .n-body')), box(pick('.family[data-family="payments"] .family-box'))));
   check('the palette: Instance and Comment; the lines, Link and Comment link', same(all('.um-editor .um-pal button').map(b => b.textContent), ['Instance', 'Comment']) && /Link, Comment link/.test(panel('.um-pal .um-note').textContent));
   key('n'); pick('.um-rename').value = 'bob'; key('Enter', {}, pick('.um-rename'));
   let m1 = gives('N adds an instance, named, shown in the view', [{ op: 'add', element: { id: 'instancespecification1', type: 'uml.InstanceSpecification', label: 'bob' }, view: 'snapshot' }], m => m.views[0].nodeIds.includes('instancespecification1'), BASE);

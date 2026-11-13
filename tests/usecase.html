@@ -66,12 +66,12 @@ try {
         : Math.min(Math.abs(x - (b.x + b.w / 2 - 12)), Math.abs(x - (b.x + b.w / 2 + 12)), Math.abs(y - b.y), Math.abs(y - b.y - b.h));
       if (d > 1) offs.push([g.dataset.from, g.dataset.to, +d.toFixed(2)]); });
     check(`${tag}: each line starts on its shape's outline`, !offs.length, offs);
-    check(`${tag}: names a screen reader reads`, pick('.node[data-id="checkout"]').getAttribute('aria-label') === 'Use case Check out, in Online bookshop, 2 extension points'
+    check(`${tag}: names a screen reader reads`, pick('.node[data-id="check-out"]').getAttribute('aria-label') === 'Use case Check out, in Online bookshop, 2 extension points'
       && pick('.node[data-id="shopper"]').getAttribute('aria-label') === 'Actor Shopper' && pick('.family[data-family="bookshop"]').getAttribute('aria-label') === 'Subject Online bookshop, holding 8 use cases'
       && pick('.edge-g[data-from="redeem-voucher"] title').textContent === 'Extend from Redeem a voucher to Check out, at payment, when the shopper has a voucher code');
     const order = all('.keys .node-key').map(k => k.dataset.node);
     check(`${tag}: reading order: actors, the subject's use cases, then the lines`, same(order.slice(0, 4), ['shopper', 'member', 'payment-provider', 'browse']) && all('.keys .um-key').length === 21, order);
-    check(`${tag}: extension points drawn under a divider`, same(all('.node[data-id="checkout"] .c-row').map(t => t.textContent), ['payment', 'extras']) && !!pick('.node[data-id="checkout"] .c-comp .n-det'));
+    check(`${tag}: extension points drawn under a divider`, same(all('.node[data-id="check-out"] .c-row').map(t => t.textContent), ['payment', 'extras']) && !!pick('.node[data-id="check-out"] .c-comp .n-det'));
     const legend = all('.m-legend b').map(b => b.textContent);
     check(`${tag}: the legend keys each line kind drawn`, same(legend, ['Association', 'Include', 'Extend', 'Generalization']), legend);
     const stageBg = css(pick('.stage'), 'backgroundColor'), low = [];
@@ -116,7 +116,7 @@ try {
   // an extend: L from Browse books to Check out, Extend; it names no point yet (the problems list says so), then its condition and points in the panel
   click('.node[data-id="browse"] .c-name'); key('l'); for (const c of 'check') key(c); key('Enter');
   all('.um-pick button').find(b => b.textContent === 'Extend').click();
-  const m4 = gives('picking Extend: one add of a uml.Extend, which names no point yet', [{ op: 'add', element: { id: 'extend1', type: 'uml.Extend', from: 'browse', to: 'checkout' }, view: 'shopping' }],
+  const m4 = gives('picking Extend: one add of a uml.Extend, which names no point yet', [{ op: 'add', element: { id: 'extend1', type: 'uml.Extend', from: 'browse', to: 'check-out' }, view: 'shopping' }],
     m => m.edges.some(e => e.id === 'extend1'), m3, 1);
   // the other line kinds, each by L and the picker
   for (const [from, name, kind, to, id, type] of [['browse', 'sign', 'Include', 'sign-in', 'include1', 'Include'], ['actor1', 'shopper', 'Generalization', 'shopper', 'generalization1', 'Generalization'], ['track', 'courier', 'Comment link', 'actor1', 'commentlink1', 'CommentLink']]) {
@@ -132,17 +132,17 @@ try {
   change(panel('[data-f="p:condition"]'), 'the shopper asks');
   const m6 = gives('the condition field sets props.condition', [{ op: 'set', id: 'extend1', path: 'props.condition', value: 'the shopper asks' }], m => m.edges.find(e => e.id === 'extend1').props.condition === 'the shopper asks', m5);
   h.update(m6);
-  check('after update() the extend reads its point by name and its condition', pick('.edge-g[data-from="browse"][data-to="checkout"] title').textContent === 'Extend from Browse books to Check out, at extras, when the shopper asks'
+  check('after update() the extend reads its point by name and its condition', pick('.edge-g[data-from="browse"][data-to="check-out"] title').textContent === 'Extend from Browse books to Check out, at extras, when the shopper asks'
     && all('.e-lab, .labels text').some(t => t.textContent.includes('«extend» (extras) [the shopper asks]')));
   // extension points: member rows by name, renamed, added, moved
-  click('.node[data-id="checkout"] .c-name');
+  click('.node[data-id="check-out"] .c-name');
   check('the properties panel lists the extension points by name', row('checkout.payment').value === 'payment' && row('checkout.extras').value === 'extras');
   row('checkout.payment').value = 'pay'; enter(row('checkout.payment'));
-  gives('an extension point renamed in its row', [{ op: 'set', id: 'checkout.payment', path: 'label', value: 'pay' }], m => m.nodes.find(n => n.id === 'checkout').members[0].label === 'pay', m6);
+  gives('an extension point renamed in its row', [{ op: 'set', id: 'checkout.payment', path: 'label', value: 'pay' }], m => m.nodes.find(n => n.id === 'check-out').members[0].label === 'pay', m6);
   const nw = panel('[data-new]'); nw.value = 'gift card'; enter(nw);
-  gives('a new extension point typed by name', [{ op: 'add', element: { id: 'extensionpoint1', type: 'uml.ExtensionPoint', label: 'gift card' }, owner: 'checkout' }], m => m.nodes.find(n => n.id === 'checkout').members.length === 3, m6);
+  gives('a new extension point typed by name', [{ op: 'add', element: { id: 'extensionpoint1', type: 'uml.ExtensionPoint', label: 'gift card' }, owner: 'check-out' }], m => m.nodes.find(n => n.id === 'check-out').members.length === 3, m6);
   key('ArrowDown', { altKey: true }, row('checkout.payment'));
-  gives('Alt + ↓ on an extension point: move it down', [{ op: 'move', id: 'checkout.payment', index: 1 }], m => m.nodes.find(n => n.id === 'checkout').members[1].id === 'checkout.payment', m6);
+  gives('Alt + ↓ on an extension point: move it down', [{ op: 'move', id: 'checkout.payment', index: 1 }], m => m.nodes.find(n => n.id === 'check-out').members[1].id === 'checkout.payment', m6);
   // the Owner field, by keyboard; a drop into the subject's box, by pointer
   click('.node[data-id="browse"] .c-name');
   const own = panel('[data-f="owner"]'), opts = [...own.options].map(o => o.textContent);
@@ -164,12 +164,12 @@ try {
   gives('the stereotypes field sets a list', [{ op: 'set', id: 'shopper', path: 'props.stereotypes', value: ['primary', 'human'] }], m => same(m.nodes.find(n => n.id === 'shopper').props.stereotypes, ['primary', 'human']), m7);
   // a pin, hide, delete. The canvas keeps every place through a session, so the pin's picture is the saved model's, drawn fresh
   h = mount(m7, { editable: true });
-  const was = id => box(pick(`.node[data-id="${id}"] .n-mask`)), before = Object.fromEntries(['shopper', 'browse', 'checkout', 'pay'].map(id => [id, was(id)]));
+  const was = id => box(pick(`.node[data-id="${id}"] .n-mask`)), before = Object.fromEntries(['shopper', 'browse', 'check-out', 'pay'].map(id => [id, was(id)]));
   click('.node[data-id="shopper"] .c-name'); key('ArrowDown', { altKey: true });
   check('Alt + ↓ pins an actor', last().commands.length === 1 && last().commands[0].op === 'set' && same(last().commands[0].path, ['layout', 'shopper']), last());
   mount(apply(m7, last().commands));
-  check('the pinned model drawn fresh: the actor a row lower, the use cases where they were', was('shopper').y > before.shopper.y && was('shopper').x === before.shopper.x && ['browse', 'checkout', 'pay'].every(id => same(was(id), before[id])),
-    [before, ['shopper', 'browse', 'checkout', 'pay'].map(was)]);
+  check('the pinned model drawn fresh: the actor a row lower, the use cases where they were', was('shopper').y > before.shopper.y && was('shopper').x === before.shopper.x && ['browse', 'check-out', 'pay'].every(id => same(was(id), before[id])),
+    [before, ['shopper', 'browse', 'check-out', 'pay'].map(was)]);
   h = mount(m7, { editable: true });
   click('.node[data-id="gift-wrap"] .c-name'); key('Delete');
   gives('Delete: hide the use case from the view', [{ op: 'hide', id: 'gift-wrap', view: 'shopping' }], m => !m.views[0].nodeIds.includes('gift-wrap'), m7);

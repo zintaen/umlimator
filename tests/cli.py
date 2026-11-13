@@ -309,7 +309,7 @@ with tempfile.TemporaryDirectory() as tmp:
                                     "created → PlacedTransition", "Capturing payment → CancelledTransition"]), txt[:800])
     txt = "".join(read("buy-book-overview.pdf"))
     ok("pdf · buy-book-overview: its tables list each node's kind and each flow, then each sequence view it opens",
-       all(flat(s) in txt for s in ["Find a bookInteraction use", "Queue the orderInteraction", "Payment accepted?Decision node", "splitFork node", "Payment accepted? → splitControl flow",
+       all(flat(s) in txt for s in ["Find a bookInteraction use", "Queue the orderInteraction", "Payment accepted?Decision node", "buy-splitFork node", "Payment accepted? → buy-splitControl flow",
                                     "storefront → apifindBooks(title)Message"]), txt[:800])
     # an element with no type is drawn as a class, and its row says so
     bare = json.loads((ROOT / "examples" / "sales-classes.json").read_text()); next(n for n in bare["nodes"] if n["id"] == "order").pop("type")

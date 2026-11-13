@@ -25,11 +25,11 @@ const canon = m => ({ ...m, nodes: [...m.nodes].sort(byId), views: m.views.map(v
 test('read(write(model)) is example 11, ids included, and nothing is reported', () => {
   const m = json('../examples/checkout-sequence.json'), text = write(m), back = read(text);
   assert.deepEqual(back.report, [], text);
-  assert.deepEqual(canon(back.model), canon(project(m, 'checkout')), text);
+  assert.deepEqual(canon(back.model), canon(project(m, 'checkout-sequence')), text);
   // the writer's text is Mermaid's: the main bars by + and -, the use as a note, the created lifeline where it is created
-  assert.match(text, /api->>\+payments: charge\(total\)\n/);
-  assert.match(text, /payments-->>-api: declined\n/);
-  assert.match(text, / {4}%% use: f3\n {4}Note over api,receipt: ref Send receipt email\n/);
+  assert.match(text, /lifeline-api->>\+lifeline-payments: charge\(total\)\n/);
+  assert.match(text, /lifeline-payments-->>-lifeline-api: declined\n/);
+  assert.match(text, / {4}%% use: f3\n {4}Note over lifeline-api,receipt: ref Send receipt email\n/);
   assert.match(text, / {4}%% represents: Receipt\n {4}create participant receipt as receipt : Receipt\n/);
 });
 
