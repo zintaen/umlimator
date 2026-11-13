@@ -3636,3 +3636,40 @@ the map's three views and the fifteen typed views of `sales-classes`, `order-obj
 - **CI.** The atlas is one of `examples/*.json`, so it is rendered, checked with `--expand`, validated against the JSON
   Schema and pictured and printed for the site as the others are; the check loop counts its 6 crossings, the activity's
   4 and the state machine's 2.
+
+## 0.22.0 (in progress)
+
+### C10: the MCP server, the diff Action and the map-repo skill meet every typed diagram
+
+The package after 0.20.0 that stage 3 deferred (`docs/diagrams/notes/stage-3.md` §12, S15), with stage 4's and stage 5's
+types folded in (`notes/stage-4.md` §19.5, `notes/stage-5.md` §16.5): class, object, package, sequence, communication, use
+case, activity, state machine, interaction overview, component, deployment and composite structure. Additive; maps diff
+and walk as before.
+
+- **`diff()` says "moves" where order means something** (risks.md M11), in `lib/umlimator-all.js` (the CLI, the diff
+  Action and the MCP server run it), from `src/uml/diff.js` through two hook slots, `TYPED.diff` and `TYPED.order`:
+  - a reorder of an element's members (a class's attributes and operations, an object's slots, a state's internal
+    transitions, a component's or a structured class's ports and parts): "moves email after name in Customer", or "… to
+    the top in …". Members both reordered and edited still read "changes Customer (members)";
+  - a reorder of a sequence view's messages and interaction uses, or of a communication model's messages (their
+    numbers): "moves validate(order) after charge(total)", or "… to the start". The moved line is marked changed (its
+    edited dot) and its view is among `views`. Before, a reorder read nothing at all;
+  - a message moved into or out of an operand: "moves orderPlaced into else", as a re-own reads;
+  - a sequence view's combined fragments: "adds the par fragment", "removes the opt fragment", "changes the opt fragment
+    (props)". Before, they read nothing. The fragments themselves are not marked on the picture.
+
+  The moved items are those off one longest run kept in their old order, so a swap of two reads as one move.
+  `lib/umlimator.js`, which draws no typed view, says what it said in 0.21.0.
+- **`paths()` on a sequence view runs in time order**: a path is a run of messages, each later than the one before and
+  sent from the lifeline it reached; the type's own `paths` (registry), as `describe` is. Before, every message was a line
+  of a graph with no time, so replies made almost everything a path. Messages in different operands of one `alt` may
+  still chain. `reach()` is unchanged.
+- **Tested on every type**: `tests/mcp.py` serves one model of each to the MCP server (its read tools in the type's own
+  words, a highlight shown on the diagram the page draws; `paths` in time order on the sequence); `tests/cli.py` runs the
+  diff Action's step as CI runs it on one model of each (a reorder reads "moves" on the class, sequence, communication,
+  component and composite structure models), and the `map-repo` skill's `cli.py` renders each typed model it is given;
+  `tests/typed-diff.test.mjs` pins the words. Stage 5's three examples are read from `docs/diagrams/examples/` until 5.8
+  moves them. The skill still writes maps only; its pin (v0.20.0) moves at a release, and renders a type only from the
+  release that has it.
+- **Core**: +62 B gzipped (`gzip -9`: 185,246 B to 185,308 B, 12.34% over 0.16.0), from the reserve: the two hook calls in `diff()`, the `paths` hook in `paths()`,
+  and the registry's comment.
