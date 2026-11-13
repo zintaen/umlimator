@@ -213,7 +213,7 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
   // A typed view's boxes (notes/stage-2.md §3.2) take the same code as a map's: their title is the type's (`title`), and a box
   // grows to hold it; laid out turned (direction down), the 24 px header room goes left, the side that becomes the top
   const familyDefs = dg.containers || [], tagged = n => map && (n.author || n.k === 'm-ext'), TB = !map && dg.turned; // tagged: a name tag hangs under the card
-  const headW = f => textW(!map && f.title || f.label || f.id, 11) + 16; // a box's title, as the audit measures it
+  const headW = f => textW(!map && f.title || f.label || f.id, !map && f.head ? 12 : 11) + 16; // a box's title, as the audit measures it (two lines: at 12 px)
   const framesNow = () => { const cache = Object.create(null); // a box may be named 'constructor'
     const frameOf = (f, trail = new Set()) => {
       if (cache[f.id]) return cache[f.id];

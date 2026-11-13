@@ -165,6 +165,12 @@ try {
   check('the handle from a node to an artifact, Communication path: refused, its reason on the hint line', ed.length === n1 && /^A communication path joins two nodes/.test(hint()), [ed.slice(n1), hint()]);
   // hide, delete
   h = mount(BASE, { editable: true });
+  // a box with a keyword line, selected: the hint line says both lines; F2's field sits over its name, not the keyword (review of 13 Nov 2026)
+  h.select({ type: 'container', id: 'browser', view: 'production' });
+  check('a box selected: the hint line says its keyword and its whole name', hint() === 'Box «executionEnvironment» Web browser, selected', hint());
+  key('F2'); const fld = pick('.um-rename'), fr = fld && fld.getBoundingClientRect(), nr = all('.family[data-family="browser"] .family-title')[1].getBoundingClientRect(), mid = nr.top + nr.height / 2;
+  check('F2 on a box with a keyword line: the field over its name', !!fld && fld.value === 'Web browser' && mid >= fr.top && mid <= fr.bottom, [fr && [fr.top, fr.bottom], nr.top, nr.bottom]);
+  if (fld) key('Escape', {}, fld);
   click('.node[data-id="database"] .c-name'); key('Delete');
   gives('Delete: hide the node from the view', [{ op: 'hide', id: 'database', view: 'production' }], m => !m.views[0].nodeIds.includes('database'), BASE);
   click('.node[data-id="edge-routes"] .c-name'); key('Delete', { shiftKey: true });

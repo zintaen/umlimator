@@ -268,5 +268,7 @@ test('the layout check passes a port half inside the node its owner names, and n
   const nodes = [N('c', 0), N('c.p', 94, { w: 12, h: 12, owner: 'c' }), N('d', 100, { w: 40 })];
   assert.deepEqual(msgs({ nodes }), ['v: nodes "c.p" and "d" overlap'], 'the port on its owner passes; the same port on another node is reported');
   assert.deepEqual(msgs({ nodes: [nodes[1], nodes[0]] }), [], 'in either order');
+  assert.deepEqual(msgs({ nodes: [N('a', 0), N('b', 50)] }), ['v: nodes "a" and "b" overlap'], 'two parts with no owner overlap');
+  assert.deepEqual(msgs({ nodes: [nodes[0], nodes[1], N('c.q', 100, { w: 12, h: 12, owner: 'c' })] }), ['v: nodes "c.p" and "c.q" overlap'], 'two ports of one owner overlap each other');
   assert.deepEqual(msgs({ map: true, nodes: [N('ops', 0), N('api', 50, { owner: 'ops' })] }), ['v: nodes "ops" and "api" overlap'], 'a map: two cards overlap however they are owned');
 });

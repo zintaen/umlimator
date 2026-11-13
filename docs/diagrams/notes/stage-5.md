@@ -113,7 +113,8 @@ What may touch the core, each change stating its bytes in its pull request. Each
 | ~~Only if decision 9 takes `labelGaps`~~ Decision 9 taken (the maintainer's decision of 13 Nov 2026): `tight` reads `map \|\| dg.labelGaps`; a row gap is a candidate only on a map (`length: map && r1 - r0`), so a typed view's room is column gaps only; the registry's pointer line names the field | `src/layout/layered.js`, `src/core/registry.js` | 5.1 | 25 B (built: 22 B, 185,100 B to 185,122 B; stage 5 so far 138 B) |
 | Decision 22 taken (the maintainer's decision of 13 Nov 2026): `overlapIssues` skips a node against the node its `owner` names, either way round (`(a.owner \|\| 0) === b.id`, so two nodes with neither an owner nor an id are still measured), not on a map: a map card's `owner` is its team's name, which may be another card's id | `src/layout/audit.js` | follow-ups | 20 B (built: 37 B, 185,109 B to 185,146 B by `/usr/bin/gzip -9` on this machine, where 5.1's 185,122 B measures 185,109 B; stage 5 so far 175 B) |
 | A box's title on two lines, its keyword above its name (UML 2.5.1; the maintainer's decision of 13 Nov 2026): `frameOf` passes `TB` to `TYPED.frame`, which grows the header room by the box's `head` on its title's side; the router's reserve over a box's title (`runRouting`) and the layout check's header test (`routeAudit`) are `head` px deeper, not on a map; the registry's pointer line names `head` | `src/layout/layered.js`, `src/layout/audit.js`, `src/core/registry.js` | follow-ups | (built: 37 B, 185,146 B to 185,183 B) |
-| | | | **Follow-ups: 74 B** (185,109 B at eaba18e to 185,183 B; stage 5 so far 212 B of its 300 B) |
+| From the follow-ups' review: a box with a `head` has its title measured at 12 px (`headW`), so a short keyword over a long name no longer cuts the name; the canvas says a selected box by all its title lines, and F2's field over a box sits `head` px lower | `src/layout/layered.js`, `src/canvas/render.js` | follow-ups | (built: 36 B, 185,183 B to 185,219 B: `headW` 19 B, the canvas 17 B) |
+| | | | **Follow-ups: 110 B** (185,109 B at eaba18e to 185,219 B; stage 5 so far 248 B of its 300 B) |
 
 | Option | For | Against |
 |---|---|---|
@@ -677,9 +678,13 @@ from, or settles what is not said above:
   maintainer's decision of 13 Nov 2026), a box with a keyword or stereotypes draws them on a line above its name, as
   UML 2.5.1 draws a keyword, `«device»` or `«executionEnvironment»` with the stereotypes after it, in 15 px more header room
   (the box's `head`, §2.3); a node with neither has its name alone in the 24 px, as before. Each line is cut to the front
-  face's width; the core keeps a box as wide as its title on one line (`headW`), so `06-deployment.json`'s "Web browser" is
-  drawn whole (5.5 drew one line, "«executionEnvironment» Web brow…"). The router's reserve over a box's title and the
-  layout check's header test take the `head` too, so no line runs through the name.
+  face's width; the core keeps a box with a `head` as wide as its title on one line measured at the lines' 12 px (`headW`;
+  at 11 px, a short keyword over a long name, `«k»` over 80 characters, cut the name), so every name is drawn whole, as
+  `06-deployment.json`'s "Web browser" is (5.5 drew one line, "«executionEnvironment» Web brow…"). The box is wider than
+  its longer line by the keyword's width (measuring each line alone would cost about 20 B more). The router's reserve over a
+  box's title and the layout check's header test take the `head` too, so no line runs through the name. Selected, the box
+  is said by both lines ("Box «executionEnvironment» Web browser, selected": the canvas joins a box's `.family-title`s,
+  where it said the first), and F2's field sits over the name, `head` px lower (`nameBox`).
 - `nest-kinds`' error covers any owner that is not a target (a package or a component too). `deployed-twice` warns of a
   line to another target only; a «deploy» line to the target that also nests the artifact is drawn nowhere (a line from a
   box to what it holds is left out) and warned by neither rule (`connect` refuses to draw one). `path-ends` also fails a path

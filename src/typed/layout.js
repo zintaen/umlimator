@@ -62,7 +62,8 @@ function layoutTyped(dg, memo) {
    - a box's pad: its padding in px where it is more than stage 2's 12 (48 where it or a box it holds has ports with lines, §7);
      a box's round: true grows its frame by √2 about its centre, so the ellipse drawn in it holds its contents (§9.3)
    - a box's head: px of header room over stage 2's 24, on the side its title is on (the top; laid out down, the left, which
-     becomes the top): a second line of title, a keyword above the name (the deployment type's, decision of 13 Nov 2026)
+     becomes the top): a second line of title, a keyword above the name (the deployment type's, decision of 13 Nov 2026);
+     its two lines go in the box's kw and name, and its title (both lines) is measured at their 12 px (layered.js headW)
    - a view's labelGaps: true lays the view out once more where a line's label found no spot, was cut short or sits on a box's
      border, with the column gap it needs widened by the label's width (a map's labelRoom, layered.js; column gaps only, as a
      typed view's rows are of mixed height; laid out down, the picture's row gaps, by the label's height, so fewer labels

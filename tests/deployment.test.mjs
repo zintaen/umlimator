@@ -70,6 +70,16 @@ test('the cube: as wide as its widest text and 10 px of depth, its keyword over 
   assert.deepEqual([...two.matchAll(/class="family-title" x="(\d+)" y="(\d+)"[^>]*>([^<]*)</g)].map(m => m.slice(1)), [['112', '127', '«executionEnvironment»'], ['112', '142', 'Web browser']]);
 });
 
+test('a short keyword over a long name: the box\'s title is measured at 12 px, so the name is whole, right and down (review of 13 Nov 2026)', () => {
+  const LONG = 'Primary relational database cluster in the west region of the world and more';
+  const m0 = model([{ ...N('db', 'Node', LONG), props: { stereotypes: ['k'] } }, N('a', 'Artifact', 'schema.sql', 'db')], []);
+  for (const direction of ['right', 'down']) {
+    const m = withDir(m0, direction), g = layout(m, 'v');
+    assert.deepEqual(check(m, 'v'), [], direction);
+    assert.deepEqual([...svgOf(g).matchAll(/class="family-title"[^>]*>([^<]*)</g)].map(x => x[1]), ['«k»', LONG], `${direction}: the keyword, then the whole name`);
+  }
+});
+
 test('06-deployment.json draws: cubes, boxes nested by parent, artifacts, components, lines by kind; laid out clean right and down', () => {
   assert.deepEqual(validate(DEP), []);
   for (const direction of ['right', 'down']) {
