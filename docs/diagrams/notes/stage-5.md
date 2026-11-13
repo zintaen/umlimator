@@ -281,6 +281,31 @@ A drag of a port, or Alt + arrows on it, goes to the type's `moveTo`: the side n
 the arrow's direction, as `set { view, path: ['present', port, 'side'] }` (on a part, `['present', part, 'ports', port, 'side']`, §6). Alt + arrow along the port's own side does
 nothing (order is not stored, S3), and the hint line says so.
 
+**As built in 5.3** (`src/uml/structure.js`: `portSides`, `portFit`, `portsDrawn`, `SN_SAY`, `structProblems`):
+
+- A port's name is drawn inside its port node's group (`n.nameBox`, set by `portsDrawn`), so it is selected and hit with
+  the port; the end labels' search places it in its role slot (above a line that leaves sideways, left of one that leaves
+  up or down).
+- The ports with no line on a side are spread evenly over its free span in `members` order, then pushed along it, 20 px
+  centre to centre, past any port with lines they would come within 8 px of; a side too short for them narrows the gaps
+  down to 4 px (§4.4, step 3), and those that still do not fit are held at the span's start, on the border, with
+  `over: true` on their port node.
+- A port node carries `owner` (its owner's id). The layout check (`overlapIssues`, `src/layout/audit.js`) reports every
+  port against its own owner, since a port sits half inside it by design (§4.1); 5.3 owns neither the check nor the
+  types, so how a type's check passes is the maintainer's decision, open for 5.4 to 5.6.
+- A port's name keeps off every box's border and 24 px header room. A line's end labels (`TYPED.lines`,
+  `src/typed/draw.js`) are placed later and do not see the port names: 5.4 to 5.6 keep them apart.
+- Model ids such as `__proto__` and `constructor` are safe as port and owner ids; a port id seen before, or a node's
+  id, is drawn once (the first) or not at all.
+- A port whose lines record no box (`e.fpb`, `e.tpb`, before 5.1's hook) is a 12 px square round its line's end.
+- Along a side as crowded as §4.1 allows (8 px between squares), neighbouring 24 px hit areas overlap by 4 px; across the
+  border each port has its full 24 px.
+- `portSides` takes a box's place in the ranking from the type (the mean of what it holds); a far end in the owner's own
+  slot counts for no side.
+- `manifest-ends` takes a deployment specification as an artifact (UML's `DeploymentSpecification` specializes `Artifact`).
+- A line the router ends on a ball's left or right side below the circle slides to the circle's centre line; the
+  component type gives every line to a ball its side (§9.2), so none does.
+
 ## 5. Lines from a box's port inward (S6)
 
 A delegation joins a component's port to a port of a component inside it; a composite structure's connector joins the
