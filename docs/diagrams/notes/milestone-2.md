@@ -739,6 +739,30 @@ each ref as an `er.Relationship` from its `1` end to its `*` end (`1` to `0..*`,
 `references` on the referring columns, identifying when they lie in the child's key. Enums, notes, table groups, other
 indexes, defaults and several schemas' names reported.
 
+As built (M2.11), where the build is more exact than the paragraph above: a column is `nullable` when it is neither
+`not null` nor a key, as SQL has it, and a relationship's parent end is `0..1` when a referring column is nullable (an
+optional parent, as `20-entity-relationship.json`'s self-reference), else `1`. In a one-to-one (`-`, both ends `1`) the
+referring end is the first of a standalone ref (`Ref: b.a_id - a.id`) and the second of an inline one
+(`a_id int [ref: - a.id]`): `@dbml/core` writes an inline ref's referenced end first and gives it no `name` key, which
+is how the adapter tells the two apart. A many-to-many (`<>`) is one relationship `0..*` to `0..*` with no foreign key,
+reported as approximated; a table partial's fields are the table's own (`@dbml/core` injects them), approximated. A
+parsed object keeps no line numbers, so a report item's `line` is its path in the Database
+(`schemas[0].tables[2].fields[1]`), as the CLI names a JSON source's items. The adapter reads a `Database` or its
+`export()`, which is not the same: the export drops the project (its name, the model's `title`, its note and database
+type), diagram views and a table's `checks {}`, so those are reported from a `Database` only; a column's checks are
+reported from both (`checks` on a `Database`, `checkIds` in the export). `tests/import/dbml.json` holds `@dbml/core`
+11.0.0's `Parser.parse(dbml, 'dbmlv2').export()` and the text, every construct of the DBML documentation: `>`, `<`, `-`
+and `<>` refs, inline and standalone, with names, actions and a colour; checks, a table partial, records, a diagram
+view, a table group's settings, explicit `[null]`. DBML nests nothing the adapter follows (schemas, tables, fields at a
+fixed depth), so §8's 64-deep limit has nothing to cut: a deep or circular object is walked once. Beside §8's counts,
+column names in ref ends and `[pk]` indexes count together, at most 100,000 (10,000 refs sharing one list of 200,000
+names would otherwise cost minutes), and the report lists 10,000 items, then one counting the rest.
+
+For M2.12 (the CLI): `@dbml/core` 11.0.0 freshly installed resolves `@dbml/parse` 11.1.0, and an ES module `import` of
+it then fails (`@dbml/parse` does not provide `formatRecordValue`) while `require` works; 12.0.0 (9 Nov 2026) has no
+default export. So the CLI loads it with `require` (`createRequire` from a module). The adapter reads 12.0.0's export of the fixture into the same
+model and report.
+
 | Option | For | Against |
 |---|---|---|
 | **(a) The adapter reads `@dbml/core`'s parsed `Database` and imports nothing; a host parses with `@dbml/core`, which it installs; `umlimator.py import x.dbml` runs it through Node when `@dbml/core` resolves there, else says how to install it (recommended)** | No dependency or peer in `package.json` (D8); in `lib/umlimator-all.js` like any reader; tested against a `Database` captured once from a pinned `@dbml/core` into `tests/import/` | A host calls two functions, not one; the captured fixture must be renewed when `@dbml/core` changes its model |
