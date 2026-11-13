@@ -67,6 +67,21 @@ drill-down, a data pipeline, an AI agent's skills, and host pages for embedding,
   diagram is read from and written to Mermaid's `sequenceDiagram`, and an OpenTelemetry trace becomes one
   (`umlimator.py trace --diagram uml.sequence`). The MCP server, the `map-repo` skill and the diff Action learn these
   types in one package after 0.20.0; until then a reorder of a view's messages shows in a diff as changed, not moved.
+- **UML use case, activity, state machine and interaction overview diagrams** (0.21.0): actors as stick figures, use
+  cases as ellipses with their extension points, a subject as a box holding its use cases, include, extend and
+  generalization ([`examples/shopping-use-cases.json`](examples/shopping-use-cases.json),
+  [what it covers](docs/conformance/uml-use-case.md)); actions, object nodes, data stores, send and accept actions, call
+  behaviour actions that open the activity they call, and the control nodes, in lanes (partitions, nested)
+  ([`examples/fulfil-activity.json`](examples/fulfil-activity.json), [what it covers](docs/conformance/uml-activity.md));
+  states with their entry, do and exit activities and internal transitions, composite states as boxes, orthogonal
+  regions with dashed dividers, every pseudostate, and transitions written `trigger [guard] / effect`
+  ([`examples/order-states.json`](examples/order-states.json), [what it covers](docs/conformance/uml-state-machine.md));
+  interaction uses and inline interactions, drawn with their sequence diagram inside, joined by the activity's control
+  nodes ([`examples/buy-book-overview.json`](examples/buy-book-overview.json),
+  [what it covers](docs/conformance/uml-interaction-overview.md)). Lines end on the outline of a circle, a diamond, a
+  bar or an ellipse. F2 edits a transition's or a flow's label through its parts; a drop changes a node's lane or a
+  state's region. A state machine is read from and written to Mermaid's `stateDiagram`. The MCP server's read tools and
+  the diff Action are tested on all four.
 - **Export**: any view as a stand-alone SVG or PNG, in the browser or from the CLI; the whole map as one PDF to hand in
   for a review: a cover with the contents, each view with its legend and tables of its cards, lines and boxes, then the
   rules (`umlimator.py pdf`).
@@ -135,7 +150,7 @@ function MapView({ model, onSelect }) {
   or costliest path, `whatIf(model, view, { remove })` what loses its way when cards go down, and
   `sequenceFromTrace(model, spans, { view, match })` keeps a trace as a numbered view; all three in Node too.
 - `editable: true` turns on editing gestures ([docs/editing.md](docs/editing.md); `examples/edit.html` is a working host).
-- `import { render, apply, history } from 'umlimator/all'` draws diagram types too: a class, object, package, sequence or communication diagram, whose gestures emit
+- `import { render, apply, history } from 'umlimator/all'` draws diagram types too: a class, object, package, sequence, communication, use case, activity, state machine or interaction overview diagram, whose gestures emit
   `edit` transactions that `apply(model, e.commands)` turns into the next model (`examples/class-editor.html` is a
   working host). `umlimator` alone draws maps, and a typed view as plain cards with a warning.
 - `diff(before, after)` returns `after` with each card and line marked added, changed or removed, what changed in words,
@@ -213,8 +228,9 @@ path. The full schema is `engine/references/schema.md` (§ Map model); `examples
 A model file that starts with `"$schema": "<path to>/umlimator.schema.json"` (exported as `umlimator/schema.json`)
 gets completion and checks in editors, and `validate(model)` lists its errors and warnings, each with where it is.
 `"schemaVersion": 2` marks a model that may hold typed elements and typed views (`docs/diagrams/model.md`). A view whose
-`diagram` is `"uml.class"`, `"uml.object"`, `"uml.package"`, `"uml.sequence"` or `"uml.communication"` is a UML class, object,
-package, sequence or communication diagram, drawn by `umlimator/all` and the CLI; a type not drawn yet shows its
+`diagram` is `"uml.class"`, `"uml.object"`, `"uml.package"`, `"uml.sequence"`, `"uml.communication"`, `"uml.use-case"`,
+`"uml.activity"`, `"uml.state-machine"` or `"uml.interaction-overview"` is a UML class, object, package, sequence,
+communication, use case, activity, state machine or interaction overview diagram, drawn by `umlimator/all` and the CLI; a type not drawn yet shows its
 nodes as plain cards, with a warning. A model with no `schemaVersion` is a map, as always, and a version newer than the
 module reads is an error.
 
@@ -281,6 +297,22 @@ and a communication diagram (`examples/checkout-communication.json`,
 | view | `edges` | a sequence view's messages and interaction uses (`uml.InteractionUse`, `props.covers`), inline and in time order; a communication view's connectors, then its messages, by id, in order. Bars and numbers are derived |
 | view | `fragments` | a sequence view's combined fragments (`uml.CombinedFragment`, `props.operator`), each with its operands as `members` (`label` the guard); a message's or fragment's `parent` is its operand |
 
+A use case diagram, an activity diagram, a state machine diagram and an interaction overview diagram
+(`examples/shopping-use-cases.json`, `fulfil-activity.json`, `order-states.json` and `buy-book-overview.json`; each
+type's note in [`docs/conformance/`](docs/conformance/)), from 0.21.0:
+
+| On | Field | What it does |
+|---|---|---|
+| node, member, edge | `type` | use case: `uml.Actor`, `uml.UseCase` (members `uml.ExtensionPoint`), `uml.Subject`; lines `uml.Association`, `uml.Include`, `uml.Extend`, `uml.Generalization` |
+| node, edge | `type` | activity: `uml.Action`, `uml.CallBehaviorAction`, `uml.SendSignalAction`, `uml.AcceptEventAction`, `uml.ObjectNode`, `uml.DataStoreNode`, `uml.InitialNode`, `uml.ActivityFinalNode`, `uml.FlowFinalNode`, `uml.DecisionNode`, `uml.MergeNode`, `uml.ForkNode`, `uml.JoinNode`, `uml.ActivityPartition`; lines `uml.ControlFlow`, `uml.ObjectFlow` |
+| node, member, edge | `type` | state machine: `uml.State` (members `uml.Region`, `uml.InternalTransition`), `uml.Pseudostate`, `uml.FinalState`; lines `uml.Transition` |
+| node, edge | `type` | interaction overview: the activity's control nodes, `uml.InteractionUse`, `uml.Interaction` (an inline interaction); lines `uml.ControlFlow` |
+| node | `parent` | a use case's subject; an activity node's partition (its lane), a partition's enclosing partition; a substate's state or region |
+| node | `opensView` | the activity a call behaviour action calls; the sequence view an interaction use or inline interaction shows |
+| node | `props` | a state's `entry`, `do`, `exit`; a pseudostate's `kind` (`initial`, `choice`, `junction`, `fork`, `join`, `shallowHistory`, `deepHistory`, `terminate`) |
+| edge, member | `props` | an extend's `extensionPoints` (ids) and `condition`; a flow's `guard` (its `label` is its name); a transition's or internal transition's `trigger`, `guard` and `effect`, drawn `trigger [guard] / effect` |
+| view | `diagram` | `"uml.use-case"`, `"uml.activity"`, `"uml.state-machine"` or `"uml.interaction-overview"` |
+
 ## Command line
 
 ```bash
@@ -297,6 +329,7 @@ python3 umlimator.py record bike-share.html --story ride --out ride.png   # bike
 python3 umlimator.py import workspace.dsl --out model.json            # a diagram you have already, as a model
 python3 umlimator.py import classes.mmd --out classes.json            # a Mermaid classDiagram, as a UML class diagram (needs Node)
 python3 umlimator.py import checkout.mmd --out checkout.json          # a Mermaid sequenceDiagram, as a UML sequence diagram (needs Node)
+python3 umlimator.py import order.mmd --out order.json                # a Mermaid stateDiagram, as a UML state machine diagram (needs Node)
 python3 umlimator.py render examples/sales-classes.json --out classes.html   # a class diagram's page; stills, check and pdf take it too
 docker compose config --format json > compose.json && python3 umlimator.py import compose.json --out model.json
 kubectl get deploy,sts,svc,ing -A -o json > cluster.json && python3 umlimator.py import cluster.json --out model.json
@@ -310,8 +343,8 @@ python3 umlimator.py mcp model.json                                    # an MCP 
 
 `import` reads Structurizr DSL (people, systems, containers and components, their relationships, and the workspace's
 views), C4-PlantUML (its element, relationship and boundary macros), Mermaid (`flowchart` or `graph`, and `C4Context`,
-`C4Container` or `C4Component`; a `classDiagram` becomes a UML class diagram and a `sequenceDiagram` a UML sequence
-diagram, each read through Node), and the JSON of `docker compose config` (services, `depends_on`, networks) and of
+`C4Container` or `C4Component`; a `classDiagram` becomes a UML class diagram, a `sequenceDiagram` a UML sequence
+diagram and a `stateDiagram` a UML state machine diagram, each read through Node), and the JSON of `docker compose config` (services, `depends_on`, networks) and of
 `kubectl get` (workloads, Services, Ingresses). It tells the format from the content, then the extension; `--format`
 decides. Groups, boundaries, subgraphs, networks and namespaces become boxes; Structurizr's views stay views, a card
 opening the view below it; `examples/clinic.json` is `examples/clinic.dsl`, imported. What each element becomes, and

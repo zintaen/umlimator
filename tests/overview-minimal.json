@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 2,
+  "title": "Interaction overview, minimal: initial, an interaction use, final, and its sequence view",
+  "nodes": [
+    {"id":"start","type":"uml.InitialNode"},
+    {"id":"use","type":"uml.InteractionUse","label":"Find a book","opensView":"find"},
+    {"id":"end","type":"uml.ActivityFinalNode"},
+    {"id":"shopper","type":"uml.Lifeline","label":"shopper","props":{"represents":"Shopper"}},
+    {"id":"shop","type":"uml.Lifeline","label":"shop","props":{"represents":"Shop"}}
+  ],
+  "edges": [
+    {"id":"f1","type":"uml.ControlFlow","from":"start","to":"use"},
+    {"id":"f2","type":"uml.ControlFlow","from":"use","to":"end"}
+  ],
+  "views": [
+    {"id":"v","diagram":"uml.interaction-overview","title":"Minimal","nodeIds":["start","use","end"]},
+    {"id":"find","diagram":"uml.sequence","title":"Find a book","parent":"v","nodeIds":["shopper","shop"],
+      "edges": [
+        {"id":"m1","type":"uml.Message","from":"shopper","to":"shop","label":"search(title)","props":{"sort":"call"}},
+        {"id":"m2","type":"uml.Message","from":"shop","to":"shopper","label":"results","props":{"sort":"reply","replyTo":"m1"}}
+      ] }
+  ]
+}

@@ -586,7 +586,8 @@ a model UML forbids is an error; one that is only unfinished is a warning.
 - **Room for guards.** A typed view's router makes no room for a label (`labelRoom` is a map's), and at a column gap of
   64 px example 9's two guards had no spot. With a labelled flow the gap grows by the widest label and 40 px laid out
   right (as the class type does with boxes), by 48 px laid out down. One gap for every column: a gap per column needs
-  `labelRoom` for typed views, the core's.
+  `labelRoom` for typed views, the core's. **The maintainer's decision (13 Nov 2026):** the uniform gap is accepted for
+  0.21.0; a per-column gap option is later work.
 - **Slots.** The geometry gives one slot per node and one per partition's header (`{ after, parent, x, y }`): `I.addNode`
   hands `add` the selection (`at.sel`) only with a slot, which "a node in the partition selected" needs, on a view of
   partitions only too. With a node selected and no partition, `add` puts the new node in that node's lane (its slot's
@@ -683,7 +684,8 @@ Where `src/uml/state.js` departs from §6, §10 and §17:
   calls first) with one listener on the panel's New member field and member rows, on a state machine view only: a row
   whose trigger is `entry`, `do` or `exit` sets that prop (and a row edited so is deleted), a second one replacing the
   first and saying so; any other row goes to the panel as before. A member hook that may return commands, in
-  `src/canvas/edit.js`, would take its place; `member.add` refuses such a row on its own.
+  `src/canvas/edit.js`, would take its place; `member.add` refuses such a row on its own. **The maintainer's decision
+  (13 Nov 2026):** the wrap is kept for 0.21.0; a proper member hook comes with stage 5.
 - **Slots.** The geometry gives a slot on each node and box, `{ after, parent: null, x, y }`: `src/typed/edit.js` passes
   the `add` hook an `at` holding `sel` only where the geometry has slots, and the Region entry reads the state selected
   there. No default gesture of this type reads a slot.
@@ -777,7 +779,9 @@ As built in 4.7 (`src/uml/overview.js`):
   stubs; with none it is 64 px. Example 13 draws both its guards whole either way. The gap is one for every column, so one
   long guard widens them all (example 13 laid out right: 3503 px wide, 6191 px with a 60-character guard; laid out down,
   1243 px high either way); less than twice the label drops guards, so making room only where a labelled flow runs waits for
-  an additive per-column gap option in `layoutGraph` (it holds `gapAfter` inside, with no option for it).
+  an additive per-column gap option in `layoutGraph` (it holds `gapAfter` inside, with no option for it). **The
+  maintainer's decision (13 Nov 2026):** the uniform gap is accepted for 0.21.0, as for the activity type; a per-column
+  gap option is later work.
 - **Palette.** Initial, Final, Flow final, Merge, Fork and Join carry `name: false`; Decision asks for its question (S8).
   A use or an inline interaction added with no name takes its view's title.
 - **Opening.** The canvas opens a typed node's view by Enter on it selected or a double-click (Q11's "click" is the map's
@@ -791,7 +795,8 @@ As built in 4.7 (`src/uml/overview.js`):
   under `overview-kinds`; a comment link with no comment at either end is a `comment-link` warning.
 - **The stress view** of §17 is generated in `tests/overview.test.mjs` (40 nodes, 50 flows, 10 inline interactions of 6
   lifelines and 12 messages): a full layout and SVG about 20 ms, a guard edited 12 to 16 ms, one inline time axis 0.03 ms
-  (CPU, best of three after a warm-up, on a laptop). 4.10's `overview-stress.json` replaces it.
+  (CPU, best of three after a warm-up, on a laptop). 4.10 writes it out as `overview-stress.json`'s `all` view; the test
+  keeps its generator.
 
 ## 12. Editing through the canvas hooks
 
@@ -1113,6 +1118,71 @@ proposes its row in its pull request's description, and writes its release notes
 | 4.9 | **The PDF's tables per type (R9).** §15's `rows` and `word`, "Elements" for a typed view | `src/page/print.js`, `tests/print-typed.test.mjs` (new) | 4.0; 4.1 for the fields' documentation | With a test-only type, the tables list its rows and words; maps' tables unchanged; class, object and package PDFs' tables unchanged but for the heading. The core's bytes before and after, within §2.3 |
 | 4.10 | **Fixtures, examples, docs, CLI.** §16's files and their tests (`tests/stage4-fixtures.test.mjs`, `tests/stage4.html`); the four examples moved, with `check.mjs`'s `MOVED`; `render`, `check`, `stills` and `pdf` on each; the schema and `.d.ts`; C10's tests (S16); every document of `plan.md` §7; `docs/conformance/uml-use-case.md`, `uml-activity.md`, `uml-state-machine.md`, `uml-interaction-overview.md`; the lanes' release notes gathered into `docs/module-api.md` | `examples/`, `tests/*-minimal.json`, `tests/*-stress.json` of the four types, `tests/stage4-fixtures.test.mjs`, `tests/stage4.html`, `tests/notation.html`, `tests/cli.py`, `tests/mcp.py`, `umlimator.py` (after 4.8), `lib/umlimator.d.ts`, `lib/umlimator.schema.json`, `docs/diagrams/examples/check.mjs`, `docs/` (but the status table) | 4.4 to 4.9 | Definition of done 1, 3, 7, 9, 10, 11 and 12 for all four types. §17's budgets enforced in CI. Each PDF lists what §15 says. The four examples in the gallery and CI. The stress fixtures' crossings pinned and stated |
 
+### 19.2.1 As built in 4.10
+
+Where 4.10 departs from row 4.10 and from §15 to §17:
+
+- **The fixtures** hold both views in one file per type (`tests/<type>-stress.json`, views `edge-cases` and `all`, their
+  ids apart: `ec-…` for the edge cases); each `all` view is the generator its type's own test times, written out
+  (`tests/overview.test.mjs` keeps its generator; the file is the same view). `tests/activity-stress.json` adds a view
+  the call behaviour action opens, `tests/overview-stress.json` the sequence views its uses and inline interactions
+  show. `tests/stage4-fixtures.test.mjs` pins, per view and direction, the crossings `check()` finds and its few other
+  findings: on the generated views two lines between one pair that share a line (use case, laid out right) and three
+  guards beside the next decision's line (overview, laid out down); on the state fixture's `edge-cases` view laid out
+  down, the fork into the Payment region running along both regions' borders. Each is stated in its conformance note.
+- **A choice with no `else`** (§16, "warned") is not warned of: `choice-guards` as built in 4.6 warns of an exit with no
+  guard, or of two `else`; the fixture holds the choice with a guard on every exit, and the note states it.
+- **§17's budgets in CI** follow the repository's rule for CI timing, which generalises the maintainer's decision for
+  the wired state machine (§10.4): every timed budget in `tests/stage4-fixtures.test.mjs` is held to a 1 s ceiling and
+  printed against its target, best of three after a warm-up. That is a full layout, each edit (target 100 ms), each
+  inline time axis (target 5 ms) and the Mermaid reader and writer, 500 transitions each way (target 100 ms). Only the
+  state machine's edit nears its target on a laptop (66 to 84 ms); the others measure 8 to 30 ms, 0.03 ms and about 1 to
+  2 ms. The types' own tests keep their budgets (`usecase.test.mjs`, `activity.test.mjs` and `overview.test.mjs` hold
+  their edits to 100 ms on their own generators). The figures in the conformance notes were taken on a laptop at a load
+  average of 6 to 8, the idlest it got, in CPU time.
+- **CI's example check.** The workflow's loop over `examples/*.json` asks for no finding at all; examples 9 and 10 keep
+  the crossings that port repair off leaves (§9.5, §10.4), so for those two files the loop asks that every finding is a
+  crossing and counts them over both passes (each view, then each stacked card unfolded): 4 for `fulfil-activity`
+  (2 on the plain pass, 2 more unfolded) and 2 for `order-states`. `tests/cli.py` pins the plain pass's 2 each. A new
+  crossing fails CI. `.github/workflows/check.yml` is outside row 4.10's Owns: decision 19 (§20).
+  Decision 19 (§20), taken: the first option, the maintainer's decision of 13 Nov 2026; the options were:
+  - *Accept the edit as it is* (recommended): CI checks the examples as drawn, and a change in their crossings fails it;
+    the cost is a per-file count in the workflow to update when a layout change moves them.
+  - *Move the examples off their crossings* (edit examples 9 and 10 until `check` finds nothing): the loop needs no
+    exception, but the examples bend to the layout, and their stills and PDFs change.
+  - *Drop the two files from the loop*: simplest, but CI no longer checks them in the browser.
+- **The PDF's tables (§15)** list what 4.9 built, and two gaps were found (`risks.md` R9): the state machine type gives
+  no `word` or `rows`, so a pseudostate reads "Pseudostate" and a state's entry, do and exit are not listed; and a line's
+  row reads its `label` only, so a transition's trigger, guard and effect, a flow's guard and an extend's points and
+  condition are missing. The first is a family-file change in `src/uml/state.js` (4.6's), the second needs a line's
+  printed text in `print.js` (the core's, about 40 B, or a type's own row for its lines). 4.10 owns neither; the
+  conformance notes state both. Decision 18 (§20), taken: the first option, the maintainer's decision of 13 Nov 2026.
+  `src/uml/state.js` gives `word` (a pseudostate's kind, "Final state", "State" or "Composite state") and `rows` (a
+  state's `entry / …`, `do / …` and `exit / …`, then its members as the panel prints them: each internal transition's
+  `trigger [guard] / effect`, each region), with no core bytes (`lib/umlimator.js` byte-identical); `tests/cli.py` reads
+  "createdInitial pseudostate" and a state's activities, `tests/state.test.mjs` the example's rows and words. The line
+  rows (a transition's trigger, guard and effect in the Lines table) stay the stated gap of R9. The options were:
+  - *State first, by 4.6's owner or with the lead's leave* (recommended): in `src/uml/state.js`, `word` returns
+    `ST_KIND_WORD[kind]` for a pseudostate (as `activity.js` does) and `rows` lists `entry / …`, `do / …`, `exit / …` and
+    the internal transitions with the type's own row builder. No core bytes; the PDF's state table becomes §15's. The
+    line rows wait for the second option.
+  - *The line rows too*: a line's printed text in `print.js` (about 40 B of the core, inside stage 4's share) or a
+    `rows` for lines in each type, so a transition's trigger, guard and effect, a flow's guard and an extend's drawn
+    label are listed. Closes §15 whole; spends core bytes or touches four family files.
+  - *Release 0.21.0 with the gaps stated* (R9 and the fidelity tables): no code, but the row's done-when stays unmet.
+- **Seen in the stills:** an unnamed merge or decision of the activity type is drawn with its id inside the diamond
+  (example 9's `stock-ready`), in Node too; and in Chrome's measure example 9's `[else]` finds no room laid out down,
+  left to its line's name. Both are stated in `docs/conformance/uml-activity.md`.
+- **Existing tests edited:** the type tests' and pages' paths to the four moved examples (and two test titles that
+  named them), `tests/core-diet.html`'s third case and its `markup` keys in `tests/core-diet.json` (the same
+  fingerprints under the new path), `tests/import/state.mmd`'s header, `tests/transition.test.mjs`'s list; the existing
+  assertions of `tests/cli.py` (render and check of a typed example) and `tests/mcp.py` (list_views, a box's wording)
+  take the four examples; `tests/import.py`'s state.mmd case asks for no core error, as `tests/mermaid-state.test.mjs`
+  does since 4.8 (it failed on the integration base before 4.10); `tests/embed.py` runs `tests/stage4.html` (its page
+  list and docstring; outside row 4.10's Owns, needed to run the page); `tests/notation.html` gains a stage 4 block
+  (additive), whose arrowhead checks run on the four examples and on the state and activity fixtures' `edge-cases`
+  views (§16's last row).
+
 ### 19.3 What runs at the same time (S17)
 
 ```
@@ -1201,6 +1271,8 @@ Each is set out with its options and trade-offs in the section named; the recomm
 | 15 | C10 for the four types | Tested in 4.10 | Folded into the package after 0.20.0 | §19.5 |
 | 16 | The order of a state's regions in the picture (S20) | First-line order, as `blockPos` gives; `members` order everywhere else | Member order drawn, about 30 B in `context.js` | §6.2 |
 | 17 | Transitions Mermaid does not support (S22) | Written as transitions with a `%% warning:` line | Written as `%% not written:` (example 10's round trip breaks) | §13 |
+| 18 | The PDF's gaps found in 4.10 (R9): the state type's `word` and `rows`, and a line's printed text | The state type's `word` and `rows` in `src/uml/state.js` (4.6's owner, or the lead's leave), no core bytes. **Taken: the maintainer's decision of 13 Nov 2026**; the line rows stay a stated gap | Line rows too (`print.js`, about 40 B, or each type's own); release with the gaps stated | §19.2.1 |
+| 19 | CI's example loop and the crossings of examples 9 and 10 (`.github/workflows/check.yml`, outside 4.10's Owns) | Accept the edit: every finding a crossing, counted over both passes (4 and 2). **Taken: the maintainer's decision of 13 Nov 2026** | Move the examples off their crossings; drop the two from the loop | §19.2.1 |
 
 ## 21. What this note changes elsewhere
 

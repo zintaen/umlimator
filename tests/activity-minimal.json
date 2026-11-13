@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 2,
+  "title": "Activity, minimal: initial, an action, final",
+  "nodes": [
+    {"id":"start","type":"uml.InitialNode"},
+    {"id":"work","type":"uml.Action","label":"Do the work"},
+    {"id":"end","type":"uml.ActivityFinalNode"}
+  ],
+  "edges": [
+    {"id":"f1","type":"uml.ControlFlow","from":"start","to":"work"},
+    {"id":"f2","type":"uml.ControlFlow","from":"work","to":"end"}
+  ],
+  "views": [
+    {"id":"v","diagram":"uml.activity","title":"Minimal","nodeIds":["start","work","end"]}
+  ]
+}
