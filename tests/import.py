@@ -316,4 +316,128 @@ with tempfile.TemporaryDirectory() as tmp:
     r = subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "import", str(ROOT / name), "--out", str(t / "x.json")], capture_output=True, text=True, env=bare)
     ok("without Node, a stateDiagram's import says it needs Node", r.returncode == 1 and "Mermaid stateDiagram" in r.stderr and "Node.js 18" in r.stderr
        and not (t / "x.json").exists(), r.stderr)
+
+# notes/milestone-2.md §8.5 (M2.12): an erDiagram, a flowchart given --typed, a Structurizr JSON workspace and a .dbml file
+# are read by the module's readers in Node (tests/mermaid-er, mermaid-flowchart, structurizr and dbml.test.mjs pin their
+# reports); every other source imports as before. A Structurizr JSON or .dbml file over 1 MiB is refused before parsing.
+ws = json.loads((ROOT / "tests" / "import" / "structurizr.json").read_text(encoding="utf-8"))["clinic"]
+ok("knows the typed sources by their content (an erDiagram, a Structurizr JSON workspace) and a .dbml file by its name",
+   [imp.detect("x", "%% a\nerDiagram\n"), imp.detect("x.json", json.dumps(ws)), imp.detect("x.dbml", "Table a {\n  id int\n}\n"),
+    imp.detect("x", '{"model": [], "views": {}}')] == ["mermaid", "structurizr-json", "dbml", None]
+   and imp.mermaid_typed("---\ntitle: t\n---\nerDiagram\n") == "erDiagram" and "an erDiagram is read by the module's reader" in imp.read("mermaid", "erDiagram\nA ||--o{ B : x\n", "x")[1][0][1])
+ok("--typed makes a flowchart or a graph the flowchart reader's, and nothing else",
+   [imp.mermaid_typed(t, True) for t in ("flowchart LR\n", "graph TD\n", "C4Context\n", "classDiagram\n")] == ["flowchart", "flowchart", None, "classDiagram"]
+   and imp.mermaid_typed("flowchart LR\n") is None and imp.mermaid_typed("graph TD\n") is None)
+
+
+def typed(r, out):
+    """What import said on stdout, the model it wrote, and the places its stderr names (file:where)."""
+    said = json.loads(r.stdout) if r.returncode == 0 else {}
+    return said, json.loads(out.read_text(encoding="utf-8")) if r.returncode == 0 and out.is_file() else {"nodes": [], "edges": [], "views": [{}]}
+
+
+def core_errors(m):  # no core error (one with no rule): the types' own rules are their tests'
+    return [p for p in u.js("validate", m) if p["level"] == "error" and not p.get("rule")]
+
+
+with tempfile.TemporaryDirectory() as tmp:
+    t = Path(tmp)
+    nonode = dict(__import__("os").environ, PATH=tmp)
+    # an erDiagram: refused before 0.24.0 ("not a flowchart, graph or C4 diagram"), now the ER reader's
+    name = "tests/import/er.mmd"
+    r = run("import", str(ROOT / name), "--out", str(t / "er.json"))
+    said, m = typed(r, t / "er.json")
+    ok(f"{name} · an erDiagram is read by the module's reader as one er view of a version-2 model",
+       said.get("format") == "mermaid" and said.get("views") == ["er-diagram"] and m.get("schemaVersion") == 2 and m["views"][0].get("diagram") == "er"
+       and {n["type"] for n in m["nodes"]} == {"er.Entity"} and {e["type"] for e in m["edges"]} == {"er.Relationship"}, r.stdout + r.stderr)
+    got = [l[len(str(ROOT / name)):].split(" ", 1)[0] for l in r.stderr.splitlines()]
+    ok(f"{name} · lists what it skips or approximates, each with its line", len(got) == said.get("unread") == 29 and all(g[1:-1].isdigit() for g in got), r.stderr)
+    ok(f"{name} · validate() finds no core error", core_errors(m) == [], core_errors(m))
+    r = subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "import", str(ROOT / name), "--out", str(t / "x.json")], capture_output=True, text=True, env=nonode)
+    ok("without Node, an erDiagram's import says it needs Node", r.returncode == 1 and "Mermaid erDiagram" in r.stderr and "Node.js 18" in r.stderr
+       and not (t / "x.json").exists(), r.stderr)
+
+    # a flowchart: a map as before; with --typed, the flowchart reader's
+    name = "tests/import/checkout.mmd"
+    r = run("import", str(ROOT / name), "--typed", "--out", str(t / "fc.json"))
+    said, m = typed(r, t / "fc.json")
+    ok(f"{name} · --typed reads a flowchart as one flowchart view of a version-2 model, its shapes kept",
+       said.get("format") == "mermaid" and said.get("views") == ["flowchart"] and m.get("schemaVersion") == 2 and m["views"][0].get("diagram") == "flowchart"
+       and card(m, "orders").get("type") == "flow.Database" and said.get("cards") == 8 and "containers" not in m["views"][0], r.stdout + r.stderr)
+    got = [l[len(str(ROOT / name)):].split(" ", 1)[0] for l in r.stderr.splitlines()]
+    ok(f"{name} · --typed lists what it skips or approximates (the subgraphs among them), each with its line",
+       len(got) == said.get("unread") == 11 and ":8:" in got and all(g[1:-1].isdigit() for g in got), r.stderr)
+    ok(f"{name} · --typed: validate() finds no core error", core_errors(m) == [], core_errors(m))
+    r = run("import", str(ROOT / name), "--out", str(t / "map.json"))
+    ok(f"{name} · without --typed, still a map", r.returncode == 0 and "schemaVersion" not in json.loads((t / "map.json").read_text()) and r.stderr == "", r.stderr)
+    r = run("import", str(ROOT / "tests" / "import" / "meals.mmd"), "--typed", "--out", str(t / "y.json"))
+    ok("--typed on a source with no typed reader (Mermaid's C4) says so, and writes nothing", r.returncode == 1 and "--typed reads a Mermaid flowchart" in r.stderr
+       and not (t / "y.json").exists(), r.stderr)
+    r = run("import", str(ROOT / "examples" / "clinic.dsl"), "--typed", "--out", str(t / "y.json"))
+    ok("--typed on Structurizr DSL says so, and writes nothing", r.returncode == 1 and "is structurizr, which imports as a map" in r.stderr and not (t / "y.json").exists(), r.stderr)
+
+    # a Structurizr JSON workspace: not recognised before 0.24.0, now the Structurizr reader's: typed C4
+    src = t / "clinic.json"
+    src.write_text(json.dumps(ws, indent=1), encoding="utf-8")
+    r = run("import", str(src), "--out", str(t / "c4.json"))
+    said, m = typed(r, t / "c4.json")
+    ok("Structurizr JSON · a workspace is read by the module's reader as typed C4 views",
+       said.get("format") == "structurizr-json" and said.get("views") == ["context", "containers", "api"]
+       and [v.get("diagram") for v in m["views"]] == ["c4.context", "c4.container", "c4.component"] and m.get("schemaVersion") == 2, r.stdout + r.stderr)
+    got = [l[len(str(src)):].split(" ", 1)[0] for l in r.stderr.splitlines()]
+    ok("Structurizr JSON · lists what it does not read, each with its path in the workspace",
+       len(got) == said.get("unread") == 6 and got[:2] == [":model.people[1].group:", ":model:"], r.stderr)
+    ok("Structurizr JSON · validate() finds no core error", core_errors(m) == [], core_errors(m))
+    big = t / "big.json"
+    big.write_text(json.dumps(ws) + " " * (1 << 20), encoding="utf-8")
+    r = subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "import", str(big), "--out", str(t / "big-out.json")], capture_output=True, text=True, env=nonode)
+    ok("Structurizr JSON · a workspace over 1 MiB is refused before it is parsed (before Node is looked for), and nothing written",
+       r.returncode == 1 and "over the limit of 1048576 (1 MiB)" in r.stderr and "Node.js" not in r.stderr and not (t / "big-out.json").exists(), r.stderr)
+    r = run("import", str(ROOT / "tests" / "import" / "compose.json"), "--format", "structurizr-json", "--out", str(t / "z.json"))
+    ok("Structurizr JSON · --format names it; a file it reads nothing from is an error", r.returncode == 1 and "nothing to import" in r.stderr, r.stderr)
+
+    # a .dbml file: @dbml/core parses it where it resolves from the working folder. CI installs none: the message, nothing written
+    cap = json.loads((ROOT / "tests" / "import" / "dbml.json").read_text(encoding="utf-8"))
+    ci = t / "ci"
+    ci.mkdir()
+    (ci / "shop.dbml").write_text(cap["dbml"], encoding="utf-8")
+    dbml = lambda folder, f, **kw: subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "import", f, "--out", "shop.json"], capture_output=True, text=True, cwd=folder, **kw)
+    r = dbml(ci, "shop.dbml")
+    ok(".dbml · with no @dbml/core where it is run, says how to install it, and writes nothing",
+       r.returncode == 1 and "npm install @dbml/core" in r.stderr and str(ci.resolve()) in r.stderr and not (ci / "shop.json").exists(), r.stderr)
+    # with a stub @dbml/core in the working folder, whose parser returns the Database M2.11 captured (and says it was called)
+    stub = t / "stub"
+    core = stub / "node_modules" / "@dbml" / "core"
+    core.mkdir(parents=True)
+    (core / "package.json").write_text('{"name": "@dbml/core", "version": "11.0.0", "main": "index.js"}', encoding="utf-8")
+    (core / "captured.json").write_text(json.dumps(cap), encoding="utf-8")
+    (core / "index.js").write_text(
+        "const fs = require('fs'), cap = require('./captured.json');\n"
+        "exports.Parser = class { static parse(text, format) {\n"
+        "  fs.writeFileSync('parsed.txt', format);\n"
+        "  if (text !== cap.dbml) { const e = new Error('parse failed'); e.diags = [{ message: 'Expect an identifier', location: { start: { line: 2, column: 3 } } }]; throw e; }\n"
+        "  return cap.database; } };\n", encoding="utf-8")
+    (stub / "shop.dbml").write_text(cap["dbml"], encoding="utf-8")
+    r = dbml(stub, "shop.dbml")
+    said, m = typed(r, stub / "shop.json")
+    ok(".dbml · read through @dbml/core's parser (dbmlv2) and the adapter as one er view of a version-2 model",
+       said.get("format") == "dbml" and said.get("views") == ["schema"] and m["views"][0].get("diagram") == "er" and said.get("cards") == 12
+       and (stub / "parsed.txt").read_text() == "dbmlv2", r.stdout + r.stderr)
+    got = [l[len("shop.dbml"):].split(" ", 1)[0] for l in r.stderr.splitlines()]
+    ok(".dbml · lists what it does not read, each with its path in the Database (the whole database's with none)",
+       len(got) == said.get("unread") == 20 and got[0] == ":" and ":schemas[0].tables[0].fields[0]:" in got, r.stderr)
+    ok(".dbml · validate() finds no core error", core_errors(m) == [], core_errors(m))
+    (stub / "parsed.txt").unlink()
+    (stub / "shop.json").unlink()
+    (stub / "bad.dbml").write_text("Table a {\n  id int [pk\n}\n", encoding="utf-8")
+    r = dbml(stub, "bad.dbml")
+    ok(".dbml · what @dbml/core cannot parse is named by its line, and nothing written",
+       r.returncode == 1 and "bad.dbml:2: Expect an identifier" in r.stderr and "could not parse" in r.stderr and not (stub / "shop.json").exists(), r.stderr)
+    (stub / "parsed.txt").unlink()
+    (stub / "big.dbml").write_text(cap["dbml"] + "\n" + "// x\n" * (1 << 18), encoding="utf-8")
+    r = dbml(stub, "big.dbml")
+    ok(".dbml · a file over 1 MiB is refused before @dbml/core parses it, and nothing written",
+       r.returncode == 1 and "over the limit of 1048576" in r.stderr and not (stub / "parsed.txt").exists() and not (stub / "shop.json").exists(), r.stderr)
+    r = dbml(stub, "shop.dbml", env=nonode)
+    ok("without Node, a .dbml file's import says it needs Node", r.returncode == 1 and "is DBML" in r.stderr and "Node.js 18" in r.stderr, r.stderr)
 sys.exit(1 if failed else 0)
