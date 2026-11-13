@@ -239,6 +239,46 @@ an error (Q2).
 | Applying | Stereotypes (list) on each element, as every type has it; tags by §5.7's fields |
 | Hide and delete | Delete hides a node; Shift + Delete deletes. A stereotype deleted does not rewrite the elements that name it: they are warned (`stereotype-unknown`), as a renamed one is (M8). A stereotype's compartment and its tag rows cannot be hidden on their own (S17's reasoning: a row with no cause would be shown or not by a key of its own); the element's whole node is hidden instead |
 
+### 4.4 As built (6.3)
+
+Where `src/uml/profile.js` and its lines in `class.js`, `owners.js`, `package.js` and `draw.js` depart from or settle §4:
+
+- **The package view's palette is unchanged.** `package.js`'s `PACKAGE_LINES` gains `uml.ProfileApplication`, so a package
+  view that lists no lines draws an application (§14), but its `elements` and `lines` (the palette) do not gain Profile and
+  Profile application: `tests/package.test.mjs` and `tests/package-fixtures.test.mjs` pin them, and the schema they are
+  checked against is 6.6's. A profile is added on the profile view. *For the maintainer to decide* (6.6 or 6.7 may add them).
+- **`typeGeo` takes three more look fields:** `node(d, n, model, pic)`, a node's drawing input before it is sized (the tag
+  compartments, the accessible name), `box(b, model, pic)`, an open package's or profile's box as drawn (its title and
+  accessible name), and `dg`, more of `layoutTyped`'s input (`repair: false`, `reroute: false`). The class, package and object
+  looks give none. `compartmentsOf` returns none for a profile (as for a package) and for a metaclass reference, which is
+  where §4.1's "no compartment" lands besides `IMPLIED`. `ownersOn`'s default box word is "Profile" for a profile, so its
+  accessible name starts "Profile BookshopConventions" on every view. `describeAs` says a profile application ("applies BookshopConventions"); `lineName`
+  is exported for the profile's `describe()`.
+- **`{required}` is the extension's label,** at the line's middle as «apply» is, not by its end: the accessible name then says
+  it ("Extension from owned to Class: {required}").
+- **A default tag value is drawn in the text colour,** like a set one: the classifier draws every row alike, and 6.3 owns only
+  `ENDS` in `draw.js`. The rows say `tag = value` either way; a missing required value is `tag = ?`.
+- **`SHAPE.profiled`** is the classifier with the node's own accessible name (the classifier writes one from its compartments,
+  which here are tags). A stereotype shows its attributes (its tag definitions) and no operations compartment. A metaclass
+  reference and an enumeration keep their own compartments (none; the literals) under the tag compartments of the
+  stereotypes they have. A package on the profile view keeps its package look, closed or open: over its name the stereotypes
+  it has, the required ones supplied too; its tags are in its accessible name (`describe()` reads it), the panel and the PDF.
+- **`stereotype-names`** (6.2's `styKey`) says two stereotypes of one profile whose names meet with the first letter in either
+  case, and two profiles of one label, which `Profile::name` could not tell apart. An exact duplicate is also the class
+  rule's `classifier-names`, since `uml.Stereotype` is a classifier kind.
+- **`application-ends`** takes a profile as the applying package (UML's Profile is a Package), but not a profile applying
+  itself, which the rule and **connect** both refuse; a package applying a profile it holds is not checked. **connect**
+  refuses on the profile view a generalization that is not between two stereotypes.
+- **`profile-owns` asks for a profile as the direct owner,** narrower than UML 2.5.1 (12.4.9's `containingProfile()` is the
+  closest profile owning a stereotype directly or indirectly). 6.2's index (§5.9) reads only a profile's direct stereotypes,
+  so a stereotype in a package inside a profile would otherwise be valid and never found. *For the maintainer to decide*
+  whether to widen both (rule, Owner field and 6.2's index) later.
+- **add** puts a stereotype, a metaclass or an enumeration into the profile selected, else the profile holding what is
+  selected, else the view's first. A metaclass with no name is added unnamed (`metaclass-known` warns of it), with no picker.
+- **The Owner field** offers profiles for a stereotype and a metaclass reference, and packages and profiles for anything else
+  a package may own. The profile view's geometry has a slot at each node and box (`composite.js`'s), so the palette's add
+  hears the profile selected.
+
 ## 5. Stereotypes applied across the model
 
 ### 5.1 Where the check runs (S2)
