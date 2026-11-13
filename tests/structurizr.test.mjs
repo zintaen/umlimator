@@ -1,5 +1,5 @@
 // The Structurizr JSON reader (notes/milestone-2.md §8.3, M2.10): tests/import/structurizr.json's two workspaces, the
-// clinic exported from examples/clinic.dsl and one holding every view kind, read into typed C4 that docs/diagrams/
+// clinic written in the export's form from examples/clinic.dsl and one holding every view kind, read into typed C4 that docs/diagrams/
 // examples/check.mjs passes, with their reports pinned (risks.md R1, R4); ids from the DSL's identifiers and names, the
 // same across two reads and across a regenerated workspace's new numeric ids (R3); §8's limits on hostile input, each by
 // a test: a deep nest, a count over the limit, a __proto__ name, text over 1 MiB, never a throw (R2).
@@ -13,7 +13,7 @@ const both = JSON.parse(readFileSync(new URL('import/structurizr.json', import.m
 const lines = r => r.report.map(x => [x.path, x.status, x.message]);
 const nodeLines = m => m.nodes.map(n => [n.id, n.type, n.parent ?? null, n.props?.shape ?? null]);
 
-test('the clinic, as exported from examples/clinic.dsl, reads into typed C4 that check.mjs passes; its report pinned', () => {
+test('the clinic, written in the export\'s form from examples/clinic.dsl, reads into typed C4 that check.mjs passes; its report pinned', () => {
   const { model, report } = read(both.clinic);
   assert.deepEqual(check(model, 'c4'), []);
   assert.deepEqual(lines({ report }), [
@@ -62,6 +62,7 @@ test('a workspace with every view kind and every shape reads into typed C4 that 
     ['model.deploymentNodes[0].children[0].infrastructureNodes[0]', 'skipped', 'an infrastructure node Load balancer is not read, nor its relationships'],
     ['model.deploymentNodes[1].softwareSystemInstances[0]', 'skipped', 'a software system instance is not read, nor its relationships'],
     ['model', 'skipped', '4 implied relationships are not read: the C4 type works them out when it draws'],
+    ['views.configuration.styles.elements', 'skipped', 'element styles: only shape is read, not background, color'],
     ['model.softwareSystems[0].containers[6].components[1]', 'approximated', 'Order store: shape Ellipse is drawn as a box'],
     ['model.softwareSystems[0].containers[6].components[2]', 'approximated', 'Search: shape Component is drawn as a box'],
     ['model.softwareSystems[2]', 'approximated', 'Warehouse: shape Circle is drawn as a box'],
@@ -111,6 +112,7 @@ test('a workspace with every view kind and every shape reads into typed C4 that 
   assert.deepEqual(view('context').nodeIds, ['customer', 'robot', 'shop', 'payments']); // a context view draws no boundary
   // steps by `order`, 10 after 4; each relationship once; an implied step as the relationship it is implied by
   assert.deepEqual(view('placing-an-order').edges, ['shops', 'shop.web-shop.api.orders', 'shop.api.store-shop.db', 'shop.api.orders-payments', 'shop.api-shop.bus']);
+  assert.deepEqual(view('placing-an-order').nodeIds[0], 'shop'); // a dynamic view draws its scope's boundary too
   assert.deepEqual(view('live').nodeIds, ['live.dc', 'live.dc.server', 'shop.api-1', 'shop.api-2', 'live.dc.dbs', 'shop.db-1', 'payments-cloud']);
 });
 
@@ -167,11 +169,11 @@ const nest = depth => {
   return { model: { softwareSystems: [{ id: '1', name: 'S', containers: [{ id: '2', name: 'C' }] }], deploymentNodes: [top] } };
 };
 
-test('deployment nodes are read 64 deep, deeper read flat from there, and reported once (R2)', () => {
+test('deployment nodes are read 64 deep, deeper nodes read flat from there, and reported once (R2)', () => {
   const { model, report } = read(nest(70)), parent = id => model.nodes.find(n => n.id === id).parent;
   assert.deepEqual(['node-2', 'node-63', 'node-64', 'node-65', 'node-70'].map(parent), ['node-1', 'node-62', 'node-63', 'node-63', 'node-63']);
-  assert.deepEqual(['c-1', 'c-63', 'c-64', 'c-65'].map(parent), ['node-1', 'node-63', 'node-63', 'node-63']);
-  assert.deepEqual(lines({ report }), [['model.deploymentNodes[0]' + '.children[0]'.repeat(63), 'approximated', 'deployment node Node 64 is nested 64 deep: what it holds is read flat from there'], ['views', 'approximated', 'the workspace has no view that is read: a landscape view shows its people and software systems']]);
+  assert.deepEqual(['c-1', 'c-63', 'c-64', 'c-65'].map(parent), ['node-1', 'node-63', 'node-64', 'node-65']); // an instance stays in its node
+  assert.deepEqual(lines({ report }), [['model.deploymentNodes[0]' + '.children[0]'.repeat(63), 'approximated', 'deployment node Node 64 is nested 64 deep: the nodes it holds are read flat from there'], ['views', 'approximated', 'the workspace has no view that is read: a landscape view shows its people and software systems']]);
   let depth = 0;
   for (let id = 'node-70'; id; id = parent(id)) depth++;
   assert.equal(depth, 64);
@@ -221,6 +223,35 @@ test('text over 1 MiB is refused; malformed input and fields of the wrong kind a
   assert.deepEqual(lines(bare), [['views', 'approximated', 'the workspace has no view that is read: a landscape view shows its people and software systems']]);
 });
 
+test('what a host builds in code never throws, and what the model has no place for is reported (R1, R2)', () => {
+  const odd = Object.create(null);
+  for (const bad of [odd, Symbol('s')]) {
+    const out = read({ model: { softwareSystems: [{ id: '1', name: 'S', containers: [{ id: '2', name: 'C' }] }],
+      deploymentNodes: [{ id: '3', name: 'D', instances: bad, containerInstances: [{ id: '4', containerId: '2' }] }] },
+    views: { dynamicViews: [{ key: 'd', relationships: [{ id: '9', order: bad }] }], systemLandscapeViews: [{ key: 'l', automaticLayout: { rankDirection: bad } }] } });
+    assert.equal(out.model.nodes.length, 4);
+    assert.deepEqual(check(out.model, 'c4'), []);
+  }
+  const thrown = read({ model: { get people() { throw new Error('no'); } } });
+  assert.deepEqual([thrown.model.nodes, lines(thrown)], [[], [['', 'skipped', 'the input threw when it was read: nothing read']]]);
+  assert.deepEqual(check(thrown.model, 'c4'), []);
+  const { model, report } = read({ model: {
+    people: [{ id: '1', name: 'P', url: 'https://p', relationships: [{ id: '5', destinationId: '2', interactionStyle: 'Asynchronous' }] }],
+    softwareSystems: [{ id: '2', name: 'S', containers: [{ id: '3', name: 'C' }] }], customElements: [{ id: '6', name: 'Custom' }],
+    deploymentNodes: [{ id: '4', name: 'D', tags: 'Element,Deployment Node,Rack', containerInstances: [{ id: '7', containerId: '3', tags: 'Container Instance,External' }] }] },
+  views: { systemLandscapeViews: [{ key: 'l', automaticLayout: { rankDirection: 'Diagonal' } }],
+    configuration: { styles: { elements: [{ tag: 'Rack', shape: 'Box' }], relationships: [{ tag: 'Relationship', dashed: true }] } } } });
+  assert.deepEqual(lines({ report }), [
+    ['model.people[0].url', 'skipped', 'P: its url is not read'],
+    ['model.deploymentNodes[0].containerInstances[0].tags', 'skipped', 'instance 1 of C: its own tags are not read (its container\'s are)'],
+    ['model.customElements', 'skipped', 'a custom element is not read'],
+    ['model.people[0].relationships[0].interactionStyle', 'approximated', 'relationship P → S is asynchronous: it is drawn as any other'],
+    ['views.configuration.styles.relationships', 'skipped', 'relationship styles are not read'],
+    ['model.deploymentNodes[0]', 'skipped', 'D: a deployment node\'s shape Box is not read'],
+    ['views.systemLandscapeViews[0].automaticLayout.rankDirection', 'skipped', 'view l: rank direction Diagonal is not one Structurizr has: not read']]);
+  assert.equal(model.views[0].direction, undefined);
+});
+
 // a seeded generator: the fixtures with one field after another replaced by something of the wrong kind
 function rng(seed) { return () => { seed = (seed + 0x6d2b79f5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t ^= t + Math.imul(t ^ (t >>> 7), 61 | t); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
 const ODD = [null, 7, '', 'x', [], {}, [null], { id: '1' }, '__proto__', true, -1, '1'];
@@ -243,6 +274,11 @@ test('hostile workspaces each read in under a second of CPU time (R2) (timed)', 
   const many = n => Array.from({ length: n }, (_, k) => ({ id: `${k}`, name: `N${k % 7}` }));
   const loop = { id: 'n', name: 'Loop' };
   loop.children = [loop, loop]; // an object a host built, not JSON: read until the count stops it
+  // parsed JSON can share nothing, but a host's object can: one list reached from many places, counted each time
+  const shared = { id: 's', name: 'Shared' };
+  shared.children = Array(2000).fill(shared);
+  const rels2k = Array.from({ length: 2000 }, (_, k) => ({ id: `r${k}`, sourceId: '0', destinationId: `${k}` }));
+  const els10k = Array.from({ length: 10000 }, (_, k) => ({ id: `${k}` }));
   const hostile = [
     ['a node that holds itself', { model: { deploymentNodes: [loop] } }],
     ['a nest 100,000 deep', nest(100000)],
@@ -253,6 +289,10 @@ test('hostile workspaces each read in under a second of CPU time (R2) (timed)', 
       views: { dynamicViews: [{ key: 'd', relationships: Array.from({ length: 200000 }, (_, k) => ({ id: `i${k % 50000}`, order: `${k}` })) }] } }],
     ['10,000 views of 10,000 elements', { model: { people: many(10000) }, views: { systemLandscapeViews: Array.from({ length: 10000 }, () => ({ key: 'v', elements: [{ id: '1' }] })) } }],
     ['a view listing 300,000 elements', { model: { people: many(10000) }, views: { systemLandscapeViews: [{ key: 'v', elements: Array.from({ length: 300000 }, (_, k) => ({ id: `${k % 20000}`, x: 1 })) }] } }],
+    ['one deployment node holding itself 2,000 times', { model: { deploymentNodes: [shared] } }],
+    ['10,000 people sharing 2,000 relationships', { model: { people: Array.from({ length: 10000 }, (_, k) => ({ id: `${k}`, name: `P${k}`, relationships: rels2k })) } }],
+    ['2,000 views sharing 10,000 elements', { model: { people: many(10000) }, views: { systemLandscapeViews: Array.from({ length: 2000 }, (_, k) => ({ key: `v${k}`, elements: els10k })) } }],
+    ['10,000 people sharing a name of a million characters', { model: { people: Array.from({ length: 10000 }, (_, k) => ({ id: `${k}`, name: 'N'.repeat(1 << 20), tags: 'T,'.repeat(1 << 19) })) } }],
     ['50,000 styles', { model: { people: many(2000).map(p => ({ ...p, tags: 'A,B,C,D,E' })) }, views: { configuration: { styles: { elements: Array.from({ length: 50000 }, (_, k) => ({ tag: 'Q' + k, shape: 'Robot' })) } } } }],
   ];
   // in this process's CPU time, a slow run tried twice more and its best kept, as the Mermaid readers' timed tests do
