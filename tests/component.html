@@ -1,0 +1,159 @@
+<!doctype html>
+<!-- The component diagram (5.4) in headless Chrome (tests/embed.py), from lib/umlimator-all.js: docs/diagrams/examples/
+     05-component.json drawn by render() in both themes, three fonts and both directions (texts inside their shapes, no two
+     nodes overlapping, each port's square on its owner's border and every port line ending on it within 1 px, the ball and
+     the socket, names, reading order, contrast, the legend), then edited through the edit event and apply(), by pointer and
+     by keyboard: the palette's six entries and N, a port added into the selected component, an interface picked as a ball,
+     F2 on a port, a delegation and an assembly by L (edits.connect), B on an interface (edits.key), Alt + arrows on a port
+     (edits.moveTo), a port typed as a member row (edits.member), the Owner field, a drop into a box, Delete on a port (deleted,
+     as said), hide and delete. -->
+<meta charset="utf-8">
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="../lib/umlimator-theme.css">
+<title>umlimator component diagram test</title>
+<body style="margin:0">
+<div id="m" style="width:1400px;height:1000px"></div>
+<script type="module">
+import { render, apply, validate } from '../lib/umlimator-all.js';
+const out = { ok: [], fail: [] };
+const check = (name, cond, info) => { document.title = name; if (cond) out.ok.push(name); else out.fail.push(name + (info === undefined ? '' : ': ' + JSON.stringify(info))); };
+const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+const el = document.getElementById('m');
+let sr, stage, ed = [];
+const pick = s => sr.querySelector(s), all = s => [...sr.querySelectorAll(s)];
+const centre = s => { const r = pick(s).getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; };
+const ptr = (target, type, [x, y]) => target.dispatchEvent(new PointerEvent(type, { clientX: x, clientY: y, button: 0, pointerId: 7, pointerType: 'mouse', bubbles: true, composed: true }));
+const key = (k, extra = {}, target = stage) => target.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true, composed: true, cancelable: true, ...extra }));
+const click = s => { const g = pick(s), at = centre(s); ptr(g, 'pointerdown', at); ptr(g, 'pointerup', at); g.dispatchEvent(new MouseEvent('click', { clientX: at[0], clientY: at[1], bubbles: true, composed: true })); };
+const mount = (model, opts = {}) => { el.innerHTML = ''; ed = []; const h = render(el, model, { view: 'components', on: { edit: e => ed.push(e) }, ...opts }); sr = el.querySelector('.umlimator').shadowRoot; stage = pick('.stage'); return h; };
+const errors = m => validate(m).filter(p => p.level === 'error');
+const last = () => ed[ed.length - 1];
+const gives = (name, cmds, test, base, errs = 0) => { const e = last(); let m = null; try { m = e && apply(base, e.commands); } catch (x) { m = null; }
+  check(name, !!e && same(e.commands, cmds) && !!m && test(m) && errors(m).length === errs, [e, m && errors(m)]); return m; };
+const change = (t, v) => { t.value = v; t.dispatchEvent(new Event('change', { bubbles: true })); };
+const box = g => { const r = g.getBBox(); return { x: r.x, y: r.y, w: r.width, h: r.height }; };
+const inside = (a, b, m = .5) => a.x >= b.x - m && a.y >= b.y - m && a.x + a.w <= b.x + b.w + m && a.y + a.h <= b.y + b.h + m;
+const FONTS = { serif: 'serif', sans: 'sans-serif', wide: 'monospace' };
+const rgba = s => { let m = /rgba?\(([^)]+)\)/.exec(s); if (m) { const p = m[1].split(/[ ,/]+/).filter(Boolean).map(Number); return [p[0] / 255, p[1] / 255, p[2] / 255, p.length > 3 ? p[3] : 1]; }
+  m = /color\(srgb ([^)]+)\)/.exec(s); if (m) { const p = m[1].split(/[ /]+/).filter(Boolean).map(Number); return [p[0], p[1], p[2], p.length > 3 ? p[3] : 1]; } return null; };
+const blend = (top, bot) => [0, 1, 2].map(i => top[i] * top[3] + bot[i] * (1 - top[3])).concat(1);
+const lum = c => { const f = v => v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]); };
+const ratio = (fg, bg) => { const [x, y] = [lum(blend(fg, bg)), lum(bg)].sort((p, q) => q - p); return +((x + 0.05) / (y + 0.05)).toFixed(2); };
+const css = (e, k) => rgba(getComputedStyle(e)[k]);
+const MODEL = await (await fetch('../docs/diagrams/examples/05-component.json')).json();
+const PORTS = ['shop-api.orders', 'shop-api.payments', 'checkout.orders', 'checkout.payments', 'payment-provider.charges'];
+try {
+  for (const theme of ['light', 'dark']) for (const [fname, family] of Object.entries(FONTS)) for (const direction of ['right', 'down']) {
+    document.documentElement.dataset.theme = theme; el.style.setProperty('--um-sans', family);
+    const M = structuredClone(MODEL); M.views[0].direction = direction;
+    const tag = `${theme}, ${fname}, ${direction}`, h = mount(M, { legend: true }), bad = [];
+    check(`${tag}: six components (one a box), five ports, a ball, a rectangle interface, an artifact, ten lines`, all('.node.component').length === 5 && all('.family[data-family="shop-api"]').length === 1
+      && same(all('.node.port').map(g => g.dataset.id).sort(), [...PORTS].sort()) && all('.node.ball').length === 1 && all('.node.classifier').length === 1 && all('.node.artifact').length === 1 && all('.edge-g').length === 10,
+      [all('.node').map(g => g.dataset.id), all('.edge-g').length]);
+    // texts inside their node (a ball's name hangs under its circle); no two nodes but a port and its owner overlap
+    const mask = g => box(g.querySelector(':scope > .n-mask'));
+    all('.node.component, .node.artifact, .node.classifier').forEach(g => g.querySelectorAll('text').forEach(t => { if (t.closest('.node') !== g) return; if (!inside(box(t), mask(g), 1)) bad.push(`${g.dataset.id}: "${t.textContent}" spills`); }));
+    const top = all('.node').filter(g => !g.classList.contains('port') && !g.parentElement.closest('.node'));
+    top.forEach((a, i) => top.slice(i + 1).forEach(b => { const p = box(a.querySelector('.n-mask') || a), q = box(b.querySelector('.n-mask') || b); if (p.x < q.x + q.w && q.x < p.x + p.w && p.y < q.y + q.h && q.y < p.y + p.h) bad.push(`${a.dataset.id} and ${b.dataset.id} overlap`); }));
+    if (!inside(mask(pick('.node[data-id="checkout"]')), box(pick('.family[data-family="shop-api"] .family-box')))) bad.push('checkout is outside Shop API');
+    check(`${tag}: every text inside its shape, Checkout inside Shop API, no nodes overlapping`, !bad.length, bad);
+    // each port's square straddles its owner's border; every line from or to a port ends on its square within 1 px
+    let seen = 0; const offs = [], sq = id => box(pick(`.node.port[data-id="${id}"] .n-body`));
+    PORTS.forEach(id => { const s = sq(id), o = id.startsWith('shop-api') ? box(pick('.family[data-family="shop-api"] .family-box')) : mask(pick(`.node[data-id="${id.split('.')[0]}"]`)), cx = s.x + s.w / 2, cy = s.y + s.h / 2;
+      if (![o.x, o.x + o.w].some(b => Math.abs(cx - b) < 1) && ![o.y, o.y + o.h].some(b => Math.abs(cy - b) < 1)) offs.push([id, 'off its border']); });
+    const lines = { 'Delegation from orders of Shop API to orders of Checkout': ['shop-api.orders', 'checkout.orders'], 'Delegation from payments of Checkout to payments of Shop API': ['checkout.payments', 'shop-api.payments'],
+      'Assembly from payments of Shop API to charges of Payment provider': ['shop-api.payments', 'payment-provider.charges'], 'Realization from orders of Shop API to Orders': ['shop-api.orders', null] };
+    all('.edge-g').forEach(g => { const t = g.querySelector('title').textContent, d = g.querySelector('path.edge').getAttribute('d').match(/-?\d+(\.\d+)?/g).map(Number), ends = [d.slice(0, 2), d.slice(-2)];
+      const id = Object.hasOwn(lines, t) ? t : null; if (!id) return; seen++;
+      lines[id].forEach((p, k) => { if (!p) return; const s = sq(p), [x, y] = ends[k], dd = Math.max(s.x - x, x - s.x - s.w, s.y - y, y - s.y - s.h, 0);
+        if (dd > 1.5) offs.push([id, p, +dd.toFixed(2)]); }); }); // a marker's cut (the delegation's open arrow) at most its length off: its tip, not drawn, is on the square
+    check(`${tag}: each port on its owner's border, each port line ending on its square`, !offs.length && seen === 4, [offs, seen]);
+    check(`${tag}: the ball and the socket: a circle, and a usage ending in the socket marker`, !!pick('.node.ball circle.fl-hit') && /socket/.test(pick('.edge-g[data-from="storefront"][data-to="i-orders"] path.edge').getAttribute('marker-end') || ''));
+    check(`${tag}: names a screen reader reads`, pick('.node[data-id="shop-api.orders"]').getAttribute('aria-label') === 'Port orders of Shop API, provides Orders'
+      && pick('.family[data-family="shop-api"]').getAttribute('aria-label') === 'Component Shop API, 2 ports, holding 1 component'
+      && pick('.node[data-id="i-orders"]').getAttribute('aria-label') === 'Interface Orders, as a ball, provided by Shop API, required by Storefront');
+    const order = all('.keys .um-key').map(k => k.dataset.node ?? 'line');
+    check(`${tag}: reading order: each element, its ports after it, then the lines`, same(order.slice(0, 6), ['storefront', 'shop-api.orders', 'shop-api.payments', 'checkout', 'checkout.orders', 'checkout.payments']) && order.length === 23, order); // a box is read by its frame, not a key
+    const legend = all('.m-legend b').map(b => b.textContent);
+    check(`${tag}: the legend keys each line kind drawn`, same(legend, ['Realization', 'Usage', 'Realization', 'Usage', 'Assembly', 'Delegation', 'Dependency', 'Manifestation']), legend);
+    const stageBg = css(pick('.stage'), 'backgroundColor'), low = [];
+    all('.node text, .family text').forEach(t => { const c = ratio(css(t, 'fill'), stageBg); if (c < 4.5) low.push([t.textContent, c]); });
+    const strokes = all('.node.port .n-body, .node.ball .n-body, .node.component > .n-body').map(b => ratio(css(b, 'stroke'), stageBg)).filter(c => c < 3);
+    check(`${tag}: contrast: texts 4.5:1, outlines and ports 3:1`, !low.length && !strokes.length, [low, strokes]);
+    h.destroy();
+  }
+  document.documentElement.dataset.theme = 'light'; el.style.removeProperty('--um-sans');
+
+  // ---- editing (DoD 4), each gesture's commands applied with apply()
+  const BASE = structuredClone(MODEL); BASE.nodes.push({ id: 'pk', type: 'uml.Package', label: 'shop' });
+  let h = mount(BASE, { editable: true });
+  const panel = s => pick('.um-editor ' + s), enter = t => key('Enter', {}, t);
+  check('the palette: Component, Interface, Artifact, Package, Port, Comment; the lines listed', same(all('.um-editor .um-pal button').map(b => b.textContent), ['Component', 'Interface', 'Artifact', 'Package', 'Port', 'Comment'])
+    && /Realization, Component realization, Usage, Assembly, Delegation, Dependency, Manifestation, Comment link/.test(panel('.um-pal .um-note').textContent), panel('.um-pal').textContent);
+  key('n'); pick('.um-rename').value = 'Search'; key('Enter', {}, pick('.um-rename'));
+  const m1 = gives('N adds a component, named, shown in the view', [{ op: 'add', element: { id: 'component1', type: 'uml.Component', label: 'Search' }, view: 'components' }], m => m.views[0].nodeIds.includes('component1'), BASE);
+  click('.node[data-id="storefront"] .c-name'); all('.um-editor .um-pal button')[4].click(); pick('.um-rename').value = 'events'; key('Enter', {}, pick('.um-rename'));
+  const m2 = gives('the palette\'s Port, Storefront selected: a port into it', [{ op: 'add', element: { id: 'port1', type: 'uml.Port', label: 'events' }, owner: 'storefront' }], m => m.nodes.find(n => n.id === 'storefront').members.length === 1, BASE);
+  h.update(m2);
+  check('after update() the new port is drawn on Storefront\'s border, in its group', !!pick('.node[data-id="storefront"] .node.port[data-id="port1"]'));
+  click('.node[data-id="i-sign-in"] .c-name'); const n0 = ed.length;
+  all('.um-editor .um-pal button')[4].click(); if (pick('.um-rename')) { pick('.um-rename').value = 'x'; key('Enter', {}, pick('.um-rename')); }
+  check('the palette\'s Port with an interface selected: refused, said, nothing emitted', ed.length === n0 && /Select a component to add a port to/.test(sr.textContent));
+  all('.um-editor .um-pal button')[1].click(); pick('.um-rename').value = 'Stock'; key('Enter', {}, pick('.um-rename'));
+  await new Promise(r => setTimeout(r, 0));
+  const ip = all('.um-pick button').map(b => b.textContent);
+  check('the palette\'s Interface: a pick of ball or rectangle', same(ip, ['Ball', 'Rectangle']), ip);
+  all('.um-pick button')[0].click();
+  gives('picking Ball: the interface added and drawn as a ball', [{ op: 'add', element: { id: 'interface1', type: 'uml.Interface', label: 'Stock' }, view: 'components' }, { op: 'set', view: 'components', path: ['present', 'interface1', 'as'], value: 'ball' }], m => m.views[0].present.interface1.as === 'ball', m2);
+  // F2 on a port, by pointer then key
+  click('.node[data-id="checkout.orders"]'); key('F2');
+  check('F2 on a port: a field holding its name', pick('.um-rename') && pick('.um-rename').value === 'orders');
+  pick('.um-rename').value = 'requests'; key('Enter', {}, pick('.um-rename'));
+  gives('F2: set the port\'s label', [{ op: 'set', id: 'checkout.orders', path: 'label', value: 'requests' }], m => m.nodes.find(n => n.id === 'checkout').members[0].label === 'requests', m2);
+  // a connector by L from a port: to a port inside its owner a delegation, to one outside an assembly (edits.connect)
+  click('.node[data-id="shop-api.payments"]'); key('l'); for (const c of 'pay') key(c); key('Enter');
+  const items = all('.um-pick button').map(b => b.textContent);
+  check('L, a name and Enter open the picker with the eight lines', same(items, ['Realization', 'Component realization', 'Usage', 'Assembly', 'Delegation', 'Dependency', 'Manifestation', 'Comment link']), items);
+  all('.um-pick button')[3].click();
+  const c1 = last().commands[0];
+  check('a connector by L from Shop API\'s port to one named pay…: its kind by nesting (edits.connect)', c1.op === 'add' && c1.element.type === 'uml.Connector' && c1.element.from === 'shop-api.payments'
+    && c1.element.props.kind === (c1.element.to === 'checkout.payments' ? 'delegation' : 'assembly') && !errors(apply(m2, last().commands)).length, last());
+  // B on an interface, by key
+  click('.node[data-id="i-sign-in"] .c-name'); key('b');
+  gives('B on an interface: a ball (edits.key)', [{ op: 'set', view: 'components', path: ['present', 'i-sign-in', 'as'], value: 'ball' }], m => m.views[0].present['i-sign-in'].as === 'ball', m2);
+  click('.node[data-id="i-orders"]'); key('B');
+  gives('B on a ball: back to a rectangle', [{ op: 'set', view: 'components', path: ['present', 'i-orders', 'as'], value: undefined }], m => !m.views[0].present['i-orders'].as, m2);
+  // Alt + arrows on a port: across its side moves it, along it is said and does nothing (edits.moveTo)
+  click('.node[data-id="payment-provider.charges"]'); const was = ed.length; key('ArrowDown', { altKey: true });
+  check('Alt + ↓ along a port\'s side: nothing emitted', ed.length === was);
+  key('ArrowRight', { altKey: true });
+  const m3 = gives('Alt + → on a port on the left: present.side right', [{ op: 'set', view: 'components', path: ['present', 'payment-provider.charges', 'side'], value: 'right' }], m => true, m2);
+  h.update(m3);
+  const pp = box(pick('.node[data-id="payment-provider"] > .n-mask')), cs = box(pick('.node[data-id="payment-provider.charges"] .n-body'));
+  check('after update() the port is on its owner\'s right border', Math.abs(cs.x + cs.w / 2 - pp.x - pp.w) < 1, [pp, cs]);
+  // a port as a member row (edits.member)
+  click('.node[data-id="checkout"] .c-name');
+  const nw = panel('[data-new]'); nw.value = 'events : EventApi'; enter(nw);
+  gives('a member row on a component is a port, name : Type (edits.member)', [{ op: 'add', element: { id: 'port2', type: 'uml.Port', label: 'events', props: { valueType: 'EventApi' } }, owner: 'checkout' }], m => m.nodes.find(n => n.id === 'checkout').members.length === 3, m3);
+  // the Owner field; a drop into a box
+  click('.node[data-id="accounts"] .c-name');
+  const own = panel('[data-f="owner"]'), opts = [...own.options].map(o => o.textContent);
+  check('the Owner field of a component: none, the components and the package', opts[0] === 'none' && opts.includes('Shop API') && opts.includes('shop'), opts);
+  change(own, 'pk');
+  gives('Owner: reparent the component to the package', [{ op: 'reparent', id: 'accounts', parent: 'pk' }], m => m.nodes.find(n => n.id === 'accounts').parent === 'pk', m3);
+  const fb = pick('.family[data-family="shop-api"] .family-box').getBoundingClientRect(), from = centre('.node[data-id="order-worker"] > .n-mask'), at = [fb.left + 40, fb.bottom - 20];
+  ptr(pick('.node[data-id="order-worker"]'), 'pointerdown', from); for (let i = 1; i <= 4; i++) ptr(stage, 'pointermove', [from[0] + (at[0] - from[0]) * i / 4, from[1] + (at[1] - from[1]) * i / 4]); ptr(stage, 'pointerup', at);
+  gives('a component dropped into Shop API\'s box: reparent', [{ op: 'reparent', id: 'order-worker', parent: 'shop-api' }], m => m.nodes.find(n => n.id === 'order-worker').parent === 'shop-api', m3);
+  // Delete on a port deletes it, as said; Delete on a component hides it; Shift + Delete deletes it
+  h = mount(m3, { editable: true });
+  click('.node[data-id="payment-provider.charges"]'); key('Delete');
+  gives('Delete on a port: deleted from the model with its lines (edits.remove)', [{ op: 'delete', id: 'payment-provider.charges' }], m => !m.edges.some(e => e.id === 'api-to-provider'), m3);
+  check('the hint line says a port is deleted, not hidden', /a port is not hidden/.test(sr.textContent), sr.textContent.slice(-300));
+  click('.node[data-id="order-worker"] .c-name'); key('Delete');
+  gives('Delete on a component: hide it', [{ op: 'hide', id: 'order-worker', view: 'components' }], m => !m.views[0].nodeIds.includes('order-worker'), m3);
+  click('.node[data-id="order-worker"] .c-name'); key('Delete', { shiftKey: true });
+  gives('Shift + Delete: delete the component and its dependency', [{ op: 'delete', id: 'order-worker' }], m => !m.edges.some(e => e.id === 'worker-needs-api'), m3);
+  h.destroy();
+} catch (e) { out.fail.push('threw: ' + (e && e.stack || e)); }
+const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
+</script>
