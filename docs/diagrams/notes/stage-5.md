@@ -555,11 +555,15 @@ Both new hooks are in `src/typed/edit.js` only, with no core byte, and return wh
 `tests/state.test.mjs` and `tests/state-machine.html` pass unchanged.
 
 As built (5.2): `member` hears the row's text trimmed; an `{ error }` also marks the row invalid, and a row the hook read is
-cleared (New member) or kept as typed. `key` is asked for a key with no Alt, Ctrl or Meta, and only when the host offers
+cleared (New member) or kept as typed, after a pick's choice when the result is a `{ pick, then }`; an empty row is not
+asked (the panel adds nothing and puts a row back). `key` hears `e.key` only, Escape, Tab, Enter and the arrows included,
+so a hook returns null for the keys it does not own. `key` is asked for a key with no Alt, Ctrl or Meta, and only when the host offers
 `rename` (the editable flag F2 and V take). The state type's `edits.member` is a non-enumerable property, so
 `Object.keys(edits)` stays 4.6's four and `tests/state.test.mjs` passes unchanged; the editor reads it as any hook. A node
 whose id holds `->` needed no engine change: selection, F2 and Delete already hand its geometry id to `rename` and `remove`,
-which `tests/type-hooks.html` now pins.
+which `tests/type-hooks.html` now pins. Any copy of a type's `edits` (`{ ...edits }`, `Object.assign`) drops the state
+type's `member`; a host wrapping `edits` copies it by name. stage-4.md §10.4's text on the state type's own listener is
+left to 5.8, whose Owns covers `docs/`.
 
 | Option, the member hook | For | Against |
 |---|---|---|

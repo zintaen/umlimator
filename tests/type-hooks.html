@@ -351,6 +351,7 @@ try {
         if (text === 'loud') return { commands: [set(owner, 'note', 'loud')], say: 'Noted aloud' };
         if (text === 'bad row') return { error: 'Not a row this type reads' };
         if (text === 'which') return { pick: ['first', 'second'], then: i => [set(owner, 'note', ['first', 'second'][i])] };
+        if (text === 'which bad') return { pick: ['only'], then: () => ({ error: 'No such row' }) };
         return null; },
       key(model, view, ids, key) { heard.push(['key', ids, key]);
         if (key === 'b' || key === 'B') return ids.includes('iface') ? [{ op: 'set', view: view.id, path: ['present', 'iface', 'as'], value: 'ball' }] : { error: 'B: only an interface is a ball' };
@@ -384,6 +385,16 @@ try {
   check('5.2 member\'s { pick, then }: the picker opens', same(all('.um-pick button').map(b => b.textContent), ['first', 'second']), all('.um-pick button').map(b => b.textContent));
   if (pick('.um-pick')) click(all('.um-pick button')[1]);
   check('5.2 …and the choice is emitted', same(last().commands, [set('a', 'note', 'second')]), last());
+  check('5.2 …and the field cleared after the choice', row('[data-new]').value === '', row('[data-new]').value);
+  type(row('[data-new]'), 'which'); await Promise.resolve(); n2 = k1();
+  if (pick('.um-pick')) key('Escape', {}, all('.um-pick button')[0]);
+  check('5.2 member\'s pick cancelled: nothing emitted, the row kept as typed', !pick('.um-pick') && ed.length === n2 && row('[data-new]').value === 'which', [ed.length - n2, row('[data-new]').value]);
+  type(row('[data-new]'), 'which bad'); await Promise.resolve();
+  if (pick('.um-pick')) click(all('.um-pick button')[0]);
+  check('5.2 member\'s pick then { error }: nothing emitted, said, the row marked invalid and kept', ed.length === n2 && live2() === 'No such row' && row('[data-new]').getAttribute('aria-invalid') === 'true' && row('[data-new]').value === 'which bad', [live2(), row('[data-new]').value]);
+  key('Escape', {}, row('[data-new]'));
+  heard.length = 0; type(row('[data-new]'), '   '); change(row('[data-m="a.i1"]'), ' ');
+  check('5.2 member not asked for an empty row: the panel\'s own (nothing added, the row put back)', !heard.length && ed.length === n2 && row('[data-m="a.i1"]').value === 'two' && !row('[data-new]').hasAttribute('aria-invalid'), [heard, ed.length - n2, row('[data-m="a.i1"]').value]);
   // edits.key: by pointer (a card clicked) and by keyboard (its ring), before the canvas's own
   heard.length = 0; n2 = k1(); card('iface'); key('B');
   check('5.2 key on a selection by pointer: asked with the ids and the key, its commands emitted', same(heard, [['key', ['iface'], 'B']]) && ed.length === n2 + 1 && same(last().commands, [{ op: 'set', view: 'r', path: ['present', 'iface', 'as'], value: 'ball' }]), [heard, last()]);
@@ -395,8 +406,8 @@ try {
   heard.length = 0; card('a'); key('n');
   check('5.2 key\'s null: the canvas\'s own (N opens the name field)', same(heard, [['key', ['a'], 'n']]) && !!pick('.um-rename'), heard);
   key('Escape', {}, pick('.um-rename'));
-  heard.length = 0; card('a'); key('b', { altKey: true }); key('b', { ctrlKey: true });
-  check('5.2 key with Alt or Ctrl: not asked', !heard.some(x => x[0] === 'key'), heard);
+  heard.length = 0; card('a'); key('b', { altKey: true }); key('b', { ctrlKey: true }); key('b', { metaKey: true });
+  check('5.2 key with Alt, Ctrl or Meta: not asked', !heard.some(x => x[0] === 'key'), heard);
   // a node whose geometry id holds "->": selected, renamed and deleted through the hooks
   heard.length = 0; card('part1->port');
   check('5.2 a node whose id holds "->" is selected', !!h.selection && h.selection.type === 'node' && h.selection.id === 'part1->port', h.selection);

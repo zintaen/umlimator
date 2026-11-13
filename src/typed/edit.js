@@ -26,9 +26,11 @@ import { arrOf } from '../map/validate.js';
    - member(model, view, owner, id, text): Enter or a change on a row of the panel's Members (id: the member's; null for the
      New member field), owner the element selected, text trimmed, before the panel commits it (notes/stage-5.md §12.1, S13).
      Null: the type's member.add or member.edit, as before. An { error } also marks the row invalid; a row read by the hook
-     is cleared (New member) or kept as typed.
+     is cleared (New member) or kept as typed, after a pick's choice. Not asked for an empty row (the panel's own).
    - key(model, view, ids, key): a key (e.key) with no Alt, Ctrl or Meta on a selection (ids, as remove's), before the
      canvas's own (S11). Null: the canvas's. Asked only when the host lets the view be renamed (B on an interface sets present).
+     It hears every such key first, Escape, Tab, Enter (a focused ring's, before the ring selects) and the arrows too, and
+     only e.key (Shift + Delete reads as Delete): return null for the keys the type does not own.
    Any hook may also return { pick: [label, …], then: i => result }: a picker of the labels opens under the element selected
    (else the view's first node), and the index chosen goes to then, whose result is read as the hook's; an empty pick is
    said and does nothing. A palette entry with name: false is added with no name field (add gets an empty label; with no
@@ -164,11 +166,16 @@ TYPED.edit = (I, c) => {
   const row = e => { const t = e.target, d = t && t.dataset, h = hook('member'), s = api.sel();
     if (!h || !d || (d.new == null && d.m == null) || !t.closest || !t.closest('.um-editor') || !I.on() || !s || s.id == null || !can(d.new != null ? 'add' : 'rename')) return;
     if (d.m != null && t.value === d.was) return;
-    const r = h(model(), view(), s.id, d.m ?? null, t.value.trim()); if (r == null) return;
+    const text = t.value.trim(); if (!text) return; // empty: the panel's own (nothing added; a row put back)
+    const r = h(model(), view(), s.id, d.m ?? null, text); if (r == null) return;
     e.preventDefault(); e.stopPropagation();
-    if (isRec(r) && r.error != null) { t.setAttribute('aria-invalid', 'true'); return ran(r); }
-    t.removeAttribute('aria-invalid'); if (d.new != null) t.value = ''; else d.was = t.value;
-    ran(r); };
+    // the row is settled by the result read, after a pick's choice (a cancelled pick keeps the row as typed)
+    const settle = x => { if (x == null) return x;
+      if (isRec(x) && Array.isArray(x.pick) && typeof x.then === 'function') return { ...x, then: i => settle(x.then(i)) };
+      if (isRec(x) && x.error != null) t.setAttribute('aria-invalid', 'true');
+      else { t.removeAttribute('aria-invalid'); if (d.new != null) t.value = ''; else d.was = t.value; }
+      return x; };
+    ran(settle(r)); };
   api.root.addEventListener('keydown', e => { if (e.key === 'Enter') row(e); }, true);
   api.root.addEventListener('change', row, true);
 };

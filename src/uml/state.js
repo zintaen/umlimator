@@ -425,7 +425,7 @@ const ST_TYPE = registerDiagramType('uml.state-machine', {
   validate: stProblems,
   rules: ST_RULES,
   describe: stDescribe,
-  // member is not enumerable: Object.keys(edits) stays 4.6's four (tests/state.test.mjs), as notes/stage-5.md §16.2 says
+  // member is not enumerable: Object.keys(edits) stays 4.6's four (tests/state.test.mjs), as notes/stage-5.md §12.1 (as built) says
   edits: Object.defineProperty({ add: stAdd, rename: stRename, moveTo: stMoveTo, remove: stRemove }, 'member', { value: stMemberRow }),
 });
 
