@@ -1,0 +1,176 @@
+<!doctype html>
+<!-- The deployment diagram (5.5) in headless Chrome (tests/embed.py), from lib/umlimator-all.js: docs/diagrams/examples/06-deployment.json
+     drawn by render() in both themes, three fonts and both directions (closed cubes, cube boxes holding their contents, nested,
+     texts inside their shapes, line ends on outlines and on a box's faces, names, reading order, contrast, the legend), then
+     edited through the edit event and apply(), by pointer and by keyboard: the palette's seven entries and N, F2, each line
+     kind by L and the picker, and by the handle (a deployment drawn from its target starts at the artifact; a communication
+     path to an artifact is refused, its reason on the hint line), the Owner field of an artifact and of a node, a drop of an artifact into a node's box, the stereotypes field,
+     hide and delete (a box with what it holds, counted on the hint line). -->
+<meta charset="utf-8">
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="../lib/umlimator-theme.css">
+<title>umlimator deployment diagram test</title>
+<body style="margin:0">
+<div id="m" style="width:1600px;height:1000px"></div>
+<script type="module">
+import { render, apply, validate } from '../lib/umlimator-all.js';
+const out = { ok: [], fail: [] };
+const check = (name, cond, info) => { document.title = name; if (cond) out.ok.push(name); else out.fail.push(name + (info === undefined ? '' : ': ' + JSON.stringify(info))); };
+const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+const el = document.getElementById('m');
+let sr, stage, ed = [];
+const pick = s => sr.querySelector(s), all = s => [...sr.querySelectorAll(s)];
+const centre = s => { const r = pick(s).getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; };
+const ptr = (target, type, [x, y]) => target.dispatchEvent(new PointerEvent(type, { clientX: x, clientY: y, button: 0, pointerId: 7, pointerType: 'mouse', bubbles: true, composed: true }));
+const key = (k, extra = {}, target = stage) => target.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true, composed: true, cancelable: true, ...extra }));
+const handleTo = ([x, y]) => { const c = pick('.um-handle circle'), r = c.getBoundingClientRect(); ptr(c, 'pointerdown', [r.x + r.width / 2, r.y + r.height / 2]); ptr(stage, 'pointermove', [x, y]); ptr(stage, 'pointerup', [x, y]); };
+const press = b => { const r = b.getBoundingClientRect(), at = [r.x + r.width / 2, r.y + r.height / 2]; ptr(b, 'pointerdown', at); ptr(b, 'pointerup', at); b.click(); };
+const hint = () => pick('.um-live').textContent;
+const click = s => { const g = pick(s), at = centre(s); ptr(g, 'pointerdown', at); ptr(g, 'pointerup', at); g.dispatchEvent(new MouseEvent('click', { clientX: at[0], clientY: at[1], bubbles: true, composed: true })); };
+const mount = (model, opts = {}) => { el.innerHTML = ''; ed = []; const h = render(el, model, { view: 'production', on: { edit: e => ed.push(e) }, ...opts }); sr = el.querySelector('.umlimator').shadowRoot; stage = pick('.stage'); return h; };
+const errors = m => validate(m).filter(p => p.level === 'error');
+const last = () => ed[ed.length - 1];
+const gives = (name, cmds, test, base, errs = 0) => { const e = last(); let m = null; try { m = e && apply(base, e.commands); } catch (x) { m = null; }
+  check(name, !!e && same(e.commands, cmds) && !!m && test(m) && errors(m).length === errs, [e, m && errors(m)]); return m; };
+const change = (t, v) => { t.value = v; t.dispatchEvent(new Event('change', { bubbles: true })); };
+const box = g => { const r = g.getBBox(); return { x: r.x, y: r.y, w: r.width, h: r.height }; };
+const inside = (a, b) => a.x >= b.x - .5 && a.y >= b.y - .5 && a.x + a.w <= b.x + b.w + .5 && a.y + a.h <= b.y + b.h + .5;
+// a point's distance from a polygon's outline: a closed cube's (10 px deep), or a cube box's border with its faces outside it
+const poly = (P, [x, y]) => Math.min(...P.map((a, i) => { const b = P[(i + 1) % P.length], dx = b[0] - a[0], dy = b[1] - a[1], t = Math.max(0, Math.min(1, ((x - a[0]) * dx + (y - a[1]) * dy) / (dx * dx + dy * dy)));
+  return Math.hypot(x - a[0] - t * dx, y - a[1] - t * dy); }));
+const cube = n => [[n.x, n.y + 10], [n.x + 10, n.y], [n.x + n.w, n.y], [n.x + n.w, n.y + n.h - 10], [n.x + n.w - 10, n.y + n.h], [n.x, n.y + n.h]];
+const faces = n => [[n.x, n.y], [n.x + 10, n.y - 10], [n.x + n.w + 10, n.y - 10], [n.x + n.w + 10, n.y + n.h - 10], [n.x + n.w, n.y + n.h], [n.x, n.y + n.h]];
+const rect = n => [[n.x, n.y], [n.x + n.w, n.y], [n.x + n.w, n.y + n.h], [n.x, n.y + n.h]];
+const FONTS = { serif: 'serif', sans: 'sans-serif', wide: 'monospace' };
+const rgba = s => { let m = /rgba?\(([^)]+)\)/.exec(s); if (m) { const p = m[1].split(/[ ,/]+/).filter(Boolean).map(Number); return [p[0] / 255, p[1] / 255, p[2] / 255, p.length > 3 ? p[3] : 1]; }
+  m = /color\(srgb ([^)]+)\)/.exec(s); if (m) { const p = m[1].split(/[ /]+/).filter(Boolean).map(Number); return [p[0], p[1], p[2], p.length > 3 ? p[3] : 1]; } return null; };
+const blend = (top, bot) => [0, 1, 2].map(i => top[i] * top[3] + bot[i] * (1 - top[3])).concat(1);
+const lum = c => { const f = v => v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]); };
+const ratio = (fg, bg) => { const [x, y] = [lum(blend(fg, bg)), lum(bg)].sort((p, q) => q - p); return +((x + 0.05) / (y + 0.05)).toFixed(2); };
+const css = (e, k) => rgba(getComputedStyle(e)[k]);
+const MODEL = await (await fetch('../docs/diagrams/examples/06-deployment.json')).json();
+const HOLDS = { 'shopper-device': ['browser'], browser: ['storefront-bundle'], 'app-server': ['jvm'], jvm: ['shop-api-jar', 'order-worker-jar', 'shop-api-config'] };
+try {
+  for (const theme of ['light', 'dark']) for (const [fname, family] of Object.entries(FONTS)) for (const direction of ['right', 'down']) {
+    document.documentElement.dataset.theme = theme; el.style.setProperty('--um-sans', family);
+    const M = structuredClone(MODEL); M.views[0].direction = direction;
+    const tag = `${theme}, ${fname}, ${direction}`, h = mount(M, { legend: true }), bad = [];
+    const nodes = all('.node');
+    check(`${tag}: three closed cubes, five artifacts, two components, four cube boxes, eight lines`, all('.node.cube').length === 3 && all('.node.artifact').length === 5 && all('.node.component').length === 2
+      && all('.family').length === 4 && all('.family .dp-face').length === 4 && all('.edge-g').length === 8, [nodes.length, all('.family').length, all('.edge-g').length]);
+    // every text in its shape (a cube's in its front face); no two nodes overlap; each box holds what its element owns, its title inside it
+    nodes.forEach(g => { const b = box(g.querySelector('.n-mask')), face = g.classList.contains('cube') ? { x: b.x, y: b.y + 10, w: b.w - 10, h: b.h - 10 } : b;
+      g.querySelectorAll('text').forEach(t => { if (!inside(box(t), face)) bad.push(`${g.dataset.id}: "${t.textContent}" spills`); }); });
+    const boxes = nodes.map(g => [g.dataset.id, box(g.querySelector('.n-mask'))]);
+    boxes.forEach(([a, p], i) => boxes.slice(i + 1).forEach(([b, q]) => { if (p.x < q.x + q.w && q.x < p.x + p.w && p.y < q.y + q.h && q.y < p.y + p.h) bad.push(`${a} and ${b} overlap`); }));
+    const frame = id => box(pick(`.family[data-family="${id}"] .family-box`));
+    Object.entries(HOLDS).forEach(([f, ids]) => { ids.forEach(id => { const n = pick(`.node[data-id="${id}"] .n-mask`), b = n ? box(n) : frame(id); if (!inside(b, frame(f))) bad.push(`${id} is outside ${f}`); });
+      if (!inside(box(pick(`.family[data-family="${f}"] .family-title`)), frame(f))) bad.push(`${f}'s title spills`); });
+    check(`${tag}: every text inside its shape, every element inside its box, none overlapping`, !bad.length, bad);
+    // line ends: each start (no marker there) on its node's outline, a box's border or the face outside it, within 1 px
+    const offs = [];
+    all('.edge-g').forEach(g => { const v = g.querySelector('path.edge').getAttribute('d').match(/-?\d+(\.\d+)?/g).map(Number), p = v.slice(0, 2), id = g.dataset.from, n = pick(`.node[data-id="${id}"]`);
+      const d = n ? poly(n.classList.contains('cube') ? cube(box(n.querySelector('.n-mask'))) : rect(box(n.querySelector('.n-mask'))), p) : poly(faces(frame(id)), p);
+      if (d > 1) offs.push([id, g.dataset.to, +d.toFixed(2)]); });
+    check(`${tag}: each line starts on its shape's outline or its box's faces`, !offs.length, offs);
+    check(`${tag}: names a screen reader reads`, pick('.node[data-id="edge"]').getAttribute('aria-label') === 'Node Edge proxy, 1 artifact deployed'
+      && pick('.node[data-id="shop-api-jar"]').getAttribute('aria-label') === 'Artifact shop-api.jar, on Java 21 runtime, manifests Shop API'
+      && pick('.family[data-family="jvm"]').getAttribute('aria-label') === 'Execution environment Java 21 runtime, in Application server, 3 artifacts deployed'
+      && pick('.edge-g[data-from="shopper-device"] title').textContent === 'Communication path HTTPS from Shopper\'s device to Edge proxy');
+    const order = all('.keys .node-key').map(k => k.dataset.node);
+    check(`${tag}: reading order: each box's contents after it, then the rest, then the lines`, same(order.slice(0, 4), ['storefront-bundle', 'edge', 'edge-routes', 'shop-api-jar']) && all('.keys .um-key').length === 18, order);
+    check(`${tag}: every line's label drawn whole`, same([...new Set(all('.e-lab, .labels text').map(t => t.textContent))].sort(), ['AMQP', 'HTTP', 'HTTPS', 'PostgreSQL wire protocol', '«deploy»', '«manifest»']),
+      all('.e-lab, .labels text').map(t => t.textContent));
+    const legend = all('.m-legend b').map(b => b.textContent);
+    check(`${tag}: the legend keys each line kind drawn`, same(legend, ['Deployment', 'Manifestation', 'Communication path', 'Dependency']), legend);
+    const stageBg = css(pick('.stage'), 'backgroundColor'), low = [];
+    [...nodes, ...all('.family')].forEach(g => g.querySelectorAll('text').forEach(t => { const c = ratio(css(t, 'fill'), stageBg); if (c < 4.5) low.push([g.dataset.id || g.dataset.family, t.textContent, c]); }));
+    const strokes = all('.node.cube .n-body, .node.cube .n-det, .family .dp-face, .family .family-box').map(b => ratio(css(b, 'stroke'), stageBg)).filter(c => c < 3);
+    check(`${tag}: contrast: texts 4.5:1, outlines and faces 3:1`, !low.length && !strokes.length, [low, strokes]);
+    h.destroy();
+  }
+  document.documentElement.dataset.theme = 'light'; el.style.removeProperty('--um-sans');
+
+  // ---- editing (DoD 4), each gesture's commands applied with apply(). A comment is there for the comment link
+  const BASE = structuredClone(MODEL); BASE.nodes.push({ id: 'n1', type: 'uml.Comment', label: 'blue-green' }); BASE.views[0].nodeIds.push('n1');
+  let h = mount(BASE, { editable: true });
+  const panel = s => pick('.um-editor ' + s);
+  const LABELS = ['Node', 'Device', 'Execution environment', 'Artifact', 'Deployment specification', 'Component', 'Comment'];
+  check('the palette: its seven elements; the lines listed', same(all('.um-editor .um-pal button').map(b => b.textContent), LABELS)
+    && /Deployment, Manifestation, Communication path, Dependency, Comment link/.test(panel('.um-pal .um-note').textContent), panel('.um-pal').textContent);
+  key('n'); pick('.um-rename').value = 'Cache'; key('Enter', {}, pick('.um-rename'));
+  const m1 = gives('N adds a node, named, shown in the view', [{ op: 'add', element: { id: 'node1', type: 'uml.Node', label: 'Cache' }, view: 'production' }], m => m.views[0].nodeIds.includes('node1'), BASE);
+  ['Device', 'ExecutionEnvironment', 'Artifact', 'DeploymentSpecification', 'Component', 'Comment'].forEach((t, i) => {
+    all('.um-editor .um-pal button')[i + 1].click(); pick('.um-rename').value = 'x' + i; key('Enter', {}, pick('.um-rename'));
+    const c = last().commands[0];
+    check(`the palette's ${LABELS[i + 1]} button adds a uml.${t}`, last().commands.length === 1 && c.op === 'add' && c.element.type === 'uml.' + t && c.element.label === 'x' + i && !errors(apply(BASE, last().commands)).length, last()); });
+  h.update(m1);
+  check('after update() the node is drawn as a closed cube with its name', pick('.node[data-id="node1"].cube .c-name').textContent === 'Cache');
+  // F2 on a cube, by pointer then key
+  click('.node[data-id="database"] .c-name'); key('F2');
+  check('F2 on a node: a field holding its name', pick('.um-rename') && pick('.um-rename').value === 'Database');
+  pick('.um-rename').value = 'Primary database'; key('Enter', {}, pick('.um-rename'));
+  const m2 = gives('F2: set its label', [{ op: 'set', id: 'database', path: 'label', value: 'Primary database' }], m => m.nodes.find(n => n.id === 'database').label === 'Primary database', m1);
+  h.update(m2);
+  check('after update() the cube reads the new name', pick('.node[data-id="database"] .c-name').textContent === 'Primary database');
+  // a deployment drawn from its target: L, a name, Enter, the picker; the hook starts it at the artifact
+  click('.node[data-id="node1"] .c-name'); key('l'); for (const c of 'routes') key(c); key('Enter');
+  const items = all('.um-pick button').map(b => b.textContent);
+  check('L, a name and Enter open the picker with the five lines', same(items, ['Deployment', 'Manifestation', 'Communication path', 'Dependency', 'Comment link']), items);
+  all('.um-pick button')[0].click();
+  const m3 = gives('a deployment drawn from a node to an artifact is added from the artifact (edits.connect)', [{ op: 'add', element: { id: 'deployment1', type: 'uml.Deployment', from: 'edge-routes', to: 'node1' }, view: 'production' }],
+    m => m.edges.some(e => e.id === 'deployment1'), m2, 0);
+  // a communication path to an artifact is refused: nothing emitted
+  const n0 = ed.length; click('.node[data-id="edge"] .c-name'); key('l'); for (const c of 'routes') key(c); key('Enter');
+  all('.um-pick button').find(b => b.textContent === 'Communication path').click();
+  check('a communication path from a node to an artifact is refused, nothing emitted, its reason on the hint line', ed.length === n0 && /^A communication path joins two nodes/.test(hint()), [ed.slice(n0), hint()]);
+  // the other line kinds, each by L and the picker
+  for (const [from, name, kind, to, id, type] of [['edge-routes', 'cache', 'Deployment', 'node1', 'deployment1', 'Deployment'], ['order-worker-jar', 'shop api', 'Manifestation', 'shop-api', 'manifestation1', 'Manifestation'],
+    ['node1', 'primary', 'Communication path', 'database', 'communicationpath1', 'CommunicationPath'], ['edge-routes', 'storefront', 'Dependency', 'storefront-bundle', 'dependency1', 'Dependency'], ['n1', 'edge', 'Comment link', 'edge', 'commentlink1', 'CommentLink']]) {
+    click(`.node[data-id="${from}"] .c-name, .node[data-id="${from}"] text`); key('l'); for (const c of name) key(c); key('Enter');
+    all('.um-pick button').find(b => b.textContent === kind).click();
+    check(`picking ${kind}: one add of a uml.${type}`, same(last().commands, [{ op: 'add', element: { id, type: 'uml.' + type, from, to }, view: 'production' }]) && !errors(apply(m2, last().commands)).length, last());
+  }
+  h.update(m3);
+  check('after update() the deployment is drawn with «deploy»', pick('.edge-g[data-from="edge-routes"][data-to="node1"] title').textContent === 'Deployment from routes.conf to Cache');
+  // the Owner field, by keyboard: an artifact into a node, a node into a node
+  click('.node[data-id="edge-routes"] .c-name');
+  const own = panel('[data-f="owner"]'), opts = [...own.options].map(o => o.textContent);
+  check('the Owner field of an artifact: none and every node, device and execution environment', same(opts, ['none', 'Shopper\'s device', 'Web browser', 'Edge proxy', 'Application server', 'Java 21 runtime', 'Primary database', 'Order queue', 'Cache']) && own.value === '', opts);
+  change(own, 'edge');
+  const m4 = gives('Owner: reparent the artifact into the node: deployed by nesting', [{ op: 'reparent', id: 'edge-routes', parent: 'edge' }], m => m.nodes.find(n => n.id === 'edge-routes').parent === 'edge', m3);
+  h.update(m4);
+  check('after update() the node is a box holding the artifact', inside(box(pick('.node[data-id="edge-routes"] .n-mask')), box(pick('.family[data-family="edge"] .family-box'))) && !!pick('.family[data-family="edge"] .dp-face'));
+  click('.node[data-id="queue"] .c-name'); change(panel('[data-f="owner"]'), 'node1');
+  gives('Owner: reparent a node into a node', [{ op: 'reparent', id: 'queue', parent: 'node1' }], m => m.nodes.find(n => n.id === 'queue').parent === 'node1', m4);
+  // a drop of an artifact into a box, by pointer
+  const to = pick('.family[data-family="jvm"] .family-box').getBoundingClientRect(), from = centre('.node[data-id="storefront-bundle"] .n-mask'), at = [to.left + to.width / 2, to.top + to.height / 2];
+  ptr(pick('.node[data-id="storefront-bundle"]'), 'pointerdown', from); for (let i = 1; i <= 4; i++) ptr(stage, 'pointermove', [from[0] + (at[0] - from[0]) * i / 4, from[1] + (at[1] - from[1]) * i / 4]); ptr(stage, 'pointerup', at);
+  const m5 = gives('an artifact dropped into the runtime\'s box: reparent', [{ op: 'reparent', id: 'storefront-bundle', parent: 'jvm' }], m => m.nodes.find(n => n.id === 'storefront-bundle').parent === 'jvm', m4);
+  h.update(m5);
+  check('after update() the runtime\'s box holds it, and the browser is a closed cube', inside(box(pick('.node[data-id="storefront-bundle"] .n-mask')), box(pick('.family[data-family="jvm"] .family-box'))) && !!pick('.node[data-id="browser"].cube'));
+  click('.node[data-id="browser"] .c-name'); change(panel('[data-f="p:stereotypes"]'), 'chromium');
+  gives('the stereotypes field sets a list', [{ op: 'set', id: 'browser', path: 'props.stereotypes', value: ['chromium'] }], m => same(m.nodes.find(n => n.id === 'browser').props.stereotypes, ['chromium']), m5);
+  // the handle, by pointer: a deployment drawn from its target starts at the artifact; a communication path to an artifact is refused
+  h = mount(BASE, { editable: true });
+  click('.node[data-id="database"] .c-name'); handleTo(centre('.node[data-id="edge-routes"] .n-mask')); press(all('.um-pick button').find(b => b.textContent === 'Deployment'));
+  gives('the handle from a node to an artifact, Deployment: added from the artifact (edits.connect)', [{ op: 'add', element: { id: 'deployment1', type: 'uml.Deployment', from: 'edge-routes', to: 'database' }, view: 'production' }],
+    m => m.edges.some(e => e.id === 'deployment1'), BASE);
+  const n1 = ed.length; click('.node[data-id="edge"] .c-name'); handleTo(centre('.node[data-id="edge-routes"] .n-mask')); press(all('.um-pick button').find(b => b.textContent === 'Communication path'));
+  check('the handle from a node to an artifact, Communication path: refused, its reason on the hint line', ed.length === n1 && /^A communication path joins two nodes/.test(hint()), [ed.slice(n1), hint()]);
+  // hide, delete
+  h = mount(BASE, { editable: true });
+  click('.node[data-id="database"] .c-name'); key('Delete');
+  gives('Delete: hide the node from the view', [{ op: 'hide', id: 'database', view: 'production' }], m => !m.views[0].nodeIds.includes('database'), BASE);
+  click('.node[data-id="edge-routes"] .c-name'); key('Delete', { shiftKey: true });
+  gives('Shift + Delete: delete the artifact and its deployment', [{ op: 'delete', id: 'edge-routes' }], m => !m.nodes.some(n => n.id === 'edge-routes') && !m.edges.some(e => e.id === 'routes-on-edge'), BASE);
+  h.select({ type: 'container', id: 'app-server', view: 'production' }); key('Delete', { shiftKey: true });
+  gives('Shift + Delete on a box: it, what it holds and their lines go (edits.remove)', [{ op: 'delete', id: 'app-server' }],
+    m => !m.nodes.some(n => ['app-server', 'jvm', 'shop-api-jar', 'shop-api-config'].includes(n.id)) && !m.edges.some(e => e.id === 'edge-to-app'), BASE);
+  check('…and the hint line counts what went with it', hint() === 'Deleted device Application server and the 4 elements it held', hint());
+  h.select({ type: 'edge', ids: ['edge-to-app'], view: 'production' }); key('Delete', { shiftKey: true });
+  gives('Shift + Delete on a communication path: delete it', [{ op: 'delete', id: 'edge-to-app' }], m => !m.edges.some(e => e.id === 'edge-to-app'), BASE);
+  h.destroy();
+} catch (e) { out.fail.push('threw: ' + (e && e.stack || e)); }
+const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
+</script>
