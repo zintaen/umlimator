@@ -554,6 +554,13 @@ Both new hooks are in `src/typed/edit.js` only, with no core byte, and return wh
 "member hook that may return commands" 4.6's wrap waits for (Q8): 5.2 moves `src/uml/state.js`'s listeners onto it, and
 `tests/state.test.mjs` and `tests/state-machine.html` pass unchanged.
 
+As built (5.2): `member` hears the row's text trimmed; an `{ error }` also marks the row invalid, and a row the hook read is
+cleared (New member) or kept as typed. `key` is asked for a key with no Alt, Ctrl or Meta, and only when the host offers
+`rename` (the editable flag F2 and V take). The state type's `edits.member` is a non-enumerable property, so
+`Object.keys(edits)` stays 4.6's four and `tests/state.test.mjs` passes unchanged; the editor reads it as any hook. A node
+whose id holds `->` needed no engine change: selection, F2 and Delete already hand its geometry id to `rename` and `remove`,
+which `tests/type-hooks.html` now pins.
+
 | Option, the member hook | For | Against |
 |---|---|---|
 | **(a) `edits.member` in `src/typed/edit.js`, read before the panel; 4.6's wrap moves onto it (recommended)** | No core byte; every type's rows go through one path; the state type loses its own listeners | Two places read a member row: the hook, then the panel's `member` |
