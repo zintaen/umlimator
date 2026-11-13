@@ -23,7 +23,7 @@
    decision, [/ /] and [\ \] input/output, [[ ]] a predefined process, [( )] a database, (( )) a connector; doc,
    manual-input and delay by @{ shape: ... } only, with the aliases Mermaid's page lists. Mermaid's other shapes are read
    as processes, approximated. A link is a flow; one with no arrowhead, dotted, thick, or with a circle or cross end is
-   approximated, <--> is two flows, ~~~ is not read. A subgraph's nodes are read, the group is not (row 21 has none). */
+   approximated, <-->, o--o and x--x are two flows, ~~~ is not read. A subgraph's nodes are read, the group is not (row 21 has none). */
 const MF_LIMIT = 1 << 20; // characters; a flowchart a person writes is a few kilobytes
 const MF_FLOWS = 100000; // the most links read: a & b & ... --> c & d & ... makes the product of its groups (R2)
 const MF_VIEW = 'flowchart'; // the view's id when the source does not name it, as the importer's
@@ -51,7 +51,7 @@ const MF_NODE = /\s*([\p{L}\p{N}_$]+(?:[.-][\p{L}\p{N}_$]+)*)/uy; // a node's id
 const MF_NAME = /^[\p{L}\p{N}_$]+(?:[.-][\p{L}\p{N}_$]+)*$/u;
 const MF_PLAIN = /\s*([<ox]?(?:-{2,}[->ox]|={2,}[=>ox]|-?\.+-[>ox]?|~{3,}))/y; // a link with no text in it
 const MF_OPEN = /\s*([<ox]?(?:--|==|-\.))\s*/y; // a link's start, its text after it (-- text -->)
-const MF_PIPE = /\s*(?:\|([^|]*)\|)?/y;
+const MF_PIPE = /\s*(?:\|("[^"]*"|[^|]*)\|)?/y; // a quoted text may hold |
 const MF_EDGE_ID = /\s*([^\s"@&|]+)@(?=[^{"])/y; // A e1@--> B
 // statements Mermaid reads and this reader does not; the importer passes over the same words (FLOW_QUIET)
 const MF_QUIET = /^(classDef|class|style|linkStyle|click|direction|accTitle|accDescr)(?![\p{L}\p{N}_])/u;
@@ -128,8 +128,9 @@ function mfFields(s, i) {
   return null;
 }
 
-// a node at i: { id, label, type, odd, fields, cls, end }, or null (the importer's fnode, with @{ } read too)
-function mfNode(s, i) {
+// a node at i: { id, label, type, odd, fields, cls, end }, or null (the importer's fnode, with @{ } read too). find is
+// the statement's indexOf, which remembers where each string was not found, so unclosed brackets cost one scan (R2)
+function mfNode(s, i, find) {
   MF_NODE.lastIndex = i;
   const n = MF_NODE.exec(s);
   if (!n) return null;
@@ -137,8 +138,8 @@ function mfNode(s, i) {
   i = out.end;
   for (const [o, c, type, odd] of MF_BRACKETS) {
     if (!s.startsWith(o, i)) continue;
-    const q = s[i + o.length] === '"' ? s.indexOf('"', i + o.length + 1) : -1;
-    const k = s.indexOf(c, q >= 0 ? q + 1 : i + o.length);
+    const q = s[i + o.length] === '"' ? find('"', i + o.length + 1) : -1;
+    const k = find(c, q >= 0 ? q + 1 : i + o.length);
     if (k > 0) { out.label = s.slice(i + o.length, k); out.type = type || 'flow.Process'; out.odd = type ? null : odd; i = k + c.length; break; }
   }
   if (out.label === undefined && s.startsWith('@{', i)) {
@@ -156,11 +157,17 @@ function mfNode(s, i) {
 
 // node groups (a & b) joined by links, or null: the importer's statement()
 function mfStatement(s) {
-  const groups = [], links = [];
+  const groups = [], links = [], miss = new Map();
+  const find = (c, from) => {
+    if (from >= (miss.get(c) ?? Infinity)) return -1;
+    const k = s.indexOf(c, from);
+    if (k < 0) miss.set(c, from);
+    return k;
+  };
   let i = 0;
   for (;;) {
     const grp = [];
-    for (let n; (n = mfNode(s, i));) {
+    for (let n; (n = mfNode(s, i, find));) {
       grp.push(n); i = n.end;
       const amp = /\s*&/y; amp.lastIndex = i;
       if (!amp.exec(s)) break;
@@ -215,10 +222,10 @@ function readMermaidFlowchart(text) {
   }
 
   const nodes = new Map(), links = [], subs = [], closed = new Set(), edgeIds = new Set();
-  let viewId, direction = 'down', started = false, hint = null, block = false, flows = 0, over = false;
+  let viewId, direction = 'down', started = false, hint = null, hintNo = 0, block = false, flows = 0, over = false;
   const statement = (s, no) => {
     if (!s) return;
-    const sg = /^subgraph\s+(?:([^\s["]+)\s*\[\s*(.*?)\s*\]|"(.+)"|(\S+)$|(.+))/.exec(s);
+    const sg = /^subgraph\s+(?:([^\s["]+)\s*\[([^\]]*)\]|"(.+)"|(\S+)$|(.+))/.exec(s);
     if (sg) { // its id as the importer's ident(): the name when it is plain, else a slug of its title
       const label = mfText(sg[2] ?? sg[3] ?? sg[4] ?? sg[5]), raw = (sg[1] ?? sg[4] ?? label).trim();
       subs.push({ id: /^[\p{L}\p{N}_.-]+$/u.test(raw) ? raw : raw.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'x', no });
@@ -275,12 +282,13 @@ function readMermaidFlowchart(text) {
         if (flows >= MF_FLOWS) { if (!over) { over = true; say(no, 'skipped', `over ${MF_FLOWS} links: the rest are not read`); } return; }
         flows++;
         if (how.length) say(no, 'approximated', `${a.id} ${lk.raw} ${b.id}: ${how.join(', ')}: read as ${two ? 'two flows' : 'a flow'}`);
-        links.push({ from: a.id, to: b.id, label, no, hint: hint ?? lk.id }); hint = null;
+        links.push({ from: a.id, to: b.id, label, no, hint: hint ?? lk.id, eid: hint == null && lk.id != null }); hint = null;
         if (two) links.push({ from: b.id, to: a.id, label, no });
       }
     });
-    hint = null;
   };
+  // a hint applies to the statement directly below it; one that statement does not take is reported, not carried on
+  const unused = () => { if (hint != null) say(hintNo, 'skipped', `%% id: ${hint}: the statement below it takes no id from it`); hint = null; };
 
   for (; i < lines.length; i++) {
     const no = i + 1, s = lines[i].trim();
@@ -291,7 +299,7 @@ function readMermaidFlowchart(text) {
       if (c.startsWith('{')) {
         say(no, 'skipped', 'a %%{init}%% directive: Mermaid\'s configuration is not read');
         if (!s.includes('}%%')) while (i + 1 < lines.length && !lines[++i].includes('}%%')); // over several lines: to its }%%
-      } else if (c.startsWith('id:')) hint = c.slice(3).trim();
+      } else if (c.startsWith('id:')) { unused(); hint = c.slice(3).trim(); hintNo = no; }
       continue;
     }
     if (!started) {
@@ -302,23 +310,24 @@ function readMermaidFlowchart(text) {
       const d = h[2];
       if (d === 'LR') direction = 'right';
       else if (d === 'BT' || d === 'RL') { direction = d === 'BT' ? 'down' : 'right'; say(no, 'approximated', `direction ${d} is drawn ${direction === 'down' ? 'top to bottom' : 'left to right'}`); }
-      for (const x of mfSplit(s.slice(h[0].length))) statement(x, no);
+      for (const x of mfSplit(s.slice(h[0].length))) { statement(x, no); unused(); }
       continue;
     }
-    for (const x of mfSplit(s)) statement(x, no);
+    for (const x of mfSplit(s)) { statement(x, no); unused(); }
   }
+  unused();
   if (!started) { say(1, 'skipped', 'not a Mermaid flowchart: nothing read'); return empty(); }
   for (const sg of subs) say(sg.no, 'approximated', `subgraph ${sg.id} is never closed: read to the end`);
 
   // ids: nodes by their names first, a subgraph's id naming none (the importer's box); then the links in order
   const used = new Set(), next = new Map();
-  const take = (h, base, no, what) => {
+  const take = (h, base, no, what, how = '%% id:') => {
     if (h != null && h !== '') {
       const t = mfId(h);
-      if (t !== h) say(no, 'approximated', `%% id: ${h}: an id holds no "->", so it is ${t}`);
+      if (t !== h) say(no, 'approximated', `${how} ${h}: an id holds no "->", so it is ${t}`);
       if (!used.has(t)) { used.add(t); return t; }
       const id = mfFree(used, next, base); used.add(id);
-      say(no, 'approximated', `%% id: ${t} is taken, so ${what} is ${id}`);
+      say(no, 'approximated', `${how} ${t} is taken, so ${what} is ${id}`);
       return id;
     }
     const id = mfFree(used, next, base); used.add(id);
@@ -337,7 +346,7 @@ function readMermaidFlowchart(text) {
     const bad = [l.from, l.to].find(x => !idOf.has(x));
     if (bad) { say(l.no, 'skipped', `${l.from} --> ${l.to}: ${bad} is a subgraph, which is not read`); continue; }
     const from = idOf.get(l.from), to = idOf.get(l.to);
-    const e = { id: take(l.hint, mfId(`${from}-${to}`), l.no, `${l.from} --> ${l.to}`), type: 'flow.Flow', from, to };
+    const e = { id: take(l.hint, mfId(`${from}-${to}`), l.no, `${l.from} --> ${l.to}`, l.eid ? 'the edge id' : undefined), type: 'flow.Flow', from, to };
     if (l.label !== undefined) e.label = l.label;
     edges.push(e);
   }
@@ -362,7 +371,7 @@ function writeMermaidFlowchart(model, viewId) {
   const out = [], notWritten = [], skip = x => notWritten.push(`${flat(x.id)} (${flat(x.type)})`), lose = (id, what) => notWritten.push(`${flat(id)}: ${flat(what)}`);
   const title = String(has(view.title) ? view.title : m.title ?? '');
   if (has(title)) out.push('---', `title: ${/^[\p{L}\p{N}][\p{L}\p{N} _.,()-]*$/u.test(title) && !title.endsWith(' ') ? title : JSON.stringify(title)}`, '---');
-  if (view.id !== MF_VIEW) { if (/[\r\n]/.test(view.id)) lose(view.id, "the view's id, which has a line break"); else out.push(`%% id: ${view.id}`); }
+  if (has(view.id) && view.id !== MF_VIEW) { if (/[\r\n]/.test(view.id)) lose(view.id, "the view's id, which has a line break"); else out.push(`%% id: ${view.id}`); }
   out.push(`flowchart ${view.direction === 'right' ? 'LR' : 'TD'}`);
 
   const byId = new Map();

@@ -202,7 +202,9 @@ test('text over the size limit is refused with a report; links past the cap are 
     'flowchart TD\n' + Array.from({ length: 60000 }, (_, k) => `a${k % 300}-->|x|b${k % 7}`).join('\n'), 'flowchart TD\na -- ' + '.'.repeat(1000000), 'flowchart TD\na -- ' + '-x'.repeat(500000),
     'flowchart TD\na -. ' + '..-'.repeat(330000), 'flowchart TD\n' + 'a["'.repeat(330000), 'flowchart TD\n' + 'a[ & '.repeat(200000), 'flowchart TD\n' + 'A@{ '.repeat(250000),
     'flowchart TD\n' + ';'.repeat(1000000), 'flowchart TD\n' + 'a-'.repeat(500000), 'flowchart TD\nA ' + ' '.repeat(1000000) + '-- x', 'flowchart TD\n' + 'a --> b\n'.repeat(130000),
-    'flowchart TD\n' + 'x@--> '.repeat(170000), 'flowchart TD\nconstructor --> __proto__\n__proto__@{ shape: constructor }\nhasOwnProperty --> toString\n'];
+    'flowchart TD\n' + 'x@--> '.repeat(170000), 'flowchart TD\nsubgraph a[' + ' '.repeat(1000000) + 'x',
+    'flowchart TD\n' + Array.from({ length: 80000 }, (_, k) => `A${k}([) `).join('& ') + ' --> Z', 'flowchart TD\n' + Array.from({ length: 80000 }, (_, k) => `A${k}[[x] `).join('& ') + ' --> Z',
+    'flowchart TD\nconstructor --> __proto__\n__proto__@{ shape: constructor }\nhasOwnProperty --> toString\n'];
   const cpu = f => { const c = process.cpuUsage(), out = f(), u = process.cpuUsage(c); return [out, (u.user + u.system) / 1000]; };
   const best = f => { let [out, ms] = cpu(f); for (let i = 0; i < 2 && ms >= 1000; i++) ms = Math.min(ms, cpu(f)[1]); return [out, ms]; };
   let worst = 0;
@@ -270,4 +272,17 @@ test('the writer names in comments what it cannot write, and the reader passes o
   const classes = json('../examples/sales-classes.json');
   assert.equal(write(classes), '%% not written: the model, which has no flowchart view\n');
   assert.match(write(classes, classes.views[0].id), /^%% not written: view .*, not a flowchart one\n$/);
+});
+
+test('an %% id: the statement below does not take is reported, not carried on; an edge id taken by a node is named so; a quoted link text may hold |', () => {
+  for (const line of ['style A fill:red', 'subgraph s', 'end', 'A -->', 'direction LR']) {
+    const r = read(`flowchart LR\n%% id: foo\n${line}\nA --> B`);
+    assert.deepEqual(r.model.edges.map(e => e.id), ['A-B'], line);
+    assert.deepEqual(r.report[0], { line: 2, status: 'skipped', message: '%% id: foo: the statement below it takes no id from it' }, line);
+  }
+  assert.deepEqual(read('flowchart LR\n%% id: foo\n%% id: bar\nA --> B\n%% id: baz').report.map(x => x.line), [2, 5]);
+  // Mermaid draws e1@{ } above its link as a node e1, so the link's id is taken
+  assert.deepEqual(read('flowchart TD\ne1@{ animate: true }\nA e1@--> B').report.at(-1), { line: 3, status: 'approximated', message: 'the edge id e1 is taken, so A --> B is A-B' });
+  assert.deepEqual(read('flowchart TD\nA -->|"a|b"| B').model.edges, [{ id: 'A-B', type: 'flow.Flow', from: 'A', to: 'B', label: 'a|b' }]);
+  assert.equal(write({ nodes: [], edges: [], views: [{ diagram: 'flowchart', nodeIds: [] }] }), 'flowchart TD\n'); // a view with no id
 });

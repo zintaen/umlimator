@@ -623,7 +623,7 @@ or inline, subgraphs, `;`), in JavaScript, against Mermaid 12.3.0's flowchart pa
 | `@{ shape: delay }` | `flow.Delay` |
 | `((text))`, `@{ shape: circle }` | `flow.Connector` |
 | `{{ }}`, `[/ \]`, `[\ /]`, `>]`, `(((`, other `@{ shape }` | `flow.Process`, approximated |
-| `-->`, `---`, `-.->`, `==>`, `<-->` | a flow; a line with no arrow, dotted or thick approximated; `<-->` two flows |
+| `-->`, `---`, `-.->`, `==>`, `<-->` | a flow; a line with no arrow, dotted or thick approximated; `<-->`, `o--o`, `x--x` two flows |
 | `subgraph … end` | its nodes read; the group skipped (row 21 has none) |
 | `TB`, `TD`, `LR`; `RL`, `BT` | `direction` `down`, `right`; the last two approximated |
 | `classDef`, `class`, `style`, `linkStyle`, `click`, `~~~` | skipped |
@@ -638,7 +638,10 @@ every node and link the importer reads has the importer's id, but the importer's
 reader reports. The reader also reads Mermaid's edge ids (`A e1@--> B`, the link's id; `e1@{ animate: true }` reported) and
 the shape aliases of Mermaid's `shapes.ts`; `direction` outside a subgraph is reported, not read (Mermaid documents it in
 subgraphs only); links past 100,000 (a product of `&` groups) are not read, reported once. A comment (`uml.Comment`) is
-not written: Mermaid's flowchart has no note.
+not written: Mermaid's flowchart has no note. A link whose tail is `<`, `o` or `x` (`<-->`, `o--o`, `x--x`) is read as
+two flows, approximated. An `%% id:` the statement below it does not take (a style line, a subgraph, a line not read) is
+reported and goes no further. `e1@{ … }` above its link is a node `e1`, as Mermaid draws it, and the link's id is reported
+as taken. A quoted link text in pipes may hold `|` (`-->|"a|b"|`), which the importer does not read.
 
 ### 8.3 Structurizr JSON (`src/readers/structurizr.js`)
 
