@@ -216,7 +216,7 @@ test("§13's collisions: a state named start or end keeps its name; derived ids 
   assert.deepEqual(canon(read(text).model), canon({ ...m, root: 'v', views: [{ id: 'v', diagram: 'uml.state-machine', nodeIds: ['start', 'go', 'end'] }] }));
 });
 
-test('text over the size limit is refused with a report; hostile input reads in under a second and never throws (R2)', () => {
+test('text over the size limit is refused with a report; hostile input reads in under a second and never throws (R2) (timed)', () => {
   const big = read('stateDiagram-v2\n' + 'x'.repeat(1 << 20));
   assert.deepEqual([big.model.nodes, big.report.map(x => x.status)], [[], ['skipped']]);
   assert.match(big.report[0].message, /over the limit/);

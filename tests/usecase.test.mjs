@@ -244,7 +244,7 @@ test('save and reopen (DoD 6): a 30-step session undoes and redoes to byte-ident
   assert.equal(describe(reopened, 'shopping'), describe(JSON.parse(seen[30]), 'shopping'));
 });
 
-test('P1 (S15): on 50 elements and 60 lines, a full layout under 1 s, and a use case renamed laid out and drawn under 100 ms (CPU, best of five)', () => {
+test('P1 (S15): on 50 elements and 60 lines, a full layout under 1 s, and a use case renamed laid out and drawn under 100 ms (CPU, best of five) (timed)', () => {
   const nodes = [{ id: 'sys', type: 'uml.Subject', label: 'Shop' }], edges = [];
   for (let i = 0; i < 8; i++) nodes.push(A(`a${i}`, `Actor ${i}`));
   for (let i = 0; i < 41; i++) nodes.push(U(`u${i}`, `Use case number ${i}`, { parent: 'sys', ...(i % 5 ? {} : { members: [{ id: `u${i}.p`, type: 'uml.ExtensionPoint', label: 'point' }] }) }));

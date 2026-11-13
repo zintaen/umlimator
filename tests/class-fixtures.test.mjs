@@ -77,7 +77,7 @@ test('the stress fixture lays out with no overlap, no line through a node and no
   assert.ok(a.h < b.h / 4, 'present.person.rows: 8 caps the 60-member class in one view, which the other shows whole');
 });
 
-test('performance (risks.md P1): the stress fixture lays out in under 1 s, and an edit that moves nothing is laid out and drawn (SVG markup) in under 100 ms', () => {
+test('performance (risks.md P1): the stress fixture lays out in under 1 s, and an edit that moves nothing is laid out and drawn (SVG markup) in under 100 ms (timed)', () => {
   const runs = [];
   for (let i = 0; i < 3; i++) { // the first run is cold (the JIT warms up on it); a page lays out warm after its first draw
     const memos = {}, t0 = performance.now(); mapContext(STRESS, { memos }).buildGeo('all'); const full = performance.now() - t0;

@@ -87,7 +87,7 @@ test('print(parse(x)) is stable for 500 generated texts; each is read or refused
   assert.ok(read > 100 && refused > 100, `${read} read, ${refused} refused`);
 });
 
-test('linear: 4,096 characters of nested brackets and of slashes read in a few milliseconds; no regular expression in the parser', () => {
+test('linear: 4,096 characters of nested brackets and of slashes read in a few milliseconds; no regular expression in the parser (timed)', () => {
   const deep = `t [${'('.repeat(2045)}${')'.repeat(2045)}]`, wide = 'a('.repeat(1000) + '/'.repeat(2000), flat = '[]'.repeat(2048);
   for (const x of [deep, wide, flat]) { let best = Infinity;
     for (let k = 0; k < 3; k++) { const t0 = performance.now(); parse(x); best = Math.min(best, performance.now() - t0); }

@@ -269,7 +269,7 @@ function stress() {
   const ids = nodes.filter(n => n.type !== 'uml.Lifeline').map(n => n.id);
   return { schemaVersion: 2, nodes, edges, views: [{ id: 'all', diagram: 'uml.interaction-overview', title: 'Stress', nodeIds: ids }, ...views] };
 }
-test('performance (§17, risks.md P1): 40 nodes, 50 flows and 10 inline interactions lay out in under 1 s; a flow\'s guard edited, or a property, is laid out and drawn in under 100 ms; each inline time axis in under 5 ms', () => {
+test('performance (§17, risks.md P1): 40 nodes, 50 flows and 10 inline interactions lay out in under 1 s; a flow\'s guard edited, or a property, is laid out and drawn in under 100 ms; each inline time axis in under 5 ms (timed)', () => {
   const S = stress(), V = VIEW(S);
   assert.deepEqual([V.nodeIds.length, S.edges.length, V.nodeIds.filter(id => S.nodes.find(n => n.id === id).type === 'uml.Interaction').length], [40, 50, 10]);
   assert.deepEqual(errors(S), []);
