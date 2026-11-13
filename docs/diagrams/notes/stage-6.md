@@ -1,6 +1,6 @@
 # Stage 6 design note: profile and timing
 
-Status: **proposed**, for the maintainer to approve before work package 6.0 starts. Written against `main` at 5f20041
+Status: **approved** by the maintainer 13 Nov 2026, with every recommendation of §16 taken; the maintainer approves it before work package 6.0 starts. Written against `main` at 5f20041
 (0.21.0's release merged, #228; stage 5's 5.0 to 5.6 merged). Stage 5's open branches were read for what they touch, not
 for what they do: `stage5-followups` (the review's fixes on 5.4 to 5.6), `stage5-docs` (5.8) and `stage5-elk-trial` (5.7,
 a scratch branch). Symbols are named, not line numbers. Revised after two reviews (feasibility against `src/`, fidelity
