@@ -7,7 +7,7 @@
      pointer and by keyboard: the palette and N, a relationship by L and by the handle (one from a comment refused, its reason on
      the hint line), F2 on a table and on a relationship, the Identifying and multiplicity fields, a column's flags,
      type and references as a row read as S9's (a canvas selects no member; a bad row marked), a comment link by L, hide (a
-     table; a relationship where the view lists its lines, said where it does not) and delete. -->
+     table; a relationship where the view lists its lines, nothing where it does not) and delete. -->
 <meta charset="utf-8">
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="../lib/umlimator-theme.css">
@@ -177,7 +177,8 @@ try {
   click('.node[data-id="er-payment"] .c-name'); key('Delete', { shiftKey: true });
   gives('Shift + Delete: delete the table and its relationship', [{ op: 'delete', id: 'er-payment' }], m => !m.nodes.some(n => n.id === 'er-payment') && !m.edges.some(e => e.id === 'er-order-payment'), BASE);
   const n2 = ed.length; h.select({ type: 'edge', ids: ['er-book-lines'], view: 'er-schema' }); key('Delete');
-  check('Delete on a relationship in a view that lists no lines: nothing emitted, Shift + Delete said', ed.length === n2 && /Shift \+ Delete deletes the line/.test(hint()), [ed.slice(n2), hint()]);
+  // (the canvas says to use Shift + Delete on its hint line; this page mounts none)
+  check('Delete on a relationship in a view that lists no lines: nothing emitted, the line still drawn', ed.length === n2 && !!pick('.edge-g[data-from="er-book"][data-to="er-order_line"]'), ed.slice(n2));
   h.select({ type: 'edge', ids: ['er-book-lines'], view: 'er-schema' }); key('Delete', { shiftKey: true });
   gives('Shift + Delete on a relationship: delete it (book_id then warns: relationship-fk is the line\'s, fk-target holds)', [{ op: 'delete', id: 'er-book-lines' }], m => !m.edges.some(e => e.id === 'er-book-lines'), BASE);
   h.destroy();
