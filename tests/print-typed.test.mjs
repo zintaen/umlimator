@@ -42,7 +42,7 @@ test('a type\'s word and rows: the element\'s kind and what is listed for it, es
 // of a typed view with their old heading, "Cards". A change to one of these examples or to the tables changes its hash.
 const PINNED = {
   'bookshop.json': 'ba6d7e080f9e1964', 'bike-share.json': '40954b2d102fae0b', 'clinic.json': 'a8cdb971d5d07425', 'monorepo.json': '4e2638724ead87d6', 'weather.json': 'c9ada5f273e01b0c', 'assistant.json': '9196bd5b01316ce2', 'shapes.json': '49fdf9fb182b383b', 'states.json': '5fe79fd4bd3d4b2f',
-  'sales-classes.json': 'c2f9bf731cb7392c', 'order-objects.json': '377e5f3b2a3538c4', 'bookshop-packages.json': '8d5ae96f14c5e2cd',
+  'sales-classes.json': 'c2f9bf731cb7392c', 'order-objects.json': '377e5f3b2a3538c4', 'bookshop-packages.json': '61f60b0985090f3d', // 6.7: the profile's row and its application's
 };
 
 test('maps\' tables are unchanged; a class, object or package view\'s are unchanged but for the heading, "Elements"', () => {

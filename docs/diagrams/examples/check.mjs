@@ -1,8 +1,9 @@
 // Checks the target examples against docs/diagrams/model.md: node docs/diagrams/examples/check.mjs
 // Structure only: the library's typed core checks (ids, types, ownership, ends), then what model.md says of each type
-// (diagram names, props that name elements, timing order), then a registered type's own validators' errors (a sequence's
-// order is the type's: notes/spike-sequence.md risk 4.8). It draws nothing. An example whose type draws moves to examples/
-// (plan.md §2, item 10) and is listed in MOVED, where it is checked as before.
+// (diagram names, props that name elements), then a registered type's own validators' errors (a sequence's order is the
+// type's: notes/spike-sequence.md risk 4.8; a timing view's changes and constraints are the timing type's, 6.6). It
+// draws nothing. An example whose type draws moves to examples/ (plan.md §2, item 10) and is listed in MOVED, where it is
+// checked as before.
 // What a registered type's props
 // name comes from its own declaration (the registry's `refs`); model.md's hand list covers the types not registered yet.
 import { readdirSync, readFileSync } from 'node:fs';
@@ -18,6 +19,8 @@ import '../../../src/uml/overview.js'; // registers uml.interaction-overview
 import '../../../src/uml/component.js'; // registers uml.component
 import '../../../src/uml/deployment.js'; // registers uml.deployment
 import '../../../src/uml/composite.js'; // registers uml.composite-structure
+import '../../../src/uml/profile.js'; // registers uml.profile
+import '../../../src/uml/timing.js'; // registers uml.timing
 
 const DIAGRAMS = ['uml.class', 'uml.object', 'uml.package', 'uml.composite-structure', 'uml.component', 'uml.deployment', 'uml.profile',
   'uml.use-case', 'uml.activity', 'uml.state-machine', 'uml.sequence', 'uml.communication', 'uml.interaction-overview', 'uml.timing',
@@ -31,7 +34,8 @@ const REF = ['replyTo', 'attachedTo', 'references', 'container'], REFS = ['conve
 export const MOVED = { '01-class.json': '../../../examples/sales-classes.json', '02-object.json': '../../../examples/order-objects.json', '03-package.json': '../../../examples/bookshop-packages.json', '11-sequence.json': '../../../examples/checkout-sequence.json', '12-communication.json': '../../../examples/checkout-communication.json',
   '08-use-case.json': '../../../examples/shopping-use-cases.json', '09-activity.json': '../../../examples/fulfil-activity.json', '10-state-machine.json': '../../../examples/order-states.json',
   '13-interaction-overview.json': '../../../examples/buy-book-overview.json',
-  '04-composite-structure.json': '../../../examples/order-service-structure.json', '05-component.json': '../../../examples/bookshop-components.json', '06-deployment.json': '../../../examples/bookshop-deployment.json' };
+  '04-composite-structure.json': '../../../examples/order-service-structure.json', '05-component.json': '../../../examples/bookshop-components.json', '06-deployment.json': '../../../examples/bookshop-deployment.json',
+  '07-profile.json': '../../../examples/bookshop-profile.json', '14-timing.json': '../../../examples/bookshop-timing.json' };
 
 // all 28 target examples, those still here and those that moved, in file order: [name, its URL]
 export function targets() {
@@ -49,7 +53,6 @@ export function check(model, expected) {
   arr(model.nodes).forEach(n => add(n)); arr(model.edges).forEach(e => add(e));
   views.forEach(v => { inline(v).forEach(e => add(e)); arr(v.fragments).forEach(f => add(f)); arr((v.timeline || {}).constraints).forEach(c => add(c)); });
   const has = (id, what) => { if (id != null && !ids.has(id)) say(`${what}: ${JSON.stringify(id)} is not an element`); };
-  const N = new Map(arr(model.nodes).map(n => [n.id, n]));
   arr(model.edges).forEach(e => { if (e && e.type == null) ['from', 'to'].forEach(k => has(e[k], `edge ${e.id}.${k}`)); }); // an untyped edge: the core leaves it to the map's checks
   const T = diagramOf({ diagram: expected }), declared = T && T.refs; // a registered type's refs, else the hand list
   all.forEach(x => { const p = x.props || {}; // props that name other elements, or a view
@@ -64,13 +67,6 @@ export function check(model, expected) {
     if (v.parent != null && !vids.has(v.parent)) say(`${at}: parent ${v.parent} is not a view`);
     const VT = diagramOf(v); // a registered type's rules: its errors (a sequence's operands, order and covers among them)
     if (VT && VT.validate && VT.validate.length >= 2) VT.validate(model, v).forEach(p => { if (p.level === 'error') say(`${p.path}: ${p.message}`); });
-    const t = v.timeline; // a timing view: each change is on a lifeline of the view, in one of its states, no earlier than the one before
-    if (t) { const last = {}, changes = new Set(arr(t.changes).map(c => c.id));
-      arr(t.changes).forEach(c => { const n = arr(v.nodeIds).includes(c.lifeline) && N.get(c.lifeline);
-        if (!n) say(`change ${c.id}: ${JSON.stringify(c.lifeline)} is not a lifeline of ${at}`);
-        else if (!arr((n.props || {}).states).includes(c.state)) say(`change ${c.id}: ${JSON.stringify(c.state)} is not one of ${c.lifeline}'s states`);
-        if (!(c.at >= (last[c.lifeline] ?? -Infinity))) say(`change ${c.id}: its time is before the change before it`); last[c.lifeline] = c.at; });
-      arr(t.constraints).forEach(c => ['from', 'to'].forEach(k => { if (c[k] != null && !changes.has(c[k])) say(`constraint ${c.id}.${k}: ${JSON.stringify(c[k])} is not a change`); })); }
   });
   all.forEach(n => { if (n.opensView != null && !vids.has(n.opensView)) say(`${n.id} opens ${n.opensView}, which is not a view`); });
   const first = views[0] && views[0].diagram;

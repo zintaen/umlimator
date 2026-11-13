@@ -9,7 +9,10 @@
      line ends (5.8, notes/stage-5.md §9.4): on the component, deployment and composite structure examples and the stress
      fixtures' edge cases, each line kind ends as the table says (the socket, the delegation's open arrow, the
      manifestation's and the «deploy» line's, a realization's triangle or a ball's plain stem, the role binding's none),
-     dashed where it says, an arrowhead's tip on the outline or the port it points to. tests/embed.py
+     dashed where it says, an arrowhead's tip on the outline or the port it points to. And stage 6's (6.6, notes/stage-6.md
+     §4.1, §11): on the profile example and the stress fixture's edge cases, an extension ends in a filled triangle the
+     line's colour, solid; a profile application in an open arrowhead, dashed, labelled «apply»; a generalization's hollow
+     triangle and a dependency's open arrow as the class type's; each tip on the outline it points to. tests/embed.py
      opens this in headless Chrome and reads <pre id="result">. -->
 <meta charset="utf-8">
 <link rel="icon" href="data:,">
@@ -31,6 +34,7 @@ import '../src/uml/overview.js';
 import '../src/uml/component.js';
 import '../src/uml/deployment.js';
 import '../src/uml/composite.js';
+import '../src/uml/profile.js';
 import { layout } from '../src/map/api.js';
 import { mapContext } from '../src/map/context.js';
 const out = { ok: [], fail: [] };
@@ -202,6 +206,32 @@ try {
   const ends5 = [...seen5].sort();
   check('stage 5: the socket, the delegation\'s open arrow, the manifestation\'s and the «deploy» line\'s, a realization\'s triangle and a ball\'s stem, the role binding\'s none, each drawn',
     ['uml.Usage socket', 'uml.Connector open', 'uml.Manifestation open', 'uml.Deployment open', 'uml.InterfaceRealization triangle', 'uml.InterfaceRealization none', 'uml.RoleBinding none'].every(k => ends5.includes(k)), ends5);
+  // ---- stage 6's line ends (6.6, §4.1): the extension's filled triangle, «apply»'s dashed open arrow
+  const WANT6 = { 'uml.Extension': ['filled-triangle', false], 'uml.ProfileApplication': ['open', true], 'uml.Generalization': ['triangle', false], 'uml.Dependency': ['open', true] }, seen6 = new Set();
+  for (const [path, vid] of [['../examples/bookshop-profile.json', 'profile'], ['profile-stress.json', 'edge-cases']]) {
+    const f = `${path.split('/').pop().slice(0, -5)} ${vid}`, model = await (await fetch(path)).json(), g = layout(model, vid);
+    for (const theme of ['light', 'dark']) for (const [fname, family] of Object.entries(FONTS)) {
+      document.documentElement.dataset.theme = theme; el.style.setProperty('--um-sans', family);
+      el.innerHTML = measured(hostMeasure(el), () => mapContext(model).buildView(vid).markup); const svg = el.querySelector('svg'), off = [];
+      svg.querySelectorAll('.edge-g').forEach(gr => { const ge = g.edges[+gr.dataset.i], e = model.edges.find(x => x.id === ge.id) || {}, path = gr.querySelector('path.edge'), name = `${e.type} ${ge.id}`;
+        if (!WANT6[e.type]) { off.push(`${name}: a line of no kind checked here`); return; }
+        const [want, dashed] = WANT6[e.type], ref = path.getAttribute('marker-end'), mk = ref && svg.querySelector(ref.slice(4, -1));
+        const kind = mk ? mk.id.replace(/^g\d+-/, '').replace(/-d$/, '') : 'none'; seen6.add(`${e.type} ${kind}`);
+        if (kind !== want) { off.push(`${name}: ends in ${kind}, not ${want}`); return; }
+        if (!!path.getAttribute('stroke-dasharray') !== dashed) off.push(`${name}: ${dashed ? 'not dashed' : 'dashed'}`);
+        const head = mk.querySelector('path'), r = head.getBBox();
+        if (Math.abs(r.x + r.width - +mk.getAttribute('refX')) > .01 || Math.abs(r.y + r.height / 2 - +mk.getAttribute('refY')) > .01) off.push(`${name}: its ${kind}'s tip is not its end`);
+        if (kind === 'filled-triangle' && getComputedStyle(head).fill !== getComputedStyle(path).stroke) off.push(`${name}: its triangle is not filled with the line's colour`);
+        if (e.type === 'uml.ProfileApplication' && !gr.textContent.includes('«apply»')) off.push(`${name}: no «apply»`);
+        const d = path.getAttribute('d').match(/-?\d+(\.\d+)?/g).map(Number), q = pt(svg, d.at(-2), d.at(-1));
+        const n = svg.querySelector(`.node[data-id="${CSS.escape(gr.dataset.to)}"]`), fam = svg.querySelector(`.family[data-family="${CSS.escape(gr.dataset.to)}"]`);
+        const b = n ? [n.querySelector(':scope > .n-body'), n.querySelector(':scope > .n-mask')] : fam ? [...fam.querySelectorAll('.family-box')] : [];
+        if (!b.some(x => { if (!x || !x.isPointInStroke) return false; x.style.strokeWidth = '3px'; const on = x.isPointInStroke(q); x.style.strokeWidth = ''; return on; })) off.push(`${name}: its tip is off ${gr.dataset.to}'s outline`); });
+      check(`${f}, ${theme}, ${fname}: each line ends as §4.1 says, dashed where it says, its tip on what it points to`, svg.querySelectorAll('.edge-g').length === g.edges.length && !off.length, off.slice(0, 8));
+    }
+  }
+  const ends6 = [...seen6].sort();
+  check('stage 6: the extension\'s filled triangle, the profile application\'s open arrow, each drawn', ['uml.Extension filled-triangle', 'uml.ProfileApplication open'].every(k => ends6.includes(k)), ends6);
   document.documentElement.dataset.theme = 'light'; el.style.removeProperty('--um-sans');
 } catch (e) { out.fail.push('threw: ' + (e && e.stack || e)); }
 const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);

@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 2,
+  "title": "Profile, minimal",
+  "nodes": [
+    {"id":"prof","type":"uml.Profile","label":"Persistence"},
+    {"id":"mc","type":"uml.MetaclassReference","label":"Class","parent":"prof"},
+    {"id":"st","type":"uml.Stereotype","label":"entity","parent":"prof","members":[{"id":"st.table","type":"uml.Property","label":"table","props":{"valueType":"String"}}]},
+    {"id":"pkg","type":"uml.Package","label":"shop"},
+    {"id":"cls","type":"uml.Class","label":"Order","parent":"pkg","props":{"stereotypes":["entity"],"tags":{"entity":{"table":"orders"}}}}
+  ],
+  "edges": [
+    {"id":"ext","type":"uml.Extension","from":"st","to":"mc"},
+    {"id":"app","type":"uml.ProfileApplication","from":"pkg","to":"prof"}
+  ],
+  "views": [
+    {"id":"v","diagram":"uml.profile","nodeIds":["prof","mc","st","pkg","cls"]}
+  ]
+}
