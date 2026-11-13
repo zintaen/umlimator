@@ -12,7 +12,8 @@ audit's repros (tooling.json's mcp machines), which failed before:
 - clear() takes the assistant's story off, and leaves a story the reader started.
 And C10 (2.6): an object model and a package model, served the same way, answer its read tools in their own words and show a
 highlight on the diagram the page draws; and so do a use case, an activity, a state machine and an interaction overview model
-(4.10).
+(4.10), a component, a deployment and a composite structure model (5.8), and a class, a sequence and a communication model
+(C10's package).
 
   python3 tests/mcp.py
 
@@ -274,6 +275,10 @@ for f, view, refs, first, cards, boxes in (("order-objects", "snapshot", ["order
                                           ("fulfil-activity", "fulfil", ["in-stock", "call-payment"], "Fulfilling an order: an activity diagram of 17 nodes, 19 flows and 3 partitions.", 20, 0),
                                           ("order-states", "order-life", ["placed", "cancelled"], "An order's life: a state machine diagram of 21 elements and 23 transitions.", 19, 4),
                                           ("buy-book-overview", "buy-book", ["ref-find", "sd-queue"], "Buying a book: an interaction overview diagram of 10 nodes and 11 flows.", 10, 0),
+                                          # C10's package (0.22.0): the class, sequence and communication types
+                                          ("sales-classes", "domain", ["customer", "order"], "Sales domain: a class diagram of 11 elements and 8 lines.", 10, 1),
+                                          ("checkout-sequence", "checkout-sequence", ["lifeline-api", "receipt"], "Checkout: a sequence diagram of 5 lifelines, 10 messages, 1 interaction use and 2 combined fragments.", 11, 0),
+                                          ("checkout-communication", "checkout-communication", ["lifeline-api", "receipt"], "Checkout: payment accepted: a communication diagram of 5 lifelines, 5 connectors and 9 messages.", 14, 0),
                                           # C10 for stage 5 (S18, 5.8): a component, a deployment and a composite structure model; a
                                           # component holding a component, a target holding what is deployed on it, the subject and an
                                           # open collaboration are boxes, a port and a part are nodes
@@ -295,6 +300,9 @@ for f, view, refs, first, cards, boxes in (("order-objects", "snapshot", ["order
         # the composite structure example's two parts typed by classes the model does not hold: its own warnings (part-type)
         warned = {"order-service-structure": ["part-type", "part-type"]}.get(f, [])
         ok(f"C10 · {f}: validate finds no problem" + (f" but its {len(warned)} warnings" if warned else ""), (lambda v: [p.get("rule") for p in v] == warned and all(p.get("level") == "warning" for p in v))(json.loads(tool("validate"))))
+        if f == "checkout-sequence":  # paths() in time order (C10): the messages that carry the shopper's checkout on to the receipt
+            got = [r.get("id") or r["ids"][0] for r in json.loads(tool("paths", view=view, **{"from": "lifeline-shopper", "to": "receipt"}))]
+            ok("C10 · checkout-sequence: paths runs in time order, message after message", got[5:] == ["m1", "m2", "m4", "m5", "m6"], got)
         tab, sid = chrome.open(url + "/")
         drawn = until(lambda: (lambda s: s if s and s["view"] == view and len(s["lit"]) == cards else None)(chrome.eval(sid, LOOK)))
         ok(f"C10 · {f}: the page draws the diagram: {cards} elements and {boxes} boxes (packages, a subject, composite states and their regions, components, nodes, a collaboration)", drawn and chrome.eval(sid, BOXES) == boxes, (drawn, chrome.eval(sid, BOXES)))
