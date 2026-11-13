@@ -22,7 +22,7 @@ Update this table in every pull request that belongs to the plan.
 | 2 | 0.19.0 | Object, package | Design note approved ([`notes/stage-2.md`](notes/stage-2.md)). 2.1 (6981b9a), 2.2 (5d8ddbe), 2.3 (9cce0e4), 2.4 (313c2b1), 2.5 (faf418f) and 2.6 (adc49b0) merged, with the Owner field's pin fix (1dc86f5). Released 12 Nov 2026 (af4a141, GitHub and npm latest); map-repo's pin does not move for it | #174, #183, #184, #185, #188, #190, #195, #196, #197 |
 | 3 | 0.20.0 | Sequence, communication | Design note approved ([`notes/stage-3.md`](notes/stage-3.md)). 3.0 (b17b678), 3.1 (7117a2e), 3.2 (9ddd4a7), 3.3 (b062d55, its gestures 3ab554d), 3.4 (a253447), 3.5 (d2ed722), 3.6 (417b4f1) and 3.7 (f98e317) merged, with the notes' changes elsewhere (b8e2315) and the router's speed flags (110a494). 3.8 (5e569b4) merged. Released 12 Nov 2026 (5fa66e9, GitHub and npm latest); map-repo pinned to it | #174, #177, #179, #180, #181, #182, #186, #187, #189, #191, #193, #194, #198, #199, #200 |
 | 4 | 0.21.0 | Use case, activity, state machine, interaction overview | Design note approved ([`notes/stage-4.md`](notes/stage-4.md)), every recommendation of §20 taken. 4.0 (857c5a0), 4.1 (6254765), 4.2 (436b9d9), 4.3 (01fc120), 4.4 (50b3294), 4.5 (798025c), 4.6 (c3d73cb), 4.7 (042721e), 4.8 (d1e7840) and 4.9 (79dcefa) merged, with maps' one card-shape style (c7fd8c4). In review: 4.10 (this PR); then the 0.21.0 release | #201, #202, #204, #205, #206, #207, #208, #209, #210, #211, #212, #213, (this PR) |
-| 5 | 0.22.0 | Component, deployment, composite structure | Design note approved ([`notes/stage-5.md`](notes/stage-5.md)), every recommendation of §18 taken; 5.0 next | (this PR) |
+| 5 | 0.22.0 | Component, deployment, composite structure | Design note approved ([`notes/stage-5.md`](notes/stage-5.md)), every recommendation of §18 taken. 5.0 (5ca0790) merged. In review: 5.1, 5.2 and 5.3; the ELK trial (5.7) under way | #215, #216, and the lanes' pull requests |
 | 6 | 0.23.0 | Profile, timing | Not started | |
 | Milestone 2 | 0.24.0 | ER, flowchart, data flow, information flow, C4 | Not started | |
 | Milestone 3 | 0.25.0 | SysML v1.7's four diagrams | Not started | |
@@ -50,6 +50,7 @@ All on 11 Nov 2026, by the maintainer. The options that were weighed are in `pro
 | D12 | Mermaid is the first text notation |
 | | Agents build this: the plan has no time estimates |
 | | 1.0.0 comes after all 28 types, when the maintainer says it is ready; after 0.27.0 the work goes on in 0.28.0 and later (13 Nov 2026) |
+| | Examples: one small example per type is the reference (gallery, fixtures, conformance); one linked Bookshop atlas is built from them (13 Nov 2026) |
 | | Maps draw in one card-shape style, the union of the c4 and uml notations; the `shapes` toggle and API are removed (13 Nov 2026, in 0.21.0) |
 
 ## What is in this folder
@@ -299,3 +300,10 @@ node docs/diagrams/examples/check.mjs         # the target examples match model.
   `shape` stays. A model that still has `shapes` loads, as any unknown field does. Typed diagrams keep their own
   notation (UML's shapes); later non-UML types reuse this shape set where their standard allows. It is its own work
   package after 4.1 (both edit `src/canvas/render.js`), in 0.21.0.
+- **13 Nov 2026 (examples).** The maintainer decided how the types' examples show: both. One small example per type
+  stays the gallery card, the CI fixture and the conformance reference, mostly the Bookshop, with a type taking its own
+  domain where the Bookshop is a stretch (SysML's e-bike). One flagship, the Bookshop atlas, is a single model whose
+  views are the Bookshop examples linked by drill-down (`opensView`): from C4 to components, deployment, classes and an
+  order's state machine; from the use cases to the activity and the sequence. It is assembled from the per-type files,
+  which share ids, with a check that it matches them. It grows with each release, with a full pass at 0.23.0 (the 14 UML
+  types) and after milestone 2 (`plan.md` §7).
