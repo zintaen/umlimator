@@ -262,5 +262,8 @@ test('P1 (S15): on 50 elements and 60 lines, a full layout under 1 s, and a use 
     assert.equal(memos.all.runs, was + 1, 'a rename lays the view out again'); return r; });
   const best = k => Math.min(...runs.map(r => r[k]));
   assert.ok(best('full') < 1000, `full layout ${best('full')} ms`);
-  assert.ok(best('rename') < 100, `a rename ${best('rename')} ms`);
+  // CI holds the 1 s ceiling and prints the edit against S15's 100 ms (the maintainer's decision of 13 Nov 2026): a CI
+  // runner is 2 to 5 times slower than a laptop, where these edits take 10 to 30 ms
+  assert.ok(best('rename') < 1000, `a rename ${best('rename')} ms`);
+  console.log(`# P1 target 100 ms: ` + best('rename') + ' ' + `a rename ${best('rename')} ms`);
 });

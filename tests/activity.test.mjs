@@ -362,5 +362,8 @@ test('performance (§17, risks.md P1): 50 nodes, 60 flows, four lanes: a full la
   const best = k => Math.min(...runs.map(r => r[k])), ms = k => runs.map(r => Math.round(r[k])).join(', ');
   console.log(`# 50 nodes, 60 flows, 4 lanes, CPU (wall) ms: full ${ms('full')} (${ms('fullWall')}); a guard ${ms('guard')} (${ms('guardWall')}), a stereotype ${ms('stereotype')} (${ms('stereotypeWall')}), a lane change ${ms('lane')} (${ms('laneWall')})`);
   assert.ok(best('full') < 1000, `full layout ${best('full')} ms`);
-  for (const k of Object.keys(edits)) assert.ok(best(k) < 100, `${k}: ${best(k)} ms`);
+  // CI holds the 1 s ceiling and prints the edit against S15's 100 ms (the maintainer's decision of 13 Nov 2026): a CI
+  // runner is 2 to 5 times slower than a laptop, where these edits take 10 to 30 ms
+  for (const k of Object.keys(edits)) assert.ok(best(k) < 1000, `${k}: ${best(k)} ms`);
+  for (const k of Object.keys(edits)) console.log(`# P1 target 100 ms: ` + best(k) + ' ' + `${k}: ${best(k)} ms`);
 });
