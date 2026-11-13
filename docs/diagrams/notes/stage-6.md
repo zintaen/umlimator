@@ -239,6 +239,34 @@ an error (Q2).
 | Applying | Stereotypes (list) on each element, as every type has it; tags by §5.7's fields |
 | Hide and delete | Delete hides a node; Shift + Delete deletes. A stereotype deleted does not rewrite the elements that name it: they are warned (`stereotype-unknown`), as a renamed one is (M8). A stereotype's compartment and its tag rows cannot be hidden on their own (S17's reasoning: a row with no cause would be shown or not by a key of its own); the element's whole node is hidden instead |
 
+### 4.4 As built (6.3)
+
+Where `src/uml/profile.js` and its lines in `class.js`, `owners.js`, `package.js` and `draw.js` depart from or settle §4:
+
+- **The package view's palette is unchanged.** `package.js`'s `PACKAGE_LINES` gains `uml.ProfileApplication`, so a package
+  view that lists no lines draws an application (§14), but its `elements` and `lines` (the palette) do not gain Profile and
+  Profile application: `tests/package.test.mjs` and `tests/package-fixtures.test.mjs` pin them, and the schema they are
+  checked against is 6.6's. A profile is added on the profile view. *For the maintainer to decide* (6.6 or 6.7 may add them).
+- **`typeGeo` takes two more look fields:** `node(d, n, model, pic)`, a node's drawing input before it is sized (the tag
+  compartments, the accessible name), and `dg`, more of `layoutTyped`'s input (`repair: false`, `reroute: false`). The class,
+  package and object looks give neither. `describeAs` says a profile application ("applies BookshopConventions"); `lineName`
+  is exported for the profile's `describe()`.
+- **`{required}` is the extension's label,** at the line's middle as «apply» is, not by its end: the accessible name then says
+  it ("Extension from owned to Class: {required}").
+- **A default tag value is drawn in the text colour,** like a set one: the classifier draws every row alike, and 6.3 owns only
+  `ENDS` in `draw.js`. The rows say `tag = value` either way; a missing required value is `tag = ?`.
+- **`SHAPE.profiled`** is the classifier with the node's own accessible name (the classifier writes one from its compartments,
+  which here are tags). A stereotype shows its attributes (its tag definitions) and no operations compartment. A package on
+  the profile view keeps its package look, its stereotypes over its name; its tags are in its name, the panel and the PDF.
+- **`stereotype-names`** (6.2's `styKey`) says two stereotypes of one profile whose names meet with the first letter in either
+  case, and two profiles of one label, which `Profile::name` could not tell apart. An exact duplicate is also the class
+  rule's `classifier-names`, since `uml.Stereotype` is a classifier kind.
+- **`application-ends`** takes a profile as the applying package (UML's Profile is a Package); **connect** refuses on the
+  profile view a generalization that is not between two stereotypes.
+- **The Owner field** offers profiles for a stereotype and a metaclass reference, and packages and profiles for anything else
+  a package may own. The profile view's geometry has a slot at each node and box (`composite.js`'s), so the palette's add
+  hears the profile selected.
+
 ## 5. Stereotypes applied across the model
 
 ### 5.1 Where the check runs (S2)
