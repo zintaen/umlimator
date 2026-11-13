@@ -36,7 +36,9 @@ const diagramOf = view => TYPES.get(view && view.diagram != null ? view.diagram 
 
 /* What only a registered type's geometry uses, installed at load time by the files under src/typed/, which only
    lib/umlimator-all.js holds (tools/build.mjs): rows, rooms and routes in layoutPass, a typed line's ends in svgOf, the
-   gestures of edit.js it takes over (edit), diff()'s words for typed models (diff, order: src/uml/diff.js). Empty in umlimator.js, where no view is laid out but as a map (risks.md C5) */
+   gestures of edit.js it takes over (edit), diff()'s words for typed models (diff, order: src/uml/diff.js). Empty in
+   umlimator.js, where no view is laid out but as a map (risks.md C5).
+   Stage 6's: across(model), validate()'s rules on the whole model; fields(model, x), more panel fields (notes/stage-6.md §5) */
 const TYPED = {};
 
 const propRefs = type => Object.assign({}, ...[...TYPES.values()].map(T => T.refs && Object.hasOwn(T.refs, type) && T.refs[type]));
