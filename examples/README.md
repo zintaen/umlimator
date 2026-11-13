@@ -55,6 +55,25 @@ Action on it in a pull request; the site shows its stills and its PDF.
 [![The state machine diagram: an order's life](https://zintaen.github.io/umlimator/examples/stills/order-states/order-life.png)](https://zintaen.github.io/umlimator/examples/order-states.html)
 [![The interaction overview diagram: buying a book](https://zintaen.github.io/umlimator/examples/stills/buy-book-overview/buy-book.png)](https://zintaen.github.io/umlimator/examples/buy-book-overview.html)
 
+## The Bookshop atlas
+
+[`bookshop-atlas.json`](bookshop-atlas.json) is the Bookshop examples above in one model (`"schemaVersion": 2`): the
+map's three views and the fifteen views of the nine diagram files, joined by drill-down. Double-click a card to open
+what it leads to:
+
+| From | Card | Opens |
+|---|---|---|
+| The map (`overview`) | Shoppers, Storefront, Database, Order queue, Order worker, Payment provider, GitHub | the use cases, buying a book, the sales classes, order 1042, fulfilling an order, the communication diagram, the packages |
+| Sales domain, order 1042 | Order, order1042 | an order's life (state machine) |
+| Bookshop packages | sales | the sales domain |
+| Shopping (use cases) | Browse the catalog, Check out, Pay for the order | find a book, buying a book, take payment (activity) |
+| Fulfilling an order, take payment | Take the next order from the queue, Charge the shopper's card | queue the order, the checkout (sequences) |
+
+It is built, not written: `node tools/atlas.mjs` reads the example files and [`../tools/atlas-links.json`](../tools/atlas-links.json)
+(the files, in order, and which card opens which view) and writes the model. An id an earlier file already has is
+renamed `<file>.<id>` in the later file, and the tool lists each one; `tests/atlas.test.mjs` fails when the committed
+atlas is not what it writes. A card that opens another kind of diagram does not unfold in place (E): it opens.
+
 ## Host pages
 
 The module embedded in a page, as an app would use it. Serve the repository over HTTP to open them locally
@@ -81,7 +100,7 @@ The module embedded in a page, as an app would use it. Serve the repository over
 
 | Feature | Where |
 |---|---|
-| Views a card opens (`opensView`) | bike-share (three levels), weather, assistant, bookshop |
+| Views a card opens (`opensView`) | bike-share (three levels), weather, assistant, bookshop; bookshop-atlas, from a map to UML diagrams and between them |
 | A view the host loads when it's opened (`opensView` with `opensCount`) | bike-share: Trip service and Fleet service, in `embed.html` |
 | A stacked card unfolded in place (E, Alt + click, `map.expand()`) | bike-share: Trip service and Fleet service in `system`, Bike share in `context`; weather: Check in `stages`, Quality check in `flow`; numbered, with its run order: weather Forecast in `stages` (with its lanes), assistant answer in `assistant` |
 | Boxes (`containers`) and their tabs (`badges`) | bike-share `system`, weather `check` |

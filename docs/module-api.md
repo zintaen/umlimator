@@ -3591,3 +3591,33 @@ What moves for a host that upgrades from 0.20.0 (beside the one card-shape style
 - **Size:** `lib/umlimator.js`, what a map host loads, is 185.0 kB (184,984 B) with `gzip -9`, 12.14% over 0.16.0 (the
   plan's budget is 15%): stage 4 added 268 B (4.1, 4.9) and the one card-shape style removed more. `lib/umlimator-all.js`
   is 335.9 kB (335,875 B), up from 276.9 kB in 0.20.0. The npm package is 574 kB, up from 515 kB.
+
+### The Bookshop atlas
+
+The maintainer's decision of 13 Nov 2026 (`docs/diagrams/README.md`'s log, `plan.md` §7). The per-type examples stay
+the reference; `examples/bookshop-atlas.json` is one model of the Bookshop that holds all of them, joined by drill-down:
+the map's three views and the fifteen typed views of `sales-classes`, `order-objects`, `bookshop-packages`,
+`checkout-sequence`, `checkout-communication`, `shopping-use-cases`, `fulfil-activity`, `order-states` and
+`buy-book-overview`. A reader goes from the map to the sales classes (Database) and on to an order's state machine
+(Order), or to what shoppers do (Shoppers), the payment activity (Pay for the order) and the checkout's sequence
+(Charge the shopper's card); every view is reached from the map.
+
+- **Assembled, not copied.** `node tools/atlas.mjs` builds it from the example files and `tools/atlas-links.json`, which
+  lists the files in order and which element opens which view (each link is the element's `opensView`). An id an
+  earlier file already uses, as an element's or a view's, is renamed `<file>.<id>` with every reference to it in its
+  file, and the tool prints what it renamed (48 ids, such as the lifelines named `api`, three of the four views named `checkout` and the communication diagram's `m1`). Labels are kept.
+  `tests/atlas.test.mjs` builds it again and compares it with the committed file byte for byte; it also asks for no
+  core error from `validate()`, every view laid out, and every drill-down opening a view of the atlas, with no id of
+  one file opening another file's view by accident.
+- **A map and typed views share one model.** A view with no `diagram` is a map, drawn as before, in a
+  `schemaVersion: 2` model too (`model.md` §1, rule 1); nothing had to be left out.
+- **Another kind of diagram opens, never unfolds in place** (`src/map/context.js`, 78 B in the core): a card whose inner
+  view is a different diagram (a map card opening a use case diagram, a class opening its state machine, an interaction
+  use opening its sequence) switches to that view; unfolding it would draw one notation's elements as another's cards.
+  A map card and an activity's call behaviour action still unfold as before.
+- **What `validate()` says.** Three errors from UML rules, none from the core: the class type's rules run on the whole
+  model, so the use case file's generalizations (an actor's, a use case's) are not between classifiers to them, and the
+  class file and the package file each have a package `sales` (`package-names`). `tests/atlas.test.mjs` pins the three.
+- **CI.** The atlas is one of `examples/*.json`, so it is rendered, checked with `--expand`, validated against the JSON
+  Schema and pictured and printed for the site as the others are; the check loop counts its 6 crossings, the activity's
+  4 and the state machine's 2.
