@@ -3792,7 +3792,7 @@ schema, `.d.ts` and conformance notes come in 0.23.0 (6.6, 6.7), whose section s
   stage 5's 248 B and C10's 183 B above, and stage 6's 6.1 (180 B) on `main`. `lib/umlimator-all.js` is 412.0 kB
   (412,030 B) with stage 6's types in it. The npm package is 655 kB.
 
-## 0.23.0 (in progress)
+## 0.23.0: the profile and timing diagrams; the 14 UML types complete; the Bookshop atlas holds them all
 
 ### The profile and timing diagrams
 
@@ -3906,3 +3906,21 @@ What moves for a host that upgrades from 0.22.0:
   slots and the registry's pointer line 111 B, the timeline in `references()` and `delete` 69 B); 6.2 to 6.7 none.
   `lib/umlimator-all.js` is 412.0 kB gzipped (412,038 B), 8 B over 0.22.0's 412,030 B. The npm package is 658 kB, up
   from 655 kB.
+
+### A delete never leaves a model failing `validate()` (#245)
+
+Deleting an extension point also deletes every extend left naming no other point of its use case, in one transaction,
+and the hint line names them; a communication view's delete names the messages it takes. In a composite structure view
+whose subject has been deleted or hidden, `subject-shown` and `binding-ends` are warnings, not errors.
+`tests/delete-cascade.test.mjs` deletes every element of every example, target and the atlas, one at a time, by Delete
+and Shift + Delete, and finds no new error.
+
+### Also on `main`: milestone 2's and milestone 4b's listed files
+
+M2.0 (#247) and 4b.0 (#248) list the next milestones' sources, empty, in `lib/umlimator-all.js` (blank lines only),
+and M2.0 gives the ER, flowchart, data flow, information flow and C4 target examples their own ids. Nothing is drawn by
+them yet.
+
+- **Size at release:** `lib/umlimator.js` is 185.6 kB (185,613 B) with `gzip -9`, as 0.22.0, 12.52% over 0.16.0 (the
+  budget is 15%). `lib/umlimator-all.js` is 412.8 kB (412,830 B). The npm package is 659 kB.
+

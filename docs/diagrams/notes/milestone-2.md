@@ -153,7 +153,7 @@ What may touch the core, each change stating its bytes in its pull request:
 | Change | File | Lane | Target |
 |---|---|---|---|
 | `addView { view, index? }` and its line in the header comment (S7) | `src/core/apply.js` | M2.1 | 160 B |
-| A card of a typed view unfolds in place only when its type says `unfolds` (S8): `unfoldable` also refuses when `v.diagram && !(diagramOf(v) \|\| {}).unfolds` (`diagramOf` is imported there already) | `src/map/context.js` | M2.1 | 13 B (measured) |
+| A card of a typed view unfolds in place only when its type says `unfolds` (S8): `unfoldable` also refuses when `v.diagram && v.diagram != 'map' && !(diagramOf(v) \|\| {}).unfolds` (`diagramOf` is imported there already; a view saying `diagram: 'map'` is a map, amended in M2.1's review, §6.3) | `src/map/context.js` | M2.1 | 13 B (measured), about 20 B with the `'map'` clause |
 | The PDF's lines table asks a type's `text(model, view, id)` before `label` (S17) | `src/page/print.js` | M2.1 | 30 B |
 | The registry's pointer line names the new fields (`text`, `unfolds`; `ENDS` open to families), after 6.1's line in the comment above `const TYPED = {}` | `src/core/registry.js` | M2.1 | 50 B |
 | | | | **253 B** |
@@ -379,6 +379,14 @@ node in its shape, and a test and CI's crossing counts hold that picture (Q5). D
 zoom would be the first typed views to meet the wrong case often. M2.1 makes `unfoldable` refuse a typed view whose type
 does not say `unfolds: true`, and sets it on the activity type (13 B of core, measured on a scratch build; one field in `src/uml/activity.js`),
 stated in 0.24.0's release section as a reproduced defect (`plan.md` §8).
+
+**Amended in M2.1's review.** The guard as first written, `v.diagram && !(diagramOf(v) || {}).unfolds`, refused every card of
+a view that says `diagram: 'map'`, which the codebase reads as a map (`src/core/model.js`, `src/map/validate.js`,
+`src/canvas/edit.js`, `print.js`): `'map'` is truthy and the map's registration has no `unfolds`. Of the two fixes, a
+`'map'` clause in the guard (`v.diagram && v.diagram != 'map' && …`, inside M2.1's Owns, and right in `lib/umlimator.js`,
+where no type is registered) and `unfolds: true` on the map's registration in `src/map/typed.js` (outside M2.1's Owns),
+the guard's clause is taken by the lead under the maintainer's standing approval (14 Nov 2026). `tests/unfold.test.mjs`
+holds it: u21 with every view saying `diagram: 'map'` unfolds `orders` in the core and with the types.
 
 | Option | For | Against |
 |---|---|---|
@@ -716,7 +724,9 @@ accessible names, a legend, `word` and `rows`:
 
 **The lines table.** It shows a line's `label` (Q11), which is not where these types keep what a line says: information
 flow's conveyed elements, ER's multiplicities and identifying, C4's technology. A type may give `text(model, view, id)`,
-which `src/page/print.js` shows in place of `label` when it returns text (about 30 B).
+which `src/page/print.js` shows in place of `label` when it returns text (about 30 B). The `id` is the line's id; a
+view's own line with none is passed its drawn key, `from->to#n` (`src/map/context.js`), which names no model element, so a
+type finds nothing by it and the row shows `label` (noted in M2.1's review).
 
 | Option | For | Against |
 |---|---|---|
