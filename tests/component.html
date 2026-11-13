@@ -95,7 +95,11 @@ try {
   click('.node[data-id="storefront"] .c-name'); all('.um-editor .um-pal button')[4].click(); pick('.um-rename').value = 'events'; key('Enter', {}, pick('.um-rename'));
   const m2 = gives('the palette\'s Port, Storefront selected: a port into it', [{ op: 'add', element: { id: 'port1', type: 'uml.Port', label: 'events' }, owner: 'storefront' }], m => m.nodes.find(n => n.id === 'storefront').members.length === 1, BASE);
   h.update(m2);
-  check('after update() the new port is drawn on Storefront\'s border, in its group', !!pick('.node[data-id="storefront"] .node.port[data-id="port1"]'));
+  { const o = box(pick('.node[data-id="storefront"] > .n-mask')), q = box(pick('.node.port[data-id="port1"] .n-body')), cx = q.x + q.w / 2, cy = q.y + q.h / 2;
+    check('after update() the new port is drawn on Storefront\'s border, a node of its own (decision 22)', !pick('.node[data-id="storefront"] .node.port')
+      && ([o.x, o.x + o.w].some(b => Math.abs(cx - b) < 1) || [o.y, o.y + o.h].some(b => Math.abs(cy - b) < 1)), [o, q]); }
+  click('.node[data-id="storefront"] .c-name');
+  check('Storefront selected: its port is not marked selected (decision 22)', pick('.node[data-id="storefront"]').classList.contains('sel') && !pick('.node.port[data-id="port1"]').classList.contains('sel') && !pick('.node.sel .node.port'));
   click('.node[data-id="i-sign-in"] .c-name'); const n0 = ed.length;
   all('.um-editor .um-pal button')[4].click(); if (pick('.um-rename')) { pick('.um-rename').value = 'x'; key('Enter', {}, pick('.um-rename')); }
   check('the palette\'s Port with an interface selected: refused, said, nothing emitted', ed.length === n0 && /Select a component to add a port to/.test(sr.textContent));
