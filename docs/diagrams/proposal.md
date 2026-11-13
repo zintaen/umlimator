@@ -777,7 +777,7 @@ UML types. Nothing technical forces the wait: any of them can be pulled forward 
 | 3 | 0.20.0 | Sequence, communication | The time-axis strategy; order as meaning; operands; traces as sequence diagrams | L2. No gates, continuations or timing constraints | Stage 1. A new interaction model: reordering and fragment nesting |
 | 4 | 0.21.0 | Use case, activity, state machine, interaction overview | Shapes that are not boxes; explicit nestable lanes; compound nodes with regions; the transition micro-syntax | L2. No pins, expansion regions, exception handlers or submachine states | Stages 1 and 3. Regions and border-crossing transitions |
 | 5 | 0.22.0 | Component, deployment, composite structure | Ports on borders; ends through parts; deep nesting | L2 | Stages 1 and 2. Port routing (§6.3) |
-| 6 | 0.23.0 | Profile, timing | Stereotype definitions and application checks; the time-ruler strategy | L2. No value lifelines | Stages 1 and 3 |
+| 6 | 0.23.0 | Profile, timing | Stereotype definitions and application checks; the time-ruler strategy | L2. Value lifelines in, by [`notes/stage-6.md`](notes/stage-6.md) decision 11 | Stages 1 and 3 |
 
 **After the UML types**
 
@@ -878,8 +878,8 @@ rendering, editing and validation is in §3.3; the acceptance criteria are §7.3
 | 5 | Component (11.6) | Components, ports, provided and required interfaces, assembly and delegation connectors, realization, nesting | Connector multiplicities |
 | 5 | Deployment (19) | Nodes, devices, execution environments, artifacts, deployment, manifestation, communication paths, deployment specifications | Instance-level deployment |
 | 5 | Composite structure (11.2, 11.3, 11.7) | Structured classifiers, parts, ports, connectors, collaborations, collaboration uses, role bindings | Connector multiplicities |
-| 6 | Profile (12.3) | Profiles, stereotypes, metaclass references, extensions, tag definitions, profile application; applied stereotypes checked across the model | Stereotype icons and custom shapes |
-| 6 | Timing (17.11) | Lifelines, state timelines, a time ruler, time and duration constraints, messages | Value lifelines; continuous timelines |
+| 6 | Profile (12.3) | Profiles, stereotypes, metaclass references, extensions, tag definitions, profile application; applied stereotypes checked across the model | Stereotype icons and custom shapes; the rest in [`notes/stage-6.md`](notes/stage-6.md) §15 |
+| 6 | Timing (17.11) | Lifelines, state timelines, value lifelines (decision 11 of [`notes/stage-6.md`](notes/stage-6.md)), a time ruler, time and duration constraints, messages | Continuous timelines; the rest in [`notes/stage-6.md`](notes/stage-6.md) §15 |
 
 ## 9. Decisions
 
