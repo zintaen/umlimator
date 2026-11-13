@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- The deployment diagram (5.5) in headless Chrome (tests/embed.py), from lib/umlimator-all.js: docs/diagrams/examples/06-deployment.json
+<!-- The deployment diagram (5.5) in headless Chrome (tests/embed.py), from lib/umlimator-all.js: examples/bookshop-deployment.json
      drawn by render() in both themes, three fonts and both directions (closed cubes, cube boxes holding their contents, nested,
      texts inside their shapes, line ends on outlines and on a box's faces, names, reading order, contrast, the legend), then
      edited through the edit event and apply(), by pointer and by keyboard: the palette's seven entries and N, F2, each line
@@ -48,7 +48,7 @@ const blend = (top, bot) => [0, 1, 2].map(i => top[i] * top[3] + bot[i] * (1 - t
 const lum = c => { const f = v => v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]); };
 const ratio = (fg, bg) => { const [x, y] = [lum(blend(fg, bg)), lum(bg)].sort((p, q) => q - p); return +((x + 0.05) / (y + 0.05)).toFixed(2); };
 const css = (e, k) => rgba(getComputedStyle(e)[k]);
-const MODEL = await (await fetch('../docs/diagrams/examples/06-deployment.json')).json();
+const MODEL = await (await fetch('../examples/bookshop-deployment.json')).json();
 const HOLDS = { 'shopper-device': ['browser'], browser: ['storefront-bundle'], 'app-server': ['jvm'], jvm: ['shop-api-jar', 'order-worker-jar', 'shop-api-config'] };
 try {
   for (const theme of ['light', 'dark']) for (const [fname, family] of Object.entries(FONTS)) for (const direction of ['right', 'down']) {
@@ -78,12 +78,12 @@ try {
       const d = n ? poly(n.classList.contains('cube') ? cube(box(n.querySelector('.n-mask'))) : rect(box(n.querySelector('.n-mask'))), p) : poly(faces(frame(id)), p);
       if (d > 1) offs.push([id, g.dataset.to, +d.toFixed(2)]); });
     check(`${tag}: each line starts on its shape's outline or its box's faces`, !offs.length, offs);
-    check(`${tag}: names a screen reader reads`, pick('.node[data-id="edge"]').getAttribute('aria-label') === 'Node Edge proxy, 1 artifact deployed'
+    check(`${tag}: names a screen reader reads`, pick('.node[data-id="edge-node"]').getAttribute('aria-label') === 'Node Edge proxy, 1 artifact deployed'
       && pick('.node[data-id="shop-api-jar"]').getAttribute('aria-label') === 'Artifact shop-api.jar, on Java 21 runtime, manifests Shop API'
       && pick('.family[data-family="jvm"]').getAttribute('aria-label') === 'Execution environment Java 21 runtime, in Application server, 3 artifacts deployed'
       && pick('.edge-g[data-from="shopper-device"] title').textContent === 'Communication path HTTPS from Shopper\'s device to Edge proxy');
     const order = all('.keys .node-key').map(k => k.dataset.node);
-    check(`${tag}: reading order: each box's contents after it, then the rest, then the lines`, same(order.slice(0, 4), ['storefront-bundle', 'edge', 'edge-routes', 'shop-api-jar']) && all('.keys .um-key').length === 18, order);
+    check(`${tag}: reading order: each box's contents after it, then the rest, then the lines`, same(order.slice(0, 4), ['storefront-bundle', 'edge-node', 'edge-routes', 'shop-api-jar']) && all('.keys .um-key').length === 18, order);
     check(`${tag}: every line's label drawn whole`, same([...new Set(all('.e-lab, .labels text').map(t => t.textContent))].sort(), ['AMQP', 'HTTP', 'HTTPS', 'PostgreSQL wire protocol', '«deploy»', '«manifest»']),
       all('.e-lab, .labels text').map(t => t.textContent));
     const legend = all('.m-legend b').map(b => b.textContent);
@@ -126,12 +126,12 @@ try {
   const m3 = gives('a deployment drawn from a node to an artifact is added from the artifact (edits.connect)', [{ op: 'add', element: { id: 'deployment1', type: 'uml.Deployment', from: 'edge-routes', to: 'node1' }, view: 'production' }],
     m => m.edges.some(e => e.id === 'deployment1'), m2, 0);
   // a communication path to an artifact is refused: nothing emitted
-  const n0 = ed.length; click('.node[data-id="edge"] .c-name'); key('l'); for (const c of 'routes') key(c); key('Enter');
+  const n0 = ed.length; click('.node[data-id="edge-node"] .c-name'); key('l'); for (const c of 'routes') key(c); key('Enter');
   all('.um-pick button').find(b => b.textContent === 'Communication path').click();
   check('a communication path from a node to an artifact is refused, nothing emitted, its reason on the hint line', ed.length === n0 && /^A communication path joins two nodes/.test(hint()), [ed.slice(n0), hint()]);
   // the other line kinds, each by L and the picker
   for (const [from, name, kind, to, id, type] of [['edge-routes', 'cache', 'Deployment', 'node1', 'deployment1', 'Deployment'], ['order-worker-jar', 'shop api', 'Manifestation', 'shop-api', 'manifestation1', 'Manifestation'],
-    ['node1', 'primary', 'Communication path', 'database', 'communicationpath1', 'CommunicationPath'], ['edge-routes', 'storefront', 'Dependency', 'storefront-bundle', 'dependency1', 'Dependency'], ['n1', 'edge', 'Comment link', 'edge', 'commentlink1', 'CommentLink']]) {
+    ['node1', 'primary', 'Communication path', 'database', 'communicationpath1', 'CommunicationPath'], ['edge-routes', 'storefront', 'Dependency', 'storefront-bundle', 'dependency1', 'Dependency'], ['n1', 'edge-node', 'Comment link', 'edge-node', 'commentlink1', 'CommentLink']]) {
     click(`.node[data-id="${from}"] .c-name, .node[data-id="${from}"] text`); key('l'); for (const c of name) key(c); key('Enter');
     all('.um-pick button').find(b => b.textContent === kind).click();
     check(`picking ${kind}: one add of a uml.${type}`, same(last().commands, [{ op: 'add', element: { id, type: 'uml.' + type, from, to }, view: 'production' }]) && !errors(apply(m2, last().commands)).length, last());
@@ -142,12 +142,12 @@ try {
   click('.node[data-id="edge-routes"] .c-name');
   const own = panel('[data-f="owner"]'), opts = [...own.options].map(o => o.textContent);
   check('the Owner field of an artifact: none and every node, device and execution environment', same(opts, ['none', 'Shopper\'s device', 'Web browser', 'Edge proxy', 'Application server', 'Java 21 runtime', 'Primary database', 'Order queue', 'Cache']) && own.value === '', opts);
-  change(own, 'edge');
-  const m4 = gives('Owner: reparent the artifact into the node: deployed by nesting', [{ op: 'reparent', id: 'edge-routes', parent: 'edge' }], m => m.nodes.find(n => n.id === 'edge-routes').parent === 'edge', m3);
+  change(own, 'edge-node');
+  const m4 = gives('Owner: reparent the artifact into the node: deployed by nesting', [{ op: 'reparent', id: 'edge-routes', parent: 'edge-node' }], m => m.nodes.find(n => n.id === 'edge-routes').parent === 'edge-node', m3);
   h.update(m4);
-  check('after update() the node is a box holding the artifact', inside(box(pick('.node[data-id="edge-routes"] .n-mask')), box(pick('.family[data-family="edge"] .family-box'))) && !!pick('.family[data-family="edge"] .dp-face'));
-  click('.node[data-id="queue"] .c-name'); change(panel('[data-f="owner"]'), 'node1');
-  gives('Owner: reparent a node into a node', [{ op: 'reparent', id: 'queue', parent: 'node1' }], m => m.nodes.find(n => n.id === 'queue').parent === 'node1', m4);
+  check('after update() the node is a box holding the artifact', inside(box(pick('.node[data-id="edge-routes"] .n-mask')), box(pick('.family[data-family="edge-node"] .family-box'))) && !!pick('.family[data-family="edge-node"] .dp-face'));
+  click('.node[data-id="queue-node"] .c-name'); change(panel('[data-f="owner"]'), 'node1');
+  gives('Owner: reparent a node into a node', [{ op: 'reparent', id: 'queue-node', parent: 'node1' }], m => m.nodes.find(n => n.id === 'queue-node').parent === 'node1', m4);
   // a drop of an artifact into a box, by pointer
   const to = pick('.family[data-family="jvm"] .family-box').getBoundingClientRect(), from = centre('.node[data-id="storefront-bundle"] .n-mask'), at = [to.left + to.width / 2, to.top + to.height / 2];
   ptr(pick('.node[data-id="storefront-bundle"]'), 'pointerdown', from); for (let i = 1; i <= 4; i++) ptr(stage, 'pointermove', [from[0] + (at[0] - from[0]) * i / 4, from[1] + (at[1] - from[1]) * i / 4]); ptr(stage, 'pointerup', at);
@@ -161,7 +161,7 @@ try {
   click('.node[data-id="database"] .c-name'); handleTo(centre('.node[data-id="edge-routes"] .n-mask')); press(all('.um-pick button').find(b => b.textContent === 'Deployment'));
   gives('the handle from a node to an artifact, Deployment: added from the artifact (edits.connect)', [{ op: 'add', element: { id: 'deployment1', type: 'uml.Deployment', from: 'edge-routes', to: 'database' }, view: 'production' }],
     m => m.edges.some(e => e.id === 'deployment1'), BASE);
-  const n1 = ed.length; click('.node[data-id="edge"] .c-name'); handleTo(centre('.node[data-id="edge-routes"] .n-mask')); press(all('.um-pick button').find(b => b.textContent === 'Communication path'));
+  const n1 = ed.length; click('.node[data-id="edge-node"] .c-name'); handleTo(centre('.node[data-id="edge-routes"] .n-mask')); press(all('.um-pick button').find(b => b.textContent === 'Communication path'));
   check('the handle from a node to an artifact, Communication path: refused, its reason on the hint line', ed.length === n1 && /^A communication path joins two nodes/.test(hint()), [ed.slice(n1), hint()]);
   // hide, delete
   h = mount(BASE, { editable: true });

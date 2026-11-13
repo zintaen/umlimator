@@ -3,7 +3,8 @@
  "title": "Bookshop atlas",
  "root": "bookshop/overview",
  "sources": ["bookshop", "sales-classes", "order-objects", "bookshop-packages", "checkout-sequence", "checkout-communication",
-  "shopping-use-cases", "fulfil-activity", "order-states", "buy-book-overview"],
+  "shopping-use-cases", "fulfil-activity", "order-states", "buy-book-overview",
+  "bookshop-components", "bookshop-deployment", "order-service-structure"],
  "links": [
   { "element": "bookshop/shoppers", "opens": "shopping-use-cases/shopping" },
   { "element": "bookshop/storefront", "opens": "buy-book-overview/buy-book" },
@@ -19,6 +20,9 @@
   { "element": "shopping-use-cases/check-out", "opens": "buy-book-overview/buy-book" },
   { "element": "shopping-use-cases/pay", "opens": "fulfil-activity/take-payment" },
   { "element": "fulfil-activity/take-order", "opens": "buy-book-overview/queue-order" },
-  { "element": "fulfil-activity/charge", "opens": "checkout-sequence/checkout-sequence" }
+  { "element": "fulfil-activity/charge", "opens": "checkout-sequence/checkout-sequence" },
+  { "element": "bookshop/hosts", "opens": "bookshop-deployment/production" },
+  { "element": "bookshop-deployment/jvm", "opens": "bookshop-components/components" },
+  { "element": "bookshop-components/shop-api", "opens": "order-service-structure/internals" }
  ]
 }

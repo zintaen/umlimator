@@ -6,7 +6,9 @@
      as a container; after a re-own every box holds exactly its contents. A second test type gives boxes from `parent`.
      What 3.4 adds to lib/umlimator.js (notes/stage-3.md §5.1): key rings on a typed view's lines, in geo.order when its type
      gives one; lines in the selection (Shift + click, Shift + Enter on a ring); L from a line when the type has edits.connect;
-     no pin with layout.pins false. This page loads no src/typed/edit.js: a line to itself is still refused, as in 0.17.0. -->
+     no pin with layout.pins false. This page loads no src/typed/edit.js: a line to itself is still refused, as in 0.17.0.
+     Stage 6's fields slot (notes/stage-6.md §5.7, 6.1): a test fill of TYPED.fields adds fields after the type's own, each
+     committed as a set of its path inside props. -->
 <meta charset="utf-8">
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="../lib/umlimator-theme.css">
@@ -15,7 +17,7 @@
 <div id="m" style="width:1100px;height:680px"></div>
 <script type="module">
 import { render } from '../src/canvas/render.js';
-import { registerDiagramType } from '../src/core/registry.js';
+import { registerDiagramType, TYPED } from '../src/core/registry.js';
 import { apply } from '../src/core/apply.js';
 import { validate } from '../src/map/validate.js';
 import { layoutTyped } from '../src/typed/layout.js';
@@ -437,6 +439,28 @@ try {
   card('a'); key('ArrowRight', { altKey: true }); key('ArrowDown', { altKey: true });
   { const from = centre('.node[data-id="a"] .n-body'); ptr(pick('.node[data-id="a"]'), 'pointerdown', from); for (let i = 1; i <= 4; i++) ptr(stage, 'pointermove', [from[0] + 60 * i, from[1] + 40 * i]); ptr(stage, 'pointerup', [from[0] + 240, from[1] + 160]); }
   check('layout.pins false: no pin by Alt + arrows or by a drag', ed.length === n2, ed.slice(n2));
+  h.destroy();
+
+  // ---- TYPED.fields (notes/stage-6.md §5.7): the slot's fields after the type's own, by element, each a set of its path
+  const TAGS = [{ key: 'p:entity:table', path: ['tags', 'entity', 'table'], label: '«entity» table', kind: 'text' }, { key: 'p:entity:indexed', path: ['tags', 'entity', 'indexed'], label: '«entity» indexed', kind: 'enum', options: ['true', 'false'] }];
+  const asked6 = []; TYPED.fields = (mm, x) => { asked6.push(x.id); return x.id === 'a' ? TAGS : x.id === 'd' ? [{ key: 'p:note:by', path: ['tags', 'note', 'by'], label: '«note» by', kind: 'text' }, null, { label: 'no key' }] : null; };
+  h = mount({ editable: true }); card('a');
+  const fs = () => all('.um-editor .um-props [data-f]').map(x => x.dataset.f).filter(k => k.startsWith('p:') || k === 'label');
+  check('TYPED.fields: asked with the model and the element; its fields after the type\'s own', asked6.includes('a') && same(fs(), ['label', 'p:owner', 'p:abstract', 'p:tier', 'p:p:entity:table', 'p:p:entity:indexed']) && f('p:p:entity:table').closest('label').textContent === '«entity» table', [asked6, fs()]);
+  f('p:p:entity:table').value = 'orders'; key('Enter', {}, f('p:p:entity:table'));
+  gives('a slot\'s text field: one set of its path, the tags and stereotype objects made on the way', [{ op: 'set', id: 'a', path: ['props', 'tags', 'entity', 'table'], value: 'orders' }], m => node(m, 'a').props.tags.entity.table === 'orders' && node(m, 'a').props.owner === 'x');
+  const T1 = apply(MODEL, last().commands); h.update(T1);
+  check('…the field shows the value the host hands back', f('p:p:entity:table').value === 'orders');
+  f('p:p:entity:indexed').value = 'true'; f('p:p:entity:indexed').dispatchEvent(new Event('change', { bubbles: true }));
+  gives('a slot\'s enum field: set to the option', [{ op: 'set', id: 'a', path: ['props', 'tags', 'entity', 'indexed'], value: 'true' }], m => same(node(m, 'a').props.tags, { entity: { table: 'orders', indexed: 'true' } }), T1);
+  f('p:p:entity:table').value = ''; key('Enter', {}, f('p:p:entity:table'));
+  gives('a slot\'s field emptied: its value removed', [{ op: 'set', id: 'a', path: ['props', 'tags', 'entity', 'table'], value: undefined }], m => same(node(m, 'a').props.tags, { entity: {} }), T1);
+  card('d');
+  check('an element with no schema: the slot\'s fields (entries with no key left out), and its props to read as before', same(fs(), ['label', 'p:p:note:by']) && panel('.um-props dl').textContent.includes('hi <b>'), fs());
+  card('b');
+  check('an element the slot gives nothing: the type\'s fields alone', same(fs(), ['label', 'p:owner', 'p:abstract', 'p:tier']), fs());
+  delete TYPED.fields; card('c'); card('a');
+  check('the slot empty: the panel as before', same(fs(), ['label', 'p:owner', 'p:abstract', 'p:tier']), fs());
   h.destroy();
 
   // ---- a large model: an editable update() costs about what a read-only one does (risks.md P1)
