@@ -109,7 +109,7 @@ export function render(container, model, options = {}) {
   const emitSel = (again = false) => {
     const now = JSON.stringify(picked()); if (now === said && !again) return; said = now;
     say(!sel ? 'Nothing selected' : (sel.type === 'node' ? nameOf(sel.id) : sel.type === 'edge' ? (e => e ? `Line from ${nameOf(e.from)} to ${nameOf(e.to)}` : 'Line')(geo.edges[edgeIndex(sel)])
-      : `Box ${(svg.querySelector(`.family[data-family="${CSS.escape(sel.id)}"] .family-title`) || {}).textContent || sel.id}`) + (more.length ? `, ${more.length + 1} ${picked().every(r => r.type === 'node') ? 'cards ' : ''}selected` : ', selected'));
+      : `Box ${[...svg.querySelectorAll(`.family[data-family="${CSS.escape(sel.id)}"] .family-title`)].map(t => t.textContent).join(' ') || sel.id}`) + (more.length ? `, ${more.length + 1} ${picked().every(r => r.type === 'node') ? 'cards ' : ''}selected` : ', selected'));
     emit('select', { target: copyRef(sel), targets: picked() });
   };
   const edgeRef = e => ({ type: 'edge', ids: edgeRefIds(e), view: cur });
@@ -554,7 +554,7 @@ export function render(container, model, options = {}) {
     if (ref.type === 'node') { const n = geo.byId[ref.id]; return n ? { x: n.x + 50, y: n.y + n.h / 2 - 13, w: n.w - 58, h: 26 } : null; }
     if (ref.type === 'edge') { const e = geo.edges[edgeIndex(ref)]; if (!e) return null; const L = e.lbl, m = e.pts[Math.floor(e.pts.length / 2)];
       return L ? { x: L.x - 8, y: L.y - 2, w: L.w + 16, h: L.h + 4 } : { x: m[0] - 60, y: m[1] - 12, w: 120, h: 24 }; }
-    const f = ref.type === 'container' && (geo.families || []).find(x => x.id === ref.id); return f ? { x: f.x + 8, y: f.y + 2, w: Math.min(f.w - 16, 220), h: 24 } : null; };
+    const f = ref.type === 'container' && (geo.families || []).find(x => x.id === ref.id); return f ? { x: f.x + 8, y: f.y + 2 + (f.head || 0), w: Math.min(f.w - 16, 220), h: 24 } : null; };
   function editor(where, text, done, ref = null) { // where: a box in map units (a new card's), or ref names what the field sits over
     if (naming) naming.close(false);
     const inp = document.createElement('input');

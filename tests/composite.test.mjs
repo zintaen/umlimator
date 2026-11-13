@@ -24,12 +24,8 @@ const T = diagramOf({ diagram: 'uml.composite-structure' }), V = CS.views[0];
 const meets = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
 const inside = (o, f) => o.x >= f.x - .01 && o.y >= f.y - .01 && o.x + o.w <= f.x + f.w + .01 && o.y + o.h <= f.y + f.h + .01;
 const withDir = (m, direction) => { const c = structuredClone(m); c.views[0].direction = direction; return c; };
-// the layout check, less what it says of a port on its own owner, which sits half inside it by design (§4.1; decision 22): a
-// report is dropped only when no other pair of nodes with those labels overlaps (the check's own test, src/layout/audit.js)
-const hit1 = (a, b) => a.x < b.x + b.w - 1 && b.x < a.x + a.w - 1 && a.y < b.y + b.h - 1 && b.y < a.y + a.h - 1;
-const issues = (m, vid) => { const N = layout(m, vid).nodes, mine = (a, b) => a.owner === b.id || b.owner === a.id;
-  return check(m, vid).map(x => x.message).filter(s => { const k = /nodes "(.*)" and "(.*)" overlap$/.exec(s);
-    return !k || N.some(a => a.label === k[1] && N.some(b => b !== a && b.label === k[2] && hit1(a, b) && !mine(a, b))); }); };
+// the layout check: a port on its own owner sits half inside it by design (§4.1) and is not an overlap (decision 22)
+const issues = (m, vid) => check(m, vid).map(x => x.message);
 const P = (id, label, more = {}) => ({ id, type: 'uml.Property', label, ...more });
 const port = (id, label = id.split('.').pop(), props) => ({ id, type: 'uml.Port', label, ...(props ? { props } : {}) });
 const con = (id, from, to, ends) => ({ id, type: 'uml.Connector', from, to, ...(ends ? { props: { ends } } : {}) });
@@ -93,7 +89,7 @@ test('04-composite-structure.json draws: the subject\'s box with its ports, part
   assert.deepEqual(validate(CS).filter(p => p.level === 'error'), []);
   for (const direction of ['right', 'down']) {
     const m = withDir(CS, direction), g = layout(m, 'internals'), by = g.byId, F = Object.fromEntries(g.families.map(f => [f.id, f])), tag = direction;
-    assert.deepEqual(issues(m, 'internals'), [], `${tag}: no overlap but a port on its own owner, no crossing, no line through a node`);
+    assert.deepEqual(issues(m, 'internals'), [], `${tag}: no overlap, no crossing, no line through a node`);
     assert.deepEqual(g.families.map(f => [f.id, f.shape, !!f.round]), [['order-service', 'subject', false], ['publish-subscribe', 'collaboration', true]]);
     assert.equal(F['order-service'].pad, 48, 'the subject has ports with lines: 48 px of padding (§7)');
     ['order-service.checkout', 'order-service.pricing', 'order-service.orders', 'order-service.listeners', 'order-events'].forEach(id => assert.ok(inside(by[id], F['order-service']), `${tag}: ${id} in the subject`));
