@@ -333,8 +333,8 @@ test('save and reopen (DoD 6): a 30-step communication session undoes and redoes
 });
 
 test('performance (§10, risks.md P1): the stress view lays out in under 1 s, and a message added, renamed or reordered is laid out again and drawn (SVG markup) in under 100 ms (timed)', () => {
-  // best of three, in this process's CPU time: CI runs the timed tests one file at a time in their own step, but on a busy machine the wall
-  // clock counts the time other processes hold the CPU. Both are printed
+  // best of three, in this process's CPU time: CI runs the timed tests one file at a time in their own step, but on a busy
+  // machine the wall clock counts the time other processes hold the CPU. Both are printed
   const V = STRESS.views.find(v => v.id === 'all'), edits = {
     add: commConnect(STRESS, V, 'gateway', 'auth', { after: 'a100' }, { type: 'uml.Message', props: { sort: 'call' } }),
     rename: [{ op: 'set', id: 'a5', path: 'label', value: 'renamed(with, a, longer, label)' }],
