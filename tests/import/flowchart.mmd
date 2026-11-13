@@ -1,0 +1,136 @@
+---
+title: Every construct on Mermaid's flowchart page
+config:
+  look: classic
+---
+%% Modelled on Mermaid 12.3.0's docs/syntax/flowchart.md (MIT), one block per section of that page, then the reader's
+%% own hints and broken input. Read by both readers of a Mermaid flowchart: the module's (src/readers/mermaid-flowchart.js,
+%% a typed flowchart) and the map importer's (umlimator_import.py, a map); tests/mermaid-flowchart.test.mjs pins the
+%% first's report and checks it reads every node and link the second reads, with the same ids.
+%%{init: {"flowchart": {"htmlLabels": false}}}%%
+flowchart TD
+    accTitle: Every construct
+    accDescr {
+        A flowchart that uses each construct on the page once
+    }
+    %% A node (default), a node with text, Unicode text, a Markdown string
+    id
+    id1[This is the text in the box]
+    uni["This ❤ Unicode"]
+    md["`This **is** _Markdown_`"]
+    %% Node shapes
+    round(This is the text in the box)
+    stadium([This is the text in the box])
+    subr[[This is the text in the box]]
+    cylinder[(Database)]
+    circle((This is the text in the circle))
+    asym>This is the text in the box]
+    rhombus{This is the text in the box}
+    hexagon{{This is the text in the box}}
+    lean[/This is the text in the box/]
+    leanalt[\This is the text in the box\]
+    trap[/Christmas\]
+    trapalt[\Go shopping/]
+    dbl(((This is the text in the circle)))
+    %% Expanded node shapes (v11.3.0+): the ten flowchart symbols, then others
+    sh1@{ shape: rect, label: "Process" }
+    sh2@{ shape: stadium, label: "Terminal point" }
+    sh3@{ shape: diam, label: "Decision" }
+    sh4@{ shape: lean-r, label: "In out" }
+    sh5@{ shape: lean-l, label: "Out in" }
+    sh6@{ shape: subproc, label: "Subprocess" }
+    sh7@{ shape: fr-rect, label: "Framed" }
+    sh8@{ shape: doc, label: "Document" }
+    sh9@{ shape: cyl, label: "Database" }
+    sh10@{ shape: manual-input, label: "Manual input" }
+    sh11@{ shape: sl-rect, label: "Sloped" }
+    sh12@{ shape: delay, label: "Delay" }
+    sh13@{ shape: circle, label: "Start" }
+    sh14@{ shape: terminal, label: "Terminal" }
+    sh15@{ shape: pill, label: "Pill" }
+    sh16@{ shape: hex, label: "Prepare" }
+    sh17@{ shape: docs, label: "Multiple documents" }
+    sh18@{ shape: bolt }
+    %% Special shapes: an icon, an image
+    icon@{ icon: "fa:user", form: "square", label: "User Icon", pos: "t", h: 60 }
+    img@{ img: "https://example.com/image.png", label: "Image Label", pos: "t", w: 60, h: 60, constraint: "on" }
+    %% Links between nodes
+    A1-->B1
+    A2 --- B2
+    A3-- This is the text! ---B3
+    A4---|This is the text|B4
+    A5-->|text|B5
+    A6-- text -->B6
+    A7-.->B7
+    A8-. text .-> B8
+    A9 ==> B9
+    A10 == text ==> B10
+    A11 ~~~ B11
+    %% Chaining of links
+    C1 -- text --> C2 -- text2 --> C3
+    a --> b & c--> d
+    E & F--> G & H
+    %% Attaching an ID to edges, and animating one
+    K e1@--> L
+    e1@{ animate: true }
+    %% New arrow types; multi-directional arrows
+    M --o N
+    M --x O
+    P o--o Q
+    Q <--> R
+    R x--x S
+    %% Minimum length of a link
+    T --> U{Is it?}
+    U -->|Yes| V[OK]
+    V --> W[Rethink]
+    W --> T
+    U ---->|No| X[End]
+    %% Special characters, entity codes
+    id2["This is the (text) in the box"]
+    Y["A double quote:#quot;"] --> Z["A dec char:#9829;"]
+    %% Subgraphs: an id and a title, a title, an id; one nested, links into them and to them
+    subgraph one [Title one]
+    a1-->a2
+    end
+    subgraph "Two words"
+    b1-->b2
+    end
+    subgraph three
+    direction RL
+    c1-->c2
+    subgraph inner
+        c3
+    end
+    end
+    c1-->a2
+    one --> three
+    three --> c2
+    %% Markdown strings on a link
+    g["`The **cat** in the hat`"] -- "`The **dog** in the hog`" --> h["Dog"]
+    %% Interaction, styling, classes
+    click A1 callback "Tooltip for a callback"
+    click B1 "https://www.github.com" "This is a tooltip for a link"
+    linkStyle 3 stroke:#ff3,stroke-width:4px,color:red;
+    style id1 fill:#f9f,stroke:#333,stroke-width:4px
+    classDef someclass fill:#f96
+    class id2 someclass
+    i1:::someclass --> i2
+    %% Statements split by ;
+    j1-->j2;j2-->j3; j3["Last; first"]
+    %% The reader's own: an id given to a link and to a node, a hint that is taken, one with "->"
+    %% id: t-link
+    k1 --> k2
+    %% id: k-three
+    k3[Third]
+    %% id: k1
+    k2 --> k1
+    %% id: has->arrow
+    k1 --> k3
+    %% Broken input
+    end
+    l1 --> l2 -->
+    l3 -- unclosed text
+    direction LR
+    q1@{ shape: doc
+    subgraph never
+    q2
