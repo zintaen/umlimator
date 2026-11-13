@@ -139,11 +139,11 @@ test('a file with every construct on Mermaid\'s state page gives the pinned repo
   const links = id => model.edges.filter(e => e.type === 'uml.CommentLink' && e.to === id).map(e => node(e.from));
   assert.equal(model.title, "Every construct on Mermaid's state diagram page");
   assert.equal(v.direction, undefined); // direction RL, read as LR, is the last
-  // Mermaid's own fork example forks into plain states; UML's fork-join rule (the state type, 4.6) wants different regions
-  // of one state, so validate() names the fork and the join, as the source wrote them. No other error
-  const typeOnly = new Set(['fork-join']), errs = m => validate(m).filter(p => p.level === 'error');
-  assert.deepEqual(errs(model).filter(p => !typeOnly.has(p.rule)), []);
-  if (errs(model).some(p => typeOnly.has(p.rule))) assert.deepEqual(errs(model).filter(p => typeOnly.has(p.rule)).map(p => p.ids[0]), ['fork_state', 'join_state']);
+  // no core error (one with no rule: a dangling end, a cycle of owners, ...). The state type's UML rules (4.6) may name
+  // what Mermaid's own examples do and UML does not allow (a fork into plain states, a history at the top): the reader
+  // keeps what the source says, and validate() says so
+  const core = m => validate(m).filter(p => p.level === 'error' && !p.rule);
+  assert.deepEqual(core(model), []);
   // states: a name, a description as the label, a text after a colon as a description comment
   assert.deepEqual([node('stateId').label, node('s2').label, node('s3').label], ['stateId', 'This is a state description', 's3']);
   assert.deepEqual(links('s3'), [{ id: 'note-1', type: 'uml.Comment', label: 'This is a state description', ext: { mermaid: { description: true } } }]);
@@ -261,7 +261,7 @@ test('malformed input is reported, never thrown', () => {
     '7 K : entry: K is a fork pseudostate, which has no activity: not read', '8 K : ev / y: K is a fork pseudostate, which has no internal transition: not read',
     '11 i : do: i is an initial pseudostate, which has no activity: not read']);
   assert.deepEqual(odd.model.nodes.map(n => [n.id, n.parent ?? null, n.props ?? null, n.members ?? null]), [['F', null, null, null], ['a', null, null, null], ['K', null, { kind: 'fork' }, null], ['i', null, { kind: 'initial' }, null]]);
-  assert.deepEqual(validate(odd.model).filter(p => p.level === 'error'), []);
+  assert.deepEqual(validate(odd.model).filter(p => p.level === 'error' && !p.rule), []); // no core error (above)
   assert.deepEqual(read('stateDiagram-v2\nstate [*]\nnote right of [*] : x\n').report.map(x => x.message), ['state [*] is not understood', 'note right of [*] : x: names no state']);
   const arrow = read('%% id: a->b\nstateDiagram-v2\n');
   assert.deepEqual([arrow.model.views[0].id, arrow.report.map(x => `${x.line} ${x.message}`)], ['a-b', ['2 %% id: a->b: an id holds no "->", so the view is a-b']]);
@@ -274,7 +274,7 @@ test('malformed input is reported, never thrown', () => {
     for (let j = 0; j < 20; j++) chars[Math.floor(r() * chars.length)] = pick(r, ['{', '}', '"', ';', '#', ':', '\n', '-->', '[*]', '--', '%%', ' as ', 'end note\n', 'state ', '<<fork>>', ':::', '<br>', '[', '/', '(', '']);
     const out = read(chars.join(''));
     assert.ok(Array.isArray(out.report));
-    assert.deepEqual(validate(out.model).filter(p => p.level === 'error' && p.rule !== 'fork-join'), [], chars.join('')); // fork-join: the source's own fork (above)
+    assert.deepEqual(validate(out.model).filter(p => p.level === 'error' && !p.rule), [], chars.join('')); // no core error (above)
     write(out.model);
   }
 });
