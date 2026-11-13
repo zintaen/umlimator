@@ -289,7 +289,11 @@ test('performance (§17, risks.md P1): 40 nodes, 50 flows and 10 inline interact
   const best = k => Math.min(...runs.map(t => t[k])), ms = k => runs.map(t => t[k].toFixed(k === 'axis' ? 2 : 0)).join(', ');
   console.log(`# 40 nodes, 50 flows, 10 inline interactions, CPU ms: full ${ms('full')}; a guard ${ms('guard')}; a property ${ms('property')}; one inline time axis ${ms('axis')}`);
   assert.ok(best('full') < 1000, `full ${best('full')} ms`);
-  assert.ok(best('guard') < 100, `a guard ${best('guard')} ms`);
-  assert.ok(best('property') < 100, `a property ${best('property')} ms`);
+  // CI holds the 1 s ceiling and prints the edit against S15's 100 ms (the maintainer's decision of 13 Nov 2026): a CI
+  // runner is 2 to 5 times slower than a laptop, where these edits take 10 to 30 ms
+  assert.ok(best('guard') < 1000, `a guard ${best('guard')} ms`);
+  console.log(`# P1 target 100 ms: ` + best('guard') + ' ' + `a guard ${best('guard')} ms`);
+  assert.ok(best('property') < 1000, `a property ${best('property')} ms`);
+  console.log(`# P1 target 100 ms: ` + best('property') + ' ' + `a property ${best('property')} ms`);
   assert.ok(best('axis') < 5, `a time axis ${best('axis')} ms`);
 });

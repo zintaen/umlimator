@@ -308,8 +308,13 @@ with tempfile.TemporaryDirectory() as tmp:
        [kinds.get(i) for i in ("Active", "if_state", "fork_state", "hist", "start", "end")] == [("uml.State", None), ("uml.Pseudostate", "choice"),
         ("uml.Pseudostate", "fork"), ("uml.Pseudostate", "shallowHistory"), ("uml.Pseudostate", "initial"), ("uml.FinalState", None)]
        and len(next(n for n in m["nodes"] if n["id"] == "Active").get("members", [])) == 3 and {e["type"] for e in m["edges"]} == {"uml.Transition", "uml.CommentLink"}, m["nodes"])
+<<<<<<< HEAD
     # no core error (one with no rule), as tests/mermaid-state.test.mjs asks since 4.8: the state type's UML rules (4.6) may
     # name what Mermaid's own examples do and UML does not allow (a fork into plain states, a history at the top)
+=======
+    # no core error (one with no rule); the state type's UML rules may name what Mermaid's own examples do and UML does not
+    # allow (a fork into plain states, a history at the top), as tests/mermaid-state.test.mjs says
+>>>>>>> origin/main
     problems = [p for p in u.js("validate", m) if p["level"] == "error" and not p.get("rule")]
     ok(f"{name} · validate() finds no core error", problems == [], problems)
     bare = dict(__import__("os").environ, PATH=tmp)
