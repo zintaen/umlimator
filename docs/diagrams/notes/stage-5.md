@@ -1030,11 +1030,7 @@ Each is set out with its options and trade-offs in the section named; the recomm
 | 19 | Hiding a port, part or role (DoD 4) | Members cannot be hidden; Delete deletes from the model, said first, as stage 3's P12 | A `present` key that hides a member | §12.2 |
 | 20 | The delegation's look | A solid line with an open arrow at its `to` end, listed as a departure: it shows which way the port delegates | UML's plain solid line (direction in the accessible name only); a plain line with «delegate» | §9.2, §17 |
 | 21 | `labelGaps` on a view laid out down | Taken, the maintainer's decision of 13 Nov 2026: Accept that a view laid out down gains less (the spike: 19 to 12 labels with no spot, against 12 to none laid out right); 5.5 states what `06-deployment.json` keeps laid out down | Let a turned view widen its row gaps as well, measured with `rows.ht`, and prefer them for a label beside a line across the ranks (core bytes, a change in `tight`'s choice of gap) | §8 |
-<<<<<<< HEAD
-| 22 | How a type's layout check passes ports on nodes (5.3's open point) | `overlapIssues` skips a node against the one its `owner` names (core, about 20 B in `src/layout/audit.js`), ports back as nodes: a selected node no longer marks its ports | As built in 5.4: ports on a node drawn in its group, out of the picture's `nodes` (no core byte); selecting the node marks its ports too | §10.1 |
-=======
-| 22 | How a type's layout check passes with ports on parts (5.6, §10.2 as built) | Teach `overlapIssues` to pass over a node whose `owner` is the other node of the pair (a few core bytes, `src/layout/audit.js`, a later package) | Keep the reports and have each type's tests and conformance note drop them (as 5.6 does now); draw a part's ports as non-nodes (they could no longer be selected) | §10.2 |
->>>>>>> origin/stage5-composite
+| 22 | How a type's layout check passes ports on their owners (5.3's open point; 5.4 and 5.6 as built) | Taken, the maintainer's decision of 13 Nov 2026: `overlapIssues` skips a node against the node its `owner` names (core, about 20 B); ports are nodes again, so selecting an element no longer marks its ports | Keep ports drawn in their owner's group (0 B; a selected node marks its ports; the tests filter the overlap) | §10.1, §10.2 |
 
 Decision 9 is taken: the spike left 12 labels with no spot, and `labelGaps` is built in 5.1 and set by the component and
 deployment types, the maintainer's decision of 13 Nov 2026 (§8, "As built").
