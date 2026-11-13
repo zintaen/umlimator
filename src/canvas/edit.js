@@ -168,7 +168,7 @@ function typedEditor(api) {
   function props() {
     const at = elementsOf(model()), id = selId(at), e = id && at.get(id);
     if (!e) return '<h3>Properties</h3><p class="um-note">Select a card or a line</p>';
-    const x = e.x, P = isRec(x.props) ? x.props : {}, schema = arrOf(isRec(def().props) ? def().props[x.type] : null).filter(f => isRec(f) && typeof f.key === 'string');
+    const x = e.x, P = isRec(x.props) ? x.props : {}, F = a => arrOf(a).filter(f => isRec(f) && typeof f.key === 'string'), own = F(isRec(def().props) ? def().props[x.type] : null), schema = [...own, ...F(TYPED.fields && TYPED.fields(model(), x))];
     const off = can('rename') ? '' : ' disabled'; // the editable flags: a field the host does not offer is shown, to read
     const text = (f, v, name, more = '') => `<label>${esc(name)}<input data-f="${esc(f)}" data-was="${esc(v)}" value="${esc(v)}"${more}${off}></label>`;
     let h = `<h3>Properties${x.type != null ? ': ' + esc(x.type) : ''}</h3>` + text('label', x.label ?? '', 'Name');
@@ -183,7 +183,7 @@ function typedEditor(api) {
     const offer = Array.isArray(os) && [{ id: '', label: 'none' }, ...os.filter(o => isRec(o) && o.id != null && !under(o.id))];
     if (offer && x.parent != null && !offer.some(o => o.id === x.parent)) offer.push({ id: x.parent, label: (at.get(x.parent) || { x: {} }).x.label });
     if (offer) h += `<label>Owner<select data-f="owner" data-owner${can('move') ? '' : ' disabled'}>${offer.map(o => `<option value="${esc(o.id)}"${o.id === (x.parent ?? '') ? ' selected' : ''}>${esc(o.label ?? o.id)}</option>`).join('')}</select></label>`;
-    const rest = schema.length ? [] : Object.entries(P); // no schema: what it holds, to read
+    const rest = own.length ? [] : Object.entries(P); // no schema: what it holds, to read
     if (rest.length) h += '<dl>' + rest.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(typeof v === 'string' ? v : JSON.stringify(v))}</dd>`).join('') + '</dl>';
     const M = def().member;
     if (e.kind === 'node' && !(M && M.holds && !M.holds(x))) { // a comment holds none
