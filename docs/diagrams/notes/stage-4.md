@@ -36,7 +36,7 @@ transition micro-syntax. Its reader: Mermaid's `stateDiagram`.
 | S19 | A composite state's entry, do and exit | Not drawn on its box in 0.21.0; in its accessible name, `describe()`, the panel and the PDF | §10.1 |
 | S20 | The order of a state's regions in the picture | The order `blockPos` gives boxes of one rank (by their first line), not `members` order; the panel, the PDF and the accessible names keep `members` order | §6.2 |
 | S21 | How strict the control-node rules are | Where UML allows one (one incoming to a fork, one outgoing from a join or a merge, none into an initial node), more is an error; where UML wants two or more, fewer is a warning, since a diagram being drawn passes through it | §9.3, §10.2 |
-| S22 | Mermaid's unsupported crossings | A transition between substates of two composites, or from outside into a substate, is written as a transition with a `%% warning:` line above it; Mermaid 12.3.0's parser is run on the writer's output once in 4.8, from a scratch page, not as a dependency | §13 |
+| S22 | Mermaid's unsupported crossings | A transition between substates of two composites, or from outside into a substate, is written as a transition with a `%% warning:` line above it; Mermaid 12.3.0's parser is run on the writer's output once in 4.8, from its npm package in a scratch directory, not as a dependency (4.8, §13) | §13 |
 
 What is left out of the subsets is in §18.
 
@@ -860,7 +860,7 @@ since the readers share one scope in `lib/umlimator-all.js`.
 | `direction LR`, `TB` | The view's `direction`: `right`, `down` | approximated for `RL`, `BT`, and a `direction` inside a composite |
 | `classDef`, `class`, `:::`, `style`, `hide empty description`, `scale`, `accTitle`, `accDescr`, `%%{init}%%` | Not read | skipped |
 | `title`, or `title` in front matter | The view's title | |
-| `%% id: <id>` above a statement; `%% kind: <kind>` above a state; `%% region: <id> <name>` before a region | That element's id; a junction, history or terminate pseudostate; a region's id and name | |
+| `%% id: <id>` above a statement (`%% link-id:` a note's line); `%% start-id:`, `%% end-id:` above the first line that names a scope's `[*]`; `%% kind: <kind>` above a state; `%% region: <id> <name>` before a region; `%% row: s1 : text` | That element's id (4.8: the transition's own id is `%% id:`, so its `[*]` ends take their own hints); a junction, history or terminate pseudostate, or an initial pseudostate or final state that is not its scope's `[*]` (`initial`, `final`); a region's id and name; the line it holds, for a composite state's text (below) | |
 | A line the reader does not know | Not read | skipped |
 | CRLF line ends, a byte-order mark | Read as LF, the mark dropped | |
 
@@ -868,7 +868,8 @@ Ids and limits:
 
 - A state's id is its Mermaid name; an initial pseudostate's `<scope>.start` (the top's `start`, a region's
   `<state>.r1.start`), a final state's `<scope>.end`; a transition's `<from>-<to>`, then `-2`, `-3` for each pair, so
-  inserting one renames only the later transitions of its own pair. Reading the same text twice gives the same ids.
+  inserting one renames only the later transitions of its own pair; an internal transition's `<state>.t<k>`, a note's
+  `note-<n>` and its line's `<note>-link` (4.8). Reading the same text twice gives the same ids.
 - **Collisions.** States take their names first (a first pass over the text), then pseudostates and transitions their
   derived ids; a derived id already taken takes the next free `-2`, `-3`, … So a user state named `start` or `end` keeps
   its name and the initial pseudostate becomes `start-2`, and `a-b --> c` against `a --> b-c` gives `a-b-c` and `a-b-c-2`.
@@ -891,26 +892,53 @@ Ids and limits:
 The writer:
 
 - writes one state machine view, `direction LR` for a view laid out right (Mermaid's default is down);
+- names a state by its id where Mermaid's lexer reads the id as one name (`[^:\n\s\-\{]+`: no `-`), else by a name made
+  of it (`payment_outcome`) under `%% id:`; the reader still reads a name with `-`, as §13's collisions need (4.8);
+- writes each transition in the innermost scope around both its ends (one with a `[*]` end in that `[*]`'s scope), so
+  the line names no state inside a body that is not around the state's own (4.8);
 - writes `state "label" as id` where the label is not the id; `entry`, `do`, `exit` and internal transitions as `id : …`
-  lines, printed by §7;
+  lines, printed by §7 (an internal transition with no effect as `trigger [guard] /`). A composite state's lines are
+  written `%% row: id : …`: Mermaid 12.3.0 refuses any text on a composite beside its label ("Group nodes can only have
+  label"), and S19 draws none on its box either (4.8);
 - writes composites nested with `--` between regions, and a region's id and name as `%% region:` when the reader would not
   derive them;
 - writes choice, fork and join as `<<…>>`; junction, shallow and deep history and terminate as a plain state under a
   `%% kind:` comment, labelled `●`, `H`, `H*` and `×` so Mermaid shows something near UML;
-- writes each transition with its printed label; an initial pseudostate or final state as `[*]`, with `%% id:` above its
-  first transition when its id is not the one the reader derives;
+- writes each transition with its printed label; an initial pseudostate or final state as `[*]`, with `%% start-id:` or
+  `%% end-id:` above its first transition when its id is not the one the reader derives. One that `[*]` cannot carry (a
+  second in its scope, one with a label, a line the wrong way, or a line to a state outside its scope, which `[*]` there
+  would move into the scope) is written as a state under `%% kind: initial` or `%% kind: final`, labelled ● or ◉ (4.8);
 - writes a comment marked `ext.mermaid.description` as `s1 : text`; any other comment linked to one state as a
   `note right of`; any other as `%% not written:`;
-- writes a second final state in one scope as one `[*]`, and says so in `%% not written:`, since Mermaid merges them;
+- (4.8: a second final state in one scope is written under `%% kind: final`, above, so the round trip keeps it, where
+  this note first had it merged into one `[*]` and named in `%% not written:`);
 - writes a transition between substates of two different composites, or from outside a composite into a substate (both
   in `10-state-machine.json`: its fork into two regions), as a transition, with `%% warning: Mermaid may not draw this`
-  above it (S22): Mermaid's page says such transitions are not supported, and our reader reads them back.
+  above it (S22): Mermaid's page says such transitions are not supported, and our reader reads them back. 4.8 warns of
+  every transition whose ends lie in different scopes, out of a composite too;
+- writes text with Mermaid's entities for `; : # " < > \`, `<br>` for a line break, an entity for a space at either end
+  and for the space after `direction`, which Mermaid's lexer reads as a statement anywhere in a line (4.8).
 
 `read(write(model))` equals the model on the subset, ids included, for `10-state-machine.json` and 500 generated models.
 `tests/import/state.mmd` holds every construct on Mermaid's page and pins the report (R4). Once, in 4.8, the writer's
 output for `10-state-machine.json` and for ten generated models is parsed by Mermaid 12.3.0 itself, from a scratch page
 in Chrome that loads it from a CDN (not a dependency of the repository); what it refuses or draws wrongly is recorded in
 the conformance note's fidelity table and in `state.mmd`'s header.
+
+4.8 ran it from Mermaid 12.3.0's npm package in a scratch directory instead (its parser and its layout data in Node,
+under jsdom, and its `render()` in headless Chrome from a page served there), which reads more than a parse: each state's
+composite and region, each transition. Result, in `state.mmd`'s header, for 4.10 to copy into the conformance note:
+every file is read, each state in the composite and region the model gives it, every transition and note kept (example
+10's seven crossings included); Chrome draws them all but one model's four transitions between a composite and a state
+inside it, which it draws with no line. Before the `%% row:` form above, Mermaid refused three of the ten models (text on
+a composite beside its label). A note's side: `note right of` is read as written, `note left of` reported, the side not kept.
+
+4.8 started beside 4.2 with its own stand-in for `transition.js`; since 4.2 merged, the swap is done: the reader
+imports `parseTransition`, `printTransition` and `trScan` from `src/uml/transition.js` and the stand-in is deleted.
+`mtPrint` keeps the writer's check that each text reads back as the very parts (untrimmed or empty parts are reported,
+not trimmed), and `mtLine` takes `trScan`'s `/` to tell `a /` from a description. The pinned report item for
+`state.mmd` line 117 (`tests/mermaid-state.test.mjs`) now quotes 4.2's wording: "its text is not trigger [guard] /
+effect: the ( it opens is not closed".
 
 | S22 option, crossings Mermaid does not support | For | Against |
 |---|---|---|
