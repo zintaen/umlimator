@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 2,
+  "title": "State machine, minimal: initial, a state, final",
+  "nodes": [
+    {"id":"start","type":"uml.Pseudostate","props":{"kind":"initial"}},
+    {"id":"idle","type":"uml.State","label":"Idle"},
+    {"id":"end","type":"uml.FinalState"}
+  ],
+  "edges": [
+    {"id":"t1","type":"uml.Transition","from":"start","to":"idle"},
+    {"id":"t2","type":"uml.Transition","from":"idle","to":"end","props":{"trigger":"close"}}
+  ],
+  "views": [
+    {"id":"v","diagram":"uml.state-machine","title":"Minimal","nodeIds":["start","idle","end"]}
+  ]
+}
