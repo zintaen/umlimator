@@ -239,6 +239,46 @@ an error (Q2).
 | Applying | Stereotypes (list) on each element, as every type has it; tags by §5.7's fields |
 | Hide and delete | Delete hides a node; Shift + Delete deletes. A stereotype deleted does not rewrite the elements that name it: they are warned (`stereotype-unknown`), as a renamed one is (M8). A stereotype's compartment and its tag rows cannot be hidden on their own (S17's reasoning: a row with no cause would be shown or not by a key of its own); the element's whole node is hidden instead |
 
+### 4.4 As built (6.3)
+
+Where `src/uml/profile.js` and its lines in `class.js`, `owners.js`, `package.js` and `draw.js` depart from or settle §4:
+
+- **The package view's palette is unchanged.** `package.js`'s `PACKAGE_LINES` gains `uml.ProfileApplication`, so a package
+  view that lists no lines draws an application (§14), but its `elements` and `lines` (the palette) do not gain Profile and
+  Profile application: `tests/package.test.mjs` and `tests/package-fixtures.test.mjs` pin them, and the schema they are
+  checked against is 6.6's. A profile is added on the profile view. *For the maintainer to decide* (6.6 or 6.7 may add them).
+- **`typeGeo` takes three more look fields:** `node(d, n, model, pic)`, a node's drawing input before it is sized (the tag
+  compartments, the accessible name), `box(b, model, pic)`, an open package's or profile's box as drawn (its title and
+  accessible name), and `dg`, more of `layoutTyped`'s input (`repair: false`, `reroute: false`). The class, package and object
+  looks give none. `compartmentsOf` returns none for a profile (as for a package) and for a metaclass reference, which is
+  where §4.1's "no compartment" lands besides `IMPLIED`. `ownersOn`'s default box word is "Profile" for a profile, so its
+  accessible name starts "Profile BookshopConventions" on every view. `describeAs` says a profile application ("applies BookshopConventions"); `lineName`
+  is exported for the profile's `describe()`.
+- **`{required}` is the extension's label,** at the line's middle as «apply» is, not by its end: the accessible name then says
+  it ("Extension from owned to Class: {required}").
+- **A default tag value is drawn in the text colour,** like a set one: the classifier draws every row alike, and 6.3 owns only
+  `ENDS` in `draw.js`. The rows say `tag = value` either way; a missing required value is `tag = ?`.
+- **`SHAPE.profiled`** is the classifier with the node's own accessible name (the classifier writes one from its compartments,
+  which here are tags). A stereotype shows its attributes (its tag definitions) and no operations compartment. A metaclass
+  reference and an enumeration keep their own compartments (none; the literals) under the tag compartments of the
+  stereotypes they have. A package on the profile view keeps its package look, closed or open: over its name the stereotypes
+  it has, the required ones supplied too; its tags are in its accessible name (`describe()` reads it), the panel and the PDF.
+- **`stereotype-names`** (6.2's `styKey`) says two stereotypes of one profile whose names meet with the first letter in either
+  case, and two profiles of one label, which `Profile::name` could not tell apart. An exact duplicate is also the class
+  rule's `classifier-names`, since `uml.Stereotype` is a classifier kind.
+- **`application-ends`** takes a profile as the applying package (UML's Profile is a Package), but not a profile applying
+  itself, which the rule and **connect** both refuse; a package applying a profile it holds is not checked. **connect**
+  refuses on the profile view a generalization that is not between two stereotypes.
+- **`profile-owns` asks for a profile as the direct owner,** narrower than UML 2.5.1 (12.4.9's `containingProfile()` is the
+  closest profile owning a stereotype directly or indirectly). 6.2's index (§5.9) reads only a profile's direct stereotypes,
+  so a stereotype in a package inside a profile would otherwise be valid and never found. *For the maintainer to decide*
+  whether to widen both (rule, Owner field and 6.2's index) later.
+- **add** puts a stereotype, a metaclass or an enumeration into the profile selected, else the profile holding what is
+  selected, else the view's first. A metaclass with no name is added unnamed (`metaclass-known` warns of it), with no picker.
+- **The Owner field** offers profiles for a stereotype and a metaclass reference, and packages and profiles for anything else
+  a package may own. The profile view's geometry has a slot at each node and box (`composite.js`'s), so the palette's add
+  hears the profile selected.
+
 ## 5. Stereotypes applied across the model
 
 ### 5.1 Where the check runs (S2)
@@ -681,6 +721,41 @@ Duration constraint, Comment link). Properties: a lifeline's `represents`, `stat
 `sort` (enum), `replyTo`; an extension's `isRequired`; a stereotype's `isAbstract`; tags on every element (§5.7). Every
 gesture has a key; each is tested by pointer and by key through `apply()`.
 
+As built (6.5), `src/uml/timing.js`, where it departs or settles what the sections above left open:
+
+- **No Comment and no Comment link on the timing palette.** Row 14's vocabulary (§3) has neither; the timing view lays
+  out lanes only, so a comment listed in `nodeIds` would need a place of its own beside the ruler. Left out (§15), for
+  the maintainer to ask for (decision 24, below).
+- **The palette's Change is the entry `uml.StateInvariant`** (a palette entry needs a type; a change in the model has
+  none, §3): `add` writes `{ id, lifeline, at, state }` into the timeline, never a node of that type.
+- **Geometry ids:** a state's row is `<lifeline>-><state>`, the ruler `->ruler`. Delete on either is refused, said.
+- **A constraint on a hidden lifeline's change** stays in the timeline and is not drawn, nor counted by `describe()`,
+  as its change is not (§7.2).
+- **F2's `@`:** a text whose part after its last `@` is not one or two numbers is all text (`mail me@home`). Renaming a
+  change into a state the lifeline does not list adds it to `states` in the same transaction, said, as `add` does.
+- **`connect` from a change to a lifeline** (either way) is a message at the change's time and the slot's; two changes
+  give their two times.
+- **Levels:** `sort` is a warning, as the sequence type's; `reply-call` an error. Both `reply-call` and `connect` judge
+  the call's `sort` as it is drawn: a message with no `sort`, or one not listed, is a call.
+- **What the hint line says** comes with the transaction (`{ commands, say }`, as the sequence type's lifelines):
+  "Hid worker; deleted its 2 messages; its changes stay in the timeline", "Deleted worker, 4 changes, 2 messages and 2
+  constraints", "Deleted 2 messages: a change, a message or a constraint is deleted, not hidden". The counts are read off
+  the model after the transaction, so a call's reply and a change's constraints, which the core's cascade takes with
+  them, are counted, and so is a change deleted beside a lifeline hidden ("…; deleted its 2 messages, and 1 change; …").
+- **One change at an instant:** `add` puts a change at the first minor tick its lifeline has free (on a selected
+  lifeline, from the ruler's start); a drop, Alt + ←/→ or F2's `@` that would put a change on another's instant is
+  refused, the guard holding `change-instant` as it holds an error, since only one of the two would be drawn.
+- **Alt + ↑/↓ on a change in a state its lifeline does not list** goes from the extra row at the bottom: ↑ to the
+  last listed state, ↓ nothing. On a message, Alt + ↑/↓ does nothing and is used up.
+- **Lanes are `uml.Lifeline` nodes only;** any other node in `nodeIds` is not drawn. A state listed twice is one row.
+- **F2's times are decimal numbers** (`-2.5`, `1e3`; not `0x10`). `name : Type` is read the same by `add` and F2:
+  `a : B : C` is `a`, representing `B:C`.
+- **The ruler's name** gives the span of the times drawn ("Time ruler, 0 to 900 ms, a tick every 200 ms" for row
+  14's example), not the room the ruler runs on past the last.
+- **L by name:** the canvas finds a node no view lists (a change) by its id, so `L` then typing reaches a change by
+  `w-waiting`, not by its state; arrows reach it as any node. Whether the canvas's `nameOf` should fall back to the
+  geometry node's label is decision 25, below.
+
 ### 8.3 Hiding (S17)
 
 | Option | For | Against |
@@ -923,7 +998,7 @@ other tags rewritten the same way); «aggregateRoot» stays defined, a specializ
 | Type | Left out |
 |---|---|
 | Profile | Stereotype icons and custom shapes (`proposal.md` §8.5); stereotypes shown in a comment symbol (12.3.4's third form); a profile's metamodel references and imports; ProfileApplication's `isStrict`; constraints owned by stereotypes (OCL); stereotype operations; a tag's list value; a tag whose type is a metaclass (a reference to a model element: its value passes as any text); a stereotype's associations; nested profiles; the `sysml.` types checked against metaclasses (milestone 3); tags drawn on other types' views (§5.8); XMI profiles (R6) |
-| Timing | Continuous timelines (`proposal.md` §8.5); message events as constraint ends; message labels (the lettered connectors that split a long message); found and lost messages; lifeline destruction (the X at a timeline's end); a duration constraint on a single element and `firstEvent`; time observations (`t = now`); duration observations; general orderings; gates; create and delete messages; lifelines decomposed; ruler breaks; a stored scale (`proposal.md` §8's "set the scale", §6.3); an `sd` frame and its name |
+| Timing | Continuous timelines (`proposal.md` §8.5); message events as constraint ends; message labels (the lettered connectors that split a long message); found and lost messages; lifeline destruction (the X at a timeline's end); a duration constraint on a single element and `firstEvent`; time observations (`t = now`); duration observations; general orderings; gates; create and delete messages; lifelines decomposed; ruler breaks; a stored scale (`proposal.md` §8's "set the scale", §6.3); an `sd` frame and its name; comments and comment links on the view (as built, 6.5, §8.2; decision 24) |
 | Both | Copy and paste (E7); per-type `diff()` writers; a reader (§10) |
 
 Departures from UML 2.5.1, which 6.6's conformance notes carry in a "Departures" line:
@@ -968,6 +1043,8 @@ Each is set out with its options and trade-offs in the section named; the recomm
 | 21 | The shape of `props.tags` | Keyed by stereotype, then tag (`{ "column": { "name": "placed_at" } }`): UML's per-application values, no clash between two stereotypes' `name`; costs one JSON level against `model.md` row 7 | A flat map plus a definition-time `tag-clash` error: `model.md`'s shape, but refuses profiles UML allows and clashes between two authors' profiles no user can fix | §5.6 |
 | 22 | An abstract required stereotype | Met by any concrete specialization the element applies; `stereotype-required` (warning) when none: UML's reading for a required stereotype with subclasses; one more rule | A definition-time error `extension-required-abstract`: simple, but refuses a profile UML allows | §5.5 |
 | 23 | A hidden timing lifeline's messages | Stated: they leave the view with it (the core's `hide` drops the view's own lines), said first with their count, as on a sequence view; no code, but showing the lifeline again does not bring them back (undo does) | The type's `remove` hook hides by `set` of `nodeIds` only, keeping the messages undrawn and `message-ends` skipping hidden lifelines: comes back whole, but a second way to hide | §8.3 |
+| 24 | Comments on a timing view (raised by 6.5) | Left out, as built: row 14 lists none, and the view lays out lanes only | Add them: a row of notes under the ruler and their links drawn straight to a lane or a change (a placement of their own, its tests and fixtures) | §8.2 |
+| 25 | How the hint line and L's typed search name a change (raised by 6.5) | By its id, as built: the canvas's `nameOf` reads the model's elements, and a change is none; no core bytes | The canvas's `nameOf` falls back to the geometry node's label, so a change reads "Waiting for payment @ 100" and L finds it by its state: kinder, but a core change (bytes from stage 6's share) touching every typed view's names | §8.2 |
 
 The maintainer's question of 13 Nov 2026, whether stages 5 and 6 can run in parallel, is decision 19: yes, for everything
 but stage 6's documents, examples and atlas (6.6, 6.7), which wait for 5.8 because they own the same files

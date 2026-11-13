@@ -132,10 +132,10 @@ for every type in it.
 | 4 ([`notes/stage-4.md`](notes/stage-4.md)) | Use case, activity, state machine, interaction overview | Shapes that are not boxes (L12); explicit nestable lanes; regions in compound nodes; the transition micro-syntax | Use case, activity, state machine, interaction overview | Mermaid state |
 | 5 ([`notes/stage-5.md`](notes/stage-5.md)) | Component, deployment, composite structure | Ports on borders; ends through parts; deep nesting; a time-boxed trial of the own engine against ELK (L9) | Component, deployment, composite structure | None |
 | 6 ([`notes/stage-6.md`](notes/stage-6.md)) | Profile, timing | Stereotype definitions and application checks across the model; the time-ruler strategy | Profile, timing | None |
-| M2 | ER, flowchart, data flow, information flow, C4 | Line-end skins; per-view scope rules; levels on drill-down | ER, flowchart, data flow, information flow, C4 (typed elements, dynamic, deployment) | Mermaid ER and flowchart (ported), Structurizr JSON, DBML as an optional adapter |
-| M3 | Requirement, block definition, internal block, parametric | Frames; SysML's types as stereotyped UML types | Requirement, block definition, internal block, parametric | Mermaid requirement |
+| M2 ([`notes/milestone-2.md`](notes/milestone-2.md)) | ER, flowchart, data flow, information flow, C4 | Line-end skins; per-view scope rules; levels on drill-down | ER, flowchart, data flow, information flow, C4 (typed elements, dynamic, deployment) | Mermaid ER and flowchart (ported), Structurizr JSON, DBML as an optional adapter |
+| M3 ([`notes/milestone-3.md`](notes/milestone-3.md)) | Requirement, block definition, internal block, parametric | Frames; SysML's types as stereotyped UML types | Requirement, block definition, internal block, parametric | Mermaid requirement |
 | M4a ([`notes/milestone-4a.md`](notes/milestone-4a.md)) | AWS, GCP, Azure; mindmap | Icon packs as data, fetched and pinned; the tree strategy | AWS, then GCP and Azure; mindmap | Mermaid mindmap |
-| M4b | BPMN | Boundary events; two flow kinds with scope rules | BPMN, the Descriptive sub-class's elements | BPMN XML through `bpmn-moddle`, as an optional adapter |
+| M4b ([`notes/milestone-4b.md`](notes/milestone-4b.md)) | BPMN | Boundary events; two flow kinds with scope rules | BPMN, the Descriptive sub-class's elements | BPMN XML through `bpmn-moddle`, as an optional adapter |
 
 Before M4a starts: read the terms inside each vendor's icon download (`proposal.md` §6.5).
 
