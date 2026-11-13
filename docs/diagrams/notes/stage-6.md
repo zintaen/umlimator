@@ -1027,22 +1027,28 @@ other tags rewritten the same way); «aggregateRoot» stays defined, a specializ
   are the view's own elements (an id there and anywhere else stops the build). The build met no clash: 6.6's revisions
   made the files agree. 29 ids are shared, four more than 0.22.0's: `order.placedAt`, `conventions`,
   `sales-applies-conventions`, `lifeline-worker`.
-- **Decision 18, option (a).** `bookshop-packages.json` gains `conventions` and `sales-applies-conventions`, as the profile
-  file has them; the package view draws the profile as a closed «profile» folder under `sales`, with its «apply» line.
-  The line is listed third in the view's `edges`: listed last, the down layout left catalog's «import» to shared
+- **Decision 18, option (a).** `bookshop-packages.json` gains `conventions` and `sales-applies-conventions`, as the
+  profile file has them; the package view draws the profile as a closed «profile» folder under `sales`, with its «apply»
+  line. The line is listed third in the view's `edges`: listed last, the down layout left catalog's «import» to shared
   undrawn and the layout check found nothing (a limit of the label placement, not this lane's to fix). The package
   type's tests (`tests/package.test.mjs`, `tests/package.html`) and `tests/mermaid-class.test.mjs` keep the example as
   stage 2 made it, the two elements taken out when read; a new test in `tests/package.test.mjs` draws the example as it
   is. `tests/print-typed.test.mjs`'s hash of the package file's tables and `tests/core-diet.json`'s four package
   fingerprints are recorded again. These are the existing tests 6.7 edits besides `tests/atlas.test.mjs`; §13.2 expected
   none.
+- **The documents 6.7 edits outside its Owns** (§13.2 lists none; `docs/` was 6.6's): `README.md`, `docs/module-api.md`,
+  `examples/README.md`, `examples/index.html` (the atlas's and the package example's cards),
+  `docs/diagrams/notes/stage-6.md` (this section), `docs/conformance/uml-package.md` and `docs/diagrams/risks.md` L8
+  (2.6's known limit, a line through `payments`' box, is now stated on the example as stage 2 made it: with the profile
+  the line goes round `catalog`'s right side), and `tests/embed.py`'s line for `tests/package.html`.
 - **The links.** `bookshop-packages/conventions` opens `profile`; `fulfil-activity/record` opens `one-charge`. From the
   map: overview → packages → profile, and overview → shopping → take-payment → one-charge.
-- **What `tests/atlas.test.mjs` pins:** the 14 kinds; `describe()` and the PDF's tables of every view; «owned» supplied to
-  exactly `customer`, `order` and `line`; the merged `placedAt`'s «column» and tags, with the class view's `describe()`
-  and PDF rows equal to the class file's (it does not draw member stereotypes); the problem list unchanged (the class
-  rule's two `generalization-kinds`, the two `realization-target`, the two `part-type`; none from a stored keyword such
-  as `order-uses-money`'s «use»); Shift + Delete of `lifeline-worker` on `queue-order` taking its four changes and both
+- **What `tests/atlas.test.mjs` pins:** the 14 kinds; `describe()` and the PDF's tables of every view; «owned» supplied
+  to exactly `customer`, `order` and `line`; the merged `placedAt`'s «column» and tags, with the class view's
+  `describe()` and PDF rows equal to the class file's (it does not draw member stereotypes); the problem list unchanged,
+  six problems as before 6.7 (the class rule's two `generalization-kinds`, the two `realization-target` and the two
+  `part-type`, where §13.2's done-when says only "the class rule's two"; none from a stored keyword such as
+  `order-uses-money`'s «use»); Shift + Delete of `lifeline-worker` on `queue-order` taking its four changes and both
   constraints.
 
 ## 15. Left out of the subsets

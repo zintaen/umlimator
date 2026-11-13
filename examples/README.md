@@ -47,7 +47,7 @@ Action on it in a pull request; the site shows its stills and its PDF.
 | [`bookshop-timing.json`](bookshop-timing.json) | UML timing diagram (`uml.timing`, 0.23.0) | One charge on a time ruler in ms: the order worker and the payment provider, the overview's and the sequence example's lifelines, each a step line through its states; a call and its reply at their times, slanted between their senders' and receivers' states; a duration constraint `{<= 800 ms}` under the worker's lane and a time constraint on its last change. What the timing diagram covers: [`docs/conformance/uml-timing.md`](../docs/conformance/uml-timing.md) |
 
 | [`order-objects.json`](order-objects.json) | UML object diagram (`uml.object`, 0.19.0) | One placed order of the same bookshop as instances of its classes: each head `name : Classifier`, underlined, its slots as `feature = value` rows; links with a name or with roles by their ends; laid out top to bottom. What the object diagram covers: [`docs/conformance/uml-object.md`](../docs/conformance/uml-object.md) |
-| [`bookshop-packages.json`](bookshop-packages.json) | UML package diagram (`uml.package`, 0.19.0) | The bookshop's packages, each a box holding the classes it owns, `card` inside `payments`; two classes named `Order` in two packages; «import», «access» (a private import), «merge» and a dependency between the boxes. What the package diagram covers: [`docs/conformance/uml-package.md`](../docs/conformance/uml-package.md) |
+| [`bookshop-packages.json`](bookshop-packages.json) | UML package diagram (`uml.package`, 0.19.0) | The bookshop's packages, each a box holding the classes it owns, `card` inside `payments`; two classes named `Order` in two packages; «import», «access» (a private import), «merge» and a dependency between the boxes; the profile `BookshopConventions`, a closed «profile» folder, applied by `sales` («apply»). What the package diagram covers: [`docs/conformance/uml-package.md`](../docs/conformance/uml-package.md) |
 
 [![The class diagram's domain view](https://zintaen.github.io/umlimator/examples/stills/sales-classes/domain.png)](https://zintaen.github.io/umlimator/examples/sales-classes.html)
 
@@ -68,8 +68,8 @@ Action on it in a pull request; the site shows its stills and its PDF.
 ## The Bookshop atlas
 
 [`bookshop-atlas.json`](bookshop-atlas.json) is the Bookshop examples above in one model (`"schemaVersion": 2`): the
-map's three views and the twenty views of the fourteen diagram files, one of each of UML's 14 diagram kinds, joined by drill-down. Double-click a card to open
-what it leads to:
+map's three views and the twenty views of the fourteen diagram files, one of each of UML's 14 diagram kinds, joined by
+drill-down. Double-click a card to open what it leads to:
 
 | From | Card | Opens |
 |---|---|---|
@@ -84,9 +84,10 @@ It is built, not written: `node tools/atlas.mjs` reads the example files and [`.
 (the files, in order, and which card opens which view) and writes the model. Elements are shared by id: one Order,
 one package `sales`, one `api` lifeline for the sequence, communication and overview files, one Shop API, its jar and the
 runtime it is deployed on for the component and deployment files; Order, its `placedAt` and the profile for the
-class, package and profile files, and the `worker` and `payments` lifelines for the overview, sequence and timing files. Where two files have an id,
-they must agree on it (a field one leaves out is the other's, a class's members are the union of theirs); where they
-disagree, the build stops and names the id, the files and the field, and the example files are what gets fixed.
+class, package and profile files, and the `worker` and `payments` lifelines for the overview, sequence and timing
+files. Where two files have an id, they must agree on it (a field one leaves out is the other's, a class's members are
+the union of theirs); where they disagree, the build stops and names the id, the files and the field, and the example
+files are what gets fixed.
 `tests/atlas.test.mjs` fails when the committed atlas is not what it writes. A card that opens another kind of diagram does not unfold in place (E): it opens.
 
 ## Host pages

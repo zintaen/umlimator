@@ -3749,9 +3749,11 @@ What moves for a host that upgrades from 0.21.0:
 Stage 6 of the plan for 28 diagram types (`docs/diagrams/notes/stage-6.md`): the last two of UML's 14. If 0.22.0 is
 released before stage 6 merges, its notes say that stage 6's code rode along provisionally; this section says what it
 does and what changes from 0.22.0. Everything is additive: maps, every typed view released before and every earlier
-example but the package example (which gains the profile, below) draw as they did in 0.22.0 (`bench/expected.json`, `tests/core-diet.json`'s fingerprints of every view drawn by
-`lib/umlimator.js`, the examples' stills); a model with no `uml.Profile` gets no new problem. The new code is in
-`lib/umlimator-all.js`, except the core's 180 B for 6.1's slots (below).
+example but two draw as they did in 0.22.0 (`bench/expected.json`, `tests/core-diet.json`'s fingerprints of every view
+drawn by `lib/umlimator.js`, the examples' stills). The two are the package example, which gains the profile, and the
+Bookshop atlas, whose packages view gains it too and which gains the profile and timing views (below). A model with no
+`uml.Profile` gets no new problem. The new code is in `lib/umlimator-all.js`, except the core's 180 B for 6.1's slots
+(below).
 
 - **The note and the files (#230, 6.0, #231).** The approved design note, every recommendation of its §16 taken (13 Nov
   2026); the four sources `src/uml/stereotypes.js`, `src/uml/profile.js`, `src/layout/timeruler.js` and
@@ -3827,7 +3829,8 @@ What moves for a host that upgrades from 0.22.0:
   profile `conventions` (a closed «profile» folder) and `sales-applies-conventions` («apply»), listed third among the
   view's lines (listed last, catalog's «import» to shared went undrawn on the down layout, with no check finding). Its
   stills, `describe()` (17 elements and 6 lines) and PDF rows change; the package type's tests keep the example as
-  stage 2 made it, and one test draws the new one.
+  stage 2 made it, and one test draws the new one. The atlas changes with it: its packages view draws the profile and
+  the «apply» line, it gains the views `profile` and `one-charge`, and its stills and PDF on the site change.
 - **Known gap** (6.1's finding; a follow-up package after stage 6, the maintainer's decision of 13 Nov 2026): with every
   type's rules, deleting an element can leave a model that fails `validate()` under four earlier types' rules
   (`extend-points`, `message-link`, `reply-once`, `subject-shown`): 29 of 1,495 deletes over the examples and targets
