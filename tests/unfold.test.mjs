@@ -140,3 +140,24 @@ test('layout() unfolds every benchmark view the bench unfolds exactly as the bro
     assert.deepEqual([hash(layout(models[name], view, { expand: cards }))], expected[k].hashes, k); }
   assert.ok(keys.length >= 4, `checked ${keys.length}`);
 });
+
+// A typed card opening a view of its own kind (milestone 2 §6.3, S8): it opens, unless its type says unfolds: true, which
+// the activity type says. Laid out from src/, which registers the types (lib/umlimator.js holds none).
+test('a class card opening a class view opens and never unfolds; a call behaviour action still unfolds its activity, in shape', async () => {
+  for (const f of ['map/typed', 'typed/layout', 'typed/draw', 'uml/class', 'uml/activity']) await import(`../src/${f}.js`);
+  const { layout: typedLayout } = await import('../src/map/api.js'), { mapContext } = await import('../src/map/context.js');
+  const m = read('../examples/sales-classes.json'); // Q5: a class view inner holding a class the domain view does not show
+  m.views.push({ id: 'inner', diagram: 'uml.class', nodeIds: ['card'] }); m.nodes.find(n => n.id === 'customer').opensView = 'inner';
+  const g = typedLayout(m, 'domain', { expand: ['customer'] });
+  assert.deepEqual(g.unfolded, []);
+  assert.equal(g.nodes.find(n => n.id === 'customer').shape, 'classifier', 'the card stays a classifier');
+  assert.ok(!g.families.some(f => f.id === 'customer'));
+  assert.equal(mapContext(m).unfoldable('customer', 'domain'), null);
+  const a = read('../examples/fulfil-activity.json'), u = typedLayout(a, 'fulfil', { expand: ['call-payment'] }), plain = typedLayout(a, 'fulfil');
+  assert.deepEqual(u.unfolded, ['call-payment']);
+  assert.equal(mapContext(a).unfoldable('call-payment', 'fulfil'), 'take-payment');
+  const inner = a.views.find(v => v.id === 'take-payment').nodeIds.filter(id => u.nodes.some(n => n.id === id));
+  assert.ok(inner.length, 'its activity\'s nodes are drawn in the box');
+  inner.forEach(id => assert.ok(u.nodes.find(n => n.id === id).shape, `${id} keeps its shape`));
+  assert.ok(plain.nodes.some(n => n.id === 'call-payment'));
+});
