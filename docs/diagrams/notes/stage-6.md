@@ -884,6 +884,16 @@ new error under four rules:
 A use case cascade (an extend left with no point goes with it) would close only the first; each of the others needs its
 own type's delete to cascade or its rule to accept what a delete leaves. That is the maintainer's to decide, after stage 6.
 
+Closed by the follow-up (approved 13 Nov 2026), without core bytes: a delete is Shift + Delete through the remove hook of
+each view that draws the element (a bare delete where the view's type has none), and `tests/delete-cascade.test.mjs` runs
+every such single delete over every example, the atlas and every target (1,589) and finds no new error. `extend-points`:
+the use case type gains a remove hook, and an extend left naming no other point goes with the point, named on the hint
+line. `message-link`: the communication type's hook already took a connector's messages. `reply-once`: the sequence
+type's hook already refused, said, a delete of the alt or an operand that leaves two replies side by side (its tests pin
+it). `subject-shown`: the rule accepts what the delete leaves, a warning for a view with no subject (it draws its other
+cards), as hiding the subject leaves it too; a subject set but not shown stays an error. A bare `apply()` delete still
+leaves the four, as it does a host's own store's: closing those is a core slot, left out.
+
 Two smaller choices as built. With no field list for its type, the panel shows a slot's fields to edit and still lists
 every prop to read, `tags` among them as JSON, as before the slot (`tests/typed-edit.html` asserts it). The delete
 cascade walks every element once a level of the chain, so a chain stored in reverse order is quadratic (2,000 changes

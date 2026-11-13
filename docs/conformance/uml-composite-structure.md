@@ -27,6 +27,11 @@ port of its type), `connector-scope` (a connector's ends lie in one structure; a
 `binding-ends` (errors); `part-type` (a part's type names exactly one class or component), `binding-role`,
 `collaboration-named`, `connector-drawn` (a connector between two ports of the subject is not drawn) (warnings); and the
 shared `port-owner` and `manifest-ends`. Deleting a part deletes the connectors through it (the type's `refs` cascade).
+`subject-shown` is a warning for a view with no subject at all, as deleting its subject, or hiding it from the view,
+leaves it: the view draws its other cards (collaborations, comments) and no structure until a subject is set; a subject
+set to something else, or not listed in `nodeIds`, stays an error. So no single delete leaves a `subject-shown` error
+(`tests/delete-cascade.test.mjs`); deleting the view with its subject was not taken, as the view and what else it shows
+are the author's.
 
 **Departures from UML 2.5.1:** a role binding's role is drawn as its line's label, not as an end label at the part's
 end (the end labels are placed after the port names and do not see them); a binding to a port is left out (below).

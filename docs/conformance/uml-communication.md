@@ -27,6 +27,10 @@ Rules, each `validate()` problem naming its `rule` and its elements: `message-li
 the message's two lifelines; a self-message needs a self connector), and the shared `reply-call`, `reply-once`,
 `create-once`, `delete-once` and `sort` (`src/uml/interaction.js`).
 
+Deleting a connector (Shift + Delete) takes the messages it carries, from every communication view with no other
+connector for them, in the same transaction (the type's remove hook), so no single delete leaves a `message-link` error
+(`tests/delete-cascade.test.mjs`). A bare `apply()` delete of a connector leaves its messages, and so the error.
+
 ## Left out
 
 - Guards and iteration beyond plain text; concurrent numbers (`1a`, `1b`); multi-objects.
