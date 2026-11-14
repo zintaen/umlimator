@@ -1,5 +1,5 @@
 import { TYPED } from '../core/registry.js';
-import { andList } from './validate.js';
+import { andList, arrOf } from './validate.js';
 
 /* ---------- change: diff (#66) and drift (#68) ----------
    Each returns a model marked with what the map draws already, so a page the CLI writes, or a still, shows the marks
@@ -19,24 +19,25 @@ const markOf = all => { const top = all.find(x => x.style === 'removed' || x.dri
 // the lines a view draws: its own list (a model line by id, or one of its own), else every model line between its cards and boxes
 const linesOf = (m, v) => { const all = Array.isArray(m.edges) ? m.edges.filter(Boolean) : [];
   if (Array.isArray(v.edges)) { const byId = new Map(all.filter(e => e.id != null).map(e => [String(e.id), e])); return v.edges.map(e => typeof e === 'string' ? byId.get(e) : e).filter(Boolean); }
-  const ids = new Set([...(v.nodeIds || []), ...(v.containers || []).map(c => c && c.id)]); return all.filter(e => ids.has(e.from) && ids.has(e.to)); };
+  const ids = new Set([...arrOf(v.nodeIds), ...arrOf(v.containers).map(c => c && c.id)]); return all.filter(e => ids.has(e.from) && ids.has(e.to)); }; // a list it is not is ignored, as validate() says
 
 /** What changed from one model to the next, as one model to draw: `after`, with each card and line marked added, changed
  *  or removed (removed ones come back from `before`, in their views, boxes and places), a summary in words, and the
  *  views that show a change. Cards and lines are matched by id (a line without one by its ends, as a Ref names it). */
 export function diff(before, after) {
-  const arr = x => (Array.isArray(x) ? x : []), A = structuredClone(before || {}), out = structuredClone(after || {});
+  const arr = arrOf, A = structuredClone(before || {}), out = structuredClone(after || {});
   const how = new Map(), was = new Map(), said = []; // each marked card or line: added, changed or removed; a changed one's [before, after]
   const card = (x, h) => ({ ...x, change: h });
   const line = (x, h) => ({ ...x, change: h, ...(h === 'changed' ? { edited: true } : { style: h }) });
-  function mark(old, now, put, keys = l => l.map(x => x && x.id), inPlace) { // now's items, marked; old's that left come back, marked removed
+  function mark(old, now, put, keys = l => l.map(x => x && x.id), inPlace) { // now's items, marked; old's that left come back, marked removed; inPlace: the removed model lines' ids
     const ko = keys(old), kn = keys(now), O = new Map(old.map((x, i) => [ko[i], x])), kept = new Set(kn);
     const res = now.map((x, i) => { if (!x || typeof x !== 'object') return x; const o = O.get(kn[i]);
       if (o && typeof o === 'object' && canon(o) === canon(x)) return x;
       const h = o && typeof o === 'object' ? 'changed' : 'added', y = put(x, h); how.set(y, h); if (h === 'changed') was.set(y, [o, x]); return y; });
     const R = [...res]; let at = 0; // in a view's lines (a sequence's are its time order) after the old one before it that stayed, else at the end
     old.forEach((x, i) => { if (kept.has(ko[i])) at = res.indexOf(R[kn.indexOf(ko[i])]) + 1;
-      else if (x && typeof x === 'object') { const y = put(x, 'removed'); how.set(y, 'removed'); res.splice(inPlace ? at++ : res.length, 0, y); } });
+      else if (x && typeof x === 'object') { const y = put(x, 'removed'); how.set(y, 'removed'); res.splice(inPlace ? at++ : res.length, 0, y); }
+      else if (inPlace && inPlace.has(x)) res.splice(at++, 0, x); }); // a removed model line a view named, in its place too
     return res;
   }
   out.nodes = mark(arr(A.nodes), arr(out.nodes), card);
@@ -59,8 +60,7 @@ export function diff(before, after) {
       w.containers = v.containers.map(c => { const back = left.filter(id => c && arr(o.containers).some(b => b && b.id === c.id && arr(b.nodeIds).includes(id))); return back.length ? { ...c, nodeIds: [...arr(c.nodeIds), ...back] } : c; });
     if (left.length && v.layout && o.layout) { const L = { ...v.layout }, taken = new Set(Object.values(L).map(String));
       left.forEach(id => { const p = o.layout[id]; if (Array.isArray(p) && !taken.has(String(p))) { L[id] = p; taken.add(String(p)); } }); w.layout = L; }
-    if (Array.isArray(v.edges)) { w.edges = mark(arr(o.edges), v.edges, line, lineKeys, 1);
-      arr(o.edges).forEach(e => { if (typeof e === 'string' && !v.edges.includes(e) && goneLines.has(e)) w.edges.push(e); }); } // a removed model line it showed
+    if (Array.isArray(v.edges)) w.edges = mark(arr(o.edges), v.edges, line, lineKeys, goneLines);
     return w;
   });
   arr(A.views).forEach(o => { if (!o || V1.has(o.id)) return; // a removed view comes back with everything in it removed
@@ -109,7 +109,7 @@ export function diff(before, after) {
  *  each a count of model edges (a drawn line that stands for several fades only when all are idle); views: those that
  *  show drift. */
 export function drift(model, observed, options = {}) {
-  const arr = x => (Array.isArray(x) ? x : []), out = structuredClone(model || {}), match = options.match || {};
+  const arr = arrOf, out = structuredClone(model || {}), match = options.match || {};
   const list = Array.isArray(observed) ? observed : arr(observed && observed.data);
   const cards = [...arr(out.nodes), ...arr(out.views).flatMap(v => arr(v && v.nodes))].filter(n => n && n.id != null);
   const ids = new Set(cards.map(n => String(n.id))), lower = new Map();

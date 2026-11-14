@@ -141,6 +141,9 @@ function tablesOf({ D, N, nodeIn, viewEdges }, v, g) {
   const cards = v => arrOf(v.nodeIds).filter(i => N[i]), boxes = v => arrOf(v.containers).filter(c => c && c.id);
   const wk = new Map(g.edges.flatMap(d => edgeRefIds(d).map(id => [id, d.wk]))), typed = (v.diagram ?? 'map') !== 'map';
   const at = Object.fromEntries(g.nodes.map(n => [n.id, n])), ids = cards(v), es = viewEdges(v).filter(e => e.from !== e.to && (!typed || wk.has(e._id) || at[e._id])), seq = v.render === 'sequence', stepped = es.some(e => e.step != null); // a typed view's: those its type draws (a communication message is drawn as a row)
+  if (typed) { const have = new Set(es.map(e => e._id)); // and a line its type draws to an end's owner (a member's, a port's), between the owners
+    const M = new Map(arrOf(D.edges).filter(Boolean).map(x => [x._id, x]));
+    g.edges.forEach(d => edgeRefIds(d).forEach(id => { const e = M.get(id); if (e && !have.has(id) && d.from !== d.to) { have.add(id); es.push({ ...e, from: d.from, to: d.to }); } })); }
   const drawn = id => (typed && at[id]?.label) || nodeIn(id, v.id).label || id; // a typed view's drawn name: sales::Order
   const name = (v, id) => esc(N[id] ? drawn(id) : (boxes(v).find(c => c.id === id) || {}).label || id);
   const held = boxes(v).map(c => [c, arrOf(c.nodeIds).filter(i => ids.includes(i))]).filter(([, ins]) => ins.length);

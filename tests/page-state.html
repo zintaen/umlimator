@@ -153,14 +153,14 @@ try {
 
   /* ---------- search after update() (#133) ---------- */
   const M2 = structuredClone(M); M2.nodes.push({ id: 'pager', label: 'Pager duty', kind: 'backend' }); M2.views.push({ id: 'oncall', title: 'On call', parent: 'context', nodeIds: ['pager'] });
-  const search = async text => { key('/', document.body); await until(() => !$('m-pal').hidden); $('m-q').value = text; $('m-q').dispatchEvent(new Event('input')); const r = $('m-res').textContent; key('Escape', $('m-q')); return r; };
+  const search = async text => { key('/', document.body); await until(() => !$('m-pal').hidden); $('m-q').value = text; $('m-q').dispatchEvent(new Event('input')); const r = $('m-res').textContent + $('m-none').textContent, bad = [...$('m-res').children].filter(x => !/^(option|group)$/.test(x.getAttribute('role')) && !x.matches('.gt')); key('Escape', $('m-q')); return bad.length ? 'not an option in the list: ' + bad.map(x => x.outerHTML).join(' ') : r; };
   pg.update(M2); await until(() => pg.navigating === null);
   let found = await search('pager');
   check('search finds the card and view an update() brought, with no did-you-mean that contradicts it', /Pager duty/.test(found) && !/Nothing called/.test(found), found);
   found = await search('on call');
   check('…and its view', /On call/.test(found) && !/Nothing called/.test(found), found);
   pg.update(M); await until(() => pg.navigating === null); found = await search('pager');
-  check('…and drops what an update() took away', /Nothing called/.test(found) && !/Pager duty/.test(found), found);
+  check('…and drops what an update() took away, saying so beside the list, which holds only options (audit 3)', /Nothing called/.test(found) && !/Pager duty/.test(found), found);
   const M3 = structuredClone(M); M3.nodes.push({ id: 'amp', label: 'Sample & Mark <i>', kind: 'backend' }); M3.views[0].nodeIds.push('amp');
   pg.update(M3); await until(() => pg.navigating === null); found = await search('amp ma rk');
   check('a result reads its label, & and < as written, with each word marked on the label (audit 2)', /Sample & Mark <i>/.test(found), found);
@@ -195,6 +195,11 @@ try {
     && ph.textContent === 'Already at the top' && !ph.hasAttribute('aria-live') && ph.nextElementSibling.getAttribute('aria-live') === 'polite' && ph.nextElementSibling.textContent === 'Already at the top', [phs().display, ph.textContent, pr.left, pr.right, pr.bottom]);
   phone.remove();
   const wide = await frame(1300), open0 = wide.contentDocument.body.classList.contains('tree-open');
+  const wd = wide.contentDocument, ww = wide.contentWindow, low = []; wd.getElementById('m-pillbtn').click(); // the view pill's details line reads at 4.5:1 in both themes (audit 3)
+  const rgb = s => s.match(/[\d.]+/g).map(Number), lum = c => { const f = v => (v /= 255) <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]); };
+  const under = el => { for (let e = el; e; e = e.parentElement) { const c = rgb(ww.getComputedStyle(e).backgroundColor); if (c.length < 4 || c[3] > 0) return c; } return [255, 255, 255]; };
+  for (const theme of ['light', 'dark']) { wd.documentElement.dataset.theme = theme; wd.querySelectorAll('.vpop .vm').forEach(el => { const [a, b] = [lum(rgb(ww.getComputedStyle(el).color)), lum(under(el))].sort((x, y) => y - x), r = (a + 0.05) / (b + 0.05); if (r < 4.5) low.push(`${theme}: ${el.textContent} ${r.toFixed(2)}:1`); }); }
+  check('the view pill\'s details line reads at 4.5:1 in light and dark (audit 3)', wd.querySelector('.vpop .vm') && !low.length, low); delete wd.documentElement.dataset.theme;
   wide.style.width = '700px'; wide.contentWindow.dispatchEvent(new Event('resize')); // as the window's own resize does (headless virtual time runs no rendering step)
   check('the views list, open on a wide window, closes when the window narrows to a phone\'s (it would cover the map)', open0 && await until(() => !wide.contentDocument.body.classList.contains('tree-open')));
   wide.remove();

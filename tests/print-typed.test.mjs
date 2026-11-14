@@ -103,3 +103,12 @@ test('no conformance note says Tab stops on a box: a box is reached through the 
   const stale = readdirSync(dir).filter(f => /Tab\s+reads\s+(each box and|a box,|the subject and|the actors, then each subject and)/.test(readFileSync(new URL(f, dir), 'utf8')));
   assert.deepEqual(stale, []);
 });
+
+test('the Lines table lists a line drawn to a member\'s owner: an association from a property, a comment on one (audit 3)', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'order', type: 'uml.Class', label: 'Order', members: [{ id: 'order.customer', type: 'uml.Property', label: 'customer' }] },
+    { id: 'customer', type: 'uml.Class', label: 'Customer' }, { id: 'note', type: 'uml.Comment', label: 'kept by id' }],
+  edges: [{ id: 'ref', type: 'uml.Association', from: 'order.customer', to: 'customer', label: 'refers to' }, { id: 'about', type: 'uml.CommentLink', from: 'note', to: 'order.customer' },
+    { id: 'plain', type: 'uml.Dependency', from: 'order', to: 'customer' }], views: [{ id: 'v', diagram: 'uml.class', nodeIds: ['order', 'customer', 'note'] }] };
+  const ctx = mapContext(m), lines = tablesOf(ctx, ctx.V.v, ctx.buildGeo('v'))[1], text = lines.rows.map(r => r.replace(/<[^>]+>/g, ''));
+  assert.match(lines.title, /<span>3<\/span>/); assert.ok(text.includes('Order → Customerrefers toAssociation') && text.some(t => t.startsWith('kept by id → Order')), text);
+});

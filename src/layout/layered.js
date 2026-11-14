@@ -215,6 +215,10 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
   // grows to hold it; laid out turned (direction down), the 24 px header room goes left, the side that becomes the top
   const familyDefs = dg.containers || [], tagged = n => map && (n.author || n.k === 'm-ext'), TB = !map && dg.turned; // tagged: a name tag hangs under the card
   const headW = f => textW(!map && f.title || f.label || f.id, !map && f.head ? 12 : 11) + 16; // a box's title, as the audit measures it (two lines: at 12 px)
+  const kids = new Map(), held = new Set(familyDefs.flatMap(f => f.nodeIds || [])); // a box's boxes; the cards in a box
+  familyDefs.forEach(f => { kids.has(f.parent) || kids.set(f.parent, []); kids.get(f.parent).push(f); });
+  // a card in a box (a port: on its owner's border) is in what it lies within; a card in none is in none, though a deep box's padding covers it
+  const within = (a, b) => a.x >= b.x && a.y >= b.y && a.x + a.w <= b.x + b.w && a.y + a.h <= b.y + b.h, owns = (f, n) => within(n, f) && (n.owner != null || held.has(n.id));
   const framesNow = () => { const cache = Object.create(null); // a box may be named 'constructor'
     const make = (f, children) => {
       const members = (f.nodeIds || []).map(id => byId[id]).filter(Boolean);
@@ -225,14 +229,12 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
       if (!map) b[TB ? 'h' : 'w'] = Math.max(b[TB ? 'h' : 'w'], headW(f) + 16);
       return cache[f.id] = dg.typed ? TYPED.frame(b, TB) : b;
     };
-    // each box after the boxes in it, on an explicit stack (boxes from an import can nest deep); one on the path is skipped (a loop)
-    const kids = new Map(); familyDefs.forEach(c => kids.has(c.parent) ? kids.get(c.parent).push(c) : kids.set(c.parent, [c]));
-    const frameOf = top => { if (cache[top.id]) return cache[top.id];
-      const st = [[top, 0, []]], on = new Set([top.id]); let got;
-      while (st.length) { const t = st.at(-1), ks = kids.get(t[0].id) || [];
-        if (t[1] < ks.length) { const c = ks[t[1]++]; if (cache[c.id]) t[2].push(cache[c.id]); else if (!on.has(c.id)) { on.add(c.id); st.push([c, 0, []]); } continue; }
-        st.pop(); on.delete(t[0].id); got = make(t[0], t[2]); if (got && st.length) st.at(-1)[2].push(got); }
-      return got; };
+    // a box's frame holds its children's: a stack, not recursion, so boxes nest to any depth; a box already on it closes a parent cycle
+    const frameOf = f => { const st = [[f, 0, []]], on = new Set([f.id]); let r = cache[f.id];
+      while (!r && st.length) { const t = st[st.length - 1], c = (kids.get(t[0].id) || [])[t[1]++];
+        if (c) { if (cache[c.id]) t[2].push(cache[c.id]); else if (!on.has(c.id)) { on.add(c.id); st.push([c, 0, []]); } continue; }
+        st.pop(); on.delete(t[0].id); const b = make(t[0], t[2]); if (!st.length) return b; if (b) st[st.length - 1][2].push(b); }
+      return r; };
     const out = familyDefs.map(f => frameOf(f)).filter(Boolean);
     if (map) out.forEach(f => { // the box fits its title and its badges, which are tabs on its top border, at the right
       const tabs = [...badgesOf(f).map((b, i) => ({ text: b.text, fill: toneOf(b), badge: i, w: b.text.length * 6.4 + 10 })), ...(f.unfolds ? [{ text: '⤡', fold: true, w: 28 }] : [])], all = tabs.reduce((a, t) => a + t.w + 4, -4); // an unfolded card's box: its ⤡ folds it (#71)
@@ -243,15 +245,14 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
   // Boxes keep apart: a column (row) gap widens wherever a box would come within 32 px of another box, or of a card outside
   // it, so their borders never touch and a line can run between them. Frames are measured again until nothing is too close.
   if (!dg.abs && familyDefs.length) for (let pass = 0, BOXGAP = 32; pass < 4; pass++) {
-    const within = (a, b) => a.x >= b.x && a.y >= b.y && a.x + a.w <= b.x + b.w && a.y + a.h <= b.y + b.h;
     const span = ns => ns.length ? { c0: Math.min(...ns.map(n => n.col)), c1: Math.max(...ns.map(n => n.col)), r0: Math.min(...ns.map(n => n.row)), r1: Math.max(...ns.map(n => n.row)) } : null;
-    const fr = framesNow().map(f => ({ ...f, s: span(nodes.filter(n => within(n, f))) })).filter(f => f.s);
-    const cards = nodes.map(n => ({ x: n.x, y: n.y, w: n.w, h: n.h + (tagged(n) ? 14 : 0), s: span([n]) }));
+    const fr = framesNow().map(f => ({ ...f, s: span(nodes.filter(n => owns(f, n))) })).filter(f => f.s);
+    const cards = nodes.map(n => ({ x: n.x, y: n.y, w: n.w, h: n.h + (tagged(n) ? 14 : 0), s: span([n]), n }));
     const wantX = {}, wantY = {}, want = (o, k, v) => { if (v > 0) o[k] = Math.max(o[k] || 0, Math.ceil(v)); };
     const at = v => map ? Math.floor(v) : v; // the room goes after that row; a typed view's: after a half row too, so a card on row .5 leaves a box on 1.5
     // a column's room goes after a whole column k (gap(k) reads no other), and moves a column c in (k, k + 1) by c - k of it
     fr.forEach((A, i) => [...fr.slice(i + 1), ...cards].forEach(B => {
-      if (within(A, B) || within(B, A) || !hit(A, B, BOXGAP)) return;
+      if (within(A, B) || (B.n ? owns(A, B.n) : within(B, A)) || !hit(A, B, BOXGAP)) return;
       const a = A.s, b = B.s;
       if (a.c1 < b.c0 || b.c1 < a.c0) { const [L, R] = a.c1 < b.c0 ? [A, B] : [B, A], k = Math.floor(L.s.c1); want(wantX, k, (L.x + L.w + BOXGAP - R.x) / (Math.min(1, R.s.c0 - k) - L.s.c1 + k)); }
       else if (a.r1 < b.r0 || b.r1 < a.r0) { const [T, U] = a.r1 < b.r0 ? [A, B] : [B, A]; want(wantY, at(T.s.r1), T.y + T.h + BOXGAP - U.y); }
@@ -450,7 +451,7 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
     families.forEach(f => { xs.add(f.x - 16); xs.add(f.x + f.w + 16); ys.add(f.y - 16); ys.add(f.y + f.h + 16); });
     let X = co([...xs]), Y = co([...ys]);
     if (families.length) { const far = (v, bs) => keep.has(v) || bs.every(u => Math.abs(v - u) >= 8);
-      X = X.filter(v => far(v, families.flatMap(f => [f.x, f.x + f.w]))); Y = Y.filter(v => far(v, families.flatMap(f => [f.y, f.y + f.h]))); }
+      const fx = families.flatMap(f => [f.x, f.x + f.w]), fy = families.flatMap(f => [f.y, f.y + f.h]); X = X.filter(v => far(v, fx)); Y = Y.filter(v => far(v, fy)); } // once, not per line
     if (W) { X = X.filter(v => keep.has(v) || (v >= W.x && v <= W.x2)); Y = Y.filter(v => keep.has(v) || (v >= W.y && v <= W.y2)); }
     const nx = X.length, ny = Y.length, N = nx * ny;
     // an end that lies in an obstacle (or, without crossings, on an earlier line) fails the search: say so before building the grid

@@ -149,6 +149,12 @@ try {
   check('a selection is announced', sr3.querySelector('[aria-live]').textContent === 'Billing, selected', sr3.querySelector('[aria-live]').textContent);
   card('svc').focus(); card('svc').dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, composed: true }));
   check('an arrow key on a card moves focus to the next card that way', sr3.activeElement === card('db'), sr3.activeElement && sr3.activeElement.dataset.id);
+  { const el = document.createElement('div'); el.style.cssText = 'width:800px;height:500px'; document.body.appendChild(el); // a card a little higher, far to the side, is not the one above
+    const hA = render(el, { nodes: [{ id: 'a', label: 'A' }, { id: 'b', label: 'B' }], edges: [], views: [{ id: 'v', nodeIds: ['a', 'b'], layout: { a: [0, 0.2], b: [1, 0] } }] }, { flow: false });
+    const s = el.querySelector('.umlimator').shadowRoot, c = id => s.querySelector(`.node[data-id="${id}"]`); c('a').focus(); c('a').dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true, composed: true }));
+    check('an arrow key moves only to a card within 45 degrees of its way: Up beside a card a little higher keeps focus (audit 3)', s.activeElement === c('a'), s.activeElement && s.activeElement.dataset.id);
+    c('a').dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, composed: true }));
+    check('…and Right goes to it', s.activeElement === c('b'), s.activeElement && s.activeElement.dataset.id); hA.destroy(); el.remove(); }
   const sels3 = [], offSel = h3.on('select', e => sels3.push(e.target && e.target.id)), enter = id => card(id).dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, composed: true }));
   enter('db'); enter('db');
   check('Enter on a selected card with no inner view sends select again, as a click does', JSON.stringify(sels3) === '["db","db"]', sels3);

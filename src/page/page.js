@@ -79,7 +79,7 @@ export function mountPage(container, model, options = {}) {
       <dl>${KEYS.map(([k, d]) => `<dt>${esc(k)}</dt><dd>${esc(d)}</dd>`).join('')}</dl></div>
     <div class="scrim" id="m-pal" hidden><div class="pal" role="dialog" aria-label="Search">
       <div class="in"><span aria-hidden="true">⌕</span><input id="m-q" type="text" autocomplete="off" spellcheck="false" placeholder="Search nodes and views" aria-label="Search nodes and views" role="combobox" aria-autocomplete="list" aria-expanded="true" aria-controls="m-res"><span class="kbd">esc</span></div>
-      <div class="res" id="m-res" role="listbox" aria-label="Results"></div>
+      <div class="res" id="m-res" role="listbox" aria-label="Results"></div><div id="m-none" role="status"></div>
       <div class="pft"><span>↑↓ move</span><span>↵ open</span><span>esc close</span></div></div></div>`;
   const $ = id => document.getElementById(id);
   const stage = $('m-stage'), panel = $('m-panel');
@@ -257,7 +257,7 @@ export function mountPage(container, model, options = {}) {
   /* ⌘K command box: nodes and views, Enter jumps. Indexed from the model shown, as an update() leaves it (issue 133) */
   const nodeIdx = () => nodes.map(n => ({ n, hay: [n.label, n.id, (n.verbs || []).join(' '), n.what, n.kind, n.author, ((D.authors || {})[n.author] || {}).name, n.origin].join(' ').toLowerCase() }));
   const viewIdx = () => views.map(v => ({ v, hay: [v.title, v.id, v.caption].join(' ').toLowerCase() }));
-  const pal = $('m-pal'), q = $('m-q'), res = $('m-res');
+  const pal = $('m-pal'), q = $('m-q'), res = $('m-res'), none = $('m-none'); // none: what a search that finds nothing says, beside the list (a list holds only options)
   let hits = [], hi = 0;
   const mark = (s, words) => { const ws = words.filter(w => w.length > 1).map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')); // on the label, then escaped: never inside an entity or a tag
     return String(s ?? '').split(ws.length ? new RegExp('(' + ws.join('|') + ')', 'ig') : /(?!)/).map((p, i) => i % 2 ? `<mark>${esc(p)}</mark>` : esc(p)).join(''); };
@@ -275,10 +275,10 @@ export function mountPage(container, model, options = {}) {
     hi = Math.min(hi, Math.max(0, hits.length - 1)); hits.length ? q.setAttribute('aria-activedescendant', 'm-o' + hi) : q.removeAttribute('aria-activedescendant'); // a reader says the highlighted result
     if (!hits.length) {
       const near = nodes.map(n => [n, lev(qs, String(n.label).toLowerCase().replace(/^\//, '').slice(0, qs.length + 2))]).sort((a, b) => a[1] - b[1])[0];
-      res.innerHTML = `<div class="none"><div aria-hidden="true">⌕</div><h4>Nothing called “${esc(q.value.trim())}”</h4>${near && near[1] <= Math.max(2, qs.length / 3) ? `Did you mean <button data-fill="${esc(near[0].label)}">${esc(near[0].label)}</button>?` : 'Try a skill, verb, script or view name.'}</div>`;
+      res.innerHTML = ''; q.setAttribute('aria-expanded', false); none.innerHTML = `<div class="none"><div aria-hidden="true">⌕</div><h4>Nothing called “${esc(q.value.trim())}”</h4>${near && near[1] <= Math.max(2, qs.length / 3) ? `Did you mean <button data-fill="${esc(near[0].label)}">${esc(near[0].label)}</button>?` : 'Try a skill, verb, script or view name.'}</div>`;
       return;
     }
-    let html = '', last = '';
+    let html = '', last = ''; none.innerHTML = ''; q.setAttribute('aria-expanded', true);
     hits.forEach((h, i) => {
       const grp = !qs ? 'Views' : h.t === 'n' ? 'Nodes' : 'Views';
       if (grp !== last) { html += `<div class="gt">${grp}</div>`; last = grp; }
@@ -301,7 +301,7 @@ export function mountPage(container, model, options = {}) {
     else if (e.key === 'Escape') { closePal(true); e.preventDefault(); }
     e.stopPropagation();
   });
-  res.addEventListener('click', e => { const f = e.target.closest('[data-fill]'); if (f) { q.value = f.dataset.fill; hi = 0; drawHits(); q.focus(); return; } const b = e.target.closest('[data-i]'); if (b) pickHit(hits[+b.dataset.i]); });
+  pal.addEventListener('click', e => { const f = e.target.closest('[data-fill]'); if (f) { q.value = f.dataset.fill; hi = 0; drawHits(); q.focus(); return; } const b = e.target.closest('[data-i]'); if (b) pickHit(hits[+b.dataset.i]); });
   res.addEventListener('pointermove', e => { const b = e.target.closest('[data-i]'); if (b && +b.dataset.i !== hi) { hi = +b.dataset.i; q.setAttribute('aria-activedescendant', 'm-o' + hi); res.querySelectorAll('.fr').forEach(x => { const on = +x.dataset.i === hi; x.classList.toggle('on', on); x.setAttribute('aria-selected', on); }); } });
   pal.addEventListener('click', e => { if (e.target === pal) closePal(); });
   $('m-find').addEventListener('click', openPal);
