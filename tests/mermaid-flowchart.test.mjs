@@ -293,3 +293,10 @@ test('a carriage return in a label is written as an entity, so it reads back as 
     assert.equal(read(t).model.nodes[0].label, label);
   }
 });
+
+test('a ; inside an entity code outside quotes ends no statement (#35; #quot; #lt;), as Mermaid reads the codes first (audit 5)', () => {
+  for (const [t, label] of [['A -->|#35;1 step| B', '#1 step'], ['A[#quot;x#quot;] --> B', undefined], ['A -- #lt;go#gt; --> B; C', '<go>']]) {
+    const r = read(`flowchart LR\n  ${t}\n`);
+    assert.deepEqual([r.model.edges.map(e => [e.from, e.to, e.label]), r.report], [[['A', 'B', label]], []], t);
+  }
+});
