@@ -132,7 +132,7 @@ function dynConnect(model, view, from, to, at, line) {
 // ("3." or "3 ·"), are not the description; what is left is set as its label. Anything else: null, the canvas's own
 function dynRename(model, view, id, text) {
   const s = dynSteps(model, view).find(x => x.e.id === id); if (!s) return null;
-  const tech = V_P(s.e).technology, t = String(text).trim().replace(new RegExp(`^${s.k}\\s*[.·]\\s*`), '');
+  const tech = V_P(s.e).technology, t = String(text).trim().replace(new RegExp(`^${s.k}\\s*(·|\\.(?!\\S))\\s*`), '');
   const label = V_HAS(tech) && t.endsWith(`[${tech}]`) ? t.slice(0, -tech.length - 2).trim() : t;
   return label === (s.e.label ?? '') ? [] : [{ op: 'set', id, path: 'label', value: label || undefined }];
 }

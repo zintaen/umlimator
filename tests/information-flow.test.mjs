@@ -316,3 +316,9 @@ test('audit 1: a name holding $\' or $& is its accessible name as written, the m
     assert.equal(g.match(/data-shape=/g).length, 1, label);
   }
 });
+
+test('audit 3: F2 with about 10 KB of text that names nothing is refused at once, not after seconds (the parse is bounded) (timed)', () => {
+  const t = performance.now(), r = T.edits.rename(IF, IF.views[0], flow(IF, 'api-email').id, 'x:,'.repeat(3200));
+  assert.deepEqual(r, { error: 'No information item or classifier is named x:' });
+  assert.ok(performance.now() - t < 2000, `${Math.round(performance.now() - t)} ms`); // before: about 25 s
+});

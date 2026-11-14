@@ -498,3 +498,18 @@ test('audit 2: a pin far off the grid is held at its edge, laid out at once, and
     const t = performance.now(); assert.ok(layout(m, VID).byId['order-placed'], 'laid out'); assert.ok(performance.now() - t < 5000, 'quickly');
     assert.ok(validate(m).some(p => p.path === `views[${m.views.indexOf(V(m))}].layout.order-placed` && /off the grid/.test(p.message)), 'warned'); }
 });
+
+test('audit 3: sub-processes nested 600 deep lay out and are described in about linear time (before: cubic, 20 s) (timed)', () => {
+  const nodes = Array.from({ length: 600 }, (_, i) => N('sp' + i, 'SubProcess', 'S' + i, i ? { parent: 'sp' + (i - 1) } : {})).concat(N('t', 'Task', 'T', { parent: 'sp599' }));
+  const m = one(nodes, []), t = performance.now();
+  assert.equal(layout(m, 'v').nodes.length, 1); assert.match(describe(m, 'v'), /S599/);
+  assert.ok(performance.now() - t < 4000, `${Math.round(performance.now() - t)} ms`);
+});
+
+test('audit 3: lanes, and sub-processes, nested 3,000 deep lay out (the lane pass and the boxes\' placement walk with their own stacks)', () => {
+  const subs = Array.from({ length: 3000 }, (_, i) => N('sp' + i, 'SubProcess', 'S' + i, i ? { parent: 'sp' + (i - 1) } : {})).concat(N('t', 'Task', 'T', { parent: 'sp2999' }));
+  assert.equal(layout(one(subs, []), 'v').nodes.length, 1);
+  const members = Array.from({ length: 3000 }, (_, i) => ({ id: 'l' + i, type: 'bpmn.Lane', label: 'L' + i, ...(i ? { parent: 'l' + (i - 1) } : {}) }));
+  const m = one([N('P', 'Participant', 'P', { members }), N('s', 'StartEvent', null, { parent: 'l2999' }), N('e', 'EndEvent', null, { parent: 'l2999' })], [F('f', 's', 'e')]);
+  assert.equal(layout(m, 'v').nodes.length, 3003);
+});
