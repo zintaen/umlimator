@@ -226,22 +226,23 @@ test('the examples moved (§10.2): check.mjs\'s MOVED, clean, as the targets wer
   assert.ok(targets().find(([x]) => x === '26-aws.json')[1].href.endsWith('/examples/bookshop-aws.json'), 'AWS moved (4a.8)');
   assert.equal(FIX['bookshop-opening-plan'].nodes.filter(n => n.opensView).length, 0, 'the standalone file opens nothing');
   const atlas = read('../examples/bookshop-atlas.json');
-  assert.deepEqual(['mm-on-gcp', 'mm-on-azure'].map(id => atlas.nodes.find(n => n.id === id).opensView), ['gcp-on-gcp', 'az-on-azure']);
-  assert.deepEqual(atlas.iconPacks, { gcp: packs.gcp.label, azure: packs.azure.label });
+  assert.deepEqual(['mm-on-gcp', 'mm-on-azure', 'mm-on-aws'].map(id => atlas.nodes.find(n => n.id === id).opensView), ['gcp-on-gcp', 'az-on-azure', 'aws-on-aws']);
+  assert.deepEqual(atlas.iconPacks, { gcp: packs.gcp.label, azure: packs.azure.label, aws: packs.aws.label });
 });
 
-test('DoD 1: the registry holds mindmap, gcp and azure, and the JSON Schema and the types name their vocabulary and iconPacks', () => {
+test('DoD 1: the registry holds mindmap, gcp, azure and aws, and the JSON Schema, the types and the README name their vocabulary and iconPacks', () => {
   const schema = readFileSync(new URL('../lib/umlimator.schema.json', import.meta.url), 'utf8'), dts = readFileSync(new URL('../lib/umlimator.d.ts', import.meta.url), 'utf8');
   const S = JSON.parse(schema), np = S.$defs.node.properties.props.anyOf[0].properties;
-  for (const d of ['mindmap', 'gcp', 'azure']) {
+  for (const d of ['mindmap', 'gcp', 'azure', 'aws']) {
     const T = diagramOf({ diagram: d });
     assert.ok(T && S.$defs.view.properties.diagram.examples.includes(d) && dts.includes(`\`${d}\``), d);
     for (const t of [...T.elements, ...(T.lines || [])].map(x => x.type)) assert.ok(schema.includes(`"${t}"`) && dts.includes(`'${t}'`), t);
     for (const [t, fields] of Object.entries(T.props || {})) for (const f of fields) assert.ok(np[f.key.split('.').at(-1)], `${t}'s ${f.key} in the schema`);
   }
   assert.ok(S.properties.iconPacks && /iconPacks\?: Record<string, string>/.test(dts));
-  assert.ok(['MindmapElementType', 'GcpElementType', 'GcpLineType', 'AzureElementType', 'AzureLineType', 'CloudElementProps'].every(k => new RegExp(`export (type|interface) ${k} `).test(dts)));
-  assert.ok(!/aws\./.test(JSON.stringify(S.$defs.node.properties.type.examples)), 'the schema\'s examples name no AWS type yet (AWS\'s vocabulary: a later package)');
+  assert.ok(['MindmapElementType', 'GcpElementType', 'GcpLineType', 'AzureElementType', 'AzureLineType', 'AwsElementType', 'AwsLineType', 'CloudElementProps'].every(k => new RegExp(`export (type|interface) ${k} `).test(dts)));
+  const all = readFileSync(new URL('../README.md', import.meta.url), 'utf8').split('\n').find(l => l.includes("from 'umlimator/all'` draws diagram types"));
+  assert.ok(['mindmap', 'Google Cloud', 'Azure', 'AWS'].every(w => all.includes(w)), 'README\'s umlimator/all line names the 0.26.0 types');
 });
 
 // §2.5 (S18): nothing this project publishes holds a vendor icon. Map logos are data URLs in committed pages today, so

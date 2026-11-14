@@ -23,7 +23,8 @@
     { "id": "mm-bank", "type": "mindmap.Topic", "label": "Business bank account", "parent": "mm-legal" },
     { "id": "mm-hosting", "type": "mindmap.Topic", "label": "Hosting", "parent": "mm-opening" },
     { "id": "mm-on-gcp", "type": "mindmap.Topic", "label": "On Google Cloud", "parent": "mm-hosting" },
-    { "id": "mm-on-azure", "type": "mindmap.Topic", "label": "On Azure", "parent": "mm-hosting" }
+    { "id": "mm-on-azure", "type": "mindmap.Topic", "label": "On Azure", "parent": "mm-hosting" },
+    { "id": "mm-on-aws", "type": "mindmap.Topic", "label": "On AWS", "parent": "mm-hosting" }
   ],
   "edges": [],
   "views": [
@@ -34,7 +35,7 @@
         "mm-launch", "mm-newsletter", "mm-opening-offer",
         "mm-warehouse", "mm-shelving", "mm-courier",
         "mm-legal", "mm-company", "mm-bank",
-        "mm-hosting", "mm-on-gcp", "mm-on-azure"],
+        "mm-hosting", "mm-on-gcp", "mm-on-azure", "mm-on-aws"],
       "present": { "mm-catalogue": { "side": "right" }, "mm-website": { "side": "right" }, "mm-launch": { "side": "right" },
         "mm-warehouse": { "side": "left" }, "mm-legal": { "side": "left" }, "mm-hosting": { "side": "left" } } }
   ]

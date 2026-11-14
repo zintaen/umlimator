@@ -32,7 +32,7 @@ test('read(write(model)) is example 25, ids and sides included, and nothing is r
   assert.deepEqual(canon(back.model), canon(project(example, 'mm-plan')), t);
   assert.doesNotMatch(t, /not written/);
   assert.match(t, /^---\ntitle: Opening the bookshop\n---\n%% id: mm-plan\nmindmap\n {2}mm-opening\[Opening the bookshop\]\n {4}%% side: right\n {4}mm-catalogue\[Catalogue\]\n {6}mm-first-titles\[/);
-  assert.match(t, /\n {4}%% side: left\n {4}mm-hosting\[Hosting\]\n {6}mm-on-gcp\[On Google Cloud\]\n {6}mm-on-azure\[On Azure\]\n$/);
+  assert.match(t, /\n {4}%% side: left\n {4}mm-hosting\[Hosting\]\n {6}mm-on-gcp\[On Google Cloud\]\n {6}mm-on-azure\[On Azure\]\n {6}mm-on-aws\[On AWS\]\n$/);
   // ids the reader derives need no form of their own
   const plain = write({ schemaVersion: 2, nodes: [{ id: 'opening', type: 'mindmap.Topic', label: 'Opening' }, { id: 'the-catalogue', type: 'mindmap.Topic', label: 'The catalogue', parent: 'opening' }],
     edges: [], views: [{ id: 'mindmap', diagram: 'mindmap', nodeIds: ['opening', 'the-catalogue'] }] });

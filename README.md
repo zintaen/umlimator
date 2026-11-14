@@ -138,15 +138,16 @@ drill-down, a data pipeline, an AI agent's skills, and host pages for embedding,
   Profiles reach SysML elements. `import` reads a Mermaid `requirementDiagram`, and the writer writes one back. The four
   e-bike files join into the e-bike atlas ([`examples/ebike-atlas.json`](examples/ebike-atlas.json)), from the
   requirements to the blocks, their wiring and the equation that checks the range.
-- **Mindmaps, Google Cloud and Azure** (0.26.0): a mindmap laid out left and right of its root, branches as curves in
+- **Mindmaps, Google Cloud, Azure and AWS** (0.26.0): a mindmap laid out left and right of its root, branches as curves in
   the map's kind colours, edited by N, F2, Alt + arrows, drops and Delete, with `import` of a Mermaid mindmap
   ([`examples/bookshop-opening-plan.json`](examples/bookshop-opening-plan.json), [what it covers](docs/conformance/mindmap.md));
-  Google Cloud and Azure architecture diagrams, groups (projects, regions, networks, subnets, zones; subscriptions,
-  resource groups, virtual networks) as boxes titled with their kind, each service a card with its vendor icon and its
-  full service name ([`examples/bookshop-gcp.json`](examples/bookshop-gcp.json), [`bookshop-azure.json`](examples/bookshop-azure.json);
-  [Google Cloud](docs/conformance/gcp.md), [Azure](docs/conformance/azure.md)). The icons come in packs you fetch
+  Google Cloud, Azure and AWS architecture diagrams, groups (projects, regions, networks, subnets, zones; subscriptions,
+  resource groups, virtual networks; accounts, VPCs, availability zones, security groups) as boxes titled with their
+  kind, each service a card with its vendor icon and its full service name ([`examples/bookshop-gcp.json`](examples/bookshop-gcp.json),
+  [`bookshop-azure.json`](examples/bookshop-azure.json), [`bookshop-aws.json`](examples/bookshop-aws.json);
+  [Google Cloud](docs/conformance/gcp.md), [Azure](docs/conformance/azure.md), [AWS](docs/conformance/aws.md)). The icons come in packs you fetch
   yourself after reading the vendor's terms (below); without one a card draws a glyph and the name. In the Bookshop
-  atlas the opening plan's Hosting topics open the two cloud views.
+  atlas the opening plan's Hosting topics open the three cloud views.
 - **BPMN** (0.27.0): the elements of BPMN 2.0.2's Descriptive conformance sub-class (Table 2.1, every row) and six more:
   pools and nested lanes as bands across the diagram, tasks, sub-processes expanded or collapsed, call activities, events
   with their markers, gateways, data, annotations and groups; boundary events on their activity's border; sequence flows
@@ -223,7 +224,7 @@ function MapView({ model, onSelect }) {
   or costliest path, `whatIf(model, view, { remove })` what loses its way when cards go down, and
   `sequenceFromTrace(model, spans, { view, match })` keeps a trace as a numbered view; all three in Node too.
 - `editable: true` turns on editing gestures ([docs/editing.md](docs/editing.md); `examples/edit.html` is a working host).
-- `import { render, apply, history } from 'umlimator/all'` draws diagram types too: a class, object, package, sequence, communication, use case, activity, state machine, interaction overview, component, deployment, composite structure, profile, timing, information flow, entity-relationship, flowchart, data flow, C4 or BPMN diagram, or one of SysML's requirement, block definition, internal block and parametric diagrams, whose gestures emit
+- `import { render, apply, history } from 'umlimator/all'` draws diagram types too: a class, object, package, sequence, communication, use case, activity, state machine, interaction overview, component, deployment, composite structure, profile, timing, information flow, entity-relationship, flowchart, data flow, C4 or BPMN diagram, a mindmap, a Google Cloud, Azure or AWS architecture diagram, or one of SysML's requirement, block definition, internal block and parametric diagrams, whose gestures emit
   `edit` transactions that `apply(model, e.commands)` turns into the next model (`examples/class-editor.html` is a
   working host). `umlimator` alone draws maps, and a typed view as plain cards with a warning.
 - `diff(before, after)` returns `after` with each card and line marked added, changed or removed, what changed in words,

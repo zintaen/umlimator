@@ -307,7 +307,7 @@ for f, view, refs, first, cards, boxes in (("order-objects", "snapshot", ["order
                                           ("ebike-range", "range-analysis", [{"type": "node", "id": "ebike.eco"}, {"type": "node", "id": "ebike.ecoRange"}], "E-bike range: a parametric diagram of 19 elements and 8 lines.", 18, 1),
                                           # C10 for milestone 4a (4a.7, decision 22): a mindmap, a Google Cloud and an Azure model, with
                                           # no pack (the server never fetches one; CI has none, so cards draw glyphs); groups are boxes
-                                          ("bookshop-opening-plan", "mm-plan", ["mm-checkout", "mm-hosting"], "Opening the bookshop: a mindmap of 21 topics.", 21, 0),
+                                          ("bookshop-opening-plan", "mm-plan", ["mm-checkout", "mm-hosting"], "Opening the bookshop: a mindmap of 22 topics.", 22, 0),
                                           ("bookshop-gcp", "gcp-on-gcp", ["gcp-api", "gcp-db"], "Bookshop on Google Cloud: a Google Cloud diagram of 16 elements and 10 connections.", 10, 6),
                                           ("bookshop-azure", "az-on-azure", ["az-api", "az-db"], "Bookshop on Azure: an Azure diagram of 14 elements and 9 connections.", 8, 6),
                                           # C10 for milestone 4b (4b.5): a BPMN model; its pools, lanes and group are nodes, its

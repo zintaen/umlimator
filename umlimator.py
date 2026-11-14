@@ -481,11 +481,13 @@ def diff_since(a):
     changed = git("diff", "--name-only", "-z", "--no-renames", a.base, "--", *(a.models or ["*.json"]))
     if changed.returncode:
         sys.exit(changed.stderr.strip())
+    top = Path(git("rev-parse", "--show-toplevel").stdout.strip())  # git names files from the top, wherever diff runs
     out = Path(a.out); out.mkdir(parents=True, exist_ok=True)
     done, md, stems = [], ["<!-- umlimator-diff -->", "### Map changes", ""], set()
     for name in filter(None, changed.stdout.split("\0")):
         old = git("show", f"{a.base}:{name}")
-        texts = (old.stdout if old.returncode == 0 else None, Path(name).read_text(encoding="utf-8") if Path(name).is_file() else None)
+        texts = (old.stdout if old.returncode == 0 else None, (top / name).read_text(encoding="utf-8") if (top / name).is_file() else None)
+        fname = flat(name.replace("`", "'"))  # the file's name in the summary: a code span of its own
         (before, e1), (after, e2) = model_of(texts[0]), model_of(texts[1])
         # a model that no longer parses (a conflict marker, a cut) is a change to say, not a file to skip; other JSON that
         # does not parse (a tsconfig.json with comments) is not a model
@@ -493,7 +495,7 @@ def diff_since(a):
                if e and (other or '"nodes"' in t and '"views"' in t)]
         if why:
             done.append({"file": name, "error": "; ".join(why)})
-            md += [f"**`{name}`**: cannot be read: " + "; ".join(why), ""]
+            md += [f"**`{fname}`**: cannot be read: " + flat("; ".join(why)), ""]
             continue
         if not (before or after):
             continue  # JSON, but not a map model
@@ -502,16 +504,17 @@ def diff_since(a):
             stem += "-" + hashlib.sha256(name.encode()).hexdigest()[:6]
         stems.add(stem)
         try:
-            r = diff_page(before, after, name if after else out / f"{stem}.json", out / f"{stem}.html", out / stem)
-        except SystemExit as e:  # the module failed on this model (js() ends the CLI): said for this file, and the rest go on
-            done.append({"file": name, "error": str(e.code)})
-            md += [f"**`{name}`**: cannot be diffed: {e.code}", ""]
+            r = diff_page(before, after, top / name if after else out / f"{stem}.json", out / f"{stem}.html", out / stem)
+        except (SystemExit, Exception) as e:  # the module failed on this model (js() ends the CLI), or an odd one: said for this file, and the rest go on
+            why = str(e.code if isinstance(e, SystemExit) else e)
+            done.append({"file": name, "error": why})
+            md += [f"**`{fname}`**: cannot be diffed: {flat(why)}", ""]
             continue
         if not r["summary"]:
             continue
         done.append({"file": name, **{k: v for k, v in r.items() if k != "model"}})
-        md += [f"**`{name}`**: " + ", ".join(r["views"]) if r["views"] else f"**`{name}`**", ""]
-        md += [f"- {s}" for s in r["summary"]] + [""] + sketch(r["model"]) + [""]
+        md += [f"**`{fname}`**: " + flat(", ".join(r["views"])) if r["views"] else f"**`{fname}`**", ""]
+        md += [f"- {flat(s)}" for s in r["summary"]] + [""] + sketch(r["model"]) + [""]
         if r.get("stillsFailed"):
             said = no_pictures(r["stillsFailed"])
             md += [f"_{said[:1].upper()}{said[1:]}._", ""]
@@ -519,6 +522,12 @@ def diff_since(a):
         md += ["No map model changed."]
     write(out / "summary.md", "\n".join(md) + "\n")
     print(json.dumps(done, indent=1))
+
+
+def flat(s):
+    """A model's words (labels, view ids) for one Markdown line of the summary a bot posts: one line, and no backtick
+    that opens a code block."""
+    return re.sub(r"\s*[\r\n]+\s*", " ", str(s)).replace("`", "\\`")
 
 
 MARKS = {"added": "#1a7f37", "changed": "#9a6700", "removed": "#cf222e"}
@@ -536,7 +545,7 @@ def sketch(m, most=60):
     if not near or len(near) > most:
         return [] if not near else [f"_{len(near)} cards changed or next to a change: too many to sketch; see the pictures._"]
     key = {i: f"n{k}" for k, i in enumerate(i for i in cards if i in near)}
-    q = lambda s: str(s).replace('"', "#quot;")
+    q = lambda s: re.sub(r"[\r\n]+", " ", str(s)).replace('"', "#quot;").replace("`", "#96;").replace("<", "#lt;").replace(">", "#gt;")
     out = ["```mermaid", "flowchart LR"]
     out += [f'  {key[i]}["{q(cards[i].get("label") or i)}"]' + (f":::{cards[i]['change']}" if cards[i].get("change") in MARKS else "") for i in key]
     style = []
@@ -616,17 +625,32 @@ def cmd_timelapse(a):
     print(json.dumps({"out": a.out, "versions": [v["label"] for v in versions]}, indent=1))
 
 
+def at_least_1(s):
+    if int(s) < 1:
+        raise argparse.ArgumentTypeError(f"{s} is less than 1")
+    return int(s)
+
+
+# The kinds of the layout check's messages, each by the words the check itself writes, rules first and each message of
+# one kind: a label or a rule title may hold another kind's words ("Apps never cross ..."), which must not move it
+KINDS = {"rules": r' breaks rule ".*"$', "crossings": r" cross$", "rightToLeft": r" runs right-to-left$", "detours": r" takes a detour \(\d+px for \d+px\)$",
+         "shortLine": r'" leaves its line \d+ px \(.*\)$', "roundEnd": r' runs round its own end ".*"$', "nearNode": r" passes within [\d.]+px of node ",
+         "onMark": r'" touches the mark on node "', "labelOnBorder": r'" sits on the border of family "', "labelNoRoom": r'" has no room on edge ',
+         "labelOnLine": r'" lies on edge '}
+
+
+def kind_of(o):
+    return next((k for k, t in KINDS.items() if re.search(t, o, re.S)), "other")
+
+
 def cmd_check(a):
     """The page's own layout check, limited to --views (a trailing * is a prefix) and with a longer wait than
     visual.py check, which gives up after 45 s on a large model. A check of no view fails: it would pass by checking
     nothing."""
-    kinds = {"crossings": " cross", "labelOnLine": " lies on edge ", "rightToLeft": "right-to-left", "detours": "detour",
-             "nearNode": "passes within", "onMark": "touches the mark", "shortLine": "leaves its line", "roundEnd": "runs round its own end",
-             "labelOnBorder": "sits on the border of family", "labelNoRoom": " has no room on edge ", "rules": ' breaks rule "'}
     # --ignore drops whole kinds from the report (pictures that keep a source drawing's own direction run lines right to left)
     asked = [k for k in (a.ignore or "").replace("right-to-left", "rightToLeft").split(",") if k]
-    if bad := [k for k in asked if k not in kinds]:
-        sys.exit(f"--ignore: unknown kind {', '.join(bad)}; known: right-to-left, {', '.join(k for k in kinds if k != 'rightToLeft')}")
+    if bad := [k for k in asked if k not in KINDS]:
+        sys.exit(f"--ignore: unknown kind {', '.join(bad)}; known: right-to-left, {', '.join(k for k in KINDS if k != 'rightToLeft')}")
     views = pick(a.page, a.views)
     data = json.loads(DATA.search(Path(a.page).read_text(encoding="utf-8")).group(1))
     packs().check(data if "nodes" in data else data.get("map", {}))  # icon ids the cached pack lacks, with the nearest
@@ -639,15 +663,14 @@ def cmd_check(a):
     if not re.match(r"[1-9]", str(rep.get("checked") or "")):  # "0 views"
         sys.exit(f"check: no view was checked ({rep.get('checked') or 'the page did not say what it checked'})")
     ov = rep.get("overlaps", [])
-    counts = {k: sum(t in o for o in ov) for k, t in kinds.items()}
-    counts["other"] = len(ov) - sum(counts.values())
-    skip = [kinds[k] for k in asked]
-    shown = [o for o in ov if not any(t in o for t in skip)]
+    of = [kind_of(o) for o in ov]
+    counts = {k: of.count(k) for k in [*KINDS, "other"]}
+    shown = [o for o, k in zip(ov, of) if k not in asked]
     print(json.dumps({"checked": rep.get("checked"), "counts": counts, "ignored": len(ov) - len(shown),
                       "problems": shown, "errors": rep.get("errors", [])}, indent=1))
     if rep.get("errors"):
         sys.exit("check reported errors")
-    if broken := sum(kinds["rules"] in o for o in shown):  # the model's own rules (#70) are a contract: CI fails on them
+    if broken := sum(kind_of(o) == "rules" for o in shown):  # the model's own rules (#70) are a contract: CI fails on them
         sys.exit(f"{broken} broken rule{'s' if broken > 1 else ''}")
 
 
@@ -711,12 +734,13 @@ def stills(page, out, views, scale=2.0, theme="light", reader=False, again=False
     whose key file (out/.stills/<view>.json) holds its key and both files' hashes is unchanged and skipped, unless
     `again`. A view counts as exported only once both files are whole and the PNG is a PNG; its key file is written last.
     A file another run, or a person, changed since is drawn again, never trusted."""
-    b = chrome()
+    b, page = chrome(), Path(page).resolve()  # as_uri needs an absolute path (a relative --out)
     out.mkdir(parents=True, exist_ok=True)
     keys = still_keys(page, [float(scale), theme, bool(reader)])
     done, failed, skipped = [], {}, []
     for v in views:
-        rec, files = out / ".stills" / f"{v}.json", {"svg": out / f"{v}.svg", "png": out / f"{v}.png"}
+        n = urllib.parse.quote(v, safe="")  # a view id is the model's, not a path: ../x stays in out
+        rec, files = out / ".stills" / f"{n}.json", {"svg": out / f"{n}.svg", "png": out / f"{n}.png"}
         try:
             was = json.loads(rec.read_text())
             if not again and was["key"] == keys.get(v) and all(sha(f) == was[k] for k, f in files.items()):
@@ -751,7 +775,7 @@ def stills(page, out, views, scale=2.0, theme="light", reader=False, again=False
 def cmd_stills(a):
     page, out = Path(a.page).resolve(), Path(a.out)
     done, failed, skipped = stills(page, out, pick(page, a.views), a.scale, a.theme, a.reader, a.all)
-    if gone := sorted({r.stem for r in (out / ".stills").glob("*.json")} - set(views_of(page))):
+    if gone := sorted({urllib.parse.unquote(r.stem) for r in (out / ".stills").glob("*.json")} - set(views_of(page))):
         print(f"stills: {out} still holds pictures of views the page no longer has: {', '.join(gone)}", file=sys.stderr)
     if failed:
         sys.exit(f"stills: {len(failed)} view(s) failed ({len(done)} exported, {len(skipped)} unchanged): "
@@ -1014,7 +1038,7 @@ def main():
     tr.add_argument("--diagram", choices=["uml.sequence"], help="the view as a UML sequence diagram (a version-2 model), not a numbered view")
     tr.set_defaults(f=cmd_trace)
     t = sub.add_parser("timelapse", help="the model's versions in git history on a slider"); t.add_argument("model"); t.add_argument("--out", required=True)
-    t.add_argument("--limit", type=int, default=30, help="the latest N versions (default 30)"); t.set_defaults(f=cmd_timelapse)
+    t.add_argument("--limit", type=at_least_1, default=30, help="the latest N versions (default 30)"); t.set_defaults(f=cmd_timelapse)
     im = sub.add_parser("import", help="a Structurizr (DSL or JSON), C4-PlantUML, Mermaid or DBML diagram, compose or Kubernetes JSON, or BPMN XML, as a model")
     im.add_argument("file"); im.add_argument("--out", required=True, help="the model, a .json file")
     im.add_argument("--format", choices=["structurizr", "plantuml", "mermaid", "compose", "kubernetes", "structurizr-json", "dbml", "bpmn"], help="default: read from the content, then the extension")
