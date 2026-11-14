@@ -102,6 +102,13 @@ try {
     [...nodes, ...all('.family'), ...(legal ? [legal] : [])].forEach(g => (g.tagName === 'text' ? [g] : [...g.querySelectorAll('text')]).forEach(t => { const c = ratio(css(t, 'fill'), stageBg); if (c < 4.5) low.push([g.dataset.id || g.dataset.family, t.textContent, c]); }));
     const strokes = all('.node .n-body, .family .family-box, .cl-glyph').map(b => ratio(css(b, 'stroke'), stageBg)).filter(c => c < 3);
     check(`${tag}: contrast: texts 4.5:1, outlines and glyphs 3:1`, !low.length && !strokes.length, [low, strokes]);
+    // axe-core 4.14's rules for what is drawn as role="img", written out: svg-img-alt and role-img-alt (each has a name),
+    // nested-interactive (nothing inside one is a tab stop)
+    const svg = pick('.stage svg'), imgs = all('.stage svg [role="img"]'), noAlt = [], nested = [];
+    imgs.forEach(x => { if (!(x.getAttribute('aria-label') || '').trim()) noAlt.push(x.dataset.id || x.dataset.family || x.localName);
+      x.querySelectorAll('[tabindex], a[href], button, input, select, textarea').forEach(c => { if (c.tabIndex >= 0) nested.push(`${x.dataset.id || x.dataset.family} holds ${c.getAttribute('class') || c.localName}`); }); });
+    check(`${tag}: axe, written out: the drawing a named group, its cards, users and groups named images with no tab stop inside`,
+      svg.getAttribute('role') === 'group' && !!(svg.getAttribute('aria-label') || '').trim() && imgs.length === nodes.length + all('.family').length && !noAlt.length && !nested.length, [imgs.length, nodes.length, noAlt, nested.slice(0, 4)]);
     h.destroy();
   }
   document.documentElement.dataset.theme = 'light'; el.style.removeProperty('--um-sans');
@@ -133,6 +140,10 @@ try {
   gives('the handle: a path', [{ op: 'add', element: { id: 'path1', type: 'gcp.Path', from: 'gcp-api', to: 'gcp-dns' }, view: V }], m => m.edges.some(e => e.id === 'path1'), m2);
   h.update(m3);
   check('after update() the path is drawn', pick('.edge-g[data-from="gcp-worker"][data-to="product1"] title').textContent === 'Path from Order worker to Cache');
+  h.select({ type: 'edge', ids: ['gcp-users-lb'], view: V }); key('F2'); pick('.um-rename').value = 'HTTPS, HTTP/2'; key('Enter', {}, pick('.um-rename'));
+  gives('F2 on a path: its label', [{ op: 'set', id: 'gcp-users-lb', path: 'label', value: 'HTTPS, HTTP/2' }], m => m.edges.find(e => e.id === 'gcp-users-lb').label === 'HTTPS, HTTP/2', m3);
+  click('.node[data-id="gcp-worker"] .c-name'); ed = []; key('ArrowDown', { altKey: true });
+  check('Alt + ↓ on a product: a pin', ed.length === 1 && ed[0].commands.length === 1 && ed[0].commands[0].op === 'set' && same(ed[0].commands[0].path, ['layout', 'gcp-worker']) && !errors(apply(m3, ed[0].commands)).length, ed.map(e => e.commands));
   click('.node[data-id="gcp-queue"] .c-name');
   const own = panel('[data-f="owner"]'), opts = [...own.options].map(o => o.textContent);
   check('the Owner field: none and every group, its kind in brackets', same(opts, ['none', 'bookshop-prod [Project]', 'europe-west1 [Region]', 'bookshop-vpc [Network]', 'data subnet, 10.10.0.0/24 [Subnetwork]', 'europe-west1-b [Zone]', 'europe-west1-c [Zone]']) && own.value === 'gcp-project', opts);
