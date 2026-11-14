@@ -126,7 +126,7 @@ try {
   click('.node[data-id="send-invoice"] .n-body'); key('l'); for (const c of 'Payment provider') key(c); key('Enter');
   gives('L to another pool: a message flow', [{ op: 'add', element: { id: 'send-invoice-payment-provider', type: 'bpmn.MessageFlow', from: 'send-invoice', to: 'payment-provider' }, view: VID }], m => m.edges.some(e => e.type === 'bpmn.MessageFlow' && e.from === 'send-invoice'), BASE);
   const n0 = ed.length; click('.node[data-id="order-placed"] .n-body'); key('l'); for (const c of 'Order received') key(c); key('Enter');
-  check('L from an end event to another pool: refused, nothing emitted, its reason on the hint line', ed.length === n0 && hint() === 'A message flow cannot start at a end event', [ed.slice(n0), hint()]);
+  check('L from an end event to another pool: refused, nothing emitted, its reason on the hint line', ed.length === n0 && hint() === 'A message flow cannot start at an end event', [ed.slice(n0), hint()]);
   click('.node[data-id="take-payment"] .n-body'); handleTo(centre('.node[data-id="order"] .n-body'));
   gives('the handle from a task to a data object: a data association', [{ op: 'add', element: { id: 'take-payment-order', type: 'bpmn.DataAssociation', from: 'take-payment', to: 'order' }, view: VID }], m => m.edges.some(e => e.id === 'take-payment-order'), BASE);
   // F2 on a flow and on a lane
@@ -145,7 +145,7 @@ try {
   click('.node[data-id="payment-timeout"] .n-body'); key('a');
   await new Promise(r => setTimeout(r, 0));
   const opts = all('.um-pick button').map(b => b.textContent);
-  check('A on a boundary event: a picker of its pool\'s activities', opts[0] === 'Cancel order' && opts.length === 6, opts);
+  check('A on a boundary event: a picker of its pool\'s activities', opts[0] === 'Cancel order' && opts.length === 4, opts);
   if (opts.length) { all('.um-pick button')[0].click(); gives('the activity picked: attachedTo set', [{ op: 'set', id: 'payment-timeout', path: 'props.attachedTo', value: 'cancel-order' }], m => m.nodes.find(n => n.id === 'payment-timeout').props.attachedTo === 'cancel-order', BASE); }
   // X expands the sub-process in the view; E stays the canvas's
   click('.node[data-id="pick-pack"] .n-body'); key('x');

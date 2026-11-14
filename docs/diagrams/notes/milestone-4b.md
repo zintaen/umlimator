@@ -399,7 +399,22 @@ approval (14 Nov 2026):
   A line that ends on a side grown for boundary events, but at none of them, is slid 16 px in on the copy, onto the
   activity's own border. A boundary event whose activity the view does not show is drawn as a free event node.
 - **Not drawn**: a message flow between two pools (both ends anchors), and a flow from a boundary event to its own activity
-  (a rework loop): each needs a route of the type's own.
+  (a rework loop): each needs a route of the type's own. `connect` refuses both, and an association from a text annotation
+  to a pool, a lane, a group or itself, so a gesture never draws nothing; a model that holds one has `describe()` say it,
+  marked "not drawn". `describe()` says a pool's own message flows on the pool's line.
+- **Data in no pool** takes rows after every pool, even when it is associated with a flow node in a lane; a text
+  annotation (always in no pool) still goes beside the flow node it is associated with (decision 23).
+- **`boundary-out`** warns for every boundary event with no sequence flow out: §4's exemption for a message boundary event
+  with only a message flow out cannot be met, as `message-ends` makes a boundary event (a catch event) an error as a
+  message flow's source, so it is dropped.
+- **The hooks keep `boundary-host` and `in-lane` too.** `moveTo` and `A` run through the same guard as `connect`, which
+  refuses a new error or a new warning of either rule: a boundary event moved to another activity goes to that activity's
+  owner; an activity dropped in another lane takes its boundary events with it, and into another pool is refused while
+  they have sequence flows; data is refused in a pool other than what it is associated with; a drop on a pool's header
+  strip, in no lane, is refused; a text annotation dropped anywhere is only pinned. A sequence flow from a pool to an
+  element in no pool is refused naming the latter ("A sequence flow cannot leave its pool: Loose is in no pool").
+- **A sub-process whose parents lead back to it** (validate's "ends up inside itself") is never drawn expanded, so the
+  layout does not loop.
 - **A message flow between activities** leaves and enters on the sides toward the other pool (§7.3), in the layout's terms.
 - **No `labelGaps`**: with it the common edits took about 130 ms of CPU on the stress view, without it about 70 to 95 ms,
   with the same clean layout and crossings on the example and the stress view.
@@ -409,7 +424,8 @@ approval (14 Nov 2026):
 - **No `rename` hook**: F2 on a flow, an annotation or a lane is the canvas's `set label`, which §11 asks for.
 - **Lanes.** `apply()` cannot reparent a member, so the Owner field offers no owner for a lane, and Delete on a lane with
   nested lanes deletes each nested lane and adds it again, one level up, in the same transaction; their flow nodes go to
-  the pool and back. `A`'s picker lists every activity of the boundary event's pool, those in its sub-processes too.
+  the pool and back. `A`'s picker lists the activities of the boundary event's pool it can move to without a new problem,
+  so one in a sub-process only when the event's flows can follow it there.
 - **`opens-view`** checks a sub-process or call activity with `opensView`, and a sub-process collapsed in the view that
   holds something with none. **`word()`** names elements, not lines (null, as the activity type's).
 - **Timings** (`tests/bpmn.test.mjs`, a stress view of 67 flow nodes, the ten boundary events among them, three
