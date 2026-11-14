@@ -24,9 +24,9 @@ function packageProblems(model) {
   (Array.isArray(model.edges) ? model.edges : []).forEach((e, i) => { if (!e || typeof e !== 'object' || (e.type !== 'uml.PackageImport' && e.type !== 'uml.PackageMerge')) return;
     const pk = id => OWN_BOXES.includes((at.get(id) || {}).type); // a profile is a package
     if (!pk(e.from) || !pk(e.to) || e.from === e.to) say('import-ends', `edges[${i}]`, [e.id, e.from, e.to].filter(x => x != null), `${e.id} runs from ${q(e.from)} to ${q(e.to)}: from a package to another package`); });
-  const seen = new Map();
-  (Array.isArray(model.nodes) ? model.nodes : []).forEach((n, i) => { if (!nodes.includes(n) || n.type !== 'uml.Package') return; const k = (n.parent ?? '') + '\u0000' + String(n.label ?? n.id), was = seen.get(k);
-    if (was) say('package-names', `nodes[${i}]`, [was, n.id], `${q(n.id)} is named twice in ${n.parent != null ? q(n.parent) : 'the model'} (${was}, ${n.id})`); else seen.set(k, n.id); });
+  const seen = new Map(); // a profile is a package too; two profiles alone are the profile type's stereotype-names
+  (Array.isArray(model.nodes) ? model.nodes : []).forEach((n, i) => { if (!nodes.includes(n) || !OWN_BOXES.includes(n.type)) return; const k = (n.parent ?? '') + '\u0000' + String(n.label ?? n.id), was = seen.get(k);
+    if (was && (n.type === 'uml.Package' || at.get(was).type === 'uml.Package')) say('package-names', `nodes[${i}]`, [was, n.id], `${q(n.id)} is named twice in ${n.parent != null ? q(n.parent) : 'the model'} (${was}, ${n.id})`); else seen.set(k, n.id); });
   return out;
 }
 
