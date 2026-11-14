@@ -1,7 +1,159 @@
 <!doctype html>
+<!-- SysML's parametric diagram (M3.5, notes/milestone-3.md §9, §13) in headless Chrome (tests/embed.py), from
+     lib/umlimator-all.js: docs/diagrams/examples/19-parametric.json drawn by render() in both themes, three fonts and both
+     directions (the frame and its header, constraint and value properties inside it, constraint properties rounded with their
+     expression, parameters on their constraint properties' borders, texts inside their shapes, no overlap but a parameter on
+     its own owner, every line end on a parameter's square or a value's box, names, reading order, the legend, contrast, axe's
+     rules written out), then a constraint block subject's parameters on its frame, then edited through the edit event and
+     apply(), by pointer and by keyboard: the palette and N (a constraint property, a value property), F2 on a constraint
+     property, a binding from a parameter by L, a parameter moved by Alt + an arrow, a member row on the subject, Delete on a
+     constraint property and on a parameter on it, Shift + Delete on a parameter. -->
 <meta charset="utf-8">
-<title>parametric: placeholder (milestone 3, M3.0)</title>
-<!-- notes/milestone-3.md M3.0: a placeholder that reports ok, so tests/embed.py lists the page once and the work package that
-     owns it (M3.2 requirement, M3.3 blocks, M3.4 internal-block, M3.5 parametric, M3.7 sysml) fills it without editing tests/embed.py -->
-<pre id="result"></pre>
-<script>document.getElementById('result').textContent = JSON.stringify({ ok: ['the placeholder page loads (filled by its work package)'], fail: [] });</script>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="../lib/umlimator-theme.css">
+<title>umlimator parametric diagram test</title>
+<body style="margin:0">
+<div id="m" style="width:1400px;height:1000px"></div>
+<script type="module">
+import { render, apply, validate } from '../lib/umlimator-all.js';
+const out = { ok: [], fail: [] };
+const check = (name, cond, info) => { document.title = name; if (cond) out.ok.push(name); else out.fail.push(name + (info === undefined ? '' : ': ' + JSON.stringify(info))); };
+const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+const el = document.getElementById('m');
+let sr, stage, ed = [], VID = 'range-analysis';
+const pick = s => sr.querySelector(s), all = s => [...sr.querySelectorAll(s)];
+const centre = s => { const r = pick(s).getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; };
+const ptr = (target, type, [x, y]) => target.dispatchEvent(new PointerEvent(type, { clientX: x, clientY: y, button: 0, pointerId: 7, pointerType: 'mouse', bubbles: true, composed: true }));
+const key = (k, extra = {}, target = stage) => target.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true, composed: true, cancelable: true, ...extra }));
+const click = s => { const g = pick(s), at = centre(s); ptr(g, 'pointerdown', at); ptr(g, 'pointerup', at); g.dispatchEvent(new MouseEvent('click', { clientX: at[0], clientY: at[1], bubbles: true, composed: true })); };
+const mount = (model, opts = {}) => { el.innerHTML = ''; ed = []; const h = render(el, model, { view: VID, on: { edit: e => ed.push(e) }, ...opts }); sr = el.querySelector('.umlimator').shadowRoot; stage = pick('.stage'); return h; };
+const errors = m => validate(m).filter(p => p.level === 'error');
+const last = () => ed[ed.length - 1];
+const gives = (name, cmds, test, base) => { const e = last(); let m = null; try { m = e && apply(base, e.commands); } catch (x) { m = null; }
+  check(name, !!e && same(e.commands, cmds) && !!m && test(m) && !errors(m).length, [e, m && errors(m)]); return m; };
+const box = g => { const r = g.getBBox(); return { x: r.x, y: r.y, w: r.width, h: r.height }; };
+const inside = (a, b) => a.x >= b.x - .5 && a.y >= b.y - .5 && a.x + a.w <= b.x + b.w + .5 && a.y + a.h <= b.y + b.h + .5;
+const meets = (p, q) => p.x < q.x + q.w - .5 && q.x < p.x + p.w - .5 && p.y < q.y + q.h - .5 && q.y < p.y + p.h - .5;
+const onEdge = ([x, y], b) => { const dx = Math.max(b.x - x, 0, x - b.x - b.w), dy = Math.max(b.y - y, 0, y - b.y - b.h); return dx || dy ? Math.hypot(dx, dy) : Math.min(x - b.x, b.x + b.w - x, y - b.y, b.y + b.h - y); };
+const FONTS = { serif: 'serif', sans: 'sans-serif', wide: 'monospace' };
+const rgba = s => { let m = /rgba?\(([^)]+)\)/.exec(s); if (m) { const p = m[1].split(/[ ,/]+/).filter(Boolean).map(Number); return [p[0] / 255, p[1] / 255, p[2] / 255, p.length > 3 ? p[3] : 1]; }
+  m = /color\(srgb ([^)]+)\)/.exec(s); if (m) { const p = m[1].split(/[ /]+/).filter(Boolean).map(Number); return [p[0], p[1], p[2], p.length > 3 ? p[3] : 1]; } return null; };
+const blend = (top, bot) => [0, 1, 2].map(i => top[i] * top[3] + bot[i] * (1 - top[3])).concat(1);
+const lum = c => { const f = v => v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]); };
+const ratio = (fg, bg) => { const [x, y] = [lum(blend(fg, bg)), lum(bg)].sort((p, q) => q - p); return +((x + 0.05) / (y + 0.05)).toFixed(2); };
+const css = (e, k) => rgba(getComputedStyle(e)[k]);
+const MODEL = await (await fetch('../docs/diagrams/examples/19-parametric.json')).json();
+const ownerOf = id => (id.includes('->') ? id.split('->')[0] : null);
+try {
+  check('the model validates with no problem', validate(MODEL).length === 0, validate(MODEL));
+  for (const theme of ['light', 'dark']) for (const [fname, family] of Object.entries(FONTS)) for (const direction of ['right', 'down']) {
+    document.documentElement.dataset.theme = theme; el.style.setProperty('--um-sans', family);
+    const M = structuredClone(MODEL); M.views[0].direction = direction;
+    const tag = `${theme}, ${fname}, ${direction}`, h = mount(M, { legend: true }), bad = [], svg = pick('.stage svg');
+    check(`${tag}: the frame, nine boxes (three constraints), nine parameters, eight bindings`, all('.node.part').length === 9 && all('.node.part.constraint').length === 3 && all('.node.port').length === 9
+      && all('.edge-g').length === 8 && !!pick('.family[data-family="ebike"] rect.family-box'), [all('.node').map(g => g.dataset.id), all('.edge-g').length]);
+    check(`${tag}: the frame's header`, pick('.family[data-family="ebike"] .family-title').textContent === 'par [Block] EBike [E-bike range]', pick('.family[data-family="ebike"] .family-title').textContent);
+    check(`${tag}: a constraint property rounded, its expression under its name`, pick('.node[data-id="ebike.eco"] .n-body').getAttribute('rx') === '10'
+      && /^\{range = energy/.test(pick('.node[data-id="ebike.eco"] .c-expr').textContent), pick('.node[data-id="ebike.eco"]').outerHTML.slice(0, 400));
+    const nodes = all('.node'), B = Object.fromEntries(nodes.map(g => [g.dataset.id, box(g.querySelector('.n-mask'))])), F = box(pick('.family[data-family="ebike"] .family-box'));
+    all('.node.part').forEach(g => g.querySelectorAll('text').forEach(t => { if (!inside(box(t), B[g.dataset.id])) bad.push(`${g.dataset.id}: "${t.textContent}" spills`); }));
+    all('.node.part').forEach(g => { if (!inside(B[g.dataset.id], F)) bad.push(`${g.dataset.id} outside the frame`); });
+    nodes.forEach((g, i) => nodes.slice(i + 1).forEach(k => { const a = g.dataset.id, b = k.dataset.id; if (ownerOf(a) !== b && ownerOf(b) !== a && meets(B[a], B[b])) bad.push(`${a} and ${b} overlap`); }));
+    all('.node.port .port-name').forEach(t => { const tb = box(t), own = t.closest('.node').dataset.id; nodes.forEach(g => { if (g.dataset.id !== own && meets(tb, B[g.dataset.id])) bad.push(`${own}'s name over ${g.dataset.id}`); }); });
+    check(`${tag}: texts inside, boxes in the frame, no overlap but a parameter on its constraint, parameter names clear`, !bad.length, bad);
+    const off = all('.node.port').map(g => { const id = g.dataset.id, p = B[id]; return [id, +onEdge([p.x + p.w / 2, p.y + p.h / 2], B[ownerOf(id)]).toFixed(2)]; }).filter(([, d]) => d > .51);
+    check(`${tag}: each parameter centred on its constraint property's border`, !off.length, off);
+    const offs = [];
+    all('.edge-g').forEach(g => { const v = g.querySelector('path.edge').getAttribute('d').match(/-?\d+(\.\d+)?/g).map(Number);
+      [v.slice(0, 2), v.slice(-2)].forEach(p => { const d = Math.min(...nodes.map(q => onEdge(p, B[q.dataset.id]))); if (d > 1) offs.push([g.dataset.from, g.dataset.to, p, +d.toFixed(2)]); }); });
+    check(`${tag}: each line ends on a parameter's square or a value's box`, !offs.length, offs);
+    check(`${tag}: names a screen reader reads`, pick('.family[data-family="ebike"]').getAttribute('aria-label') === 'Parametric diagram of block EBike: E-bike range'
+      && pick('.node[data-id="ebike.eco"]').getAttribute('aria-label') === 'Constraint eco: RangeEquation {range = energy / consumption}, in EBike, 3 parameters'
+      && pick('.node[data-id="ebike.eco->range-equation.range"]').getAttribute('aria-label') === 'Parameter range: Distance of eco'
+      && pick('.node[data-id="ebike.ecoRange"]').getAttribute('aria-label') === 'Value ecoRange: Distance, in EBike'
+      && [...all('.edge-g title')].some(t => t.textContent === 'Binding from value ecoRange to parameter range of eco'),
+    [pick('.node[data-id="ebike.eco"]').getAttribute('aria-label'), all('.edge-g title').map(t => t.textContent)]);
+    check(`${tag}: reading order: the values, then each constraint and its parameters`, all('.keys .node-key').slice(0, 1).map(k => k.dataset.node).join() === 'ebike.batteryCapacity', all('.keys .node-key').slice(0, 4).map(k => k.dataset.node));
+    const legend = all('.m-legend b').map(b => b.textContent);
+    check(`${tag}: the legend keys the binding`, same(legend, ['Binding']), legend);
+    const stageBg = css(pick('.stage'), 'backgroundColor'), low = [];
+    nodes.forEach(g => { const body = g.querySelector('.n-body'), fill = css(body, 'fill'), bg = fill ? blend(fill, stageBg) : stageBg;
+      g.querySelectorAll('text').forEach(t => { const c = ratio(css(t, 'fill'), t.classList.contains('port-name') ? stageBg : bg); if (c < 4.5) low.push([g.dataset.id, t.textContent, c]); }); });
+    const tagText = pick('.family[data-family="ebike"] .family-title'); if (ratio(css(tagText, 'fill'), stageBg) < 4.5) low.push(['frame', ratio(css(tagText, 'fill'), stageBg)]);
+    const strokes = all('.node.part .n-body, .node.port .n-body, .family-box').map(b => ratio(css(b, 'stroke'), stageBg)).filter(c => c < 3);
+    check(`${tag}: contrast: texts 4.5:1, outlines 3:1`, !low.length && !strokes.length, [low, strokes]);
+    // axe-core 4.14's rules for what is drawn as role="img", written out: svg-img-alt and role-img-alt (each has a name),
+    // nested-interactive (nothing inside one is a tab stop)
+    const imgs = all('.stage svg [role="img"]'), noAlt = [], nested = [];
+    imgs.forEach(x => { if (!(x.getAttribute('aria-label') || '').trim()) noAlt.push(x.dataset.id || x.localName);
+      x.querySelectorAll('[tabindex], a[href], button, input, select, textarea').forEach(c => { if (c.tabIndex >= 0) nested.push(`${x.dataset.id} holds ${c.getAttribute('class') || c.localName}`); }); });
+    check(`${tag}: axe, written out: the drawing a named group, its 19 boxes and parameters named images with no tab stop inside`,
+      svg.getAttribute('role') === 'group' && !!(svg.getAttribute('aria-label') || '').trim() && imgs.length >= 19 && !noAlt.length && !nested.length, [imgs.length, noAlt, nested.slice(0, 4)]);
+    h.destroy();
+  }
+  document.documentElement.dataset.theme = 'light'; el.style.removeProperty('--um-sans');
+
+  // ---- a constraint block subject: its parameters on its frame
+  { const C = structuredClone(MODEL), p = (id, t) => ({ id: `range-model.${id}`, type: 'sysml.ConstraintParameter', label: id, props: { valueType: t } });
+    const bind = (id, from, to, ends) => ({ id, type: 'sysml.BindingConnector', from, to, props: { ends } });
+    C.nodes.push({ id: 'range-model', type: 'sysml.ConstraintBlock', label: 'RangeModel', members: [p('energy', 'Energy'), p('consumption', 'EnergyPerDistance'), p('range', 'Distance'),
+      { id: 'range-model.r', type: 'sysml.ConstraintProperty', label: 'r', props: { valueType: 'RangeEquation' } }] });
+    C.edges.push(...['range', 'energy', 'consumption'].map(k => bind('n-' + k, 'range-model.' + k, 'range-equation.' + k, { to: { part: 'range-model.r' } })));
+    C.root = 'model'; C.views = [{ id: 'model', diagram: 'sysml.parametric', subject: 'range-model', nodeIds: ['range-model'] }]; VID = 'model';
+    const h = mount(C), F = box(pick('.family[data-family="range-model"] .family-box'));
+    const off = ['energy', 'consumption', 'range'].map(k => { const p = box(pick(`.node[data-id="range-model.${k}"] .n-mask`)); return [k, +onEdge([p.x + p.w / 2, p.y + p.h / 2], F).toFixed(2)]; }).filter(([, d]) => d > .51);
+    check('a constraint block subject: its parameters centred on its frame\'s border, its header, three bindings', validate(C).length === 0 && !off.length && all('.edge-g').length === 3
+      && pick('.family[data-family="range-model"] .family-title').textContent === 'par [ConstraintBlock] RangeModel', [validate(C), off]);
+    h.destroy(); VID = 'range-analysis'; }
+
+  // ---- editing (DoD 4), each gesture's commands applied with apply()
+  const BASE = MODEL;
+  let h = mount(BASE, { editable: true });
+  const panel = s => pick('.um-editor ' + s), name = t => { pick('.um-rename').value = t; key('Enter', {}, pick('.um-rename')); };
+  check('the palette: Constraint property, Value property, Comment; the lines listed', same(all('.um-editor .um-pal button').map(b => b.textContent), ['Constraint property', 'Value property', 'Comment'])
+    && /Binding, Comment link/.test(panel('.um-pal .um-note').textContent), panel('.um-pal').textContent);
+  key('n'); name('city : RangeEquation');
+  const m1 = gives('N adds a constraint property into the subject', [{ op: 'add', element: { id: 'ebike.city', type: 'sysml.ConstraintProperty', label: 'city', props: { valueType: 'RangeEquation' } }, owner: 'ebike' }],
+    m => m.nodes[0].members.some(x => x.id === 'ebike.city'), BASE);
+  h.update(m1);
+  check('after update() the constraint property is drawn in the frame, rounded, with its type\'s parameters', !!pick('.node.part.constraint[data-id="ebike.city"]') && !!pick('.node.port[data-id="ebike.city->range-equation.range"]')
+    && inside(box(pick('.node[data-id="ebike.city"] .n-mask')), box(pick('.family[data-family="ebike"] .family-box'))));
+  all('.um-editor .um-pal button')[1].click(); name('mass : Mass');
+  gives('the palette\'s Value property: a sysml.ValueProperty', [{ op: 'add', element: { id: 'ebike.mass', type: 'sysml.ValueProperty', label: 'mass', props: { valueType: 'Mass' } }, owner: 'ebike' }],
+    m => m.nodes[0].members.some(x => x.id === 'ebike.mass'), m1);
+  click('.node[data-id="ebike.boost"] .c-name'); key('F2');
+  check('F2 on a constraint property: a field holding name : Type', pick('.um-rename') && pick('.um-rename').value === 'boost : RangeEquation', pick('.um-rename') && pick('.um-rename').value);
+  name('sport : RangeEquation');
+  const m2 = gives('F2 on a constraint property: its name set', [{ op: 'set', id: 'ebike.boost', path: 'label', value: 'sport' }], m => m.nodes[0].members.find(x => x.id === 'ebike.boost').label === 'sport', m1);
+  h.update(m2);
+  // a binding from a value by L, arrows to a parameter and Enter, the picker: it runs to the parameter, through its constraint property
+  click('.node[data-id="ebike.ecoRange"] .c-name'); key('l');
+  for (let i = 0; i < 24 && !(pick('.um-target') && pick('.um-target').dataset.id.includes('->')); i++) key(['ArrowRight', 'ArrowDown', 'ArrowUp', 'ArrowLeft'][Math.floor(i / 6)]);
+  const target = pick('.um-target') && pick('.um-target').dataset.id; key('Enter');
+  check('L from a value, arrows to a parameter and Enter open the picker with the two lines', !!target && target.includes('->') && same(all('.um-pick button').map(b => b.textContent), ['Binding', 'Comment link']), [target, all('.um-pick button').map(b => b.textContent)]);
+  all('.um-pick button')[0].click();
+  { const e = last(), c = e && e.commands[0], m = c && apply(m2, e.commands);
+    check('Binding: a sysml.BindingConnector from the value to the parameter, ends.to.part its constraint property, no label', e.commands.length === 1 && c.op === 'add' && c.element.type === 'sysml.BindingConnector'
+      && c.element.from === 'ebike.ecoRange' && same(c.element.props.ends, { to: { part: target.split('->')[0] } }) && c.element.to === target.split('->')[1] && !('label' in c.element) && !errors(m).length, [e, m && errors(m)]); }
+  click('.node[data-id="ebike.eco->range-equation.range"] .n-mask');
+  { const n = ed.length; for (const k of ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']) if (ed.length === n) key(k, { altKey: true }); // the arrows along its side move nothing
+    const e = ed.length > n ? last() : null, c = e && e.commands[0];
+    check('Alt + an arrow across a parameter\'s side: its side, under its constraint property in the view', !!c && c.op === 'set' && same(c.path, ['present', 'ebike.eco', 'ports', 'range-equation.range', 'side']), e); }
+  h.select({ type: 'container', id: 'ebike', view: VID });
+  const nw = panel('[data-new]');
+  check('the subject\'s members listed by their rows', !!nw && panel('[data-m="ebike.eco"]').value === 'eco : RangeEquation' && panel('[data-m="ebike.ecoRange"]').value === 'ecoRange : Distance',
+    nw && all('.um-editor [data-m]').map(i => i.value));
+  if (nw) { nw.value = 'speed : Speed'; key('Enter', {}, nw);
+    gives('a member row `name : Type`: a value property of the subject', [{ op: 'add', element: { id: 'ebike.speed', type: 'sysml.ValueProperty', label: 'speed', props: { valueType: 'Speed' } }, owner: 'ebike' }],
+      m => m.nodes[0].members.some(x => x.id === 'ebike.speed'), m2); }
+  h = mount(m2, { editable: true });
+  click('.node[data-id="ebike.eco"] .c-name'); key('Delete');
+  gives('Delete on a constraint property: deleted from the model, its bindings with it', [{ op: 'delete', id: 'ebike.eco' }], m => !m.edges.some(e => e.id === 'bind-eco-range'), m2);
+  click('.node[data-id="ebike.eco->range-equation.range"] .n-mask'); key('Delete');
+  gives('Delete on a parameter on a constraint property: the bindings through it', [{ op: 'delete', id: 'bind-eco-range' }], m => !m.edges.some(e => e.id === 'bind-eco-range'), m2);
+  click('.node[data-id="ebike.usable->usable-energy.share"] .n-mask'); key('Delete', { shiftKey: true });
+  gives('Shift + Delete on a parameter: the parameter from its constraint block, its bindings with it', [{ op: 'delete', id: 'usable-energy.share' }], m => !m.nodes.find(n => n.id === 'usable-energy').members.some(x => x.id === 'usable-energy.share'), m2);
+  h.destroy();
+} catch (e) { out.fail.push('threw: ' + (e && e.stack || e)); }
+const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
+</script>

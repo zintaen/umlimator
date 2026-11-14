@@ -584,6 +584,17 @@ Each with a passing and a failing fixture in `tests/parametric.test.mjs`.
 Editing: Palette Constraint property, Value property, Comment; line Binding; connect from a value to a parameter's square
 (through its constraint property) emits a `sysml.BindingConnector` with `ends.to.part`.
 
+**As built (M3.5, `src/sysml/parametric.js`, departures found in the build, 14 Nov 2026; taken by the lead under the
+maintainer's standing approval (14 Nov 2026)).** A constraint property's box is the composite type's, sized by its name and
+its parameters, so the e-bike's expressions are cut (`{range = energy / c…}`); they are whole in its accessible name and the
+PDF's rows (§17). The type keeps the composite type's `connector-drawn` (a binding between two parameters of the subject is
+not drawn), re-said, beside the five rules above. A binding drawn from a parameter to a value runs from the value, so the
+parameter's constraint property is `ends.to.part` either way; one drawn to a constraint property's box is refused. A member
+row `param name : Type` is a parameter; the Value property entry is refused on a constraint block subject (§7.3). A gap: laid
+out down, a constraint block subject's parameters on the frame's top side cross its header band with their lines inward (the
+composite geometry's port sides do not see the header); `tests/parametric.test.mjs` pins it, and the e-bike's own view is
+clean both ways.
+
 ## 10. SysML elements in other views
 
 A block, requirement or test case shown on a UML view (a class view of a mixed model) is drawn by that type as an element
