@@ -1,0 +1,3965 @@
+{
+ "schemaVersion": 2,
+ "title": "ER, stress",
+ "nodes": [
+  {
+   "id": "ec-line",
+   "type": "er.Entity",
+   "label": "order_line",
+   "members": [
+    {
+     "id": "ec-line.order_id",
+     "type": "er.Column",
+     "label": "order_id",
+     "props": {
+      "dataType": "bigint",
+      "primaryKey": true,
+      "foreignKey": true,
+      "references": "ec-order.id"
+     }
+    },
+    {
+     "id": "ec-line.line_no",
+     "type": "er.Column",
+     "label": "line_no",
+     "props": {
+      "dataType": "int",
+      "primaryKey": true
+     }
+    },
+    {
+     "id": "ec-line.qty",
+     "type": "er.Column",
+     "label": "qty",
+     "props": {
+      "dataType": "int"
+     }
+    }
+   ]
+  },
+  {
+   "id": "ec-order",
+   "type": "er.Entity",
+   "label": "orders",
+   "members": [
+    {
+     "id": "ec-order.id",
+     "type": "er.Column",
+     "label": "id",
+     "props": {
+      "dataType": "bigint",
+      "primaryKey": true
+     }
+    },
+    {
+     "id": "ec-order.customer_id",
+     "type": "er.Column",
+     "label": "customer_id",
+     "props": {
+      "dataType": "bigint",
+      "foreignKey": true,
+      "references": "ec-customer.id",
+      "nullable": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "ec-customer",
+   "type": "er.Entity",
+   "label": "customer",
+   "members": [
+    {
+     "id": "ec-customer.id",
+     "type": "er.Column",
+     "label": "id",
+     "props": {
+      "dataType": "bigint",
+      "primaryKey": true
+     }
+    },
+    {
+     "id": "ec-customer.email",
+     "type": "er.Column",
+     "label": "email",
+     "props": {
+      "dataType": "varchar(200)",
+      "unique": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "ec-employee",
+   "type": "er.Entity",
+   "label": "employee",
+   "members": [
+    {
+     "id": "ec-employee.id",
+     "type": "er.Column",
+     "label": "id",
+     "props": {
+      "dataType": "bigint",
+      "primaryKey": true
+     }
+    },
+    {
+     "id": "ec-employee.manager_id",
+     "type": "er.Column",
+     "label": "manager_id",
+     "props": {
+      "dataType": "bigint",
+      "foreignKey": true,
+      "references": "ec-employee.id",
+      "nullable": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "ec-student",
+   "type": "er.Entity",
+   "label": "student",
+   "members": [
+    {
+     "id": "ec-student.id",
+     "type": "er.Column",
+     "label": "id",
+     "props": {
+      "dataType": "bigint",
+      "primaryKey": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "ec-course",
+   "type": "er.Entity",
+   "label": "course",
+   "members": [
+    {
+     "id": "ec-course.id",
+     "type": "er.Column",
+     "label": "id",
+     "props": {
+      "dataType": "bigint",
+      "primaryKey": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "ec-enrolment",
+   "type": "er.Entity",
+   "label": "enrolment",
+   "members": [
+    {
+     "id": "ec-enrolment.student_id",
+     "type": "er.Column",
+     "label": "student_id",
+     "props": {
+      "dataType": "bigint",
+      "primaryKey": true,
+      "foreignKey": true,
+      "references": "ec-student.id"
+     }
+    },
+    {
+     "id": "ec-enrolment.course_id",
+     "type": "er.Column",
+     "label": "course_id",
+     "props": {
+      "dataType": "bigint",
+      "primaryKey": true,
+      "foreignKey": true,
+      "references": "ec-course.id"
+     }
+    }
+   ]
+  },
+  {
+   "id": "ec-post",
+   "type": "er.Entity",
+   "label": "post",
+   "members": [
+    {
+     "id": "ec-post.id",
+     "type": "er.Column",
+     "label": "id",
+     "props": {
+      "dataType": "bigint",
+      "primaryKey": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "ec-tag",
+   "type": "er.Entity",
+   "label": "tag",
+   "members": [
+    {
+     "id": "ec-tag.id",
+     "type": "er.Column",
+     "label": "id",
+     "props": {
+      "dataType": "bigint",
+      "primaryKey": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "ec-shelf",
+   "type": "er.Entity",
+   "label": "shelf",
+   "members": [
+    {
+     "id": "ec-shelf.id",
+     "type": "er.Column",
+     "label": "id",
+     "props": {
+      "dataType": "bigint",
+      "primaryKey": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "ec-slot",
+   "type": "er.Entity",
+   "label": "slot",
+   "members": [
+    {
+     "id": "ec-slot.shelf_id",
+     "type": "er.Column",
+     "label": "shelf_id",
+     "props": {
+      "dataType": "bigint",
+      "primaryKey": true,
+      "foreignKey": true,
+      "references": "ec-shelf.id"
+     }
+    },
+    {
+     "id": "ec-slot.n",
+     "type": "er.Column",
+     "label": "n",
+     "props": {
+      "dataType": "int",
+      "primaryKey": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "ec-person",
+   "type": "er.Entity",
+   "label": "person",
+   "members": [
+    {
+     "id": "ec-person.id",
+     "type": "er.Column",
+     "label": "id",
+     "props": {
+      "dataType": "bigint",
+      "primaryKey": true
+     }
+    },
+    {
+     "id": "ec-person.home_id",
+     "type": "er.Column",
+     "label": "home_id",
+     "props": {
+      "dataType": "bigint",
+      "foreignKey": true,
+      "references": "ec-address.id"
+     }
+    },
+    {
+     "id": "ec-person.work_id",
+     "type": "er.Column",
+     "label": "work_id",
+     "props": {
+      "dataType": "bigint",
+      "foreignKey": true,
+      "references": "ec-address.id",
+      "nullable": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "ec-address",
+   "type": "er.Entity",
+   "label": "address",
+   "members": [
+    {
+     "id": "ec-address.id",
+     "type": "er.Column",
+     "label": "id",
+     "props": {
+      "dataType": "bigint",
+      "primaryKey": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "ec-team",
+   "type": "er.Entity",
+   "label": "team",
+   "members": [
+    {
+     "id": "ec-team.id",
+     "type": "er.Column",
+     "label": "id",
+     "props": {
+      "dataType": "bigint",
+      "primaryKey": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "ec-player",
+   "type": "er.Entity",
+   "label": "player",
+   "members": [
+    {
+     "id": "ec-player.id",
+     "type": "er.Column",
+     "label": "id",
+     "props": {
+      "dataType": "bigint",
+      "primaryKey": true
+     }
+    },
+    {
+     "id": "ec-player.team_id",
+     "type": "er.Column",
+     "label": "team_id",
+     "props": {
+      "dataType": "bigint",
+      "foreignKey": true,
+      "references": "ec-team.id"
+     }
+    }
+   ]
+  },
+  {
+   "id": "ec-wide",
+   "type": "er.Entity",
+   "label": "wide_table",
+   "members": [
+    {
+     "id": "ec-wide.id",
+     "type": "er.Column",
+     "label": "id",
+     "props": {
+      "dataType": "bigint",
+      "primaryKey": true
+     }
+    },
+    {
+     "id": "ec-wide.col_1",
+     "type": "er.Column",
+     "label": "col_1",
+     "props": {
+      "dataType": "text"
+     }
+    },
+    {
+     "id": "ec-wide.col_2",
+     "type": "er.Column",
+     "label": "col_2",
+     "props": {
+      "dataType": "int"
+     }
+    },
+    {
+     "id": "ec-wide.col_3",
+     "type": "er.Column",
+     "label": "col_3",
+     "props": {
+      "dataType": "text"
+     }
+    },
+    {
+     "id": "ec-wide.col_4",
+     "type": "er.Column",
+     "label": "col_4",
+     "props": {
+      "dataType": "int"
+     }
+    },
+    {
+     "id": "ec-wide.col_5",
+     "type": "er.Column",
+     "label": "col_5",
+     "props": {
+      "dataType": "text"
+     }
+    },
+    {
+     "id": "ec-wide.col_6",
+     "type": "er.Column",
+     "label": "col_6",
+     "props": {
+      "dataType": "int"
+     }
+    },
+    {
+     "id": "ec-wide.col_7",
+     "type": "er.Column",
+     "label": "col_7",
+     "props": {
+      "dataType": "text"
+     }
+    },
+    {
+     "id": "ec-wide.col_8",
+     "type": "er.Column",
+     "label": "col_8",
+     "props": {
+      "dataType": "int"
+     }
+    },
+    {
+     "id": "ec-wide.col_9",
+     "type": "er.Column",
+     "label": "col_9",
+     "props": {
+      "dataType": "text"
+     }
+    },
+    {
+     "id": "ec-wide.col_10",
+     "type": "er.Column",
+     "label": "col_10",
+     "props": {
+      "dataType": "int"
+     }
+    },
+    {
+     "id": "ec-wide.col_11",
+     "type": "er.Column",
+     "label": "col_11",
+     "props": {
+      "dataType": "text"
+     }
+    },
+    {
+     "id": "ec-wide.col_12",
+     "type": "er.Column",
+     "label": "col_12",
+     "props": {
+      "dataType": "int"
+     }
+    },
+    {
+     "id": "ec-wide.col_13",
+     "type": "er.Column",
+     "label": "col_13",
+     "props": {
+      "dataType": "text"
+     }
+    },
+    {
+     "id": "ec-wide.col_14",
+     "type": "er.Column",
+     "label": "col_14",
+     "props": {
+      "dataType": "int"
+     }
+    },
+    {
+     "id": "ec-wide.col_15",
+     "type": "er.Column",
+     "label": "col_15",
+     "props": {
+      "dataType": "text"
+     }
+    },
+    {
+     "id": "ec-wide.col_16",
+     "type": "er.Column",
+     "label": "col_16",
+     "props": {
+      "dataType": "int"
+     }
+    },
+    {
+     "id": "ec-wide.col_17",
+     "type": "er.Column",
+     "label": "col_17",
+     "props": {
+      "dataType": "text"
+     }
+    },
+    {
+     "id": "ec-wide.col_18",
+     "type": "er.Column",
+     "label": "col_18",
+     "props": {
+      "dataType": "int"
+     }
+    },
+    {
+     "id": "ec-wide.col_19",
+     "type": "er.Column",
+     "label": "col_19",
+     "props": {
+      "dataType": "text"
+     }
+    },
+    {
+     "id": "ec-wide.col_20",
+     "type": "er.Column",
+     "label": "col_20",
+     "props": {
+      "dataType": "int"
+     }
+    },
+    {
+     "id": "ec-wide.col_21",
+     "type": "er.Column",
+     "label": "col_21",
+     "props": {
+      "dataType": "text"
+     }
+    },
+    {
+     "id": "ec-wide.col_22",
+     "type": "er.Column",
+     "label": "col_22",
+     "props": {
+      "dataType": "int"
+     }
+    },
+    {
+     "id": "ec-wide.col_23",
+     "type": "er.Column",
+     "label": "col_23",
+     "props": {
+      "dataType": "text"
+     }
+    },
+    {
+     "id": "ec-wide.col_24",
+     "type": "er.Column",
+     "label": "col_24",
+     "props": {
+      "dataType": "int"
+     }
+    },
+    {
+     "id": "ec-wide.col_25",
+     "type": "er.Column",
+     "label": "col_25",
+     "props": {
+      "dataType": "text"
+     }
+    },
+    {
+     "id": "ec-wide.col_26",
+     "type": "er.Column",
+     "label": "col_26",
+     "props": {
+      "dataType": "int"
+     }
+    },
+    {
+     "id": "ec-wide.col_27",
+     "type": "er.Column",
+     "label": "col_27",
+     "props": {
+      "dataType": "text"
+     }
+    },
+    {
+     "id": "ec-wide.col_28",
+     "type": "er.Column",
+     "label": "col_28",
+     "props": {
+      "dataType": "int"
+     }
+    },
+    {
+     "id": "ec-wide.col_29",
+     "type": "er.Column",
+     "label": "col_29",
+     "props": {
+      "dataType": "text"
+     }
+    },
+    {
+     "id": "ec-wide.col_30",
+     "type": "er.Column",
+     "label": "col_30",
+     "props": {
+      "dataType": "int"
+     }
+    },
+    {
+     "id": "ec-wide.col_31",
+     "type": "er.Column",
+     "label": "col_31",
+     "props": {
+      "dataType": "text"
+     }
+    },
+    {
+     "id": "ec-wide.col_32",
+     "type": "er.Column",
+     "label": "col_32",
+     "props": {
+      "dataType": "int"
+     }
+    },
+    {
+     "id": "ec-wide.col_33",
+     "type": "er.Column",
+     "label": "col_33",
+     "props": {
+      "dataType": "text"
+     }
+    },
+    {
+     "id": "ec-wide.col_34",
+     "type": "er.Column",
+     "label": "col_34",
+     "props": {
+      "dataType": "int"
+     }
+    },
+    {
+     "id": "ec-wide.col_35",
+     "type": "er.Column",
+     "label": "col_35",
+     "props": {
+      "dataType": "text"
+     }
+    },
+    {
+     "id": "ec-wide.col_36",
+     "type": "er.Column",
+     "label": "col_36",
+     "props": {
+      "dataType": "int"
+     }
+    },
+    {
+     "id": "ec-wide.col_37",
+     "type": "er.Column",
+     "label": "col_37",
+     "props": {
+      "dataType": "text"
+     }
+    },
+    {
+     "id": "ec-wide.col_38",
+     "type": "er.Column",
+     "label": "col_38",
+     "props": {
+      "dataType": "int"
+     }
+    },
+    {
+     "id": "ec-wide.col_39",
+     "type": "er.Column",
+     "label": "col_39",
+     "props": {
+      "dataType": "text"
+     }
+    },
+    {
+     "id": "ec-wide.customer_id",
+     "type": "er.Column",
+     "label": "customer_id",
+     "props": {
+      "dataType": "bigint",
+      "foreignKey": true,
+      "references": "ec-customer.id",
+      "unique": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "ec-a",
+   "type": "er.Entity",
+   "label": "odd_parent",
+   "members": [
+    {
+     "id": "ec-a.id",
+     "type": "er.Column",
+     "label": "id",
+     "props": {
+      "dataType": "bigint",
+      "primaryKey": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "ec-b",
+   "type": "er.Entity",
+   "label": "odd_child",
+   "members": [
+    {
+     "id": "ec-b.id",
+     "type": "er.Column",
+     "label": "id",
+     "props": {
+      "dataType": "bigint",
+      "primaryKey": true
+     }
+    },
+    {
+     "id": "ec-b.a_id",
+     "type": "er.Column",
+     "label": "a_id",
+     "props": {
+      "dataType": "bigint",
+      "foreignKey": true,
+      "references": "ec-a.id"
+     }
+    }
+   ]
+  },
+  {
+   "id": "e0",
+   "type": "er.Entity",
+   "label": "table_0",
+   "members": [
+    {
+     "id": "e0.id",
+     "type": "er.Column",
+     "label": "id",
+     "props": {
+      "dataType": "bigint",
+      "primaryKey": true
+     }
+    },
+    {
+     "id": "e0.name",
+     "type": "er.Column",
+     "label": "name",
+     "props": {
+      "dataType": "varchar(80)"
+     }
+    }
+   ]
+  },
+  {
+   "id": "e1",
+   "type": "er.Entity",
+   "label": "table_1",
+   "members": [
+    {
+     "id": "e1.id",
+     "type": "er.Column",
+     "label": "id",
+     "props": {
+      "dataType": "bigint",
+      "primaryKey": true
+     }
+    },
+    {
+     "id": "e1.name",
+     "type": "er.Column",
+     "label": "name",
+     "props": {
+      "dataType": "varchar(80)"
+     }
+    },
+    {
+     "id": "e1.fk0",
+     "type": "er.Column",
+     "label": "fk_0",
+     "props": {
+      "dataType": "bigint",
+      "foreignKey": true,
+      "references": "e0.id",
+      "primaryKey": true
+     }
+    },
+    {
+     "id": "e1.fk49",
+     "type": "er.Column",
+     "label": "fk_49",
+     "props": {
+      "dataType": "bigint",
+      "foreignKey": true,
+      "references": "e0.id"
+     }
+    }
+   ]
+  },
+  {
+   "id": "e2",
+   "type": "er.Entity",
+   "label": "table_2",
+   "members": [
+    {
+     "id": "e2.id",
+     "type": "er.Column",
+     "label": "id",
+     "props": {
+      "dataType": "bigint",
+      "primaryKey": true
+     }
+    },
+    {
+     "id": "e2.name",
+     "type": "er.Column",
+     "label": "name",
+     "props": {
+      "dataType": "varchar(80)"
+     }
+    },
+    {
+     "id": "e2.fk1",
+     "type": "er.Column",
+     "label": "fk_1",
+     "props": {
+      "dataType": "bigint",
+      "foreignKey": true,
+      "references": "e1.id"
+     }
+    },
+    {
+     "id": "e2.fk50",
+     "type": "er.Column",
+     "label": "fk_50",
+     "props": {
+      "dataType": "bigint",
+      "foreignKey": true,
+      "references": "e0.id"
+     }
+    }
+   ]
+  },
+  {
+   "id": "e3",
+   "type": "er.Entity",
+   "label": "table_3",
+   "members": [
+    {
+     "id": "e3.id",
+     "type": "er.Column",
+     "label": "id",
+     "props": {
+      "dataType": "bigint",
+      "primaryKey": true
+     }
+    },
+    {
+     "id": "e3.name",
+     "type": "er.Column",
+     "label": "name",
+     "props": {
+      "dataType": "varchar(80)"
+     }
+    },
+    {
+     "id": "e3.fk2",
+     "type": "er.Column",
+     "label": "fk_2",
+     "props": {
+      "dataType": "bigint",
+      "foreignKey": true,
+      "references": "e2.id"
+     }
+    },
+    {
+     "id": "e3.fk51",
+     "type": "er.Column",
+     "label": "fk_51",
+     "props": {
+      "dataType": "bigint",
+      "foreignKey": true,
+      "references": "e0.id",
+      "primaryKey": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "e4",
+   "type": "er.Entity",
+   "label": "table_4",
+   "members": [
+    {
+     "id": "e4.id",
+     "type": "er.Column",
+     "label": "id",
+     "props": {
+      "dataType": "bigint",
+      "primaryKey": true
+     }
+    },
+    {
+     "id": "e4.name",
+     "type": "er.Column",
+     "label": "name",
+     "props": {
+      "dataType": "varchar(80)"
+     }
+    },
+    {
+     "id": "e4.fk3",
+     "type": "er.Column",
+     "label": "fk_3",
+     "props": {
+      "dataType": "bigint",
+      "foreignKey": true,
+      "references": "e1.id",
+      "primaryKey": true
+     }
+    },
+    {
+     "id": "e4.fk52",
+     "type": "er.Column",
+     "label": "fk_52",
+     "props": {
+      "dataType": "bigint",
+      "foreignKey": true,
+      "references": "e0.id"
+     }
+    }
+   ]
+  },
+  {
+   "id": "e5",
+   "type": "er.Entity",
+   "label": "table_5",
+   "members": [
+    {
+     "id": "e5.id",
+     "type": "er.Column",
+     "label": "id",
+     "props": {
+      "dataType": "bigint",
+      "primaryKey": true
+     }
+    },
+    {
+     "id": "e5.name",
+     "type": "er.Column",
+     "label": "name",
+     "props": {
+      "dataType": "varchar(80)"
+     }
+    },
+    {
+     "id": "e5.fk4",
+     "type": "er.Column",
+     "label": "fk_4",
+     "props": {
+      "dataType": "bigint",
+      "foreignKey": true,
+      "references": "e3.id"
+     }
+    },
+    {
+     "id": "e5.fk53",
+     "type": "er.Column",
+     "label": "fk_53",
+     "props": {
+      "dataType": "bigint",
+      "foreignKey": true,
+      "references": "e1.id"
+     }
+    }
+   ]
+  },
+  {
+   "id": "e6",
+   "type": "er.Entity",
+   "label": "table_6",
+   "members": [
+    {
+     "id": "e6.id",
+     "type": "er.Column",
+     "label": "id",
+     "props": {
+      "dataType": "bigint",
+      "primaryKey": true
+     }
+    },
+    {
+     "id": "e6.name",
+     "type": "er.Column",
+     "label": "name",
+     "props": {
+      "dataType": "varchar(80)"
+     }
+    },
+    {
+     "id": "e6.fk5",
+     "type": "er.Column",
+     "label": "fk_5",
+     "props": {
+      "dataType": "bigint",
+      "foreignKey": true,
+      "references": "e5.id"
+     }
+    },
+    {
+     "id": "e6.fk54",
+     "type": "er.Column",
+     "label": "fk_54",
+     "props": {
+      "dataType": "bigint",
+      "foreignKey": true,
+      "references": "e0.id",
+      "primaryKey": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "e7",
+   "type": "er.Entity",
+   "label": "table_7",
+   "members": [
+    {
+     "id": "e7.id",
+     "type": "er.Column",
+     "label": "id",
+     "props": {
+      "dataType": "bigint",
+      "primaryKey": true
+     }
+    },
+    {
+     "id": "e7.name",
+     "type": "er.Column",
+     "label": "name",
+     "props": {
+      "dataType": "varchar(80)"
+     }
+    },
+    {
+     "id": "e7.fk6",
+     "type": "er.Column",
+     "label": "fk_6",
+     "props": {
+      "dataType": "bigint",
+      "foreignKey": true,
+      "references": "e0.id",
+      "primaryKey": true
+     }
+    },
+    {
+     "id": "e7.fk55",
+     "type": "er.Column",
+     "label": "fk_55",
+     "props": {
+      "dataType": "bigint",
+      "foreignKey": true,
+      "references": "e0.id"
+     }
+    }
+   ]
+  },
+  {
+   "id": "e8",
+   "type": "er.Entity",
+   "label": "table_8",
+   "members": [
+    {
+     "id": "e8.id",
+     "type": "er.Column",
+     "label": "id",
+     "props": {
+      "dataType": "bigint",
+      "primaryKey": true
+     }
+    },
+    {
+     "id": "e8.name",
+     "type": "er.Column",
+     "label": "name",
+     "props": {
+      "dataType": "varchar(80)"
+     }
+    },
+    {
+     "id": "e8.fk7",
+     "type": "er.Column",
+     "label": "fk_7",
+     "props": {
+      "dataType": "bigint",
+      "foreignKey": true,
+      "references": "e1.id"
+     }
+    },
+    {
+     "id": "e8.fk56",
+     "type": "er.Column",
+     "label": "fk_56",
+     "props": {
+      "dataType": "bigint",
+      "foreignKey": true,
+      "references": "e0.id"
+     }
+    }
+   ]
+  },
+  {
+   "id": "e9",
+   "type": "er.Entity",
+   "label": "table_9",
+   "members": [
+    {
+     "id": "e9.id",
+     "type": "er.Column",
+     "label": "id",
+     "props": {
+      "dataType": "bigint",
+      "primaryKey": true
+     }
+    },
+    {
+     "id": "e9.name",
+     "type": "er.Column",
+     "label": "name",
+     "props": {
+      "dataType": "varchar(80)"
+     }
+    },
+    {
+     "id": "e9.fk8",
+     "type": "er.Column",
+     "label": "fk_8",
+     "props": {
+      "dataType": "bigint",
+      "foreignKey": true,
+      "references": "e2.id"
+     }
+    },
+    {
+     "id": "e9.fk57",
+     "type": "er.Column",
+     "label": "fk_57",
+     "props": {
+      "dataType": "bigint",
+      "foreignKey": true,
+      "references": "e3.id",
+      "primaryKey": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "e10",
+   "type": "er.Entity",
+   "label": "table_10",
+   "members": [
+    {
+     "id": "e10.id",
+     "type": "er.Column",
+     "label": "id",
+     "props": {
+      "dataType": "bigint",
+      "primaryKey": true
+     }
+    },
+    {
+     "id": "e10.name",
+     "type": "er.Column",
+     "label": "name",
+     "props": {
+      "dataType": "varchar(80)"
+     }
+    },
+    {
+     "id": "e10.fk9",
+     "type": "er.Column",
+     "label": "fk_9",
+     "props": {
+      "dataType": "bigint",
+      "foreignKey": true,
+      "references": "e3.id",
+      "primaryKey": true
+     }
+    },
+    {
+     "id": "e10.fk58",
+     "type": "er.Column",
+     "label": "fk_58",
+     "props": {
+      "dataType": "bigint",
+      "foreignKey": true,
+      "references": "e6.id"
+     }
+    }
+   ]
+  },
+  {
+   "id": "e11",
+   "type": "er.Entity",
+   "label": "table_11",
+   "members": [
+    {
+     "id": "e11.id",
+     "type": "er.Column",
+     "label": "id",
+     "props": {
+      "dataType": "bigint",
+      "primaryKey": true
+     }
+    },
+    {
+     "id": "e11.name",
+     "type": "er.Column",
+     "label": "name",
+     "props": {
+      "dataType": "varchar(80)"
+     }
+    },
+    {
+     "id": "e11.fk10",
+     "type": "er.Column",
+     "label": "fk_10",
+     "props": {
+      "dataType": "bigint",
+      "foreignKey": true,
+      "references": "e4.id"
+     }
+    },
+    {
+     "id": "e11.fk59",
+     "type": "er.Column",
+     "label": "fk_59",
+     "props": {
+      "dataType": "bigint",
+      "foreignKey": true,
+      "references": "e6.id"
+     }
+    }
+   ]
+  },
+  {
+   "id": "e12",
+   "type": "er.Entity",
+   "label": "table_12",
+   "members": [
+    {
+     "id": "e12.id",
+     "type": "er.Column",
+     "label": "id",
+     "props": {
+      "dataType": "bigint",
+      "primaryKey": true
+     }
+    },
+    {
+     "id": "e12.name",
+     "type": "er.Column",
+     "label": "name",
+     "props": {
+      "dataType": "varchar(80)"
+     }
+    },
+    {
+     "id": "e12.fk11",
+     "type": "er.Column",
+     "label": "fk_11",
+     "props": {
+      "dataType": "bigint",
+      "foreignKey": true,
+      "references": "e5.id"
+     }
+    }
+   ]
+  },
+  {
+   "id": "e13",
+   "type": "er.Entity",
+   "label": "table_13",
+   "members": [
+    {
+     "id": "e13.id",
+     "type": "er.Column",
+     "label": "id",
+     "props": {
+      "dataType": "bigint",
+      "primaryKey": true
+     }
+    },
+    {
+     "id": "e13.name",
+     "type": "er.Column",
+     "label": "name",
+     "props": {
+      "dataType": "varchar(80)"
+     }
+    },
+    {
+     "id": "e13.fk12",
+     "type": "er.Column",
+     "label": "fk_12",
+     "props": {
+      "dataType": "bigint",
+      "foreignKey": true,
+      "references": "e6.id",
+      "primaryKey": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "e14",
+   "type": "er.Entity",
+   "label": "table_14",
+   "members": [
+    {
+     "id": "e14.id",
+     "type": "er.Column",
+     "label": "id",
+     "props": {
+      "dataType": "bigint",
+      "primaryKey": true
+     }
+    },
+    {
+     "id": "e14.name",
+     "type": "er.Column",
+     "label": "name",
+     "props": {
+      "dataType": "varchar(80)"
+     }
+    },
+    {
+     "id": "e14.fk13",
+     "type": "er.Column",
+     "label": "fk_13",
+     "props": {
+      "dataType": "bigint",
+      "foreignKey": true,
+      "references": "e7.id"
+     }
+    }
+   ]
+  },
+  {
+   "id": "e15",
+   "type": "er.Entity",
+   "label": "table_15",
+   "members": [
+    {
+     "id": "e15.id",
+     "type": "er.Column",
+     "label": "id",
+     "props": {
+      "dataType": "bigint",
+      "primaryKey": true
+     }
+    },
+    {
+     "id": "e15.name",
+     "type": "er.Column",
+     "label": "name",
+     "props": {
+      "dataType": "varchar(80)"
+     }
+    },
+    {
+     "id": "e15.fk14",
+     "type": "er.Column",
+     "label": "fk_14",
+     "props": {
+      "dataType": "bigint",
+      "foreignKey": true,
+      "references": "e8.id"
+     }
+    }
+   ]
+  },
+  {
+   "id": "e16",
+   "type": "er.Entity",
+   "label": "table_16",
+   "members": [
+    {
+     "id": "e16.id",
+     "type": "er.Column",
+     "label": "id",
+     "props": {
+      "dataType": "bigint",
+      "primaryKey": true
+     }
+    },
+    {
+     "id": "e16.name",
+     "type": "er.Column",
+     "label": "name",
+     "props": {
+      "dataType": "varchar(80)"
+     }
+    },
+    {
+     "id": "e16.fk15",
+     "type": "er.Column",
+     "label": "fk_15",
+     "props": {
+      "dataType": "bigint",
+      "foreignKey": true,
+      "references": "e9.id",
+      "primaryKey": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "e17",
+   "type": "er.Entity",
+   "label": "table_17",
+   "members": [
+    {
+     "id": "e17.id",
+     "type": "er.Column",
+     "label": "id",
+     "props": {
+      "dataType": "bigint",
+      "primaryKey": true
+     }
+    },
+    {
+     "id": "e17.name",
+     "type": "er.Column",
+     "label": "name",
+     "props": {
+      "dataType": "varchar(80)"
+     }
+    },
+    {
+     "id": "e17.fk16",
+     "type": "er.Column",
+     "label": "fk_16",
+     "props": {
+      "dataType": "bigint",
+      "foreignKey": true,
+      "references": "e10.id"
+     }
+    }
+   ]
+  },
+  {
+   "id": "e18",
+   "type": "er.Entity",
+   "label": "table_18",
+   "members": [
+    {
+     "id": "e18.id",
+     "type": "er.Column",
+     "label": "id",
+     "props": {
+      "dataType": "bigint",
+      "primaryKey": true
+     }
+    },
+    {
+     "id": "e18.name",
+     "type": "er.Column",
+     "label": "name",
+     "props": {
+      "dataType": "varchar(80)"
+     }
+    },
+    {
+     "id": "e18.fk17",
+     "type": "er.Column",
+     "label": "fk_17",
+     "props": {
+      "dataType": "bigint",
+      "foreignKey": true,
+      "references": "e11.id"
+     }
+    }
+   ]
+  },
+  {
+   "id": "e19",
+   "type": "er.Entity",
+   "label": "table_19",
+   "members": [
+    {
+     "id": "e19.id",
+     "type": "er.Column",
+     "label": "id",
+     "props": {
+      "dataType": "bigint",
+      "primaryKey": true
+     }
+    },
+    {
+     "id": "e19.name",
+     "type": "er.Column",
+     "label": "name",
+     "props": {
+      "dataType": "varchar(80)"
+     }
+    },
+    {
+     "id": "e19.fk18",
+     "type": "er.Column",
+     "label": "fk_18",
+     "props": {
+      "dataType": "bigint",
+      "foreignKey": true,
+      "references": "e12.id",
+      "primaryKey": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "e20",
+   "type": "er.Entity",
+   "label": "table_20",
+   "members": [
+    {
+     "id": "e20.id",
+     "type": "er.Column",
+     "label": "id",
+     "props": {
+      "dataType": "bigint",
+      "primaryKey": true
+     }
+    },
+    {
+     "id": "e20.name",
+     "type": "er.Column",
+     "label": "name",
+     "props": {
+      "dataType": "varchar(80)"
+     }
+    },
+    {
+     "id": "e20.fk19",
+     "type": "er.Column",
+     "label": "fk_19",
+     "props": {
+      "dataType": "bigint",
+      "foreignKey": true,
+      "references": "e13.id"
+     }
+    }
+   ]
+  },
+  {
+   "id": "e21",
+   "type": "er.Entity",
+   "label": "table_21",
+   "members": [
+    {
+     "id": "e21.id",
+     "type": "er.Column",
+     "label": "id",
+     "props": {
+      "dataType": "bigint",
+      "primaryKey": true
+     }
+    },
+    {
+     "id": "e21.name",
+     "type": "er.Column",
+     "label": "name",
+     "props": {
+      "dataType": "varchar(80)"
+     }
+    },
+    {
+     "id": "e21.fk20",
+     "type": "er.Column",
+     "label": "fk_20",
+     "props": {
+      "dataType": "bigint",
+      "foreignKey": true,
+      "references": "e14.id"
+     }
+    }
+   ]
+  },
+  {
+   "id": "e22",
+   "type": "er.Entity",
+   "label": "table_22",
+   "members": [
+    {
+     "id": "e22.id",
+     "type": "er.Column",
+     "label": "id",
+     "props": {
+      "dataType": "bigint",
+      "primaryKey": true
+     }
+    },
+    {
+     "id": "e22.name",
+     "type": "er.Column",
+     "label": "name",
+     "props": {
+      "dataType": "varchar(80)"
+     }
+    },
+    {
+     "id": "e22.fk21",
+     "type": "er.Column",
+     "label": "fk_21",
+     "props": {
+      "dataType": "bigint",
+      "foreignKey": true,
+      "references": "e15.id",
+      "primaryKey": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "e23",
+   "type": "er.Entity",
+   "label": "table_23",
+   "members": [
+    {
+     "id": "e23.id",
+     "type": "er.Column",
+     "label": "id",
+     "props": {
+      "dataType": "bigint",
+      "primaryKey": true
+     }
+    },
+    {
+     "id": "e23.name",
+     "type": "er.Column",
+     "label": "name",
+     "props": {
+      "dataType": "varchar(80)"
+     }
+    },
+    {
+     "id": "e23.fk22",
+     "type": "er.Column",
+     "label": "fk_22",
+     "props": {
+      "dataType": "bigint",
+      "foreignKey": true,
+      "references": "e16.id"
+     }
+    }
+   ]
+  },
+  {
+   "id": "e24",
+   "type": "er.Entity",
+   "label": "table_24",
+   "members": [
+    {
+     "id": "e24.id",
+     "type": "er.Column",
+     "label": "id",
+     "props": {
+      "dataType": "bigint",
+      "primaryKey": true
+     }
+    },
+    {
+     "id": "e24.name",
+     "type": "er.Column",
+     "label": "name",
+     "props": {
+      "dataType": "varchar(80)"
+     }
+    },
+    {
+     "id": "e24.fk23",
+     "type": "er.Column",
+     "label": "fk_23",
+     "props": {
+      "dataType": "bigint",
+      "foreignKey": true,
+      "references": "e17.id"
+     }
+    }
+   ]
+  },
+  {
+   "id": "e25",
+   "type": "er.Entity",
+   "label": "table_25",
+   "members": [
+    {
+     "id": "e25.id",
+     "type": "er.Column",
+     "label": "id",
+     "props": {
+      "dataType": "bigint",
+      "primaryKey": true
+     }
+    },
+    {
+     "id": "e25.name",
+     "type": "er.Column",
+     "label": "name",
+     "props": {
+      "dataType": "varchar(80)"
+     }
+    },
+    {
+     "id": "e25.fk24",
+     "type": "er.Column",
+     "label": "fk_24",
+     "props": {
+      "dataType": "bigint",
+      "foreignKey": true,
+      "references": "e18.id",
+      "primaryKey": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "e26",
+   "type": "er.Entity",
+   "label": "table_26",
+   "members": [
+    {
+     "id": "e26.id",
+     "type": "er.Column",
+     "label": "id",
+     "props": {
+      "dataType": "bigint",
+      "primaryKey": true
+     }
+    },
+    {
+     "id": "e26.name",
+     "type": "er.Column",
+     "label": "name",
+     "props": {
+      "dataType": "varchar(80)"
+     }
+    },
+    {
+     "id": "e26.fk25",
+     "type": "er.Column",
+     "label": "fk_25",
+     "props": {
+      "dataType": "bigint",
+      "foreignKey": true,
+      "references": "e19.id"
+     }
+    }
+   ]
+  },
+  {
+   "id": "e27",
+   "type": "er.Entity",
+   "label": "table_27",
+   "members": [
+    {
+     "id": "e27.id",
+     "type": "er.Column",
+     "label": "id",
+     "props": {
+      "dataType": "bigint",
+      "primaryKey": true
+     }
+    },
+    {
+     "id": "e27.name",
+     "type": "er.Column",
+     "label": "name",
+     "props": {
+      "dataType": "varchar(80)"
+     }
+    },
+    {
+     "id": "e27.fk26",
+     "type": "er.Column",
+     "label": "fk_26",
+     "props": {
+      "dataType": "bigint",
+      "foreignKey": true,
+      "references": "e20.id"
+     }
+    }
+   ]
+  },
+  {
+   "id": "e28",
+   "type": "er.Entity",
+   "label": "table_28",
+   "members": [
+    {
+     "id": "e28.id",
+     "type": "er.Column",
+     "label": "id",
+     "props": {
+      "dataType": "bigint",
+      "primaryKey": true
+     }
+    },
+    {
+     "id": "e28.name",
+     "type": "er.Column",
+     "label": "name",
+     "props": {
+      "dataType": "varchar(80)"
+     }
+    },
+    {
+     "id": "e28.fk27",
+     "type": "er.Column",
+     "label": "fk_27",
+     "props": {
+      "dataType": "bigint",
+      "foreignKey": true,
+      "references": "e21.id",
+      "primaryKey": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "e29",
+   "type": "er.Entity",
+   "label": "table_29",
+   "members": [
+    {
+     "id": "e29.id",
+     "type": "er.Column",
+     "label": "id",
+     "props": {
+      "dataType": "bigint",
+      "primaryKey": true
+     }
+    },
+    {
+     "id": "e29.name",
+     "type": "er.Column",
+     "label": "name",
+     "props": {
+      "dataType": "varchar(80)"
+     }
+    },
+    {
+     "id": "e29.fk28",
+     "type": "er.Column",
+     "label": "fk_28",
+     "props": {
+      "dataType": "bigint",
+      "foreignKey": true,
+      "references": "e22.id"
+     }
+    }
+   ]
+  },
+  {
+   "id": "e30",
+   "type": "er.Entity",
+   "label": "table_30",
+   "members": [
+    {
+     "id": "e30.id",
+     "type": "er.Column",
+     "label": "id",
+     "props": {
+      "dataType": "bigint",
+      "primaryKey": true
+     }
+    },
+    {
+     "id": "e30.name",
+     "type": "er.Column",
+     "label": "name",
+     "props": {
+      "dataType": "varchar(80)"
+     }
+    },
+    {
+     "id": "e30.fk29",
+     "type": "er.Column",
+     "label": "fk_29",
+     "props": {
+      "dataType": "bigint",
+      "foreignKey": true,
+      "references": "e23.id"
+     }
+    }
+   ]
+  },
+  {
+   "id": "e31",
+   "type": "er.Entity",
+   "label": "table_31",
+   "members": [
+    {
+     "id": "e31.id",
+     "type": "er.Column",
+     "label": "id",
+     "props": {
+      "dataType": "bigint",
+      "primaryKey": true
+     }
+    },
+    {
+     "id": "e31.name",
+     "type": "er.Column",
+     "label": "name",
+     "props": {
+      "dataType": "varchar(80)"
+     }
+    },
+    {
+     "id": "e31.fk30",
+     "type": "er.Column",
+     "label": "fk_30",
+     "props": {
+      "dataType": "bigint",
+      "foreignKey": true,
+      "references": "e24.id",
+      "primaryKey": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "e32",
+   "type": "er.Entity",
+   "label": "table_32",
+   "members": [
+    {
+     "id": "e32.id",
+     "type": "er.Column",
+     "label": "id",
+     "props": {
+      "dataType": "bigint",
+      "primaryKey": true
+     }
+    },
+    {
+     "id": "e32.name",
+     "type": "er.Column",
+     "label": "name",
+     "props": {
+      "dataType": "varchar(80)"
+     }
+    },
+    {
+     "id": "e32.fk31",
+     "type": "er.Column",
+     "label": "fk_31",
+     "props": {
+      "dataType": "bigint",
+      "foreignKey": true,
+      "references": "e25.id"
+     }
+    }
+   ]
+  },
+  {
+   "id": "e33",
+   "type": "er.Entity",
+   "label": "table_33",
+   "members": [
+    {
+     "id": "e33.id",
+     "type": "er.Column",
+     "label": "id",
+     "props": {
+      "dataType": "bigint",
+      "primaryKey": true
+     }
+    },
+    {
+     "id": "e33.name",
+     "type": "er.Column",
+     "label": "name",
+     "props": {
+      "dataType": "varchar(80)"
+     }
+    },
+    {
+     "id": "e33.fk32",
+     "type": "er.Column",
+     "label": "fk_32",
+     "props": {
+      "dataType": "bigint",
+      "foreignKey": true,
+      "references": "e26.id"
+     }
+    }
+   ]
+  },
+  {
+   "id": "e34",
+   "type": "er.Entity",
+   "label": "table_34",
+   "members": [
+    {
+     "id": "e34.id",
+     "type": "er.Column",
+     "label": "id",
+     "props": {
+      "dataType": "bigint",
+      "primaryKey": true
+     }
+    },
+    {
+     "id": "e34.name",
+     "type": "er.Column",
+     "label": "name",
+     "props": {
+      "dataType": "varchar(80)"
+     }
+    },
+    {
+     "id": "e34.fk33",
+     "type": "er.Column",
+     "label": "fk_33",
+     "props": {
+      "dataType": "bigint",
+      "foreignKey": true,
+      "references": "e27.id",
+      "primaryKey": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "e35",
+   "type": "er.Entity",
+   "label": "table_35",
+   "members": [
+    {
+     "id": "e35.id",
+     "type": "er.Column",
+     "label": "id",
+     "props": {
+      "dataType": "bigint",
+      "primaryKey": true
+     }
+    },
+    {
+     "id": "e35.name",
+     "type": "er.Column",
+     "label": "name",
+     "props": {
+      "dataType": "varchar(80)"
+     }
+    },
+    {
+     "id": "e35.fk34",
+     "type": "er.Column",
+     "label": "fk_34",
+     "props": {
+      "dataType": "bigint",
+      "foreignKey": true,
+      "references": "e28.id"
+     }
+    }
+   ]
+  },
+  {
+   "id": "e36",
+   "type": "er.Entity",
+   "label": "table_36",
+   "members": [
+    {
+     "id": "e36.id",
+     "type": "er.Column",
+     "label": "id",
+     "props": {
+      "dataType": "bigint",
+      "primaryKey": true
+     }
+    },
+    {
+     "id": "e36.name",
+     "type": "er.Column",
+     "label": "name",
+     "props": {
+      "dataType": "varchar(80)"
+     }
+    },
+    {
+     "id": "e36.fk35",
+     "type": "er.Column",
+     "label": "fk_35",
+     "props": {
+      "dataType": "bigint",
+      "foreignKey": true,
+      "references": "e29.id"
+     }
+    }
+   ]
+  },
+  {
+   "id": "e37",
+   "type": "er.Entity",
+   "label": "table_37",
+   "members": [
+    {
+     "id": "e37.id",
+     "type": "er.Column",
+     "label": "id",
+     "props": {
+      "dataType": "bigint",
+      "primaryKey": true
+     }
+    },
+    {
+     "id": "e37.name",
+     "type": "er.Column",
+     "label": "name",
+     "props": {
+      "dataType": "varchar(80)"
+     }
+    },
+    {
+     "id": "e37.fk36",
+     "type": "er.Column",
+     "label": "fk_36",
+     "props": {
+      "dataType": "bigint",
+      "foreignKey": true,
+      "references": "e30.id",
+      "primaryKey": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "e38",
+   "type": "er.Entity",
+   "label": "table_38",
+   "members": [
+    {
+     "id": "e38.id",
+     "type": "er.Column",
+     "label": "id",
+     "props": {
+      "dataType": "bigint",
+      "primaryKey": true
+     }
+    },
+    {
+     "id": "e38.name",
+     "type": "er.Column",
+     "label": "name",
+     "props": {
+      "dataType": "varchar(80)"
+     }
+    },
+    {
+     "id": "e38.fk37",
+     "type": "er.Column",
+     "label": "fk_37",
+     "props": {
+      "dataType": "bigint",
+      "foreignKey": true,
+      "references": "e31.id"
+     }
+    }
+   ]
+  },
+  {
+   "id": "e39",
+   "type": "er.Entity",
+   "label": "table_39",
+   "members": [
+    {
+     "id": "e39.id",
+     "type": "er.Column",
+     "label": "id",
+     "props": {
+      "dataType": "bigint",
+      "primaryKey": true
+     }
+    },
+    {
+     "id": "e39.name",
+     "type": "er.Column",
+     "label": "name",
+     "props": {
+      "dataType": "varchar(80)"
+     }
+    },
+    {
+     "id": "e39.fk38",
+     "type": "er.Column",
+     "label": "fk_38",
+     "props": {
+      "dataType": "bigint",
+      "foreignKey": true,
+      "references": "e32.id"
+     }
+    }
+   ]
+  },
+  {
+   "id": "e40",
+   "type": "er.Entity",
+   "label": "table_40",
+   "members": [
+    {
+     "id": "e40.id",
+     "type": "er.Column",
+     "label": "id",
+     "props": {
+      "dataType": "bigint",
+      "primaryKey": true
+     }
+    },
+    {
+     "id": "e40.name",
+     "type": "er.Column",
+     "label": "name",
+     "props": {
+      "dataType": "varchar(80)"
+     }
+    },
+    {
+     "id": "e40.fk39",
+     "type": "er.Column",
+     "label": "fk_39",
+     "props": {
+      "dataType": "bigint",
+      "foreignKey": true,
+      "references": "e33.id",
+      "primaryKey": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "e41",
+   "type": "er.Entity",
+   "label": "table_41",
+   "members": [
+    {
+     "id": "e41.id",
+     "type": "er.Column",
+     "label": "id",
+     "props": {
+      "dataType": "bigint",
+      "primaryKey": true
+     }
+    },
+    {
+     "id": "e41.name",
+     "type": "er.Column",
+     "label": "name",
+     "props": {
+      "dataType": "varchar(80)"
+     }
+    },
+    {
+     "id": "e41.fk40",
+     "type": "er.Column",
+     "label": "fk_40",
+     "props": {
+      "dataType": "bigint",
+      "foreignKey": true,
+      "references": "e34.id"
+     }
+    }
+   ]
+  },
+  {
+   "id": "e42",
+   "type": "er.Entity",
+   "label": "table_42",
+   "members": [
+    {
+     "id": "e42.id",
+     "type": "er.Column",
+     "label": "id",
+     "props": {
+      "dataType": "bigint",
+      "primaryKey": true
+     }
+    },
+    {
+     "id": "e42.name",
+     "type": "er.Column",
+     "label": "name",
+     "props": {
+      "dataType": "varchar(80)"
+     }
+    },
+    {
+     "id": "e42.fk41",
+     "type": "er.Column",
+     "label": "fk_41",
+     "props": {
+      "dataType": "bigint",
+      "foreignKey": true,
+      "references": "e35.id"
+     }
+    }
+   ]
+  },
+  {
+   "id": "e43",
+   "type": "er.Entity",
+   "label": "table_43",
+   "members": [
+    {
+     "id": "e43.id",
+     "type": "er.Column",
+     "label": "id",
+     "props": {
+      "dataType": "bigint",
+      "primaryKey": true
+     }
+    },
+    {
+     "id": "e43.name",
+     "type": "er.Column",
+     "label": "name",
+     "props": {
+      "dataType": "varchar(80)"
+     }
+    },
+    {
+     "id": "e43.fk42",
+     "type": "er.Column",
+     "label": "fk_42",
+     "props": {
+      "dataType": "bigint",
+      "foreignKey": true,
+      "references": "e36.id",
+      "primaryKey": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "e44",
+   "type": "er.Entity",
+   "label": "table_44",
+   "members": [
+    {
+     "id": "e44.id",
+     "type": "er.Column",
+     "label": "id",
+     "props": {
+      "dataType": "bigint",
+      "primaryKey": true
+     }
+    },
+    {
+     "id": "e44.name",
+     "type": "er.Column",
+     "label": "name",
+     "props": {
+      "dataType": "varchar(80)"
+     }
+    },
+    {
+     "id": "e44.fk43",
+     "type": "er.Column",
+     "label": "fk_43",
+     "props": {
+      "dataType": "bigint",
+      "foreignKey": true,
+      "references": "e37.id"
+     }
+    }
+   ]
+  },
+  {
+   "id": "e45",
+   "type": "er.Entity",
+   "label": "table_45",
+   "members": [
+    {
+     "id": "e45.id",
+     "type": "er.Column",
+     "label": "id",
+     "props": {
+      "dataType": "bigint",
+      "primaryKey": true
+     }
+    },
+    {
+     "id": "e45.name",
+     "type": "er.Column",
+     "label": "name",
+     "props": {
+      "dataType": "varchar(80)"
+     }
+    },
+    {
+     "id": "e45.fk44",
+     "type": "er.Column",
+     "label": "fk_44",
+     "props": {
+      "dataType": "bigint",
+      "foreignKey": true,
+      "references": "e38.id"
+     }
+    }
+   ]
+  },
+  {
+   "id": "e46",
+   "type": "er.Entity",
+   "label": "table_46",
+   "members": [
+    {
+     "id": "e46.id",
+     "type": "er.Column",
+     "label": "id",
+     "props": {
+      "dataType": "bigint",
+      "primaryKey": true
+     }
+    },
+    {
+     "id": "e46.name",
+     "type": "er.Column",
+     "label": "name",
+     "props": {
+      "dataType": "varchar(80)"
+     }
+    },
+    {
+     "id": "e46.fk45",
+     "type": "er.Column",
+     "label": "fk_45",
+     "props": {
+      "dataType": "bigint",
+      "foreignKey": true,
+      "references": "e39.id",
+      "primaryKey": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "e47",
+   "type": "er.Entity",
+   "label": "table_47",
+   "members": [
+    {
+     "id": "e47.id",
+     "type": "er.Column",
+     "label": "id",
+     "props": {
+      "dataType": "bigint",
+      "primaryKey": true
+     }
+    },
+    {
+     "id": "e47.name",
+     "type": "er.Column",
+     "label": "name",
+     "props": {
+      "dataType": "varchar(80)"
+     }
+    },
+    {
+     "id": "e47.fk46",
+     "type": "er.Column",
+     "label": "fk_46",
+     "props": {
+      "dataType": "bigint",
+      "foreignKey": true,
+      "references": "e40.id"
+     }
+    }
+   ]
+  },
+  {
+   "id": "e48",
+   "type": "er.Entity",
+   "label": "table_48",
+   "members": [
+    {
+     "id": "e48.id",
+     "type": "er.Column",
+     "label": "id",
+     "props": {
+      "dataType": "bigint",
+      "primaryKey": true
+     }
+    },
+    {
+     "id": "e48.name",
+     "type": "er.Column",
+     "label": "name",
+     "props": {
+      "dataType": "varchar(80)"
+     }
+    },
+    {
+     "id": "e48.fk47",
+     "type": "er.Column",
+     "label": "fk_47",
+     "props": {
+      "dataType": "bigint",
+      "foreignKey": true,
+      "references": "e41.id"
+     }
+    }
+   ]
+  },
+  {
+   "id": "e49",
+   "type": "er.Entity",
+   "label": "table_49",
+   "members": [
+    {
+     "id": "e49.id",
+     "type": "er.Column",
+     "label": "id",
+     "props": {
+      "dataType": "bigint",
+      "primaryKey": true
+     }
+    },
+    {
+     "id": "e49.name",
+     "type": "er.Column",
+     "label": "name",
+     "props": {
+      "dataType": "varchar(80)"
+     }
+    },
+    {
+     "id": "e49.fk48",
+     "type": "er.Column",
+     "label": "fk_48",
+     "props": {
+      "dataType": "bigint",
+      "foreignKey": true,
+      "references": "e42.id",
+      "primaryKey": true
+     }
+    }
+   ]
+  }
+ ],
+ "edges": [
+  {
+   "id": "ec-order-lines",
+   "type": "er.Relationship",
+   "from": "ec-order",
+   "to": "ec-line",
+   "label": "holds",
+   "props": {
+    "identifying": true,
+    "ends": {
+     "from": {
+      "multiplicity": "1"
+     },
+     "to": {
+      "multiplicity": "1..*"
+     }
+    }
+   }
+  },
+  {
+   "id": "ec-customer-orders",
+   "type": "er.Relationship",
+   "from": "ec-customer",
+   "to": "ec-order",
+   "label": "places",
+   "props": {
+    "identifying": false,
+    "ends": {
+     "from": {
+      "multiplicity": "0..1"
+     },
+     "to": {
+      "multiplicity": "0..*"
+     }
+    }
+   }
+  },
+  {
+   "id": "ec-manages",
+   "type": "er.Relationship",
+   "from": "ec-employee",
+   "to": "ec-employee",
+   "label": "manages",
+   "props": {
+    "identifying": false,
+    "ends": {
+     "from": {
+      "multiplicity": "0..1"
+     },
+     "to": {
+      "multiplicity": "0..*"
+     }
+    }
+   }
+  },
+  {
+   "id": "ec-student-enrolments",
+   "type": "er.Relationship",
+   "from": "ec-student",
+   "to": "ec-enrolment",
+   "props": {
+    "identifying": true,
+    "ends": {
+     "from": {
+      "multiplicity": "1"
+     },
+     "to": {
+      "multiplicity": "0..*"
+     }
+    }
+   }
+  },
+  {
+   "id": "ec-course-enrolments",
+   "type": "er.Relationship",
+   "from": "ec-course",
+   "to": "ec-enrolment",
+   "props": {
+    "identifying": true,
+    "ends": {
+     "from": {
+      "multiplicity": "1"
+     },
+     "to": {
+      "multiplicity": "0..*"
+     }
+    }
+   }
+  },
+  {
+   "id": "ec-post-tags",
+   "type": "er.Relationship",
+   "from": "ec-post",
+   "to": "ec-tag",
+   "label": "tagged",
+   "props": {
+    "identifying": false,
+    "ends": {
+     "from": {
+      "multiplicity": "0..*"
+     },
+     "to": {
+      "multiplicity": "0..*"
+     }
+    }
+   }
+  },
+  {
+   "id": "ec-shelf-slots",
+   "type": "er.Relationship",
+   "from": "ec-shelf",
+   "to": "ec-slot",
+   "props": {
+    "identifying": true,
+    "ends": {
+     "from": {
+      "multiplicity": "0..1"
+     },
+     "to": {
+      "multiplicity": "0..*"
+     }
+    }
+   }
+  },
+  {
+   "id": "ec-home",
+   "type": "er.Relationship",
+   "from": "ec-address",
+   "to": "ec-person",
+   "label": "home of",
+   "props": {
+    "identifying": false,
+    "ends": {
+     "from": {
+      "multiplicity": "1"
+     },
+     "to": {
+      "multiplicity": "0..*"
+     }
+    }
+   }
+  },
+  {
+   "id": "ec-work",
+   "type": "er.Relationship",
+   "from": "ec-address",
+   "to": "ec-person",
+   "label": "work of",
+   "props": {
+    "identifying": false,
+    "ends": {
+     "from": {
+      "multiplicity": "0..1"
+     },
+     "to": {
+      "multiplicity": "0..*"
+     }
+    }
+   }
+  },
+  {
+   "id": "ec-team-players",
+   "type": "er.Relationship",
+   "from": "ec-team",
+   "to": "ec-player",
+   "label": "fields",
+   "props": {
+    "identifying": false,
+    "ends": {
+     "from": {
+      "multiplicity": "1"
+     },
+     "to": {
+      "multiplicity": "2..5"
+     }
+    }
+   }
+  },
+  {
+   "id": "ec-odd",
+   "type": "er.Relationship",
+   "from": "ec-a",
+   "to": "ec-b",
+   "props": {
+    "identifying": false,
+    "ends": {
+     "from": {
+      "multiplicity": "1"
+     },
+     "to": {
+      "multiplicity": "lots"
+     }
+    }
+   }
+  },
+  {
+   "id": "ec-wide-one",
+   "type": "er.Relationship",
+   "from": "ec-customer",
+   "to": "ec-wide",
+   "props": {
+    "identifying": false,
+    "ends": {
+     "from": {
+      "multiplicity": "1"
+     },
+     "to": {
+      "multiplicity": "1"
+     }
+    }
+   }
+  },
+  {
+   "id": "r0",
+   "type": "er.Relationship",
+   "from": "e0",
+   "to": "e1",
+   "label": "has 0",
+   "props": {
+    "identifying": true,
+    "ends": {
+     "from": {
+      "multiplicity": "1"
+     },
+     "to": {
+      "multiplicity": "0..*"
+     }
+    }
+   }
+  },
+  {
+   "id": "r1",
+   "type": "er.Relationship",
+   "from": "e1",
+   "to": "e2",
+   "label": "has 1",
+   "props": {
+    "identifying": false,
+    "ends": {
+     "from": {
+      "multiplicity": "1"
+     },
+     "to": {
+      "multiplicity": "1..*"
+     }
+    }
+   }
+  },
+  {
+   "id": "r2",
+   "type": "er.Relationship",
+   "from": "e2",
+   "to": "e3",
+   "label": "has 2",
+   "props": {
+    "identifying": false,
+    "ends": {
+     "from": {
+      "multiplicity": "1"
+     },
+     "to": {
+      "multiplicity": "0..1"
+     }
+    }
+   }
+  },
+  {
+   "id": "r3",
+   "type": "er.Relationship",
+   "from": "e1",
+   "to": "e4",
+   "label": "has 3",
+   "props": {
+    "identifying": true,
+    "ends": {
+     "from": {
+      "multiplicity": "1"
+     },
+     "to": {
+      "multiplicity": "1"
+     }
+    }
+   }
+  },
+  {
+   "id": "r4",
+   "type": "er.Relationship",
+   "from": "e3",
+   "to": "e5",
+   "label": "has 4",
+   "props": {
+    "identifying": false,
+    "ends": {
+     "from": {
+      "multiplicity": "1"
+     },
+     "to": {
+      "multiplicity": "0..*"
+     }
+    }
+   }
+  },
+  {
+   "id": "r5",
+   "type": "er.Relationship",
+   "from": "e5",
+   "to": "e6",
+   "label": "has 5",
+   "props": {
+    "identifying": false,
+    "ends": {
+     "from": {
+      "multiplicity": "1"
+     },
+     "to": {
+      "multiplicity": "1..*"
+     }
+    }
+   }
+  },
+  {
+   "id": "r6",
+   "type": "er.Relationship",
+   "from": "e0",
+   "to": "e7",
+   "label": "has 6",
+   "props": {
+    "identifying": true,
+    "ends": {
+     "from": {
+      "multiplicity": "1"
+     },
+     "to": {
+      "multiplicity": "0..1"
+     }
+    }
+   }
+  },
+  {
+   "id": "r7",
+   "type": "er.Relationship",
+   "from": "e1",
+   "to": "e8",
+   "label": "has 7",
+   "props": {
+    "identifying": false,
+    "ends": {
+     "from": {
+      "multiplicity": "1"
+     },
+     "to": {
+      "multiplicity": "1"
+     }
+    }
+   }
+  },
+  {
+   "id": "r8",
+   "type": "er.Relationship",
+   "from": "e2",
+   "to": "e9",
+   "label": "has 8",
+   "props": {
+    "identifying": false,
+    "ends": {
+     "from": {
+      "multiplicity": "1"
+     },
+     "to": {
+      "multiplicity": "0..*"
+     }
+    }
+   }
+  },
+  {
+   "id": "r9",
+   "type": "er.Relationship",
+   "from": "e3",
+   "to": "e10",
+   "label": "has 9",
+   "props": {
+    "identifying": true,
+    "ends": {
+     "from": {
+      "multiplicity": "1"
+     },
+     "to": {
+      "multiplicity": "1..*"
+     }
+    }
+   }
+  },
+  {
+   "id": "r10",
+   "type": "er.Relationship",
+   "from": "e4",
+   "to": "e11",
+   "label": "has 10",
+   "props": {
+    "identifying": false,
+    "ends": {
+     "from": {
+      "multiplicity": "1"
+     },
+     "to": {
+      "multiplicity": "0..1"
+     }
+    }
+   }
+  },
+  {
+   "id": "r11",
+   "type": "er.Relationship",
+   "from": "e5",
+   "to": "e12",
+   "label": "has 11",
+   "props": {
+    "identifying": false,
+    "ends": {
+     "from": {
+      "multiplicity": "1"
+     },
+     "to": {
+      "multiplicity": "1"
+     }
+    }
+   }
+  },
+  {
+   "id": "r12",
+   "type": "er.Relationship",
+   "from": "e6",
+   "to": "e13",
+   "label": "has 12",
+   "props": {
+    "identifying": true,
+    "ends": {
+     "from": {
+      "multiplicity": "1"
+     },
+     "to": {
+      "multiplicity": "0..*"
+     }
+    }
+   }
+  },
+  {
+   "id": "r13",
+   "type": "er.Relationship",
+   "from": "e7",
+   "to": "e14",
+   "label": "has 13",
+   "props": {
+    "identifying": false,
+    "ends": {
+     "from": {
+      "multiplicity": "1"
+     },
+     "to": {
+      "multiplicity": "1..*"
+     }
+    }
+   }
+  },
+  {
+   "id": "r14",
+   "type": "er.Relationship",
+   "from": "e8",
+   "to": "e15",
+   "label": "has 14",
+   "props": {
+    "identifying": false,
+    "ends": {
+     "from": {
+      "multiplicity": "1"
+     },
+     "to": {
+      "multiplicity": "0..1"
+     }
+    }
+   }
+  },
+  {
+   "id": "r15",
+   "type": "er.Relationship",
+   "from": "e9",
+   "to": "e16",
+   "label": "has 15",
+   "props": {
+    "identifying": true,
+    "ends": {
+     "from": {
+      "multiplicity": "1"
+     },
+     "to": {
+      "multiplicity": "1"
+     }
+    }
+   }
+  },
+  {
+   "id": "r16",
+   "type": "er.Relationship",
+   "from": "e10",
+   "to": "e17",
+   "label": "has 16",
+   "props": {
+    "identifying": false,
+    "ends": {
+     "from": {
+      "multiplicity": "1"
+     },
+     "to": {
+      "multiplicity": "0..*"
+     }
+    }
+   }
+  },
+  {
+   "id": "r17",
+   "type": "er.Relationship",
+   "from": "e11",
+   "to": "e18",
+   "label": "has 17",
+   "props": {
+    "identifying": false,
+    "ends": {
+     "from": {
+      "multiplicity": "1"
+     },
+     "to": {
+      "multiplicity": "1..*"
+     }
+    }
+   }
+  },
+  {
+   "id": "r18",
+   "type": "er.Relationship",
+   "from": "e12",
+   "to": "e19",
+   "label": "has 18",
+   "props": {
+    "identifying": true,
+    "ends": {
+     "from": {
+      "multiplicity": "1"
+     },
+     "to": {
+      "multiplicity": "0..1"
+     }
+    }
+   }
+  },
+  {
+   "id": "r19",
+   "type": "er.Relationship",
+   "from": "e13",
+   "to": "e20",
+   "label": "has 19",
+   "props": {
+    "identifying": false,
+    "ends": {
+     "from": {
+      "multiplicity": "1"
+     },
+     "to": {
+      "multiplicity": "1"
+     }
+    }
+   }
+  },
+  {
+   "id": "r20",
+   "type": "er.Relationship",
+   "from": "e14",
+   "to": "e21",
+   "label": "has 20",
+   "props": {
+    "identifying": false,
+    "ends": {
+     "from": {
+      "multiplicity": "1"
+     },
+     "to": {
+      "multiplicity": "0..*"
+     }
+    }
+   }
+  },
+  {
+   "id": "r21",
+   "type": "er.Relationship",
+   "from": "e15",
+   "to": "e22",
+   "label": "has 21",
+   "props": {
+    "identifying": true,
+    "ends": {
+     "from": {
+      "multiplicity": "1"
+     },
+     "to": {
+      "multiplicity": "1..*"
+     }
+    }
+   }
+  },
+  {
+   "id": "r22",
+   "type": "er.Relationship",
+   "from": "e16",
+   "to": "e23",
+   "label": "has 22",
+   "props": {
+    "identifying": false,
+    "ends": {
+     "from": {
+      "multiplicity": "1"
+     },
+     "to": {
+      "multiplicity": "0..1"
+     }
+    }
+   }
+  },
+  {
+   "id": "r23",
+   "type": "er.Relationship",
+   "from": "e17",
+   "to": "e24",
+   "label": "has 23",
+   "props": {
+    "identifying": false,
+    "ends": {
+     "from": {
+      "multiplicity": "1"
+     },
+     "to": {
+      "multiplicity": "1"
+     }
+    }
+   }
+  },
+  {
+   "id": "r24",
+   "type": "er.Relationship",
+   "from": "e18",
+   "to": "e25",
+   "label": "has 24",
+   "props": {
+    "identifying": true,
+    "ends": {
+     "from": {
+      "multiplicity": "1"
+     },
+     "to": {
+      "multiplicity": "0..*"
+     }
+    }
+   }
+  },
+  {
+   "id": "r25",
+   "type": "er.Relationship",
+   "from": "e19",
+   "to": "e26",
+   "label": "has 25",
+   "props": {
+    "identifying": false,
+    "ends": {
+     "from": {
+      "multiplicity": "1"
+     },
+     "to": {
+      "multiplicity": "1..*"
+     }
+    }
+   }
+  },
+  {
+   "id": "r26",
+   "type": "er.Relationship",
+   "from": "e20",
+   "to": "e27",
+   "label": "has 26",
+   "props": {
+    "identifying": false,
+    "ends": {
+     "from": {
+      "multiplicity": "1"
+     },
+     "to": {
+      "multiplicity": "0..1"
+     }
+    }
+   }
+  },
+  {
+   "id": "r27",
+   "type": "er.Relationship",
+   "from": "e21",
+   "to": "e28",
+   "label": "has 27",
+   "props": {
+    "identifying": true,
+    "ends": {
+     "from": {
+      "multiplicity": "1"
+     },
+     "to": {
+      "multiplicity": "1"
+     }
+    }
+   }
+  },
+  {
+   "id": "r28",
+   "type": "er.Relationship",
+   "from": "e22",
+   "to": "e29",
+   "label": "has 28",
+   "props": {
+    "identifying": false,
+    "ends": {
+     "from": {
+      "multiplicity": "1"
+     },
+     "to": {
+      "multiplicity": "0..*"
+     }
+    }
+   }
+  },
+  {
+   "id": "r29",
+   "type": "er.Relationship",
+   "from": "e23",
+   "to": "e30",
+   "label": "has 29",
+   "props": {
+    "identifying": false,
+    "ends": {
+     "from": {
+      "multiplicity": "1"
+     },
+     "to": {
+      "multiplicity": "1..*"
+     }
+    }
+   }
+  },
+  {
+   "id": "r30",
+   "type": "er.Relationship",
+   "from": "e24",
+   "to": "e31",
+   "label": "has 30",
+   "props": {
+    "identifying": true,
+    "ends": {
+     "from": {
+      "multiplicity": "1"
+     },
+     "to": {
+      "multiplicity": "0..1"
+     }
+    }
+   }
+  },
+  {
+   "id": "r31",
+   "type": "er.Relationship",
+   "from": "e25",
+   "to": "e32",
+   "label": "has 31",
+   "props": {
+    "identifying": false,
+    "ends": {
+     "from": {
+      "multiplicity": "1"
+     },
+     "to": {
+      "multiplicity": "1"
+     }
+    }
+   }
+  },
+  {
+   "id": "r32",
+   "type": "er.Relationship",
+   "from": "e26",
+   "to": "e33",
+   "label": "has 32",
+   "props": {
+    "identifying": false,
+    "ends": {
+     "from": {
+      "multiplicity": "1"
+     },
+     "to": {
+      "multiplicity": "0..*"
+     }
+    }
+   }
+  },
+  {
+   "id": "r33",
+   "type": "er.Relationship",
+   "from": "e27",
+   "to": "e34",
+   "label": "has 33",
+   "props": {
+    "identifying": true,
+    "ends": {
+     "from": {
+      "multiplicity": "1"
+     },
+     "to": {
+      "multiplicity": "1..*"
+     }
+    }
+   }
+  },
+  {
+   "id": "r34",
+   "type": "er.Relationship",
+   "from": "e28",
+   "to": "e35",
+   "label": "has 34",
+   "props": {
+    "identifying": false,
+    "ends": {
+     "from": {
+      "multiplicity": "1"
+     },
+     "to": {
+      "multiplicity": "0..1"
+     }
+    }
+   }
+  },
+  {
+   "id": "r35",
+   "type": "er.Relationship",
+   "from": "e29",
+   "to": "e36",
+   "label": "has 35",
+   "props": {
+    "identifying": false,
+    "ends": {
+     "from": {
+      "multiplicity": "1"
+     },
+     "to": {
+      "multiplicity": "1"
+     }
+    }
+   }
+  },
+  {
+   "id": "r36",
+   "type": "er.Relationship",
+   "from": "e30",
+   "to": "e37",
+   "label": "has 36",
+   "props": {
+    "identifying": true,
+    "ends": {
+     "from": {
+      "multiplicity": "1"
+     },
+     "to": {
+      "multiplicity": "0..*"
+     }
+    }
+   }
+  },
+  {
+   "id": "r37",
+   "type": "er.Relationship",
+   "from": "e31",
+   "to": "e38",
+   "label": "has 37",
+   "props": {
+    "identifying": false,
+    "ends": {
+     "from": {
+      "multiplicity": "1"
+     },
+     "to": {
+      "multiplicity": "1..*"
+     }
+    }
+   }
+  },
+  {
+   "id": "r38",
+   "type": "er.Relationship",
+   "from": "e32",
+   "to": "e39",
+   "label": "has 38",
+   "props": {
+    "identifying": false,
+    "ends": {
+     "from": {
+      "multiplicity": "1"
+     },
+     "to": {
+      "multiplicity": "0..1"
+     }
+    }
+   }
+  },
+  {
+   "id": "r39",
+   "type": "er.Relationship",
+   "from": "e33",
+   "to": "e40",
+   "label": "has 39",
+   "props": {
+    "identifying": true,
+    "ends": {
+     "from": {
+      "multiplicity": "1"
+     },
+     "to": {
+      "multiplicity": "1"
+     }
+    }
+   }
+  },
+  {
+   "id": "r40",
+   "type": "er.Relationship",
+   "from": "e34",
+   "to": "e41",
+   "label": "has 40",
+   "props": {
+    "identifying": false,
+    "ends": {
+     "from": {
+      "multiplicity": "1"
+     },
+     "to": {
+      "multiplicity": "0..*"
+     }
+    }
+   }
+  },
+  {
+   "id": "r41",
+   "type": "er.Relationship",
+   "from": "e35",
+   "to": "e42",
+   "label": "has 41",
+   "props": {
+    "identifying": false,
+    "ends": {
+     "from": {
+      "multiplicity": "1"
+     },
+     "to": {
+      "multiplicity": "1..*"
+     }
+    }
+   }
+  },
+  {
+   "id": "r42",
+   "type": "er.Relationship",
+   "from": "e36",
+   "to": "e43",
+   "label": "has 42",
+   "props": {
+    "identifying": true,
+    "ends": {
+     "from": {
+      "multiplicity": "1"
+     },
+     "to": {
+      "multiplicity": "0..1"
+     }
+    }
+   }
+  },
+  {
+   "id": "r43",
+   "type": "er.Relationship",
+   "from": "e37",
+   "to": "e44",
+   "label": "has 43",
+   "props": {
+    "identifying": false,
+    "ends": {
+     "from": {
+      "multiplicity": "1"
+     },
+     "to": {
+      "multiplicity": "1"
+     }
+    }
+   }
+  },
+  {
+   "id": "r44",
+   "type": "er.Relationship",
+   "from": "e38",
+   "to": "e45",
+   "label": "has 44",
+   "props": {
+    "identifying": false,
+    "ends": {
+     "from": {
+      "multiplicity": "1"
+     },
+     "to": {
+      "multiplicity": "0..*"
+     }
+    }
+   }
+  },
+  {
+   "id": "r45",
+   "type": "er.Relationship",
+   "from": "e39",
+   "to": "e46",
+   "label": "has 45",
+   "props": {
+    "identifying": true,
+    "ends": {
+     "from": {
+      "multiplicity": "1"
+     },
+     "to": {
+      "multiplicity": "1..*"
+     }
+    }
+   }
+  },
+  {
+   "id": "r46",
+   "type": "er.Relationship",
+   "from": "e40",
+   "to": "e47",
+   "label": "has 46",
+   "props": {
+    "identifying": false,
+    "ends": {
+     "from": {
+      "multiplicity": "1"
+     },
+     "to": {
+      "multiplicity": "0..1"
+     }
+    }
+   }
+  },
+  {
+   "id": "r47",
+   "type": "er.Relationship",
+   "from": "e41",
+   "to": "e48",
+   "label": "has 47",
+   "props": {
+    "identifying": false,
+    "ends": {
+     "from": {
+      "multiplicity": "1"
+     },
+     "to": {
+      "multiplicity": "1"
+     }
+    }
+   }
+  },
+  {
+   "id": "r48",
+   "type": "er.Relationship",
+   "from": "e42",
+   "to": "e49",
+   "label": "has 48",
+   "props": {
+    "identifying": true,
+    "ends": {
+     "from": {
+      "multiplicity": "1"
+     },
+     "to": {
+      "multiplicity": "0..*"
+     }
+    }
+   }
+  },
+  {
+   "id": "r49",
+   "type": "er.Relationship",
+   "from": "e0",
+   "to": "e1",
+   "label": "has 49",
+   "props": {
+    "identifying": false,
+    "ends": {
+     "from": {
+      "multiplicity": "1"
+     },
+     "to": {
+      "multiplicity": "1..*"
+     }
+    }
+   }
+  },
+  {
+   "id": "r50",
+   "type": "er.Relationship",
+   "from": "e0",
+   "to": "e2",
+   "label": "has 50",
+   "props": {
+    "identifying": false,
+    "ends": {
+     "from": {
+      "multiplicity": "1"
+     },
+     "to": {
+      "multiplicity": "0..1"
+     }
+    }
+   }
+  },
+  {
+   "id": "r51",
+   "type": "er.Relationship",
+   "from": "e0",
+   "to": "e3",
+   "label": "has 51",
+   "props": {
+    "identifying": true,
+    "ends": {
+     "from": {
+      "multiplicity": "1"
+     },
+     "to": {
+      "multiplicity": "1"
+     }
+    }
+   }
+  },
+  {
+   "id": "r52",
+   "type": "er.Relationship",
+   "from": "e0",
+   "to": "e4",
+   "label": "has 52",
+   "props": {
+    "identifying": false,
+    "ends": {
+     "from": {
+      "multiplicity": "1"
+     },
+     "to": {
+      "multiplicity": "0..*"
+     }
+    }
+   }
+  },
+  {
+   "id": "r53",
+   "type": "er.Relationship",
+   "from": "e1",
+   "to": "e5",
+   "label": "has 53",
+   "props": {
+    "identifying": false,
+    "ends": {
+     "from": {
+      "multiplicity": "1"
+     },
+     "to": {
+      "multiplicity": "1..*"
+     }
+    }
+   }
+  },
+  {
+   "id": "r54",
+   "type": "er.Relationship",
+   "from": "e0",
+   "to": "e6",
+   "label": "has 54",
+   "props": {
+    "identifying": true,
+    "ends": {
+     "from": {
+      "multiplicity": "1"
+     },
+     "to": {
+      "multiplicity": "0..1"
+     }
+    }
+   }
+  },
+  {
+   "id": "r55",
+   "type": "er.Relationship",
+   "from": "e0",
+   "to": "e7",
+   "label": "has 55",
+   "props": {
+    "identifying": false,
+    "ends": {
+     "from": {
+      "multiplicity": "1"
+     },
+     "to": {
+      "multiplicity": "1"
+     }
+    }
+   }
+  },
+  {
+   "id": "r56",
+   "type": "er.Relationship",
+   "from": "e0",
+   "to": "e8",
+   "label": "has 56",
+   "props": {
+    "identifying": false,
+    "ends": {
+     "from": {
+      "multiplicity": "1"
+     },
+     "to": {
+      "multiplicity": "0..*"
+     }
+    }
+   }
+  },
+  {
+   "id": "r57",
+   "type": "er.Relationship",
+   "from": "e3",
+   "to": "e9",
+   "label": "has 57",
+   "props": {
+    "identifying": true,
+    "ends": {
+     "from": {
+      "multiplicity": "1"
+     },
+     "to": {
+      "multiplicity": "1..*"
+     }
+    }
+   }
+  },
+  {
+   "id": "r58",
+   "type": "er.Relationship",
+   "from": "e6",
+   "to": "e10",
+   "label": "has 58",
+   "props": {
+    "identifying": false,
+    "ends": {
+     "from": {
+      "multiplicity": "1"
+     },
+     "to": {
+      "multiplicity": "0..1"
+     }
+    }
+   }
+  },
+  {
+   "id": "r59",
+   "type": "er.Relationship",
+   "from": "e6",
+   "to": "e11",
+   "label": "has 59",
+   "props": {
+    "identifying": false,
+    "ends": {
+     "from": {
+      "multiplicity": "1"
+     },
+     "to": {
+      "multiplicity": "1"
+     }
+    }
+   }
+  }
+ ],
+ "views": [
+  {
+   "id": "edge-cases",
+   "diagram": "er",
+   "title": "Edge cases, crow's foot",
+   "nodeIds": [
+    "ec-line",
+    "ec-order",
+    "ec-customer",
+    "ec-employee",
+    "ec-student",
+    "ec-course",
+    "ec-enrolment",
+    "ec-post",
+    "ec-tag",
+    "ec-shelf",
+    "ec-slot",
+    "ec-person",
+    "ec-address",
+    "ec-team",
+    "ec-player",
+    "ec-wide",
+    "ec-a",
+    "ec-b"
+   ],
+   "present": {
+    "ec-wide": {
+     "rows": 8
+    }
+   }
+  },
+  {
+   "id": "edge-cases-idef1x",
+   "diagram": "er",
+   "title": "Edge cases, IDEF1X",
+   "notation": "idef1x",
+   "nodeIds": [
+    "ec-line",
+    "ec-order",
+    "ec-customer",
+    "ec-employee",
+    "ec-student",
+    "ec-course",
+    "ec-enrolment",
+    "ec-post",
+    "ec-tag",
+    "ec-shelf",
+    "ec-slot",
+    "ec-person",
+    "ec-address",
+    "ec-team",
+    "ec-player",
+    "ec-wide",
+    "ec-a",
+    "ec-b"
+   ],
+   "present": {
+    "ec-wide": {
+     "rows": 8
+    }
+   }
+  },
+  {
+   "id": "all",
+   "diagram": "er",
+   "title": "All",
+   "nodeIds": [
+    "e0",
+    "e1",
+    "e2",
+    "e3",
+    "e4",
+    "e5",
+    "e6",
+    "e7",
+    "e8",
+    "e9",
+    "e10",
+    "e11",
+    "e12",
+    "e13",
+    "e14",
+    "e15",
+    "e16",
+    "e17",
+    "e18",
+    "e19",
+    "e20",
+    "e21",
+    "e22",
+    "e23",
+    "e24",
+    "e25",
+    "e26",
+    "e27",
+    "e28",
+    "e29",
+    "e30",
+    "e31",
+    "e32",
+    "e33",
+    "e34",
+    "e35",
+    "e36",
+    "e37",
+    "e38",
+    "e39",
+    "e40",
+    "e41",
+    "e42",
+    "e43",
+    "e44",
+    "e45",
+    "e46",
+    "e47",
+    "e48",
+    "e49"
+   ]
+  }
+ ]
+}

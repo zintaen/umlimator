@@ -1,5 +1,5 @@
 // The flowchart, flowchart (work package M2.3, notes/milestone-2.md §7.2): the type's definition, its ten symbols (sizes,
-// text boxes, insets), docs/diagrams/examples/21-flowchart.json laid out clean down and right and down with no direction,
+// text boxes, insets), examples/returns-flowchart.json laid out clean down and right and down with no direction,
 // accessible names, the reading order, the legend, describe(), the validators, the PDF's line text, the editing hooks, a
 // 30-step session saved and reopened, and the common edit's time. tests/flowchart.html draws it in a browser and edits it by
 // pointer and keyboard. Imports src/ to reach the internals; lib/umlimator-all.js holds the same code.
@@ -19,7 +19,7 @@ import { svgOf } from '../src/draw/svg.js';
 import { tablesOf } from '../src/page/print.js';
 import '../src/flowchart/flowchart.js';
 
-const EX = JSON.parse(readFileSync(new URL('../docs/diagrams/examples/21-flowchart.json', import.meta.url)));
+const EX = JSON.parse(readFileSync(new URL('../examples/returns-flowchart.json', import.meta.url)));
 const T = diagramOf({ diagram: 'flowchart' });
 const N = (id, t, label) => ({ id, type: 'flow.' + t, ...(label != null ? { label } : {}) });
 const F = (id, from, to, label) => ({ id, type: 'flow.Flow', from, to, ...(label != null ? { label } : {}) });

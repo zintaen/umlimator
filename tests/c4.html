@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- C4's static views (M2.6) in headless Chrome (tests/embed.py), from lib/umlimator-all.js: docs/diagrams/examples/23-c4.json's
+<!-- C4's static views (M2.6) in headless Chrome (tests/embed.py), from lib/umlimator-all.js: examples/bookshop-c4.json's
      context, container and component views, and a context view with an implied line, drawn by render() in both themes, three
      fonts and both directions (each element in its map shape with its three lines inside it, no two overlapping, the subject a
      dashed boundary holding what it owns, every line end on its element's outline within 1 px, names, reading order, contrast
@@ -49,7 +49,7 @@ const blend = (top, bot) => [0, 1, 2].map(i => top[i] * top[3] + bot[i] * (1 - t
 const lum = c => { const f = v => v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]); };
 const ratio = (fg, bg) => { const [x, y] = [lum(blend(fg, bg)), lum(bg)].sort((p, q) => q - p); return +((x + 0.05) / (y + 0.05)).toFixed(2); };
 const css = (e, k) => rgba(getComputedStyle(e)[k]);
-const MODEL = await (await fetch('../docs/diagrams/examples/23-c4.json')).json();
+const MODEL = await (await fetch('../examples/bookshop-c4.json')).json();
 // a context view of the model with the system's own line to the payment provider gone: its containers' lines are implied (G3)
 const G3 = structuredClone(MODEL); G3.edges = G3.edges.filter(e => e.id !== 'c4-bookshop-payments');
 G3.views.push({ id: 'ctx', diagram: 'c4.context', title: 'Implied', subject: 'c4-bookshop', nodeIds: ['c4-shopper', 'c4-bookshop', 'c4-payments', 'c4-courier', 'c4-mail'] });

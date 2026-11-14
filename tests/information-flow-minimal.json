@@ -1,0 +1,45 @@
+{
+ "schemaVersion": 2,
+ "title": "Information flow, minimal",
+ "nodes": [
+  {
+   "id": "shopper",
+   "type": "uml.Actor",
+   "label": "Shopper"
+  },
+  {
+   "id": "shop",
+   "type": "uml.Component",
+   "label": "Shop"
+  },
+  {
+   "id": "order",
+   "type": "uml.InformationItem",
+   "label": "Order"
+  }
+ ],
+ "edges": [
+  {
+   "id": "places",
+   "type": "uml.InformationFlow",
+   "from": "shopper",
+   "to": "shop",
+   "props": {
+    "conveyed": [
+     "order"
+    ]
+   }
+  }
+ ],
+ "views": [
+  {
+   "id": "v",
+   "diagram": "uml.information-flow",
+   "nodeIds": [
+    "shopper",
+    "shop",
+    "order"
+   ]
+  }
+ ]
+}
