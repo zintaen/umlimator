@@ -167,6 +167,9 @@ try {
     for (const [k, dx, dy] of [['ArrowRight', 1, 0], ['ArrowDown', 0, 1]]) { ed = []; click('.node[data-id="slip"] .n-body'); key(k, { altKey: true });
       const n = ed.length && at('slip'); way.push(n && [Math.sign(Math.round(n.x - s.x)), Math.sign(Math.round(n.y - s.y))]); if (!same(way.at(-1), [dx, dy])) way.push('wrong'); }
     check(`direction ${d}: Alt + Right moves a node right, Alt + Down down`, !way.includes('wrong'), way);
+    if (d) { click('.node[data-id="resaleable"] .n-body'); const n = hint(); lineRing('Flow from Fit for resale? to Rejection letter: no').focus(); key('Enter', {}, sr.activeElement);
+      check('a selection is announced by its accessible name, a node\'s and a flow\'s (audit 4)', n === pick('.node[data-id="resaleable"]').getAttribute('aria-label') + ', selected'
+        && hint() === 'Flow from Fit for resale? to Rejection letter: no, selected', [n, hint()]); }
     ed = []; h.destroy();
   }
 } catch (x) { out.fail.push('threw: ' + (x && x.stack || x)); }

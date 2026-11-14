@@ -1,4 +1,5 @@
 import { diagramOf } from '../core/registry.js';
+import { edgeRefIds } from './api.js';
 import { mapContext } from './context.js';
 import { KIND, kindOf } from './kinds.js';
 import { WIRE_KINDS, andList, arrOf } from './validate.js';
@@ -6,16 +7,20 @@ import { WIRE_KINDS, andList, arrOf } from './validate.js';
 /* ---------- paths(), reach(), describe() and otlpSpans(): a view's lines walked and put in words, with no DOM (#62, #64, #65) ----------
    A line runs from → to as the model gives it. Each result is a list of Refs a host can hand to highlight(); a line's Ref
    names one model edge (a drawn line that stands for several takes the strongest mark among them). */
+const viewType = (model, viewId) => model && model.schemaVersion === 2 && diagramOf(arrOf(model.views).find(v => v && v.id === viewId));
 function lineGraph(model, viewId) {
   const ctx = mapContext(model), v = ctx.V[viewId];
   if (!v) throw new Error(`umlimator: no view ${JSON.stringify(viewId)}`);
-  return { ctx, v, ids: (v.nodeIds || []).filter(i => ctx.N[i]), edges: ctx.viewEdges(v).filter(e => e.from !== e.to) };
+  const ids = (v.nodeIds || []).filter(i => ctx.N[i]), M = new Map(arrOf(ctx.D.edges).map(e => [e && e._id, e]));
+  if (!viewType(model, viewId)) return { ctx, v, ids, edges: ctx.viewEdges(v).filter(e => e.from !== e.to) };
+  // a typed view: its lines as drawn, a line to a member (a port) between the cards it is drawn on, and the drawn ids too
+  const g = ctx.buildGeo(viewId);
+  return { ctx, v, ids: [...new Set([...ids, ...g.nodes.map(n => n.id)])], edges: g.edges.flatMap(d => d.from === d.to ? [] : edgeRefIds(d).map(_id => ({ ...M.get(_id), _id, from: d.from, to: d.to }))) };
 }
 const walkFrom = (edges, start, back) => { const seen = new Set([start]); // breadth first along lines (back: against them)
   for (let q = [start]; q.length;) { const u = q.shift(); edges.forEach(e => { const [a, b] = back ? [e.to, e.from] : [e.from, e.to]; if (a === u && !seen.has(b)) { seen.add(b); q.push(b); } }); }
   return seen; };
 
-const viewType = (model, viewId) => model && model.schemaVersion === 2 && diagramOf(arrOf(model.views).find(v => v && v.id === viewId));
 /** Every card and line on a path from one card to another, following lines forward: the cards both reachable from `from`
  *  and leading to `to`, and the lines between them. [] when no path joins them. */
 export function paths(model, viewId, from, to) {

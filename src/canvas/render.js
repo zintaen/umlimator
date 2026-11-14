@@ -108,7 +108,7 @@ export function render(container, model, options = {}) {
   let said = '[]'; // the selection last reported: a select event means it changed, or a click asked again (again)
   const emitSel = (again = false) => {
     const now = JSON.stringify(picked()); if (now === said && !again) return; said = now;
-    say(!sel ? 'Nothing selected' : (sel.type === 'node' ? nameOf(sel.id) : sel.type === 'edge' ? (e => e ? `Line from ${nameOf(e.from)} to ${nameOf(e.to)}` : 'Line')(geo.edges[edgeIndex(sel)])
+    say(!sel ? 'Nothing selected' : (sel.type === 'node' ? (geo.byId[sel.id] || (geo.families || []).find(f => f.id === sel.id) || {}).aria || nameOf(sel.id) : sel.type === 'edge' ? (e => e ? e.aria || `Line from ${nameOf(e.from)} to ${nameOf(e.to)}` : 'Line')(geo.edges[edgeIndex(sel)])
       : `Box ${[...svg.querySelectorAll(`.family[data-family="${CSS.escape(sel.id)}"] .family-title`)].map(t => t.textContent).join(' ') || sel.id}`) + (more.length ? `, ${more.length + 1} ${picked().every(r => r.type === 'node') ? 'cards ' : ''}selected` : ', selected'));
     emit('select', { target: copyRef(sel), targets: picked() });
   };

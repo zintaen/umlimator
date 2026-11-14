@@ -189,7 +189,7 @@ try {
   h = mount(G3, 'ctx', { editable: true });
   const sel = '.edge-g[data-from="c4-bookshop"][data-to="c4-payments"]';
   h.select({ type: 'edge', ids: ['c4-bookshop->c4-payments'], view: 'ctx' });
-  check('an implied line selected: the hint line says it', hint() === 'Line from Bookshop to Payment provider, selected', hint());
+  check('an implied line selected: the hint line says it, by its accessible name', /^Implied relationship from Bookshop to Payment provider, standing for 2 relationships.*, selected$/.test(hint()), hint());
   check('its focus key names what it stands for', /^Implied relationship from Bookshop to Payment provider, standing for 2 relationships/.test((all('.keys .line-key').find(k => /^Implied/.test(k.getAttribute('aria-label') || '')) || { getAttribute: () => '' }).getAttribute('aria-label'))
     && /standing for 2 relationships/.test(pick(sel + ' title').textContent));
   const n1 = ed.length;

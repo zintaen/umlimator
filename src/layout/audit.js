@@ -3,7 +3,7 @@ import { hit } from './layered.js';
 
 // an issue's message, and what it is about (the cards, lines and boxes it names) when the caller keeps a list of that: check()
 // turns those into Refs; the page's check reads only the messages
-// a card or box as the map names it, and a line by its ends
+// a card or box by its label, else its id
 const nm = x => x.label || x.id, name = e => `${nm(e.s)}→${nm(e.t)}`;
 const teller = (issues, refs) => (message, ...about) => { issues.push(message); if (refs) refs.push(about); };
 // a label's box L across one of box f's borders
