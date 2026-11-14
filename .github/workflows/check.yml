@@ -51,13 +51,20 @@ jobs:
           sys.exit(1 if bad else 0)
           PY
 
+      - name: bpmn-moddle for the BPMN XML adapter's tests, in a scratch folder (an optional adapter's library, never a dependency of the module; each of its five packages pinned, notes/milestone-4b.md decision 24)
+        run: npm install --no-save --prefix "$RUNNER_TEMP/moddle" bpmn-moddle@10.3.1 moddle@8.2.1 moddle-xml@12.3.2 min-dash@5.1.0 saxen@11.2.0
+
       - name: layout() draws the benchmark views as recorded, with no DOM (Node)
+        env:
+          UMLIMATOR_BPMN_MODDLE: ${{ runner.temp }}/moddle  # the tests that need it fail without it in CI (CI=true)
         run: node --test --test-skip-pattern='\(timed\)'
 
       # the tests whose titles end "(timed)" assert a CPU or wall time (P1, linear time): one file at a time, so the
       # rest of the suite running beside them cannot push a 1 s ceiling over (the maintainer's decision of 13 Nov 2026)
       - name: The timed tests hold their budgets, run one file at a time
         if: ${{ !cancelled() }}   # still runs when the step above fails, so a failing test does not hide the budgets
+        env:
+          UMLIMATOR_BPMN_MODDLE: ${{ runner.temp }}/moddle  # the tests that need it fail without it in CI (CI=true)
         run: node --test --test-concurrency=1 --test-name-pattern='\(timed\)'
 
       - name: The example renders as committed and its layout check is clean
@@ -179,7 +186,12 @@ jobs:
       - name: When something goes wrong, the CLI says so and leaves the previous output (Chrome failing, --views, render, pdf, stills, diff --base, icons, mcp)
         run: python3 tests/outcomes.py
 
+      - name: bpmn-moddle for the BPMN XML adapter's tests, in a scratch folder (an optional adapter's library, never a dependency of the module; each of its five packages pinned, notes/milestone-4b.md decision 24)
+        run: npm install --no-save --prefix "$RUNNER_TEMP/moddle" bpmn-moddle@10.3.1 moddle@8.2.1 moddle-xml@12.3.2 min-dash@5.1.0 saxen@11.2.0
+
       - name: The CLI's import reads a sample of each format into a model that validates, renders and checks clean
+        env:
+          UMLIMATOR_BPMN_MODDLE: ${{ runner.temp }}/moddle  # the tests that need it fail without it in CI (CI=true)
         run: python3 tests/import.py
 
       - name: The diff Action's comment step, the release job's steps and map-repo's CLI, run against stand-ins for GitHub, git and npm

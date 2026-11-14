@@ -1,0 +1,370 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Every row of BPMN 2.0.2's Table 2.1 (the Descriptive sub-class) and the extras notes/milestone-4b.md S1 and decision 21
+     name, with diagram interchange, written as a modelling tool writes a file: incoming and outgoing references, label
+     bounds, a message as a root element. tests/bpmn-xml.test.mjs pins what it reads and the report. -->
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" id="Definitions_1" name="Returns" targetNamespace="http://example.com/bpmn/returns">
+  <bpmn:message id="Message_return" name="Return request" />
+  <bpmn:dataStore id="DataStore_crm" name="Customer records" />
+  <bpmn:category id="Category_1">
+    <bpmn:categoryValue id="CategoryValue_check" value="Checks" />
+  </bpmn:category>
+  <bpmn:collaboration id="Collaboration_1">
+    <bpmn:participant id="customer" name="Customer" />
+    <bpmn:participant id="shop" name="Shop" processRef="Process_returns" />
+    <bpmn:messageFlow id="m-request" name="Return request" sourceRef="customer" targetRef="request-in" />
+    <bpmn:messageFlow id="m-refund" name="Refund" sourceRef="tell-customer" targetRef="customer" />
+    <bpmn:messageFlow id="m-chase" sourceRef="chase" targetRef="customer" />
+    <bpmn:messageFlow id="m-reply" sourceRef="customer" targetRef="reply-in" />
+    <bpmn:textAnnotation id="note-policy">
+      <bpmn:text>30 days from delivery</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:association id="a-policy" associationDirection="One" sourceRef="note-policy" targetRef="check-date" />
+    <bpmn:group id="group-checks" categoryValueRef="CategoryValue_check" />
+  </bpmn:collaboration>
+  <bpmn:process id="Process_returns" isExecutable="false">
+    <bpmn:laneSet id="LaneSet_1">
+      <bpmn:lane id="desk" name="Returns desk">
+        <bpmn:documentation>Staffed 9 to 5</bpmn:documentation>
+        <bpmn:flowNodeRef>request-in</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>check-date</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>in-time</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>refuse</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>refused</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>split</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>tell-customer</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>chase</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>reply-in</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>no-reply</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>merge</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>noted</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>refunded</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>nightly</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>tidy</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>tidied</bpmn:flowNodeRef>
+        <bpmn:childLaneSet id="LaneSet_desk">
+          <bpmn:lane id="desk-front" name="Front">
+            <bpmn:flowNodeRef>check-date</bpmn:flowNodeRef>
+          </bpmn:lane>
+          <bpmn:lane id="desk-back" name="Back" />
+        </bpmn:childLaneSet>
+      </bpmn:lane>
+      <bpmn:lane id="store" name="Store room">
+        <bpmn:flowNodeRef>inspect</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>restock</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>slow</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>late</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>supervisor</bpmn:flowNodeRef>
+      </bpmn:lane>
+    </bpmn:laneSet>
+    <bpmn:startEvent id="request-in" name="Request received">
+      <bpmn:outgoing>f-1</bpmn:outgoing>
+      <bpmn:dataOutputAssociation id="d-form-out">
+        <bpmn:targetRef>form</bpmn:targetRef>
+      </bpmn:dataOutputAssociation>
+      <bpmn:messageEventDefinition id="MessageEventDefinition_1" messageRef="Message_return" />
+    </bpmn:startEvent>
+    <bpmn:userTask id="check-date" name="Check the date" categoryValueRef="CategoryValue_check">
+      <bpmn:documentation>Against the delivery date on the order</bpmn:documentation>
+      <bpmn:incoming>f-1</bpmn:incoming>
+      <bpmn:outgoing>f-2</bpmn:outgoing>
+      <bpmn:property id="Property_1" name="__targetRef_placeholder" />
+      <bpmn:dataInputAssociation id="d-form-in">
+        <bpmn:sourceRef>form</bpmn:sourceRef>
+        <bpmn:targetRef>Property_1</bpmn:targetRef>
+      </bpmn:dataInputAssociation>
+    </bpmn:userTask>
+    <bpmn:exclusiveGateway id="in-time" name="In time?" categoryValueRef="CategoryValue_check">
+      <bpmn:incoming>f-2</bpmn:incoming>
+      <bpmn:outgoing>f-yes</bpmn:outgoing>
+      <bpmn:outgoing>f-no</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:task id="refuse" name="Refuse the return">
+      <bpmn:incoming>f-no</bpmn:incoming>
+      <bpmn:outgoing>f-3</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:endEvent id="refused" name="Return refused">
+      <bpmn:incoming>f-3</bpmn:incoming>
+      <bpmn:terminateEventDefinition id="TerminateEventDefinition_1" />
+    </bpmn:endEvent>
+    <bpmn:parallelGateway id="split">
+      <bpmn:incoming>f-yes</bpmn:incoming>
+      <bpmn:outgoing>f-4</bpmn:outgoing>
+      <bpmn:outgoing>f-5</bpmn:outgoing>
+    </bpmn:parallelGateway>
+    <bpmn:subProcess id="inspect" name="Inspect the parcel">
+      <bpmn:incoming>f-4</bpmn:incoming>
+      <bpmn:outgoing>f-6</bpmn:outgoing>
+      <bpmn:dataOutputAssociation id="d-crm-write">
+        <bpmn:targetRef>crm</bpmn:targetRef>
+      </bpmn:dataOutputAssociation>
+      <bpmn:startEvent id="opened" name="Parcel opened">
+        <bpmn:outgoing>f-in-1</bpmn:outgoing>
+      </bpmn:startEvent>
+      <bpmn:serviceTask id="photograph" name="Photograph the items">
+        <bpmn:incoming>f-in-1</bpmn:incoming>
+        <bpmn:outgoing>f-in-2</bpmn:outgoing>
+      </bpmn:serviceTask>
+      <bpmn:endEvent id="inspected" name="Inspected">
+        <bpmn:incoming>f-in-2</bpmn:incoming>
+      </bpmn:endEvent>
+      <bpmn:sequenceFlow id="f-in-1" sourceRef="opened" targetRef="photograph" />
+      <bpmn:sequenceFlow id="f-in-2" sourceRef="photograph" targetRef="inspected" />
+    </bpmn:subProcess>
+    <bpmn:subProcess id="restock" name="Restock">
+      <bpmn:incoming>f-6</bpmn:incoming>
+      <bpmn:outgoing>f-7</bpmn:outgoing>
+      <bpmn:startEvent id="restock-start" name="Items back">
+        <bpmn:outgoing>f-r-1</bpmn:outgoing>
+      </bpmn:startEvent>
+      <bpmn:task id="shelve" name="Shelve the items">
+        <bpmn:incoming>f-r-1</bpmn:incoming>
+        <bpmn:outgoing>f-r-2</bpmn:outgoing>
+      </bpmn:task>
+      <bpmn:endEvent id="restocked" name="Shelved">
+        <bpmn:incoming>f-r-2</bpmn:incoming>
+      </bpmn:endEvent>
+      <bpmn:sequenceFlow id="f-r-1" sourceRef="restock-start" targetRef="shelve" />
+      <bpmn:sequenceFlow id="f-r-2" sourceRef="shelve" targetRef="restocked" />
+    </bpmn:subProcess>
+    <bpmn:callActivity id="tell-customer" name="Refund the customer" calledElement="Refund">
+      <bpmn:incoming>f-5</bpmn:incoming>
+      <bpmn:outgoing>f-8</bpmn:outgoing>
+    </bpmn:callActivity>
+    <bpmn:intermediateThrowEvent id="chase" name="Ask for the receipt">
+      <bpmn:incoming>f-8</bpmn:incoming>
+      <bpmn:outgoing>f-9</bpmn:outgoing>
+      <bpmn:messageEventDefinition id="MessageEventDefinition_2" />
+    </bpmn:intermediateThrowEvent>
+    <bpmn:intermediateCatchEvent id="reply-in" name="Receipt received">
+      <bpmn:incoming>f-9</bpmn:incoming>
+      <bpmn:outgoing>f-10</bpmn:outgoing>
+      <bpmn:messageEventDefinition id="MessageEventDefinition_3" />
+    </bpmn:intermediateCatchEvent>
+    <bpmn:intermediateCatchEvent id="no-reply" name="A week passes">
+      <bpmn:incoming>f-11</bpmn:incoming>
+      <bpmn:outgoing>f-12</bpmn:outgoing>
+      <bpmn:timerEventDefinition id="TimerEventDefinition_1" />
+    </bpmn:intermediateCatchEvent>
+    <bpmn:exclusiveGateway id="merge">
+      <bpmn:incoming>f-10</bpmn:incoming>
+      <bpmn:incoming>f-12</bpmn:incoming>
+      <bpmn:outgoing>f-13</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:intermediateThrowEvent id="noted" name="Refund noted">
+      <bpmn:incoming>f-13</bpmn:incoming>
+      <bpmn:outgoing>f-14</bpmn:outgoing>
+    </bpmn:intermediateThrowEvent>
+    <bpmn:endEvent id="refunded" name="Refund sent">
+      <bpmn:incoming>f-14</bpmn:incoming>
+      <bpmn:incoming>f-7</bpmn:incoming>
+      <bpmn:messageEventDefinition id="MessageEventDefinition_4" />
+    </bpmn:endEvent>
+    <bpmn:boundaryEvent id="slow" name="Two days" attachedToRef="inspect">
+      <bpmn:outgoing>f-15</bpmn:outgoing>
+      <bpmn:timerEventDefinition id="TimerEventDefinition_2" />
+    </bpmn:boundaryEvent>
+    <bpmn:boundaryEvent id="late" name="Supplier asks" cancelActivity="false" attachedToRef="inspect">
+      <bpmn:outgoing>f-16</bpmn:outgoing>
+      <bpmn:messageEventDefinition id="MessageEventDefinition_5" />
+    </bpmn:boundaryEvent>
+    <bpmn:task id="supervisor" name="Call the supervisor">
+      <bpmn:incoming>f-15</bpmn:incoming>
+      <bpmn:incoming>f-16</bpmn:incoming>
+    </bpmn:task>
+    <bpmn:startEvent id="nightly" name="Every night">
+      <bpmn:outgoing>f-17</bpmn:outgoing>
+      <bpmn:timerEventDefinition id="TimerEventDefinition_3" />
+    </bpmn:startEvent>
+    <bpmn:task id="tidy" name="Tidy the desk">
+      <bpmn:incoming>f-17</bpmn:incoming>
+      <bpmn:outgoing>f-18</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:endEvent id="tidied" name="Tidy">
+      <bpmn:incoming>f-18</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:dataObjectReference id="form" name="Return form" dataObjectRef="DataObject_form" />
+    <bpmn:dataObject id="DataObject_form" />
+    <bpmn:dataStoreReference id="crm" dataStoreRef="DataStore_crm" />
+    <bpmn:sequenceFlow id="f-1" sourceRef="request-in" targetRef="check-date" />
+    <bpmn:sequenceFlow id="f-2" sourceRef="check-date" targetRef="in-time" />
+    <bpmn:sequenceFlow id="f-yes" name="yes" sourceRef="in-time" targetRef="split" />
+    <bpmn:sequenceFlow id="f-no" name="no" sourceRef="in-time" targetRef="refuse" />
+    <bpmn:sequenceFlow id="f-3" sourceRef="refuse" targetRef="refused" />
+    <bpmn:sequenceFlow id="f-4" sourceRef="split" targetRef="inspect" />
+    <bpmn:sequenceFlow id="f-5" sourceRef="split" targetRef="tell-customer" />
+    <bpmn:sequenceFlow id="f-6" sourceRef="inspect" targetRef="restock" />
+    <bpmn:sequenceFlow id="f-7" sourceRef="restock" targetRef="refunded" />
+    <bpmn:sequenceFlow id="f-8" sourceRef="tell-customer" targetRef="chase" />
+    <bpmn:sequenceFlow id="f-9" sourceRef="chase" targetRef="reply-in" />
+    <bpmn:sequenceFlow id="f-10" sourceRef="reply-in" targetRef="merge" />
+    <bpmn:sequenceFlow id="f-11" sourceRef="chase" targetRef="no-reply" />
+    <bpmn:sequenceFlow id="f-12" sourceRef="no-reply" targetRef="merge" />
+    <bpmn:sequenceFlow id="f-13" sourceRef="merge" targetRef="noted" />
+    <bpmn:sequenceFlow id="f-14" sourceRef="noted" targetRef="refunded" />
+    <bpmn:sequenceFlow id="f-15" sourceRef="slow" targetRef="supervisor" />
+    <bpmn:sequenceFlow id="f-16" sourceRef="late" targetRef="supervisor" />
+    <bpmn:sequenceFlow id="f-17" sourceRef="nightly" targetRef="tidy" />
+    <bpmn:sequenceFlow id="f-18" sourceRef="tidy" targetRef="tidied" />
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="returns" name="Returns">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="Collaboration_1">
+      <bpmndi:BPMNShape id="customer_di" bpmnElement="customer" isHorizontal="true">
+        <dc:Bounds x="160" y="40" width="1400" height="60" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shop_di" bpmnElement="shop" isHorizontal="true">
+        <dc:Bounds x="160" y="160" width="1400" height="560" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="desk_di" bpmnElement="desk" isHorizontal="true">
+        <dc:Bounds x="190" y="160" width="1370" height="320" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="desk-front_di" bpmnElement="desk-front" isHorizontal="true">
+        <dc:Bounds x="220" y="160" width="1340" height="160" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="desk-back_di" bpmnElement="desk-back" isHorizontal="true">
+        <dc:Bounds x="220" y="320" width="1340" height="160" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="store_di" bpmnElement="store" isHorizontal="true">
+        <dc:Bounds x="190" y="480" width="1370" height="240" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="request-in_di" bpmnElement="request-in">
+        <dc:Bounds x="252" y="222" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="228" y="265" width="84" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="check-date_di" bpmnElement="check-date">
+        <dc:Bounds x="340" y="200" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="in-time_di" bpmnElement="in-time" isMarkerVisible="true">
+        <dc:Bounds x="495" y="215" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="refuse_di" bpmnElement="refuse">
+        <dc:Bounds x="600" y="340" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="refused_di" bpmnElement="refused">
+        <dc:Bounds x="752" y="362" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="split_di" bpmnElement="split">
+        <dc:Bounds x="605" y="215" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="inspect_di" bpmnElement="inspect" isExpanded="true">
+        <dc:Bounds x="560" y="500" width="360" height="160" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="opened_di" bpmnElement="opened">
+        <dc:Bounds x="592" y="562" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="photograph_di" bpmnElement="photograph">
+        <dc:Bounds x="680" y="540" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="inspected_di" bpmnElement="inspected">
+        <dc:Bounds x="832" y="562" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="restock_di" bpmnElement="restock" isExpanded="false">
+        <dc:Bounds x="980" y="540" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="tell-customer_di" bpmnElement="tell-customer">
+        <dc:Bounds x="720" y="200" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="chase_di" bpmnElement="chase">
+        <dc:Bounds x="872" y="222" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="reply-in_di" bpmnElement="reply-in">
+        <dc:Bounds x="962" y="222" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="no-reply_di" bpmnElement="no-reply">
+        <dc:Bounds x="962" y="302" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="merge_di" bpmnElement="merge" isMarkerVisible="true">
+        <dc:Bounds x="1045" y="215" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="noted_di" bpmnElement="noted">
+        <dc:Bounds x="1142" y="222" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="refunded_di" bpmnElement="refunded">
+        <dc:Bounds x="1232" y="222" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="slow_di" bpmnElement="slow">
+        <dc:Bounds x="682" y="642" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="late_di" bpmnElement="late">
+        <dc:Bounds x="762" y="642" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="supervisor_di" bpmnElement="supervisor">
+        <dc:Bounds x="980" y="640" width="100" height="60" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="nightly_di" bpmnElement="nightly">
+        <dc:Bounds x="252" y="402" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="tidy_di" bpmnElement="tidy">
+        <dc:Bounds x="340" y="380" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="tidied_di" bpmnElement="tidied">
+        <dc:Bounds x="492" y="402" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="form_di" bpmnElement="form">
+        <dc:Bounds x="252" y="300" width="36" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="crm_di" bpmnElement="crm">
+        <dc:Bounds x="1345" y="555" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="note-policy_di" bpmnElement="note-policy">
+        <dc:Bounds x="440" y="110" width="140" height="30" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="group-checks_di" bpmnElement="group-checks">
+        <dc:Bounds x="320" y="180" width="250" height="120" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="m-request_di" bpmnElement="m-request">
+        <di:waypoint x="270" y="100" />
+        <di:waypoint x="270" y="222" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="m-refund_di" bpmnElement="m-refund">
+        <di:waypoint x="770" y="200" />
+        <di:waypoint x="770" y="100" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="m-chase_di" bpmnElement="m-chase">
+        <di:waypoint x="890" y="222" />
+        <di:waypoint x="890" y="100" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="m-reply_di" bpmnElement="m-reply">
+        <di:waypoint x="980" y="100" />
+        <di:waypoint x="980" y="222" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="a-policy_di" bpmnElement="a-policy">
+        <di:waypoint x="480" y="140" />
+        <di:waypoint x="420" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="f-1_di" bpmnElement="f-1">
+        <di:waypoint x="288" y="240" />
+        <di:waypoint x="340" y="240" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="f-yes_di" bpmnElement="f-yes">
+        <di:waypoint x="545" y="240" />
+        <di:waypoint x="605" y="240" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="566" y="222" width="18" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="d-form-in_di" bpmnElement="d-form-in">
+        <di:waypoint x="288" y="320" />
+        <di:waypoint x="360" y="280" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+  <bpmndi:BPMNDiagram id="restock-view" name="Restock">
+    <bpmndi:BPMNPlane id="BPMNPlane_restock" bpmnElement="restock">
+      <bpmndi:BPMNShape id="restock-start_di" bpmnElement="restock-start">
+        <dc:Bounds x="180" y="160" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shelve_di" bpmnElement="shelve">
+        <dc:Bounds x="270" y="138" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="restocked_di" bpmnElement="restocked">
+        <dc:Bounds x="422" y="160" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="f-r-1_di" bpmnElement="f-r-1">
+        <di:waypoint x="216" y="178" />
+        <di:waypoint x="270" y="178" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>
