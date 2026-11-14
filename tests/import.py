@@ -331,7 +331,7 @@ ok("--typed makes a flowchart or a graph the flowchart reader's, and nothing els
 
 
 def typed(r, out):
-    """What import said on stdout, the model it wrote, and the places its stderr names (file:where)."""
+    """What import said on stdout, and the model it wrote."""
     said = json.loads(r.stdout) if r.returncode == 0 else {}
     return said, json.loads(out.read_text(encoding="utf-8")) if r.returncode == 0 and out.is_file() else {"nodes": [], "edges": [], "views": [{}]}
 
@@ -354,6 +354,10 @@ with tempfile.TemporaryDirectory() as tmp:
     ok(f"{name} · lists what it skips or approximates, each with its line", len(got) == said.get("unread") == 29 and all(g[1:-1].isdigit() for g in got), r.stderr)
     ok(f"{name} · validate() finds no core error", core_errors(m) == [], core_errors(m))
     r = subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "import", str(ROOT / name), "--out", str(t / "x.json")], capture_output=True, text=True, env=nonode)
+    r2 = subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "import", str(ROOT / "tests/import/checkout.mmd"), "--typed", "--out", str(t / "x.json")],
+                        capture_output=True, text=True, env=nonode)
+    ok("without Node, --typed on a flowchart says to drop --typed for a map", r2.returncode == 1 and "without --typed, as a map" in r2.stderr
+       and "flowcharts and C4 diagrams need only Python" not in r2.stderr, r2.stderr)
     ok("without Node, an erDiagram's import says it needs Node", r.returncode == 1 and "Mermaid erDiagram" in r.stderr and "Node.js 18" in r.stderr
        and not (t / "x.json").exists(), r.stderr)
 
@@ -402,10 +406,12 @@ with tempfile.TemporaryDirectory() as tmp:
     ci.mkdir()
     (ci / "shop.dbml").write_text(cap["dbml"], encoding="utf-8")
     dbml = lambda folder, f, **kw: subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "import", f, "--out", "shop.json"], capture_output=True, text=True, cwd=folder, **kw)
-    r = dbml(ci, "shop.dbml")
+    home = {k: v for k, v in __import__("os").environ.items() if k != "NODE_PATH"} | {"HOME": str(ci)}  # no global @dbml/core either
+    r = dbml(ci, "shop.dbml", env=home)
     ok(".dbml · with no @dbml/core where it is run, says how to install it, and writes nothing",
        r.returncode == 1 and "npm install @dbml/core" in r.stderr and str(ci.resolve()) in r.stderr and not (ci / "shop.json").exists(), r.stderr)
-    # with a stub @dbml/core in the working folder, whose parser returns the Database M2.11 captured (and says it was called)
+    # with a stub @dbml/core in the working folder, whose parser returns the export() M2.11 captured (and says it was called):
+    # the adapter on the export's shape; the CLI gives it a real parse's Database, which CI does not install (§8.5)
     stub = t / "stub"
     core = stub / "node_modules" / "@dbml" / "core"
     core.mkdir(parents=True)
@@ -438,6 +444,18 @@ with tempfile.TemporaryDirectory() as tmp:
     r = dbml(stub, "big.dbml")
     ok(".dbml · a file over 1 MiB is refused before @dbml/core parses it, and nothing written",
        r.returncode == 1 and "over the limit of 1048576" in r.stderr and not (stub / "parsed.txt").exists() and not (stub / "shop.json").exists(), r.stderr)
+    big.rename(stub / "huge.json")
+    r = subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "import", "huge.json", "--format", "dbml", "--out", "shop.json"],
+                       capture_output=True, text=True, cwd=stub, env=nonode)
+    ok("--format dbml · a file over 1 MiB is refused before it is read", r.returncode == 1 and "over the limit of 1048576 (1 MiB) for DBML: nothing read" in r.stderr, r.stderr)
+    said = []
+    for body in ("throw new Error('Cannot find module @dbml/parse');\n", "module.exports = {};\n"):  # an install that does not load
+        (core / "index.js").write_text(body, encoding="utf-8")
+        r = dbml(stub, "shop.dbml")
+        said.append(r.returncode == 1 and "@dbml/core at " in r.stderr and "did not load" in r.stderr and "could not parse" not in r.stderr
+                    and "npm install @dbml/core" in r.stderr and not (stub / "shop.json").exists())
+    ok(".dbml · an @dbml/core that throws as it loads, or has no Parser.parse, is named as the install's fault, not the file's, and nothing written",
+       said == [True, True], r.stderr)
     r = dbml(stub, "shop.dbml", env=nonode)
     ok("without Node, a .dbml file's import says it needs Node", r.returncode == 1 and "is DBML" in r.stderr and "Node.js 18" in r.stderr, r.stderr)
 sys.exit(1 if failed else 0)

@@ -781,6 +781,10 @@ def cmd_import(a):
     it is parsed. What it does not import is listed on stderr, each with its line (in JSON, its path)."""
     sys.path.insert(0, str(HERE))
     import umlimator_import as imp
+    named = {"structurizr-json": "a Structurizr JSON workspace", "dbml": "DBML"}
+    early = a.format or ("dbml" if Path(a.file).suffix.lower() == ".dbml" else None)  # ponytail: a .dbml file's name is trusted here, before detect reads it
+    if early in imp.NODE_FORMATS and (size := Path(a.file).stat().st_size) > imp.LIMIT:  # hostile input (milestone-2.md §8): not even read
+        sys.exit(f"import: {a.file} is {size} bytes, over the limit of {imp.LIMIT} (1 MiB) for {named[early]}: nothing read, nothing written")
     text = Path(a.file).read_text(encoding="utf-8-sig")  # a byte-order mark is not the diagram's
     fmt = a.format or imp.detect(a.file, text)
     if not fmt and text.lstrip()[:1] in ("{", "["):  # JSON that does not parse (cut short?) is not a format it can't tell
@@ -793,7 +797,7 @@ def cmd_import(a):
     if a.typed and not kind and fmt not in imp.NODE_FORMATS:
         sys.exit(f"import: --typed reads a Mermaid flowchart typed; {a.file} is {fmt}"
                  f"{' but not a flowchart' if fmt == 'mermaid' else ''}, which imports as a map: nothing written")
-    what = f"a Mermaid {kind}" if kind else {"structurizr-json": "a Structurizr JSON workspace", "dbml": "DBML"}.get(fmt)
+    what = f"a Mermaid {kind}" if kind else named.get(fmt)
     if what:  # the module's reader, in Node (risks.md R7)
         name, fn = {"classDiagram": ("mermaid-class.js", "readMermaidClass"), "sequenceDiagram": ("mermaid-sequence.js", "readMermaidSequence"),
                     "stateDiagram": ("mermaid-state.js", "readMermaidState"), "erDiagram": ("mermaid-er.js", "readMermaidEr"),
@@ -804,16 +808,19 @@ def cmd_import(a):
             sys.exit(f"import: {a.file} is {size} bytes, over the limit of {imp.LIMIT} (1 MiB) for {what}: nothing read, nothing written")
         reader = HERE / "src" / "readers" / name
         if not shutil.which("node"):
-            sys.exit(f"import: {a.file} is {what}, which the module's reader reads in Node.js 18 or later; install Node to import it. "
-                     "Structurizr DSL, C4-PlantUML, compose, Kubernetes and Mermaid's flowcharts and C4 diagrams need only Python")
+            sys.exit(f"import: {a.file} is {what}, which the module's reader reads in Node.js 18 or later; install Node to import it"
+                     + (", or import it without --typed, as a map, which needs only Python" if kind == "flowchart" else
+                        ". Structurizr DSL, C4-PlantUML, compose, Kubernetes and Mermaid's flowcharts and C4 diagrams need only Python"))
         if not reader.is_file():  # a copy of the CLI with lib/ but not src/
             sys.exit(f"import: {a.file} is {what}, whose reader is src/readers/{name}, which this copy of "
                      f"umlimator does not have ({reader.parent} is missing it): import it from a full clone of the repository")
         if fmt == "dbml":  # @dbml/core parses, the adapter reads its Database; required, not imported (milestone-2.md §8.4)
             code = ("import { createRequire } from 'node:module'; import { readDbml } from " + json.dumps(reader.as_uri()) + ";"
                     "const req = createRequire(process.cwd() + '/'); let at; try { at = req.resolve('@dbml/core') } catch { process.stdout.write('null'); process.exit(0) }"
+                    "let P; try { P = req(at).Parser; if (typeof (P && P.parse) !== 'function') throw new Error('it has no Parser.parse') }"
+                    " catch (e) { process.stdout.write(JSON.stringify({ broken: at, why: String(e && e.message || e) })); process.exit(0) }"
                     "let s = ''; for await (const c of process.stdin) s += c; let db;"
-                    "try { db = req(at).Parser.parse(s, 'dbmlv2') } catch (e) { process.stdout.write(JSON.stringify({ diags: (Array.isArray(e && e.diags) ? e.diags : [e])"
+                    "try { db = P.parse(s, 'dbmlv2') } catch (e) { process.stdout.write(JSON.stringify({ diags: (Array.isArray(e && e.diags) ? e.diags : [e])"
                     ".map(d => [d && d.location && d.location.start ? d.location.start.line : null, String(d && d.message || d)]) })); process.exit(0) }"
                     "process.stdout.write(JSON.stringify(readDbml(db)));")
             p = run([shutil.which("node"), "--input-type=module", "-e", code], input=text)
@@ -823,6 +830,9 @@ def cmd_import(a):
             if r is None:
                 sys.exit(f"import: {a.file} is DBML, which @dbml/core parses, and @dbml/core does not resolve from this folder ({Path.cwd()}): "
                          "install it here (npm install @dbml/core) and import again; umlimator does not depend on it. Nothing written")
+            if "broken" in r:  # an install that does not load is not the user's DBML at fault
+                sys.exit(f"import: @dbml/core at {r['broken']} did not load ({r['why']}): reinstall it (npm install @dbml/core) and import again. "
+                         f"{a.file} was not parsed; nothing written")
             for where, msg in r.get("diags") or []:
                 print(f"{a.file}:{where}: {msg}" if where is not None else f"{a.file}: {msg}", file=sys.stderr)
             if "diags" in r:

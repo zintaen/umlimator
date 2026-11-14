@@ -798,13 +798,19 @@ As built (M2.12), where the build departs from or adds to the above:
 - **The 1 MiB check** is of the file's bytes, before Node is looked for and before Node or `@dbml/core` parses it. For a
   JSON file it comes after `detect`'s own `json.loads` (the standard library's, which every JSON source has had since
   #90, to tell compose from Kubernetes): a workspace cannot be told from other JSON unread. The Mermaid readers keep
-  their own 1 MiB character limit (§8).
+  their own 1 MiB character limit (§8). With `--format structurizr-json` or `dbml`, or a `.dbml` name, the file's size
+  is checked before it is read at all.
 - **DBML.** `@dbml/core` is found by `createRequire` from the working folder. That is CommonJS resolution, so a
   global install (`NODE_PATH`, `~/.node_modules`) resolves too; the message names the working folder. The adapter is
   given the parsed `Database`, not its `export()`, so the project, diagram views and a table's checks are reported
   (§8.4). What `@dbml/core` cannot parse is listed by its line (its `diags`), and nothing is written. Tried once with
   `@dbml/core` 11.0.0 freshly installed (resolving `@dbml/parse` 11.1.0): the fixture's DBML imports, 24 items
-  reported, against the export's 20 that the stub returns.
+  reported, against the export's 20 that the stub returns. So the stub in `tests/import.py` returns M2.11's captured
+  `export()`, not a `Database` as §11's row M2.12 says: CI tests the adapter on the export's shape, and the `Database`
+  path only by that run. An `@dbml/core` that resolves but does not load (it throws, or has no `Parser.parse`) is named
+  as the install's fault, with its path, not as a parse error of the file. Whatever `@dbml/core` resolves from the
+  working folder or its parents runs (option (a)): importing a `.dbml` file in a checkout one does not trust runs its
+  `node_modules`.
 - **Report places.** A typed reader's item names its place by `line` (the Mermaid readers, and the DBML adapter's path)
   or `path` (the Structurizr reader); an empty one (the whole source) is printed with no place.
 - **Owns.** Beyond `cmd_import`, `detect` and `mermaid_typed`: the import subcommand's arguments in `main()`
