@@ -181,7 +181,9 @@ const rqEnds = (I, t, from, to) => (t === 'sysml.DeriveReqt' && !(I.is(from, RQ)
   : t === 'sysml.Satisfy' && !I.is(to, RQ) ? 'satisfy-ends' : t === 'sysml.Verify' && !I.is(to, RQ) ? 'verify-ends' : null);
 function rqProblems(model) {
   const I = rqIndex(model), out = [], say = (level, rule, path, ids, msg) => out.push({ level, rule, path, ids: [...new Set(ids.filter(x => x != null))], message: `${rule}: ${msg}` });
-  const reqs = [...I.at.values()].filter(x => x.type === RQ && x.from == null), byName = new Map(reqs.map(r => [rqName(r), r.id])), ids = new Map();
+  // a name that labels a block or a value type too types by that (bdd reads it so): only a requirement's name alone is one
+  const types = new Set([...I.at.values()].filter(x => ['sysml.Block', 'sysml.InterfaceBlock', 'sysml.ConstraintBlock', 'sysml.ValueType', 'uml.Class', 'uml.DataType'].includes(x.type)).map(rqName));
+  const reqs = [...I.at.values()].filter(x => x.type === RQ && x.from == null), byName = new Map(reqs.filter(r => !types.has(rqName(r))).map(r => [rqName(r), r.id])), ids = new Map();
   RQ_ARR(model && model.nodes).forEach((x, i) => { if (!RQ_OBJ(x) || I.at.get(x.id) !== x) return; const path = `nodes[${i}]`, p = RQ_PROPS(x);
     if (x.type === RQ && x.parent != null && I.at.has(x.parent) && !I.is(x.parent, RQ) && !I.is(x.parent, RQ_PKG)) say('warning', 'requirement-owner', `${path}.parent`, [x.id, x.parent], `${I.q(x.id)} is owned by ${I.q(x.parent)}, not a requirement or a package`);
     if (x.type !== RQ && x.type !== 'uml.Comment' && I.is(x.parent, RQ)) say('error', 'requirement-nested', `${path}.parent`, [x.id, x.parent], `${I.q(x.id)} is owned by ${I.q(x.parent)}: what a requirement owns is a requirement`);

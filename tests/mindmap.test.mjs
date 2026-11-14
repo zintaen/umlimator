@@ -19,7 +19,7 @@ import { mapContext } from '../src/map/context.js';
 import { validate } from '../src/map/validate.js';
 import { describe } from '../src/map/insight.js';
 import { tablesOf } from '../src/page/print.js';
-import { MM_TYPE, MM_INK, mmProblems, mmAdd, mmMoveTo, mmRemove, mmRename, mmConnect, mmShow } from '../src/mindmap/mindmap.js';
+import { MM_TYPE, MM_INK, mmProblems, mmAdd, mmMoveTo, mmRemove, mmRename, mmConnect, mmShow, mmRows, mmRun } from '../src/mindmap/mindmap.js';
 
 const EX = () => JSON.parse(readFileSync(new URL('../examples/bookshop-opening-plan.json', import.meta.url), 'utf8'));
 const V = m => m.views[0], VID = 'mm-plan', T = 'mindmap.Topic';
@@ -387,4 +387,12 @@ test('P1 (§11): 300 topics in eight levels: a full layout with markup, a topic 
 test('the type ships in lib/umlimator-all.js only (risks.md C5)', () => {
   const all = readFileSync(new URL('../lib/umlimator-all.js', import.meta.url), 'utf8'), core = readFileSync(new URL('../lib/umlimator.js', import.meta.url), 'utf8');
   for (const k of ["registerDiagramType('mindmap'", 'function mmRun(', "SHAPE['mm-topic'] = "]) { assert.ok(all.includes(k), k); assert.ok(!core.includes(k), k); }
+});
+
+test('audit 1: topics in a parent cycle have the depth they are drawn at', () => {
+  const T = 'mindmap.Topic', m = { schemaVersion: 2, root: 'v', nodes: [{ id: 'x', type: T, parent: 'y' }, { id: 'y', type: T, parent: 'x' }],
+    views: [{ id: 'v', type: 'typed', diagram: 'mindmap', nodeIds: ['x', 'y'], present: { y: { side: 'left' } } }] };
+  assert.equal(mmRun(m, m.views[0]).byId.y.depth, 1);
+  assert.deepEqual(mmRows(m, m.views[0], 'y'), ['Depth 1', 'Under x']);
+  assert.deepEqual(validate(m).filter(p => p.rule === 'side-first'), [], 'y is first-level: its side is read');
 });
