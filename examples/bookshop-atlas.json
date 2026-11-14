@@ -2323,7 +2323,8 @@
    "label": "Cancel order",
    "parent": "bp-sales",
    "props": {
-    "taskType": "service"
+    "taskType": "service",
+    "documentation": "Nothing to refund: no payment was taken."
    }
   },
   {
@@ -2346,7 +2347,8 @@
    "label": "Email invoice",
    "parent": "bp-sales",
    "props": {
-    "taskType": "service"
+    "taskType": "service",
+    "documentation": "Sent to the address the order gives."
    }
   },
   {
