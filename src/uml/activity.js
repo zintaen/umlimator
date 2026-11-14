@@ -132,7 +132,7 @@ function actGeo({ model, view, pos, memo }) {
   const P = I.lanes.length ? laneRows(Object.fromEntries(I.drawn.map(id => [id, at(id)])), I.laneOf, I.lanes) : null; // each lane a run of rows
   const bar = id => acLook(I.N.get(id))[0] === 'bar', side = (id, w) => I.lines.filter(e => e[w] === id).length;
   const nodes = I.drawn.map(id => { const x = I.N.get(id), [shape] = acLook(x), [col, row] = P ? P[id] : at(id), st = acStereo(x);
-    const d = { id, label: ['initial', 'final', 'flow-final', 'bar'].includes(shape) ? '' : acName(x), type: x.type, kind: 'file', shape, aria: acNodeName(model, I, x, I.lines), col, row,
+    const d = { id, label: ['initial', 'final', 'flow-final', 'bar'].includes(shape) ? '' : acName(x), type: x.type, kind: 'file', shape, aria: acNodeName(model, I, x, I.lines), col, row, saysOpens: x.type === 'uml.CallBehaviorAction',
       stereotypes: x.type === 'uml.DataStoreNode' ? ['datastore', ...st] : st, ...(shape === 'bar' ? { busy: Math.max(side(id, 'from'), side(id, 'to')), down } : {}) };
     return { ...d, ...SHAPE[shape].size(d) }; });
   // a bar's lines enter on the side facing the flow's start and leave on the other (§4.1): left and right in the layout's

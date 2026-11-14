@@ -229,7 +229,8 @@ with tempfile.TemporaryDirectory() as tmp:
               **{f"view_{k}": '{"nodes": [{"id": "a"}], "views": [{"id": "v", "nodeIds": ["a"], %s}]}' % x for k, x in (("overrides", '"nodeOverrides": []'),
                  ("nodes", '"nodes": 5'), ("ids", '"nodeIds": 5'), ("edges", '"edges": 5'), ("boxes", '"containers": 3'), ("box", '"containers": [3]'))},
               "members": '{"schemaVersion": 2, "nodes": [{"id": "a", "members": [{"id": "b", "members": 5}]}], "views": [{"id": "v", "nodeIds": ["a"]}]}',
-              "meta_str": '{"meta": "draft", "nodes": [{"id": "a"}], "views": [{"id": "v", "nodeIds": ["a"]}]}'}
+              "meta_str": '{"meta": "draft", "nodes": [{"id": "a"}], "views": [{"id": "v", "nodeIds": ["a"]}]}',
+              "view_num_id": '{"nodes": [{"id": "a"}], "views": [{"id": "v", "nodeIds": ["a"]}, {"id": 7, "nodeIds": ["a"]}]}'}  # audit 6: stills and check ended in tracebacks
     for k, text in shapes.items():
         f = t / "names" / f"{k}.json"
         f.write_bytes(b"\xef\xbb\xbf" + json.dumps(json.loads((t / "names" / "m.json").read_text())).encode() if text is None else text.encode())
@@ -253,6 +254,30 @@ with tempfile.TemporaryDirectory() as tmp:
     # a view id too long for a file name gets a name that fits, as long ids differ by a hash (audit 3)
     longs = u.still_names(["v" * 300, "v" * 299 + "w"])
     ok("stills · a view id too long for a file name is cut and hashed", all(len(x.encode()) <= 200 for x in longs.values()) and len(set(longs.values())) == 2, longs)
+
+    # audit 6: the CLI's odd input, each in one line
+    bike_m = str(ROOT / "examples" / "bike-share.json")
+    b = plain("trace", bike_m, str(ROOT / "examples" / "traces" / "ride-end.json"), "--view", "system", "--out", str(t / "hand.json"))
+    ok("trace · a view a person made is never replaced: one line, nothing written", b.returncode == 1 and "no trace made" in b.stderr and not (t / "hand.json").exists(), b.stderr[-300:])
+    (t / "outdir").mkdir()
+    b, s = plain("render", str(n / "m.json"), "--out", str(t / "outdir"), "--no-check"), plain("stills", str(n / "page.html"), "--out", str(n / "m.json"))
+    ok("render · --out an existing folder, and stills --out an existing file, are said in one line", b.returncode == 1 and "is a folder" in b.stderr
+       and s.returncode == 1 and "is a file" in s.stderr and "Traceback" not in b.stderr + s.stderr, (b.stderr[-300:], s.stderr[-300:]))
+    b = plain("mcp", bike_m, "--port", "73910")
+    ok("mcp · --port 73910 is a usage error, not a traceback", b.returncode == 2 and "not a port" in b.stderr and "Traceback" not in b.stderr, b.stderr[-300:])
+    ro = t / "ro"; ro.mkdir(); (ro / "m.json").write_text((n / "m.json").read_text()); ro.chmod(0o555)
+    if not os.access(ro, os.W_OK):  # root writes anyway
+        b = plain("render", str(ro / "m.json"), "--out", str(t / "ro.html"), "--no-check")
+        ok("render · a model in a folder that cannot be written is said in one line", b.returncode == 1 and "cannot write in" in b.stderr and "Traceback" not in b.stderr, b.stderr[-300:])
+    ro.chmod(0o755)
+    # a card whose inner view comes from the view's override: the stills key holds that view's size (the ⤢ pill)
+    kid = lambda k: {"title": "t", "nodes": [{"id": c, "label": c} for c in "xyzw"], "views": [{"id": "a", "nodeIds": ["x"], "nodeOverrides": {"x": {"opensView": "b"}}},
+                                                                               {"id": "b", "parent": "a", "nodeIds": list("yzw"[:k])}]}
+    keys = []
+    for k in (2, 3):
+        (t / f"kid{k}.json").write_text(json.dumps(kid(k))); cli("render", str(t / f"kid{k}.json"), "--out", str(t / f"kid{k}.html"), "--no-check")
+        keys.append(u.still_keys(t / f"kid{k}.html", [2.0, "light", False]).get("a"))
+    ok("stills · a view is drawn again when the inner view an override opens grows", None not in keys and keys[0] != keys[1], keys)
 
     # the diff Action's step as CI runs it (C10, 2.6): a pull request's merge commit against its first parent, the pathspec
     # examples/*.json passed to git as written (set -f), on one object model and one package model
