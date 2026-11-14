@@ -1,6 +1,6 @@
 import { registerDiagramType } from '../core/registry.js';
 import { CLASS_DEF, RULES, classProblems, describeAs, drawnLines, typeGeo } from './class.js';
-import { OWNER_RULES, ownerChoices, ownerProblems, ownersOn } from './owners.js';
+import { OWNER_RULES, OWN_BOXES, ownerChoices, ownerProblems, ownersOn } from './owners.js';
 
 /* ---------- the package diagram, uml.package (work package 2.2, notes/stage-2.md §10.2, §10.3) ----------
    Packages and the classifiers of the class diagram, drawn by the class view's code with their names only: a package holding
@@ -22,7 +22,7 @@ function packageProblems(model) {
   const at = new Map(nodes.map(n => [n.id, n])), q = id => JSON.stringify(String((at.get(id) || {}).label ?? id));
   const say = (rule, path, ids, msg) => out.push({ level: 'error', rule, path, ids, message: `${rule}: ${msg}` });
   (Array.isArray(model.edges) ? model.edges : []).forEach((e, i) => { if (!e || typeof e !== 'object' || (e.type !== 'uml.PackageImport' && e.type !== 'uml.PackageMerge')) return;
-    const pk = id => (at.get(id) || {}).type === 'uml.Package';
+    const pk = id => OWN_BOXES.includes((at.get(id) || {}).type); // a profile is a package
     if (!pk(e.from) || !pk(e.to) || e.from === e.to) say('import-ends', `edges[${i}]`, [e.id, e.from, e.to].filter(x => x != null), `${e.id} runs from ${q(e.from)} to ${q(e.to)}: from a package to another package`); });
   const seen = new Map();
   (Array.isArray(model.nodes) ? model.nodes : []).forEach((n, i) => { if (!nodes.includes(n) || n.type !== 'uml.Package') return; const k = (n.parent ?? '') + '\u0000' + String(n.label ?? n.id), was = seen.get(k);
@@ -41,6 +41,7 @@ const PACKAGE_TYPE = registerDiagramType('uml.package', {
   boxes: (model, view) => ownersOn(model, view).boxes,
   owners: ownerChoices,
   member: { holds: () => false }, // a classifier is drawn by its name here; its members are edited in a class view
+  rows: () => [], // so the PDF lists no members
   validate: (model, view) => [...classProblems(model), ...packageProblems(model), ...ownerProblems(model, view, drawnLines(model, view, PACKAGE_LINES).lines)],
   rules: { ...RULES, ...OWNER_RULES, ...PACKAGE_RULES },
   describe: describeAs(PACKAGE_LOOK),

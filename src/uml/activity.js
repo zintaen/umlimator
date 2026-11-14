@@ -79,7 +79,7 @@ function actIndex(model, view) {
   // a lane's own owner lane, or null at the top: a lane whose chain of shown owners comes back to it is at the top (laneRows')
   const outer = once(id => { const seen = new Set(); for (let l = up(id); l != null && !seen.has(l); l = up(l)) { if (l === id) return null; seen.add(l); } return up(id); });
   const laneOf = id => (lanes.has(id) ? null : up(id)), drawn = ids.filter(id => !lanes.has(id)), on = new Set(drawn);
-  const list = Array.isArray(view && view.edges) ? view.edges.map(x => (typeof x === 'string' ? E.get(x) : x)) : [...E.values()].filter(e => AC_LINES.includes(e.type));
+  const list = Array.isArray(view && view.edges) ? [...new Set(view.edges.map(x => (typeof x === 'string' ? E.get(x) : x)))] : [...E.values()].filter(e => AC_LINES.includes(e.type));
   const lines = list.filter(e => AC_OBJ(e) && typeof e.id === 'string' && on.has(e.from) && on.has(e.to));
   const n = new Map(), under = p => n.get(p) || 0; // the nodes under each lane, at any depth, counted in one pass
   drawn.forEach(id => { for (let l = laneOf(id); l != null; l = outer(l)) n.set(l, under(l) + 1); });

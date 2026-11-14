@@ -43,7 +43,7 @@ function ovIndex(model, view) {
   OV_ARR(model && model.edges).forEach(e => { if (OV_OBJ(e) && typeof e.id === 'string' && !E.has(e.id)) E.set(e.id, e); });
   OV_ARR(model && model.views).forEach(v => { if (OV_OBJ(v) && typeof v.id === 'string' && !V.has(v.id)) V.set(v.id, v); });
   const ids = [...new Set(OV_ARR(view && view.nodeIds).filter(id => N.has(id)))], shown = new Set(ids);
-  const list = Array.isArray(view && view.edges) ? view.edges.map(x => (typeof x === 'string' ? E.get(x) : x)) : [...E.values()].filter(e => OV_LINES.includes(e.type));
+  const list = Array.isArray(view && view.edges) ? [...new Set(view.edges.map(x => (typeof x === 'string' ? E.get(x) : x)))] : [...E.values()].filter(e => OV_LINES.includes(e.type));
   const both = list.filter(e => OV_OBJ(e) && typeof e.id === 'string' && shown.has(e.from) && shown.has(e.to));
   const lines = both.filter(e => OV_LINES.includes(e.type)), stray = both.filter(e => !OV_LINES.includes(e.type)); // stray: not drawn, warned of
   const el = id => (N.get(id) || [])[0];

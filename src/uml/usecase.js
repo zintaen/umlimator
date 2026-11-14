@@ -99,7 +99,7 @@ function ucPic(model, view) {
 // line from a box to what it holds is left out
 function ucLines(model, view, pic) {
   const E = new Map(); UC_ARR(model.edges).forEach(e => { if (UC_OBJ(e) && typeof e.id === 'string' && !E.has(e.id)) E.set(e.id, e); });
-  const shown = new Set(pic.ids), list = Array.isArray(view.edges) ? view.edges.map(x => (typeof x === 'string' ? E.get(x) : x)) : [...E.values()].filter(e => UC_LINES.includes(e.type));
+  const shown = new Set(pic.ids), list = Array.isArray(view.edges) ? [...new Set(view.edges.map(x => (typeof x === 'string' ? E.get(x) : x)))] : [...E.values()].filter(e => UC_LINES.includes(e.type));
   return list.filter(e => UC_OBJ(e) && typeof e.id === 'string' && shown.has(e.from) && shown.has(e.to)
     && ![[e.from, e.to], [e.to, e.from]].some(([b, x]) => pic.open.has(b) && (b === x || pic.chain(x).includes(b))));
 }
