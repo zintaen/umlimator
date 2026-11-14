@@ -225,11 +225,11 @@
    "edited validate": "daec15d409755e13"
   },
   "26-aws.json": {
-   "layout on-aws": "5d6fc5beaf2fa729",
-   "describe on-aws": "7e9817993976ea18",
+   "layout aws-on-aws": "957b81db2c1ab554",
+   "describe aws-on-aws": "7e9817993976ea18",
    "validate": "65524f88f886c00e",
-   "edit": "c54e108caa44fc63",
-   "edited layout on-aws": "b02e590e3475c64f",
+   "edit": "2f124e8fc95cb2cf",
+   "edited layout aws-on-aws": "511a63596c5cd45d",
    "edited validate": "65524f88f886c00e"
   },
   "27-gcp.json": {

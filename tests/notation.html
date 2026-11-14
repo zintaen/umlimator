@@ -330,8 +330,7 @@ try {
   // none at its from, each end on the outline or the group border it meets; a group dashed by its kind (region, zone,
   // availability zone) and solid otherwise; a mindmap's branches curves with no end, 2.5 px from the root and 1.5 px below
   await import('../src/mindmap/mindmap.js');
-  const { CLOUD_DEFS } = await import('../src/cloud/cloud.js'), { registerDiagramType } = await import('../src/core/registry.js');
-  registerDiagramType('aws', CLOUD_DEFS.aws); // off in the build (decision 1); the fixture's AWS view drawn from src/ (§4.7)
+  await import('../src/cloud/cloud.js'); // registers gcp, azure and aws (CLOUD_AWS on since 4a.8)
   const DASHED = new Set(['region', 'zone', 'availability-zone']), seen4 = new Set();
   for (const [path, vid] of [['../examples/bookshop-gcp.json', 'gcp-on-gcp'], ['../examples/bookshop-azure.json', 'az-on-azure'], ['cloud-stress.json', 'edge-cases'], ['cloud-stress.json', 'aws-edge-cases']]) {
     const f = `${path.split('/').pop().slice(0, -5)} ${vid}`, model = await (await fetch(path)).json(), g = layout(model, vid);

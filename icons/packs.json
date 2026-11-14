@@ -46,5 +46,28 @@
     },
     "names": {},
     "aliases": {}
+  },
+  "aws": {
+    "vendor": "Amazon Web Services",
+    "label": "2026-07-31",
+    "zips": [
+      {
+        "url": "https://d1.awsstatic.com/onedam/marketing-channels/website/public/shared/architecture-icon-release/Icon-package_07312026.5846e92413caa21490223536cc97f1269e44fa92.zip",
+        "bytes": 13988918,
+        "sha256": "d2d166c453526471749d520e0db022c459abef759d2946cf2dd1d1c992dc6526"
+      }
+    ],
+    "icons": "(?:Architecture-Service-Icons_[^/]+/Arch_[^/]+/64/Arch_|Resource-Icons_[^/]+/Res_[^/]+/(?:Res_48_Light/)?Res_)([^/]+?)_(?:64|48|48_Light)\\.svg",
+    "terms": {
+      "url": "https://aws.amazon.com/architecture/icons/",
+      "read": "2026-11-14",
+      "text": "AWS Architecture Icons (https://aws.amazon.com/architecture/icons/): \"We allow customers and partners to use these toolkits and assets to create architecture diagrams.\" \"You can also put icons in materials like whitepapers, presentations, data sheets, and posters.\"\n\nAWS accepted the maintainer's request by email (14 Nov 2026) that Umlimator download these icons at its user's request: never bundled with Umlimator, downloaded only when you ask, from AWS's pinned address and checked by SHA-256, after these terms and your yes; kept in a cache on your machine; drawn unmodified, with the service's name beside each icon, and with this line wherever they are drawn:\n\nAmazon Web Services, AWS and the AWS service icons shown are trademarks of Amazon.com, Inc. or its affiliates.\n\nAWS's trademark guidelines: https://aws.amazon.com/trademark-guidelines/",
+      "sha256": "41b5824de75b5f421a3adfec8b36646ab81d1c52d9a3ddc435c7bed48841e84a"
+    },
+    "legal": "Amazon Web Services, AWS and the AWS service icons shown are trademarks of Amazon.com, Inc. or its affiliates.",
+    "names": {
+      "Amazon-VPC_NAT-Gateway": "Amazon VPC NAT Gateway"
+    },
+    "aliases": {}
   }
 }

@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """umlimator.py pack and a render's pack entries (milestone 4a, notes/milestone-4a.md §4), on a synthetic pack this test
 builds: two zips standing in for Google's (a coloured square, a white circle), one for Azure's (with a terms PDF, an id
-filed twice and a member named outside its folder), served from 127.0.0.1 with every request logged. Nothing here
-contacts a vendor or holds a vendor's icon.
+filed twice and a member named outside its folder), one laid out as AWS's (4a.8), served from 127.0.0.1 with every
+request logged. Nothing here contacts a vendor or holds a vendor's icon.
 
   python3 tests/packs.py
 """
-import atexit, functools, hashlib, http.server, io, json, os, shutil, subprocess, sys, tempfile, threading, zipfile
+import atexit, base64, functools, hashlib, http.server, io, json, os, shutil, subprocess, sys, tempfile, threading, zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -119,7 +119,21 @@ def kept(d):
 
 # ---------- the real rows ----------
 import re
-ok("rows#1 · icons/packs.json offers Google's and Azure's packs and no AWS row (decision 1)", sorted(REAL) == ["azure", "gcp"], sorted(REAL))
+ok("rows#1 · icons/packs.json offers Google's, Azure's and AWS's packs (AWS's since its acceptance of 14 Nov 2026, 4a.8)", sorted(REAL) == ["aws", "azure", "gcp"], sorted(REAL))
+A = REAL["aws"]
+ok("rows#5 · AWS's row: pinned by address, size and SHA-256; its terms carry its trademark line, which is its legal line",
+   A["zips"] == [{"url": "https://d1.awsstatic.com/onedam/marketing-channels/website/public/shared/architecture-icon-release/Icon-package_07312026.5846e92413caa21490223536cc97f1269e44fa92.zip",
+                  "bytes": 13988918, "sha256": "d2d166c453526471749d520e0db022c459abef759d2946cf2dd1d1c992dc6526"}]
+   and A["legal"] in A["terms"]["text"] and A["legal"].endswith("are trademarks of Amazon.com, Inc. or its affiliates.") and A["label"] == "2026-07-31", A["zips"])
+AP = lambda n: (m := re.fullmatch(A["icons"], n)) and m.group(1)
+ok("rows#6 · AWS's pattern: a service's 64 px icon and a resource's 48 px (light) icon give the id; other sizes, dark icons and macOS's copies none",
+   [AP(n) for n in ("Architecture-Service-Icons_07312026/Arch_Storage/64/Arch_Amazon-Simple-Storage-Service_64.svg",
+                    "Resource-Icons_07312026/Res_Networking-Content-Delivery/Res_Amazon-VPC_NAT-Gateway_48.svg",
+                    "Resource-Icons_07312026/Res_General-Icons/Res_48_Light/Res_Users_48_Light.svg",
+                    "Architecture-Service-Icons_07312026/Arch_Storage/32/Arch_Amazon-Simple-Storage-Service_32.svg",
+                    "Resource-Icons_07312026/Res_General-Icons/Res_48_Dark/Res_Users_48_Dark.svg",
+                    "__MACOSX/Architecture-Service-Icons_07312026/Arch_Storage/64/._Arch_Amazon-Simple-Storage-Service_64.svg")]
+   == ["Amazon-Simple-Storage-Service", "Amazon-VPC_NAT-Gateway", "Users", None, None, None])
 ok("rows#2 · each row's terms are pinned by the sha256 of their words, and its zips by https addresses",
    all(sha(r["terms"]["text"].encode()) == r["terms"]["sha256"] and all(z["url"].startswith("https://") for z in r["zips"]) for r in REAL.values()))
 ok("rows#3 · a member's path gives the pack's id, spaces as hyphens (§4.1)",
@@ -143,7 +157,7 @@ ok("test-only#2 · UMLIMATOR_TEST other than 1 does not unlock UMLIMATOR_PACKS",
 r = cli(d, "pack", "fetch", "gcp", "--accept-terms", "gcp@test-1", UMLIMATOR_OFFLINE="1")
 ok("offline#1 · UMLIMATOR_OFFLINE refuses, with no request", r.returncode and "UMLIMATOR_OFFLINE" in r.stderr and not log and not kept(d), (r.stderr, log))
 r = cli(d, "pack", "fetch", "aws")
-ok("aws#1 · the AWS pack is not offered", r.returncode and "AWS pack is not offered in this release" in r.stderr, r.stderr)
+ok("aws#1 · a packs file with no AWS row does not offer it", r.returncode and "AWS pack is not offered in this release" in r.stderr, r.stderr)
 r = cli(d, "pack", "fetch", "gcp")
 ok("yes#1 · no terminal and no flag: the terms are shown and nothing is requested",
    r.returncode and GT in r.stdout and "Umlimator is not affiliated" in r.stdout and "--accept-terms gcp@test-1" in r.stderr
@@ -290,6 +304,35 @@ b = bytearray(z.read_bytes()); b[len(b) // 2] ^= 1; z.write_bytes(bytes(b))
 icons, opened, err = probe(d)
 ok("render#2 · a cached zip changed by one byte is not read: no icon of that pack on the page",
    not [k for k in icons if k.startswith("gcp/")] and "azure/Test-Service" in icons and "pack fetch gcp" in err, (sorted(icons), err))
+
+# ---------- AWS (4a.8): a synthetic pack laid out as AWS's zip is ----------
+AWT = f"Synthetic AWS terms ({MARK}). " + REAL["aws"]["legal"]
+files["aws.zip"] = zipped({"Architecture-Service-Icons_0/Arch_Test/64/Arch_Amazon-Test-Service_64.svg": svg("#ff9900"),
+                           "Architecture-Service-Icons_0/Arch_Test/32/Arch_Amazon-Test-Service_32.svg": svg("#000001"),
+                           "__MACOSX/Architecture-Service-Icons_0/Arch_Test/64/._Arch_Amazon-Test-Service_64.svg": b"x",
+                           "Resource-Icons_0/Res_Test/Res_Amazon-Test_Thing_48.svg": svg("#8c4fff")})
+(served / "aws.zip").write_bytes(files["aws.zip"])
+d = t / "aws"
+d.mkdir()
+(d / "packs.json").write_text(json.dumps({"aws": {**REAL["aws"], "label": "test-a",
+    "zips": [{"url": f"{base}/aws.zip", "bytes": len(files["aws.zip"]), "sha256": sha(files["aws.zip"])}],
+    "terms": {"url": "https://example.invalid/aws", "read": "2026-11-14", "text": AWT, "sha256": sha(AWT.encode())},
+    "names": {}}}))  # Amazon-Test_Thing's name derived: hyphens and underscores as spaces
+r = cli(d, "pack", "fetch", "aws")
+ok("aws#2 · AWS's terms, its trademark line and the not-affiliated line are shown, and nothing is requested without a yes",
+   r.returncode and AWT in r.stdout and "not affiliated with, endorsed by or sponsored by Amazon Web Services" in r.stdout and "--accept-terms aws@test-a" in r.stderr
+   and not log and not kept(d), (r.stdout, r.stderr, log))
+r = cli(d, "pack", "fetch", "aws", "--accept-terms", "aws@test-a")
+ok("aws#3 · with the yes, the pinned zip is fetched and kept in the user's cache, the yes recorded",
+   r.returncode == 0 and log == ["/aws.zip"] and kept(d) == ["packs/aws/test-a/0.zip", "packs/aws/test-a/accepted.json"] and "2 icons" in r.stdout, (r.stdout, r.stderr, kept(d)))
+am = {"schemaVersion": 2, "nodes": [{"id": "s", "type": "aws.Service", "label": "Files", "props": {"icon": "Amazon-Test-Service"}},
+                                    {"id": "n", "type": "aws.Resource", "label": "NAT", "props": {"icon": "Amazon-Test_Thing"}}],
+      "edges": [], "views": [{"id": "v", "diagram": "aws", "nodeIds": ["s", "n"]}]}
+icons, opened, err = probe(d, am)
+ok("aws#4 · a render reads the AWS pack from the cache: its icons, unchanged, with their names, and AWS's trademark line; no socket",
+   icons.get("aws/") == {"legal": REAL["aws"]["legal"]} and icons.get("aws/Amazon-Test-Service", {}).get("name") == "Amazon Test Service"
+   and icons.get("aws/Amazon-Test_Thing", {}).get("name") == "Amazon Test Thing"
+   and base64.b64decode(icons["aws/Amazon-Test-Service"]["src"].split(",", 1)[1]) == svg("#ff9900") and not opened, (sorted(icons), opened, err))
 
 srv.shutdown()
 print("FAILED" if failed else "all pack checks passed")

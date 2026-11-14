@@ -11,13 +11,15 @@ import { ownersOn, readingOrder } from '../uml/owners.js';
    reroute off (§11). The icons come from the host's `icons` table, keyed `<pack>/<id>` (§4.5): the module never fetches one,
    draws it only through <image> from a data URL, scaled with meet, never clipped, filtered, masked, faded or transformed (S6);
    with none a 24 px outlined square, the glyph. A picture that draws a Google icon draws Google's legal line under it, inside
-   its bounds, and its legend and describe() end with it (S9). AWS is written and tested with its siblings and registered
-   only when CLOUD_AWS is on (decision 1, §4.7): the build drops this file's exports, so no public surface carries it. Ships
-   in lib/umlimator-all.js only. */
+   its bounds, and its legend and describe() end with it (S9); AWS's trademark line the same, wherever an AWS icon is drawn
+   (AWS's acceptance of 14 Nov 2026, work package 4a.8). AWS is registered since AWS accepted (CLOUD_AWS, decision 1, §4.7).
+   The build drops this file's exports, so no public surface carries the definitions. Ships in lib/umlimator-all.js only. */
 
-const CLOUD_AWS = false;
+const CLOUD_AWS = true;
 // Google's legal line, as icons/packs.json's gcp row holds it (tests/cloud.test.mjs keeps the two equal)
 const GCP_LEGAL = 'Google Cloud and the Google Cloud logo are trademarks of Google LLC.';
+// AWS's trademark line, as icons/packs.json's aws row holds it (the same test keeps the two equal)
+const AWS_LEGAL = 'Amazon Web Services, AWS and the AWS service icons shown are trademarks of Amazon.com, Inc. or its affiliates.';
 
 const CL_OBJ = x => x !== null && typeof x === 'object' && !Array.isArray(x), CL_ARR = x => (Array.isArray(x) ? x : []);
 const CL_HAS = x => x != null && x !== '';
@@ -27,11 +29,11 @@ const clPlural = (k, w) => `${k} ${k === 1 ? w : w + 's'}`;
 
 /* ---- the three families (model.md rows 26 to 28, §5.5): group kinds, where each may sit, the dashed ones ---- */
 const CL_FAM = {
-  aws: { title: 'an AWS diagram', group: 'aws.Group', key: 'groupType', items: { 'aws.Service': 'Service', 'aws.Resource': 'Resource' }, line: ['aws.Connection', 'Connection'],
+  aws: { title: 'an AWS diagram', legal: AWS_LEGAL, group: 'aws.Group', key: 'groupType', items: { 'aws.Service': 'Service', 'aws.Resource': 'Resource' }, line: ['aws.Connection', 'Connection'],
     kinds: { cloud: 'Cloud', account: 'Account', region: 'Region', 'availability-zone': 'Availability zone', vpc: 'VPC', 'public-subnet': 'Public subnet', 'private-subnet': 'Private subnet', 'security-group': 'Security group', generic: 'Group' },
     sits: { cloud: [], account: ['cloud', 'account'], region: ['cloud', 'account'], vpc: ['region'], 'availability-zone': ['vpc', 'region'], 'public-subnet': ['availability-zone', 'vpc'],
       'private-subnet': ['availability-zone', 'vpc'], 'security-group': ['public-subnet', 'private-subnet', 'vpc'] } },
-  gcp: { title: 'a Google Cloud diagram', group: 'gcp.Zone', key: 'zoneType', items: { 'gcp.Product': 'Product' }, user: 'gcp.User', line: ['gcp.Path', 'Path'],
+  gcp: { title: 'a Google Cloud diagram', legal: GCP_LEGAL, group: 'gcp.Zone', key: 'zoneType', items: { 'gcp.Product': 'Product' }, user: 'gcp.User', line: ['gcp.Path', 'Path'],
     kinds: { project: 'Project', region: 'Region', zone: 'Zone', network: 'Network', subnetwork: 'Subnetwork', generic: 'Group' },
     sits: { project: [], region: ['project'], network: ['project', 'region'], subnetwork: ['network'], zone: ['region', 'subnetwork'] } },
   azure: { title: 'an Azure diagram', group: 'azure.Group', key: 'groupType', items: { 'azure.Service': 'Service' }, line: ['azure.Connector', 'Connector'],
@@ -45,11 +47,11 @@ const clWord = (F, x) => (x.type === F.group ? clKindWord(F, x) : Object.hasOwn(
 const clThe = w => `the ${w === w.toUpperCase() ? w : w.toLowerCase()}`; // "the VPC", "the resource group"
 
 // a node's icon (S6, S8): its id, the table's entry for it (a data URL only, never markup) and the full name, from the table
-// or the id with hyphens as spaces; null with no props.icon
+// or the id with hyphens and underscores as spaces; null with no props.icon
 function clIcon(F, D, n) {
   const id = clProps(n).icon; if (typeof id !== 'string' || !id) return null;
   const T = CL_OBJ(D && D.icons) ? D.icons : {}, k = F.pack + '/' + id, e = Object.hasOwn(T, k) && CL_OBJ(T[k]) ? T[k] : {};
-  return { id, src: typeof e.src === 'string' && /^data:image\//.test(e.src) ? e.src : null, dark: e.dark === true, name: CL_HAS(e.name) ? String(e.name) : id.replace(/-/g, ' ') };
+  return { id, src: typeof e.src === 'string' && /^data:image\//.test(e.src) ? e.src : null, dark: e.dark === true, name: CL_HAS(e.name) ? String(e.name) : id.split(/[-_\s]+/).filter(Boolean).join(' ') };
 }
 // the host gave this family's pack: its legal entry or any icon of it (icon-missing reads only then)
 const clGiven = (F, D) => CL_OBJ(D && D.icons) && Object.keys(D.icons).some(k => k.startsWith(F.pack + '/'));
@@ -137,7 +139,7 @@ function clLegend(F, nodes, boxes, edges, legal) {
     ...kinds.map(b => clItem(F.kinds[b.gkind] || 'Group', 'a group, its kind in brackets', `<rect x="3" y="2" width="22" height="12" rx="3" fill="none" stroke="var(--um-muted)" stroke-width="1.4"${b.dashed ? ' stroke-dasharray="3 2"' : ''}/>`)),
     ...(nodes.some(n => n.shape === 'cloud-user') ? [clItem('User', 'a person who uses the system', '<circle cx="14" cy="5" r="3.5" fill="none" stroke="var(--um-muted)" stroke-width="1.4"/><path d="M7 15C7 10 21 10 21 15" fill="none" stroke="var(--um-muted)" stroke-width="1.4"/>')] : []),
     ...(edges.length ? [clItem(F.line[1], 'a request or a flow of data, to the arrow', '<g stroke="var(--um-muted)" stroke-width="1.4" fill="none"><path d="M2 8H25"/><path d="M17 4L26 8L17 12"/></g>')] : []),
-    ...(legal ? [`<span class="lgi cl-legal">${esc(GCP_LEGAL)}</span>`] : [])];
+    ...(legal ? [`<span class="lgi cl-legal">${esc(F.legal)}</span>`] : [])];
 }
 
 /* ---- the view laid out (§5) ---- */
@@ -155,10 +157,10 @@ const clGeo = F => ({ model, view, pos, memo }) => {
     aria: clLineName(F, e, I), ...(CL_OBJ(e.style) || typeof e.style === 'string' ? { style: e.style } : {}) }));
   const g = layoutTyped({ nodes, edges, ...(boxes.length ? { containers: boxes } : {}), direction: view.direction === 'down' ? 'down' : 'right',
     gap: 48, rgap: 56, labelGaps: true, repair: false, reroute: false }, memo);
-  // on a copy (§2.5): Google's legal line under the picture, inside its bounds, wherever a Google icon is drawn (S9)
-  const B = g.bounds, legal = F.pack === 'gcp' && nodes.some(n => n.img), tw = legal ? textW(GCP_LEGAL, 10) : 0;
+  // on a copy (§2.5): the vendor's legal line under the picture, inside its bounds, wherever its icon is drawn (S9; AWS's, 4a.8)
+  const B = g.bounds, legal = !!F.legal && nodes.some(n => n.img), tw = legal ? textW(F.legal, 10) : 0;
   const slots = [...g.nodes, ...CL_ARR(g.families)].map(n => ({ after: n.id, parent: null, x: n.x + n.w / 2, y: n.y + n.h / 2 })); // the palette's add hears the selection (profile.js's)
-  return { ...g, ...(legal ? { bounds: { ...B, w: Math.max(B.w, tw + 32), h: B.h + 18 }, legal: { x: B.x + 16, y: B.y + B.h + 4, text: GCP_LEGAL } } : {}),
+  return { ...g, ...(legal ? { bounds: { ...B, w: Math.max(B.w, tw + 32), h: B.h + 18 }, legal: { x: B.x + 16, y: B.y + B.h + 4, text: F.legal } } : {}),
     slots, legend: clLegend(F, g.nodes, boxes, edges, legal), order: [...readingOrder(pic), ...lines.map(e => e.id)] };
 };
 const clDraw = g => ({ under: '', over: g.legal ? `<text class="cl-legal" x="${r2(g.legal.x)}" y="${r2(g.legal.y)}" fill="var(--um-muted)" style="font:400 10px var(--um-sans)">${esc(g.legal.text)}</text>` : '' });
@@ -196,10 +198,10 @@ function clDescribe(F, model, viewId) {
   const v = CL_ARR(model && model.views).find(x => CL_OBJ(x) && x.id === viewId); if (!v) throw new Error(`umlimator: no view ${JSON.stringify(viewId)}`);
   const pic = clPic(F, model, v), I = clIndex(model), lines = clLinesOf(F, model, v, pic, I), box = new Map(pic.boxes.map(b => [b.id, b.aria]));
   const depth = id => { let d = 0; for (let o = pic.owner(id); o != null; o = pic.owner(o)) d++; return d; };
-  const legal = F.pack === 'gcp' && pic.ids.some(id => { const x = pic.at.get(id), ic = Object.hasOwn(F.items, x.type) && clIcon(F, model, x); return ic && ic.src; });
+  const legal = !!F.legal && pic.ids.some(id => { const x = pic.at.get(id), ic = Object.hasOwn(F.items, x.type) && clIcon(F, model, x); return ic && ic.src; });
   return [`${v.title || v.id}: ${F.title} of ${clPlural(pic.ids.length, 'element')} and ${clPlural(lines.length, 'connection')}.`,
     ...readingOrder(pic).map(id => '  '.repeat(depth(id)) + (box.get(id) ?? clNodeName(F, model, pic.at.get(id))) + '.'),
-    ...lines.map(e => clLineName(F, e, I) + '.'), ...(legal ? [GCP_LEGAL] : [])].join('\n');
+    ...lines.map(e => clLineName(F, e, I) + '.'), ...(legal ? [F.legal] : [])].join('\n');
 }
 
 /* ---- editing (§5.6) ---- */
@@ -257,6 +259,6 @@ function clDef(pack, F) {
 }
 const CLOUD_DEFS = Object.fromEntries(Object.entries(CL_FAM).map(([k, F]) => [k, clDef(k, F)]));
 const GCP_TYPE = registerDiagramType('gcp', CLOUD_DEFS.gcp), AZURE_TYPE = registerDiagramType('azure', CLOUD_DEFS.azure);
-if (CLOUD_AWS) registerDiagramType('aws', CLOUD_DEFS.aws); // off until AWS answers (decision 1); 4a.8 turns it on
+if (CLOUD_AWS) registerDiagramType('aws', CLOUD_DEFS.aws); // on since AWS accepted the maintainer's request (14 Nov 2026, 4a.8)
 
-export { CLOUD_AWS, CLOUD_DEFS, GCP_LEGAL, GCP_TYPE, AZURE_TYPE, CL_RULES };
+export { CLOUD_AWS, CLOUD_DEFS, GCP_LEGAL, AWS_LEGAL, GCP_TYPE, AZURE_TYPE, CL_RULES };

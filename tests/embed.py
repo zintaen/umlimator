@@ -51,7 +51,7 @@ tests/c4-views.html: C4's dynamic and deployment views (M2.7): examples/bookshop
   then each gesture by pointer and keyboard through apply().
 tests/mindmap.html: the mindmap (4a.4): examples/bookshop-opening-plan.json in both themes and three fonts (topics apart, texts inside, no branch
   curve through a topic, names, reading order, contrast), and each gesture by pointer and keyboard through apply(): N, F2, Alt + arrows, drops, Delete, Show.
-tests/cloud.html: the cloud family (4a.6): examples/bookshop-gcp.json and bookshop-azure.json, and docs/diagrams/examples/26-aws.json with aws registered from src/, in both themes,
+tests/cloud.html: the cloud family (4a.6): examples/bookshop-gcp.json and bookshop-azure.json, and bookshop-aws.json, in both themes,
   three fonts and both directions, with synthetic icons (S18), then each gesture by pointer and keyboard through apply().
 tests/m4a.html: milestone 4a's fixtures (4a.7): tests/mindmap-minimal.json, mindmap-stress.json, cloud-minimal.json and cloud-stress.json, every view in both themes and three fonts,
   cloud views right and down (none meeting, texts inside, no curve through a topic, each element in its group, vendor images untouched, Google's legal line, names,

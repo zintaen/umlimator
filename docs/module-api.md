@@ -4142,7 +4142,7 @@ fixtures, examples and documents come in 0.26.0 and 0.27.0, whose sections say w
 - **Size at release:** `lib/umlimator.js` is 186.2 kB (186,174 B) with `gzip -9`, 12.86% over 0.16.0 (the budget is
   15%). `lib/umlimator-all.js` is 590.2 kB (590,184 B). The npm package is 845 kB.
 
-## 0.26.0 (in progress): the mindmap; Google Cloud and Azure diagrams; icon packs fetched after the vendor's terms
+## 0.26.0 (in progress): the mindmap; Google Cloud, Azure and AWS diagrams; icon packs fetched after the vendor's terms
 
 Milestone 4a of the plan for 28 diagram types (`docs/diagrams/notes/milestone-4a.md`), merged to `main` before 0.26.0
 ships (after 0.25.0), provisional until then. Everything is additive: maps, every typed view released before and every
@@ -4191,7 +4191,7 @@ logo rows below, the three examples moved below, and the Bookshop atlas, which g
   may start or end at a group's border. Google's legal line under any picture that draws a Google icon, in its legend and
   `describe()`. Five rules (`group-kind`, `group-nesting`, `line-inside`, `icon-set`, `icon-missing`); a line between a
   group and what it holds is refused. The `aws` definition is built and tested with them, behind `CLOUD_AWS = false`:
-  not registered, on no surface of `lib/umlimator-all.js`.
+  not registered, on no surface of `lib/umlimator-all.js` until 4a.8.
 - **Fixtures, examples, atlas, docs (4a.7).** `docs/diagrams/examples/25-mindmap.json`, `27-gcp.json` and
   `28-azure.json` are `examples/bookshop-opening-plan.json`, `bookshop-gcp.json` and `bookshop-azure.json`
   (`check.mjs`'s `MOVED`), their `iconPacks` the pins' labels (`gcp` `2026-11-14`, `azure` `V25`), each cloud view's
@@ -4205,10 +4205,20 @@ logo rows below, the three examples moved below, and the Bookshop atlas, which g
   types gain the three types' vocabulary (`MindmapElementType`, `GcpElementType`, `GcpLineType`, `AzureElementType`,
   `AzureLineType`, `CloudElementProps`), `iconPacks` and the icons table's `name` and `legal`.
   `docs/conformance/mindmap.md`, `gcp.md` and `azure.md`.
+- **AWS, `aws` (4a.8).** AWS accepted the maintainer's request by email (14 Nov 2026), so the `aws` type, written and
+  tested with `gcp` and `azure` behind `CLOUD_AWS`, is on: `lib/umlimator-all.js` registers `aws.Group` (`groupType`),
+  `aws.Service`, `aws.Resource` (`props.icon`) and `aws.Connection`, drawn and edited as the cloud family is
+  (`docs/conformance/aws.md`). `icons/packs.json` gains the `aws` row: AWS's `Icon-package_07312026` zip pinned by
+  address, size and SHA-256, label `2026-07-31`, AWS's terms and its trademark line; `umlimator.py pack fetch aws` shows
+  the terms and asks a yes before any byte. AWS's trademark line, "Amazon Web Services, AWS and the AWS service icons
+  shown are trademarks of Amazon.com, Inc. or its affiliates.", is drawn under any picture that draws an AWS icon, inside
+  its bounds, and ends its legend and `describe()`, as Google's legal line does. `docs/diagrams/examples/26-aws.json` is
+  `examples/bookshop-aws.json`, its ids prefixed `aws-`, with `"iconPacks": { "aws": "2026-07-31" }`; with repair and
+  rerouting off its view keeps two crossings.
 
 What moves for a host that upgrades from 0.25.0:
 
-- **Nothing a map or an earlier type draws.** `lib/umlimator.js` draws the three types as plain cards with a warning,
+- **Nothing a map or an earlier type draws.** `lib/umlimator.js` draws the four types as plain cards with a warning,
   as it does every type it does not hold.
 - **Three logos move, one stops downloading:** a map naming `azuredevops`, `foundry` or `containerapps` draws them from
   the Azure pack once the user fetched it (`umlimator.py pack fetch azure`), and its card's sigil until then; `entra` is
@@ -4225,7 +4235,8 @@ What moves for a host that upgrades from 0.25.0:
   fetched pack lacks. `UMLIMATOR_NO_PACKS` (no pack entries), and `UMLIMATOR_PACKS` with `UMLIMATOR_TEST` (tests only).
 - **The examples moved.** `docs/diagrams/examples/25-mindmap.json`, `27-gcp.json` and `28-azure.json` are
   `examples/bookshop-opening-plan.json`, `bookshop-gcp.json` and `bookshop-azure.json`; Google's `iconPacks` label is
-  the pin's (`2026-11-14`, it said `2025`) and each cloud view has a caption. `26-aws.json` stays a target until 4a.8.
+  the pin's (`2026-11-14`, it said `2025`) and each cloud view has a caption.
+  `26-aws.json` is `examples/bookshop-aws.json` (4a.8).
   The atlas's stills and PDF on the site change: it holds 38 views with 4b.5's BPMN two, the opening plan in its views list.
 - **Decisions:** every recommendation of the note's §14; the choices each package took under the maintainer's standing
   approval (14 Nov 2026) are in the note's "As built" sections (§2.4, §3, §4.1, §5.7, §6.3, §7.3, §8.4, §10).
@@ -4234,7 +4245,7 @@ What moves for a host that upgrades from 0.25.0:
   model); an `update()` that changes only the `icons` table keeps the view's picture; no insertion bar while a mindmap
   topic is dragged; a view's `nodeIds` loses a deleted chain's ids one `splice` each (a 20,000-topic delete meets 100 ms
   only where they sit together, §2.4).
-- **Left out** (the note's §13): AWS in 0.26.0 (built, off until AWS answers, 4a.8); downloading packs from the module,
+- **Left out** (the note's §13): downloading packs from the module,
   the page or the MCP server; the vendors' group colours and diagram guidelines; icon search beyond the properties
   panel's field; older pack versions side by side; Mermaid's shapes drawn; folding a branch in place; a mindmap laid out
   down or radially; XMI, copy and paste, per-type `diff()` writers.

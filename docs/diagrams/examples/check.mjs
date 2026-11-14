@@ -44,7 +44,8 @@ export const MOVED = { '01-class.json': '../../../examples/sales-classes.json', 
   '16-requirement.json': '../../../examples/ebike-requirements.json', '17-block-definition.json': '../../../examples/ebike-blocks.json',
   '18-internal-block.json': '../../../examples/ebike-structure.json', '19-parametric.json': '../../../examples/ebike-range.json',
   '24-bpmn.json': '../../../examples/bookshop-order-to-shipment.json',
-  '25-mindmap.json': '../../../examples/bookshop-opening-plan.json', '27-gcp.json': '../../../examples/bookshop-gcp.json', '28-azure.json': '../../../examples/bookshop-azure.json' };
+  '25-mindmap.json': '../../../examples/bookshop-opening-plan.json', '27-gcp.json': '../../../examples/bookshop-gcp.json', '28-azure.json': '../../../examples/bookshop-azure.json',
+  '26-aws.json': '../../../examples/bookshop-aws.json' };
 
 // all 28 target examples, those still here and those that moved, in file order: [name, its URL]
 export function targets() {

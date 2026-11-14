@@ -641,8 +641,8 @@ With `UMLIMATOR_OFFLINE=1` the CLI fetches nothing: a logo not in the cache keep
 
 ### Cloud icon packs (0.26.0)
 
-The Google Cloud and Azure diagrams draw each vendor's own service icons, which umlimator never ships, never bundles and
-never downloads on its own. You fetch a pack yourself, once, with `umlimator.py pack fetch gcp` or `pack fetch azure`:
+The Google Cloud, Azure and AWS diagrams draw each vendor's own service icons, which umlimator never ships, never bundles and
+never downloads on its own. You fetch a pack yourself, once, with `umlimator.py pack fetch gcp`, `pack fetch azure` or `pack fetch aws`:
 
 - **The terms first.** The vendor's terms are shown in full, with the line below, before any byte of the pack is
   downloaded, and you type `yes`. With no terminal (an agent, a script), `--accept-terms gcp@2026-11-14` (the pack and its
@@ -660,7 +660,12 @@ never downloads on its own. You fetch a pack yourself, once, with `umlimator.py 
   picture and ends its description: "Google Cloud and the Google Cloud logo are trademarks of Google LLC."
 - **Logos from Microsoft's pack.** The logos `azuredevops`, `foundry` and `containerapps` are read from the Azure pack
   once you fetched it; `entra` is read from the cache if it is there. A render no longer downloads any of them.
-- **AWS** is not offered in this release: the AWS diagram is built and waits on AWS's answer to how its icons may be used.
+- **AWS.** `pack fetch aws` works the same way, from AWS's pinned `Icon-package_07312026` zip; AWS accepted this use by
+  email to the maintainer (14 Nov 2026). Wherever an AWS icon is drawn, AWS's trademark line is drawn under the picture
+  and ends its description: "Amazon Web Services, AWS and the AWS service icons shown are trademarks of Amazon.com, Inc.
+  or its affiliates."
+- **The only fetcher a user runs.** `tools/fetch_icons.py` is upstream's maintainer script, kept unmodified and not in
+  the npm package; it downloads without these pins, terms or yes, so it is not a way to get a pack.
 
 Umlimator is not affiliated with, endorsed by or sponsored by Amazon Web Services, Google or Microsoft.
 

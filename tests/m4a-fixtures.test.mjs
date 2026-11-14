@@ -6,13 +6,13 @@
 // that repair and reroute off leave (§11) and nothing else. Then §10.1's cases one by one, §11's budgets on the fixtures'
 // views all (CPU, best of five after a warm-up, CI's 1 s held, the 100 ms target printed), DoD 1 (the registry, the JSON
 // Schema and the types), the moved examples and the atlas's links, and §2.5: nothing this project publishes holds a vendor
-// icon. AWS's views are drawn by registering aws here from src/cloud/cloud.js (off in the build, §4.7). The icons are
+// icon. AWS's views are drawn by the build's own registration (src/cloud/cloud.js, CLOUD_AWS on since 4a.8). The icons are
 // synthetic data URLs the test builds: no vendor icon is committed or fetched (S18). tests/m4a.html draws every view in
 // Chrome under three fonts and both themes.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
-import { diagramOf, registerDiagramType } from '../src/core/registry.js';
+import { diagramOf } from '../src/core/registry.js';
 import { apply } from '../src/core/apply.js';
 import { textW } from '../src/core/text.js';
 import '../src/map/typed.js';
@@ -22,10 +22,9 @@ import { validate } from '../src/map/validate.js';
 import { describe } from '../src/map/insight.js';
 import { tablesOf } from '../src/page/print.js';
 import { mmProblems, mmRename, mmMoveTo, mmAdd, MM_TYPE } from '../src/mindmap/mindmap.js';
-import { CLOUD_DEFS, GCP_LEGAL } from '../src/cloud/cloud.js';
+import { GCP_LEGAL } from '../src/cloud/cloud.js';
 import { check as checkTarget, targets } from '../docs/diagrams/examples/check.mjs';
 
-registerDiagramType('aws', CLOUD_DEFS.aws); // AWS is off in the build (decision 1); its fixture views drawn from src/ (§4.7)
 const read = f => JSON.parse(readFileSync(new URL(f, import.meta.url), 'utf8'));
 const FIX = { 'mindmap-minimal': read('./mindmap-minimal.json'), 'mindmap-stress': read('./mindmap-stress.json'), 'cloud-minimal': read('./cloud-minimal.json'),
   'cloud-stress': read('./cloud-stress.json'), 'bookshop-opening-plan': read('../examples/bookshop-opening-plan.json'), 'bookshop-gcp': read('../examples/bookshop-gcp.json'),
@@ -215,7 +214,7 @@ test('the PDF\'s tables (DoD 7): a topic\'s word, depth and parent; a product\'s
   for (const w of ['Service', 'App Services', 'icon App-Services', 'in snet-apps [Subnet]']) assert.ok(az.includes(w), w);
 });
 
-test('the examples moved (§10.2): check.mjs\'s MOVED, clean, as the targets were; their iconPacks the pins\' labels; the atlas\'s Hosting topics open the cloud views; AWS\'s stays a target', () => {
+test('the examples moved (§10.2): check.mjs\'s MOVED, clean, as the targets were; their iconPacks the pins\' labels; the atlas\'s Hosting topics open the cloud views; AWS\'s moved by 4a.8', () => {
   const packs = read('../icons/packs.json');
   for (const [f, to, type] of [['25-mindmap.json', 'bookshop-opening-plan', 'mindmap'], ['27-gcp.json', 'bookshop-gcp', 'gcp'], ['28-azure.json', 'bookshop-azure', 'azure']]) {
     const [, url] = targets().find(([x]) => x === f);
@@ -224,7 +223,7 @@ test('the examples moved (§10.2): check.mjs\'s MOVED, clean, as the targets wer
     assert.deepEqual(validate(FIX[to]), [], to);
   }
   assert.deepEqual([FIX['bookshop-gcp'].iconPacks, FIX['bookshop-azure'].iconPacks], [{ gcp: packs.gcp.label }, { azure: packs.azure.label }]);
-  assert.ok(targets().find(([x]) => x === '26-aws.json')[1].href.endsWith('/docs/diagrams/examples/26-aws.json'), 'AWS waits for 4a.8');
+  assert.ok(targets().find(([x]) => x === '26-aws.json')[1].href.endsWith('/examples/bookshop-aws.json'), 'AWS moved (4a.8)');
   assert.equal(FIX['bookshop-opening-plan'].nodes.filter(n => n.opensView).length, 0, 'the standalone file opens nothing');
   const atlas = read('../examples/bookshop-atlas.json');
   assert.deepEqual(['mm-on-gcp', 'mm-on-azure'].map(id => atlas.nodes.find(n => n.id === id).opensView), ['gcp-on-gcp', 'az-on-azure']);
@@ -242,7 +241,7 @@ test('DoD 1: the registry holds mindmap, gcp and azure, and the JSON Schema and 
   }
   assert.ok(S.properties.iconPacks && /iconPacks\?: Record<string, string>/.test(dts));
   assert.ok(['MindmapElementType', 'GcpElementType', 'GcpLineType', 'AzureElementType', 'AzureLineType', 'CloudElementProps'].every(k => new RegExp(`export (type|interface) ${k} `).test(dts)));
-  assert.ok(!/aws\./.test(JSON.stringify(S.$defs.node.properties.type.examples)), 'AWS is not offered (4a.8)');
+  assert.ok(!/aws\./.test(JSON.stringify(S.$defs.node.properties.type.examples)), 'the schema\'s examples name no AWS type yet (AWS\'s vocabulary: a later package)');
 });
 
 // §2.5 (S18): nothing this project publishes holds a vendor icon. Map logos are data URLs in committed pages today, so

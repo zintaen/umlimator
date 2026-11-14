@@ -1,10 +1,10 @@
 <!doctype html>
-<!-- The cloud architecture family (4a.6) in headless Chrome (tests/embed.py), from ../src/ throughout (aws is off in the build and
-     registered here, notes/milestone-4a.md §4.7): examples/bookshop-gcp.json with a synthetic icons table (one icon white),
-     examples/bookshop-azure.json with none (glyphs and full names) and docs/diagrams/examples/26-aws.json with a table, drawn by render() in both themes, three fonts
+<!-- The cloud architecture family (4a.6) in headless Chrome (tests/embed.py), from ../src/ throughout (aws registered by
+     src/cloud/cloud.js since 4a.8, notes/milestone-4a.md §4.7): examples/bookshop-gcp.json with a synthetic icons table (one icon white),
+     examples/bookshop-azure.json with none (glyphs and full names) and examples/bookshop-aws.json with a table, drawn by render() in both themes, three fonts
      and both directions (cards and groups, texts inside their shapes, each element in its group, every vendor <image> with meet
      and nothing that crops, filters, masks, fades or transforms it, Google's legal line inside the picture under a Google icon
-     only, names, reading order, legend, contrast), then edited through the edit event and apply(), by pointer and by keyboard:
+     only and AWS's trademark line under an AWS icon, names, reading order, legend, contrast), then edited through the edit event and apply(), by pointer and by keyboard:
      the palette and N (into the group selected), F2, a line by L and by the handle (the canvas's L and handle end on cards
      only, so a line refused between a group and what it holds is tested in tests/cloud.test.mjs), the Owner field, a drop into a group, the icon and zone type fields, hide and delete
      (a group with what it holds, counted on the hint line). No vendor icon: the icons are synthetic data URLs (S18). -->
@@ -17,12 +17,10 @@
 <script type="module">
 import { render } from '../src/canvas/render.js';
 import { apply } from '../src/core/apply.js';
-import { registerDiagramType } from '../src/core/registry.js';
 import { validate } from '../src/map/validate.js';
 import '../src/map/typed.js';
 import '../src/typed/edit.js';
-import { CLOUD_DEFS, GCP_LEGAL } from '../src/cloud/cloud.js';
-registerDiagramType('aws', CLOUD_DEFS.aws);
+import { GCP_LEGAL, AWS_LEGAL } from '../src/cloud/cloud.js';
 const out = { ok: [], fail: [] };
 const check = (name, cond, info) => { document.title = name; if (cond) out.ok.push(name); else out.fail.push(name + (info === undefined ? '' : ': ' + JSON.stringify(info))); };
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
@@ -50,14 +48,14 @@ const blend = (top, bot) => [0, 1, 2].map(i => top[i] * top[3] + bot[i] * (1 - t
 const lum = c => { const f = v => v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]); };
 const ratio = (fg, bg) => { const [x, y] = [lum(blend(fg, bg)), lum(bg)].sort((p, q) => q - p); return +((x + 0.05) / (y + 0.05)).toFixed(2); };
 const css = (e, k) => rgba(getComputedStyle(e)[k]);
-const load = async f => (await fetch('../' + f)).json(); // the two moved to examples/ (4a.7); AWS's stays a target until 4a.8
+const load = async f => (await fetch('../' + f)).json(); // the three moved to examples/ (4a.7, 4a.8)
 // synthetic icons (S18): a coloured square, a white circle; the table the CLI builds (§4.5)
 const SQ = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><rect width="16" height="16" fill="#3367d6"/></svg>');
 const WH = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><circle cx="8" cy="8" r="7" fill="#fff"/></svg>');
-const table = (pack, m, white) => Object.fromEntries([...(pack === 'gcp' ? [['gcp/', { legal: GCP_LEGAL }]] : []),
+const table = (pack, m, white) => Object.fromEntries([...(pack === 'gcp' ? [['gcp/', { legal: GCP_LEGAL }]] : pack === 'aws' ? [['aws/', { legal: AWS_LEGAL }]] : []),
   ...m.nodes.filter(n => n.props && n.props.icon).map(n => [`${pack}/${n.props.icon}`, { src: n.props.icon === white ? WH : SQ, dark: n.props.icon === white, name: n.props.icon.replace(/-/g, ' ') }])]);
-const GCP = await load('examples/bookshop-gcp.json'), AZ = await load('examples/bookshop-azure.json'), AWS = await load('docs/diagrams/examples/26-aws.json');
-const CASES = [['gcp', { ...GCP, icons: table('gcp', GCP, 'Cloud-SQL') }, 'gcp-on-gcp', 9, 6, 9], ['azure', AZ, 'az-on-azure', 8, 6, 0], ['aws', { ...AWS, icons: table('aws', AWS, 'Amazon-RDS') }, 'on-aws', 15, 10, 15]];
+const GCP = await load('examples/bookshop-gcp.json'), AZ = await load('examples/bookshop-azure.json'), AWS = await load('examples/bookshop-aws.json');
+const CASES = [['gcp', { ...GCP, icons: table('gcp', GCP, 'Cloud-SQL') }, 'gcp-on-gcp', 9, 6, 9], ['azure', AZ, 'az-on-azure', 8, 6, 0], ['aws', { ...AWS, icons: table('aws', AWS, 'Amazon-RDS') }, 'aws-on-aws', 15, 10, 15]];
 // a vendor <image> and what holds it in its card: nothing that crops, filters, masks, fades or transforms it (§5.2)
 const untouched = img => { const bad = []; if (img.getAttribute('preserveAspectRatio') !== 'xMidYMid meet') bad.push('not meet');
   for (let e = img; e && !e.classList.contains('node'); e = e.parentElement) { const s = getComputedStyle(e);
@@ -84,8 +82,9 @@ try {
     check(`${tag}: every vendor <image> drawn with meet, never clipped, filtered, masked, faded or transformed`, !touched.length && all('.node image').every(i => /^data:image\//.test(i.getAttribute('href'))), touched);
     check(`${tag}: a white icon on the dark tile, a coloured one on the light`, !icons || (all('.node .n-logo.dark').length > 0 && all('.node .n-logo:not(.dark)').length > 0 && all('.node .n-logo').length === icons));
     const legal = pick('text.cl-legal'), vb = pick('svg').viewBox.baseVal;
-    if (fam === 'gcp') { const L = box(legal); check(`${tag}: Google's legal line under the picture, inside its bounds; the legend ends with it`, legal.textContent === GCP_LEGAL && L.x >= vb.x && L.y >= vb.y && L.x + L.w <= vb.x + vb.width && L.y + L.h <= vb.y + vb.height
-      && boxes.every(([, b]) => b.y + b.h < L.y) && all('.m-legend .lgi').at(-1).textContent === GCP_LEGAL, [L, [vb.x, vb.y, vb.width, vb.height]]); }
+    const LEG = { gcp: GCP_LEGAL, aws: AWS_LEGAL }[fam];
+    if (LEG) { const L = box(legal); check(`${tag}: the vendor's legal line under the picture, inside its bounds; the legend ends with it`, legal.textContent === LEG && L.x >= vb.x && L.y >= vb.y && L.x + L.w <= vb.x + vb.width && L.y + L.h <= vb.y + vb.height
+      && boxes.every(([, b]) => b.y + b.h < L.y) && all('.m-legend .lgi').at(-1).textContent === LEG, [L, [vb.x, vb.y, vb.width, vb.height]]); }
     else check(`${tag}: no Google legal line`, !legal && !pick('.m-legend').textContent.includes(GCP_LEGAL));
     if (fam === 'gcp') {
       check(`${tag}: names a screen reader reads`, pick('.node[data-id="gcp-api"]').getAttribute('aria-label') === 'Product Shop API, Cloud Run' && pick('.node[data-id="gcp-users"]').getAttribute('aria-label') === 'User Shoppers'

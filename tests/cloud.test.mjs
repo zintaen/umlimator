@@ -1,5 +1,5 @@
 // The cloud architecture family, aws, gcp and azure (work package 4a.6, notes/milestone-4a.md §5): the three definitions, AWS
-// behind CLOUD_AWS (registered here by the test, §4.7) and on no surface of lib/umlimator-all.js, the service card (an icon
+// registered since AWS accepted (CLOUD_AWS, 4a.8) and exported by no surface of lib/umlimator-all.js, the service card (an icon
 // only through <image> from a data URL, with meet and nothing that crops or alters it; the glyph without one), the full name,
 // groups as boxes titled with their kind, Google's legal line (its two copies equal; in the picture, the legend and
 // describe() wherever a Google icon is drawn), the validators, names, reading order, legend, the PDF's rows, the editing
@@ -19,13 +19,12 @@ import { mapContext } from '../src/map/context.js';
 import { validate } from '../src/map/validate.js';
 import { describe } from '../src/map/insight.js';
 import { svgOf } from '../src/draw/svg.js';
-import { CLOUD_AWS, CLOUD_DEFS, GCP_LEGAL } from '../src/cloud/cloud.js';
+import { CLOUD_AWS, CLOUD_DEFS, GCP_LEGAL, AWS_LEGAL } from '../src/cloud/cloud.js';
 
 const read = f => JSON.parse(readFileSync(new URL(f, import.meta.url)));
-const GCP = read('../examples/bookshop-gcp.json'), AZ = read('../examples/bookshop-azure.json'), AWS = read('../docs/diagrams/examples/26-aws.json');
-registerDiagramType('aws', CLOUD_DEFS.aws); // AWS is off in the build (decision 1); tested on every run from src/ (§4.7)
+const GCP = read('../examples/bookshop-gcp.json'), AZ = read('../examples/bookshop-azure.json'), AWS = read('../examples/bookshop-aws.json'); // moved by 4a.7 and 4a.8, AWS's ids prefixed aws-
 const T = { gcp: diagramOf({ diagram: 'gcp' }), azure: diagramOf({ diagram: 'azure' }), aws: diagramOf({ diagram: 'aws' }) };
-const TARGETS = [['gcp', GCP, 'gcp-on-gcp'], ['azure', AZ, 'az-on-azure'], ['aws', AWS, 'on-aws']];
+const TARGETS = [['gcp', GCP, 'gcp-on-gcp'], ['azure', AZ, 'az-on-azure'], ['aws', AWS, 'aws-on-aws']];
 const meets = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
 const inside = (o, f) => o.x >= f.x && o.y >= f.y && o.x + o.w <= f.x + f.w && o.y + o.h <= f.y + f.h;
 const withDir = (m, direction) => { const c = structuredClone(m); c.views[0].direction = direction; return c; };
@@ -35,7 +34,7 @@ const unid = s => s.replace(/\bg\d+-/g, 'g-');
 const SQ = 'data:image/svg+xml;base64,' + Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><rect width="16" height="16" fill="#3367d6"/></svg>').toString('base64');
 const WH = 'data:image/svg+xml;base64,' + Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><circle cx="8" cy="8" r="7" fill="#fff"/></svg>').toString('base64');
 // the table the CLI builds from a fetched pack (§4.5): every icon a model names, Google's legal entry with its pack
-const table = (pack, m, more = {}) => Object.fromEntries([...(pack === 'gcp' ? [['gcp/', { legal: GCP_LEGAL }]] : []),
+const table = (pack, m, more = {}) => Object.fromEntries([...(pack === 'gcp' ? [['gcp/', { legal: GCP_LEGAL }]] : pack === 'aws' ? [['aws/', { legal: AWS_LEGAL }]] : []),
   ...m.nodes.filter(n => n.props && n.props.icon).map(n => [`${pack}/${n.props.icon}`, { src: SQ, dark: false, name: n.props.icon.replace(/-/g, ' ') }]), ...Object.entries(more)]);
 const withIcons = (pack, m, more) => ({ ...structuredClone(m), icons: table(pack, m, more) });
 const ends = markup => [...markup.matchAll(/<g class="edge-g[^"]*" data-from="([^"]*)" data-to="([^"]*)" data-i="(\d+)">[\s\S]*?<path d="([^"]*)" class="edge/g)]
@@ -43,9 +42,10 @@ const ends = markup => [...markup.matchAll(/<g class="edge-g[^"]*" data-from="([
 const boxOff = (n, [x, y]) => { const dx = Math.max(n.x - x, 0, x - n.x - n.w), dy = Math.max(n.y - y, 0, y - n.y - n.h); return dx || dy ? Math.hypot(dx, dy) : Math.min(x - n.x, n.x + n.w - x, y - n.y, n.y + n.h - y); };
 const images = markup => [...markup.matchAll(/<image\b[^>]*>/g)].map(m => m[0]);
 
-test('the definitions: gcp and azure registered; aws written, tested and not registered by the module (CLOUD_AWS off); palettes, lines, fields, hooks, rules', () => {
-  assert.equal(CLOUD_AWS, false);
-  assert.ok(T.gcp && T.azure && T.aws && T.aws.name === 'aws', 'aws is registered here, by the test');
+test('the definitions: gcp, azure and aws registered by the module (CLOUD_AWS on, 4a.8); palettes, lines, fields, hooks, rules', () => {
+  assert.equal(CLOUD_AWS, true);
+  assert.ok(T.gcp && T.azure && T.aws === diagramOf({ diagram: 'aws' }) && T.aws.name === 'aws', 'aws registered by src/cloud/cloud.js');
+  assert.throws(() => registerDiagramType('aws', CLOUD_DEFS.aws), /registered already/);
   assert.deepEqual(T.gcp.elements.map(e => e.label), ['Project', 'Region', 'Zone', 'Network', 'Subnetwork', 'Group', 'Product', 'User']);
   assert.deepEqual(T.gcp.elements[1], { type: 'gcp.Zone', label: 'Region', props: { zoneType: 'region' } });
   assert.deepEqual(T.azure.elements.map(e => e.label), ['Subscription', 'Resource group', 'Region', 'Virtual network', 'Subnet', 'Group', 'Service']);
@@ -62,23 +62,24 @@ test('the definitions: gcp and azure registered; aws written, tested and not reg
   }
 });
 
-test('lib/umlimator-all.js neither exposes nor registers aws (§4.7): an aws view draws as plain cards with the registry\'s warning; gcp and azure draw', async () => {
+test('lib/umlimator-all.js registers aws and exports none of the family (§4.7, 4a.8): an aws view draws as its type, as gcp and azure do', async () => {
   const lib = await import('../lib/umlimator-all.js'), src = readFileSync(new URL('../lib/umlimator-all.js', import.meta.url), 'utf8');
   assert.deepEqual(Object.keys(lib).filter(k => /aws|cloud/i.test(k)), [], 'no export');
-  assert.ok(src.includes("const CLOUD_AWS = false;"), "the switch off"); assert.equal(src.split("registerDiagramType('aws'").length, 2, 'one aws registration'); assert.ok(src.includes("if (CLOUD_AWS) registerDiagramType('aws'"), 'behind the switch');
-  const w = lib.validate(AWS).filter(p => /diagram "aws" is not drawn by this release/.test(p.message));
-  assert.equal(w.length, 1, 'the registry\'s warning');
-  for (const m of [GCP, AZ]) assert.deepEqual(lib.validate(m), [], m.title);
-  const [plainAws, w2] = said(() => lib.layout(AWS, 'on-aws'));
-  assert.ok(lib.layout(GCP, 'gcp-on-gcp').families.length === 6 && plainAws.map === true && !plainAws.nodes.some(n => n.shape === 'cloud-card'), 'gcp laid out as its type; aws as plain map cards');
-  assert.deepEqual(w2, ['umlimator: view "on-aws": diagram "aws" is not drawn by this release; its nodes are drawn as plain cards']);
+  assert.ok(src.includes("const CLOUD_AWS = true;"), "the switch on"); assert.equal(src.split("registerDiagramType('aws'").length, 2, 'one aws registration');
+  for (const m of [GCP, AZ, AWS]) assert.deepEqual(lib.validate(m), [], m.title);
+  const [aws, w2] = said(() => lib.layout(AWS, 'aws-on-aws'));
+  assert.ok(lib.layout(GCP, 'gcp-on-gcp').families.length === 6 && !aws.map && aws.families.length === 10 && aws.nodes.filter(n => n.shape === 'cloud-card').length === 15, 'aws laid out as its type');
+  assert.deepEqual(w2, []);
   // and the module's core holds none of the family (risks.md C5)
   const core = readFileSync(new URL('../lib/umlimator.js', import.meta.url), 'utf8');
-  for (const k of ["registerDiagramType('gcp'", "SHAPE['cloud-card']", 'GCP_LEGAL']) { assert.ok(src.includes(k), k); assert.ok(!core.includes(k), k); }
+  for (const k of ["registerDiagramType('gcp'", "registerDiagramType('aws'", "SHAPE['cloud-card']", 'GCP_LEGAL', 'AWS_LEGAL']) { assert.ok(src.includes(k), k); assert.ok(!core.includes(k), k); }
 });
 
-test('Google\'s legal line: its two copies, icons/packs.json\'s and the type\'s, are equal (S9)', () => {
-  assert.equal(read('../icons/packs.json').gcp.legal, GCP_LEGAL);
+test('the legal lines: their two copies, icons/packs.json\'s and the type\'s, are equal (S9; AWS\'s trademark line, 4a.8)', () => {
+  const P = read('../icons/packs.json');
+  assert.equal(P.gcp.legal, GCP_LEGAL); assert.equal(P.aws.legal, AWS_LEGAL);
+  assert.match(AWS_LEGAL, /^Amazon Web Services, AWS .* are trademarks of Amazon\.com, Inc\. or its affiliates\.$/);
+  assert.ok(P.aws.terms.text.includes(AWS_LEGAL), 'AWS\'s terms, shown before the download, carry the line');
 });
 
 test('the three targets (rows 26 to 28) validate clean and lay out clean right and down: every line routed, no overlap, each in its group, ends on outlines; crossings pinned (repair and reroute off, §11)', () => {
@@ -103,8 +104,8 @@ test('the three targets (rows 26 to 28) validate clean and lay out clean right a
   console.log(`# 4a.6 targets, crossings: ${JSON.stringify(got)}`);
   assert.deepEqual(got, want);
   // Q8: a line from a group ends on its border: a subnet to a NAT gateway in a sibling subnet, the VPC to a service it does not hold
-  const g = layout(AWS, 'on-aws'), e = id => g.edges.find(x => x.id === id);
-  assert.ok(e('private-a-nat') && e('vpc-monitoring'), 'both drawn');
+  const g = layout(AWS, 'aws-on-aws'), e = id => g.edges.find(x => x.id === id);
+  assert.ok(e('aws-private-a-nat') && e('aws-vpc-monitoring'), 'both drawn');
 });
 
 test('groups (§5.3): boxes nested by parent, titled "<label> [<kind>]", dashed by kind (region, availability zone, zone); a group holding nothing shown is a closed card of that title', () => {
@@ -186,6 +187,21 @@ test('Google\'s legal line (S9): under a picture that draws a Google icon, insid
   assert.ok(!a.legal && images(mapContext(azi).buildView('az-on-azure').markup).length === 8 && !describe(azi, 'az-on-azure').includes(GCP_LEGAL), 'Azure\'s icons carry no Google line');
 });
 
+test('AWS\'s trademark line (4a.8, AWS\'s acceptance of 14 Nov 2026): under a picture that draws an AWS icon, inside its bounds; the legend and describe() end with it; none without one; never Google\'s', () => {
+  const m = withIcons('aws', AWS), g = layout(m, 'aws-on-aws'), bare = layout(AWS, 'aws-on-aws'), { markup } = mapContext(m).buildView('aws-on-aws');
+  assert.equal(g.legal.text, AWS_LEGAL);
+  assert.ok(g.legal.y + 3 <= g.bounds.y + g.bounds.h && g.bounds.h === bare.bounds.h + 18, 'inside its bounds');
+  assert.ok(markup.includes(`>${AWS_LEGAL}</text>`) && !markup.includes(GCP_LEGAL));
+  assert.ok(g.legend.at(-1).includes(AWS_LEGAL));
+  assert.equal(describe(m, 'aws-on-aws').split('\n').at(-1), AWS_LEGAL);
+  assert.ok(!bare.legal && !describe(AWS, 'aws-on-aws').includes(AWS_LEGAL), 'no icon, no line');
+  assert.equal(bare.nodes.find(n => n.id === 'aws-nat-a').name, 'Amazon VPC NAT Gateway', 'a derived name: hyphens and underscores as spaces');
+  // each icon drawn unmodified, its service name beside it
+  assert.equal(images(markup).length, 15); for (const i of images(markup)) assert.match(i, /preserveAspectRatio="xMidYMid meet"/);
+  const words = id => [...markup.split(`data-id="${id}"`)[1].split('</g></g>')[0].matchAll(/class="c-st cl-name"[^>]*>([^<]*)</g)].map(x => x[1]).join(' ');
+  for (const n of g.nodes.filter(n => n.img)) assert.equal(words(n.id), n.name, `${n.id}: the service name beside its icon`);
+});
+
 test('the layout is not edited after layoutTyped: drawn twice from one memo, the same markup (§2.5); a name arriving with a fetched pack lays the view out again', () => {
   const m = withIcons('gcp', GCP), memos = {}, first = mapContext(m, { memos }).buildView('gcp-on-gcp'), pts = JSON.stringify(memos['gcp-on-gcp'].g.edges.map(e => e.pts));
   const second = mapContext(m, { memos }).buildView('gcp-on-gcp');
@@ -217,7 +233,7 @@ test('describe(): the groups as an outline, each service with its full name, the
     '    Service CDN and routing, Front Door and CDN Profiles, icon not available.', '    Service Logs and alerts, Monitor, icon not available.']);
   assert.equal(d.at(-1), 'Connector logs, metrics from snet-apps to Logs and alerts.');
   assert.equal(d.length, 1 + 14 + 9);
-  assert.equal(describe(AWS, 'on-aws').split('\n')[0], 'Bookshop on AWS: an AWS diagram of 25 elements and 17 connections.');
+  assert.equal(describe(AWS, 'aws-on-aws').split('\n')[0], 'Bookshop on AWS: an AWS diagram of 25 elements and 17 connections.');
 });
 
 test('the PDF\'s tables (§5.7): a service\'s and a group\'s kind; a service\'s full name, icon id and group', () => {
@@ -226,7 +242,7 @@ test('the PDF\'s tables (§5.7): a service\'s and a group\'s kind; a service\'s 
   assert.deepEqual(T.azure.rows(m, v, 'az-api'), ['App Services', 'icon App-Services', 'in snet-apps [Subnet]']);
   assert.equal(T.azure.rows(m, v, 'az-vnet'), null);
   assert.deepEqual(T.gcp.rows(GCP, GCP.views[0], 'gcp-dns'), ['Cloud DNS', 'icon Cloud-DNS', 'in bookshop-prod [Project]']);
-  assert.equal(T.gcp.word(GCP, 'gcp-users'), 'User'); assert.equal(T.aws.word(AWS, 'nat-a'), 'Resource');
+  assert.equal(T.gcp.word(GCP, 'gcp-users'), 'User'); assert.equal(T.aws.word(AWS, 'aws-nat-a'), 'Resource');
 });
 
 // ---- §5.5: validators, each with a passing and a failing case, in each family
@@ -242,11 +258,11 @@ const BREAKS = {
     'line-inside': m => { m.edges.push({ id: 'in', type: 'azure.Connector', from: 'az-rg', to: 'az-rg' }); return ['in', 'az-rg']; },
     'icon-set': m => { m.nodes.find(n => n.id === 'az-db').props.icon = ''; return ['az-db']; },
     'icon-missing': m => { m.icons = { 'azure/Monitor': { src: SQ, name: 'Monitor' } }; return ['az-api', 'az-assets', 'az-db', 'az-front-door', 'az-queue', 'az-vault', 'az-worker']; } },
-  aws: { 'group-kind': m => { m.nodes.find(n => n.id === 'vpc').props.groupType = 'VPC'; return ['vpc']; },
-    'group-nesting': m => { m.nodes.find(n => n.id === 'vpc').parent = 'cloud'; return ['vpc', 'cloud']; },
-    'line-inside': m => { m.edges.push({ id: 'in', type: 'aws.Connection', from: 'db', to: 'vpc' }); return ['in', 'db', 'vpc']; },
-    'icon-set': m => { delete m.nodes.find(n => n.id === 'nat-a').props.icon; return ['nat-a']; },
-    'icon-missing': m => { m.icons = table('aws', m); delete m.icons['aws/Amazon-RDS']; return ['db', 'db-standby']; } },
+  aws: { 'group-kind': m => { m.nodes.find(n => n.id === 'aws-vpc').props.groupType = 'VPC'; return ['aws-vpc']; },
+    'group-nesting': m => { m.nodes.find(n => n.id === 'aws-vpc').parent = 'aws-cloud'; return ['aws-vpc', 'aws-cloud']; },
+    'line-inside': m => { m.edges.push({ id: 'in', type: 'aws.Connection', from: 'aws-db', to: 'aws-vpc' }); return ['in', 'aws-db', 'aws-vpc']; },
+    'icon-set': m => { delete m.nodes.find(n => n.id === 'aws-nat-a').props.icon; return ['aws-nat-a']; },
+    'icon-missing': m => { m.icons = table('aws', m); delete m.icons['aws/Amazon-RDS']; return ['aws-db', 'aws-db-standby']; } },
 };
 test('validators: each target breaks no rule; each rule fails on a model that breaks it, naming its rule and its elements, at its level, in validate() too', () => {
   for (const [fam, M] of TARGETS) {
@@ -281,7 +297,7 @@ test('the editing hooks: a line refused between a group and what it holds; the p
   assert.equal(T.gcp.edits.connect(GCP, v, 'gcp-network', 'gcp-lb'), null, 'a group and a service it does not hold');
   assert.deepEqual(T.gcp.edits.connect(GCP, v, 'gcp-region', 'gcp-db'), { error: 'A line cannot join the region and what it holds' });
   assert.deepEqual(T.gcp.edits.connect(GCP, v, 'gcp-db', 'gcp-network'), { error: 'A line cannot join the network and what it holds' });
-  assert.deepEqual(T.aws.edits.connect(AWS, AWS.views[0], 'vpc', 'vpc'), { error: 'A line cannot join the VPC and what it holds' });
+  assert.deepEqual(T.aws.edits.connect(AWS, AWS.views[0], 'aws-vpc', 'aws-vpc'), { error: 'A line cannot join the VPC and what it holds' });
   assert.deepEqual(T.azure.edits.connect(AZ, AZ.views[0], 'az-rg', 'az-api'), { error: 'A line cannot join the resource group and what it holds' });
   // add: a group's kind from its palette entry; into the group selected, else at the top
   const sub = T.gcp.elements.find(e => e.label === 'Subnetwork'), prod = T.gcp.elements.find(e => e.label === 'Product');
@@ -294,7 +310,7 @@ test('the editing hooks: a line refused between a group and what it holds; the p
   assert.deepEqual(T.gcp.edits.remove(GCP, v, ['gcp-region'], true), { commands: [{ op: 'delete', id: 'gcp-region' }], say: 'Deleted Region europe-west1 and the 8 elements it held' });
   assert.equal(T.gcp.edits.remove(GCP, v, ['gcp-region'], false), null);
   assert.equal(T.gcp.edits.remove(GCP, v, ['gcp-api'], true), null);
-  assert.equal(T.aws.edits.remove(AWS, AWS.views[0], ['az-a', 'az-b'], true).say, 'Deleted 2 groups and the 12 elements they held');
+  assert.equal(T.aws.edits.remove(AWS, AWS.views[0], ['aws-az-a', 'aws-az-b'], true).say, 'Deleted 2 groups and the 12 elements they held');
   const gone = apply(GCP, T.gcp.edits.remove(GCP, v, ['gcp-region'], true).commands);
   assert.ok(!gone.nodes.some(n => ['gcp-api', 'gcp-db', 'gcp-zone-c'].includes(n.id)) && !gone.edges.some(e => e.id === 'gcp-lb-api'), 'what it holds and their lines go');
   assert.deepEqual(validate(gone), []);
