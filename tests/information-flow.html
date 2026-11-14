@@ -1,6 +1,6 @@
 <!doctype html>
 <!-- The information flow diagram (M2.5, notes/milestone-2.md §7.4) in headless Chrome (tests/embed.py), from lib/umlimator-all.js:
-     docs/diagrams/examples/15-information-flow.json drawn by render() in both themes, three fonts and both directions (texts in
+     examples/order-information-flow.json drawn by render() in both themes, three fonts and both directions (texts in
      their shapes, no overlap, line ends on outlines, «flow» labels, names, reading order, contrast, the legend, axe's rules for
      role="img" written out), then edited through the edit event and apply(), by pointer and by keyboard: the palette's six
      entries and N, F2 on an element, a flow by L and the picker and by the handle (then a picker of what it conveys), a flow
@@ -44,7 +44,7 @@ const blend = (top, bot) => [0, 1, 2].map(i => top[i] * top[3] + bot[i] * (1 - t
 const lum = c => { const f = v => v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]); };
 const ratio = (fg, bg) => { const [x, y] = [lum(blend(fg, bg)), lum(bg)].sort((p, q) => q - p); return +((x + 0.05) / (y + 0.05)).toFixed(2); };
 const css = (e, k) => rgba(getComputedStyle(e)[k]);
-const MODEL = await (await fetch('../docs/diagrams/examples/15-information-flow.json')).json();
+const MODEL = await (await fetch('../examples/order-information-flow.json')).json();
 const LABELS = ['«flow» Card details', '«flow» Order', '«flow» Order, Card details', '«flow» Order, Receipt', '«flow» Receipt', '«flow» Stock level'];
 try {
   for (const theme of ['light', 'dark']) for (const [fname, family] of Object.entries(FONTS)) for (const direction of ['right', 'down']) {

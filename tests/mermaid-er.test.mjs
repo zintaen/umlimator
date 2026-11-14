@@ -26,7 +26,7 @@ const ONCE = /kept under ext\.mermaid\.comment|which column a foreign key refere
 const core = m => validate(m).filter(p => p.level === 'error' && !p.rule); // no core error (one with no rule: a dangling end, an id twice, ...)
 
 test('read(write(model)) is example 20, ids and references included, and nothing is reported', () => {
-  const m = json('../docs/diagrams/examples/20-entity-relationship.json'), text = write(m), back = read(text);
+  const m = json('../examples/bookshop-schema.json'), text = write(m), back = read(text);
   assert.deepEqual(back.report, [], text);
   assert.deepEqual(canon(back.model), canon(project(m, 'er-schema')), text);
   assert.doesNotMatch(text, /not written/);

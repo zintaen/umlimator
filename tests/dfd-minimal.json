@@ -1,0 +1,54 @@
+{
+ "schemaVersion": 2,
+ "title": "Data flow, minimal",
+ "nodes": [
+  {
+   "id": "customer",
+   "type": "dfd.ExternalEntity",
+   "label": "Customer"
+  },
+  {
+   "id": "take",
+   "type": "dfd.Process",
+   "label": "Take order",
+   "props": {
+    "number": "1"
+   }
+  },
+  {
+   "id": "orders",
+   "type": "dfd.DataStore",
+   "label": "Orders",
+   "props": {
+    "number": "D1"
+   }
+  }
+ ],
+ "edges": [
+  {
+   "id": "order",
+   "type": "dfd.DataFlow",
+   "from": "customer",
+   "to": "take",
+   "label": "order"
+  },
+  {
+   "id": "saved",
+   "type": "dfd.DataFlow",
+   "from": "take",
+   "to": "orders",
+   "label": "saved order"
+  }
+ ],
+ "views": [
+  {
+   "id": "v",
+   "diagram": "dfd",
+   "nodeIds": [
+    "customer",
+    "take",
+    "orders"
+   ]
+  }
+ ]
+}
