@@ -1,7 +1,193 @@
 <!doctype html>
+<!-- The requirement diagram (M3.2, notes/milestone-3.md §6, §13) in headless Chrome (tests/embed.py), from lib/umlimator-all.js: an
+     inline copy of docs/diagrams/examples/16-requirement.json drawn by render() in both themes, three fonts and both directions
+     (its frame round every card, texts inside their boxes, none overlapping, each owner before what it contains, the crosshair
+     at the owner, names, reading order, the legend, axe's rules written out, contrast), then edited through the edit event and
+     apply(), by pointer and by keyboard: the palette and N (a requirement into the one selected, said), F2 on a requirement
+     ("EB-1.4 Full range" sets its id and name) and on the frame (the view's title), lines by L and the picker and by the
+     handle (Containment re-owns, Satisfy added, one refused in its rule's words, Copy taking its supplier's text), the panel's
+     id, text, risk and verify method fields, hide and delete by key and by the panel's buttons. -->
 <meta charset="utf-8">
-<title>requirement: placeholder (milestone 3, M3.0)</title>
-<!-- notes/milestone-3.md M3.0: a placeholder that reports ok, so tests/embed.py lists the page once and the work package that
-     owns it (M3.2 requirement, M3.3 blocks, M3.4 internal-block, M3.5 parametric, M3.7 sysml) fills it without editing tests/embed.py -->
-<pre id="result"></pre>
-<script>document.getElementById('result').textContent = JSON.stringify({ ok: ['the placeholder page loads (filled by its work package)'], fail: [] });</script>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="../lib/umlimator-theme.css">
+<title>umlimator requirement diagram test</title>
+<body style="margin:0">
+<div id="m" style="width:1600px;height:1000px"></div>
+<script type="module">
+import { render, apply, validate } from '../lib/umlimator-all.js';
+const out = { ok: [], fail: [] };
+const check = (name, cond, info) => { document.title = name; if (cond) out.ok.push(name); else out.fail.push(name + (info === undefined ? '' : ': ' + JSON.stringify(info))); };
+const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+const el = document.getElementById('m');
+let sr, stage, ed = [];
+const pick = s => sr.querySelector(s), all = s => [...sr.querySelectorAll(s)];
+const centre = s => { const r = pick(s).getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; };
+const ptr = (target, type, [x, y]) => target.dispatchEvent(new PointerEvent(type, { clientX: x, clientY: y, button: 0, pointerId: 7, pointerType: 'mouse', bubbles: true, composed: true }));
+const key = (k, extra = {}, target = stage) => target.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true, composed: true, cancelable: true, ...extra }));
+const handleTo = ([x, y]) => { const c = pick('.um-handle circle'), r = c.getBoundingClientRect(); ptr(c, 'pointerdown', [r.x + r.width / 2, r.y + r.height / 2]); ptr(stage, 'pointermove', [x, y]); ptr(stage, 'pointerup', [x, y]); };
+const press = b => { const r = b.getBoundingClientRect(), at = [r.x + r.width / 2, r.y + r.height / 2]; ptr(b, 'pointerdown', at); ptr(b, 'pointerup', at); b.click(); };
+const hint = () => pick('.um-live').textContent;
+const click = s => { const g = pick(s), at = centre(s); ptr(g, 'pointerdown', at); ptr(g, 'pointerup', at); g.dispatchEvent(new MouseEvent('click', { clientX: at[0], clientY: at[1], bubbles: true, composed: true })); };
+const V = 'requirements';
+const mount = (model, opts = {}) => { el.innerHTML = ''; ed = []; const h = render(el, model, { view: V, on: { edit: e => ed.push(e) }, ...opts }); sr = el.querySelector('.umlimator').shadowRoot; stage = pick('.stage'); return h; };
+const errors = m => validate(m).filter(p => p.level === 'error');
+const last = () => ed[ed.length - 1];
+const gives = (name, cmds, test, base, errs = 0) => { const e = last(); let m = null; try { m = e && apply(base, e.commands); } catch (x) { m = null; }
+  check(name, !!e && same(e.commands, cmds) && !!m && test(m) && errors(m).length === errs, [e, m && errors(m)]); return m; };
+const change = (t, v) => { t.value = v; t.dispatchEvent(new Event('change', { bubbles: true })); };
+const box = g => { const r = g.getBBox(); return { x: r.x, y: r.y, w: r.width, h: r.height }; };
+const inside = (a, b) => a.x >= b.x - .5 && a.y >= b.y - .5 && a.x + a.w <= b.x + b.w + .5 && a.y + a.h <= b.y + b.h + .5;
+const FONTS = { serif: 'serif', sans: 'sans-serif', wide: 'monospace' };
+const rgba = s => { let m = /rgba?\(([^)]+)\)/.exec(s); if (m) { const p = m[1].split(/[ ,/]+/).filter(Boolean).map(Number); return [p[0] / 255, p[1] / 255, p[2] / 255, p.length > 3 ? p[3] : 1]; }
+  m = /color\(srgb ([^)]+)\)/.exec(s); if (m) { const p = m[1].split(/[ /]+/).filter(Boolean).map(Number); return [p[0], p[1], p[2], p.length > 3 ? p[3] : 1]; } return null; };
+const blend = (top, bot) => [0, 1, 2].map(i => top[i] * top[3] + bot[i] * (1 - top[3])).concat(1);
+const lum = c => { const f = v => v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]); };
+const ratio = (fg, bg) => { const [x, y] = [lum(blend(fg, bg)), lum(bg)].sort((p, q) => q - p); return +((x + 0.05) / (y + 0.05)).toFixed(2); };
+const css = (e, k) => rgba(getComputedStyle(e)[k]);
+// an inline copy of docs/diagrams/examples/16-requirement.json (M3.7 moves the file)
+const R = (id, label, parent, reqId, text) => ({ id, type: 'sysml.Requirement', label, ...(parent ? { parent } : {}), props: { reqId, text } });
+const Ln = (id, type, from, to) => ({ id, type: 'sysml.' + type, from, to });
+const CUT = 'Assistance shall fall away progressively and stop when the bike reaches 25 km/h.';
+const MODEL = { schemaVersion: 2, title: 'E-bike: requirements', root: V, nodes: [
+  R('spec', 'E-bike specification', null, 'EB-1', 'The e-bike shall serve as a shared city bike that riders hire from a dock and return to a dock.'),
+  R('assist', 'Pedal assistance', 'spec', 'EB-1.1', 'The motor shall assist the rider only while the rider is pedalling.'), R('cut-off', 'Assistance cut-off', 'assist', 'EB-1.1.1', CUT),
+  R('range', 'Range', 'spec', 'EB-1.2', 'A full charge shall give at least 60 km of assisted riding.'),
+  R('docking', 'Docking', 'spec', 'EB-1.3', 'The e-bike shall lock into a dock when it is returned and shall charge while it is docked.'),
+  R('lock-time', 'Locking time', 'docking', 'EB-1.3.1', 'The dock shall lock the e-bike within 2 s of the bike being pushed in.'),
+  R('capacity', 'Battery capacity', null, 'BAT-1', 'The battery shall store at least 500 Wh.'), R('assist-curve', 'Assistance curve', null, 'CTL-1', 'Assistance shall follow pedal torque and shall not exceed 250 W of continuous power.'),
+  R('legal-speed', 'Maximum assisted speed', null, 'REG-3', CUT), R('availability', 'All-day availability', null, 'CITY-4', 'A bike shall last a full day of hires on one charge.'),
+  { id: 'battery', type: 'sysml.Block', label: 'Battery' }, { id: 'controller', type: 'sysml.Block', label: 'Controller' }, { id: 'dock', type: 'sysml.Block', label: 'Dock' },
+  { id: 'range-ride', type: 'sysml.TestCase', label: 'Range ride on the test circuit' }, { id: 'roller-test', type: 'sysml.TestCase', label: 'Cut-off speed on the rollers' },
+  { id: 'why-500', type: 'uml.Comment', label: '60 km at 7 Wh/km takes 420 Wh; 500 Wh keeps 15 % in reserve', props: { stereotypes: ['rationale'] } }],
+edges: [Ln('capacity-from-range', 'DeriveReqt', 'capacity', 'range'), Ln('curve-refines-assist', 'Refine', 'assist-curve', 'assist'), Ln('range-traces-availability', 'Trace', 'range', 'availability'),
+  Ln('cut-off-copies-legal-speed', 'Copy', 'cut-off', 'legal-speed'), Ln('battery-satisfies-capacity', 'Satisfy', 'battery', 'capacity'), Ln('controller-satisfies-cut-off', 'Satisfy', 'controller', 'cut-off'),
+  Ln('dock-satisfies-lock-time', 'Satisfy', 'dock', 'lock-time'), Ln('ride-verifies-range', 'Verify', 'range-ride', 'range'), Ln('rollers-verify-cut-off', 'Verify', 'roller-test', 'cut-off'),
+  { id: 'why-500-link', type: 'uml.CommentLink', from: 'why-500', to: 'capacity' }],
+views: [{ id: V, diagram: 'sysml.requirement', title: 'E-bike requirements', parent: null, direction: 'down',
+  nodeIds: ['spec', 'assist', 'cut-off', 'range', 'docking', 'lock-time', 'capacity', 'assist-curve', 'legal-speed', 'availability', 'battery', 'controller', 'dock', 'range-ride', 'roller-test', 'why-500'] }] };
+const OWNED = [['spec', 'assist'], ['assist', 'cut-off'], ['spec', 'range'], ['spec', 'docking'], ['docking', 'lock-time']];
+try {
+  for (const theme of ['light', 'dark']) for (const [fname, family] of Object.entries(FONTS)) for (const direction of ['down', 'right']) {
+    document.documentElement.dataset.theme = theme; el.style.setProperty('--um-sans', family);
+    const M = structuredClone(MODEL); M.views[0].direction = direction;
+    const tag = `${theme}, ${fname}, ${direction}`, h = mount(M, { legend: true }), bad = [], nodes = all('.node');
+    const frame = pick('.family[data-family="requirements->frame"]'), F = frame && box(frame.querySelector('.family-box'));
+    check(`${tag}: sixteen cards and fifteen lines, five of them containment, in one frame`, nodes.length === 16 && all('.edge-g').length === 15 && !!frame && all('.family').length === 1
+      && OWNED.every(([o, c]) => !!pick(`.edge-g[data-from="${c}"][data-to="${o}"] path.edge[marker-end*="crosshair"]`)), [nodes.length, all('.edge-g').length]);
+    // every text in its box; no two cards overlap; each card inside the frame; the frame's tag above them
+    nodes.forEach(g => { const b = box(g.querySelector('.n-mask')); if (F && !inside(b, F)) bad.push(`${g.dataset.id} outside the frame`);
+      g.querySelectorAll('text').forEach(t => { if (!inside(box(t), b)) bad.push(`${g.dataset.id}: "${t.textContent}" spills`); }); });
+    const boxes = nodes.map(g => [g.dataset.id, box(g.querySelector('.n-mask'))]);
+    boxes.forEach(([a, p], i) => boxes.slice(i + 1).forEach(([b, q]) => { if (p.x < q.x + q.w && q.x < p.x + p.w && p.y < q.y + q.h && q.y < p.y + p.h) bad.push(`${a} and ${b} overlap`); }));
+    const tagBox = frame && box(frame.querySelector('.family-title')), top = Math.min(...boxes.map(([, b]) => b.y));
+    if (!tagBox || tagBox.y + tagBox.h > top) bad.push('the tag meets a card');
+    check(`${tag}: every text inside its box, none overlapping, every card in the frame under its tag`, !bad.length, bad);
+    const at = id => box(pick(`.node[data-id="${id}"] .n-mask`)), before = OWNED.filter(([o, c]) => !(direction === 'down' ? at(o).y + at(o).h < at(c).y : at(o).x + at(o).w < at(c).x));
+    check(`${tag}: each owner ${direction === 'down' ? 'above' : 'left of'} what it contains`, !before.length, before);
+    const rows = [...pick('.node[data-id="spec"]').querySelectorAll('.c-row')].map(t => t.textContent);
+    check(`${tag}: «requirement» over the name, the compartment's id and wrapped text`, pick('.node[data-id="spec"] .c-st').textContent === '«requirement»' && rows[0] === 'id = "EB-1"' && rows.length >= 3 && rows.join(' ').endsWith('to a dock."'), rows);
+    check(`${tag}: names a screen reader reads`, pick('.node[data-id="assist"]').getAttribute('aria-label') === 'Requirement Pedal assistance, EB-1.1: The motor shall assist the rider only while the rider is pedalling.'
+      && frame.getAttribute('aria-label') === 'Requirement diagram of model E-bike: requirements: E-bike requirements'
+      && pick('.edge-g[data-from="controller"][data-to="cut-off"] title').textContent === 'Satisfy from block Controller to requirement Assistance cut-off'
+      && pick('.edge-g[data-from="assist"][data-to="spec"] title').textContent === 'Containment of requirement Pedal assistance in requirement E-bike specification');
+    const order = all('.keys .node-key').map(k => k.dataset.node);
+    const tops = order.map(id => box(pick(`.node[data-id="${id}"] .n-mask`))), back = tops.filter((b, i) => i && b.y + b.h <= tops[i - 1].y); // none wholly above the one before it
+    check(`${tag}: reading order: the cards by their places, top to bottom, then the lines`, order.length === 16 && !back.length && all('.keys .um-key').length === 31, order);
+    const said = [...new Set(all('.e-lab, .labels text').map(t => t.textContent))].sort();
+    check(`${tag}: each relationship's keyword drawn`, same(said, ['«copy»', '«deriveReqt»', '«refine»', '«satisfy»', '«trace»', '«verify»']), said);
+    const legend = all('.m-legend b').map(b => b.textContent);
+    check(`${tag}: the legend keys the six relationships, containment and the comment link`, same(legend, ['Derive «deriveReqt»', 'Satisfy «satisfy»', 'Verify «verify»', 'Refine «refine»', 'Trace «trace»', 'Copy «copy»', 'Containment', 'Comment link']), legend);
+    const stageBg = css(pick('.stage'), 'backgroundColor'), low = [];
+    [...nodes, frame].forEach(g => g.querySelectorAll('text').forEach(t => { const c = ratio(css(t, 'fill'), stageBg); if (c < 4.5) low.push([g.dataset.id || 'frame', t.textContent, c]); }));
+    const strokes = all('.node .n-body, .edge-g path.edge, .family-box').map(b => ratio(css(b, 'stroke'), stageBg)).filter(c => c < 3);
+    check(`${tag}: contrast: texts 4.5:1, outlines, the frame and lines 3:1`, !low.length && !strokes.length, [low, strokes]);
+    // axe-core 4.14's rules for what is drawn as role="img", written out: svg-img-alt and role-img-alt (each has a name),
+    // nested-interactive (nothing inside one is a tab stop), and no other name inside a node
+    const svg = pick('.stage svg'), imgs = all('.stage svg [role="img"]'), noAlt = [], nested = [];
+    imgs.forEach(x => { if (!(x.getAttribute('aria-label') || '').trim()) noAlt.push(x.dataset.id || x.localName);
+      x.querySelectorAll('[tabindex], a[href], button, input, select, textarea').forEach(c => { if (c.tabIndex >= 0) nested.push(`${x.dataset.id} holds ${c.getAttribute('class') || c.localName}`); }); });
+    check(`${tag}: axe, written out: the drawing a named group, its 16 cards and the frame named images with no tab stop and no other name inside`,
+      svg.getAttribute('role') === 'group' && !!(svg.getAttribute('aria-label') || '').trim() && imgs.length === 17 && !noAlt.length && !nested.length && nodes.every(g => !g.querySelector('[aria-label]')), [imgs.length, noAlt, nested.slice(0, 4)]);
+    h.destroy();
+  }
+  document.documentElement.dataset.theme = 'light'; el.style.removeProperty('--um-sans');
+
+  // ---- editing (DoD 4), each gesture's commands applied with apply()
+  const BASE = MODEL;
+  let h = mount(BASE, { editable: true });
+  const panel = s => pick('.um-editor ' + s);
+  const PAL = ['Requirement', 'Test case', 'Block', 'Package', 'Comment'];
+  check('the palette: its five elements; the lines listed, Containment first', same(all('.um-editor .um-pal button').map(b => b.textContent), PAL)
+    && /Containment, Derive, Satisfy, Verify, Refine, Trace, Copy, Comment link/.test(panel('.um-pal .um-note').textContent), panel('.um-pal').textContent);
+  click('.node[data-id="range"] .c-name'); key('n'); pick('.um-rename').value = 'Brakes'; key('Enter', {}, pick('.um-rename'));
+  const m1 = gives('N with a requirement selected: a requirement added into it (edits.add)', [{ op: 'add', element: { id: 'requirement1', type: 'sysml.Requirement', label: 'Brakes', parent: 'range' }, view: V }],
+    m => m.views[0].nodeIds.includes('requirement1') && m.nodes.find(n => n.id === 'requirement1').parent === 'range', BASE);
+  check('…and the hint line says it has no id and how to give it one', /Requirement added in Range with no id: F2 with "EB-2 Brakes"/.test(hint()), hint());
+  [['sysml.TestCase'], ['sysml.Block'], ['uml.Package'], ['uml.Comment']].forEach(([t], i) => {
+    all('.um-editor .um-pal button')[i + 1].click(); pick('.um-rename').value = 'x' + i; key('Enter', {}, pick('.um-rename'));
+    const c = last().commands[0];
+    check(`the palette's ${PAL[i + 1]} button adds a ${t}`, last().commands.length === 1 && c.op === 'add' && c.element.type === t && c.element.label === 'x' + i && !errors(apply(BASE, last().commands)).length, last()); });
+  h.update(m1);
+  check('after update() the new requirement is drawn with its containment line to Range', !!pick('.node[data-id="requirement1"]') && !!pick('.edge-g[data-from="requirement1"][data-to="range"]'));
+  // F2 on a requirement: "EB-1.4 Full range" sets its id and name
+  click('.node[data-id="range"] .c-name'); key('F2');
+  check('F2 on a requirement: a field holding its name', pick('.um-rename') && pick('.um-rename').value === 'Range');
+  pick('.um-rename').value = 'EB-1.4 Full range'; key('Enter', {}, pick('.um-rename'));
+  const m2 = gives('F2: "EB-1.4 Full range" sets its name and its id (edits.rename)', [{ op: 'set', id: 'range', path: 'label', value: 'Full range' }, { op: 'set', id: 'range', path: 'props.reqId', value: 'EB-1.4' }],
+    m => m.nodes.find(n => n.id === 'range').props.reqId === 'EB-1.4', m1);
+  h.update(m2);
+  check('after update() the requirement reads its new name and id', pick('.node[data-id="range"] .c-name').textContent === 'Full range' && pick('.node[data-id="range"] .c-row').textContent === 'id = "EB-1.4"');
+  // F2 on the frame: the view's title
+  h.select({ type: 'container', id: 'requirements->frame', view: V }); key('F2'); const ft = pick('.um-rename');
+  check('F2 on the frame: a field', !!ft, hint());
+  if (ft) { ft.value = 'All requirements'; key('Enter', {}, ft); }
+  gives('F2 on the frame that is no element: set the view\'s title', [{ op: 'set', view: V, path: 'title', value: 'All requirements' }], m => m.views[0].title === 'All requirements', m2);
+  // lines by L, a name and the picker: Containment re-owns
+  click('.node[data-id="capacity"] .c-name'); key('l'); for (const c of 'docking') key(c); key('Enter');
+  const items = all('.um-pick button').map(b => b.textContent);
+  check('L, a name and Enter open the picker with the eight lines', same(items, ['Containment', 'Derive', 'Satisfy', 'Verify', 'Refine', 'Trace', 'Copy', 'Comment link']), items);
+  all('.um-pick button')[0].click();
+  const m3 = gives('picking Containment: reparent the requirement into the other (edits.connect)', [{ op: 'reparent', id: 'capacity', parent: 'docking' }], m => m.nodes.find(n => n.id === 'capacity').parent === 'docking', m2);
+  h.update(m3);
+  check('after update() its containment line is drawn, crosshair at Docking', !!pick('.edge-g[data-from="capacity"][data-to="docking"] path.edge[marker-end*="crosshair"]'));
+  // a satisfy between two blocks: refused in the rule's words, nothing emitted
+  const n0 = ed.length; click('.node[data-id="battery"] .c-name'); key('l'); for (const c of 'contr') key(c); key('Enter'); all('.um-pick button').find(b => b.textContent === 'Satisfy').click();
+  check('a satisfy to a block: nothing emitted, the rule said on the hint line', ed.length === n0 && /satisfy-ends: a satisfy runs to a requirement/.test(hint()), [ed.slice(n0), hint()]);
+  // the handle, by pointer: a satisfy from a block to a requirement
+  click('.node[data-id="dock"] .c-name'); handleTo(centre('.node[data-id="docking"] .n-mask')); press(all('.um-pick button').find(b => b.textContent === 'Satisfy'));
+  const ls = last().commands[0];
+  gives('the handle from a block to a requirement, Satisfy: one add', [{ op: 'add', element: { id: ls.element.id, type: 'sysml.Satisfy', from: 'dock', to: 'docking' }, view: V }], m => m.edges.some(e => e.type === 'sysml.Satisfy' && e.from === 'dock' && e.to === 'docking'), m3);
+  // Copy: the copy and the client's text, one transaction
+  click('.node[data-id="availability"] .c-name'); key('l'); for (const c of 'full') key(c); key('Enter'); all('.um-pick button').find(b => b.textContent === 'Copy').click();
+  const lc = last().commands[0];
+  gives('Copy: the copy added and the client takes its supplier\'s text, in one transaction', [{ op: 'add', element: { id: lc.element.id, type: 'sysml.Copy', from: 'availability', to: 'range' }, view: V },
+    { op: 'set', id: 'availability', path: 'props.text', value: 'A full charge shall give at least 60 km of assisted riding.' }], m => !validate(m).some(p => p.rule === 'copy-text'), m3);
+  // the panel's fields
+  click('.node[data-id="docking"] .c-name');
+  change(panel('[data-f="p:risk"]'), 'high');
+  gives('the risk field sets props.risk', [{ op: 'set', id: 'docking', path: 'props.risk', value: 'high' }], m => m.nodes.find(n => n.id === 'docking').props.risk === 'high', m3);
+  change(panel('[data-f="p:verifyMethod"]'), 'test');
+  gives('the verify method field sets props.verifyMethod', [{ op: 'set', id: 'docking', path: 'props.verifyMethod', value: 'test' }], m => m.nodes.find(n => n.id === 'docking').props.verifyMethod === 'test', m3);
+  change(panel('[data-f="p:reqId"]'), 'EB-1.9');
+  gives('the id field sets props.reqId', [{ op: 'set', id: 'docking', path: 'props.reqId', value: 'EB-1.9' }], m => m.nodes.find(n => n.id === 'docking').props.reqId === 'EB-1.9', m3);
+  change(panel('[data-f="p:text"]'), 'The e-bike shall lock into a dock.');
+  const m4 = gives('the text field sets props.text', [{ op: 'set', id: 'docking', path: 'props.text', value: 'The e-bike shall lock into a dock.' }], m => m.nodes.find(n => n.id === 'docking').props.text === 'The e-bike shall lock into a dock.', m3);
+  h.update(m4);
+  check('after update() the requirement draws its new text', [...pick('.node[data-id="docking"]').querySelectorAll('.c-row')].map(t => t.textContent).join(' ').includes('lock into a dock."'));
+  // hide, delete
+  h = mount(BASE, { editable: true });
+  const button = t => all('.um-editor button').find(b => b.textContent.trim() === t);
+  click('.node[data-id="availability"] .c-name'); key('Delete');
+  gives('Delete: hide the requirement from the view', [{ op: 'hide', id: 'availability', view: V }], m => !m.views[0].nodeIds.includes('availability'), BASE);
+  click('.node[data-id="assist"] .c-name'); key('Delete', { shiftKey: true });
+  gives('Shift + Delete: delete the requirement; what it contains is re-homed to its owner (edits.remove)', [{ op: 'reparent', id: 'cut-off', parent: 'spec' }, { op: 'delete', id: 'assist' }], m => !m.nodes.some(n => n.id === 'assist') && m.nodes.find(n => n.id === 'cut-off').parent === 'spec', BASE);
+  click('.node[data-id="dock"] .c-name'); button('Remove from view').click();
+  gives('Remove from view, in the properties panel: hide the block', [{ op: 'hide', id: 'dock', view: V }], m => !m.views[0].nodeIds.includes('dock'), BASE);
+  click('.node[data-id="roller-test"] .c-name'); button('Delete from model').click();
+  gives('Delete from model, in the properties panel: the test case and its verify', [{ op: 'delete', id: 'roller-test' }], m => !m.nodes.some(n => n.id === 'roller-test') && !m.edges.some(e => e.id === 'rollers-verify-cut-off'), BASE);
+  h.select({ type: 'edge', ids: ['range-traces-availability'], view: V }); key('Delete', { shiftKey: true });
+  gives('Shift + Delete on a trace: delete it', [{ op: 'delete', id: 'range-traces-availability' }], m => !m.edges.some(e => e.id === 'range-traces-availability'), BASE);
+  h.destroy();
+} catch (e) { out.fail.push('threw: ' + (e && e.stack || e)); }
+const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
+</script>
