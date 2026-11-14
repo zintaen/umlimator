@@ -896,7 +896,8 @@
    "id": "track",
    "type": "uml.UseCase",
    "label": "Track an order",
-   "parent": "bookshop"
+   "parent": "bookshop",
+   "opensView": "order-to-shipment"
   },
   {
    "id": "lane-worker",
@@ -2616,6 +2617,249 @@
    "parent": "az-snet-data",
    "props": {
     "icon": "SQL-Database"
+   }
+  },
+  {
+   "id": "bp-shopper",
+   "type": "bpmn.Participant",
+   "label": "Shopper"
+  },
+  {
+   "id": "basket-ready",
+   "type": "bpmn.StartEvent",
+   "label": "Basket is ready",
+   "parent": "bp-shopper",
+   "props": {
+    "definition": "none"
+   }
+  },
+  {
+   "id": "place-order",
+   "type": "bpmn.Task",
+   "label": "Place order",
+   "parent": "bp-shopper",
+   "props": {
+    "taskType": "user"
+   }
+  },
+  {
+   "id": "order-placed",
+   "type": "bpmn.EndEvent",
+   "label": "Order placed",
+   "parent": "bp-shopper",
+   "props": {
+    "definition": "none"
+   }
+  },
+  {
+   "id": "bp-bookshop",
+   "type": "bpmn.Participant",
+   "label": "Bookshop",
+   "members": [
+    {
+     "id": "bp-sales",
+     "type": "bpmn.Lane",
+     "label": "Sales"
+    },
+    {
+     "id": "bp-warehouse",
+     "type": "bpmn.Lane",
+     "label": "Warehouse"
+    }
+   ]
+  },
+  {
+   "id": "order-received",
+   "type": "bpmn.StartEvent",
+   "label": "Order received",
+   "parent": "bp-sales",
+   "props": {
+    "definition": "message"
+   }
+  },
+  {
+   "id": "bp-take-payment",
+   "type": "bpmn.Task",
+   "label": "Take payment",
+   "parent": "bp-sales",
+   "props": {
+    "taskType": "service"
+   }
+  },
+  {
+   "id": "payment-timeout",
+   "type": "bpmn.BoundaryEvent",
+   "label": "No answer in 2 minutes",
+   "parent": "bp-sales",
+   "props": {
+    "attachedTo": "bp-take-payment",
+    "cancelActivity": true,
+    "definition": "timer"
+   }
+  },
+  {
+   "id": "paid",
+   "type": "bpmn.ExclusiveGateway",
+   "label": "Paid?",
+   "parent": "bp-sales"
+  },
+  {
+   "id": "not-paid",
+   "type": "bpmn.ExclusiveGateway",
+   "parent": "bp-sales"
+  },
+  {
+   "id": "cancel-order",
+   "type": "bpmn.Task",
+   "label": "Cancel order",
+   "parent": "bp-sales",
+   "props": {
+    "taskType": "service",
+    "documentation": "Nothing to refund: no payment was taken."
+   }
+  },
+  {
+   "id": "order-cancelled",
+   "type": "bpmn.EndEvent",
+   "label": "Order cancelled",
+   "parent": "bp-sales",
+   "props": {
+    "definition": "terminate"
+   }
+  },
+  {
+   "id": "fork",
+   "type": "bpmn.ParallelGateway",
+   "parent": "bp-sales"
+  },
+  {
+   "id": "send-invoice",
+   "type": "bpmn.Task",
+   "label": "Email invoice",
+   "parent": "bp-sales",
+   "props": {
+    "taskType": "service",
+    "documentation": "Sent to the address the order gives."
+   }
+  },
+  {
+   "id": "pick-pack",
+   "type": "bpmn.SubProcess",
+   "label": "Pick and pack",
+   "parent": "bp-warehouse",
+   "opensView": "pick-and-pack"
+  },
+  {
+   "id": "bp-join",
+   "type": "bpmn.ParallelGateway",
+   "parent": "bp-warehouse"
+  },
+  {
+   "id": "courier-pickup",
+   "type": "bpmn.IntermediateCatchEvent",
+   "label": "Courier's pickup at 16:00",
+   "parent": "bp-warehouse",
+   "props": {
+    "definition": "timer",
+    "categoryValueRef": [
+     "dispatch"
+    ]
+   }
+  },
+  {
+   "id": "bp-ship",
+   "type": "bpmn.CallActivity",
+   "label": "Hand parcel to courier",
+   "parent": "bp-warehouse",
+   "props": {
+    "calledElement": "Ship parcel",
+    "categoryValueRef": [
+     "dispatch"
+    ]
+   }
+  },
+  {
+   "id": "shipping-notice",
+   "type": "bpmn.IntermediateThrowEvent",
+   "label": "Shipping notice sent",
+   "parent": "bp-sales",
+   "props": {
+    "definition": "message",
+    "categoryValueRef": [
+     "dispatch"
+    ]
+   }
+  },
+  {
+   "id": "order-shipped",
+   "type": "bpmn.EndEvent",
+   "label": "Order shipped",
+   "parent": "bp-sales",
+   "props": {
+    "definition": "none"
+   }
+  },
+  {
+   "id": "bp-payment-provider",
+   "type": "bpmn.Participant",
+   "label": "Payment provider"
+  },
+  {
+   "id": "bp-order",
+   "type": "bpmn.DataObject",
+   "label": "Order",
+   "parent": "bp-bookshop"
+  },
+  {
+   "id": "bp-stock",
+   "type": "bpmn.DataStoreReference",
+   "label": "Stock database",
+   "parent": "bp-bookshop"
+  },
+  {
+   "id": "note-card",
+   "type": "bpmn.TextAnnotation",
+   "label": "Card details go straight to the provider; the shop never sees them"
+  },
+  {
+   "id": "dispatch",
+   "type": "bpmn.Group",
+   "label": "Dispatch"
+  },
+  {
+   "id": "picking-starts",
+   "type": "bpmn.StartEvent",
+   "label": "Picking starts",
+   "parent": "pick-pack",
+   "props": {
+    "definition": "none"
+   }
+  },
+  {
+   "id": "pick-books",
+   "type": "bpmn.Task",
+   "label": "Pick books from the shelves",
+   "parent": "pick-pack",
+   "props": {
+    "taskType": "user"
+   }
+  },
+  {
+   "id": "pack-parcel",
+   "type": "bpmn.Task",
+   "label": "Pack and label parcel",
+   "parent": "pick-pack",
+   "props": {
+    "taskType": "none"
+   }
+  },
+  {
+   "id": "parcel-packed",
+   "type": "bpmn.EndEvent",
+   "label": "Parcel packed",
+   "parent": "pick-pack",
+   "props": {
+    "definition": "none"
    }
   }
  ],
@@ -4567,6 +4811,186 @@
    "from": "az-snet-apps",
    "to": "az-monitor",
    "label": "logs, metrics"
+  },
+  {
+   "id": "f-basket",
+   "type": "bpmn.SequenceFlow",
+   "from": "basket-ready",
+   "to": "place-order"
+  },
+  {
+   "id": "f-placed",
+   "type": "bpmn.SequenceFlow",
+   "from": "place-order",
+   "to": "order-placed"
+  },
+  {
+   "id": "f-received",
+   "type": "bpmn.SequenceFlow",
+   "from": "order-received",
+   "to": "bp-take-payment"
+  },
+  {
+   "id": "bp-f-charged",
+   "type": "bpmn.SequenceFlow",
+   "from": "bp-take-payment",
+   "to": "paid"
+  },
+  {
+   "id": "bp-f-paid",
+   "type": "bpmn.SequenceFlow",
+   "from": "paid",
+   "to": "fork",
+   "label": "yes"
+  },
+  {
+   "id": "bp-f-declined",
+   "type": "bpmn.SequenceFlow",
+   "from": "paid",
+   "to": "not-paid",
+   "label": "no"
+  },
+  {
+   "id": "f-timeout",
+   "type": "bpmn.SequenceFlow",
+   "from": "payment-timeout",
+   "to": "not-paid"
+  },
+  {
+   "id": "f-cancel",
+   "type": "bpmn.SequenceFlow",
+   "from": "not-paid",
+   "to": "cancel-order"
+  },
+  {
+   "id": "f-cancelled",
+   "type": "bpmn.SequenceFlow",
+   "from": "cancel-order",
+   "to": "order-cancelled"
+  },
+  {
+   "id": "bp-f-to-pick",
+   "type": "bpmn.SequenceFlow",
+   "from": "fork",
+   "to": "pick-pack"
+  },
+  {
+   "id": "f-to-invoice",
+   "type": "bpmn.SequenceFlow",
+   "from": "fork",
+   "to": "send-invoice"
+  },
+  {
+   "id": "bp-f-packed",
+   "type": "bpmn.SequenceFlow",
+   "from": "pick-pack",
+   "to": "bp-join"
+  },
+  {
+   "id": "f-invoiced",
+   "type": "bpmn.SequenceFlow",
+   "from": "send-invoice",
+   "to": "bp-join"
+  },
+  {
+   "id": "bp-f-wait",
+   "type": "bpmn.SequenceFlow",
+   "from": "bp-join",
+   "to": "courier-pickup"
+  },
+  {
+   "id": "f-pickup",
+   "type": "bpmn.SequenceFlow",
+   "from": "courier-pickup",
+   "to": "bp-ship"
+  },
+  {
+   "id": "f-handed",
+   "type": "bpmn.SequenceFlow",
+   "from": "bp-ship",
+   "to": "shipping-notice"
+  },
+  {
+   "id": "f-shipped",
+   "type": "bpmn.SequenceFlow",
+   "from": "shipping-notice",
+   "to": "order-shipped"
+  },
+  {
+   "id": "f-pick",
+   "type": "bpmn.SequenceFlow",
+   "from": "picking-starts",
+   "to": "pick-books"
+  },
+  {
+   "id": "f-pack",
+   "type": "bpmn.SequenceFlow",
+   "from": "pick-books",
+   "to": "pack-parcel"
+  },
+  {
+   "id": "bp-f-done",
+   "type": "bpmn.SequenceFlow",
+   "from": "pack-parcel",
+   "to": "parcel-packed"
+  },
+  {
+   "id": "m-order",
+   "type": "bpmn.MessageFlow",
+   "from": "place-order",
+   "to": "order-received",
+   "label": "Order"
+  },
+  {
+   "id": "bp-m-charge",
+   "type": "bpmn.MessageFlow",
+   "from": "bp-take-payment",
+   "to": "bp-payment-provider",
+   "label": "Charge request"
+  },
+  {
+   "id": "m-result",
+   "type": "bpmn.MessageFlow",
+   "from": "bp-payment-provider",
+   "to": "bp-take-payment",
+   "label": "Payment result"
+  },
+  {
+   "id": "m-notice",
+   "type": "bpmn.MessageFlow",
+   "from": "shipping-notice",
+   "to": "bp-shopper",
+   "label": "Shipping notice"
+  },
+  {
+   "id": "d-order-out",
+   "type": "bpmn.DataAssociation",
+   "from": "order-received",
+   "to": "bp-order"
+  },
+  {
+   "id": "d-order-in",
+   "type": "bpmn.DataAssociation",
+   "from": "bp-order",
+   "to": "pick-pack"
+  },
+  {
+   "id": "d-stock-read",
+   "type": "bpmn.DataAssociation",
+   "from": "bp-stock",
+   "to": "pick-pack"
+  },
+  {
+   "id": "d-stock-write",
+   "type": "bpmn.DataAssociation",
+   "from": "pick-pack",
+   "to": "bp-stock"
+  },
+  {
+   "id": "a-note-card",
+   "type": "bpmn.Association",
+   "from": "note-card",
+   "to": "bp-take-payment"
   }
  ],
  "views": [
@@ -5833,6 +6257,52 @@
     "az-worker",
     "az-snet-data",
     "az-db"
+   ]
+  },
+  {
+   "id": "order-to-shipment",
+   "diagram": "bpmn",
+   "title": "From order to shipment",
+   "parent": null,
+   "nodeIds": [
+    "bp-shopper",
+    "basket-ready",
+    "place-order",
+    "order-placed",
+    "bp-bookshop",
+    "order-received",
+    "bp-take-payment",
+    "payment-timeout",
+    "paid",
+    "not-paid",
+    "cancel-order",
+    "order-cancelled",
+    "fork",
+    "send-invoice",
+    "pick-pack",
+    "bp-join",
+    "courier-pickup",
+    "bp-ship",
+    "shipping-notice",
+    "order-shipped",
+    "bp-payment-provider",
+    "bp-order",
+    "bp-stock",
+    "note-card",
+    "dispatch"
+   ]
+  },
+  {
+   "id": "pick-and-pack",
+   "diagram": "bpmn",
+   "title": "Pick and pack",
+   "parent": "order-to-shipment",
+   "subject": "pick-pack",
+   "nodeIds": [
+    "picking-starts",
+    "pick-books",
+    "pack-parcel",
+    "parcel-packed"
    ]
   }
  ],

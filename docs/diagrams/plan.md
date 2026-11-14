@@ -106,7 +106,8 @@ src/uml/ ...   one folder per family: definitions, validators, describe writers;
                (milestone 2: src/er/, src/flowchart/, src/dfd/, src/c4/ with c4.js and views.js; uml/information.js)
                (milestone 3: src/sysml/ with sysml.js, the table and projection, and requirement.js, blocks.js, internal.js, parametric.js)
                (milestone 4a: src/mindmap/ and src/cloud/, one file for the AWS, Google Cloud and Azure family)
-src/readers/   one file per source language and diagram; milestone 2's: mermaid-er, mermaid-flowchart, structurizr (JSON), dbml (an adapter over @dbml/core's parsed model); milestone 3's: mermaid-requirement (a reader and a writer); milestone 4a's: mermaid-mindmap
+               (milestone 4b: src/bpmn/ with notation.js and process.js)
+src/readers/   one file per source language and diagram; milestone 2's: mermaid-er, mermaid-flowchart, structurizr (JSON), dbml (an adapter over @dbml/core's parsed model); milestone 3's: mermaid-requirement (a reader and a writer); milestone 4a's: mermaid-mindmap; milestone 4b's: bpmn-xml (an adapter over a bpmn-moddle the caller passes)
 lib/           built and committed: umlimator.js (core and map), umlimator-<family>.js, umlimator-all.js
 ```
 

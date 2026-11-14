@@ -1,0 +1,1873 @@
+{
+ "schemaVersion": 2,
+ "title": "BPMN, stress",
+ "nodes": [
+  {
+   "id": "ec-shop",
+   "type": "bpmn.Participant",
+   "label": "Shop",
+   "props": {
+    "processRef": "shop-orders",
+    "documentation": "The shop's own process."
+   },
+   "members": [
+    {
+     "id": "ec-front",
+     "type": "bpmn.Lane",
+     "label": "Front desk"
+    },
+    {
+     "id": "ec-back",
+     "type": "bpmn.Lane",
+     "label": "Back office"
+    },
+    {
+     "id": "ec-back-a",
+     "type": "bpmn.Lane",
+     "label": "Stores",
+     "parent": "ec-back"
+    },
+    {
+     "id": "ec-back-a1",
+     "type": "bpmn.Lane",
+     "label": "Packing",
+     "parent": "ec-back-a"
+    },
+    {
+     "id": "ec-empty",
+     "type": "bpmn.Lane",
+     "label": "Returns"
+    }
+   ]
+  },
+  {
+   "id": "ec-start",
+   "type": "bpmn.StartEvent",
+   "label": "Every morning",
+   "parent": "ec-front",
+   "props": {
+    "definition": "timer"
+   }
+  },
+  {
+   "id": "ec-check",
+   "type": "bpmn.Task",
+   "label": "Check the order",
+   "parent": "ec-front",
+   "props": {
+    "taskType": "user",
+    "documentation": "By hand, against the stock list.",
+    "categoryValueRef": [
+     "ec-grp"
+    ]
+   }
+  },
+  {
+   "id": "ec-late",
+   "type": "bpmn.BoundaryEvent",
+   "label": "Too late",
+   "parent": "ec-front",
+   "props": {
+    "definition": "timer",
+    "attachedTo": "ec-check",
+    "cancelActivity": true
+   }
+  },
+  {
+   "id": "ec-ping",
+   "type": "bpmn.BoundaryEvent",
+   "label": "Customer asks",
+   "parent": "ec-front",
+   "props": {
+    "definition": "message",
+    "attachedTo": "ec-check",
+    "cancelActivity": false
+   }
+  },
+  {
+   "id": "ec-gw",
+   "type": "bpmn.ExclusiveGateway",
+   "label": "Is every book in this order in stock now?",
+   "parent": "ec-front"
+  },
+  {
+   "id": "ec-pay",
+   "type": "bpmn.Task",
+   "label": "Take payment",
+   "parent": "ec-front",
+   "props": {
+    "taskType": "service"
+   }
+  },
+  {
+   "id": "ec-reply",
+   "type": "bpmn.IntermediateCatchEvent",
+   "label": "Bank replies",
+   "parent": "ec-front",
+   "props": {
+    "definition": "message"
+   }
+  },
+  {
+   "id": "ec-fork",
+   "type": "bpmn.ParallelGateway",
+   "parent": "ec-front"
+  },
+  {
+   "id": "ec-sub",
+   "type": "bpmn.SubProcess",
+   "label": "Pack the books",
+   "parent": "ec-back-a1",
+   "opensView": "ec-inside"
+  },
+  {
+   "id": "ec-sub-start",
+   "type": "bpmn.StartEvent",
+   "label": "Packing starts",
+   "parent": "ec-sub",
+   "props": {
+    "definition": "none"
+   }
+  },
+  {
+   "id": "ec-sub-task",
+   "type": "bpmn.Task",
+   "label": "Wrap",
+   "parent": "ec-sub",
+   "props": {
+    "taskType": "none"
+   }
+  },
+  {
+   "id": "ec-sub-end",
+   "type": "bpmn.EndEvent",
+   "label": "Packed",
+   "parent": "ec-sub",
+   "props": {
+    "definition": "none"
+   }
+  },
+  {
+   "id": "ec-sub-late",
+   "type": "bpmn.BoundaryEvent",
+   "label": "Packing overdue",
+   "parent": "ec-back-a1",
+   "props": {
+    "definition": "timer",
+    "attachedTo": "ec-sub",
+    "cancelActivity": false
+   }
+  },
+  {
+   "id": "ec-call",
+   "type": "bpmn.CallActivity",
+   "label": "Reserve stock",
+   "parent": "ec-back-a",
+   "props": {
+    "calledElement": "Reserve"
+   }
+  },
+  {
+   "id": "ec-refused",
+   "type": "bpmn.BoundaryEvent",
+   "label": "Stock refused",
+   "parent": "ec-back-a",
+   "props": {
+    "definition": "message",
+    "attachedTo": "ec-call",
+    "cancelActivity": true
+   }
+  },
+  {
+   "id": "ec-join",
+   "type": "bpmn.ParallelGateway",
+   "parent": "ec-back"
+  },
+  {
+   "id": "ec-milestone",
+   "type": "bpmn.IntermediateThrowEvent",
+   "label": "Ready",
+   "parent": "ec-back",
+   "props": {
+    "definition": "none"
+   }
+  },
+  {
+   "id": "ec-one",
+   "type": "bpmn.ExclusiveGateway",
+   "label": "Pass",
+   "parent": "ec-back"
+  },
+  {
+   "id": "ec-throw",
+   "type": "bpmn.IntermediateThrowEvent",
+   "label": "Shipping notice sent to the customer now",
+   "parent": "ec-back",
+   "props": {
+    "definition": "message"
+   }
+  },
+  {
+   "id": "ec-end",
+   "type": "bpmn.EndEvent",
+   "label": "Notified",
+   "parent": "ec-back",
+   "props": {
+    "definition": "message"
+   }
+  },
+  {
+   "id": "ec-stop",
+   "type": "bpmn.EndEvent",
+   "label": "Stopped",
+   "parent": "ec-front",
+   "props": {
+    "definition": "terminate"
+   }
+  },
+  {
+   "id": "ec-wait",
+   "type": "bpmn.IntermediateCatchEvent",
+   "label": "A day later",
+   "parent": "ec-front",
+   "props": {
+    "definition": "timer"
+   }
+  },
+  {
+   "id": "ec-done",
+   "type": "bpmn.EndEvent",
+   "label": "Answered",
+   "parent": "ec-front",
+   "props": {
+    "definition": "none"
+   }
+  },
+  {
+   "id": "ec-loose",
+   "type": "bpmn.Task",
+   "label": "Tidy up",
+   "parent": "ec-shop",
+   "props": {
+    "taskType": "none"
+   }
+  },
+  {
+   "id": "ec-doc",
+   "type": "bpmn.DataObject",
+   "label": "Order form",
+   "parent": "ec-shop"
+  },
+  {
+   "id": "ec-db",
+   "type": "bpmn.DataStoreReference",
+   "label": "Stock",
+   "parent": "ec-shop",
+   "props": {
+    "dataStoreRef": "stock-db"
+   }
+  },
+  {
+   "id": "ec-customer",
+   "type": "bpmn.Participant",
+   "label": "Customer"
+  },
+  {
+   "id": "ec-c-start",
+   "type": "bpmn.StartEvent",
+   "label": "Notice arrives",
+   "parent": "ec-customer",
+   "props": {
+    "definition": "message"
+   }
+  },
+  {
+   "id": "ec-c-task",
+   "type": "bpmn.Task",
+   "label": "Read the notice",
+   "parent": "ec-customer",
+   "props": {
+    "taskType": "user",
+    "categoryValueRef": [
+     "ec-grp"
+    ]
+   }
+  },
+  {
+   "id": "ec-c-end",
+   "type": "bpmn.EndEvent",
+   "label": "Read",
+   "parent": "ec-customer",
+   "props": {
+    "definition": "none"
+   }
+  },
+  {
+   "id": "ec-bank",
+   "type": "bpmn.Participant",
+   "label": "Bank"
+  },
+  {
+   "id": "ec-note",
+   "type": "bpmn.TextAnnotation",
+   "label": "Checked before ten every day"
+  },
+  {
+   "id": "ec-grp",
+   "type": "bpmn.Group",
+   "label": "Seen by the customer"
+  },
+  {
+   "id": "P0",
+   "type": "bpmn.Participant",
+   "label": "Pool 0",
+   "members": [
+    {
+     "id": "a",
+     "type": "bpmn.Lane",
+     "label": "Lane a"
+    },
+    {
+     "id": "b",
+     "type": "bpmn.Lane",
+     "label": "Lane b"
+    },
+    {
+     "id": "c",
+     "type": "bpmn.Lane",
+     "label": "Lane c",
+     "parent": "b"
+    }
+   ]
+  },
+  {
+   "id": "P0n0",
+   "type": "bpmn.StartEvent",
+   "label": "Start P0",
+   "parent": "a",
+   "props": {
+    "definition": "none"
+   }
+  },
+  {
+   "id": "P0n1",
+   "type": "bpmn.Task",
+   "label": "Task P0.1",
+   "parent": "a",
+   "props": {
+    "taskType": "user"
+   }
+  },
+  {
+   "id": "P0n2",
+   "type": "bpmn.ExclusiveGateway",
+   "label": "Check P0.2?",
+   "parent": "a"
+  },
+  {
+   "id": "P0n3",
+   "type": "bpmn.Task",
+   "label": "Task P0.3",
+   "parent": "a",
+   "props": {
+    "taskType": "none"
+   }
+  },
+  {
+   "id": "P0n4",
+   "type": "bpmn.Task",
+   "label": "Task P0.4",
+   "parent": "b",
+   "props": {
+    "taskType": "user"
+   }
+  },
+  {
+   "id": "P0n5",
+   "type": "bpmn.Task",
+   "label": "Task P0.5",
+   "parent": "b",
+   "props": {
+    "taskType": "service"
+   }
+  },
+  {
+   "id": "P0n6",
+   "type": "bpmn.ExclusiveGateway",
+   "label": "Check P0.6?",
+   "parent": "b"
+  },
+  {
+   "id": "P0n7",
+   "type": "bpmn.Task",
+   "label": "Task P0.7",
+   "parent": "b",
+   "props": {
+    "taskType": "user"
+   }
+  },
+  {
+   "id": "P0n8",
+   "type": "bpmn.Task",
+   "label": "Task P0.8",
+   "parent": "c",
+   "props": {
+    "taskType": "service"
+   }
+  },
+  {
+   "id": "P0n9",
+   "type": "bpmn.SubProcess",
+   "label": "Sub-process P0",
+   "parent": "c"
+  },
+  {
+   "id": "P0n10",
+   "type": "bpmn.ExclusiveGateway",
+   "label": "Check P0.10?",
+   "parent": "c"
+  },
+  {
+   "id": "P0n11",
+   "type": "bpmn.Task",
+   "label": "Task P0.11",
+   "parent": "c",
+   "props": {
+    "taskType": "service"
+   }
+  },
+  {
+   "id": "P0n12",
+   "type": "bpmn.Task",
+   "label": "Task P0.12",
+   "parent": "a",
+   "props": {
+    "taskType": "none"
+   }
+  },
+  {
+   "id": "P0n13",
+   "type": "bpmn.Task",
+   "label": "Task P0.13",
+   "parent": "a",
+   "props": {
+    "taskType": "user"
+   }
+  },
+  {
+   "id": "P0n14",
+   "type": "bpmn.ExclusiveGateway",
+   "label": "Check P0.14?",
+   "parent": "a"
+  },
+  {
+   "id": "P0n15",
+   "type": "bpmn.Task",
+   "label": "Task P0.15",
+   "parent": "a",
+   "props": {
+    "taskType": "none"
+   }
+  },
+  {
+   "id": "P0n16",
+   "type": "bpmn.EndEvent",
+   "label": "End P0",
+   "parent": "b",
+   "props": {
+    "definition": "none"
+   }
+  },
+  {
+   "id": "P0n9s",
+   "type": "bpmn.StartEvent",
+   "label": "In",
+   "parent": "P0n9",
+   "props": {
+    "definition": "none"
+   }
+  },
+  {
+   "id": "P0n9t",
+   "type": "bpmn.Task",
+   "label": "Inside",
+   "parent": "P0n9"
+  },
+  {
+   "id": "P0n9e",
+   "type": "bpmn.EndEvent",
+   "label": "Out",
+   "parent": "P0n9",
+   "props": {
+    "definition": "none"
+   }
+  },
+  {
+   "id": "P1",
+   "type": "bpmn.Participant",
+   "label": "Pool 1",
+   "members": [
+    {
+     "id": "d",
+     "type": "bpmn.Lane",
+     "label": "Lane d"
+    },
+    {
+     "id": "e",
+     "type": "bpmn.Lane",
+     "label": "Lane e"
+    }
+   ]
+  },
+  {
+   "id": "P1n0",
+   "type": "bpmn.StartEvent",
+   "label": "Start P1",
+   "parent": "d",
+   "props": {
+    "definition": "none"
+   }
+  },
+  {
+   "id": "P1n1",
+   "type": "bpmn.Task",
+   "label": "Task P1.1",
+   "parent": "d",
+   "props": {
+    "taskType": "user"
+   }
+  },
+  {
+   "id": "P1n2",
+   "type": "bpmn.ExclusiveGateway",
+   "label": "Check P1.2?",
+   "parent": "d"
+  },
+  {
+   "id": "P1n3",
+   "type": "bpmn.Task",
+   "label": "Task P1.3",
+   "parent": "d",
+   "props": {
+    "taskType": "none"
+   }
+  },
+  {
+   "id": "P1n4",
+   "type": "bpmn.Task",
+   "label": "Task P1.4",
+   "parent": "e",
+   "props": {
+    "taskType": "user"
+   }
+  },
+  {
+   "id": "P1n5",
+   "type": "bpmn.Task",
+   "label": "Task P1.5",
+   "parent": "e",
+   "props": {
+    "taskType": "service"
+   }
+  },
+  {
+   "id": "P1n6",
+   "type": "bpmn.ExclusiveGateway",
+   "label": "Check P1.6?",
+   "parent": "e"
+  },
+  {
+   "id": "P1n7",
+   "type": "bpmn.Task",
+   "label": "Task P1.7",
+   "parent": "e",
+   "props": {
+    "taskType": "user"
+   }
+  },
+  {
+   "id": "P1n8",
+   "type": "bpmn.Task",
+   "label": "Task P1.8",
+   "parent": "d",
+   "props": {
+    "taskType": "service"
+   }
+  },
+  {
+   "id": "P1n9",
+   "type": "bpmn.SubProcess",
+   "label": "Sub-process P1",
+   "parent": "d"
+  },
+  {
+   "id": "P1n10",
+   "type": "bpmn.ExclusiveGateway",
+   "label": "Check P1.10?",
+   "parent": "d"
+  },
+  {
+   "id": "P1n11",
+   "type": "bpmn.Task",
+   "label": "Task P1.11",
+   "parent": "d",
+   "props": {
+    "taskType": "service"
+   }
+  },
+  {
+   "id": "P1n12",
+   "type": "bpmn.Task",
+   "label": "Task P1.12",
+   "parent": "e",
+   "props": {
+    "taskType": "none"
+   }
+  },
+  {
+   "id": "P1n13",
+   "type": "bpmn.Task",
+   "label": "Task P1.13",
+   "parent": "e",
+   "props": {
+    "taskType": "user"
+   }
+  },
+  {
+   "id": "P1n14",
+   "type": "bpmn.ExclusiveGateway",
+   "label": "Check P1.14?",
+   "parent": "e"
+  },
+  {
+   "id": "P1n15",
+   "type": "bpmn.Task",
+   "label": "Task P1.15",
+   "parent": "e",
+   "props": {
+    "taskType": "none"
+   }
+  },
+  {
+   "id": "P1n16",
+   "type": "bpmn.EndEvent",
+   "label": "End P1",
+   "parent": "d",
+   "props": {
+    "definition": "none"
+   }
+  },
+  {
+   "id": "P1n9s",
+   "type": "bpmn.StartEvent",
+   "label": "In",
+   "parent": "P1n9",
+   "props": {
+    "definition": "none"
+   }
+  },
+  {
+   "id": "P1n9t",
+   "type": "bpmn.Task",
+   "label": "Inside",
+   "parent": "P1n9"
+  },
+  {
+   "id": "P1n9e",
+   "type": "bpmn.EndEvent",
+   "label": "Out",
+   "parent": "P1n9",
+   "props": {
+    "definition": "none"
+   }
+  },
+  {
+   "id": "P2",
+   "type": "bpmn.Participant",
+   "label": "Pool 2",
+   "members": [
+    {
+     "id": "f",
+     "type": "bpmn.Lane",
+     "label": "Lane f"
+    }
+   ]
+  },
+  {
+   "id": "P2n0",
+   "type": "bpmn.StartEvent",
+   "label": "Start P2",
+   "parent": "f",
+   "props": {
+    "definition": "none"
+   }
+  },
+  {
+   "id": "P2n1",
+   "type": "bpmn.Task",
+   "label": "Task P2.1",
+   "parent": "f",
+   "props": {
+    "taskType": "user"
+   }
+  },
+  {
+   "id": "P2n2",
+   "type": "bpmn.ExclusiveGateway",
+   "label": "Check P2.2?",
+   "parent": "f"
+  },
+  {
+   "id": "P2n3",
+   "type": "bpmn.Task",
+   "label": "Task P2.3",
+   "parent": "f",
+   "props": {
+    "taskType": "none"
+   }
+  },
+  {
+   "id": "P2n4",
+   "type": "bpmn.Task",
+   "label": "Task P2.4",
+   "parent": "f",
+   "props": {
+    "taskType": "user"
+   }
+  },
+  {
+   "id": "P2n5",
+   "type": "bpmn.Task",
+   "label": "Task P2.5",
+   "parent": "f",
+   "props": {
+    "taskType": "service"
+   }
+  },
+  {
+   "id": "P2n6",
+   "type": "bpmn.ExclusiveGateway",
+   "label": "Check P2.6?",
+   "parent": "f"
+  },
+  {
+   "id": "P2n7",
+   "type": "bpmn.Task",
+   "label": "Task P2.7",
+   "parent": "f",
+   "props": {
+    "taskType": "user"
+   }
+  },
+  {
+   "id": "P2n8",
+   "type": "bpmn.Task",
+   "label": "Task P2.8",
+   "parent": "f",
+   "props": {
+    "taskType": "service"
+   }
+  },
+  {
+   "id": "P2n9",
+   "type": "bpmn.Task",
+   "label": "Task P2.9",
+   "parent": "f",
+   "props": {
+    "taskType": "none"
+   }
+  },
+  {
+   "id": "P2n10",
+   "type": "bpmn.ExclusiveGateway",
+   "label": "Check P2.10?",
+   "parent": "f"
+  },
+  {
+   "id": "P2n11",
+   "type": "bpmn.Task",
+   "label": "Task P2.11",
+   "parent": "f",
+   "props": {
+    "taskType": "service"
+   }
+  },
+  {
+   "id": "P2n12",
+   "type": "bpmn.Task",
+   "label": "Task P2.12",
+   "parent": "f",
+   "props": {
+    "taskType": "none"
+   }
+  },
+  {
+   "id": "P2n13",
+   "type": "bpmn.Task",
+   "label": "Task P2.13",
+   "parent": "f",
+   "props": {
+    "taskType": "user"
+   }
+  },
+  {
+   "id": "P2n14",
+   "type": "bpmn.ExclusiveGateway",
+   "label": "Check P2.14?",
+   "parent": "f"
+  },
+  {
+   "id": "P2n15",
+   "type": "bpmn.Task",
+   "label": "Task P2.15",
+   "parent": "f",
+   "props": {
+    "taskType": "none"
+   }
+  },
+  {
+   "id": "P2n16",
+   "type": "bpmn.EndEvent",
+   "label": "End P2",
+   "parent": "f",
+   "props": {
+    "definition": "none"
+   }
+  },
+  {
+   "id": "be0",
+   "type": "bpmn.BoundaryEvent",
+   "label": "Late 0",
+   "parent": "a",
+   "props": {
+    "attachedTo": "P0n1",
+    "definition": "timer",
+    "cancelActivity": false
+   }
+  },
+  {
+   "id": "be1",
+   "type": "bpmn.BoundaryEvent",
+   "label": "Late 1",
+   "parent": "a",
+   "props": {
+    "attachedTo": "P0n3",
+    "definition": "message"
+   }
+  },
+  {
+   "id": "be2",
+   "type": "bpmn.BoundaryEvent",
+   "label": "Late 2",
+   "parent": "a",
+   "props": {
+    "attachedTo": "P0n3",
+    "definition": "timer"
+   }
+  },
+  {
+   "id": "be3",
+   "type": "bpmn.BoundaryEvent",
+   "label": "Late 3",
+   "parent": "c",
+   "props": {
+    "attachedTo": "P0n9",
+    "definition": "message",
+    "cancelActivity": false
+   }
+  },
+  {
+   "id": "be4",
+   "type": "bpmn.BoundaryEvent",
+   "label": "Late 4",
+   "parent": "d",
+   "props": {
+    "attachedTo": "P1n1",
+    "definition": "timer"
+   }
+  },
+  {
+   "id": "be5",
+   "type": "bpmn.BoundaryEvent",
+   "label": "Late 5",
+   "parent": "e",
+   "props": {
+    "attachedTo": "P1n5",
+    "definition": "message"
+   }
+  },
+  {
+   "id": "be6",
+   "type": "bpmn.BoundaryEvent",
+   "label": "Late 6",
+   "parent": "e",
+   "props": {
+    "attachedTo": "P1n13",
+    "definition": "timer",
+    "cancelActivity": false
+   }
+  },
+  {
+   "id": "be7",
+   "type": "bpmn.BoundaryEvent",
+   "label": "Late 7",
+   "parent": "f",
+   "props": {
+    "attachedTo": "P2n3",
+    "definition": "message"
+   }
+  },
+  {
+   "id": "be8",
+   "type": "bpmn.BoundaryEvent",
+   "label": "Late 8",
+   "parent": "f",
+   "props": {
+    "attachedTo": "P2n7",
+    "definition": "timer"
+   }
+  },
+  {
+   "id": "be9",
+   "type": "bpmn.BoundaryEvent",
+   "label": "Late 9",
+   "parent": "f",
+   "props": {
+    "attachedTo": "P2n11",
+    "definition": "message",
+    "cancelActivity": false
+   }
+  }
+ ],
+ "edges": [
+  {
+   "id": "ec-f1",
+   "type": "bpmn.SequenceFlow",
+   "from": "ec-start",
+   "to": "ec-check"
+  },
+  {
+   "id": "ec-f2",
+   "type": "bpmn.SequenceFlow",
+   "from": "ec-check",
+   "to": "ec-gw"
+  },
+  {
+   "id": "ec-f3",
+   "type": "bpmn.SequenceFlow",
+   "from": "ec-gw",
+   "to": "ec-pay",
+   "label": "yes"
+  },
+  {
+   "id": "ec-f4",
+   "type": "bpmn.SequenceFlow",
+   "from": "ec-gw",
+   "to": "ec-stop",
+   "label": "no"
+  },
+  {
+   "id": "ec-f5",
+   "type": "bpmn.SequenceFlow",
+   "from": "ec-pay",
+   "to": "ec-reply"
+  },
+  {
+   "id": "ec-f6",
+   "type": "bpmn.SequenceFlow",
+   "from": "ec-reply",
+   "to": "ec-fork"
+  },
+  {
+   "id": "ec-f7",
+   "type": "bpmn.SequenceFlow",
+   "from": "ec-fork",
+   "to": "ec-sub"
+  },
+  {
+   "id": "ec-f8",
+   "type": "bpmn.SequenceFlow",
+   "from": "ec-fork",
+   "to": "ec-call"
+  },
+  {
+   "id": "ec-f9",
+   "type": "bpmn.SequenceFlow",
+   "from": "ec-sub",
+   "to": "ec-join"
+  },
+  {
+   "id": "ec-f10",
+   "type": "bpmn.SequenceFlow",
+   "from": "ec-call",
+   "to": "ec-join"
+  },
+  {
+   "id": "ec-f11",
+   "type": "bpmn.SequenceFlow",
+   "from": "ec-join",
+   "to": "ec-milestone"
+  },
+  {
+   "id": "ec-f12",
+   "type": "bpmn.SequenceFlow",
+   "from": "ec-milestone",
+   "to": "ec-one"
+  },
+  {
+   "id": "ec-f13",
+   "type": "bpmn.SequenceFlow",
+   "from": "ec-one",
+   "to": "ec-throw"
+  },
+  {
+   "id": "ec-f14",
+   "type": "bpmn.SequenceFlow",
+   "from": "ec-throw",
+   "to": "ec-end"
+  },
+  {
+   "id": "ec-f15",
+   "type": "bpmn.SequenceFlow",
+   "from": "ec-late",
+   "to": "ec-stop"
+  },
+  {
+   "id": "ec-f16",
+   "type": "bpmn.SequenceFlow",
+   "from": "ec-ping",
+   "to": "ec-wait"
+  },
+  {
+   "id": "ec-f17",
+   "type": "bpmn.SequenceFlow",
+   "from": "ec-wait",
+   "to": "ec-done"
+  },
+  {
+   "id": "ec-f18",
+   "type": "bpmn.SequenceFlow",
+   "from": "ec-sub-late",
+   "to": "ec-join"
+  },
+  {
+   "id": "ec-f19",
+   "type": "bpmn.SequenceFlow",
+   "from": "ec-refused",
+   "to": "ec-join"
+  },
+  {
+   "id": "ec-s1",
+   "type": "bpmn.SequenceFlow",
+   "from": "ec-sub-start",
+   "to": "ec-sub-task"
+  },
+  {
+   "id": "ec-s2",
+   "type": "bpmn.SequenceFlow",
+   "from": "ec-sub-task",
+   "to": "ec-sub-end"
+  },
+  {
+   "id": "ec-c1",
+   "type": "bpmn.SequenceFlow",
+   "from": "ec-c-start",
+   "to": "ec-c-task"
+  },
+  {
+   "id": "ec-c2",
+   "type": "bpmn.SequenceFlow",
+   "from": "ec-c-task",
+   "to": "ec-c-end"
+  },
+  {
+   "id": "ec-cross",
+   "type": "bpmn.SequenceFlow",
+   "from": "ec-c-task",
+   "to": "ec-loose"
+  },
+  {
+   "id": "ec-m1",
+   "type": "bpmn.MessageFlow",
+   "from": "ec-pay",
+   "to": "ec-bank",
+   "label": "Charge"
+  },
+  {
+   "id": "ec-m2",
+   "type": "bpmn.MessageFlow",
+   "from": "ec-pay",
+   "to": "ec-bank",
+   "label": "Hold"
+  },
+  {
+   "id": "ec-m3",
+   "type": "bpmn.MessageFlow",
+   "from": "ec-bank",
+   "to": "ec-reply",
+   "label": "Result"
+  },
+  {
+   "id": "ec-m4",
+   "type": "bpmn.MessageFlow",
+   "from": "ec-throw",
+   "to": "ec-c-start",
+   "label": "Notice"
+  },
+  {
+   "id": "ec-m5",
+   "type": "bpmn.MessageFlow",
+   "from": "ec-end",
+   "to": "ec-customer",
+   "label": "Done"
+  },
+  {
+   "id": "ec-m6",
+   "type": "bpmn.MessageFlow",
+   "from": "ec-customer",
+   "to": "ec-ping",
+   "label": "Question"
+  },
+  {
+   "id": "ec-a1",
+   "type": "bpmn.Association",
+   "from": "ec-note",
+   "to": "ec-check",
+   "props": {
+    "direction": "one"
+   }
+  },
+  {
+   "id": "ec-d1",
+   "type": "bpmn.DataAssociation",
+   "from": "ec-check",
+   "to": "ec-doc"
+  },
+  {
+   "id": "ec-d2",
+   "type": "bpmn.DataAssociation",
+   "from": "ec-doc",
+   "to": "ec-pay"
+  },
+  {
+   "id": "ec-d3",
+   "type": "bpmn.DataAssociation",
+   "from": "ec-pay",
+   "to": "ec-db"
+  },
+  {
+   "id": "ec-d4",
+   "type": "bpmn.DataAssociation",
+   "from": "ec-db",
+   "to": "ec-call"
+  },
+  {
+   "id": "s-P0n0",
+   "type": "bpmn.SequenceFlow",
+   "from": "P0n0",
+   "to": "P0n1"
+  },
+  {
+   "id": "s-P0n1",
+   "type": "bpmn.SequenceFlow",
+   "from": "P0n1",
+   "to": "P0n2"
+  },
+  {
+   "id": "s-P0n2",
+   "type": "bpmn.SequenceFlow",
+   "from": "P0n2",
+   "to": "P0n3",
+   "label": "yes"
+  },
+  {
+   "id": "s-P0n3",
+   "type": "bpmn.SequenceFlow",
+   "from": "P0n3",
+   "to": "P0n4"
+  },
+  {
+   "id": "s-P0n4",
+   "type": "bpmn.SequenceFlow",
+   "from": "P0n4",
+   "to": "P0n5"
+  },
+  {
+   "id": "s-P0n5",
+   "type": "bpmn.SequenceFlow",
+   "from": "P0n5",
+   "to": "P0n6"
+  },
+  {
+   "id": "s-P0n6",
+   "type": "bpmn.SequenceFlow",
+   "from": "P0n6",
+   "to": "P0n7",
+   "label": "yes"
+  },
+  {
+   "id": "s-P0n7",
+   "type": "bpmn.SequenceFlow",
+   "from": "P0n7",
+   "to": "P0n8"
+  },
+  {
+   "id": "s-P0n8",
+   "type": "bpmn.SequenceFlow",
+   "from": "P0n8",
+   "to": "P0n9"
+  },
+  {
+   "id": "s-P0n9",
+   "type": "bpmn.SequenceFlow",
+   "from": "P0n9",
+   "to": "P0n10"
+  },
+  {
+   "id": "s-P0n10",
+   "type": "bpmn.SequenceFlow",
+   "from": "P0n10",
+   "to": "P0n11",
+   "label": "yes"
+  },
+  {
+   "id": "s-P0n11",
+   "type": "bpmn.SequenceFlow",
+   "from": "P0n11",
+   "to": "P0n12"
+  },
+  {
+   "id": "s-P0n12",
+   "type": "bpmn.SequenceFlow",
+   "from": "P0n12",
+   "to": "P0n13"
+  },
+  {
+   "id": "s-P0n13",
+   "type": "bpmn.SequenceFlow",
+   "from": "P0n13",
+   "to": "P0n14"
+  },
+  {
+   "id": "s-P0n14",
+   "type": "bpmn.SequenceFlow",
+   "from": "P0n14",
+   "to": "P0n15",
+   "label": "yes"
+  },
+  {
+   "id": "s-P0n15",
+   "type": "bpmn.SequenceFlow",
+   "from": "P0n15",
+   "to": "P0n16"
+  },
+  {
+   "id": "x-P0n2",
+   "type": "bpmn.SequenceFlow",
+   "from": "P0n2",
+   "to": "P0n4",
+   "label": "no"
+  },
+  {
+   "id": "x-P0n6",
+   "type": "bpmn.SequenceFlow",
+   "from": "P0n6",
+   "to": "P0n8",
+   "label": "no"
+  },
+  {
+   "id": "x-P0n10",
+   "type": "bpmn.SequenceFlow",
+   "from": "P0n10",
+   "to": "P0n12",
+   "label": "no"
+  },
+  {
+   "id": "x-P0n14",
+   "type": "bpmn.SequenceFlow",
+   "from": "P0n14",
+   "to": "P0n16",
+   "label": "no"
+  },
+  {
+   "id": "P0n9f1",
+   "type": "bpmn.SequenceFlow",
+   "from": "P0n9s",
+   "to": "P0n9t"
+  },
+  {
+   "id": "P0n9f2",
+   "type": "bpmn.SequenceFlow",
+   "from": "P0n9t",
+   "to": "P0n9e"
+  },
+  {
+   "id": "s-P1n0",
+   "type": "bpmn.SequenceFlow",
+   "from": "P1n0",
+   "to": "P1n1"
+  },
+  {
+   "id": "s-P1n1",
+   "type": "bpmn.SequenceFlow",
+   "from": "P1n1",
+   "to": "P1n2"
+  },
+  {
+   "id": "s-P1n2",
+   "type": "bpmn.SequenceFlow",
+   "from": "P1n2",
+   "to": "P1n3",
+   "label": "yes"
+  },
+  {
+   "id": "s-P1n3",
+   "type": "bpmn.SequenceFlow",
+   "from": "P1n3",
+   "to": "P1n4"
+  },
+  {
+   "id": "s-P1n4",
+   "type": "bpmn.SequenceFlow",
+   "from": "P1n4",
+   "to": "P1n5"
+  },
+  {
+   "id": "s-P1n5",
+   "type": "bpmn.SequenceFlow",
+   "from": "P1n5",
+   "to": "P1n6"
+  },
+  {
+   "id": "s-P1n6",
+   "type": "bpmn.SequenceFlow",
+   "from": "P1n6",
+   "to": "P1n7",
+   "label": "yes"
+  },
+  {
+   "id": "s-P1n7",
+   "type": "bpmn.SequenceFlow",
+   "from": "P1n7",
+   "to": "P1n8"
+  },
+  {
+   "id": "s-P1n8",
+   "type": "bpmn.SequenceFlow",
+   "from": "P1n8",
+   "to": "P1n9"
+  },
+  {
+   "id": "s-P1n9",
+   "type": "bpmn.SequenceFlow",
+   "from": "P1n9",
+   "to": "P1n10"
+  },
+  {
+   "id": "s-P1n10",
+   "type": "bpmn.SequenceFlow",
+   "from": "P1n10",
+   "to": "P1n11",
+   "label": "yes"
+  },
+  {
+   "id": "s-P1n11",
+   "type": "bpmn.SequenceFlow",
+   "from": "P1n11",
+   "to": "P1n12"
+  },
+  {
+   "id": "s-P1n12",
+   "type": "bpmn.SequenceFlow",
+   "from": "P1n12",
+   "to": "P1n13"
+  },
+  {
+   "id": "s-P1n13",
+   "type": "bpmn.SequenceFlow",
+   "from": "P1n13",
+   "to": "P1n14"
+  },
+  {
+   "id": "s-P1n14",
+   "type": "bpmn.SequenceFlow",
+   "from": "P1n14",
+   "to": "P1n15",
+   "label": "yes"
+  },
+  {
+   "id": "s-P1n15",
+   "type": "bpmn.SequenceFlow",
+   "from": "P1n15",
+   "to": "P1n16"
+  },
+  {
+   "id": "x-P1n2",
+   "type": "bpmn.SequenceFlow",
+   "from": "P1n2",
+   "to": "P1n4",
+   "label": "no"
+  },
+  {
+   "id": "x-P1n6",
+   "type": "bpmn.SequenceFlow",
+   "from": "P1n6",
+   "to": "P1n8",
+   "label": "no"
+  },
+  {
+   "id": "x-P1n10",
+   "type": "bpmn.SequenceFlow",
+   "from": "P1n10",
+   "to": "P1n12",
+   "label": "no"
+  },
+  {
+   "id": "x-P1n14",
+   "type": "bpmn.SequenceFlow",
+   "from": "P1n14",
+   "to": "P1n16",
+   "label": "no"
+  },
+  {
+   "id": "P1n9f1",
+   "type": "bpmn.SequenceFlow",
+   "from": "P1n9s",
+   "to": "P1n9t"
+  },
+  {
+   "id": "P1n9f2",
+   "type": "bpmn.SequenceFlow",
+   "from": "P1n9t",
+   "to": "P1n9e"
+  },
+  {
+   "id": "s-P2n0",
+   "type": "bpmn.SequenceFlow",
+   "from": "P2n0",
+   "to": "P2n1"
+  },
+  {
+   "id": "s-P2n1",
+   "type": "bpmn.SequenceFlow",
+   "from": "P2n1",
+   "to": "P2n2"
+  },
+  {
+   "id": "s-P2n2",
+   "type": "bpmn.SequenceFlow",
+   "from": "P2n2",
+   "to": "P2n3",
+   "label": "yes"
+  },
+  {
+   "id": "s-P2n3",
+   "type": "bpmn.SequenceFlow",
+   "from": "P2n3",
+   "to": "P2n4"
+  },
+  {
+   "id": "s-P2n4",
+   "type": "bpmn.SequenceFlow",
+   "from": "P2n4",
+   "to": "P2n5"
+  },
+  {
+   "id": "s-P2n5",
+   "type": "bpmn.SequenceFlow",
+   "from": "P2n5",
+   "to": "P2n6"
+  },
+  {
+   "id": "s-P2n6",
+   "type": "bpmn.SequenceFlow",
+   "from": "P2n6",
+   "to": "P2n7",
+   "label": "yes"
+  },
+  {
+   "id": "s-P2n7",
+   "type": "bpmn.SequenceFlow",
+   "from": "P2n7",
+   "to": "P2n8"
+  },
+  {
+   "id": "s-P2n8",
+   "type": "bpmn.SequenceFlow",
+   "from": "P2n8",
+   "to": "P2n9"
+  },
+  {
+   "id": "s-P2n9",
+   "type": "bpmn.SequenceFlow",
+   "from": "P2n9",
+   "to": "P2n10"
+  },
+  {
+   "id": "s-P2n10",
+   "type": "bpmn.SequenceFlow",
+   "from": "P2n10",
+   "to": "P2n11",
+   "label": "yes"
+  },
+  {
+   "id": "s-P2n11",
+   "type": "bpmn.SequenceFlow",
+   "from": "P2n11",
+   "to": "P2n12"
+  },
+  {
+   "id": "s-P2n12",
+   "type": "bpmn.SequenceFlow",
+   "from": "P2n12",
+   "to": "P2n13"
+  },
+  {
+   "id": "s-P2n13",
+   "type": "bpmn.SequenceFlow",
+   "from": "P2n13",
+   "to": "P2n14"
+  },
+  {
+   "id": "s-P2n14",
+   "type": "bpmn.SequenceFlow",
+   "from": "P2n14",
+   "to": "P2n15",
+   "label": "yes"
+  },
+  {
+   "id": "s-P2n15",
+   "type": "bpmn.SequenceFlow",
+   "from": "P2n15",
+   "to": "P2n16"
+  },
+  {
+   "id": "x-P2n2",
+   "type": "bpmn.SequenceFlow",
+   "from": "P2n2",
+   "to": "P2n4",
+   "label": "no"
+  },
+  {
+   "id": "x-P2n6",
+   "type": "bpmn.SequenceFlow",
+   "from": "P2n6",
+   "to": "P2n8",
+   "label": "no"
+  },
+  {
+   "id": "x-P2n10",
+   "type": "bpmn.SequenceFlow",
+   "from": "P2n10",
+   "to": "P2n12",
+   "label": "no"
+  },
+  {
+   "id": "x-P2n14",
+   "type": "bpmn.SequenceFlow",
+   "from": "P2n14",
+   "to": "P2n16",
+   "label": "no"
+  },
+  {
+   "id": "fbe0",
+   "type": "bpmn.SequenceFlow",
+   "from": "be0",
+   "to": "P0n4"
+  },
+  {
+   "id": "fbe1",
+   "type": "bpmn.SequenceFlow",
+   "from": "be1",
+   "to": "P0n6"
+  },
+  {
+   "id": "fbe2",
+   "type": "bpmn.SequenceFlow",
+   "from": "be2",
+   "to": "P0n6"
+  },
+  {
+   "id": "fbe3",
+   "type": "bpmn.SequenceFlow",
+   "from": "be3",
+   "to": "P0n12"
+  },
+  {
+   "id": "fbe4",
+   "type": "bpmn.SequenceFlow",
+   "from": "be4",
+   "to": "P1n4"
+  },
+  {
+   "id": "fbe5",
+   "type": "bpmn.SequenceFlow",
+   "from": "be5",
+   "to": "P1n8"
+  },
+  {
+   "id": "fbe6",
+   "type": "bpmn.SequenceFlow",
+   "from": "be6",
+   "to": "P1n16"
+  },
+  {
+   "id": "fbe7",
+   "type": "bpmn.SequenceFlow",
+   "from": "be7",
+   "to": "P2n6"
+  },
+  {
+   "id": "fbe8",
+   "type": "bpmn.SequenceFlow",
+   "from": "be8",
+   "to": "P2n10"
+  },
+  {
+   "id": "fbe9",
+   "type": "bpmn.SequenceFlow",
+   "from": "be9",
+   "to": "P2n14"
+  },
+  {
+   "id": "m0",
+   "type": "bpmn.MessageFlow",
+   "from": "P0n1",
+   "to": "P1n4",
+   "label": "Message 0"
+  },
+  {
+   "id": "m1",
+   "type": "bpmn.MessageFlow",
+   "from": "P1n3",
+   "to": "P2n5",
+   "label": "Message 1"
+  },
+  {
+   "id": "m2",
+   "type": "bpmn.MessageFlow",
+   "from": "P2n4",
+   "to": "P0n7",
+   "label": "Message 2"
+  },
+  {
+   "id": "m3",
+   "type": "bpmn.MessageFlow",
+   "from": "P0n5",
+   "to": "P1n8",
+   "label": "Message 3"
+  },
+  {
+   "id": "m4",
+   "type": "bpmn.MessageFlow",
+   "from": "P1n7",
+   "to": "P2n9",
+   "label": "Message 4"
+  },
+  {
+   "id": "m5",
+   "type": "bpmn.MessageFlow",
+   "from": "P2n8",
+   "to": "P0n12",
+   "label": "Message 5"
+  },
+  {
+   "id": "m6",
+   "type": "bpmn.MessageFlow",
+   "from": "P0n11",
+   "to": "P1n13",
+   "label": "Message 6"
+  },
+  {
+   "id": "m7",
+   "type": "bpmn.MessageFlow",
+   "from": "P1n12",
+   "to": "P2n13",
+   "label": "Message 7"
+  },
+  {
+   "id": "m8",
+   "type": "bpmn.MessageFlow",
+   "from": "P2n12",
+   "to": "P0n1",
+   "label": "Message 8"
+  },
+  {
+   "id": "m9",
+   "type": "bpmn.MessageFlow",
+   "from": "P0n15",
+   "to": "P1n3",
+   "label": "Message 9"
+  }
+ ],
+ "views": [
+  {
+   "id": "edge-cases",
+   "diagram": "bpmn",
+   "title": "Edge cases",
+   "nodeIds": [
+    "ec-shop",
+    "ec-start",
+    "ec-check",
+    "ec-late",
+    "ec-ping",
+    "ec-refused",
+    "ec-gw",
+    "ec-pay",
+    "ec-reply",
+    "ec-fork",
+    "ec-sub",
+    "ec-sub-start",
+    "ec-sub-task",
+    "ec-sub-end",
+    "ec-sub-late",
+    "ec-call",
+    "ec-join",
+    "ec-milestone",
+    "ec-one",
+    "ec-throw",
+    "ec-end",
+    "ec-stop",
+    "ec-wait",
+    "ec-done",
+    "ec-loose",
+    "ec-doc",
+    "ec-db",
+    "ec-customer",
+    "ec-c-start",
+    "ec-c-task",
+    "ec-c-end",
+    "ec-bank",
+    "ec-note",
+    "ec-grp"
+   ]
+  },
+  {
+   "id": "ec-closed",
+   "diagram": "bpmn",
+   "title": "Edge cases, the sub-process closed",
+   "nodeIds": [
+    "ec-shop",
+    "ec-start",
+    "ec-check",
+    "ec-late",
+    "ec-ping",
+    "ec-refused",
+    "ec-gw",
+    "ec-pay",
+    "ec-reply",
+    "ec-fork",
+    "ec-sub",
+    "ec-sub-late",
+    "ec-call",
+    "ec-join",
+    "ec-milestone",
+    "ec-one",
+    "ec-throw",
+    "ec-end",
+    "ec-stop",
+    "ec-wait",
+    "ec-done",
+    "ec-loose",
+    "ec-doc",
+    "ec-db",
+    "ec-customer",
+    "ec-c-start",
+    "ec-c-task",
+    "ec-c-end",
+    "ec-bank",
+    "ec-note",
+    "ec-grp"
+   ]
+  },
+  {
+   "id": "ec-inside",
+   "diagram": "bpmn",
+   "title": "Pack the books",
+   "parent": "ec-closed",
+   "subject": "ec-sub",
+   "nodeIds": [
+    "ec-sub-start",
+    "ec-sub-task",
+    "ec-sub-end"
+   ]
+  },
+  {
+   "id": "all",
+   "diagram": "bpmn",
+   "title": "Stress",
+   "nodeIds": [
+    "P0",
+    "P0n0",
+    "P0n1",
+    "P0n2",
+    "P0n3",
+    "P0n4",
+    "P0n5",
+    "P0n6",
+    "P0n7",
+    "P0n8",
+    "P0n9",
+    "P0n10",
+    "P0n11",
+    "P0n12",
+    "P0n13",
+    "P0n14",
+    "P0n15",
+    "P0n16",
+    "P0n9s",
+    "P0n9t",
+    "P0n9e",
+    "P1",
+    "P1n0",
+    "P1n1",
+    "P1n2",
+    "P1n3",
+    "P1n4",
+    "P1n5",
+    "P1n6",
+    "P1n7",
+    "P1n8",
+    "P1n9",
+    "P1n10",
+    "P1n11",
+    "P1n12",
+    "P1n13",
+    "P1n14",
+    "P1n15",
+    "P1n16",
+    "P1n9s",
+    "P1n9t",
+    "P1n9e",
+    "P2",
+    "P2n0",
+    "P2n1",
+    "P2n2",
+    "P2n3",
+    "P2n4",
+    "P2n5",
+    "P2n6",
+    "P2n7",
+    "P2n8",
+    "P2n9",
+    "P2n10",
+    "P2n11",
+    "P2n12",
+    "P2n13",
+    "P2n14",
+    "P2n15",
+    "P2n16",
+    "be0",
+    "be1",
+    "be2",
+    "be3",
+    "be4",
+    "be5",
+    "be6",
+    "be7",
+    "be8",
+    "be9"
+   ]
+  }
+ ]
+}
