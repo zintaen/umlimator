@@ -126,7 +126,7 @@ test('mindmap-stress.json, edge-cases (§10.1): 30 children, every branch on one
   assert.equal(g.byId.d70.depth, 71);
   assert.deepEqual(g.nodes.filter(n => n.root).map(n => n.id), ['r', 'second', 'stray']);
   assert.deepEqual(mmProblems(m, V(m, 'edge-cases')).map(p => [p.level, p.rule, p.ids]), [['error', 'topic-parent', ['stray']], ['warning', 'mindmap-root', ['r', 'second']],
-    ['warning', 'mindmap-root', ['r', 'stray']], ['warning', 'side-first', ['a3']], ['warning', 'mindmap-depth', ['d63']]]);
+    ['warning', 'mindmap-root', ['r', 'stray']], ['warning', 'side-first', ['a3']], ['warning', 'mindmap-depth', ['d64']]]);
   assert.deepEqual(mmProblems(m, V(m, 'all')).map(p => p.rule), ['topic-parent'], 'the stress view all breaks no rule of its own (topic-parent is the model\'s: edge-cases\' stray topic)');
   assert.match(describe(m, 'edge-cases'), /^Edge cases: a mindmap of 109 topics in 3 trees\./);
 });

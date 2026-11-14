@@ -57,7 +57,7 @@ function ifIndex(model) {
 const ifSays = (I, e) => `${IF_HAS(e.label) ? e.label + ': ' : ''}${I.conveyed(e).map(I.nm).join(', ')}`;
 // the lines drawn: those the view lists, or with no list the model's of this type's kinds, between two elements it shows
 function ifLines(I, view, shown) {
-  const by = new Map(I.E.map(e => [e.id, e])), list = Array.isArray(view.edges) ? view.edges.map(x => (typeof x === 'string' ? by.get(x) : x)) : I.E.filter(e => IF_LINES.includes(e.type));
+  const by = new Map(I.E.map(e => [e.id, e])), list = Array.isArray(view.edges) ? [...new Set(view.edges.map(x => (typeof x === 'string' ? by.get(x) : x)))] : I.E.filter(e => IF_LINES.includes(e.type));
   return list.filter(e => IF_OBJ(e) && typeof e.id === 'string' && shown.has(e.from) && shown.has(e.to));
 }
 const ifShown = (I, view) => [...new Set(IF_ARR(view && view.nodeIds))].filter(id => I.at.has(id));
@@ -149,8 +149,10 @@ function ifConnect(model, view, from, to, at, line) {
 function ifRename(model, view, id, text) {
   const I = ifIndex(model), e = I.E.find(x => x.id === id); if (!e || e.type !== 'uml.InformationFlow') return null;
   const t = String(text ?? '').replace(/^\s*«flow»\s*/, ''), can = ifConveyable(I), at = new Map();
-  // names, then ids, looked up in one map (the first element wins, as before); a run is never longer than the most commas a name holds
-  [...can.map(n => [ifName(n).trim(), n]), ...can.map(n => [n.id, n])].forEach(([k, n]) => at.has(k) || at.set(k, n));
+  // names, then ids, looked up in one map (the first element wins: what the flow conveys now, so an unchanged name keeps its
+  // element, then as before); a run is never longer than the most commas a name holds
+  const by = [...I.conveyed(e).map(x => I.at.get(x)).filter(Boolean), ...can];
+  [...by.map(n => [ifName(n).trim(), n]), ...by.map(n => [n.id, n])].forEach(([k, n]) => at.has(k) || at.set(k, n));
   const find = s => at.get(s), most = Math.max(0, ...[...at.keys()].map(k => k.split(',').length));
   // a list read entry by entry, each the longest run of comma-separated parts that names an element
   const list = s => { const p = s.split(','), ids = []; let i = 0;

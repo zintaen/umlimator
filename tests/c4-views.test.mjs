@@ -44,12 +44,12 @@ test('the definitions: c4.dynamic and c4.deployment, each its own; the static ty
   assert.deepEqual([DYN.name, DEP.name], ['c4.dynamic', 'c4.deployment']);
   assert.notEqual(DYN.layout, STATIC.layout); assert.notEqual(DEP.layout, DYN.layout);
   assert.deepEqual(DYN.elements, STATIC.elements); assert.deepEqual(DYN.props, STATIC.props);
-  assert.deepEqual(Object.keys(DYN.edits), ['add', 'key', 'connect', 'moveTo', 'rename']);
+  assert.deepEqual(Object.keys(DYN.edits), ['add', 'key', 'rename', 'connect', 'moveTo']);
   assert.deepEqual(DEP.elements.map(e => [e.type, e.label, e.name ?? true]), [['c4.DeploymentNode', 'Deployment node', true], ['c4.ContainerInstance', 'Container instance', false], ['uml.Comment', 'Comment', true]]);
   assert.deepEqual(DEP.lines.map(e => e.type), ['c4.Relationship', 'uml.CommentLink']);
   assert.deepEqual(DEP.props['c4.DeploymentNode'].map(f => f.key), ['description', 'technology']);
   assert.deepEqual(DEP.props['c4.ContainerInstance'].map(f => f.key), ['container']);
-  assert.deepEqual(Object.keys(DEP.edits), ['add', 'key']);
+  assert.deepEqual(Object.keys(DEP.edits), ['add', 'key', 'rename']);
   for (const T of [DYN, DEP]) for (const k of ['layout', 'validate', 'describe', 'boxes', 'owners', 'word', 'rows', 'text']) assert.equal(typeof T[k], 'function', `${T.name} ${k}`);
   assert.deepEqual(Object.keys(DYN.rules), [...Object.keys(STATIC.rules), 'c4-steps']);
   assert.deepEqual(Object.keys(DEP.rules), [...Object.keys(STATIC.rules), 'c4-steps', 'c4-box-line']);
@@ -372,4 +372,27 @@ test('audit 3: F2 on a step keeps a description that starts with the step\'s num
   const v = C4.views[V(DV)], r = t => DYN.edits.rename(C4, v, 'c4-api-payments', t);
   assert.deepEqual(r('3.5 TB export nightly'), [{ op: 'set', id: 'c4-api-payments', path: 'label', value: '3.5 TB export nightly' }]);
   assert.deepEqual(r('3. 5 TB export'), [{ op: 'set', id: 'c4-api-payments', path: 'label', value: '5 TB export' }], 'a typed number and a space: cut');
+});
+
+test('F2 on a static or deployment relationship (rename): the technology F2 shows is not put into its label; anything but a relationship, the canvas\'s', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'u', type: 'c4.Person', label: 'User' }, { id: 's', type: 'c4.SoftwareSystem', label: 'Shop' }],
+    edges: [{ id: 'r', type: 'c4.Relationship', from: 'u', to: 's', label: 'Uses', props: { technology: 'JSON/HTTPS' } }],
+    views: [{ id: 'v', diagram: 'c4.context', title: 'T', subject: 's', nodeIds: ['u', 's'] }] };
+  const field = layout(m, 'v').edges.find(e => e.id === 'r').label; assert.equal(field, 'Uses [JSON/HTTPS]');
+  for (const D of [STATIC, DEP]) {
+    assert.deepEqual(D.edits.rename(m, m.views[0], 'r', field), [], 'unchanged: nothing');
+    const cmds = D.edits.rename(m, m.views[0], 'r', field.replace('Uses', 'Calls')); assert.deepEqual(cmds, [{ op: 'set', id: 'r', path: 'label', value: 'Calls' }]);
+    assert.equal(layout(apply(m, cmds), 'v').edges.find(e => e.id === 'r').label, 'Calls [JSON/HTTPS]');
+    assert.equal(D.edits.rename(m, m.views[0], 'u', 'x'), null);
+  }
+});
+
+test('an element whose type is an Object.prototype name: an unknown type, its tag "[constructor]"; validate() of a dynamic or deployment view reports, never throws', () => {
+  for (const t of ['constructor', 'toString']) {
+    const m = { schemaVersion: 2, nodes: [{ id: 's', type: 'c4.SoftwareSystem', label: 'S' }, { id: 'x', type: t, label: 'X' }], edges: [],
+      views: [{ id: 'c', diagram: 'c4.context', subject: 's', nodeIds: ['s', 'x'] }, { id: 'd', diagram: 'c4.dynamic', subject: 'x', nodeIds: ['s', 'x'], edges: [] },
+        { id: 'p', diagram: 'c4.deployment', subject: 'x', nodeIds: ['s', 'x'] }] };
+    for (const v of ['c', 'd', 'p']) assert.equal(layout(m, v).byId.x.tag, `[${t}]`, v);
+    const p = validate(m).map(x => x.rule); assert.ok(p.includes('c4-subject'), p);
+  }
 });

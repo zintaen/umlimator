@@ -105,7 +105,7 @@ function dfdIndex(model) {
 // and reach the level only through its own processes (Yourdon and DeMarco's levelling)
 function dfdLines(model, view) {
   const E = new Map(); DFD_ARR(model.edges).forEach(e => { if (DFD_OBJ(e) && typeof e.id === 'string' && !E.has(e.id)) E.set(e.id, e); });
-  const shown = new Set(DFD_ARR(view.nodeIds)), listed = Array.isArray(view.edges), list = listed ? view.edges.map(x => (typeof x === 'string' ? E.get(x) : x)) : [...E.values()].filter(e => DFD_LINES.includes(e.type));
+  const shown = new Set(DFD_ARR(view.nodeIds)), listed = Array.isArray(view.edges), list = listed ? [...new Set(view.edges.map(x => (typeof x === 'string' ? E.get(x) : x)))] : [...E.values()].filter(e => DFD_LINES.includes(e.type));
   const lv = !listed && view.parent !== view.id && DFD_ARR(model.nodes).some(x => DFD_OBJ(x) && x.type === 'dfd.Process' && x.opensView === view.id);
   const up = new Set(lv ? DFD_ARR((DFD_ARR(model.views).find(v => DFD_OBJ(v) && v.id === view.parent) || {}).nodeIds) : []);
   return list.filter(e => DFD_OBJ(e) && typeof e.id === 'string' && shown.has(e.from) && shown.has(e.to) && !(up.has(e.from) && up.has(e.to)));

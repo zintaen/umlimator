@@ -3,7 +3,7 @@ import { esc, fit } from '../core/text.js';
 import { SHAPE, r2, sidePorts } from '../draw/shapes.js';
 import { layoutTyped } from '../typed/layout.js';
 import { ownersOn, readingOrder } from '../uml/owners.js';
-import { C4_DEF, C4_RULES, C4_WORD, c4Index, c4Pic, c4Lines, c4Problems, c4Legend, c4NodeName, c4LineName, c4LineLabel, c4Shape, c4TagOf, c4Ext, c4Key, c4Owners } from './c4.js';
+import { C4_DEF, C4_RULES, C4_WORD, c4Index, c4Pic, c4Lines, c4Problems, c4Legend, c4NodeName, c4LineName, c4LineLabel, c4Shape, c4TagOf, c4Ext, c4Key, c4Owners, c4Rename } from './c4.js';
 
 /* ---------- C4's dynamic and deployment views, c4.dynamic and c4.deployment (work package M2.7, notes/milestone-2.md §7.5.2,
    §7.5.3, §5.1) ----------
@@ -48,7 +48,7 @@ const dynLevel = (model, view) => { const t = (c4Index(model).at.get(view.subjec
 // what a dynamic view draws: its steps between two elements it shows (not a boundary), and the comment links it lists
 function dynDrawn(model, view) {
   const pic = c4Pic(model, view), ends = new Set(pic.ids.filter(id => !pic.open.has(id))), steps = dynSteps(model, view);
-  const notes = V_ARR(view.edges).map(x => (typeof x === 'string' ? pic.I.E.find(e => e.id === x) : null)).filter(e => e && e.type === 'uml.CommentLink' && ends.has(e.from) && ends.has(e.to));
+  const notes = [...new Set(V_ARR(view.edges).map(x => (typeof x === 'string' ? pic.I.E.find(e => e.id === x) : null)))].filter(e => e && e.type === 'uml.CommentLink' && ends.has(e.from) && ends.has(e.to));
   return { pic, steps, notes };
 }
 const dynName = (e, k, pic) => `Step ${k}: ${c4LineName(e, pic)}`;
@@ -132,9 +132,7 @@ function dynConnect(model, view, from, to, at, line) {
 // ("3." or "3 ·"), are not the description; what is left is set as its label. Anything else: null, the canvas's own
 function dynRename(model, view, id, text) {
   const s = dynSteps(model, view).find(x => x.e.id === id); if (!s) return null;
-  const tech = V_P(s.e).technology, t = String(text).trim().replace(new RegExp(`^${s.k}\\s*(·|\\.(?!\\S))\\s*`), '');
-  const label = V_HAS(tech) && t.endsWith(`[${tech}]`) ? t.slice(0, -tech.length - 2).trim() : t;
-  return label === (s.e.label ?? '') ? [] : [{ op: 'set', id, path: 'label', value: label || undefined }];
+  return c4Rename(model, view, id, String(text).trim().replace(new RegExp(`^${s.k}\\s*(·|\\.(?!\\S))\\s*`), ''));
 }
 // add: a container or component added at the view's level (its subject's, §5.1) is owned by the subject, as on that static view
 const dynAdd = (model, view, entry, label) => (V_OBJ(view) ? C4_DEF.edits.add(model, { ...view, diagram: dynLevel(model, view) }, entry, label) : null);
@@ -267,7 +265,7 @@ const DEP_DEF = {
     if (x.type !== 'c4.ContainerInstance') return C4_DEF.rows(model, view, id);
     const c = depOf(I, x); return [`Instance of ${c ? vName(c) : 'no container'}`, ...(c ? C4_DEF.rows(model, view, c.id) : [])]; },
   text: C4_DEF.text,
-  edits: { add: depAdd, key: depKey },
+  edits: { add: depAdd, key: depKey, rename: c4Rename },
 };
 
 const C4_VIEW_TYPES = [registerDiagramType('c4.dynamic', DYN_DEF), registerDiagramType('c4.deployment', DEP_DEF)];
