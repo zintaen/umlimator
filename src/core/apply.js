@@ -191,8 +191,8 @@ function run(m, c, gone) {
       if (!at.has(c.id) && gone.has(c.id)) return; // gone with an earlier command of this transaction
       need(c.id); const now = new Set(), kids = new Map();
       for (const [k, o] of at) if ((o.kind === 'node' || o.kind === 'member') && o.x.parent != null) { if (!kids.has(o.x.parent)) kids.set(o.x.parent, []); kids.get(o.x.parent).push(k); }
-      const take = id => { const r = at.get(id); if (!r || now.has(id)) return; now.add(id);
-        arr(r.x.members).forEach(y => isObj(y) && take(y.id)); arr(kids.get(id)).forEach(take); }; // what it owns goes with it
+      const take = id => { for (const s = [id]; s.length;) { const k = s.pop(), r = at.get(k); if (!r || now.has(k)) continue; now.add(k);
+        arr(r.x.members).forEach(y => isObj(y) && s.push(y.id)); arr(kids.get(k)).forEach(x => s.push(x)); } }; // what it owns goes with it
       take(c.id);
       // lines to what is gone go too, lines to those lines, a timeline's items, and what a type's refs cascade (a reply with its call)
       const cascade = x => Object.entries(propRefs(x.type)).some(([p, how]) => how === 'cascade' && [].concat(dig(x, p)).some(id => now.has(id)));
@@ -202,7 +202,8 @@ function run(m, c, gone) {
       for (const [k, o] of at) if (!now.has(k) && now.has(o.x.parent)) { let p = o.x.parent;
         for (let n = 0; p != null && now.has(p) && n++ < at.size;) p = above(p);
         if (p != null && !now.has(p)) o.x.parent = p; else delete o.x.parent; }
-      for (const [k, o] of at) if (now.has(k) && !(o.owner && now.has(o.owner.id))) { const i = o.list.indexOf(o.x); if (i >= 0) o.list.splice(i, 1); }
+      const ls = new Set(), xs = new Set(); for (const [k, o] of at) if (now.has(k) && !(o.owner && now.has(o.owner.id))) { ls.add(o.list); xs.add(o.x); }
+      ls.forEach(l => { const k = l.filter(x => !xs.has(x)); Object.assign(l, k).length = k.length; });
       for (let found = refs(m, now); found.length; found = refs(m, now)) clear(m, found); // a line without an id to a gone line goes in a second round
       now.forEach(id => gone.add(id));
       return;
