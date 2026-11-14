@@ -741,8 +741,8 @@ Where 4b.5 departs from §12.3, §13, §15.2 and §18, each taken by the lead un
   three inside each of two sub-processes, 57, with the ten boundary events counted apart (§14's spike counted them so;
   4b.3's test reaches 67 by adding them). Three more would move every pin 4b.3 and this package hold on it, and add
   to timings already at the target in CI.
-- **CI's timings sit at the target.** On CI's runner (run 43563271519) the four common edits took 97.6 to 100.0 ms, a
-  sequence flow's name on the target, and the full layout 100.4 ms; on the laptop 52 to 55 ms against 55 ms. Each common
+- **CI's timings sit at the target or just over it.** On CI's runner (runs 43563271519 and 43564910738) the four
+  common edits took 97.6 to 108.2 ms and the full layout 100.4 to 105.8 ms; on the laptop 52 to 55 ms against 55 ms. Each common
   edit lays the view out again, so it costs about a full layout; the memo spares only an edit that moves nothing. CI
   holds the 1 s ceiling as the maintainer decided (13 Nov 2026); the release note and the conformance note say so.
 - **A sequence flow across pools** is in the JSON (an error, `sequence-scope`); `connect` between those two ends makes a

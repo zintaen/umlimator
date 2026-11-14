@@ -129,8 +129,8 @@ Apple laptop under other agents' load (14 Nov 2026): a full layout and its SVG 5
 nothing out; a task renamed 54 ms; a sequence flow's name 52 ms; a flow node moved to another lane 55 ms; a boundary
 event's side 53 ms. CI holds 1 s and prints the figures against the 100 ms target. The BPMN XML adapter reads and writes
 500 elements under its 100 ms target (`tests/bpmn-xml.test.mjs`).
-On CI's runner (run 43563271519) the four common edits took 97.6 to 100.0 ms and the full layout 100.4 ms: the edits
-sit at the target there, a sequence flow's name on it, and cost about as much as a full layout, since each lays the
+On CI's runner (runs 43563271519 and 43564910738) the four common edits took 97.6 to 108.2 ms and the full layout
+100.4 to 105.8 ms: the edits sit at the target there, over it in the second run, and cost about as much as a full layout, since each lays the
 view out again; only an edit that moves nothing is spared by the memo.
 
 ## Tests

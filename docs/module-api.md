@@ -4124,8 +4124,8 @@ CLI and the adapter; the core is unchanged.
 - **P1.** On the stress view `all` (CPU, best of five, an Apple laptop under load): a full layout and its SVG 55 ms;
   documentation 6 ms, laying nothing out; a task renamed 54 ms, a sequence flow's name 52 ms, a flow node moved to
   another lane 55 ms, a boundary event's side 53 ms. CI holds 1 s and prints each against the 100 ms target.
-  On CI's runner (run 43563271519) the four common edits took 97.6 to 100.0 ms and the full layout 100.4 ms: the
-  edits sit at the target there, a sequence flow's name on it, and cost about as much as a full layout, since each
+  On CI's runner (runs 43563271519 and 43564910738) the four common edits took 97.6 to 108.2 ms and the full
+  layout 100.4 to 105.8 ms: the edits sit at the target there, over it in the second run, and cost about as much as a full layout, since each
   lays the view out again (the memo spares only an edit that moves nothing).
 - **Size:** `lib/umlimator.js`, what a map host loads, is 186,161 B with `gzip -9`, unchanged by milestone 4b: 12.86%
   over 0.16.0 (the budget is 15%). Milestone 4b spent none of its 700 B share. `lib/umlimator-all.js` is 552,200 B
