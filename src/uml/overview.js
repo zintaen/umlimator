@@ -148,7 +148,7 @@ function ovGeo({ model, view, pos, memo }) {
   const bar = id => I.el(id).type === 'uml.ForkNode' || I.el(id).type === 'uml.JoinNode';
   const nodes = I.ids.map(id => { const x = I.el(id), shape = ovOwn(OV_SHAPE, x.type) || 'rounded', d = { id, label: OV_HAS(x.label) ? String(x.label) : '', type: x.type, kind: 'file', shape, col: at(id)[0], row: at(id)[1] };
     const sd = x.type === 'uml.Interaction' ? ovInline(model, I, x) : null;
-    d.aria = ovNodeName(model, I, x, ins.get(id) || 0, outs.get(id) || 0, sd);
+    d.aria = ovNodeName(model, I, x, ins.get(id) || 0, outs.get(id) || 0, sd); d.saysOpens = x.type === 'uml.InteractionUse' || x.type === 'uml.Interaction' && !sd;
     if (shape === 'rounded') d.stereotypes = ovStereo(x);
     if (shape === 'bar') Object.assign(d, { busy: Math.max(ins.get(id) || 0, outs.get(id) || 0), down });
     if (shape === 'ov-inline') { const b = sd && sd.run && sd.run.bounds, tw = tagSize(`sd ${d.label}`).w + 2 * OV_SD.pad;
