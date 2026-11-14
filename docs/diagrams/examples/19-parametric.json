@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
   "title": "E-bike: range",
-  "root": "range",
+  "root": "range-analysis",
   "nodes": [
     { "id": "ebike", "type": "sysml.Block", "label": "EBike",
       "members": [
@@ -49,7 +49,7 @@
       "props": { "ends": { "to": { "part": "ebike.boost" } } } }
   ],
   "views": [
-    { "id": "range", "diagram": "sysml.parametric", "title": "E-bike range", "parent": null, "subject": "ebike",
+    { "id": "range-analysis", "diagram": "sysml.parametric", "title": "E-bike range", "parent": null, "subject": "ebike",
       "nodeIds": ["ebike"] }
   ]
 }

@@ -155,7 +155,7 @@ try {
   const own = panel('[data-f="owner"]'), opts = [...own.options].map(o => o.textContent);
   check('the Owner field of a container: none and every software system', same(opts, ['none', 'Bookshop', 'Payment provider', 'Email service', 'Courier']) && own.value === 'c4-bookshop', opts);
   change(own, 'c4-payments');
-  gives('Owner: reparent the container (it leaves the boundary; c4-owner holds; c4-level says the view lists it with its new owner, not the subject)', [{ op: 'reparent', id: 'c4-worker', parent: 'c4-payments' }], m => m.nodes.find(n => n.id === 'c4-worker').parent === 'c4-payments', m4, 1);
+  gives('Owner: reparent the container (it leaves the boundary; c4-owner holds; c4-level says the container view and the dynamic view list it with its new owner, not the subject)', [{ op: 'reparent', id: 'c4-worker', parent: 'c4-payments' }], m => m.nodes.find(n => n.id === 'c4-worker').parent === 'c4-payments', m4, 2);
   // T: the type, picked
   click('.node[data-id="c4-queue"] .c-name'); key('t'); await tick();
   const types = all('.um-pick button').map(b => b.textContent);
@@ -166,7 +166,7 @@ try {
   click('.node[data-id="c4-db"] .c-name'); key('Delete');
   gives('Delete: hide the element from the view', [{ op: 'hide', id: 'c4-db', view: 'c4-containers' }], m => !m.views[1].nodeIds.includes('c4-db'), m4);
   click('.node[data-id="c4-storefront"] .c-name'); key('Delete', { shiftKey: true });
-  gives('Shift + Delete: delete it and its relationships from the model (its instance\'s container then names nothing: c4-instance)', [{ op: 'delete', id: 'c4-storefront' }], m => !m.nodes.some(n => n.id === 'c4-storefront') && !m.edges.some(e => e.to === 'c4-storefront' || e.from === 'c4-storefront'), m4, 1);
+  gives('Shift + Delete: delete it and its relationships from the model, its instance with it (M2.7\'s refs)', [{ op: 'delete', id: 'c4-storefront' }], m => !m.nodes.some(n => n.id === 'c4-storefront' || n.id === 'c4-storefront-1') && !m.edges.some(e => e.to === 'c4-storefront' || e.from === 'c4-storefront'), m4);
   click('.node[data-id="container1"] .c-name'); key('Delete', { shiftKey: true });
   gives('Shift + Delete on a container with no instance: no error left', [{ op: 'delete', id: 'container1' }], m => !m.nodes.some(n => n.id === 'container1'), m4);
   h.destroy();

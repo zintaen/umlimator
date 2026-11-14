@@ -141,11 +141,11 @@
    "edited validate": "506d251fdef33c37"
   },
   "17-block-definition.json": {
-   "layout blocks": "ee9cc67d0eb5b34a",
+   "layout blocks": "52eb01b9743652e9",
    "describe blocks": "9bb392b80ebc7c7a",
    "validate": "b5a4060a9e0361bb",
-   "edit": "11fcc9f317727b4a",
-   "edited layout blocks": "75ada3debc815919",
+   "edit": "c00e14be8cb216c4",
+   "edited layout blocks": "d44bed9458202dd7",
    "edited validate": "b5a4060a9e0361bb"
   },
   "18-internal-block.json": {
@@ -157,11 +157,11 @@
    "edited validate": "17c2e3928a271090"
   },
   "19-parametric.json": {
-   "layout range": "607d7936489207f9",
-   "describe range": "0342c3c5e14543ef",
+   "layout range-analysis": "9e6b1e14d3af374f",
+   "describe range-analysis": "0342c3c5e14543ef",
    "validate": "309c92e80082904a",
-   "edit": "d0cfd8c3e648502c",
-   "edited layout range": "750019b4ab1f794e",
+   "edit": "6470528702109a76",
+   "edited layout range-analysis": "750019b4ab1f794e",
    "edited validate": "309c92e80082904a"
   },
   "20-entity-relationship.json": {
@@ -217,35 +217,35 @@
    "edited validate": "ab94089ef574e55a"
   },
   "25-mindmap.json": {
-   "layout plan": "40d1db484d7a288d",
-   "describe plan": "5ce7d90d6db7de1c",
+   "layout mm-plan": "b2e81cdf89c91af8",
+   "describe mm-plan": "682b99988f8f09e0",
    "validate": "daec15d409755e13",
-   "edit": "7a43e0f6e8cf68cd",
-   "edited layout plan": "965650fe0da3a8b8",
+   "edit": "59190eb2520ee871",
+   "edited layout mm-plan": "c5012db76f6d0b00",
    "edited validate": "daec15d409755e13"
   },
   "26-aws.json": {
-   "layout on-aws": "25a693b61352218e",
+   "layout on-aws": "5d6fc5beaf2fa729",
    "describe on-aws": "7e9817993976ea18",
    "validate": "65524f88f886c00e",
-   "edit": "15a4aedf265f33c3",
-   "edited layout on-aws": "dccd79198d30a769",
+   "edit": "c54e108caa44fc63",
+   "edited layout on-aws": "b02e590e3475c64f",
    "edited validate": "65524f88f886c00e"
   },
   "27-gcp.json": {
-   "layout on-gcp": "b1cd8d0b1e8638be",
-   "describe on-gcp": "1c900fcefcced3d6",
+   "layout gcp-on-gcp": "536c01efdc529358",
+   "describe gcp-on-gcp": "1c900fcefcced3d6",
    "validate": "d8a750f6d7f41721",
-   "edit": "f3ac52d5419f721a",
-   "edited layout on-gcp": "c1076a4640c593ee",
+   "edit": "2a5adafa4d6843fd",
+   "edited layout gcp-on-gcp": "4fd78a1e3eabf8f0",
    "edited validate": "d8a750f6d7f41721"
   },
   "28-azure.json": {
-   "layout on-azure": "56b4477cf525c8ec",
-   "describe on-azure": "cff3f0a67beedd92",
+   "layout az-on-azure": "617652d1a4215929",
+   "describe az-on-azure": "cff3f0a67beedd92",
    "validate": "404236670800e847",
-   "edit": "0b21f8c7d7caeb47",
-   "edited layout on-azure": "9051f0e9737ebb38",
+   "edit": "04eb6817a0bae48a",
+   "edited layout az-on-azure": "1b47135d0741b255",
    "edited validate": "404236670800e847"
   },
   "examples/sales-classes.json": {
