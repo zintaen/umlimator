@@ -334,8 +334,13 @@ def bpmn(fn, a, *args):
             f"let f, B; try {{ f = createRequire(path.join({json.dumps(folder)}, 'x')).resolve('bpmn-moddle'); }} catch {{ process.exit(3); }}"
             "try { B = (await import(pathToFileURL(f))).BpmnModdle; } catch {} if (typeof B !== 'function') process.exit(4);"
             f"const BpmnModdle = B, u = await import({json.dumps(adapter.as_uri())});"
-            "let s = ''; for await (const c of process.stdin) s += c;"
-            f"process.stdout.write(JSON.stringify(await u[{json.dumps(fn)}](...JSON.parse(s), BpmnModdle())));")
+            "let s = ''; for await (const c of process.stdin) s += c; const a = JSON.parse(s);"
+            # export with no geometry given: the type's layout of the view (lib/umlimator-all.js), a pool's or lane's its band,
+            # an expanded sub-process its frame, every other node its box, a line its points (notes/milestone-4b.md §12.3, 4b.5)
+            f"if ({json.dumps(fn)} === 'writeBpmnXml' && a[2] == null) {{ const g = (await import({json.dumps((HERE / 'lib' / 'umlimator-all.js').as_uri())})).layout(a[0], a[1]), at = new Map();"
+            "for (const n of [...g.nodes, ...(g.families || []), ...(g.bands || [])]) if (typeof n.id === 'string' && !n.id.startsWith('\\u0000')) at.set(n.id, { id: n.id, x: n.x, y: n.y, w: n.w, h: n.h });"
+            "a[2] = { nodes: [...at.values()], edges: g.edges.filter(e => e.id).map(e => ({ id: e.id, pts: e.pts })) }; }"
+            f"process.stdout.write(JSON.stringify(await u[{json.dumps(fn)}](...a, BpmnModdle())));")
     r = run([node, "--input-type=module", "-e", code], input=json.dumps(args))
     if r.returncode in (3, 4):
         why = f"not found in {folder}" if r.returncode == 3 else f"the one in {folder} has no BpmnModdle export: an older or another package"

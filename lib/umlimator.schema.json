@@ -426,7 +426,7 @@
      }
     },
     "type": {
-     "description": "Schema version 2: the element's type, <notation>.<Name> (uml.Class). validate() checks typed fields only in a model with schemaVersion 2. The class diagram (uml.class, 0.18.0): uml.Class, uml.Interface, uml.Enumeration, uml.DataType, uml.PrimitiveType, uml.Package and uml.Comment; their members uml.Property, uml.Operation and uml.EnumerationLiteral. The object diagram (uml.object, 0.19.0): uml.InstanceSpecification and uml.Comment; an instance's members uml.Slot. The package diagram (uml.package, 0.19.0): uml.Package and the class diagram's classifiers, and uml.Comment. The sequence and communication diagrams (uml.sequence, uml.communication, 0.20.0): uml.Lifeline. The use case diagram (uml.use-case, 0.21.0): uml.Actor, uml.UseCase, uml.Subject and uml.Comment; a use case's members uml.ExtensionPoint. The activity diagram (uml.activity, 0.21.0): uml.InitialNode, uml.ActivityFinalNode, uml.FlowFinalNode, uml.Action, uml.CallBehaviorAction, uml.SendSignalAction, uml.AcceptEventAction, uml.DecisionNode, uml.MergeNode, uml.ForkNode, uml.JoinNode, uml.ObjectNode, uml.DataStoreNode, uml.ActivityPartition and uml.Comment. The state machine diagram (uml.state-machine, 0.21.0): uml.State, uml.Pseudostate, uml.FinalState and uml.Comment; a state's members uml.Region and uml.InternalTransition. The interaction overview diagram (uml.interaction-overview, 0.21.0): the activity's control nodes, uml.InteractionUse, uml.Interaction (an inline interaction) and uml.Comment. The component diagram (uml.component, 0.22.0): uml.Component, uml.Interface, uml.Artifact, uml.Package and uml.Comment; a component's (or class's) members uml.Port. The deployment diagram (uml.deployment, 0.22.0): uml.Node, uml.Device, uml.ExecutionEnvironment, uml.Artifact, uml.DeploymentSpecification, uml.Component and uml.Comment. The composite structure diagram (uml.composite-structure, 0.22.0): the view's subject (a uml.Class, uml.Component or uml.Collaboration), uml.Collaboration, uml.CollaborationUse and uml.Comment; the subject's members uml.Property (its parts) and uml.Port, a collaboration's uml.Property (its roles). The profile diagram (uml.profile, 0.23.0): uml.Profile, uml.Stereotype and uml.MetaclassReference (each owned by a profile), uml.Enumeration (a tag's type), uml.Package, uml.Comment and any element that applies a stereotype; a stereotype's members uml.Property (its tag definitions), an enumeration's uml.EnumerationLiteral. The timing diagram (uml.timing, 0.23.0): uml.Lifeline (its changes and constraints are in the view's timeline). The entity-relationship diagram (er, 0.24.0): er.Entity and uml.Comment; an entity's members er.Column. The flowchart (flowchart, 0.24.0): flow.Terminator, flow.Process, flow.Decision, flow.InputOutput, flow.PredefinedProcess, flow.Document, flow.Database, flow.ManualInput, flow.Delay, flow.Connector and uml.Comment. The data flow diagram (dfd, 0.24.0): dfd.Process, dfd.DataStore, dfd.ExternalEntity and uml.Comment. The information flow diagram (uml.information-flow, 0.24.0): uml.Class, uml.Interface, uml.Component, uml.Actor, uml.InformationItem and uml.Comment. C4 (c4.landscape, c4.context, c4.container, c4.component, c4.dynamic, c4.deployment, 0.24.0): c4.Person, c4.SoftwareSystem, c4.Container (owned by a software system), c4.Component (owned by a container), c4.DeploymentNode (owned by a deployment node or none), c4.ContainerInstance (owned by a deployment node) and uml.Comment. SysML v1.7 (0.25.0, docs/conformance/sysml-*.md): the requirement diagram (sysml.requirement): sysml.Requirement (owned by a requirement or a package), sysml.TestCase, sysml.Block, uml.Package and uml.Comment. The block definition diagram (sysml.block-definition): sysml.Block, sysml.InterfaceBlock, sysml.ConstraintBlock, sysml.ValueType, uml.Package and uml.Comment; a block's members sysml.PartProperty, sysml.ReferenceProperty, sysml.ValueProperty, sysml.ConstraintProperty, sysml.Port, sysml.FlowProperty and uml.Operation, a constraint block's sysml.ConstraintParameter and sysml.ConstraintProperty. The internal block and parametric diagrams (sysml.internal-block, sysml.parametric): the view's subject, whose members are drawn inside its frame. The mindmap (mindmap, 0.26.0): mindmap.Topic, its tree by parent (a topic with none is a root). Google Cloud (gcp, 0.26.0): gcp.Zone (a group; props.zoneType), gcp.Product (props.icon) and gcp.User. Azure (azure, 0.26.0): azure.Group (props.groupType) and azure.Service (props.icon). A group owns by parent what it holds.",
+     "description": "Schema version 2: the element's type, <notation>.<Name> (uml.Class). validate() checks typed fields only in a model with schemaVersion 2. The class diagram (uml.class, 0.18.0): uml.Class, uml.Interface, uml.Enumeration, uml.DataType, uml.PrimitiveType, uml.Package and uml.Comment; their members uml.Property, uml.Operation and uml.EnumerationLiteral. The object diagram (uml.object, 0.19.0): uml.InstanceSpecification and uml.Comment; an instance's members uml.Slot. The package diagram (uml.package, 0.19.0): uml.Package and the class diagram's classifiers, and uml.Comment. The sequence and communication diagrams (uml.sequence, uml.communication, 0.20.0): uml.Lifeline. The use case diagram (uml.use-case, 0.21.0): uml.Actor, uml.UseCase, uml.Subject and uml.Comment; a use case's members uml.ExtensionPoint. The activity diagram (uml.activity, 0.21.0): uml.InitialNode, uml.ActivityFinalNode, uml.FlowFinalNode, uml.Action, uml.CallBehaviorAction, uml.SendSignalAction, uml.AcceptEventAction, uml.DecisionNode, uml.MergeNode, uml.ForkNode, uml.JoinNode, uml.ObjectNode, uml.DataStoreNode, uml.ActivityPartition and uml.Comment. The state machine diagram (uml.state-machine, 0.21.0): uml.State, uml.Pseudostate, uml.FinalState and uml.Comment; a state's members uml.Region and uml.InternalTransition. The interaction overview diagram (uml.interaction-overview, 0.21.0): the activity's control nodes, uml.InteractionUse, uml.Interaction (an inline interaction) and uml.Comment. The component diagram (uml.component, 0.22.0): uml.Component, uml.Interface, uml.Artifact, uml.Package and uml.Comment; a component's (or class's) members uml.Port. The deployment diagram (uml.deployment, 0.22.0): uml.Node, uml.Device, uml.ExecutionEnvironment, uml.Artifact, uml.DeploymentSpecification, uml.Component and uml.Comment. The composite structure diagram (uml.composite-structure, 0.22.0): the view's subject (a uml.Class, uml.Component or uml.Collaboration), uml.Collaboration, uml.CollaborationUse and uml.Comment; the subject's members uml.Property (its parts) and uml.Port, a collaboration's uml.Property (its roles). The profile diagram (uml.profile, 0.23.0): uml.Profile, uml.Stereotype and uml.MetaclassReference (each owned by a profile), uml.Enumeration (a tag's type), uml.Package, uml.Comment and any element that applies a stereotype; a stereotype's members uml.Property (its tag definitions), an enumeration's uml.EnumerationLiteral. The timing diagram (uml.timing, 0.23.0): uml.Lifeline (its changes and constraints are in the view's timeline). The entity-relationship diagram (er, 0.24.0): er.Entity and uml.Comment; an entity's members er.Column. The flowchart (flowchart, 0.24.0): flow.Terminator, flow.Process, flow.Decision, flow.InputOutput, flow.PredefinedProcess, flow.Document, flow.Database, flow.ManualInput, flow.Delay, flow.Connector and uml.Comment. The data flow diagram (dfd, 0.24.0): dfd.Process, dfd.DataStore, dfd.ExternalEntity and uml.Comment. The information flow diagram (uml.information-flow, 0.24.0): uml.Class, uml.Interface, uml.Component, uml.Actor, uml.InformationItem and uml.Comment. C4 (c4.landscape, c4.context, c4.container, c4.component, c4.dynamic, c4.deployment, 0.24.0): c4.Person, c4.SoftwareSystem, c4.Container (owned by a software system), c4.Component (owned by a container), c4.DeploymentNode (owned by a deployment node or none), c4.ContainerInstance (owned by a deployment node) and uml.Comment. SysML v1.7 (0.25.0, docs/conformance/sysml-*.md): the requirement diagram (sysml.requirement): sysml.Requirement (owned by a requirement or a package), sysml.TestCase, sysml.Block, uml.Package and uml.Comment. The block definition diagram (sysml.block-definition): sysml.Block, sysml.InterfaceBlock, sysml.ConstraintBlock, sysml.ValueType, uml.Package and uml.Comment; a block's members sysml.PartProperty, sysml.ReferenceProperty, sysml.ValueProperty, sysml.ConstraintProperty, sysml.Port, sysml.FlowProperty and uml.Operation, a constraint block's sysml.ConstraintParameter and sysml.ConstraintProperty. The internal block and parametric diagrams (sysml.internal-block, sysml.parametric): the view's subject, whose members are drawn inside its frame. The mindmap (mindmap, 0.26.0): mindmap.Topic, its tree by parent (a topic with none is a root). Google Cloud (gcp, 0.26.0): gcp.Zone (a group; props.zoneType), gcp.Product (props.icon) and gcp.User. Azure (azure, 0.26.0): azure.Group (props.groupType) and azure.Service (props.icon). A group owns by parent what it holds. The BPMN diagram (bpmn, 0.27.0): bpmn.Participant, bpmn.Task, bpmn.SubProcess, bpmn.CallActivity, bpmn.StartEvent, bpmn.EndEvent, bpmn.IntermediateCatchEvent, bpmn.IntermediateThrowEvent, bpmn.BoundaryEvent, bpmn.ExclusiveGateway, bpmn.ParallelGateway, bpmn.DataObject, bpmn.DataStoreReference, bpmn.TextAnnotation and bpmn.Group; a pool's members bpmn.Lane, a lane's parent another lane of its pool.",
      "examples": [
       "uml.Class",
       "uml.Interface",
@@ -492,7 +492,23 @@
       "gcp.Product",
       "gcp.User",
       "azure.Group",
-      "azure.Service"
+      "azure.Service",
+      "bpmn.Participant",
+      "bpmn.Task",
+      "bpmn.SubProcess",
+      "bpmn.CallActivity",
+      "bpmn.StartEvent",
+      "bpmn.EndEvent",
+      "bpmn.IntermediateCatchEvent",
+      "bpmn.IntermediateThrowEvent",
+      "bpmn.BoundaryEvent",
+      "bpmn.ExclusiveGateway",
+      "bpmn.ParallelGateway",
+      "bpmn.DataObject",
+      "bpmn.DataStoreReference",
+      "bpmn.TextAnnotation",
+      "bpmn.Group",
+      "bpmn.Lane"
      ]
     },
     "parent": {
@@ -663,6 +679,54 @@
           "subnet",
           "generic"
          ]
+        },
+        "documentation": {
+         "type": "string",
+         "description": "Any bpmn element (0.27.0): its documentation, shown in the properties panel, describe() and the PDF's rows."
+        },
+        "processRef": {
+         "type": "string",
+         "description": "bpmn.Participant (0.27.0): its process's id, kept for BPMN XML's round trip when it is not <participant>-process."
+        },
+        "taskType": {
+         "description": "bpmn.Task (0.27.0): none (the default), user or service; its marker.",
+         "examples": [
+          "none",
+          "user",
+          "service"
+         ]
+        },
+        "definition": {
+         "description": "A bpmn event (0.27.0): its event definition, by kind: a start event none, message or timer; an end event none, message or terminate; an intermediate catch event message or timer; an intermediate throw event none or message; a boundary event message or timer.",
+         "examples": [
+          "none",
+          "message",
+          "timer",
+          "terminate"
+         ]
+        },
+        "attachedTo": {
+         "type": "string",
+         "description": "bpmn.BoundaryEvent (0.27.0): the id of the activity on whose border it sits (a declared reference: deleting the activity deletes it)."
+        },
+        "cancelActivity": {
+         "type": "boolean",
+         "description": "bpmn.BoundaryEvent (0.27.0): false for a non-interrupting event, drawn dashed; true by default."
+        },
+        "calledElement": {
+         "type": "string",
+         "description": "bpmn.CallActivity (0.27.0): the process or task it calls, as text."
+        },
+        "dataStoreRef": {
+         "type": "string",
+         "description": "bpmn.DataStoreReference (0.27.0): the data store it refers to, as text."
+        },
+        "categoryValueRef": {
+         "type": "array",
+         "items": {
+          "type": "string"
+         },
+         "description": "A bpmn flow node, data object or annotation (0.27.0): the ids of the groups (bpmn.Group) it is in; a deleted group is dropped."
         }
        }
       },
@@ -1069,7 +1133,7 @@
      "description": "When the line is used."
     },
     "type": {
-     "description": "Schema version 2: the element's type, <notation>.<Name> (uml.Class). The class diagram (uml.class, 0.18.0): uml.Association, uml.Generalization (from the specific to the general), uml.InterfaceRealization (to the interface), uml.Dependency (from the client) and uml.CommentLink (from the comment). The object diagram (uml.object, 0.19.0): uml.Link and uml.CommentLink. The package diagram (uml.package, 0.19.0): uml.PackageImport and uml.PackageMerge (from the importing or merging package), uml.Dependency and uml.CommentLink. The sequence diagram (uml.sequence, 0.20.0): uml.Message, inline in its view's edges, in time order. The communication diagram (uml.communication, 0.20.0): uml.Connector and uml.Message, model lines its view lists, connectors first; only the messages' order means anything. The use case diagram (uml.use-case, 0.21.0): uml.Association (an actor and a use case), uml.Include and uml.Extend (from the including or extending use case), uml.Generalization (from the specific to the general) and uml.CommentLink. The activity diagram (uml.activity, 0.21.0): uml.ControlFlow, uml.ObjectFlow and uml.CommentLink. The state machine diagram (uml.state-machine, 0.21.0): uml.Transition and uml.CommentLink. The interaction overview diagram (uml.interaction-overview, 0.21.0): uml.ControlFlow and uml.CommentLink. The component diagram (uml.component, 0.22.0): uml.InterfaceRealization (from a component, a class or a port to the interface: a plain stem to a ball), uml.Usage (to the interface: a socket at a ball, else a dashed «use» arrow), uml.ComponentRealization (from the realizing classifier to the component), uml.Connector (props.kind assembly or delegation; from or to a port), uml.Dependency, uml.Manifestation (from an artifact) and uml.CommentLink. The deployment diagram (uml.deployment, 0.22.0): uml.Deployment (from an artifact or deployment specification to its target), uml.Manifestation, uml.CommunicationPath (between two targets), uml.Dependency and uml.CommentLink. The composite structure diagram (uml.composite-structure, 0.22.0): uml.Connector (between parts and ports; an end through a part keeps props.ends.<end>.part), uml.RoleBinding (from a part to a collaboration use; its label the role) and uml.CommentLink. The profile diagram (uml.profile, 0.23.0): uml.Extension (from a stereotype to a metaclass reference; props.isRequired), uml.ProfileApplication (from a package to a profile), uml.Generalization (between stereotypes) and uml.CommentLink. The timing diagram (uml.timing, 0.23.0): uml.Message, inline in its view's edges (props.sentAt, props.receivedAt). The entity-relationship diagram (er, 0.24.0): er.Relationship (from the referenced entity to the referring one) and uml.CommentLink. The flowchart (flowchart, 0.24.0): flow.Flow (a decision's exits labelled) and uml.CommentLink. The data flow diagram (dfd, 0.24.0): dfd.DataFlow and uml.CommentLink. The information flow diagram (uml.information-flow, 0.24.0): uml.InformationFlow (props.conveyed) and uml.CommentLink. C4 (0.24.0): c4.Relationship (its label the description, props.technology) and uml.CommentLink; a dynamic view's edges list relationship ids, each once, in time order. SysML v1.7 (0.25.0): the requirement diagram's sysml.DeriveReqt, sysml.Satisfy, sysml.Verify, sysml.Refine, sysml.Trace and sysml.Copy, each from the client to the supplier, and uml.CommentLink; containment is a requirement's parent, drawn as a crosshair line, never stored. The block definition diagram's uml.Association, uml.Generalization, uml.Dependency and uml.CommentLink. The internal block diagram's sysml.Connector (ends through parts, ends.<from|to>.part). The parametric diagram's sysml.BindingConnector, from a value property or a parameter of the subject to a parameter reached through a constraint property (ends.to.part). Google Cloud (gcp, 0.26.0): gcp.Path. Azure (azure, 0.26.0): azure.Connector. Either may start or end at a group, drawn to its border, but never join a group and what it holds. A mindmap has no lines.",
+     "description": "Schema version 2: the element's type, <notation>.<Name> (uml.Class). The class diagram (uml.class, 0.18.0): uml.Association, uml.Generalization (from the specific to the general), uml.InterfaceRealization (to the interface), uml.Dependency (from the client) and uml.CommentLink (from the comment). The object diagram (uml.object, 0.19.0): uml.Link and uml.CommentLink. The package diagram (uml.package, 0.19.0): uml.PackageImport and uml.PackageMerge (from the importing or merging package), uml.Dependency and uml.CommentLink. The sequence diagram (uml.sequence, 0.20.0): uml.Message, inline in its view's edges, in time order. The communication diagram (uml.communication, 0.20.0): uml.Connector and uml.Message, model lines its view lists, connectors first; only the messages' order means anything. The use case diagram (uml.use-case, 0.21.0): uml.Association (an actor and a use case), uml.Include and uml.Extend (from the including or extending use case), uml.Generalization (from the specific to the general) and uml.CommentLink. The activity diagram (uml.activity, 0.21.0): uml.ControlFlow, uml.ObjectFlow and uml.CommentLink. The state machine diagram (uml.state-machine, 0.21.0): uml.Transition and uml.CommentLink. The interaction overview diagram (uml.interaction-overview, 0.21.0): uml.ControlFlow and uml.CommentLink. The component diagram (uml.component, 0.22.0): uml.InterfaceRealization (from a component, a class or a port to the interface: a plain stem to a ball), uml.Usage (to the interface: a socket at a ball, else a dashed «use» arrow), uml.ComponentRealization (from the realizing classifier to the component), uml.Connector (props.kind assembly or delegation; from or to a port), uml.Dependency, uml.Manifestation (from an artifact) and uml.CommentLink. The deployment diagram (uml.deployment, 0.22.0): uml.Deployment (from an artifact or deployment specification to its target), uml.Manifestation, uml.CommunicationPath (between two targets), uml.Dependency and uml.CommentLink. The composite structure diagram (uml.composite-structure, 0.22.0): uml.Connector (between parts and ports; an end through a part keeps props.ends.<end>.part), uml.RoleBinding (from a part to a collaboration use; its label the role) and uml.CommentLink. The profile diagram (uml.profile, 0.23.0): uml.Extension (from a stereotype to a metaclass reference; props.isRequired), uml.ProfileApplication (from a package to a profile), uml.Generalization (between stereotypes) and uml.CommentLink. The timing diagram (uml.timing, 0.23.0): uml.Message, inline in its view's edges (props.sentAt, props.receivedAt). The entity-relationship diagram (er, 0.24.0): er.Relationship (from the referenced entity to the referring one) and uml.CommentLink. The flowchart (flowchart, 0.24.0): flow.Flow (a decision's exits labelled) and uml.CommentLink. The data flow diagram (dfd, 0.24.0): dfd.DataFlow and uml.CommentLink. The information flow diagram (uml.information-flow, 0.24.0): uml.InformationFlow (props.conveyed) and uml.CommentLink. C4 (0.24.0): c4.Relationship (its label the description, props.technology) and uml.CommentLink; a dynamic view's edges list relationship ids, each once, in time order. SysML v1.7 (0.25.0): the requirement diagram's sysml.DeriveReqt, sysml.Satisfy, sysml.Verify, sysml.Refine, sysml.Trace and sysml.Copy, each from the client to the supplier, and uml.CommentLink; containment is a requirement's parent, drawn as a crosshair line, never stored. The block definition diagram's uml.Association, uml.Generalization, uml.Dependency and uml.CommentLink. The internal block diagram's sysml.Connector (ends through parts, ends.<from|to>.part). The parametric diagram's sysml.BindingConnector, from a value property or a parameter of the subject to a parameter reached through a constraint property (ends.to.part). Google Cloud (gcp, 0.26.0): gcp.Path. Azure (azure, 0.26.0): azure.Connector. Either may start or end at a group, drawn to its border, but never join a group and what it holds. A mindmap has no lines. The BPMN diagram (bpmn, 0.27.0): bpmn.SequenceFlow, bpmn.MessageFlow, bpmn.Association and bpmn.DataAssociation.",
      "examples": [
       "uml.Association",
       "uml.Generalization",
@@ -1108,7 +1172,11 @@
       "sysml.Connector",
       "sysml.BindingConnector",
       "gcp.Path",
-      "azure.Connector"
+      "azure.Connector",
+      "bpmn.SequenceFlow",
+      "bpmn.MessageFlow",
+      "bpmn.Association",
+      "bpmn.DataAssociation"
      ]
     },
     "parent": {
@@ -1261,6 +1329,18 @@
            ]
           }
          }
+        },
+        "direction": {
+         "description": "bpmn.Association (0.27.0): none (the default), one or both: its open arrowheads.",
+         "examples": [
+          "none",
+          "one",
+          "both"
+         ]
+        },
+        "documentation": {
+         "type": "string",
+         "description": "Any bpmn line (0.27.0): its documentation, shown in the properties panel and describe()."
         }
        }
       },
@@ -1542,7 +1622,7 @@
      "description": "Guess a line's kind from its label's words when its edges name none (render() and layout(); the standalone page always does)."
     },
     "diagram": {
-     "description": "Schema version 2: the view's diagram type; without it the view is a map. uml.class draws a class diagram (0.18.0, lib/umlimator-all.js), uml.object an object diagram and uml.package a package diagram (0.19.0), uml.sequence a sequence diagram and uml.communication a communication diagram (0.20.0), uml.use-case a use case diagram, uml.activity an activity diagram, uml.state-machine a state machine diagram and uml.interaction-overview an interaction overview diagram (0.21.0), uml.component a component diagram, uml.deployment a deployment diagram and uml.composite-structure a composite structure diagram (0.22.0), uml.profile a profile diagram and uml.timing a timing diagram (0.23.0), er an entity-relationship diagram, flowchart a flowchart, dfd a data flow diagram, uml.information-flow an information flow diagram, and c4.landscape, c4.context, c4.container, c4.component, c4.dynamic and c4.deployment C4's six views (0.24.0); sysml.requirement, sysml.block-definition, sysml.internal-block and sysml.parametric SysML v1.7's four diagrams, each in a frame (0.25.0); mindmap a mindmap, and gcp and azure Google Cloud and Azure architecture diagrams (0.26.0); a type this release does not draw is drawn as plain cards, with a warning.",
+     "description": "Schema version 2: the view's diagram type; without it the view is a map. uml.class draws a class diagram (0.18.0, lib/umlimator-all.js), uml.object an object diagram and uml.package a package diagram (0.19.0), uml.sequence a sequence diagram and uml.communication a communication diagram (0.20.0), uml.use-case a use case diagram, uml.activity an activity diagram, uml.state-machine a state machine diagram and uml.interaction-overview an interaction overview diagram (0.21.0), uml.component a component diagram, uml.deployment a deployment diagram and uml.composite-structure a composite structure diagram (0.22.0), uml.profile a profile diagram and uml.timing a timing diagram (0.23.0), er an entity-relationship diagram, flowchart a flowchart, dfd a data flow diagram, uml.information-flow an information flow diagram, and c4.landscape, c4.context, c4.container, c4.component, c4.dynamic and c4.deployment C4's six views (0.24.0); sysml.requirement, sysml.block-definition, sysml.internal-block and sysml.parametric SysML v1.7's four diagrams, each in a frame (0.25.0); mindmap a mindmap, and gcp and azure Google Cloud and Azure architecture diagrams (0.26.0); bpmn a BPMN diagram (0.27.0); a type this release does not draw is drawn as plain cards, with a warning.",
      "examples": [
       "uml.class",
       "uml.object",
@@ -1574,7 +1654,8 @@
       "sysml.parametric",
       "mindmap",
       "gcp",
-      "azure"
+      "azure",
+      "bpmn"
      ]
     },
     "subject": {

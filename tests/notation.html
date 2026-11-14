@@ -23,7 +23,12 @@
      outline), and SysML's frame (its tag in the corner, its text inside it, cut on a narrow frame). And milestone 4a's
      (4a.7, notes/milestone-4a.md §5.3, §5.4, §7.1): Google Cloud's, Azure's and AWS's lines solid with an open arrow at their
      to end, each end on the outline or group border it meets; groups dashed by kind (region, zone, availability zone);
-     a mindmap's branches curves with no end, 2.5 px from the root and 1.5 px below. tests/embed.py
+     a mindmap's branches curves with no end, 2.5 px from the root and 1.5 px below. And milestone 4b's
+     (4b.5, notes/milestone-4b.md §7.1, §10): on the BPMN example and the stress fixture's edge cases, a sequence flow
+     solid with a filled arrow; a message flow dashed (6 4), an open circle at its source and a hollow triangle at its
+     target; an association dotted (2 3) with open arrows by its direction; a data association dotted with an open arrow
+     at its target; each end, plain or under its marker, on the outline it meets (a boundary event's circle within 1 px, a
+     pool's border for a message flow to a pool). tests/embed.py
      opens this in headless Chrome and reads <pre id="result">. -->
 <meta charset="utf-8">
 <link rel="icon" href="data:,">
@@ -49,6 +54,7 @@ import '../src/uml/profile.js';
 import '../src/er/er.js';
 import '../src/uml/information.js';
 import '../src/c4/c4.js';
+import '../src/bpmn/process.js';
 import { layout } from '../src/map/api.js';
 import { mapContext } from '../src/map/context.js';
 const out = { ok: [], fail: [] };
@@ -357,6 +363,34 @@ try {
   const ends4 = [...seen4].join(' | ');
   check('milestone 4a: the three families\' lines with an open arrow, region and zone groups dashed, the rest solid, each drawn',
     ['gcp.Path none open', 'azure.Connector none open', 'aws.Connection none open', 'group region dashed', 'group zone dashed', 'group availability-zone dashed', 'group project solid', 'group subnet solid', 'group security-group solid'].every(k => ends4.includes(k)), [...seen4]);
+  // ---- milestone 4b's line ends (4b.5, §7.1, §10): each kind's ends and dashes by what the model says
+  const WANT4 = { 'bpmn.SequenceFlow': () => ['none', 'arrow', null], 'bpmn.MessageFlow': () => ['circle', 'triangle', '6 4'],
+    'bpmn.Association': e => { const d = (e.props || {}).direction || 'none'; return [d === 'both' ? 'open' : 'none', d === 'none' ? 'none' : 'open', '2 3']; },
+    'bpmn.DataAssociation': () => ['none', 'open', '2 3'] }, seen4b = new Set();
+  for (const [path, vid] of [['../examples/bookshop-order-to-shipment.json', 'order-to-shipment'], ['bpmn-stress.json', 'edge-cases']]) {
+    const f = `${path.split('/').pop().slice(0, -5)} ${vid}`, model = await (await fetch(path)).json(), g = layout(model, vid);
+    for (const theme of ['light', 'dark']) for (const [fname, family] of Object.entries(FONTS)) {
+      document.documentElement.dataset.theme = theme; el.style.setProperty('--um-sans', family);
+      el.innerHTML = measured(hostMeasure(el), () => mapContext(model).buildView(vid).markup); const svg = el.querySelector('svg'), off = [];
+      svg.querySelectorAll('.edge-g').forEach(gr => { const ge = g.edges[+gr.dataset.i], e = model.edges.find(x => x.id === ge.id) || { type: ge.type }, path = gr.querySelector('path.edge'), name = `${e.type} ${ge.id}`;
+        if (!WANT4[e.type]) { off.push(`${name}: a line of no kind checked here`); return; }
+        const [wf, wt, dash] = WANT4[e.type](e), kind = a => { const r = path.getAttribute(a), mk = r && svg.querySelector(r.slice(4, -1)); return mk ? mk.id.replace(/^g\d+-/, '').replace(/-d$/, '') : 'none'; };
+        const [kf, kt] = [kind('marker-start'), kind('marker-end')]; seen4b.add(`${e.type} ${kf} ${kt} ${path.getAttribute('stroke-dasharray')}`);
+        if (kf !== wf || kt !== wt) off.push(`${name}: ends ${kf} and ${kt}, not ${wf} and ${wt}`);
+        if (path.getAttribute('stroke-dasharray') !== dash) off.push(`${name}: dashed ${path.getAttribute('stroke-dasharray')}, not ${dash}`);
+        const d = path.getAttribute('d').match(/-?\d+(\.\d+)?/g).map(Number);
+        [[d[0], d[1], gr.dataset.from], [d.at(-2), d.at(-1), gr.dataset.to]].forEach(([x, y, id]) => { const q = pt(svg, x, y), e2 = CSS.escape(id), n = svg.querySelector(`.node[data-id="${e2}"]`);
+          const body = (n && (n.querySelector(':scope > .bp-hit') || n.querySelector(':scope > .n-body'))) || svg.querySelector(`.bz-pools rect[data-o="${e2}"]`) || svg.querySelector(`.family[data-family="${e2}"] .family-box`);
+          if (!body) return off.push(`${name}: no outline for ${id}`);
+          const gn = g.byId[id]; if (gn && gn.type === 'bpmn.BoundaryEvent' && gn.owner) { const c = body.getBBox(), r = Math.hypot(x - c.x - c.width / 2, y - c.y - c.height / 2) - c.width / 2;
+            if (Math.abs(r) > 1) off.push(`${name}: its end at ${id} ${r.toFixed(2)} px off the circle`); return; }
+          body.style.strokeWidth = '3px'; const on = body.isPointInStroke(q); body.style.strokeWidth = ''; if (!on) off.push(`${name}: its end at ${id} (${x}, ${y}) is off the outline`); }); });
+      check(`${f}, ${theme}, ${fname}: each BPMN line ends and dashes as its kind says, every end on the outline it meets`, svg.querySelectorAll('.edge-g').length === g.edges.length && !off.length, off.slice(0, 8));
+    }
+  }
+  const ends4b = [...seen4b].join(' | ');
+  check('milestone 4b: a sequence flow\'s arrow, a message flow\'s circle and triangle dashed, an association and a data association dotted, each drawn',
+    ['bpmn.SequenceFlow none arrow null', 'bpmn.MessageFlow circle triangle 6 4', 'bpmn.Association none open 2 3', 'bpmn.DataAssociation none open 2 3'].every(k => ends4b.includes(k)), [...seen4b]);
   document.documentElement.dataset.theme = 'light'; el.style.removeProperty('--um-sans');
 } catch (e) { out.fail.push('threw: ' + (e && e.stack || e)); }
 const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);

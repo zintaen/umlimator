@@ -1,4 +1,4 @@
-// The Bookshop atlas (0.21.0; the 14 UML types since 0.23.0; ER, flowchart, data flow, information flow and C4 since 0.24.0; the mindmap, Google Cloud and Azure since 0.26.0): examples/bookshop-atlas.json is what tools/atlas.mjs builds from the Bookshop examples and
+// The Bookshop atlas (0.21.0; the 14 UML types since 0.23.0; ER, flowchart, data flow, information flow and C4 since 0.24.0; the mindmap, Google Cloud and Azure since 0.26.0; BPMN since 0.27.0): examples/bookshop-atlas.json is what tools/atlas.mjs builds from the Bookshop examples and
 // tools/atlas-links.json, byte for byte, so it cannot drift from them. It validates with no core error, every view lays
 // out as in its own file, and every drill-down opens a view of the atlas: each link of the links file, the files' own, and
 // no other. From the C4 context, the root since 0.24.0, the map and the mindmap a reader reaches every view. An element is shared by id: the files that have it agree on it, or
@@ -31,6 +31,7 @@ import '../src/c4/c4.js';
 import '../src/c4/views.js';
 import '../src/mindmap/mindmap.js';
 import '../src/cloud/cloud.js';
+import '../src/bpmn/process.js';
 import { layout, check } from '../src/map/api.js';
 import { mapContext } from '../src/map/context.js';
 import { validate } from '../src/map/validate.js';
@@ -91,14 +92,14 @@ test('every view lays out; check() finds only the crossings its own file keeps',
   }
   // fulfil-activity's 2 and order-states' 2, as the CI loop counts them on their own files' plain pass; bookshop-c4's 8
   // and bookshop-data-flow's 2, as their own files' (0.24.0, repair and reroute off: notes/milestone-2.md §11); the Google
-  // Cloud and Azure examples' 1 each (0.26.0, notes/milestone-4a.md §5.7)
+  // Cloud and Azure examples' 1 each (0.26.0, notes/milestone-4a.md §5.7); the BPMN example's 5 (0.27.0, notes/milestone-4b.md §14)
   assert.ok(found.every(p => / cross$/.test(p)), found.join('\n'));
   const own = name => { const src = JSON.parse(readFileSync(new URL(`../examples/${name}.json`, import.meta.url), 'utf8'));
     return src.views.flatMap(v => check(src, v.id).map(p => p.message)); };
-  assert.deepEqual(found, ['fulfil-activity', 'order-states', ...M2, ...M4A].flatMap(own));
+  assert.deepEqual(found, ['fulfil-activity', 'order-states', ...M2, ...M4A, 'bookshop-order-to-shipment'].flatMap(own));
   assert.deepEqual(found.map(p => p.split(':')[0]), ['view fulfil', 'view fulfil', 'view order-life', 'view order-life',
     ...Array(3).fill('view c4-containers'), ...Array(2).fill('view c4-components'), ...Array(2).fill('view c4-placing-an-order'),
-    'view c4-deployment', 'view dfd-level-1', 'view dfd-level-1', 'view gcp-on-gcp', 'view az-on-azure']);
+    'view c4-deployment', 'view dfd-level-1', 'view dfd-level-1', 'view gcp-on-gcp', 'view az-on-azure', ...Array(5).fill('view order-to-shipment')]);
 });
 
 test('every drill-down opens a view of the atlas: the links file\'s, the files\' own, and no other', () => {
@@ -144,14 +145,16 @@ test('every drill-down opens a view of the atlas: the links file\'s, the files\'
   step('c4-deployment', 'production'); step('dfd-level-1', 'dfd-level-2-take-order');
   // the opening plan's Hosting topics open the Google Cloud and Azure views (0.26.0, notes/milestone-4a.md §10.3)
   step('mm-plan', 'gcp-on-gcp'); step('mm-plan', 'az-on-azure');
+  // the use case Track an order opens the BPMN process, and its sub-process its own view (0.27.0, notes/milestone-4b.md §13)
+  step('shopping', 'order-to-shipment'); step('order-to-shipment', 'pick-and-pack');
 });
 
-test('the atlas holds a view of each of the 14 UML diagram kinds, information flow, ER, flowchart, data flow, C4\'s six, the mindmap, Google Cloud and Azure; describe() and the PDF\'s tables read every view', () => {
+test('the atlas holds a view of each of the 14 UML diagram kinds, information flow, ER, flowchart, data flow, C4\'s six, the mindmap, Google Cloud, Azure and BPMN; describe() and the PDF\'s tables read every view', () => {
   assert.deepEqual([...new Set(M.views.map(v => v.diagram).filter(d => d?.startsWith('uml.')))].sort(), ['uml.activity', 'uml.class',
     'uml.communication', 'uml.component', 'uml.composite-structure', 'uml.deployment', 'uml.information-flow', 'uml.interaction-overview', 'uml.object', 'uml.package',
     'uml.profile', 'uml.sequence', 'uml.state-machine', 'uml.timing', 'uml.use-case']);
   // C4's landscape view is not in the Bookshop: one software system of its own, so its context view says what a landscape would
-  assert.deepEqual([...new Set(M.views.map(v => v.diagram).filter(d => d && !d.startsWith('uml.')))].sort(), ['azure', 'c4.component', 'c4.container',
+  assert.deepEqual([...new Set(M.views.map(v => v.diagram).filter(d => d && !d.startsWith('uml.')))].sort(), ['azure', 'bpmn', 'c4.component', 'c4.container',
     'c4.context', 'c4.deployment', 'c4.dynamic', 'dfd', 'er', 'flowchart', 'gcp', 'mindmap']);
   // the label of each pack the cloud files' icons were chosen from, as icons/packs.json pins it (0.26.0)
   const packs = JSON.parse(readFileSync(new URL('../icons/packs.json', import.meta.url), 'utf8'));
