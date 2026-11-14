@@ -1,5 +1,5 @@
-// The BPMN diagram, bpmn (work package 4b.3, notes/milestone-4b.md §3 to §8, §11): its definition; docs/diagrams/examples/
-// 24-bpmn.json laid out clean right and down (pools and lanes as bands, every node in its own, no line through a node, no
+// The BPMN diagram, bpmn (work package 4b.3, notes/milestone-4b.md §3 to §8, §11): its definition; examples/
+// bookshop-order-to-shipment.json laid out clean right and down (pools and lanes as bands, every node in its own, no line through a node, no
 // sequence flow outside its pool's band, boundary events on their activities' borders, message flows to a pool on its
 // border); the lane pass (§8.1: a block whole, a pin an order in its lane, data in its pool's band); boundary events (§6.2:
 // on an expanded sub-process, two on one side, one with no line, one that moves with its activity); anchors (§7.2); a memo's

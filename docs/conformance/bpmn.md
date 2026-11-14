@@ -5,7 +5,7 @@ and **edit** on the subset below, and **read** and **write** BPMN XML through `b
 (an optional adapter, never a dependency of the module).
 
 The claim: the elements of the **Descriptive conformance sub-class (BPMN 2.0.2, 2.2.2, Table 2.1)**, every row and every
-attribute it lists, each with its passing test; and six elements beyond it, named below: five rows of Table 2.2 (the
+attribute it lists, each with its passing test (the element's type, its name and each attribute's field); and six elements beyond it, named below: five rows of Table 2.2 (the
 Analytic sub-class's additions) and the none intermediate throw event. No claim is made of the Analytic sub-class, of
 the Common Executable sub-class or of execution semantics (clause 13). The standard is [BPMN 2.0.2](https://www.omg.org/spec/BPMN/2.0.2/PDF)
 (formal/13-12-09), read on 13 Nov 2026.
@@ -84,12 +84,13 @@ Layout limits, measured on the example and `tests/bpmn-stress.json`:
 - Port repair and rerouting off (`repair: false`, `reroute: false`, S16).
 - The example lays out with 5 crossings laid out right and 6 down, nothing else `check()` finds; its sub-process's view
   is clean.
-- `tests/m4b-fixtures.test.mjs` pins the stress file. Its `edge-cases` view (two boundary events on one side, one on an
-  expanded sub-process, two message flows to a black-box pool from one column and one from it, lanes three deep, an empty
+- `tests/m4b-fixtures.test.mjs` pins the stress file. Its `edge-cases` view (two boundary events on one side, their task
+  pinned and the pin moved; a non-interrupting one on an expanded sub-process; an interrupting message one on the call
+  activity; two message flows to a black-box pool from one column and one from it, lanes three deep, an empty
   lane, a gateway with one exit, a flow node in a pool with lanes but in none, a sequence flow across pools, a group
   across two pools, an annotation, data both ways, 40-character labels) crosses 12 times each way; `ec-closed`, the same
-  with the sub-process closed, 14 laid out right and 15 down; `ec-inside` none. Its generated `all` view (67 flow nodes
-  with ten boundary events, three pools, six lanes, ten message flows, two expanded sub-processes) crosses 30 times laid
+  with the sub-process closed, 13 laid out right and 14 down; `ec-inside` none. Its generated `all` view (57 flow nodes
+  and ten boundary events, three pools, six lanes, ten message flows, two expanded sub-processes) crosses 30 times laid
   out right and 29 down. In every view no node overlaps another, no line runs through a node, every line ends on its
   node, no sequence flow leaves its pool's band and every boundary circle is centred on its activity's border.
 - A task's name is wrapped to three lines of 180 px; a name outside to two lines of 120 px, then cut with an ellipsis.
@@ -128,6 +129,9 @@ Apple laptop under other agents' load (14 Nov 2026): a full layout and its SVG 5
 nothing out; a task renamed 54 ms; a sequence flow's name 52 ms; a flow node moved to another lane 55 ms; a boundary
 event's side 53 ms. CI holds 1 s and prints the figures against the 100 ms target. The BPMN XML adapter reads and writes
 500 elements under its 100 ms target (`tests/bpmn-xml.test.mjs`).
+On CI's runner (run 43563271519) the four common edits took 97.6 to 100.0 ms and the full layout 100.4 ms: the edits
+sit at the target there, a sequence flow's name on it, and cost about as much as a full layout, since each lays the
+view out again; only an edit that moves nothing is spared by the memo.
 
 ## Tests
 

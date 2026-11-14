@@ -386,6 +386,15 @@ with tempfile.TemporaryDirectory() as tmp:
         ok("bpmn · import reads the exported example back with the same elements, lines and views",
            sorted(n["id"] for n in back.get("nodes", [])) == sorted(n["id"] for n in json.loads(ex.read_text(encoding="utf-8"))["nodes"])
            and len(back.get("edges", [])) == 29 and [v["id"] for v in back.get("views", [])] == ["order-to-shipment", "pick-and-pack"], r.stderr)
+        # an expanded sub-process is written at its frame (the layout's families), not a box: the stress fixture's edge-cases
+        st = ROOT / "tests" / "bpmn-stress.json"
+        r = run("export", str(st), "--view", "edge-cases", "--out", str(t / "ec.bpmn"))
+        xml = (t / "ec.bpmn").read_text(encoding="utf-8") if r.returncode == 0 else ""
+        g = u.js("layout", json.loads(st.read_text(encoding="utf-8")), "edge-cases", module=u.HERE / "lib" / "umlimator-all.js")
+        f = next(f for f in g["families"] if f["id"] == "ec-sub")
+        ok("bpmn · export writes an expanded sub-process at its frame, expanded",
+           re.search(rf'bpmnElement="ec-sub" isExpanded="true">\s*<dc:Bounds x="{num(f["x"])}" y="{num(f["y"])}" width="{num(f["w"])}" height="{num(f["h"])}"', xml) is not None,
+           r.stdout + r.stderr + json.dumps(f))
 
 # notes/milestone-2.md §8.5 (M2.12): an erDiagram, a flowchart given --typed, a Structurizr JSON workspace and a .dbml file
 # are read by the module's readers in Node (tests/mermaid-er, mermaid-flowchart, structurizr and dbml.test.mjs pin their

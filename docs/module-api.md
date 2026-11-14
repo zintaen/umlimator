@@ -4093,8 +4093,8 @@ CLI and the adapter; the core is unchanged.
   a lane, a group or itself) is refused, and `describe()` names one a model holds "not drawn".
 - **BPMN XML (4b.4, #267).** `readBpmnXml(xml, moddle)` and `writeBpmnXml(model, viewId, geo, moddle)`, internal, with a
   `bpmn-moddle` the caller makes; the module imports nothing and `package.json` gains no dependency. `umlimator.py
-  import` reads a `.bpmn` file and the new `umlimator.py export --format bpmn` writes one, through a `bpmn-moddle` found
-  by `--moddle`, `UMLIMATOR_BPMN_MODDLE` or the working folder, or the message "BPMN needs bpmn-moddle: npm install
+  import` reads a `.bpmn` file and the new `umlimator.py export` writes one (`--format bpmn` is its default), through
+  a `bpmn-moddle` found by `--moddle`, `UMLIMATOR_BPMN_MODDLE` or the working folder, or the message "BPMN needs bpmn-moddle: npm install
   bpmn-moddle@10.3.1". Positions are not kept on reading, said once per file; conditional and default flows, send and
   receive tasks and a timer's value are read plain and kept under `ext.bpmn`, reported `weakened`; anything else outside
   the subset is reported and kept, never written back. Both reports are capped at 1,000 items; a file of thousands of
@@ -4119,11 +4119,14 @@ CLI and the adapter; the core is unchanged.
   sub-processes, transactions, compensation, messages as elements, data inputs and outputs, positions and colours from a
   file's diagram interchange, resizing a pool or lane, XMI, copy and paste, per-type `diff()` writers; a Mermaid reader.
 - **Layout limits** (`docs/conformance/bpmn.md`): with repair and rerouting off, the example crosses 5 times laid out
-  right and 6 down; the stress views 12 (`edge-cases`), 14 and 15 (`ec-closed`), 30 and 29 (`all`). No view runs a line
+  right and 6 down; the stress views 12 (`edge-cases`), 13 and 14 (`ec-closed`), 30 and 29 (`all`). No view runs a line
   through a node or a sequence flow out of its pool.
 - **P1.** On the stress view `all` (CPU, best of five, an Apple laptop under load): a full layout and its SVG 55 ms;
   documentation 6 ms, laying nothing out; a task renamed 54 ms, a sequence flow's name 52 ms, a flow node moved to
   another lane 55 ms, a boundary event's side 53 ms. CI holds 1 s and prints each against the 100 ms target.
+  On CI's runner (run 43563271519) the four common edits took 97.6 to 100.0 ms and the full layout 100.4 ms: the
+  edits sit at the target there, a sequence flow's name on it, and cost about as much as a full layout, since each
+  lays the view out again (the memo spares only an edit that moves nothing).
 - **Size:** `lib/umlimator.js`, what a map host loads, is 186,161 B with `gzip -9`, unchanged by milestone 4b: 12.86%
   over 0.16.0 (the budget is 15%). Milestone 4b spent none of its 700 B share. `lib/umlimator-all.js` is 552,200 B
   gzipped.

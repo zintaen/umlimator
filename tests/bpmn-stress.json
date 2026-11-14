@@ -154,7 +154,8 @@
    "parent": "ec-back-a1",
    "props": {
     "definition": "timer",
-    "attachedTo": "ec-sub"
+    "attachedTo": "ec-sub",
+    "cancelActivity": false
    }
   },
   {
@@ -164,6 +165,17 @@
    "parent": "ec-back-a",
    "props": {
     "calledElement": "Reserve"
+   }
+  },
+  {
+   "id": "ec-refused",
+   "type": "bpmn.BoundaryEvent",
+   "label": "Stock refused",
+   "parent": "ec-back-a",
+   "props": {
+    "definition": "message",
+    "attachedTo": "ec-call",
+    "cancelActivity": true
    }
   },
   {
@@ -1039,6 +1051,12 @@
    "to": "ec-join"
   },
   {
+   "id": "ec-f19",
+   "type": "bpmn.SequenceFlow",
+   "from": "ec-refused",
+   "to": "ec-join"
+  },
+  {
    "id": "ec-s1",
    "type": "bpmn.SequenceFlow",
    "from": "ec-sub-start",
@@ -1693,6 +1711,7 @@
     "ec-check",
     "ec-late",
     "ec-ping",
+    "ec-refused",
     "ec-gw",
     "ec-pay",
     "ec-reply",
@@ -1733,6 +1752,7 @@
     "ec-check",
     "ec-late",
     "ec-ping",
+    "ec-refused",
     "ec-gw",
     "ec-pay",
     "ec-reply",

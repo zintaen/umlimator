@@ -67,7 +67,7 @@ function clean(m, vid) {
 // flow (an error in the JSON, refused by connect) is drawn, and left out of the band check, which is for flows in one pool
 const PINNED = {
   'bpmn-minimal': { v: { right: [0, 0, 0], down: [0, 0, 0] } },
-  'bpmn-stress': { 'edge-cases': { right: [12, 0, 0], down: [12, 0, 0] }, 'ec-closed': { right: [14, 0, 0], down: [15, 0, 0] }, 'ec-inside': { right: [0, 0, 0], down: [0, 0, 0] },
+  'bpmn-stress': { 'edge-cases': { right: [12, 0, 0], down: [12, 0, 0] }, 'ec-closed': { right: [13, 0, 0], down: [14, 0, 0] }, 'ec-inside': { right: [0, 0, 0], down: [0, 0, 0] },
     all: { right: [30, 0, 0], down: [29, 0, 0] } },
   example: { 'order-to-shipment': { right: [5, 0, 0], down: [6, 0, 0] }, 'pick-and-pack': { right: [0, 0, 0], down: [0, 0, 0] } },
 };
@@ -100,6 +100,12 @@ test('bpmn-stress.json, edge-cases: each case of §13, and what the rules say of
   const be = id => g.byId[id];
   assert.deepEqual(['ec-late', 'ec-ping'].map(id => [be(id).owner, be(id).side, p(id).definition, p(id).cancelActivity]), [['ec-check', 'B', 'timer', true], ['ec-check', 'B', 'message', false]]);
   assert.ok(Math.abs(be('ec-late').x - be('ec-ping').x) >= 32 + 8, 'the two circles keep apart');
+  // a boundary event that moves with its task: ec-check pinned, then the pin moved; both circles on its border each time
+  const at = [[0, 0], [2, 0]].map(cr => { const pinned = apply(m, { op: 'set', view: 'edge-cases', path: ['layout', 'ec-check'], value: cr }), [, , bad] = clean(pinned, 'edge-cases'), q = quiet(() => layout(pinned, 'edge-cases'));
+    assert.deepEqual(bad, [], JSON.stringify(cr)); assert.equal(q.byId['ec-check'].col, cr[0]);
+    return ['ec-check', 'ec-late', 'ec-ping'].map(id => [q.byId[id].x, q.byId[id].owner || id]); });
+  assert.deepEqual(at[1].map(x => x[1]), ['ec-check', 'ec-check', 'ec-check']);
+  at[1].forEach(([x], k) => assert.notEqual(x, at[0][k][0], 'the pin moved the task and its circles with it (clean(): on its border each time)'));
   assert.deepEqual([be('ec-sub-late').owner, g.families.map(f => f.id)], ['ec-sub', ['ec-sub']], 'a boundary event on the expanded sub-process');
   // a message flow to and from the black-box pool, two from one column, the anchors gone
   const end = id => g.edges.find(e => e.id === id), bank = g.bands.find(b => b.id === 'ec-bank');
@@ -125,33 +131,49 @@ test('bpmn-stress.json, edge-cases: each case of §13, and what the rules say of
   assert.match(describe(m, 'edge-cases'), /^Edge cases: a BPMN diagram of /);
 });
 
-// Table 2.1, row by row (docs/conformance/bpmn.md), and the extras S1 and decision 21 name: each in edge-cases, drawn
+// Table 2.1, row by row (docs/conformance/bpmn.md), and the extras S1 and decision 21 name: each in edge-cases, drawn, each
+// element's type checked with every attribute its line lists (an id is every element's; a name its label)
+const is = (m, id, type, label, props = {}) => { const n = node(m, id); return !!n && n.type === 'bpmn.' + type && (label === undefined || n.label === label)
+  && Object.entries(props).every(([k, v]) => (n.props || {})[k] === v) && V(m, 'edge-cases').nodeIds.includes(id); };
+const line = (m, id, type, from, to, label) => m.edges.some(e => e.id === id && e.type === 'bpmn.' + type && e.from === from && e.to === to && e.label === label);
+const event = (type, definition) => (m, id, label, more = {}) => is(m, id, type, label, { definition, ...more });
 const TABLE = {
-  'participant (pool)': m => node(m, 'ec-shop').type === 'bpmn.Participant' && node(m, 'ec-shop').props.processRef === 'shop-orders',
-  laneSet: m => node(m, 'ec-shop').members.length === 5,
-  'sequenceFlow (unconditional)': m => m.edges.some(e => e.id === 'ec-f3' && e.type === 'bpmn.SequenceFlow' && e.label === 'yes'),
-  messageFlow: m => m.edges.some(e => e.id === 'ec-m1' && e.type === 'bpmn.MessageFlow' && e.label === 'Charge'),
-  'exclusiveGateway, parallelGateway': m => node(m, 'ec-gw').type === 'bpmn.ExclusiveGateway' && node(m, 'ec-fork').type === 'bpmn.ParallelGateway',
-  'task (None), userTask, serviceTask': m => ['ec-sub-task', 'ec-check', 'ec-pay'].map(id => node(m, id).props.taskType).join() === 'none,user,service',
-  'subProcess (expanded), (collapsed)': m => layout(m, 'edge-cases').families[0].id === 'ec-sub' && layout(m, 'ec-closed').byId['ec-sub'].shape === 'bpmn-task',
-  CallActivity: m => node(m, 'ec-call').props.calledElement === 'Reserve',
-  DataObject: m => node(m, 'ec-doc').type === 'bpmn.DataObject',
-  TextAnnotation: m => node(m, 'ec-note').label === 'Checked before ten every day',
-  'association/dataAssociation': m => ['bpmn.Association', 'bpmn.DataAssociation'].every(t => m.edges.some(e => e.type === t)),
-  dataStoreReference: m => node(m, 'ec-db').props.dataStoreRef === 'stock-db',
-  'startEvent (None), endEvent (None)': m => node(m, 'ec-sub-start').props.definition === 'none' && node(m, 'ec-c-end').props.definition === 'none',
-  'messageStartEvent, messageEndEvent': m => node(m, 'ec-c-start').props.definition === 'message' && node(m, 'ec-end').props.definition === 'message',
-  timerStartEvent: m => node(m, 'ec-start').props.definition === 'timer',
-  terminateEndEvent: m => node(m, 'ec-stop').props.definition === 'terminate',
-  documentation: m => /stock list/.test(describe(m, 'edge-cases')),
-  Group: m => node(m, 'ec-grp').type === 'bpmn.Group' && layout(m, 'edge-cases').byId['ec-grp'] != null,
+  'participant (pool)': m => is(m, 'ec-shop', 'Participant', 'Shop', { processRef: 'shop-orders' }),
+  // a lane with its name; childLaneSet by a lane's parent; flowElementRef by a flow node's parent
+  laneSet: m => { const L = node(m, 'ec-shop').members; return L.length === 5 && L.every(l => l.type === 'bpmn.Lane' && l.label)
+    && L.find(l => l.id === 'ec-back-a1').parent === 'ec-back-a' && node(m, 'ec-check').parent === 'ec-front' && node(m, 'ec-sub').parent === 'ec-back-a1'; },
+  'sequenceFlow (unconditional)': m => line(m, 'ec-f3', 'SequenceFlow', 'ec-gw', 'ec-pay', 'yes'),
+  messageFlow: m => line(m, 'ec-m1', 'MessageFlow', 'ec-pay', 'ec-bank', 'Charge'),
+  'exclusiveGateway, parallelGateway': m => is(m, 'ec-gw', 'ExclusiveGateway', 'Is every book in this order in stock now?') && is(m, 'ec-fork', 'ParallelGateway'),
+  'task (None), userTask, serviceTask': m => is(m, 'ec-sub-task', 'Task', 'Wrap', { taskType: 'none' }) && is(m, 'ec-check', 'Task', 'Check the order', { taskType: 'user' }) && is(m, 'ec-pay', 'Task', 'Take payment', { taskType: 'service' }),
+  // flowElement: what the sub-process holds, by parent, drawn inside its frame
+  'subProcess (expanded), (collapsed)': m => { const g = layout(m, 'edge-cases'), f = g.families[0], held = m.nodes.filter(n => n.parent === 'ec-sub').map(n => n.id);
+    return is(m, 'ec-sub', 'SubProcess', 'Pack the books') && f.id === 'ec-sub' && held.join() === 'ec-sub-start,ec-sub-task,ec-sub-end'
+      && held.every(id => { const n = g.byId[id]; return n.x >= f.x && n.y >= f.y && n.x + n.w <= f.x + f.w && n.y + n.h <= f.y + f.h; })
+      && layout(m, 'ec-closed').byId['ec-sub'].shape === 'bpmn-task'; },
+  CallActivity: m => is(m, 'ec-call', 'CallActivity', 'Reserve stock', { calledElement: 'Reserve' }),
+  DataObject: m => is(m, 'ec-doc', 'DataObject', 'Order form'),
+  TextAnnotation: m => is(m, 'ec-note', 'TextAnnotation', 'Checked before ten every day'),
+  'association/dataAssociation': m => m.edges.some(e => e.id === 'ec-a1' && e.type === 'bpmn.Association' && e.from === 'ec-note' && e.to === 'ec-check' && e.props.direction === 'one')
+    && line(m, 'ec-d1', 'DataAssociation', 'ec-check', 'ec-doc') && line(m, 'ec-d2', 'DataAssociation', 'ec-doc', 'ec-pay'),
+  dataStoreReference: m => is(m, 'ec-db', 'DataStoreReference', 'Stock', { dataStoreRef: 'stock-db' }),
+  'startEvent (None), endEvent (None)': m => event('StartEvent', 'none')(m, 'ec-sub-start', 'Packing starts') && event('EndEvent', 'none')(m, 'ec-c-end', 'Read'),
+  'messageStartEvent, messageEndEvent': m => event('StartEvent', 'message')(m, 'ec-c-start', 'Notice arrives') && event('EndEvent', 'message')(m, 'ec-end', 'Notified'),
+  timerStartEvent: m => event('StartEvent', 'timer')(m, 'ec-start', 'Every morning'),
+  terminateEndEvent: m => event('EndEvent', 'terminate')(m, 'ec-stop', 'Stopped'),
+  documentation: m => node(m, 'ec-check').props.documentation === 'By hand, against the stock list.' && /stock list/.test(describe(m, 'edge-cases')),
+  // categoryRef: each member names the group in props.categoryValueRef
+  Group: m => is(m, 'ec-grp', 'Group', 'Seen by the customer') && layout(m, 'edge-cases').byId['ec-grp'] != null
+    && m.nodes.filter(n => (n.props?.categoryValueRef || []).includes('ec-grp')).map(n => n.id).join() === 'ec-check,ec-c-task',
   // Table 2.2's rows the claim adds (S1), and the none intermediate throw event (decision 21)
-  'Message Intermediate Catch Event': m => node(m, 'ec-reply').props.definition === 'message',
-  'Message Intermediate Throw Event': m => node(m, 'ec-throw').props.definition === 'message',
-  'Timer Intermediate Catch Event': m => node(m, 'ec-wait').props.definition === 'timer',
-  'Message Boundary Event (interrupting, non-interrupting)': m => node(m, 'ec-ping').props.definition === 'message' && node(m, 'ec-ping').props.cancelActivity === false,
-  'Timer Boundary Event (interrupting, non-interrupting)': m => node(m, 'ec-late').props.cancelActivity === true && m.nodes.some(n => n.type === 'bpmn.BoundaryEvent' && n.props.definition === 'timer' && n.props.cancelActivity === false),
-  'None Intermediate Throw Event (decision 21)': m => node(m, 'ec-milestone').props.definition === 'none',
+  'Message Intermediate Catch Event': m => event('IntermediateCatchEvent', 'message')(m, 'ec-reply', 'Bank replies'),
+  'Message Intermediate Throw Event': m => event('IntermediateThrowEvent', 'message')(m, 'ec-throw', 'Shipping notice sent to the customer now'),
+  'Timer Intermediate Catch Event': m => event('IntermediateCatchEvent', 'timer')(m, 'ec-wait', 'A day later'),
+  'Message Boundary Event (interrupting, non-interrupting)': m => event('BoundaryEvent', 'message')(m, 'ec-refused', 'Stock refused', { attachedTo: 'ec-call', cancelActivity: true })
+    && event('BoundaryEvent', 'message')(m, 'ec-ping', 'Customer asks', { attachedTo: 'ec-check', cancelActivity: false }),
+  'Timer Boundary Event (interrupting, non-interrupting)': m => event('BoundaryEvent', 'timer')(m, 'ec-late', 'Too late', { attachedTo: 'ec-check', cancelActivity: true })
+    && event('BoundaryEvent', 'timer')(m, 'ec-sub-late', 'Packing overdue', { attachedTo: 'ec-sub', cancelActivity: false }),
+  'None Intermediate Throw Event (decision 21)': m => event('IntermediateThrowEvent', 'none')(m, 'ec-milestone', 'Ready'),
 };
 test('Table 2.1, row by row, and the six extras: each in edge-cases, drawn there with its marker', () => {
   const m = FIX['bpmn-stress'];
@@ -166,11 +188,11 @@ test('Table 2.1, row by row, and the six extras: each in edge-cases, drawn there
   assert.doesNotMatch(note, /claims? (the )?Analytic/);
 });
 
-test('the stress view all is §14\'s P1 size, the generator tests/bpmn.test.mjs times written out', () => {
+test('the stress view all is §14\'s P1 size (57 flow nodes and ten boundary events, §13.1), the generator tests/bpmn.test.mjs times written out', () => {
   const m = FIX['bpmn-stress'], v = V(m, 'all'), on = new Set(v.nodeIds), shown = m.nodes.filter(n => on.has(n.id));
   const kinds = t => shown.filter(n => n.type === 'bpmn.' + t).length;
-  assert.deepEqual([shown.filter(n => /Event$|Gateway$|Task$|SubProcess$/.test(n.type)).length, kinds('Participant'), shown.flatMap(n => n.members || []).length, kinds('BoundaryEvent'),
-    m.edges.filter(e => e.type === 'bpmn.MessageFlow' && on.has(e.from) && on.has(e.to)).length, layout(m, 'all').families.length], [67, 3, 6, 10, 10, 2]);
+  assert.deepEqual([shown.filter(n => /Event$|Gateway$|Task$|SubProcess$/.test(n.type) && n.type !== 'bpmn.BoundaryEvent').length, kinds('Participant'), shown.flatMap(n => n.members || []).length, kinds('BoundaryEvent'),
+    m.edges.filter(e => e.type === 'bpmn.MessageFlow' && on.has(e.from) && on.has(e.to)).length, layout(m, 'all').families.length], [57, 3, 6, 10, 10, 2], '57 flow nodes, not 60 (§13.1), and ten boundary events');
 });
 
 // §14: the stress view's full layout and SVG, an edit that moves nothing (documentation), and the common edits
