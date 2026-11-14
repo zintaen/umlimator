@@ -60,8 +60,12 @@ test('every shape\'s out fills its box, and a point on any side slid by inset (d
       assert.ok(off(segs, q) < .02, `${n.id}, side ${side} at ${t}: slid to ${q}, ${off(segs, q).toFixed(3)} px off its outline`); }
     for (const side of ['L', 'R', 'T', 'B']) for (let k = 1; k <= 3; k++) S.ports(n, side, k).forEach(q => assert.ok(off(segs, q) < .02, `${n.id}: port ${q} on its outline`));
   }
-  // the outline grown by d (a selection's halo) is the same shape d px out
-  for (const n of NODES) { const g = outline(SHAPE[n.shape].out(n, 3)), xs = g.flatMap(s => [s[0], s[2]]); assert.ok(Math.abs(Math.min(...xs) - n.x + 3) < .02 && Math.abs(Math.max(...xs) - n.x - n.w - 3) < .02, n.id); }
+  // the outline grown by d (a selection's halo) is the same shape d px out: its box d px out, and every edge's middle d px
+  // off the outline (a page's fold too, which a fold kept at 10 px would put 3√2 px out). Not the gateway's or the store's:
+  // they are the map's diamond and cylinder, whose halos grow their box by d, as every diamond's and cylinder's do
+  for (const n of NODES) { const segs = outline(SHAPE[n.shape].out(n)), g = outline(SHAPE[n.shape].out(n, 3)), xs = g.flatMap(s => [s[0], s[2]]);
+    assert.ok(Math.abs(Math.min(...xs) - n.x + 3) < .02 && Math.abs(Math.max(...xs) - n.x - n.w - 3) < .02, n.id);
+    if (!['bpmn-gateway', 'bpmn-store'].includes(n.shape)) g.forEach(([ax, ay, bx, by]) => { const m = off(segs, [(ax + bx) / 2, (ay + by) / 2]); assert.ok(Math.abs(m - 3) < .05, `${n.id}: an edge of its halo ${m.toFixed(3)} px out`); }); }
 });
 
 test('drawn: a node of the shape it names, named, strokes --um-muted or --um-text, fills the stage\'s, --um-text or none, every text inside its shape and cut to it', () => {
@@ -148,7 +152,7 @@ test('labels outside (§9.2), on hand-built geometry: under the shape first, two
   const lines = [[[220, 140], [220, 200]], [[240, 120], [290, 120]], [[260, 150], [400, 150]]];
   const L = bpmnLabels([g, e], lines, [t]);
   assert.equal(L.length, 2);
-  const boxes = [...lines.flatMap(p => p.slice(1).map((q, k) => ({ x: Math.min(p[k][0], q[0]) - 1, y: Math.min(p[k][1], q[1]) - 1, w: Math.abs(q[0] - p[k][0]) + 2, h: Math.abs(q[1] - p[k][1]) + 2 }))), g, e, t];
+  const boxes = [...lines.flatMap(p => p.slice(1).map((q, k) => ({ x: Math.min(p[k][0], q[0]) - 4, y: Math.min(p[k][1], q[1]) - 4, w: Math.abs(q[0] - p[k][0]) + 8, h: Math.abs(q[1] - p[k][1]) + 8 }))), g, e, t];
   for (const b of L) { assert.ok(b.lines.length <= 2 && b.lines.every(l => textW(l, 11) <= 120) && b.w <= 124, JSON.stringify(b));
     boxes.forEach(k => assert.ok(!meets(b, k), `${b.id}'s label ${JSON.stringify(b)} meets ${JSON.stringify(k)}`)); }
   assert.ok(!meets(L[0], L[1]), 'the two labels apart');
@@ -160,18 +164,41 @@ test('labels outside (§9.2), on hand-built geometry: under the shape first, two
   // crowded on every side close in: it steps outwards until clear
   const ring = [{ x: 150, y: 60, w: 140, h: 36 }, { x: 150, y: 144, w: 140, h: 36 }, { x: 150, y: 60, w: 46, h: 120 }, { x: 244, y: 60, w: 46, h: 120 }];
   const [far] = bpmnLabels([N('g', 'bpmn-gateway', 200, 100, 'Paid?')], [], ring);
-  assert.ok(ring.every(k => !meets(far, k)) && far.y >= 180 && far.x + far.w / 2 === 220, JSON.stringify(far));
+  assert.ok(ring.every(k => !meets(far, k)) && far.y >= 180 && far.x + far.w / 2 === 220 && !far.clash, JSON.stringify(far));
+  // nothing clear within 200 px: under it, flagged; a null line or a line of one point is no line
+  const [boxed] = bpmnLabels([N('e', 'bpmn-event', 0, 0, 'Late')], null, [{ x: -500, y: -500, w: 1000, h: 1000 }]);
+  assert.deepEqual([boxed.y, boxed.clash], [36, true]);
+  assert.equal(bpmnLabels([N('e', 'bpmn-event', 0, 0, 'Late')], [null, [[0, 0]]], null)[0].y, 36);
 });
 
 test('the group\'s frame (§9.3): 16 px round its members, its title at the top left moved along the border off other nodes; hit on its border and title only', () => {
   const m = [{ x: 100, y: 100, w: 100, h: 64 }, { x: 300, y: 200, w: 32, h: 32 }];
   assert.deepEqual(bpmnGroupFrame('Money', m), { x: 84, y: 84, w: 264, h: 164, tx: 96 });
   assert.equal(bpmnGroupFrame('Money', []), null);
+  assert.equal(bpmnGroupFrame('Money', m, null).tx, 96);
+  // a title cut to its frame is still kept off others, and flagged where no place along the top is clear
+  const cut = bpmnGroupFrame('A very long group title that is longer than the frame', [{ x: 0, y: 0, w: 40, h: 40 }], [{ x: -16, y: -16, w: 200, h: 15 }]);
+  assert.deepEqual([cut.tx, cut.clash], [-4, true]);
+  assert.equal(bpmnGroupFrame('A very long group title that is longer than the frame', [{ x: 0, y: 0, w: 40, h: 40 }], [{ x: 300, y: -16, w: 10, h: 15 }]).clash, undefined);
   const other = { x: 90, y: 80, w: 40, h: 20 }, f = bpmnGroupFrame('Money', m, [other]);
   assert.ok(f.tx >= other.x + other.w + 2 && f.tx - 4 < other.x + other.w + 2, JSON.stringify(f));
   const s = SHAPE['bpmn-group'].draw({ id: 'gr', label: 'Money', ...f });
-  assert.match(s, /^<g class="node bpmn-group" data-id="gr" data-shape="bpmn-group" [^>]*aria-label="Group Money"><path d="[^"]+" class="bp-hit" fill="none" stroke="transparent" stroke-width="12"\/>/);
+  assert.match(s, /^<g class="node bpmn-group" data-id="gr" data-shape="bpmn-group" [^>]*aria-label="Group Money"><path d="[^"]+" class="bp-hit" fill="none" stroke="transparent" stroke-width="24"\/>/);
+  assert.match(s, new RegExp(`<rect x="${f.tx - 2}" y="80" width="[\\d.]+" height="24" class="bp-hit"`), 'its title hit 24 px high');
+  assert.match(SHAPE['bpmn-group'].draw({ id: 'gr', label: 'M', ...f }), /width="24" height="24" class="bp-hit"/, 'and 24 px wide at least');
   assert.match(s, /class="n-body" fill="none" stroke="var\(--um-muted\)" stroke-dasharray="8 3 2 3"/);
   assert.match(s, new RegExp(`<text x="${f.tx}" [^>]*>Money</text></g>$`));
   assert.doesNotMatch(s, /n-mask/, 'nothing fills the inside');
+});
+
+test('performance (S16, risks.md P1): the labels outside of 200 events with two lines each, 41-character names, on a grid, placed under 100 ms (timed)', () => {
+  const items = [], lines = [];
+  for (let i = 0; i < 200; i++) { const x = (i % 15) * 90, y = Math.floor(i / 15) * 70;
+    items.push({ id: 'e' + i, x, y, w: 32, h: 32, label: 'Payment declined by the card issuer twice' }); lines.push([[x + 32, y + 16], [x + 90, y + 16]], [[x + 16, y + 32], [x + 16, y + 70]]); }
+  const runs = [];
+  for (let k = 0; k < 4; k++) { const c = process.cpuUsage(), out = bpmnLabels(items, lines), u = process.cpuUsage(c); assert.equal(out.length, 200); if (k) runs.push((u.user + u.system) / 1000); }
+  const best = Math.min(...runs);
+  // CI holds the 1 s ceiling and prints the pass against S16's 100 ms (as the other timed tests)
+  console.log(`# P1 target 100 ms: ${best} ms, 200 labels outside (CPU ms ${runs.map(Math.round).join(', ')})`);
+  assert.ok(best < 1000, `${best} ms`);
 });

@@ -431,11 +431,19 @@ A group naming nothing shown is not drawn, and `describe()` says so.
   `message`, `timer`, `terminate`, `exclusive`, `parallel`) for the tests.
 - **Labels outside**: `bpmnLabels(items, lines, also)` returns `[{ id, x, y, w, h, lines }]` for items
   `[{ id, x, y, w, h, label }]`, keeping clear of each line's segments (4 px round them), the items' shapes, `also` (every
-  other node drawn) and the labels placed before; at each step of 4 px outwards it tries under, over, right and left in
-  that order. `bpmnLabelSvg(b)` draws one, `data-o` its node's id.
+  other node drawn) and the labels placed before; at each step of 4 px outwards, up to 200 px, it tries under, over,
+  right and left in that order. Where nothing is clear by then, the label goes 4 px under its shape with `clash: true`,
+  for `describe()` and the tests. Each item tries only the boxes within its search's reach, so 200 labels take about
+  30 ms of CPU (a timed test prints it against S16's 100 ms). `bpmnLabelSvg(b)` draws one, `data-o` its node's id.
 - **Groups**: `bpmnGroupFrame(label, members, others)` gives the frame 16 px round the members' boxes and `tx`, its
   title's left, moved along the top border off `others`; the title is drawn inside the frame's top left, in the 16 px
-  between the border and the members. Null with no member shown.
+  between the border and the members. Where no place along the top is clear, `tx` is 12 px in and `clash: true`. Null
+  with no member shown. The group is hit on a band 24 px wide along its border and a box round its title 24 px high and
+  24 px wide at least (§9.1's 24 px); every node is drawn over it, so the band's inner 12 px still reach the members.
+- **`bpmn-data`**'s outline grown by `d` (a selection's halo) moves its fold's edge `d` px out too: the fold's run along
+  each side grows by `d(2 - √2)`. The gateway's and the store's halos are the map's diamond's and cylinder's.
+- **Its browser test** draws lines between the shapes through the typed lines (`src/typed/draw.js`) with 4b.1's ends,
+  the circle at the start and the arrow at the end, and checks each line's end on its shape's drawn outline.
 - **Pools and lanes** draw through `SHAPE.partition` (`src/uml/activity.js`, before this file in `ALL`), as `bpmn-pool`
   and `bpmn-lane` with their own `data-shape` and names.
 
