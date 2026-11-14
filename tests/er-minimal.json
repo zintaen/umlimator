@@ -1,0 +1,78 @@
+{
+ "schemaVersion": 2,
+ "title": "ER, minimal",
+ "nodes": [
+  {
+   "id": "customer",
+   "type": "er.Entity",
+   "label": "customer",
+   "members": [
+    {
+     "id": "customer.id",
+     "type": "er.Column",
+     "label": "id",
+     "props": {
+      "dataType": "bigint",
+      "primaryKey": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "orders",
+   "type": "er.Entity",
+   "label": "orders",
+   "members": [
+    {
+     "id": "orders.id",
+     "type": "er.Column",
+     "label": "id",
+     "props": {
+      "dataType": "bigint",
+      "primaryKey": true
+     }
+    },
+    {
+     "id": "orders.customer_id",
+     "type": "er.Column",
+     "label": "customer_id",
+     "props": {
+      "dataType": "bigint",
+      "foreignKey": true,
+      "references": "customer.id"
+     }
+    }
+   ]
+  }
+ ],
+ "edges": [
+  {
+   "id": "places",
+   "type": "er.Relationship",
+   "from": "customer",
+   "to": "orders",
+   "label": "places",
+   "props": {
+    "identifying": false,
+    "ends": {
+     "from": {
+      "multiplicity": "1"
+     },
+     "to": {
+      "multiplicity": "0..*"
+     }
+    }
+   }
+  }
+ ],
+ "views": [
+  {
+   "id": "v",
+   "diagram": "er",
+   "nodeIds": [
+    "customer",
+    "orders"
+   ]
+  }
+ ]
+}
