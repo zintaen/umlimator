@@ -1258,7 +1258,7 @@ the target examples so every lane builds on the final ids; M2.13 moves them and 
 | `bookshop-c4/c4-order-store` | `bookshop-data-flow/dfd-level-1` |
 | `bookshop-c4/c4-shopper` | `shopping-use-cases/shopping` |
 | `bookshop-c4/c4-staff` | `returns-flowchart/returns` |
-| `bookshop-c4/c4-web-host` | `bookshop-deployment/production` |
+| `bookshop-c4/c4-api-1` (was `c4-web-host`, a box: amended in M2.13's build) | `bookshop-deployment/production` |
 
 **The root.** The log of 13 Nov 2026 describes the atlas as running "from C4 to components, deployment, classes and an
 order's state machine"; until now the map's `overview` stood in for C4.
@@ -1269,7 +1269,10 @@ order's state machine"; until now the map's `overview` stood in for C4.
 | (b) The map's `overview` stays the root; the C4 views are reached from the views list | Nothing moves | The typed C4 views hang off nothing by drill-down |
 
 **Amended in M2.13's build.** The atlas builds with the five files as M2.0 left them: no id clashed with stage 6's
-merged examples, so none was renamed, and no link changed. It holds 33 views, 208 nodes and 216 edges, and shares 32 elements, four of them milestone 2's: `shopper` (the use case example's actor),
+merged examples, so none was renamed. One link changed: `bookshop-c4/c4-web-host` holds Docker Compose, so every view
+draws it as a box, which Enter does not open (a box's `opensView` is reached by no gesture); the link is
+`bookshop-c4/c4-api-1` (the Shop API's instance, a card) to `bookshop-deployment/production` (`tests/m2.html` opens each
+link in the page, M2.14). It holds 33 views, 208 nodes and 216 edges, and shares 32 elements, four of them milestone 2's: `shopper` (the use case example's actor),
 `storefront-component`, `shop-api` and `payment-provider-component` (stage 5's components). What else the move touched:
 
 - **Tests that read the five files by path** read them at their new paths, nothing else changed: `tests/c4.test.mjs`,

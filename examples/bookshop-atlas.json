@@ -1749,8 +1749,7 @@
    "props": {
     "technology": "Ubuntu 24.04 LTS",
     "description": "The web tier's server."
-   },
-   "opensView": "production"
+   }
   },
   {
    "id": "c4-docker",
@@ -1768,7 +1767,8 @@
    "parent": "c4-docker",
    "props": {
     "container": "c4-api"
-   }
+   },
+   "opensView": "production"
   },
   {
    "id": "c4-worker-1",
