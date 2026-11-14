@@ -1,7 +1,7 @@
-// The Bookshop atlas (0.21.0; the 14 UML types since 0.23.0): examples/bookshop-atlas.json is what tools/atlas.mjs builds from the Bookshop examples and
+// The Bookshop atlas (0.21.0; the 14 UML types since 0.23.0; ER, flowchart, data flow, information flow and C4 since 0.24.0): examples/bookshop-atlas.json is what tools/atlas.mjs builds from the Bookshop examples and
 // tools/atlas-links.json, byte for byte, so it cannot drift from them. It validates with no core error, every view lays
 // out as in its own file, and every drill-down opens a view of the atlas: each link of the links file, the files' own, and
-// no other. From the map a reader reaches every view. An element is shared by id: the files that have it agree on it, or
+// no other. From the C4 context, the root since 0.24.0, and the map a reader reaches every view. An element is shared by id: the files that have it agree on it, or
 // the build stops.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -23,12 +23,19 @@ import '../src/uml/deployment.js';
 import '../src/uml/composite.js';
 import '../src/uml/profile.js';
 import '../src/uml/timing.js';
+import '../src/er/er.js';
+import '../src/flowchart/flowchart.js';
+import '../src/dfd/dfd.js';
+import '../src/uml/information.js';
+import '../src/c4/c4.js';
+import '../src/c4/views.js';
 import { layout, check } from '../src/map/api.js';
 import { mapContext } from '../src/map/context.js';
 import { validate } from '../src/map/validate.js';
 import { describe } from '../src/map/insight.js';
 import { tablesOf } from '../src/page/print.js';
 import { apply } from '../src/core/apply.js';
+import { diagramOf } from '../src/core/registry.js';
 import { appliedOf } from '../src/uml/stereotypes.js';
 import { build } from '../tools/atlas.mjs';
 
@@ -43,10 +50,13 @@ test('the committed atlas is what tools/atlas.mjs builds, byte for byte', () => 
   // one Order, one package sales: the class and package files' 14 elements, and the 5 lifelines the sequence,
   // communication and overview files share; one Shop API, its jar and where the jar runs: the component and deployment
   // files' 6 (0.22.0); the profile file's sales, Order and its placedAt, the profile and its application the package file
-  // shows, and the timing file's two lifelines, the overview's worker and the sequence's payments (0.23.0)
+  // shows, and the timing file's two lifelines, the overview's worker and the sequence's payments (0.23.0); the information
+  // flow file's shopper (the use case file's actor) and the component file's storefront, Shop API and payment provider
+  // (0.24.0, notes/milestone-2.md §12.5)
   assert.deepEqual(shared.map(x => x.id), ['sales', 'shared', 'catalog', 'payments-package', 'card', 'customer', 'order', 'order.placedAt', 'line',
     'book', 'payable', 'payment', 'card-payment', 'status', 'money', 'conventions', 'sales-applies-conventions', 'lifeline-shopper',
-    'lifeline-storefront', 'lifeline-api', 'lifeline-payments', 'receipt', 'lifeline-worker', 'shop-api', 'order-worker', 'shop-api-jar', 'app-server',
+    'lifeline-storefront', 'lifeline-api', 'lifeline-payments', 'receipt', 'shopper', 'lifeline-worker', 'storefront-component', 'shop-api',
+    'payment-provider-component', 'order-worker', 'shop-api-jar', 'app-server',
     'jvm', 'api-jar-manifests-api']);
   const ids = [...M.nodes, ...M.edges, ...M.views.flatMap(v => [...(v.edges || []).filter(e => typeof e === 'object'), ...(v.fragments || [])])].map(x => x.id);
   assert.equal(new Set(ids).size, ids.length, 'every element id once');
@@ -75,9 +85,15 @@ test('every view lays out; check() finds only the crossings its own file keeps',
     assert.ok(g.nodes.length > 0 && g.edges.every(e => e.pts.length >= 2), v.id);
     found.push(...check(M, v.id).map(p => p.message));
   }
-  // fulfil-activity's 2 and order-states' 2, as the CI loop counts them on their own files' plain pass
+  // fulfil-activity's 2 and order-states' 2, as the CI loop counts them on their own files' plain pass; bookshop-c4's 8
+  // and bookshop-data-flow's 2, as their own files' (0.24.0, repair and reroute off: notes/milestone-2.md §11)
   assert.ok(found.every(p => / cross$/.test(p)), found.join('\n'));
-  assert.deepEqual(found.map(p => p.split(':')[0]), ['view fulfil', 'view fulfil', 'view order-life', 'view order-life']);
+  const own = name => { const src = JSON.parse(readFileSync(new URL(`../examples/${name}.json`, import.meta.url), 'utf8'));
+    return src.views.flatMap(v => check(src, v.id).map(p => p.message)); };
+  assert.deepEqual(found, ['fulfil-activity', 'order-states', ...LINKS.sources.slice(-5)].flatMap(own));
+  assert.deepEqual(found.map(p => p.split(':')[0]), ['view fulfil', 'view fulfil', 'view order-life', 'view order-life',
+    ...Array(3).fill('view c4-containers'), ...Array(2).fill('view c4-components'), ...Array(2).fill('view c4-placing-an-order'),
+    'view c4-deployment', 'view dfd-level-1', 'view dfd-level-1']);
 });
 
 test('every drill-down opens a view of the atlas: the links file\'s, the files\' own, and no other', () => {
@@ -93,10 +109,17 @@ test('every drill-down opens a view of the atlas: the links file\'s, the files\'
   assert.equal(ctx.unfoldable(id('fulfil-activity/call-payment'), 'fulfil'), 'take-payment');
   // a node opens a view by its opensView, or by being that view's id: only the map's Shop API, as in bookshop.json
   assert.deepEqual([...new Set(opens.filter(([, n]) => M.nodes.find(x => x.id === n).opensView == null).map(([, n, o]) => `${n}>${o}`))], ['api>api']);
-  // from the map, every view: by what opens it, or as a view's child
+  // from the map, every view but the C4 views and those only they open (0.24.0): by what opens it, or as a view's child
   const next = new Map(M.views.map(v => [v.id, new Set([...opens.filter(x => x[0] === v.id).map(x => x[2]), ...M.views.filter(w => w.parent === v.id).map(w => w.id)])]));
   const reach = from => { const seen = new Set([from]); for (const v of seen) next.get(v).forEach(w => seen.add(w)); return seen; };
-  assert.deepEqual([...reach(M.root)].sort(), M.views.map(v => v.id).sort());
+  const NEW = ['c4-context', 'c4-containers', 'c4-components', 'c4-placing-an-order', 'c4-deployment', 'er-schema', 'returns', 'dfd-level-1',
+    'dfd-level-2-take-order', 'order-flows'];
+  assert.deepEqual([...reach('overview')].sort(), M.views.map(v => v.id).filter(v => !NEW.includes(v)).sort());
+  // the root is the C4 context (decision 20): from it every milestone 2 view, and through its links the UML views they
+  // open; the map's overview from the views list
+  assert.equal(M.root, 'c4-context');
+  assert.deepEqual([...reach(M.root)].filter(v => NEW.includes(v)).sort(), [...NEW].sort());
+  assert.deepEqual([...new Set([...reach(M.root), ...reach('overview')])].sort(), M.views.map(v => v.id).sort());
   // the journeys the gallery names: map → classes → an order's state machine; use cases → activity → sequence; map's hosts
   // → deployment → components → the order service's structure (0.22.0)
   const step = (a, b) => assert.ok(next.get(a).has(b), `${a} opens ${b}`);
@@ -105,14 +128,35 @@ test('every drill-down opens a view of the atlas: the links file\'s, the files\'
   step('overview', 'production'); step('production', 'components'); step('components', 'internals');
   // the package view's profile opens the profile view; Take payment's "Record the payment" the timing view (0.23.0)
   step('overview', 'packages'); step('packages', 'profile'); step('take-payment', 'one-charge');
+  // C4 down its levels, and out of them to the views each element's design is in (0.24.0, notes/milestone-2.md §12.5)
+  step('c4-context', 'c4-containers'); step('c4-containers', 'c4-components'); step('c4-context', 'c4-deployment');
+  step('c4-context', 'shopping'); step('c4-context', 'returns'); step('c4-containers', 'er-schema'); step('c4-containers', 'fulfil');
+  step('c4-containers', 'order-flows'); step('c4-components', 'checkout-sequence'); step('c4-components', 'dfd-level-1');
+  step('c4-deployment', 'production'); step('dfd-level-1', 'dfd-level-2-take-order');
 });
 
-test('the atlas holds a view of each of the 14 UML diagram kinds; describe() and the PDF\'s tables read every view', () => {
+test('the atlas holds a view of each of the 14 UML diagram kinds, information flow, ER, flowchart, data flow and C4\'s six; describe() and the PDF\'s tables read every view', () => {
   assert.deepEqual([...new Set(M.views.map(v => v.diagram).filter(d => d?.startsWith('uml.')))].sort(), ['uml.activity', 'uml.class',
-    'uml.communication', 'uml.component', 'uml.composite-structure', 'uml.deployment', 'uml.interaction-overview', 'uml.object', 'uml.package',
+    'uml.communication', 'uml.component', 'uml.composite-structure', 'uml.deployment', 'uml.information-flow', 'uml.interaction-overview', 'uml.object', 'uml.package',
     'uml.profile', 'uml.sequence', 'uml.state-machine', 'uml.timing', 'uml.use-case']);
+  // C4's landscape view is not in the Bookshop: one software system of its own, so its context view says what a landscape would
+  assert.deepEqual([...new Set(M.views.map(v => v.diagram).filter(d => d && !d.startsWith('uml.')))].sort(), ['c4.component', 'c4.container',
+    'c4.context', 'c4.deployment', 'c4.dynamic', 'dfd', 'er', 'flowchart']);
   const ctx = mapContext(M);
   for (const v of M.views) { assert.ok(describe(M, v.id).length, v.id); assert.ok(tablesOf(ctx, ctx.V[v.id], ctx.buildGeo(v.id)).length, v.id); }
+});
+
+test('the five milestone 2 examples pass their types\' validate, each on its own and in the atlas: no problem at any level (0.24.0)', () => {
+  for (const name of LINKS.sources.slice(-5)) {
+    const src = JSON.parse(readFileSync(new URL(`../examples/${name}.json`, import.meta.url), 'utf8'));
+    assert.deepEqual(validate(src), [], name);
+    for (const v of src.views) {
+      const T = diagramOf(v);
+      assert.ok(T && T.validate, `${name} view ${v.id}: ${v.diagram} is registered`);
+      assert.deepEqual(T.validate(src, v), [], `${name} view ${v.id}`);
+      assert.deepEqual(T.validate(M, M.views.find(w => w.id === v.id)), [], `${name} view ${v.id} in the atlas`);
+    }
+  }
 });
 
 test('the profile in the atlas: «owned», required on Class, is supplied to exactly the classes of sales; placedAt\'s «column» and tags are the model\'s, and the class view reads as its own file', () => {

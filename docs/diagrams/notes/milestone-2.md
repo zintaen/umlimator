@@ -1104,6 +1104,47 @@ The five target examples move to `examples/bookshop-schema.json`, `examples/retu
 `examples/bookshop-data-flow.json`, `examples/order-information-flow.json` and `examples/bookshop-c4.json` (M2.13), and
 join the gallery and CI.
 
+**Amended in M2.14's build.** Each choice taken by the lead under the maintainer's standing approval (14 Nov 2026), the
+note's direction kept:
+
+- **The stress files' views.** A file holds its `edge-cases` view and the views beside it a case needs: ER's
+  `edge-cases-idef1x` (the IDEF1X copy); the DFD's `ec-level-2`, `ec-level-2-gs` (both notations of one level),
+  `ec-level-3` and `ec-pay-level` (made by `D` when the file was written, so it is `D`'s output); C4's `ec-landscape`,
+  `ec-context`, `edge-cases` (a container view: every shape, and another container's component, the error),
+  `ec-component`, `ec-dynamic` and `ec-deployment`. Each `all` view is the type's own P1 generator, written out. The
+  twelve dynamic steps run from a person along a chain of the twelve containers: a ring of them made the container
+  view's lines cross the row in Chrome.
+- **What the fixtures keep**, pinned in `tests/m2-fixtures.test.mjs` and stated in each conformance note: the
+  edge-case and minimal views are clean but for crossings (DFD's level 2: 2 right, 1 down; information flow: 2 right;
+  C4's container view: 1 down). One label is not drawn: the information flow fixture's flow to a gone id finds no room
+  beside the class flow into the same box. The generated `all` views cross as repair and reroute off leave them (ER 18
+  and 25, flowchart 4 and 4, DFD none, information flow 149 and 121 with 1 and 18 other findings, C4 94 and 98 with 132
+  and 228, lines sharing lines and labels on lines); C4's crowded container view also runs lines through cards the
+  router found no way round (237 right, 202 down, by line and card). §10's "no line through a node" holds for every view
+  but that one, in Node and in Chrome (`tests/m2.html` runs every view, `all` included, in both themes and three fonts,
+  with the line-through, end-within-1-px and label-over-a-node checks on every view but C4's `all`).
+- **§11's edits.** ER's edit that moves nothing changes a column's type to one as wide (`varchar(80)` to `varchar(10)`
+  and so on), so the entity keeps its size; the test checks that it, and C4's technology, lay nothing out (the memo's
+  run count holds). It still costs about as much as a full layout: drawing the SVG is most of the time. The information
+  flow edit adds a third conveyed item, a different one each run.
+- **The readers' construct files** (DoD 2's reader half) read into models whose types' `validate` finds no error but
+  one: `tests/import/er.mmd`'s `DOCK }o--|| HARBOUR` is identifying with its many end first, as Mermaid's text writes it,
+  and `identifying-parent` names it (the reader keeps Mermaid's left-to-right order). The warnings are counted by rule.
+- **`check.mjs` does not import the five types** (§3 says each type's `validate` runs there). With them imported,
+  `tests/delete-cascade.test.mjs`, which loads its types through `check.mjs`, finds that single deletes leave new errors in
+  the moved examples and the atlas: deleting a C4 view's subject leaves `c4-subject` (and `c4-level` for its components)
+  in 10 cases, and deleting or hiding a DFD level's external entity or store leaves `dfd-balance` in 16. Closing them is
+  the C4 and DFD types' `remove` hooks' work (M2.6's, M2.4's), as stage 6's follow-up closed M15; until then the five
+  examples' `validate` runs in `tests/atlas.test.mjs` (each view, alone and in the atlas) and the readers' files' in
+  `tests/m2-fixtures.test.mjs`. `risks.md` M15 records it.
+- **`tests/m2.html`** opens each link of `tools/atlas-links.json` in the atlas's page (M2.13's "each link opens its
+  view in the page"): Enter opens a selected card only, so a link on an element every view draws as a box cannot be
+  opened there; two of stages 5 and 6 are such (`bookshop-packages/sales`, `bookshop-deployment/jvm`), pinned as known.
+- **`tests/c4-views.html`** (M2.7's page) was never in `tests/embed.py`'s list; M2.14, which owns the list's appends,
+  appends it (the rule that a package adding a page appends it, kept).
+- **The documents** of `plan.md` §7 and §15's changes to `model.md` and `risks.md` (rows 15, 20 to 23, rule 10, §3;
+  C5, C8, C10, M9, G3, ER, P1, R9, and two new rows: M16 for Q5, M17 for the atlas's ids).
+
 ## 11. Performance (S19)
 
 | Fixture | Budget, in Node, CPU time, best of seven after a warm-up |
@@ -1151,7 +1192,8 @@ package proposes its row and writes its release notes in its pull request's desc
 | M2.14 | **Fixtures, examples, docs.** §10's files and their tests (`tests/m2-fixtures.test.mjs`, `tests/m2.html`); `render`, `check`, `stills` and `pdf` on each example; the schema and `.d.ts`; C10's tests; every document of `plan.md` §7; `docs/conformance/er.md`, `flowchart.md`, `dfd.md`, `uml-information-flow.md`, `c4.md`; the lanes' release notes in `docs/module-api.md` | `tests/*-minimal.json`, `tests/*-stress.json` of the five types, `tests/m2-fixtures.test.mjs`, `tests/m2.html`, `tests/notation.html`, `tests/cli.py`, `tests/mcp.py`, `tests/embed.py` (appends), `lib/umlimator.d.ts`, `lib/umlimator.schema.json`, `examples/README.md`, `examples/index.html`, `docs/` (but the status table) | M2.1 to M2.13 | Definition of done 1, 3, 7, 9, 10, 11 and 12 for the five types; DoD 2's reader half: each reader's construct file and `tests/import/structurizr.json` read into models that pass their types' `validate` (the C4 type's for M2.10's workspaces), with the reports pinned; §11's budgets in CI; the stress fixtures' crossings pinned and stated |
 
 Existing tests a package edits, and why: M2.1 adds cases to `tests/apply.test.mjs`, `tests/unfold.test.mjs` and
-`tests/print-typed.test.mjs`; M2.7 two expectations of `tests/c4.html` (§7.5.5); M2.12 to `tests/import.py`; M2.13 to `tests/atlas.test.mjs`; M2.14 points `tests/cli.py` and
+`tests/print-typed.test.mjs`; M2.7 two expectations of `tests/c4.html` (§7.5.5); M2.12 to `tests/import.py`; M2.13 to `tests/atlas.test.mjs`, and points the tests that read the five target examples at their
+new paths (§12.5, amended in M2.13's build); M2.14 points `tests/cli.py` and
 `tests/mcp.py` at the moved examples and adds the new ends to `tests/notation.html`; each page lane appends its page to
 `tests/embed.py`. No other existing test changes.
 
@@ -1257,7 +1299,7 @@ the target examples so every lane builds on the final ids; M2.13 moves them and 
 | `bookshop-c4/c4-order-store` | `bookshop-data-flow/dfd-level-1` |
 | `bookshop-c4/c4-shopper` | `shopping-use-cases/shopping` |
 | `bookshop-c4/c4-staff` | `returns-flowchart/returns` |
-| `bookshop-c4/c4-web-host` | `bookshop-deployment/production` |
+| `bookshop-c4/c4-api-1` (was `c4-web-host`, a box: amended in M2.13's build) | `bookshop-deployment/production` |
 
 **The root.** The log of 13 Nov 2026 describes the atlas as running "from C4 to components, deployment, classes and an
 order's state machine"; until now the map's `overview` stood in for C4.
@@ -1266,6 +1308,29 @@ order's state machine"; until now the map's `overview` stood in for C4.
 |---|---|---|
 | **(a) `bookshop-c4/c4-context` becomes the root; the map's `overview` stays, reached from the views list (recommended)** | The atlas as the maintainer described it | The map, the package's first notation, is no longer the first picture |
 | (b) The map's `overview` stays the root; the C4 views are reached from the views list | Nothing moves | The typed C4 views hang off nothing by drill-down |
+
+**Amended in M2.13's build.** The atlas builds with the five files as M2.0 left them: no id clashed with stage 6's
+merged examples, so none was renamed. One link changed: `bookshop-c4/c4-web-host` holds Docker Compose, so every view
+draws it as a box, which Enter does not open (a box's `opensView` is reached by no gesture); the link is
+`bookshop-c4/c4-api-1` (the Shop API's instance, a card) to `bookshop-deployment/production` (`tests/m2.html` opens each
+link in the page, M2.14). It holds 33 views, 208 nodes and 216 edges, and shares 32 elements, four of them milestone 2's: `shopper` (the use case example's actor),
+`storefront-component`, `shop-api` and `payment-provider-component` (stage 5's components). What else the move touched:
+
+- **Tests that read the five files by path** read them at their new paths, nothing else changed: `tests/c4.test.mjs`,
+  `c4-views.test.mjs`, `dfd.test.mjs`, `flowchart.test.mjs`, `information-flow.test.mjs`, `mermaid-er.test.mjs`,
+  `mermaid-flowchart.test.mjs` and the pages `c4.html`, `c4-views.html`, `dfd.html`, `er.html`, `flowchart.html`,
+  `information-flow.html` (`tests/er.test.mjs` finds its file through `check.mjs`'s `targets()`, unchanged). The moved
+  files take no `$schema` line, as most moved examples, so `tests/core-diet.json`'s fingerprints of the five targets hold;
+  its five keys naming `docs/diagrams/examples/23-c4.json`, and `tests/core-diet.html`'s case, name
+  `examples/bookshop-c4.json`, with the same values. `tests/embed.py`'s note of `er.html` names the new path.
+- **CI's example loop** (`.github/workflows/check.yml`) renders every `examples/*.json`, so the moved files join it; its
+  pinned crossings gain `bookshop-c4` 14 and `bookshop-data-flow` 2 as Chrome counts them (Node's `check()` counts 8 and
+  2: the browser measures text wider, as the C4 tests' pins say), and the atlas's 6 become 22, the two files' added.
+- **The root** is `bookshop-c4/c4-context` (decision 20, taken). The atlas test's "from the root, every view" becomes:
+  from the C4 context every milestone 2 view, from the map's `overview` every other, and the two together every view.
+- **The atlas test** imports the five types, pins the four new shared elements, counts each file's own crossings, steps
+  each link of the table above, and runs each moved file's views through their type's `validate`, alone and in the
+  atlas: no problem at any level.
 
 ### 12.6 The release
 

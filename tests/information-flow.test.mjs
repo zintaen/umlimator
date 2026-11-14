@@ -21,7 +21,7 @@ import { svgOf } from '../src/draw/svg.js';
 import { tablesOf } from '../src/page/print.js';
 import '../src/uml/information.js';
 
-const IF = JSON.parse(readFileSync(new URL('../docs/diagrams/examples/15-information-flow.json', import.meta.url)));
+const IF = JSON.parse(readFileSync(new URL('../examples/order-information-flow.json', import.meta.url)));
 const V = 'order-flows';
 const T = diagramOf({ diagram: 'uml.information-flow' });
 const meets = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
