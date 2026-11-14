@@ -61,6 +61,13 @@ try {
     const bg = css(pick('.stage'), 'backgroundColor'), low = all('.mm-text').map(t => [t.textContent, ratio(css(t, 'fill'), bg)]).filter(([, c]) => c < 4.5);
     const lines = all('.mm-branch, .node.mm-topic rect.n-body').map(p => ratio(css(p, 'stroke'), bg)).filter(c => c < 3);
     check(`${tag}: contrast: texts 4.5:1, curves and borders 3:1`, !low.length && !lines.length, [low, lines]);
+    // axe-core 4.14's rules for what is drawn as role="img", written out: svg-img-alt and role-img-alt (each has a name),
+    // nested-interactive (nothing inside one is a tab stop)
+    const svg = pick('.stage svg'), imgs = all('.stage svg [role="img"]'), noAlt = [], nested = [];
+    imgs.forEach(x => { if (!(x.getAttribute('aria-label') || '').trim()) noAlt.push(x.dataset.id || x.localName);
+      x.querySelectorAll('[tabindex], a[href], button, input, select, textarea').forEach(c => { if (c.tabIndex >= 0) nested.push(`${x.dataset.id} holds ${c.getAttribute('class') || c.localName}`); }); });
+    check(`${tag}: axe, written out: the drawing a named group, its 21 topics named images with no tab stop and no other name inside`,
+      svg.getAttribute('role') === 'group' && !!(svg.getAttribute('aria-label') || '').trim() && imgs.length === 21 && !noAlt.length && !nested.length && all('.node.mm-topic [aria-label]').length === 0, [imgs.length, noAlt, nested.slice(0, 4)]);
     h.destroy();
   }
   document.documentElement.dataset.theme = 'light'; el.style.removeProperty('--um-sans');
