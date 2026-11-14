@@ -31,7 +31,7 @@ const core = m => validate(m).filter(p => p.level === 'error' && !p.rule); // no
 const lines = r => r.report.map(x => `${x.line} ${x.status}: ${x.message}`);
 
 test('read(write(model)) is example 16 without its comment, and nothing is reported', () => {
-  const m = json('../docs/diagrams/examples/16-requirement.json'), text = write(m), back = read(text);
+  const m = json('../examples/ebike-requirements.json'), text = write(m), back = read(text);
   assert.deepEqual(back.report, [], text);
   assert.deepEqual(canon(back.model), canon(project(m, 'requirements')), text);
   assert.ok(project(m, 'requirements').nodes.length === 15 && project(m, 'requirements').edges.length === 9);

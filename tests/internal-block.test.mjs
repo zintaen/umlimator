@@ -20,7 +20,7 @@ import { tablesOf } from '../src/page/print.js';
 import { SYS_AS_UML } from '../src/sysml/sysml.js';
 import { SYS_IB_SPOT } from '../src/sysml/internal.js';
 
-const M18 = JSON.parse(readFileSync(new URL('../docs/diagrams/examples/18-internal-block.json', import.meta.url)));
+const M18 = JSON.parse(readFileSync(new URL('sysml-targets.json', import.meta.url)))['18-internal-block'];
 const T = diagramOf({ diagram: 'sysml.internal-block' }), VID = 'inside-ebike';
 const node = (m, id) => m.nodes.find(n => n.id === id), mem = (m, id) => m.nodes.flatMap(n => n.members || []).find(x => x.id === id);
 const withDir = (m, direction) => { const c = structuredClone(m); c.views[0].direction = direction; return c; };

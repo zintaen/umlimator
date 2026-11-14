@@ -103,9 +103,10 @@ src/canvas/    render (camera, selection, keyboard), edit (gestures), pieces (vi
 src/page/      the standalone page, print
 src/map/       the map type: kinds, lanes, hubs, numbered views
 src/uml/ ...   one folder per family: definitions, validators, describe writers; stereotypes.js (stage 6) checks applied stereotypes and their tags across the model
-               (milestone 2: src/er/, src/flowchart/, src/dfd/, src/c4/ with c4.js and views.js; uml/information.js;
-               milestone 4b: src/bpmn/ with notation.js and process.js)
-src/readers/   one file per source language and diagram; milestone 2's: mermaid-er, mermaid-flowchart, structurizr (JSON), dbml (an adapter over @dbml/core's parsed model); milestone 4b's: bpmn-xml (an adapter over a bpmn-moddle the caller passes)
+               (milestone 2: src/er/, src/flowchart/, src/dfd/, src/c4/ with c4.js and views.js; uml/information.js)
+               (milestone 3: src/sysml/ with sysml.js, the table and projection, and requirement.js, blocks.js, internal.js, parametric.js)
+               (milestone 4b: src/bpmn/ with notation.js and process.js)
+src/readers/   one file per source language and diagram; milestone 2's: mermaid-er, mermaid-flowchart, structurizr (JSON), dbml (an adapter over @dbml/core's parsed model); milestone 3's: mermaid-requirement (a reader and a writer); milestone 4b's: bpmn-xml (an adapter over a bpmn-moddle the caller passes)
 lib/           built and committed: umlimator.js (core and map), umlimator-<family>.js, umlimator-all.js
 ```
 
@@ -166,7 +167,7 @@ When the maintainer says 1.0.0 is ready (13 Nov 2026: not straight after 0.27.0)
 | `docs/diagrams/README.md` | The status table, in every pull request |
 | `docs/diagrams/model.md`, `risks.md` | What the stage's design note changed; risks closed or found |
 | Per type | A conformance note: subset, clauses, what is left out, the fidelity table |
-| `examples/` | Each type's small example (the reference: gallery, fixtures, conformance), and the Bookshop atlas: the release's Bookshop views joined to it by drill-down, checked against the small files (13 Nov 2026) |
+| `examples/` | Each type's small example (the reference: gallery, fixtures, conformance), and the Bookshop atlas: the release's Bookshop views joined to it by drill-down, checked against the small files (13 Nov 2026). SysML keeps its own domain, the e-bike: `examples/ebike-atlas.json` joins its four files by the same builder (`tools/atlas.mjs --links tools/ebike-links.json`), [`notes/milestone-3.md`](notes/milestone-3.md) §15 |
 
 ## 8. Working rules
 

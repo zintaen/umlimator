@@ -480,6 +480,35 @@ enum), `icon` (text).
 `describe()`: the groups as an outline, each service with its full name, then the connections. PDF: `word` (Service,
 Group's kind), `rows` (full name, icon id, group).
 
+As built (4a.6, 14 Nov 2026). `src/cloud/cloud.js` holds one definition per family from one table (`CL_FAM`); `gcp` and
+`azure` are registered, `aws` only under `CLOUD_AWS` (off), and the module exports `CLOUD_DEFS` for the tests. Where the
+build departs or settles what the note left open:
+
+- **The pack given.** `icon-missing` reads where the host's table holds `<pack>/` or any `<pack>/<id>` key: the CLI writes
+  `<pack>/` for Google only (4a.3), so Azure's pack counts as given by its icons.
+- **`group-nesting`.** A group with no parent passes; a `generic` group, or any group in a `generic` one, passes; a kind the
+  table gives no parent (`cloud`, `project`, `subscription`) warns inside any other group.
+- **An icon's entry.** Only a `src` that is a `data:image/` URL is drawn; any other entry (another address, markup) draws the
+  glyph, its name kept. A card's accessible name ends ", icon not available" wherever the glyph is drawn, and the legend
+  then holds an "Icon not available" entry.
+- **The legal line** has its baseline 4 px below the picture's bounds (which hold the 36 px margin); the bounds grow by 18 px
+  to hold it, and widen where the picture is narrower.
+- **Hooks.** `connect`, `add` and `remove` only: `rename` (the label) and `moveTo` (a drop into a group is stage 2's
+  `reparent`, Alt + arrows a pin) are the canvas's defaults. The canvas's L and handle end on cards only, so a line from or
+  to an open group is written in the model (or by a host) and not drawn by pointer or key; the refusal of a line between a
+  group and what it holds is the hook's and is tested on it. DoD 4 (§5.6's "by pointer and L") for a line with a group at
+  an end: met by the `connect` command through `apply()` and the hook, as milestone 2 met DoD 4 for gestures the canvas
+  lacks; drawing such a line by pointer or L is left to a later canvas package (`src/canvas/edit.js` is not this
+  package's). Taken by the lead under the maintainer's standing approval (14 Nov 2026).
+- **The targets** lay out with no overlap, no line through a node and every line routed; their crossings are pinned (1 to 3
+  a view, right and down), as M2.7 pinned C4's, with repair and reroute off.
+- **P1.** `cloud-stress.json` is 4a.7's; `tests/cloud.test.mjs` builds the same size in code (60 products in five levels,
+  80 paths) and prints the figures against 100 ms under CI's 1 s; they are recorded in the pull request.
+- **Not reached.** An `update()` that changes only the `icons` table keeps the view's picture: the context's view key
+  (`src/map/context.js`, the core) reads a map card's `icon`, not `props.icon`. A host gives the table with the model, as
+  the CLI does, so a page draws the icons; changing them in place is left to a later core package (§5.2 then holds in
+  full). Taken by the lead under the maintainer's standing approval (14 Nov 2026).
+
 ## 6. The tree strategy (S11, S12)
 
 ### 6.1 Options
@@ -579,6 +608,25 @@ back.
 |---|---|---|
 | **(a) Hides its branch (recommended)** | What mindmap tools do; matches Shift + Delete, which takes the branch | One key hides many topics; undo brings them back |
 | (b) Hides the topic only; its children hang from its parent in the picture | One element per Delete | The picture rewires itself; a user rarely means it |
+
+As built (4a.4, 14 Nov 2026), where §7 left a choice or the canvas could not do what it says. Levels count the root as
+the first, so `mindmap-depth` warns from level 65 (depth 64), naming the topics there. A topic whose parent is not a topic
+(`topic-parent`) is a root of its own; each further root's tree, and one tree for shown topics in a cycle, is laid out by
+its own `layoutTree` call and stacked 48 px under the one before; the bounds take a 24 px margin. A topic's text breaks at
+its newlines; a paragraph past 400 characters is cut before wrapping (four lines hold about 130). A topic that opens a view
+is 26 px wider, for the ⤢ mark. No legend: a branch's colour means nothing. A new topic's id comes from its words, as the
+reader's (`base`, `base-2`…). Alt + ↑ and ↓, every side change, and a first-level topic's move under another topic (Alt +
+→ or ← away from the root, or a drop) set, in the same transaction, the drawn side of each other first-level topic that
+has none given, so no other branch swings across; the moved topic's own side, if given, goes. A drop is read from the dropped topic's centre:
+on a topic, under it, last; on the root, a first-level topic takes the half it fell on (its own half: nothing) and a deeper
+one becomes first-level on that half; in the gap between two siblings' boxes, there, taking their side when they are
+first-level. The canvas draws no insertion bar while a topic is dragged (it has no hook for one, and its files are the
+core's). The outline's Show on a hidden topic brings back the topic and every descendant under it through hidden topics
+only, after its nearest shown ancestor's last shown descendant: the canvas's Show adds one id and has no hook, so
+`src/mindmap/mindmap.js` wraps `TYPED.edit` and hears that button's click first, on a mindmap view only; Enter on the
+button clicks it. Delete's hide clears the topic's `present` entry (apply's `hide`), so a first-level topic brought back by
+Show takes the side the balance gives it, which may be the other half; undo puts it back where it was. The canvas's palette still names its generic line ("Lines: line") for a type with no lines; L then says
+the hook's refusal. Taken by the lead under the maintainer's standing approval (14 Nov 2026).
 
 ## 8. The Mermaid mindmap reader and writer (`src/readers/mermaid-mindmap.js`, S15)
 

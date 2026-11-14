@@ -518,6 +518,35 @@ gestures (1.7), with each type's hooks:
 | | a step's place | | `Alt + ↑/↓` on a step | `move { id, view, index }` among the steps drawn |
 | | an implied line | select it to read what it stands for | | none: F2, Delete, Shift + Delete and L emit nothing |
 
+## Milestone 3's gestures: SysML's requirement, block definition, internal block and parametric diagrams (0.25.0)
+
+Milestone 3 (`docs/diagrams/notes/milestone-3.md` §6.4, §7.4, §8.5, §9, §11) adds no command and binds no key: each type's
+hooks on the typed canvas's gestures (1.7). A drop on a frame that is no element (a requirement or block definition view
+with no subject) reparents the card to the view's subject, or to none; Delete on that frame emits nothing.
+
+| Type | Edit | Pointer | Keyboard | Commands |
+|---|---|---|---|---|
+| Requirement (`sysml.requirement`) | a requirement, test case, block, package, comment | the palette | `N` | `add`; a requirement into the selected requirement or package (its `parent`), else the frame's subject |
+| | containment | the palette's Containment line, or a drag | `L`, the owner, Enter | `reparent` of the first to the second |
+| | derive, satisfy, verify, refine, trace, copy | the handle or a drag | `L`, a picker | `add`, checked against the rules' errors (`{ error }` with the rule's words); a copy also sets the client's `text` to the supplier's, in one transaction |
+| | a name and id | double-click once selected | `F2`: `EB-1.2 Range` sets `reqId` and the name together | `set label`, `set props.reqId` |
+| | id, text, risk, verify method | the properties panel | | `set props.<field>` |
+| | a containment line deleted | | for a host: the type's `remove` hook on the line's id | the child re-homed to its owner's owner; Delete on the line from the canvas emits nothing (it is derived, no element) |
+| | a requirement deleted | | `Shift + Delete` | what it contains re-homed to its owner, then `delete`, one transaction |
+| Block definition (`sysml.block-definition`) | a block, interface block, constraint block, value type, package, comment | the palette | `N` | `add` |
+| | a member | the panel's Members, one row each | Enter; `part`, `ref`, `value`, `constraint`, `port` (`proxy port`, `full port`), `in`, `out`, `inout`, `param` before `name : Type [mult]` | `add` or `set` of the member; with no keyword, a block's name makes a part, a constraint block's a constraint property, anything else a value |
+| | a part association | the palette's Association (part) | `L` | `add` with `ends.from.aggregation: composite`, and the part property it draws, one transaction; to a constraint block a constraint property; to anything else refused |
+| | an expression, unit, quantity kind, kind, direction | the properties panel | | `set props.<field>` |
+| Internal block (`sysml.internal-block`) | a part, reference, value, port | the palette (a port goes to the selected part's type) | `N` | `add` into the subject or the part's type |
+| | a connector | the handle or a drag from a port on a part | `L`, the other port, Enter | `add` of a `sysml.Connector` with `ends.<end>.part`, no label |
+| | a port's side | | `Alt + arrows` on a port | `set { view, path: ['present', id, 'side'] }` |
+| | a port's kind and `~` | | `F2`: `«proxy» charge : ~ChargeInterface` | `set props.kind`, `set props.valueType` |
+| | an item flow | the properties panel | | `set props.itemFlow.item`, `set props.itemFlow.direction` |
+| | a part deleted | | `Shift + Delete` | `delete`, its connectors with it (the type's `refs`) |
+| Parametric (`sysml.parametric`) | a constraint or value property | the palette | `N` | `add`; a member row `name : Type` (a constraint or value property) or `param name : Type` (a parameter, on a constraint block only) |
+| | a binding | a drag from a value to a parameter's square | `L`, the parameter, Enter | `add` of a `sysml.BindingConnector` with `ends.to.part`; one drawn from a parameter runs from the value; one to a constraint property's box is refused |
+| | a constraint property's type | the properties panel | | `set props.valueType` |
+
 ## BPMN's gestures (0.27.0)
 
 The BPMN diagram (`docs/diagrams/notes/milestone-4b.md` §11, as built §8.3) adds no command and two keys, `A` and `X`,

@@ -278,6 +278,33 @@ export interface C4ElementProps { description?: string; technology?: string; ext
   shape?: 'person' | 'robot' | 'browser' | 'window' | 'terminal' | 'mobile' | 'cylinder' | 'pipe' | 'folder' | 'document' | 'hexagon' | 'box'; container?: string; [key: string]: unknown }
 /** A C4 relationship's props: its technology (its `label` is its description). */
 export interface C4RelationshipProps { technology?: string; [key: string]: unknown }
+/** SysML v1.7's vocabulary (views with `diagram` one of `sysml.requirement`, `sysml.block-definition`,
+ *  `sysml.internal-block` and `sysml.parametric`, umlimator/all from 0.25.0; docs/conformance/sysml-*.md). Every SysML view
+ *  is drawn in a frame whose header names the view's `subject`: a package (requirement, block definition), a block
+ *  (internal block, parametric) or a constraint block (parametric); with none, `[Model]` and the model's title. A
+ *  requirement's owner (`parent`) is a requirement or a package; containment between requirements is drawn as a crosshair
+ *  line, never stored. An internal block or parametric view draws its subject's members inside the subject's frame. */
+export type SysmlViewType = 'sysml.requirement' | 'sysml.block-definition' | 'sysml.internal-block' | 'sysml.parametric';
+export type SysmlElementType = 'sysml.Requirement' | 'sysml.TestCase' | 'sysml.Block' | 'sysml.InterfaceBlock' | 'sysml.ConstraintBlock' | 'sysml.ValueType'
+  | 'uml.Package' | 'uml.Comment';
+export type SysmlMemberType = 'sysml.PartProperty' | 'sysml.ReferenceProperty' | 'sysml.ValueProperty' | 'sysml.ConstraintProperty' | 'sysml.Port'
+  | 'sysml.FlowProperty' | 'sysml.ConstraintParameter' | 'uml.Operation';
+/** Each runs from the client to the supplier; on a block definition view the class diagram's lines. */
+export type SysmlLineType = 'sysml.DeriveReqt' | 'sysml.Satisfy' | 'sysml.Verify' | 'sysml.Refine' | 'sysml.Trace' | 'sysml.Copy'
+  | 'sysml.Connector' | 'sysml.BindingConnector' | 'uml.Association' | 'uml.Generalization' | 'uml.Dependency' | 'uml.CommentLink';
+/** A requirement's props: its id and text (wrapped whole; a view's `present.<id>.rows` caps it), and SysML's non-normative
+ *  risk and verify method. Mermaid's requirement kinds (functionalRequirement, …) are `stereotypes`. */
+export interface SysmlRequirementProps { reqId?: string; text?: string; risk?: 'low' | 'medium' | 'high';
+  verifyMethod?: 'analysis' | 'inspection' | 'test' | 'demonstration'; stereotypes?: string[]; [key: string]: unknown }
+/** A constraint block's expression, as text; a value type's unit and quantity kind. */
+export interface SysmlClassifierProps { constraint?: string; unit?: string; quantityKind?: string; [key: string]: unknown }
+/** A port's kind (none: a plain port) and type; `~` before the type conjugates it. A flow property's direction. */
+export interface SysmlPortProps { kind?: 'proxy' | 'full'; valueType?: string; [key: string]: unknown }
+export interface SysmlFlowPropertyProps { direction?: 'in' | 'out' | 'inout'; valueType?: string; [key: string]: unknown }
+/** A connector's item flow: the item's name is its label, a filled triangle points the way it flows. */
+export interface SysmlItemFlow { item: string; direction: 'from-to' | 'to-from' }
+/** A connector's or binding's props: an end through a part or constraint property (`ends.to.part`), and an item flow. */
+export interface SysmlConnectorProps { ends?: { from?: { part?: string }; to?: { part?: string } }; itemFlow?: SysmlItemFlow; [key: string]: unknown }
 /** BPMN's vocabulary (a view with `diagram: 'bpmn'`, umlimator/all from 0.27.0; docs/conformance/bpmn.md): Table 2.1 of
  *  BPMN 2.0.2 and six extras. A pool (`bpmn.Participant`) owns its lanes as members (`bpmn.Lane`, a lane's `parent` another
  *  lane of its pool); a flow node's `parent` is its innermost lane, its pool, its sub-process or none. A sub-process is drawn

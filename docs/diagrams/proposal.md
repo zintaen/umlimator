@@ -862,7 +862,8 @@ every reference resolves; a composite end's multiplicity is at most 1.
 
 ### 8.5 Stages 2 to 6: subsets
 
-Each subset is the smallest that makes the type usable. The clause numbers are UML 2.5.1's. What a type needs in
+Each subset is the smallest that makes the type usable. The clause numbers are UML 2.5.1's. SysML v1.7's four subsets
+(milestone 3) are [`notes/milestone-3.md`](notes/milestone-3.md) §17's, and `docs/conformance/sysml-*.md`'s. What a type needs in
 rendering, editing and validation is in §3.3; the acceptance criteria are §7.3's.
 
 | Stage | Type | In the subset | Left out |

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """The CLI's change commands end to end (#66, #67, #68): diff of two files, diff --base in a git repository (what the
-diff Action runs on a pull request; on an object and a package model as the Action's step runs it, 2.6, and on a use case, an activity, a state machine and an interaction overview model, 4.10, and a component, a deployment and a composite structure model, 5.8, and a profile and a timing model, 6.6, and an ER, a flowchart, a data flow, an information flow and a C4 model, M2.14, and a BPMN model, 4b.5, and on every other typed type, a reorder reading "moves", C10); map-repo's CLI rendering each typed model (C10); drift and timelapse; trace (#96; as a UML sequence view, 3.8); and pdf (#93; the stage 4 types' tables, 4.10, stage 5's, 5.8, stage 6's, 6.6, and milestone 2's, M2.14), read back with the standard
+diff Action runs on a pull request; on an object and a package model as the Action's step runs it, 2.6, and on a use case, an activity, a state machine and an interaction overview model, 4.10, and a component, a deployment and a composite structure model, 5.8, and a profile and a timing model, 6.6, and an ER, a flowchart, a data flow, an information flow and a C4 model, M2.14, SysML's four e-bike models, M3.7, and a BPMN model, 4b.5, and on every other typed type, a reorder reading "moves", C10); map-repo's CLI rendering each typed model (C10); drift and timelapse; trace (#96; as a UML sequence view, 3.8); and pdf (#93; the stage 4 types' tables, 4.10, stage 5's, 5.8, stage 6's, 6.6, milestone 2's, M2.14, and SysML's, M3.7), read back with the standard
 library. Pages only for the rest: stills (Chrome) are covered by `stills` itself. And the MCP server (#91), driven
 through its pipes as an MCP client drives it, with a page's event stream.
 
@@ -312,6 +312,30 @@ with tempfile.TemporaryDirectory() as tmp:
            x.get("summary") == [said] and view in (x.get("views") or []) and (t / "action-m2-out" / f"examples-{f}.html").is_file() and all(Path(s).is_file() for s in x.get("stills", [None]))
            and f"- {said}" in md, x)
 
+    # C10 for milestone 3 (M3.7): the Action's step on SysML's four e-bike models, each changed in a pull request
+    SYSML = {"ebike-requirements": (lambda m: rename(m, "capacity", "Pack capacity"), "requirements", "renames Battery capacity to Pack capacity"),
+             "ebike-blocks": (lambda m: rename(m, "rental-vehicle", "HireVehicle"), "blocks", "renames RentalVehicle to HireVehicle"),
+             "ebike-structure": (lambda m: rename(m, "ebike", "Bike"), "inside-ebike", "renames EBike to Bike"),
+             "ebike-range": (lambda m: rename(m, "ebike", "Bike"), "range-analysis", "renames EBike to Bike")}
+    d = t / "action-m3"; (d / "examples").mkdir(parents=True)
+    dgit = lambda *x: subprocess.run(["git", "-C", str(d), "-c", "user.name=test", "-c", "user.email=test@example.invalid", *x], capture_output=True, text=True, check=True)
+    dgit("init", "-q")
+    for f in SYSML:
+        (d / "examples" / f"{f}.json").write_text((ROOT / "examples" / f"{f}.json").read_text(encoding="utf-8"), encoding="utf-8")
+    dgit("add", "examples"); dgit("commit", "-q", "-m", "base")
+    for f, (change, _, _) in SYSML.items():
+        m = json.loads((d / "examples" / f"{f}.json").read_text()); change(m)
+        (d / "examples" / f"{f}.json").write_text(json.dumps(m, indent=1))
+    dgit("commit", "-q", "-am", "the pull request")
+    r = cli("diff", "--base", "HEAD^1", "--out", str(t / "action-m3-out"), "--models", "examples/*.json", cwd=d) or []
+    by = {x["file"]: x for x in r}
+    md = (t / "action-m3-out" / "summary.md").read_text(encoding="utf-8") if (t / "action-m3-out" / "summary.md").is_file() else ""
+    for f, (_, view, said) in SYSML.items():
+        x = by.get(f"examples/{f}.json", {})
+        ok(f"diff --base, as the Action runs it (C10, M3.7) · {f}: what changed in words, its view, a page and a still",
+           x.get("summary") == [said] and view in (x.get("views") or []) and (t / "action-m3-out" / f"examples-{f}.html").is_file() and all(Path(s).is_file() for s in x.get("stills", [None]))
+           and f"- {said}" in md, x)
+
     # map-repo's CLI (C10): the skill writes maps only, and renders a typed model it is given, every type on main. Its
     # launcher runs a release from its cache; this checkout stands in for one (UMLIMATOR_REF, an empty UMLIMATOR_SHA)
     (t / "skill-cache").mkdir()
@@ -322,6 +346,7 @@ with tempfile.TemporaryDirectory() as tmp:
                                                        "bookshop-components", "bookshop-deployment", "order-service-structure",
                                                        "bookshop-profile", "bookshop-timing",
                                                        "bookshop-schema", "returns-flowchart", "bookshop-data-flow", "order-information-flow", "bookshop-c4",
+                                                       "ebike-requirements", "ebike-blocks", "ebike-structure", "ebike-range",
                                                        "bookshop-order-to-shipment")]
     for path in TYPED:
         p = subprocess.run([sys.executable, str(ROOT / "plugins" / "umlimator" / "skills" / "map-repo" / "scripts" / "cli.py"), "render", str(path),
@@ -386,6 +411,8 @@ with tempfile.TemporaryDirectory() as tmp:
                                                                        "bookshop-profile", "bookshop-timing",
                                                                        # M2.14: milestone 2's five examples
                                                                        "bookshop-schema", "returns-flowchart", "bookshop-data-flow", "order-information-flow", "bookshop-c4",
+                                                                       # M3.7: SysML's four e-bike examples
+                                                                       "ebike-requirements", "ebike-blocks", "ebike-structure", "ebike-range",
                                                                        # 4b.5: the BPMN example
                                                                        "bookshop-order-to-shipment"))):
         src = json.loads(path.read_text())
@@ -501,6 +528,19 @@ with tempfile.TemporaryDirectory() as tmp:
     for n, want in PDF2.items():
         txt = "".join(read(f"{n}.pdf"))
         ok(f"pdf · {n}: its tables list what milestone 2's type says of each element and line (§9)", all(w in txt for w in want), [w for w in want if w not in txt] or txt[:800])
+    # M3.7: SysML's tables (notes/milestone-3.md §13): a requirement's id, text and derived relations, each relationship by its
+    # keyword; a block's compartments, an interface block's flow properties, a constraint block's expression and parameters, a
+    # value type's unit; the subject's members, each connector with the item it carries; each binding by its ends
+    PDF3 = {"ebike-requirements": ["RangeRequirementid:EB-1.2text:Afullchargeshallgiveatleast60kmofassistedriding.containedinE-bikespecificationderivesBatterycapacity",
+                                   "BatterycapacityRequirementid:BAT-1", "Battery→Batterycapacity«satisfy»Satisfy", "Rangerideonthetestcircuit→Range«verify»Verify"],
+            "ebike-blocks": ["ChargeInterfaceInterfaceblockflowproperties:indc:DCPowerflowproperties:outstateOfCharge:Percent",
+                             "RangeEquationConstraintblockconstraints:{range=energy/consumption}parameters:range:Distance", "EnergyValuetypequantity:unit=Wh",
+                             "EBike→RentalVehicleGeneralization"],
+            "ebike-structure": ["EBikeBlockbattery:Battery[1]", "refdock:Dock[0..1]", "Connectorfrompowerofbatterytosupplyofcontroller,carryingDCPowerfrompowertosupply"],
+            "ebike-range": ["eco:RangeEquation", "BindingfromvalueecoRangetoparameterrangeofeco", "Bindingfromparameterusableofusabletoparameterenergyofboost"]}
+    for n, want in PDF3.items():
+        txt = "".join(read(f"{n}.pdf"))
+        ok(f"pdf · {n}: its tables list what SysML's type says of each element and line (§13)", all(w in txt for w in want), [w for w in want if w not in txt] or txt[:800])
     txt = "".join(read("bookshop-timing.pdf"))
     ok("pdf · bookshop-timing: its tables list each lifeline's changes in time order, the messages it sends and the constraints on its changes, each message's kind",
        all(flat(s) in txt for s in ["workerLifeline0 ms: Idle100 ms: Waiting for payment760 ms: Recording payment900 ms: Idlecharge(total) to payments at 100 ms → 140 ms",

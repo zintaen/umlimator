@@ -27,7 +27,7 @@ import '../src/sysml/internal.js';
 import '../src/sysml/parametric.js';
 
 const read = p => JSON.parse(readFileSync(new URL(p, import.meta.url)));
-const [M16, M17, M18, M19] = ['16-requirement', '17-block-definition', '18-internal-block', '19-parametric'].map(n => read(`../docs/diagrams/examples/${n}.json`));
+const [M16, M17, M18, M19] = ['16-requirement', '17-block-definition', '18-internal-block', '19-parametric'].map(n => read('sysml-targets.json')[n]);
 // the four merged by id, as tools/atlas.mjs merges them (its merge, §15.2)
 function atlas() {
   const out = { schemaVersion: 2, title: 'E-bike', nodes: [], edges: [], views: [] };

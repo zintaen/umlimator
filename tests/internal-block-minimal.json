@@ -1,0 +1,82 @@
+{
+ "schemaVersion": 2,
+ "title": "Internal block, minimal",
+ "nodes": [
+  {
+   "id": "bike",
+   "type": "sysml.Block",
+   "label": "Bike",
+   "members": [
+    {
+     "id": "bike.battery",
+     "type": "sysml.PartProperty",
+     "label": "battery",
+     "props": {
+      "valueType": "Battery"
+     }
+    },
+    {
+     "id": "bike.motor",
+     "type": "sysml.PartProperty",
+     "label": "motor",
+     "props": {
+      "valueType": "Motor"
+     }
+    }
+   ]
+  },
+  {
+   "id": "battery",
+   "type": "sysml.Block",
+   "label": "Battery",
+   "members": [
+    {
+     "id": "battery.out",
+     "type": "sysml.Port",
+     "label": "out"
+    }
+   ]
+  },
+  {
+   "id": "motor",
+   "type": "sysml.Block",
+   "label": "Motor",
+   "members": [
+    {
+     "id": "motor.in",
+     "type": "sysml.Port",
+     "label": "in"
+    }
+   ]
+  }
+ ],
+ "edges": [
+  {
+   "id": "battery-motor",
+   "type": "sysml.Connector",
+   "from": "battery.out",
+   "to": "motor.in",
+   "props": {
+    "ends": {
+     "from": {
+      "part": "bike.battery"
+     },
+     "to": {
+      "part": "bike.motor"
+     }
+    }
+   }
+  }
+ ],
+ "views": [
+  {
+   "id": "v",
+   "diagram": "sysml.internal-block",
+   "title": "Minimal",
+   "subject": "bike",
+   "nodeIds": [
+    "bike"
+   ]
+  }
+ ]
+}

@@ -1,0 +1,1355 @@
+{
+ "schemaVersion": 2,
+ "title": "Requirement, stress",
+ "nodes": [
+  {
+   "id": "ec-root",
+   "type": "sysml.Requirement",
+   "label": "Root",
+   "props": {
+    "reqId": "EC-1",
+    "text": "The system shall do what this requirement says, every day."
+   }
+  },
+  {
+   "id": "ec-l1",
+   "type": "sysml.Requirement",
+   "label": "Level one",
+   "parent": "ec-root",
+   "props": {
+    "reqId": "EC-1.1",
+    "text": "The system shall do what this requirement says, every day."
+   }
+  },
+  {
+   "id": "ec-l2",
+   "type": "sysml.Requirement",
+   "label": "Level two",
+   "parent": "ec-l1",
+   "props": {
+    "reqId": "EC-1.1.1",
+    "text": "The system shall do what this requirement says, every day."
+   }
+  },
+  {
+   "id": "ec-l3",
+   "type": "sysml.Requirement",
+   "label": "Level three",
+   "parent": "ec-l2",
+   "props": {
+    "reqId": "EC-1.1.1.1",
+    "text": "The system shall do what this requirement says, every day."
+   }
+  },
+  {
+   "id": "ec-pkg",
+   "type": "uml.Package",
+   "label": "Regulations"
+  },
+  {
+   "id": "ec-in-pkg",
+   "type": "sysml.Requirement",
+   "label": "Speed limit",
+   "parent": "ec-pkg",
+   "props": {
+    "reqId": "REG-1",
+    "text": "Assistance shall stop at 25 km/h."
+   }
+  },
+  {
+   "id": "ec-d1",
+   "type": "sysml.Requirement",
+   "label": "Derived one",
+   "props": {
+    "reqId": "EC-2",
+    "text": "The system shall do what this requirement says, every day."
+   }
+  },
+  {
+   "id": "ec-d2",
+   "type": "sysml.Requirement",
+   "label": "Derived two",
+   "props": {
+    "reqId": "EC-3",
+    "text": "The system shall do what this requirement says, every day."
+   }
+  },
+  {
+   "id": "ec-src",
+   "type": "sysml.Requirement",
+   "label": "Source",
+   "props": {
+    "reqId": "EC-4",
+    "text": "The original text."
+   }
+  },
+  {
+   "id": "ec-copy",
+   "type": "sysml.Requirement",
+   "label": "Copy",
+   "props": {
+    "reqId": "EC-5",
+    "text": "Another text."
+   }
+  },
+  {
+   "id": "ec-blk",
+   "type": "sysml.Block",
+   "label": "Frame"
+  },
+  {
+   "id": "ec-blk2",
+   "type": "sysml.Block",
+   "label": "Fork"
+  },
+  {
+   "id": "ec-dup-a",
+   "type": "sysml.Requirement",
+   "label": "Duplicate A",
+   "props": {
+    "reqId": "EC-6",
+    "text": "The system shall do what this requirement says, every day."
+   }
+  },
+  {
+   "id": "ec-dup-b",
+   "type": "sysml.Requirement",
+   "label": "Duplicate B",
+   "props": {
+    "reqId": "EC-6",
+    "text": "The system shall do what this requirement says, every day."
+   }
+  },
+  {
+   "id": "ec-member",
+   "type": "sysml.Requirement",
+   "label": "With a member",
+   "props": {
+    "reqId": "EC-7",
+    "text": "The system shall do what this requirement says, every day."
+   },
+   "members": [
+    {
+     "id": "ec-member.x",
+     "type": "uml.Property",
+     "label": "x"
+    }
+   ]
+  },
+  {
+   "id": "ec-gen-a",
+   "type": "sysml.Requirement",
+   "label": "General",
+   "props": {
+    "reqId": "EC-8",
+    "text": "The system shall do what this requirement says, every day."
+   }
+  },
+  {
+   "id": "ec-gen-b",
+   "type": "sysml.Requirement",
+   "label": "Special",
+   "props": {
+    "reqId": "EC-9",
+    "text": "The system shall do what this requirement says, every day."
+   }
+  },
+  {
+   "id": "ec-long",
+   "type": "sysml.Requirement",
+   "label": "Long text",
+   "props": {
+    "reqId": "EC-10",
+    "text": "The rider shall be able to hire, ride and return a bike at any dock of the city, at any hour, in any weather, The rider shall be able to hire, ride and return a bike at any dock of the city, at any hour, in any weather, The rider shall be able to hire, ride and return a bike at any dock of the city, at any hour, in any weather, The rider shall be able to hire, ride and return a bike at any dock of the city, at any hour, in any weather, The rider shall be able to hire, ride and return a bike at any dock of the city, at any hour, in any weather, The rider shall be able to hire, ride and return a"
+   }
+  },
+  {
+   "id": "ec-capped",
+   "type": "sysml.Requirement",
+   "label": "Capped text",
+   "props": {
+    "reqId": "EC-11",
+    "text": "The rider shall be able to hire, ride and return a bike at any dock of the city, at any hour, in any weather, The rider shall be able to hire, ride and return a bike at any dock of the city, at any hour, in any weather, The rider shall be able to hire, ride and return a bike at any dock of the city, at any hour, in any weather, The rider shall be able to hire, ride and return a bike at any dock of the city, at any hour, in any weather, The rider shall be able to hire, ride and return a bike at any dock of the city, at any hour, in any weather, The rider shall be able to hire, ride and return a"
+   }
+  },
+  {
+   "id": "ec-tester",
+   "type": "sysml.TestCase",
+   "label": "Bench test"
+  },
+  {
+   "id": "ec-why",
+   "type": "uml.Comment",
+   "label": "Measured on the test circuit",
+   "props": {
+    "stereotypes": [
+     "rationale"
+    ]
+   }
+  },
+  {
+   "id": "ec-kind-0",
+   "type": "sysml.Requirement",
+   "label": "functional requirement",
+   "props": {
+    "reqId": "EC-K0",
+    "text": "The system shall do what this requirement says, every day.",
+    "stereotypes": [
+     "functionalRequirement"
+    ]
+   }
+  },
+  {
+   "id": "ec-kind-1",
+   "type": "sysml.Requirement",
+   "label": "interface requirement",
+   "props": {
+    "reqId": "EC-K1",
+    "text": "The system shall do what this requirement says, every day.",
+    "stereotypes": [
+     "interfaceRequirement"
+    ]
+   }
+  },
+  {
+   "id": "ec-kind-2",
+   "type": "sysml.Requirement",
+   "label": "performance requirement",
+   "props": {
+    "reqId": "EC-K2",
+    "text": "The system shall do what this requirement says, every day.",
+    "stereotypes": [
+     "performanceRequirement"
+    ]
+   }
+  },
+  {
+   "id": "ec-kind-3",
+   "type": "sysml.Requirement",
+   "label": "physical requirement",
+   "props": {
+    "reqId": "EC-K3",
+    "text": "The system shall do what this requirement says, every day.",
+    "stereotypes": [
+     "physicalRequirement"
+    ]
+   }
+  },
+  {
+   "id": "ec-kind-4",
+   "type": "sysml.Requirement",
+   "label": "design constraint",
+   "props": {
+    "reqId": "EC-K4",
+    "text": "The system shall do what this requirement says, every day.",
+    "stereotypes": [
+     "designConstraint"
+    ]
+   }
+  },
+  {
+   "id": "ec-name",
+   "type": "sysml.Requirement",
+   "label": "A requirement name forty characters long",
+   "props": {
+    "reqId": "EC-12",
+    "text": "The system shall do what this requirement says, every day."
+   }
+  },
+  {
+   "id": "ec-no-text",
+   "type": "sysml.Requirement",
+   "label": "No text",
+   "props": {
+    "reqId": "EC-13"
+   }
+  },
+  {
+   "id": "r0",
+   "type": "sysml.Requirement",
+   "label": "Requirement 0",
+   "props": {
+    "reqId": "R-0",
+    "text": "The system shall meet need number 0 in full, every day of the year."
+   }
+  },
+  {
+   "id": "r1",
+   "type": "sysml.Requirement",
+   "label": "Requirement 1",
+   "parent": "r0",
+   "props": {
+    "reqId": "R-1",
+    "text": "The system shall meet need number 1 in full, every day of the year."
+   }
+  },
+  {
+   "id": "r2",
+   "type": "sysml.Requirement",
+   "label": "Requirement 2",
+   "parent": "r1",
+   "props": {
+    "reqId": "R-2",
+    "text": "The system shall meet need number 2 in full, every day of the year."
+   }
+  },
+  {
+   "id": "r3",
+   "type": "sysml.Requirement",
+   "label": "Requirement 3",
+   "parent": "r1",
+   "props": {
+    "reqId": "R-3",
+    "text": "The system shall meet need number 3 in full, every day of the year."
+   }
+  },
+  {
+   "id": "r4",
+   "type": "sysml.Requirement",
+   "label": "Requirement 4",
+   "parent": "r2",
+   "props": {
+    "reqId": "R-4",
+    "text": "The system shall meet need number 4 in full, every day of the year."
+   }
+  },
+  {
+   "id": "r5",
+   "type": "sysml.Requirement",
+   "label": "Requirement 5",
+   "props": {
+    "reqId": "R-5",
+    "text": "The system shall meet need number 5 in full, every day of the year."
+   }
+  },
+  {
+   "id": "r6",
+   "type": "sysml.Requirement",
+   "label": "Requirement 6",
+   "parent": "r5",
+   "props": {
+    "reqId": "R-6",
+    "text": "The system shall meet need number 6 in full, every day of the year."
+   }
+  },
+  {
+   "id": "r7",
+   "type": "sysml.Requirement",
+   "label": "Requirement 7",
+   "parent": "r6",
+   "props": {
+    "reqId": "R-7",
+    "text": "The system shall meet need number 7 in full, every day of the year."
+   }
+  },
+  {
+   "id": "r8",
+   "type": "sysml.Requirement",
+   "label": "Requirement 8",
+   "parent": "r6",
+   "props": {
+    "reqId": "R-8",
+    "text": "The system shall meet need number 8 in full, every day of the year."
+   }
+  },
+  {
+   "id": "r9",
+   "type": "sysml.Requirement",
+   "label": "Requirement 9",
+   "parent": "r7",
+   "props": {
+    "reqId": "R-9",
+    "text": "The system shall meet need number 9 in full, every day of the year."
+   }
+  },
+  {
+   "id": "r10",
+   "type": "sysml.Requirement",
+   "label": "Requirement 10",
+   "props": {
+    "reqId": "R-10",
+    "text": "The system shall meet need number 10 in full, every day of the year."
+   }
+  },
+  {
+   "id": "r11",
+   "type": "sysml.Requirement",
+   "label": "Requirement 11",
+   "parent": "r10",
+   "props": {
+    "reqId": "R-11",
+    "text": "The system shall meet need number 11 in full, every day of the year."
+   }
+  },
+  {
+   "id": "r12",
+   "type": "sysml.Requirement",
+   "label": "Requirement 12",
+   "parent": "r11",
+   "props": {
+    "reqId": "R-12",
+    "text": "The system shall meet need number 12 in full, every day of the year."
+   }
+  },
+  {
+   "id": "r13",
+   "type": "sysml.Requirement",
+   "label": "Requirement 13",
+   "parent": "r11",
+   "props": {
+    "reqId": "R-13",
+    "text": "The system shall meet need number 13 in full, every day of the year."
+   }
+  },
+  {
+   "id": "r14",
+   "type": "sysml.Requirement",
+   "label": "Requirement 14",
+   "parent": "r12",
+   "props": {
+    "reqId": "R-14",
+    "text": "The system shall meet need number 14 in full, every day of the year."
+   }
+  },
+  {
+   "id": "r15",
+   "type": "sysml.Requirement",
+   "label": "Requirement 15",
+   "props": {
+    "reqId": "R-15",
+    "text": "The system shall meet need number 15 in full, every day of the year."
+   }
+  },
+  {
+   "id": "r16",
+   "type": "sysml.Requirement",
+   "label": "Requirement 16",
+   "parent": "r15",
+   "props": {
+    "reqId": "R-16",
+    "text": "The system shall meet need number 16 in full, every day of the year."
+   }
+  },
+  {
+   "id": "r17",
+   "type": "sysml.Requirement",
+   "label": "Requirement 17",
+   "parent": "r16",
+   "props": {
+    "reqId": "R-17",
+    "text": "The system shall meet need number 17 in full, every day of the year."
+   }
+  },
+  {
+   "id": "r18",
+   "type": "sysml.Requirement",
+   "label": "Requirement 18",
+   "parent": "r16",
+   "props": {
+    "reqId": "R-18",
+    "text": "The system shall meet need number 18 in full, every day of the year."
+   }
+  },
+  {
+   "id": "r19",
+   "type": "sysml.Requirement",
+   "label": "Requirement 19",
+   "parent": "r17",
+   "props": {
+    "reqId": "R-19",
+    "text": "The system shall meet need number 19 in full, every day of the year."
+   }
+  },
+  {
+   "id": "r20",
+   "type": "sysml.Requirement",
+   "label": "Requirement 20",
+   "props": {
+    "reqId": "R-20",
+    "text": "The system shall meet need number 20 in full, every day of the year."
+   }
+  },
+  {
+   "id": "r21",
+   "type": "sysml.Requirement",
+   "label": "Requirement 21",
+   "parent": "r20",
+   "props": {
+    "reqId": "R-21",
+    "text": "The system shall meet need number 21 in full, every day of the year."
+   }
+  },
+  {
+   "id": "r22",
+   "type": "sysml.Requirement",
+   "label": "Requirement 22",
+   "parent": "r21",
+   "props": {
+    "reqId": "R-22",
+    "text": "The system shall meet need number 22 in full, every day of the year."
+   }
+  },
+  {
+   "id": "r23",
+   "type": "sysml.Requirement",
+   "label": "Requirement 23",
+   "parent": "r21",
+   "props": {
+    "reqId": "R-23",
+    "text": "The system shall meet need number 23 in full, every day of the year."
+   }
+  },
+  {
+   "id": "r24",
+   "type": "sysml.Requirement",
+   "label": "Requirement 24",
+   "parent": "r22",
+   "props": {
+    "reqId": "R-24",
+    "text": "The system shall meet need number 24 in full, every day of the year."
+   }
+  },
+  {
+   "id": "r25",
+   "type": "sysml.Requirement",
+   "label": "Requirement 25",
+   "props": {
+    "reqId": "R-25",
+    "text": "The system shall meet need number 25 in full, every day of the year."
+   }
+  },
+  {
+   "id": "r26",
+   "type": "sysml.Requirement",
+   "label": "Requirement 26",
+   "parent": "r25",
+   "props": {
+    "reqId": "R-26",
+    "text": "The system shall meet need number 26 in full, every day of the year."
+   }
+  },
+  {
+   "id": "r27",
+   "type": "sysml.Requirement",
+   "label": "Requirement 27",
+   "parent": "r26",
+   "props": {
+    "reqId": "R-27",
+    "text": "The system shall meet need number 27 in full, every day of the year."
+   }
+  },
+  {
+   "id": "r28",
+   "type": "sysml.Requirement",
+   "label": "Requirement 28",
+   "parent": "r26",
+   "props": {
+    "reqId": "R-28",
+    "text": "The system shall meet need number 28 in full, every day of the year."
+   }
+  },
+  {
+   "id": "r29",
+   "type": "sysml.Requirement",
+   "label": "Requirement 29",
+   "parent": "r27",
+   "props": {
+    "reqId": "R-29",
+    "text": "The system shall meet need number 29 in full, every day of the year."
+   }
+  },
+  {
+   "id": "r30",
+   "type": "sysml.Requirement",
+   "label": "Requirement 30",
+   "props": {
+    "reqId": "R-30",
+    "text": "The system shall meet need number 30 in full, every day of the year."
+   }
+  },
+  {
+   "id": "r31",
+   "type": "sysml.Requirement",
+   "label": "Requirement 31",
+   "parent": "r30",
+   "props": {
+    "reqId": "R-31",
+    "text": "The system shall meet need number 31 in full, every day of the year."
+   }
+  },
+  {
+   "id": "r32",
+   "type": "sysml.Requirement",
+   "label": "Requirement 32",
+   "parent": "r31",
+   "props": {
+    "reqId": "R-32",
+    "text": "The system shall meet need number 32 in full, every day of the year."
+   }
+  },
+  {
+   "id": "r33",
+   "type": "sysml.Requirement",
+   "label": "Requirement 33",
+   "parent": "r31",
+   "props": {
+    "reqId": "R-33",
+    "text": "The system shall meet need number 33 in full, every day of the year."
+   }
+  },
+  {
+   "id": "r34",
+   "type": "sysml.Requirement",
+   "label": "Requirement 34",
+   "parent": "r32",
+   "props": {
+    "reqId": "R-34",
+    "text": "The system shall meet need number 34 in full, every day of the year."
+   }
+  },
+  {
+   "id": "r35",
+   "type": "sysml.Requirement",
+   "label": "Requirement 35",
+   "props": {
+    "reqId": "R-35",
+    "text": "The system shall meet need number 35 in full, every day of the year."
+   }
+  },
+  {
+   "id": "r36",
+   "type": "sysml.Requirement",
+   "label": "Requirement 36",
+   "parent": "r35",
+   "props": {
+    "reqId": "R-36",
+    "text": "The system shall meet need number 36 in full, every day of the year."
+   }
+  },
+  {
+   "id": "r37",
+   "type": "sysml.Requirement",
+   "label": "Requirement 37",
+   "parent": "r36",
+   "props": {
+    "reqId": "R-37",
+    "text": "The system shall meet need number 37 in full, every day of the year."
+   }
+  },
+  {
+   "id": "r38",
+   "type": "sysml.Requirement",
+   "label": "Requirement 38",
+   "parent": "r36",
+   "props": {
+    "reqId": "R-38",
+    "text": "The system shall meet need number 38 in full, every day of the year."
+   }
+  },
+  {
+   "id": "r39",
+   "type": "sysml.Requirement",
+   "label": "Requirement 39",
+   "parent": "r37",
+   "props": {
+    "reqId": "R-39",
+    "text": "The system shall meet need number 39 in full, every day of the year."
+   }
+  },
+  {
+   "id": "r40",
+   "type": "sysml.Requirement",
+   "label": "Requirement 40",
+   "props": {
+    "reqId": "R-40",
+    "text": "The system shall meet need number 40 in full, every day of the year."
+   }
+  },
+  {
+   "id": "r41",
+   "type": "sysml.Requirement",
+   "label": "Requirement 41",
+   "parent": "r40",
+   "props": {
+    "reqId": "R-41",
+    "text": "The system shall meet need number 41 in full, every day of the year."
+   }
+  },
+  {
+   "id": "r42",
+   "type": "sysml.Requirement",
+   "label": "Requirement 42",
+   "parent": "r41",
+   "props": {
+    "reqId": "R-42",
+    "text": "The system shall meet need number 42 in full, every day of the year."
+   }
+  },
+  {
+   "id": "r43",
+   "type": "sysml.Requirement",
+   "label": "Requirement 43",
+   "parent": "r41",
+   "props": {
+    "reqId": "R-43",
+    "text": "The system shall meet need number 43 in full, every day of the year."
+   }
+  },
+  {
+   "id": "r44",
+   "type": "sysml.Requirement",
+   "label": "Requirement 44",
+   "parent": "r42",
+   "props": {
+    "reqId": "R-44",
+    "text": "The system shall meet need number 44 in full, every day of the year."
+   }
+  },
+  {
+   "id": "r45",
+   "type": "sysml.Requirement",
+   "label": "Requirement 45",
+   "props": {
+    "reqId": "R-45",
+    "text": "The system shall meet need number 45 in full, every day of the year."
+   }
+  },
+  {
+   "id": "r46",
+   "type": "sysml.Requirement",
+   "label": "Requirement 46",
+   "parent": "r45",
+   "props": {
+    "reqId": "R-46",
+    "text": "The system shall meet need number 46 in full, every day of the year."
+   }
+  },
+  {
+   "id": "r47",
+   "type": "sysml.Requirement",
+   "label": "Requirement 47",
+   "parent": "r46",
+   "props": {
+    "reqId": "R-47",
+    "text": "The system shall meet need number 47 in full, every day of the year."
+   }
+  },
+  {
+   "id": "r48",
+   "type": "sysml.Requirement",
+   "label": "Requirement 48",
+   "parent": "r46",
+   "props": {
+    "reqId": "R-48",
+    "text": "The system shall meet need number 48 in full, every day of the year."
+   }
+  },
+  {
+   "id": "r49",
+   "type": "sysml.Requirement",
+   "label": "Requirement 49",
+   "parent": "r47",
+   "props": {
+    "reqId": "R-49",
+    "text": "The system shall meet need number 49 in full, every day of the year."
+   }
+  },
+  {
+   "id": "b0",
+   "type": "sysml.Block",
+   "label": "Block 0"
+  },
+  {
+   "id": "t0",
+   "type": "sysml.TestCase",
+   "label": "Test 0"
+  },
+  {
+   "id": "b1",
+   "type": "sysml.Block",
+   "label": "Block 1"
+  },
+  {
+   "id": "t1",
+   "type": "sysml.TestCase",
+   "label": "Test 1"
+  },
+  {
+   "id": "b2",
+   "type": "sysml.Block",
+   "label": "Block 2"
+  },
+  {
+   "id": "t2",
+   "type": "sysml.TestCase",
+   "label": "Test 2"
+  },
+  {
+   "id": "b3",
+   "type": "sysml.Block",
+   "label": "Block 3"
+  },
+  {
+   "id": "t3",
+   "type": "sysml.TestCase",
+   "label": "Test 3"
+  },
+  {
+   "id": "b4",
+   "type": "sysml.Block",
+   "label": "Block 4"
+  },
+  {
+   "id": "t4",
+   "type": "sysml.TestCase",
+   "label": "Test 4"
+  },
+  {
+   "id": "b5",
+   "type": "sysml.Block",
+   "label": "Block 5"
+  },
+  {
+   "id": "t5",
+   "type": "sysml.TestCase",
+   "label": "Test 5"
+  }
+ ],
+ "edges": [
+  {
+   "id": "ec-d1-d2",
+   "type": "sysml.DeriveReqt",
+   "from": "ec-d2",
+   "to": "ec-d1"
+  },
+  {
+   "id": "ec-d2-d1",
+   "type": "sysml.DeriveReqt",
+   "from": "ec-d1",
+   "to": "ec-d2"
+  },
+  {
+   "id": "ec-copies",
+   "type": "sysml.Copy",
+   "from": "ec-copy",
+   "to": "ec-src"
+  },
+  {
+   "id": "ec-sat-block",
+   "type": "sysml.Satisfy",
+   "from": "ec-blk",
+   "to": "ec-blk2"
+  },
+  {
+   "id": "ec-gen",
+   "type": "uml.Generalization",
+   "from": "ec-gen-b",
+   "to": "ec-gen-a"
+  },
+  {
+   "id": "ec-verify-block",
+   "type": "sysml.Verify",
+   "from": "ec-blk",
+   "to": "ec-l3"
+  },
+  {
+   "id": "ec-verify",
+   "type": "sysml.Verify",
+   "from": "ec-tester",
+   "to": "ec-l2"
+  },
+  {
+   "id": "ec-sat",
+   "type": "sysml.Satisfy",
+   "from": "ec-blk",
+   "to": "ec-root"
+  },
+  {
+   "id": "ec-why-link",
+   "type": "uml.CommentLink",
+   "from": "ec-why",
+   "to": "ec-l1"
+  },
+  {
+   "id": "s0",
+   "type": "sysml.Satisfy",
+   "from": "b0",
+   "to": "r0"
+  },
+  {
+   "id": "v0",
+   "type": "sysml.Verify",
+   "from": "t0",
+   "to": "r3"
+  },
+  {
+   "id": "s1",
+   "type": "sysml.Satisfy",
+   "from": "b1",
+   "to": "r7"
+  },
+  {
+   "id": "v1",
+   "type": "sysml.Verify",
+   "from": "t1",
+   "to": "r14"
+  },
+  {
+   "id": "s2",
+   "type": "sysml.Satisfy",
+   "from": "b2",
+   "to": "r14"
+  },
+  {
+   "id": "v2",
+   "type": "sysml.Verify",
+   "from": "t2",
+   "to": "r25"
+  },
+  {
+   "id": "s3",
+   "type": "sysml.Satisfy",
+   "from": "b3",
+   "to": "r21"
+  },
+  {
+   "id": "v3",
+   "type": "sysml.Verify",
+   "from": "t3",
+   "to": "r36"
+  },
+  {
+   "id": "s4",
+   "type": "sysml.Satisfy",
+   "from": "b4",
+   "to": "r28"
+  },
+  {
+   "id": "v4",
+   "type": "sysml.Verify",
+   "from": "t4",
+   "to": "r47"
+  },
+  {
+   "id": "s5",
+   "type": "sysml.Satisfy",
+   "from": "b5",
+   "to": "r35"
+  },
+  {
+   "id": "v5",
+   "type": "sysml.Verify",
+   "from": "t5",
+   "to": "r8"
+  },
+  {
+   "id": "s6",
+   "type": "sysml.Satisfy",
+   "from": "b0",
+   "to": "r42"
+  },
+  {
+   "id": "v6",
+   "type": "sysml.Verify",
+   "from": "t0",
+   "to": "r19"
+  },
+  {
+   "id": "s7",
+   "type": "sysml.Satisfy",
+   "from": "b1",
+   "to": "r49"
+  },
+  {
+   "id": "v7",
+   "type": "sysml.Verify",
+   "from": "t1",
+   "to": "r30"
+  },
+  {
+   "id": "s8",
+   "type": "sysml.Satisfy",
+   "from": "b2",
+   "to": "r6"
+  },
+  {
+   "id": "v8",
+   "type": "sysml.Verify",
+   "from": "t2",
+   "to": "r41"
+  },
+  {
+   "id": "s9",
+   "type": "sysml.Satisfy",
+   "from": "b3",
+   "to": "r13"
+  },
+  {
+   "id": "v9",
+   "type": "sysml.Verify",
+   "from": "t3",
+   "to": "r2"
+  },
+  {
+   "id": "s10",
+   "type": "sysml.Satisfy",
+   "from": "b4",
+   "to": "r20"
+  },
+  {
+   "id": "v10",
+   "type": "sysml.Verify",
+   "from": "t4",
+   "to": "r13"
+  },
+  {
+   "id": "s11",
+   "type": "sysml.Satisfy",
+   "from": "b5",
+   "to": "r27"
+  },
+  {
+   "id": "v11",
+   "type": "sysml.Verify",
+   "from": "t5",
+   "to": "r24"
+  },
+  {
+   "id": "s12",
+   "type": "sysml.Satisfy",
+   "from": "b0",
+   "to": "r34"
+  },
+  {
+   "id": "v12",
+   "type": "sysml.Verify",
+   "from": "t0",
+   "to": "r35"
+  },
+  {
+   "id": "s13",
+   "type": "sysml.Satisfy",
+   "from": "b1",
+   "to": "r41"
+  },
+  {
+   "id": "v13",
+   "type": "sysml.Verify",
+   "from": "t1",
+   "to": "r46"
+  },
+  {
+   "id": "s14",
+   "type": "sysml.Satisfy",
+   "from": "b2",
+   "to": "r48"
+  },
+  {
+   "id": "v14",
+   "type": "sysml.Verify",
+   "from": "t2",
+   "to": "r7"
+  },
+  {
+   "id": "s15",
+   "type": "sysml.Satisfy",
+   "from": "b3",
+   "to": "r5"
+  },
+  {
+   "id": "v15",
+   "type": "sysml.Verify",
+   "from": "t3",
+   "to": "r18"
+  },
+  {
+   "id": "s16",
+   "type": "sysml.Satisfy",
+   "from": "b4",
+   "to": "r12"
+  },
+  {
+   "id": "v16",
+   "type": "sysml.Verify",
+   "from": "t4",
+   "to": "r29"
+  },
+  {
+   "id": "s17",
+   "type": "sysml.Satisfy",
+   "from": "b5",
+   "to": "r19"
+  },
+  {
+   "id": "v17",
+   "type": "sysml.Verify",
+   "from": "t5",
+   "to": "r40"
+  },
+  {
+   "id": "s18",
+   "type": "sysml.Satisfy",
+   "from": "b0",
+   "to": "r26"
+  },
+  {
+   "id": "v18",
+   "type": "sysml.Verify",
+   "from": "t0",
+   "to": "r1"
+  },
+  {
+   "id": "s19",
+   "type": "sysml.Satisfy",
+   "from": "b1",
+   "to": "r33"
+  },
+  {
+   "id": "v19",
+   "type": "sysml.Verify",
+   "from": "t1",
+   "to": "r12"
+  },
+  {
+   "id": "d0",
+   "type": "sysml.DeriveReqt",
+   "from": "r1",
+   "to": "r13"
+  },
+  {
+   "id": "d1",
+   "type": "sysml.Trace",
+   "from": "r6",
+   "to": "r18"
+  },
+  {
+   "id": "d2",
+   "type": "sysml.DeriveReqt",
+   "from": "r11",
+   "to": "r23"
+  },
+  {
+   "id": "d3",
+   "type": "sysml.Trace",
+   "from": "r16",
+   "to": "r28"
+  },
+  {
+   "id": "d4",
+   "type": "sysml.DeriveReqt",
+   "from": "r21",
+   "to": "r33"
+  },
+  {
+   "id": "d5",
+   "type": "sysml.Trace",
+   "from": "r26",
+   "to": "r38"
+  },
+  {
+   "id": "d6",
+   "type": "sysml.DeriveReqt",
+   "from": "r31",
+   "to": "r43"
+  },
+  {
+   "id": "d7",
+   "type": "sysml.Trace",
+   "from": "r36",
+   "to": "r48"
+  },
+  {
+   "id": "d8",
+   "type": "sysml.DeriveReqt",
+   "from": "r41",
+   "to": "r3"
+  },
+  {
+   "id": "d9",
+   "type": "sysml.Trace",
+   "from": "r46",
+   "to": "r8"
+  },
+  {
+   "id": "d10",
+   "type": "sysml.DeriveReqt",
+   "from": "r1",
+   "to": "r13"
+  },
+  {
+   "id": "d11",
+   "type": "sysml.Trace",
+   "from": "r6",
+   "to": "r18"
+  },
+  {
+   "id": "d12",
+   "type": "sysml.DeriveReqt",
+   "from": "r11",
+   "to": "r23"
+  },
+  {
+   "id": "d13",
+   "type": "sysml.Trace",
+   "from": "r16",
+   "to": "r28"
+  },
+  {
+   "id": "d14",
+   "type": "sysml.DeriveReqt",
+   "from": "r21",
+   "to": "r33"
+  },
+  {
+   "id": "d15",
+   "type": "sysml.Trace",
+   "from": "r26",
+   "to": "r38"
+  },
+  {
+   "id": "d16",
+   "type": "sysml.DeriveReqt",
+   "from": "r31",
+   "to": "r43"
+  },
+  {
+   "id": "d17",
+   "type": "sysml.Trace",
+   "from": "r36",
+   "to": "r48"
+  },
+  {
+   "id": "d18",
+   "type": "sysml.DeriveReqt",
+   "from": "r41",
+   "to": "r3"
+  },
+  {
+   "id": "d19",
+   "type": "sysml.Trace",
+   "from": "r46",
+   "to": "r8"
+  }
+ ],
+ "views": [
+  {
+   "id": "edge-cases",
+   "diagram": "sysml.requirement",
+   "title": "Edge cases",
+   "nodeIds": [
+    "ec-root",
+    "ec-l1",
+    "ec-l2",
+    "ec-l3",
+    "ec-pkg",
+    "ec-in-pkg",
+    "ec-d1",
+    "ec-d2",
+    "ec-src",
+    "ec-copy",
+    "ec-blk",
+    "ec-blk2",
+    "ec-dup-a",
+    "ec-dup-b",
+    "ec-member",
+    "ec-gen-a",
+    "ec-gen-b",
+    "ec-long",
+    "ec-capped",
+    "ec-tester",
+    "ec-why",
+    "ec-kind-0",
+    "ec-kind-1",
+    "ec-kind-2",
+    "ec-kind-3",
+    "ec-kind-4",
+    "ec-name",
+    "ec-no-text"
+   ],
+   "present": {
+    "ec-capped": {
+     "rows": 3
+    }
+   }
+  },
+  {
+   "id": "ec-package",
+   "diagram": "sysml.requirement",
+   "title": "In a package",
+   "subject": "ec-pkg",
+   "nodeIds": [
+    "ec-pkg",
+    "ec-in-pkg"
+   ]
+  },
+  {
+   "id": "all",
+   "diagram": "sysml.requirement",
+   "title": "All",
+   "nodeIds": [
+    "r0",
+    "r1",
+    "r2",
+    "r3",
+    "r4",
+    "r5",
+    "r6",
+    "r7",
+    "r8",
+    "r9",
+    "r10",
+    "r11",
+    "r12",
+    "r13",
+    "r14",
+    "r15",
+    "r16",
+    "r17",
+    "r18",
+    "r19",
+    "r20",
+    "r21",
+    "r22",
+    "r23",
+    "r24",
+    "r25",
+    "r26",
+    "r27",
+    "r28",
+    "r29",
+    "r30",
+    "r31",
+    "r32",
+    "r33",
+    "r34",
+    "r35",
+    "r36",
+    "r37",
+    "r38",
+    "r39",
+    "r40",
+    "r41",
+    "r42",
+    "r43",
+    "r44",
+    "r45",
+    "r46",
+    "r47",
+    "r48",
+    "r49",
+    "b0",
+    "t0",
+    "b1",
+    "t1",
+    "b2",
+    "t2",
+    "b3",
+    "t3",
+    "b4",
+    "t4",
+    "b5",
+    "t5"
+   ]
+  }
+ ]
+}
