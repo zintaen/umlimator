@@ -1,0 +1,64 @@
+﻿---
+title: Every construct on Mermaid's mindmap page
+config:
+  layout: tidy-tree
+---
+%% Mermaid 12.3.0's mindmap page (docs/syntax/mindmap.md), each construct once, for tests/mermaid-mindmap.test.mjs.
+%% Indentation: a tab counts one, as a space does (mindmap.jison: the indent is a run of [\s]+, its level the run's
+%% length; mindmapDb.ts's getParent: the nearest earlier node with a smaller level is the parent).
+%%{init: {"theme": "forest"}}%%
+mindmap
+  root((mindmap))
+    Origins
+      Long history
+      ::icon(fa fa-book)
+      Popularisation
+        British popular psychology author Tony Buzan
+    Research
+      On effectiveness<br>and features
+      On Automatic creation
+        Uses
+            Creative techniques
+            Strategic planning
+            Argument mapping
+    Tools
+      Pen and paper
+      Mermaid
+    Shapes
+      sq[Square]
+      rr(Rounded square)
+      ci((Circle))
+      bg))Bang((
+      cl)Cloud(
+      hx{{Hexagon}}
+      [Text with no id]
+      (Rounded with no id)
+    Icons and classes
+      A[I am a topic]
+      :::urgent large
+      B(Another)
+      ::icon(mdi mdi-skull-outline)
+    Markdown
+      md["`The **root** with
+a second line
+Unicode works too: 🤓`"]
+      md2["`Is this a _wrap_?`"]
+    Quoted and entities
+      q1["A double quote:#quot; and #35;hash"]
+      q2["Angles #lt;b#gt; and #amp; and #9829;"]
+      q3["Unknown #nope; kept"]
+      q4["Unclosed quote]
+    Unclear indents
+						six tabs, level six
+						  six tabs and two spaces
+     five spaces, between the levels
+    %% id: hinted
+    Hinted topic
+    %% side: left
+    %% opens: mindmap
+    Left side
+    Origins
+    Origins
+    unclosed((shape
+    after[text] trailing
+  Second root
