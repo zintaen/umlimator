@@ -4675,3 +4675,83 @@ C4 views change (the router fix under Core). What changes for callers:
   (604,131 B); the npm package is 871.2 kB (`npm pack --dry-run`). The maintainer decided on 15 Nov 2026 that the core
   has no size cap until 1.0.0: sizes are reported each release and a budget is set at 1.0.0. 0.31.0's "the next core
   change has no room without a cut elsewhere" no longer applies.
+
+## 0.33.0: fixes from the sixth audit
+
+The sixth audit confirmed 30 findings. All are fixed in this release, in five pull requests (#323 to #327), each with a
+test that fails without its fix (findings 0, 4, 12 and 14 are one defect, as are 2 and 29, and 20 and 24). Pictures
+change only where a label had been dropped (the label fix under Layout); of 441 views compared (examples, fixtures and
+bench models, both directions), no other view changed. In the bench only `s16/job` changes: `bench/expected.json` is
+re-pinned there (`bf8840f3` to `d7b8c6d9`). What changes for callers:
+
+- **Layout and labels (#327).** A labelled line no longer loses its label silently: across the examples and stress
+  fixtures, 48 lost labels go to 0. A label that still has no spot after every line is routed gets late tries. On a
+  typed view, in order: move an earlier label within reach of the line out of the way, a strict spot beside the line, a
+  spot over a line but off box borders, then a map's passes 1 and 2. On a map, the strict spot, then the one off box
+  borders. A label placed on a late try still asks for room (`labelRoom`), which may widen a row gap; a typed view
+  without `labelGaps` asks only when it has 30 cards or fewer, so a larger view keeps the looser spot. In a numbered map
+  view, the gap between two columns of a lane widens for a labelled line between them. A label that finds no spot at all
+  is reported by `check()` on maps and typed views alike: `label "x" has no room on edge A→B: not drawn` (timing views
+  and a numbered view's comb lines, whose steps are on the cards, are left out). Pictures that change: sales-classes
+  `domain`, bookshop-gcp `gcp-on-gcp`, bookshop-azure `az-on-azure`, their copies in bookshop-atlas, weather
+  `forecaster`, and turned and stress views (the fixture pins name each one). Turned views (`direction: down`) draw more
+  labels over lines, which `check()` names: its findings over the 441 views go from 4,035 to 4,091. Composite
+  structure: three or more named connectors from one port sit 28 px apart, not 10, and where two far ends are level the
+  line that goes round the nearer part takes the outer place, so every name is placed and the lines do not cross.
+  `check()` tests a timing view's slanted message lines exactly, so its false shared lines and false labels on lines go
+  (21 on `timing-stress` `all`) and real crossings are found; axis-aligned segments are tested as before.
+- **Core (#324).** `diff()` reports a line a view hid or showed, by the line's id, when both its ends stay in the view:
+  `takes the line from A to B (label) out of the view V`, the line coming back in the view's list marked removed, in its
+  place, and `puts the line from A to B in the view V`, marked added. A `render: "sequence"` map view whose kept lines
+  change order reads `reorders the steps in the view V`. Each adds the view to `views`, so `umlimator.py diff` no longer
+  leaves the file out. Lines without an id are not compared; typed views keep their own `moves` wording. A typed
+  geometry node that names the view it opens in its own name carries the new flag `saysOpens` (a DFD process with a
+  level, a call behaviour action, an interaction use, an inline interaction drawn in full, a mindmap topic); the
+  accessible name adds ", opens <view title>" to every other typed element that opens a view, even one whose label or
+  description has the word "opens" (0.32.0 guessed from the text).
+- **UML types, information flow and the mindmap (#326).** A line listed twice in `view.edges` is drawn, read and counted
+  once in class, package, object, component, deployment, composite structure and profile views, and a card listed
+  twice in `view.nodeIds` is drawn once (`ownersOn` dedupes the view's ids). Composite structure: a listed connector
+  between two types' ports with no `props.ends` gets the `connector-part` warning (an unlisted one stays silent). Class
+  and package `describe()` name every line they count: Usage "uses", Realization "realizes", Abstraction "abstracts",
+  Extension "extends", any other kind "linked to". A class member row with a function type (`=>`, `->`) keeps it whole.
+  A call behaviour action unfolded in place is a box in the call's lane, holding its activity, and the call's two flows
+  end on the box (only the unfolded picture changes). Information flow: F2 on a flow conveying two elements of one name
+  keeps both. A component or artifact whose id holds `$'` or `$&` is drawn as written. Mindmap: N, Delete and a drop
+  return on a topic parent cycle (the tree follows the cycle as drawn). `docs/editing.md` says the timing view's Alt +
+  arrow emits `move` on `nodeIds`, as it does.
+- **Readers, writers and the Python importer (#325).** `writeMermaidClass` leaves out, on a `%% not written` line, a
+  member that would read back differently; a property typed `char*` is written type first (`+char* data`) and reads back
+  as itself, while an operation returning a type ending in `*` or `$` has no form that reads back and is not written.
+  The Mermaid class reader keeps `d: Dict[str, int]` and `h: (e: Event, c: Ctx) => void` as one parameter each.
+  `umlimator.py import` passes over a `%%{ init }%%` directive spread over several lines, so detection and the
+  flowchart and C4 readers work; it splits lines at `\n`, `\r\n` and `\r` only, so a U+2028 in a label no longer
+  splits its line.
+- **CLI (#323).** `umlimator.py trace --view` refuses, in one line and before writing, to replace a view a person made
+  (a caption that does not start "From a trace"); a view an earlier trace made is still replaced where it is. In the
+  library, `sequenceFromTrace()` still replaces any view with that id, but never makes the replaced view or one below it
+  the new view's parent. The 0.13.0 section above says `trace` takes the place of a view with that id: for the CLI, that
+  now holds only for a view a trace made (the released section is left as written). `stills` draws a view again when
+  the inner view a `nodeOverrides.opensView` opens has changed. A model in a folder that cannot be written, `--out`
+  naming a folder (render, import, pdf, trace, export, timelapse) or `stills --out` naming a file, a numeric view id
+  (`views[i].id is not a string`) and `mcp --port` outside 0 to 65535 (a usage error) are each said in one line, never a
+  traceback.
+- **Known gaps.** Still open from 0.32.0: a box has no Tab stop; the keyboard reaches it through the outline. A
+  double-click (or Enter) on a box does not open its view (the 0.24.0 gap). Deep nesting is super-linear outside the
+  core. A composite structure or SysML internal block view's Lines rows name a part by its id, not its drawn name. The
+  JavaScript Mermaid readers still decode `#55296;` to a lone surrogate. The requirement layout leaves out a link into a
+  box nested more than 64 deep from its ranking. Typed hooks that answer Alt+arrows themselves were not checked on views
+  laid out down. `reach()` from a model id that the view draws under another id returns only that element. A negative
+  step duration plays 500 ms while `validate()`'s warning says 4000 ms. Mermaid C4 macro arguments keep entity codes as
+  written. `describe()` of an inline interaction does not say it opens a view. New: in composite structure, five or more
+  delegations from one port still cross, even with no labels (a limit that was already there; this release fixes three
+  and four). Room for a label in a turned view is still mostly along the line, not across it; the cloud stress `all`
+  view, laid out right, now has room for its three labels and crosses 56 times (was 52). The map flowchart and
+  Structurizr DSL readers turn a U+2028 inside a label into a space (`--typed` keeps it). `validate()` gives typed views
+  no "listed twice" warning (they are now drawn once). The unfolded call behaviour box is a plain container frame, not a
+  call behaviour shape. A page rendered before 0.33.0 with a numeric view id still ends in a traceback in `stills` and
+  `check`.
+- **Size:** `lib/umlimator.js`, what a map host loads, is 193.7 kB (193,656 B) with `gzip -9`, 17.40% over 0.16.0's
+  164,954 B, up 2,345 B from 0.32.0, nearly all in #327 (the label fix) and #324. `lib/umlimator-all.js` is 608.1 kB
+  (608,067 B), up 3,936 B; the npm package is 877.4 kB (`npm pack --dry-run`). There is no core size cap until 1.0.0
+  (the maintainer's decision of 15 Nov 2026): sizes are reported each release and a budget is set at 1.0.0.
