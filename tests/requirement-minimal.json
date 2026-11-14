@@ -1,0 +1,50 @@
+{
+ "schemaVersion": 2,
+ "title": "Requirement, minimal",
+ "nodes": [
+  {
+   "id": "need",
+   "type": "sysml.Requirement",
+   "label": "Need",
+   "props": {
+    "reqId": "N-1",
+    "text": "The bike shall be hired from a dock."
+   }
+  },
+  {
+   "id": "lock",
+   "type": "sysml.Requirement",
+   "label": "Lock",
+   "parent": "need",
+   "props": {
+    "reqId": "N-1.1",
+    "text": "The dock shall lock the bike."
+   }
+  },
+  {
+   "id": "dock",
+   "type": "sysml.Block",
+   "label": "Dock"
+  }
+ ],
+ "edges": [
+  {
+   "id": "dock-satisfies-lock",
+   "type": "sysml.Satisfy",
+   "from": "dock",
+   "to": "lock"
+  }
+ ],
+ "views": [
+  {
+   "id": "v",
+   "diagram": "sysml.requirement",
+   "title": "Minimal",
+   "nodeIds": [
+    "need",
+    "lock",
+    "dock"
+   ]
+  }
+ ]
+}

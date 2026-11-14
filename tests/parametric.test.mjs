@@ -19,7 +19,7 @@ import { describe } from '../src/map/insight.js';
 import { tablesOf } from '../src/page/print.js';
 import '../src/sysml/parametric.js';
 
-const M19 = JSON.parse(readFileSync(new URL('../docs/diagrams/examples/19-parametric.json', import.meta.url)));
+const M19 = JSON.parse(readFileSync(new URL('sysml-targets.json', import.meta.url)))['19-parametric'];
 const T = diagramOf({ diagram: 'sysml.parametric' }), VID = 'range-analysis', V = M19.views[0];
 const node = (m, id) => m.nodes.find(n => n.id === id), mem = (m, id) => m.nodes.flatMap(n => n.members || []).find(x => x.id === id);
 const withDir = (m, direction) => { const c = structuredClone(m); c.views[0].direction = direction; return c; };
