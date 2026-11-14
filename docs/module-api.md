@@ -4401,3 +4401,76 @@ corrected in 0.27.0 (#291). Maps draw as they did (`bench/expected.json` is unch
 - **Size:** `lib/umlimator.js`, what a map host loads, is 186.7 kB (186,668 B) with `gzip -9`, 13.16% over 0.16.0's
   164,954 B (the budget is 15%), up 494 B from 0.27.0 (#293's 449 B, #294's 45 B). `lib/umlimator-all.js` is 593.3 kB
   (593,343 B); the npm package is 855.6 kB.
+
+## 0.29.0: fixes from the second audit
+
+The second audit confirmed 53 findings. All 53 are fixed in this release, in five pull requests (#299 to #303), each
+with a test that fails without its fix. Maps draw as they did (`bench/expected.json` is unchanged). What changes for
+callers:
+
+- **Core (#303).** A typed view's PDF Lines table lists only the lines its type draws (a communication message, drawn
+  as a row, still counts), so the examples' PDFs lose rows that were listed but never drawn: the C4 container and
+  component views (relationships of the boundary or of the container being opened), the component view (information
+  flows), the information-flow view (a port connector) and the e-bike requirements view (connectors). `diff()` puts a
+  view's removed line back in its place, after the old line before it that stayed (first if none), so a removed
+  sequence message is drawn inside its operand and the diff model passes `validate()`; removed cards and model lines
+  are still added at the end. A changed item with no ends is named by its label or id, never "the line from undefined
+  to undefined". `validate()` reports `edges` that is not a list, a view that is not an object and a box's `nodeIds`
+  that is not a list, which `layout()`, `describe()` and `render()` then leave out instead of throwing. A typed view's
+  key holds every view's id, title and subject, so `update()` redraws the "opens <view>" names after a view is renamed.
+  Find matches words on the raw label and escapes each piece after, so a result never shows `&amp;`; the button is
+  named "Find a node or view, ⌘K" (or "Ctrl K") with `aria-keyshortcuts`, and axe-core 4.14 reports no violation on
+  `bookshop.html`; the search field is a combobox whose `aria-activedescendant` follows the highlighted result, in a
+  list named "Results". Author tags and the panel chip count whole characters, never half a surrogate pair. The
+  outline of elements selects a box as a container, so F2, Delete and Shift + Delete act on it; the component,
+  deployment, profile, composite structure, state machine and use case conformance notes now say, as the package note
+  does, that a box is not a Tab stop and is reached through the outline.
+- **UML types (#299).** `layout()` of a chain of 3,000 components, lifelines or composite parts, `validate()` of a
+  3,000-deep stereotype chain or of an object view over a 5,000-deep generalization chain, and `describe()` of a class,
+  deployment or component view nested 3,000 deep no longer overflow the stack; the visiting order, and so every
+  picture, is the same. A component's PDF port row is the port's name and type whole. Sequence: a fragment listed
+  twice is the core's "id is used twice" error, not a throw, and a message and a use sharing an id lay out. An inline
+  interaction counts a lifeline listed twice once. `apply()` treats an inherited key on a path (`toString`) as absent,
+  so `S` on a timing lifeline named `toString`, `constructor` or `__proto__` works, as do other types' `present.<id>`
+  and `layout.<id>` paths.
+- **ER, containment, layout pins, SysML, mindmap and cloud (#302).** `validate()` warns at `views[i].layout.<id>` on a
+  pin far off the grid ("… is off the grid: held at N columns or rows out"), for any view, and the layout holds every
+  pin within ± (the view's card count + 64): a pin of 1e5 took tens of seconds and 1e308 threw. Delete and Shift +
+  Delete on a selected requirement containment line re-home the requirement, as its conformance note says (a type's
+  `edits.remove` hook now gets a line's geometry ids too). ER: an FK target holding a space is printed quoted and read
+  back; a name holding `)` is printed quoted; a column with no label prints the name the drawing uses, and its
+  accessible name, `describe()` and PDF rows follow. SysML: a forward derive chain of 20,000 gives one `derive-cycle`
+  warning instead of a throw. Mindmap: in a parent cycle the PDF row names the drawn parent. AWS and Azure: a node
+  with no type is no longer drawn and named as a user.
+- **Readers, writers and the Python importer (#300).** The Python importer's Mermaid link and C4 macro argument
+  parsers are linear (a 1.5 KB file had hung `import` for 12 s); the Kubernetes and compose importers are linear and
+  refuse JSON over 1 MiB, as the text importers do. The Mermaid class writer reads each member line back and writes
+  `%% not written: <id> (<type>)` for one the reader would read as another, and writes `»` inside a stereotype as
+  `#187;`. The BPMN writer and the requirement writer look values up by own key (`toString` or `constructor` no longer
+  loses the file); an unknown `taskType`, association direction or view direction is named not written. The BPMN
+  reader reports a data input association's sources after the first and keeps them under `ext.bpmn`. The state, class
+  and sequence writers write unindented text when the indented text would be over the reader's 1 MiB limit.
+- **CLI, the diff Action, MCP and the atlas tool (#301).** `check` reads the broken rules from the page's own `rules`
+  array in its check report, so a label ending in `breaks rule "…"` is not a broken rule; a page rendered before
+  0.29.0 has no array, and `check` falls back to matching the words until it is rendered again. Stills are named
+  readably again (0.28.0 percent-encoded them): only `%`, `/`, `\`, NUL and an id of `.` or `..` are encoded, and a
+  view id that differs from an earlier one only in case gets `-` and 6 hex characters of its SHA-256, computed over all
+  the page's views so `--views` keeps the names. Pictures 0.28.0 wrote under encoded names stay in the folder until
+  deleted. The diff Action's comment is cut under 60,000 characters at a line boundary, never inside a Mermaid sketch,
+  and says so; its "needs pull-requests: write" hint shows only on HTTP 403 or 404. `diff --base` and `timelapse` read
+  a UTF-16 or UTF-32 JSON file; `render` reads a BOM and says in one line when a model is not JSON or not a model;
+  `stills`, `check`, `pdf` and `record` say in one line when a file is not a umlimator page; `record --size 800` is a
+  usage error; an MCP `highlight` Ref with non-string fields is a tool error. `tools/atlas.mjs` checks that the links
+  file's root is a view of the file it names.
+- **Docs and examples (#301).** The gallery and 12 example host pages declare `<html lang="en">`. The atlas README and
+  gallery card no longer promise that a double-click opens a box's view. README's Model section lists `"aws"`. The DBML
+  fixture is described as the `export()` of a Database parsed by @dbml/core 11.0.0.
+- **map-repo (#298).** The skill's CLI is pinned to v0.28.0 (plugin 0.1.13), and its SKILL.md names
+  `umlimator.py pack fetch gcp|azure|aws` again.
+- **Known gaps.** A box (package, node, subject, composite state, region, open collaboration) has no Tab stop; the
+  keyboard reaches it through the outline. A double-click (or Enter) on a box does not open its view (the 0.24.0 gap).
+  `layout()` of a class view nested about 3,000 deep still overflows the stack in the core's box placement. A chain
+  of 3,000 components or composite parts lays out but takes several seconds.
+- **Size:** `lib/umlimator.js`, what a map host loads, is 187.9 kB (187,891 B) with `gzip -9`, 13.91% over 0.16.0's
+  164,954 B (the budget is 15%), up 1,223 B from 0.28.0 (#303, #302 and #299). `lib/umlimator-all.js` is 596.3 kB
+  (596,259 B); the npm package is 859.8 kB.
