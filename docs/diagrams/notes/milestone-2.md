@@ -631,6 +631,42 @@ Hooks: `connect` asks which item to convey by `{ pick, then }` among the model's
 properties: `conveyed` as a list of names (resolved by label). Accessible names: "Information flow from Shopper to
 Storefront, conveys Order and Card details".
 
+**Amended in M2.5's build.** Where the build departs from the paragraphs above:
+
+- **«flow» before the label, not over it.** A typed line's label is one line (`svgOf`), so the label reads `«flow» Order,
+  Card details`, as the use case type's `«include»`; cut at 280 as a whole.
+- **`conveyed` edited as text on the flow, not in the panel.** The panel's fields write the value typed (ids), with no
+  hook to resolve names, and adding one is core. F2, or a double-click on a selected flow, edits the flow's text as drawn,
+  `[name:] Order, Card details` («flow» typed or not): each entry an element's name (an information item first), else its
+  id; a name no element has, or no entry, is refused on the hint line. It sets `props.conveyed` and the flow's name, each
+  only when it changed. The panel shows `conveyed` to read.
+- **Shift + Delete takes a flow left conveying nothing** (`edits.remove`), in the same transaction, said on the hint line,
+  as the use case type takes an extend left naming no extension point: `tests/delete-cascade.test.mjs` holds that no single
+  delete gesture leaves a new error, and `conveyed-some` would be one. `apply()`'s delete alone still only drops the id
+  (`refs`), and `conveyed-some` then says what conveys nothing.
+- **What may be conveyed**: UML 2.5.1's `convey_classifiers` (§20.2.4), not any classifier: an information item, a class,
+  an interface, a component or a signal; never an actor, a data type, an enumeration or a primitive type (`conveyed-kind`
+  says so). Taken by the lead under the maintainer's standing approval (14 Nov 2026). Classes and interfaces are drawn as
+  the classifier with their name only (an interface «interface»), named by the type's accessible name (`if-classifier`);
+  any other kind a view shows is drawn as the classifier under its own keyword («signal», «dataType», «useCase»), so none
+  passes for a class. A conveyed element's PDF row lists the flows that convey it, an information item's always.
+- **`conveyed-once`** (error): a flow conveys each element once (UML: `conveyed` is a set); F2 keeps each element once.
+- **F2's text read whole**: a name may hold `:` or `,` (`Billing::Receipt`, `Name, address`), and so may a flow's own name.
+  The text is read with no name first, then named at each `:` in turn, each list entry the longest run of parts that names
+  an element; the reading that leaves the flow as it is wins (the text as drawn, entered again, changes nothing), else the
+  first that names elements throughout. Text that reads both ways, a name and a list or one element's name, is ambiguous as
+  drawn; the reading with no name is taken.
+- **A flow from an element to itself** is allowed (UML does not forbid it), and the PDF's lines table leaves it out, as it
+  does every type's: `tablesOf` (core) drops a line whose ends are one element. Left to the core.
+- **A flow back over two columns or more** (a reply closing a loop) leaves its source's bottom and comes into its target's
+  bottom, in the layout's axes: with both flags off (S19), `15-information-flow.json`'s reply from the email service to the
+  shopper otherwise crosses the line into the email service, right and down. A fixed side, not a search (`ponytail:` in the
+  source).
+- **`validate(model)`** takes no view, so it runs once a model; the three rules are model rules.
+- **The common edit is timed in `tests/information-flow.test.mjs`** on a generated view of 40 nodes and 60 flows (a conveyed
+  element added: about 120 ms CPU on a loaded laptop, against the 100 ms target; CI holds 1 s); M2.14's stress fixture
+  takes it over.
+
 ### 7.5 C4 (`src/c4/c4.js`, `src/c4/views.js`)
 
 `c4.js` holds the elements, their look, the boundaries, implied lines and the four static views; `views.js` the dynamic
