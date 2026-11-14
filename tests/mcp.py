@@ -14,7 +14,8 @@ And C10 (2.6): an object model and a package model, served the same way, answer 
 highlight on the diagram the page draws; and so do a use case, an activity, a state machine and an interaction overview model
 (4.10), a component, a deployment and a composite structure model (5.8), a profile and a timing model (6.6), a class, a
 sequence and a communication model (C10's package), an ER, a flowchart, a data flow, an information flow and a C4
-model (M2.14), and SysML's four e-bike models (M3.7), and a mindmap, a Google Cloud and an Azure model, with no icon pack (4a.7).
+model (M2.14), SysML's four e-bike models (M3.7), and a mindmap, a Google Cloud and an Azure model, with no icon
+pack (4a.7).
 
   python3 tests/mcp.py
 

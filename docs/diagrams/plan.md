@@ -104,8 +104,8 @@ src/page/      the standalone page, print
 src/map/       the map type: kinds, lanes, hubs, numbered views
 src/uml/ ...   one folder per family: definitions, validators, describe writers; stereotypes.js (stage 6) checks applied stereotypes and their tags across the model
                (milestone 2: src/er/, src/flowchart/, src/dfd/, src/c4/ with c4.js and views.js; uml/information.js)
-               (milestone 3: src/sysml/ with sysml.js, the table and projection, and requirement.js, blocks.js, internal.js, parametric.js;
-               milestone 4a: src/mindmap/ and src/cloud/, one file for the AWS, Google Cloud and Azure family)
+               (milestone 3: src/sysml/ with sysml.js, the table and projection, and requirement.js, blocks.js, internal.js, parametric.js)
+               (milestone 4a: src/mindmap/ and src/cloud/, one file for the AWS, Google Cloud and Azure family)
 src/readers/   one file per source language and diagram; milestone 2's: mermaid-er, mermaid-flowchart, structurizr (JSON), dbml (an adapter over @dbml/core's parsed model); milestone 3's: mermaid-requirement (a reader and a writer); milestone 4a's: mermaid-mindmap
 lib/           built and committed: umlimator.js (core and map), umlimator-<family>.js, umlimator-all.js
 ```

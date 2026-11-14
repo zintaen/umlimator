@@ -259,7 +259,7 @@ test('nothing published holds a vendor icon (§2.5): no committed file under exa
     if (/"(gcp|azure|aws)\/[^"]*"\s*:\s*\{/.test(s)) bad.push(`${f}: a pack's icons entry`);
   }
   assert.deepEqual(bad, []);
-  const manifest = read('../icons/manifest.json'), listed = new Set(Object.values(manifest).flatMap(e => (e && typeof e === 'object' ? [e.file, ...Object.values(e).filter(x => typeof x === 'string')] : [])));
+  const manifest = read('../icons/manifest.json'), listed = new Set(Object.values(manifest).flatMap(e => (e && typeof e === 'object' && e.source === 'lucide' ? [e.file, ...Object.values(e).filter(x => typeof x === 'string')] : [])));
   const svgs = readdirSync(new URL('../icons/', import.meta.url)).filter(f => f.endsWith('.svg'));
-  assert.deepEqual(svgs.filter(f => ![...listed].some(x => x === f || x.endsWith('/' + f) || x === f.replace(/\.svg$/, ''))), [], 'an SVG in icons/ the manifest does not list');
+  assert.deepEqual(svgs.filter(f => ![...listed].some(x => x === f || x.endsWith('/' + f) || x === f.replace(/\.svg$/, ''))), [], 'an SVG in icons/ not in the manifest\'s Lucide rows (§2.5)');
 });

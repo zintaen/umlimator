@@ -38,9 +38,9 @@ const KEYS = {
     'sort', 'stereotypes', 'trigger', 'value', 'valueType', 'visibility', 'tags', 'states', 'sentAt', 'receivedAt', 'isRequired',
     'conveyed', 'dataType', 'primaryKey', 'foreignKey', 'nullable', 'unique', 'references', 'identifying', 'number', 'description', 'technology',
     'external', 'shape', 'container',
+    'icon', 'groupType', 'zoneType',
     // SysML's (0.25.0, the e-bike atlas)
-    'reqId', 'text', 'risk', 'verifyMethod', 'constraint', 'unit', 'quantityKind', 'direction', 'itemFlow',
-    'icon', 'groupType', 'zoneType'],
+    'reqId', 'text', 'risk', 'verifyMethod', 'constraint', 'unit', 'quantityKind', 'direction', 'itemFlow'],
 };
 function known(x, kind, where) {
   const odd = Object.keys(x).filter(k => !KEYS[kind].includes(k));

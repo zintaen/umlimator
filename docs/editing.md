@@ -547,7 +547,6 @@ with no subject) reparents the card to the view's subject, or to none; Delete on
 | | a binding | a drag from a value to a parameter's square | `L`, the parameter, Enter | `add` of a `sysml.BindingConnector` with `ends.to.part`; one drawn from a parameter runs from the value; one to a constraint property's box is refused |
 | | a constraint property's type | the properties panel | | `set props.valueType` |
 
-
 ## Milestone 4a's gestures: the mindmap, Google Cloud and Azure (0.26.0)
 
 Milestone 4a (`docs/diagrams/notes/milestone-4a.md` §5.6, §7.3) adds no command and no canvas key: each gesture is the
