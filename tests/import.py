@@ -179,6 +179,10 @@ m, un = imp.read("structurizr", 'workspace {\nmodel {\n' + 'group "g" {\n' * 150
 ok("hostile · 1500 nested groups read as nested boxes, no RecursionError", len(m["views"][0]["containers"]) == 1500
    and m["views"][0]["containers"][-1]["nodeIds"] == ["p"] and un == [], un)
 
+n = imp.fnode('A[x] --> B["y', 9)  # audit 4: an unclosed quote found A's ], went back, and matched the link forever
+ok("hostile · a label's unclosed quote after an earlier ] is said, not imported, and ends", n[3] >= 9
+   and imp.read("mermaid", 'flowchart TD\n  A[x] --> B["y', "x")[1] == [(2, 'not imported: A[x] --> B["y')], n)
+
 def quick(fmt, text):  # (model, unread, seconds)
     t0 = time.time()
     return (*imp.read(fmt, text, "x"), time.time() - t0)
