@@ -104,7 +104,7 @@ function pieces(X, el, o) {
         <span class="rel-e">${e.step != null ? esc(e.step) + ' · ' : ''}${esc(e.label || '')}${inView ? '' : ' ↗'}</span></button></li>`; }).join('') + '</ul>';
   }
   const authorChip = login => { const A = (X().ctx().D.authors || {})[login] || {};
-    return `<a class="author" href="${esc(A.url || 'https://github.com/' + login)}" target="_blank" rel="noopener">${A.avatar ? `<img src="${A.avatar}" alt="">` : `<i>${esc(login.slice(0, 2).toUpperCase())}</i>`}<span>${esc(A.name || login)} <b>@${esc(login)}</b></span></a>`; };
+    return `<a class="author" href="${esc(A.url || 'https://github.com/' + login)}" target="_blank" rel="noopener">${A.avatar ? `<img src="${esc(A.avatar)}" alt="">` : `<i>${esc(login.slice(0, 2).toUpperCase())}</i>`}<span>${esc(A.name || login)} <b>@${esc(login)}</b></span></a>`; };
   const focused = () => { const a = el.panel.getRootNode().activeElement; return a && el.panel.contains(a) ? a : null; };
   function show(nid) {
     const { D, N, V, nodeIn, opensOf, kidCount, unfoldable, viewsWith, viewEdges } = X().ctx(), geo = X().geo(), cur = X().view(), panel = el.panel;

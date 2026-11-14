@@ -127,6 +127,8 @@ try {
   check('a link that names the theme names the one shown, after ◐ too', link().theme === 'light' && document.documentElement.dataset.theme === 'light', location.hash);
   const pressed = () => $('m-theme').getAttribute('aria-pressed'), named = $('m-theme').getAttribute('aria-label');
   check('◐ says which theme is on: "Dark theme", pressed in dark and not in light (#135)', named === 'Dark theme' && pressed() === 'false' && ($('m-theme').click(), pressed() === 'true'), [named, pressed()]);
+  const fb = $('m-find'), seen = fb.querySelector('.ft').textContent.replace('…', '').toLowerCase();
+  check('the Find button\'s name holds its visible label (WCAG 2.5.3, audit 1)', fb.getAttribute('aria-label').toLowerCase().includes(seen), [fb.getAttribute('aria-label'), seen]);
   try { localStorage.removeItem('visual-theme'); } catch (_) {} if (theme0) document.documentElement.dataset.theme = theme0; else delete document.documentElement.dataset.theme;
 
   // a move keeps the entry it leaves: a selection there stays in it (the select a move sends rewrote it)

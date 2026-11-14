@@ -150,7 +150,7 @@ function svgOf(geo, opts = {}) {
     // the mark, centred on the face
     const glyph = L && SIGIL[L.sh] ? L.sh : n.k; // a person's, robot's, phone's, terminal's, folder's or node's own mark
     parts.push((() => { const I = (opts.icons || {})[n.icon], x = map ? n.x + 14 : n.x + (verb ? 14 : 9), y = map ? fy - 14 : n.y + (priv ? 8 : 11), M = map ? 28 : 16;  // map: one 28 px mark, left, centred
-return I && I.src ? `<rect x="${x - M * 3 / 28}" y="${y - M * 3 / 28}" width="${M * 34 / 28}" height="${M * 34 / 28}" rx="${M / 4}" class="n-logo${I.dark ? ' dark' : ''}"/><image href="${I.src}" x="${x}" y="${y}" width="${M}" height="${M}"/>`
+return I && I.src ? `<rect x="${x - M * 3 / 28}" y="${y - M * 3 / 28}" width="${M * 34 / 28}" height="${M * 34 / 28}" rx="${M / 4}" class="n-logo${I.dark ? ' dark' : ''}"/><image href="${esc(I.src)}" x="${x}" y="${y}" width="${M}" height="${M}"/>`
   : I && I.g ? `<g transform="translate(${x} ${y}) scale(${M / 24})" class="n-sigil" fill="none" stroke="${c}" stroke-width="${1.75 * 24 / M}" stroke-linecap="round" stroke-linejoin="round">${I.g}</g>`
   : `<g transform="translate(${x} ${y}) scale(${M / 16})" class="n-sigil" fill="none" stroke="${c}" stroke-width="${1.75 * 16 / M}" stroke-linecap="round" stroke-linejoin="round">${SIGIL[glyph]}</g>`; })());
     parts.push(`<text x="${tx0}" y="${ly}" text-anchor="${anchor}" class="n-label" data-o="${esc(n.id)}" data-t="nl" style="font-size:${lpx.toFixed(1)}px" ${removed ? 'text-decoration="line-through"' : ''}>${two ? lines(two, 15) : esc(label)}</text>`);
@@ -168,7 +168,7 @@ return I && I.src ? `<rect x="${x - M * 3 / 28}" y="${y - M * 3 / 28}" width="${
       const T = n.tag, cxp = T.x + 11, cyp = T.y + 11, cid = 'av-' + id + '-' + String(n.id).replace(/[^\w-]/g, '_');
       const ini = T.img ? '' : String(n.author || '?').split(/[\s_-]+/).map(w => w[0]).join('').slice(0, 2).toUpperCase();
       parts.push(`<g class="ntag"><title>${esc(T.name ? 'by ' + T.name + ' (@' + n.author + ')' : n.author ? '@' + n.author : 'author unknown')}</title><rect x="${T.x}" y="${T.y}" width="${T.w}" height="${T.h}" rx="${T.h / 2}" class="ntag-bg"/>`
-        + (T.img ? `<clipPath id="${cid}"><circle cx="${cxp}" cy="${cyp}" r="13"/></clipPath><image href="${T.img}" x="${cxp - 13}" y="${cyp - 13}" width="26" height="26" clip-path="url(#${cid})" preserveAspectRatio="xMidYMid slice"/><circle cx="${cxp}" cy="${cyp}" r="13" class="ntag-ring" stroke="${c}"/>`
+        + (T.img ? `<clipPath id="${cid}"><circle cx="${cxp}" cy="${cyp}" r="13"/></clipPath><image href="${esc(T.img)}" x="${cxp - 13}" y="${cyp - 13}" width="26" height="26" clip-path="url(#${cid})" preserveAspectRatio="xMidYMid slice"/><circle cx="${cxp}" cy="${cyp}" r="13" class="ntag-ring" stroke="${c}"/>`
           : `<circle cx="${cxp}" cy="${cyp}" r="13" class="n-mask" stroke="${c}" stroke-width="1.4" stroke-dasharray="2 2"/><text x="${cxp}" y="${cyp + 3}" text-anchor="middle" class="ini-tx2" fill="${c}">${esc(ini)}</text> `)
         + `<text x="${T.x + 30}" y="${T.y + 14.5}" class="ntag-tx" data-t="nt" data-o="${esc(n.id)}">${esc(T.text)}</text></g>`);
       said.push(`(by${T.name ? ' ' + T.name : ''}) ${plain([ini, T.text].filter(Boolean).join(' '))}`);
