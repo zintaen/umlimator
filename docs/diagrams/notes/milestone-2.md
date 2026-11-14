@@ -1020,6 +1020,36 @@ model and report.
 | **(a) A map by default; `--typed` for the typed reader (recommended)** | Nothing that worked changes; a map keeps its subgraph boxes, which row 21 lacks | Two outputs for one source |
 | (b) Typed by default from 0.24.0, a stated exception | One answer per source; flowchart shapes kept | Breaks a host that imports flowcharts as maps; subgraphs lost |
 
+As built (M2.12), where the build departs from or adds to the above:
+
+- **Format names.** `detect` returns `structurizr-json` for a JSON object whose `model` and `views` are objects, and
+  `dbml` for a `.dbml` file (by its name only: DBML has no header to know it by); both are in `NODE_FORMATS`, beside
+  `FORMATS` (the Python readers', unchanged, so its test holds), and both are `--format` choices and the JSON's
+  `format`. `erDiagram` joins `MERMAID` and `TYPED`, so a file with another extension is known by its content too.
+- **`--typed`** on a source with no typed reader (Structurizr DSL, C4-PlantUML, Mermaid's C4, compose, Kubernetes) is
+  refused, nothing written, rather than ignored; on a source read typed already it changes nothing.
+- **The 1 MiB check** is of the file's bytes, before Node is looked for and before Node or `@dbml/core` parses it. For a
+  JSON file it comes after `detect`'s own `json.loads` (the standard library's, which every JSON source has had since
+  #90, to tell compose from Kubernetes): a workspace cannot be told from other JSON unread. The Mermaid readers keep
+  their own 1 MiB character limit (§8). With `--format structurizr-json` or `dbml`, or a `.dbml` name, the file's size
+  is checked before it is read at all.
+- **DBML.** `@dbml/core` is found by `createRequire` from the working folder. That is CommonJS resolution, so a
+  global install (`NODE_PATH`, `~/.node_modules`) resolves too; the message names the working folder. The adapter is
+  given the parsed `Database`, not its `export()`, so the project, diagram views and a table's checks are reported
+  (§8.4). What `@dbml/core` cannot parse is listed by its line (its `diags`), and nothing is written. Tried once with
+  `@dbml/core` 11.0.0 freshly installed (resolving `@dbml/parse` 11.1.0): the fixture's DBML imports, 24 items
+  reported, against the export's 20 that the stub returns. So the stub in `tests/import.py` returns M2.11's captured
+  `export()`, not a `Database` as §11's row M2.12 says: CI tests the adapter on the export's shape, and the `Database`
+  path only by that run. An `@dbml/core` that resolves but does not load (it throws, or has no `Parser.parse`) is named
+  as the install's fault, with its path, not as a parse error of the file. Whatever `@dbml/core` resolves from the
+  working folder or its parents runs (option (a)): importing a `.dbml` file in a checkout one does not trust runs its
+  `node_modules`.
+- **Report places.** A typed reader's item names its place by `line` (the Mermaid readers, and the DBML adapter's path)
+  or `path` (the Structurizr reader); an empty one (the whole source) is printed with no place.
+- **Owns.** Beyond `cmd_import`, `detect` and `mermaid_typed`: the import subcommand's arguments in `main()`
+  (`--typed`, the two `--format` choices), and in `umlimator_import.py` its docstring, `NODE_FORMATS`, `LIMIT`, `EXT`'s
+  `.dbml`, and `mermaid()`'s "an erDiagram" in the message `import` never shows (it routes to Node first).
+
 ## 9. `describe()`, the PDF and the legend (S17)
 
 Each type gives `describe(model, viewId)` (what the view holds, then each line by its accessible name, in reading order),
