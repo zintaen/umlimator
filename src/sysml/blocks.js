@@ -156,7 +156,7 @@ function bdText(model, view, id) {
 const BD_KEYS = [['proxy port', 'sysml.Port', { kind: 'proxy' }], ['full port', 'sysml.Port', { kind: 'full' }], ['port', 'sysml.Port'], ['part', 'sysml.PartProperty'],
   ['ref', 'sysml.ReferenceProperty'], ['value', 'sysml.ValueProperty'], ['constraint', 'sysml.ConstraintProperty'], ['param', 'sysml.ConstraintParameter'],
   ['inout', 'sysml.FlowProperty', { direction: 'inout' }], ['in', 'sysml.FlowProperty', { direction: 'in' }], ['out', 'sysml.FlowProperty', { direction: 'out' }]]
-  .map(([w, type, props = {}]) => ({ re: new RegExp(`^${w.replace(' ', '\\s+')}\\s+`), w, type, props }));
+  .map(([w, type, props = {}]) => ({ re: new RegExp(`^${w.replace(' ', '\\s+')}\\s+(?=[^\\s:])`), w, type, props }));
 const BD_WORDS = { 'sysml.PartProperty': 'part', 'sysml.ReferenceProperty': 'ref', 'sysml.ValueProperty': 'value', 'sysml.ConstraintProperty': 'constraint', 'sysml.ConstraintParameter': 'param' };
 // text, owner (the node, or none) and model (or none: no name picks a kind) -> { type, label, props } or { error }
 function bdParse(text, owner, model) {

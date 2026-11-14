@@ -536,7 +536,7 @@ const BZ_TYPE = registerDiagramType('bpmn', {
   // the PDF's tables: an element's kind; its lane or activity, and its documentation
   word: (model, id) => { const x = bzIndex(model).el(id); return x && String(x.type).startsWith('bpmn.') ? bzWord(x) : null; },
   rows: (model, view, id) => { const P = bzPic(model, view), x = P.I.el(id); if (!x) return null;
-    const r = [...(P.be.has(id) ? [`on ${P.I.called(P.be.get(id))}`] : P.laneOf(id) != null ? [`in ${bzLabel(P.I.el(P.laneOf(id)))}`] : []), ...(BZ_HAS(bzProps(x).documentation) ? [String(bzProps(x).documentation).trim()] : [])];
+    const r = [...(P.be.has(id) ? [`on ${P.I.called(P.be.get(id))}`] : P.laneOf(id) != null && P.laneOf(id) !== id ? [`in ${bzLabel(P.I.el(P.laneOf(id)))}`] : []), ...(BZ_HAS(bzProps(x).documentation) ? [String(bzProps(x).documentation).trim()] : [])];
     return r.length ? r : null; },
 });
 

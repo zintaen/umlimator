@@ -328,3 +328,13 @@ test('audit 4: F2 reads back an element whose name has a space at either end, as
   assert.deepEqual(T.edits.rename(m, m.views[0], 'f', '«flow» Order '), [], 'unchanged: nothing');
   assert.deepEqual(T.edits.rename(m, m.views[0], 'f', '«flow» x, Order'), [{ op: 'set', id: 'f', path: 'props.conveyed', value: ['i', 'j'] }]);
 });
+
+test('F2 that leaves a flow\'s conveyed names as they are keeps what it conveys, when an information item shares a conveyed classifier\'s name', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'a', type: 'uml.Actor', label: 'A' }, { id: 'b', type: 'uml.Class', label: 'B' }, { id: 'Order', type: 'uml.Class', label: 'Order' },
+    { id: 'order-item', type: 'uml.InformationItem', label: 'Order' }], edges: [{ id: 'f', type: 'uml.InformationFlow', from: 'a', to: 'b', label: 'place', props: { conveyed: ['Order'] } }],
+    views: [{ id: 'v', diagram: 'uml.information-flow', nodeIds: ['a', 'b'] }] };
+  const r = t => diagramOf({ diagram: 'uml.information-flow' }).edits.rename(m, m.views[0], 'f', t);
+  assert.deepEqual(r('«flow» place: Order'), []);
+  assert.deepEqual(r('submit: Order'), [{ op: 'set', id: 'f', path: 'label', value: 'submit' }]);
+  assert.deepEqual(r('submit: order-item'), [{ op: 'set', id: 'f', path: 'props.conveyed', value: ['order-item'] }, { op: 'set', id: 'f', path: 'label', value: 'submit' }], 'by id, the item');
+});

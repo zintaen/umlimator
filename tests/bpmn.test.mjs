@@ -134,8 +134,8 @@ test('names, reading order, describe(), the legend, the PDF\'s words and rows', 
   assert.equal(said.at(-1), 'Group Dispatch: Courier\'s pickup at 16:00, Hand parcel to courier, Shipping notice sent.');
   const doc = apply(EX, { op: 'set', id: 'bp-take-payment', path: 'props.documentation', value: 'Charged once.' });
   assert.ok(describe(doc, VID).includes('Service task Take payment, in Sales (Charged once.); then'), 'documentation printed (S2, 2.2.6)');
-  assert.deepEqual([T.word(EX, 'paid'), T.word(EX, 'payment-timeout'), T.word(EX, 'bp-f-paid'), T.rows(doc, V(doc), 'bp-take-payment'), T.rows(EX, V(EX), 'payment-timeout'), T.rows(EX, V(EX), 'note-card')],
-    ['Exclusive gateway', 'Timer boundary event', null, ['in Sales', 'Charged once.'], ['on Take payment'], ['in Sales']]);
+  assert.deepEqual([T.word(EX, 'paid'), T.word(EX, 'payment-timeout'), T.word(EX, 'bp-f-paid'), T.rows(doc, V(doc), 'bp-take-payment'), T.rows(EX, V(EX), 'payment-timeout'), T.rows(EX, V(EX), 'note-card'), T.rows(EX, V(EX), 'bp-bookshop'), T.rows(EX, V(EX), 'bp-sales')],
+    ['Exclusive gateway', 'Timer boundary event', null, ['in Sales', 'Charged once.'], ['on Take payment'], ['in Sales'], null, ['in Bookshop']], 'a pool is in nothing');
   // a group round nothing shown is not drawn, and describe() says so
   const hidden = apply(EX, ['courier-pickup', 'bp-ship', 'shipping-notice'].map(id => ({ op: 'hide', id, view: VID })));
   assert.equal(layout(hidden, VID).byId.dispatch, undefined); assert.equal(describe(hidden, VID).split('\n').at(-1), 'Group Dispatch, round nothing shown: not drawn.');
