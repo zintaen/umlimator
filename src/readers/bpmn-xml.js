@@ -150,7 +150,10 @@ async function readBpmnXml(xml, moddle) {
         for (const p of r.participants || []) {
           const n = add(p, 'bpmn.Participant', null); if (!n) continue;
           tagged.push([p, n]);
-          if (p.processRef) {
+          if (p.processRef && owner.has(p.processRef)) { // the first keeps it, as the writer gives each pool its own
+            const first = owner.get(p.processRef).id;
+            say(n.id, 'skipped', `its process ${p.processRef.id} is also ${first}'s: its content is read into ${first}`);
+          } else if (p.processRef) {
             owner.set(p.processRef, n);
             const base = p.id + '-process', ref = p.processRef.id;
             if (ref !== base && !(ref.startsWith(base + '-') && /^\d+$/.test(ref.slice(base.length + 1)))) n.props = { ...n.props, processRef: ref };
@@ -175,7 +178,10 @@ async function readBpmnXml(xml, moddle) {
         const doc = (l.documentation || []).map(x => x.text).filter(bxStr).join('\n');
         const m = { id, type: 'bpmn.Lane', ...(bxStr(l.name) ? { label: l.name } : {}), ...(up ? { parent: up } : {}), ...(doc ? { props: { documentation: doc } } : {}) };
         (pool.members ??= []).push(m); byId.set(id, m); foreign(l, id); ext(l, id);
-        for (const f of l.flowNodeRef || []) if (!(depth.get(f) >= d)) { laneOf.set(f, id); depth.set(f, d); }
+        for (const f of l.flowNodeRef || []) {
+          if (f.$parent && f.$parent.$type === 'bpmn:Process' && f.$parent !== proc) say(id, 'skipped', `flowNodeRef ${f.id}: a flow node of another process, left in its own`);
+          else if (!(depth.get(f) >= d)) { laneOf.set(f, id); depth.set(f, d); }
+        }
         if (l.childLaneSet) stack.push(...(l.childLaneSet.lanes || []).map(c => [c, id, d + 1]).reverse());
       }
     }
