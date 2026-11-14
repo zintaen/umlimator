@@ -53,6 +53,8 @@ test("sequenceFromTrace(): the replay example's trace becomes bike-share's numbe
   const fresh = sequenceFromTrace({ ...bike, views: bike.views.filter(v => v.id !== 'ride-end') }, otlpSpans(trace), { match });
   const v = fresh.views[fresh.views.length - 1];
   assert.deepEqual([v.id, v.title, v.parent, v.render, v.edges.length], ['trace', 'trace', 'trips', 'sequence', 8], 'a new view comes last, under the view that shows most of its cards');
+  const root = sequenceFromTrace(bike, otlpSpans(trace), { view: 'context', match }).views.find(v => v.id === 'context');
+  assert.equal(root.parent, undefined, 'audit 6: a view replaced is never put under itself or a view below it (a parent cycle)');
 });
 
 test('sequenceFromTrace() matches services as replay() does, orders steps by time, and leaves out work inside one card', () => {

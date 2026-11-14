@@ -39,7 +39,7 @@ function ownIndex(model, members = []) {
    holds sits in the node's box); shape(x) and word(x), a box's shape and the word its accessible name starts with ('package', 'Package') */
 function ownersOn(model, view, look = {}) {
   const { boxTypes = OWN_BOXES, qualify = true, qualifyBy = null, members = [], shape = () => 'package', word = x => (x.type === 'uml.Profile' ? 'Profile' : 'Package') } = look;
-  const { at, chain, up, mems } = ownIndex(model, members), ids = OWN_ARR(OWN_OBJ(view) ? view.nodeIds : null).filter(id => at.has(id) && !mems.has(id)), seen = new Set(ids);
+  const { at, chain, up, mems } = ownIndex(model, members), ids = [...new Set(OWN_ARR(OWN_OBJ(view) ? view.nodeIds : null))].filter(id => at.has(id) && !mems.has(id)), seen = new Set(ids);
   const live = new Set(ids.flatMap(id => chain(id).filter(p => mems.has(p) && seen.has(up.get(p))))), place = m => OWN_ARR(at.get(up.get(m)).members).indexOf(at.get(m)); // members holding something shown
   const many = m => OWN_ARR(at.get(up.get(m)).members).filter(x => OWN_OBJ(x) && members.includes(x.type)).length > 1; // §6.1, 2: two or more in the model
   const kept = [...live].filter(many).sort((a, b) => place(a) - place(b)), all = [...ids, ...kept], shown = new Set(all);

@@ -39,11 +39,14 @@ function mmIndex(model, V) {
   const kids = new Map(ids.map(id => [id, []])), roots = [];
   ids.forEach(id => { const u = up(id); if (u == null) roots.push(id); else kids.get(u).push(id); });
   const depth = new Map(), tree = new Map(), trees = [];
-  const reach = (root, k) => { for (const s = [root]; s.length;) { const id = s.pop(); tree.set(id, k); trees[k].list.push(id);
-    kids.get(id).forEach(c => { if (!tree.has(c)) { depth.set(c, depth.get(id) + 1); s.push(c); } }); } };
+  const from = new Map(), reach = (root, k) => { for (const s = [root]; s.length;) { const id = s.pop(); tree.set(id, k); trees[k].list.push(id);
+    kids.get(id).forEach(c => { if (!tree.has(c)) { depth.set(c, depth.get(id) + 1); from.set(c, id); s.push(c); } }); } };
   roots.forEach(r => { depth.set(r, 0); trees.push({ root: r, list: [] }); reach(r, trees.length - 1); });
   const lost = ids.filter(id => !tree.has(id)), hung = new Map(); // a cycle of shown topics: one tree, from the first, layoutTree hanging the rest from it; each depth and parent as drawn
-  if (lost.length) { trees.push({ root: lost[0], list: [] }); lost.forEach(id => { if (!tree.has(id)) { depth.set(id, id === lost[0] ? 0 : 1); hung.set(id, id === lost[0] ? null : lost[0]); reach(id, trees.length - 1); } }); }
+  if (lost.length) { trees.push({ root: lost[0], list: [] }); lost.forEach(id => { if (!tree.has(id)) { depth.set(id, id === lost[0] ? 0 : 1); hung.set(id, id === lost[0] ? null : lost[0]); reach(id, trees.length - 1); } });
+    // up and kids then follow that tree as drawn, so no shown topic is its own ancestor and every walk of them ends (audit 6)
+    trees.at(-1).list.forEach(id => A.set(id, hung.has(id) ? hung.get(id) : from.get(id))); kids.forEach(l => { l.length = 0; });
+    ids.forEach(id => { const u = up(id); if (u != null) kids.get(u).push(id); }); }
   trees.forEach(t => t.list.sort((a, b) => pos.get(a) - pos.get(b))); // children in nodeIds order
   const side = id => (MM_OBJ(P[id]) && (P[id].side === 'left' || P[id].side === 'right') ? P[id].side : null);
   return { N, topic, pos, ids, shown, up, kids, roots, trees, depth, hung, P, side, parentOf };
@@ -84,7 +87,7 @@ function mmRun(model, view) {
     const branches = new Map(); // a first-level topic's subtree in pre-order (nodes come in pre-order)
     o.nodes.forEach(t => { const x = X.N.get(t.id), k = kids.get(t.id) || 0, v = opens(t.id), p = up.get(t.id), s = size.get(t.id);
       const n = { id: t.id, shape: 'mm-topic', type: MM_T, label: mmText(x), k: 'file', x: t.x, y: r2(t.y + dy), w: t.w, h: t.h, depth: t.depth, side: t.side, branch: t.branch,
-        ink: t.branch == null ? null : ink.get(t.branch), root: t.depth === 0, lines: s.lines, tw: s.tw, opens: v ? String(v.title ?? v.id) : null, parent: p ?? null,
+        ink: t.branch == null ? null : ink.get(t.branch), root: t.depth === 0, lines: s.lines, tw: s.tw, opens: v ? String(v.title ?? v.id) : null, saysOpens: !!v, parent: p ?? null,
         aria: `Topic ${mmOne(x)}, ${p == null ? 'the root' : `under ${mmOne(X.N.get(p))}`}${k ? `, ${mmPlural(k, 'subtopic')}` : ''}${v ? `, opens ${v.title ?? v.id}` : ''}` };
       nodes.push(n); byId[n.id] = n;
       x0 = Math.min(x0, n.x); y0 = Math.min(y0, n.y); x1 = Math.max(x1, n.x + n.w); y1 = Math.max(y1, n.y + n.h);

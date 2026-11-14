@@ -145,7 +145,7 @@ function dfdGeo({ model, view, pos, memo }) {
   const I = dfdIndex(model), ids = DFD_ARR(view.nodeIds).filter((id, k, a) => I.at.has(id) && a.indexOf(id) === k), lines = dfdLines(model, view), skin = dfdSkin(view), P = id => (pos && Object.hasOwn(pos, id) ? pos[id] : [0, 0]);
   const nodes = ids.map(id => { const x = I.at.get(id), k = DFD_KIND[x.type];
     const d = { id, label: String(x.label ?? id), type: x.type || 'dfd.Process', kind: 'file', ...(k ? { shape: `dfd-${k}-${skin}`, number: dfdNum(x) } : x.type === 'uml.Comment' ? { shape: 'note' } : { shape: 'classifier', compartments: [] }),
-      aria: dfdNodeName(I, id, lines), col: P(id)[0], row: P(id)[1] };
+      aria: dfdNodeName(I, id, lines), saysOpens: !!(x.type === 'dfd.Process' && I.views.get(x.opensView)), col: P(id)[0], row: P(id)[1] };
     return { ...d, ...SHAPE[d.shape].size(d) }; });
   const edges = lines.map(e => ({ id: e.id, _id: e.id, type: e.type, from: e.from, to: e.to, ...(DFD_HAS(e.label) ? { label: String(e.label), cut: 280 } : {}),
     end: DFD_END[e.type] || DFD_END['dfd.DataFlow'], aria: dfdLineName(I, e), ...(DFD_OBJ(e.style) || typeof e.style === 'string' ? { style: e.style } : {}) }));

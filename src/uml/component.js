@@ -69,7 +69,7 @@ function cpPic(model, view) {
   const I = cpIndex(model), pic = ownersOn(model, view, CP_BOX), shown = new Set(pic.ids);
   // each line the view lists (or with no list each of this type's kinds) whose ends, a port taken to its owner, it shows
   const E = new Map(); CP_ARR(model && model.edges).forEach(e => { if (CP_OBJ(e) && typeof e.id === 'string' && !E.has(e.id)) E.set(e.id, e); });
-  const list = Array.isArray(view.edges) ? view.edges.map(x => (typeof x === 'string' ? E.get(x) : x)) : [...E.values()].filter(e => CP_LINES.includes(e.type));
+  const list = Array.isArray(view.edges) ? [...new Set(view.edges.map(x => (typeof x === 'string' ? E.get(x) : x)))] : [...E.values()].filter(e => CP_LINES.includes(e.type));
   const at = id => (shown.has(id) ? { at: id, port: null } : I.P.has(id) && shown.has(I.P.get(id).owner) ? { at: I.P.get(id).owner, port: id } : null);
   const holds = (b, x) => pic.open.has(b) && pic.chain(x).includes(b);
   const lines = [], inside = []; list.forEach(e => { if (!CP_OBJ(e) || typeof e.id !== 'string') return; const f = at(e.from), t = at(e.to); if (!f || !t) return;

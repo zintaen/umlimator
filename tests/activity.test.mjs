@@ -377,3 +377,13 @@ test('partitions nested 3,000 deep: describe() and layout() in time near linear,
   assert.deepEqual(g.order.slice(N - 1, N + 2), ['p' + (N - 1), 'i', 'a']);
   assert.ok(performance.now() - t < 10000, 'was cubic in the depth: minutes here');
 });
+
+test('audit 6: a call behaviour action unfolded in place is a box in its lane, its flows ending on the box', () => {
+  const g = layout(EX, 'fulfil', { expand: ['call-payment'] }), f = (g.families || []).find(b => b.id === 'call-payment');
+  assert.deepEqual(g.unfolded, ['call-payment']); assert.ok(f, 'the box is drawn');
+  const lane = g.bands.find(b => b.id === 'lane-worker'), within = (n, b) => n.x >= b.x && n.y >= b.y && n.x + n.w <= b.x + b.w && n.y + n.h <= b.y + b.h;
+  for (const id of ['pay-start', 'charge', 'record', 'pay-done']) { assert.ok(within(g.byId[id], f), id + ' in the box'); assert.ok(within(g.byId[id], lane), id + ' in the call\'s lane'); }
+  assert.ok(within(f, lane), 'the box in the call\'s lane');
+  for (const id of ['f-to-pay', 'f-paid']) assert.ok(g.edges.some(e => e.id === id), id + ' drawn');
+  assert.deepEqual(check(EX, 'fulfil', { expand: ['call-payment'] }).map(p => p.message), check(EX, 'fulfil').map(p => p.message), 'no new problem');
+});

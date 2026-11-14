@@ -400,3 +400,20 @@ test('audit 1: topics in a parent cycle have the depth they are drawn at', () =>
   for (const id of ['c', 'x', 'y']) assert.equal(mmRows(m2, m2.views[0], id)[1], g.byId[id].parent == null ? 'The root' : `Under ${g.byId[id].parent}`, `audit 2: ${id}'s row names its drawn parent`);
   assert.deepEqual(validate(m).filter(p => p.rule === 'side-first'), [], 'y is first-level: its side is read');
 });
+
+test('audit 6: on a topic parent cycle, N, Delete and a drop each return', async () => {
+  // a hang would stop this file's process: the gestures run in a child, which a timeout ends
+  const { spawnSync } = await import('node:child_process');
+  const code = `const W = ${JSON.stringify(new URL('../src/', import.meta.url).href)}; await import(W + 'map/typed.js');
+    const { mmAdd, mmRemove, mmMoveTo, mmRun } = await import(W + 'mindmap/mindmap.js'), T = 'mindmap.Topic';
+    const m = { schemaVersion: 2, root: 'v', nodes: [{ id: 'a', type: T, label: 'A', parent: 'b' }, { id: 'b', type: T, label: 'B', parent: 'a' }, { id: 'c', type: T, label: 'C', parent: 'a' }],
+      views: [{ id: 'v', diagram: 'mindmap', nodeIds: ['a', 'b', 'c'] }] }, b = mmRun(m, 'v').byId.b;
+    console.log(JSON.stringify([mmAdd(m, 'v', { type: T }, 'new', {}), mmRemove(m, 'v', ['a'], false), mmRemove(m, 'v', ['c', 'b'], false), mmMoveTo(m, 'v', 'c', { pt: [b.x + 2, b.y + 2] })]));`;
+  const r = spawnSync(process.execPath, ['--max-old-space-size=200', '--input-type=module', '-e', code], { encoding: 'utf8', timeout: 30000 });
+  assert.equal(r.status, 0, r.stderr || 'timed out');
+  const [add, hide, hide2, drop] = JSON.parse(r.stdout);
+  assert.equal(add[0].element.parent, 'a', 'N with nothing selected: a child of the drawn root');
+  assert.deepEqual(hide.commands.map(c => c.id).sort(), ['a', 'b', 'c'], 'Delete on the drawn root hides each topic once');
+  assert.deepEqual(hide2.commands.map(c => c.id).sort(), ['b', 'c']);
+  assert.ok(Array.isArray(drop));
+});

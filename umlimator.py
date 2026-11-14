@@ -59,6 +59,7 @@ def not_objects(d):
     out += [f"{k}[{i}] is not an object" for k in ("nodes", "edges", "views") for i, x in enumerate(lst(d.get(k))) if not isinstance(x, dict)]
     out += ["meta is not an object"] if "meta" in d and not isinstance(d["meta"], dict) else []
     for i, v in ((i, v) for i, v in enumerate(lst(d.get("views"))) if isinstance(v, dict)):
+        out += [f"views[{i}].id is not a string"] if "id" in v and not isinstance(v["id"], str) else []  # the page's keys are strings (audit 6)
         out += [f"views[{i}].{k} is not a list" for k in ("nodes", "nodeIds", "edges", "containers", "stepIds", "browserOrder", "intake", "tour")
                 if k in v and not isinstance(v[k], list)]
         out += [f"views[{i}].{k}[{j}] is not an object" for k in ("nodes", "containers", "intake") for j, n in enumerate(lst(v.get(k))) if not isinstance(n, dict)]
@@ -131,6 +132,8 @@ def replacing(path):
     """A path beside `path` to write to, renamed over it when the block ends without an error and removed otherwise: the
     previous file stays until the new one is whole, and a reader never sees half of one."""
     path = Path(path)
+    if path.is_dir():  # before any work is written (render: before the engine runs), not an IsADirectoryError at the end
+        sys.exit(f"--out {path} is a folder: name a file")
     path.parent.mkdir(parents=True, exist_ok=True)  # as render's --out: a folder that is not there yet is made
     tmp = path.with_name(f".{path.stem}.{os.urandom(4).hex()}{path.suffix}")  # not mkstemp: the file takes the usual mode
     try:
@@ -317,6 +320,9 @@ def temp_json(m, near, suffix):
             break
         except FileExistsError:
             _temps.discard(tmp)
+        except OSError as e:  # a read-only folder: one line, not a traceback (audit 6). Not a copy elsewhere: an intake
+            _temps.discard(tmp)  # logo and the git root are read from the model's own folder
+            sys.exit(f"cannot write in {d}, the folder of {near} ({e.strerror or e}): the model is rendered from a copy beside it, so copy it to a folder you can write")
     with os.fdopen(fd, "w", encoding="utf-8") as f:
         f.write(json.dumps(m, ensure_ascii=False))
     return str(tmp)
@@ -620,11 +626,14 @@ def cmd_drift(a):
 def cmd_trace(a):
     """A trace kept as a numbered view (#96): MODEL.json with a sequence view made from an OpenTelemetry trace in OTLP JSON,
     its calls between cards in time order, each labelled with its span's name and its duration; written to --out (which
-    may be MODEL.json itself). A view with that id is replaced. --match: {service name: card id} where names differ.
+    may be MODEL.json itself). A view with that id that a trace made is replaced; one a person made is never. --match: {service name: card id} where names differ.
     --diagram uml.sequence: the view is a UML sequence view, and the model written is a version-2 model (which releases
     before 0.17.0 refuse); the summary printed adds `diagram` and the helper's `report`. It needs src/uml/convert.js, so
     a full clone of the repository: without it trace exits with a message."""
     m, trace = read_json(a.model), read_json(a.trace, model=False)
+    was = next((v for v in m.get("views") or [] if isinstance(v, dict) and v.get("id") == a.view), None)
+    if was and not str(was.get("caption") or "").startswith("From a trace"):  # a view a person made is theirs (audit 6)
+        sys.exit(f"trace: {a.model} has a view {a.view!r} that no trace made: name another --view (trace replaces only a view it made)")
     opts = {"view": a.view, "match": read_json(a.match, model=False) if a.match else {}, **({"title": a.title} if a.title else {})}
     report = None
     if a.diagram:  # a UML sequence view (notes/stage-3.md §7): the numbered view through the internal helper, in src/uml/convert.js
@@ -690,6 +699,13 @@ def size(s):
     except ValueError:
         pass
     raise argparse.ArgumentTypeError(f"{s!r} is not WxH, e.g. 1160x740")
+
+
+def port(s):
+    """--port, 0 to 65535 (0: any free one)."""
+    if not (s.isdigit() and int(s) <= 65535):
+        raise argparse.ArgumentTypeError(f"{s!r} is not a port, 0 to 65535")
+    return int(s)
 
 
 def at_least_1(s):
@@ -797,6 +813,16 @@ def still_keys(page, opts):
             if isinstance(x, dict):
                 owner.setdefault(x.get("id"), n.get("id")); todo += x.get("members") or []
     own = lambda x: owner.get(x, x) if isinstance(x, str) else x
+    of_node = {}
+    for x in views:
+        if isinstance(x.get("node"), str):
+            of_node.setdefault(x["node"], x["id"])
+
+    def inner(i, v):  # a card's inner view, as the page's childOf finds it: the view's override, then the card's view or opensView,
+        n = {**(N.get(i) or {}), **((v.get("nodeOverrides") or {}).get(i) or {})}  # a view with its id, a view whose `node` it is
+        o = n.get("view") or n.get("opensView")
+        c = o if isinstance(o, str) and o in V else i if i in V else of_node.get(i)
+        return c if c != v["id"] else None
     keys = {}
     for v in views:
         ids = set(v.get("nodeIds") or [])
@@ -805,7 +831,7 @@ def still_keys(page, opts):
         # a typed view draws from more than its cards: a part's ports are its type's, found by label anywhere in the model,
         # and a connector may end on one (audit 4): its key is the whole model's cards and lines
         lines = data.get("edges", []) if v.get("diagram") else [e for e in data.get("edges", []) if own(e.get("from")) in ends and own(e.get("to")) in ends]
-        kids = {i: len((V.get((N.get(i) or {}).get("opensView") or i) or {}).get("nodeIds") or []) for i in sorted(ids)}
+        kids = {i: len((V.get(inner(i, v)) or {}).get("nodeIds") or []) for i in sorted(ids)}
         cards = [n for n in nodes if n] + list((v.get("nodeOverrides") or {}).values())
         used, who = ({n.get(k) for n in cards} - {None} for k in ("icon", "author"))
         used |= {f"{p}/{i}" for p, i in map(packs().pick, cards) if isinstance(i, str)} | {f"{p}/" for p, _ in map(packs().pick, cards)}  # a pack's icon and its legal line
@@ -840,6 +866,8 @@ def stills(page, out, views, scale=2.0, theme="light", reader=False, again=False
     whose key file (out/.stills/<view>.json) holds its key and both files' hashes is unchanged and skipped, unless
     `again`. A view counts as exported only once both files are whole and the PNG is a PNG; its key file is written last.
     A file another run, or a person, changed since is drawn again, never trusted."""
+    if out.exists() and not out.is_dir():
+        sys.exit(f"--out {out} is a file: name a folder for the stills")
     b, page = chrome(), Path(page).resolve()  # as_uri needs an absolute path (a relative --out)
     out.mkdir(parents=True, exist_ok=True)
     keys = still_keys(page, [float(scale), theme, bool(reader)])
@@ -1151,7 +1179,7 @@ def main():
     dr.add_argument("--out", required=True); dr.add_argument("--match", help="JSON: {service name: card id}"); dr.add_argument("--stills")
     dr.set_defaults(f=cmd_drift)
     tr = sub.add_parser("trace", help="a trace (OTLP JSON) kept as a numbered view of the model"); tr.add_argument("model"); tr.add_argument("trace")
-    tr.add_argument("--view", required=True, help="the new view's id (one with that id is replaced)"); tr.add_argument("--out", required=True, help="the model with the view: a .json file")
+    tr.add_argument("--view", required=True, help="the new view's id (one with that id that a trace made is replaced)"); tr.add_argument("--out", required=True, help="the model with the view: a .json file")
     tr.add_argument("--match", help="JSON: {service name: card id}"); tr.add_argument("--title", help="the view's title (default: its id)")
     tr.add_argument("--diagram", choices=["uml.sequence"], help="the view as a UML sequence diagram (a version-2 model), not a numbered view")
     tr.set_defaults(f=cmd_trace)
@@ -1168,7 +1196,7 @@ def main():
     ex.add_argument("--format", choices=["bpmn"], default="bpmn"); ex.add_argument("--moddle", help="the folder bpmn-moddle is installed in (default: UMLIMATOR_BPMN_MODDLE, else the working folder)")
     ex.set_defaults(f=cmd_export)
     mc = sub.add_parser("mcp", help="a Model Context Protocol server over stdio: an AI assistant reads the model and drives its page")
-    mc.add_argument("model"); mc.add_argument("--port", type=int, default=7391, help="the page's port on 127.0.0.1 (default 7391; another if it is taken)")
+    mc.add_argument("model"); mc.add_argument("--port", type=port, default=7391, help="the page's port on 127.0.0.1 (default 7391; another if it is taken)")
     mc.set_defaults(f=cmd_mcp)
     a = p.parse_args()
     if getattr(a, "page", None) and not Path(a.page).is_file():
