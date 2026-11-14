@@ -125,6 +125,19 @@ drill-down, a data pipeline, an AI agent's skills, and host pages for embedding,
   Mermaid `erDiagram`, a Mermaid flowchart with `--typed`, a Structurizr JSON workspace and a `.dbml` file (with
   `@dbml/core` installed by you) into them. The Bookshop atlas starts at the C4 context, whose elements open the schema,
   the data flow, the information flow, the returns flowchart and the UML views.
+- **SysML v1.7** (0.25.0): the requirement, block definition, internal block and parametric diagrams, each in a frame
+  with SysML's header (`req [Package] Name [view]`). Requirements with their id and wrapped text, containment drawn with
+  a crosshair, and the six relationships checked as SysML says
+  ([`examples/ebike-requirements.json`](examples/ebike-requirements.json), [what it covers](docs/conformance/sysml-requirement.md));
+  blocks, interface blocks, constraint blocks and value types with SysML's named compartments
+  ([`examples/ebike-blocks.json`](examples/ebike-blocks.json), [what it covers](docs/conformance/sysml-block-definition.md));
+  parts, proxy and full ports with their flow arrows, `~` conjugation and item flows on connectors
+  ([`examples/ebike-structure.json`](examples/ebike-structure.json), [what it covers](docs/conformance/sysml-internal-block.md));
+  constraint properties with their expressions, parameters on their borders, binding connectors
+  ([`examples/ebike-range.json`](examples/ebike-range.json), [what it covers](docs/conformance/sysml-parametric.md)).
+  Profiles reach SysML elements. `import` reads a Mermaid `requirementDiagram`, and the writer writes one back. The four
+  e-bike files join into the e-bike atlas ([`examples/ebike-atlas.json`](examples/ebike-atlas.json)), from the
+  requirements to the blocks, their wiring and the equation that checks the range.
 - **Export**: any view as a stand-alone SVG or PNG, in the browser or from the CLI; the whole map as one PDF to hand in
   for a review: a cover with the contents, each view with its legend and tables of its cards, lines and boxes, then the
   rules (`umlimator.py pdf`).
@@ -193,7 +206,7 @@ function MapView({ model, onSelect }) {
   or costliest path, `whatIf(model, view, { remove })` what loses its way when cards go down, and
   `sequenceFromTrace(model, spans, { view, match })` keeps a trace as a numbered view; all three in Node too.
 - `editable: true` turns on editing gestures ([docs/editing.md](docs/editing.md); `examples/edit.html` is a working host).
-- `import { render, apply, history } from 'umlimator/all'` draws diagram types too: a class, object, package, sequence, communication, use case, activity, state machine, interaction overview, component, deployment, composite structure, profile, timing, information flow, entity-relationship, flowchart, data flow or C4 diagram, whose gestures emit
+- `import { render, apply, history } from 'umlimator/all'` draws diagram types too: a class, object, package, sequence, communication, use case, activity, state machine, interaction overview, component, deployment, composite structure, profile, timing, information flow, entity-relationship, flowchart, data flow or C4 diagram, or one of SysML's requirement, block definition, internal block and parametric diagrams, whose gestures emit
   `edit` transactions that `apply(model, e.commands)` turns into the next model (`examples/class-editor.html` is a
   working host). `umlimator` alone draws maps, and a typed view as plain cards with a warning.
 - `diff(before, after)` returns `after` with each card and line marked added, changed or removed, what changed in words,
@@ -278,7 +291,8 @@ gets completion and checks in editors, and `validate(model)` lists its errors an
 sequence, communication, use case, activity, state machine, interaction overview, component, deployment, composite
 structure, profile, timing or information flow diagram; `"er"`, `"flowchart"` and `"dfd"` an entity-relationship
 diagram, a flowchart and a data flow diagram; `"c4.landscape"`, `"c4.context"`, `"c4.container"`, `"c4.component"`,
-`"c4.dynamic"` and `"c4.deployment"` C4's six views; each drawn by `umlimator/all` and the CLI; a type not drawn yet shows its
+`"c4.dynamic"` and `"c4.deployment"` C4's six views; `"sysml.requirement"`, `"sysml.block-definition"`,
+`"sysml.internal-block"` and `"sysml.parametric"` SysML v1.7's four diagrams; each drawn by `umlimator/all` and the CLI; a type not drawn yet shows its
 nodes as plain cards, with a warning. A model with no `schemaVersion` is a map, as always, and a version newer than the
 module reads is an error.
 
@@ -406,6 +420,19 @@ Milestone 2's five types (`examples/bookshop-schema.json`, `returns-flowchart.js
 | view | `edges` | a C4 dynamic view's steps: relationship ids, each once, in time order |
 | view | `diagram` | `"er"`, `"flowchart"`, `"dfd"`, `"uml.information-flow"`, `"c4.landscape"`, `"c4.context"`, `"c4.container"`, `"c4.component"`, `"c4.dynamic"`, `"c4.deployment"` |
 
+SysML v1.7's four types (`examples/ebike-requirements.json`, `ebike-blocks.json`, `ebike-structure.json` and
+`ebike-range.json`; each type's note in [`docs/conformance/`](docs/conformance/)), from 0.25.0:
+
+| On | Field | What it does |
+|---|---|---|
+| node, member, edge | `type` | Requirement: `sysml.Requirement`, `sysml.TestCase`, `sysml.Block`, `uml.Package`; lines `sysml.DeriveReqt`, `sysml.Satisfy`, `sysml.Verify`, `sysml.Refine`, `sysml.Trace`, `sysml.Copy`, client to supplier. Block definition: `sysml.Block`, `sysml.InterfaceBlock`, `sysml.ConstraintBlock`, `sysml.ValueType`; members `sysml.PartProperty`, `sysml.ReferenceProperty`, `sysml.ValueProperty`, `sysml.ConstraintProperty`, `sysml.Port`, `sysml.FlowProperty`, `sysml.ConstraintParameter`, `uml.Operation`; the class diagram's lines. Internal block: lines `sysml.Connector`. Parametric: lines `sysml.BindingConnector` |
+| node | `props` | a requirement's `reqId`, `text`, `risk`, `verifyMethod`; a constraint block's `constraint`; a value type's `unit`, `quantityKind` |
+| member | `props` | `valueType` (a port's starting `~` is conjugated), `multiplicity`, `default`; a port's `kind` (`proxy`, `full`); a flow property's `direction` |
+| edge | `props` | a connector's `itemFlow` (`{ item, direction }`); a connector's or binding's `ends.<from\|to>.part` |
+| node | `parent` | a requirement's owner, a requirement (drawn as a crosshair line) or a package |
+| view | `subject` | the frame's element: a package (requirement, block definition), a block (internal block, parametric) or a constraint block (parametric) |
+| view | `diagram` | `"sysml.requirement"`, `"sysml.block-definition"`, `"sysml.internal-block"`, `"sysml.parametric"` |
+
 ## Command line
 
 ```bash
@@ -423,6 +450,7 @@ python3 umlimator.py import workspace.dsl --out model.json            # a diagra
 python3 umlimator.py import classes.mmd --out classes.json            # a Mermaid classDiagram, as a UML class diagram (needs Node)
 python3 umlimator.py import checkout.mmd --out checkout.json          # a Mermaid sequenceDiagram, as a UML sequence diagram (needs Node)
 python3 umlimator.py import order.mmd --out order.json                # a Mermaid stateDiagram, as a UML state machine diagram (needs Node)
+python3 umlimator.py import needs.mmd --out needs.json                # a Mermaid requirementDiagram, as a SysML requirement diagram (needs Node)
 python3 umlimator.py import schema.mmd --out schema.json              # a Mermaid erDiagram, as an ER diagram (needs Node)
 python3 umlimator.py import returns.mmd --typed --out returns.json    # a Mermaid flowchart as a flowchart (without --typed, a map)
 python3 umlimator.py import workspace.json --out c4.json              # a Structurizr JSON workspace, as typed C4 views (needs Node)

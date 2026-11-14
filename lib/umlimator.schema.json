@@ -411,7 +411,7 @@
      }
     },
     "type": {
-     "description": "Schema version 2: the element's type, <notation>.<Name> (uml.Class). validate() checks typed fields only in a model with schemaVersion 2. The class diagram (uml.class, 0.18.0): uml.Class, uml.Interface, uml.Enumeration, uml.DataType, uml.PrimitiveType, uml.Package and uml.Comment; their members uml.Property, uml.Operation and uml.EnumerationLiteral. The object diagram (uml.object, 0.19.0): uml.InstanceSpecification and uml.Comment; an instance's members uml.Slot. The package diagram (uml.package, 0.19.0): uml.Package and the class diagram's classifiers, and uml.Comment. The sequence and communication diagrams (uml.sequence, uml.communication, 0.20.0): uml.Lifeline. The use case diagram (uml.use-case, 0.21.0): uml.Actor, uml.UseCase, uml.Subject and uml.Comment; a use case's members uml.ExtensionPoint. The activity diagram (uml.activity, 0.21.0): uml.InitialNode, uml.ActivityFinalNode, uml.FlowFinalNode, uml.Action, uml.CallBehaviorAction, uml.SendSignalAction, uml.AcceptEventAction, uml.DecisionNode, uml.MergeNode, uml.ForkNode, uml.JoinNode, uml.ObjectNode, uml.DataStoreNode, uml.ActivityPartition and uml.Comment. The state machine diagram (uml.state-machine, 0.21.0): uml.State, uml.Pseudostate, uml.FinalState and uml.Comment; a state's members uml.Region and uml.InternalTransition. The interaction overview diagram (uml.interaction-overview, 0.21.0): the activity's control nodes, uml.InteractionUse, uml.Interaction (an inline interaction) and uml.Comment. The component diagram (uml.component, 0.22.0): uml.Component, uml.Interface, uml.Artifact, uml.Package and uml.Comment; a component's (or class's) members uml.Port. The deployment diagram (uml.deployment, 0.22.0): uml.Node, uml.Device, uml.ExecutionEnvironment, uml.Artifact, uml.DeploymentSpecification, uml.Component and uml.Comment. The composite structure diagram (uml.composite-structure, 0.22.0): the view's subject (a uml.Class, uml.Component or uml.Collaboration), uml.Collaboration, uml.CollaborationUse and uml.Comment; the subject's members uml.Property (its parts) and uml.Port, a collaboration's uml.Property (its roles). The profile diagram (uml.profile, 0.23.0): uml.Profile, uml.Stereotype and uml.MetaclassReference (each owned by a profile), uml.Enumeration (a tag's type), uml.Package, uml.Comment and any element that applies a stereotype; a stereotype's members uml.Property (its tag definitions), an enumeration's uml.EnumerationLiteral. The timing diagram (uml.timing, 0.23.0): uml.Lifeline (its changes and constraints are in the view's timeline). The entity-relationship diagram (er, 0.24.0): er.Entity and uml.Comment; an entity's members er.Column. The flowchart (flowchart, 0.24.0): flow.Terminator, flow.Process, flow.Decision, flow.InputOutput, flow.PredefinedProcess, flow.Document, flow.Database, flow.ManualInput, flow.Delay, flow.Connector and uml.Comment. The data flow diagram (dfd, 0.24.0): dfd.Process, dfd.DataStore, dfd.ExternalEntity and uml.Comment. The information flow diagram (uml.information-flow, 0.24.0): uml.Class, uml.Interface, uml.Component, uml.Actor, uml.InformationItem and uml.Comment. C4 (c4.landscape, c4.context, c4.container, c4.component, c4.dynamic, c4.deployment, 0.24.0): c4.Person, c4.SoftwareSystem, c4.Container (owned by a software system), c4.Component (owned by a container), c4.DeploymentNode (owned by a deployment node or none), c4.ContainerInstance (owned by a deployment node) and uml.Comment.",
+     "description": "Schema version 2: the element's type, <notation>.<Name> (uml.Class). validate() checks typed fields only in a model with schemaVersion 2. The class diagram (uml.class, 0.18.0): uml.Class, uml.Interface, uml.Enumeration, uml.DataType, uml.PrimitiveType, uml.Package and uml.Comment; their members uml.Property, uml.Operation and uml.EnumerationLiteral. The object diagram (uml.object, 0.19.0): uml.InstanceSpecification and uml.Comment; an instance's members uml.Slot. The package diagram (uml.package, 0.19.0): uml.Package and the class diagram's classifiers, and uml.Comment. The sequence and communication diagrams (uml.sequence, uml.communication, 0.20.0): uml.Lifeline. The use case diagram (uml.use-case, 0.21.0): uml.Actor, uml.UseCase, uml.Subject and uml.Comment; a use case's members uml.ExtensionPoint. The activity diagram (uml.activity, 0.21.0): uml.InitialNode, uml.ActivityFinalNode, uml.FlowFinalNode, uml.Action, uml.CallBehaviorAction, uml.SendSignalAction, uml.AcceptEventAction, uml.DecisionNode, uml.MergeNode, uml.ForkNode, uml.JoinNode, uml.ObjectNode, uml.DataStoreNode, uml.ActivityPartition and uml.Comment. The state machine diagram (uml.state-machine, 0.21.0): uml.State, uml.Pseudostate, uml.FinalState and uml.Comment; a state's members uml.Region and uml.InternalTransition. The interaction overview diagram (uml.interaction-overview, 0.21.0): the activity's control nodes, uml.InteractionUse, uml.Interaction (an inline interaction) and uml.Comment. The component diagram (uml.component, 0.22.0): uml.Component, uml.Interface, uml.Artifact, uml.Package and uml.Comment; a component's (or class's) members uml.Port. The deployment diagram (uml.deployment, 0.22.0): uml.Node, uml.Device, uml.ExecutionEnvironment, uml.Artifact, uml.DeploymentSpecification, uml.Component and uml.Comment. The composite structure diagram (uml.composite-structure, 0.22.0): the view's subject (a uml.Class, uml.Component or uml.Collaboration), uml.Collaboration, uml.CollaborationUse and uml.Comment; the subject's members uml.Property (its parts) and uml.Port, a collaboration's uml.Property (its roles). The profile diagram (uml.profile, 0.23.0): uml.Profile, uml.Stereotype and uml.MetaclassReference (each owned by a profile), uml.Enumeration (a tag's type), uml.Package, uml.Comment and any element that applies a stereotype; a stereotype's members uml.Property (its tag definitions), an enumeration's uml.EnumerationLiteral. The timing diagram (uml.timing, 0.23.0): uml.Lifeline (its changes and constraints are in the view's timeline). The entity-relationship diagram (er, 0.24.0): er.Entity and uml.Comment; an entity's members er.Column. The flowchart (flowchart, 0.24.0): flow.Terminator, flow.Process, flow.Decision, flow.InputOutput, flow.PredefinedProcess, flow.Document, flow.Database, flow.ManualInput, flow.Delay, flow.Connector and uml.Comment. The data flow diagram (dfd, 0.24.0): dfd.Process, dfd.DataStore, dfd.ExternalEntity and uml.Comment. The information flow diagram (uml.information-flow, 0.24.0): uml.Class, uml.Interface, uml.Component, uml.Actor, uml.InformationItem and uml.Comment. C4 (c4.landscape, c4.context, c4.container, c4.component, c4.dynamic, c4.deployment, 0.24.0): c4.Person, c4.SoftwareSystem, c4.Container (owned by a software system), c4.Component (owned by a container), c4.DeploymentNode (owned by a deployment node or none), c4.ContainerInstance (owned by a deployment node) and uml.Comment. SysML v1.7 (0.25.0, docs/conformance/sysml-*.md): the requirement diagram (sysml.requirement): sysml.Requirement (owned by a requirement or a package), sysml.TestCase, sysml.Block, uml.Package and uml.Comment. The block definition diagram (sysml.block-definition): sysml.Block, sysml.InterfaceBlock, sysml.ConstraintBlock, sysml.ValueType, uml.Package and uml.Comment; a block's members sysml.PartProperty, sysml.ReferenceProperty, sysml.ValueProperty, sysml.ConstraintProperty, sysml.Port, sysml.FlowProperty and uml.Operation, a constraint block's sysml.ConstraintParameter and sysml.ConstraintProperty. The internal block and parametric diagrams (sysml.internal-block, sysml.parametric): the view's subject, whose members are drawn inside its frame.",
      "examples": [
       "uml.Class",
       "uml.Interface",
@@ -465,14 +465,20 @@
       "c4.Container",
       "c4.Component",
       "c4.DeploymentNode",
-      "c4.ContainerInstance"
+      "c4.ContainerInstance",
+      "sysml.Requirement",
+      "sysml.TestCase",
+      "sysml.Block",
+      "sysml.InterfaceBlock",
+      "sysml.ConstraintBlock",
+      "sysml.ValueType"
      ]
     },
     "parent": {
      "description": "Schema version 2: the element that owns it (a package, a composite state, a lane). From 0.19.0 a class, object or package view draws a shown package that owns something it shows as a box holding it. A use case's: a subject or a package. An activity node's: its partition (lane); a partition's: the partition it is nested in. A substate's or pseudostate's: a state, or a region (a member) of one. A component's: a component (drawn nested) or a package. A node's, device's or execution environment's: one of the three (UML's nestedNode); an artifact's or deployment specification's: the target it is deployed on. A collaboration use's: the subject of its composite structure view (0.22.0). A stereotype's and a metaclass reference's: a profile; an enumeration's may be (0.23.0)."
     },
     "props": {
-     "description": "Schema version 2: the type's own properties. The class diagram (uml.class, 0.18.0): isAbstract and stereotypes on a classifier; on a member, the fields of its UML text (docs/conformance/uml-class.md). The object diagram (uml.object, 0.19.0): an instance's classifier and stereotypes; a slot's value (docs/conformance/uml-object.md). The sequence and communication diagrams (uml.sequence, uml.communication, 0.20.0): a lifeline's represents, and stereotypes (actor draws «actor» over its name). The state machine diagram (uml.state-machine, 0.21.0): a state's entry, do and exit, a pseudostate's kind (docs/conformance/uml-state-machine.md). The composite structure diagram (uml.composite-structure, 0.22.0): a collaboration use's collaboration (docs/conformance/uml-composite-structure.md). On any UML element, stereotypes and their tags, checked against the profiles applied to its packages (0.23.0, docs/conformance/uml-profile.md). The profile diagram (uml.profile, 0.23.0): a stereotype's isAbstract. The timing diagram (uml.timing, 0.23.0): a lifeline's states (docs/conformance/uml-timing.md). The entity-relationship diagram (er, 0.24.0): a column's dataType, primaryKey, foreignKey, references (a column id), nullable and unique (docs/conformance/er.md). The data flow diagram (dfd, 0.24.0): a process's or a store's number (docs/conformance/dfd.md). C4 (0.24.0): an element's description, technology, external and shape (a map card shape: person, robot, browser, window, terminal, mobile, cylinder, pipe, folder, document, hexagon, box); a container instance's container (docs/conformance/c4.md).",
+     "description": "Schema version 2: the type's own properties. The class diagram (uml.class, 0.18.0): isAbstract and stereotypes on a classifier; on a member, the fields of its UML text (docs/conformance/uml-class.md). The object diagram (uml.object, 0.19.0): an instance's classifier and stereotypes; a slot's value (docs/conformance/uml-object.md). The sequence and communication diagrams (uml.sequence, uml.communication, 0.20.0): a lifeline's represents, and stereotypes (actor draws «actor» over its name). The state machine diagram (uml.state-machine, 0.21.0): a state's entry, do and exit, a pseudostate's kind (docs/conformance/uml-state-machine.md). The composite structure diagram (uml.composite-structure, 0.22.0): a collaboration use's collaboration (docs/conformance/uml-composite-structure.md). On any UML element, stereotypes and their tags, checked against the profiles applied to its packages (0.23.0, docs/conformance/uml-profile.md). The profile diagram (uml.profile, 0.23.0): a stereotype's isAbstract. The timing diagram (uml.timing, 0.23.0): a lifeline's states (docs/conformance/uml-timing.md). The entity-relationship diagram (er, 0.24.0): a column's dataType, primaryKey, foreignKey, references (a column id), nullable and unique (docs/conformance/er.md). The data flow diagram (dfd, 0.24.0): a process's or a store's number (docs/conformance/dfd.md). C4 (0.24.0): an element's description, technology, external and shape (a map card shape: person, robot, browser, window, terminal, mobile, cylinder, pipe, folder, document, hexagon, box); a container instance's container (docs/conformance/c4.md). SysML (0.25.0, docs/conformance/sysml-*.md): a requirement's reqId, text, risk and verifyMethod; a constraint block's constraint; a value type's unit and quantityKind; stereotypes on any element (a requirement's Mermaid kind, functionalRequirement and the rest).",
      "anyOf": [
       {
        "type": "object",
@@ -578,6 +584,38 @@
           "hexagon",
           "box"
          ]
+        },
+        "reqId": {
+         "description": "sysml.Requirement (0.25.0): its id, drawn id = \"EB-1.1\" (no two requirements share one, a warning)."
+        },
+        "text": {
+         "description": "sysml.Requirement (0.25.0): its text, drawn text = \"…\", wrapped at 224 px into as many rows as it needs (a view's present.<id>.rows caps them with +k more); a copy's text is its supplier's."
+        },
+        "risk": {
+         "description": "sysml.Requirement (0.25.0, SysML's non-normative extendedRequirement): low, medium or high.",
+         "examples": [
+          "low",
+          "medium",
+          "high"
+         ]
+        },
+        "verifyMethod": {
+         "description": "sysml.Requirement (0.25.0, SysML's non-normative extendedRequirement): analysis, inspection, test or demonstration.",
+         "examples": [
+          "analysis",
+          "inspection",
+          "test",
+          "demonstration"
+         ]
+        },
+        "constraint": {
+         "description": "sysml.ConstraintBlock (0.25.0): its expression, as text (range = energy / consumption), drawn in braces; on a parametric view inside each constraint property of it, cut to the box."
+        },
+        "unit": {
+         "description": "sysml.ValueType (0.25.0): its unit, as text (Wh)."
+        },
+        "quantityKind": {
+         "description": "sysml.ValueType (0.25.0): its quantity kind, as text (energy)."
         }
        }
       },
@@ -585,7 +623,7 @@
      ]
     },
     "members": {
-     "description": "Schema version 2: owned parts, in display order (attributes, ports, regions, lanes), each a typed element. The class diagram (uml.class, 0.18.0): a classifier's attributes (uml.Property) and operations (uml.Operation), an enumeration's literals (uml.EnumerationLiteral). The object diagram (uml.object, 0.19.0): an instance's slots (uml.Slot), each a feature = value row. The use case diagram (uml.use-case, 0.21.0): a use case's extension points (uml.ExtensionPoint, by name). The state machine diagram (uml.state-machine, 0.21.0): a state's regions (uml.Region, by name) and internal transitions (uml.InternalTransition, trigger [guard] / effect). The component diagram (uml.component, 0.22.0): a component's or class's ports (uml.Port), drawn on its border. The composite structure diagram (uml.composite-structure, 0.22.0): the subject's parts (uml.Property, name : Type [multiplicity]) and ports (uml.Port); a collaboration's roles (uml.Property). The profile diagram (uml.profile, 0.23.0): a stereotype's tag definitions (uml.Property, name : Type [multiplicity] = default).",
+     "description": "Schema version 2: owned parts, in display order (attributes, ports, regions, lanes), each a typed element. The class diagram (uml.class, 0.18.0): a classifier's attributes (uml.Property) and operations (uml.Operation), an enumeration's literals (uml.EnumerationLiteral). The object diagram (uml.object, 0.19.0): an instance's slots (uml.Slot), each a feature = value row. The use case diagram (uml.use-case, 0.21.0): a use case's extension points (uml.ExtensionPoint, by name). The state machine diagram (uml.state-machine, 0.21.0): a state's regions (uml.Region, by name) and internal transitions (uml.InternalTransition, trigger [guard] / effect). The component diagram (uml.component, 0.22.0): a component's or class's ports (uml.Port), drawn on its border. The composite structure diagram (uml.composite-structure, 0.22.0): the subject's parts (uml.Property, name : Type [multiplicity]) and ports (uml.Port); a collaboration's roles (uml.Property). The profile diagram (uml.profile, 0.23.0): a stereotype's tag definitions (uml.Property, name : Type [multiplicity] = default). SysML (0.25.0): a block's parts, references, values and constraint properties, ports, flow properties and operations; a constraint block's parameters (sysml.ConstraintParameter), drawn on a constraint property's border on a parametric view.",
      "anyOf": [
       {
        "type": "array",
@@ -599,7 +637,16 @@
             "description": "Unique among every node, edge and member of the model."
            },
            "type": {
-            "description": "uml.Property, uml.Operation or uml.EnumerationLiteral in a class diagram; uml.Slot in an object diagram. uml.ExtensionPoint in a use case diagram; uml.Region or uml.InternalTransition in a state machine diagram. uml.Port on a component or class (component and composite structure diagrams); uml.Property as a part or a role in a composite structure diagram (0.22.0). uml.Property on a stereotype: a tag definition (profile diagram, 0.23.0)."
+            "description": "uml.Property, uml.Operation or uml.EnumerationLiteral in a class diagram; uml.Slot in an object diagram. uml.ExtensionPoint in a use case diagram; uml.Region or uml.InternalTransition in a state machine diagram. uml.Port on a component or class (component and composite structure diagrams); uml.Property as a part or a role in a composite structure diagram (0.22.0). uml.Property on a stereotype: a tag definition (profile diagram, 0.23.0). sysml.PartProperty, sysml.ReferenceProperty, sysml.ValueProperty, sysml.ConstraintProperty, sysml.Port, sysml.FlowProperty, sysml.ConstraintParameter on a SysML block or constraint block (0.25.0).",
+            "examples": [
+             "sysml.PartProperty",
+             "sysml.ReferenceProperty",
+             "sysml.ValueProperty",
+             "sysml.ConstraintProperty",
+             "sysml.Port",
+             "sysml.FlowProperty",
+             "sysml.ConstraintParameter"
+            ]
            },
            "label": {
             "description": "The member's name (a slot's: the feature it gives a value); the rest of its UML text is in props."
@@ -620,10 +667,10 @@
                 "description": "uml.Property, uml.Operation: public, private, protected or package (+ - # ~)."
                },
                "valueType": {
-                "description": "uml.Property, and each of an operation's parameters: its type, as text (Money, String[], Map<K, V>). uml.Port: its type, drawn name : Type beside it (0.22.0). A part's or role's: the class or component it is, by label (a part shows that type's ports). A tag definition's (0.23.0): Boolean, Integer, Real, UnlimitedNatural, String, or an enumeration of the profile by label."
+                "description": "uml.Property, and each of an operation's parameters: its type, as text (Money, String[], Map<K, V>). uml.Port: its type, drawn name : Type beside it (0.22.0). A part's or role's: the class or component it is, by label (a part shows that type's ports). A tag definition's (0.23.0): Boolean, Integer, Real, UnlimitedNatural, String, or an enumeration of the profile by label. A SysML property's or port's type (0.25.0): ~ before a port's type conjugates it (~ChargeInterface), reversing its flow."
                },
                "multiplicity": {
-                "description": "uml.Property: 1, *, n..m or n..* (0..1, 1..*), kept as written."
+                "description": "uml.Property: 1, *, n..m or n..* (0..1, 1..*), kept as written. A SysML part, reference, value or constraint property's (0.25.0)."
                },
                "default": {
                 "description": "uml.Property: its default value, as text."
@@ -657,6 +704,21 @@
                 "examples": [
                  "composite",
                  "shared"
+                ]
+               },
+               "kind": {
+                "description": "sysml.Port (0.25.0): proxy (drawn «proxy», typed by an interface block), full («full») or none (a plain port).",
+                "examples": [
+                 "proxy",
+                 "full"
+                ]
+               },
+               "direction": {
+                "description": "sysml.FlowProperty (0.25.0): in, out or inout; a port typed by its interface block draws an arrow from them.",
+                "examples": [
+                 "in",
+                 "out",
+                 "inout"
                 ]
                }
               }
@@ -960,7 +1022,7 @@
      "description": "When the line is used."
     },
     "type": {
-     "description": "Schema version 2: the element's type, <notation>.<Name> (uml.Class). The class diagram (uml.class, 0.18.0): uml.Association, uml.Generalization (from the specific to the general), uml.InterfaceRealization (to the interface), uml.Dependency (from the client) and uml.CommentLink (from the comment). The object diagram (uml.object, 0.19.0): uml.Link and uml.CommentLink. The package diagram (uml.package, 0.19.0): uml.PackageImport and uml.PackageMerge (from the importing or merging package), uml.Dependency and uml.CommentLink. The sequence diagram (uml.sequence, 0.20.0): uml.Message, inline in its view's edges, in time order. The communication diagram (uml.communication, 0.20.0): uml.Connector and uml.Message, model lines its view lists, connectors first; only the messages' order means anything. The use case diagram (uml.use-case, 0.21.0): uml.Association (an actor and a use case), uml.Include and uml.Extend (from the including or extending use case), uml.Generalization (from the specific to the general) and uml.CommentLink. The activity diagram (uml.activity, 0.21.0): uml.ControlFlow, uml.ObjectFlow and uml.CommentLink. The state machine diagram (uml.state-machine, 0.21.0): uml.Transition and uml.CommentLink. The interaction overview diagram (uml.interaction-overview, 0.21.0): uml.ControlFlow and uml.CommentLink. The component diagram (uml.component, 0.22.0): uml.InterfaceRealization (from a component, a class or a port to the interface: a plain stem to a ball), uml.Usage (to the interface: a socket at a ball, else a dashed «use» arrow), uml.ComponentRealization (from the realizing classifier to the component), uml.Connector (props.kind assembly or delegation; from or to a port), uml.Dependency, uml.Manifestation (from an artifact) and uml.CommentLink. The deployment diagram (uml.deployment, 0.22.0): uml.Deployment (from an artifact or deployment specification to its target), uml.Manifestation, uml.CommunicationPath (between two targets), uml.Dependency and uml.CommentLink. The composite structure diagram (uml.composite-structure, 0.22.0): uml.Connector (between parts and ports; an end through a part keeps props.ends.<end>.part), uml.RoleBinding (from a part to a collaboration use; its label the role) and uml.CommentLink. The profile diagram (uml.profile, 0.23.0): uml.Extension (from a stereotype to a metaclass reference; props.isRequired), uml.ProfileApplication (from a package to a profile), uml.Generalization (between stereotypes) and uml.CommentLink. The timing diagram (uml.timing, 0.23.0): uml.Message, inline in its view's edges (props.sentAt, props.receivedAt). The entity-relationship diagram (er, 0.24.0): er.Relationship (from the referenced entity to the referring one) and uml.CommentLink. The flowchart (flowchart, 0.24.0): flow.Flow (a decision's exits labelled) and uml.CommentLink. The data flow diagram (dfd, 0.24.0): dfd.DataFlow and uml.CommentLink. The information flow diagram (uml.information-flow, 0.24.0): uml.InformationFlow (props.conveyed) and uml.CommentLink. C4 (0.24.0): c4.Relationship (its label the description, props.technology) and uml.CommentLink; a dynamic view's edges list relationship ids, each once, in time order.",
+     "description": "Schema version 2: the element's type, <notation>.<Name> (uml.Class). The class diagram (uml.class, 0.18.0): uml.Association, uml.Generalization (from the specific to the general), uml.InterfaceRealization (to the interface), uml.Dependency (from the client) and uml.CommentLink (from the comment). The object diagram (uml.object, 0.19.0): uml.Link and uml.CommentLink. The package diagram (uml.package, 0.19.0): uml.PackageImport and uml.PackageMerge (from the importing or merging package), uml.Dependency and uml.CommentLink. The sequence diagram (uml.sequence, 0.20.0): uml.Message, inline in its view's edges, in time order. The communication diagram (uml.communication, 0.20.0): uml.Connector and uml.Message, model lines its view lists, connectors first; only the messages' order means anything. The use case diagram (uml.use-case, 0.21.0): uml.Association (an actor and a use case), uml.Include and uml.Extend (from the including or extending use case), uml.Generalization (from the specific to the general) and uml.CommentLink. The activity diagram (uml.activity, 0.21.0): uml.ControlFlow, uml.ObjectFlow and uml.CommentLink. The state machine diagram (uml.state-machine, 0.21.0): uml.Transition and uml.CommentLink. The interaction overview diagram (uml.interaction-overview, 0.21.0): uml.ControlFlow and uml.CommentLink. The component diagram (uml.component, 0.22.0): uml.InterfaceRealization (from a component, a class or a port to the interface: a plain stem to a ball), uml.Usage (to the interface: a socket at a ball, else a dashed «use» arrow), uml.ComponentRealization (from the realizing classifier to the component), uml.Connector (props.kind assembly or delegation; from or to a port), uml.Dependency, uml.Manifestation (from an artifact) and uml.CommentLink. The deployment diagram (uml.deployment, 0.22.0): uml.Deployment (from an artifact or deployment specification to its target), uml.Manifestation, uml.CommunicationPath (between two targets), uml.Dependency and uml.CommentLink. The composite structure diagram (uml.composite-structure, 0.22.0): uml.Connector (between parts and ports; an end through a part keeps props.ends.<end>.part), uml.RoleBinding (from a part to a collaboration use; its label the role) and uml.CommentLink. The profile diagram (uml.profile, 0.23.0): uml.Extension (from a stereotype to a metaclass reference; props.isRequired), uml.ProfileApplication (from a package to a profile), uml.Generalization (between stereotypes) and uml.CommentLink. The timing diagram (uml.timing, 0.23.0): uml.Message, inline in its view's edges (props.sentAt, props.receivedAt). The entity-relationship diagram (er, 0.24.0): er.Relationship (from the referenced entity to the referring one) and uml.CommentLink. The flowchart (flowchart, 0.24.0): flow.Flow (a decision's exits labelled) and uml.CommentLink. The data flow diagram (dfd, 0.24.0): dfd.DataFlow and uml.CommentLink. The information flow diagram (uml.information-flow, 0.24.0): uml.InformationFlow (props.conveyed) and uml.CommentLink. C4 (0.24.0): c4.Relationship (its label the description, props.technology) and uml.CommentLink; a dynamic view's edges list relationship ids, each once, in time order. SysML v1.7 (0.25.0): the requirement diagram's sysml.DeriveReqt, sysml.Satisfy, sysml.Verify, sysml.Refine, sysml.Trace and sysml.Copy, each from the client to the supplier, and uml.CommentLink; containment is a requirement's parent, drawn as a crosshair line, never stored. The block definition diagram's uml.Association, uml.Generalization, uml.Dependency and uml.CommentLink. The internal block diagram's sysml.Connector (ends through parts, ends.<from|to>.part). The parametric diagram's sysml.BindingConnector, from a value property or a parameter of the subject to a parameter reached through a constraint property (ends.to.part).",
      "examples": [
       "uml.Association",
       "uml.Generalization",
@@ -989,20 +1051,28 @@
       "flow.Flow",
       "dfd.DataFlow",
       "uml.InformationFlow",
-      "c4.Relationship"
+      "c4.Relationship",
+      "sysml.DeriveReqt",
+      "sysml.Satisfy",
+      "sysml.Verify",
+      "sysml.Refine",
+      "sysml.Trace",
+      "sysml.Copy",
+      "sysml.Connector",
+      "sysml.BindingConnector"
      ]
     },
     "parent": {
      "description": "Schema version 2: the element that owns it (a package, a composite state, a lane). In a sequence view: the operand (uml.InteractionOperand) of one of its fragments that holds the message; none at the top level."
     },
     "props": {
-     "description": "Schema version 2: the type's own properties. The class diagram (uml.class, 0.18.0): an association's ends, and stereotypes on any line («use» on a dependency). The object diagram (uml.object, 0.19.0): a link's association and the roles at its ends. The package diagram (uml.package, 0.19.0): a package import's visibility. The sequence and communication diagrams (0.20.0): a message's sort and replyTo. The use case diagram (0.21.0): an extend's extensionPoints and condition. The activity and interaction overview diagrams (0.21.0): a flow's guard (its label is its name). The state machine diagram (0.21.0): a transition's trigger, guard and effect, drawn trigger [guard] / effect. The component diagram (0.22.0): a connector's kind (assembly or delegation). The composite structure diagram (0.22.0): a connector end's part (ends.from.part, ends.to.part), UML's partWithPort. The profile diagram (0.23.0): an extension's isRequired. The timing diagram (0.23.0): a message's sort (call, async or reply), replyTo, sentAt and receivedAt. The entity-relationship diagram (er, 0.24.0): a relationship's identifying and ends.<from|to>.multiplicity (1, 0..1, 1..*, 0..*; other bounds, such as 2..5 or 3, drawn as the nearest of the four with their text). The information flow diagram (uml.information-flow, 0.24.0): a flow's conveyed, ids of information items or classifiers (docs/conformance/uml-information-flow.md). C4 (0.24.0): a relationship's technology.",
+     "description": "Schema version 2: the type's own properties. The class diagram (uml.class, 0.18.0): an association's ends, and stereotypes on any line («use» on a dependency). The object diagram (uml.object, 0.19.0): a link's association and the roles at its ends. The package diagram (uml.package, 0.19.0): a package import's visibility. The sequence and communication diagrams (0.20.0): a message's sort and replyTo. The use case diagram (0.21.0): an extend's extensionPoints and condition. The activity and interaction overview diagrams (0.21.0): a flow's guard (its label is its name). The state machine diagram (0.21.0): a transition's trigger, guard and effect, drawn trigger [guard] / effect. The component diagram (0.22.0): a connector's kind (assembly or delegation). The composite structure diagram (0.22.0): a connector end's part (ends.from.part, ends.to.part), UML's partWithPort. The profile diagram (0.23.0): an extension's isRequired. The timing diagram (0.23.0): a message's sort (call, async or reply), replyTo, sentAt and receivedAt. The entity-relationship diagram (er, 0.24.0): a relationship's identifying and ends.<from|to>.multiplicity (1, 0..1, 1..*, 0..*; other bounds, such as 2..5 or 3, drawn as the nearest of the four with their text). The information flow diagram (uml.information-flow, 0.24.0): a flow's conveyed, ids of information items or classifiers (docs/conformance/uml-information-flow.md). C4 (0.24.0): a relationship's technology. SysML (0.25.0): a connector's itemFlow; a connector's or binding's ends through parts (ends.<from|to>.part).",
      "anyOf": [
       {
        "type": "object",
        "properties": {
         "ends": {
-         "description": "uml.Association: { from, to }, each end's role, multiplicity, aggregation and navigability. uml.Link: each end's role. uml.Connector (composite structure, 0.22.0): an end through a part, { part }: the end (from or to) is a port of the part's type, reached through that part. er.Relationship (0.24.0): each end's multiplicity (1, 0..1, 1..*, 0..*; other bounds, such as 2..5 or 3, drawn as the nearest of the four with their text), drawn as the view's notation says.",
+         "description": "uml.Association: { from, to }, each end's role, multiplicity, aggregation and navigability. uml.Link: each end's role. uml.Connector (composite structure, 0.22.0): an end through a part, { part }: the end (from or to) is a port of the part's type, reached through that part. er.Relationship (0.24.0): each end's multiplicity (1, 0..1, 1..*, 0..*; other bounds, such as 2..5 or 3, drawn as the nearest of the four with their text), drawn as the view's notation says. sysml.Connector and sysml.BindingConnector (0.25.0): an end through a part (or a constraint property), { part }, as the composite structure's.",
          "anyOf": [
           {
            "type": "object",
@@ -1127,6 +1197,21 @@
         },
         "technology": {
          "description": "c4.Relationship (0.24.0): drawn as [technology] after its description."
+        },
+        "itemFlow": {
+         "description": "sysml.Connector (0.25.0): { item, direction }, direction from-to or to-from: the item's name is the line's label, a filled triangle on its middle points the way it flows.",
+         "type": "object",
+         "properties": {
+          "item": {
+           "type": "string"
+          },
+          "direction": {
+           "examples": [
+            "from-to",
+            "to-from"
+           ]
+          }
+         }
         }
        }
       },
@@ -1408,7 +1493,7 @@
      "description": "Guess a line's kind from its label's words when its edges name none (render() and layout(); the standalone page always does)."
     },
     "diagram": {
-     "description": "Schema version 2: the view's diagram type; without it the view is a map. uml.class draws a class diagram (0.18.0, lib/umlimator-all.js), uml.object an object diagram and uml.package a package diagram (0.19.0), uml.sequence a sequence diagram and uml.communication a communication diagram (0.20.0), uml.use-case a use case diagram, uml.activity an activity diagram, uml.state-machine a state machine diagram and uml.interaction-overview an interaction overview diagram (0.21.0), uml.component a component diagram, uml.deployment a deployment diagram and uml.composite-structure a composite structure diagram (0.22.0), uml.profile a profile diagram and uml.timing a timing diagram (0.23.0), er an entity-relationship diagram, flowchart a flowchart, dfd a data flow diagram, uml.information-flow an information flow diagram, and c4.landscape, c4.context, c4.container, c4.component, c4.dynamic and c4.deployment C4's six views (0.24.0); a type this release does not draw is drawn as plain cards, with a warning.",
+     "description": "Schema version 2: the view's diagram type; without it the view is a map. uml.class draws a class diagram (0.18.0, lib/umlimator-all.js), uml.object an object diagram and uml.package a package diagram (0.19.0), uml.sequence a sequence diagram and uml.communication a communication diagram (0.20.0), uml.use-case a use case diagram, uml.activity an activity diagram, uml.state-machine a state machine diagram and uml.interaction-overview an interaction overview diagram (0.21.0), uml.component a component diagram, uml.deployment a deployment diagram and uml.composite-structure a composite structure diagram (0.22.0), uml.profile a profile diagram and uml.timing a timing diagram (0.23.0), er an entity-relationship diagram, flowchart a flowchart, dfd a data flow diagram, uml.information-flow an information flow diagram, and c4.landscape, c4.context, c4.container, c4.component, c4.dynamic and c4.deployment C4's six views (0.24.0); sysml.requirement, sysml.block-definition, sysml.internal-block and sysml.parametric SysML v1.7's four diagrams, each in a frame (0.25.0); a type this release does not draw is drawn as plain cards, with a warning.",
      "examples": [
       "uml.class",
       "uml.object",
@@ -1433,11 +1518,15 @@
       "c4.container",
       "c4.component",
       "c4.dynamic",
-      "c4.deployment"
+      "c4.deployment",
+      "sysml.requirement",
+      "sysml.block-definition",
+      "sysml.internal-block",
+      "sysml.parametric"
      ]
     },
     "subject": {
-     "description": "Schema version 2: the element this diagram is the inside of. In a class, object or package view, the package names are qualified from (sales::Order without sales:: in a view of sales); not drawn unless the view lists it. In a composite structure view (0.22.0): the class, component or collaboration whose parts and ports it draws, listed in nodeIds. In a C4 view (0.24.0): the software system or container it zooms into, drawn as a boundary when nodeIds lists it."
+     "description": "Schema version 2: the element this diagram is the inside of. In a class, object or package view, the package names are qualified from (sales::Order without sales:: in a view of sales); not drawn unless the view lists it. In a composite structure view (0.22.0): the class, component or collaboration whose parts and ports it draws, listed in nodeIds. In a C4 view (0.24.0): the software system or container it zooms into, drawn as a boundary when nodeIds lists it. A SysML view (0.25.0): the element its frame names, a package (requirement, block definition), a block (internal block, parametric) or a constraint block (parametric); with none, the frame names [Model] and the model's title."
     },
     "direction": {
      "description": "Schema version 2: a typed view's layout direction (default right). A map stays left to right. A sequence view is always down; another direction is a warning."

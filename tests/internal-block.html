@@ -43,7 +43,7 @@ const lum = c => { const f = v => v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.05
 const ratio = (fg, bg) => { const [x, y] = [lum(blend(fg, bg)), lum(bg)].sort((p, q) => q - p); return +((x + 0.05) / (y + 0.05)).toFixed(2); };
 const css = (e, k) => rgba(getComputedStyle(e)[k]);
 // 18 with what §8.2 draws, as tests/internal-block.test.mjs builds it
-const MODEL = await (await fetch('../docs/diagrams/examples/18-internal-block.json')).json();
+const MODEL = (await (await fetch('sysml-targets.json')).json())['18-internal-block']; // 18 as M3.0 left it (M3.7 moved it)
 { const mem = id => MODEL.nodes.flatMap(n => n.members || []).find(x => x.id === id), fp = (id, d) => ({ id, type: 'sysml.FlowProperty', label: id.split('.').pop(), props: { valueType: 'DCPower', direction: d } });
   mem('battery.charge').props = { kind: 'proxy', valueType: 'ChargeInterface' }; mem('dock.charge').props = { kind: 'proxy', valueType: '~ChargeInterface' }; mem('controller.supply').props = { kind: 'full', valueType: 'PowerIn' };
   MODEL.nodes.push({ id: 'charge-interface', type: 'sysml.InterfaceBlock', label: 'ChargeInterface', members: [fp('charge-interface.dc', 'in')] },

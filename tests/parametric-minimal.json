@@ -1,0 +1,102 @@
+{
+ "schemaVersion": 2,
+ "title": "Parametric, minimal",
+ "nodes": [
+  {
+   "id": "bike",
+   "type": "sysml.Block",
+   "label": "Bike",
+   "members": [
+    {
+     "id": "bike.energy",
+     "type": "sysml.ValueProperty",
+     "label": "energy",
+     "props": {
+      "valueType": "Real"
+     }
+    },
+    {
+     "id": "bike.range",
+     "type": "sysml.ValueProperty",
+     "label": "range",
+     "props": {
+      "valueType": "Real"
+     }
+    },
+    {
+     "id": "bike.eq",
+     "type": "sysml.ConstraintProperty",
+     "label": "eq",
+     "props": {
+      "valueType": "RangeEq"
+     }
+    }
+   ]
+  },
+  {
+   "id": "range-eq",
+   "type": "sysml.ConstraintBlock",
+   "label": "RangeEq",
+   "props": {
+    "constraint": "r = e / 7"
+   },
+   "members": [
+    {
+     "id": "range-eq.e",
+     "type": "sysml.ConstraintParameter",
+     "label": "e",
+     "props": {
+      "valueType": "Real"
+     }
+    },
+    {
+     "id": "range-eq.r",
+     "type": "sysml.ConstraintParameter",
+     "label": "r",
+     "props": {
+      "valueType": "Real"
+     }
+    }
+   ]
+  }
+ ],
+ "edges": [
+  {
+   "id": "bind-e",
+   "type": "sysml.BindingConnector",
+   "from": "bike.energy",
+   "to": "range-eq.e",
+   "props": {
+    "ends": {
+     "to": {
+      "part": "bike.eq"
+     }
+    }
+   }
+  },
+  {
+   "id": "bind-r",
+   "type": "sysml.BindingConnector",
+   "from": "bike.range",
+   "to": "range-eq.r",
+   "props": {
+    "ends": {
+     "to": {
+      "part": "bike.eq"
+     }
+    }
+   }
+  }
+ ],
+ "views": [
+  {
+   "id": "v",
+   "diagram": "sysml.parametric",
+   "title": "Minimal",
+   "subject": "bike",
+   "nodeIds": [
+    "bike"
+   ]
+  }
+ ]
+}
