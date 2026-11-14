@@ -18,7 +18,7 @@ import { describe } from '../src/map/insight.js';
 import { svgOf } from '../src/draw/svg.js';
 import { SHAPE } from '../src/draw/shapes.js';
 import { textW } from '../src/core/text.js';
-import { rqWrap } from '../src/sysml/requirement.js';
+import { rqWrap, rqRank } from '../src/sysml/requirement.js';
 
 const T = diagramOf({ diagram: 'sysml.requirement' }), V = 'requirements';
 const R = (id, label, parent, reqId, text, more = {}) => ({ id, type: 'sysml.Requirement', label, ...(parent ? { parent } : {}), props: { reqId, text }, ...more });
@@ -175,13 +175,21 @@ test('names, reading order, legend and describe() (§13): the frame named, each 
   assert.match(g.legend[6], /<path d="M14 8A6 6 0 1 0 26 8/);
   const d = describe(M16, V).split('\n');
   assert.equal(d[0], 'E-bike requirements: a requirement diagram (req [Model] E-bike: requirements [E-bike requirements]) of 16 elements and 15 lines.');
-  assert.equal(d[3], 'Requirement Assistance cut-off, EB-1.1.1: Assistance shall fall away progressively and stop when the bike reaches 25 km/h.; contained in Pedal assistance; copies Maximum assisted speed; satisfied by Controller; verified by Cut-off speed on the rollers.');
+  assert.equal(d[3], 'Requirement Assistance cut-off, EB-1.1.1: Assistance shall fall away progressively and stop when the bike reaches 25 km/h; contained in Pedal assistance; copies Maximum assisted speed; satisfied by Controller; verified by Cut-off speed on the rollers.');
   assert.equal(d.length, 17);
 });
 
 test('the layout is not edited after layoutTyped: drawn twice from one memo, the same markup (§2.4)', () => {
   const memos = {}, first = mapContext(M16, { memos }).buildView(V), second = mapContext(M16, { memos }).buildView(V);
   assert.equal(memos[V].runs, 1); assert.equal(unid(second.markup), unid(first.markup));
+});
+
+test('a view\'s own edges list draws only the type\'s lines; a long chain of links ranks without running out of stack', () => {
+  const m = { schemaVersion: 2, title: 'M', nodes: [{ id: 'a', type: 'sysml.Block', label: 'A' }, { id: 'b', type: 'sysml.Block', label: 'B' }],
+    edges: [{ id: 'g', type: 'uml.Generalization', from: 'a', to: 'b' }], views: [{ id: 'v', diagram: 'sysml.requirement', nodeIds: ['a', 'b'], edges: ['g'] }] };
+  assert.deepEqual(layout(m, 'v').edges, []); assert.match(describe(m, 'v'), /and 0 lines\./);
+  const ids = Array.from({ length: 5000 }, (_, i) => 'r' + i), pos = rqRank({ id: 'f', nodeIds: ids }, [], ids.slice(1).map((id, i) => [ids[i], id]));
+  assert.deepEqual(pos.r4999, [4999, 0]);
 });
 
 test('a pin wins: a card pinned keeps its cell, and one ranked onto it goes down a row', () => {
