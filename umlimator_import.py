@@ -31,8 +31,8 @@ NODE_FORMATS = ["structurizr-json", "dbml"]  # read typed by the module's reader
 LIMIT = 1 << 20  # bytes: a Structurizr JSON or .dbml file over it is refused before it is parsed (notes/milestone-2.md §8)
 EXT = {".dbml": "dbml", ".dsl": "structurizr", ".puml": "plantuml", ".plantuml": "plantuml", ".pu": "plantuml", ".iuml": "plantuml",
        ".mmd": "mermaid", ".mermaid": "mermaid", ".bpmn": "bpmn"}  # bpmn: XML the module's adapter reads (umlimator.py import)
-MERMAID = re.compile(r"(flowchart|graph|C4Context|C4Container|C4Component|classDiagram|sequenceDiagram|stateDiagram|erDiagram)\b")
-TYPED = ("classDiagram", "sequenceDiagram", "stateDiagram", "erDiagram")  # the diagrams the module's readers read, in Node (src/readers/)
+MERMAID = re.compile(r"(flowchart|graph|C4Context|C4Container|C4Component|classDiagram|sequenceDiagram|stateDiagram|erDiagram|mindmap)\b")
+TYPED = ("classDiagram", "sequenceDiagram", "stateDiagram", "erDiagram", "mindmap")  # the diagrams the module's readers read, in Node (src/readers/)
 
 # ponytail: a keyword guess over names, technologies, tags and images, the first match winning; a source's own type
 # (a cylinder, ContainerDb, _Ext, a StatefulSet) comes first. Add words when a common stack lands on the wrong colour.
@@ -154,7 +154,7 @@ def detect(path, text):
 
 def mermaid_typed(text, typed=False):
     """The Mermaid diagram the module's readers read (src/readers/, through Node), classDiagram, sequenceDiagram,
-    stateDiagram (stateDiagram-v2 too) or erDiagram, and with typed (import --typed) "flowchart" for a flowchart or a
+    stateDiagram (stateDiagram-v2 too), erDiagram or mindmap, and with typed (import --typed) "flowchart" for a flowchart or a
     graph; else None: this file reads Mermaid's flowcharts and C4 diagrams, as maps."""
     directive = False  # a %%{ ... }%% directive may run over several lines
     for s in (l.strip() for l in front(text)[1].splitlines()):

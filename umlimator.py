@@ -833,7 +833,7 @@ def cmd_import(a):
     elif what:  # the module's reader, in Node (risks.md R7)
         name, fn = {"classDiagram": ("mermaid-class.js", "readMermaidClass"), "sequenceDiagram": ("mermaid-sequence.js", "readMermaidSequence"),
                     "stateDiagram": ("mermaid-state.js", "readMermaidState"), "erDiagram": ("mermaid-er.js", "readMermaidEr"),
-                    "flowchart": ("mermaid-flowchart.js", "readMermaidFlowchart"), "structurizr-json": ("structurizr.js", "readStructurizr"),
+                    "flowchart": ("mermaid-flowchart.js", "readMermaidFlowchart"), "mindmap": ("mermaid-mindmap.js", "readMermaidMindmap"), "structurizr-json": ("structurizr.js", "readStructurizr"),
                     "dbml": ("dbml.js", "readDbml")}[kind or fmt]
         size = Path(a.file).stat().st_size
         if fmt in imp.NODE_FORMATS and size > imp.LIMIT:  # hostile input (milestone-2.md §8): before Node or @dbml/core parses it
