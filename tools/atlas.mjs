@@ -109,10 +109,14 @@ export function build(links = read(new URL('atlas-links.json', import.meta.url))
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const arg = k => { const i = process.argv.indexOf(k); return i > 0 ? process.argv[i + 1] : null; };
-  const out = arg('--out') || 'examples/bookshop-atlas.json', links = arg('--links');
+  const arg = k => { const i = process.argv.indexOf(k), v = i > 0 ? process.argv[i + 1] : null; return v && !v.startsWith('--') ? v : null; };
+  const out = arg('--out'), links = arg('--links');
+  // another atlas needs its own path, so it never falls back to the Bookshop's
+  if ((links || process.argv.includes('--links') || process.argv.includes('--out')) && !(links && out)) {
+    console.error('usage: node tools/atlas.mjs [--links <file> --out <file>]'); process.exit(2);
+  }
   const { shared, text } = build(links ? read(links) : undefined);
-  writeFileSync(arg('--out') || new URL('bookshop-atlas.json', EX), text);
-  console.log(`${out} written; ${shared.length} elements shared by several files, each written once:`);
+  writeFileSync(out || new URL('bookshop-atlas.json', EX), text);
+  console.log(`${out || 'examples/bookshop-atlas.json'} written; ${shared.length} elements shared by several files, each written once:`);
   for (const { id, files } of shared) console.log(`  ${id}: ${files.join(', ')}`);
 }

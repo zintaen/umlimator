@@ -78,7 +78,7 @@
   {
    "id": "ec-big",
    "type": "sysml.Block",
-   "label": "Forty rows",
+   "label": "Forty rows of every kind",
    "members": [
     {
      "id": "ec-big.v0",
@@ -337,67 +337,69 @@
      }
     },
     {
-     "id": "ec-big.v32",
-     "type": "sysml.ValueProperty",
-     "label": "value32",
+     "id": "ec-big.part",
+     "type": "sysml.PartProperty",
+     "label": "part",
      "props": {
-      "valueType": "Real"
+      "valueType": "Part",
+      "multiplicity": "1"
      }
     },
     {
-     "id": "ec-big.v33",
-     "type": "sysml.ValueProperty",
-     "label": "value33",
+     "id": "ec-big.ref",
+     "type": "sysml.ReferenceProperty",
+     "label": "ref",
      "props": {
-      "valueType": "Real"
+      "valueType": "Part",
+      "multiplicity": "0..1"
      }
     },
     {
-     "id": "ec-big.v34",
+     "id": "ec-big.mass",
      "type": "sysml.ValueProperty",
-     "label": "value34",
+     "label": "mass",
      "props": {
-      "valueType": "Real"
+      "valueType": "Mass"
      }
     },
     {
-     "id": "ec-big.v35",
-     "type": "sysml.ValueProperty",
-     "label": "value35",
+     "id": "ec-big.eq",
+     "type": "sysml.ConstraintProperty",
+     "label": "eq",
      "props": {
-      "valueType": "Real"
+      "valueType": "Balance"
      }
     },
     {
-     "id": "ec-big.v36",
-     "type": "sysml.ValueProperty",
-     "label": "value36",
+     "id": "ec-big.start",
+     "type": "uml.Operation",
+     "label": "start"
+    },
+    {
+     "id": "ec-big.proxy",
+     "type": "sysml.Port",
+     "label": "proxy",
      "props": {
-      "valueType": "Real"
+      "kind": "proxy",
+      "valueType": "Signals"
      }
     },
     {
-     "id": "ec-big.v37",
-     "type": "sysml.ValueProperty",
-     "label": "value37",
+     "id": "ec-big.full",
+     "type": "sysml.Port",
+     "label": "full",
      "props": {
-      "valueType": "Real"
+      "kind": "full",
+      "valueType": "Part"
      }
     },
     {
-     "id": "ec-big.v38",
-     "type": "sysml.ValueProperty",
-     "label": "value38",
+     "id": "ec-big.conj",
+     "type": "sysml.Port",
+     "label": "conj",
      "props": {
-      "valueType": "Real"
-     }
-    },
-    {
-     "id": "ec-big.v39",
-     "type": "sysml.ValueProperty",
-     "label": "value39",
-     "props": {
-      "valueType": "Real"
+      "kind": "proxy",
+      "valueType": "~Signals"
      }
     }
    ]

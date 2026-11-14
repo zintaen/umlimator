@@ -23,6 +23,7 @@ import '../src/sysml/blocks.js';
 import '../src/sysml/internal.js';
 import '../src/sysml/parametric.js';
 import { diagramOf } from '../src/core/registry.js';
+import { SYS_AS_UML } from '../src/sysml/sysml.js';
 
 const read = f => JSON.parse(readFileSync(new URL(`./${f}.json`, import.meta.url), 'utf8'));
 const TYPES = ['requirement', 'block-definition', 'internal-block', 'parametric'];
@@ -137,7 +138,7 @@ test('block-definition-stress.json, edge-cases: each case of §15.3, and what th
   assert.deepEqual(comps('ec-mass'), ['quantity'], 'a value type with its unit and quantity kind');
   assert.deepEqual(b('ec-signals').members.map(x => x.props.direction), ['in', 'out', 'inout'], 'flow properties of each direction');
   assert.deepEqual(b('ec-all').members.filter(x => x.type === 'sysml.Port').map(x => [x.props.kind, x.props.valueType]), [['proxy', 'Signals'], ['full', 'Part'], ['proxy', '~Signals']], 'proxy, full and conjugated ports');
-  assert.equal(b('ec-big').members.length, 40, 'a block of 40 rows');
+  assert.equal(b('ec-big').members.length, 40); assert.deepEqual(comps('ec-big'), comps('ec-all'), 'a block with all of them and 40 rows');
   assert.deepEqual(g.families.filter(f => f.id !== 'edge-cases->frame').map(f => [f.id, f.nodeIds]), [['ec-pkg', ['ec-in-pkg-a', 'ec-in-pkg-b']]], 'a package holding blocks, a box in the frame');
 });
 
@@ -155,6 +156,9 @@ test('internal-block-stress.json, edge-cases: each case of §15.3, and what the 
   assert.ok(g.byId['ec-sys.mass'], 'a value property');
   assert.deepEqual(['ec-sys.src->ec-source.out', 'ec-sys.src->ec-source.back', 'ec-sys.sink->ec-sink.in'].map(id => g.byId[id].nameBox.text),
     ['«proxy» out : PowerIf', '«full» back : Sink', '«proxy» in : ~PowerIf'], 'proxy, full and conjugated ports');
+  assert.deepEqual(['ec-sys.src->ec-source.out', 'ec-sys.src->ec-source.back', 'ec-sys.sink->ec-sink.in', 'ec-sys.src->ec-source.both'].map(id => g.byId[id].flow),
+    ['out', undefined, 'in', 'inout'], 'with flow arrows: out, none on the full port (typed by a block), in (~ turns it round), both');
+  assert.equal((diagramOf({ diagram: 'sysml.internal-block' }).draw(g).over.match(/class="ib-flow"/g) || []).length, g.nodes.filter(n => n.flow).length, 'an arrow drawn for each port with a flow');
   assert.equal(m.edges.filter(x => x.from === 'ec-source.both').length, 2, 'two connectors on one port');
   assert.equal(g.byId['ec-sys.plug'].owner, 'ec-sys', 'the frame\'s port, a delegation\'s end');
   assert.deepEqual(g.nodes.filter(n => n.id.startsWith('ec-sys.loose->')).map(n => n.id), ['ec-sys.loose->ec-source.out'], 'a part typed by no block shows the port its connector reaches');
@@ -210,11 +214,16 @@ test('§14\'s budgets on each stress view all: a full layout and its SVG under 1
   quiet(() => { for (const t of TYPES) {
     const M = FIX[`${t}-stress`], memos = {}, draw = m => mapContext(m, { memos }).buildView('all').markup;
     draw(M); Object.values(EDITS[t]).forEach(f => draw(apply(M, f(20, M)))); // the warm-up
-    const runs = [0, 1, 2, 3, 4, 5, 6].map(k => ({ full: timed(() => mapContext(M).buildView('all').markup),
-      ...Object.fromEntries(Object.entries(EDITS[t]).map(([n, f]) => { const e = apply(M, f(k, M)); return [n, timed(() => draw(e))]; })) }));
+    // each edit's commands (the type's own ranking among them) and apply() inside its time, as §14 says
+    const runs = [0, 1, 2, 3, 4, 5, 6].map(k => { const was = memos.all.runs;
+      const r = { full: timed(() => mapContext(M).buildView('all').markup),
+        ...Object.fromEntries(Object.entries(EDITS[t]).map(([n, f]) => [n, timed(() => draw(apply(M, f(k, M))))])) };
+      assert.equal(memos.all.runs, was + Object.keys(EDITS[t]).length, `${t}: each edit lays the view out again`);
+      if (t === 'internal-block') r.projection = timed(() => SYS_AS_UML(M, V(M, 'all')));
+      return r; });
     const best = k => Math.min(...runs.map(r => r[k]));
     for (const k of Object.keys(runs[0])) assert.ok(best(k) < 1000, `${t} ${k} ${best(k)} ms`);
-    out.push(`${t}: ${Object.keys(EDITS[t]).map(k => `${k} ${best(k).toFixed(1)} ms`).join(', ')}, full layout and SVG ${best('full').toFixed(1)} ms`);
+    out.push(`${t}: ${Object.keys(EDITS[t]).map(k => `${k} ${best(k).toFixed(1)} ms`).join(', ')}, full layout and SVG ${best('full').toFixed(1)} ms${runs[0].projection === undefined ? '' : `, the projection ${best('projection').toFixed(2)} ms`}`);
   } });
   console.log(`# P1 target 100 ms (milestone 3's fixtures): ${out.join('; ')}`);
 });
@@ -228,8 +237,10 @@ test('DoD 1: the registry holds the four types, and the JSON Schema and the type
     assert.equal(D && D.name, name);
     assert.ok(S.view.properties.diagram.examples.includes(name) && dts.includes(`'${name}'`), `the schema's view.diagram and the types name ${name}`);
     for (const x of [...D.elements, ...D.lines].map(x => x.type).filter(x => x !== 'containment')) assert.ok(schema.includes(`"${x}"`) && dts.includes(`'${x}'`), `${name}: ${x}`);
+    // each field under its own element's props: a line's on the edge, a member's on the member, else the node's
+    const lineTypes = new Set(D.lines.map(x => x.type)), at = ty => lineTypes.has(ty) ? ep : /Property|Port|Parameter|Operation/.test(ty) ? mp : np;
     for (const [ty, fields] of Object.entries(D.props || {})) for (const f of fields) { const k = (f.key || f.path.join('.')).split('.');
-      assert.ok(np[k.at(-1)] || mp[k.at(-1)] || ep[k.at(-1)] || ep[k[0]], `${name}: ${ty}'s ${k.join('.')} in the schema`); }
+      assert.ok(at(ty)[k[0]], `${name}: ${ty}'s ${k.join('.')} in the schema`); }
   }
   assert.ok(['SysmlElementType', 'SysmlRequirementProps', 'SysmlPortProps', 'SysmlItemFlow'].every(k => new RegExp(`export (type|interface) ${k} `).test(dts)));
   assert.match(np.risk.description, /low.*medium.*high/i);

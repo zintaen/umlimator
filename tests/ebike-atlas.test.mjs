@@ -37,6 +37,11 @@ test('the committed e-bike atlas is what tools/atlas.mjs --links tools/ebike-lin
   const dir = mkdtempSync(join(tmpdir(), 'ebike-')), out = join(dir, 'atlas.json'), root = new URL('..', import.meta.url).pathname;
   const said = execFileSync(process.execPath, ['tools/atlas.mjs', '--links', 'tools/ebike-links.json', '--out', out], { cwd: root, encoding: 'utf8' });
   assert.equal(readFileSync(out, 'utf8'), text); assert.match(said, /written; 46 elements shared by several files/);
+  // --links with no --out (or a flag with no value) is refused, and the Bookshop's atlas is left alone
+  const bookshop = readFileSync(new URL('../examples/bookshop-atlas.json', import.meta.url), 'utf8');
+  for (const a of [['--links', 'tools/ebike-links.json'], ['--links', 'tools/ebike-links.json', '--out'], ['--out', out]])
+    assert.throws(() => execFileSync(process.execPath, ['tools/atlas.mjs', ...a], { cwd: root, stdio: 'pipe' }), /usage/, a.join(' '));
+  assert.equal(readFileSync(new URL('../examples/bookshop-atlas.json', import.meta.url), 'utf8'), bookshop);
   // the Bookshop's, with no flag, as before (tests/atlas.test.mjs holds it)
   assert.deepEqual(build().model.title, 'Bookshop atlas');
   // shared by id: the blocks the requirements name, EBike and its members, the blocks inside it, and the range equation
