@@ -149,16 +149,17 @@ function ifConnect(model, view, from, to, at, line) {
 function ifRename(model, view, id, text) {
   const I = ifIndex(model), e = I.E.find(x => x.id === id); if (!e || e.type !== 'uml.InformationFlow') return null;
   const t = String(text ?? '').replace(/^\s*«flow»\s*/, ''), can = ifConveyable(I), at = new Map();
-  // names, then ids, looked up in one map (the first element wins: what the flow conveys now, so an unchanged name keeps its
-  // element, then as before); a run is never longer than the most commas a name holds
+  // names, then ids, looked up in one map, each to its elements in order (what the flow conveys now first, so an unchanged
+  // name keeps its element, then as before; a name two elements share, each in turn: audit 6); a run is never longer than the
+  // most commas a name holds
   const by = [...I.conveyed(e).map(x => I.at.get(x)).filter(Boolean), ...can];
-  [...by.map(n => [ifName(n).trim(), n]), ...by.map(n => [n.id, n])].forEach(([k, n]) => at.has(k) || at.set(k, n));
+  [...by.map(n => [ifName(n).trim(), n]), ...by.map(n => [n.id, n])].forEach(([k, n]) => { const c = at.get(k) || at.set(k, []).get(k); c.includes(n) || c.push(n); });
   const find = s => at.get(s), most = Math.max(0, ...[...at.keys()].map(k => k.split(',').length));
   // a list read entry by entry, each the longest run of comma-separated parts that names an element
   const list = s => { const p = s.split(','), ids = []; let i = 0;
     while (i < p.length) { if (!p[i].trim()) { i++; continue; }
       let j = Math.min(p.length, i + most), x; while (j > i && !(x = find(p.slice(i, j).join(',').trim()))) j--;
-      if (!x) return { error: `No information item or classifier is named ${p[i].trim()}` }; ids.push(x.id); i = j; }
+      if (!x) return { error: `No information item or classifier is named ${p[i].trim()}` }; ids.push((x.find(n => !ids.includes(n.id)) || x[0]).id); i = j; }
     return ids.length ? { ids: [...new Set(ids)] } : { error: 'A flow conveys one element at least' }; };
   const reads = [-1, ...[...t].flatMap((ch, k) => (ch === ':' ? [k] : []))].map(k => ({ name: k < 0 ? '' : t.slice(0, k).trim(), ...list(k < 0 ? t : t.slice(k + 1)) }));
   const same = r => r.ids && r.name === (e.label ?? '') && JSON.stringify(r.ids) === JSON.stringify(I.conveyed(e));

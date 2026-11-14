@@ -414,3 +414,14 @@ test("two named connectors from one port of the subject: both names are placed, 
   assert.deepEqual(layout(m, 'v').edges.filter(e => e.label).map(e => [e.id, e.lbl && e.lbl.text]), [['c1', 'orders'], ['c2', 'refunds']]);
   assert.deepEqual(check(m, 'v'), []);
 });
+
+test('audit 6: a listed connector between two types\' ports that names no part is reported, not dropped silently', () => {
+  const pt = (id, label) => ({ id, type: 'uml.Port', label });
+  const m = { schemaVersion: 2, nodes: [{ id: 'S', type: 'uml.Class', label: 'Svc', members: [pt('S.api', 'api'), { id: 'S.p0', type: 'uml.Property', label: 'p0', props: { valueType: 'T0' } }, { id: 'S.p1', type: 'uml.Property', label: 'p1', props: { valueType: 'T1' } }] },
+    { id: 'T0', type: 'uml.Class', label: 'T0', members: [pt('T0.in', 'in')] }, { id: 'T1', type: 'uml.Class', label: 'T1', members: [pt('T1.in', 'in')] }],
+  edges: [{ id: 'bare', type: 'uml.Connector', from: 'T0.in', to: 'T1.in' }, { id: 'unlisted', type: 'uml.Connector', from: 'T1.in', to: 'T0.in' }],
+  views: [{ id: 'v', diagram: 'uml.composite-structure', subject: 'S', nodeIds: ['S'], edges: ['bare'] }] };
+  assert.ok(!layout(m, 'v').edges.some(e => e.id === 'bare'));
+  const p = validate(m).filter(x => x.rule === 'connector-part');
+  assert.deepEqual(p.map(x => [x.level, x.path, x.ids]), [['warning', 'edges[0].props.ends.from.part', ['bare', 'T0.in']]], 'the unlisted one may belong to another view');
+});

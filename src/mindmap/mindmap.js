@@ -39,11 +39,14 @@ function mmIndex(model, V) {
   const kids = new Map(ids.map(id => [id, []])), roots = [];
   ids.forEach(id => { const u = up(id); if (u == null) roots.push(id); else kids.get(u).push(id); });
   const depth = new Map(), tree = new Map(), trees = [];
-  const reach = (root, k) => { for (const s = [root]; s.length;) { const id = s.pop(); tree.set(id, k); trees[k].list.push(id);
-    kids.get(id).forEach(c => { if (!tree.has(c)) { depth.set(c, depth.get(id) + 1); s.push(c); } }); } };
+  const from = new Map(), reach = (root, k) => { for (const s = [root]; s.length;) { const id = s.pop(); tree.set(id, k); trees[k].list.push(id);
+    kids.get(id).forEach(c => { if (!tree.has(c)) { depth.set(c, depth.get(id) + 1); from.set(c, id); s.push(c); } }); } };
   roots.forEach(r => { depth.set(r, 0); trees.push({ root: r, list: [] }); reach(r, trees.length - 1); });
   const lost = ids.filter(id => !tree.has(id)), hung = new Map(); // a cycle of shown topics: one tree, from the first, layoutTree hanging the rest from it; each depth and parent as drawn
-  if (lost.length) { trees.push({ root: lost[0], list: [] }); lost.forEach(id => { if (!tree.has(id)) { depth.set(id, id === lost[0] ? 0 : 1); hung.set(id, id === lost[0] ? null : lost[0]); reach(id, trees.length - 1); } }); }
+  if (lost.length) { trees.push({ root: lost[0], list: [] }); lost.forEach(id => { if (!tree.has(id)) { depth.set(id, id === lost[0] ? 0 : 1); hung.set(id, id === lost[0] ? null : lost[0]); reach(id, trees.length - 1); } });
+    // up and kids then follow that tree as drawn, so no shown topic is its own ancestor and every walk of them ends (audit 6)
+    trees.at(-1).list.forEach(id => A.set(id, hung.has(id) ? hung.get(id) : from.get(id))); kids.forEach(l => { l.length = 0; });
+    ids.forEach(id => { const u = up(id); if (u != null) kids.get(u).push(id); }); }
   trees.forEach(t => t.list.sort((a, b) => pos.get(a) - pos.get(b))); // children in nodeIds order
   const side = id => (MM_OBJ(P[id]) && (P[id].side === 'left' || P[id].side === 'right') ? P[id].side : null);
   return { N, topic, pos, ids, shown, up, kids, roots, trees, depth, hung, P, side, parentOf };

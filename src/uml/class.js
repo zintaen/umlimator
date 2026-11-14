@@ -83,7 +83,7 @@ function parseMember(text, kind) {
   if (props.isAbstract) return fail('a property is not {abstract}');
   if (s[0] === ':') { // the type: up to a multiplicity or a default outside brackets
     let i = 1, depth = 0;
-    for (; i < s.length; i++) { const c = s[i]; if (c === '<' || c === '(') depth++; else if (c === '>' || c === ')') depth--; else if (depth === 0 && c === '=') break;
+    for (; i < s.length; i++) { const c = s[i]; if ((c === '=' || c === '-') && s[i + 1] === '>') i++; else if (c === '<' || c === '(') depth++; else if (c === '>' || c === ')') depth = Math.max(0, depth - 1); else if (depth === 0 && c === '=') break;
       else if (depth === 0 && c === '[') { let j = i, d = 0; for (; j < s.length; j++) { if (s[j] === '[') d++; else if (s[j] === ']' && !--d) break; }
         const after = s.slice(j + 1).trim(); if (j >= s.length || (multBounds(s.slice(i + 1, j)) && (!after || after[0] === '='))) break; i = j; } } // String[], list[str]: a bracket that is not a closing multiplicity is the type's, as the Mermaid reader's mcMult
     const t = s.slice(1, i).trim(); if (!t) return fail('a type follows the colon');
@@ -252,7 +252,7 @@ function lineName(e, at, pic) {
    holds is among them: it is drawn by none (holdsLine), and rule line-inside warns of it */
 function drawnLines(model, view, own) {
   const at = classIndex(model), pic = ownersOn(model, view), shown = new Set(pic.ids), top = id => { const r = at.get(id); return r && r.owner ? top(r.owner.id) : id; };
-  const list = Array.isArray(view.edges) ? view.edges : UML_ARR(model.edges).filter(e => !own || (UML_OBJ(e) && own.includes(e.type)));
+  const list = Array.isArray(view.edges) ? [...new Set(view.edges.map(e => (typeof e === 'string' ? (at.get(e) || {}).x : e)))] : UML_ARR(model.edges).filter(e => !own || (UML_OBJ(e) && own.includes(e.type)));
   const lines = list.map(e => (typeof e === 'string' ? (at.get(e) || {}).x : e)).filter(e => UML_OBJ(e) && typeof e.id === 'string')
     .map(e => ({ e, from: top(e.from), to: top(e.to) })).filter(({ from, to }) => shown.has(from) && shown.has(to));
   return { at, pic, lines };
@@ -363,8 +363,9 @@ const describeAs = look => (model, viewId) => {
         said.push(`${verb} ${nm(far === 'to' ? t : f)}${end(e, far)}${UML_HAS(e.label) ? ` ("${e.label}")` : ''}`); }
       else if (f !== id) return;
       else { const verb = { 'uml.Generalization': 'a kind of', 'uml.InterfaceRealization': 'realizes', 'uml.Dependency': 'depends on', 'uml.PackageMerge': 'merges', 'uml.ProfileApplication': 'applies', 'uml.CommentLink': 'about',
-        'uml.PackageImport': keyword(e) === '«access»' ? 'accesses' : 'imports' }[e.type]; // and the stereotypes and label the line draws (audit 5)
-        if (verb) said.push(`${verb} ${nm(t)}${stereoText(e) ? ' ' + stereoText(e) : ''}${UML_HAS(e.label) ? ` ("${e.label}")` : ''}`); } });
+        'uml.Usage': 'uses', 'uml.Realization': 'realizes', 'uml.Abstraction': 'abstracts', 'uml.Extension': 'extends',
+        'uml.PackageImport': keyword(e) === '«access»' ? 'accesses' : 'imports' }[e.type] || 'linked to'; // and the stereotypes and label the line draws (audit 5); any other kind it draws too (audit 6)
+        said.push(`${verb} ${nm(t)}${stereoText(e) ? ' ' + stereoText(e) : ''}${UML_HAS(e.label) ? ` ("${e.label}")` : ''}`); } });
     out.push(nodeName(at.get(id).x, pic, look) + (said.length ? '; ' + said.join('; ') : '') + '.'); });
   return out.join('\n');
 };

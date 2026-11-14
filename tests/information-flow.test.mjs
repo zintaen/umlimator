@@ -338,3 +338,22 @@ test('F2 that leaves a flow\'s conveyed names as they are keeps what it conveys,
   assert.deepEqual(r('submit: Order'), [{ op: 'set', id: 'f', path: 'label', value: 'submit' }]);
   assert.deepEqual(r('submit: order-item'), [{ op: 'set', id: 'f', path: 'props.conveyed', value: ['order-item'] }, { op: 'set', id: 'f', path: 'label', value: 'submit' }], 'by id, the item');
 });
+
+test('audit 6: F2 on a flow conveying two elements of one name keeps both', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'shop', type: 'uml.Class', label: 'Shop' }, { id: 'store', type: 'uml.Class', label: 'Store' },
+    { id: 'sales-order', type: 'uml.InformationItem', label: 'Order' }, { id: 'ship-order', type: 'uml.InformationItem', label: 'Order' }],
+  edges: [{ id: 'f', type: 'uml.InformationFlow', from: 'shop', to: 'store', label: 'send', props: { conveyed: ['sales-order', 'ship-order'] } }],
+  views: [{ id: 'v', diagram: 'uml.information-flow', nodeIds: ['shop', 'store', 'sales-order', 'ship-order'] }] };
+  const drawn = layout(m, 'v').edges.find(e => e.id === 'f').label;
+  assert.deepEqual(T.edits.rename(m, m.views[0], 'f', drawn), []);
+  assert.deepEqual(T.edits.rename(m, m.views[0], 'f', drawn.replace('send', 'post')), [{ op: 'set', id: 'f', path: 'label', value: 'post' }]);
+});
+
+test('audit 6: a component id holding $\' or $& is drawn as written', () => {
+  for (const id of ["cost$'s-api", 'a$&b']) {
+    const m = { schemaVersion: 2, nodes: [{ id, type: 'uml.Component', label: 'Costs API' }, { id: 'b', type: 'uml.Class', label: 'B' }, { id: 'i', type: 'uml.InformationItem', label: 'Invoice' }],
+      edges: [{ id: 'f', type: 'uml.InformationFlow', from: id, to: 'b', props: { conveyed: ['i'] } }], views: [{ id: 'v', diagram: 'uml.information-flow', nodeIds: [id, 'b'] }] };
+    const s = svgOf(layout(m, 'v'));
+    assert.ok(s.includes(`data-o="${id.replace('&', '&amp;').replace("'", '&#39;')}"`), id); assert.ok(!/="[^"]*</.test(s), id + ': no < inside an attribute');
+  }
+});

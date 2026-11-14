@@ -476,7 +476,7 @@ hidden: Delete deletes it, and the hint line says so first.
 | move a change in time | drag it along its lane | `Alt + ←/→`: one minor tick | `set` of its `at`; refused onto another change's instant (`change-instant`) |
 | a change's state | | `Alt + ↑/↓` on a states-form change: the state above or below (from the extra row of an unlisted state, ↑ goes to the last listed one) | `set` of its `state` |
 | move a message in time | drag it | `Alt + ←/→`: both times by one minor tick | `set` of `sentAt` and `receivedAt`; Alt + ↑/↓ on a message does nothing |
-| reorder lifelines | | `Alt + ↑/↓` on a lifeline | `set` of `nodeIds` |
+| reorder lifelines | | `Alt + ↑/↓` on a lifeline | `move` on `nodeIds` |
 | a value lifeline | | `S` on a lifeline | `set` of `present.<id>.as` to `values`, or removed |
 | rename | double-click once selected | `F2`: a change `state` or `state @ t`; a message `label`, `label @ t` or `label @ t1 → t2` (`->` too); a constraint its label; a lifeline `name` or `name : Type`; a state's row its name (rewriting `states` and every change of that lifeline in it); the ruler the view's unit (empty removes it) | `set`; a text whose part after its last `@` is not one or two decimal numbers is all text; a message's ends and a constraint's are not re-attached (delete and connect again, as the hint line says) |
 | hide a lifeline | Remove from view | `Delete` | `hide`: its changes and constraints stay in the timeline, not drawn; its messages go with it (the view's own lines), counted on the hint line first |

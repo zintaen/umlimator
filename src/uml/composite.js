@@ -104,7 +104,7 @@ function csPic(model, view) {
     return ids.includes(x) || partOf.has(x) ? { node: x, id: x } : null; };
   const within = (b, n) => b === sid ? n !== sid && (partOf.get(n) === S || uses.includes(n)) : collabs.some(c => c.x.id === b && partOf.get(n) === c.x);
   const E = new Map(); CS_ARR(model && model.edges).forEach(e => { if (CS_OBJ(e) && typeof e.id === 'string' && !E.has(e.id)) E.set(e.id, e); });
-  const list = Array.isArray(view && view.edges) ? view.edges.map(x => (typeof x === 'string' ? E.get(x) : x)) : [...E.values()].filter(e => CS_LINES.includes(e.type));
+  const list = Array.isArray(view && view.edges) ? [...new Set(view.edges.map(x => (typeof x === 'string' ? E.get(x) : x)))] : [...E.values()].filter(e => CS_LINES.includes(e.type));
   const loops = []; // connectors between two ports of one box: not drawn (the router has no line from a box to itself), warned
   const lines = list.filter(CS_OBJ).map(e => { const f = end(e, 'from'), t = end(e, 'to'); if (!f || !t) return null;
     if (boxed.has(f.node) && f.node === t.node) { loops.push(e.id); return null; }
@@ -270,7 +270,11 @@ function csProblems(model, view) {
   CS_ARR(model.edges).forEach((e, i) => { if (!CS_OBJ(e)) return; const ends = CS_OBJ(CS_PROPS(e).ends) ? CS_PROPS(e).ends : {}, path = `edges[${i}]`;
     if (e.type === 'uml.Connector') {
       const parts = ['from', 'to'].map(k => (CS_OBJ(ends[k]) ? ends[k].part : null)), touches = ['from', 'to'].some((k, j) => structOf(e[k], parts[j]) || P.collabs.some(c => owner(e[k]) === c.x) || (parts[j] != null && owner(parts[j]) === S));
-      if (!touches) return;
+      // a connector the view lists between ports of types, no part named: in no structure of the view, not drawn (audit 6)
+      if (!touches) { const k = ['from', 'to'].find((k, j) => parts[j] == null && ((P.mem.get(e[k]) || {}).m || {}).type === 'uml.Port');
+        if (k && CS_ARR(view.edges).some(x => x === e.id || x === e)) say('warning', 'connector-part', `${path}.props.ends.${k}.part`, [e.id, e[k]],
+          `${e.id}'s ${k} end goes to port ${q(e[k])} of ${q(owner(e[k]).id)} without naming the part it goes through (props.ends.${k}.part), so it is not drawn`);
+        return; }
       ['from', 'to'].forEach((k, j) => { const p = parts[j]; if (p == null) return;
         if (!S || owner(p) !== S || P.mem.get(p).m.type !== 'uml.Property') return say('error', 'connector-part', `${path}.props.ends.${k}.part`, [e.id, p], `${e.id}'s ${k} end goes through ${q(p)}, not a part of the subject`);
         const T = P.typeOf(P.mem.get(p).m); if (T && !P.kids(T, 'uml.Port').some(m => m.id === e[k])) say('error', 'connector-part', `${path}.${k}`, [e.id, e[k], p], `${e.id}'s ${k} end ${q(e[k])} is not a port of ${q(T.id)}, the type of ${q(p)}`); });
