@@ -5,7 +5,7 @@
      with a synthetic icons table (S18: a coloured square and a white circle, no vendor icon): every node drawn, no two
      topics or cards meeting, every text inside its shape, no branch curve through a topic (sampled every 4 px), every
      element inside its group, every vendor <image> with meet and nothing that crops, filters, masks, fades or transforms it,
-     Google's legal line inside the picture under a Google icon only, every node named, texts at 4.5:1 and outlines, curves
+     Google's legal line inside the picture under a Google icon only (AWS's under an AWS icon, 4a.8), every node named, texts at 4.5:1 and outlines, curves
      and glyphs at 3:1. Then the Bookshop atlas: the opening plan's Hosting topics open the Google Cloud and Azure views.
      tests/m4a-fixtures.test.mjs lays the same views out in Node. -->
 <meta charset="utf-8">
@@ -20,7 +20,7 @@ import { layout } from '../src/map/api.js';
 import '../src/map/typed.js';
 import '../src/typed/edit.js';
 import '../src/mindmap/mindmap.js';
-import { GCP_LEGAL } from '../src/cloud/cloud.js';
+import { GCP_LEGAL, AWS_LEGAL } from '../src/cloud/cloud.js';
 const out = { ok: [], fail: [] };
 const check = (name, cond, info) => { document.title = name; if (cond) out.ok.push(name); else out.fail.push(name + (info === undefined ? '' : ': ' + JSON.stringify(info))); };
 const el = document.getElementById('m');
@@ -76,11 +76,11 @@ try {
           const imgs = all('.node image'), touched = imgs.flatMap(i => untouched(i).map(x => `${i.closest('.node').dataset.id}: ${x}`));
           check(`${tag}: ${imgs.length} vendor <image>s from data URLs, with meet, never clipped, filtered, masked, faded or transformed; ${all('.edge-g').length} lines drawn`,
             !touched.length && imgs.every(i => /^data:image\//.test(i.getAttribute('href'))) && all('.edge-g').length === g.edges.length, touched.slice(0, 6));
-          const legal = pick('text.cl-legal'), google = v.diagram === 'gcp' && imgs.length > 0;
+          const legal = pick('text.cl-legal'), LEG = { gcp: GCP_LEGAL, aws: AWS_LEGAL }[v.diagram], google = LEG && imgs.length > 0; // AWS's trademark line since 4a.8
           if (google) { const L = box(legal), vb = svg.viewBox.baseVal;
-            check(`${tag}: Google's legal line inside the picture, under it`, legal.textContent === GCP_LEGAL && L.x >= vb.x && L.y >= vb.y && L.x + L.w <= vb.x + vb.width && L.y + L.h <= vb.y + vb.height
+            check(`${tag}: the vendor's legal line inside the picture, under it`, legal.textContent === LEG && L.x >= vb.x && L.y >= vb.y && L.x + L.w <= vb.x + vb.width && L.y + L.h <= vb.y + vb.height
               && list.every(([, b]) => b.y + b.h < L.y), [L, [vb.x, vb.y, vb.width, vb.height]]); }
-          else check(`${tag}: no Google icon drawn, no legal line`, !legal);
+          else check(`${tag}: no Google or AWS icon drawn, no legal line`, !legal);
         }
         const unnamed = nodes.filter(x => !(x.getAttribute('aria-label') || '').trim()).map(x => x.dataset.id);
         const bg = css(pick('.stage'), 'backgroundColor'), low = [];
