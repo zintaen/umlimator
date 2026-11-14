@@ -19,6 +19,7 @@ const geometryKey = dg => JSON.stringify([VIEW_GEO.map(k => dg[k]), (dg.nodes ||
 const SIDE_T = { L: 'T', T: 'L', R: 'B', B: 'R' }, swapXY = p => [p[1], p[0]];
 const flipBox = r => { if (r) [r.x, r.y, r.w, r.h] = [r.y, r.x, r.h, r.w]; };
 function transpose(g) {
+  g.down = true; // the canvas's drops and Alt + arrows read its columns down
   [...g.nodes, ...(g.families || []), ...new Set(g.edges.flatMap(e => [e.s, e.t]).filter(n => n && n.box)), g.bounds].forEach(flipBox); // a line's end on a box too
   (g.groups || []).forEach(r => { [r.x, r.y, r.x2, r.y2] = [r.y, r.x, r.y2, r.x2]; });
   g.edges.forEach(e => { e.pts = e.pts.map(swapXY); if (e.fixed) e.fixed = e.pts; e.p1 = swapXY(e.p1); e.p2 = swapXY(e.p2);

@@ -3,6 +3,8 @@ import { hit } from './layered.js';
 
 // an issue's message, and what it is about (the cards, lines and boxes it names) when the caller keeps a list of that: check()
 // turns those into Refs; the page's check reads only the messages
+// a card or box as the map names it, and a line by its ends
+const nm = x => x.label || x.id, name = e => `${nm(e.s)}→${nm(e.t)}`;
 const teller = (issues, refs) => (message, ...about) => { issues.push(message); if (refs) refs.push(about); };
 // a label's box L across one of box f's borders
 const onBorder = (L, f) => { const xin = L.x + L.w > f.x && L.x < f.x + f.w, yin = L.y + L.h > f.y && L.y < f.y + f.h;
@@ -20,7 +22,6 @@ function routeAudit(geo, where, only, refs) { // only: a set of edges; counts ju
   const issues = [], say = teller(issues, refs);
   // routes: no crossings, no shared runs, no label lying across another route
   const segs = geo.edges.map(e => e.pts.slice(0, -1).map((a, i) => [a, e.pts[i + 1]]));
-  const name = e => `${e.s.label}→${e.t.label}`;
   const crossing = ([a, b], [c, d]) => {
     const av = a[0] === b[0], cv = c[0] === d[0];
     if (av === cv) { // parallel: overlapping collinear run = shared trunk
@@ -49,9 +50,9 @@ function routeAudit(geo, where, only, refs) { // only: a set of edges; counts ju
     geo.edges.forEach((e, i) => {
       // clearance: a route keeps 12+ px from every node it does not connect
       geo.nodes.forEach(n => { if (n.id === e.from || n.id === e.to) return;
-        if (segHit({ x: n.x - ex + .5, y: n.y - ex + .5, w: n.w + 2 * ex - 1, h: n.h + 2 * ex - 1 }, i)) say(`${where}: edge ${name(e)} passes within ${ex}px of node "${n.label}"`, e, n); });
+        if (segHit({ x: n.x - ex + .5, y: n.y - ex + .5, w: n.w + 2 * ex - 1, h: n.h + 2 * ex - 1 }, i)) say(`${where}: edge ${name(e)} passes within ${ex}px of node "${nm(n)}"`, e, n); });
       const dt = detour(e.pts); if (dt) say(`${where}: edge ${name(e)} takes a detour (${Math.round(dt[0])}px for ${Math.round(dt[1])}px)`, e);
-      const r = roundEnd(e); if (r) say(`${where}: edge ${name(e)} runs round its own end "${r[0].label}"`, e, r[0].box ? (geo.families || []).find(f => f.id === r[0].id) : r[0]);
+      const r = roundEnd(e); if (r) say(`${where}: edge ${name(e)} runs round its own end "${nm(r[0])}"`, e, r[0].box ? (geo.families || []).find(f => f.id === r[0].id) : r[0]);
       // reading order: every wire runs left to right, except one that closes a loop or answers its pair (keepPairs)
       if (!e.back && !e.both && !drawn.has(e.to + '>' + e.from) && e.t.x + e.t.w / 2 <= e.s.x + e.s.w / 2) say(`${where}: edge ${name(e)} runs right-to-left`, e);
     });
@@ -68,23 +69,23 @@ function routeAudit(geo, where, only, refs) { // only: a set of edges; counts ju
   lanes.forEach((l, i) => {
     lanes.slice(i + 1).forEach(m => { if (hit(l, m, -1)) say(`${where}: lanes "${l.title}" and "${m.title}" overlap`); });
     (geo.nodes || []).forEach(n => {
-      if (n.lane === i && (n.x < l.x || n.x + n.w > l.x + l.w || n.y < l.y || n.y + n.h + (n.tag ? 14 : 0) > l.y + l.h)) say(`${where}: lane "${l.title}": node "${n.label}" sticks out`, n);
-      if (n.lane != null && n.lane !== i && hit(n, l, -1)) say(`${where}: lane "${l.title}": node "${n.label}" of another lane sits in it`, n);
-      if (n.lane == null && hit(n, l, -1)) say(`${where}: lane "${l.title}": node "${n.label}" belongs to no lane but sits in it`, n);
+      if (n.lane === i && (n.x < l.x || n.x + n.w > l.x + l.w || n.y < l.y || n.y + n.h + (n.tag ? 14 : 0) > l.y + l.h)) say(`${where}: lane "${l.title}": node "${nm(n)}" sticks out`, n);
+      if (n.lane != null && n.lane !== i && hit(n, l, -1)) say(`${where}: lane "${l.title}": node "${nm(n)}" of another lane sits in it`, n);
+      if (n.lane == null && hit(n, l, -1)) say(`${where}: lane "${l.title}": node "${nm(n)}" belongs to no lane but sits in it`, n);
     });
   });
   (geo.blocks || []).forEach(b => geo.edges.forEach((o, j) => { if (segHit({ x: b.x + 1, y: b.y + 1, w: b.w - 2, h: b.h - 2 }, j)) say(`${where}: lane "${b.title || ''}": header crossed by edge ${name(o)}`, o); }));
   const families = geo.families || [], inside = (a,b) => b.x > a.x && b.y > a.y && b.x+b.w < a.x+a.w && b.y+b.h < a.y+a.h;
   families.forEach(f => {
     const parent = families.find(p => p.id === f.parent);
-    if (f.parent && (!parent || !inside(parent,f))) say(`${where}: family "${f.label}" sticks out of its parent`, f);
-    (f.nodeIds || []).forEach(id => { const n = geo.byId[id]; if (n && !inside(f,n)) say(`${where}: family "${f.label}" does not contain "${n.label}"`, f, n); });
-    families.filter(g => g !== f && g.parent === f.parent && g.id > f.id).forEach(g => { if (hit(f,g,-1)) say(`${where}: families "${f.label}" and "${g.label}" overlap`, f, g); });
-    geo.edges.forEach((e,i) => { if (segHit({x:f.x+8,y:f.y+3,w:Math.min(f.w-16,textW(f.label || f.id,11)+16),h:22+(!geo.map&&f.head||0)},i)) say(`${where}: family "${f.label}": header crossed by edge ${name(e)}`, f, e); });
+    if (f.parent && (!parent || !inside(parent,f))) say(`${where}: family "${nm(f)}" sticks out of its parent`, f);
+    (f.nodeIds || []).forEach(id => { const n = geo.byId[id]; if (n && !inside(f,n)) say(`${where}: family "${nm(f)}" does not contain "${nm(n)}"`, f, n); });
+    families.filter(g => g !== f && g.parent === f.parent && g.id > f.id).forEach(g => { if (hit(f,g,-1)) say(`${where}: families "${nm(f)}" and "${nm(g)}" overlap`, f, g); });
+    geo.edges.forEach((e,i) => { if (segHit({x:f.x+8,y:f.y+3,w:Math.min(f.w-16,textW(f.label || f.id,11)+16),h:22+(!geo.map&&f.head||0)},i)) say(`${where}: family "${nm(f)}": header crossed by edge ${name(e)}`, f, e); });
     geo.edges.forEach((e,i) => { if (segs[i].some(([a,b]) => { const v = a[0] === b[0], c = v ? a[0] : a[1], p = v ? [a[1], b[1]] : [a[0], b[0]];
       const lo = Math.max(Math.min(...p), v ? f.y : f.x), hi = Math.min(Math.max(...p), v ? f.y + f.h : f.x + f.w);
-      return hi - lo > 40 && (v ? [f.x, f.x + f.w] : [f.y, f.y + f.h]).some(u => Math.abs(c - u) < 8); })) say(`${where}: edge ${name(e)} runs along the border of family "${f.label}"`, e, f); });
-    geo.edges.forEach(e => { const L = e.lbl; if (L && onBorder(L, f)) say(`${where}: label "${L.text || L.step}" sits on the border of family "${f.label}"`, e, f); });
+      return hi - lo > 40 && (v ? [f.x, f.x + f.w] : [f.y, f.y + f.h]).some(u => Math.abs(c - u) < 8); })) say(`${where}: edge ${name(e)} runs along the border of family "${nm(f)}"`, e, f); });
+    geo.edges.forEach(e => { const L = e.lbl; if (L && onBorder(L, f)) say(`${where}: label "${L.text || L.step}" sits on the border of family "${nm(f)}"`, e, f); });
   });
   return issues;
 }
@@ -96,13 +97,13 @@ function overlapIssues(geo, where, refs) {
   const issues = [], nodes = geo.nodes, say = teller(issues, refs);
   const inside = (a, b) => a.x >= b.x - 1 && a.y >= b.y - 1 && a.x + a.w <= b.x + b.w + 1 && a.y + a.h <= b.y + b.h + 1;
   const holds = (a, b) => (a.holder && inside(b, a)) || (b.holder && inside(a, b)) || !geo.map && ((a.owner || 0) === b.id || (b.owner || 0) === a.id); // a holder (a sequence's frame) may hold what it meets, not cross it; a port its owner
-  for (let i = 0; i < nodes.length; i++) for (let j = i + 1; j < nodes.length; j++) if (hit(box(nodes[i]), box(nodes[j]), -1) && !holds(nodes[i], nodes[j])) say(`${where}: nodes "${nodes[i].label}" and "${nodes[j].label}" overlap`, nodes[i], nodes[j]);
+  for (let i = 0; i < nodes.length; i++) for (let j = i + 1; j < nodes.length; j++) if (hit(box(nodes[i]), box(nodes[j]), -1) && !holds(nodes[i], nodes[j])) say(`${where}: nodes "${nm(nodes[i])}" and "${nm(nodes[j])}" overlap`, nodes[i], nodes[j]);
   return issues;
 }
 function leaveIssues(geo, where, refs) {
   const issues = [], say = teller(issues, refs);
   // a numbered line's label with no room on it: only its step shows, its words in the line's title and the details only
-  if (geo.map) geo.edges.forEach(e => { if (e.label && e.lbl && e.lbl.short) say(`${where}: label "${e.label}" has no room on edge ${e.s.label}→${e.t.label}: only its step ${e.lbl.step} shows`, e); });
+  if (geo.map) geo.edges.forEach(e => { if (e.label && e.lbl && e.lbl.short) say(`${where}: label "${e.label}" has no room on edge ${name(e)}: only its step ${e.lbl.step} shows`, e); });
   if (geo.map) geo.edges.forEach(e => { const L = e.lbl; if (!L || (!e.label && L.step == null) || !e.pts) return; // a label, or a step's mark, must leave some of its own line visible
     const c = [L.x + L.w / 2, L.y + L.h / 2], P = e.pts; let s = 0, at = null, half = 0, tot = 0;
     for (let i = 0; i + 1 < P.length; i++) { const a = P[i], b = P[i + 1], len = Math.abs(b[0] - a[0]) + Math.abs(b[1] - a[1]);
@@ -111,7 +112,7 @@ function leaveIssues(geo, where, refs) {
         if (onH || onV) { at = tot + Math.abs(c[0] - a[0]) + Math.abs(c[1] - a[1]); half = onH ? L.w / 2 : L.h / 2; } }
       tot += len; }
     if (at == null) return; const room = Math.min(at - half, tot - at - half);
-    if (room < 16) say(`${where}: label "${e.label || L.step}" leaves its line ${Math.max(0, Math.round(room))} px (${e.s.label}→${e.t.label})`, e); });
+    if (room < 16) say(`${where}: label "${e.label || L.step}" leaves its line ${Math.max(0, Math.round(room))} px (${name(e)})`, e); });
   return issues;
 }
 
@@ -122,21 +123,21 @@ function auditSvg(svg, geo, where) {
   const nodes = geo.nodes.filter(n => !n.holder), faces = Object.fromEntries([...svg.querySelectorAll('.node[data-face]')].map(g => [g.dataset.id, g.dataset.face.split(' ').map(Number)])); // a shape's face (0.15.0)
   T.forEach(a => {
     if (a.t === 'lt' || a.t === 'ft') {
-      nodes.forEach(n => { if (hit(a.b, R(n), -1)) issues.push(`${where}: lane "${a.txt}": header covers node "${n.label}"`); });
+      nodes.forEach(n => { if (hit(a.b, R(n), -1)) issues.push(`${where}: lane "${a.txt}": header covers node "${nm(n)}"`); });
       if (a.t === 'ft') { const f = (geo.families || []).find(f => f.id === a.o); if (f && (a.b.x < f.x || a.b.x+a.b.w > f.x+f.w)) issues.push(`${where}: family title "${a.txt}" overflows its box`); }
     } else if (a.t === 'el') {
-      nodes.forEach(n => { if (hit(a.b, R(n), -1)) issues.push(`${where}: edge label "${a.txt}" covers node "${n.label}"`); });
+      nodes.forEach(n => { if (hit(a.b, R(n), -1)) issues.push(`${where}: edge label "${a.txt}" covers node "${nm(n)}"`); });
     } else {
       const own = geo.byId[a.o];
-      if (own && (a.b.x < own.x + 1 || a.b.x + a.b.w > own.x + own.w - 1)) issues.push(`${where}: text "${a.txt}" overflows node "${own.label}"`);
+      if (own && (a.b.x < own.x + 1 || a.b.x + a.b.w > own.x + own.w - 1)) issues.push(`${where}: text "${a.txt}" overflows node "${nm(own)}"`);
       const face = own && faces[own.id], fy = face ? (face[0] + face[1]) / 2 : own && own.y + own.h / 2; // a shape's mark and text keep to its face
-      if (own && geo.map && (a.t === 'nl' || a.t === 'ns') && hit(a.b, { x: own.x + 11, y: fy - 17, w: 34, h: 34 }, 2)) issues.push(`${where}: text "${a.txt}" touches the mark on node "${own.label}"`);
-      if (face && (a.b.y < face[0] - 1 || a.b.y + a.b.h > face[1] + 1)) issues.push(`${where}: text "${a.txt}" overflows the shape of node "${own.label}"`);
-      nodes.forEach(n => { if (n !== own && hit(a.b, R(n), -1)) issues.push(`${where}: text "${a.txt}" overlaps node "${n.label}"`); });
+      if (own && geo.map && (a.t === 'nl' || a.t === 'ns') && hit(a.b, { x: own.x + 11, y: fy - 17, w: 34, h: 34 }, 2)) issues.push(`${where}: text "${a.txt}" touches the mark on node "${nm(own)}"`);
+      if (face && (a.b.y < face[0] - 1 || a.b.y + a.b.h > face[1] + 1)) issues.push(`${where}: text "${a.txt}" overflows the shape of node "${nm(own)}"`);
+      nodes.forEach(n => { if (n !== own && hit(a.b, R(n), -1)) issues.push(`${where}: text "${a.txt}" overlaps node "${nm(n)}"`); });
     }
   });
   svg.querySelectorAll('rect.verb-chip').forEach(r => { const own = geo.byId[r.closest('[data-id]').dataset.id], x = +r.getAttribute('x'); // a chip's pill, not only its text (#84)
-    if (own && (x < own.x + 1 || x + +r.getAttribute('width') > own.x + own.w - 1)) issues.push(`${where}: chip "${r.nextElementSibling.textContent}" overflows node "${own.label}"`); });
+    if (own && (x < own.x + 1 || x + +r.getAttribute('width') > own.x + own.w - 1)) issues.push(`${where}: chip "${r.nextElementSibling.textContent}" overflows node "${nm(own)}"`); });
   issues.push(...routeAudit(geo, where), ...leaveIssues(geo, where));
   const els = T.filter(a => a.t === 'el');
   for (let i = 0; i < els.length; i++) for (let j = i + 1; j < els.length; j++) if (hit(els[i].b, els[j].b, -1)) issues.push(`${where}: edge labels "${els[i].txt}" and "${els[j].txt}" overlap`);
