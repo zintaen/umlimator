@@ -206,7 +206,7 @@ def fetch(pack, accept=None):
         print(f"the {row['vendor']} pack {row['label']} is fetched already: {folder(pack, row)}")
         return
     prior = accepted(pack, row)
-    via = prior and prior["via"]
+    via = prior and prior.get("via")
     if not prior:
         terms(pack, row)
         if accept is not None:
