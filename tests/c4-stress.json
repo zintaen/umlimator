@@ -1,0 +1,1833 @@
+{
+ "schemaVersion": 2,
+ "title": "C4, stress",
+ "nodes": [
+  {
+   "id": "ec-user",
+   "type": "c4.Person",
+   "label": "User",
+   "props": {
+    "description": "A description of three hundred characters, written out to test how a C4 element holds a long text: it says what the element does, who uses it, what it keeps, what it sends on and to whom, and how often; then it says it again in other words, so that it runs to the full length the fixture asks for. Do"
+   }
+  },
+  {
+   "id": "ec-admin",
+   "type": "c4.Person",
+   "label": "Admin",
+   "props": {
+    "description": "Admin, described."
+   }
+  },
+  {
+   "id": "ec-sys",
+   "type": "c4.SoftwareSystem",
+   "label": "Shop",
+   "props": {
+    "description": "A description of three hundred characters, written out to test how a C4 element holds a long text: it says what the element does, who uses it, what it keeps, what it sends on and to whom, and how often; then it says it again in other words, so that it runs to the full length the fixture asks for. Do"
+   }
+  },
+  {
+   "id": "ec-other",
+   "type": "c4.SoftwareSystem",
+   "label": "Partner",
+   "props": {
+    "description": "Partner, described.",
+    "external": true
+   }
+  },
+  {
+   "id": "ec-mail",
+   "type": "c4.SoftwareSystem",
+   "label": "Mailer",
+   "props": {
+    "description": "Mailer, described.",
+    "external": true
+   }
+  },
+  {
+   "id": "ec-c0",
+   "type": "c4.Container",
+   "label": "Container person",
+   "parent": "ec-sys",
+   "props": {
+    "description": "Container person, described.",
+    "technology": "Tech",
+    "shape": "person"
+   }
+  },
+  {
+   "id": "ec-c1",
+   "type": "c4.Container",
+   "label": "Container robot",
+   "parent": "ec-sys",
+   "props": {
+    "description": "Container robot, described.",
+    "technology": "Tech",
+    "shape": "robot"
+   }
+  },
+  {
+   "id": "ec-c2",
+   "type": "c4.Container",
+   "label": "Container browser",
+   "parent": "ec-sys",
+   "props": {
+    "description": "Container browser, described.",
+    "technology": "Tech",
+    "shape": "browser"
+   }
+  },
+  {
+   "id": "ec-c3",
+   "type": "c4.Container",
+   "label": "Container window",
+   "parent": "ec-sys",
+   "props": {
+    "description": "Container window, described.",
+    "technology": "Tech",
+    "shape": "window"
+   }
+  },
+  {
+   "id": "ec-c4",
+   "type": "c4.Container",
+   "label": "Container terminal",
+   "parent": "ec-sys",
+   "props": {
+    "description": "Container terminal, described.",
+    "technology": "Tech",
+    "shape": "terminal"
+   }
+  },
+  {
+   "id": "ec-c5",
+   "type": "c4.Container",
+   "label": "Container mobile",
+   "parent": "ec-sys",
+   "props": {
+    "description": "Container mobile, described.",
+    "technology": "Tech",
+    "shape": "mobile"
+   }
+  },
+  {
+   "id": "ec-c6",
+   "type": "c4.Container",
+   "label": "Container cylinder",
+   "parent": "ec-sys",
+   "props": {
+    "description": "Container cylinder, described.",
+    "technology": "Tech",
+    "shape": "cylinder"
+   }
+  },
+  {
+   "id": "ec-c7",
+   "type": "c4.Container",
+   "label": "Container pipe",
+   "parent": "ec-sys",
+   "props": {
+    "description": "Container pipe, described.",
+    "technology": "Tech",
+    "shape": "pipe"
+   }
+  },
+  {
+   "id": "ec-c8",
+   "type": "c4.Container",
+   "label": "Container folder",
+   "parent": "ec-sys",
+   "props": {
+    "description": "Container folder, described.",
+    "technology": "Tech",
+    "shape": "folder"
+   }
+  },
+  {
+   "id": "ec-c9",
+   "type": "c4.Container",
+   "label": "Container document",
+   "parent": "ec-sys",
+   "props": {
+    "description": "Container document, described.",
+    "technology": "Tech",
+    "shape": "document"
+   }
+  },
+  {
+   "id": "ec-c10",
+   "type": "c4.Container",
+   "label": "Container hexagon",
+   "parent": "ec-sys",
+   "props": {
+    "description": "Container hexagon, described.",
+    "technology": "Tech",
+    "shape": "hexagon"
+   }
+  },
+  {
+   "id": "ec-c11",
+   "type": "c4.Container",
+   "label": "Container box",
+   "parent": "ec-sys",
+   "props": {
+    "description": "Container box, described.",
+    "technology": "Tech",
+    "shape": "box"
+   }
+  },
+  {
+   "id": "ec-k1",
+   "type": "c4.Component",
+   "label": "Router",
+   "parent": "ec-c3",
+   "props": {
+    "description": "Router, described.",
+    "technology": "Router"
+   }
+  },
+  {
+   "id": "ec-k2",
+   "type": "c4.Component",
+   "label": "Store",
+   "parent": "ec-c3",
+   "props": {
+    "description": "Store, described.",
+    "technology": "ORM"
+   }
+  },
+  {
+   "id": "ec-k3",
+   "type": "c4.Component",
+   "label": "Elsewhere",
+   "parent": "ec-c4",
+   "props": {
+    "description": "Elsewhere, described.",
+    "technology": "Lib"
+   }
+  },
+  {
+   "id": "ec-d1",
+   "type": "c4.DeploymentNode",
+   "label": "Level 1",
+   "props": {
+    "description": "Level 1, described.",
+    "technology": "Node 1"
+   }
+  },
+  {
+   "id": "ec-d2",
+   "type": "c4.DeploymentNode",
+   "label": "Level 2",
+   "parent": "ec-d1",
+   "props": {
+    "description": "Level 2, described.",
+    "technology": "Node 2"
+   }
+  },
+  {
+   "id": "ec-d3",
+   "type": "c4.DeploymentNode",
+   "label": "Level 3",
+   "parent": "ec-d2",
+   "props": {
+    "description": "Level 3, described.",
+    "technology": "Node 3"
+   }
+  },
+  {
+   "id": "ec-d4",
+   "type": "c4.DeploymentNode",
+   "label": "Level 4",
+   "parent": "ec-d3",
+   "props": {
+    "description": "Level 4, described.",
+    "technology": "Node 4"
+   }
+  },
+  {
+   "id": "ec-d5",
+   "type": "c4.DeploymentNode",
+   "label": "Level 5",
+   "parent": "ec-d4",
+   "props": {
+    "description": "Level 5, described.",
+    "technology": "Node 5"
+   }
+  },
+  {
+   "id": "ec-i3",
+   "type": "c4.ContainerInstance",
+   "label": "Container window",
+   "parent": "ec-d5",
+   "props": {
+    "container": "ec-c3"
+   }
+  },
+  {
+   "id": "ec-i4",
+   "type": "c4.ContainerInstance",
+   "label": "Container terminal",
+   "parent": "ec-d3",
+   "props": {
+    "container": "ec-c4"
+   }
+  },
+  {
+   "id": "sys",
+   "type": "c4.SoftwareSystem",
+   "label": "Platform",
+   "props": {
+    "description": "Platform, described."
+   }
+  },
+  {
+   "id": "p0",
+   "type": "c4.Person",
+   "label": "Person 0",
+   "props": {
+    "description": "A user of kind 0 who signs in and works with the platform every day."
+   }
+  },
+  {
+   "id": "p1",
+   "type": "c4.Person",
+   "label": "Person 1",
+   "props": {
+    "description": "A user of kind 1 who signs in and works with the platform every day."
+   }
+  },
+  {
+   "id": "p2",
+   "type": "c4.Person",
+   "label": "Person 2",
+   "props": {
+    "description": "A user of kind 2 who signs in and works with the platform every day."
+   }
+  },
+  {
+   "id": "p3",
+   "type": "c4.Person",
+   "label": "Person 3",
+   "props": {
+    "description": "A user of kind 3 who signs in and works with the platform every day."
+   }
+  },
+  {
+   "id": "p4",
+   "type": "c4.Person",
+   "label": "Person 4",
+   "props": {
+    "description": "A user of kind 4 who signs in and works with the platform every day."
+   }
+  },
+  {
+   "id": "c0",
+   "type": "c4.Container",
+   "label": "Service 0",
+   "parent": "sys",
+   "props": {
+    "description": "Handles part 0 of the work: reads, writes and checks records ",
+    "technology": "PostgreSQL",
+    "shape": "cylinder"
+   }
+  },
+  {
+   "id": "c1",
+   "type": "c4.Container",
+   "label": "Service 1",
+   "parent": "sys",
+   "props": {
+    "description": "Handles part 1 of the work: reads, writes and checks records reads, writes and checks records ",
+    "technology": "Go",
+    "shape": "box"
+   }
+  },
+  {
+   "id": "c2",
+   "type": "c4.Container",
+   "label": "Service 2",
+   "parent": "sys",
+   "props": {
+    "description": "Handles part 2 of the work: reads, writes and checks records reads, writes and checks records reads, writes and checks records ",
+    "technology": "Go",
+    "shape": "box"
+   }
+  },
+  {
+   "id": "c3",
+   "type": "c4.Container",
+   "label": "Service 3",
+   "parent": "sys",
+   "props": {
+    "description": "Handles part 3 of the work: reads, writes and checks records ",
+    "technology": "PostgreSQL",
+    "shape": "cylinder"
+   }
+  },
+  {
+   "id": "c4",
+   "type": "c4.Container",
+   "label": "Service 4",
+   "parent": "sys",
+   "props": {
+    "description": "Handles part 4 of the work: reads, writes and checks records reads, writes and checks records ",
+    "technology": "Go",
+    "shape": "box"
+   }
+  },
+  {
+   "id": "c5",
+   "type": "c4.Container",
+   "label": "Service 5",
+   "parent": "sys",
+   "props": {
+    "description": "Handles part 5 of the work: reads, writes and checks records reads, writes and checks records reads, writes and checks records ",
+    "technology": "Go",
+    "shape": "box"
+   }
+  },
+  {
+   "id": "c6",
+   "type": "c4.Container",
+   "label": "Service 6",
+   "parent": "sys",
+   "props": {
+    "description": "Handles part 6 of the work: reads, writes and checks records ",
+    "technology": "PostgreSQL",
+    "shape": "cylinder"
+   }
+  },
+  {
+   "id": "c7",
+   "type": "c4.Container",
+   "label": "Service 7",
+   "parent": "sys",
+   "props": {
+    "description": "Handles part 7 of the work: reads, writes and checks records reads, writes and checks records ",
+    "technology": "Go",
+    "shape": "box"
+   }
+  },
+  {
+   "id": "c8",
+   "type": "c4.Container",
+   "label": "Service 8",
+   "parent": "sys",
+   "props": {
+    "description": "Handles part 8 of the work: reads, writes and checks records reads, writes and checks records reads, writes and checks records ",
+    "technology": "Go",
+    "shape": "box"
+   }
+  },
+  {
+   "id": "c9",
+   "type": "c4.Container",
+   "label": "Service 9",
+   "parent": "sys",
+   "props": {
+    "description": "Handles part 9 of the work: reads, writes and checks records ",
+    "technology": "PostgreSQL",
+    "shape": "cylinder"
+   }
+  },
+  {
+   "id": "c10",
+   "type": "c4.Container",
+   "label": "Service 10",
+   "parent": "sys",
+   "props": {
+    "description": "Handles part 10 of the work: reads, writes and checks records reads, writes and checks records ",
+    "technology": "Go",
+    "shape": "box"
+   }
+  },
+  {
+   "id": "c11",
+   "type": "c4.Container",
+   "label": "Service 11",
+   "parent": "sys",
+   "props": {
+    "description": "Handles part 11 of the work: reads, writes and checks records reads, writes and checks records reads, writes and checks records ",
+    "technology": "Go",
+    "shape": "box"
+   }
+  },
+  {
+   "id": "c12",
+   "type": "c4.Container",
+   "label": "Service 12",
+   "parent": "sys",
+   "props": {
+    "description": "Handles part 12 of the work: reads, writes and checks records ",
+    "technology": "PostgreSQL",
+    "shape": "cylinder"
+   }
+  },
+  {
+   "id": "c13",
+   "type": "c4.Container",
+   "label": "Service 13",
+   "parent": "sys",
+   "props": {
+    "description": "Handles part 13 of the work: reads, writes and checks records reads, writes and checks records ",
+    "technology": "Go",
+    "shape": "box"
+   }
+  },
+  {
+   "id": "c14",
+   "type": "c4.Container",
+   "label": "Service 14",
+   "parent": "sys",
+   "props": {
+    "description": "Handles part 14 of the work: reads, writes and checks records reads, writes and checks records reads, writes and checks records ",
+    "technology": "Go",
+    "shape": "box"
+   }
+  },
+  {
+   "id": "c15",
+   "type": "c4.Container",
+   "label": "Service 15",
+   "parent": "sys",
+   "props": {
+    "description": "Handles part 15 of the work: reads, writes and checks records ",
+    "technology": "PostgreSQL",
+    "shape": "cylinder"
+   }
+  },
+  {
+   "id": "c16",
+   "type": "c4.Container",
+   "label": "Service 16",
+   "parent": "sys",
+   "props": {
+    "description": "Handles part 16 of the work: reads, writes and checks records reads, writes and checks records ",
+    "technology": "Go",
+    "shape": "box"
+   }
+  },
+  {
+   "id": "c17",
+   "type": "c4.Container",
+   "label": "Service 17",
+   "parent": "sys",
+   "props": {
+    "description": "Handles part 17 of the work: reads, writes and checks records reads, writes and checks records reads, writes and checks records ",
+    "technology": "Go",
+    "shape": "box"
+   }
+  },
+  {
+   "id": "c18",
+   "type": "c4.Container",
+   "label": "Service 18",
+   "parent": "sys",
+   "props": {
+    "description": "Handles part 18 of the work: reads, writes and checks records ",
+    "technology": "PostgreSQL",
+    "shape": "cylinder"
+   }
+  },
+  {
+   "id": "c19",
+   "type": "c4.Container",
+   "label": "Service 19",
+   "parent": "sys",
+   "props": {
+    "description": "Handles part 19 of the work: reads, writes and checks records reads, writes and checks records ",
+    "technology": "Go",
+    "shape": "box"
+   }
+  },
+  {
+   "id": "c20",
+   "type": "c4.Container",
+   "label": "Service 20",
+   "parent": "sys",
+   "props": {
+    "description": "Handles part 20 of the work: reads, writes and checks records reads, writes and checks records reads, writes and checks records ",
+    "technology": "Go",
+    "shape": "box"
+   }
+  },
+  {
+   "id": "c21",
+   "type": "c4.Container",
+   "label": "Service 21",
+   "parent": "sys",
+   "props": {
+    "description": "Handles part 21 of the work: reads, writes and checks records ",
+    "technology": "PostgreSQL",
+    "shape": "cylinder"
+   }
+  },
+  {
+   "id": "c22",
+   "type": "c4.Container",
+   "label": "Service 22",
+   "parent": "sys",
+   "props": {
+    "description": "Handles part 22 of the work: reads, writes and checks records reads, writes and checks records ",
+    "technology": "Go",
+    "shape": "box"
+   }
+  },
+  {
+   "id": "c23",
+   "type": "c4.Container",
+   "label": "Service 23",
+   "parent": "sys",
+   "props": {
+    "description": "Handles part 23 of the work: reads, writes and checks records reads, writes and checks records reads, writes and checks records ",
+    "technology": "Go",
+    "shape": "box"
+   }
+  },
+  {
+   "id": "c24",
+   "type": "c4.Container",
+   "label": "Service 24",
+   "parent": "sys",
+   "props": {
+    "description": "Handles part 24 of the work: reads, writes and checks records ",
+    "technology": "PostgreSQL",
+    "shape": "cylinder"
+   }
+  },
+  {
+   "id": "c25",
+   "type": "c4.Container",
+   "label": "Service 25",
+   "parent": "sys",
+   "props": {
+    "description": "Handles part 25 of the work: reads, writes and checks records reads, writes and checks records ",
+    "technology": "Go",
+    "shape": "box"
+   }
+  },
+  {
+   "id": "c26",
+   "type": "c4.Container",
+   "label": "Service 26",
+   "parent": "sys",
+   "props": {
+    "description": "Handles part 26 of the work: reads, writes and checks records reads, writes and checks records reads, writes and checks records ",
+    "technology": "Go",
+    "shape": "box"
+   }
+  },
+  {
+   "id": "c27",
+   "type": "c4.Container",
+   "label": "Service 27",
+   "parent": "sys",
+   "props": {
+    "description": "Handles part 27 of the work: reads, writes and checks records ",
+    "technology": "PostgreSQL",
+    "shape": "cylinder"
+   }
+  },
+  {
+   "id": "c28",
+   "type": "c4.Container",
+   "label": "Service 28",
+   "parent": "sys",
+   "props": {
+    "description": "Handles part 28 of the work: reads, writes and checks records reads, writes and checks records ",
+    "technology": "Go",
+    "shape": "box"
+   }
+  },
+  {
+   "id": "c29",
+   "type": "c4.Container",
+   "label": "Service 29",
+   "parent": "sys",
+   "props": {
+    "description": "Handles part 29 of the work: reads, writes and checks records reads, writes and checks records reads, writes and checks records ",
+    "technology": "Go",
+    "shape": "box"
+   }
+  },
+  {
+   "id": "x0",
+   "type": "c4.SoftwareSystem",
+   "label": "External 0",
+   "props": {
+    "description": "External 0, described.",
+    "external": true
+   }
+  },
+  {
+   "id": "x1",
+   "type": "c4.SoftwareSystem",
+   "label": "External 1",
+   "props": {
+    "description": "External 1, described.",
+    "external": true
+   }
+  },
+  {
+   "id": "x2",
+   "type": "c4.SoftwareSystem",
+   "label": "External 2",
+   "props": {
+    "description": "External 2, described.",
+    "external": true
+   }
+  },
+  {
+   "id": "x3",
+   "type": "c4.SoftwareSystem",
+   "label": "External 3",
+   "props": {
+    "description": "External 3, described.",
+    "external": true
+   }
+  },
+  {
+   "id": "x4",
+   "type": "c4.SoftwareSystem",
+   "label": "External 4",
+   "props": {
+    "description": "External 4, described.",
+    "external": true
+   }
+  },
+  {
+   "id": "x5",
+   "type": "c4.SoftwareSystem",
+   "label": "External 5",
+   "props": {
+    "description": "External 5, described.",
+    "external": true
+   }
+  },
+  {
+   "id": "x6",
+   "type": "c4.SoftwareSystem",
+   "label": "External 6",
+   "props": {
+    "description": "External 6, described.",
+    "external": true
+   }
+  },
+  {
+   "id": "x7",
+   "type": "c4.SoftwareSystem",
+   "label": "External 7",
+   "props": {
+    "description": "External 7, described.",
+    "external": true
+   }
+  },
+  {
+   "id": "x8",
+   "type": "c4.SoftwareSystem",
+   "label": "External 8",
+   "props": {
+    "description": "External 8, described.",
+    "external": true
+   }
+  },
+  {
+   "id": "x9",
+   "type": "c4.SoftwareSystem",
+   "label": "External 9",
+   "props": {
+    "description": "External 9, described.",
+    "external": true
+   }
+  },
+  {
+   "id": "x10",
+   "type": "c4.SoftwareSystem",
+   "label": "External 10",
+   "props": {
+    "description": "External 10, described.",
+    "external": true
+   }
+  },
+  {
+   "id": "x11",
+   "type": "c4.SoftwareSystem",
+   "label": "External 11",
+   "props": {
+    "description": "External 11, described.",
+    "external": true
+   }
+  },
+  {
+   "id": "x12",
+   "type": "c4.SoftwareSystem",
+   "label": "External 12",
+   "props": {
+    "description": "External 12, described.",
+    "external": true
+   }
+  },
+  {
+   "id": "x13",
+   "type": "c4.SoftwareSystem",
+   "label": "External 13",
+   "props": {
+    "description": "External 13, described.",
+    "external": true
+   }
+  }
+ ],
+ "edges": [
+  {
+   "id": "ec-uses",
+   "type": "c4.Relationship",
+   "from": "ec-user",
+   "to": "ec-c2",
+   "label": "Uses",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "ec-admin-uses",
+   "type": "c4.Relationship",
+   "from": "ec-admin",
+   "to": "ec-sys",
+   "label": "Runs"
+  },
+  {
+   "id": "ec-k1-other",
+   "type": "c4.Relationship",
+   "from": "ec-k1",
+   "to": "ec-other",
+   "label": "Calls",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "ec-k2-mail",
+   "type": "c4.Relationship",
+   "from": "ec-k2",
+   "to": "ec-mail",
+   "label": "Sends",
+   "props": {
+    "technology": "SMTP"
+   }
+  },
+  {
+   "id": "ec-sys-mail",
+   "type": "c4.Relationship",
+   "from": "ec-sys",
+   "to": "ec-mail",
+   "label": "Sends mail with",
+   "props": {
+    "technology": "SMTP"
+   }
+  },
+  {
+   "id": "ec-i3-i4",
+   "type": "c4.Relationship",
+   "from": "ec-i3",
+   "to": "ec-i4",
+   "label": "Calls",
+   "props": {
+    "technology": "gRPC"
+   }
+  },
+  {
+   "id": "ec-step0",
+   "type": "c4.Relationship",
+   "from": "ec-user",
+   "to": "ec-c0",
+   "label": "Step 1",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "ec-step1",
+   "type": "c4.Relationship",
+   "from": "ec-c0",
+   "to": "ec-c1",
+   "label": "Step 2",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "ec-step2",
+   "type": "c4.Relationship",
+   "from": "ec-c1",
+   "to": "ec-c2",
+   "label": "Step 3",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "ec-step3",
+   "type": "c4.Relationship",
+   "from": "ec-c2",
+   "to": "ec-c3",
+   "label": "Step 4",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "ec-step4",
+   "type": "c4.Relationship",
+   "from": "ec-c3",
+   "to": "ec-c4",
+   "label": "Step 5",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "ec-step5",
+   "type": "c4.Relationship",
+   "from": "ec-c4",
+   "to": "ec-c5",
+   "label": "Step 6",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "ec-step6",
+   "type": "c4.Relationship",
+   "from": "ec-c5",
+   "to": "ec-c6",
+   "label": "Step 7",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "ec-step7",
+   "type": "c4.Relationship",
+   "from": "ec-c6",
+   "to": "ec-c7",
+   "label": "Step 8",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "ec-step8",
+   "type": "c4.Relationship",
+   "from": "ec-c7",
+   "to": "ec-c8",
+   "label": "Step 9",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "ec-step9",
+   "type": "c4.Relationship",
+   "from": "ec-c8",
+   "to": "ec-c9",
+   "label": "Step 10",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "ec-step10",
+   "type": "c4.Relationship",
+   "from": "ec-c9",
+   "to": "ec-c10",
+   "label": "Step 11",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "ec-step11",
+   "type": "c4.Relationship",
+   "from": "ec-c10",
+   "to": "ec-c11",
+   "label": "Step 12",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "r0",
+   "type": "c4.Relationship",
+   "from": "p0",
+   "to": "c0",
+   "label": "Uses",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "r1",
+   "type": "c4.Relationship",
+   "from": "p1",
+   "to": "c6",
+   "label": "Uses",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "r2",
+   "type": "c4.Relationship",
+   "from": "p2",
+   "to": "c12",
+   "label": "Uses",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "r3",
+   "type": "c4.Relationship",
+   "from": "p3",
+   "to": "c18",
+   "label": "Uses",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "r4",
+   "type": "c4.Relationship",
+   "from": "p4",
+   "to": "c24",
+   "label": "Uses",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "r5",
+   "type": "c4.Relationship",
+   "from": "c0",
+   "to": "c1",
+   "label": "Calls",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "r6",
+   "type": "c4.Relationship",
+   "from": "c1",
+   "to": "c2",
+   "label": "Calls",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "r7",
+   "type": "c4.Relationship",
+   "from": "c2",
+   "to": "c3",
+   "label": "Calls",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "r8",
+   "type": "c4.Relationship",
+   "from": "c3",
+   "to": "c4",
+   "label": "Calls",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "r9",
+   "type": "c4.Relationship",
+   "from": "c4",
+   "to": "c5",
+   "label": "Calls",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "r10",
+   "type": "c4.Relationship",
+   "from": "c5",
+   "to": "c6",
+   "label": "Calls",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "r11",
+   "type": "c4.Relationship",
+   "from": "c6",
+   "to": "c7",
+   "label": "Calls",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "r12",
+   "type": "c4.Relationship",
+   "from": "c7",
+   "to": "c8",
+   "label": "Calls",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "r13",
+   "type": "c4.Relationship",
+   "from": "c8",
+   "to": "c9",
+   "label": "Calls",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "r14",
+   "type": "c4.Relationship",
+   "from": "c9",
+   "to": "c10",
+   "label": "Calls",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "r15",
+   "type": "c4.Relationship",
+   "from": "c10",
+   "to": "c11",
+   "label": "Calls",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "r16",
+   "type": "c4.Relationship",
+   "from": "c11",
+   "to": "c12",
+   "label": "Calls",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "r17",
+   "type": "c4.Relationship",
+   "from": "c12",
+   "to": "c13",
+   "label": "Calls",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "r18",
+   "type": "c4.Relationship",
+   "from": "c13",
+   "to": "c14",
+   "label": "Calls",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "r19",
+   "type": "c4.Relationship",
+   "from": "c14",
+   "to": "c15",
+   "label": "Calls",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "r20",
+   "type": "c4.Relationship",
+   "from": "c15",
+   "to": "c16",
+   "label": "Calls",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "r21",
+   "type": "c4.Relationship",
+   "from": "c16",
+   "to": "c17",
+   "label": "Calls",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "r22",
+   "type": "c4.Relationship",
+   "from": "c17",
+   "to": "c18",
+   "label": "Calls",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "r23",
+   "type": "c4.Relationship",
+   "from": "c18",
+   "to": "c19",
+   "label": "Calls",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "r24",
+   "type": "c4.Relationship",
+   "from": "c19",
+   "to": "c20",
+   "label": "Calls",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "r25",
+   "type": "c4.Relationship",
+   "from": "c20",
+   "to": "c21",
+   "label": "Calls",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "r26",
+   "type": "c4.Relationship",
+   "from": "c21",
+   "to": "c22",
+   "label": "Calls",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "r27",
+   "type": "c4.Relationship",
+   "from": "c22",
+   "to": "c23",
+   "label": "Calls",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "r28",
+   "type": "c4.Relationship",
+   "from": "c23",
+   "to": "c24",
+   "label": "Calls",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "r29",
+   "type": "c4.Relationship",
+   "from": "c24",
+   "to": "c25",
+   "label": "Calls",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "r30",
+   "type": "c4.Relationship",
+   "from": "c25",
+   "to": "c26",
+   "label": "Calls",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "r31",
+   "type": "c4.Relationship",
+   "from": "c26",
+   "to": "c27",
+   "label": "Calls",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "r32",
+   "type": "c4.Relationship",
+   "from": "c27",
+   "to": "c28",
+   "label": "Calls",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "r33",
+   "type": "c4.Relationship",
+   "from": "c28",
+   "to": "c29",
+   "label": "Calls",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "r34",
+   "type": "c4.Relationship",
+   "from": "c1",
+   "to": "x0",
+   "label": "Sends to",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "r35",
+   "type": "c4.Relationship",
+   "from": "c3",
+   "to": "x1",
+   "label": "Sends to",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "r36",
+   "type": "c4.Relationship",
+   "from": "c5",
+   "to": "x2",
+   "label": "Sends to",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "r37",
+   "type": "c4.Relationship",
+   "from": "c7",
+   "to": "x3",
+   "label": "Sends to",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "r38",
+   "type": "c4.Relationship",
+   "from": "c9",
+   "to": "x4",
+   "label": "Sends to",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "r39",
+   "type": "c4.Relationship",
+   "from": "c11",
+   "to": "x5",
+   "label": "Sends to",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "r40",
+   "type": "c4.Relationship",
+   "from": "c13",
+   "to": "x6",
+   "label": "Sends to",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "r41",
+   "type": "c4.Relationship",
+   "from": "c15",
+   "to": "x7",
+   "label": "Sends to",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "r42",
+   "type": "c4.Relationship",
+   "from": "c17",
+   "to": "x8",
+   "label": "Sends to",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "r43",
+   "type": "c4.Relationship",
+   "from": "c19",
+   "to": "x9",
+   "label": "Sends to",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "r44",
+   "type": "c4.Relationship",
+   "from": "c21",
+   "to": "x10",
+   "label": "Sends to",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "r45",
+   "type": "c4.Relationship",
+   "from": "c23",
+   "to": "x11",
+   "label": "Sends to",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "r46",
+   "type": "c4.Relationship",
+   "from": "c25",
+   "to": "x12",
+   "label": "Sends to",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "r47",
+   "type": "c4.Relationship",
+   "from": "c27",
+   "to": "x13",
+   "label": "Sends to",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "r48",
+   "type": "c4.Relationship",
+   "from": "c0",
+   "to": "c3",
+   "label": "Reads from",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "r49",
+   "type": "c4.Relationship",
+   "from": "c7",
+   "to": "c14",
+   "label": "Reads from",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "r50",
+   "type": "c4.Relationship",
+   "from": "c14",
+   "to": "c25",
+   "label": "Reads from",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "r51",
+   "type": "c4.Relationship",
+   "from": "c21",
+   "to": "c6",
+   "label": "Reads from",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "r52",
+   "type": "c4.Relationship",
+   "from": "c28",
+   "to": "c17",
+   "label": "Reads from",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "r53",
+   "type": "c4.Relationship",
+   "from": "c5",
+   "to": "c28",
+   "label": "Reads from",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "r54",
+   "type": "c4.Relationship",
+   "from": "c12",
+   "to": "c9",
+   "label": "Reads from",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "r55",
+   "type": "c4.Relationship",
+   "from": "c19",
+   "to": "c20",
+   "label": "Reads from",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "r56",
+   "type": "c4.Relationship",
+   "from": "c26",
+   "to": "c1",
+   "label": "Reads from",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "r57",
+   "type": "c4.Relationship",
+   "from": "c3",
+   "to": "c12",
+   "label": "Reads from",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "r58",
+   "type": "c4.Relationship",
+   "from": "c10",
+   "to": "c23",
+   "label": "Reads from",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "r59",
+   "type": "c4.Relationship",
+   "from": "c17",
+   "to": "c4",
+   "label": "Reads from",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "r60",
+   "type": "c4.Relationship",
+   "from": "c24",
+   "to": "c15",
+   "label": "Reads from",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "r61",
+   "type": "c4.Relationship",
+   "from": "c1",
+   "to": "c26",
+   "label": "Reads from",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "r62",
+   "type": "c4.Relationship",
+   "from": "c8",
+   "to": "c7",
+   "label": "Reads from",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "r63",
+   "type": "c4.Relationship",
+   "from": "c15",
+   "to": "c18",
+   "label": "Reads from",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "r64",
+   "type": "c4.Relationship",
+   "from": "c22",
+   "to": "c29",
+   "label": "Reads from",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "r65",
+   "type": "c4.Relationship",
+   "from": "c29",
+   "to": "c10",
+   "label": "Reads from",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "r66",
+   "type": "c4.Relationship",
+   "from": "c6",
+   "to": "c21",
+   "label": "Reads from",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "r67",
+   "type": "c4.Relationship",
+   "from": "c13",
+   "to": "c2",
+   "label": "Reads from",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "r68",
+   "type": "c4.Relationship",
+   "from": "c20",
+   "to": "c13",
+   "label": "Reads from",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "r69",
+   "type": "c4.Relationship",
+   "from": "c27",
+   "to": "c24",
+   "label": "Reads from",
+   "props": {
+    "technology": "HTTPS"
+   }
+  }
+ ],
+ "views": [
+  {
+   "id": "ec-landscape",
+   "diagram": "c4.landscape",
+   "title": "Landscape",
+   "nodeIds": [
+    "ec-user",
+    "ec-admin",
+    "ec-sys",
+    "ec-other",
+    "ec-mail"
+   ]
+  },
+  {
+   "id": "ec-context",
+   "diagram": "c4.context",
+   "title": "Context",
+   "subject": "ec-sys",
+   "nodeIds": [
+    "ec-user",
+    "ec-admin",
+    "ec-sys",
+    "ec-other",
+    "ec-mail"
+   ]
+  },
+  {
+   "id": "edge-cases",
+   "diagram": "c4.container",
+   "title": "Containers: every shape",
+   "subject": "ec-sys",
+   "nodeIds": [
+    "ec-sys",
+    "ec-user",
+    "ec-admin",
+    "ec-c0",
+    "ec-c1",
+    "ec-c2",
+    "ec-c3",
+    "ec-c4",
+    "ec-c5",
+    "ec-c6",
+    "ec-c7",
+    "ec-c8",
+    "ec-c9",
+    "ec-c10",
+    "ec-c11",
+    "ec-other",
+    "ec-mail",
+    "ec-k3"
+   ]
+  },
+  {
+   "id": "ec-component",
+   "diagram": "c4.component",
+   "title": "Components",
+   "subject": "ec-c3",
+   "nodeIds": [
+    "ec-c3",
+    "ec-k1",
+    "ec-k2",
+    "ec-other",
+    "ec-mail"
+   ]
+  },
+  {
+   "id": "ec-dynamic",
+   "diagram": "c4.dynamic",
+   "title": "Twelve steps",
+   "subject": "ec-sys",
+   "nodeIds": [
+    "ec-user",
+    "ec-c0",
+    "ec-c1",
+    "ec-c2",
+    "ec-c3",
+    "ec-c4",
+    "ec-c5",
+    "ec-c6",
+    "ec-c7",
+    "ec-c8",
+    "ec-c9",
+    "ec-c10",
+    "ec-c11"
+   ],
+   "edges": [
+    "ec-step0",
+    "ec-step1",
+    "ec-step2",
+    "ec-step3",
+    "ec-step4",
+    "ec-step5",
+    "ec-step6",
+    "ec-step7",
+    "ec-step8",
+    "ec-step9",
+    "ec-step10",
+    "ec-step11"
+   ]
+  },
+  {
+   "id": "ec-deployment",
+   "diagram": "c4.deployment",
+   "title": "Five deep",
+   "nodeIds": [
+    "ec-d1",
+    "ec-d2",
+    "ec-d3",
+    "ec-d4",
+    "ec-d5",
+    "ec-i3",
+    "ec-i4"
+   ]
+  },
+  {
+   "id": "all",
+   "diagram": "c4.container",
+   "title": "All",
+   "subject": "sys",
+   "nodeIds": [
+    "sys",
+    "p0",
+    "p1",
+    "p2",
+    "p3",
+    "p4",
+    "c0",
+    "c1",
+    "c2",
+    "c3",
+    "c4",
+    "c5",
+    "c6",
+    "c7",
+    "c8",
+    "c9",
+    "c10",
+    "c11",
+    "c12",
+    "c13",
+    "c14",
+    "c15",
+    "c16",
+    "c17",
+    "c18",
+    "c19",
+    "c20",
+    "c21",
+    "c22",
+    "c23",
+    "c24",
+    "c25",
+    "c26",
+    "c27",
+    "c28",
+    "c29",
+    "x0",
+    "x1",
+    "x2",
+    "x3",
+    "x4",
+    "x5",
+    "x6",
+    "x7",
+    "x8",
+    "x9",
+    "x10",
+    "x11",
+    "x12",
+    "x13"
+   ]
+  }
+ ]
+}

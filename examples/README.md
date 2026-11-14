@@ -44,6 +44,11 @@ Action on it in a pull request; the site shows its stills and its PDF.
 | [`bookshop-deployment.json`](bookshop-deployment.json) | UML deployment diagram (`uml.deployment`, 0.22.0) | The bookshop in production: devices, execution environments and nodes as cubes, nested two deep; artifacts deployed by nesting and one by a «deploy» line; a deployment specification and its dependency; manifestations of the components; communication paths with their protocols. What the deployment diagram covers: [`docs/conformance/uml-deployment.md`](../docs/conformance/uml-deployment.md) |
 | [`order-service-structure.json`](order-service-structure.json) | UML composite structure diagram (`uml.composite-structure`, 0.22.0) | Inside the order service: its ports on its border, four parts (one shared, dashed), the two whose classes the model holds showing their type's ports (`check` warns of the other two, `part-type`), connectors from the subject's ports in to a part's and out, an open collaboration as a dashed ellipse with its roles, and a collaboration use binding two parts to its roles. What the composite structure diagram covers: [`docs/conformance/uml-composite-structure.md`](../docs/conformance/uml-composite-structure.md) |
 | [`bookshop-profile.json`](bookshop-profile.json) | UML profile diagram (`uml.profile`, 0.23.0) | The bookshop's modelling conventions, laid out down: a profile holding two metaclasses and four stereotypes with their tag definitions, an extension marked `{required}` (every class of `sales` gets «owned»), a stereotype specializing another, tags of String and Boolean with a default; `sales` applies the profile by «apply», and Order shows a compartment of tags for each stereotype it has, its `placedAt` its «column» tags in braces. What the profile diagram covers: [`docs/conformance/uml-profile.md`](../docs/conformance/uml-profile.md) |
+| [`order-information-flow.json`](order-information-flow.json) | UML information flow diagram (`uml.information-flow`, 0.24.0) | What travels with an order: the shopper (the use case example's actor), the storefront, Shop API and payment provider (the component example's), a warehouse and an email service; four information items; eight dashed «flow» lines, each saying what it conveys, one back flow running under the rows. What it covers: [`docs/conformance/uml-information-flow.md`](../docs/conformance/uml-information-flow.md) |
+| [`bookshop-schema.json`](bookshop-schema.json) | Entity-relationship diagram (`er`, 0.24.0) | The bookshop's database: seven tables with their key columns first, a composite key, a junction table, a unique column, a nullable foreign key, a self-reference; identifying lines solid, the rest dashed, each end in crow's foot (or IDEF1X with `notation`). What it covers: [`docs/conformance/er.md`](../docs/conformance/er.md) |
+| [`returns-flowchart.json`](returns-flowchart.json) | Flowchart (`flowchart`, 0.24.0) | Handling a returned book, laid out down: a start and an end, input/output, manual input, a decision with yes and no, a predefined process, a delay, a database, a document, and a connector joining two branches. What it covers: [`docs/conformance/flowchart.md`](../docs/conformance/flowchart.md) |
+| [`bookshop-data-flow.json`](bookshop-data-flow.json) | Data flow diagram (`dfd`, 0.24.0) | The bookshop's data flow in two levels: three external entities, three numbered processes and two stores; Take order opens its level 2, which balances against it. What it covers: [`docs/conformance/dfd.md`](../docs/conformance/dfd.md) |
+| [`bookshop-c4.json`](bookshop-c4.json) | C4 (`c4.context`, `c4.container`, `c4.component`, `c4.dynamic`, `c4.deployment`, 0.24.0) | The bookshop's architecture: a system context, its containers (a database as a cylinder, the system a dashed boundary), the Shop API's components, placing an order as ten numbered steps, and production's deployment nodes holding container instances; external systems grey. The Bookshop atlas's root. What it covers: [`docs/conformance/c4.md`](../docs/conformance/c4.md) |
 | [`bookshop-timing.json`](bookshop-timing.json) | UML timing diagram (`uml.timing`, 0.23.0) | One charge on a time ruler in ms: the order worker and the payment provider, the overview's and the sequence example's lifelines, each a step line through its states; a call and its reply at their times, slanted between their senders' and receivers' states; a duration constraint `{<= 800 ms}` under the worker's lane and a time constraint on its last change. What the timing diagram covers: [`docs/conformance/uml-timing.md`](../docs/conformance/uml-timing.md) |
 
 | [`order-objects.json`](order-objects.json) | UML object diagram (`uml.object`, 0.19.0) | One placed order of the same bookshop as instances of its classes: each head `name : Classifier`, underlined, its slots as `feature = value` rows; links with a name or with roles by their ends; laid out top to bottom. What the object diagram covers: [`docs/conformance/uml-object.md`](../docs/conformance/uml-object.md) |
@@ -64,15 +69,20 @@ Action on it in a pull request; the site shows its stills and its PDF.
 [![The composite structure diagram: inside the order service](https://zintaen.github.io/umlimator/examples/stills/order-service-structure/internals.png)](https://zintaen.github.io/umlimator/examples/order-service-structure.html)
 [![The profile diagram: the bookshop's conventions](https://zintaen.github.io/umlimator/examples/stills/bookshop-profile/profile.png)](https://zintaen.github.io/umlimator/examples/bookshop-profile.html)
 [![The timing diagram: one charge](https://zintaen.github.io/umlimator/examples/stills/bookshop-timing/one-charge.png)](https://zintaen.github.io/umlimator/examples/bookshop-timing.html)
+[![C4: the bookshop's containers](https://zintaen.github.io/umlimator/examples/stills/bookshop-c4/c4-containers.png)](https://zintaen.github.io/umlimator/examples/bookshop-c4.html)
+[![The ER diagram: the bookshop's schema](https://zintaen.github.io/umlimator/examples/stills/bookshop-schema/er-schema.png)](https://zintaen.github.io/umlimator/examples/bookshop-schema.html)
 
 ## The Bookshop atlas
 
 [`bookshop-atlas.json`](bookshop-atlas.json) is the Bookshop examples above in one model (`"schemaVersion": 2`): the
-map's three views and the twenty views of the fourteen diagram files, one of each of UML's 14 diagram kinds, joined by
-drill-down. Double-click a card to open what it leads to:
+map's three views and the thirty views of the nineteen diagram files, one of each of UML's 14 diagram kinds and of the
+ER, flowchart, data flow, information flow and C4 diagrams, joined by drill-down. It opens at the C4 system context
+(0.24.0); the map is in the views list. Double-click a card to open what it leads to:
 
 | From | Card | Opens |
 |---|---|---|
+| The C4 views (`c4-context`, `c4-containers`, `c4-components`, `c4-deployment`) | Bookshop, Shop API; Shopper, Shop staff; Database, Order worker, Storefront; Checkout, Order store; the Shop API's instance | the containers, the components; the use cases, the returns flowchart; the schema (ER), fulfilling an order, what travels with an order (information flow); the checkout (sequence), the data flow; production (deployment) |
+| The data flow's level 1 | Take order | its level 2 |
 | The map (`overview`) | Shoppers, Storefront, Database, Order queue, Order worker, Payment provider, GitHub | the use cases, buying a book, the sales classes, order 1042, fulfilling an order, the communication diagram, the packages |
 | Sales domain, order 1042 | Order, order1042 | an order's life (state machine) |
 | Bookshop packages | sales, BookshopConventions | the sales domain, the conventions profile |
@@ -85,7 +95,9 @@ It is built, not written: `node tools/atlas.mjs` reads the example files and [`.
 one package `sales`, one `api` lifeline for the sequence, communication and overview files, one Shop API, its jar and the
 runtime it is deployed on for the component and deployment files; Order, its `placedAt` and the profile for the
 class, package and profile files, and the `worker` and `payments` lifelines for the overview, sequence and timing
-files. Where two files have an id, they must agree on it (a field one leaves out is the other's, a class's members are
+files; the shopper for the use case and information flow files, and the storefront, Shop API and payment provider for
+the component and information flow files. The ER, data flow and C4 files' ids carry `er-`, `dfd-` and `c4-` (a C4
+element and a map card are different elements: a card has no type). Where two files have an id, they must agree on it (a field one leaves out is the other's, a class's members are
 the union of theirs); where they disagree, the build stops and names the id, the files and the field, and the example
 files are what gets fixed.
 `tests/atlas.test.mjs` fails when the committed atlas is not what it writes. A card that opens another kind of diagram does not unfold in place (E): it opens.
@@ -175,6 +187,10 @@ The module embedded in a page, as an app would use it. Serve the repository over
 | Nodes, devices and execution environments as cubes, nested; deployment by nesting or by a «deploy» line; a keyword over a box's name | bookshop-deployment |
 | A part showing its type's ports (`ends.<end>.part`), a shared part, an open collaboration as a dashed ellipse, a collaboration use's role bindings | order-service-structure |
 | A Mermaid `stateDiagram`, imported (`umlimator.py import`) | [`tests/import/state.mmd`](../tests/import/state.mmd), which CI imports (`tests/import.py`) |
+| Line ends by multiplicity in two notations on one geometry (crow's foot, IDEF1X: `notation`); a column as a row of text | bookshop-schema |
+| Levels made by `D` and checked for balance; two symbol sets on one geometry (`notation`) | bookshop-data-flow |
+| Typed C4: a view's subject as a dashed boundary, implied relationships, a dynamic view's numbered steps, deployment nodes holding instances; elements on the map's card shapes (`props.shape`) | bookshop-c4 |
+| A Mermaid `erDiagram`, a Mermaid flowchart (`--typed`), a Structurizr JSON workspace and DBML, imported (`umlimator.py import`) | [`tests/import/er.mmd`](../tests/import/er.mmd), [`flowchart.mmd`](../tests/import/flowchart.mmd), [`structurizr.json`](../tests/import/structurizr.json), [`dbml.json`](../tests/import/dbml.json), which CI reads (`tests/import.py`, the readers' tests) |
 | `layout()` in Node | `layout.mjs` |
 | The model's JSON Schema (`"$schema"`), `validate()` and `check()` | every model written by hand (`"$schema"`), `playground.html` |
 | The standalone page (`mountPage`) and the CLI's `render`, `check` and `stills` | every map on the site, built by CI |

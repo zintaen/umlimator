@@ -12,8 +12,9 @@ audit's repros (tooling.json's mcp machines), which failed before:
 - clear() takes the assistant's story off, and leaves a story the reader started.
 And C10 (2.6): an object model and a package model, served the same way, answer its read tools in their own words and show a
 highlight on the diagram the page draws; and so do a use case, an activity, a state machine and an interaction overview model
-(4.10), a component, a deployment and a composite structure model (5.8), a profile and a timing model (6.6), and a class, a
-sequence and a communication model (C10's package).
+(4.10), a component, a deployment and a composite structure model (5.8), a profile and a timing model (6.6), a class, a
+sequence and a communication model (C10's package), and an ER, a flowchart, a data flow, an information flow and a C4
+model (M2.14).
 
   python3 tests/mcp.py
 
@@ -288,7 +289,14 @@ for f, view, refs, first, cards, boxes in (("order-objects", "snapshot", ["order
                                           # C10 for stage 6 (6.6): a profile and a timing model; the profile and the package are boxes,
                                           # a timing view's lanes, state rows, changes, constraints and ruler are nodes
                                           ("bookshop-profile", "profile", ["order", "entity"], "Bookshop conventions profile: a profile diagram of 9 elements and 5 lines.", 7, 2),
-                                          ("bookshop-timing", "one-charge", ["lifeline-worker", "lifeline-payments"], "One charge: a timing diagram of 2 lifelines, 8 changes, 2 messages and 2 constraints, in ms.", 19, 0)):
+                                          ("bookshop-timing", "one-charge", ["lifeline-worker", "lifeline-payments"], "One charge: a timing diagram of 2 lifelines, 8 changes, 2 messages and 2 constraints, in ms.", 19, 0),
+                                          # C10 for milestone 2 (M2.14): an ER, a flowchart, a data flow, an information flow and a C4 model;
+                                          # the C4 context view lists its subject with nothing it owns, so it is a card, not a boundary
+                                          ("bookshop-schema", "er-schema", ["er-customer", "er-order"], "Bookshop schema: an entity-relationship diagram of 7 elements and 7 lines.", 7, 0),
+                                          ("returns-flowchart", "returns", ["inspect", "refund"], "Handling a returned book: a flowchart of 13 nodes and 13 flows.", 13, 0),
+                                          ("bookshop-data-flow", "dfd-level-1", ["dfd-take-order", "dfd-orders"], "Bookshop, level 1: a data flow diagram of 8 elements and 11 lines.", 8, 0),
+                                          ("order-information-flow", "order-flows", ["shopper", "order-info"], "What travels with an order: an information flow diagram of 10 elements and 8 lines.", 10, 0),
+                                          ("bookshop-c4", "c4-context", ["c4-shopper", "c4-bookshop"], "Bookshop: system context: a C4 system context diagram of 6 elements and 6 relationships.", 6, 0)):
     m = json.loads((ROOT / "examples" / f"{f}.json").read_text(encoding="utf-8"))
     srv = subprocess.Popen([sys.executable, str(ROOT / "umlimator.py"), "mcp", str(ROOT / "examples" / f"{f}.json"), "--port", "0"], stdin=subprocess.PIPE,
                            stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
