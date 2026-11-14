@@ -496,3 +496,10 @@ test('a class file of 20000 nested namespaces that the reader read, once written
   const back = read(write(m));
   assert.deepEqual([back.report, back.model.nodes.length], [[], 20001]);
 });
+
+test('a %% id: that is taken or above a line that takes none is reported; a class with no label is named not written (audit 3)', () => {
+  assert.deepEqual(read('classDiagram\nclass X\n%% id: X\nA --> B\n').report, [{ line: 4, status: 'approximated', message: '%% id: X is taken, so A --> B is X-2' }]);
+  assert.deepEqual(read('classDiagram\n%% id: zz\nclass C\n').report, [{ line: 3, status: 'skipped', message: '%% id: zz is above a line that takes none: not read' }]);
+  const t = write({ schemaVersion: 2, root: 'v', nodes: [{ id: 'n1', type: 'uml.Class', label: '' }], edges: [], views: [{ id: 'v', diagram: 'uml.class', nodeIds: ['n1'] }] }, 'v');
+  assert.match(t, /%% not written: n1: no label, read as its name/);
+});
