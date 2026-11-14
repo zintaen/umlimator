@@ -13,6 +13,8 @@
   kubernetes    `kubectl get ... -o json` (a List or one object): Deployments, StatefulSets, DaemonSets, Services (to the
                 workloads their selector picks), Ingresses (to their Services), and env values that name a Service
 
+BPMN XML (.bpmn) is told here and read by the module's adapter, src/readers/bpmn-xml.js, in Node through bpmn-moddle.
+
 read(fmt, text, name) returns (model, unread): unread lists what was not imported, each as (where, message), where
 being a line number, or an item's path in a JSON source.
 """
@@ -21,7 +23,7 @@ from pathlib import Path
 
 FORMATS = ["structurizr", "plantuml", "mermaid", "compose", "kubernetes"]
 EXT = {".dsl": "structurizr", ".puml": "plantuml", ".plantuml": "plantuml", ".pu": "plantuml", ".iuml": "plantuml",
-       ".mmd": "mermaid", ".mermaid": "mermaid"}
+       ".mmd": "mermaid", ".mermaid": "mermaid", ".bpmn": "bpmn"}  # bpmn: XML the module's adapter reads (umlimator.py import)
 MERMAID = re.compile(r"(flowchart|graph|C4Context|C4Container|C4Component|classDiagram|sequenceDiagram|stateDiagram)\b")
 TYPED = ("classDiagram", "sequenceDiagram", "stateDiagram")  # the diagrams the module's readers read, in Node (src/readers/)
 
@@ -128,6 +130,8 @@ def detect(path, text):
             return "compose"
         if isinstance(d, list) or isinstance(d, dict) and ("items" in d or "apiVersion" in d):
             return "kubernetes"
+    if text.lstrip()[:1] == "<" and "http://www.omg.org/spec/BPMN/20100524/MODEL" in text[:4096]:
+        return "bpmn"
     if re.search(r"^\s*@startuml", text, re.M):
         return "plantuml"
     body = re.sub(r"/\*.*?\*/", "", front(text)[1], flags=re.S)

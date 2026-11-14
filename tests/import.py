@@ -316,4 +316,41 @@ with tempfile.TemporaryDirectory() as tmp:
     r = subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "import", str(ROOT / name), "--out", str(t / "x.json")], capture_output=True, text=True, env=bare)
     ok("without Node, a stateDiagram's import says it needs Node", r.returncode == 1 and "Mermaid stateDiagram" in r.stderr and "Node.js 18" in r.stderr
        and not (t / "x.json").exists(), r.stderr)
+
+# BPMN XML is read and written by the module's adapter in Node, through a bpmn-moddle the user installs, never umlimator
+# (notes/milestone-4b.md §12.4): CI installs it in a scratch folder and names it in UMLIMATOR_BPMN_MODDLE. Without it the
+# CLI says how to install it, and the checks that need it say they skipped, except in CI, where they fail.
+# tests/bpmn-xml.test.mjs pins the adapter's reports and its round trip
+name = "tests/import/descriptive.bpmn"
+ok("bpmn · known by its content or its .bpmn extension", imp.detect("x", '<?xml version="1.0"?>\n<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL">') == "bpmn"
+   and imp.detect("x.bpmn", "") == "bpmn" and imp.detect("x.xml", "<definitions/>") is None)
+with tempfile.TemporaryDirectory() as tmp:
+    t = Path(tmp)
+    none = dict(__import__("os").environ, UMLIMATOR_BPMN_MODDLE=tmp)  # a folder with no bpmn-moddle
+    for cmd in (["import", str(ROOT / name), "--out", str(t / "x.json")], ["export", str(ROOT / "docs" / "diagrams" / "examples" / "24-bpmn.json"), "--out", str(t / "x.bpmn")]):
+        r = subprocess.run([sys.executable, str(ROOT / "umlimator.py"), *cmd], capture_output=True, text=True, env=none, cwd=tmp)
+        ok(f"bpmn · without bpmn-moddle, {cmd[0]} says how to install it and writes nothing",
+           r.returncode == 1 and "BPMN needs bpmn-moddle: npm install bpmn-moddle@10.3.1" in r.stderr and not any(t.glob("x.*")), r.stderr)
+    r = run("import", str(ROOT / name), "--out", str(t / "returns.json"))
+    if "BPMN needs bpmn-moddle" in r.stderr and not __import__("os").environ.get("CI"):
+        print("skip umlimator.py import · bpmn: bpmn-moddle is not installed here (UMLIMATOR_BPMN_MODDLE names its folder)")
+    else:
+        said = json.loads(r.stdout) if r.returncode == 0 else {}
+        m = json.loads((t / "returns.json").read_text(encoding="utf-8")) if r.returncode == 0 else {"nodes": [], "edges": [], "views": []}
+        ok(f"{name} · read by the module's adapter as two bpmn views of a version-2 model", said.get("format") == "bpmn" and said.get("views") == ["returns", "restock-view"]
+           and m.get("schemaVersion") == 2 and said.get("cards") == 33 and said.get("lines") == 32, r.stdout + r.stderr)
+        got = [l[len(str(ROOT / name)):].split(" ", 1)[0] for l in r.stderr.splitlines()]
+        ok(f"{name} · lists what it skips, each with its element's id, and once that positions are not kept", got == [":Message_return:", ":"]
+           and "positions and sizes in the diagram interchange are not kept" in r.stderr, r.stderr)
+        problems = [p for p in u.js("validate", m) if p["level"] == "error"]
+        ok(f"{name} · validate() finds no error", problems == [], problems)
+        r = run("export", str(t / "returns.json"), "--view", "returns", "--out", str(t / "returns.bpmn"))
+        ok("bpmn · export writes the model's BPMN and says what it leaves out (ext.bpmn)", r.returncode == 0 and json.loads(r.stdout) == {
+            "out": str(t / "returns.bpmn"), "format": "bpmn", "view": "returns", "notWritten": 1} and "under ext.bpmn" in r.stderr, r.stdout + r.stderr)
+        r = run("import", str(t / "returns.bpmn"), "--out", str(t / "again.json"))
+        again = json.loads((t / "again.json").read_text(encoding="utf-8")) if r.returncode == 0 else {}
+        ok("bpmn · what export writes, import reads back as the same model, but what ext.bpmn held",
+           {k: v for k, v in m.items() if k != "ext"} == again, r.stderr)
+        r = run("export", str(t / "returns.json"), "--view", "nowhere", "--out", str(t / "y.bpmn"))
+        ok("bpmn · export of a view the model does not have is an error", r.returncode == 1 and "has no bpmn view nowhere" in r.stderr, r.stderr)
 sys.exit(1 if failed else 0)
