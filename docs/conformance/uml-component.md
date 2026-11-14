@@ -92,7 +92,7 @@ its rendered page. The PNG was looked at, the SVG read, the PDF's text read back
 | Text | Text, in the page's font family; the font is not embedded unless `fontCSS` is given | Pixels | Selectable text |
 | Accessible names | Each component's, port's, interface's and artifact's `aria-label` kept ("Port orders of Shop API, provides Orders"); the lines' `<title>` removed, as for maps | None | None |
 | Theme | The page's, every colour resolved | The page's | `--theme`, light by default |
-| Tables | None | None | "Elements": each component with its ports (`name : Type`, what each provides) and the connectors from them, an interface's kind and operations, what an artifact manifests; "Lines": each line between two elements, from → to and its kind. **Gap:** a line from or to a port is not a row of "Lines" (its ends are not cards; `risks.md` R10): a port's realization is in its row ("provides Orders"), its delegations and assemblies under its component |
+| Tables | None | None | "Elements": each component with its ports (`name : Type`, what each provides) and the connectors from them, an interface's kind and operations, what an artifact manifests; "Lines": each line between two elements, from → to and its kind. A line from or to a port is a row of "Lines" too (since 0.30.0, `risks.md` R10), between the components that own its ends; a port's realization is also in its row ("provides Orders"), its delegations and assemblies under its component |
 
 The site builds every example's stills and PDF ([zintaen.github.io/umlimator](https://zintaen.github.io/umlimator/)).
 
