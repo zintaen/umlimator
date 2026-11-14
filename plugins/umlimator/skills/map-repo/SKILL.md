@@ -62,6 +62,9 @@ checked), and let a card open the part you split off.
 - `icon`: a name from `icons/manifest.json` in the fetched release. Line icons ship (users, user, window, server,
   database, queue, network, key, lock, gauge, chart, webhook, layers, folder, package, terminal, settings, ...); brand
   logos (react, postgresql, docker, kubernetes, github, ...) download on first use.
+- Cloud vendors' service icons (Google Cloud, Azure, AWS) are not logos: they come in packs the user fetches with
+  `umlimator.py pack fetch gcp|azure|aws` after reading the vendor's terms. Never fetch one on your own: show the user
+  the terms the command prints, and pass `--accept-terms <pack>@<label>` only on their yes.
 - Text: a card's label up to 22 characters, its sublabel up to 26; a line's label a verb or protocol up to 18.
   Longer text goes in `what`, `when` and `how`, which the page shows on click.
 - Lines run left to right in reading order: draw a request from caller to callee, data from producer to consumer.
