@@ -542,6 +542,35 @@ resolves.
 working folder (`--moddle PATH` or `UMLIMATOR_BPMN_MODDLE` to name another, §12.1). Without it, both exit with: "BPMN
 needs bpmn-moddle: npm install bpmn-moddle@10.3.1". `export` is a new command; it writes BPMN only in 0.27.0.
 
+### 12.5 As built (4b.4)
+
+Where 4b.4 departs from §12.1 to §12.4 and §13, each taken by the lead under the maintainer's standing approval (14 Nov
+2026):
+
+- `writeBpmnXml` resolves to `{ xml, report }`, not to the XML alone: §12.2 and §12.3 ask the writer to say what it
+  drops, and a report item per element is how every reader says it. Each item is `skipped`, its message ending "not
+  written".
+- The writer writes every `bpmn` view of the model as a BPMNDiagram, not only `viewId`'s: the example's sub-process view
+  is a diagram of its own, and `read(write(model))` must give it back. `geo` gives the bounds and points of `viewId`'s
+  diagram; every other shape sits on a plain grid. Until 4b.5 wires the type's layout, `umlimator.py export` passes no
+  geometry, so all its shapes are on the grid. `--view` defaults to the model's first `bpmn` view.
+- A view's `parent` is derived on reading: the first other view that shows its `subject`, else `null`; a view's fields
+  other than `id`, `title`, `parent`, `subject` and `nodeIds` (`direction`, `present`) are reported not written.
+- Weakened as well: a timer's time (`timeDate`, `timeDuration`, `timeCycle`), kept under the event's `ext.bpmn.timer`.
+  A pool's or an annotation's groups are written as `umlimator:groups` (BPMN gives `categoryValueRef` to flow elements
+  only). A foreign attribute on a read element is reported.
+- `read(write(model))` is compared as the Mermaid readers' tests compare it: the order of nodes, of lines and of a view's
+  `nodeIds` is not meaning; a pool's lanes come back in pre-order (a lane set's own order), as the generated models
+  give them.
+- The hostile files over 1 MiB, of 10,000 levels and of many references are made by the test, not committed (they would
+  put megabytes in the repository); `tests/import/hostile/` holds the small ones (entity expansion, references to
+  nothing, no diagram interchange, an unknown namespace).
+- `weakened.bpmn`'s "`gateway-flows` and `flow-start` silent" is tested as what those rules read (the gateway keeps its
+  flows out, each task its flow in), since the rules are 4b.3's.
+- CI's checks have run in four jobs since this note was written: the `node --test` steps are in `node`, `tests/import.py`
+  in `bench`. So the pinned install step is in both jobs, and `UMLIMATOR_BPMN_MODDLE` on the two `node --test` steps and
+  on `tests/import.py`'s.
+
 ## 13. Fixtures, examples and the atlas
 
 From `risks.md` §6's BPMN row and Table 2.1. Each lives in `tests/`, laid out in Node and in Chrome under three fonts and
