@@ -317,6 +317,35 @@ with tempfile.TemporaryDirectory() as tmp:
     ok("without Node, a stateDiagram's import says it needs Node", r.returncode == 1 and "Mermaid stateDiagram" in r.stderr and "Node.js 18" in r.stderr
        and not (t / "x.json").exists(), r.stderr)
 
+# A Mermaid mindmap is read by the module's reader too (notes/milestone-4a.md §8.4, 4a.5): one mindmap view, a model
+# docs/diagrams/examples/check.mjs passes. tests/mermaid-mindmap.test.mjs pins the reader's report and its round trip
+name = "tests/import/mindmap.mmd"
+ok("mermaid · a mindmap is known by its content, and the Python reader leaves it to the module's",
+   imp.detect("x", "%% a\nmindmap\n  root\n") == "mermaid" and imp.mermaid_typed("---\ntitle: t\n---\nmindmap\n") == "mindmap"
+   and imp.mermaid_typed('%%{init: {"theme": "dark"}}%%\nmindmap\n') == "mindmap" and imp.mermaid_typed("mindmapX\n") is None
+   and "a mindmap is read by the module's reader" in imp.read("mermaid", "mindmap\n  root\n", "x")[1][0][1])
+with tempfile.TemporaryDirectory() as tmp:
+    t = Path(tmp)
+    r = run("import", str(ROOT / name), "--out", str(t / "mindmap.json"))
+    said = json.loads(r.stdout) if r.returncode == 0 else {}
+    m = json.loads((t / "mindmap.json").read_text(encoding="utf-8")) if r.returncode == 0 else {"nodes": [], "edges": [], "views": [{}]}
+    v = m["views"][0]
+    ok(f"{name} · read by the module's reader as one mindmap view of a version-2 model, past its byte-order mark",
+       said.get("format") == "mermaid" and said.get("views") == ["mindmap"] and m.get("schemaVersion") == 2 and v.get("diagram") == "mindmap"
+       and m.get("title") == "Every construct on Mermaid's mindmap page" and said.get("cards") == 46 and said.get("lines") == 0
+       and {n["type"] for n in m["nodes"]} == {"mindmap.Topic"} and card(m, "ci").get("parent") == "shapes", r.stdout + r.stderr)
+    got = [l[len(str(ROOT / name)):].split(" ", 1)[0] for l in r.stderr.splitlines()]
+    ok(f"{name} · lists what it skips or approximates, each with its line",
+       got == [f":{n}:" for n in (4, 9, 11, 14, 29, 31, 32, 33, 38, 42, 49, 50, 62, 63, 64)] and said.get("unread") == 15, r.stderr)
+    checked = subprocess.run(["node", "--input-type=module", "-e", "import { check } from " + json.dumps((ROOT / "docs" / "diagrams" / "examples" / "check.mjs").as_uri())
+                              + "; import { readFileSync } from 'node:fs'; process.stdout.write(JSON.stringify(check(JSON.parse(readFileSync(process.argv[1], 'utf8')), 'mindmap')));",
+                              str(t / "mindmap.json")], capture_output=True, text=True)
+    ok(f"{name} · the model it writes passes docs/diagrams/examples/check.mjs", checked.returncode == 0 and json.loads(checked.stdout or "null") == [], checked.stdout + checked.stderr)
+    bare = dict(__import__("os").environ, PATH=tmp)
+    r = subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "import", str(ROOT / name), "--out", str(t / "x.json")], capture_output=True, text=True, env=bare)
+    ok("without Node, a mindmap's import says it needs Node", r.returncode == 1 and "Mermaid mindmap" in r.stderr and "Node.js 18" in r.stderr
+       and not (t / "x.json").exists(), r.stderr)
+
 # BPMN XML is read and written by the module's adapter in Node, through a bpmn-moddle the user installs, never umlimator
 # (notes/milestone-4b.md §12.4): CI installs it in a scratch folder and names it in UMLIMATOR_BPMN_MODDLE. Without it the
 # CLI says how to install it, and the checks that need it say they skipped, except in CI, where they fail.

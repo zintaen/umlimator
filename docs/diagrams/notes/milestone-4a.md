@@ -638,6 +638,27 @@ newlines.
 `umlimator_import.py`'s `TYPED` gains `mindmap`, so `umlimator.py import plan.mmd` reads it through Node as the other
 Mermaid readers. Nothing else in the CLI changes for it.
 
+As built (4a.5, 14 Nov 2026), with these departures:
+
+- A tab counts one, as a space does: Mermaid 12.3.0's lexer reads an indent as a run of `[\s]+` and takes its length as
+  the level (`mindmap.jison`, `mindmapDb.ts`'s `getParent`); pinned in `tests/import/mindmap.mmd`. So §8.2's 10,000 lines
+  each a tab deeper hold 50 million characters and are refused by size first, as the spaces would be; the tab case is
+  1,400 lines, as the spaces' is.
+- §8.2's large inputs are built by `tests/mermaid-mindmap.test.mjs`, not committed; `tests/import/hostile/` holds the
+  four small ones (`mindmap-directives`, `-proto`, `-unclosed`, `-crlf`).
+- `[ ]` is the topic itself, not a kept shape: it is the writer's `id[text]`, so a topic with an id of its own reads back
+  with no `ext.mermaid`. Mermaid draws it square; the other five shapes are kept.
+- Icons, classes and Markdown strings are reported once per kind, as shapes are, not once per topic.
+- What the writer cannot write is named in `%% not written:` lines, as the other Mermaid writers do.
+- An id from text is its words in lower case joined by `-`, at most 60 characters, `topic` when it has none.
+- `umlimator.py`'s reader table gains `mindmap` (one entry, outside the row's Owns: the CLI looks the reader up by the
+  routed name), and `umlimator_import.py`'s `MERMAID` gains it with `TYPED`, so a source with no `.mmd` name is known by
+  its content and the map importer says the module reads it.
+- `read(write(model))` is compared with the model as one view shows it, as the flowchart's test does: the shown topics, and
+  the view's title as the model's.
+- A carriage return in a label is written as a line break, as `\n` is, and named in a `%% not written:` line; an
+  unclosed Markdown string is its one line read as text, the lines after it read as they are.
+
 | Option, Mermaid's shapes (decision 16) | For | Against |
 |---|---|---|
 | **(a) Kept under `ext.mermaid`, drawn in the one topic look, written back, reported (recommended)** | Round trip whole; a mindmap has no notation that gives shapes meaning; no new shapes | A source's circles and clouds draw as rounded boxes |

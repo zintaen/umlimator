@@ -21,7 +21,7 @@
 MODEL.json is the map model in engine/references/schema.md (nodes, edges, views), plus umlimator's `badge` field on a
 node (PROPOSED, TARGET, OFF ...). `stills` needs Google Chrome or Chromium; the PNGs are what a document that cannot
 run the page (a wiki such as Confluence) shows. `diff`, `drift`, `trace` and `mcp` run the module's own functions in Node,
-and so does `import` of a Mermaid classDiagram, sequenceDiagram, stateDiagram, erDiagram or requirementDiagram (their
+and so does `import` of a Mermaid classDiagram, sequenceDiagram, stateDiagram, erDiagram, requirementDiagram or mindmap (their
 readers are the module's, in src/readers/).
 BPMN XML is read and written by the module's adapter in Node through bpmn-moddle, which umlimator never installs: `npm
 install bpmn-moddle@10.3.1` in the working folder, or name its folder with --moddle or UMLIMATOR_BPMN_MODDLE.
@@ -829,7 +829,7 @@ def cmd_record(a):
 def cmd_import(a):
     """A diagram a team has already, as a model (#90): Structurizr DSL, C4-PlantUML, Mermaid, or the JSON of `docker
     compose config` or `kubectl get`. umlimator_import.py reads them, but for a Mermaid classDiagram, sequenceDiagram,
-    stateDiagram, erDiagram or requirementDiagram, a Mermaid flowchart given --typed, a Structurizr JSON workspace and a
+    stateDiagram, erDiagram, requirementDiagram or mindmap, a Mermaid flowchart given --typed, a Structurizr JSON workspace and a
     .dbml file, which the module's readers read in Node into a typed model (schema version 2: uml.class, uml.sequence,
     uml.state-machine, er, sysml.requirement, flowchart or C4 views; notes/milestone-2.md §8.5, milestone-3.md §12.4). A
     .dbml file is parsed by @dbml/core where it resolves from the working folder, which umlimator does not install. A
@@ -861,7 +861,7 @@ def cmd_import(a):
         name, fn = {"classDiagram": ("mermaid-class.js", "readMermaidClass"), "sequenceDiagram": ("mermaid-sequence.js", "readMermaidSequence"),
                     "stateDiagram": ("mermaid-state.js", "readMermaidState"), "erDiagram": ("mermaid-er.js", "readMermaidEr"),
                     "requirementDiagram": ("mermaid-requirement.js", "readMermaidRequirement"),
-                    "flowchart": ("mermaid-flowchart.js", "readMermaidFlowchart"), "structurizr-json": ("structurizr.js", "readStructurizr"),
+                    "flowchart": ("mermaid-flowchart.js", "readMermaidFlowchart"), "mindmap": ("mermaid-mindmap.js", "readMermaidMindmap"), "structurizr-json": ("structurizr.js", "readStructurizr"),
                     "dbml": ("dbml.js", "readDbml")}[kind or fmt]
         size = Path(a.file).stat().st_size
         if fmt in imp.NODE_FORMATS and size > imp.LIMIT:  # hostile input (milestone-2.md §8): before Node or @dbml/core parses it
