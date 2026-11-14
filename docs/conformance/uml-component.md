@@ -100,8 +100,8 @@ The site builds every example's stills and PDF ([zintaen.github.io/umlimator](ht
 
 Every piece has a name: "Component Shop API, 2 ports, holding 1 component", "Port orders of Shop API, provides Orders",
 "Interface Orders, as a ball, provided by Shop API, required by Storefront", "Delegation from orders of Shop API to
-orders of Checkout", "Artifact shop-api.jar, manifests Shop API". Tab reads each box and what it holds, each element's
-ports after it in their drawn order, then the lines (`geo.order`). `describe()` writes the view in sentences. Text reads
+orders of Checkout", "Artifact shop-api.jar, manifests Shop API". Tab reads what each box holds, each element's
+ports after it in their drawn order, then the lines (`geo.order`); a box is not a Tab stop: the keyboard reaches it through the outline of elements. `describe()` writes the view in sentences. Text reads
 at 4.5:1 and lines, outlines and ports at 3:1 on the stage in both themes (`tests/component.html`, `tests/stage5.html`).
 A port's hit area is 24 px. Every editing gesture has a key (`docs/editing.md`): `B` turns an interface into a ball and
 back; `Alt + arrows` moves a port to another side.

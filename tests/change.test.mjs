@@ -58,7 +58,7 @@ test('diff() marks a card put into a view or taken out of one there only, and a 
   const d = diff(base, after), [one, two] = d.model.views;
   assert.deepEqual(d.summary, ['adds Y, from A', 'removes X', 'takes C out of the view One', 'puts C in the view Two']);
   assert.deepEqual([one.nodeOverrides.c.change, two.nodeOverrides.c.change, d.model.nodes.find(n => n.id === 'c').change], ['removed', 'added', undefined]);
-  assert.deepEqual(two.edges.map(e => e.style), ['added', 'removed']);
+  assert.deepEqual(two.edges.map(e => e.style), ['removed', 'added']); // a view's removed line comes back in its place (audit 2)
   assert.deepEqual(d.views, ['one', 'two']);
 });
 

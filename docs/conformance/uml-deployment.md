@@ -74,7 +74,7 @@ PNG was looked at, the SVG read, the PDF's text read back (`tests/cli.py` reads 
 Every piece has a name: "Device Application server, holding 1 execution environment", "Execution environment Java 21
 runtime, in Application server, 3 artifacts deployed", "Artifact shop-api.jar, on Java 21 runtime, manifests Shop API",
 "Communication path HTTPS from Shopper's device to Edge proxy". A selected box is said by both its title lines. Tab
-reads each box and what it holds, then the rest, then the lines. Text reads at 4.5:1, lines and outlines at 3:1 in both
+reads what each box holds, then the rest, then the lines; a box is not a Tab stop: the keyboard reaches it through the outline of elements. Text reads at 4.5:1, lines and outlines at 3:1 in both
 themes (`tests/deployment.html`, `tests/stage5.html`). Every gesture has a key (`docs/editing.md`); a drop of an
 artifact into a node and the Owner field each deploy it by nesting.
 

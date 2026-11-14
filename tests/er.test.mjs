@@ -137,7 +137,7 @@ test('the PDF\'s tables (§9): an entity\'s word and its columns as S9 prints th
   assert.equal(T.rows(EX, V, 'er-customer-orders'), null);
   assert.equal(T.text(EX, V, 'er-customer-orders'), 'places: 1 to 0..*, non-identifying');
   assert.equal(T.text(EX, V, 'er-book-authors'), '1 to 1..*, identifying'); assert.equal(T.text(EX, V, 'er-order'), null);
-  const ctx = mapContext(EX), [els, lines] = tablesOf(ctx, ctx.V[VID], { nodes: [], edges: [] }), cells = r => [...r.matchAll(/<td>(.*?)<\/td>/g)].map(m => m[1]);
+  const ctx = mapContext(EX), [els, lines] = tablesOf(ctx, ctx.V[VID], { nodes: [], edges: layout(EX, VID).edges }), cells = r => [...r.matchAll(/<td>(.*?)<\/td>/g)].map(m => m[1]);
   assert.ok(els.rows.some(r => cells(r).includes('Table')));
   assert.ok(lines.rows.map(r => cells(r)[1]).includes('contains: 1 to 1..*, identifying'), lines.rows.map(r => cells(r)[1]));
 });

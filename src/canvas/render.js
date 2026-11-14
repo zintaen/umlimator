@@ -1192,7 +1192,7 @@ export function render(container, model, options = {}) {
   /* a typed view of a version 2 model (1.7): its gestures emit `edit`, a transaction of commands, and its panels show */
   const tx = E && typedEditor({ root, stage, can, say, status, touch, nearest, nameOf, editor, picked,
     emit: commands => emit('edit', { view: cur, commands }), view: () => cur, model: () => current, geo: () => geo, svg: () => svg, cam: () => cam, sel: () => sel,
-    selectId: id => { const e = geo.byId[id] ? null : geo.edges.find(x => edgeRefIds(x).includes(id)); return e ? select(edgeRef(e)) : select(nodeRef(id)); },
+    selectId: id => { const e = geo.byId[id] ? null : geo.edges.find(x => edgeRefIds(x).includes(id)); return select(e ? edgeRef(e) : !geo.byId[id] && (geo.families || []).some(f => f.id === id) ? { type: 'container', id, view: cur } : nodeRef(id)); }, // a box: the outline's way to select one
     drawn: id => !!geo.byId[id] || geo.edges.some(x => edgeRefIds(x).includes(id)), rename: () => rename(sel), focus: () => focusMap() });
   const typed = () => !!tx && tx.on();
 

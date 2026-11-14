@@ -10,11 +10,13 @@ import '../src/map/typed.js';
 import '../src/uml/class.js';
 import '../src/uml/object.js';
 import '../src/uml/package.js';
+import '../src/uml/deployment.js';
+import { layout } from '../src/map/api.js';
 import { mapContext } from '../src/map/context.js';
 import { tablesOf } from '../src/page/print.js';
 
 const read = p => JSON.parse(readFileSync(new URL(p, import.meta.url)));
-const NONE = { nodes: [], edges: [] }; // the geometry the tables read: steps and opened views of cards, kinds of map lines
+const NONE = { nodes: [], edges: ['go', 'back', 'none'].map(_id => ({ _id })) }; // the geometry the tables read: steps and opened views of cards, the lines drawn and their kinds
 const cells = row => [...row.matchAll(/<td>(.*?)<\/td>/g)].map(m => m[1]);
 
 const seen = [];
@@ -80,5 +82,24 @@ test('a type\'s text is a line\'s Label cell, escaped; with none from it, the li
 test('no conformance note says a typed view\'s table heading reads "Cards": it reads "Elements" (audit 1)', () => {
   const dir = new URL('../docs/conformance/', import.meta.url);
   const stale = readdirSync(dir).filter(f => /heading (still )?says "Cards"/.test(readFileSync(new URL(f, dir), 'utf8')));
+  assert.deepEqual(stale, []);
+});
+
+test('a typed view\'s Lines table lists the lines its type draws, not every model line between its elements (audit 2)', () => {
+  const C = (id, label, more = {}) => ({ id, type: 'uml.Class', label, ...more });
+  for (const m of [
+    { schemaVersion: 2, nodes: [C('a', 'A'), C('b', 'B')], edges: [{ id: 'x', type: 'uml.Association', from: 'a', to: 'b' }], views: [{ id: 'v', diagram: 'uml.package', nodeIds: ['a', 'b'] }] },
+    { schemaVersion: 2, nodes: [{ id: 'p', type: 'uml.Package', label: 'p' }, C('a', 'A', { parent: 'p' })], edges: [{ id: 'x', type: 'uml.Dependency', from: 'p', to: 'a' }], views: [{ id: 'v', diagram: 'uml.class', nodeIds: ['p', 'a'] }] },
+    { schemaVersion: 2, nodes: [C('a', 'A'), C('b', 'B'), { id: 'o', type: 'uml.InstanceSpecification', label: 'o', props: { classifier: 'A' } }], edges: [{ id: 'x', type: 'uml.Association', from: 'a', to: 'b' }], views: [{ id: 'v', diagram: 'uml.object', nodeIds: ['a', 'b', 'o'] }] },
+    { schemaVersion: 2, nodes: [{ id: 'n', type: 'uml.Node', label: 'Server' }, { id: 'j', type: 'uml.Artifact', label: 'app.jar', parent: 'n' }], edges: [{ id: 'x', type: 'uml.Deployment', from: 'j', to: 'n' }], views: [{ id: 'v', diagram: 'uml.deployment', nodeIds: ['n', 'j'] }] }]) {
+    const g = layout(m, 'v'), ctx = mapContext(m);
+    assert.deepEqual(g.edges, [], m.views[0].diagram);
+    assert.deepEqual(tablesOf(ctx, ctx.V.v, g)[1].rows, [], m.views[0].diagram);
+  }
+});
+
+test('no conformance note says Tab stops on a box: a box is reached through the outline of elements, as in the package note (audit 2)', () => {
+  const dir = new URL('../docs/conformance/', import.meta.url);
+  const stale = readdirSync(dir).filter(f => /Tab\s+reads\s+(each box and|a box,|the subject and|the actors, then each subject and)/.test(readFileSync(new URL(f, dir), 'utf8')));
   assert.deepEqual(stale, []);
 });

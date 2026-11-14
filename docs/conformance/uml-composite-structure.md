@@ -86,8 +86,9 @@ pdf`. The PNG was looked at, the SVG read, the PDF's text read back (`tests/cli.
 Every piece has a name: "Class OrderService, 2 ports, holding 4 parts, 1 collaboration use", "Part checkout :
 CheckoutFlow [1], in OrderService, 3 ports", "Port quotes of checkout", "Collaboration use orderEvents :
 PublishSubscribe, binding publisher to checkout, subscriber to listeners", "Role binding from checkout to orderEvents, as
-publisher". Tab reads the subject and its ports, each part and its ports, the collaboration uses, each open
-collaboration and its roles, then the lines. Text reads at 4.5:1 and lines and outlines at 3:1 in both themes
+publisher". Tab reads the subject's ports, each part and its ports, the collaboration uses, each open
+collaboration's roles, then the lines; the subject and an open collaboration are boxes, not Tab stops: the keyboard
+reaches them through the outline of elements. Text reads at 4.5:1 and lines and outlines at 3:1 in both themes
 (`tests/composite.html`, `tests/stage5.html`). Every gesture has a key (`docs/editing.md`).
 
 ## Performance (P1)

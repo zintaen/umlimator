@@ -14,6 +14,8 @@ export function validate(model) {
   const ver = versionProblem(m); if (ver) (ver.level === 'error' ? err : warn)('schemaVersion', ver.message); // a model this release cannot read is drawn wrongly: say so (F6)
   if (!Array.isArray(m.nodes)) err('nodes', 'the model needs a list of cards');
   if (!views.length) err('views', 'the model has no views');
+  arr(m.views).forEach((v, i) => { if (!v || typeof v !== 'object') err(`views[${i}]`, 'a view is an object: left out'); });
+  if (m.edges != null && !Array.isArray(m.edges)) err('edges', 'edges is a list: no line is drawn');
   const ids = new Set(), vids = new Set(), lineIds = new Set();
   // schema version 2: typed lines and typed views are the typed core's to check (src/core/model.js), the rest is a map's
   const typed = m.schemaVersion === 2, typedView = v => typed && v.diagram != null && v.diagram !== 'map';
@@ -28,7 +30,7 @@ export function validate(model) {
   };
   const shapeIs = (n, at) => { if (n && n.shape != null && !SHAPE_NAMES.includes(String(n.shape).toLowerCase())) warn(at + '.shape', `unknown shape "${n.shape}": drawn by its kind (the shapes: ${SHAPE_NAMES.join(', ')})`); };
   // a field that must be a list and is not: drawn as if missing (a view's cards: none)
-  const list = (x, at, k) => { if (x[k] != null && !Array.isArray(x[k])) (k == 'nodeIds' ? err : warn)(`${at}.${k}`, `${k} is a list: ${k == 'nodeIds' ? 'the view draws no cards' : 'ignored'}`); };
+  const list = (x, at, k, box) => { if (x[k] != null && !Array.isArray(x[k])) (k == 'nodeIds' ? err : warn)(`${at}.${k}`, `${k} is a list: ${k != 'nodeIds' ? 'ignored' : box ? 'the box holds no cards' : 'the view draws no cards'}`); };
   const gone = (x, at) => { if (x && x.shapes !== undefined) warn(at + 'shapes', 'shapes is no longer read: maps draw in one style'); }; // the box/c4/uml choice, removed in 0.21.0
   gone(m, '');
   arr(m.nodes).forEach((n, i) => card(n, `nodes[${i}]`));
@@ -68,7 +70,7 @@ export function validate(model) {
     arr(v.browserOrder).forEach((id, j) => { if (!vids.has(id)) err(`${at}.browserOrder[${j}]`, `"${id}" is not a view`); });
     arr(v.intake).forEach((s, j) => { if (!mine.has(s && s.to)) err(`${at}.intake[${j}].to`, `"${s && s.to}" is not one of the view's cards`); });
     arr(v.containers).forEach((c, j) => { if (!c || !c.id) err(`${at}.containers[${j}].id`, 'a box needs an id'); else if (boxes[c.id]) err(`${at}.containers[${j}].id`, `box id "${c.id}" is used twice`); else boxes[c.id] = c; });
-    arr(v.containers).forEach((c, j) => { if (!c) return;
+    arr(v.containers).forEach((c, j) => { if (!c) return; list(c, `${at}.containers[${j}]`, 'nodeIds', 1);
       arr(c.nodeIds).forEach((id, k) => { if (!mine.has(id)) err(`${at}.containers[${j}].nodeIds[${k}]`, `"${id}" is not one of the view's cards`); });
       if (c.parent != null && !boxes[c.parent]) err(`${at}.containers[${j}].parent`, `"${c.parent}" is not a box of this view`);
       if (c.tone != null && typeof c.tone !== 'string') warn(`${at}.containers[${j}].tone`, `tone ${JSON.stringify(c.tone)} is not a palette name (green, amber, ...): ${c.tone ? 'drawn in slate' : 'ignored'}`);

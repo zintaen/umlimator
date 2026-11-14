@@ -53,7 +53,7 @@ export function mountPage(container, model, options = {}) {
       <button class="ibtn" id="m-outline" title="Views (O)" aria-label="Toggle the views list" aria-expanded="false">☰</button>
       <span class="mbrand"><i></i><span>${esc(D.title || 'Map')}</span></span>
       <nav class="crumbs" id="m-crumbs" aria-label="Breadcrumb"></nav>
-      <button class="findbtn" id="m-find" type="button" aria-label="Find a node or view (${modK})"><span aria-hidden="true">⌕</span><span class="ft">Find a node or view…</span><span class="kbd">${modK}</span></button>
+      <button class="findbtn" id="m-find" type="button" aria-label="Find a node or view, ${modK}" aria-keyshortcuts="${mac ? 'Meta' : 'Control'}+K"><span aria-hidden="true">⌕</span><span class="ft">Find a node or view…</span> <span class="kbd">${modK}</span></button>
       <button class="ibtn" id="m-theme" title="Light / dark" aria-label="Dark theme" aria-pressed="false">◐</button>${(D.stories || []).length ? `
       <div class="menu"><button class="ibtn txt" id="m-stories" aria-haspopup="true" aria-expanded="false" title="Stories: walk-throughs of this map">▶<span class="lbl"> Stories</span></button>
         <div class="menu-pop" id="m-stories-pop" hidden>${D.stories.map(s => `<button data-story="${esc(s && s.id)}">${esc((s && (s.title || s.id)) || '')}</button>`).join('')}</div></div>` : ''}${arrOf(D.lenses).some(l => l && l.id) ? `
@@ -78,8 +78,8 @@ export function mountPage(container, model, options = {}) {
     <div class="hpop" id="m-helpbox" role="dialog" aria-label="Keys" hidden><b>Keys</b>
       <dl>${KEYS.map(([k, d]) => `<dt>${esc(k)}</dt><dd>${esc(d)}</dd>`).join('')}</dl></div>
     <div class="scrim" id="m-pal" hidden><div class="pal" role="dialog" aria-label="Search">
-      <div class="in"><span aria-hidden="true">⌕</span><input id="m-q" type="text" autocomplete="off" spellcheck="false" placeholder="Search nodes and views" aria-label="Search nodes and views" aria-controls="m-res"><span class="kbd">esc</span></div>
-      <div class="res" id="m-res" role="listbox"></div>
+      <div class="in"><span aria-hidden="true">⌕</span><input id="m-q" type="text" autocomplete="off" spellcheck="false" placeholder="Search nodes and views" aria-label="Search nodes and views" role="combobox" aria-autocomplete="list" aria-expanded="true" aria-controls="m-res"><span class="kbd">esc</span></div>
+      <div class="res" id="m-res" role="listbox" aria-label="Results"></div>
       <div class="pft"><span>↑↓ move</span><span>↵ open</span><span>esc close</span></div></div></div>`;
   const $ = id => document.getElementById(id);
   const stage = $('m-stage'), panel = $('m-panel');
@@ -259,7 +259,8 @@ export function mountPage(container, model, options = {}) {
   const viewIdx = () => views.map(v => ({ v, hay: [v.title, v.id, v.caption].join(' ').toLowerCase() }));
   const pal = $('m-pal'), q = $('m-q'), res = $('m-res');
   let hits = [], hi = 0;
-  const mark = (s, words) => { let out = esc(s); words.filter(w => w.length > 1).forEach(w => { out = out.replace(new RegExp('(' + w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'ig'), '<mark>$1</mark>'); }); return out; };
+  const mark = (s, words) => { const ws = words.filter(w => w.length > 1).map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')); // on the label, then escaped: never inside an entity or a tag
+    return String(s ?? '').split(ws.length ? new RegExp('(' + ws.join('|') + ')', 'ig') : /(?!)/).map((p, i) => i % 2 ? `<mark>${esc(p)}</mark>` : esc(p)).join(''); };
   const lev = (a, b) => { const d = Array.from({ length: b.length + 1 }, (_, i) => i); for (let i = 1; i <= a.length; i++) { let p = d[0]; d[0] = i; for (let j = 1; j <= b.length; j++) { const t = d[j]; d[j] = Math.min(d[j] + 1, d[j - 1] + 1, p + (a[i - 1] === b[j - 1] ? 0 : 1)); p = t; } } return d[b.length]; };
   function drawHits() {
     const qs = q.value.trim().toLowerCase(), words = qs.split(/\s+/).filter(Boolean);
@@ -271,7 +272,7 @@ export function mountPage(container, model, options = {}) {
       const vs = viewIdx().filter(x => words.every(w => x.hay.includes(w))).slice(0, 5).map(x => ({ t: 'v', v: x.v }));
       hits = [...ns, ...vs];
     }
-    hi = Math.min(hi, Math.max(0, hits.length - 1));
+    hi = Math.min(hi, Math.max(0, hits.length - 1)); hits.length ? q.setAttribute('aria-activedescendant', 'm-o' + hi) : q.removeAttribute('aria-activedescendant'); // a reader says the highlighted result
     if (!hits.length) {
       const near = nodes.map(n => [n, lev(qs, String(n.label).toLowerCase().replace(/^\//, '').slice(0, qs.length + 2))]).sort((a, b) => a[1] - b[1])[0];
       res.innerHTML = `<div class="none"><div aria-hidden="true">⌕</div><h4>Nothing called “${esc(q.value.trim())}”</h4>${near && near[1] <= Math.max(2, qs.length / 3) ? `Did you mean <button data-fill="${esc(near[0].label)}">${esc(near[0].label)}</button>?` : 'Try a skill, verb, script or view name.'}</div>`;
@@ -282,8 +283,8 @@ export function mountPage(container, model, options = {}) {
       const grp = !qs ? 'Views' : h.t === 'n' ? 'Nodes' : 'Views';
       if (grp !== last) { html += `<div class="gt">${grp}</div>`; last = grp; }
       if (h.t === 'n') { const k = kindOf(h.n.kind, true), vs = viewsWith(h.n.id), here = geo.byId[h.n.id];
-        html += `<button class="fr${i === hi ? ' on' : ''}" role="option" aria-selected="${i === hi}" data-i="${i}"><i style="background:var(--um-${KIND[k][0]})"></i><b>${mark(h.n.label, words)}</b><span>${esc(KIND[k][1])} · ${here ? 'this view' : esc(vs.map(v => shortT(v.title || v.id)).slice(0, 2).join(', ') || 'no view')}</span></button>`; }
-      else html += `<button class="fr${i === hi ? ' on' : ''}" role="option" aria-selected="${i === hi}" data-i="${i}"><i style="background:var(--um-accent)"></i><b>${mark(h.v.title || h.v.id, words)}</b><span>${(h.v.nodeIds || []).length} nodes${h.v.id === cur ? ' · here' : ''}</span></button>`;
+        html += `<button class="fr${i === hi ? ' on' : ''}" role="option" id="m-o${i}" aria-selected="${i === hi}" data-i="${i}"><i style="background:var(--um-${KIND[k][0]})"></i><b>${mark(h.n.label, words)}</b><span>${esc(KIND[k][1])} · ${here ? 'this view' : esc(vs.map(v => shortT(v.title || v.id)).slice(0, 2).join(', ') || 'no view')}</span></button>`; }
+      else html += `<button class="fr${i === hi ? ' on' : ''}" role="option" id="m-o${i}" aria-selected="${i === hi}" data-i="${i}"><i style="background:var(--um-accent)"></i><b>${mark(h.v.title || h.v.id, words)}</b><span>${(h.v.nodeIds || []).length} nodes${h.v.id === cur ? ' · here' : ''}</span></button>`;
     });
     res.innerHTML = html;
     const on = res.querySelector('.fr.on'); on && on.scrollIntoView({ block: 'nearest' });
@@ -301,7 +302,7 @@ export function mountPage(container, model, options = {}) {
     e.stopPropagation();
   });
   res.addEventListener('click', e => { const f = e.target.closest('[data-fill]'); if (f) { q.value = f.dataset.fill; hi = 0; drawHits(); q.focus(); return; } const b = e.target.closest('[data-i]'); if (b) pickHit(hits[+b.dataset.i]); });
-  res.addEventListener('pointermove', e => { const b = e.target.closest('[data-i]'); if (b && +b.dataset.i !== hi) { hi = +b.dataset.i; res.querySelectorAll('.fr').forEach(x => { const on = +x.dataset.i === hi; x.classList.toggle('on', on); x.setAttribute('aria-selected', on); }); } });
+  res.addEventListener('pointermove', e => { const b = e.target.closest('[data-i]'); if (b && +b.dataset.i !== hi) { hi = +b.dataset.i; q.setAttribute('aria-activedescendant', 'm-o' + hi); res.querySelectorAll('.fr').forEach(x => { const on = +x.dataset.i === hi; x.classList.toggle('on', on); x.setAttribute('aria-selected', on); }); } });
   pal.addEventListener('click', e => { if (e.target === pal) closePal(); });
   $('m-find').addEventListener('click', openPal);
 

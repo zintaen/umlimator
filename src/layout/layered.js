@@ -267,7 +267,7 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
     if (n.author || n.k === 'm-ext') {
       const A = (dg.authors || {})[n.author] || {}, max = n.w - 40;
       let t = n.author ? '@' + n.author : 'unknown';
-      while (t.length > 4 && sansW(t, 10, .92) + 42 > max) t = t.slice(0, -2) + '…';
+      while (t.length > 4 && sansW(t, 10, .92) + 42 > max) t = [...t].slice(0, -2).join('') + '…'; // whole characters: never half an emoji
       const w = Math.ceil(sansW(t, 10, .92) + 42);
       n.tag = { x: n.x + n.w - 12 - w, y: n.y + n.h - 9, w, h: 22, text: t, img: A.avatar || '', name: A.name || '' };
       n.decoB.push([n.tag.x - 2, n.tag.w + 4]);

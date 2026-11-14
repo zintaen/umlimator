@@ -248,3 +248,11 @@ test('the gallery and the examples\' README reach every example model: the AWS v
   assert.deepEqual(names.filter(n => !gallery.includes(`href="${n}.html"`)), ['monorepo']);
   assert.deepEqual(names.filter(n => !readme.includes(`(${n}.json)`)), []);
 });
+
+test('a typed view\'s key holds the titles of the views it opens: update() redraws "opens <view>" after a rename (audit 2)', () => {
+  const R = structuredClone(M); R.views.forEach(v => { v.title = 'Renamed ' + (v.title ?? v.id); });
+  for (const vid of ['buy-book', 'fulfil', 'dfd-level-1', 'mm-plan']) {
+    assert.notEqual(mapContext(M).viewKey(vid), mapContext(R).viewKey(vid), vid);
+    assert.match(mapContext(R).buildView(vid).markup, /Renamed/, vid);
+  }
+});

@@ -92,7 +92,8 @@ PNG was looked at, the SVG read, the PDF's text read back (`tests/cli.py` reads 
 
 Every piece has a name: "Profile BookshopConventions, holding 6 elements", "Stereotype owned, extends Class {required},
 team: String [0..1]", "Profile application from sales to BookshopConventions: «apply»"; an element's name says its
-stereotypes, the required ones too, and its tags. Tab reads each box and what it holds, then the rest, then the lines.
+stereotypes, the required ones too, and its tags. Tab reads what each box holds, then the rest, then the lines;
+a box is not a Tab stop: the keyboard reaches it through the outline of elements.
 Text reads at 4.5:1, lines and outlines at 3:1 in both themes (`tests/profile.html`, `tests/stage6.html`). Every gesture
 has a key (`docs/editing.md`).
 
