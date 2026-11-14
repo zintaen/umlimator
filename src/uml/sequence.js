@@ -38,7 +38,7 @@ const sqOperator = f => String(sqProps(f).operator ?? '');
 /* The view's structure, read once: the walk (interaction.js), each operand's fragment, each fragment's parent and its
    operands, which operand chain each occurrence lies in, and each fragment's block of occurrences (rows lo to hi) */
 function sqIndex(model, view) {
-  const w = interactionWalk(model, view), frags = SQ_ARR(view.fragments).filter(f => SQ_OBJ(f) && typeof f.id === 'string');
+  const w = interactionWalk(model, view), once = new Set(), frags = SQ_ARR(view.fragments).filter(f => SQ_OBJ(f) && typeof f.id === 'string' && !once.has(f.id) && once.add(f.id)); // listed twice: the first (the core reports it)
   const F = new Map(frags.map(f => [f.id, f])), opOf = new Map(); // operand id → its fragment
   frags.forEach(f => SQ_ARR(f.members).forEach(o => { if (SQ_OBJ(o) && typeof o.id === 'string' && !opOf.has(o.id)) opOf.set(o.id, f); }));
   // the fragments an occurrence or a fragment lies in, from the innermost out, each with the operand it lies in
@@ -75,7 +75,7 @@ function sqInput(model, view, X = sqIndex(model, view)) {
    and problems from it; order (S13): heads left to right, then fragments, operands and occurrences in time order */
 function sqRun(model, view) {
   const X = sqIndex(model, view), inp = sqInput(model, view, X), o = layoutTimeAxis(inp), heads = sqHeads(model, view), H = new Map(heads.map(n => [n.id, n]));
-  const msgs = X.occ.filter(m => m.message), nth = new Map(msgs.map((m, k) => [m.id, k + 1]));
+  const msgs = X.occ.filter(m => m.message), M = new Map(msgs.map(m => [m.id, m])), U = new Map(X.occ.filter(u => !u.message).map(u => [u.id, u])), nth = new Map(msgs.map((m, k) => [m.id, k + 1]));
   const inWhat = parent => { const c = X.chain(parent)[0]; if (!c) return ''; const op = SQ_ARR(c.f.members).find(m => SQ_OBJ(m) && m.id === c.op) || {};
     return `, in ${sqOperator(c.f) || 'fragment'}${SQ_HAS(op.label) ? ', ' + op.label : ''}`; };
   const direct = id => X.occ.filter(m => m.parent === id).length;
@@ -86,12 +86,12 @@ function sqRun(model, view) {
       return [{ id: fr.id, shape: 'frame', type: 'uml.CombinedFragment', label: op, k: 'file', holder: true, x: fr.x, y: fr.y, w: fr.w, h: fr.h, aria: `Combined fragment ${op}, ${ms.length} ${ms.length === 1 ? 'operand' : 'operands'}` },
         ...fr.parts.map(p => { const m = ms.find(x => x.id === p.id) || {}, k = direct(p.id);
           return { ...p, shape: 'operand', type: 'uml.InteractionOperand', label: m.label, k: 'file', holder: true, aria: `Operand ${SQ_HAS(m.label) ? m.label + ' ' : ''}of ${op}, ${k} ${k === 1 ? 'occurrence' : 'occurrences'}` }; })]; }),
-    ...o.spans.map(s => { const u = X.byId.get(s.id), cs = SQ_ARR(sqProps(u.el).covers).filter(id => H.has(id)), all = heads.map(n => n.id), ids = cs.length ? all.filter(id => cs.includes(id)) : all;
+    ...o.spans.map(s => { const u = U.get(s.id), cs = SQ_ARR(sqProps(u.el).covers).filter(id => H.has(id)), all = heads.map(n => n.id), ids = cs.length ? all.filter(id => cs.includes(id)) : all;
       return { ...s, shape: 'use', type: 'uml.InteractionUse', label: String(u.el.label ?? ''), k: 'file', holder: true,
         aria: `Interaction use ${u.el.label ?? ''}${ids.length ? `, over ${sqName(H.get(ids[0]))}${ids.length > 1 ? ' to ' + sqName(H.get(ids[ids.length - 1])) : ''}` : ''}` }; }),
   ];
   const byId = Object.fromEntries(nodes.map(n => [n.id, n]));
-  const edges = o.lines.map(l => { const m = X.byId.get(l.id), t = SQ_HAS(m.el.label) ? String(m.el.label) : '';
+  const edges = o.lines.map(l => { const m = M.get(l.id), t = SQ_HAS(m.el.label) ? String(m.el.label) : '';
     return { id: m.id, _id: m.id, type: 'uml.Message', from: m.from, to: m.to, s: byId[m.from], t: byId[m.to], pts: l.pts, end: SQ_END[m.sort], sort: m.sort,
       ...(t ? { lbl: { ...l.lbl, text: t }, label: t } : {}),
       aria: `Message ${nth.get(m.id)} of ${msgs.length}: ${sqName(H.get(m.from))} to ${sqName(H.get(m.to))}${t ? ', ' + t : ''}, ${m.sort}${inWhat(m.parent)}` }; });

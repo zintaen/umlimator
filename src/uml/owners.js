@@ -57,8 +57,8 @@ function ownersOn(model, view, look = {}) {
 
 // the reading order of a view's elements (§5): each box, then what it holds, depth first; the rest in the view's order
 function readingOrder(pic) {
-  const out = [], put = o => pic.holds(o).forEach(id => { out.push(id); if (pic.open.has(id)) put(id); });
-  put(null);
+  const out = [], st = [...pic.holds(null)].reverse(); // a stack, not recursion: boxes nested to any depth
+  while (st.length) { const id = st.pop(); out.push(id); if (pic.open.has(id)) st.push(...[...pic.holds(id)].reverse()); }
   return out;
 }
 

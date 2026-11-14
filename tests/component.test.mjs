@@ -297,3 +297,16 @@ test('P1 (§14): on 50 elements, 60 lines and 54 ports in boxes three deep, a fu
   for (const k of ['full', 'port', 'comp']) assert.ok(best(k) < 1000, `${k} ${best(k)} ms`);
   console.log(`# P1 target 100 ms: a full layout ${best('full')} ms, a port renamed ${best('port')} ms, a component renamed ${best('comp')} ms`);
 });
+
+test('layout() of a chain of 3,000 components joined by assemblies: ranked without recursion (audit 2)', () => {
+  const nodes = Array.from({ length: 3000 }, (_, i) => ({ id: 'c' + i, type: 'uml.Component', label: 'C' + i }));
+  const edges = nodes.slice(1).map((n, i) => ({ id: 'a' + i, type: 'uml.Connector', from: nodes[i].id, to: n.id, props: { kind: 'assembly' } }));
+  const g = layout({ schemaVersion: 2, nodes, edges, views: [{ id: 'v', diagram: 'uml.component', nodeIds: nodes.map(n => n.id) }] }, 'v');
+  assert.ok(g.byId.c2999.x > g.byId.c0.x);
+});
+
+test('a port\'s PDF row is its name and type whole, even when the type holds " of <its component>" (audit 2)', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'c', type: 'uml.Component', label: 'Order', members: [{ id: 'p', type: 'uml.Port', label: 'status', props: { valueType: 'List of Orders' } },
+    { id: 'q', type: 'uml.Port', label: 'Port Authority feed' }] }], edges: [], views: [{ id: 'v', diagram: 'uml.component', nodeIds: ['c'] }] };
+  assert.deepEqual(T.rows(m, m.views[0], 'c'), ['status : List of Orders', 'Port Authority feed']);
+});

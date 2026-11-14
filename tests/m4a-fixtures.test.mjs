@@ -243,6 +243,8 @@ test('DoD 1: the registry holds mindmap, gcp, azure and aws, and the JSON Schema
   assert.ok(['MindmapElementType', 'GcpElementType', 'GcpLineType', 'AzureElementType', 'AzureLineType', 'AwsElementType', 'AwsLineType', 'CloudElementProps'].every(k => new RegExp(`export (type|interface) ${k} `).test(dts)));
   const all = readFileSync(new URL('../README.md', import.meta.url), 'utf8').split('\n').find(l => l.includes("from 'umlimator/all'` draws diagram types"));
   assert.ok(['mindmap', 'Google Cloud', 'Azure', 'AWS'].every(w => all.includes(w)), 'README\'s umlimator/all line names the 0.26.0 types');
+  const model = readFileSync(new URL('../README.md', import.meta.url), 'utf8').split('\n').find(l => l.includes('`"gcp"`'));
+  assert.ok(['`"gcp"`', '`"azure"`', '`"aws"`'].every(w => model.includes(w)), 'README\'s Model section lists every 0.26.0 diagram value (audit 2)');
 });
 
 // §2.5 (S18): nothing this project publishes holds a vendor icon. Map logos are data URLs in committed pages today, so

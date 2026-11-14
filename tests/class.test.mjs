@@ -341,3 +341,9 @@ test('a generalization chain 20,000 deep is walked without recursion; a cycle at
   const cyc = classProblems({ schemaVersion: 2, nodes, edges }).filter(p => p.rule === 'generalization-cycle');
   assert.equal(cyc.length, 1); assert.deepEqual(cyc[0].ids, ['c' + (n - 3), 'c' + (n - 2), 'c' + (n - 1), 'back']);
 });
+
+test('describe() of a view of packages nested 3,000 deep: the reading order without recursion (audit 2)', () => {
+  const nodes = Array.from({ length: 3000 }, (_, i) => ({ id: 'p' + i, type: 'uml.Package', label: 'p' + i, ...(i ? { parent: 'p' + (i - 1) } : {}) }));
+  nodes.push({ id: 'c', type: 'uml.Class', label: 'C', parent: 'p2999' });
+  assert.match(describe({ schemaVersion: 2, nodes, edges: [], views: [{ id: 'all', diagram: 'uml.class', nodeIds: nodes.map(n => n.id) }] }, 'all'), /p2999/);
+});

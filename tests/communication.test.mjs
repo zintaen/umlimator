@@ -363,3 +363,9 @@ test('the ranking walks a chain of 20,000 lifelines without recursion, one colum
   const { rank, fwd } = cmRank(ids, links);
   assert.equal(rank[ids[19999]], 19999); assert.equal(fwd.length, 19999);
 });
+
+test('layout() of a chain of 3,000 lifelines: the host finds its loops without recursion (audit 2)', () => {
+  const nodes = Array.from({ length: 3000 }, (_, i) => ({ id: 'n' + i, type: 'uml.Lifeline', label: 'N' + i }));
+  const edges = nodes.slice(1).map((n, i) => ({ id: 'e' + i, type: 'uml.Connector', from: nodes[i].id, to: n.id }));
+  assert.equal(layout({ schemaVersion: 2, nodes, edges, views: [{ id: 'v', diagram: 'uml.communication', nodeIds: nodes.map(n => n.id) }] }, 'v').nodes.filter(n => n.shape === 'lifeline').length, 3000);
+});

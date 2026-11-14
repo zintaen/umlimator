@@ -227,6 +227,9 @@ test('the build stops where the files disagree on an element, naming it, the fil
   assert.throws(() => two([order()], [{ id: 'order', type: 'uml.ObjectNode' }]), /disagree on its type: "uml.Class" against "uml.ObjectNode"/);
   assert.throws(() => two([], [{ id: 'v', type: 'uml.Class' }]), /node v in b would open a's view v/);
   assert.throws(() => two([{ id: 'a', props: { owner: 'a' } }], []), /owner/); // a field the atlas does not know
+  // the root is checked as a link's view is: a view of the file it names (audit 2)
+  for (const root of ['a/nope', 'b/v', 'v']) assert.throws(() => build({ title: 't', root, sources: ['a', 'b'], links: [] },
+    name => ({ a: { nodes: [], views: [{ id: 'v', nodeIds: [] }] }, b: { nodes: [], views: [] } })[name]), /root .* is no view of its file/);
   // a timing view's changes and constraints are the view's own elements, with their own fields (0.23.0)
   const timed = timeline => build({ title: 't', root: 'a/v', sources: ['a', 'b'], links: [] },
     name => ({ a: { nodes: [order()], views: [{ id: 'v', nodeIds: [] }] }, b: { views: [{ id: 'w', nodeIds: [], timeline }] } })[name]);
@@ -247,4 +250,8 @@ test('the gallery and the examples\' README reach every example model: the AWS v
   const names = readdirSync(dir).filter(f => f.endsWith('.json') && !f.startsWith('.')).map(f => f.slice(0, -5));
   assert.deepEqual(names.filter(n => !gallery.includes(`href="${n}.html"`)), ['monorepo']);
   assert.deepEqual(names.filter(n => !readme.includes(`(${n}.json)`)), []);
+  // the two links on elements drawn only as boxes, which a double-click does not open (module-api.md 0.24.0's known gaps),
+  // are said where the README promises a double-click opens what a card leads to, and the gallery promises no drill-down to them (audit 2)
+  assert.match(readme.replace(/\s+/g, ' '), /a double-click does not open yet: `sales` \(in the packages\) and the Java 21 runtime/);
+  assert.doesNotMatch(gallery, /production's deployment, the components/);
 });

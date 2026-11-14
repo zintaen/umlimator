@@ -43,6 +43,7 @@ const BX_NS = 'https://zintaen.github.io/umlimator/bpmn'; // the umlimator: attr
 const BX_VIEW = 'process'; // the view of a file with no diagram interchange
 const BX_TASK = { 'bpmn:Task': 'none', 'bpmn:UserTask': 'user', 'bpmn:ServiceTask': 'service', 'bpmn:SendTask': 'send', 'bpmn:ReceiveTask': 'receive' };
 const BX_TASK_OUT = { none: 'bpmn:Task', user: 'bpmn:UserTask', service: 'bpmn:ServiceTask' };
+const BX_DIR_OUT = { none: undefined, one: 'One', both: 'Both' };
 const BX_DEFS = { // the definitions each kind of event may take (§3.2)
   StartEvent: ['none', 'message', 'timer'], EndEvent: ['none', 'message', 'terminate'], IntermediateCatchEvent: ['message', 'timer'],
   IntermediateThrowEvent: ['none', 'message'], BoundaryEvent: ['message', 'timer'] };
@@ -214,7 +215,13 @@ async function readBpmnXml(xml, moddle) {
         if (el.loopCharacteristics) skip(el.loopCharacteristics, n.id, '(a marker outside the subset)');
         const ends = new Set((el.dataInputAssociations || []).map(a => a.targetRef)); // the writer's placeholder ends
         for (const x of [el.ioSpecification, el.inputSet, el.outputSet, ...(el.properties || []), ...(el.dataInputs || []), ...(el.dataOutputs || [])]) if (x && !ends.has(x)) skip(x, n.id);
-        for (const a of el.dataInputAssociations || []) pending.push([a, 'bpmn.DataAssociation', (a.sourceRef || [])[0], el, null]);
+        for (const a of el.dataInputAssociations || []) {
+          pending.push([a, 'bpmn.DataAssociation', (a.sourceRef || [])[0], el, null]);
+          if (a.sourceRef?.length > 1) { // a line has one source: the rest are said and kept
+            say(a.id || n.id, 'skipped', `its sources after the first (${a.sourceRef.slice(1).map(x => x.id).join(', ')}): kept under ext.bpmn, not read`);
+            skipped.push({ parent: n.id, element: bxJson(a) });
+          }
+        }
         for (const a of el.dataOutputAssociations || []) pending.push([a, 'bpmn.DataAssociation', el, a.targetRef, null]);
       }
       for (const a of c.artifacts || []) {
@@ -355,7 +362,11 @@ async function writeBpmnXml(model, viewId, geo, moddle) {
     };
     for (const n of nodes) {
       const t = n.type, k = t.slice(5), pr = n.props || {};
-      if (t === 'bpmn.Task') els.set(n, mk(BX_TASK_OUT[pr.taskType] || 'bpmn:Task', n, { name: n.label }));
+      if (t === 'bpmn.Task') {
+        const tt = pr.taskType ?? 'none', ok = Object.hasOwn(BX_TASK_OUT, tt); // own keys only: "constructor" is no task type
+        if (!ok) say(n.id, `props.taskType ${tt}`);
+        els.set(n, mk(ok ? BX_TASK_OUT[tt] : 'bpmn:Task', n, { name: n.label }));
+      }
       else if (t === 'bpmn.DataObject') els.set(n, mk('bpmn:DataObjectReference', n, { name: n.label }));
       else if (t === 'bpmn.TextAnnotation') els.set(n, mk('bpmn:TextAnnotation', n, { text: n.label }));
       else if (t === 'bpmn.Group') {
@@ -421,7 +432,9 @@ async function writeBpmnXml(model, viewId, geo, moddle) {
         if (!collab) { say(e.id, 'a message flow in a model with no participant'); continue; }
         collab.messageFlows.push(x = mk('bpmn:MessageFlow', e, { name: e.label, sourceRef: A, targetRef: B }));
       } else if (e.type === 'bpmn.Association') {
-        x = mk('bpmn:Association', e, { sourceRef: A, targetRef: B, associationDirection: { one: 'One', both: 'Both' }[pr.direction] });
+        const dir = pr.direction ?? 'none';
+        if (!Object.hasOwn(BX_DIR_OUT, dir)) say(e.id, `props.direction ${dir}`);
+        x = mk('bpmn:Association', e, { sourceRef: A, targetRef: B, associationDirection: Object.hasOwn(BX_DIR_OUT, dir) ? BX_DIR_OUT[dir] : undefined });
         const at = [a, b].find(n => n.type === 'bpmn.TextAnnotation') || a;
         (holder(at) || collab || proc(null)).artifacts.push(x);
       } else if (e.type === 'bpmn.DataAssociation') {

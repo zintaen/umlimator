@@ -408,3 +408,15 @@ test('sub-processes nested 3,000 deep are written unindented, in linear size, an
   assert.ok(w.xml.length < 1 << 20, `${w.xml.length} characters`);
   assert.equal((await read(w.xml, BpmnModdle())).model.nodes.length, 3000);
 });
+
+test('a taskType or direction outside row 24 ("constructor" among them) is reported, the rest written; a data input association\'s second source is said and kept (audit 2)', needs, async () => {
+  for (const [k, v] of [['taskType', 'toString'], ['taskType', 'constructor'], ['direction', 'constructor'], ['direction', 'foo']]) {
+    const m = { schemaVersion: 2, root: 'v', nodes: [{ id: 't', type: 'bpmn.Task', label: 'Pack', ...(k === 'taskType' ? { props: { taskType: v } } : {}) }, { id: 'n', type: 'bpmn.TextAnnotation', label: 'note' }],
+      edges: [{ id: 'a', type: 'bpmn.Association', from: 'n', to: 't', ...(k === 'direction' ? { props: { direction: v } } : {}) }], views: [{ id: 'v', diagram: 'bpmn', parent: null, nodeIds: ['t', 'n'] }] };
+    const [w, back] = await roundTrip(m);
+    assert.deepEqual([w.report.map(x => `${x.line}: ${x.message}`), back.model.nodes.length, back.model.edges[0].props], [[`${k === 'taskType' ? 't' : 'a'}: props.${k} ${v}: not written`], 2, undefined], `${k} ${v}`);
+  }
+  const { model, report } = await read(`<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL" id="d"><process id="p"><dataObjectReference id="a" dataObjectRef="o"/>
+    <dataObjectReference id="b" dataObjectRef="o"/><dataObject id="o"/><task id="t"><dataInputAssociation id="da"><sourceRef>a</sourceRef><sourceRef>b</sourceRef></dataInputAssociation></task></process></definitions>`, BpmnModdle());
+  assert.deepEqual([model.edges.map(e => `${e.from}-${e.to}`), report[0].message, model.ext.bpmn.skipped[0].parent], [['a-t'], 'its sources after the first (b): kept under ext.bpmn, not read', 't']);
+});
