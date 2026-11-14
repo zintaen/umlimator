@@ -49,6 +49,7 @@ Action on it in a pull request; the site shows its stills and its PDF.
 | [`returns-flowchart.json`](returns-flowchart.json) | Flowchart (`flowchart`, 0.24.0) | Handling a returned book, laid out down: a start and an end, input/output, manual input, a decision with yes and no, a predefined process, a delay, a database, a document, and a connector joining two branches. What it covers: [`docs/conformance/flowchart.md`](../docs/conformance/flowchart.md) |
 | [`bookshop-data-flow.json`](bookshop-data-flow.json) | Data flow diagram (`dfd`, 0.24.0) | The bookshop's data flow in two levels: three external entities, three numbered processes and two stores; Take order opens its level 2, which balances against it. What it covers: [`docs/conformance/dfd.md`](../docs/conformance/dfd.md) |
 | [`bookshop-c4.json`](bookshop-c4.json) | C4 (`c4.context`, `c4.container`, `c4.component`, `c4.dynamic`, `c4.deployment`, 0.24.0) | The bookshop's architecture: a system context, its containers (a database as a cylinder, the system a dashed boundary), the Shop API's components, placing an order as ten numbered steps, and production's deployment nodes holding container instances; external systems grey. The Bookshop atlas's root. What it covers: [`docs/conformance/c4.md`](../docs/conformance/c4.md) |
+| [`bookshop-order-to-shipment.json`](bookshop-order-to-shipment.json) | BPMN (`bpmn`, 0.27.0) | From order to shipment: three pools (the shopper, the bookshop with two lanes, the payment provider as a black box), a service task with a timer boundary event, exclusive and parallel gateways, a collapsed sub-process that opens its own view, a call activity, message flows to a pool's border, a data object and a data store, an annotation and a group |
 | [`bookshop-timing.json`](bookshop-timing.json) | UML timing diagram (`uml.timing`, 0.23.0) | One charge on a time ruler in ms: the order worker and the payment provider, the overview's and the sequence example's lifelines, each a step line through its states; a call and its reply at their times, slanted between their senders' and receivers' states; a duration constraint `{<= 800 ms}` under the worker's lane and a time constraint on its last change. What the timing diagram covers: [`docs/conformance/uml-timing.md`](../docs/conformance/uml-timing.md) |
 
 | [`order-objects.json`](order-objects.json) | UML object diagram (`uml.object`, 0.19.0) | One placed order of the same bookshop as instances of its classes: each head `name : Classifier`, underlined, its slots as `feature = value` rows; links with a name or with roles by their ends; laid out top to bottom. What the object diagram covers: [`docs/conformance/uml-object.md`](../docs/conformance/uml-object.md) |
@@ -70,13 +71,14 @@ Action on it in a pull request; the site shows its stills and its PDF.
 [![The profile diagram: the bookshop's conventions](https://zintaen.github.io/umlimator/examples/stills/bookshop-profile/profile.png)](https://zintaen.github.io/umlimator/examples/bookshop-profile.html)
 [![The timing diagram: one charge](https://zintaen.github.io/umlimator/examples/stills/bookshop-timing/one-charge.png)](https://zintaen.github.io/umlimator/examples/bookshop-timing.html)
 [![C4: the bookshop's containers](https://zintaen.github.io/umlimator/examples/stills/bookshop-c4/c4-containers.png)](https://zintaen.github.io/umlimator/examples/bookshop-c4.html)
+[![BPMN: from order to shipment](https://zintaen.github.io/umlimator/examples/stills/bookshop-order-to-shipment/order-to-shipment.png)](https://zintaen.github.io/umlimator/examples/bookshop-order-to-shipment.html)
 [![The ER diagram: the bookshop's schema](https://zintaen.github.io/umlimator/examples/stills/bookshop-schema/er-schema.png)](https://zintaen.github.io/umlimator/examples/bookshop-schema.html)
 
 ## The Bookshop atlas
 
 [`bookshop-atlas.json`](bookshop-atlas.json) is the Bookshop examples above in one model (`"schemaVersion": 2`): the
-map's three views and the thirty views of the nineteen diagram files, one of each of UML's 14 diagram kinds and of the
-ER, flowchart, data flow, information flow and C4 diagrams, joined by drill-down. It opens at the C4 system context
+map's three views and the thirty-two views of the twenty diagram files, one of each of UML's 14 diagram kinds and of the
+ER, flowchart, data flow, information flow, C4 and BPMN diagrams, joined by drill-down. It opens at the C4 system context
 (0.24.0); the map is in the views list. Double-click a card to open what it leads to:
 
 | From | Card | Opens |
@@ -86,7 +88,7 @@ ER, flowchart, data flow, information flow and C4 diagrams, joined by drill-down
 | The map (`overview`) | Shoppers, Storefront, Database, Order queue, Order worker, Payment provider, GitHub | the use cases, buying a book, the sales classes, order 1042, fulfilling an order, the communication diagram, the packages |
 | Sales domain, order 1042 | Order, order1042 | an order's life (state machine) |
 | Bookshop packages | sales, BookshopConventions | the sales domain, the conventions profile |
-| Shopping (use cases) | Browse the catalog, Check out, Pay for the order | find a book, buying a book, take payment (activity) |
+| Shopping (use cases) | Browse the catalog, Check out, Pay for the order, Track an order | find a book, buying a book, take payment (activity), from order to shipment (BPMN, 0.27.0) |
 | Fulfilling an order, take payment | Take the next order from the queue, Charge the shopper's card, Record the payment on the order | queue the order, the checkout (sequences), one charge (timing) |
 | The map (`overview`), production, the components | Hosts, Java 21 runtime, Shop API | production (deployment), the components, inside the order service (composite structure) |
 
@@ -190,6 +192,8 @@ The module embedded in a page, as an app would use it. Serve the repository over
 | Line ends by multiplicity in two notations on one geometry (crow's foot, IDEF1X: `notation`); a column as a row of text | bookshop-schema |
 | Levels made by `D` and checked for balance; two symbol sets on one geometry (`notation`) | bookshop-data-flow |
 | Typed C4: a view's subject as a dashed boundary, implied relationships, a dynamic view's numbered steps, deployment nodes holding instances; elements on the map's card shapes (`props.shape`) | bookshop-c4 |
+| BPMN: pools and nested lanes as bands, boundary events on an activity's border, message flows to a pool's border, a sub-process expanded or collapsed by the view, names outside events and gateways, a group across lanes | bookshop-order-to-shipment, [`tests/bpmn-stress.json`](../tests/bpmn-stress.json) |
+| BPMN XML, imported and exported laid out (`umlimator.py import`, `export`, through a `bpmn-moddle` you install) | [`tests/import/descriptive.bpmn`](../tests/import/descriptive.bpmn), which CI imports (`tests/import.py`) |
 | A Mermaid `erDiagram`, a Mermaid flowchart (`--typed`), a Structurizr JSON workspace and DBML, imported (`umlimator.py import`) | [`tests/import/er.mmd`](../tests/import/er.mmd), [`flowchart.mmd`](../tests/import/flowchart.mmd), [`structurizr.json`](../tests/import/structurizr.json), [`dbml.json`](../tests/import/dbml.json), which CI reads (`tests/import.py`, the readers' tests) |
 | `layout()` in Node | `layout.mjs` |
 | The model's JSON Schema (`"$schema"`), `validate()` and `check()` | every model written by hand (`"$schema"`), `playground.html` |

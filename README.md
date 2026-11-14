@@ -125,6 +125,13 @@ drill-down, a data pipeline, an AI agent's skills, and host pages for embedding,
   Mermaid `erDiagram`, a Mermaid flowchart with `--typed`, a Structurizr JSON workspace and a `.dbml` file (with
   `@dbml/core` installed by you) into them. The Bookshop atlas starts at the C4 context, whose elements open the schema,
   the data flow, the information flow, the returns flowchart and the UML views.
+- **BPMN** (0.27.0): the elements of BPMN 2.0.2's Descriptive conformance sub-class (Table 2.1, every row) and six more:
+  pools and nested lanes as bands across the diagram, tasks, sub-processes expanded or collapsed, call activities, events
+  with their markers, gateways, data, annotations and groups; boundary events on their activity's border; sequence flows
+  that stay in their pool and message flows between pools, the kind picked by the ends you join
+  ([`examples/bookshop-order-to-shipment.json`](examples/bookshop-order-to-shipment.json), [what it covers](docs/conformance/bpmn.md)).
+  `import` reads BPMN XML and `export` writes it, laid out, through a `bpmn-moddle` you install (never a dependency of
+  umlimator). The Bookshop atlas opens the process from the use case "Track an order".
 - **Export**: any view as a stand-alone SVG or PNG, in the browser or from the CLI; the whole map as one PDF to hand in
   for a review: a cover with the contents, each view with its legend and tables of its cards, lines and boxes, then the
   rules (`umlimator.py pdf`).
@@ -135,8 +142,9 @@ drill-down, a data pipeline, an AI agent's skills, and host pages for embedding,
   marked on the map where it breaks; `umlimator.py check` fails on a broken rule, so CI does.
 - **Change**: what a pull request changes, marked on the map and said in words (with a GitHub Action that posts it);
   a time-lapse of a model's history, where cards glide, fade in and fade out; and drift, the map against the traffic seen.
-- **Import**: a Structurizr workspace, a C4-PlantUML or Mermaid diagram, or what `docker compose config` and `kubectl get`
-  print as JSON, read into a model (`umlimator.py import`), with what it can't read listed line by line.
+- **Import**: a Structurizr workspace, a C4-PlantUML or Mermaid diagram, BPMN XML, or what `docker compose config` and
+  `kubectl get` print as JSON, read into a model (`umlimator.py import`), with what it can't read listed line by line;
+  and a model's BPMN written back as BPMN XML (`umlimator.py export`).
 - **An AI assistant on the map**: an MCP server (`umlimator.py mcp`) through which an assistant such as Claude Code reads
   the model (a view in words, paths, what a card reaches, broken rules, problems, a diff) and drives its page in your
   browser (a view, a highlight, a tour, a story).
@@ -193,7 +201,7 @@ function MapView({ model, onSelect }) {
   or costliest path, `whatIf(model, view, { remove })` what loses its way when cards go down, and
   `sequenceFromTrace(model, spans, { view, match })` keeps a trace as a numbered view; all three in Node too.
 - `editable: true` turns on editing gestures ([docs/editing.md](docs/editing.md); `examples/edit.html` is a working host).
-- `import { render, apply, history } from 'umlimator/all'` draws diagram types too: a class, object, package, sequence, communication, use case, activity, state machine, interaction overview, component, deployment, composite structure, profile, timing, information flow, entity-relationship, flowchart, data flow or C4 diagram, whose gestures emit
+- `import { render, apply, history } from 'umlimator/all'` draws diagram types too: a class, object, package, sequence, communication, use case, activity, state machine, interaction overview, component, deployment, composite structure, profile, timing, information flow, entity-relationship, flowchart, data flow, C4 or BPMN diagram, whose gestures emit
   `edit` transactions that `apply(model, e.commands)` turns into the next model (`examples/class-editor.html` is a
   working host). `umlimator` alone draws maps, and a typed view as plain cards with a warning.
 - `diff(before, after)` returns `after` with each card and line marked added, changed or removed, what changed in words,
@@ -278,7 +286,7 @@ gets completion and checks in editors, and `validate(model)` lists its errors an
 sequence, communication, use case, activity, state machine, interaction overview, component, deployment, composite
 structure, profile, timing or information flow diagram; `"er"`, `"flowchart"` and `"dfd"` an entity-relationship
 diagram, a flowchart and a data flow diagram; `"c4.landscape"`, `"c4.context"`, `"c4.container"`, `"c4.component"`,
-`"c4.dynamic"` and `"c4.deployment"` C4's six views; each drawn by `umlimator/all` and the CLI; a type not drawn yet shows its
+`"c4.dynamic"` and `"c4.deployment"` C4's six views; `"bpmn"` a BPMN diagram; each drawn by `umlimator/all` and the CLI; a type not drawn yet shows its
 nodes as plain cards, with a warning. A model with no `schemaVersion` is a map, as always, and a version newer than the
 module reads is an error.
 
@@ -406,6 +414,18 @@ Milestone 2's five types (`examples/bookshop-schema.json`, `returns-flowchart.js
 | view | `edges` | a C4 dynamic view's steps: relationship ids, each once, in time order |
 | view | `diagram` | `"er"`, `"flowchart"`, `"dfd"`, `"uml.information-flow"`, `"c4.landscape"`, `"c4.context"`, `"c4.container"`, `"c4.component"`, `"c4.dynamic"`, `"c4.deployment"` |
 
+A BPMN diagram (`examples/bookshop-order-to-shipment.json`; [`docs/conformance/bpmn.md`](docs/conformance/bpmn.md)), from
+0.27.0:
+
+| On | Field | What it does |
+|---|---|---|
+| node, member, edge | `type` | `bpmn.Participant` (a pool; members `bpmn.Lane`), `bpmn.Task`, `bpmn.SubProcess`, `bpmn.CallActivity`, `bpmn.StartEvent`, `bpmn.EndEvent`, `bpmn.IntermediateCatchEvent`, `bpmn.IntermediateThrowEvent`, `bpmn.BoundaryEvent`, `bpmn.ExclusiveGateway`, `bpmn.ParallelGateway`, `bpmn.DataObject`, `bpmn.DataStoreReference`, `bpmn.TextAnnotation`, `bpmn.Group`; lines `bpmn.SequenceFlow`, `bpmn.MessageFlow`, `bpmn.Association`, `bpmn.DataAssociation` (a flow's `label` is its name) |
+| member, node | `parent` | a lane's lane of the same pool (nested); a flow node's innermost lane, its pool, its sub-process or none; data's pool or none |
+| node, edge | `props` | on any element, `documentation`; a pool's `processRef`; a task's `taskType` (`none`, `user`, `service`); an event's `definition` (`none`, `message`, `timer`, `terminate`, by its kind); a boundary event's `attachedTo` (an activity) and `cancelActivity` (false: non-interrupting); a call activity's `calledElement`; a data store's `dataStoreRef`; the groups an element is in, `categoryValueRef` (ids); an association's `direction` (`none`, `one`, `both`) |
+| node | `opensView` | a collapsed sub-process's own view, whose `subject` is the sub-process |
+| view | `present` | a boundary event's side (`{ "side": "bottom" }`) |
+| view | `diagram` | `"bpmn"`; a sub-process is drawn expanded when `nodeIds` lists something it holds |
+
 ## Command line
 
 ```bash
@@ -427,6 +447,8 @@ python3 umlimator.py import schema.mmd --out schema.json              # a Mermai
 python3 umlimator.py import returns.mmd --typed --out returns.json    # a Mermaid flowchart as a flowchart (without --typed, a map)
 python3 umlimator.py import workspace.json --out c4.json              # a Structurizr JSON workspace, as typed C4 views (needs Node)
 python3 umlimator.py import schema.dbml --out schema.json             # DBML, as an ER diagram (needs Node and @dbml/core, installed by you)
+python3 umlimator.py import order.bpmn --out order.json               # BPMN XML, as a BPMN diagram (needs Node and bpmn-moddle, installed by you)
+python3 umlimator.py export order.json --out order.bpmn               # a model's BPMN as BPMN XML, laid out (the same)
 python3 umlimator.py render examples/sales-classes.json --out classes.html   # a class diagram's page; stills, check and pdf take it too
 docker compose config --format json > compose.json && python3 umlimator.py import compose.json --out model.json
 kubectl get deploy,sts,svc,ing -A -o json > cluster.json && python3 umlimator.py import cluster.json --out model.json

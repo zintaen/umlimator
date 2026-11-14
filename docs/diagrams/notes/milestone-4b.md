@@ -713,6 +713,40 @@ atlas builds, `check.mjs` passes, and the example validates with the same proble
 `tools/atlas.mjs`'s `KEYS.props` gains `attachedTo`, `calledElement`, `cancelActivity`, `categoryValueRef`,
 `dataStoreRef`, `definition`, `direction`, `documentation`, `processRef`, `taskType`.
 
+### 13.1 As built (4b.5)
+
+Where 4b.5 departs from §12.3, §13, §15.2 and §18, each taken by the lead under the maintainer's standing approval (14 Nov
+2026):
+
+- **18 ids renamed, not 15.** Since this note was written the atlas gained `warehouse`, `join` and `m-charge` as other
+  elements, so the example's `bp-warehouse`, `bp-join` and `bp-m-charge` are renamed too; `tests/m4b-fixtures.test.mjs`
+  checks that no old id is left and every reference names an element or a view. Its problems are as before: none.
+- **Documentation on two tasks, no nested lane.** §3.1's nested lane would move every pin 4b.3's tests and
+  `tests/bpmn.html` hold on the example; nested lanes three deep are in `tests/bpmn-stress.json`'s `edge-cases` view,
+  which holds every row of Table 2.1 and the six extras, so each row is exercised there.
+- **The stress file's views.** `edge-cases`, `ec-closed` (the same with its sub-process closed), `ec-inside` (that
+  sub-process's own view, its `opensView`) and `all` (4b.3's generator, written out). Crossings pinned, right and down:
+  `edge-cases` 12 and 12, `ec-closed` 14 and 15, `ec-inside` 0, `all` 30 and 29; the example 5 and 6. Nothing else
+  `check()` finds, no overlap, no line through a node, no sequence flow outside its pool, every boundary circle on its
+  activity's border, in Node and in Chrome (`tests/m4b.html`, three fonts, both themes).
+- **A sequence flow across pools** is in the JSON (an error, `sequence-scope`); `connect` between those two ends makes a
+  message flow, never a sequence flow (§7.1), so that is what the test holds.
+- **`import` and `export` on the example** are tested in `tests/import.py`, which runs where CI installs `bpmn-moddle`
+  (the `bench` job), not in `tests/cli.py`, whose job has none. §12.3's wiring of the type's layout into the CLI is in
+  `umlimator.py` (4b.4's file): with no geometry given, `export` lays the view out with `lib/umlimator-all.js` and gives
+  the writer each pool's and lane's band, each expanded sub-process's frame, each other node's box and each line's
+  points; `tests/import.py` reads them back from the XML and imports the file again.
+- **Files outside the Owns list**, each following the example's move or rename: `tests/bpmn.test.mjs`, `tests/bpmn.html`
+  and `tests/bpmn-xml.test.mjs` (the path and the renamed ids, their pins unchanged otherwise), `tests/import.py`,
+  `tests/atlas.test.mjs` (the atlas's diagram kinds, its crossings and the new link), `tests/core-diet.json` (the moved
+  example's fingerprints, recorded again; every other entry unchanged), `.github/workflows/check.yml` (the example loop's
+  crossing ceilings for the example, 5, and the atlas, 27), `umlimator.py` and `README.md` (`plan.md` §7's documents).
+  `tests/embed.py` also lists `tests/bpmn.html`, which 4b.3's merge left out.
+- **`proposal.md` §8.5** has no BPMN row; its §3.4 row points to §16 and the conformance note instead.
+- **Gaps found:** the PDF's tables name an unnamed gateway by its id (`fork`, `not-paid`); two lines on one boundary event
+  leave its port's face side by side, 0.76 px off its circle (inside §13's 1 px). Both are 4b.3's code, stated in the
+  conformance note and the release notes, not changed here.
+
 ## 14. Performance (P1, S16)
 
 | Fixture | Budget, in Node, CPU time, best of N after a warm-up; CI holds 1 s and prints the target |

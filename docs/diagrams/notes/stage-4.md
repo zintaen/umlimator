@@ -275,6 +275,13 @@ argument, `rgap`, the row gap the type laid out with, since `g` does not carry i
 widen a gap past it; without it the narrowest gap between two rows is taken. Siblings with an `order` come first, by it;
 those without one follow in list order.)
 
+(Amended in milestone 4b's 4b.1, [`milestone-4b.md`](milestone-4b.md) §5.2, written by 4b.5: a sixth argument, `runs`,
+optional, `{ laneId: [first, last] }`, each lane's rows as the type placed them, used in place of the count of `g`'s
+nodes; a lane with no run takes its nested lanes' rows, one with neither has no band, and a run that is not
+`[first, last]` with `0 <= first <= last` counts as none. When `g.families` is not empty, a box's frame counts toward the
+extent of its first and last content row, so a divider never crosses a box. The activity type passes no `runs` and has
+no boxes, so its bands do not move.)
+
 - **Rows.** Within each column, the nodes keep their ranked order, sorted by lane (depth first, in `nodeIds` order). Lane
   `k` takes `rows_k` rows, the most of its nodes in any one column; lanes follow each other with no shared row. A nested
   lane's rows sit inside its parent's.
