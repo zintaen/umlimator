@@ -461,7 +461,10 @@ function bzRemove(model, view, ids, fromModel) {
   const held = [...I.N.values()].filter(n => shift.has(n.parent) && !rest.includes(n.id));
   held.forEach(n => cmds.push({ op: 'reparent', id: n.id, parent: I.L.get(n.parent).pool }));
   [...gone, ...moved].forEach(id => cmds.push({ op: 'delete', id }));
-  moved.forEach(id => { const { x, pool } = I.L.get(id), p = keep(id), c = structuredClone(x); delete c.parent; if (p !== pool) c.parent = p; cmds.push({ op: 'add', element: c, owner: pool }); });
+  // each added again where the outermost deleted lane above it was among its pool's members, so the lanes keep their order
+  const top = id => I.chain(id).filter(p => gone.has(p)).at(-1), after = pool => BZ_ARR(I.el(pool).members).flatMap(m => (!BZ_OBJ(m) || !shift.has(m.id) ? [m] : moved.filter(id => top(id) === m.id)));
+  moved.map(id => [after(I.L.get(id).pool).indexOf(id), id]).sort((a, b) => a[0] - b[0]).forEach(([index, id]) => { const { x, pool } = I.L.get(id), p = keep(id), c = structuredClone(x);
+    delete c.parent; if (p !== pool) c.parent = p; cmds.push({ op: 'add', element: c, owner: pool, index }); });
   held.forEach(n => { const p = gone.has(n.parent) ? keep(n.parent) : n.parent; if (p !== I.L.get(n.parent).pool) cmds.push({ op: 'reparent', id: n.id, parent: p }); });
   const owned = p => [...I.N.values()].filter(n => I.chain(n.id).includes(p)).length;
   rest.forEach(id => cmds.push(fromModel || own.has(id) || I.L.has(id) ? { op: 'delete', id } : { op: 'hide', id, view: view.id }));

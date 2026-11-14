@@ -36,7 +36,7 @@ const ifKey = t => (Object.hasOwn(IF_KEY, t) ? IF_KEY[t] : String(t ?? '').split
 const IF_IT = { pad: 8, name: 13, more: 32 };
 // the classifier's own markup, named by n.aria (A1) and by its shape
 const ifClassifier = (n, c, f, shape = 'classifier') => SHAPE.classifier.draw(n, c, f).replace(/data-shape="classifier" tabindex="-1" role="img" aria-label="[^"]*"/,
-  `data-shape="${shape}" tabindex="-1" role="img" aria-label="${esc(n.aria || n.label || '')}"`);
+  () => `data-shape="${shape}" tabindex="-1" role="img" aria-label="${esc(n.aria || n.label || '')}"`); // a function: no $ pattern in a name is read
 // a class or an interface: the classifier, named by its accessible name rather than the classifier's own («interface» twice)
 SHAPE['if-classifier'] = { ...SHAPE.classifier, draw: (n, c, f) => ifClassifier(n, c, f) };
 SHAPE['information-item'] = { ...SHAPE.classifier,

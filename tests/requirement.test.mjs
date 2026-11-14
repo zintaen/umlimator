@@ -343,3 +343,11 @@ test('P1 (S18): on 50 requirements and 60 relationships, a full layout under 1 s
   for (const k of ['text', 'satisfy', 'unown']) assert.ok(best(k) < 1000, `${k} ${best(k)} ms`);
   console.log(`# P1 target 100 ms: a text edited ${best('text')} ms, a satisfy added ${best('satisfy')} ms, a containment line deleted ${best('unown')} ms; full layout ${best('full')} ms`);
 });
+
+test('audit 1: requirement-typing leaves a property typed by a value type that shares a requirement\'s name', () => {
+  const m = { schemaVersion: 2, nodes: [N('speed', 'sysml.ValueType', 'Speed'),
+    N('bike', 'sysml.Block', 'Bike', { members: [{ id: 'bike.top', type: 'sysml.ValueProperty', label: 'top', props: { valueType: 'Speed' } }, { id: 'bike.goal', type: 'sysml.ValueProperty', label: 'goal', props: { valueType: 'Fast' } }] }),
+    R('rq', 'Speed', null, 'R1', 'The bike shall reach 25 km/h'), R('rq2', 'Fast', null, 'R2', 'It is fast')],
+  edges: [], views: [{ id: 'req', diagram: 'sysml.requirement', nodeIds: ['rq', 'rq2'] }] };
+  assert.deepEqual(validate(m).filter(p => p.rule === 'requirement-typing').map(p => p.ids), [['bike.goal', 'rq2']], 'only the name a requirement alone holds');
+});
