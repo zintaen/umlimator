@@ -17,25 +17,30 @@ import { r2 } from '../draw/shapes.js';
    near edge midpoint. Nodes and links in pre-order. Bands are disjoint and children keep their order, so no two topics
    overlap and no two links cross. Two passes over an explicit stack, never recursion: linear in the topics.
    Problems: { level, message, ids }: the root not a topic (nothing drawn), a topic listed twice (the first drawn), a
-   topic that does not descend from the root, its parent not here or a cycle (hung from the root, last). */
+   topic with no id (not drawn), a topic that does not descend from the root, its parent not here or a cycle: the top of
+   its unreached chain (where the parent is not here; in a cycle, the member listed first) hung from the root, last, with
+   what it holds. Sizes and gaps over TREE_MAX count as TREE_MAX, so sums stay finite. */
 
 const TREE = { x: 48, y: 12 }; // the gaps when the input gives none: a child from its parent's edge; two sibling bands
 
-const treeNum = v => (Number.isFinite(v) && v > 0 ? v : 0);
-const treeGap = (v, d) => (Number.isFinite(v) && v >= 0 ? v : d);
+const TREE_MAX = 1e9; // px: a larger size or gap counts as this, so no sum overflows
+const treeNum = v => (Number.isFinite(v) && v > 0 ? Math.min(v, TREE_MAX) : 0);
+const treeGap = (v, d) => (Number.isFinite(v) && v >= 0 ? Math.min(v, TREE_MAX) : d);
 const treeSpan = (list, gy) => list.reduce((s, T, i) => s + T.band + (i ? gy : 0), 0); // bands stacked gy apart
 
-function layoutTree(input = {}) {
+function layoutTree(input) {
+  input = input || {};
   const problems = [], say = (level, message, ids) => problems.push({ level, message, ids });
   const gx = treeGap((input.gap || {}).x, TREE.x), gy = treeGap((input.gap || {}).y, TREE.y);
   const byId = new Map();
   for (const t of Array.isArray(input.topics) ? input.topics : []) {
-    if (!t || t.id == null) continue;
+    if (!t || typeof t !== 'object') continue;
+    if (t.id == null) { say('warning', 'a topic with no id: not drawn', []); continue; }
     if (byId.has(t.id)) say('warning', `topic ${t.id} is listed twice: the first is drawn`, [t.id]);
-    else byId.set(t.id, { t, id: t.id, w: treeNum(t.w), h: treeNum(t.h), kids: [], sub: [] });
+    else byId.set(t.id, { t, i: byId.size, id: t.id, w: treeNum(t.w), h: treeNum(t.h), kids: [], sub: [] });
   }
   const root = byId.get(input.root);
-  if (!root) { say('error', `the root ${input.root} is not a topic here: nothing drawn`, [input.root]); return { nodes: [], links: [], bounds: { x: 0, y: 0, w: 0, h: 0 }, problems }; }
+  if (!root) { if (input.root == null) say('error', 'no root given: nothing drawn', []); else say('error', `the root ${input.root} is not a topic here: nothing drawn`, [input.root]); return { nodes: [], links: [], bounds: { x: 0, y: 0, w: 0, h: 0 }, problems }; }
   for (const T of byId.values()) if (T !== root && byId.has(T.t.parent)) byId.get(T.t.parent).kids.push(T);
 
   // ---- pre-order, from the root; then each topic not reached, in order, hung from the root with what it holds
@@ -43,7 +48,14 @@ function layoutTree(input = {}) {
     while (st.length) { const T = st.pop(); order.push(T);
       for (let i = T.kids.length - 1; i >= 0; i--) { const C = T.kids[i]; if (!C.seen) { C.seen = true; C.up = T; st.push(C); } } } };
   walk(root);
-  for (const T of byId.values()) if (!T.seen) { say('warning', `topic ${T.id} does not descend from the root ${root.id}: hung from it`, [T.id]); T.up = root; walk(T); }
+  // the top of T's unreached chain: up through parents until one is not here (the last one) or one repeats (a cycle:
+  // its member listed first). Every topic on the climb is walked from that top, so each climbs once: still linear.
+  for (const T of byId.values()) if (!T.seen) {
+    const path = []; let H = T;
+    while (H && !H.on) { H.on = true; path.push(H); H = byId.get(H.t.parent); }
+    const top = H ? path.slice(path.indexOf(H)).reduce((a, b) => (b.i < a.i ? b : a)) : path.at(-1);
+    say('warning', `topic ${top.id} does not descend from the root ${root.id}: hung from it`, [top.id]); top.up = root; walk(top);
+  }
   order.forEach(T => { if (T.up) T.up.sub.push(T); T.depth = T.up ? T.up.depth + 1 : 0; T.branch = T.depth > 1 ? T.up.branch : T.depth ? T.id : null; });
 
   // ---- bands, post-order; sides
@@ -66,13 +78,14 @@ function layoutTree(input = {}) {
   const nodes = [], links = [];
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
   for (const T of order) {
-    nodes.push({ id: T.id, x: r2(T.x), y: r2(T.y), w: T.w, h: T.h, side: T.side, depth: T.depth, branch: T.branch });
-    x0 = Math.min(x0, T.x); y0 = Math.min(y0, T.y); x1 = Math.max(x1, T.x + T.w); y1 = Math.max(y1, T.y + T.h);
+    const n = { id: T.id, x: r2(T.x), y: r2(T.y), w: T.w, h: T.h, side: T.side, depth: T.depth, branch: T.branch };
+    nodes.push(n); // the bounds from the node as drawn (rounded), so they hold it
+    x0 = Math.min(x0, n.x); y0 = Math.min(y0, n.y); x1 = Math.max(x1, n.x + n.w); y1 = Math.max(y1, n.y + n.h);
     if (!T.up) continue;
     const P = T.up, L = T.side === 'left';
     links.push({ from: P.id, to: T.id, p1: [r2(L ? P.x : P.x + P.w), r2(P.y + P.h / 2)], p2: [r2(L ? T.x + T.w : T.x), r2(T.y + T.h / 2)] });
   }
-  return { nodes, links, bounds: { x: r2(x0), y: r2(y0), w: r2(x1 - x0), h: r2(y1 - y0) }, problems };
+  return { nodes, links, bounds: { x: x0, y: y0, w: x1 - x0, h: y1 - y0 }, problems };
 }
 
 export { TREE, layoutTree };

@@ -24,7 +24,7 @@ function clean(o, inp) {
   const bad = [], gx = (inp.gap || {}).x ?? TREE.x, gy = (inp.gap || {}).y ?? TREE.y, at = new Map(o.nodes.map(n => [n.id, n]));
   o.nodes.forEach((a, i) => o.nodes.slice(0, i).forEach(b => { if (meets(a, b)) bad.push(`${a.id} meets ${b.id}`); }));
   const B = o.bounds;
-  o.nodes.forEach(n => { if (n.x < B.x - .02 || n.y < B.y - .02 || n.x + n.w > B.x + B.w + .02 || n.y + n.h > B.y + B.h + .02) bad.push(`${n.id} out of the bounds`); });
+  o.nodes.forEach(n => { if (n.x < B.x || n.y < B.y || n.x + n.w > B.x + B.w + 1e-9 || n.y + n.h > B.y + B.h + 1e-9) bad.push(`${n.id} out of the bounds`); });
   const { band } = bands(inp), kids = new Map();
   o.links.forEach(l => { const p = at.get(l.from), c = at.get(l.to), L = c.side === 'left';
     kids.set(p.id, [...(kids.get(p.id) || []), c]);
@@ -47,7 +47,7 @@ const TABLE = {
     tp('b', 'r'), tp('b1', 'b'), tp('b2', 'b1'), tp('b3', 'b2'), tp('b4', 'b3')] },
   'every branch on one side': { root: 'r', topics: [tp('r', null), ...'abcd'.split('').flatMap(c => [tp(c, 'r', 80, 24, 'left'), tp(`${c}1`, c), tp(`${c}2`, c)])] },
   'a parent taller than its children': { root: 'r', topics: [tp('r', null), tp('a', 'r', 200, 120), tp('a1', 'a', 40, 12), tp('a2', 'a', 40, 12), tp('b', 'r', 60, 16)] },
-  'sizes that vary at each depth': { root: 'r', topics: [tp('r', null, 50, 60), ...Array.from({ length: 40 }, (_, i) => tp(`t${i}`, i < 6 ? 'r' : `t${(i * 7) % i}`, 30 + (i * 37) % 170, 20 + (i * 13) % 60))] },
+  'sizes that vary at each depth': { root: 'r', topics: [tp('r', null, 50, 60), ...Array.from({ length: 40 }, (_, i) => tp(`t${i}`, i < 6 ? 'r' : `t${Math.floor(i / 2)}`, 30 + (i * 37) % 170, 20 + (i * 13) % 60))] },
   'gaps of zero': { root: 'r', gap: { x: 0, y: 0 }, topics: [tp('r', null), tp('a', 'r'), tp('b', 'r'), tp('c', 'r'), tp('a1', 'a'), tp('a2', 'a')] },
   'wide gaps': { root: 'r', gap: { x: 120, y: 40 }, topics: [tp('r', null), tp('a', 'r'), tp('b', 'r'), tp('a1', 'a'), tp('b1', 'b'), tp('b2', 'b')] },
 };
@@ -105,7 +105,8 @@ test('each side\'s first-level bands centred on the root\'s middle', () => {
 test('problems: the root not a topic draws nothing; a topic listed twice draws the first; one not under the root hangs from it, last', () => {
   let o = layoutTree({ root: 'x', topics: [tp('r', null)] });
   assert.deepEqual(o, { nodes: [], links: [], bounds: { x: 0, y: 0, w: 0, h: 0 }, problems: [{ level: 'error', message: 'the root x is not a topic here: nothing drawn', ids: ['x'] }] });
-  assert.deepEqual(layoutTree().nodes, []);
+  assert.deepEqual(layoutTree().nodes, []); assert.deepEqual(layoutTree(null).problems, [{ level: 'error', message: 'no root given: nothing drawn', ids: [] }]);
+  assert.deepEqual(layoutTree({ root: 'r', topics: [tp('r', null), { parent: 'r', w: 9 }] }).problems, [{ level: 'warning', message: 'a topic with no id: not drawn', ids: [] }]);
 
   o = layoutTree({ root: 'r', topics: [tp('r', null), tp('a', 'r', 80), tp('a', 'r', 300)] });
   assert.deepEqual(o.nodes.map(n => [n.id, n.w]), [['r', 80], ['a', 80]]);
@@ -119,14 +120,32 @@ test('problems: the root not a topic draws nothing; a topic listed twice draws t
   assert.deepEqual(o.links.map(l => `${l.from}>${l.to}`), ['r>a', 'r>m', 'r>p', 'p>q', 'r>s', 's>s1', 'r>z']);
   assert.deepEqual(clean(o, { ...inp, topics: inp.topics.map(t => (['m', 'p', 's', 'z'].includes(t.id) ? { ...t, parent: 'r' } : t)) }), []);
 
+  // a child listed before its unreached parent stays under it: the top of the chain hangs, in either order
+  for (const topics of [[tp('r', null), tp('x', 'y'), tp('y', 'gone')], [tp('r', null), tp('y', 'gone'), tp('x', 'y')]]) {
+    o = layoutTree({ root: 'r', topics });
+    assert.deepEqual([o.links.map(l => `${l.from}>${l.to}`), o.problems.map(p => p.ids[0])], [['r>y', 'y>x'], ['y']]);
+  }
+  // a cycle with a tail listed first: the cycle's member listed first hangs, the tail under its own parent
+  o = layoutTree({ root: 'r', topics: [tp('r', null), tp('d', 'c2'), tp('c1', 'c2'), tp('c2', 'c1')] });
+  assert.deepEqual([o.links.map(l => `${l.from}>${l.to}`), o.problems.map(p => p.ids[0])], [['r>c1', 'c1>c2', 'c2>d'], ['c1']]);
+
   // a clean input lists none
   assert.deepEqual(layoutTree(TABLE['a star of six']).problems, []);
 });
 
-test('sizes that are not numbers count as 0; a gap not given or negative takes the default', () => {
+test('sizes that are not numbers, or negative, count as 0; a gap not given or negative takes the default; past TREE_MAX counts as it', () => {
   const o = layoutTree({ root: 'r', gap: { x: -5 }, topics: [{ id: 'r', w: 'x', h: NaN }, { id: 'a', parent: 'r', w: -3, h: 20 }] });
   assert.deepEqual(o.nodes.map(n => [n.w, n.h]), [[0, 0], [0, 20]]);
   assert.equal(o.nodes[1].x, TREE.x);
+  const big = layoutTree({ root: 'r', gap: { x: 1e308, y: 1e308 }, topics: ['r', 'a', 'b', 'c', 'd'].map((id, i) => tp(id, i ? 'r' : null, 1e308, 1e308)) });
+  assert.ok(big.nodes.every(n => Number.isFinite(n.x) && Number.isFinite(n.y) && n.w === 1e9));
+  assert.deepEqual(clean(big, { ...big, root: 'r', gap: { x: 1e9, y: 1e9 }, topics: big.nodes.map(n => ({ ...n, parent: n.depth ? 'r' : null })) }), []);
+});
+
+test('bounds hold every node as drawn (rounded), with no slack', () => {
+  const inp = { root: 'r', gap: { x: .005, y: .003 }, topics: [tp('r', null, .333, .333), tp('a', 'r', .333, .333), tp('b', 'r', .333, .333), tp('c', 'r', .333, 1.0051)] };
+  const o = layoutTree(inp), B = o.bounds;
+  assert.deepEqual(o.nodes.filter(n => n.x < B.x || n.y < B.y || n.x + n.w > B.x + B.w + 1e-9 || n.y + n.h > B.y + B.h + 1e-9), []);
 });
 
 test('the same input twice gives the same output, and the input is not changed', () => {
@@ -158,7 +177,7 @@ test('5,000 topics: no two overlap and the bounds hold them all', () => {
   const s = [...o.nodes].sort((a, b) => a.y - b.y), bad = [];
   s.forEach((a, i) => { for (let j = i + 1; j < s.length && s[j].y < a.y + a.h; j++) if (meets(a, s[j])) bad.push(`${a.id} meets ${s[j].id}`); });
   assert.deepEqual(bad, []);
-  const B = o.bounds; assert.ok(o.nodes.every(n => n.x >= B.x && n.y >= B.y && n.x + n.w <= B.x + B.w + .02 && n.y + n.h <= B.y + B.h + .02));
+  const B = o.bounds; assert.ok(o.nodes.every(n => n.x >= B.x && n.y >= B.y && n.x + n.w <= B.x + B.w + 1e-9 && n.y + n.h <= B.y + B.h + 1e-9));
 });
 
 test('5,000 topics laid out under CI\'s 1 s, printed against 100 ms (CPU, best of seven, after a warm-up) (timed)', () => {

@@ -460,11 +460,13 @@ near edge midpoint. Problems: `{ level, message, ids }`, never `warn()`.
   hangs from its nearest shown ancestor.
 
 As built (4a.1, 14 Nov 2026), where the contract left a choice: the root is at (0, 0), its `side` and `branch` null, its
-`depth` 0; `bounds` is the tight box of the nodes, so the type adds its margin; nodes and links come in pre-order, children
-in input order; sizes not numbers count as 0, and a gap not given or negative takes 48 and 12. Problems: a root that is
-not a topic draws nothing (an error); a topic listed twice draws the first (a warning); a topic that does not descend from
-the root (its parent not in the input, a cycle, a second root) hangs from the root after its other children, with what it
-holds (a warning), so the type passes the nearest shown ancestor as `parent` and lays out a second tree on its own call.
+`depth` 0; `bounds` is the tight box of the nodes as returned (rounded), so it holds each and the type adds its margin;
+nodes and links come in pre-order, children in input order; sizes not numbers, or negative, count as 0, a gap not given
+or negative takes 48 and 12, and a size or gap over 1e9 px counts as 1e9 so no sum overflows. Problems: no root, or a
+root that is not a topic, draws nothing (an error); a topic with no id is not drawn and a topic listed twice draws the
+first (warnings); a topic that does not descend from the root (its parent not in the input, a cycle, a second root) is
+reached through the top of its chain, the topic whose parent is not here or, in a cycle, the member listed first; that
+top hangs from the root after its other children, with all it holds, whatever order the topics come in (a warning), so the type passes the nearest shown ancestor as `parent` and lays out a second tree on its own call.
 A given side counts where its topic comes in the order, so pinning a later topic's side moves no earlier one. Taken by the
 lead under the maintainer's standing approval (14 Nov 2026).
 
