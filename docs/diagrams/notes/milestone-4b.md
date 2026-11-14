@@ -747,7 +747,9 @@ Each is set out with its options and trade-offs in the section named; the recomm
   whole tree as decision 24 says, and the CLI's user gets what their own install resolves.
 - **`plan.md`.** §5's M4b row points here (done with this note); §4.3 lists `src/bpmn/`.
 - **`proposal.md`.** §3.4's BPMN row: "24 rows" is Table 2.1's, read; §8.5's BPMN subset points to §16.
-- **`notes/stage-4.md`.** §5.2's `laneBands` contract gains `runs` and boxes when 4b.1 merges.
+- **`notes/stage-4.md`.** §5.2's `laneBands` contract gains `runs` and boxes when 4b.1 merges. Written by 4b.5 (`docs/`
+  is in its Owns, not 4b.1's), with `docs/module-api.md`'s ports section gaining `portMin` beside `fromPort`, `toPort`,
+  `inner` and `portRank` in the edge geometry.
 - **`README.md` in this folder.** The status table shows this note and, once approved, its work packages; the log
   records the decisions, and the core budget split of 13 Nov 2026 (4,451 B: stage 6 400, M2 1,400, M3 500, M4a 700, M4b
   700, reserve about 750), which no document records yet (§2.3). (The lead's.)

@@ -111,9 +111,8 @@ for (const direction of ['right', 'down']) {
   });
 }
 
-test('laneBands with no runs and no boxes is as before: runs and boxes are only read where given', () => {
-  const g = layoutTyped({ ...BANDED('right'), containers: [] }), plain = laneBands(g, LANES, laneOf, false, 64);
-  assert.deepEqual(laneBands(g, LANES, laneOf, false, 64, undefined), plain);
+test('laneBands: runs that are not [first, last] give no band (the old behaviour without runs is tests/lanes.test.mjs\'s)', () => {
+  const g = layoutTyped({ ...BANDED('right'), containers: [] });
   assert.deepEqual(laneBands(g, LANES, laneOf, false, 64, { a: 'x', b: [2, 1] }).bands.map(b => b.id), [], 'runs that are not [first, last] give no band');
 });
 
@@ -215,7 +214,8 @@ for (const direction of ['right', 'down']) {
       assert.ok(onIt, `${x.id} on ${x.owner}'s border`); });
     const crossings = c.issues.filter(m => / cross$/.test(m)), other = c.issues.filter(m => !/ cross$/.test(m));
     console.log(`# 4b.1 spike, ${direction}: ${c.through.length} lines through a boundary circle${c.through.length ? ' (' + c.through.join(', ') + ')' : ''}; ${c.outside.length} sequence flows outside their pool's band as laneBands gives it${c.outside.length ? ' (' + c.outside.join(', ') + ')' : ''}, ${c.outsideGrown.length} with the band grown to 12 px past the router's line; ${crossings.length} crossings; ${other.length} other layout issues${other.length ? ': ' + other.slice(0, 4).join('; ') : ''}; routes ${JSON.stringify(g.stats)}`);
-    assert.ok(Array.isArray(c.through) && Array.isArray(c.outside));
+    assert.deepEqual(c.through, [], 'no line through a boundary circle (§14)');
+    assert.deepEqual(c.outside, [], 'no sequence flow outside its pool\'s band (§14)');
   });
 }
 
