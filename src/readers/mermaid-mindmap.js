@@ -65,7 +65,7 @@ function mmrTopic(s, more) {
     while (q < 0) { const n = more(); if (n == null) break; parts.push(n); q = n.indexOf('`"'); if (q < 0) at += n.length + 1; else q += at; }
     s = parts.join('\n');
     if (q >= 0 && s.startsWith(c, q + 2)) { out.text = s.slice(j + 2, q); out.md = true; end = q + 2 + c.length; }
-    else return { text: s.trim(), bare: true, unclosed: `${o}"\` is not closed by \`"${c}` };
+    else return { text: parts[0].trim(), bare: true, unclosed: `${o}"\` is not closed by \`"${c}`, rewind: true };
   } else if (s[j] === '"') {
     const q = s.indexOf('"', j + 1);
     if (q >= 0 && s.startsWith(c, q + 1)) { out.text = s.slice(j + 1, q); out.quote = true; end = q + 1 + c.length; }
@@ -114,7 +114,7 @@ function mmrRead(text, report, say, empty) {
   const topics = [], stack = [], once = new Set(), hints = new Map();
   const first = (key, no, message) => { if (!once.has(key)) { once.add(key); say(no, 'approximated', message); } };
   const unused = () => { for (const [k, h] of hints) say(h.no, 'skipped', `%% ${k}: ${h.v}: no topic below it takes it`); hints.clear(); };
-  let started = false, viewId, deep = false;
+  let started = false, viewId, deep = false, dry = Infinity; // past line dry, no `" is left: an unclosed Markdown string looks no further
   for (; i < lines.length; i++) {
     const no = i + 1, line = lines[i], s = line.trim();
     if (!s) continue;
@@ -155,7 +155,8 @@ function mmrRead(text, report, say, empty) {
     }
     let ind = 0;
     while (/\s/.test(line[ind])) ind++;
-    const t = mmrTopic(line.slice(ind), () => (i + 1 < lines.length ? lines[++i].replace(/\r$/, '') : null));
+    const t = mmrTopic(line.slice(ind), () => (i + 1 < lines.length && i < dry ? lines[++i].replace(/\r$/, '') : null));
+    if (t.rewind) { dry = no - 1; i = no - 1; } // unclosed: the one line read as text, the lines after it read as they are
     if (t.unclosed) say(no, 'approximated', `${mmrClip(t.text)}: ${t.unclosed}, read as text`);
     if (t.after) say(no, 'skipped', `${mmrClip(t.after)}: text after the topic is not read`);
     const bad = e => say(no, 'skipped', `${e}: an entity Mermaid does not know, kept as written`);
@@ -190,16 +191,16 @@ function mmrRead(text, report, say, empty) {
     r.out = mmrFree(used, next, r.base ?? mmrSlug(r.label)); used.add(r.out);
     if (r.base != null) say(r.id ? r.id.no : r.no, 'approximated', `${r.id ? '%% id:' : 'topic'} ${r.base} is taken, so it is ${r.out}`);
   }
-  const vid = viewId || MMR_VIEW, present = {};
+  const vid = viewId || MMR_VIEW, present = new Map();
   const nodes = topics.map(r => {
     const n = { id: r.out, type: 'mindmap.Topic', label: r.label };
     if (r.parent) n.parent = r.parent.out;
     if (r.opens) n.opensView = r.opens.v;
     if (r.mer) n.ext = { mermaid: r.mer };
-    if (r.side) present[r.out] = { side: r.side.v };
+    if (r.side) present.set(r.out, { side: r.side.v });
     return n;
   });
-  const view = { id: vid, diagram: 'mindmap', ...(title ? { title } : {}), nodeIds: nodes.map(n => n.id), ...(Object.keys(present).length ? { present } : {}) };
+  const view = { id: vid, diagram: 'mindmap', ...(title ? { title } : {}), nodeIds: nodes.map(n => n.id), ...(present.size ? { present: Object.fromEntries(present) } : {}) };
   report.sort((a, b) => a.line - b.line); // stable: one line's items keep their order
   return { model: { schemaVersion: 2, ...(title ? { title } : {}), root: vid, nodes, edges: [], views: [view] }, report };
 }
@@ -247,7 +248,8 @@ function writeMermaidMindmap(model, viewId) {
     if (d > MMR_DEEP && !deep) { deep = true; lose(n.id, `deeper than ${MMR_DEEP} levels, so it and what lies below it are written at level ${MMR_DEEP}`); }
     const label = str(n.label) ? n.label : '';
     if (!str(n.label)) lose(n.id, has(n.label) ? 'its label, which is not text' : 'no label, read as an empty one');
-    const sh = MMR_OPEN.get(mer.shape), md = mer.markdown === true, side = isObj(present[n.id]) ? present[n.id].side : undefined;
+    const sh = MMR_OPEN.get(mer.shape), md = mer.markdown === true, side = Object.hasOwn(present, n.id) && isObj(present[n.id]) ? present[n.id].side : undefined;
+    if (/\r/.test(label)) lose(n.id, 'a carriage return in its label, written as a line break');
     if (has(mer.shape) && !sh) lose(n.id, `shape ${mer.shape}, which Mermaid's mindmap does not have`);
     if (side === 'left' || side === 'right') out.push(`${pad}%% side: ${side}`);
     if (has(n.opensView)) { if (hintable(n.opensView)) out.push(`${pad}%% opens: ${n.opensView}`); else lose(n.id, 'its opensView, which a comment cannot hold'); }

@@ -66,8 +66,9 @@ function generate(seed) {
   const kids = new Map(), order = [], stack = [nodes[0]];
   for (const n of nodes.slice(1)) { if (!kids.has(n.parent)) kids.set(n.parent, []); kids.get(n.parent).push(n); }
   while (stack.length) { const n = stack.pop(); order.push(n.id); stack.push(...(kids.get(n.id) || []).toReversed()); }
-  const present = {};
-  for (const n of kids.get(nodes[0].id) || []) if (r() < 0.5) present[n.id] = { side: pick(r, ['left', 'right']) };
+  const sides = [];
+  for (const n of kids.get(nodes[0].id) || []) if (r() < 0.5) sides.push([n.id, { side: pick(r, ['left', 'right']) }]);
+  const present = Object.fromEntries(sides); // a key __proto__ kept as a key
   const title = r() < 0.6 ? pick(r, ['Plan', 'Plan: a shop', "It's here", '---']) : undefined;
   const view = { id: pick(r, ['mindmap', 'plan', 'mm-plan', 'a b']), diagram: 'mindmap', ...(title ? { title } : {}), nodeIds: order, ...(Object.keys(present).length ? { present } : {}) };
   for (const n of nodes) delete n.depth;
@@ -195,7 +196,8 @@ test('hostile input (§8.2) reads in under a second and never throws; over 1 MiB
     assert.ok(h.length <= 1 << 20, `${name}: ${h.length}`);
     const [r, ms] = best(() => read(h));
     worst = Math.max(worst, ms);
-    assert.ok(ms < 1000 && r.model.schemaVersion === 2, `${name}: read in ${ms} ms`);
+    assert.ok(ms < 1000 && r.model.schemaVersion === 2 && r.model.nodes.length > 0, `${name}: read in ${ms} ms`);
+    assert.ok(!r.report.some(x => /the reader failed/.test(x.message)), `${name}: the reader failed`);
     assert.ok(best(() => write(r.model))[1] < 1000, `${name}: written slowly`);
   }
   console.log(`# hostile input: the slowest read ${worst.toFixed(0)} ms CPU, best of three (target and ceiling 1000 ms)`);
@@ -220,6 +222,17 @@ test('hostile input (§8.2) reads in under a second and never throws; over 1 MiB
   assert.deepEqual(lines(read(hostile['tests/import/hostile/mindmap-unclosed.mmd'])), ['3 approximated: id((text: (( is not closed by )), read as text',
     '4 approximated: id2{{text}: {{ is not closed by }}, read as text', '5 approximated: ]closing first: ] opens no shape, read as text',
     '6 approximated: x))bang: )) is not closed by ((, read as text', '7 approximated: "["quote: [ is not closed by ], read as text']);
+  // an unclosed Markdown string is its one line, read as text; the lines after it are read as they are
+  const md = read('mindmap\n  root\n    a["`open\n    b\n    c\n');
+  assert.deepEqual([md.model.nodes.map(n => [n.id, n.parent ?? null]), lines(md)],
+    [[['root', null], ['a-open', 'root'], ['b', 'root'], ['c', 'root']], ['3 approximated: a["`open: ["` is not closed by `"], read as text']]);
+  assert.equal(read(hostile['an unclosed Markdown string']).model.nodes.length, 300001);
+  // a side on a topic whose id is __proto__ is kept and written back; a carriage return in a label is reported
+  const side = read('mindmap\n  root\n    %% side: left\n    __proto__[x]\n');
+  assert.deepEqual([Object.entries(side.model.views[0].present), side.report], [[['__proto__', { side: 'left' }]], []]);
+  assert.match(write(side.model), /%% side: left\n {4}__proto__\[x\]/);
+  assert.match(write({ schemaVersion: 2, nodes: [{ id: 'a', type: 'mindmap.Topic', label: 'a\r\nb' }], edges: [], views: [{ id: 'v', diagram: 'mindmap', nodeIds: ['a'] }] }),
+    /%% not written: a: a carriage return in its label, written as a line break/);
   const crlf = read(hostile['tests/import/hostile/mindmap-crlf.mmd']);
   assert.deepEqual([crlf.report, crlf.model.nodes.map(n => [n.id, n.parent ?? null])],
     [[], [['root', null], ['one-tab', 'root'], ['space-then-tab', 'one-tab'], ['two', 'one-tab'], ['four-spaces', 'two']]]);
@@ -235,6 +248,7 @@ test('malformed input is reported, never thrown', () => {
   for (const x of [null, 42, {}, '', 'flowchart TD\nA-->B', '---\ntitle: x\n', 'mindmap', 'mindmap\n::icon(x)\n:::c\n', 'mindmap\n  a[\n  ((\n  "`\n  ]\n  %% id:\n  %% side: up\n']) {
     const r = read(x);
     assert.ok(Array.isArray(r.report) && r.model.schemaVersion === 2 && r.model.views[0].diagram === 'mindmap', String(x));
+    assert.ok(!r.report.some(y => /the reader failed/.test(y.message)), `${String(x)}: the reader failed`);
   }
   assert.deepEqual(lines(read('flowchart TD\nA-->B')), ['1 skipped: not a Mermaid mindmap: nothing read']);
   assert.deepEqual(lines(read('mindmap\n::icon(x)\n:::c\n  a\n')), ['2 skipped: ::icon(x): no topic above it', '3 skipped: :::c: no topic above it']);
