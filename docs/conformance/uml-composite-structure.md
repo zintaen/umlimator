@@ -24,7 +24,8 @@ example is [`examples/order-service-structure.json`](../../examples/order-servic
 
 Rules (`notes/stage-5.md` §10.2): `subject-shown` (a warning for a view with no subject), `connector-part` (an end's part is a part of the subject and the end a
 port of its type), `connector-scope` (a connector's ends lie in one structure; an end on the subject itself breaks it),
-`binding-ends` (a warning for a view with no subject) (errors); `part-type` (a part's type names exactly one class or component), `binding-role`,
+`binding-ends` (a warning for a view with no subject) (errors); `part-type` (a part's type names exactly one class or component),
+`part-multiplicity` (a part's multiplicity is one, as `1`, `*`, `0..1`, `1..*`), `binding-role`,
 `collaboration-named`, `connector-drawn` (a connector between two ports of the subject is not drawn) (warnings); and the
 shared `port-owner` and `manifest-ends`. Deleting a part deletes the connectors through it (the type's `refs` cascade).
 `subject-shown` is a warning for a view with no subject at all, as deleting its subject, or hiding it from the view,

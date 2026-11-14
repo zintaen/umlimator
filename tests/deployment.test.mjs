@@ -46,7 +46,7 @@ test('the definition: uml.deployment is registered with its palette, its five li
   for (const t of ['uml.Node', 'uml.Device', 'uml.ExecutionEnvironment', 'uml.Artifact', 'uml.DeploymentSpecification', 'uml.Component', 'uml.Deployment', 'uml.CommunicationPath']) assert.deepEqual(T.props[t].map(f => f.key), ['stereotypes'], t);
   for (const k of ['layout', 'validate', 'describe', 'boxes', 'owners', 'word', 'rows']) assert.equal(typeof T[k], 'function', k);
   assert.deepEqual(Object.keys(T.edits), ['connect', 'remove']);
-  assert.deepEqual(Object.keys(T.rules), ['deploy-ends', 'deployed-twice', 'nest-kinds', 'path-ends', 'manifest-ends']);
+  assert.deepEqual(Object.keys(T.rules), ['deploy-ends', 'deployed-twice', 'nest-kinds', 'path-ends', 'manifest-ends', 'line-inside']);
 });
 
 test('the cube: as wide as its widest text and 10 px of depth, its keyword over the name; its inset puts a slid point on its outline; open, its frame holds its faces', () => {
@@ -375,4 +375,11 @@ test('layout() of a deployment view nested 3,000 deep (audit 3)', () => {
   const nodes = Array.from({ length: 3000 }, (_, i) => ({ id: 'p' + i, type: 'uml.Node', label: 'P' + i, ...(i ? { parent: 'p' + (i - 1) } : {}) }));
   nodes.push({ id: 'c', type: 'uml.Artifact', label: 'C', parent: 'p2999' });
   assert.equal(layout({ schemaVersion: 2, nodes, edges: [], views: [{ id: 'v', diagram: 'uml.deployment', nodeIds: nodes.map(n => n.id) }] }, 'v').nodes.length, 1);
+});
+
+test('line-inside: a dependency between a node and the artifact it holds is not drawn and is warned; a «deploy» to its own target is not (audit 5)', () => {
+  const m = { schemaVersion: 2, nodes: [N('srv', 'Node', 'Server'), N('jar', 'Artifact', 'app.jar', 'srv')],
+    edges: [{ id: 'd1', type: 'uml.Dependency', from: 'srv', to: 'jar', label: 'needs' }, { id: 'dp', type: 'uml.Deployment', from: 'jar', to: 'srv' }], views: [{ id: 'v', diagram: 'uml.deployment', nodeIds: ['srv', 'jar'] }] };
+  assert.deepEqual(layout(m, 'v').edges, []);
+  assert.deepEqual(validate(m).map(p => [p.rule, p.level, p.ids]), [['line-inside', 'warning', ['d1', 'srv', 'jar']]]);
 });

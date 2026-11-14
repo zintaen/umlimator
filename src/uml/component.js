@@ -4,7 +4,7 @@ import { SHAPE } from '../draw/shapes.js';
 import { rowsFor, untangle } from '../layout/layered.js';
 import { layoutTyped } from '../typed/layout.js';
 import { memberEdit, parseMember, printMember } from './class.js'; // an interface's operations; SHAPE.note, a comment's look
-import { ownersOn, placeTabs, readingOrder } from './owners.js';
+import { lineInside, ownersOn, placeTabs, readingOrder } from './owners.js';
 import { SN_SAY, STRUCT_RULES, portFit, portSides, portsDrawn, structProblems } from './structure.js';
 
 /* ---------- the component diagram, uml.component (work package 5.4, notes/stage-5.md §10.1) ----------
@@ -61,28 +61,26 @@ const CP_LOOK = {
 };
 
 /* ---- the view read: its boxes, its lines, every element's words ---- */
-const CP_BOX = { boxTypes: ['uml.Component', 'uml.Package'], shape: x => (x.type === 'uml.Component' ? 'component' : 'package'), word: x => (x.type === 'uml.Component' ? 'Component' : 'Package') };
+// a name is qualified by its components and packages only: an artifact nested in a node (deployed on it, as the
+// deployment view draws it) is not named by the node here (0.22.0, the Bookshop atlas); nor is a box's title (audit 5)
+const CP_BOX = { boxTypes: ['uml.Component', 'uml.Package'], qualifyBy: ['uml.Component', 'uml.Package'], shape: x => (x.type === 'uml.Component' ? 'component' : 'package'), word: x => (x.type === 'uml.Component' ? 'Component' : 'Package') };
 const CP_WORD = { 'uml.Component': 'component', 'uml.Interface': 'interface', 'uml.Artifact': 'artifact', 'uml.Package': 'package', 'uml.Comment': 'comment', 'uml.Port': 'port' };
 function cpPic(model, view) {
   const I = cpIndex(model), pic = ownersOn(model, view, CP_BOX), shown = new Set(pic.ids);
-  // a name is qualified by its components and packages only: an artifact nested in a node (deployed on it, as the
-  // deployment view draws it) is not named by the node here (0.22.0, the Bookshop atlas)
-  const qual = pic.name; pic.name = id => { const c = pic.chain(id), k = c.findIndex(p => !CP_BOX.boxTypes.includes((pic.at.get(p) || {}).type));
-    if (k < 0) return qual(id); const up = c.slice(0, k), o = up.indexOf(pic.owner(id));
-    return [...up.slice(0, o < 0 ? k : o).reverse(), id].map(x => String(pic.at.get(x).label ?? x)).join('::'); };
   // each line the view lists (or with no list each of this type's kinds) whose ends, a port taken to its owner, it shows
   const E = new Map(); CP_ARR(model && model.edges).forEach(e => { if (CP_OBJ(e) && typeof e.id === 'string' && !E.has(e.id)) E.set(e.id, e); });
   const list = Array.isArray(view.edges) ? view.edges.map(x => (typeof x === 'string' ? E.get(x) : x)) : [...E.values()].filter(e => CP_LINES.includes(e.type));
   const at = id => (shown.has(id) ? { at: id, port: null } : I.P.has(id) && shown.has(I.P.get(id).owner) ? { at: I.P.get(id).owner, port: id } : null);
   const holds = (b, x) => pic.open.has(b) && pic.chain(x).includes(b);
-  const lines = []; list.forEach(e => { if (!CP_OBJ(e) || typeof e.id !== 'string') return; const f = at(e.from), t = at(e.to); if (!f || !t) return;
-    // a line between a box and what it holds leaves the box's port inward (§5); without a port at the box's end it is not drawn
+  const lines = [], inside = []; list.forEach(e => { if (!CP_OBJ(e) || typeof e.id !== 'string') return; const f = at(e.from), t = at(e.to); if (!f || !t) return;
+    // a line between a box and what it holds leaves the box's port inward (§5); without a port at the box's end it is not drawn (inside: line-inside)
     const inner = holds(f.at, t.at) ? 'from' : holds(t.at, f.at) ? 'to' : null;
-    if ((inner && !(inner === 'from' ? f : t).port) || (f.at === t.at && (f.port || t.port))) return;
+    if (inner && !(inner === 'from' ? f : t).port) return void inside.push({ e, from: f.at, to: t.at });
+    if (f.at === t.at && (f.port || t.port)) return;
     lines.push({ e, f, t, inner, kind: cpKind(I, view, e) }); });
   const boxes = pic.boxes.map(b => { const x = I.N.get(b.id); if (x.type !== 'uml.Component') return b;
     return { ...b, aria: SN_SAY.component(pic.name(b.id), { stereotypes: cpStereo(x), ports: cpPortsOf(x).length, holds: pic.holds(b.id).map(id => CP_WORD[(I.N.get(id) || {}).type] || 'element') }) }; });
-  return { ...pic, boxes, I, lines };
+  return { ...pic, boxes, I, lines, inside };
 }
 // "Port orders of Shop API, provides Orders"; "Interface Orders, as a ball, provided by Shop API, required by Storefront"
 function cpNodeName(model, view, pic, id, bare) { // bare: a port without " of <owner>" (the PDF's rows)
@@ -215,6 +213,7 @@ const CP_RULES = {
   'assembly-ends': 'an assembly joins two components or their ports, neither inside the other',
   'component-realization-ends': 'a component realization runs from a class or a component to a component',
   'component-owner': 'a component\'s owner is a component or a package',
+  'line-inside': 'a line between a box and something it holds, with no port at the box\'s end, is not drawn (a connector: delegation-ends, assembly-ends)',
 };
 function cpProblems(model, view) {
   const out = [...structProblems(model, view)], I = cpIndex(model), say = (level, rule, path, ids, msg) => out.push({ level, rule, path, ids: ids.filter(x => x != null), message: `${rule}: ${msg}` });
@@ -235,6 +234,7 @@ function cpProblems(model, view) {
     if (e.type === 'uml.ComponentRealization' && (I.P.has(e.from) || I.P.has(e.to) || !['uml.Class', 'uml.Component'].includes(I.ty(e.from)) || I.ty(e.to) !== 'uml.Component'))
       say('error', 'component-realization-ends', path, ends, `${e.id} runs from ${q(e.from)} to ${q(e.to)}: a component realization runs from a class or a component to a component`); });
   if (view) { const vi = CP_ARR(model.views).indexOf(view);
+    cpPic(model, view).inside.forEach(({ e, from, to }) => { if (e.type !== 'uml.Connector') out.push(lineInside(view, vi, e, from, to, q)); });
     Object.entries(CP_OBJ(view.present) ? view.present : {}).forEach(([id, p]) => { if (CP_OWN(p, 'as') === 'ball' && (I.N.get(id) || {}).type !== 'uml.Interface')
       say('warning', 'ball-interface', `views[${vi}].present`, [id], `${q(id)} is not an interface: view ${JSON.stringify(view.id)} does not draw it as a ball`); }); }
   return out;

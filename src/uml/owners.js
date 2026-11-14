@@ -34,19 +34,20 @@ function ownIndex(model, members = []) {
    the boxes nested in it by `parent`; name(id): the drawn name, with the owners between it and its owner on the picture,
    or with none from the view's subject when that is one of its owners, else from the top (§6); full(id): from the top.
    look (notes/stage-4.md §8.2, §6.1), each field optional: boxTypes, the node types that may be a box (OWN_BOXES); qualify
-   false, names drawn without their owners; members, member types that are boxes too (a state's regions): one is shown when
+   false, names drawn without their owners; qualifyBy, the node types a name's owners may be, up to the first that is not; members, member types that are boxes too (a state's regions): one is shown when
    its node is and it holds something shown, and is a box when its node has two or more in the model (with one, what it
    holds sits in the node's box); shape(x) and word(x), a box's shape and the word its accessible name starts with ('package', 'Package') */
 function ownersOn(model, view, look = {}) {
-  const { boxTypes = OWN_BOXES, qualify = true, members = [], shape = () => 'package', word = x => (x.type === 'uml.Profile' ? 'Profile' : 'Package') } = look;
+  const { boxTypes = OWN_BOXES, qualify = true, qualifyBy = null, members = [], shape = () => 'package', word = x => (x.type === 'uml.Profile' ? 'Profile' : 'Package') } = look;
   const { at, chain, up, mems } = ownIndex(model, members), ids = OWN_ARR(OWN_OBJ(view) ? view.nodeIds : null).filter(id => at.has(id) && !mems.has(id)), seen = new Set(ids);
   const live = new Set(ids.flatMap(id => chain(id).filter(p => mems.has(p) && seen.has(up.get(p))))), place = m => OWN_ARR(at.get(up.get(m)).members).indexOf(at.get(m)); // members holding something shown
   const many = m => OWN_ARR(at.get(up.get(m)).members).filter(x => OWN_OBJ(x) && members.includes(x.type)).length > 1; // §6.1, 2: two or more in the model
   const kept = [...live].filter(many).sort((a, b) => place(a) - place(b)), all = [...ids, ...kept], shown = new Set(all);
   const ow = new Map(all.map(id => [id, chain(id).find(p => shown.has(p) && (mems.has(p) || boxTypes.includes(at.get(p).type))) ?? null])), owner = id => ow.get(id) ?? null;
-  const upTo = (id, stop) => { const c = chain(id), k = c.indexOf(stop); return [...(k < 0 ? c : c.slice(0, k)).reverse(), id].map(x => ownName(at.get(x))).join('::'); };
+  const upTo = (id, stop, by) => { const c = chain(id), k = c.indexOf(stop), q = by ? c.findIndex(p => !by.includes((at.get(p) || {}).type)) : -1;
+    return [...c.slice(0, Math.min(k < 0 ? c.length : k, q < 0 ? c.length : q)).reverse(), id].map(x => ownName(at.get(x))).join('::'); };
   const full = id => upTo(id, null), subject = OWN_OBJ(view) ? view.subject : null;
-  const name = id => { const o = owner(id); return !qualify ? ownName(at.get(id)) : upTo(id, o != null ? o : chain(id).includes(subject) ? subject : null); };
+  const name = id => { const o = owner(id); return !qualify ? ownName(at.get(id)) : upTo(id, o != null ? o : chain(id).includes(subject) ? subject : null, qualifyBy); };
   const by = new Map(); all.forEach(id => { const o = owner(id); if (!by.has(o)) by.set(o, []); by.get(o).push(id); }); // grouped once: a view of 10,000 elements
   const holds = o => by.get(o) || [], open = new Set([...by.keys()].filter(x => x != null));
   const boxes = all.filter(id => open.has(id)).map(id => { const p = at.get(id), st = stereoOf(p), held = holds(id), o = owner(id), nm = name(id);
@@ -80,6 +81,9 @@ const OWNER_RULES = {
   'line-inside': 'a line between a package and something it holds, or from an open package to itself, is not drawn',
   'own-boxes': 'a view\'s hand-written containers are ignored where the type gives boxes',
 };
+// the line-inside warning: line e, between box from and to, which it holds (or itself), is not drawn; q(id), an element's quoted name
+const lineInside = (view, vi, e, from, to, q) => ({ level: 'warning', rule: 'line-inside', path: `views[${vi}]`, ids: from === to ? [e.id, from] : [e.id, from, to],
+  message: `line-inside: ${e.id}, ${from === to ? `from ${q(from)} to itself, a box,` : `between ${q(from)} and ${q(to)}, which one holds,`} is not drawn in view ${JSON.stringify(view.id)}` });
 // model: the owner-kinds rule; view (the type's view): line-inside and own-boxes for it, lines as `drawn(model, view)` gives
 // them ({ e, from, to }, the ends as nodes, before a line between a package and what it holds is left out)
 function ownerProblems(model, view, lines) {
@@ -90,8 +94,7 @@ function ownerProblems(model, view, lines) {
     const p = all.get(n.parent).x; if (!OWN_BOXES.includes(p.type)) say('owner-kinds', `nodes[${i}].parent`, [n.id, p.id], `${q(n.id)} is owned by ${q(p.id)}, a ${String(p.type).split('.').pop()}, not a package`); });
   if (!view) return out;
   const vi = OWN_ARR(model.views).indexOf(view), pic = ownersOn(model, view);
-  lines.forEach(({ e, from, to }) => { if (holdsLine(pic, from, to)) say('line-inside', `views[${vi}]`, from === to ? [e.id, from] : [e.id, from, to],
-    `${e.id}, ${from === to ? `from ${q(from)} to itself, a box,` : `between ${q(from)} and ${q(to)}, which one holds,`} is not drawn in view ${JSON.stringify(view.id)}`); });
+  lines.forEach(({ e, from, to }) => { if (holdsLine(pic, from, to)) out.push(lineInside(view, vi, e, from, to, q)); });
   if (OWN_ARR(view.containers).length) say('own-boxes', `views[${vi}].containers`, [view.id], `view ${JSON.stringify(view.id)} draws its packages as boxes; its own containers are ignored`);
   return out;
 }
@@ -141,4 +144,4 @@ function placeTabs(g) {
   return g;
 }
 
-export { OWN_BOXES, OWNER_RULES, ownersOn, readingOrder, holdsLine, ownerChoices, ownerProblems, placeTabs };
+export { OWN_BOXES, OWNER_RULES, ownersOn, readingOrder, holdsLine, lineInside, ownerChoices, ownerProblems, placeTabs };

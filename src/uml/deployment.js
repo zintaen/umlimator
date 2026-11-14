@@ -3,7 +3,7 @@ import { esc, fit, textW } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
 import { layoutTyped } from '../typed/layout.js';
 import './class.js'; // SHAPE.note, a comment's look
-import { ownersOn, readingOrder } from './owners.js';
+import { lineInside, ownersOn, readingOrder } from './owners.js';
 import { SN_SAY, structProblems } from './structure.js'; // SHAPE.artifact and SHAPE.component too
 
 /* ---------- the deployment diagram, uml.deployment (work package 5.5, notes/stage-5.md §10.3) ----------
@@ -80,11 +80,12 @@ function dpPic(model, view) {
 }
 // the lines drawn: those the view lists, or with no list the model's of this type's kinds, between two elements it shows; a
 // line from a box to what it holds is left out (the router refuses it)
-function dpLines(model, view, pic) {
+function dpListed(view, pic) {
   const E = new Map(pic.I.E.map(e => [e.id, e])), shown = new Set(pic.ids), list = Array.isArray(view.edges) ? view.edges.map(x => (typeof x === 'string' ? E.get(x) : x)) : pic.I.E.filter(e => DP_LINES.includes(e.type));
-  return list.filter(e => DP_OBJ(e) && typeof e.id === 'string' && shown.has(e.from) && shown.has(e.to)
-    && ![[e.from, e.to], [e.to, e.from]].some(([b, x]) => pic.open.has(b) && (b === x || pic.chain(x).includes(b))));
+  return list.filter(e => DP_OBJ(e) && typeof e.id === 'string' && shown.has(e.from) && shown.has(e.to));
 }
+const dpLines = (model, view, pic) => dpListed(view, pic).filter(e => !dpInside(pic, e));
+const dpInside = (pic, e) => [[e.from, e.to], [e.to, e.from]].some(([b, x]) => pic.open.has(b) && (b === x || pic.chain(x).includes(b)));
 const DP_KEYWORD = { 'uml.Deployment': '«deploy»', 'uml.Manifestation': '«manifest»' };
 const dpLineLabel = e => [DP_KEYWORD[e.type], ...dpStereo(e).map(t => `«${t}»`), e.label].filter(DP_HAS).join(' ');
 const DP_LINE_LOOK = { 'uml.Deployment': { from: 'none', to: 'open', dashed: true }, 'uml.Manifestation': { from: 'none', to: 'open', dashed: true },
@@ -164,6 +165,7 @@ const DP_RULES = {
   'nest-kinds': 'a node, device or execution environment is owned by one of the three (an error), in a usual pair (a warning): an execution environment in any, a device in a node or a device, a node in a node',
   'path-ends': 'a communication path joins two nodes, devices or execution environments, neither holding the other',
   'manifest-ends': 'a manifestation runs from an artifact (an error), to a component (a warning)',
+  'line-inside': 'a line between a box and something it holds, or from an open box to itself, is not drawn (a deployment and a communication path: their own rules)',
 };
 const DP_USUAL = { 'uml.ExecutionEnvironment': DP_TARGETS, 'uml.Device': ['uml.Node', 'uml.Device'], 'uml.Node': ['uml.Node'] };
 function dpProblems(model, view) {
@@ -181,6 +183,8 @@ function dpProblems(model, view) {
         say('warning', 'deployed-twice', path, [e.id, e.from, a.parent, e.to], `${q(e.from)} is nested in ${q(a.parent)} and deployed by ${e.id} to ${q(e.to)} as well`); } }
     if (e.type === 'uml.CommunicationPath' && (!DP_TARGETS.includes(ty(e.from)) || !DP_TARGETS.includes(ty(e.to)) || e.from === e.to || I.holds(e.from, e.to) || I.holds(e.to, e.from)))
       say('error', 'path-ends', path, ends, `${e.id} joins ${q(e.from)} (${kind(e.from)}) and ${q(e.to)} (${kind(e.to)}): a communication path joins two nodes, devices or execution environments`); });
+  if (view) { const vi = DP_ARR(model.views).indexOf(view), pic = dpPic(model, view); // a deployment and a communication path: their own rules
+    dpListed(view, pic).forEach(e => { if (!['uml.Deployment', 'uml.CommunicationPath'].includes(e.type) && dpInside(pic, e)) out.push(lineInside(view, vi, e, e.from, e.to, q)); }); }
   return [...out, ...structProblems(model, view).filter(p => p.rule === 'manifest-ends')];
 }
 
