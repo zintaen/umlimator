@@ -181,6 +181,13 @@ test('port-compatible, assembly: two parts\' proxy ports of one interface block 
   // a full port, or two interface blocks, are not this rule's
   const f = structuredClone(RICH); mem(f, 'dock.charge').props = { kind: 'full', valueType: 'ChargeInterface' };
   assert.deepEqual(validate(f).filter(p => p.rule === 'port-compatible'), []);
+  // an interface block whose flow properties are all inout: neither conjugated (or both) flows both ways at each end, passing
+  for (const vt of ['ChargeInterface', '~ChargeInterface']) { const io = structuredClone(RICH); node(io, 'charge-interface').members[0].props.direction = 'inout';
+    mem(io, 'battery.charge').props.valueType = vt; mem(io, 'dock.charge').props.valueType = vt; mem(io, 'ebike.plug').props.valueType = vt;
+    assert.deepEqual(validate(io).filter(p => p.rule === 'port-compatible'), [], vt); }
+  const mixed = structuredClone(RICH); node(mixed, 'charge-interface').members.push({ id: 'charge-interface.x', type: 'sysml.FlowProperty', label: 'x', props: { direction: 'inout' } });
+  mem(mixed, 'dock.charge').props.valueType = 'ChargeInterface';
+  assert.equal(validate(mixed).filter(p => p.rule === 'port-compatible').length, 1, 'one in among inouts: warned');
 });
 test('port-compatible, delegation: the frame\'s port and a part\'s port of one type, conjugated alike; another type or one ~ warned', () => {
   for (const [vt, ok] of [['ChargeInterface', true], ['~ChargeInterface', false], ['PowerIn', false]]) { const m = structuredClone(RICH); mem(m, 'ebike.plug').props.valueType = vt;
@@ -233,6 +240,30 @@ test('remove, rename, moveTo and member rows on the projection: SysML\'s types b
   assert.deepEqual(node(RICH, 'ebike').members.map(T.member.print).slice(-2), ['ref dock : Dock [0..1]', 'proxy port plug : ChargeInterface']);
   assert.equal(T.member.print(mem(RICH, 'dock.charge')), 'proxy port charge : ~ChargeInterface');
   assert.ok(T.member.add('x', node(RICH, 'ebike')).error && T.member.edit(mem(RICH, 'ebike.battery'), 'x').error);
+});
+test('a port\'s ~ and kind by F2 and its row, both ways; nothing changed says nothing; a row keeps its member\'s kind', () => {
+  const P = 'ebike.dock->dock.charge', set = (path, value) => [{ op: 'set', id: 'dock.charge', path, value }];
+  assert.deepEqual(T.edits.rename(RICH, V, P, 'charge : ChargeInterface').commands, set('props.valueType', 'ChargeInterface'), 'F2 takes the ~ off');
+  assert.deepEqual(T.edits.rename(RICH, V, P, 'charge : ~ChargeInterface'), { commands: [] }, 'its own type: nothing set, nothing said');
+  assert.deepEqual(T.edits.rename(RICH, V, P, 'charge'), { commands: [] });
+  assert.deepEqual(T.edits.rename(RICH, V, P, '«full» charge').commands, set('props.kind', 'full'), '«full» in F2: the kind');
+  assert.deepEqual(T.edits.member(RICH, V, 'dock', 'dock.charge', 'proxy port charge : ChargeInterface'), set('props.valueType', 'ChargeInterface'), 'the row takes the ~ off');
+  const off = run(RICH, T.edits.member(RICH, V, 'dock', 'dock.charge', 'proxy port charge : ChargeInterface'));
+  assert.deepEqual(T.edits.member(off, off.views[0], 'dock', 'dock.charge', 'proxy port charge : ~ChargeInterface'), set('props.valueType', '~ChargeInterface'), 'and puts it back');
+  assert.match(T.edits.member(RICH, V, 'ebike', 'ebike.battery', 'proxy port battery : Battery').error, /keeps its member's kind/);
+  assert.match(T.edits.member(RICH, V, 'ebike', 'ebike.battery', 'ref battery : Battery').error, /keeps its member's kind/);
+  assert.deepEqual(T.edits.member(RICH, V, 'ebike', 'ebike.dock', 'ref dock : Dock [1]'), [{ op: 'set', id: 'ebike.dock', path: 'props.multiplicity', value: '1' }], 'a reference\'s own row');
+});
+test('a block\'s card is named a block; an item flow with no direction is no label; a lone ~ conjugates nothing', () => {
+  const b = structuredClone(RICH); b.views[0].nodeIds.push('battery');
+  assert.ok(describe(b, VID).split('\n').includes('Block Battery.'));
+  const n = structuredClone(RICH); n.views[0].subject = null; assert.equal(describe(n, VID).split('\n')[1], 'Block EBike.');
+  const f = structuredClone(RICH); f.edges[0].props.itemFlow = { item: 'Data' };
+  const g = layout(f, VID), e = g.edges.find(x => x.id === f.edges[0].id);
+  assert.equal(e.label, undefined); assert.equal(e.item, undefined); assert.doesNotMatch(mapContext(f).buildView(VID).markup, />Data</);
+  assert.deepEqual(validate(f).map(p => p.rule), ['item-flow']);
+  const w = structuredClone(RICH); mem(w, 'battery.charge').props.valueType = '~';
+  assert.equal(layout(w, VID).byId['ebike.battery->battery.charge'].aria, 'Proxy port charge of battery');
 });
 test('save and reopen (DoD 6): a 30-step session undoes and redoes to byte-identical models, and reopening its saved JSON midway ends where the session does', () => {
   const E = l => T.elements.find(e => e.label === l), steps = [];

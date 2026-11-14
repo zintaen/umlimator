@@ -30,7 +30,7 @@ function SYS_IB_INDEX(model, view) {
   return { at, mem, E, S, el: id => at.get(id) || (mem.get(id) || {}).m || null };
 }
 // a port's type: its name, and whether ~ conjugates it (§8.2)
-const SYS_IB_TYPE = p => { const t = String(SYS_IB_PROPS(p).valueType ?? '').trim(); return { conj: t.startsWith('~'), name: t.replace(/^~\s*/, '') }; };
+const SYS_IB_TYPE = p => { const t = String(SYS_IB_PROPS(p).valueType ?? '').trim(), name = t.replace(/^~\s*/, ''); return { conj: t.startsWith('~') && name !== '', name }; }; // a lone ~ conjugates nothing
 const SYS_IB_IFACE = (I, name) => { const c = name ? [...I.at.values()].filter(n => n.type === 'sysml.InterfaceBlock' && n.label === name) : []; return c.length === 1 ? c[0] : null; };
 // the way a port's items flow, seen from its owner: in, out or inout (both), from the flow properties of the interface block
 // that types it, turned round by ~; null when no interface block with flow properties types it
@@ -63,6 +63,7 @@ function SYS_IB_LINE_SAY(I, e) {
   return `Connector from ${SYS_IB_END(I, e, 'from')} to ${SYS_IB_END(I, e, 'to')}${f ? `, carrying ${f.item} from ${say(I, e, a)} to ${say(I, e, b)}` : SYS_IB_HAS(e.label) ? ': ' + e.label : ''}`;
 }
 function SYS_IB_SAY(I, g, id) {
+  const n = I.at.get(id); if (n && n.type === 'sysml.Block') { const c = g.byId && g.byId[id]; return c && c.aria ? String(c.aria).replace(/^Class\b/, 'Block') : null; } // a block's card: not "Class"
   const k = String(id).indexOf('->'), m = I.mem.get(k < 0 ? id : String(id).slice(k + 2));
   if (m && m.m.type === 'sysml.Port') return SYS_IB_PORT_SAY(I, m.m, k < 0 ? m.owner : I.el(String(id).slice(0, k)));
   if (m && I.S && m.owner === I.S && Object.hasOwn(SYS_IB_PROP, m.m.type)) { const ports = SYS_IB_ARR(g.nodes).filter(n => n.owner === id && n.shape === 'port').length;
@@ -103,14 +104,23 @@ const SYS_IB_LEGEND = [
   ['Comment link', 'what a comment is about', g => g.edges.some(e => e.type === 'uml.CommentLink'), '<path d="M2 8H26" stroke="var(--um-muted)" stroke-width="1.4" stroke-dasharray="3 2"/>'],
 ];
 
-/* ---- the view laid out: the projection laid out by the composite type, dressed (src/sysml/sysml.js), then on a copy: each
-   port's member and flow, each item flow's triangle, SysML's legend. A conjugated port's type keeps its ~ in the name the
-   layout measures ---- */
-function SYS_IB_GEO({ model, view, pos, memo }) {
-  const P = SYS_AS_UML(model, view), I = SYS_IB_INDEX(model, view);
+/* ---- M3.1's projection as this type lays it out and edits it, on a copy: a conjugated port's type keeps its ~ (in the name the
+   layout measures, and what an edit to it compares with), and a connector's item flow is its label only when whole (an item
+   and a direction: item-flow), else its own label ---- */
+function SYS_IB_PROJ(model, view, I) {
+  const P = SYS_AS_UML(model, view), es = SYS_IB_ARR(model.edges);
   const tilde = m => { const o = SYS_IB_OBJ(m) && m.type === 'uml.Port' ? I.mem.get(m.id) : null; return o && SYS_IB_TYPE(o.m).conj ? { ...m, props: { ...SYS_IB_PROPS(m), valueType: '~' + SYS_IB_TYPE(o.m).name } } : m; };
   const nodes = P.model.nodes.map(n => (SYS_IB_OBJ(n) && SYS_IB_ARR(n.members).some(m => tilde(m) !== m) ? { ...n, members: n.members.map(tilde) } : n));
-  const raw = csGeo({ model: { ...P.model, nodes }, view: P.view, pos, memo });
+  const edges = P.model.edges.map((e, i) => { const x = es[i]; if (!SYS_IB_OBJ(e) || !SYS_IB_OBJ(x) || x.type !== 'sysml.Connector' || SYS_IB_IF(x) || e.label === x.label) return e;
+    const { label, ...rest } = e; return x.label === undefined ? rest : { ...rest, label: x.label }; });
+  return { model: { ...P.model, nodes, edges }, view: P.view };
+}
+
+/* ---- the view laid out: the projection laid out by the composite type, dressed (src/sysml/sysml.js), then on a copy: each
+   port's member and flow, each item flow's triangle, SysML's legend ---- */
+function SYS_IB_GEO({ model, view, pos, memo }) {
+  const I = SYS_IB_INDEX(model, view), P = SYS_IB_PROJ(model, view, I);
+  const raw = csGeo({ model: P.model, view: P.view, pos, memo });
   const d = SYS_DRESS(raw, model, view, id => SYS_IB_SAY(I, raw, id));
   const memberOf = id => { const k = String(id).indexOf('->'); return k < 0 ? id : String(id).slice(k + 2); };
   const out = { ...d, nodes: d.nodes.map(n => { if (n.shape !== 'port') return n; const m = I.el(memberOf(n.id)), f = m ? SYS_IB_FLOW(I, m) : null; return { ...n, member: memberOf(n.id), ...(f ? { flow: f } : {}) }; }),
@@ -129,7 +139,7 @@ const SYS_IB_RULES = {
   'connector-drawn': 'a connector between two ports of the subject is not drawn: the frame has no line to itself',
   'part-type': 'a part or reference property\'s type names exactly one block of the model by label',
   'item-flow': 'an item flow\'s item is text and its direction from-to or to-from',
-  'port-compatible': 'two parts\' proxy ports of one interface block are joined conjugate (one ~); a delegation joins ports of one type, conjugated alike, flowing the same way',
+  'port-compatible': 'two parts\' proxy ports of one interface block are joined conjugate (one ~), unless every flow property is inout; a delegation joins ports of one type, conjugated alike, flowing the same way',
 };
 function SYS_IB_PROBLEMS(model, view) {
   if (!view) return [];
@@ -147,10 +157,12 @@ function SYS_IB_PROBLEMS(model, view) {
     const ends = ['from', 'to'].map(k => ({ k, part: part(e, k), m: (I.mem.get(e[k]) || {}).m })).filter(x => x.m && x.m.type === 'sysml.Port');
     if (ends.length < 2) return;
     const [a, b] = ends, [ta, tb] = [a, b].map(x => SYS_IB_TYPE(x.m)), raw = x => String(SYS_IB_PROPS(x.m).valueType).trim();
-    if (a.part != null && b.part != null) { // assembly: two parts' proxy ports of one interface block meet conjugate, or flowing opposite ways
-      if (![a, b].every(x => SYS_IB_PROPS(x.m).kind === 'proxy') || !ta.name || ta.name !== tb.name || !SYS_IB_IFACE(I, ta.name)) return;
-      const fa = SYS_IB_FLOW(I, a.m), fb = SYS_IB_FLOW(I, b.m);
-      if (ta.conj === tb.conj && !(fa && fb && [fa, fb].sort().join() === 'in,out'))
+    if (a.part != null && b.part != null) { // assembly: two parts' proxy ports of one interface block meet conjugate, or flowing opposite ways (inout both ways)
+      const B = ta.name && ta.name === tb.name ? SYS_IB_IFACE(I, ta.name) : null;
+      if (![a, b].every(x => SYS_IB_PROPS(x.m).kind === 'proxy') || !B) return;
+      // conjugated alike, each flow property flows the same way at both ends: opposite only when every one is inout (SysML 1.7)
+      const ds = SYS_IB_ARR(B.members).filter(m => SYS_IB_OBJ(m) && m.type === 'sysml.FlowProperty').map(m => SYS_IB_PROPS(m).direction);
+      if (ta.conj === tb.conj && !(ds.length && ds.every(d => d === 'inout')))
         say('warning', 'port-compatible', path, [e.id, a.m.id, b.m.id], `${e.id} joins ${q(a.m.id)} of ${q(a.part)} and ${q(b.m.id)} of ${q(b.part)}, proxy ports typed ${ta.name} ${ta.conj ? 'both conjugated' : 'neither conjugated'}: one end is conjugated (~), so what flows out of one flows into the other`);
     } else if ((a.part == null) !== (b.part == null)) { // delegation: the frame's port to a part's port
       const [fr, pt] = a.part == null ? [a, b] : [b, a];
@@ -177,18 +189,27 @@ function SYS_IB_DESCRIBE(model, viewId) {
 const SYS_IB_AS = { 'sysml.PartProperty': 'uml.Property', 'sysml.ReferenceProperty': 'uml.Property', 'sysml.ValueProperty': 'uml.Property', 'sysml.Port': 'uml.Port', 'sysml.Connector': 'uml.Connector' };
 const SYS_IB_ENTRY = x => (SYS_IB_OBJ(x) && Object.hasOwn(SYS_IB_AS, x.type) ? { ...x, type: SYS_IB_AS[x.type] } : x);
 const SYS_IB_MAP = (r, f) => (Array.isArray(r) ? f(r) : !SYS_IB_OBJ(r) ? r : Array.isArray(r.commands) ? { ...r, commands: f(r.commands) } : typeof r.then === 'function' ? { ...r, then: i => SYS_IB_MAP(r.then(i), f) } : r);
-const SYS_IB_ON = hook => (model, view, ...a) => { const P = SYS_AS_UML(model, view), I = SYS_IB_INDEX(model, view);
-  return SYS_IB_MAP(SYS_BACK(hook(P.model, P.view, ...a), model, view), cs => cs.filter(c => !(SYS_IB_OBJ(c) && c.op === 'set' && c.path === 'label' && I.el(c.id) && I.el(c.id).label === c.value))); };
+const SYS_IB_ON = hook => (model, view, ...a) => { const I = SYS_IB_INDEX(model, view), P = SYS_IB_PROJ(model, view, I);
+  const r = SYS_IB_MAP(SYS_BACK(hook(P.model, P.view, ...a), model, view), cs => cs.filter(c => !(SYS_IB_OBJ(c) && c.op === 'set' && c.path === 'label' && I.el(c.id) && I.el(c.id).label === c.value)));
+  return SYS_IB_OBJ(r) && Array.isArray(r.commands) && !r.commands.length ? { commands: [] } : r; }; // nothing changed: nothing said
+// F2's text may start «proxy» or «full», as the projection names a port: it sets the port's kind
+function SYS_IB_RENAME(model, view, id, text) {
+  const k = /^\s*«(proxy|full)»/.exec(String(text)), x = SYS_IB_INDEX(model, view).el(String(id).split('->').pop());
+  const hook = (m, v, ...a) => { const r = csRename(m, v, ...a); return k && x && x.type === 'sysml.Port' && SYS_IB_PROPS(x).kind !== k[1] ? SYS_IB_MAP(r, cs => [...cs, { op: 'set', id: x.id, path: 'props.kind', value: k[1] }]) : r; };
+  return SYS_IB_ON(hook)(model, view, id, text);
+}
 const SYS_IB_KIND = (r, f) => SYS_IB_MAP(r, cs => cs.map(c => (SYS_IB_OBJ(c) && c.op === 'add' && SYS_IB_OBJ(c.element) ? { ...c, element: f(c.element) } : c)));
 function SYS_IB_ADD(model, view, entry, label, at) {
   const r = SYS_IB_ON(csAdd)(model, view, SYS_IB_ENTRY(entry), label, at), t = SYS_IB_OBJ(entry) ? entry.type : null;
   return Object.hasOwn(SYS_IB_PROP, t) ? SYS_IB_KIND(r, x => (Object.hasOwn(SYS_IB_PROP, x.type) ? { ...x, type: t } : x)) : r;
 }
 function SYS_IB_MEMBER(model, view, owner, id, text) {
-  const k = /^(proxy|full)\s+(?=port\s)/i.exec(String(text)), ref = id == null && /^ref\s+/i.test(String(text)), t = String(text).replace(/^(proxy|full)\s+(?=port\s)/i, '').replace(/^ref\s+/i, '');
+  const k = /^(proxy|full)\s+(?=port\s)/i.exec(String(text)), ref = /^ref\s+/i.test(String(text)), t = String(text).replace(/^(proxy|full)\s+(?=port\s)/i, '').replace(/^ref\s+/i, '');
+  const was = id == null ? null : SYS_IB_INDEX(model, view).el(id);
+  if (was && ((/^port\s/i.test(t) && was.type !== 'sysml.Port') || (ref && was.type !== 'sysml.ReferenceProperty'))) // a row keeps its member's kind
+    return { error: `A row keeps its member's kind: delete ${SYS_IB_NAME(was)} and add a ${ref ? 'ref' : 'port'} row` };
   const r = SYS_IB_ON(csMember)(model, view, owner, id, t), kind = k ? k[1].toLowerCase() : undefined;
   if (id == null) return SYS_IB_KIND(r, x => (x.type === 'sysml.Port' && kind ? { ...x, props: { ...SYS_IB_PROPS(x), kind } } : ref && Object.hasOwn(SYS_IB_PROP, x.type) ? { ...x, type: 'sysml.ReferenceProperty' } : x));
-  const was = SYS_IB_INDEX(model, view).el(id);
   return was && was.type === 'sysml.Port' && SYS_IB_PROPS(was).kind !== kind ? SYS_IB_MAP(r, cs => [...cs, { op: 'set', id, path: 'props.kind', value: kind }]) : r;
 }
 const SYS_IB_MEMBERS = {
@@ -246,7 +267,7 @@ const SYS_IB_TYPE_DEF = registerDiagramType('sysml.internal-block', {
   rows: SYS_IB_ROWS,
   text: SYS_IB_LINE_TEXT,
   edits: { connect: (model, view, from, to, at, line) => SYS_IB_ON(csConnect)(model, view, from, to, at, SYS_IB_ENTRY(line)), moveTo: SYS_IB_ON(csMoveTo), add: SYS_IB_ADD,
-    remove: SYS_IB_ON(csRemove), rename: SYS_IB_ON(csRename), member: SYS_IB_MEMBER },
+    remove: SYS_IB_ON(csRemove), rename: SYS_IB_RENAME, member: SYS_IB_MEMBER },
 });
 
 export { SYS_IB_TYPE_DEF, SYS_IB_GEO, SYS_IB_PROBLEMS, SYS_IB_FLOW, SYS_IB_SPOT };
