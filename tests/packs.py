@@ -334,6 +334,20 @@ ok("aws#4 · a render reads the AWS pack from the cache: its icons, unchanged, w
    and icons.get("aws/Amazon-Test_Thing", {}).get("name") == "Amazon Test Thing"
    and base64.b64decode(icons["aws/Amazon-Test-Service"]["src"].split(",", 1)[1]) == svg("#ff9900") and not opened, (sorted(icons), opened, err))
 
+# a fetched pack's icons reach a still's key and a timelapse (audit 4)
+sys.path.insert(0, str(ROOT))
+import umlimator as u
+(d / "m.json").write_text(json.dumps(am))
+cli(d, "render", str(d / "m.json"), "--out", str(d / "p.html"), "--no-check")
+src = u.page_data(d / "p.html")[0]["icons"]["aws/Amazon-Test-Service"]["src"]
+(d / "q.html").write_text((d / "p.html").read_text(encoding="utf-8").replace(src, src[:-8] + "AAAAAAAA"), encoding="utf-8")  # the pack's icon, and only it, changed
+ok("stills#1 · a still's key covers its pack icons: a view whose pack icon changes (a pack fetched) is drawn again",
+   u.still_keys(d / "p.html", [])["v"] != u.still_keys(d / "q.html", [])["v"])
+git = lambda *a: subprocess.run(["git", "-C", str(d), "-c", "user.name=t", "-c", "user.email=t@example.invalid", *a], capture_output=True, check=True)
+git("init", "-q"); git("add", "m.json"); git("commit", "-qm", "one")
+r = subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "timelapse", "m.json", "--out", "t.html"], capture_output=True, text=True, cwd=d, env=env(d), timeout=120)
+ok("timelapse#1 · a timelapse page holds a fetched pack's icons, as a rendered one does", r.returncode == 0 and '"aws/Amazon-Test-Service"' in (d / "t.html").read_text(), r.stderr[-300:])
+
 srv.shutdown()
 print("FAILED" if failed else "all pack checks passed")
 sys.exit(1 if failed else 0)

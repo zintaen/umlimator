@@ -106,9 +106,9 @@ function dynProblems(model, view) {
 }
 function dynDescribe(model, viewId) {
   const v = V_ARR(model && model.views).find(x => V_OBJ(x) && x.id === viewId); if (!v) throw new Error(`umlimator: no view ${JSON.stringify(viewId)}`);
-  const { steps, pic } = dynDrawn(model, v), box = new Map(c4Pic(model, v).boxes.map(b => [b.id, b]));
+  const { steps, notes, pic } = dynDrawn(model, v), box = new Map(c4Pic(model, v).boxes.map(b => [b.id, b]));
   return [`${v.title || v.id}: a C4 dynamic diagram of ${vPlural(pic.ids.length, 'element')} and ${vPlural(steps.length, 'step')}.`,
-    ...readingOrder(pic).map(id => (box.has(id) ? box.get(id).aria : c4NodeName(pic.at.get(id)))), ...steps.map(({ e, k }) => dynName(e, k, pic))].map(t => t.replace(/\.?$/, '.')).join('\n');
+    ...readingOrder(pic).map(id => (box.has(id) ? box.get(id).aria : c4NodeName(pic.at.get(id)))), ...steps.map(({ e, k }) => dynName(e, k, pic)), ...notes.map(e => c4LineName(e, pic))].map(t => t.replace(/\.?$/, '.')).join('\n');
 }
 /* moveTo(model, view, id, at): a step one place earlier or later (Alt + arrows, { by }), or to { index } in view.edges. A
    card, or a line dropped where there is no slot: null, the canvas's own */

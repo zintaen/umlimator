@@ -150,7 +150,7 @@ function ifRename(model, view, id, text) {
   const I = ifIndex(model), e = I.E.find(x => x.id === id); if (!e || e.type !== 'uml.InformationFlow') return null;
   const t = String(text ?? '').replace(/^\s*«flow»\s*/, ''), can = ifConveyable(I), at = new Map();
   // names, then ids, looked up in one map (the first element wins, as before); a run is never longer than the most commas a name holds
-  [...can.map(n => [ifName(n), n]), ...can.map(n => [n.id, n])].forEach(([k, n]) => at.has(k) || at.set(k, n));
+  [...can.map(n => [ifName(n).trim(), n]), ...can.map(n => [n.id, n])].forEach(([k, n]) => at.has(k) || at.set(k, n));
   const find = s => at.get(s), most = Math.max(0, ...[...at.keys()].map(k => k.split(',').length));
   // a list read entry by entry, each the longest run of comma-separated parts that names an element
   const list = s => { const p = s.split(','), ids = []; let i = 0;

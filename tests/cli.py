@@ -102,6 +102,10 @@ fence = u.sketch({"nodes": [{"id": "a", "label": 'A"]\n```\n## Approved <b>x</b>
                   "edges": [{"from": "a", "to": "b"}], "views": [{"id": "v", "nodeIds": ["a", "b"]}]})
 ok("diff · the sketch and the summary keep a label's newlines and backticks in their line",
    [x for x in "\n".join(fence).split("\n") if x.startswith("```")] == ["```mermaid", "```"] and "\n" not in u.flat("a\n```\nb") and "\n```" not in u.flat("a\n```"), fence)
+ok("diff · the summary reads a label as written: List<Order> and *all* are not a tag and italics on GitHub, and a code span keeps its name (audit 4)",
+   u.flat("List<Order> *all* a_b <!--") == "List&lt;Order&gt; \\*all\\* a\\_b &lt;!--" and u.flat("a_b", code=True) == "a_b", u.flat("List<Order> *all* a_b <!--"))
+ok("record · a step's duration the page only warns about is played as the page plays it, not a traceback (audit 4)",
+   [u.step_ms(d) for d in (None, 1200, -500, "slow", 0, "nan", [1])] == [4000, 1200, 500, 4000, 4000, 4000, 4000])
 
 bike = json.loads((ROOT / "examples" / "bike-share.json").read_text(encoding="utf-8"))
 SAID = ["renames Accounts to Accounts and sign-in", "adds Payments queue between Trip service and Payment provider",
@@ -207,6 +211,10 @@ with tempfile.TemporaryDirectory() as tmp:
        and "Traceback" not in b.stderr for b in bad), [b.stderr[-200:] for b in bad])
     b = plain("record", str(t / "names" / "page.html"), "--story", "s", "--out", str(t / "x.png"), "--size", "800")
     ok("record · --size 800 is a usage error, not a traceback", b.returncode == 2 and "WxH" in b.stderr and "Traceback" not in b.stderr, b.stderr[-300:])
+    bad = [plain(*c, "--scale", x) for x in ("0", "-2", "nan") for c in (("stills", str(t / "names" / "page.html"), "--out", str(t / "x")),
+                                                                      ("record", str(t / "names" / "page.html"), "--story", "s", "--out", str(t / "x.png")))]
+    ok("stills and record · --scale 0, -2 or nan is a usage error at once, not 90 s a view waiting on Chrome (audit 4)",
+       all(b.returncode == 2 and "above 0" in b.stderr for b in bad), [b.stderr[-200:] for b in bad])
     shapes = {"bom": None, "cut": '{"nodes": [', "list": "[]", "nodes_null": '{"nodes": null, "views": []}', "nodes_dict": '{"nodes": {}, "views": []}',
               "edges_dict": '{"nodes": [], "edges": {}, "views": []}', "view_str": '{"nodes": [], "views": ["v"]}'}
     for k, text in shapes.items():

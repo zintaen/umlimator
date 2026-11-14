@@ -67,7 +67,7 @@ function parseColumn(text, I, was) {
 }
 function printColumn(c, I = erIndex(ER_SEEN.get(c))) {
   const p = erProps(c), r = ER_HAS(p.references) && I.col.get(p.references), pair = r && `${erName(r.e)}.${erName(r.c)}`;
-  const ref = r && !/[\s.]/.test(erName(r.e) + erName(r.c)) && erRef(pair, I) === p.references ? pair : p.references, q = x => (/^$|[\s"()[\]{}<>]/.test(x) ? `"${x.replace(/["\\]/g, '\\$&')}"` : x);
+  const ref = r && !/[\s.]/.test(erName(r.e) + erName(r.c)) && erRef(pair, I) === p.references ? pair : p.references, q = x => (/^$|[\s"()[\]{}<>]/.test(x) || erFlag(x) ? `"${x.replace(/["\\]/g, '\\$&')}"` : x);
   return [q(erName(c)), ER_HAS(p.dataType) && String(p.dataType), p.primaryKey === true && 'PK', (p.foreignKey === true || ER_HAS(ref)) && 'FK', ER_HAS(ref) && q(String(ref)), p.unique === true && 'UK', p.nullable === true && 'NULL'].filter(x => typeof x === 'string' && x !== '').join(' ');
 }
 

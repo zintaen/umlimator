@@ -290,3 +290,9 @@ test('the type ships in lib/umlimator-all.js only (risks.md C5)', () => {
   const all = readFileSync(new URL('../lib/umlimator-all.js', import.meta.url), 'utf8'), core = readFileSync(new URL('../lib/umlimator.js', import.meta.url), 'utf8');
   for (const k of ["registerDiagramType('sysml.parametric'", 'function SYS_PAR_GEO(']) { assert.ok(all.includes(k), k); assert.ok(!core.includes(k), k); }
 });
+
+test('audit 4: the hint line\'s SysML words leave the element names as written', () => {
+  const m = structuredClone(M19); mem(m, 'ebike.batteryCapacity').label = 'spare part count'; mem(m, 'ebike.eco').label = 'port connector';
+  assert.match(T.edits.remove(m, m.views[0], ['ebike.batteryCapacity'], true).say, /^Deleted property spare part count of EBike/);
+  assert.match(T.edits.remove(m, m.views[0], ['ebike.eco'], false).say, /property port connector of EBike and its 3 lines/);
+});

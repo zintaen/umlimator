@@ -116,7 +116,7 @@ by `tests/import.py` and `tests/bpmn-xml.test.mjs`.
 ## Accessibility
 
 Every piece has a name: "Service task Take payment, in Sales"; "Timer boundary event No answer in 2 minutes, on Take
-payment"; "Pool Bookshop, 2 lanes, 16 elements"; "Message flow from Take payment to Payment provider, named Charge
+payment"; "Pool Bookshop, 2 lanes, 17 elements"; "Message flow from Take payment to Payment provider, named Charge
 request". The reading order runs pool by pool, lane by lane, along the flows, each boundary event after its activity;
 then the groups, then the lines. Text reads at 4.5:1, lines and outlines at 3:1 in both themes (`tests/bpmn.html`,
 `tests/m4b.html`). Every gesture has a key (`docs/editing.md`): `A` attaches a boundary event to an activity by a picker,

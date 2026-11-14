@@ -326,3 +326,13 @@ test('audit 2: an FK to a column whose id holds a space, and a column with no la
   t.nodes[0].members[0].label = '';
   assert.ok(erMember(t, null, 't', 't.qty', printColumn(t.nodes[0].members[0])).error, 'an empty name is reported, not replaced by the type');
 });
+
+test('audit 4: an FK to a column whose id is a flag word prints it quoted, so the row saves back with its reference', () => {
+  for (const id of ['PK', 'fk', 'null', 'UK']) {
+    const c = C('o.c', 'customer_id', { dataType: 'bigint', foreignKey: true, references: id });
+    const m = { schemaVersion: 2, nodes: [{ id: 'u', type: 'er.Entity', label: 'user accounts', members: [C(id, 'id', { primaryKey: true })] }, { id: 'o', type: 'er.Entity', label: 'orders', members: [c] }], edges: [], views: [] };
+    const row = (ER_TYPE.owners(m), printColumn(c));
+    assert.equal(row, `customer_id bigint FK "${id}"`);
+    assert.deepEqual(erMember(m, null, 'o', 'o.c', row)[1].value, c.props, id);
+  }
+});

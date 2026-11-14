@@ -118,6 +118,7 @@ def replacing(path):
     """A path beside `path` to write to, renamed over it when the block ends without an error and removed otherwise: the
     previous file stays until the new one is whole, and a reader never sees half of one."""
     path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)  # as render's --out: a folder that is not there yet is made
     tmp = path.with_name(f".{path.stem}.{os.urandom(4).hex()}{path.suffix}")  # not mkstemp: the file takes the usual mode
     try:
         yield tmp
@@ -505,7 +506,7 @@ def diff_since(a):
     for name in filter(None, changed.stdout.split("\0")):
         old = subprocess.run(["git", "show", f"{a.base}:{name}"], capture_output=True)  # bytes: a file need not be UTF-8
         texts = (old.stdout if old.returncode == 0 else None, (top / name).read_bytes() if (top / name).is_file() else None)
-        fname = flat(name.replace("`", "'"))  # the file's name in the summary: a code span of its own
+        fname = flat(name.replace("`", "'"), code=True)  # the file's name in the summary: a code span of its own
         (before, e1), (after, e2) = model_of(texts[0]), model_of(texts[1])
         # a model that no longer parses (a conflict marker, a cut) is a change to say, not a file to skip; other JSON that
         # does not parse (a tsconfig.json with comments) is not a model
@@ -553,10 +554,12 @@ def capped(md, most=60000):
     return cut + "\n\n_The rest is cut: a comment holds up to 65536 characters. Every change is in the pages and stills._"
 
 
-def flat(s):
-    """A model's words (labels, view ids) for one Markdown line of the summary a bot posts: one line, and no backtick
-    that opens a code block."""
-    return re.sub(r"\s*[\r\n]+\s*", " ", str(s)).replace("`", "\\`")
+def flat(s, code=False):
+    """A model's words (labels, view ids) for one Markdown line of the summary a bot posts: one line, read as written (no
+    tag, emphasis or link of GitHub's: List<Order> stays whole), and no backtick that opens a code block. In a code span
+    (`code`) only the line: a code span shows an escape as it is."""
+    s = re.sub(r"\s*[\r\n]+\s*", " ", str(s))
+    return s if code else re.sub(r"([\\`*_\[\]~|])", r"\\\1", html.escape(s, quote=False))
 
 
 MARKS = {"added": "#1a7f37", "changed": "#9a6700", "removed": "#cf222e"}
@@ -648,13 +651,20 @@ def cmd_timelapse(a):
             print(f"{sha[:7]}: {path} is not a JSON model there; left out", file=sys.stderr)
     if not versions:
         sys.exit(f"no versions of {a.model} in git history")
-    data = {"title": str(versions[-1]["model"].get("title") or Path(a.model).stem), "icons": icon_table([v["model"] for v in versions]), "versions": versions}
+    data = {"title": str(versions[-1]["model"].get("title") or Path(a.model).stem), "icons": {**icon_table(ms := [v["model"] for v in versions]), **packs().table(ms)}, "versions": versions}
     page = (HERE / "engine" / "assets" / "timelapse.html").read_text(encoding="utf-8")
     page = page.replace("__TITLE__", html.escape(data["title"]), 1).replace("/*__UMLIMATOR_THEME__*/", THEME.read_text(encoding="utf-8"), 1)
     page = page.replace("/*__VERSIONS__*/", json.dumps(data, ensure_ascii=False).replace("</", "<\\/"), 1)
     page = page.replace("/*__UMLIMATOR_LIB__*/", LIB.read_text(encoding="utf-8"), 1)
     write(a.out, page)
     print(json.dumps({"out": a.out, "versions": [v["label"] for v in versions]}, indent=1))
+
+
+def above_0(s):
+    """--scale, a number above 0 (not nan)."""
+    if not float(s) > 0:
+        raise argparse.ArgumentTypeError(f"{s!r} is not a number above 0")
+    return float(s)
 
 
 def size(s):
@@ -777,11 +787,14 @@ def still_keys(page, opts):
         ids = set(v.get("nodeIds") or [])
         ends = ids | {c.get("id") for c in v.get("containers") or [] if isinstance(c, dict)}  # a line may end on a box (#28)
         nodes = [N.get(i) for i in sorted(ids)]
-        lines = [e for e in data.get("edges", []) if own(e.get("from")) in ends and own(e.get("to")) in ends]
+        # a typed view draws from more than its cards: a part's ports are its type's, found by label anywhere in the model,
+        # and a connector may end on one (audit 4): its key is the whole model's cards and lines
+        lines = data.get("edges", []) if v.get("diagram") else [e for e in data.get("edges", []) if own(e.get("from")) in ends and own(e.get("to")) in ends]
         kids = {i: len((V.get((N.get(i) or {}).get("opensView") or i) or {}).get("nodeIds") or []) for i in sorted(ids)}
         cards = [n for n in nodes if n] + list((v.get("nodeOverrides") or {}).values())
         used, who = ({n.get(k) for n in cards} - {None} for k in ("icon", "author"))
-        blob = json.dumps([v, nodes, lines, kids, {k: icons[k] for k in sorted(used) if k in icons},
+        used |= {f"{p}/{i}" for p, i in map(packs().pick, cards) if isinstance(i, str)} | {f"{p}/" for p, _ in map(packs().pick, cards)}  # a pack's icon and its legal line
+        blob = json.dumps([v, data.get("nodes") if v.get("diagram") else nodes, lines, kids, {k: icons[k] for k in sorted(used) if k in icons},
                            {k: authors[k] for k in sorted(who) if k in authors}, data.get("rules"), engine, opts], sort_keys=True)
         keys[v["id"]] = hashlib.sha256(blob.encode()).hexdigest()
     return keys
@@ -883,6 +896,15 @@ def cmd_pdf(a):
     print(json.dumps({"out": a.out, "pages": pages, "bytes": out.stat().st_size}, indent=1))
 
 
+def step_ms(d):
+    """A story step's time on screen, as the page plays it: Math.max(500, +duration || 4000)."""
+    try:
+        d = float(d or 0)
+    except (TypeError, ValueError):
+        d = 0
+    return int(max(500, d)) if 0 < abs(d) < 1e9 else 4000  # not nan, inf or 0
+
+
 def apng(frames, delays, out):
     """PNG files of one size as one animated PNG, each frame shown for its delay in ms: the frames' own image data,
     numbered into APNG's frame chunks (nothing decoded or encoded again)."""
@@ -936,7 +958,7 @@ def cmd_record(a):
             # a tour: 2 frames a leg, at most 6 so the file stays small, each shown for its share of the step's duration
             # ponytail: the ride fills the step at its own pace, not the live dot's: only the page knows the ride's length
             # (have the page say it if the pace matters)
-            ms, k = int(step.get("duration") or 4000), max(1, min(6, 2 * len(step.get("tour") or []) - 1))
+            ms, k = step_ms(step.get("duration")), max(1, min(6, 2 * len(step.get("tour") or []) - 1))
             for i in range(k):
                 png = Path(tmp) / f"{len(frames):03}.png"
                 headless(b, "--virtual-time-budget=8000", "--force-prefers-reduced-motion", f"--window-size={w},{h}", f"--force-device-scale-factor={a.scale}", f"--screenshot={png}",
@@ -960,6 +982,8 @@ def cmd_import(a):
     sys.path.insert(0, str(HERE))
     import umlimator_import as imp
     named = {"structurizr-json": "a Structurizr JSON workspace", "dbml": "DBML"}
+    if not Path(a.file).is_file():
+        sys.exit(f"import: no file at {a.file}")
     early = a.format or ("dbml" if Path(a.file).suffix.lower() == ".dbml" else None)  # ponytail: a .dbml file's name is trusted here, before detect reads it
     if early in imp.NODE_FORMATS and (size := Path(a.file).stat().st_size) > imp.LIMIT:  # hostile input (milestone-2.md §8): not even read
         sys.exit(f"import: {a.file} is {size} bytes, over the limit of {imp.LIMIT} (1 MiB) for {named[early]}: nothing read, nothing written")
@@ -1080,7 +1104,7 @@ def main():
     r = sub.add_parser("render"); r.add_argument("model"); r.add_argument("--out", required=True)
     r.add_argument("--no-check", action="store_true"); r.set_defaults(f=cmd_render)
     s = sub.add_parser("stills"); s.add_argument("page"); s.add_argument("--out", required=True)
-    s.add_argument("--views", help="a,b,pic-* (a trailing * is a prefix)"); s.add_argument("--scale", type=float, default=2.0); s.add_argument("--theme", default="light", choices=["light", "dark"])
+    s.add_argument("--views", help="a,b,pic-* (a trailing * is a prefix)"); s.add_argument("--scale", type=above_0, default=2.0); s.add_argument("--theme", default="light", choices=["light", "dark"])
     s.add_argument("--reader", action="store_true", help="reader copy: no CHECK tab, no drill-down pill (as stillsv.js)")
     s.add_argument("--all", action="store_true", help="export every view, even one whose inputs are unchanged since its last export")
     s.set_defaults(f=cmd_stills)
@@ -1090,7 +1114,7 @@ def main():
     pd.add_argument("--paper", default="a4", choices=["a4", "letter"], help="the paper, across (default a4)"); pd.set_defaults(f=cmd_pdf)
     rc = sub.add_parser("record", help="a story as an animated PNG, a frame per step and frames along a step's tour"); rc.add_argument("page")
     rc.add_argument("--story", required=True); rc.add_argument("--out", required=True, help="a .png file")
-    rc.add_argument("--size", type=size, default="1160x740", help="the window, WxH (up to 1180 wide the views list stays shut)"); rc.add_argument("--scale", type=float, default=1)
+    rc.add_argument("--size", type=size, default="1160x740", help="the window, WxH (up to 1180 wide the views list stays shut)"); rc.add_argument("--scale", type=above_0, default=1)
     rc.add_argument("--theme", default="light", choices=["light", "dark"]); rc.set_defaults(f=cmd_record)
     i = sub.add_parser("pin-icons", help="record each new brand mark's sha256 and move it out of icons/ into the cache"); i.set_defaults(f=cmd_pin_icons)
     pk = sub.add_parser("pack", help="the cloud vendors' icon packs, fetched only on request and after their terms (icons/packs.json)")

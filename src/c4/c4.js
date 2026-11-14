@@ -243,8 +243,8 @@ const c4Free = (used, base) => { if (!used.has(base)) return base; let k = 2; wh
 // D (§6.1): a software system's container view, or a container's component view, made: the element (its boundary), what it
 // owns a level down, and what their relationships reach, each lifted to that level; the element then opens it. One transaction
 function c4Zoom(model, view, ids) {
-  const I = c4Index(model), x = [...ids].reverse().map(id => I.at.get(id)).find(y => y && (y.type === 'c4.SoftwareSystem' || y.type === 'c4.Container') && y.opensView == null);
-  if (!x) return null;
+  const I = c4Index(model), x = [...ids].reverse().map(id => I.at.get(id)).find(y => y && (y.type === 'c4.SoftwareSystem' || y.type === 'c4.Container'));
+  if (!x) return null; if (x.opensView != null) return { error: `${c4Name(x)} opens "${x.opensView}" already: Enter opens it` };
   const sys = x.type === 'c4.SoftwareSystem', kids = I.kids(x.id, sys ? 'c4.Container' : 'c4.Component'), inside = new Set(kids);
   // the far end of a relationship, at the new view's level: a person or a software system as it is, a container as it is (a
   // system's own are inside already), a component as its container, anything else not at all
