@@ -26,7 +26,7 @@ test('validate() names each error and warning by where it is, and accepts what r
     'error views[0].browserOrder[0]', 'error views[0].containers[0].nodeIds[1]', 'error views[0].containers[0].parent', 'error views[0].containers[1].parent',
     'error views[0].containers[2].parent', 'error views[0].edges[1]', 'error views[0].edges[3].to', 'error views[0].nodeIds[2]',
     'error views[0].stepIds[0]', 'error views[0].tour[1]',
-    'warning edges[2].fromSide', 'warning edges[2].kind', 'warning edges[2].weight', 'warning nodes[3].kind', 'warning nodes[3].opensView', 'warning views[0].layout.zz',
+    'warning edges[2].fromSide', 'warning edges[2].kind', 'warning edges[2].weight', 'warning nodes[3].kind', 'warning nodes[3].opensView', 'warning views[0].containers[2]', 'warning views[0].layout.zz',
   ]);
   assert.match(validate(bad).find(p => p.path === 'views[0].containers[0].parent').message, /inside itself/);
   assert.deepEqual(validate({ nodes: [] }).map(p => p.path), ['views']);
