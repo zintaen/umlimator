@@ -279,7 +279,7 @@ const typeGeo = look => ({ model, view, pos, memo }) => {
   // widest label and 40 px for its stubs (laid out down, a label sits across its line, in the gap between rows)
   const down = view.direction === 'down', wide = !down && boxes.length ? Math.max(0, ...edges.filter(e => e.label).map(labelW)) : 0;
   const g = layoutTyped({ nodes, edges, ...(boxes.length ? { containers: boxes } : {}), direction: down ? 'down' : 'right', gap: 96 + (wide ? Math.ceil(wide) + 40 : 0), rgap: 56, ...look.dg }, memo);
-  g.legend = legendOf(g.edges);
+  g.legend = legendOf(g.edges); g.order = [...readingOrder(pic), ...edges.map(e => e.id)]; // Tab: the elements, then the lines
   return placeTabs(g);
 };
 const classGeo = typeGeo(CLASS_LOOK);
@@ -336,11 +336,12 @@ function classProblems(model) {
   });
   // a generalization cycle: said once, at the line that closes it, naming every element on it
   const state = new Map(), stack = [];
-  const walk = id => { state.set(id, 1); stack.push(id);
-    for (const [p, path, eid] of parents.get(id) || []) {
+  const walk = id => { const at = [0]; state.set(id, 1); stack.push(id); // a stack of frames, not recursion: a chain of any depth
+    while (at.length) { const top = stack[stack.length - 1], ps = parents.get(top) || [];
+      if (at[at.length - 1] === ps.length) { at.pop(); stack.pop(); state.set(top, 2); continue; }
+      const [p, path, eid] = ps[at[at.length - 1]++];
       if (state.get(p) === 1) { const loop = stack.slice(stack.indexOf(p)); say('generalization-cycle', path, [...loop, eid], `${loop.map(q).join(' → ')} → ${q(p)} is its own ancestor (${eid})`); }
-      else if (!state.has(p)) walk(p); }
-    stack.pop(); state.set(id, 2); };
+      else if (!state.has(p)) { state.set(p, 1); stack.push(p); at.push(0); } } };
   [...parents.keys()].forEach(id => { if (!state.has(id)) walk(id); });
   return out;
 }

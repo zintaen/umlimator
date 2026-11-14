@@ -165,6 +165,48 @@ ok("structurizr · groups nest as boxes, and a view's scope sits in its own grou
 ok("knows each format by its content", [imp.detect("x", t) for t in ("/* a */\nworkspace {", "@startuml", "flowchart LR", '{"services": {}}', '{"kind": "List", "items": []}')]
    == imp.FORMATS)
 
+# Hostile and odd input (audit 1): linear work, a bounded model, and what is skipped said, never a traceback
+import time
+t0 = time.time()
+m, un = imp.read("mermaid", "flowchart TD\n" + "A --> B\n" * 20000, "x")
+ok("hostile · 20000 repeats of one link import in linear time (a numbered id resumes its search)",
+   len(m["edges"]) == 20000 and m["edges"][-1]["id"] == "A-B-20000" and time.time() - t0 < 10, time.time() - t0)
+m, un = imp.read("mermaid", "flowchart TD\n" + " & ".join(f"a{i}" for i in range(400)) + " --> " + " & ".join(f"b{i}" for i in range(400)), "x")
+ok("hostile · a & b --> c & d is capped at 100000 links, said once", len(m["edges"]) == imp.FLOWS and un == [(2, "over 100000 links: the rest are not imported")], un)
+m, un = imp.read("plantuml", "@startuml\n" + "' x\n" * (imp.LIMIT // 4 + 1), "x")
+ok("hostile · a text format over 1 MiB is not read", m["nodes"] == [] and un and "over the limit of 1048576" in un[0][1], un)
+m, un = imp.read("structurizr", 'workspace {\nmodel {\n' + 'group "g" {\n' * 1500 + 'p = person "P"\n' + '}\n' * 1500 + '}\n}\n', "x")
+ok("hostile · 1500 nested groups read as nested boxes, no RecursionError", len(m["views"][0]["containers"]) == 1500
+   and m["views"][0]["containers"][-1]["nodeIds"] == ["p"] and un == [], un)
+odd = {"kubernetes": ([[{"kind": "Deployment"}]], 5, {"items": [None]}, [{"kind": "Deployment", "metadata": "x"}],
+                      [{"kind": "Service", "metadata": {"name": "s"}, "spec": {"selector": ["a"], "ports": [80]}}],
+                      [{"kind": "Ingress", "metadata": {"name": "i"}, "spec": {"rules": [None]}}],
+                      [{"kind": "Deployment", "metadata": {"name": 5}, "spec": {"template": {"spec": {"containers": [{"image": 7, "env": [None]}]}}}}]),
+       "compose": ([1], {"services": ["a"]}, {"services": {"a": "nginx"}}, {"name": 5, "services": {"a": {"image": 5, "ports": [None]}}})}
+crashed = []
+for fmt, cases in odd.items():
+    for d in cases:
+        try:
+            imp.read(fmt, json.dumps(d), "x")
+        except Exception as e:
+            crashed.append((fmt, d, repr(e)))
+ok("hostile · Kubernetes and compose JSON of odd shapes reads, skipping what is not an object", crashed == [], crashed)
+m, un = imp.read("kubernetes", "[[1]]", "x")
+ok("hostile · a nested array is said, not imported", m["nodes"] == [] and un == [("[0]", "not an object: not imported")], un)
+m, un = imp.read("compose", json.dumps({"services": {"web": {"depends_on": "db", "ports": "8080:80"}, "db": {}}}), "x")
+ok("compose · a string depends_on or ports is one entry, not its characters",
+   line(m, "web", "db") and card(m, "web").get("what") == "Publishes 8080:80." and un == [], (m, un))
+
+with tempfile.TemporaryDirectory() as tmp:
+    t = Path(tmp)
+    (t / "bad.mmd").write_bytes(b"\xff\xfe\x00flowchart")
+    r = run("import", str(t / "bad.mmd"), "--out", str(t / "b.json"))
+    ok("a file that is not UTF-8 is said in one line, no traceback", r.returncode == 1 and "is not UTF-8 text" in r.stderr and "Traceback" not in r.stderr, r.stderr)
+    (t / "bare.json").write_text(json.dumps({"title": "t", "nodes": ["a", {"id": "b", "label": "B"}], "edges": [], "views": [{"id": "v", "nodeIds": ["b"]}]}))
+    r = run("render", str(t / "bare.json"), "--out", str(t / "bare.html"), "--no-check")
+    ok("render · a node that is not an object is a model problem, no traceback (backlog 4a.3)",
+       r.returncode == 1 and "nodes[0] is not an object" in r.stderr and "Traceback" not in r.stderr, r.stderr[-800:])
+
 with tempfile.TemporaryDirectory() as tmp:
     t = Path(tmp)
     for name, (fmt, views, unread, facts) in EXPECT.items():

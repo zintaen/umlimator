@@ -23,9 +23,12 @@ export function validate(model) {
     const k = String(n.kind ?? '').toLowerCase();
     if (n.kind != null && !(hasKey(KIND, k) || hasKey(MAPK, k) || hasKey(ALIAS, k))) warn(at + '.kind', `unknown kind "${n.kind}": drawn as a script card`);
     if (n.owner != null && typeof n.owner !== 'string') warn(at + '.owner', 'an owner is a name: ignored');
+    list(n, at, 'verbs');
     shapeIs(n, at);
   };
   const shapeIs = (n, at) => { if (n && n.shape != null && !SHAPE_NAMES.includes(String(n.shape).toLowerCase())) warn(at + '.shape', `unknown shape "${n.shape}": drawn by its kind (the shapes: ${SHAPE_NAMES.join(', ')})`); };
+  // a field that must be a list and is not: drawn as if missing (a view's cards: none)
+  const list = (x, at, k) => { if (x[k] != null && !Array.isArray(x[k])) (k == 'nodeIds' ? err : warn)(`${at}.${k}`, `${k} is a list: ${k == 'nodeIds' ? 'the view draws no cards' : 'ignored'}`); };
   const gone = (x, at) => { if (x && x.shapes !== undefined) warn(at + 'shapes', 'shapes is no longer read: maps draw in one style'); }; // the box/c4/uml choice, removed in 0.21.0
   gone(m, '');
   arr(m.nodes).forEach((n, i) => card(n, `nodes[${i}]`));
@@ -34,7 +37,7 @@ export function validate(model) {
   if (m.root != null && !vids.has(m.root)) err('root', `root "${m.root}" is not a view`);
   const later = (x, at) => { if (x && x.opensView && !vids.has(x.opensView)) warn(at + '.opensView', `opens "${x.opensView}", a view the model does not have: fine if the host loads it when it is opened`); };
   arr(m.nodes).forEach((n, i) => later(n, `nodes[${i}]`));
-  views.forEach((v, i) => gone(v, `views[${i}].`));
+  views.forEach((v, i) => { gone(v, `views[${i}].`); ['nodeIds', 'containers', 'intake'].forEach(k => list(v, `views[${i}]`, k)); });
   // a frontend card is drawn as a browser: a person's icon on one says the model means a person (0.15.0); not said of a card
   // only typed views hold, which keep their own notation (0.21.0)
   const typedOnly = id => { const vs = views.filter(v => arr(v.nodeIds).includes(id)); return vs.length && vs.every(v => typedView(v) && diagramOf(v)); };

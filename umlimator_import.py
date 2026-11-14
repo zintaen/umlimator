@@ -28,7 +28,9 @@ from pathlib import Path
 
 FORMATS = ["structurizr", "plantuml", "mermaid", "compose", "kubernetes"]
 NODE_FORMATS = ["structurizr-json", "dbml"]  # read typed by the module's readers, in Node (umlimator.py import)
-LIMIT = 1 << 20  # bytes: a Structurizr JSON or .dbml file over it is refused before it is parsed (notes/milestone-2.md §8)
+LIMIT = 1 << 20  # bytes: a Structurizr JSON or .dbml file over it is refused before it is parsed (notes/milestone-2.md §8); a
+# Structurizr DSL, C4-PlantUML or Mermaid text over it (in characters) is not read
+FLOWS = 100000  # a flowchart's links at most: a & b --> c & d is a product (the module's MF_FLOWS)
 EXT = {".dbml": "dbml", ".dsl": "structurizr", ".puml": "plantuml", ".plantuml": "plantuml", ".pu": "plantuml", ".iuml": "plantuml",
        ".mmd": "mermaid", ".mermaid": "mermaid", ".bpmn": "bpmn"}  # bpmn: XML the module's adapter reads (umlimator.py import)
 MERMAID = re.compile(r"(flowchart|graph|C4Context|C4Container|C4Component|classDiagram|sequenceDiagram|stateDiagram|erDiagram|requirementDiagram|mindmap)\b")
@@ -51,7 +53,7 @@ GUESS = [("database", r"database|\bdb\b|sql|postgres|mysql|maria|mongo|redis|val
 
 
 def guess(words, default="backend"):
-    t = " ".join(w for w in words if w).lower()
+    t = " ".join(str(w) for w in words if w).lower()
     return next((k for k, rx in GUESS if re.search(rx, t)), default)
 
 
@@ -68,7 +70,7 @@ TOOL_KINDS = ("frontend", "mobile", "database", "queue", "file")
 
 def c4guess(words):
     k = guess(words)
-    return "mobile" if k == "frontend" and re.search(MOBILE, " ".join(w for w in words if w).lower()) else k
+    return "mobile" if k == "frontend" and re.search(MOBILE, " ".join(str(w) for w in words if w).lower()) else k
 
 
 def clip(s, n):
@@ -84,14 +86,17 @@ def ident(s):
 
 class Model:
     def __init__(self, title):
-        self.title, self.nodes, self.edges, self.views, self.unread, self.ids = title, {}, [], [], [], set()
+        self.title, self.nodes, self.edges, self.views, self.unread, self.ids, self.next = title, {}, [], [], [], set(), {}
 
     def say(self, where, msg):
         self.unread.append((where, msg))
 
     def uniq(self, *hints):
         """The first hint no card, line or view has yet, else the first one numbered."""
-        got = next(h for h in itertools.chain(hints, (f"{hints[0]}-{n}" for n in itertools.count(2))) if h not in self.ids)
+        got = next((h for h in hints if h not in self.ids), None)
+        if got is None:  # ids are never freed, so the search goes on from where the last one for this hint stopped (linear)
+            n = next(n for n in itertools.count(self.next.get(hints[0], 2)) if f"{hints[0]}-{n}" not in self.ids)
+            got, self.next[hints[0]] = f"{hints[0]}-{n}", n + 1
         self.ids.add(got)
         return got
 
@@ -111,7 +116,14 @@ class Model:
         return e["id"]
 
     def view(self, hint, nodes, boxes=(), **more):
-        full = lambda b: b["nodeIds"] or any(full(c) for c in boxes if c.get("parent") == b["id"])
+        kids, up, parents = set(), [b.get("parent") for b in boxes if b["nodeIds"]], {}  # kids: each id with cards in a box below
+        for b in boxes:
+            parents.setdefault(b["id"], []).append(b.get("parent"))
+        while up:  # one pass up from each box with cards, never twice through an id (deep or many boxes stay linear)
+            if (p := up.pop()) is not None and p not in kids:
+                kids.add(p)
+                up += parents.get(p, [])
+        full = lambda b: b["nodeIds"] or b["id"] in kids
         for b in boxes:
             if not full(b):
                 self.say(b.pop("line", None), f"box {b['id']}: holds no card, so it is not drawn")
@@ -179,6 +191,9 @@ def front(text):
 def read(fmt, text, name):
     if fmt in ("compose", "kubernetes"):
         m = (compose if fmt == "compose" else kubernetes)(json.loads(text), name)
+    elif len(text) > LIMIT:  # hostile input (risks.md R2), as the module's readers refuse it
+        m = Model(name)
+        m.say(None, f"{len(text)} characters, over the limit of {LIMIT} (1 MiB) for {fmt}: nothing read")
     else:
         m = {"structurizr": structurizr, "plantuml": plantuml, "mermaid": mermaid}[fmt](text, name)
     return m.model(), sorted(m.unread, key=lambda u: [int(t) if t.isdigit() else t for t in re.split(r"(\d+)", str(u[0]))])
@@ -371,7 +386,12 @@ def views(m, els, lines, specs, find, implied, groups):
     software systems; in a container view also its system's containers (in a box); in a component view also its
     container's components (in a box) and that system's other containers. A relationship between elements a view
     doesn't show lifts to the nearest ones it does (an implied line), unless a relationship joins those two already."""
-    up = lambda c: [c, *up(els[c]["parent"])] if c else []
+    def up(c):  # c and the elements it is in, innermost first (a loop: deep nests are not too deep for it)
+        out = []
+        while c:
+            out.append(c)
+            c = els[c]["parent"]
+        return out
     # implied: "any" draws one implied line per pair unless a relationship joins them; "same" one per description, unless a
     # relationship with that description joins them (Structurizr's two strategies)
     key = lambda x, y, r: (x, y) if implied == "any" else (x, y, r["desc"])
@@ -423,11 +443,15 @@ def views(m, els, lines, specs, find, implied, groups):
         made_box = {}
 
         def group_box(g):  # a group's box: in the group around it, else in the scope's box when the group is in the scope
-            if g not in made_box:
-                G = groups[g]
-                made_box[g] = {"id": G["id"], "label": clip(G["label"], 40), "nodeIds": [],
-                               "parent": group_box(G["parent"])["id"] if G["parent"] is not None else scope if level > 1 and G["owner"] == scope else None}
-                box.append(made_box[g])
+            chain, h = [], g  # the groups around g not yet boxed, made outermost first (a loop: deep nests are not too deep)
+            while h is not None and h not in made_box:
+                chain.append(h)
+                h = groups[h]["parent"]
+            for h in reversed(chain):
+                G = groups[h]
+                made_box[h] = {"id": G["id"], "label": clip(G["label"], 40), "nodeIds": [],
+                               "parent": made_box[G["parent"]]["id"] if G["parent"] is not None else scope if level > 1 and G["owner"] == scope else None}
+                box.append(made_box[h])
             return made_box[g]
         if level > 1 and els[scope]["group"] is not None:  # the scope's box, in its own group's box
             box[0]["parent"] = group_box(els[scope]["group"])["id"]
@@ -659,7 +683,12 @@ def flowchart(lines, m):
                         old.update(label=label, shape=shape)
                     if subs:
                         subs[-1]["seen"].append(nid)
-                links += [(a[0], b[0], lk, no) for k, lk in enumerate(joins) for a in groups[k] for b in groups[k + 1]]
+                if len(links) <= FLOWS:  # a & b --> c & d is a product: lazily, never past the cap (hostile input, R2)
+                    links += itertools.islice(((a[0], b[0], lk, no) for k, lk in enumerate(joins) for a in groups[k] for b in groups[k + 1]),
+                                              FLOWS + 1 - len(links))
+                    if len(links) > FLOWS:
+                        links.pop()
+                        m.say(no, f"over {FLOWS} links: the rest are not imported")
             else:
                 m.say(no, f"not imported: {clip(s, 80)}")
     for sg in subs:
@@ -687,20 +716,32 @@ def flowchart(lines, m):
 
 # ---------- docker compose ----------
 
+def many(x):
+    """A JSON value as a list of its entries: one string is one entry, an object its keys, anything else none."""
+    return [x] if isinstance(x, (str, int, float)) and not isinstance(x, bool) else list(x) if isinstance(x, (list, dict)) else []
+
+
 def compose(d, name):
-    m, svcs, nets = Model(d.get("name") or name), d.get("services") or {}, {}
+    d = d if isinstance(d, dict) else {}  # not compose's object: nothing to import
+    m, svcs, nets = Model(str(d.get("name") or name)), {}, {}
+    if not isinstance(d.get("services") or {}, dict):
+        m.say("services", "not an object of services: not imported")
+    for s, c in (d.get("services") if isinstance(d.get("services"), dict) else {}).items():
+        if c is None or isinstance(c, dict):
+            svcs[s] = c or {}
+        else:
+            m.say(f"services.{s}", "not an object: not imported")
     for s, c in svcs.items():
-        c = c or {}
         build = c.get("build")
         ctx = build.get("context") if isinstance(build, dict) else build
-        nets[s] = list(c.get("networks") or ([] if c.get("network_mode") else ["default"]))
-        ports = [str(p.get("published") or p.get("target")) if isinstance(p, dict) else str(p) for p in c.get("ports") or []]
+        nets[s] = [str(n) for n in many(c.get("networks"))] or ([] if c.get("network_mode") else ["default"])
+        ports = [str(p.get("published") or p.get("target")) if isinstance(p, dict) else str(p) for p in many(c.get("ports")) if p is not None]
         what = [f"Publishes {', '.join(ports)}." if ports else "", f"On networks {', '.join(nets[s])}." if len(nets[s]) > 1 else ""]
         m.ids.add(s)
         m.card(s, s, guess([c.get("image"), s]), c.get("image") or (f"build {Path(str(ctx)).name or '.'}" if ctx else None), " ".join(what))
     for s, c in svcs.items():
         deps = {}  # a link is a dependency too: one line per pair, the first word for it
-        for t, label in [(t, "depends on") for t in (c or {}).get("depends_on") or []] + [(str(t).split(":")[0], "links") for t in (c or {}).get("links") or []]:
+        for t, label in [(str(t), "depends on") for t in many(c.get("depends_on"))] + [(str(t).split(":")[0], "links") for t in many(c.get("links"))]:
             deps.setdefault(t, label)
         for t, label in deps.items():
             if t in svcs:
@@ -722,59 +763,73 @@ SHORT = {"Deployment": "deploy", "StatefulSet": "sts", "DaemonSet": "ds", "Servi
 HOST = re.compile(r"(?:[a-z][a-z0-9+.-]*://)?(?:[^@/\s]*@)?([a-z0-9-]+(?:\.[a-z0-9-]+)*)(?::\d+)?(?:/\S*)?", re.I)
 
 
+def obj(x):
+    """x when it is a JSON object, else an empty one: a field of the wrong kind reads as missing."""
+    return x if isinstance(x, dict) else {}
+
+
+def objs_in(x):
+    """The JSON objects in a list (a field of the wrong kind holds none)."""
+    return [o for o in x if isinstance(o, dict)] if isinstance(x, list) else []
+
+
 def kubernetes(d, name):
     m = Model(name)
     if isinstance(d, list):
         items, at = d, lambda i: f"[{i}]"
-    elif isinstance(d.get("items"), list):
+    elif isinstance(d, dict) and isinstance(d.get("items"), list):
         items, at = d["items"], lambda i: f"items[{i}]"
     else:
         items, at = [d], lambda i: "the object"
     objs = []
     for i, o in enumerate(items):
-        kind, md = o.get("kind"), o.get("metadata") or {}
+        if not isinstance(o, dict):
+            m.say(at(i), "not an object: not imported")
+            continue
+        kind, md = o.get("kind"), obj(o.get("metadata"))
+        kind = kind if isinstance(kind, str) else None
         if kind in ("Pod", "ReplicaSet", "ControllerRevision") and md.get("ownerReferences"):
             continue  # drawn as the workload that owns it
         if kind not in SHORT or not md.get("name"):
             m.say(at(i), f"{kind} {md.get('name', '')}: not imported")
             continue
-        nm, ns, spec = md["name"], md.get("namespace") or "default", o.get("spec") or {}
+        nm, ns, spec = str(md["name"]), str(md.get("namespace") or "default"), obj(o.get("spec"))
         cid = m.uniq(f"{SHORT[kind]}-{nm}", f"{SHORT[kind]}-{nm}-{ns}")
         objs.append((i, kind, ns, nm, spec, cid))
         if kind == "Service":
-            ext, ports = spec.get("type") == "ExternalName", ", ".join(f"{p.get('port')}→{p.get('targetPort') or p.get('port')}" for p in spec.get("ports") or [])
+            ext, ports = spec.get("type") == "ExternalName", ", ".join(f"{p.get('port')}→{p.get('targetPort') or p.get('port')}" for p in objs_in(spec.get("ports")))
             m.card(cid, nm, "external" if ext else "cloud", f"Service · {spec.get('externalName') if ext else spec.get('type') or 'ClusterIP'}" + (f" · {ports}" if ports and not ext else ""))
         elif kind == "Ingress":
-            hosts = [r["host"] for r in spec.get("rules") or [] if r.get("host")]
+            hosts = [str(r["host"]) for r in objs_in(spec.get("rules")) if r.get("host")]
             m.card(cid, nm, "cloud", f"Ingress · {hosts[0]}" if hosts else "Ingress", f"Hosts: {', '.join(hosts)}." if len(hosts) > 1 else None)
         else:
-            pod = (spec.get("template") or {}).get("spec") or {}
-            images = [c.get("image") or "" for c in pod.get("containers") or []]
+            pod = obj(obj(spec.get("template")).get("spec"))
+            images = [str(c.get("image") or "") for c in objs_in(pod.get("containers"))]
             n = spec.get("replicas")
             what = " ".join(x for x in [f"{n} replica{'s' * (n != 1)}." if n else "", f"Images: {', '.join(images)}." if images else ""] if x)
             m.card(cid, nm, guess([*images, nm], "database" if kind == "StatefulSet" else "backend"), f"{kind} · {images[0].rsplit('/', 1)[-1]}" if images else kind, what)
     svc = {(ns, nm): cid for _, kind, ns, nm, _, cid in objs if kind == "Service"}
     for i, kind, ns, nm, spec, cid in objs:
-        if kind == "Service" and spec.get("selector"):  # to each workload whose pods it selects (its ports are on its card)
+        if kind == "Service" and obj(spec.get("selector")):  # to each workload whose pods it selects (its ports are on its card)
             for _, k2, ns2, _, s2, wid in objs:
-                labels = ((s2.get("template") or {}).get("metadata") or {}).get("labels") or {}
+                labels = obj(obj(obj(s2.get("template")).get("metadata")).get("labels"))
                 if k2 not in ("Service", "Ingress") and ns2 == ns and spec["selector"].items() <= labels.items():
                     m.line(cid, wid, what="selects its pods")
         elif kind == "Ingress":  # each path to its Service, labelled with the path (and the host, when there are several)
-            rules = spec.get("rules") or []
-            routes = [((r.get("host") or "" if len({x.get("host") for x in rules}) > 1 else "") + (p.get("path") or "/"), p.get("backend") or {})
-                      for r in rules for p in (r.get("http") or {}).get("paths") or []]
-            for label, b in routes + ([("default", spec["defaultBackend"])] if spec.get("defaultBackend") else []):
-                to = (b.get("service") or {}).get("name") or b.get("serviceName")  # networking.k8s.io/v1, or the older v1beta1
-                if (ns, to) in svc:
+            rules = objs_in(spec.get("rules"))
+            routes = [((str(r.get("host") or "") if len({str(x.get("host")) for x in rules}) > 1 else "") + str(p.get("path") or "/"), obj(p.get("backend")))
+                      for r in rules for p in objs_in(obj(r.get("http")).get("paths"))]
+            for label, b in routes + ([("default", obj(spec["defaultBackend"]))] if spec.get("defaultBackend") else []):
+                to = obj(b.get("service")).get("name") or b.get("serviceName")  # networking.k8s.io/v1, or the older v1beta1
+                if isinstance(to, str) and (ns, to) in svc:
                     m.line(cid, svc[(ns, to)], label)
                 else:
                     m.say(at(i), f"Ingress {nm} routes to Service {to}, which is not here")
         elif kind not in ("Service", "Ingress"):  # an env value that names a Service: its host, as name, name.namespace or name.namespace.svc...
             # ponytail: a value that is one host or URL; a list of hosts, envFrom and ConfigMaps are not read
             seen = set()
-            for c in ((spec.get("template") or {}).get("spec") or {}).get("containers") or []:
-                for env in c.get("env") or []:
+            for c in objs_in(obj(obj(spec.get("template")).get("spec")).get("containers")):
+                for env in objs_in(c.get("env")):
                     h = HOST.fullmatch(str(env.get("value") or ""))
                     parts = re.sub(r"\.svc(\.cluster\.local)?$", "", h.group(1)).split(".") if h else []
                     to = svc.get((parts[1] if len(parts) == 2 else ns, parts[0])) if 0 < len(parts) <= 2 else None

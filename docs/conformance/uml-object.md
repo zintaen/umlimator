@@ -66,7 +66,7 @@ Measured on `examples/order-objects.json` (0.19.0): `umlimator.py stills` (SVG a
 | Accessible names | Each instance's `aria-label` kept ("Instance specification order1042 : Order, 2 slots"); the lines' `<title>` removed, as for maps | None | None |
 | Theme | The page's, light or dark, every colour resolved (no CSS variables), so the file opens alone | The page's | `--theme`, light by default |
 | Views | One per call (`view`); `stills` writes every view | One per call; `stills` every view, at 2x | Every view (`--views` picks), each on its own page |
-| Tables | None | None | Per type (R8, 0.19.0): each instance by its name, its kind ("Instance specification") and its slots as `feature = value`; each link from → to, its label and its kind ("Link"). The table's heading still says "Cards", the map's word |
+| Tables | None | None | Per type (R8, 0.19.0): each instance by its drawn name (`ada : Customer`), its kind ("Instance specification") and its slots as `feature = value`; each link from → to, its label and its kind ("Link"). The table's heading says "Elements" |
 
 The site builds every example's stills and PDF ([zintaen.github.io/umlimator](https://zintaen.github.io/umlimator/)),
 this one's among them.

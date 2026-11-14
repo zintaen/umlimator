@@ -10,6 +10,7 @@ import '../src/map/typed.js';
 import { layout, check } from '../src/map/api.js';
 import { mapContext } from '../src/map/context.js';
 import { validate } from '../src/map/validate.js';
+import '../src/uml/package.js';
 import { describe } from '../src/map/insight.js';
 import { multBounds, parseMember, printMember, memberEdit, classProblems } from '../src/uml/class.js';
 
@@ -306,4 +307,37 @@ test('a class view draws a shown package owning something shown as a box, and na
   assert.deepEqual(layout(bare, 'payments-only').nodes.map(n => n.label), ['sales::Order', 'payments::Payable', 'payments::Payment', 'payments::card::CardPayment'], 'with no subject, from the top');
   assert.deepEqual(layout(CLASS, 'payments-only').nodes.map(n => n.label), ['Order', 'payments::Payable', 'payments::Payment', 'payments::card::CardPayment'], 'from the subject');
   assert.equal(layout(bare, 'payments-only').nodes[0].aria, 'Class sales::Order (entity), 5 attributes, 3 operations');
+});
+
+test('a typed view\'s key changes with an element it draws but does not list: update() redraws a renamed package that qualifies a name (audit 1)', () => {
+  const after = structuredClone(CLASS); after.nodes.find(n => n.id === 'shared').label = 'Renamed';
+  assert.ok(!CLASS.views.find(v => v.id === 'domain').nodeIds.includes('shared'));
+  assert.notEqual(mapContext(CLASS).viewKey('domain'), mapContext(after).viewKey('domain'));
+  assert.match(mapContext(after).buildView('domain').markup, /Renamed::Money/);
+});
+
+test('a class view with a box lays out a line to a listed id that is no element: the line is left out, as without the box (backlog M3.3)', () => {
+  const C = id => ({ id, type: 'uml.Class', label: id.toUpperCase() });
+  const m = { schemaVersion: 2, nodes: [{ id: 'p', type: 'uml.Package', label: 'p' }, { ...C('a'), parent: 'p' }, C('b')], edges: [{ id: 'e', type: 'uml.Dependency', from: 'a', to: 'ghost' }, { id: 'f', type: 'uml.Dependency', from: 'a', to: 'b' }],
+    views: [{ id: 'v', diagram: 'uml.class', nodeIds: ['p', 'a', 'b', 'ghost'] }] };
+  assert.ok(validate(m).some(p => p.level === 'error' && /ghost/.test(p.message)));
+  const g = layout(m, 'v');
+  assert.deepEqual(g.edges.map(e => e.id), ['f']);
+});
+
+test('class and package views: Tab reaches every element, then every line (one node-key ring per card, audit 1)', () => {
+  for (const [m, vid] of [[CLASS, 'domain'], [read('./package-minimal.json'), 'v']]) {
+    const s = mapContext(m).buildView(vid).markup, cards = (s.match(/<g class="node[ "]/g) || []).length;
+    assert.ok(cards > 0, vid);
+    assert.equal((s.match(/node-key/g) || []).length, cards, `${m.title}: a ring per card`);
+  }
+});
+
+test('a generalization chain 20,000 deep is walked without recursion; a cycle at its end is still said once, naming it (audit 1)', () => {
+  const n = 20000, nodes = Array.from({ length: n }, (_, i) => ({ id: 'c' + i, type: 'uml.Class', label: 'C' + i }));
+  const edges = Array.from({ length: n - 1 }, (_, i) => ({ id: 'g' + i, type: 'uml.Generalization', from: 'c' + i, to: 'c' + (i + 1) }));
+  assert.deepEqual(classProblems({ schemaVersion: 2, nodes, edges }), []);
+  edges.push({ id: 'back', type: 'uml.Generalization', from: 'c' + (n - 1), to: 'c' + (n - 3) });
+  const cyc = classProblems({ schemaVersion: 2, nodes, edges }).filter(p => p.rule === 'generalization-cycle');
+  assert.equal(cyc.length, 1); assert.deepEqual(cyc[0].ids, ['c' + (n - 3), 'c' + (n - 2), 'c' + (n - 1), 'back']);
 });

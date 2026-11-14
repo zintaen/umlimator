@@ -27,6 +27,7 @@ function wrap2(s, px, max) { const w = String(s ?? '').split(' '); let best = nu
 function clauseFit(s, px, max) { s = String(s ?? ''); if (textW(s, px) <= max) return s; for (const sep of ['; ', ', ', ' (']) { const q = s.split(sep); let o = q[0]; if (textW(o, px) > max) continue; for (const x of q.slice(1)) { if (textW(o + sep + x, px) > max) break; o += sep + x; } return o; } return fit(s, px, max, true); }
 function fit(s, px, max, words) { s = String(s ?? ''); if (textW(s, px) <= max) return s; // words: cut between words where it can (a card's texts)
   let k; if (measureText) { k = s.length; while (k > 3 && textW(s.slice(0, k) + '…', px) > max) k--; } else k = Math.max(Math.floor(max / (px * 0.6)) - 1, 3);
+  if (/[\uD800-\uDBFF]/.test(s[k - 1])) k--; // never half an emoji: a lone surrogate draws as a broken glyph
   const w = words ? s.slice(0, k + 1).replace(/\S*$/, '').replace(/[\s,;:]+$/, '') : '';
   return (w || s.slice(0, k)) + '…'; }
 

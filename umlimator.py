@@ -46,9 +46,20 @@ def visual_cmd(tmp, *args):
     run = ("import importlib.util, pathlib, sys\n"
            "def load(name, path): s = importlib.util.spec_from_file_location(name, path); m = importlib.util.module_from_spec(s); s.loader.exec_module(m); return m\n"
            "v, u = load('visual', sys.argv[1]), load('umlimator', sys.argv[2]); v.TEMPLATE = pathlib.Path(sys.argv[3])\n"
-           "check = v.validate_map; v.validate_map = lambda d: check(u.upstream_view(d))\n"
+           "check = v.validate_map; v.validate_map = lambda d: u.not_objects(d) or check(u.upstream_view(d))\n"
            "sys.argv = [sys.argv[1]] + sys.argv[4:]; v.main()")
     return [sys.executable, "-c", run, str(VISUAL), str(Path(__file__).resolve()), str(page), *args]
+
+
+def not_objects(d):
+    """Each entry upstream's validate_map reads as an object and is not one, as its problems (it would end in a traceback)."""
+    lst = lambda x: x if isinstance(x, list) else []
+    out = [f"{k}[{i}] is not an object" for k in ("nodes", "edges", "views") for i, x in enumerate(lst(d.get(k))) if not isinstance(x, dict)]
+    for i, v in ((i, v) for i, v in enumerate(lst(d.get("views"))) if isinstance(v, dict)):
+        out += [f"views[{i}].nodes[{j}] is not an object" for j, n in enumerate(lst(v.get("nodes"))) if not isinstance(n, dict)]
+        o = v.get("nodeOverrides")
+        out += [f"views[{i}].nodeOverrides.{k} is not an object" for k, x in (o.items() if isinstance(o, dict) else []) if not isinstance(x, dict)]
+    return out
 
 
 def upstream_view(d):
@@ -288,8 +299,11 @@ def untemp(path):
 
 def icon_table(models):
     """Every icon the models' cards name, by name (see page_model)."""
-    names = {n["icon"] for m in models for n in m.get("nodes", []) if n.get("icon")}
-    names |= {o["icon"] for m in models for v in m.get("views", []) for o in (v.get("nodeOverrides") or {}).values() if o.get("icon")}
+    d = lambda x: x if isinstance(x, dict) else {}  # a malformed entry names no icon: the engine reports it (validate)
+    lst = lambda x: x if isinstance(x, list) else []
+    names = {n["icon"] for m in models for n in map(d, lst(m.get("nodes"))) if isinstance(n.get("icon"), str) and n["icon"]}
+    names |= {o["icon"] for m in models for v in map(d, lst(m.get("views"))) for o in map(d, d(v.get("nodeOverrides")).values())
+              if isinstance(o.get("icon"), str) and o["icon"]}
     man = json.loads((ICONS / "manifest.json").read_text())
     table = {}
     for name in sorted(names):
@@ -870,7 +884,10 @@ def cmd_import(a):
     early = a.format or ("dbml" if Path(a.file).suffix.lower() == ".dbml" else None)  # ponytail: a .dbml file's name is trusted here, before detect reads it
     if early in imp.NODE_FORMATS and (size := Path(a.file).stat().st_size) > imp.LIMIT:  # hostile input (milestone-2.md §8): not even read
         sys.exit(f"import: {a.file} is {size} bytes, over the limit of {imp.LIMIT} (1 MiB) for {named[early]}: nothing read, nothing written")
-    text = Path(a.file).read_text(encoding="utf-8-sig")  # a byte-order mark is not the diagram's
+    try:
+        text = Path(a.file).read_text(encoding="utf-8-sig")  # a byte-order mark is not the diagram's
+    except UnicodeDecodeError as e:
+        sys.exit(f"import: {a.file} is not UTF-8 text ({e.reason} at byte {e.start}): nothing read, nothing written")
     fmt = a.format or imp.detect(a.file, text)
     if not fmt and text.lstrip()[:1] in ("{", "["):  # JSON that does not parse (cut short?) is not a format it can't tell
         try:

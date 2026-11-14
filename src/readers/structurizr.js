@@ -107,6 +107,13 @@ function szRead(workspace, report, recs, rels, views) {
     if (v != null) say(at, 'skipped', `${k} is not a list: not read`);
     return [];
   };
+  const keys = (o, path) => { // an object's own keys, counted as list entries (a shared object, each time it is reached)
+    if (spent || o === null || typeof o !== 'object') return [];
+    const ks = Object.keys(o);
+    if (ks.length > work) { work = 0; over(path); return []; }
+    work -= ks.length;
+    return ks;
+  };
   const text = (o, k, path) => {
     const v = szOwn(o, k);
     if (typeof v === 'string') return str(v, path ? `${path}.${k}` : k) || undefined;
@@ -130,8 +137,8 @@ function szRead(workspace, report, recs, rels, views) {
     return rec;
   };
   const unread = (x, path, what) => { // what an element holds that the model has no place for
-    const props = szOwn(x, 'properties'), other = props && typeof props === 'object' ? Object.keys(props).filter(k => k !== SZ_ID) : [];
-    if (other.length) say(`${path}.properties`, 'skipped', `${what}: properties ${other.join(', ')} are not read`);
+    const other = keys(szOwn(x, 'properties'), `${path}.properties`).filter(k => k !== SZ_ID);
+    if (other.length) say(`${path}.properties`, 'skipped', `${what}: properties ${other.slice(0, 5).join(', ')}${other.length > 5 ? ` and ${other.length - 5} more` : ''} are not read`);
     if (list(x, 'perspectives', path).length) say(`${path}.perspectives`, 'skipped', `${what}: perspectives are not read`);
     const g = szOwn(x, 'group');
     if (typeof g === 'string' && !groups.has(g)) { groups.add(g); say(`${path}.group`, 'skipped', `group ${g}: groups are not read`); }
@@ -230,7 +237,7 @@ function szRead(workspace, report, recs, rels, views) {
   list(szOwn(conf, 'styles'), 'elements', 'views.configuration.styles').forEach(s => {
     const tag = str(szOwn(s, 'tag'), 'views.configuration.styles.elements'), shape = str(szOwn(s, 'shape'), 'views.configuration.styles.elements');
     if (tag !== undefined && shape !== undefined) styles.set(tag, { shape, mapped: SZ_SHAPE.get(shape.toLowerCase()) });
-    if (s !== null && typeof s === 'object') for (const k of Object.keys(s)) if (k !== 'tag' && k !== 'shape') looks.add(k);
+    for (const k of keys(s, 'views.configuration.styles.elements')) if (k !== 'tag' && k !== 'shape') looks.add(k);
   });
   if (looks.size) say('views.configuration.styles.elements', 'skipped', `element styles: only shape is read, not ${[...looks].slice(0, 20).join(', ')}`);
   if (list(szOwn(conf, 'styles'), 'relationships', 'views.configuration.styles').length) say('views.configuration.styles.relationships', 'skipped', 'relationship styles are not read');

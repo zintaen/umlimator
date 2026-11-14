@@ -455,3 +455,24 @@ test('the writer is linear in a namespace\'s dotted children, and writes a model
   const back = read(write(m));
   assert.deepEqual([back.report, back.model.nodes], [[], m.nodes]);
 });
+
+test('labels with #, a backslash, a leading <<, « or spaces at their ends round-trip (audit 1)', () => {
+  const model = { schemaVersion: 2, root: 'v', nodes: [{ id: 'A', type: 'uml.Class', label: 'Files in C:\\new' }, { id: 'B', type: 'uml.Class', label: 'Price #35;1' }],
+    edges: [{ id: 'A-B', type: 'uml.Dependency', from: 'A', to: 'B', label: '<<use>> it' }, { id: 'A-B-2', type: 'uml.Dependency', from: 'A', to: 'B', label: '  padded  ' },
+      { id: 'A-B-3', type: 'uml.Dependency', from: 'A', to: 'B', label: '«x» y', props: { stereotypes: ['s#1'] } }],
+    views: [{ id: 'v', diagram: 'uml.class', nodeIds: ['A', 'B'] }] };
+  const back = read(write(model));
+  assert.deepEqual([back.report, back.model.nodes, back.model.edges], [[], model.nodes, model.edges]);
+});
+
+test('the writer is linear in notes and in a view that lists its edges by id (audit 1) (timed)', () => {
+  const notes = read('classDiagram\nclass A\n' + 'note for A "x"\n'.repeat(30000)).model;
+  let t0 = performance.now();
+  write(notes);
+  assert.ok(performance.now() - t0 < 1500, `notes: ${performance.now() - t0} ms`);
+  const nodes = [{ id: 'A', type: 'uml.Class', label: 'A' }, { id: 'B', type: 'uml.Class', label: 'B' }];
+  const edges = Array.from({ length: 40000 }, (_, k) => ({ id: `e${k}`, type: 'uml.Dependency', from: 'A', to: 'B' }));
+  t0 = performance.now();
+  write({ schemaVersion: 2, nodes, edges, views: [{ id: 'v', diagram: 'uml.class', nodeIds: ['A', 'B'], edges: edges.map(e => e.id) }] });
+  assert.ok(performance.now() - t0 < 1500, `edges by id: ${performance.now() - t0} ms`);
+});

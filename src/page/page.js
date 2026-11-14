@@ -53,7 +53,7 @@ export function mountPage(container, model, options = {}) {
       <button class="ibtn" id="m-outline" title="Views (O)" aria-label="Toggle the views list" aria-expanded="false">☰</button>
       <span class="mbrand"><i></i><span>${esc(D.title || 'Map')}</span></span>
       <nav class="crumbs" id="m-crumbs" aria-label="Breadcrumb"></nav>
-      <button class="findbtn" id="m-find" type="button" aria-label="Search nodes and views (${modK})"><span aria-hidden="true">⌕</span><span class="ft">Find a node or view…</span><span class="kbd">${modK}</span></button>
+      <button class="findbtn" id="m-find" type="button" aria-label="Find a node or view (${modK})"><span aria-hidden="true">⌕</span><span class="ft">Find a node or view…</span><span class="kbd">${modK}</span></button>
       <button class="ibtn" id="m-theme" title="Light / dark" aria-label="Dark theme" aria-pressed="false">◐</button>${(D.stories || []).length ? `
       <div class="menu"><button class="ibtn txt" id="m-stories" aria-haspopup="true" aria-expanded="false" title="Stories: walk-throughs of this map">▶<span class="lbl"> Stories</span></button>
         <div class="menu-pop" id="m-stories-pop" hidden>${D.stories.map(s => `<button data-story="${esc(s && s.id)}">${esc((s && (s.title || s.id)) || '')}</button>`).join('')}</div></div>` : ''}${arrOf(D.lenses).some(l => l && l.id) ? `

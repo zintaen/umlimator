@@ -351,3 +351,15 @@ test('save and reopen (DoD 6): a 30-step session across both views undoes and re
     assert.equal(describe(reopened, vid), describe(JSON.parse(seen[30]), vid));
   }
 });
+
+test('audit 1: a dynamic view draws an element of a type C4 has no word for; an inline step with no id is named by its place', () => {
+  for (const t of ['c4.Containr', 'uml.Class', undefined]) {
+    const m = { schemaVersion: 2, nodes: [{ id: 'p', type: 'c4.Person', label: 'P', props: { description: 'd' } }, { id: 'x', ...(t ? { type: t } : {}), label: 'X' }],
+      edges: [Rel('r', 'p', 'x', 'uses')], views: [{ id: 'v', diagram: 'c4.dynamic', title: 'V', nodeIds: ['p', 'x'], edges: ['r'] }] };
+    assert.ok(layout(m, 'v').legend.length, `drawn with ${t}`);
+    assert.ok(validate(m).some(p => p.rule === 'c4-level'), 'validate says what is wrong');
+  }
+  const m = { schemaVersion: 2, nodes: [{ id: 'p', type: 'c4.Person', label: 'P', props: { description: 'd' } }, { id: 's', type: 'c4.SoftwareSystem', label: 'S', props: { description: 'd' } }],
+    edges: [Rel('r', 'p', 's', 'uses')], views: [{ id: 'v', diagram: 'c4.dynamic', title: 'D', nodeIds: ['p', 's'], edges: ['r', { type: 'c4.Relationship', from: 'p', to: 's' }] }] };
+  assert.deepEqual(validate(m).filter(p => p.rule === 'c4-steps').map(p => p.message), ['c4-steps: step at edges[1] is written in the view: a step names a relationship of the model']);
+});
