@@ -96,15 +96,16 @@ Releases: 0.17.0 after 1.1 to 1.8 (nothing new is drawn, so it is a pure regress
 
 ```
 src/core/      model (ids, migrate, validate), registry, apply (commands), text (measuring)
-src/layout/    layered (today's), route (the router); timeaxis (stage 3), lanes (stage 4) and timeruler (stage 6, a timing view's linear time ruler), umlimator-all.js only; later: compound, tree
+src/layout/    layered (today's), route (the router); timeaxis (stage 3), lanes (stage 4), timeruler (stage 6, a timing view's linear time ruler) and tree (milestone 4a, a mindmap's bands), umlimator-all.js only; later: compound
 src/draw/      svg, shapes, lines
 src/typed/     what only a registered type's geometry takes (0.18.0, risks.md C5): typed layout, the classifier, line ends and end labels
 src/canvas/    render (camera, selection, keyboard), edit (gestures), pieces (views list, palette, properties, problems, legend, hints)
 src/page/      the standalone page, print
 src/map/       the map type: kinds, lanes, hubs, numbered views
 src/uml/ ...   one folder per family: definitions, validators, describe writers; stereotypes.js (stage 6) checks applied stereotypes and their tags across the model
-               (milestone 2: src/er/, src/flowchart/, src/dfd/, src/c4/ with c4.js and views.js; uml/information.js)
-src/readers/   one file per source language and diagram; milestone 2's: mermaid-er, mermaid-flowchart, structurizr (JSON), dbml (an adapter over @dbml/core's parsed model)
+               (milestone 2: src/er/, src/flowchart/, src/dfd/, src/c4/ with c4.js and views.js; uml/information.js;
+               milestone 4a: src/mindmap/ and src/cloud/, one file for the AWS, Google Cloud and Azure family)
+src/readers/   one file per source language and diagram; milestone 2's: mermaid-er, mermaid-flowchart, structurizr (JSON), dbml (an adapter over @dbml/core's parsed model); milestone 4a's: mermaid-mindmap
 lib/           built and committed: umlimator.js (core and map), umlimator-<family>.js, umlimator-all.js
 ```
 
