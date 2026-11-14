@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- References to nothing: a flow to an element no file has, a boundary event on nothing, a shape of nothing. -->
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" id="defs" targetNamespace="http://example.com/bpmn/hostile">
+  <process id="p">
+    <task id="t" name="Here" />
+    <boundaryEvent id="b" attachedToRef="nowhere"><timerEventDefinition /></boundaryEvent>
+    <sequenceFlow id="f" sourceRef="t" targetRef="nowhere" />
+  </process>
+  <bpmndi:BPMNDiagram id="d">
+    <bpmndi:BPMNPlane id="pl" bpmnElement="p">
+      <bpmndi:BPMNShape id="s" bpmnElement="ghost"><dc:Bounds x="0" y="0" width="10" height="10" /></bpmndi:BPMNShape>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</definitions>

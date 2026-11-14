@@ -18,6 +18,8 @@ detect() also knows two formats the module's readers read typed, in Node (NODE_F
 (`model` and `views` at the top: src/readers/structurizr.js) and a .dbml file (@dbml/core parses it, src/readers/dbml.js
 reads what it parsed).
 
+BPMN XML (.bpmn) is told here and read by the module's adapter, src/readers/bpmn-xml.js, in Node through bpmn-moddle.
+
 read(fmt, text, name) returns (model, unread): unread lists what was not imported, each as (where, message), where
 being a line number, or an item's path in a JSON source.
 """
@@ -28,7 +30,7 @@ FORMATS = ["structurizr", "plantuml", "mermaid", "compose", "kubernetes"]
 NODE_FORMATS = ["structurizr-json", "dbml"]  # read typed by the module's readers, in Node (umlimator.py import)
 LIMIT = 1 << 20  # bytes: a Structurizr JSON or .dbml file over it is refused before it is parsed (notes/milestone-2.md §8)
 EXT = {".dbml": "dbml", ".dsl": "structurizr", ".puml": "plantuml", ".plantuml": "plantuml", ".pu": "plantuml", ".iuml": "plantuml",
-       ".mmd": "mermaid", ".mermaid": "mermaid"}
+       ".mmd": "mermaid", ".mermaid": "mermaid", ".bpmn": "bpmn"}  # bpmn: XML the module's adapter reads (umlimator.py import)
 MERMAID = re.compile(r"(flowchart|graph|C4Context|C4Container|C4Component|classDiagram|sequenceDiagram|stateDiagram|erDiagram)\b")
 TYPED = ("classDiagram", "sequenceDiagram", "stateDiagram", "erDiagram")  # the diagrams the module's readers read, in Node (src/readers/)
 
@@ -137,6 +139,8 @@ def detect(path, text):
             return "compose"
         if isinstance(d, list) or isinstance(d, dict) and ("items" in d or "apiVersion" in d):
             return "kubernetes"
+    if text.lstrip()[:1] == "<" and "http://www.omg.org/spec/BPMN/20100524/MODEL" in text[:4096]:
+        return "bpmn"
     if re.search(r"^\s*@startuml", text, re.M):
         return "plantuml"
     body = re.sub(r"/\*.*?\*/", "", front(text)[1], flags=re.S)
