@@ -4055,5 +4055,6 @@ What moves for a host that upgrades from 0.23.0:
   to 59 and 37 to 63 ms; information flow 118 to 211 and 121 to 229 ms; C4 109 to 229 and 117 to 237 ms. CI holds 1 s and prints each against the 100 ms target.
 - **Size:** `lib/umlimator.js`, what a map host loads, is 185,873 B with this machine's `gzip -9` (`v0.23.0`'s file
   185,600 B on the same machine): 12.68% over 0.16.0 (the budget is 15%). Milestone 2 spent 273 B of its 1,400 B share,
-  all in M2.1 (the lead's count: 286 B); the five types, the readers, the CLI, M2.13 and M2.14 none.
+  all in M2.1 (read from stdin; `gzip -9c` on the file stores its 13-byte name too, 286 B); the five types, the readers,
+  the CLI, M2.13 and M2.14 none.
   `lib/umlimator-all.js` is 484,838 B gzipped (`v0.23.0`'s 412,813 B on the same machine). The npm package is 735 kB.

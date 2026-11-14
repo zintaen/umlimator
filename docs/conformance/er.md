@@ -80,7 +80,8 @@ lines and outlines at 3:1 in both themes (`tests/er.html`, `tests/m2.html`). Eve
 
 `tests/m2-fixtures.test.mjs` on `tests/er-stress.json`'s `all` view (50 entities, 60 relationships), CPU time, best of
 seven after a warm-up, on an Apple laptop under other agents' load (14 Nov 2026): a full layout and its SVG 28 to 54 ms;
-a column added (its entity grows) 24 to 48 ms; a column's type set (no other entity moves) 29 to 52 ms; a notation
+a column added (its entity grows) 24 to 48 ms; a column's type set to one as wide, which lays nothing out (the test checks the memo's run count), 25 ms
+(one run; most of it is drawing the SVG); a notation
 switch 10 to 16 ms, laying nothing out (two runs). CI holds 1 s and prints the figures against the 100 ms target.
 
 ## Tests

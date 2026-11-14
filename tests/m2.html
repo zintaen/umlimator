@@ -1,10 +1,10 @@
 <!doctype html>
 <!-- Milestone 2's fixtures (M2.14, notes/milestone-2.md §10) in headless Chrome (tests/embed.py), from lib/umlimator-all.js:
      every view of tests/er-*.json, flowchart-*.json, dfd-*.json, information-flow-*.json and c4-*.json drawn by render() in
-     both directions, both themes and three fonts (a generated view all in one theme and font: its limits are pinned in
-     Node): every node and line drawn, no two nodes overlapping, every text inside its node, every node inside its box, no
-     line through a node but its own two ends (not on all, whose crowding tests/m2-fixtures.test.mjs pins), every node and
-     line named, texts at 4.5:1 and lines and outlines at 3:1. Then the Bookshop atlas (M2.13): each link of
+     both directions, both themes and three fonts: every node and line drawn, no two nodes overlapping, every text inside
+     its node, every node inside its box, no line through a node but its own two ends, every line end within 1 px of its
+     node's box, no line label over a node (these three not on c4-stress.json's all, whose crowding
+     tests/m2-fixtures.test.mjs pins), every node and line named, texts at 4.5:1 and lines and outlines at 3:1. Then the Bookshop atlas (M2.13): each link of
      tools/atlas-links.json, selected in a view that draws it as a card and opened by Enter, opens its view in the page. -->
 <meta charset="utf-8">
 <link rel="icon" href="data:,">
@@ -33,27 +33,29 @@ const css = (x, k) => rgba(getComputedStyle(x)[k]);
 const FIX = {};
 for (const t of ['er', 'flowchart', 'dfd', 'information-flow', 'c4']) for (const k of ['minimal', 'stress']) FIX[`${t}-${k}`] = await (await fetch(`${t}-${k}.json`)).json();
 
-function drawn(g, bad, through) {
+function drawn(g, bad, strict) {
   const nodes = all('.stage svg .node[data-id]'), B = new Map(nodes.map(n => [n.dataset.id, bb(n.querySelector('.n-mask') || n)]));
   const missing = g.nodes.filter(n => !B.has(n.id)).map(n => n.id); if (missing.length) bad.push(`not drawn: ${missing.join(', ')}`);
   const list = [...B]; list.forEach(([a, p], i) => list.slice(i + 1).forEach(([b, q]) => { if (meets(p, q, .5)) bad.push(`${a} and ${b} overlap`); }));
   nodes.forEach(n => n.querySelectorAll('text').forEach(t => { if (t.textContent.trim() && !inside(bb(t), B.get(n.dataset.id))) bad.push(`${n.dataset.id}: "${t.textContent}" out of its shape`); }));
   (g.families || []).forEach(f => { const box = pick(`.family[data-family="${CSS.escape(f.id)}"] .family-box`); if (!box) return bad.push(`box ${f.id} not drawn`);
     g.nodes.filter(n => n.parent === f.id || (g.byId[n.id] && g.byId[n.id].family === f.id)).forEach(n => { if (B.has(n.id) && !inside(B.get(n.id), bb(box))) bad.push(`${n.id} outside ${f.id}`); }); });
-  if (through) all('.edge-g').forEach(e => { const from = e.dataset.from, to = e.dataset.to, p = ptsOf(e.querySelector('path.edge').getAttribute('d'));
+  if (strict) all('.edge-g').forEach(e => { const from = e.dataset.from, to = e.dataset.to, p = ptsOf(e.querySelector('path.edge').getAttribute('d'));
+    [[from, p[0]], [to, p.at(-1)]].forEach(([id, [x, y]]) => { const b = B.get(id), o = b && Math.max(b.x - x, x - b.x - b.w, b.y - y, y - b.y - b.h, 0); if (o > 1) bad.push(`${from}>${to} ends ${o.toFixed(1)} px off ${id}`); });
     p.slice(1).forEach((q, k) => { const s = { x: Math.min(p[k][0], q[0]), y: Math.min(p[k][1], q[1]), w: Math.abs(q[0] - p[k][0]) || .01, h: Math.abs(q[1] - p[k][1]) || .01 };
       B.forEach((b, id) => { if (id !== from && id !== to && meets(s, { x: b.x + 1, y: b.y + 1, w: b.w - 2, h: b.h - 2 })) bad.push(`${from}>${to} runs through ${id}`); }); }); });
+  if (strict) all('.labels .e-lab .e-lbg').forEach(r => { const l = bb(r); B.forEach((b, id) => { if (meets(l, b)) bad.push(`label ${r.parentNode.dataset.i} is over ${id}`); }); });
   return nodes;
 }
 try {
   for (const [fx, MODEL] of Object.entries(FIX)) for (const v of MODEL.views) for (const d of ['right', 'down'])
-    for (const theme of v.id === 'all' ? ['light'] : ['light', 'dark']) for (const [fname, family] of Object.entries(v.id === 'all' ? { sans: FONTS.sans } : FONTS)) {
+    for (const theme of ['light', 'dark']) for (const [fname, family] of Object.entries(FONTS)) {
       document.documentElement.dataset.theme = theme; el.style.setProperty('--um-sans', family);
       const M = { ...MODEL, views: MODEL.views.map(w => (w.id === v.id ? { ...w, direction: d } : w)) }, g = layout(M, v.id);
       el.innerHTML = ''; const h = render(el, M, { view: v.id }); sr = el.querySelector('.umlimator').shadowRoot;
       const tag = `${fx} ${v.id}, ${d}, ${theme}, ${fname}`, svg = pick('.stage svg'), bad = [];
       svg.style.textRendering = 'geometricPrecision'; // measured unhinted, as tests/stage5.html does
-      const nodes = drawn(g, bad, v.id !== 'all'), lines = all('.edge-g');
+      const strict = !(fx === 'c4-stress' && v.id === 'all'), nodes = drawn(g, bad, strict), lines = all('.edge-g');
       nodes.forEach(n => { if (!(n.getAttribute('aria-label') || '').trim()) bad.push(`${n.dataset.id} has no name`); });
       lines.forEach(e => { if (!(e.querySelector(':scope > title') || {}).textContent) bad.push(`a line from ${e.dataset.from} has no name`); });
       const stageBg = css(pick('.stage'), 'backgroundColor'), low = [];
@@ -61,7 +63,7 @@ try {
         n.querySelectorAll('text').forEach(t => { if (!t.textContent.trim()) return; const r = ratio(css(t, 'fill'), bg); if (r < 4.5) low.push([n.dataset.id, t.textContent, r]); });
         if (body && css(body, 'stroke') && css(body, 'stroke')[3]) { const k = ratio(css(body, 'stroke'), stageBg); if (k < 3) low.push([n.dataset.id, 'outline', k]); } });
       all('.edge-g path.edge').forEach(p => { const r = ratio(css(p, 'stroke'), stageBg); if (r < 3) low.push(['line', r]); });
-      check(`${tag}: ${g.nodes.length} nodes and ${g.edges.length} lines drawn; no overlap, texts inside, inside their boxes${v.id === 'all' ? '' : ', no line through a node'}, every piece named, contrast`,
+      check(`${tag}: ${g.nodes.length} nodes and ${g.edges.length} lines drawn; no overlap, texts inside, inside their boxes${strict ? ', no line through a node, every end within 1 px of its node, no label over a node' : ''}, every piece named, contrast`,
         lines.length === g.edges.length && !bad.length && !low.length, [lines.length, g.edges.length, bad.slice(0, 10), low.slice(0, 6)]);
       h.destroy();
     }

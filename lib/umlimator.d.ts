@@ -242,7 +242,7 @@ export type ErMemberType = 'er.Column';
 export type ErLineType = 'er.Relationship' | 'uml.CommentLink';
 /** A column's props; `references` names a column id (a declared reference, dropped when that column is deleted). */
 export interface ErColumnProps { dataType?: string; primaryKey?: boolean; foreignKey?: boolean; references?: string; nullable?: boolean; unique?: boolean; [key: string]: unknown }
-/** A relationship's props: identifying (solid) or not (dashed), and each end's multiplicity (1, 0..1, 1..*, 0..*). */
+/** A relationship's props: identifying (solid) or not (dashed), and each end's multiplicity (1, 0..1, 1..*, 0..*; other bounds, such as 2..5 or 3, drawn as the nearest of the four with their text). */
 export interface ErRelationshipProps { identifying?: boolean; ends?: { from?: { multiplicity?: string }; to?: { multiplicity?: string } }; [key: string]: unknown }
 /** The flowchart's vocabulary (a view with `diagram: 'flowchart'`, umlimator/all from 0.24.0; docs/conformance/flowchart.md).
  *  A decision's exits are labelled flows; a connector with flows in and out is a junction. Laid out down by default. */

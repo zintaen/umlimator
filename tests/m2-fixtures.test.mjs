@@ -6,8 +6,9 @@
 // and what check() finds pinned: the crossings that repair and reroute off leave (§11, S19) and the few other findings,
 // each stated in its type's conformance note (docs/conformance/). Then §11's budgets in CPU time, best of seven after a
 // warm-up: a full layout and its SVG under 1 s; the common edit and an edit that moves nothing under CI's 1 s ceiling,
-// their time printed against the 100 ms target; an ER notation switch lays nothing out. tests/m2.html draws every view in
-// Chrome under three fonts and both themes.
+// their time printed against the 100 ms target, the edit that moves nothing checked to lay nothing out; an ER notation switch
+// lays nothing out. tests/m2.html draws every view in Chrome under three fonts and both themes, with the same three line
+// checks on every view but C4's all.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -148,6 +149,12 @@ test('dfd-stress.json, edge-cases: three levels, the second balanced and the thi
   assert.ok(V(m, 'ec-level-2').nodeIds.includes('ec-cart') && !V(m, 'edge-cases').nodeIds.includes('ec-cart'), 'a local store at the second level');
   const made = V(m, 'ec-pay-level');
   assert.deepEqual([node(m, 'ec-pay').opensView, made.parent, node(m, 'ec-pay-2.1').props.number], ['ec-pay-level', 'edge-cases', '2.1'], 'a level made by D, balanced by construction');
+  // D made it: strip the level and press D again, and the same view, process and two flows come back
+  const made2 = ['ec-charge-2.1', 'ec-auth-2.1'], bare = { ...m, nodes: m.nodes.filter(n => n.id !== 'ec-pay-2.1').map(n => (n.id === 'ec-pay' ? (({ opensView, ...r }) => r)(n) : n)),
+    edges: m.edges.filter(e => !made2.includes(e.id)), views: m.views.filter(v => v.id !== 'ec-pay-level') };
+  const again = apply(bare, diagramOf({ diagram: 'dfd' }).edits.key(bare, V(bare, 'edge-cases'), ['ec-pay'], 'D').commands);
+  const level = x => [V(x, 'ec-pay-level'), node(x, 'ec-pay'), node(x, 'ec-pay-2.1'), ...made2.map(id => x.edges.find(e => e.id === id))];
+  assert.deepEqual(level(again), level(m), 'the fixture\'s level is D\'s output');
   assert.equal(V(m, 'ec-level-2-gs').notation, 'gane-sarson', 'both notations of one level');
   const at = x => x.nodes.map(n => [n.id, n.x, n.y, n.w, n.h]);
   assert.deepEqual(at(layout(m, 'ec-level-2-gs')), at(layout(m, 'ec-level-2')), 'one geometry for both skins');
@@ -188,10 +195,10 @@ test('the stress views all are §11\'s P1 sizes', () => {
 
 // §11: per type, the common edit and, where §11 names one, an edit that moves nothing
 const EDITS = {
-  er: { common: k => [{ op: 'add', element: { id: `e9.c${k}`, type: 'er.Column', label: `c_${k}`, props: { dataType: 'int' } }, owner: 'e9' }], still: k => [{ op: 'set', id: 'e7.name', path: 'props.dataType', value: `text${k}` }] },
+  er: { common: k => [{ op: 'add', element: { id: `e9.c${k}`, type: 'er.Column', label: `c_${k}`, props: { dataType: 'int' } }, owner: 'e9' }], still: k => [{ op: 'set', id: 'e7.name', path: 'props.dataType', value: `varchar(${k + 1}0)` }] },
   flowchart: { common: k => [{ op: 'set', id: 'n27', path: 'label', value: `Is it ${'x'.repeat(4 + 3 * k)}?` }] },
   dfd: { common: k => [{ op: 'set', id: 'c7', path: 'label', value: `step ${'x'.repeat(4 + 3 * k)}` }] },
-  'information-flow': { common: k => [{ op: 'set', id: 'f7', path: 'props.conveyed', value: ['i7', `i${(k + 8) % 16}`] }] },
+  'information-flow': { common: k => [{ op: 'set', id: 'f7', path: 'props.conveyed', value: ['i7', 'i12', `i${k}`] }] }, // a third item conveyed, a different one each run
   c4: { common: k => [{ op: 'set', id: 'c5', path: 'props.description', value: `Handles part 5 of the work, and ${'more '.repeat(8 + 4 * k)}` }], still: k => [{ op: 'set', id: 'c5', path: 'props.technology', value: 'Rust' }] },
 };
 test('§11\'s budgets on each stress view all: a full layout and its SVG under 1 s; the common edit and an edit that moves nothing, laid out and drawn, under CI\'s 1 s ceiling, the 100 ms target printed; an ER notation switch lays nothing out (CPU, best of seven after a warm-up) (timed)', () => {
@@ -204,6 +211,7 @@ test('§11\'s budgets on each stress view all: a full layout and its SVG under 1
       ...(EDITS[t].still ? { still: timed(() => draw(apply(M, EDITS[t].still(k)))) } : {}) }));
     const best = k => Math.min(...runs.map(r => r[k]));
     for (const k of Object.keys(runs[0])) assert.ok(best(k) < 1000, `${t} ${k} ${best(k)} ms`);
+    if (EDITS[t].still) { draw(M); const before = memos.all.runs; draw(apply(M, EDITS[t].still(0))); assert.equal(memos.all.runs, before, `${t}: the edit that moves nothing lays nothing out`); }
     if (t === 'er') { draw(M); const before = memos.all.runs; const sw = timed(() => draw(apply(M, [{ op: 'set', view: 'all', path: 'notation', value: 'idef1x' }])));
       assert.equal(memos.all.runs, before, 'the switch repaints'); assert.ok(sw < 1000); said.push(`er notation switch ${sw.toFixed(1)} ms`); }
     said.push(`${t}: common edit ${best('common').toFixed(1)} ms${runs[0].still != null ? `, an edit that moves nothing ${best('still').toFixed(1)} ms` : ''}, full layout and SVG ${best('full').toFixed(1)} ms`);
@@ -248,4 +256,6 @@ test('DoD 1: the registry holds the five types (C4 under its six names), and the
   assert.ok(['ErColumnProps', 'ErRelationshipProps', 'FlowchartElementType', 'DfdNumberProps', 'UmlInformationFlowProps', 'C4ElementProps', 'C4RelationshipProps', 'C4ViewType'].every(k => new RegExp(`export (type|interface) ${k} `).test(dts)));
   assert.match(dts, /op: 'addView'; view: MapView; index\?: number/);
   assert.match(S.view.properties.notation.description, /idef1x.*gane-sarson/);
+  assert.match(S.edge.properties.props.anyOf[0].properties.ends.description, /er\.Relationship.*multiplicity/, 'the ER relationship\'s multiplicity under ends');
+  assert.match(dts, /export interface ErRelationshipProps [^}]*multiplicity/);
 });

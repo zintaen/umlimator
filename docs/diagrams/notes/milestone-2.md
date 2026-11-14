@@ -1118,9 +1118,15 @@ note's direction kept:
   edge-case and minimal views are clean but for crossings (DFD's level 2: 2 right, 1 down; information flow: 2 right;
   C4's container view: 1 down). One label is not drawn: the information flow fixture's flow to a gone id finds no room
   beside the class flow into the same box. The generated `all` views cross as repair and reroute off leave them (ER 18
-  and 25, flowchart 4 and 4, DFD none, information flow 149 and 121 with labels on lines, C4 94 and 98); C4's crowded
-  container view also runs lines through cards the router found no way round (237 right, 202 down). §10's "no line
-  through a node" holds for every view but that one.
+  and 25, flowchart 4 and 4, DFD none, information flow 149 and 121 with 1 and 18 other findings, C4 94 and 98 with 132
+  and 228, lines sharing lines and labels on lines); C4's crowded container view also runs lines through cards the
+  router found no way round (237 right, 202 down, by line and card). §10's "no line through a node" holds for every view
+  but that one, in Node and in Chrome (`tests/m2.html` runs every view, `all` included, in both themes and three fonts,
+  with the line-through, end-within-1-px and label-over-a-node checks on every view but C4's `all`).
+- **§11's edits.** ER's edit that moves nothing changes a column's type to one as wide (`varchar(80)` to `varchar(10)`
+  and so on), so the entity keeps its size; the test checks that it, and C4's technology, lay nothing out (the memo's
+  run count holds). It still costs about as much as a full layout: drawing the SVG is most of the time. The information
+  flow edit adds a third conveyed item, a different one each run.
 - **The readers' construct files** (DoD 2's reader half) read into models whose types' `validate` finds no error but
   one: `tests/import/er.mmd`'s `DOCK }o--|| HARBOUR` is identifying with its many end first, as Mermaid's text writes it,
   and `identifying-parent` names it (the reader keeps Mermaid's left-to-right order). The warnings are counted by rule.
@@ -1134,6 +1140,8 @@ note's direction kept:
 - **`tests/m2.html`** opens each link of `tools/atlas-links.json` in the atlas's page (M2.13's "each link opens its
   view in the page"): Enter opens a selected card only, so a link on an element every view draws as a box cannot be
   opened there; two of stages 5 and 6 are such (`bookshop-packages/sales`, `bookshop-deployment/jvm`), pinned as known.
+- **`tests/c4-views.html`** (M2.7's page) was never in `tests/embed.py`'s list; M2.14, which owns the list's appends,
+  appends it (the rule that a package adding a page appends it, kept).
 - **The documents** of `plan.md` §7 and §15's changes to `model.md` and `risks.md` (rows 15, 20 to 23, rule 10, §3;
   C5, C8, C10, M9, G3, ER, P1, R9, and two new rows: M16 for Q5, M17 for the atlas's ids).
 

@@ -16,7 +16,8 @@
      (M2.14, notes/milestone-2.md §4, §7.4, §5.2): on the ER example and fixture in both notations, each end as its
      multiplicity says (crow's foot's four, IDEF1X's dot and an optional parent's diamond), identifying solid and
      non-identifying dashed; an information flow a dashed open arrow labelled «flow»; a C4 relationship a solid open arrow
-     and an implied one dashed; each end on the outline it meets. tests/embed.py
+     and an implied one dashed; each end, plain or under its marker, on the outline it meets (an actor's on its
+     figure's column). tests/embed.py
      opens this in headless Chrome and reads <pre id="result">. -->
 <meta charset="utf-8">
 <link rel="icon" href="data:,">
@@ -258,16 +259,20 @@ try {
         const [kf, kt] = [kind('marker-start'), kind('marker-end')]; seen2.add(`${e.type}${ge.implied ? ' implied' : ''} ${kf} ${kt}`);
         if (kf !== wf || kt !== wt) off.push(`${name}: ends ${kf} and ${kt}, not ${wf} and ${wt}`);
         if (!!path.getAttribute('stroke-dasharray') !== dashed) off.push(`${name}: ${dashed ? 'not dashed' : 'dashed'}`);
-
         const d = path.getAttribute('d').match(/-?\d+(\.\d+)?/g).map(Number);
-        [[d[0], d[1], gr.dataset.from, kf], [d.at(-2), d.at(-1), gr.dataset.to, kt]].forEach(([x, y, id, k]) => { const q = pt(svg, x, y), n = svg.querySelector(`.node[data-id="${CSS.escape(id)}"]`);
-          // an end with a marker stops at the marker's back; the marker's tip is on the outline: walk the marker's length on
-          if (!n || e.type === 'uml.InformationFlow') return; const bx = [n.querySelector(':scope > .n-body'), n.querySelector(':scope > .n-mask')];
-          if (k === 'none' && !bx.some(x2 => { if (!x2 || !x2.isPointInStroke) return false; x2.style.strokeWidth = '3px'; const on = x2.isPointInStroke(q); x2.style.strokeWidth = ''; return on; })) off.push(`${name}: its end at ${id} is off the outline`); }); });
+        // every end, plain or under a marker (whose reference point is where the line ends), on the outline it meets
+        [[d[0], d[1], gr.dataset.from, kf], [d.at(-2), d.at(-1), gr.dataset.to, kt]].forEach(([x, y, id]) => { const q = pt(svg, x, y), n = svg.querySelector(`.node[data-id="${CSS.escape(id)}"]`);
+          if (!n) return off.push(`${name}: no node ${id}`); const bx = [n.querySelector(':scope > .n-body'), n.querySelector(':scope > .n-mask')];
+          // an actor is a stick figure with no outline: its end on its box narrowed to the figure's 24 px column (src/uml/usecase.js)
+          const isActor = (model.nodes.find(z => z.id === id) || {}).type === 'uml.Actor';
+          if (isActor) { const r = n.querySelector(':scope > .n-mask').getBBox(), L = r.x + r.width / 2 - 12, R = L + 24, B = r.y + r.height;
+            const on = (Math.min(Math.abs(x - L), Math.abs(x - R)) <= 1 && y >= r.y - 1 && y <= B + 1) || (Math.min(Math.abs(y - r.y), Math.abs(y - B)) <= 1 && x >= L - 1 && x <= R + 1);
+            if (!on) off.push(`${name}: its end at ${id} (${x}, ${y}) is off the figure's column`); return; }
+          if (!bx.some(x2 => { if (!x2 || !x2.isPointInStroke) return false; x2.style.strokeWidth = '3px'; const on = x2.isPointInStroke(q); x2.style.strokeWidth = ''; return on; })) off.push(`${name}: its end at ${id} (${x}, ${y}) is off the outline`); }); });
       // each placed label (the fixture's flow to a gone id has none: its label finds no room, pinned in tests/m2-fixtures.test.mjs)
       const flows = g.edges.filter(x => x.lbl && (model.edges.find(y => y.id === x.id) || {}).type === 'uml.InformationFlow').length, said = (svg.textContent.match(/«flow»/g) || []).length;
       if (said !== flows) off.push(`«flow» drawn ${said} times for ${flows} information flows`);
-      check(`${f}, ${theme}, ${fname}: each line ends as its model says, dashed where it says, «flow» by each information flow, an ER or C4 line's plain end on the outline it meets`, svg.querySelectorAll('.edge-g').length === g.edges.length && !off.length, off.slice(0, 8));
+      check(`${f}, ${theme}, ${fname}: each line ends as its model says, dashed where it says, «flow» by each information flow, every end on the outline it meets`, svg.querySelectorAll('.edge-g').length === g.edges.length && !off.length, off.slice(0, 8));
     }
   }
   const ends2 = [...seen2].join(' ');
