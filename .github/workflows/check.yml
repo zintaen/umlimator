@@ -182,6 +182,9 @@ jobs:
       - name: The CLI's import reads a sample of each format into a model that validates, renders and checks clean
         run: python3 tests/import.py
 
+      - name: umlimator.py pack fetches a synthetic icon pack only after its terms and a yes, by its pinned size and sha256, and a render never downloads one (no vendor contacted)
+        run: python3 tests/packs.py
+
       - name: The diff Action's comment step, the release job's steps and map-repo's CLI, run against stand-ins for GitHub, git and npm
         run: python3 tests/steps.py
 
@@ -201,7 +204,7 @@ jobs:
           import importlib.util, json, sys
           spec = importlib.util.spec_from_file_location("u", "umlimator.py"); u = importlib.util.module_from_spec(spec); spec.loader.exec_module(u)
           man = json.load(open("icons/manifest.json"))
-          bad = [k for k, e in man.items() if e["source"] != "lucide" and u.icon_bytes(e) is None]
+          bad = [k for k, e in man.items() if e["source"] != "lucide" and not e.get("pack") and e.get("render") != "cache" and u.icon_bytes(e) is None]  # an icon pack's, or one a render never downloads (entra): never fetched by CI
           print(f"{sum(1 for e in man.values() if e['source'] != 'lucide') - len(bad)} logos ok; failed: {bad}")
           sys.exit(1 if bad else 0)
           PY
