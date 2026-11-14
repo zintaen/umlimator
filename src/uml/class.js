@@ -83,7 +83,9 @@ function parseMember(text, kind) {
   if (props.isAbstract) return fail('a property is not {abstract}');
   if (s[0] === ':') { // the type: up to a multiplicity or a default outside brackets
     let i = 1, depth = 0;
-    for (; i < s.length; i++) { const c = s[i]; if (c === '<' || c === '(') depth++; else if (c === '>' || c === ')') depth--; else if (depth === 0 && c === '[' && s[i + 1] === ']') i++; else if (depth === 0 && (c === '[' || c === '=')) break; } // String[]: an array type, not a multiplicity
+    for (; i < s.length; i++) { const c = s[i]; if (c === '<' || c === '(') depth++; else if (c === '>' || c === ')') depth--; else if (depth === 0 && c === '=') break;
+      else if (depth === 0 && c === '[') { let j = i, d = 0; for (; j < s.length; j++) { if (s[j] === '[') d++; else if (s[j] === ']' && !--d) break; }
+        const after = s.slice(j + 1).trim(); if (j >= s.length || (multBounds(s.slice(i + 1, j)) && (!after || after[0] === '='))) break; i = j; } } // String[], list[str]: a bracket that is not a closing multiplicity is the type's, as the Mermaid reader's mcMult
     const t = s.slice(1, i).trim(); if (!t) return fail('a type follows the colon');
     props.valueType = t; s = s.slice(i).trim();
   }
@@ -360,13 +362,9 @@ const describeAs = look => (model, viewId) => {
         const verb = agg === 'composite' ? 'composed of' : agg === 'shared' ? 'aggregates' : whole === 'composite' ? 'part of' : whole === 'shared' ? 'held by' : 'associated with';
         said.push(`${verb} ${nm(far === 'to' ? t : f)}${end(e, far)}${UML_HAS(e.label) ? ` ("${e.label}")` : ''}`); }
       else if (f !== id) return;
-      else if (e.type === 'uml.Generalization') said.push(`a kind of ${nm(t)}`);
-      else if (e.type === 'uml.InterfaceRealization') said.push(`realizes ${nm(t)}`);
-      else if (e.type === 'uml.Dependency') said.push(`depends on ${nm(t)}${stereoText(e) ? ' ' + stereoText(e) : ''}`);
-      else if (e.type === 'uml.PackageImport') said.push(`${keyword(e) === '«access»' ? 'accesses' : 'imports'} ${nm(t)}`);
-      else if (e.type === 'uml.PackageMerge') said.push(`merges ${nm(t)}`);
-      else if (e.type === 'uml.ProfileApplication') said.push(`applies ${nm(t)}`);
-      else if (e.type === 'uml.CommentLink') said.push(`about ${nm(t)}`); });
+      else { const verb = { 'uml.Generalization': 'a kind of', 'uml.InterfaceRealization': 'realizes', 'uml.Dependency': 'depends on', 'uml.PackageMerge': 'merges', 'uml.ProfileApplication': 'applies', 'uml.CommentLink': 'about',
+        'uml.PackageImport': keyword(e) === '«access»' ? 'accesses' : 'imports' }[e.type]; // and the stereotypes and label the line draws (audit 5)
+        if (verb) said.push(`${verb} ${nm(t)}${stereoText(e) ? ' ' + stereoText(e) : ''}${UML_HAS(e.label) ? ` ("${e.label}")` : ''}`); } });
     out.push(nodeName(at.get(id).x, pic, look) + (said.length ? '; ' + said.join('; ') : '') + '.'); });
   return out.join('\n');
 };

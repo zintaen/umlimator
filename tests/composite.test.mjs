@@ -54,7 +54,7 @@ test('the definition: uml.composite-structure with its palette, three lines, §1
   for (const k of ['layout', 'validate', 'describe', 'word', 'rows']) assert.equal(typeof T[k], 'function', k);
   assert.deepEqual(Object.keys(T.edits).sort(), ['add', 'connect', 'member', 'moveTo', 'remove', 'rename']);
   assert.deepEqual(['uml.Class', 'uml.Component', 'uml.Collaboration', 'uml.Interface'].map(t => T.member.holds({ type: t })), [true, true, true, false]);
-  assert.deepEqual(Object.keys(T.rules), ['subject-shown', 'part-type', 'connector-part', 'connector-scope', 'connector-drawn', 'binding-ends', 'binding-role', 'collaboration-named', 'port-owner', 'manifest-ends']);
+  assert.deepEqual(Object.keys(T.rules), ['subject-shown', 'part-type', 'part-multiplicity', 'connector-part', 'connector-scope', 'connector-drawn', 'binding-ends', 'binding-role', 'collaboration-named', 'port-owner', 'manifest-ends']);
 });
 
 test('the shapes: a part (dashed when shared), a collaboration use (a dashed ellipse), an open collaboration\'s frame', () => {
@@ -185,6 +185,7 @@ test('names, reading order, legend and describe() (§10.2, §11, A1)', () => {
 const RULE_CASES = {
   'subject-shown': m => { m.views[0].subject = 'checkout-class'; },
   'part-type': m => { mem(m, 'order-service.pricing').props.valueType = 'Nobody'; },
+  'part-multiplicity': m => { mem(m, 'order-service.pricing').props.multiplicity = 'many'; }, // audit 5: no rule read it
   'connector-part': m => { m.edges[0].props.ends.to.part = 'order-service.pricing'; },
   'connector-scope': m => { m.edges.push(con('across', 'order-service.checkout', 'publish-subscribe.publisher')); },
   'connector-drawn': m => { m.edges.push(con('loop', 'order-service.api', 'order-service.payments')); },
@@ -196,7 +197,7 @@ const RULE_CASES = {
 test('validators: each rule passes the example and fails on a model that breaks it, naming its rule and its elements, at its level', () => {
   const base = validate(CS).map(p => p.rule);
   assert.deepEqual(base, ['part-type', 'part-type'], 'the example\'s two parts typed by classes it does not hold');
-  const LEVEL = { 'part-type': 'warning', 'connector-drawn': 'warning', 'binding-role': 'warning', 'collaboration-named': 'warning' };
+  const LEVEL = { 'part-type': 'warning', 'part-multiplicity': 'warning', 'connector-drawn': 'warning', 'binding-role': 'warning', 'collaboration-named': 'warning' };
   for (const [rule, breakIt] of Object.entries(RULE_CASES)) { const m = structuredClone(CS); breakIt(m);
     const got = validate(m).filter(p => p.rule === rule && (rule !== 'part-type' || p.ids[0] === 'order-service.pricing'));
     assert.equal(got.length, 1, `${rule}: ${JSON.stringify(validate(m))}`); assert.equal(got[0].level, LEVEL[rule] || 'error', rule);
@@ -387,6 +388,10 @@ test('layout() of a subject with a chain of 3,000 parts: ranked without recursio
 test('a part or port row it prints parses back: a qualified type, an array type, a generic type (audit 4)', () => {
   for (const row of ['a : ns::T [1]', 'a : T[]', 'a : Map<K, V>', 'a : T[] [0..*]']) assert.equal(T.member.print(csRow(null, row)), row, row);
   assert.equal(T.member.print(csRow({ type: 'uml.Class' }, 'port p : ns::T')), 'port p : ns::T');
+  // audit 5: a closing bracket that is no multiplicity is the type's, so an unchanged row edits nothing
+  assert.deepEqual(csParse('items : list[str]'), { label: 'items', valueType: 'list[str]', multiplicity: undefined });
+  assert.deepEqual(csParse('c : Map[K, V] [0..1]'), { label: 'c', valueType: 'Map[K, V]', multiplicity: '0..1' });
+  assert.deepEqual(csParse('xs : T [many]').multiplicity, undefined);
   assert.deepEqual(csParse('a::b'), { label: 'a::b', valueType: undefined, multiplicity: undefined });
   const m = { schemaVersion: 2, nodes: [{ id: 's', type: 'uml.Class', label: 'S', members: [P('s.t', 't', { props: { valueType: 'Tag[]' } })] }], edges: [], views: [{ id: 'v', diagram: 'uml.composite-structure', nodeIds: ['s'] }] };
   assert.deepEqual(T.edits.member(m, m.views[0], 's', 's.t', 't2 : Tag[]'), [{ op: 'set', id: 's.t', path: 'label', value: 't2' }]);
@@ -397,4 +402,15 @@ test("the subject's operation row prints and edits as the class type's, never as
   assert.equal(T.member.print(op), 'place(): Receipt');
   assert.ok(T.member.edit(op, 'place : Order').error);
   assert.equal(T.member.edit(op, 'place(): Order').commands.find(c => c.path === 'props').value.returnType, 'Order');
+});
+
+test("two named connectors from one port of the subject: both names are placed, the box's pad making them room (audit 5)", () => {
+  const pt = (id, label) => ({ id, type: 'uml.Port', label });
+  const m = { schemaVersion: 2, nodes: [{ id: 'S', type: 'uml.Class', label: 'Svc', members: [pt('S.api', 'api'), P('S.a', 'a', { props: { valueType: 'A' } }), P('S.b', 'b', { props: { valueType: 'B' } })] },
+    { id: 'A', type: 'uml.Class', label: 'A', members: [pt('A.in', 'in')] }, { id: 'B', type: 'uml.Class', label: 'B', members: [pt('B.in', 'in')] }],
+  edges: [{ id: 'c1', type: 'uml.Connector', from: 'S.api', to: 'A.in', label: 'orders', props: { ends: { to: { part: 'S.a' } } } },
+    { id: 'c2', type: 'uml.Connector', from: 'S.api', to: 'B.in', label: 'refunds', props: { ends: { to: { part: 'S.b' } } } }, { id: 'c3', type: 'uml.Connector', from: 'A.in', to: 'B.in' }],
+  views: [{ id: 'v', diagram: 'uml.composite-structure', subject: 'S', nodeIds: ['S'] }] };
+  assert.deepEqual(layout(m, 'v').edges.filter(e => e.label).map(e => [e.id, e.lbl && e.lbl.text]), [['c1', 'orders'], ['c2', 'refunds']]);
+  assert.deepEqual(check(m, 'v'), []);
 });

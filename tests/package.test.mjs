@@ -222,6 +222,8 @@ test('validators: 03-package.json breaks no rule; each rule fails on a model tha
   // an import to itself (on a box, not drawn either); a merge from a class; a package and a class may share a name in one owner
   for (const [e, rules] of [[{ id: 'self', type: 'uml.PackageImport', from: 'sales', to: 'sales' }, ['import-ends', 'line-inside']], [{ id: 'cm', type: 'uml.PackageMerge', from: 'book', to: 'sales' }, ['import-ends']]]) {
     const m = unlisted(); m.edges.push(e); assert.deepEqual(T.validate(m, m.views[0]).map(p => p.rule), rules, e.id); }
+  const pf = unlisted(); pf.nodes.push(N('sales-profile', 'Profile', 'sales')); // audit 5: a profile is a package
+  assert.deepEqual(T.validate(pf, pf.views[0]).map(p => [p.rule, p.ids]), [['package-names', ['sales', 'sales-profile']]]);
   const m = structuredClone(PKG); m.nodes.push(N('c2', 'Class', 'sales')); assert.deepEqual(T.validate(m, m.views[0]), []);
   // the class type warns of owners and boxes too; the classifier rules run on a model with only a package view
   const c = structuredClone(PKG); BREAKS['owner-kinds'](c); BREAKS['own-boxes'](c); c.views[0].diagram = 'uml.class';
