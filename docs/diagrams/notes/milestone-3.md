@@ -671,6 +671,27 @@ generated models on the subset, and for generated models whose names hold each o
 | **(a) A reader and a writer (recommended)** | As the class, sequence and state readers; Mermaid is the notation agents write (D12) | The comments' conventions to keep |
 | (b) A reader only | Less | A model edited here cannot go back to Mermaid |
 
+**As built (M3.6, departures found in the build, 14 Nov 2026).** Taken by the lead under the maintainer's standing approval
+(14 Nov 2026), each the note's direction made exact:
+
+- **Ids.** Every valid `%% id:` is taken first, the definitions' then the relationships', so a hint clashes only with
+  another hint (the later is skipped and reported) and never with a name; then each definition takes its name or slug,
+  then each relationship `<from>-<kind>-<to>` (`battery-satisfies-capacity`, Mermaid's word for the kind), each the next
+  free. A name is an id when it holds only letters, digits, `_`, `.` and `-` of any script (`\p{L}`, `\p{N}`), not
+  `\w`'s ASCII, so `Ünit` keeps its letter; a slug turns every other run into `-`. With hints first, the writer gives a
+  hint exactly to an element whose id is not the one its written name derives.
+- **"Names no element written before it"** is read as a hint above no definition or relationship (a stray `%% id:`, a
+  `%% text:` above an element, a hint above a `contains`, which is a parent, not an element): reported, not applied.
+- **Bare names** stop where Mermaid's lexer stops them (`{ < > - =` and `:::`), so a bare `a-b` is no name; the writer
+  quotes every name that is not a word of letters, digits, `_` and `.`, or is one of the grammar's words. A label Mermaid's
+  quotes cannot hold, and one that two elements share (the second written `Range-2`), goes whole in `%% name:`.
+- **Direction.** No `direction` line leaves the view's unset (Mermaid draws TB); the writer writes none for an unset
+  view, so it reads back unset, where §12.3 says `LR` "otherwise".
+- **Containment's errors.** A requirement containing what is not a requirement is skipped as `requirement-nested`'s error;
+  a cycle loses its last `contains` in the file; a copy between two requirements whose texts differ is read, left to
+  `copy-text` (§6.3: it fires on a model read in).
+- **The CLI.** `umlimator.py`'s reader table (`cmd_import`) gains its row as well as the docstrings' lists: the route.
+
 ### 12.4 The CLI (S16)
 
 `umlimator_import.py`'s `MERMAID` and `TYPED` gain `requirementDiagram`; `umlimator.py import` routes it to the reader
