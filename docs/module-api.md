@@ -4059,7 +4059,7 @@ What moves for a host that upgrades from 0.23.0:
   the CLI, M2.13 and M2.14 none.
   `lib/umlimator-all.js` is 484,838 B gzipped (`v0.23.0`'s 412,813 B on the same machine). The npm package is 735 kB.
 
-## 0.25.0 (in progress): SysML v1.7's requirement, block definition, internal block and parametric diagrams; the Mermaid requirement reader and writer; the e-bike atlas
+## 0.25.0: SysML v1.7's requirement, block definition, internal block and parametric diagrams; the Mermaid requirement reader and writer; the e-bike atlas
 
 Milestone 3 of the plan for 28 diagram types (`docs/diagrams/notes/milestone-3.md`), merged to `main` before 0.25.0 ships
 (after 0.24.0), provisional until then. Everything is additive: maps, every typed view released before and every earlier
@@ -4129,6 +4129,16 @@ but for the one changed rule below and the four SysML targets, which draw for th
   parametric 101, 80 and 96 ms. CI holds 1 s and prints each against the 100 ms target.
 - **Size:** `lib/umlimator.js`, what a map host loads, grows by M3.1's 24 B with this machine's `gzip -9` (185,873 B to
   185,897 B, against milestone 3's 500 B share); M3.2 to M3.7 none.
+
+### Also on `main`, provisional until their releases: milestones 4a and 4b's types
+
+The mindmap (4a.4), the cloud family for Google Cloud and Azure (4a.6, AWS behind `CLOUD_AWS` until 4a.8), the icon
+packs (4a.3), the tree layout (4a.1), a deep chain made linear in the core (4a.2), the Mermaid mindmap reader (4a.5),
+and BPMN's engine, notation, type and XML adapter (4b.1 to 4b.4) are on `main`, so this release carries them; their
+fixtures, examples and documents come in 0.26.0 and 0.27.0, whose sections say what they do.
+
+- **Size at release:** `lib/umlimator.js` is 186.2 kB (186,174 B) with `gzip -9`, 12.86% over 0.16.0 (the budget is
+  15%). `lib/umlimator-all.js` is 590.2 kB (590,184 B). The npm package is 845 kB.
 
 ## 0.26.0 (in progress): the mindmap; Google Cloud and Azure diagrams; icon packs fetched after the vendor's terms
 

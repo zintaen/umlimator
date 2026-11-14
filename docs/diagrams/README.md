@@ -24,8 +24,8 @@ Update this table in every pull request that belongs to the plan.
 | 4 | 0.21.0 | Use case, activity, state machine, interaction overview | Design note approved ([`notes/stage-4.md`](notes/stage-4.md)), every recommendation of §20 taken. 4.0 (857c5a0), 4.1 (6254765), 4.2 (436b9d9), 4.3 (01fc120), 4.4 (50b3294), 4.5 (798025c), 4.6 (c3d73cb), 4.7 (042721e), 4.8 (d1e7840) and 4.9 (79dcefa) merged, with maps' one card-shape style (c7fd8c4). 4.10 (c62d356), the Bookshop atlas (5a2a917) and the timed-test sweep (dac35fd) merged. Released 13 Nov 2026 (5f20041, GitHub and npm latest); map-repo pinned to it | #201, #202, #204, #205, #206, #207, #208, #209, #210, #211, #212, #213, #217, #222, #226, #228, (this PR) |
 | 5 | 0.22.0 | Component, deployment, composite structure | Design note approved ([`notes/stage-5.md`](notes/stage-5.md)), every recommendation of §18 taken. 5.0 to 5.8, the follow-ups, the ELK trial (own engine only, L9 closed) and C10 merged. Released 13 Nov 2026 (b828e9d, GitHub and npm latest) | #215, #216, #218, #219, #220, #223, #224, #225, #227, #232, #233, #236, #246 |
 | 6 | 0.23.0 | Profile, timing | Design note approved ([`notes/stage-6.md`](notes/stage-6.md)), every recommendation of §16 taken. Released 14 Nov 2026 (05b913d, GitHub and npm latest): **the 14 UML types are complete** | #230, #231, #237 to #241, #244, #245, #251 |
-| Milestone 2 | 0.24.0 | ER, flowchart, data flow, information flow, C4 | Design note approved ([`notes/milestone-2.md`](notes/milestone-2.md)). M2.0 to M2.14 merged. Releasing 0.24.0 (this PR) | #234, #247, #253 to #264, #268, (this PR) |
-| Milestone 3 | 0.25.0 | SysML v1.7's four diagrams | Design note approved ([`notes/milestone-3.md`](notes/milestone-3.md)), every recommendation taken; its lanes queue within the five-lane cap | #242 |
+| Milestone 2 | 0.24.0 | ER, flowchart, data flow, information flow, C4 | Design note approved ([`notes/milestone-2.md`](notes/milestone-2.md)). Released 14 Nov 2026 (3e74d96, GitHub and npm latest) | #234, #247, #253 to #264, #268, #273 |
+| Milestone 3 | 0.25.0 | SysML v1.7's four diagrams | Design note approved ([`notes/milestone-3.md`](notes/milestone-3.md)). M3.0 to M3.7 merged. Releasing 0.25.0 (this PR) | #242, #265, #269, #274 to #276, #279, #283, #285, (this PR) |
 | Milestone 4 | 0.26.0, 0.27.0 | AWS, GCP, Azure, mindmap; BPMN | Design notes approved: 4a ([`notes/milestone-4a.md`](notes/milestone-4a.md); AWS gated until AWS answers the maintainer's email of 14 Nov 2026) and 4b, BPMN ([`notes/milestone-4b.md`](notes/milestone-4b.md)); 4b.0 being built | #235, #243 |
 | After the 28 types | 0.28.0 and later | What the maintainer asks for next | Not started | |
 | Stabilization | 1.0.0 | Frozen API and schema, conformance notes; when the maintainer says it is ready | Not started | |
@@ -330,3 +330,8 @@ node docs/diagrams/examples/check.mjs         # the target examples match model.
   dynamic and deployment views, and the Mermaid ER, Mermaid flowchart, Structurizr JSON and DBML readers); 0.24.0's
   release pull request follows. Milestones 3, 4a and 4b are under way (M3.0, 4a.0, 4b.0, 4b.1 and 4b.4 merged).
   Crossing pins became ceilings: Linux CI measures text narrower than a Mac (#268).
+- **14 Nov 2026 (0.24.0; milestone 3 complete).** 0.24.0 released (#273, 3e74d96): GitHub Release and npm latest.
+  Milestone 3's M3.0 to M3.7 merged (SysML's requirement, block definition, internal block and parametric diagrams,
+  the Mermaid requirement reader and writer, the e-bike atlas); 0.25.0's release pull request follows. Milestone 4a's
+  types and milestone 4b's are on `main`; their documents (4a.7, 4b.5) and AWS (4a.8: AWS accepted the maintainer's
+  request by email, 14 Nov 2026) are being finished. Local checks became light: GitHub CI runs the full suite.
