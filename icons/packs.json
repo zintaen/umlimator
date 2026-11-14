@@ -1,0 +1,50 @@
+{
+  "gcp": {
+    "vendor": "Google Cloud",
+    "label": "2026-11-14",
+    "zips": [
+      {
+        "url": "https://services.google.com/fh/files/misc/core-products-icons.zip",
+        "bytes": null,
+        "sha256": null
+      },
+      {
+        "url": "https://services.google.com/fh/files/misc/category-icons.zip",
+        "bytes": null,
+        "sha256": null
+      }
+    ],
+    "icons": "(?:[^/]+/)?(?:Unique|Category) Icons/([^/]+)/SVG/[^/]+\\.svg",
+    "terms": {
+      "url": "https://cloud.google.com/icons",
+      "read": "2026-11-14",
+      "text": "Google Cloud product icons (https://cloud.google.com/icons): \"Welcome to the official library for Google Cloud product icons. Here you can find the Google Cloud product icons you need for your diagrams, technical documentation, and more.\"\n\nGoogle's brand guidance: https://about.google/brand-resource-center/rules/\n\nGoogle Cloud and the Google Cloud logo are trademarks of Google LLC.",
+      "sha256": "0d06c39f4858683c468057909d562508ba3ad73fc0180ae64a98f60fe0588c2f"
+    },
+    "legal": "Google Cloud and the Google Cloud logo are trademarks of Google LLC.",
+    "names": {},
+    "aliases": {}
+  },
+  "azure": {
+    "vendor": "Microsoft Azure",
+    "label": "V25",
+    "zips": [
+      {
+        "url": "https://arch-center.azureedge.net/icons/Azure_Public_Service_Icons_V25.zip",
+        "bytes": 1045239,
+        "sha256": null
+      }
+    ],
+    "icons": "(?:[^/]+/)?Icons/[^/]+/\\d+-icon-service-([^/]+)\\.svg",
+    "terms": {
+      "url": "https://learn.microsoft.com/azure/architecture/icons",
+      "read": "2026-11-14",
+      "text": "Microsoft permits the use of these icons in architectural diagrams, training materials, or documentation. You can copy, distribute, and display the icons only for the permitted use unless granted explicit permission by Microsoft. Microsoft reserves all other rights.",
+      "sha256": "b5b99c7c55dbbfb75764ac620d0493042c2d19aa21acb7f444482efdeef8e765",
+      "member": "Microsoft_Terms_of_Use.pdf",
+      "memberSha256": null
+    },
+    "names": {},
+    "aliases": {}
+  }
+}

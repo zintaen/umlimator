@@ -84,8 +84,10 @@ InteractionOperand: InteractionFragment Namespace`.split('\n').forEach(row => { 
 Object.assign(UML_META, { Region: ['Namespace', 'RedefinableElement'], Transition: ['Namespace', 'RedefinableElement'] }); // through Namespace too
 // the registry's types that are no metaclass, and what they are (§5.4); null: no stereotype fits it
 const UML_AS = { InternalTransition: 'Transition', Subject: 'Classifier', Link: 'InstanceSpecification', RoleBinding: 'Dependency', CommentLink: null };
-// a uml.* element's metaclass, null for none, undefined for an element of no UML type (a sysml. one is not checked, §5.4)
-const metaOf = x => typeof x.type !== 'string' || !x.type.startsWith('uml.') ? undefined : Object.hasOwn(UML_AS, x.type.slice(4)) ? UML_AS[x.type.slice(4)] : x.type.slice(4);
+// another notation's types and their metaclasses, filled by the family that defines them (SysML's: src/sysml/sysml.js, notes/milestone-3.md §3.3)
+const UML_META_AS = Object.create(null);
+// a uml.* element's metaclass, null for none; a type of UML_META_AS, its metaclass there; undefined for any other (not checked, §5.4)
+const metaOf = x => typeof x.type !== 'string' ? undefined : !x.type.startsWith('uml.') ? UML_META_AS[x.type] : Object.hasOwn(UML_AS, x.type.slice(4)) ? UML_AS[x.type.slice(4)] : x.type.slice(4);
 const META_UP = new Map();
 // a metaclass and every metaclass it specializes; a name in no row is only itself
 function metaUp(name) {
@@ -267,4 +269,4 @@ function tagFields(model, x) {
 TYPED.across = stereoProblems;
 TYPED.fields = tagFields;
 
-export { styKey, STY_RULES, UML_META, UML_AS, metaOf, metaUp, metaKnown, stereoProblems, appliedOf, tagFields };
+export { styKey, STY_RULES, STY_FREE, UML_META, UML_AS, UML_META_AS, metaOf, metaUp, metaKnown, stereoProblems, appliedOf, tagFields };
