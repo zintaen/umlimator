@@ -340,3 +340,8 @@ test('fragments nested deeper than 64 are read as their content, reported once, 
   assert.ok(out.length < 20000, `${out.length} characters`);
   assert.deepEqual(read(out).model, model);
 });
+
+test('a sequence file 200 alts deep with 20000 elses that the reader read, once written, reads again: unindented over the limit (audit 2)', () => {
+  const m = read('sequenceDiagram\n' + 'alt x\n'.repeat(200) + 'A->>B: x\nelse y\n'.repeat(20000) + 'end\n'.repeat(200)).model, t = write(m);
+  assert.deepEqual([t.length < 1 << 20, read(t).report], [true, []]);
+});

@@ -6,6 +6,7 @@ import { createRequire } from 'node:module';
 import markdownIt, { attrs } from '../lib/umlimator-markdown-it.js';
 import remark from '../lib/umlimator-remark.js';
 import { UmlimatorMap } from '../lib/umlimator-element.js';
+import { readFileSync, readdirSync } from 'node:fs';
 
 const md = { renderer: { rules: { fence: () => '<pre>the host\'s</pre>' } } };
 markdownIt(md);
@@ -50,4 +51,10 @@ test('the package exports the element and both plugins; the element\'s module lo
   }
   assert.equal(typeof UmlimatorMap, 'function');
   assert.equal(globalThis.customElements, undefined);
+});
+
+test('every page in examples/, the gallery the site opens on included, declares its language (axe html-has-lang, audit 2)', () => {
+  const dir = new URL('../examples/', import.meta.url);
+  const bare = readdirSync(dir).filter(f => f.endsWith('.html') && !/<html lang="[a-z]/.test(readFileSync(new URL(f, dir), 'utf8')));
+  assert.deepEqual(bare, []);
 });

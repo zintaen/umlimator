@@ -539,7 +539,9 @@ function writeMermaidState(model, viewId) {
   }
   writeScope('', 0);
   for (const x of notWritten) out.push(`  %% not written: ${x}`);
-  return out.join('\n') + '\n';
+  // unindented when indented text would be over the reader's own limit, so what the reader read can be read again
+  const text = out.join('\n') + '\n';
+  return text.length > MT_LIMIT ? text.replace(/^[ \t]+/gm, '') : text;
 }
 
 export { readMermaidState, writeMermaidState };
