@@ -1,0 +1,1143 @@
+{
+ "schemaVersion": 2,
+ "title": "Information flow, stress",
+ "nodes": [
+  {
+   "id": "ec-user",
+   "type": "uml.Actor",
+   "label": "User"
+  },
+  {
+   "id": "ec-app",
+   "type": "uml.Component",
+   "label": "App"
+  },
+  {
+   "id": "ec-api",
+   "type": "uml.Component",
+   "label": "API"
+  },
+  {
+   "id": "ec-ledger",
+   "type": "uml.Class",
+   "label": "Ledger"
+  },
+  {
+   "id": "ec-port",
+   "type": "uml.Interface",
+   "label": "Payments"
+  },
+  {
+   "id": "ec-i0",
+   "type": "uml.InformationItem",
+   "label": "Order"
+  },
+  {
+   "id": "ec-i1",
+   "type": "uml.InformationItem",
+   "label": "Card"
+  },
+  {
+   "id": "ec-i2",
+   "type": "uml.InformationItem",
+   "label": "Receipt"
+  },
+  {
+   "id": "ec-i3",
+   "type": "uml.InformationItem",
+   "label": "Address"
+  },
+  {
+   "id": "ec-i4",
+   "type": "uml.InformationItem",
+   "label": "Basket"
+  },
+  {
+   "id": "ec-i5",
+   "type": "uml.InformationItem",
+   "label": "Stock"
+  },
+  {
+   "id": "ec-hidden",
+   "type": "uml.InformationItem",
+   "label": "Audit trail"
+  },
+  {
+   "id": "s0",
+   "type": "uml.Class",
+   "label": "Service 0"
+  },
+  {
+   "id": "s1",
+   "type": "uml.Component",
+   "label": "Service 1"
+  },
+  {
+   "id": "s2",
+   "type": "uml.Component",
+   "label": "Service 2"
+  },
+  {
+   "id": "s3",
+   "type": "uml.Class",
+   "label": "Service 3"
+  },
+  {
+   "id": "s4",
+   "type": "uml.Component",
+   "label": "Service 4"
+  },
+  {
+   "id": "s5",
+   "type": "uml.Component",
+   "label": "Service 5"
+  },
+  {
+   "id": "s6",
+   "type": "uml.Class",
+   "label": "Service 6"
+  },
+  {
+   "id": "s7",
+   "type": "uml.Component",
+   "label": "Service 7"
+  },
+  {
+   "id": "s8",
+   "type": "uml.Component",
+   "label": "Service 8"
+  },
+  {
+   "id": "s9",
+   "type": "uml.Class",
+   "label": "Service 9"
+  },
+  {
+   "id": "s10",
+   "type": "uml.Component",
+   "label": "Service 10"
+  },
+  {
+   "id": "s11",
+   "type": "uml.Component",
+   "label": "Service 11"
+  },
+  {
+   "id": "s12",
+   "type": "uml.Class",
+   "label": "Service 12"
+  },
+  {
+   "id": "s13",
+   "type": "uml.Component",
+   "label": "Service 13"
+  },
+  {
+   "id": "s14",
+   "type": "uml.Component",
+   "label": "Service 14"
+  },
+  {
+   "id": "s15",
+   "type": "uml.Class",
+   "label": "Service 15"
+  },
+  {
+   "id": "s16",
+   "type": "uml.Component",
+   "label": "Service 16"
+  },
+  {
+   "id": "s17",
+   "type": "uml.Component",
+   "label": "Service 17"
+  },
+  {
+   "id": "s18",
+   "type": "uml.Class",
+   "label": "Service 18"
+  },
+  {
+   "id": "s19",
+   "type": "uml.Component",
+   "label": "Service 19"
+  },
+  {
+   "id": "s20",
+   "type": "uml.Component",
+   "label": "Service 20"
+  },
+  {
+   "id": "s21",
+   "type": "uml.Class",
+   "label": "Service 21"
+  },
+  {
+   "id": "s22",
+   "type": "uml.Component",
+   "label": "Service 22"
+  },
+  {
+   "id": "s23",
+   "type": "uml.Component",
+   "label": "Service 23"
+  },
+  {
+   "id": "i0",
+   "type": "uml.InformationItem",
+   "label": "Item 0"
+  },
+  {
+   "id": "i1",
+   "type": "uml.InformationItem",
+   "label": "Item 1"
+  },
+  {
+   "id": "i2",
+   "type": "uml.InformationItem",
+   "label": "Item 2"
+  },
+  {
+   "id": "i3",
+   "type": "uml.InformationItem",
+   "label": "Item 3"
+  },
+  {
+   "id": "i4",
+   "type": "uml.InformationItem",
+   "label": "Item 4"
+  },
+  {
+   "id": "i5",
+   "type": "uml.InformationItem",
+   "label": "Item 5"
+  },
+  {
+   "id": "i6",
+   "type": "uml.InformationItem",
+   "label": "Item 6"
+  },
+  {
+   "id": "i7",
+   "type": "uml.InformationItem",
+   "label": "Item 7"
+  },
+  {
+   "id": "i8",
+   "type": "uml.InformationItem",
+   "label": "Item 8"
+  },
+  {
+   "id": "i9",
+   "type": "uml.InformationItem",
+   "label": "Item 9"
+  },
+  {
+   "id": "i10",
+   "type": "uml.InformationItem",
+   "label": "Item 10"
+  },
+  {
+   "id": "i11",
+   "type": "uml.InformationItem",
+   "label": "Item 11"
+  },
+  {
+   "id": "i12",
+   "type": "uml.InformationItem",
+   "label": "Item 12"
+  },
+  {
+   "id": "i13",
+   "type": "uml.InformationItem",
+   "label": "Item 13"
+  },
+  {
+   "id": "i14",
+   "type": "uml.InformationItem",
+   "label": "Item 14"
+  },
+  {
+   "id": "i15",
+   "type": "uml.InformationItem",
+   "label": "Item 15"
+  }
+ ],
+ "edges": [
+  {
+   "id": "ec-six",
+   "type": "uml.InformationFlow",
+   "from": "ec-user",
+   "to": "ec-app",
+   "props": {
+    "conveyed": [
+     "ec-i0",
+     "ec-i1",
+     "ec-i2",
+     "ec-i3",
+     "ec-i4",
+     "ec-i5"
+    ]
+   }
+  },
+  {
+   "id": "ec-there-1",
+   "type": "uml.InformationFlow",
+   "from": "ec-app",
+   "to": "ec-api",
+   "props": {
+    "conveyed": [
+     "ec-i0"
+    ]
+   },
+   "label": "submit"
+  },
+  {
+   "id": "ec-there-2",
+   "type": "uml.InformationFlow",
+   "from": "ec-app",
+   "to": "ec-api",
+   "props": {
+    "conveyed": [
+     "ec-i4"
+    ]
+   }
+  },
+  {
+   "id": "ec-back-1",
+   "type": "uml.InformationFlow",
+   "from": "ec-api",
+   "to": "ec-app",
+   "props": {
+    "conveyed": [
+     "ec-i2"
+    ]
+   },
+   "label": "confirm"
+  },
+  {
+   "id": "ec-back-2",
+   "type": "uml.InformationFlow",
+   "from": "ec-api",
+   "to": "ec-app",
+   "props": {
+    "conveyed": [
+     "ec-i5"
+    ]
+   }
+  },
+  {
+   "id": "ec-not-shown",
+   "type": "uml.InformationFlow",
+   "from": "ec-api",
+   "to": "ec-port",
+   "props": {
+    "conveyed": [
+     "ec-hidden"
+    ]
+   }
+  },
+  {
+   "id": "ec-gone",
+   "type": "uml.InformationFlow",
+   "from": "ec-api",
+   "to": "ec-ledger",
+   "props": {
+    "conveyed": [
+     "ec-i1",
+     "ec-no-such-item"
+    ]
+   }
+  },
+  {
+   "id": "ec-class",
+   "type": "uml.InformationFlow",
+   "from": "ec-port",
+   "to": "ec-ledger",
+   "props": {
+    "conveyed": [
+     "ec-ledger"
+    ]
+   }
+  },
+  {
+   "id": "f0",
+   "type": "uml.InformationFlow",
+   "from": "s0",
+   "to": "s1",
+   "props": {
+    "conveyed": [
+     "i0",
+     "i9"
+    ]
+   }
+  },
+  {
+   "id": "f1",
+   "type": "uml.InformationFlow",
+   "from": "s1",
+   "to": "s8",
+   "props": {
+    "conveyed": [
+     "i1",
+     "i6"
+    ]
+   }
+  },
+  {
+   "id": "f2",
+   "type": "uml.InformationFlow",
+   "from": "s2",
+   "to": "s15",
+   "props": {
+    "conveyed": [
+     "i2",
+     "i7"
+    ]
+   }
+  },
+  {
+   "id": "f3",
+   "type": "uml.InformationFlow",
+   "from": "s3",
+   "to": "s22",
+   "props": {
+    "conveyed": [
+     "i3"
+    ]
+   }
+  },
+  {
+   "id": "f4",
+   "type": "uml.InformationFlow",
+   "from": "s4",
+   "to": "s5",
+   "props": {
+    "conveyed": [
+     "i4",
+     "i9"
+    ]
+   }
+  },
+  {
+   "id": "f5",
+   "type": "uml.InformationFlow",
+   "from": "s5",
+   "to": "s12",
+   "props": {
+    "conveyed": [
+     "i5",
+     "i10",
+     "i14"
+    ]
+   }
+  },
+  {
+   "id": "f6",
+   "type": "uml.InformationFlow",
+   "from": "s6",
+   "to": "s19",
+   "props": {
+    "conveyed": [
+     "i6"
+    ]
+   }
+  },
+  {
+   "id": "f7",
+   "type": "uml.InformationFlow",
+   "from": "s7",
+   "to": "s2",
+   "props": {
+    "conveyed": [
+     "i7",
+     "i12"
+    ]
+   }
+  },
+  {
+   "id": "f8",
+   "type": "uml.InformationFlow",
+   "from": "s8",
+   "to": "s9",
+   "props": {
+    "conveyed": [
+     "i8",
+     "i13"
+    ]
+   }
+  },
+  {
+   "id": "f9",
+   "type": "uml.InformationFlow",
+   "from": "s9",
+   "to": "s16",
+   "props": {
+    "conveyed": [
+     "i9"
+    ]
+   }
+  },
+  {
+   "id": "f10",
+   "type": "uml.InformationFlow",
+   "from": "s10",
+   "to": "s23",
+   "props": {
+    "conveyed": [
+     "i10",
+     "i15",
+     "i3"
+    ]
+   }
+  },
+  {
+   "id": "f11",
+   "type": "uml.InformationFlow",
+   "from": "s11",
+   "to": "s6",
+   "props": {
+    "conveyed": [
+     "i11",
+     "i0"
+    ]
+   }
+  },
+  {
+   "id": "f12",
+   "type": "uml.InformationFlow",
+   "from": "s12",
+   "to": "s13",
+   "props": {
+    "conveyed": [
+     "i12"
+    ]
+   }
+  },
+  {
+   "id": "f13",
+   "type": "uml.InformationFlow",
+   "from": "s13",
+   "to": "s20",
+   "props": {
+    "conveyed": [
+     "i13",
+     "i2"
+    ]
+   }
+  },
+  {
+   "id": "f14",
+   "type": "uml.InformationFlow",
+   "from": "s14",
+   "to": "s3",
+   "props": {
+    "conveyed": [
+     "i14",
+     "i3"
+    ]
+   }
+  },
+  {
+   "id": "f15",
+   "type": "uml.InformationFlow",
+   "from": "s15",
+   "to": "s10",
+   "props": {
+    "conveyed": [
+     "i15",
+     "i8"
+    ]
+   }
+  },
+  {
+   "id": "f16",
+   "type": "uml.InformationFlow",
+   "from": "s16",
+   "to": "s17",
+   "props": {
+    "conveyed": [
+     "i0",
+     "i5"
+    ]
+   }
+  },
+  {
+   "id": "f17",
+   "type": "uml.InformationFlow",
+   "from": "s17",
+   "to": "s0",
+   "props": {
+    "conveyed": [
+     "i1",
+     "i6"
+    ]
+   }
+  },
+  {
+   "id": "f18",
+   "type": "uml.InformationFlow",
+   "from": "s18",
+   "to": "s7",
+   "props": {
+    "conveyed": [
+     "i2"
+    ]
+   }
+  },
+  {
+   "id": "f19",
+   "type": "uml.InformationFlow",
+   "from": "s19",
+   "to": "s14",
+   "props": {
+    "conveyed": [
+     "i3",
+     "i8"
+    ]
+   }
+  },
+  {
+   "id": "f20",
+   "type": "uml.InformationFlow",
+   "from": "s20",
+   "to": "s21",
+   "props": {
+    "conveyed": [
+     "i4",
+     "i9",
+     "i13"
+    ]
+   }
+  },
+  {
+   "id": "f21",
+   "type": "uml.InformationFlow",
+   "from": "s21",
+   "to": "s4",
+   "props": {
+    "conveyed": [
+     "i5"
+    ]
+   }
+  },
+  {
+   "id": "f22",
+   "type": "uml.InformationFlow",
+   "from": "s22",
+   "to": "s11",
+   "props": {
+    "conveyed": [
+     "i6",
+     "i11"
+    ]
+   }
+  },
+  {
+   "id": "f23",
+   "type": "uml.InformationFlow",
+   "from": "s23",
+   "to": "s18",
+   "props": {
+    "conveyed": [
+     "i7",
+     "i12"
+    ]
+   }
+  },
+  {
+   "id": "f24",
+   "type": "uml.InformationFlow",
+   "from": "s0",
+   "to": "s2",
+   "props": {
+    "conveyed": [
+     "i8"
+    ]
+   }
+  },
+  {
+   "id": "f25",
+   "type": "uml.InformationFlow",
+   "from": "s1",
+   "to": "s9",
+   "props": {
+    "conveyed": [
+     "i9",
+     "i14",
+     "i2"
+    ]
+   }
+  },
+  {
+   "id": "f26",
+   "type": "uml.InformationFlow",
+   "from": "s2",
+   "to": "s16",
+   "props": {
+    "conveyed": [
+     "i10",
+     "i15"
+    ]
+   }
+  },
+  {
+   "id": "f27",
+   "type": "uml.InformationFlow",
+   "from": "s3",
+   "to": "s23",
+   "props": {
+    "conveyed": [
+     "i11"
+    ]
+   }
+  },
+  {
+   "id": "f28",
+   "type": "uml.InformationFlow",
+   "from": "s4",
+   "to": "s6",
+   "props": {
+    "conveyed": [
+     "i12",
+     "i1"
+    ]
+   }
+  },
+  {
+   "id": "f29",
+   "type": "uml.InformationFlow",
+   "from": "s5",
+   "to": "s13",
+   "props": {
+    "conveyed": [
+     "i13",
+     "i2"
+    ]
+   }
+  },
+  {
+   "id": "f30",
+   "type": "uml.InformationFlow",
+   "from": "s6",
+   "to": "s20",
+   "props": {
+    "conveyed": [
+     "i14",
+     "i7"
+    ]
+   }
+  },
+  {
+   "id": "f31",
+   "type": "uml.InformationFlow",
+   "from": "s7",
+   "to": "s3",
+   "props": {
+    "conveyed": [
+     "i15",
+     "i4"
+    ]
+   }
+  },
+  {
+   "id": "f32",
+   "type": "uml.InformationFlow",
+   "from": "s8",
+   "to": "s10",
+   "props": {
+    "conveyed": [
+     "i0",
+     "i5"
+    ]
+   }
+  },
+  {
+   "id": "f33",
+   "type": "uml.InformationFlow",
+   "from": "s9",
+   "to": "s17",
+   "props": {
+    "conveyed": [
+     "i1"
+    ]
+   }
+  },
+  {
+   "id": "f34",
+   "type": "uml.InformationFlow",
+   "from": "s10",
+   "to": "s0",
+   "props": {
+    "conveyed": [
+     "i2",
+     "i7"
+    ]
+   }
+  },
+  {
+   "id": "f35",
+   "type": "uml.InformationFlow",
+   "from": "s11",
+   "to": "s7",
+   "props": {
+    "conveyed": [
+     "i3",
+     "i8",
+     "i12"
+    ]
+   }
+  },
+  {
+   "id": "f36",
+   "type": "uml.InformationFlow",
+   "from": "s12",
+   "to": "s14",
+   "props": {
+    "conveyed": [
+     "i4"
+    ]
+   }
+  },
+  {
+   "id": "f37",
+   "type": "uml.InformationFlow",
+   "from": "s13",
+   "to": "s21",
+   "props": {
+    "conveyed": [
+     "i5",
+     "i10"
+    ]
+   }
+  },
+  {
+   "id": "f38",
+   "type": "uml.InformationFlow",
+   "from": "s14",
+   "to": "s4",
+   "props": {
+    "conveyed": [
+     "i6",
+     "i11"
+    ]
+   }
+  },
+  {
+   "id": "f39",
+   "type": "uml.InformationFlow",
+   "from": "s15",
+   "to": "s11",
+   "props": {
+    "conveyed": [
+     "i7"
+    ]
+   }
+  },
+  {
+   "id": "f40",
+   "type": "uml.InformationFlow",
+   "from": "s16",
+   "to": "s18",
+   "props": {
+    "conveyed": [
+     "i8",
+     "i13",
+     "i1"
+    ]
+   }
+  },
+  {
+   "id": "f41",
+   "type": "uml.InformationFlow",
+   "from": "s17",
+   "to": "s1",
+   "props": {
+    "conveyed": [
+     "i9",
+     "i14"
+    ]
+   }
+  },
+  {
+   "id": "f42",
+   "type": "uml.InformationFlow",
+   "from": "s18",
+   "to": "s8",
+   "props": {
+    "conveyed": [
+     "i10"
+    ]
+   }
+  },
+  {
+   "id": "f43",
+   "type": "uml.InformationFlow",
+   "from": "s19",
+   "to": "s15",
+   "props": {
+    "conveyed": [
+     "i11",
+     "i0"
+    ]
+   }
+  },
+  {
+   "id": "f44",
+   "type": "uml.InformationFlow",
+   "from": "s20",
+   "to": "s22",
+   "props": {
+    "conveyed": [
+     "i12",
+     "i1"
+    ]
+   }
+  },
+  {
+   "id": "f45",
+   "type": "uml.InformationFlow",
+   "from": "s21",
+   "to": "s5",
+   "props": {
+    "conveyed": [
+     "i13",
+     "i6"
+    ]
+   }
+  },
+  {
+   "id": "f46",
+   "type": "uml.InformationFlow",
+   "from": "s22",
+   "to": "s12",
+   "props": {
+    "conveyed": [
+     "i14",
+     "i3"
+    ]
+   }
+  },
+  {
+   "id": "f47",
+   "type": "uml.InformationFlow",
+   "from": "s23",
+   "to": "s19",
+   "props": {
+    "conveyed": [
+     "i15",
+     "i4"
+    ]
+   }
+  },
+  {
+   "id": "f48",
+   "type": "uml.InformationFlow",
+   "from": "s0",
+   "to": "s3",
+   "props": {
+    "conveyed": [
+     "i0"
+    ]
+   }
+  },
+  {
+   "id": "f49",
+   "type": "uml.InformationFlow",
+   "from": "s1",
+   "to": "s10",
+   "props": {
+    "conveyed": [
+     "i1",
+     "i6"
+    ]
+   }
+  },
+  {
+   "id": "f50",
+   "type": "uml.InformationFlow",
+   "from": "s2",
+   "to": "s17",
+   "props": {
+    "conveyed": [
+     "i2",
+     "i7",
+     "i11"
+    ]
+   }
+  },
+  {
+   "id": "f51",
+   "type": "uml.InformationFlow",
+   "from": "s3",
+   "to": "s0",
+   "props": {
+    "conveyed": [
+     "i3"
+    ]
+   }
+  },
+  {
+   "id": "f52",
+   "type": "uml.InformationFlow",
+   "from": "s4",
+   "to": "s7",
+   "props": {
+    "conveyed": [
+     "i4",
+     "i9"
+    ]
+   }
+  },
+  {
+   "id": "f53",
+   "type": "uml.InformationFlow",
+   "from": "s5",
+   "to": "s14",
+   "props": {
+    "conveyed": [
+     "i5",
+     "i10"
+    ]
+   }
+  },
+  {
+   "id": "f54",
+   "type": "uml.InformationFlow",
+   "from": "s6",
+   "to": "s21",
+   "props": {
+    "conveyed": [
+     "i6"
+    ]
+   }
+  },
+  {
+   "id": "f55",
+   "type": "uml.InformationFlow",
+   "from": "s7",
+   "to": "s4",
+   "props": {
+    "conveyed": [
+     "i7",
+     "i12",
+     "i0"
+    ]
+   }
+  },
+  {
+   "id": "f56",
+   "type": "uml.InformationFlow",
+   "from": "s8",
+   "to": "s11",
+   "props": {
+    "conveyed": [
+     "i8",
+     "i13"
+    ]
+   }
+  },
+  {
+   "id": "f57",
+   "type": "uml.InformationFlow",
+   "from": "s9",
+   "to": "s18",
+   "props": {
+    "conveyed": [
+     "i9"
+    ]
+   }
+  },
+  {
+   "id": "f58",
+   "type": "uml.InformationFlow",
+   "from": "s10",
+   "to": "s1",
+   "props": {
+    "conveyed": [
+     "i10",
+     "i15"
+    ]
+   }
+  },
+  {
+   "id": "f59",
+   "type": "uml.InformationFlow",
+   "from": "s11",
+   "to": "s8",
+   "props": {
+    "conveyed": [
+     "i11",
+     "i0"
+    ]
+   }
+  }
+ ],
+ "views": [
+  {
+   "id": "edge-cases",
+   "diagram": "uml.information-flow",
+   "title": "Edge cases",
+   "nodeIds": [
+    "ec-user",
+    "ec-app",
+    "ec-api",
+    "ec-ledger",
+    "ec-port",
+    "ec-i0",
+    "ec-i1",
+    "ec-i2",
+    "ec-i3",
+    "ec-i4",
+    "ec-i5"
+   ]
+  },
+  {
+   "id": "all",
+   "diagram": "uml.information-flow",
+   "title": "All",
+   "nodeIds": [
+    "s0",
+    "s1",
+    "s2",
+    "s3",
+    "s4",
+    "s5",
+    "s6",
+    "s7",
+    "s8",
+    "s9",
+    "s10",
+    "s11",
+    "s12",
+    "s13",
+    "s14",
+    "s15",
+    "s16",
+    "s17",
+    "s18",
+    "s19",
+    "s20",
+    "s21",
+    "s22",
+    "s23",
+    "i0",
+    "i1",
+    "i2",
+    "i3",
+    "i4",
+    "i5",
+    "i6",
+    "i7",
+    "i8",
+    "i9",
+    "i10",
+    "i11",
+    "i12",
+    "i13",
+    "i14",
+    "i15"
+   ]
+  }
+ ]
+}

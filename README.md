@@ -109,6 +109,22 @@ drill-down, a data pipeline, an AI agent's skills, and host pages for embedding,
   lifeline into a value lifeline; deleting a lifeline deletes its changes and their constraints. The MCP server's read
   tools and the diff Action are tested on both, and the Bookshop atlas, now with a view of each of UML's 14 diagram
   kinds, opens them from the package view's profile and from the activity's "Record the payment on the order".
+- **ER, flowchart, data flow, information flow and C4** (0.24.0): tables with their key columns first, related in crow's
+  foot or IDEF1X, one geometry for both, each column a row `name type [PK] [FK table.column] [UK] [NULL]`
+  ([`examples/bookshop-schema.json`](examples/bookshop-schema.json), [what it covers](docs/conformance/er.md)); ten
+  flowchart symbols, laid out down, decisions with labelled exits
+  ([`examples/returns-flowchart.json`](examples/returns-flowchart.json), [what it covers](docs/conformance/flowchart.md));
+  data flow levels in Yourdon or Gane and Sarson, made by `D` and checked for balance
+  ([`examples/bookshop-data-flow.json`](examples/bookshop-data-flow.json), [what it covers](docs/conformance/dfd.md));
+  UML information flows, dashed «flow» lines saying what they convey
+  ([`examples/order-information-flow.json`](examples/order-information-flow.json),
+  [what it covers](docs/conformance/uml-information-flow.md)); and typed C4 in six views (landscape, context, container,
+  component, dynamic, deployment) on the map's card shapes, each view checking what it may show, its subject a dashed
+  boundary, relationships whose ends a view hides drawn as implied lines, `D` making the next level
+  ([`examples/bookshop-c4.json`](examples/bookshop-c4.json), [what it covers](docs/conformance/c4.md)). `import` reads a
+  Mermaid `erDiagram`, a Mermaid flowchart with `--typed`, a Structurizr JSON workspace and a `.dbml` file (with
+  `@dbml/core` installed by you) into them. The Bookshop atlas starts at the C4 context, whose elements open the schema,
+  the data flow, the information flow, the returns flowchart and the UML views.
 - **Export**: any view as a stand-alone SVG or PNG, in the browser or from the CLI; the whole map as one PDF to hand in
   for a review: a cover with the contents, each view with its legend and tables of its cards, lines and boxes, then the
   rules (`umlimator.py pdf`).
@@ -177,7 +193,7 @@ function MapView({ model, onSelect }) {
   or costliest path, `whatIf(model, view, { remove })` what loses its way when cards go down, and
   `sequenceFromTrace(model, spans, { view, match })` keeps a trace as a numbered view; all three in Node too.
 - `editable: true` turns on editing gestures ([docs/editing.md](docs/editing.md); `examples/edit.html` is a working host).
-- `import { render, apply, history } from 'umlimator/all'` draws diagram types too: a class, object, package, sequence, communication, use case, activity, state machine, interaction overview, component, deployment, composite structure, profile or timing diagram, whose gestures emit
+- `import { render, apply, history } from 'umlimator/all'` draws diagram types too: a class, object, package, sequence, communication, use case, activity, state machine, interaction overview, component, deployment, composite structure, profile, timing, information flow, entity-relationship, flowchart, data flow or C4 diagram, whose gestures emit
   `edit` transactions that `apply(model, e.commands)` turns into the next model (`examples/class-editor.html` is a
   working host). `umlimator` alone draws maps, and a typed view as plain cards with a warning.
 - `diff(before, after)` returns `after` with each card and line marked added, changed or removed, what changed in words,
@@ -258,9 +274,11 @@ gets completion and checks in editors, and `validate(model)` lists its errors an
 `"schemaVersion": 2` marks a model that may hold typed elements and typed views (`docs/diagrams/model.md`). A view whose
 `diagram` is `"uml.class"`, `"uml.object"`, `"uml.package"`, `"uml.sequence"`, `"uml.communication"`, `"uml.use-case"`,
 `"uml.activity"`, `"uml.state-machine"`, `"uml.interaction-overview"`, `"uml.component"`, `"uml.deployment"`,
-`"uml.composite-structure"`, `"uml.profile"` or `"uml.timing"` is a UML class, object, package, sequence, communication,
-use case, activity, state machine, interaction overview, component, deployment, composite structure, profile or timing
-diagram, drawn by `umlimator/all` and the CLI; a type not drawn yet shows its
+`"uml.composite-structure"`, `"uml.profile"`, `"uml.timing"` or `"uml.information-flow"` is a UML class, object, package,
+sequence, communication, use case, activity, state machine, interaction overview, component, deployment, composite
+structure, profile, timing or information flow diagram; `"er"`, `"flowchart"` and `"dfd"` an entity-relationship
+diagram, a flowchart and a data flow diagram; `"c4.landscape"`, `"c4.context"`, `"c4.container"`, `"c4.component"`,
+`"c4.dynamic"` and `"c4.deployment"` C4's six views; each drawn by `umlimator/all` and the CLI; a type not drawn yet shows its
 nodes as plain cards, with a warning. A model with no `schemaVersion` is a map, as always, and a version newer than the
 module reads is an error.
 
@@ -372,6 +390,22 @@ A profile diagram and a timing diagram (`examples/bookshop-profile.json` and `bo
 | view | `present` | a lifeline drawn as a value lifeline (`{ "as": "values" }`) |
 | view | `diagram` | `"uml.profile"` or `"uml.timing"` |
 
+Milestone 2's five types (`examples/bookshop-schema.json`, `returns-flowchart.json`, `bookshop-data-flow.json`,
+`order-information-flow.json` and `bookshop-c4.json`; each type's note in [`docs/conformance/`](docs/conformance/)), from
+0.24.0:
+
+| On | Field | What it does |
+|---|---|---|
+| node, member, edge | `type` | ER: `er.Entity` (members `er.Column`), lines `er.Relationship` from the referenced entity to the referring one. Flowchart: `flow.Terminator`, `flow.Process`, `flow.Decision`, `flow.InputOutput`, `flow.PredefinedProcess`, `flow.Document`, `flow.Database`, `flow.ManualInput`, `flow.Delay`, `flow.Connector`; lines `flow.Flow`. Data flow: `dfd.Process`, `dfd.DataStore`, `dfd.ExternalEntity`; lines `dfd.DataFlow`. Information flow: `uml.InformationItem` and the classes, interfaces, components and actors it travels between; lines `uml.InformationFlow`. C4: `c4.Person`, `c4.SoftwareSystem`, `c4.Container`, `c4.Component`, `c4.DeploymentNode`, `c4.ContainerInstance`; lines `c4.Relationship` (its `label` the description) |
+| member | `props` | a column's `dataType`, `primaryKey`, `foreignKey`, `references` (a column id), `nullable`, `unique` |
+| node, edge | `props` | a relationship's `identifying` and `ends.from` and `ends.to`'s `multiplicity`; a process's or store's `number`; a flow's `conveyed` (ids); a C4 element's `description`, `technology`, `external`, `shape` (a map card shape), an instance's `container`; a C4 relationship's `technology` |
+| node | `parent` | a container's software system, a component's container, a deployment node's node, an instance's node |
+| node | `opensView` | a process's level: a `dfd` view whose `parent` is the view the process is on |
+| view | `notation` | `"crowsfoot"` (default) or `"idef1x"` for `er`, `"yourdon"` (default) or `"gane-sarson"` for `dfd`: a repaint |
+| view | `subject` | a C4 view's system or container, drawn as a boundary when `nodeIds` lists it |
+| view | `edges` | a C4 dynamic view's steps: relationship ids, each once, in time order |
+| view | `diagram` | `"er"`, `"flowchart"`, `"dfd"`, `"uml.information-flow"`, `"c4.landscape"`, `"c4.context"`, `"c4.container"`, `"c4.component"`, `"c4.dynamic"`, `"c4.deployment"` |
+
 ## Command line
 
 ```bash
@@ -389,6 +423,10 @@ python3 umlimator.py import workspace.dsl --out model.json            # a diagra
 python3 umlimator.py import classes.mmd --out classes.json            # a Mermaid classDiagram, as a UML class diagram (needs Node)
 python3 umlimator.py import checkout.mmd --out checkout.json          # a Mermaid sequenceDiagram, as a UML sequence diagram (needs Node)
 python3 umlimator.py import order.mmd --out order.json                # a Mermaid stateDiagram, as a UML state machine diagram (needs Node)
+python3 umlimator.py import schema.mmd --out schema.json              # a Mermaid erDiagram, as an ER diagram (needs Node)
+python3 umlimator.py import returns.mmd --typed --out returns.json    # a Mermaid flowchart as a flowchart (without --typed, a map)
+python3 umlimator.py import workspace.json --out c4.json              # a Structurizr JSON workspace, as typed C4 views (needs Node)
+python3 umlimator.py import schema.dbml --out schema.json             # DBML, as an ER diagram (needs Node and @dbml/core, installed by you)
 python3 umlimator.py render examples/sales-classes.json --out classes.html   # a class diagram's page; stills, check and pdf take it too
 docker compose config --format json > compose.json && python3 umlimator.py import compose.json --out model.json
 kubectl get deploy,sts,svc,ing -A -o json > cluster.json && python3 umlimator.py import cluster.json --out model.json
