@@ -160,6 +160,11 @@ test('describe(): the class view in words, each element with its members counted
   const p = describe(CLASS, 'payments-only').split('\n');
   assert.equal(p.length, 5);
   assert.equal(p[1], 'Class Order (entity), 5 attributes, 3 operations; aggregates payments::Payment (payments, 0..*); realizes payments::Payable.', 'the view\'s subject, sales, keeps its own names plain');
+  // audit 5: every line's label and stereotypes, as drawn
+  const m = { schemaVersion: 2, nodes: [{ id: 'o', type: 'uml.Class', label: 'Order' }, { id: 'p', type: 'uml.Class', label: 'Pricing' }, { id: 'i', type: 'uml.Interface', label: 'Payable' }],
+    edges: [{ id: 'd', type: 'uml.Dependency', from: 'o', to: 'p', label: 'computes totals with' }, { id: 'r', type: 'uml.InterfaceRealization', from: 'o', to: 'i', label: 'since v2', props: { stereotypes: ['v2'] } }],
+    views: [{ id: 'v', diagram: 'uml.class', nodeIds: ['o', 'p', 'i'] }] };
+  assert.equal(describe(m, 'v').split('\n')[1], 'Class Order, 0 attributes, 0 operations; depends on Pricing ("computes totals with"); realizes Payable «v2» ("since v2").');
 });
 
 const noOverlap = g => { for (const a of g.nodes) for (const b of g.nodes) if (a !== b) assert.ok(a.x + a.w <= b.x || b.x + b.w <= a.x || a.y + a.h <= b.y || b.y + b.h <= a.y, `${a.id} and ${b.id} overlap`); };
