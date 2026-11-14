@@ -115,8 +115,8 @@ test('example 24 validates clean and lays out clean right and down: bands, every
 test('names, reading order, describe(), the legend, the PDF\'s words and rows', () => {
   const g = layout(EX, VID), aria = id => g.byId[id].aria;
   assert.deepEqual(['bp-take-payment', 'payment-timeout', 'paid', 'order-cancelled', 'bp-bookshop', 'bp-sales', 'bp-payment-provider', 'dispatch', 'pick-pack', 'note-card'].map(aria), ['Service task Take payment, in Sales',
-    'Timer boundary event No answer in 2 minutes, on Take payment', 'Exclusive gateway Paid?, in Sales', 'Terminate end event Order cancelled, in Sales', 'Pool Bookshop, 2 lanes, 16 elements',
-    'Lane Sales of Bookshop, 10 elements', 'Pool Payment provider, a black box', 'Group Dispatch, round 3 elements', 'Sub-process Pick and pack (collapsed), in Warehouse',
+    'Timer boundary event No answer in 2 minutes, on Take payment', 'Exclusive gateway Paid?, in Sales', 'Terminate end event Order cancelled, in Sales', 'Pool Bookshop, 2 lanes, 17 elements',
+    'Lane Sales of Bookshop, 12 elements', 'Pool Payment provider, a black box', 'Group Dispatch, round 3 elements', 'Sub-process Pick and pack (collapsed), in Warehouse',
     'Text annotation Card details go straight to the provider; the shop never sees them, in Sales']);
   assert.equal(g.edges.find(e => e.id === 'bp-f-paid').aria, 'Sequence flow from Paid? to parallel gateway, named yes');
   assert.equal(g.edges.find(e => e.id === 'bp-m-charge').aria, 'Message flow from Take payment to Payment provider, named Charge request');
@@ -127,8 +127,8 @@ test('names, reading order, describe(), the legend, the PDF\'s words and rows', 
   assert.match(mapContext(EX).buildView(VID).markup, /<g class="bz-pools"><rect class="bz-pool" data-o="bp-shopper"/);
   assert.match(mapContext(EX).buildView(VID).markup, /<g class="bp-label" data-o="paid"/);
   const said = describe(EX, VID).split('\n');
-  assert.deepEqual(said.slice(0, 6), ['From order to shipment: a BPMN diagram of 18 flow nodes, 21 flows and 3 pools.', 'Pool Shopper, 3 elements.', 'Pool Bookshop, 2 lanes, 16 elements.',
-    'Lane Sales of Bookshop, 10 elements.', 'Lane Warehouse of Bookshop, 4 elements.', 'Pool Payment provider, a black box; message to Take payment (Payment result).'], 'a message flow leaving a pool said with its pool');
+  assert.deepEqual(said.slice(0, 6), ['From order to shipment: a BPMN diagram of 18 flow nodes, 21 flows and 3 pools.', 'Pool Shopper, 3 elements.', 'Pool Bookshop, 2 lanes, 17 elements.',
+    'Lane Sales of Bookshop, 12 elements.', 'Lane Warehouse of Bookshop, 5 elements.', 'Pool Payment provider, a black box; message to Take payment (Payment result).'], 'a message flow leaving a pool said with its pool');
   assert.ok(said.includes('Service task Take payment, in Sales; then Paid?; message to Payment provider (Charge request).'));
   assert.ok(said.includes('Timer boundary event No answer in 2 minutes, on Take payment; then exclusive gateway.'), 'a boundary event after its activity, with its flow');
   assert.equal(said.at(-1), 'Group Dispatch: Courier\'s pickup at 16:00, Hand parcel to courier, Shipping notice sent.');
@@ -352,7 +352,10 @@ test('add: into the lane, pool or sub-process selected; a lane into a pool, nest
   assert.deepEqual(bzAdd(EX, V(EX), E('Boundary', 'BoundaryEvent'), '', { sel: ['paid'] }), { error: 'Select an activity to attach a boundary event to' });
   assert.equal(bzAdd(EX, V(EX), E('Data object', 'DataObject'), 'Invoice', { sel: ['bp-sales'] })[0].element.parent, 'bp-bookshop', 'data in the pool, not the lane');
   assert.equal(bzAdd(EX, V(EX), E('Text annotation', 'TextAnnotation'), 'Why', { sel: ['bp-sales'] })[0].element.parent, undefined);
-  assert.equal(bzAdd(EX, V(EX), E('Task', 'Task'), 'Count', { sel: ['pick-pack'] })[0].element.parent, 'pick-pack', 'into the sub-process selected');
+  // audit 4: a collapsed sub-process selected: beside it, in its owner (else it would open here holding the new task alone)
+  assert.equal(bzAdd(EX, V(EX), E('Task', 'Task'), 'Count', { sel: ['pick-pack'] })[0].element.parent, 'bp-warehouse', 'beside the collapsed sub-process');
+  const xp = run(EX, bzKey(EX, V(EX), ['pick-pack'], 'X'));
+  assert.equal(bzAdd(xp, V(xp), E('Task', 'Task'), 'Count', { sel: ['pick-pack'] })[0].element.parent, 'pick-pack', 'into the expanded sub-process selected');
   assert.equal(bzAdd(EX, V(EX), { type: 'uml.Class' }, 'x', null), null);
   for (const [entry, sel] of [[E('Lane', 'Lane'), ['bp-warehouse']], [E('Boundary', 'BoundaryEvent', { definition: 'timer' }), ['send-invoice']], [E('Pool', 'Participant'), []], [E('Group', 'Group'), []]])
     run(EX, bzAdd(EX, V(EX), entry, 'New', { sel }));

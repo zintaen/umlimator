@@ -322,3 +322,9 @@ test('audit 3: F2 with about 10 KB of text that names nothing is refused at once
   assert.deepEqual(r, { error: 'No information item or classifier is named x:' });
   assert.ok(performance.now() - t < 2000, `${Math.round(performance.now() - t)} ms`); // before: about 25 s
 });
+
+test('audit 4: F2 reads back an element whose name has a space at either end, as drawn', () => {
+  const m = model([N('a', 'Class', 'A'), N('b', 'Class', 'B'), N('i', 'InformationItem', 'x'), N('j', 'InformationItem', 'Order ')], [F('f', 'a', 'b', ['j'])]);
+  assert.deepEqual(T.edits.rename(m, m.views[0], 'f', '«flow» Order '), [], 'unchanged: nothing');
+  assert.deepEqual(T.edits.rename(m, m.views[0], 'f', '«flow» x, Order'), [{ op: 'set', id: 'f', path: 'props.conveyed', value: ['i', 'j'] }]);
+});

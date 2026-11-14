@@ -87,7 +87,7 @@ try {
     check(`${tag}: the boundary event a circle on take-payment's border`, (() => { const c = B.get('payment-timeout'), t = B.get('bp-take-payment'), cx = c.x + c.w / 2, cy = c.y + c.h / 2;
       return d === 'right' ? Math.abs(cy - (t.y + t.h)) < 1 : Math.abs(cx - (t.x + t.w)) < 1; })());
     check(`${tag}: names a screen reader reads`, pick('.node[data-id="payment-timeout"]').getAttribute('aria-label') === 'Timer boundary event No answer in 2 minutes, on Take payment'
-      && pick('.node[data-id="bp-bookshop"]').getAttribute('aria-label') === 'Pool Bookshop, 2 lanes, 16 elements' && pick('.node[data-id="paid"]').getAttribute('aria-label') === 'Exclusive gateway Paid?, in Sales'
+      && pick('.node[data-id="bp-bookshop"]').getAttribute('aria-label') === 'Pool Bookshop, 2 lanes, 17 elements' && pick('.node[data-id="paid"]').getAttribute('aria-label') === 'Exclusive gateway Paid?, in Sales'
       && pick('.edge-g[data-from="bp-take-payment"][data-to="bp-payment-provider"] title').textContent === 'Message flow from Take payment to Payment provider, named Charge request');
     const keys = all('.keys .um-key').map(k => k.dataset.node || k.dataset.edge), order = layout(dir(d), VID).order;
     check(`${tag}: a key for every element and line, in reading order`, keys.length === order.length && same(all('.keys .node-key').map(k => k.dataset.node), order.filter(id => !keys.includes(id) ? false : all('.keys .node-key').some(k => k.dataset.node === id))), [keys.length, order.length]);
