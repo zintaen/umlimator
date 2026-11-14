@@ -246,14 +246,16 @@ As built (4a.3, 14 Nov 2026). The words, for the maintainer to approve:
   and the legal line. The page carries no legal line of its own: `legal` is "Google Cloud and the Google Cloud logo are
   trademarks of Google LLC.", Google's usual trademark attribution, which the maintainer confirms or replaces with the
   words of the answer of 13 Nov 2026 (one edit of `text`, `legal` and `terms.sha256`). Label `2026-11-14`.
-- **Not yet pinned.** Each zip's `sha256` (and Google's `bytes`, which its server does not give without a download) and
-  Azure's `memberSha256` are `null`: a pin needs the zips themselves, and downloading them is the yes this note keeps for
-  a person who has read the terms, so the lead did not. `pack fetch` refuses a row with no pin ("not pinned in this
-  release"). The maintainer pins: reads the terms on each page, downloads the zips there, and records `bytes` (`wc -c`),
-  `sha256` (`shasum -a 256`) and, for Azure, `unzip -p <zip> '*Microsoft_Terms_of_Use.pdf' | shasum -a 256`; then
-  `UMLIMATOR_ICON_CACHE=$(mktemp -d) python3 umlimator.py pack fetch gcp` (and `azure`) checks the pins, lists duplicate
-  ids, and the examples' ids are checked with `check`'s nearest ids. Whether Azure's zip holds an Entra ID icon (decision
-  7) is read at that pin.
+- **Pinned (14 Nov 2026).** Each zip downloaded once from the address above and recorded by `wc -c` and
+  `shasum -a 256`; the terms on both pages re-read and unchanged. Google `core-products-icons.zip`: 318,678 bytes,
+  `6531a10f…1eece`; `category-icons.zip`: 795,968 bytes, `e5bc3abd…45002`. Azure `Azure_Public_Service_Icons_V25.zip`
+  (still the page's link): 1,045,239 bytes, `f293d992…351339`; its `Microsoft_Terms_of_Use.pdf`, `983e83ce…0531c`. A real
+  `pack fetch` of each into a scratch cache checks the pins: Google 45 icons (19 products, 26 category icons), Azure 643
+  ids, 61 filed more than once (two of them, `Load-Balancer-Hub` and `Workspaces`, differ: the first is kept). What the
+  examples' ids found: Azure's `Service-Bus` is `Azure-Service-Bus` in V25 (an alias row); decision 7's three ids are
+  there; V25 has no plain Entra ID icon (`Entra-*` services only), so `entra` stays as it is. Google's zips carry no
+  `Cloud-DNS`, `Cloud-Load-Balancing`, `Cloud-CDN` or `Pub-Sub` icon, so those cards draw a glyph until Google ships one
+  (`check` names the nearest ids).
 - **Departures.** The patterns take an optional top folder (`(?:[^/]+/)?`; Azure's zip files its icons under
   `Azure_Public_Service_Icons/Icons/…`), still anchored and with no nested repetition. A duplicate id whose files differ is
   named by `pack fetch` and the first kept, not an error that blocks a user's fetch; the pin's review adds the alias row.

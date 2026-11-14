@@ -60,6 +60,9 @@ Layout limits, with port repair and rerouting off (`repair: false`, `reroute: fa
 A picture made where no pack was fetched, or with `UMLIMATOR_NO_PACKS=1` (every page and still this project publishes),
 carries glyphs and full names only.
 
+The pin (0.26.0): Microsoft's `Azure_Public_Service_Icons_V25.zip`, 643 ids, its `Microsoft_Terms_of_Use.pdf` checked by
+its own hash. `Service-Bus` is an alias of V25's `Azure-Service-Bus`.
+
 ## Accessibility
 
 Every piece has a name: "Service Shop API, App Services"; "Region West Europe, holding 4 elements"; a card drawn

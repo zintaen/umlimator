@@ -5,13 +5,13 @@
     "zips": [
       {
         "url": "https://services.google.com/fh/files/misc/core-products-icons.zip",
-        "bytes": null,
-        "sha256": null
+        "bytes": 318678,
+        "sha256": "6531a10f58bc599c24d9a455d81dd757c1a03c3c43da9cddf639b859c1c1eece"
       },
       {
         "url": "https://services.google.com/fh/files/misc/category-icons.zip",
-        "bytes": null,
-        "sha256": null
+        "bytes": 795968,
+        "sha256": "e5bc3abd3527dc2500e9bff7f15870783e2c764129c49b7cd4c1b4e105345002"
       }
     ],
     "icons": "(?:[^/]+/)?(?:Unique|Category) Icons/([^/]+)/SVG/[^/]+\\.svg",
@@ -32,7 +32,7 @@
       {
         "url": "https://arch-center.azureedge.net/icons/Azure_Public_Service_Icons_V25.zip",
         "bytes": 1045239,
-        "sha256": null
+        "sha256": "f293d99252b3638557dd08ccbff9f2529083473d39b373fb2af29a7200351339"
       }
     ],
     "icons": "(?:[^/]+/)?Icons/[^/]+/\\d+-icon-service-([^/]+)\\.svg",
@@ -42,10 +42,12 @@
       "text": "Microsoft permits the use of these icons in architectural diagrams, training materials, or documentation. You can copy, distribute, and display the icons only for the permitted use unless granted explicit permission by Microsoft. Microsoft reserves all other rights.",
       "sha256": "b5b99c7c55dbbfb75764ac620d0493042c2d19aa21acb7f444482efdeef8e765",
       "member": "Microsoft_Terms_of_Use.pdf",
-      "memberSha256": null
+      "memberSha256": "983e83cef1a8f85164760b076a96df54cb50af345861cb1d8344040037d0531c"
     },
     "names": {},
-    "aliases": {}
+    "aliases": {
+      "Service-Bus": "Azure-Service-Bus"
+    }
   },
   "aws": {
     "vendor": "Amazon Web Services",
