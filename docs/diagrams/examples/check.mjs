@@ -21,10 +21,6 @@ import '../../../src/uml/deployment.js'; // registers uml.deployment
 import '../../../src/uml/composite.js'; // registers uml.composite-structure
 import '../../../src/uml/profile.js'; // registers uml.profile
 import '../../../src/uml/timing.js'; // registers uml.timing
-import '../../../src/sysml/requirement.js'; // registers sysml.requirement
-import '../../../src/sysml/blocks.js'; // registers sysml.block-definition
-import '../../../src/sysml/internal.js'; // registers sysml.internal-block
-import '../../../src/sysml/parametric.js'; // registers sysml.parametric
 
 const DIAGRAMS = ['uml.class', 'uml.object', 'uml.package', 'uml.composite-structure', 'uml.component', 'uml.deployment', 'uml.profile',
   'uml.use-case', 'uml.activity', 'uml.state-machine', 'uml.sequence', 'uml.communication', 'uml.interaction-overview', 'uml.timing',

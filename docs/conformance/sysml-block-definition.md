@@ -108,4 +108,5 @@ generalizations); `tests/cli.py`; `tests/mcp.py`; `tests/ebike-atlas.test.mjs`.
 
 **Gaps:** clause numbers inside clauses 8 to 10 were not quoted from SysML v1.7's PDF in this build (the file could not be
 read here); whether SysML lets an interface block hold value and reference properties is not settled; the type draws
-every model line between its blocks unless the view lists its `edges`.
+every model line between its blocks unless the view lists its `edges`; deleting a constraint block leaves the constraint
+properties it typed failing `constraint-type` (an error on a type naming nothing), `risks.md` M15.

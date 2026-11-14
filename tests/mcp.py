@@ -298,11 +298,12 @@ for f, view, refs, first, cards, boxes in (("order-objects", "snapshot", ["order
                                           ("order-information-flow", "order-flows", ["shopper", "order-info"], "What travels with an order: an information flow diagram of 10 elements and 8 lines.", 10, 0),
                                           ("bookshop-c4", "c4-context", ["c4-shopper", "c4-bookshop"], "Bookshop: system context: a C4 system context diagram of 6 elements and 6 relationships.", 6, 0),
                                           # C10 for milestone 3 (M3.7): SysML's four e-bike models; each view's frame is its one box, an
-                                          # internal block or parametric view's parts' ports and parameters are cards
+                                          # internal block or parametric view's parts' ports and parameters are cards; a part or a
+                                          # constraint property is a member, which highlight takes as a Ref (a member's id is no card's)
                                           ("ebike-requirements", "requirements", ["spec", "assist"], "E-bike requirements: a requirement diagram (req [Model] E-bike: requirements [E-bike requirements]) of 16 elements and 15 lines.", 16, 1),
                                           ("ebike-blocks", "blocks", ["ebike", "battery"], "E-bike blocks: a block definition diagram of 12 elements and 5 lines.", 12, 1),
-                                          ("ebike-structure", "inside-ebike", ["ebike.battery", "ebike.controller"], "Inside the e-bike: an internal block diagram of 24 elements and 6 lines.", 23, 1),
-                                          ("ebike-range", "range-analysis", ["ebike.eco", "ebike.ecoRange"], "E-bike range: a parametric diagram of 19 elements and 8 lines.", 18, 1)):
+                                          ("ebike-structure", "inside-ebike", [{"type": "node", "id": "ebike.battery"}, {"type": "node", "id": "ebike.controller"}], "Inside the e-bike: an internal block diagram of 24 elements and 6 lines.", 23, 1),
+                                          ("ebike-range", "range-analysis", [{"type": "node", "id": "ebike.eco"}, {"type": "node", "id": "ebike.ecoRange"}], "E-bike range: a parametric diagram of 19 elements and 8 lines.", 18, 1)):
     m = json.loads((ROOT / "examples" / f"{f}.json").read_text(encoding="utf-8"))
     srv = subprocess.Popen([sys.executable, str(ROOT / "umlimator.py"), "mcp", str(ROOT / "examples" / f"{f}.json"), "--port", "0"], stdin=subprocess.PIPE,
                            stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
@@ -327,7 +328,7 @@ for f, view, refs, first, cards, boxes in (("order-objects", "snapshot", ["order
         until(lambda: state()["pages"][0].get("state"))  # the page's event stream is connected, so the tool waits for it to show
         # the page reports its state before its event stream is counted as connected: ask again until the server counts it
         said = until(lambda: (lambda r: None if r.startswith("No page is connected") else r)(tool("highlight", refs=refs, view=view))) or "No page is connected"
-        got = until(lambda: (lambda s: s if s and "mcp" in s["overlays"] and s["lit"] == sorted(refs) else None)(chrome.eval(sid, LOOK)))
+        got = until(lambda: (lambda s: s if s and "mcp" in s["overlays"] and s["lit"] == sorted(r["id"] if isinstance(r, dict) else r for r in refs) else None)(chrome.eval(sid, LOOK)))
         ok(f"C10 · {f}: highlight is shown on the diagram, the rest dimmed, and the tool says so once it is", said.startswith(f"Shown on 1 page at {url}, on view {view}")
            and got and got["dimmed"] == cards - len(refs), (said, got))
     finally:
