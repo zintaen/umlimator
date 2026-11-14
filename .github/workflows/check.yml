@@ -93,13 +93,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5  # the oldest Python the README and map-repo name: the CLI's files must parse there (3.12's f-strings do not)
-        id: py39
-        with:
-          python-version: "3.9"
-
-      - name: The CLI parses on Python 3.9, the oldest the README and the map-repo skill name
-        run: ${{ steps.py39.outputs.python-path }} -m py_compile umlimator*.py plugins/umlimator/skills/map-repo/scripts/*.py
+      - name: The CLI parses on Python 3.9, the oldest the README and the map-repo skill name (3.12's f-strings do not; setup-python has no 3.9 for this runner, so its image)
+        run: docker run --rm -v "$PWD:/w" -w /w python:3.9-slim sh -c 'python -m py_compile umlimator*.py plugins/umlimator/skills/map-repo/scripts/*.py'
 
       - uses: actions/setup-python@v5
         with:
