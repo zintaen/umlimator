@@ -243,3 +243,53 @@ test('a level made in one transaction (addView, add, set opensView) undoes and r
   assert.equal(JSON.stringify(h.undo()), before);
   assert.equal(JSON.stringify(h.redo()), after);
 });
+
+// A deep parent chain (milestone 4a §2.4, work package 4a.2): delete takes what an element owns with a stack, not
+// recursion, and takes the gone out of each list in one pass, so 20,000 levels delete and a flat root does not go
+// quadratic. A topic here is a plain package: the core is what is tested
+const topics = (n, parentOf) => ({ schemaVersion: 2,
+  nodes: Array.from({ length: n }, (_, i) => ({ id: 't' + i, type: 'uml.Package', ...(i ? { parent: 't' + parentOf(i) } : {}) })),
+  views: [{ id: 'v', diagram: 'uml.package', nodeIds: Array.from({ length: n }, (_, i) => 't' + i) }] });
+const chain = n => topics(n, i => i - 1), flat = n => topics(n, () => 0);
+
+test('delete down a parent chain 20,000 deep takes all of it, and from the middle leaves what is above (4a.2)', () => {
+  const m = run(chain(20000), { op: 'delete', id: 't0' });
+  assert.deepEqual([m.nodes, m.views[0].nodeIds], [[], []]);
+  const mid = run(chain(20000), { op: 'delete', id: 't10000' });
+  assert.deepEqual([mid.nodes.length, mid.nodes.at(-1).id, mid.views[0].nodeIds.length], [10000, 't9999', 10000]);
+  const f = run(flat(20000), { op: 'delete', id: 't0' });
+  assert.deepEqual([f.nodes, f.views[0].nodeIds], [[], []]);
+});
+
+test('delete keeps the order of what stays in a list, and an element with a duplicate id that is not the one indexed (4a.2)', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'a', type: 'uml.Package' }, { id: 'b', type: 'uml.Class', parent: 'a' }, { id: 'c', type: 'uml.Class' },
+    { id: 'd', type: 'uml.Class', parent: 'a', members: [{ id: 'd.x', type: 'uml.Property' }] }, { id: 'e', type: 'uml.Class' }, { id: 'b', type: 'uml.Class', label: 'twin' }],
+    views: [{ id: 'v', diagram: 'uml.class', nodeIds: ['a', 'b', 'c', 'd', 'e'], nodes: [{ id: 'own', type: 'uml.Class', parent: 'a' }, { id: 'keep', type: 'uml.Class' }] }] };
+  const out = run(m, { op: 'delete', id: 'a' });
+  assert.deepEqual(out.nodes, [{ id: 'c', type: 'uml.Class' }, { id: 'e', type: 'uml.Class' }, { id: 'b', type: 'uml.Class', label: 'twin' }]);
+  assert.deepEqual([out.views[0].nodes, out.views[0].nodeIds], [[{ id: 'keep', type: 'uml.Class' }], ['c', 'e']]);
+  const mem = run(m, { op: 'delete', id: 'd.x' });
+  assert.deepEqual(mem.nodes[3], { id: 'd', type: 'uml.Class', parent: 'a', members: [] });
+});
+
+test('delete of a 20,000-topic chain\'s root and of a flat 20,000-topic root under CI\'s 1 s, printed against 100 ms; a flat 100,000 under 1 s (CPU, best of five, after a warm-up) (timed)', () => {
+  const timed = f => { const c = process.cpuUsage(); f(); const u = process.cpuUsage(c); return (u.user + u.system) / 1000; };
+  const best = m => { apply(m, { op: 'delete', id: 't0' }); return Math.min(...Array.from({ length: 5 }, () => timed(() => apply(m, { op: 'delete', id: 't0' })))); };
+  const c = best(chain(20000)), f = best(flat(20000)), big = best(flat(100000)); // one splice each was 0.1 s at 20,000, tens of seconds here
+  for (const ms of [c, f, big]) assert.ok(ms < 1000, `${ms} ms`);
+  console.log(`# P1 target 100 ms: delete of a 20,000 chain ${c} ms, of a flat 20,000 root ${f} ms (a flat 100,000: ${big} ms)`);
+});
+
+// §2.4: what stays under a gone chain finds its owner once, and lines to lines cascade in one pass, whatever their order
+test('delete of a 20,000 chain under 5,000 view fragments, and of a card under 3,000 lines each to the next, listed last first, under CI\'s 1 s (CPU, best of five) (timed)', () => {
+  const timed = f => { const c = process.cpuUsage(); f(); const u = process.cpuUsage(c); return (u.user + u.system) / 1000; };
+  const best = (m, id) => Math.min(...Array.from({ length: 5 }, () => timed(() => apply(m, { op: 'delete', id }))));
+  const deep = chain(20000); deep.views[0].fragments = Array.from({ length: 5000 }, (_, i) => ({ id: `f${i}`, type: 'uml.Comment', parent: 't19999' }));
+  const lines = { schemaVersion: 2, nodes: [{ id: 'a', type: 'uml.Class' }, { id: 'b', type: 'uml.Class' }],
+    edges: Array.from({ length: 3000 }, (_, i) => ({ id: `e${2999 - i}`, type: 'uml.Dependency', from: i === 2999 ? 'a' : `e${2998 - i}`, to: 'b' })) };
+  const d = apply(deep, { op: 'delete', id: 't0' }), l = apply(lines, { op: 'delete', id: 'a' });
+  assert.deepEqual([d.nodes.length, d.views[0].fragments.length, d.views[0].fragments.some(f => 'parent' in f), l.edges], [0, 5000, false, []]);
+  const f = best(deep, 't0'), e = best(lines, 'a');
+  for (const ms of [f, e]) assert.ok(ms < 1000, `${ms} ms`);
+  console.log(`# P1 ceiling 1 s: a 20,000 chain under 5,000 fragments ${f} ms; 3,000 lines to lines in reverse ${e} ms`);
+});
