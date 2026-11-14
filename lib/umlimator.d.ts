@@ -44,7 +44,7 @@ export interface MapNode {
 /** A typed element in schema version 2's envelope (docs/diagrams/model.md §1): a node, a member, a typed edge, a
  *  fragment. Nodes, edges, members and fragments share one id space; an id never contains "->". A typed edge is an
  *  Element with `from` and `to`, which may name a member. A typed view is a MapView with `diagram` (uml.class), and may
- *  have `subject`, `direction` ('right' | 'down'), `notation`, `present`, `fragments` and `timeline`. umlimator/all draws `uml.class` (0.18.0), `uml.object` and `uml.package` (0.19.0), `uml.sequence` and `uml.communication` (0.20.0), `uml.use-case`, `uml.activity`, `uml.state-machine` and `uml.interaction-overview` (0.21.0), `uml.component`, `uml.deployment` and `uml.composite-structure` (0.22.0), `uml.profile` and `uml.timing` (0.23.0); other types draw as plain cards.
+ *  have `subject`, `direction` ('right' | 'down'), `notation`, `present`, `fragments` and `timeline`. umlimator/all draws `uml.class` (0.18.0), `uml.object` and `uml.package` (0.19.0), `uml.sequence` and `uml.communication` (0.20.0), `uml.use-case`, `uml.activity`, `uml.state-machine` and `uml.interaction-overview` (0.21.0), `uml.component`, `uml.deployment` and `uml.composite-structure` (0.22.0), `uml.profile` and `uml.timing` (0.23.0), `er`, `flowchart`, `dfd`, `uml.information-flow` and C4's six views `c4.landscape`, `c4.context`, `c4.container`, `c4.component`, `c4.dynamic` and `c4.deployment` (0.24.0); other types draw as plain cards.
  *  From 0.19.0 the class, object and package types draw a shown package that owns something the view shows as a box holding it (`parent`), and
  *  qualify names (`sales::Order`) from the nearest shown owner, the view's `subject`, or the top. */
 export interface Element {
@@ -233,6 +233,51 @@ export interface UmlTimingConstraint { id: string; type: 'uml.DurationConstraint
 export interface UmlTimeline { unit?: string; changes?: UmlTimingChange[]; constraints?: UmlTimingConstraint[] }
 /** What a timing view shows of a lifeline, in its `present`: drawn as a value lifeline. */
 export interface UmlTimingPresent { as?: 'values' }
+/** The entity-relationship diagram's vocabulary (a view with `diagram: 'er'`, umlimator/all from 0.24.0;
+ *  docs/conformance/er.md). An entity's columns are `er.Column` members, each read and printed as one row,
+ *  `name type [PK] [FK table.column] [UK] [NULL]`. A relationship runs from the referenced entity to the referring one. The
+ *  view's `notation` is `crowsfoot` (the default) or `idef1x`, a repaint on one geometry. */
+export type ErElementType = 'er.Entity' | 'uml.Comment';
+export type ErMemberType = 'er.Column';
+export type ErLineType = 'er.Relationship' | 'uml.CommentLink';
+/** A column's props; `references` names a column id (a declared reference, dropped when that column is deleted). */
+export interface ErColumnProps { dataType?: string; primaryKey?: boolean; foreignKey?: boolean; references?: string; nullable?: boolean; unique?: boolean; [key: string]: unknown }
+/** A relationship's props: identifying (solid) or not (dashed), and each end's multiplicity (1, 0..1, 1..*, 0..*). */
+export interface ErRelationshipProps { identifying?: boolean; ends?: { from?: { multiplicity?: string }; to?: { multiplicity?: string } }; [key: string]: unknown }
+/** The flowchart's vocabulary (a view with `diagram: 'flowchart'`, umlimator/all from 0.24.0; docs/conformance/flowchart.md).
+ *  A decision's exits are labelled flows; a connector with flows in and out is a junction. Laid out down by default. */
+export type FlowchartElementType = 'flow.Terminator' | 'flow.Process' | 'flow.Decision' | 'flow.InputOutput' | 'flow.PredefinedProcess' | 'flow.Document'
+  | 'flow.Database' | 'flow.ManualInput' | 'flow.Delay' | 'flow.Connector' | 'uml.Comment';
+export type FlowchartLineType = 'flow.Flow' | 'uml.CommentLink';
+/** The data flow diagram's vocabulary (a view with `diagram: 'dfd'`, umlimator/all from 0.24.0; docs/conformance/dfd.md).
+ *  A process's `opensView` names its level, a `dfd` view whose `parent` is the view the process is on; numbers are stored
+ *  and checked under their parent's. The view's `notation` is `yourdon` (the default) or `gane-sarson`, a repaint. */
+export type DfdElementType = 'dfd.Process' | 'dfd.DataStore' | 'dfd.ExternalEntity' | 'uml.Comment';
+export type DfdLineType = 'dfd.DataFlow' | 'uml.CommentLink';
+/** A process's or a store's props: its number (1, 1.2, D1). */
+export interface DfdNumberProps { number?: string; [key: string]: unknown }
+/** The information flow diagram's vocabulary (a view with `diagram: 'uml.information-flow'`, umlimator/all from 0.24.0;
+ *  docs/conformance/uml-information-flow.md). A flow is a dashed «flow» line labelled with what it conveys. */
+export type UmlInformationFlowElementType = 'uml.Class' | 'uml.Interface' | 'uml.Component' | 'uml.Actor' | 'uml.InformationItem' | 'uml.Comment';
+export type UmlInformationFlowLineType = 'uml.InformationFlow' | 'uml.CommentLink';
+/** An information flow's props: the ids of the information items or classifiers it conveys (a declared reference: a
+ *  deleted id is dropped). Its `label`, when given, is its name, drawn before what it conveys. */
+export interface UmlInformationFlowProps { conveyed?: string[]; [key: string]: unknown }
+/** C4's vocabulary (views with `diagram` one of `c4.landscape`, `c4.context`, `c4.container`, `c4.component`, `c4.dynamic`
+ *  and `c4.deployment`, umlimator/all from 0.24.0; docs/conformance/c4.md). Ownership is `parent`: a container's is a software
+ *  system, a component's a container, a deployment node's a deployment node or none, an instance's a deployment node. A
+ *  view's `subject` is drawn as a boundary when `nodeIds` lists it; a dynamic view's `edges` are relationship ids, each once,
+ *  in time order, numbered when drawn. A relationship whose end a view does not show is drawn between the nearest shown
+ *  owners (an implied line, never stored or edited). */
+export type C4ViewType = 'c4.landscape' | 'c4.context' | 'c4.container' | 'c4.component' | 'c4.dynamic' | 'c4.deployment';
+export type C4ElementType = 'c4.Person' | 'c4.SoftwareSystem' | 'c4.Container' | 'c4.Component' | 'c4.DeploymentNode' | 'c4.ContainerInstance' | 'uml.Comment';
+export type C4LineType = 'c4.Relationship' | 'uml.CommentLink';
+/** A C4 element's props; `shape` names one of the map's card shapes (a person is `person` and every other element `box`
+ *  without it); an instance's `container` is a declared reference (deleting the container deletes its instances). */
+export interface C4ElementProps { description?: string; technology?: string; external?: boolean;
+  shape?: 'person' | 'robot' | 'browser' | 'window' | 'terminal' | 'mobile' | 'cylinder' | 'pipe' | 'folder' | 'document' | 'hexagon' | 'box'; container?: string; [key: string]: unknown }
+/** A C4 relationship's props: its technology (its `label` is its description). */
+export interface C4RelationshipProps { technology?: string; [key: string]: unknown }
 /** What a line means, drawn as its colour: calls (the default), feeds (hands work on), triggers (suggests, offers, fires),
  *  state (reads or writes a file, board or config: a thinner line, a muted label, no flow) and guard (a hook steps in).
  *  Colours are --um-w-<kind>. An edge's `style` (emphasis, dashed, security) wins over its kind's colour. */
@@ -550,7 +595,9 @@ export type Command =
   | { op: 'move'; id: string; view: string; index: number; owner?: never }
   | { op: 'hide'; id: string; view: string }
   | { op: 'delete'; id: string }
-  | { op: 'reparent'; id: string; parent: string | null };
+  | { op: 'reparent'; id: string; parent: string | null }
+  /** 0.24.0: a view added to `views` (at `index`, else last); refused when its id is taken. No command deletes a view. */
+  | { op: 'addView'; view: MapView; index?: number };
 /** The model after a transaction: one command, or a list run in order, on a copy (0.17.0). A command that cannot run
  *  throws, and none of the transaction is applied. `delete` takes with it the element's members, what it owns, the lines
  *  to them and every place that names them (references()); one already gone in the same transaction is passed over.
