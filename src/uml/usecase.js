@@ -4,7 +4,7 @@ import { SHAPE, r2 } from '../draw/shapes.js';
 import { labelW } from '../layout/layered.js';
 import { layoutTyped } from '../typed/layout.js';
 import './class.js'; // SHAPE.note, a comment's look
-import { ownersOn, placeTabs } from './owners.js';
+import { ownersOn, placeTabs, readingOrder } from './owners.js';
 
 /* ---------- the use case diagram, uml.use-case (work package 4.4, notes/stage-4.md §8) ----------
    Actors (a stick figure), use cases (an ellipse, its extension points in a compartment under the name) and subjects: a
@@ -135,9 +135,9 @@ function ucLineName(model, e, pic) {
 }
 // reading order (§14): actors, then each subject (or package) and what it holds, then the rest, then the lines
 function ucOrder(pic, lines) {
-  const top = pic.holds(null), at = id => pic.at.get(id).type, out = [], put = id => { out.push(id); if (pic.open.has(id)) pic.holds(id).forEach(put); };
-  [...top.filter(id => at(id) === 'uml.Actor'), ...top.filter(id => at(id) === 'uml.Subject' || at(id) === 'uml.Package'), ...top.filter(id => !['uml.Actor', 'uml.Subject', 'uml.Package'].includes(at(id)))].forEach(put);
-  return [...out, ...lines.map(e => e.id)];
+  const top = pic.holds(null), at = id => pic.at.get(id).type; // readingOrder's stack: packages nested to any depth
+  const first = [...top.filter(id => at(id) === 'uml.Actor'), ...top.filter(id => at(id) === 'uml.Subject' || at(id) === 'uml.Package'), ...top.filter(id => !['uml.Actor', 'uml.Subject', 'uml.Package'].includes(at(id)))];
+  return [...readingOrder({ ...pic, holds: o => (o == null ? first : pic.holds(o)) }), ...lines.map(e => e.id)];
 }
 
 /* ---- the legend: each line kind drawn. ponytail: copies class.js's legendItem and ends, which it does not export ---- */
