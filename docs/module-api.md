@@ -4541,3 +4541,69 @@ draw as they did (`bench/expected.json` is unchanged). What changes for callers:
 - **Size:** `lib/umlimator.js`, what a map host loads, is 189.0 kB (189,017 B) with `gzip -9`, 14.59% over 0.16.0's
   164,954 B, about 680 B under the 15% cap (189,697 B), up 1,126 B from 0.29.0 (#309 and #305).
   `lib/umlimator-all.js` is 599.8 kB (599,775 B); the npm package is 864.4 kB.
+
+## 0.31.0: fixes from the fourth audit
+
+The fourth audit confirmed 37 findings. All are fixed in this release, in five pull requests (#311 to #315), each with
+a test that fails without its fix. Maps draw as they did (`bench/expected.json` is unchanged). What changes for callers:
+
+- **Core (#314).** `check()` names a card or box with no label by its id (`label ?? id`; an empty label stays empty),
+  so a crossing reads "edges a→c and b→d cross", not "undefined". `rules()` removes repeats by drawn line, not by
+  message text, so two broken lines to two cards that share a label are both reported. The details panel escapes an
+  icon's `src`. `reach()`, `paths()`, `critical()` and `whatIf()` on a typed view walk the lines as drawn, so a line
+  that ends on a member or a port counts, between the cards it is drawn on; the drawn ids (`ebike.battery`) are
+  accepted as well as the view's. `validate()` on a map view: a box whose id is one of the view's cards is an error (a
+  box sharing the id of a card not in the view, as clinic's drill-down boxes do, is still allowed); new warnings for a
+  card listed twice in `nodeIds` ("drawn twice"), a card in two boxes where neither holds the other ("they overlap") and
+  a box with no cards in it or in any box inside it ("it is not drawn, nor its lines"). A typed geometry laid out down
+  carries `down: true`; the canvas reads it, so Alt+arrows move a card the way it looks on a view laid out down
+  (a flowchart with no direction too), and a card dropped on its own place, or nudged a few px, no longer jumps 50 to
+  130 px. The flowchart's `moveTo` hook only refuses a dragged flow; the canvas places nodes. On a typed view the live
+  region announces a selected node, box-like piece or line by its accessible name, not its internal id, and the panel
+  and Find call an element by its type's word (`wordOf`, now exported from `src/page/print.js`), not "Script"; a typed
+  element's panel shows no INTERNAL badge and no When/What/How tabs, and Find also searches by type. `<umlimator-map>`
+  and the docs blocks load `umlimator-all.js` from their own folder for a model with `schemaVersion: 2`, only then, so
+  they draw diagram types; README's MkDocs copy list adds that file.
+- **UML types (#312).** Composite structure: a part or port row reads its name up to the first lone `:`, so a type may
+  be qualified (`repo : data::Repository [1]` round-trips) and `T[]` stays the type; a subject's operation and
+  attribute rows print and edit as the class type's. `import-ends` accepts a package or a profile at either end of an
+  import or merge. The PDF's Elements table lists no member rows for a package view, and an object view prints a
+  classifier's members as the class type does. Use case, activity, state machine and interaction overview views draw,
+  key and count a line listed twice in `view.edges` once. A state machine's `describe()` headline counts transitions
+  only; comment links are still read in the body.
+- **Milestone 2, BPMN and SysML types (#313).** A DFD node typed by an `Object.prototype` name (`constructor`,
+  `__proto__`, …) is drawn as a plain classifier and `validate()` reports it, never throws. C4: D on a system or
+  container that already opens a view returns `{ error: '<name> opens "<view>" already: Enter opens it' }`; a dynamic
+  view's `describe()` names its comment links. Information flow: F2 renames a flow conveying an element whose name has
+  a leading or trailing space. ER: a column token that is a flag word (`PK`, `FK`, `UK`, `NULL`) is printed quoted, so
+  the row reads back. BPMN: N with a collapsed sub-process selected adds the new element beside it, in its owner (inside
+  only when this view draws it expanded); lane and pool names count the items drawn in them (`laneOf`), so the example's
+  pool reads "Pool Bookshop, 2 lanes, 17 elements" (was 16) and its lanes "Sales 12" and "Warehouse 5". SysML: a
+  requirement or block definition frame whose id holds `$` keeps its title; the parametric hint line's word swaps leave
+  the user's element names as written. `docs/editing.md`: Delete or Shift + Delete on a requirement containment line
+  reparents the child to its owner's owner.
+- **Readers and the Python importer (#311).** The Python Mermaid flowchart importer no longer hangs on a label that
+  opens a quote it never closes after an earlier `]` (`A[x] --> B["y`); the line is said `not imported`. The class
+  reader reads a `$` or `*` straight after `)` as static or abstract, as Mermaid does (`+draw(int x)$ bool`).
+- **CLI, the diff Action and MCP (#315).** `stills` keys a typed view on the whole model's cards and lines, so a
+  changed connector to a part's port redraws it (any edit to a model now redraws its typed views; map views keep the
+  narrower key), and keys a card's icon-pack entries, so fetching a pack redraws a cloud view. The diff Action's summary
+  escapes labels (`List<Order>`, `*all*` read as written). `--out` in a folder not there yet creates it for every
+  writer (import, timelapse, trace, export, pdf). `timelapse` draws a fetched pack's icons. `record` plays a step
+  duration the page only warns about as the page does (`Math.max(500, +duration || 4000)`), never a traceback.
+  `import` of a missing file or a folder says `import: no file at <path>`. `stills` and `record` refuse `--scale` 0,
+  negative or nan as a usage error. The MCP test `mcp-latest-command#3` no longer flakes.
+- **Docs (this release).** `docs/diagrams/notes/stage-6.md` and `docs/conformance/uml-profile.md` no longer list a
+  profile's own import as left out.
+- **Known gaps.** Still open from 0.30.0: a box has no Tab stop; the keyboard reaches it through the outline. A
+  double-click (or Enter) on a box does not open its view (the 0.24.0 gap). Deep nesting is super-linear outside the
+  core: a class view 3,000 deep takes about 2 s and a component view about 1.5 s, BPMN 3,000 deep 1.5 to 2 s. A
+  composite structure or SysML internal block view's Lines rows name a part by its id (`order-service.checkout`), not
+  its drawn name. The JavaScript Mermaid readers still decode `#55296;` to a lone surrogate (the CLI writes it as
+  U+FFFD). The requirement layout leaves out a link into a box nested more than 64 deep from its ranking. New: typed
+  hooks that answer Alt+arrows themselves (activity, C4 dynamic and others) were not checked on views laid out down.
+  `reach()` from a model id that the view draws under another id (`battery` drawn as `ebike.battery`) returns only
+  that element; the drawn id works. A negative step duration plays 500 ms while `validate()`'s warning says 4000 ms.
+- **Size:** `lib/umlimator.js`, what a map host loads, is 189.7 kB (189,673 B) with `gzip -9`, 14.99% over 0.16.0's
+  164,954 B, up 656 B from 0.30.0 (#314). It is 24 B under the 15% cap (189,697 B): the next core change has no room
+  without a cut elsewhere. `lib/umlimator-all.js` is 600.6 kB (600,629 B); the npm package is 866.0 kB.

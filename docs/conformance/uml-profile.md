@@ -55,10 +55,11 @@ was not checked in this package.
 ## Left out
 
 `notes/stage-6.md` §15: stereotype icons and custom shapes; stereotypes shown in a comment symbol; a profile's metamodel
-references and imports; ProfileApplication's `isStrict`; constraints owned by stereotypes (OCL); stereotype operations;
-a tag's list value; a tag whose type is a metaclass (its value passes as any text); a stereotype's associations; nested
-profiles; `sysml.` types checked against metaclasses (milestone 3); tags drawn on other types' views; XMI profiles. And,
-for both stage 6 types, copy and paste, per-type `diff()` writers and a reader.
+references (its own import is not flagged since 0.31.0); ProfileApplication's `isStrict`; constraints owned by
+stereotypes (OCL); stereotype operations; a tag's list value; a tag whose type is a metaclass (its value passes as any
+text); a stereotype's associations; nested profiles; `sysml.` types checked against metaclasses (milestone 3); tags
+drawn on other types' views; XMI profiles. And, for both stage 6 types, copy and paste, per-type `diff()` writers and a
+reader.
 
 Layout limits, measured on `examples/bookshop-profile.json` and `tests/profile-stress.json`:
 
