@@ -178,7 +178,7 @@ drill-down, a data pipeline, an AI agent's skills, and host pages for embedding,
 npm install umlimator
 ```
 
-Or from GitHub, at a tag or any commit: `"umlimator": "github:zintaen/umlimator#v0.27.0"`. npm 12 refuses git
+Or from GitHub, at a tag or any commit: `"umlimator": "github:zintaen/umlimator#v0.28.0"`. npm 12 refuses git
 dependencies unless the project opts in, so that also needs `allow-git=root` in the `.npmrc` next to `package.json`.
 
 ## Embed
@@ -571,7 +571,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: zintaen/umlimator@v0.27.0
+      - uses: zintaen/umlimator@v0.28.0
         with:
           models: "docs/*.json"   # optional: where the models are (default: every .json that is a map model)
 ```

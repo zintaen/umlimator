@@ -4339,3 +4339,65 @@ CLI and the adapter; the core is unchanged.
 - **At release:** `lib/umlimator.js` is 186.2 kB (186,174 B) with `gzip -9`, 12.86% over 0.16.0 (the budget is 15%);
   `lib/umlimator-all.js`, with milestones 3, 4a and 4b, is 590.3 kB (590,335 B); the npm package is 852 kB. Nothing
   changed since 0.26.0 but this section and the version: 0.26.0 already carried BPMN, provisional.
+
+
+## 0.28.0: fixes from the first audit of all 28 types
+
+The first audit of all 28 diagram types confirmed 61 findings. Sixty are fixed in this release, in five pull requests,
+each with a test that fails without its fix; the 61st, the 0.27.0 section's size of `lib/umlimator-all.js`, was
+corrected in 0.27.0 (#291). Maps draw as they did (`bench/expected.json` is unchanged). What changes for callers:
+
+- **Core (#293).** `update()` now redraws a typed view after any edit to the model: a typed view's key covers the
+  model's elements, lines and icons table, so editing an element the view draws but does not list (a qualifying
+  package, a deployed container, a lifeline's represented part, an icon entry) redraws it. This lifts the limit the
+  0.26.0 section states, "an `update()` that changes only the `icons` table keeps the view's picture". Any edit now
+  drops the cached layout of every typed view; only the view on screen is drawn again, the others when opened.
+  `layout()` and `render()` no longer throw on a view with boxes whose line ends on a listed id that is no card
+  (`blockPos` leaves the line out, as a view without boxes did). `validate()` reports a `views[i].nodeIds` that is not
+  a list as an error and warns on a `containers`, `intake` or `nodes[i].verbs` that is not a list, which are then
+  ignored. An icon's `src` and an author's avatar are escaped in `href` and `<img src>`; a cut label never splits a
+  surrogate pair. Class, object and package views now have keyboard rings: Tab reaches every card and the arrow keys
+  move between them, as in the other typed views. `aria-pressed` is set only on button cards and rings, never on a
+  `role="img"` card. The page's Find button is named "Find a node or view (⌘K)".
+- **UML types (#294).** A typed view's PDF Elements and Lines tables name each element as drawn (`sales::Order`,
+  `ada : Customer`, a lifeline `api : ShopApi`), so the pinned table hashes of `sales-classes.json` and
+  `order-objects.json` change. A stereotype that specializes one a plain package owns no longer throws; the component
+  PDF lists an assembly to another component's port; a lifeline listed twice in `nodeIds` is drawn once in sequence and
+  timing views; state machine `validate()` and its Owner field no longer throw on a member with no string id or a
+  parent that names no element; a timing constraint of an unknown kind gets `constraint-ends`, and three changes at one
+  instant give one warning naming them all; sequence wrap picks a fragment id whose operand ids are free. Generalization
+  chains, include chains, nested packages and communication rankings 20,000 deep no longer overflow the stack.
+- **C4, ER, information flow, SysML, mindmap and BPMN (#292).** ER: an entity's accessible name now holds its rows in
+  full, so every entity's `aria-label` changes; a column name holding whitespace, a quote or a bracket is printed in
+  double quotes, with `"` and `\` escaped, and read back unescaped; a row's FK token that is the column's current
+  `references` id keeps that reference. C4: a dynamic view with an element C4 has no word for lays out; `D` no longer builds a
+  container view that fails `c4-level` when it reaches both a system and one of its containers; `c4-relationship` fires on a relationship with a
+  non-C4 end; an inline step with no id is reported "step at edges[k]". Information flow: a name holding `$'` or `$&`
+  draws. SysML: `requirement-typing` skips a name that also labels a block, value type, class or data type. Mindmap:
+  topics in a parent cycle get the depth they are drawn at. BPMN: deleting a lane keeps its nested lanes in its place.
+- **CLI, MCP, the diff Action and map-repo (#295).** `render`, `check`, `pack` and the MCP page parse on Python 3.9 to
+  3.11 again (0.26.0 and 0.27.0 raise a SyntaxError there); CI compiles every `umlimator*.py` and map-repo's scripts on
+  Python 3.9. Stills and key files are named `urllib.parse.quote(view id)`, so an id holding `/` stays inside `--out`
+  (`a/b` is written `a%2Fb.svg`; ids of letters, digits, `-`, `_`, `.` and `~` keep their names). `check --ignore`
+  counts each message under one kind; `diff --base` works from a subfolder and with a relative `--out`, and goes on past
+  a file it cannot read; the diff Action's comment keeps a label's newlines and backticks inside their line; an MCP
+  argument of the wrong JSON type is a tool error naming its schema; `timelapse --limit` refuses a value below 1.
+  map-repo's SKILL.md no longer names `pack`, which its pinned v0.21.0 CLI lacks; it is re-pinned to this release, with
+  the pack line back, after the tag.
+- **AWS in the schema, types, README, gallery and atlas (#295).** The JSON Schema and `lib/umlimator.d.ts` gain AWS
+  (`AwsElementType`, `AwsLineType`, AWS's group kinds). The mindmap example `bookshop-opening-plan.json` gains the topic
+  `mm-on-aws` ("On AWS") under Hosting, 22 topics, which the Bookshop atlas links to `aws-on-aws`; the atlas holds 39
+  views. The gallery gains AWS and e-bike atlas cards.
+- **Readers, writers and the Python importer (#296).** The Python importer refuses Structurizr DSL, C4-PlantUML and
+  Mermaid text over 1 MiB, saying why, and caps a flowchart's `&` links at 100,000 with one report line; repeated ids are
+  linear; odd but parseable Kubernetes or compose JSON, a file that is not UTF-8 and a node that is not an object are
+  reported in one line, never a traceback. The Mermaid sequence reader caps fragment nesting at 64 (deeper is read as its
+  content, reported once) and its writer never throws. The class writer encodes `#`, `\`, an edge label's `«` and its
+  end spaces; the reader takes «stereotypes» before it decodes entities, so `: #lt;#lt;x#gt;#gt;` reads as the label
+  `<<x>>`. The BPMN writer reports an empty label, every `ext` key other than `bpmn` and a lane whose parent is not a
+  lane of its own pool, and writes unindented XML past 32 levels; the reader reports an extension outside a flow node and
+  an `umlimator:id` holding `->` (read with `-`). The Structurizr reader's work over shared `properties` is bounded;
+  1,500 nested groups import.
+- **Size:** `lib/umlimator.js`, what a map host loads, is 186.7 kB (186,668 B) with `gzip -9`, 13.16% over 0.16.0's
+  164,954 B (the budget is 15%), up 494 B from 0.27.0 (#293's 449 B, #294's 45 B). `lib/umlimator-all.js` is 593.3 kB
+  (593,343 B); the npm package is 855.6 kB.
