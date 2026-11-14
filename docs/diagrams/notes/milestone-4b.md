@@ -221,7 +221,9 @@ dependency.
 
 - **`runs`.** `laneBands(g, lanes, laneOf, turned, rgap, runs)`: `runs`, when given, is `{ laneId: [first, last] }`, each
   lane's rows as the type placed them; `laneBands` then skips `laneRuns`' count. The BPMN type places its own rows (S7)
-  and a box spans rows the count cannot see. Absent, as now: the activity type does not change.
+  and a box spans rows the count cannot see. Absent, as now: the activity type does not change. As built (4b.1): a lane
+  with no run takes its nested lanes' rows (a pool's band from its lanes'), and a lane with neither has no band; a run that
+  is not `[first, last]` with `0 <= first <= last` counts as none.
 - **Boxes in the rows.** When `g.families` is not empty, a box's frame counts toward the extent of its first and last
   content row, so a divider is never drawn across an expanded sub-process (Q14). The activity type has no boxes.
 - The empty row between two pools is a run of its own in `runs`, with no band; the type draws no band for it.
@@ -282,7 +284,10 @@ of one empty row, 120 px across at least (stage 4's empty lane), its name in its
   layout the activity grown by 16 px on each side that holds a boundary event, and on the copy draws the activity at its
   own size inside that box: the router keeps its lines off the whole circle, and the lines' ends already lie on the
   circle's outer side. No engine field. 4b.1's spike counts lines that cross a boundary circle (§14); the fixtures'
-  "no line through a node" covers the circles, which are on the copy's `nodes`.
+  "no line through a node" covers the circles, which are on the copy's `nodes`. As built (4b.1's spike): a box (an
+  expanded sub-process) cannot be grown on one side by its size, so the stand-in gives a box with boundary events a `pad`
+  of 28 (16 px more than stage 2's 12 on every side) and on the copy draws its frame 16 px in on each side that holds one;
+  the circle is then on the drawn frame and the contents keep 12 px of padding there.
 - **Drawn** on the copy: a 32 px circle centred on the port's box, double ring, dashed when non-interrupting
   (`cancelActivity: false`), with its definition's marker; its lines' ends slid onto its outer face; its label by S9's
   search. One with no line is placed on its side's free span by its place among its activity's boundary events, as 5.3
@@ -636,6 +641,16 @@ atlas builds, `check.mjs` passes, and the example validates with the same proble
   cross a boundary circle (with the activities grown by 16 px, §6.2). Over 100 ms on an idle machine, a flow outside its
   pool, or a line through a circle, goes to the maintainer with options before 4b.3 draws.
 
+4b.1's spike as built (`tests/bpmn-engine.test.mjs`, a test-only stand-in: cpPlace over sequence and message flows, a lane
+pass of its own keeping a block whole, runs for `laneBands`, activities grown 16 px for their circles, 60 flow nodes,
+three pools, six lanes, ten boundary events, one on an expanded sub-process, two on one task's side, ten message flows):
+0 lines through a boundary circle and 0 sequence flows outside their pool's band, right and down, with the band as
+`laneBands` gives it (so before §5.2a's 12 px growth); 32 crossings laid out right and 45 down, no other layout issue,
+with both flags off. CPU, best of five after a warm-up, ranked, laned, laid out and drawn, on a machine shared with other
+work: a full layout 66 ms; documentation 8 ms; a task renamed 87 ms; a sequence flow's name 72 ms; a flow node moved to
+another lane 84 ms; a boundary event's side 70 ms. All under the 100 ms target: nothing goes to the maintainer before
+4b.3 draws. The crossings are for 4b.5 to pin on the stress fixture.
+
 ## 15. Work packages
 
 ### 15.1 Before milestone 4b starts
@@ -780,7 +795,9 @@ Each is set out with its options and trade-offs in the section named; the recomm
   whole tree as decision 24 says, and the CLI's user gets what their own install resolves.
 - **`plan.md`.** §5's M4b row points here (done with this note); §4.3 lists `src/bpmn/`.
 - **`proposal.md`.** §3.4's BPMN row: "24 rows" is Table 2.1's, read; §8.5's BPMN subset points to §16.
-- **`notes/stage-4.md`.** §5.2's `laneBands` contract gains `runs` and boxes when 4b.1 merges.
+- **`notes/stage-4.md`.** §5.2's `laneBands` contract gains `runs` and boxes when 4b.1 merges. Written by 4b.5 (`docs/`
+  is in its Owns, not 4b.1's), with `docs/module-api.md`'s ports section gaining `portMin` beside `fromPort`, `toPort`,
+  `inner` and `portRank` in the edge geometry.
 - **`README.md` in this folder.** The status table shows this note and, once approved, its work packages; the log
   records the decisions, and the core budget split of 13 Nov 2026 (4,451 B: stage 6 400, M2 1,400, M3 500, M4a 700, M4b
   700, reserve about 750), which no document records yet (§2.3). (The lead's.)

@@ -1,0 +1,95 @@
+<!doctype html>
+<!-- Milestone 4b's engine (4b.1, notes/milestone-4b.md §5.2, §6.2, §10) in headless Chrome (tests/embed.py): a stand-in type
+     lays out two pools in bands with runs (lanes a and b, b holding an expanded sub-process across a's columns; an empty row;
+     lane c), its nodes sized in the host's font, with three boundary events as 32 px ports (two on one task's side, one on
+     the box), each activity grown 16 px for them and drawn at its own size on the copy; a message flow with the circle end and
+     a dotted association. Under three fonts, right and down: each boundary event's line starts on its circle's outer face
+     within 1 px, each circle centred on its activity's drawn border, two on one side 8 px apart; each band holds its nodes
+     and no divider crosses the box's frame; the circle end and the dotted line drawn; the view laid out clean.
+     Imports src/ to register the stand-in type. -->
+<meta charset="utf-8">
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="../lib/umlimator-theme.css">
+<title>umlimator BPMN engine test</title>
+<body style="margin:0">
+<div id="m" style="width:1180px;height:900px"></div>
+<script type="module">
+import { render } from '../src/canvas/render.js';
+import { registerDiagramType } from '../src/core/registry.js';
+import { layoutTyped } from '../src/typed/layout.js';
+import { laneBands } from '../src/layout/lanes.js';
+import { textW } from '../src/core/text.js';
+import { routeAudit, overlapIssues } from '../src/layout/audit.js';
+import '../src/typed/draw.js';
+const out = { ok: [], fail: [] };
+const check = (name, cond, info) => { document.title = name; if (cond) out.ok.push(name); else out.fail.push(name + (info === undefined ? '' : ': ' + JSON.stringify(info))); };
+const LANES = [{ id: 'P1', order: 0 }, { id: 'a', parent: 'P1', order: 0 }, { id: 'b', parent: 'P1', order: 1 }, { id: 'P2', order: 1 }, { id: 'c', parent: 'P2', order: 0 }];
+const IN = { n1: 'a', n2: 'a', n3: 'a', n4: 'b', s1: 'b', s2: 'b', n5: 'c', n6: 'c', n7: 'b' }, laneOf = id => IN[id] ?? null;
+const RUNS = { a: [0, 0], b: [1, 2], '\u0000gap': [3, 3], c: [4, 4] };
+const BE = [['be1', 'n2', 1], ['be2', 'n2', 0], ['be3', 'S', 0]]; // id, activity, its rank on the side
+// each task as wide as its name in the host's font, and 16 + 2 × 40 px along a side with two events; grown 16 px on it
+function FIX(direction) {
+  const down = direction === 'down', grown = id => BE.some(b => b[1] === id);
+  const N = (id, col, row) => { const label = id.toUpperCase() + ' review task', w = Math.max(120, Math.ceil(textW(label, 13)) + 32), h = 64;
+    return { id, label, col, row, w: w + (down && grown(id) ? 16 : 0), h: Math.max(h, grown(id) && down ? 96 : 0) + (!down && grown(id) ? 16 : 0) }; };
+  const be = ([id, on, rank], to) => ({ id: 'f' + id, from: on, to, fromPort: id, fromSide: 'bottom', portRank: rank, portMin: 32, end: { to: 'arrow' } });
+  return { direction, repair: false, reroute: false, gap: 48, rgap: 64,
+    nodes: [N('n1', 0, 0), N('n2', 1, 0), N('n3', 3, 0), N('n4', 0, 1), N('s1', 1, 1), N('s2', 2, 1), N('n7', 3, 2), N('n5', 0, 4), N('n6', 3, 4)],
+    containers: [{ id: 'S', label: 'Expanded', title: 'Expanded', nodeIds: ['s1', 's2'], pad: 28 }],
+    edges: [...[['n1', 'n2'], ['n2', 'n3'], ['n4', 'S'], ['s1', 's2']].map(([from, to], i) => ({ id: 'e' + i, from, to, end: { to: 'arrow' } })),
+      be(BE[0], 'n3'), be(BE[1], 's1'), be(BE[2], 'n7'),
+      { id: 'msg', from: 'n5', to: 'n1', end: { from: 'circle', to: 'triangle', dashed: true } }, { id: 'assoc', from: 'n6', to: 'n3', end: { to: 'open', dashed: 'dot' } }] };
+}
+const SIDE = { B: [0, -1], T: [0, 1], R: [-1, 0], L: [1, 0] };
+let geo = null;
+// the copy (the layout's g is never written): bands moved back by shift, each activity at its own size, each event a circle
+function finish(g, down) {
+  const L = laneBands(g, LANES, laneOf, down, 64, RUNS), back = b => ({ ...b, x: b.x - L.shift.x, y: b.y - L.shift.y });
+  const circles = BE.map(([id, on]) => { const e = g.edges.find(x => x.fromPort === id), [dx, dy] = SIDE[e.fs], b = e.fpb;
+    return { id, on, i: g.edges.indexOf(e), side: e.fs, cx: b.x + b.w / 2 + 16 * dx, cy: b.y + b.h / 2 + 16 * dy }; });
+  const own = n => { if (!circles.some(c => c.on === n.id)) return n; const s = circles.find(c => c.on === n.id).side, c = { ...n };
+    if (s === 'B') c.h -= 16; if (s === 'R') c.w -= 16; if (s === 'T') { c.y += 16; c.h -= 16; } if (s === 'L') { c.x += 16; c.w -= 16; } return c; };
+  const nodes = g.nodes.map(own);
+  return { ...g, nodes, byId: Object.fromEntries(nodes.map(n => [n.id, n])), families: g.families.map(own), bands: L.bands.map(back), bounds: back(L.bounds), circles };
+}
+registerDiagramType('test.bpmn-engine', {
+  layout: { pins: false, run: (D, v, { memo }) => (geo = finish(layoutTyped(FIX(v.direction), memo), v.direction === 'down')) },
+  draw: g => ({ under: g.bands.map(b => `<rect class="t-band" data-band="${b.id}" x="${b.x}" y="${b.y}" width="${b.w}" height="${b.h}" fill="none" stroke="var(--um-muted)"/>`).join(''),
+    over: g.circles.map(c => `<circle class="t-be" data-be="${c.id}" cx="${c.cx}" cy="${c.cy}" r="16" fill="var(--um-stage-bg)" stroke="var(--um-muted)"/>`).join('') }) });
+const IDS = Object.keys(IN);
+const MODEL = d => ({ schemaVersion: 2, nodes: IDS.map(id => ({ id, type: 'test.Node', label: id })), edges: [], views: [{ id: 'v', diagram: 'test.bpmn-engine', direction: d, nodeIds: IDS }] });
+const el = document.getElementById('m'), FONTS = { serif: 'serif', sans: 'sans-serif', wide: 'monospace' };
+const holds = (o, r, m = .5) => r.x >= o.x - m && r.y >= o.y - m && r.x + r.width <= o.x + o.width + m && r.y + r.height <= o.y + o.height + m;
+const meets = (p, q) => p.x < q.x + q.width && q.x < p.x + p.width && p.y < q.y + q.height && q.y < p.y + p.height;
+try {
+  const widths = {};
+  for (const [fname, family] of Object.entries(FONTS)) for (const d of ['right', 'down']) {
+    el.style.setProperty('--um-sans', family); el.innerHTML = '';
+    const h = render(el, MODEL(d), { view: 'v' }), sr = el.querySelector('.umlimator').shadowRoot, tag = `${fname}, ${d}`, g = geo;
+    widths[fname] = g.byId.n1.w;
+    const path = i => sr.querySelector(`.edge-g[data-i="${i}"] path.edge`), bad = [];
+    g.circles.forEach(c => { const P = path(c.i), p = P.getPointAtLength(0), r = Math.hypot(p.x - c.cx, p.y - c.cy), n = g.byId[c.on] || g.families.find(f => f.id === c.on);
+      if (Math.abs(r - 16) > 1) bad.push(`${c.id}: its line starts ${r.toFixed(1)} px from its centre`);
+      const B = c.side === 'B' ? n.y + n.h : c.side === 'T' ? n.y : c.side === 'R' ? n.x + n.w : n.x;
+      if (Math.abs((c.side === 'B' || c.side === 'T' ? c.cy : c.cx) - B) > .5) bad.push(`${c.id}: off ${c.on}'s drawn border`);
+      if (!sr.querySelector(`.t-be[data-be="${c.id}"]`)) bad.push(`${c.id}: not drawn`); });
+    check(`${tag}: each boundary event's line starts on its circle's outer face within 1 px, each circle on its activity's drawn border`, !bad.length, bad);
+    const [c1, c2] = ['be2', 'be1'].map(id => g.circles.find(c => c.id === id)), v = d === 'down';
+    check(`${tag}: two boundary events on one side keep 8 px apart`, Math.abs((v ? c2.cy - c1.cy : c2.cx - c1.cx) - 40) < .01, [c1, c2]);
+    const band = id => sr.querySelector(`.t-band[data-band="${id}"]`).getBBox(), node = id => sr.querySelector(`.node[data-id="${id}"]`).getBBox(), lost = [];
+    IDS.forEach(id => { if (!holds(band(laneOf(id)), node(id))) lost.push(id); });
+    const F = g.families.find(f => f.id === 'S'), frame = { x: F.x, y: F.y, width: F.w, height: F.h };
+    check(`${tag}: each band holds its nodes; the box is in its lane, no divider crosses it; the pools apart`, !lost.length && holds(band('b'), frame) && !meets(frame, band('a')) && !meets(frame, band('c')) && !meets(band('P1'), band('P2')), { lost, frame });
+    const msg = sr.querySelector(`.edge-g[data-i="${g.edges.findIndex(e => e.id === 'msg')}"] path.edge`), dot = sr.querySelector(`.edge-g[data-i="${g.edges.findIndex(e => e.id === 'assoc')}"] path.edge`);
+    const ms = (msg.getAttribute('marker-start') || '').match(/#([^)]+)/), mk = ms && sr.getElementById(ms[1]);
+    check(`${tag}: the message flow starts with the circle end, open and filled with the stage, and ends with a hollow triangle`, !!mk && /circle/.test(ms[1]) && mk.querySelector('path').getAttribute('fill') === 'var(--um-stage-bg)' && /triangle/.test(msg.getAttribute('marker-end') || '') && msg.getAttribute('stroke-dasharray') === '6 4');
+    check(`${tag}: the association is dotted`, dot.getAttribute('stroke-dasharray') === '2 3');
+    const issues = [...overlapIssues(g, ''), ...routeAudit(g, '')];
+    check(`${tag}: laid out clean`, !issues.length, issues.slice(0, 6));
+    h.destroy();
+  }
+  check('the three fonts measure differently', new Set(Object.values(widths)).size === 3, widths);
+} catch (x) { out.fail.push('threw: ' + (x && x.stack || x)); }
+el.style.removeProperty('--um-sans');
+const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
+</script>

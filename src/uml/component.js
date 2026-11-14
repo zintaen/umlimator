@@ -340,4 +340,4 @@ const CP_TYPE = registerDiagramType('uml.component', {
     return null; },
 });
 
-export { CP_TYPE, CP_RULES, cpGeo, cpProblems, cpDescribe, cpConnect, cpMoveTo, cpAdd, cpMember, cpKey, cpRemove };
+export { CP_TYPE, CP_RULES, cpGeo, cpProblems, cpDescribe, cpConnect, cpMoveTo, cpAdd, cpMember, cpKey, cpRemove, cpRank, cpPlace };
