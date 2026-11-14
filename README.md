@@ -420,7 +420,6 @@ Milestone 2's five types (`examples/bookshop-schema.json`, `returns-flowchart.js
 | view | `edges` | a C4 dynamic view's steps: relationship ids, each once, in time order |
 | view | `diagram` | `"er"`, `"flowchart"`, `"dfd"`, `"uml.information-flow"`, `"c4.landscape"`, `"c4.context"`, `"c4.container"`, `"c4.component"`, `"c4.dynamic"`, `"c4.deployment"` |
 
-
 SysML v1.7's four types (`examples/ebike-requirements.json`, `ebike-blocks.json`, `ebike-structure.json` and
 `ebike-range.json`; each type's note in [`docs/conformance/`](docs/conformance/)), from 0.25.0:
 
@@ -433,6 +432,7 @@ SysML v1.7's four types (`examples/ebike-requirements.json`, `ebike-blocks.json`
 | node | `parent` | a requirement's owner, a requirement (drawn as a crosshair line) or a package |
 | view | `subject` | the frame's element: a package (requirement, block definition), a block (internal block, parametric) or a constraint block (parametric) |
 | view | `diagram` | `"sysml.requirement"`, `"sysml.block-definition"`, `"sysml.internal-block"`, `"sysml.parametric"` |
+
 ## Command line
 
 ```bash
