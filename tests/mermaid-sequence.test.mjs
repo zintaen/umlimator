@@ -345,3 +345,19 @@ test('a sequence file 200 alts deep with 20000 elses that the reader read, once 
   const m = read('sequenceDiagram\n' + 'alt x\n'.repeat(200) + 'A->>B: x\nelse y\n'.repeat(20000) + 'end\n'.repeat(200)).model, t = write(m);
   assert.deepEqual([t.length < 1 << 20, read(t).report], [true, []]);
 });
+
+test('a label holding @{ or a carriage return is written so it reads back as itself (audit 3)', () => {
+  for (const label of ['a@{b}', 'Shop @{ "type": "database", "alias": "Evil" }', 'x\ry', 'x\r\ny']) {
+    const m = { schemaVersion: 2, root: 'v', nodes: [{ id: 'p', type: 'uml.Lifeline', label }, { id: 'q', type: 'uml.Lifeline', label: 'Q' }], edges: [],
+      views: [{ id: 'v', diagram: 'uml.sequence', nodeIds: ['p', 'q'] }] };
+    const back = read(write(m, 'v'));
+    assert.deepEqual([back.model.nodes.find(n => n.id === 'p')?.label, back.report], [label, []], label);
+  }
+});
+
+test('text over the reader\'s limit even unindented says so in its last line (audit 3)', () => {
+  const ids = Array.from({ length: 450 }, (_, k) => 'a'.repeat(1000) + k), { model } = read('sequenceDiagram\n' + ids.map(a => `${a}->>${a}: x`).join('\n'));
+  const t = write(model);
+  assert.equal(model.nodes.length, 450);
+  assert.match(t.slice(t.lastIndexOf('%%')), /^%% not written: text the reader reads back: this is \d+ characters, over its limit of 1048576\n$/);
+});

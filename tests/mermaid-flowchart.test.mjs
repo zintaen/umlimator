@@ -286,3 +286,10 @@ test('an %% id: the statement below does not take is reported, not carried on; a
   assert.deepEqual(read('flowchart TD\nA -->|"a|b"| B').model.edges, [{ id: 'A-B', type: 'flow.Flow', from: 'A', to: 'B', label: 'a|b' }]);
   assert.equal(write({ nodes: [], edges: [], views: [{ diagram: 'flowchart', nodeIds: [] }] }), 'flowchart TD\n'); // a view with no id
 });
+
+test('a carriage return in a label is written as an entity, so it reads back as itself (audit 3)', () => {
+  for (const label of ['x\ry', 'x\r\ny']) {
+    const t = write({ schemaVersion: 2, root: 'v', nodes: [{ id: 'a', type: 'flow.Process', label }], edges: [], views: [{ id: 'v', diagram: 'flowchart', nodeIds: ['a'] }] }, 'v');
+    assert.equal(read(t).model.nodes[0].label, label);
+  }
+});

@@ -48,7 +48,8 @@ def visual_cmd(tmp, *args):
            "v, u = load('visual', sys.argv[1]), load('umlimator', sys.argv[2]); v.TEMPLATE = pathlib.Path(sys.argv[3])\n"
            "check = v.validate_map; v.validate_map = lambda d: u.not_objects(d) or check(u.upstream_view(d))\n"
            "sys.argv = [sys.argv[1]] + sys.argv[4:]; v.main()")
-    return [sys.executable, "-c", run, str(VISUAL), str(Path(__file__).resolve()), str(page), *args]
+    # -I: no folder of the caller's on sys.path, so a base64.py where it runs (a mapped repository, a pull request) never loads
+    return [sys.executable, "-I", "-c", run, str(VISUAL), str(Path(__file__).resolve()), str(page), *args]
 
 
 def not_objects(d):
@@ -249,17 +250,25 @@ def cmd_pin_icons(a):
         dark.unlink()
 
 
+def read_json(path, model=True):
+    """A JSON file as every command reads one: a BOM too; a model is an object. Else one line, exit 1."""
+    try:
+        m = json.loads(Path(path).read_text(encoding="utf-8-sig"))
+    except OSError as e:
+        sys.exit(f"cannot read {path} ({e.strerror or e})")
+    except ValueError as e:
+        sys.exit(f"{path} is not valid JSON ({e})")
+    if model and not isinstance(m, dict):
+        sys.exit(f"{path} is not a model: its JSON is not an object")
+    return m
+
+
 def page_model(model_path, out, source=None):
     """The model as rendered: with an `icons` table of every icon its nodes name (`icon`): a Lucide line icon as its
     inner markup, drawn in the card's kind colour; a brand mark as a data URI on a white tile, never recoloured.
     Returns the path of a temporary copy next to the model, so relative paths still resolve. The copy's name is its
     own (renders of one model can run at once), and the page records the model's path (or `source`) as its source."""
-    try:
-        m = json.loads(Path(model_path).read_text(encoding="utf-8-sig"))  # a BOM too, as import and export read
-    except ValueError as e:
-        sys.exit(f"{model_path} is not valid JSON ({e})")
-    if not isinstance(m, dict):
-        sys.exit(f"{model_path} is not a model: its JSON is not an object")
+    m = read_json(model_path)
     if bad := not_objects(m):  # before the engine, whose loader reads a view as an object before it checks anything
         sys.exit(f"{model_path}: " + "; ".join(bad))
     # visual.py records the checkout's root relative to the page; for a page outside the checkout that path climbs
@@ -457,7 +466,7 @@ def cmd_diff(a):
         return diff_since(a)
     if len(a.files) != 2:
         sys.exit("diff: give BEFORE.json and AFTER.json, or --base REF")
-    before, after = (json.loads(Path(f).read_text(encoding="utf-8")) for f in a.files)
+    before, after = map(read_json, a.files)
     r = diff_page(before, after, a.files[1], a.out, a.stills)
     print(json.dumps({k: v for k, v in r.items() if k != "model"}, indent=1))
     if r.get("stillsFailed"):
@@ -581,8 +590,8 @@ def cmd_drift(a):
     """The map against the traffic seen: lines that run but are not drawn come in dashed rose, drawn lines between
     services traffic reached that carried nothing fade. OBSERVED.json: [{from, to, count}], or a Jaeger or Tempo
     dependency list ([{parent, child, callCount}], or {"data": [...]}); --match: {service: card id} where names differ."""
-    m, seen = (json.loads(Path(f).read_text(encoding="utf-8")) for f in (a.model, a.observed))
-    r = js("drift", m, seen, {"match": json.loads(Path(a.match).read_text(encoding="utf-8")) if a.match else {}})
+    m, seen = read_json(a.model), read_json(a.observed, model=False)
+    r = js("drift", m, seen, {"match": read_json(a.match, model=False) if a.match else {}})
     r["model"]["title"] = f"{m.get('title') or Path(a.model).stem}: drawn vs. seen"
     rep = render_model(r["model"], a.model, a.out)
     pngs, failed = shots(a.out, a.stills, r["views"])
@@ -598,8 +607,8 @@ def cmd_trace(a):
     --diagram uml.sequence: the view is a UML sequence view, and the model written is a version-2 model (which releases
     before 0.17.0 refuse); the summary printed adds `diagram` and the helper's `report`. It needs src/uml/convert.js, so
     a full clone of the repository: without it trace exits with a message."""
-    m, trace = (json.loads(Path(f).read_text(encoding="utf-8")) for f in (a.model, a.trace))
-    opts = {"view": a.view, "match": json.loads(Path(a.match).read_text(encoding="utf-8")) if a.match else {}, **({"title": a.title} if a.title else {})}
+    m, trace = read_json(a.model), read_json(a.trace, model=False)
+    opts = {"view": a.view, "match": read_json(a.match, model=False) if a.match else {}, **({"title": a.title} if a.title else {})}
     report = None
     if a.diagram:  # a UML sequence view (notes/stage-3.md §7): the numbered view through the internal helper, in src/uml/convert.js
         helper = HERE / "src" / "uml" / "convert.js"
@@ -631,12 +640,15 @@ def cmd_timelapse(a):
         r = subprocess.run(["git", "show", f"{sha}:{path}"], capture_output=True)  # bytes: json.loads finds the encoding
         try:
             subject = subject if len(subject) <= 90 else subject[:89].rstrip() + "…"
-            versions.append({"label": f"{day} {subject}".strip(), "model": json.loads(r.stdout)})
-        except ValueError:  # not JSON, or bytes in no encoding JSON has
-            print(f"{sha[:7]}: {path} is not JSON there; left out", file=sys.stderr)
+            m = json.loads(r.stdout)
+            if not isinstance(m, dict):
+                raise ValueError
+            versions.append({"label": f"{day} {subject}".strip(), "model": m})
+        except ValueError:  # not JSON, bytes in no encoding JSON has, or JSON that is no model
+            print(f"{sha[:7]}: {path} is not a JSON model there; left out", file=sys.stderr)
     if not versions:
         sys.exit(f"no versions of {a.model} in git history")
-    data = {"title": versions[-1]["model"].get("title") or Path(a.model).stem, "icons": icon_table([v["model"] for v in versions]), "versions": versions}
+    data = {"title": str(versions[-1]["model"].get("title") or Path(a.model).stem), "icons": icon_table([v["model"] for v in versions]), "versions": versions}
     page = (HERE / "engine" / "assets" / "timelapse.html").read_text(encoding="utf-8")
     page = page.replace("__TITLE__", html.escape(data["title"]), 1).replace("/*__UMLIMATOR_THEME__*/", THEME.read_text(encoding="utf-8"), 1)
     page = page.replace("/*__VERSIONS__*/", json.dumps(data, ensure_ascii=False).replace("</", "<\\/"), 1)
@@ -752,12 +764,20 @@ def still_keys(page, opts):
     views = data.get("views") or []
     V, N = {v["id"]: v for v in views}, {n["id"]: n for n in data.get("nodes", [])}
     icons, authors = data.get("icons") or {}, data.get("authors") or {}
+    owner = {}  # each member's (a port's) card, at any depth: walked with a list, not recursion
+    for n in data.get("nodes", []):
+        todo = list(n.get("members") or [])
+        while todo:
+            x = todo.pop()
+            if isinstance(x, dict):
+                owner.setdefault(x.get("id"), n.get("id")); todo += x.get("members") or []
+    own = lambda x: owner.get(x, x) if isinstance(x, str) else x
     keys = {}
     for v in views:
         ids = set(v.get("nodeIds") or [])
         ends = ids | {c.get("id") for c in v.get("containers") or [] if isinstance(c, dict)}  # a line may end on a box (#28)
         nodes = [N.get(i) for i in sorted(ids)]
-        lines = [e for e in data.get("edges", []) if e.get("from") in ends and e.get("to") in ends]
+        lines = [e for e in data.get("edges", []) if own(e.get("from")) in ends and own(e.get("to")) in ends]
         kids = {i: len((V.get((N.get(i) or {}).get("opensView") or i) or {}).get("nodeIds") or []) for i in sorted(ids)}
         cards = [n for n in nodes if n] + list((v.get("nodeOverrides") or {}).values())
         used, who = ({n.get(k) for n in cards} - {None} for k in ("icon", "author"))
@@ -773,12 +793,14 @@ def sha(f):
 
 def still_names(ids):
     """Each view's file name in a stills folder: its id, with only what would leave the folder or break the name encoded
-    (% / \\ NUL, an id of . or ..), and a hash after an id that one before it matches but for case (macOS and Windows
+    (% / \\ NUL, an id of . or ..), an id too long for a file name cut and hashed, and a hash after an id that one before it matches but for case (macOS and Windows
     fold case in file names, so the two would share files)."""
     out, seen = {}, set()
     for v in ids:
         n = v.replace("%", "%25").replace("/", "%2F").replace("\\", "%5C").replace("\0", "%00")
         n = {".": "%2E", "..": "%2E%2E"}.get(n, n)
+        if len(n.encode()) > 200:  # a file name holds 255 bytes, and replacing() adds its own to it
+            n = n.encode()[:180].decode(errors="ignore") + "-" + hashlib.sha256(v.encode()).hexdigest()[:8]
         if n.casefold() in seen:
             n += "-" + hashlib.sha256(v.encode()).hexdigest()[:6]
         seen.add(n.casefold()); out[v] = n
@@ -818,7 +840,7 @@ def stills(page, out, views, scale=2.0, theme="light", reader=False, again=False
                 headless(b, f"--window-size={info['w']},{info['h']}", f"--screenshot={p.resolve()}", pic.as_uri())
                 if not p.is_file() or p.read_bytes()[:8] != b"\x89PNG\r\n\x1a\n":
                     raise ChromeError("Chrome wrote no PNG")
-        except ChromeError as e:
+        except (ChromeError, OSError) as e:  # OSError: a file this view's pictures cannot be written to
             failed[v] = str(e)
             continue
         rec.parent.mkdir(exist_ok=True)
@@ -1014,7 +1036,10 @@ def cmd_import(a):
         print(f"{a.file}:{where}: {msg}" if where is not None else f"{a.file}: {msg}", file=sys.stderr)
     if not m["nodes"]:
         sys.exit(f"import: {a.file} has nothing to import as {fmt}")
-    write(a.out, json.dumps(m, indent=2, ensure_ascii=False) + "\n")
+    out = json.dumps(m, indent=2, ensure_ascii=False) + "\n"
+    if (fixed := re.sub("[\ud800-\udfff]", "\ufffd", out)) != out:  # a lone surrogate (an entity or escape gave it) has no UTF-8
+        print(f"{a.file}: a lone surrogate code point (U+D800 to U+DFFF), which no UTF-8 file holds: written as U+FFFD", file=sys.stderr)
+    write(a.out, fixed)
     inline = sum(isinstance(e, dict) for v in m["views"] for e in v.get("edges") or [])  # a sequence view's messages
     print(json.dumps({"out": a.out, "format": fmt, "cards": len(m["nodes"]), "lines": len(m["edges"]) + inline,
                       "views": [v["id"] for v in m["views"]], "unread": len(unread),
@@ -1024,12 +1049,9 @@ def cmd_import(a):
 def cmd_export(a):
     """A model's BPMN as BPMN XML (notes/milestone-4b.md §12.3): every bpmn element and view, through the module's
     writer in Node with the user's bpmn-moddle; what it does not write is listed on stderr, each with its element's id."""
-    try:
-        m = json.loads(Path(a.model).read_text(encoding="utf-8-sig"))
-    except FileNotFoundError:
+    if not Path(a.model).is_file():
         sys.exit(f"no model at {a.model}")
-    except ValueError as e:
-        sys.exit(f"export: {a.model} is not valid JSON ({e})")
+    m = read_json(a.model)
     views = [v.get("id") for v in m.get("views") or [] if isinstance(v, dict) and v.get("diagram") == "bpmn"]
     view = a.view or (views[0] if views else None)
     if view not in views:
