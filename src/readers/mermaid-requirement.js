@@ -335,7 +335,7 @@ function writeMermaidRequirement(model, viewId) {
   if (view && view.id !== MQ_VIEW) { if (keeps(view.id)) out.push(`%% id: ${view.id}`); else lose(view.id, "the view's id, which the reader would not keep"); }
   out.push('requirementDiagram');
   if (view && view.direction != null) {
-    const d = { down: 'TB', right: 'LR' }[view.direction];
+    const d = view.direction === 'down' ? 'TB' : view.direction === 'right' ? 'LR' : null; // no table: "constructor" is no direction
     if (!d) lose(view.id, `direction ${view.direction}: written as Mermaid's TB`);
     out.push(`  direction ${d || 'TB'}`);
   }
