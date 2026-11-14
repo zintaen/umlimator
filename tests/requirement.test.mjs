@@ -243,6 +243,10 @@ test('validators: 16 breaks no rule (copy-text passes on it); each rule fails on
   // a derive to itself is warned once; a missing end is the core's
   const self = structuredClone(M16); self.edges.push(L('x', 'DeriveReqt', 'range', 'range'));
   assert.deepEqual(T.validate(self).map(p => p.message), ['derive-cycle: requirement "Range" → requirement "Range" derives a requirement from itself (x)']);
+  // audit 2: a 20,000-long derive chain written forward, closed into a loop, is walked without overflowing the stack
+  const K = 20000, chain = { schemaVersion: 2, nodes: Array.from({ length: K }, (_, i) => N('r' + i, 'sysml.Requirement', 'R' + i, { props: { text: 't' } })),
+    edges: Array.from({ length: K }, (_, i) => L('d' + i, 'DeriveReqt', 'r' + i, 'r' + ((i + 1) % K))), views: [] };
+  assert.deepEqual(T.validate(chain).map(p => [p.rule, p.ids.length]), [['derive-cycle', K + 1]]);
   const gone = structuredClone(M16); gone.edges.push(L('x', 'Satisfy', 'battery', 'nowhere')); assert.deepEqual(T.validate(gone), []);
   const sat = structuredClone(M16); BREAKS['satisfy-ends'][0](sat);
   assert.equal(T.validate(sat)[0].message, 'satisfy-ends: x runs from block "Battery" to block "Dock": a satisfy runs to a requirement');

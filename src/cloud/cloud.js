@@ -43,7 +43,8 @@ const CL_FAM = {
 const CL_DASHED = ['region', 'availability-zone', 'zone'];
 const clKindOf = (F, x) => { const k = clProps(x)[F.key]; return typeof k === 'string' && Object.hasOwn(F.kinds, k) ? k : null; };
 const clKindWord = (F, x) => { const k = clKindOf(F, x); return k ? F.kinds[k] : 'Group'; };
-const clWord = (F, x) => (x.type === F.group ? clKindWord(F, x) : Object.hasOwn(F.items, x.type) ? F.items[x.type] : x.type === F.user ? 'User' : String(x.type ?? '').split('.').pop());
+const clU = (F, x) => F.user != null && x.type === F.user; // aws and azure have no user: a node with no type is not one
+const clWord = (F, x) => (x.type === F.group ? clKindWord(F, x) : Object.hasOwn(F.items, x.type) ? F.items[x.type] : clU(F, x) ? 'User' : String(x.type ?? '').split('.').pop());
 const clThe = w => `the ${w === w.toUpperCase() ? w : w.toLowerCase()}`; // "the VPC", "the resource group"
 
 // a node's icon (S6, S8): its id, the table's entry for it (a data URL only, never markup) and the full name, from the table
@@ -124,7 +125,7 @@ function clLinesOf(F, model, view, pic, I) {
 function clNodeName(F, D, n) {
   if (n.type === F.group) return `${clKindWord(F, n)} ${clName(n)}`;
   const ic = clIcon(F, D, n), w = clWord(F, n);
-  if (n.type === F.user) return `${w} ${clName(n)}`;
+  if (clU(F, n)) return `${w} ${clName(n)}`;
   return `${w} ${clName(n)}${ic && ic.name !== clName(n) ? ', ' + ic.name : ''}${ic && ic.src ? '' : ', icon not available'}`;
 }
 const clLineName = (F, e, I) => { const nm = id => clName(I.at.get(id) || { id }); return `${F.line[1]} ${CL_HAS(e.label) ? e.label + ' ' : ''}from ${nm(e.from)} to ${nm(e.to)}`; };
@@ -146,7 +147,7 @@ function clLegend(F, nodes, boxes, edges, legal) {
 const clGeo = F => ({ model, view, pos, memo }) => {
   const pic = clPic(F, model, view), I = clIndex(model), lines = clLinesOf(F, model, view, pic, I), P = id => (CL_OBJ(pos) && Object.hasOwn(pos, id) ? pos[id] : [0, 0]);
   const nodes = pic.ids.filter(id => !pic.open.has(id)).map(id => { const n = pic.at.get(id), ic = clIcon(F, model, n), group = n.type === F.group;
-    const shape = group ? 'cloud-group' : n.type === F.user ? 'cloud-user' : 'cloud-card';
+    const shape = group ? 'cloud-group' : clU(F, n) ? 'cloud-user' : 'cloud-card';
     // the drawn texts and the icon are the node's, so a name arriving with a fetched pack sizes and lays the view out again (§5.2)
     const d = { id, label: clName(n), type: n.type || F.group, kind: 'file', shape, aria: clNodeName(F, model, n), col: P(id)[0], row: P(id)[1],
       ...(group ? { title: `${clName(n)} [${clKindWord(F, n)}]`, gkind: clKindOf(F, n), dashed: CL_DASHED.includes(clKindOf(F, n)) } : {}),
@@ -182,9 +183,9 @@ function clProblems(F, model) {
       else if (up && k !== 'generic') { const pk = isG(up.id) ? clKindOf(F, up) : null;
         if (!isG(up.id)) say('warning', 'group-nesting', `${path}.parent`, [n.id, up.id], `${q(n.id)}, a ${F.kinds[k]} group, sits in ${q(up.id)}, which is no group`);
         else if (pk && pk !== 'generic' && !F.sits[k].includes(pk)) say('warning', 'group-nesting', `${path}.parent`, [n.id, up.id], `${q(n.id)}, a ${F.kinds[k]} group, sits in ${q(up.id)}, a ${F.kinds[pk]} group: ${F.sits[k].length ? `it sits in ${F.sits[k].map(x => F.kinds[x]).join(' or ')}` : 'it sits in no group'}`); } }
-    if (Object.hasOwn(F.items, n.type) || n.type === F.user) {
+    if (Object.hasOwn(F.items, n.type) || clU(F, n)) {
       if (up && !isG(up.id)) say('warning', 'group-nesting', `${path}.parent`, [n.id, up.id], `${q(n.id)} sits in ${q(up.id)}, which is no group`);
-      if (n.type === F.user) return;
+      if (clU(F, n)) return;
       const ic = clIcon(F, model, n);
       if (!ic) say('warning', 'icon-set', `${path}.props.icon`, [n.id], `${q(n.id)} names no icon: it is drawn with a glyph`);
       else if (given && !ic.src) say('warning', 'icon-missing', `${path}.props.icon`, [n.id], `the ${F.pack} pack given has no icon ${JSON.stringify(ic.id)} for ${q(n.id)}: it is drawn with a glyph`); } });
@@ -233,7 +234,7 @@ function clRemove(F, model, view, ids, fromModel) {
 function clDef(pack, F) {
   F.pack = pack;
   const kindField = { key: F.key, label: F.key === 'zoneType' ? 'Zone type' : 'Group type', kind: 'enum', options: Object.keys(F.kinds) }, iconField = { key: 'icon', label: 'Icon', kind: 'text' };
-  const mine = x => CL_OBJ(x) && (x.type === F.group || x.type === F.user || Object.hasOwn(F.items, x.type));
+  const mine = x => CL_OBJ(x) && (x.type === F.group || clU(F, x) || Object.hasOwn(F.items, x.type));
   return {
     title: F.title.replace(/^an? /, ''),
     // one palette entry per group kind, then the services (and the user)

@@ -187,6 +187,8 @@ try {
   gives('Delete from model, in the properties panel: the test case and its verify', [{ op: 'delete', id: 'roller-test' }], m => !m.nodes.some(n => n.id === 'roller-test') && !m.edges.some(e => e.id === 'rollers-verify-cut-off'), BASE);
   h.select({ type: 'edge', ids: ['range-traces-availability'], view: V }); key('Delete', { shiftKey: true });
   gives('Shift + Delete on a trace: delete it', [{ op: 'delete', id: 'range-traces-availability' }], m => !m.edges.some(e => e.id === 'range-traces-availability'), BASE);
+  h.select({ type: 'edge', ids: ['assist->cut-off'], view: V }); key('Delete');
+  gives('audit 2: Delete on a containment line: the requirement re-homed to its owner\'s owner (edits.remove, §6.2)', [{ op: 'reparent', id: 'cut-off', parent: 'spec' }], m => m.nodes.find(n => n.id === 'cut-off').parent === 'spec', BASE);
   h.destroy();
 } catch (e) { out.fail.push('threw: ' + (e && e.stack || e)); }
 const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);

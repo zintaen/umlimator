@@ -207,10 +207,11 @@ function rqProblems(model) {
     if ((e.type === 'sysml.Refine' || e.type === 'sysml.Trace') && !I.is(e.from, RQ) && !I.is(e.to, RQ)) say('warning', e.type === 'sysml.Refine' ? 'refine-ends' : 'trace-ends', path, ends, `${runs}: neither end is a requirement`);
     if (e.type === 'sysml.DeriveReqt' && !bad) derives.set(e.from, [...(derives.get(e.from) || []), [e.to, e.id, path]]); });
   // a derive cycle: said once, at the line that closes it, naming every requirement on it
-  const st = new Map(), stack = [];
-  const walk = id => { st.set(id, 1); stack.push(id); // ponytail: recursion as deep as a derive chain
-    for (const [to, eid, path] of derives.get(id) || []) { if (st.get(to) === 1) { const loop = stack.slice(stack.indexOf(to)); say('warning', 'derive-cycle', path, [...loop, eid], `${[...loop, to].map(I.q).join(' → ')} derives a requirement from itself (${eid})`); } else if (!st.has(to)) walk(to); }
-    stack.pop(); st.set(id, 2); };
+  const st = new Map();
+  const walk = s => { const at = [[s, 0]]; st.set(s, 1); // depth first with its own stack, as rqRank's dfs, so a long derive chain does not overflow
+    while (at.length) { const top = at.at(-1), es = derives.get(top[0]) || []; if (top[1] === es.length) { st.set(top[0], 2); at.pop(); continue; }
+      const [to, eid, path] = es[top[1]++];
+      if (st.get(to) === 1) { const loop = at.slice(at.findIndex(f => f[0] === to)).map(f => f[0]); say('warning', 'derive-cycle', path, [...loop, eid], `${[...loop, to].map(I.q).join(' → ')} derives a requirement from itself (${eid})`); } else if (!st.has(to)) { st.set(to, 1); at.push([to, 0]); } } };
   [...derives.keys()].forEach(id => { if (!st.has(id)) walk(id); });
   return out;
 }

@@ -58,7 +58,9 @@ export function validate(model) {
   const anyBox = new Set(views.flatMap(v => arr(v.containers).map(c => c && c.id)));
   arr(m.edges).forEach((e, i) => { if (!(typed && e && e.type != null)) line(e, `edges[${i}]`, new Set([...ids, ...anyBox]));
     if (e && e.id != null) { if (lineIds.has(e.id)) err(`edges[${i}].id`, `line id "${e.id}" is used twice`); lineIds.add(e.id); } });
-  views.forEach((v, i) => { if (typedView(v)) return;
+  views.forEach((v, i) => { const lim = arr(v.nodeIds).length + 64; // a pin far off the grid, any view's: held there (context.js onGrid, layered.js)
+    Object.entries(v.layout || {}).forEach(([id, p]) => { if (Array.isArray(p) && p.some(x => typeof x === 'number' && !(Math.abs(x) <= lim))) warn(`views[${i}].layout.${id}`, `"${id}"'s place ${JSON.stringify(p)} is off the grid: held at ${lim} columns or rows out`); });
+    if (typedView(v)) return;
     const at = `views[${i}]`, mine = new Set(arr(v.nodeIds)), boxes = {};
     if (v.parent != null && !vids.has(v.parent) && !ids.has(v.parent)) err(at + '.parent', `parent "${v.parent}" is not a view`);
     arr(v.nodeIds).forEach((id, j) => { if (!ids.has(id)) err(`${at}.nodeIds[${j}]`, `"${id}" is not a card`); });

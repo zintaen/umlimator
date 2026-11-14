@@ -205,7 +205,11 @@ function mapContext(model, opts = {}) {
   }
   /* a layout may place only some cards: they keep their slots, the rest take their auto-layout slot or the next free
      row below it (a complete layout is used as it is) */
+  // a pin far off the grid (1e6, 1e308) held at 64 cells past the view's count: laying out walks every column and row between (validate warns)
+  function onGrid(vid, L) { const lim = ((V[vid] || {}).nodeIds || []).length + 64, off = x => typeof x === 'number' && !(Math.abs(x) <= lim), cut = p => (Array.isArray(p) && p.some(off) ? p.map(x => (off(x) ? Math.max(-lim, Math.min(lim, x || 0)) : x)) : p);
+    return Object.values(L).some(p => cut(p) !== p) ? Object.fromEntries(Object.entries(L).map(([k, p]) => [k, cut(p)])) : L; }
   function fillLayout(vid, L) {
+    L = onGrid(vid, L);
     const bx = boxesOf(vid), ids = (V[vid].nodeIds || []).filter(i => N[i] && !bx.some(b => b.id === i)); // a box takes its place from what it holds
     if (ids.every(i => Array.isArray(L[i]))) return L;
     const auto = autoPos(vid), out = {};
@@ -374,7 +378,7 @@ function mapContext(model, opts = {}) {
     if (T) { // the type's layout (registry.js), in the host's measure (R2)
       const L = T.layout, memo = memos[vid] ||= {}, k = !override && L.key ? L.key(D, v) : null;
       if (k != null && memo.runKey === k) return memo.runGeo;
-      const pos = override || (L.pins === false ? {} : L.rank === false ? v.layout || {} : v.layout ? fillLayout(vid, v.layout) : (layoutCache[vid] ||= autoPos(vid))); // pins: false, no ranking either (notes/stage-3.md Q9)
+      const pos = override || (L.pins === false ? {} : L.rank === false ? onGrid(vid, v.layout || {}) : v.layout ? fillLayout(vid, v.layout) : (layoutCache[vid] ||= autoPos(vid))); // pins: false, no ranking either (notes/stage-3.md Q9)
       const g = L.run ? L.run(D, v, { measure: M, pos, memo }) : L({ model: D, view: v, pos, memo });
       if (k != null) Object.assign(memo, { runKey: k, runGeo: g });
       return g;

@@ -35,12 +35,13 @@ function erIndex(model) {
 const ER_FLAG = { pk: 'primaryKey', fk: 'foreignKey', uk: 'unique', null: 'nullable' };
 const ER_SYNTAX = ['dataType', 'primaryKey', 'foreignKey', 'unique', 'nullable', 'references'];
 const erFlag = t => Object.hasOwn(ER_FLAG, String(t).toLowerCase());
-function erTokens(s) { // split at spaces outside brackets: "amount numeric(10, 2) NULL"; null when a bracket is left open or closes none
-  const out = []; let depth = 0, cur = '';
-  for (const ch of s) { if ('([{<'.includes(ch)) depth++; else if (')]}>'.includes(ch) && --depth < 0) return null;
+function erTokens(s) { // split at spaces outside brackets and "quotes": "amount numeric(10, 2) NULL"; null when a bracket is left open or closes none
+  const out = []; let depth = 0, cur = '', q = 0;
+  for (const ch of s) { if (q) { cur += ch; q = q > 1 ? 1 : ch === '\\' ? 2 : ch !== '"'; continue; }
+    if (ch === '"') q = 1; else if ('([{<'.includes(ch)) depth++; else if (')]}>'.includes(ch) && --depth < 0) return null;
     if (/\s/.test(ch) && !depth) { if (cur) out.push(cur); cur = ''; } else cur += ch; }
   if (cur) out.push(cur);
-  return depth ? null : out;
+  return depth || q ? null : out;
 }
 // a column named by table.column, its entity's label and its own, when exactly one column has them; else by its id. Labels
 // first: an id (`<entity id>.<label>`, erNewId) can read as another column's labels once a table is renamed
@@ -61,13 +62,13 @@ function parseColumn(text, I, was) {
     if (!f) return fail(`"${k}" is left over: write name type [PK] [FK table.column] [UK] [NULL]`);
     if (props[f]) return fail(`${k.toUpperCase()} is written twice`);
     props[f] = true;
-    if (f === 'foreignKey' && t.length && !erFlag(t[0])) { const r = t.shift(), id = erRef(r, I, was); if (id == null) return fail(`FK ${r} names no column (table.column)`); props.references = id; } }
+    if (f === 'foreignKey' && t.length && !erFlag(t[0])) { const r = t.shift(), u = /^"((?:[^"\\]|\\.)*)"$/.exec(r), id = erRef(u ? u[1].replace(/\\(.)/g, '$1') : r, I, was); if (id == null) return fail(`FK ${r} names no column (table.column)`); props.references = id; } }
   return { label, props };
 }
 function printColumn(c, I = erIndex(ER_SEEN.get(c))) {
   const p = erProps(c), r = ER_HAS(p.references) && I.col.get(p.references), pair = r && `${erName(r.e)}.${erName(r.c)}`;
-  const ref = r && !/[\s.]/.test(erName(r.e) + erName(r.c)) && erRef(pair, I) === p.references ? pair : p.references, name = String(c.label ?? '');
-  return [/[\s"([{<>}\]]/.test(name) ? `"${name.replace(/["\\]/g, '\\$&')}"` : name, ER_HAS(p.dataType) && String(p.dataType), p.primaryKey === true && 'PK', (p.foreignKey === true || ER_HAS(ref)) && 'FK', ref, p.unique === true && 'UK', p.nullable === true && 'NULL'].filter(x => typeof x === 'string' && x !== '').join(' ');
+  const ref = r && !/[\s.]/.test(erName(r.e) + erName(r.c)) && erRef(pair, I) === p.references ? pair : p.references, q = x => (/^$|[\s"()[\]{}<>]/.test(x) ? `"${x.replace(/["\\]/g, '\\$&')}"` : x);
+  return [q(erName(c)), ER_HAS(p.dataType) && String(p.dataType), p.primaryKey === true && 'PK', (p.foreignKey === true || ER_HAS(ref)) && 'FK', ER_HAS(ref) && q(String(ref)), p.unique === true && 'UK', p.nullable === true && 'NULL'].filter(x => typeof x === 'string' && x !== '').join(' ');
 }
 
 /* ---- the entity (§7.1): its name in a 24 px header, then its key columns, a divider, the rest; each row its marks (PK, FK,
