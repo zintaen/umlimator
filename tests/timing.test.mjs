@@ -451,7 +451,6 @@ test('key: S on a lifeline whose id is toString, constructor or __proto__ turns 
   }
 });
 
-<<<<<<< HEAD
 test("check() on a timing view's slanted messages: a real crossing is said, no false shared line, no label said to lie on a line that passes it by (audit 6)", () => {
   const L = (id, st) => ({ id, type: 'uml.Lifeline', label: id, props: { states: st } }), M = (id, from, to, sentAt, receivedAt, label) => ({ id, type: 'uml.Message', from, to, ...(label ? { label } : {}), props: { sort: 'async', sentAt, receivedAt } });
   const view = (edges, st = ['x']) => ({ schemaVersion: 2, nodes: [L('a', st), L('b', st), L('c', ['x'])], edges: [],
@@ -461,11 +460,11 @@ test("check() on a timing view's slanted messages: a real crossing is said, no f
     ['view v: edges a→c and c→a cross', 'view v: edges a→b and c→a cross']);
   // "tick" sits inside the long line's bounding box, 30 px off the line
   assert.deepEqual(check(view([M('long', 'a', 'c', 0, 100, 'go'), M('short', 'b', 'b', 80, 80, 'tick')], ['x', 'y']), 'v').map(p => p.message), []);
-=======
+});
+
 test('audit 6: Alt + arrow on a lifeline moves it in nodeIds, as docs/editing.md says', () => {
   const m = EX(), V0 = V(m), id = V0.nodeIds[0], out = tmMoveTo(m, V0, id, { by: [0, 1] });
   assert.deepEqual(out, [{ op: 'move', id, view: V0.id, index: 1 }]);
   const row = readFileSync(new URL('../docs/editing.md', import.meta.url), 'utf8').split('\n').find(l => l.startsWith('| reorder lifelines | | `Alt + ↑/↓` on a lifeline'));
   assert.ok(row && row.includes('`move` on `nodeIds`'), row);
->>>>>>> origin/main
 });
