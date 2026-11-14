@@ -14,7 +14,7 @@ And C10 (2.6): an object model and a package model, served the same way, answer 
 highlight on the diagram the page draws; and so do a use case, an activity, a state machine and an interaction overview model
 (4.10), a component, a deployment and a composite structure model (5.8), a profile and a timing model (6.6), a class, a
 sequence and a communication model (C10's package), and an ER, a flowchart, a data flow, an information flow and a C4
-model (M2.14).
+model (M2.14), and a mindmap, a Google Cloud and an Azure model, with no icon pack (4a.7).
 
   python3 tests/mcp.py
 
@@ -296,7 +296,12 @@ for f, view, refs, first, cards, boxes in (("order-objects", "snapshot", ["order
                                           ("returns-flowchart", "returns", ["inspect", "refund"], "Handling a returned book: a flowchart of 13 nodes and 13 flows.", 13, 0),
                                           ("bookshop-data-flow", "dfd-level-1", ["dfd-take-order", "dfd-orders"], "Bookshop, level 1: a data flow diagram of 8 elements and 11 lines.", 8, 0),
                                           ("order-information-flow", "order-flows", ["shopper", "order-info"], "What travels with an order: an information flow diagram of 10 elements and 8 lines.", 10, 0),
-                                          ("bookshop-c4", "c4-context", ["c4-shopper", "c4-bookshop"], "Bookshop: system context: a C4 system context diagram of 6 elements and 6 relationships.", 6, 0)):
+                                          ("bookshop-c4", "c4-context", ["c4-shopper", "c4-bookshop"], "Bookshop: system context: a C4 system context diagram of 6 elements and 6 relationships.", 6, 0),
+                                          # C10 for milestone 4a (4a.7, decision 22): a mindmap, a Google Cloud and an Azure model, with
+                                          # no pack (the server never fetches one; CI has none, so cards draw glyphs); groups are boxes
+                                          ("bookshop-opening-plan", "mm-plan", ["mm-checkout", "mm-hosting"], "Opening the bookshop: a mindmap of 21 topics.", 21, 0),
+                                          ("bookshop-gcp", "gcp-on-gcp", ["gcp-api", "gcp-db"], "Bookshop on Google Cloud: a Google Cloud diagram of 16 elements and 10 connections.", 10, 6),
+                                          ("bookshop-azure", "az-on-azure", ["az-api", "az-db"], "Bookshop on Azure: an Azure diagram of 14 elements and 9 connections.", 8, 6)):
     m = json.loads((ROOT / "examples" / f"{f}.json").read_text(encoding="utf-8"))
     srv = subprocess.Popen([sys.executable, str(ROOT / "umlimator.py"), "mcp", str(ROOT / "examples" / f"{f}.json"), "--port", "0"], stdin=subprocess.PIPE,
                            stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
