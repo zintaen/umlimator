@@ -492,3 +492,9 @@ test('audit 1: deleting a lane keeps its nested lanes in its place', () => {
   assert.equal(lanes(m), 'G A B H');
   assert.equal(lanes(apply(m, bzRemove(m, m.views[0], ['G'], false).commands)), 'A B H');
 });
+
+test('audit 2: a pin far off the grid is held at its edge, laid out at once, and validate() says so', () => {
+  for (const pin of [[1e308, 0], [0, -1e7]]) { const m = structuredClone(EX); V(m).layout = { ...(V(m).layout || {}), 'order-placed': pin };
+    const t = performance.now(); assert.ok(layout(m, VID).byId['order-placed'], 'laid out'); assert.ok(performance.now() - t < 5000, 'quickly');
+    assert.ok(validate(m).some(p => p.path === `views[${m.views.indexOf(V(m))}].layout.order-placed` && /off the grid/.test(p.message)), 'warned'); }
+});

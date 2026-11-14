@@ -84,8 +84,9 @@ TYPED.edit = (I, c) => {
     if (!t) return false;
     const vs = arrOf(model().views).filter(v => isRec(v) && v.diagram === t.opens);
     choose(vs.map(v => v.title ?? v.id), i => emit([{ op: 'set', id, path: 'opensView', value: vs[i].id }]), 'Opens view', id); return true; }
-  I.remove = (fromModel, ids = c.picks()) => { const h = hook('remove'), dflt = () => base.remove(fromModel, ids);
-    return h && can('delete') && ids.length ? ran(h(model(), view(), ids, !!fromModel), dflt) : dflt(); };
+  // the hook is given a line's geometry ids too ('owner->child', a type's derived line, sysml-requirement.md); the core's delete only element ids
+  I.remove = (fromModel, ids) => { const h = hook('remove'), all = ids || [...new Set([...c.picks(), ...api.picked().flatMap(r => r && r.type === 'edge' ? arrOf(r.ids) : [])])], dflt = () => base.remove(fromModel, ids);
+    return h && can('delete') && all.length ? ran(h(model(), view(), all, !!fromModel), dflt) : dflt(); };
   function wrap(ids) { // W: the picker of the type's wraps, under the first card selected, else under the far end of the first line
     const h = hook('wrap'), list = arrOf(c.def().wraps), opts = list.map(w => isRec(w) ? w : { label: String(w) }), g = api.geo();
     const at = ids.find(id => Object.hasOwn(g.byId || {}, id)) ?? (g.edges.find(x => ids.includes(x._id)) || {}).to;

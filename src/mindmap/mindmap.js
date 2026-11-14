@@ -42,11 +42,11 @@ function mmIndex(model, V) {
   const reach = (root, k) => { for (const s = [root]; s.length;) { const id = s.pop(); tree.set(id, k); trees[k].list.push(id);
     kids.get(id).forEach(c => { if (!tree.has(c)) { depth.set(c, depth.get(id) + 1); s.push(c); } }); } };
   roots.forEach(r => { depth.set(r, 0); trees.push({ root: r, list: [] }); reach(r, trees.length - 1); });
-  const lost = ids.filter(id => !tree.has(id)); // a cycle of shown topics: one tree, from the first, layoutTree hanging the rest; each depth as drawn
-  if (lost.length) { trees.push({ root: lost[0], list: [] }); lost.forEach(id => { if (!tree.has(id)) { depth.set(id, id === lost[0] ? 0 : 1); reach(id, trees.length - 1); } }); }
+  const lost = ids.filter(id => !tree.has(id)), hung = new Map(); // a cycle of shown topics: one tree, from the first, layoutTree hanging the rest from it; each depth and parent as drawn
+  if (lost.length) { trees.push({ root: lost[0], list: [] }); lost.forEach(id => { if (!tree.has(id)) { depth.set(id, id === lost[0] ? 0 : 1); hung.set(id, id === lost[0] ? null : lost[0]); reach(id, trees.length - 1); } }); }
   trees.forEach(t => t.list.sort((a, b) => pos.get(a) - pos.get(b))); // children in nodeIds order
   const side = id => (MM_OBJ(P[id]) && (P[id].side === 'left' || P[id].side === 'right') ? P[id].side : null);
-  return { N, topic, pos, ids, shown, up, kids, roots, trees, depth, P, side, parentOf };
+  return { N, topic, pos, ids, shown, up, kids, roots, trees, depth, hung, P, side, parentOf };
 }
 
 /* a topic's text, wrapped to four lines of 200 px (a newline breaks one), the last cut with fit; its box */
@@ -150,7 +150,7 @@ function mmDescribe(model, viewId) {
 /* the PDF's word and rows (§7.1): a topic's depth and its parent */
 function mmRows(model, view, id) {
   const V = mmView(model, view); if (!V) return null; const X = mmIndex(model, V); if (!X.shown.has(id)) return null;
-  const p = X.up(id); return [`Depth ${X.depth.get(id) ?? 0}`, p == null ? 'The root' : `Under ${mmOne(X.N.get(p))}`];
+  const p = X.hung.has(id) ? X.hung.get(id) : X.up(id); return [`Depth ${X.depth.get(id) ?? 0}`, p == null ? 'The root' : `Under ${mmOne(X.N.get(p))}`];
 }
 
 /* ---- the gesture hooks (§7.3). Each takes the model and the view (or its id) and returns the commands of one transaction,
