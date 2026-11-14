@@ -53,7 +53,7 @@ Layout limits, measured on `examples/bookshop-deployment.json` and `tests/deploy
   between one pair). Six levels of nesting with a communication path from the deepest to the top (L8): the outer box is
   **488 × 574 px**, right and down. Its generated `all` view (50 nodes and artifacts, 50 lines, boxes five deep): 15
   crossings right and 15 down; three lines along a box's border laid out right, and a label on a box's border; laid out
-  down, three pairs of lines sharing a line and seven labels on a line. Seven labels there found no spot and were left
+  down, three pairs of lines sharing a line and eight labels on a line. Seven labels there found no spot and were left
   off with nothing said; since audit 6 they are drawn, on a looser spot (one on a cube's face line, right).
 
 ## Writers: what each shows of a deployment diagram
