@@ -396,15 +396,16 @@ function readMermaidClass(text) {
       }
     }
     if (!e) continue;
-    let label = mcText(r.label);
-    const stereotypes = [];
+    let label = r.label;
+    const stereotypes = []; // taken before the text is decoded: an encoded #lt;#lt; or #171; is the label's own text
     for (;;) {
       label = label.trim();
       const [o, c] = label.startsWith('«') ? ['«', '»'] : label.startsWith('<<') ? ['<<', '>>'] : [];
       const end = o ? label.indexOf(c, o.length) : -1;
       if (end < 0) break;
-      stereotypes.push(label.slice(o.length, end).trim()); label = label.slice(end + c.length);
+      stereotypes.push(mcText(label.slice(o.length, end)).trim()); label = label.slice(end + c.length);
     }
+    label = mcText(label);
     if (stereotypes.length) e.props = { ...e.props, stereotypes };
     if (label) e.label = label;
     edges.push({ e, hint: r.hint, at, what });
@@ -470,7 +471,7 @@ function writeMermaidClass(model, viewId) {
   const VIS = mcTable({ public: '+', private: '-', protected: '#', package: '~' });
   const ARROW = mcTable({ 'uml.Generalization': '--|>', 'uml.InterfaceRealization': '..|>', 'uml.Dependency': '..>' });
   const has = x => x != null && x !== '', gen = s => String(s).replace(/[<>]/g, '~');
-  const enc = s => String(s).replace(/"/g, '#quot;').replace(/</g, '#lt;').replace(/>/g, '#gt;').replace(/\n/g, '<br>');
+  const enc = s => String(s).replace(/[#\\]/g, c => (c === '#' ? '#35;' : '#92;')).replace(/"/g, '#quot;').replace(/</g, '#lt;').replace(/>/g, '#gt;').replace(/\n/g, '<br>');
   const name = id => (/^[\p{L}\p{N}_]+(-[\p{L}\p{N}_]+)*$/u.test(id) ? id : '`' + id + '`');
   // what Mermaid cannot carry: an element, as `<id> (<type>)`, or one property of one, as `<id>: <what>`
   const out = [], notWritten = [], skip = x => notWritten.push(`${flat(x.id)} (${flat(x.type)})`), lose = (id, what) => notWritten.push(`${flat(id)}: ${flat(what)}`);
@@ -540,7 +541,9 @@ function writeMermaidClass(model, viewId) {
     heads.set(n.id, [anns, rows]);
   }
 
-  const edgeOf = e => (typeof e === 'string' ? arr(m.edges).find(x => isObj(x) && x.id === e) : e);
+  const byEdge = new Map();
+  for (const x of arr(m.edges)) if (isObj(x) && !byEdge.has(x.id)) byEdge.set(x.id, x); // the first of an id, as find gave
+  const edgeOf = e => (typeof e === 'string' ? byEdge.get(e) : e);
   const owner = new Map(shown.flatMap(id => arr(byId.get(id).members).filter(isObj).map(x => [x.id, id])));
   const inView = id => shownSet.has(id) || owner.has(id); // a line may end on a member, which Mermaid cannot draw
   const lines = (view && Array.isArray(view.edges) ? view.edges.map(edgeOf) : arr(m.edges).filter(e => isObj(e) && inView(e.from) && inView(e.to))).filter(isObj);
@@ -549,7 +552,8 @@ function writeMermaidClass(model, viewId) {
     if (e.type === 'uml.CommentLink') { if (nl(e.id)) skip(e); else links.push(e); continue; }
     if (!(written.has(e.from) && written.has(e.to)) || !(e.type === 'uml.Association' || e.type in ARROW) || nl(e.id)) { skip(e); continue; }
     const p = isObj(e.props) ? e.props : {}, ends = isObj(p.ends) ? p.ends : {};
-    const label = [...arr(p.stereotypes).map(s => `«${s}»`), ...(has(e.label) ? [e.label] : [])].join(' ');
+    // the label's own « and its spaces at either end as entities: the reader takes its «stereotypes» before it decodes, and trims
+    const label = [...arr(p.stereotypes).map(s => `«${enc(s)}»`), ...(has(e.label) ? [enc(e.label).replace(/«/g, '#171;').replace(/^\s|\s$/g, c => `#${c.codePointAt(0)};`)] : [])].join(' ');
     let arrow = ARROW[e.type], c1 = '', c2 = '';
     if (!arrow) { // an end has one mark: a diamond, or else an arrowhead
       const mark = (end, nav, w) => {
@@ -561,15 +565,17 @@ function writeMermaidClass(model, viewId) {
       const f = isObj(ends.from) ? ends.from : {}, t = isObj(ends.to) ? ends.to : {};
       arrow = mark(f, '<', 'from') + '--' + mark(t, '>', 'to'); c1 = card(f); c2 = card(t);
     }
-    relations.push([idOf(e.id, `${e.from}-${e.to}`), `${name(e.from)}${c1} ${arrow}${c2} ${name(e.to)}${label ? ' : ' + enc(label) : ''}`]);
+    relations.push([idOf(e.id, `${e.from}-${e.to}`), `${name(e.from)}${c1} ${arrow}${c2} ${name(e.to)}${label ? ' : ' + label : ''}`]);
   }
+  const linksFrom = new Map(), noteIds = new Set(notes.map(n => n.id)); // by note, once: a note's links are not a scan of all
+  for (const e of links) { if (!linksFrom.has(e.from)) linksFrom.set(e.from, []); linksFrom.get(e.from).push(e); }
   const noteLines = notes.map((n, k) => {
-    const mine = links.filter(e => e.from === n.id && written.has(e.to));
-    links.filter(e => e.from === n.id && e !== mine[0]).forEach(skip);
+    const its = linksFrom.get(n.id) || [], mine = its.filter(e => written.has(e.to));
+    its.filter(e => e !== mine[0]).forEach(skip);
     const hint = idOf(n.id, `note-${k + 1}`), link = mine[0] ? idOf(mine[0].id, `${n.id}-link`) : null;
     return [hint, link, `note ${mine[0] ? `for ${name(mine[0].to)} ` : ''}"${enc(n.label ?? '')}"`];
   });
-  links.filter(e => !notes.some(n => n.id === e.from)).forEach(skip);
+  links.filter(e => !noteIds.has(e.from)).forEach(skip);
 
   const labelled = (n, as = n.id) => (has(n.label) && n.label !== as ? `["${enc(n.label)}"]` : '');
   // Mermaid names a namespace inside P as P.<name>, and splits a name at its dots, in backticks too. So a namespace whose
