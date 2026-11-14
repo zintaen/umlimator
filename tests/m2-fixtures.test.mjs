@@ -56,8 +56,8 @@ function clean(m, vid) {
 
 // what each view keeps, laid out right and down, counted: [crossings, check()'s other findings, what clean() calls wrong]. The
 // edge-cases views and the minimal ones are clean but for the crossings counted here. The generated views all crowd 60 to 70 lines with repair and reroute off (§11): there the information
-// flow view's labels lie on lines and C4's container view's lines share lines, and some run through cards they do not join
-// (the router found no way round). Each is stated in its type's conformance note.
+// flow view's labels lie on lines and, laid out down, C4's container view's lines share lines and its labels lie on lines (none runs
+// through a card since a C4 card's text tag stopped putting the router's grid out of order). Each is stated in its type's conformance note.
 const PINNED = {
   'er-minimal': { 'v': { right: [0, 0, 0], down: [0, 0, 0] } },
   'er-stress': { 'edge-cases': { right: [0, 0, 0], down: [0, 0, 0] }, 'edge-cases-idef1x': { right: [0, 0, 0], down: [0, 0, 0] }, 'all': { right: [18, 0, 0], down: [25, 0, 0] } },
@@ -70,7 +70,7 @@ const PINNED = {
   'information-flow-stress': { 'edge-cases': { right: [2, 0, 0], down: [0, 0, 0] }, 'all': { right: [149, 1, 0], down: [121, 18, 0] } },
   'c4-minimal': { 'v': { right: [0, 0, 0], down: [0, 0, 0] } },
   'c4-stress': {
-    'ec-landscape': { right: [0, 0, 0], down: [0, 0, 0] }, 'ec-context': { right: [0, 0, 0], down: [0, 0, 0] }, 'edge-cases': { right: [0, 0, 0], down: [1, 0, 0] }, 'ec-component': { right: [0, 0, 0], down: [0, 0, 0] }, 'ec-dynamic': { right: [0, 0, 0], down: [0, 0, 0] }, 'ec-deployment': { right: [0, 0, 0], down: [0, 0, 0] }, 'all': { right: [94, 369, 237], down: [98, 430, 202] } },
+    'ec-landscape': { right: [0, 0, 0], down: [0, 0, 0] }, 'ec-context': { right: [0, 0, 0], down: [0, 0, 0] }, 'edge-cases': { right: [0, 0, 0], down: [0, 0, 0] }, 'ec-component': { right: [0, 0, 0], down: [0, 0, 0] }, 'ec-dynamic': { right: [0, 0, 0], down: [0, 0, 0] }, 'ec-deployment': { right: [0, 0, 0], down: [0, 0, 0] }, 'all': { right: [136, 0, 0], down: [117, 27, 0] } },
 };
 
 test('every view of the ten fixtures, right and down: a line through a node, an end off its node, a label over a node and check()\'s findings, each only as pinned (the stated limits)', () => {

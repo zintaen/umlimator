@@ -447,7 +447,7 @@ with tempfile.TemporaryDirectory() as tmp:
         except ValueError:
             r = None
         # the pinned crossings of examples 9 and 10, as render's own check above (stage 5's three are clean since decision 22)
-        said = {"fulfil-activity": ["cross"] * 2, "order-states": ["cross"] * 2, "bookshop-c4": ["cross"] * 14, "bookshop-data-flow": ["cross"] * 2,
+        said = {"fulfil-activity": ["cross"] * 2, "order-states": ["cross"] * 2, "bookshop-c4": ["cross"] * 8, "bookshop-data-flow": ["cross"] * 2,
                 "bookshop-gcp": ["cross"], "bookshop-azure": ["cross"], "bookshop-order-to-shipment": ["cross"] * 5}.get(path.stem, [])
         ok(f"map-repo's cli.py · renders a typed model it is given ({path.stem}): the page, and its check" + (f" (at most {len(said)} crossings, stated)" if said else " clean"),
            p.returncode == 0 and r is not None and not r.get("errors") and all(q.endswith(" cross") for q in r.get("problems") or []) and len(r.get("problems") or []) <= len(said)
@@ -518,7 +518,7 @@ with tempfile.TemporaryDirectory() as tmp:
         # 4a.7: the Google Cloud and Azure examples' one each, repair and reroute off (notes/milestone-4a.md §11), stated in
         # docs/conformance/gcp.md and azure.md
         # 4b.5: the BPMN example's, repair and reroute off (notes/milestone-4b.md §14), stated in docs/conformance/bpmn.md
-        crossings = {"fulfil-activity": 2, "order-states": 2, "bookshop-c4": 14, "bookshop-data-flow": 2, "bookshop-gcp": 1, "bookshop-azure": 1, "bookshop-order-to-shipment": 5}.get(name, 0)
+        crossings = {"fulfil-activity": 2, "order-states": 2, "bookshop-c4": 8, "bookshop-data-flow": 2, "bookshop-gcp": 1, "bookshop-azure": 1, "bookshop-order-to-shipment": 5}.get(name, 0)
         ok(f"render · a typed model ({name}): the engine accepts lines that end on members, and the check is clean" + (f" but its {crossings} pinned crossings" if crossings else ""),
            r is not None and len(r.get("problems") or []) <= crossings and all(p.endswith(" cross") for p in r.get("problems") or []) and not r.get("errors"), r)
         page = (t / f"{name}.html").read_text(encoding="utf-8") if r else ""
