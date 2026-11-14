@@ -221,17 +221,12 @@ test('connect: a flow between two flowchart nodes is the default; one to a comme
   assert.equal(T.edits.connect(d, v, 'resaleable', 'letter', null, FLOW), null, 'another answer: the default');
 });
 
-test('moveTo: on a view with no direction (laid out down) a drop pins by the turned axes; a view that says its direction is the canvas\'s', () => {
-  const m = withDir(EX, null), g = layout(m, 'returns'), n = g.byId.letter, to = g.byId.wait;
-  // dropped on wait's centre: wait's column and row, read across the picture laid out down
-  assert.deepEqual(T.edits.moveTo(m, m.views[0], 'letter', { pt: [to.x + to.w / 2, to.y + to.h / 2], geo: g }), [{ op: 'set', view: 'returns', path: ['layout', 'letter'], value: [to.col, to.row] }]);
-  assert.deepEqual(T.edits.moveTo(m, m.views[0], 'letter', { pt: [n.x + n.w / 2, n.y + n.h / 2], geo: g }), [], 'dropped where it is: nothing');
-  assert.equal(T.edits.moveTo(EX, EX.views[0], 'letter', { pt: [0, 0], geo: g }), null, 'direction down: the canvas reads it');
+test('moveTo: a flow dragged is refused; a node is the canvas\'s, which reads a view laid out down (no direction too) from its geometry', () => {
+  const m = withDir(EX, null), g = layout(m, 'returns'), to = g.byId.wait;
+  assert.equal(T.edits.moveTo(m, m.views[0], 'letter', { pt: [to.x + to.w / 2, to.y + to.h / 2], geo: g }), null);
   assert.equal(T.edits.moveTo(m, m.views[0], 'letter', { by: [0, 1], geo: g }), null, 'Alt + arrows: the default');
   for (const v of [m.views[0], EX.views[0]]) assert.match(T.edits.moveTo(m, v, 'resaleable-no', null).error, /^A flow follows its nodes/, 'a flow dragged: said, not a ghost that vanishes');
-  // the pin is where it was dropped: laid out again, letter is in wait's column and row
-  const pinned = apply(m, T.edits.moveTo(m, m.views[0], 'letter', { pt: [to.x + to.w / 2, to.y + to.h / 2], geo: g })), h = layout(pinned, 'returns');
-  assert.deepEqual([h.byId.letter.col, h.byId.letter.row], [to.col, to.row]);
+  assert.ok(g.down && layout(EX, 'returns').down && !layout(withDir(EX, 'right'), 'returns').down, 'g.down: laid out down');
 });
 
 test('save and reopen (DoD 6): a 30-step session undoes and redoes to byte-identical models, and reopening its saved JSON midway ends where the session does', () => {

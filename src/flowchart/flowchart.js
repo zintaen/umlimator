@@ -193,20 +193,10 @@ function fcConnect(model, view, from, to, at, line) {
   if (!label) return null;
   return [...(was ? [] : [{ op: 'set', id: o[0].id, path: 'label', value: 'yes' }]), { op: 'add', element: { id: fcId(model, 'flow'), type: 'flow.Flow', from, to, label }, view: view.id }];
 }
-// moveTo: a line dragged (or Alt + arrows on it) is refused, said on the hint line: a flow follows its ends. A view with no direction is laid out down, which the canvas's drop reads as laid out right (render.js hintAt reads
-// a view that says down): the pin is read here with the axes turned, as hintAt reads one. Anything else: null, the default
-function fcMoveTo(model, view, id, at) {
-  if (FC_ARR(model && model.edges).some(e => FC_OBJ(e) && e.id === id)) return { error: 'A flow follows its nodes: move a node instead' };
-  if (!FC_OBJ(view) || view.direction != null || !FC_OBJ(at) || !Array.isArray(at.pt) || !FC_OBJ(at.geo)) return null;
-  const ns = FC_ARR(at.geo.nodes).filter(m => FC_OBJ(m) && Number.isFinite(m.col) && Number.isFinite(m.row) && !m.aside), n = ns.find(m => m.id === id);
-  if (!n) return null;
-  const [y, x] = at.pt, X = m => m.y + m.h / 2, Y = m => m.x, cols = [...new Set(ns.map(m => m.col))].sort((a, b) => a - b);
-  const mid = c => { const k = ns.filter(m => m.col === c); return k.reduce((s, m) => s + X(m), 0) / k.length; };
-  const first = cols[0], last = cols.at(-1), step = cols.length > 1 ? (mid(last) - mid(first)) / (last - first) : 260;
-  let col = first, best = Infinity; cols.forEach(c => { const d = Math.abs(mid(c) - x); if (d < best) { best = d; col = c; } });
-  if (x > mid(last) + step / 2) col = last + Math.round((x - mid(last)) / step); else if (x < mid(first) - step / 2) col = Math.max(0, first - Math.round((mid(first) - x) / step));
-  const a = ns[0], b = ns.find(m => m.row !== a.row), pitch = b ? (Y(b) - Y(a)) / (b.row - a.row) : 108, row = Math.max(0, Math.round((y - (Y(a) - a.row * pitch) - 32) / pitch));
-  return col === n.col && row === n.row ? [] : [{ op: 'set', view: view.id, path: ['layout', id], value: [col, row] }];
+// moveTo: a line dragged (or Alt + arrows on it) is refused, said on the hint line: a flow follows its ends. Anything else: null,
+// the default, which reads a view laid out down (no direction too) from its geometry (render.js hintAt, g.down)
+function fcMoveTo(model, view, id) {
+  return FC_ARR(model && model.edges).some(e => FC_OBJ(e) && e.id === id) ? { error: 'A flow follows its nodes: move a node instead' } : null;
 }
 
 /* ---- the type ---- */

@@ -64,20 +64,24 @@ export function validate(model) {
     Object.entries(v.layout || {}).forEach(([id, p]) => { if (!Array.isArray(p) || typeof p[0] !== 'number' || typeof p[1] !== 'number') warn(`views[${i}].layout.${id}`, `"${id}"'s place ${JSON.stringify(p)} is not two numbers: ignored`);
       else if (p.some(x => !(Math.abs(x) <= lim))) warn(`views[${i}].layout.${id}`, `"${id}"'s place ${JSON.stringify(p)} is off the grid: held at ${lim} columns or rows out`); });
     if (typedView(v)) return;
-    const at = `views[${i}]`, mine = new Set(arr(v.nodeIds)), boxes = {};
+    const at = `views[${i}]`, mine = new Set(), boxes = {}, home = {}, full = new Set();
     if (v.parent != null && !vids.has(v.parent) && !ids.has(v.parent)) err(at + '.parent', `parent "${v.parent}" is not a view`);
-    arr(v.nodeIds).forEach((id, j) => { if (!ids.has(id)) err(`${at}.nodeIds[${j}]`, `"${id}" is not a card`); });
+    arr(v.nodeIds).forEach((id, j) => { if (!ids.has(id)) err(`${at}.nodeIds[${j}]`, `"${id}" is not a card`); else if (mine.has(id)) warn(`${at}.nodeIds[${j}]`, `"${id}" is listed twice: drawn twice`); mine.add(id); });
     Object.entries(v.nodeOverrides || {}).forEach(([id, o]) => { if (!ids.has(id)) err(`${at}.nodeOverrides.${id}`, `"${id}" is not a card`); later(o, `${at}.nodeOverrides.${id}`); shapeIs(o, `${at}.nodeOverrides.${id}`); });
     arr(v.nodes).forEach((n, j) => later(n, `${at}.nodes[${j}]`));
     ['stepIds', 'tour'].forEach(k => arr(v[k]).forEach((id, j) => { if (!mine.has(id)) err(`${at}.${k}[${j}]`, `"${id}" is not one of the view's cards`); }));
     arr(v.browserOrder).forEach((id, j) => { if (!vids.has(id)) err(`${at}.browserOrder[${j}]`, `"${id}" is not a view`); });
     arr(v.intake).forEach((s, j) => { if (!mine.has(s && s.to)) err(`${at}.intake[${j}].to`, `"${s && s.to}" is not one of the view's cards`); });
-    arr(v.containers).forEach((c, j) => { if (!c || !c.id) err(`${at}.containers[${j}].id`, 'a box needs an id'); else if (boxes[c.id]) err(`${at}.containers[${j}].id`, `box id "${c.id}" is used twice`); else boxes[c.id] = c; });
+    arr(v.containers).forEach((c, j) => { if (!c || !c.id) err(`${at}.containers[${j}].id`, 'a box needs an id'); else if (boxes[c.id]) err(`${at}.containers[${j}].id`, `box id "${c.id}" is used twice`); else if (mine.has(c.id)) err(`${at}.containers[${j}].id`, `box id "${c.id}" is one of the view's cards`); else boxes[c.id] = c; });
+    const outer = b => { const a = new Set(); for (let p = b; boxes[p] && !a.has(p); p = boxes[p].parent) a.add(p); return a; }; // b and the boxes it sits in
     arr(v.containers).forEach((c, j) => { if (!c) return; list(c, `${at}.containers[${j}]`, 'nodeIds', 1);
-      arr(c.nodeIds).forEach((id, k) => { if (!mine.has(id)) err(`${at}.containers[${j}].nodeIds[${k}]`, `"${id}" is not one of the view's cards`); });
+      arr(c.nodeIds).forEach((id, k) => { if (!mine.has(id)) return err(`${at}.containers[${j}].nodeIds[${k}]`, `"${id}" is not one of the view's cards`);
+        const h = home[id]; if (h && !outer(c.id).has(h) && !outer(h).has(c.id)) warn(`${at}.containers[${j}].nodeIds[${k}]`, `"${id}" is in box "${h}" too, and neither box holds the other: they overlap`);
+        if (!h || outer(c.id).has(h)) home[id] = c.id; for (let p = c.id; boxes[p] && !full.has(p); p = boxes[p].parent) full.add(p); });
       if (c.parent != null && !boxes[c.parent]) err(`${at}.containers[${j}].parent`, `"${c.parent}" is not a box of this view`);
       if (c.tone != null && typeof c.tone !== 'string') warn(`${at}.containers[${j}].tone`, `tone ${JSON.stringify(c.tone)} is not a palette name (green, amber, ...): ${c.tone ? 'drawn in slate' : 'ignored'}`);
       for (let p = c.parent, seen = new Set([c.id]); p != null && boxes[p]; p = boxes[p].parent) { if (seen.has(p)) { err(`${at}.containers[${j}].parent`, `box "${c.id}" ends up inside itself`); break; } seen.add(p); } });
+    arr(v.containers).forEach((c, j) => { if (c && boxes[c.id] === c && !full.has(c.id)) warn(`${at}.containers[${j}]`, `box "${c.id}" holds no cards: it is not drawn, nor its lines`); });
     const ends = new Set([...ids, ...Object.keys(boxes)]);
     if (Array.isArray(v.edges)) v.edges.forEach((e, j) => { if (typeof e !== 'string') line(e, `${at}.edges[${j}]`, ends); else if (!lineIds.has(e)) err(`${at}.edges[${j}]`, `"${e}" is not a line`); });
     Object.keys(v.layout || {}).forEach(id => { if (!mine.has(id)) warn(`${at}.layout.${id}`, `"${id}" is not one of the view's cards: its place is ignored`); });
@@ -216,7 +220,7 @@ export function rules(model) {
         targets: [...ring.map(c => ({ type: 'container', id: c, view: v.id })), ...[...new Set(via.map(e => drawn.get(e)))].map(es => line(es[0]))] }));
       else { const said = new Set(); // parallel edges that break it read as one line, once
         lines.forEach(e => { const a = end(e.from), b = end(e.to), message = `view ${v.id}: edge ${a.label}→${b.label} ${breaks}`;
-          if (picks(r.from, a) && picks(r.to, b) && !said.has(message)) { said.add(message); out.push({ rule: r.id, view: v.id, message, targets: [line(e)] }); } }); }
+          if (picks(r.from, a) && picks(r.to, b) && !said.has(drawn.get(e))) { said.add(drawn.get(e)); out.push({ rule: r.id, view: v.id, message, targets: [line(e)] }); } }); }
     });
   });
   return out;

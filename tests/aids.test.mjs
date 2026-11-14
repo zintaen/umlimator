@@ -18,6 +18,7 @@ test('validate() takes a step on a line and a tone on a box, and warns when they
     `warning edges[2].step: step -1 ${no}`, `warning edges[3].step: step "2abc" ${no}`, `warning edges[4].step: step "" ${no}`,
     'warning views[0].containers[1].tone: tone 5 is not a palette name (green, amber, ...): drawn in slate',
     'warning views[0].containers[2].tone: tone false is not a palette name (green, amber, ...): ignored',
+    'warning views[0].containers[2]: box "z" holds no cards: it is not drawn, nor its lines', // audit 4
   ]);
 });
 

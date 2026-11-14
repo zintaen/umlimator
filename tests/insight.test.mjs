@@ -81,3 +81,12 @@ test('validate() checks lenses, owners and budgets; owner works in rules too', (
   assert.deepEqual(rules({ ...m, rules: [{ id: 'r', from: { owner: 'web' } }] }).map(b => b.targets[0].ids), [['e']]);
   assert.deepEqual(validate(bike), []);
 });
+
+test('audit 4: on a typed view reach() and paths() follow the lines as drawn, a line from a member (a port) from the card it is drawn on', async () => {
+  const A = await import('../lib/umlimator-all.js'), ex = f => JSON.parse(readFileSync(new URL(`../examples/${f}.json`, import.meta.url)));
+  const m = ex('bookshop-components'), ids = r => r.flatMap(x => x.type === 'node' ? [x.id] : x.ids);
+  assert.ok(ids(A.reach(m, 'components', 'shop-api', { depth: 1 })).includes('i-orders'));
+  assert.ok(ids(A.paths(m, 'components', 'shop-api', 'i-orders')).includes('api-provides-orders'));
+  assert.ok(ids(A.reach(m, 'components', 'i-orders', { backward: true, depth: 1 })).includes('shop-api'));
+  assert.ok(ids(A.reach(ex('ebike-structure'), 'inside-ebike', 'ebike.battery')).includes('ebike.dock'));
+});

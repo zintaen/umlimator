@@ -108,7 +108,7 @@ export function render(container, model, options = {}) {
   let said = '[]'; // the selection last reported: a select event means it changed, or a click asked again (again)
   const emitSel = (again = false) => {
     const now = JSON.stringify(picked()); if (now === said && !again) return; said = now;
-    say(!sel ? 'Nothing selected' : (sel.type === 'node' ? nameOf(sel.id) : sel.type === 'edge' ? (e => e ? `Line from ${nameOf(e.from)} to ${nameOf(e.to)}` : 'Line')(geo.edges[edgeIndex(sel)])
+    say(!sel ? 'Nothing selected' : (sel.type === 'node' ? (geo.byId[sel.id] || (geo.families || []).find(f => f.id === sel.id) || {}).aria || nameOf(sel.id) : sel.type === 'edge' ? (e => e ? e.aria || `Line from ${nameOf(e.from)} to ${nameOf(e.to)}` : 'Line')(geo.edges[edgeIndex(sel)])
       : `Box ${[...svg.querySelectorAll(`.family[data-family="${CSS.escape(sel.id)}"] .family-title`)].map(t => t.textContent).join(' ') || sel.id}`) + (more.length ? `, ${more.length + 1} ${picked().every(r => r.type === 'node') ? 'cards ' : ''}selected` : ', selected'));
     emit('select', { target: copyRef(sel), targets: picked() });
   };
@@ -511,7 +511,7 @@ export function render(container, model, options = {}) {
   function hintAt(x, y) { // a point in the view, and on a column view its column and row
     const h = { x: Math.round(x), y: Math.round(y) };
     if (!gridView()) return h;
-    const T = typed() && (ctx.V[cur] || {}).direction === 'down', X = n => T ? n.y + n.h / 2 : n.x + n.w / 2, Y = n => T ? n.x : n.y; // a typed view laid out down: its columns run down
+    const T = geo.down, X = n => T ? n.y + n.h / 2 : n.x + n.w / 2, Y = n => T ? n.x : n.y; // a typed view laid out down: its columns run down
     if (T) [x, y] = [y, x];
     const cols = [...new Set(geo.nodes.filter(n => !n.aside).map(n => n.col))].sort((a, b) => a - b); // the row of cards with no line keeps off the columns
     const mid = c => { const ns = geo.nodes.filter(n => n.col === c && !n.aside); return ns.reduce((a, n) => a + X(n), 0) / ns.length; };
@@ -520,7 +520,8 @@ export function render(container, model, options = {}) {
     if (x > mid(last) + step / 2) col = last + Math.round((x - mid(last)) / step);
     else if (x < mid(first) - step / 2) col = Math.max(0, first - Math.round((mid(first) - x) / step));
     const a = geo.nodes[0], b = geo.nodes.find(n => n.row !== a.row), pitch = b ? (Y(b) - Y(a)) / (b.row - a.row) : 108;
-    h.col = col; h.row = Math.max(0, Math.round((y - (Y(a) - a.row * pitch) - 32) / pitch));
+    const on = geo.nodes.find(n => n.col === col && !n.aside && y >= Y(n) && y <= Y(n) + (T ? n.w : n.h)); // on a card of the column: its row, half rows too
+    h.col = col; h.row = on ? on.row : Math.max(0, Math.round((y - (Y(a) - a.row * pitch) - 32) / pitch));
     return h;
   }
   const siblings = n => { const b = boxOf(n.id); return geo.nodes.filter(m => m.col === n.col && !m.aside === !n.aside && boxOf(m.id) === b).sort((p, q) => p.y - q.y); };

@@ -76,3 +76,10 @@ test('validate() checks rules: an id, from, to or noCycles, its views, and selec
   assert.match(validate(m).find(p => p.path === 'rules[0].from.kind').message, /picks script cards/);
   assert.deepEqual(validate({ ...m, rules: 'none' }).map(p => p.path), ['rules']);
 });
+
+test('audit 4: two lines to two cards with one label that break a rule are two broken lines, not one message', () => {
+  const m = { nodes: [{ id: 'web', label: 'Web' }, { id: 'orders-db', label: 'Postgres', kind: 'db' }, { id: 'users-db', label: 'Postgres', kind: 'db' }],
+    edges: [{ id: 'e1', from: 'web', to: 'orders-db' }, { id: 'e2', from: 'web', to: 'users-db' }, { id: 'e3', from: 'web', to: 'users-db' }],
+    views: [{ id: 'v', nodeIds: ['web', 'orders-db', 'users-db'] }], rules: [{ id: 'no-db', from: { id: 'web' }, to: { kind: 'db' } }] };
+  assert.deepEqual(rules(m).map(r => r.targets[0].ids), [['e1'], ['e2', 'e3']], 'parallel lines still read as one');
+});

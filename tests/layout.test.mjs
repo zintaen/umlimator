@@ -533,3 +533,25 @@ test('a pin that is not two numbers is no pin: laid out as unpinned, and validat
     assert.ok(validate(m).some(q => q.path === 'views[0].layout.a' && /not two numbers/.test(q.message)), JSON.stringify(p));
   }
 });
+
+test('audit 4: check() names a card or box with no label by its id', () => {
+  const ids = ['a', 'b', 'c', 'd', 'e'], edges = [];
+  ids.forEach(x => ids.forEach(y => { if (x < y) edges.push({ from: x, to: y }); }));
+  const said = check({ nodes: ids.map(id => ({ id })), edges: [...edges, { from: 'e', to: 'a' }], views: [{ id: 'v', nodeIds: ids }] }, 'v').map(i => i.message);
+  assert.ok(said.length && said.every(s => !s.includes('undefined')), said.join('\n'));
+  const box = check({ nodes: [{ id: 'a' }, { id: 'b' }, { id: 'c' }], views: [{ id: 'v', nodeIds: ['a', 'b', 'c'], containers: [{ id: 'x', nodeIds: ['a', 'b'] }, { id: 'y', nodeIds: ['b', 'c'] }] }] }, 'v').map(i => i.message);
+  assert.ok(box.includes('view v: families "x" and "y" overlap'), box.join('\n'));
+});
+
+test('audit 4: validate() says what a map view draws wrongly: a card listed twice, a card in two sibling boxes, a box with no cards, a box with a card\'s id', () => {
+  const N = ids => ids.map(id => ({ id })), said = m => validate(m).map(p => `${p.level} ${p.path}: ${p.message}`);
+  assert.deepEqual(said({ nodes: N(['a', 'b']), views: [{ id: 'v', nodeIds: ['a', 'a', 'b'] }] }), ['warning views[0].nodeIds[1]: "a" is listed twice: drawn twice']);
+  assert.deepEqual(said({ nodes: N(['a', 'b']), edges: [{ from: 'a', to: 'x' }], views: [{ id: 'v', nodeIds: ['a', 'b'], containers: [{ id: 'x', nodeIds: [] }] }] }),
+    ['warning views[0].containers[0]: box "x" holds no cards: it is not drawn, nor its lines']);
+  assert.deepEqual(said({ nodes: N(['a', 'b', 'c']), views: [{ id: 'v', nodeIds: ['a', 'b', 'c'], containers: [{ id: 'x', nodeIds: ['a', 'b'] }, { id: 'y', nodeIds: ['b', 'c'] }] }] }),
+    ['warning views[0].containers[1].nodeIds[0]: "b" is in box "x" too, and neither box holds the other: they overlap']);
+  // a card in a box and in a box inside it, or a box holding only a box with cards: fine
+  assert.deepEqual(said({ nodes: N(['a', 'b']), views: [{ id: 'v', nodeIds: ['a', 'b'], containers: [{ id: 'x', nodeIds: ['a'] }, { id: 'y', parent: 'x', nodeIds: ['a'] }, { id: 'z', nodeIds: [] }, { id: 'w', parent: 'z', nodeIds: ['b'] }] }] }), []);
+  assert.deepEqual(said({ nodes: N(['web', 'pay', 'pay-api']), views: [{ id: 'v', nodeIds: ['web', 'pay', 'pay-api'], containers: [{ id: 'pay', nodeIds: ['pay-api'] }] }] }),
+    ['error views[0].containers[0].id: box id "pay" is one of the view\'s cards']);
+});

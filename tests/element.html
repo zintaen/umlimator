@@ -119,6 +119,12 @@ try {
   d.setAttribute('src', 'nope.json'); await until(() => dev.length === 3);
   check("…and a model that can't be had ends loading, with an error that says why", d.loading === false && dev[2] instanceof ErrorEvent && /nope\.json: 404/.test(dev[2].message), dev[2].message);
   d.remove();
+  // a model with diagram types (audit 4): drawn by umlimator-all.js, a class diagram as classes, not plain cards
+  const cls = document.createElement('umlimator-map'); cls.setAttribute('src', '../examples/sales-classes.json'); cls.setAttribute('view', 'domain'); document.body.append(cls);
+  await until(() => cls.map && sr(cls).querySelector('.node'), 10000);
+  const typedNodes = cls.map ? sr(cls).querySelectorAll('.node').length : 0;
+  check('a class diagram\'s model is drawn in its notation: its classes images, none a plain card', typedNodes > 0 && !sr(cls).querySelector('.node[role="button"]') && !!sr(cls).querySelector('.node[role="img"]'), typedNodes);
+  cls.remove();
 } catch (e) { out.fail.push('threw: ' + (e && e.stack || e)); }
 const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
 </script>

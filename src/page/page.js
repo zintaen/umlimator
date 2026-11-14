@@ -4,7 +4,7 @@ import { esc, inline } from '../core/text.js';
 import { mapContext } from '../map/context.js';
 import { KIND, kindOf } from '../map/kinds.js';
 import { arrOf } from '../map/validate.js';
-import { printDoc } from './print.js';
+import { printDoc, wordOf } from './print.js';
 
 /* ================= the standalone viewer =================
    One-row top bar · column browser of views on the left · map on top · details strip below; built on render().
@@ -255,7 +255,7 @@ export function mountPage(container, model, options = {}) {
   const recordSoon = () => { if (rec && !handle.story) { clearTimeout(rec.t); rec.t = setTimeout(() => rec && !handle.story && rec.take(), 650); } }; // once the camera has landed; not a story's steps
 
   /* ⌘K command box: nodes and views, Enter jumps. Indexed from the model shown, as an update() leaves it (issue 133) */
-  const nodeIdx = () => nodes.map(n => ({ n, hay: [n.label, n.id, (n.verbs || []).join(' '), n.what, n.kind, n.author, ((D.authors || {})[n.author] || {}).name, n.origin].join(' ').toLowerCase() }));
+  const nodeIdx = () => nodes.map(n => ({ n, hay: [n.label, n.id, (n.verbs || []).join(' '), n.what, n.kind, n.type, n.author, ((D.authors || {})[n.author] || {}).name, n.origin].join(' ').toLowerCase() }));
   const viewIdx = () => views.map(v => ({ v, hay: [v.title, v.id, v.caption].join(' ').toLowerCase() }));
   const pal = $('m-pal'), q = $('m-q'), res = $('m-res'), none = $('m-none'); // none: what a search that finds nothing says, beside the list (a list holds only options)
   let hits = [], hi = 0;
@@ -283,7 +283,7 @@ export function mountPage(container, model, options = {}) {
       const grp = !qs ? 'Views' : h.t === 'n' ? 'Nodes' : 'Views';
       if (grp !== last) { html += `<div class="gt">${grp}</div>`; last = grp; }
       if (h.t === 'n') { const k = kindOf(h.n.kind, true), vs = viewsWith(h.n.id), here = geo.byId[h.n.id];
-        html += `<button class="fr${i === hi ? ' on' : ''}" role="option" id="m-o${i}" aria-selected="${i === hi}" data-i="${i}"><i style="background:var(--um-${KIND[k][0]})"></i><b>${mark(h.n.label, words)}</b><span>${esc(KIND[k][1])} · ${here ? 'this view' : esc(vs.map(v => shortT(v.title || v.id)).slice(0, 2).join(', ') || 'no view')}</span></button>`; }
+        html += `<button class="fr${i === hi ? ' on' : ''}" role="option" id="m-o${i}" aria-selected="${i === hi}" data-i="${i}"><i style="background:var(--um-${KIND[k][0]})"></i><b>${mark(h.n.label, words)}</b><span>${esc(h.n.type ? wordOf(D, vs[0], h.n.id, h.n.type) : KIND[k][1])} · ${here ? 'this view' : esc(vs.map(v => shortT(v.title || v.id)).slice(0, 2).join(', ') || 'no view')}</span></button>`; }
       else html += `<button class="fr${i === hi ? ' on' : ''}" role="option" id="m-o${i}" aria-selected="${i === hi}" data-i="${i}"><i style="background:var(--um-accent)"></i><b>${mark(h.v.title || h.v.id, words)}</b><span>${(h.v.nodeIds || []).length} nodes${h.v.id === cur ? ' · here' : ''}</span></button>`;
     });
     res.innerHTML = html;

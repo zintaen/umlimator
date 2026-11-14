@@ -158,6 +158,20 @@ try {
   gives('a drag on a view with no direction: pinned where it was dropped, read down the picture', [{ op: 'set', view: 'returns', path: ['layout', 'letter'], value: [w.col, w.row] }],
     m => { const g = layout(m, 'returns').byId.letter; return g.col === w.col && g.row === w.row; });
   h.destroy();
+  // laid out down (audit 4): a node nudged within its own place stays, half rows too; Alt + arrows move it the way they point
+  for (const d of ['down', null]) {
+    base = dir(d); h = mount(base, { editable: true }); const g1 = layout(base, 'returns'), moved = [];
+    g1.nodes.forEach(n => { const [x, y] = centre(`.node[data-id="${n.id}"] .n-body`); drag(`.node[data-id="${n.id}"] .n-body`, [x + 7, y + 7]); if (ed.length) moved.push(n.id); ed = []; });
+    check(`direction ${d}: a node dropped a few px from where it was does not move`, !moved.length, moved);
+    const at = id => layout(apply(base, last().commands), 'returns').byId[id], s = g1.byId.slip, way = [];
+    for (const [k, dx, dy] of [['ArrowRight', 1, 0], ['ArrowDown', 0, 1]]) { ed = []; click('.node[data-id="slip"] .n-body'); key(k, { altKey: true });
+      const n = ed.length && at('slip'); way.push(n && [Math.sign(Math.round(n.x - s.x)), Math.sign(Math.round(n.y - s.y))]); if (!same(way.at(-1), [dx, dy])) way.push('wrong'); }
+    check(`direction ${d}: Alt + Right moves a node right, Alt + Down down`, !way.includes('wrong'), way);
+    if (d) { click('.node[data-id="resaleable"] .n-body'); const n = hint(); lineRing('Flow from Fit for resale? to Rejection letter: no').focus(); key('Enter', {}, sr.activeElement);
+      check('a selection is announced by its accessible name, a node\'s and a flow\'s (audit 4)', n === pick('.node[data-id="resaleable"]').getAttribute('aria-label') + ', selected'
+        && hint() === 'Flow from Fit for resale? to Rejection letter: no, selected', [n, hint()]); }
+    ed = []; h.destroy();
+  }
 } catch (x) { out.fail.push('threw: ' + (x && x.stack || x)); }
 document.documentElement.dataset.theme = 'light'; el.style.removeProperty('--um-sans');
 const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);

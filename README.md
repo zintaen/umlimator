@@ -264,7 +264,9 @@ the map is drawn, and stay where scripts don't run ([`examples/element.html`](ex
 ```
 
 - **The model**: `src`, a URL resolved as an `<img>`'s is (a `data:` URL too), or the model in a child
-  `<script type="application/json">`.
+  `<script type="application/json">`. A model of schema version 2, which may hold diagram types, is drawn by
+  `umlimator-all.js`, which the element loads from beside itself only then: a class diagram in a fenced block is drawn
+  in UML notation, as `umlimator/all` draws it.
 - **Attributes**: `view`, `minimap`, `controls="false"`, `wheel="ctrl"` (the wheel zooms only with Ctrl or ⌘, and scrolls
   the page otherwise, as a map in a document should), `height` (a number is pixels; 480 by default, or size it in CSS)
   and `theme` (`light` or `dark`: theme.css's palette for that map, whatever the page's). Changing one draws the map
@@ -292,7 +294,7 @@ view: api
   and a client module (`clientModules: ['./src/umlimator.js']`) that imports `umlimator/element` and
   `umlimator/theme.css`.
 - **MkDocs, or any site that allows HTML**: write the element itself in the Markdown. Copy `lib/umlimator.js`,
-  `lib/umlimator-element.js` and `lib/umlimator-theme.css` into `docs/js/`, and load them in `mkdocs.yml`:
+  `lib/umlimator-element.js` and `lib/umlimator-theme.css` (and `lib/umlimator-all.js`, for diagram types) into `docs/js/`, and load them in `mkdocs.yml`:
   `extra_javascript: [{ path: js/umlimator-element.js, type: module }]` and `extra_css: [js/umlimator-theme.css]`.
 
 ## Model
