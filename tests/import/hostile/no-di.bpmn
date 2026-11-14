@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- No diagram interchange: every element in one view. -->
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL" id="defs" targetNamespace="http://example.com/bpmn/hostile">
+  <process id="p">
+    <startEvent id="s" />
+    <task id="t" name="Only task" />
+    <endEvent id="e" />
+    <sequenceFlow id="f1" sourceRef="s" targetRef="t" />
+    <sequenceFlow id="f2" sourceRef="t" targetRef="e" />
+  </process>
+</definitions>

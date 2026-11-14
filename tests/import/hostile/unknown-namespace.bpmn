@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- An unknown namespace: its elements and attributes, inside and outside extensionElements. -->
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:x="urn:example:unknown" id="defs" targetNamespace="http://example.com/bpmn/hostile" x:flavour="sour">
+  <x:settings mode="strict" />
+  <process id="p" x:owner="ops">
+    <task id="t" name="Known" x:retries="3">
+      <extensionElements><x:hint text="be quick" /></extensionElements>
+    </task>
+    <x:robot id="r" />
+  </process>
+</definitions>
