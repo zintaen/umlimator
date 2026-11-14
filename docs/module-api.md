@@ -3925,7 +3925,7 @@ them yet.
   budget is 15%). `lib/umlimator-all.js` is 412.8 kB (412,830 B). The npm package is 659 kB.
 
 
-## 0.24.0 (in progress): the ER, flowchart, data flow, information flow and C4 diagrams; four readers; the Bookshop atlas opens at C4
+## 0.24.0: the ER, flowchart, data flow, information flow and C4 diagrams; four readers; the Bookshop atlas opens at C4
 
 Milestone 2 of the plan for 28 diagram types (`docs/diagrams/notes/milestone-2.md`), merged to `main` before 0.24.0 ships
 (after 0.23.0), provisional until then. Everything is additive: maps, every typed view released before and every earlier
