@@ -21,6 +21,8 @@ import '../../../src/uml/deployment.js'; // registers uml.deployment
 import '../../../src/uml/composite.js'; // registers uml.composite-structure
 import '../../../src/uml/profile.js'; // registers uml.profile
 import '../../../src/uml/timing.js'; // registers uml.timing
+import '../../../src/mindmap/mindmap.js'; // registers mindmap (4a.7)
+import '../../../src/cloud/cloud.js'; // registers gcp and azure; aws only under CLOUD_AWS (4a.7)
 
 const DIAGRAMS = ['uml.class', 'uml.object', 'uml.package', 'uml.composite-structure', 'uml.component', 'uml.deployment', 'uml.profile',
   'uml.use-case', 'uml.activity', 'uml.state-machine', 'uml.sequence', 'uml.communication', 'uml.interaction-overview', 'uml.timing',
@@ -37,7 +39,8 @@ export const MOVED = { '01-class.json': '../../../examples/sales-classes.json', 
   '04-composite-structure.json': '../../../examples/order-service-structure.json', '05-component.json': '../../../examples/bookshop-components.json', '06-deployment.json': '../../../examples/bookshop-deployment.json',
   '07-profile.json': '../../../examples/bookshop-profile.json', '14-timing.json': '../../../examples/bookshop-timing.json',
   '15-information-flow.json': '../../../examples/order-information-flow.json', '20-entity-relationship.json': '../../../examples/bookshop-schema.json',
-  '21-flowchart.json': '../../../examples/returns-flowchart.json', '22-data-flow.json': '../../../examples/bookshop-data-flow.json', '23-c4.json': '../../../examples/bookshop-c4.json' };
+  '21-flowchart.json': '../../../examples/returns-flowchart.json', '22-data-flow.json': '../../../examples/bookshop-data-flow.json', '23-c4.json': '../../../examples/bookshop-c4.json',
+  '25-mindmap.json': '../../../examples/bookshop-opening-plan.json', '27-gcp.json': '../../../examples/bookshop-gcp.json', '28-azure.json': '../../../examples/bookshop-azure.json' };
 
 // all 28 target examples, those still here and those that moved, in file order: [name, its URL]
 export function targets() {

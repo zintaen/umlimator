@@ -20,7 +20,7 @@ const stop = msg => { throw new Error(`tools/atlas.mjs: ${msg}`); };
 // what each part may hold; a field not listed here has not been looked at for what merging it means, so a file using one
 // stops the build
 const KEYS = {
-  file: ['$schema', 'schemaVersion', 'title', 'root', 'meta', 'nodes', 'edges', 'views'],
+  file: ['$schema', 'schemaVersion', 'title', 'root', 'meta', 'nodes', 'edges', 'views', 'iconPacks'],
   view: ['id', 'diagram', 'title', 'caption', 'parent', 'nodeIds', 'edges', 'fragments', 'subject', 'direction', 'notation',
     'layout', 'present', 'tour', 'containers', 'render', 'lanes', 'gap', 'rgap', 'timeline'],
   node: ['id', 'type', 'label', 'parent', 'props', 'members', 'opensView', 'kind', 'icon', 'sublabel', 'what', 'when', 'how', 'badge',
@@ -35,7 +35,8 @@ const KEYS = {
     'guard', 'isAbstract', 'isDerived', 'isStatic', 'kind', 'multiplicity', 'operator', 'parameters', 'represents', 'returnType',
     'sort', 'stereotypes', 'trigger', 'value', 'valueType', 'visibility', 'tags', 'states', 'sentAt', 'receivedAt', 'isRequired',
     'conveyed', 'dataType', 'primaryKey', 'foreignKey', 'nullable', 'unique', 'references', 'identifying', 'number', 'description', 'technology',
-    'external', 'shape', 'container'],
+    'external', 'shape', 'container',
+    'icon', 'groupType', 'zoneType'],
 };
 function known(x, kind, where) {
   const odd = Object.keys(x).filter(k => !KEYS[kind].includes(k));
@@ -63,7 +64,7 @@ export function merge(a, b, who, pre = '') {
 }
 
 export function build(links = read(new URL('atlas-links.json', import.meta.url)), load = name => read(new URL(`${name}.json`, EX))) {
-  const kinds = new Map(), files = new Map(), els = { nodes: new Map(), edges: new Map() }, views = new Map();
+  const kinds = new Map(), files = new Map(), els = { nodes: new Map(), edges: new Map() }, views = new Map(), packs = new Map();
   const mark = (x, kind, name) => { // every id, with what it is and the files that have it
     const k = kinds.get(x.id);
     if (k != null && (k !== kind || kind.startsWith('in view'))) stop(`${x.id} is ${k} in ${files.get(x.id).join(', ')} and ${kind} in ${name}`);
@@ -73,6 +74,11 @@ export function build(links = read(new URL('atlas-links.json', import.meta.url))
   for (const name of links.sources) {
     const m = load(name);
     known(m, 'file', `examples/${name}.json`);
+    // the label of each icon pack the file's icons were chosen from: one label a pack, or the build stops (notes/milestone-4a.md §10.3)
+    for (const [pack, label] of Object.entries(isObj(m.iconPacks) ? m.iconPacks : {})) {
+      if (packs.has(pack) && packs.get(pack).label !== label) stop(`${packs.get(pack).file} and ${name} disagree on icon pack ${pack}: ${JSON.stringify(packs.get(pack).label)} against ${JSON.stringify(label)}`);
+      if (!packs.has(pack)) packs.set(pack, { label, file: name });
+    }
     for (const [list, kind] of [['nodes', 'node'], ['edges', 'edge']]) for (const x of m[list] || []) {
       known(x, kind, `${name} ${kind} ${x.id}`); mark(x, `a ${kind}`, name);
       const was = els[list].get(x.id), fs = files.get(x.id);
@@ -100,6 +106,7 @@ export function build(links = read(new URL('atlas-links.json', import.meta.url))
   }
   const model = { $schema: '../lib/umlimator.schema.json', schemaVersion: 2, title: links.title, root: at(links.root)[1],
     nodes: [...els.nodes.values()], edges: [...els.edges.values()], views: [...views.values()].map(x => x.v) };
+  if (packs.size) model.iconPacks = Object.fromEntries([...packs].map(([p, x]) => [p, x.label]));
   const shared = [...files].filter(([, fs]) => fs.length > 1).map(([id, fs]) => ({ id, files: fs }));
   return { model, shared, text: JSON.stringify(model, null, 1) + '\n' };
 }

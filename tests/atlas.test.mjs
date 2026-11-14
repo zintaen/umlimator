@@ -1,7 +1,7 @@
-// The Bookshop atlas (0.21.0; the 14 UML types since 0.23.0; ER, flowchart, data flow, information flow and C4 since 0.24.0): examples/bookshop-atlas.json is what tools/atlas.mjs builds from the Bookshop examples and
+// The Bookshop atlas (0.21.0; the 14 UML types since 0.23.0; ER, flowchart, data flow, information flow and C4 since 0.24.0; the mindmap, Google Cloud and Azure since 0.26.0): examples/bookshop-atlas.json is what tools/atlas.mjs builds from the Bookshop examples and
 // tools/atlas-links.json, byte for byte, so it cannot drift from them. It validates with no core error, every view lays
 // out as in its own file, and every drill-down opens a view of the atlas: each link of the links file, the files' own, and
-// no other. From the C4 context, the root since 0.24.0, and the map a reader reaches every view. An element is shared by id: the files that have it agree on it, or
+// no other. From the C4 context, the root since 0.24.0, the map and the mindmap a reader reaches every view. An element is shared by id: the files that have it agree on it, or
 // the build stops.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -29,6 +29,8 @@ import '../src/dfd/dfd.js';
 import '../src/uml/information.js';
 import '../src/c4/c4.js';
 import '../src/c4/views.js';
+import '../src/mindmap/mindmap.js';
+import '../src/cloud/cloud.js';
 import { layout, check } from '../src/map/api.js';
 import { mapContext } from '../src/map/context.js';
 import { validate } from '../src/map/validate.js';
@@ -42,6 +44,8 @@ import { build } from '../tools/atlas.mjs';
 const LINKS = JSON.parse(readFileSync(new URL('../tools/atlas-links.json', import.meta.url), 'utf8'));
 const { model: M, shared, text } = build();
 const id = ref => ref.slice(ref.indexOf('/') + 1);
+const M2 = ['bookshop-c4', 'bookshop-schema', 'returns-flowchart', 'bookshop-data-flow', 'order-information-flow'];
+const M4A = ['bookshop-opening-plan', 'bookshop-gcp', 'bookshop-azure'];
 
 test('the committed atlas is what tools/atlas.mjs builds, byte for byte', () => {
   assert.equal(readFileSync(new URL('../examples/bookshop-atlas.json', import.meta.url), 'utf8'), text,
@@ -86,14 +90,15 @@ test('every view lays out; check() finds only the crossings its own file keeps',
     found.push(...check(M, v.id).map(p => p.message));
   }
   // fulfil-activity's 2 and order-states' 2, as the CI loop counts them on their own files' plain pass; bookshop-c4's 8
-  // and bookshop-data-flow's 2, as their own files' (0.24.0, repair and reroute off: notes/milestone-2.md §11)
+  // and bookshop-data-flow's 2, as their own files' (0.24.0, repair and reroute off: notes/milestone-2.md §11); the Google
+  // Cloud and Azure examples' 1 each (0.26.0, notes/milestone-4a.md §5.7)
   assert.ok(found.every(p => / cross$/.test(p)), found.join('\n'));
   const own = name => { const src = JSON.parse(readFileSync(new URL(`../examples/${name}.json`, import.meta.url), 'utf8'));
     return src.views.flatMap(v => check(src, v.id).map(p => p.message)); };
-  assert.deepEqual(found, ['fulfil-activity', 'order-states', ...LINKS.sources.slice(-5)].flatMap(own));
+  assert.deepEqual(found, ['fulfil-activity', 'order-states', ...M2, ...M4A].flatMap(own));
   assert.deepEqual(found.map(p => p.split(':')[0]), ['view fulfil', 'view fulfil', 'view order-life', 'view order-life',
     ...Array(3).fill('view c4-containers'), ...Array(2).fill('view c4-components'), ...Array(2).fill('view c4-placing-an-order'),
-    'view c4-deployment', 'view dfd-level-1', 'view dfd-level-1']);
+    'view c4-deployment', 'view dfd-level-1', 'view dfd-level-1', 'view gcp-on-gcp', 'view az-on-azure']);
 });
 
 test('every drill-down opens a view of the atlas: the links file\'s, the files\' own, and no other', () => {
@@ -114,12 +119,16 @@ test('every drill-down opens a view of the atlas: the links file\'s, the files\'
   const reach = from => { const seen = new Set([from]); for (const v of seen) next.get(v).forEach(w => seen.add(w)); return seen; };
   const NEW = ['c4-context', 'c4-containers', 'c4-components', 'c4-placing-an-order', 'c4-deployment', 'er-schema', 'returns', 'dfd-level-1',
     'dfd-level-2-take-order', 'order-flows'];
-  assert.deepEqual([...reach('overview')].sort(), M.views.map(v => v.id).filter(v => !NEW.includes(v)).sort());
+  // the mindmap is a root view of its own (0.26.0, decision 19): its Hosting topics open the two cloud views
+  const MM = ['mm-plan', 'gcp-on-gcp', 'az-on-azure'];
+  assert.deepEqual([...reach('mm-plan')].sort(), [...MM].sort());
+  assert.deepEqual([...reach('overview')].sort(), M.views.map(v => v.id).filter(v => !NEW.includes(v) && !MM.includes(v)).sort());
   // the root is the C4 context (decision 20): from it every milestone 2 view, and through its links the UML views they
   // open; the map's overview from the views list
   assert.equal(M.root, 'c4-context');
   assert.deepEqual([...reach(M.root)].filter(v => NEW.includes(v)).sort(), [...NEW].sort());
-  assert.deepEqual([...new Set([...reach(M.root), ...reach('overview')])].sort(), M.views.map(v => v.id).sort());
+  assert.deepEqual([...new Set([...reach(M.root), ...reach('overview'), ...reach('mm-plan')])].sort(), M.views.map(v => v.id).sort());
+  assert.ok(!opens.some(([, , o]) => o === 'mm-plan'), 'nothing opens the mindmap: a root view, from the views list');
   // the journeys the gallery names: map → classes → an order's state machine; use cases → activity → sequence; map's hosts
   // → deployment → components → the order service's structure (0.22.0)
   const step = (a, b) => assert.ok(next.get(a).has(b), `${a} opens ${b}`);
@@ -133,21 +142,26 @@ test('every drill-down opens a view of the atlas: the links file\'s, the files\'
   step('c4-context', 'shopping'); step('c4-context', 'returns'); step('c4-containers', 'er-schema'); step('c4-containers', 'fulfil');
   step('c4-containers', 'order-flows'); step('c4-components', 'checkout-sequence'); step('c4-components', 'dfd-level-1');
   step('c4-deployment', 'production'); step('dfd-level-1', 'dfd-level-2-take-order');
+  // the opening plan's Hosting topics open the Google Cloud and Azure views (0.26.0, notes/milestone-4a.md §10.3)
+  step('mm-plan', 'gcp-on-gcp'); step('mm-plan', 'az-on-azure');
 });
 
-test('the atlas holds a view of each of the 14 UML diagram kinds, information flow, ER, flowchart, data flow and C4\'s six; describe() and the PDF\'s tables read every view', () => {
+test('the atlas holds a view of each of the 14 UML diagram kinds, information flow, ER, flowchart, data flow, C4\'s six, the mindmap, Google Cloud and Azure; describe() and the PDF\'s tables read every view', () => {
   assert.deepEqual([...new Set(M.views.map(v => v.diagram).filter(d => d?.startsWith('uml.')))].sort(), ['uml.activity', 'uml.class',
     'uml.communication', 'uml.component', 'uml.composite-structure', 'uml.deployment', 'uml.information-flow', 'uml.interaction-overview', 'uml.object', 'uml.package',
     'uml.profile', 'uml.sequence', 'uml.state-machine', 'uml.timing', 'uml.use-case']);
   // C4's landscape view is not in the Bookshop: one software system of its own, so its context view says what a landscape would
-  assert.deepEqual([...new Set(M.views.map(v => v.diagram).filter(d => d && !d.startsWith('uml.')))].sort(), ['c4.component', 'c4.container',
-    'c4.context', 'c4.deployment', 'c4.dynamic', 'dfd', 'er', 'flowchart']);
+  assert.deepEqual([...new Set(M.views.map(v => v.diagram).filter(d => d && !d.startsWith('uml.')))].sort(), ['azure', 'c4.component', 'c4.container',
+    'c4.context', 'c4.deployment', 'c4.dynamic', 'dfd', 'er', 'flowchart', 'gcp', 'mindmap']);
+  // the label of each pack the cloud files' icons were chosen from, as icons/packs.json pins it (0.26.0)
+  const packs = JSON.parse(readFileSync(new URL('../icons/packs.json', import.meta.url), 'utf8'));
+  assert.deepEqual(M.iconPacks, { gcp: packs.gcp.label, azure: packs.azure.label });
   const ctx = mapContext(M);
   for (const v of M.views) { assert.ok(describe(M, v.id).length, v.id); assert.ok(tablesOf(ctx, ctx.V[v.id], ctx.buildGeo(v.id)).length, v.id); }
 });
 
-test('the five milestone 2 examples pass their types\' validate, each on its own and in the atlas: no problem at any level (0.24.0)', () => {
-  for (const name of LINKS.sources.slice(-5)) {
+test('the five milestone 2 examples and milestone 4a\'s three pass their types\' validate, each on its own and in the atlas: no problem at any level (0.24.0, 0.26.0)', () => {
+  for (const name of [...M2, ...M4A]) {
     const src = JSON.parse(readFileSync(new URL(`../examples/${name}.json`, import.meta.url), 'utf8'));
     assert.deepEqual(validate(src), [], name);
     for (const v of src.views) {
@@ -182,8 +196,13 @@ test('deleting lifeline-worker from the sequence view (Shift + Delete) takes its
 test('every view lays out in the atlas as in its own file: the same boxes, and lines through the same points', () => {
   for (const name of LINKS.sources) {
     const src = JSON.parse(readFileSync(new URL(`../examples/${name}.json`, import.meta.url), 'utf8'));
-    const pic = g => ({ nodes: g.nodes.map(n => [n.id, n.x, n.y, n.w, n.h]), edges: g.edges.map(e => [e.from, e.to, e.pts]) });
-    for (const v of src.views) assert.deepEqual(pic(layout(M, v.id)), pic(layout(src, v.id)), `${name} view ${v.id}`);
+    // but a mindmap topic the links file makes open a view: 26 px wider for its mark, grown away from the root
+    // (notes/milestone-4a.md §7.3), since its file has no cloud view for it to open (0.26.0)
+    const wide = new Set(LINKS.links.filter(l => l.element.startsWith(name + '/') && src.views[0].diagram === 'mindmap').map(l => id(l.element)));
+    const pic = (g, atlas) => ({ nodes: g.nodes.map(n => (atlas && wide.has(n.id) ? [n.id, n.x < 0 ? n.x + 26 : n.x, n.y, n.w - 26, n.h] : [n.id, n.x, n.y, n.w, n.h])),
+      edges: g.edges.map(e => [e.from, e.to, e.pts]) });
+    for (const v of src.views) assert.deepEqual(pic(layout(M, v.id), true), pic(layout(src, v.id)), `${name} view ${v.id}`);
+    if (name === 'bookshop-opening-plan') assert.deepEqual([...wide], ['mm-on-gcp', 'mm-on-azure']);
   }
 });
 
@@ -210,4 +229,12 @@ test('the build stops where the files disagree on an element, naming it, the fil
     name => ({ a: { nodes: [order()], views: [{ id: 'v', nodeIds: [] }] }, b: { views: [{ id: 'w', nodeIds: [], timeline }] } })[name]);
   assert.throws(() => timed({ changes: [{ id: 'order', lifeline: 'x', at: 0 }] }), /order is a node in a and in view w in b/);
   assert.throws(() => timed({ scale: 2 }), /scale/);
+});
+
+test('icon packs: one label a pack across the files, written in the atlas; two files that disagree stop the build (0.26.0)', () => {
+  const packs = (a, b) => build({ title: 't', root: 'a/v', sources: ['a', 'b'], links: [] },
+    name => ({ a: { iconPacks: a, nodes: [], views: [{ id: 'v', nodeIds: [] }] }, b: { iconPacks: b, nodes: [], views: [] } })[name]).model.iconPacks;
+  assert.deepEqual(packs({ gcp: '1' }, { gcp: '1', azure: '2' }), { gcp: '1', azure: '2' });
+  assert.throws(() => packs({ gcp: '1' }, { gcp: '2' }), /a and b disagree on icon pack gcp: "1" against "2"/);
+  assert.equal(two([], []).model.iconPacks, undefined, 'no pack, no field');
 });

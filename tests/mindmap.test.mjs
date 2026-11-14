@@ -1,5 +1,5 @@
 // The mindmap type, mindmap (work package 4a.4, notes/milestone-4a.md §7), in Node on the sources: its definition,
-// docs/diagrams/examples/25-mindmap.json laid out clean (no overlap, text in its topic, no branch curve through a topic,
+// examples/bookshop-opening-plan.json (target 25) laid out clean (no overlap, text in its topic, no branch curve through a topic,
 // sampled every 4 px) with its names, reading order and describe(), the edge cases of §10.1 drawn clean, the branch
 // colours and their contrast in both themes, each validator with a passing and a failing model, every gesture hook's
 // commands through apply() (N, F2, Alt + arrows, drops, Delete, Shift + Delete, the outline's Show, L refused), a
@@ -21,7 +21,7 @@ import { describe } from '../src/map/insight.js';
 import { tablesOf } from '../src/page/print.js';
 import { MM_TYPE, MM_INK, mmProblems, mmAdd, mmMoveTo, mmRemove, mmRename, mmConnect, mmShow } from '../src/mindmap/mindmap.js';
 
-const EX = () => JSON.parse(readFileSync(new URL('../docs/diagrams/examples/25-mindmap.json', import.meta.url), 'utf8'));
+const EX = () => JSON.parse(readFileSync(new URL('../examples/bookshop-opening-plan.json', import.meta.url), 'utf8'));
 const V = m => m.views[0], VID = 'mm-plan', T = 'mindmap.Topic';
 const errors = m => validate(m).filter(p => p.level === 'error');
 const rules = m => mmProblems(m, V(m)).map(p => [p.level, p.rule, p.ids]);
@@ -60,7 +60,7 @@ test('the definition: the palette\'s Topic, no lines, a layout of its own with n
   assert.deepEqual(Object.keys(D.rules), ['mindmap-root', 'topic-parent', 'side-first', 'mindmap-depth']);
 });
 
-test('25-mindmap.json lays out clean: 21 topics, the root at (0, 0), three branches right and three left as pinned, children in nodeIds order, a curve per topic, no problem', () => {
+test('the mindmap example lays out clean: 21 topics, the root at (0, 0), three branches right and three left as pinned, children in nodeIds order, a curve per topic, no problem', () => {
   const m = EX(), g = layout(m, VID);
   assert.deepEqual(validate(m), []);
   assert.deepEqual(unclean(g), []);

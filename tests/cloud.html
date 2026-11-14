@@ -1,7 +1,7 @@
 <!doctype html>
 <!-- The cloud architecture family (4a.6) in headless Chrome (tests/embed.py), from ../src/ throughout (aws is off in the build and
-     registered here, notes/milestone-4a.md §4.7): docs/diagrams/examples/27-gcp.json with a synthetic icons table (one icon white),
-     28-azure.json with none (glyphs and full names) and 26-aws.json with a table, drawn by render() in both themes, three fonts
+     registered here, notes/milestone-4a.md §4.7): examples/bookshop-gcp.json with a synthetic icons table (one icon white),
+     examples/bookshop-azure.json with none (glyphs and full names) and docs/diagrams/examples/26-aws.json with a table, drawn by render() in both themes, three fonts
      and both directions (cards and groups, texts inside their shapes, each element in its group, every vendor <image> with meet
      and nothing that crops, filters, masks, fades or transforms it, Google's legal line inside the picture under a Google icon
      only, names, reading order, legend, contrast), then edited through the edit event and apply(), by pointer and by keyboard:
@@ -50,13 +50,13 @@ const blend = (top, bot) => [0, 1, 2].map(i => top[i] * top[3] + bot[i] * (1 - t
 const lum = c => { const f = v => v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]); };
 const ratio = (fg, bg) => { const [x, y] = [lum(blend(fg, bg)), lum(bg)].sort((p, q) => q - p); return +((x + 0.05) / (y + 0.05)).toFixed(2); };
 const css = (e, k) => rgba(getComputedStyle(e)[k]);
-const load = async f => (await fetch('../docs/diagrams/examples/' + f)).json();
+const load = async f => (await fetch('../' + f)).json(); // the two moved to examples/ (4a.7); AWS's stays a target until 4a.8
 // synthetic icons (S18): a coloured square, a white circle; the table the CLI builds (§4.5)
 const SQ = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><rect width="16" height="16" fill="#3367d6"/></svg>');
 const WH = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><circle cx="8" cy="8" r="7" fill="#fff"/></svg>');
 const table = (pack, m, white) => Object.fromEntries([...(pack === 'gcp' ? [['gcp/', { legal: GCP_LEGAL }]] : []),
   ...m.nodes.filter(n => n.props && n.props.icon).map(n => [`${pack}/${n.props.icon}`, { src: n.props.icon === white ? WH : SQ, dark: n.props.icon === white, name: n.props.icon.replace(/-/g, ' ') }])]);
-const GCP = await load('27-gcp.json'), AZ = await load('28-azure.json'), AWS = await load('26-aws.json');
+const GCP = await load('examples/bookshop-gcp.json'), AZ = await load('examples/bookshop-azure.json'), AWS = await load('docs/diagrams/examples/26-aws.json');
 const CASES = [['gcp', { ...GCP, icons: table('gcp', GCP, 'Cloud-SQL') }, 'gcp-on-gcp', 9, 6, 9], ['azure', AZ, 'az-on-azure', 8, 6, 0], ['aws', { ...AWS, icons: table('aws', AWS, 'Amazon-RDS') }, 'on-aws', 15, 10, 15]];
 // a vendor <image> and what holds it in its card: nothing that crops, filters, masks, fades or transforms it (§5.2)
 const untouched = img => { const bad = []; if (img.getAttribute('preserveAspectRatio') !== 'xMidYMid meet') bad.push('not meet');
