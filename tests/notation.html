@@ -20,7 +20,10 @@
      figure's column). And milestone 3's
      base (M3.1, notes/milestone-3.md §5, §6.2, §7.1): a classifier's titled compartments (each name first, centred, muted,
      in its band), ariaOwn as its accessible name, the containment line's crosshair (hollow, its tip on the owner's
-     outline), and SysML's frame (its tag in the corner, its text inside it, cut on a narrow frame). tests/embed.py
+     outline), and SysML's frame (its tag in the corner, its text inside it, cut on a narrow frame). And milestone 4a's
+     (4a.7, notes/milestone-4a.md §5.3, §5.4, §7.1): Google Cloud's, Azure's and AWS's lines solid with an open arrow at their
+     to end, each end on the outline or group border it meets; groups dashed by kind (region, zone, availability zone);
+     a mindmap's branches curves with no end, 2.5 px from the root and 1.5 px below. tests/embed.py
      opens this in headless Chrome and reads <pre id="result">. -->
 <meta charset="utf-8">
 <link rel="icon" href="data:,">
@@ -317,6 +320,44 @@ try {
     check(`${tag}: a frame's tag sits in its top left corner, its text inside it; a narrow frame cuts it`, fr.length === 2 && !bad.length && fr[0].t.textContent === 'bdd [Model] E-bike: blocks [E-bike blocks]' && /…$/.test(fr[1].t.textContent)
       && fr[0].g.getAttribute('aria-label') === 'Block definition diagram of model E-bike: blocks: E-bike blocks' && getComputedStyle(fr[0].g.querySelector('.family-box')).stroke === getComputedStyle(head).stroke, { bad, t: fr.map(x => x.t.textContent) });
   }
+  // ---- milestone 4a (4a.7, notes/milestone-4a.md §5.3, §5.4, §7.1): a cloud line solid with an open arrow at its to end and
+  // none at its from, each end on the outline or the group border it meets; a group dashed by its kind (region, zone,
+  // availability zone) and solid otherwise; a mindmap's branches curves with no end, 2.5 px from the root and 1.5 px below
+  await import('../src/mindmap/mindmap.js');
+  const { CLOUD_DEFS } = await import('../src/cloud/cloud.js'), { registerDiagramType } = await import('../src/core/registry.js');
+  registerDiagramType('aws', CLOUD_DEFS.aws); // off in the build (decision 1); the fixture's AWS view drawn from src/ (§4.7)
+  const DASHED = new Set(['region', 'zone', 'availability-zone']), seen4 = new Set();
+  for (const [path, vid] of [['../examples/bookshop-gcp.json', 'gcp-on-gcp'], ['../examples/bookshop-azure.json', 'az-on-azure'], ['cloud-stress.json', 'edge-cases'], ['cloud-stress.json', 'aws-edge-cases']]) {
+    const f = `${path.split('/').pop().slice(0, -5)} ${vid}`, model = await (await fetch(path)).json(), g = layout(model, vid);
+    for (const theme of ['light', 'dark']) for (const [fname, family] of Object.entries(FONTS)) {
+      document.documentElement.dataset.theme = theme; el.style.setProperty('--um-sans', family);
+      el.innerHTML = measured(hostMeasure(el), () => mapContext(model).buildView(vid).markup); const svg = el.querySelector('svg'), off = [];
+      svg.querySelectorAll('.edge-g').forEach(gr => { const ge = g.edges[+gr.dataset.i], path = gr.querySelector('path.edge'), name = `${ge.type} ${ge.id}`;
+        const kind = a => { const r = path.getAttribute(a), mk = r && svg.querySelector(r.slice(4, -1)); return mk ? mk.id.replace(/^g\d+-/, '').replace(/-d$/, '') : 'none'; };
+        const [kf, kt] = [kind('marker-start'), kind('marker-end')]; seen4.add(`${ge.type} ${kf} ${kt}`);
+        if (kf !== 'none' || kt !== 'open') off.push(`${name}: ends ${kf} and ${kt}, not none and open`);
+        if (path.getAttribute('stroke-dasharray')) off.push(`${name}: dashed`);
+        const d = path.getAttribute('d').match(/-?\d+(\.\d+)?/g).map(Number);
+        [[d[0], d[1], gr.dataset.from], [d.at(-2), d.at(-1), gr.dataset.to]].forEach(([x, y, id]) => { const q = pt(svg, x, y), e = CSS.escape(id);
+          const bx = [svg.querySelector(`.node[data-id="${e}"] > .n-body`), svg.querySelector(`.node[data-id="${e}"] > .n-mask`), svg.querySelector(`.family[data-family="${e}"] .family-box`)];
+          if ((model.nodes.find(z => z.id === id) || {}).type === 'gcp.User') return; // a person: its end on its box, as the map's
+          if (!bx.some(x2 => { if (!x2 || !x2.isPointInStroke) return false; x2.style.strokeWidth = '3px'; const on = x2.isPointInStroke(q); x2.style.strokeWidth = ''; return on; })) off.push(`${name}: its end at ${id} (${x}, ${y}) is off the outline`); }); });
+      svg.querySelectorAll('.family').forEach(fg => { const n = model.nodes.find(z => z.id === fg.dataset.family), k = n && n.props && (n.props.zoneType || n.props.groupType), dash = !!fg.querySelector('.family-box').getAttribute('stroke-dasharray');
+        seen4.add(`group ${k} ${dash ? 'dashed' : 'solid'}`); if (dash !== DASHED.has(k)) off.push(`${fg.dataset.family} (${k}): ${dash ? 'dashed' : 'solid'}`); });
+      check(`${f}, ${theme}, ${fname}: each line solid with an open arrow at its to end, every end on the outline or border it meets; each group dashed by its kind`, svg.querySelectorAll('.edge-g').length === g.edges.length && !off.length, off.slice(0, 8));
+    }
+  }
+  const mm = await (await fetch('../examples/bookshop-opening-plan.json')).json(), mg = layout(mm, 'mm-plan');
+  for (const theme of ['light', 'dark']) {
+    document.documentElement.dataset.theme = theme;
+    el.innerHTML = measured(hostMeasure(el), () => mapContext(mm).buildView('mm-plan').markup); const svg = el.querySelector('svg'), br = [...svg.querySelectorAll('.mm-branch')];
+    const widths = br.map(p => +getComputedStyle(p).strokeWidth.replace('px', '')), first = mg.mm.links.map(l => mg.byId[l.from].root);
+    check(`mindmap, ${theme}: ${br.length} branch curves (cubic, no end marker), 2.5 px from the root and 1.5 px below`, br.length === mg.mm.links.length && br.every(p => /C/.test(p.getAttribute('d')) && !p.getAttribute('marker-end') && !p.getAttribute('marker-start'))
+      && widths.every((w, i) => w === (first[i] ? 2.5 : 1.5)), widths);
+  }
+  const ends4 = [...seen4].join(' | ');
+  check('milestone 4a: the three families\' lines with an open arrow, region and zone groups dashed, the rest solid, each drawn',
+    ['gcp.Path none open', 'azure.Connector none open', 'aws.Connection none open', 'group region dashed', 'group zone dashed', 'group availability-zone dashed', 'group project solid', 'group subnet solid', 'group security-group solid'].every(k => ends4.includes(k)), [...seen4]);
   document.documentElement.dataset.theme = 'light'; el.style.removeProperty('--um-sans');
 } catch (e) { out.fail.push('threw: ' + (e && e.stack || e)); }
 const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
