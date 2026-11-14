@@ -720,6 +720,47 @@ technology]"; container instances are elements drawn as their container (its sha
 with "Instance of" in the accessible name). Relationships between instances are the model's (`23-c4.json` writes them
 out); none is derived from the containers' (§13).
 
+#### 7.5.4 Amended in M2.6's build
+
+Where `src/c4/c4.js` departs from §5.2 and §7.5, each choice taken by the lead under the maintainer's standing approval
+(14 Nov 2026), the note's recommended direction kept:
+
+- **An implied line's refusal.** The canvas leaves a line id holding `->` out of every gesture before a type's hook is
+  asked (`idsOf` in `src/canvas/edit.js`, `I.label` in `src/typed/edit.js`), so F2's commit, Delete, Shift + Delete and
+  L on an implied line emit nothing, as §5.2 asks, but the hooks never hear it and the hint line says only "Line from
+  Bookshop to Payment provider, selected". What it stands for and where to edit it are in its accessible name (its focus
+  key and its title): "Implied relationship from Bookshop to Payment provider, standing for 2 relationships: …. Edit them
+  where their own ends are shown". Saying the refusal on the hint line needs `src/typed/edit.js` to pass a positional
+  line id to `rename`, `remove` and `key`: a later package's, not M2.6's Owns. A pair a relationship joins is never
+  implied, whether the view draws that relationship or its `edges` list hides it.
+- **A relationship's text on one line.** A typed line has one label line (the map's `sublabel` is the map's), so a
+  relationship reads "description [technology]", cut at 280 px, as the dynamic view's steps will.
+- **The type, by T.** The properties panel sets `props` only, so an element's C4 type is changed by T on a selected
+  element, a picker of the four types, through `edits.key` (`set` of `type`); T is free on a typed view (Q15).
+- **People first.** The host's ranking reads each line's direction, so a line into a person (the email service's
+  "Delivers confirmations to" the shopper) ranked the shopper last. `rankFlip` ranks a line into a person as from them;
+  `rankFlip` sees the line alone, so `boxes()`, which the host asks first, leaves the model's people for it (a
+  `ponytail:` note in the code).
+- **The layout's gaps and what `23-c4.json` keeps.** `gap` 48, `rgap` 64 (56 routed the email service's line to the
+  shopper through a card), `labelGaps`, `cut` 280, repair and reroute off. Laid out right and down, the three static
+  views have no overlap, no text outside its element, no line through a node, every end on its outline within 1 px and
+  no label over a node (§10's list); with repair and reroute off the container view keeps 3 crossings, the component view
+  2, and laid out down one label ("Saves the paid order with") on another line, pinned in `tests/c4.test.mjs` as the
+  activity type's are.
+- **External elements** take the map's external tone (slate) for fill and outline, as `KIND.external` draws it.
+- **Only the subject is a boundary.** `ownersOn` boxes any listed owner, so a view listing an element with an owner
+  other than its subject would draw that owner as a boundary and drop the relationships lifted onto it. `c4-level`
+  refuses such a view instead ("is listed with its owner …, which is not the view's subject"), so a valid view draws
+  only its subject as a dashed box, as §7.5.1 says. `c4-owner` also refuses a `parent` on a person or software system,
+  which T can leave behind and the Owner field does not offer to clear.
+- **Inline relationships.** A relationship written in a view's `edges` (model.md) is checked by `c4-relationship` and
+  `c4-label` at its own path (`views[i].edges[k]`), and the PDF reads its technology.
+- **P1, measured first (§11).** On `tests/c4.test.mjs`'s 50 elements and 70 relationships (a container view, a third of
+  its containers cylinders), CPU best of seven on a loaded laptop: an element's description, which grows its node and
+  lays the view out again, 135 to 191 ms; a full layout 132 to 201 ms; `external`, which moves nothing, 32 to 44 ms (a
+  repaint); a container's technology, §11's named edit, which keeps the node's size here and moves nothing, 46 to 49 ms.
+  A technology long enough to widen its node lays the view out again, as a description does. The common edit is over the 100 ms target and under CI's 1 s ceiling; the test prints it.
+
 ## 8. Readers (S15, S16)
 
 Each in `src/readers/`, in `lib/umlimator-all.js` only: hand-written and linear, a report of `skipped` and
