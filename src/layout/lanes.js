@@ -8,9 +8,13 @@ import { r2 } from '../draw/shapes.js';
    laneRows(pos, laneOf, lanes) -> pos'   pos: { id: [col, row] } as ranked (pins included); laneOf: id -> its innermost
                                           lane's id, or null; lanes: [{ id, parent, order }] outermost first, siblings
                                           by `order`, those with none after them in list order. pos' is new: each lane a run of rows
-   laneBands(g, lanes, laneOf, turned, rgap) -> { bands: [{ id, parent, depth, x, y, w, h, head: { x, y, w, h } }], shift, bounds }
+   laneBands(g, lanes, laneOf, turned, rgap, runs) -> { bands: [{ id, parent, depth, x, y, w, h, head: { x, y, w, h } }], shift, bounds }
                                           g: layoutTyped's geometry, read, never written (§2.4); turned: laid out down;
-                                          rgap: the row gap it was laid out with (else the narrowest gap between two rows).
+                                          rgap: the row gap it was laid out with (else the narrowest gap between two rows);
+                                          runs (optional, milestone 4b §5.2): { key: [first, last] }, each lane's rows as
+                                          the type placed them, in place of counting g's nodes; a lane with no run takes its
+                                          nested lanes' rows, and with none has no band; a key that is no lane (the empty
+                                          row between two pools) only counts its rows.
                                           bands are where they lie once the type has moved its copy of g by shift ({ x, y });
                                           bounds: g's bounds so moved and grown to hold the bands
    Rows: lanes in depth-first order, a lane's own nodes in the rows before its nested lanes'; in each column a lane's nodes
@@ -19,7 +23,8 @@ import { r2 } from '../draw/shapes.js';
    Bands: along the flow, the whole diagram and a 22 px header strip per level of nesting at its start; across it, from the
    divider before a lane's first row to the one after its last, each 12 px past the router's line rgap / 2 before the later
    row (gapLinesY), toward it; the outer edges 12 px inside the router's line. An empty lane at an end takes a row that
-   leaves its band 120 px across at least. */
+   leaves its band 120 px across at least. A box's frame (g.families) counts toward the extent of the first and last rows
+   of the nodes it holds, so no divider crosses it (milestone 4b §5.2; the activity type has no boxes). */
 
 const LN = { head: 22, off: 12, pad: 16, gap: 44, row: 64, min: 120 }; // a header level; a divider off the router's line; the bands' margin; the row gap when g has none to measure; an empty end row's least size; an empty end lane's least width
 
@@ -58,16 +63,23 @@ function laneRows(pos, laneOf, lanes) {
   return out;
 }
 
-function laneBands(g, lanes, laneOf, turned, rgap) {
+function laneBands(g, lanes, laneOf, turned, rgap, runs) {
   const order = laneOrder(lanes), nodes = (g && g.nodes) || [], b = (g && g.bounds) || { x: 0, y: 0, w: 0, h: 0 };
   const [A, S, L, T] = turned ? ['x', 'w', 'y', 'h'] : ['y', 'h', 'x', 'w']; // across the flow, its size; along it, its size
-  const { start, count, rows } = laneRuns(nodes.map(n => [n.id, n.col]), laneOf, order);
+  let first, last, rows;
+  if (runs && typeof runs === 'object') { const ok = r => Array.isArray(r) && Number.isInteger(r[0]) && Number.isInteger(r[1]) && r[0] >= 0 && r[0] <= r[1], R = Object.values(runs).filter(ok);
+    const run = id => (Object.hasOwn(runs, id) && ok(runs[id]) ? runs[id] : [Infinity, -Infinity]);
+    first = order.map(l => run(l.id)[0]); last = order.map(l => run(l.id)[1]);
+    rows = Math.max(0, ...R.map(r => r[1] + 1), ...nodes.map(n => (Number.isInteger(n.row) ? n.row + 1 : 0))); }
+  else { const c = laneRuns(nodes.map(n => [n.id, n.col]), laneOf, order); rows = c.rows; first = c.start.slice(0, order.length); last = order.map((l, s) => c.start[s] + c.count[s] - 1); }
   // each row's extent across the flow: from its nodes, else between its neighbours; a gap is the narrowest between two rows
   const lo = [], hi = [];
   nodes.forEach(n => { const r = n.row; if (!Number.isInteger(r)) return; lo[r] = Math.min(lo[r] ?? Infinity, n[A]); hi[r] = Math.max(hi[r] ?? -Infinity, n[A] + n[S]); });
   let gap = Infinity; for (let r = 0; r + 1 < rows; r++) if (lo[r] != null && lo[r + 1] != null) gap = Math.min(gap, lo[r + 1] - hi[r]);
   if (gap === Infinity) gap = LN.gap;
   if (Number.isFinite(rgap) && rgap > 0) gap = rgap;
+  ((g && g.families) || []).forEach(f => { const rs = nodes.filter(n => Number.isInteger(n.row) && n.x >= f.x && n.y >= f.y && n.x + n.w <= f.x + f.w && n.y + n.h <= f.y + f.h).map(n => n.row);
+    if (!rs.length) return; const r0 = Math.min(...rs), r1 = Math.max(...rs); lo[r0] = Math.min(lo[r0], f[A]); hi[r1] = Math.max(hi[r1], f[A] + f[S]); });
   const end = Math.max(LN.row, LN.min + 2 * LN.off - gap); // an empty end row: its band, the row and a gap less two offsets, 120 px at least
   for (let r = 0; r < rows;) { if (lo[r] != null) { r++; continue; }
     let e = r; while (e < rows && lo[e] == null) e++; // rows r to e - 1 hold nothing
@@ -77,13 +89,13 @@ function laneBands(g, lanes, laneOf, turned, rgap) {
     r = e; }
   const before = r => lo[r] - gap / 2 + LN.off, after = r => (r + 1 < rows ? before(r + 1) : hi[r] + gap / 2 - LN.off); // off the router's lines, which lie rgap / 2 from each row
   // each lane's rows: its own and its nested lanes'
-  const first = start.slice(0, order.length), last = order.map((l, s) => start[s] + count[s] - 1), at = new Map(order.map((l, s) => [l.id, s]));
+  const at = new Map(order.map((l, s) => [l.id, s]));
   order.forEach((l, s) => { for (let p = order[at.get(l.parent)]; p; p = order[at.get(p.parent)]) { const q = at.get(p.id); first[q] = Math.min(first[q], first[s]); last[q] = Math.max(last[q], last[s]); } });
   const levels = order.length ? 1 + Math.max(...order.map(l => l.depth)) : 0, shift = { x: 0, y: 0, [L]: levels * LN.head };
   const a0 = b[L] + LN.pad, a1 = b[L] + b[T] + shift[L] - LN.pad;
-  const bands = order.map((l, s) => { const c0 = before(first[s]), c1 = after(last[s]), s0 = a0 + l.depth * LN.head;
+  const bands = order.flatMap((l, s) => { if (!(first[s] <= last[s])) return []; const c0 = before(first[s]), c1 = after(last[s]), s0 = a0 + l.depth * LN.head;
     const box = len => ({ [L]: r2(s0), [T]: r2(len), [A]: r2(c0), [S]: r2(c1 - c0) });
-    return { id: l.id, parent: l.parent, depth: l.depth, ...box(a1 - s0), head: box(LN.head) }; });
+    return [{ id: l.id, parent: l.parent, depth: l.depth, ...box(a1 - s0), head: box(LN.head) }]; });
   const x0 = Math.min(b.x + shift.x, ...bands.map(d => d.x - LN.pad)), y0 = Math.min(b.y + shift.y, ...bands.map(d => d.y - LN.pad));
   const x1 = Math.max(b.x + b.w + shift.x, ...bands.map(d => d.x + d.w + LN.pad)), y1 = Math.max(b.y + b.h + shift.y, ...bands.map(d => d.y + d.h + LN.pad));
   return { bands, shift, bounds: { x: r2(x0), y: r2(y0), w: r2(x1 - x0), h: r2(y1 - y0) } };

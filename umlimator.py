@@ -12,7 +12,8 @@
   umlimator.py trace MODEL.json TRACE.json --view ID --out OUT.json [--match MATCH.json] [--title T] [--diagram uml.sequence]   # a trace (OTLP JSON) kept as a numbered view, or as a UML sequence diagram
   umlimator.py timelapse MODEL.json --out PAGE.html [--limit 20]   # the model's versions in git history, on a slider
   umlimator.py record PAGE.html --story ID --out STORY.png [--size 1160x740] [--scale 1] [--theme light|dark]   # a story as an animated PNG
-  umlimator.py import FILE --out MODEL.json [--format structurizr|plantuml|mermaid|compose|kubernetes]   # a diagram you have, as a model
+  umlimator.py import FILE --out MODEL.json [--format structurizr|plantuml|mermaid|compose|kubernetes|structurizr-json|dbml|bpmn] [--typed] [--moddle DIR]   # a diagram you have, as a model
+  umlimator.py export MODEL.json --out FILE.bpmn [--view ID] [--format bpmn] [--moddle DIR]   # a model's BPMN, as BPMN XML
   umlimator.py pdf PAGE.html --out MAP.pdf [--views a,b] [--theme light|dark] [--paper a4|letter]   # one PDF: a cover with the contents,
                                                        # each view with its legend and tables of its cards, lines and boxes, the rules
   umlimator.py mcp MODEL.json [--port 7391]   # an MCP server over stdio: an AI assistant reads the model and drives its page
@@ -21,6 +22,8 @@ MODEL.json is the map model in engine/references/schema.md (nodes, edges, views)
 node (PROPOSED, TARGET, OFF ...). `stills` needs Google Chrome or Chromium; the PNGs are what a document that cannot
 run the page (a wiki such as Confluence) shows. `diff`, `drift`, `trace` and `mcp` run the module's own functions in Node,
 and so does `import` of a Mermaid classDiagram, sequenceDiagram or stateDiagram (their readers are the module's, in src/readers/).
+BPMN XML is read and written by the module's adapter in Node through bpmn-moddle, which umlimator never installs: `npm
+install bpmn-moddle@10.3.1` in the working folder, or name its folder with --moddle or UMLIMATOR_BPMN_MODDLE.
 """
 import argparse, atexit, base64, contextlib, hashlib, html, io, json, os, re, shutil, signal, struct, subprocess, sys, tempfile, urllib.parse, urllib.request, zipfile, zlib
 from pathlib import Path
@@ -287,6 +290,32 @@ def js(fn, *args, module=LIB):
     code = (f"import * as u from {json.dumps(module.as_uri())}; let s = ''; for await (const c of process.stdin) s += c;"
             f"process.stdout.write(JSON.stringify(u[{json.dumps(fn)}](...JSON.parse(s))));")
     r = run([node, "--input-type=module", "-e", code], input=json.dumps(args))
+    if r.returncode:
+        sys.exit(r.stderr.strip()[-2000:])
+    return json.loads(r.stdout)
+
+
+MODDLE = "bpmn-moddle@10.3.1"  # the version the adapter is tested with (notes/milestone-4b.md §12.1, decision 24)
+
+
+def bpmn(fn, a, *args):
+    """readBpmnXml or writeBpmnXml (src/readers/bpmn-xml.js) run in Node with a bpmn-moddle the user installed, found in
+    --moddle, else UMLIMATOR_BPMN_MODDLE, else the working folder (notes/milestone-4b.md §12.4)."""
+    node = shutil.which("node") or sys.exit(f"{a.cmd}: BPMN is read and written by the module's adapter in Node.js 18 or later: install Node")
+    adapter = HERE / "src" / "readers" / "bpmn-xml.js"
+    if not adapter.is_file():
+        sys.exit(f"{a.cmd}: BPMN's adapter is src/readers/bpmn-xml.js, which this copy of umlimator does not have: use a full clone of the repository")
+    folder = a.moddle or os.environ.get("UMLIMATOR_BPMN_MODDLE") or os.getcwd()
+    code = ("import { createRequire } from 'node:module'; import { pathToFileURL } from 'node:url'; import path from 'node:path';"
+            f"let f, B; try {{ f = createRequire(path.join({json.dumps(folder)}, 'x')).resolve('bpmn-moddle'); }} catch {{ process.exit(3); }}"
+            "try { B = (await import(pathToFileURL(f))).BpmnModdle; } catch {} if (typeof B !== 'function') process.exit(4);"
+            f"const BpmnModdle = B, u = await import({json.dumps(adapter.as_uri())});"
+            "let s = ''; for await (const c of process.stdin) s += c;"
+            f"process.stdout.write(JSON.stringify(await u[{json.dumps(fn)}](...JSON.parse(s), BpmnModdle())));")
+    r = run([node, "--input-type=module", "-e", code], input=json.dumps(args))
+    if r.returncode in (3, 4):
+        why = f"not found in {folder}" if r.returncode == 3 else f"the one in {folder} has no BpmnModdle export: an older or another package"
+        sys.exit(f"{a.cmd}: BPMN needs bpmn-moddle: npm install {MODDLE} ({why}; --moddle DIR or UMLIMATOR_BPMN_MODDLE names another folder)")
     if r.returncode:
         sys.exit(r.stderr.strip()[-2000:])
     return json.loads(r.stdout)
@@ -792,13 +821,16 @@ def cmd_import(a):
             json.loads(text)
         except ValueError as e:
             sys.exit(f"import: {a.file} is not valid JSON ({e}): is it cut short? (give --format if it is not JSON)")
-    fmt = fmt or sys.exit(f"import: cannot tell the format of {a.file}: give --format ({', '.join(imp.FORMATS + imp.NODE_FORMATS)})")
+    fmt = fmt or sys.exit(f"import: cannot tell the format of {a.file}: give --format ({', '.join(imp.FORMATS + imp.NODE_FORMATS + ['bpmn'])})")
     kind = fmt == "mermaid" and imp.mermaid_typed(text, a.typed)
-    if a.typed and not kind and fmt not in imp.NODE_FORMATS:
+    if a.typed and not kind and fmt not in imp.NODE_FORMATS + ["bpmn"]:  # those are typed already
         sys.exit(f"import: --typed reads a Mermaid flowchart typed; {a.file} is {fmt}"
                  f"{' but not a flowchart' if fmt == 'mermaid' else ''}, which imports as a map: nothing written")
     what = f"a Mermaid {kind}" if kind else named.get(fmt)
-    if what:  # the module's reader, in Node (risks.md R7)
+    if fmt == "bpmn":  # BPMN XML: the module's adapter, through the user's bpmn-moddle (notes/milestone-4b.md §12)
+        r = bpmn("readBpmnXml", a, text)
+        m, unread = r["model"], [(x["line"] or None, f"{x['status']}: {x['message']}") for x in r["report"]]
+    elif what:  # the module's reader, in Node (risks.md R7)
         name, fn = {"classDiagram": ("mermaid-class.js", "readMermaidClass"), "sequenceDiagram": ("mermaid-sequence.js", "readMermaidSequence"),
                     "stateDiagram": ("mermaid-state.js", "readMermaidState"), "erDiagram": ("mermaid-er.js", "readMermaidEr"),
                     "flowchart": ("mermaid-flowchart.js", "readMermaidFlowchart"), "structurizr-json": ("structurizr.js", "readStructurizr"),
@@ -856,6 +888,30 @@ def cmd_import(a):
     print(json.dumps({"out": a.out, "format": fmt, "cards": len(m["nodes"]), "lines": len(m["edges"]) + inline,
                       "views": [v["id"] for v in m["views"]], "unread": len(unread),
                       "notImported": [{"where": w, "message": msg} for w, msg in unread]}, indent=1))
+
+
+def cmd_export(a):
+    """A model's BPMN as BPMN XML (notes/milestone-4b.md §12.3): every bpmn element and view, through the module's
+    writer in Node with the user's bpmn-moddle; what it does not write is listed on stderr, each with its element's id."""
+    try:
+        m = json.loads(Path(a.model).read_text(encoding="utf-8-sig"))
+    except FileNotFoundError:
+        sys.exit(f"no model at {a.model}")
+    except ValueError as e:
+        sys.exit(f"export: {a.model} is not valid JSON ({e})")
+    views = [v.get("id") for v in m.get("views") or [] if isinstance(v, dict) and v.get("diagram") == "bpmn"]
+    view = a.view or (views[0] if views else None)
+    if view not in views:
+        sys.exit(f"export: {a.model} has no bpmn view {view}" if view else f"export: {a.model} has no bpmn view to export")
+    r = bpmn("writeBpmnXml", a, m, view, None)
+    for x in r["report"]:
+        print(f"{a.model}:{x['line']}: {x['message']}" if x["line"] else f"{a.model}: {x['message']}", file=sys.stderr)
+    if not r["xml"]:
+        sys.exit(f"export: nothing written to {a.out}")
+    write(a.out, r["xml"])
+    print(json.dumps({"out": a.out, "format": "bpmn", "view": view, "notWritten": len(r["report"])}, indent=1))
+
+
 def cmd_mcp(a):
     """A Model Context Protocol server over stdio for one model (#91): tools that read it, and tools that drive its page,
     served on 127.0.0.1. It lives in umlimator_mcp.py, next to this file."""
@@ -904,11 +960,16 @@ def main():
     tr.set_defaults(f=cmd_trace)
     t = sub.add_parser("timelapse", help="the model's versions in git history on a slider"); t.add_argument("model"); t.add_argument("--out", required=True)
     t.add_argument("--limit", type=int, default=30, help="the latest N versions (default 30)"); t.set_defaults(f=cmd_timelapse)
-    im = sub.add_parser("import", help="a Structurizr (DSL or JSON), C4-PlantUML, Mermaid or DBML diagram, or compose or Kubernetes JSON, as a model")
+    im = sub.add_parser("import", help="a Structurizr (DSL or JSON), C4-PlantUML, Mermaid or DBML diagram, compose or Kubernetes JSON, or BPMN XML, as a model")
     im.add_argument("file"); im.add_argument("--out", required=True, help="the model, a .json file")
-    im.add_argument("--format", choices=["structurizr", "plantuml", "mermaid", "compose", "kubernetes", "structurizr-json", "dbml"], help="default: read from the content, then the extension")
+    im.add_argument("--format", choices=["structurizr", "plantuml", "mermaid", "compose", "kubernetes", "structurizr-json", "dbml", "bpmn"], help="default: read from the content, then the extension")
     im.add_argument("--typed", action="store_true", help="a Mermaid flowchart as a typed flowchart view (needs Node), not a map")
+    im.add_argument("--moddle", help="BPMN: the folder bpmn-moddle is installed in (default: UMLIMATOR_BPMN_MODDLE, else the working folder)")
     im.set_defaults(f=cmd_import)
+    ex = sub.add_parser("export", help="a model's BPMN as BPMN XML, through bpmn-moddle"); ex.add_argument("model")
+    ex.add_argument("--out", required=True, help="the file, .bpmn"); ex.add_argument("--view", help="the bpmn view whose layout it carries (default: the first)")
+    ex.add_argument("--format", choices=["bpmn"], default="bpmn"); ex.add_argument("--moddle", help="the folder bpmn-moddle is installed in (default: UMLIMATOR_BPMN_MODDLE, else the working folder)")
+    ex.set_defaults(f=cmd_export)
     mc = sub.add_parser("mcp", help="a Model Context Protocol server over stdio: an AI assistant reads the model and drives its page")
     mc.add_argument("model"); mc.add_argument("--port", type=int, default=7391, help="the page's port on 127.0.0.1 (default 7391; another if it is taken)")
     mc.set_defaults(f=cmd_mcp)

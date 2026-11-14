@@ -1,38 +1,38 @@
 {
   "schemaVersion": 2,
   "title": "Bookshop: on Azure",
-  "root": "on-azure",
+  "root": "az-on-azure",
   "nodes": [
-    { "id": "subscription", "type": "azure.Group", "label": "Bookshop production", "props": { "groupType": "subscription" } },
-    { "id": "rg", "type": "azure.Group", "label": "rg-bookshop-prod", "parent": "subscription", "props": { "groupType": "resource-group" } },
-    { "id": "front-door", "type": "azure.Service", "label": "CDN and routing", "parent": "rg", "props": { "icon": "Front-Door" } },
-    { "id": "monitor", "type": "azure.Service", "label": "Logs and alerts", "parent": "rg", "props": { "icon": "Monitor" } },
-    { "id": "region", "type": "azure.Group", "label": "West Europe", "parent": "rg", "props": { "groupType": "region" } },
-    { "id": "assets", "type": "azure.Service", "label": "Storefront files", "parent": "region", "props": { "icon": "Storage-Account" } },
-    { "id": "queue", "type": "azure.Service", "label": "Order queue", "parent": "region", "props": { "icon": "Service-Bus" } },
-    { "id": "vault", "type": "azure.Service", "label": "Secrets", "parent": "region", "props": { "icon": "Key-Vault" } },
-    { "id": "vnet", "type": "azure.Group", "label": "vnet-bookshop", "parent": "region", "props": { "groupType": "virtual-network" } },
-    { "id": "snet-apps", "type": "azure.Group", "label": "snet-apps", "parent": "vnet", "props": { "groupType": "subnet" } },
-    { "id": "api", "type": "azure.Service", "label": "Shop API", "parent": "snet-apps", "props": { "icon": "App-Service" } },
-    { "id": "worker", "type": "azure.Service", "label": "Order worker", "parent": "snet-apps", "props": { "icon": "App-Service" } },
-    { "id": "snet-data", "type": "azure.Group", "label": "snet-data", "parent": "vnet", "props": { "groupType": "subnet" } },
-    { "id": "db", "type": "azure.Service", "label": "Database", "parent": "snet-data", "props": { "icon": "SQL-Database" } }
+    { "id": "az-subscription", "type": "azure.Group", "label": "Bookshop production", "props": { "groupType": "subscription" } },
+    { "id": "az-rg", "type": "azure.Group", "label": "rg-bookshop-prod", "parent": "az-subscription", "props": { "groupType": "resource-group" } },
+    { "id": "az-front-door", "type": "azure.Service", "label": "CDN and routing", "parent": "az-rg", "props": { "icon": "Front-Door-and-CDN-Profiles" } },
+    { "id": "az-monitor", "type": "azure.Service", "label": "Logs and alerts", "parent": "az-rg", "props": { "icon": "Monitor" } },
+    { "id": "az-region", "type": "azure.Group", "label": "West Europe", "parent": "az-rg", "props": { "groupType": "region" } },
+    { "id": "az-assets", "type": "azure.Service", "label": "Storefront files", "parent": "az-region", "props": { "icon": "Storage-Accounts" } },
+    { "id": "az-queue", "type": "azure.Service", "label": "Order queue", "parent": "az-region", "props": { "icon": "Service-Bus" } },
+    { "id": "az-vault", "type": "azure.Service", "label": "Secrets", "parent": "az-region", "props": { "icon": "Key-Vaults" } },
+    { "id": "az-vnet", "type": "azure.Group", "label": "vnet-bookshop", "parent": "az-region", "props": { "groupType": "virtual-network" } },
+    { "id": "az-snet-apps", "type": "azure.Group", "label": "snet-apps", "parent": "az-vnet", "props": { "groupType": "subnet" } },
+    { "id": "az-api", "type": "azure.Service", "label": "Shop API", "parent": "az-snet-apps", "props": { "icon": "App-Services" } },
+    { "id": "az-worker", "type": "azure.Service", "label": "Order worker", "parent": "az-snet-apps", "props": { "icon": "App-Services" } },
+    { "id": "az-snet-data", "type": "azure.Group", "label": "snet-data", "parent": "az-vnet", "props": { "groupType": "subnet" } },
+    { "id": "az-db", "type": "azure.Service", "label": "Database", "parent": "az-snet-data", "props": { "icon": "SQL-Database" } }
   ],
   "edges": [
-    { "id": "front-door-assets", "type": "azure.Connector", "from": "front-door", "to": "assets", "label": "storefront" },
-    { "id": "front-door-api", "type": "azure.Connector", "from": "front-door", "to": "api", "label": "/api" },
-    { "id": "api-db", "type": "azure.Connector", "from": "api", "to": "db", "label": "SQL" },
-    { "id": "api-queue", "type": "azure.Connector", "from": "api", "to": "queue", "label": "paid order" },
-    { "id": "queue-worker", "type": "azure.Connector", "from": "queue", "to": "worker", "label": "next order" },
-    { "id": "worker-db", "type": "azure.Connector", "from": "worker", "to": "db", "label": "SQL" },
-    { "id": "api-vault", "type": "azure.Connector", "from": "api", "to": "vault", "label": "secrets" },
-    { "id": "worker-vault", "type": "azure.Connector", "from": "worker", "to": "vault", "label": "secrets" },
-    { "id": "apps-monitor", "type": "azure.Connector", "from": "snet-apps", "to": "monitor", "label": "logs, metrics" }
+    { "id": "az-front-door-assets", "type": "azure.Connector", "from": "az-front-door", "to": "az-assets", "label": "storefront" },
+    { "id": "az-front-door-api", "type": "azure.Connector", "from": "az-front-door", "to": "az-api", "label": "/api" },
+    { "id": "az-api-db", "type": "azure.Connector", "from": "az-api", "to": "az-db", "label": "SQL" },
+    { "id": "az-api-queue", "type": "azure.Connector", "from": "az-api", "to": "az-queue", "label": "paid order" },
+    { "id": "az-queue-worker", "type": "azure.Connector", "from": "az-queue", "to": "az-worker", "label": "next order" },
+    { "id": "az-worker-db", "type": "azure.Connector", "from": "az-worker", "to": "az-db", "label": "SQL" },
+    { "id": "az-api-vault", "type": "azure.Connector", "from": "az-api", "to": "az-vault", "label": "secrets" },
+    { "id": "az-worker-vault", "type": "azure.Connector", "from": "az-worker", "to": "az-vault", "label": "secrets" },
+    { "id": "az-apps-monitor", "type": "azure.Connector", "from": "az-snet-apps", "to": "az-monitor", "label": "logs, metrics" }
   ],
   "views": [
-    { "id": "on-azure", "diagram": "azure", "title": "Bookshop on Azure", "parent": null,
-      "nodeIds": ["subscription", "rg", "front-door", "monitor", "region", "assets", "queue", "vault",
-        "vnet", "snet-apps", "api", "worker", "snet-data", "db"] }
+    { "id": "az-on-azure", "diagram": "azure", "title": "Bookshop on Azure", "parent": null,
+      "nodeIds": ["az-subscription", "az-rg", "az-front-door", "az-monitor", "az-region", "az-assets", "az-queue", "az-vault",
+        "az-vnet", "az-snet-apps", "az-api", "az-worker", "az-snet-data", "az-db"] }
   ],
   "iconPacks": { "azure": "V25" }
 }
