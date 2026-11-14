@@ -416,3 +416,14 @@ test('the PDF\'s tables (§15, decision 18): each element\'s kind by word, a sta
   assert.deepEqual(T.rows(m, m.views[0], 'placed').slice(-1), ['nudge [unpaid] / remind']);
   assert.equal(T.word(m, 'nope'), null);
 });
+
+test('a member with no string id is reported by validate(), not a throw (audit 1)', () => {
+  const m = (members, type = 'uml.State') => ({ schemaVersion: 2, nodes: [{ id: 's', type, label: 'S', members }], edges: [], views: [{ id: 'v', diagram: 'uml.state-machine', nodeIds: ['s'] }] });
+  for (const x of [m([{ type: 'uml.InternalTransition', props: { trigger: 'tick' } }]), m([{ id: 7, type: 'uml.InternalTransition', props: { trigger: 'tick' } }]), m([{ type: 'uml.Region' }], 'uml.FinalState')])
+    assert.ok(validate(x).length);
+});
+
+test('the Owner field stops at a parent that is no element, for every element (audit 1)', () => {
+  const o = { schemaVersion: 2, nodes: [{ id: 's1', type: 'uml.State', label: 'Idle', parent: 'gone' }, { id: 's2', type: 'uml.State', label: 'Busy' }], edges: [], views: [{ id: 'v', diagram: 'uml.state-machine', nodeIds: ['s1', 's2'] }] };
+  assert.deepEqual(T.owners(o, o.nodes[1]), [{ id: 's1', label: 'Idle' }]);
+});

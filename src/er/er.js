@@ -44,29 +44,30 @@ function erTokens(s) { // split at spaces outside brackets: "amount numeric(10, 
 }
 // a column named by table.column, its entity's label and its own, when exactly one column has them; else by its id. Labels
 // first: an id (`<entity id>.<label>`, erNewId) can read as another column's labels once a table is renamed
-function erRef(t, I) {
+function erRef(t, I, was) {
+  if (t === was && I.col.has(t)) return t; // the id the row printed for its current target: kept, whatever labels it reads as
   const k = t.indexOf('.'), hit = k > 0 ? [...I.col].filter(([, { c, e }]) => erName(e) === t.slice(0, k) && erName(c) === t.slice(k + 1)) : [];
   return hit.length === 1 ? hit[0][0] : I.col.has(t) ? t : null;
 }
-// a row's name: its first word, or "in quotes" when it has a space (printColumn writes it so)
-function parseColumn(text, I) {
-  const s = String(text ?? '').trim(), q = /^"([^"]*)"(?=\s|$)/.exec(s), t = erTokens(q ? s.slice(q[0].length) : s), fail = why => ({ error: `"${s}" is not a column: ${why}` });
+// a row's name: its first word, or "in quotes" when it has a space, a quote or a bracket, \" and \\ inside (printColumn writes it so)
+function parseColumn(text, I, was) {
+  const s = String(text ?? '').trim(), q = /^"((?:[^"\\]|\\.)*)"(?=\s|$)/.exec(s), t = erTokens(q ? s.slice(q[0].length) : s), fail = why => ({ error: `"${s}" is not a column: ${why}` });
   if (!t) return fail('its brackets do not pair');
   if (q ? !q[1].trim() : !t.length) return fail('it is empty');
-  const label = q ? q[1] : t.shift(), props = {}, type = [];
+  const label = q ? q[1].replace(/\\(.)/g, '$1') : t.shift(), props = {}, type = [];
   while (t.length && !erFlag(t[0])) type.push(t.shift()); // a type of several words: "double precision", "timestamp with time zone"
   if (type.length) props.dataType = type.join(' ');
   while (t.length) { const k = t.shift(), f = erFlag(k) && ER_FLAG[k.toLowerCase()];
     if (!f) return fail(`"${k}" is left over: write name type [PK] [FK table.column] [UK] [NULL]`);
     if (props[f]) return fail(`${k.toUpperCase()} is written twice`);
     props[f] = true;
-    if (f === 'foreignKey' && t.length && !erFlag(t[0])) { const r = t.shift(), id = erRef(r, I); if (id == null) return fail(`FK ${r} names no column (table.column)`); props.references = id; } }
+    if (f === 'foreignKey' && t.length && !erFlag(t[0])) { const r = t.shift(), id = erRef(r, I, was); if (id == null) return fail(`FK ${r} names no column (table.column)`); props.references = id; } }
   return { label, props };
 }
 function printColumn(c, I = erIndex(ER_SEEN.get(c))) {
   const p = erProps(c), r = ER_HAS(p.references) && I.col.get(p.references), pair = r && `${erName(r.e)}.${erName(r.c)}`;
   const ref = r && !/[\s.]/.test(erName(r.e) + erName(r.c)) && erRef(pair, I) === p.references ? pair : p.references, name = String(c.label ?? '');
-  return [/\s/.test(name) ? `"${name}"` : name, ER_HAS(p.dataType) && String(p.dataType), p.primaryKey === true && 'PK', (p.foreignKey === true || ER_HAS(ref)) && 'FK', ref, p.unique === true && 'UK', p.nullable === true && 'NULL'].filter(x => typeof x === 'string' && x !== '').join(' ');
+  return [/[\s"([{<>}\]]/.test(name) ? `"${name.replace(/["\\]/g, '\\$&')}"` : name, ER_HAS(p.dataType) && String(p.dataType), p.primaryKey === true && 'PK', (p.foreignKey === true || ER_HAS(ref)) && 'FK', ref, p.unique === true && 'UK', p.nullable === true && 'NULL'].filter(x => typeof x === 'string' && x !== '').join(' ');
 }
 
 /* ---- the entity (§7.1): its name in a 24 px header, then its key columns, a divider, the rest; each row its marks (PK, FK,
@@ -142,6 +143,8 @@ function erNodeName(n) {
   const cs = erCols(n), keys = cs.filter(c => erProps(c).primaryKey === true).map(erName);
   return `Table ${erName(n)}, ${keys.length ? 'key ' + erAnd(keys) : 'no key'}, ${erPlural(cs.length, 'column')}`;
 }
+// an entity's name and its rows, whole (a row cut in the drawing is read here): its accessible name and describe()'s line
+const erFull = (n, I) => { const cs = erCols(n); return erNodeName(n) + (cs.length ? ': ' + cs.map(c => printColumn(c, I)).join('; ') : ''); };
 // "Identifying relationship contains from order (exactly one) to order_line (one or more)"
 function erLineName(e, I) {
   const nm = id => (I.at.has(id) ? erName(I.at.get(id)) : String(id));
@@ -186,7 +189,7 @@ function erGeo({ model, view, pos, memo }) {
   const { I, ids } = erShown(model, view), idef = view.notation === 'idef1x', lines = erLines(view, I, ids), P = id => erPick(pos, id) || [0, 0];
   const nodes = ids.map(id => { const n = I.at.get(id), pr = ER_OBJ(erPick(view.present, id)) ? view.present[id] : {};
     const d = n.type === 'uml.Comment' ? { shape: 'note' } : { shape: 'entity', sections: erSections(n), collapsed: ER_ARR(pr.collapsed), ...(Number.isFinite(pr.rows) ? { rows: pr.rows } : {}), ...(idef && erDependent(I, id) ? { dep: true } : {}) };
-    const x = { id, label: erName(n), type: n.type || 'er.Entity', kind: 'file', ...d, aria: erNodeName(n), col: P(id)[0], row: P(id)[1] };
+    const x = { id, label: erName(n), type: n.type || 'er.Entity', kind: 'file', ...d, aria: erFull(n, I), col: P(id)[0], row: P(id)[1] };
     return { ...x, ...SHAPE[x.shape].size(x) }; });
   const edges = lines.map(e => ({ id: e.id, _id: e.id, type: e.type, from: e.from, to: e.to, label: ER_HAS(e.label) ? String(e.label) : undefined, end: erLook(e, idef), aria: erLineName(e, I), cut: 280,
     ...(ER_OBJ(e.style) || typeof e.style === 'string' ? { style: e.style } : {}) }));
@@ -249,7 +252,7 @@ function erProblems(model) {
    each line ---- */
 function erDescribe(model, viewId) {
   const v = ER_ARR(model && model.views).find(x => ER_OBJ(x) && x.id === viewId); if (!v) throw new Error(`umlimator: no view ${JSON.stringify(viewId)}`);
-  const { I, ids } = erShown(model, v), lines = erLines(v, I, ids), say = n => { const cs = erCols(n); return erNodeName(n) + (cs.length ? ': ' + cs.map(c => printColumn(c, I)).join('; ') : ''); };
+  const { I, ids } = erShown(model, v), lines = erLines(v, I, ids), say = n => erFull(n, I);
   return [`${v.title || v.id}: an entity-relationship diagram of ${erPlural(ids.length, 'element')} and ${erPlural(lines.length, 'line')}.`,
     ...ids.map(id => say(I.at.get(id)) + '.'), ...lines.map(e => erLineName(e, I) + '.')].join('\n');
 }
@@ -260,7 +263,7 @@ const erNewId = (model, base) => { const used = new Set(); JSON.stringify(model,
 // a row of the panel's Members, read as S9's: a new column, or a column's name and syntax props set (its other props kept)
 function erMember(model, view, owner, id, text) {
   const I = erIndex(model); if ((I.at.get(owner) || {}).type !== 'er.Entity') return null;
-  const r = parseColumn(text, I); if (r.error) return r;
+  const r = parseColumn(text, I, erProps((I.col.get(id) || {}).c || {}).references); if (r.error) return r;
   if (id == null) return [{ op: 'add', element: { id: erNewId(model, `${owner}.${r.label}`), type: 'er.Column', label: r.label, ...(Object.keys(r.props).length ? { props: r.props } : {}) }, owner }];
   const m = (I.col.get(id) || {}).c; if (!m) return null;
   const keep = Object.fromEntries(Object.entries(erProps(m)).filter(([k]) => !ER_SYNTAX.includes(k)));

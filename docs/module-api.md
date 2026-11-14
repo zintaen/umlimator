@@ -4267,10 +4267,9 @@ What moves for a host that upgrades from 0.25.0:
   vendors' packs are pinned (#289): `umlimator.py pack fetch gcp|azure|aws` works after the vendor's terms.
 
 
-## 0.27.0 (in progress): the BPMN diagram; BPMN XML read and written through bpmn-moddle; `umlimator.py export`
+## 0.27.0: the BPMN diagram; BPMN XML read and written through bpmn-moddle; `umlimator.py export`
 
-Milestone 4b of the plan for 28 diagram types (`docs/diagrams/notes/milestone-4b.md`), merged to `main` before 0.27.0
-ships (after 0.26.0), provisional until then. Everything is additive: maps, every typed view released before and every
+Milestone 4b of the plan for 28 diagram types (`docs/diagrams/notes/milestone-4b.md`), released after 0.26.0. Everything is additive: maps, every typed view released before and every
 earlier example draw as they did (`bench/expected.json`, the examples' stills, every earlier test), but the BPMN
 example, moved and renamed below, and the Bookshop atlas, which gains it. The new code is in `lib/umlimator-all.js`, the
 CLI and the adapter; the core is unchanged.
@@ -4334,5 +4333,9 @@ CLI and the adapter; the core is unchanged.
   layout 100.4 to 105.8 ms: the edits sit at the target there, over it in the second run, and cost about as much as a full layout, since each
   lays the view out again (the memo spares only an edit that moves nothing).
 - **Size:** `lib/umlimator.js`, what a map host loads, is 186,161 B with `gzip -9`, unchanged by milestone 4b: 12.86%
-  over 0.16.0 (the budget is 15%). Milestone 4b spent none of its 700 B share. `lib/umlimator-all.js` is 552,200 B
-  gzipped.
+  over 0.16.0 (the budget is 15%). Milestone 4b spent none of its 700 B share. `lib/umlimator-all.js` was 552,200 B
+  gzipped with milestone 4b alone.
+
+- **At release:** `lib/umlimator.js` is 186.2 kB (186,174 B) with `gzip -9`, 12.86% over 0.16.0 (the budget is 15%);
+  `lib/umlimator-all.js`, with milestones 3, 4a and 4b, is 590.3 kB (590,335 B); the npm package is 852 kB. Nothing
+  changed since 0.26.0 but this section and the version: 0.26.0 already carried BPMN, provisional.

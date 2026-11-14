@@ -332,3 +332,12 @@ test('class and package views: Tab reaches every element, then every line (one n
     assert.equal((s.match(/node-key/g) || []).length, cards, `${m.title}: a ring per card`);
   }
 });
+
+test('a generalization chain 20,000 deep is walked without recursion; a cycle at its end is still said once, naming it (audit 1)', () => {
+  const n = 20000, nodes = Array.from({ length: n }, (_, i) => ({ id: 'c' + i, type: 'uml.Class', label: 'C' + i }));
+  const edges = Array.from({ length: n - 1 }, (_, i) => ({ id: 'g' + i, type: 'uml.Generalization', from: 'c' + i, to: 'c' + (i + 1) }));
+  assert.deepEqual(classProblems({ schemaVersion: 2, nodes, edges }), []);
+  edges.push({ id: 'back', type: 'uml.Generalization', from: 'c' + (n - 1), to: 'c' + (n - 3) });
+  const cyc = classProblems({ schemaVersion: 2, nodes, edges }).filter(p => p.rule === 'generalization-cycle');
+  assert.equal(cyc.length, 1); assert.deepEqual(cyc[0].ids, ['c' + (n - 3), 'c' + (n - 2), 'c' + (n - 1), 'back']);
+});

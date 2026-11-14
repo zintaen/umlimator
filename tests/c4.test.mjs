@@ -17,7 +17,7 @@ import { mapContext } from '../src/map/context.js';
 import { validate } from '../src/map/validate.js';
 import { describe } from '../src/map/insight.js';
 import { svgOf } from '../src/draw/svg.js';
-import { C4_SHAPES } from '../src/c4/c4.js';
+import { C4_SHAPES, c4Zoom } from '../src/c4/c4.js';
 
 const C4 = JSON.parse(readFileSync(new URL('../examples/bookshop-c4.json', import.meta.url)));
 const T = diagramOf({ diagram: 'c4.container' });
@@ -374,4 +374,20 @@ test('P1 (§11), C4\'s view measured first: on 50 elements and 70 relationships,
   assert.ok(best('full') < 1000, `full layout ${best('full')} ms`);
   assert.ok(best('desc') < 1000, `a description ${best('desc')} ms`); assert.ok(best('still') < 1000, `external ${best('still')} ms`); assert.ok(best('tech') < 1000, `technology ${best('tech')} ms`);
   console.log(`# P1 target 100 ms (C4, M2.6): an element's description ${best('desc').toFixed(1)} ms, external (moves nothing) ${best('still').toFixed(1)} ms, a container's technology (§11's named edit, moves nothing) ${best('tech').toFixed(1)} ms; full layout ${best('full').toFixed(1)} ms; routes ${JSON.stringify(said(() => layout(STRESS, 'all'))[0].stats)}`);
+});
+
+test('audit 1: D leaves a container reached with its system to it; c4-relationship on a non-C4 end; a container view may show other systems\' containers', () => {
+  const d = { description: 'd' }, dt = { description: 'd', technology: 't' };
+  const m = { schemaVersion: 2, nodes: [{ id: 's', type: 'c4.SoftwareSystem', label: 'Shop', props: d }, { id: 'a', type: 'c4.Container', label: 'API', parent: 's', props: dt },
+    { id: 's2', type: 'c4.SoftwareSystem', label: 'Payments', props: d }, { id: 'c2', type: 'c4.Container', label: 'Payments API', parent: 's2', props: dt }],
+  edges: [Rel('r1', 'a', 's2', 'pays via'), Rel('r2', 'a', 'c2', 'calls')], views: [{ id: 'land', diagram: 'c4.landscape', title: 'L', nodeIds: ['s', 's2'] }] };
+  const z = apply(m, c4Zoom(m, m.views[0], ['s']).commands);
+  assert.deepEqual(z.views.at(-1).nodeIds, ['s', 'a', 's2'], 'Payments API is left to Payments, its lines lifted onto it');
+  assert.deepEqual(validate(z).filter(p => p.level === 'error'), []);
+  const n = { ...m, nodes: [...m.nodes, { id: 'n', type: 'uml.Comment', label: 'a note' }], edges: [Rel('r3', 's', 'n', 'reads')], views: [{ id: 'v', diagram: 'c4.landscape', title: 'L', nodeIds: ['s', 'n'] }] };
+  assert.deepEqual(validate(n).filter(p => p.rule === 'c4-relationship').map(p => p.message),
+    ['c4-relationship: r3 joins "Shop", a software system, and "a note", a comment: a relationship joins two static elements or two deployment elements']);
+  const cv = { ...m, edges: [], views: [{ id: 'v', diagram: 'c4.container', title: 'C', subject: 's', nodeIds: ['s', 'a', 'c2'] }] };
+  assert.deepEqual(validate(cv).filter(p => p.rule === 'c4-level'), [], 'another system\'s container on a container view');
+  assert.match(readFileSync(new URL('../docs/conformance/c4.md', import.meta.url), 'utf8'), /containers too \(its subject's and other systems'\)/);
 });

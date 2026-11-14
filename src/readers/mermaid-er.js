@@ -409,7 +409,9 @@ function writeMermaidEr(model, viewId) {
     out.push('  }');
   }
 
-  const edgeOf = e => (typeof e === 'string' ? arr(m.edges).find(x => isObj(x) && x.id === e) : e);
+  const byEdge = new Map();
+  for (const x of arr(m.edges)) if (isObj(x) && !byEdge.has(x.id)) byEdge.set(x.id, x); // the first of an id, as find gave
+  const edgeOf = e => (typeof e === 'string' ? byEdge.get(e) : e);
   const lines = (view && Array.isArray(view.edges) ? view.edges.map(edgeOf) : arr(m.edges).filter(e => isObj(e) && shownSet.has(e.from) && shownSet.has(e.to))).filter(isObj);
   const seenEdges = new Set();
   for (const e of lines) {

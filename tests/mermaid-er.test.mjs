@@ -301,3 +301,11 @@ test('the writer names in comments what it cannot write, and the reader passes o
   assert.equal(write(classes), '%% not written: the model, which has no er view\n');
   assert.match(write(classes, classes.views[0].id), /^%% not written: view .*, not an er one\n$/);
 });
+
+test('the writer is linear in a view that lists its edges by id (audit 1) (timed)', () => {
+  const nodes = [{ id: 'A', type: 'er.Entity', label: 'A' }, { id: 'B', type: 'er.Entity', label: 'B' }];
+  const edges = Array.from({ length: 40000 }, (_, k) => ({ id: `e${k}`, type: 'er.Relationship', from: 'A', to: 'B' }));
+  const t0 = performance.now();
+  write({ schemaVersion: 2, nodes, edges, views: [{ id: 'v', diagram: 'er', nodeIds: ['A', 'B'], edges: edges.map(e => e.id) }] });
+  assert.ok(performance.now() - t0 < 1500, `${performance.now() - t0} ms`);
+});

@@ -6,7 +6,8 @@
 
    readMermaidSequence(text) -> { model, report }: a version-2 model with one `uml.sequence` view, in model.md row 11's
    vocabulary, and a report of what was not read as written, each item { line, status, message }, status `skipped` or
-   `approximated` (R1). The reader is hand-written and linear, and refuses text over MS_LIMIT characters (R2). Ids come
+   `approximated` (R1). The reader is hand-written and linear, and refuses text over MS_LIMIT characters (R2); fragments
+   nested deeper than MS_DEEP are read as their content, in the fragment at that depth (reported once). Ids come
    from the source's names (R3): a lifeline's is its name; a message is <from>-<to>, then -2, -3 ... for each pair, so
    inserting one renames only the later messages of its own pair; a fragment <operator>-<n>, an operand <fragment>.<k>.
    `%% id: <id>` above a statement gives that element its id instead (`%% operand-id:` the first operand of a fragment's
@@ -32,6 +33,7 @@
      `else` is the guard else). `critical`/`option` and `rect` are read as their content; `box` as its participants;
    - `;` ends a statement as a line does (an entity such as #59; does not); `<br>` is a line break in text. */
 const MS_LIMIT = 1 << 20; // characters; a sequence diagram a person writes is a few kilobytes
+const MS_DEEP = 64; // fragments nested deeper are read as their content (R2); the writer indents at most this deep
 const MS_VIEW = 'sequence-diagram'; // the view's id when the source does not name it
 const MS_OPS = ['alt', 'opt', 'loop', 'par', 'break'];
 // arrows, a longer one before its prefix: [text, sort, what is not drawn]
@@ -180,7 +182,7 @@ function readMermaidSequence(text) {
   }
 
   const lifelines = new Map(), order = [], items = [], stack = [], creating = new Map(), destroying = new Map();
-  let viewId, started = false, hint = {}, block = false, last = null;
+  let viewId, started = false, hint = {}, block = false, last = null, frames = 0, deep = false; // frames: fragments open on the stack
   const life = (name, no) => {
     if (!lifelines.has(name)) { const rec = { name, no, node: { id: undefined, type: 'uml.Lifeline', label: name } }; lifelines.set(name, rec); order.push(rec); }
     return lifelines.get(name);
@@ -199,6 +201,12 @@ function readMermaidSequence(text) {
     if (created) creating.set(p.name, no);
   };
   const open = (operator, guard, no) => {
+    if (frames >= MS_DEEP) { // hostile nesting (R2): read as its content, as a rect is
+      stack.push({ what: operator, cur: cur(), no });
+      if (!deep) { deep = true; say(no, 'approximated', `${operator} ${guard}: fragments nested deeper than ${MS_DEEP} are read as their content, with no frame`); }
+      return;
+    }
+    frames++;
     const frag = { kind: 'frag', operator, no, hint: hint.id, parent: cur(), ops: [] };
     const op = { kind: 'op', frag, k: 1, label: guard ? msDecode(guard) : undefined, hint: hint.operand };
     frag.ops.push(op); items.push(frag, op); stack.push({ frag, cur: op, no });
@@ -254,7 +262,7 @@ function readMermaidSequence(text) {
         else say(no, 'skipped', 'option outside a critical region: not read');
       } else if (word === 'rect') { stack.push({ what: 'rect', cur: cur(), no }); say(no, 'skipped', `rect ${rest}: a background colour is not read; its content is`); }
       else if (word === 'box') { stack.push({ what: 'box', cur: cur(), no }); say(no, 'skipped', `box ${rest}: a group of participants is not read; the participants are`); }
-      else if (word === 'end') { if (top) stack.pop(); else say(no, 'skipped', 'an end that closes nothing'); }
+      else if (word === 'end') { if (top) { if (stack.pop().frag) frames--; } else say(no, 'skipped', 'an end that closes nothing'); }
       else if (word === 'note') {
         const c = rest.indexOf(':'), where = (c < 0 ? rest : rest.slice(0, c)).trim(), body = c < 0 ? '' : rest.slice(c + 1).trim();
         const names = where.replace(/^(over|left of|right of)\s+/i, '').split(',').map(x => x.trim()).filter(Boolean);
@@ -334,7 +342,11 @@ function readMermaidSequence(text) {
   return { model: { schemaVersion: 2, ...(title ? { title } : {}), root: view.id, nodes, edges: [], views: [view] }, report };
 }
 
-function writeMermaidSequence(model, viewId) {
+function writeMermaidSequence(model, viewId) { // it never throws: what a host built that breaks it is said in one comment
+  try { return msWrite(model, viewId); } catch (e) { return `%% not written: the model (${String(e && e.message || e).split('\n')[0]})\n`; }
+}
+
+function msWrite(model, viewId) {
   const m = model && typeof model === 'object' ? model : {}, arr = x => (Array.isArray(x) ? x : []), isObj = x => !!x && typeof x === 'object';
   const flat = s => String(s).replace(/\r\n|\r|\n/g, '\\n'), nl = s => /[\r\n]/.test(String(s)), has = x => x != null && x !== '';
   const views = arr(m.views).filter(isObj);
@@ -414,7 +426,7 @@ function writeMermaidSequence(model, viewId) {
 
   // the occurrences in time order, opening and closing fragments around them; an empty fragment ends its operand
   const stack = [], on = new Map(), done = new Set(), broken = new Set(), count = new Map(), parentOf = new Map(); // on: fragment -> its place in the stack
-  const put = (depth, ...xs) => out.push(...xs.map(x => '  '.repeat(depth + 1) + x));
+  const put = (depth, ...xs) => out.push(...xs.map(x => '  '.repeat(Math.min(depth, MS_DEEP) + 1) + x)); // capped: text linear in the model
   const top = () => (stack.length ? stack.at(-1).f.members[stack.at(-1).i].id : undefined); // the operand being written
   const empty = (x, what) => { if (x.label === '') lose(x.id, `an empty ${what}, read as none`); };
   const guard = o => (has(o.label) ? ' ' + enc(o.label) : '');
@@ -466,7 +478,7 @@ function writeMermaidSequence(model, viewId) {
     if (s === 'create') put(d, ...heads.get(x.to).map((l, k, a) => (k === a.length - 1 ? 'create ' + l : l)));
     if (s === 'delete') put(d, `destroy ${names.get(x.to)}`);
     empty(x, 'label');
-    msgAt.set(x, { line: out.length, pad: '  '.repeat(d + 1), h: idOf(x.id, `${x.from}-${x.to}`), parent: top() });
+    msgAt.set(x, { line: out.length, pad: '  '.repeat(Math.min(d, MS_DEEP) + 1), h: idOf(x.id, `${x.from}-${x.to}`), parent: top() });
     out.push(null);
   }
   while (stack.length) finish();

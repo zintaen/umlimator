@@ -224,11 +224,12 @@ function ucProblems(model) {
       say('error', 'generalization-kinds', path, ends, `${e.id} runs from ${q(e.from)} to ${q(e.to)}: a generalization joins two actors or two use cases`); });
   // an include cycle: said once, at the include that closes it, naming every use case on it
   const state = new Map(), stack = [];
-  const walk = id => { state.set(id, 1); stack.push(id);
-    for (const [p, path, eid] of inc.get(id) || []) {
+  const walk = id => { const at = [0]; state.set(id, 1); stack.push(id); // a stack of frames, not recursion: a chain of any depth
+    while (at.length) { const top = stack[stack.length - 1], ps = inc.get(top) || [];
+      if (at[at.length - 1] === ps.length) { at.pop(); stack.pop(); state.set(top, 2); continue; }
+      const [p, path, eid] = ps[at[at.length - 1]++];
       if (state.get(p) === 1) { const loop = stack.slice(stack.indexOf(p)); say('error', 'include-cycle', path, [...loop, eid], `${[...loop, p].map(q).join(' → ')} includes itself (${eid})`); }
-      else if (!state.has(p)) walk(p); }
-    stack.pop(); state.set(id, 2); };
+      else if (!state.has(p)) { state.set(p, 1); stack.push(p); at.push(0); } } };
   [...inc.keys()].forEach(id => { if (!state.has(id)) walk(id); });
   return out;
 }

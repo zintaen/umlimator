@@ -40,7 +40,7 @@ function tmIndex(model, V) {
   const N = new Map(); [...TM_ARR(V.nodes), ...TM_ARR(model && model.nodes)].forEach(n => { if (TM_OBJ(n) && typeof n.id === 'string' && !N.has(n.id)) N.set(n.id, n); });
   const TL = TM_OBJ(V.timeline) ? V.timeline : {}, item = x => TM_OBJ(x) && typeof x.id === 'string';
   const changes = TM_ARR(TL.changes).filter(item), cons = TM_ARR(TL.constraints).filter(item), msgs = TM_ARR(V.edges).filter(e => item(e) && e.type === 'uml.Message');
-  const heads = TM_ARR(V.nodeIds).filter(id => N.has(id) && N.get(id).type === 'uml.Lifeline').map(id => N.get(id)), P = TM_OBJ(V.present) ? V.present : {};
+  const heads = [...new Set(TM_ARR(V.nodeIds))].filter(id => N.has(id) && N.get(id).type === 'uml.Lifeline').map(id => N.get(id)), P = TM_OBJ(V.present) ? V.present : {};
   const unit = TM_HAS(TL.unit) ? String(TL.unit) : null, t = x => `${x}${unit ? ' ' + unit : ''}`;
   const name = id => (N.has(id) ? tmName(N.get(id)) : String(id)), C = new Map(changes.map(c => [c.id, c]));
   const H = new Map(heads.map(n => [n.id, n])), hid = id => C.has(id) && !H.has(C.get(id).lifeline); // a change of a hidden lifeline
@@ -183,7 +183,9 @@ function tmProblems(model, view) {
     if (!tmNum(c.at)) return say('change-time', cPath(c) + '.at', [c.id], `change ${c.id}'s time ${JSON.stringify(c.at)} is not a number`);
     if (!X.H.has(c.lifeline)) return; // a hidden lifeline keeps its changes, not drawn and not warned (§7.2)
     if (!X.values(c.lifeline) && !tmStates(n).includes(String(c.state ?? ''))) say('change-state', cPath(c) + '.state', [c.id, c.lifeline], `change ${c.id}'s state ${JSON.stringify(c.state)} is not one of ${tmName(n)}'s states: drawn on an extra row`, 'warning');
-    const k = `${c.lifeline} ${c.at}`; if (seen.has(k)) say('change-instant', cPath(c) + '.at', [seen.get(k), c.id], `${tmName(n)} changes twice at ${X.t(c.at)} (${seen.get(k)} and ${c.id}): only ${[seen.get(k), c.id].sort().pop()} is drawn`, 'warning'); else seen.set(k, c.id); });
+    const k = `${c.lifeline} ${c.at}`; if (!seen.has(k)) seen.set(k, [n]); seen.get(k).push(c); });
+  seen.forEach(([n, ...cs]) => { const ids = cs.map(c => c.id); // one warning an instant, naming all its changes and the one drawn
+    if (cs.length > 1) say('change-instant', cPath(cs[1]) + '.at', ids, `${tmName(n)} changes ${cs.length > 2 ? cs.length + ' times' : 'twice'} at ${X.t(cs[0].at)} (${ids.slice(0, -1).join(', ')} and ${ids.at(-1)}): only ${[...ids].sort().pop()} is drawn`, 'warning'); });
   X.msgs.forEach(m => { const p = tmProps(m), off = [m.from, m.to].filter(id => !X.H.has(id));
     if (off.length) say('message-ends', ePath(m), [m.id, ...off], `${m.id} runs from ${m.from} to ${m.to}, and ${[...new Set(off)].join(' and ')} ${new Set(off).size > 1 ? 'are not lifelines' : 'is not a lifeline'} of view ${V.id}`);
     if (!tmNum(p.sentAt) || !tmNum(p.receivedAt)) say('change-time', ePath(m) + '.props', [m.id], `message ${m.id}'s sentAt and receivedAt are not both numbers`);
@@ -192,7 +194,7 @@ function tmProblems(model, view) {
     else if (p.sort === 'reply') { const c = X.msgs.find(x => x.id === p.replyTo);
       if (!c || tmSort(c) !== 'call' || c.from !== m.to || c.to !== m.from || !(tmProps(c).sentAt <= p.sentAt)) say('reply-call', ePath(m) + '.props.replyTo', [m.id, c && c.id], `${m.id} answers ${JSON.stringify(p.replyTo)}, which is not a call of this view from ${m.to} to ${m.from} sent no later`); } });
   X.cons.forEach(c => { const kind = TM_KIND[c.type], a = X.C.get(c.from), b = X.C.get(c.to);
-    if (kind === 'time' ? !a || c.to != null : !a || !b) return say('constraint-ends', kPath(c), [c.id], kind === 'time' ? `time constraint ${c.id} needs a change of the view in from, and no to` : kind ? `duration constraint ${c.id} needs two changes of the view in from and to` : `${c.id} is a ${JSON.stringify(c.type)}, not a duration or time constraint`);
+    if (!kind || (kind === 'time' ? !a || c.to != null : !a || !b)) return say('constraint-ends', kPath(c), [c.id], kind === 'time' ? `time constraint ${c.id} needs a change of the view in from, and no to` : kind ? `duration constraint ${c.id} needs two changes of the view in from and to` : `${c.id} is a ${JSON.stringify(c.type)}, not a duration or time constraint`);
     if (kind === 'duration' && tmNum(a.at) && tmNum(b.at) && b.at < a.at) say('constraint-order', kPath(c) + '.to', [c.id, c.from, c.to], `${c.id} runs from ${X.t(a.at)} back to ${X.t(b.at)}`, 'warning'); });
   return out;
 }

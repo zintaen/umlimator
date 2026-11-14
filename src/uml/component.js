@@ -332,9 +332,9 @@ const CP_TYPE = registerDiagramType('uml.component', {
   // the PDF's tables (§11): a component's ports, each with what it provides and requires; an interface's operations; what an artifact manifests
   word: (model, id) => { const x = cpIndex(model).N.get(id); return x ? ({ 'uml.Component': 'Component', 'uml.Interface': 'Interface', 'uml.Artifact': 'Artifact', 'uml.Package': 'Package', 'uml.Comment': 'Comment' }[x.type] || null) : null; },
   rows: (model, view, id) => { const pic = cpPic(model, view), x = pic.I.N.get(id); if (!x) return null;
-    // then the connectors from its ports (0.22.0), which the Lines table leaves out: a port is no card
+    // then the connectors from it or its ports with a port at an end (0.22.0), which the Lines table leaves out: a port is no card
     if (x.type === 'uml.Component') return [...cpPortsOf(x).map(p => cpNodeName(model, view, pic, p.id).replace(/^Port /, '').replace(` of ${pic.name(id)}`, '')),
-      ...pic.lines.filter(l => l.e.type === 'uml.Connector' && (pic.I.P.get(l.e.from) || {}).owner === id).map(l => cpLineName(pic, l))];
+      ...pic.lines.filter(l => l.e.type === 'uml.Connector' && pic.I.comp(l.e.from) === id && (pic.I.P.has(l.e.from) || pic.I.P.has(l.e.to))).map(l => cpLineName(pic, l))];
     if (x.type === 'uml.Interface') return CP_ARR(x.members).filter(CP_OBJ).map(printMember);
     if (x.type === 'uml.Artifact') return pic.lines.filter(l => l.e.type === 'uml.Manifestation' && l.e.from === id).map(l => `manifests ${pic.name(l.e.to)}`);
     return null; },

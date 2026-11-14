@@ -147,10 +147,14 @@ function styIndex(model) {
     if (e.type === 'uml.Extension' && isT(e.from, 'uml.Stereotype') && isT(e.to, 'uml.MetaclassReference')) { const meta = styName(at.get(e.to)); add(I.ext, e.from, meta);
       const p = at.get(e.from).parent; if (STY_OBJ(e.props) && e.props.isRequired === true && I.byProfile.has(p)) add(I.req, p, { st: at.get(e.from), meta }); } });
   // the profiles applied to an owner and its owners: memoised per owner, so no element walks its chain on its own
-  I.scope = id => { if (id == null || !at.has(id)) return []; if (I.memo.has(id)) return I.memo.get(id); I.memo.set(id, []); // a cycle (the core's error) ends here
-    const above = I.scope(up.get(id)), mine = (I.applied.get(id) || []).filter(p => !above.includes(p)), s = mine.length ? [...above, ...mine] : above; I.memo.set(id, s); return s; };
+  I.scope = id => { const ch = []; let s = []; // up the owners to one known, then down: no recursion, any depth
+    for (let k = id; k != null && at.has(k); k = up.get(k)) { if (I.memo.has(k)) { s = I.memo.get(k); break; } I.memo.set(k, []); ch.push(k); } // a cycle (the core's error) ends here
+    for (const k of ch.reverse()) { const mine = (I.applied.get(k) || []).filter(p => !s.includes(p)); if (mine.length) s = [...s, ...mine]; I.memo.set(k, s); }
+    return s; };
   // an owner inside a profile, or the profile: its own definitions, which its required stereotypes do not reach (§5.5)
-  const inP = new Map(); I.inProf = id => { if (id == null || !at.has(id)) return false; if (!inP.has(id)) { inP.set(id, false); inP.set(id, at.get(id).type === 'uml.Profile' || I.inProf(up.get(id))); } return inP.get(id); };
+  const inP = new Map(); I.inProf = id => { const ch = []; let r = false; // as scope: up to a profile or one known, no recursion
+    for (let k = id; k != null && at.has(k); k = up.get(k)) { if (inP.has(k)) { r = inP.get(k); break; } inP.set(k, false); ch.push(k); if (at.get(k).type === 'uml.Profile') { r = true; break; } }
+    ch.forEach(k => inP.set(k, r)); return r; };
   return I;
 }
 const styOf = model => { if (!STY_SEEN.has(model)) STY_SEEN.set(model, styIndex(model)); return STY_SEEN.get(model); };
@@ -187,7 +191,7 @@ function styTagFits(I, def, prof, v) {
   if (t === 'Integer') return re(/^-?\d+$/, 'a whole number');
   if (t === 'Real') return re(/^-?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?$/, 'a number');
   if (t === 'UnlimitedNatural') return re(/^(\d+|\*)$/, 'a whole number or *');
-  const lits = prof && I.enums.get(prof.id).get(t);
+  const lits = I.enums.get(prof && prof.id)?.get(t);
   return lits ? (s !== null && lits.includes(s)) || `one of ${lits.join(', ')}` : s !== null || 'text';
 }
 
@@ -262,7 +266,7 @@ function tagFields(model, x) {
   if (!STY_OBJ(x) || typeof x.id !== 'string') return [];
   const I = styOf(model);
   return appliedOf(model, x.id).flatMap(e => e.tags.map(({ name, def }) => { const t = STY_OBJ(def.props) ? def.props.valueType : null, p = I.at.get(e.stereotype.parent);
-    const lits = t === 'Boolean' ? ['true', 'false'] : p && I.enums.get(p.id).get(t);
+    const lits = t === 'Boolean' ? ['true', 'false'] : I.enums.get(p && p.id)?.get(t);
     return { key: `p:${e.key}:${name}`, path: ['tags', e.key, name], label: `«${styName(e.stereotype)}» ${name}`, ...(lits ? { kind: 'enum', options: lits } : { kind: 'text' }) }; }));
 }
 

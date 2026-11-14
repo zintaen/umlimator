@@ -85,7 +85,7 @@ try {
     check(`${tag}: the verbs drawn; IDEF1X's letters as end labels`, same(labs, ['contains', 'places', 'referred']) && same(letters, notation === 'idef1x' ? ['P', 'P', 'Z'] : []), [labs, letters]);
     const round = all('.node.entity > .n-mask[rx]').map(r => r.parentNode.dataset.id).sort();
     check(`${tag}: IDEF1X rounds the dependent entities' corners`, same(round, notation === 'idef1x' ? ['er-book_author', 'er-order_line'] : []), round);
-    check(`${tag}: names a screen reader reads`, pick('.node[data-id="er-order_line"]').getAttribute('aria-label') === 'Table order_line, key order_id and line_no, 4 columns'
+    check(`${tag}: names a screen reader reads`, pick('.node[data-id="er-order_line"]').getAttribute('aria-label') === 'Table order_line, key order_id and line_no, 4 columns: order_id bigint PK FK order.id; line_no integer PK; book_id bigint FK book.id; quantity integer'
       && pick('.edge-g[data-from="er-order"][data-to="er-order_line"] title').textContent === 'Identifying relationship contains from order (exactly one) to order_line (one or more)');
     const order = all('.keys .um-key').map(k => k.dataset.node || k.dataset.edge || k.textContent);
     check(`${tag}: a key for every entity and line, in reading order`, all('.keys .um-key').length === 14 && same(all('.keys .node-key').map(k => k.dataset.node), IDS), order);

@@ -379,3 +379,18 @@ test('P1: a stress view of 20 lifelines, 200 messages and 10 nested fragments la
   assert.deepEqual([g.edges.length, g.ta.frames.length, g.problems], [200, 10, []]);
   assert.ok(best < 100, `${best.toFixed(1)} ms`);
 });
+
+test('a lifeline listed twice in nodeIds is one head, drawn once (audit 1)', () => {
+  const m = structuredClone(SEQ), v = V(m), id = v.nodeIds[0]; v.nodeIds.push(id);
+  assert.deepEqual(layout(m, v.id).nodes.map(n => n.id), layout(SEQ, v.id).nodes.map(n => n.id));
+});
+
+test('wrap picks a fragment id whose operand ids are free too: another fragment\'s operand f1.1 makes it f2 (audit 1)', () => {
+  const Mg = (id, parent) => ({ id, type: 'uml.Message', from: 'A', to: 'B', label: id, ...(parent ? { parent } : {}), props: { sort: 'async' } });
+  const m = { schemaVersion: 2, nodes: ['A', 'B'].map(id => ({ id, type: 'uml.Lifeline', label: id })), edges: [],
+    views: [{ id: 'v', diagram: 'uml.sequence', nodeIds: ['A', 'B'], edges: [Mg('m0'), Mg('m1', 'f1.1')],
+      fragments: [{ id: 'g', type: 'uml.CombinedFragment', props: { operator: 'opt' }, members: [{ id: 'f1.1', type: 'uml.InteractionOperand', label: 'x' }] }] }] };
+  const r = sqWrap(m, 'v', ['m0'], 'alt');
+  assert.ok(Array.isArray(r), JSON.stringify(r));
+  assert.deepEqual(r[0].element.members.map(o => o.id), ['f2.1', 'f2.2']);
+});
