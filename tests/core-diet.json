@@ -261,13 +261,13 @@
  },
  "all": {
   "examples/sales-classes.json": {
-   "layout domain": "5d847f7c43fde285",
+   "layout domain": "de34deb6146bb9bd",
    "describe domain": "6895f2f5bfbdd8d8",
-   "layout payments-only": "ac182aef5ab1f8b0",
+   "layout payments-only": "486b69d70c901df6",
    "describe payments-only": "18a817b76e2956a0",
    "validate": "643d5437104296e2",
    "edit": "b44ba8a9f8e15e68",
-   "edited layout domain": "e59e054456db6f11",
+   "edited layout domain": "8afce176ecfbbe35",
    "edited validate": "643d5437104296e2"
   }
  },
@@ -281,7 +281,7 @@
   "umlimator.js examples/bookshop-c4.json c4-deployment": "92b1d24e4db870eb",
   "umlimator.js examples/fulfil-activity.json fulfil": "7574fa3f729c7092",
   "umlimator.js examples/fulfil-activity.json take-payment": "fc54192e340a685c",
-  "umlimator-all.js examples/sales-classes.json domain": "f80c70c1547a0d64",
-  "umlimator-all.js examples/sales-classes.json payments-only": "6cc69cc000bae6ab"
+  "umlimator-all.js examples/sales-classes.json domain": "98761468fc7541e3",
+  "umlimator-all.js examples/sales-classes.json payments-only": "c7d6f6825adabba6"
  }
 }
