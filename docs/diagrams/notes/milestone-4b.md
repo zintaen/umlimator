@@ -567,6 +567,25 @@ Where 4b.4 departs from §12.1 to §12.4 and §13, each taken by the lead under 
   nothing, no diagram interchange, an unknown namespace).
 - `weakened.bpmn`'s "`gateway-flows` and `flow-start` silent" is tested as what those rules read (the gateway keeps its
   flows out, each task its flow in), since the rules are 4b.3's.
+- `read(write(model))` equals the model with the defaults the reader writes out filled in: a task's `taskType` `none`, an
+  event's `definition` `none`, a boundary event's `cancelActivity` `true` (row 24's defaults; the 500 generated models
+  leave them out at times). What a reader would read back otherwise is reported by the writer, not left silent: a
+  property on a type row 24 does not give it to (`calledElement` on a task, `categoryValueRef` on a lane, a group or a
+  line), a data object, data store, annotation or group whose `parent` is a lane (written in its pool), lanes whose
+  `parent`s make a cycle (written at the top of their pool), a `processRef` already taken or of the form
+  `<participant>-process-<n>`, a view's `subject` that is no sub-process, a view's `parent` other than the one derived, a
+  view's node that is no element written, an `opensView` other than the first view with the sub-process as `subject`,
+  and a node in no view. The root view's diagram is written first, since a reader takes the first for the root. The
+  writer's report is capped at 1,000 items as the reader's is.
+- The reader reports, and keeps under `ext.bpmn`, what §12.2's list did not name: a boundary event whose host is not
+  read loses `attachedTo`; a sub-process's lane sets; an activity's or event's `ioSpecification`, properties, data
+  inputs and outputs, input and output sets (but the ends of the data associations it reads); a sequence flow's
+  `categoryValueRef`, kept under the flow's own `ext.bpmn`, since row 24 gives a line no groups.
+- The hostile files made by the test include a fifth: just under 1 MiB of diagrams, one per sub-process with it as its
+  plane and one showing them all, which a lookup per view made quadratic; the reader keeps a set and a map instead.
+- The CLI finds bpmn-moddle in `--moddle`, else `UMLIMATOR_BPMN_MODDLE`, else the working folder (§12.1 lists them in
+  another order): a flag given on the command line wins over the environment. A bpmn-moddle with no `BpmnModdle`
+  export (an older or another package) gets the install message.
 - CI's checks have run in four jobs since this note was written: the `node --test` steps are in `node`, `tests/import.py`
   in `bench`. So the pinned install step is in both jobs, and `UMLIMATOR_BPMN_MODDLE` on the two `node --test` steps and
   on `tests/import.py`'s.

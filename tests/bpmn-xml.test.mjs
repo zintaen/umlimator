@@ -83,8 +83,9 @@ function generated(seed) {
     const kind = pick(['Task', 'Task', 'SubProcess', 'CallActivity', 'StartEvent', 'EndEvent', 'IntermediateCatchEvent', 'IntermediateThrowEvent', 'BoundaryEvent', 'ExclusiveGateway', 'ParallelGateway']);
     const parent = pick(holders()), defs = { StartEvent: ['none', 'message', 'timer'], EndEvent: ['none', 'message', 'terminate'], IntermediateCatchEvent: ['message', 'timer'], IntermediateThrowEvent: ['none', 'message'], BoundaryEvent: ['message', 'timer'] };
     if (kind === 'BoundaryEvent' && !acts.length) continue;
-    const props = kind === 'Task' ? { taskType: pick(['none', 'user', 'service']) } : kind === 'CallActivity' && some(.5) ? { calledElement: text() }
-      : kind in defs ? { definition: pick(defs[kind]), ...(kind === 'BoundaryEvent' ? { attachedTo: pick(acts).id, cancelActivity: some(.5) } : {}) } : {};
+    const def = kind in defs && pick(defs[kind]); // a default left out at times: the reader fills it in (filled)
+    const props = kind === 'Task' ? (some(.8) ? { taskType: pick(['none', 'user', 'service']) } : {}) : kind === 'CallActivity' && some(.5) ? { calledElement: text() }
+      : def ? { ...(def === 'none' && some(.5) ? {} : { definition: def }), ...(kind === 'BoundaryEvent' ? { attachedTo: pick(acts).id, ...(some(.7) ? { cancelActivity: some(.5) } : {}) } : {}) } : {};
     const n = node(`bpmn.${kind}`, parent, props);
     flow.push(n);
     if (['Task', 'SubProcess', 'CallActivity'].includes(kind)) acts.push(n);
@@ -119,13 +120,21 @@ function generated(seed) {
   return { schemaVersion: 2, ...(some(.5) ? { title: text() } : {}), root: root.id, nodes, edges, views };
 }
 
-test('read(write(model)) equals the model, for 500 generated models in the subset', needs, async () => {
+// the defaults the reader writes out (row 24: a task's kind none, an event's definition none, cancelActivity true)
+const DEFAULTS = { 'bpmn.Task': { taskType: 'none' }, 'bpmn.StartEvent': { definition: 'none' }, 'bpmn.EndEvent': { definition: 'none' },
+  'bpmn.IntermediateThrowEvent': { definition: 'none' }, 'bpmn.BoundaryEvent': { cancelActivity: true } };
+const filled = m => ({ ...m, nodes: m.nodes.map(n => (DEFAULTS[n.type] ? { ...n, props: { ...DEFAULTS[n.type], ...n.props } } : n)) });
+
+test('read(write(model)) equals the model, its defaults filled in, for 500 generated models in the subset', needs, async () => {
+  let left = 0;
   for (let seed = 1; seed <= 500; seed++) {
     const m = generated(seed), [w, back] = await roundTrip(m);
+    left += m.nodes.filter(n => DEFAULTS[n.type] && Object.keys(DEFAULTS[n.type]).some(k => !(n.props && k in n.props))).length;
     assert.deepEqual(w.report, [], `seed ${seed}`);
     assert.deepEqual(back.report.filter(x => x !== R5 && x.message !== R5.message), [], `seed ${seed}\n${w.xml}`);
-    assert.deepEqual(canon(back.model), canon(m), `seed ${seed}\n${w.xml}`);
+    assert.deepEqual(canon(back.model), canon(filled(m)), `seed ${seed}\n${w.xml}`);
   }
+  assert.ok(left > 100, left); // the generated models leave defaults out often enough to test the filling
 });
 
 test('an id that is not an XML name is written escaped, the model\'s id in umlimator:id; a view\'s id apart from the nodes\'', needs, async () => {
@@ -242,6 +251,57 @@ test('the writer reports what it does not write: other diagrams, ext.bpmn, a lin
   assert.match(xml, /<bpmn:startEvent id="s" \/>/);
 });
 
+test('the writer reports what a reader would read back otherwise, and writes a cycle of lanes at the top (§12.5)', needs, async () => {
+  const pool = (id, props, members) => ({ id, type: 'bpmn.Participant', ...(props ? { props } : {}), ...(members ? { members } : {}) });
+  const task = (id, more = {}) => ({ id, type: 'bpmn.Task', props: { taskType: 'none' }, ...more });
+  const m = { schemaVersion: 2, root: 'w', nodes: [
+    pool('P', null, [{ id: 'L1', type: 'bpmn.Lane', parent: 'L2' }, { id: 'L2', type: 'bpmn.Lane', parent: 'L1' }, { id: 'L3', type: 'bpmn.Lane', parent: 'L1' }]),
+    pool('Q', { processRef: 'X' }), pool('R', { processRef: 'X' }), pool('S', { processRef: 'S-process-2' }), pool('T', { processRef: 'T-process' }),
+    task('t', { parent: 'L1', props: { taskType: 'none', calledElement: 'x', attachedTo: 't', processRef: 'y', definition: 'none', dataStoreRef: 'z', cancelActivity: false } }),
+    { id: 'g', type: 'bpmn.ExclusiveGateway', props: { taskType: 'user' } }, { id: 'grp', type: 'bpmn.Group', parent: 'L3', props: { categoryValueRef: ['grp'] } },
+    { id: 'sp', type: 'bpmn.SubProcess' }, { id: 'sq', type: 'bpmn.SubProcess', opensView: 'v' }, task('lost')],
+  edges: [{ id: 'f', type: 'bpmn.SequenceFlow', from: 't', to: 'g', props: { categoryValueRef: ['grp'] } }],
+  views: [{ id: 'v', diagram: 'bpmn', parent: null, nodeIds: ['P', 'Q', 'R', 'S', 'T', 't', 'g', 'grp', 'sp', 'sq', 'L1'] },
+    { id: 'w', diagram: 'bpmn', parent: null, nodeIds: [] }, { id: 'in-sp', diagram: 'bpmn', parent: 'w', subject: 'sp', nodeIds: [] },
+    { id: 'in-t', diagram: 'bpmn', parent: 'v', subject: 't', nodeIds: [] }] };
+  const many = Array.from({ length: 1200 }, (_, k) => task(`k${k}`, { props: { taskType: 'none', colour: 'red' } }));
+  const [w, back] = await roundTrip(m), at = x => `${x.line}: ${x.message}`;
+  assert.deepEqual(w.report.map(at), [
+    't: props.calledElement: not written', 't: props.attachedTo: not written', 't: props.processRef: not written', 't: props.definition: not written',
+    't: props.dataStoreRef: not written', 't: props.cancelActivity: not written', 'g: props.taskType: not written', 'grp: props.categoryValueRef: not written',
+    'L1: parent L2, which leads round to this lane (written at the top of its pool): not written', 'L2: parent L1, which leads round to this lane (written at the top of its pool): not written',
+    'R: props.processRef X, an id already taken (written as X-2): not written', 'S: props.processRef S-process-2, which a reader takes for S-process made unique: not written',
+    'grp: parent L3, a lane, which BPMN gives no Group (written in its pool): not written', 'f: props.categoryValueRef: not written',
+    'v: the view\'s node L1, which is no element written: not written', 'in-sp: the view\'s parent w (a reader takes v from its subject): not written',
+    'in-t: the view\'s subject t, which is no sub-process written: not written', 'in-t: the view\'s parent v (a reader takes null from its subject): not written',
+    'sp: opensView none (a reader takes in-sp, the first view with it as subject): not written', 'sq: opensView v (a reader takes null, the first view with it as subject): not written',
+    'lost: in no view (a reader puts it in the first, w): not written']);
+  // the root's diagram first; the lanes of a cycle at the top of their pool, their flow nodes named, L3 under L1
+  assert.equal(back.model.root, 'w');
+  assert.deepEqual(back.model.nodes.find(n => n.id === 'P').members, [{ id: 'L1', type: 'bpmn.Lane' }, { id: 'L3', type: 'bpmn.Lane', parent: 'L1' }, { id: 'L2', type: 'bpmn.Lane' }]);
+  assert.deepEqual(['t', 'grp'].map(id => back.model.nodes.find(n => n.id === id).parent), ['L1', 'P']);
+  assert.doesNotMatch(w.xml, /undefined/);
+  // the writer's report, as the reader's, lists BX_MAX items and counts the rest in one
+  const big = await write({ schemaVersion: 2, root: 'v', nodes: many, edges: [], views: [{ id: 'v', diagram: 'bpmn', parent: null, nodeIds: many.map(n => n.id) }] }, 'v', null, BpmnModdle());
+  assert.deepEqual([big.report.length, big.report.at(-1).message], [1001, '200 more items like these: not listed']);
+});
+
+test('the reader says what it does not read: a host not read, a sub-process\'s lanes, an activity\'s own data, a line\'s groups', needs, async () => {
+  const { model, report } = await read(`<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL" id="d" targetNamespace="x">
+    <category id="c"><categoryValue id="cv" value="G" /></category>
+    <process id="p"><adHocSubProcess id="ah" /><boundaryEvent id="b" attachedToRef="ah"><timerEventDefinition /></boundaryEvent>
+      <task id="t"><ioSpecification id="io" /><property id="pr" /></task><task id="u" />
+      <sequenceFlow id="f" sourceRef="t" targetRef="u" categoryValueRef="cv" /><group id="g" categoryValueRef="cv" />
+      <subProcess id="sp"><laneSet id="ls"><lane id="l" /></laneSet></subProcess></process></definitions>`, BpmnModdle());
+  assert.deepEqual(report.map(x => `${x.line} ${x.status}: ${x.message}`), ['ah skipped: AdHocSubProcess outside the subset: kept under ext.bpmn, not read',
+    'io skipped: InputOutputSpecification outside the subset: kept under ext.bpmn, not read', 'pr skipped: Property outside the subset: kept under ext.bpmn, not read',
+    'ls skipped: LaneSet of a sub-process: kept under ext.bpmn, not read', 'b skipped: its host ah is not read: attachedTo not read',
+    'f skipped: its groups (categoryValueRef, which row 24 gives no line): kept under ext.bpmn, not read', ' skipped: no diagram interchange: every element is in one view, process']);
+  assert.deepEqual(model.nodes.find(n => n.id === 'b').props, { definition: 'timer', cancelActivity: true });
+  assert.deepEqual(model.edges[0].ext, { bpmn: { categoryValueRef: ['cv'] } });
+  assert.deepEqual(model.ext.bpmn.skipped.map(x => [x.parent, x.element.id]), [[undefined, 'ah'], ['t', 'io'], ['t', 'pr'], ['sp', 'ls']]);
+});
+
 test('neither function throws: no moddle, not text, a moddle that throws, a model that is not one', async () => {
   const none = { line: '', status: 'skipped', message: 'no bpmn-moddle instance given (npm install bpmn-moddle@10.3.1): nothing read' };
   assert.deepEqual(await read('<definitions/>', null), { model: { schemaVersion: 2, nodes: [], edges: [], views: [] }, report: [none] });
@@ -265,6 +325,12 @@ test('hostile files are read or refused in under a second each, and never throw 
   hostile['10000-levels (made here)'] = `<definitions ${NS}><process id="p">${Array.from({ length: 10000 }, (_, k) => `<subProcess id="s${k}">`).join('')}${'</subProcess>'.repeat(10000)}</process></definitions>`;
   const many = `<definitions ${NS}><process id="p"><task id="a" /><task id="b" />${flows(18500)}</process></definitions>`;
   hostile['many-references (made here)'] = many;
+  // as many diagrams as sub-processes, each one's plane, and one diagram showing them all: just under 1 MiB, linear
+  const n = 7300, subs = Array.from({ length: n }, (_, k) => `<subProcess id="s${k}" />`).join('');
+  hostile['many-views (made here)'] = `<definitions ${NS} xmlns:di="http://www.omg.org/spec/BPMN/20100524/DI"><process id="p">${subs}</process>${Array.from({ length: n }, (_, k) =>
+    `<di:BPMNDiagram id="d${k}"><di:BPMNPlane bpmnElement="s${k}" /></di:BPMNDiagram>`).join('')}<di:BPMNDiagram id="all"><di:BPMNPlane bpmnElement="p">${Array.from({ length: n }, (_, k) =>
+    `<di:BPMNShape bpmnElement="s${k}" />`).join('')}</di:BPMNPlane></di:BPMNDiagram></definitions>`;
+  assert.ok(hostile['many-views (made here)'].length < 1 << 20 && hostile['many-views (made here)'].length > 0.9 * (1 << 20));
   assert.ok(many.length < 1 << 20 && many.length > 0.9 * (1 << 20), many.length);
   const said = {};
   for (const [name, xml] of Object.entries(hostile)) {
@@ -289,6 +355,8 @@ test('hostile files are read or refused in under a second each, and never throw 
   assert.ok(deep.model.nodes.length === 10000 || deep.report.some(x => /could not be read/.test(x.message)), deep.report.slice(0, 3));
   const lots = said['many-references (made here)'];
   assert.deepEqual([lots.model.nodes.length, lots.model.edges.length], [2, 18500]);
+  const views = said['many-views (made here)'].model.views;
+  assert.deepEqual([views.length, views[0].parent, views[0].subject, views.at(-1).id], [7301, 'all', 's0', 'all']);
 });
 
 test('500 elements are read and written in time, each way (P1) (timed)', needs, async () => {

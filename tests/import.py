@@ -351,6 +351,20 @@ with tempfile.TemporaryDirectory() as tmp:
         again = json.loads((t / "again.json").read_text(encoding="utf-8")) if r.returncode == 0 else {}
         ok("bpmn · what export writes, import reads back as the same model, but what ext.bpmn held",
            {k: v for k, v in m.items() if k != "ext"} == again, r.stderr)
+        # --moddle names the folder, before UMLIMATOR_BPMN_MODDLE (here a folder with none); one whose bpmn-moddle has no
+        # BpmnModdle export (an older or another package) gets the install message, not a stack trace
+        have = __import__("os").environ.get("UMLIMATOR_BPMN_MODDLE") or __import__("os").getcwd()  # where import found it above
+        r = subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "import", str(ROOT / name), "--out", str(t / "flag.json"), "--moddle", have],
+                           capture_output=True, text=True, env=none, cwd=tmp)
+        ok("bpmn · --moddle names bpmn-moddle's folder, before UMLIMATOR_BPMN_MODDLE", r.returncode == 0 and (t / "flag.json").is_file(), r.stderr)
+        odd = t / "odd" / "node_modules" / "bpmn-moddle"
+        odd.mkdir(parents=True)
+        (odd / "package.json").write_text('{"name": "bpmn-moddle", "version": "0.0.1", "main": "index.js"}', encoding="utf-8")
+        (odd / "index.js").write_text("module.exports = function () {};", encoding="utf-8")
+        r = subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "import", str(ROOT / name), "--out", str(t / "odd.json"), "--moddle", str(t / "odd")],
+                           capture_output=True, text=True, env=none, cwd=tmp)
+        ok("bpmn · a bpmn-moddle with no BpmnModdle export gets the install message, not a stack trace", r.returncode == 1
+           and "BPMN needs bpmn-moddle: npm install bpmn-moddle@10.3.1 (the one in" in r.stderr and "at " not in r.stderr and not (t / "odd.json").exists(), r.stderr)
         r = run("export", str(t / "returns.json"), "--view", "nowhere", "--out", str(t / "y.bpmn"))
         ok("bpmn · export of a view the model does not have is an error", r.returncode == 1 and "has no bpmn view nowhere" in r.stderr, r.stderr)
 sys.exit(1 if failed else 0)

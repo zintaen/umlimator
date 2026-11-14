@@ -307,13 +307,15 @@ def bpmn(fn, a, *args):
         sys.exit(f"{a.cmd}: BPMN's adapter is src/readers/bpmn-xml.js, which this copy of umlimator does not have: use a full clone of the repository")
     folder = a.moddle or os.environ.get("UMLIMATOR_BPMN_MODDLE") or os.getcwd()
     code = ("import { createRequire } from 'node:module'; import { pathToFileURL } from 'node:url'; import path from 'node:path';"
-            f"let f; try {{ f = createRequire(path.join({json.dumps(folder)}, 'x')).resolve('bpmn-moddle'); }} catch {{ process.exit(3); }}"
-            f"const {{ BpmnModdle }} = await import(pathToFileURL(f)), u = await import({json.dumps(adapter.as_uri())});"
+            f"let f, B; try {{ f = createRequire(path.join({json.dumps(folder)}, 'x')).resolve('bpmn-moddle'); }} catch {{ process.exit(3); }}"
+            "try { B = (await import(pathToFileURL(f))).BpmnModdle; } catch {} if (typeof B !== 'function') process.exit(4);"
+            f"const BpmnModdle = B, u = await import({json.dumps(adapter.as_uri())});"
             "let s = ''; for await (const c of process.stdin) s += c;"
             f"process.stdout.write(JSON.stringify(await u[{json.dumps(fn)}](...JSON.parse(s), BpmnModdle())));")
     r = run([node, "--input-type=module", "-e", code], input=json.dumps(args))
-    if r.returncode == 3:
-        sys.exit(f"{a.cmd}: BPMN needs bpmn-moddle: npm install {MODDLE} (not found in {folder}; --moddle DIR or UMLIMATOR_BPMN_MODDLE names another folder)")
+    if r.returncode in (3, 4):
+        why = f"not found in {folder}" if r.returncode == 3 else f"the one in {folder} has no BpmnModdle export: an older or another package"
+        sys.exit(f"{a.cmd}: BPMN needs bpmn-moddle: npm install {MODDLE} ({why}; --moddle DIR or UMLIMATOR_BPMN_MODDLE names another folder)")
     if r.returncode:
         sys.exit(r.stderr.strip()[-2000:])
     return json.loads(r.stdout)
@@ -844,6 +846,8 @@ def cmd_import(a):
     print(json.dumps({"out": a.out, "format": fmt, "cards": len(m["nodes"]), "lines": len(m["edges"]) + inline,
                       "views": [v["id"] for v in m["views"]], "unread": len(unread),
                       "notImported": [{"where": w, "message": msg} for w, msg in unread]}, indent=1))
+
+
 def cmd_export(a):
     """A model's BPMN as BPMN XML (notes/milestone-4b.md §12.3): every bpmn element and view, through the module's
     writer in Node with the user's bpmn-moddle; what it does not write is listed on stderr, each with its element's id."""
