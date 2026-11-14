@@ -156,6 +156,7 @@ test('validators: the example breaks no rule; each rule fails on a model that br
   bad(m => { TL(m).constraints[0].to = 'ghost'; }, [['error', 'constraint-ends', ['c-wait']]]);
   bad(m => { TL(m).constraints[1].to = 'w-idle'; }, [['error', 'constraint-ends', ['c-finished']]]);
   bad(m => { TL(m).constraints[1].type = 'uml.Constraint'; }, [['error', 'constraint-ends', ['c-finished']]]);
+  bad(m => { TL(m).constraints[0].type = 'uml.Constraint'; }, [['error', 'constraint-ends', ['c-wait']]]); // audit 1: two good ends, an unknown kind
   bad(m => { Object.assign(TL(m).constraints[0], { from: 'w-recording', to: 'w-waiting' }); }, [['warning', 'constraint-order', ['c-wait', 'w-recording', 'w-waiting']]]);
   // a hidden lifeline keeps its changes, not drawn and not warned (§7.2)
   const h = apply(EX(), { op: 'hide', id: 'payments', view: 'charge' });
@@ -379,7 +380,7 @@ test('a 30-step session through the hooks: each step a transaction that adds no 
 });
 
 test('the PDF\'s tables (§9): a lifeline\'s changes in time order, the messages it sends and the constraints on its changes', () => {
-  const m = EX(), ctx = mapContext(m), [els, lines] = tablesOf(ctx, ctx.V.charge, ctx.buildGeo('charge')), row = els.rows.find(r => r.includes('<b>worker</b>'));
+  const m = EX(), ctx = mapContext(m), [els, lines] = tablesOf(ctx, ctx.V.charge, ctx.buildGeo('charge')), row = els.rows.find(r => r.includes('<b>worker : OrderWorker</b>'));
   assert.deepEqual(TM_TYPE.rows(m, 'charge', 'worker'), ['0 ms: Idle', '100 ms: Waiting for payment', '760 ms: Recording payment', '900 ms: Idle', 'charge(total) to payments at 100 ms → 140 ms',
     'Duration constraint {<= 800 ms} on worker from 100 ms to 760 ms', 'Time constraint {<= 1000 ms} on worker at 900 ms']);
   assert.match(row, /<td>Lifeline<\/td>/); assert.match(row, /<p>760 ms: Recording payment<\/p>/);
@@ -422,4 +423,15 @@ test('P1 (§12): 12 lifelines, 400 changes, 100 messages, 40 constraints: a full
 test('the type ships in lib/umlimator-all.js only (risks.md C5)', () => {
   const all = readFileSync(new URL('../lib/umlimator-all.js', import.meta.url), 'utf8'), core = readFileSync(new URL('../lib/umlimator.js', import.meta.url), 'utf8');
   for (const k of ["registerDiagramType('uml.timing'", 'function tmRun(', "SHAPE['tm-lane'] = "]) { assert.ok(all.includes(k), k); assert.ok(!core.includes(k), k); }
+});
+
+test('a lifeline listed twice in nodeIds is one lane, drawn once (audit 1)', () => {
+  const m = EX(), v = m.views[0]; v.nodeIds.push(v.nodeIds[0]);
+  assert.deepEqual(layout(m, v.id).nodes.map(n => n.id), layout(EX(), v.id).nodes.map(n => n.id));
+});
+
+test('three changes at one instant: one warning naming all three and the one drawn, the id that sorts last (audit 1)', () => {
+  const m = EX(); ch(m, 'w-done').at = 760; ch(m, 'w-waiting').at = 760;
+  assert.deepEqual(tmProblems(m, 'charge').filter(p => p.rule === 'change-instant').map(p => [p.ids, p.message]),
+    [[['w-waiting', 'w-recording', 'w-done'], 'change-instant: worker changes 3 times at 760 ms (w-waiting, w-recording and w-done): only w-waiting is drawn']]);
 });

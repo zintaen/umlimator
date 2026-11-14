@@ -108,6 +108,9 @@ test('names, reading order, describe(), the legend, and the PDF\'s words and row
   assert.deepEqual(T.rows(CM, CM.views[0], 'shop-api-jar'), ['manifests Shop API']);
   const typed = structuredClone(CM); typed.nodes[1].members[0].props = { valueType: 'OrderApi' };
   assert.deepEqual(T.rows(typed, typed.views[0], 'shop-api')[0], 'orders : OrderApi, provides Orders');
+  // audit 1: a connector from the component itself to another's port is listed under it
+  const own = structuredClone(CM); own.edges.push({ id: 'sf-orders', type: 'uml.Connector', from: 'storefront-component', to: 'shop-api.orders', label: 'calls', props: { kind: 'assembly' } });
+  assert.ok(T.rows(own, own.views[0], 'storefront-component').includes('Assembly from Storefront to orders of Shop API: calls'));
 });
 
 test('a class on a component view is drawn as a classifier, with no «component»', () => {

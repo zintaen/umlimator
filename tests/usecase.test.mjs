@@ -268,3 +268,12 @@ test('P1 (S15): on 50 elements and 60 lines, a full layout under 1 s, and a use 
   assert.ok(best('rename') < 1000, `a rename ${best('rename')} ms`);
   console.log(`# P1 target 100 ms: ` + best('rename') + ' ' + `a rename ${best('rename')} ms`);
 });
+
+test('an include chain 20,000 long is walked without recursion; a cycle at its end is said once, naming it (audit 1)', () => {
+  const n = 20000, ids = Array.from({ length: n }, (_, i) => 'u' + i);
+  const m = { schemaVersion: 2, nodes: ids.map(id => ({ id, type: 'uml.UseCase', label: id })), edges: ids.slice(1).map((id, i) => ({ id: 'i' + i, type: 'uml.Include', from: ids[i], to: id })),
+    views: [{ id: 'v', diagram: 'uml.use-case', nodeIds: ids.slice(0, 3) }] };
+  assert.deepEqual(validate(m), []);
+  m.edges.push({ id: 'back', type: 'uml.Include', from: ids[n - 1], to: ids[n - 2] });
+  assert.deepEqual(validate(m).filter(p => p.rule === 'include-cycle').map(p => p.ids), [[ids[n - 2], ids[n - 1], 'back']]);
+});

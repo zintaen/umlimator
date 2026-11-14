@@ -57,7 +57,7 @@ on its rendered page. Each file was opened and looked at.
 | Text | Text, in the page's font family; the font is not embedded unless `fontCSS` is given | Pixels | Selectable text |
 | Accessible names | Each lifeline's and message row's `aria-label` kept; the connectors' `<title>` removed, as for maps | None | None |
 | Theme | The page's, light or dark, every colour resolved | The page's | `--theme`, light by default |
-| Tables | None | None | Per type (R8): each lifeline and its kind ("Lifeline"); each connector and each message from → to, its label and its kind ("Connector", "Message"). **Gaps:** a self-message and a self connector (`api → api`) are left out of the lines table and of the line count; a message's number and sort are not in the table (the picture has the numbers); the heading still says "Cards" |
+| Tables | None | None | Per type (R8): each lifeline and its kind ("Lifeline"); each connector and each message from → to, its label and its kind ("Connector", "Message"). **Gaps:** a self-message and a self connector (`api → api`) are left out of the lines table and of the line count; a message's number and sort are not in the table (the picture has the numbers) |
 
 ## Accessibility
 

@@ -66,7 +66,7 @@ its rendered page. Each file was opened and looked at.
 | Text | Text, in the page's font family; the font is not embedded unless `fontCSS` is given | Pixels | Selectable text |
 | Accessible names | Each head's, frame's, operand's and use's `aria-label` kept; the messages' `<title>` removed, as for maps | None | None |
 | Theme | The page's, light or dark, every colour resolved, so the file opens alone | The page's | `--theme`, light by default |
-| Tables | None | None | Per type (R8): each lifeline by its name and kind ("Lifeline"); each message from → to, its label and its kind ("Message"). **Gaps:** a self-message (`api → api`) is left out of the lines table and of the cover's and the page's line count ("9 lines" for 10 messages); fragments, operands and interaction uses are not listed; a message's sort is not given (every kind reads "Message"); the heading still says "Cards" |
+| Tables | None | None | Per type (R8): each lifeline by its drawn name (`api : ShopApi`) and kind ("Lifeline"); each message from → to, its label and its kind ("Message"). **Gaps:** a self-message (`api → api`) is left out of the lines table and of the cover's and the page's line count ("9 lines" for 10 messages); fragments, operands and interaction uses are not listed; a message's sort is not given (every kind reads "Message") |
 
 The site builds every example's stills and PDF ([zintaen.github.io/umlimator](https://zintaen.github.io/umlimator/)),
 this one's among them.

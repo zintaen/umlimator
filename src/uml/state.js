@@ -254,12 +254,12 @@ function stProblems(model) {
     if (bad.length) say('error', 'transition-ends', path, [e.id, ...bad], `${e.id} ends on ${bad.map(id => `${q(id)}${el(id) ? `, a ${String(ty(id)).split('.').pop()}` : ', which is no element'}`).join(' and ')}: a transition joins states, pseudostates or final states`);
     if (printTransition(ST_PROPS(e)) == null) say('warning', 'label-syntax', `${path}.props`, [e.id], `${e.id}'s parts do not read back as "${transitionText(ST_PROPS(e))}": edit them in the properties panel`); });
   const has = (e, k) => ST_HAS(ST_PROPS(e)[k]), list = es => es.map(([e]) => e.id).join(', ');
-  // nodes: owners, kinds, and the pseudostates' and final states' lines
+  // nodes: owners, kinds, and the pseudostates' and final states' lines; a member's path by its place (one with no id is in no index)
   const inits = new Map(), hist = new Map();
   N.forEach(({ x, path }, id) => {
     if (ST_VERTEX.includes(x.type) && x.parent != null) { const r = M.get(x.parent), p = N.get(x.parent);
       if (!(r && r.x.type === 'uml.Region' && r.owner.type === 'uml.State') && !(p && p.x.type === 'uml.State')) say('error', 'owner-kinds', `${path}.parent`, [id, x.parent], `${q(id)} is owned by ${q(x.parent)}, which is not a state or a region of one`); }
-    stMembers(x, 'uml.Region').forEach(m => { if (x.type !== 'uml.State') say('error', 'owner-kinds', M.get(m.id).path, [id, m.id], `region ${m.id} is a member of ${q(id)}, which is not a state`); });
+    stMembers(x, 'uml.Region').forEach(m => { if (x.type !== 'uml.State') say('error', 'owner-kinds', `${path}.members[${x.members.indexOf(m)}]`, [id, m.id], `region ${m.id} is a member of ${q(id)}, which is not a state`); });
     const i = ins.get(id) || [], o = outs.get(id) || [], ids = es => [id, ...es.map(([e]) => e.id)];
     if (x.type === 'uml.FinalState') {
       if (o.length) say('error', 'final-out', path, ids(o), `${q(id)} has ${stPlural(o.length, 'outgoing transition')} (${list(o)}); a final state has none`);
@@ -267,7 +267,7 @@ function stProblems(model) {
       if (bad.length || acts.length) say('error', 'final-kind', path, [id, ...bad.map(m => m.id)], `${q(id)} has ${[...(bad.length ? [stPlural(bad.length, 'region or internal transition')] : []), ...acts].join(', ')}; a final state has none`); }
     if (x.type === 'uml.State') { const rs = stMembers(x, 'uml.Region'), direct = I.kids.get(id) || [];
       if (rs.length && direct.length) say('warning', 'region-mixed', path, [id, ...direct.map(d => d.id)], `${q(id)} holds regions and also ${direct.map(d => q(d.id)).join(', ')} directly`);
-      stMembers(x, 'uml.InternalTransition').forEach(m => { const t = ST_PROPS(m).trigger, mp = M.get(m.id).path;
+      stMembers(x, 'uml.InternalTransition').forEach(m => { const t = ST_PROPS(m).trigger, mp = `${path}.members[${x.members.indexOf(m)}]`;
         if (ST_ACTS.includes(String(t ?? '').trim())) say('error', 'reserved-trigger', `${mp}.props.trigger`, [id, m.id], `internal transition ${m.id} of ${q(id)} has the trigger "${String(t).trim()}", which names the state's ${String(t).trim()} activity`);
         else if (!ST_HAS(t)) say('warning', 'internal-trigger', mp, [id, m.id], `internal transition ${m.id} of ${q(id)} has no trigger`);
         if (printTransition(ST_PROPS(m)) == null) say('warning', 'label-syntax', `${mp}.props`, [m.id], `internal transition ${m.id}'s parts do not read back as "${transitionText(ST_PROPS(m))}"`); }); }
@@ -381,12 +381,12 @@ function stMoveTo(model, view, id, at) {
   if (rs.length !== 1 || !n || n.parent === rs[0].id || stWithin(stIndex(model), s.id, id)) return null; // into itself: the default refuses it
   const L = view.layout; return [{ op: 'reparent', id, parent: rs[0].id }, ...(ST_OBJ(L) && Object.hasOwn(L, id) ? [{ op: 'set', view: view.id, path: ['layout', id], value: undefined }] : [])];
 }
-// the Owner field: every state and region of the model by its name from the top ("Fulfilling", "Fulfilling / Parcel"),
+// the Owner field (its path stops at an owner that is no element): every state and region of the model by its name from the top ("Fulfilling", "Fulfilling / Parcel"),
 // but the element itself and what lies under it
 function stOwners(model, x) {
   if (!ST_OBJ(x) || x.from != null || !ST_VERTEX.includes(x.type) && x.type !== 'uml.Comment') return null;
   const I = stIndex(model);
-  const full = id => { const out = [], seen = new Set(); for (let p = id; p != null && !seen.has(p); p = stUp(I, p)) { seen.add(p); const e = (I.N.get(p) || I.M.get(p)).x; out.unshift(ST_HAS(e.label) ? e.label : p); } return out.join(' / '); };
+  const full = id => { const out = [], seen = new Set(); for (let p = id; (I.N.has(p) || I.M.has(p)) && !seen.has(p); p = stUp(I, p)) { seen.add(p); const e = (I.N.get(p) || I.M.get(p)).x; out.unshift(ST_HAS(e.label) ? e.label : p); } return out.join(' / '); };
   return [...I.N.values()].filter(({ x: n }) => n.type === 'uml.State').flatMap(({ x: n }) => [{ id: n.id, label: full(n.id) }, ...stMembers(n, 'uml.Region').map(r => ({ id: r.id, label: full(r.id) }))])
     .filter(o => !stWithin(I, o.id, x.id));
 }

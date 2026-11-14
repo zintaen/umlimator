@@ -28,7 +28,7 @@ const sqProps = x => (SQ_OBJ(x && x.props) ? x.props : {});
 // the view's lifelines by id: a model node, or one of the view's own
 function sqHeads(model, view) {
   const at = new Map(); [...SQ_ARR(view.nodes), ...SQ_ARR(model.nodes)].forEach(n => { if (SQ_OBJ(n) && typeof n.id === 'string' && !at.has(n.id)) at.set(n.id, n); });
-  return SQ_ARR(view.nodeIds).filter(id => at.has(id)).map(id => at.get(id));
+  return [...new Set(SQ_ARR(view.nodeIds))].filter(id => at.has(id)).map(id => at.get(id)); // listed twice: one head
 }
 const sqName = n => String(n.label ?? n.id);
 const sqHeadText = n => sqName(n) + (SQ_HAS(sqProps(n).represents) ? ' : ' + sqProps(n).represents : ''); // "api : ShopApi"
@@ -138,7 +138,7 @@ const SQ_RULES = {
 };
 function sqProblems(model, view) {
   const out = [], V = sqView(model, view); if (!SQ_OBJ(model) || !V) return out;
-  const vi = SQ_ARR(model.views).indexOf(V), at = `views[${vi}]`, X = sqIndex(model, V), ids = SQ_ARR(V.nodeIds), col = new Map(ids.map((id, j) => [id, j]));
+  const vi = SQ_ARR(model.views).indexOf(V), at = `views[${vi}]`, X = sqIndex(model, V), ids = [...new Set(SQ_ARR(V.nodeIds))], col = new Map(ids.map((id, j) => [id, j]));
   const say = (rule, path, who, msg, level = 'error') => out.push({ level, rule, path, ids: who.filter(x => x != null), message: `${rule}: ${msg}` });
   const fPath = f => `${at}.fragments[${SQ_ARR(V.fragments).indexOf(f)}]`;
   // parent-operand: an occurrence's or a fragment's parent; a fragment inside itself
@@ -215,7 +215,7 @@ function sqPaths(model, viewId, from, to) {
    transaction that would add an error the model did not have is never returned: { error } names the rule (S5) ---- */
 function sqNewId(model, base, more = []) { // the base and the first number free in the model: 'm11', 'f3'
   const used = new Set(more); JSON.stringify(model, (k, v) => { if (k === 'id' && typeof v === 'string') used.add(v); return v; });
-  const b = String(base).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'el'; let k = 1; while (used.has(b + k)) k++; return b + k;
+  const b = String(base).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'el'; let k = 1; while (['', '.1', '.2'].some(x => used.has(b + k + x))) k++; return b + k; // a fragment's operands free too
 }
 const sqErr = message => ({ error: message });
 const sqErrKey = p => `${p.rule}|${[...p.ids].sort().join()}`;

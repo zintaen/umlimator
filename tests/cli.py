@@ -447,17 +447,17 @@ with tempfile.TemporaryDirectory() as tmp:
         ok(f"stills · {name}: a picture of every view", st is not None and len(list((t / f"stills-{name}").glob("*.png"))) == len(src["views"]), st)
         pd = cli("pdf", str(t / f"{name}.html"), "--out", str(t / f"{name}.pdf"))
         ok(f"pdf · {name}: written", pd is not None and (t / f"{name}.pdf").read_bytes()[:5] == b"%PDF-", pd)
-    # R8: a class view's tables list each element's type and members, as the type prints them, and each line's kind
+    # R8: a class view's tables list each element by its drawn name (audit 1: payments::Payable, ada : Customer), its type and members, as the type prints them, and each line's kind
     txt = "".join(read("sales-classes.pdf"))
     ok("pdf · sales-classes: its tables list element types, members and line kinds, not the map's kinds",
        all(flat(s) in txt for s in ["CardKindMembers", "OrderClass- id: UUID", "+ add(book: Book, quantity: Integer)", "MoneyData type+ amount: Decimal",
-                                    "From → toLabelKind", "Customer → OrderplacesAssociation", "CardPayment → PaymentGeneralization", "Order → PayableInterface realization"])
+                                    "From → toLabelKind", "Customer → OrderplacesAssociation", "payments::card::CardPayment → payments::PaymentGeneralization", "Order → payments::PayableInterface realization"])
        and "Script" not in txt and "calls" not in txt, txt[:800])
     # 2.6: the object diagram's tables list each instance with its slots, the package diagram's each element's kind and each line's
     txt = "".join(read("order-objects.pdf"))
     ok("pdf · order-objects: its tables list each instance's kind and its slots as feature = value, and each link",
-       all(flat(s) in txt for s in ["CardKindMembers", "order1042Instance specificationstatus = placedtotal = 34.00 EUR", "cardInstance specificationamount = 34.00 EURlast4 = 4242",
-                                    "From → toLabelKind", "ada → order1042placesLink", "order1042 → cardLink"]) and "Script" not in txt and "calls" not in txt, txt[:800])
+       all(flat(s) in txt for s in ["CardKindMembers", "order1042 : OrderInstance specificationstatus = placedtotal = 34.00 EUR", "card : CardPaymentInstance specificationamount = 34.00 EURlast4 = 4242",
+                                    "From → toLabelKind", "ada : Customer → order1042 : OrderplacesLink", "order1042 : Order → card : CardPaymentLink"]) and "Script" not in txt and "calls" not in txt, txt[:800])
     txt = "".join(read("bookshop-packages.pdf"))
     ok("pdf · bookshop-packages: its tables list each element's kind (package, class, interface, enumeration, data type) and each line's",
        all(flat(s) in txt for s in ["CardKindMembers", "sharedPackageMoneyData type", "OrderStatusEnumeration", "PayableInterface", "wholesalePackageOrderClass",
@@ -465,11 +465,11 @@ with tempfile.TemporaryDirectory() as tmp:
     # 3.8: a sequence's and a communication's tables give each lifeline's kind and each message's, connectors too (R8)
     txt = "".join(read("checkout-sequence.pdf"))
     ok("pdf · checkout-sequence: its tables list each lifeline and each message between two lifelines, by kind",
-       all(flat(s) in txt for s in ["CardKindMembers", "apiLifeline", "From → toLabelKind", "shopper → storefrontcheckout()Message", "payments → apipaidMessage"])
+       all(flat(s) in txt for s in ["CardKindMembers", "api : ShopApiLifeline", "From → toLabelKind", "shopper : Shopper → storefront : Storefrontcheckout()Message", "payments : PaymentProvider → api : ShopApipaidMessage"])
        and "Script" not in txt and "calls" not in txt, txt[:800])
     txt = "".join(read("checkout-communication.pdf"))
     ok("pdf · checkout-communication: its tables list each lifeline, each connector and each message, by kind",
-       all(flat(s) in txt for s in ["apiLifeline", "api → paymentsConnector", "api → paymentscharge(total)Message", "1.1.2.1: paid"])
+       all(flat(s) in txt for s in ["api : ShopApiLifeline", "api : ShopApi → payments : PaymentProviderConnector", "api : ShopApi → payments : PaymentProvidercharge(total)Message", "1.1.2.1: paid"])
        and "Script" not in txt and "calls" not in txt, txt[:800])
     # 4.10: the four stage 4 types' tables (notes/stage-4.md §15): a use case's extension points, an activity node's kind and
     # its partition, a state's internal transitions and a composite's regions, an overview node's kind; each line's kind
@@ -490,7 +490,7 @@ with tempfile.TemporaryDirectory() as tmp:
     txt = "".join(read("buy-book-overview.pdf"))
     ok("pdf · buy-book-overview: its tables list each node's kind and each flow, then each sequence view it opens",
        all(flat(s) in txt for s in ["Find a bookInteraction use", "Queue the orderInteraction", "Payment accepted?Decision node", "buy-splitFork node", "Payment accepted? → buy-splitControl flow",
-                                    "storefront → apifindBooks(title)Message"]), txt[:800])
+                                    "storefront : Storefront → api : ShopApifindBooks(title)Message"]), txt[:800])
     # 5.8: the three stage 5 types' tables (notes/stage-5.md §11): a component's ports with what they provide and the
     # connectors from them, an interface's kind, what an artifact manifests; a target's kind and what is deployed on it; the
     # subject's parts with their aggregation and its connectors, a collaboration use's collaboration and bindings
@@ -507,7 +507,7 @@ with tempfile.TemporaryDirectory() as tmp:
     txt = "".join(read("order-service-structure.pdf"))
     ok("pdf · order-service-structure: its tables list the subject's ports and parts, each part shared or composite, its connectors, the collaboration use's collaboration and bindings, the collaboration's roles",
        all(flat(s) in txt for s in ["OrderServiceClassport apiport payments", "checkout : CheckoutFlow [1], composite", "listeners : OrderListener [0..*], shared",
-                                    "Connector from api of OrderService to requests of checkout", "orderEventsCollaboration usePublishSubscribepublisher ← checkoutsubscriber ← listeners",
+                                    "Connector from api of OrderService to requests of checkout", "orderEvents : PublishSubscribeCollaboration usePublishSubscribepublisher ← checkoutsubscriber ← listeners",
                                     "PublishSubscribeCollaborationpublisher : EventSource [1]subscriber : EventListener [0..*]Connector from publisher to subscriber"]), txt[:800])
     # 6.6: the two stage 6 types' tables (notes/stage-6.md §9): a profile's stereotypes and metaclasses and the packages it is
     # applied to, a metaclass's extensions, a stereotype's extension, generals and tags, an element's stereotypes with their
@@ -570,9 +570,9 @@ with tempfile.TemporaryDirectory() as tmp:
        and back["views"][0].get("present") == ex["views"][0]["present"], (w.stderr[-300:], r.stderr[-300:], tree(back)[:4]))
     txt = "".join(read("bookshop-timing.pdf"))
     ok("pdf · bookshop-timing: its tables list each lifeline's changes in time order, the messages it sends and the constraints on its changes, each message's kind",
-       all(flat(s) in txt for s in ["workerLifeline0 ms: Idle100 ms: Waiting for payment760 ms: Recording payment900 ms: Idlecharge(total) to payments at 100 ms → 140 ms",
-                                    "Duration constraint {<= 800 ms} on worker from 100 ms to 760 msTime constraint {<= 1000 ms} on worker at 900 ms", "paymentsLifeline0 ms: Idle140 ms: Authorising",
-                                    "paid to worker at 720 ms → 760 ms", "worker → paymentscharge(total)Message"]), txt[:800])
+       all(flat(s) in txt for s in ["worker : OrderWorkerLifeline0 ms: Idle100 ms: Waiting for payment760 ms: Recording payment900 ms: Idlecharge(total) to payments at 100 ms → 140 ms",
+                                    "Duration constraint {<= 800 ms} on worker from 100 ms to 760 msTime constraint {<= 1000 ms} on worker at 900 ms", "payments : PaymentProviderLifeline0 ms: Idle140 ms: Authorising",
+                                    "paid to worker at 720 ms → 760 ms", "worker : OrderWorker → payments : PaymentProvidercharge(total)Message"]), txt[:800])
     # an element with no type is drawn as a class, and its row says so
     bare = json.loads((ROOT / "examples" / "sales-classes.json").read_text()); next(n for n in bare["nodes"] if n["id"] == "order").pop("type")
     (t / "bare.json").write_text(json.dumps(bare))
