@@ -11,6 +11,7 @@ import { history } from '../src/core/history.js';
 import '../src/map/typed.js';
 import { layout, check } from '../src/map/api.js';
 import { validate } from '../src/map/validate.js';
+import { mapContext } from '../src/map/context.js';
 import { describe } from '../src/map/insight.js';
 import { svgOf } from '../src/draw/svg.js';
 import { parseSlot, printSlot, slotEdit } from '../src/uml/object.js';
@@ -211,4 +212,10 @@ test('save and reopen (DoD 6): a 30-step session on 02-object.json undoes and re
   assert.equal(flat(layout(reopened, 'snapshot')), flat(layout(JSON.parse(seen[30]), 'snapshot')));
   assert.equal(describe(reopened, 'snapshot'), describe(JSON.parse(seen[30]), 'snapshot'));
   assert.deepEqual(check(reopened, 'snapshot'), []);
+});
+
+test('an object view: Tab reaches every element, then every line (one node-key ring per card, audit 1)', () => {
+  const s = mapContext(OBJ).buildView('snapshot').markup, cards = (s.match(/<g class="node[ "]/g) || []).length;
+  assert.ok(cards > 0);
+  assert.equal((s.match(/node-key/g) || []).length, cards);
 });

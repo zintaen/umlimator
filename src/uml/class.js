@@ -279,7 +279,7 @@ const typeGeo = look => ({ model, view, pos, memo }) => {
   // widest label and 40 px for its stubs (laid out down, a label sits across its line, in the gap between rows)
   const down = view.direction === 'down', wide = !down && boxes.length ? Math.max(0, ...edges.filter(e => e.label).map(labelW)) : 0;
   const g = layoutTyped({ nodes, edges, ...(boxes.length ? { containers: boxes } : {}), direction: down ? 'down' : 'right', gap: 96 + (wide ? Math.ceil(wide) + 40 : 0), rgap: 56, ...look.dg }, memo);
-  g.legend = legendOf(g.edges);
+  g.legend = legendOf(g.edges); g.order = [...readingOrder(pic), ...edges.map(e => e.id)]; // Tab: the elements, then the lines
   return placeTabs(g);
 };
 const classGeo = typeGeo(CLASS_LOOK);

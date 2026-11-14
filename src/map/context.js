@@ -52,6 +52,9 @@ function mapContext(model, opts = {}) {
   edgeIds(D.edges); (D.views || []).forEach(v => { if (Array.isArray(v.edges)) edgeIds(v.edges); });
   const views = (D.views || []).filter(v => v && v.id);
   const nodes = [...(D.nodes || []), ...views.flatMap(v => v.nodes || [])];
+  // a field that must be a list and is not (validate() says so) is left out, as a missing one is
+  const lists = (o, ks) => o && ks.forEach(k => { if (o[k] != null && !Array.isArray(o[k])) delete o[k]; });
+  views.forEach(v => { lists(v, ['nodeIds', 'containers', 'intake']); Object.values(v.nodeOverrides || {}).forEach(o => lists(o, ['verbs'])); }); nodes.forEach(n => lists(n, ['verbs']));
   const N = Object.fromEntries(nodes.map(n => [n.id, n]));
   const V = Object.fromEntries(views.map(v => [v.id, v]));
   const viewOfParent = p => V[p] ? p : (views.find(v => v.id === p || v.node === p) || {}).id; // parent may name a node
@@ -221,7 +224,7 @@ function mapContext(model, opts = {}) {
   // A typed view whose type gives boxes (notes/stage-2.md §3.2) passes them, T: { boxes, flip }; their ids are not cards
   function blockPos(vid, T) {
     const v = T ? flipView(vid, T.flip) : V[vid], boxes = T ? T.boxes : (v.containers || []).filter(c => c && c.id), ids = (v.nodeIds || []).filter(i => N[i] && !(T && boxes.some(b => b.id === i))), lp = loopsOf(v);
-    const fwd = lp.edges.filter((e, k) => !lp.back.has(k) && e.from !== e.to), byBox = Object.fromEntries(boxes.map(b => [b.id, b]));
+    const byBox = Object.fromEntries(boxes.map(b => [b.id, b])), known = x => ids.includes(x) || Object.hasOwn(byBox, x), fwd = lp.edges.filter((e, k) => !lp.back.has(k) && e.from !== e.to && known(e.from) && known(e.to)); // not a line to an id that is neither (M3.3)
     const home = Object.fromEntries(ids.map(i => [i, (boxes.filter(b => (b.nodeIds || []).includes(i)).pop() || {}).id ?? null])); // the box a card is drawn in
     const up = x => ids.includes(x) ? home[x] : byBox[x] && byBox[byBox[x].parent] ? byBox[x].parent : null; // the box a card or box sits in
     const itemIn = (x, g) => { for (let k = 0; x != null && k < 64; k++, x = up(x)) if (up(x) === g) return x; }; // what in group g holds x
@@ -496,7 +499,7 @@ function mapContext(model, opts = {}) {
   const viewKey = vid => {
     const v = V[vid], ids = (v.nodeIds || []).filter(i => N[i]), ns = ids.map(i => nodeIn(i, vid));
     const icons = [...new Set(ns.map(n => n.icon).filter(Boolean))].map(k => (D.icons || {})[k]), who = [...new Set(ns.map(n => n.author).filter(Boolean))].map(k => (D.authors || {})[k]);
-    return JSON.stringify([v, ns, viewEdges(v), ids.map(i => [kidCount(i, vid), opensOf(i, vid)]), icons, who, boxesOf(vid)]); // a type's boxes lay it out
+    return JSON.stringify([v, ns, viewEdges(v), ids.map(i => [kidCount(i, vid), opensOf(i, vid)]), icons, who, boxesOf(vid), v.diagram && v.diagram != 'map' && [D.nodes, D.edges, D.icons]]); // a type's boxes lay it out; a typed view also draws what it does not list (a package's name): the whole model
   };
   /* ---------- unfolding in place (#71): a stacked card opens into a box on the view it is on ----------
      The card becomes a box with its id and name, holding its inner view's own cards: those not on this view already (the

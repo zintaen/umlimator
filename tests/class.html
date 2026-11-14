@@ -206,6 +206,11 @@ try {
   check('update() keeps the view\'s layout memo: an edit that moves nothing lays out nothing, one that resizes a class lays out once', r0 >= 1 && r1 === r0 && runs() === r0 + 1, [r0, r1, runs()]);
   check('a 40-element class view: every element and an end label drawn after the edits', before.split('|').length === 40 && all('.node').length === 40 && !!pick('text.end-lab'));
   h.destroy();
+  // a card here is an image, its ring the button: aria-pressed only on the ring (axe aria-allowed-attr, audit 1)
+  h = mount(MODEL); click('.node[data-id="order"]');
+  check('a selected card is pressed on its ring, never on the role=img card', !all('.node[role="img"][aria-pressed]').length && pick('.node-key[data-node="order"]').getAttribute('aria-pressed') === 'true',
+    all('.node[aria-pressed]').map(g => g.dataset.id));
+  h.destroy();
 } catch (e) { out.fail.push('threw: ' + (e && e.stack || e)); }
 const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
 </script>

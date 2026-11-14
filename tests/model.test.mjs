@@ -3,6 +3,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { validate, check, layout } from '../lib/umlimator.js';
+import { mapContext } from '../src/map/context.js';
+import { fit } from '../src/core/text.js';
 
 const read = p => JSON.parse(readFileSync(new URL(p, import.meta.url)));
 
@@ -83,4 +85,35 @@ test('validate() of a 20,000-topic chain, a chain into a cycle and a ring of 20,
   const [c, t, r] = [chain, tail, ring].map(best); // each walk to the top was 9.5 s at 20,000
   for (const ms of [c, t, r]) assert.ok(ms < 1000, `${ms} ms`);
   console.log(`# P1 target 100 ms: validate() of a 20,000 chain ${c} ms, a chain into a cycle ${t} ms, a ring of 20,000 ${r} ms`);
+});
+
+test('a map view with a box lays out a line to a listed id that is no card: the line is left out, as without the box (backlog M3.3)', () => {
+  const m = { nodes: [{ id: 'a', label: 'A' }, { id: 'b', label: 'B' }], edges: [{ from: 'a', to: 'b' }, { from: 'b', to: 'ghost' }],
+    views: [{ id: 'v', nodeIds: ['a', 'b', 'ghost'], containers: [{ id: 'box', label: 'Box', nodeIds: ['a'] }] }] };
+  assert.ok(validate(m).some(p => p.level === 'error' && /ghost/.test(p.message)));
+  assert.equal(layout(m, 'v').edges.length, 1);
+});
+
+test('a field that must be a list and is not: validate() says so, and the map draws without it (audit 1)', () => {
+  const base = () => ({ nodes: [{ id: 'a', label: 'A' }, { id: 'b', label: 'B' }], edges: [{ from: 'a', to: 'b' }], views: [{ id: 'v', nodeIds: ['a', 'b'] }] });
+  for (const [set, path, level] of [[m => { m.nodes[0].verbs = 'GET /orders'; }, 'nodes[0].verbs', 'warning'], [m => { m.views[0].nodeIds = 'a'; }, 'views[0].nodeIds', 'error'],
+    [m => { m.views[0].containers = 'box'; }, 'views[0].containers', 'warning'], [m => { m.views[0].intake = 'feed'; }, 'views[0].intake', 'warning']]) {
+    const m = base(); set(m);
+    assert.ok(validate(m).some(p => p.path === path && p.level === level), path);
+    assert.doesNotThrow(() => layout(m, 'v'), path);
+  }
+});
+
+test('an icon\'s src and an author\'s avatar are escaped in href: an SVG data URL draws, and a model adds no attributes (audit 1)', () => {
+  const src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg"/>';
+  const m = { icons: { logo: { src }, bad: { src: 'x" onerror="alert(1)' } }, authors: { ann: { avatar: 'y" onload="alert(2)' } },
+    nodes: [{ id: 'a', label: 'A', icon: 'logo' }, { id: 'b', label: 'B', icon: 'bad', author: 'ann' }], views: [{ id: 'v', nodeIds: ['a', 'b'] }] };
+  const s = mapContext(m).buildView('v').markup;
+  assert.ok(s.includes('href="data:image/svg+xml;utf8,&lt;svg xmlns=&quot;http://www.w3.org/2000/svg&quot;/&gt;"'));
+  assert.ok(!/ on(error|load)="/.test(s));
+});
+
+test('a cut label ends on whole characters: never half an emoji (audit 1)', () => {
+  const t = fit('\u{1F600}'.repeat(40), 13, 100, true);
+  assert.ok(t.endsWith('…') && !/[\uD800-\uDBFF](?![\uDC00-\uDFFF])/.test(t), JSON.stringify(t));
 });

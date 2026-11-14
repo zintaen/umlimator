@@ -91,7 +91,7 @@ function objectGeo({ model, view, pos, memo }) {
   // as the class view (class.js typeGeo): laid out right with boxes, the columns spread by the widest label
   const down = view.direction === 'down', wide = !down && pic.boxes.length ? Math.max(0, ...edges.filter(e => e.label).map(labelW)) : 0;
   const g = layoutTyped({ nodes, edges, ...(pic.boxes.length ? { containers: pic.boxes } : {}), direction: down ? 'down' : 'right', gap: 96 + (wide ? Math.ceil(wide) + 40 : 0), rgap: 56 }, memo);
-  g.legend = obLegend(g.edges);
+  g.legend = obLegend(g.edges); g.order = [...readingOrder(pic), ...edges.map(e => e.id)]; // Tab: the elements, then the lines
   return placeTabs(g);
 }
 

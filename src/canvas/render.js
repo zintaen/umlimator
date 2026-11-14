@@ -249,7 +249,7 @@ export function render(container, model, options = {}) {
       svg.insertAdjacentHTML('beforeend', `<g class="um-edit um-handle" data-from="${esc(n.id)}"><title>Drag to another card to add a line</title><circle cx="${n.x + n.w + 12}" cy="${n.y + n.h / 2}" r="6"/></g>`); }
     svg.querySelectorAll('.sel,.nb,.hot').forEach(g => g.classList.remove('sel', 'nb', 'hot')); stage.classList.remove('focusing');
     const pk = picked(), ns = pk.filter(r => r.type === 'node').map(r => r.id), li = pk.filter(r => r.type === 'edge').map(edgeIndex);
-    svg.querySelectorAll('.line-key').forEach(k => k.setAttribute('aria-pressed', li.includes(+k.dataset.i))); svg.querySelectorAll('.node, .node-key').forEach(g => g.setAttribute('aria-pressed', ns.includes(g.dataset.id ?? g.dataset.node)));
+    svg.querySelectorAll('.line-key').forEach(k => k.setAttribute('aria-pressed', li.includes(+k.dataset.i))); svg.querySelectorAll('.node:not([role=img]), .node-key').forEach(g => g.setAttribute('aria-pressed', ns.includes(g.dataset.id ?? g.dataset.node)));
     if (!sel) return;
     if (sel.type === 'node') {
       const nid = sel.id, ups = new Set(), downs = new Set();
