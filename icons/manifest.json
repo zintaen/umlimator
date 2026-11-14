@@ -169,20 +169,20 @@
   "azuredevops": {
     "file": "azuredevops.svg",
     "source": "azure",
-    "url": "https://arch-center.azureedge.net/icons/Azure_Public_Service_Icons_V24.zip#10261-icon-service-Azure-DevOps.svg",
-    "sha256": "15b5068ceeb28f0f3cf566aa8cf99619f99d47059d7a91fda0ef47091a71a041"
+    "pack": "azure",
+    "id": "Azure-DevOps"
   },
   "foundry": {
     "file": "foundry.svg",
     "source": "azure",
-    "url": "https://arch-center.azureedge.net/icons/Azure_Public_Service_Icons_V24.zip#035746832-icon-service-AI-Foundry.svg",
-    "sha256": "fab039a771f72780ae34e59065d61c66a02d3c347d50923ef2956f34912ea02c"
+    "pack": "azure",
+    "id": "AI-Foundry"
   },
   "containerapps": {
     "file": "containerapps.svg",
     "source": "azure",
-    "url": "https://arch-center.azureedge.net/icons/Azure_Public_Service_Icons_V24.zip#02989-icon-service-Container-Apps-Environments.svg",
-    "sha256": "3cf4ba9242e31496f778a27e92c9c2b2a09664f105c58325d5e2dcb142d3c3b9"
+    "pack": "azure",
+    "id": "Container-Apps-Environments"
   },
   "user": {
     "source": "lucide",
@@ -374,7 +374,8 @@
     "file": "entra.svg",
     "source": "microsoft",
     "url": "https://download.microsoft.com/download/3/1/a/31a56038-856a-4489-88e4-ee5a1c4352be/Microsoft%20Entra%20architecture%20icons%20-%20Oct%202023.zip#Microsoft Entra ID color icon.svg",
-    "sha256": "efd9f54562bfb78bf3c77aecdd5fc31b61fce8a1cec78c4370b41fc470e54eda"
+    "sha256": "efd9f54562bfb78bf3c77aecdd5fc31b61fce8a1cec78c4370b41fc470e54eda",
+    "render": "cache"
   },
   "caddy": {
     "file": "caddy.png",

@@ -167,12 +167,21 @@ def icon_bytes(e):
     local = ICONS / e["file"]
     if local.is_file():
         return local.read_bytes()
+    if e.get("pack"):  # Microsoft's icons come with the Azure pack, fetched after its terms, never by a render (milestone 4a, decision 7)
+        got = None if os.environ.get("UMLIMATOR_NO_PACKS") else packs().icon(e["pack"], e["id"])
+        if not got:
+            print(f"icon {e['file']}: read from the {e['pack']} icon pack only, which is not fetched; the card keeps its kind sigil "
+                  f"(`umlimator.py pack fetch {e['pack']}` fetches it after showing its terms)", file=sys.stderr)
+        return got and got[0]
     cached = CACHE / e["file"]
     if cached.is_file():
         data = cached.read_bytes()
         if hashlib.sha256(data).hexdigest() == e.get("sha256"):
             return data
         print(f"icon {e['file']}: the copy in {CACHE} does not match its pinned sha256; fetching it again", file=sys.stderr)
+    if e.get("render") == "cache":  # entra: Microsoft's package, whose terms were not read, is never downloaded by a render
+        print(f"icon {e['file']}: used from {CACHE} only, never downloaded by a render; the card keeps its kind sigil", file=sys.stderr)
+        return None
     try:
         url, _, member = e["url"].partition("#")
         req = urllib.request.Request(url, headers={"User-Agent": "umlimator"})
@@ -191,6 +200,14 @@ def icon_bytes(e):
     with replacing(cached) as tmp:  # two renders fetching one logo never read half of it
         tmp.write_bytes(data)
     return data
+
+
+def packs():
+    """umlimator_packs.py, next to this file (the icon packs: `pack`, and the pack entries of a page's icons table)."""
+    if str(HERE) not in sys.path:
+        sys.path.insert(0, str(HERE))
+    import umlimator_packs
+    return umlimator_packs
 
 
 def cmd_pin_icons(a):
@@ -222,7 +239,7 @@ def page_model(model_path, out, source=None):
     base = Path(root or os.getcwd()).resolve()
     if not Path(out).resolve().is_relative_to(base):
         m.setdefault("meta", {}).setdefault("root", "")
-    table = icon_table([m])
+    table = {**icon_table([m]), **packs().table([m])}  # pack keys hold a `/`, logos' never
     if table:
         m["icons"] = table
     # the path visual.py would record for the model itself (its portable_path): in the checkout, under home as ~/, else the name
@@ -556,6 +573,8 @@ def cmd_check(a):
     if bad := [k for k in asked if k not in kinds]:
         sys.exit(f"--ignore: unknown kind {', '.join(bad)}; known: right-to-left, {', '.join(k for k in kinds if k != 'rightToLeft')}")
     views = pick(a.page, a.views)
+    data = json.loads(DATA.search(Path(a.page).read_text(encoding="utf-8")).group(1))
+    packs().check(data if "nodes" in data else data.get("map", {}))  # icon ids the cached pack lacks, with the nearest
     url = Path(a.page).resolve().as_uri() + "#check=1&theme=light" + (f"&views={fragment(views)}" if a.views else "") + ("&expand=1" if a.expand else "")
     dom = headless(chrome(), "--virtual-time-budget=6000", "--window-size=1440,900", "--dump-dom", url, timeout=a.timeout)
     m = re.search(r'<pre id="visual-check"[^>]*>(.*?)</pre>', dom, re.S)
@@ -842,6 +861,11 @@ def main():
     rc.add_argument("--size", default="1160x740", help="the window, WxH (up to 1180 wide the views list stays shut)"); rc.add_argument("--scale", type=float, default=1)
     rc.add_argument("--theme", default="light", choices=["light", "dark"]); rc.set_defaults(f=cmd_record)
     i = sub.add_parser("pin-icons", help="record each new brand mark's sha256 and move it out of icons/ into the cache"); i.set_defaults(f=cmd_pin_icons)
+    pk = sub.add_parser("pack", help="the cloud vendors' icon packs, fetched only on request and after their terms (icons/packs.json)")
+    pks = pk.add_subparsers(dest="what", required=True); pks.add_parser("list", help="each pack's pin, whether it is fetched and accepted")
+    pf = pks.add_parser("fetch", help="show a pack's terms, ask for a yes, then download its pinned zips into the cache"); pf.add_argument("pack")
+    pf.add_argument("--accept-terms", metavar="PACK@LABEL", help="with no terminal: the user's yes to the terms printed, for this pack and pin only")
+    pk.set_defaults(f=lambda a: packs().main(a))
     c = sub.add_parser("check"); c.add_argument("page"); c.add_argument("--views", help="a,b,pic-* (a trailing * is a prefix)")
     c.add_argument("--timeout", type=int, default=600)
     c.add_argument("--expand", action="store_true", help="also check each view with each stacked card unfolded in place, one at a time (#71)")
