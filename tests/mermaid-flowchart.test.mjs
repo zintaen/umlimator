@@ -26,7 +26,7 @@ const canon = m => ({ ...m, nodes: [...m.nodes].sort(byId), edges: [...m.edges].
 const core = m => validate(m).filter(p => p.level === 'error' && !p.rule); // a core error: a dangling end, an id used twice, ...
 
 test('read(write(model)) is example 21, ids included, and nothing is reported', () => {
-  const m = json('../docs/diagrams/examples/21-flowchart.json'), text = write(m), back = read(text);
+  const m = json('../examples/returns-flowchart.json'), text = write(m), back = read(text);
   assert.deepEqual(back.report, [], text);
   assert.deepEqual(canon(back.model), canon(project(m, 'returns')), text);
   assert.doesNotMatch(text, /not written/);

@@ -1,0 +1,1021 @@
+{
+ "schemaVersion": 2,
+ "title": "Flowchart, stress",
+ "nodes": [
+  {
+   "id": "ec-start",
+   "type": "flow.Terminator",
+   "label": "Start"
+  },
+  {
+   "id": "ec-start-2",
+   "type": "flow.Terminator",
+   "label": "Second start"
+  },
+  {
+   "id": "ec-read",
+   "type": "flow.InputOutput",
+   "label": "Read the order"
+  },
+  {
+   "id": "ec-typed",
+   "type": "flow.ManualInput",
+   "label": "Key in the code"
+  },
+  {
+   "id": "ec-check",
+   "type": "flow.Decision",
+   "label": "Which way?"
+  },
+  {
+   "id": "ec-a",
+   "type": "flow.Process",
+   "label": "Way A"
+  },
+  {
+   "id": "ec-b",
+   "type": "flow.PredefinedProcess",
+   "label": "Way B"
+  },
+  {
+   "id": "ec-c",
+   "type": "flow.Document",
+   "label": "Print the slip"
+  },
+  {
+   "id": "ec-join",
+   "type": "flow.Connector",
+   "label": "J"
+  },
+  {
+   "id": "ec-wait",
+   "type": "flow.Delay",
+   "label": "Wait a day"
+  },
+  {
+   "id": "ec-save",
+   "type": "flow.Database",
+   "label": "Save it"
+  },
+  {
+   "id": "ec-long",
+   "type": "flow.Process",
+   "label": "A step whose label runs on and on, long enough to wrap over several lines and test how a long label is cut down to fit on the page"
+  },
+  {
+   "id": "ec-again",
+   "type": "flow.Decision",
+   "label": "Again?"
+  },
+  {
+   "id": "ec-end",
+   "type": "flow.Terminator",
+   "label": "End"
+  },
+  {
+   "id": "ec-island",
+   "type": "flow.Process",
+   "label": "Nobody reaches this"
+  },
+  {
+   "id": "n0",
+   "type": "flow.Terminator",
+   "label": "Step number 0"
+  },
+  {
+   "id": "n1",
+   "type": "flow.InputOutput",
+   "label": "Step number 1"
+  },
+  {
+   "id": "n2",
+   "type": "flow.PredefinedProcess",
+   "label": "Step number 2"
+  },
+  {
+   "id": "n3",
+   "type": "flow.Decision",
+   "label": "Step number 3"
+  },
+  {
+   "id": "n4",
+   "type": "flow.Database",
+   "label": "Step number 4"
+  },
+  {
+   "id": "n5",
+   "type": "flow.ManualInput",
+   "label": "Step number 5"
+  },
+  {
+   "id": "n6",
+   "type": "flow.Delay",
+   "label": "Step number 6"
+  },
+  {
+   "id": "n7",
+   "type": "flow.Process",
+   "label": "Step number 7"
+  },
+  {
+   "id": "n8",
+   "type": "flow.Connector",
+   "label": "J"
+  },
+  {
+   "id": "n9",
+   "type": "flow.Decision",
+   "label": "Step number 9"
+  },
+  {
+   "id": "n10",
+   "type": "flow.InputOutput",
+   "label": "Step number 10"
+  },
+  {
+   "id": "n11",
+   "type": "flow.PredefinedProcess",
+   "label": "Step number 11"
+  },
+  {
+   "id": "n12",
+   "type": "flow.Document",
+   "label": "Step number 12"
+  },
+  {
+   "id": "n13",
+   "type": "flow.Database",
+   "label": "Step number 13"
+  },
+  {
+   "id": "n14",
+   "type": "flow.ManualInput",
+   "label": "Step number 14"
+  },
+  {
+   "id": "n15",
+   "type": "flow.Decision",
+   "label": "Step number 15"
+  },
+  {
+   "id": "n16",
+   "type": "flow.Process",
+   "label": "Step number 16"
+  },
+  {
+   "id": "n17",
+   "type": "flow.Connector",
+   "label": "J"
+  },
+  {
+   "id": "n18",
+   "type": "flow.Process",
+   "label": "Step number 18"
+  },
+  {
+   "id": "n19",
+   "type": "flow.InputOutput",
+   "label": "Step number 19"
+  },
+  {
+   "id": "n20",
+   "type": "flow.PredefinedProcess",
+   "label": "Step number 20"
+  },
+  {
+   "id": "n21",
+   "type": "flow.Decision",
+   "label": "Step number 21"
+  },
+  {
+   "id": "n22",
+   "type": "flow.Database",
+   "label": "Step number 22"
+  },
+  {
+   "id": "n23",
+   "type": "flow.ManualInput",
+   "label": "Step number 23"
+  },
+  {
+   "id": "n24",
+   "type": "flow.Delay",
+   "label": "Step number 24"
+  },
+  {
+   "id": "n25",
+   "type": "flow.Process",
+   "label": "Step number 25"
+  },
+  {
+   "id": "n26",
+   "type": "flow.Connector",
+   "label": "J"
+  },
+  {
+   "id": "n27",
+   "type": "flow.Decision",
+   "label": "Step number 27"
+  },
+  {
+   "id": "n28",
+   "type": "flow.InputOutput",
+   "label": "Step number 28"
+  },
+  {
+   "id": "n29",
+   "type": "flow.PredefinedProcess",
+   "label": "Step number 29"
+  },
+  {
+   "id": "n30",
+   "type": "flow.Document",
+   "label": "Step number 30"
+  },
+  {
+   "id": "n31",
+   "type": "flow.Database",
+   "label": "Step number 31"
+  },
+  {
+   "id": "n32",
+   "type": "flow.ManualInput",
+   "label": "Step number 32"
+  },
+  {
+   "id": "n33",
+   "type": "flow.Decision",
+   "label": "Step number 33"
+  },
+  {
+   "id": "n34",
+   "type": "flow.Process",
+   "label": "Step number 34"
+  },
+  {
+   "id": "n35",
+   "type": "flow.Connector",
+   "label": "J"
+  },
+  {
+   "id": "n36",
+   "type": "flow.Process",
+   "label": "Step number 36"
+  },
+  {
+   "id": "n37",
+   "type": "flow.InputOutput",
+   "label": "Step number 37"
+  },
+  {
+   "id": "n38",
+   "type": "flow.PredefinedProcess",
+   "label": "Step number 38"
+  },
+  {
+   "id": "n39",
+   "type": "flow.Decision",
+   "label": "Step number 39"
+  },
+  {
+   "id": "n40",
+   "type": "flow.Database",
+   "label": "Step number 40"
+  },
+  {
+   "id": "n41",
+   "type": "flow.ManualInput",
+   "label": "Step number 41"
+  },
+  {
+   "id": "n42",
+   "type": "flow.Delay",
+   "label": "Step number 42"
+  },
+  {
+   "id": "n43",
+   "type": "flow.Process",
+   "label": "Step number 43"
+  },
+  {
+   "id": "n44",
+   "type": "flow.Connector",
+   "label": "J"
+  },
+  {
+   "id": "n45",
+   "type": "flow.Decision",
+   "label": "Step number 45"
+  },
+  {
+   "id": "n46",
+   "type": "flow.InputOutput",
+   "label": "Step number 46"
+  },
+  {
+   "id": "n47",
+   "type": "flow.PredefinedProcess",
+   "label": "Step number 47"
+  },
+  {
+   "id": "n48",
+   "type": "flow.Document",
+   "label": "Step number 48"
+  },
+  {
+   "id": "n49",
+   "type": "flow.Database",
+   "label": "Step number 49"
+  },
+  {
+   "id": "n50",
+   "type": "flow.ManualInput",
+   "label": "Step number 50"
+  },
+  {
+   "id": "n51",
+   "type": "flow.Decision",
+   "label": "Step number 51"
+  },
+  {
+   "id": "n52",
+   "type": "flow.Process",
+   "label": "Step number 52"
+  },
+  {
+   "id": "n53",
+   "type": "flow.Connector",
+   "label": "J"
+  },
+  {
+   "id": "n54",
+   "type": "flow.Process",
+   "label": "Step number 54"
+  },
+  {
+   "id": "n55",
+   "type": "flow.InputOutput",
+   "label": "Step number 55"
+  },
+  {
+   "id": "n56",
+   "type": "flow.PredefinedProcess",
+   "label": "Step number 56"
+  },
+  {
+   "id": "n57",
+   "type": "flow.Decision",
+   "label": "Step number 57"
+  },
+  {
+   "id": "n58",
+   "type": "flow.Database",
+   "label": "Step number 58"
+  },
+  {
+   "id": "n59",
+   "type": "flow.Terminator",
+   "label": "Step number 59"
+  }
+ ],
+ "edges": [
+  {
+   "id": "ec-f1",
+   "type": "flow.Flow",
+   "from": "ec-start",
+   "to": "ec-read"
+  },
+  {
+   "id": "ec-f2",
+   "type": "flow.Flow",
+   "from": "ec-start-2",
+   "to": "ec-typed"
+  },
+  {
+   "id": "ec-f3",
+   "type": "flow.Flow",
+   "from": "ec-read",
+   "to": "ec-check"
+  },
+  {
+   "id": "ec-f4",
+   "type": "flow.Flow",
+   "from": "ec-typed",
+   "to": "ec-check"
+  },
+  {
+   "id": "ec-f5",
+   "type": "flow.Flow",
+   "from": "ec-check",
+   "to": "ec-a",
+   "label": "a"
+  },
+  {
+   "id": "ec-f6",
+   "type": "flow.Flow",
+   "from": "ec-check",
+   "to": "ec-b",
+   "label": "b"
+  },
+  {
+   "id": "ec-f7",
+   "type": "flow.Flow",
+   "from": "ec-check",
+   "to": "ec-c",
+   "label": "c"
+  },
+  {
+   "id": "ec-f8",
+   "type": "flow.Flow",
+   "from": "ec-a",
+   "to": "ec-join"
+  },
+  {
+   "id": "ec-f9",
+   "type": "flow.Flow",
+   "from": "ec-b",
+   "to": "ec-join"
+  },
+  {
+   "id": "ec-f10",
+   "type": "flow.Flow",
+   "from": "ec-c",
+   "to": "ec-join"
+  },
+  {
+   "id": "ec-f11",
+   "type": "flow.Flow",
+   "from": "ec-join",
+   "to": "ec-wait"
+  },
+  {
+   "id": "ec-f12",
+   "type": "flow.Flow",
+   "from": "ec-wait",
+   "to": "ec-save"
+  },
+  {
+   "id": "ec-f13",
+   "type": "flow.Flow",
+   "from": "ec-save",
+   "to": "ec-long"
+  },
+  {
+   "id": "ec-f14",
+   "type": "flow.Flow",
+   "from": "ec-long",
+   "to": "ec-again"
+  },
+  {
+   "id": "ec-f15",
+   "type": "flow.Flow",
+   "from": "ec-again",
+   "to": "ec-read",
+   "label": "yes"
+  },
+  {
+   "id": "ec-f16",
+   "type": "flow.Flow",
+   "from": "ec-again",
+   "to": "ec-end",
+   "label": "no"
+  },
+  {
+   "id": "ec-f17",
+   "type": "flow.Flow",
+   "from": "ec-island",
+   "to": "ec-end"
+  },
+  {
+   "id": "f0",
+   "type": "flow.Flow",
+   "from": "n0",
+   "to": "n1"
+  },
+  {
+   "id": "f1",
+   "type": "flow.Flow",
+   "from": "n1",
+   "to": "n2"
+  },
+  {
+   "id": "f2",
+   "type": "flow.Flow",
+   "from": "n2",
+   "to": "n3"
+  },
+  {
+   "id": "f3",
+   "type": "flow.Flow",
+   "from": "n3",
+   "to": "n4",
+   "label": "yes"
+  },
+  {
+   "id": "f4",
+   "type": "flow.Flow",
+   "from": "n4",
+   "to": "n5"
+  },
+  {
+   "id": "f5",
+   "type": "flow.Flow",
+   "from": "n5",
+   "to": "n6"
+  },
+  {
+   "id": "f6",
+   "type": "flow.Flow",
+   "from": "n6",
+   "to": "n7"
+  },
+  {
+   "id": "f7",
+   "type": "flow.Flow",
+   "from": "n7",
+   "to": "n8"
+  },
+  {
+   "id": "f8",
+   "type": "flow.Flow",
+   "from": "n8",
+   "to": "n9"
+  },
+  {
+   "id": "f9",
+   "type": "flow.Flow",
+   "from": "n9",
+   "to": "n10",
+   "label": "yes"
+  },
+  {
+   "id": "f10",
+   "type": "flow.Flow",
+   "from": "n10",
+   "to": "n11"
+  },
+  {
+   "id": "f11",
+   "type": "flow.Flow",
+   "from": "n11",
+   "to": "n12"
+  },
+  {
+   "id": "f12",
+   "type": "flow.Flow",
+   "from": "n12",
+   "to": "n13"
+  },
+  {
+   "id": "f13",
+   "type": "flow.Flow",
+   "from": "n13",
+   "to": "n14"
+  },
+  {
+   "id": "f14",
+   "type": "flow.Flow",
+   "from": "n14",
+   "to": "n15"
+  },
+  {
+   "id": "f15",
+   "type": "flow.Flow",
+   "from": "n15",
+   "to": "n16",
+   "label": "yes"
+  },
+  {
+   "id": "f16",
+   "type": "flow.Flow",
+   "from": "n16",
+   "to": "n17"
+  },
+  {
+   "id": "f17",
+   "type": "flow.Flow",
+   "from": "n17",
+   "to": "n18"
+  },
+  {
+   "id": "f18",
+   "type": "flow.Flow",
+   "from": "n18",
+   "to": "n19"
+  },
+  {
+   "id": "f19",
+   "type": "flow.Flow",
+   "from": "n19",
+   "to": "n20"
+  },
+  {
+   "id": "f20",
+   "type": "flow.Flow",
+   "from": "n20",
+   "to": "n21"
+  },
+  {
+   "id": "f21",
+   "type": "flow.Flow",
+   "from": "n21",
+   "to": "n22",
+   "label": "yes"
+  },
+  {
+   "id": "f22",
+   "type": "flow.Flow",
+   "from": "n22",
+   "to": "n23"
+  },
+  {
+   "id": "f23",
+   "type": "flow.Flow",
+   "from": "n23",
+   "to": "n24"
+  },
+  {
+   "id": "f24",
+   "type": "flow.Flow",
+   "from": "n24",
+   "to": "n25"
+  },
+  {
+   "id": "f25",
+   "type": "flow.Flow",
+   "from": "n25",
+   "to": "n26"
+  },
+  {
+   "id": "f26",
+   "type": "flow.Flow",
+   "from": "n26",
+   "to": "n27"
+  },
+  {
+   "id": "f27",
+   "type": "flow.Flow",
+   "from": "n27",
+   "to": "n28",
+   "label": "yes"
+  },
+  {
+   "id": "f28",
+   "type": "flow.Flow",
+   "from": "n28",
+   "to": "n29"
+  },
+  {
+   "id": "f29",
+   "type": "flow.Flow",
+   "from": "n29",
+   "to": "n30"
+  },
+  {
+   "id": "f30",
+   "type": "flow.Flow",
+   "from": "n30",
+   "to": "n31"
+  },
+  {
+   "id": "f31",
+   "type": "flow.Flow",
+   "from": "n31",
+   "to": "n32"
+  },
+  {
+   "id": "f32",
+   "type": "flow.Flow",
+   "from": "n32",
+   "to": "n33"
+  },
+  {
+   "id": "f33",
+   "type": "flow.Flow",
+   "from": "n33",
+   "to": "n34",
+   "label": "yes"
+  },
+  {
+   "id": "f34",
+   "type": "flow.Flow",
+   "from": "n34",
+   "to": "n35"
+  },
+  {
+   "id": "f35",
+   "type": "flow.Flow",
+   "from": "n35",
+   "to": "n36"
+  },
+  {
+   "id": "f36",
+   "type": "flow.Flow",
+   "from": "n36",
+   "to": "n37"
+  },
+  {
+   "id": "f37",
+   "type": "flow.Flow",
+   "from": "n37",
+   "to": "n38"
+  },
+  {
+   "id": "f38",
+   "type": "flow.Flow",
+   "from": "n38",
+   "to": "n39"
+  },
+  {
+   "id": "f39",
+   "type": "flow.Flow",
+   "from": "n39",
+   "to": "n40",
+   "label": "yes"
+  },
+  {
+   "id": "f40",
+   "type": "flow.Flow",
+   "from": "n40",
+   "to": "n41"
+  },
+  {
+   "id": "f41",
+   "type": "flow.Flow",
+   "from": "n41",
+   "to": "n42"
+  },
+  {
+   "id": "f42",
+   "type": "flow.Flow",
+   "from": "n42",
+   "to": "n43"
+  },
+  {
+   "id": "f43",
+   "type": "flow.Flow",
+   "from": "n43",
+   "to": "n44"
+  },
+  {
+   "id": "f44",
+   "type": "flow.Flow",
+   "from": "n44",
+   "to": "n45"
+  },
+  {
+   "id": "f45",
+   "type": "flow.Flow",
+   "from": "n45",
+   "to": "n46",
+   "label": "yes"
+  },
+  {
+   "id": "f46",
+   "type": "flow.Flow",
+   "from": "n46",
+   "to": "n47"
+  },
+  {
+   "id": "f47",
+   "type": "flow.Flow",
+   "from": "n47",
+   "to": "n48"
+  },
+  {
+   "id": "f48",
+   "type": "flow.Flow",
+   "from": "n48",
+   "to": "n49"
+  },
+  {
+   "id": "f49",
+   "type": "flow.Flow",
+   "from": "n49",
+   "to": "n50"
+  },
+  {
+   "id": "f50",
+   "type": "flow.Flow",
+   "from": "n50",
+   "to": "n51"
+  },
+  {
+   "id": "f51",
+   "type": "flow.Flow",
+   "from": "n51",
+   "to": "n52",
+   "label": "yes"
+  },
+  {
+   "id": "f52",
+   "type": "flow.Flow",
+   "from": "n52",
+   "to": "n53"
+  },
+  {
+   "id": "f53",
+   "type": "flow.Flow",
+   "from": "n53",
+   "to": "n54"
+  },
+  {
+   "id": "f54",
+   "type": "flow.Flow",
+   "from": "n54",
+   "to": "n55"
+  },
+  {
+   "id": "f55",
+   "type": "flow.Flow",
+   "from": "n55",
+   "to": "n56"
+  },
+  {
+   "id": "f56",
+   "type": "flow.Flow",
+   "from": "n56",
+   "to": "n57"
+  },
+  {
+   "id": "f57",
+   "type": "flow.Flow",
+   "from": "n57",
+   "to": "n58",
+   "label": "yes"
+  },
+  {
+   "id": "f58",
+   "type": "flow.Flow",
+   "from": "n58",
+   "to": "n59"
+  },
+  {
+   "id": "g0",
+   "type": "flow.Flow",
+   "from": "n3",
+   "to": "n7",
+   "label": "no"
+  },
+  {
+   "id": "g1",
+   "type": "flow.Flow",
+   "from": "n9",
+   "to": "n13",
+   "label": "no"
+  },
+  {
+   "id": "g2",
+   "type": "flow.Flow",
+   "from": "n15",
+   "to": "n19",
+   "label": "no"
+  },
+  {
+   "id": "g3",
+   "type": "flow.Flow",
+   "from": "n21",
+   "to": "n25",
+   "label": "no"
+  },
+  {
+   "id": "g4",
+   "type": "flow.Flow",
+   "from": "n27",
+   "to": "n31",
+   "label": "no"
+  },
+  {
+   "id": "g5",
+   "type": "flow.Flow",
+   "from": "n33",
+   "to": "n37",
+   "label": "no"
+  },
+  {
+   "id": "g6",
+   "type": "flow.Flow",
+   "from": "n39",
+   "to": "n43",
+   "label": "no"
+  },
+  {
+   "id": "g7",
+   "type": "flow.Flow",
+   "from": "n45",
+   "to": "n49",
+   "label": "no"
+  },
+  {
+   "id": "g8",
+   "type": "flow.Flow",
+   "from": "n51",
+   "to": "n55",
+   "label": "no"
+  },
+  {
+   "id": "g9",
+   "type": "flow.Flow",
+   "from": "n57",
+   "to": "n58",
+   "label": "no"
+  },
+  {
+   "id": "back",
+   "type": "flow.Flow",
+   "from": "n56",
+   "to": "n50"
+  }
+ ],
+ "views": [
+  {
+   "id": "edge-cases",
+   "diagram": "flowchart",
+   "title": "Edge cases",
+   "nodeIds": [
+    "ec-start",
+    "ec-start-2",
+    "ec-read",
+    "ec-typed",
+    "ec-check",
+    "ec-a",
+    "ec-b",
+    "ec-c",
+    "ec-join",
+    "ec-wait",
+    "ec-save",
+    "ec-long",
+    "ec-again",
+    "ec-end",
+    "ec-island"
+   ]
+  },
+  {
+   "id": "all",
+   "diagram": "flowchart",
+   "title": "All",
+   "nodeIds": [
+    "n0",
+    "n1",
+    "n2",
+    "n3",
+    "n4",
+    "n5",
+    "n6",
+    "n7",
+    "n8",
+    "n9",
+    "n10",
+    "n11",
+    "n12",
+    "n13",
+    "n14",
+    "n15",
+    "n16",
+    "n17",
+    "n18",
+    "n19",
+    "n20",
+    "n21",
+    "n22",
+    "n23",
+    "n24",
+    "n25",
+    "n26",
+    "n27",
+    "n28",
+    "n29",
+    "n30",
+    "n31",
+    "n32",
+    "n33",
+    "n34",
+    "n35",
+    "n36",
+    "n37",
+    "n38",
+    "n39",
+    "n40",
+    "n41",
+    "n42",
+    "n43",
+    "n44",
+    "n45",
+    "n46",
+    "n47",
+    "n48",
+    "n49",
+    "n50",
+    "n51",
+    "n52",
+    "n53",
+    "n54",
+    "n55",
+    "n56",
+    "n57",
+    "n58",
+    "n59"
+   ]
+  }
+ ]
+}

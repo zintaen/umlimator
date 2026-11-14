@@ -33,7 +33,9 @@ const KEYS = {
   // an element's props, as the Bookshop files use them
   props: ['replyTo', 'covers', 'extensionPoints', 'ends', 'aggregation', 'classifier', 'collaboration', 'condition', 'default', 'do', 'effect', 'entry', 'exit',
     'guard', 'isAbstract', 'isDerived', 'isStatic', 'kind', 'multiplicity', 'operator', 'parameters', 'represents', 'returnType',
-    'sort', 'stereotypes', 'trigger', 'value', 'valueType', 'visibility', 'tags', 'states', 'sentAt', 'receivedAt', 'isRequired'],
+    'sort', 'stereotypes', 'trigger', 'value', 'valueType', 'visibility', 'tags', 'states', 'sentAt', 'receivedAt', 'isRequired',
+    'conveyed', 'dataType', 'primaryKey', 'foreignKey', 'nullable', 'unique', 'references', 'identifying', 'number', 'description', 'technology',
+    'external', 'shape', 'container'],
 };
 function known(x, kind, where) {
   const odd = Object.keys(x).filter(k => !KEYS[kind].includes(k));

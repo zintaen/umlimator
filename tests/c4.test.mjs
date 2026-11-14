@@ -19,7 +19,7 @@ import { describe } from '../src/map/insight.js';
 import { svgOf } from '../src/draw/svg.js';
 import { C4_SHAPES } from '../src/c4/c4.js';
 
-const C4 = JSON.parse(readFileSync(new URL('../docs/diagrams/examples/23-c4.json', import.meta.url)));
+const C4 = JSON.parse(readFileSync(new URL('../examples/bookshop-c4.json', import.meta.url)));
 const T = diagramOf({ diagram: 'c4.container' });
 const STATIC = ['c4-context', 'c4-containers', 'c4-components'];
 const meets = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;

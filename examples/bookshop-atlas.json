@@ -2,7 +2,7 @@
  "$schema": "../lib/umlimator.schema.json",
  "schemaVersion": 2,
  "title": "Bookshop atlas",
- "root": "overview",
+ "root": "c4-context",
  "nodes": [
   {
    "id": "shoppers",
@@ -1554,6 +1554,678 @@
      }
     }
    ]
+  },
+  {
+   "id": "c4-shopper",
+   "type": "c4.Person",
+   "label": "Shopper",
+   "props": {
+    "description": "Browses the catalogue, buys books and tracks orders."
+   },
+   "opensView": "shopping"
+  },
+  {
+   "id": "c4-staff",
+   "type": "c4.Person",
+   "label": "Shop staff",
+   "props": {
+    "description": "Keep the catalogue up to date and refund orders."
+   },
+   "opensView": "returns"
+  },
+  {
+   "id": "c4-bookshop",
+   "type": "c4.SoftwareSystem",
+   "label": "Bookshop",
+   "opensView": "c4-containers",
+   "props": {
+    "description": "Sells books online: catalogue, basket, checkout and order tracking."
+   }
+  },
+  {
+   "id": "c4-payments",
+   "type": "c4.SoftwareSystem",
+   "label": "Payment provider",
+   "props": {
+    "description": "Takes card payments and makes refunds.",
+    "external": true
+   }
+  },
+  {
+   "id": "c4-mail",
+   "type": "c4.SoftwareSystem",
+   "label": "Email service",
+   "props": {
+    "description": "Delivers the shop's emails.",
+    "external": true
+   }
+  },
+  {
+   "id": "c4-courier",
+   "type": "c4.SoftwareSystem",
+   "label": "Courier",
+   "props": {
+    "description": "Collects parcels and delivers them to shoppers.",
+    "external": true
+   }
+  },
+  {
+   "id": "c4-storefront",
+   "type": "c4.Container",
+   "label": "Storefront",
+   "parent": "c4-bookshop",
+   "props": {
+    "technology": "TypeScript, React",
+    "description": "The shop in the browser: catalogue, basket and checkout, and the admin pages for staff."
+   },
+   "opensView": "order-flows"
+  },
+  {
+   "id": "c4-api",
+   "type": "c4.Container",
+   "label": "Shop API",
+   "parent": "c4-bookshop",
+   "opensView": "c4-components",
+   "props": {
+    "technology": "Python, FastAPI",
+    "description": "Catalogue, basket, checkout and accounts as a JSON API."
+   }
+  },
+  {
+   "id": "c4-worker",
+   "type": "c4.Container",
+   "label": "Order worker",
+   "parent": "c4-bookshop",
+   "props": {
+    "technology": "Python",
+    "description": "Fulfils paid orders: books the delivery and sends the confirmation."
+   },
+   "opensView": "fulfil"
+  },
+  {
+   "id": "c4-db",
+   "type": "c4.Container",
+   "label": "Database",
+   "parent": "c4-bookshop",
+   "props": {
+    "technology": "PostgreSQL",
+    "description": "Books, baskets, orders and accounts."
+   },
+   "opensView": "er-schema"
+  },
+  {
+   "id": "c4-queue",
+   "type": "c4.Container",
+   "label": "Order queue",
+   "parent": "c4-bookshop",
+   "props": {
+    "technology": "PostgreSQL table",
+    "description": "Paid orders waiting to be fulfilled, oldest first."
+   }
+  },
+  {
+   "id": "c4-catalogue",
+   "type": "c4.Component",
+   "label": "Catalogue",
+   "parent": "c4-api",
+   "props": {
+    "technology": "FastAPI router",
+    "description": "Lists and searches books."
+   }
+  },
+  {
+   "id": "c4-checkout",
+   "type": "c4.Component",
+   "label": "Checkout",
+   "parent": "c4-api",
+   "props": {
+    "technology": "FastAPI router",
+    "description": "Turns a basket into a paid order."
+   },
+   "opensView": "checkout-sequence"
+  },
+  {
+   "id": "c4-accounts",
+   "type": "c4.Component",
+   "label": "Accounts and sign-in",
+   "parent": "c4-api",
+   "props": {
+    "technology": "FastAPI router",
+    "description": "Signs shoppers and staff in; keeps hashed passwords and sessions."
+   }
+  },
+  {
+   "id": "c4-payment-client",
+   "type": "c4.Component",
+   "label": "Payment client",
+   "parent": "c4-api",
+   "props": {
+    "technology": "Python, httpx",
+    "description": "Starts card payments and reads their result."
+   }
+  },
+  {
+   "id": "c4-order-store",
+   "type": "c4.Component",
+   "label": "Order store",
+   "parent": "c4-api",
+   "props": {
+    "technology": "SQLAlchemy",
+    "description": "Saves orders and puts the paid ones on the order queue."
+   },
+   "opensView": "dfd-level-1"
+  },
+  {
+   "id": "c4-device",
+   "type": "c4.DeploymentNode",
+   "label": "User's device",
+   "props": {
+    "technology": "Laptop, tablet or phone",
+    "description": "A shopper's or a staff member's own device."
+   }
+  },
+  {
+   "id": "c4-browser",
+   "type": "c4.DeploymentNode",
+   "label": "Web browser",
+   "parent": "c4-device",
+   "props": {
+    "technology": "Chrome, Firefox, Safari or Edge"
+   }
+  },
+  {
+   "id": "c4-storefront-1",
+   "type": "c4.ContainerInstance",
+   "label": "Storefront",
+   "parent": "c4-browser",
+   "props": {
+    "container": "c4-storefront"
+   }
+  },
+  {
+   "id": "c4-web-host",
+   "type": "c4.DeploymentNode",
+   "label": "Web server",
+   "props": {
+    "technology": "Ubuntu 24.04 LTS",
+    "description": "The web tier's server."
+   }
+  },
+  {
+   "id": "c4-docker",
+   "type": "c4.DeploymentNode",
+   "label": "Docker Compose",
+   "parent": "c4-web-host",
+   "props": {
+    "technology": "Docker Engine 27"
+   }
+  },
+  {
+   "id": "c4-api-1",
+   "type": "c4.ContainerInstance",
+   "label": "Shop API",
+   "parent": "c4-docker",
+   "props": {
+    "container": "c4-api"
+   },
+   "opensView": "production"
+  },
+  {
+   "id": "c4-worker-1",
+   "type": "c4.ContainerInstance",
+   "label": "Order worker",
+   "parent": "c4-docker",
+   "props": {
+    "container": "c4-worker"
+   }
+  },
+  {
+   "id": "c4-db-host",
+   "type": "c4.DeploymentNode",
+   "label": "Database server",
+   "props": {
+    "technology": "Ubuntu 24.04 LTS",
+    "description": "Backed up every night."
+   }
+  },
+  {
+   "id": "c4-postgres",
+   "type": "c4.DeploymentNode",
+   "label": "PostgreSQL",
+   "parent": "c4-db-host",
+   "props": {
+    "technology": "PostgreSQL 16"
+   }
+  },
+  {
+   "id": "c4-db-1",
+   "type": "c4.ContainerInstance",
+   "label": "Database",
+   "parent": "c4-postgres",
+   "props": {
+    "container": "c4-db"
+   }
+  },
+  {
+   "id": "c4-queue-1",
+   "type": "c4.ContainerInstance",
+   "label": "Order queue",
+   "parent": "c4-postgres",
+   "props": {
+    "container": "c4-queue"
+   }
+  },
+  {
+   "id": "er-customer",
+   "type": "er.Entity",
+   "label": "customer",
+   "members": [
+    {
+     "id": "er-customer.id",
+     "type": "er.Column",
+     "label": "id",
+     "props": {
+      "dataType": "bigint",
+      "primaryKey": true
+     }
+    },
+    {
+     "id": "er-customer.email",
+     "type": "er.Column",
+     "label": "email",
+     "props": {
+      "dataType": "varchar(255)",
+      "unique": true
+     }
+    },
+    {
+     "id": "er-customer.referred_by",
+     "type": "er.Column",
+     "label": "referred_by",
+     "props": {
+      "dataType": "bigint",
+      "foreignKey": true,
+      "nullable": true,
+      "references": "er-customer.id"
+     }
+    }
+   ]
+  },
+  {
+   "id": "er-order",
+   "type": "er.Entity",
+   "label": "order",
+   "members": [
+    {
+     "id": "er-order.id",
+     "type": "er.Column",
+     "label": "id",
+     "props": {
+      "dataType": "bigint",
+      "primaryKey": true
+     }
+    },
+    {
+     "id": "er-order.customer_id",
+     "type": "er.Column",
+     "label": "customer_id",
+     "props": {
+      "dataType": "bigint",
+      "foreignKey": true,
+      "references": "er-customer.id"
+     }
+    },
+    {
+     "id": "er-order.placed_at",
+     "type": "er.Column",
+     "label": "placed_at",
+     "props": {
+      "dataType": "timestamptz",
+      "nullable": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "er-order_line",
+   "type": "er.Entity",
+   "label": "order_line",
+   "members": [
+    {
+     "id": "er-order_line.order_id",
+     "type": "er.Column",
+     "label": "order_id",
+     "props": {
+      "dataType": "bigint",
+      "primaryKey": true,
+      "foreignKey": true,
+      "references": "er-order.id"
+     }
+    },
+    {
+     "id": "er-order_line.line_no",
+     "type": "er.Column",
+     "label": "line_no",
+     "props": {
+      "dataType": "integer",
+      "primaryKey": true
+     }
+    },
+    {
+     "id": "er-order_line.book_id",
+     "type": "er.Column",
+     "label": "book_id",
+     "props": {
+      "dataType": "bigint",
+      "foreignKey": true,
+      "references": "er-book.id"
+     }
+    },
+    {
+     "id": "er-order_line.quantity",
+     "type": "er.Column",
+     "label": "quantity",
+     "props": {
+      "dataType": "integer"
+     }
+    }
+   ]
+  },
+  {
+   "id": "er-book",
+   "type": "er.Entity",
+   "label": "book",
+   "members": [
+    {
+     "id": "er-book.id",
+     "type": "er.Column",
+     "label": "id",
+     "props": {
+      "dataType": "bigint",
+      "primaryKey": true
+     }
+    },
+    {
+     "id": "er-book.isbn",
+     "type": "er.Column",
+     "label": "isbn",
+     "props": {
+      "dataType": "char(13)",
+      "unique": true
+     }
+    },
+    {
+     "id": "er-book.title",
+     "type": "er.Column",
+     "label": "title",
+     "props": {
+      "dataType": "varchar(255)"
+     }
+    }
+   ]
+  },
+  {
+   "id": "er-author",
+   "type": "er.Entity",
+   "label": "author",
+   "members": [
+    {
+     "id": "er-author.id",
+     "type": "er.Column",
+     "label": "id",
+     "props": {
+      "dataType": "bigint",
+      "primaryKey": true
+     }
+    },
+    {
+     "id": "er-author.name",
+     "type": "er.Column",
+     "label": "name",
+     "props": {
+      "dataType": "varchar(120)"
+     }
+    }
+   ]
+  },
+  {
+   "id": "er-book_author",
+   "type": "er.Entity",
+   "label": "book_author",
+   "members": [
+    {
+     "id": "er-book_author.book_id",
+     "type": "er.Column",
+     "label": "book_id",
+     "props": {
+      "dataType": "bigint",
+      "primaryKey": true,
+      "foreignKey": true,
+      "references": "er-book.id"
+     }
+    },
+    {
+     "id": "er-book_author.author_id",
+     "type": "er.Column",
+     "label": "author_id",
+     "props": {
+      "dataType": "bigint",
+      "primaryKey": true,
+      "foreignKey": true,
+      "references": "er-author.id"
+     }
+    }
+   ]
+  },
+  {
+   "id": "er-payment",
+   "type": "er.Entity",
+   "label": "payment",
+   "members": [
+    {
+     "id": "er-payment.id",
+     "type": "er.Column",
+     "label": "id",
+     "props": {
+      "dataType": "bigint",
+      "primaryKey": true
+     }
+    },
+    {
+     "id": "er-payment.order_id",
+     "type": "er.Column",
+     "label": "order_id",
+     "props": {
+      "dataType": "bigint",
+      "foreignKey": true,
+      "unique": true,
+      "references": "er-order.id"
+     }
+    },
+    {
+     "id": "er-payment.amount",
+     "type": "er.Column",
+     "label": "amount",
+     "props": {
+      "dataType": "numeric(10,2)"
+     }
+    }
+   ]
+  },
+  {
+   "id": "return-arrives",
+   "type": "flow.Terminator",
+   "label": "Returned parcel arrives"
+  },
+  {
+   "id": "slip",
+   "type": "flow.InputOutput",
+   "label": "Read the returns slip"
+  },
+  {
+   "id": "key-in",
+   "type": "flow.ManualInput",
+   "label": "Key in the order number"
+  },
+  {
+   "id": "inspect",
+   "type": "flow.Process",
+   "label": "Inspect the book"
+  },
+  {
+   "id": "resaleable",
+   "type": "flow.Decision",
+   "label": "Fit for resale?"
+  },
+  {
+   "id": "refund",
+   "type": "flow.PredefinedProcess",
+   "label": "Refund the payment"
+  },
+  {
+   "id": "wait",
+   "type": "flow.Delay",
+   "label": "Wait for the bank to confirm"
+  },
+  {
+   "id": "restock",
+   "type": "flow.Process",
+   "label": "Put the book back on the shelf"
+  },
+  {
+   "id": "stock-records",
+   "type": "flow.Database",
+   "label": "Stock records"
+  },
+  {
+   "id": "letter",
+   "type": "flow.Document",
+   "label": "Rejection letter"
+  },
+  {
+   "id": "post-back",
+   "type": "flow.Process",
+   "label": "Post the book back"
+  },
+  {
+   "id": "join",
+   "type": "flow.Connector",
+   "label": "A"
+  },
+  {
+   "id": "end",
+   "type": "flow.Terminator",
+   "label": "Return closed"
+  },
+  {
+   "id": "dfd-customer",
+   "type": "dfd.ExternalEntity",
+   "label": "Customer"
+  },
+  {
+   "id": "dfd-provider",
+   "type": "dfd.ExternalEntity",
+   "label": "Payment provider"
+  },
+  {
+   "id": "dfd-courier",
+   "type": "dfd.ExternalEntity",
+   "label": "Courier"
+  },
+  {
+   "id": "dfd-take-order",
+   "type": "dfd.Process",
+   "label": "Take order",
+   "opensView": "dfd-level-2-take-order",
+   "props": {
+    "number": "1"
+   }
+  },
+  {
+   "id": "dfd-take-payment",
+   "type": "dfd.Process",
+   "label": "Take payment",
+   "props": {
+    "number": "2"
+   }
+  },
+  {
+   "id": "dfd-ship-order",
+   "type": "dfd.Process",
+   "label": "Ship order",
+   "props": {
+    "number": "3"
+   }
+  },
+  {
+   "id": "dfd-books",
+   "type": "dfd.DataStore",
+   "label": "Books",
+   "props": {
+    "number": "D1"
+   }
+  },
+  {
+   "id": "dfd-orders",
+   "type": "dfd.DataStore",
+   "label": "Orders",
+   "props": {
+    "number": "D2"
+   }
+  },
+  {
+   "id": "dfd-check-basket",
+   "type": "dfd.Process",
+   "label": "Check the basket",
+   "props": {
+    "number": "1.1"
+   }
+  },
+  {
+   "id": "dfd-total-order",
+   "type": "dfd.Process",
+   "label": "Total the order",
+   "props": {
+    "number": "1.2"
+   }
+  },
+  {
+   "id": "dfd-record-order",
+   "type": "dfd.Process",
+   "label": "Record the order",
+   "props": {
+    "number": "1.3"
+   }
+  },
+  {
+   "id": "warehouse",
+   "type": "uml.Component",
+   "label": "Warehouse"
+  },
+  {
+   "id": "email-service",
+   "type": "uml.Component",
+   "label": "Email service"
+  },
+  {
+   "id": "order-info",
+   "type": "uml.InformationItem",
+   "label": "Order"
+  },
+  {
+   "id": "card-details",
+   "type": "uml.InformationItem",
+   "label": "Card details"
+  },
+  {
+   "id": "receipt-info",
+   "type": "uml.InformationItem",
+   "label": "Receipt"
+  },
+  {
+   "id": "stock-info",
+   "type": "uml.InformationItem",
+   "label": "Stock level"
   }
  ],
  "edges": [
@@ -2662,6 +3334,715 @@
    "from": "order-service.listeners",
    "to": "order-events",
    "label": "subscriber"
+  },
+  {
+   "id": "c4-shopper-bookshop",
+   "type": "c4.Relationship",
+   "from": "c4-shopper",
+   "to": "c4-bookshop",
+   "label": "Browses and buys books with"
+  },
+  {
+   "id": "c4-staff-bookshop",
+   "type": "c4.Relationship",
+   "from": "c4-staff",
+   "to": "c4-bookshop",
+   "label": "Keep the catalogue and refund orders with"
+  },
+  {
+   "id": "c4-bookshop-payments",
+   "type": "c4.Relationship",
+   "from": "c4-bookshop",
+   "to": "c4-payments",
+   "label": "Takes card payments with",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "c4-bookshop-mail",
+   "type": "c4.Relationship",
+   "from": "c4-bookshop",
+   "to": "c4-mail",
+   "label": "Sends order confirmations with",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "c4-bookshop-courier",
+   "type": "c4.Relationship",
+   "from": "c4-bookshop",
+   "to": "c4-courier",
+   "label": "Books deliveries with",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "c4-mail-shopper",
+   "type": "c4.Relationship",
+   "from": "c4-mail",
+   "to": "c4-shopper",
+   "label": "Delivers confirmations to",
+   "props": {
+    "technology": "Email"
+   }
+  },
+  {
+   "id": "c4-shopper-storefront",
+   "type": "c4.Relationship",
+   "from": "c4-shopper",
+   "to": "c4-storefront",
+   "label": "Fills a basket and checks out in",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "c4-staff-storefront",
+   "type": "c4.Relationship",
+   "from": "c4-staff",
+   "to": "c4-storefront",
+   "label": "Edit the catalogue and refund orders in",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "c4-storefront-api",
+   "type": "c4.Relationship",
+   "from": "c4-storefront",
+   "to": "c4-api",
+   "label": "Reads the catalogue and places orders through",
+   "props": {
+    "technology": "JSON over HTTPS"
+   }
+  },
+  {
+   "id": "c4-api-payments",
+   "type": "c4.Relationship",
+   "from": "c4-api",
+   "to": "c4-payments",
+   "label": "Charges cards with",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "c4-api-db",
+   "type": "c4.Relationship",
+   "from": "c4-api",
+   "to": "c4-db",
+   "label": "Reads and writes books, baskets and orders in",
+   "props": {
+    "technology": "SQL"
+   }
+  },
+  {
+   "id": "c4-api-queue",
+   "type": "c4.Relationship",
+   "from": "c4-api",
+   "to": "c4-queue",
+   "label": "Puts paid orders on",
+   "props": {
+    "technology": "SQL"
+   }
+  },
+  {
+   "id": "c4-worker-queue",
+   "type": "c4.Relationship",
+   "from": "c4-worker",
+   "to": "c4-queue",
+   "label": "Claims paid orders from",
+   "props": {
+    "technology": "SQL"
+   }
+  },
+  {
+   "id": "c4-worker-courier",
+   "type": "c4.Relationship",
+   "from": "c4-worker",
+   "to": "c4-courier",
+   "label": "Books deliveries with",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "c4-worker-mail",
+   "type": "c4.Relationship",
+   "from": "c4-worker",
+   "to": "c4-mail",
+   "label": "Sends confirmations with",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "c4-worker-db",
+   "type": "c4.Relationship",
+   "from": "c4-worker",
+   "to": "c4-db",
+   "label": "Marks orders as fulfilled in",
+   "props": {
+    "technology": "SQL"
+   }
+  },
+  {
+   "id": "c4-storefront-catalogue",
+   "type": "c4.Relationship",
+   "from": "c4-storefront",
+   "to": "c4-catalogue",
+   "label": "Lists and searches books through",
+   "props": {
+    "technology": "JSON over HTTPS"
+   }
+  },
+  {
+   "id": "c4-storefront-checkout",
+   "type": "c4.Relationship",
+   "from": "c4-storefront",
+   "to": "c4-checkout",
+   "label": "Places orders through",
+   "props": {
+    "technology": "JSON over HTTPS"
+   }
+  },
+  {
+   "id": "c4-storefront-accounts",
+   "type": "c4.Relationship",
+   "from": "c4-storefront",
+   "to": "c4-accounts",
+   "label": "Signs in through",
+   "props": {
+    "technology": "JSON over HTTPS"
+   }
+  },
+  {
+   "id": "c4-checkout-payment-client",
+   "type": "c4.Relationship",
+   "from": "c4-checkout",
+   "to": "c4-payment-client",
+   "label": "Charges the card through"
+  },
+  {
+   "id": "c4-payment-client-payments",
+   "type": "c4.Relationship",
+   "from": "c4-payment-client",
+   "to": "c4-payments",
+   "label": "Starts a card payment with",
+   "props": {
+    "technology": "HTTPS"
+   }
+  },
+  {
+   "id": "c4-checkout-order-store",
+   "type": "c4.Relationship",
+   "from": "c4-checkout",
+   "to": "c4-order-store",
+   "label": "Saves the paid order with"
+  },
+  {
+   "id": "c4-order-store-db",
+   "type": "c4.Relationship",
+   "from": "c4-order-store",
+   "to": "c4-db",
+   "label": "Reads and writes orders in",
+   "props": {
+    "technology": "SQL"
+   }
+  },
+  {
+   "id": "c4-order-store-queue",
+   "type": "c4.Relationship",
+   "from": "c4-order-store",
+   "to": "c4-queue",
+   "label": "Puts paid orders on",
+   "props": {
+    "technology": "SQL"
+   }
+  },
+  {
+   "id": "c4-catalogue-db",
+   "type": "c4.Relationship",
+   "from": "c4-catalogue",
+   "to": "c4-db",
+   "label": "Reads books from",
+   "props": {
+    "technology": "SQL"
+   }
+  },
+  {
+   "id": "c4-accounts-db",
+   "type": "c4.Relationship",
+   "from": "c4-accounts",
+   "to": "c4-db",
+   "label": "Reads and writes accounts and sessions in",
+   "props": {
+    "technology": "SQL"
+   }
+  },
+  {
+   "id": "c4-storefront-1-api-1",
+   "type": "c4.Relationship",
+   "from": "c4-storefront-1",
+   "to": "c4-api-1",
+   "label": "Calls",
+   "props": {
+    "technology": "JSON over HTTPS, port 443"
+   }
+  },
+  {
+   "id": "c4-api-1-db-1",
+   "type": "c4.Relationship",
+   "from": "c4-api-1",
+   "to": "c4-db-1",
+   "label": "Reads from and writes to",
+   "props": {
+    "technology": "SQL, port 5432, private network"
+   }
+  },
+  {
+   "id": "c4-api-1-queue-1",
+   "type": "c4.Relationship",
+   "from": "c4-api-1",
+   "to": "c4-queue-1",
+   "label": "Puts paid orders on",
+   "props": {
+    "technology": "SQL, port 5432, private network"
+   }
+  },
+  {
+   "id": "c4-worker-1-queue-1",
+   "type": "c4.Relationship",
+   "from": "c4-worker-1",
+   "to": "c4-queue-1",
+   "label": "Claims paid orders from",
+   "props": {
+    "technology": "SQL, port 5432, private network"
+   }
+  },
+  {
+   "id": "c4-worker-1-db-1",
+   "type": "c4.Relationship",
+   "from": "c4-worker-1",
+   "to": "c4-db-1",
+   "label": "Marks orders as fulfilled in",
+   "props": {
+    "technology": "SQL, port 5432, private network"
+   }
+  },
+  {
+   "id": "er-customer-orders",
+   "type": "er.Relationship",
+   "from": "er-customer",
+   "to": "er-order",
+   "label": "places",
+   "props": {
+    "identifying": false,
+    "ends": {
+     "from": {
+      "multiplicity": "1"
+     },
+     "to": {
+      "multiplicity": "0..*"
+     }
+    }
+   }
+  },
+  {
+   "id": "er-order-lines",
+   "type": "er.Relationship",
+   "from": "er-order",
+   "to": "er-order_line",
+   "label": "contains",
+   "props": {
+    "identifying": true,
+    "ends": {
+     "from": {
+      "multiplicity": "1"
+     },
+     "to": {
+      "multiplicity": "1..*"
+     }
+    }
+   }
+  },
+  {
+   "id": "er-book-lines",
+   "type": "er.Relationship",
+   "from": "er-book",
+   "to": "er-order_line",
+   "props": {
+    "identifying": false,
+    "ends": {
+     "from": {
+      "multiplicity": "1"
+     },
+     "to": {
+      "multiplicity": "0..*"
+     }
+    }
+   }
+  },
+  {
+   "id": "er-book-authors",
+   "type": "er.Relationship",
+   "from": "er-book",
+   "to": "er-book_author",
+   "props": {
+    "identifying": true,
+    "ends": {
+     "from": {
+      "multiplicity": "1"
+     },
+     "to": {
+      "multiplicity": "1..*"
+     }
+    }
+   }
+  },
+  {
+   "id": "er-author-books",
+   "type": "er.Relationship",
+   "from": "er-author",
+   "to": "er-book_author",
+   "props": {
+    "identifying": true,
+    "ends": {
+     "from": {
+      "multiplicity": "1"
+     },
+     "to": {
+      "multiplicity": "0..*"
+     }
+    }
+   }
+  },
+  {
+   "id": "er-order-payment",
+   "type": "er.Relationship",
+   "from": "er-order",
+   "to": "er-payment",
+   "props": {
+    "identifying": false,
+    "ends": {
+     "from": {
+      "multiplicity": "1"
+     },
+     "to": {
+      "multiplicity": "0..1"
+     }
+    }
+   }
+  },
+  {
+   "id": "er-customer-referrals",
+   "type": "er.Relationship",
+   "from": "er-customer",
+   "to": "er-customer",
+   "label": "referred",
+   "props": {
+    "identifying": false,
+    "ends": {
+     "from": {
+      "multiplicity": "0..1"
+     },
+     "to": {
+      "multiplicity": "0..*"
+     }
+    }
+   }
+  },
+  {
+   "id": "start-slip",
+   "type": "flow.Flow",
+   "from": "return-arrives",
+   "to": "slip"
+  },
+  {
+   "id": "slip-key-in",
+   "type": "flow.Flow",
+   "from": "slip",
+   "to": "key-in"
+  },
+  {
+   "id": "key-in-inspect",
+   "type": "flow.Flow",
+   "from": "key-in",
+   "to": "inspect"
+  },
+  {
+   "id": "inspect-resaleable",
+   "type": "flow.Flow",
+   "from": "inspect",
+   "to": "resaleable"
+  },
+  {
+   "id": "resaleable-yes",
+   "type": "flow.Flow",
+   "from": "resaleable",
+   "to": "refund",
+   "label": "yes"
+  },
+  {
+   "id": "resaleable-no",
+   "type": "flow.Flow",
+   "from": "resaleable",
+   "to": "letter",
+   "label": "no"
+  },
+  {
+   "id": "refund-wait",
+   "type": "flow.Flow",
+   "from": "refund",
+   "to": "wait"
+  },
+  {
+   "id": "wait-restock",
+   "type": "flow.Flow",
+   "from": "wait",
+   "to": "restock"
+  },
+  {
+   "id": "restock-stock",
+   "type": "flow.Flow",
+   "from": "restock",
+   "to": "stock-records"
+  },
+  {
+   "id": "stock-join",
+   "type": "flow.Flow",
+   "from": "stock-records",
+   "to": "join"
+  },
+  {
+   "id": "letter-post-back",
+   "type": "flow.Flow",
+   "from": "letter",
+   "to": "post-back"
+  },
+  {
+   "id": "post-back-join",
+   "type": "flow.Flow",
+   "from": "post-back",
+   "to": "join"
+  },
+  {
+   "id": "join-end",
+   "type": "flow.Flow",
+   "from": "join",
+   "to": "end"
+  },
+  {
+   "id": "dfd-basket",
+   "type": "dfd.DataFlow",
+   "from": "dfd-customer",
+   "to": "dfd-take-order",
+   "label": "basket"
+  },
+  {
+   "id": "dfd-price-and-stock",
+   "type": "dfd.DataFlow",
+   "from": "dfd-books",
+   "to": "dfd-take-order",
+   "label": "price and stock"
+  },
+  {
+   "id": "dfd-new-order",
+   "type": "dfd.DataFlow",
+   "from": "dfd-take-order",
+   "to": "dfd-orders",
+   "label": "new order"
+  },
+  {
+   "id": "dfd-confirmation",
+   "type": "dfd.DataFlow",
+   "from": "dfd-take-order",
+   "to": "dfd-customer",
+   "label": "order confirmation"
+  },
+  {
+   "id": "dfd-amount-due",
+   "type": "dfd.DataFlow",
+   "from": "dfd-orders",
+   "to": "dfd-take-payment",
+   "label": "amount due"
+  },
+  {
+   "id": "dfd-charge-request",
+   "type": "dfd.DataFlow",
+   "from": "dfd-take-payment",
+   "to": "dfd-provider",
+   "label": "charge request"
+  },
+  {
+   "id": "dfd-charge-result",
+   "type": "dfd.DataFlow",
+   "from": "dfd-provider",
+   "to": "dfd-take-payment",
+   "label": "charge result"
+  },
+  {
+   "id": "dfd-paid-order",
+   "type": "dfd.DataFlow",
+   "from": "dfd-take-payment",
+   "to": "dfd-ship-order",
+   "label": "paid order"
+  },
+  {
+   "id": "dfd-stock-change",
+   "type": "dfd.DataFlow",
+   "from": "dfd-ship-order",
+   "to": "dfd-books",
+   "label": "stock change"
+  },
+  {
+   "id": "dfd-shipping-label",
+   "type": "dfd.DataFlow",
+   "from": "dfd-ship-order",
+   "to": "dfd-courier",
+   "label": "shipping label"
+  },
+  {
+   "id": "dfd-shipping-notice",
+   "type": "dfd.DataFlow",
+   "from": "dfd-ship-order",
+   "to": "dfd-customer",
+   "label": "shipping notice"
+  },
+  {
+   "id": "dfd-l2-basket",
+   "type": "dfd.DataFlow",
+   "from": "dfd-customer",
+   "to": "dfd-check-basket",
+   "label": "basket"
+  },
+  {
+   "id": "dfd-l2-price-and-stock",
+   "type": "dfd.DataFlow",
+   "from": "dfd-books",
+   "to": "dfd-check-basket",
+   "label": "price and stock"
+  },
+  {
+   "id": "dfd-l2-checked-lines",
+   "type": "dfd.DataFlow",
+   "from": "dfd-check-basket",
+   "to": "dfd-total-order",
+   "label": "checked lines"
+  },
+  {
+   "id": "dfd-l2-totalled-order",
+   "type": "dfd.DataFlow",
+   "from": "dfd-total-order",
+   "to": "dfd-record-order",
+   "label": "totalled order"
+  },
+  {
+   "id": "dfd-l2-new-order",
+   "type": "dfd.DataFlow",
+   "from": "dfd-record-order",
+   "to": "dfd-orders",
+   "label": "new order"
+  },
+  {
+   "id": "dfd-l2-confirmation",
+   "type": "dfd.DataFlow",
+   "from": "dfd-record-order",
+   "to": "dfd-customer",
+   "label": "order confirmation"
+  },
+  {
+   "id": "flow-shopper-storefront",
+   "type": "uml.InformationFlow",
+   "from": "shopper",
+   "to": "storefront-component",
+   "props": {
+    "conveyed": [
+     "order-info",
+     "card-details"
+    ]
+   }
+  },
+  {
+   "id": "storefront-payments",
+   "type": "uml.InformationFlow",
+   "from": "storefront-component",
+   "to": "payment-provider-component",
+   "props": {
+    "conveyed": [
+     "card-details"
+    ]
+   }
+  },
+  {
+   "id": "flow-storefront-api",
+   "type": "uml.InformationFlow",
+   "from": "storefront-component",
+   "to": "shop-api",
+   "props": {
+    "conveyed": [
+     "order-info"
+    ]
+   }
+  },
+  {
+   "id": "api-warehouse",
+   "type": "uml.InformationFlow",
+   "from": "shop-api",
+   "to": "warehouse",
+   "props": {
+    "conveyed": [
+     "order-info"
+    ]
+   }
+  },
+  {
+   "id": "warehouse-api",
+   "type": "uml.InformationFlow",
+   "from": "warehouse",
+   "to": "shop-api",
+   "props": {
+    "conveyed": [
+     "stock-info"
+    ]
+   }
+  },
+  {
+   "id": "api-storefront",
+   "type": "uml.InformationFlow",
+   "from": "shop-api",
+   "to": "storefront-component",
+   "props": {
+    "conveyed": [
+     "stock-info"
+    ]
+   }
+  },
+  {
+   "id": "api-email",
+   "type": "uml.InformationFlow",
+   "from": "shop-api",
+   "to": "email-service",
+   "props": {
+    "conveyed": [
+     "order-info",
+     "receipt-info"
+    ]
+   }
+  },
+  {
+   "id": "email-shopper",
+   "type": "uml.InformationFlow",
+   "from": "email-service",
+   "to": "shopper",
+   "props": {
+    "conveyed": [
+     "receipt-info"
+    ]
+   }
   }
  ],
  "views": [
@@ -3641,6 +5022,197 @@
      }
     ]
    }
+  },
+  {
+   "id": "c4-context",
+   "diagram": "c4.context",
+   "title": "Bookshop: system context",
+   "parent": null,
+   "subject": "c4-bookshop",
+   "nodeIds": [
+    "c4-shopper",
+    "c4-staff",
+    "c4-bookshop",
+    "c4-payments",
+    "c4-mail",
+    "c4-courier"
+   ]
+  },
+  {
+   "id": "c4-containers",
+   "diagram": "c4.container",
+   "title": "Bookshop: containers",
+   "parent": "c4-context",
+   "subject": "c4-bookshop",
+   "nodeIds": [
+    "c4-bookshop",
+    "c4-shopper",
+    "c4-staff",
+    "c4-storefront",
+    "c4-api",
+    "c4-worker",
+    "c4-db",
+    "c4-queue",
+    "c4-payments",
+    "c4-mail",
+    "c4-courier"
+   ]
+  },
+  {
+   "id": "c4-components",
+   "diagram": "c4.component",
+   "title": "Shop API: components",
+   "parent": "c4-containers",
+   "subject": "c4-api",
+   "nodeIds": [
+    "c4-api",
+    "c4-storefront",
+    "c4-catalogue",
+    "c4-checkout",
+    "c4-accounts",
+    "c4-payment-client",
+    "c4-order-store",
+    "c4-db",
+    "c4-queue",
+    "c4-payments"
+   ]
+  },
+  {
+   "id": "c4-placing-an-order",
+   "diagram": "c4.dynamic",
+   "title": "Placing an order",
+   "parent": "c4-containers",
+   "subject": "c4-bookshop",
+   "nodeIds": [
+    "c4-shopper",
+    "c4-storefront",
+    "c4-api",
+    "c4-payments",
+    "c4-db",
+    "c4-queue",
+    "c4-worker",
+    "c4-courier",
+    "c4-mail"
+   ],
+   "edges": [
+    "c4-shopper-storefront",
+    "c4-storefront-api",
+    "c4-api-payments",
+    "c4-api-db",
+    "c4-api-queue",
+    "c4-worker-queue",
+    "c4-worker-courier",
+    "c4-worker-mail",
+    "c4-mail-shopper",
+    "c4-worker-db"
+   ]
+  },
+  {
+   "id": "c4-deployment",
+   "diagram": "c4.deployment",
+   "title": "Bookshop: production deployment",
+   "parent": "c4-context",
+   "nodeIds": [
+    "c4-device",
+    "c4-browser",
+    "c4-storefront-1",
+    "c4-web-host",
+    "c4-docker",
+    "c4-api-1",
+    "c4-worker-1",
+    "c4-db-host",
+    "c4-postgres",
+    "c4-db-1",
+    "c4-queue-1"
+   ]
+  },
+  {
+   "id": "er-schema",
+   "diagram": "er",
+   "title": "Bookshop schema",
+   "parent": null,
+   "notation": "crowsfoot",
+   "nodeIds": [
+    "er-customer",
+    "er-order",
+    "er-order_line",
+    "er-book",
+    "er-author",
+    "er-book_author",
+    "er-payment"
+   ]
+  },
+  {
+   "id": "returns",
+   "diagram": "flowchart",
+   "title": "Handling a returned book",
+   "parent": null,
+   "direction": "down",
+   "nodeIds": [
+    "return-arrives",
+    "slip",
+    "key-in",
+    "inspect",
+    "resaleable",
+    "refund",
+    "wait",
+    "restock",
+    "stock-records",
+    "letter",
+    "post-back",
+    "join",
+    "end"
+   ]
+  },
+  {
+   "id": "dfd-level-1",
+   "diagram": "dfd",
+   "title": "Bookshop, level 1",
+   "parent": null,
+   "notation": "yourdon",
+   "nodeIds": [
+    "dfd-customer",
+    "dfd-provider",
+    "dfd-courier",
+    "dfd-take-order",
+    "dfd-take-payment",
+    "dfd-ship-order",
+    "dfd-books",
+    "dfd-orders"
+   ]
+  },
+  {
+   "id": "dfd-level-2-take-order",
+   "diagram": "dfd",
+   "title": "1 Take order",
+   "parent": "dfd-level-1",
+   "notation": "yourdon",
+   "nodeIds": [
+    "dfd-customer",
+    "dfd-books",
+    "dfd-orders",
+    "dfd-check-basket",
+    "dfd-total-order",
+    "dfd-record-order"
+   ]
+  },
+  {
+   "id": "order-flows",
+   "diagram": "uml.information-flow",
+   "title": "What travels with an order",
+   "parent": null,
+   "nodeIds": [
+    "shopper",
+    "storefront-component",
+    "shop-api",
+    "payment-provider-component",
+    "warehouse",
+    "email-service",
+    "order-info",
+    "card-details",
+    "receipt-info",
+    "stock-info"
+   ]
   }
  ]
 }
