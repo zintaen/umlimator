@@ -393,6 +393,10 @@ function mapContext(model, opts = {}) {
       if (k != null && memo.runKey === k) return memo.runGeo;
       const pos = override || (L.pins === false ? {} : L.rank === false ? onGrid(vid, v.layout || {}) : v.layout ? fillLayout(vid, v.layout) : (layoutCache[vid] ||= autoPos(vid))); // pins: false, no ranking either (notes/stage-3.md Q9)
       const g = L.run ? L.run(D, v, { measure: M, pos, memo }) : L({ model: D, view: v, pos, memo });
+      // an element that opens a view says which in its name, as a map card does, unless its type's name says so already
+      // (a typed node draws no ⤢ mark: notes/stage-4.md)
+      (g.nodes || []).forEach(n => { const o = N[n.id] && opensOf(n.id, vid); if (!o || /\bopens\b/.test(n.aria || '')) return;
+        n.opensTo = String((V[o] || {}).title ?? o); const t = `, opens ${n.opensTo}`; if (n.aria) n.aria += t; if (typeof n.ariaOwn === 'string' && n.ariaOwn) n.ariaOwn += t; });
       if (k != null) Object.assign(memo, { runKey: k, runGeo: g });
       return g;
     }

@@ -14,6 +14,7 @@ import { SHAPE, SHAPE_NAMES } from '../src/draw/shapes.js';
 import '../src/map/typed.js';
 import { layout, check } from '../src/map/api.js';
 import { mapContext } from '../src/map/context.js';
+import { throughIssues } from '../src/layout/audit.js';
 import { validate } from '../src/map/validate.js';
 import { describe } from '../src/map/insight.js';
 import { svgOf } from '../src/draw/svg.js';
@@ -85,7 +86,7 @@ test('the element (§7.5): the shape props.shape names (a person by default, els
 });
 
 test('23-c4.json\'s static views draw: people and boxes, external grey, the subject a dashed boundary; laid out right and down with no overlap, no line through a node, ends on outlines; the crossings pinned', () => {
-  const pinned = { 'c4-context right': [], 'c4-context down': [], 'c4-containers right': ['3 cross'], 'c4-containers down': ['3 cross'], 'c4-components right': ['2 cross'], 'c4-components down': ['2 cross', '1 label on a line'] }, got = {};
+  const pinned = { 'c4-context right': [], 'c4-context down': [], 'c4-containers right': ['3 cross'], 'c4-containers down': ['3 cross'], 'c4-components right': ['2 cross'], 'c4-components down': ['2 cross'] }, got = {};
   for (const vid of STATIC) for (const direction of ['right', 'down']) {
     const m = withDir(C4, vid, direction), [g, warned] = said(() => layout(m, vid)), tag = `${vid} ${direction}`;
     assert.deepEqual(warned.filter(w => !/is not drawn by this release/.test(w)), [], `${tag}: every line routed`);
@@ -181,7 +182,7 @@ test('the layout is not edited after layoutTyped: drawn twice from one memo, the
 
 test('names, reading order and the key (A1, §7.5): each element by type, technology and description; the boundary and what it holds first; each type, shape, external, the relationship and the implied line keyed', () => {
   const g = layout(C4, 'c4-containers'), s = svgOf(g);
-  assert.equal(g.byId['c4-api'].aria, 'Container Shop API, Python, FastAPI: Catalogue, basket, checkout and accounts as a JSON API.');
+  assert.equal(g.byId['c4-api'].aria, 'Container Shop API, Python, FastAPI: Catalogue, basket, checkout and accounts as a JSON API., opens Shop API: components');
   assert.equal(g.byId['c4-shopper'].aria, 'Person Shopper: Browses the catalogue, buys books and tracks orders.');
   assert.equal(g.byId['c4-payments'].aria, 'External software system Payment provider: Takes card payments and makes refunds.');
   assert.equal(g.families[0].aria, 'Software system Bookshop, a boundary holding 5 containers');
@@ -390,4 +391,22 @@ test('audit 1: D leaves a container reached with its system to it; c4-relationsh
   const cv = { ...m, edges: [], views: [{ id: 'v', diagram: 'c4.container', title: 'C', subject: 's', nodeIds: ['s', 'a', 'c2'] }] };
   assert.deepEqual(validate(cv).filter(p => p.rule === 'c4-level'), [], 'another system\'s container on a container view');
   assert.match(readFileSync(new URL('../docs/conformance/c4.md', import.meta.url), 'utf8'), /containers too \(its subject's and other systems'\)/);
+});
+
+test('audit 5: lines go round the cards on a typed view, however wide the host font (bookshop-c4 containers), and check() reports one drawn through a card', () => {
+  const m = JSON.parse(readFileSync(new URL('../examples/bookshop-c4.json', import.meta.url), 'utf8')), was = console.warn;
+  // a C4 card's tag is its text ("[Container]"), not an author's name tag: its NaN box once put the router's grid out of order, and at
+  // 0.54 em a character (Linux CI's fonts) the worker's lines to the email service and the courier ran through the order queue
+  for (const k of [0.54, 0.6]) { const warned = [], measure = (s, px) => s.length * px * k; console.warn = (...a) => warned.push(a.join(' '));
+    let said, g; try { g = layout(m, 'c4-containers', { measure }); said = check(m, 'c4-containers', { measure }); } finally { console.warn = was; }
+    assert.deepEqual(warned, [], `${k} em: every line routed round the cards`);
+    assert.deepEqual(said.filter(i => / passes through card /.test(i.message)).map(i => i.message), [], `${k} em`);
+    if (k === 0.6) continue;
+    // the check itself: the worker's line to the email service drawn straight through the queue
+    const q = g.byId['c4-queue'], e = g.edges.find(x => x.ids.includes('c4-worker-mail')), y = q.y + q.h / 2, refs = [];
+    e.pts = [[e.s.x + e.s.w, y], [q.x + q.w + 40, y], [q.x + q.w + 40, e.t.y + e.t.h / 2], [e.t.x, e.t.y + e.t.h / 2]];
+    const found = throughIssues(g, 'view c4-containers', refs), at = found.indexOf('view c4-containers: edge Order worker→Email service passes through card "Order queue"');
+    assert.ok(at >= 0, found.join('\n'));
+    assert.ok(refs[at][0] === e && refs[at][1].id === 'c4-queue', 'about the line and the card');
+  }
 });

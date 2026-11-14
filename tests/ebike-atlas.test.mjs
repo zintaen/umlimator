@@ -83,7 +83,8 @@ test('the atlas and each file validate with no problem at any level through the 
 });
 
 test('every view lays out in the atlas exactly as in its own file, and check() finds nothing (the frame header of a view with no subject names the model\'s title)', () => {
-  const pic = (m, vid) => { const { ms, ...g } = layout(m, vid); return g; };
+  // the same picture; only the atlas's drill-downs add "opens <view>" to a name (audit 5)
+  const pic = (m, vid) => { const { ms, ...g } = layout(m, vid); return JSON.parse(JSON.stringify(g, (k, x) => k === 'opensTo' ? undefined : (k === 'aria' || k === 'ariaOwn') && typeof x === 'string' ? x.replace(/, opens [^,]*$/, '') : x)); };
   for (const [name, src] of Object.entries(FILES)) for (const v of src.views) {
     assert.deepEqual(pic({ ...M, title: src.title }, v.id), pic(src, v.id), `${name} view ${v.id}`);
     assert.deepEqual([check(M, v.id), check(src, v.id)], [[], []], `${name} view ${v.id}`);

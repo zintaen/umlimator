@@ -55,7 +55,7 @@ function classSvg(n, c, f) { // its outline, its head, then each compartment und
     top += bh; });
   // its accessible name (A1): "Class Order (entity, abstract), 2 attributes, 1 operation", every member counted, shown or not
   const counts = all.map(C => `${C.members.length} ${C.members.length === 1 ? C.name.replace(/s$/, '') : C.name}`), why = [...stereo, ...(n.abstract ? ['abstract'] : [])];
-  const name = typeof n.ariaOwn === 'string' && n.ariaOwn ? n.ariaOwn : [`${words(n.type || 'uml.Class')} ${n.label ?? ''}${why.length ? ` (${why.join(', ')})` : ''}`, ...counts].join(', ');
+  const name = typeof n.ariaOwn === 'string' && n.ariaOwn ? n.ariaOwn : [`${words(n.type || 'uml.Class')} ${n.label ?? ''}${why.length ? ` (${why.join(', ')})` : ''}`, ...counts, ...(n.opensTo ? [`opens ${n.opensTo}`] : [])].join(', ');
   return `<g class="node classifier" data-id="${esc(n.id)}" data-shape="classifier" tabindex="-1" role="img" aria-label="${esc(name)}">${out.join('')}</g>`;
 }
 const CLASSIFIER = { // UML's class box (1.5): a rectangle, its name compartment, then one compartment per member kind (classParts)

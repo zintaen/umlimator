@@ -116,7 +116,7 @@ test('names, reading order, describe(), the legend, the PDF\'s words and rows', 
   const g = layout(EX, VID), aria = id => g.byId[id].aria;
   assert.deepEqual(['bp-take-payment', 'payment-timeout', 'paid', 'order-cancelled', 'bp-bookshop', 'bp-sales', 'bp-payment-provider', 'dispatch', 'pick-pack', 'note-card'].map(aria), ['Service task Take payment, in Sales',
     'Timer boundary event No answer in 2 minutes, on Take payment', 'Exclusive gateway Paid?, in Sales', 'Terminate end event Order cancelled, in Sales', 'Pool Bookshop, 2 lanes, 17 elements',
-    'Lane Sales of Bookshop, 12 elements', 'Pool Payment provider, a black box', 'Group Dispatch, round 3 elements', 'Sub-process Pick and pack (collapsed), in Warehouse',
+    'Lane Sales of Bookshop, 12 elements', 'Pool Payment provider, a black box', 'Group Dispatch, round 3 elements', 'Sub-process Pick and pack (collapsed), in Warehouse, opens Pick and pack',
     'Text annotation Card details go straight to the provider; the shop never sees them, in Sales']);
   assert.equal(g.edges.find(e => e.id === 'bp-f-paid').aria, 'Sequence flow from Paid? to parallel gateway, named yes');
   assert.equal(g.edges.find(e => e.id === 'bp-m-charge').aria, 'Message flow from Take payment to Payment provider, named Charge request');

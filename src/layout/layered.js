@@ -279,7 +279,9 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
       n.decoB.push([n.tag.x - 2, n.tag.w + 4]);
     }
   });
-  const tagRects = nodes.filter(n => n.tag).map(n => ({ x: n.tag.x - 2, y: n.tag.y - 2, w: n.tag.w + 4, h: n.tag.h + 6 }));
+  // an author's name tag only: a typed card's tag is its text ("[Container]"), and its NaN box sorted the grid's lines out of order,
+  // so the router's binary search marked no card in the way and lines ran through cards (bookshop-c4's order queue)
+  const tagRects = nodes.filter(n => n.tag?.w).map(n => ({ x: n.tag.x - 2, y: n.tag.y - 2, w: n.tag.w + 4, h: n.tag.h + 6 }));
   const families = framesNow();
   families.forEach(f => (f.tabs || []).forEach(t => tagRects.push({ x: t.x - 2, y: f.y - 10, w: t.w + 4, h: 19 }))); // lines and labels keep off a box's tabs
   // intake sources: brand badges stacked left of the node they feed, each with its own short feeds line

@@ -134,6 +134,12 @@ try {
     check("the host may take Open (preventDefault): the map stays where it is", JSON.stringify(ev) === '["trips"]' && h.view === 'system', [ev, h.view]);
     h.destroy(); }
 
+  { const ev = [], [h, sr, q] = make({ details: true, on: { open: e => { ev.push(e.view); e.preventDefault(); } } }); // audit 5
+    click(q('.node[data-id="trips"]')); await wait(100); // the panel opens, the stage shrinks and the view is refitted: the card moves away
+    ['click', 'dblclick'].forEach(t => q('.stage').dispatchEvent(new MouseEvent(t, { bubbles: true, composed: true, detail: 2 }))); // the second click, and the dblclick, land on the stage
+    check('audit 5: a double-click opens the card its first click hit, though the panel moved it from under the second', JSON.stringify(ev) === '["trips"]', ev);
+    h.destroy(); }
+
   { const [h, sr, q] = make({ nav: true, legend: true, hints: true, details: true });
     await wait(400); h.select({ type: 'node', id: 'trips' });
     const S = box(q('.stage'));
