@@ -219,3 +219,10 @@ test('an object view: Tab reaches every element, then every line (one node-key r
   assert.ok(cards > 0);
   assert.equal((s.match(/node-key/g) || []).length, cards);
 });
+
+test('validate() of an object view, an instance of the last of a 5,000-deep generalization chain: its attributes walked without recursion (audit 2)', () => {
+  const nodes = Array.from({ length: 5000 }, (_, i) => ({ id: 'c' + i, type: 'uml.Class', label: 'C' + i, members: [{ id: 'c' + i + '.a', type: 'uml.Property', label: 'a' + i }] }));
+  const edges = nodes.slice(1).map((n, i) => ({ id: 'g' + i, type: 'uml.Generalization', from: n.id, to: nodes[i].id }));
+  nodes.push(I('o', 'o', 'C4999', [['a0', '1']]));
+  assert.deepEqual(validate({ schemaVersion: 2, nodes, edges, views: [{ id: 'v', diagram: 'uml.object', nodeIds: ['o'] }] }), []);
+});

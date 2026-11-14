@@ -85,11 +85,11 @@ function cpPic(model, view) {
   return { ...pic, boxes, I, lines };
 }
 // "Port orders of Shop API, provides Orders"; "Interface Orders, as a ball, provided by Shop API, required by Storefront"
-function cpNodeName(model, view, pic, id) {
+function cpNodeName(model, view, pic, id, bare) { // bare: a port without " of <owner>" (the PDF's rows)
   const { I, lines } = pic, x = I.N.get(id) || (I.P.get(id) || {}).x, of = k => lines.filter(l => l.e.type === k);
   if (!x) return String(id);
   if (I.P.has(id)) { const by = k => of(k).filter(l => l.e.from === id && I.ty(l.e.to) === 'uml.Interface').map(l => cpName(I.N.get(l.e.to)));
-    return SN_SAY.port(cpName(x), pic.name(I.P.get(id).owner), { valueType: cpProps(x).valueType, provides: by('uml.InterfaceRealization'), requires: by('uml.Usage') }); }
+    return SN_SAY.port(cpName(x), bare ? null : pic.name(I.P.get(id).owner), { valueType: cpProps(x).valueType, provides: by('uml.InterfaceRealization'), requires: by('uml.Usage') }); }
   const b = pic.boxes.find(y => y.id === id); if (b) return b.aria;
   const st = cpStereo(x), owners = k => of(k).filter(l => l.e.to === id).map(l => pic.name(I.comp(l.e.from)));
   if (x.type === 'uml.Component') return SN_SAY.component(pic.name(id), { stereotypes: st, ports: cpPortsOf(x).length });
@@ -121,7 +121,9 @@ const cpLegend = kinds => Object.keys(CP_LOOK).filter(k => kinds.has(k)).map(k =
 function cpRank(items, links) {
   const outs = new Map(items.map(id => [id, []])), st = new Map(), fwd = [];
   links.forEach(l => outs.get(l[0]).push(l));
-  const dfs = u => { st.set(u, 1); outs.get(u).forEach(l => { if (st.get(l[1]) === 1) return; fwd.push(l); if (!st.has(l[1])) dfs(l[1]); }); st.set(u, 2); };
+  const dfs = u => { const fr = [[u, 0]]; st.set(u, 1); // a stack of frames, not recursion: a chain of any length
+    while (fr.length) { const f = fr[fr.length - 1], ls = outs.get(f[0]); if (f[1] === ls.length) { fr.pop(); st.set(f[0], 2); continue; }
+      const l = ls[f[1]++]; if (st.get(l[1]) === 1) continue; fwd.push(l); if (!st.has(l[1])) { st.set(l[1], 1); fr.push([l[1], 0]); } } };
   [...items.filter(id => !links.some(l => l[1] === id)), ...items].forEach(id => { if (!st.has(id)) dfs(id); });
   const rank = Object.fromEntries(items.map(id => [id, 0]));
   for (let it = 0, more = true; more && it <= items.length; it++) { more = false; fwd.forEach(([a, b]) => { if (rank[b] < rank[a] + 1) { rank[b] = rank[a] + 1; more = true; } }); }
@@ -333,7 +335,7 @@ const CP_TYPE = registerDiagramType('uml.component', {
   word: (model, id) => { const x = cpIndex(model).N.get(id); return x ? ({ 'uml.Component': 'Component', 'uml.Interface': 'Interface', 'uml.Artifact': 'Artifact', 'uml.Package': 'Package', 'uml.Comment': 'Comment' }[x.type] || null) : null; },
   rows: (model, view, id) => { const pic = cpPic(model, view), x = pic.I.N.get(id); if (!x) return null;
     // then the connectors from it or its ports with a port at an end (0.22.0), which the Lines table leaves out: a port is no card
-    if (x.type === 'uml.Component') return [...cpPortsOf(x).map(p => cpNodeName(model, view, pic, p.id).replace(/^Port /, '').replace(` of ${pic.name(id)}`, '')),
+    if (x.type === 'uml.Component') return [...cpPortsOf(x).map(p => cpNodeName(model, view, pic, p.id, 1).slice(5)),
       ...pic.lines.filter(l => l.e.type === 'uml.Connector' && pic.I.comp(l.e.from) === id && (pic.I.P.has(l.e.from) || pic.I.P.has(l.e.to))).map(l => cpLineName(pic, l))];
     if (x.type === 'uml.Interface') return CP_ARR(x.members).filter(CP_OBJ).map(printMember);
     if (x.type === 'uml.Artifact') return pic.lines.filter(l => l.e.type === 'uml.Manifestation' && l.e.from === id).map(l => `manifests ${pic.name(l.e.to)}`);

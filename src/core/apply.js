@@ -133,7 +133,7 @@ function run(m, c, gone) {
       if (c.view != null && keys[0] === 'id') throw new Error('set: a view keeps its id');
       let o = c.view != null ? viewOf(c.view) : need(c.id).x;
       for (const k of keys.slice(0, -1)) {
-        if (o[k] === undefined) { if (c.value === undefined) return; o[k] = {}; }
+        if (!Object.hasOwn(o, k) || o[k] === undefined) { if (c.value === undefined) return; o[k] = {}; } // an inherited key (toString) is none
         else if (!isObj(o[k])) throw new Error(`set: ${keys.join('.')} goes through ${k}, which is not an object`);
         o = o[k];
       }

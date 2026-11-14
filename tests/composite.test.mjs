@@ -376,3 +376,10 @@ test('the type ships in lib/umlimator-all.js only (risks.md C5)', () => {
   const all = readFileSync(new URL('../lib/umlimator-all.js', import.meta.url), 'utf8'), core = readFileSync(new URL('../lib/umlimator.js', import.meta.url), 'utf8');
   for (const k of ["registerDiagramType('uml.composite-structure'", 'function csGeo(', 'SHAPE.collaboration = {']) { assert.ok(all.includes(k), k); assert.ok(!core.includes(k), k); }
 });
+
+test('layout() of a subject with a chain of 3,000 parts: ranked without recursion (audit 2)', () => {
+  const parts = Array.from({ length: 3000 }, (_, i) => ({ id: 'p' + i, type: 'uml.Property', label: 'p' + i }));
+  const edges = parts.slice(1).map((p, i) => ({ id: 'k' + i, type: 'uml.Connector', from: parts[i].id, to: p.id }));
+  const g = layout({ schemaVersion: 2, nodes: [{ id: 'S', type: 'uml.Class', label: 'S', members: parts }], edges, views: [{ id: 'v', diagram: 'uml.composite-structure', subject: 'S', nodeIds: ['S'] }] }, 'v');
+  assert.equal(g.nodes.length, 3000); assert.ok(g.nodes[2999].x > g.nodes[0].x);
+});

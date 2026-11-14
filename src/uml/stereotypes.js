@@ -170,15 +170,20 @@ function styGenerals(I, st) {
    Each stereotype says only its own: a redefinition of another type, or two unrelated generals' tags of one name and two types */
 function styDefs(I, st) {
   if (I.defsOf.has(st.id)) return I.defsOf.get(st.id);
-  const out = new Map(), clash = new Map(), t = x => STY_OBJ(x.props) ? x.props.valueType ?? 'String' : 'String'; I.defsOf.set(st.id, out); // a cycle (6.3's error) ends here
-  STY_ARR(I.gens.get(st.id)).forEach(g => styDefs(I, I.at.get(g)).forEach((e, n) => { const was = out.get(n);
-    if (!was || styGenerals(I, e.st).includes(was.st)) return out.set(n, e); // e redefines it
-    if (was.def !== e.def && !styGenerals(I, was.st).includes(e.st) && t(was.def) !== t(e.def)) clash.set(n, [was, e]); }));
-  STY_ARR(st.members).forEach(d => { if (!STY_OBJ(d) || d.type !== 'uml.Property') return; const n = styName(d), was = out.get(n); clash.delete(n);
-    if (was && t(was.def) !== t(d)) I.probs.push(stySay('tag-defined', 'warning', styPath(I, d), [d.id, was.def.id], `«${styName(st)}» redefines tag "${n}" of «${styName(was.st)}» as ${t(d)}, not ${t(was.def)}`));
-    out.set(n, { def: d, st }); });
-  clash.forEach(([a, b], n) => I.probs.push(stySay('tag-defined', 'warning', styPath(I, st), [st.id, a.def.id, b.def.id], `«${styName(st)}» inherits tag "${n}" from «${styName(a.st)}» as ${t(a.def)} and from «${styName(b.st)}» as ${t(b.def)}: redefine it`)));
-  return out;
+  const t = x => STY_OBJ(x.props) ? x.props.valueType ?? 'String' : 'String', fr = [[st, 0]]; I.defsOf.set(st.id, new Map());
+  while (fr.length) { // its generals' first, by a stack of frames, not recursion: a chain of any length. A cycle (6.3's error) ends at the one met again
+    const f = fr[fr.length - 1], gs = STY_ARR(I.gens.get(f[0].id));
+    if (f[1] < gs.length) { const g = gs[f[1]++]; if (!I.defsOf.has(g)) { I.defsOf.set(g, new Map()); fr.push([I.at.get(g), 0]); } continue; }
+    fr.pop(); const s = f[0], out = I.defsOf.get(s.id), clash = new Map();
+    gs.forEach(g => I.defsOf.get(g).forEach((e, n) => { const was = out.get(n);
+      if (!was || styGenerals(I, e.st).includes(was.st)) return out.set(n, e); // e redefines it
+      if (was.def !== e.def && !styGenerals(I, was.st).includes(e.st) && t(was.def) !== t(e.def)) clash.set(n, [was, e]); }));
+    STY_ARR(s.members).forEach(d => { if (!STY_OBJ(d) || d.type !== 'uml.Property') return; const n = styName(d), was = out.get(n); clash.delete(n);
+      if (was && t(was.def) !== t(d)) I.probs.push(stySay('tag-defined', 'warning', styPath(I, d), [d.id, was.def.id], `«${styName(s)}» redefines tag "${n}" of «${styName(was.st)}» as ${t(d)}, not ${t(was.def)}`));
+      out.set(n, { def: d, st: s }); });
+    clash.forEach(([a, b], n) => I.probs.push(stySay('tag-defined', 'warning', styPath(I, s), [s.id, a.def.id, b.def.id], `«${styName(s)}» inherits tag "${n}" from «${styName(a.st)}» as ${t(a.def)} and from «${styName(b.st)}» as ${t(b.def)}: redefine it`)));
+  }
+  return I.defsOf.get(st.id);
 }
 const styFits = (I, st, meta) => [st, ...styGenerals(I, st)].some(s => STY_ARR(I.ext.get(s.id)).some(m => metaUp(meta).has(m)));
 const stySay = (rule, level, path, ids, msg) => ({ level, rule, path, ids, message: `${rule}: ${msg}` });
