@@ -11,7 +11,9 @@ import { hasKey } from '../map/kinds.js';
 // view's present; a map never draws it): shape 'classifier'; label; type ('uml.Class', named in its accessible name);
 // stereotypes [text], shown «…» over the name; abstract (the name in italics); underline (the name underlined: an instance, notes/stage-2.md §9.1); compartments [{ name, members }] in order
 // ('attributes', 'operations', 'literals'), each member in the model's envelope ({ type, label, props }); collapsed
-// [compartment names], hidden with no divider; rows: at most that many rows in a compartment, then "+k more" (stage 1 note §5)
+// [compartment names], hidden with no divider; rows: at most that many rows in a compartment, then "+k more" (stage 1 note §5);
+// a compartment's title: true draws its name as its first row, centred and muted (SysML's named compartments, notes/milestone-3.md
+// §7.1); ariaOwn: the accessible name in full, in place of the one built here (§6.1). No UML type sets either
 const CL = { pad: 8, name: 13, row: 11, st: 14, nl: 18, rl: 15, gap: 5, empty: 10, minW: 96, maxW: 320 };
 const VIS = { public: '+', private: '-', protected: '#', package: '~' };
 // a member's row in UML's form: "+ total: Money [1]", "+ /count: Integer = 0", "+ place(at: Date): Order"; a literal's label
@@ -26,11 +28,11 @@ function memberText(m) { const p = obj(m.props) ? m.props : {}, has = x => x != 
 function classParts(n) {
   const hidden = new Set(Array.isArray(n.collapsed) ? n.collapsed : []), cap = Number.isFinite(n.rows) ? Math.max(0, Math.floor(n.rows)) : Infinity, slant = n.abstract ? 1.1 : 1;
   const stereo = (Array.isArray(n.stereotypes) ? n.stereotypes : []).filter(t => t != null && t !== '').map(String), st = stereo.map(t => `«${t}»`);
-  const all = (Array.isArray(n.compartments) ? n.compartments : []).filter(obj).map(c => ({ name: String(c.name ?? ''), members: Array.isArray(c.members) ? c.members.filter(obj) : [] }));
-  const comps = all.filter(c => !hidden.has(c.name)).map(c => ({ name: c.name, rows: c.members.slice(0, cap).map(m => ({ m, text: memberText(m) })), more: Math.max(0, c.members.length - cap) }));
-  const texts = [[n.label ?? '', CL.name, slant], ...st.map(t => [t, CL.row, 1]), ...comps.flatMap(c => [...c.rows.map(r => [r.text, CL.row, 1]), ...(c.more ? [[`+${c.more} more`, CL.row, 1]] : [])])];
+  const all = (Array.isArray(n.compartments) ? n.compartments : []).filter(obj).map(c => ({ name: String(c.name ?? ''), title: c.title === true, members: Array.isArray(c.members) ? c.members.filter(obj) : [] }));
+  const comps = all.filter(c => !hidden.has(c.name)).map(c => ({ name: c.name, title: c.title, rows: c.members.slice(0, cap).map(m => ({ m, text: memberText(m) })), more: Math.max(0, c.members.length - cap) }));
+  const texts = [[n.label ?? '', CL.name, slant], ...st.map(t => [t, CL.row, 1]), ...comps.flatMap(c => [...(c.title ? [[c.name, CL.row, 1]] : []), ...c.rows.map(r => [r.text, CL.row, 1]), ...(c.more ? [[`+${c.more} more`, CL.row, 1]] : [])])];
   const w = Math.ceil(Math.min(CL.maxW, Math.max(CL.minW, ...texts.map(([t, px, k]) => textW(t, px) * k + 2 * CL.pad))));
-  const head = 2 * CL.gap + st.length * CL.st + CL.nl, tall = c => { const k = c.rows.length + (c.more ? 1 : 0); return k ? 2 * CL.gap - 2 + k * CL.rl : CL.empty; };
+  const head = 2 * CL.gap + st.length * CL.st + CL.nl, tall = c => { const k = +c.title + c.rows.length + (c.more ? 1 : 0); return k ? 2 * CL.gap - 2 + k * CL.rl : CL.empty; };
   return { stereo, st, all, comps, head, tall, slant, size: { w, h: comps.reduce((a, c) => a + tall(c), head) } };
 }
 const words = t => String(t).split('.').pop().replace(/([a-z])([A-Z])/g, (_, a, b) => a + ' ' + b.toLowerCase()); // 'uml.DataType': "Data type"
@@ -44,15 +46,16 @@ function classSvg(n, c, f) { // its outline, its head, then each compartment und
   hd.push(`<text x="${cx}" y="${r2(ty + 14)}" text-anchor="middle" class="c-name" fill="var(--um-text)" ${font(CL.name, 600, n.abstract)}${n.underline ? ' text-decoration="underline"' : ''} data-o="${esc(n.id)}">${esc(fit(n.label ?? '', CL.name, max / slant))}</text>`);
   out.push(`<g class="c-head" data-band="${r2(y)} ${r2(y + head)}">${hd.join('')}</g>`);
   let top = y + head;
-  comps.forEach((C, i) => { const bh = i === comps.length - 1 ? Math.max(y + h - top, 0) : tall(C), at = j => top + CL.gap - 1 + j * CL.rl + 11.5;
+  comps.forEach((C, i) => { const bh = i === comps.length - 1 ? Math.max(y + h - top, 0) : tall(C), at = j => top + CL.gap - 1 + (j + C.title) * CL.rl + 11.5;
     const rows = C.rows.map((r, j) => { const p = obj(r.m.props) ? r.m.props : {};
       return row('c-row', 'var(--um-text)', at(j), r.text, ` ${font(CL.row, 400, /Operation$/.test(r.m.type || '') && p.isAbstract)}${p.isStatic ? ' text-decoration="underline"' : ''}`); });
+    if (C.title) rows.unshift(`<text x="${cx}" y="${r2(at(-1))}" text-anchor="middle" class="c-title" fill="var(--um-muted)" ${font(CL.row, 400)}>${esc(fit(C.name, CL.row, max))}</text>`);
     if (C.more) rows.push(row('c-more', 'var(--um-muted)', at(C.rows.length), `+${C.more} more`, ` ${font(CL.row, 400)}`));
     out.push(`<g class="c-comp" data-comp="${esc(C.name)}" data-band="${r2(top)} ${r2(top + bh)}"><path d="M${x} ${r2(top)}H${x + w}" class="n-det" stroke="${c}"/>${rows.join('')}</g>`);
     top += bh; });
   // its accessible name (A1): "Class Order (entity, abstract), 2 attributes, 1 operation", every member counted, shown or not
   const counts = all.map(C => `${C.members.length} ${C.members.length === 1 ? C.name.replace(/s$/, '') : C.name}`), why = [...stereo, ...(n.abstract ? ['abstract'] : [])];
-  const name = [`${words(n.type || 'uml.Class')} ${n.label ?? ''}${why.length ? ` (${why.join(', ')})` : ''}`, ...counts].join(', ');
+  const name = typeof n.ariaOwn === 'string' && n.ariaOwn ? n.ariaOwn : [`${words(n.type || 'uml.Class')} ${n.label ?? ''}${why.length ? ` (${why.join(', ')})` : ''}`, ...counts].join(', ');
   return `<g class="node classifier" data-id="${esc(n.id)}" data-shape="classifier" tabindex="-1" role="img" aria-label="${esc(name)}">${out.join('')}</g>`;
 }
 const CLASSIFIER = { // UML's class box (1.5): a rectangle, its name compartment, then one compartment per member kind (classParts)
