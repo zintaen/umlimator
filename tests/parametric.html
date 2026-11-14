@@ -6,7 +6,8 @@
      its own owner, every line end on a parameter's square or a value's box, names, reading order, the legend, contrast, axe's
      rules written out), then a constraint block subject's parameters on its frame, then edited through the edit event and
      apply(), by pointer and by keyboard: the palette and N (a constraint property, a value property), F2 on a constraint
-     property, a binding from a parameter by L, a parameter moved by Alt + an arrow, a member row on the subject, Delete on a
+     property, a binding from a value by L and by the handle dragged onto a parameter, a parameter moved by Alt + an arrow and
+     by a drag to another side, a member row on the subject, Delete on a
      constraint property and on a parameter on it, Shift + Delete on a parameter. -->
 <meta charset="utf-8">
 <link rel="icon" href="data:,">
@@ -25,6 +26,8 @@ const pick = s => sr.querySelector(s), all = s => [...sr.querySelectorAll(s)];
 const centre = s => { const r = pick(s).getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; };
 const ptr = (target, type, [x, y]) => target.dispatchEvent(new PointerEvent(type, { clientX: x, clientY: y, button: 0, pointerId: 7, pointerType: 'mouse', bubbles: true, composed: true }));
 const key = (k, extra = {}, target = stage) => target.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true, composed: true, cancelable: true, ...extra }));
+const handleTo = ([x, y]) => { const c = pick('.um-handle circle'), r = c.getBoundingClientRect(); ptr(c, 'pointerdown', [r.x + r.width / 2, r.y + r.height / 2]); ptr(stage, 'pointermove', [x, y]); ptr(stage, 'pointerup', [x, y]); };
+const press = b => { const r = b.getBoundingClientRect(), at = [r.x + r.width / 2, r.y + r.height / 2]; ptr(b, 'pointerdown', at); ptr(b, 'pointerup', at); b.click(); };
 const click = s => { const g = pick(s), at = centre(s); ptr(g, 'pointerdown', at); ptr(g, 'pointerup', at); g.dispatchEvent(new MouseEvent('click', { clientX: at[0], clientY: at[1], bubbles: true, composed: true })); };
 const mount = (model, opts = {}) => { el.innerHTML = ''; ed = []; const h = render(el, model, { view: VID, on: { edit: e => ed.push(e) }, ...opts }); sr = el.querySelector('.umlimator').shadowRoot; stage = pick('.stage'); return h; };
 const errors = m => validate(m).filter(p => p.level === 'error');
@@ -59,8 +62,9 @@ try {
     all('.node.part').forEach(g => g.querySelectorAll('text').forEach(t => { if (!inside(box(t), B[g.dataset.id])) bad.push(`${g.dataset.id}: "${t.textContent}" spills`); }));
     all('.node.part').forEach(g => { if (!inside(B[g.dataset.id], F)) bad.push(`${g.dataset.id} outside the frame`); });
     nodes.forEach((g, i) => nodes.slice(i + 1).forEach(k => { const a = g.dataset.id, b = k.dataset.id; if (ownerOf(a) !== b && ownerOf(b) !== a && meets(B[a], B[b])) bad.push(`${a} and ${b} overlap`); }));
-    all('.node.port .port-name').forEach(t => { const tb = box(t), own = t.closest('.node').dataset.id; nodes.forEach(g => { if (g.dataset.id !== own && meets(tb, B[g.dataset.id])) bad.push(`${own}'s name over ${g.dataset.id}`); }); });
-    check(`${tag}: texts inside, boxes in the frame, no overlap but a parameter on its constraint, parameter names clear`, !bad.length, bad);
+    all('.node.port .port-name').forEach(t => { const tb = box(t), own = t.closest('.node').dataset.id; nodes.forEach(g => { if (g.dataset.id !== own && meets(tb, B[g.dataset.id])) bad.push(`${own}'s name over ${g.dataset.id}`); });
+      if (!inside(tb, F)) bad.push(`${own}'s name outside the frame`); });
+    check(`${tag}: texts inside, boxes in the frame, no overlap but a parameter on its constraint, parameter names clear and in the frame`, !bad.length, bad);
     const off = all('.node.port').map(g => { const id = g.dataset.id, p = B[id]; return [id, +onEdge([p.x + p.w / 2, p.y + p.h / 2], B[ownerOf(id)]).toFixed(2)]; }).filter(([, d]) => d > .51);
     check(`${tag}: each parameter centred on its constraint property's border`, !off.length, off);
     const offs = [];
@@ -135,10 +139,23 @@ try {
   { const e = last(), c = e && e.commands[0], m = c && apply(m2, e.commands);
     check('Binding: a sysml.BindingConnector from the value to the parameter, ends.to.part its constraint property, no label', e.commands.length === 1 && c.op === 'add' && c.element.type === 'sysml.BindingConnector'
       && c.element.from === 'ebike.ecoRange' && same(c.element.props.ends, { to: { part: target.split('->')[0] } }) && c.element.to === target.split('->')[1] && !('label' in c.element) && !errors(m).length, [e, m && errors(m)]); }
+  // the same by pointer: the handle dragged from a value onto a parameter, the picker
+  click('.node[data-id="ebike.boostRange"] .c-name'); handleTo(centre('.node[data-id="ebike.eco->range-equation.consumption"] .n-mask'));
+  check('the handle dragged from a value onto a parameter opens the picker', same(all('.um-pick button').map(b => b.textContent), ['Binding', 'Comment link']), all('.um-pick button').map(b => b.textContent));
+  if (pick('.um-pick button')) press(all('.um-pick button')[0]); // pressed, as a pointer does: a click alone just after a drag is the drag's
+  { const e = last(), c = e && e.commands[0], m = c && apply(m2, e.commands);
+    check('Binding by the handle: from the value to the parameter, ends.to.part its constraint property', !!c && c.op === 'add' && c.element.type === 'sysml.BindingConnector' && c.element.from === 'ebike.boostRange'
+      && c.element.to === 'range-equation.consumption' && same(c.element.props.ends, { to: { part: 'ebike.eco' } }) && !errors(m).length, [e, m && errors(m)]); }
   click('.node[data-id="ebike.eco->range-equation.range"] .n-mask');
   { const n = ed.length; for (const k of ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']) if (ed.length === n) key(k, { altKey: true }); // the arrows along its side move nothing
     const e = ed.length > n ? last() : null, c = e && e.commands[0];
     check('Alt + an arrow across a parameter\'s side: its side, under its constraint property in the view', !!c && c.op === 'set' && same(c.path, ['present', 'ebike.eco', 'ports', 'range-equation.range', 'side']), e); }
+  // a parameter dragged onto its constraint property's other side (its side now: the one the arrows left it on, or not the top)
+  { const id = 'ebike.eco->range-equation.consumption', o = pick('.node[data-id="ebike.eco"] .n-mask').getBoundingClientRect(), from = centre(`.node[data-id="${id}"] .n-mask`);
+    const at = [o.x + o.width / 2, o.y + o.height - 2], n = ed.length;
+    ptr(pick(`.node[data-id="${id}"]`), 'pointerdown', from); for (let i = 1; i <= 4; i++) ptr(stage, 'pointermove', [from[0] + (at[0] - from[0]) * i / 4, from[1] + (at[1] - from[1]) * i / 4]); ptr(stage, 'pointerup', at);
+    const e = ed.length > n ? last() : null;
+    check('a parameter dragged to its constraint property\'s bottom: its side, under its constraint property in the view', !!e && same(e.commands, [{ op: 'set', view: VID, path: ['present', 'ebike.eco', 'ports', 'range-equation.consumption', 'side'], value: 'bottom' }]), e); }
   h.select({ type: 'container', id: 'ebike', view: VID });
   const nw = panel('[data-new]');
   check('the subject\'s members listed by their rows', !!nw && panel('[data-m="ebike.eco"]').value === 'eco : RangeEquation' && panel('[data-m="ebike.ecoRange"]').value === 'ecoRange : Distance',

@@ -58,7 +58,7 @@ test('the definition: sysml.parametric with its palette, two lines, its properti
   assert.deepEqual(['sysml.Block', 'sysml.ConstraintBlock', 'sysml.InterfaceBlock'].map(t => T.member.holds({ type: t })), [true, true, false]);
 });
 
-test('19-parametric.json draws clean in its frame, right and down: properties inside, every parameter centred on its constraint property\'s border, validates with no problem', () => {
+test('19-parametric.json draws clean in its frame, right and down: properties inside, every parameter centred on its constraint property\'s border, its name in the frame, validates with no problem', () => {
   assert.deepEqual(validate(M19), []); assert.deepEqual(validate(NEST), []);
   for (const direction of ['right', 'down']) {
     const d = withDir(M19, direction), g = layout(d, VID), F = g.families.find(f => f.id === 'ebike');
@@ -68,7 +68,10 @@ test('19-parametric.json draws clean in its frame, right and down: properties in
       assert.ok(b.x >= F.x && b.y >= F.y && b.x + b.w <= F.x + F.w && b.y + b.h <= F.y + F.h, `${direction}: ${x.id} in the frame`); });
     const ports = g.nodes.filter(n => n.shape === 'port');
     assert.equal(ports.length, 9, direction);
-    ports.forEach(n => { assert.equal(g.byId[n.owner].shape, 'sysml-constraint', n.id); assert.ok(onBorder(g, n), `${direction}: ${n.id} on ${n.owner}'s border`); });
+    ports.forEach(n => { assert.equal(g.byId[n.owner].shape, 'sysml-constraint', n.id); assert.ok(onBorder(g, n), `${direction}: ${n.id} on ${n.owner}'s border`);
+      const b = n.nameBox; assert.ok(b && b.x >= F.x && b.y >= F.y && b.x + b.w <= F.x + F.w && b.y + b.h <= F.y + F.h, `${direction}: ${n.id}'s name in the frame`); });
+    const all = [F, ...g.nodes, ...ports.map(n => n.nameBox)], B = g.bounds;
+    assert.ok(all.every(b => b.x >= B.x && b.y >= B.y && b.x + b.w <= B.x + B.w && b.y + b.h <= B.y + B.h), `${direction}: the bounds hold the frame and the names`);
     assert.deepEqual(['usable', 'eco', 'boost'].map(k => g.byId['ebike.' + k].expr), ['{usable = capacity * share}', '{range = energy / consumption}', '{range = energy / consumption}']);
     assert.equal(g.edges.length, 8);
   }
@@ -210,6 +213,13 @@ test('remove, rename, moveTo and member rows on the projection: SysML\'s types b
   assert.deepEqual(T.edits.member(M19, V, 'range-equation', null, 'param speed : Speed'), [{ op: 'add', element: { id: 'range-equation.speed', type: 'sysml.ConstraintParameter', label: 'speed', props: { valueType: 'Speed' } }, owner: 'range-equation' }]);
   assert.deepEqual(T.edits.member(M19, V, 'range-equation', 'range-equation.range', 'param range : Length'), [{ op: 'set', id: 'range-equation.range', path: 'props.valueType', value: 'Length' }]);
   assert.match(T.edits.member(M19, V, 'ebike', 'ebike.eco', 'param eco : RangeEquation').error, /keeps its member's kind/);
+  assert.match(T.edits.member(M19, V, 'ebike', null, 'param x : Real').error, /belongs to a constraint block/, 'a param row on a block: no port added');
+  assert.match(T.edits.member(M19, V, 'range-equation', null, 'x : Real').error, /holds parameters/, 'a plain row on a constraint block: refused');
+  // the composite type's words said in SysML's: a parameter, a binding, a constraint property
+  assert.equal(T.edits.rename(M19, V, 'ebike.eco->range-equation.range', 'dist : Length').say, 'Renamed RangeEquation\'s parameter: every constraint property of that type shows it');
+  const along = { L: [0, 1], R: [0, 1], T: [1, 0], B: [1, 0] }[side];
+  assert.match(T.edits.moveTo(M19, V, 'ebike.eco->range-equation.range', { by: along, geo }).error, /^A parameter's place along its side/);
+  assert.match(T.edits.member(M19, V, 'range-equation', 'range-equation.range', 'param range : Length [2]').error, /^A parameter is param name : Type$/);
   assert.deepEqual(node(M19, 'range-equation').members.map(T.member.print), ['param range : Distance', 'param energy : Energy', 'param consumption : EnergyPerDistance']);
   assert.equal(T.member.print(mem(M19, 'ebike.eco')), 'eco : RangeEquation');
   assert.ok(T.member.add('x', node(M19, 'ebike')).error && T.member.edit(mem(M19, 'ebike.eco'), 'x').error);

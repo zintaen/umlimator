@@ -82,9 +82,38 @@ function SYS_PAR_GEO({ model, view, pos, memo }) {
   const d = SYS_DRESS(raw, model, view, id => SYS_PAR_SAY(I, raw, id));
   const nodes = d.nodes.map(n => { const m = I.mem.get(n.id); if (!m || m.owner !== I.S || m.m.type !== 'sysml.ConstraintProperty') return n;
     const x = SYS_PAR_EXPR(I.block(m.m)); return { ...n, shape: 'sysml-constraint', ...(x ? { expr: x } : {}) }; });
-  const now = new Map(nodes.map(n => [n.id, n]));
-  return { ...d, nodes, byId: Object.fromEntries(Object.entries(d.byId).map(([k, n]) => [k, now.get(k) || n])),
+  const now = new Map(SYS_PAR_NAMES(d, nodes, I).map(n => [n.id, n]));
+  return { ...d, nodes: [...now.values()], ...SYS_PAR_BOUNDS(d, now), byId: Object.fromEntries(Object.entries(d.byId).map(([k, n]) => [k, now.get(k) || n])),
     legend: SYS_PAR_LEGEND.filter(([, , on]) => on(d)).map(([w, says, , dash]) => `<span class="lgi" title="${esc(w + ' — ' + says)}"><svg class="lgs" viewBox="0 0 28 16" aria-hidden="true"><path d="M2 8H26" stroke="var(--um-muted)" stroke-width="1.4"${dash}/></svg><b>${esc(w)}</b><span>${esc(says)}</span></span>`) };
+}
+
+/* ---- a parameter's name the composite type placed outside the frame (it looks along its line's first stretch, up to 400 px
+   off it, for a spot clear of everything; where the bindings run up a shared bus, laid out right, none inside is: §9's as built)
+   placed again at the nearest spot to its parameter, on a 4 px grid within 400 px, inside the frame below its header and clear
+   of every box, parameter, name, line and label; no such spot: where it was ---- */
+const SYS_PAR_MEETS = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+const SYS_PAR_IN = (a, F) => a.x >= F.x && a.y >= F.y && a.x + a.w <= F.x + F.w && a.y + a.h <= F.y + F.h;
+const SYS_PAR_GRID = (() => { const o = []; for (let i = -100; i <= 100; i++) for (let j = -100; j <= 100; j++) o.push([i * 4, j * 4]); return o.sort((p, q) => p[0] ** 2 + p[1] ** 2 - q[0] ** 2 - q[1] ** 2); })();
+function SYS_PAR_NAMES(d, nodes, I) {
+  const F = I.S && SYS_PAR_ARR(d.families).find(f => f.id === I.S.id);
+  const off = n => n.shape === 'port' && n.nameBox && !SYS_PAR_IN(n.nameBox, F);
+  if (!F || !nodes.some(off)) return nodes;
+  const out = nodes.slice(), inner = { x: F.x + 4, y: F.y + 28, w: F.w - 8, h: F.h - 32 };
+  const lines = SYS_PAR_ARR(d.edges).flatMap(e => [...SYS_PAR_ARR(e.pts).slice(1).map((q, k) => { const p = e.pts[k]; return { x: Math.min(p[0], q[0]) - 3, y: Math.min(p[1], q[1]) - 3, w: Math.abs(q[0] - p[0]) + 6, h: Math.abs(q[1] - p[1]) + 6 }; }), ...(e.lbl ? [e.lbl] : [])]);
+  out.forEach((n, i) => { const b = n.nameBox; if (!off(n)) return;
+    const keep = [...out.map(x => ({ x: x.x - 2, y: x.y - 2, w: x.w + 4, h: x.h + 4 })), ...out.filter((x, k) => k !== i && x.nameBox).map(x => x.nameBox), ...lines];
+    const cx = n.x + n.w / 2 - b.w / 2, cy = n.y + n.h / 2 - b.h / 2;
+    for (const [dx, dy] of SYS_PAR_GRID) { const c = { ...b, x: r2(cx + dx), y: r2(cy + dy) };
+      if (SYS_PAR_IN(c, inner) && !keep.some(k => SYS_PAR_MEETS(c, k))) { out[i] = { ...n, nameBox: c }; break; } } });
+  return out;
+}
+// the bounds again when a name moved: the composite type's, less nothing but what moved (the frame holds the rest)
+function SYS_PAR_BOUNDS(d, now) {
+  if (!d.bounds || SYS_PAR_ARR(d.nodes).every(n => now.get(n.id) === n || now.get(n.id).nameBox === n.nameBox)) return {};
+  const all = [...SYS_PAR_ARR(d.families), ...now.values(), ...[...now.values()].map(n => n.nameBox), ...SYS_PAR_ARR(d.edges).map(e => e.lbl)].filter(Boolean);
+  SYS_PAR_ARR(d.edges).forEach(e => SYS_PAR_ARR(e.pts).forEach(([x, y]) => all.push({ x, y, w: 0, h: 0 })));
+  const x = Math.min(...all.map(b => b.x)), y = Math.min(...all.map(b => b.y));
+  return { bounds: { ...d.bounds, x, y, w: Math.max(...all.map(b => b.x + b.w)) - x, h: Math.max(...all.map(b => b.y + b.h)) - y } };
 }
 
 /* ---- validators (§9). Each problem: { level, rule, path, message, ids } ---- */
@@ -142,12 +171,17 @@ function SYS_PAR_DESCRIBE(model, viewId) {
 
 /* ---- editing (§9): the composite type's hooks on the projection, what they return mapped back (SYS_BACK); a palette entry or
    a line of SysML's type asked as its projected one, and the kind it names kept. A binding drawn from a parameter to a value
-   runs from the value, so the parameter's constraint property is ends.to.part. A member row `param name : Type` is a parameter ---- */
+   runs from the value, so the parameter's constraint property is ends.to.part. A member row `param name : Type` is a parameter,
+   on a constraint block only; a constraint block takes no other row. What a hook says is in SysML's words ---- */
 const SYS_PAR_AS = { 'sysml.ConstraintProperty': 'uml.Property', 'sysml.ValueProperty': 'uml.Property', 'sysml.BindingConnector': 'uml.Connector' };
 const SYS_PAR_ENTRY = x => (SYS_PAR_OBJ(x) && Object.hasOwn(SYS_PAR_AS, x.type) ? { ...x, type: SYS_PAR_AS[x.type] } : x);
 const SYS_PAR_MAP = (r, f) => (Array.isArray(r) ? f(r) : !SYS_PAR_OBJ(r) ? r : Array.isArray(r.commands) ? { ...r, commands: f(r.commands) } : r);
-const SYS_PAR_ON = hook => (model, view, ...a) => { const P = SYS_AS_UML(model, view); return SYS_BACK(hook(P.model, P.view, ...a), model, view); };
-const SYS_PAR_WORDS = [[/\bconnectors?\b/g, w => w.replace('connector', 'binding')], [/\bport\b/g, 'parameter'], [/\bpart (?=\S+ of )/g, 'property ']];
+// what a hook says or refuses, in SysML's words: a connector is a binding, a port a parameter, a part a (constraint) property
+const SYS_PAR_WORDS = [[/\bconnectors?\b/g, w => w.replace('connector', 'binding')], [/\bport name\b/g, 'param name'], [/\bport\b/g, 'parameter'],
+  [/\bevery part\b/g, 'every constraint property'], [/\bparts\b/g, 'properties'], [/\bpart\b/g, 'property']];
+const SYS_PAR_RESAY = r => { const re = s => SYS_PAR_WORDS.reduce((x, [a, b]) => x.replace(a, b), s);
+  return SYS_PAR_OBJ(r) && typeof r.say === 'string' ? { ...r, say: re(r.say) } : SYS_PAR_OBJ(r) && typeof r.error === 'string' ? { ...r, error: re(r.error) } : r; };
+const SYS_PAR_ON = hook => (model, view, ...a) => { const P = SYS_AS_UML(model, view); return SYS_PAR_RESAY(SYS_BACK(hook(P.model, P.view, ...a), model, view)); };
 function SYS_PAR_CONNECT(model, view, from, to, at, line) {
   const box = [from, to].map(id => SYS_PAR_INDEX(model, view).el(id)).find(x => x && x.type === 'sysml.ConstraintProperty'); // a binding ends on a parameter of it, not its box
   if (box && SYS_PAR_OBJ(line) && line.type === 'sysml.BindingConnector') return { error: `A binding joins values and parameters: pick a parameter of ${SYS_PAR_NAME(box)}` };
@@ -163,11 +197,11 @@ function SYS_PAR_ADD(model, view, entry, label, at) {
 function SYS_PAR_MEMBER(model, view, owner, id, text) {
   const param = /^param\s+/i.test(String(text)), t = String(text).replace(/^param\s+/i, 'port '), was = id == null ? null : SYS_PAR_INDEX(model, view).el(id);
   if (was && param !== (was.type === 'sysml.ConstraintParameter')) return { error: `A row keeps its member's kind: delete ${SYS_PAR_NAME(was)} and add a ${param ? 'param' : 'property'} row` };
+  // a new row's kind is its owner's: a constraint block holds parameters, a block constraint and value properties (no ports here)
+  const o = was ? null : SYS_PAR_INDEX(model, view).el(owner), cb = o && o.type === 'sysml.ConstraintBlock';
+  if (o && Object.hasOwn(SYS_PAR_SUBJ, o.type) && param !== cb) return { error: cb ? 'A constraint block holds parameters: add a row param name : Type' : 'A parameter belongs to a constraint block: on a block a row is name : Type' };
   return SYS_PAR_ON(csMember)(model, view, owner, id, t);
 }
-const SYS_PAR_REMOVE = (model, view, ids, fromModel) => { const r = SYS_PAR_ON(csRemove)(model, view, ids, fromModel);
-  const re = s => SYS_PAR_WORDS.reduce((x, [a, b]) => x.replace(a, b), s);
-  return SYS_PAR_OBJ(r) && typeof r.say === 'string' ? { ...r, say: re(r.say) } : SYS_PAR_OBJ(r) && typeof r.error === 'string' ? { ...r, error: re(r.error) } : r; };
 const SYS_PAR_MEMBERS = {
   print: m => (m.type === 'sysml.ConstraintParameter' ? `param ${m.label ?? ''}${SYS_PAR_HAS(SYS_PAR_PROPS(m).valueType) ? ' : ' + SYS_PAR_PROPS(m).valueType : ''}`
     : `${m.label ?? ''}${SYS_PAR_HAS(SYS_PAR_PROPS(m).valueType) ? ' : ' + SYS_PAR_PROPS(m).valueType : ''}${SYS_PAR_HAS(SYS_PAR_PROPS(m).multiplicity) ? ` [${SYS_PAR_PROPS(m).multiplicity}]` : ''}`),
@@ -222,7 +256,7 @@ const SYS_PAR_TYPE = registerDiagramType('sysml.parametric', {
   word: SYS_PAR_WORD,
   rows: SYS_PAR_ROWS,
   text: SYS_PAR_LINE_TEXT,
-  edits: { connect: SYS_PAR_CONNECT, moveTo: SYS_PAR_ON(csMoveTo), add: SYS_PAR_ADD, remove: SYS_PAR_REMOVE, rename: SYS_PAR_ON(csRename), member: SYS_PAR_MEMBER },
+  edits: { connect: SYS_PAR_CONNECT, moveTo: SYS_PAR_ON(csMoveTo), add: SYS_PAR_ADD, remove: SYS_PAR_ON(csRemove), rename: SYS_PAR_ON(csRename), member: SYS_PAR_MEMBER },
 });
 
 export { SYS_PAR_TYPE, SYS_PAR_GEO, SYS_PAR_PROBLEMS };
