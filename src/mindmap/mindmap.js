@@ -171,6 +171,8 @@ const mmSide = (V, id, value) => ({ op: 'set', view: V.id, path: ['present', id,
 // what the picture shows of the first-level topics' sides, set where no side is given, so a move does not swing the others
 const mmPins = (X, V, g, but) => g.nodes.filter(n => n.depth === 1 && n.id !== but && !X.side(n.id)).map(n => mmSide(V, n.id, n.side));
 const mmUnside = (X, V, id) => (MM_OBJ(X.P[id]) && X.P[id].side !== undefined ? [mmSide(V, id, undefined)] : []);
+// T goes under a topic other than the root: its side, if given, goes; a first-level T pins the other branches, as the demote does
+const mmLeave = (X, V, g, T) => [...(T.depth === 1 ? mmPins(X, V, g, T.id) : []), ...mmUnside(X, V, T.id)];
 const mmInside = (X, id, of) => { for (let p = of; p != null; p = X.up(p)) if (p === id) return true; return false; }; // of is id or under it
 const mmGeo = (model, V, at) => (MM_OBJ(at && at.geo) && at.geo.mm ? at.geo : mmRun(model, V)); // the canvas's, as measured in the host's font
 
@@ -207,7 +209,7 @@ function mmKeyMove(X, V, g, T, [dx, dy]) {
   if (inward) { const P = T.parent, G = X.up(P), was = g.byId[P]; // promote: under its grandparent, after its old parent
     return [...(was.depth === 1 ? [...mmPins(X, V, g, null), mmSide(V, id, was.side)] : []), { op: 'reparent', id, parent: G }, ...mmAfter(X, V, id, mmEnd(X, P, id))]; }
   const S = sibs[i - 1]; if (S == null) return mmErr(`No topic above ${name} to move it into`); // demote: into the sibling before it, last
-  return [...pins, ...mmUnside(X, V, id), { op: 'reparent', id, parent: S }, ...mmAfter(X, V, id, mmEnd(X, S, id))];
+  return [...mmLeave(X, V, g, T), { op: 'reparent', id, parent: S }, ...mmAfter(X, V, id, mmEnd(X, S, id))];
 }
 function mmDrop(X, V, g, T, [x, y]) {
   const id = T.id, hit = g.nodes.find(n => n.id !== id && x >= n.x && x <= n.x + n.w && y >= n.y && y <= n.y + n.h);
@@ -216,7 +218,7 @@ function mmDrop(X, V, g, T, [x, y]) {
     if (hit.root && T.depth === 1 && hit.id === T.parent) { const s = x < hit.x + hit.w / 2 ? 'left' : 'right'; // the root's other half: the other side
       return s === T.side ? [] : [...mmPins(X, V, g, id), mmSide(V, id, s)]; }
     if (hit.id === T.parent) return [];
-    const top = hit.root ? [...mmPins(X, V, g, id), mmSide(V, id, x < hit.x + hit.w / 2 ? 'left' : 'right')] : mmUnside(X, V, id);
+    const top = hit.root ? [...mmPins(X, V, g, id), mmSide(V, id, x < hit.x + hit.w / 2 ? 'left' : 'right')] : mmLeave(X, V, g, T);
     return [...top, { op: 'reparent', id, parent: hit.id }, ...mmAfter(X, V, id, mmEnd(X, hit.id, id))];
   }
   // between two siblings drawn one above the other: the gap between their boxes, across both
@@ -225,7 +227,7 @@ function mmDrop(X, V, g, T, [x, y]) {
       if (y < a.y + a.h || y > b.y || x < Math.min(a.x, b.x) || x > Math.max(a.x + a.w, b.x + b.w)) continue;
       if (a.id === id || b.id === id) return [];
       if (mmInside(X, id, P.id)) return mmErr('A topic cannot go under one of its own subtopics');
-      const top = P.root ? [...mmPins(X, V, g, id), mmSide(V, id, a.side)] : mmUnside(X, V, id);
+      const top = P.root ? [...mmPins(X, V, g, id), mmSide(V, id, a.side)] : mmLeave(X, V, g, T);
       return [...top, ...(P.id !== T.parent ? [{ op: 'reparent', id, parent: P.id }] : []), ...mmBefore(X, V, id, X.pos.get(b.id))]; } }
   return mmErr('Drop a topic on another to move it under it, or between two topics to put it there');
 }
@@ -261,8 +263,8 @@ const mmConnect = () => mmErr('A mindmap has no lines; drop a topic on another t
 function mmShow(model, view, id) {
   const V = mmView(model, view); if (!V) return null;
   const X = mmIndex(model, V); if (!X.topic(id) || X.shown.has(id)) return null;
-  const all = mmAllKids(X), add = [];
-  for (const s = [id]; s.length;) { const k = s.pop(); add.push(k); const c = MM_ARR(all.get(k)).filter(c => !X.shown.has(c)); for (let i = c.length - 1; i >= 0; i--) s.push(c[i]); }
+  const all = mmAllKids(X), add = [], seen = new Set(); // seen: a parent cycle among the hidden ends the walk
+  for (const s = [id]; s.length;) { const k = s.pop(); if (seen.has(k)) continue; seen.add(k); add.push(k); const c = MM_ARR(all.get(k)).filter(c => !X.shown.has(c)); for (let i = c.length - 1; i >= 0; i--) s.push(c[i]); }
   if (add.length === 1) return null;
   const list = [...MM_ARR(V.nodeIds)], u = X.up(id), k = u == null ? list.length : mmEnd(X, u) + 1;
   list.splice(k, 0, ...add);

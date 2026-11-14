@@ -233,6 +233,11 @@ test('Alt + arrows: up and down among its siblings; towards the root promotes, a
   const c = mmMoveTo(u, V(u), 'mm-launch', { by: [0, -1] });
   assert.deepEqual(c.filter(x => x.op === 'set').map(x => [x.path[1], x.value]), Object.entries(drawn));
   const after = layout(apply(u, c), VID); assert.ok(Object.entries(drawn).every(([id, s]) => after.byId[id].side === s));
+  // demoted with no side given: the others pinned as drawn, none on the demoted topic, so side-first stays quiet
+  const d = mmMoveTo(u, V(u), 'mm-launch', { by: [1, 0] }), dn = apply(u, d), dg = layout(dn, VID);
+  assert.ok(!d.some(x => x.op === 'set' && x.path[1] === 'mm-launch'), JSON.stringify(d));
+  assert.deepEqual([node(dn, 'mm-launch').parent, mmProblems(dn, V(dn))], ['mm-catalogue', []]);
+  assert.ok(Object.entries(drawn).every(([id, s]) => id === 'mm-launch' || dg.byId[id].side === s));
 });
 
 test('drops: on a topic, under it, last; between two siblings, there; a first-level topic on the root\'s other half changes side; a topic between two first-level ones takes their side; never under itself', () => {
@@ -259,6 +264,10 @@ test('drops: on a topic, under it, last; between two siblings, there; a first-le
   assert.match(drop('mm-checkout', [R.x - 2000, R.y]).error, /Drop a topic on another/);
   // without the canvas's geometry, the type lays the view out itself
   assert.deepEqual(mmMoveTo(m, V0, 'mm-courier', { pt: at('mm-launch') }), drop('mm-courier', at('mm-launch')));
+  // a first-level topic dropped under another, no side given anywhere: the other branches pinned as drawn, none swings
+  const u = EX(); V(u).present = {}; const ug = layout(u, VID), drawn = ug.nodes.filter(x => x.depth === 1 && x.id !== 'mm-catalogue');
+  const uat = ug.byId['mm-checkout'], un = apply(u, mmMoveTo(u, V(u), 'mm-catalogue', { pt: [uat.x + uat.w / 2, uat.y + uat.h / 2], geo: ug })), after = layout(un, VID);
+  assert.deepEqual([node(un, 'mm-catalogue').parent, drawn.filter(x => after.byId[x.id].side !== x.side).map(x => x.id), mmProblems(un, V(un))], ['mm-checkout', [], []]);
 });
 
 test('Delete hides a topic\'s branch, said with the count; Shift + Delete deletes it, apply() taking its descendants; the outline\'s Show brings back the topic and what was hidden with it', () => {
@@ -283,6 +292,9 @@ test('Delete hides a topic\'s branch, said with the count; Shift + Delete delete
   assert.deepEqual(mmShow(part, V(part), 'mm-checkout').commands[0].value, [...V(h).nodeIds, 'mm-card-payments', 'mm-checkout', 'mm-order-emails']);
   assert.equal(mmShow(h, V(h), 'mm-card-payments'), null);
   assert.equal(mmShow(m, V0, 'mm-checkout'), null, 'shown already');
+  // a parent cycle among the hidden (which validation reports) ends the walk: each topic once
+  const cyc = { schemaVersion: 2, nodes: [{ id: 'r', type: T, label: 'R' }, { id: 'a', type: T, label: 'A', parent: 'b' }, { id: 'b', type: T, label: 'B', parent: 'a' }], edges: [], views: [{ id: 'v', diagram: 'mindmap', nodeIds: ['r'] }] };
+  assert.deepEqual(mmShow(cyc, 'v', 'a').commands[0].value, ['r', 'a', 'b']);
 });
 
 /* ---- a 30-step session through the hooks (DoD 6) ---- */
