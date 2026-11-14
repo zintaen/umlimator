@@ -383,3 +383,18 @@ test('layout() of a subject with a chain of 3,000 parts: ranked without recursio
   const g = layout({ schemaVersion: 2, nodes: [{ id: 'S', type: 'uml.Class', label: 'S', members: parts }], edges, views: [{ id: 'v', diagram: 'uml.composite-structure', subject: 'S', nodeIds: ['S'] }] }, 'v');
   assert.equal(g.nodes.length, 3000); assert.ok(g.nodes[2999].x > g.nodes[0].x);
 });
+
+test('a part or port row it prints parses back: a qualified type, an array type, a generic type (audit 4)', () => {
+  for (const row of ['a : ns::T [1]', 'a : T[]', 'a : Map<K, V>', 'a : T[] [0..*]']) assert.equal(T.member.print(csRow(null, row)), row, row);
+  assert.equal(T.member.print(csRow({ type: 'uml.Class' }, 'port p : ns::T')), 'port p : ns::T');
+  assert.deepEqual(csParse('a::b'), { label: 'a::b', valueType: undefined, multiplicity: undefined });
+  const m = { schemaVersion: 2, nodes: [{ id: 's', type: 'uml.Class', label: 'S', members: [P('s.t', 't', { props: { valueType: 'Tag[]' } })] }], edges: [], views: [{ id: 'v', diagram: 'uml.composite-structure', nodeIds: ['s'] }] };
+  assert.deepEqual(T.edits.member(m, m.views[0], 's', 's.t', 't2 : Tag[]'), [{ op: 'set', id: 's.t', path: 'label', value: 't2' }]);
+});
+
+test("the subject's operation row prints and edits as the class type's, never as a part (audit 4)", () => {
+  const op = { id: 's.place', type: 'uml.Operation', label: 'place', props: { returnType: 'Receipt' } };
+  assert.equal(T.member.print(op), 'place(): Receipt');
+  assert.ok(T.member.edit(op, 'place : Order').error);
+  assert.equal(T.member.edit(op, 'place(): Order').commands.find(c => c.path === 'props').value.returnType, 'Order');
+});

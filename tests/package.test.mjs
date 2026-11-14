@@ -12,6 +12,7 @@ import '../src/map/typed.js';
 import { layout, check } from '../src/map/api.js';
 import { validate } from '../src/map/validate.js';
 import { mapContext } from '../src/map/context.js';
+import { tablesOf } from '../src/page/print.js';
 import { describe } from '../src/map/insight.js';
 import { SHAPE } from '../src/draw/shapes.js';
 import { svgOf } from '../src/draw/svg.js';
@@ -305,4 +306,16 @@ test('the example as 6.7 made it (the Bookshop atlas, decision 18): sales applie
   const d = describe(EX, 'packages').split('\n');
   assert.deepEqual([d[0], d[5], d.at(-1)], ['Bookshop packages: a package diagram of 17 elements and 6 lines.',
     'Package sales, holding 4 elements; imports catalog; applies BookshopConventions; depends on payments.', 'Profile BookshopConventions (closed).']);
+});
+
+test('import-ends: a package may import or merge a profile, a profile being a package (audit 4)', () => {
+  const m = { schemaVersion: 2, nodes: [N('sales', 'Package', 'sales'), N('conv', 'Profile', 'Conventions'), N('c', 'Class', 'C')],
+    edges: [{ id: 'imp', type: 'uml.PackageImport', from: 'sales', to: 'conv' }, { id: 'bad', type: 'uml.PackageImport', from: 'sales', to: 'c' }], views: [] };
+  assert.deepEqual(T.validate(m, { id: 'v', nodeIds: [] }).filter(p => p.rule === 'import-ends').map(p => p.ids[0]), ['bad']);
+});
+
+test("the PDF's Elements table lists no members for a classifier drawn by its name (audit 4)", () => {
+  const m = { schemaVersion: 2, nodes: [N('o', 'Class', 'Order', null, { members: [{ id: 'o.id', type: 'uml.Property', label: 'id' }] })], edges: [], views: [{ id: 'v', diagram: 'uml.package', nodeIds: ['o'] }] };
+  const c = mapContext(m), [els] = tablesOf(c, c.V.v, c.buildGeo('v'));
+  assert.ok(!els.rows[0].includes('<p>'), els.rows[0]);
 });
