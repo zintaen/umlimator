@@ -323,3 +323,9 @@ test('an initial or final state that cannot be its scope\'s [*] is written under
   assert.deepEqual(read(text).report, []);
   assert.deepEqual(canon(read(text).model), canon({ ...m, root: 'state-diagram' }));
 });
+
+test('a state file nested 20000 deep that the reader read, once written, reads again: unindented over the limit (audit 2)', () => {
+  const m = read('stateDiagram-v2\n' + Array.from({ length: 20000 }, (_, i) => `state s${i} {`).join('\n') + '\nx\n' + '}\n'.repeat(20000)).model;
+  const back = read(write(m));
+  assert.deepEqual([back.report, back.model.nodes.length], [[], 20001]);
+});

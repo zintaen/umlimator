@@ -351,3 +351,5 @@ node docs/diagrams/examples/check.mjs         # the target examples match model.
 - **14 Nov 2026 (0.27.0, 0.28.0).** 0.27.0 released (#291): BPMN. Audit round 1's fixes merged (#292 to #296): 60 of
   its 61 findings, each with a test that fails without it; the 61st, the 0.27.0 section's size line, was fixed in #291.
   0.28.0 (this PR) releases them. Audit round 2 is running.
+- **14 Nov 2026 (map-repo on 0.28.0).** map-repo's pin moved to v0.28.0 (f89dfb0), plugin 0.1.13, and its SKILL.md
+  names `umlimator.py pack fetch gcp|azure|aws` again, the command the pinned CLI now has.

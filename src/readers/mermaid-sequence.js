@@ -502,7 +502,9 @@ function msWrite(model, viewId) {
   }
   notWritten.splice(replySlot, 0, ...lost);
   for (const x of notWritten) out.push(`  %% not written: ${x}`);
-  return out.join('\n') + '\n';
+  // unindented when indented text would be over the reader's own limit, so what the reader read can be read again
+  const text = out.join('\n') + '\n';
+  return text.length > MS_LIMIT ? text.replace(/^[ \t]+/gm, '') : text;
 }
 
 export { readMermaidSequence, writeMermaidSequence };

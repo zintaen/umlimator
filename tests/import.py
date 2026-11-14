@@ -178,6 +178,23 @@ ok("hostile · a text format over 1 MiB is not read", m["nodes"] == [] and un an
 m, un = imp.read("structurizr", 'workspace {\nmodel {\n' + 'group "g" {\n' * 1500 + 'p = person "P"\n' + '}\n' * 1500 + '}\n}\n', "x")
 ok("hostile · 1500 nested groups read as nested boxes, no RecursionError", len(m["views"][0]["containers"]) == 1500
    and m["views"][0]["containers"][-1]["nodeIds"] == ["p"] and un == [], un)
+
+def quick(fmt, text):  # (model, unread, seconds)
+    t0 = time.time()
+    return (*imp.read(fmt, text, "x"), time.time() - t0)
+m, un, dt = quick("mermaid", "flowchart\na --" + " " * 3000 + "x")  # audit 2: \s* [^|]+? \s* backtracked cubically
+ok("hostile · a link's text of 3000 spaces and no close is said, not imported, in linear time", un == [(2, "not imported: a -- x")] and dt < 2, (un, dt))
+m, un, dt = quick("plantuml", "@startuml\nPerson(a, x" + " " * 100000 + "y)\n@enduml")  # audit 2: a lazy argument retried its end at each space
+ok("hostile · a C4 macro argument of 100000 spaces reads in linear time", card(m, "a")["label"].split() == ["x", "y"] and dt < 2, dt)
+_, _, dt = quick("kubernetes", json.dumps({"kind": "Ingress", "metadata": {"name": "i"}, "spec": {"rules": [{"host": f"h{i}", "http": {"paths": [{"path": "/"}]}} for i in range(18000)]}}))
+ok("hostile · an Ingress of 18000 rules reads in linear time (its hosts counted once)", dt < 3, dt)
+m, _, dt = quick("kubernetes", json.dumps([{"kind": "Service", "metadata": {"name": f"s{i}"}, "spec": {"selector": {"app": f"a{i}"}}} for i in range(3000)]
+                                         + [{"kind": "Deployment", "metadata": {"name": f"d{i}"}, "spec": {"template": {"metadata": {"labels": {"app": f"a{i}"}}}}} for i in range(3000)]))
+ok("hostile · 3000 Services selecting 3000 workloads read in linear time, each to its own", len(m["edges"]) == 3000 and line(m, "svc-s2999", "deploy-d2999") and dt < 1, dt)
+m, _, dt = quick("compose", json.dumps({"services": {f"s{i}": {"networks": [f"n{i % 2}" if i < 4 else f"n{i}"]} for i in range(20000)}}))
+ok("hostile · 20000 compose services on their own networks read in linear time", dt < 3 and m["views"][0]["containers"][0]["nodeIds"] == ["s0", "s2"], dt)
+m, un, _ = quick("compose", json.dumps({"services": {}, "x": " " * imp.LIMIT}))
+ok("hostile · compose or Kubernetes JSON over 1 MiB is not read", m["nodes"] == [] and "over the limit of 1048576" in un[0][1], un)
 odd = {"kubernetes": ([[{"kind": "Deployment"}]], 5, {"items": [None]}, [{"kind": "Deployment", "metadata": "x"}],
                       [{"kind": "Service", "metadata": {"name": "s"}, "spec": {"selector": ["a"], "ports": [80]}}],
                       [{"kind": "Ingress", "metadata": {"name": "i"}, "spec": {"rules": [None]}}],

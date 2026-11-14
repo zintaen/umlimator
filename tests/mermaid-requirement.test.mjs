@@ -381,3 +381,8 @@ test('the writer keeps to Mermaid\'s strings: a value bare only with a word char
     '%% not written: e: ext.mermaid.type Block, which the reader reads back as none']);
   assert.deepEqual(read(text).model.nodes.find(n => n.id === 'a').props, { reqId: '/x', text: '' });
 });
+
+test('a view direction "constructor" is named not written and written TB, not a function\'s source (audit 2)', () => {
+  const text = write({ schemaVersion: 2, nodes: [{ id: 'r', type: 'sysml.Requirement', label: 'R' }], views: [{ id: 'v', diagram: 'sysml.requirement', direction: 'constructor', nodeIds: ['r'] }] }, 'v');
+  assert.deepEqual(text.split('\n').filter(l => /direction/.test(l)).map(l => l.trim()), ['direction TB', '%% not written: v: direction constructor: written as Mermaid\'s TB']);
+});
