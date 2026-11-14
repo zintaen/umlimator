@@ -3,7 +3,7 @@ import { esc, fit, textW } from '../core/text.js';
 import { SHAPE, boxOut, portsOn, r2 } from '../draw/shapes.js';
 import { rowsFor, untangle } from '../layout/layered.js';
 import { layoutTyped } from '../typed/layout.js';
-import './class.js'; // SHAPE.note, a comment's look
+import { memberEdit, printMember } from './class.js'; // a subject's other members, as the class type's; SHAPE.note, a comment's look
 import './usecase.js'; // SHAPE.ellipse, a collaboration use's; SHAPE.subject, a class subject's frame
 import { SN_SAY, STRUCT_RULES, portFit, portSides, portsDrawn, structProblems } from './structure.js';
 
@@ -35,8 +35,9 @@ const csSplit = id => { const s = String(id), k = s.indexOf('->'); return k < 0 
 const csPartText = m => { const p = CS_PROPS(m); return `${m.label ?? ''}${CS_HAS(p.valueType) ? ' : ' + p.valueType : ''}${CS_HAS(p.multiplicity) ? ` [${p.multiplicity}]` : ''}`.trim(); };
 const csPortText = m => `${m.label ?? ''}${CS_HAS(CS_PROPS(m).valueType) ? ' : ' + CS_PROPS(m).valueType : ''}`;
 function csParse(t) {
-  const m = /^\s*([^:[\]]*?)\s*(?::\s*([^:[\]]*?)\s*)?(?:\[\s*([^\]]*?)\s*\])?\s*$/.exec(String(t ?? ''));
-  return m && m[1] ? { label: m[1], valueType: m[2] || undefined, multiplicity: m[3] || undefined } : { error: 'A part is name : Type [multiplicity]' };
+  // the name runs to the first lone ':' (a type may be ns::T), the multiplicity is a closing non-empty [...] (T[] is a type)
+  const [, h, k] = /^(.*?)(?:\s*\[\s*([^\]\s][^\]]*?)\s*\])?$/s.exec(String(t ?? '').trim()), m = /^((?:[^:]|::)*?)\s*(?::(?!:)\s*((?:[^:]|::)*))?$/s.exec(h);
+  return m && m[1] ? { label: m[1], valueType: m[2] || undefined, multiplicity: k } : { error: 'A part is name : Type [multiplicity]' };
 }
 // a member row on owner (§12.1): `port name : Type` on a class or component is a port, any other row a part (on a collaboration,
 // a role); was: the member the row edits, whose kind it keeps. A member as the model writes it, or { error }
@@ -387,9 +388,9 @@ function csMember(model, view, owner, id, text) {
   return was ? csSets(was, r) : [{ op: 'add', element: { id: csFresh(model, `${o.id}.${r.label.toLowerCase()}`), ...r }, owner: o.id }];
 }
 const CS_MEMBER = {
-  print: m => (m.type === 'uml.Port' ? `port ${csPortText(m)}` : m.type === 'uml.Property' ? csPartText(m) : String(m.label ?? '')),
+  print: m => (m.type === 'uml.Port' ? `port ${csPortText(m)}` : m.type === 'uml.Property' ? csPartText(m) : printMember(m)),
   add: (text, owner) => csRow(owner, text),
-  edit: (m, text) => { const r = csRow(null, text, m); return r.error ? r : { commands: csSets(m, r) }; },
+  edit: (m, text) => { if (m.type !== 'uml.Port' && m.type !== 'uml.Property') return memberEdit(m, text); const r = csRow(null, text, m); return r.error ? r : { commands: csSets(m, r) }; },
   holds: n => CS_SUBJECTS.includes(n.type),
 };
 

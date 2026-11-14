@@ -236,3 +236,9 @@ test('a model with only object views gets no class rules but member-names (uml-o
   assert.ok(!rules.includes('generalization-kinds') && !rules.includes('comment-link'), rules.join());
   assert.ok(!T.rules['generalization-kinds'] && !T.rules['comment-link']);
 });
+
+test("the PDF prints a classifier's members as the class type does, as the picture draws them (audit 4)", () => {
+  assert.equal(T.member.print({ id: 'p', type: 'uml.Operation', label: 'place', props: { returnType: 'Receipt' } }), 'place(): Receipt');
+  assert.equal(T.member.print({ id: 'a', type: 'uml.Property', label: 'id', props: { valueType: 'UUID', visibility: 'private' } }), '- id: UUID');
+  assert.equal(T.member.print({ id: 's', type: 'uml.Slot', label: 'id', props: { value: '7' } }), 'id = 7');
+});

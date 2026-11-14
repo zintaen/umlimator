@@ -135,7 +135,7 @@ function stNodeName(x, pic, I, open) {
 // the lines drawn: those the view lists, or with no list the model's of this type's kinds, between two elements it shows
 function stLines(model, view, pic) {
   const E = new Map(); ST_ARR(model && model.edges).forEach(e => { if (ST_OBJ(e) && typeof e.id === 'string' && !E.has(e.id)) E.set(e.id, e); });
-  const shown = new Set(pic.ids), list = Array.isArray(view.edges) ? view.edges.map(x => (typeof x === 'string' ? E.get(x) : x)) : [...E.values()];
+  const shown = new Set(pic.ids), list = Array.isArray(view.edges) ? [...new Set(view.edges.map(x => (typeof x === 'string' ? E.get(x) : x)))] : [...E.values()];
   return list.filter(e => ST_OBJ(e) && typeof e.id === 'string' && ST_LINES.includes(e.type) && shown.has(e.from) && shown.has(e.to));
 }
 const stLineLabel = e => (e.type === 'uml.Transition' ? [...stStereo(e).map(t => `«${t}»`), stPartsText(e)].filter(ST_HAS).join(' ') : stStereo(e).map(t => `«${t}»`).join(' '));
@@ -316,7 +316,7 @@ function stProblems(model) {
 function stDescribe(model, viewId) {
   const v = ST_ARR(model && model.views).find(x => ST_OBJ(x) && x.id === viewId); if (!v) throw new Error(`umlimator: no view ${JSON.stringify(viewId)}`);
   const pic = stPic(model, v), lines = stLines(model, v, pic), by = new Map(lines.map(e => [e.id, e])), box = new Map(pic.boxes.map(b => [b.id, b]));
-  return [`${v.title || v.id}: a state machine diagram of ${stPlural(pic.ids.length, 'element')} and ${stPlural(lines.length, 'transition')}.`,
+  return [`${v.title || v.id}: a state machine diagram of ${stPlural(pic.ids.length, 'element')} and ${stPlural(lines.filter(e => e.type === 'uml.Transition').length, 'transition')}.`,
     ...stOrder(pic, lines).map(id => (by.has(id) ? stLineName(by.get(id), pic) : box.has(id) ? box.get(id).aria : stNodeName(pic.at.get(id), pic, pic.I, false)) + '.')].join('\n');
 }
 

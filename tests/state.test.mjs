@@ -19,6 +19,9 @@ import { describe } from '../src/map/insight.js';
 import { svgOf } from '../src/draw/svg.js';
 import { tablesOf } from '../src/page/print.js';
 import { stActivityRow } from '../src/uml/state.js';
+import '../src/uml/usecase.js';
+import '../src/uml/activity.js';
+import '../src/uml/overview.js';
 
 const SM = JSON.parse(readFileSync(new URL('../examples/order-states.json', import.meta.url)));
 const T = diagramOf({ diagram: 'uml.state-machine' }), V = SM.views[0];
@@ -426,4 +429,22 @@ test('a member with no string id is reported by validate(), not a throw (audit 1
 test('the Owner field stops at a parent that is no element, for every element (audit 1)', () => {
   const o = { schemaVersion: 2, nodes: [{ id: 's1', type: 'uml.State', label: 'Idle', parent: 'gone' }, { id: 's2', type: 'uml.State', label: 'Busy' }], edges: [], views: [{ id: 'v', diagram: 'uml.state-machine', nodeIds: ['s1', 's2'] }] };
   assert.deepEqual(T.owners(o, o.nodes[1]), [{ id: 's1', label: 'Idle' }]);
+});
+
+test('a line listed twice in view.edges is drawn and said once: state, activity, use case, overview (audit 4)', () => {
+  for (const f of ['order-states', 'fulfil-activity', 'shopping-use-cases', 'buy-book-overview']) {
+    const m = JSON.parse(readFileSync(new URL(`../examples/${f}.json`, import.meta.url))), v = m.views[0];
+    v.edges = layout(m, v.id).edges.map(e => e.id); const a = describe(m, v.id); v.edges.push(v.edges[0]);
+    assert.equal(describe(m, v.id), a, f);
+    const ids = layout(m, v.id).edges.map(e => e.id); assert.equal(ids.length, new Set(ids).size, f);
+  }
+});
+
+test("describe()'s headline counts transitions, not comment links (audit 4)", () => {
+  const m = structuredClone(SM), n = describe(m, V.id).split('\n')[0];
+  m.nodes.push({ id: 'note1', type: 'uml.Comment', label: 'Paid orders only' }); m.edges.push({ id: 'cl1', type: 'uml.CommentLink', from: 'note1', to: m.edges.find(e => e.type === 'uml.Transition').to });
+  if (Array.isArray(m.views[0].nodeIds)) m.views[0].nodeIds.push('note1'); if (Array.isArray(m.views[0].edges)) m.views[0].edges.push('cl1');
+  const h = describe(m, V.id).split('\n')[0];
+  assert.match(describe(m, V.id), /Comment link from Paid orders only/);
+  assert.equal(h.match(/(\d+) transitions/)[1], n.match(/(\d+) transitions/)[1]);
 });

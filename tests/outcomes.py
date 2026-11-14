@@ -231,6 +231,16 @@ with tempfile.TemporaryDirectory() as tmp:
     k1 = comp_key()
     next(e for e in comp["edges"] if e["id"] == "api-to-provider")["label"] = "CHANGED"  # port to port
     ok("stills-cache#3 · and a line that ends on a port, a member of a card (audit 3)", comp_key() != k1)
+    comp = json.loads((ROOT / "examples" / "order-service-structure.json").read_text(encoding="utf-8"))
+    def comp_key():
+        (k / "c.json").write_text(json.dumps(comp), encoding="utf-8")
+        cli("render", k / "c.json", "--out", k / "c.html", "--no-check")
+        return u.still_keys(k / "c.html", [])["internals"]
+    k1 = comp_key()
+    comp["edges"] = [e for e in comp["edges"] if e["id"] != "api-to-checkout"]  # to a port of the part's type, CheckoutFlow
+    k2 = comp_key()
+    next(n for n in comp["nodes"] if n["id"] == "checkout-class")["members"][1]["label"] = "prices"  # a port the part draws
+    ok("stills-cache#3 · and, in a typed view, a connector to a part's port and the part's type, cards the view does not list (audit 4)", len({k1, k2, comp_key()}) == 3)
     cli("stills", page, "--out", k / "st", "--views", "ride-end")
     again(lambda m: m["views"].pop())  # ride-end
     r = cli("stills", k / "m.html", "--out", k / "st", "--views", "system")

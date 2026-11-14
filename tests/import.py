@@ -179,6 +179,10 @@ m, un = imp.read("structurizr", 'workspace {\nmodel {\n' + 'group "g" {\n' * 150
 ok("hostile · 1500 nested groups read as nested boxes, no RecursionError", len(m["views"][0]["containers"]) == 1500
    and m["views"][0]["containers"][-1]["nodeIds"] == ["p"] and un == [], un)
 
+n = imp.fnode('A[x] --> B["y', 9)  # audit 4: an unclosed quote found A's ], went back, and matched the link forever
+ok("hostile · a label's unclosed quote after an earlier ] is said, not imported, and ends", n[3] >= 9
+   and imp.read("mermaid", 'flowchart TD\n  A[x] --> B["y', "x")[1] == [(2, 'not imported: A[x] --> B["y')], n)
+
 def quick(fmt, text):  # (model, unread, seconds)
     t0 = time.time()
     return (*imp.read(fmt, text, "x"), time.time() - t0)
@@ -231,6 +235,12 @@ ok("compose · a string depends_on or ports is one entry, not its characters",
 
 with tempfile.TemporaryDirectory() as tmp:
     t = Path(tmp)
+    (t / "adir.mmd").mkdir()
+    r = [run("import", str(t / f), "--out", str(t / "o.json")) for f in ("nope.mmd", "adir.mmd")]
+    ok("a missing file or a folder is said in one line, not a traceback (audit 4)",
+       all(x.returncode == 1 and "import: no file at" in x.stderr and "Traceback" not in x.stderr for x in r), [x.stderr[-200:] for x in r])
+    r = run("import", str(ROOT / "tests" / "import" / "parcels.puml"), "--out", str(t / "new" / "deeper" / "o.json"))
+    ok("--out in a folder not there yet: the folder is made, as render's (audit 4)", r.returncode == 0 and (t / "new" / "deeper" / "o.json").is_file(), r.stderr[-300:])
     (t / "bad.mmd").write_bytes(b"\xff\xfe\x00flowchart")
     r = run("import", str(t / "bad.mmd"), "--out", str(t / "b.json"))
     ok("a file that is not UTF-8 is said in one line, no traceback", r.returncode == 1 and "is not UTF-8 text" in r.stderr and "Traceback" not in r.stderr, r.stderr)
