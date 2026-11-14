@@ -1,0 +1,193 @@
+<!doctype html>
+<!-- The entity-relationship diagram (M2.2, notes/milestone-2.md §4, §7.1) in headless Chrome (tests/embed.py), from
+     lib/umlimator-all.js: an inline copy of docs/diagrams/examples/20-entity-relationship.json drawn by render() in both themes,
+     three fonts, both directions and both notations (texts inside their entities, none overlapping, each end the one its
+     multiplicity and the notation choose, its tip on the entity's outline within 1 px, IDEF1X's letters and dependent corners,
+     names, reading order, contrast, the legend, axe's rules written out), then edited through the edit event and apply(), by
+     pointer and by keyboard: the palette and N, a relationship by L and by the handle (one from a comment refused, its reason on
+     the hint line), F2 on a table and on a relationship, the Identifying and multiplicity fields, a column's flags,
+     type and references as a row read as S9's (a canvas selects no member; a bad row marked), a comment link by L, hide (a
+     table; a relationship where the view lists its lines, nothing where it does not) and delete. -->
+<meta charset="utf-8">
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="../lib/umlimator-theme.css">
+<title>umlimator entity-relationship diagram test</title>
+<body style="margin:0">
+<div id="m" style="width:1600px;height:1100px"></div>
+<script type="module">
+import { render, apply, validate } from '../lib/umlimator-all.js';
+const out = { ok: [], fail: [] };
+const check = (name, cond, info) => { document.title = name; if (cond) out.ok.push(name); else out.fail.push(name + (info === undefined ? '' : ': ' + JSON.stringify(info))); };
+const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+const el = document.getElementById('m');
+let sr, stage, ed = [];
+const pick = s => sr.querySelector(s), all = s => [...sr.querySelectorAll(s)];
+const centre = s => { const r = pick(s).getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; };
+const ptr = (target, type, [x, y]) => target.dispatchEvent(new PointerEvent(type, { clientX: x, clientY: y, button: 0, pointerId: 7, pointerType: 'mouse', bubbles: true, composed: true }));
+const key = (k, extra = {}, target = stage) => target.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true, composed: true, cancelable: true, ...extra }));
+const handleTo = ([x, y]) => { const c = pick('.um-handle circle'), r = c.getBoundingClientRect(); ptr(c, 'pointerdown', [r.x + r.width / 2, r.y + r.height / 2]); ptr(stage, 'pointermove', [x, y]); ptr(stage, 'pointerup', [x, y]); };
+const press = b => { const r = b.getBoundingClientRect(), at = [r.x + r.width / 2, r.y + r.height / 2]; ptr(b, 'pointerdown', at); ptr(b, 'pointerup', at); b.click(); };
+const hint = () => pick('.um-live').textContent;
+const click = s => { const g = pick(s), at = centre(s); ptr(g, 'pointerdown', at); ptr(g, 'pointerup', at); g.dispatchEvent(new MouseEvent('click', { clientX: at[0], clientY: at[1], bubbles: true, composed: true })); };
+const mount = (model, opts = {}) => { el.innerHTML = ''; ed = []; const h = render(el, model, { view: 'er-schema', on: { edit: e => ed.push(e) }, ...opts }); sr = el.querySelector('.umlimator').shadowRoot; stage = pick('.stage'); return h; };
+const errors = m => validate(m).filter(p => p.level === 'error');
+const last = () => ed[ed.length - 1];
+const gives = (name, cmds, test, base, errs = 0) => { const e = last(); let m = null; try { m = e && apply(base, e.commands); } catch (x) { m = null; }
+  check(name, !!e && same(e.commands, cmds) && !!m && test(m) && errors(m).length === errs, [e, m && errors(m)]); return m; };
+const change = (t, v) => { if (t.type === 'checkbox') t.checked = v; else t.value = v; t.dispatchEvent(new Event('change', { bubbles: true })); };
+const box = g => { const r = g.getBBox(); return { x: r.x, y: r.y, w: r.width, h: r.height }; };
+const inside = (a, b) => a.x >= b.x - .5 && a.y >= b.y - .5 && a.x + a.w <= b.x + b.w + .5 && a.y + a.h <= b.y + b.h + .5;
+const pt = (svg, x, y) => { const p = svg.createSVGPoint(); p.x = x; p.y = y; return p; };
+const FONTS = { serif: 'serif', sans: 'sans-serif', wide: 'monospace' };
+const rgba = s => { let m = /rgba?\(([^)]+)\)/.exec(s); if (m) { const p = m[1].split(/[ ,/]+/).filter(Boolean).map(Number); return [p[0] / 255, p[1] / 255, p[2] / 255, p.length > 3 ? p[3] : 1]; }
+  m = /color\(srgb ([^)]+)\)/.exec(s); if (m) { const p = m[1].split(/[ /]+/).filter(Boolean).map(Number); return [p[0], p[1], p[2], p.length > 3 ? p[3] : 1]; } return null; };
+const blend = (top, bot) => [0, 1, 2].map(i => top[i] * top[3] + bot[i] * (1 - top[3])).concat(1);
+const lum = c => { const f = v => v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]); };
+const ratio = (fg, bg) => { const [x, y] = [lum(blend(fg, bg)), lum(bg)].sort((p, q) => q - p); return +((x + 0.05) / (y + 0.05)).toFixed(2); };
+const css = (e, k) => rgba(getComputedStyle(e)[k]);
+// docs/diagrams/examples/20-entity-relationship.json as M2.0 left it (M2.13 moves it; this page keeps its own copy)
+const MODEL = {"schemaVersion":2,"title":"Bookshop: database schema","root":"er-schema","nodes":[{"id":"er-customer","type":"er.Entity","label":"customer","members":[{"id":"er-customer.id","type":"er.Column","label":"id","props":{"dataType":"bigint","primaryKey":true}},{"id":"er-customer.email","type":"er.Column","label":"email","props":{"dataType":"varchar(255)","unique":true}},{"id":"er-customer.referred_by","type":"er.Column","label":"referred_by","props":{"dataType":"bigint","foreignKey":true,"nullable":true,"references":"er-customer.id"}}]},{"id":"er-order","type":"er.Entity","label":"order","members":[{"id":"er-order.id","type":"er.Column","label":"id","props":{"dataType":"bigint","primaryKey":true}},{"id":"er-order.customer_id","type":"er.Column","label":"customer_id","props":{"dataType":"bigint","foreignKey":true,"references":"er-customer.id"}},{"id":"er-order.placed_at","type":"er.Column","label":"placed_at","props":{"dataType":"timestamptz","nullable":true}}]},{"id":"er-order_line","type":"er.Entity","label":"order_line","members":[{"id":"er-order_line.order_id","type":"er.Column","label":"order_id","props":{"dataType":"bigint","primaryKey":true,"foreignKey":true,"references":"er-order.id"}},{"id":"er-order_line.line_no","type":"er.Column","label":"line_no","props":{"dataType":"integer","primaryKey":true}},{"id":"er-order_line.book_id","type":"er.Column","label":"book_id","props":{"dataType":"bigint","foreignKey":true,"references":"er-book.id"}},{"id":"er-order_line.quantity","type":"er.Column","label":"quantity","props":{"dataType":"integer"}}]},{"id":"er-book","type":"er.Entity","label":"book","members":[{"id":"er-book.id","type":"er.Column","label":"id","props":{"dataType":"bigint","primaryKey":true}},{"id":"er-book.isbn","type":"er.Column","label":"isbn","props":{"dataType":"char(13)","unique":true}},{"id":"er-book.title","type":"er.Column","label":"title","props":{"dataType":"varchar(255)"}}]},{"id":"er-author","type":"er.Entity","label":"author","members":[{"id":"er-author.id","type":"er.Column","label":"id","props":{"dataType":"bigint","primaryKey":true}},{"id":"er-author.name","type":"er.Column","label":"name","props":{"dataType":"varchar(120)"}}]},{"id":"er-book_author","type":"er.Entity","label":"book_author","members":[{"id":"er-book_author.book_id","type":"er.Column","label":"book_id","props":{"dataType":"bigint","primaryKey":true,"foreignKey":true,"references":"er-book.id"}},{"id":"er-book_author.author_id","type":"er.Column","label":"author_id","props":{"dataType":"bigint","primaryKey":true,"foreignKey":true,"references":"er-author.id"}}]},{"id":"er-payment","type":"er.Entity","label":"payment","members":[{"id":"er-payment.id","type":"er.Column","label":"id","props":{"dataType":"bigint","primaryKey":true}},{"id":"er-payment.order_id","type":"er.Column","label":"order_id","props":{"dataType":"bigint","foreignKey":true,"unique":true,"references":"er-order.id"}},{"id":"er-payment.amount","type":"er.Column","label":"amount","props":{"dataType":"numeric(10,2)"}}]}],"edges":[{"id":"er-customer-orders","type":"er.Relationship","from":"er-customer","to":"er-order","label":"places","props":{"identifying":false,"ends":{"from":{"multiplicity":"1"},"to":{"multiplicity":"0..*"}}}},{"id":"er-order-lines","type":"er.Relationship","from":"er-order","to":"er-order_line","label":"contains","props":{"identifying":true,"ends":{"from":{"multiplicity":"1"},"to":{"multiplicity":"1..*"}}}},{"id":"er-book-lines","type":"er.Relationship","from":"er-book","to":"er-order_line","props":{"identifying":false,"ends":{"from":{"multiplicity":"1"},"to":{"multiplicity":"0..*"}}}},{"id":"er-book-authors","type":"er.Relationship","from":"er-book","to":"er-book_author","props":{"identifying":true,"ends":{"from":{"multiplicity":"1"},"to":{"multiplicity":"1..*"}}}},{"id":"er-author-books","type":"er.Relationship","from":"er-author","to":"er-book_author","props":{"identifying":true,"ends":{"from":{"multiplicity":"1"},"to":{"multiplicity":"0..*"}}}},{"id":"er-order-payment","type":"er.Relationship","from":"er-order","to":"er-payment","props":{"identifying":false,"ends":{"from":{"multiplicity":"1"},"to":{"multiplicity":"0..1"}}}},{"id":"er-customer-referrals","type":"er.Relationship","from":"er-customer","to":"er-customer","label":"referred","props":{"identifying":false,"ends":{"from":{"multiplicity":"0..1"},"to":{"multiplicity":"0..*"}}}}],"views":[{"id":"er-schema","diagram":"er","title":"Bookshop schema","parent":null,"notation":"crowsfoot","nodeIds":["er-customer","er-order","er-order_line","er-book","er-author","er-book_author","er-payment"]}]};
+const IDS = MODEL.views[0].nodeIds, LINES = MODEL.edges.map(e => e.id);
+// each line's two ends as §4.1 draws them, in each notation
+const ENDS = { crowsfoot: { 'er-customer-orders': ['cf-one', 'cf-zero-many'], 'er-order-lines': ['cf-one', 'cf-one-many'], 'er-book-lines': ['cf-one', 'cf-zero-many'], 'er-book-authors': ['cf-one', 'cf-one-many'],
+    'er-author-books': ['cf-one', 'cf-zero-many'], 'er-order-payment': ['cf-one', 'cf-zero-one'], 'er-customer-referrals': ['cf-zero-one', 'cf-zero-many'] },
+  idef1x: { 'er-customer-orders': [null, 'idef-dot'], 'er-order-lines': [null, 'idef-dot'], 'er-book-lines': [null, 'idef-dot'], 'er-book-authors': [null, 'idef-dot'],
+    'er-author-books': [null, 'idef-dot'], 'er-order-payment': [null, 'idef-dot'], 'er-customer-referrals': ['idef-diamond', 'idef-dot'] } };
+try {
+  check('the inline example validates clean', same(validate(MODEL), []), validate(MODEL));
+  for (const theme of ['light', 'dark']) for (const [fname, family] of Object.entries(FONTS)) for (const direction of ['right', 'down']) for (const notation of ['crowsfoot', 'idef1x']) {
+    document.documentElement.dataset.theme = theme; el.style.setProperty('--um-sans', family);
+    const M = structuredClone(MODEL); Object.assign(M.views[0], { direction, notation });
+    const tag = `${theme}, ${fname}, ${direction}, ${notation}`, h = mount(M, { legend: true }), bad = [], nodes = all('.node'), svg = pick('.stage svg');
+    check(`${tag}: seven entities, seven lines`, all('.node.entity').length === 7 && all('.edge-g').length === 7, [nodes.length, all('.edge-g').length]);
+    nodes.forEach(g => { const b = box(g.querySelector('.n-mask')); g.querySelectorAll('text').forEach(t => { if (!inside(box(t), b)) bad.push(`${g.dataset.id}: "${t.textContent}" spills`); }); });
+    const boxes = nodes.map(g => [g.dataset.id, box(g.querySelector('.n-mask'))]);
+    boxes.forEach(([a, p], i) => boxes.slice(i + 1).forEach(([b, q]) => { if (p.x < q.x + q.w && q.x < p.x + p.w && p.y < q.y + q.h && q.y < p.y + p.h) bad.push(`${a} and ${b} overlap`); }));
+    check(`${tag}: every text inside its entity, none overlapping`, !bad.length, bad);
+    // each end the one §4.1 chooses, its marker's tip its reference point, the line's end on the entity's outline within 1 px
+    const off = [];
+    all('.edge-g').forEach(g => { const path = g.querySelector('path.edge'), id = LINES.find(x => g.querySelector('title') && MODEL.edges.find(e => e.id === x && e.from === g.dataset.from && e.to === g.dataset.to)), want = ENDS[notation][id];
+      if (!want) { off.push(`${g.dataset.from}>${g.dataset.to}: no line`); return; }
+      const d = path.getAttribute('d').match(/-?\d+(\.\d+)?/g).map(Number);
+      [['marker-start', g.dataset.from, d[0], d[1], want[0]], ['marker-end', g.dataset.to, d.at(-2), d.at(-1), want[1]]].forEach(([attr, nid, x, y, kind]) => {
+        const ref = path.getAttribute(attr), mk = ref && sr.getElementById(ref.slice(5, -1)), got = mk ? mk.id.replace(/^g\d+-/, '').replace(/-[a-z]+$/, '') : null;
+        if (got !== kind) { off.push(`${id} ${attr}: ${got}, not ${kind}`); return; }
+        if (!mk) return;
+        const r = mk.querySelector('path').getBBox();
+        if (Math.abs(r.x + r.width - +mk.getAttribute('refX')) > .01 || Math.abs(r.y + r.height / 2 - +mk.getAttribute('refY')) > .01) off.push(`${id} ${attr}: the tip is not the marker's end`);
+        const tip = [x, y]; // the marker's tip is the line's end (its refX is its length)
+        const body = pick(`.node[data-id="${nid}"] .n-body`); body.style.strokeWidth = '2px'; const on = body.isPointInStroke(pt(svg, ...tip)); body.style.strokeWidth = '';
+        if (!on) off.push(`${id} ${attr}: its tip ${tip.map(Math.round)} is off ${nid}'s outline`); }); });
+    check(`${tag}: each end the one its multiplicity and the notation choose, its tip on the entity's outline within 1 px`, !off.length, off.slice(0, 6));
+    const dashed = all('.edge-g path.edge').filter(p => (p.getAttribute('stroke-dasharray') || getComputedStyle(p).strokeDasharray || 'none') !== 'none').length;
+    check(`${tag}: three identifying lines solid, four non-identifying dashed`, dashed === 4, dashed);
+    const labs = [...new Set(all('.e-lab, .labels text:not(.end-lab)').map(t => t.textContent))].sort(), letters = all('.end-lab').map(t => t.textContent).sort();
+    check(`${tag}: the verbs drawn; IDEF1X's letters as end labels`, same(labs, ['contains', 'places', 'referred']) && same(letters, notation === 'idef1x' ? ['P', 'P', 'Z'] : []), [labs, letters]);
+    const round = all('.node.entity > .n-mask[rx]').map(r => r.parentNode.dataset.id).sort();
+    check(`${tag}: IDEF1X rounds the dependent entities' corners`, same(round, notation === 'idef1x' ? ['er-book_author', 'er-order_line'] : []), round);
+    check(`${tag}: names a screen reader reads`, pick('.node[data-id="er-order_line"]').getAttribute('aria-label') === 'Table order_line, key order_id and line_no, 4 columns'
+      && pick('.edge-g[data-from="er-order"][data-to="er-order_line"] title').textContent === 'Identifying relationship contains from order (exactly one) to order_line (one or more)');
+    const order = all('.keys .um-key').map(k => k.dataset.node || k.dataset.edge || k.textContent);
+    check(`${tag}: a key for every entity and line, in reading order`, all('.keys .um-key').length === 14 && same(all('.keys .node-key').map(k => k.dataset.node), IDS), order);
+    const legend = all('.m-legend b').map(b => b.textContent);
+    check(`${tag}: the legend keys each line look and end drawn`, same(legend, ['Identifying', 'Non-identifying', ...(notation === 'idef1x' ? ['Child end', 'Optional parent', 'Dependent entity'] : ['Exactly one', 'Zero or one', 'One or more', 'Zero or more'])]), legend);
+    const stageBg = css(pick('.stage'), 'backgroundColor'), low = [];
+    nodes.forEach(g => g.querySelectorAll('text').forEach(t => { const c = ratio(css(t, 'fill'), stageBg); if (c < 4.5) low.push([g.dataset.id, t.textContent, c]); }));
+    all('.end-lab').forEach(t => { const c = ratio(css(t, 'fill'), stageBg); if (c < 4.5) low.push(['end', t.textContent, c]); });
+    const strokes = all('.node .n-body, .edge-g path.edge').map(b => ratio(css(b, 'stroke'), stageBg)).filter(c => c < 3);
+    check(`${tag}: contrast: texts 4.5:1, outlines and lines 3:1`, !low.length && !strokes.length, [low.slice(0, 4), strokes]);
+    // axe-core 4.14's rules for what is drawn as role="img", written out: svg-img-alt and role-img-alt (each has a name),
+    // nested-interactive (nothing inside one is a tab stop)
+    const imgs = all('.stage svg [role="img"]'), noAlt = [], nested = [];
+    imgs.forEach(x => { if (!(x.getAttribute('aria-label') || '').trim()) noAlt.push(x.dataset.id || x.localName);
+      x.querySelectorAll('[tabindex], a[href], button, input, select, textarea').forEach(c => { if (c.tabIndex >= 0) nested.push(`${x.dataset.id} holds ${c.getAttribute('class') || c.localName}`); }); });
+    check(`${tag}: axe, written out: the drawing a named group, its 7 entities named images with no tab stop and no other name inside`,
+      svg.getAttribute('role') === 'group' && !!(svg.getAttribute('aria-label') || '').trim() && imgs.length === 7 && !noAlt.length && !nested.length && all('.node.entity [aria-label]').length === 0, [imgs.length, noAlt, nested.slice(0, 4)]);
+    h.destroy();
+  }
+  document.documentElement.dataset.theme = 'light'; el.style.removeProperty('--um-sans');
+
+  // ---- editing (DoD 4), each gesture's commands applied with apply()
+  const BASE = structuredClone(MODEL);
+  let h = mount(BASE, { editable: true });
+  const panel = s => pick('.um-editor ' + s);
+  check('the palette: Table and Comment; the lines listed', same(all('.um-editor .um-pal button').map(b => b.textContent), ['Table', 'Comment'])
+    && /Relationship, Comment link/.test(panel('.um-pal .um-note').textContent), panel('.um-pal').textContent);
+  key('n'); pick('.um-rename').value = 'shipment'; key('Enter', {}, pick('.um-rename'));
+  gives('N adds a table, named, shown in the view (pk-exists then warns)', [{ op: 'add', element: { id: 'entity1', type: 'er.Entity', label: 'shipment' }, view: 'er-schema' }], m => m.views[0].nodeIds.includes('entity1'), BASE);
+  all('.um-editor .um-pal button')[1].click(); pick('.um-rename').value = 'Money in cents'; key('Enter', {}, pick('.um-rename'));
+  const m0 = gives('the palette\'s Comment: added', [{ op: 'add', element: { id: 'comment1', type: 'uml.Comment', label: 'Money in cents' }, view: 'er-schema' }], m => m.nodes.some(n => n.id === 'comment1'), BASE);
+  // a relationship by L and the picker: 1 to 0..*, non-identifying; one from a comment refused, its reason on the hint line
+  click('.node[data-id="er-author"] .c-name'); key('l'); for (const c of 'payment') key(c); key('Enter');
+  const kinds = all('.um-pick button').map(b => b.textContent);
+  check('L, a name and Enter open the picker with the two lines', same(kinds, ['Relationship', 'Comment link']), kinds);
+  all('.um-pick button')[0].click();
+  const REL = { identifying: false, ends: { from: { multiplicity: '1' }, to: { multiplicity: '0..*' } } };
+  gives('L, Relationship: added from the table selected, 1 to 0..*, non-identifying (relationship-fk then warns)', [{ op: 'add', element: { id: 'relationship1', type: 'er.Relationship', from: 'er-author', to: 'er-payment', props: REL }, view: 'er-schema' }],
+    m => validate(m).some(p => p.rule === 'relationship-fk'), BASE);
+  h.update(m0);
+  const n0 = ed.length; click('.node[data-id="comment1"] .c-row'); key('l'); for (const c of 'payment') key(c); key('Enter');
+  all('.um-pick button').find(b => b.textContent === 'Relationship').click();
+  check('a relationship from a comment is refused, nothing emitted, its reason on the hint line', ed.length === n0 && hint() === 'A relationship joins two tables', [ed.slice(n0), hint()]);
+  h.update(m0); click('.node[data-id="comment1"] .c-row'); key('l'); for (const c of 'payment') key(c); key('Enter');
+  all('.um-pick button').find(b => b.textContent === 'Comment link').click();
+  gives('L from a comment, Comment link: added to the table', [{ op: 'add', element: { id: 'commentlink1', type: 'uml.CommentLink', from: 'comment1', to: 'er-payment' }, view: 'er-schema' }],
+    m => m.edges.some(e => e.id === 'commentlink1' && e.type === 'uml.CommentLink'), m0);
+  h.update(m0);
+  // the handle, by pointer: from one table to another
+  click('.node[data-id="er-book"] .c-name'); handleTo(centre('.node[data-id="er-author"] .n-mask')); press(all('.um-pick button').find(b => b.textContent === 'Relationship'));
+  gives('the handle from a table to another, Relationship: added', [{ op: 'add', element: { id: 'relationship1', type: 'er.Relationship', from: 'er-book', to: 'er-author', props: REL }, view: 'er-schema' }], m => m.edges.some(e => e.id === 'relationship1'), m0);
+  // F2 on a table and on a relationship
+  click('.node[data-id="er-book"] .c-name'); key('F2');
+  check('F2 on a table: a field holding its name', pick('.um-rename') && pick('.um-rename').value === 'book');
+  pick('.um-rename').value = 'title'; key('Enter', {}, pick('.um-rename'));
+  gives('F2: set its label', [{ op: 'set', id: 'er-book', path: 'label', value: 'title' }], m => by(m, 'er-book').label === 'title', m0);
+  h.select({ type: 'edge', ids: ['er-book-lines'], view: 'er-schema' }); key('F2'); pick('.um-rename').value = 'sold as'; key('Enter', {}, pick('.um-rename'));
+  gives('F2 on a relationship: set its label, its verb', [{ op: 'set', id: 'er-book-lines', path: 'label', value: 'sold as' }], m => m.edges.find(e => e.id === 'er-book-lines').label === 'sold as', m0);
+  // the panel: Identifying and the two multiplicities on a relationship
+  h.select({ type: 'edge', ids: ['er-order-payment'], view: 'er-schema' }); change(panel('[data-f="p:identifying"]'), true);
+  gives('the Identifying field sets identifying (order_id, out of payment\'s key, then fails identifying-key)', [{ op: 'set', id: 'er-order-payment', path: 'props.identifying', value: true }],
+    m => errors(m)[0].rule === 'identifying-key', m0, 1);
+  const mf = panel('[data-f="p:ends.to.multiplicity"]');
+  check('the child multiplicity field holds it', !!mf && mf.value === '0..1', mf && mf.value);
+  if (mf) { change(mf, '1');
+    gives('the multiplicity field sets it by its path', [{ op: 'set', id: 'er-order-payment', path: ['props', 'ends', 'to', 'multiplicity'], value: '1' }], m => m.edges.find(e => e.id === 'er-order-payment').props.ends.to.multiplicity === '1', m0); }
+  // the columns as member rows: one edited, one added, a bad one marked and nothing emitted
+  click('.node[data-id="er-book"] .c-name');
+  const rows = all('.um-editor [data-m]').map(x => x.value);
+  check('a table\'s panel lists its columns as S9 rows', same(rows, ['id bigint PK', 'isbn char(13) UK', 'title varchar(255)']), rows);
+  const isbn = all('.um-editor [data-m]')[1]; isbn.value = 'isbn13 char(13) UK NULL'; key('Enter', {}, isbn);
+  gives('a row edited: its name and props set as one transaction', [{ op: 'set', id: 'er-book.isbn', path: 'label', value: 'isbn13' }, { op: 'set', id: 'er-book.isbn', path: 'props', value: { dataType: 'char(13)', unique: true, nullable: true } }],
+    m => col(m, 'er-book.isbn').props.nullable === true, m0);
+  const nm = panel('[data-new]'); nm.value = 'author_id bigint FK author.id'; key('Enter', {}, nm);
+  gives('New member: a column added, its FK resolved to the column\'s id', [{ op: 'add', element: { id: 'er-book.author_id', type: 'er.Column', label: 'author_id', props: { dataType: 'bigint', foreignKey: true, references: 'er-author.id' } }, owner: 'er-book' }],
+    m => col(m, 'er-book.author_id').props.references === 'er-author.id', m0);
+  panel('[data-up="er-book.title"]').click();
+  gives('↑ on a column: moved up among its table\'s columns (drawn in that order in its section)', [{ op: 'move', id: 'er-book.title', index: 1 }], m => by(m, 'er-book').members[1].id === 'er-book.title', m0);
+  const n1 = ed.length, nm2 = panel('[data-new]'); nm2.value = 'x int FK nowhere.id'; key('Enter', {}, nm2);
+  check('a row that does not read: marked, said, nothing emitted', ed.length === n1 && nm2.getAttribute('aria-invalid') === 'true' && /FK nowhere\.id names no column/.test(hint()), [ed.slice(n1), hint()]);
+  // a notation switch, as the host sets it: the picture repaints, every entity where it was
+  const was = all('.node.entity').map(g => g.getAttribute('data-id') + box(g.querySelector('.n-mask')).x);
+  h.update(apply(m0, [{ op: 'set', view: 'er-schema', path: 'notation', value: 'idef1x' }]));
+  check('a notation switch: the ends change, the entities stay', all('.end-lab').length === 3 && same(all('.node.entity').map(g => g.getAttribute('data-id') + box(g.querySelector('.n-mask')).x), was), was);
+  // hide, delete
+  h = mount(BASE, { editable: true });
+  click('.node[data-id="er-payment"] .c-name'); key('Delete');
+  gives('Delete: hide the table from the view', [{ op: 'hide', id: 'er-payment', view: 'er-schema' }], m => !m.views[0].nodeIds.includes('er-payment'), BASE);
+  click('.node[data-id="er-payment"] .c-name'); key('Delete', { shiftKey: true });
+  gives('Shift + Delete: delete the table and its relationship', [{ op: 'delete', id: 'er-payment' }], m => !m.nodes.some(n => n.id === 'er-payment') && !m.edges.some(e => e.id === 'er-order-payment'), BASE);
+  const n2 = ed.length; h.select({ type: 'edge', ids: ['er-book-lines'], view: 'er-schema' }); key('Delete');
+  // (the canvas says to use Shift + Delete on its hint line; this page mounts none)
+  check('Delete on a relationship in a view that lists no lines: nothing emitted, the line still drawn', ed.length === n2 && !!pick('.edge-g[data-from="er-book"][data-to="er-order_line"]'), ed.slice(n2));
+  h.select({ type: 'edge', ids: ['er-book-lines'], view: 'er-schema' }); key('Delete', { shiftKey: true });
+  gives('Shift + Delete on a relationship: delete it (book_id then warns: relationship-fk is the line\'s, fk-target holds)', [{ op: 'delete', id: 'er-book-lines' }], m => !m.edges.some(e => e.id === 'er-book-lines'), BASE);
+  h.destroy();
+  const LISTED = structuredClone(BASE); LISTED.views[0].edges = [...LINES];
+  h = mount(LISTED, { editable: true }); h.select({ type: 'edge', ids: ['er-book-lines'], view: 'er-schema' }); key('Delete');
+  gives('Delete on a relationship in a view that lists its lines: hidden from the view', [{ op: 'hide', id: 'er-book-lines', view: 'er-schema' }], m => !m.views[0].edges.includes('er-book-lines') && m.edges.some(e => e.id === 'er-book-lines'), LISTED);
+  h.destroy();
+} catch (e) { out.fail.push('threw: ' + (e && e.stack || e)); }
+function by(m, id) { return m.nodes.find(n => n.id === id); }
+function col(m, id) { return m.nodes.flatMap(n => n.members || []).find(c => c.id === id); }
+const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
+</script>

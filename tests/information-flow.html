@@ -1,0 +1,168 @@
+<!doctype html>
+<!-- The information flow diagram (M2.5, notes/milestone-2.md §7.4) in headless Chrome (tests/embed.py), from lib/umlimator-all.js:
+     docs/diagrams/examples/15-information-flow.json drawn by render() in both themes, three fonts and both directions (texts in
+     their shapes, no overlap, line ends on outlines, «flow» labels, names, reading order, contrast, the legend, axe's rules for
+     role="img" written out), then edited through the edit event and apply(), by pointer and by keyboard: the palette's six
+     entries and N, F2 on an element, a flow by L and the picker and by the handle (then a picker of what it conveys), a flow
+     from an information item refused with its reason on the hint line, a comment link, F2 and a double-click on a flow (what
+     it conveys, by name), the stereotypes field, hide and delete (an item deleted leaves every flow that conveyed it). -->
+<meta charset="utf-8">
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="../lib/umlimator-theme.css">
+<title>umlimator information flow diagram test</title>
+<body style="margin:0">
+<div id="m" style="width:1600px;height:1000px"></div>
+<script type="module">
+import { render, apply, validate } from '../lib/umlimator-all.js';
+const out = { ok: [], fail: [] };
+const check = (name, cond, info) => { document.title = name; if (cond) out.ok.push(name); else out.fail.push(name + (info === undefined ? '' : ': ' + JSON.stringify(info))); };
+const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+const tick = () => new Promise(r => setTimeout(r, 0));
+const el = document.getElementById('m'), V = 'order-flows';
+let sr, stage, ed = [];
+const pick = s => sr.querySelector(s), all = s => [...sr.querySelectorAll(s)];
+const centre = s => { const r = pick(s).getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; };
+const ptr = (target, type, [x, y]) => target.dispatchEvent(new PointerEvent(type, { clientX: x, clientY: y, button: 0, pointerId: 7, pointerType: 'mouse', bubbles: true, composed: true }));
+const key = (k, extra = {}, target = stage) => target.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true, composed: true, cancelable: true, ...extra }));
+const handleTo = ([x, y]) => { const c = pick('.um-handle circle'), r = c.getBoundingClientRect(); ptr(c, 'pointerdown', [r.x + r.width / 2, r.y + r.height / 2]); ptr(stage, 'pointermove', [x, y]); ptr(stage, 'pointerup', [x, y]); };
+const press = b => { const r = b.getBoundingClientRect(), at = [r.x + r.width / 2, r.y + r.height / 2]; ptr(b, 'pointerdown', at); ptr(b, 'pointerup', at); b.click(); };
+const hint = () => pick('.um-live').textContent;
+const click = s => { const g = pick(s), at = centre(s); ptr(g, 'pointerdown', at); ptr(g, 'pointerup', at); g.dispatchEvent(new MouseEvent('click', { clientX: at[0], clientY: at[1], bubbles: true, composed: true })); };
+const mount = (model, opts = {}) => { el.innerHTML = ''; ed = []; const h = render(el, model, { view: V, on: { edit: e => ed.push(e) }, ...opts }); sr = el.querySelector('.umlimator').shadowRoot; stage = pick('.stage'); return h; };
+const errors = m => validate(m).filter(p => p.level === 'error');
+const last = () => ed[ed.length - 1];
+const gives = (name, cmds, test, base, errs = 0) => { const e = last(); let m = null; try { m = e && apply(base, e.commands); } catch (x) { m = null; }
+  check(name, !!e && same(e.commands, cmds) && !!m && test(m) && errors(m).length === errs, [e, m && errors(m)]); return m; };
+const change = (t, v) => { t.value = v; t.dispatchEvent(new Event('change', { bubbles: true })); };
+const box = g => { const r = g.getBBox(); return { x: r.x, y: r.y, w: r.width, h: r.height }; };
+const inside = (a, b) => a.x >= b.x - .5 && a.y >= b.y - .5 && a.x + a.w <= b.x + b.w + .5 && a.y + a.h <= b.y + b.h + .5;
+const rectOff = (n, [x, y]) => { const dx = Math.max(n.x - x, 0, x - n.x - n.w), dy = Math.max(n.y - y, 0, y - n.y - n.h); return dx || dy ? Math.hypot(dx, dy) : Math.min(x - n.x, n.x + n.w - x, y - n.y, n.y + n.h - y); };
+const FONTS = { serif: 'serif', sans: 'sans-serif', wide: 'monospace' };
+const rgba = s => { let m = /rgba?\(([^)]+)\)/.exec(s); if (m) { const p = m[1].split(/[ ,/]+/).filter(Boolean).map(Number); return [p[0] / 255, p[1] / 255, p[2] / 255, p.length > 3 ? p[3] : 1]; }
+  m = /color\(srgb ([^)]+)\)/.exec(s); if (m) { const p = m[1].split(/[ /]+/).filter(Boolean).map(Number); return [p[0], p[1], p[2], p.length > 3 ? p[3] : 1]; } return null; };
+const blend = (top, bot) => [0, 1, 2].map(i => top[i] * top[3] + bot[i] * (1 - top[3])).concat(1);
+const lum = c => { const f = v => v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]); };
+const ratio = (fg, bg) => { const [x, y] = [lum(blend(fg, bg)), lum(bg)].sort((p, q) => q - p); return +((x + 0.05) / (y + 0.05)).toFixed(2); };
+const css = (e, k) => rgba(getComputedStyle(e)[k]);
+const MODEL = await (await fetch('../docs/diagrams/examples/15-information-flow.json')).json();
+const LABELS = ['«flow» Card details', '«flow» Order', '«flow» Order, Card details', '«flow» Order, Receipt', '«flow» Receipt', '«flow» Stock level'];
+try {
+  for (const theme of ['light', 'dark']) for (const [fname, family] of Object.entries(FONTS)) for (const direction of ['right', 'down']) {
+    document.documentElement.dataset.theme = theme; el.style.setProperty('--um-sans', family);
+    const M = structuredClone(MODEL); M.views[0].direction = direction;
+    const tag = `${theme}, ${fname}, ${direction}`, h = mount(M, { legend: true }), bad = [];
+    const nodes = all('.node');
+    check(`${tag}: an actor, five components, four information items with their triangle, eight lines`, all('.node.actor').length === 1 && all('.node.component').length === 5
+      && all('.node[data-shape="information-item"] .if-icon').length === 4 && all('.edge-g').length === 8, [nodes.length, all('.edge-g').length]);
+    // every text in its shape (an actor's in its box), the triangle clear of the item's name; no two nodes overlap
+    nodes.forEach(g => { const b = box(g.querySelector('.n-mask')); g.querySelectorAll('text').forEach(t => { if (!inside(box(t), b)) bad.push(`${g.dataset.id}: "${t.textContent}" spills`); });
+      const tri = g.querySelector('.if-icon'), nm = g.querySelector('.c-name'); if (tri && box(nm).x + box(nm).w > box(tri).x) bad.push(`${g.dataset.id}: its name reaches the triangle`); });
+    const boxes = nodes.map(g => [g.dataset.id, box(g.querySelector('.n-mask'))]);
+    boxes.forEach(([a, p], i) => boxes.slice(i + 1).forEach(([b, q]) => { if (p.x < q.x + q.w && q.x < p.x + p.w && p.y < q.y + q.h && q.y < p.y + p.h) bad.push(`${a} and ${b} overlap`); }));
+    check(`${tag}: every text inside its shape, none overlapping, the triangle clear of the name`, !bad.length, bad);
+    // line ends: each end on its node's box (an actor's: its figure's 24 px column), within 1 px
+    const offs = [];
+    all('.edge-g').forEach(g => { const v = g.querySelector('path.edge').getAttribute('d').match(/-?\d+(\.\d+)?/g).map(Number);
+      [[g.dataset.from, v.slice(0, 2)], [g.dataset.to, v.slice(-2)]].forEach(([id, pt]) => { const n = pick(`.node[data-id="${id}"]`), b = box(n.querySelector('.n-mask'));
+        const o = n.classList.contains('actor') ? { x: b.x + (b.w - 24) / 2, y: b.y, w: 24, h: b.h } : b, d = rectOff(o, pt); if (d > 1) offs.push([g.dataset.from, g.dataset.to, id, +d.toFixed(2)]); }); });
+    check(`${tag}: each line starts and ends on its shapes' outlines`, !offs.length, offs);
+    check(`${tag}: each flow dashed with an open arrow`, all('.edge-g path.edge').every(p => p.getAttribute('stroke-dasharray') === '6 4' && /open/.test(p.getAttribute('marker-end'))));
+    check(`${tag}: names a screen reader reads`, pick('.node[data-id="order-info"]').getAttribute('aria-label') === 'Information item Order, conveyed by 4 flows'
+      && pick('.node[data-id="shopper"]').getAttribute('aria-label') === 'Actor Shopper'
+      && pick('.edge-g[data-from="shopper"] title').textContent === 'Information flow from Shopper to Storefront, conveys Order and Card details');
+    const order = all('.keys .um-key').map(k => k.dataset.node ?? 'line');
+    check(`${tag}: a key for every element and line, in reading order`, same(order, [...M.views[0].nodeIds, ...Array(8).fill('line')]), order);
+    const labs = [...new Set(all('.e-lab, .labels text').map(t => t.textContent))].sort();
+    check(`${tag}: every flow's label drawn whole: «flow» and what it conveys`, same(labs, LABELS), labs);
+    const legend = all('.m-legend b').map(b => b.textContent);
+    check(`${tag}: the legend keys the information flow`, same(legend, ['Information flow']), legend);
+    const stageBg = css(pick('.stage'), 'backgroundColor'), low = [];
+    nodes.forEach(g => g.querySelectorAll('text').forEach(t => { const c = ratio(css(t, 'fill'), stageBg); if (c < 4.5) low.push([g.dataset.id, t.textContent, c]); }));
+    const strokes = all('.node .n-body, .node .if-icon, .edge-g path.edge').map(b => ratio(css(b, 'stroke'), stageBg)).filter(c => c < 3);
+    check(`${tag}: contrast: texts 4.5:1, outlines, triangles and lines 3:1`, !low.length && !strokes.length, [low, strokes]);
+    // axe-core 4.14's rules for what is drawn as role="img", written out: svg-img-alt and role-img-alt (each has a name),
+    // nested-interactive (nothing inside one is a tab stop), and no second name inside one
+    const svg = pick('.stage svg'), imgs = all('.stage svg [role="img"]'), noAlt = [], nested = [];
+    imgs.forEach(x => { if (!(x.getAttribute('aria-label') || '').trim()) noAlt.push(x.dataset.id || x.localName);
+      x.querySelectorAll('[tabindex], a[href], button, input, select, textarea').forEach(c => { if (c.tabIndex >= 0) nested.push(`${x.dataset.id} holds ${c.getAttribute('class') || c.localName}`); }); });
+    check(`${tag}: axe, written out: the drawing a named group, its 10 nodes named images with no tab stop and no other name inside`,
+      svg.getAttribute('role') === 'group' && !!(svg.getAttribute('aria-label') || '').trim() && imgs.length === 10 && !noAlt.length && !nested.length && imgs.every(x => !x.querySelector('[aria-label]')), [imgs.length, noAlt, nested]);
+    h.destroy();
+  }
+  document.documentElement.dataset.theme = 'light'; el.style.removeProperty('--um-sans');
+
+  // ---- editing (DoD 4), each gesture's commands applied with apply(). A comment is there for the comment link
+  const BASE = structuredClone(MODEL); BASE.nodes.push({ id: 'n1', type: 'uml.Comment', label: 'card data never stored' }); BASE.views[0].nodeIds.push('n1');
+  let h = mount(BASE, { editable: true });
+  const panel = s => pick('.um-editor ' + s);
+  const PAL = ['Class', 'Interface', 'Component', 'Actor', 'Information item', 'Comment'];
+  check('the palette: its six elements; the lines listed', same(all('.um-editor .um-pal button').map(b => b.textContent), PAL)
+    && /Information flow, Comment link/.test(panel('.um-pal .um-note').textContent), panel('.um-pal').textContent);
+  key('n'); pick('.um-rename').value = 'Ledger'; key('Enter', {}, pick('.um-rename'));
+  const m1 = gives('N adds a class, named, shown in the view', [{ op: 'add', element: { id: 'class1', type: 'uml.Class', label: 'Ledger' }, view: V }], m => m.views[0].nodeIds.includes('class1'), BASE);
+  ['Interface', 'Component', 'Actor', 'InformationItem', 'Comment'].forEach((t, i) => {
+    all('.um-editor .um-pal button')[i + 1].click(); pick('.um-rename').value = 'x' + i; key('Enter', {}, pick('.um-rename'));
+    const c = last().commands[0];
+    check(`the palette's ${PAL[i + 1]} button adds a uml.${t}`, last().commands.length === 1 && c.op === 'add' && c.element.type === 'uml.' + t && c.element.label === 'x' + i && !errors(apply(BASE, last().commands)).length, last()); });
+  h.update(m1);
+  check('after update() the class is drawn with its name', pick('.node[data-id="class1"] .c-name').textContent === 'Ledger');
+  click('.node[data-id="order-info"] .c-name'); key('F2');
+  check('F2 on an information item: a field holding its name', pick('.um-rename') && pick('.um-rename').value === 'Order');
+  pick('.um-rename').value = 'Order details'; key('Enter', {}, pick('.um-rename'));
+  const m2 = gives('F2: set its label', [{ op: 'set', id: 'order-info', path: 'label', value: 'Order details' }], m => m.nodes.find(n => n.id === 'order-info').label === 'Order details', m1);
+  h.update(m2);
+  check('after update() every flow conveying it reads the new name', pick('.edge-g[data-from="shopper"] title').textContent === 'Information flow from Shopper to Storefront, conveys Order details and Card details');
+  // a flow by L, a name, Enter, the line picker, then the picker of what it conveys
+  click('.node[data-id="class1"] .c-name'); key('l'); for (const c of 'warehouse') key(c); key('Enter');
+  const items = all('.um-pick button').map(b => b.textContent);
+  check('L, a name and Enter open the picker with the two lines', same(items, ['Information flow', 'Comment link']), items);
+  all('.um-pick button')[0].click(); await tick();
+  const what = all('.um-pick button').map(b => b.textContent);
+  check('then a picker of what it conveys: the items first, then the classes, interfaces and components, no actor', same(what.slice(0, 4), ['Order details', 'Card details', 'Receipt', 'Stock level']) && what.at(-1) === 'Ledger' && what.length === 10 && !what.includes('Shopper') && pick('.um-pick').getAttribute('aria-label') === 'Choose', what);
+  all('.um-pick button')[3].click();
+  const m3 = gives('picking Stock level: one add of a flow conveying it (edits.connect)', [{ op: 'add', element: { id: 'flow1', type: 'uml.InformationFlow', from: 'class1', to: 'warehouse', props: { conveyed: ['stock-info'] } }, view: V }],
+    m => m.edges.some(e => e.id === 'flow1'), m2);
+  h.update(m3);
+  check('after update() the flow is drawn: «flow» Stock level', pick('.edge-g[data-from="class1"] title').textContent === 'Information flow from Ledger to Warehouse, conveys Stock level' && all('.e-label').some(t => t.textContent === '«flow» Stock level'));
+  // a flow from an information item is refused: nothing emitted
+  const n0 = ed.length; click('.node[data-id="card-details"] .c-name'); key('l'); for (const c of 'warehouse') key(c); key('Enter');
+  all('.um-pick button').find(b => b.textContent === 'Information flow').click(); await tick();
+  check('a flow from an information item is refused, nothing emitted, its reason on the hint line', ed.length === n0 && hint() === 'An information flow joins two classes, interfaces, components or actors', [ed.slice(n0), hint()]);
+  click('.node[data-id="n1"] .c-row'); key('l'); for (const c of 'shop api') key(c); key('Enter');
+  all('.um-pick button').find(b => b.textContent === 'Comment link').click();
+  check('a comment link by L and the picker', same(last().commands, [{ op: 'add', element: { id: 'commentlink1', type: 'uml.CommentLink', from: 'n1', to: 'shop-api' }, view: V }]) && !errors(apply(m3, last().commands)).length, last());
+  // the handle, by pointer
+  click('.node[data-id="warehouse"] .c-name'); handleTo(centre('.node[data-id="email-service"] .n-mask')); press(all('.um-pick button').find(b => b.textContent === 'Information flow')); await tick();
+  press(all('.um-pick button').find(b => b.textContent === 'Receipt'));
+  gives('the handle from a component to a component, Information flow, Receipt', [{ op: 'add', element: { id: 'flow2', type: 'uml.InformationFlow', from: 'warehouse', to: 'email-service', props: { conveyed: ['receipt-info'] } }, view: V }], m => m.edges.some(e => e.id === 'flow2'), m3);
+  // F2 on a flow: its text as drawn; names typed set what it conveys, and a name before a colon its own name
+  h.select({ type: 'edge', ids: ['api-email'], view: V }); key('F2');
+  check('F2 on a flow: a field holding its text as drawn', pick('.um-rename') && pick('.um-rename').value === '«flow» Order details, Receipt', pick('.um-rename') && pick('.um-rename').value);
+  pick('.um-rename').value = 'confirm: Receipt, Stock level'; key('Enter', {}, pick('.um-rename'));
+  const m4 = gives('F2: what it conveys by name, and its name', [{ op: 'set', id: 'api-email', path: 'props.conveyed', value: ['receipt-info', 'stock-info'] }, { op: 'set', id: 'api-email', path: 'label', value: 'confirm' }],
+    m => same(m.edges.find(e => e.id === 'api-email').props.conveyed, ['receipt-info', 'stock-info']), m3);
+  h.update(m4);
+  check('after update() the flow reads its name and what it conveys', all('.e-label').some(t => t.textContent === '«flow» confirm: Receipt, Stock level'));
+  // a double-click on the selected flow's label: the same field; a name no element has is refused
+  h.select({ type: 'edge', ids: ['email-shopper'], view: V }); const lab = all('.e-lab').find(g => g.textContent === '«flow» Receipt');
+  lab.dispatchEvent(new MouseEvent('dblclick', { bubbles: true, composed: true, cancelable: true }));
+  check('a double-click on a selected flow: the field holding its text', pick('.um-rename') && pick('.um-rename').value === '«flow» Receipt');
+  const n2 = ed.length; pick('.um-rename').value = 'Receipt, Parcel'; key('Enter', {}, pick('.um-rename'));
+  check('a name no element has: refused, said on the hint line', ed.length === n2 && hint() === 'No information item or classifier is named Parcel', [ed.slice(n2), hint()]);
+  // the stereotypes field
+  h = mount(BASE, { editable: true });
+  click('.node[data-id="warehouse"] .c-name'); change(panel('[data-f="p:stereotypes"]'), 'external');
+  gives('the stereotypes field sets a list', [{ op: 'set', id: 'warehouse', path: 'props.stereotypes', value: ['external'] }], m => same(m.nodes.find(n => n.id === 'warehouse').props.stereotypes, ['external']), BASE);
+  // hide, delete
+  click('.node[data-id="stock-info"] .c-name'); key('Delete');
+  gives('Delete: hide the item from the view; the flows still name it', [{ op: 'hide', id: 'stock-info', view: V }], m => !m.views[0].nodeIds.includes('stock-info') && m.edges.find(e => e.id === 'warehouse-api').props.conveyed[0] === 'stock-info', BASE);
+  click('.node[data-id="card-details"] .c-name'); key('Delete', { shiftKey: true });
+  gives('Shift + Delete on an item: deleted, dropped from every flow that conveyed it, and the flow left conveying nothing goes too (edits.remove)', [{ op: 'delete', id: 'card-details' }, { op: 'delete', id: 'storefront-payments' }],
+    m => !m.nodes.some(n => n.id === 'card-details') && same(m.edges.find(e => e.id === 'flow-shopper-storefront').props.conveyed, ['order-info']) && m.edges.length === BASE.edges.length - 1, BASE);
+  check('…said on the hint line', hint() === 'Deleted "Card details" and the 1 flow that conveyed nothing else: Storefront → Payment provider', hint());
+  h.select({ type: 'edge', ids: ['api-email'], view: V }); key('Delete', { shiftKey: true });
+  gives('Shift + Delete on a flow: delete it', [{ op: 'delete', id: 'api-email' }], m => !m.edges.some(e => e.id === 'api-email'), BASE);
+  h.destroy();
+} catch (e) { out.fail.push('threw: ' + (e && e.stack || e)); }
+const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
+</script>
