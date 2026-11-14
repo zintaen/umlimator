@@ -19,7 +19,7 @@ def rows():
     """icons/packs.json, or under UMLIMATOR_TEST the file UMLIMATOR_PACKS names (a synthetic pack's addresses): a test's
     only, since it redirects where a pack is downloaded from (risks.md S2)."""
     alt = os.environ.get("UMLIMATOR_PACKS")
-    if alt and not os.environ.get("UMLIMATOR_TEST"):
+    if alt and os.environ.get("UMLIMATOR_TEST") != "1":
         sys.exit("UMLIMATOR_PACKS is for umlimator's tests only, and is read only with UMLIMATOR_TEST=1; unset it")
     return json.loads(Path(alt or HERE / "icons" / "packs.json").read_text(encoding="utf-8"))
 
@@ -115,29 +115,42 @@ def icon(pack, i, row=None):
     return b, white(b)
 
 
-def family(n):
-    return (n.get("type") or "").split(".")[0]
+def pick(n):
+    """A node's (family, props.icon); ("", None) where the model is malformed, which then renders as it did before."""
+    if not isinstance(n, dict):
+        return "", None
+    t, p = n.get("type"), n.get("props")
+    return t.split(".")[0] if isinstance(t, str) else "", p.get("icon") if isinstance(p, dict) else None
+
+
+_told = set()
+
+
+def tell(p, row):
+    """The one line per pack, per run, that says a pack is not fetched and how to fetch it (§4.5)."""
+    if p not in _told:
+        _told.add(p)
+        print(f"icons: the {row['vendor']} pack is not fetched, so its cards draw a glyph or their sigil; "
+              f"`umlimator.py pack fetch {p}` fetches it after showing its terms", file=sys.stderr)
 
 
 def table(models):
     """The page's pack entries (§4.5): `<pack>/<id>` -> {src, dark, name} for every node whose family has a pack row and
-    whose props.icon the fetched pack holds, and `<pack>/` -> {legal} (Google) or {} for each pack it gives. A pack not
+    whose props.icon the fetched pack holds, and `<pack>/` -> {legal} for a pack with a legal line (Google). A pack not
     fetched adds nothing and one line says how to fetch it. UMLIMATOR_NO_PACKS: nothing (renders whose output is
     committed, so a maintainer's packs never reach the repository)."""
     if os.environ.get("UMLIMATOR_NO_PACKS"):
         return {}
-    rs, out, told = rows(), {}, set()
+    rs, out = rows(), {}
     for n in (n for m in models for n in m.get("nodes", [])):
-        p, i = family(n), (n.get("props") or {}).get("icon")
+        p, i = pick(n)
         if p not in rs or not isinstance(i, str) or not i:
             continue
         if ids_of(p, rs[p]) is None:
-            if p not in told:
-                told.add(p)
-                print(f"icons: the {rs[p]['vendor']} pack is not fetched, so its cards draw a glyph and the full name; "
-                      f"`umlimator.py pack fetch {p}` fetches it after showing its terms", file=sys.stderr)
+            tell(p, rs[p])
             continue
-        out.setdefault(f"{p}/", {"legal": rs[p]["legal"]} if rs[p].get("legal") else {})
+        if rs[p].get("legal"):
+            out[f"{p}/"] = {"legal": rs[p]["legal"]}
         if got := icon(p, i, rs[p]):
             pid = rs[p].get("aliases", {}).get(i, i)
             out[f"{p}/{i}"] = {"src": "data:image/svg+xml;base64," + base64.b64encode(got[0]).decode(),
@@ -149,12 +162,13 @@ def check(model):
     """What only the cached pack knows, for `umlimator.py check` (§5.5): an id the pack lacks with the three nearest, an
     id an alias moved, and a model's iconPacks label other than the pin. Lines on stderr; nothing fails on them."""
     rs = rows()
-    for p, label in (model.get("iconPacks") or {}).items():
+    asked = model.get("iconPacks")
+    for p, label in (asked.items() if isinstance(asked, dict) else ()):
         if p in rs and label != rs[p]["label"]:
             print(f"icons: the model's icons were chosen from the {p} pack's pin {label}; this release pins {rs[p]['label']}", file=sys.stderr)
     seen = set()
     for n in model.get("nodes", []):
-        p, i = family(n), (n.get("props") or {}).get("icon")
+        p, i = pick(n)
         if p not in rs or not isinstance(i, str) or (p, i) in seen:
             continue
         seen.add((p, i))
@@ -166,7 +180,7 @@ def check(model):
             print(f"icons: {p} icon {i!r} is {to!r} in the pin {rs[p]['label']} (an alias); write {to!r}", file=sys.stderr)
         elif i not in ids:
             near = difflib.get_close_matches(i, list(ids), 3, 0.4)
-            print(f"icons: the {p} pack has no icon {i!r} ({n['id']}); nearest: {', '.join(near) or 'none'}", file=sys.stderr)
+            print(f"icons: the {p} pack has no icon {i!r} ({n.get('id')}); nearest: {', '.join(near) or 'none'}", file=sys.stderr)
 
 
 def terms(pack, row):
@@ -183,6 +197,8 @@ def download(url, size, to):
             if got > size:
                 raise OSError(f"larger than the {size} bytes this release pinned")
             f.write(chunk)
+        if got != size:  # a network failure, not a vendor's changed file
+            raise OSError(f"cut short at {got} of the {size} bytes this release pinned")
 
 
 def fetch(pack, accept=None):
@@ -199,7 +215,7 @@ def fetch(pack, accept=None):
         sys.exit(f"pack fetch: the {pack} terms in packs.json do not match their pinned sha256")
     if not all(z.get("sha256") and z.get("bytes") for z in row["zips"]) or (t.get("member") and not t.get("memberSha256")):
         sys.exit(f"pack fetch: the {row['vendor']} pack is not pinned in this release (no size or sha256 yet)")
-    test = os.environ.get("UMLIMATOR_TEST") and os.environ.get("UMLIMATOR_PACKS")
+    test = os.environ.get("UMLIMATOR_TEST") == "1" and os.environ.get("UMLIMATOR_PACKS")
     if bad := [z["url"] for z in row["zips"] if not z["url"].startswith("https://") and not test]:
         sys.exit(f"pack fetch: {bad[0]} is not an https address")
     if zips(pack, row):
@@ -232,8 +248,8 @@ def fetch(pack, accept=None):
                 sys.exit(f"pack fetch: cannot download {z['url']} ({e}); nothing was kept")
             if sha(tmp.read_bytes()) != z["sha256"]:
                 sys.exit(f"pack fetch: {row['vendor']}'s file at {z['url']} is not the one this release pinned"
-                         f"{' (Google changes these files without a version)' if pack == 'gcp' else ''}; the copy you "
-                         "already have, if any, is still used. A later release pins the new one. Nothing was kept")
+                         f"{' (Google changes these files without a version)' if pack == 'gcp' else ''}. "
+                         "A later release pins the new one. Nothing was kept")
         pdf = None
         if t.get("member"):
             try:
@@ -256,7 +272,7 @@ def fetch(pack, accept=None):
     ids, dup = index(row, zips(pack, row))
     if dup:
         differ = sorted(i for i, ns in dup.items() if any(sha(ids[i][0].read(ids[i][1])) != sha(ids[i][0].read(n)) for n in ns))
-        print(f"{len(dup)} ids are filed more than once; the first in the zip is used"
+        print(f"{len(dup)} ids are filed more than once, the first in the zip used: {', '.join(sorted(dup))}"
               + (f"; these differ, an alias row picks one at the next pin: {', '.join(differ)}" if differ else ""))
     print(f"fetched the {row['vendor']} pack {row['label']}: {len(ids)} icons in {d}"
           + (f"; Microsoft's terms: {d / t['member']}" if pdf else ""))
@@ -266,7 +282,7 @@ def listing():
     for p, row in rows().items():
         a = accepted(p, row)
         state = "fetched" if zips(p, row) else "not fetched"
-        print(f"{p}  {row['vendor']}  pin {row['label']}  {state}, terms {'accepted (' + a['via'] + ')' if a else 'not accepted'}")
+        print(f"{p}  {row['vendor']}  pin {row['label']}  {state}, terms {f"accepted ({a.get('via') or 'how not recorded'})" if a else 'not accepted'}")
     print(NOT_AFFILIATED)
 
 

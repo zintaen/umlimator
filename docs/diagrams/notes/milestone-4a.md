@@ -247,6 +247,9 @@ As built (4a.3, 14 Nov 2026). The words, for the maintainer to approve:
   downloads (`pack` and `render: "cache"`), which would otherwise fail on every run. `umlimator.py` gains `packs()`, the
   lazy import of `umlimator_packs.py` beside it (as `cmd_import` imports `umlimator_import`), used by the four places this
   row names.
+  The messages name the pack by its row's `vendor`: "Google Cloud's file at …" (§4.2) and "download the Microsoft Azure
+  icons (V25)" (§4.3). The one line per pack that says how to fetch it (§4.5) is shared by the pack entries and
+  `icon_bytes`' three Azure rows, so a render prints it once per pack.
 
 ### 4.2 Fetching (4a.3, S4)
 
@@ -258,8 +261,10 @@ entry, as `umlimator_import.py` is for `import`):
    accepted before.
 3. Each zip is downloaded over HTTPS from its pinned address into a temporary file in the cache folder, reading no more
    than its pinned `bytes`; its SHA-256 is checked before anything reads it. A mismatch keeps nothing and says: "Google's
-   file at <url> is not the one this release pinned (Google changes these files without a version); the copy you already
-   have, if any, is still used. A later release pins the new one."
+   file at <url> is not the one this release pinned (Google changes these files without a version). A later release pins
+   the new one." (A copy that matches the pin is "fetched already" before any download, and a copy of an older pin is in
+   a folder a render never reads, so no copy is "still used".) A download shorter than the pinned `bytes` is a failed
+   download ("cannot download"), not a changed file.
 4. Azure: the zip's `Microsoft_Terms_of_Use.pdf` is hashed in memory; a hash other than `memberSha256` keeps nothing
    and says Microsoft's terms changed, so the pack waits for a re-pin.
 5. Kept as `<icon cache>/packs/<pack>/<label>/<n>.zip`, renamed into place (`replacing`, as `icon_bytes` does), with

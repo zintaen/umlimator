@@ -6,7 +6,7 @@ contacts a vendor or holds a vendor's icon.
 
   python3 tests/packs.py
 """
-import functools, hashlib, http.server, io, json, os, subprocess, sys, tempfile, threading, zipfile
+import atexit, functools, hashlib, http.server, io, json, os, shutil, subprocess, sys, tempfile, threading, zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -36,6 +36,7 @@ sha = lambda b: hashlib.sha256(b).hexdigest()
 REAL = json.loads((ROOT / "icons" / "packs.json").read_text())
 
 t = Path(tempfile.mkdtemp(prefix="umlimator-packs-"))
+atexit.register(shutil.rmtree, t, True)
 served, log = t / "served", []
 served.mkdir()
 files = {
@@ -44,6 +45,7 @@ files = {
     "azure.zip": zipped({"Azure_Public_Service_Icons/Icons/devops/10261-icon-service-Azure-DevOps.svg": svg("#0078d4"),
                          "Azure_Public_Service_Icons/Icons/other/10262-icon-service-Azure-DevOps.svg": svg("#005ba1"),
                          "Azure_Public_Service_Icons/Icons/web/10001-icon-service-Test-Service.svg": svg("#0078d4"),
+                         "Azure_Public_Service_Icons/Icons/web2/10001-icon-service-Test-Service.svg": svg("#0078d4"),
                          "../Icons/x/1-icon-service-Escape.svg": svg("#0078d4"),
                          "Azure_Public_Service_Icons/Microsoft_Terms_of_Use.pdf": b"%PDF-1.4 " + MARK.encode()}),
 }
@@ -135,6 +137,9 @@ d = setup("refuse")
 r = subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "pack", "list"], capture_output=True, text=True,
                    env={**env(d), "UMLIMATOR_TEST": ""})
 ok("test-only#1 · UMLIMATOR_PACKS without UMLIMATOR_TEST is refused", r.returncode and "UMLIMATOR_TEST=1" in r.stderr, r.stderr)
+r = subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "pack", "list"], capture_output=True, text=True,
+                   env={**env(d), "UMLIMATOR_TEST": "0"})
+ok("test-only#2 · UMLIMATOR_TEST other than 1 does not unlock UMLIMATOR_PACKS", r.returncode and "UMLIMATOR_TEST=1" in r.stderr, r.stderr)
 r = cli(d, "pack", "fetch", "gcp", "--accept-terms", "gcp@test-1", UMLIMATOR_OFFLINE="1")
 ok("offline#1 · UMLIMATOR_OFFLINE refuses, with no request", r.returncode and "UMLIMATOR_OFFLINE" in r.stderr and not log and not kept(d), (r.stderr, log))
 r = cli(d, "pack", "fetch", "aws")
@@ -166,6 +171,10 @@ d = setup("too-big", gcp__zips__0__bytes=len(files["core.zip"]) - 1)
 r = cli(d, "pack", "fetch", "gcp", "--accept-terms", "gcp@test-1")
 ok("size#1 · a zip larger than its pinned size stops the download and keeps nothing",
    r.returncode and "larger than the" in r.stderr and log == ["/core.zip"] and not kept(d), (r.stderr, log, kept(d)))
+d = setup("short", gcp__zips__0__bytes=len(files["core.zip"]) + 1)
+r = cli(d, "pack", "fetch", "gcp", "--accept-terms", "gcp@test-1")
+ok("size#2 · a download shorter than its pinned size is a failed download, not a changed file, and keeps nothing",
+   r.returncode and "cannot download" in r.stderr and "cut short" in r.stderr and "not the one" not in r.stderr and not kept(d), (r.stderr, kept(d)))
 d = setup("pdf", azure__terms__memberSha256="0" * 64)
 r = cli(d, "pack", "fetch", "azure", "--accept-terms", "azure@V-test")
 ok("pdf#1 · an Azure zip whose terms PDF differs from its pin keeps nothing", r.returncode and "Microsoft's terms changed" in r.stderr and not kept(d), (r.stderr, kept(d)))
@@ -183,8 +192,9 @@ acc = json.loads((d / "cache/packs/azure/V-test/accepted.json").read_text()) if 
 ok("terminal#1 · yes typed at a terminal downloads the pack, keeps Microsoft's PDF beside it and records via terminal",
    r.returncode == 0 and AT in r.stdout and acc.get("via") == "terminal" and (d / "cache/packs/azure/V-test/Microsoft_Terms_of_Use.pdf").is_file()
    and "Microsoft_Terms_of_Use.pdf" in r.stdout, (r.stdout, r.stderr))
-ok("dup#1 · an id filed twice is listed once, the first in the zip used, and one whose files differ is named",
-   "1 ids are filed more than once" in r.stdout and "Azure-DevOps" in r.stdout, r.stdout)
+ok("dup#1 · each id filed twice is listed once, the first in the zip used, and one whose files differ is named",
+   "2 ids are filed more than once, the first in the zip used: Azure-DevOps, Test-Service;" in r.stdout
+   and "these differ, an alias row picks one at the next pin: Azure-DevOps\n" in r.stdout, r.stdout)
 ok("zip-slip#1 · a member named outside its folder is read in memory, never written", not list(t.rglob("Escape*")) and not (t / "Icons").exists())
 r = cli(d, "pack", "fetch", "gcp")
 ok("again#1 · a pack fetched and accepted is not asked or downloaded again", r.returncode == 0 and "fetched already" in r.stdout and not log, (r.stdout, log))
@@ -199,6 +209,10 @@ ok("repin#1 · a new label asks again: the terms shown, nothing requested withou
 r = cli(d, "pack", "fetch", "gcp")
 ok("repin#2 · changed terms under the same label ask again", r.returncode and "New." in r.stdout and not log, (r.stdout, log))
 (d / "packs.json").write_text(json.dumps(rows()))
+a = d / "cache/packs/gcp/test-1/accepted.json"
+a.write_text(json.dumps({**json.loads(a.read_text()), "via": None}))
+r = cli(d, "pack", "list")
+ok("list#2 · a recorded yes with no via is listed, not a crash", r.returncode == 0 and "gcp  Google Cloud  pin test-1  fetched, terms accepted (how not recorded)" in r.stdout, (r.stdout, r.stderr))
 
 # ---------- what a render reads: the cache only, never a socket ----------
 PROBE = r"""
@@ -225,8 +239,8 @@ model = {"schemaVersion": 2, "iconPacks": {"gcp": "test-0"}, "nodes": [
     "edges": [], "views": [{"id": "v", "diagram": "gcp", "nodeIds": ["a", "b", "c", "w", "x"]}]}
 
 
-def probe(d, **more):
-    r = subprocess.run([sys.executable, "-I", "-c", PROBE, str(ROOT / "umlimator.py"), json.dumps(model), str(d / "m.json")],
+def probe(d, m=model, **more):
+    r = subprocess.run([sys.executable, "-I", "-c", PROBE, str(ROOT / "umlimator.py"), json.dumps(m), str(d / "m.json")],
                        capture_output=True, text=True, env={**env(d, **more), "UMLIMATOR_OFFLINE": ""}, timeout=120)
     out = json.loads(r.stdout) if r.returncode == 0 else {"icons": {}, "opened": ["(failed)"]}
     return out["icons"], out["opened"], r.stderr
@@ -239,8 +253,8 @@ ok("table#1 · a fetched pack's icons reach the page keyed <pack>/<id>, as data 
    and g("gcp/Test-Run").get("dark") is False and g("azure/Test-Service").get("name") == "Test Service", sorted(icons))
 ok("table#2 · an alias reads the pinned id; a names row gives the full name; a white icon is marked dark",
    g("gcp/Old-Run").get("src") == g("gcp/Test-Run").get("src") and g("gcp/Pub-Sub").get("name") == "Pub/Sub" and g("gcp/White-Thing").get("dark") is True, sorted(icons))
-ok("table#3 · the Google pack gives its legal line; the Azure pack an empty entry; an id the pack lacks none",
-   icons.get("gcp/") == {"legal": REAL["gcp"]["legal"]} and icons.get("azure/") == {} and "gcp/Test-Rn" not in icons, sorted(icons))
+ok("table#3 · the Google pack gives its legal line; the Azure pack, with none, no `azure/` entry; an id the pack lacks none",
+   icons.get("gcp/") == {"legal": REAL["gcp"]["legal"]} and "azure/" not in icons and "gcp/Test-Rn" not in icons, sorted(icons))
 ok("logos#1 · the manifest's Azure rows are read from the fetched Azure pack", icons.get("azuredevops", {}).get("src", "").startswith("data:image/svg+xml"), sorted(icons))
 ok("socket#1 · a render with packs fetched opens no socket, entra's missing logo included", not opened and "entra.svg: used from" in err, (opened, err))
 ok("check#1 · check names an id the pack lacks with the nearest ids, an id an alias moved, and a label other than the pin",
@@ -248,17 +262,34 @@ ok("check#1 · check names an id the pack lacks with the nearest ids, an id an a
    and "pin test-0; this release pins test-1" in err, err)
 icons, opened, err = probe(d, UMLIMATOR_NO_PACKS="1")
 ok("no-packs#1 · UMLIMATOR_NO_PACKS: no pack entry with a pack cached, and the Azure logos keep their sigil",
-   not [k for k in icons if "/" in k] and "azuredevops" not in icons and not opened, (sorted(icons), opened))
+   not [k for k in icons if "/" in k] and "azuredevops" not in icons and not opened
+   and "turned off by UMLIMATOR_NO_PACKS" in err and "not fetched" not in err, (sorted(icons), opened, err))
 e = setup("empty")
 icons, opened, err = probe(e)
 ok("glyphs#1 · with no pack fetched, the page has no pack entry and one line per pack says how to fetch it",
-   not [k for k in icons if "/" in k] and err.count("umlimator.py pack fetch gcp") == 1 and "umlimator.py pack fetch azure" in err, (sorted(icons), err))
+   not [k for k in icons if "/" in k] and err.count("umlimator.py pack fetch gcp") == 1 and err.count("umlimator.py pack fetch azure") == 1, (sorted(icons), err))
 ok("socket#2 · a render with no pack fetched opens no socket: the Azure logos and entra are never downloaded",
-   not opened and "azuredevops" not in icons and "entra" not in icons and "read from the azure icon pack only" in err, (opened, err))
+   not opened and "azuredevops" not in icons and "entra" not in icons and "entra.svg: used from" in err, (opened, err))
 (e / "cache").mkdir(exist_ok=True)
 (e / "cache" / "entra.svg").write_bytes(b"<svg/>")  # not entra's pinned file: kept as the sigil, not fetched again
 icons, opened, err = probe(e)
 ok("socket#3 · a cached entra that does not match its pin is not fetched again by a render", not opened and "entra" not in icons, (opened, err))
+
+hostile = {"nodes": [{"id": "p", "type": "gcp.Product", "props": ["x"]}, {"id": "q", "type": 5, "props": {"icon": "Test-Run"}},
+                     {"id": "s", "type": "gcp.Product", "props": "x"}], "iconPacks": ["gcp"], "edges": [], "views": []}
+icons, opened, err = probe(d, hostile)
+ok("hostile#1 · a node whose props or type is malformed renders and checks with no pack entry, as before 4a.3",
+   opened == [] and "Traceback" not in err and not [k for k in icons if "/" in k], (opened, err))
+(d / "packs.json").write_text(json.dumps(rows(gcp__terms__text=GT + " New.", gcp__terms__sha256=sha((GT + " New.").encode()))))
+icons, opened, err = probe(d)
+ok("render#1 · terms changed since the yes: a render draws none of that pack's icons and says how to fetch it",
+   not [k for k in icons if k.startswith("gcp/")] and "azure/Test-Service" in icons and "pack fetch gcp" in err, (sorted(icons), err))
+(d / "packs.json").write_text(json.dumps(rows()))
+z = d / "cache/packs/gcp/test-1/0.zip"
+b = bytearray(z.read_bytes()); b[len(b) // 2] ^= 1; z.write_bytes(bytes(b))
+icons, opened, err = probe(d)
+ok("render#2 · a cached zip changed by one byte is not read: no icon of that pack on the page",
+   not [k for k in icons if k.startswith("gcp/")] and "azure/Test-Service" in icons and "pack fetch gcp" in err, (sorted(icons), err))
 
 srv.shutdown()
 print("FAILED" if failed else "all pack checks passed")

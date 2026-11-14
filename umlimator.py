@@ -168,10 +168,16 @@ def icon_bytes(e):
     if local.is_file():
         return local.read_bytes()
     if e.get("pack"):  # Microsoft's icons come with the Azure pack, fetched after its terms, never by a render (milestone 4a, decision 7)
-        got = None if os.environ.get("UMLIMATOR_NO_PACKS") else packs().icon(e["pack"], e["id"])
-        if not got:
-            print(f"icon {e['file']}: read from the {e['pack']} icon pack only, which is not fetched; the card keeps its kind sigil "
-                  f"(`umlimator.py pack fetch {e['pack']}` fetches it after showing its terms)", file=sys.stderr)
+        if os.environ.get("UMLIMATOR_NO_PACKS"):
+            print(f"icon {e['file']}: read from the {e['pack']} icon pack only, turned off by UMLIMATOR_NO_PACKS; the card keeps its kind sigil", file=sys.stderr)
+            return None
+        P = packs()
+        row = P.rows()[e["pack"]]
+        got = P.icon(e["pack"], e["id"], row)
+        if not got and P.ids_of(e["pack"], row) is None:
+            P.tell(e["pack"], row)  # one line per pack, shared with the pack entries' (§4.5)
+        elif not got:
+            print(f"icon {e['file']}: the {e['pack']} pack {row['label']} has no icon {e['id']!r}; the card keeps its kind sigil", file=sys.stderr)
         return got and got[0]
     cached = CACHE / e["file"]
     if cached.is_file():
