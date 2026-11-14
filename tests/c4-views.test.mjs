@@ -50,10 +50,9 @@ test('the definitions: c4.dynamic and c4.deployment, each its own; the static ty
   assert.deepEqual(DEP.props['c4.DeploymentNode'].map(f => f.key), ['description', 'technology']);
   assert.deepEqual(DEP.props['c4.ContainerInstance'].map(f => f.key), ['container']);
   assert.deepEqual(Object.keys(DEP.edits), ['add', 'key']);
-  for (const T of [DYN, DEP]) {
-    for (const k of ['layout', 'validate', 'describe', 'boxes', 'owners', 'word', 'rows', 'text']) assert.equal(typeof T[k], 'function', `${T.name} ${k}`);
-    assert.deepEqual(Object.keys(T.rules), [...Object.keys(STATIC.rules), 'c4-steps']);
-  }
+  for (const T of [DYN, DEP]) for (const k of ['layout', 'validate', 'describe', 'boxes', 'owners', 'word', 'rows', 'text']) assert.equal(typeof T[k], 'function', `${T.name} ${k}`);
+  assert.deepEqual(Object.keys(DYN.rules), [...Object.keys(STATIC.rules), 'c4-steps']);
+  assert.deepEqual(Object.keys(DEP.rules), [...Object.keys(STATIC.rules), 'c4-steps', 'c4-box-line']);
   assert.deepEqual(DEP.refs, { 'c4.ContainerInstance': { 'props.container': 'cascade' } });
   assert.deepEqual(STATIC.refs, undefined, 'the static type is as M2.6 left it');
 });
@@ -84,14 +83,14 @@ test('the dynamic view (§7.5.2): each step numbered by its place, "k · descrip
   assert.ok(!g.edges.some(e => e.implied), 'only steps are drawn');
   assert.equal(g.byId['c4-shopper'].sh, 'person'); assert.equal(g.byId['c4-payments'].ext, true);
   assert.ok(g.byId['c4-shopper'].col < g.byId['c4-mail'].col, 'a step into a person ranked as from them (M2.6\'s rankFlip)');
-  // a step whose end is not shown is not drawn, and the others keep their numbers; a step listed twice is drawn once
+  // a step whose end is not shown is not drawn; a step listed twice is drawn once; the numbers are those drawn, 1, 2, 3 (S13)
   const m = structuredClone(C4); m.views[V(DV)].nodeIds = m.views[V(DV)].nodeIds.filter(id => id !== 'c4-payments'); m.views[V(DV)].edges.push('c4-api-db');
-  assert.deepEqual(layout(m, DV).edges.map(e => e.step), [1, 2, 4, 5, 6, 7, 8, 9, 10]);
+  assert.deepEqual(layout(m, DV).edges.map(e => e.step), [1, 2, 3, 4, 5, 6, 7, 8, 9]);
   // listing its subject draws the boundary; a step to the boundary is not drawn
   const b = structuredClone(C4); b.views[V(DV)].nodeIds.unshift('c4-bookshop'); b.views[V(DV)].edges.unshift('c4-shopper-bookshop');
   const h = layout(b, DV);
   assert.deepEqual(h.families.map(f => f.title), ['Bookshop [Software System]']);
-  assert.equal(h.edges.length, 10); assert.equal(h.edges[0].step, 2);
+  assert.equal(h.edges.length, 10); assert.equal(h.edges[0].step, 1);
   // a view with no steps draws no line
   const none = structuredClone(C4); delete none.views[V(DV)].edges;
   assert.deepEqual(layout(none, DV).edges, []);
@@ -154,6 +153,13 @@ test('steps reordered: Alt + Down, Up, Right and Left on a selected step move it
   assert.deepEqual(DYN.edits.moveTo(n, n.views[V(DV)], 'c4-api-payments', { by: [0, 1] }), [{ op: 'move', id: 'c4-api-payments', view: DV, index: 4 }]);
   assert.deepEqual(apply(n, DYN.edits.moveTo(n, n.views[V(DV)], 'c4-api-payments', { by: [0, 1] })).views[V(DV)].edges.slice(2, 6), ['nl', 'c4-api-db', 'c4-api-payments', 'c4-api-queue']);
   assert.deepEqual(layout(n, DV).edges.filter(e => e.type === 'uml.CommentLink').map(e => [e.id, e.label]), [['nl', undefined]]);
+  // numbers are derived among the steps drawn (S13): a step listed twice or not drawn takes no number and no place
+  const g = structuredClone(C4); g.views[V(DV)].edges = ['c4-shopper-storefront', 'c4-storefront-api', 'c4-shopper-storefront', 'c4-worker-mail', 'c4-api-db'];
+  g.views[V(DV)].nodeIds = g.views[V(DV)].nodeIds.filter(id => id !== 'c4-mail');
+  assert.deepEqual(layout(g, DV).edges.map(e => [e.id, e.step]), [['c4-shopper-storefront', 1], ['c4-storefront-api', 2], ['c4-api-db', 3]]);
+  assert.equal(DYN.text(g, g.views[V(DV)], 'c4-api-db'), '3 · Reads and writes books, baskets and orders in [SQL]');
+  assert.deepEqual(DYN.edits.moveTo(g, g.views[V(DV)], 'c4-api-db', { by: [0, -1] }), [{ op: 'move', id: 'c4-api-db', view: DV, index: 1 }]);
+  assert.equal(DYN.edits.moveTo(g, g.views[V(DV)], 'c4-worker-mail', { by: [0, -1] }), null, 'not drawn: no step to move');
 });
 
 test('connect on a dynamic view: a relationship the model has between the two, not yet a step, is added as the last step; else the canvas\'s add (a new relationship, listed last); a comment link the canvas\'s', () => {
@@ -202,6 +208,7 @@ const BREAKS = {
   'c4-subject': [m => { m.views[V(PV)].subject = 'c4-api'; return ['c4-api']; }, 'error'],
   'c4-label': [m => { delete m.edges.find(e => e.id === 'c4-api-1-db-1').label; return ['c4-api-1-db-1', 'c4-api-1', 'c4-db-1']; }, 'warning'],
   'c4-title': [m => { delete m.views[V(PV)].title; return []; }, 'warning'],
+  'c4-box-line': [m => { m.edges.push(Rel('sd', 'c4-storefront-1', 'c4-docker', 'Calls')); return ['sd', 'c4-docker']; }, 'warning'],
 };
 test('validators: 23-c4.json breaks no rule in its two views; each rule fails on a model that breaks it, naming its rule and its elements, at its level', () => {
   assert.deepEqual(ours(C4), []);
@@ -231,6 +238,16 @@ test('validators: 23-c4.json breaks no rule in its two views; each rule fails on
   assert.deepEqual(msg(m => { m.views[V(PV)].subject = 'c4-api'; }), [`error ${p}.subject c4-subject: its subject "Shop API" is a container: a deployment view is of a software system or of all`]);
   // the model's rules hold in these views too, said once
   assert.deepEqual(msg(m => { m.nodes.find(n => n.id === 'c4-db-1').props.container = 'c4-catalogue'; }).map(x => x.split(' c4-')[1].split(':')[0]), ['instance']);
+  // c4-steps: a step written in the view that is no relationship; a view listing no step
+  assert.deepEqual(msg(m => m.views[V(DV)].edges.push({})), [`error ${d}.edges[10] c4-steps: step null is written in the view and is no relationship: a step names a relationship of the model`]);
+  assert.deepEqual(msg(m => { delete m.views[V(DV)].edges; }), [`warning ${d}.edges c4-steps: view "${DV}" lists no step: a dynamic view draws its steps alone`]);
+  // c4-box-line: an instance hidden while its node still holds something shown: its relationships are not drawn, and said so;
+  // with the node holding nothing shown they are lifted onto it (no warning)
+  const hide = ids => m => { m.views[V(PV)].nodeIds = m.views[V(PV)].nodeIds.filter(id => !ids.includes(id)); };
+  assert.deepEqual(msg(hide(['c4-db-1'])), [
+    `warning edges[${C4.edges.findIndex(e => e.id === 'c4-api-1-db-1')}] c4-box-line: c4-api-1-db-1, from "Shop API" to "Database", is not drawn: the view draws "PostgreSQL" as a box, which no line ends on`,
+    `warning edges[${C4.edges.findIndex(e => e.id === 'c4-worker-1-db-1')}] c4-box-line: c4-worker-1-db-1, from "Order worker" to "Database", is not drawn: the view draws "PostgreSQL" as a box, which no line ends on`]);
+  assert.deepEqual(msg(hide(['c4-db-1', 'c4-queue-1'])), []);
   // the dynamic view's own c4-label, c4-description and c4-technology, as on a static view
   assert.deepEqual(msg(m => { delete m.edges.find(e => e.id === 'c4-api-queue').label; }).map(x => x.split(' ').slice(0, 3).join(' ')), ['warning edges[11].label c4-label:']);
 });
@@ -292,8 +309,20 @@ test('the deployment view\'s hooks: the palette\'s instance picks its container 
   assert.deepEqual(t.then(4), [{ op: 'set', id: 'c4-db-1', path: 'props.container', value: 'c4-queue' }]); assert.deepEqual(t.then(3), []);
   assert.equal(DEP.edits.key(C4, v, ['c4-docker'], 'T'), null); assert.equal(DEP.edits.key(C4, v, ['c4-docker'], 'D'), null);
   assert.deepEqual(DEP.owners(C4, C4.nodes.find(n => n.id === 'c4-api-1')).map(o => o.id), ['c4-device', 'c4-browser', 'c4-web-host', 'c4-docker', 'c4-db-host', 'c4-postgres']);
-  assert.deepEqual(DEP.owners(C4, C4.nodes.find(n => n.id === 'c4-docker')), DEP.owners(C4, C4.nodes.find(n => n.id === 'c4-api-1')));
+  // a deployment node: not itself nor a node inside it
+  assert.deepEqual(DEP.owners(C4, C4.nodes.find(n => n.id === 'c4-docker')).map(o => o.id), ['c4-device', 'c4-browser', 'c4-web-host', 'c4-db-host', 'c4-postgres']);
+  assert.deepEqual(DEP.owners(C4, C4.nodes.find(n => n.id === 'c4-web-host')).map(o => o.id), ['c4-device', 'c4-browser', 'c4-db-host', 'c4-postgres']);
+  // the instance's id is free of every id in the model, a relationship's too
+  const taken = structuredClone(C4); taken.edges.push(Rel('c4-api-instance', 'c4-api', 'c4-db', 'Reads'));
+  const ops = DEP.edits.add(taken, taken.views[V(PV)], { type: 'c4.ContainerInstance' }, '').then(1);
+  assert.equal(ops[0].element.id, 'c4-api-instance-2'); assert.ok(apply(taken, ops).nodes.some(x => x.id === 'c4-api-instance-2'));
   assert.deepEqual(DEP.owners(C4, C4.nodes.find(n => n.id === 'c4-api')), STATIC.owners(C4, C4.nodes.find(n => n.id === 'c4-api')));
+  // the dynamic view: add at its subject's level (a container owned by the software system; a component, as on a container view, the canvas's own)
+  const dv = C4.views[V(DV)], add = DYN.edits.add(C4, dv, { type: 'c4.Container' }, 'Search');
+  assert.deepEqual(add, [{ op: 'add', element: { id: 'container1', type: 'c4.Container', label: 'Search', parent: 'c4-bookshop' }, view: DV }]);
+  assert.deepEqual(ours(apply(C4, add)).filter(p => p.level === 'error'), []);
+  assert.equal(DYN.edits.add(C4, dv, { type: 'c4.Component' }, 'X'), null); assert.equal(DYN.edits.add(C4, { ...dv, subject: undefined }, { type: 'c4.Container' }, 'X'), null);
+  assert.equal(DYN.edits.add(C4, { ...dv, subject: 'c4-api' }, { type: 'c4.Component' }, 'X')[0].element.parent, 'c4-api');
   // the dynamic view: D and T as on a static view
   assert.deepEqual(DYN.edits.key(C4, C4.views[V(DV)], ['c4-worker'], 'T').pick, ['Person', 'Software system', 'Container', 'Component']);
 });

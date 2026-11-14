@@ -120,6 +120,9 @@ try {
   gives('…Enter: its description set, the technology left out (edits.rename)', [{ op: 'set', id: 'c4-api-payments', path: 'label', value: 'Charges the card with' }], m => m.edges.find(e => e.id === 'c4-api-payments').label === 'Charges the card with', LESS);
   h.select({ type: 'edge', ids: ['c4-api-payments'], view: DV }); key('Delete');
   gives('Delete on a step: out of the view, the model keeps it', [{ op: 'hide', id: 'c4-api-payments', view: DV }], m => !m.views[VI(DV)].edges.includes('c4-api-payments') && m.edges.some(e => e.id === 'c4-api-payments'), LESS);
+  all('.um-editor .um-pal button')[2].click(); pick('.um-rename').value = 'Search'; key('Enter', {}, pick('.um-rename'));
+  gives('the palette\'s Container on the dynamic view: owned by its subject, at its level (edits.add)', [{ op: 'add', element: { id: 'container1', type: 'c4.Container', label: 'Search', parent: 'c4-bookshop' }, view: DV }],
+    m => m.views[VI(DV)].nodeIds.includes('container1'), LESS);
   h.destroy();
 
   // ---- the deployment view (DoD 4)
@@ -154,6 +157,8 @@ try {
   gives('Owner: reparent the instance (it leaves Docker Compose for the web server)', [{ op: 'reparent', id: 'c4-api-1', parent: 'c4-web-host' }], m => m.nodes.find(n => n.id === 'c4-api-1').parent === 'c4-web-host', m2);
   click('.family[data-family="c4-web-host"] .family-title');
   check('a click on a deployment node\'s title selects its box', same(h.selection && [h.selection.type, h.selection.id], ['container', 'c4-web-host']), h.selection);
+  const nodeOpts = [...panel('[data-f="owner"]').options].map(o => o.textContent);
+  check('the Owner field of a deployment node: none and every deployment node but itself and the nodes inside it', same(nodeOpts, ['none', 'User\'s device', 'Web browser', 'Database server', 'PostgreSQL']), nodeOpts);
   change(panel('[data-f="p:technology"]'), 'Debian 13');
   gives('a deployment node\'s technology field', [{ op: 'set', id: 'c4-web-host', path: 'props.technology', value: 'Debian 13' }], m => m.nodes.find(n => n.id === 'c4-web-host').props.technology === 'Debian 13', m2);
   change(panel('[data-f="p:description"]'), 'The web tier.');

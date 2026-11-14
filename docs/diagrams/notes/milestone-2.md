@@ -629,7 +629,11 @@ standing approval (14 Nov 2026), the note's recommended direction kept:
   on a line laid out down; the deployment view 1 crossing each way: pinned in `tests/c4-views.test.mjs`.
 - **Only steps are drawn on a dynamic view.** No line is implied (§5.2 is the static views'); a step whose end is not shown,
   or is drawn as the subject's boundary, is not drawn, and `c4-steps` says which. `c4-steps` is also an error for a step
-  written in the view (an inline relationship) and for a relationship listed twice (S13's "each once").
+  written in the view (an inline relationship, or an object that is no relationship) and for a relationship listed twice
+  (S13's "each once"), and a warning for a view that lists no step. The numbers are derived among the steps drawn (1, 2,
+  3, S13): a step listed twice or not drawn takes no number, and Alt + arrows move a step past the steps drawn.
+- **Add on a dynamic view** is the static view's at the subject's level: a container added to a dynamic view of a software
+  system, or a component to one of a container, is owned by the subject.
 - **A dynamic view with no subject** is checked at the landscape view's level (people and software systems), as the context
   view is without its `c4-subject` warning, which asks for a subject the dynamic view may leave out (§5.1).
 - **A step by connect.** L or the handle between two shown elements a relationship already joins adds that relationship as
@@ -642,12 +646,15 @@ standing approval (14 Nov 2026), the note's recommended direction kept:
   title; one holding nothing shown is drawn as the map's node shape with C4's three lines. Their descriptions and
   technologies are not asked for by `c4-description` and `c4-technology` (`23-c4.json`'s browser and Docker Compose have
   none). An instance's relationship whose far instance is not shown is lifted to that instance's node, as §5.2 lifts
-  (implied, dashed); none is derived from the containers' relationships.
+  (implied, dashed), when the node holds nothing else shown and is drawn as a node; none is derived from the containers'
+  relationships. A line ends on an element, never on a box, so a relationship with an end in or on a node drawn as a box
+  is not drawn, and `c4-box-line` (a warning, the deployment view's own rule) says which.
 - **An instance's container.** The properties panel's choices are fixed per type, so the container is a text field holding
   its id, and T on a selected instance picks it among the model's containers (T is free on the deployment view: no
   element there takes C4's type picker). The palette's Container instance asks no name, picks its container, and puts the
   instance in the view's first deployment node that holds no other: the add hook hears no selection on a layered view (no
-  slots); the Owner field (every deployment node) or a drop into a box moves it.
+  slots); its id is free of every id in the model, relationships' and views' too; the Owner field (every deployment node
+  but the node itself and the nodes inside it) or a drop into a box moves it.
 - **`refs`** (`c4.ContainerInstance`'s `props.container`, `cascade`) is declared on the deployment view's type; the core
   reads every registered type's, so deleting a container from any view deletes its instances and their relationships.
 - **An existing test edited.** Two expectations of `tests/c4.html` (M2.6's page, outside M2.7's Owns) follow from this row:

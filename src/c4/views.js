@@ -27,14 +27,19 @@ const vPlural = (k, w) => `${k} ${k === 1 ? w : w + 's'}`;
 const V_RULES = { ...C4_RULES,
   'c4-level': C4_RULES['c4-level'] + '; a dynamic view what its subject\'s level draws; a deployment view deployment nodes and container instances, with a subject only instances of its containers',
   'c4-subject': C4_RULES['c4-subject'] + '; a dynamic view zooms into a software system, a container or nothing; a deployment view into a software system or nothing',
-  'c4-steps': 'a dynamic view\'s steps are the model\'s relationships, each once, between elements it shows' };
+  'c4-steps': 'a dynamic view\'s steps are the model\'s relationships, each once, between elements it shows; it lists at least one' };
+const DEP_RULES = { ...V_RULES, 'c4-box-line': 'a deployment view draws no line onto a deployment node drawn as a box: a relationship with an end in or on one is not drawn' };
+// every id the model holds, views' too (src/c4/c4.js's c4Used, not exported; src/c4/c4.js is M2.6's)
+const vUsed = model => { const used = new Set(V_ARR(model.views).filter(V_OBJ).map(v => v.id)); JSON.stringify(model, (k, v) => { if (k === 'id' && typeof v === 'string') used.add(v); return v; }); return used; };
 
 /* ---- the dynamic view (§7.5.2) ---- */
-// its steps: [{ e, k }], each relationship listed, the first time, with its place among the view's relationships (1, 2, 3)
+// its steps drawn: [{ e, k, i }], each model relationship listed (the first time) between two elements the view shows (not a
+// boundary), numbered 1, 2, 3 among those drawn (S13), i its place in view.edges
 function dynSteps(model, view) {
-  const I = c4Index(model), rel = new Map(I.rels.map(r => [r.id, r])), seen = new Set(), out = []; let k = 0;
-  V_ARR(V_OBJ(view) ? view.edges : null).forEach(x => { const e = typeof x === 'string' ? rel.get(x) : null; if (!e && !(V_OBJ(x) && x.type === 'c4.Relationship')) return;
-    k++; if (e && !seen.has(e.id)) { seen.add(e.id); out.push({ e, k }); } });
+  if (!V_OBJ(view)) return [];
+  const pic = c4Pic(model, view), ends = new Set(pic.ids.filter(id => !pic.open.has(id))), rel = new Map(pic.I.rels.map(r => [r.id, r])), seen = new Set(), out = [];
+  V_ARR(view.edges).forEach((x, i) => { const e = typeof x === 'string' ? rel.get(x) : null;
+    if (e && !seen.has(e.id) && ends.has(e.from) && ends.has(e.to)) out.push({ e, k: out.length + 1, i }); if (e) seen.add(e.id); });
   return out;
 }
 // the level a dynamic view draws at: as the static view its subject's type zooms to
@@ -42,7 +47,7 @@ const dynLevel = (model, view) => { const t = (c4Index(model).at.get(view.subjec
   return view.subject == null ? 'c4.landscape' : t === 'c4.SoftwareSystem' ? 'c4.container' : t === 'c4.Container' ? 'c4.component' : null; };
 // what a dynamic view draws: its steps between two elements it shows (not a boundary), and the comment links it lists
 function dynDrawn(model, view) {
-  const pic = c4Pic(model, view), ends = new Set(pic.ids.filter(id => !pic.open.has(id))), steps = dynSteps(model, view).filter(({ e }) => ends.has(e.from) && ends.has(e.to));
+  const pic = c4Pic(model, view), ends = new Set(pic.ids.filter(id => !pic.open.has(id))), steps = dynSteps(model, view);
   const notes = V_ARR(view.edges).map(x => (typeof x === 'string' ? pic.I.E.find(e => e.id === x) : null)).filter(e => e && e.type === 'uml.CommentLink' && ends.has(e.from) && ends.has(e.to));
   return { pic, steps, notes };
 }
@@ -92,11 +97,13 @@ function dynProblems(model, view) {
   const pic = c4Pic(model, view), ends = new Set(pic.ids.filter(id => !pic.open.has(id))), rel = new Set(I.rels.map(r => r.id)), seen = new Set();
   V_ARR(view.edges).forEach((x, k) => { const p = `${at}.edges[${k}]`;
     if (V_OBJ(x) && x.type === 'c4.Relationship') return out.push(say('error', 'c4-steps', p, [x.id], `step ${x.id} is written in the view: a step names a relationship of the model`));
-    if (typeof x !== 'string' || !(rel.has(x) || I.E.some(e => e.id === x && e.type === 'uml.CommentLink'))) return V_OBJ(x) ? null : out.push(say('error', 'c4-steps', p, [String(x)], `step ${JSON.stringify(String(x))} is no relationship of the model`));
+    if (V_OBJ(x)) return out.push(say('error', 'c4-steps', p, [typeof x.id === 'string' ? x.id : null], `step ${JSON.stringify(typeof x.id === 'string' ? x.id : null)} is written in the view and is no relationship: a step names a relationship of the model`));
+    if (typeof x !== 'string' || !(rel.has(x) || I.E.some(e => e.id === x && e.type === 'uml.CommentLink'))) return out.push(say('error', 'c4-steps', p, [String(x)], `step ${JSON.stringify(String(x))} is no relationship of the model`));
     if (!rel.has(x)) return null;
     if (seen.has(x)) return out.push(say('error', 'c4-steps', p, [x], `${x} is a step twice: each relationship is one step`));
     seen.add(x); const e = I.E.find(r => r.id === x), gone = [e.from, e.to].filter(id => !ends.has(id));
     if (gone.length) out.push(say('warning', 'c4-steps', p, [x, ...gone], `${x}, from ${q(e.from)} to ${q(e.to)}, is not drawn: the view ${gone.map(id => (pic.open.has(id) ? `draws ${q(id)} as a boundary` : `does not show ${q(id)}`)).join(' or ')}`)); return null; });
+  if (!V_ARR(view.edges).some(x => typeof x === 'string' && rel.has(x))) out.push(say('warning', 'c4-steps', `${at}.edges`, [], `view ${JSON.stringify(String(view.id))} lists no step: a dynamic view draws its steps alone`));
   return out;
 }
 function dynDescribe(model, viewId) {
@@ -109,12 +116,12 @@ function dynDescribe(model, viewId) {
    card, or a line dropped where there is no slot: null, the canvas's own */
 function dynMoveTo(model, view, id, at) {
   if (!V_OBJ(view) || !V_OBJ(at)) return null;
-  const list = V_ARR(view.edges), rel = new Set(c4Index(model).rels.map(r => r.id)), steps = list.map((x, i) => [x, i]).filter(([x]) => typeof x === 'string' && rel.has(x)), k = steps.findIndex(([x]) => x === id);
+  const steps = dynSteps(model, view), k = steps.findIndex(s => s.e.id === id);
   if (k < 0) return null;
-  if (Number.isInteger(at.index)) return at.index === steps[k][1] ? [] : [{ op: 'move', id, view: view.id, index: at.index }];
+  if (Number.isInteger(at.index)) return at.index === steps[k].i ? [] : [{ op: 'move', id, view: view.id, index: at.index }];
   if (!Array.isArray(at.by)) return null;
   const to = k + Math.sign((+at.by[0] || 0) + (+at.by[1] || 0));
-  return to < 0 || to >= steps.length || to === k ? [] : [{ op: 'move', id, view: view.id, index: steps[to][1] }];
+  return to < 0 || to >= steps.length || to === k ? [] : [{ op: 'move', id, view: view.id, index: steps[to].i }];
 }
 // connect: a relationship between two shown elements is a step: the model's own when one joins them and is not a step yet,
 // else a new one (the canvas's add, which lists it last)
@@ -131,6 +138,8 @@ function dynRename(model, view, id, text) {
   const label = V_HAS(tech) && t.endsWith(`[${tech}]`) ? t.slice(0, -tech.length - 2).trim() : t;
   return label === (s.e.label ?? '') ? [] : [{ op: 'set', id, path: 'label', value: label || undefined }];
 }
+// add: a container or component added at the view's level (its subject's, §5.1) is owned by the subject, as on that static view
+const dynAdd = (model, view, entry, label) => (V_OBJ(view) ? C4_DEF.edits.add(model, { ...view, diagram: dynLevel(model, view) }, entry, label) : null);
 const DYN_DEF = { ...C4_DEF,
   title: 'C4 dynamic diagram',
   layout: dynGeo,
@@ -139,7 +148,7 @@ const DYN_DEF = { ...C4_DEF,
   describe: dynDescribe,
   // the PDF's lines table: a step's number before its text, as drawn
   text: (model, view, id) => { const t = C4_DEF.text(model, view, id), s = dynSteps(model, view).find(x => x.e.id === id); return s ? [String(s.k), t].filter(V_HAS).join(' · ') : t; },
-  edits: { ...C4_DEF.edits, connect: dynConnect, moveTo: dynMoveTo, rename: dynRename },
+  edits: { ...C4_DEF.edits, add: dynAdd, connect: dynConnect, moveTo: dynMoveTo, rename: dynRename },
 };
 
 /* ---- the deployment view (§7.5.3) ---- */
@@ -200,6 +209,12 @@ function depProblems(model, view) {
       say('error', 'c4-level', `${at}.nodeIds[${k}]`, [id, c.id], `${q(id)}, an instance of ${q(c.id)}, is not drawn in a deployment view of ${q(subj.id)}: ${q(c.id)} is not one of its containers`); });
   c4Lines(model, view, depPic(model, view)).own.forEach(e => { if (e.type !== 'c4.Relationship' || V_HAS(e.label)) return;
     const i = V_ARR(model.edges).indexOf(e); say('warning', 'c4-label', `${i >= 0 ? `edges[${i}]` : `${at}.edges[${V_ARR(view.edges).indexOf(e)}]`}.label`, [e.id, e.from, e.to], `${e.id}, from ${q(e.from)} to ${q(e.to)}, has no description`); });
+  // a relationship whose end is, or lies in, a node drawn as a box: a line ends on an element, so it is not drawn (§5.2 lifts onto
+  // a node holding nothing shown only)
+  const dp = depPic(model, view), near = id => { for (const x of [id, ...I.chain(id)]) if (dp.ids.includes(x)) return x; return null; };
+  I.rels.forEach(r => { const a = near(r.from), b = near(r.to); if (a == null || b == null || a === b || I.chain(a).includes(b) || I.chain(b).includes(a)) return;
+    const box = [a, b].filter(x => dp.open.has(x)); if (!box.length) return;
+    const i = V_ARR(model.edges).indexOf(r); say('warning', 'c4-box-line', i >= 0 ? `edges[${i}]` : `${at}.edges`, [r.id, ...box], `${r.id}, from ${q(r.from)} to ${q(r.to)}, is not drawn: the view draws ${box.map(q).join(' and ')} as a box, which no line ends on`); });
   if (!V_HAS(view.title)) say('warning', 'c4-title', `${at}.title`, [], `view ${JSON.stringify(view.id)} has no title`);
   return out;
 }
@@ -217,7 +232,7 @@ function depAdd(model, view, entry, label) {
   const into = ids.find(id => !ids.some(o => (I.at.get(o) || {}).parent === id));
   if (into == null) return { error: 'Add a deployment node first: an instance runs on one' };
   if (!cs.length) return { error: 'The model has no container to deploy' };
-  const used = new Set(I.at.keys());
+  const used = vUsed(model);
   return { pick: cs.map(vName), then: i => { const c = cs[i], b = `${c.id}-instance`; let id = b, k = 2; while (used.has(id)) id = `${b}-${k++}`;
     return [{ op: 'add', element: { id, type: 'c4.ContainerInstance', label: V_HAS(label) ? label : vName(c), parent: into, props: { container: c.id } }, view: view.id }]; } };
 }
@@ -231,7 +246,8 @@ function depKey(model, view, ids, key) {
 // the Owner field: an instance's and a deployment node's deployment nodes
 function depOwners(model, x) {
   if (!V_OBJ(x) || x.from != null || (x.type !== 'c4.ContainerInstance' && x.type !== 'c4.DeploymentNode')) return c4Owners(model, x);
-  return V_ARR(model.nodes).filter(n => V_OBJ(n) && n.type === 'c4.DeploymentNode').map(n => ({ id: n.id, label: vName(n) }));
+  const I = c4Index(model); // not the node itself nor a node inside it (the core refuses a cycle)
+  return V_ARR(model.nodes).filter(n => V_OBJ(n) && n.type === 'c4.DeploymentNode' && n.id !== x.id && !I.chain(n.id).includes(x.id)).map(n => ({ id: n.id, label: vName(n) }));
 }
 const DEP_DEF = {
   title: 'C4 deployment diagram',
@@ -243,7 +259,7 @@ const DEP_DEF = {
   boxes: (model, view) => depPic(model, view).boxes,
   owners: depOwners,
   validate: depProblems,
-  rules: V_RULES,
+  rules: DEP_RULES,
   describe: depDescribe,
   // a deleted container takes its instances (§3, Q7); read for every view, whichever type declares it
   refs: { 'c4.ContainerInstance': { 'props.container': 'cascade' } },
@@ -258,4 +274,4 @@ const DEP_DEF = {
 
 const C4_VIEW_TYPES = [registerDiagramType('c4.dynamic', DYN_DEF), registerDiagramType('c4.deployment', DEP_DEF)];
 
-export { C4_VIEW_TYPES, DYN_DEF, DEP_DEF, V_RULES, dynSteps, dynLevel, dynGeo, dynProblems, dynDescribe, dynMoveTo, dynConnect, depPic, depGeo, depProblems, depDescribe, depNodeName, depAdd, depKey, depOwners };
+export { C4_VIEW_TYPES, DYN_DEF, DEP_DEF, V_RULES, DEP_RULES, dynSteps, dynAdd, dynLevel, dynGeo, dynProblems, dynDescribe, dynMoveTo, dynConnect, depPic, depGeo, depProblems, depDescribe, depNodeName, depAdd, depKey, depOwners };
