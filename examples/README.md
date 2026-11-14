@@ -53,6 +53,9 @@ Action on it in a pull request; the site shows its stills and its PDF.
 | [`ebike-blocks.json`](ebike-blocks.json) | SysML block definition diagram (`sysml.block-definition`, 0.25.0) | The e-bike's blocks in a `bdd` frame with SysML's named compartments: EBike's parts, reference, values and constraints, a battery's ports, an interface block's flow properties, two constraint blocks with their expressions and parameters, value types with their units; composition, generalization and «use». What it covers: [`docs/conformance/sysml-block-definition.md`](../docs/conformance/sysml-block-definition.md) |
 | [`ebike-structure.json`](ebike-structure.json) | SysML internal block diagram (`sysml.internal-block`, 0.25.0) | Inside the e-bike: EBike as the `ibd` frame holding its parts, the dock it refers to (dashed) and its values; ports on the parts' borders, the charging ports typed by an interface block (one conjugated) with their flow arrows, connectors carrying DC power and phase current as item flows. What it covers: [`docs/conformance/sysml-internal-block.md`](../docs/conformance/sysml-internal-block.md) |
 | [`ebike-range.json`](ebike-range.json) | SysML parametric diagram (`sysml.parametric`, 0.25.0) | The e-bike's range in eco and boost from its battery's usable energy: three constraint properties with their expressions, their parameters on their borders, bound to the bike's value properties. What it covers: [`docs/conformance/sysml-parametric.md`](../docs/conformance/sysml-parametric.md) |
+| [`bookshop-opening-plan.json`](bookshop-opening-plan.json) | Mindmap (`mindmap`, 0.26.0) | Opening the bookshop: 21 topics left and right of the root, six branches each in a colour of the kind palette, their sides pinned in `present`; in the atlas its Hosting topics open the two cloud views. What it covers: [`docs/conformance/mindmap.md`](../docs/conformance/mindmap.md) |
+| [`bookshop-gcp.json`](bookshop-gcp.json) | Google Cloud (`gcp`, 0.26.0) | The bookshop on Google Cloud: a project, a region, a network, a subnetwork and two zones as nested boxes titled with their kind (a region and a zone dashed), nine products and the shoppers, a line from a group's border. The site draws it with no icon pack, so each card shows a glyph and its full service name: fetch the icons yourself (`umlimator.py pack fetch gcp`, after Google's terms) to see them. What it covers: [`docs/conformance/gcp.md`](../docs/conformance/gcp.md) |
+| [`bookshop-azure.json`](bookshop-azure.json) | Azure (`azure`, 0.26.0) | The bookshop on Azure: a subscription, a resource group, a region, a virtual network and two subnets as nested boxes, eight services, a line from a subnet's border. Glyphs and full names on the site, as for Google Cloud (`umlimator.py pack fetch azure`, after Microsoft's terms). What it covers: [`docs/conformance/azure.md`](../docs/conformance/azure.md) |
 | [`bookshop-order-to-shipment.json`](bookshop-order-to-shipment.json) | BPMN (`bpmn`, 0.27.0) | From order to shipment: three pools (the shopper, the bookshop with two lanes, the payment provider as a black box), a service task with a timer boundary event, exclusive and parallel gateways, a collapsed sub-process that opens its own view, a call activity, message flows to a pool's border, a data object and a data store, an annotation and a group |
 | [`bookshop-timing.json`](bookshop-timing.json) | UML timing diagram (`uml.timing`, 0.23.0) | One charge on a time ruler in ms: the order worker and the payment provider, the overview's and the sequence example's lifelines, each a step line through its states; a call and its reply at their times, slanted between their senders' and receivers' states; a duration constraint `{<= 800 ms}` under the worker's lane and a time constraint on its last change. What the timing diagram covers: [`docs/conformance/uml-timing.md`](../docs/conformance/uml-timing.md) |
 
@@ -78,13 +81,19 @@ Action on it in a pull request; the site shows its stills and its PDF.
 [![BPMN: from order to shipment](https://zintaen.github.io/umlimator/examples/stills/bookshop-order-to-shipment/order-to-shipment.png)](https://zintaen.github.io/umlimator/examples/bookshop-order-to-shipment.html)
 [![The ER diagram: the bookshop's schema](https://zintaen.github.io/umlimator/examples/stills/bookshop-schema/er-schema.png)](https://zintaen.github.io/umlimator/examples/bookshop-schema.html)
 [![The SysML internal block diagram: inside the e-bike](https://zintaen.github.io/umlimator/examples/stills/ebike-structure/inside-ebike.png)](https://zintaen.github.io/umlimator/examples/ebike-structure.html)
+[![A mindmap: opening the bookshop](https://zintaen.github.io/umlimator/examples/stills/bookshop-opening-plan/mm-plan.png)](https://zintaen.github.io/umlimator/examples/bookshop-opening-plan.html)
+[![Google Cloud: the bookshop, glyphs and full names](https://zintaen.github.io/umlimator/examples/stills/bookshop-gcp/gcp-on-gcp.png)](https://zintaen.github.io/umlimator/examples/bookshop-gcp.html)
+[![Azure: the bookshop, glyphs and full names](https://zintaen.github.io/umlimator/examples/stills/bookshop-azure/az-on-azure.png)](https://zintaen.github.io/umlimator/examples/bookshop-azure.html)
+
+Umlimator is not affiliated with, endorsed by or sponsored by Amazon Web Services, Google or Microsoft. No vendor icon is in
+this repository or on the site: every page and still published is built with `UMLIMATOR_NO_PACKS=1`.
 
 ## The Bookshop atlas
 
 [`bookshop-atlas.json`](bookshop-atlas.json) is the Bookshop examples above in one model (`"schemaVersion": 2`): the
-map's three views and the thirty-two views of the twenty diagram files, one of each of UML's 14 diagram kinds and of the
-ER, flowchart, data flow, information flow, C4 and BPMN diagrams, joined by drill-down. It opens at the C4 system context
-(0.24.0); the map is in the views list. Double-click a card to open what it leads to:
+map's three views and the thirty-five views of the twenty-three diagram files, one of each of UML's 14 diagram kinds and
+of the ER, flowchart, data flow, information flow, C4, mindmap, Google Cloud, Azure and BPMN diagrams, joined by drill-down. It
+opens at the C4 system context (0.24.0); the map and the opening plan (a mindmap, 0.26.0) are in the views list. Double-click a card to open what it leads to:
 
 | From | Card | Opens |
 |---|---|---|
@@ -96,6 +105,7 @@ ER, flowchart, data flow, information flow, C4 and BPMN diagrams, joined by dril
 | Shopping (use cases) | Browse the catalog, Check out, Pay for the order, Track an order | find a book, buying a book, take payment (activity), from order to shipment (BPMN, 0.27.0) |
 | Fulfilling an order, take payment | Take the next order from the queue, Charge the shopper's card, Record the payment on the order | queue the order, the checkout (sequences), one charge (timing) |
 | The map (`overview`), production, the components | Hosts, Java 21 runtime, Shop API | production (deployment), the components, inside the order service (composite structure) |
+| Opening the bookshop (mindmap) | On Google Cloud, On Azure (under Hosting) | the bookshop on Google Cloud, on Azure (0.26.0) |
 
 It is built, not written: `node tools/atlas.mjs` reads the example files and [`../tools/atlas-links.json`](../tools/atlas-links.json)
 (the files, in order, and which card opens which view) and writes the model. Elements are shared by id: one Order,
@@ -104,7 +114,8 @@ runtime it is deployed on for the component and deployment files; Order, its `pl
 class, package and profile files, and the `worker` and `payments` lifelines for the overview, sequence and timing
 files; the shopper for the use case and information flow files, and the storefront, Shop API and payment provider for
 the component and information flow files. The ER, data flow and C4 files' ids carry `er-`, `dfd-` and `c4-` (a C4
-element and a map card are different elements: a card has no type). Where two files have an id, they must agree on it (a field one leaves out is the other's, a class's members are
+element and a map card are different elements: a card has no type); the mindmap, Google Cloud and Azure files' `mm-`,
+`gcp-` and `az-`, and their icon packs' labels (`iconPacks`) are one per pack. Where two files have an id, they must agree on it (a field one leaves out is the other's, a class's members are
 the union of theirs); where they disagree, the build stops and names the id, the files and the field, and the example
 files are what gets fixed.
 `tests/atlas.test.mjs` fails when the committed atlas is not what it writes. A card that opens another kind of diagram does not unfold in place (E): it opens.
@@ -208,6 +219,9 @@ The module embedded in a page, as an app would use it. Serve the repository over
 | Line ends by multiplicity in two notations on one geometry (crow's foot, IDEF1X: `notation`); a column as a row of text | bookshop-schema |
 | Levels made by `D` and checked for balance; two symbol sets on one geometry (`notation`) | bookshop-data-flow |
 | Typed C4: a view's subject as a dashed boundary, implied relationships, a dynamic view's numbered steps, deployment nodes holding instances; elements on the map's card shapes (`props.shape`) | bookshop-c4 |
+| A mindmap: the tree strategy's bands left and right of the root, branch curves in the kind palette, sides in `present` | bookshop-opening-plan, [`tests/mindmap-stress.json`](../tests/mindmap-stress.json) |
+| Cloud architecture: groups nested as boxes titled with their kind, service cards with an icon from a pack the user fetched (`umlimator.py pack fetch`, after the vendor's terms) or a glyph, the full service name, Google's legal line | bookshop-gcp, bookshop-azure, [`tests/cloud-stress.json`](../tests/cloud-stress.json) |
+| A Mermaid mindmap, imported (`umlimator.py import`) | [`tests/import/mindmap.mmd`](../tests/import/mindmap.mmd), which CI reads (`tests/import.py`) |
 | BPMN: pools and nested lanes as bands, boundary events on an activity's border, message flows to a pool's border, a sub-process expanded or collapsed by the view, names outside events and gateways, a group across lanes | bookshop-order-to-shipment, [`tests/bpmn-stress.json`](../tests/bpmn-stress.json) |
 | BPMN XML, imported and exported laid out (`umlimator.py import`, `export`, through a `bpmn-moddle` you install) | [`tests/import/descriptive.bpmn`](../tests/import/descriptive.bpmn), which CI imports (`tests/import.py`) |
 | A Mermaid `erDiagram`, a Mermaid flowchart (`--typed`), a Structurizr JSON workspace and DBML, imported (`umlimator.py import`) | [`tests/import/er.mmd`](../tests/import/er.mmd), [`flowchart.mmd`](../tests/import/flowchart.mmd), [`structurizr.json`](../tests/import/structurizr.json), [`dbml.json`](../tests/import/dbml.json), which CI reads (`tests/import.py`, the readers' tests) |

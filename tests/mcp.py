@@ -14,7 +14,8 @@ And C10 (2.6): an object model and a package model, served the same way, answer 
 highlight on the diagram the page draws; and so do a use case, an activity, a state machine and an interaction overview model
 (4.10), a component, a deployment and a composite structure model (5.8), a profile and a timing model (6.6), a class, a
 sequence and a communication model (C10's package), an ER, a flowchart, a data flow, an information flow and a C4
-model (M2.14), SysML's four e-bike models (M3.7) and a BPMN model (4b.5).
+model (M2.14), SysML's four e-bike models (M3.7), a mindmap, a Google Cloud and an Azure model, with no icon pack
+(4a.7), and a BPMN model (4b.5).
 
   python3 tests/mcp.py
 
@@ -304,6 +305,11 @@ for f, view, refs, first, cards, boxes in (("order-objects", "snapshot", ["order
                                           ("ebike-blocks", "blocks", ["ebike", "battery"], "E-bike blocks: a block definition diagram of 12 elements and 5 lines.", 12, 1),
                                           ("ebike-structure", "inside-ebike", [{"type": "node", "id": "ebike.battery"}, {"type": "node", "id": "ebike.controller"}], "Inside the e-bike: an internal block diagram of 24 elements and 6 lines.", 23, 1),
                                           ("ebike-range", "range-analysis", [{"type": "node", "id": "ebike.eco"}, {"type": "node", "id": "ebike.ecoRange"}], "E-bike range: a parametric diagram of 19 elements and 8 lines.", 18, 1),
+                                          # C10 for milestone 4a (4a.7, decision 22): a mindmap, a Google Cloud and an Azure model, with
+                                          # no pack (the server never fetches one; CI has none, so cards draw glyphs); groups are boxes
+                                          ("bookshop-opening-plan", "mm-plan", ["mm-checkout", "mm-hosting"], "Opening the bookshop: a mindmap of 21 topics.", 21, 0),
+                                          ("bookshop-gcp", "gcp-on-gcp", ["gcp-api", "gcp-db"], "Bookshop on Google Cloud: a Google Cloud diagram of 16 elements and 10 connections.", 10, 6),
+                                          ("bookshop-azure", "az-on-azure", ["az-api", "az-db"], "Bookshop on Azure: an Azure diagram of 14 elements and 9 connections.", 8, 6),
                                           # C10 for milestone 4b (4b.5): a BPMN model; its pools, lanes and group are nodes, its
                                           # sub-process collapsed here, so no box
                                           ("bookshop-order-to-shipment", "order-to-shipment", ["bp-take-payment", "payment-timeout"], "From order to shipment: a BPMN diagram of 18 flow nodes, 21 flows and 3 pools.", 27, 0)):

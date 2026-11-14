@@ -33,9 +33,9 @@
     { "id": "gcp-db-replica", "type": "gcp.Path", "from": "gcp-db", "to": "gcp-db-standby", "label": "replicates" }
   ],
   "views": [
-    { "id": "gcp-on-gcp", "diagram": "gcp", "title": "Bookshop on Google Cloud", "parent": null,
+    { "id": "gcp-on-gcp", "diagram": "gcp", "title": "Bookshop on Google Cloud", "caption": "Icons from a pack you fetch: umlimator.py pack fetch gcp, after Google's terms; glyphs and full names without it. Umlimator is not affiliated with, endorsed by or sponsored by Amazon Web Services, Google or Microsoft.", "parent": null,
       "nodeIds": ["gcp-users", "gcp-project", "gcp-dns", "gcp-lb", "gcp-cdn", "gcp-assets", "gcp-queue", "gcp-region", "gcp-api", "gcp-worker",
         "gcp-network", "gcp-subnet", "gcp-zone-b", "gcp-db", "gcp-zone-c", "gcp-db-standby"] }
   ],
-  "iconPacks": { "gcp": "2025" }
+  "iconPacks": { "gcp": "2026-11-14" }
 }

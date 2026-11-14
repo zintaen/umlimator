@@ -22,7 +22,7 @@ import { svgOf } from '../src/draw/svg.js';
 import { CLOUD_AWS, CLOUD_DEFS, GCP_LEGAL } from '../src/cloud/cloud.js';
 
 const read = f => JSON.parse(readFileSync(new URL(f, import.meta.url)));
-const GCP = read('../docs/diagrams/examples/27-gcp.json'), AZ = read('../docs/diagrams/examples/28-azure.json'), AWS = read('../docs/diagrams/examples/26-aws.json');
+const GCP = read('../examples/bookshop-gcp.json'), AZ = read('../examples/bookshop-azure.json'), AWS = read('../docs/diagrams/examples/26-aws.json');
 registerDiagramType('aws', CLOUD_DEFS.aws); // AWS is off in the build (decision 1); tested on every run from src/ (§4.7)
 const T = { gcp: diagramOf({ diagram: 'gcp' }), azure: diagramOf({ diagram: 'azure' }), aws: diagramOf({ diagram: 'aws' }) };
 const TARGETS = [['gcp', GCP, 'gcp-on-gcp'], ['azure', AZ, 'az-on-azure'], ['aws', AWS, 'on-aws']];

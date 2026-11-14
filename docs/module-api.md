@@ -4142,6 +4142,114 @@ fixtures, examples and documents come in 0.26.0 and 0.27.0, whose sections say w
 - **Size at release:** `lib/umlimator.js` is 186.2 kB (186,174 B) with `gzip -9`, 12.86% over 0.16.0 (the budget is
   15%). `lib/umlimator-all.js` is 590.2 kB (590,184 B). The npm package is 845 kB.
 
+## 0.26.0 (in progress): the mindmap; Google Cloud and Azure diagrams; icon packs fetched after the vendor's terms
+
+Milestone 4a of the plan for 28 diagram types (`docs/diagrams/notes/milestone-4a.md`), merged to `main` before 0.26.0
+ships (after 0.25.0), provisional until then. Everything is additive: maps, every typed view released before and every
+earlier example draw as they did (`bench/expected.json`, the examples' stills, every earlier test), but for the three
+logo rows below, the three examples moved below, and the Bookshop atlas, which gains them. The new code is in
+`lib/umlimator-all.js` and the CLI, except 4a.2's core bytes.
+
+- **The files and ids (4a.0, #265).** `src/layout/tree.js`, `src/mindmap/mindmap.js`, `src/readers/mermaid-mindmap.js`
+  and `src/cloud/cloud.js` in `tools/build.mjs`'s `ALL` after milestone 4b's. The four target examples take the atlas's
+  prefixes (`mm-`, `gcp-`, `az-`; AWS's keeps its ids until 4a.8) and the packs' own icon ids
+  (`Front-Door-and-CDN-Profiles`, `Storage-Accounts`, `App-Services`, `Key-Vaults`, `Amazon-Simple-Storage-Service`…);
+  the mindmap gains a Hosting branch.
+- **The tree strategy (4a.1, #270).** `layoutTree(input)`, a pure function (no DOM, no model): each subtree a band,
+  bands stacked, a topic centred on its children's; two iterative passes, so a chain of 20,000 lays out; sides from
+  `side`, else the half whose first-level bands are shorter so far, right on a tie. Problems are returned, never warned.
+- **A deep chain, linear (4a.2, #278).** `apply()`'s `delete` no longer recurses: a 20,000-level `parent` chain deletes
+  (one of 6,000 threw a `RangeError` before), the deleted elements leave each list in one pass (a flat 20,000-topic root
+  in 13 ms, 128 ms before), and what stays under a gone chain finds its nearest owner once per gone id. `validate()`'s
+  cycle check is linear (9 ms at 20,000 deep, 9.5 s before) and reports each cycle where and in the order it did. No
+  output changes: lists keep their order, an element listed twice loses only its first place.
+- **Icon packs (4a.3, #271).** `umlimator.py pack list` and `umlimator.py pack fetch gcp|azure` (`umlimator_packs.py`),
+  from `icons/packs.json`: the vendor's terms shown in full and a yes typed, or `--accept-terms <pack>@<label>`, which
+  prints them and is recorded as given by flag, before any byte is downloaded; each zip read no further than its pinned
+  size and checked by SHA-256, Azure's terms PDF by its pinned hash; kept in `<icon cache>/packs/<pack>/<label>/` with
+  `accepted.json`; members read in memory, never extracted. A render reads a fetched pack into the page's `icons` table
+  (`<pack>/<id>`: `{ src, dark, name }`, and Google's `gcp/`: `{ legal }`), never downloads one, and says once per pack
+  how to fetch it; `UMLIMATOR_NO_PACKS=1` draws glyphs whatever the cache holds. `check` names an icon id a pack lacks
+  with its three nearest ids. The packs' zips are not yet pinned (`sha256: null`): `pack fetch` refuses them until the
+  maintainer pins each from the vendor's page in a release. CI tests every path on a synthetic pack it builds
+  (`tests/packs.py`) and never contacts a vendor.
+- **The mindmap, `mindmap` (4a.4, #281).** Topics as rounded boxes (the root 15 px, the rest 13 px, four lines of 200
+  px), laid out by `layoutTree`, branches as curves in the map's kind palette, 2.5 px from the root and 1.5 px below.
+  Four rules (`topic-parent`, `mindmap-root`, `side-first`, `mindmap-depth`). `N` adds a child; Alt + arrows move a topic
+  among its siblings, promote, demote and change side; a drop on a topic reparents, between siblings reorders, on the
+  root's other half changes side; Delete hides a branch, Shift + Delete deletes it, the outline's Show brings back a
+  topic and what was hidden with it; L is refused, said. A topic that opens a view carries the drill-down mark.
+- **The Mermaid mindmap reader and writer (4a.5, #280).** `readMermaidMindmap` and `writeMermaidMindmap`, internal,
+  against Mermaid 12.3.0: indentation is the tree (a tab counts one, as Mermaid's lexer counts it); five shapes, icons,
+  classes and Markdown strings kept under `ext.mermaid`, written back, reported `approximated`; sides and drill-downs in
+  `%% side:` and `%% opens:`. Over 1 MiB refused; deeper than 64 levels hung at 64; never a throw. `umlimator.py import`
+  reads a `.mmd` mindmap through Node.
+- **Google Cloud and Azure, `gcp` and `azure` (4a.6, #282).** One family in `src/cloud/cloud.js`: groups as boxes
+  titled "<label> [<kind>]", dashed for a region or a zone; each product or service a card with the vendor's icon from the
+  host's `icons` table, 32 px on a 39 px tile, through `<image>` from a data URL only, with `meet` and nothing that crops
+  or alters it, the full service name under its label, a glyph where the table has none; lines with an open arrow that
+  may start or end at a group's border. Google's legal line under any picture that draws a Google icon, in its legend and
+  `describe()`. Five rules (`group-kind`, `group-nesting`, `line-inside`, `icon-set`, `icon-missing`); a line between a
+  group and what it holds is refused. The `aws` definition is built and tested with them, behind `CLOUD_AWS = false`:
+  not registered, on no surface of `lib/umlimator-all.js`.
+- **Fixtures, examples, atlas, docs (4a.7).** `docs/diagrams/examples/25-mindmap.json`, `27-gcp.json` and
+  `28-azure.json` are `examples/bookshop-opening-plan.json`, `bookshop-gcp.json` and `bookshop-azure.json`
+  (`check.mjs`'s `MOVED`), their `iconPacks` the pins' labels (`gcp` `2026-11-14`, `azure` `V25`), each cloud view's
+  caption saying how to fetch the icons and that umlimator is not affiliated with the vendor; they join the gallery and
+  CI's example loop, drawn with no pack. The Bookshop atlas joins the three: the opening plan is a root view, its
+  Hosting topics open the two cloud views, and `tools/atlas.mjs` writes `iconPacks`, one label a pack (two files that
+  disagree stop the build). `tests/mindmap-minimal.json`, `mindmap-stress.json`, `cloud-minimal.json` and
+  `cloud-stress.json` with `tests/m4a-fixtures.test.mjs` and `tests/m4a.html`; a test that nothing under `examples/` or
+  `docs/` holds a pack's icon entry or the synthetic pack's marker, and the site built with `UMLIMATOR_NO_PACKS=1`; the
+  MCP server's read tools, the diff Action's step and map-repo's CLI on the three examples (C10). The JSON Schema and the
+  types gain the three types' vocabulary (`MindmapElementType`, `GcpElementType`, `GcpLineType`, `AzureElementType`,
+  `AzureLineType`, `CloudElementProps`), `iconPacks` and the icons table's `name` and `legal`.
+  `docs/conformance/mindmap.md`, `gcp.md` and `azure.md`.
+
+What moves for a host that upgrades from 0.25.0:
+
+- **Nothing a map or an earlier type draws.** `lib/umlimator.js` draws the three types as plain cards with a warning,
+  as it does every type it does not hold.
+- **Three logos move, one stops downloading:** a map naming `azuredevops`, `foundry` or `containerapps` draws them from
+  the Azure pack once the user fetched it (`umlimator.py pack fetch azure`), and its card's sigil until then; `entra` is
+  read from the cache if it is there, else the sigil. A render downloads none of the four any more (the note's decision 7,
+  a stated exception to "maps draw exactly as now"). No example or test names them.
+- **`delete` down a deep chain** no longer throws, and `validate()` no longer stalls on one; both give what they gave
+  before on every model that did not throw.
+- **The icons table** may hold `<pack>/<id>` entries with `name`, and `gcp/` with `legal`, which a cloud view reads; a
+  map's logo keys have no `/`, so the two never meet. A host that is not the CLI gives the table with the model
+  (`model.icons`), from icons it fetched under the vendor's terms; the module never fetches one.
+- **New in the JSON Schema and `lib/umlimator.d.ts`:** the three types' element and line types and props, `iconPacks`,
+  the icons table's `name` and `legal`; nothing accepted before is rejected (ajv: every example and the four new fixtures valid).
+- **New on the CLI:** `umlimator.py pack list`, `pack fetch`; `import` reads a Mermaid mindmap; `check` names icon ids a
+  fetched pack lacks. `UMLIMATOR_NO_PACKS` (no pack entries), and `UMLIMATOR_PACKS` with `UMLIMATOR_TEST` (tests only).
+- **The examples moved.** `docs/diagrams/examples/25-mindmap.json`, `27-gcp.json` and `28-azure.json` are
+  `examples/bookshop-opening-plan.json`, `bookshop-gcp.json` and `bookshop-azure.json`; Google's `iconPacks` label is
+  the pin's (`2026-11-14`, it said `2025`) and each cloud view has a caption. `26-aws.json` stays a target until 4a.8.
+  The atlas's stills and PDF on the site change: it holds 38 views with 4b.5's BPMN two, the opening plan in its views list.
+- **Decisions:** every recommendation of the note's §14; the choices each package took under the maintainer's standing
+  approval (14 Nov 2026) are in the note's "As built" sections (§2.4, §3, §4.1, §5.7, §6.3, §7.3, §8.4, §10).
+- **Known gaps:** the packs' zips are not pinned yet, so `pack fetch` refuses both packs until a release pins them (the
+  maintainer's download, §4.1); a line from or to a cloud group is not drawn by the canvas's handle or L (written in the
+  model); an `update()` that changes only the `icons` table keeps the view's picture; no insertion bar while a mindmap
+  topic is dragged; a view's `nodeIds` loses a deleted chain's ids one `splice` each (a 20,000-topic delete meets 100 ms
+  only where they sit together, §2.4).
+- **Left out** (the note's §13): AWS in 0.26.0 (built, off until AWS answers, 4a.8); downloading packs from the module,
+  the page or the MCP server; the vendors' group colours and diagram guidelines; icon search beyond the properties
+  panel's field; older pack versions side by side; Mermaid's shapes drawn; folding a branch in place; a mindmap laid out
+  down or radially; XMI, copy and paste, per-type `diff()` writers.
+- **Layout limits** (`docs/conformance/`): with repair and rerouting off, the Google Cloud example crosses once right
+  and once down, the Azure example once right and 3 times down; the cloud stress view `all` 52 and 54 times, one path's
+  label on another laid out down. The mindmap example and fixtures lay out clean. No view runs a line through a node.
+- **P1.** CPU, best of five, an Apple laptop under load: the mindmap stress view's full layout and SVG, and a topic
+  renamed, added, moved to the other side and promoted, 1 to 2 ms each; the cloud stress view's full layout and SVG
+  155 to 180 ms, a product renamed 165 to 195 ms, its icon changed 27 to 31 ms, moved into another group 190 to 216 ms, a
+  path added 175 to 223 ms (CI's runner, 4a.6: 259 to 299 ms). The cloud figures are over the 100 ms target, as decision
+  20 expected; CI holds 1 s and prints each against the target.
+- **Size:** `lib/umlimator.js`, what a map host loads, is 186,161 B with `gzip -9`: 12.86% over 0.16.0 (the budget is
+  15%). Milestone 4a spent 266 B of its 700 B share, all in 4a.2 (185,873 B to 186,139 B; 4a.4 and 4a.6 none).
+  `lib/umlimator-all.js` is 590,167 B gzipped with milestones 3, 4a and 4b's code on `main`. The npm package is 845.5 kB.
+
 ## 0.27.0 (in progress): the BPMN diagram; BPMN XML read and written through bpmn-moddle; `umlimator.py export`
 
 Milestone 4b of the plan for 28 diagram types (`docs/diagrams/notes/milestone-4b.md`), merged to `main` before 0.27.0

@@ -236,7 +236,7 @@
    "layout gcp-on-gcp": "536c01efdc529358",
    "describe gcp-on-gcp": "1c900fcefcced3d6",
    "validate": "d8a750f6d7f41721",
-   "edit": "2a5adafa4d6843fd",
+   "edit": "633afe0a52683599",
    "edited layout gcp-on-gcp": "4fd78a1e3eabf8f0",
    "edited validate": "d8a750f6d7f41721"
   },
@@ -244,7 +244,7 @@
    "layout az-on-azure": "617652d1a4215929",
    "describe az-on-azure": "cff3f0a67beedd92",
    "validate": "404236670800e847",
-   "edit": "04eb6817a0bae48a",
+   "edit": "a6bd1bddb86df1a3",
    "edited layout az-on-azure": "1b47135d0741b255",
    "edited validate": "404236670800e847"
   },

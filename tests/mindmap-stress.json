@@ -1,0 +1,2909 @@
+{
+ "$schema": "../lib/umlimator.schema.json",
+ "schemaVersion": 2,
+ "title": "Mindmap, stress",
+ "nodes": [
+  {
+   "id": "r",
+   "type": "mindmap.Topic",
+   "label": "Root"
+  },
+  {
+   "id": "a",
+   "type": "mindmap.Topic",
+   "label": "Branch a",
+   "parent": "r"
+  },
+  {
+   "id": "b",
+   "type": "mindmap.Topic",
+   "label": "Branch b",
+   "parent": "r"
+  },
+  {
+   "id": "c",
+   "type": "mindmap.Topic",
+   "label": "Branch c",
+   "parent": "r"
+  },
+  {
+   "id": "a0",
+   "type": "mindmap.Topic",
+   "label": "Child 0",
+   "parent": "a"
+  },
+  {
+   "id": "a1",
+   "type": "mindmap.Topic",
+   "label": "Child 1",
+   "parent": "a"
+  },
+  {
+   "id": "a2",
+   "type": "mindmap.Topic",
+   "label": "Child 2",
+   "parent": "a"
+  },
+  {
+   "id": "a3",
+   "type": "mindmap.Topic",
+   "label": "Child 3",
+   "parent": "a"
+  },
+  {
+   "id": "a4",
+   "type": "mindmap.Topic",
+   "label": "Child 4",
+   "parent": "a"
+  },
+  {
+   "id": "a5",
+   "type": "mindmap.Topic",
+   "label": "Child 5",
+   "parent": "a"
+  },
+  {
+   "id": "a6",
+   "type": "mindmap.Topic",
+   "label": "Child 6",
+   "parent": "a"
+  },
+  {
+   "id": "a7",
+   "type": "mindmap.Topic",
+   "label": "Child 7",
+   "parent": "a"
+  },
+  {
+   "id": "a8",
+   "type": "mindmap.Topic",
+   "label": "Child 8",
+   "parent": "a"
+  },
+  {
+   "id": "a9",
+   "type": "mindmap.Topic",
+   "label": "Child 9",
+   "parent": "a"
+  },
+  {
+   "id": "a10",
+   "type": "mindmap.Topic",
+   "label": "Child 10",
+   "parent": "a"
+  },
+  {
+   "id": "a11",
+   "type": "mindmap.Topic",
+   "label": "Child 11",
+   "parent": "a"
+  },
+  {
+   "id": "a12",
+   "type": "mindmap.Topic",
+   "label": "Child 12",
+   "parent": "a"
+  },
+  {
+   "id": "a13",
+   "type": "mindmap.Topic",
+   "label": "Child 13",
+   "parent": "a"
+  },
+  {
+   "id": "a14",
+   "type": "mindmap.Topic",
+   "label": "Child 14",
+   "parent": "a"
+  },
+  {
+   "id": "a15",
+   "type": "mindmap.Topic",
+   "label": "Child 15",
+   "parent": "a"
+  },
+  {
+   "id": "a16",
+   "type": "mindmap.Topic",
+   "label": "Child 16",
+   "parent": "a"
+  },
+  {
+   "id": "a17",
+   "type": "mindmap.Topic",
+   "label": "Child 17",
+   "parent": "a"
+  },
+  {
+   "id": "a18",
+   "type": "mindmap.Topic",
+   "label": "Child 18",
+   "parent": "a"
+  },
+  {
+   "id": "a19",
+   "type": "mindmap.Topic",
+   "label": "Child 19",
+   "parent": "a"
+  },
+  {
+   "id": "a20",
+   "type": "mindmap.Topic",
+   "label": "Child 20",
+   "parent": "a"
+  },
+  {
+   "id": "a21",
+   "type": "mindmap.Topic",
+   "label": "Child 21",
+   "parent": "a"
+  },
+  {
+   "id": "a22",
+   "type": "mindmap.Topic",
+   "label": "Child 22",
+   "parent": "a"
+  },
+  {
+   "id": "a23",
+   "type": "mindmap.Topic",
+   "label": "Child 23",
+   "parent": "a"
+  },
+  {
+   "id": "a24",
+   "type": "mindmap.Topic",
+   "label": "Child 24",
+   "parent": "a"
+  },
+  {
+   "id": "a25",
+   "type": "mindmap.Topic",
+   "label": "Child 25",
+   "parent": "a"
+  },
+  {
+   "id": "a26",
+   "type": "mindmap.Topic",
+   "label": "Child 26",
+   "parent": "a"
+  },
+  {
+   "id": "a27",
+   "type": "mindmap.Topic",
+   "label": "Child 27",
+   "parent": "a"
+  },
+  {
+   "id": "a28",
+   "type": "mindmap.Topic",
+   "label": "Child 28",
+   "parent": "a"
+  },
+  {
+   "id": "a29",
+   "type": "mindmap.Topic",
+   "label": "Child 29",
+   "parent": "a"
+  },
+  {
+   "id": "long",
+   "type": "mindmap.Topic",
+   "label": "A topic of two hundred characters, which wraps to four lines of two hundred pixels and is cut with an ellipsis where it does not fit, so that its box never grows past the width the note sets for it, e",
+   "parent": "b"
+  },
+  {
+   "id": "gone",
+   "type": "mindmap.Topic",
+   "label": "Hidden",
+   "parent": "b"
+  },
+  {
+   "id": "orphan",
+   "type": "mindmap.Topic",
+   "label": "Its parent is hidden",
+   "parent": "gone"
+  },
+  {
+   "id": "second",
+   "type": "mindmap.Topic",
+   "label": "A second root"
+  },
+  {
+   "id": "second-kid",
+   "type": "mindmap.Topic",
+   "label": "Under the second root",
+   "parent": "second"
+  },
+  {
+   "id": "d1",
+   "type": "mindmap.Topic",
+   "label": "Level 3",
+   "parent": "c"
+  },
+  {
+   "id": "d2",
+   "type": "mindmap.Topic",
+   "label": "Level 4",
+   "parent": "d1"
+  },
+  {
+   "id": "d3",
+   "type": "mindmap.Topic",
+   "label": "Level 5",
+   "parent": "d2"
+  },
+  {
+   "id": "d4",
+   "type": "mindmap.Topic",
+   "label": "Level 6",
+   "parent": "d3"
+  },
+  {
+   "id": "d5",
+   "type": "mindmap.Topic",
+   "label": "Level 7",
+   "parent": "d4"
+  },
+  {
+   "id": "d6",
+   "type": "mindmap.Topic",
+   "label": "Level 8",
+   "parent": "d5"
+  },
+  {
+   "id": "d7",
+   "type": "mindmap.Topic",
+   "label": "Level 9",
+   "parent": "d6"
+  },
+  {
+   "id": "d8",
+   "type": "mindmap.Topic",
+   "label": "Level 10",
+   "parent": "d7"
+  },
+  {
+   "id": "d9",
+   "type": "mindmap.Topic",
+   "label": "Level 11",
+   "parent": "d8"
+  },
+  {
+   "id": "d10",
+   "type": "mindmap.Topic",
+   "label": "Level 12",
+   "parent": "d9"
+  },
+  {
+   "id": "d11",
+   "type": "mindmap.Topic",
+   "label": "Level 13",
+   "parent": "d10"
+  },
+  {
+   "id": "d12",
+   "type": "mindmap.Topic",
+   "label": "Level 14",
+   "parent": "d11"
+  },
+  {
+   "id": "d13",
+   "type": "mindmap.Topic",
+   "label": "Level 15",
+   "parent": "d12"
+  },
+  {
+   "id": "d14",
+   "type": "mindmap.Topic",
+   "label": "Level 16",
+   "parent": "d13"
+  },
+  {
+   "id": "d15",
+   "type": "mindmap.Topic",
+   "label": "Level 17",
+   "parent": "d14"
+  },
+  {
+   "id": "d16",
+   "type": "mindmap.Topic",
+   "label": "Level 18",
+   "parent": "d15"
+  },
+  {
+   "id": "d17",
+   "type": "mindmap.Topic",
+   "label": "Level 19",
+   "parent": "d16"
+  },
+  {
+   "id": "d18",
+   "type": "mindmap.Topic",
+   "label": "Level 20",
+   "parent": "d17"
+  },
+  {
+   "id": "d19",
+   "type": "mindmap.Topic",
+   "label": "Level 21",
+   "parent": "d18"
+  },
+  {
+   "id": "d20",
+   "type": "mindmap.Topic",
+   "label": "Level 22",
+   "parent": "d19"
+  },
+  {
+   "id": "d21",
+   "type": "mindmap.Topic",
+   "label": "Level 23",
+   "parent": "d20"
+  },
+  {
+   "id": "d22",
+   "type": "mindmap.Topic",
+   "label": "Level 24",
+   "parent": "d21"
+  },
+  {
+   "id": "d23",
+   "type": "mindmap.Topic",
+   "label": "Level 25",
+   "parent": "d22"
+  },
+  {
+   "id": "d24",
+   "type": "mindmap.Topic",
+   "label": "Level 26",
+   "parent": "d23"
+  },
+  {
+   "id": "d25",
+   "type": "mindmap.Topic",
+   "label": "Level 27",
+   "parent": "d24"
+  },
+  {
+   "id": "d26",
+   "type": "mindmap.Topic",
+   "label": "Level 28",
+   "parent": "d25"
+  },
+  {
+   "id": "d27",
+   "type": "mindmap.Topic",
+   "label": "Level 29",
+   "parent": "d26"
+  },
+  {
+   "id": "d28",
+   "type": "mindmap.Topic",
+   "label": "Level 30",
+   "parent": "d27"
+  },
+  {
+   "id": "d29",
+   "type": "mindmap.Topic",
+   "label": "Level 31",
+   "parent": "d28"
+  },
+  {
+   "id": "d30",
+   "type": "mindmap.Topic",
+   "label": "Level 32",
+   "parent": "d29"
+  },
+  {
+   "id": "d31",
+   "type": "mindmap.Topic",
+   "label": "Level 33",
+   "parent": "d30"
+  },
+  {
+   "id": "d32",
+   "type": "mindmap.Topic",
+   "label": "Level 34",
+   "parent": "d31"
+  },
+  {
+   "id": "d33",
+   "type": "mindmap.Topic",
+   "label": "Level 35",
+   "parent": "d32"
+  },
+  {
+   "id": "d34",
+   "type": "mindmap.Topic",
+   "label": "Level 36",
+   "parent": "d33"
+  },
+  {
+   "id": "d35",
+   "type": "mindmap.Topic",
+   "label": "Level 37",
+   "parent": "d34"
+  },
+  {
+   "id": "d36",
+   "type": "mindmap.Topic",
+   "label": "Level 38",
+   "parent": "d35"
+  },
+  {
+   "id": "d37",
+   "type": "mindmap.Topic",
+   "label": "Level 39",
+   "parent": "d36"
+  },
+  {
+   "id": "d38",
+   "type": "mindmap.Topic",
+   "label": "Level 40",
+   "parent": "d37"
+  },
+  {
+   "id": "d39",
+   "type": "mindmap.Topic",
+   "label": "Level 41",
+   "parent": "d38"
+  },
+  {
+   "id": "d40",
+   "type": "mindmap.Topic",
+   "label": "Level 42",
+   "parent": "d39"
+  },
+  {
+   "id": "d41",
+   "type": "mindmap.Topic",
+   "label": "Level 43",
+   "parent": "d40"
+  },
+  {
+   "id": "d42",
+   "type": "mindmap.Topic",
+   "label": "Level 44",
+   "parent": "d41"
+  },
+  {
+   "id": "d43",
+   "type": "mindmap.Topic",
+   "label": "Level 45",
+   "parent": "d42"
+  },
+  {
+   "id": "d44",
+   "type": "mindmap.Topic",
+   "label": "Level 46",
+   "parent": "d43"
+  },
+  {
+   "id": "d45",
+   "type": "mindmap.Topic",
+   "label": "Level 47",
+   "parent": "d44"
+  },
+  {
+   "id": "d46",
+   "type": "mindmap.Topic",
+   "label": "Level 48",
+   "parent": "d45"
+  },
+  {
+   "id": "d47",
+   "type": "mindmap.Topic",
+   "label": "Level 49",
+   "parent": "d46"
+  },
+  {
+   "id": "d48",
+   "type": "mindmap.Topic",
+   "label": "Level 50",
+   "parent": "d47"
+  },
+  {
+   "id": "d49",
+   "type": "mindmap.Topic",
+   "label": "Level 51",
+   "parent": "d48"
+  },
+  {
+   "id": "d50",
+   "type": "mindmap.Topic",
+   "label": "Level 52",
+   "parent": "d49"
+  },
+  {
+   "id": "d51",
+   "type": "mindmap.Topic",
+   "label": "Level 53",
+   "parent": "d50"
+  },
+  {
+   "id": "d52",
+   "type": "mindmap.Topic",
+   "label": "Level 54",
+   "parent": "d51"
+  },
+  {
+   "id": "d53",
+   "type": "mindmap.Topic",
+   "label": "Level 55",
+   "parent": "d52"
+  },
+  {
+   "id": "d54",
+   "type": "mindmap.Topic",
+   "label": "Level 56",
+   "parent": "d53"
+  },
+  {
+   "id": "d55",
+   "type": "mindmap.Topic",
+   "label": "Level 57",
+   "parent": "d54"
+  },
+  {
+   "id": "d56",
+   "type": "mindmap.Topic",
+   "label": "Level 58",
+   "parent": "d55"
+  },
+  {
+   "id": "d57",
+   "type": "mindmap.Topic",
+   "label": "Level 59",
+   "parent": "d56"
+  },
+  {
+   "id": "d58",
+   "type": "mindmap.Topic",
+   "label": "Level 60",
+   "parent": "d57"
+  },
+  {
+   "id": "d59",
+   "type": "mindmap.Topic",
+   "label": "Level 61",
+   "parent": "d58"
+  },
+  {
+   "id": "d60",
+   "type": "mindmap.Topic",
+   "label": "Level 62",
+   "parent": "d59"
+  },
+  {
+   "id": "d61",
+   "type": "mindmap.Topic",
+   "label": "Level 63",
+   "parent": "d60"
+  },
+  {
+   "id": "d62",
+   "type": "mindmap.Topic",
+   "label": "Level 64",
+   "parent": "d61"
+  },
+  {
+   "id": "d63",
+   "type": "mindmap.Topic",
+   "label": "Level 65",
+   "parent": "d62"
+  },
+  {
+   "id": "d64",
+   "type": "mindmap.Topic",
+   "label": "Level 66",
+   "parent": "d63"
+  },
+  {
+   "id": "d65",
+   "type": "mindmap.Topic",
+   "label": "Level 67",
+   "parent": "d64"
+  },
+  {
+   "id": "d66",
+   "type": "mindmap.Topic",
+   "label": "Level 68",
+   "parent": "d65"
+  },
+  {
+   "id": "d67",
+   "type": "mindmap.Topic",
+   "label": "Level 69",
+   "parent": "d66"
+  },
+  {
+   "id": "d68",
+   "type": "mindmap.Topic",
+   "label": "Level 70",
+   "parent": "d67"
+  },
+  {
+   "id": "d69",
+   "type": "mindmap.Topic",
+   "label": "Level 71",
+   "parent": "d68"
+  },
+  {
+   "id": "d70",
+   "type": "mindmap.Topic",
+   "label": "Level 72",
+   "parent": "d69"
+  },
+  {
+   "id": "note",
+   "type": "uml.Comment",
+   "label": "A note"
+  },
+  {
+   "id": "stray",
+   "type": "mindmap.Topic",
+   "label": "Its parent is a note",
+   "parent": "note"
+  },
+  {
+   "id": "t0",
+   "type": "mindmap.Topic",
+   "label": "The plan"
+  },
+  {
+   "id": "t1",
+   "type": "mindmap.Topic",
+   "label": "Topic 1",
+   "parent": "t0"
+  },
+  {
+   "id": "t2",
+   "type": "mindmap.Topic",
+   "label": "Topic 2",
+   "parent": "t0"
+  },
+  {
+   "id": "t3",
+   "type": "mindmap.Topic",
+   "label": "Topic 3",
+   "parent": "t0"
+  },
+  {
+   "id": "t4",
+   "type": "mindmap.Topic",
+   "label": "Topic 4",
+   "parent": "t0"
+  },
+  {
+   "id": "t5",
+   "type": "mindmap.Topic",
+   "label": "Topic 5 with a longer text that wraps",
+   "parent": "t0"
+  },
+  {
+   "id": "t6",
+   "type": "mindmap.Topic",
+   "label": "Topic 6",
+   "parent": "t0"
+  },
+  {
+   "id": "t7",
+   "type": "mindmap.Topic",
+   "label": "Topic 7",
+   "parent": "t1"
+  },
+  {
+   "id": "t8",
+   "type": "mindmap.Topic",
+   "label": "Topic 8",
+   "parent": "t2"
+  },
+  {
+   "id": "t9",
+   "type": "mindmap.Topic",
+   "label": "Topic 9",
+   "parent": "t3"
+  },
+  {
+   "id": "t10",
+   "type": "mindmap.Topic",
+   "label": "Topic 10 with a longer text that wraps",
+   "parent": "t4"
+  },
+  {
+   "id": "t11",
+   "type": "mindmap.Topic",
+   "label": "Topic 11",
+   "parent": "t5"
+  },
+  {
+   "id": "t12",
+   "type": "mindmap.Topic",
+   "label": "Topic 12",
+   "parent": "t6"
+  },
+  {
+   "id": "t13",
+   "type": "mindmap.Topic",
+   "label": "Topic 13",
+   "parent": "t7"
+  },
+  {
+   "id": "t14",
+   "type": "mindmap.Topic",
+   "label": "Topic 14",
+   "parent": "t8"
+  },
+  {
+   "id": "t15",
+   "type": "mindmap.Topic",
+   "label": "Topic 15 with a longer text that wraps",
+   "parent": "t9"
+  },
+  {
+   "id": "t16",
+   "type": "mindmap.Topic",
+   "label": "Topic 16",
+   "parent": "t10"
+  },
+  {
+   "id": "t17",
+   "type": "mindmap.Topic",
+   "label": "Topic 17",
+   "parent": "t11"
+  },
+  {
+   "id": "t18",
+   "type": "mindmap.Topic",
+   "label": "Topic 18",
+   "parent": "t12"
+  },
+  {
+   "id": "t19",
+   "type": "mindmap.Topic",
+   "label": "Topic 19",
+   "parent": "t13"
+  },
+  {
+   "id": "t20",
+   "type": "mindmap.Topic",
+   "label": "Topic 20 with a longer text that wraps",
+   "parent": "t14"
+  },
+  {
+   "id": "t21",
+   "type": "mindmap.Topic",
+   "label": "Topic 21",
+   "parent": "t15"
+  },
+  {
+   "id": "t22",
+   "type": "mindmap.Topic",
+   "label": "Topic 22",
+   "parent": "t16"
+  },
+  {
+   "id": "t23",
+   "type": "mindmap.Topic",
+   "label": "Topic 23",
+   "parent": "t17"
+  },
+  {
+   "id": "t24",
+   "type": "mindmap.Topic",
+   "label": "Topic 24",
+   "parent": "t18"
+  },
+  {
+   "id": "t25",
+   "type": "mindmap.Topic",
+   "label": "Topic 25 with a longer text that wraps",
+   "parent": "t19"
+  },
+  {
+   "id": "t26",
+   "type": "mindmap.Topic",
+   "label": "Topic 26",
+   "parent": "t20"
+  },
+  {
+   "id": "t27",
+   "type": "mindmap.Topic",
+   "label": "Topic 27",
+   "parent": "t21"
+  },
+  {
+   "id": "t28",
+   "type": "mindmap.Topic",
+   "label": "Topic 28",
+   "parent": "t22"
+  },
+  {
+   "id": "t29",
+   "type": "mindmap.Topic",
+   "label": "Topic 29",
+   "parent": "t23"
+  },
+  {
+   "id": "t30",
+   "type": "mindmap.Topic",
+   "label": "Topic 30 with a longer text that wraps",
+   "parent": "t24"
+  },
+  {
+   "id": "t31",
+   "type": "mindmap.Topic",
+   "label": "Topic 31",
+   "parent": "t25"
+  },
+  {
+   "id": "t32",
+   "type": "mindmap.Topic",
+   "label": "Topic 32",
+   "parent": "t26"
+  },
+  {
+   "id": "t33",
+   "type": "mindmap.Topic",
+   "label": "Topic 33",
+   "parent": "t27"
+  },
+  {
+   "id": "t34",
+   "type": "mindmap.Topic",
+   "label": "Topic 34",
+   "parent": "t28"
+  },
+  {
+   "id": "t35",
+   "type": "mindmap.Topic",
+   "label": "Topic 35 with a longer text that wraps",
+   "parent": "t29"
+  },
+  {
+   "id": "t36",
+   "type": "mindmap.Topic",
+   "label": "Topic 36",
+   "parent": "t30"
+  },
+  {
+   "id": "t37",
+   "type": "mindmap.Topic",
+   "label": "Topic 37",
+   "parent": "t31"
+  },
+  {
+   "id": "t38",
+   "type": "mindmap.Topic",
+   "label": "Topic 38",
+   "parent": "t32"
+  },
+  {
+   "id": "t39",
+   "type": "mindmap.Topic",
+   "label": "Topic 39",
+   "parent": "t33"
+  },
+  {
+   "id": "t40",
+   "type": "mindmap.Topic",
+   "label": "Topic 40 with a longer text that wraps",
+   "parent": "t34"
+  },
+  {
+   "id": "t41",
+   "type": "mindmap.Topic",
+   "label": "Topic 41",
+   "parent": "t35"
+  },
+  {
+   "id": "t42",
+   "type": "mindmap.Topic",
+   "label": "Topic 42",
+   "parent": "t36"
+  },
+  {
+   "id": "t43",
+   "type": "mindmap.Topic",
+   "label": "Topic 43",
+   "parent": "t14"
+  },
+  {
+   "id": "t44",
+   "type": "mindmap.Topic",
+   "label": "Topic 44",
+   "parent": "t21"
+  },
+  {
+   "id": "t45",
+   "type": "mindmap.Topic",
+   "label": "Topic 45 with a longer text that wraps",
+   "parent": "t28"
+  },
+  {
+   "id": "t46",
+   "type": "mindmap.Topic",
+   "label": "Topic 46",
+   "parent": "t35"
+  },
+  {
+   "id": "t47",
+   "type": "mindmap.Topic",
+   "label": "Topic 47",
+   "parent": "t6"
+  },
+  {
+   "id": "t48",
+   "type": "mindmap.Topic",
+   "label": "Topic 48",
+   "parent": "t13"
+  },
+  {
+   "id": "t49",
+   "type": "mindmap.Topic",
+   "label": "Topic 49",
+   "parent": "t20"
+  },
+  {
+   "id": "t50",
+   "type": "mindmap.Topic",
+   "label": "Topic 50 with a longer text that wraps",
+   "parent": "t27"
+  },
+  {
+   "id": "t51",
+   "type": "mindmap.Topic",
+   "label": "Topic 51",
+   "parent": "t34"
+  },
+  {
+   "id": "t52",
+   "type": "mindmap.Topic",
+   "label": "Topic 52",
+   "parent": "t5"
+  },
+  {
+   "id": "t53",
+   "type": "mindmap.Topic",
+   "label": "Topic 53",
+   "parent": "t12"
+  },
+  {
+   "id": "t54",
+   "type": "mindmap.Topic",
+   "label": "Topic 54",
+   "parent": "t19"
+  },
+  {
+   "id": "t55",
+   "type": "mindmap.Topic",
+   "label": "Topic 55 with a longer text that wraps",
+   "parent": "t26"
+  },
+  {
+   "id": "t56",
+   "type": "mindmap.Topic",
+   "label": "Topic 56",
+   "parent": "t33"
+  },
+  {
+   "id": "t57",
+   "type": "mindmap.Topic",
+   "label": "Topic 57",
+   "parent": "t4"
+  },
+  {
+   "id": "t58",
+   "type": "mindmap.Topic",
+   "label": "Topic 58",
+   "parent": "t11"
+  },
+  {
+   "id": "t59",
+   "type": "mindmap.Topic",
+   "label": "Topic 59",
+   "parent": "t18"
+  },
+  {
+   "id": "t60",
+   "type": "mindmap.Topic",
+   "label": "Topic 60 with a longer text that wraps",
+   "parent": "t25"
+  },
+  {
+   "id": "t61",
+   "type": "mindmap.Topic",
+   "label": "Topic 61",
+   "parent": "t32"
+  },
+  {
+   "id": "t62",
+   "type": "mindmap.Topic",
+   "label": "Topic 62",
+   "parent": "t3"
+  },
+  {
+   "id": "t63",
+   "type": "mindmap.Topic",
+   "label": "Topic 63",
+   "parent": "t10"
+  },
+  {
+   "id": "t64",
+   "type": "mindmap.Topic",
+   "label": "Topic 64",
+   "parent": "t17"
+  },
+  {
+   "id": "t65",
+   "type": "mindmap.Topic",
+   "label": "Topic 65 with a longer text that wraps",
+   "parent": "t24"
+  },
+  {
+   "id": "t66",
+   "type": "mindmap.Topic",
+   "label": "Topic 66",
+   "parent": "t31"
+  },
+  {
+   "id": "t67",
+   "type": "mindmap.Topic",
+   "label": "Topic 67",
+   "parent": "t2"
+  },
+  {
+   "id": "t68",
+   "type": "mindmap.Topic",
+   "label": "Topic 68",
+   "parent": "t9"
+  },
+  {
+   "id": "t69",
+   "type": "mindmap.Topic",
+   "label": "Topic 69",
+   "parent": "t16"
+  },
+  {
+   "id": "t70",
+   "type": "mindmap.Topic",
+   "label": "Topic 70 with a longer text that wraps",
+   "parent": "t23"
+  },
+  {
+   "id": "t71",
+   "type": "mindmap.Topic",
+   "label": "Topic 71",
+   "parent": "t30"
+  },
+  {
+   "id": "t72",
+   "type": "mindmap.Topic",
+   "label": "Topic 72",
+   "parent": "t1"
+  },
+  {
+   "id": "t73",
+   "type": "mindmap.Topic",
+   "label": "Topic 73",
+   "parent": "t8"
+  },
+  {
+   "id": "t74",
+   "type": "mindmap.Topic",
+   "label": "Topic 74",
+   "parent": "t15"
+  },
+  {
+   "id": "t75",
+   "type": "mindmap.Topic",
+   "label": "Topic 75 with a longer text that wraps",
+   "parent": "t22"
+  },
+  {
+   "id": "t76",
+   "type": "mindmap.Topic",
+   "label": "Topic 76",
+   "parent": "t29"
+  },
+  {
+   "id": "t77",
+   "type": "mindmap.Topic",
+   "label": "Topic 77",
+   "parent": "t36"
+  },
+  {
+   "id": "t78",
+   "type": "mindmap.Topic",
+   "label": "Topic 78",
+   "parent": "t7"
+  },
+  {
+   "id": "t79",
+   "type": "mindmap.Topic",
+   "label": "Topic 79",
+   "parent": "t14"
+  },
+  {
+   "id": "t80",
+   "type": "mindmap.Topic",
+   "label": "Topic 80 with a longer text that wraps",
+   "parent": "t21"
+  },
+  {
+   "id": "t81",
+   "type": "mindmap.Topic",
+   "label": "Topic 81",
+   "parent": "t28"
+  },
+  {
+   "id": "t82",
+   "type": "mindmap.Topic",
+   "label": "Topic 82",
+   "parent": "t35"
+  },
+  {
+   "id": "t83",
+   "type": "mindmap.Topic",
+   "label": "Topic 83",
+   "parent": "t6"
+  },
+  {
+   "id": "t84",
+   "type": "mindmap.Topic",
+   "label": "Topic 84",
+   "parent": "t13"
+  },
+  {
+   "id": "t85",
+   "type": "mindmap.Topic",
+   "label": "Topic 85 with a longer text that wraps",
+   "parent": "t20"
+  },
+  {
+   "id": "t86",
+   "type": "mindmap.Topic",
+   "label": "Topic 86",
+   "parent": "t27"
+  },
+  {
+   "id": "t87",
+   "type": "mindmap.Topic",
+   "label": "Topic 87",
+   "parent": "t34"
+  },
+  {
+   "id": "t88",
+   "type": "mindmap.Topic",
+   "label": "Topic 88",
+   "parent": "t5"
+  },
+  {
+   "id": "t89",
+   "type": "mindmap.Topic",
+   "label": "Topic 89",
+   "parent": "t12"
+  },
+  {
+   "id": "t90",
+   "type": "mindmap.Topic",
+   "label": "Topic 90 with a longer text that wraps",
+   "parent": "t19"
+  },
+  {
+   "id": "t91",
+   "type": "mindmap.Topic",
+   "label": "Topic 91",
+   "parent": "t26"
+  },
+  {
+   "id": "t92",
+   "type": "mindmap.Topic",
+   "label": "Topic 92",
+   "parent": "t33"
+  },
+  {
+   "id": "t93",
+   "type": "mindmap.Topic",
+   "label": "Topic 93",
+   "parent": "t4"
+  },
+  {
+   "id": "t94",
+   "type": "mindmap.Topic",
+   "label": "Topic 94",
+   "parent": "t11"
+  },
+  {
+   "id": "t95",
+   "type": "mindmap.Topic",
+   "label": "Topic 95 with a longer text that wraps",
+   "parent": "t18"
+  },
+  {
+   "id": "t96",
+   "type": "mindmap.Topic",
+   "label": "Topic 96",
+   "parent": "t25"
+  },
+  {
+   "id": "t97",
+   "type": "mindmap.Topic",
+   "label": "Topic 97",
+   "parent": "t32"
+  },
+  {
+   "id": "t98",
+   "type": "mindmap.Topic",
+   "label": "Topic 98",
+   "parent": "t3"
+  },
+  {
+   "id": "t99",
+   "type": "mindmap.Topic",
+   "label": "Topic 99",
+   "parent": "t10"
+  },
+  {
+   "id": "t100",
+   "type": "mindmap.Topic",
+   "label": "Topic 100 with a longer text that wraps",
+   "parent": "t17"
+  },
+  {
+   "id": "t101",
+   "type": "mindmap.Topic",
+   "label": "Topic 101",
+   "parent": "t24"
+  },
+  {
+   "id": "t102",
+   "type": "mindmap.Topic",
+   "label": "Topic 102",
+   "parent": "t31"
+  },
+  {
+   "id": "t103",
+   "type": "mindmap.Topic",
+   "label": "Topic 103",
+   "parent": "t2"
+  },
+  {
+   "id": "t104",
+   "type": "mindmap.Topic",
+   "label": "Topic 104",
+   "parent": "t9"
+  },
+  {
+   "id": "t105",
+   "type": "mindmap.Topic",
+   "label": "Topic 105 with a longer text that wraps",
+   "parent": "t16"
+  },
+  {
+   "id": "t106",
+   "type": "mindmap.Topic",
+   "label": "Topic 106",
+   "parent": "t23"
+  },
+  {
+   "id": "t107",
+   "type": "mindmap.Topic",
+   "label": "Topic 107",
+   "parent": "t30"
+  },
+  {
+   "id": "t108",
+   "type": "mindmap.Topic",
+   "label": "Topic 108",
+   "parent": "t1"
+  },
+  {
+   "id": "t109",
+   "type": "mindmap.Topic",
+   "label": "Topic 109",
+   "parent": "t8"
+  },
+  {
+   "id": "t110",
+   "type": "mindmap.Topic",
+   "label": "Topic 110 with a longer text that wraps",
+   "parent": "t15"
+  },
+  {
+   "id": "t111",
+   "type": "mindmap.Topic",
+   "label": "Topic 111",
+   "parent": "t22"
+  },
+  {
+   "id": "t112",
+   "type": "mindmap.Topic",
+   "label": "Topic 112",
+   "parent": "t29"
+  },
+  {
+   "id": "t113",
+   "type": "mindmap.Topic",
+   "label": "Topic 113",
+   "parent": "t36"
+  },
+  {
+   "id": "t114",
+   "type": "mindmap.Topic",
+   "label": "Topic 114",
+   "parent": "t7"
+  },
+  {
+   "id": "t115",
+   "type": "mindmap.Topic",
+   "label": "Topic 115 with a longer text that wraps",
+   "parent": "t14"
+  },
+  {
+   "id": "t116",
+   "type": "mindmap.Topic",
+   "label": "Topic 116",
+   "parent": "t21"
+  },
+  {
+   "id": "t117",
+   "type": "mindmap.Topic",
+   "label": "Topic 117",
+   "parent": "t28"
+  },
+  {
+   "id": "t118",
+   "type": "mindmap.Topic",
+   "label": "Topic 118",
+   "parent": "t35"
+  },
+  {
+   "id": "t119",
+   "type": "mindmap.Topic",
+   "label": "Topic 119",
+   "parent": "t6"
+  },
+  {
+   "id": "t120",
+   "type": "mindmap.Topic",
+   "label": "Topic 120 with a longer text that wraps",
+   "parent": "t13"
+  },
+  {
+   "id": "t121",
+   "type": "mindmap.Topic",
+   "label": "Topic 121",
+   "parent": "t20"
+  },
+  {
+   "id": "t122",
+   "type": "mindmap.Topic",
+   "label": "Topic 122",
+   "parent": "t27"
+  },
+  {
+   "id": "t123",
+   "type": "mindmap.Topic",
+   "label": "Topic 123",
+   "parent": "t34"
+  },
+  {
+   "id": "t124",
+   "type": "mindmap.Topic",
+   "label": "Topic 124",
+   "parent": "t5"
+  },
+  {
+   "id": "t125",
+   "type": "mindmap.Topic",
+   "label": "Topic 125 with a longer text that wraps",
+   "parent": "t12"
+  },
+  {
+   "id": "t126",
+   "type": "mindmap.Topic",
+   "label": "Topic 126",
+   "parent": "t19"
+  },
+  {
+   "id": "t127",
+   "type": "mindmap.Topic",
+   "label": "Topic 127",
+   "parent": "t26"
+  },
+  {
+   "id": "t128",
+   "type": "mindmap.Topic",
+   "label": "Topic 128",
+   "parent": "t33"
+  },
+  {
+   "id": "t129",
+   "type": "mindmap.Topic",
+   "label": "Topic 129",
+   "parent": "t4"
+  },
+  {
+   "id": "t130",
+   "type": "mindmap.Topic",
+   "label": "Topic 130 with a longer text that wraps",
+   "parent": "t11"
+  },
+  {
+   "id": "t131",
+   "type": "mindmap.Topic",
+   "label": "Topic 131",
+   "parent": "t18"
+  },
+  {
+   "id": "t132",
+   "type": "mindmap.Topic",
+   "label": "Topic 132",
+   "parent": "t25"
+  },
+  {
+   "id": "t133",
+   "type": "mindmap.Topic",
+   "label": "Topic 133",
+   "parent": "t32"
+  },
+  {
+   "id": "t134",
+   "type": "mindmap.Topic",
+   "label": "Topic 134",
+   "parent": "t3"
+  },
+  {
+   "id": "t135",
+   "type": "mindmap.Topic",
+   "label": "Topic 135 with a longer text that wraps",
+   "parent": "t10"
+  },
+  {
+   "id": "t136",
+   "type": "mindmap.Topic",
+   "label": "Topic 136",
+   "parent": "t17"
+  },
+  {
+   "id": "t137",
+   "type": "mindmap.Topic",
+   "label": "Topic 137",
+   "parent": "t24"
+  },
+  {
+   "id": "t138",
+   "type": "mindmap.Topic",
+   "label": "Topic 138",
+   "parent": "t31"
+  },
+  {
+   "id": "t139",
+   "type": "mindmap.Topic",
+   "label": "Topic 139",
+   "parent": "t2"
+  },
+  {
+   "id": "t140",
+   "type": "mindmap.Topic",
+   "label": "Topic 140 with a longer text that wraps",
+   "parent": "t9"
+  },
+  {
+   "id": "t141",
+   "type": "mindmap.Topic",
+   "label": "Topic 141",
+   "parent": "t16"
+  },
+  {
+   "id": "t142",
+   "type": "mindmap.Topic",
+   "label": "Topic 142",
+   "parent": "t23"
+  },
+  {
+   "id": "t143",
+   "type": "mindmap.Topic",
+   "label": "Topic 143",
+   "parent": "t30"
+  },
+  {
+   "id": "t144",
+   "type": "mindmap.Topic",
+   "label": "Topic 144",
+   "parent": "t1"
+  },
+  {
+   "id": "t145",
+   "type": "mindmap.Topic",
+   "label": "Topic 145 with a longer text that wraps",
+   "parent": "t8"
+  },
+  {
+   "id": "t146",
+   "type": "mindmap.Topic",
+   "label": "Topic 146",
+   "parent": "t15"
+  },
+  {
+   "id": "t147",
+   "type": "mindmap.Topic",
+   "label": "Topic 147",
+   "parent": "t22"
+  },
+  {
+   "id": "t148",
+   "type": "mindmap.Topic",
+   "label": "Topic 148",
+   "parent": "t29"
+  },
+  {
+   "id": "t149",
+   "type": "mindmap.Topic",
+   "label": "Topic 149",
+   "parent": "t36"
+  },
+  {
+   "id": "t150",
+   "type": "mindmap.Topic",
+   "label": "Topic 150 with a longer text that wraps",
+   "parent": "t7"
+  },
+  {
+   "id": "t151",
+   "type": "mindmap.Topic",
+   "label": "Topic 151",
+   "parent": "t14"
+  },
+  {
+   "id": "t152",
+   "type": "mindmap.Topic",
+   "label": "Topic 152",
+   "parent": "t21"
+  },
+  {
+   "id": "t153",
+   "type": "mindmap.Topic",
+   "label": "Topic 153",
+   "parent": "t28"
+  },
+  {
+   "id": "t154",
+   "type": "mindmap.Topic",
+   "label": "Topic 154",
+   "parent": "t35"
+  },
+  {
+   "id": "t155",
+   "type": "mindmap.Topic",
+   "label": "Topic 155 with a longer text that wraps",
+   "parent": "t6"
+  },
+  {
+   "id": "t156",
+   "type": "mindmap.Topic",
+   "label": "Topic 156",
+   "parent": "t13"
+  },
+  {
+   "id": "t157",
+   "type": "mindmap.Topic",
+   "label": "Topic 157",
+   "parent": "t20"
+  },
+  {
+   "id": "t158",
+   "type": "mindmap.Topic",
+   "label": "Topic 158",
+   "parent": "t27"
+  },
+  {
+   "id": "t159",
+   "type": "mindmap.Topic",
+   "label": "Topic 159",
+   "parent": "t34"
+  },
+  {
+   "id": "t160",
+   "type": "mindmap.Topic",
+   "label": "Topic 160 with a longer text that wraps",
+   "parent": "t5"
+  },
+  {
+   "id": "t161",
+   "type": "mindmap.Topic",
+   "label": "Topic 161",
+   "parent": "t12"
+  },
+  {
+   "id": "t162",
+   "type": "mindmap.Topic",
+   "label": "Topic 162",
+   "parent": "t19"
+  },
+  {
+   "id": "t163",
+   "type": "mindmap.Topic",
+   "label": "Topic 163",
+   "parent": "t26"
+  },
+  {
+   "id": "t164",
+   "type": "mindmap.Topic",
+   "label": "Topic 164",
+   "parent": "t33"
+  },
+  {
+   "id": "t165",
+   "type": "mindmap.Topic",
+   "label": "Topic 165 with a longer text that wraps",
+   "parent": "t4"
+  },
+  {
+   "id": "t166",
+   "type": "mindmap.Topic",
+   "label": "Topic 166",
+   "parent": "t11"
+  },
+  {
+   "id": "t167",
+   "type": "mindmap.Topic",
+   "label": "Topic 167",
+   "parent": "t18"
+  },
+  {
+   "id": "t168",
+   "type": "mindmap.Topic",
+   "label": "Topic 168",
+   "parent": "t25"
+  },
+  {
+   "id": "t169",
+   "type": "mindmap.Topic",
+   "label": "Topic 169",
+   "parent": "t32"
+  },
+  {
+   "id": "t170",
+   "type": "mindmap.Topic",
+   "label": "Topic 170 with a longer text that wraps",
+   "parent": "t3"
+  },
+  {
+   "id": "t171",
+   "type": "mindmap.Topic",
+   "label": "Topic 171",
+   "parent": "t10"
+  },
+  {
+   "id": "t172",
+   "type": "mindmap.Topic",
+   "label": "Topic 172",
+   "parent": "t17"
+  },
+  {
+   "id": "t173",
+   "type": "mindmap.Topic",
+   "label": "Topic 173",
+   "parent": "t24"
+  },
+  {
+   "id": "t174",
+   "type": "mindmap.Topic",
+   "label": "Topic 174",
+   "parent": "t31"
+  },
+  {
+   "id": "t175",
+   "type": "mindmap.Topic",
+   "label": "Topic 175 with a longer text that wraps",
+   "parent": "t2"
+  },
+  {
+   "id": "t176",
+   "type": "mindmap.Topic",
+   "label": "Topic 176",
+   "parent": "t9"
+  },
+  {
+   "id": "t177",
+   "type": "mindmap.Topic",
+   "label": "Topic 177",
+   "parent": "t16"
+  },
+  {
+   "id": "t178",
+   "type": "mindmap.Topic",
+   "label": "Topic 178",
+   "parent": "t23"
+  },
+  {
+   "id": "t179",
+   "type": "mindmap.Topic",
+   "label": "Topic 179",
+   "parent": "t30"
+  },
+  {
+   "id": "t180",
+   "type": "mindmap.Topic",
+   "label": "Topic 180 with a longer text that wraps",
+   "parent": "t1"
+  },
+  {
+   "id": "t181",
+   "type": "mindmap.Topic",
+   "label": "Topic 181",
+   "parent": "t8"
+  },
+  {
+   "id": "t182",
+   "type": "mindmap.Topic",
+   "label": "Topic 182",
+   "parent": "t15"
+  },
+  {
+   "id": "t183",
+   "type": "mindmap.Topic",
+   "label": "Topic 183",
+   "parent": "t22"
+  },
+  {
+   "id": "t184",
+   "type": "mindmap.Topic",
+   "label": "Topic 184",
+   "parent": "t29"
+  },
+  {
+   "id": "t185",
+   "type": "mindmap.Topic",
+   "label": "Topic 185 with a longer text that wraps",
+   "parent": "t36"
+  },
+  {
+   "id": "t186",
+   "type": "mindmap.Topic",
+   "label": "Topic 186",
+   "parent": "t7"
+  },
+  {
+   "id": "t187",
+   "type": "mindmap.Topic",
+   "label": "Topic 187",
+   "parent": "t14"
+  },
+  {
+   "id": "t188",
+   "type": "mindmap.Topic",
+   "label": "Topic 188",
+   "parent": "t21"
+  },
+  {
+   "id": "t189",
+   "type": "mindmap.Topic",
+   "label": "Topic 189",
+   "parent": "t28"
+  },
+  {
+   "id": "t190",
+   "type": "mindmap.Topic",
+   "label": "Topic 190 with a longer text that wraps",
+   "parent": "t35"
+  },
+  {
+   "id": "t191",
+   "type": "mindmap.Topic",
+   "label": "Topic 191",
+   "parent": "t6"
+  },
+  {
+   "id": "t192",
+   "type": "mindmap.Topic",
+   "label": "Topic 192",
+   "parent": "t13"
+  },
+  {
+   "id": "t193",
+   "type": "mindmap.Topic",
+   "label": "Topic 193",
+   "parent": "t20"
+  },
+  {
+   "id": "t194",
+   "type": "mindmap.Topic",
+   "label": "Topic 194",
+   "parent": "t27"
+  },
+  {
+   "id": "t195",
+   "type": "mindmap.Topic",
+   "label": "Topic 195 with a longer text that wraps",
+   "parent": "t34"
+  },
+  {
+   "id": "t196",
+   "type": "mindmap.Topic",
+   "label": "Topic 196",
+   "parent": "t5"
+  },
+  {
+   "id": "t197",
+   "type": "mindmap.Topic",
+   "label": "Topic 197",
+   "parent": "t12"
+  },
+  {
+   "id": "t198",
+   "type": "mindmap.Topic",
+   "label": "Topic 198",
+   "parent": "t19"
+  },
+  {
+   "id": "t199",
+   "type": "mindmap.Topic",
+   "label": "Topic 199",
+   "parent": "t26"
+  },
+  {
+   "id": "t200",
+   "type": "mindmap.Topic",
+   "label": "Topic 200 with a longer text that wraps",
+   "parent": "t33"
+  },
+  {
+   "id": "t201",
+   "type": "mindmap.Topic",
+   "label": "Topic 201",
+   "parent": "t4"
+  },
+  {
+   "id": "t202",
+   "type": "mindmap.Topic",
+   "label": "Topic 202",
+   "parent": "t11"
+  },
+  {
+   "id": "t203",
+   "type": "mindmap.Topic",
+   "label": "Topic 203",
+   "parent": "t18"
+  },
+  {
+   "id": "t204",
+   "type": "mindmap.Topic",
+   "label": "Topic 204",
+   "parent": "t25"
+  },
+  {
+   "id": "t205",
+   "type": "mindmap.Topic",
+   "label": "Topic 205 with a longer text that wraps",
+   "parent": "t32"
+  },
+  {
+   "id": "t206",
+   "type": "mindmap.Topic",
+   "label": "Topic 206",
+   "parent": "t3"
+  },
+  {
+   "id": "t207",
+   "type": "mindmap.Topic",
+   "label": "Topic 207",
+   "parent": "t10"
+  },
+  {
+   "id": "t208",
+   "type": "mindmap.Topic",
+   "label": "Topic 208",
+   "parent": "t17"
+  },
+  {
+   "id": "t209",
+   "type": "mindmap.Topic",
+   "label": "Topic 209",
+   "parent": "t24"
+  },
+  {
+   "id": "t210",
+   "type": "mindmap.Topic",
+   "label": "Topic 210 with a longer text that wraps",
+   "parent": "t31"
+  },
+  {
+   "id": "t211",
+   "type": "mindmap.Topic",
+   "label": "Topic 211",
+   "parent": "t2"
+  },
+  {
+   "id": "t212",
+   "type": "mindmap.Topic",
+   "label": "Topic 212",
+   "parent": "t9"
+  },
+  {
+   "id": "t213",
+   "type": "mindmap.Topic",
+   "label": "Topic 213",
+   "parent": "t16"
+  },
+  {
+   "id": "t214",
+   "type": "mindmap.Topic",
+   "label": "Topic 214",
+   "parent": "t23"
+  },
+  {
+   "id": "t215",
+   "type": "mindmap.Topic",
+   "label": "Topic 215 with a longer text that wraps",
+   "parent": "t30"
+  },
+  {
+   "id": "t216",
+   "type": "mindmap.Topic",
+   "label": "Topic 216",
+   "parent": "t1"
+  },
+  {
+   "id": "t217",
+   "type": "mindmap.Topic",
+   "label": "Topic 217",
+   "parent": "t8"
+  },
+  {
+   "id": "t218",
+   "type": "mindmap.Topic",
+   "label": "Topic 218",
+   "parent": "t15"
+  },
+  {
+   "id": "t219",
+   "type": "mindmap.Topic",
+   "label": "Topic 219",
+   "parent": "t22"
+  },
+  {
+   "id": "t220",
+   "type": "mindmap.Topic",
+   "label": "Topic 220 with a longer text that wraps",
+   "parent": "t29"
+  },
+  {
+   "id": "t221",
+   "type": "mindmap.Topic",
+   "label": "Topic 221",
+   "parent": "t36"
+  },
+  {
+   "id": "t222",
+   "type": "mindmap.Topic",
+   "label": "Topic 222",
+   "parent": "t7"
+  },
+  {
+   "id": "t223",
+   "type": "mindmap.Topic",
+   "label": "Topic 223",
+   "parent": "t14"
+  },
+  {
+   "id": "t224",
+   "type": "mindmap.Topic",
+   "label": "Topic 224",
+   "parent": "t21"
+  },
+  {
+   "id": "t225",
+   "type": "mindmap.Topic",
+   "label": "Topic 225 with a longer text that wraps",
+   "parent": "t28"
+  },
+  {
+   "id": "t226",
+   "type": "mindmap.Topic",
+   "label": "Topic 226",
+   "parent": "t35"
+  },
+  {
+   "id": "t227",
+   "type": "mindmap.Topic",
+   "label": "Topic 227",
+   "parent": "t6"
+  },
+  {
+   "id": "t228",
+   "type": "mindmap.Topic",
+   "label": "Topic 228",
+   "parent": "t13"
+  },
+  {
+   "id": "t229",
+   "type": "mindmap.Topic",
+   "label": "Topic 229",
+   "parent": "t20"
+  },
+  {
+   "id": "t230",
+   "type": "mindmap.Topic",
+   "label": "Topic 230 with a longer text that wraps",
+   "parent": "t27"
+  },
+  {
+   "id": "t231",
+   "type": "mindmap.Topic",
+   "label": "Topic 231",
+   "parent": "t34"
+  },
+  {
+   "id": "t232",
+   "type": "mindmap.Topic",
+   "label": "Topic 232",
+   "parent": "t5"
+  },
+  {
+   "id": "t233",
+   "type": "mindmap.Topic",
+   "label": "Topic 233",
+   "parent": "t12"
+  },
+  {
+   "id": "t234",
+   "type": "mindmap.Topic",
+   "label": "Topic 234",
+   "parent": "t19"
+  },
+  {
+   "id": "t235",
+   "type": "mindmap.Topic",
+   "label": "Topic 235 with a longer text that wraps",
+   "parent": "t26"
+  },
+  {
+   "id": "t236",
+   "type": "mindmap.Topic",
+   "label": "Topic 236",
+   "parent": "t33"
+  },
+  {
+   "id": "t237",
+   "type": "mindmap.Topic",
+   "label": "Topic 237",
+   "parent": "t4"
+  },
+  {
+   "id": "t238",
+   "type": "mindmap.Topic",
+   "label": "Topic 238",
+   "parent": "t11"
+  },
+  {
+   "id": "t239",
+   "type": "mindmap.Topic",
+   "label": "Topic 239",
+   "parent": "t18"
+  },
+  {
+   "id": "t240",
+   "type": "mindmap.Topic",
+   "label": "Topic 240 with a longer text that wraps",
+   "parent": "t25"
+  },
+  {
+   "id": "t241",
+   "type": "mindmap.Topic",
+   "label": "Topic 241",
+   "parent": "t32"
+  },
+  {
+   "id": "t242",
+   "type": "mindmap.Topic",
+   "label": "Topic 242",
+   "parent": "t3"
+  },
+  {
+   "id": "t243",
+   "type": "mindmap.Topic",
+   "label": "Topic 243",
+   "parent": "t10"
+  },
+  {
+   "id": "t244",
+   "type": "mindmap.Topic",
+   "label": "Topic 244",
+   "parent": "t17"
+  },
+  {
+   "id": "t245",
+   "type": "mindmap.Topic",
+   "label": "Topic 245 with a longer text that wraps",
+   "parent": "t24"
+  },
+  {
+   "id": "t246",
+   "type": "mindmap.Topic",
+   "label": "Topic 246",
+   "parent": "t31"
+  },
+  {
+   "id": "t247",
+   "type": "mindmap.Topic",
+   "label": "Topic 247",
+   "parent": "t2"
+  },
+  {
+   "id": "t248",
+   "type": "mindmap.Topic",
+   "label": "Topic 248",
+   "parent": "t9"
+  },
+  {
+   "id": "t249",
+   "type": "mindmap.Topic",
+   "label": "Topic 249",
+   "parent": "t16"
+  },
+  {
+   "id": "t250",
+   "type": "mindmap.Topic",
+   "label": "Topic 250 with a longer text that wraps",
+   "parent": "t23"
+  },
+  {
+   "id": "t251",
+   "type": "mindmap.Topic",
+   "label": "Topic 251",
+   "parent": "t30"
+  },
+  {
+   "id": "t252",
+   "type": "mindmap.Topic",
+   "label": "Topic 252",
+   "parent": "t1"
+  },
+  {
+   "id": "t253",
+   "type": "mindmap.Topic",
+   "label": "Topic 253",
+   "parent": "t8"
+  },
+  {
+   "id": "t254",
+   "type": "mindmap.Topic",
+   "label": "Topic 254",
+   "parent": "t15"
+  },
+  {
+   "id": "t255",
+   "type": "mindmap.Topic",
+   "label": "Topic 255 with a longer text that wraps",
+   "parent": "t22"
+  },
+  {
+   "id": "t256",
+   "type": "mindmap.Topic",
+   "label": "Topic 256",
+   "parent": "t29"
+  },
+  {
+   "id": "t257",
+   "type": "mindmap.Topic",
+   "label": "Topic 257",
+   "parent": "t36"
+  },
+  {
+   "id": "t258",
+   "type": "mindmap.Topic",
+   "label": "Topic 258",
+   "parent": "t7"
+  },
+  {
+   "id": "t259",
+   "type": "mindmap.Topic",
+   "label": "Topic 259",
+   "parent": "t14"
+  },
+  {
+   "id": "t260",
+   "type": "mindmap.Topic",
+   "label": "Topic 260 with a longer text that wraps",
+   "parent": "t21"
+  },
+  {
+   "id": "t261",
+   "type": "mindmap.Topic",
+   "label": "Topic 261",
+   "parent": "t28"
+  },
+  {
+   "id": "t262",
+   "type": "mindmap.Topic",
+   "label": "Topic 262",
+   "parent": "t35"
+  },
+  {
+   "id": "t263",
+   "type": "mindmap.Topic",
+   "label": "Topic 263",
+   "parent": "t6"
+  },
+  {
+   "id": "t264",
+   "type": "mindmap.Topic",
+   "label": "Topic 264",
+   "parent": "t13"
+  },
+  {
+   "id": "t265",
+   "type": "mindmap.Topic",
+   "label": "Topic 265 with a longer text that wraps",
+   "parent": "t20"
+  },
+  {
+   "id": "t266",
+   "type": "mindmap.Topic",
+   "label": "Topic 266",
+   "parent": "t27"
+  },
+  {
+   "id": "t267",
+   "type": "mindmap.Topic",
+   "label": "Topic 267",
+   "parent": "t34"
+  },
+  {
+   "id": "t268",
+   "type": "mindmap.Topic",
+   "label": "Topic 268",
+   "parent": "t5"
+  },
+  {
+   "id": "t269",
+   "type": "mindmap.Topic",
+   "label": "Topic 269",
+   "parent": "t12"
+  },
+  {
+   "id": "t270",
+   "type": "mindmap.Topic",
+   "label": "Topic 270 with a longer text that wraps",
+   "parent": "t19"
+  },
+  {
+   "id": "t271",
+   "type": "mindmap.Topic",
+   "label": "Topic 271",
+   "parent": "t26"
+  },
+  {
+   "id": "t272",
+   "type": "mindmap.Topic",
+   "label": "Topic 272",
+   "parent": "t33"
+  },
+  {
+   "id": "t273",
+   "type": "mindmap.Topic",
+   "label": "Topic 273",
+   "parent": "t4"
+  },
+  {
+   "id": "t274",
+   "type": "mindmap.Topic",
+   "label": "Topic 274",
+   "parent": "t11"
+  },
+  {
+   "id": "t275",
+   "type": "mindmap.Topic",
+   "label": "Topic 275 with a longer text that wraps",
+   "parent": "t18"
+  },
+  {
+   "id": "t276",
+   "type": "mindmap.Topic",
+   "label": "Topic 276",
+   "parent": "t25"
+  },
+  {
+   "id": "t277",
+   "type": "mindmap.Topic",
+   "label": "Topic 277",
+   "parent": "t32"
+  },
+  {
+   "id": "t278",
+   "type": "mindmap.Topic",
+   "label": "Topic 278",
+   "parent": "t3"
+  },
+  {
+   "id": "t279",
+   "type": "mindmap.Topic",
+   "label": "Topic 279",
+   "parent": "t10"
+  },
+  {
+   "id": "t280",
+   "type": "mindmap.Topic",
+   "label": "Topic 280 with a longer text that wraps",
+   "parent": "t17"
+  },
+  {
+   "id": "t281",
+   "type": "mindmap.Topic",
+   "label": "Topic 281",
+   "parent": "t24"
+  },
+  {
+   "id": "t282",
+   "type": "mindmap.Topic",
+   "label": "Topic 282",
+   "parent": "t31"
+  },
+  {
+   "id": "t283",
+   "type": "mindmap.Topic",
+   "label": "Topic 283",
+   "parent": "t2"
+  },
+  {
+   "id": "t284",
+   "type": "mindmap.Topic",
+   "label": "Topic 284",
+   "parent": "t9"
+  },
+  {
+   "id": "t285",
+   "type": "mindmap.Topic",
+   "label": "Topic 285 with a longer text that wraps",
+   "parent": "t16"
+  },
+  {
+   "id": "t286",
+   "type": "mindmap.Topic",
+   "label": "Topic 286",
+   "parent": "t23"
+  },
+  {
+   "id": "t287",
+   "type": "mindmap.Topic",
+   "label": "Topic 287",
+   "parent": "t30"
+  },
+  {
+   "id": "t288",
+   "type": "mindmap.Topic",
+   "label": "Topic 288",
+   "parent": "t1"
+  },
+  {
+   "id": "t289",
+   "type": "mindmap.Topic",
+   "label": "Topic 289",
+   "parent": "t8"
+  },
+  {
+   "id": "t290",
+   "type": "mindmap.Topic",
+   "label": "Topic 290 with a longer text that wraps",
+   "parent": "t15"
+  },
+  {
+   "id": "t291",
+   "type": "mindmap.Topic",
+   "label": "Topic 291",
+   "parent": "t22"
+  },
+  {
+   "id": "t292",
+   "type": "mindmap.Topic",
+   "label": "Topic 292",
+   "parent": "t29"
+  },
+  {
+   "id": "t293",
+   "type": "mindmap.Topic",
+   "label": "Topic 293",
+   "parent": "t36"
+  },
+  {
+   "id": "t294",
+   "type": "mindmap.Topic",
+   "label": "Topic 294",
+   "parent": "t7"
+  },
+  {
+   "id": "t295",
+   "type": "mindmap.Topic",
+   "label": "Topic 295 with a longer text that wraps",
+   "parent": "t14"
+  },
+  {
+   "id": "t296",
+   "type": "mindmap.Topic",
+   "label": "Topic 296",
+   "parent": "t21"
+  },
+  {
+   "id": "t297",
+   "type": "mindmap.Topic",
+   "label": "Topic 297",
+   "parent": "t28"
+  },
+  {
+   "id": "t298",
+   "type": "mindmap.Topic",
+   "label": "Topic 298",
+   "parent": "t35"
+  },
+  {
+   "id": "t299",
+   "type": "mindmap.Topic",
+   "label": "Topic 299",
+   "parent": "t6"
+  }
+ ],
+ "edges": [],
+ "views": [
+  {
+   "id": "edge-cases",
+   "diagram": "mindmap",
+   "title": "Edge cases",
+   "nodeIds": [
+    "r",
+    "a",
+    "b",
+    "c",
+    "a0",
+    "a1",
+    "a2",
+    "a3",
+    "a4",
+    "a5",
+    "a6",
+    "a7",
+    "a8",
+    "a9",
+    "a10",
+    "a11",
+    "a12",
+    "a13",
+    "a14",
+    "a15",
+    "a16",
+    "a17",
+    "a18",
+    "a19",
+    "a20",
+    "a21",
+    "a22",
+    "a23",
+    "a24",
+    "a25",
+    "a26",
+    "a27",
+    "a28",
+    "a29",
+    "long",
+    "orphan",
+    "second",
+    "second-kid",
+    "d1",
+    "d2",
+    "d3",
+    "d4",
+    "d5",
+    "d6",
+    "d7",
+    "d8",
+    "d9",
+    "d10",
+    "d11",
+    "d12",
+    "d13",
+    "d14",
+    "d15",
+    "d16",
+    "d17",
+    "d18",
+    "d19",
+    "d20",
+    "d21",
+    "d22",
+    "d23",
+    "d24",
+    "d25",
+    "d26",
+    "d27",
+    "d28",
+    "d29",
+    "d30",
+    "d31",
+    "d32",
+    "d33",
+    "d34",
+    "d35",
+    "d36",
+    "d37",
+    "d38",
+    "d39",
+    "d40",
+    "d41",
+    "d42",
+    "d43",
+    "d44",
+    "d45",
+    "d46",
+    "d47",
+    "d48",
+    "d49",
+    "d50",
+    "d51",
+    "d52",
+    "d53",
+    "d54",
+    "d55",
+    "d56",
+    "d57",
+    "d58",
+    "d59",
+    "d60",
+    "d61",
+    "d62",
+    "d63",
+    "d64",
+    "d65",
+    "d66",
+    "d67",
+    "d68",
+    "d69",
+    "d70",
+    "stray"
+   ],
+   "present": {
+    "a": {
+     "side": "right"
+    },
+    "b": {
+     "side": "right"
+    },
+    "c": {
+     "side": "right"
+    },
+    "a3": {
+     "side": "left"
+    }
+   }
+  },
+  {
+   "id": "all",
+   "diagram": "mindmap",
+   "title": "Three hundred topics",
+   "nodeIds": [
+    "t0",
+    "t1",
+    "t2",
+    "t3",
+    "t4",
+    "t5",
+    "t6",
+    "t7",
+    "t8",
+    "t9",
+    "t10",
+    "t11",
+    "t12",
+    "t13",
+    "t14",
+    "t15",
+    "t16",
+    "t17",
+    "t18",
+    "t19",
+    "t20",
+    "t21",
+    "t22",
+    "t23",
+    "t24",
+    "t25",
+    "t26",
+    "t27",
+    "t28",
+    "t29",
+    "t30",
+    "t31",
+    "t32",
+    "t33",
+    "t34",
+    "t35",
+    "t36",
+    "t37",
+    "t38",
+    "t39",
+    "t40",
+    "t41",
+    "t42",
+    "t43",
+    "t44",
+    "t45",
+    "t46",
+    "t47",
+    "t48",
+    "t49",
+    "t50",
+    "t51",
+    "t52",
+    "t53",
+    "t54",
+    "t55",
+    "t56",
+    "t57",
+    "t58",
+    "t59",
+    "t60",
+    "t61",
+    "t62",
+    "t63",
+    "t64",
+    "t65",
+    "t66",
+    "t67",
+    "t68",
+    "t69",
+    "t70",
+    "t71",
+    "t72",
+    "t73",
+    "t74",
+    "t75",
+    "t76",
+    "t77",
+    "t78",
+    "t79",
+    "t80",
+    "t81",
+    "t82",
+    "t83",
+    "t84",
+    "t85",
+    "t86",
+    "t87",
+    "t88",
+    "t89",
+    "t90",
+    "t91",
+    "t92",
+    "t93",
+    "t94",
+    "t95",
+    "t96",
+    "t97",
+    "t98",
+    "t99",
+    "t100",
+    "t101",
+    "t102",
+    "t103",
+    "t104",
+    "t105",
+    "t106",
+    "t107",
+    "t108",
+    "t109",
+    "t110",
+    "t111",
+    "t112",
+    "t113",
+    "t114",
+    "t115",
+    "t116",
+    "t117",
+    "t118",
+    "t119",
+    "t120",
+    "t121",
+    "t122",
+    "t123",
+    "t124",
+    "t125",
+    "t126",
+    "t127",
+    "t128",
+    "t129",
+    "t130",
+    "t131",
+    "t132",
+    "t133",
+    "t134",
+    "t135",
+    "t136",
+    "t137",
+    "t138",
+    "t139",
+    "t140",
+    "t141",
+    "t142",
+    "t143",
+    "t144",
+    "t145",
+    "t146",
+    "t147",
+    "t148",
+    "t149",
+    "t150",
+    "t151",
+    "t152",
+    "t153",
+    "t154",
+    "t155",
+    "t156",
+    "t157",
+    "t158",
+    "t159",
+    "t160",
+    "t161",
+    "t162",
+    "t163",
+    "t164",
+    "t165",
+    "t166",
+    "t167",
+    "t168",
+    "t169",
+    "t170",
+    "t171",
+    "t172",
+    "t173",
+    "t174",
+    "t175",
+    "t176",
+    "t177",
+    "t178",
+    "t179",
+    "t180",
+    "t181",
+    "t182",
+    "t183",
+    "t184",
+    "t185",
+    "t186",
+    "t187",
+    "t188",
+    "t189",
+    "t190",
+    "t191",
+    "t192",
+    "t193",
+    "t194",
+    "t195",
+    "t196",
+    "t197",
+    "t198",
+    "t199",
+    "t200",
+    "t201",
+    "t202",
+    "t203",
+    "t204",
+    "t205",
+    "t206",
+    "t207",
+    "t208",
+    "t209",
+    "t210",
+    "t211",
+    "t212",
+    "t213",
+    "t214",
+    "t215",
+    "t216",
+    "t217",
+    "t218",
+    "t219",
+    "t220",
+    "t221",
+    "t222",
+    "t223",
+    "t224",
+    "t225",
+    "t226",
+    "t227",
+    "t228",
+    "t229",
+    "t230",
+    "t231",
+    "t232",
+    "t233",
+    "t234",
+    "t235",
+    "t236",
+    "t237",
+    "t238",
+    "t239",
+    "t240",
+    "t241",
+    "t242",
+    "t243",
+    "t244",
+    "t245",
+    "t246",
+    "t247",
+    "t248",
+    "t249",
+    "t250",
+    "t251",
+    "t252",
+    "t253",
+    "t254",
+    "t255",
+    "t256",
+    "t257",
+    "t258",
+    "t259",
+    "t260",
+    "t261",
+    "t262",
+    "t263",
+    "t264",
+    "t265",
+    "t266",
+    "t267",
+    "t268",
+    "t269",
+    "t270",
+    "t271",
+    "t272",
+    "t273",
+    "t274",
+    "t275",
+    "t276",
+    "t277",
+    "t278",
+    "t279",
+    "t280",
+    "t281",
+    "t282",
+    "t283",
+    "t284",
+    "t285",
+    "t286",
+    "t287",
+    "t288",
+    "t289",
+    "t290",
+    "t291",
+    "t292",
+    "t293",
+    "t294",
+    "t295",
+    "t296",
+    "t297",
+    "t298",
+    "t299"
+   ]
+  }
+ ]
+}

@@ -1,0 +1,1829 @@
+{
+ "$schema": "../lib/umlimator.schema.json",
+ "schemaVersion": 2,
+ "title": "Cloud, stress",
+ "nodes": [
+  {
+   "id": "ec-users",
+   "type": "gcp.User",
+   "label": "Shoppers"
+  },
+  {
+   "id": "ec-project",
+   "type": "gcp.Zone",
+   "label": "shop-prod",
+   "props": {
+    "zoneType": "project"
+   }
+  },
+  {
+   "id": "ec-region",
+   "type": "gcp.Zone",
+   "label": "europe-west1",
+   "parent": "ec-project",
+   "props": {
+    "zoneType": "region"
+   }
+  },
+  {
+   "id": "ec-net",
+   "type": "gcp.Zone",
+   "label": "shop-vpc",
+   "parent": "ec-region",
+   "props": {
+    "zoneType": "network"
+   }
+  },
+  {
+   "id": "ec-sub-a",
+   "type": "gcp.Zone",
+   "label": "apps subnet",
+   "parent": "ec-net",
+   "props": {
+    "zoneType": "subnetwork"
+   }
+  },
+  {
+   "id": "ec-zone-a",
+   "type": "gcp.Zone",
+   "label": "europe-west1-b",
+   "parent": "ec-sub-a",
+   "props": {
+    "zoneType": "zone"
+   }
+  },
+  {
+   "id": "ec-api",
+   "type": "gcp.Product",
+   "label": "Shop API",
+   "parent": "ec-zone-a",
+   "props": {
+    "icon": "Cloud-Run"
+   }
+  },
+  {
+   "id": "ec-sql",
+   "type": "gcp.Product",
+   "label": "Orders",
+   "parent": "ec-zone-a",
+   "props": {
+    "icon": "Cloud-SQL"
+   }
+  },
+  {
+   "id": "ec-sub-b",
+   "type": "gcp.Zone",
+   "label": "data subnet",
+   "parent": "ec-net",
+   "props": {
+    "zoneType": "subnetwork"
+   }
+  },
+  {
+   "id": "ec-zone-b",
+   "type": "gcp.Zone",
+   "label": "europe-west1-c",
+   "parent": "ec-sub-b",
+   "props": {
+    "zoneType": "zone"
+   }
+  },
+  {
+   "id": "ec-lacks",
+   "type": "gcp.Product",
+   "label": "Search index",
+   "parent": "ec-zone-b",
+   "props": {
+    "icon": "Cloud-Search-Appliance"
+   }
+  },
+  {
+   "id": "ec-alias",
+   "type": "gcp.Product",
+   "label": "Order queue",
+   "parent": "ec-region",
+   "props": {
+    "icon": "Cloud-PubSub"
+   }
+  },
+  {
+   "id": "ec-plain",
+   "type": "gcp.Product",
+   "label": "Mailer",
+   "parent": "ec-project"
+  },
+  {
+   "id": "ec-odd",
+   "type": "gcp.Zone",
+   "label": "continent",
+   "parent": "ec-project",
+   "props": {
+    "zoneType": "continent"
+   }
+  },
+  {
+   "id": "ec-loose",
+   "type": "gcp.Zone",
+   "label": "stray subnet",
+   "parent": "ec-project",
+   "props": {
+    "zoneType": "subnetwork"
+   }
+  },
+  {
+   "id": "ec-loose-svc",
+   "type": "gcp.Product",
+   "label": "Cron",
+   "parent": "ec-loose",
+   "props": {
+    "icon": "Cloud-Scheduler"
+   }
+  },
+  {
+   "id": "nn-users",
+   "type": "gcp.User",
+   "label": "Staff"
+  },
+  {
+   "id": "nn-project",
+   "type": "gcp.Zone",
+   "label": "shop-admin",
+   "props": {
+    "zoneType": "project"
+   }
+  },
+  {
+   "id": "nn-region",
+   "type": "gcp.Zone",
+   "label": "europe-west2",
+   "parent": "nn-project",
+   "props": {
+    "zoneType": "region"
+   }
+  },
+  {
+   "id": "az-sub",
+   "type": "azure.Group",
+   "label": "Shop production",
+   "props": {
+    "groupType": "subscription"
+   }
+  },
+  {
+   "id": "az-rg",
+   "type": "azure.Group",
+   "label": "rg-shop",
+   "parent": "az-sub",
+   "props": {
+    "groupType": "resource-group"
+   }
+  },
+  {
+   "id": "az-region",
+   "type": "azure.Group",
+   "label": "West Europe",
+   "parent": "az-rg",
+   "props": {
+    "groupType": "region"
+   }
+  },
+  {
+   "id": "az-vnet",
+   "type": "azure.Group",
+   "label": "vnet-shop",
+   "parent": "az-region",
+   "props": {
+    "groupType": "virtual-network"
+   }
+  },
+  {
+   "id": "az-snet",
+   "type": "azure.Group",
+   "label": "snet-apps",
+   "parent": "az-vnet",
+   "props": {
+    "groupType": "subnet"
+   }
+  },
+  {
+   "id": "az-app",
+   "type": "azure.Service",
+   "label": "Shop API",
+   "parent": "az-snet",
+   "props": {
+    "icon": "App-Services"
+   }
+  },
+  {
+   "id": "az-sql",
+   "type": "azure.Service",
+   "label": "Database",
+   "parent": "az-snet",
+   "props": {
+    "icon": "SQL-Database"
+   }
+  },
+  {
+   "id": "az-shared",
+   "type": "azure.Group",
+   "label": "Shared",
+   "parent": "az-rg",
+   "props": {
+    "groupType": "generic"
+   }
+  },
+  {
+   "id": "az-vault",
+   "type": "azure.Service",
+   "label": "Secrets",
+   "parent": "az-shared",
+   "props": {
+    "icon": "Key-Vaults"
+   }
+  },
+  {
+   "id": "az-stray",
+   "type": "azure.Group",
+   "label": "snet-loose",
+   "parent": "az-rg",
+   "props": {
+    "groupType": "subnet"
+   }
+  },
+  {
+   "id": "az-bus",
+   "type": "azure.Service",
+   "label": "Order queue",
+   "parent": "az-stray",
+   "props": {
+    "icon": "Service-Bus"
+   }
+  },
+  {
+   "id": "aws-cloud",
+   "type": "aws.Group",
+   "label": "AWS",
+   "props": {
+    "groupType": "cloud"
+   }
+  },
+  {
+   "id": "aws-account",
+   "type": "aws.Group",
+   "label": "shop-prod",
+   "parent": "aws-cloud",
+   "props": {
+    "groupType": "account"
+   }
+  },
+  {
+   "id": "aws-region",
+   "type": "aws.Group",
+   "label": "eu-west-1",
+   "parent": "aws-account",
+   "props": {
+    "groupType": "region"
+   }
+  },
+  {
+   "id": "aws-vpc",
+   "type": "aws.Group",
+   "label": "shop-vpc",
+   "parent": "aws-region",
+   "props": {
+    "groupType": "vpc"
+   }
+  },
+  {
+   "id": "aws-az",
+   "type": "aws.Group",
+   "label": "eu-west-1a",
+   "parent": "aws-vpc",
+   "props": {
+    "groupType": "availability-zone"
+   }
+  },
+  {
+   "id": "aws-private",
+   "type": "aws.Group",
+   "label": "private",
+   "parent": "aws-az",
+   "props": {
+    "groupType": "private-subnet"
+   }
+  },
+  {
+   "id": "aws-sg",
+   "type": "aws.Group",
+   "label": "api-sg",
+   "parent": "aws-private",
+   "props": {
+    "groupType": "security-group"
+   }
+  },
+  {
+   "id": "aws-api",
+   "type": "aws.Service",
+   "label": "Shop API",
+   "parent": "aws-sg",
+   "props": {
+    "icon": "Amazon-Elastic-Container-Service"
+   }
+  },
+  {
+   "id": "aws-db",
+   "type": "aws.Resource",
+   "label": "Database",
+   "parent": "aws-private",
+   "props": {
+    "icon": "Amazon-RDS"
+   }
+  },
+  {
+   "id": "aws-public",
+   "type": "aws.Group",
+   "label": "public",
+   "parent": "aws-az",
+   "props": {
+    "groupType": "public-subnet"
+   }
+  },
+  {
+   "id": "aws-nat",
+   "type": "aws.Resource",
+   "label": "NAT gateway",
+   "parent": "aws-public",
+   "props": {
+    "icon": "Amazon-VPC-NAT-Gateway"
+   }
+  },
+  {
+   "id": "aws-mail",
+   "type": "aws.Service",
+   "label": "Mailer",
+   "parent": "aws-region",
+   "props": {
+    "icon": "Amazon-Simple-Email-Service"
+   }
+  },
+  {
+   "id": "p",
+   "type": "gcp.Zone",
+   "label": "bookshop-prod",
+   "props": {
+    "zoneType": "project"
+   }
+  },
+  {
+   "id": "s0",
+   "type": "gcp.Product",
+   "label": "Service 1",
+   "parent": "p",
+   "props": {
+    "icon": "Cloud-SQL"
+   }
+  },
+  {
+   "id": "s1",
+   "type": "gcp.Product",
+   "label": "Service 2",
+   "parent": "p",
+   "props": {
+    "icon": "Pub-Sub"
+   }
+  },
+  {
+   "id": "s2",
+   "type": "gcp.Product",
+   "label": "Service 3",
+   "parent": "p",
+   "props": {
+    "icon": "Cloud-Run"
+   }
+  },
+  {
+   "id": "s3",
+   "type": "gcp.Product",
+   "label": "Service 4",
+   "parent": "p",
+   "props": {
+    "icon": "Cloud-SQL"
+   }
+  },
+  {
+   "id": "s4",
+   "type": "gcp.Product",
+   "label": "Service 5",
+   "parent": "p",
+   "props": {
+    "icon": "Pub-Sub"
+   }
+  },
+  {
+   "id": "s5",
+   "type": "gcp.Product",
+   "label": "Service 6",
+   "parent": "p",
+   "props": {
+    "icon": "Cloud-Run"
+   }
+  },
+  {
+   "id": "r0",
+   "type": "gcp.Zone",
+   "label": "region 0",
+   "parent": "p",
+   "props": {
+    "zoneType": "region"
+   }
+  },
+  {
+   "id": "n0",
+   "type": "gcp.Zone",
+   "label": "network 0",
+   "parent": "r0",
+   "props": {
+    "zoneType": "network"
+   }
+  },
+  {
+   "id": "s6",
+   "type": "gcp.Product",
+   "label": "Service 7",
+   "parent": "r0",
+   "props": {
+    "icon": "Cloud-SQL"
+   }
+  },
+  {
+   "id": "s7",
+   "type": "gcp.Product",
+   "label": "Service 8",
+   "parent": "r0",
+   "props": {
+    "icon": "Pub-Sub"
+   }
+  },
+  {
+   "id": "s8",
+   "type": "gcp.Product",
+   "label": "Service 9",
+   "parent": "r0",
+   "props": {
+    "icon": "Cloud-Run"
+   }
+  },
+  {
+   "id": "r0s0",
+   "type": "gcp.Zone",
+   "label": "subnetwork 0.0",
+   "parent": "n0",
+   "props": {
+    "zoneType": "subnetwork"
+   }
+  },
+  {
+   "id": "r0s0z0",
+   "type": "gcp.Zone",
+   "label": "zone 0.0.0",
+   "parent": "r0s0",
+   "props": {
+    "zoneType": "zone"
+   }
+  },
+  {
+   "id": "s9",
+   "type": "gcp.Product",
+   "label": "Service 10",
+   "parent": "r0s0z0",
+   "props": {
+    "icon": "Cloud-SQL"
+   }
+  },
+  {
+   "id": "s10",
+   "type": "gcp.Product",
+   "label": "Service 11",
+   "parent": "r0s0z0",
+   "props": {
+    "icon": "Pub-Sub"
+   }
+  },
+  {
+   "id": "s11",
+   "type": "gcp.Product",
+   "label": "Service 12",
+   "parent": "r0s0z0",
+   "props": {
+    "icon": "Cloud-Run"
+   }
+  },
+  {
+   "id": "s12",
+   "type": "gcp.Product",
+   "label": "Service 13",
+   "parent": "r0s0z0",
+   "props": {
+    "icon": "Cloud-SQL"
+   }
+  },
+  {
+   "id": "s13",
+   "type": "gcp.Product",
+   "label": "Service 14",
+   "parent": "r0s0z0",
+   "props": {
+    "icon": "Pub-Sub"
+   }
+  },
+  {
+   "id": "s14",
+   "type": "gcp.Product",
+   "label": "Service 15",
+   "parent": "r0s0z0",
+   "props": {
+    "icon": "Cloud-Run"
+   }
+  },
+  {
+   "id": "r0s0z1",
+   "type": "gcp.Zone",
+   "label": "zone 0.0.1",
+   "parent": "r0s0",
+   "props": {
+    "zoneType": "zone"
+   }
+  },
+  {
+   "id": "s15",
+   "type": "gcp.Product",
+   "label": "Service 16",
+   "parent": "r0s0z1",
+   "props": {
+    "icon": "Cloud-SQL"
+   }
+  },
+  {
+   "id": "s16",
+   "type": "gcp.Product",
+   "label": "Service 17",
+   "parent": "r0s0z1",
+   "props": {
+    "icon": "Pub-Sub"
+   }
+  },
+  {
+   "id": "s17",
+   "type": "gcp.Product",
+   "label": "Service 18",
+   "parent": "r0s0z1",
+   "props": {
+    "icon": "Cloud-Run"
+   }
+  },
+  {
+   "id": "s18",
+   "type": "gcp.Product",
+   "label": "Service 19",
+   "parent": "r0s0z1",
+   "props": {
+    "icon": "Cloud-SQL"
+   }
+  },
+  {
+   "id": "s19",
+   "type": "gcp.Product",
+   "label": "Service 20",
+   "parent": "r0s0z1",
+   "props": {
+    "icon": "Pub-Sub"
+   }
+  },
+  {
+   "id": "s20",
+   "type": "gcp.Product",
+   "label": "Service 21",
+   "parent": "r0s0z1",
+   "props": {
+    "icon": "Cloud-Run"
+   }
+  },
+  {
+   "id": "r0s1",
+   "type": "gcp.Zone",
+   "label": "subnetwork 0.1",
+   "parent": "n0",
+   "props": {
+    "zoneType": "subnetwork"
+   }
+  },
+  {
+   "id": "r0s1z0",
+   "type": "gcp.Zone",
+   "label": "zone 0.1.0",
+   "parent": "r0s1",
+   "props": {
+    "zoneType": "zone"
+   }
+  },
+  {
+   "id": "s21",
+   "type": "gcp.Product",
+   "label": "Service 22",
+   "parent": "r0s1z0",
+   "props": {
+    "icon": "Cloud-SQL"
+   }
+  },
+  {
+   "id": "s22",
+   "type": "gcp.Product",
+   "label": "Service 23",
+   "parent": "r0s1z0",
+   "props": {
+    "icon": "Pub-Sub"
+   }
+  },
+  {
+   "id": "s23",
+   "type": "gcp.Product",
+   "label": "Service 24",
+   "parent": "r0s1z0",
+   "props": {
+    "icon": "Cloud-Run"
+   }
+  },
+  {
+   "id": "s24",
+   "type": "gcp.Product",
+   "label": "Service 25",
+   "parent": "r0s1z0",
+   "props": {
+    "icon": "Cloud-SQL"
+   }
+  },
+  {
+   "id": "s25",
+   "type": "gcp.Product",
+   "label": "Service 26",
+   "parent": "r0s1z0",
+   "props": {
+    "icon": "Pub-Sub"
+   }
+  },
+  {
+   "id": "s26",
+   "type": "gcp.Product",
+   "label": "Service 27",
+   "parent": "r0s1z0",
+   "props": {
+    "icon": "Cloud-Run"
+   }
+  },
+  {
+   "id": "r0s1z1",
+   "type": "gcp.Zone",
+   "label": "zone 0.1.1",
+   "parent": "r0s1",
+   "props": {
+    "zoneType": "zone"
+   }
+  },
+  {
+   "id": "s27",
+   "type": "gcp.Product",
+   "label": "Service 28",
+   "parent": "r0s1z1",
+   "props": {
+    "icon": "Cloud-SQL"
+   }
+  },
+  {
+   "id": "s28",
+   "type": "gcp.Product",
+   "label": "Service 29",
+   "parent": "r0s1z1",
+   "props": {
+    "icon": "Pub-Sub"
+   }
+  },
+  {
+   "id": "s29",
+   "type": "gcp.Product",
+   "label": "Service 30",
+   "parent": "r0s1z1",
+   "props": {
+    "icon": "Cloud-Run"
+   }
+  },
+  {
+   "id": "s30",
+   "type": "gcp.Product",
+   "label": "Service 31",
+   "parent": "r0s1z1",
+   "props": {
+    "icon": "Cloud-SQL"
+   }
+  },
+  {
+   "id": "s31",
+   "type": "gcp.Product",
+   "label": "Service 32",
+   "parent": "r0s1z1",
+   "props": {
+    "icon": "Pub-Sub"
+   }
+  },
+  {
+   "id": "s32",
+   "type": "gcp.Product",
+   "label": "Service 33",
+   "parent": "r0s1z1",
+   "props": {
+    "icon": "Cloud-Run"
+   }
+  },
+  {
+   "id": "r1",
+   "type": "gcp.Zone",
+   "label": "region 1",
+   "parent": "p",
+   "props": {
+    "zoneType": "region"
+   }
+  },
+  {
+   "id": "n1",
+   "type": "gcp.Zone",
+   "label": "network 1",
+   "parent": "r1",
+   "props": {
+    "zoneType": "network"
+   }
+  },
+  {
+   "id": "s33",
+   "type": "gcp.Product",
+   "label": "Service 34",
+   "parent": "r1",
+   "props": {
+    "icon": "Cloud-SQL"
+   }
+  },
+  {
+   "id": "s34",
+   "type": "gcp.Product",
+   "label": "Service 35",
+   "parent": "r1",
+   "props": {
+    "icon": "Pub-Sub"
+   }
+  },
+  {
+   "id": "s35",
+   "type": "gcp.Product",
+   "label": "Service 36",
+   "parent": "r1",
+   "props": {
+    "icon": "Cloud-Run"
+   }
+  },
+  {
+   "id": "r1s0",
+   "type": "gcp.Zone",
+   "label": "subnetwork 1.0",
+   "parent": "n1",
+   "props": {
+    "zoneType": "subnetwork"
+   }
+  },
+  {
+   "id": "r1s0z0",
+   "type": "gcp.Zone",
+   "label": "zone 1.0.0",
+   "parent": "r1s0",
+   "props": {
+    "zoneType": "zone"
+   }
+  },
+  {
+   "id": "s36",
+   "type": "gcp.Product",
+   "label": "Service 37",
+   "parent": "r1s0z0",
+   "props": {
+    "icon": "Cloud-SQL"
+   }
+  },
+  {
+   "id": "s37",
+   "type": "gcp.Product",
+   "label": "Service 38",
+   "parent": "r1s0z0",
+   "props": {
+    "icon": "Pub-Sub"
+   }
+  },
+  {
+   "id": "s38",
+   "type": "gcp.Product",
+   "label": "Service 39",
+   "parent": "r1s0z0",
+   "props": {
+    "icon": "Cloud-Run"
+   }
+  },
+  {
+   "id": "s39",
+   "type": "gcp.Product",
+   "label": "Service 40",
+   "parent": "r1s0z0",
+   "props": {
+    "icon": "Cloud-SQL"
+   }
+  },
+  {
+   "id": "s40",
+   "type": "gcp.Product",
+   "label": "Service 41",
+   "parent": "r1s0z0",
+   "props": {
+    "icon": "Pub-Sub"
+   }
+  },
+  {
+   "id": "s41",
+   "type": "gcp.Product",
+   "label": "Service 42",
+   "parent": "r1s0z0",
+   "props": {
+    "icon": "Cloud-Run"
+   }
+  },
+  {
+   "id": "r1s0z1",
+   "type": "gcp.Zone",
+   "label": "zone 1.0.1",
+   "parent": "r1s0",
+   "props": {
+    "zoneType": "zone"
+   }
+  },
+  {
+   "id": "s42",
+   "type": "gcp.Product",
+   "label": "Service 43",
+   "parent": "r1s0z1",
+   "props": {
+    "icon": "Cloud-SQL"
+   }
+  },
+  {
+   "id": "s43",
+   "type": "gcp.Product",
+   "label": "Service 44",
+   "parent": "r1s0z1",
+   "props": {
+    "icon": "Pub-Sub"
+   }
+  },
+  {
+   "id": "s44",
+   "type": "gcp.Product",
+   "label": "Service 45",
+   "parent": "r1s0z1",
+   "props": {
+    "icon": "Cloud-Run"
+   }
+  },
+  {
+   "id": "s45",
+   "type": "gcp.Product",
+   "label": "Service 46",
+   "parent": "r1s0z1",
+   "props": {
+    "icon": "Cloud-SQL"
+   }
+  },
+  {
+   "id": "s46",
+   "type": "gcp.Product",
+   "label": "Service 47",
+   "parent": "r1s0z1",
+   "props": {
+    "icon": "Pub-Sub"
+   }
+  },
+  {
+   "id": "s47",
+   "type": "gcp.Product",
+   "label": "Service 48",
+   "parent": "r1s0z1",
+   "props": {
+    "icon": "Cloud-Run"
+   }
+  },
+  {
+   "id": "r1s1",
+   "type": "gcp.Zone",
+   "label": "subnetwork 1.1",
+   "parent": "n1",
+   "props": {
+    "zoneType": "subnetwork"
+   }
+  },
+  {
+   "id": "r1s1z0",
+   "type": "gcp.Zone",
+   "label": "zone 1.1.0",
+   "parent": "r1s1",
+   "props": {
+    "zoneType": "zone"
+   }
+  },
+  {
+   "id": "s48",
+   "type": "gcp.Product",
+   "label": "Service 49",
+   "parent": "r1s1z0",
+   "props": {
+    "icon": "Cloud-SQL"
+   }
+  },
+  {
+   "id": "s49",
+   "type": "gcp.Product",
+   "label": "Service 50",
+   "parent": "r1s1z0",
+   "props": {
+    "icon": "Pub-Sub"
+   }
+  },
+  {
+   "id": "s50",
+   "type": "gcp.Product",
+   "label": "Service 51",
+   "parent": "r1s1z0",
+   "props": {
+    "icon": "Cloud-Run"
+   }
+  },
+  {
+   "id": "s51",
+   "type": "gcp.Product",
+   "label": "Service 52",
+   "parent": "r1s1z0",
+   "props": {
+    "icon": "Cloud-SQL"
+   }
+  },
+  {
+   "id": "s52",
+   "type": "gcp.Product",
+   "label": "Service 53",
+   "parent": "r1s1z0",
+   "props": {
+    "icon": "Pub-Sub"
+   }
+  },
+  {
+   "id": "s53",
+   "type": "gcp.Product",
+   "label": "Service 54",
+   "parent": "r1s1z0",
+   "props": {
+    "icon": "Cloud-Run"
+   }
+  },
+  {
+   "id": "r1s1z1",
+   "type": "gcp.Zone",
+   "label": "zone 1.1.1",
+   "parent": "r1s1",
+   "props": {
+    "zoneType": "zone"
+   }
+  },
+  {
+   "id": "s54",
+   "type": "gcp.Product",
+   "label": "Service 55",
+   "parent": "r1s1z1",
+   "props": {
+    "icon": "Cloud-SQL"
+   }
+  },
+  {
+   "id": "s55",
+   "type": "gcp.Product",
+   "label": "Service 56",
+   "parent": "r1s1z1",
+   "props": {
+    "icon": "Pub-Sub"
+   }
+  },
+  {
+   "id": "s56",
+   "type": "gcp.Product",
+   "label": "Service 57",
+   "parent": "r1s1z1",
+   "props": {
+    "icon": "Cloud-Run"
+   }
+  },
+  {
+   "id": "s57",
+   "type": "gcp.Product",
+   "label": "Service 58",
+   "parent": "r1s1z1",
+   "props": {
+    "icon": "Cloud-SQL"
+   }
+  },
+  {
+   "id": "s58",
+   "type": "gcp.Product",
+   "label": "Service 59",
+   "parent": "r1s1z1",
+   "props": {
+    "icon": "Pub-Sub"
+   }
+  },
+  {
+   "id": "s59",
+   "type": "gcp.Product",
+   "label": "Service 60",
+   "parent": "r1s1z1",
+   "props": {
+    "icon": "Cloud-Run"
+   }
+  }
+ ],
+ "edges": [
+  {
+   "id": "ec-in",
+   "type": "gcp.Path",
+   "from": "ec-users",
+   "to": "ec-api",
+   "label": "HTTPS"
+  },
+  {
+   "id": "ec-q",
+   "type": "gcp.Path",
+   "from": "ec-api",
+   "to": "ec-alias"
+  },
+  {
+   "id": "ec-db",
+   "type": "gcp.Path",
+   "from": "ec-api",
+   "to": "ec-sql"
+  },
+  {
+   "id": "ec-from-group",
+   "type": "gcp.Path",
+   "from": "ec-sub-a",
+   "to": "ec-lacks",
+   "label": "peering"
+  },
+  {
+   "id": "ec-inside",
+   "type": "gcp.Path",
+   "from": "ec-zone-a",
+   "to": "ec-api"
+  },
+  {
+   "id": "az-c1",
+   "type": "azure.Connector",
+   "from": "az-app",
+   "to": "az-sql"
+  },
+  {
+   "id": "az-c2",
+   "type": "azure.Connector",
+   "from": "az-app",
+   "to": "az-vault",
+   "label": "reads"
+  },
+  {
+   "id": "az-c3",
+   "type": "azure.Connector",
+   "from": "az-snet",
+   "to": "az-bus",
+   "label": "sends"
+  },
+  {
+   "id": "aws-c1",
+   "type": "aws.Connection",
+   "from": "aws-api",
+   "to": "aws-db"
+  },
+  {
+   "id": "aws-c2",
+   "type": "aws.Connection",
+   "from": "aws-private",
+   "to": "aws-nat"
+  },
+  {
+   "id": "aws-c3",
+   "type": "aws.Connection",
+   "from": "aws-vpc",
+   "to": "aws-mail"
+  },
+  {
+   "id": "c0",
+   "type": "gcp.Path",
+   "from": "s0",
+   "to": "s1",
+   "label": "HTTPS"
+  },
+  {
+   "id": "c1",
+   "type": "gcp.Path",
+   "from": "s1",
+   "to": "s2",
+   "label": "gRPC"
+  },
+  {
+   "id": "c2",
+   "type": "gcp.Path",
+   "from": "s2",
+   "to": "s3",
+   "label": "HTTPS"
+  },
+  {
+   "id": "c3",
+   "type": "gcp.Path",
+   "from": "s3",
+   "to": "s4",
+   "label": "gRPC"
+  },
+  {
+   "id": "c4",
+   "type": "gcp.Path",
+   "from": "s4",
+   "to": "s5",
+   "label": "HTTPS"
+  },
+  {
+   "id": "c5",
+   "type": "gcp.Path",
+   "from": "s5",
+   "to": "s6",
+   "label": "gRPC"
+  },
+  {
+   "id": "c6",
+   "type": "gcp.Path",
+   "from": "s6",
+   "to": "s7",
+   "label": "HTTPS"
+  },
+  {
+   "id": "c7",
+   "type": "gcp.Path",
+   "from": "s7",
+   "to": "s8",
+   "label": "gRPC"
+  },
+  {
+   "id": "c8",
+   "type": "gcp.Path",
+   "from": "s8",
+   "to": "s9",
+   "label": "HTTPS"
+  },
+  {
+   "id": "c9",
+   "type": "gcp.Path",
+   "from": "s9",
+   "to": "s10",
+   "label": "gRPC"
+  },
+  {
+   "id": "c10",
+   "type": "gcp.Path",
+   "from": "s10",
+   "to": "s11",
+   "label": "HTTPS"
+  },
+  {
+   "id": "c11",
+   "type": "gcp.Path",
+   "from": "s11",
+   "to": "s12",
+   "label": "gRPC"
+  },
+  {
+   "id": "c12",
+   "type": "gcp.Path",
+   "from": "s12",
+   "to": "s13",
+   "label": "HTTPS"
+  },
+  {
+   "id": "c13",
+   "type": "gcp.Path",
+   "from": "s13",
+   "to": "s14",
+   "label": "gRPC"
+  },
+  {
+   "id": "c14",
+   "type": "gcp.Path",
+   "from": "s14",
+   "to": "s15",
+   "label": "HTTPS"
+  },
+  {
+   "id": "c15",
+   "type": "gcp.Path",
+   "from": "s15",
+   "to": "s16",
+   "label": "gRPC"
+  },
+  {
+   "id": "c16",
+   "type": "gcp.Path",
+   "from": "s16",
+   "to": "s17",
+   "label": "HTTPS"
+  },
+  {
+   "id": "c17",
+   "type": "gcp.Path",
+   "from": "s17",
+   "to": "s18",
+   "label": "gRPC"
+  },
+  {
+   "id": "c18",
+   "type": "gcp.Path",
+   "from": "s18",
+   "to": "s19",
+   "label": "HTTPS"
+  },
+  {
+   "id": "c19",
+   "type": "gcp.Path",
+   "from": "s19",
+   "to": "s20",
+   "label": "gRPC"
+  },
+  {
+   "id": "c20",
+   "type": "gcp.Path",
+   "from": "s20",
+   "to": "s21",
+   "label": "HTTPS"
+  },
+  {
+   "id": "c21",
+   "type": "gcp.Path",
+   "from": "s21",
+   "to": "s22",
+   "label": "gRPC"
+  },
+  {
+   "id": "c22",
+   "type": "gcp.Path",
+   "from": "s22",
+   "to": "s23",
+   "label": "HTTPS"
+  },
+  {
+   "id": "c23",
+   "type": "gcp.Path",
+   "from": "s23",
+   "to": "s24",
+   "label": "gRPC"
+  },
+  {
+   "id": "c24",
+   "type": "gcp.Path",
+   "from": "s24",
+   "to": "s25",
+   "label": "HTTPS"
+  },
+  {
+   "id": "c25",
+   "type": "gcp.Path",
+   "from": "s25",
+   "to": "s26",
+   "label": "gRPC"
+  },
+  {
+   "id": "c26",
+   "type": "gcp.Path",
+   "from": "s26",
+   "to": "s27",
+   "label": "HTTPS"
+  },
+  {
+   "id": "c27",
+   "type": "gcp.Path",
+   "from": "s27",
+   "to": "s28",
+   "label": "gRPC"
+  },
+  {
+   "id": "c28",
+   "type": "gcp.Path",
+   "from": "s28",
+   "to": "s29",
+   "label": "HTTPS"
+  },
+  {
+   "id": "c29",
+   "type": "gcp.Path",
+   "from": "s29",
+   "to": "s30",
+   "label": "gRPC"
+  },
+  {
+   "id": "c30",
+   "type": "gcp.Path",
+   "from": "s30",
+   "to": "s31",
+   "label": "HTTPS"
+  },
+  {
+   "id": "c31",
+   "type": "gcp.Path",
+   "from": "s31",
+   "to": "s32",
+   "label": "gRPC"
+  },
+  {
+   "id": "c32",
+   "type": "gcp.Path",
+   "from": "s32",
+   "to": "s33",
+   "label": "HTTPS"
+  },
+  {
+   "id": "c33",
+   "type": "gcp.Path",
+   "from": "s33",
+   "to": "s34",
+   "label": "gRPC"
+  },
+  {
+   "id": "c34",
+   "type": "gcp.Path",
+   "from": "s34",
+   "to": "s35",
+   "label": "HTTPS"
+  },
+  {
+   "id": "c35",
+   "type": "gcp.Path",
+   "from": "s35",
+   "to": "s36",
+   "label": "gRPC"
+  },
+  {
+   "id": "c36",
+   "type": "gcp.Path",
+   "from": "s36",
+   "to": "s37",
+   "label": "HTTPS"
+  },
+  {
+   "id": "c37",
+   "type": "gcp.Path",
+   "from": "s37",
+   "to": "s38",
+   "label": "gRPC"
+  },
+  {
+   "id": "c38",
+   "type": "gcp.Path",
+   "from": "s38",
+   "to": "s39",
+   "label": "HTTPS"
+  },
+  {
+   "id": "c39",
+   "type": "gcp.Path",
+   "from": "s39",
+   "to": "s40",
+   "label": "gRPC"
+  },
+  {
+   "id": "c40",
+   "type": "gcp.Path",
+   "from": "s40",
+   "to": "s41",
+   "label": "HTTPS"
+  },
+  {
+   "id": "c41",
+   "type": "gcp.Path",
+   "from": "s41",
+   "to": "s42",
+   "label": "gRPC"
+  },
+  {
+   "id": "c42",
+   "type": "gcp.Path",
+   "from": "s42",
+   "to": "s43",
+   "label": "HTTPS"
+  },
+  {
+   "id": "c43",
+   "type": "gcp.Path",
+   "from": "s43",
+   "to": "s44",
+   "label": "gRPC"
+  },
+  {
+   "id": "c44",
+   "type": "gcp.Path",
+   "from": "s44",
+   "to": "s45",
+   "label": "HTTPS"
+  },
+  {
+   "id": "c45",
+   "type": "gcp.Path",
+   "from": "s45",
+   "to": "s46",
+   "label": "gRPC"
+  },
+  {
+   "id": "c46",
+   "type": "gcp.Path",
+   "from": "s46",
+   "to": "s47",
+   "label": "HTTPS"
+  },
+  {
+   "id": "c47",
+   "type": "gcp.Path",
+   "from": "s47",
+   "to": "s48",
+   "label": "gRPC"
+  },
+  {
+   "id": "c48",
+   "type": "gcp.Path",
+   "from": "s48",
+   "to": "s49",
+   "label": "HTTPS"
+  },
+  {
+   "id": "c49",
+   "type": "gcp.Path",
+   "from": "s49",
+   "to": "s50",
+   "label": "gRPC"
+  },
+  {
+   "id": "c50",
+   "type": "gcp.Path",
+   "from": "s50",
+   "to": "s51",
+   "label": "HTTPS"
+  },
+  {
+   "id": "c51",
+   "type": "gcp.Path",
+   "from": "s51",
+   "to": "s52",
+   "label": "gRPC"
+  },
+  {
+   "id": "c52",
+   "type": "gcp.Path",
+   "from": "s52",
+   "to": "s53",
+   "label": "HTTPS"
+  },
+  {
+   "id": "c53",
+   "type": "gcp.Path",
+   "from": "s53",
+   "to": "s54",
+   "label": "gRPC"
+  },
+  {
+   "id": "c54",
+   "type": "gcp.Path",
+   "from": "s54",
+   "to": "s55",
+   "label": "HTTPS"
+  },
+  {
+   "id": "c55",
+   "type": "gcp.Path",
+   "from": "s55",
+   "to": "s56",
+   "label": "gRPC"
+  },
+  {
+   "id": "c56",
+   "type": "gcp.Path",
+   "from": "s56",
+   "to": "s57",
+   "label": "HTTPS"
+  },
+  {
+   "id": "c57",
+   "type": "gcp.Path",
+   "from": "s57",
+   "to": "s58",
+   "label": "gRPC"
+  },
+  {
+   "id": "c58",
+   "type": "gcp.Path",
+   "from": "s58",
+   "to": "s59",
+   "label": "HTTPS"
+  },
+  {
+   "id": "x0",
+   "type": "gcp.Path",
+   "from": "s0",
+   "to": "s13"
+  },
+  {
+   "id": "x1",
+   "type": "gcp.Path",
+   "from": "s3",
+   "to": "s16"
+  },
+  {
+   "id": "x2",
+   "type": "gcp.Path",
+   "from": "s6",
+   "to": "s19"
+  },
+  {
+   "id": "x3",
+   "type": "gcp.Path",
+   "from": "s9",
+   "to": "s22"
+  },
+  {
+   "id": "x4",
+   "type": "gcp.Path",
+   "from": "s12",
+   "to": "s25"
+  },
+  {
+   "id": "x5",
+   "type": "gcp.Path",
+   "from": "s15",
+   "to": "s28"
+  },
+  {
+   "id": "x6",
+   "type": "gcp.Path",
+   "from": "s18",
+   "to": "s31"
+  },
+  {
+   "id": "x7",
+   "type": "gcp.Path",
+   "from": "s21",
+   "to": "s34"
+  },
+  {
+   "id": "x8",
+   "type": "gcp.Path",
+   "from": "s24",
+   "to": "s37"
+  },
+  {
+   "id": "x9",
+   "type": "gcp.Path",
+   "from": "s27",
+   "to": "s40"
+  },
+  {
+   "id": "x10",
+   "type": "gcp.Path",
+   "from": "s30",
+   "to": "s43"
+  },
+  {
+   "id": "x11",
+   "type": "gcp.Path",
+   "from": "s33",
+   "to": "s46"
+  },
+  {
+   "id": "x12",
+   "type": "gcp.Path",
+   "from": "s36",
+   "to": "s49"
+  },
+  {
+   "id": "x13",
+   "type": "gcp.Path",
+   "from": "s39",
+   "to": "s52"
+  },
+  {
+   "id": "x14",
+   "type": "gcp.Path",
+   "from": "s42",
+   "to": "s55"
+  },
+  {
+   "id": "x15",
+   "type": "gcp.Path",
+   "from": "s45",
+   "to": "s58"
+  },
+  {
+   "id": "x16",
+   "type": "gcp.Path",
+   "from": "s48",
+   "to": "s1"
+  },
+  {
+   "id": "x17",
+   "type": "gcp.Path",
+   "from": "s51",
+   "to": "s4"
+  },
+  {
+   "id": "x18",
+   "type": "gcp.Path",
+   "from": "s54",
+   "to": "s7"
+  },
+  {
+   "id": "x19",
+   "type": "gcp.Path",
+   "from": "s57",
+   "to": "s10"
+  },
+  {
+   "id": "x20",
+   "type": "gcp.Path",
+   "from": "s0",
+   "to": "s13"
+  }
+ ],
+ "views": [
+  {
+   "id": "edge-cases",
+   "diagram": "gcp",
+   "title": "Edge cases",
+   "nodeIds": [
+    "ec-users",
+    "ec-project",
+    "ec-region",
+    "ec-net",
+    "ec-sub-a",
+    "ec-zone-a",
+    "ec-api",
+    "ec-sql",
+    "ec-sub-b",
+    "ec-zone-b",
+    "ec-lacks",
+    "ec-alias",
+    "ec-plain",
+    "ec-odd",
+    "ec-loose",
+    "ec-loose-svc"
+   ]
+  },
+  {
+   "id": "ec-no-product",
+   "diagram": "gcp",
+   "title": "No product",
+   "nodeIds": [
+    "nn-users",
+    "nn-project",
+    "nn-region"
+   ]
+  },
+  {
+   "id": "az-edge-cases",
+   "diagram": "azure",
+   "title": "Azure edge cases",
+   "nodeIds": [
+    "az-sub",
+    "az-rg",
+    "az-region",
+    "az-vnet",
+    "az-snet",
+    "az-app",
+    "az-sql",
+    "az-shared",
+    "az-vault",
+    "az-stray",
+    "az-bus"
+   ]
+  },
+  {
+   "id": "aws-edge-cases",
+   "diagram": "aws",
+   "title": "AWS edge cases",
+   "nodeIds": [
+    "aws-cloud",
+    "aws-account",
+    "aws-region",
+    "aws-vpc",
+    "aws-az",
+    "aws-private",
+    "aws-sg",
+    "aws-api",
+    "aws-db",
+    "aws-public",
+    "aws-nat",
+    "aws-mail"
+   ]
+  },
+  {
+   "id": "all",
+   "diagram": "gcp",
+   "title": "Sixty products",
+   "nodeIds": [
+    "p",
+    "s0",
+    "s1",
+    "s2",
+    "s3",
+    "s4",
+    "s5",
+    "r0",
+    "n0",
+    "s6",
+    "s7",
+    "s8",
+    "r0s0",
+    "r0s0z0",
+    "s9",
+    "s10",
+    "s11",
+    "s12",
+    "s13",
+    "s14",
+    "r0s0z1",
+    "s15",
+    "s16",
+    "s17",
+    "s18",
+    "s19",
+    "s20",
+    "r0s1",
+    "r0s1z0",
+    "s21",
+    "s22",
+    "s23",
+    "s24",
+    "s25",
+    "s26",
+    "r0s1z1",
+    "s27",
+    "s28",
+    "s29",
+    "s30",
+    "s31",
+    "s32",
+    "r1",
+    "n1",
+    "s33",
+    "s34",
+    "s35",
+    "r1s0",
+    "r1s0z0",
+    "s36",
+    "s37",
+    "s38",
+    "s39",
+    "s40",
+    "s41",
+    "r1s0z1",
+    "s42",
+    "s43",
+    "s44",
+    "s45",
+    "s46",
+    "s47",
+    "r1s1",
+    "r1s1z0",
+    "s48",
+    "s49",
+    "s50",
+    "s51",
+    "s52",
+    "s53",
+    "r1s1z1",
+    "s54",
+    "s55",
+    "s56",
+    "s57",
+    "s58",
+    "s59"
+   ]
+  }
+ ]
+}

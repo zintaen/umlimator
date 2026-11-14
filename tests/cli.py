@@ -291,6 +291,10 @@ with tempfile.TemporaryDirectory() as tmp:
             "bookshop-data-flow": (lambda m: rename(m, "dfd-courier", "Carrier"), "dfd-level-1", "renames Courier to Carrier"),
             "order-information-flow": (lambda m: rename(m, "email-service", "Mailer"), "order-flows", "renames Email service to Mailer"),
             "bookshop-c4": (lambda m: rename(m, "c4-staff", "Staff"), "c4-context", "renames Shop staff to Staff"),
+            # 4a.7: milestone 4a's three examples (C10, decision 22), with no icon pack: CI never has one (S18)
+            "bookshop-opening-plan": (lambda m: rename(m, "mm-checkout", "Payment"), "mm-plan", "renames Checkout to Payment"),
+            "bookshop-gcp": (lambda m: rename(m, "gcp-api", "Store API"), "gcp-on-gcp", "renames Shop API to Store API"),
+            "bookshop-azure": (lambda m: rename(m, "az-db", "Orders database"), "az-on-azure", "renames Database to Orders database"),
             # 4b.5: the BPMN example
             "bookshop-order-to-shipment": (lambda m: rename(m, "bp-take-payment", "Charge the card"), "order-to-shipment", "renames Take payment to Charge the card")}
     d = t / "action-m2"; (d / "examples").mkdir(parents=True)
@@ -308,7 +312,7 @@ with tempfile.TemporaryDirectory() as tmp:
     md = (t / "action-m2-out" / "summary.md").read_text(encoding="utf-8") if (t / "action-m2-out" / "summary.md").is_file() else ""
     for f, (_, view, said) in FIVE.items():
         x = by.get(f"examples/{f}.json", {})
-        ok(f"diff --base, as the Action runs it (C10, M2.14, 4b.5) · {f}: what changed in words, its view, a page and a still",
+        ok(f"diff --base, as the Action runs it (C10, M2.14, 4a.7, 4b.5) · {f}: what changed in words, its view, a page and a still",
            x.get("summary") == [said] and view in (x.get("views") or []) and (t / "action-m2-out" / f"examples-{f}.html").is_file() and all(Path(s).is_file() for s in x.get("stills", [None]))
            and f"- {said}" in md, x)
 
@@ -347,6 +351,7 @@ with tempfile.TemporaryDirectory() as tmp:
                                                        "bookshop-profile", "bookshop-timing",
                                                        "bookshop-schema", "returns-flowchart", "bookshop-data-flow", "order-information-flow", "bookshop-c4",
                                                        "ebike-requirements", "ebike-blocks", "ebike-structure", "ebike-range",
+                                                       "bookshop-opening-plan", "bookshop-gcp", "bookshop-azure",
                                                        "bookshop-order-to-shipment")]
     for path in TYPED:
         p = subprocess.run([sys.executable, str(ROOT / "plugins" / "umlimator" / "skills" / "map-repo" / "scripts" / "cli.py"), "render", str(path),
@@ -357,7 +362,7 @@ with tempfile.TemporaryDirectory() as tmp:
             r = None
         # the pinned crossings of examples 9 and 10, as render's own check above (stage 5's three are clean since decision 22)
         said = {"fulfil-activity": ["cross"] * 2, "order-states": ["cross"] * 2, "bookshop-c4": ["cross"] * 14, "bookshop-data-flow": ["cross"] * 2,
-                "bookshop-order-to-shipment": ["cross"] * 5}.get(path.stem, [])
+                "bookshop-gcp": ["cross"], "bookshop-azure": ["cross"], "bookshop-order-to-shipment": ["cross"] * 5}.get(path.stem, [])
         ok(f"map-repo's cli.py · renders a typed model it is given ({path.stem}): the page, and its check" + (f" (at most {len(said)} crossings, stated)" if said else " clean"),
            p.returncode == 0 and r is not None and not r.get("errors") and all(q.endswith(" cross") for q in r.get("problems") or []) and len(r.get("problems") or []) <= len(said)
            and (t / f"skill-{path.stem}.html").is_file(), (p.returncode, p.stdout[-400:], p.stderr[-400:]))
@@ -413,6 +418,8 @@ with tempfile.TemporaryDirectory() as tmp:
                                                                        "bookshop-schema", "returns-flowchart", "bookshop-data-flow", "order-information-flow", "bookshop-c4",
                                                                        # M3.7: SysML's four e-bike examples
                                                                        "ebike-requirements", "ebike-blocks", "ebike-structure", "ebike-range",
+                                                                       # 4a.7: milestone 4a's three examples, rendered with no pack (UMLIMATOR_NO_PACKS in CI's site build)
+                                                                       "bookshop-opening-plan", "bookshop-gcp", "bookshop-azure",
                                                                        # 4b.5: the BPMN example
                                                                        "bookshop-order-to-shipment"))):
         src = json.loads(path.read_text())
@@ -422,8 +429,10 @@ with tempfile.TemporaryDirectory() as tmp:
         # at most these: text widths differ between machines (Linux CI counts fewer than a Mac), so the count is a ceiling
         # M2.14: the crossings repair and reroute off leave in the C4 and data flow examples (notes/milestone-2.md §11), as Chrome
         # counts them (tests/atlas.test.mjs counts Node's); stated in docs/conformance/c4.md and dfd.md
+        # 4a.7: the Google Cloud and Azure examples' one each, repair and reroute off (notes/milestone-4a.md §11), stated in
+        # docs/conformance/gcp.md and azure.md
         # 4b.5: the BPMN example's, repair and reroute off (notes/milestone-4b.md §14), stated in docs/conformance/bpmn.md
-        crossings = {"fulfil-activity": 2, "order-states": 2, "bookshop-c4": 14, "bookshop-data-flow": 2, "bookshop-order-to-shipment": 5}.get(name, 0)
+        crossings = {"fulfil-activity": 2, "order-states": 2, "bookshop-c4": 14, "bookshop-data-flow": 2, "bookshop-gcp": 1, "bookshop-azure": 1, "bookshop-order-to-shipment": 5}.get(name, 0)
         ok(f"render · a typed model ({name}): the engine accepts lines that end on members, and the check is clean" + (f" but its {crossings} pinned crossings" if crossings else ""),
            r is not None and len(r.get("problems") or []) <= crossings and all(p.endswith(" cross") for p in r.get("problems") or []) and not r.get("errors"), r)
         page = (t / f"{name}.html").read_text(encoding="utf-8") if r else ""
@@ -520,6 +529,11 @@ with tempfile.TemporaryDirectory() as tmp:
             "order-information-flow": ["OrderInformationitemShopper→StorefrontStorefront→ShopAPI", "Shopper→StorefrontOrder,CarddetailsInformationflow", "«flow»Order,Carddetails"],
             "bookshop-c4": ["PaymentproviderSoftwaresystemTakescardpaymentsandmakesrefunds.external", "Bookshop→PaymentproviderTakescardpaymentswith[HTTPS]Relationship",
                             "ShopAPI[Container:Python,FastAPI]"],
+            # 4a.7: milestone 4a's (notes/milestone-4a.md §5.7, §7.1, DoD 7): a topic's word, depth and parent; a product's or a
+            # service's word, full name, icon id and group, each a glyph here (no pack: S18)
+            "bookshop-opening-plan": ["CheckoutTopicDepth2UnderWebsite", "OpeningthebookshopTopicDepth0Theroot"],
+            "bookshop-gcp": ["ShopAPIProductCloudRuniconCloud-Runineurope-west1[Region]", "europe-west1[Region]", "Shoppers→LoadbalancerHTTPSPath"],
+            "bookshop-azure": ["DatabaseServiceSQLDatabaseiconSQL-Databaseinsnet-data[Subnet]", "Connector"],
             # 4b.5: BPMN's (notes/milestone-4b.md §11, DoD 7): each element's word and its rows (its lane, the activity a boundary
             # event is on, its documentation); each flow's ends, name and kind
             "bookshop-order-to-shipment": ["TakepaymentServicetaskinSales", "Noanswerin2minutesTimerboundaryeventonTakepayment", "BookshopPool",
@@ -541,6 +555,19 @@ with tempfile.TemporaryDirectory() as tmp:
     for n, want in PDF3.items():
         txt = "".join(read(f"{n}.pdf"))
         ok(f"pdf · {n}: its tables list what SysML's type says of each element and line (§13)", all(w in txt for w in want), [w for w in want if w not in txt] or txt[:800])
+    # 4a.7: import on the mindmap example (notes/milestone-4a.md §8.4): the module's writer gives its Mermaid, and
+    # umlimator.py import reads it back to the same topics under the same parents, in the same order, on the same sides
+    ex = json.loads((ROOT / "examples" / "bookshop-opening-plan.json").read_text(encoding="utf-8"))
+    w = subprocess.run(["node", "--input-type=module", "-e", "import { writeMermaidMindmap } from " + json.dumps((ROOT / "src" / "readers" / "mermaid-mindmap.js").as_uri())
+                        + "; let s = ''; for await (const c of process.stdin) s += c; process.stdout.write(writeMermaidMindmap(JSON.parse(s)));"],
+                       input=json.dumps(ex), capture_output=True, text=True)
+    (t / "plan.mmd").write_text(w.stdout, encoding="utf-8")
+    r = subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "import", str(t / "plan.mmd"), "--out", str(t / "plan.json")], capture_output=True, text=True)
+    back = json.loads((t / "plan.json").read_text(encoding="utf-8")) if r.returncode == 0 else {"nodes": [], "views": [{}]}
+    tree = lambda m: [(n["id"], n["label"], n.get("parent")) for n in m["nodes"]]
+    ok("import · bookshop-opening-plan: its Mermaid mindmap, read back to the same topics, parents, order and sides",
+       w.returncode == 0 and "\nmindmap\n" in w.stdout and tree(back) == tree(ex) and back["views"][0].get("nodeIds") == ex["views"][0]["nodeIds"]
+       and back["views"][0].get("present") == ex["views"][0]["present"], (w.stderr[-300:], r.stderr[-300:], tree(back)[:4]))
     txt = "".join(read("bookshop-timing.pdf"))
     ok("pdf · bookshop-timing: its tables list each lifeline's changes in time order, the messages it sends and the constraints on its changes, each message's kind",
        all(flat(s) in txt for s in ["workerLifeline0 ms: Idle100 ms: Waiting for payment760 ms: Recording payment900 ms: Idlecharge(total) to payments at 100 ms → 140 ms",

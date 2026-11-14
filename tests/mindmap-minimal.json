@@ -1,0 +1,23 @@
+{
+ "$schema": "../lib/umlimator.schema.json",
+ "schemaVersion": 2,
+ "title": "Mindmap, minimal",
+ "nodes": [
+  {
+   "id": "idea",
+   "type": "mindmap.Topic",
+   "label": "One idea"
+  }
+ ],
+ "edges": [],
+ "views": [
+  {
+   "id": "v",
+   "diagram": "mindmap",
+   "title": "One topic",
+   "nodeIds": [
+    "idea"
+   ]
+  }
+ ]
+}
