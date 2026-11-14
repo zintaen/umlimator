@@ -347,7 +347,7 @@ function writeMermaidState(model, viewId) {
   // text: Mermaid's own characters as entities, a line break as <br>, a space at either end as an entity, which the
   // reader's trim keeps, and the space after "direction", which Mermaid's lexer takes anywhere in a line
   const ent = c => `#${c.codePointAt(0)};`;
-  const enc = s => String(s).replace(/[#;:"<>\\]/g, ent).replace(/\r\n|\r|\n/g, '<br>').replace(/^\s|\s$/g, ent).replace(/(direction)(\s)/gi, (_, w, c) => w + ent(c));
+  const enc = s => String(s).replace(/[#;:"<>\\\r]/g, ent).replace(/\n/g, '<br>').replace(/^\s|\s$/g, ent).replace(/(direction)(\s)/gi, (_, w, c) => w + ent(c));
   const okId = id => str(id) && id !== '' && id.trim() === id && !/[\r\n]/.test(id); // a hint keeps it
   const out = [], notWritten = [], skip = x => notWritten.push(`${flat(x.id)} (${flat(x.type)})`), lose = (id, what) => notWritten.push(`${flat(id)}: ${flat(what)}`);
   const title = String(has(view.title) ? view.title : m.title ?? '');
@@ -539,9 +539,10 @@ function writeMermaidState(model, viewId) {
   }
   writeScope('', 0);
   for (const x of notWritten) out.push(`  %% not written: ${x}`);
-  // unindented when indented text would be over the reader's own limit, so what the reader read can be read again
-  const text = out.join('\n') + '\n';
-  return text.length > MT_LIMIT ? text.replace(/^[ \t]+/gm, '') : text;
+  // unindented when indented text would be over the reader's own limit; text still over it (long ids, a state or class
+  // declared again) cannot be read again, and says so in its last line
+  const text = out.join('\n') + '\n', t = text.length > MT_LIMIT ? text.replace(/^[ \t]+/gm, '') : text;
+  return t.length > MT_LIMIT ? t + `%% not written: text the reader reads back: this is ${t.length} characters, over its limit of ${MT_LIMIT}\n` : t;
 }
 
 export { readMermaidState, writeMermaidState };

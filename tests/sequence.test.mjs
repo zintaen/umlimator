@@ -406,3 +406,12 @@ test('a fragment listed twice, and a message and a use sharing an id: validate()
   const g = layout(u, 's');
   assert.deepEqual([g.edges.map(e => e.aria), g.nodes.filter(n => n.shape === 'use').map(n => n.aria)], [['Message 1 of 1: a to b, x, async'], ['Interaction use Pay, over a to b']]);
 });
+
+test('two messages of one id, one naming no lifeline: layout() draws the other, each line its own message (audit 3)', () => {
+  const two = { schemaVersion: 2, nodes: [{ id: 'a', type: 'uml.Lifeline' }, { id: 'b', type: 'uml.Lifeline' }], edges: [] };
+  const M = (id, from, to, label) => ({ id, type: 'uml.Message', from, to, label });
+  const g = layout({ ...two, views: [{ id: 's', diagram: 'uml.sequence', nodeIds: ['a', 'b'], edges: [M('x', 'a', 'b', 'one'), M('x', 'ghost', 'b', 'two')] }] }, 's');
+  assert.deepEqual(g.edges.map(e => e.label), ['one']);
+  const h = layout({ ...two, views: [{ id: 's', diagram: 'uml.sequence', nodeIds: ['a', 'b'], edges: [M('x', 'a', 'b', 'one'), M('x', 'b', 'a', 'two')] }] }, 's');
+  assert.deepEqual(h.edges.map(e => e.aria), ['Message 1 of 2: a to b, one, call', 'Message 2 of 2: b to a, two, call']);
+});

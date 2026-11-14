@@ -369,3 +369,12 @@ test('layout() of a chain of 3,000 lifelines: the host finds its loops without r
   const edges = nodes.slice(1).map((n, i) => ({ id: 'e' + i, type: 'uml.Connector', from: nodes[i].id, to: n.id }));
   assert.equal(layout({ schemaVersion: 2, nodes, edges, views: [{ id: 'v', diagram: 'uml.communication', nodeIds: nodes.map(n => n.id) }] }, 'v').nodes.filter(n => n.shape === 'lifeline').length, 3000);
 });
+
+test('a message the view lists twice is read once: one row, its own number, no false reply-call (audit 3)', () => {
+  const m = structuredClone(EX), v = m.views[0], id = v.edges.find(x => (m.edges.find(e => e.id === x) || {}).type === 'uml.Message');
+  v.edges.push(id);
+  const g = layout(m, v.id), label = m.edges.find(e => e.id === id).label;
+  assert.equal(g.nodes.filter(n => n.id === id).length, 1);
+  assert.deepEqual(validate(m).filter(p => p.rule === 'reply-call'), []);
+  assert.deepEqual(describe(m, v.id).split('\n').filter(l => l.includes(label)).map(l => l.split(':')[0]), ['1']);
+});

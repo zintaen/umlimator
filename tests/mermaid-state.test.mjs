@@ -329,3 +329,10 @@ test('a state file nested 20000 deep that the reader read, once written, reads a
   const back = read(write(m));
   assert.deepEqual([back.report, back.model.nodes.length], [[], 20001]);
 });
+
+test('a carriage return in a label is written as an entity, so it reads back as itself (audit 3)', () => {
+  for (const label of ['x\ry', 'x\r\ny']) {
+    const t = write({ schemaVersion: 2, root: 'v', nodes: [{ id: 'a', type: 'uml.State', label }], edges: [], views: [{ id: 'v', diagram: 'uml.state-machine', nodeIds: ['a'] }] }, 'v');
+    assert.equal(read(t).model.nodes.find(n => n.id === 'a').label, label);
+  }
+});

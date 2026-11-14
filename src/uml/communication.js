@@ -27,7 +27,7 @@ function commIndex(model, view) {
   CM_ARR(model && model.nodes).forEach(n => { if (CM_OBJ(n) && typeof n.id === 'string' && !N.has(n.id)) N.set(n.id, n); });
   CM_ARR(model && model.edges).forEach(e => { if (CM_OBJ(e) && typeof e.id === 'string' && !E.has(e.id)) E.set(e.id, e); });
   const ids = [...new Set(CM_ARR(view && view.nodeIds).filter(id => N.has(id)))], shown = new Set(ids);
-  const list = CM_ARR(view && view.edges).map(x => (typeof x === 'string' ? E.get(x) : x)).filter(e => CM_OBJ(e) && typeof e.id === 'string');
+  const list = [...new Set(CM_ARR(view && view.edges).map(x => (typeof x === 'string' ? E.get(x) : x)))].filter(e => CM_OBJ(e) && typeof e.id === 'string'); // listed twice: once
   const pair = (a, b) => [a, b].sort().join(CM_STACK), joins = e => shown.has(e.from) && shown.has(e.to);
   const connectors = list.filter(e => e.type === 'uml.Connector' && joins(e)), carrier = new Map(), on = new Map();
   connectors.forEach(c => { const k = pair(c.from, c.to); if (!carrier.has(k)) carrier.set(k, c); on.set(c.id, []); });

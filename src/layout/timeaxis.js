@@ -169,7 +169,7 @@ function layoutTimeAxis(input = {}) {
       const ex = born[it.to] === it.ri ? X[it.to] - dir * cw[it.to] / 2 : side(it.to, active(it.to, it.y), -dir);
       const n = it.from + dir, near = n === it.to ? ex : dir > 0 ? X[n] - solidL[n] : X[n] + solidR[n], cx = (sx + near) / 2;
       it.pts = [[sx, it.y], [ex, it.y]]; it.lbl = { x: cx - it.w / 2, y: it.y - TA.above - it.h, w: it.w, h: it.h }; }
-    lines.push({ id: it.r.id, pts: it.pts.map(p => p.map(r2)), lbl: { x: r2(it.lbl.x), y: r2(it.lbl.y), w: r2(it.w), h: r2(it.h) } }); });
+    lines.push({ id: it.r.id, ri: it.ri, pts: it.pts.map(p => p.map(r2)), lbl: { x: r2(it.lbl.x), y: r2(it.lbl.y), w: r2(it.w), h: r2(it.h) } }); });
   const boxX = b => (heads.length ? [X[b.lo] - b.L, Math.max(X[b.hi] + b.R, X[b.lo] - b.L + b.need)] : [TA.edge, TA.edge + b.need]);
   const outSpans = spans.map(s => { const [x0, x1] = boxX(s); s.it.box = [x0, x1]; return { id: s.it.r.id, x: r2(x0), y: r2(s.it.y), w: r2(x1 - x0), h: r2(s.it.h) }; });
   const outFrames = frames.map(fr => { const [x0, x1] = boxX(fr);

@@ -90,9 +90,9 @@ WAIT, BEAT = 6, 2        # s: how long a page tool waits for a page to show its 
 
 def load():
     try:
-        return json.loads(MODEL.read_text(encoding="utf-8"))
-    except (OSError, ValueError) as e:
-        raise Fail(f"cannot read the model {MODEL.name}: {e}")
+        return cli.read_json(MODEL)  # as render reads it: a BOM too, an object
+    except SystemExit as e:
+        raise Fail(f"cannot read the model {MODEL.name}: {e.code}")
 
 
 def version():
@@ -173,9 +173,9 @@ def call(name, a):
         tried = list(dict.fromkeys([given] if given.is_absolute() else [MODEL.parent / given, Path.cwd() / given]))
         other = next((p for p in tried if p.is_file()), tried[0])
         try:
-            before = json.loads(other.read_text(encoding="utf-8"))
-        except (OSError, ValueError) as e:
-            raise Fail(f"cannot read {a['other_model_path']} (looked for {' and '.join(map(str, tried))}): {e}")
+            before = cli.read_json(other)
+        except SystemExit as e:
+            raise Fail(f"cannot read {a['other_model_path']} (looked for {' and '.join(map(str, tried))}): {e.code}")
         d = node("diff", before, m)
         return {"summary": d["summary"], "views": d["views"]}
     if name == "page_state":

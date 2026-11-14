@@ -186,6 +186,21 @@ m, un, dt = quick("mermaid", "flowchart\na --" + " " * 3000 + "x")  # audit 2: \
 ok("hostile · a link's text of 3000 spaces and no close is said, not imported, in linear time", un == [(2, "not imported: a -- x")] and dt < 2, (un, dt))
 m, un, dt = quick("plantuml", "@startuml\nPerson(a, x" + " " * 100000 + "y)\n@enduml")  # audit 2: a lazy argument retried its end at each space
 ok("hostile · a C4 macro argument of 100000 spaces reads in linear time", card(m, "a")["label"].split() == ["x", "y"] and dt < 2, dt)
+# audit 3: a subgraph label's \s* (.*?) \s* backtracked cubically; a ; split by a lookahead, a .-close retried along a run of
+# dots and a lazy /* */ in detect() were quadratic; a DSL element's id grew with its depth
+_, un, dt = quick("mermaid", "flowchart\nsubgraph a[" + " " * 100000 + "x\nend")
+ok("hostile · a subgraph's unclosed [ and 100000 spaces read in linear time", dt < 1, dt)
+_, _, dt = quick("mermaid", "flowchart\na -- " + "." * 1000000 + "x")
+ok("hostile · a link's text of 1000000 dots reads in linear time", dt < 2, dt)
+m, _, dt = quick("mermaid", "flowchart\na-->b" + ';"' * 400000 + "\nc-->d;e-->f")
+ok("hostile · a line of 400000 ;\" pairs splits in linear time, and ; outside quotes still splits", dt < 3 and line(m, "e", "f"), dt)
+t0 = time.time()
+ok("hostile · detect() reads 400000 unclosed /* and 1000000 blank lines in linear time",
+   imp.detect("x", "/*" * 400000) is None and imp.detect("x", "\n" * 1000000 + "x") is None and time.time() - t0 < 1, time.time() - t0)
+m, un, dt = quick("structurizr", "workspace {\nmodel {\n" + 'abcdefghij = container "x" {\n' * 30000 + "}\n" * 30000 + "}\n}\n")
+ok("hostile · 30000 nested DSL elements are read flat past 64 deep, short ids, in linear time",
+   len(m["nodes"]) == 30000 and max(len(n["id"]) for n in m["nodes"]) < 1000 and dt < 5
+   and (67, "x is nested over 64 deep: it and what it holds are read flat from there") in un, (dt, un[:2]))
 _, _, dt = quick("kubernetes", json.dumps({"kind": "Ingress", "metadata": {"name": "i"}, "spec": {"rules": [{"host": f"h{i}", "http": {"paths": [{"path": "/"}]}} for i in range(18000)]}}))
 ok("hostile · an Ingress of 18000 rules reads in linear time (its hosts counted once)", dt < 3, dt)
 m, _, dt = quick("kubernetes", json.dumps([{"kind": "Service", "metadata": {"name": f"s{i}"}, "spec": {"selector": {"app": f"a{i}"}}} for i in range(3000)]
@@ -219,6 +234,10 @@ with tempfile.TemporaryDirectory() as tmp:
     (t / "bad.mmd").write_bytes(b"\xff\xfe\x00flowchart")
     r = run("import", str(t / "bad.mmd"), "--out", str(t / "b.json"))
     ok("a file that is not UTF-8 is said in one line, no traceback", r.returncode == 1 and "is not UTF-8 text" in r.stderr and "Traceback" not in r.stderr, r.stderr)
+    (t / "lone.json").write_text('{"services": {"a\\ud800": {}}}')  # audit 3: a lone surrogate ended the UTF-8 write in a traceback
+    r = run("import", str(t / "lone.json"), "--out", str(t / "lone-out.json"))
+    ok("a lone surrogate (an escape or entity) is written as U+FFFD and said, no traceback",
+       r.returncode == 0 and "written as U+FFFD" in r.stderr and "a\ufffd" in (t / "lone-out.json").read_text(encoding="utf-8"), r.stderr[-800:])
     (t / "bare.json").write_text(json.dumps({"title": "t", "nodes": ["a", {"id": "b", "label": "B"}], "edges": [], "views": [{"id": "v", "nodeIds": ["b"]}]}))
     r = run("render", str(t / "bare.json"), "--out", str(t / "bare.html"), "--no-check")
     ok("render · a node that is not an object is a model problem, no traceback (backlog 4a.3)",

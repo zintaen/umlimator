@@ -407,7 +407,8 @@ function writeMermaidRequirement(model, viewId) {
     out.push(`  ${tok(e.from)} - ${word} -> ${tok(e.to)}`);
   }
   for (const x of notWritten) out.push(`  %% not written: ${x}`);
-  return out.join('\n') + '\n';
+  const t = out.join('\n') + '\n'; // over the reader's limit, it cannot be read again, and says so in its last line
+  return t.length > MQ_LIMIT ? t + `%% not written: text the reader reads back: this is ${t.length} characters, over its limit of ${MQ_LIMIT}\n` : t;
 }
 
 export { readMermaidRequirement, writeMermaidRequirement };

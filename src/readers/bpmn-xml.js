@@ -17,7 +17,8 @@
    under the element's `ext.bpmn`: a sequence flow's condition, a gateway's default, a send or receive task's kind, a
    timer's time. Anything else (an element, an event definition or a marker outside the subset, an extension) is
    reported `skipped` and kept under the model's `ext.bpmn.skipped` as moddle's JSON with its parent's id; a line to it
-   is reported too. Positions and sizes are not kept (R5): the report says so once per file.
+   is reported too. An attribute outside the subset (startQuantity, isForCompensation, isCollection, ...) set to other
+   than its default is reported once per file, by its name, and not kept; isExecutable, an engine's only, is passed over. Positions and sizes are not kept (R5): the report says so once per file.
 
    writeBpmnXml(model, viewId, geo, moddle) -> promise of { xml, report }: every `bpmn.*` element of the model in one
    definitions, a collaboration when it has a participant, a process per participant (its `processRef`, else
@@ -57,6 +58,7 @@ const BX_PROPS = { 'bpmn.Participant': ['processRef'], 'bpmn.Task': ['taskType']
 const bxProp = (t, k) => k === 'documentation' || (BX_PROPS[t] || (t.slice(5) in BX_DEFS ? ['definition'] : [])).includes(k)
   || k === 'categoryValueRef' && !['bpmn.Group', 'bpmn.Lane'].includes(t) && !/(Flow|Association)$/.test(t); // a node's groups (row 24)
 const BX_LOOSE = new Set(['bpmn.DataObject', 'bpmn.DataStoreReference', 'bpmn.TextAnnotation', 'bpmn.Group']); // in a pool, never a lane
+const BX_ATTRS = new Set(['id', 'name', 'calledElement', 'cancelActivity', 'associationDirection', 'triggeredByEvent', 'isExecutable']); // read, or an engine's only
 const BX_FIELDS = new Set(['id', 'type', 'label', 'parent', 'props', 'members', 'opensView', 'ext', 'from', 'to']);
 const BX_SIZE = { 'bpmn.Participant': [600, 200], 'bpmn.Lane': [570, 100], 'bpmn.Group': [200, 120], 'bpmn.TextAnnotation': [120, 40],
   'bpmn.DataObject': [36, 50], 'bpmn.DataStoreReference': [50, 50], 'bpmn.ExclusiveGateway': [50, 50], 'bpmn.ParallelGateway': [50, 50] };
@@ -109,7 +111,14 @@ async function readBpmnXml(xml, moddle) {
       if (id !== a && !fixed.has(el)) { fixed.add(el); say(id, 'weakened', `umlimator:id ${a} holds "->", which names a map's lines by position: read as ${id}`); }
       return id;
     };
-    const foreign = (el, id) => { for (const k of Object.keys(el.$attrs || {})) if (!k.startsWith('xmlns') && !(pre && k.startsWith(pre))) say(id, 'skipped', `the attribute ${k}: not read`); };
+    const said = new Set(); // BPMN's own attributes set and not read (startQuantity, isForCompensation, ...): each said once
+    const foreign = (el, id) => {
+      for (const k of Object.keys(el.$attrs || {})) if (!k.startsWith('xmlns') && !(pre && k.startsWith(pre))) say(id, 'skipped', `the attribute ${k}: not read`);
+      for (const k of Object.keys(el)) {
+        const p = el.$type !== 'bpmn:Definitions' && el.$descriptor?.propertiesByName?.[k];
+        if (p && p.isAttr && !p.isReference && !BX_ATTRS.has(k) && el[k] !== p.default && !said.has(k)) { said.add(k); say(id, 'skipped', `the attribute ${k}="${el[k]}": not read, here or elsewhere in the file`); }
+      }
+    };
     foreign(defs, '');
     const elOf = new Map(); // a moddle element -> its node or lane
     const skip = (el, parent, why = 'outside the subset') => {
