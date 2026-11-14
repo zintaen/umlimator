@@ -12,7 +12,11 @@
      dashed where it says, an arrowhead's tip on the outline or the port it points to. And stage 6's (6.6, notes/stage-6.md
      §4.1, §11): on the profile example and the stress fixture's edge cases, an extension ends in a filled triangle the
      line's colour, solid; a profile application in an open arrowhead, dashed, labelled «apply»; a generalization's hollow
-     triangle and a dependency's open arrow as the class type's; each tip on the outline it points to. tests/embed.py
+     triangle and a dependency's open arrow as the class type's; each tip on the outline it points to. And milestone 2's
+     (M2.14, notes/milestone-2.md §4, §7.4, §5.2): on the ER example and fixture in both notations, each end as its
+     multiplicity says (crow's foot's four, IDEF1X's dot and an optional parent's diamond), identifying solid and
+     non-identifying dashed; an information flow a dashed open arrow labelled «flow»; a C4 relationship a solid open arrow
+     and an implied one dashed; each end on the outline it meets. tests/embed.py
      opens this in headless Chrome and reads <pre id="result">. -->
 <meta charset="utf-8">
 <link rel="icon" href="data:,">
@@ -35,6 +39,9 @@ import '../src/uml/component.js';
 import '../src/uml/deployment.js';
 import '../src/uml/composite.js';
 import '../src/uml/profile.js';
+import '../src/er/er.js';
+import '../src/uml/information.js';
+import '../src/c4/c4.js';
 import { layout } from '../src/map/api.js';
 import { mapContext } from '../src/map/context.js';
 const out = { ok: [], fail: [] };
@@ -232,6 +239,40 @@ try {
   }
   const ends6 = [...seen6].sort();
   check('stage 6: the extension\'s filled triangle, the profile application\'s open arrow, each drawn', ['uml.Extension filled-triangle', 'uml.ProfileApplication open'].every(k => ends6.includes(k)), ends6);
+  // ---- milestone 2's line ends (M2.14, §4.1, §7.4, §5.2): each end by what the model says, independently of the type's code
+  const b = t => { const m = /^(\d+)(?:\.\.(\d+|\*))?$/.exec(String(t)); if (!m) return null; const lo = +m[1], hi = m[2] === undefined ? lo : m[2] === '*' ? Infinity : +m[2]; return hi >= 1 && lo <= hi ? [lo, hi] : null; };
+  const cf = t => { const x = b(t); return x ? `cf-${x[0] ? 'one' : 'zero'}-${x[1] > 1 ? 'many' : 'one'}`.replace('cf-one-one', 'cf-one') : 'none'; };
+  const idef = (t, w) => { const x = b(t); return !x ? 'none' : w === 'from' && x[1] === 1 ? (x[0] ? 'none' : 'idef-diamond') : 'idef-dot'; };
+  const WANT2 = {
+    'er.Relationship': (e, v) => { const n = v.notation === 'idef1x', m = w => e.props.ends[w].multiplicity; return [n ? idef(m('from'), 'from') : cf(m('from')), n ? idef(m('to'), 'to') : cf(m('to')), !e.props.identifying]; },
+    'uml.InformationFlow': () => ['none', 'open', true], 'c4.Relationship': (e, v, ge) => ['none', 'open', !!ge.implied] }, seen2 = new Set();
+  for (const [path, vid] of [['../examples/bookshop-schema.json', 'er-schema'], ['er-stress.json', 'edge-cases'], ['er-stress.json', 'edge-cases-idef1x'],
+    ['../examples/order-information-flow.json', 'order-flows'], ['information-flow-stress.json', 'edge-cases'], ['c4-stress.json', 'ec-context'], ['../examples/bookshop-c4.json', 'c4-containers']]) {
+    const f = `${path.split('/').pop().slice(0, -5)} ${vid}`, model = await (await fetch(path)).json(), g = layout(model, vid), v = model.views.find(x => x.id === vid);
+    for (const theme of ['light', 'dark']) for (const [fname, family] of Object.entries(FONTS)) {
+      document.documentElement.dataset.theme = theme; el.style.setProperty('--um-sans', family);
+      el.innerHTML = measured(hostMeasure(el), () => mapContext(model).buildView(vid).markup); const svg = el.querySelector('svg'), off = [];
+      svg.querySelectorAll('.edge-g').forEach(gr => { const ge = g.edges[+gr.dataset.i], e = model.edges.find(x => x.id === ge.id) || { type: ge.type }, path = gr.querySelector('path.edge'), name = `${e.type} ${ge.id}`;
+        if (!WANT2[e.type]) { off.push(`${name}: a line of no kind checked here`); return; }
+        const [wf, wt, dashed] = WANT2[e.type](e, v, ge), kind = a => { const r = path.getAttribute(a), mk = r && svg.querySelector(r.slice(4, -1)); return mk ? mk.id.replace(/^g\d+-/, '').replace(/-d$/, '') : 'none'; };
+        const [kf, kt] = [kind('marker-start'), kind('marker-end')]; seen2.add(`${e.type}${ge.implied ? ' implied' : ''} ${kf} ${kt}`);
+        if (kf !== wf || kt !== wt) off.push(`${name}: ends ${kf} and ${kt}, not ${wf} and ${wt}`);
+        if (!!path.getAttribute('stroke-dasharray') !== dashed) off.push(`${name}: ${dashed ? 'not dashed' : 'dashed'}`);
+
+        const d = path.getAttribute('d').match(/-?\d+(\.\d+)?/g).map(Number);
+        [[d[0], d[1], gr.dataset.from, kf], [d.at(-2), d.at(-1), gr.dataset.to, kt]].forEach(([x, y, id, k]) => { const q = pt(svg, x, y), n = svg.querySelector(`.node[data-id="${CSS.escape(id)}"]`);
+          // an end with a marker stops at the marker's back; the marker's tip is on the outline: walk the marker's length on
+          if (!n || e.type === 'uml.InformationFlow') return; const bx = [n.querySelector(':scope > .n-body'), n.querySelector(':scope > .n-mask')];
+          if (k === 'none' && !bx.some(x2 => { if (!x2 || !x2.isPointInStroke) return false; x2.style.strokeWidth = '3px'; const on = x2.isPointInStroke(q); x2.style.strokeWidth = ''; return on; })) off.push(`${name}: its end at ${id} is off the outline`); }); });
+      // each placed label (the fixture's flow to a gone id has none: its label finds no room, pinned in tests/m2-fixtures.test.mjs)
+      const flows = g.edges.filter(x => x.lbl && (model.edges.find(y => y.id === x.id) || {}).type === 'uml.InformationFlow').length, said = (svg.textContent.match(/«flow»/g) || []).length;
+      if (said !== flows) off.push(`«flow» drawn ${said} times for ${flows} information flows`);
+      check(`${f}, ${theme}, ${fname}: each line ends as its model says, dashed where it says, «flow» by each information flow, an ER or C4 line's plain end on the outline it meets`, svg.querySelectorAll('.edge-g').length === g.edges.length && !off.length, off.slice(0, 8));
+    }
+  }
+  const ends2 = [...seen2].join(' ');
+  check('milestone 2: crow\'s foot\'s four ends, IDEF1X\'s dot and diamond, «flow»\'s open arrow, C4\'s relationship and implied line, each drawn',
+    ['cf-one', 'cf-zero-one', 'cf-one-many', 'cf-zero-many', 'idef-dot', 'idef-diamond', 'uml.InformationFlow none open', 'c4.Relationship none open', 'c4.Relationship implied none open'].every(k => ends2.includes(k)), [...seen2]);
   document.documentElement.dataset.theme = 'light'; el.style.removeProperty('--um-sans');
 } catch (e) { out.fail.push('threw: ' + (e && e.stack || e)); }
 const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);

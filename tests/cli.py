@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """The CLI's change commands end to end (#66, #67, #68): diff of two files, diff --base in a git repository (what the
-diff Action runs on a pull request; on an object and a package model as the Action's step runs it, 2.6, and on a use case, an activity, a state machine and an interaction overview model, 4.10, and a component, a deployment and a composite structure model, 5.8, and a profile and a timing model, 6.6, and on every other typed type, a reorder reading "moves", C10); map-repo's CLI rendering each typed model (C10); drift and timelapse; trace (#96; as a UML sequence view, 3.8); and pdf (#93; the stage 4 types' tables, 4.10, stage 5's, 5.8, and stage 6's, 6.6), read back with the standard
+diff Action runs on a pull request; on an object and a package model as the Action's step runs it, 2.6, and on a use case, an activity, a state machine and an interaction overview model, 4.10, and a component, a deployment and a composite structure model, 5.8, and a profile and a timing model, 6.6, and an ER, a flowchart, a data flow, an information flow and a C4 model, M2.14, and on every other typed type, a reorder reading "moves", C10); map-repo's CLI rendering each typed model (C10); drift and timelapse; trace (#96; as a UML sequence view, 3.8); and pdf (#93; the stage 4 types' tables, 4.10, stage 5's, 5.8, stage 6's, 6.6, and milestone 2's, M2.14), read back with the standard
 library. Pages only for the rest: stills (Chrome) are covered by `stills` itself. And the MCP server (#91), driven
 through its pipes as an MCP client drives it, with a page's event stream.
 
@@ -285,6 +285,31 @@ with tempfile.TemporaryDirectory() as tmp:
            x.get("summary") == [said] and view in (x.get("views") or []) and (t / "action-c10-out" / f"examples-{f}.html").is_file() and all(Path(s).is_file() for s in x.get("stills", [None]))
            and f"- {said}" in md, x)
 
+    # C10 for milestone 2 (M2.14): the Action's step on one model of each of the five types, each changed in a pull request
+    FIVE = {"bookshop-schema": (lambda m: rename(m, "er-customer", "client"), "er-schema", "renames customer to client"),
+            "returns-flowchart": (lambda m: rename(m, "inspect", "Check the book"), "returns", "renames Inspect the book to Check the book"),
+            "bookshop-data-flow": (lambda m: rename(m, "dfd-courier", "Carrier"), "dfd-level-1", "renames Courier to Carrier"),
+            "order-information-flow": (lambda m: rename(m, "email-service", "Mailer"), "order-flows", "renames Email service to Mailer"),
+            "bookshop-c4": (lambda m: rename(m, "c4-staff", "Staff"), "c4-context", "renames Shop staff to Staff")}
+    d = t / "action-m2"; (d / "examples").mkdir(parents=True)
+    dgit = lambda *x: subprocess.run(["git", "-C", str(d), "-c", "user.name=test", "-c", "user.email=test@example.invalid", *x], capture_output=True, text=True, check=True)
+    dgit("init", "-q")
+    for f in FIVE:
+        (d / "examples" / f"{f}.json").write_text((ROOT / "examples" / f"{f}.json").read_text(encoding="utf-8"), encoding="utf-8")
+    dgit("add", "examples"); dgit("commit", "-q", "-m", "base")
+    for f, (change, _, _) in FIVE.items():
+        m = json.loads((d / "examples" / f"{f}.json").read_text()); change(m)
+        (d / "examples" / f"{f}.json").write_text(json.dumps(m, indent=1))
+    dgit("commit", "-q", "-am", "the pull request")
+    r = cli("diff", "--base", "HEAD^1", "--out", str(t / "action-m2-out"), "--models", "examples/*.json", cwd=d) or []
+    by = {x["file"]: x for x in r}
+    md = (t / "action-m2-out" / "summary.md").read_text(encoding="utf-8") if (t / "action-m2-out" / "summary.md").is_file() else ""
+    for f, (_, view, said) in FIVE.items():
+        x = by.get(f"examples/{f}.json", {})
+        ok(f"diff --base, as the Action runs it (C10, M2.14) · {f}: what changed in words, its view, a page and a still",
+           x.get("summary") == [said] and view in (x.get("views") or []) and (t / "action-m2-out" / f"examples-{f}.html").is_file() and all(Path(s).is_file() for s in x.get("stills", [None]))
+           and f"- {said}" in md, x)
+
     # map-repo's CLI (C10): the skill writes maps only, and renders a typed model it is given, every type on main. Its
     # launcher runs a release from its cache; this checkout stands in for one (UMLIMATOR_REF, an empty UMLIMATOR_SHA)
     (t / "skill-cache").mkdir()
@@ -293,7 +318,8 @@ with tempfile.TemporaryDirectory() as tmp:
     TYPED = [ROOT / "examples" / f"{n}.json" for n in ("sales-classes", "order-objects", "bookshop-packages", "checkout-sequence", "checkout-communication",
                                                        "shopping-use-cases", "fulfil-activity", "order-states", "buy-book-overview",
                                                        "bookshop-components", "bookshop-deployment", "order-service-structure",
-                                                       "bookshop-profile", "bookshop-timing")]
+                                                       "bookshop-profile", "bookshop-timing",
+                                                       "bookshop-schema", "returns-flowchart", "bookshop-data-flow", "order-information-flow", "bookshop-c4")]
     for path in TYPED:
         p = subprocess.run([sys.executable, str(ROOT / "plugins" / "umlimator" / "skills" / "map-repo" / "scripts" / "cli.py"), "render", str(path),
                             "--out", str(t / f"skill-{path.stem}.html")], capture_output=True, text=True, env=skill_env)
@@ -302,7 +328,7 @@ with tempfile.TemporaryDirectory() as tmp:
         except ValueError:
             r = None
         # the pinned crossings of examples 9 and 10, as render's own check above (stage 5's three are clean since decision 22)
-        said = {"fulfil-activity": ["cross"] * 2, "order-states": ["cross"] * 2}.get(path.stem, [])
+        said = {"fulfil-activity": ["cross"] * 2, "order-states": ["cross"] * 2, "bookshop-c4": ["cross"] * 14, "bookshop-data-flow": ["cross"] * 2}.get(path.stem, [])
         ok(f"map-repo's cli.py · renders a typed model it is given ({path.stem}): the page, and its check" + (f" ({len(said)} {said[0]}s, stated)" if said else " clean"),
            p.returncode == 0 and r is not None and not r.get("errors") and [q.rsplit(" ", 1)[-1] for q in r.get("problems") or []] == said
            and (t / f"skill-{path.stem}.html").is_file(), (p.returncode, p.stdout[-400:], p.stderr[-400:]))
@@ -353,12 +379,16 @@ with tempfile.TemporaryDirectory() as tmp:
                        *((n, ROOT / "examples" / f"{n}.json") for n in ("shopping-use-cases", "fulfil-activity", "order-states", "buy-book-overview",
                                                                        "bookshop-components", "bookshop-deployment", "order-service-structure",
                                                                        # 6.6: the profile and timing examples
-                                                                       "bookshop-profile", "bookshop-timing"))):
+                                                                       "bookshop-profile", "bookshop-timing",
+                                                                       # M2.14: milestone 2's five examples
+                                                                       "bookshop-schema", "returns-flowchart", "bookshop-data-flow", "order-information-flow", "bookshop-c4"))):
         src = json.loads(path.read_text())
         r = cli("render", str(path), "--out", str(t / f"{name}.html"))
         # 4.10: the crossings that turning port repair off leaves in examples 9 and 10 (notes/stage-4.md §17), pinned in their
         # types' tests and stated in their conformance notes; nothing else
-        crossings = {"fulfil-activity": 2, "order-states": 2}.get(name, 0)
+        # M2.14: the crossings repair and reroute off leave in the C4 and data flow examples (notes/milestone-2.md §11), as Chrome
+        # counts them (tests/atlas.test.mjs counts Node's); stated in docs/conformance/c4.md and dfd.md
+        crossings = {"fulfil-activity": 2, "order-states": 2, "bookshop-c4": 14, "bookshop-data-flow": 2}.get(name, 0)
         ok(f"render · a typed model ({name}): the engine accepts lines that end on members, and the check is clean" + (f" but its {crossings} pinned crossings" if crossings else ""),
            r is not None and len(r.get("problems") or []) == crossings and all(p.endswith(" cross") for p in r.get("problems") or []) and not r.get("errors"), r)
         page = (t / f"{name}.html").read_text(encoding="utf-8") if r else ""
@@ -445,6 +475,19 @@ with tempfile.TemporaryDirectory() as tmp:
                                     "ownedStereotypeextends Class {required}team: String [0..1]", "aggregateRootStereotypea kind of «entity»boundedContext: String",
                                     "OrderClass«entity» table = orders«owned» required team = checkout- placedAt: Instant [0..1]: «column» name = placed_at, indexed = true",
                                     "From → toLabelKind", "entity → ClassExtension", "sales → BookshopConventionsProfile application"]), txt[:800])
+    # M2.14: milestone 2's tables (notes/milestone-2.md §9): an entity's columns as rows and a relationship's ends; a flowchart
+    # node's symbol; a process's number and the level it opens; what an information flow conveys, and an item's flows; a C4
+    # element's type and description, an external one so marked, a relationship's technology
+    PDF2 = {"bookshop-schema": ["customerTableidbigintPKemailvarchar(255)UKreferred_bybigintFKcustomer.idNULL", "order_lineTableorder_idbigintPKFKorder.id",
+                                "customer→orderplaces:1to0..*,non-identifyingRelationship", "order→order_linecontains:1to1..*,identifyingRelationship"],
+            "returns-flowchart": ["Fitforresale?Decision", "StockrecordsDatabase", "AConnector", "Fitforresale?→RejectionletternoFlow"],
+            "bookshop-data-flow": ["TakeorderProcessnumber1openslevel1Takeorder", "BooksDatastorenumberD1", "Customer→TakeorderbasketDataflow", "Bookshop,level1›1Takeorder"],
+            "order-information-flow": ["OrderInformationitemShopper→StorefrontStorefront→ShopAPI", "Shopper→StorefrontOrder,CarddetailsInformationflow", "«flow»Order,Carddetails"],
+            "bookshop-c4": ["PaymentproviderSoftwaresystemTakescardpaymentsandmakesrefunds.external", "Bookshop→PaymentproviderTakescardpaymentswith[HTTPS]Relationship",
+                            "ShopAPI[Container:Python,FastAPI]"]}
+    for n, want in PDF2.items():
+        txt = "".join(read(f"{n}.pdf"))
+        ok(f"pdf · {n}: its tables list what milestone 2's type says of each element and line (§9)", all(w in txt for w in want), [w for w in want if w not in txt] or txt[:800])
     txt = "".join(read("bookshop-timing.pdf"))
     ok("pdf · bookshop-timing: its tables list each lifeline's changes in time order, the messages it sends and the constraints on its changes, each message's kind",
        all(flat(s) in txt for s in ["workerLifeline0 ms: Idle100 ms: Waiting for payment760 ms: Recording payment900 ms: Idlecharge(total) to payments at 100 ms → 140 ms",
