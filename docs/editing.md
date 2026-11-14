@@ -485,3 +485,35 @@ hidden: Delete deletes it, and the hint line says so first.
 `L` then typing reaches a change by its id (`w-waiting`), not its state: the canvas names a node no view lists by its id
 (decision 25). A state's row (`<lifeline>-><state>`) and the ruler (`->ruler`) are drawn under geometry ids; Delete on
 either is refused, said.
+
+## Milestone 2's gestures: ER, flowchart, data flow, information flow and C4 (0.24.0)
+
+Milestone 2 (`docs/diagrams/notes/milestone-2.md` §6, §7) adds one command and one key, both through `apply()`. The
+command is `addView { view, index? }`: a view added to `views`, refused when its id is taken; no command deletes a view.
+The key is `D`, on a selected element that opens no view: it makes that element's level, a new view holding its context,
+and sets the element's `opensView`, in one transaction (`addView`, `add`s and a `set`); Enter then opens it. On an
+element that opens a view already, `D` says so on the hint line and emits nothing. The rest is the typed canvas's
+gestures (1.7), with each type's hooks:
+
+| Type | Edit | Pointer | Keyboard | Commands |
+|---|---|---|---|---|
+| ER (`er`) | a column, its type and flags | the panel's Members, one row per column | Enter; the row's text `name type [PK] [FK table.column] [UK] [NULL]` | the type's member hook: `add` or `set` of the column's label and props; `FK` names the referenced column by its table's and its own labels (or its id) and resolves it to `references` |
+| | a relationship | the handle or a drag between two tables | `L`, the other table, Enter | `add` of an `er.Relationship`, `1` to `0..*`, non-identifying; one from or to anything but a table is refused |
+| | a relationship's ends and identifying | the properties panel | | `set props.identifying`, `set props.ends.<from\|to>.multiplicity` |
+| | a column deleted, the notation switched | | | for a host: `delete` of the column's id; `set { view, path: 'notation', value: 'idef1x' }` (a repaint) |
+| Flowchart (`flowchart`) | a node of each of the ten symbols | the palette | `N` | `add` with `view` |
+| | a flow | the handle or a drag | `L` | `add`; a decision's second exit is labelled to answer its first (`no` after `yes`); an end that is no flowchart node is refused |
+| | move a node | drag it | `Alt + arrows` | `set` of its place (the canvas's); a flow is not dragged: "A flow follows its nodes: move a node instead" |
+| Data flow (`dfd`) | a process, a store, an entity | the palette | `N` | `add`; a process or store is numbered (the next free under the view's parent process; a store `D<n>`) |
+| | a level | | `D` on a process | `addView` of `<id>-level`, the child process `<n>.1`, each flow copied to it, `set` of the process's `opensView`: balanced from the start |
+| | a number | the properties panel | | `set props.number`, checked by `dfd-numbers` |
+| Information flow (`uml.information-flow`) | a flow | the handle or a drag between two classifiers or actors | `L`, the other end, Enter | a picker of what to convey (the model's items and classifiers), then `add` with `props.conveyed` |
+| | what a flow conveys, its name | double-click once selected | `F2`: `[name:] Order, Card details` («flow» typed or not) | `set props.conveyed` and `set label`, each only when it changed; a name no element has is refused on the hint line |
+| | delete an element | Delete from model | `Shift + Delete` | `delete`: dropped from every `conveyed`; a flow left conveying nothing is deleted with it, said |
+| C4 (six views) | an element at the view's level | the palette | `N` | `add`; a container on a container view (or a dynamic view of a system) has the subject as `parent`, a component likewise |
+| | a level | | `D` on a software system or a container | `addView` of its container or component view, `set` of its `opensView` |
+| | an element's type, an instance's container | | `T`: a picker | `set type` (`c4-owner` and `c4-level` say what no longer fits); `set props.container` |
+| | description, technology, external, shape | the properties panel | | `set props.<field>` |
+| | a relationship | the handle or a drag | `L` | `add`; on a dynamic view between two elements a relationship already joins, that relationship becomes the last step (`set` of the view's `edges`) |
+| | a step's place | | `Alt + ↑/↓` on a step | `move { id, view, index }` among the steps drawn |
+| | an implied line | select it to read what it stands for | | none: F2, Delete, Shift + Delete and L emit nothing |
