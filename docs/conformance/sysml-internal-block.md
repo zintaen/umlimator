@@ -43,8 +43,9 @@ Rules (`src/sysml/internal.js`), each with a passing and a failing fixture in `t
   left off its line, its triangle drawn and `describe()` naming it.
 - **A subject holding no part** (a block with ports only) is framed at its card's size, which the composite type sizes for
   its ports: the header is cut to it.
-- **A connector joins members**, which the PDF's Lines table leaves out: its item flow reaches the PDF through the
-  subject's rows, which name each connector with what it carries.
+- **A connector joins members**, which the PDF's Lines table lists since 0.30.0 (`risks.md` R10) between the parts its
+  ends are drawn on, each part named by its id (`ebike.battery`), not its drawn name; the subject's rows also name each
+  connector with what it carries.
 
 ## Left out
 

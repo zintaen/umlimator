@@ -2445,7 +2445,7 @@ Nothing is removed. Every type, option, field, fragment, event and command is as
 ### Card shapes: box, c4 and uml
 
 > Since 0.21.0 maps draw in one card-shape style, the union of `c4` and `uml`, and the choice below is gone: see
-> [0.21.0](#0210-in-progress). This section is kept as 0.15.0 shipped it.
+> [0.21.0](#0210-maps-in-one-card-shape-style-the-use-case-activity-state-machine-and-interaction-overview-diagrams-the-bookshop-atlas). This section is kept as 0.15.0 shipped it.
 
 A notation draws each card as a shape. Every shape is drawn inside its card's own box, so the layout, the routes, the
 widths, the layout check and the bench hashes are the same in all three. Switching the notation draws the cards again
@@ -4474,3 +4474,70 @@ callers:
 - **Size:** `lib/umlimator.js`, what a map host loads, is 187.9 kB (187,891 B) with `gzip -9`, 13.91% over 0.16.0's
   164,954 B (the budget is 15%), up 1,223 B from 0.28.0 (#303, #302 and #299). `lib/umlimator-all.js` is 596.3 kB
   (596,259 B); the npm package is 859.8 kB.
+
+## 0.30.0: fixes from the third audit
+
+The third audit confirmed 53 findings, 46 distinct defects. All are fixed in this release, in five pull requests
+(#305 to #309), each with a test that fails without its fix; the 53rd, a dead link in this file, is fixed here. Maps
+draw as they did (`bench/expected.json` is unchanged). What changes for callers:
+
+- **Core (#309).** `layout()` walks boxes with its own stack, so a class, package, use case, deployment, C4
+  deployment, SysML block definition, cloud or plain map view with boxes nested 3,000 deep (or deeper) lays out (a
+  3,000-deep class view in about 2 s, a map in about 0.6 s): this lifts 0.29.0's known gap of a class view nested about
+  3,000 deep. The 64-step cap on box ordering is gone, so a line from a card 64 or more boxes deep orders its blocks
+  like any other. A top-level card is no longer laid out inside nested boxes that do not hold it. One stress picture
+  changes: in `tests/component-stress.json`, view `all`, direction right, the top-level interface Api0 no longer lies
+  in Box 1, crossings drop from 126 to 116 and `check` reports 0 findings where it reported 5. `diff()` puts a removed
+  model line that a view lists by id back in its place, so a sequence keeps its step order; `diff()` and `drift()` read
+  a view's `containers` that is not a list as none. A `views[i].layout` pin that is not two numbers is laid out as
+  unpinned (maps drew NaN coordinates and typed views threw), and `validate()` warns `"<id>"'s place [...] is not two
+  numbers: ignored`. `validate()` reports a null in `nodes` when a UML view exists instead of throwing. A typed view's
+  PDF Lines table now lists the lines its type draws to a member's or a port's owner, between the owners as drawn: a
+  class or profile view's association from a property and comment on one, a component view's delegations and
+  assemblies, a composite structure view's connectors and role bindings, a SysML internal block view's connectors. Find's "Nothing called …" is a status beside
+  the list, not inside it, and the combobox is not expanded while nothing is found. The view pill's details line and
+  lane arrows use `--um-muted` (4.5:1 in both themes). An arrow key moves only to a card within 45 degrees of its
+  direction, so Up and Down on a sequence lifeline no longer move sideways; with none, focus stays.
+- **UML types (#308).** The object type runs only `member-names` of the class rules, and its `rules` list only that
+  one, as its conformance note says: a model with only object views no longer gets generalization-kinds, comment-link
+  or multiplicity. Editing a component's operation or attribute row edits it as a member; it was rewritten as a port.
+  Sequence: two messages of one id, one naming no lifeline, lay out, each with its own label and number (the time
+  axis's lines carry a new field, `ri`). Communication: a message a view lists twice is read once (one row, the right
+  number, no false reply-call error). Component layout is no longer cubic in owner depth (800 levels: 10 s to 0.3 s),
+  activity layout and describe are no longer cubic in partition depth (3,000 levels: about 0.3 s), and use case
+  `describe()` of packages nested 6,000 deep no longer overflows the stack.
+- **Milestone 2, BPMN and SysML types (#305).** A flowchart node with no label is named by the id it draws in its
+  accessible name, `describe()` and line names, and a data flow comment with no label likewise. C4 dynamic view: F2
+  cuts a typed step number only when a space or the end follows its dot, so "1.5 TB export" keeps its "1.". Renaming
+  an information flow with about 10 KB of text no longer freezes the page. BPMN: sub-processes nested 600 deep lay out
+  in about 45 ms (was 15 s) and describe in about 35 ms (was 6 s); lanes and sub-processes nested 3,000 deep lay out.
+  SysML requirement views with packages nested 3,000 deep lay out.
+- **Readers, writers and the Python importer (#307).** The Python Mermaid flowchart importer's subgraph pattern, its
+  `;` split and its link close are linear, as is `import`'s format detection (`/* */` comments and leading blank
+  lines). Structurizr DSL elements nested deeper than 64 are read flat from there, and the importer says so once, so
+  ids stay short. A lone surrogate (an escape or an entity) is written as U+FFFD and said in one stderr line, never a
+  traceback. The class, state, sequence, mindmap and requirement writers end text that would be over the reader's
+  1 MiB limit with `%% not written: … over its limit of 1048576`. The sequence writer writes `@{` in a label as
+  `#64;{`; the flowchart, state and sequence writers write a carriage return as `#13;`, so it reads back. The mindmap
+  reader no longer decodes `#constructor;` through `Object.prototype`. The class reader reports a `%% id:` hint that is
+  taken or stands above a line that takes none, and the class writer names a class with no label. The BPMN reader
+  reports, once per name per file, a set attribute outside its subset (`startQuantity`, `isForCompensation`, …).
+- **CLI, the diff Action, MCP and the atlas tool (#306).** The engine's child process runs as `python -I`, so a
+  stdlib-named `.py` file in the working folder is never run (render, diff, drift, MCP, the map-repo skill and the diff
+  Action; the Action's count step too). diff, drift, trace, export and the MCP tools read a model as render does (a
+  BOM read, a file that is no model said in one line, never a traceback); timelapse leaves out a version that is not an
+  object. `stills` redraws a view when a line that ends on a port changes, and a view id over 200 UTF-8 bytes is cut to
+  180 with an 8-hex hash of the id added; a view whose files cannot be written is listed in `failed` and the others are
+  still exported. `tools/atlas.mjs` keeps each line with no id as its own file's line, never merged.
+- **Docs and examples (#306, this release).** `examples/README.md` names Shop API among the boxes a double-click does
+  not open and its Diagrams table is whole again. This file's link to 0.21.0 from the 0.15.0 card-shapes section points
+  at the 0.21.0 heading.
+- **Known gaps.** A box has no Tab stop; the keyboard reaches it through the outline. A double-click (or Enter) on a
+  box does not open its view (the 0.24.0 gap). Deep nesting is super-linear outside the core: a class view 3,000 deep
+  takes about 2 s and a component view about 1.5 s, BPMN 3,000 deep 1.5 to 2 s. A composite structure or SysML internal block view's
+  Lines rows name a part by its id (`order-service.checkout`), not its drawn name. The JavaScript Mermaid readers still decode
+  `#55296;` to a lone surrogate (the CLI writes it as U+FFFD). The requirement layout leaves out a link into a box
+  nested more than 64 deep from its ranking.
+- **Size:** `lib/umlimator.js`, what a map host loads, is 189.0 kB (189,017 B) with `gzip -9`, 14.59% over 0.16.0's
+  164,954 B, about 680 B under the 15% cap (189,697 B), up 1,126 B from 0.29.0 (#309 and #305).
+  `lib/umlimator-all.js` is 599.8 kB (599,775 B); the npm package is 864.4 kB.
