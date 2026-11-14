@@ -327,7 +327,8 @@ function classProblems(model) {
         if (typeOfId(who) === 'uml.Interface') say('interface-composite', `${path}.props.ends.${w}.aggregation`, [e.id, who], `interface ${q(who)} owns a part by composition (${e.id})`);
         if (b && b.upper > 1) say('composite-multiplicity', `${path}.props.ends.${w}.multiplicity`, [e.id, who], `the composite end${who != null ? ' at ' + q(who) : ''} has multiplicity [${at2.multiplicity}], more than 1 (${e.id})`); } });
     if (e.type === 'uml.Generalization') {
-      if (at.has(e.from) && at.has(e.to) && (!isCls(e.from) || !isCls(e.to) || typeOfId(e.from) !== typeOfId(e.to))) say('generalization-kinds', path, [e.id, ...ends], `${typeWord(typeOfId(e.from)).toLowerCase()} ${q(e.from)} specializes ${typeWord(typeOfId(e.to)).toLowerCase()} ${q(e.to)} (${e.id})`);
+      // an end of another notation (a SysML block) is that notation's to judge (notes/milestone-3.md §7.3)
+      if (at.has(e.from) && at.has(e.to) && [e.from, e.to].every(id => String(typeOfId(id)).startsWith('uml.')) && (!isCls(e.from) || !isCls(e.to) || typeOfId(e.from) !== typeOfId(e.to))) say('generalization-kinds', path, [e.id, ...ends], `${typeWord(typeOfId(e.from)).toLowerCase()} ${q(e.from)} specializes ${typeWord(typeOfId(e.to)).toLowerCase()} ${q(e.to)} (${e.id})`);
       if (!parents.has(e.from)) parents.set(e.from, []); parents.get(e.from).push([e.to, path, e.id]); }
     if (e.type === 'uml.InterfaceRealization' && (typeOfId(e.to) !== 'uml.Interface' || !isCls(e.from) || typeOfId(e.from) === 'uml.Interface'))
       say('realization-target', path, [e.id, ...ends], `${e.id} runs from ${q(e.from)} to ${q(e.to)}: from a class, enumeration or data type to an interface`);
@@ -386,4 +387,4 @@ const CLASS_TYPE = registerDiagramType('uml.class', {
   describe: classDescribe,
 });
 
-export { CLASS_TYPE, CLASS_DEF, RULES, lineName, multBounds, parseMember, printMember, memberEdit, classProblems, classDescribe, classGeo, typeGeo, describeAs, drawnLines };
+export { CLASS_TYPE, CLASS_DEF, RULES, lineName, lineLook, lineLabel, legendOf, legendItem, LEGEND_ENDS, multBounds, parseMember, printMember, memberEdit, classProblems, classDescribe, classGeo, typeGeo, describeAs, drawnLines };
