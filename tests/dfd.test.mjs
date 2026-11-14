@@ -19,7 +19,7 @@ import { describe } from '../src/map/insight.js';
 import { svgOf } from '../src/draw/svg.js';
 import '../src/dfd/dfd.js';
 
-const DF = JSON.parse(readFileSync(new URL('../docs/diagrams/examples/22-data-flow.json', import.meta.url)));
+const DF = JSON.parse(readFileSync(new URL('../examples/bookshop-data-flow.json', import.meta.url)));
 const T = diagramOf({ diagram: 'dfd' }), L1 = 'dfd-level-1', L2 = 'dfd-level-2-take-order';
 const meets = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
 const P = (id, label, number, more = {}) => ({ id, type: 'dfd.Process', label, ...(number != null ? { props: { number } } : {}), ...more });

@@ -1,6 +1,6 @@
 <!doctype html>
 <!-- C4's dynamic and deployment views (M2.7) in headless Chrome (tests/embed.py), from lib/umlimator-all.js:
-     docs/diagrams/examples/23-c4.json's dynamic and deployment views drawn by render() in both themes, three fonts and both
+     examples/bookshop-c4.json's dynamic and deployment views drawn by render() in both themes, three fonts and both
      directions (each element in its map shape with its three lines inside it, no two overlapping, deployment nodes as solid
      boxes holding what they hold, every line end on its element's outline within 1 px, the steps numbered, names, contrast,
      the key, axe's rules written out), then edited through the edit event and apply(), by pointer and by keyboard: a step
@@ -45,7 +45,7 @@ const blend = (top, bot) => [0, 1, 2].map(i => top[i] * top[3] + bot[i] * (1 - t
 const lum = c => { const f = v => v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]); };
 const ratio = (fg, bg) => { const [x, y] = [lum(blend(fg, bg)), lum(bg)].sort((p, q) => q - p); return +((x + 0.05) / (y + 0.05)).toFixed(2); };
 const css = (e, k) => rgba(getComputedStyle(e)[k]);
-const MODEL = await (await fetch('../docs/diagrams/examples/23-c4.json')).json();
+const MODEL = await (await fetch('../examples/bookshop-c4.json')).json();
 const DV = 'c4-placing-an-order', PV = 'c4-deployment', VI = id => MODEL.views.findIndex(v => v.id === id);
 const VIEWS = { [DV]: [9, 0, 10, ['Person', 'Container', 'External software system', 'Relationship']], [PV]: [5, 6, 5, ['Deployment node', 'Container instance', 'Relationship']] }; // elements, boxes, lines, the key
 try {

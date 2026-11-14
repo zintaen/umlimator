@@ -42,7 +42,7 @@ tests/profile.html, tests/timing.html, tests/stage6.html: stage 6's pages (notes
   until 6.3 (profile), 6.5 (timing) and 6.6 (the fixtures) fill them.
 tests/component.html: the component diagram (5.4): docs/diagrams/examples/05-component.json in both themes, three fonts and both directions (ports on borders, line ends on ports,
   ball and socket, names, reading order, contrast, legend), and each gesture by pointer and keyboard through apply().
-tests/er.html: the entity-relationship diagram (M2.2): docs/diagrams/examples/20-entity-relationship.json in both themes, three fonts, both directions and both notations
+tests/er.html: the entity-relationship diagram (M2.2): examples/bookshop-schema.json in both themes, three fonts, both directions and both notations
   (ends by multiplicity and notation on outlines, IDEF1X's letters and corners, names, reading order, contrast, legend), and each gesture by pointer and keyboard through apply().
 tests/core-diet.html: the markup render() draws from lib/umlimator.js (three version-2 examples) and lib/umlimator-all.js (the class example), as main drew it before src/typed/ left the core (0.18.0).
 examples/edit.html, embed.html, live.html, playground.html, ask.html, replay.html, timelapse.html, drift.html, element.html, notations.html: the host pages load and draw.

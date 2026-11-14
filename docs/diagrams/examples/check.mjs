@@ -35,7 +35,9 @@ export const MOVED = { '01-class.json': '../../../examples/sales-classes.json', 
   '08-use-case.json': '../../../examples/shopping-use-cases.json', '09-activity.json': '../../../examples/fulfil-activity.json', '10-state-machine.json': '../../../examples/order-states.json',
   '13-interaction-overview.json': '../../../examples/buy-book-overview.json',
   '04-composite-structure.json': '../../../examples/order-service-structure.json', '05-component.json': '../../../examples/bookshop-components.json', '06-deployment.json': '../../../examples/bookshop-deployment.json',
-  '07-profile.json': '../../../examples/bookshop-profile.json', '14-timing.json': '../../../examples/bookshop-timing.json' };
+  '07-profile.json': '../../../examples/bookshop-profile.json', '14-timing.json': '../../../examples/bookshop-timing.json',
+  '15-information-flow.json': '../../../examples/order-information-flow.json', '20-entity-relationship.json': '../../../examples/bookshop-schema.json',
+  '21-flowchart.json': '../../../examples/returns-flowchart.json', '22-data-flow.json': '../../../examples/bookshop-data-flow.json', '23-c4.json': '../../../examples/bookshop-c4.json' };
 
 // all 28 target examples, those still here and those that moved, in file order: [name, its URL]
 export function targets() {

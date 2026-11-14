@@ -1151,7 +1151,8 @@ package proposes its row and writes its release notes in its pull request's desc
 | M2.14 | **Fixtures, examples, docs.** §10's files and their tests (`tests/m2-fixtures.test.mjs`, `tests/m2.html`); `render`, `check`, `stills` and `pdf` on each example; the schema and `.d.ts`; C10's tests; every document of `plan.md` §7; `docs/conformance/er.md`, `flowchart.md`, `dfd.md`, `uml-information-flow.md`, `c4.md`; the lanes' release notes in `docs/module-api.md` | `tests/*-minimal.json`, `tests/*-stress.json` of the five types, `tests/m2-fixtures.test.mjs`, `tests/m2.html`, `tests/notation.html`, `tests/cli.py`, `tests/mcp.py`, `tests/embed.py` (appends), `lib/umlimator.d.ts`, `lib/umlimator.schema.json`, `examples/README.md`, `examples/index.html`, `docs/` (but the status table) | M2.1 to M2.13 | Definition of done 1, 3, 7, 9, 10, 11 and 12 for the five types; DoD 2's reader half: each reader's construct file and `tests/import/structurizr.json` read into models that pass their types' `validate` (the C4 type's for M2.10's workspaces), with the reports pinned; §11's budgets in CI; the stress fixtures' crossings pinned and stated |
 
 Existing tests a package edits, and why: M2.1 adds cases to `tests/apply.test.mjs`, `tests/unfold.test.mjs` and
-`tests/print-typed.test.mjs`; M2.7 two expectations of `tests/c4.html` (§7.5.5); M2.12 to `tests/import.py`; M2.13 to `tests/atlas.test.mjs`; M2.14 points `tests/cli.py` and
+`tests/print-typed.test.mjs`; M2.7 two expectations of `tests/c4.html` (§7.5.5); M2.12 to `tests/import.py`; M2.13 to `tests/atlas.test.mjs`, and points the tests that read the five target examples at their
+new paths (§12.5, amended in M2.13's build); M2.14 points `tests/cli.py` and
 `tests/mcp.py` at the moved examples and adds the new ends to `tests/notation.html`; each page lane appends its page to
 `tests/embed.py`. No other existing test changes.
 
@@ -1266,6 +1267,26 @@ order's state machine"; until now the map's `overview` stood in for C4.
 |---|---|---|
 | **(a) `bookshop-c4/c4-context` becomes the root; the map's `overview` stays, reached from the views list (recommended)** | The atlas as the maintainer described it | The map, the package's first notation, is no longer the first picture |
 | (b) The map's `overview` stays the root; the C4 views are reached from the views list | Nothing moves | The typed C4 views hang off nothing by drill-down |
+
+**Amended in M2.13's build.** The atlas builds with the five files as M2.0 left them: no id clashed with stage 6's
+merged examples, so none was renamed, and no link changed. It holds 33 views, 208 nodes and 216 edges, and shares 32 elements, four of them milestone 2's: `shopper` (the use case example's actor),
+`storefront-component`, `shop-api` and `payment-provider-component` (stage 5's components). What else the move touched:
+
+- **Tests that read the five files by path** read them at their new paths, nothing else changed: `tests/c4.test.mjs`,
+  `c4-views.test.mjs`, `dfd.test.mjs`, `flowchart.test.mjs`, `information-flow.test.mjs`, `mermaid-er.test.mjs`,
+  `mermaid-flowchart.test.mjs` and the pages `c4.html`, `c4-views.html`, `dfd.html`, `er.html`, `flowchart.html`,
+  `information-flow.html` (`tests/er.test.mjs` finds its file through `check.mjs`'s `targets()`, unchanged). The moved
+  files take no `$schema` line, as most moved examples, so `tests/core-diet.json`'s fingerprints of the five targets hold;
+  its five keys naming `docs/diagrams/examples/23-c4.json`, and `tests/core-diet.html`'s case, name
+  `examples/bookshop-c4.json`, with the same values. `tests/embed.py`'s note of `er.html` names the new path.
+- **CI's example loop** (`.github/workflows/check.yml`) renders every `examples/*.json`, so the moved files join it; its
+  pinned crossings gain `bookshop-c4` 14 and `bookshop-data-flow` 2 as Chrome counts them (Node's `check()` counts 8 and
+  2: the browser measures text wider, as the C4 tests' pins say), and the atlas's 6 become 22, the two files' added.
+- **The root** is `bookshop-c4/c4-context` (decision 20, taken). The atlas test's "from the root, every view" becomes:
+  from the C4 context every milestone 2 view, from the map's `overview` every other, and the two together every view.
+- **The atlas test** imports the five types, pins the four new shared elements, counts each file's own crossings, steps
+  each link of the table above, and runs each moved file's views through their type's `validate`, alone and in the
+  atlas: no problem at any level.
 
 ### 12.6 The release
 
