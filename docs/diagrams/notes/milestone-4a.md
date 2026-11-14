@@ -475,18 +475,23 @@ build departs or settles what the note left open:
 - **An icon's entry.** Only a `src` that is a `data:image/` URL is drawn; any other entry (another address, markup) draws the
   glyph, its name kept. A card's accessible name ends ", icon not available" wherever the glyph is drawn, and the legend
   then holds an "Icon not available" entry.
-- **The legal line** is drawn 18 px under the picture, the bounds widened to hold it where the picture is narrower.
+- **The legal line** has its baseline 4 px below the picture's bounds (which hold the 36 px margin); the bounds grow by 18 px
+  to hold it, and widen where the picture is narrower.
 - **Hooks.** `connect`, `add` and `remove` only: `rename` (the label) and `moveTo` (a drop into a group is stage 2's
   `reparent`, Alt + arrows a pin) are the canvas's defaults. The canvas's L and handle end on cards only, so a line from or
   to an open group is written in the model (or by a host) and not drawn by pointer or key; the refusal of a line between a
-  group and what it holds is the hook's and is tested on it.
+  group and what it holds is the hook's and is tested on it. DoD 4 (§5.6's "by pointer and L") for a line with a group at
+  an end: met by the `connect` command through `apply()` and the hook, as milestone 2 met DoD 4 for gestures the canvas
+  lacks; drawing such a line by pointer or L is left to a later canvas package (`src/canvas/edit.js` is not this
+  package's). Taken by the lead under the maintainer's standing approval (14 Nov 2026).
 - **The targets** lay out with no overlap, no line through a node and every line routed; their crossings are pinned (1 to 3
   a view, right and down), as M2.7 pinned C4's, with repair and reroute off.
 - **P1.** `cloud-stress.json` is 4a.7's; `tests/cloud.test.mjs` builds the same size in code (60 products in five levels,
   80 paths) and prints the figures against 100 ms under CI's 1 s; they are recorded in the pull request.
 - **Not reached.** An `update()` that changes only the `icons` table keeps the view's picture: the context's view key
   (`src/map/context.js`, the core) reads a map card's `icon`, not `props.icon`. A host gives the table with the model, as
-  the CLI does, so a page draws the icons; changing them in place is left to a later core package.
+  the CLI does, so a page draws the icons; changing them in place is left to a later core package (§5.2 then holds in
+  full). Taken by the lead under the maintainer's standing approval (14 Nov 2026).
 
 ## 6. The tree strategy (S11, S12)
 

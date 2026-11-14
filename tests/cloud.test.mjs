@@ -241,7 +241,7 @@ const BREAKS = {
     'group-nesting': m => { m.nodes.find(n => n.id === 'az-monitor').parent = 'az-front-door'; return ['az-monitor', 'az-front-door']; },
     'line-inside': m => { m.edges.push({ id: 'in', type: 'azure.Connector', from: 'az-rg', to: 'az-rg' }); return ['in', 'az-rg']; },
     'icon-set': m => { m.nodes.find(n => n.id === 'az-db').props.icon = ''; return ['az-db']; },
-    'icon-missing': m => { m.icons = { 'azure/Monitor': { src: SQ, name: 'Monitor' } }; return null; } },
+    'icon-missing': m => { m.icons = { 'azure/Monitor': { src: SQ, name: 'Monitor' } }; return ['az-api', 'az-assets', 'az-db', 'az-front-door', 'az-queue', 'az-vault', 'az-worker']; } },
   aws: { 'group-kind': m => { m.nodes.find(n => n.id === 'vpc').props.groupType = 'VPC'; return ['vpc']; },
     'group-nesting': m => { m.nodes.find(n => n.id === 'vpc').parent = 'cloud'; return ['vpc', 'cloud']; },
     'line-inside': m => { m.edges.push({ id: 'in', type: 'aws.Connection', from: 'db', to: 'vpc' }); return ['in', 'db', 'vpc']; },
@@ -254,7 +254,6 @@ test('validators: each target breaks no rule; each rule fails on a model that br
     assert.deepEqual(T[fam].validate(withIcons(fam, M)), [], `${fam} with its pack`);
     for (const [rule, broke] of Object.entries(BREAKS[fam])) {
       const m = structuredClone(M), ids = broke(m), got = T[fam].validate(m);
-      if (!ids) { assert.deepEqual(got.map(p => p.rule), [...new Set(got.map(p => p.rule))].length ? got.map(() => 'icon-missing') : [], `${fam} ${rule}`); assert.ok(got.length > 0, `${fam} ${rule}: the pack given, each icon not in it`); continue; }
       const mine = got.filter(p => p.rule === rule);
       assert.ok(mine.length > 0 && got.every(p => p.rule === rule), `${fam} ${rule}: ${JSON.stringify(got)}`);
       assert.deepEqual([...new Set(mine.flatMap(p => p.ids))].sort(), [...ids].sort(), `${fam} ${rule}`);
@@ -352,7 +351,7 @@ test('P1 (§11, decision 20): on 60 services in five levels of groups and 80 con
   const runs = [0, 1, 2, 3, 4].map(k => ({ full: timed(() => mapContext(M).buildView('v')),
     rename: timed(() => draw(apply(M, [{ op: 'set', id: 's7', path: 'label', value: `Renamed service ${'x'.repeat(3 + 4 * k)}` }]))),
     icon: timed(() => draw(apply(M, [{ op: 'set', id: 's8', path: 'props.icon', value: k % 2 ? 'Cloud-Functions' : 'Pub-Sub' }]))),
-    move: timed(() => draw(apply(M, [{ op: 'reparent', id: 's20', parent: `r${k % 2}s${k % 2}z${(k + 1) % 2}` }]))),
+    move: timed(() => draw(apply(M, [{ op: 'reparent', id: 's20', parent: `r1s${k % 2}z${k % 2}` }]))),
     connect: timed(() => draw(apply(M, [{ op: 'add', element: { id: `new${k}`, type: 'gcp.Path', from: 's2', to: `s${30 + k}` }, view: 'v' }]))) }));
   const best = k => Math.min(...runs.map(r => r[k]));
   for (const k of ['full', 'rename', 'icon', 'move', 'connect']) assert.ok(best(k) < 1000, `${k} ${best(k)} ms`);
