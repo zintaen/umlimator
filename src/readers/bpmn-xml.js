@@ -100,7 +100,14 @@ async function readBpmnXml(xml, moddle) {
     title = bxStr(defs.name);
     const ns = Object.keys(defs.$attrs || {}).find(k => k.startsWith('xmlns:') && defs.$attrs[k] === BX_NS), pre = ns ? ns.slice(6) + ':' : null;
     const attr = (el, k) => (pre && el.$attrs && typeof el.$attrs[pre + k] === 'string' ? el.$attrs[pre + k] : null);
-    const idOf = el => attr(el, 'id') ?? el.id;
+    const fixed = new Set(); // an umlimator:id holding "->" (model.md rule 5) is read with "-", once said; a blank one is none
+    const idOf = el => {
+      const a = attr(el, 'id');
+      if (a == null || !a.trim()) return el.id;
+      const id = a.replace(/->+/g, '-');
+      if (id !== a && !fixed.has(el)) { fixed.add(el); say(id, 'weakened', `umlimator:id ${a} holds "->", which names a map's lines by position: read as ${id}`); }
+      return id;
+    };
     const foreign = (el, id) => { for (const k of Object.keys(el.$attrs || {})) if (!k.startsWith('xmlns') && !(pre && k.startsWith(pre))) say(id, 'skipped', `the attribute ${k}: not read`); };
     foreign(defs, '');
     const elOf = new Map(); // a moddle element -> its node or lane
@@ -109,6 +116,8 @@ async function readBpmnXml(xml, moddle) {
       say(id || parent || '', 'skipped', `${(el.$type || 'an element').replace('bpmn:', '')} ${why}: kept under ext.bpmn, not read`);
       skipped.push({ ...(parent ? { parent } : {}), element: bxJson(el) });
     };
+    const ext = (el, parent) => { if (el.extensionElements) skip(el.extensionElements, parent, '(an extension)'); };
+    ext(defs, null);
     const add = (el, type, parent, props = {}, label = el.name) => {
       const id = idOf(el);
       if (!bxStr(id) || byId.has(id)) { skip(el, parent, id ? `has the id ${id}, taken` : 'has no id'); return null; }
@@ -116,7 +125,7 @@ async function readBpmnXml(xml, moddle) {
       if (doc) props.documentation = doc;
       const n = { id, type, ...(bxStr(label) ? { label } : {}), ...(parent ? { parent } : {}), ...(Object.keys(props).length ? { props } : {}) };
       nodes.push(n); byId.set(id, n); elOf.set(el, n); foreign(el, id);
-      if (el.extensionElements) skip(el.extensionElements, id, '(an extension)');
+      ext(el, id);
       return n;
     };
     const weak = (n, what, key, value) => { (n.ext ??= { bpmn: {} }).bpmn[key] = value; say(n.id, 'weakened', `${what}: kept under ext.bpmn, read as plain`); };
@@ -127,6 +136,7 @@ async function readBpmnXml(xml, moddle) {
     const owner = new Map(), queue = [];
     for (const r of defs.rootElements || []) {
       if (r.$type === 'bpmn:Collaboration') {
+        ext(r, null);
         for (const p of r.participants || []) {
           const n = add(p, 'bpmn.Participant', null); if (!n) continue;
           tagged.push([p, n]);
@@ -154,7 +164,7 @@ async function readBpmnXml(xml, moddle) {
         if (!bxStr(id) || byId.has(id)) { skip(l, pool.id, id ? `has the id ${id}, taken` : 'has no id'); continue; }
         const doc = (l.documentation || []).map(x => x.text).filter(bxStr).join('\n');
         const m = { id, type: 'bpmn.Lane', ...(bxStr(l.name) ? { label: l.name } : {}), ...(up ? { parent: up } : {}), ...(doc ? { props: { documentation: doc } } : {}) };
-        (pool.members ??= []).push(m); byId.set(id, m); foreign(l, id);
+        (pool.members ??= []).push(m); byId.set(id, m); foreign(l, id); ext(l, id);
         for (const f of l.flowNodeRef || []) if (!(depth.get(f) >= d)) { laneOf.set(f, id); depth.set(f, d); }
         if (l.childLaneSet) stack.push(...(l.childLaneSet.lanes || []).map(c => [c, id, d + 1]).reverse());
       }
@@ -163,7 +173,7 @@ async function readBpmnXml(xml, moddle) {
     const objects = new Set(), refd = new Set();
     for (let q = 0; q < queue.length; q++) {
       const [c, inner] = queue[q], pool = c.$type === 'bpmn:Process' ? owner.get(c) : null, parent = inner || (pool && pool.id) || null;
-      if (c.$type === 'bpmn:Process') foreign(c, c.id || '');
+      if (c.$type === 'bpmn:Process') { foreign(c, c.id || ''); ext(c, parent); }
       else for (const s of c.laneSets || []) skip(s, inner, 'of a sub-process');
       for (const el of c.flowElements || []) {
         const t = el.$type, kind = t.replace('bpmn:', ''), at = (pool && laneOf.get(el)) || parent;
@@ -238,7 +248,7 @@ async function readBpmnXml(xml, moddle) {
       if (doc) props.documentation = doc;
       if (type === 'bpmn.Association' && el.associationDirection && el.associationDirection !== 'None') props.direction = el.associationDirection.toLowerCase();
       const e = { id, type, from: from.id, to: to.id, ...(bxStr(el.name) && type.endsWith('Flow') ? { label: el.name } : {}), ...(Object.keys(props).length ? { props } : {}) };
-      edges.push(e); byId.set(id, e); foreign(el, id);
+      edges.push(e); byId.set(id, e); foreign(el, id); ext(el, id);
       if (w) weak(e, w[0], w[1], w[2]);
       if ((el.categoryValueRef || []).length) {
         (e.ext ??= { bpmn: {} }).bpmn.categoryValueRef = el.categoryValueRef.map(v => v.id);
@@ -296,6 +306,7 @@ async function writeBpmnXml(model, viewId, geo, moddle) {
     if (all.length > nodes.length) say('', `elements of other diagrams (${all.length - nodes.length})`);
     if (model && model.views && model.views.length > views.length) say('', `views of other diagrams (${model.views.length - views.length})`);
     if (model && model.ext && model.ext.bpmn) say('', 'what the model keeps under ext.bpmn (elements a reader skipped)');
+    for (const k of Object.keys(model && typeof model.ext === 'object' && model.ext || {})) if (k !== 'bpmn') say('', `what the model keeps under ext.${k}`);
     const pools = nodes.filter(n => n.type === 'bpmn.Participant'), members = pools.flatMap(p => (p.members || []).filter(m => m && m.type === 'bpmn.Lane').map(m => [m, p]));
     // ids: a model id that is an XML name is the element's; the others escaped, after them, so none takes a model's id
     const used = new Set(), xid = new Map(), ok = id => typeof id === 'string' && /^[A-Za-z_][\w.-]*$/.test(id);
@@ -310,7 +321,8 @@ async function writeBpmnXml(model, viewId, geo, moddle) {
       if (bxStr(doc)) el.documentation = [M('bpmn:Documentation', { text: doc })];
       for (const k of Object.keys(x)) if (!BX_FIELDS.has(k)) say(x.id, k);
       for (const k of Object.keys(x.props || {})) if (!bxProp(x.type, k)) say(x.id, `props.${k}`);
-      if (x.ext && x.ext.bpmn) say(x.id, 'what it keeps under ext.bpmn');
+      for (const k of Object.keys(typeof x.ext === 'object' && x.ext || {})) say(x.id, `what it keeps under ext.${k}`);
+      if (x.label === '') say(x.id, 'an empty label, which a reader reads as none');
       return el;
     };
     // containers: a participant's process, made when something sits in it; a sub-process; the process for no pool
@@ -367,8 +379,9 @@ async function writeBpmnXml(model, viewId, geo, moddle) {
     }
     for (const [m] of members) els.set(m, mk('bpmn:Lane', m, { name: m.label, flowNodeRef: [] }));
     const el = id => els.get(byId.get(id) || (laneOf.get(id) || [])[0]);
-    const ring = new Set(); // lanes whose parents lead round to them: written at the top of their pool
+    const ring = new Set(); // lanes whose parents lead round to them, or are no lane of their pool: written at the top of their pool
     for (const [m, p] of members) {
+      if (m.parent != null && !(laneOf.has(m.parent) && laneOf.get(m.parent)[1] === p)) { ring.add(m); say(m.id, `parent ${m.parent}, which is no lane of its pool (written at the top of its pool)`); continue; }
       let up = m.parent;
       for (let k = 0; k <= members.length && up !== m.id && laneOf.has(up) && laneOf.get(up)[1] === p; k++) up = laneOf.get(up)[0].parent;
       if (up === m.id) { ring.add(m); say(m.id, `parent ${m.parent}, which leads round to this lane (written at the top of its pool)`); }
@@ -472,7 +485,18 @@ async function writeBpmnXml(model, viewId, geo, moddle) {
     if (collab) roots.unshift(collab);
     const defs = M('bpmn:Definitions', { id: free('definitions'), name: model && bxStr(model.title), targetNamespace: BX_NS, exporter: 'umlimator', rootElements: roots, diagrams });
     defs.$attrs['xmlns:umlimator'] = BX_NS;
-    return result((await moddle.toXML(defs, { format: true })).xml);
+    // indented only when shallow: moddle indents each level, so a model nested thousands deep would be depth * depth long
+    const level = new Map(); // an element -> how deep it sits, by its parents (sub-processes, lanes), each walked once
+    let most = 0;
+    for (const n of [...nodes, ...members.map(x => x[0])]) {
+      const path = [], on = new Set();
+      let x = n;
+      for (; x && !level.has(x) && !on.has(x); x = byId.get(x.parent) || (laneOf.get(x.parent) || [])[0]) { path.push(x); on.add(x); }
+      let d = level.get(x) || 0;
+      while (path.length) level.set(path.pop(), ++d);
+      most = Math.max(most, d);
+    }
+    return result((await moddle.toXML(defs, { format: most <= BX_DEEP })).xml);
   } catch (e) {
     say('', `the model (${bxMsg(e)})`);
     return result('');
