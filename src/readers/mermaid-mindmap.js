@@ -229,8 +229,14 @@ function writeMermaidMindmap(model, viewId) {
     if (n.type !== 'mindmap.Topic' || !hintable(n.id)) { notWritten.push(`${flat(n.id)} (${flat(n.type)})`); continue; }
     shown.set(id, n);
   }
+  // each one hangs from its nearest shown ancestor, as the view draws it (mmIndex.up); each hidden one walked once
+  const A = new Map(), parentOf = id => { const p = byId.get(id).parent; return p != null && byId.has(p) && byId.get(p).type === 'mindmap.Topic' ? p : null; };
+  const up = id => { const path = [id], seen = new Set(path); let p = parentOf(id);
+    while (p != null && !shown.has(p) && !A.has(p) && !seen.has(p)) { path.push(p); seen.add(p); p = parentOf(p); }
+    const r = p == null || seen.has(p) ? null : shown.has(p) ? p : A.get(p); path.slice(1).forEach(x => A.set(x, r)); return r; };
   for (const n of shown.values()) {
-    if (shown.has(n.parent) && n.parent !== n.id) { if (!kids.has(n.parent)) kids.set(n.parent, []); kids.get(n.parent).push(n); } else roots.push(n);
+    const u = up(n.id);
+    if (u != null) { if (!kids.has(u)) kids.set(u, []); kids.get(u).push(n); } else roots.push(n);
   }
   for (const r of roots.slice(1)) lose(r.id, 'a further root, which Mermaid refuses: it and what it holds');
   const ent = c => `#${c.codePointAt(0)};`, enc = s => s.replace(/[#"<`]/g, c => (c === '"' ? '#quot;' : ent(c)));
