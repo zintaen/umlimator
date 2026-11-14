@@ -5,7 +5,7 @@
 // the build stops.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import '../src/map/typed.js';
 import '../src/typed/layout.js';
 import '../src/typed/draw.js';
@@ -46,7 +46,7 @@ const LINKS = JSON.parse(readFileSync(new URL('../tools/atlas-links.json', impor
 const { model: M, shared, text } = build();
 const id = ref => ref.slice(ref.indexOf('/') + 1);
 const M2 = ['bookshop-c4', 'bookshop-schema', 'returns-flowchart', 'bookshop-data-flow', 'order-information-flow'];
-const M4A = ['bookshop-opening-plan', 'bookshop-gcp', 'bookshop-azure'];
+const M4A = ['bookshop-opening-plan', 'bookshop-gcp', 'bookshop-azure', 'bookshop-aws'];
 
 test('the committed atlas is what tools/atlas.mjs builds, byte for byte', () => {
   assert.equal(readFileSync(new URL('../examples/bookshop-atlas.json', import.meta.url), 'utf8'), text,
@@ -92,14 +92,14 @@ test('every view lays out; check() finds only the crossings its own file keeps',
   }
   // fulfil-activity's 2 and order-states' 2, as the CI loop counts them on their own files' plain pass; bookshop-c4's 8
   // and bookshop-data-flow's 2, as their own files' (0.24.0, repair and reroute off: notes/milestone-2.md §11); the Google
-  // Cloud and Azure examples' 1 each (0.26.0, notes/milestone-4a.md §5.7); the BPMN example's 5 (0.27.0, notes/milestone-4b.md §14)
+  // Cloud and Azure examples' 1 each and the AWS example's 2 (0.26.0, notes/milestone-4a.md §5.7); the BPMN example's 5 (0.27.0, notes/milestone-4b.md §14)
   assert.ok(found.every(p => / cross$/.test(p)), found.join('\n'));
   const own = name => { const src = JSON.parse(readFileSync(new URL(`../examples/${name}.json`, import.meta.url), 'utf8'));
     return src.views.flatMap(v => check(src, v.id).map(p => p.message)); };
   assert.deepEqual(found, ['fulfil-activity', 'order-states', ...M2, ...M4A, 'bookshop-order-to-shipment'].flatMap(own));
   assert.deepEqual(found.map(p => p.split(':')[0]), ['view fulfil', 'view fulfil', 'view order-life', 'view order-life',
     ...Array(3).fill('view c4-containers'), ...Array(2).fill('view c4-components'), ...Array(2).fill('view c4-placing-an-order'),
-    'view c4-deployment', 'view dfd-level-1', 'view dfd-level-1', 'view gcp-on-gcp', 'view az-on-azure', ...Array(5).fill('view order-to-shipment')]);
+    'view c4-deployment', 'view dfd-level-1', 'view dfd-level-1', 'view gcp-on-gcp', 'view az-on-azure', 'view aws-on-aws', 'view aws-on-aws', ...Array(5).fill('view order-to-shipment')]);
 });
 
 test('every drill-down opens a view of the atlas: the links file\'s, the files\' own, and no other', () => {
@@ -120,8 +120,8 @@ test('every drill-down opens a view of the atlas: the links file\'s, the files\'
   const reach = from => { const seen = new Set([from]); for (const v of seen) next.get(v).forEach(w => seen.add(w)); return seen; };
   const NEW = ['c4-context', 'c4-containers', 'c4-components', 'c4-placing-an-order', 'c4-deployment', 'er-schema', 'returns', 'dfd-level-1',
     'dfd-level-2-take-order', 'order-flows'];
-  // the mindmap is a root view of its own (0.26.0, decision 19): its Hosting topics open the two cloud views
-  const MM = ['mm-plan', 'gcp-on-gcp', 'az-on-azure'];
+  // the mindmap is a root view of its own (0.26.0, decision 19): its Hosting topics open the three cloud views
+  const MM = ['mm-plan', 'gcp-on-gcp', 'az-on-azure', 'aws-on-aws'];
   assert.deepEqual([...reach('mm-plan')].sort(), [...MM].sort());
   assert.deepEqual([...reach('overview')].sort(), M.views.map(v => v.id).filter(v => !NEW.includes(v) && !MM.includes(v)).sort());
   // the root is the C4 context (decision 20): from it every milestone 2 view, and through its links the UML views they
@@ -143,22 +143,22 @@ test('every drill-down opens a view of the atlas: the links file\'s, the files\'
   step('c4-context', 'shopping'); step('c4-context', 'returns'); step('c4-containers', 'er-schema'); step('c4-containers', 'fulfil');
   step('c4-containers', 'order-flows'); step('c4-components', 'checkout-sequence'); step('c4-components', 'dfd-level-1');
   step('c4-deployment', 'production'); step('dfd-level-1', 'dfd-level-2-take-order');
-  // the opening plan's Hosting topics open the Google Cloud and Azure views (0.26.0, notes/milestone-4a.md §10.3)
-  step('mm-plan', 'gcp-on-gcp'); step('mm-plan', 'az-on-azure');
+  // the opening plan's Hosting topics open the Google Cloud, Azure and AWS views (0.26.0, notes/milestone-4a.md §10.3)
+  step('mm-plan', 'gcp-on-gcp'); step('mm-plan', 'az-on-azure'); step('mm-plan', 'aws-on-aws');
   // the use case Track an order opens the BPMN process, and its sub-process its own view (0.27.0, notes/milestone-4b.md §13)
   step('shopping', 'order-to-shipment'); step('order-to-shipment', 'pick-and-pack');
 });
 
-test('the atlas holds a view of each of the 14 UML diagram kinds, information flow, ER, flowchart, data flow, C4\'s six, the mindmap, Google Cloud, Azure and BPMN; describe() and the PDF\'s tables read every view', () => {
+test('the atlas holds a view of each of the 14 UML diagram kinds, information flow, ER, flowchart, data flow, C4\'s six, the mindmap, Google Cloud, Azure, AWS and BPMN; describe() and the PDF\'s tables read every view', () => {
   assert.deepEqual([...new Set(M.views.map(v => v.diagram).filter(d => d?.startsWith('uml.')))].sort(), ['uml.activity', 'uml.class',
     'uml.communication', 'uml.component', 'uml.composite-structure', 'uml.deployment', 'uml.information-flow', 'uml.interaction-overview', 'uml.object', 'uml.package',
     'uml.profile', 'uml.sequence', 'uml.state-machine', 'uml.timing', 'uml.use-case']);
   // C4's landscape view is not in the Bookshop: one software system of its own, so its context view says what a landscape would
-  assert.deepEqual([...new Set(M.views.map(v => v.diagram).filter(d => d && !d.startsWith('uml.')))].sort(), ['azure', 'bpmn', 'c4.component', 'c4.container',
+  assert.deepEqual([...new Set(M.views.map(v => v.diagram).filter(d => d && !d.startsWith('uml.')))].sort(), ['aws', 'azure', 'bpmn', 'c4.component', 'c4.container',
     'c4.context', 'c4.deployment', 'c4.dynamic', 'dfd', 'er', 'flowchart', 'gcp', 'mindmap']);
   // the label of each pack the cloud files' icons were chosen from, as icons/packs.json pins it (0.26.0)
   const packs = JSON.parse(readFileSync(new URL('../icons/packs.json', import.meta.url), 'utf8'));
-  assert.deepEqual(M.iconPacks, { gcp: packs.gcp.label, azure: packs.azure.label });
+  assert.deepEqual(M.iconPacks, { gcp: packs.gcp.label, azure: packs.azure.label, aws: packs.aws.label });
   const ctx = mapContext(M);
   for (const v of M.views) { assert.ok(describe(M, v.id).length, v.id); assert.ok(tablesOf(ctx, ctx.V[v.id], ctx.buildGeo(v.id)).length, v.id); }
 });
@@ -205,7 +205,7 @@ test('every view lays out in the atlas as in its own file: the same boxes, and l
     const pic = (g, atlas) => ({ nodes: g.nodes.map(n => (atlas && wide.has(n.id) ? [n.id, n.x < 0 ? n.x + 26 : n.x, n.y, n.w - 26, n.h] : [n.id, n.x, n.y, n.w, n.h])),
       edges: g.edges.map(e => [e.from, e.to, e.pts]) });
     for (const v of src.views) assert.deepEqual(pic(layout(M, v.id), true), pic(layout(src, v.id)), `${name} view ${v.id}`);
-    if (name === 'bookshop-opening-plan') assert.deepEqual([...wide], ['mm-on-gcp', 'mm-on-azure']);
+    if (name === 'bookshop-opening-plan') assert.deepEqual([...wide], ['mm-on-gcp', 'mm-on-azure', 'mm-on-aws']);
   }
 });
 
@@ -240,4 +240,11 @@ test('icon packs: one label a pack across the files, written in the atlas; two f
   assert.deepEqual(packs({ gcp: '1' }, { gcp: '1', azure: '2' }), { gcp: '1', azure: '2' });
   assert.throws(() => packs({ gcp: '1' }, { gcp: '2' }), /a and b disagree on icon pack gcp: "1" against "2"/);
   assert.equal(two([], []).model.iconPacks, undefined, 'no pack, no field');
+});
+
+test('the gallery and the examples\' README reach every example model: the AWS view and the e-bike atlas included (monorepo.json is what monorepo.py writes, in the README only)', () => {
+  const dir = new URL('../examples/', import.meta.url), gallery = readFileSync(new URL('index.html', dir), 'utf8'), readme = readFileSync(new URL('README.md', dir), 'utf8');
+  const names = readdirSync(dir).filter(f => f.endsWith('.json') && !f.startsWith('.')).map(f => f.slice(0, -5));
+  assert.deepEqual(names.filter(n => !gallery.includes(`href="${n}.html"`)), ['monorepo']);
+  assert.deepEqual(names.filter(n => !readme.includes(`(${n}.json)`)), []);
 });

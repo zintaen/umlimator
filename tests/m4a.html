@@ -94,9 +94,10 @@ try {
   // the Bookshop atlas: the opening plan is a root view, and its Hosting topics carry the drill-down mark to the cloud views
   const atlas = await load('../examples/bookshop-atlas.json');
   el.innerHTML = ''; const h = render(el, atlas, { view: 'mm-plan' }); sr = el.querySelector('.umlimator').shadowRoot;
-  const marks = ['mm-on-gcp', 'mm-on-azure'].map(id => { const x = pick(`.node[data-id="${id}"]`); return x && x.querySelector('.open-hint') ? x.getAttribute('aria-label') : null; });
-  check('the atlas: the opening plan\'s Hosting topics open the Google Cloud and Azure views, each with its drill-down mark',
-    marks[0] === 'Topic On Google Cloud, under Hosting, opens Bookshop on Google Cloud' && marks[1] === 'Topic On Azure, under Hosting, opens Bookshop on Azure', marks);
+  const marks = ['mm-on-gcp', 'mm-on-azure', 'mm-on-aws'].map(id => { const x = pick(`.node[data-id="${id}"]`); return x && x.querySelector('.open-hint') ? x.getAttribute('aria-label') : null; });
+  check('the atlas: the opening plan\'s Hosting topics open the Google Cloud, Azure and AWS views, each with its drill-down mark',
+    marks[0] === 'Topic On Google Cloud, under Hosting, opens Bookshop on Google Cloud' && marks[1] === 'Topic On Azure, under Hosting, opens Bookshop on Azure'
+    && marks[2] === 'Topic On AWS, under Hosting, opens Bookshop on AWS', marks);
   h.setView('gcp-on-gcp');
   check('the atlas: the Google Cloud view drawn there with glyphs (no pack in the atlas) and no legal line', all('.node.cloud-card').length === 9 && !all('.node image').length && !pick('text.cl-legal'), all('.node.cloud-card').length);
   h.destroy();

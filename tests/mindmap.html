@@ -46,7 +46,7 @@ try {
     document.documentElement.dataset.theme = theme; el.style.setProperty('--um-sans', family);
     const tag = `${theme}, ${fname}`, h = mount(structuredClone(MODEL)), bad = [];
     const tops = all('.node.mm-topic'), R = Object.fromEntries(tops.map(g => [g.dataset.id, box(g.querySelector('rect.n-body'))]));
-    check(`${tag}: 21 topics, 20 branch curves, no line for the router`, tops.length === 21 && all('.mm-branch').length === 20 && !all('.edge-g').length, tops.length);
+    check(`${tag}: 22 topics, 21 branch curves, no line for the router`, tops.length === 22 && all('.mm-branch').length === 21 && !all('.edge-g').length, tops.length);
     tops.forEach((g, i) => { const id = g.dataset.id, t = box(g.querySelector('text'));
       if (!inside(t, R[id])) bad.push(`${id}'s text leaves it`);
       tops.slice(0, i).forEach(o => { if (meets(R[id], R[o.dataset.id])) bad.push(`${id} meets ${o.dataset.id}`); }); });
@@ -66,8 +66,8 @@ try {
     const svg = pick('.stage svg'), imgs = all('.stage svg [role="img"]'), noAlt = [], nested = [];
     imgs.forEach(x => { if (!(x.getAttribute('aria-label') || '').trim()) noAlt.push(x.dataset.id || x.localName);
       x.querySelectorAll('[tabindex], a[href], button, input, select, textarea').forEach(c => { if (c.tabIndex >= 0) nested.push(`${x.dataset.id} holds ${c.getAttribute('class') || c.localName}`); }); });
-    check(`${tag}: axe, written out: the drawing a named group, its 21 topics named images with no tab stop and no other name inside`,
-      svg.getAttribute('role') === 'group' && !!(svg.getAttribute('aria-label') || '').trim() && imgs.length === 21 && !noAlt.length && !nested.length && all('.node.mm-topic [aria-label]').length === 0, [imgs.length, noAlt, nested.slice(0, 4)]);
+    check(`${tag}: axe, written out: the drawing a named group, its 22 topics named images with no tab stop and no other name inside`,
+      svg.getAttribute('role') === 'group' && !!(svg.getAttribute('aria-label') || '').trim() && imgs.length === 22 && !noAlt.length && !nested.length && all('.node.mm-topic [aria-label]').length === 0, [imgs.length, noAlt, nested.slice(0, 4)]);
     h.destroy();
   }
   document.documentElement.dataset.theme = 'light'; el.style.removeProperty('--um-sans');
@@ -113,10 +113,10 @@ try {
   check('a topic dropped on its own subtopic: refused, said', ed.length === n0 && said(/under one of its own subtopics/));
   // Delete, Shift + Delete
   click('mm-checkout'); key('Delete');
-  gives('Delete: the topic and its shown subtopics hidden, in one transaction', ['mm-checkout', 'mm-order-emails', 'mm-card-payments'].map(id => ({ op: 'hide', id, view: VID })), m => m.views[0].nodeIds.length === 18 && m.nodes.length === 21, BASE);
+  gives('Delete: the topic and its shown subtopics hidden, in one transaction', ['mm-checkout', 'mm-order-emails', 'mm-card-payments'].map(id => ({ op: 'hide', id, view: VID })), m => m.views[0].nodeIds.length === 19 && m.nodes.length === 22, BASE);
   check('… and the hint line counts them', said(/Hid Checkout and its 2 subtopics/));
   click('mm-website'); key('Delete', { shiftKey: true });
-  gives('Shift + Delete: the topic deleted, its subtopics with it', [{ op: 'delete', id: 'mm-website' }], m => m.nodes.length === 16, BASE);
+  gives('Shift + Delete: the topic deleted, its subtopics with it', [{ op: 'delete', id: 'mm-website' }], m => m.nodes.length === 17, BASE);
   check('… and the hint line counts them', said(/Deleted Website and its 4 subtopics/));
   // L: a mindmap has no lines
   const n1 = ed.length; click('mm-launch'); key('l'); for (const c of 'legal') key(c); key('Enter'); // the other end found by its name

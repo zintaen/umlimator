@@ -282,7 +282,7 @@ def listing():
     for p, row in rows().items():
         a = accepted(p, row)
         state = "fetched" if zips(p, row) else "not fetched"
-        print(f"{p}  {row['vendor']}  pin {row['label']}  {state}, terms {f"accepted ({a.get('via') or 'how not recorded'})" if a else 'not accepted'}")
+        print(f"{p}  {row['vendor']}  pin {row['label']}  {state}, terms {'accepted (' + (a.get('via') or 'how not recorded') + ')' if a else 'not accepted'}")
     print(NOT_AFFILIATED)
 
 

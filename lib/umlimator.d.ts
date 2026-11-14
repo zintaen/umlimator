@@ -10,8 +10,8 @@ export interface MapModel {
   nodes: MapNode[];
   edges?: MapEdge[];
   views: MapView[];
-  /** Icons by name. From 0.26.0 a cloud view (gcp, azure) reads its vendor icons here too, keyed `<pack>/<id>` with a data
-   *  URL in `src` and the full service name in `name`, and Google's `gcp/` entry with `legal`: icons the host fetched under
+  /** Icons by name. From 0.26.0 a cloud view (gcp, azure, aws) reads its vendor icons here too, keyed `<pack>/<id>` with a data
+   *  URL in `src` and the full service name in `name`, and Google's `gcp/` and AWS's `aws/` entries with `legal`: icons the host fetched under
    *  the vendor's terms (umlimator.py builds the table from a fetched pack; the module never fetches one). */
   icons?: Record<string, { g?: string; src?: string; dark?: boolean; name?: string; legal?: string }>;
   /** Schema version 2 (0.26.0): the label of the pinned icon pack each cloud pack's ids were chosen from, by pack
@@ -50,7 +50,7 @@ export interface MapNode {
 /** A typed element in schema version 2's envelope (docs/diagrams/model.md §1): a node, a member, a typed edge, a
  *  fragment. Nodes, edges, members and fragments share one id space; an id never contains "->". A typed edge is an
  *  Element with `from` and `to`, which may name a member. A typed view is a MapView with `diagram` (uml.class), and may
- *  have `subject`, `direction` ('right' | 'down'), `notation`, `present`, `fragments` and `timeline`. umlimator/all draws `uml.class` (0.18.0), `uml.object` and `uml.package` (0.19.0), `uml.sequence` and `uml.communication` (0.20.0), `uml.use-case`, `uml.activity`, `uml.state-machine` and `uml.interaction-overview` (0.21.0), `uml.component`, `uml.deployment` and `uml.composite-structure` (0.22.0), `uml.profile` and `uml.timing` (0.23.0), `er`, `flowchart`, `dfd`, `uml.information-flow` and C4's six views `c4.landscape`, `c4.context`, `c4.container`, `c4.component`, `c4.dynamic` and `c4.deployment` (0.24.0), `mindmap`, `gcp` and `azure` (0.26.0), `bpmn` (0.27.0); other types draw as plain cards.
+ *  have `subject`, `direction` ('right' | 'down'), `notation`, `present`, `fragments` and `timeline`. umlimator/all draws `uml.class` (0.18.0), `uml.object` and `uml.package` (0.19.0), `uml.sequence` and `uml.communication` (0.20.0), `uml.use-case`, `uml.activity`, `uml.state-machine` and `uml.interaction-overview` (0.21.0), `uml.component`, `uml.deployment` and `uml.composite-structure` (0.22.0), `uml.profile` and `uml.timing` (0.23.0), `er`, `flowchart`, `dfd`, `uml.information-flow` and C4's six views `c4.landscape`, `c4.context`, `c4.container`, `c4.component`, `c4.dynamic` and `c4.deployment` (0.24.0), `mindmap`, `gcp`, `azure` and `aws` (0.26.0), `bpmn` (0.27.0); other types draw as plain cards.
  *  From 0.19.0 the class, object and package types draw a shown package that owns something the view shows as a box holding it (`parent`), and
  *  qualify names (`sales::Order`) from the nearest shown owner, the view's `subject`, or the top. */
 export interface Element {
@@ -314,18 +314,21 @@ export interface SysmlConnectorProps { ends?: { from?: { part?: string }; to?: {
 /** The mindmap (a view with `diagram: 'mindmap'`, umlimator/all from 0.26.0; docs/conformance/mindmap.md): topics only, the
  *  tree by `parent`, children in the view's `nodeIds` order; a first-level topic's half in `present.<id>.side`. No lines. */
 export type MindmapElementType = 'mindmap.Topic';
-/** Google Cloud and Azure architecture diagrams (views with `diagram: 'gcp'` or `'azure'`, umlimator/all from 0.26.0;
- *  docs/conformance/gcp.md, azure.md): groups own what they hold by `parent`; a service's icon is drawn from the host's
+/** Google Cloud, Azure and AWS architecture diagrams (views with `diagram: 'gcp'`, `'azure'` or `'aws'`, umlimator/all from
+ *  0.26.0; docs/conformance/gcp.md, azure.md, aws.md): groups own what they hold by `parent`; a service's icon is drawn from the host's
  *  `icons` table at `<pack>/<props.icon>`, else as a glyph with its full name. */
 export type GcpElementType = 'gcp.Zone' | 'gcp.Product' | 'gcp.User';
 export type GcpLineType = 'gcp.Path';
 export type AzureElementType = 'azure.Group' | 'azure.Service';
 export type AzureLineType = 'azure.Connector';
-/** A cloud element's props: a group's kind (`zoneType` on gcp.Zone, `groupType` on azure.Group) and a service's icon id,
+export type AwsElementType = 'aws.Group' | 'aws.Service' | 'aws.Resource';
+export type AwsLineType = 'aws.Connection';
+/** A cloud element's props: a group's kind (`zoneType` on gcp.Zone, `groupType` on azure.Group and aws.Group) and a service's icon id,
  *  the pinned pack's own (`Cloud-Run`, `Front-Door-and-CDN-Profiles`). */
 export interface CloudElementProps {
   zoneType?: 'project' | 'region' | 'zone' | 'network' | 'subnetwork' | 'generic';
-  groupType?: 'subscription' | 'resource-group' | 'region' | 'virtual-network' | 'subnet' | 'generic';
+  groupType?: 'subscription' | 'resource-group' | 'region' | 'virtual-network' | 'subnet' | 'generic'
+    | 'cloud' | 'account' | 'availability-zone' | 'vpc' | 'public-subnet' | 'private-subnet' | 'security-group';
   icon?: string; [key: string]: unknown }
 /** BPMN's vocabulary (a view with `diagram: 'bpmn'`, umlimator/all from 0.27.0; docs/conformance/bpmn.md): Table 2.1 of
  *  BPMN 2.0.2 and six extras. A pool (`bpmn.Participant`) owns its lanes as members (`bpmn.Lane`, a lane's `parent` another

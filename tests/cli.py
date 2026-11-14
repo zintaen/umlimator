@@ -14,6 +14,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 failed = False
+sys.path.insert(0, str(ROOT))
+import umlimator as u
 
 
 def ok(name, cond, info=""):
@@ -82,6 +84,17 @@ def edited(m):  # a made-up pull request on the bike share: a queue between Trip
     return m
 
 
+# check's kinds: a rule whose title holds another kind's words is a broken rule, which --ignore crossings keeps
+ok("check · each message is of one kind, by the check's own words, not a label's or a rule title's",
+   [u.kind_of(o) for o in ['view v: edge Web→DB breaks rule "Apps never cross into the data tier"', "view v: edges a→b and c→d cross",
+                           'view v: label "runs right-to-left" lies on edge a→b', "view v: edge a→b takes a detour (90px for 40px)"]]
+   == ["rules", "crossings", "labelOnLine", "detours"])
+# the diff Action's comment: a label is one node's text and a summary line one line, never a fence of their own
+fence = u.sketch({"nodes": [{"id": "a", "label": 'A"]\n```\n## Approved <b>x</b>', "change": "added"}, {"id": "b", "label": "B"}],
+                  "edges": [{"from": "a", "to": "b"}], "views": [{"id": "v", "nodeIds": ["a", "b"]}]})
+ok("diff · the sketch and the summary keep a label's newlines and backticks in their line",
+   [x for x in "\n".join(fence).split("\n") if x.startswith("```")] == ["```mermaid", "```"] and "\n" not in u.flat("a\n```\nb") and "\n```" not in u.flat("a\n```"), fence)
+
 bike = json.loads((ROOT / "examples" / "bike-share.json").read_text(encoding="utf-8"))
 SAID = ["renames Accounts to Accounts and sign-in", "adds Payments queue between Trip service and Payment provider",
         "removes Feature flags", "removes the line from Trip service to Payment provider (charges)"]
@@ -143,6 +156,7 @@ with tempfile.TemporaryDirectory() as tmp:
     data = json.loads(data.group(1)) if data else {}
     ok("timelapse · every version in git history, oldest first, on one page with the module and its icons",
        [v["label"][11:] for v in data.get("versions", [])] == ["version 1", "version 2", "version 3"] and "export function render" in lapse and data.get("icons"), r)
+    ok("timelapse · --limit 0 is refused (the latest 0 versions, not all of them)", cli("timelapse", "docs/map.json", "--limit", "0", "--out", str(t / "lapse0.html"), cwd=g) is None)
 
     (g / "docs" / "map.json").write_text(json.dumps(edited(json.loads((g / "docs" / "map.json").read_text()))))
     (g / "notes.json").write_text('{"not": "a map"}'); git("add", "notes.json")
@@ -151,9 +165,19 @@ with tempfile.TemporaryDirectory() as tmp:
     ok("diff --base · each map model changed since the ref (and no other JSON), as a page", r is not None and [x["file"] for x in r] == ["docs/map.json"] and (t / "pr" / "docs-map.html").is_file(), r)
     ok("diff --base · a summary for the pull request: what changed, and a sketch GitHub draws", md.startswith("<!-- umlimator-diff -->") and "- adds Payments queue between Trip service and Payment provider" in md
        and "```mermaid" in md and ":::added" in md and ":::removed" in md, md[:600])
+    r = cli("diff", "--base", "HEAD", "--out", "pr-sub", cwd=g / "docs") or [{}]  # from a subfolder, with a relative --out: git names files from the top
+    ok("diff --base · run from a subfolder, the edited model reads as edited, with its stills", r[0].get("file") == "docs/map.json" and "removes Feature flags" in r[0].get("summary", [])
+       and "error" not in r[0] and r[0].get("stills") and all(Path(g / "docs" / s).is_file() for s in r[0]["stills"]), r)
     git("checkout", "-q", "--", "docs/map.json")
     cli("diff", "--base", "HEAD", "--out", str(t / "pr2"), cwd=g)
     ok("diff --base · says so when no map changed", "No map model changed." in ((t / "pr2" / "summary.md").read_text(encoding="utf-8") if (t / "pr2" / "summary.md").is_file() else ""))
+
+    # a view id is the model's, not a path: ../x is a still inside --out
+    (t / "esc").mkdir(); (t / "esc" / "m.json").write_text(json.dumps({"title": "t", "nodes": [{"id": "a", "label": "A"}, {"id": "b", "label": "B"}],
+        "edges": [{"id": "e", "from": "a", "to": "b"}], "views": [{"id": "../escaped", "title": "V", "nodeIds": ["a", "b"]}]}))
+    cli("render", str(t / "esc" / "m.json"), "--out", str(t / "esc" / "page.html"), "--no-check")
+    r = cli("stills", str(t / "esc" / "page.html"), "--out", str(t / "esc" / "out"))
+    ok("stills · a view id with a / is a file name inside --out", r and len(r) == 1 and Path(r[0]["png"]).parent == t / "esc" / "out" and not list((t / "esc").glob("escaped.*")), r)
 
     # the diff Action's step as CI runs it (C10, 2.6): a pull request's merge commit against its first parent, the pathspec
     # examples/*.json passed to git as written (set -f), on one object model and one package model
@@ -698,6 +722,8 @@ ok("mcp · diff: what changed from another model file to this one", not err and 
    "removes Payments queue", "adds a line from Trip service to Payment provider (charges)"], "views": ["system"]}, said)
 said, err = tool("describe_view", view="nope")
 ok("mcp · a call that names what the model lacks is a tool error that says what it has", err and said.startswith("no view 'nope'; the views: context, system"), said)
+wrong = [tool("describe_view", view=["trips"]), tool("tour", cards=[{"id": "trips"}]), tool("diff", other_model_path=5)]
+ok("mcp · an argument of another type than its inputSchema's is a tool error that names it", all(e for _, e in wrong) and "view is not" in wrong[0][0], wrong)
 
 said, err = tool("show_view", view="trips")
 ok("mcp · a page tool with no page connected says to open its URL", not err and said.startswith("No page is connected") and url and url.group(0) in said, said)

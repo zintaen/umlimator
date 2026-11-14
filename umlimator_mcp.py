@@ -509,6 +509,19 @@ class Page(http.server.BaseHTTPRequestHandler):
             super().log_request(code, size)
 
 
+JSON_TYPES = {"string": str, "boolean": bool, "integer": int, "array": list, "object": dict}
+
+
+def fits(v, s):
+    """Whether an argument is of the type its inputSchema gives (the subset these tools use)."""
+    if "anyOf" in s:
+        return any(fits(v, x) for x in s["anyOf"])
+    t = s.get("type")
+    if not isinstance(v, JSON_TYPES.get(t, object)) or t == "integer" and (isinstance(v, bool) or v < s.get("minimum", v)):
+        return False
+    return t != "array" or all(fits(x, s.get("items", {})) for x in v)
+
+
 def failure(rid, code, message, data=None):
     return {"jsonrpc": "2.0", "id": rid, "error": {"code": code, "message": message, **({"data": data} if data is not None else {})}}
 
@@ -536,6 +549,9 @@ def result(method, p):
         try:
             if missing := [k for k in t["inputSchema"]["required"] if k not in a]:
                 raise Fail(f"{t['name']} needs {', '.join(missing)}")
+            props = t["inputSchema"]["properties"]  # a value of another type would fail inside the tool, as an internal error
+            if wrong := [f"{k} is not {json.dumps({x: y for x, y in props[k].items() if x != 'description'})}" for k in a if k in props and not fits(a[k], props[k])]:
+                raise Fail(f"{t['name']}: {'; '.join(wrong)}")
             said = call(t["name"], a)
         except Fail as e:
             return {"content": [{"type": "text", "text": str(e)}], "isError": True}

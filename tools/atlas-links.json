@@ -6,7 +6,7 @@
   "shopping-use-cases", "fulfil-activity", "order-states", "buy-book-overview",
   "bookshop-components", "bookshop-deployment", "order-service-structure", "bookshop-timing",
   "bookshop-c4", "bookshop-schema", "returns-flowchart", "bookshop-data-flow", "order-information-flow",
-  "bookshop-opening-plan", "bookshop-gcp", "bookshop-azure", "bookshop-order-to-shipment"],
+  "bookshop-opening-plan", "bookshop-gcp", "bookshop-azure", "bookshop-aws", "bookshop-order-to-shipment"],
  "links": [
   { "element": "bookshop/shoppers", "opens": "shopping-use-cases/shopping" },
   { "element": "bookshop/storefront", "opens": "buy-book-overview/buy-book" },
@@ -38,6 +38,7 @@
   { "element": "bookshop-c4/c4-api-1", "opens": "bookshop-deployment/production" },
   { "element": "bookshop-opening-plan/mm-on-gcp", "opens": "bookshop-gcp/gcp-on-gcp" },
   { "element": "bookshop-opening-plan/mm-on-azure", "opens": "bookshop-azure/az-on-azure" },
+  { "element": "bookshop-opening-plan/mm-on-aws", "opens": "bookshop-aws/aws-on-aws" },
   { "element": "shopping-use-cases/track", "opens": "bookshop-order-to-shipment/order-to-shipment" }
  ]
 }

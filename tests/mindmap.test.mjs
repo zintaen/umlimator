@@ -60,11 +60,11 @@ test('the definition: the palette\'s Topic, no lines, a layout of its own with n
   assert.deepEqual(Object.keys(D.rules), ['mindmap-root', 'topic-parent', 'side-first', 'mindmap-depth']);
 });
 
-test('the mindmap example lays out clean: 21 topics, the root at (0, 0), three branches right and three left as pinned, children in nodeIds order, a curve per topic, no problem', () => {
+test('the mindmap example lays out clean: 22 topics, the root at (0, 0), three branches right and three left as pinned, children in nodeIds order, a curve per topic, no problem', () => {
   const m = EX(), g = layout(m, VID);
   assert.deepEqual(validate(m), []);
   assert.deepEqual(unclean(g), []);
-  assert.equal(g.nodes.length, 21); assert.deepEqual(g.edges, []); assert.equal(g.mm.links.length, 20);
+  assert.equal(g.nodes.length, 22); assert.deepEqual(g.edges, []); assert.equal(g.mm.links.length, 21);
   assert.deepEqual([g.byId['mm-opening'].x, g.byId['mm-opening'].y, g.byId['mm-opening'].root], [0, 0, true]);
   const first = g.nodes.filter(n => n.depth === 1);
   assert.deepEqual(first.map(n => [n.id, n.side]), [['mm-catalogue', 'right'], ['mm-website', 'right'], ['mm-launch', 'right'], ['mm-warehouse', 'left'], ['mm-legal', 'left'], ['mm-hosting', 'left']]);
@@ -83,8 +83,8 @@ test('the picture: branches as curves in the under layer, 2.5 px from the root a
   const m = EX(), memos = {}, draw = () => mapContext(m, { memos }).buildView(VID).markup.replace(/\bg\d+-/g, 'g-'), a = draw();
   assert.equal(a, draw());
   const curves = [...a.matchAll(/<path class="mm-branch" d="M[^"]*C[^"]*" fill="none" stroke="var\(--um-k-(\w+)\)" stroke-width="([\d.]+)"/g)];
-  assert.equal(curves.length, 20);
-  assert.equal(curves.filter(c => c[2] === '2.5').length, 6); assert.equal(curves.filter(c => c[2] === '1.5').length, 14);
+  assert.equal(curves.length, 21);
+  assert.equal(curves.filter(c => c[2] === '2.5').length, 6); assert.equal(curves.filter(c => c[2] === '1.5').length, 15);
   assert.ok(a.indexOf('class="mm-under"') < a.indexOf('class="nodes"'), 'under the topics');
   assert.match(a, /<g class="node mm-topic" data-id="mm-checkout"[^>]*aria-label="Topic Checkout, under Website, 2 subtopics"><title>Checkout<\/title><rect[^>]*class="n-mask"\/><rect[^>]*class="n-body" fill="transparent" stroke="var\(--um-k-lane\)"/);
   assert.match(a, /<g class="node mm-topic mm-root" data-id="mm-opening"[^>]*><title>[^<]*<\/title><rect[^>]*\/><rect[^>]*stroke="var\(--um-text\)" stroke-width="2"/);
@@ -102,8 +102,8 @@ test('names (A1), reading order (the root, its right branches, then its left, ea
   const L = apply(m, [{ op: 'set', view: VID, path: ['present', 'mm-catalogue', 'side'], value: 'left' }]), o = layout(L, VID).order;
   assert.deepEqual(o.slice(0, 9), ['mm-opening', 'mm-website', 'mm-storefront', 'mm-checkout', 'mm-card-payments', 'mm-order-emails', 'mm-launch', 'mm-newsletter', 'mm-opening-offer']);
   assert.deepEqual(o.slice(9, 12), ['mm-catalogue', 'mm-first-titles', 'mm-wholesalers'], 'a branch moved left reads after the right ones');
-  assert.equal(describe(m, VID).split('\n').slice(0, 6).join('\n'), ['Opening the bookshop: a mindmap of 21 topics.', 'Opening the bookshop', '  Catalogue', '    Choose the first 500 titles', '    Agree terms with two wholesalers', '  Website'].join('\n'));
-  assert.equal(describe(m, VID).split('\n').length, 22);
+  assert.equal(describe(m, VID).split('\n').slice(0, 6).join('\n'), ['Opening the bookshop: a mindmap of 22 topics.', 'Opening the bookshop', '  Catalogue', '    Choose the first 500 titles', '    Agree terms with two wholesalers', '  Website'].join('\n'));
+  assert.equal(describe(m, VID).split('\n').length, 23);
   // a topic that opens a view says so, and carries the drill-down mark
   const op = apply(m, [{ op: 'addView', view: { id: 'gcp', diagram: 'uml.class', title: 'On Google Cloud', nodeIds: [] } }, { op: 'set', id: 'mm-on-gcp', path: 'opensView', value: 'gcp' }]);
   const go = layout(op, VID);
@@ -275,11 +275,11 @@ test('Delete hides a topic\'s branch, said with the count; Shift + Delete delete
   let r = mmRemove(m, V0, ['mm-checkout'], false);
   assert.deepEqual(r.commands, ['mm-checkout', 'mm-order-emails', 'mm-card-payments'].map(id => ({ op: 'hide', id, view: VID })));
   assert.equal(r.say, 'Hid Checkout and its 2 subtopics: the outline\'s Show, or undo, brings them back');
-  const h = run(m, r); assert.deepEqual([h.nodes.length, V(h).nodeIds.length], [21, 18]);
+  const h = run(m, r); assert.deepEqual([h.nodes.length, V(h).nodeIds.length], [22, 19]);
   assert.equal(mmRemove(m, V0, ['mm-checkout', 'mm-card-payments'], false).commands.length, 3, 'a topic under another selected goes with it');
   r = mmRemove(m, V0, ['mm-website'], true);
   assert.deepEqual([r.commands, r.say], [[{ op: 'delete', id: 'mm-website' }], 'Deleted Website and its 4 subtopics']);
-  const d = run(m, r); assert.deepEqual([d.nodes.length, V(d).nodeIds.length], [16, 16]);
+  const d = run(m, r); assert.deepEqual([d.nodes.length, V(d).nodeIds.length], [17, 17]);
   assert.equal(mmRemove(m, V0, ['mm-shelving'], true).say, 'Deleted Shelving and a packing table');
   assert.equal(mmRemove(m, V0, ['mm-catalogue', 'mm-legal'], true).say, 'Deleted Catalogue, Legal and money and their 4 subtopics');
   assert.equal(mmRemove(m, V0, ['ghost'], false), null);

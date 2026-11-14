@@ -81,7 +81,7 @@ jobs:
           for m in examples/*.json; do
             n=$(basename "$m" .json); [ "$n" = bookshop ] && continue   # checked above, with its committed page
             python3 umlimator.py render "$m" --out "/tmp/$n.html" --no-check
-            x=0; case "$n" in fulfil-activity) x=4;; order-states) x=2;; bookshop-c4) x=14;; bookshop-data-flow) x=2;; bookshop-gcp) x=1;; bookshop-azure) x=1;; bookshop-order-to-shipment) x=5;; bookshop-atlas) x=29;; bookshop-aws) x=2;; esac   # at most the crossings port repair off leave (text widths differ between machines, so the count is a ceiling)s (notes/stage-4.md §17; notes/milestone-2.md §11; notes/milestone-4a.md §11), counted over both passes; pinned in tests/cli.py and the types' tests; the atlas keeps its files' (tests/atlas.test.mjs)
+            x=0; case "$n" in fulfil-activity) x=4;; order-states) x=2;; bookshop-c4) x=14;; bookshop-data-flow) x=2;; bookshop-gcp) x=1;; bookshop-azure) x=1;; bookshop-order-to-shipment) x=5;; bookshop-atlas) x=31;; bookshop-aws) x=2;; esac   # at most the crossings port repair off leave (text widths differ between machines, so the count is a ceiling)s (notes/stage-4.md §17; notes/milestone-2.md §11; notes/milestone-4a.md §11), counted over both passes; pinned in tests/cli.py and the types' tests; the atlas keeps its files' (tests/atlas.test.mjs)
             python3 umlimator.py check "/tmp/$n.html" --expand > "/tmp/$n.json"   # every view, and again with each stacked card unfolded in place (#71)
             python3 -I -c "import json, sys; s = open(sys.argv[1]).read(); d = json.loads(s[s.find('{'):]); p = d['problems']; assert d['checked'] and not d['errors'] and all(q.endswith(' cross') for q in p) and len(p) <= int(sys.argv[2]), (sys.argv[1], p, d['errors'])" "/tmp/$n.json" "$x"
           done
@@ -92,6 +92,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5  # the oldest Python the README and map-repo name: the CLI's files must parse there (3.12's f-strings do not)
+        id: py39
+        with:
+          python-version: "3.9"
+
+      - name: The CLI parses on Python 3.9, the oldest the README and the map-repo skill name
+        run: ${{ steps.py39.outputs.python-path }} -m py_compile umlimator*.py plugins/umlimator/skills/map-repo/scripts/*.py
 
       - uses: actions/setup-python@v5
         with:
@@ -124,7 +132,15 @@ jobs:
                   sys.exit(f"{s}: its frontmatter needs a name and a description")
           print(f"{len(market['plugins'])} plugin(s), manifests and skills ok")
           PY
-          python3 plugins/umlimator/skills/map-repo/scripts/cli.py --help > /dev/null   # clones the pinned tag and checks its commit
+          python3 plugins/umlimator/skills/map-repo/scripts/cli.py --help > /tmp/cli-help   # clones the pinned tag and checks its commit
+          python3 -I - <<'PY'
+          import re, sys
+          has = set(re.search(r"\{([\w,-]+)\}", open("/tmp/cli-help").read()).group(1).split(","))
+          said = set(re.findall(r"(?:\bcli|umlimator\.py) ([a-z][\w-]*)", open("plugins/umlimator/skills/map-repo/SKILL.md", encoding="utf-8").read()))
+          if said - has:
+              sys.exit(f"map-repo's SKILL.md names commands its pinned CLI lacks: {', '.join(sorted(said - has))}")
+          print(f"map-repo's commands ({', '.join(sorted(said))}) are all in its pinned CLI")
+          PY
 
   # The CLI's diff, drift, timelapse, mcp and pdf, and the diff Action's dry run (about 4.5 min)
   cli:
