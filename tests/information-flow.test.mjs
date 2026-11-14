@@ -155,7 +155,7 @@ test('the PDF (§9, S17): each element\'s kind; an item\'s rows, the flows that 
   const cv = structuredClone(IF); flow(cv, 'api-email').props.conveyed.push('warehouse');
   assert.deepEqual(T.rows(cv, v, 'warehouse'), ['Shop API → Email service'], 'a conveyed component: the flows that convey it');
   assert.equal(T.text(IF, v, 'api-email'), 'Order, Receipt');
-  const ctx = mapContext(IF), [els, lines] = tablesOf(ctx, ctx.V[V], { nodes: [], edges: [] }), cells = r => [...r.matchAll(/<td>(.*?)<\/td>/g)].map(x => x[1]);
+  const ctx = mapContext(IF), [els, lines] = tablesOf(ctx, ctx.V[V], { nodes: [], edges: layout(IF, V).edges }), cells = r => [...r.matchAll(/<td>(.*?)<\/td>/g)].map(x => x[1]);
   assert.deepEqual(lines.rows.map(r => cells(r)[1]), ['Order, Card details', 'Card details', 'Order', 'Order', 'Stock level', 'Stock level', 'Order, Receipt', 'Receipt']);
   assert.deepEqual(lines.rows.map(r => cells(r)[2]), Array(8).fill('Information flow'));
   assert.ok(els.rows.some(r => cells(r)[1] === 'Information item' && cells(r)[2] === '<p>Shopper → Storefront</p><p>Storefront → Payment provider</p>'), 'the item\'s rows');

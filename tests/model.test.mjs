@@ -117,3 +117,20 @@ test('a cut label ends on whole characters: never half an emoji (audit 1)', () =
   const t = fit('\u{1F600}'.repeat(40), 13, 100, true);
   assert.ok(t.endsWith('…') && !/[\uD800-\uDBFF](?![\uDC00-\uDFFF])/.test(t), JSON.stringify(t));
 });
+
+test('edges that is no list, a view that is no object, a box\'s nodeIds that is no list: validate() says so, and the map draws without it (audit 2)', () => {
+  const base = () => ({ nodes: [{ id: 'a', label: 'A' }, { id: 'b', label: 'B' }], edges: [{ from: 'a', to: 'b' }], views: [{ id: 'v', nodeIds: ['a', 'b'], containers: [{ id: 'box', label: 'Box', nodeIds: ['b'] }] }] });
+  for (const [set, path] of [[m => { m.views[0].containers[0].nodeIds = 'b'; }, 'views[0].containers[0].nodeIds'], [m => { m.edges = { 0: m.edges[0] }; }, 'edges'], [m => { m.views.push(null); }, 'views[1]']]) {
+    const m = base(); set(m);
+    assert.ok(validate(m).some(p => p.path === path && p.level === 'error'), path);
+    assert.doesNotThrow(() => layout(m, 'v'), path);
+  }
+});
+
+test('a card\'s author tag ends on whole characters: initials and a long name never cut an emoji in half (audit 2)', () => {
+  const lone = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/;
+  for (const author of ['\u{1F680} rocket team', 'team-' + '\u{1F680}'.repeat(30)]) {
+    const s = mapContext({ nodes: [{ id: 'a', label: 'Orders', author }], views: [{ id: 'v', nodeIds: ['a'] }] }).buildView('v').markup;
+    assert.ok(!lone.test(s), author);
+  }
+});

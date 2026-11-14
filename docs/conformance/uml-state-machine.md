@@ -97,8 +97,8 @@ rendered page. Each file was opened and looked at.
 Every piece has a name: "State Placed, entry reserve the books, do poll the payment provider, exit log the payment
 result, 1 internal transition", "Composite state Fulfilling, 2 regions", "Region Parcel of Fulfilling, 3 states",
 "Initial pseudostate in Parcel", "Choice", "Terminate", "Transition from Capturing payment to itself: capture failed
-[attempts < 3] / count the attempt". A cut label's full text is in its line's name. Tab reads a box, then what it
-holds, depth first, then the transitions. `describe()` starts at the top initial pseudostate. Text reads at 4.5:1 and
+[attempts < 3] / count the attempt". A cut label's full text is in its line's name. Tab reads what each box
+holds, depth first, then the transitions; a composite state or a region is a box, not a Tab stop: the keyboard reaches it through the outline of elements. `describe()` starts at the top initial pseudostate. Text reads at 4.5:1 and
 lines and outlines at 3:1 on the stage in both themes (`tests/state-machine.html`, `tests/stage4.html`). Every editing
 gesture has a key (`docs/editing.md`).
 

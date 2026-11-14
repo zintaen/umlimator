@@ -129,6 +129,8 @@ try {
   check('◐ says which theme is on: "Dark theme", pressed in dark and not in light (#135)', named === 'Dark theme' && pressed() === 'false' && ($('m-theme').click(), pressed() === 'true'), [named, pressed()]);
   const fb = $('m-find'), seen = fb.querySelector('.ft').textContent.replace('…', '').toLowerCase();
   check('the Find button\'s name holds its visible label (WCAG 2.5.3, audit 1)', fb.getAttribute('aria-label').toLowerCase().includes(seen), [fb.getAttribute('aria-label'), seen]);
+  const words = t => t.replace(/[^\p{L}\p{N}\s]/gu, '').replace(/\s+/g, ' ').toLowerCase().trim(), seenAll = words(fb.textContent); // axe reads aria-hidden text too
+  check('…and all its visible text, the shortcut too, as axe reads it (label-content-name-mismatch, audit 2)', words(fb.getAttribute('aria-label')).includes(seenAll), [fb.getAttribute('aria-label'), seenAll]);
   try { localStorage.removeItem('visual-theme'); } catch (_) {} if (theme0) document.documentElement.dataset.theme = theme0; else delete document.documentElement.dataset.theme;
 
   // a move keeps the entry it leaves: a selection there stays in it (the select a move sends rewrote it)
@@ -159,6 +161,14 @@ try {
   check('…and its view', /On call/.test(found) && !/Nothing called/.test(found), found);
   pg.update(M); await until(() => pg.navigating === null); found = await search('pager');
   check('…and drops what an update() took away', /Nothing called/.test(found) && !/Pager duty/.test(found), found);
+  const M3 = structuredClone(M); M3.nodes.push({ id: 'amp', label: 'Sample & Mark <i>', kind: 'backend' }); M3.views[0].nodeIds.push('amp');
+  pg.update(M3); await until(() => pg.navigating === null); found = await search('amp ma rk');
+  check('a result reads its label, & and < as written, with each word marked on the label (audit 2)', /Sample & Mark <i>/.test(found), found);
+  key('/', document.body); await until(() => !$('m-pal').hidden); $('m-q').value = 'a'; $('m-q').dispatchEvent(new Event('input')); key('ArrowDown', $('m-q'));
+  const on = $('m-res').querySelector('.fr.on');
+  check('the search field is a combobox whose active result a reader hears, in a named list (audit 2)', $('m-q').getAttribute('role') === 'combobox' && !!on && $('m-q').getAttribute('aria-activedescendant') === on.id && !!$('m-res').getAttribute('aria-label'),
+    [$('m-q').getAttribute('aria-activedescendant'), on && on.id]);
+  key('Escape', $('m-q')); pg.update(M); await until(() => pg.navigating === null);
 
   /* ---------- destroy() takes the page's listeners with it ---------- */
   pg.destroy(); const help0 = $('m-helpbox').hidden;

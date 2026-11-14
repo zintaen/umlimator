@@ -87,3 +87,10 @@ test('paths() on a sequence view runs in time order; on other views as before', 
   const bike = load('examples/bike-share.json'), v = bike.views[0], [a, b] = v.nodeIds;
   assert.deepEqual(all.paths(bike, v.id, a, b), core.paths(bike, v.id, a, b));
 });
+
+test('a sequence view: a removed message comes back in its place, inside its operand, and an interaction use is named by its label (audit 2)', () => {
+  const d = all.diff(seq, all.apply(seq, { op: 'delete', id: 'receipt' }));
+  assert.deepEqual(d.model.views[0].edges.map(e => e.id ?? e), seq.views[0].edges.map(e => e.id ?? e));
+  assert.deepEqual(all.validate(d.model).filter(p => p.level === 'error'), []);
+  assert.deepEqual(d.summary, ['removes receipt', 'changes Send receipt email (props)']);
+});

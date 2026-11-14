@@ -139,10 +139,11 @@ function printDoc(X, model, Q) {
 // a view's tables, out of printDoc for Node's tests
 function tablesOf({ D, N, nodeIn, viewEdges }, v, g) {
   const cards = v => arrOf(v.nodeIds).filter(i => N[i]), boxes = v => arrOf(v.containers).filter(c => c && c.id);
-  const ids = cards(v), es = viewEdges(v).filter(e => e.from !== e.to), seq = v.render === 'sequence', stepped = es.some(e => e.step != null), at = Object.fromEntries(g.nodes.map(n => [n.id, n]));
-  const typed = (v.diagram ?? 'map') !== 'map', drawn = id => (typed && at[id]?.label) || nodeIn(id, v.id).label || id; // a typed view's drawn name: sales::Order
+  const wk = new Map(g.edges.flatMap(d => edgeRefIds(d).map(id => [id, d.wk]))), typed = (v.diagram ?? 'map') !== 'map';
+  const at = Object.fromEntries(g.nodes.map(n => [n.id, n])), ids = cards(v), es = viewEdges(v).filter(e => e.from !== e.to && (!typed || wk.has(e._id) || at[e._id])), seq = v.render === 'sequence', stepped = es.some(e => e.step != null); // a typed view's: those its type draws (a communication message is drawn as a row)
+  const drawn = id => (typed && at[id]?.label) || nodeIn(id, v.id).label || id; // a typed view's drawn name: sales::Order
   const name = (v, id) => esc(N[id] ? drawn(id) : (boxes(v).find(c => c.id === id) || {}).label || id);
-  const wk = new Map(g.edges.flatMap(d => edgeRefIds(d).map(id => [id, d.wk]))), held = boxes(v).map(c => [c, arrOf(c.nodeIds).filter(i => ids.includes(i))]).filter(([, ins]) => ins.length);
+  const held = boxes(v).map(c => [c, arrOf(c.nodeIds).filter(i => ids.includes(i))]).filter(([, ins]) => ins.length);
   const word = t => String(t || '').split('.').pop().replace(/([a-z])([A-Z])/g, (_, a, b) => a + ' ' + b.toLowerCase()); // 'uml.DataType': "Data type"
   const T = diagramOf(v) || {}, asText = (T.member || {}).print || (m => m.label ?? m.id); // a member as its type writes it, else its name
   return [

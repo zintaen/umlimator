@@ -49,12 +49,13 @@ function mapContext(model, opts = {}) {
   const D = structuredClone(migrate(model) || {}); // a newer schemaVersion throws: drawn wrongly otherwise (F6)
   plainViews(D); // typed views of a diagram this release does not draw: plain cards
   const M = opts.measure || null, withM = f => (...a) => measured(M, () => f(...a));
-  edgeIds(D.edges); (D.views || []).forEach(v => { if (Array.isArray(v.edges)) edgeIds(v.edges); });
-  const views = (D.views || []).filter(v => v && v.id);
-  const nodes = [...(D.nodes || []), ...views.flatMap(v => v.nodes || [])];
   // a field that must be a list and is not (validate() says so) is left out, as a missing one is
   const lists = (o, ks) => o && ks.forEach(k => { if (o[k] != null && !Array.isArray(o[k])) delete o[k]; });
-  views.forEach(v => { lists(v, ['nodeIds', 'containers', 'intake']); Object.values(v.nodeOverrides || {}).forEach(o => lists(o, ['verbs'])); }); nodes.forEach(n => lists(n, ['verbs']));
+  lists(D, ['edges', 'views']); D.views = (D.views || []).filter(v => v && typeof v === 'object');
+  edgeIds(D.edges); D.views.forEach(v => { if (Array.isArray(v.edges)) edgeIds(v.edges); });
+  const views = D.views.filter(v => v.id);
+  const nodes = [...(D.nodes || []), ...views.flatMap(v => v.nodes || [])];
+  views.forEach(v => { lists(v, ['nodeIds', 'containers', 'intake']); [...(v.containers || []), ...(Array.isArray(v.lanes) ? v.lanes : [])].forEach(c => lists(c, ['nodeIds'])); Object.values(v.nodeOverrides || {}).forEach(o => lists(o, ['verbs'])); }); nodes.forEach(n => lists(n, ['verbs']));
   const N = Object.fromEntries(nodes.map(n => [n.id, n]));
   const V = Object.fromEntries(views.map(v => [v.id, v]));
   const viewOfParent = p => V[p] ? p : (views.find(v => v.id === p || v.node === p) || {}).id; // parent may name a node
@@ -505,7 +506,7 @@ function mapContext(model, opts = {}) {
   const viewKey = vid => {
     const v = V[vid], ids = (v.nodeIds || []).filter(i => N[i]), ns = ids.map(i => nodeIn(i, vid));
     const icons = [...new Set(ns.map(n => n.icon).filter(Boolean))].map(k => (D.icons || {})[k]), who = [...new Set(ns.map(n => n.author).filter(Boolean))].map(k => (D.authors || {})[k]);
-    return JSON.stringify([v, ns, viewEdges(v), ids.map(i => [kidCount(i, vid), opensOf(i, vid)]), icons, who, boxesOf(vid), v.diagram && v.diagram != 'map' && [D.nodes, D.edges, D.icons]]); // a type's boxes lay it out; a typed view also draws what it does not list (a package's name): the whole model
+    return JSON.stringify([v, ns, viewEdges(v), ids.map(i => [kidCount(i, vid), opensOf(i, vid)]), icons, who, boxesOf(vid), v.diagram && v.diagram != 'map' && [D.nodes, D.edges, D.icons, views.map(w => [w.id, w.title, w.subject]), (V[v.parent] || {}).nodeIds]]); // a type's boxes lay it out; a typed view also draws what it does not list (a package's name, the title of a view it opens, a DFD parent's cards): the whole model
   };
   /* ---------- unfolding in place (#71): a stacked card opens into a box on the view it is on ----------
      The card becomes a box with its id and name, holding its inner view's own cards: those not on this view already (the

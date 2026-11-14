@@ -29,12 +29,14 @@ export function diff(before, after) {
   const how = new Map(), was = new Map(), said = []; // each marked card or line: added, changed or removed; a changed one's [before, after]
   const card = (x, h) => ({ ...x, change: h });
   const line = (x, h) => ({ ...x, change: h, ...(h === 'changed' ? { edited: true } : { style: h }) });
-  function mark(old, now, put, keys = l => l.map(x => x && x.id)) { // now's items, marked; old's that left come back, marked removed
+  function mark(old, now, put, keys = l => l.map(x => x && x.id), inPlace) { // now's items, marked; old's that left come back, marked removed
     const ko = keys(old), kn = keys(now), O = new Map(old.map((x, i) => [ko[i], x])), kept = new Set(kn);
     const res = now.map((x, i) => { if (!x || typeof x !== 'object') return x; const o = O.get(kn[i]);
       if (o && typeof o === 'object' && canon(o) === canon(x)) return x;
       const h = o && typeof o === 'object' ? 'changed' : 'added', y = put(x, h); how.set(y, h); if (h === 'changed') was.set(y, [o, x]); return y; });
-    old.forEach((x, i) => { if (x && typeof x === 'object' && !kept.has(ko[i])) { const y = put(x, 'removed'); how.set(y, 'removed'); res.push(y); } });
+    const R = [...res]; let at = 0; // in a view's lines (a sequence's are its time order) after the old one before it that stayed, else at the end
+    old.forEach((x, i) => { if (kept.has(ko[i])) at = res.indexOf(R[kn.indexOf(ko[i])]) + 1;
+      else if (x && typeof x === 'object') { const y = put(x, 'removed'); how.set(y, 'removed'); res.splice(inPlace ? at++ : res.length, 0, y); } });
     return res;
   }
   out.nodes = mark(arr(A.nodes), arr(out.nodes), card);
@@ -57,7 +59,7 @@ export function diff(before, after) {
       w.containers = v.containers.map(c => { const back = left.filter(id => c && arr(o.containers).some(b => b && b.id === c.id && arr(b.nodeIds).includes(id))); return back.length ? { ...c, nodeIds: [...arr(c.nodeIds), ...back] } : c; });
     if (left.length && v.layout && o.layout) { const L = { ...v.layout }, taken = new Set(Object.values(L).map(String));
       left.forEach(id => { const p = o.layout[id]; if (Array.isArray(p) && !taken.has(String(p))) { L[id] = p; taken.add(String(p)); } }); w.layout = L; }
-    if (Array.isArray(v.edges)) { w.edges = mark(arr(o.edges), v.edges, line, lineKeys);
+    if (Array.isArray(v.edges)) { w.edges = mark(arr(o.edges), v.edges, line, lineKeys, 1);
       arr(o.edges).forEach(e => { if (typeof e === 'string' && !v.edges.includes(e) && goneLines.has(e)) w.edges.push(e); }); } // a removed model line it showed
     return w;
   });
@@ -86,11 +88,11 @@ export function diff(before, after) {
       const t = TYPED.diff && TYPED.diff(o, x, name, [A, out]); if (t) return said.push(...t); // a typed element's own words (src/uml/diff.js)
       said.push((keys.includes('label') ? `renames ${o.label || o.id} to ${x.label || x.id}` : `changes ${name(n.id)}`) + (rest.length ? ` (${rest.join(', ')})` : '')); } });
   lines.forEach(e => { const h = how.get(e); if (!h || cardHow.get(e.from) === h && h !== 'changed' || cardHow.get(e.to) === h && h !== 'changed') return;
-    const ends = `${name(e.from)} to ${name(e.to)}`, lab = e.label ? ` (${e.label})` : '';
-    if (h === 'added') said.push(`adds a line from ${ends}${lab}`);
-    if (h === 'removed') said.push(`removes the line from ${ends}${lab}`);
+    const ends = e.from == null && e.to == null ? null : `${name(e.from)} to ${name(e.to)}`, lab = e.label ? ` (${e.label})` : '', it = ends ? 'the line from ' + ends : e.label ?? e.id; // an item with no ends (an interaction use) by its name
+    if (h === 'added') said.push(ends ? `adds a line from ${ends}${lab}` : `adds ${it}`);
+    if (h === 'removed') said.push(ends ? `removes ${it}${lab}` : `removes ${it}`);
     if (h === 'changed') { const [o, x] = was.get(e), t = TYPED.diff && TYPED.diff(o, x, name, [A, out]); if (t) return said.push(...t);
-      said.push(`changes the line from ${ends} (${diffKeys([o, x]).map(k => k === 'label' ? `label ${o.label ?? '-'} → ${x.label ?? '-'}` : k).join(', ')})`); } });
+      said.push(`changes ${it} (${diffKeys([o, x]).map(k => k === 'label' ? `label ${o.label ?? '-'} → ${x.label ?? '-'}` : k).join(', ')})`); } });
   moved.forEach(([verb, id, v]) => said.push(`${verb} ${name(id)} ${verb === 'puts' ? 'in' : 'out of'} the view ${v.title || v.id}`));
   if (TYPED.order) TYPED.order(A, out, views, V0, said, touched, name);
 

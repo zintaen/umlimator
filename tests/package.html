@@ -120,6 +120,8 @@ try {
   click('.node[data-id="money"] .c-name'); key('ArrowDown', { altKey: true });
   check('Alt + ↓ pins a class', last().commands.length === 1 && last().commands[0].op === 'set' && same(last().commands[0].path, ['layout', 'money']), last());
   // a box: selected as a container, F2, Delete, Shift + Delete
+  key('Escape'); const goSales = pick('.um-editor .um-els [data-go="sales"]'); goSales && goSales.click();
+  check('the outline\'s row of a box selects it as a container: the keyboard\'s way to a box (audit 2)', same(h.selection && [h.selection.type, h.selection.id], ['container', 'sales']), h.selection);
   click('.family[data-family="sales"] .family-title');
   check('a click on a box\'s title selects the package', same(h.selection && [h.selection.type, h.selection.id], ['container', 'sales']), h.selection);
   key('F2'); check('F2 on a box: a field holding its own name', pick('.um-rename') && pick('.um-rename').value === 'sales');

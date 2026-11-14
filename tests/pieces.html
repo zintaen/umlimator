@@ -192,6 +192,9 @@ try {
     }
     check("the standalone page keeps them too, light and dark, its views list marking the view shown (#112)", map.view === 'api' && !!doc.querySelector('#m-tree .mit.on') && !bad.length, [map.view, ...new Set(bad)].slice(0, 8));
     f.remove(); }
+  { const M = structuredClone(BIKE); M.nodes.find(n => n.id === 'trips').author = 'a\u{1F680}';
+    const [h, sr, q] = make({ details: true }, M); h.select({ type: 'node', id: 'trips' }); const ini = (q('.panel .author i') || {}).textContent;
+    check('the panel\'s author chip ends on whole characters: never half an emoji (audit 2)', ini === 'A\u{1F680}', ini); h.destroy(); }
 } catch (err) {
   out.fail.push('threw: ' + (err && err.stack || err));
 }

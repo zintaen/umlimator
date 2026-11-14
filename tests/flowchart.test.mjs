@@ -193,7 +193,7 @@ test('validators: 21-flowchart.json breaks no rule; each rule fails on a model t
 
 test('the PDF\'s lines table: a decision\'s exit with no label says so (S17); every other line shows its label', () => {
   const m = structuredClone(EX); m.edges.find(e => e.id === 'resaleable-no').label = ' ';
-  const ctx = mapContext(m), rows = tablesOf(ctx, ctx.V.returns, { nodes: [], edges: [] })[1].rows.map(r => [...r.matchAll(/<td>(.*?)<\/td>/g)].map(x => x[1]));
+  const ctx = mapContext(m), rows = tablesOf(ctx, ctx.V.returns, { nodes: [], edges: layout(m, 'returns').edges })[1].rows.map(r => [...r.matchAll(/<td>(.*?)<\/td>/g)].map(x => x[1]));
   const row = id => rows[m.edges.findIndex(e => e.id === id)];
   assert.deepEqual(row('resaleable-no').slice(1), ['an exit of Fit for resale? with no label', 'Flow']);
   assert.deepEqual(row('resaleable-yes').slice(1), ['yes', 'Flow']);

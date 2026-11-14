@@ -72,7 +72,8 @@ The site builds every example's stills and PDF ([zintaen.github.io/umlimator](ht
 
 Every piece has a name: "Actor Shopper", "Use case Check out, in Online bookshop, 2 extension points", "Subject Online
 bookshop, holding 8 use cases", "Extend from Redeem a voucher to Check out, at payment, when the shopper has a voucher
-code". Tab reads the actors, then each subject and its use cases, then the rest, then the lines (`geo.order`).
+code". Tab reads the actors, then each subject's use cases, then the rest, then the lines (`geo.order`); a
+subject is a box, not a Tab stop: the keyboard reaches it through the outline of elements.
 `describe()` writes the view in sentences. Text reads at 4.5:1 and lines and outlines at 3:1 on the stage in both themes
 (`tests/usecase.html`, `tests/stage4.html`). Every editing gesture has a key (`docs/editing.md`).
 
