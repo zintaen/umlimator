@@ -298,7 +298,7 @@ test('D (§6.1): a software system that opens no view makes its container view, 
   // the next free id; an element that opens a view, a person, a component, no selection or another key: the canvas's own
   const taken = structuredClone(m0); taken.views.push({ id: 'c4-bookshop-containers' });
   assert.equal(T.edits.key(taken, ctx, ['c4-bookshop'], 'D').commands[0].view.id, 'c4-bookshop-containers-2');
-  assert.equal(T.edits.key(C4, ctx, ['c4-bookshop'], 'D'), null, 'it opens a view already');
+  assert.deepEqual(T.edits.key(C4, ctx, ['c4-bookshop'], 'D'), { error: 'Bookshop opens "c4-containers" already: Enter opens it' }, 'it opens a view already: said on the hint line');
   for (const [ids, k] of [[['c4-shopper'], 'D'], [['c4-catalogue'], 'D'], [[], 'D'], [['c4-bookshop'], 'x']]) assert.equal(T.edits.key(m0, ctx, ids, k), null, `${ids} ${k}`);
 });
 

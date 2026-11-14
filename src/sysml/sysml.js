@@ -79,7 +79,7 @@ function SYS_FRAME(model, view, nodeIds) {
 // its shape: a rectangle and the tag, cut to the frame's width (src/uml/frame.js)
 SHAPE['sysml-frame'] = {
   frame: f => `<rect class="family-box" x="${r2(f.x)}" y="${r2(f.y)}" width="${r2(f.w)}" height="${r2(f.h)}" stroke="var(--um-muted)"/>`
-    + frameTag(f.x, f.y, String(f.title ?? f.label ?? f.id), f.w).replace('<text ', `<text class="family-title" data-t="ft" data-o="${esc(f.id)}" `),
+    + frameTag(f.x, f.y, String(f.title ?? f.label ?? f.id), f.w).replace('<text ', () => `<text class="family-title" data-t="ft" data-o="${esc(f.id)}" `),
 };
 
 /* ---- the projection (§8.1): an internal block or parametric view as a composite structure view, on a copy ---- */

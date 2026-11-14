@@ -20,8 +20,8 @@ const DFD_HAS = x => x != null && String(x).trim() !== '';
 const dfdNum = x => (DFD_OBJ(x && x.props) && DFD_HAS(x.props.number) ? String(x.props.number).trim() : '');
 const dfdPlural = (k, w) => `${k} ${k === 1 ? w : w + 's'}`;
 const DFD_LINES = ['dfd.DataFlow', 'uml.CommentLink'];
-const DFD_KIND = { 'dfd.Process': 'process', 'dfd.DataStore': 'store', 'dfd.ExternalEntity': 'entity' };
-const DFD_WORD = { 'dfd.Process': 'Process', 'dfd.DataStore': 'Data store', 'dfd.ExternalEntity': 'External entity', 'uml.Comment': 'Comment' };
+const DFD_KIND = { __proto__: null, 'dfd.Process': 'process', 'dfd.DataStore': 'store', 'dfd.ExternalEntity': 'entity' };
+const DFD_WORD = { __proto__: null, 'dfd.Process': 'Process', 'dfd.DataStore': 'Data store', 'dfd.ExternalEntity': 'External entity', 'uml.Comment': 'Comment' };
 const dfdSkin = view => (view && view.notation === 'gane-sarson' ? 'gane-sarson' : 'yourdon');
 
 /* ---- the shapes (§4.3): one size for both skins; each draws its number and name inside its box ---- */

@@ -179,9 +179,13 @@ const SYS_PAR_MAP = (r, f) => (Array.isArray(r) ? f(r) : !SYS_PAR_OBJ(r) ? r : A
 // what a hook says or refuses, in SysML's words: a connector is a binding, a port a parameter, a part a (constraint) property
 const SYS_PAR_WORDS = [[/\bconnectors?\b/g, w => w.replace('connector', 'binding')], [/\bport name\b/g, 'param name'], [/\bport\b/g, 'parameter'],
   [/\bevery part\b/g, 'every constraint property'], [/\bparts\b/g, 'properties'], [/\bpart\b/g, 'property']];
-const SYS_PAR_RESAY = r => { const re = s => SYS_PAR_WORDS.reduce((x, [a, b]) => x.replace(a, b), s);
+// the model's names holding those words are kept as written: each swapped out for a mark first, put back after (a name equal to
+// a word the hook says keeps that word too: ponytail, a hook saying its words apart from the names would need its own table)
+const SYS_PAR_RESAY = (r, model) => { const kept = [], names = [...SYS_PAR_ARR(model && model.nodes), ...SYS_PAR_ARR(model && model.edges)].flatMap(x => [x, ...SYS_PAR_ARR(x && x.members)])
+    .map(x => (SYS_PAR_OBJ(x) ? String(x.label ?? '') : '')).filter(s => /\b(connector|port|part)s?\b/.test(s)).sort((a, b) => b.length - a.length);
+  const re = s => SYS_PAR_WORDS.reduce((x, [a, b]) => x.replace(a, b), names.reduce((x, k) => x.split(k).join(`\0${kept.push(k) - 1}\0`), s)).replace(/\0(\d+)\0/g, (_, k) => kept[k]);
   return SYS_PAR_OBJ(r) && typeof r.say === 'string' ? { ...r, say: re(r.say) } : SYS_PAR_OBJ(r) && typeof r.error === 'string' ? { ...r, error: re(r.error) } : r; };
-const SYS_PAR_ON = hook => (model, view, ...a) => { const P = SYS_AS_UML(model, view); return SYS_PAR_RESAY(SYS_BACK(hook(P.model, P.view, ...a), model, view)); };
+const SYS_PAR_ON = hook => (model, view, ...a) => { const P = SYS_AS_UML(model, view); return SYS_PAR_RESAY(SYS_BACK(hook(P.model, P.view, ...a), model, view), model); };
 function SYS_PAR_CONNECT(model, view, from, to, at, line) {
   const box = [from, to].map(id => SYS_PAR_INDEX(model, view).el(id)).find(x => x && x.type === 'sysml.ConstraintProperty'); // a binding ends on a parameter of it, not its box
   if (box && SYS_PAR_OBJ(line) && line.type === 'sysml.BindingConnector') return { error: `A binding joins values and parameters: pick a parameter of ${SYS_PAR_NAME(box)}` };

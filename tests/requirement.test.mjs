@@ -361,3 +361,9 @@ test('audit 3: packages nested 3,000 deep lay out (the ranking and the core\'s b
   const m = { schemaVersion: 2, title: 'T', nodes, edges: [], views: [{ id: 'v', diagram: 'sysml.requirement', nodeIds: nodes.map(n => n.id) }] };
   assert.equal(layout(m, 'v').nodes.length, 1);
 });
+
+test('audit 4: a frame whose id holds $ keeps it in its title\'s data-o (no replacement pattern)', () => {
+  const m = { schemaVersion: 2, title: 'T', nodes: [{ id: "pk$'", type: 'uml.Package', label: 'Pk' }, R('r1', 'R1', "pk$'", '1', 'x')], edges: [],
+    views: [{ id: 'v', diagram: 'sysml.requirement', subject: "pk$'", nodeIds: ['r1'] }] };
+  assert.match(svgOf(layout(m, 'v')), /<text class="family-title" data-t="ft" data-o="pk\$&#39;" /);
+});

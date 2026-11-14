@@ -274,6 +274,10 @@ test('describe(): each view in sentences, what it holds in reading order, then e
   assert.equal(d[1], 'Person Shopper: Browses the catalogue, buys books and tracks orders.');
   assert.equal(d[10], 'Step 1: Relationship from Shopper to Storefront: Fills a basket and checks out in [HTTPS].');
   assert.equal(d.length, 1 + 9 + 10);
+  // audit 4: a comment link the dynamic view draws is named too, after the steps
+  const n = structuredClone(C4), nv = n.views[V(DV)]; n.nodes.push({ id: 'note1', type: 'uml.Comment', label: 'Card details stay out' });
+  n.edges.push({ id: 'cl1', type: 'uml.CommentLink', from: 'note1', to: 'c4-api' }); nv.nodeIds.push('note1'); nv.edges.push('cl1');
+  assert.match(describe(n, DV), /\nComment link from [^\n]*Shop API[^\n]*\.$/);
   const e = describe(C4, PV).split('\n');
   assert.equal(e[0], 'Bookshop: production deployment: a C4 deployment diagram of 11 elements and 5 relationships.');
   assert.deepEqual(e.slice(1, 4), ['Deployment node User\'s device, Laptop, tablet or phone, a box holding 1 deployment node.', 'Deployment node Web browser, Chrome, Firefox, Safari or Edge, a box holding 1 container instance.',

@@ -320,3 +320,12 @@ test('audit 3: a comment with no label is named by the id it draws', () => {
   assert.equal(layout(m, 'v').nodes.find(x => x.id === 'note-on-p').aria, 'Comment: note-on-p');
   assert.match(describe(m, 'v'), /Comment: note-on-p\./);
 });
+
+test('audit 4: a node typed by an Object.prototype name is drawn as a plain classifier; validate() and describe() do not throw', () => {
+  for (const type of ['constructor', 'toString', '__proto__', 'hasOwnProperty']) {
+    const m = { schemaVersion: 2, nodes: [P('p', 'Take order', '1'), { id: 'x', type, label: 'Odd' }], edges: [F('f', 'x', 'x')], views: [{ id: 'v', diagram: 'dfd', title: 'L1', nodeIds: ['p', 'x'] }] };
+    assert.equal(layout(m, 'v').byId.x.shape, 'classifier', type);
+    assert.ok(validate(m).length, type);
+    assert.doesNotMatch(describe(m, 'v'), /native code/, type);
+  }
+});

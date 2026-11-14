@@ -531,7 +531,7 @@ with no subject) reparents the card to the view's subject, or to none; Delete on
 | | derive, satisfy, verify, refine, trace, copy | the handle or a drag | `L`, a picker | `add`, checked against the rules' errors (`{ error }` with the rule's words); a copy also sets the client's `text` to the supplier's, in one transaction |
 | | a name and id | double-click once selected | `F2`: `EB-1.2 Range` sets `reqId` and the name together | `set label`, `set props.reqId` |
 | | id, text, risk, verify method | the properties panel | | `set props.<field>` |
-| | a containment line deleted | | for a host: the type's `remove` hook on the line's id | the child re-homed to its owner's owner; Delete on the line from the canvas emits nothing (it is derived, no element) |
+| | a containment line deleted | | `Delete` or `Shift + Delete` on the line (for a host: the type's `remove` hook on the line's id) | `reparent` of the child to its owner's owner, said on the hint line |
 | | a requirement deleted | | `Shift + Delete` | what it contains re-homed to its owner, then `delete`, one transaction |
 | Block definition (`sysml.block-definition`) | a block, interface block, constraint block, value type, package, comment | the palette | `N` | `add` |
 | | a member | the panel's Members, one row each | Enter; `part`, `ref`, `value`, `constraint`, `port` (`proxy port`, `full port`), `in`, `out`, `inout`, `param` before `name : Type [mult]` | `add` or `set` of the member; with no keyword, a block's name makes a part, a constraint block's a constraint property, anything else a value |

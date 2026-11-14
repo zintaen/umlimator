@@ -95,7 +95,8 @@ function bzPic(model, view) {
       .map(o => o && o.at).find(o => o != null && BZ_FLOW.includes(I.ty(o)) && bandOf(o) != null && ((p == null && I.ty(id) === BZ_NOTE) || I.poolOf(o) === p));
     dataLane.set(id, by != null ? { lane: bandOf(by), by } : { lane: p != null && band.has(p) ? p : null }); });
   const lo = new Map(), laneOf = id => (lo.has(id) ? lo.get(id) : lo.set(id, dataLane.has(id) ? dataLane.get(id).lane : bandOf(id)).get(id));
-  const inLane = new Map(); [...items, ...open].forEach(i => I.chain(i).forEach(p => { if (I.L.has(p)) inLane.set(p, (inLane.get(p) || 0) + 1); })); // each lane's element count
+  // each lane's and pool's element count: what it draws (laneOf, so data and notes too), its nested lanes' with it
+  const inLane = new Map(); [...items, ...open].forEach(i => { const l = laneOf(i); if (l != null) [l, ...I.chain(l)].forEach(p => inLane.set(p, (inLane.get(p) || 0) + 1)); });
   const held = new Map(); [...items, ...open].forEach(x => { const o = owner(x); held.has(o) ? held.get(o).push(x) : held.set(o, [x]); });
   const holds = o => held.get(o) || [];
   const boxes = ids.filter(id => open.has(id)).map(id => { const x = I.N.get(id), o = owner(id);
@@ -104,11 +105,10 @@ function bzPic(model, view) {
 }
 
 // accessible names (§9.4): "Service task Take payment, in Sales"; "Timer boundary event No answer, on Take payment"; "Pool
-// Bookshop, 2 lanes, 16 elements"; "Lane Sales of Bookshop, 11 elements"; "Group Dispatch, round 3 elements"
+// Bookshop, 2 lanes, 17 elements"; "Lane Sales of Bookshop, 12 elements"; "Group Dispatch, round 3 elements"
 function bzNodeName(P, id) {
   const { I } = P, x = I.el(id); if (!x) return String(id);
-  const inPool = p => P.items.concat([...P.open]).filter(i => I.poolOf(i) === p).length;
-  if (x.type === BZ_POOL) { const ls = I.lanesOf(id).length, k = inPool(id);
+  if (x.type === BZ_POOL) { const ls = I.lanesOf(id).length, k = P.inLane.get(id) || 0;
     return `Pool ${bzLabel(x)}${ls ? ', ' + bzPlural(ls, 'lane') : ''}${!ls && !k ? ', a black box' : ', ' + bzPlural(k, 'element')}`; }
   if (I.L.has(id)) return `Lane ${bzLabel(x)} of ${bzLabel(I.el(I.L.get(id).pool))}, ${bzPlural(P.inLane.get(id) || 0, 'element')}`;
   if (x.type === BZ_GROUP) return `Group ${bzLabel(x)}, round ${bzPlural(P.ids.filter(i => bzRefs(I.el(i)).includes(id)).length, 'element')}`;
@@ -439,12 +439,12 @@ function bzMoveTo(model, view, id, at) {
   const L = view.layout;
   return bzGuard(model, view, [{ op: 'reparent', id, parent: dest }, ...bes.flatMap(b => bzOwnerTo(I, b, dest)), ...(BZ_OBJ(L) && Object.hasOwn(L, id) ? [{ op: 'set', view: view.id, path: ['layout', id], value: undefined }] : [])]);
 }
-// add: into the lane, pool or expanded sub-process selected, else the selected node's owner; a lane into the pool selected
+// add: into the lane, pool or expanded sub-process selected, else the selected node's (a collapsed sub-process's) owner; a lane into the pool selected
 // (nested in the lane selected); a boundary event onto the activity selected; data in a pool, never a lane
 function bzAdd(model, view, entry, label, at) {
   if (!BZ_OBJ(view) || !BZ_OBJ(entry) || !String(entry.type).startsWith('bpmn.')) return null;
   const I = bzIndex(model), sel = BZ_ARR(BZ_OBJ(at) ? at.sel : null), t = entry.type, name = BZ_HAS(label) ? String(label).trim() : '';
-  const into = sel.map(id => (I.L.has(id) || I.ty(id) === BZ_POOL || I.ty(id) === BZ_SUB ? id : I.el(id) && BZ_FLOW.includes(I.ty(id)) ? I.el(id).parent : null)).find(p => p != null) ?? null;
+  const into = sel.map(id => (I.L.has(id) || I.ty(id) === BZ_POOL || (I.ty(id) === BZ_SUB && bzPic(model, view).open.has(id)) ? id : I.el(id) && BZ_FLOW.includes(I.ty(id)) ? I.el(id).parent : null)).find(p => p != null) ?? null;
   const el = { id: bzFreshId(model, name || entry.label || t.split('.').pop()), type: t, ...(name ? { label: name } : {}), ...(BZ_OBJ(entry.props) ? { props: structuredClone(entry.props) } : {}) };
   if (t === BZ_LANE) { const p = sel.map(id => (I.ty(id) === BZ_POOL ? id : I.L.has(id) ? I.L.get(id).pool : null)).find(Boolean);
     if (!p) return { error: 'Select a pool to add a lane to' };
