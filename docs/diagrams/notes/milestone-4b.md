@@ -221,7 +221,9 @@ dependency.
 
 - **`runs`.** `laneBands(g, lanes, laneOf, turned, rgap, runs)`: `runs`, when given, is `{ laneId: [first, last] }`, each
   lane's rows as the type placed them; `laneBands` then skips `laneRuns`' count. The BPMN type places its own rows (S7)
-  and a box spans rows the count cannot see. Absent, as now: the activity type does not change.
+  and a box spans rows the count cannot see. Absent, as now: the activity type does not change. As built (4b.1): a lane
+  with no run takes its nested lanes' rows (a pool's band from its lanes'), and a lane with neither has no band; a run that
+  is not `[first, last]` with `0 <= first <= last` counts as none.
 - **Boxes in the rows.** When `g.families` is not empty, a box's frame counts toward the extent of its first and last
   content row, so a divider is never drawn across an expanded sub-process (Q14). The activity type has no boxes.
 - The empty row between two pools is a run of its own in `runs`, with no band; the type draws no band for it.
@@ -282,7 +284,10 @@ of one empty row, 120 px across at least (stage 4's empty lane), its name in its
   layout the activity grown by 16 px on each side that holds a boundary event, and on the copy draws the activity at its
   own size inside that box: the router keeps its lines off the whole circle, and the lines' ends already lie on the
   circle's outer side. No engine field. 4b.1's spike counts lines that cross a boundary circle (§14); the fixtures'
-  "no line through a node" covers the circles, which are on the copy's `nodes`.
+  "no line through a node" covers the circles, which are on the copy's `nodes`. As built (4b.1's spike): a box (an
+  expanded sub-process) cannot be grown on one side by its size, so the stand-in gives a box with boundary events a `pad`
+  of 28 (16 px more than stage 2's 12 on every side) and on the copy draws its frame 16 px in on each side that holds one;
+  the circle is then on the drawn frame and the contents keep 12 px of padding there.
 - **Drawn** on the copy: a 32 px circle centred on the port's box, double ring, dashed when non-interrupting
   (`cancelActivity: false`), with its definition's marker; its lines' ends slid onto its outer face; its label by S9's
   search. One with no line is placed on its side's free span by its place among its activity's boundary events, as 5.3
@@ -542,6 +547,54 @@ resolves.
 working folder (`--moddle PATH` or `UMLIMATOR_BPMN_MODDLE` to name another, §12.1). Without it, both exit with: "BPMN
 needs bpmn-moddle: npm install bpmn-moddle@10.3.1". `export` is a new command; it writes BPMN only in 0.27.0.
 
+### 12.5 As built (4b.4)
+
+Where 4b.4 departs from §12.1 to §12.4 and §13, each taken by the lead under the maintainer's standing approval (14 Nov
+2026):
+
+- `writeBpmnXml` resolves to `{ xml, report }`, not to the XML alone: §12.2 and §12.3 ask the writer to say what it
+  drops, and a report item per element is how every reader says it. Each item is `skipped`, its message ending "not
+  written".
+- The writer writes every `bpmn` view of the model as a BPMNDiagram, not only `viewId`'s: the example's sub-process view
+  is a diagram of its own, and `read(write(model))` must give it back. `geo` gives the bounds and points of `viewId`'s
+  diagram; every other shape sits on a plain grid. Until 4b.5 wires the type's layout, `umlimator.py export` passes no
+  geometry, so all its shapes are on the grid. `--view` defaults to the model's first `bpmn` view.
+- A view's `parent` is derived on reading: the first other view that shows its `subject`, else `null`; a view's fields
+  other than `id`, `title`, `parent`, `subject` and `nodeIds` (`direction`, `present`) are reported not written.
+- Weakened as well: a timer's time (`timeDate`, `timeDuration`, `timeCycle`), kept under the event's `ext.bpmn.timer`.
+  A pool's or an annotation's groups are written as `umlimator:groups` (BPMN gives `categoryValueRef` to flow elements
+  only). A foreign attribute on a read element is reported.
+- `read(write(model))` is compared as the Mermaid readers' tests compare it: the order of nodes, of lines and of a view's
+  `nodeIds` is not meaning; a pool's lanes come back in pre-order (a lane set's own order), as the generated models
+  give them.
+- The hostile files over 1 MiB, of 10,000 levels and of many references are made by the test, not committed (they would
+  put megabytes in the repository); `tests/import/hostile/` holds the small ones (entity expansion, references to
+  nothing, no diagram interchange, an unknown namespace).
+- `weakened.bpmn`'s "`gateway-flows` and `flow-start` silent" is tested as what those rules read (the gateway keeps its
+  flows out, each task its flow in), since the rules are 4b.3's.
+- `read(write(model))` equals the model with the defaults the reader writes out filled in: a task's `taskType` `none`, an
+  event's `definition` `none`, a boundary event's `cancelActivity` `true` (row 24's defaults; the 500 generated models
+  leave them out at times). What a reader would read back otherwise is reported by the writer, not left silent: a
+  property on a type row 24 does not give it to (`calledElement` on a task, `categoryValueRef` on a lane, a group or a
+  line), a data object, data store, annotation or group whose `parent` is a lane (written in its pool), lanes whose
+  `parent`s make a cycle (written at the top of their pool), a `processRef` already taken or of the form
+  `<participant>-process-<n>`, a view's `subject` that is no sub-process, a view's `parent` other than the one derived, a
+  view's node that is no element written, an `opensView` other than the first view with the sub-process as `subject`,
+  and a node in no view. The root view's diagram is written first, since a reader takes the first for the root. The
+  writer's report is capped at 1,000 items as the reader's is.
+- The reader reports, and keeps under `ext.bpmn`, what §12.2's list did not name: a boundary event whose host is not
+  read loses `attachedTo`; a sub-process's lane sets; an activity's or event's `ioSpecification`, properties, data
+  inputs and outputs, input and output sets (but the ends of the data associations it reads); a sequence flow's
+  `categoryValueRef`, kept under the flow's own `ext.bpmn`, since row 24 gives a line no groups.
+- The hostile files made by the test include a fifth: just under 1 MiB of diagrams, one per sub-process with it as its
+  plane and one showing them all, which a lookup per view made quadratic; the reader keeps a set and a map instead.
+- The CLI finds bpmn-moddle in `--moddle`, else `UMLIMATOR_BPMN_MODDLE`, else the working folder (§12.1 lists them in
+  another order): a flag given on the command line wins over the environment. A bpmn-moddle with no `BpmnModdle`
+  export (an older or another package) gets the install message.
+- CI's checks have run in four jobs since this note was written: the `node --test` steps are in `node`, `tests/import.py`
+  in `bench`. So the pinned install step is in both jobs, and `UMLIMATOR_BPMN_MODDLE` on the two `node --test` steps and
+  on `tests/import.py`'s.
+
 ## 13. Fixtures, examples and the atlas
 
 From `risks.md` §6's BPMN row and Table 2.1. Each lives in `tests/`, laid out in Node and in Chrome under three fonts and
@@ -587,6 +640,16 @@ atlas builds, `check.mjs` passes, and the example validates with the same proble
   edits laid out and drawn; the count of sequence flows routed outside their pool's band; and the count of lines that
   cross a boundary circle (with the activities grown by 16 px, §6.2). Over 100 ms on an idle machine, a flow outside its
   pool, or a line through a circle, goes to the maintainer with options before 4b.3 draws.
+
+4b.1's spike as built (`tests/bpmn-engine.test.mjs`, a test-only stand-in: cpPlace over sequence and message flows, a lane
+pass of its own keeping a block whole, runs for `laneBands`, activities grown 16 px for their circles, 60 flow nodes,
+three pools, six lanes, ten boundary events, one on an expanded sub-process, two on one task's side, ten message flows):
+0 lines through a boundary circle and 0 sequence flows outside their pool's band, right and down, with the band as
+`laneBands` gives it (so before §5.2a's 12 px growth); 32 crossings laid out right and 45 down, no other layout issue,
+with both flags off. CPU, best of five after a warm-up, ranked, laned, laid out and drawn, on a machine shared with other
+work: a full layout 66 ms; documentation 8 ms; a task renamed 87 ms; a sequence flow's name 72 ms; a flow node moved to
+another lane 84 ms; a boundary event's side 70 ms. All under the 100 ms target: nothing goes to the maintainer before
+4b.3 draws. The crossings are for 4b.5 to pin on the stress fixture.
 
 ## 15. Work packages
 
@@ -732,7 +795,9 @@ Each is set out with its options and trade-offs in the section named; the recomm
   whole tree as decision 24 says, and the CLI's user gets what their own install resolves.
 - **`plan.md`.** §5's M4b row points here (done with this note); §4.3 lists `src/bpmn/`.
 - **`proposal.md`.** §3.4's BPMN row: "24 rows" is Table 2.1's, read; §8.5's BPMN subset points to §16.
-- **`notes/stage-4.md`.** §5.2's `laneBands` contract gains `runs` and boxes when 4b.1 merges.
+- **`notes/stage-4.md`.** §5.2's `laneBands` contract gains `runs` and boxes when 4b.1 merges. Written by 4b.5 (`docs/`
+  is in its Owns, not 4b.1's), with `docs/module-api.md`'s ports section gaining `portMin` beside `fromPort`, `toPort`,
+  `inner` and `portRank` in the edge geometry.
 - **`README.md` in this folder.** The status table shows this note and, once approved, its work packages; the log
   records the decisions, and the core budget split of 13 Nov 2026 (4,451 B: stage 6 400, M2 1,400, M3 500, M4a 700, M4b
   700, reserve about 750), which no document records yet (§2.3). (The lead's.)

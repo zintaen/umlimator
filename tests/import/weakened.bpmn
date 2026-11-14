@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- What nearly every file with an exclusive gateway holds: conditions on the flows leaving it and a default, a send
+     and a receive task, and a timer's time. Read as plain flows and tasks, each reported `weakened` and kept under ext.bpmn
+     (notes/milestone-4b.md §12.2), so the gateway keeps its flows out and each task its flow in. -->
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" id="defs" targetNamespace="http://example.com/bpmn/weakened">
+  <process id="approve" isExecutable="true">
+    <startEvent id="asked" name="Leave asked for" />
+    <receiveTask id="wait-form" name="Wait for the form" />
+    <exclusiveGateway id="days" name="How many days?" default="f-long" />
+    <task id="approve-short" name="Approve" />
+    <sendTask id="ask-manager" name="Ask the manager" />
+    <exclusiveGateway id="joined" />
+    <intermediateCatchEvent id="an-hour" name="An hour passes">
+      <timerEventDefinition>
+        <timeDuration xsi:type="tFormalExpression">PT1H</timeDuration>
+      </timerEventDefinition>
+    </intermediateCatchEvent>
+    <endEvent id="done" name="Done" />
+    <sequenceFlow id="f-asked" sourceRef="asked" targetRef="wait-form" />
+    <sequenceFlow id="f-form" sourceRef="wait-form" targetRef="days" />
+    <sequenceFlow id="f-short" name="up to 3" sourceRef="days" targetRef="approve-short">
+      <conditionExpression xsi:type="tFormalExpression">${days &lt;= 3}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="f-long" name="more" sourceRef="days" targetRef="ask-manager" />
+    <sequenceFlow id="f-approved" sourceRef="approve-short" targetRef="joined" />
+    <sequenceFlow id="f-asked-manager" sourceRef="ask-manager" targetRef="joined" />
+    <sequenceFlow id="f-wait" sourceRef="joined" targetRef="an-hour" />
+    <sequenceFlow id="f-done" sourceRef="an-hour" targetRef="done" />
+  </process>
+</definitions>

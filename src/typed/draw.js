@@ -65,14 +65,16 @@ SHAPE.classifier = CLASSIFIER;
 
 // A typed view's line (1.5; a map's lines never read it) says how it is drawn in e.end: { from, to, dashed, labels }. from
 // and to name an end in this table, the line's ends as UML draws them (none, or a name it does not hold, draws no marker);
-// dashed: a dependency's or realization's line; labels: each end's role and multiplicity (endLabels). Each end: [its
-// length, half its height, its path pointing right with the tip at its length, its fill]. Its tip is where the line ends,
-// on the node's outline. Hollow is the stage's background, filled the line's own colour (T2), in either theme. The socket
-// (notes/stage-5.md §9.2) is a usage's end on an interface drawn as a 16 px ball: a half circle of radius 11 open towards the
-// ball, its middle on the line 3 px before the end (the ball's outline), its centre 8 px past it (the ball's)
+// dashed: a dependency's or realization's line, 'dot' a dotted one (BPMN's association, notes/milestone-4b.md §10);
+// labels: each end's role and multiplicity (endLabels). Each end: [its length, half its height, its path pointing right
+// with the tip at its length, its fill]. Its tip is where the line ends, on the node's outline. Hollow is the stage's
+// background, filled the line's own colour (T2), in either theme. The socket (notes/stage-5.md §9.2) is a usage's end on
+// an interface drawn as a 16 px ball: a half circle of radius 11 open towards the ball, its middle on the line 3 px before
+// the end (the ball's outline), its centre 8 px past it (the ball's)
 const ENDS = { none: null, arrow: [10, 4, 'M0 0L10 4L0 8Z', 'line'], open: [10, 5, 'M0 0L10 5L0 10', 'none'], triangle: [13, 7, 'M0 0L13 7L0 14Z', 'hollow'],
   diamond: [16, 6, 'M0 6L8 0L16 6L8 12Z', 'hollow'], 'filled-diamond': [16, 6, 'M0 6L8 0L16 6L8 12Z', 'line'], socket: [3, 11, 'M11 0A11 11 0 0 0 11 22', 'none'],
-  'filled-triangle': [13, 7, 'M0 0L13 7L0 14Z', 'line'] }; // an extension's, at the metaclass (notes/stage-6.md §4.1)
+  'filled-triangle': [13, 7, 'M0 0L13 7L0 14Z', 'line'], // an extension's, at the metaclass (notes/stage-6.md §4.1)
+  circle: [8, 4, 'M0 4A4 4 0 1 0 8 4A4 4 0 1 0 0 4Z', 'hollow'] }; // a message flow's start, its far side the line's end (notes/milestone-4b.md §10)
 const endOf = (E, w) => hasKey(ENDS, E[w]) && ENDS[E[w]] ? E[w] : null;
 
 // a typed line's end labels (1.5): each end's role and multiplicity (e.end.labels: { from: { role, mult }, to: { role, mult } }),
@@ -116,7 +118,7 @@ TYPED.lines = ({ id, edges, drawn, lstyle, MC }) => {
   return {
     defs: ends.map(endMark).join(''),
     edge(e, i) { const E = e.end; if (!E) return null;
-      const st = E.dashed ? { ...lstyle(e), dash: '6 4' } : lstyle(e), cut = w => endOf(E, w) ? ENDS[endOf(E, w)][0] : 0, at = w => endOf(E, w) ? `url(#${id}-${endOf(E, w)}-${st.m})` : '';
+      const st = E.dashed ? { ...lstyle(e), dash: E.dashed === 'dot' ? '2 3' : '6 4' } : lstyle(e), cut = w => endOf(E, w) ? ENDS[endOf(E, w)][0] : 0, at = w => endOf(E, w) ? `url(#${id}-${endOf(E, w)}-${st.m})` : '';
       return { st, pts: trimLine(drawn[i], cut('from'), cut('to')), marks: `${at('to') ? `marker-end="${at('to')}"` : ''} ${at('from') ? `marker-start="${at('from')}"` : ''}` }; },
     labels: i => edges[i].end ? endLabs(i).map(b => `<text x="${r2(b.x + b.w / 2)}" y="${r2(b.y + 10.5)}" text-anchor="middle" class="end-lab" data-i="${i}" data-end="${b.end}" data-box="${b.x} ${b.y} ${b.w} ${b.h}" fill="var(--um-muted)" style="font:500 10px var(--um-sans)">${esc(b.text)}</text>`).join('') : '',
   };
