@@ -132,8 +132,10 @@ function cpRank(items, links) {
 function cpPlace(pic, lines, pins) {
   const links = lines.filter(l => !l.inner).map(l => (l.kind === 'socket' ? [l.t.at, l.f.at] : [l.f.at, l.t.at]));
   const itemIn = (x, g) => { for (let k = 0; x != null && k < 64; k++, x = pic.owner(x)) if (pic.owner(x) === g) return x; };
+  // each box placed after the boxes it holds, with no recursion: boxes can nest deep
+  const done = new Map(), order = [null]; for (let i = 0; i < order.length; i++) pic.holds(order[i]).forEach(x => pic.open.has(x) && order.push(x));
   const block = g => { const items = pic.holds(g), size = Object.create(null), pos = Object.create(null);
-    items.forEach(x => { size[x] = pic.open.has(x) ? block(x) : { w: 1, h: 1, pos: { [x]: [0, 0] } }; });
+    items.forEach(x => { size[x] = pic.open.has(x) ? done.get(x) : { w: 1, h: 1, pos: { [x]: [0, 0] } }; });
     const L = links.map(([a, b]) => [itemIn(a, g), itemIn(b, g)]).filter(([a, b]) => a !== undefined && b !== undefined && a !== b), lined = new Set(L.flat());
     const { rank, fwd } = cpRank(items.filter(x => lined.has(x)), L), cols = [], hh = x => size[x].h;
     items.filter(x => lined.has(x)).forEach(x => (cols[rank[x]] ||= []).push(x));
@@ -146,7 +148,8 @@ function cpPlace(pic, lines, pins) {
     loose.forEach(x => { if (c && c + size[x].w > per) { r += rh; c = 0; rh = 0; }
       Object.entries(size[x].pos).forEach(([id, [a, b]]) => { pos[id] = [c + a, r + b]; }); c += size[x].w; rh = Math.max(rh, size[x].h); c0 = Math.max(c0, c); });
     return { w: c0, h: r + rh, pos }; };
-  const at = block(null).pos, P = Object.entries(CP_OBJ(pins) ? pins : {}).filter(([id, p]) => Object.hasOwn(at, id) && Array.isArray(p) && p.length === 2 && p.every(Number.isFinite));
+  order.reverse().forEach(g => done.set(g, block(g)));
+  const at = done.get(null).pos, P = Object.entries(CP_OBJ(pins) ? pins : {}).filter(([id, p]) => Object.hasOwn(at, id) && Array.isArray(p) && p.length === 2 && p.every(Number.isFinite));
   if (!P.length) return at;
   const taken = P.map(([, p]) => p), free = (c, r) => !taken.some(([c2, r2]) => c2 === c && Math.abs(r2 - r) < 1), pinned = new Set(P.map(([id]) => id));
   P.forEach(([id, p]) => { at[id] = p; });

@@ -73,8 +73,12 @@ function bzPic(model, view) {
   const pools = ids.filter(id => I.ty(id) === BZ_POOL), groups = ids.filter(id => I.ty(id) === BZ_GROUP);
   const lanes = pools.flatMap((p, k) => [{ id: p, order: k }, ...I.lanesOf(p).map((id, j) => ({ id, parent: I.up(id), order: j }))]), band = new Set(lanes.map(l => l.id));
   const be = new Map(); ids.forEach(id => { const h = bzProps(I.N.get(id)).attachedTo; if (I.ty(id) === BZ_BE && shown.has(h) && BZ_ACT.includes(I.ty(h))) be.set(id, h); });
-  const open = new Set(); ids.forEach(id => { if (I.ty(id) !== BZ_POOL && I.ty(id) !== BZ_GROUP && !be.has(id)) I.chain(id).forEach(p => { if (shown.has(p) && I.ty(p) === BZ_SUB && !I.looped(p)) open.add(p); }); });
-  const owner = id => I.chain(id).find(p => open.has(p)) ?? null; // the expanded sub-process it is drawn in
+  // each owner looked at once: one already walked had its own owners walked with it
+  const open = new Set(), went = new Set(); ids.forEach(id => { if (I.ty(id) !== BZ_POOL && I.ty(id) !== BZ_GROUP && !be.has(id)) for (const p of I.chain(id)) { if (went.has(p)) break; went.add(p); if (shown.has(p) && I.ty(p) === BZ_SUB && !I.looped(p)) open.add(p); } });
+  // the expanded sub-process it is drawn in: the first open one up its chain, kept for each id walked (an open one is in no loop)
+  const own = new Map(), owner = id => { if (own.has(id)) return own.get(id); const path = [id]; let p = I.up(id), o = null;
+    for (const seen = new Set(path); p != null && I.el(p) && !seen.has(p); p = I.up(p)) { if (open.has(p) || own.has(p)) { o = open.has(p) ? p : own.get(p); break; } seen.add(p); path.push(p); }
+    path.forEach(x => own.set(x, o)); return o; };
   const items = ids.filter(id => I.ty(id) !== BZ_POOL && I.ty(id) !== BZ_GROUP && !be.has(id) && !open.has(id)), laid = new Set([...items, ...open]);
   const list = Array.isArray(view && view.edges) ? view.edges.map(x => (typeof x === 'string' ? I.E.get(x) : x)) : [...I.E.values()].filter(e => BZ_LINES.includes(e.type));
   const both = id => shown.has(id) || (I.L.has(id) && shown.has(I.L.get(id).pool)), said = list.filter(e => BZ_OBJ(e) && BZ_LINES.includes(e.type) && both(e.from) && both(e.to));
@@ -90,11 +94,13 @@ function bzPic(model, view) {
     const by = lines.filter(l => l.e.type === BZ_ASSOC || l.e.type === BZ_DATA_ASSOC).map(l => (l.f.at === id && !l.f.port ? l.t : l.t.at === id && !l.t.port ? l.f : null))
       .map(o => o && o.at).find(o => o != null && BZ_FLOW.includes(I.ty(o)) && bandOf(o) != null && ((p == null && I.ty(id) === BZ_NOTE) || I.poolOf(o) === p));
     dataLane.set(id, by != null ? { lane: bandOf(by), by } : { lane: p != null && band.has(p) ? p : null }); });
-  const laneOf = id => (dataLane.has(id) ? dataLane.get(id).lane : bandOf(id));
-  const holds = o => [...items, ...open].filter(x => owner(x) === o);
+  const lo = new Map(), laneOf = id => (lo.has(id) ? lo.get(id) : lo.set(id, dataLane.has(id) ? dataLane.get(id).lane : bandOf(id)).get(id));
+  const inLane = new Map(); [...items, ...open].forEach(i => I.chain(i).forEach(p => { if (I.L.has(p)) inLane.set(p, (inLane.get(p) || 0) + 1); })); // each lane's element count
+  const held = new Map(); [...items, ...open].forEach(x => { const o = owner(x); held.has(o) ? held.get(o).push(x) : held.set(o, [x]); });
+  const holds = o => held.get(o) || [];
   const boxes = ids.filter(id => open.has(id)).map(id => { const x = I.N.get(id), o = owner(id);
     return { id, label: bzLabel(x), title: bzLabel(x), nodeIds: holds(id).filter(k => !open.has(k)), ...(o != null ? { parent: o } : {}), shape: 'bpmn-frame', aria: bpmnName(bzLook(x, true)) }; });
-  return { I, ids, shown, pools, groups, lanes, band, be, open, owner, items, lines, said, laneOf, dataLane, holds, boxes };
+  return { I, ids, shown, pools, groups, lanes, band, be, open, owner, items, lines, said, laneOf, dataLane, holds, boxes, inLane };
 }
 
 // accessible names (§9.4): "Service task Take payment, in Sales"; "Timer boundary event No answer, on Take payment"; "Pool
@@ -104,7 +110,7 @@ function bzNodeName(P, id) {
   const inPool = p => P.items.concat([...P.open]).filter(i => I.poolOf(i) === p).length;
   if (x.type === BZ_POOL) { const ls = I.lanesOf(id).length, k = inPool(id);
     return `Pool ${bzLabel(x)}${ls ? ', ' + bzPlural(ls, 'lane') : ''}${!ls && !k ? ', a black box' : ', ' + bzPlural(k, 'element')}`; }
-  if (I.L.has(id)) return `Lane ${bzLabel(x)} of ${bzLabel(I.el(I.L.get(id).pool))}, ${bzPlural([...P.items, ...P.open].filter(i => I.chain(i).includes(id)).length, 'element')}`;
+  if (I.L.has(id)) return `Lane ${bzLabel(x)} of ${bzLabel(I.el(I.L.get(id).pool))}, ${bzPlural(P.inLane.get(id) || 0, 'element')}`;
   if (x.type === BZ_GROUP) return `Group ${bzLabel(x)}, round ${bzPlural(P.ids.filter(i => bzRefs(I.el(i)).includes(id)).length, 'element')}`;
   const name = bpmnName(bzLook(x, P.open.has(id))), lane = P.laneOf(id);
   if (P.be.has(id)) return `${name}, on ${I.called(P.be.get(id))}`;
@@ -147,9 +153,11 @@ function bzGeo({ model, view, pos: pins, memo }) {
         leaves(it.x).forEach(id => { at[id] = [placed[id][0], base + r + placed[id][1] - it.r0]; }); });
       mine.filter(x => beside(x) != null).forEach(x => { const c = span(beside(x)).c0, r = next[c] ?? 0; next[c] = r + 1; at[x] = [c, base + r]; });
       const n = Math.max(least, 0, ...Object.values(next)); if (n) { runs[l] = [base, base + n - 1]; base += n; } };
-    const ord = laneOrder(P.lanes), kids = id => ord.filter(l => l.parent === id);
-    const visit = (l, pool) => { const ks = kids(l.id); if (!pool) stack(l.id, ks.length ? 0 : 1); ks.forEach(k => visit(k, false)); if (pool) stack(l.id, ks.length ? 0 : 1); };
-    ord.filter(l => l.depth === 0).forEach((p, k) => { if (k) { runs['\u0000gap' + k] = [base, base]; base++; } const b0 = base; visit(p, true); spans[p.id] = [b0, base - 1]; });
+    const ord = laneOrder(P.lanes), kids = new Map(); ord.forEach(l => kids.has(l.parent) ? kids.get(l.parent).push(l) : kids.set(l.parent, [l]));
+    // a lane stacked before its lanes, a pool after them; an explicit stack, as lanes from an import can nest deep
+    const visit = top => { const q = [[top, 1]]; while (q.length) { const [l, pool] = q.pop(), ks = kids.get(l.id) || [];
+      if (pool !== 1) stack(l.id, ks.length ? 0 : 1); if (pool !== 2) { if (pool) q.push([l, 2]); q.push(...ks.map(k => [k, 0]).reverse()); } } };
+    ord.filter(l => l.depth === 0).forEach((p, k) => { if (k) { runs['\u0000gap' + k] = [base, base]; base++; } const b0 = base; visit(p); spans[p.id] = [b0, base - 1]; });
     if (by.has('\u0000none')) { runs['\u0000gap'] = [base, base]; base++; stack('\u0000none', 0); } }
   const rowOf = x => Math.min(...leaves(x).map(id => at[id][1])), colOf = x => Math.min(...leaves(x).map(id => at[id][0]));
   const toward = (me, other) => (other.pool ? (spans[other.pool] || [0])[0] : rowOf(other.at)) < (me.pool ? spans[me.pool][0] : rowOf(me.at));

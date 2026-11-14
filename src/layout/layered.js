@@ -216,11 +216,7 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
   const familyDefs = dg.containers || [], tagged = n => map && (n.author || n.k === 'm-ext'), TB = !map && dg.turned; // tagged: a name tag hangs under the card
   const headW = f => textW(!map && f.title || f.label || f.id, !map && f.head ? 12 : 11) + 16; // a box's title, as the audit measures it (two lines: at 12 px)
   const framesNow = () => { const cache = Object.create(null); // a box may be named 'constructor'
-    const frameOf = (f, trail = new Set()) => {
-      if (cache[f.id]) return cache[f.id];
-      if (trail.has(f.id)) return null;
-      const next = new Set([...trail, f.id]);
-      const children = familyDefs.filter(c => c.parent === f.id).map(c => frameOf(c, next)).filter(Boolean);
+    const make = (f, children) => {
       const members = (f.nodeIds || []).map(id => byId[id]).filter(Boolean);
       const rects = [...members.map(n => TB ? { x: n.x - 14, y: n.y - 36, w: n.w + 44, h: n.h + 72 } : {x:n.x - 36,y:n.y - 14,w:n.w + 72,h:n.h + 44 + (tagged(n) ? 14 : 0)}), ...children];
       if (!rects.length) return null;
@@ -229,6 +225,14 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
       if (!map) b[TB ? 'h' : 'w'] = Math.max(b[TB ? 'h' : 'w'], headW(f) + 16);
       return cache[f.id] = dg.typed ? TYPED.frame(b, TB) : b;
     };
+    // each box after the boxes in it, on an explicit stack (boxes from an import can nest deep); one on the path is skipped (a loop)
+    const kids = new Map(); familyDefs.forEach(c => kids.has(c.parent) ? kids.get(c.parent).push(c) : kids.set(c.parent, [c]));
+    const frameOf = top => { if (cache[top.id]) return cache[top.id];
+      const st = [[top, 0, []]], on = new Set([top.id]); let got;
+      while (st.length) { const t = st.at(-1), ks = kids.get(t[0].id) || [];
+        if (t[1] < ks.length) { const c = ks[t[1]++]; if (cache[c.id]) t[2].push(cache[c.id]); else if (!on.has(c.id)) { on.add(c.id); st.push([c, 0, []]); } continue; }
+        st.pop(); on.delete(t[0].id); got = make(t[0], t[2]); if (got && st.length) st.at(-1)[2].push(got); }
+      return got; };
     const out = familyDefs.map(f => frameOf(f)).filter(Boolean);
     if (map) out.forEach(f => { // the box fits its title and its badges, which are tabs on its top border, at the right
       const tabs = [...badgesOf(f).map((b, i) => ({ text: b.text, fill: toneOf(b), badge: i, w: b.text.length * 6.4 + 10 })), ...(f.unfolds ? [{ text: '⤡', fold: true, w: 28 }] : [])], all = tabs.reduce((a, t) => a + t.w + 4, -4); // an unfolded card's box: its ⤡ folds it (#71)

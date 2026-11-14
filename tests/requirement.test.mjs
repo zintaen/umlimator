@@ -355,3 +355,9 @@ test('audit 1: requirement-typing leaves a property typed by a value type that s
   edges: [], views: [{ id: 'req', diagram: 'sysml.requirement', nodeIds: ['rq', 'rq2'] }] };
   assert.deepEqual(validate(m).filter(p => p.rule === 'requirement-typing').map(p => p.ids), [['bike.goal', 'rq2']], 'only the name a requirement alone holds');
 });
+
+test('audit 3: packages nested 3,000 deep lay out (the ranking and the core\'s boxes walk with their own stacks)', () => {
+  const nodes = Array.from({ length: 3000 }, (_, i) => N('p' + i, 'uml.Package', 'P' + i, i ? { parent: 'p' + (i - 1) } : {})).concat(R('r', 'R', 'p2999', '1', 't'));
+  const m = { schemaVersion: 2, title: 'T', nodes, edges: [], views: [{ id: 'v', diagram: 'sysml.requirement', nodeIds: nodes.map(n => n.id) }] };
+  assert.equal(layout(m, 'v').nodes.length, 1);
+});

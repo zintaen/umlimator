@@ -97,8 +97,10 @@ function rqRank(frame, boxes, links) {
   boxes.forEach(b => kids.set(b.parent, [...(kids.get(b.parent) || []), b.id]));
   cards.forEach((ids, g) => ids.forEach(id => home.set(id, g)));
   const itemIn = (x, g) => { for (let y = x, k = 0; y != null && k < 64; k++) { const u = home.has(y) ? home.get(y) : up.get(y); if (u === g) return y; y = u; } return null; };
+  // each box placed after the boxes it holds, and flattened, with no recursion: packages from an import can nest deep
+  const done = new Map(), order = [frame.id]; for (let i = 0; i < order.length; i++) (kids.get(order[i]) || []).forEach(b => order.push(b));
   const place = g => {
-    const subs = new Map((kids.get(g) || []).map(b => [b, place(b)])), items = [...(cards.get(g) || []), ...subs.keys()], sz = id => subs.get(id) || { w: 1, h: 1, at: null };
+    const subs = new Map((kids.get(g) || []).map(b => [b, done.get(b)])), items = [...(cards.get(g) || []), ...subs.keys()], sz = id => subs.get(id) || { w: 1, h: 1, at: null };
     const ls = links.map(([a, b]) => [itemIn(a, g), itemIn(b, g)]).filter(([a, b]) => a != null && b != null && a !== b);
     const outs = new Map(items.map(id => [id, []])), st = new Map(), back = new Set(), rank = new Map(items.map(id => [id, 0]));
     ls.forEach((l, k) => outs.get(l[0]).push(k));
@@ -115,8 +117,9 @@ function rqRank(frame, boxes, links) {
     items.filter(id => !lined.has(id)).forEach(id => { const { w, h: hh } = sz(id); if (cx && cx + w > W) { under += band; cx = 0; band = 0; } at.set(id, [cx, under]); cx += w; band = Math.max(band, hh); });
     return { w: Math.max(1, ...[...at].map(([id, [c]]) => c + sz(id).w)), h: Math.max(1, ...[...at].map(([id, [, r]]) => r + h(id))), at, subs };
   };
-  const pos = Object.create(null), flat = (P, c0, r0) => P.at.forEach(([c, r], id) => { if (P.subs.has(id)) flat(P.subs.get(id), c0 + c, r0 + r); else pos[id] = [c0 + c, r0 + r]; });
-  flat(place(frame.id), 0, 0);
+  order.reverse().forEach(g => done.set(g, place(g)));
+  const pos = Object.create(null), q = [[done.get(frame.id), 0, 0]];
+  while (q.length) { const [P, c0, r0] = q.pop(); if (typeof P === 'string') pos[P] = [c0, r0]; else [...P.at].reverse().forEach(([id, [c, r]]) => q.push([P.subs.get(id) || id, c0 + c, r0 + r])); }
   return pos;
 }
 
