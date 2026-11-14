@@ -58,7 +58,7 @@ const ovNm = (I, id) => { const x = I.el(id); return x && OV_HAS(x.label) ? Stri
 function ovInline(model, I, n, lay = true) {
   const sv = I.V.get(n.opensView);
   if (!sv || sv.diagram !== 'uml.sequence') return null;
-  const own = new Set(OV_ARR(sv.nodes).filter(OV_OBJ).map(x => x.id)), heads = OV_ARR(sv.nodeIds).filter(id => I.N.has(id) || own.has(id)).length;
+  const own = new Set(OV_ARR(sv.nodes).filter(OV_OBJ).map(x => x.id)), heads = new Set(OV_ARR(sv.nodeIds).filter(id => I.N.has(id) || own.has(id))).size; // listed twice: one head, as sqHeads draws
   const messages = interactionWalk(model, sv).occ.filter(o => o.message).length;
   const small = heads <= OV_MAX.heads && messages <= OV_MAX.messages;
   return { view: sv, heads, messages, small, run: small && lay ? sqRun(model, sv) : null };

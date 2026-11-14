@@ -374,7 +374,11 @@ function tmRemove(model, view, ids, fromModel) {
 function tmKeyHook(model, view, ids, key) {
   const V = tmView(model, view); if (!V || (key !== 's' && key !== 'S')) return null;
   const X = tmIndex(model, V), ls = TM_ARR(ids).filter(id => X.H.has(id)); if (!ls.length) return null;
-  return ls.map(id => ({ op: 'set', view: V.id, path: ['present', id, 'as'], value: X.values(id) ? undefined : 'values' }));
+  const as = id => (X.values(id) ? undefined : 'values');
+  if (!ls.some(id => ['__proto__', 'constructor', 'prototype'].includes(id))) return ls.map(id => ({ op: 'set', view: V.id, path: ['present', id, 'as'], value: as(id) }));
+  // an id no path of set may hold (core/apply.js UNSAFE): the whole present, each entry an own key
+  const P = TM_OBJ(V.present) ? V.present : {};
+  return [{ op: 'set', view: V.id, path: ['present'], value: ls.reduce((v, id) => { const e = { ...(Object.hasOwn(P, id) && TM_OBJ(P[id]) ? P[id] : {}), as: as(id) }; if (!e.as) delete e.as; return { ...v, [id]: e }; }, { ...P }) }];
 }
 
 /* ---- the type ---- */
