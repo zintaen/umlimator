@@ -215,6 +215,42 @@ cloud view to open and `tools/atlas.mjs` stops on a node that opens a view alrea
   aliases the new files need.
 - No `aws` row until 4a.8 (decision 1).
 
+As built (4a.3, 14 Nov 2026). The words, for the maintainer to approve:
+
+- **Azure**, `terms.text`, from https://learn.microsoft.com/en-us/azure/architecture/icons/ read 14 Nov 2026 (the
+  page's "Icon terms", above "I agree to the above terms" and the download link), word for word: "Microsoft permits the
+  use of these icons in architectural diagrams, training materials, or documentation. You can copy, distribute, and
+  display the icons only for the permitted use unless granted explicit permission by Microsoft. Microsoft reserves all
+  other rights." The page links `Azure_Public_Service_Icons_V25.zip` (label `V25`, 1,045,239 bytes by the server's
+  `Content-Length`).
+- **Google**, `terms.text`, from https://cloud.google.com/icons read 14 Nov 2026: the page's usage statement, word for
+  word ("Welcome to the official library for Google Cloud product icons. Here you can find the Google Cloud product icons
+  you need for your diagrams, technical documentation, and more."), the brand guidance's address
+  (https://about.google/brand-resource-center/rules/; the icons page links none, so Google's own rules page is named),
+  and the legal line. The page carries no legal line of its own: `legal` is "Google Cloud and the Google Cloud logo are
+  trademarks of Google LLC.", Google's usual trademark attribution, which the maintainer confirms or replaces with the
+  words of the answer of 13 Nov 2026 (one edit of `text`, `legal` and `terms.sha256`). Label `2026-11-14`.
+- **Not yet pinned.** Each zip's `sha256` (and Google's `bytes`, which its server does not give without a download) and
+  Azure's `memberSha256` are `null`: a pin needs the zips themselves, and downloading them is the yes this note keeps for
+  a person who has read the terms, so the lead did not. `pack fetch` refuses a row with no pin ("not pinned in this
+  release"). The maintainer pins: reads the terms on each page, downloads the zips there, and records `bytes` (`wc -c`),
+  `sha256` (`shasum -a 256`) and, for Azure, `unzip -p <zip> '*Microsoft_Terms_of_Use.pdf' | shasum -a 256`; then
+  `UMLIMATOR_ICON_CACHE=$(mktemp -d) python3 umlimator.py pack fetch gcp` (and `azure`) checks the pins, lists duplicate
+  ids, and the examples' ids are checked with `check`'s nearest ids. Whether Azure's zip holds an Entra ID icon (decision
+  7) is read at that pin.
+- **Departures.** The patterns take an optional top folder (`(?:[^/]+/)?`; Azure's zip files its icons under
+  `Azure_Public_Service_Icons/Icons/…`), still anchored and with no nested repetition. A duplicate id whose files differ is
+  named by `pack fetch` and the first kept, not an error that blocks a user's fetch; the pin's review adds the alias row.
+  `entra` keeps its row and gains `"render": "cache"` (read from the cache, never downloaded by a render); the three Azure
+  rows lose `url` and `sha256` (the zip's pin covers them) and gain `pack` and `id`. `.github/workflows/check.yml` gains a
+  second edit besides `tests/packs.py`'s step: its "every brand logo still downloads" step skips the rows a render never
+  downloads (`pack` and `render: "cache"`), which would otherwise fail on every run. `umlimator.py` gains `packs()`, the
+  lazy import of `umlimator_packs.py` beside it (as `cmd_import` imports `umlimator_import`), used by the four places this
+  row names.
+  The messages name the pack by its row's `vendor`: "Google Cloud's file at …" (§4.2) and "download the Microsoft Azure
+  icons (V25)" (§4.3). The one line per pack that says how to fetch it (§4.5) is shared by the pack entries and
+  `icon_bytes`' three Azure rows, so a render prints it once per pack.
+
 ### 4.2 Fetching (4a.3, S4)
 
 `umlimator.py pack fetch <pack>` and `umlimator.py pack list`, in a new `umlimator_packs.py` (`umlimator.py` stays the
@@ -225,8 +261,10 @@ entry, as `umlimator_import.py` is for `import`):
    accepted before.
 3. Each zip is downloaded over HTTPS from its pinned address into a temporary file in the cache folder, reading no more
    than its pinned `bytes`; its SHA-256 is checked before anything reads it. A mismatch keeps nothing and says: "Google's
-   file at <url> is not the one this release pinned (Google changes these files without a version); the copy you already
-   have, if any, is still used. A later release pins the new one."
+   file at <url> is not the one this release pinned (Google changes these files without a version). A later release pins
+   the new one." (A copy that matches the pin is "fetched already" before any download, and a copy of an older pin is in
+   a folder a render never reads, so no copy is "still used".) A download shorter than the pinned `bytes` is a failed
+   download ("cannot download"), not a changed file.
 4. Azure: the zip's `Microsoft_Terms_of_Use.pdf` is hashed in memory; a hash other than `memberSha256` keeps nothing
    and says Microsoft's terms changed, so the pack waits for a re-pin.
 5. Kept as `<icon cache>/packs/<pack>/<label>/<n>.zip`, renamed into place (`replacing`, as `icon_bytes` does), with
@@ -458,6 +496,17 @@ near edge midpoint. Problems: `{ level, message, ids }`, never `warn()`.
 - The root is at `x = 0`; each side's first-level bands are stacked and centred on the root's middle.
 - A cycle cannot reach it: the type passes the tree as `ownIndex` breaks cycles (stage 2). A topic whose parent is not shown
   hangs from its nearest shown ancestor.
+
+As built (4a.1, 14 Nov 2026), where the contract left a choice: the root is at (0, 0), its `side` and `branch` null, its
+`depth` 0; `bounds` is the tight box of the nodes as returned (rounded), so it holds each and the type adds its margin;
+nodes and links come in pre-order, children in input order; sizes not numbers, or negative, count as 0, a gap not given
+or negative takes 48 and 12, and a size or gap over 1e9 px counts as 1e9 so no sum overflows. Problems: no root, or a
+root that is not a topic, draws nothing (an error); a topic with no id is not drawn and a topic listed twice draws the
+first (warnings); a topic that does not descend from the root (its parent not in the input, a cycle, a second root) is
+reached through the top of its chain, the topic whose parent is not here or, in a cycle, the member listed first; that
+top hangs from the root after its other children, with all it holds, whatever order the topics come in (a warning), so the type passes the nearest shown ancestor as `parent` and lays out a second tree on its own call.
+A given side counts where its topic comes in the order, so pinning a later topic's side moves no earlier one. Taken by the
+lead under the maintainer's standing approval (14 Nov 2026).
 
 ### 6.4 Sides (S12)
 
