@@ -4058,3 +4058,22 @@ What moves for a host that upgrades from 0.23.0:
   all in M2.1 (read from stdin; `gzip -9c` on the file stores its 13-byte name too, 286 B); the five types, the readers,
   the CLI, M2.13 and M2.14 none.
   `lib/umlimator-all.js` is 484,838 B gzipped (`v0.23.0`'s 412,813 B on the same machine). The npm package is 735 kB.
+
+## 0.26.0: AWS architecture diagrams (work package 4a.8)
+
+Milestone 4a (`docs/diagrams/notes/milestone-4a.md`), provisional until 0.26.0 ships. AWS accepted the maintainer's
+request by email (14 Nov 2026), so the `aws` type, written and tested with `gcp` and `azure` behind `CLOUD_AWS`, is on.
+Additive: maps and every typed view draw as before.
+
+- **The `aws` diagram** (`model.md` row 26) is registered by `lib/umlimator-all.js`: `aws.Group` (`groupType`),
+  `aws.Service`, `aws.Resource` (`props.icon`), `aws.Connection`, drawn and edited as the cloud family is
+  (`docs/conformance/aws.md`). `lib/umlimator.js` draws it as plain cards with a warning, as it does every typed view.
+- **AWS's pack.** `icons/packs.json` gains the `aws` row: AWS's `Icon-package_07312026` zip pinned by address, size and
+  SHA-256, label `2026-07-31`, AWS's terms and its trademark line. `umlimator.py pack fetch aws` shows the terms and asks
+  a yes before any byte. The module never fetches: a host gives the icons in `model.icons` as `aws/<id>`, under the same
+  terms, as it gives Google's and Azure's.
+- **AWS's trademark line**, "Amazon Web Services, AWS and the AWS service icons shown are trademarks of Amazon.com, Inc.
+  or its affiliates.", is drawn under any picture that draws an AWS icon, inside its bounds, and ends its legend and
+  `describe()`, as Google's legal line does for Google's icons.
+- **The example moved.** `docs/diagrams/examples/26-aws.json` is `examples/bookshop-aws.json`, its ids prefixed `aws-`
+  for the atlas, with `"iconPacks": { "aws": "2026-07-31" }`. With repair and rerouting off its view keeps two crossings.

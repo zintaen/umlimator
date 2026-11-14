@@ -561,6 +561,13 @@ python3 umlimator.py pin-icons                                # records each new
 
 With `UMLIMATOR_OFFLINE=1` the CLI fetches nothing: a logo not in the cache keeps its card's sigil (`mcp` sets it).
 
+The cloud diagrams' icon packs (AWS, Google Cloud, Azure) are never bundled and never downloaded by a render. Only
+`python3 umlimator.py pack fetch aws` (or `gcp`, `azure`) downloads one, from the vendor's address pinned in
+`icons/packs.json` and checked by SHA-256, after showing the vendor's terms and getting your yes; it is kept in your
+icon cache. Icons are drawn unmodified with the full service name beside each, and a picture that draws AWS's or
+Google's icons carries that vendor's trademark line. AWS accepted this use by email to the maintainer (14 Nov 2026).
+Umlimator is not affiliated with, endorsed by or sponsored by Amazon Web Services, Google or Microsoft.
+
 ## Development
 
 ```bash

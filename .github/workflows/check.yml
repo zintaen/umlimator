@@ -81,7 +81,7 @@ jobs:
           for m in examples/*.json; do
             n=$(basename "$m" .json); [ "$n" = bookshop ] && continue   # checked above, with its committed page
             python3 umlimator.py render "$m" --out "/tmp/$n.html" --no-check
-            x=0; case "$n" in fulfil-activity) x=4;; order-states) x=2;; bookshop-c4) x=14;; bookshop-data-flow) x=2;; bookshop-atlas) x=22;; esac   # at most the crossings port repair off leave (text widths differ between machines, so the count is a ceiling)s (notes/stage-4.md §17; notes/milestone-2.md §11), counted over both passes; pinned in tests/cli.py and the types' tests; the atlas keeps its files' (tests/atlas.test.mjs)
+            x=0; case "$n" in fulfil-activity) x=4;; order-states) x=2;; bookshop-c4) x=14;; bookshop-data-flow) x=2;; bookshop-atlas) x=22;; bookshop-aws) x=2;; esac   # at most the crossings port repair off leave (text widths differ between machines, so the count is a ceiling)s (notes/stage-4.md §17; notes/milestone-2.md §11), counted over both passes; pinned in tests/cli.py and the types' tests; the atlas keeps its files' (tests/atlas.test.mjs)
             python3 umlimator.py check "/tmp/$n.html" --expand > "/tmp/$n.json"   # every view, and again with each stacked card unfolded in place (#71)
             python3 -I -c "import json, sys; s = open(sys.argv[1]).read(); d = json.loads(s[s.find('{'):]); p = d['problems']; assert d['checked'] and not d['errors'] and all(q.endswith(' cross') for q in p) and len(p) <= int(sys.argv[2]), (sys.argv[1], p, d['errors'])" "/tmp/$n.json" "$x"
           done

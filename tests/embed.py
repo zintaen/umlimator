@@ -49,7 +49,7 @@ tests/m2.html: milestone 2's fixtures (M2.14): tests/er-*.json, flowchart-*.json
   the three line checks not on C4's crowded generated view), and each link of the Bookshop atlas opened in the page.
 tests/c4-views.html: C4's dynamic and deployment views (M2.7): examples/bookshop-c4.json's two in both themes, three fonts and both directions,
   then each gesture by pointer and keyboard through apply().
-tests/cloud.html: the cloud architecture family (4a.6): the Google Cloud, Azure and AWS targets (AWS registered by the page, from ../src/) in both themes, three fonts and both
+tests/cloud.html: the cloud architecture family (4a.6): the Google Cloud, Azure and AWS targets (AWS registered by src/cloud/cloud.js since 4a.8, the page from ../src/) in both themes, three fonts and both
   directions (cards, groups, icons drawn unmodified, Google's legal line, names, reading order, legend, contrast), and each gesture by pointer and keyboard through apply().
 tests/bpmn-notation.html: BPMN's notation (4b.2): every shape, marker, pool and lane header, the expanded sub-process's frame and a group in both themes and three fonts
   (sizes, ends slid onto outlines, texts inside, names, contrast, the group hit on its border only), and the labels outside clear of lines, nodes and each other.

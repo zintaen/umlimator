@@ -101,7 +101,7 @@ node docs/diagrams/examples/check.mjs         # the target examples match model.
 | Question | Assumed until answered |
 |---|---|
 | Are copy, paste and duplicate wanted before 1.0.0 (`risks.md` E7)? | No |
-| May a tool download the AWS and Google icon packs for its users? | Unknown; to be read from the vendors' terms before milestone 4 |
+| May a tool download the AWS and Google icon packs for its users? | Answered for all three vendors. Google and Azure: by their terms (13 Nov 2026). AWS: AWS accepted the maintainer's request by email (14 Nov 2026): downloaded only at the user's request from the pinned official address checked by SHA-256, AWS's terms shown and a yes first, never bundled, cached on the user's machine, icons unmodified with the service name beside each, a not-affiliated line and AWS's trademark line (`notes/milestone-4a.md` §2.3, 4a.8) |
 
 ## Log
 
@@ -330,3 +330,9 @@ node docs/diagrams/examples/check.mjs         # the target examples match model.
   dynamic and deployment views, and the Mermaid ER, Mermaid flowchart, Structurizr JSON and DBML readers); 0.24.0's
   release pull request follows. Milestones 3, 4a and 4b are under way (M3.0, 4a.0, 4b.0, 4b.1 and 4b.4 merged).
   Crossing pins became ceilings: Linux CI measures text narrower than a Mac (#268).
+- **14 Nov 2026 (AWS's answer).** AWS accepted the maintainer's request by email (14 Nov 2026) to let the tool download
+  the AWS Architecture Icons at a user's request, as the request described it: never bundled; downloaded only when the
+  user asks, from the pinned official address checked by SHA-256; AWS's terms shown and a yes first; cached on the
+  user's machine; icons unmodified with the service name beside each; a not-affiliated line and AWS's trademark line.
+  The icon-pack question is answered for all three vendors. Work package 4a.8 turns AWS on: `CLOUD_AWS`, the pinned
+  `aws` row, `examples/bookshop-aws.json`.

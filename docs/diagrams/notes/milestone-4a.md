@@ -381,6 +381,45 @@ surface. Its tests import it from `src/cloud/cloud.js` and register it, so AWS i
 from `src/` is not lib's. 4a.8 sets the constant, adds the pinned
 `aws` row with AWS's terms, moves `26-aws.json`, adds the atlas link and `docs/conformance/aws.md`.
 
+As built (4a.8, 14 Nov 2026). AWS accepted the maintainer's request by email (14 Nov 2026): the tool may download the
+AWS Architecture Icons at a user's request, as the request described it (never bundled; downloaded only when the user
+asks, from the pinned official address checked by SHA-256; AWS's terms shown and a yes first; cached on the user's
+machine; icons unmodified with the service name beside each; a not-affiliated line and AWS's trademark line).
+`CLOUD_AWS` is `true`. Where the build departs or settles what the note left open:
+
+- **The pin.** `Icon-package_07312026.5846e924….zip` from `d1.awsstatic.com`, the address AWS's icons page links (read
+  14 Nov 2026), 13,988,918 bytes, SHA-256 `d2d166c453526471749d520e0db022c459abef759d2946cf2dd1d1c992dc6526`: downloaded
+  once by the lead into a scratch folder outside the repository, both match. Label `2026-07-31`, the date in the zip's
+  folders, which the example's `iconPacks` already named. With that copy served locally, `pack fetch aws` indexes 768
+  icons and every id of `examples/bookshop-aws.json` resolves; three ids are filed twice (the first is used).
+- **The pattern.** `Arch_<id>_64.svg` under `Architecture-Service-Icons_<date>/Arch_<category>/64/`, and `Res_<id>_48.svg`
+  under `Resource-Icons_<date>/Res_<category>/` (the general icons' `Res_48_Light/` only); anchored, no nested
+  repetition, and macOS's `__MACOSX/._…` copies match nothing. 400 resource ids hold `_` between service and resource,
+  which the derived name keeps ("Amazon VPC_NAT Gateway"): the row's `names` gives the example's one; a rule for `_`
+  belongs to `umlimator_packs.py` and the family's name (not this package's).
+- **The words, for the maintainer to approve.** `terms.text`: the icons page's permission, word for word as read
+  through a page reader ("We allow customers and partners to use these toolkits and assets to create architecture
+  diagrams." "You can also put icons in materials like whitepapers, presentations, data sheets, and posters."), the
+  conditions of the request AWS accepted, the trademark line and the address of AWS's trademark guidelines.
+  `legal`: "Amazon Web Services, AWS and the AWS service icons shown are trademarks of Amazon.com, Inc. or its
+  affiliates." Replacing either with the words of AWS's email is one edit of `text`, `legal`, `terms.sha256` and
+  `AWS_LEGAL`.
+- **AWS's trademark line** is drawn as Google's legal line is (§5.7): a family's `legal` in `CL_FAM`, under a picture that
+  draws one of its icons, inside its bounds, at the end of the legend and `describe()`; `AWS_LEGAL` and the row's `legal`
+  are kept equal by `tests/cloud.test.mjs`. Google's line and Azure's views draw exactly as before.
+- **The example.** `26-aws.json` is `examples/bookshop-aws.json`, every id prefixed `aws-` (the view `aws-on-aws`) and
+  nothing else changed; `check.mjs`'s `MOVED` names it. `tests/core-diet.json`'s entry for `26-aws.json` is re-recorded
+  for the new ids, as 4a.0 re-recorded the other three (the layout and edit fingerprints change with the ids; describe
+  and validate do not). `.github/workflows/check.yml`'s examples step gains `bookshop-aws) x=2`, the view's two
+  crossings with repair and rerouting off, pinned in `tests/cloud.test.mjs` since 4a.6.
+- **Tests outside Owns**, which turning AWS on changes: `tests/cloud.test.mjs` and `tests/cloud.html` read the moved
+  example and no longer register `aws` themselves (the build does; a second registration throws), and assert the lib
+  registers it, the trademark line and the name beside each icon; `tests/packs.py` holds the real row's pin and pattern
+  and fetches and renders a synthetic AWS pack; `tests/embed.py`'s line for `tests/cloud.html`.
+- **The atlas's "On AWS"** waits for 4a.7, which brings the mindmap and the cloud views into the atlas: the topic
+  `mm-on-aws` under "Hosting", its link to `aws-on-aws` in `tools/atlas-links.json`, and `examples/bookshop-atlas.json`
+  built again, when 4a.7's branch is merged here.
+
 ## 5. The cloud types
 
 ### 5.1 What they build on (S7)
