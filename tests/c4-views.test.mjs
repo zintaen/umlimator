@@ -19,7 +19,7 @@ import { describe } from '../src/map/insight.js';
 import { svgOf } from '../src/draw/svg.js';
 import '../src/c4/views.js';
 
-const C4 = JSON.parse(readFileSync(new URL('../docs/diagrams/examples/23-c4.json', import.meta.url)));
+const C4 = JSON.parse(readFileSync(new URL('../examples/bookshop-c4.json', import.meta.url)));
 const DYN = diagramOf({ diagram: 'c4.dynamic' }), DEP = diagramOf({ diagram: 'c4.deployment' }), STATIC = diagramOf({ diagram: 'c4.container' });
 const V = id => C4.views.findIndex(v => v.id === id), DV = 'c4-placing-an-order', PV = 'c4-deployment';
 const meets = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;

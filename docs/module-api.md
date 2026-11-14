@@ -3924,3 +3924,137 @@ them yet.
 - **Size at release:** `lib/umlimator.js` is 185.6 kB (185,613 B) with `gzip -9`, as 0.22.0, 12.52% over 0.16.0 (the
   budget is 15%). `lib/umlimator-all.js` is 412.8 kB (412,830 B). The npm package is 659 kB.
 
+
+## 0.24.0: the ER, flowchart, data flow, information flow and C4 diagrams; four readers; the Bookshop atlas opens at C4
+
+Milestone 2 of the plan for 28 diagram types (`docs/diagrams/notes/milestone-2.md`), merged to `main` before 0.24.0 ships
+(after 0.23.0), provisional until then. Everything is additive: maps, every typed view released before and every earlier
+example draw as they did in 0.23.0 (`bench/expected.json`, `tests/core-diet.json`'s fingerprints, the examples'
+stills), but for the one defect fixed below and the Bookshop atlas, which gains the five diagrams and a new root. The
+new code is in `lib/umlimator-all.js`, except M2.1's core bytes (below).
+
+- **The files and ids (M2.0, #247).** Ten sources, empty, in `tools/build.mjs`'s `ALL` after stage 6's: `src/er/er.js`,
+  `src/flowchart/flowchart.js`, `src/dfd/dfd.js`, `src/uml/information.js`, `src/c4/c4.js`, `src/c4/views.js` and the
+  four readers. The five target examples take their own ids (`er-`, `dfd-` and `c4-` prefixes, the flowchart's and
+  information flow's renames), so the Bookshop atlas shares only the elements meant to be shared; C4's container and
+  component views list their subject.
+- **The engine's slots (M2.1, #253).** `apply()` gains `addView { view, index? }`: a view added at an index or at the
+  end, refused when its id is taken or it is not an object with a string id; undone like every command; no command
+  deletes a view. A type may give `text(model, view, id)`, which the PDF's lines table shows in place of a line's `label`
+  (`docs/diagrams/risks.md` R9). **Fixed:** a card in a typed view that opens a view of its own kind opens it instead of
+  unfolding in place through the map's code, unless its type says `unfolds: true` (a class card used to unfold into a
+  plain box and lose its classifier). The activity type sets `unfolds`, so a call behaviour action still unfolds its
+  activity; a view that says `diagram: 'map'` unfolds as one with no `diagram`.
+- **The entity-relationship diagram, `er` (M2.2, #258).** Tables with their key columns first; relationships in crow's
+  foot or IDEF1X (`view.notation`), one geometry, so a switch only repaints; identifying solid, non-identifying dashed.
+  Each column is a row `name type [PK] [FK table.column] [UK] [NULL]`: a type of several words, a name with a space in
+  double quotes, a row whose brackets do not pair refused; `FK` names the referenced column by its table's and its own
+  labels, or its id. Ten rules (`pk-exists`, `column-names`, `fk-target`, `fk-flag`, `relationship-fk`,
+  `identifying-key`, `identifying-parent`, `relationship-ends`, `relationship-tables`, `notation`). The legend keys each
+  line style and end drawn and IDEF1X's dependent entity. A column deleted, the notation switched and a column's flags as
+  fields have no canvas gesture: a host does them through `apply()`. `src/typed/draw.js` exports `ENDS`; the type adds
+  its six ends at load.
+- **The flowchart, `flowchart` (M2.3, #259).** Ten symbols (terminator, process, decision, input/output, predefined
+  process, document, database, manual input, delay, connector) and a comment; laid out down unless the view says right.
+  Five rules (`flow-ends`, `start-end`, `terminator-flows`, `decision-exits`, `reachable`); decision labels compared
+  trimmed and case aside. Accessible names say each decision's exits and whether a terminator is a start or an end; the
+  reading order runs from the start. A decision's second exit is labelled to answer its first; a flow is not dragged
+  ("A flow follows its nodes: move a node instead"); the PDF flags a decision's exit with no label.
+- **The data flow diagram, `dfd` (M2.4, #260).** Processes, stores and external entities in Yourdon or Gane and Sarson
+  (`view.notation`, a repaint); numbers stored and checked under the parent process's; `D` on a process makes its level,
+  balanced from the start; balancing checks the flows each view draws, so hiding a flow or its far end on a level breaks
+  it as deleting it does; a level draws only its own flows. Six rules (`dfd-flow-process`, `dfd-process-io`,
+  `dfd-flow-label`, `dfd-numbers`, `dfd-balance`, `dfd-level`). A long number is cut.
+- **The information flow diagram, `uml.information-flow` (M2.5, #261).** Classes, interfaces, components and actors
+  in their own types' looks; information items as a classifier with a filled triangle; flows as dashed lines with an
+  open arrow, labelled «flow» then what they convey. A flow conveys information items, classes, interfaces, components or
+  signals, each once (UML 2.5.1); four rules (`conveyed-some`, `conveyed-kind`, `conveyed-once`, `flow-ends`).
+  Connecting asks what the flow conveys; F2 edits a flow's text as drawn (`[name:] Order, Card details`); deleting an
+  element drops it from every flow, and Shift + Delete takes a flow left conveying nothing, said on the hint line. The
+  PDF lists what each flow conveys, and each conveyed element's flows.
+- **C4's static views (M2.6, #262).** `c4.landscape`, `c4.context`, `c4.container`, `c4.component`: people, software
+  systems, containers and components on the map's card shapes (`props.shape`), external ones grey; the view's subject a
+  dashed boundary when listed; implied relationships one dashed line a pair, never edited, their accessible name saying
+  what they stand for; `D` makes a system's container view or a container's component view; `T` changes an element's C4
+  type; the key lists each element type and shape drawn. Errors `c4-level`, `c4-subject`, `c4-owner`, `c4-instance`,
+  `c4-relationship`; warnings `c4-zoom`, `c4-description`, `c4-technology`, `c4-label`, `c4-title`.
+- **C4's dynamic and deployment views (M2.7, #263).** `c4.dynamic`: steps are relationship ids in the view's `edges`,
+  each once, numbered among the steps drawn, reordered by Alt + arrows; a step that is no relationship is an error, a
+  view with no step a warning (`c4-steps`); adding on a dynamic view puts the element in its subject. `c4.deployment`:
+  deployment nodes nest as boxes, container instances drawn as their containers; a relationship with an end in or on a
+  node drawn as a box is not drawn, and `c4-box-line` says which; deleting a container deletes its instances (`refs`).
+- **The readers (M2.8 to M2.11, #254 to #257), internal until the registry is public.** `readMermaidEr` and
+  `writeMermaidEr`: every construct on Mermaid 12.3.0's ER page, ids and references kept in `%% id:` and
+  `%% references:` comments, what Mermaid cannot carry named in `%% not written:`. `readMermaidFlowchart` and
+  `writeMermaidFlowchart`: ported from the map importer, with Mermaid's `@{ shape: … }` form; reads in linear time where a
+  bracket is never closed. `readStructurizr(workspace)`: people, systems, containers, components, deployment nodes,
+  instances, relationships and the six view kinds; ids from the DSL's identifiers or names, never Structurizr's numbers;
+  shapes from the workspace's element styles. `readDbml(database)`: a `Database` that `@dbml/core` parsed (or its
+  `export()`), as one `er` view; umlimator does not depend on `@dbml/core`. Each reports what it skipped or
+  approximated, never throws, and holds counts and nesting to limits (§8).
+- **The CLI (M2.12, #264).** `umlimator.py import` reads a Mermaid `erDiagram` (one er view), a Mermaid flowchart given
+  `--typed` (one flowchart view; without it, a map as before), a Structurizr JSON workspace (typed C4) and a `.dbml` file
+  (through the `@dbml/core` Node finds from the working folder; not installed by umlimator) through the readers in Node.
+  `--typed` on a source with no typed reader is refused, nothing written; a Structurizr JSON or DBML file over 1 MiB is
+  refused before it is parsed; an `@dbml/core` that does not load is named as the install's fault.
+- **The Bookshop atlas (M2.13).** The five examples join it, elements merged by id: the information flow example's
+  shopper and the component example's storefront, Shop API and payment provider are one element each (32 shared now,
+  29 in 0.23.0). The C4 system context is the atlas's root (decision 20); the map's overview is in the views list. The C4
+  elements open the views their design is in: the database the schema, the order worker the fulfilment activity, the
+  storefront what travels with an order, checkout the checkout sequence, the order store the data flow, the shopper the
+  use cases, shop staff the returns flowchart, the Shop API's instance the production deployment. `tools/atlas.mjs`
+  carries the milestone's props.
+- **Fixtures, examples, documents (M2.14).** `tests/er-`, `flowchart-`, `dfd-`, `information-flow-` and `c4-minimal.json`
+  and `-stress.json` (§10) with `tests/m2-fixtures.test.mjs` (each view laid out right and down, what `check()` finds
+  pinned, every case of §10, the readers' construct files through their types' `validate`, §11's budgets) and
+  `tests/m2.html` (every view in Chrome, three fonts, both themes, and each atlas link opened in the page); the five
+  examples moved from `docs/diagrams/examples/` to `examples/` (`check.mjs`'s `MOVED`), in the gallery and CI; the JSON Schema and `.d.ts`; `docs/conformance/er.md`, `flowchart.md`, `dfd.md`,
+  `uml-information-flow.md` and `c4.md`; `tests/notation.html` checks the six ER ends, «flow» and the implied line; the
+  MCP server, the diff Action and map-repo's CLI tested on each (C10).
+
+What moves for a host that upgrades from 0.23.0:
+
+- **Nothing a map or an earlier type draws.** `lib/umlimator.js` draws the five types as plain cards with a warning, as
+  it does every type it does not hold.
+- **One behaviour changes, a defect fixed:** pressing E (or Alt + click) on a typed view's card that opens a view of its
+  own kind now opens that view; before, a class card unfolded into a plain box through the map's code. The activity's
+  call behaviour action still unfolds (`unfolds: true`), so CI's crossing counts and `fulfil`'s unfolded picture hold.
+- **New in `apply()`:** the command `addView`. A host that lists commands by `op` meets a new one; the `edit` event
+  carries it from `D` on a data flow process or a C4 system or container.
+- **New in the registry, provisional:** a type's `text(model, view, id)` and `unfolds`. `ENDS` in `src/typed/draw.js`
+  takes rows from a family at load.
+- **New in the JSON Schema and `lib/umlimator.d.ts`:** the five types' element, member and line types and props
+  (`ErColumnProps`, `ErRelationshipProps`, `FlowchartElementType`, `DfdNumberProps`, `UmlInformationFlowProps`,
+  `C4ElementProps`, `C4RelationshipProps`, `C4ViewType`, …), `notation`'s values, a C4 view's `subject` and `addView` in
+  `Command`; nothing accepted before is rejected (ajv: the 28 examples and the ten new fixtures valid).
+- **`umlimator.py import`** reads four more sources typed; nothing it read before reads differently, and a Mermaid
+  flowchart is still a map unless `--typed` is given.
+- **The examples moved.** `docs/diagrams/examples/15-information-flow.json`, `20-entity-relationship.json`,
+  `21-flowchart.json`, `22-data-flow.json` and `23-c4.json` are `examples/order-information-flow.json`,
+  `bookshop-schema.json`, `returns-flowchart.json`, `bookshop-data-flow.json` and `bookshop-c4.json`, unchanged in
+  content. The atlas's stills and PDF on the site change: it opens at the C4 context and holds 33 views.
+- **Decisions:** every recommendation of the note's §14, decision 18 the maintainer's (b); the choices each package
+  took under the maintainer's standing approval (14 Nov 2026) are in the note's "Amended in" paragraphs (§7.1 to §7.5.5,
+  §12.5).
+- **Known gaps:** a link to a view on an element that every view draws as a box cannot be opened from the page (Enter
+  opens a card only): the atlas's `bookshop-packages/sales` and `bookshop-deployment/jvm`, from stages 5 and 6, are
+  reached from the views list (M2.13 moved C4's own link from the web host, a box, to the Shop API's instance). A
+  single delete can leave a new error in a C4 or DFD model: deleting a view's subject (`c4-subject`, `c4-level`), or
+  deleting or hiding a level's external entity or store (`dfd-balance`); `risks.md` M15, for the types' `remove` hooks.
+- **Left out** (`notes/milestone-2.md` §13): Chen's notation, IDEF1X's key-based level, lines on columns, subtype
+  clusters, SQL DDL, a DBML writer; ISO 5807's other symbols, the off-page connector, swimlanes, groups; unfolding a DFD
+  level in place, data dictionaries, control flows; information flow ends beyond §3's and the «flow» line on other UML
+  views; C4's code diagram, software system instances, infrastructure nodes, groups, repeated or parallel steps,
+  instance relationships derived from containers', filtered views, a Structurizr writer, conversion from a map; for all
+  five, deleting a view, copy and paste, per-type `diff()` writers, stereotypes on the non-UML types.
+- **Layout limits** (each conformance note): with repair and rerouting off, `bookshop-c4.json` keeps 8 crossings over its
+  views in Node (14 as Chrome measures text) and `bookshop-data-flow.json`'s level 1 two; the stress views' generated
+  `all` cross more (C4's crowded container view also runs lines through cards it could not route round).
+- **P1.** On the stress views (CPU, best of seven, an Apple laptop under load): ER, a full layout 28 to 54 ms, a column
+  added 24 to 48 ms, a notation switch 10 to 16 ms laying nothing out; flowchart 33 to 67 and 31 to 63 ms; data flow 38
+  to 59 and 37 to 63 ms; information flow 118 to 211 and 121 to 229 ms; C4 109 to 229 and 117 to 237 ms. CI holds 1 s and prints each against the 100 ms target.
+- **Size:** `lib/umlimator.js`, what a map host loads, is 185,873 B with this machine's `gzip -9` (`v0.23.0`'s file
+  185,600 B on the same machine): 12.68% over 0.16.0 (the budget is 15%). Milestone 2 spent 273 B of its 1,400 B share,
+  all in M2.1 (read from stdin; `gzip -9c` on the file stores its 13-byte name too, 286 B); the five types, the readers,
+  the CLI, M2.13 and M2.14 none.
+  `lib/umlimator-all.js` is 484,838 B gzipped (`v0.23.0`'s 412,813 B on the same machine). The npm package is 735 kB.

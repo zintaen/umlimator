@@ -1,0 +1,46 @@
+{
+ "schemaVersion": 2,
+ "title": "Flowchart, minimal",
+ "nodes": [
+  {
+   "id": "start",
+   "type": "flow.Terminator",
+   "label": "Start"
+  },
+  {
+   "id": "work",
+   "type": "flow.Process",
+   "label": "Do the work"
+  },
+  {
+   "id": "end",
+   "type": "flow.Terminator",
+   "label": "End"
+  }
+ ],
+ "edges": [
+  {
+   "id": "f1",
+   "type": "flow.Flow",
+   "from": "start",
+   "to": "work"
+  },
+  {
+   "id": "f2",
+   "type": "flow.Flow",
+   "from": "work",
+   "to": "end"
+  }
+ ],
+ "views": [
+  {
+   "id": "v",
+   "diagram": "flowchart",
+   "nodeIds": [
+    "start",
+    "work",
+    "end"
+   ]
+  }
+ ]
+}
