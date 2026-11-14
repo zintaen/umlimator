@@ -4607,3 +4607,71 @@ a test that fails without its fix. Maps draw as they did (`bench/expected.json` 
 - **Size:** `lib/umlimator.js`, what a map host loads, is 189.7 kB (189,673 B) with `gzip -9`, 14.99% over 0.16.0's
   164,954 B, up 656 B from 0.30.0 (#314). It is 24 B under the 15% cap (189,697 B): the next core change has no room
   without a cut elsewhere. `lib/umlimator-all.js` is 600.6 kB (600,629 B); the npm package is 866.0 kB.
+
+## 0.32.0: fixes from the fifth audit
+
+The fifth audit confirmed 33 findings. All are fixed in this release, in five pull requests (#317 to #321), each with a
+test that fails without its fix. Maps draw as they did (`bench/expected.json` is unchanged); of the typed pictures, only
+C4 views change (the router fix under Core). What changes for callers:
+
+- **Core (#321).** `check()` and the page check report a line drawn through a card on a typed view (`edge X→Y passes
+  through card "Z"`), skipping the line's own ends, their ports and owners, boxes round an end, holders, a communication
+  diagram's message rows and a timing view's marks; it is kept out of the score the layouts use, so no picture changes
+  for it. The router fix: a C4 card's text tag (`[Container]`) was read as an author's name tag, giving obstacle rects
+  with NaN coordinates that put the router's grid out of order, so lines ran through cards; only an object tag is a name
+  tag now. Only C4 pictures change: bookshop-c4 goes from 14 crossings to 8, the atlas's ceiling from 31 to 25, and
+  c4-stress `all` now has no line through a card. `diff()` reports changes made only in a view: a card renamed in one
+  view (`nodeOverrides`), moved to another box, a box renamed, a view retitled; each adds the view to `views` and marks
+  the card changed there. `check()` names an unlabelled control node (a choice, a fork, a final node) by its id; map
+  cards keep `label ?? id`. The details panel lists each line of a typed card once. A double-click on an unselected card
+  opens the card the first click hit (same view, within 1 s), though the refit moved it. A typed element that opens
+  another view ends its accessible name with ", opens <view title>" (names that already say "opens" are left alone); no
+  drill-down mark is drawn on typed elements. The 0.26.0 section above says a mindmap topic that opens a view "carries
+  the drill-down mark": it does not, its name says ", opens <view>" instead (the released section is left as written;
+  `docs/conformance/mindmap.md` and `notes/milestone-4a.md` are corrected).
+- **UML types (#319).** Composite structure: the subject's box grows by the widest label among named connectors from its
+  ports, so two named connectors from one port both keep their names; a part's closing `[...]` is the multiplicity only
+  when it is one (`list[str]` stays the type), and the new warning `part-multiplicity` flags a stored multiplicity that
+  is not one or has its lower bound above its upper. Class member rows typed `list[str]` or `Dict[str, int]` edit. The
+  component and deployment views give the `line-inside` warning for a line between a box and something it holds.
+  Class and package `describe()` end every line kind other than an association with its stereotypes and `("label")`.
+  `package-names` compares packages and profiles in one owner. A component view's box owned by a node is titled
+  without the node's name (`ownersOn`'s new look option `qualifyBy`). Timing: hiding a lifeline says only the clauses
+  that apply ("Hid b").
+- **Milestone 2, BPMN, SysML and the mindmap (#317).** A line listed twice in `view.edges` is drawn, counted and read
+  once in ER, flowchart, DFD, C4 static, deployment and dynamic (comment links) and information flow views (the
+  flowchart's false `terminator-flows` goes). C4: static and deployment views gain F2 rename (`c4Rename`, exported from
+  `src/c4/c4.js`; `C4_DEF.edits` and `DEP_DEF.edits` list `rename`), which keeps the `[technology]` out of the label;
+  the dynamic view's rename calls it; an element typed by an `Object.prototype` name is an unknown type, tagged
+  "[constructor]", and `validate()` no longer throws. Information flow: F2 that leaves a flow's conveyed names as they
+  are keeps what it conveys. `mindmap-depth` warns at depth 65, the first the Mermaid reader and writer move, counting
+  levels below the root. BPMN's PDF gives a pool no "in …" row. Block definition: "in : Signal" names a member `in`.
+- **Readers, writers and the Python importer (#318).** `writeMermaidMindmap` hangs a shown topic from its nearest shown
+  ancestor. A `;` inside an entity code outside quotes ends no flowchart statement, in JavaScript and Python. Structurizr
+  DSL import joins a line ending in `\` with the next. Front matter fences may have trailing spaces or tabs (CRLF files
+  too). The Python map importer decodes Mermaid entity codes. The class reader reads `Square~Shape~` in a relation or a
+  member line as the class Square. The BPMN reader reports and ignores a lane's `flowNodeRef` to another process's flow
+  node, and a second pool on an owned process (the first keeps it).
+- **CLI, the diff Action and map-repo (#320).** The map-repo skill's CLI is pinned to v0.31.0 (plugin 0.1.14); CI checks
+  that the pinned release runs the engine with `-I`. `render` (and the MCP page, diff and drift) says a malformed view
+  field in one line (`nodes`, `nodeIds`, `edges`, `containers`, `stepIds`, `browserOrder`, `intake` or `tour` not a
+  list, null included; `nodeOverrides`, a container or intake entry, or top-level `meta` not an object; a card's
+  `members` not a list at any depth), never a traceback. The diff Action's summary @-mentions no one (a word joiner after
+  each `@` in prose). `check` and `pdf --views` pick a view whose id holds a comma (ids encoded twice). CI runs
+  `tests/bpmn-engine.html`.
+- **Known gaps.** Still open from 0.31.0: a box has no Tab stop; the keyboard reaches it through the outline. A
+  double-click (or Enter) on a box does not open its view (the 0.24.0 gap). Deep nesting is super-linear outside the
+  core: a class view 3,000 deep takes about 2 s and a component view about 1.5 s, BPMN 3,000 deep 1.5 to 2 s. A
+  composite structure or SysML internal block view's Lines rows name a part by its id, not its drawn name. The
+  JavaScript Mermaid readers still decode `#55296;` to a lone surrogate. The requirement layout leaves out a link into a
+  box nested more than 64 deep from its ranking. Typed hooks that answer Alt+arrows themselves were not checked on views
+  laid out down. `reach()` from a model id that the view draws under another id returns only that element. A negative
+  step duration plays 500 ms while `validate()`'s warning says 4000 ms. New: a labelled line whose label gets no spot is
+  dropped with no `check()` report (seen in bookshop-atlas, sales-classes, the C4 container, GCP and Azure views and
+  weather.json); it is under audit in round 6. Mermaid C4 macro arguments keep entity codes as written. `describe()` of
+  an inline interaction does not say it opens a view.
+- **Size:** `lib/umlimator.js`, what a map host loads, is 191.3 kB (191,311 B) with `gzip -9`, 15.98% over 0.16.0's
+  164,954 B, up 1,638 B from 0.31.0, nearly all in #321 (#320 added 32 B). `lib/umlimator-all.js` is 604.1 kB
+  (604,131 B); the npm package is 871.2 kB (`npm pack --dry-run`). The maintainer decided on 15 Nov 2026 that the core
+  has no size cap until 1.0.0: sizes are reported each release and a budget is set at 1.0.0. 0.31.0's "the next core
+  change has no room without a cut elsewhere" no longer applies.
