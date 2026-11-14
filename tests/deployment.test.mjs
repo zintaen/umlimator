@@ -363,3 +363,16 @@ test('P1 (§14): on 50 nodes and artifacts, 50 lines and boxes five deep, a full
   assert.ok(best('label') < 1000, `a path's label ${best('label')} ms`); assert.ok(best('move') < 1000, `an artifact moved ${best('move')} ms`); assert.ok(best('stereo') < 1000, `a stereotype ${best('stereo')} ms`);
   console.log(`# P1 target 100 ms: a path's label ${best('label').toFixed(1)} ms, an artifact moved into another node ${best('move').toFixed(1)} ms, a stereotype ${best('stereo').toFixed(1)} ms; full layout ${best('full').toFixed(1)} ms; routes ${JSON.stringify(layout(STRESS, 'v').stats)}`);
 });
+
+test('a top-level artifact beside nodes nested 25 deep lies in none of them: the boxes keep apart by what they hold (audit 3)', () => {
+  const nodes = Array.from({ length: 25 }, (_, i) => ({ id: 'p' + i, type: 'uml.Node', label: 'P' + i, ...(i ? { parent: 'p' + (i - 1) } : {}) }));
+  nodes.push({ id: 'c', type: 'uml.Artifact', label: 'C', parent: 'p24' }, { id: 'd', type: 'uml.Artifact', label: 'D' });
+  const g = layout({ schemaVersion: 2, nodes, edges: [{ id: 'e', type: 'uml.Dependency', from: 'c', to: 'd' }], views: [{ id: 'v', diagram: 'uml.deployment', nodeIds: nodes.map(n => n.id) }] }, 'v'), d = g.byId.d;
+  assert.deepEqual(g.families.filter(f => d.x < f.x + f.w && d.x + d.w > f.x && d.y < f.y + f.h && d.y + d.h > f.y).map(f => f.id), []);
+});
+
+test('layout() of a deployment view nested 3,000 deep (audit 3)', () => {
+  const nodes = Array.from({ length: 3000 }, (_, i) => ({ id: 'p' + i, type: 'uml.Node', label: 'P' + i, ...(i ? { parent: 'p' + (i - 1) } : {}) }));
+  nodes.push({ id: 'c', type: 'uml.Artifact', label: 'C', parent: 'p2999' });
+  assert.equal(layout({ schemaVersion: 2, nodes, edges: [], views: [{ id: 'v', diagram: 'uml.deployment', nodeIds: nodes.map(n => n.id) }] }, 'v').nodes.length, 1);
+});

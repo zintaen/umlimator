@@ -7,7 +7,7 @@ import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { layout, check, history } from '../lib/umlimator.js';
+import { layout, check, history, validate } from '../lib/umlimator.js';
 
 const read = p => JSON.parse(readFileSync(new URL(p, import.meta.url)));
 // the bench's geometry hash (bench/bench.py, #bench=1): FNV-1a over node boxes, route points and label spots
@@ -517,4 +517,19 @@ test('the CLI renders what render() draws: a card that opens a view the host loa
     assert.match(no.stderr, /edge data->nowhere has an unknown end/);
     assert.doesNotMatch(no.stderr, /opens unknown view|data->web/);
   } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('a map whose containers nest 3,000 deep lays out: its boxes placed and framed without recursion (audit 3)', () => {
+  const containers = Array.from({ length: 3000 }, (_, i) => ({ id: 'b' + i, ...(i ? { parent: 'b' + (i - 1) } : {}), ...(i === 2999 ? { nodeIds: ['a'] } : {}) }));
+  const g = layout({ nodes: [{ id: 'a' }, { id: 'z' }], edges: [{ from: 'a', to: 'z' }], views: [{ id: 'v', nodeIds: ['a', 'z'], containers }] }, 'v');
+  assert.ok(g.byId.z.x > g.byId.a.x);
+});
+
+test('a pin that is not two numbers is no pin: laid out as unpinned, and validate() says so (audit 3)', () => {
+  for (const p of [[0, 'x'], ['x', 0], [0, {}], ['a', 'b'], [0]]) {
+    const m = { nodes: [{ id: 'a' }, { id: 'b' }, { id: 'c' }], edges: [{ from: 'a', to: 'b' }, { from: 'b', to: 'c' }], views: [{ id: 'v', nodeIds: ['a', 'b', 'c'], layout: { a: p } }] };
+    const a = layout(m, 'v').byId.a;
+    assert.ok(Number.isFinite(a.x) && Number.isFinite(a.y), JSON.stringify(p));
+    assert.ok(validate(m).some(q => q.path === 'views[0].layout.a' && /not two numbers/.test(q.message)), JSON.stringify(p));
+  }
 });

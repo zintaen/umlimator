@@ -131,9 +131,10 @@ function cpRank(items, links) {
 }
 function cpPlace(pic, lines, pins) {
   const links = lines.filter(l => !l.inner).map(l => (l.kind === 'socket' ? [l.t.at, l.f.at] : [l.f.at, l.t.at]));
-  const itemIn = (x, g) => { for (let k = 0; x != null && k < 64; k++, x = pic.owner(x)) if (pic.owner(x) === g) return x; };
+  const itemIn = (x, g) => { for (let k = 0; x != null && k <= seq.size; k++, x = pic.owner(x)) if (pic.owner(x) === g) return x; };
+  const done = new Map(), seq = new Set([null]); for (const g of seq) pic.holds(g).forEach(x => pic.open.has(x) && seq.add(x)); // top down; laid out bottom up: no recursion, boxes nested to any depth
   const block = g => { const items = pic.holds(g), size = Object.create(null), pos = Object.create(null);
-    items.forEach(x => { size[x] = pic.open.has(x) ? block(x) : { w: 1, h: 1, pos: { [x]: [0, 0] } }; });
+    items.forEach(x => { size[x] = pic.open.has(x) ? done.get(x) : { w: 1, h: 1, pos: { [x]: [0, 0] } }; });
     const L = links.map(([a, b]) => [itemIn(a, g), itemIn(b, g)]).filter(([a, b]) => a !== undefined && b !== undefined && a !== b), lined = new Set(L.flat());
     const { rank, fwd } = cpRank(items.filter(x => lined.has(x)), L), cols = [], hh = x => size[x].h;
     items.filter(x => lined.has(x)).forEach(x => (cols[rank[x]] ||= []).push(x));
@@ -146,7 +147,8 @@ function cpPlace(pic, lines, pins) {
     loose.forEach(x => { if (c && c + size[x].w > per) { r += rh; c = 0; rh = 0; }
       Object.entries(size[x].pos).forEach(([id, [a, b]]) => { pos[id] = [c + a, r + b]; }); c += size[x].w; rh = Math.max(rh, size[x].h); c0 = Math.max(c0, c); });
     return { w: c0, h: r + rh, pos }; };
-  const at = block(null).pos, P = Object.entries(CP_OBJ(pins) ? pins : {}).filter(([id, p]) => Object.hasOwn(at, id) && Array.isArray(p) && p.length === 2 && p.every(Number.isFinite));
+  [...seq].reverse().forEach(g => done.set(g, block(g)));
+  const at = done.get(null).pos, P = Object.entries(CP_OBJ(pins) ? pins : {}).filter(([id, p]) => Object.hasOwn(at, id) && Array.isArray(p) && p.length === 2 && p.every(Number.isFinite));
   if (!P.length) return at;
   const taken = P.map(([, p]) => p), free = (c, r) => !taken.some(([c2, r2]) => c2 === c && Math.abs(r2 - r) < 1), pinned = new Set(P.map(([id]) => id));
   P.forEach(([id, p]) => { at[id] = p; });
@@ -155,8 +157,9 @@ function cpPlace(pic, lines, pins) {
 }
 function cpGeo({ model, view, pos: pins, memo }) {
   const pic = cpPic(model, view), { I, lines } = pic, down = view.direction === 'down', present = CP_OBJ(view.present) ? view.present : {}, pos = cpPlace(pic, lines, pins);
-  const P = id => { const p = CP_OWN(pos, id); if (Array.isArray(p)) return p; const k = pic.open.has(id) ? pic.holds(id).map(P).filter(Boolean) : []; // a box: the mean of what it holds
-    return k.length ? [k.reduce((a, q) => a + q[0], 0) / k.length, k.reduce((a, q) => a + q[1], 0) / k.length] : null; };
+  const at = new Map(), P = id => { if (at.has(id)) return at.get(id); const p = CP_OWN(pos, id); if (Array.isArray(p)) return p; const k = pic.open.has(id) ? pic.holds(id).map(P).filter(Boolean) : []; // a box: the mean of what it holds
+    const r = k.length ? [k.reduce((a, q) => a + q[0], 0) / k.length, k.reduce((a, q) => a + q[1], 0) / k.length] : null; at.set(id, r); return r; };
+  readingOrder(pic).reverse().forEach(P); // inner boxes first: no recursion, boxes nested to any depth
   const pos2 = Object.fromEntries(pic.ids.map(id => [id, P(id)]).filter(([, p]) => p));
   // each port's side (§4.2): pinned, else facing its lines' far ends outside it; a port whose only lines run to its owner's
   // owner's ports takes their side, so a delegation runs straight in, and their order: the mean place of their far ends
@@ -180,7 +183,8 @@ function cpGeo({ model, view, pos: pins, memo }) {
     const s = SHAPE[d.shape].size(d), f = CP_OWN(fit, id); return { ...d, w: Math.max(s.w, f ? f.w : 0), h: d.shape === 'ball' ? 16 : Math.max(s.h, f ? f.h : 0) }; });
   // a box whose ports have lines, or that holds one that does, takes 48 px of padding (§7)
   const lined = new Set(shownPorts.filter(({ p }) => ends(p.id).length).map(x => x.owner));
-  const boxes = pic.boxes.map(b => ({ ...b, ...([b.id, ...pic.ids.filter(x => pic.chain(x).includes(b.id))].some(x => pic.open.has(x) && lined.has(x)) ? { pad: 48 } : {}) }));
+  const pad = new Set(pic.ids.filter(x => pic.open.has(x) && lined.has(x)).flatMap(x => [x, ...pic.chain(x)])); // a lined box and every box around it
+  const boxes = pic.boxes.map(b => ({ ...b, ...(pad.has(b.id) ? { pad: 48 } : {}) }));
   const ball = (l, w) => { const me = w === 'from' ? l.f : l.t, o = w === 'from' ? l.t : l.f; if (me.port || !cpBall(I, view, me.at)) return {};
     const a = P(me.at) || [0, 0], b = P(o.at) || [0, 0]; // a ball's line on its left or right by the rank ([col, row] holds it first either way) (§9.2); laid out down, a line from
     // before it comes in above and one from after it on the side it comes from, so none crosses the name under the circle

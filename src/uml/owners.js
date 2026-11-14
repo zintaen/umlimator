@@ -19,7 +19,7 @@ const stereoOf = x => OWN_ARR(OWN_OBJ(x.props) ? x.props.stereotypes : null).fil
 // members: the member types indexed too (a state's regions, notes/stage-4.md §6.1), each owned by its node
 function ownIndex(model, members = []) {
   const at = new Map(), up = new Map(), mems = new Set(), put = (x, p) => { if (OWN_OBJ(x) && typeof x.id === 'string' && !at.has(x.id)) { at.set(x.id, x); up.set(x.id, p); return true; } };
-  OWN_ARR(OWN_OBJ(model) ? model.nodes : null).forEach(n => put(n, n.parent));
+  OWN_ARR(OWN_OBJ(model) ? model.nodes : null).forEach(n => OWN_OBJ(n) && put(n, n.parent)); // a null in nodes is validate's error, not a throw
   if (members.length) [...at.values()].forEach(n => OWN_ARR(n.members).forEach(m => { if (OWN_OBJ(m) && members.includes(m.type) && put(m, n.id)) mems.add(m.id); }));
   const chain = id => { const out = [], seen = new Set([id]);
     for (let p = up.get(id); p != null && at.has(p); p = up.get(p)) { if (seen.has(p)) return p === id ? [] : out.slice(0, out.indexOf(p) + 1); seen.add(p); out.push(p); }

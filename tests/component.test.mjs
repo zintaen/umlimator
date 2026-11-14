@@ -310,3 +310,10 @@ test('a port\'s PDF row is its name and type whole, even when the type holds " o
     { id: 'q', type: 'uml.Port', label: 'Port Authority feed' }] }], edges: [], views: [{ id: 'v', diagram: 'uml.component', nodeIds: ['c'] }] };
   assert.deepEqual(T.rows(m, m.views[0], 'c'), ['status : List of Orders', 'Port Authority feed']);
 });
+
+test('layout() of components nested 3,000 deep: the boxes placed and centred without recursion (audit 3)', () => {
+  const nodes = Array.from({ length: 3000 }, (_, i) => ({ id: 'p' + i, type: 'uml.Component', label: 'P' + i, ...(i ? { parent: 'p' + (i - 1) } : {}) }));
+  nodes.push({ id: 'c', type: 'uml.Component', label: 'C', parent: 'p2999' }, { id: 'd', type: 'uml.Component', label: 'D' });
+  const g = layout({ schemaVersion: 2, nodes, edges: [{ id: 'e', type: 'uml.Dependency', from: 'c', to: 'd' }], views: [{ id: 'v', diagram: 'uml.component', nodeIds: nodes.map(n => n.id) }] }, 'v');
+  assert.ok(g.byId.c && g.byId.d);
+});

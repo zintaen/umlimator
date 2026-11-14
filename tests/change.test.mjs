@@ -111,3 +111,18 @@ test('diff() says a re-own on a class model in words: an element moved into a pa
   const map = p => ({ nodes: [{ id: 'x', label: 'X', parent: p }, { id: 'y' }, { id: 'z' }] });
   assert.deepEqual(diff(map('y'), map('z')).summary, ['changes X (parent)']);
 });
+
+test('diff() puts a removed model line a view names by id back in its place: a sequence keeps its order (audit 3)', () => {
+  const base = { nodes: [{ id: 'a' }, { id: 'b' }, { id: 'c' }], edges: [{ id: 'm1', from: 'a', to: 'b' }, { id: 'm2', from: 'b', to: 'c' }, { id: 'm3', from: 'c', to: 'a' }],
+    views: [{ id: 'v', render: 'sequence', nodeIds: ['a', 'b', 'c'], edges: ['m1', 'm2', 'm3'] }] };
+  const after = structuredClone(base); after.edges.splice(1, 1); after.views[0].edges = ['m1', 'm3'];
+  assert.deepEqual(diff(base, after).model.views[0].edges, ['m1', 'm2', 'm3']);
+});
+
+test('diff() and drift() ignore a view\'s containers that is not a list, as validate() says (audit 3)', () => {
+  for (const c of [1, 'ab', {}]) {
+    const m = { nodes: [{ id: 'a' }, { id: 'b' }], edges: [{ id: 'e', from: 'a', to: 'b' }], views: [{ id: 'v', nodeIds: ['a', 'b'], containers: c }] }, n = structuredClone(m);
+    n.edges[0].label = 'x';
+    assert.doesNotThrow(() => diff(m, n), JSON.stringify(c)); assert.doesNotThrow(() => drift(m, []), JSON.stringify(c));
+  }
+});

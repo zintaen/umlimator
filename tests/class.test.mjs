@@ -347,3 +347,18 @@ test('describe() of a view of packages nested 3,000 deep: the reading order with
   nodes.push({ id: 'c', type: 'uml.Class', label: 'C', parent: 'p2999' });
   assert.match(describe({ schemaVersion: 2, nodes, edges: [], views: [{ id: 'all', diagram: 'uml.class', nodeIds: nodes.map(n => n.id) }] }, 'all'), /p2999/);
 });
+
+test('layout() of a view of packages nested 3,000 deep: the boxes placed without recursion; a line from 70 deep still orders them (audit 3)', () => {
+  const deep = n => { const nodes = Array.from({ length: n }, (_, i) => ({ id: 'p' + i, type: 'uml.Package', label: 'p' + i, ...(i ? { parent: 'p' + (i - 1) } : {}) }));
+    nodes.push({ id: 'c', type: 'uml.Class', label: 'C', parent: 'p' + (n - 1) }, { id: 'd', type: 'uml.Class', label: 'D' });
+    return { schemaVersion: 2, nodes, edges: [{ id: 'e', type: 'uml.Dependency', from: 'c', to: 'd' }], views: [{ id: 'v', diagram: 'uml.class', nodeIds: ['d', ...nodes.filter(x => x.id !== 'd').map(x => x.id)] }] }; };
+  assert.equal(layout(deep(3000), 'v').nodes.length, 2);
+  const g = layout(deep(70), 'v'), d = g.byId.d;
+  assert.ok(d.x > g.byId.c.x, 'the line runs forward: D after the block that holds C');
+  assert.deepEqual(g.families.filter(f => d.x < f.x + f.w && d.x + d.w > f.x && d.y < f.y + f.h && d.y + d.h > f.y).map(f => f.id), [], 'D in no box');
+});
+
+test('validate() of a model with a null in nodes and a class view reports it, and does not throw (audit 3)', () => {
+  const p = validate({ schemaVersion: 2, nodes: [{ id: 'a', type: 'uml.Class' }, null], edges: [], views: [{ id: 'v', diagram: 'uml.class', nodeIds: ['a'] }] });
+  assert.ok(p.some(x => x.path === 'nodes[1]' && x.level === 'error'), JSON.stringify(p));
+});

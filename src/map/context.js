@@ -208,9 +208,10 @@ function mapContext(model, opts = {}) {
   }
   /* a layout may place only some cards: they keep their slots, the rest take their auto-layout slot or the next free
      row below it (a complete layout is used as it is) */
-  // a pin far off the grid (1e6, 1e308) held at 64 cells past the view's count: laying out walks every column and row between (validate warns)
-  function onGrid(vid, L) { const lim = ((V[vid] || {}).nodeIds || []).length + 64, off = x => typeof x === 'number' && !(Math.abs(x) <= lim), cut = p => (Array.isArray(p) && p.some(off) ? p.map(x => (off(x) ? Math.max(-lim, Math.min(lim, x || 0)) : x)) : p);
-    return Object.values(L).some(p => cut(p) !== p) ? Object.fromEntries(Object.entries(L).map(([k, p]) => [k, cut(p)])) : L; }
+  // a pin far off the grid (1e6, 1e308) held at 64 cells past the view's count: laying out walks every column and row between;
+  // one that is not two numbers is no pin (validate warns of both)
+  function onGrid(vid, L) { const lim = ((V[vid] || {}).nodeIds || []).length + 64, off = x => typeof x === 'number' && !(Math.abs(x) <= lim), cut = p => (Array.isArray(p) && !(typeof p[0] === 'number' && typeof p[1] === 'number') ? null : Array.isArray(p) && p.some(off) ? p.map(x => (off(x) ? Math.max(-lim, Math.min(lim, x || 0)) : x)) : p);
+    return Object.values(L).some(p => cut(p) !== p) ? Object.fromEntries(Object.entries(L).map(([k, p]) => [k, cut(p)]).filter(e => e[1])) : L; }
   function fillLayout(vid, L) {
     L = onGrid(vid, L);
     const bx = boxesOf(vid), ids = (V[vid].nodeIds || []).filter(i => N[i] && !bx.some(b => b.id === i)); // a box takes its place from what it holds
@@ -230,22 +231,30 @@ function mapContext(model, opts = {}) {
      placed by its own lines alone, so a box fed from outside, and the lines that pass it, ran into the cards beside it. */
   // A typed view whose type gives boxes (notes/stage-2.md §3.2) passes them, T: { boxes, flip }; their ids are not cards
   function blockPos(vid, T) {
-    const v = T ? flipView(vid, T.flip) : V[vid], boxes = T ? T.boxes : (v.containers || []).filter(c => c && c.id), ids = (v.nodeIds || []).filter(i => N[i] && !(T && boxes.some(b => b.id === i))), lp = loopsOf(v);
+    const v = T ? flipView(vid, T.flip) : V[vid], boxes = T ? T.boxes : (v.containers || []).filter(c => c && c.id), ids = (v.nodeIds || []).filter(i => N[i] && !(T && boxes.some(b => b.id === i))), isId = new Set(ids), lp = loopsOf(v);
     const byBox = Object.fromEntries(boxes.map(b => [b.id, b])), known = x => ids.includes(x) || Object.hasOwn(byBox, x), fwd = lp.edges.filter((e, k) => !lp.back.has(k) && e.from !== e.to && known(e.from) && known(e.to)); // not a line to an id that is neither (M3.3)
     const home = Object.fromEntries(ids.map(i => [i, (boxes.filter(b => (b.nodeIds || []).includes(i)).pop() || {}).id ?? null])); // the box a card is drawn in
-    const up = x => ids.includes(x) ? home[x] : byBox[x] && byBox[byBox[x].parent] ? byBox[x].parent : null; // the box a card or box sits in
-    const itemIn = (x, g) => { for (let k = 0; x != null && k < 64; k++, x = up(x)) if (up(x) === g) return x; }; // what in group g holds x
-    const holds = (x, y) => { for (let k = 0; y != null && k < 64; k++, y = up(y)) if (y === x) return true; return false; };
+    const up = x => isId.has(x) ? home[x] : byBox[x] && byBox[byBox[x].parent] ? byBox[x].parent : null; // the box a card or box sits in
+    const kids = new Map(), tin = new Map(), tout = new Map(), dep = new Map([[null, 0]]), path = new Map(), st = [[null, 0]]; let t = 0;
+    boxes.forEach(b => { const p = up(b.id); kids.has(p) || kids.set(p, []); kids.get(p).push(b.id); });
+    // a walk of the box tree with a stack, not recursion, so boxes nest to any depth: each box's span (x holds y when x's span
+    // holds y's), and the boxes inner first (tout's order), the order they are laid out in
+    while (st.length) { const f = st[st.length - 1], c = (kids.get(f[0]) || [])[f[1]++];
+      if (c === undefined) tout.set(st.pop()[0], t++); else if (!tin.has(c)) { tin.set(c, t++); dep.set(c, st.length); st.push([c, 0]); } }
+    // x and its boxes from the top, once (a step per box at most, so a cycle, validate's error, ends); what in group g holds x
+    const anc = x => { if (!path.has(x)) { const a = []; for (let k = 0, y = x; y != null && k <= boxes.length; k++, y = up(y)) a.push(y); path.set(x, a.reverse()); } return path.get(x); };
+    const itemIn = (x, g) => { const v = anc(x)[dep.get(g)]; return v != null && up(v) === g ? v : undefined; };
+    const holds = (x, y) => x === y || (isId.has(y) ? holds(x, home[y]) : tin.get(x) < tin.get(y) && tout.get(y) < tout.get(x));
     const first = x => { const k = lp.edges.findIndex(e => holds(x, e.from) || holds(x, e.to)); return k < 0 ? Infinity : k; };
     const sink = x => ids.includes(x) && isState(x) && !fwd.some(e => e.from === x); // state that leads nowhere goes last
     const lined = x => lp.edges.some(e => e.from !== e.to && (holds(x, e.from) || holds(x, e.to)));
     let was = {}, now = {}; // each box as the pass before laid it out, and as this one does
     const block = (g, P, order) => { // a group's cards at [col, row] from its top left, and its size in slots; P: where the pass before put each card
-      const all = [...ids.filter(i => home[i] === g), ...boxes.filter(b => up(b.id) === g).map(b => b.id)];
+      const all = [...ids.filter(i => home[i] === g), ...(kids.get(g) || [])];
       // cards with no line go in rows of their own under the group's columns, as under a plain view (#46): at the bottom of
       // their box, or under the view; they stacked in the first column with the sources
       const loose = all.some(lined) ? all.filter(x => ids.includes(x) && !lined(x)) : [], items = all.filter(x => !loose.includes(x)), size = {}, out = {};
-      items.forEach(x => { size[x] = ids.includes(x) ? { w: 1, h: 1, pos: { [x]: [0, 0] } } : block(x, P, order); out[x] = []; });
+      items.forEach(x => { size[x] = isId.has(x) ? { w: 1, h: 1, pos: { [x]: [0, 0] } } : now[x]; out[x] = []; });
       fwd.forEach(e => { const a = itemIn(e.from, g), b = itemIn(e.to, g); if (a !== undefined && b !== undefined && a !== b && !out[a].includes(b)) out[a].push(b); });
       const st = {}, dag = [], into = new Set(Object.values(out).flat()); // lines that close a loop do not order the blocks
       const dfs = u => { st[u] = 1; out[u].forEach(w => { if (st[w] === 1) return; dag.push([u, w]); if (!st[w]) dfs(w); }); st[u] = 2; };
@@ -280,8 +289,9 @@ function mapContext(model, opts = {}) {
       if (loose.length) { c0 = Math.max(c0, Math.min(per, loose.length)); h += Math.ceil(loose.length / per); }
       return (now[g] = { w: c0, h, pos });
     };
-    let P = block(null).pos;
-    for (const order of [false, true]) { was = now; now = {}; P = block(null, P, order).pos; } // levelled by the lines from outside, then ordered by them too
+    const run = (P, order) => { tout.forEach((_, g) => block(g, P, order)); return now[null].pos; };
+    let P = run();
+    for (const order of [false, true]) { was = now; now = {}; P = run(P, order); } // levelled by the lines from outside, then ordered by them too
     return P;
   }
   // a typed view whose type lays it out (1.9): the plain flow's ranking, with the lines the type turns round for it

@@ -281,12 +281,13 @@ export function render(container, model, options = {}) {
     return true;
   }
 
-  /* keyboard: the nearest card in an arrow's direction, by distance along it plus twice the distance across it */
+  /* keyboard: the nearest card in an arrow's direction, by distance along it plus twice the distance across it; within 45
+     degrees of it, so a card almost level is not the one above (none there: focus stays) */
   function nearest(n, k) {
     const [dx, dy] = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[k] || [0, 0], cx = n.x + n.w / 2, cy = n.y + n.h / 2;
     let best = null, bs = Infinity;
     geo.nodes.forEach(m => { if (m.id === n.id) return; const ax = m.x + m.w / 2 - cx, ay = m.y + m.h / 2 - cy, along = ax * dx + ay * dy, across = Math.abs(ax * dy - ay * dx);
-      if (along <= 0) return; const sc = along + 2 * across; if (sc < bs) { bs = sc; best = m; } });
+      if (along <= 0 || across > along) return; const sc = along + 2 * across; if (sc < bs) { bs = sc; best = m; } });
     return best;
   }
 
