@@ -369,3 +369,30 @@ test('validate() of a model with a null in nodes and a class view reports it, an
   const p = validate({ schemaVersion: 2, nodes: [{ id: 'a', type: 'uml.Class' }, null], edges: [], views: [{ id: 'v', diagram: 'uml.class', nodeIds: ['a'] }] });
   assert.ok(p.some(x => x.path === 'nodes[1]' && x.level === 'error'), JSON.stringify(p));
 });
+
+// audit 6: a line or a card a structural view lists twice is drawn, read and counted once (class, package, object, component,
+// deployment, composite structure, profile)
+const STRUCT = ['sales-classes', 'bookshop-packages', 'order-objects', 'bookshop-components', 'bookshop-deployment', 'order-service-structure', 'bookshop-profile'];
+const structOf = async () => { for (const t of ['object', 'component', 'deployment', 'composite', 'profile']) await import(`../src/uml/${t}.js`); return STRUCT.map(n => read(`../examples/${n}.json`)); };
+test('audit 6: a line listed twice in view.edges is drawn and counted once', async () => {
+  for (const a of await structOf()) { const m = structuredClone(a), v = m.views[0]; v.edges = Array.isArray(v.edges) ? v.edges : layout(a, v.id).edges.map(e => e.id); v.edges.push(v.edges[0]);
+    const g = layout(m, v.id), id = v.edges[0];
+    assert.equal(g.edges.filter(e => e.id === id).length, 1, a.views[0].id); assert.equal(g.order.filter(x => x === id).length, 1, a.views[0].id);
+    assert.equal(describe(m, v.id).split('\n')[0], describe(a, v.id).split('\n')[0], a.views[0].id); }
+});
+test('audit 6: a card listed twice in view.nodeIds is drawn once', async () => {
+  for (const a of await structOf()) { const m = structuredClone(a), v = m.views[0], id = layout(a, v.id).nodes.at(-1).id; v.nodeIds.push(id);
+    assert.equal(layout(m, v.id).nodes.filter(n => n.id === id).length, 1, v.id); assert.equal(describe(m, v.id), describe(a, v.id), v.id); }
+});
+test('audit 6: describe names every line a class view draws, of any kind', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'o', type: 'uml.Class', label: 'Order' }, { id: 'p', type: 'uml.Class', label: 'Payment' }, { id: 'i', type: 'uml.Interface', label: 'Payable' }],
+    edges: [{ id: 'u', type: 'uml.Usage', from: 'o', to: 'i' }, { id: 'r', type: 'uml.Realization', from: 'p', to: 'o', label: 'implements' }, { id: 'd', type: 'uml.Abstraction', from: 'p', to: 'i' }, { id: 'x', type: 'uml.Trace', from: 'i', to: 'o' }],
+    views: [{ id: 'v', diagram: 'uml.class', nodeIds: ['o', 'p', 'i'] }] };
+  const d = describe(m, 'v');
+  for (const s of ['uses Payable', 'realizes Order ("implements")', 'abstracts Payable', 'linked to Order']) assert.ok(d.includes(s), s + ' in ' + d);
+});
+test('audit 6: a member row with a function type keeps it whole', () => {
+  assert.deepEqual(parseMember('onClick: (e: Event) => void'), { type: 'uml.Property', label: 'onClick', props: { valueType: '(e: Event) => void' } });
+  assert.deepEqual(parseMember('next: Fn(a)->B [0..1]'), { type: 'uml.Property', label: 'next', props: { valueType: 'Fn(a)->B', multiplicity: '0..1' } });
+  assert.deepEqual(parseMember('f: Map<K, V> = x').props, { valueType: 'Map<K, V>', default: 'x' });
+});

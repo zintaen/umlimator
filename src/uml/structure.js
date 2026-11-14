@@ -67,7 +67,7 @@ function snClassifier(shape, said, icon) {
     draw(n) { const p = snParts(n, snKeyword({ ...n, shape })), cx = n.x + n.w / 2, max = n.w - 2 * SN.pad;
       let y = n.y + snIconBand + (n.h - snIconBand - p.st.length * SN.sth - SN.nlh - 8) / 2;
       const tx = p.st.map(t => { const s = snText(cx, y + 11, fit(t, SN.st, max), SN.st, 400, SN.line, 'c-st'); y += SN.sth; return s; });
-      tx.push(snText(cx, y + 12, fit(p.name, SN.name, max), SN.name, 600, SN.ink, 'c-name').replace('<text ', `<text data-o="${esc(n.id)}" `));
+      tx.push(snText(cx, y + 12, fit(p.name, SN.name, max), SN.name, 600, SN.ink, 'c-name').replace('<text ', () => `<text data-o="${esc(n.id)}" `));
       return snNode(n, shape, said(n), snBody(snRect(n)) + icon(n.x + n.w - 22, n.y + 6) + tx.join('')); },
   };
   return S;

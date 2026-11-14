@@ -81,7 +81,7 @@ function dpPic(model, view) {
 // the lines drawn: those the view lists, or with no list the model's of this type's kinds, between two elements it shows; a
 // line from a box to what it holds is left out (the router refuses it)
 function dpListed(view, pic) {
-  const E = new Map(pic.I.E.map(e => [e.id, e])), shown = new Set(pic.ids), list = Array.isArray(view.edges) ? view.edges.map(x => (typeof x === 'string' ? E.get(x) : x)) : pic.I.E.filter(e => DP_LINES.includes(e.type));
+  const E = new Map(pic.I.E.map(e => [e.id, e])), shown = new Set(pic.ids), list = Array.isArray(view.edges) ? [...new Set(view.edges.map(x => (typeof x === 'string' ? E.get(x) : x)))] : pic.I.E.filter(e => DP_LINES.includes(e.type));
   return list.filter(e => DP_OBJ(e) && typeof e.id === 'string' && shown.has(e.from) && shown.has(e.to));
 }
 const dpLines = (model, view, pic) => dpListed(view, pic).filter(e => !dpInside(pic, e));

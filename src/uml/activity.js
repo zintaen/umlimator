@@ -78,12 +78,18 @@ function actIndex(model, view) {
   const up = once(id => { const seen = new Set([id]); for (let p = (N.get(id) || {}).parent; p != null && N.has(p) && !seen.has(p); p = N.get(p).parent) { if (lanes.has(p)) return p; seen.add(p); } return null; });
   // a lane's own owner lane, or null at the top: a lane whose chain of shown owners comes back to it is at the top (laneRows')
   const outer = once(id => { const seen = new Set(); for (let l = up(id); l != null && !seen.has(l); l = up(l)) { if (l === id) return null; seen.add(l); } return up(id); });
-  const laneOf = id => (lanes.has(id) ? null : up(id)), drawn = ids.filter(id => !lanes.has(id)), on = new Set(drawn);
+  // a call behaviour action unfolded in place (src/map/context.js unfold): a box holding its activity's nodes, in the call's
+  // lane, the call's lines ending on its border (notes/milestone-2.md §6.3, audit 6)
+  const boxes = AC_ARR(view && view.containers).filter(b => AC_OBJ(b) && b.unfolds != null && N.has(b.id) && !shown.has(b.id)), inBox = new Map();
+  boxes.forEach(b => { AC_ARR(b.nodeIds).forEach(i => inBox.set(i, b.id)); if (boxes.some(c => c.id === b.parent)) inBox.set(b.id, b.parent); });
+  const laneOf = id => { if (lanes.has(id)) return null; for (let x = id, k = 0; k <= boxes.length; k++, x = inBox.get(x)) { const u = up(x); if (u != null || !inBox.has(x)) return u; } return null; };
+  const drawn = ids.filter(id => !lanes.has(id)), on = new Set([...drawn, ...boxes.map(b => b.id)]);
   const list = Array.isArray(view && view.edges) ? [...new Set(view.edges.map(x => (typeof x === 'string' ? E.get(x) : x)))] : [...E.values()].filter(e => AC_LINES.includes(e.type));
   const lines = list.filter(e => AC_OBJ(e) && typeof e.id === 'string' && on.has(e.from) && on.has(e.to));
   const n = new Map(), under = p => n.get(p) || 0; // the nodes under each lane, at any depth, counted in one pass
   drawn.forEach(id => { for (let l = laneOf(id); l != null; l = outer(l)) n.set(l, under(l) + 1); });
-  return { N, E, path, ids, shown, parts, drawn, lines, up, laneOf, isPart, under,
+  return { N, E, path, ids, shown, parts, drawn, lines, up, laneOf, isPart, under, boxes: boxes.map(b => ({ id: b.id, label: acName(N.get(b.id)), title: acName(N.get(b.id)),
+      nodeIds: AC_ARR(b.nodeIds).filter(i => on.has(i)), ...(inBox.has(b.id) ? { parent: inBox.get(b.id) } : {}), aria: `Call behaviour ${acName(N.get(b.id))}, unfolded` })),
     lanes: parts.map((id, order) => ({ id, parent: outer(id), order })) };
 }
 const acName = x => String(x.label ?? x.id);
@@ -144,7 +150,7 @@ function actGeo({ model, view, pos, memo }) {
   // widest label and 40 px for its stubs laid out right, as the class type does, and by 48 px laid out down, where a label
   // lies across its line. ponytail: one gap for every column; a gap per column needs labelRoom for typed views (the core's)
   const wide = edges.some(e => e.label) ? (down ? 48 : Math.ceil(Math.max(...edges.filter(e => e.label).map(labelW))) + 40) : 0;
-  const g = layoutTyped({ nodes, edges, direction: down ? 'down' : 'right', gap: AC.gap + wide, rgap: AC.rgap, repair: false, reroute: false }, memo);
+  const g = layoutTyped({ nodes, edges, ...(I.boxes.length ? { containers: I.boxes } : {}), direction: down ? 'down' : 'right', gap: AC.gap + wide, rgap: AC.rgap, repair: false, reroute: false }, memo);
   return acFinish(model, g, I, down);
 }
 
@@ -309,7 +315,8 @@ const ACT_TYPE = registerDiagramType('uml.activity', {
   validate: actProblems,
   rules: ACT_RULES,
   describe: actDescribe,
-  unfolds: true, // a call behaviour action unfolds its activity in place (notes/milestone-2.md §6.3)
+  unfolds: true, // a call behaviour action unfolds its activity in place (notes/milestone-2.md §6.3): a box, laid out as a block
+  boxes: (model, view) => actIndex(model, view).boxes,
   edits: { connect: actConnect, moveTo: actMoveTo, add: actAdd, remove: actRemove, rename: actRename },
   // the PDF's tables (§15): a node's kind, and its partition
   word: (model, id) => { const x = AC_ARR(model && model.nodes).find(n => AC_OBJ(n) && n.id === id); return x && Object.hasOwn(AC_LOOK, x.type) ? AC_LOOK[x.type][1] : null; },

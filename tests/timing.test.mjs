@@ -450,3 +450,10 @@ test('key: S on a lifeline whose id is toString, constructor or __proto__ turns 
     assert.deepEqual(JSON.parse(JSON.stringify(V(run(n, tmKeyHook(n, 't', [id], 'S'))).present)), JSON.parse(`{"${id}":{}}`), id);
   }
 });
+
+test('audit 6: Alt + arrow on a lifeline moves it in nodeIds, as docs/editing.md says', () => {
+  const m = EX(), V0 = V(m), id = V0.nodeIds[0], out = tmMoveTo(m, V0, id, { by: [0, 1] });
+  assert.deepEqual(out, [{ op: 'move', id, view: V0.id, index: 1 }]);
+  const row = readFileSync(new URL('../docs/editing.md', import.meta.url), 'utf8').split('\n').find(l => l.startsWith('| reorder lifelines | | `Alt + ↑/↓` on a lifeline'));
+  assert.ok(row && row.includes('`move` on `nodeIds`'), row);
+});
