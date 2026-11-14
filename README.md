@@ -311,7 +311,7 @@ structure, profile, timing or information flow diagram; `"er"`, `"flowchart"` an
 diagram, a flowchart and a data flow diagram; `"c4.landscape"`, `"c4.context"`, `"c4.container"`, `"c4.component"`,
 `"c4.dynamic"` and `"c4.deployment"` C4's six views; `"sysml.requirement"`, `"sysml.block-definition"`,
 `"sysml.internal-block"` and `"sysml.parametric"` SysML v1.7's four diagrams (0.25.0); `"mindmap"` a mindmap and
-`"gcp"` and `"azure"` Google Cloud and Azure architecture diagrams (0.26.0); `"bpmn"` a BPMN diagram (0.27.0); each drawn by `umlimator/all` and the
+`"gcp"`, `"azure"` and `"aws"` Google Cloud, Azure and AWS architecture diagrams (0.26.0); `"bpmn"` a BPMN diagram (0.27.0); each drawn by `umlimator/all` and the
 CLI; a type not drawn yet shows its
 nodes as plain cards, with a warning. A model with no `schemaVersion` is a map, as always, and a version newer than the
 module reads is an error.

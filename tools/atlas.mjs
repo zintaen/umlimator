@@ -109,7 +109,9 @@ export function build(links = read(new URL('atlas-links.json', import.meta.url))
     if (n.opensView != null) stop(`${element} opens ${n.opensView} already`);
     els.nodes.set(id, { ...n, opensView: vid });
   }
-  const model = { $schema: '../lib/umlimator.schema.json', schemaVersion: 2, title: links.title, root: at(links.root)[1],
+  const [rf, root] = at(links.root);
+  if (views.get(root)?.file !== rf) stop(`root ${links.root} is no view of its file`);
+  const model = { $schema: '../lib/umlimator.schema.json', schemaVersion: 2, title: links.title, root,
     nodes: [...els.nodes.values()], edges: [...els.edges.values()], views: [...views.values()].map(x => x.v) };
   if (packs.size) model.iconPacks = Object.fromEntries([...packs].map(([p, x]) => [p, x.label]));
   const shared = [...files].filter(([, fs]) => fs.length > 1).map(([id, fs]) => ({ id, files: fs }));

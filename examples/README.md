@@ -95,7 +95,10 @@ this repository or on the site: every page and still published is built with `UM
 [`bookshop-atlas.json`](bookshop-atlas.json) is the Bookshop examples above in one model (`"schemaVersion": 2`): the
 map's three views and the thirty-six views of the twenty-four diagram files, one of each of UML's 14 diagram kinds and
 of the ER, flowchart, data flow, information flow, C4, mindmap, Google Cloud, Azure, AWS and BPMN diagrams, joined by drill-down. It
-opens at the C4 system context (0.24.0); the map and the opening plan (a mindmap, 0.26.0) are in the views list. Double-click a card to open what it leads to:
+opens at the C4 system context (0.24.0); the map and the opening plan (a mindmap, 0.26.0) are in the views list. Double-click a card to open what it leads to.
+Two of the elements below are drawn as boxes, which a double-click does not open yet: `sales` (in the packages) and the
+Java 21 runtime (in production). Open the sales domain (also from the map) and the components
+from the views list:
 
 | From | Card | Opens |
 |---|---|---|

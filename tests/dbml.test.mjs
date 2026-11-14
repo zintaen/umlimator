@@ -73,6 +73,13 @@ test('the captured Database reads into a model check.mjs passes, with the pinned
   assert.equal(JSON.stringify(captured.database), before);
 });
 
+test('the fixture is what export() gives, and the reader\'s header says so, not a captured Database (audit 2, backlog M2.12)', () => {
+  assert.deepEqual(Object.keys(captured.database).sort(), ['notes', 'records', 'schemas']); // no project, database type or diagram views
+  const head = readFileSync(new URL('../src/readers/dbml.js', import.meta.url), 'utf8').slice(0, 900).replace(/\s+/g, ' ');
+  assert.match(head, /the export\(\) of a Database parsed by @dbml\/core/);
+  assert.doesNotMatch(head, /Database captured/);
+});
+
 test('the adapter imports nothing and package.json names no @dbml/core (D8)', () => {
   const src = readFileSync(new URL('../src/readers/dbml.js', import.meta.url), 'utf8'), pkg = readFileSync(new URL('../package.json', import.meta.url), 'utf8');
   assert.doesNotMatch(src, /^\s*import\b|\brequire\(|\bimport\(/m);

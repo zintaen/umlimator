@@ -89,6 +89,14 @@ ok("check · each message is of one kind, by the check's own words, not a label'
    [u.kind_of(o) for o in ['view v: edge Web→DB breaks rule "Apps never cross into the data tier"', "view v: edges a→b and c→d cross",
                            'view v: label "runs right-to-left" lies on edge a→b', "view v: edge a→b takes a detour (90px for 40px)"]]
    == ["rules", "crossings", "labelOnLine", "detours"])
+near = 'view v: edge A→B passes within 12px of node "Ledger breaks rule "audit""'
+ok("check · a label that ends in breaks rule \"...\" is not a broken rule: the page lists its broken rules apart (audit 2)",
+   u.kind_of(near, set()) == "nearNode" and u.kind_of('view v: edge A→B breaks rule "audit"', {'view v: edge A→B breaks rule "audit"'}) == "rules")
+long = "\n".join(["<!-- umlimator-diff -->", "### Map changes", ""] + [f"- adds card {i} between a and b" for i in range(3000)]
+                 + ["", "```mermaid", "flowchart LR"] + ["  n1 --> n2"] * 3000 + ["```"])
+cut = u.capped(long)
+ok("diff --base · the summary stays under GitHub's 65536 characters for a comment, cut at a line, outside a sketch, saying so (audit 2)",
+   len(cut) < 61000 and cut.count("```") % 2 == 0 and "The rest is cut" in cut and u.capped("short") == "short", len(cut))
 # the diff Action's comment: a label is one node's text and a summary line one line, never a fence of their own
 fence = u.sketch({"nodes": [{"id": "a", "label": 'A"]\n```\n## Approved <b>x</b>', "change": "added"}, {"id": "b", "label": "B"}],
                   "edges": [{"from": "a", "to": "b"}], "views": [{"id": "v", "nodeIds": ["a", "b"]}]})
@@ -160,9 +168,10 @@ with tempfile.TemporaryDirectory() as tmp:
 
     (g / "docs" / "map.json").write_text(json.dumps(edited(json.loads((g / "docs" / "map.json").read_text()))))
     (g / "notes.json").write_text('{"not": "a map"}'); git("add", "notes.json")
+    (g / "settings.json").write_bytes('{"editor": "x"}'.encode("utf-16")); git("add", "settings.json")  # as PowerShell writes it: not UTF-8 (audit 2)
     r = cli("diff", "--base", "HEAD", "--out", str(t / "pr"), cwd=g)
     md = (t / "pr" / "summary.md").read_text(encoding="utf-8") if (t / "pr" / "summary.md").is_file() else ""
-    ok("diff --base · each map model changed since the ref (and no other JSON), as a page", r is not None and [x["file"] for x in r] == ["docs/map.json"] and (t / "pr" / "docs-map.html").is_file(), r)
+    ok("diff --base · each map model changed since the ref (and no other JSON, a UTF-16 one too), as a page", r is not None and [x["file"] for x in r] == ["docs/map.json"] and (t / "pr" / "docs-map.html").is_file(), r)
     ok("diff --base · a summary for the pull request: what changed, and a sketch GitHub draws", md.startswith("<!-- umlimator-diff -->") and "- adds Payments queue between Trip service and Payment provider" in md
        and "```mermaid" in md and ":::added" in md and ":::removed" in md, md[:600])
     r = cli("diff", "--base", "HEAD", "--out", "pr-sub", cwd=g / "docs") or [{}]  # from a subfolder, with a relative --out: git names files from the top
@@ -178,6 +187,35 @@ with tempfile.TemporaryDirectory() as tmp:
     cli("render", str(t / "esc" / "m.json"), "--out", str(t / "esc" / "page.html"), "--no-check")
     r = cli("stills", str(t / "esc" / "page.html"), "--out", str(t / "esc" / "out"))
     ok("stills · a view id with a / is a file name inside --out", r and len(r) == 1 and Path(r[0]["png"]).parent == t / "esc" / "out" and not list((t / "esc").glob("escaped.*")), r)
+
+    # a view's files are named by its id as it is (a space, a letter beyond ASCII); two ids that differ only in case get
+    # files of their own, as macOS and Windows fold case (audit 2)
+    (t / "names").mkdir(); (t / "names" / "m.json").write_text(json.dumps({"title": "t", "nodes": [{"id": "a", "label": "A"}, {"id": "b", "label": "B"}],
+        "edges": [{"id": "e", "from": "a", "to": "b"}], "views": [{"id": i, "title": i, "nodeIds": ["a", "b"] if i != "api" else ["a"]} for i in ("Übersicht flow", "API", "api")]}))
+    cli("render", str(t / "names" / "m.json"), "--out", str(t / "names" / "page.html"), "--no-check")
+    r = cli("stills", str(t / "names" / "page.html"), "--out", str(t / "names" / "out")) or []
+    again = subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "stills", str(t / "names" / "page.html"), "--out", str(t / "names" / "out")], capture_output=True, text=True)
+    pngs = sorted(Path(x["png"]).name for x in r)
+    ok("stills · <view>.png as the docs say, and views whose ids differ only in case each keep their own pictures (audit 2)",
+       len(pngs) == 3 and "Übersicht flow.png" in pngs and "API.png" in pngs and len({p.casefold() for p in pngs}) == 3
+       and "0 still(s) exported, 3 unchanged" in again.stderr and "no longer has" not in again.stderr, (pngs, again.stderr[-300:]))
+    # a file that is no page, a model that is no model, a --size that is no size: one line, no traceback (audit 2)
+    plain = lambda *x: subprocess.run([sys.executable, str(ROOT / "umlimator.py"), *x], capture_output=True, text=True)
+    bad = [plain(c, str(t / "names" / "m.json"), *extra) for c, extra in (("stills", ["--out", str(t / "x")]), ("check", []), ("pdf", ["--out", str(t / "x.pdf")]),
+                                                                          ("record", ["--story", "s", "--out", str(t / "x.png")]))]
+    ok("stills, check, pdf and record · a file that is no umlimator page is said in one line", all(b.returncode == 1 and "is not a umlimator page" in b.stderr
+       and "Traceback" not in b.stderr for b in bad), [b.stderr[-200:] for b in bad])
+    b = plain("record", str(t / "names" / "page.html"), "--story", "s", "--out", str(t / "x.png"), "--size", "800")
+    ok("record · --size 800 is a usage error, not a traceback", b.returncode == 2 and "WxH" in b.stderr and "Traceback" not in b.stderr, b.stderr[-300:])
+    shapes = {"bom": None, "cut": '{"nodes": [', "list": "[]", "nodes_null": '{"nodes": null, "views": []}', "nodes_dict": '{"nodes": {}, "views": []}',
+              "edges_dict": '{"nodes": [], "edges": {}, "views": []}', "view_str": '{"nodes": [], "views": ["v"]}'}
+    for k, text in shapes.items():
+        f = t / "names" / f"{k}.json"
+        f.write_bytes(b"\xef\xbb\xbf" + json.dumps(json.loads((t / "names" / "m.json").read_text())).encode() if text is None else text.encode())
+    bad = {k: plain("render", str(t / "names" / f"{k}.json"), "--out", str(t / "names" / f"{k}.html"), "--no-check") for k in shapes}
+    ok("render · a model with a BOM renders; one that is cut short or oddly shaped is said in one line, not a traceback (audit 2)",
+       bad.pop("bom").returncode == 0 and all(b.returncode != 0 and b.stderr.strip() and "Traceback" not in b.stderr for b in bad.values()),
+       {k: b.stderr[-200:] for k, b in bad.items()})
 
     # the diff Action's step as CI runs it (C10, 2.6): a pull request's merge commit against its first parent, the pathspec
     # examples/*.json passed to git as written (set -f), on one object model and one package model
@@ -748,6 +786,9 @@ ok("mcp · a page that connects gets what the assistant asked last", sent and se
 said, err = tool("highlight", refs=["trips", "payments", "s9"], view="system")
 ok("mcp · highlight: shown on the page once it answers, with card and line ids as Refs, on its event stream", said.startswith("Shown on 1 page") and sent[-1]["want"]["view"] == "system"
    and sent[-1]["want"]["highlight"] == {"refs": [{"type": "node", "id": "trips"}, {"type": "node", "id": "payments"}, {"type": "edge", "ids": ["s9"]}], "view": "system"}, (said, sent[-1:]))
+bad = [tool("highlight", refs=[x]) for x in ({"type": "node", "id": ["a"]}, {"type": "edge", "ids": 5}, {"type": "edge", "ids": [["x"]]}, {"type": "container", "container": ["x"]})]
+ok("mcp · highlight: a Ref whose fields are not strings is a tool error naming it, never an internal error (audit 2)",
+   all(err is True and said.startswith("refs[0] is not a Ref") for said, err in bad), bad)
 c = web(); c.request("GET", "/"); r = c.getresponse(); page = r.read().decode()
 ok("mcp · serves the CLI's page, with the script that shows commands on its map handle (window.umlimatorMap)",
    r.status == 200 and "const map = window.umlimatorMap" in page and "new EventSource(`/events?page=" in page and "Fare calculator" in page)
