@@ -367,3 +367,13 @@ test('performance (§17, risks.md P1): 50 nodes, 60 flows, four lanes: a full la
   for (const k of Object.keys(edits)) assert.ok(best(k) < 1000, `${k}: ${best(k)} ms`);
   for (const k of Object.keys(edits)) console.log(`# P1 target 100 ms: ` + best(k) + ' ' + `${k}: ${best(k)} ms`);
 });
+
+test('partitions nested 3,000 deep: describe() and layout() in time near linear, and no recursion (audit 3)', () => {
+  const N = 3000, nodes = Array.from({ length: N }, (_, i) => ({ id: 'p' + i, type: 'uml.ActivityPartition', label: 'P' + i, ...(i ? { parent: 'p' + (i - 1) } : {}) }));
+  nodes.push({ id: 'i', type: 'uml.InitialNode', parent: 'p' + (N - 1) }, { id: 'a', type: 'uml.Action', label: 'Do', parent: 'p' + (N - 1) });
+  const m = { schemaVersion: 2, nodes, edges: [{ id: 'f', type: 'uml.ControlFlow', from: 'i', to: 'a' }], views: [{ id: 'v', diagram: 'uml.activity', nodeIds: nodes.map(n => n.id) }] };
+  const t = performance.now(), d = describe(m, 'v'), g = layout(m, 'v');
+  assert.ok(d.includes('Partition P0, 2 nodes') && d.includes(`Partition P${N - 1}, 2 nodes`));
+  assert.deepEqual(g.order.slice(N - 1, N + 2), ['p' + (N - 1), 'i', 'a']);
+  assert.ok(performance.now() - t < 10000, 'was cubic in the depth: minutes here');
+});

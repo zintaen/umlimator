@@ -226,3 +226,13 @@ test('validate() of an object view, an instance of the last of a 5,000-deep gene
   nodes.push(I('o', 'o', 'C4999', [['a0', '1']]));
   assert.deepEqual(validate({ schemaVersion: 2, nodes, edges, views: [{ id: 'v', diagram: 'uml.object', nodeIds: ['o'] }] }), []);
 });
+
+test('a model with only object views gets no class rules but member-names (uml-object.md, audit 3)', () => {
+  const m = { schemaVersion: 2, nodes: [I('a', 'a', null, [['x', '1'], ['x', '2']]), I('b', 'b', null, []), { id: 'n', type: 'uml.Comment', label: 'about a' }],
+    edges: [{ id: 'g', type: 'uml.Generalization', from: 'a', to: 'b' }, { id: 'c', type: 'uml.CommentLink', from: 'a', to: 'n' }],
+    views: [{ id: 'v', diagram: 'uml.object', nodeIds: ['a', 'b', 'n'] }] };
+  const rules = validate(m).map(p => p.rule);
+  assert.ok(rules.includes('member-names'), rules.join());
+  assert.ok(!rules.includes('generalization-kinds') && !rules.includes('comment-link'), rules.join());
+  assert.ok(!T.rules['generalization-kinds'] && !T.rules['comment-link']);
+});

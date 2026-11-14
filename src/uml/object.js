@@ -157,8 +157,8 @@ const OBJECT_TYPE = registerDiagramType('uml.object', {
   owners: ownerChoices,
   // a slot is a member row, `feature = value` (§9.2); a comment and a package hold none
   member: { print: printSlot, edit: slotEdit, add: parseSlot, holds: n => n.type === 'uml.InstanceSpecification' },
-  validate: (model, view) => [...classProblems(model), ...objectProblems(model), ...ownerProblems(model, view, drawnLines(model, view, OBJECT_LINES).lines)],
-  rules: { ...RULES, ...OBJECT_RULES, ...OWNER_RULES }, // member-names: two slots for one feature
+  validate: (model, view) => [...classProblems(model).filter(p => p.rule === 'member-names'), ...objectProblems(model), ...ownerProblems(model, view, drawnLines(model, view, OBJECT_LINES).lines)],
+  rules: { 'member-names': RULES['member-names'], ...OBJECT_RULES, ...OWNER_RULES }, // of the class rules, member-names only: two slots for one feature (§9.3)
   describe: objectDescribe,
 });
 

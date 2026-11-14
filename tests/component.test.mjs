@@ -310,3 +310,19 @@ test('a port\'s PDF row is its name and type whole, even when the type holds " o
     { id: 'q', type: 'uml.Port', label: 'Port Authority feed' }] }], edges: [], views: [{ id: 'v', diagram: 'uml.component', nodeIds: ['c'] }] };
   assert.deepEqual(T.rows(m, m.views[0], 'c'), ['status : List of Orders', 'Port Authority feed']);
 });
+
+test('a component\'s operation or attribute row is edited as a member, not as a port (audit 3)', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'shop', type: 'uml.Component', label: 'Shop', members: [
+    { id: 'shop.place', type: 'uml.Operation', label: 'place', props: { returnType: 'Order' } }, { id: 'shop.api', type: 'uml.Port', label: 'api' }] }],
+  edges: [], views: [{ id: 'v', diagram: 'uml.component', nodeIds: ['shop'] }] };
+  assert.equal(T.edits.member(m, m.views[0], 'shop', 'shop.place', 'placeOrder(): Order'), null, 'member.edit\'s (memberEdit)');
+  assert.deepEqual(T.edits.member(m, m.views[0], 'shop', 'shop.api', 'web : Http')[1], { op: 'set', id: 'shop.api', path: 'props.valueType', value: 'Http' });
+});
+
+test('layout() of components nested 1,500 deep marks the padded boxes in one pass up (audit 3)', () => {
+  const N = 1500, nodes = Array.from({ length: N }, (_, i) => ({ id: 'p' + i, type: 'uml.Component', label: 'P' + i, ...(i ? { parent: 'p' + (i - 1) } : {}) }));
+  nodes.push({ id: 'c', type: 'uml.Component', label: 'C', parent: 'p' + (N - 1) }, { id: 'd', type: 'uml.Component', label: 'D' });
+  const t = performance.now(), g = layout({ schemaVersion: 2, nodes, edges: [{ id: 'e', type: 'uml.Dependency', from: 'c', to: 'd' }], views: [{ id: 'v', diagram: 'uml.component', nodeIds: nodes.map(n => n.id) }] }, 'v');
+  assert.equal(g.edges.length, 1);
+  assert.ok(performance.now() - t < 10000, 'was cubic in the depth: about a minute and a half here');
+});
