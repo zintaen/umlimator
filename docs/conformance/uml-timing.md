@@ -49,7 +49,10 @@ the maintainer's of 13 Nov 2026). And copy and paste, per-type `diff()` writers 
 Layout limits, measured on `examples/bookshop-timing.json` and `tests/timing-stress.json`. The layout check (`check()`,
 the CLI's `check`) treats a lane as a holder, so its own rows, changes and labels inside it are not overlaps, and the
 browser's text checks leave lanes out altogether (no text, header or line label is checked against a lane, its own or
-another's); the timing views are held to §11's own predicate in `tests/stage6-fixtures.test.mjs` instead:
+another's); a slanted message is tested as the slanted line it is (two that cross in an X are said to cross, two that
+never meet are not said to share a line, a label is on a line only when the line runs through it: audit 6, which
+dropped 21 false findings on the stress view's `all`); the timing views are held to §11's own predicate in
+`tests/stage6-fixtures.test.mjs` as well:
 
 - The example lays out clean: `check()` finds nothing, and the predicate holds (every step and row in its lane, every
   message's ends on its lanes' levels within 1 px, no label over a step, a row, a value or another label).

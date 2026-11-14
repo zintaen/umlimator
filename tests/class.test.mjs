@@ -369,3 +369,11 @@ test('validate() of a model with a null in nodes and a class view reports it, an
   const p = validate({ schemaVersion: 2, nodes: [{ id: 'a', type: 'uml.Class' }, null], edges: [], views: [{ id: 'v', diagram: 'uml.class', nodeIds: ['a'] }] });
   assert.ok(p.some(x => x.path === 'nodes[1]' && x.level === 'error'), JSON.stringify(p));
 });
+
+test('every labelled line of a typed view gets a spot or check() says it has none (audit 6): sales-classes\' "places", one 56 px run between two classes side by side in a view laid out down, gets its row gap widened', () => {
+  for (const direction of ['down', 'right']) {
+    const m = { ...CLASS, views: CLASS.views.map(v => v.id === 'domain' ? { ...v, direction } : v) }, g = layout(m, 'domain');
+    assert.deepEqual(g.edges.filter(e => (e.label || e.step != null) && !e.lbl).map(e => e.id), [], direction);
+    assert.deepEqual(check(m, 'domain').map(p => p.message), [], direction);
+  }
+});

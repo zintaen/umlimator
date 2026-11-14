@@ -5,7 +5,7 @@ import { held, warn } from '../core/warn.js';
 import { r2 } from '../draw/shapes.js';
 import { svgOf } from '../draw/svg.js';
 import { leaveIssues, routeAudit } from '../layout/audit.js';
-import { layoutGraph, pillW, pullSources, rowsFor, untangle } from '../layout/layered.js';
+import { layoutGraph, pillW, pullSources, rowsFor, stepW, untangle } from '../layout/layered.js';
 import { WIRES, badgesOf, mapNodeW } from './cards.js';
 import { markOf } from './diff.js';
 import { plainViews } from './typed.js';
@@ -435,7 +435,11 @@ function mapContext(model, opts = {}) {
           taken.add(row); rowAt[id] = row; maxRows = Math.max(maxRows, row + 1);
           nodesOut.push({ ...nodeIn(id, vid), sub: nodeIn(id, vid).sub || nodeIn(id, vid).sublabel, kids: kidCount(id, vid), opens: !!opensOf(id, vid), ax: x, ay: row * pitch, w: widths[id], h: NH, lane: li, step: stepTxt(id) });
         });
-        x += colW + (j < L.cols.length - 1 ? SUBG : CG);
+        // a labelled line to the next column holds its label and step mark, with 27 px of line each side (layoutPass's gapAfter;
+        // at 54 px its label found no spot and was left off, audit 6)
+        const next = new Set(L.cols[j + 1] || []), w = Math.max(0, ...edges.filter(e => e.label && (col.includes(e.from) && next.has(e.to) || col.includes(e.to) && next.has(e.from)))
+          .map(e => pillW(e.label, e.sublabel) + (e.step != null ? stepW(e.step) + 4 : 0) + 54));
+        x += colW + (j < L.cols.length - 1 ? Math.max(SUBG, w) : CG);
       });
       const right = x - CG + 16;
       const lx = P.boxed ? x0 - CG + 40 : x0 - 12, lw = P.boxed ? right - lx : right - 4 - lx;

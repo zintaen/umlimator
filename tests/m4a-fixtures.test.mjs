@@ -84,7 +84,7 @@ const PINNED = {
   'mindmap-stress': { 'edge-cases': [0, 0, 0, 0], all: [0, 0, 0, 0] },
   'cloud-minimal': { gcp: { right: [0, 0, 0, 0], down: [0, 0, 0, 0] }, azure: { right: [0, 0, 0, 0], down: [0, 0, 0, 0] } },
   'cloud-stress': { 'edge-cases': { right: [0, 0, 0, 1], down: [0, 0, 0, 1] }, 'ec-no-product': { right: [0, 0, 0, 0], down: [0, 0, 0, 0] },
-    'az-edge-cases': { right: [0, 0, 0, 0], down: [0, 0, 0, 0] }, 'aws-edge-cases': { right: [0, 0, 0, 0], down: [0, 0, 0, 0] }, all: { right: [52, 0, 0, 0], down: [54, 1, 0, 0] } },
+    'az-edge-cases': { right: [0, 0, 0, 0], down: [0, 0, 0, 0] }, 'aws-edge-cases': { right: [0, 0, 0, 0], down: [0, 0, 0, 0] }, all: { right: [56, 0, 0, 0], down: [54, 1, 0, 0] } }, // three labels left off before audit 6: drawn, laid out with room for them
   'bookshop-opening-plan': { 'mm-plan': [0, 0, 0, 0] },
   'bookshop-gcp': { 'gcp-on-gcp': { right: [1, 0, 0, 0], down: [1, 0, 0, 0] } },
   'bookshop-azure': { 'az-on-azure': { right: [1, 0, 0, 0], down: [3, 0, 0, 0] } },

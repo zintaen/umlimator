@@ -18,6 +18,8 @@ const hit = (a, b, pad = 0) => a.x < b.x + b.w + pad && b.x < a.x + a.w + pad &&
 // a line whose route layoutPass draws itself in a typed view: 'loop' (a node to itself) or 'fan'. A symbol, so no field of a
 // model's line can set it
 const OWN_ROUTE = Symbol('own route');
+// a typed view's labels placed only once routing was done, on a looser spot (layoutPass's last try): they ask for room as a lost one does
+const LOOSE = new WeakSet();
 const labelW = e => textW(fit((e.step != null ? e.step + ' · ' : '') + (e.label || ''), 10, e.cut || 150), 10) + 12;
 
 /* Layered auto-layout for views that carry no col/row: longest-path layers (cycles broken by DFS),
@@ -101,7 +103,7 @@ function layoutGraph(dg, map) {
   let g = layoutPass(dg, map, null);
   if (g.room) { const g2 = layoutPass(dg, map, g.room, true); g2.ms.probe = g.ms.probe; g = g2; }
   // a label with no room where it fits: the view laid out again with room for it, kept with fewer issues and labels cut short
-  if (g.labelRoom) { const g2 = layoutPass(dg, map, g.labelRoom, true), cut = h => h.edges.filter(e => (e.label || e.step != null) && (!e.lbl || e.lbl.short)).length;
+  if (g.labelRoom) { const g2 = layoutPass(dg, map, g.labelRoom, true), cut = h => h.edges.filter(e => (e.label || e.step != null) && (!e.lbl || e.lbl.short || LOOSE.has(e))).length;
     delete g.labelRoom; if (routeAudit(g2, '').length + cut(g2) < routeAudit(g, '').length + cut(g)) g = g2; }
   // two lines that still cross: one takes another side, and the view is laid out so once more, kept if it has fewer issues. A
   // line that closes a loop leaves its source on the far side, out round the map as a loop under the boxes does, and still comes
@@ -575,18 +577,18 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
   // labels: on the edge's own segment, in free space — never across another route, node, or label
   const placed = [];
   // every spot on e's line where a label of this text fits, best first, at pass 0 (strict), 1 (strict, but it may touch a box
-  // border) or 2 (relaxed)
+  // border) or 2 (relaxed); a typed view's late tries (placeLabel) also 3 (relaxed, off box borders) and 4 (strict, beside the line)
   const subOf = (e, text) => map && text && e.sublabel ? fit(e.sublabel, 9.5, e.under ? 320 : 440) : ''; // a second, smaller line under the label (#44)
   const sizeOf = (e, text, sub = subOf(e, text)) => { const two = !!(text && sub), pill = map && e.step != null;
     const w = map ? (text ? pillW(text, two && sub) : 0) + (pill ? stepW(e.step) + (text ? 4 : 6) : 0) : textW(text, 10) + 12, hgt = map ? (two ? 32 : 20) : 18;
     return dg.turned ? { two, w: hgt, hgt: w } : { two, w, hgt }; }; // a view laid out down: turned, as its nodes are (stage 1 note §6)
-  function* fits(e, text, pass) { const relax = pass === 2, sub = subOf(e, text);
+  function* fits(e, text, pass) { const relax = pass === 2 || pass === 3, sub = subOf(e, text);
     const segs = segsOf(e.pts).map((s, i) => ({ a: s[0], b: s[1], i, l: Math.hypot(s[1][0] - s[0][0], s[1][1] - s[0][1]), h: s[0][1] === s[1][1] }));
     const order = [...segs].sort((p, q) => (q.h - p.h) * 40 + (q.l - p.l));
     // the strict spots along a segment: the middle, a third and a fifth of the way, then those just clear of each card's stub room,
     // tag, label and line beside it, the middle's nearest first: where the label fits, one of them is in. The five alone missed a
     // gap 15 px wide, and the label sat on a box's border (clinic's "Queues reminders")
-    const spots = (sg, w, hgt) => { const v = sg.h ? 0 : 1, lo = sg.a[v], len = sg.b[v] - lo, half = (v ? hgt : w) / 2 + 3.5, mid = sg.a[1 - v], across = (v ? w : hgt) / 2 + 3;
+    const spots = (sg, w, hgt, off = 0) => { const v = sg.h ? 0 : 1, lo = sg.a[v], len = sg.b[v] - lo, half = (v ? hgt : w) / 2 + 3.5, mid = sg.a[1 - v] + off, across = (v ? w : hgt) / 2 + 3;
       const span = r => [[r.x, r.x + r.w], [r.y, r.y + r.h]], rs = [...nodeRects.map(r => ({ x: r.x - STUB - 4, y: r.y - STUB - 4, w: r.w + 2 * STUB + 8, h: r.h + 2 * STUB + 8 })), ...tagRects, ...placed,
         ...[...routed.filter(r => r !== e).map(r => r.pts), e.pts].flatMap(P => segsOf(P).map(([p, q]) => ({ x: Math.min(p[0], q[0]), y: Math.min(p[1], q[1]), w: Math.abs(q[0] - p[0]), h: Math.abs(q[1] - p[1]) })))];
       return [.5, .32, .68, .2, .8, ...rs.map(span).filter(s => s[1 - v][0] < mid + across && s[1 - v][1] > mid - across).flatMap(s => [s[v][0] - half, s[v][1] + half])
@@ -595,13 +597,14 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
     for (const sg of order) {
       if (!relax && sg.h && sg.l < w + 10) continue;
       if (!relax && !sg.h && sg.l < hgt + 14) continue;
-      for (const f of (relax ? [.5, .32, .68, .2, .8, .1, .9, .42, .58, .26, .74, .05, .95] : spots(sg, w, hgt))) {
-        const lx = sg.a[0] + (sg.b[0] - sg.a[0]) * f, ly = sg.a[1] + (sg.b[1] - sg.a[1]) * f;
+      // pass 4: beside the segment, either side, as strict (a line along a box's border leaves no spot on itself)
+      for (const off of (pass === 4 ? [-1, 1].map(k => k * ((sg.h ? hgt : w) / 2 + 4)) : [0])) for (const f of (relax ? [.5, .32, .68, .2, .8, .1, .9, .42, .58, .26, .74, .05, .95] : spots(sg, w, hgt, off))) {
+        const lx = sg.a[0] + (sg.b[0] - sg.a[0]) * f + (sg.h ? 0 : off), ly = sg.a[1] + (sg.b[1] - sg.a[1]) * f + (sg.h ? off : 0);
         const box = { x: lx - w / 2, y: ly - hgt / 2, w, h: hgt };
         const grow = { x: box.x - 3, y: box.y - 3, w: box.w + 6, h: box.h + 6 };
         if (nodeRects.some(r => hit(relax ? { x: r.x, y: r.y - 10, w: r.w, h: r.h + 10 } : { x: r.x - STUB - 4, y: r.y - STUB - 4, w: r.w + 2 * STUB + 8, h: r.h + 2 * STUB + 8 }, box))) continue; // keep port stubs free
         if (tagRects.some(r => hit(r, grow))) continue;
-        if (placed.some(r => (pass === 0 || !r.band) && hit(r, grow))) continue;
+        if (placed.some(r => (pass === 0 || pass >= 3 || !r.band) && hit(r, grow))) continue;
         if (!relax && routed.some(r => r !== e && segsOf(r.pts).some(([a, b]) => segHitsRect(a, b, grow)))) continue;
         if (!relax && segs.some(s2 => s2.i !== sg.i && segHitsRect(s2.a, s2.b, box))) continue;
         yield { box, grow, lbl: { ...box, text, ...(two ? { sub } : {}), step: map ? e.step : null, ...(pill ? { sw: stepW(e.step) } : {}) } };
@@ -612,7 +615,7 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
   const unput = e => { const L = e.lbl, same = m => r => r.x === L.x - m && r.y === L.y - m && r.w === L.w + 2 * m && r.h === L.h + 2 * m;
     const p = placed.findIndex(same(0)), q = reserved.findIndex(same(3)); if (p >= 0) placed.splice(p, 1); if (q >= 0) reserved.splice(q, 1); e.lbl = null; };
   const fullOf = e => map ? fit(e.label || '', 10.5, e.under ? 320 : 440) : fit((e.step != null ? e.step + ' · ' : '') + (e.label || ''), 10, e.cut || 150);
-  function placeLabel(e) {
+  function placeLabel(e, late) { // late: a typed view's line left with no spot, once every line is routed: a map's fallbacks too
     if (!e.label && e.step == null) return;
     const full = fullOf(e);
     const tries = [full]; if (e.step != null && e.label && !dg.abs) tries.push(map ? '' : String(e.step));
@@ -621,12 +624,16 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
     // a label whose spots are all taken by a label placed before it: that label moves to each of its other spots in turn, until
     // this one fits too. Both centred on their lines, the labels of two lines that leave a card side by side (16 px apart, too
     // close to stack) left the second no room, and it fell back to its step (assistant's "a draft", by a jog of 16 px)
-    if (map) for (const o of routed) { if (o === e || !o.lbl || o.lbl.short || o.fixed) continue;
+    // Only a label within reach of e's line can be in its way: the others are passed over (each try scans every spot of both
+    // lines, and over every line it made the late tries of a large typed view three times as slow)
+    const { w: lw, hgt: lh } = sizeOf(e, full), xs = e.pts.map(p => p[0]), ys = e.pts.map(p => p[1]);
+    const reach = { x: Math.min(...xs) - lw / 2 - 4, y: Math.min(...ys) - lh / 2 - 4, w: Math.max(...xs) - Math.min(...xs) + lw + 8, h: Math.max(...ys) - Math.min(...ys) + lh + 8 };
+    if (map || late) for (const o of routed) { if (o === e || !o.lbl || o.lbl.short || o.fixed || !hit(o.lbl, reach)) continue;
       const was = o.lbl, back = () => put(o, { box: { x: was.x, y: was.y, w: was.w, h: was.h }, grow: { x: was.x - 3, y: was.y - 3, w: was.w + 6, h: was.h + 6 }, lbl: was }, was.text);
       unput(o); if (!first(e, full, 0)) { back(); continue; } // e finds no spot even without it
       for (const so of fits(o, was.text, 0)) { put(o, so, was.text); if ((s = first(e, full, 0))) return put(e, s, full); unput(o); }
       back(); }
-    for (const pass of (map ? [0, 1, 2] : [0])) for (const text of tries) if ((pass || text !== full) && (s = first(e, text, pass))) return put(e, s, full);
+    for (const pass of (map ? [0, 1, 2] : late ? [0, 4, 3, 1, 2] : [0])) for (const text of tries) if ((pass || text !== full) && (s = first(e, text, pass))) return put(e, s, full);
   }
   let stats = {};
   free.forEach(e => { // every port's stub is reserved before routing starts
@@ -767,16 +774,21 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
   // a label on a box's border, cut to its step or with no spot asks for room where it is: the column gap it sits in widens by
   // the label's width, else the row gap by its height and 14 px; a label in neither, or with no spot, the gap its line's longest
   // run crosses, a column's first. layoutGraph lays the view out again with it, and keeps that layout if it is better
+  // a typed view's label still with no spot, once every line is routed: an earlier label moved, a spot beside its line, one over
+  // a line but off box borders, then a map's looser ones; drawn so, it still asks for room below (it was left off with nothing
+  // said, audit 6). One left with none, check() names (leaveIssues)
+  if (!map) edges.forEach(e => { if ((e.label || e.step != null) && !e.lbl && e.pts) { placeLabel(e, true); if (e.lbl) LOOSE.add(e); } });
   let labelRoom = null;
-  const tight = !last && !dg.quick && (map || dg.labelGaps) && !dg.abs ? free.filter(e => (e.label || e.step != null) && (!e.lbl || e.lbl.short || families.some(f => onBorder(e.lbl, f)))) : [];
+  const lost = e => !e.lbl || LOOSE.has(e); // a typed view's rows are of mixed height: only such a label widens a row gap, by its row's foot
+  const tight = !last && !dg.quick && !dg.abs ? free.filter(e => (e.label || e.step != null) && (lost(e) || (map || dg.labelGaps) && (e.lbl.short || families.some(f => onBorder(e.lbl, f))))) : [];
   if (tight.length) {
     const cs = Object.keys(colX).map(Number), rs = nodes.map(n => n.row), r0 = Math.floor(Math.min(...rs)), r1 = Math.ceil(Math.max(...rs)), need = { x: {}, y: {} };
     const gaps = [...cs.filter(c => colX[c + 1] != null).map(c => ['x', c, colX[c] + (colW[c] || NW), colX[c + 1]]),
-      ...Array.from({ length: map && r1 - r0 }, (_, k) => ['y', r0 + k, rowY(r0 + k) + NH, rowY(r0 + k + 1)])];
-    tight.forEach(e => { const { w, hgt: h } = sizeOf(e, fullOf(e)), L = e.lbl, c = L && { x: L.x + L.w / 2, y: L.y + L.h / 2 };
-      let best = c && ['x', 'y'].map(k => gaps.find(([gk, g, p, q]) => gk === k && c[k] >= p && c[k] <= q)).find(Boolean);
+      ...Array.from({ length: r1 - r0 }, (_, k) => ['y', r0 + k, map ? rowY(r0 + k) + NH : Math.max(rowY(r0 + k), ...nodes.filter(n => n.row === r0 + k).map(n => n.y + n.h)), rowY(r0 + k + 1)])];
+    tight.forEach(e => { const { w, hgt: h } = sizeOf(e, fullOf(e)), L = !LOOSE.has(e) && e.lbl, c = L && { x: L.x + L.w / 2, y: L.y + L.h / 2 }, gs = map || lost(e) ? gaps : gaps.filter(g => g[0] === 'x');
+      let best = c && ['x', 'y'].map(k => gs.find(([gk, g, p, q]) => gk === k && c[k] >= p && c[k] <= q)).find(Boolean);
       if (!best) segsOf(e.pts).forEach(([a, b]) => { const k = a[1] === b[1] ? 'x' : 'y', i = k === 'x' ? 0 : 1, lo = Math.min(a[i], b[i]), hi = Math.max(a[i], b[i]);
-        gaps.forEach(([gk, g, p, q]) => { const run = Math.min(hi, q) - Math.max(lo, p); if (gk === k && run > 0 && (!best || (k === 'x') > (best[0] === 'x') || ((k === 'x') === (best[0] === 'x') && run > best[2]))) best = [k, g, run]; }); });
+        gs.forEach(([gk, g, p, q]) => { const run = Math.min(hi, q) - Math.max(lo, p); if (gk === k && run > 0 && (!best || (k === 'x') > (best[0] === 'x') || ((k === 'x') === (best[0] === 'x') && run > best[2]))) best = [k, g, run]; }); });
       if (best) need[best[0]][best[1]] = (need[best[0]][best[1]] || 0) + (best[0] === 'x' ? w : h + 14); });
     if (Object.keys(need.x).length + Object.keys(need.y).length) labelRoom = { ...room, lx: need.x, ly: need.y };
   }
@@ -795,4 +807,4 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
   return { ms: __ms, ...(labelRoom ? { labelRoom } : {}), stats, nodes, edges, subAndChips: !!dg.subAndChips, groups, families, intake, tour: dg.tour || null, byId, map, hub: dg.hub || null, lanes: dg.lanes || [], blocks: dg.blocks || [], bounds: { x: minX, y: minY, w: Math.max(...xs) - minX + M, h: Math.max(...ys) - minY + M } };
 }
 
-export { CHG, NW, OWN_ROUTE, labelW, pillW, stepOrder, hit, untangle, pullSources, rowsFor, layoutGraph };
+export { CHG, NW, OWN_ROUTE, labelW, pillW, stepW, stepOrder, hit, untangle, pullSources, rowsFor, layoutGraph };

@@ -233,7 +233,8 @@ test('5.1\'s spike (§14): 50 nodes, 60 lines with long labels, 40 ports, boxes 
   console.log(`# 5.1 spike: a label edit ${best('label').toFixed(1)} ms (target 100 ms), full layout ${best('full').toFixed(1)} ms; ${labelled.length} labels, ${none} with no spot, ${cutShort} cut to fit; routes ${JSON.stringify(g0.stats)}`);
   // labelGaps (§8, decision 9): the view laid out once more with the column gaps its tight labels need; rows do not move
   const lg = d => ({ ...d, labelGaps: true }), g1 = layoutTyped(lg(dg)), l1 = g1.edges.filter(e => e.label), none1 = l1.filter(e => !e.lbl).length;
-  assert.ok(none1 < none, `labelGaps leaves ${none1} labels with no spot, against ${none}`);
+  // every label has a spot, with or without labelGaps: one with none takes a looser spot and asks for room (audit 6)
+  assert.deepEqual([none, none1], [0, 0], `labelGaps leaves ${none1} labels with no spot, against ${none}`);
   assert.deepEqual(g1.nodes.map(n => n.y), g0.nodes.map(n => n.y), 'column gaps only');
   const m1 = {}; draw(lg(dg), m1); draw(lg(SPIKE('warm ')), m1);
   const runs1 = Array.from({ length: 7 }, (_, k) => ({ full: cpu(() => layoutTyped(lg(dg))), label: cpu(() => draw(lg(SPIKE('x'.repeat(k + 1) + ' ')), m1)) }));
@@ -247,13 +248,13 @@ test('5.1\'s spike (§14): 50 nodes, 60 lines with long labels, 40 ports, boxes 
   console.log(`# 5.1 spike laid out down: ${noSpot(d0)} with no spot, ${Math.round(d0.bounds.h)} px high, routes ${JSON.stringify(d0.stats)}; with labelGaps ${noSpot(d1)}, ${Math.round(d1.bounds.h)} px high, routes ${JSON.stringify(d1.stats)}`);
 });
 
-test('labelGaps widens column gaps only: a tight label between two cards of one column moves no card up or down', () => {
-  // one column, so no column gap: the old candidate list (a row gap on a typed view too) moved b and c down by 32 and 64 px
+test('a label with no spot between two cards of one column: drawn, the row gap its run crosses widened by its height and 14 px (from the row\'s foot: rows are of mixed height), with labelGaps or without (audit 6)', () => {
+  // it found no spot and was left off with nothing said; a row gap was not widened for it, as the old candidate list measured
+  // every row as the view's node height
   const dg = { repair: false, reroute: false, nodes: ['a', 'b', 'c'].map((id, row) => ({ id, label: id.toUpperCase(), col: 0, row })),
     edges: [['a', 'b'], ['b', 'c']].map(([from, to]) => ({ id: from + to, from, to, label: LONG, fromSide: 'bottom', toSide: 'top' })) };
   const g0 = layoutTyped(dg), g1 = layoutTyped({ ...dg, labelGaps: true });
-  assert.ok(g0.edges.some(e => !e.lbl), 'the fixture keeps a label with no spot');
-  assert.deepEqual(g1.nodes.map(n => n.y), g0.nodes.map(n => n.y));
+  for (const g of [g0, g1]) { assert.deepEqual(g.edges.filter(e => !e.lbl).map(e => e.id), []); assert.deepEqual(g.nodes.map(n => n.y), [0, 140, 280], 'each gap 44 px and 18 + 14'); }
 });
 
 test('labelGaps is opt-in: a typed view without it lays out as before, and turning it on lays the view out again', () => {

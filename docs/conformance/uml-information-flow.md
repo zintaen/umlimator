@@ -45,10 +45,11 @@ Layout limits, measured on `examples/order-information-flow.json` and `tests/inf
   closing a loop) leaves its source's bottom and comes into its target's bottom, a fixed side, not a search.
 - The example lays out clean right and down: `check()` finds nothing.
 - `tests/m2-fixtures.test.mjs` pins the stress file. Its `edge-cases` view crosses twice laid out right and is clean
-  down. One label there, the flow conveying a gone id (`ec-gone`, an error), finds no room beside the class flow into
-  the same box and is not drawn, right and down; the flow is, and its accessible name and the PDF say what it conveys.
-  The generated `all` view (40 nodes, 60 flows, one to three items each) crosses 149 times right and 121 down, with one
-  label on a line right and 18 findings down (labels on lines, lines sharing a line); no line runs through a node.
+  down. One label there, the flow conveying a gone id (`ec-gone`, an error), found no room beside the class flow into
+  the same box and was left off with nothing said; since audit 6 it takes a spot beside its line, right and down.
+  The generated `all` view (40 nodes, 60 flows, one to three items each) crosses 149 times right and 121 down, with two
+  labels on lines right and 44 findings down (labels on lines, lines sharing a line: labels left off before audit 6 are
+  drawn); no line runs through a node.
 - A six-item label is cut with an ellipsis at 280 px.
 
 ## Writers: what each shows of an information flow diagram

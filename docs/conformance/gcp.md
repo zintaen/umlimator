@@ -47,7 +47,9 @@ Layout limits, with port repair and rerouting off (`repair: false`, `reroute: fa
   an alias a re-pin moved, a line from a group to a product in a sibling group, one between a group and what it holds, a
   white icon and a coloured one, a wrong kind, a subnetwork outside a network, a product with no icon) is clean both ways but
   for the line inside its group, which is not drawn; `ec-no-product` draws no legal line. Its `all` view (60 products in
-  five levels of groups, 80 paths) crosses 52 times laid out right and 54 down, where one path's label lies on another.
+  five levels of groups, 80 paths) crosses 56 times laid out right and 54 down, where one path's label lies on another.
+  Laid out right, three labels found no spot and were left off with nothing said; since audit 6 they are drawn, the view
+  laid out with room for them. The example's "paid order" (and the Azure example's "secrets") too.
 - A label is wrapped to two lines of 180 px, the full name to two, then cut with an ellipsis; both are in the card's
   accessible name, `describe()` and the PDF.
 

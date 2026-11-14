@@ -57,6 +57,8 @@ function clean(m, vid) {
 // label on a line (deployment, down), and in the component view a ball's name under a port (Api0 and in) and port names
 // over lines and, once, over a sibling component (c0.b over c4; the layout keeps no room for names, §4.3, L5). On
 // edge-cases: ten ports on one side of a box, which cannot grow (§4.1), five held at its span's start (over), 15 pairs
+// Labels that found no spot were left off with nothing said; drawn now on a looser spot (audit 6), a few lie on a line or a
+// box's border, and the deployment view all laid out down, laid out with room for them, crosses once more.
 const PINNED = {
   'component-minimal': {
     'v': {
@@ -78,8 +80,8 @@ const PINNED = {
       right: [0,[],[]],
       down: [4,[],[]] },
     'all': {
-      right: [15,["view all: edge Stack 1 level 3→Stack 2 level 3 runs along the border of family \"Stack 2 level 2\"","view all: edge Stack 1 level 4→Stack 3 level 0 runs along the border of family \"Stack 3 level 0\"","view all: edge Stack 2 level 3→Stack 3 level 3 runs along the border of family \"Stack 3 level 2\""],[]],
-      down: [14,["view all: edges Stack 1 level 4→Stack 2 level 4 and Stack 1 level 4→Stack 3 level 0 share a line","view all: edges Stack 2 level 4→Stack 3 level 4 and Stack 3 level 4→Stack 0 level 0 share a line","view all: edges Stack 3 level 4→Stack 4 level 4 and Stack 4 level 4→Stack 1 level 0 share a line","view all: label \"HTTPS with mutual TLS\" lies on edge Stack 3 level 4→Stack 0 level 0","view all: label \"HTTPS with mutual TLS\" lies on edge Stack 1 level 4→Stack 3 level 0"],[]] } },
+      right: [15,["view all: label \"gRPC\" sits on the border of family \"Stack 0 level 0\"","view all: edge Stack 1 level 3→Stack 2 level 3 runs along the border of family \"Stack 2 level 2\"","view all: edge Stack 1 level 4→Stack 3 level 0 runs along the border of family \"Stack 3 level 0\"","view all: edge Stack 2 level 3→Stack 3 level 3 runs along the border of family \"Stack 3 level 2\""],[]],
+      down: [15,["view all: edges Stack 1 level 4→Stack 2 level 4 and Stack 1 level 4→Stack 3 level 0 share a line","view all: edges Stack 2 level 4→Stack 3 level 4 and Stack 3 level 4→Stack 0 level 0 share a line","view all: edges Stack 3 level 4→Stack 4 level 4 and Stack 4 level 4→Stack 1 level 0 share a line","view all: label \"HTTPS with mutual TLS\" lies on edge Stack 3 level 4→Stack 0 level 0","view all: label \"HTTPS with mutual TLS\" lies on edge Stack 1 level 1→Stack 2 level 1","view all: label \"HTTPS with mutual TLS\" lies on edge service-1-0.jar→service-2-4.jar","view all: label \"HTTPS with mutual TLS\" lies on edge Stack 1 level 4→Stack 3 level 0","view all: label \"HTTPS with mutual TLS\" lies on edge Stack 2 level 4→Stack 4 level 0","view all: label \"HTTPS with mutual TLS\" lies on edge Stack 3 level 1→Stack 4 level 1","view all: label \"HTTPS with mutual TLS\" lies on edge Stack 3 level 2→Stack 4 level 2","view all: label \"HTTPS with mutual TLS\" lies on edge Stack 2 level 4→Stack 4 level 0"],[]] } },
   'composite-minimal': {
     'v': {
       right: [0,[],[]],

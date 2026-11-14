@@ -17,12 +17,24 @@ const behind = (n, side, [x, y]) => side === 'R' ? x < n.x - .5 : side === 'L' ?
 // [the end, its side] that a line runs round: its route goes behind one of its own ends while its other end is not there. A
 // long line passed the detour rule however it went round (clinic's reminder: over the patient, down its far side, under it)
 const roundEnd = e => [[e.s, e.fs, e.pts[e.pts.length - 1]], [e.t, e.ts, e.pts[0]]].find(([n, side, far]) => n && side && !behind(n, side, far) && e.pts.some(p => behind(n, side, p)));
+// a slanted segment (a timing view's message): exact tests in place of the axis-aligned ones below, which read it as level (audit 6)
+const slant = (a, b) => a[0] !== b[0] && a[1] !== b[1], turn = (p, q, r) => { const t = (q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0]); return Math.abs(t) < 1e-6 ? 0 : Math.sign(t); };
+const slantCross = ([a, b], [c, d]) => { const o = [turn(a, b, c), turn(a, b, d), turn(c, d, a), turn(c, d, b)];
+  if (o.every(t => !t)) { const k = Math.abs(b[0] - a[0]) >= Math.abs(b[1] - a[1]) ? 0 : 1; // on one line: a shared run where they overlap
+    return Math.min(Math.max(a[k], b[k]), Math.max(c[k], d[k])) - Math.max(Math.min(a[k], b[k]), Math.min(c[k], d[k])) > 1 ? 'share' : null; }
+  return o[0] * o[1] < 0 && o[2] * o[3] < 0 ? 'cross' : null; };
+// segment a-b through the inside of box r (Liang-Barsky); an axis-aligned one by its bounding box, as before
+const segIn = (a, b, r) => { if (!(Math.max(a[0], b[0]) > r.x && Math.min(a[0], b[0]) < r.x + r.w && Math.max(a[1], b[1]) > r.y && Math.min(a[1], b[1]) < r.y + r.h)) return false;
+  if (!slant(a, b)) return true; let t0 = 0, t1 = 1; const dx = b[0] - a[0], dy = b[1] - a[1];
+  for (const [p, q] of [[-dx, a[0] - r.x], [dx, r.x + r.w - a[0]], [-dy, a[1] - r.y], [dy, r.y + r.h - a[1]]]) { const t = q / p; if (p < 0) t0 = Math.max(t0, t); else t1 = Math.min(t1, t); }
+  return t0 < t1; };
 function routeAudit(geo, where, only, refs) { // only: a set of edges; counts just the issues that involve one of them
   const sk = e => only && !only.has(e);
   const issues = [], say = teller(issues, refs);
   // routes: no crossings, no shared runs, no label lying across another route
   const segs = geo.edges.map(e => e.pts.slice(0, -1).map((a, i) => [a, e.pts[i + 1]]));
   const crossing = ([a, b], [c, d]) => {
+    if (slant(a, b) || slant(c, d)) return slantCross([a, b], [c, d]);
     const av = a[0] === b[0], cv = c[0] === d[0];
     if (av === cv) { // parallel: overlapping collinear run = shared trunk
       if (av && Math.abs(a[0] - c[0]) < 1) return Math.min(Math.max(a[1], b[1]), Math.max(c[1], d[1])) - Math.max(Math.min(a[1], b[1]), Math.min(c[1], d[1])) > 1 ? 'share' : null;
@@ -43,8 +55,8 @@ function routeAudit(geo, where, only, refs) { // only: a set of edges; counts ju
     if (found === 'share') say(`${where}: edges ${name(geo.edges[i])} and ${name(geo.edges[j])} share a line`, geo.edges[i], geo.edges[j]);
   }
   geo.edges.forEach((e, i) => { if (!e.lbl) return; const L = { x: e.lbl.x + 1, y: e.lbl.y + 1, w: e.lbl.w - 2, h: e.lbl.h - 2 };
-    geo.edges.forEach((o, j) => { if (j !== i && !(sk(e) && sk(o)) && segs[j].some(([a, b]) => Math.max(a[0], b[0]) > L.x && Math.min(a[0], b[0]) < L.x + L.w && Math.max(a[1], b[1]) > L.y && Math.min(a[1], b[1]) < L.y + L.h)) say(`${where}: label "${e.lbl.text || e.lbl.step}" lies on edge ${name(o)}`, e, o); }); });
-  const segHit = (r, i) => segs[i].some(([a, b]) => Math.max(a[0], b[0]) > r.x && Math.min(a[0], b[0]) < r.x + r.w && Math.max(a[1], b[1]) > r.y && Math.min(a[1], b[1]) < r.y + r.h);
+    geo.edges.forEach((o, j) => { if (j !== i && !(sk(e) && sk(o)) && segs[j].some(([a, b]) => segIn(a, b, L))) say(`${where}: label "${e.lbl.text || e.lbl.step}" lies on edge ${name(o)}`, e, o); }); });
+  const segHit = (r, i) => segs[i].some(([a, b]) => segIn(a, b, r));
   if (geo.map) {
     const ex = 12, drawn = new Set(geo.edges.map(e => e.from + '>' + e.to)); // A→B and B→A both drawn: a pair the view keeps apart
     geo.edges.forEach((e, i) => {
@@ -113,6 +125,10 @@ function throughIssues(geo, where, refs) {
 }
 function leaveIssues(geo, where, refs) {
   const issues = [], say = teller(issues, refs);
+  // a labelled line, on a map or a typed view, whose label found no spot at all: not drawn, so said (audit 6). A numbered
+  // view's comb line with no label has its step on its card; a timing view's message's `label` is its text and times, which
+  // it edits (its drawn label, in lbl, is always placed)
+  if (!geo.tr) geo.edges.forEach(e => { if (!e.lbl && (e.label || e.step != null && !e.fixed)) say(`${where}: ${e.label ? `label "${e.label}"` : `step ${e.step}`} has no room on edge ${name(e)}: not drawn`, e); });
   // a numbered line's label with no room on it: only its step shows, its words in the line's title and the details only
   if (geo.map) geo.edges.forEach(e => { if (e.label && e.lbl && e.lbl.short) say(`${where}: label "${e.label}" has no room on edge ${name(e)}: only its step ${e.lbl.step} shows`, e); });
   if (geo.map) geo.edges.forEach(e => { const L = e.lbl; if (!L || (!e.label && L.step == null) || !e.pts) return; // a label, or a step's mark, must leave some of its own line visible

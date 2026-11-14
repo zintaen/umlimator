@@ -57,20 +57,21 @@ function clean(m, vid) {
 // what each view keeps, laid out right and down, counted: [crossings, check()'s other findings, what clean() calls wrong]. The
 // edge-cases views and the minimal ones are clean but for the crossings counted here. The generated views all crowd 60 to 70 lines with repair and reroute off (§11): there the information
 // flow view's labels lie on lines and, laid out down, C4's container view's lines share lines and its labels lie on lines (none runs
-// through a card since a C4 card's text tag stopped putting the router's grid out of order). Each is stated in its type's conformance note.
+// through a card since a C4 card's text tag stopped putting the router's grid out of order). Labels that found no spot and were
+// left off with nothing said are drawn since audit 6, and lie on lines there too (ER and C4 right), and C4's down crosses more. Each is stated in its type's conformance note.
 const PINNED = {
   'er-minimal': { 'v': { right: [0, 0, 0], down: [0, 0, 0] } },
-  'er-stress': { 'edge-cases': { right: [0, 0, 0], down: [0, 0, 0] }, 'edge-cases-idef1x': { right: [0, 0, 0], down: [0, 0, 0] }, 'all': { right: [18, 0, 0], down: [25, 0, 0] } },
+  'er-stress': { 'edge-cases': { right: [0, 0, 0], down: [0, 0, 0] }, 'edge-cases-idef1x': { right: [0, 0, 0], down: [0, 0, 0] }, 'all': { right: [18, 0, 0], down: [25, 2, 0] } },
   'flowchart-minimal': { 'v': { right: [0, 0, 0], down: [0, 0, 0] } },
   'flowchart-stress': { 'edge-cases': { right: [0, 0, 0], down: [0, 0, 0] }, 'all': { right: [4, 0, 0], down: [4, 0, 0] } },
   'dfd-minimal': { 'v': { right: [0, 0, 0], down: [0, 0, 0] } },
   'dfd-stress': {
     'edge-cases': { right: [0, 0, 0], down: [0, 0, 0] }, 'ec-level-2': { right: [2, 0, 0], down: [1, 0, 0] }, 'ec-level-2-gs': { right: [2, 0, 0], down: [1, 0, 0] }, 'ec-level-3': { right: [0, 0, 0], down: [0, 0, 0] }, 'ec-pay-level': { right: [0, 0, 0], down: [0, 0, 0] }, 'all': { right: [0, 0, 0], down: [0, 0, 0] } },
   'information-flow-minimal': { 'v': { right: [0, 0, 0], down: [0, 0, 0] } },
-  'information-flow-stress': { 'edge-cases': { right: [2, 0, 0], down: [0, 0, 0] }, 'all': { right: [149, 1, 0], down: [121, 18, 0] } },
+  'information-flow-stress': { 'edge-cases': { right: [2, 0, 0], down: [0, 0, 0] }, 'all': { right: [149, 2, 0], down: [121, 44, 0] } },
   'c4-minimal': { 'v': { right: [0, 0, 0], down: [0, 0, 0] } },
   'c4-stress': {
-    'ec-landscape': { right: [0, 0, 0], down: [0, 0, 0] }, 'ec-context': { right: [0, 0, 0], down: [0, 0, 0] }, 'edge-cases': { right: [0, 0, 0], down: [0, 0, 0] }, 'ec-component': { right: [0, 0, 0], down: [0, 0, 0] }, 'ec-dynamic': { right: [0, 0, 0], down: [0, 0, 0] }, 'ec-deployment': { right: [0, 0, 0], down: [0, 0, 0] }, 'all': { right: [136, 0, 0], down: [117, 27, 0] } },
+    'ec-landscape': { right: [0, 0, 0], down: [0, 0, 0] }, 'ec-context': { right: [0, 0, 0], down: [0, 0, 0] }, 'edge-cases': { right: [0, 0, 0], down: [0, 0, 0] }, 'ec-component': { right: [0, 0, 0], down: [0, 0, 0] }, 'ec-dynamic': { right: [0, 0, 0], down: [0, 0, 0] }, 'ec-deployment': { right: [0, 0, 0], down: [0, 0, 0] }, 'all': { right: [136, 3, 0], down: [135, 28, 0] } },
 };
 
 test('every view of the ten fixtures, right and down: a line through a node, an end off its node, a label over a node and check()\'s findings, each only as pinned (the stated limits)', () => {
@@ -164,9 +165,9 @@ test('information-flow-stress.json, edge-cases: each case of §10, and what the 
   const m = FIX['information-flow-stress'], g = layout(m, 'edge-cases'), e = id => m.edges.find(x => x.id === id);
   assert.deepEqual(said(m), [['error', 'conveyed-kind', ['ec-gone', 'ec-no-such-item']]], 'a conveyed id that is gone: nothing else');
   assert.equal(e('ec-six').props.conveyed.length, 6);
-  // every label placed but the flow to a gone id's, which finds no room beside the class flow into the same box (a limit,
-  // stated in docs/conformance/uml-information-flow.md); right and down alike
-  for (const d of ['right', 'down']) assert.deepEqual(layout(turned(m, 'edge-cases', d), 'edge-cases').edges.filter(x => !x.lbl).map(x => x.id), ['ec-gone'], d);
+  // every label placed, right and down: the flow to a gone id's found no spot beside the class flow into the same box and was
+  // left off with nothing said; it takes a spot beside its line now (audit 6)
+  for (const d of ['right', 'down']) assert.deepEqual(layout(turned(m, 'edge-cases', d), 'edge-cases').edges.filter(x => !x.lbl).map(x => x.id), [], d);
   const six = g.edges.find(x => x.id === 'ec-six').lbl; assert.ok(six && /…/.test(six.text ?? JSON.stringify(six)), 'six conveyed: the label cut');
   assert.deepEqual([['ec-app', 'ec-api'], ['ec-api', 'ec-app']].map(([a, b]) => m.edges.filter(x => x.from === a && x.to === b).length), [2, 2], 'two flows each way between one pair');
   assert.ok(!V(m, 'edge-cases').nodeIds.includes('ec-hidden') && e('ec-not-shown').props.conveyed.includes('ec-hidden'), 'an item conveyed and not shown');
