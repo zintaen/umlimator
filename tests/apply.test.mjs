@@ -279,3 +279,17 @@ test('delete of a 20,000-topic chain\'s root and of a flat 20,000-topic root und
   for (const ms of [c, f, big]) assert.ok(ms < 1000, `${ms} ms`);
   console.log(`# P1 target 100 ms: delete of a 20,000 chain ${c} ms, of a flat 20,000 root ${f} ms (a flat 100,000: ${big} ms)`);
 });
+
+// §2.4: what stays under a gone chain finds its owner once, and lines to lines cascade in one pass, whatever their order
+test('delete of a 20,000 chain under 5,000 view fragments, and of a card under 3,000 lines each to the next, listed last first, under CI\'s 1 s (CPU, best of five) (timed)', () => {
+  const timed = f => { const c = process.cpuUsage(); f(); const u = process.cpuUsage(c); return (u.user + u.system) / 1000; };
+  const best = (m, id) => Math.min(...Array.from({ length: 5 }, () => timed(() => apply(m, { op: 'delete', id }))));
+  const deep = chain(20000); deep.views[0].fragments = Array.from({ length: 5000 }, (_, i) => ({ id: `f${i}`, type: 'uml.Comment', parent: 't19999' }));
+  const lines = { schemaVersion: 2, nodes: [{ id: 'a', type: 'uml.Class' }, { id: 'b', type: 'uml.Class' }],
+    edges: Array.from({ length: 3000 }, (_, i) => ({ id: `e${2999 - i}`, type: 'uml.Dependency', from: i === 2999 ? 'a' : `e${2998 - i}`, to: 'b' })) };
+  const d = apply(deep, { op: 'delete', id: 't0' }), l = apply(lines, { op: 'delete', id: 'a' });
+  assert.deepEqual([d.nodes.length, d.views[0].fragments.length, d.views[0].fragments.some(f => 'parent' in f), l.edges], [0, 5000, false, []]);
+  const f = best(deep, 't0'), e = best(lines, 'a');
+  for (const ms of [f, e]) assert.ok(ms < 1000, `${ms} ms`);
+  console.log(`# P1 ceiling 1 s: a 20,000 chain under 5,000 fragments ${f} ms; 3,000 lines to lines in reverse ${e} ms`);
+});
