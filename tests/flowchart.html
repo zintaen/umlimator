@@ -1,0 +1,164 @@
+<!doctype html>
+<!-- The flowchart (M2.3, notes/milestone-2.md §7.2) in headless Chrome (tests/embed.py), from lib/umlimator-all.js: an inline
+     copy of docs/diagrams/examples/21-flowchart.json drawn by render() in both themes, three fonts and both directions (the
+     ten symbols, no overlap, every text in its shape, no line through a node, every line end on its shape's outline, the
+     labelled exits, names, the reading order of the keys, the legend, contrast, axe's rules written out); then edited through
+     the edit event and apply(), by pointer and by keyboard: the palette and N, L and the picker, the handle, a decision's
+     second exit labelled to answer its first, a flow from a comment refused, F2 and a double-click on a flow, F2 on a node,
+     a drag on a view with no direction (laid out down) pinned where it was dropped, Delete and Shift + Delete.
+     tests/flowchart.test.mjs lays the same example out in Node. -->
+<meta charset="utf-8">
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="../lib/umlimator-theme.css">
+<title>umlimator flowchart test</title>
+<body style="margin:0">
+<div id="m" style="width:1400px;height:1100px"></div>
+<script type="module">
+import { render, apply, validate, describe, layout } from '../lib/umlimator-all.js';
+const out = { ok: [], fail: [] };
+const check = (name, cond, info) => { document.title = name; if (cond) out.ok.push(name); else out.fail.push(name + (info === undefined ? '' : ': ' + JSON.stringify(info))); };
+const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+const el = document.getElementById('m');
+let sr, stage, ed = [];
+const pick = s => sr.querySelector(s), all = s => [...sr.querySelectorAll(s)];
+const tick = () => new Promise(r => setTimeout(r, 0));
+const ptr = (target, type, [x, y]) => target.dispatchEvent(new PointerEvent(type, { clientX: x, clientY: y, button: 0, pointerId: 7, pointerType: 'mouse', bubbles: true, composed: true }));
+const key = (k, extra = {}, target = stage) => target.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true, composed: true, cancelable: true, ...extra }));
+const rect = x => { const r = x.getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width, h: r.height }; };
+const centre = s => { const r = rect(pick(s)); return [r.x + r.w / 2, r.y + r.h / 2]; };
+const click = s => { const g = pick(s), at = centre(s); ptr(g, 'pointerdown', at); ptr(g, 'pointerup', at); g.dispatchEvent(new MouseEvent('click', { clientX: at[0], clientY: at[1], bubbles: true, composed: true })); };
+const drag = (s, to) => { const g = pick(s), from = centre(s); ptr(g, 'pointerdown', from); for (let i = 1; i <= 4; i++) ptr(stage, 'pointermove', [from[0] + (to[0] - from[0]) * i / 4, from[1] + (to[1] - from[1]) * i / 4]); ptr(stage, 'pointerup', to); };
+const handleTo = ([x, y]) => { const c = pick('.um-handle circle'), r = c.getBoundingClientRect(); ptr(c, 'pointerdown', [r.x + r.width / 2, r.y + r.height / 2]); ptr(stage, 'pointermove', [x, y]); ptr(stage, 'pointerup', [x, y]); };
+const mount = (model, opts = {}) => { el.innerHTML = ''; ed = []; const h = render(el, model, { view: 'returns', on: { edit: e => ed.push(e) }, ...opts }); sr = el.querySelector('.umlimator').shadowRoot; stage = pick('.stage'); return h; };
+const errors = m => validate(m).filter(p => p.level === 'error');
+const meets = (a, b, k = 0) => a.x + k < b.x + b.w && b.x + k < a.x + a.w && a.y + k < b.y + b.h && b.y + k < a.y + a.h;
+const inside = (a, b, k = 1) => a.x >= b.x - k && a.y >= b.y - k && a.x + a.w <= b.x + b.w + k && a.y + a.h <= b.y + b.h + k;
+const ptsOf = d => { const n = d.match(/-?\d+(\.\d+)?/g).map(Number), p = []; for (let i = 0; i < n.length; i += 2) p.push([n[i], n[i + 1]]); return p; };
+const segs = p => p.slice(1).map((q, k) => ({ x: Math.min(p[k][0], q[0]), y: Math.min(p[k][1], q[1]), w: Math.abs(q[0] - p[k][0]) || .01, h: Math.abs(q[1] - p[k][1]) || .01 }));
+const FONTS = { serif: 'serif', sans: 'sans-serif', wide: 'monospace' };
+const rgba = s => { let m = /rgba?\(([^)]+)\)/.exec(s); if (m) { const p = m[1].split(/[ ,/]+/).filter(Boolean).map(Number); return [p[0] / 255, p[1] / 255, p[2] / 255, p.length > 3 ? p[3] : 1]; }
+  m = /color\(srgb ([^)]+)\)/.exec(s); if (m) { const p = m[1].split(/[ /]+/).filter(Boolean).map(Number); return [p[0], p[1], p[2], p.length > 3 ? p[3] : 1]; } return null; };
+const blend = (top, bot) => [0, 1, 2].map(i => top[i] * top[3] + bot[i] * (1 - top[3])).concat(1);
+const lum = c => { const f = v => v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]); };
+const ratio = (fg, bg) => { const [x, y] = [lum(blend(fg, bg)), lum(bg)].sort((p, q) => q - p); return +((x + 0.05) / (y + 0.05)).toFixed(2); };
+const css = (x, k) => rgba(getComputedStyle(x)[k]);
+// docs/diagrams/examples/21-flowchart.json as M2.0 left it (M2.13 moves it to examples/returns-flowchart.json; this page keeps its own copy)
+const EX = {"schemaVersion":2,"title":"Bookshop: handling a returned book","root":"returns","nodes":[{"id":"return-arrives","type":"flow.Terminator","label":"Returned parcel arrives"},{"id":"slip","type":"flow.InputOutput","label":"Read the returns slip"},{"id":"key-in","type":"flow.ManualInput","label":"Key in the order number"},{"id":"inspect","type":"flow.Process","label":"Inspect the book"},{"id":"resaleable","type":"flow.Decision","label":"Fit for resale?"},{"id":"refund","type":"flow.PredefinedProcess","label":"Refund the payment"},{"id":"wait","type":"flow.Delay","label":"Wait for the bank to confirm"},{"id":"restock","type":"flow.Process","label":"Put the book back on the shelf"},{"id":"stock-records","type":"flow.Database","label":"Stock records"},{"id":"letter","type":"flow.Document","label":"Rejection letter"},{"id":"post-back","type":"flow.Process","label":"Post the book back"},{"id":"join","type":"flow.Connector","label":"A"},{"id":"end","type":"flow.Terminator","label":"Return closed"}],"edges":[{"id":"start-slip","type":"flow.Flow","from":"return-arrives","to":"slip"},{"id":"slip-key-in","type":"flow.Flow","from":"slip","to":"key-in"},{"id":"key-in-inspect","type":"flow.Flow","from":"key-in","to":"inspect"},{"id":"inspect-resaleable","type":"flow.Flow","from":"inspect","to":"resaleable"},{"id":"resaleable-yes","type":"flow.Flow","from":"resaleable","to":"refund","label":"yes"},{"id":"resaleable-no","type":"flow.Flow","from":"resaleable","to":"letter","label":"no"},{"id":"refund-wait","type":"flow.Flow","from":"refund","to":"wait"},{"id":"wait-restock","type":"flow.Flow","from":"wait","to":"restock"},{"id":"restock-stock","type":"flow.Flow","from":"restock","to":"stock-records"},{"id":"stock-join","type":"flow.Flow","from":"stock-records","to":"join"},{"id":"letter-post-back","type":"flow.Flow","from":"letter","to":"post-back"},{"id":"post-back-join","type":"flow.Flow","from":"post-back","to":"join"},{"id":"join-end","type":"flow.Flow","from":"join","to":"end"}],"views":[{"id":"returns","diagram":"flowchart","title":"Handling a returned book","parent":null,"direction":"down","nodeIds":["return-arrives","slip","key-in","inspect","resaleable","refund","wait","restock","stock-records","letter","post-back","join","end"]}]};
+const dir = d => ({ ...EX, views: EX.views.map(v => { const w = { ...v }; if (d) w.direction = d; else delete w.direction; return w; }) });
+const SHAPES = { 'return-arrives': 'terminator', slip: 'io', 'key-in': 'manual', inspect: 'process', resaleable: 'diamond', refund: 'predefined', wait: 'delay', restock: 'process', 'stock-records': 'database', letter: 'doc', 'post-back': 'process', join: 'connector', end: 'terminator' };
+try {
+  check('the inline example validates clean', same(validate(EX), []), validate(EX));
+  const widths = {};
+  for (const theme of ['light', 'dark']) for (const [fname, family] of Object.entries(FONTS)) for (const d of ['down', 'right']) {
+    document.documentElement.dataset.theme = theme; el.style.setProperty('--um-sans', family);
+    const tag = `${d}, ${theme}, ${fname}`, h = mount(dir(d), { legend: true }), bad = [];
+    const nodes = all('.node'), lines = all('.edge-g'), B = new Map(nodes.map(g => [g.dataset.id, rect(g.querySelector('.n-body'))]));
+    if (d === 'down') widths[fname] = B.get('restock').w;
+    check(`${tag}: 13 nodes in their symbols' shapes, 13 flows`, nodes.length === 13 && lines.length === 13 && nodes.every(g => g.dataset.shape === SHAPES[g.dataset.id]), nodes.map(g => [g.dataset.id, g.dataset.shape]));
+    const ids = [...B.keys()];
+    ids.forEach((a, i) => ids.slice(i + 1).forEach(b => { if (meets(B.get(a), B.get(b), .5)) bad.push(`${a} and ${b} overlap`); }));
+    nodes.forEach(g => g.querySelectorAll('text').forEach(t => { if (!inside(rect(t), B.get(g.dataset.id))) bad.push(`${g.dataset.id}: "${t.textContent}" out of its shape`); }));
+    // no line through a node but its own two ends, each end on its node's outline (the stroke, widened to 3 px)
+    const svg = pick('.stage svg'), cm = svg.getScreenCTM();
+    lines.forEach(g => { const from = g.dataset.from, to = g.dataset.to, p = ptsOf(g.querySelector('path.edge').getAttribute('d'));
+      segs(p.map(([x, y]) => { const q = new DOMPoint(x, y).matrixTransform(cm); return [q.x, q.y]; })).forEach(s => B.forEach((b, id) => {
+        if (id !== from && id !== to && meets(s, { x: b.x + 1, y: b.y + 1, w: b.w - 2, h: b.h - 2 })) bad.push(`${from}>${to} runs through ${id}`); }));
+      [[p[0], from], [p.at(-1), to]].forEach(([q, id]) => { const body = pick(`.node[data-id="${id}"] .n-body`); body.style.strokeWidth = '3px';
+        const o = svg.createSVGPoint(); [o.x, o.y] = q; if (!body.isPointInStroke(o)) bad.push(`${from}>${to} ends off ${id}'s outline at ${q}`); body.style.strokeWidth = ''; }); });
+    check(`${tag}: no overlap, every text inside its shape, no line through a node, every end on its outline`, !bad.length, bad.slice(0, 12));
+    // the exits: labelled, a filled arrow at the end of each flow
+    const mk = pick('.edge-g[data-from="resaleable"][data-to="refund"] path.edge').getAttribute('marker-end'), mp = mk && sr.getElementById(/url\(#([^)]+)\)/.exec(mk)[1]);
+    check(`${tag}: the decision's exits labelled yes and no; a flow ends in a filled arrow`, all('.e-label').map(t => t.textContent).sort().join('|') === 'no|yes' && !!mp && same(css(mp.querySelector('path'), 'fill'), css(mp.querySelector('path'), 'stroke')), mk);
+    // contrast: texts 4.5:1 on what is under them, outlines, details and lines 3:1 on the stage
+    const stageBg = css(pick('.stage'), 'backgroundColor'), low = [];
+    nodes.forEach(g => { const body = g.querySelector('.n-body'), bg = blend(css(body, 'fill'), stageBg);
+      g.querySelectorAll('text').forEach(x => { const r = ratio(css(x, 'fill'), bg); if (r < 4.5) low.push([g.dataset.id, x.textContent, r]); });
+      [body, ...g.querySelectorAll('.n-det')].forEach(x => { const k = ratio(css(x, 'stroke'), stageBg); if (k < 3) low.push([g.dataset.id, x.getAttribute('class'), k]); }); });
+    lines.forEach(g => { const r = ratio(css(g.querySelector('path.edge'), 'stroke'), stageBg); if (r < 3) low.push(['line', g.dataset.from, r]); });
+    all('.e-lab').forEach(x => { const r = ratio(css(x.querySelector('text'), 'fill'), blend(css(x.querySelector('rect'), 'fill'), stageBg)); if (r < 4.5) low.push(['label', x.textContent, r]); });
+    check(`${tag}: contrast: texts 4.5:1, outlines, details and lines 3:1`, !low.length, low.slice(0, 8));
+    // axe-core 4.14's rules for what is drawn as role="img", written out: svg-img-alt and role-img-alt (each has a name),
+    // nested-interactive (nothing inside one is a tab stop)
+    const imgs = all('.stage svg [role="img"]'), noAlt = [], nested = [];
+    imgs.forEach(x => { if (!(x.getAttribute('aria-label') || '').trim()) noAlt.push(x.dataset.id || x.localName);
+      x.querySelectorAll('[tabindex], a[href], button, input, select, textarea').forEach(c => { if (c.tabIndex >= 0) nested.push(`${x.dataset.id} holds ${c.getAttribute('class') || c.localName}`); }); });
+    check(`${tag}: axe, written out: the drawing a named group, its 13 nodes named images with no tab stop inside`,
+      svg.getAttribute('role') === 'group' && !!(svg.getAttribute('aria-label') || '').trim() && imgs.length === 13 && !noAlt.length && !nested.length, [imgs.length, noAlt, nested.slice(0, 4)]);
+    // a key for every node and flow, in reading order: from the start, one branch to its end before the next
+    const keys = all('.keys > .um-key').map(k => k.dataset.node ?? 'line');
+    check(`${tag}: Tab follows the reading order: the nodes from the start, the yes branch read to its end first, then the flows`,
+      same(keys.slice(0, 13), ['return-arrives', 'slip', 'key-in', 'inspect', 'resaleable', 'refund', 'wait', 'restock', 'stock-records', 'join', 'end', 'letter', 'post-back']) && keys.slice(13).length === 13 && keys.slice(13).every(k => k === 'line'), keys);
+    if (theme === 'light' && fname === 'sans') {
+      const aria = id => pick(`.node[data-id="${id}"]`).getAttribute('aria-label');
+      check(`${tag}: nodes and flows have names a screen reader reads`, aria('resaleable') === 'Decision Fit for resale?, exits yes to Refund the payment, no to Rejection letter'
+        && aria('return-arrives') === 'Terminator Returned parcel arrives, a start' && aria('stock-records') === 'Database Stock records'
+        && pick('.edge-g[data-from="resaleable"][data-to="letter"] title').textContent === 'Flow from Fit for resale? to Rejection letter: no', [aria('resaleable'), aria('return-arrives')]);
+      const legend = all('.m-legend b').map(b => b.textContent);
+      check(`${tag}: the legend keys the flow and each symbol drawn`, same(legend, ['Flow', 'Terminator', 'Process', 'Decision', 'Input/output', 'Predefined process', 'Document', 'Database', 'Manual input', 'Delay', 'Connector']), legend);
+    }
+    h.destroy();
+  }
+  check('the three fonts measure differently', new Set(Object.values(widths)).size === 3, widths);
+  document.documentElement.dataset.theme = 'light'; el.style.removeProperty('--um-sans');
+  check('describe() writes the view in words', describe(EX, 'returns').startsWith('Handling a returned book: a flowchart of 13 nodes and 13 flows.\nTerminator Returned parcel arrives, a start.'));
+
+  // ---- the gestures (DoD 4), each through the edit event and apply()
+  let base = EX, h = mount(base, { editable: true });
+  const hint = () => pick('.um-live').textContent, last = () => ed[ed.length - 1];
+  const button = t => all('.um-editor .um-pal button').find(b => b.textContent.trim() === t), panel = s => pick('.um-editor ' + s);
+  const gives = (name, cmds, test = () => true) => { const e = last(); let m = null; try { m = e && apply(base, e.commands); } catch (x) { m = null; }
+    check(name, ed.length === 1 && same(e.commands, cmds) && !!m && test(m) && !errors(m).length, [ed.map(x => x.commands), m && errors(m)]); ed = []; return m; };
+  const lineRing = name => all('.line-key').find(k => k.getAttribute('aria-label') === name);
+  check('the palette: the ten symbols and a comment', same(all('.um-editor .um-pal button').map(b => b.textContent.trim()), ['Terminator', 'Process', 'Decision', 'Input/output', 'Predefined process', 'Document', 'Database', 'Manual input', 'Delay', 'Connector', 'Comment']));
+  key('n'); pick('.um-rename').value = 'Log the return'; key('Enter', {}, pick('.um-rename'));
+  gives('N adds the palette\'s first symbol, named, shown in the view', [{ op: 'add', element: { id: 'terminator1', type: 'flow.Terminator', label: 'Log the return' }, view: 'returns' }], m => m.views[0].nodeIds.includes('terminator1'));
+  button('Decision').click(); pick('.um-rename').value = 'Damaged?'; key('Enter', {}, pick('.um-rename'));
+  gives('the palette\'s Decision, named', [{ op: 'add', element: { id: 'decision1', type: 'flow.Decision', label: 'Damaged?' }, view: 'returns' }]);
+  // F2 on a node; F2 and a double-click on a flow, from its ring
+  click('.node[data-id="inspect"] .n-body'); key('F2');
+  check('F2 on a node: a field holding its label', pick('.um-rename') && pick('.um-rename').value === 'Inspect the book');
+  pick('.um-rename').value = 'Inspect the parcel'; key('Enter', {}, pick('.um-rename'));
+  gives('…Enter sets its label', [{ op: 'set', id: 'inspect', path: 'label', value: 'Inspect the parcel' }]);
+  lineRing('Flow from Fit for resale? to Rejection letter: no').focus(); key('Enter', {}, sr.activeElement); key('F2');
+  check('F2 on a flow: a field holding its label', pick('.um-rename') && pick('.um-rename').value === 'no', pick('.um-rename') && pick('.um-rename').value);
+  pick('.um-rename').value = 'damaged'; key('Enter', {}, pick('.um-rename'));
+  gives('…Enter sets the exit\'s label', [{ op: 'set', id: 'resaleable-no', path: 'label', value: 'damaged' }]);
+  const lab = pick('.edge-g[data-from="resaleable"][data-to="letter"] .hitline'), at = rect(lab);
+  lab.dispatchEvent(new MouseEvent('dblclick', { clientX: at.x + at.w / 2, clientY: at.y + at.h / 2, bubbles: true, composed: true, cancelable: true }));
+  check('a double-click on the selected flow opens the same field', pick('.um-rename') && pick('.um-rename').value === 'no');
+  pick('.um-rename').value = 'worn'; key('Enter', {}, pick('.um-rename'));
+  gives('…and sets its label', [{ op: 'set', id: 'resaleable-no', path: 'label', value: 'worn' }]);
+  // L by keyboard: the picker of the two lines, then the type's connect
+  click('.node[data-id="wait"] .n-body'); key('l'); for (const c of 'Rejection') key(c); key('Enter');
+  const kinds = all('.um-pick button').map(b => b.textContent);
+  check('L, a name and Enter open the picker of the flowchart\'s lines', same(kinds, ['Flow', 'Comment link']), kinds);
+  all('.um-pick button')[0].click();
+  gives('picking Flow adds it', [{ op: 'add', element: { id: 'flow1', type: 'flow.Flow', from: 'wait', to: 'letter' }, view: 'returns' }]);
+  h.destroy();
+  // a decision with one exit: its second, by the handle, answers it
+  base = structuredClone(EX); base.edges = base.edges.filter(e => e.id !== 'resaleable-no'); base.nodes.push({ id: 'n1', type: 'uml.Comment', label: 'Ask the manager' }); base.views[0].nodeIds.push('n1');
+  h = mount(base, { editable: true });
+  click('.node[data-id="resaleable"] .n-body'); handleTo(centre('.node[data-id="letter"] .n-body')); click('.um-pick button');
+  gives('the handle from a decision whose exit says yes: the new exit says no', [{ op: 'add', element: { id: 'flow1', type: 'flow.Flow', from: 'resaleable', to: 'letter', label: 'no' }, view: 'returns' }],
+    m => same(validate(m).filter(p => p.rule === 'decision-exits'), []));
+  click('.node[data-id="n1"] .n-body'); handleTo(centre('.node[data-id="inspect"] .n-body')); click('.um-pick button');
+  check('the handle from a comment, Flow: refused, with its rule on the hint line', !ed.length && /^flow-ends: /.test(hint()), [ed, hint()]);
+  click('.node[data-id="n1"] .n-body'); handleTo(centre('.node[data-id="inspect"] .n-body')); click('.um-pick button:nth-child(2)');
+  gives('…Comment link: added', [{ op: 'add', element: { id: 'commentlink1', type: 'uml.CommentLink', from: 'n1', to: 'inspect' }, view: 'returns' }]);
+  // Delete hides; Shift + Delete deletes, its flows with it
+  click('.node[data-id="wait"] .n-body'); key('Delete');
+  gives('Delete hides a node from the view', [{ op: 'hide', id: 'wait', view: 'returns' }], m => !m.views[0].nodeIds.includes('wait'));
+  click('.node[data-id="wait"] .n-body'); key('Delete', { shiftKey: true });
+  gives('Shift + Delete deletes it and its flows', [{ op: 'delete', id: 'wait' }], m => !m.nodes.some(n => n.id === 'wait') && !m.edges.some(e => e.from === 'wait' || e.to === 'wait'));
+  h.destroy();
+  // a view with no direction is laid out down: a node dragged onto another's place is pinned at that place's column and row
+  base = dir(null); h = mount(base, { editable: true });
+  const g0 = layout(base, 'returns'), w = g0.byId.wait;
+  drag('.node[data-id="letter"] .n-body', centre('.node[data-id="wait"] .n-body'));
+  gives('a drag on a view with no direction: pinned where it was dropped, read down the picture', [{ op: 'set', view: 'returns', path: ['layout', 'letter'], value: [w.col, w.row] }],
+    m => { const g = layout(m, 'returns').byId.letter; return g.col === w.col && g.row === w.row; });
+  h.destroy();
+} catch (x) { out.fail.push('threw: ' + (x && x.stack || x)); }
+document.documentElement.dataset.theme = 'light'; el.style.removeProperty('--um-sans');
+const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
+</script>

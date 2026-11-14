@@ -121,4 +121,4 @@ TYPED.lines = ({ id, edges, drawn, lstyle, MC }) => {
   };
 };
 
-export { endLabels };
+export { endLabels, ENDS };
