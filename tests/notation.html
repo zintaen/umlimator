@@ -12,7 +12,10 @@
      dashed where it says, an arrowhead's tip on the outline or the port it points to. And stage 6's (6.6, notes/stage-6.md
      §4.1, §11): on the profile example and the stress fixture's edge cases, an extension ends in a filled triangle the
      line's colour, solid; a profile application in an open arrowhead, dashed, labelled «apply»; a generalization's hollow
-     triangle and a dependency's open arrow as the class type's; each tip on the outline it points to. tests/embed.py
+     triangle and a dependency's open arrow as the class type's; each tip on the outline it points to. And milestone 3's
+     base (M3.1, notes/milestone-3.md §5, §6.2, §7.1): a classifier's titled compartments (each name first, centred, muted,
+     in its band), ariaOwn as its accessible name, the containment line's crosshair (hollow, its tip on the owner's
+     outline), and SysML's frame (its tag in the corner, its text inside it, cut on a narrow frame). tests/embed.py
      opens this in headless Chrome and reads <pre id="result">. -->
 <meta charset="utf-8">
 <link rel="icon" href="data:,">
@@ -232,6 +235,42 @@ try {
   }
   const ends6 = [...seen6].sort();
   check('stage 6: the extension\'s filled triangle, the profile application\'s open arrow, each drawn', ['uml.Extension filled-triangle', 'uml.ProfileApplication open'].every(k => ends6.includes(k)), ends6);
+  // ---- milestone 3 (M3.1, notes/milestone-3.md §5, §6.2, §7.1): the crosshair end, a titled compartment, ariaOwn, the frame
+  await import('../src/sysml/sysml.js');
+  const PP = (label, valueType) => ({ type: 'sysml.PartProperty', label, props: { valueType } });
+  const N3 = [{ id: 'ebike', type: 'sysml.Block', label: 'EBike', stereotypes: ['block'], ariaOwn: 'Block EBike, 2 parts, 1 value', compartments: [
+      { name: 'parts', title: true, members: [PP('battery', 'Battery'), PP('motor', 'Motor')] }, { name: 'values', title: true, members: [{ type: 'sysml.ValueProperty', label: 'mass', props: { valueType: 'Mass' } }] }] },
+    { id: 'spec', type: 'sysml.Requirement', label: 'Specification', stereotypes: ['requirement'], compartments: [] },
+    { id: 'assist', type: 'sysml.Requirement', label: 'Pedal assistance', stereotypes: ['requirement'], compartments: [] }];
+  for (const theme of ['light', 'dark']) for (const [fname, family] of Object.entries(FONTS)) {
+    document.documentElement.dataset.theme = theme; el.style.setProperty('--um-sans', family);
+    const tag = `M3.1 ${theme}, ${fname}`, G = measured(hostMeasure(el), () => {
+      const size = Object.fromEntries(N3.map(n => [n.id, SHAPE.classifier.size(n)])), at = { ebike: [40, 60], spec: [400, 60], assist: [400, 260] };
+      const nodes = N3.map(n => ({ ...n, shape: 'classifier', k: 'file', x: at[n.id][0], y: at[n.id][1], ...size[n.id] })), by = Object.fromEntries(nodes.map(n => [n.id, n])), S = by.spec, A = by.assist, cx = S.x + S.w / 2;
+      const edges = [{ id: 'c', from: 'assist', to: 'spec', s: A, t: S, aria: 'Containment', pts: [[cx, A.y], [cx, S.y + S.h]], end: { from: 'none', to: 'crosshair' } }];
+      const families = [{ id: 'v->frame', x: 10, y: 10, w: 640, h: 380, title: 'bdd [Model] E-bike: blocks [E-bike blocks]', shape: 'sysml-frame', aria: 'Block definition diagram of model E-bike: blocks: E-bike blocks' },
+        { id: 'narrow', x: 700, y: 10, w: 90, h: 80, title: 'ibd [Block] EBike [Inside the e-bike]', shape: 'sysml-frame', aria: 'Internal block diagram of block EBike: Inside the e-bike' }];
+      return { nodes, edges, svg: svgOf({ nodes, edges, families, groups: [], bounds: { x: 0, y: 0, w: 800, h: 400 }, byId: by }, { title: tag }) }; });
+    el.innerHTML = G.svg; const svg = el.querySelector('svg'), blk = svg.querySelector('.node[data-id="ebike"]'), n = G.nodes[0], off = [];
+    const titles = [...blk.querySelectorAll('.c-title')], st = getComputedStyle(blk.querySelector('.c-st')).fill;
+    titles.forEach(t => { const r = t.getBBox(), [top, bot] = t.closest('[data-band]').dataset.band.split(' ').map(Number);
+      if (r.x < n.x + 1 || r.x + r.width > n.x + n.w - 1 || r.y < top - .5 || r.y + r.height > bot + .5) off.push(`${t.textContent}: outside its band`);
+      if (Math.abs(r.x + r.width / 2 - (n.x + n.w / 2)) > 1) off.push(`${t.textContent}: not centred`);
+      if (getComputedStyle(t).fill !== st) off.push(`${t.textContent}: not muted`);
+      if (t.nextElementSibling && t.nextElementSibling.getBBox().y < r.y + r.height - .5) off.push(`${t.textContent}: over its first row`); });
+    check(`${tag}: a titled compartment draws its name first, centred, muted, inside its band, over its rows`, titles.map(t => t.textContent).join('|') === 'parts|values' && !off.length, off);
+    check(`${tag}: ariaOwn is the classifier's accessible name`, blk.getAttribute('aria-label') === 'Block EBike, 2 parts, 1 value' && svg.querySelector('.node[data-id="spec"]').getAttribute('aria-label') === 'Requirement Specification (requirement)');
+    const path = svg.querySelector('.edge-g[data-i="0"] .edge'), ref = path.getAttribute('marker-end'), mk = ref && svg.querySelector(ref.slice(4, -1)), head = mk && mk.querySelector('path'), r = head && head.getBBox();
+    const d = path.getAttribute('d').match(/-?\d+(\.\d+)?/g).map(Number), body = svg.querySelector('.node[data-id="spec"] .n-body'); body.style.strokeWidth = '3px';
+    const tip = G.edges[0].pts[1], onIt = body.isPointInStroke(pt(svg, tip[0], tip[1])); body.style.strokeWidth = '';
+    check(`${tag}: the crosshair: a hollow circle with a cross at the owner, its tip and the line's end on the owner's outline`,
+      !!mk && /crosshair/.test(mk.id) && Math.abs(r.x + r.width - +mk.getAttribute('refX')) < .01 && Math.abs(r.y + r.height / 2 - +mk.getAttribute('refY')) < .01 && r.width === 14
+      && getComputedStyle(head).fill === getComputedStyle(el).backgroundColor && onIt && Math.abs(d.at(-1) - tip[1]) < .01, { id: mk && mk.id, r: r && [r.x, r.y, r.width, r.height], d, onIt });
+    const fr = [...svg.querySelectorAll('.family')].map(g => ({ g, f: g.dataset.family, box: g.querySelector('.family-box').getBBox(), tag: g.querySelector('.f-tag').getBBox(), t: g.querySelector('.family-title') }));
+    const bad = fr.filter(({ box, tag: tg, t }) => { const tr = t.getBBox(); return tg.x < box.x - .01 || tg.x + tg.width > box.x + box.width + .01 || tr.x < tg.x || tr.x + tr.width > tg.x + tg.width + .5 || tr.y < tg.y - .5 || tr.y + tr.height > tg.y + tg.height + .5; }).map(x => x.f);
+    check(`${tag}: a frame's tag sits in its top left corner, its text inside it; a narrow frame cuts it`, fr.length === 2 && !bad.length && fr[0].t.textContent === 'bdd [Model] E-bike: blocks [E-bike blocks]' && /…$/.test(fr[1].t.textContent)
+      && fr[0].g.getAttribute('aria-label') === 'Block definition diagram of model E-bike: blocks: E-bike blocks' && getComputedStyle(fr[0].g.querySelector('.family-box')).stroke === getComputedStyle(head).stroke, { bad, t: fr.map(x => x.t.textContent) });
+  }
   document.documentElement.dataset.theme = 'light'; el.style.removeProperty('--um-sans');
 } catch (e) { out.fail.push('threw: ' + (e && e.stack || e)); }
 const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
