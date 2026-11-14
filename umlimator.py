@@ -773,12 +773,18 @@ def cmd_record(a):
 
 def cmd_import(a):
     """A diagram a team has already, as a model (#90): Structurizr DSL, C4-PlantUML, Mermaid, or the JSON of `docker
-    compose config` or `kubectl get`. umlimator_import.py reads them, but for a Mermaid classDiagram, sequenceDiagram or
-    stateDiagram, which the module's readers read in Node into a typed model (schema version 2, one uml.class,
-    uml.sequence or uml.state-machine view);
-    what it does not import is listed on stderr, each with its line (in JSON, its path)."""
+    compose config` or `kubectl get`. umlimator_import.py reads them, but for a Mermaid classDiagram, sequenceDiagram,
+    stateDiagram or erDiagram, a Mermaid flowchart given --typed, a Structurizr JSON workspace and a .dbml file, which
+    the module's readers read in Node into a typed model (schema version 2: uml.class, uml.sequence, uml.state-machine,
+    er, flowchart or C4 views; notes/milestone-2.md §8.5). A .dbml file is parsed by @dbml/core where it resolves from
+    the working folder, which umlimator does not install. A Structurizr JSON or .dbml file over 1 MiB is refused before
+    it is parsed. What it does not import is listed on stderr, each with its line (in JSON, its path)."""
     sys.path.insert(0, str(HERE))
     import umlimator_import as imp
+    named = {"structurizr-json": "a Structurizr JSON workspace", "dbml": "DBML"}
+    early = a.format or ("dbml" if Path(a.file).suffix.lower() == ".dbml" else None)  # ponytail: a .dbml file's name is trusted here, before detect reads it
+    if early in imp.NODE_FORMATS and (size := Path(a.file).stat().st_size) > imp.LIMIT:  # hostile input (milestone-2.md §8): not even read
+        sys.exit(f"import: {a.file} is {size} bytes, over the limit of {imp.LIMIT} (1 MiB) for {named[early]}: nothing read, nothing written")
     text = Path(a.file).read_text(encoding="utf-8-sig")  # a byte-order mark is not the diagram's
     fmt = a.format or imp.detect(a.file, text)
     if not fmt and text.lstrip()[:1] in ("{", "["):  # JSON that does not parse (cut short?) is not a format it can't tell
@@ -786,20 +792,56 @@ def cmd_import(a):
             json.loads(text)
         except ValueError as e:
             sys.exit(f"import: {a.file} is not valid JSON ({e}): is it cut short? (give --format if it is not JSON)")
-    fmt = fmt or sys.exit(f"import: cannot tell the format of {a.file}: give --format ({', '.join(imp.FORMATS)})")
-    kind = fmt == "mermaid" and imp.mermaid_typed(text)
-    if kind:  # a classDiagram, a sequenceDiagram or a stateDiagram: the module's reader, in Node (risks.md R7)
+    fmt = fmt or sys.exit(f"import: cannot tell the format of {a.file}: give --format ({', '.join(imp.FORMATS + imp.NODE_FORMATS)})")
+    kind = fmt == "mermaid" and imp.mermaid_typed(text, a.typed)
+    if a.typed and not kind and fmt not in imp.NODE_FORMATS:
+        sys.exit(f"import: --typed reads a Mermaid flowchart typed; {a.file} is {fmt}"
+                 f"{' but not a flowchart' if fmt == 'mermaid' else ''}, which imports as a map: nothing written")
+    what = f"a Mermaid {kind}" if kind else named.get(fmt)
+    if what:  # the module's reader, in Node (risks.md R7)
         name, fn = {"classDiagram": ("mermaid-class.js", "readMermaidClass"), "sequenceDiagram": ("mermaid-sequence.js", "readMermaidSequence"),
-                    "stateDiagram": ("mermaid-state.js", "readMermaidState")}[kind]
+                    "stateDiagram": ("mermaid-state.js", "readMermaidState"), "erDiagram": ("mermaid-er.js", "readMermaidEr"),
+                    "flowchart": ("mermaid-flowchart.js", "readMermaidFlowchart"), "structurizr-json": ("structurizr.js", "readStructurizr"),
+                    "dbml": ("dbml.js", "readDbml")}[kind or fmt]
+        size = Path(a.file).stat().st_size
+        if fmt in imp.NODE_FORMATS and size > imp.LIMIT:  # hostile input (milestone-2.md §8): before Node or @dbml/core parses it
+            sys.exit(f"import: {a.file} is {size} bytes, over the limit of {imp.LIMIT} (1 MiB) for {what}: nothing read, nothing written")
         reader = HERE / "src" / "readers" / name
         if not shutil.which("node"):
-            sys.exit(f"import: {a.file} is a Mermaid {kind}, which the module's reader reads in Node.js 18 or later; "
-                     "install Node to import it. Structurizr, C4-PlantUML, compose, Kubernetes and Mermaid's flowcharts and C4 diagrams need only Python")
+            sys.exit(f"import: {a.file} is {what}, which the module's reader reads in Node.js 18 or later; install Node to import it"
+                     + (", or import it without --typed, as a map, which needs only Python" if kind == "flowchart" else
+                        ". Structurizr DSL, C4-PlantUML, compose, Kubernetes and Mermaid's flowcharts and C4 diagrams need only Python"))
         if not reader.is_file():  # a copy of the CLI with lib/ but not src/
-            sys.exit(f"import: {a.file} is a Mermaid {kind}, whose reader is src/readers/{name}, which this copy of "
+            sys.exit(f"import: {a.file} is {what}, whose reader is src/readers/{name}, which this copy of "
                      f"umlimator does not have ({reader.parent} is missing it): import it from a full clone of the repository")
-        r = js(fn, text, module=reader)
-        m, unread = r["model"], [(x["line"], f"{x['status']}: {x['message']}") for x in r["report"]]
+        if fmt == "dbml":  # @dbml/core parses, the adapter reads its Database; required, not imported (milestone-2.md §8.4)
+            code = ("import { createRequire } from 'node:module'; import { readDbml } from " + json.dumps(reader.as_uri()) + ";"
+                    "const req = createRequire(process.cwd() + '/'); let at; try { at = req.resolve('@dbml/core') } catch { process.stdout.write('null'); process.exit(0) }"
+                    "let P; try { P = req(at).Parser; if (typeof (P && P.parse) !== 'function') throw new Error('it has no Parser.parse') }"
+                    " catch (e) { process.stdout.write(JSON.stringify({ broken: at, why: String(e && e.message || e) })); process.exit(0) }"
+                    "let s = ''; for await (const c of process.stdin) s += c; let db;"
+                    "try { db = P.parse(s, 'dbmlv2') } catch (e) { process.stdout.write(JSON.stringify({ diags: (Array.isArray(e && e.diags) ? e.diags : [e])"
+                    ".map(d => [d && d.location && d.location.start ? d.location.start.line : null, String(d && d.message || d)]) })); process.exit(0) }"
+                    "process.stdout.write(JSON.stringify(readDbml(db)));")
+            p = run([shutil.which("node"), "--input-type=module", "-e", code], input=text)
+            if p.returncode:
+                sys.exit(p.stderr.strip()[-2000:])
+            r = json.loads(p.stdout)
+            if r is None:
+                sys.exit(f"import: {a.file} is DBML, which @dbml/core parses, and @dbml/core does not resolve from this folder ({Path.cwd()}): "
+                         "install it here (npm install @dbml/core) and import again; umlimator does not depend on it. Nothing written")
+            if "broken" in r:  # an install that does not load is not the user's DBML at fault
+                sys.exit(f"import: @dbml/core at {r['broken']} did not load ({r['why']}): reinstall it (npm install @dbml/core) and import again. "
+                         f"{a.file} was not parsed; nothing written")
+            for where, msg in r.get("diags") or []:
+                print(f"{a.file}:{where}: {msg}" if where is not None else f"{a.file}: {msg}", file=sys.stderr)
+            if "diags" in r:
+                sys.exit(f"import: @dbml/core could not parse {a.file}: nothing written")
+        else:
+            r = js(fn, text, module=reader)
+        # a JSON source's item is named by its path (Structurizr's `path`, the DBML adapter's `line`); '' is the whole file
+        m, unread = r["model"], [(x.get("line", x.get("path")) if x.get("line", x.get("path")) != "" else None,
+                                  f"{x['status']}: {x['message']}") for x in r["report"]]
     else:
         try:
             m, unread = imp.read(fmt, text, Path(a.file).stem)
@@ -862,9 +904,10 @@ def main():
     tr.set_defaults(f=cmd_trace)
     t = sub.add_parser("timelapse", help="the model's versions in git history on a slider"); t.add_argument("model"); t.add_argument("--out", required=True)
     t.add_argument("--limit", type=int, default=30, help="the latest N versions (default 30)"); t.set_defaults(f=cmd_timelapse)
-    im = sub.add_parser("import", help="a Structurizr, C4-PlantUML or Mermaid diagram, or compose or Kubernetes JSON, as a model")
+    im = sub.add_parser("import", help="a Structurizr (DSL or JSON), C4-PlantUML, Mermaid or DBML diagram, or compose or Kubernetes JSON, as a model")
     im.add_argument("file"); im.add_argument("--out", required=True, help="the model, a .json file")
-    im.add_argument("--format", choices=["structurizr", "plantuml", "mermaid", "compose", "kubernetes"], help="default: read from the content, then the extension")
+    im.add_argument("--format", choices=["structurizr", "plantuml", "mermaid", "compose", "kubernetes", "structurizr-json", "dbml"], help="default: read from the content, then the extension")
+    im.add_argument("--typed", action="store_true", help="a Mermaid flowchart as a typed flowchart view (needs Node), not a map")
     im.set_defaults(f=cmd_import)
     mc = sub.add_parser("mcp", help="a Model Context Protocol server over stdio: an AI assistant reads the model and drives its page")
     mc.add_argument("model"); mc.add_argument("--port", type=int, default=7391, help="the page's port on 127.0.0.1 (default 7391; another if it is taken)")
