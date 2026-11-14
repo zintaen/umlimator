@@ -1,0 +1,11 @@
+{
+ "about": "The e-bike atlas (examples/ebike-atlas.json), as tools/atlas.mjs --links tools/ebike-links.json --out examples/ebike-atlas.json builds it: SysML's four examples, in this order (an element two of them have, by its id, is one element, and the files must agree on it), and which element opens which view, each as \"<file>/<id>\".",
+ "title": "E-bike atlas",
+ "root": "ebike-requirements/requirements",
+ "sources": ["ebike-requirements", "ebike-blocks", "ebike-structure", "ebike-range"],
+ "links": [
+  { "element": "ebike-requirements/spec", "opens": "ebike-blocks/blocks" },
+  { "element": "ebike-requirements/range", "opens": "ebike-range/range-analysis" },
+  { "element": "ebike-blocks/ebike", "opens": "ebike-structure/inside-ebike" }
+ ]
+}

@@ -1,0 +1,71 @@
+{
+  "$schema": "../lib/umlimator.schema.json",
+  "schemaVersion": 2,
+  "title": "E-bike: internal structure",
+  "root": "inside-ebike",
+  "nodes": [
+    {"id": "ebike", "type": "sysml.Block", "label": "EBike",
+      "members": [
+        {"id": "ebike.battery", "type": "sysml.PartProperty", "label": "battery", "props": {"valueType": "Battery", "multiplicity": "1"}},
+        {"id": "ebike.controller", "type": "sysml.PartProperty", "label": "controller", "props": {"valueType": "Controller", "multiplicity": "1"}},
+        {"id": "ebike.motor", "type": "sysml.PartProperty", "label": "motor", "props": {"valueType": "Motor", "multiplicity": "1"}},
+        {"id": "ebike.frontLight", "type": "sysml.PartProperty", "label": "frontLight", "props": {"valueType": "Light", "multiplicity": "1"}},
+        {"id": "ebike.rearLight", "type": "sysml.PartProperty", "label": "rearLight", "props": {"valueType": "Light", "multiplicity": "1"}},
+        {"id": "ebike.dock", "type": "sysml.ReferenceProperty", "label": "dock", "props": {"valueType": "Dock", "multiplicity": "0..1"}},
+        {"id": "ebike.batteryCapacity", "type": "sysml.ValueProperty", "label": "batteryCapacity", "props": {"valueType": "Energy"}},
+        {"id": "ebike.usableShare", "type": "sysml.ValueProperty", "label": "usableShare", "props": {"valueType": "Real"}},
+        {"id": "ebike.ecoConsumption", "type": "sysml.ValueProperty", "label": "ecoConsumption", "props": {"valueType": "EnergyPerDistance"}},
+        {"id": "ebike.boostConsumption", "type": "sysml.ValueProperty", "label": "boostConsumption", "props": {"valueType": "EnergyPerDistance"}},
+        {"id": "ebike.ecoRange", "type": "sysml.ValueProperty", "label": "ecoRange", "props": {"valueType": "Distance"}},
+        {"id": "ebike.boostRange", "type": "sysml.ValueProperty", "label": "boostRange", "props": {"valueType": "Distance"}},
+        {"id": "ebike.usable", "type": "sysml.ConstraintProperty", "label": "usable", "props": {"valueType": "UsableEnergy"}},
+        {"id": "ebike.eco", "type": "sysml.ConstraintProperty", "label": "eco", "props": {"valueType": "RangeEquation"}},
+        {"id": "ebike.boost", "type": "sysml.ConstraintProperty", "label": "boost", "props": {"valueType": "RangeEquation"}}
+      ] },
+    {"id": "battery", "type": "sysml.Block", "label": "Battery",
+      "members": [
+        {"id": "battery.capacity", "type": "sysml.ValueProperty", "label": "capacity", "props": {"valueType": "Energy"}},
+        {"id": "battery.cellVoltage", "type": "sysml.ValueProperty", "label": "cellVoltage", "props": {"valueType": "Voltage", "multiplicity": "10"}},
+        {"id": "battery.charge", "type": "sysml.Port", "label": "charge", "props": {"valueType": "ChargeInterface"}},
+        {"id": "battery.power", "type": "sysml.Port", "label": "power"},
+        {"id": "battery.bus", "type": "sysml.Port", "label": "bus"}
+      ] },
+    {"id": "controller", "type": "sysml.Block", "label": "Controller",
+      "members": [
+        {"id": "controller.setAssistLevel", "type": "uml.Operation", "label": "setAssistLevel", "props": {"parameters": [{"name": "level", "valueType": "Integer"}]}},
+        {"id": "controller.supply", "type": "sysml.Port", "label": "supply"},
+        {"id": "controller.drive", "type": "sysml.Port", "label": "drive"},
+        {"id": "controller.lights", "type": "sysml.Port", "label": "lights"},
+        {"id": "controller.bus", "type": "sysml.Port", "label": "bus"}
+      ] },
+    {"id": "motor", "type": "sysml.Block", "label": "Motor",
+      "members": [
+        {"id": "motor.ratedPower", "type": "sysml.ValueProperty", "label": "ratedPower", "props": {"valueType": "Power"}},
+        {"id": "motor.phases", "type": "sysml.Port", "label": "phases"}
+      ] },
+    {"id": "light", "type": "sysml.Block", "label": "Light",
+      "members": [
+        {"id": "light.power", "type": "sysml.Port", "label": "power"}
+      ] },
+    {"id": "dock", "type": "sysml.Block", "label": "Dock",
+      "members": [
+        {"id": "dock.charge", "type": "sysml.Port", "label": "charge", "props": {"valueType": "~ChargeInterface"}}
+      ] },
+    {"id": "charge-interface", "type": "sysml.InterfaceBlock", "label": "ChargeInterface",
+      "members": [
+        {"id": "charge-interface.dc", "type": "sysml.FlowProperty", "label": "dc", "props": {"valueType": "DCPower", "direction": "in"}},
+        {"id": "charge-interface.stateOfCharge", "type": "sysml.FlowProperty", "label": "stateOfCharge", "props": {"valueType": "Percent", "direction": "out"}}
+      ] }
+  ],
+  "edges": [
+    {"id": "battery-dock-charge", "type": "sysml.Connector", "from": "battery.charge", "to": "dock.charge", "props": {"ends": {"from": {"part": "ebike.battery"}, "to": {"part": "ebike.dock"}}, "itemFlow": {"item": "DCPower", "direction": "to-from"}}},
+    {"id": "battery-feeds-controller", "type": "sysml.Connector", "from": "battery.power", "to": "controller.supply", "props": {"ends": {"from": {"part": "ebike.battery"}, "to": {"part": "ebike.controller"}}, "itemFlow": {"item": "DCPower", "direction": "from-to"}}},
+    {"id": "controller-drives-motor", "type": "sysml.Connector", "from": "controller.drive", "to": "motor.phases", "props": {"ends": {"from": {"part": "ebike.controller"}, "to": {"part": "ebike.motor"}}, "itemFlow": {"item": "PhaseCurrent", "direction": "from-to"}}},
+    {"id": "battery-controller-bus", "type": "sysml.Connector", "from": "battery.bus", "to": "controller.bus", "props": {"ends": {"from": {"part": "ebike.battery"}, "to": {"part": "ebike.controller"}}}},
+    {"id": "controller-front-light", "type": "sysml.Connector", "from": "controller.lights", "to": "light.power", "props": {"ends": {"from": {"part": "ebike.controller"}, "to": {"part": "ebike.frontLight"}}}},
+    {"id": "controller-rear-light", "type": "sysml.Connector", "from": "controller.lights", "to": "light.power", "props": {"ends": {"from": {"part": "ebike.controller"}, "to": {"part": "ebike.rearLight"}}}}
+  ],
+  "views": [
+    {"id": "inside-ebike", "diagram": "sysml.internal-block", "title": "Inside the e-bike", "parent": null, "subject": "ebike", "nodeIds": ["ebike"]}
+  ]
+}

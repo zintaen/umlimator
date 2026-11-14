@@ -1,7 +1,9 @@
 // Builds examples/bookshop-atlas.json, the Bookshop atlas: the Bookshop examples in one model (schemaVersion 2), the map's
 // views and every typed view, joined by drill-down. tools/atlas-links.json names the files, in order, and which element
 // opens which view (its opensView). No dependency. `node tools/atlas.mjs`; tests/atlas.test.mjs fails when the committed
-// atlas is not what this writes.
+// atlas is not what this writes. `--links <file>` and `--out <file>` build another atlas the same way:
+// `node tools/atlas.mjs --links tools/ebike-links.json --out examples/ebike-atlas.json` writes the e-bike atlas (0.25.0),
+// which tests/ebike-atlas.test.mjs keeps.
 //
 // Ids: one model, many views. A node, member or edge whose id is in several files is one element, written once: the
 // files must agree on it. Its type, parent and ends (from, to) are equal; any other field the files both set is equal
@@ -35,7 +37,9 @@ const KEYS = {
     'guard', 'isAbstract', 'isDerived', 'isStatic', 'kind', 'multiplicity', 'operator', 'parameters', 'represents', 'returnType',
     'sort', 'stereotypes', 'trigger', 'value', 'valueType', 'visibility', 'tags', 'states', 'sentAt', 'receivedAt', 'isRequired',
     'conveyed', 'dataType', 'primaryKey', 'foreignKey', 'nullable', 'unique', 'references', 'identifying', 'number', 'description', 'technology',
-    'external', 'shape', 'container'],
+    'external', 'shape', 'container',
+    // SysML's (0.25.0, the e-bike atlas)
+    'reqId', 'text', 'risk', 'verifyMethod', 'constraint', 'unit', 'quantityKind', 'direction', 'itemFlow'],
 };
 function known(x, kind, where) {
   const odd = Object.keys(x).filter(k => !KEYS[kind].includes(k));
@@ -105,8 +109,10 @@ export function build(links = read(new URL('atlas-links.json', import.meta.url))
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const { shared, text } = build();
-  writeFileSync(new URL('bookshop-atlas.json', EX), text);
-  console.log(`examples/bookshop-atlas.json written; ${shared.length} elements shared by several files, each written once:`);
+  const arg = k => { const i = process.argv.indexOf(k); return i > 0 ? process.argv[i + 1] : null; };
+  const out = arg('--out') || 'examples/bookshop-atlas.json', links = arg('--links');
+  const { shared, text } = build(links ? read(links) : undefined);
+  writeFileSync(arg('--out') || new URL('bookshop-atlas.json', EX), text);
+  console.log(`${out} written; ${shared.length} elements shared by several files, each written once:`);
   for (const { id, files } of shared) console.log(`  ${id}: ${files.join(', ')}`);
 }

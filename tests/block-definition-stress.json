@@ -1,0 +1,3183 @@
+{
+ "schemaVersion": 2,
+ "title": "Block definition, stress",
+ "nodes": [
+  {
+   "id": "ec-all",
+   "type": "sysml.Block",
+   "label": "Everything",
+   "members": [
+    {
+     "id": "ec-all.part",
+     "type": "sysml.PartProperty",
+     "label": "part",
+     "props": {
+      "valueType": "Part",
+      "multiplicity": "1"
+     }
+    },
+    {
+     "id": "ec-all.ref",
+     "type": "sysml.ReferenceProperty",
+     "label": "ref",
+     "props": {
+      "valueType": "Part",
+      "multiplicity": "0..1"
+     }
+    },
+    {
+     "id": "ec-all.mass",
+     "type": "sysml.ValueProperty",
+     "label": "mass",
+     "props": {
+      "valueType": "Mass"
+     }
+    },
+    {
+     "id": "ec-all.eq",
+     "type": "sysml.ConstraintProperty",
+     "label": "eq",
+     "props": {
+      "valueType": "Balance"
+     }
+    },
+    {
+     "id": "ec-all.start",
+     "type": "uml.Operation",
+     "label": "start"
+    },
+    {
+     "id": "ec-all.proxy",
+     "type": "sysml.Port",
+     "label": "proxy",
+     "props": {
+      "kind": "proxy",
+      "valueType": "Signals"
+     }
+    },
+    {
+     "id": "ec-all.full",
+     "type": "sysml.Port",
+     "label": "full",
+     "props": {
+      "kind": "full",
+      "valueType": "Part"
+     }
+    },
+    {
+     "id": "ec-all.conj",
+     "type": "sysml.Port",
+     "label": "conj",
+     "props": {
+      "kind": "proxy",
+      "valueType": "~Signals"
+     }
+    }
+   ]
+  },
+  {
+   "id": "ec-big",
+   "type": "sysml.Block",
+   "label": "Forty rows",
+   "members": [
+    {
+     "id": "ec-big.v0",
+     "type": "sysml.ValueProperty",
+     "label": "value0",
+     "props": {
+      "valueType": "Real"
+     }
+    },
+    {
+     "id": "ec-big.v1",
+     "type": "sysml.ValueProperty",
+     "label": "value1",
+     "props": {
+      "valueType": "Real"
+     }
+    },
+    {
+     "id": "ec-big.v2",
+     "type": "sysml.ValueProperty",
+     "label": "value2",
+     "props": {
+      "valueType": "Real"
+     }
+    },
+    {
+     "id": "ec-big.v3",
+     "type": "sysml.ValueProperty",
+     "label": "value3",
+     "props": {
+      "valueType": "Real"
+     }
+    },
+    {
+     "id": "ec-big.v4",
+     "type": "sysml.ValueProperty",
+     "label": "value4",
+     "props": {
+      "valueType": "Real"
+     }
+    },
+    {
+     "id": "ec-big.v5",
+     "type": "sysml.ValueProperty",
+     "label": "value5",
+     "props": {
+      "valueType": "Real"
+     }
+    },
+    {
+     "id": "ec-big.v6",
+     "type": "sysml.ValueProperty",
+     "label": "value6",
+     "props": {
+      "valueType": "Real"
+     }
+    },
+    {
+     "id": "ec-big.v7",
+     "type": "sysml.ValueProperty",
+     "label": "value7",
+     "props": {
+      "valueType": "Real"
+     }
+    },
+    {
+     "id": "ec-big.v8",
+     "type": "sysml.ValueProperty",
+     "label": "value8",
+     "props": {
+      "valueType": "Real"
+     }
+    },
+    {
+     "id": "ec-big.v9",
+     "type": "sysml.ValueProperty",
+     "label": "value9",
+     "props": {
+      "valueType": "Real"
+     }
+    },
+    {
+     "id": "ec-big.v10",
+     "type": "sysml.ValueProperty",
+     "label": "value10",
+     "props": {
+      "valueType": "Real"
+     }
+    },
+    {
+     "id": "ec-big.v11",
+     "type": "sysml.ValueProperty",
+     "label": "value11",
+     "props": {
+      "valueType": "Real"
+     }
+    },
+    {
+     "id": "ec-big.v12",
+     "type": "sysml.ValueProperty",
+     "label": "value12",
+     "props": {
+      "valueType": "Real"
+     }
+    },
+    {
+     "id": "ec-big.v13",
+     "type": "sysml.ValueProperty",
+     "label": "value13",
+     "props": {
+      "valueType": "Real"
+     }
+    },
+    {
+     "id": "ec-big.v14",
+     "type": "sysml.ValueProperty",
+     "label": "value14",
+     "props": {
+      "valueType": "Real"
+     }
+    },
+    {
+     "id": "ec-big.v15",
+     "type": "sysml.ValueProperty",
+     "label": "value15",
+     "props": {
+      "valueType": "Real"
+     }
+    },
+    {
+     "id": "ec-big.v16",
+     "type": "sysml.ValueProperty",
+     "label": "value16",
+     "props": {
+      "valueType": "Real"
+     }
+    },
+    {
+     "id": "ec-big.v17",
+     "type": "sysml.ValueProperty",
+     "label": "value17",
+     "props": {
+      "valueType": "Real"
+     }
+    },
+    {
+     "id": "ec-big.v18",
+     "type": "sysml.ValueProperty",
+     "label": "value18",
+     "props": {
+      "valueType": "Real"
+     }
+    },
+    {
+     "id": "ec-big.v19",
+     "type": "sysml.ValueProperty",
+     "label": "value19",
+     "props": {
+      "valueType": "Real"
+     }
+    },
+    {
+     "id": "ec-big.v20",
+     "type": "sysml.ValueProperty",
+     "label": "value20",
+     "props": {
+      "valueType": "Real"
+     }
+    },
+    {
+     "id": "ec-big.v21",
+     "type": "sysml.ValueProperty",
+     "label": "value21",
+     "props": {
+      "valueType": "Real"
+     }
+    },
+    {
+     "id": "ec-big.v22",
+     "type": "sysml.ValueProperty",
+     "label": "value22",
+     "props": {
+      "valueType": "Real"
+     }
+    },
+    {
+     "id": "ec-big.v23",
+     "type": "sysml.ValueProperty",
+     "label": "value23",
+     "props": {
+      "valueType": "Real"
+     }
+    },
+    {
+     "id": "ec-big.v24",
+     "type": "sysml.ValueProperty",
+     "label": "value24",
+     "props": {
+      "valueType": "Real"
+     }
+    },
+    {
+     "id": "ec-big.v25",
+     "type": "sysml.ValueProperty",
+     "label": "value25",
+     "props": {
+      "valueType": "Real"
+     }
+    },
+    {
+     "id": "ec-big.v26",
+     "type": "sysml.ValueProperty",
+     "label": "value26",
+     "props": {
+      "valueType": "Real"
+     }
+    },
+    {
+     "id": "ec-big.v27",
+     "type": "sysml.ValueProperty",
+     "label": "value27",
+     "props": {
+      "valueType": "Real"
+     }
+    },
+    {
+     "id": "ec-big.v28",
+     "type": "sysml.ValueProperty",
+     "label": "value28",
+     "props": {
+      "valueType": "Real"
+     }
+    },
+    {
+     "id": "ec-big.v29",
+     "type": "sysml.ValueProperty",
+     "label": "value29",
+     "props": {
+      "valueType": "Real"
+     }
+    },
+    {
+     "id": "ec-big.v30",
+     "type": "sysml.ValueProperty",
+     "label": "value30",
+     "props": {
+      "valueType": "Real"
+     }
+    },
+    {
+     "id": "ec-big.v31",
+     "type": "sysml.ValueProperty",
+     "label": "value31",
+     "props": {
+      "valueType": "Real"
+     }
+    },
+    {
+     "id": "ec-big.v32",
+     "type": "sysml.ValueProperty",
+     "label": "value32",
+     "props": {
+      "valueType": "Real"
+     }
+    },
+    {
+     "id": "ec-big.v33",
+     "type": "sysml.ValueProperty",
+     "label": "value33",
+     "props": {
+      "valueType": "Real"
+     }
+    },
+    {
+     "id": "ec-big.v34",
+     "type": "sysml.ValueProperty",
+     "label": "value34",
+     "props": {
+      "valueType": "Real"
+     }
+    },
+    {
+     "id": "ec-big.v35",
+     "type": "sysml.ValueProperty",
+     "label": "value35",
+     "props": {
+      "valueType": "Real"
+     }
+    },
+    {
+     "id": "ec-big.v36",
+     "type": "sysml.ValueProperty",
+     "label": "value36",
+     "props": {
+      "valueType": "Real"
+     }
+    },
+    {
+     "id": "ec-big.v37",
+     "type": "sysml.ValueProperty",
+     "label": "value37",
+     "props": {
+      "valueType": "Real"
+     }
+    },
+    {
+     "id": "ec-big.v38",
+     "type": "sysml.ValueProperty",
+     "label": "value38",
+     "props": {
+      "valueType": "Real"
+     }
+    },
+    {
+     "id": "ec-big.v39",
+     "type": "sysml.ValueProperty",
+     "label": "value39",
+     "props": {
+      "valueType": "Real"
+     }
+    }
+   ]
+  },
+  {
+   "id": "ec-part",
+   "type": "sysml.Block",
+   "label": "Part",
+   "members": [
+    {
+     "id": "ec-part.plug",
+     "type": "sysml.Port",
+     "label": "plug"
+    }
+   ]
+  },
+  {
+   "id": "ec-mass",
+   "type": "sysml.ValueType",
+   "label": "Mass",
+   "props": {
+    "unit": "kg",
+    "quantityKind": "mass"
+   }
+  },
+  {
+   "id": "ec-signals",
+   "type": "sysml.InterfaceBlock",
+   "label": "Signals",
+   "members": [
+    {
+     "id": "ec-signals.cmd",
+     "type": "sysml.FlowProperty",
+     "label": "cmd",
+     "props": {
+      "valueType": "Signal",
+      "direction": "in"
+     }
+    },
+    {
+     "id": "ec-signals.state",
+     "type": "sysml.FlowProperty",
+     "label": "state",
+     "props": {
+      "valueType": "Signal",
+      "direction": "out"
+     }
+    },
+    {
+     "id": "ec-signals.bus",
+     "type": "sysml.FlowProperty",
+     "label": "bus",
+     "props": {
+      "valueType": "Signal",
+      "direction": "inout"
+     }
+    }
+   ]
+  },
+  {
+   "id": "ec-balance",
+   "type": "sysml.ConstraintBlock",
+   "label": "Balance",
+   "props": {
+    "constraint": "a = b"
+   },
+   "members": [
+    {
+     "id": "ec-balance.a",
+     "type": "sysml.ConstraintParameter",
+     "label": "a",
+     "props": {
+      "valueType": "Real"
+     }
+    },
+    {
+     "id": "ec-balance.b",
+     "type": "sysml.ConstraintParameter",
+     "label": "b",
+     "props": {
+      "valueType": "Real"
+     }
+    },
+    {
+     "id": "ec-balance.sub",
+     "type": "sysml.ConstraintProperty",
+     "label": "sub",
+     "props": {
+      "valueType": "Sum"
+     }
+    }
+   ]
+  },
+  {
+   "id": "ec-sum",
+   "type": "sysml.ConstraintBlock",
+   "label": "Sum",
+   "props": {
+    "constraint": "x = y + 1"
+   },
+   "members": [
+    {
+     "id": "ec-sum.x",
+     "type": "sysml.ConstraintParameter",
+     "label": "x"
+    },
+    {
+     "id": "ec-sum.y",
+     "type": "sysml.ConstraintParameter",
+     "label": "y"
+    }
+   ]
+  },
+  {
+   "id": "ec-odd",
+   "type": "sysml.Block",
+   "label": "Odd typings",
+   "members": [
+    {
+     "id": "ec-odd.weight",
+     "type": "sysml.PartProperty",
+     "label": "weight",
+     "props": {
+      "valueType": "Mass"
+     }
+    },
+    {
+     "id": "ec-odd.eq",
+     "type": "sysml.ConstraintProperty",
+     "label": "eq",
+     "props": {
+      "valueType": "Part"
+     }
+    }
+   ]
+  },
+  {
+   "id": "ec-bad-eq",
+   "type": "sysml.ConstraintBlock",
+   "label": "Bad equation",
+   "props": {
+    "constraint": "f = 0"
+   },
+   "members": [
+    {
+     "id": "ec-bad-eq.f",
+     "type": "sysml.FlowProperty",
+     "label": "f",
+     "props": {
+      "valueType": "Signal",
+      "direction": "in"
+     }
+    }
+   ]
+  },
+  {
+   "id": "ec-twice",
+   "type": "sysml.Block",
+   "label": "Twice",
+   "members": [
+    {
+     "id": "ec-twice.part",
+     "type": "sysml.PartProperty",
+     "label": "part",
+     "props": {
+      "valueType": "Part",
+      "multiplicity": "1"
+     }
+    }
+   ]
+  },
+  {
+   "id": "ec-pkg",
+   "type": "uml.Package",
+   "label": "Parts"
+  },
+  {
+   "id": "ec-in-pkg-a",
+   "type": "sysml.Block",
+   "label": "Bolt",
+   "parent": "ec-pkg"
+  },
+  {
+   "id": "ec-in-pkg-b",
+   "type": "sysml.Block",
+   "label": "Nut",
+   "parent": "ec-pkg"
+  },
+  {
+   "id": "b0",
+   "type": "sysml.Block",
+   "label": "Block0",
+   "members": [
+    {
+     "id": "b0.mass",
+     "type": "sysml.ValueProperty",
+     "label": "mass",
+     "props": {
+      "valueType": "Real"
+     }
+    },
+    {
+     "id": "b0.io",
+     "type": "sysml.Port",
+     "label": "io",
+     "props": {
+      "valueType": "Plug"
+     }
+    },
+    {
+     "id": "b0.p1",
+     "type": "sysml.PartProperty",
+     "label": "p1",
+     "props": {
+      "valueType": "Block1",
+      "multiplicity": "1"
+     }
+    },
+    {
+     "id": "b0.p2",
+     "type": "sysml.PartProperty",
+     "label": "p2",
+     "props": {
+      "valueType": "Block2",
+      "multiplicity": "1"
+     }
+    }
+   ]
+  },
+  {
+   "id": "b1",
+   "type": "sysml.Block",
+   "label": "Block1",
+   "members": [
+    {
+     "id": "b1.mass",
+     "type": "sysml.ValueProperty",
+     "label": "mass",
+     "props": {
+      "valueType": "Real"
+     }
+    },
+    {
+     "id": "b1.io",
+     "type": "sysml.Port",
+     "label": "io",
+     "props": {
+      "valueType": "Plug"
+     }
+    },
+    {
+     "id": "b1.p3",
+     "type": "sysml.PartProperty",
+     "label": "p3",
+     "props": {
+      "valueType": "Block3",
+      "multiplicity": "1"
+     }
+    },
+    {
+     "id": "b1.p4",
+     "type": "sysml.PartProperty",
+     "label": "p4",
+     "props": {
+      "valueType": "Block4",
+      "multiplicity": "1"
+     }
+    }
+   ]
+  },
+  {
+   "id": "b2",
+   "type": "sysml.Block",
+   "label": "Block2",
+   "members": [
+    {
+     "id": "b2.mass",
+     "type": "sysml.ValueProperty",
+     "label": "mass",
+     "props": {
+      "valueType": "Real"
+     }
+    },
+    {
+     "id": "b2.io",
+     "type": "sysml.Port",
+     "label": "io",
+     "props": {
+      "valueType": "Plug"
+     }
+    },
+    {
+     "id": "b2.p5",
+     "type": "sysml.PartProperty",
+     "label": "p5",
+     "props": {
+      "valueType": "Block5",
+      "multiplicity": "1"
+     }
+    },
+    {
+     "id": "b2.p6",
+     "type": "sysml.PartProperty",
+     "label": "p6",
+     "props": {
+      "valueType": "Block6",
+      "multiplicity": "1"
+     }
+    }
+   ]
+  },
+  {
+   "id": "b3",
+   "type": "sysml.Block",
+   "label": "Block3",
+   "members": [
+    {
+     "id": "b3.mass",
+     "type": "sysml.ValueProperty",
+     "label": "mass",
+     "props": {
+      "valueType": "Real"
+     }
+    },
+    {
+     "id": "b3.io",
+     "type": "sysml.Port",
+     "label": "io",
+     "props": {
+      "valueType": "Plug"
+     }
+    },
+    {
+     "id": "b3.p7",
+     "type": "sysml.PartProperty",
+     "label": "p7",
+     "props": {
+      "valueType": "Block7",
+      "multiplicity": "1"
+     }
+    },
+    {
+     "id": "b3.p8",
+     "type": "sysml.PartProperty",
+     "label": "p8",
+     "props": {
+      "valueType": "Block8",
+      "multiplicity": "1"
+     }
+    }
+   ]
+  },
+  {
+   "id": "b4",
+   "type": "sysml.Block",
+   "label": "Block4",
+   "members": [
+    {
+     "id": "b4.mass",
+     "type": "sysml.ValueProperty",
+     "label": "mass",
+     "props": {
+      "valueType": "Real"
+     }
+    },
+    {
+     "id": "b4.io",
+     "type": "sysml.Port",
+     "label": "io",
+     "props": {
+      "valueType": "Plug"
+     }
+    },
+    {
+     "id": "b4.p9",
+     "type": "sysml.PartProperty",
+     "label": "p9",
+     "props": {
+      "valueType": "Block9",
+      "multiplicity": "1"
+     }
+    },
+    {
+     "id": "b4.p10",
+     "type": "sysml.PartProperty",
+     "label": "p10",
+     "props": {
+      "valueType": "Block10",
+      "multiplicity": "1"
+     }
+    }
+   ]
+  },
+  {
+   "id": "b5",
+   "type": "sysml.Block",
+   "label": "Block5",
+   "members": [
+    {
+     "id": "b5.mass",
+     "type": "sysml.ValueProperty",
+     "label": "mass",
+     "props": {
+      "valueType": "Real"
+     }
+    },
+    {
+     "id": "b5.io",
+     "type": "sysml.Port",
+     "label": "io",
+     "props": {
+      "valueType": "Plug"
+     }
+    },
+    {
+     "id": "b5.p11",
+     "type": "sysml.PartProperty",
+     "label": "p11",
+     "props": {
+      "valueType": "Block11",
+      "multiplicity": "1"
+     }
+    },
+    {
+     "id": "b5.p12",
+     "type": "sysml.PartProperty",
+     "label": "p12",
+     "props": {
+      "valueType": "Block12",
+      "multiplicity": "1"
+     }
+    }
+   ]
+  },
+  {
+   "id": "b6",
+   "type": "sysml.Block",
+   "label": "Block6",
+   "members": [
+    {
+     "id": "b6.mass",
+     "type": "sysml.ValueProperty",
+     "label": "mass",
+     "props": {
+      "valueType": "Real"
+     }
+    },
+    {
+     "id": "b6.io",
+     "type": "sysml.Port",
+     "label": "io",
+     "props": {
+      "valueType": "Plug"
+     }
+    },
+    {
+     "id": "b6.p13",
+     "type": "sysml.PartProperty",
+     "label": "p13",
+     "props": {
+      "valueType": "Block13",
+      "multiplicity": "1"
+     }
+    },
+    {
+     "id": "b6.p14",
+     "type": "sysml.PartProperty",
+     "label": "p14",
+     "props": {
+      "valueType": "Block14",
+      "multiplicity": "1"
+     }
+    }
+   ]
+  },
+  {
+   "id": "b7",
+   "type": "sysml.Block",
+   "label": "Block7",
+   "members": [
+    {
+     "id": "b7.mass",
+     "type": "sysml.ValueProperty",
+     "label": "mass",
+     "props": {
+      "valueType": "Real"
+     }
+    },
+    {
+     "id": "b7.io",
+     "type": "sysml.Port",
+     "label": "io",
+     "props": {
+      "valueType": "Plug"
+     }
+    },
+    {
+     "id": "b7.p15",
+     "type": "sysml.PartProperty",
+     "label": "p15",
+     "props": {
+      "valueType": "Block15",
+      "multiplicity": "1"
+     }
+    },
+    {
+     "id": "b7.p16",
+     "type": "sysml.PartProperty",
+     "label": "p16",
+     "props": {
+      "valueType": "Block16",
+      "multiplicity": "1"
+     }
+    }
+   ]
+  },
+  {
+   "id": "b8",
+   "type": "sysml.Block",
+   "label": "Block8",
+   "members": [
+    {
+     "id": "b8.mass",
+     "type": "sysml.ValueProperty",
+     "label": "mass",
+     "props": {
+      "valueType": "Real"
+     }
+    },
+    {
+     "id": "b8.io",
+     "type": "sysml.Port",
+     "label": "io",
+     "props": {
+      "valueType": "Plug"
+     }
+    },
+    {
+     "id": "b8.p17",
+     "type": "sysml.PartProperty",
+     "label": "p17",
+     "props": {
+      "valueType": "Block17",
+      "multiplicity": "1"
+     }
+    },
+    {
+     "id": "b8.p18",
+     "type": "sysml.PartProperty",
+     "label": "p18",
+     "props": {
+      "valueType": "Block18",
+      "multiplicity": "1"
+     }
+    }
+   ]
+  },
+  {
+   "id": "b9",
+   "type": "sysml.Block",
+   "label": "Block9",
+   "members": [
+    {
+     "id": "b9.mass",
+     "type": "sysml.ValueProperty",
+     "label": "mass",
+     "props": {
+      "valueType": "Real"
+     }
+    },
+    {
+     "id": "b9.io",
+     "type": "sysml.Port",
+     "label": "io",
+     "props": {
+      "valueType": "Plug"
+     }
+    },
+    {
+     "id": "b9.p19",
+     "type": "sysml.PartProperty",
+     "label": "p19",
+     "props": {
+      "valueType": "Block19",
+      "multiplicity": "1"
+     }
+    },
+    {
+     "id": "b9.p20",
+     "type": "sysml.PartProperty",
+     "label": "p20",
+     "props": {
+      "valueType": "Block20",
+      "multiplicity": "1"
+     }
+    }
+   ]
+  },
+  {
+   "id": "b10",
+   "type": "sysml.Block",
+   "label": "Block10",
+   "members": [
+    {
+     "id": "b10.mass",
+     "type": "sysml.ValueProperty",
+     "label": "mass",
+     "props": {
+      "valueType": "Real"
+     }
+    },
+    {
+     "id": "b10.io",
+     "type": "sysml.Port",
+     "label": "io",
+     "props": {
+      "valueType": "Plug"
+     }
+    },
+    {
+     "id": "b10.p21",
+     "type": "sysml.PartProperty",
+     "label": "p21",
+     "props": {
+      "valueType": "Block21",
+      "multiplicity": "1"
+     }
+    },
+    {
+     "id": "b10.p22",
+     "type": "sysml.PartProperty",
+     "label": "p22",
+     "props": {
+      "valueType": "Block22",
+      "multiplicity": "1"
+     }
+    }
+   ]
+  },
+  {
+   "id": "b11",
+   "type": "sysml.Block",
+   "label": "Block11",
+   "members": [
+    {
+     "id": "b11.mass",
+     "type": "sysml.ValueProperty",
+     "label": "mass",
+     "props": {
+      "valueType": "Real"
+     }
+    },
+    {
+     "id": "b11.io",
+     "type": "sysml.Port",
+     "label": "io",
+     "props": {
+      "valueType": "Plug"
+     }
+    },
+    {
+     "id": "b11.p23",
+     "type": "sysml.PartProperty",
+     "label": "p23",
+     "props": {
+      "valueType": "Block23",
+      "multiplicity": "1"
+     }
+    },
+    {
+     "id": "b11.p24",
+     "type": "sysml.PartProperty",
+     "label": "p24",
+     "props": {
+      "valueType": "Block24",
+      "multiplicity": "1"
+     }
+    }
+   ]
+  },
+  {
+   "id": "b12",
+   "type": "sysml.Block",
+   "label": "Block12",
+   "members": [
+    {
+     "id": "b12.mass",
+     "type": "sysml.ValueProperty",
+     "label": "mass",
+     "props": {
+      "valueType": "Real"
+     }
+    },
+    {
+     "id": "b12.io",
+     "type": "sysml.Port",
+     "label": "io",
+     "props": {
+      "valueType": "Plug"
+     }
+    },
+    {
+     "id": "b12.p25",
+     "type": "sysml.PartProperty",
+     "label": "p25",
+     "props": {
+      "valueType": "Block25",
+      "multiplicity": "1"
+     }
+    },
+    {
+     "id": "b12.p26",
+     "type": "sysml.PartProperty",
+     "label": "p26",
+     "props": {
+      "valueType": "Block26",
+      "multiplicity": "1"
+     }
+    }
+   ]
+  },
+  {
+   "id": "b13",
+   "type": "sysml.Block",
+   "label": "Block13",
+   "members": [
+    {
+     "id": "b13.mass",
+     "type": "sysml.ValueProperty",
+     "label": "mass",
+     "props": {
+      "valueType": "Real"
+     }
+    },
+    {
+     "id": "b13.io",
+     "type": "sysml.Port",
+     "label": "io",
+     "props": {
+      "valueType": "Plug"
+     }
+    },
+    {
+     "id": "b13.p27",
+     "type": "sysml.PartProperty",
+     "label": "p27",
+     "props": {
+      "valueType": "Block27",
+      "multiplicity": "1"
+     }
+    },
+    {
+     "id": "b13.p28",
+     "type": "sysml.PartProperty",
+     "label": "p28",
+     "props": {
+      "valueType": "Block28",
+      "multiplicity": "1"
+     }
+    }
+   ]
+  },
+  {
+   "id": "b14",
+   "type": "sysml.Block",
+   "label": "Block14",
+   "members": [
+    {
+     "id": "b14.mass",
+     "type": "sysml.ValueProperty",
+     "label": "mass",
+     "props": {
+      "valueType": "Real"
+     }
+    },
+    {
+     "id": "b14.io",
+     "type": "sysml.Port",
+     "label": "io",
+     "props": {
+      "valueType": "Plug"
+     }
+    },
+    {
+     "id": "b14.p29",
+     "type": "sysml.PartProperty",
+     "label": "p29",
+     "props": {
+      "valueType": "Block29",
+      "multiplicity": "1"
+     }
+    },
+    {
+     "id": "b14.p30",
+     "type": "sysml.PartProperty",
+     "label": "p30",
+     "props": {
+      "valueType": "Block30",
+      "multiplicity": "1"
+     }
+    }
+   ]
+  },
+  {
+   "id": "b15",
+   "type": "sysml.Block",
+   "label": "Block15",
+   "members": [
+    {
+     "id": "b15.mass",
+     "type": "sysml.ValueProperty",
+     "label": "mass",
+     "props": {
+      "valueType": "Real"
+     }
+    },
+    {
+     "id": "b15.io",
+     "type": "sysml.Port",
+     "label": "io",
+     "props": {
+      "valueType": "Plug"
+     }
+    },
+    {
+     "id": "b15.p31",
+     "type": "sysml.PartProperty",
+     "label": "p31",
+     "props": {
+      "valueType": "Block31",
+      "multiplicity": "1"
+     }
+    },
+    {
+     "id": "b15.p32",
+     "type": "sysml.PartProperty",
+     "label": "p32",
+     "props": {
+      "valueType": "Block32",
+      "multiplicity": "1"
+     }
+    }
+   ]
+  },
+  {
+   "id": "b16",
+   "type": "sysml.Block",
+   "label": "Block16",
+   "members": [
+    {
+     "id": "b16.mass",
+     "type": "sysml.ValueProperty",
+     "label": "mass",
+     "props": {
+      "valueType": "Real"
+     }
+    },
+    {
+     "id": "b16.io",
+     "type": "sysml.Port",
+     "label": "io",
+     "props": {
+      "valueType": "Plug"
+     }
+    },
+    {
+     "id": "b16.p33",
+     "type": "sysml.PartProperty",
+     "label": "p33",
+     "props": {
+      "valueType": "Block33",
+      "multiplicity": "1"
+     }
+    },
+    {
+     "id": "b16.p34",
+     "type": "sysml.PartProperty",
+     "label": "p34",
+     "props": {
+      "valueType": "Block34",
+      "multiplicity": "1"
+     }
+    }
+   ]
+  },
+  {
+   "id": "b17",
+   "type": "sysml.Block",
+   "label": "Block17",
+   "members": [
+    {
+     "id": "b17.mass",
+     "type": "sysml.ValueProperty",
+     "label": "mass",
+     "props": {
+      "valueType": "Real"
+     }
+    },
+    {
+     "id": "b17.io",
+     "type": "sysml.Port",
+     "label": "io",
+     "props": {
+      "valueType": "Plug"
+     }
+    },
+    {
+     "id": "b17.p35",
+     "type": "sysml.PartProperty",
+     "label": "p35",
+     "props": {
+      "valueType": "Block35",
+      "multiplicity": "1"
+     }
+    },
+    {
+     "id": "b17.p36",
+     "type": "sysml.PartProperty",
+     "label": "p36",
+     "props": {
+      "valueType": "Block36",
+      "multiplicity": "1"
+     }
+    }
+   ]
+  },
+  {
+   "id": "b18",
+   "type": "sysml.Block",
+   "label": "Block18",
+   "members": [
+    {
+     "id": "b18.mass",
+     "type": "sysml.ValueProperty",
+     "label": "mass",
+     "props": {
+      "valueType": "Real"
+     }
+    },
+    {
+     "id": "b18.io",
+     "type": "sysml.Port",
+     "label": "io",
+     "props": {
+      "valueType": "Plug"
+     }
+    },
+    {
+     "id": "b18.p37",
+     "type": "sysml.PartProperty",
+     "label": "p37",
+     "props": {
+      "valueType": "Block37",
+      "multiplicity": "1"
+     }
+    },
+    {
+     "id": "b18.p38",
+     "type": "sysml.PartProperty",
+     "label": "p38",
+     "props": {
+      "valueType": "Block38",
+      "multiplicity": "1"
+     }
+    }
+   ]
+  },
+  {
+   "id": "b19",
+   "type": "sysml.Block",
+   "label": "Block19",
+   "members": [
+    {
+     "id": "b19.mass",
+     "type": "sysml.ValueProperty",
+     "label": "mass",
+     "props": {
+      "valueType": "Real"
+     }
+    },
+    {
+     "id": "b19.io",
+     "type": "sysml.Port",
+     "label": "io",
+     "props": {
+      "valueType": "Plug"
+     }
+    },
+    {
+     "id": "b19.p39",
+     "type": "sysml.PartProperty",
+     "label": "p39",
+     "props": {
+      "valueType": "Block39",
+      "multiplicity": "1"
+     }
+    },
+    {
+     "id": "b19.p40",
+     "type": "sysml.PartProperty",
+     "label": "p40",
+     "props": {
+      "valueType": "Block40",
+      "multiplicity": "1"
+     }
+    }
+   ]
+  },
+  {
+   "id": "b20",
+   "type": "sysml.Block",
+   "label": "Block20",
+   "members": [
+    {
+     "id": "b20.mass",
+     "type": "sysml.ValueProperty",
+     "label": "mass",
+     "props": {
+      "valueType": "Real"
+     }
+    },
+    {
+     "id": "b20.io",
+     "type": "sysml.Port",
+     "label": "io",
+     "props": {
+      "valueType": "Plug"
+     }
+    },
+    {
+     "id": "b20.p41",
+     "type": "sysml.PartProperty",
+     "label": "p41",
+     "props": {
+      "valueType": "Block41",
+      "multiplicity": "1"
+     }
+    },
+    {
+     "id": "b20.p42",
+     "type": "sysml.PartProperty",
+     "label": "p42",
+     "props": {
+      "valueType": "Block42",
+      "multiplicity": "1"
+     }
+    }
+   ]
+  },
+  {
+   "id": "b21",
+   "type": "sysml.Block",
+   "label": "Block21",
+   "members": [
+    {
+     "id": "b21.mass",
+     "type": "sysml.ValueProperty",
+     "label": "mass",
+     "props": {
+      "valueType": "Real"
+     }
+    },
+    {
+     "id": "b21.io",
+     "type": "sysml.Port",
+     "label": "io",
+     "props": {
+      "valueType": "Plug"
+     }
+    },
+    {
+     "id": "b21.p43",
+     "type": "sysml.PartProperty",
+     "label": "p43",
+     "props": {
+      "valueType": "Block43",
+      "multiplicity": "1"
+     }
+    },
+    {
+     "id": "b21.p44",
+     "type": "sysml.PartProperty",
+     "label": "p44",
+     "props": {
+      "valueType": "Block44",
+      "multiplicity": "1"
+     }
+    }
+   ]
+  },
+  {
+   "id": "b22",
+   "type": "sysml.Block",
+   "label": "Block22",
+   "members": [
+    {
+     "id": "b22.mass",
+     "type": "sysml.ValueProperty",
+     "label": "mass",
+     "props": {
+      "valueType": "Real"
+     }
+    },
+    {
+     "id": "b22.io",
+     "type": "sysml.Port",
+     "label": "io",
+     "props": {
+      "valueType": "Plug"
+     }
+    },
+    {
+     "id": "b22.p45",
+     "type": "sysml.PartProperty",
+     "label": "p45",
+     "props": {
+      "valueType": "Block45",
+      "multiplicity": "1"
+     }
+    },
+    {
+     "id": "b22.p46",
+     "type": "sysml.PartProperty",
+     "label": "p46",
+     "props": {
+      "valueType": "Block46",
+      "multiplicity": "1"
+     }
+    }
+   ]
+  },
+  {
+   "id": "b23",
+   "type": "sysml.Block",
+   "label": "Block23",
+   "members": [
+    {
+     "id": "b23.mass",
+     "type": "sysml.ValueProperty",
+     "label": "mass",
+     "props": {
+      "valueType": "Real"
+     }
+    },
+    {
+     "id": "b23.io",
+     "type": "sysml.Port",
+     "label": "io",
+     "props": {
+      "valueType": "Plug"
+     }
+    },
+    {
+     "id": "b23.p47",
+     "type": "sysml.PartProperty",
+     "label": "p47",
+     "props": {
+      "valueType": "Block47",
+      "multiplicity": "1"
+     }
+    },
+    {
+     "id": "b23.p48",
+     "type": "sysml.PartProperty",
+     "label": "p48",
+     "props": {
+      "valueType": "Block48",
+      "multiplicity": "1"
+     }
+    }
+   ]
+  },
+  {
+   "id": "b24",
+   "type": "sysml.Block",
+   "label": "Block24",
+   "members": [
+    {
+     "id": "b24.mass",
+     "type": "sysml.ValueProperty",
+     "label": "mass",
+     "props": {
+      "valueType": "Real"
+     }
+    },
+    {
+     "id": "b24.io",
+     "type": "sysml.Port",
+     "label": "io",
+     "props": {
+      "valueType": "Plug"
+     }
+    },
+    {
+     "id": "b24.p49",
+     "type": "sysml.PartProperty",
+     "label": "p49",
+     "props": {
+      "valueType": "Block49",
+      "multiplicity": "1"
+     }
+    }
+   ]
+  },
+  {
+   "id": "b25",
+   "type": "sysml.Block",
+   "label": "Block25",
+   "members": [
+    {
+     "id": "b25.mass",
+     "type": "sysml.ValueProperty",
+     "label": "mass",
+     "props": {
+      "valueType": "Real"
+     }
+    },
+    {
+     "id": "b25.io",
+     "type": "sysml.Port",
+     "label": "io",
+     "props": {
+      "valueType": "Plug"
+     }
+    }
+   ]
+  },
+  {
+   "id": "b26",
+   "type": "sysml.Block",
+   "label": "Block26",
+   "members": [
+    {
+     "id": "b26.mass",
+     "type": "sysml.ValueProperty",
+     "label": "mass",
+     "props": {
+      "valueType": "Real"
+     }
+    },
+    {
+     "id": "b26.io",
+     "type": "sysml.Port",
+     "label": "io",
+     "props": {
+      "valueType": "Plug"
+     }
+    }
+   ]
+  },
+  {
+   "id": "b27",
+   "type": "sysml.Block",
+   "label": "Block27",
+   "members": [
+    {
+     "id": "b27.mass",
+     "type": "sysml.ValueProperty",
+     "label": "mass",
+     "props": {
+      "valueType": "Real"
+     }
+    },
+    {
+     "id": "b27.io",
+     "type": "sysml.Port",
+     "label": "io",
+     "props": {
+      "valueType": "Plug"
+     }
+    }
+   ]
+  },
+  {
+   "id": "b28",
+   "type": "sysml.Block",
+   "label": "Block28",
+   "members": [
+    {
+     "id": "b28.mass",
+     "type": "sysml.ValueProperty",
+     "label": "mass",
+     "props": {
+      "valueType": "Real"
+     }
+    },
+    {
+     "id": "b28.io",
+     "type": "sysml.Port",
+     "label": "io",
+     "props": {
+      "valueType": "Plug"
+     }
+    }
+   ]
+  },
+  {
+   "id": "b29",
+   "type": "sysml.Block",
+   "label": "Block29",
+   "members": [
+    {
+     "id": "b29.mass",
+     "type": "sysml.ValueProperty",
+     "label": "mass",
+     "props": {
+      "valueType": "Real"
+     }
+    },
+    {
+     "id": "b29.io",
+     "type": "sysml.Port",
+     "label": "io",
+     "props": {
+      "valueType": "Plug"
+     }
+    }
+   ]
+  },
+  {
+   "id": "b30",
+   "type": "sysml.Block",
+   "label": "Block30",
+   "members": [
+    {
+     "id": "b30.mass",
+     "type": "sysml.ValueProperty",
+     "label": "mass",
+     "props": {
+      "valueType": "Real"
+     }
+    },
+    {
+     "id": "b30.io",
+     "type": "sysml.Port",
+     "label": "io",
+     "props": {
+      "valueType": "Plug"
+     }
+    }
+   ]
+  },
+  {
+   "id": "b31",
+   "type": "sysml.Block",
+   "label": "Block31",
+   "members": [
+    {
+     "id": "b31.mass",
+     "type": "sysml.ValueProperty",
+     "label": "mass",
+     "props": {
+      "valueType": "Real"
+     }
+    },
+    {
+     "id": "b31.io",
+     "type": "sysml.Port",
+     "label": "io",
+     "props": {
+      "valueType": "Plug"
+     }
+    }
+   ]
+  },
+  {
+   "id": "b32",
+   "type": "sysml.Block",
+   "label": "Block32",
+   "members": [
+    {
+     "id": "b32.mass",
+     "type": "sysml.ValueProperty",
+     "label": "mass",
+     "props": {
+      "valueType": "Real"
+     }
+    },
+    {
+     "id": "b32.io",
+     "type": "sysml.Port",
+     "label": "io",
+     "props": {
+      "valueType": "Plug"
+     }
+    }
+   ]
+  },
+  {
+   "id": "b33",
+   "type": "sysml.Block",
+   "label": "Block33",
+   "members": [
+    {
+     "id": "b33.mass",
+     "type": "sysml.ValueProperty",
+     "label": "mass",
+     "props": {
+      "valueType": "Real"
+     }
+    },
+    {
+     "id": "b33.io",
+     "type": "sysml.Port",
+     "label": "io",
+     "props": {
+      "valueType": "Plug"
+     }
+    }
+   ]
+  },
+  {
+   "id": "b34",
+   "type": "sysml.Block",
+   "label": "Block34",
+   "members": [
+    {
+     "id": "b34.mass",
+     "type": "sysml.ValueProperty",
+     "label": "mass",
+     "props": {
+      "valueType": "Real"
+     }
+    },
+    {
+     "id": "b34.io",
+     "type": "sysml.Port",
+     "label": "io",
+     "props": {
+      "valueType": "Plug"
+     }
+    }
+   ]
+  },
+  {
+   "id": "b35",
+   "type": "sysml.Block",
+   "label": "Block35",
+   "members": [
+    {
+     "id": "b35.mass",
+     "type": "sysml.ValueProperty",
+     "label": "mass",
+     "props": {
+      "valueType": "Real"
+     }
+    },
+    {
+     "id": "b35.io",
+     "type": "sysml.Port",
+     "label": "io",
+     "props": {
+      "valueType": "Plug"
+     }
+    }
+   ]
+  },
+  {
+   "id": "b36",
+   "type": "sysml.Block",
+   "label": "Block36",
+   "members": [
+    {
+     "id": "b36.mass",
+     "type": "sysml.ValueProperty",
+     "label": "mass",
+     "props": {
+      "valueType": "Real"
+     }
+    },
+    {
+     "id": "b36.io",
+     "type": "sysml.Port",
+     "label": "io",
+     "props": {
+      "valueType": "Plug"
+     }
+    }
+   ]
+  },
+  {
+   "id": "b37",
+   "type": "sysml.Block",
+   "label": "Block37",
+   "members": [
+    {
+     "id": "b37.mass",
+     "type": "sysml.ValueProperty",
+     "label": "mass",
+     "props": {
+      "valueType": "Real"
+     }
+    },
+    {
+     "id": "b37.io",
+     "type": "sysml.Port",
+     "label": "io",
+     "props": {
+      "valueType": "Plug"
+     }
+    }
+   ]
+  },
+  {
+   "id": "b38",
+   "type": "sysml.Block",
+   "label": "Block38",
+   "members": [
+    {
+     "id": "b38.mass",
+     "type": "sysml.ValueProperty",
+     "label": "mass",
+     "props": {
+      "valueType": "Real"
+     }
+    },
+    {
+     "id": "b38.io",
+     "type": "sysml.Port",
+     "label": "io",
+     "props": {
+      "valueType": "Plug"
+     }
+    }
+   ]
+  },
+  {
+   "id": "b39",
+   "type": "sysml.Block",
+   "label": "Block39",
+   "members": [
+    {
+     "id": "b39.mass",
+     "type": "sysml.ValueProperty",
+     "label": "mass",
+     "props": {
+      "valueType": "Real"
+     }
+    },
+    {
+     "id": "b39.io",
+     "type": "sysml.Port",
+     "label": "io",
+     "props": {
+      "valueType": "Plug"
+     }
+    }
+   ]
+  },
+  {
+   "id": "b40",
+   "type": "sysml.Block",
+   "label": "Block40",
+   "members": [
+    {
+     "id": "b40.mass",
+     "type": "sysml.ValueProperty",
+     "label": "mass",
+     "props": {
+      "valueType": "Real"
+     }
+    },
+    {
+     "id": "b40.io",
+     "type": "sysml.Port",
+     "label": "io",
+     "props": {
+      "valueType": "Plug"
+     }
+    }
+   ]
+  },
+  {
+   "id": "b41",
+   "type": "sysml.Block",
+   "label": "Block41",
+   "members": [
+    {
+     "id": "b41.mass",
+     "type": "sysml.ValueProperty",
+     "label": "mass",
+     "props": {
+      "valueType": "Real"
+     }
+    },
+    {
+     "id": "b41.io",
+     "type": "sysml.Port",
+     "label": "io",
+     "props": {
+      "valueType": "Plug"
+     }
+    }
+   ]
+  },
+  {
+   "id": "b42",
+   "type": "sysml.Block",
+   "label": "Block42",
+   "members": [
+    {
+     "id": "b42.mass",
+     "type": "sysml.ValueProperty",
+     "label": "mass",
+     "props": {
+      "valueType": "Real"
+     }
+    },
+    {
+     "id": "b42.io",
+     "type": "sysml.Port",
+     "label": "io",
+     "props": {
+      "valueType": "Plug"
+     }
+    }
+   ]
+  },
+  {
+   "id": "b43",
+   "type": "sysml.Block",
+   "label": "Block43",
+   "members": [
+    {
+     "id": "b43.mass",
+     "type": "sysml.ValueProperty",
+     "label": "mass",
+     "props": {
+      "valueType": "Real"
+     }
+    },
+    {
+     "id": "b43.io",
+     "type": "sysml.Port",
+     "label": "io",
+     "props": {
+      "valueType": "Plug"
+     }
+    }
+   ]
+  },
+  {
+   "id": "b44",
+   "type": "sysml.Block",
+   "label": "Block44",
+   "members": [
+    {
+     "id": "b44.mass",
+     "type": "sysml.ValueProperty",
+     "label": "mass",
+     "props": {
+      "valueType": "Real"
+     }
+    },
+    {
+     "id": "b44.io",
+     "type": "sysml.Port",
+     "label": "io",
+     "props": {
+      "valueType": "Plug"
+     }
+    }
+   ]
+  },
+  {
+   "id": "b45",
+   "type": "sysml.Block",
+   "label": "Block45",
+   "members": [
+    {
+     "id": "b45.mass",
+     "type": "sysml.ValueProperty",
+     "label": "mass",
+     "props": {
+      "valueType": "Real"
+     }
+    },
+    {
+     "id": "b45.io",
+     "type": "sysml.Port",
+     "label": "io",
+     "props": {
+      "valueType": "Plug"
+     }
+    }
+   ]
+  },
+  {
+   "id": "b46",
+   "type": "sysml.Block",
+   "label": "Block46",
+   "members": [
+    {
+     "id": "b46.mass",
+     "type": "sysml.ValueProperty",
+     "label": "mass",
+     "props": {
+      "valueType": "Real"
+     }
+    },
+    {
+     "id": "b46.io",
+     "type": "sysml.Port",
+     "label": "io",
+     "props": {
+      "valueType": "Plug"
+     }
+    }
+   ]
+  },
+  {
+   "id": "b47",
+   "type": "sysml.Block",
+   "label": "Block47",
+   "members": [
+    {
+     "id": "b47.mass",
+     "type": "sysml.ValueProperty",
+     "label": "mass",
+     "props": {
+      "valueType": "Real"
+     }
+    },
+    {
+     "id": "b47.io",
+     "type": "sysml.Port",
+     "label": "io",
+     "props": {
+      "valueType": "Plug"
+     }
+    }
+   ]
+  },
+  {
+   "id": "b48",
+   "type": "sysml.Block",
+   "label": "Block48",
+   "members": [
+    {
+     "id": "b48.mass",
+     "type": "sysml.ValueProperty",
+     "label": "mass",
+     "props": {
+      "valueType": "Real"
+     }
+    },
+    {
+     "id": "b48.io",
+     "type": "sysml.Port",
+     "label": "io",
+     "props": {
+      "valueType": "Plug"
+     }
+    }
+   ]
+  },
+  {
+   "id": "b49",
+   "type": "sysml.Block",
+   "label": "Block49",
+   "members": [
+    {
+     "id": "b49.mass",
+     "type": "sysml.ValueProperty",
+     "label": "mass",
+     "props": {
+      "valueType": "Real"
+     }
+    },
+    {
+     "id": "b49.io",
+     "type": "sysml.Port",
+     "label": "io",
+     "props": {
+      "valueType": "Plug"
+     }
+    }
+   ]
+  }
+ ],
+ "edges": [
+  {
+   "id": "ec-all-part",
+   "type": "uml.Association",
+   "from": "ec-all",
+   "to": "ec-part",
+   "props": {
+    "ends": {
+     "from": {
+      "aggregation": "composite"
+     },
+     "to": {
+      "role": "part",
+      "multiplicity": "1"
+     }
+    }
+   }
+  },
+  {
+   "id": "ec-twice-part",
+   "type": "uml.Association",
+   "from": "ec-twice",
+   "to": "ec-part",
+   "props": {
+    "ends": {
+     "from": {
+      "aggregation": "composite"
+     },
+     "to": {
+      "role": "part",
+      "multiplicity": "2"
+     }
+    }
+   }
+  },
+  {
+   "id": "ec-gen-kinds",
+   "type": "uml.Generalization",
+   "from": "ec-mass",
+   "to": "ec-part"
+  },
+  {
+   "id": "a1",
+   "type": "uml.Association",
+   "from": "b0",
+   "to": "b1",
+   "props": {
+    "ends": {
+     "from": {
+      "aggregation": "composite"
+     },
+     "to": {
+      "role": "p1",
+      "multiplicity": "1"
+     }
+    }
+   }
+  },
+  {
+   "id": "a2",
+   "type": "uml.Association",
+   "from": "b0",
+   "to": "b2",
+   "props": {
+    "ends": {
+     "from": {
+      "aggregation": "composite"
+     },
+     "to": {
+      "role": "p2",
+      "multiplicity": "1"
+     }
+    }
+   }
+  },
+  {
+   "id": "a3",
+   "type": "uml.Association",
+   "from": "b1",
+   "to": "b3",
+   "props": {
+    "ends": {
+     "from": {
+      "aggregation": "composite"
+     },
+     "to": {
+      "role": "p3",
+      "multiplicity": "1"
+     }
+    }
+   }
+  },
+  {
+   "id": "a4",
+   "type": "uml.Association",
+   "from": "b1",
+   "to": "b4",
+   "props": {
+    "ends": {
+     "from": {
+      "aggregation": "composite"
+     },
+     "to": {
+      "role": "p4",
+      "multiplicity": "1"
+     }
+    }
+   }
+  },
+  {
+   "id": "a5",
+   "type": "uml.Association",
+   "from": "b2",
+   "to": "b5",
+   "props": {
+    "ends": {
+     "from": {
+      "aggregation": "composite"
+     },
+     "to": {
+      "role": "p5",
+      "multiplicity": "1"
+     }
+    }
+   }
+  },
+  {
+   "id": "a6",
+   "type": "uml.Association",
+   "from": "b2",
+   "to": "b6",
+   "props": {
+    "ends": {
+     "from": {
+      "aggregation": "composite"
+     },
+     "to": {
+      "role": "p6",
+      "multiplicity": "1"
+     }
+    }
+   }
+  },
+  {
+   "id": "a7",
+   "type": "uml.Association",
+   "from": "b3",
+   "to": "b7",
+   "props": {
+    "ends": {
+     "from": {
+      "aggregation": "composite"
+     },
+     "to": {
+      "role": "p7",
+      "multiplicity": "1"
+     }
+    }
+   }
+  },
+  {
+   "id": "a8",
+   "type": "uml.Association",
+   "from": "b3",
+   "to": "b8",
+   "props": {
+    "ends": {
+     "from": {
+      "aggregation": "composite"
+     },
+     "to": {
+      "role": "p8",
+      "multiplicity": "1"
+     }
+    }
+   }
+  },
+  {
+   "id": "a9",
+   "type": "uml.Association",
+   "from": "b4",
+   "to": "b9",
+   "props": {
+    "ends": {
+     "from": {
+      "aggregation": "composite"
+     },
+     "to": {
+      "role": "p9",
+      "multiplicity": "1"
+     }
+    }
+   }
+  },
+  {
+   "id": "a10",
+   "type": "uml.Association",
+   "from": "b4",
+   "to": "b10",
+   "props": {
+    "ends": {
+     "from": {
+      "aggregation": "composite"
+     },
+     "to": {
+      "role": "p10",
+      "multiplicity": "1"
+     }
+    }
+   }
+  },
+  {
+   "id": "a11",
+   "type": "uml.Association",
+   "from": "b5",
+   "to": "b11",
+   "props": {
+    "ends": {
+     "from": {
+      "aggregation": "composite"
+     },
+     "to": {
+      "role": "p11",
+      "multiplicity": "1"
+     }
+    }
+   }
+  },
+  {
+   "id": "a12",
+   "type": "uml.Association",
+   "from": "b5",
+   "to": "b12",
+   "props": {
+    "ends": {
+     "from": {
+      "aggregation": "composite"
+     },
+     "to": {
+      "role": "p12",
+      "multiplicity": "1"
+     }
+    }
+   }
+  },
+  {
+   "id": "a13",
+   "type": "uml.Association",
+   "from": "b6",
+   "to": "b13",
+   "props": {
+    "ends": {
+     "from": {
+      "aggregation": "composite"
+     },
+     "to": {
+      "role": "p13",
+      "multiplicity": "1"
+     }
+    }
+   }
+  },
+  {
+   "id": "a14",
+   "type": "uml.Association",
+   "from": "b6",
+   "to": "b14",
+   "props": {
+    "ends": {
+     "from": {
+      "aggregation": "composite"
+     },
+     "to": {
+      "role": "p14",
+      "multiplicity": "1"
+     }
+    }
+   }
+  },
+  {
+   "id": "a15",
+   "type": "uml.Association",
+   "from": "b7",
+   "to": "b15",
+   "props": {
+    "ends": {
+     "from": {
+      "aggregation": "composite"
+     },
+     "to": {
+      "role": "p15",
+      "multiplicity": "1"
+     }
+    }
+   }
+  },
+  {
+   "id": "a16",
+   "type": "uml.Association",
+   "from": "b7",
+   "to": "b16",
+   "props": {
+    "ends": {
+     "from": {
+      "aggregation": "composite"
+     },
+     "to": {
+      "role": "p16",
+      "multiplicity": "1"
+     }
+    }
+   }
+  },
+  {
+   "id": "a17",
+   "type": "uml.Association",
+   "from": "b8",
+   "to": "b17",
+   "props": {
+    "ends": {
+     "from": {
+      "aggregation": "composite"
+     },
+     "to": {
+      "role": "p17",
+      "multiplicity": "1"
+     }
+    }
+   }
+  },
+  {
+   "id": "a18",
+   "type": "uml.Association",
+   "from": "b8",
+   "to": "b18",
+   "props": {
+    "ends": {
+     "from": {
+      "aggregation": "composite"
+     },
+     "to": {
+      "role": "p18",
+      "multiplicity": "1"
+     }
+    }
+   }
+  },
+  {
+   "id": "a19",
+   "type": "uml.Association",
+   "from": "b9",
+   "to": "b19",
+   "props": {
+    "ends": {
+     "from": {
+      "aggregation": "composite"
+     },
+     "to": {
+      "role": "p19",
+      "multiplicity": "1"
+     }
+    }
+   }
+  },
+  {
+   "id": "a20",
+   "type": "uml.Association",
+   "from": "b9",
+   "to": "b20",
+   "props": {
+    "ends": {
+     "from": {
+      "aggregation": "composite"
+     },
+     "to": {
+      "role": "p20",
+      "multiplicity": "1"
+     }
+    }
+   }
+  },
+  {
+   "id": "a21",
+   "type": "uml.Association",
+   "from": "b10",
+   "to": "b21",
+   "props": {
+    "ends": {
+     "from": {
+      "aggregation": "composite"
+     },
+     "to": {
+      "role": "p21",
+      "multiplicity": "1"
+     }
+    }
+   }
+  },
+  {
+   "id": "a22",
+   "type": "uml.Association",
+   "from": "b10",
+   "to": "b22",
+   "props": {
+    "ends": {
+     "from": {
+      "aggregation": "composite"
+     },
+     "to": {
+      "role": "p22",
+      "multiplicity": "1"
+     }
+    }
+   }
+  },
+  {
+   "id": "a23",
+   "type": "uml.Association",
+   "from": "b11",
+   "to": "b23",
+   "props": {
+    "ends": {
+     "from": {
+      "aggregation": "composite"
+     },
+     "to": {
+      "role": "p23",
+      "multiplicity": "1"
+     }
+    }
+   }
+  },
+  {
+   "id": "a24",
+   "type": "uml.Association",
+   "from": "b11",
+   "to": "b24",
+   "props": {
+    "ends": {
+     "from": {
+      "aggregation": "composite"
+     },
+     "to": {
+      "role": "p24",
+      "multiplicity": "1"
+     }
+    }
+   }
+  },
+  {
+   "id": "a25",
+   "type": "uml.Association",
+   "from": "b12",
+   "to": "b25",
+   "props": {
+    "ends": {
+     "from": {
+      "aggregation": "composite"
+     },
+     "to": {
+      "role": "p25",
+      "multiplicity": "1"
+     }
+    }
+   }
+  },
+  {
+   "id": "a26",
+   "type": "uml.Association",
+   "from": "b12",
+   "to": "b26",
+   "props": {
+    "ends": {
+     "from": {
+      "aggregation": "composite"
+     },
+     "to": {
+      "role": "p26",
+      "multiplicity": "1"
+     }
+    }
+   }
+  },
+  {
+   "id": "a27",
+   "type": "uml.Association",
+   "from": "b13",
+   "to": "b27",
+   "props": {
+    "ends": {
+     "from": {
+      "aggregation": "composite"
+     },
+     "to": {
+      "role": "p27",
+      "multiplicity": "1"
+     }
+    }
+   }
+  },
+  {
+   "id": "a28",
+   "type": "uml.Association",
+   "from": "b13",
+   "to": "b28",
+   "props": {
+    "ends": {
+     "from": {
+      "aggregation": "composite"
+     },
+     "to": {
+      "role": "p28",
+      "multiplicity": "1"
+     }
+    }
+   }
+  },
+  {
+   "id": "a29",
+   "type": "uml.Association",
+   "from": "b14",
+   "to": "b29",
+   "props": {
+    "ends": {
+     "from": {
+      "aggregation": "composite"
+     },
+     "to": {
+      "role": "p29",
+      "multiplicity": "1"
+     }
+    }
+   }
+  },
+  {
+   "id": "a30",
+   "type": "uml.Association",
+   "from": "b14",
+   "to": "b30",
+   "props": {
+    "ends": {
+     "from": {
+      "aggregation": "composite"
+     },
+     "to": {
+      "role": "p30",
+      "multiplicity": "1"
+     }
+    }
+   }
+  },
+  {
+   "id": "a31",
+   "type": "uml.Association",
+   "from": "b15",
+   "to": "b31",
+   "props": {
+    "ends": {
+     "from": {
+      "aggregation": "composite"
+     },
+     "to": {
+      "role": "p31",
+      "multiplicity": "1"
+     }
+    }
+   }
+  },
+  {
+   "id": "a32",
+   "type": "uml.Association",
+   "from": "b15",
+   "to": "b32",
+   "props": {
+    "ends": {
+     "from": {
+      "aggregation": "composite"
+     },
+     "to": {
+      "role": "p32",
+      "multiplicity": "1"
+     }
+    }
+   }
+  },
+  {
+   "id": "a33",
+   "type": "uml.Association",
+   "from": "b16",
+   "to": "b33",
+   "props": {
+    "ends": {
+     "from": {
+      "aggregation": "composite"
+     },
+     "to": {
+      "role": "p33",
+      "multiplicity": "1"
+     }
+    }
+   }
+  },
+  {
+   "id": "a34",
+   "type": "uml.Association",
+   "from": "b16",
+   "to": "b34",
+   "props": {
+    "ends": {
+     "from": {
+      "aggregation": "composite"
+     },
+     "to": {
+      "role": "p34",
+      "multiplicity": "1"
+     }
+    }
+   }
+  },
+  {
+   "id": "a35",
+   "type": "uml.Association",
+   "from": "b17",
+   "to": "b35",
+   "props": {
+    "ends": {
+     "from": {
+      "aggregation": "composite"
+     },
+     "to": {
+      "role": "p35",
+      "multiplicity": "1"
+     }
+    }
+   }
+  },
+  {
+   "id": "a36",
+   "type": "uml.Association",
+   "from": "b17",
+   "to": "b36",
+   "props": {
+    "ends": {
+     "from": {
+      "aggregation": "composite"
+     },
+     "to": {
+      "role": "p36",
+      "multiplicity": "1"
+     }
+    }
+   }
+  },
+  {
+   "id": "a37",
+   "type": "uml.Association",
+   "from": "b18",
+   "to": "b37",
+   "props": {
+    "ends": {
+     "from": {
+      "aggregation": "composite"
+     },
+     "to": {
+      "role": "p37",
+      "multiplicity": "1"
+     }
+    }
+   }
+  },
+  {
+   "id": "a38",
+   "type": "uml.Association",
+   "from": "b18",
+   "to": "b38",
+   "props": {
+    "ends": {
+     "from": {
+      "aggregation": "composite"
+     },
+     "to": {
+      "role": "p38",
+      "multiplicity": "1"
+     }
+    }
+   }
+  },
+  {
+   "id": "a39",
+   "type": "uml.Association",
+   "from": "b19",
+   "to": "b39",
+   "props": {
+    "ends": {
+     "from": {
+      "aggregation": "composite"
+     },
+     "to": {
+      "role": "p39",
+      "multiplicity": "1"
+     }
+    }
+   }
+  },
+  {
+   "id": "a40",
+   "type": "uml.Association",
+   "from": "b19",
+   "to": "b40",
+   "props": {
+    "ends": {
+     "from": {
+      "aggregation": "composite"
+     },
+     "to": {
+      "role": "p40",
+      "multiplicity": "1"
+     }
+    }
+   }
+  },
+  {
+   "id": "a41",
+   "type": "uml.Association",
+   "from": "b20",
+   "to": "b41",
+   "props": {
+    "ends": {
+     "from": {
+      "aggregation": "composite"
+     },
+     "to": {
+      "role": "p41",
+      "multiplicity": "1"
+     }
+    }
+   }
+  },
+  {
+   "id": "a42",
+   "type": "uml.Association",
+   "from": "b20",
+   "to": "b42",
+   "props": {
+    "ends": {
+     "from": {
+      "aggregation": "composite"
+     },
+     "to": {
+      "role": "p42",
+      "multiplicity": "1"
+     }
+    }
+   }
+  },
+  {
+   "id": "a43",
+   "type": "uml.Association",
+   "from": "b21",
+   "to": "b43",
+   "props": {
+    "ends": {
+     "from": {
+      "aggregation": "composite"
+     },
+     "to": {
+      "role": "p43",
+      "multiplicity": "1"
+     }
+    }
+   }
+  },
+  {
+   "id": "a44",
+   "type": "uml.Association",
+   "from": "b21",
+   "to": "b44",
+   "props": {
+    "ends": {
+     "from": {
+      "aggregation": "composite"
+     },
+     "to": {
+      "role": "p44",
+      "multiplicity": "1"
+     }
+    }
+   }
+  },
+  {
+   "id": "a45",
+   "type": "uml.Association",
+   "from": "b22",
+   "to": "b45",
+   "props": {
+    "ends": {
+     "from": {
+      "aggregation": "composite"
+     },
+     "to": {
+      "role": "p45",
+      "multiplicity": "1"
+     }
+    }
+   }
+  },
+  {
+   "id": "a46",
+   "type": "uml.Association",
+   "from": "b22",
+   "to": "b46",
+   "props": {
+    "ends": {
+     "from": {
+      "aggregation": "composite"
+     },
+     "to": {
+      "role": "p46",
+      "multiplicity": "1"
+     }
+    }
+   }
+  },
+  {
+   "id": "a47",
+   "type": "uml.Association",
+   "from": "b23",
+   "to": "b47",
+   "props": {
+    "ends": {
+     "from": {
+      "aggregation": "composite"
+     },
+     "to": {
+      "role": "p47",
+      "multiplicity": "1"
+     }
+    }
+   }
+  },
+  {
+   "id": "a48",
+   "type": "uml.Association",
+   "from": "b23",
+   "to": "b48",
+   "props": {
+    "ends": {
+     "from": {
+      "aggregation": "composite"
+     },
+     "to": {
+      "role": "p48",
+      "multiplicity": "1"
+     }
+    }
+   }
+  },
+  {
+   "id": "a49",
+   "type": "uml.Association",
+   "from": "b24",
+   "to": "b49",
+   "props": {
+    "ends": {
+     "from": {
+      "aggregation": "composite"
+     },
+     "to": {
+      "role": "p49",
+      "multiplicity": "1"
+     }
+    }
+   }
+  },
+  {
+   "id": "g0",
+   "type": "uml.Generalization",
+   "from": "b42",
+   "to": "b0"
+  },
+  {
+   "id": "g1",
+   "type": "uml.Generalization",
+   "from": "b43",
+   "to": "b1"
+  },
+  {
+   "id": "g2",
+   "type": "uml.Generalization",
+   "from": "b44",
+   "to": "b2"
+  },
+  {
+   "id": "g3",
+   "type": "uml.Generalization",
+   "from": "b45",
+   "to": "b3"
+  },
+  {
+   "id": "g4",
+   "type": "uml.Generalization",
+   "from": "b46",
+   "to": "b4"
+  },
+  {
+   "id": "g5",
+   "type": "uml.Generalization",
+   "from": "b47",
+   "to": "b5"
+  },
+  {
+   "id": "g6",
+   "type": "uml.Generalization",
+   "from": "b48",
+   "to": "b6"
+  },
+  {
+   "id": "g7",
+   "type": "uml.Generalization",
+   "from": "b49",
+   "to": "b7"
+  }
+ ],
+ "views": [
+  {
+   "id": "edge-cases",
+   "diagram": "sysml.block-definition",
+   "title": "Edge cases",
+   "nodeIds": [
+    "ec-all",
+    "ec-big",
+    "ec-part",
+    "ec-mass",
+    "ec-signals",
+    "ec-balance",
+    "ec-sum",
+    "ec-odd",
+    "ec-bad-eq",
+    "ec-twice",
+    "ec-pkg",
+    "ec-in-pkg-a",
+    "ec-in-pkg-b"
+   ]
+  },
+  {
+   "id": "all",
+   "diagram": "sysml.block-definition",
+   "title": "All",
+   "nodeIds": [
+    "b0",
+    "b1",
+    "b2",
+    "b3",
+    "b4",
+    "b5",
+    "b6",
+    "b7",
+    "b8",
+    "b9",
+    "b10",
+    "b11",
+    "b12",
+    "b13",
+    "b14",
+    "b15",
+    "b16",
+    "b17",
+    "b18",
+    "b19",
+    "b20",
+    "b21",
+    "b22",
+    "b23",
+    "b24",
+    "b25",
+    "b26",
+    "b27",
+    "b28",
+    "b29",
+    "b30",
+    "b31",
+    "b32",
+    "b33",
+    "b34",
+    "b35",
+    "b36",
+    "b37",
+    "b38",
+    "b39",
+    "b40",
+    "b41",
+    "b42",
+    "b43",
+    "b44",
+    "b45",
+    "b46",
+    "b47",
+    "b48",
+    "b49"
+   ]
+  }
+ ]
+}
