@@ -1036,7 +1036,10 @@ def cmd_import(a):
         print(f"{a.file}:{where}: {msg}" if where is not None else f"{a.file}: {msg}", file=sys.stderr)
     if not m["nodes"]:
         sys.exit(f"import: {a.file} has nothing to import as {fmt}")
-    write(a.out, json.dumps(m, indent=2, ensure_ascii=False) + "\n")
+    out = json.dumps(m, indent=2, ensure_ascii=False) + "\n"
+    if (fixed := re.sub("[\ud800-\udfff]", "\ufffd", out)) != out:  # a lone surrogate (an entity or escape gave it) has no UTF-8
+        print(f"{a.file}: a lone surrogate code point (U+D800 to U+DFFF), which no UTF-8 file holds: written as U+FFFD", file=sys.stderr)
+    write(a.out, fixed)
     inline = sum(isinstance(e, dict) for v in m["views"] for e in v.get("edges") or [])  # a sequence view's messages
     print(json.dumps({"out": a.out, "format": fmt, "cards": len(m["nodes"]), "lines": len(m["edges"]) + inline,
                       "views": [v["id"] for v in m["views"]], "unread": len(unread),

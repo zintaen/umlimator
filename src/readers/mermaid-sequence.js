@@ -355,9 +355,9 @@ function msWrite(model, viewId) {
   if (!view) return '%% not written: the model, which has no uml.sequence view\n';
   if (view.diagram !== 'uml.sequence') return `%% not written: view ${flat(view.id)}, a ${flat(view.diagram)} view, not a uml.sequence one\n`;
   // text: Mermaid's own characters as entities, a line break as <br>, and a space at either end as an entity, which the reader's trim keeps
-  const enc = s => String(s).replace(/[#;<>\\]/g, c => ({ '#': '#35;', ';': '#59;', '<': '#lt;', '>': '#gt;', '\\': '#92;' })[c]).replace(/\r\n|\r|\n/g, '<br>')
+  const enc = s => String(s).replace(/[#;<>\\\r]/g, c => ({ '#': '#35;', ';': '#59;', '<': '#lt;', '>': '#gt;', '\\': '#92;', '\r': '#13;' })[c]).replace(/\n/g, '<br>')
     .replace(/^\s|\s$/g, c => `#${c.codePointAt(0)};`);
-  const encA = s => enc(s).replace(/:/g, '#58;'); // an alias: under %% represents:, its first colon ends the label
+  const encA = s => enc(s).replace(/:/g, '#58;').replace(/@\{/g, '#64;{'); // an alias: under %% represents:, its first colon ends the label; @{ starts a config
   const out = [], notWritten = [], skip = x => notWritten.push(`${flat(x.id)} (${flat(x.type)})`), lose = (id, what) => notWritten.push(`${flat(id)}: ${flat(what)}`);
   const title = has(view.title) ? view.title : m.title;
   if (has(title)) out.push('---', `title: ${/^[\p{L}\p{N}][\p{L}\p{N} _.,()-]*$/u.test(title) && !title.endsWith(' ') ? title : JSON.stringify(String(title))}`, '---');
@@ -502,9 +502,10 @@ function msWrite(model, viewId) {
   }
   notWritten.splice(replySlot, 0, ...lost);
   for (const x of notWritten) out.push(`  %% not written: ${x}`);
-  // unindented when indented text would be over the reader's own limit, so what the reader read can be read again
-  const text = out.join('\n') + '\n';
-  return text.length > MS_LIMIT ? text.replace(/^[ \t]+/gm, '') : text;
+  // unindented when indented text would be over the reader's own limit; text still over it (long ids, a state or class
+  // declared again) cannot be read again, and says so in its last line
+  const text = out.join('\n') + '\n', t = text.length > MS_LIMIT ? text.replace(/^[ \t]+/gm, '') : text;
+  return t.length > MS_LIMIT ? t + `%% not written: text the reader reads back: this is ${t.length} characters, over its limit of ${MS_LIMIT}\n` : t;
 }
 
 export { readMermaidSequence, writeMermaidSequence };

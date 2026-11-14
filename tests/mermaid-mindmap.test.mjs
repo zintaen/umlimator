@@ -257,3 +257,8 @@ test('malformed input is reported, never thrown', () => {
   assert.deepEqual([arrow.model.root, arrow.model.nodes[0].id, lines(arrow)],
     ['a-b', 'x-y', ['1 approximated: %% id: a->b: an id holds no "->", so the view is a-b', '3 approximated: topic x->y: an id holds no "->", so it is x-y']]);
 });
+
+test('#constructor; is an entity Mermaid does not know, kept as written, not Object.prototype\'s (audit 3)', () => {
+  const { model, report } = read('mindmap\n  root\n    a["x #constructor; y"]\n');
+  assert.deepEqual([model.nodes.find(n => n.id === 'a').label, report.map(r => r.message)], ['x #constructor; y', ['#constructor;: an entity Mermaid does not know, kept as written']]);
+});

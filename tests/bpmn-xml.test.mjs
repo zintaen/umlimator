@@ -420,3 +420,11 @@ test('a taskType or direction outside row 24 ("constructor" among them) is repor
     <dataObjectReference id="b" dataObjectRef="o"/><dataObject id="o"/><task id="t"><dataInputAssociation id="da"><sourceRef>a</sourceRef><sourceRef>b</sourceRef></dataInputAssociation></task></process></definitions>`, BpmnModdle());
   assert.deepEqual([model.edges.map(e => `${e.from}-${e.to}`), report[0].message, model.ext.bpmn.skipped[0].parent], [['a-t'], 'its sources after the first (b): kept under ext.bpmn, not read', 't']);
 });
+
+test('a BPMN attribute outside the subset, set off its default, is reported once per name; isExecutable is passed over (audit 3)', needs, async () => {
+  const { report } = await read('<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL" id="d" targetNamespace="x"><process id="p" isExecutable="true">'
+    + '<task id="t" startQuantity="3" isForCompensation="true"/><task id="u" isForCompensation="true" startQuantity="1"/><dataObject id="o" isCollection="true"/></process></definitions>', BpmnModdle());
+  assert.deepEqual(report.filter(r => r.line !== '').map(r => `${r.line} ${r.message}`), [
+    't the attribute startQuantity="3": not read, here or elsewhere in the file', 't the attribute isForCompensation="true": not read, here or elsewhere in the file',
+    'o the attribute isCollection="true": not read, here or elsewhere in the file']);
+});
