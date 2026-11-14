@@ -636,7 +636,7 @@ def fnode(s, i):
         if s.startswith(o, i):
             j = s.find('"', i + len(o) + 1) + 1 if s.startswith('"', i + len(o)) else i + len(o)
             k = s.find(c, j)
-            if k > 0:
+            if j and k > 0:  # j is 0 when a quote opens and never closes: find no ] behind it
                 i, label, shape = k + len(c), text(s[i + len(o):k]), o
                 break
     else:
