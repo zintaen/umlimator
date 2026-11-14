@@ -680,8 +680,12 @@ export function render(container, model, options = {}) {
   }
 
   /* events: each clickable thing reports its reference */
+  // the card a double-click's first click hit: that click may open the details panel, refit the view and move the card
+  // from under the second, which still opens it (a dblclick with no two clicks before it, sent by a script, opens its target)
+  let hit1 = null;
   stage.addEventListener('click', e => {
     const t = e.target;
+    if (e.detail === 1) hit1 = { id: (t.closest('.node') || { dataset: {} }).dataset.id, at: performance.now(), v: cur }; else if (e.detail === 2 && hit1) hit1.two = true;
     const bv = t.closest('.empty-view [data-v]'); if (bv) return go(bv.dataset.v);
     if (t.closest('.ctl, .minimap')) return;
     const g = t.closest('.node'), chip = t.closest('[data-chip]'), badge = t.closest('[data-badge]'), eg = t.closest('.edge-g, .e-lab'), fam = t.closest('.family');
@@ -703,9 +707,10 @@ export function render(container, model, options = {}) {
     select(null);
     if (P.onBackground) P.onBackground();
   });
-  stage.addEventListener('dblclick', e => { const g = e.target.closest('.node'); if (!g) return; e.preventDefault(); if (e.target.closest('.open-hint') || (e.altKey && !E)) return; // Alt: its click unfolded
-    if (can('rename') && sel && sel.type === 'node' && sel.id === g.dataset.id && e.target.closest('.n-label')) return rename(sel); // a selected card's name edits
-    open(g.dataset.id); });
+  stage.addEventListener('dblclick', e => { const g = e.target.closest('.node'), id = (hit1 && hit1.two && hit1.v === cur && performance.now() - hit1.at < 1000 && hit1.id) || g && g.dataset.id; hit1 = null;
+    if (!id) return; e.preventDefault(); if (e.target.closest('.open-hint') || (e.altKey && !E)) return; // Alt: its click unfolded
+    if (can('rename') && sel && sel.type === 'node' && sel.id === id && g && g.dataset.id === id && e.target.closest('.n-label')) return rename(sel); // a selected card's name edits
+    open(id); });
   stage.addEventListener('keydown', e => { if (e.defaultPrevented || e.metaKey || e.ctrlKey || (e.altKey && !E) || e.target.closest('input')) return;
     if ((e.key === 'Enter' || e.key === ' ') && e.target.closest('button')) return; // a button of the map's own (zoom, ↑, ≋, Back) presses itself
     if (key(e)) { e.preventDefault(); e.stopPropagation(); } });

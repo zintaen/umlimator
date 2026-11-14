@@ -70,7 +70,7 @@ test('example 13 validates, lays out clean down and right, and names every node 
     assert.ok(r.g.edges.every(e => e.cut === 280 && e.end.to === 'open'), 'flows cut at 280 px, an open arrow'); }
   const g = layout(EX, 'buy-book'), aria = id => g.byId[id].aria;
   assert.deepEqual(['buy-start', 'ref-find', 'try-payment', 'payment-ok', 'buy-split', 'sd-queue', 'both-done', 'buy-done'].map(aria), ['Initial node', 'Interaction use Find a book, opens Find a book',
-    'Merge, 2 entries', 'Decision Payment accepted?, 2 exits', 'Fork, 2 branches', 'Inline interaction Queue the order, 3 lifelines, 3 messages', 'Join, 2 branches', 'Activity final']);
+    'Merge, 2 entries', 'Decision Payment accepted?, 2 exits', 'Fork, 2 branches', 'Inline interaction Queue the order, 3 lifelines, 3 messages, opens Queue the order', 'Join, 2 branches', 'Activity final']);
   assert.deepEqual(['f-accepted', 'f-declined', 'f-buy-start'].map(id => g.edges.find(e => e.id === id).aria), ['Control flow from Payment accepted? to fork, guard payment accepted',
     'Control flow from Payment accepted? to merge, guard else', 'Control flow from initial node to Find a book']);
   assert.deepEqual(g.nodes.map(n => n.shape), ['initial', 'ov-use', 'diamond', 'ov-use', 'diamond', 'bar', 'ov-use', 'ov-inline', 'bar', 'final']);
@@ -114,7 +114,7 @@ test('the inline interaction (S11): its view at full size inside an "sd" frame, 
     const inner = s.slice(s.indexOf('<g class="ov-sd"'));
     assert.equal((s.match(/class="node /g) || []).length, 1, 'one .node: its own');
     assert.doesNotMatch(inner, /class="node|ll-hit|f-hit|data-id=|data-o=|tabindex=|role=|aria-label=|class="n-body|class="n-mask|e-lab/);
-    assert.match(s, /aria-label="Inline interaction Queue the order, 3 lifelines, 3 messages"/);
+    assert.match(s, /aria-label="Inline interaction Queue the order, 3 lifelines, 3 messages, opens Queue the order"/);
     assert.match(s, />sd Queue the order</);
     assert.match(s, /<g class="ov-sd" aria-hidden="true" transform="translate\(/);
     for (const t of ['>alt<', '>[in stock]<', '>[else]<', '>ref<', '>Audit<', '>enqueue(order)<', '>queued<', '>orderPlaced<', '>api : ShopApi<']) assert.ok(s.includes(t), `${d}: ${t}`);
@@ -126,7 +126,7 @@ test('the inline interaction (S11): its view at full size inside an "sd" frame, 
   const big = structuredClone(EX), q = big.views.find(v => v.id === 'queue-order');
   for (let k = 0; k < 6; k++) { big.nodes.push({ id: 'x' + k, type: 'uml.Lifeline' }); q.nodeIds.push('x' + k); }
   const gb = layout(big, 'buy-book'), s = inlineOf(mapContext(big).buildView('buy-book').markup);
-  assert.equal(gb.byId['sd-queue'].aria, 'Inline interaction Queue the order, 9 lifelines, 3 messages, drawn as its frame only');
+  assert.equal(gb.byId['sd-queue'].aria, 'Inline interaction Queue the order, 9 lifelines, 3 messages, drawn as its frame only, opens Queue the order');
   assert.ok(gb.byId['sd-queue'].h < 50 && !s.includes('ov-sd') && s.includes('>sd<') && s.includes('>Queue the order<'));
   assert.deepEqual(ovProblems(big, VIEW(big)).map(p => [p.level, p.rule, p.ids]), [['warning', 'inline-size', ['sd-queue', 'queue-order']]]);
 });
@@ -303,6 +303,6 @@ test('an inline interaction counts a lifeline its sequence view lists three time
   const m = structuredClone(EX), sd = m.nodes.find(n => n.id === 'sd-queue'), sv = m.views.find(v => v.id === sd.opensView);
   sv.nodeIds = [...sv.nodeIds, ...sv.nodeIds, ...sv.nodeIds];
   const n = layout(m, 'buy-book').byId['sd-queue'];
-  assert.match(n.aria, /, 3 lifelines, 3 messages$/); assert.ok(n.sd);
+  assert.match(n.aria, /, 3 lifelines, 3 messages, opens Queue the order$/); assert.ok(n.sd);
   assert.deepEqual(validate(m), []);
 });

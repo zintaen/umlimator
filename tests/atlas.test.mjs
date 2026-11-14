@@ -37,6 +37,7 @@ import { mapContext } from '../src/map/context.js';
 import { validate } from '../src/map/validate.js';
 import { describe } from '../src/map/insight.js';
 import { tablesOf } from '../src/page/print.js';
+import { svgOf } from '../src/draw/svg.js';
 import { apply } from '../src/core/apply.js';
 import { diagramOf } from '../src/core/registry.js';
 import { appliedOf } from '../src/uml/stereotypes.js';
@@ -272,4 +273,14 @@ test('a typed view\'s key holds the titles of the views it opens: update() redra
     assert.notEqual(mapContext(M).viewKey(vid), mapContext(R).viewKey(vid), vid);
     assert.match(mapContext(R).buildView(vid).markup, /Renamed/, vid);
   }
+});
+
+test('audit 5: each typed element that opens a view says so in its accessible name, drawn and in the focus keys', () => {
+  const m = JSON.parse(readFileSync(new URL('../examples/bookshop-atlas.json', import.meta.url), 'utf8'));
+  const was = console.warn; console.warn = () => {}; const silent = []; let n = 0;
+  try { for (const x of m.nodes.filter(x => x.opensView && x.type && x.type !== 'mindmap.Topic')) for (const v of m.views.filter(v => (v.nodeIds || []).includes(x.id) && v.id !== x.opensView)) {
+    const g = layout(m, v.id), c = g.nodes.find(y => y.id === x.id); if (!c) continue; n++; // the drawn name (svgOf) and the focus key's (the geometry's aria)
+    const said = (svgOf(g).match(new RegExp(`class="node[^"]*" data-id="${x.id}"[^>]*aria-label="([^"]*)"`)) || [])[1] || '';
+    if (![c.aria || '', said].every(t => /\bopens\b/.test(t))) silent.push(`${v.id} ${x.id}: ${c.aria} | ${said}`); } } finally { console.warn = was; }
+  assert.ok(n > 20, n); assert.deepEqual(silent, []);
 });

@@ -79,10 +79,10 @@ test('the shapes: junction, history and terminate; a state\'s compartment, its r
 });
 
 // the crossings that turning port repair off leaves (notes/stage-4.md §17): pinned
-const PINNED = {
-  right: ['view order-life: edges →Fulfilling and Picking→Packed cross', 'view order-life: edges →Cancelled and Capturing payment→Cancelled cross'],
-  down: ['view order-life: edges →Fulfilling and →Payment captured cross', 'view order-life: edges →Cancelled and →Payment captured cross', 'view order-life: edges →Cancelled and Payment captured→ cross',
-    'view order-life: edges →Cancelled and Fulfilling→Cancelled cross', 'view order-life: edges Capturing payment→Cancelled and Capturing payment→Payment captured cross'],
+const PINNED = { // a pseudostate is named by its id (audit 5)
+  right: ['view order-life: edges payment-outcome→Fulfilling and Picking→Packed cross', 'view order-life: edges payment-outcome→Cancelled and Capturing payment→Cancelled cross'],
+  down: ['view order-life: edges payment-outcome→Fulfilling and prepaid→Payment captured cross', 'view order-life: edges payment-outcome→Cancelled and prepaid→Payment captured cross', 'view order-life: edges payment-outcome→Cancelled and Payment captured→ready cross',
+    'view order-life: edges payment-outcome→Cancelled and Fulfilling→Cancelled cross', 'view order-life: edges Capturing payment→Cancelled and Capturing payment→Payment captured cross'],
 };
 test('order-states.json (example 10) draws: shapes by kind, composites as boxes, regions stacked with dividers across their state, laid out clean right and down', () => {
   assert.deepEqual(validate(SM), []);

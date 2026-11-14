@@ -83,7 +83,7 @@ try {
     if (name === 'example 13') {
       const aria = id => pick(`.node[data-id="${id}"]`).getAttribute('aria-label'), title = (f, t) => pick(`.edge-g[data-from="${f}"][data-to="${t}"] title`).textContent;
       check(`${tag}: nodes and flows have the names §14 gives`, aria('ref-find') === 'Interaction use Find a book, opens Find a book' && aria('payment-ok') === 'Decision Payment accepted?, 2 exits'
-        && aria('sd-queue') === 'Inline interaction Queue the order, 3 lifelines, 3 messages' && aria('buy-split') === 'Fork, 2 branches' && aria('try-payment') === 'Merge, 2 entries'
+        && aria('sd-queue') === 'Inline interaction Queue the order, 3 lifelines, 3 messages, opens Queue the order' && aria('buy-split') === 'Fork, 2 branches' && aria('try-payment') === 'Merge, 2 entries'
         && title('payment-ok', 'buy-split') === 'Control flow from Payment accepted? to fork, guard payment accepted', [aria('ref-find'), aria('payment-ok'), title('payment-ok', 'buy-split')]);
       const labs = all('.e-lab text').map(t => t.textContent).sort();
       check(`${tag}: the guards are drawn whole`, same(labs, ['[else]', '[payment accepted]']), labs);

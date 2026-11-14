@@ -60,7 +60,7 @@ test('the definitions: c4.dynamic and c4.deployment, each its own; the static ty
 const pinned = (m, vid) => { const kinds = {}; check(m, vid).map(p => p.message).forEach(p => { const k = / cross$/.test(p) ? 'cross' : / lies on edge /.test(p) ? 'label on a line' : p; kinds[k] = (kinds[k] || 0) + 1; });
   return Object.entries(kinds).map(([k, n]) => `${n} ${k}`); };
 test('23-c4.json\'s dynamic and deployment views lay out right and down: every line routed, no overlap, ends on outlines, boxes holding what they hold; the crossings and labels on lines pinned', () => {
-  const want = { [`${DV} right`]: ['2 cross'], [`${DV} down`]: ['4 cross', '2 label on a line'], [`${PV} right`]: ['1 cross'], [`${PV} down`]: ['1 cross'] }, got = {};
+  const want = { [`${DV} right`]: ['2 cross'], [`${DV} down`]: ['3 cross', '1 label on a line'], [`${PV} right`]: ['1 cross'], [`${PV} down`]: ['1 cross'] }, got = {};
   for (const vid of [DV, PV]) for (const direction of ['right', 'down']) {
     const m = withDir(C4, vid, direction), [g, warned] = said(() => layout(m, vid)), tag = `${vid} ${direction}`;
     assert.deepEqual(warned, [], `${tag}: drawn, every line routed`);

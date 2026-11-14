@@ -128,10 +128,12 @@ function pieces(X, el, o) {
     const inView = new Set(geo.nodes.map(x => x.id)), seen = new Set();
     const collect = dir => {
       const out = [];
-      const add = (e, id, iv) => { const key = dir + id + (e.label || ''); if (seen.has(key)) return; seen.add(key); out.push({ e, id, inView: iv }); };
-      geo.edges.forEach(e => { if (dir === 'up' && e.to === nid) add(e, e.from, true); if (dir === 'down' && e.from === nid) add(e, e.to, true); });
-      viewEdges(V[cur]).forEach((e, i) => { const e2 = V[cur].render === 'sequence' ? { ...e, step: i + 1 } : e; if (dir === 'up' && e.to === nid) add(e2, e.from, true); if (dir === 'down' && e.from === nid) add(e2, e.to, true); });
-      (D.edges || []).forEach(e => { if (dir === 'up' && e.to === nid) add(e, e.from, inView.has(e.from)); if (dir === 'down' && e.from === nid) add(e, e.to, inView.has(e.to)); });
+      // one entry a line: by its ends and label, and by its model id (a typed view draws a line with its own label: a C4 technology, «use»)
+      const add = (e, id, iv, mid) => { const key = dir + id + (e.label || ''), mk = mid != null && dir + '#' + mid; if (seen.has(key) || mk && seen.has(mk)) return; seen.add(key); if (mk) seen.add(mk); out.push({ e, id, inView: iv }); };
+      geo.edges.forEach(e => { const all = (e.all || [e]).filter(x => x._id), mid = all.length === 1 ? all[0]._id : null; // a line for several edges: by label, as before
+        if (dir === 'up' && e.to === nid) add(e, e.from, true, mid); if (dir === 'down' && e.from === nid) add(e, e.to, true, mid); });
+      viewEdges(V[cur]).forEach((e, i) => { const e2 = V[cur].render === 'sequence' ? { ...e, step: i + 1 } : e; if (dir === 'up' && e.to === nid) add(e2, e.from, true, e.id); if (dir === 'down' && e.from === nid) add(e2, e.to, true, e.id); });
+      (D.edges || []).forEach(e => { if (dir === 'up' && e.to === nid) add(e, e.from, inView.has(e.from), e.id); if (dir === 'down' && e.from === nid) add(e, e.to, inView.has(e.to), e.id); });
       return out;
     };
     const ups = collect('up'), downs = collect('down'), srcs = srcList(n);
