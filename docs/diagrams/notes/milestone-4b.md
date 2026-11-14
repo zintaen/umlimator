@@ -377,6 +377,47 @@ sub-process's lane), the box is one block in `cpPlace` and in the type's lane pa
 frame (§5.2). A boundary event on an
 expanded sub-process is a port on its box. Its contents' sequence flows stay inside it (`sequence-scope`).
 
+### 8.3 As built (4b.3)
+
+`src/bpmn/process.js`. Where it departs from §5 to §8 and §11, each taken by the lead under the maintainer's standing
+approval (14 Nov 2026):
+
+- **The lane pass** stacks each lane's top-level items in `cpPlace`'s order (by row, then column) from the lane's first
+  row, each in the first row free in all its columns: a lane's rows are packed, not kept at `cpPlace`'s offsets, so a
+  chain in one lane runs straight. A lane's own items take rows before its nested lanes' (`laneRows`' rule); a pool's own
+  items (a flow node in no lane, data with no association) after its lanes, as decision 23 says. What is in no pool
+  takes rows after every pool, past one more empty row.
+- **A pool's outer edges** grow 24 px (§5.2a) but at most half the empty row beside them less 4 px, so two pools' headers
+  never meet: an expanded sub-process in a pool's first or last row counts its frame toward that row, which narrows the
+  empty row.
+- **An anchor** is 2 px across the flow and `2 + 24 (k - 1)` px along it for `k` message flows, so two from one column
+  keep apart (F2), as a 2 px anchor could not.
+- **Boundary events.** An activity with a circle on its left or right is 16 px wider of its own (32 px grown), so its
+  centred name keeps clear of the circle. A boundary event with no line takes 96 px of its side (the circles with lines
+  are centred there by `spreadPorts`), placed clear of them and of the other lines' ends on that side; where those ends
+  leave no room it is held at the span's end and marked `over` (the layout places those ends, the sizing cannot see them).
+  A line that ends on a side grown for boundary events, but at none of them, is slid 16 px in on the copy, onto the
+  activity's own border. A boundary event whose activity the view does not show is drawn as a free event node.
+- **Not drawn**: a message flow between two pools (both ends anchors), and a flow from a boundary event to its own activity
+  (a rework loop): each needs a route of the type's own.
+- **A message flow between activities** leaves and enters on the sides toward the other pool (§7.3), in the layout's terms.
+- **No `labelGaps`**: with it the common edits took about 130 ms of CPU on the stress view, without it about 70 to 95 ms,
+  with the same clean layout and crossings on the example and the stress view.
+- **One line entry.** The canvas opens a picker of kinds whenever a type lists more than one line (`src/canvas/edit.js`),
+  which decision 8 rules out; so `lines` holds one entry, "Flow (sequence, message, association or data association, by
+  its ends)", which the palette's Lines note shows, and `connect` picks the kind. The legend keys the four kinds drawn.
+- **No `rename` hook**: F2 on a flow, an annotation or a lane is the canvas's `set label`, which §11 asks for.
+- **Lanes.** `apply()` cannot reparent a member, so the Owner field offers no owner for a lane, and Delete on a lane with
+  nested lanes deletes each nested lane and adds it again, one level up, in the same transaction; their flow nodes go to
+  the pool and back. `A`'s picker lists every activity of the boundary event's pool, those in its sub-processes too.
+- **`opens-view`** checks a sub-process or call activity with `opensView`, and a sub-process collapsed in the view that
+  holds something with none. **`word()`** names elements, not lines (null, as the activity type's).
+- **Timings** (`tests/bpmn.test.mjs`, a stress view of 67 flow nodes, the ten boundary events among them, three
+  pools, six lanes, ten message flows, two expanded sub-processes; CPU, best of five after a warm-up, on a machine shared
+  with other work): a full layout and drawing about 75 to 95 ms; documentation 6 to 8 ms; a task renamed, a sequence
+  flow's name, a flow node moved to another lane and a boundary event's side 70 to 95 ms each: under §14's 100 ms.
+  Crossings: the example 5 laid out right and 6 down; the stress view 30 right and 29 down.
+
 ## 9. Notation
 
 ### 9.1 Shapes
