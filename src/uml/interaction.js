@@ -13,13 +13,13 @@ const SORTS = ['call', 'async', 'reply', 'create', 'delete'];
    finds it, sort one of SORTS (any other is a call) and null on an interaction use. ops: operand id → { id, el, fragment } */
 function interactionWalk(model, view) {
   const views = IA_ARR(model && model.views), vi = views.includes(view) ? views.indexOf(view) : views.findIndex(v => IA_OBJ(v) && IA_OBJ(view) && v.id === view.id);
-  const byId = new Map(), ops = new Map(), occ = [];
+  const byId = new Map(), ops = new Map(), occ = [], seen = new Set();
   IA_ARR(model && model.edges).forEach((e, k) => { if (IA_OBJ(e) && !byId.has(e.id)) byId.set(e.id, [e, `edges[${k}]`]); });
   IA_ARR(view && view.fragments).forEach(f => { if (IA_OBJ(f)) IA_ARR(f.members).forEach(o => { if (IA_OBJ(o) && !ops.has(o.id)) ops.set(o.id, { id: o.id, el: o, fragment: f }); }); });
   IA_ARR(view && view.edges).forEach((x, i) => {
     const [el, path] = typeof x === 'string' ? byId.get(x) || [] : [x, `views[${vi}].edges[${i}]`];
     const message = IA_OBJ(el) && el.type === 'uml.Message'; // one with no id, or a message with no ends, is the core's error (src/core/model.js)
-    if (!IA_OBJ(el) || el.id == null || (message ? el.from == null || el.to == null : el.type !== 'uml.InteractionUse')) return;
+    if (!IA_OBJ(el) || seen.has(el) || !seen.add(el) || el.id == null || (message ? el.from == null || el.to == null : el.type !== 'uml.InteractionUse')) return;
     const p = IA_OBJ(el.props) ? el.props : {};
     occ.push({ id: el.id, i, r: occ.length, path, el, message, from: el.from, to: el.to,
       sort: message ? (SORTS.includes(p.sort) ? p.sort : 'call') : null, replyTo: p.replyTo ?? null, parent: el.parent ?? null });

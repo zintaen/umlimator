@@ -75,7 +75,7 @@ function sqInput(model, view, X = sqIndex(model, view)) {
    and problems from it; order (S13): heads left to right, then fragments, operands and occurrences in time order */
 function sqRun(model, view) {
   const X = sqIndex(model, view), inp = sqInput(model, view, X), o = layoutTimeAxis(inp), heads = sqHeads(model, view), H = new Map(heads.map(n => [n.id, n]));
-  const msgs = X.occ.filter(m => m.message), M = new Map(msgs.map(m => [m.id, m])), U = new Map(X.occ.filter(u => !u.message).map(u => [u.id, u])), nth = new Map(msgs.map((m, k) => [m.id, k + 1]));
+  const msgs = X.occ.filter(m => m.message), M = new Map(msgs.map(m => [m.i, m])), U = new Map(X.occ.filter(u => !u.message).map(u => [u.id, u])), nth = new Map(msgs.map((m, k) => [m, k + 1])); // by row: two messages of one id (the core reports it) each its own
   const inWhat = parent => { const c = X.chain(parent)[0]; if (!c) return ''; const op = SQ_ARR(c.f.members).find(m => SQ_OBJ(m) && m.id === c.op) || {};
     return `, in ${sqOperator(c.f) || 'fragment'}${SQ_HAS(op.label) ? ', ' + op.label : ''}`; };
   const direct = id => X.occ.filter(m => m.parent === id).length;
@@ -91,10 +91,10 @@ function sqRun(model, view) {
         aria: `Interaction use ${u.el.label ?? ''}${ids.length ? `, over ${sqName(H.get(ids[0]))}${ids.length > 1 ? ' to ' + sqName(H.get(ids[ids.length - 1])) : ''}` : ''}` }; }),
   ];
   const byId = Object.fromEntries(nodes.map(n => [n.id, n]));
-  const edges = o.lines.map(l => { const m = M.get(l.id), t = SQ_HAS(m.el.label) ? String(m.el.label) : '';
+  const edges = o.lines.map(l => { const m = M.get(l.ri), t = SQ_HAS(m.el.label) ? String(m.el.label) : '';
     return { id: m.id, _id: m.id, type: 'uml.Message', from: m.from, to: m.to, s: byId[m.from], t: byId[m.to], pts: l.pts, end: SQ_END[m.sort], sort: m.sort,
       ...(t ? { lbl: { ...l.lbl, text: t }, label: t } : {}),
-      aria: `Message ${nth.get(m.id)} of ${msgs.length}: ${sqName(H.get(m.from))} to ${sqName(H.get(m.to))}${t ? ', ' + t : ''}, ${m.sort}${inWhat(m.parent)}` }; });
+      aria: `Message ${nth.get(m)} of ${msgs.length}: ${sqName(H.get(m.from))} to ${sqName(H.get(m.to))}${t ? ', ' + t : ''}, ${m.sort}${inWhat(m.parent)}` }; });
   // reading order: by height on the page; at one height a frame before its first operand, both before what they hold
   const rank = { frame: 0, operand: 1 }, at = [...nodes.filter(n => n.shape !== 'lifeline').map(n => [n.id, n.y, rank[n.shape] ?? 2]), ...edges.map(e => [e.id, e.pts[0][1], 2])];
   const order = [...o.heads.map(h => h.id), ...at.sort((a, b) => a[1] - b[1] || a[2] - b[2]).map(x => x[0])];

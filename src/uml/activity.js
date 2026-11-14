@@ -74,13 +74,15 @@ function actIndex(model, view) {
   const ids = [...new Set(AC_ARR(view && view.nodeIds).filter(id => N.has(id)))], shown = new Set(ids);
   const isPart = id => N.has(id) && N.get(id).type === 'uml.ActivityPartition', parts = ids.filter(isPart), lanes = new Set(parts);
   // the nearest shown partition above an element (§9.2), or null; a cycle of owners stops where it closes
-  const up = id => { const seen = new Set([id]); for (let p = (N.get(id) || {}).parent; p != null && N.has(p) && !seen.has(p); p = N.get(p).parent) { if (lanes.has(p)) return p; seen.add(p); } return null; };
+  const once = f => { const c = new Map(); return id => (c.has(id) ? c.get(id) : c.set(id, f(id)).get(id)); }; // each worked out once: partitions nested to any depth
+  const up = once(id => { const seen = new Set([id]); for (let p = (N.get(id) || {}).parent; p != null && N.has(p) && !seen.has(p); p = N.get(p).parent) { if (lanes.has(p)) return p; seen.add(p); } return null; });
   // a lane's own owner lane, or null at the top: a lane whose chain of shown owners comes back to it is at the top (laneRows')
-  const outer = id => { const seen = new Set(); for (let l = up(id); l != null && !seen.has(l); l = up(l)) { if (l === id) return null; seen.add(l); } return up(id); };
+  const outer = once(id => { const seen = new Set(); for (let l = up(id); l != null && !seen.has(l); l = up(l)) { if (l === id) return null; seen.add(l); } return up(id); });
   const laneOf = id => (lanes.has(id) ? null : up(id)), drawn = ids.filter(id => !lanes.has(id)), on = new Set(drawn);
   const list = Array.isArray(view && view.edges) ? view.edges.map(x => (typeof x === 'string' ? E.get(x) : x)) : [...E.values()].filter(e => AC_LINES.includes(e.type));
   const lines = list.filter(e => AC_OBJ(e) && typeof e.id === 'string' && on.has(e.from) && on.has(e.to));
-  const under = p => drawn.filter(id => { for (let l = laneOf(id); l != null; l = outer(l)) if (l === p) return true; return false; });
+  const n = new Map(), under = p => n.get(p) || 0; // the nodes under each lane, at any depth, counted in one pass
+  drawn.forEach(id => { for (let l = laneOf(id); l != null; l = outer(l)) n.set(l, under(l) + 1); });
   return { N, E, path, ids, shown, parts, drawn, lines, up, laneOf, isPart, under,
     lanes: parts.map((id, order) => ({ id, parent: outer(id), order })) };
 }
@@ -96,7 +98,7 @@ const acViewName = (model, id) => { const v = AC_ARR(model && model.views).find(
 function acNodeName(model, I, x, lines) {
   const [, word] = acLook(x), st = acStereo(x), lane = I.laneOf(x.id), outs = lines.filter(e => e.from === x.id && AC_FLOWS.includes(e.type)).length, ins = lines.filter(e => e.to === x.id && AC_FLOWS.includes(e.type)).length;
   if (x.type === 'uml.Comment') return 'Comment: ' + acName(x);
-  if (x.type === 'uml.ActivityPartition') return `Partition ${acName(x)}${st.length ? ` (${st.join(', ')})` : ''}, ${acPlural(I.under(x.id).length, 'node')}`;
+  if (x.type === 'uml.ActivityPartition') return `Partition ${acName(x)}${st.length ? ` (${st.join(', ')})` : ''}, ${acPlural(I.under(x.id), 'node')}`;
   const named = !['initial', 'final', 'flow-final', 'bar'].includes(acLook(x)[0]) && AC_HAS(x.label) ? ' ' + String(x.label).trim() : '';
   const count = { 'uml.DecisionNode': acPlural(outs, 'exit'), 'uml.MergeNode': acPlural(ins, 'entry', 'entries'), 'uml.ForkNode': acPlural(outs, 'branch', 'branches'), 'uml.JoinNode': acPlural(ins, 'branch', 'branches') }[x.type];
   const opens = x.type === 'uml.CallBehaviorAction' ? `opens ${acViewName(model, x.opensView) ?? 'no view'}` : null;
@@ -160,9 +162,11 @@ function acFinish(model, g, I, down) {
   // reading order (§14): a partition, then its nested partitions, then its own nodes by rank; then the nodes in no lane by
   // rank; then the lines. The nodes are drawn in it, then the headers, so the canvas's first node is a laid-out one
   const rank = (a, b) => byId[a].col - byId[b].col || byId[a].row - byId[b].row, order = [];
-  const put = p => { order.push(p); I.lanes.filter(l => l.parent === p).forEach(l => put(l.id)); order.push(...I.drawn.filter(id => I.laneOf(id) === p).sort(rank)); };
-  I.lanes.filter(l => l.parent == null).forEach(l => put(l.id));
-  order.push(...I.drawn.filter(id => I.laneOf(id) == null).sort(rank));
+  const kids = new Map(), own = new Map(), at = (m, k) => m.get(k) || m.set(k, []).get(k);
+  I.lanes.forEach(l => at(kids, l.parent).push(l.id)); I.drawn.forEach(id => at(own, I.laneOf(id)).push(id));
+  const st = [...at(kids, null)].reverse(); // a stack, not recursion: [p] stands for p's own nodes, after its nested lanes
+  while (st.length) { const p = st.pop(); if (Array.isArray(p)) order.push(...at(own, p[0]).sort(rank)); else { order.push(p); st.push([p], ...[...at(kids, p)].reverse()); } }
+  order.push(...at(own, null).sort(rank));
   const mid = n => ({ x: n.x + n.w / 2, y: n.y + n.h / 2 });
   const types = new Set([...g.edges.map(e => e.type), ...I.drawn.map(id => I.N.get(id).type)]);
   return { ...g, nodes: [...order.filter(id => !I.isPart(id)), ...I.parts].map(id => byId[id]), byId, bounds, bands, partitions: heads.map(h => h.id), order: [...order, ...g.edges.map(e => e.id)],

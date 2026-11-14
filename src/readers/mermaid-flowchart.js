@@ -366,7 +366,7 @@ function writeMermaidFlowchart(model, viewId) {
   // text, always quoted: Mermaid's own characters as entity codes, a line break as <br>, a space at either end as an
   // entity, which the reader's trim keeps; # first, so no other text reads as a code
   const ent = c => `#${c.codePointAt(0)};`;
-  const enc = s => `"${String(s).replace(/[#"|;<>\\`]/g, ent).replace(/\r\n|\r|\n/g, '<br>').replace(/^\s|\s$/g, ent)}"`;
+  const enc = s => `"${String(s).replace(/[#"|;<>\\`\r]/g, ent).replace(/\n/g, '<br>').replace(/^\s|\s$/g, ent)}"`; // \r too, so it reads back
   const okId = id => str(id) && id !== '' && id.trim() === id && !/[\r\n]/.test(id); // a hint keeps it
   const out = [], notWritten = [], skip = x => notWritten.push(`${flat(x.id)} (${flat(x.type)})`), lose = (id, what) => notWritten.push(`${flat(id)}: ${flat(what)}`);
   const title = String(has(view.title) ? view.title : m.title ?? '');

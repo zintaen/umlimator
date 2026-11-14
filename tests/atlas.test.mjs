@@ -237,6 +237,14 @@ test('the build stops where the files disagree on an element, naming it, the fil
   assert.throws(() => timed({ scale: 2 }), /scale/);
 });
 
+test('lines without an id are each their file\'s own: two in one file, or in two files, are never merged (audit 3)', () => {
+  const ab = { from: 'a', to: 'b' };
+  const { model } = build({ title: 't', root: 'a/v', sources: ['a', 'b'], links: [] }, name => ({
+    a: { nodes: [{ id: 'a' }, { id: 'b' }, { id: 'c' }], edges: [ab, { from: 'b', to: 'c' }, ab], views: [{ id: 'v', nodeIds: [] }] },
+    b: { nodes: [], edges: [ab], views: [] } })[name]);
+  assert.equal(model.edges.length, 4);
+});
+
 test('icon packs: one label a pack across the files, written in the atlas; two files that disagree stop the build (0.26.0)', () => {
   const packs = (a, b) => build({ title: 't', root: 'a/v', sources: ['a', 'b'], links: [] },
     name => ({ a: { iconPacks: a, nodes: [], views: [{ id: 'v', nodeIds: [] }] }, b: { iconPacks: b, nodes: [], views: [] } })[name]).model.iconPacks;
@@ -252,7 +260,9 @@ test('the gallery and the examples\' README reach every example model: the AWS v
   assert.deepEqual(names.filter(n => !readme.includes(`(${n}.json)`)), []);
   // the two links on elements drawn only as boxes, which a double-click does not open (module-api.md 0.24.0's known gaps),
   // are said where the README promises a double-click opens what a card leads to, and the gallery promises no drill-down to them (audit 2)
-  assert.match(readme.replace(/\s+/g, ' '), /a double-click does not open yet: `sales` \(in the packages\) and the Java 21 runtime/);
+  assert.match(readme.replace(/\s+/g, ' '), /a double-click does not open yet: `sales` \(in the packages\), the Java 21 runtime \(in production\) and Shop API \(in the components\)/);
+  // a table's rows run on: a row after a blank line starts a table, so a delimiter row follows it (audit 3)
+  assert.doesNotMatch(readme, /\n\n\|[^\n]*\n(?!\|[-| :]+\n)/);
   assert.doesNotMatch(gallery, /production's deployment, the components/);
 });
 

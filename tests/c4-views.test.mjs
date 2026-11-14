@@ -363,3 +363,9 @@ test('audit 1: a dynamic view draws an element of a type C4 has no word for; an 
     edges: [Rel('r', 'p', 's', 'uses')], views: [{ id: 'v', diagram: 'c4.dynamic', title: 'D', nodeIds: ['p', 's'], edges: ['r', { type: 'c4.Relationship', from: 'p', to: 's' }] }] };
   assert.deepEqual(validate(m).filter(p => p.rule === 'c4-steps').map(p => p.message), ['c4-steps: step at edges[1] is written in the view: a step names a relationship of the model']);
 });
+
+test('audit 3: F2 on a step keeps a description that starts with the step\'s number and a dot, as in a decimal', () => {
+  const v = C4.views[V(DV)], r = t => DYN.edits.rename(C4, v, 'c4-api-payments', t);
+  assert.deepEqual(r('3.5 TB export nightly'), [{ op: 'set', id: 'c4-api-payments', path: 'label', value: '3.5 TB export nightly' }]);
+  assert.deepEqual(r('3. 5 TB export'), [{ op: 'set', id: 'c4-api-payments', path: 'label', value: '5 TB export' }], 'a typed number and a space: cut');
+});

@@ -283,3 +283,11 @@ test('the type ships in lib/umlimator-all.js only (risks.md C5)', () => {
   const all = readFileSync(new URL('../lib/umlimator-all.js', import.meta.url), 'utf8'), core = readFileSync(new URL('../lib/umlimator.js', import.meta.url), 'utf8');
   for (const k of ["registerDiagramType('flowchart'", 'SHAPE.connector = ']) { assert.ok(all.includes(k), k); assert.ok(!core.includes(k), k); }
 });
+
+test('audit 3: a node with no label is named by the id it draws, in its accessible name, describe() and the lines\' names', () => {
+  const m = one([N('s', 'Terminator', 'Start'), N('check-stock', 'Process'), N('d', 'Terminator', 'Done')], [F('f1', 's', 'check-stock'), F('f2', 'check-stock', 'd')]);
+  const g = layout(m, 'v'), n = g.nodes.find(x => x.id === 'check-stock');
+  assert.equal(n.label, 'check-stock'); assert.equal(n.aria, 'Process check-stock');
+  assert.equal(g.edges.find(e => e.id === 'f1').aria, 'Flow from Start to check-stock');
+  assert.match(describe(m, 'v'), /Flow from check-stock to Done/);
+});

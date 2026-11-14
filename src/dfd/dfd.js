@@ -112,7 +112,7 @@ function dfdLines(model, view) {
 }
 // accessible names (A1): "Process 1 Take order, opens level 1 Take order, 2 flows in, 2 out"; a flow: "Data flow basket from Customer to 1 Take order"
 function dfdNodeName(I, id, lines) {
-  const x = I.at.get(id); if (x.type === 'uml.Comment') return 'Comment: ' + String(x.label ?? '');
+  const x = I.at.get(id); if (x.type === 'uml.Comment') return 'Comment: ' + String(x.label ?? id);
   const ins = lines.filter(e => e.type === 'dfd.DataFlow' && e.to === id && e.from !== id).length, outs = lines.filter(e => e.type === 'dfd.DataFlow' && e.from === id && e.to !== id).length;
   const v = x.type === 'dfd.Process' && I.views.get(x.opensView);
   return `${DFD_WORD[x.type] || String(x.type).split('.').pop()} ${I.name(id)}${v ? `, opens level ${v.title || v.id}` : ''}, ${dfdPlural(ins, 'flow')} in, ${outs} out`;

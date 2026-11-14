@@ -50,7 +50,7 @@ runs:
         # a pull request's checkout is its merge commit, whose first parent is the base branch as it is now
         git rev-parse -q --verify HEAD^1 > /dev/null || git fetch -q --no-tags --depth=2 origin "$GITHUB_SHA"
         python3 "$GITHUB_ACTION_PATH/umlimator.py" diff --base HEAD^1 --out "$OUT" --models $MODELS > "$OUT.json"
-        echo "changed=$(python3 -c 'import json, sys; print(len(json.load(open(sys.argv[1]))))' "$OUT.json")" >> "$GITHUB_OUTPUT"
+        echo "changed=$(python3 -I -c 'import json, sys; print(len(json.load(open(sys.argv[1]))))' "$OUT.json")" >> "$GITHUB_OUTPUT"
         echo "summary=$OUT/summary.md" >> "$GITHUB_OUTPUT"
     - id: pictures
       if: steps.diff.outputs.changed != '0'

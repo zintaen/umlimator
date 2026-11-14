@@ -216,6 +216,22 @@ with tempfile.TemporaryDirectory() as tmp:
     ok("render · a model with a BOM renders; one that is cut short or oddly shaped is said in one line, not a traceback (audit 2)",
        bad.pop("bom").returncode == 0 and all(b.returncode != 0 and b.stderr.strip() and "Traceback" not in b.stderr for b in bad.values()),
        {k: b.stderr[-200:] for k, b in bad.items()})
+    # and so do the other commands that read a model (audit 3)
+    n = t / "names"
+    bad = [plain("diff", str(n / "m.json"), str(n / "list.json"), "--out", str(n / "d.html")), plain("diff", str(n / "m.json"), str(n / "cut.json"), "--out", str(n / "d.html")),
+           plain("drift", str(n / "list.json"), str(n / "m.json"), "--out", str(n / "d.html")), plain("trace", str(n / "list.json"), str(n / "m.json"), "--view", "t", "--out", str(n / "t.json")),
+           plain("export", str(n / "list.json"), "--out", str(n / "x.bpmn"))]
+    bom = plain("diff", str(n / "m.json"), str(n / "bom.json"), "--out", str(n / "d.html"))
+    ok("diff, drift, trace and export · a model with a BOM is read; one that is no model is said in one line, not a traceback (audit 3)",
+       bom.returncode == 0 and all(b.returncode == 1 and b.stderr.strip() and "Traceback" not in b.stderr for b in bad), [bom.stderr[-200:]] + [b.stderr[-200:] for b in bad])
+    # a render never loads code from the folder it runs in: a base64.py there is not the standard library's (audit 3)
+    (t / "planted").mkdir(); (t / "planted" / "base64.py").write_text("raise SystemExit('planted base64.py ran')\n")
+    r = subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "render", str(n / "m.json"), "--out", str(t / "planted.html"), "--no-check"],
+                       capture_output=True, text=True, cwd=t / "planted")
+    ok("render · a stdlib-named .py file in the working folder is never run", r.returncode == 0 and "planted" not in r.stderr, r.stderr[-300:])
+    # a view id too long for a file name gets a name that fits, as long ids differ by a hash (audit 3)
+    longs = u.still_names(["v" * 300, "v" * 299 + "w"])
+    ok("stills · a view id too long for a file name is cut and hashed", all(len(x.encode()) <= 200 for x in longs.values()) and len(set(longs.values())) == 2, longs)
 
     # the diff Action's step as CI runs it (C10, 2.6): a pull request's merge commit against its first parent, the pathspec
     # examples/*.json passed to git as written (set -f), on one object model and one package model

@@ -313,3 +313,10 @@ test('P1 (S19): on 50 nodes and 60 flows, a full layout under 1 s, and a flow\'s
   assert.ok(best('label') < 1000, `a flow's label ${best('label')} ms`);
   console.log(`# P1 target 100 ms: a flow's label ${best('label')} ms; full layout ${best('full')} ms`);
 });
+
+test('audit 3: a comment with no label is named by the id it draws', () => {
+  const m = { schemaVersion: 2, nodes: [P('p', 'Take order', '1'), { id: 'note-on-p', type: 'uml.Comment' }], edges: [{ id: 'c', type: 'uml.CommentLink', from: 'note-on-p', to: 'p' }],
+    views: [{ id: 'v', diagram: 'dfd', nodeIds: ['p', 'note-on-p'] }] };
+  assert.equal(layout(m, 'v').nodes.find(x => x.id === 'note-on-p').aria, 'Comment: note-on-p');
+  assert.match(describe(m, 'v'), /Comment: note-on-p\./);
+});

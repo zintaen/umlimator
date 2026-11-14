@@ -26,7 +26,7 @@ const MMR_DEEP = 64; // levels below the root that are read as written; deeper h
 const MMR_SHAPES = [['((', '))', 'circle', 'a circle'], ['))', '((', 'bang', 'a bang'], ['{{', '}}', 'hexagon', 'a hexagon'],
   ['(', ')', 'rounded', 'a rounded rectangle'], [')', '(', 'cloud', 'a cloud'], ['[', ']', null]];
 const MMR_OPEN = new Map(MMR_SHAPES.filter(s => s[2]).map(s => [s[2], s]));
-const MMR_ENT = { quot: '"', lt: '<', gt: '>', amp: '&' };
+const MMR_ENT = new Map([['quot', '"'], ['lt', '<'], ['gt', '>'], ['amp', '&']]); // a Map: #constructor; is no entity
 const MMR_LEAD = /^(%%|:::|::icon\(|mindmap)/i; // a line that starts so is not a topic's name or bare text
 const mmrId = s => String(s).replace(/->+/g, '-'); // an id never holds "->" (model.md rule 5)
 const mmrClip = s => (s.length > 60 ? s.slice(0, 57) + '...' : s);
@@ -43,7 +43,7 @@ function mmrFree(used, next, base) { // the first of base, base-2, ... not in us
 // text as Mermaid shows it: <br> a line break, its entity codes read; one it does not know kept as written, reported
 function mmrText(s, bad) {
   return s.replace(/<br\s*\/?>/gi, '\n').replace(/#([a-z]+|\d+);/gi, (all, e) => {
-    const n = /^\d/.test(e) ? Number(e) : -1, c = n >= 0 ? (n <= 0x10ffff ? String.fromCodePoint(n) : undefined) : MMR_ENT[e.toLowerCase()];
+    const n = /^\d/.test(e) ? Number(e) : -1, c = n >= 0 ? (n <= 0x10ffff ? String.fromCodePoint(n) : undefined) : MMR_ENT.get(e.toLowerCase());
     if (c === undefined) bad(all);
     return c ?? all;
   });
@@ -271,7 +271,8 @@ function writeMermaidMindmap(model, viewId) {
   for (const n of shown.values()) if (!done.has(n.id)) lose(n.id, 'in a cycle of parents, so no root holds it');
   for (const e of arr(m.edges)) if (isObj(e) && (shown.has(e.from) || shown.has(e.to))) notWritten.push(`${flat(e.id)} (${flat(e.type)}): a mindmap has no lines`);
   for (const x of notWritten) out.push(`%% not written: ${x}`);
-  return out.join('\n') + '\n';
+  const t = out.join('\n') + '\n'; // over the reader's limit, it cannot be read again, and says so in its last line
+  return t.length > MMR_LIMIT ? t + `%% not written: text the reader reads back: this is ${t.length} characters, over its limit of ${MMR_LIMIT}\n` : t;
 }
 
 export { readMermaidMindmap, writeMermaidMindmap };

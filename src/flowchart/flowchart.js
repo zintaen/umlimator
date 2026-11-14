@@ -91,13 +91,13 @@ function fcIndex(model, view) {
   return { N, E, path, ids, lines, flows, ins, outs, starts, ends, walk, reached };
 }
 const fcName = x => String(x.label ?? x.id);
-const fcCalled = x => (x ? (FC_TXT(x.label) || fcLook(x)[1].toLowerCase()) : '?');
+const fcCalled = x => (x ? (FC_TXT(fcName(x)) || fcLook(x)[1].toLowerCase()) : '?');
 const fcPlural = (k, w) => `${k} ${k === 1 ? w : w + 's'}`;
 
 // accessible names (A1): "Decision Fit for resale?, exits yes to Refund the payment, no to Rejection letter"; "Terminator Return closed, an end"
 function fcNodeName(I, x) {
   if (x.type === 'uml.Comment') return 'Comment: ' + fcName(x);
-  const [, word] = fcLook(x), head = FC_TXT(x.label) ? `${word} ${FC_TXT(x.label)}` : word, o = I.outs(x.id);
+  const [, word] = fcLook(x), head = fcSaid({ label: fcName(x) }, word), o = I.outs(x.id);
   if (x.type === 'flow.Decision') return `${head}, ${o.length ? 'exits ' + o.map(e => `${FC_TXT(e.label) ? FC_TXT(e.label) + ' ' : ''}to ${fcCalled(I.N.get(e.to))}`).join(', ') : 'no exits'}`;
   if (x.type === 'flow.Terminator') return `${head}, ${I.starts.includes(x.id) ? 'a start' : I.ends.includes(x.id) ? 'an end' : 'flows in and out'}`;
   return head;

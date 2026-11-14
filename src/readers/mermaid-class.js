@@ -234,7 +234,9 @@ function readMermaidClass(text) {
   };
   const where = () => { for (let k = stack.length - 1; k >= 0; k--) if (stack[k].kind === 'package') return stack[k]; return null; };
   const annotate = (rec, s) => { const e = s.indexOf('>>', 2); rec.anns.push((e < 0 ? s.slice(2) : s.slice(2, e)).trim()); return e < 0 ? s.length : e + 2; };
-  const member = (rec, s, no) => { if (s.trim()) rec.raw.push({ text: s, line: no, hint: hint.id }); };
+  const take = k => { const h = hint[k]; delete hint[k]; return h; }; // a hint its line uses; one left is said where it is dropped
+  const drop = no => { for (const k in hint) say(no, 'skipped', `%% ${k === 'id' ? 'id' : 'link-id'}: ${hint[k]} is above a line that takes none: not read`); hint = {}; };
+  const member = (rec, s, no) => { if (s.trim()) rec.raw.push({ text: s, line: no, hint: take('id') }); };
 
   for (; i < lines.length; i++) {
     const no = i + 1, s = lines[i].trim();
@@ -270,7 +272,7 @@ function readMermaidClass(text) {
       else say(no, 'skipped', `direction ${d}: not a direction`);
     } else if (word === 'class') {
       const n = mcName(s, mcSkip(s, 5));
-      if (!n) { say(no, 'skipped', 'a class with no name'); hint = {}; continue; }
+      if (!n) { say(no, 'skipped', 'a class with no name'); drop(no); continue; }
       const rec = cls(n[0], no), pkg = where();
       if (pkg) rec.pkg = pkg;
       let k = n[1], rest = '';
@@ -299,7 +301,7 @@ function readMermaidClass(text) {
       if (rest) say(no, 'skipped', `class ${n[0]}: "${rest}" is not read`);
     } else if (word === 'namespace') {
       const n = mcName(s, mcSkip(s, 9), true);
-      if (!n) { say(no, 'skipped', 'a namespace with no name'); hint = {}; continue; }
+      if (!n) { say(no, 'skipped', 'a namespace with no name'); drop(no); continue; }
       let k = mcSkip(s, n[1]), label;
       if (s.startsWith('["', k)) { const q = mcQuoted(s, k + 1); if (q && s[q[1]] === ']') { label = mcText(q[0]); k = mcSkip(s, q[1] + 1); } }
       let segs = n[2] ? [n[0]] : n[0].split('.');
@@ -326,7 +328,7 @@ function readMermaidClass(text) {
       if (!q) say(no, 'skipped', 'a note with no "text"');
       else {
         if (where()) say(no, 'approximated', `a note in namespace ${where().name} is read outside it`);
-        const rec = { kind: 'note', node: { type: 'uml.Comment', label: mcText(q[0]) }, target, hint: hint.id, linkHint: hint.link };
+        const rec = { kind: 'note', node: { type: 'uml.Comment', label: mcText(q[0]) }, target, hint: take('id'), linkHint: take('link'), no };
         notes.push(rec); order.push(rec);
       }
     } else if (s.startsWith('<<')) {
@@ -339,13 +341,13 @@ function readMermaidClass(text) {
       if (word.startsWith('accDescr') && s.includes('{') && !s.includes('}')) block = true;
     } else {
       const r = mcRelation(s);
-      if (r) { relations.push({ ...r, no, hint: hint.id, from: cls(r.a, no), to: cls(r.b, no) }); hint = {}; continue; }
+      if (r) { relations.push({ ...r, no, hint: take('id'), from: cls(r.a, no), to: cls(r.b, no) }); drop(no); continue; }
       const n = mcName(s, 0), k = n ? mcSkip(s, n[1]) : -1;
       if (n && s[k] === ':') member(cls(n[0], no), s.slice(k + 1), no);
       else if (n && k >= s.length) cls(n[0], no);
       else say(no, 'skipped', `"${s.length > 60 ? s.slice(0, 57) + '...' : s}" is not understood`);
     }
-    hint = {};
+    drop(no);
   }
   if (!started) { say(1, 'skipped', 'not a Mermaid classDiagram: nothing read'); return empty(); }
   for (const open of stack) say(lines.length, 'approximated', `${open.kind === 'class' ? 'class ' + open.rec.name : 'namespace ' + open.name} is never closed: read to the end`);
@@ -354,6 +356,11 @@ function readMermaidClass(text) {
   // namespace's name (inside another parent) or a name the id rule changes (no "->") is made unique, each reported. Later
   // members, relations and notes, in the order they come, made unique
   const used = new Set(), next = new Map(), uniq = name => { const id = mcFree(used, next, mcId(name)); used.add(id); return id; };
+  const hinted = (h, base, no, what) => { // a %% id: that is taken or holds "->" is said, as the state reader says it
+    const id = uniq(h ?? base);
+    if (h != null && id !== h) say(no, 'approximated', mcId(h) === h ? `%% id: ${h} is taken, so ${what} is ${id}` : `%% id: ${h}: an id holds no "->", so ${what} is ${id}`);
+    return id;
+  };
   const named = [...classes.values(), ...packages];
   for (const rec of named) if (mcId(rec.name) === rec.name && !used.has(rec.name)) { rec.node.id = rec.name; used.add(rec.name); }
   for (const rec of named) if (rec.node.id === undefined) {
@@ -408,7 +415,7 @@ function readMermaidClass(text) {
     label = mcText(label);
     if (stereotypes.length) e.props = { ...e.props, stereotypes };
     if (label) e.label = label;
-    edges.push({ e, hint: r.hint, at, what });
+    edges.push({ e, hint: r.hint, at, no: r.no, what });
   }
 
   // finish the classes: their type from the annotations, then their members
@@ -441,14 +448,14 @@ function readMermaidClass(text) {
       if (seen.has(key)) { say(r.line, 'skipped', `${rec.node.id}.${x.label}: ${rec.node.id} has a member ${key} already`); continue; }
       seen.add(key);
       if (x.props && !Object.keys(x.props).length) delete x.props;
-      members.push({ id: uniq(r.hint ?? `${rec.node.id}.${x.label}`), ...x });
+      members.push({ id: hinted(r.hint, `${rec.node.id}.${x.label}`, r.line, `${rec.node.id}.${x.label}`), ...x });
     }
     if (members.length) rec.node.members = members;
   }
-  const out = edges.map(({ e, hint }) => ({ id: uniq(hint ?? `${e.from}-${e.to}`), ...e }));
+  const out = edges.map(({ e, hint, no, what }) => ({ id: hinted(hint, `${e.from}-${e.to}`, no, what), ...e }));
   notes.forEach((rec, k) => {
-    rec.node = { id: uniq(rec.hint ?? `note-${k + 1}`), ...rec.node };
-    if (rec.target) out.push({ id: uniq(rec.linkHint ?? `${rec.node.id}-link`), type: 'uml.CommentLink', from: rec.node.id, to: rec.target.node.id });
+    rec.node = { id: hinted(rec.hint, `note-${k + 1}`, rec.no, `note ${k + 1}`), ...rec.node };
+    if (rec.target) out.push({ id: hinted(rec.linkHint, `${rec.node.id}-link`, rec.no, `note ${k + 1}'s link`), type: 'uml.CommentLink', from: rec.node.id, to: rec.target.node.id });
   });
 
   const nodes = order.map(x => x.node), view = { id: viewId || MC_VIEW, diagram: 'uml.class', ...(title ? { title } : {}), ...(direction === 'down' ? { direction } : {}), nodeIds: nodes.map(n => n.id) };
@@ -517,6 +524,7 @@ function writeMermaidClass(model, viewId) {
   const heads = new Map(); // a class's annotations and member rows
   for (const n of tree) if (!isPkg(n)) {
     const rows = [], np = isObj(n.props) ? n.props : {};
+    if (!has(n.label)) lose(n.id, 'no label, read as its name');
     const anns = [...(KIND[n.type] ? [KIND[n.type]] : []), ...(np.isAbstract ? ['abstract'] : []), ...arr(np.stereotypes).filter(s => {
       const k = String(s).toLowerCase(), ok = !nl(s) && !String(s).includes('>>') && k !== 'abstract' && !(k in MC_TYPES); // one the reader reads back as itself
       if (!ok) lose(n.id, `stereotype ${s}`);
@@ -621,9 +629,10 @@ function writeMermaidClass(model, viewId) {
   for (const [hint, text] of relations) out.push(...(hint ? [`  %% id: ${hint}`] : []), `  ${text}`);
   for (const [hint, link, text] of noteLines) out.push(...(hint ? [`  %% id: ${hint}`] : []), ...(link ? [`  %% link-id: ${link}`] : []), `  ${text}`);
   for (const x of notWritten) out.push(`  %% not written: ${x}`);
-  // unindented when indented text would be over the reader's own limit, so what the reader read can be read again
-  const text = out.join('\n') + '\n';
-  return text.length > MC_LIMIT ? text.replace(/^[ \t]+/gm, '') : text;
+  // unindented when indented text would be over the reader's own limit; text still over it (long ids, a state or class
+  // declared again) cannot be read again, and says so in its last line
+  const text = out.join('\n') + '\n', t = text.length > MC_LIMIT ? text.replace(/^[ \t]+/gm, '') : text;
+  return t.length > MC_LIMIT ? t + `%% not written: text the reader reads back: this is ${t.length} characters, over its limit of ${MC_LIMIT}\n` : t;
 }
 
 export { readMermaidClass, writeMermaidClass };

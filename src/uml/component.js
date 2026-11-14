@@ -183,7 +183,7 @@ function cpGeo({ model, view, pos: pins, memo }) {
     const s = SHAPE[d.shape].size(d), f = CP_OWN(fit, id); return { ...d, w: Math.max(s.w, f ? f.w : 0), h: d.shape === 'ball' ? 16 : Math.max(s.h, f ? f.h : 0) }; });
   // a box whose ports have lines, or that holds one that does, takes 48 px of padding (§7)
   const lined = new Set(shownPorts.filter(({ p }) => ends(p.id).length).map(x => x.owner));
-  const pad = new Set(pic.ids.filter(x => pic.open.has(x) && lined.has(x)).flatMap(x => [x, ...pic.chain(x)])); // a lined box and every box around it
+  const pad = new Set(); lined.forEach(x => { if (pic.open.has(x)) for (const p of [x, ...pic.chain(x)]) { if (pad.has(p)) break; pad.add(p); } }); // marked up once: nesting to any depth
   const boxes = pic.boxes.map(b => ({ ...b, ...(pad.has(b.id) ? { pad: 48 } : {}) }));
   const ball = (l, w) => { const me = w === 'from' ? l.f : l.t, o = w === 'from' ? l.t : l.f; if (me.port || !cpBall(I, view, me.at)) return {};
     const a = P(me.at) || [0, 0], b = P(o.at) || [0, 0]; // a ball's line on its left or right by the rank ([col, row] holds it first either way) (§9.2); laid out down, a line from
@@ -286,6 +286,7 @@ function cpAdd(model, view, entry, label, at) {
 // the panel's member rows on a component: a port, `name` or `name : Type` (§12.1). A class has no rows here (member.holds): its ports come from the palette
 function cpMember(model, view, owner, id, text) {
   const I = cpIndex(model); if ((I.N.get(owner) || {}).type !== 'uml.Component') return null;
+  if (id != null && !I.P.has(id)) return null; // an operation or attribute row: member.edit's (memberEdit)
   const r = cpPortText(text); if (r.error) return r;
   if (id == null) return [{ op: 'add', element: { id: cpNewId(model, 'port'), type: 'uml.Port', label: r.label, ...(r.valueType ? { props: { valueType: r.valueType } } : {}) }, owner }];
   return [{ op: 'set', id, path: 'label', value: r.label }, { op: 'set', id, path: 'props.valueType', value: r.valueType }];

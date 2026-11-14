@@ -30,6 +30,7 @@ FORMATS = ["structurizr", "plantuml", "mermaid", "compose", "kubernetes"]
 NODE_FORMATS = ["structurizr-json", "dbml"]  # read typed by the module's readers, in Node (umlimator.py import)
 LIMIT = 1 << 20  # bytes: a Structurizr JSON or .dbml file over it is refused before it is parsed (notes/milestone-2.md §8); a
 # Structurizr DSL, C4-PlantUML or Mermaid text over it (in characters) is not read
+DEEP = 64  # elements nested deeper are read flat from there, so an id (the dotted path) stays short (the module's SZ_DEEP, R2)
 FLOWS = 100000  # a flowchart's links at most: a & b --> c & d is a product (the module's MF_FLOWS)
 EXT = {".dbml": "dbml", ".dsl": "structurizr", ".puml": "plantuml", ".plantuml": "plantuml", ".pu": "plantuml", ".iuml": "plantuml",
        ".mmd": "mermaid", ".mermaid": "mermaid", ".bpmn": "bpmn"}  # bpmn: XML the module's adapter reads (umlimator.py import)
@@ -153,9 +154,13 @@ def detect(path, text):
             return "kubernetes"
     if text.lstrip()[:1] == "<" and "http://www.omg.org/spec/BPMN/20100524/MODEL" in text[:4096]:
         return "bpmn"
-    if re.search(r"^\s*@startuml", text, re.M):
+    if re.search(r"^[^\S\n]*@startuml", text, re.M):  # not \s*: from every line it would run over the blank ones after it
         return "plantuml"
-    body = re.sub(r"/\*.*?\*/", "", front(text)[1], flags=re.S)
+    body, i, parts = front(text)[1], 0, []  # /* ... */ cut by one scan (a lazy .*? rescanned to the end from each unclosed /*)
+    while (j := body.find("/*", i)) >= 0 and (k := body.find("*/", j + 2)) >= 0:
+        parts.append(body[i:j])
+        i = k + 2
+    body = "".join(parts) + body[i:]
     first = next((s for s in (l.strip() for l in body.splitlines()) if s and not s.startswith(("%%", "//", "#", "'"))), "")
     if MERMAID.match(first):
         return "mermaid"
@@ -217,8 +222,8 @@ SZ_SHAPE = {"box": "box", "roundedbox": "box", "person": "person", "robot": "rob
 
 def structurizr(text, name):
     m = Model(name)
-    els, ref, path, rels, specs, stack, groups, styles = {}, {}, {}, [], [], [], [], []
-    implied, comment, opened = "any", 0, []  # comment: the line a /* ... */ opened on; opened: each open block's line and text
+    els, ref, path, rels, specs, stack, groups, styles, depth = {}, {}, {}, [], [], [], [], [], {}
+    implied, comment, opened, flat = "any", 0, [], False  # comment: the line a /* ... */ opened on; opened: each open block's line and text
     for no, raw in enumerate(text.splitlines(), 1):
         s = raw.strip()
         if comment or s.startswith("/*"):
@@ -265,8 +270,12 @@ def structurizr(text, name):
             e, r = element(toks), relationship(toks, at if where == "el" else None)
             if e:
                 alias, typ, nm, desc, tech, tags = e
+                if depth.get(parent, 0) >= DEEP:  # beside its holder, said once
+                    flat or m.say(no, f"{nm} is nested over {DEEP} deep: it and what it holds are read flat from there")
+                    flat, parent = True, els[parent]["parent"]
                 full = f"{path[parent]}.{alias}" if alias and parent in path else alias
                 cid = m.uniq(*[h for h in (alias and ident(alias), full and ident(full.replace(".", "-")), ident(nm)) if h])
+                depth[cid] = depth.get(parent, 0) + 1
                 els[cid] = {"type": typ, "name": nm, "desc": desc, "tech": tech, "tags": tags, "parent": parent, "group": grp}
                 if alias:
                     path[cid] = full
@@ -333,9 +342,10 @@ def structurizr(text, name):
         elif eid := m.line(a, b, r["desc"], r["tech"], where=r["line"], loop=els[b]["type"] == "person"):
             lines.append((a, b, eid, r))
     if not specs:  # no views to follow: the landscape, then a view per system with containers and per container with components
+        holders = {e["parent"] for e in els.values()}
         specs = [{"type": "systemlandscape", "scope": None, "include": [], "exclude": [], "line": None}] + [
             {"type": "container" if e["type"] == "softwaresystem" else "component", "scope": c, "include": [], "exclude": [], "line": None}
-            for c, e in els.items() if any(x["parent"] == c for x in els.values())]
+            for c, e in els.items() if c in holders]
     views(m, els, lines, specs, find, implied, groups)
     return m
 
@@ -606,7 +616,7 @@ SHAPES = [("(((", ")))"), ("([", "])"), ("[[", "]]"), ("[(", ")]"), ("((", "))")
           ("[\\", "\\]"), ("[\\", "/]"), ("[", "]"), ("(", ")"), ("{", "}"), (">", "]")]
 NODE = re.compile(r"\s*([\w$]+(?:[.-][\w$]+)*)")
 LINK = re.compile(r"""\s*(?:(?P<plain>[<ox]?(?:-{2,}[->ox]|={2,}[=>ox]|-?\.+-[>ox]?|~{3,}))
-                     |(?P<open>[<ox]?(?:--|==|-\.))(?P<text>[^|]+?)(?P<close>-{2,}[->ox]|={2,}[=>ox]|\.+-[>ox]?))
+                     |(?P<open>[<ox]?(?:--|==|-\.))(?P<text>[^|]+?)(?P<close>-{2,}[->ox]|={2,}[=>ox]|(?<!\.)\.+-[>ox]?))
                      \s*(?:\|(?P<pipe>[^|]*)\|)?""", re.X)
 FLOW_QUIET = re.compile(r"(classDef|class|style|linkStyle|click|direction|accTitle|accDescr)\b")
 
@@ -662,8 +672,9 @@ def statement(s):
 def flowchart(lines, m):
     nodes, subs, boxes, claimed, links = {}, [], [], {}, []
     for no, line in lines:
-        for s in (x.strip() for x in re.split(r';(?=(?:[^"]*"[^"]*")*[^"]*$)', line)):
-            g = re.match(r'subgraph\s+(?:([^\s\["]+)\s*\[\s*(.*?)\s*\]|"(.+)"|(\S+)$|(.+))', s)
+        # statements: split at each ; outside quotes, in one scan (a lookahead per ; rescanned the line); no \s* beside the label (R2)
+        for s in (x.strip() for x in re.findall(r'(?:"[^"]*"?|[^;"])*', line)):
+            g = re.match(r'subgraph\s+(?:([^\s\["]+)\s*\[([^\]]*)\]|"(.+)"|(\S+)$|(.+))', s)
             if g:
                 label = text(g.group(2) or g.group(3) or g.group(4) or g.group(5))
                 subs.append({"id": ident(g.group(1) or g.group(4) or label), "label": clip(label, 40), "seen": [], "line": no,

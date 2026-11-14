@@ -277,3 +277,11 @@ test('an include chain 20,000 long is walked without recursion; a cycle at its e
   m.edges.push({ id: 'back', type: 'uml.Include', from: ids[n - 1], to: ids[n - 2] });
   assert.deepEqual(validate(m).filter(p => p.rule === 'include-cycle').map(p => p.ids), [[ids[n - 2], ids[n - 1], 'back']]);
 });
+
+test('describe() of packages nested 6,000 deep reads them with a stack, not recursion (audit 3)', () => {
+  const N = 6000, nodes = Array.from({ length: N }, (_, i) => ({ id: 'p' + i, type: 'uml.Package', label: 'P' + i, ...(i ? { parent: 'p' + (i - 1) } : {}) }));
+  nodes.push({ id: 'u', type: 'uml.UseCase', label: 'Buy', parent: 'p' + (N - 1) }, { id: 'a', type: 'uml.Actor', label: 'Shopper' });
+  const d = describe({ schemaVersion: 2, nodes, edges: [{ id: 'e', type: 'uml.Association', from: 'a', to: 'u' }], views: [{ id: 'v', diagram: 'uml.use-case', nodeIds: nodes.map(n => n.id) }] }, 'v').split('\n');
+  assert.ok(d[1].startsWith('Actor Shopper'), d[1]);
+  assert.equal(d.length, N + 4);
+});
