@@ -63,8 +63,11 @@ function typedProblems(model) {
   parents.forEach(([x, at]) => { const k = kindOf.get(x.parent);
     if (!['node', 'member', 'fragment'].includes(k)) err(at + '.parent', `parent ${name(x.parent)} is not ${k ? 'an owner: it is ' + (k === 'edge' ? 'an edge' : 'a timing item') : 'an element'}`);
     else if (where.get(x.id) === at) { parentOf.set(x.id, x.parent); written.add(x.id); } });
-  for (const id of written) { const seen = new Set([id]);
-    for (let p = parentOf.get(id); p != null; p = parentOf.get(p)) { if (seen.has(p)) { if (p === id) err(where.get(id) + '.parent', `"${id}" ends up inside itself`); break; } seen.add(p); } }
+  const walked = new Map(), loop = new Set(); // linear: a walk stops where one went before, a cycle if this one
+  for (const id of written) { let p = id;
+    for (; p != null && !walked.has(p); p = parentOf.get(p)) walked.set(p, id);
+    if (walked.get(p) === id) for (; !loop.has(p); p = parentOf.get(p)) loop.add(p); }
+  for (const id of written) if (loop.has(id)) err(where.get(id) + '.parent', `"${id}" ends up inside itself`);
   // a typed edge's ends: a node, a member or a box; a part named on an end is an element
   const ends = (e, at, viewBoxes) => {
     ['from', 'to'].forEach(k => { if (!has(e[k]) && !viewBoxes.has(e[k])) err(`${at}.${k}`, `${name(e[k])} is not an element or a box`);
