@@ -66,6 +66,9 @@ Layout limits, with port repair and rerouting off (`repair: false`, `reroute: fa
 A picture made where no pack was fetched, or with `UMLIMATOR_NO_PACKS=1` (every page and still this project publishes),
 carries glyphs and full names only.
 
+The pin (0.26.0): Google's `core-products-icons.zip` and `category-icons.zip`, 45 icons (19 products, 26 categories). Ids
+the pin lacks (`Cloud-DNS`, `Cloud-Load-Balancing`, `Cloud-CDN`, `Pub-Sub` in the Bookshop example) draw a glyph.
+
 ## Accessibility
 
 Every piece has a name: "Product Shop API, Cloud Run"; "Region europe-west1, holding 3 elements"; a card drawn

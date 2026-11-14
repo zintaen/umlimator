@@ -627,8 +627,8 @@ never downloads on its own. You fetch a pack yourself, once, with `umlimator.py 
   label, as `pack list` prints them) is the yes: it prints the terms too and is recorded as given by flag. An agent shows
   you the terms and passes the flag only on your yes; the MCP server offers neither. A new label asks again.
 - **Pinned.** Each zip comes from its vendor's own address, pinned in `icons/packs.json` by size and SHA-256; a file
-  that differs is not kept. Azure's `Microsoft_Terms_of_Use.pdf` is checked against its pinned hash too. A pack whose
-  zips a release has not pinned yet is refused ("not pinned in this release").
+  that differs is not kept. Azure's `Microsoft_Terms_of_Use.pdf` is checked against its pinned hash too. All three packs
+  are pinned in 0.26.0; a vendor that changes its file without a version waits for a later release's re-pin.
 - **Cached for you only.** A fetched pack lives in `<icon cache>/packs/` (`~/.cache/umlimator/icons`, or
   `$UMLIMATOR_ICON_CACHE`). A render reads it and copies the icons it draws into the page, as it does a logo, and never
   downloads a pack; with none fetched the cards draw a glyph and one line says how to fetch it. `UMLIMATOR_NO_PACKS=1`

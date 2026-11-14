@@ -4168,8 +4168,8 @@ logo rows below, the three examples moved below, and the Bookshop atlas, which g
   `accepted.json`; members read in memory, never extracted. A render reads a fetched pack into the page's `icons` table
   (`<pack>/<id>`: `{ src, dark, name }`, and Google's `gcp/`: `{ legal }`), never downloads one, and says once per pack
   how to fetch it; `UMLIMATOR_NO_PACKS=1` draws glyphs whatever the cache holds. `check` names an icon id a pack lacks
-  with its three nearest ids. The packs' zips are not yet pinned (`sha256: null`): `pack fetch` refuses them until the
-  maintainer pins each from the vendor's page in a release. CI tests every path on a synthetic pack it builds
+  with its three nearest ids. Google's two zips and Azure's V25 zip (with its
+  `Microsoft_Terms_of_Use.pdf`) are pinned, as AWS's is, so `pack fetch` works for all three clouds. CI tests every path on a synthetic pack it builds
   (`tests/packs.py`) and never contacts a vendor.
 - **The mindmap, `mindmap` (4a.4, #281).** Topics as rounded boxes (the root 15 px, the rest 13 px, four lines of 200
   px), laid out by `layoutTree`, branches as curves in the map's kind palette, 2.5 px from the root and 1.5 px below.
@@ -4238,8 +4238,8 @@ What moves for a host that upgrades from 0.25.0:
   The atlas's stills and PDF on the site change: it holds 36 views, the opening plan in its views list.
 - **Decisions:** every recommendation of the note's §14; the choices each package took under the maintainer's standing
   approval (14 Nov 2026) are in the note's "As built" sections (§2.4, §3, §4.1, §5.7, §6.3, §7.3, §8.4, §10).
-- **Known gaps:** the packs' zips are not pinned yet, so `pack fetch` refuses both packs until a release pins them (the
-  maintainer's download, §4.1); a line from or to a cloud group is not drawn by the canvas's handle or L (written in the
+- **Known gaps:** Google's zips hold 45 icons (19 products, 26 categories), so `Cloud-DNS`, `Cloud-Load-Balancing`,
+  `Cloud-CDN` and `Pub-Sub` draw a glyph; Azure's V25 has no plain Entra ID icon; a line from or to a cloud group is not drawn by the canvas's handle or L (written in the
   model); an `update()` that changes only the `icons` table keeps the view's picture; no insertion bar while a mindmap
   topic is dragged; a view's `nodeIds` loses a deleted chain's ids one `splice` each (a 20,000-topic delete meets 100 ms
   only where they sit together, §2.4).
