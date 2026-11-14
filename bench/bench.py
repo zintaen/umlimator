@@ -41,7 +41,7 @@ def page_of(model, tmp):
 
 def run_view(binary, page, view, runs, optimize, timeout):
     """One page load that times one view; None on a timeout."""
-    url = page.as_uri() + f"#bench=1&views={urllib.parse.quote(view, safe='')}&runs={runs}" + ("&optimize=1" if optimize else "")  # a + in a hash reads as a space
+    url = page.as_uri() + f"#bench=1&views={urllib.parse.quote(urllib.parse.quote(view, safe=''), safe='')}&runs={runs}" + ("&optimize=1" if optimize else "")  # a + in a hash reads as a space
     # no --virtual-time-budget: it virtualises the page's clock, and the bench runs before the load event anyway
     dom = visual.chrome(binary, "--dump-dom", url, done=lambda t: "</html>" in t, timeout=timeout)
     m = PRE.search(dom)

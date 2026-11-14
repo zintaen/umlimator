@@ -57,10 +57,23 @@ def not_objects(d):
     lst = lambda x: x if isinstance(x, list) else []
     out = [f"{k} is not a list" for k in ("nodes", "edges", "views") if k in d and not isinstance(d[k], list)]
     out += [f"{k}[{i}] is not an object" for k in ("nodes", "edges", "views") for i, x in enumerate(lst(d.get(k))) if not isinstance(x, dict)]
+    out += ["meta is not an object"] if "meta" in d and not isinstance(d["meta"], dict) else []
     for i, v in ((i, v) for i, v in enumerate(lst(d.get("views"))) if isinstance(v, dict)):
-        out += [f"views[{i}].nodes[{j}] is not an object" for j, n in enumerate(lst(v.get("nodes"))) if not isinstance(n, dict)]
+        out += [f"views[{i}].{k} is not a list" for k in ("nodes", "nodeIds", "edges", "containers", "stepIds", "browserOrder", "intake", "tour")
+                if k in v and not isinstance(v[k], list)]
+        out += [f"views[{i}].{k}[{j}] is not an object" for k in ("nodes", "containers", "intake") for j, n in enumerate(lst(v.get(k))) if not isinstance(n, dict)]
+        out += [f"views[{i}].containers[{j}].nodeIds is not a list" for j, c in enumerate(lst(v.get("containers")))
+                if isinstance(c, dict) and "nodeIds" in c and not isinstance(c["nodeIds"], list)]
         o = v.get("nodeOverrides")
+        out += [f"views[{i}].nodeOverrides is not an object"] if "nodeOverrides" in v and not isinstance(o, dict) else []
         out += [f"views[{i}].nodeOverrides.{k} is not an object" for k, x in (o.items() if isinstance(o, dict) else []) if not isinstance(x, dict)]
+    # a card's members, and theirs, at any depth (a stack, not recursion: a deep model never ends in a RecursionError)
+    todo = [(f"nodes[{i}]", n) for i, n in enumerate(lst(d.get("nodes"))) if isinstance(n, dict)]
+    while todo:
+        at, n = todo.pop()
+        if "members" in n and not isinstance(n["members"], list):
+            out.append(f"{at}.members is not a list")
+        todo += [(f"{at}.members[{j}]", x) for j, x in enumerate(lst(n.get("members"))) if isinstance(x, dict)]
     return out
 
 
@@ -557,9 +570,10 @@ def capped(md, most=60000):
 def flat(s, code=False):
     """A model's words (labels, view ids) for one Markdown line of the summary a bot posts: one line, read as written (no
     tag, emphasis or link of GitHub's: List<Order> stays whole), and no backtick that opens a code block. In a code span
-    (`code`) only the line: a code span shows an escape as it is."""
+    (`code`) only the line: a code span shows an escape as it is. An @ is followed by a word joiner, so a label such as
+    @Transactional or "calls @ops" mentions (notifies) no one."""
     s = re.sub(r"\s*[\r\n]+\s*", " ", str(s))
-    return s if code else re.sub(r"([\\`*_\[\]~|])", r"\\\1", html.escape(s, quote=False))
+    return s if code else re.sub(r"([\\`*_\[\]~|])", r"\\\1", html.escape(s, quote=False)).replace("@", "@\u2060")
 
 
 MARKS = {"added": "#1a7f37", "changed": "#9a6700", "removed": "#cf222e"}
@@ -760,8 +774,9 @@ def pick(page, spec):
 
 
 def fragment(views):
-    """View ids for the page's link, each encoded: an id may hold & + % # (the page reads them with URLSearchParams)."""
-    return ",".join(urllib.parse.quote(v, safe="") for v in views)
+    """View ids for the page's link, each encoded twice: an id may hold & + % # and a comma. URLSearchParams decodes the
+    value once, the page splits it on ',' and decodes each id again, so a comma in an id is never a separator."""
+    return ",".join(urllib.parse.quote(urllib.parse.quote(v, safe=""), safe="") for v in views)
 
 
 def still_keys(page, opts):
