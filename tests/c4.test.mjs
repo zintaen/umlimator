@@ -86,7 +86,8 @@ test('the element (§7.5): the shape props.shape names (a person by default, els
 });
 
 test('23-c4.json\'s static views draw: people and boxes, external grey, the subject a dashed boundary; laid out right and down with no overlap, no line through a node, ends on outlines; the crossings pinned', () => {
-  const pinned = { 'c4-context right': [], 'c4-context down': [], 'c4-containers right': ['3 cross'], 'c4-containers down': ['3 cross'], 'c4-components right': ['2 cross'], 'c4-components down': ['2 cross'] }, got = {};
+  const pinned = { 'c4-context right': [], 'c4-context down': [], 'c4-containers right': ['3 cross'], 'c4-containers down': ['3 cross', '8 label on a line'], // five labels left off with nothing said, laid out down: now drawn (audit 6)
+    'c4-components right': ['2 cross'], 'c4-components down': ['2 cross'] }, got = {};
   for (const vid of STATIC) for (const direction of ['right', 'down']) {
     const m = withDir(C4, vid, direction), [g, warned] = said(() => layout(m, vid)), tag = `${vid} ${direction}`;
     assert.deepEqual(warned.filter(w => !/is not drawn by this release/.test(w)), [], `${tag}: every line routed`);

@@ -96,8 +96,16 @@ function spreadPorts({ n, side, ends }, turned) {
   const per = (x, r) => Array.isArray(r) ? r[x.from ? 0 : 1] : r, least = x => { const m = per(x, x.e.portMin); return Number.isFinite(m) ? m : 0; };
   const rank = x => per(x, x.e.portRank) ?? 1e9, byFar = (a, b) => far(a) - far(b), groups = [];
   ends.forEach(x => { const g = x.port != null && groups.find(o => o.port === x.port); if (g) g.ends.push(x); else groups.push({ port: x.port, ends: [x] }); });
-  groups.forEach(g => { g.faces = [g.ends.filter(x => !x.inner).sort(byFar), g.ends.filter(x => x.inner).sort(byFar)];
-    g.at = g.ends.reduce((a, x) => a + far(x), 0) / g.ends.length; g.need = g.port == null ? 2 : 2 + 10 * Math.max(...g.faces.map(f => f.length));
+  // three or more named lines inward from one port (a composite's delegations) sit 28 px apart, so each one's label keeps clear of
+  // the next line: 10 px apart, the first one's label shut the second out of the gap between the parts, and it went round and crossed (audit 6)
+  const pitch = f => f.filter(x => x.inner && x.e.label).length > 2 ? 28 : 10;
+  // of those, two whose far ends are level (a part behind a part): the one farther off goes round the nearer one's part, so it
+  // takes the outer place, the first on the low side of the lines' middle, the last on the high side
+  const deep = x => v ? Math.abs(x.other.x + x.other.w / 2 - n.x) : Math.abs(x.other.y + x.other.h / 2 - n.y);
+  const named = f => { if (pitch(f) === 10) return f; const mid = f.reduce((a, x) => a + far(x), 0) / f.length;
+    return f.sort((a, b) => far(a) - far(b) || (far(a) <= mid ? deep(b) - deep(a) : deep(a) - deep(b))); };
+  groups.forEach(g => { g.faces = [g.ends.filter(x => !x.inner).sort(byFar), named(g.ends.filter(x => x.inner).sort(byFar))];
+    g.at = g.ends.reduce((a, x) => a + far(x), 0) / g.ends.length; g.need = g.port == null ? 2 : 2 + Math.max(...g.faces.map(f => pitch(f) * f.length));
     g.L = g.port == null ? 2 : Math.max(g.need, ...g.ends.map(least)); });
   groups.sort((a, b) => a.at - b.at || rank(a.ends[0]) - rank(b.ends[0]));
   let lo = a0 + 8, hi = a0 + len - 8;
@@ -109,7 +117,7 @@ function spreadPorts({ n, side, ends }, turned) {
   const B = side === 'L' ? n.x : side === 'R' ? n.x + n.w : side === 'T' ? n.y : n.y + n.h;
   let s = (lo + hi - sum - gap * k) / 2;
   groups.forEach(g => { const box = v ? { x: B - 6, y: s, w: 12, h: g.L } : { x: s, y: B - 6, w: g.L, h: 12 };
-    g.faces.forEach(face => face.forEach((x, j) => { const c = g.port == null ? s + 1 : s + (g.L - g.need) / 2 + 6 + 10 * j;
+    g.faces.forEach(face => face.forEach((x, j) => { const c = g.port == null ? s + 1 : s + (g.L - g.need) / 2 + 6 + pitch(face) * j;
       x.e[x.from ? 'p1' : 'p2'] = v ? [B, c] : [c, B]; if (g.port != null) x.e[x.from ? 'fpb' : 'tpb'] = { ...box }; }));
     s += g.L + gap; });
 }

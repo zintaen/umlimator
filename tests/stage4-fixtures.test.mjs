@@ -66,7 +66,8 @@ function clean(m, vid) {
 
 // what check() finds on each view, laid out right and down: [crossings, other findings]. Port repair is off for the four
 // types (§17): two lines that cross next to a shared side keep their ports. The other findings are on generated views
-// (two lines between one pair, a guard beside the next decision's line) and one region's border (stated in the notes)
+// (two lines between one pair, a guard beside the next decision's line) and one region's border (stated in the notes), and,
+// laid out down, labels that found no spot and were left off with nothing said: drawn on a looser spot now (audit 6)
 const PINNED = {
   'usecase-minimal': { v: { right: [0, []], down: [0, []] } },
   'usecase-stress': { 'edge-cases': { right: [1, []], down: [1, []] },
@@ -74,8 +75,8 @@ const PINNED = {
   'activity-minimal': { v: { right: [0, []], down: [0, []] } },
   'activity-stress': { 'edge-cases': { right: [1, []], down: [1, []] }, 'ec-take-payment': { right: [0, []], down: [0, []] }, all: { right: [9, []], down: [14, []] } },
   'state-minimal': { v: { right: [0, []], down: [0, []] } },
-  'state-stress': { 'edge-cases': { right: [0, []], down: [1, ['view edge-cases: edge ec-fork→Capturing payment runs along the border of family "Parcel"', 'view edge-cases: edge ec-fork→Capturing payment runs along the border of family "Payment"']] },
-    all: { right: [19, []], down: [26, []] } },
+  'state-stress': { 'edge-cases': { right: [0, []], down: [1, ['view edge-cases: edge ec-fork→Capturing payment runs along the border of family "Parcel"', 'view edge-cases: edge ec-fork→Capturing payment runs along the border of family "Payment"', 'view edge-cases: label "capture failed after the provider timed out t…" sits on the border of family "Payment"']] },
+    all: { right: [19, []], down: [26, ['view all: label "evt [x > 0] / act" lies on edge State 40→State 2', 'view all: label "evt [x > 0] / act" lies on edge State 40→State 22', 'view all: label "evt [x > 0] / act" lies on edge State 42→State 10', 'view all: label "evt [x > 0] / act" lies on edge State 16→State 42', 'view all: label "evt [x > 0] / act" lies on edge State 42→State 30', 'view all: label "evt [x > 0] / act" lies on edge State 42→State 11']] } },
   'overview-minimal': { v: { right: [0, []], down: [0, []] } },
   'overview-stress': { 'edge-cases': { right: [0, []], down: [1, []] },
     all: { right: [0, []], down: [3, ['view all: label "[in stock]" lies on edge Check 0?→Use 0', 'view all: label "[in stock]" lies on edge Check 1?→Use 1', 'view all: label "[in stock]" lies on edge Check 2?→Use 2']] } },
@@ -88,6 +89,7 @@ test('every view of the eight fixtures lays out clean right and down: no line th
     assert.deepEqual(r.bad, [], `${f} ${v.id} ${d}`);
     ((seen[f] ||= {})[v.id] ||= {})[d] = [r.crossings, r.other];
   }
+  if (process.env.PIN) console.log(JSON.stringify(seen));
   assert.deepEqual(seen, PINNED);
 });
 

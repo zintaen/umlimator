@@ -615,9 +615,10 @@ first change, or on a lane with no change, the lane's middle. Equal times draw i
 Its sort draws its ends as the sequence type does (`SQ_END`: a call filled, async open, a reply dashed and open); create
 and delete are not timing sorts (§15). Its label sits at the line's middle, 4 px above it, moved away 4 px at a time, at most the sender's lane's height,
 until it meets no label, step or band text placed before it; one still meeting something is reported in the ruler's own
-`problems` (`timing-label`). The layout check (`routeAudit`, `src/layout/audit.js`) is not used: it treats every
-segment as upright or across, so two slanted messages fall into its "parallel" branch (false shares, missed crossings),
-and steps, bands and strips are not its nodes or edges; `stage5-followups` is changing that file too. §11's timing
+`problems` (`timing-label`). The layout check (`routeAudit`, `src/layout/audit.js`) is not the timing view's measure:
+steps, bands and strips are not its nodes or edges. `check()` runs it on the view all the same, and since audit 6 it
+tests a slanted segment exactly (a real crossing, a run shared on one line, a label the line passes through), where it
+had read every segment as upright or across (false shares, missed crossings); `stage5-followups` is changing that file too. §11's timing
 conditions are a predicate of their own, in `tests/timeruler.test.mjs` and `tests/stage6.html`. A message from a lane to
 itself is a line within the lane.
 

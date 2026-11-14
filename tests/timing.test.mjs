@@ -11,7 +11,7 @@ import { diagramOf } from '../src/core/registry.js';
 import { apply } from '../src/core/apply.js';
 import { history } from '../src/core/history.js';
 import '../src/map/typed.js';
-import { layout } from '../src/map/api.js';
+import { layout, check } from '../src/map/api.js';
 import { mapContext } from '../src/map/context.js';
 import { validate } from '../src/map/validate.js';
 import { describe } from '../src/map/insight.js';
@@ -449,6 +449,17 @@ test('key: S on a lifeline whose id is toString, constructor or __proto__ turns 
     assert.ok(Object.hasOwn(P, id) && P[id].as === 'values', id); assert.equal({}.as, undefined);
     assert.deepEqual(JSON.parse(JSON.stringify(V(run(n, tmKeyHook(n, 't', [id], 'S'))).present)), JSON.parse(`{"${id}":{}}`), id);
   }
+});
+
+test("check() on a timing view's slanted messages: a real crossing is said, no false shared line, no label said to lie on a line that passes it by (audit 6)", () => {
+  const L = (id, st) => ({ id, type: 'uml.Lifeline', label: id, props: { states: st } }), M = (id, from, to, sentAt, receivedAt, label) => ({ id, type: 'uml.Message', from, to, ...(label ? { label } : {}), props: { sort: 'async', sentAt, receivedAt } });
+  const view = (edges, st = ['x']) => ({ schemaVersion: 2, nodes: [L('a', st), L('b', st), L('c', ['x'])], edges: [],
+    views: [{ id: 'v', diagram: 'uml.timing', nodeIds: ['a', 'b', 'c'], edges, timeline: { unit: 'ms', changes: ['a', 'b', 'c'].map(l => ({ id: l + '0', lifeline: l, at: 0, state: 'x' })), constraints: [] } }] });
+  // a→c and a→b leave a's level at different times and never touch; a→c and c→a cross in an X, as do a→b and c→a
+  assert.deepEqual(check(view([M('m1', 'a', 'c', 0, 100), M('m2', 'a', 'b', 50, 60), M('m3', 'c', 'a', 0, 100)]), 'v').map(p => p.message),
+    ['view v: edges a→c and c→a cross', 'view v: edges a→b and c→a cross']);
+  // "tick" sits inside the long line's bounding box, 30 px off the line
+  assert.deepEqual(check(view([M('long', 'a', 'c', 0, 100, 'go'), M('short', 'b', 'b', 80, 80, 'tick')], ['x', 'y']), 'v').map(p => p.message), []);
 });
 
 test('audit 6: Alt + arrow on a lifeline moves it in nodeIds, as docs/editing.md says', () => {

@@ -8,6 +8,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { layout, check, history, validate } from '../lib/umlimator.js';
+import { leaveIssues } from '../src/layout/audit.js';
 
 const read = p => JSON.parse(readFileSync(new URL(p, import.meta.url)));
 // the bench's geometry hash (bench/bench.py, #bench=1): FNV-1a over node boxes, route points and label spots
@@ -554,4 +555,14 @@ test('audit 4: validate() says what a map view draws wrongly: a card listed twic
   assert.deepEqual(said({ nodes: N(['a', 'b']), views: [{ id: 'v', nodeIds: ['a', 'b'], containers: [{ id: 'x', nodeIds: ['a'] }, { id: 'y', parent: 'x', nodeIds: ['a'] }, { id: 'z', nodeIds: [] }, { id: 'w', parent: 'z', nodeIds: ['b'] }] }] }), []);
   assert.deepEqual(said({ nodes: N(['web', 'pay', 'pay-api']), views: [{ id: 'v', nodeIds: ['web', 'pay', 'pay-api'], containers: [{ id: 'pay', nodeIds: ['pay-api'] }] }] }),
     ['error views[0].containers[0].id: box id "pay" is one of the view\'s cards']);
+});
+
+test('a labelled line whose label finds no spot is said by check(), on a map or a typed view; a numbered view\'s label gets the room it needs (audit 6)', () => {
+  const A = { id: 'a', label: 'A' }, B = { id: 'b', label: 'B' }, line = x => ({ from: 'a', to: 'b', s: A, t: B, pts: [[0, 0], [10, 0]], lbl: null, ...x });
+  for (const map of [true, false]) assert.deepEqual(leaveIssues({ map, nodes: [A, B], edges: [line({ label: 'pays' }), line({ step: 2 }), line({ step: 1, fixed: true }), line({})] }, 'view v'),
+    ['view v: label "pays" has no room on edge A→B: not drawn', 'view v: step 2 has no room on edge A→B: not drawn']); // a comb line's step is on its card
+  // weather's nightly run (a numbered view): "pushes warnings", between two cards of one lane 54 px apart, was left off
+  const w = read('../examples/weather.json'), g = layout(w, 'forecaster');
+  assert.deepEqual(g.edges.filter(e => e.label && !e.lbl).map(e => e.label), []);
+  assert.deepEqual(check(w, 'forecaster'), []);
 });

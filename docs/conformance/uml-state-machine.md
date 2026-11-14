@@ -51,7 +51,9 @@ Layout limits, measured on `examples/order-states.json` and `tests/state-stress.
 - Port repair is off (`notes/stage-4.md` §17): two lines that cross next to a shared side keep their ports. Example 10
   has two crossings laid out right and five laid out down; `tests/state-stress.json` none and one in its `edge-cases`
   view, and 19 and 26 in its `all` view (50 states, 60 transitions, composites three deep, two regions a level). Laid out
-  down, the `edge-cases` view's fork into the Payment region runs along the border of both regions (L11). All pinned,
+  down, the `edge-cases` view's fork into the Payment region runs along the border of both regions (L11). Laid out down,
+  labels that found no spot were left off with nothing said: since audit 6 they are drawn on a looser spot, which
+  `check()` names (example 10: two labels on lines; the stress file: one on a region's border, six on lines in `all`). All pinned,
   in `tests/state.test.mjs`, `tests/stage4-fixtures.test.mjs` and `tests/cli.py`; CI's example check passes over them.
 - Each box level adds 72 px along the flow and 44 px across it; deep orthogonal states grow wide.
 

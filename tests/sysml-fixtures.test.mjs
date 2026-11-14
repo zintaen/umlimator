@@ -56,10 +56,11 @@ function clean(m, vid) {
 // The edge-cases views and the minimal ones are clean but for the crossings counted here and one finding: laid out down, a
 // constraint block subject's parameter on the frame's top crosses its header band (M3.5's gap, stated in
 // docs/conformance/sysml-parametric.md). The generated views all crowd 60 lines with repair and reroute off (§14): there
-// lines share a track. Each is stated in its type's conformance note
+// lines share a track, and labels that found no spot and were left off with nothing said, drawn now on a looser spot (audit 6),
+// lie on lines. Each is stated in its type's conformance note
 const PINNED = {
   'requirement-minimal': { v: { right: [0, 0, 0], down: [0, 0, 0] } },
-  'requirement-stress': { 'edge-cases': { right: [1, 0, 0], down: [1, 0, 0] }, 'ec-package': { right: [0, 0, 0], down: [0, 0, 0] }, all: { right: [204, 0, 0], down: [235, 2, 0] } },
+  'requirement-stress': { 'edge-cases': { right: [1, 0, 0], down: [1, 0, 0] }, 'ec-package': { right: [0, 0, 0], down: [0, 0, 0] }, all: { right: [204, 1, 0], down: [235, 4, 0] } },
   'block-definition-minimal': { v: { right: [0, 0, 0], down: [0, 0, 0] } },
   'block-definition-stress': { 'edge-cases': { right: [0, 0, 0], down: [0, 0, 0] }, all: { right: [54, 0, 0], down: [50, 0, 0] } },
   'internal-block-minimal': { v: { right: [0, 0, 0], down: [0, 0, 0] } },

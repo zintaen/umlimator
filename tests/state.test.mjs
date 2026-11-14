@@ -82,7 +82,12 @@ test('the shapes: junction, history and terminate; a state\'s compartment, its r
 const PINNED = { // a pseudostate is named by its id (audit 5)
   right: ['view order-life: edges payment-outcome→Fulfilling and Picking→Packed cross', 'view order-life: edges payment-outcome→Cancelled and Capturing payment→Cancelled cross'],
   down: ['view order-life: edges payment-outcome→Fulfilling and prepaid→Payment captured cross', 'view order-life: edges payment-outcome→Cancelled and prepaid→Payment captured cross', 'view order-life: edges payment-outcome→Cancelled and Payment captured→ready cross',
-    'view order-life: edges payment-outcome→Cancelled and Fulfilling→Cancelled cross', 'view order-life: edges Capturing payment→Cancelled and Capturing payment→Payment captured cross'],
+    'view order-life: edges payment-outcome→Cancelled and Fulfilling→Cancelled cross', 'view order-life: edges Capturing payment→Cancelled and Capturing payment→Payment captured cross',
+    // two labels that found no spot and were left off with nothing said: drawn now, on a looser spot (audit 6)
+    'view order-life: label "capture failed [attempts < 3] / count the att…" lies on edge Capturing payment→Cancelled',
+    'view order-life: label "capture failed [attempts < 3] / count the att…" lies on edge Capturing payment→Payment captured',
+    'view order-life: label "cancel requested / refund the payment" lies on edge Capturing payment→Cancelled',
+    'view order-life: label "cancel requested / refund the payment" lies on edge Payment captured→ready'],
 };
 test('order-states.json (example 10) draws: shapes by kind, composites as boxes, regions stacked with dividers across their state, laid out clean right and down', () => {
   assert.deepEqual(validate(SM), []);
