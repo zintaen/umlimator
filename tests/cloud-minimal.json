@@ -1,0 +1,62 @@
+{
+ "$schema": "../lib/umlimator.schema.json",
+ "schemaVersion": 2,
+ "title": "Cloud, minimal",
+ "nodes": [
+  {
+   "id": "g-project",
+   "type": "gcp.Zone",
+   "label": "shop-prod",
+   "props": {
+    "zoneType": "project"
+   }
+  },
+  {
+   "id": "g-run",
+   "type": "gcp.Product",
+   "label": "Shop API",
+   "parent": "g-project",
+   "props": {
+    "icon": "Cloud-Run"
+   }
+  },
+  {
+   "id": "a-rg",
+   "type": "azure.Group",
+   "label": "rg-shop",
+   "props": {
+    "groupType": "resource-group"
+   }
+  },
+  {
+   "id": "a-app",
+   "type": "azure.Service",
+   "label": "Shop API",
+   "parent": "a-rg",
+   "props": {
+    "icon": "App-Services"
+   }
+  }
+ ],
+ "edges": [],
+ "views": [
+  {
+   "id": "gcp",
+   "diagram": "gcp",
+   "title": "One project, one product",
+   "nodeIds": [
+    "g-project",
+    "g-run"
+   ]
+  },
+  {
+   "id": "azure",
+   "diagram": "azure",
+   "title": "One resource group, one service",
+   "nodeIds": [
+    "a-rg",
+    "a-app"
+   ]
+  }
+ ]
+}

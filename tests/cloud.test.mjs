@@ -22,7 +22,7 @@ import { svgOf } from '../src/draw/svg.js';
 import { CLOUD_AWS, CLOUD_DEFS, GCP_LEGAL, AWS_LEGAL } from '../src/cloud/cloud.js';
 
 const read = f => JSON.parse(readFileSync(new URL(f, import.meta.url)));
-const GCP = read('../docs/diagrams/examples/27-gcp.json'), AZ = read('../docs/diagrams/examples/28-azure.json'), AWS = read('../examples/bookshop-aws.json'); // moved by 4a.8, its ids prefixed aws-
+const GCP = read('../examples/bookshop-gcp.json'), AZ = read('../examples/bookshop-azure.json'), AWS = read('../examples/bookshop-aws.json'); // moved by 4a.7 and 4a.8, AWS's ids prefixed aws-
 const T = { gcp: diagramOf({ diagram: 'gcp' }), azure: diagramOf({ diagram: 'azure' }), aws: diagramOf({ diagram: 'aws' }) };
 const TARGETS = [['gcp', GCP, 'gcp-on-gcp'], ['azure', AZ, 'az-on-azure'], ['aws', AWS, 'aws-on-aws']];
 const meets = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
@@ -195,6 +195,7 @@ test('AWS\'s trademark line (4a.8, AWS\'s acceptance of 14 Nov 2026): under a pi
   assert.ok(g.legend.at(-1).includes(AWS_LEGAL));
   assert.equal(describe(m, 'aws-on-aws').split('\n').at(-1), AWS_LEGAL);
   assert.ok(!bare.legal && !describe(AWS, 'aws-on-aws').includes(AWS_LEGAL), 'no icon, no line');
+  assert.equal(bare.nodes.find(n => n.id === 'aws-nat-a').name, 'Amazon VPC NAT Gateway', 'a derived name: hyphens and underscores as spaces');
   // each icon drawn unmodified, its service name beside it
   assert.equal(images(markup).length, 15); for (const i of images(markup)) assert.match(i, /preserveAspectRatio="xMidYMid meet"/);
   const words = id => [...markup.split(`data-id="${id}"`)[1].split('</g></g>')[0].matchAll(/class="c-st cl-name"[^>]*>([^<]*)</g)].map(x => x[1]).join(' ');

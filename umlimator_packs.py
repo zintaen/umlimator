@@ -87,7 +87,7 @@ def index(row, zs):
 
 
 def name_of(row, i):
-    return row.get("names", {}).get(i) or i.replace("-", " ")
+    return row.get("names", {}).get(i) or " ".join(i.replace("_", " ").replace("-", " ").split())  # AWS: Amazon-VPC_NAT-Gateway, Map-
 
 
 _ids = {}  # a fetched pack's index, by its cache folder and its files' stamps: a render reads each zip once

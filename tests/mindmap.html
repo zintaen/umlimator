@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- The mindmap (4a.4) in headless Chrome (tests/embed.py), from lib/umlimator-all.js: docs/diagrams/examples/25-mindmap.json
+<!-- The mindmap (4a.4) in headless Chrome (tests/embed.py), from lib/umlimator-all.js: examples/bookshop-opening-plan.json
      drawn by render() in both themes and three fonts (no two topics meet, each text inside its topic, no branch curve
      through a topic, sampled every 4 px, names, reading order, contrast: text 4.5:1, curves and borders 3:1), then edited
      through the edit event and apply(), by pointer and by keyboard: N and the palette, F2, Alt + ↑ ↓ ← →, a topic dropped
@@ -41,7 +41,7 @@ const lum = c => { const f = v => v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.05
 const ratio = (fg, bg) => { const [x, y] = [lum(blend(fg, bg)), lum(bg)].sort((p, q) => q - p); return +((x + 0.05) / (y + 0.05)).toFixed(2); };
 const css = (e, k) => rgba(getComputedStyle(e)[k]);
 try {
-  const MODEL = await (await fetch('../docs/diagrams/examples/25-mindmap.json')).json(), IDS = MODEL.views[0].nodeIds;
+  const MODEL = await (await fetch('../examples/bookshop-opening-plan.json')).json(), IDS = MODEL.views[0].nodeIds;
   for (const theme of ['light', 'dark']) for (const [fname, family] of Object.entries(FONTS)) {
     document.documentElement.dataset.theme = theme; el.style.setProperty('--um-sans', family);
     const tag = `${theme}, ${fname}`, h = mount(structuredClone(MODEL)), bad = [];

@@ -317,7 +317,7 @@ d.mkdir()
 (d / "packs.json").write_text(json.dumps({"aws": {**REAL["aws"], "label": "test-a",
     "zips": [{"url": f"{base}/aws.zip", "bytes": len(files["aws.zip"]), "sha256": sha(files["aws.zip"])}],
     "terms": {"url": "https://example.invalid/aws", "read": "2026-11-14", "text": AWT, "sha256": sha(AWT.encode())},
-    "names": {"Amazon-Test_Thing": "Amazon Test Thing"}}}))
+    "names": {}}}))  # Amazon-Test_Thing's name derived: hyphens and underscores as spaces
 r = cli(d, "pack", "fetch", "aws")
 ok("aws#2 · AWS's terms, its trademark line and the not-affiliated line are shown, and nothing is requested without a yes",
    r.returncode and AWT in r.stdout and "not affiliated with, endorsed by or sponsored by Amazon Web Services" in r.stdout and "--accept-terms aws@test-a" in r.stderr

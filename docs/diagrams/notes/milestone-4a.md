@@ -391,12 +391,18 @@ machine; icons unmodified with the service name beside each; a not-affiliated li
   14 Nov 2026), 13,988,918 bytes, SHA-256 `d2d166c453526471749d520e0db022c459abef759d2946cf2dd1d1c992dc6526`: downloaded
   once by the lead into a scratch folder outside the repository, both match. Label `2026-07-31`, the date in the zip's
   folders, which the example's `iconPacks` already named. With that copy served locally, `pack fetch aws` indexes 768
-  icons and every id of `examples/bookshop-aws.json` resolves; three ids are filed twice (the first is used).
+  icons and every id of `examples/bookshop-aws.json` resolves. Three ids are filed twice with different files:
+  `AWS-Compute-Optimizer` (`Arch_Compute`, `Arch_Management-Tools`), `Amazon-Kinesis-Video-Streams` (`Arch_Media-Services`,
+  `Arch_Analytics`) and `AWS-Management-Console` (a 64 px service icon, a 48 px general resource icon). The first member
+  is used on purpose and no alias row is added: an alias maps one id to another and cannot pick a member, and each
+  pair draws the same service.
 - **The pattern.** `Arch_<id>_64.svg` under `Architecture-Service-Icons_<date>/Arch_<category>/64/`, and `Res_<id>_48.svg`
   under `Resource-Icons_<date>/Res_<category>/` (the general icons' `Res_48_Light/` only); anchored, no nested
   repetition, and macOS's `__MACOSX/._…` copies match nothing. 400 resource ids hold `_` between service and resource,
-  which the derived name keeps ("Amazon VPC_NAT Gateway"): the row's `names` gives the example's one; a rule for `_`
-  belongs to `umlimator_packs.py` and the family's name (not this package's).
+  and two of AWS's file names hold a space (`Res_Amazon-Location-Service_Map _48.svg`, so the id
+  `Amazon-Location-Service_Map-`). The derived name (`umlimator_packs.py`'s `name_of` and the family's fallback in
+  `src/cloud/cloud.js`) reads hyphens and underscores as spaces and trims: "Amazon VPC NAT Gateway", "Amazon Location
+  Service Map". Google's and Azure's ids hold neither, so their names do not change.
 - **The words, for the maintainer to approve.** `terms.text`: the icons page's permission, word for word as read
   through a page reader ("We allow customers and partners to use these toolkits and assets to create architecture
   diagrams." "You can also put icons in materials like whitepapers, presentations, data sheets, and posters."), the
@@ -415,10 +421,21 @@ machine; icons unmodified with the service name beside each; a not-affiliated li
 - **Tests outside Owns**, which turning AWS on changes: `tests/cloud.test.mjs` and `tests/cloud.html` read the moved
   example and no longer register `aws` themselves (the build does; a second registration throws), and assert the lib
   registers it, the trademark line and the name beside each icon; `tests/packs.py` holds the real row's pin and pattern
-  and fetches and renders a synthetic AWS pack; `tests/embed.py`'s line for `tests/cloud.html`.
-- **The atlas's "On AWS"** waits for 4a.7, which brings the mindmap and the cloud views into the atlas: the topic
-  `mm-on-aws` under "Hosting", its link to `aws-on-aws` in `tools/atlas-links.json`, and `examples/bookshop-atlas.json`
-  built again, when 4a.7's branch is merged here.
+  and fetches and renders a synthetic AWS pack, its resource icon's name derived. With 4a.7's branch merged:
+  `tests/m4a-fixtures.test.mjs`, `tests/m4a.html` and `tests/notation.html` no longer register `aws` either, so
+  `cloud-stress.json`'s AWS view is drawn by the build's own registration; `tests/embed.py`'s description of
+  `tests/cloud.html` names the moved example.
+- **Docs outside Owns.** `docs/diagrams/README.md`'s open-questions row and a log entry of 14 Nov 2026 record AWS's
+  answer (the lead's to accept); `docs/module-api.md`'s 0.26.0 section gains the AWS bullet, under 4a.7's heading.
+- **`tools/fetch_icons.py`** keeps its `aws/` path (upstream's, unmodified, not in the npm package): it downloads
+  without the pin, terms or yes, and the README's Icons section says it is not a way to get a pack.
+- **Left for `umlimator_packs.py`'s next owner:** `pack fetch`'s message "the AWS pack is not offered in this release"
+  now shows only for a packs file with no `aws` row (aws#1 quotes it).
+- **The atlas's "On AWS"** is not in this pull request: the topic `mm-on-aws` under "Hosting" belongs to
+  `examples/bookshop-opening-plan.json`, which 4a.7 owns and which its tests pin by topic (the Mermaid writer's text,
+  the MCP server's 21 topics, the mindmap's moves, the fingerprints). A follow-up after 4a.7 merges adds the topic,
+  `bookshop-aws` to `tools/atlas-links.json`'s sources with the link `mm-on-aws` to `aws-on-aws`, and builds
+  `examples/bookshop-atlas.json` again.
 
 ## 5. The cloud types
 
@@ -806,6 +823,39 @@ page carries the "not affiliated" line under the cloud views.
 writes it in the atlas; `KEYS.props` gains `icon`, `groupType`, `zoneType`. The links go in
 `tools/atlas-links.json`.
 
+As built (4a.7, 14 Nov 2026), where §10 left a choice or the build found what it did not say:
+
+- **The fixtures.** `tests/cloud-stress.json` holds four edge-case views, since a view is one family: `edge-cases` (Google
+  Cloud: every row of §10.1 but the AWS and Azure ones), `ec-no-product` (a Google Cloud view with no product, so no legal
+  line with the pack given), `az-edge-cases` and `aws-edge-cases`; and `all`, §11's view, as `tests/cloud.test.mjs` builds
+  it. "A Google view whose only Google icon is in the legend" cannot be built: the legend lists only icons a card draws,
+  so a legend icon is a card icon and the line follows. A re-pin's alias is a test-side table entry under the old id with
+  the pinned icon's name, as the CLI writes one (`icons/packs.json`'s aliases are empty at this pin); the CLI's alias path
+  is `tests/packs.py`'s. The mindmap fixtures are §10.1's cases as `tests/mindmap.test.mjs` builds them, the 200-character
+  topic cut to exactly 200.
+- **What `check()` finds, pinned** (`tests/m4a-fixtures.test.mjs`, repair and reroute off): every mindmap view clean; the
+  Google Cloud example 1 crossing right and down, Azure's 1 right and 3 down; the cloud stress view `all` 52 right and 54
+  down, where one path's label lies on another (the only finding that is not a crossing, stated in
+  `docs/conformance/gcp.md`). The line inside its group in `edge-cases` is not drawn (`line-inside`). CI's example loop
+  holds `bookshop-gcp` and `bookshop-azure` at 1 and the atlas at 24 (22 before), as Chrome counts them with `--expand`.
+- **The atlas.** A mindmap topic that opens a view is 26 px wider (§7.3's As built) and the Hosting topics open the cloud
+  views only in the atlas, so `tests/atlas.test.mjs` compares the opening plan's layout with its file's but for those two
+  topics, 26 px wider and grown away from the root. The opening plan is a root view: nothing opens it, and the test reaches
+  every view from the C4 context, the map's overview and it.
+- **The not-affiliated line** is each cloud view's `caption` in its example (shown on its page, the atlas's page and the
+  gallery's card), so the atlas carries it with no field of its own; the README's Icons section, the conformance notes,
+  `examples/README.md` and the gallery say it too.
+- **§2.5's test** (`tests/m4a-fixtures.test.mjs`): no committed `.json`, `.html`, `.svg`, `.md`, `.js` or `.mjs` file under
+  `examples/` or `docs/` holds a pack's icons entry (a key `<pack>/<id>` holding an object) or the synthetic pack's marker, and every SVG in `icons/`
+  is the manifest's. The site's build in `check.yml` sets `UMLIMATOR_NO_PACKS=1`; CI has no pack cached either.
+- **Import on each** is the mindmap's only (the cloud types have no reader): `tests/cli.py` writes the example's Mermaid
+  with the module's writer and imports it back to the same topics, order and sides.
+- **Existing tests edited:** `tests/atlas.test.mjs` (adds cases; names milestone 2's five files where it took the last
+  five sources); `tests/cli.py`, `tests/mcp.py` and `tests/notation.html` (add the three examples and milestone 4a's
+  ends); `tests/embed.py` (appends `tests/m4a.html`); `tests/core-diet.json` (two `edit` fingerprints); and the example
+  paths in `tests/mindmap.test.mjs`, `tests/mindmap.html`, `tests/cloud.test.mjs` and `tests/cloud.html`. Taken by the lead
+  under the maintainer's standing approval (14 Nov 2026).
+
 ## 11. Performance (P1, S19)
 
 | Fixture | Budget, CPU time in Node, best of N after a warm-up; CI holds 1 s and prints the target |
@@ -854,7 +904,7 @@ writes its release notes in its pull request for 4a.7 to gather.
 | 4a.4 | **The mindmap type.** §7 | `src/mindmap/mindmap.js`, `tests/mindmap.test.mjs` (new), `tests/mindmap.html` (new), `tests/embed.py` (appends its page) | 4a.1; 4a.2 for its Shift + Delete test of a deep chain | Definition of done 2, 4, 5, 6 and 8 on row 25; every gesture by pointer and key through `apply()`; a 30-step session undone, redone and reopened byte-identical; `25-mindmap.json` lays out clean; each branch colour's contrast at 3:1 or more in both themes |
 | 4a.5 | **Mermaid mindmap reader and writer.** §8 | `src/readers/mermaid-mindmap.js`, `tests/mermaid-mindmap.test.mjs` (new), `tests/import/mindmap.mmd`, `tests/import/hostile/mindmap-*.mmd`, `umlimator_import.py` (`TYPED`), `tests/import.py` (adds cases) | 4a.0 (row 25 only) | `read(write(model))` equals the model for the example and 500 generated models; ids stable across two reads; the construct file's report pinned; §8.2's rows each under 1 s and never thrown; `umlimator.py import` of a `.mmd` mindmap writes a model `check.mjs` passes |
 | 4a.6 | **The cloud family.** §5: the three definitions, `aws` behind `CLOUD_AWS = false`; the card, groups, glyphs, names, Google's legal line, rules, `describe()`, legend, `rows`, `word`, hooks. The P1 stress view's figures printed and recorded in the pull request (§11, decision 20) | `src/cloud/cloud.js`, `tests/cloud.test.mjs` (new), `tests/cloud.html` (new), `tests/embed.py` (appends its page) | 4a.0; §4.5's table format (not 4a.3's code) | Definition of done 2, 4, 5, 6 and 8 on rows 27 and 28, and on row 26 with `aws` imported from `src/cloud/cloud.js` and registered by the test; `tests/cloud.html` imports from `../src/` throughout; `lib/umlimator-all.js` neither exposes nor registers `aws` (asserted); every vendor `<image>` with `meet` and no clip, filter, mask, opacity or transform; the targets lay out clean; an icon drawn through `<image>` only, never inlined; the legal line's two copies equal; a view with no table draws glyphs and full names |
-| 4a.7 | **Fixtures, examples, atlas, docs.** §10's files and tests (`tests/m4a-fixtures.test.mjs`, `tests/m4a.html`); the three examples moved, with `MOVED` and their `iconPacks` labels from `icons/packs.json`; the atlas (§10.3); `render`, `check`, `stills`, `pdf`, `import` on each; the schema and `.d.ts` (`iconPacks`, the three types); C10's tests (the MCP server, the diff Action); §2.5's test that nothing published holds a vendor icon; every document of `plan.md` §7; the three conformance notes; the lanes' release notes | `examples/`, `tests/mindmap-*.json`, `tests/cloud-*.json`, `tests/m4a-fixtures.test.mjs`, `tests/m4a.html`, `tests/notation.html`, `tests/cli.py`, `tests/mcp.py`, `tests/embed.py` (appends), `tests/atlas.test.mjs` (adds cases), `tools/atlas.mjs` (`KEYS`, `iconPacks`), `tools/atlas-links.json`, `lib/umlimator.d.ts`, `lib/umlimator.schema.json`, `docs/diagrams/examples/check.mjs`, `docs/` (but the status table), `README.md` (its Icons section), `plugins/umlimator/skills/map-repo/SKILL.md` (the pack line) | 4a.1 to 4a.6; 6.6, 6.7, M2.13, M2.14 and 4b.5 merged, or rehearsed (§12.4) | Definition of done 1, 3, 7, 9, 10, 11 and 12 for the three types; the atlas builds with no clash and its links open; §11's budgets in CI; the stress fixtures' crossings pinned; the gallery's stills hold no vendor icon |
+| 4a.7 | **Fixtures, examples, atlas, docs.** §10's files and tests (`tests/m4a-fixtures.test.mjs`, `tests/m4a.html`); the three examples moved, with `MOVED` and their `iconPacks` labels from `icons/packs.json`; the atlas (§10.3); `render`, `check`, `stills`, `pdf`, `import` on each; the schema and `.d.ts` (`iconPacks`, the three types); C10's tests (the MCP server, the diff Action); §2.5's test that nothing published holds a vendor icon; every document of `plan.md` §7; the three conformance notes; the lanes' release notes | `examples/`, `tests/mindmap-*.json`, `tests/cloud-*.json`, `tests/m4a-fixtures.test.mjs`, `tests/m4a.html`, `tests/notation.html`, `tests/cli.py`, `tests/mcp.py`, `tests/embed.py` (appends), `tests/atlas.test.mjs` (adds cases), `tools/atlas.mjs` (`KEYS`, `iconPacks`), `tools/atlas-links.json`, `lib/umlimator.d.ts`, `lib/umlimator.schema.json`, `docs/diagrams/examples/check.mjs`, `docs/` (but the status table), `README.md` (its Icons section), `plugins/umlimator/skills/map-repo/SKILL.md` (the pack line); departures found in the build (14 Nov 2026): `.github/workflows/check.yml` (the example loop's crossing ceilings for the two cloud examples and the atlas, and `UMLIMATOR_NO_PACKS` on the site's build, §2.5), `tests/core-diet.json` (the moved Google Cloud and Azure targets' `edit` fingerprints, which hash the whole model: the pin's label and the captions), and the example paths in `tests/mindmap.test.mjs`, `tests/mindmap.html`, `tests/cloud.test.mjs` and `tests/cloud.html` | 4a.1 to 4a.6; 6.6, 6.7, M2.13, M2.14 and 4b.5 merged, or rehearsed (§12.4) | Definition of done 1, 3, 7, 9, 10, 11 and 12 for the three types; the atlas builds with no clash and its links open; §11's budgets in CI; the stress fixtures' crossings pinned; the gallery's stills hold no vendor icon |
 | 4a.8 | **AWS on** (waits). `CLOUD_AWS = true`; the pinned `aws` row with AWS's terms; `26-aws.json` moved with its `iconPacks`; the atlas's "On AWS"; `docs/conformance/aws.md`; its release notes; any conditions AWS's reply attaches (§2.3) | `src/cloud/cloud.js` (the constant), `icons/packs.json` (its row), `examples/bookshop-aws.json`, `docs/diagrams/examples/26-aws.json`, `check.mjs`'s `MOVED`, `tools/atlas-links.json`, `examples/bookshop-atlas.json`, `docs/conformance/aws.md`, the README's Icons section | AWS's answer, and the maintainer's go; 4a.7 | Definition of done for row 26; the AWS rows of `cloud-stress.json` drawn by the build's own registration |
 
 Existing tests a package edits, and why: 4a.0 re-records the four targets' entries of `tests/core-diet.json`; 4a.2 adds cases to `tests/apply.test.mjs` and `tests/model.test.mjs`; 4a.5 to `tests/import.py`; 4a.7 to

@@ -711,7 +711,8 @@ advice. What could not be confirmed is listed in §10.
   carries no licence text. Google's brand guidance restricts imitation of product icons.
 - **Third-party bundles** (Iconify sets, `aws-icons`, mingrammer/diagrams, PlantUML's standard library) claim MIT,
   CC0 or Apache for their packaging while the icons remain their owners'. They are no basis for bundling.
-- **Recommendation (D10).** Do not ship vendor icons in the MIT package. Fetch each pack from its owner on first
+- **Recommendation (D10).** The terms as answered on 13 Nov 2026, and how each pack is fetched, pinned and drawn, are in
+  [`notes/milestone-4a.md`](notes/milestone-4a.md) §2.3 and §4 (0.26.0). Do not ship vendor icons in the MIT package. Fetch each pack from its owner on first
   use, pin it by hash and pack version, never recolour or reshape an icon, and show the owner's terms once. This is
   how brand logos work today (`icons/manifest.json`, `tools/fetch_icons.py`, `README.md:357-360`).
 - **Open question.** Whether AWS's and Google's terms allow a tool to download the packs for its users could not be

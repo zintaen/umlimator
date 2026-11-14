@@ -47,11 +47,11 @@ const clWord = (F, x) => (x.type === F.group ? clKindWord(F, x) : Object.hasOwn(
 const clThe = w => `the ${w === w.toUpperCase() ? w : w.toLowerCase()}`; // "the VPC", "the resource group"
 
 // a node's icon (S6, S8): its id, the table's entry for it (a data URL only, never markup) and the full name, from the table
-// or the id with hyphens as spaces; null with no props.icon
+// or the id with hyphens and underscores as spaces; null with no props.icon
 function clIcon(F, D, n) {
   const id = clProps(n).icon; if (typeof id !== 'string' || !id) return null;
   const T = CL_OBJ(D && D.icons) ? D.icons : {}, k = F.pack + '/' + id, e = Object.hasOwn(T, k) && CL_OBJ(T[k]) ? T[k] : {};
-  return { id, src: typeof e.src === 'string' && /^data:image\//.test(e.src) ? e.src : null, dark: e.dark === true, name: CL_HAS(e.name) ? String(e.name) : id.replace(/-/g, ' ') };
+  return { id, src: typeof e.src === 'string' && /^data:image\//.test(e.src) ? e.src : null, dark: e.dark === true, name: CL_HAS(e.name) ? String(e.name) : id.split(/[-_\s]+/).filter(Boolean).join(' ') };
 }
 // the host gave this family's pack: its legal entry or any icon of it (icon-missing reads only then)
 const clGiven = (F, D) => CL_OBJ(D && D.icons) && Object.keys(D.icons).some(k => k.startsWith(F.pack + '/'));

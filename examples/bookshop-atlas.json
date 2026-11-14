@@ -2226,6 +2226,397 @@
    "id": "stock-info",
    "type": "uml.InformationItem",
    "label": "Stock level"
+  },
+  {
+   "id": "mm-opening",
+   "type": "mindmap.Topic",
+   "label": "Opening the bookshop"
+  },
+  {
+   "id": "mm-catalogue",
+   "type": "mindmap.Topic",
+   "label": "Catalogue",
+   "parent": "mm-opening"
+  },
+  {
+   "id": "mm-first-titles",
+   "type": "mindmap.Topic",
+   "label": "Choose the first 500 titles",
+   "parent": "mm-catalogue"
+  },
+  {
+   "id": "mm-wholesalers",
+   "type": "mindmap.Topic",
+   "label": "Agree terms with two wholesalers",
+   "parent": "mm-catalogue"
+  },
+  {
+   "id": "mm-website",
+   "type": "mindmap.Topic",
+   "label": "Website",
+   "parent": "mm-opening"
+  },
+  {
+   "id": "mm-storefront",
+   "type": "mindmap.Topic",
+   "label": "Storefront",
+   "parent": "mm-website"
+  },
+  {
+   "id": "mm-checkout",
+   "type": "mindmap.Topic",
+   "label": "Checkout",
+   "parent": "mm-website"
+  },
+  {
+   "id": "mm-card-payments",
+   "type": "mindmap.Topic",
+   "label": "Card payments",
+   "parent": "mm-checkout"
+  },
+  {
+   "id": "mm-order-emails",
+   "type": "mindmap.Topic",
+   "label": "Order confirmation emails",
+   "parent": "mm-checkout"
+  },
+  {
+   "id": "mm-launch",
+   "type": "mindmap.Topic",
+   "label": "Launch",
+   "parent": "mm-opening"
+  },
+  {
+   "id": "mm-newsletter",
+   "type": "mindmap.Topic",
+   "label": "Newsletter to the waiting list",
+   "parent": "mm-launch"
+  },
+  {
+   "id": "mm-opening-offer",
+   "type": "mindmap.Topic",
+   "label": "Free delivery in the first week",
+   "parent": "mm-launch"
+  },
+  {
+   "id": "mm-warehouse",
+   "type": "mindmap.Topic",
+   "label": "Warehouse",
+   "parent": "mm-opening"
+  },
+  {
+   "id": "mm-shelving",
+   "type": "mindmap.Topic",
+   "label": "Shelving and a packing table",
+   "parent": "mm-warehouse"
+  },
+  {
+   "id": "mm-courier",
+   "type": "mindmap.Topic",
+   "label": "Courier contract",
+   "parent": "mm-warehouse"
+  },
+  {
+   "id": "mm-legal",
+   "type": "mindmap.Topic",
+   "label": "Legal and money",
+   "parent": "mm-opening"
+  },
+  {
+   "id": "mm-company",
+   "type": "mindmap.Topic",
+   "label": "Register the company",
+   "parent": "mm-legal"
+  },
+  {
+   "id": "mm-bank",
+   "type": "mindmap.Topic",
+   "label": "Business bank account",
+   "parent": "mm-legal"
+  },
+  {
+   "id": "mm-hosting",
+   "type": "mindmap.Topic",
+   "label": "Hosting",
+   "parent": "mm-opening"
+  },
+  {
+   "id": "mm-on-gcp",
+   "type": "mindmap.Topic",
+   "label": "On Google Cloud",
+   "parent": "mm-hosting",
+   "opensView": "gcp-on-gcp"
+  },
+  {
+   "id": "mm-on-azure",
+   "type": "mindmap.Topic",
+   "label": "On Azure",
+   "parent": "mm-hosting",
+   "opensView": "az-on-azure"
+  },
+  {
+   "id": "gcp-users",
+   "type": "gcp.User",
+   "label": "Shoppers"
+  },
+  {
+   "id": "gcp-project",
+   "type": "gcp.Zone",
+   "label": "bookshop-prod",
+   "props": {
+    "zoneType": "project"
+   }
+  },
+  {
+   "id": "gcp-dns",
+   "type": "gcp.Product",
+   "label": "DNS",
+   "parent": "gcp-project",
+   "props": {
+    "icon": "Cloud-DNS"
+   }
+  },
+  {
+   "id": "gcp-lb",
+   "type": "gcp.Product",
+   "label": "Load balancer",
+   "parent": "gcp-project",
+   "props": {
+    "icon": "Cloud-Load-Balancing"
+   }
+  },
+  {
+   "id": "gcp-cdn",
+   "type": "gcp.Product",
+   "label": "CDN",
+   "parent": "gcp-project",
+   "props": {
+    "icon": "Cloud-CDN"
+   }
+  },
+  {
+   "id": "gcp-assets",
+   "type": "gcp.Product",
+   "label": "Storefront files",
+   "parent": "gcp-project",
+   "props": {
+    "icon": "Cloud-Storage"
+   }
+  },
+  {
+   "id": "gcp-queue",
+   "type": "gcp.Product",
+   "label": "Order queue",
+   "parent": "gcp-project",
+   "props": {
+    "icon": "Pub-Sub"
+   }
+  },
+  {
+   "id": "gcp-region",
+   "type": "gcp.Zone",
+   "label": "europe-west1",
+   "parent": "gcp-project",
+   "props": {
+    "zoneType": "region"
+   }
+  },
+  {
+   "id": "gcp-api",
+   "type": "gcp.Product",
+   "label": "Shop API",
+   "parent": "gcp-region",
+   "props": {
+    "icon": "Cloud-Run"
+   }
+  },
+  {
+   "id": "gcp-worker",
+   "type": "gcp.Product",
+   "label": "Order worker",
+   "parent": "gcp-region",
+   "props": {
+    "icon": "Cloud-Run"
+   }
+  },
+  {
+   "id": "gcp-network",
+   "type": "gcp.Zone",
+   "label": "bookshop-vpc",
+   "parent": "gcp-region",
+   "props": {
+    "zoneType": "network"
+   }
+  },
+  {
+   "id": "gcp-subnet",
+   "type": "gcp.Zone",
+   "label": "data subnet, 10.10.0.0/24",
+   "parent": "gcp-network",
+   "props": {
+    "zoneType": "subnetwork"
+   }
+  },
+  {
+   "id": "gcp-zone-b",
+   "type": "gcp.Zone",
+   "label": "europe-west1-b",
+   "parent": "gcp-subnet",
+   "props": {
+    "zoneType": "zone"
+   }
+  },
+  {
+   "id": "gcp-db",
+   "type": "gcp.Product",
+   "label": "Database, primary",
+   "parent": "gcp-zone-b",
+   "props": {
+    "icon": "Cloud-SQL"
+   }
+  },
+  {
+   "id": "gcp-zone-c",
+   "type": "gcp.Zone",
+   "label": "europe-west1-c",
+   "parent": "gcp-subnet",
+   "props": {
+    "zoneType": "zone"
+   }
+  },
+  {
+   "id": "gcp-db-standby",
+   "type": "gcp.Product",
+   "label": "Database, standby",
+   "parent": "gcp-zone-c",
+   "props": {
+    "icon": "Cloud-SQL"
+   }
+  },
+  {
+   "id": "az-subscription",
+   "type": "azure.Group",
+   "label": "Bookshop production",
+   "props": {
+    "groupType": "subscription"
+   }
+  },
+  {
+   "id": "az-rg",
+   "type": "azure.Group",
+   "label": "rg-bookshop-prod",
+   "parent": "az-subscription",
+   "props": {
+    "groupType": "resource-group"
+   }
+  },
+  {
+   "id": "az-front-door",
+   "type": "azure.Service",
+   "label": "CDN and routing",
+   "parent": "az-rg",
+   "props": {
+    "icon": "Front-Door-and-CDN-Profiles"
+   }
+  },
+  {
+   "id": "az-monitor",
+   "type": "azure.Service",
+   "label": "Logs and alerts",
+   "parent": "az-rg",
+   "props": {
+    "icon": "Monitor"
+   }
+  },
+  {
+   "id": "az-region",
+   "type": "azure.Group",
+   "label": "West Europe",
+   "parent": "az-rg",
+   "props": {
+    "groupType": "region"
+   }
+  },
+  {
+   "id": "az-assets",
+   "type": "azure.Service",
+   "label": "Storefront files",
+   "parent": "az-region",
+   "props": {
+    "icon": "Storage-Accounts"
+   }
+  },
+  {
+   "id": "az-queue",
+   "type": "azure.Service",
+   "label": "Order queue",
+   "parent": "az-region",
+   "props": {
+    "icon": "Service-Bus"
+   }
+  },
+  {
+   "id": "az-vault",
+   "type": "azure.Service",
+   "label": "Secrets",
+   "parent": "az-region",
+   "props": {
+    "icon": "Key-Vaults"
+   }
+  },
+  {
+   "id": "az-vnet",
+   "type": "azure.Group",
+   "label": "vnet-bookshop",
+   "parent": "az-region",
+   "props": {
+    "groupType": "virtual-network"
+   }
+  },
+  {
+   "id": "az-snet-apps",
+   "type": "azure.Group",
+   "label": "snet-apps",
+   "parent": "az-vnet",
+   "props": {
+    "groupType": "subnet"
+   }
+  },
+  {
+   "id": "az-api",
+   "type": "azure.Service",
+   "label": "Shop API",
+   "parent": "az-snet-apps",
+   "props": {
+    "icon": "App-Services"
+   }
+  },
+  {
+   "id": "az-worker",
+   "type": "azure.Service",
+   "label": "Order worker",
+   "parent": "az-snet-apps",
+   "props": {
+    "icon": "App-Services"
+   }
+  },
+  {
+   "id": "az-snet-data",
+   "type": "azure.Group",
+   "label": "snet-data",
+   "parent": "az-vnet",
+   "props": {
+    "groupType": "subnet"
+   }
+  },
+  {
+   "id": "az-db",
+   "type": "azure.Service",
+   "label": "Database",
+   "parent": "az-snet-data",
+   "props": {
+    "icon": "SQL-Database"
+   }
   }
  ],
  "edges": [
@@ -4043,6 +4434,139 @@
      "receipt-info"
     ]
    }
+  },
+  {
+   "id": "gcp-users-dns",
+   "type": "gcp.Path",
+   "from": "gcp-users",
+   "to": "gcp-dns",
+   "label": "looks up"
+  },
+  {
+   "id": "gcp-users-lb",
+   "type": "gcp.Path",
+   "from": "gcp-users",
+   "to": "gcp-lb",
+   "label": "HTTPS"
+  },
+  {
+   "id": "gcp-lb-cdn",
+   "type": "gcp.Path",
+   "from": "gcp-lb",
+   "to": "gcp-cdn",
+   "label": "storefront"
+  },
+  {
+   "id": "gcp-cdn-assets",
+   "type": "gcp.Path",
+   "from": "gcp-cdn",
+   "to": "gcp-assets",
+   "label": "cache fill"
+  },
+  {
+   "id": "gcp-lb-api",
+   "type": "gcp.Path",
+   "from": "gcp-lb",
+   "to": "gcp-api",
+   "label": "/api"
+  },
+  {
+   "id": "gcp-api-db",
+   "type": "gcp.Path",
+   "from": "gcp-api",
+   "to": "gcp-db",
+   "label": "SQL"
+  },
+  {
+   "id": "gcp-api-queue",
+   "type": "gcp.Path",
+   "from": "gcp-api",
+   "to": "gcp-queue",
+   "label": "paid order"
+  },
+  {
+   "id": "gcp-queue-worker",
+   "type": "gcp.Path",
+   "from": "gcp-queue",
+   "to": "gcp-worker",
+   "label": "pushes"
+  },
+  {
+   "id": "gcp-worker-db",
+   "type": "gcp.Path",
+   "from": "gcp-worker",
+   "to": "gcp-db",
+   "label": "SQL"
+  },
+  {
+   "id": "gcp-db-replica",
+   "type": "gcp.Path",
+   "from": "gcp-db",
+   "to": "gcp-db-standby",
+   "label": "replicates"
+  },
+  {
+   "id": "az-front-door-assets",
+   "type": "azure.Connector",
+   "from": "az-front-door",
+   "to": "az-assets",
+   "label": "storefront"
+  },
+  {
+   "id": "az-front-door-api",
+   "type": "azure.Connector",
+   "from": "az-front-door",
+   "to": "az-api",
+   "label": "/api"
+  },
+  {
+   "id": "az-api-db",
+   "type": "azure.Connector",
+   "from": "az-api",
+   "to": "az-db",
+   "label": "SQL"
+  },
+  {
+   "id": "az-api-queue",
+   "type": "azure.Connector",
+   "from": "az-api",
+   "to": "az-queue",
+   "label": "paid order"
+  },
+  {
+   "id": "az-queue-worker",
+   "type": "azure.Connector",
+   "from": "az-queue",
+   "to": "az-worker",
+   "label": "next order"
+  },
+  {
+   "id": "az-worker-db",
+   "type": "azure.Connector",
+   "from": "az-worker",
+   "to": "az-db",
+   "label": "SQL"
+  },
+  {
+   "id": "az-api-vault",
+   "type": "azure.Connector",
+   "from": "az-api",
+   "to": "az-vault",
+   "label": "secrets"
+  },
+  {
+   "id": "az-worker-vault",
+   "type": "azure.Connector",
+   "from": "az-worker",
+   "to": "az-vault",
+   "label": "secrets"
+  },
+  {
+   "id": "az-apps-monitor",
+   "type": "azure.Connector",
+   "from": "az-snet-apps",
+   "to": "az-monitor",
+   "label": "logs, metrics"
   }
  ],
  "views": [
@@ -5213,6 +5737,107 @@
     "receipt-info",
     "stock-info"
    ]
+  },
+  {
+   "id": "mm-plan",
+   "diagram": "mindmap",
+   "title": "Opening the bookshop",
+   "parent": null,
+   "nodeIds": [
+    "mm-opening",
+    "mm-catalogue",
+    "mm-first-titles",
+    "mm-wholesalers",
+    "mm-website",
+    "mm-storefront",
+    "mm-checkout",
+    "mm-card-payments",
+    "mm-order-emails",
+    "mm-launch",
+    "mm-newsletter",
+    "mm-opening-offer",
+    "mm-warehouse",
+    "mm-shelving",
+    "mm-courier",
+    "mm-legal",
+    "mm-company",
+    "mm-bank",
+    "mm-hosting",
+    "mm-on-gcp",
+    "mm-on-azure"
+   ],
+   "present": {
+    "mm-catalogue": {
+     "side": "right"
+    },
+    "mm-website": {
+     "side": "right"
+    },
+    "mm-launch": {
+     "side": "right"
+    },
+    "mm-warehouse": {
+     "side": "left"
+    },
+    "mm-legal": {
+     "side": "left"
+    },
+    "mm-hosting": {
+     "side": "left"
+    }
+   }
+  },
+  {
+   "id": "gcp-on-gcp",
+   "diagram": "gcp",
+   "title": "Bookshop on Google Cloud",
+   "caption": "Icons from a pack you fetch: umlimator.py pack fetch gcp, after Google's terms; glyphs and full names without it. Umlimator is not affiliated with, endorsed by or sponsored by Google.",
+   "parent": null,
+   "nodeIds": [
+    "gcp-users",
+    "gcp-project",
+    "gcp-dns",
+    "gcp-lb",
+    "gcp-cdn",
+    "gcp-assets",
+    "gcp-queue",
+    "gcp-region",
+    "gcp-api",
+    "gcp-worker",
+    "gcp-network",
+    "gcp-subnet",
+    "gcp-zone-b",
+    "gcp-db",
+    "gcp-zone-c",
+    "gcp-db-standby"
+   ]
+  },
+  {
+   "id": "az-on-azure",
+   "diagram": "azure",
+   "title": "Bookshop on Azure",
+   "caption": "Icons from a pack you fetch: umlimator.py pack fetch azure, after Microsoft's terms; glyphs and full names without it. Umlimator is not affiliated with, endorsed by or sponsored by Microsoft.",
+   "parent": null,
+   "nodeIds": [
+    "az-subscription",
+    "az-rg",
+    "az-front-door",
+    "az-monitor",
+    "az-region",
+    "az-assets",
+    "az-queue",
+    "az-vault",
+    "az-vnet",
+    "az-snet-apps",
+    "az-api",
+    "az-worker",
+    "az-snet-data",
+    "az-db"
+   ]
   }
- ]
+ ],
+ "iconPacks": {
+  "gcp": "2026-11-14",
+  "azure": "V25"
+ }
 }
