@@ -74,6 +74,14 @@ test('drawing (§7.1): the frame and its header; each kind\'s keyword over its n
   assert.deepEqual(comps('energy'), [['quantity', true, ['unit = Wh', 'quantityKind = energy']]]);
   assert.deepEqual(comps('controller'), [['operations', true, ['setAssistLevel']]]);
   assert.deepEqual(comps('rental-vehicle'), [], 'an empty compartment is not drawn');
+  // a member of a type of no SysML kind (member-kinds refuses it) is drawn in the last compartment and counted, not hidden
+  const o = structuredClone(M17); by(o, 'motor').members.push({ id: 'motor.torque', type: 'uml.Property', label: 'torque', props: { valueType: 'Real' } }, { id: 'motor.go', type: 'uml.Reception', label: 'go' });
+  const go = layout(o, V).byId.motor; assert.deepEqual(go.compartments.map(c => [c.name, c.members.map(m => m.label)]), [['values', ['ratedPower']], ['other members', ['torque', 'go']]]);
+  assert.equal(go.aria, 'Block Motor, 1 value, 2 other members'); assert.match(describe(o, V), /Block Motor, 1 value, 2 other members\./);
+  // a view naming an id that is no node, with a line to it: laid out in its frame and checked, not thrown; validate() names it
+  const d = { schemaVersion: 2, root: 'v', nodes: [B('a', 'A')], edges: [{ id: 'x', type: 'uml.Association', from: 'a', to: 'zz' }], views: [{ id: 'v', diagram: 'sysml.block-definition', nodeIds: ['a', 'zz'] }] };
+  const gd = layout(d, 'v'); assert.deepEqual([gd.nodes.map(x => x.id), gd.families.map(f => f.shape)], [['a'], ['sysml-frame']]); assert.deepEqual(check(d, 'v'), []);
+  assert.ok(validate(d).length > 0);
   // every compartment drawn with its title, a muted centred row
   const titles = [...s.matchAll(/class="c-title"[^>]*>([^<]+)</g)].map(x => x[1]);
   assert.deepEqual(titles.sort(), ['constraints', 'constraints', 'flow properties', 'operations', 'parameters', 'parts', 'ports', 'ports', 'quantity', 'quantity', 'references', 'values', 'values'].sort());
@@ -185,6 +193,10 @@ test('validators (§7.3), the cases around each rule: what passes and what fails
   assert.deepEqual(rules([P('b.k', 'ConstraintParameter', 'k')]), ['member-kinds'], 'a parameter in a block');
   assert.deepEqual(rules([], [{ id: 'ib2', type: 'sysml.InterfaceBlock', label: 'I', members: [P('ib2.a', 'PartProperty', 'a', { valueType: 'Wheel' }), P('ib2.p', 'Port', 'p', { kind: 'full' }), P('ib2.f', 'FlowProperty', 'f', { direction: 'in' }), P('ib2.q', 'Port', 'q', { kind: 'proxy', valueType: 'Plug' }), { id: 'ib2.o', type: 'uml.Operation', label: 'o' }] }]),
     ['member-kinds', 'member-kinds'], 'an interface block holds no part and no full port');
+  assert.deepEqual(rules([], [{ id: 'ib3', type: 'sysml.InterfaceBlock', label: 'I3', members: [P('ib3.p', 'Port', 'p')] }]), ['member-kinds'], 'an interface block holds proxy ports only, not a plain one (clause 9)');
+  assert.deepEqual(rules([], [{ id: 'vt3', type: 'sysml.ValueType', label: 'V3', members: [P('vt3.v', 'ValueProperty', 'v', { valueType: 'Real' }), { id: 'vt3.o', type: 'uml.Operation', label: 'o' }] }]), [], 'a value type holds values and operations');
+  assert.deepEqual(rules([], [{ id: 'vt4', type: 'sysml.ValueType', label: 'V4', members: [P('vt4.a', 'PartProperty', 'a', { valueType: 'Wheel' }), P('vt4.p', 'Port', 'p', { kind: 'full' })] }]), ['member-kinds', 'member-kinds'], 'a value type holds no part and no port');
+  assert.deepEqual(rules([{ id: 'b.t', type: 'uml.Property', label: 't', props: { valueType: 'Real' } }, { id: 'b.r', type: 'uml.Reception', label: 'go' }]), ['member-kinds', 'member-kinds'], 'a block holds no member of a type of no SysML kind');
   assert.deepEqual(rules([], [{ id: 'cb2', type: 'sysml.ConstraintBlock', label: 'E', members: [P('cb2.v', 'ValueProperty', 'v'), P('cb2.k', 'ConstraintParameter', 'k'), P('cb2.c', 'ConstraintProperty', 'c', { valueType: 'Eq' })] }]), ['member-kinds'], 'a constraint block holds no value');
   assert.deepEqual(rules([], [{ id: 'vt2', type: 'sysml.ValueType', label: 'V', members: [P('vt2.f', 'FlowProperty', 'f', { direction: 'in' })] }]), ['member-kinds'], 'a value type holds no flow property');
   // general-kinds: one kind passes; a UML class specializing a block fails here, and the class rule leaves it (S20)
@@ -200,6 +212,7 @@ test('validators (§7.3), the cases around each rule: what passes and what fails
   assert.deepEqual(asc({ from: { aggregation: 'composite' }, to: {} }), ['part-unlisted'], 'no role');
   assert.deepEqual(asc({ from: { aggregation: 'composite' }, to: { role: 'w' } }, [P('b.w', 'ValueProperty', 'w')]), ['part-unlisted'], 'its role names a value');
   assert.deepEqual(asc({ from: { aggregation: 'shared' }, to: { role: 'x' } }), [], 'a shared end is a reference: not judged');
+  assert.deepEqual(asc({ from: { aggregation: 'composite' }, to: { role: 'e' } }, [P('b.e', 'ConstraintProperty', 'e', { valueType: 'Eq' })], ['b', 'cb']), [], 'to a constraint block, its role names a constraint property');
 });
 
 // ---- §7.4: members as text, the panel's rows, connect
@@ -216,6 +229,9 @@ test('member rows (§7.4): a keyword picks the kind, the type picks it with none
   assert.deepEqual(bdParse('part p: Battery', by(M17, 'range-equation'), M17), { error: 'member-kinds: constraint block RangeEquation holds no part' });
   assert.deepEqual(bdParse('full port p: X', by(M17, 'charge-interface'), M17), { error: 'member-kinds: interface block ChargeInterface holds no full port' });
   assert.match(bdParse('part battery Battery').error, /is not a member/);
+  // a stored direction or kind none of SysML's is printed as stored, so the row does not parse back unchanged; no direction is inout, SysML's default
+  for (const [m, x] of [[P('f', 'FlowProperty', 'dc', { valueType: 'X', direction: 'sideways' }), 'sideways dc: X'], [P('p', 'Port', 'p', { kind: 'odd' }), 'odd port p'], [P('f', 'FlowProperty', 'dc', { valueType: 'X' }), 'inout dc: X']]) {
+    assert.equal(bdPrint(m), x); assert.equal(!!bdParse(x).error, x !== 'inout dc: X', x); }
   // the printed rows of the example, then what the panel shows
   assert.deepEqual(by(M17, 'battery').members.map(T.member.print), ['value capacity: Energy', 'value cellVoltage: Voltage [10]', 'port charge: ChargeInterface']);
   assert.equal(T.member.print(by(M17, 'controller').members[0]), 'setAssistLevel(level: Integer)');
@@ -250,6 +266,12 @@ test('connect (§7.4): a part association adds the part property it draws, named
   assert.deepEqual(layout(m, V).byId.motor.compartments[0].members.map(x => x.label), ['battery']);
   assert.equal(c('ebike', 'battery', 0)[0].element.label, 'battery2', 'a role not taken');
   assert.deepEqual(c('range-equation', 'battery', 0), { error: 'A constraint block holds no part' });
+  const k = c('ebike', 'range-equation', 0); // to a constraint block: a constraint property (SysML's composition to a constraint block)
+  assert.deepEqual(k[0].element, { id: 'ebike.rangeEquation', type: 'sysml.ConstraintProperty', label: 'rangeEquation', props: { valueType: 'RangeEquation', multiplicity: '1' } });
+  assert.deepEqual(validate(apply(M17, k)), []);
+  assert.deepEqual(c('ebike', 'energy', 0), { error: 'A part association ends at a block or a constraint block, not value type' });
+  assert.deepEqual(c('ebike', 'charge-interface', 0), { error: 'A part association ends at a block or a constraint block, not interface block' });
+  assert.deepEqual(c('energy', 'battery', 0), { error: 'A value type holds no part' });
   assert.equal(c('motor', 'battery', 1), null, 'a reference association: the default');
   assert.deepEqual(c('energy', 'battery', 2), { error: 'A generalization joins two of one kind: value type and block differ' });
   assert.equal(c('motor', 'rental-vehicle', 2), null); assert.equal(c('dock', 'charge-interface', 3), null);
