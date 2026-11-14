@@ -1,7 +1,151 @@
 <!doctype html>
+<!-- The block definition diagram (M3.3, notes/milestone-3.md §7, §13) in headless Chrome (tests/embed.py), from
+     lib/umlimator-all.js: an inline copy of docs/diagrams/examples/17-block-definition.json drawn by render() in both themes,
+     three fonts and both directions (every node in the frame, its header tag, texts inside their shapes, the keywords, every
+     compartment titled, names, reading order, contrast, the legend, axe's rules written out), then edited through the edit
+     event and apply(), by pointer and by keyboard: the palette and N, a part association by L (its part property added with
+     it), a generalization by the handle (one refused, its reason on the hint line), F2, a value type's Unit field, a
+     constraint block's Constraint field, member rows by keyword (one refused), hide and delete. -->
 <meta charset="utf-8">
-<title>blocks: placeholder (milestone 3, M3.0)</title>
-<!-- notes/milestone-3.md M3.0: a placeholder that reports ok, so tests/embed.py lists the page once and the work package that
-     owns it (M3.2 requirement, M3.3 blocks, M3.4 internal-block, M3.5 parametric, M3.7 sysml) fills it without editing tests/embed.py -->
-<pre id="result"></pre>
-<script>document.getElementById('result').textContent = JSON.stringify({ ok: ['the placeholder page loads (filled by its work package)'], fail: [] });</script>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="../lib/umlimator-theme.css">
+<title>umlimator block definition diagram test</title>
+<body style="margin:0">
+<div id="m" style="width:1600px;height:1100px"></div>
+<script type="module">
+import { render, apply, validate } from '../lib/umlimator-all.js';
+const out = { ok: [], fail: [] };
+const check = (name, cond, info) => { document.title = name; if (cond) out.ok.push(name); else out.fail.push(name + (info === undefined ? '' : ': ' + JSON.stringify(info))); };
+const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+const el = document.getElementById('m');
+let sr, stage, ed = [];
+const pick = s => sr.querySelector(s), all = s => [...sr.querySelectorAll(s)];
+const centre = s => { const r = pick(s).getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; };
+const ptr = (target, type, [x, y]) => target.dispatchEvent(new PointerEvent(type, { clientX: x, clientY: y, button: 0, pointerId: 7, pointerType: 'mouse', bubbles: true, composed: true }));
+const key = (k, extra = {}, target = stage) => target.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true, composed: true, cancelable: true, ...extra }));
+const handleTo = ([x, y]) => { const c = pick('.um-handle circle'), r = c.getBoundingClientRect(); ptr(c, 'pointerdown', [r.x + r.width / 2, r.y + r.height / 2]); ptr(stage, 'pointermove', [x, y]); ptr(stage, 'pointerup', [x, y]); };
+const press = b => { const r = b.getBoundingClientRect(), at = [r.x + r.width / 2, r.y + r.height / 2]; ptr(b, 'pointerdown', at); ptr(b, 'pointerup', at); b.click(); };
+const hint = () => pick('.um-live').textContent;
+const click = s => { const g = pick(s), at = centre(s); ptr(g, 'pointerdown', at); ptr(g, 'pointerup', at); g.dispatchEvent(new MouseEvent('click', { clientX: at[0], clientY: at[1], bubbles: true, composed: true })); };
+const mount = (model, opts = {}) => { el.innerHTML = ''; ed = []; const h = render(el, model, { view: 'blocks', on: { edit: e => ed.push(e) }, ...opts }); sr = el.querySelector('.umlimator').shadowRoot; stage = pick('.stage'); return h; };
+const errors = m => validate(m).filter(p => p.level === 'error');
+const last = () => ed[ed.length - 1];
+const gives = (name, cmds, test, base, errs = 0) => { const e = last(); let m = null; try { m = e && apply(base, e.commands); } catch (x) { m = null; }
+  check(name, !!e && same(e.commands, cmds) && !!m && test(m) && errors(m).length === errs, [e, m && errors(m)]); return m; };
+const change = (t, v) => { if (t.type === 'checkbox') t.checked = v; else t.value = v; t.dispatchEvent(new Event('change', { bubbles: true })); };
+const box = g => { const r = g.getBBox(); return { x: r.x, y: r.y, w: r.width, h: r.height }; };
+const inside = (a, b) => a.x >= b.x - .5 && a.y >= b.y - .5 && a.x + a.w <= b.x + b.w + .5 && a.y + a.h <= b.y + b.h + .5;
+const FONTS = { serif: 'serif', sans: 'sans-serif', wide: 'monospace' };
+const rgba = s => { let m = /rgba?\(([^)]+)\)/.exec(s); if (m) { const p = m[1].split(/[ ,/]+/).filter(Boolean).map(Number); return [p[0] / 255, p[1] / 255, p[2] / 255, p.length > 3 ? p[3] : 1]; }
+  m = /color\(srgb ([^)]+)\)/.exec(s); if (m) { const p = m[1].split(/[ /]+/).filter(Boolean).map(Number); return [p[0], p[1], p[2], p.length > 3 ? p[3] : 1]; } return null; };
+const blend = (top, bot) => [0, 1, 2].map(i => top[i] * top[3] + bot[i] * (1 - top[3])).concat(1);
+const lum = c => { const f = v => v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]); };
+const ratio = (fg, bg) => { const [x, y] = [lum(blend(fg, bg)), lum(bg)].sort((p, q) => q - p); return +((x + 0.05) / (y + 0.05)).toFixed(2); };
+const css = (e, k) => rgba(getComputedStyle(e)[k]);
+// docs/diagrams/examples/17-block-definition.json, as M3.0 left it (M3.7 moves it; this page keeps its own copy)
+const MODEL = {"schemaVersion":2,"title":"E-bike: blocks","root":"blocks","nodes":[{"id":"rental-vehicle","type":"sysml.Block","label":"RentalVehicle"},{"id":"ebike","type":"sysml.Block","label":"EBike","members":[{"id":"ebike.battery","type":"sysml.PartProperty","label":"battery","props":{"valueType":"Battery","multiplicity":"1"}},{"id":"ebike.controller","type":"sysml.PartProperty","label":"controller","props":{"valueType":"Controller","multiplicity":"1"}},{"id":"ebike.motor","type":"sysml.PartProperty","label":"motor","props":{"valueType":"Motor","multiplicity":"1"}},{"id":"ebike.wheels","type":"sysml.PartProperty","label":"wheels","props":{"valueType":"Wheel","multiplicity":"2"}},{"id":"ebike.dock","type":"sysml.ReferenceProperty","label":"dock","props":{"valueType":"Dock","multiplicity":"0..1"}},{"id":"ebike.rangeEq","type":"sysml.ConstraintProperty","label":"rangeEq","props":{"valueType":"RangeEquation"}}]},{"id":"battery","type":"sysml.Block","label":"Battery","members":[{"id":"battery.capacity","type":"sysml.ValueProperty","label":"capacity","props":{"valueType":"Energy"}},{"id":"battery.cellVoltage","type":"sysml.ValueProperty","label":"cellVoltage","props":{"valueType":"Voltage","multiplicity":"10"}},{"id":"battery.charge","type":"sysml.Port","label":"charge","props":{"valueType":"ChargeInterface"}}]},{"id":"motor","type":"sysml.Block","label":"Motor","members":[{"id":"motor.ratedPower","type":"sysml.ValueProperty","label":"ratedPower","props":{"valueType":"Power"}}]},{"id":"controller","type":"sysml.Block","label":"Controller","members":[{"id":"controller.setAssistLevel","type":"uml.Operation","label":"setAssistLevel","props":{"parameters":[{"name":"level","valueType":"Integer"}]}}]},{"id":"dock","type":"sysml.Block","label":"Dock","members":[{"id":"dock.charge","type":"sysml.Port","label":"charge","props":{"valueType":"~ChargeInterface"}}]},{"id":"charge-interface","type":"sysml.InterfaceBlock","label":"ChargeInterface","members":[{"id":"charge-interface.dc","type":"sysml.FlowProperty","label":"dc","props":{"valueType":"DCPower","direction":"in"}},{"id":"charge-interface.stateOfCharge","type":"sysml.FlowProperty","label":"stateOfCharge","props":{"valueType":"Percent","direction":"out"}}]},{"id":"range-equation","type":"sysml.ConstraintBlock","label":"RangeEquation","props":{"constraint":"range = energy / consumption"},"members":[{"id":"range-equation.range","type":"sysml.ConstraintParameter","label":"range","props":{"valueType":"Distance"}},{"id":"range-equation.energy","type":"sysml.ConstraintParameter","label":"energy","props":{"valueType":"Energy"}},{"id":"range-equation.consumption","type":"sysml.ConstraintParameter","label":"consumption","props":{"valueType":"EnergyPerDistance"}}]},{"id":"voltage","type":"sysml.ValueType","label":"Voltage","props":{"unit":"V","quantityKind":"voltage"}},{"id":"energy","type":"sysml.ValueType","label":"Energy","props":{"unit":"Wh","quantityKind":"energy"}}],"edges":[{"id":"ebike-battery","type":"uml.Association","from":"ebike","to":"battery","props":{"ends":{"from":{"aggregation":"composite","multiplicity":"0..1"},"to":{"role":"battery","multiplicity":"1"}}}},{"id":"ebike-motor","type":"uml.Association","from":"ebike","to":"motor","props":{"ends":{"from":{"aggregation":"composite","multiplicity":"1"},"to":{"role":"motor","multiplicity":"1"}}}},{"id":"ebike-controller","type":"uml.Association","from":"ebike","to":"controller","props":{"ends":{"from":{"aggregation":"composite","multiplicity":"1"},"to":{"role":"controller","multiplicity":"1"}}}},{"id":"ebike-is-rental-vehicle","type":"uml.Generalization","from":"ebike","to":"rental-vehicle"},{"id":"dock-uses-charge-interface","type":"uml.Dependency","from":"dock","to":"charge-interface","props":{"stereotypes":["use"]}}],"views":[{"id":"blocks","diagram":"sysml.block-definition","title":"E-bike blocks","parent":null,"direction":"down","nodeIds":["rental-vehicle","ebike","battery","motor","controller","dock","charge-interface","range-equation","voltage","energy"]}]};
+const CLS = MODEL.views[0].nodeIds;
+try {
+  check('the inline example validates clean', same(validate(MODEL), []), validate(MODEL));
+  for (const theme of ['light', 'dark']) for (const [fname, family] of Object.entries(FONTS)) for (const direction of ['down', 'right']) {
+    document.documentElement.dataset.theme = theme; el.style.setProperty('--um-sans', family);
+    const M = structuredClone(MODEL); M.views[0].direction = direction;
+    const tag = `${theme}, ${fname}, ${direction}`, h = mount(M, { legend: true }), bad = [], nodes = all('.node');
+    check(`${tag}: ten classifiers, one frame, five lines`, all('.node.classifier').length === 10 && all('.family').length === 1 && all('.edge-g').length === 5, [nodes.length, all('.family').length, all('.edge-g').length]);
+    nodes.forEach(g => { const b = box(g.querySelector('.n-mask')); g.querySelectorAll('text').forEach(t => { if (!inside(box(t), b)) bad.push(`${g.dataset.id}: "${t.textContent}" spills`); }); });
+    const boxes = nodes.map(g => [g.dataset.id, box(g.querySelector('.n-mask'))]);
+    boxes.forEach(([a, p], i) => boxes.slice(i + 1).forEach(([b, q]) => { if (p.x < q.x + q.w && q.x < p.x + p.w && p.y < q.y + q.h && q.y < p.y + p.h) bad.push(`${a} and ${b} overlap`); }));
+    const frame = box(pick('.family[data-family="blocks->frame"] .family-box')), title = pick('.family[data-family="blocks->frame"] .family-title');
+    boxes.forEach(([id, b]) => { if (!inside(b, frame)) bad.push(`${id} is outside the frame`); });
+    if (!inside(box(title), frame)) bad.push('the header spills out of the frame');
+    boxes.forEach(([id, b]) => { const t = box(title); if (t.x < b.x + b.w && b.x < t.x + t.w && t.y < b.y + b.h && b.y < t.y + t.h) bad.push(`the header over ${id}`); });
+    check(`${tag}: every text inside its shape, every element inside the frame, none overlapping, the header clear of them`, !bad.length, bad);
+    check(`${tag}: the frame's header`, title.textContent === 'bdd [Model] E-bike: blocks [E-bike blocks]', title.textContent);
+    const heads = id => all(`.node[data-id="${id}"] .c-st`).map(t => t.textContent);
+    check(`${tag}: each kind's keyword over its name`, same(['ebike', 'charge-interface', 'range-equation', 'energy'].map(heads), [['«block»'], ['«interfaceBlock»'], ['«constraintBlock»'], ['«valueType»']]), ['ebike', 'charge-interface', 'range-equation', 'energy'].map(heads));
+    const titles = all('.node .c-title'), centred = titles.every(t => t.getAttribute('text-anchor') === 'middle' && same(css(t, 'fill'), css(pick('.node .c-st'), 'fill')));
+    check(`${tag}: every compartment titled, its name centred in the muted colour`, titles.length === 13 && all('.node .c-comp').length === 13 && centred, [titles.length, all('.node .c-comp').length]);
+    const rows = id => all(`.node[data-id="${id}"] .c-row`).map(t => t.textContent);
+    check(`${tag}: the rows: parts, a port's type, flow directions, an expression, a unit`, same(rows('ebike'), ['battery: Battery [1]', 'controller: Controller [1]', 'motor: Motor [1]', 'wheels: Wheel [2]', 'dock: Dock [0..1]', 'rangeEq: RangeEquation'])
+      && same(rows('dock'), ['charge: ~ChargeInterface']) && same(rows('charge-interface'), ['in dc: DCPower', 'out stateOfCharge: Percent']) && rows('range-equation')[0] === '{range = energy / consumption}' && same(rows('energy'), ['unit = Wh', 'quantityKind = energy']),
+      [rows('ebike'), rows('charge-interface'), rows('range-equation'), rows('energy')]);
+    check(`${tag}: names a screen reader reads`, pick('.node[data-id="ebike"]').getAttribute('aria-label') === 'Block EBike, 4 parts, 1 reference, 1 constraint'
+      && pick('.family[data-family="blocks->frame"]').getAttribute('aria-label') === 'Block definition diagram of model E-bike: blocks: E-bike blocks'
+      && pick('.edge-g[data-from="ebike"][data-to="battery"] title').textContent === 'Association from EBike (0..1) to Battery (battery, 1)', pick('.node[data-id="ebike"]').getAttribute('aria-label'));
+    check(`${tag}: a key for every element and line, in reading order`, all('.keys .um-key').length === 15 && same(all('.keys .node-key').map(k => k.dataset.node), CLS), all('.keys .node-key').map(k => k.dataset.node));
+    const legend = all('.m-legend b').map(b => b.textContent);
+    check(`${tag}: the legend keys each line kind drawn`, same(legend, ['Association', 'Generalization', 'Dependency', 'Composition']), legend);
+    const stageBg = css(pick('.stage'), 'backgroundColor'), low = [];
+    [...nodes, ...all('.family')].forEach(g => g.querySelectorAll('text').forEach(t => { const c = ratio(css(t, 'fill'), stageBg); if (c < 4.5) low.push([g.dataset.id || g.dataset.family, t.textContent, c]); }));
+    const strokes = all('.node .n-body, .family .family-box, .edge-g path.edge').map(b => ratio(css(b, 'stroke'), stageBg)).filter(c => c < 3);
+    check(`${tag}: contrast: texts 4.5:1, outlines and lines 3:1`, !low.length && !strokes.length, [low, strokes]);
+    // axe-core 4.14's rules for what is drawn as role="img", written out: svg-img-alt and role-img-alt (each has a name),
+    // nested-interactive (nothing inside one is a tab stop); the classifier's aria-label is the type's own (ariaOwn)
+    const svg = pick('.stage svg'), imgs = all('.stage svg [role="img"]'), noAlt = [], nested = [];
+    imgs.forEach(x => { if (!(x.getAttribute('aria-label') || '').trim()) noAlt.push(x.dataset.id || x.dataset.family || x.localName);
+      x.querySelectorAll('[tabindex], a[href], button, input, select, textarea').forEach(c => { if (c.tabIndex >= 0) nested.push(`${x.dataset.id || x.dataset.family} holds ${c.getAttribute('class') || c.localName}`); }); });
+    const labels = all('.node.classifier').map(g => g.querySelectorAll('[aria-label]').length);
+    check(`${tag}: axe, written out: the drawing a named group, its 10 nodes and the frame named images with no tab stop and no other name inside`,
+      svg.getAttribute('role') === 'group' && !!(svg.getAttribute('aria-label') || '').trim() && imgs.length === 11 && !noAlt.length && !nested.length && labels.every(k => k === 0), [imgs.length, noAlt, nested.slice(0, 4), labels]);
+    h.destroy();
+  }
+  document.documentElement.dataset.theme = 'light'; el.style.removeProperty('--um-sans');
+
+  // ---- editing (DoD 4), each gesture's commands applied with apply()
+  const BASE = structuredClone(MODEL);
+  let h = mount(BASE, { editable: true });
+  const panel = s => pick('.um-editor ' + s);
+  check('the palette: its six elements; the lines listed', same(all('.um-editor .um-pal button').map(b => b.textContent), ['Block', 'Interface block', 'Constraint block', 'Value type', 'Package', 'Comment'])
+    && /Part association, Reference association, Generalization, Dependency, Comment link/.test(panel('.um-pal .um-note').textContent), panel('.um-pal').textContent);
+  key('n'); pick('.um-rename').value = 'Frame'; key('Enter', {}, pick('.um-rename'));
+  gives('N adds a block, named, shown in the view', [{ op: 'add', element: { id: 'block1', type: 'sysml.Block', label: 'Frame' }, view: 'blocks' }], m => m.views[0].nodeIds.includes('block1'), BASE);
+  all('.um-editor .um-pal button')[3].click(); pick('.um-rename').value = 'Power'; key('Enter', {}, pick('.um-rename'));
+  gives('the palette\'s Value type: added', [{ op: 'add', element: { id: 'valuetype1', type: 'sysml.ValueType', label: 'Power' }, view: 'blocks' }], m => m.nodes.some(n => n.id === 'valuetype1'), BASE);
+  // a part association by L: the part property it draws added with it
+  click('.node[data-id="motor"] .c-name'); key('l'); for (const c of 'Battery') key(c); key('Enter');
+  const kinds = all('.um-pick button').map(b => b.textContent);
+  check('L, a name and Enter open the picker with the five lines', same(kinds, ['Part association', 'Reference association', 'Generalization', 'Dependency', 'Comment link']), kinds);
+  all('.um-pick button')[0].click();
+  const m1 = gives('L, Part association: the part property and the line naming it by its role, one transaction', [{ op: 'add', element: { id: 'motor.battery', type: 'sysml.PartProperty', label: 'battery', props: { valueType: 'Battery', multiplicity: '1' } }, owner: 'motor' },
+    { op: 'add', element: { id: 'association1', type: 'uml.Association', from: 'motor', to: 'battery', props: { ends: { from: { aggregation: 'composite' }, to: { role: 'battery', multiplicity: '1' } } } }, view: 'blocks' }], m => same(validate(m), []), BASE);
+  h.update(m1);
+  check('after update() the part is a row of Motor\'s parts', all('.node[data-id="motor"] .c-row').map(t => t.textContent).includes('battery: Battery [1]'), all('.node[data-id="motor"] .c-row').map(t => t.textContent));
+  // the handle, by pointer: a generalization of two kinds refused, one of one kind added
+  const n0 = ed.length; click('.node[data-id="energy"] .c-name'); handleTo(centre('.node[data-id="battery"] .n-mask')); press(all('.um-pick button').find(b => b.textContent === 'Generalization'));
+  check('the handle from a value type to a block, Generalization: refused, its reason on the hint line', ed.length === n0 && hint() === 'A generalization joins two of one kind: value type and block differ', [ed.slice(n0), hint()]);
+  click('.node[data-id="motor"] .c-name'); handleTo(centre('.node[data-id="rental-vehicle"] .n-mask')); press(all('.um-pick button').find(b => b.textContent === 'Generalization'));
+  gives('the handle from a block to a block, Generalization: added', [{ op: 'add', element: { id: 'generalization1', type: 'uml.Generalization', from: 'motor', to: 'rental-vehicle' }, view: 'blocks' }], m => m.edges.some(e => e.id === 'generalization1'), m1);
+  // F2
+  click('.node[data-id="controller"] .c-name'); key('F2');
+  check('F2 on a block: a field holding its name', pick('.um-rename') && pick('.um-rename').value === 'Controller');
+  pick('.um-rename').value = 'MotorController'; key('Enter', {}, pick('.um-rename'));
+  gives('F2: set its label', [{ op: 'set', id: 'controller', path: 'label', value: 'MotorController' }], m => m.nodes.find(n => n.id === 'controller').label === 'MotorController', m1);
+  // the panel: a value type's Unit, a constraint block's Constraint
+  click('.node[data-id="energy"] .c-name'); change(panel('[data-f="p:unit"]'), 'kWh');
+  gives('the Unit field sets a value type\'s unit', [{ op: 'set', id: 'energy', path: 'props.unit', value: 'kWh' }], m => m.nodes.find(n => n.id === 'energy').props.unit === 'kWh', m1);
+  click('.node[data-id="range-equation"] .c-name'); change(panel('[data-f="p:constraint"]'), 'range = energy / rate');
+  gives('the Constraint field sets a constraint block\'s expression', [{ op: 'set', id: 'range-equation', path: 'props.constraint', value: 'range = energy / rate' }], m => m.nodes.find(n => n.id === 'range-equation').props.constraint === 'range = energy / rate', m1);
+  // member rows: the panel prints each with its keyword; New member and a row edited read the keyword; a kind the owner may not hold refused
+  click('.node[data-id="ebike"] .c-name');
+  check('a block\'s panel prints its members with their keywords', same(all('.um-editor [data-m]').map(x => x.value), ['part battery: Battery [1]', 'part controller: Controller [1]', 'part motor: Motor [1]', 'part wheels: Wheel [2]', 'ref dock: Dock [0..1]', 'constraint rangeEq: RangeEquation']), all('.um-editor [data-m]').map(x => x.value));
+  const row = panel('[data-m="ebike.dock"]'); change(row, 'part dock: Dock [1]');
+  gives('a row edited to another keyword: its kind, name and props set', [{ op: 'set', id: 'ebike.dock', path: 'type', value: 'sysml.PartProperty' }, { op: 'set', id: 'ebike.dock', path: 'label', value: 'dock' }, { op: 'set', id: 'ebike.dock', path: 'props', value: { valueType: 'Dock', multiplicity: '1' } }],
+    m => m.nodes.find(n => n.id === 'ebike').members.find(x => x.id === 'ebike.dock').type === 'sysml.PartProperty', m1);
+  click('.node[data-id="battery"] .c-name'); let nm = panel('[data-new]'); nm.value = 'proxy port plug: ChargeInterface'; key('Enter', {}, nm);
+  gives('New member, proxy port: added to the block', [{ op: 'add', element: { id: 'battery.plug', type: 'sysml.Port', label: 'plug', props: { valueType: 'ChargeInterface', kind: 'proxy' } }, owner: 'battery' }],
+    m => m.nodes.find(n => n.id === 'battery').members.some(x => x.id === 'battery.plug'), m1);
+  const n1 = ed.length; click('.node[data-id="range-equation"] .c-name'); nm = panel('[data-new]'); nm.value = 'value v: Real'; key('Enter', {}, nm);
+  check('New member, a value in a constraint block: refused, the row marked, its reason on the hint line', ed.length === n1 && nm.getAttribute('aria-invalid') === 'true' && hint() === 'member-kinds: constraint block RangeEquation holds no value', [ed.slice(n1), hint()]);
+  // hide, delete
+  h = mount(BASE, { editable: true });
+  click('.node[data-id="motor"] .c-name'); key('Delete');
+  gives('Delete: hide the block from the view', [{ op: 'hide', id: 'motor', view: 'blocks' }], m => !m.views[0].nodeIds.includes('motor'), BASE);
+  click('.node[data-id="motor"] .c-name'); key('Delete', { shiftKey: true });
+  gives('Shift + Delete: delete the block and its association, EBike\'s part property kept, typed by a name of no element', [{ op: 'delete', id: 'motor' }],
+    m => !m.nodes.some(n => n.id === 'motor') && !m.edges.some(e => e.id === 'ebike-motor') && same(validate(m), []), BASE);
+  h.select({ type: 'edge', ids: ['ebike-is-rental-vehicle'], view: 'blocks' }); key('Delete', { shiftKey: true });
+  gives('Shift + Delete on a generalization: delete it', [{ op: 'delete', id: 'ebike-is-rental-vehicle' }], m => !m.edges.some(e => e.id === 'ebike-is-rental-vehicle'), BASE);
+  h.destroy();
+} catch (e) { out.fail.push('threw: ' + (e && e.stack || e)); }
+const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
+</script>
