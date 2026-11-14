@@ -181,7 +181,7 @@ test('the layout is not edited after layoutTyped: drawn twice from one memo, the
 
 test('names, reading order and the key (A1, §7.5): each element by type, technology and description; the boundary and what it holds first; each type, shape, external, the relationship and the implied line keyed', () => {
   const g = layout(C4, 'c4-containers'), s = svgOf(g);
-  assert.equal(g.byId['c4-api'].aria, 'Container Shop API, Python, FastAPI: Catalogue, basket, checkout and accounts as a JSON API.');
+  assert.equal(g.byId['c4-api'].aria, 'Container Shop API, Python, FastAPI: Catalogue, basket, checkout and accounts as a JSON API., opens Shop API: components');
   assert.equal(g.byId['c4-shopper'].aria, 'Person Shopper: Browses the catalogue, buys books and tracks orders.');
   assert.equal(g.byId['c4-payments'].aria, 'External software system Payment provider: Takes card payments and makes refunds.');
   assert.equal(g.families[0].aria, 'Software system Bookshop, a boundary holding 5 containers');
@@ -390,4 +390,12 @@ test('audit 1: D leaves a container reached with its system to it; c4-relationsh
   const cv = { ...m, edges: [], views: [{ id: 'v', diagram: 'c4.container', title: 'C', subject: 's', nodeIds: ['s', 'a', 'c2'] }] };
   assert.deepEqual(validate(cv).filter(p => p.rule === 'c4-level'), [], 'another system\'s container on a container view');
   assert.match(readFileSync(new URL('../docs/conformance/c4.md', import.meta.url), 'utf8'), /containers too \(its subject's and other systems'\)/);
+});
+
+test('audit 5: check() reports a line drawn through a card on a typed view (bookshop-c4 containers, a host font 10% narrower)', () => {
+  const m = JSON.parse(readFileSync(new URL('../examples/bookshop-c4.json', import.meta.url), 'utf8')), was = console.warn;
+  console.warn = () => {}; let said; try { said = check(m, 'c4-containers', { measure: (s, px) => s.length * px * 0.54 }); } finally { console.warn = was; }
+  const p = said.find(i => i.message === 'view c4-containers: edge Order worker→Email service passes through card "Order queue"');
+  assert.ok(p, said.map(i => i.message).join('\n'));
+  assert.deepEqual(p.targets.map(t => t.type === 'edge' ? t.ids : t.id), [['c4-worker-mail'], 'c4-queue']);
 });

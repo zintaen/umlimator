@@ -92,7 +92,7 @@ try {
     const legend = all('.m-legend b').map(b => b.textContent), implied = vid === 'ctx' || vid === 'c4-context'; // the system's own line to the payment provider is gone from G3
     check(`${tag}: the key names each element type drawn, external, the relationship${implied ? ' and the implied line' : ''}`, legend.includes('Person') === (vid !== 'c4-components') && legend.includes('External software system')
       && legend.includes('Relationship') && legend.includes('Implied relationship') === implied, legend);
-    if (vid === 'c4-containers') check(`${tag}: names a screen reader reads`, pick('.node[data-id="c4-api"]').getAttribute('aria-label') === 'Container Shop API, Python, FastAPI: Catalogue, basket, checkout and accounts as a JSON API.'
+    if (vid === 'c4-containers') check(`${tag}: names a screen reader reads`, pick('.node[data-id="c4-api"]').getAttribute('aria-label') === 'Container Shop API, Python, FastAPI: Catalogue, basket, checkout and accounts as a JSON API., opens Shop API: components'
       && pick('.family[data-family="c4-bookshop"]').getAttribute('aria-label') === 'Software system Bookshop, a boundary holding 5 containers'
       && pick('.edge-g[data-from="c4-storefront"][data-to="c4-api"] title').textContent === 'Relationship from Storefront to Shop API: Reads the catalogue and places orders through [JSON over HTTPS]'
       && pick('.family[data-family="c4-bookshop"] .family-title').textContent === 'Bookshop [Software System]');
@@ -196,6 +196,13 @@ try {
   key('F2'); if (pick('.um-rename')) { pick('.um-rename').value = 'Pays'; key('Enter', {}, pick('.um-rename')); }
   key('Delete'); key('Delete', { shiftKey: true }); key('l'); key('Escape');
   check('F2, Delete, Shift + Delete and L on an implied line: refused, nothing emitted', ed.length === n1, ed.slice(n1));
+  h.destroy();
+
+  // ---- audit 5: the details panel lists each model line once, though the drawn label adds its technology
+  h = mount(MODEL, 'c4-containers', { details: true });
+  h.select({ type: 'node', id: 'c4-api' }); pick('[data-tab="links"]').click();
+  const rels = all('.links .rel').map(b => b.dataset.n);
+  check('audit 5: the panel lists each line of Shop API once (Storefront in; Payment provider, Database, Order queue out)', rels.length === new Set(rels).size && rels.includes('c4-storefront'), rels);
   h.destroy();
 } catch (e) { out.fail.push('threw: ' + (e && e.stack || e)); }
 const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);

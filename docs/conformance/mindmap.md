@@ -19,7 +19,7 @@ strategy (`src/layout/tree.js`, §6): each subtree takes a band, bands are stack
 | Branch | the topic's `parent` (no line elements) | a cubic curve from the parent's edge to the child's, horizontal at both ends, 2.5 px from the root and 1.5 px below, each first-level branch in a colour of the map's kind palette, cycled |
 | Order | the view's `nodeIds` | children in that order, top to bottom |
 | Side | `present.<id>.side` on a first-level topic | that half; with none, the half whose first-level bands are shorter so far (right on a tie) |
-| A topic that opens a view | `opensView` | the drill-down mark other typed nodes carry; the topic 26 px wider for it |
+| A topic that opens a view | `opensView` | the drill-down mark (⤢), the only typed node that draws one (other typed elements that open a view say so in their names: "…, opens <view>"); the topic 26 px wider for it |
 
 Rules (`src/mindmap/mindmap.js`): error `topic-parent` (a topic's parent is a topic); warnings `mindmap-root` (one tree a
 view: each further root is drawn as its own tree under the first), `side-first` (a side on a deeper topic is ignored),

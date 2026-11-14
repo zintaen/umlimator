@@ -3,8 +3,8 @@ import { hit } from './layered.js';
 
 // an issue's message, and what it is about (the cards, lines and boxes it names) when the caller keeps a list of that: check()
 // turns those into Refs; the page's check reads only the messages
-// a card or box by its label, else its id
-const nm = x => x.label ?? x.id, name = e => `${nm(e.s)}→${nm(e.t)}`;
+// a card or box by its label, else its id; a typed node with no text (a choice, a fork, a final node) by its id too
+const nm = x => x.type ? x.label || x.id : x.label ?? x.id, name = e => `${nm(e.s)}→${nm(e.t)}`;
 const teller = (issues, refs) => (message, ...about) => { issues.push(message); if (refs) refs.push(about); };
 // a label's box L across one of box f's borders
 const onBorder = (L, f) => { const xin = L.x + L.w > f.x && L.x < f.x + f.w, yin = L.y + L.h > f.y && L.y < f.y + f.h;
@@ -100,6 +100,17 @@ function overlapIssues(geo, where, refs) {
   for (let i = 0; i < nodes.length; i++) for (let j = i + 1; j < nodes.length; j++) if (hit(box(nodes[i]), box(nodes[j]), -1) && !holds(nodes[i], nodes[j])) say(`${where}: nodes "${nm(nodes[i])}" and "${nm(nodes[j])}" overlap`, nodes[i], nodes[j]);
   return issues;
 }
+// a typed view's line through a card it does not join, its owner, its ports or a box round one of its ends (a map's 12 px
+// clearance in routeAudit covers maps; a communication diagram's message rows sit on their link and a timing view's marks on its lanes by design; kept out of routeAudit, which the layouts also score with, so no picture changes)
+function throughIssues(geo, where, refs) {
+  const issues = [], say = teller(issues, refs); if (geo.map) return issues;
+  const inside = (a, b) => a.x >= b.x - 1 && a.y >= b.y - 1 && a.x + a.w <= b.x + b.w + 1 && a.y + a.h <= b.y + b.h + 1;
+  geo.edges.forEach(e => { const ends = [e.s, e.t].filter(Boolean), P = e.pts || [];
+    geo.nodes.forEach(n => { if (n.holder || n.shape === 'message-row' || /^tm-/.test(n.shape) || ends.some(m => m === n || n.owner === m.id || m.owner === n.id || inside(m, n) || inside(n, m))) return;
+      if (P.some((a, k) => k && Math.max(a[0], P[k - 1][0]) > n.x + 1 && Math.min(a[0], P[k - 1][0]) < n.x + n.w - 1 && Math.max(a[1], P[k - 1][1]) > n.y + 1 && Math.min(a[1], P[k - 1][1]) < n.y + n.h - 1))
+        say(`${where}: edge ${name(e)} passes through card "${nm(n)}"`, e, n); }); });
+  return issues;
+}
 function leaveIssues(geo, where, refs) {
   const issues = [], say = teller(issues, refs);
   // a numbered line's label with no room on it: only its step shows, its words in the line's title and the details only
@@ -138,10 +149,10 @@ function auditSvg(svg, geo, where) {
   });
   svg.querySelectorAll('rect.verb-chip').forEach(r => { const own = geo.byId[r.closest('[data-id]').dataset.id], x = +r.getAttribute('x'); // a chip's pill, not only its text (#84)
     if (own && (x < own.x + 1 || x + +r.getAttribute('width') > own.x + own.w - 1)) issues.push(`${where}: chip "${r.nextElementSibling.textContent}" overflows node "${nm(own)}"`); });
-  issues.push(...routeAudit(geo, where), ...leaveIssues(geo, where));
+  issues.push(...routeAudit(geo, where), ...throughIssues(geo, where), ...leaveIssues(geo, where));
   const els = T.filter(a => a.t === 'el');
   for (let i = 0; i < els.length; i++) for (let j = i + 1; j < els.length; j++) if (hit(els[i].b, els[j].b, -1)) issues.push(`${where}: edge labels "${els[i].txt}" and "${els[j].txt}" overlap`);
   return issues;
 }
 
-export { onBorder, detour, behind, routeAudit, overlapIssues, leaveIssues };
+export { onBorder, detour, behind, routeAudit, overlapIssues, throughIssues, leaveIssues };

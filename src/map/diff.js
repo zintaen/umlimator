@@ -21,6 +21,11 @@ const linesOf = (m, v) => { const all = Array.isArray(m.edges) ? m.edges.filter(
   if (Array.isArray(v.edges)) { const byId = new Map(all.filter(e => e.id != null).map(e => [String(e.id), e])); return v.edges.map(e => typeof e === 'string' ? byId.get(e) : e).filter(Boolean); }
   const ids = new Set([...arrOf(v.nodeIds), ...arrOf(v.containers).map(c => c && c.id)]); return all.filter(e => ids.has(e.from) && ids.has(e.to)); }; // a list it is not is ignored, as validate() says
 
+// the box a card sits in on a view: the innermost of the boxes that list it
+const boxOf = (v, id) => { const cs = arrOf(v.containers).filter(Boolean), by = new Map(cs.map(c => [c.id, c]));
+  const depth = c => { let d = 0; for (const seen = new Set(); c && !seen.has(c); c = by.get(c.parent)) { seen.add(c); d++; } return d; };
+  return cs.filter(c => arrOf(c.nodeIds).includes(id)).reduce((a, c) => !a || depth(c) > depth(a) ? c : a, null); };
+
 /** What changed from one model to the next, as one model to draw: `after`, with each card and line marked added, changed
  *  or removed (removed ones come back from `before`, in their views, boxes and places), a summary in words, and the
  *  views that show a change. Cards and lines are matched by id (a line without one by its ends, as a Ref names it). */
@@ -44,7 +49,7 @@ export function diff(before, after) {
   out.edges = mark(arr(A.edges), arr(out.edges), line, lineKeys);
   const goneLines = new Set(out.edges.filter(e => how.get(e) === 'removed' && e.id != null).map(e => String(e.id)));
   const V0 = new Map(arr(A.views).filter(Boolean).map(v => [v.id, v])), V1 = new Set(arr(out.views).filter(Boolean).map(v => v.id));
-  const moved = [], touched = new Set(); // cards put into or taken out of a view; views whose cards the diff marks there
+  const moved = [], touched = new Set(), viewSaid = []; // cards put into or taken out of a view; views whose cards the diff marks there; what only a view changes
   const views = arr(out.views).map(v => {
     const o = v && V0.get(v.id); if (!o) return v;
     const w = { ...v }, ids = arr(v.nodeIds), oldIds = arr(o.nodeIds);
@@ -55,6 +60,16 @@ export function diff(before, after) {
     left.forEach(id => { if (how.get(at.get(id)) !== 'removed') { ov[id] = { ...(o.nodeOverrides || {})[id], change: 'removed' }; moved.push(['takes', id, v]); } });
     came.forEach(id => { if (at.get(id) && how.get(at.get(id)) !== 'added') { ov[id] = { ...ov[id], change: 'added' }; moved.push(['puts', id, v]); } });
     if (left.length || came.length) touched.add(v.id);
+    // what only the view changes: its title, a box's name, a card's name here (nodeOverrides) or the box it sits in
+    const vn = v.title || v.id, says = t => { viewSaid.push(`${t} in the view ${vn}`); touched.add(v.id); }, bn = c => String(c.label ?? c.title ?? c.id);
+    if ((o.title || o.id) !== vn) { viewSaid.push(`retitles the view ${o.title || o.id} to ${vn}`); touched.add(v.id); }
+    const ob = new Map(arr(o.containers).filter(Boolean).map(c => [c.id, c]));
+    arr(v.containers).forEach(c => { const b = c && ob.get(c.id); if (b && bn(b) !== bn(c)) says(`renames the box ${bn(b)} to ${bn(c)}`); });
+    ids.filter(id => oldIds.includes(id)).forEach(id => { const a = (o.nodeOverrides || {})[id] || {}, b = (v.nodeOverrides || {})[id] || {}, base = (at.get(id) || {}).label || id;
+      const keys = [...new Set([...Object.keys(a), ...Object.keys(b)])].filter(k => canon(a[k]) !== canon(b[k])), rest = keys.filter(k => k !== 'label'), b0 = boxOf(o, id), b1 = boxOf(v, id);
+      if (keys.length) says((keys.includes('label') ? `renames ${a.label ?? base} to ${b.label ?? base}` : `changes ${b.label ?? base}`) + (rest.length ? ` (${rest.join(', ')})` : ''));
+      if ((b0 && b0.id) !== (b1 && b1.id)) says(`moves ${b.label ?? base} ${b0 ? 'out of ' + bn(b0) : ''}${b0 && b1 ? ' ' : ''}${b1 ? 'into ' + bn(b1) : ''}`);
+      if ((keys.length || (b0 && b0.id) !== (b1 && b1.id)) && !how.has(at.get(id))) ov[id] = { ...ov[id], change: 'changed' }; });
     if (Object.keys(ov).length) w.nodeOverrides = ov;
     if (left.length && Array.isArray(v.containers)) // a removed card stays in its box, and in its place on a view laid out by hand when that is free
       w.containers = v.containers.map(c => { const back = left.filter(id => c && arr(o.containers).some(b => b && b.id === c.id && arr(b.nodeIds).includes(id))); return back.length ? { ...c, nodeIds: [...arr(c.nodeIds), ...back] } : c; });
@@ -94,6 +109,7 @@ export function diff(before, after) {
     if (h === 'changed') { const [o, x] = was.get(e), t = TYPED.diff && TYPED.diff(o, x, name, [A, out]); if (t) return said.push(...t);
       said.push(`changes ${it} (${diffKeys([o, x]).map(k => k === 'label' ? `label ${o.label ?? '-'} → ${x.label ?? '-'}` : k).join(', ')})`); } });
   moved.forEach(([verb, id, v]) => said.push(`${verb} ${name(id)} ${verb === 'puts' ? 'in' : 'out of'} the view ${v.title || v.id}`));
+  said.push(...viewSaid);
   if (TYPED.order) TYPED.order(A, out, views, V0, said, touched, name);
 
   // the views that show a change: a card or line the diff marks, or a card it put in or took out

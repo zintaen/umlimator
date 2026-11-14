@@ -74,7 +74,7 @@ const PINNED = {
   'activity-minimal': { v: { right: [0, []], down: [0, []] } },
   'activity-stress': { 'edge-cases': { right: [1, []], down: [1, []] }, 'ec-take-payment': { right: [0, []], down: [0, []] }, all: { right: [9, []], down: [14, []] } },
   'state-minimal': { v: { right: [0, []], down: [0, []] } },
-  'state-stress': { 'edge-cases': { right: [0, []], down: [1, ['view edge-cases: edge →Capturing payment runs along the border of family "Parcel"', 'view edge-cases: edge →Capturing payment runs along the border of family "Payment"']] },
+  'state-stress': { 'edge-cases': { right: [0, []], down: [1, ['view edge-cases: edge ec-fork→Capturing payment runs along the border of family "Parcel"', 'view edge-cases: edge ec-fork→Capturing payment runs along the border of family "Payment"']] },
     all: { right: [19, []], down: [26, []] } },
   'overview-minimal': { v: { right: [0, []], down: [0, []] } },
   'overview-stress': { 'edge-cases': { right: [0, []], down: [1, []] },

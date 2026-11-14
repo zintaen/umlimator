@@ -126,3 +126,14 @@ test('diff() and drift() ignore a view\'s containers that is not a list, as vali
     assert.doesNotThrow(() => diff(m, n), JSON.stringify(c)); assert.doesNotThrow(() => drift(m, []), JSON.stringify(c));
   }
 });
+
+test('audit 5: diff() says what only a view changes (a card renamed there, moved to another box, a box renamed, the view retitled) and lists that view', () => {
+  const base = () => ({ nodes: [{ id: 'a', label: 'A' }, { id: 'b', label: 'B' }], edges: [{ id: 'ab', from: 'a', to: 'b' }],
+    views: [{ id: 'v', title: 'V', nodeIds: ['a', 'b'], containers: [{ id: 'k', label: 'Box', nodeIds: ['a'] }, { id: 's', label: 'Shelf', nodeIds: ['b'] }] }] });
+  const t = f => { const b = base(); f(b.views[0]); const d = diff(base(), b); return [d.summary, d.views, (d.model.views[0].nodeOverrides || {}).a]; };
+  assert.deepEqual(t(v => { v.nodeOverrides = { a: { label: 'Alpha' } }; }), [['renames A to Alpha in the view V'], ['v'], { label: 'Alpha', change: 'changed' }]);
+  assert.deepEqual(t(v => { v.containers[0].nodeIds = []; v.containers[1].nodeIds = ['a', 'b']; }), [['moves A out of Box into Shelf in the view V'], ['v'], { change: 'changed' }]);
+  assert.deepEqual(t(v => { v.containers[0].label = 'Crate'; }), [['renames the box Box to Crate in the view V'], ['v'], undefined]);
+  assert.deepEqual(t(v => { v.title = 'W'; }), [['retitles the view V to W'], ['v'], undefined]);
+  assert.deepEqual(t(() => {}), [[], [], undefined]);
+});

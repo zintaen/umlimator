@@ -631,7 +631,7 @@ lead under the maintainer's standing approval (14 Nov 2026).
   200 px and cut with `fit`; a 24 px hit area at least.
 - Branches: cubic curves from `p1` to `p2` with horizontal tangents, drawn in `draw`'s under layer, 2.5 px from the root and
   1.5 px below, each in its branch's colour; a topic's border in its branch's colour.
-- A topic with `opensView` carries the drill-down mark other typed nodes carry (the atlas, §10.3).
+- A topic with `opensView` carries the drill-down mark (the atlas, §10.3); no other typed node draws one (notes/stage-4.md), they say "opens <view>" in their names (audit 5).
 - `describe()`: the tree as an indented outline, pre-order, right branches then left. Focus order (Tab) and the reading
   order are that order too, tested on the stress view. PDF: `word` "Topic", `rows` its depth and its
   parent. Accessible names: "Topic Checkout, under Website, 2 subtopics".

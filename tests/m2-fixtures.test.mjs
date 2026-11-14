@@ -70,7 +70,7 @@ const PINNED = {
   'information-flow-stress': { 'edge-cases': { right: [2, 0, 0], down: [0, 0, 0] }, 'all': { right: [149, 1, 0], down: [121, 18, 0] } },
   'c4-minimal': { 'v': { right: [0, 0, 0], down: [0, 0, 0] } },
   'c4-stress': {
-    'ec-landscape': { right: [0, 0, 0], down: [0, 0, 0] }, 'ec-context': { right: [0, 0, 0], down: [0, 0, 0] }, 'edge-cases': { right: [0, 0, 0], down: [1, 0, 0] }, 'ec-component': { right: [0, 0, 0], down: [0, 0, 0] }, 'ec-dynamic': { right: [0, 0, 0], down: [0, 0, 0] }, 'ec-deployment': { right: [0, 0, 0], down: [0, 0, 0] }, 'all': { right: [94, 132, 237], down: [98, 228, 202] } },
+    'ec-landscape': { right: [0, 0, 0], down: [0, 0, 0] }, 'ec-context': { right: [0, 0, 0], down: [0, 0, 0] }, 'edge-cases': { right: [0, 0, 0], down: [1, 0, 0] }, 'ec-component': { right: [0, 0, 0], down: [0, 0, 0] }, 'ec-dynamic': { right: [0, 0, 0], down: [0, 0, 0] }, 'ec-deployment': { right: [0, 0, 0], down: [0, 0, 0] }, 'all': { right: [94, 369, 237], down: [98, 430, 202] } },
 };
 
 test('every view of the ten fixtures, right and down: a line through a node, an end off its node, a label over a node and check()\'s findings, each only as pinned (the stated limits)', () => {
