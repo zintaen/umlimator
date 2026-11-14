@@ -270,6 +270,11 @@ test('remove (S17): a change, a message or a constraint is deleted, said; Delete
   let r = tmRemove(m, V0, ['worker'], false);
   assert.deepEqual(r.commands, [{ op: 'hide', id: 'worker', view: 'charge' }]);
   assert.equal(r.say, 'Hid worker; deleted its 2 messages; its changes stay in the timeline');
+  { // audit 5: only the clauses that hold, for a lifeline with no message and one change or none
+    const q = { schemaVersion: 2, nodes: [{ id: 'lamp', type: 'uml.Lifeline', label: 'lamp', props: { states: ['Off', 'On'] } }, { id: 'b', type: 'uml.Lifeline', label: 'b' }], edges: [],
+      views: [{ id: 'v', diagram: 'uml.timing', nodeIds: ['lamp', 'b'], timeline: { unit: 's', changes: [{ id: 'c1', lifeline: 'lamp', at: 0, state: 'Off' }], constraints: [] } }] };
+    assert.equal(tmRemove(q, 'v', ['lamp'], false).say, 'Hid lamp; its change stays in the timeline');
+    assert.equal(tmRemove(q, 'v', ['b'], false).say, 'Hid b'); }
   let n = run(m, r);
   assert.deepEqual([V(n).nodeIds, V(n).edges, TL(n)], [['payments'], [], TL(m)]);
   r = tmRemove(m, V0, ['worker'], true); assert.equal(r.say, 'Deleted worker, 4 changes, 2 messages and 2 constraints');

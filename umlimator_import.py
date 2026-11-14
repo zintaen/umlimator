@@ -186,7 +186,7 @@ def mermaid_typed(text, typed=False):
 
 def front(text):
     """Mermaid's front matter (--- title: ... ---): its title, and the text with the block as blank lines."""
-    m = re.match(r"\s*---\n(.*?)\n---\n", text, re.S)
+    m = re.match(r"\s*---[^\S\n]*\n(.*?)\n---[^\S\n]*(?:\n|$)", text, re.S)
     if not m:
         return None, text
     title = re.search(r"^title:\s*(.+)$", m.group(1), re.M)
@@ -220,12 +220,26 @@ SZ_SHAPE = {"box": "box", "roundedbox": "box", "person": "person", "robot": "rob
             "mobiledeviceportrait": "mobile", "mobiledevicelandscape": "mobile", "hexagon": "hexagon"}
 
 
+def dsl_lines(text):
+    """The DSL's statements, stripped, with their first line's number: a line ending in \\ goes on in the next."""
+    buf, start = [], 0
+    for no, raw in enumerate(text.splitlines(), 1):
+        start = start or no
+        raw = raw.rstrip()
+        if raw.endswith("\\"):
+            buf.append(raw[:-1])
+            continue
+        yield start, "".join(buf + [raw]).strip()
+        buf, start = [], 0
+    if buf:
+        yield start, "".join(buf).strip()
+
+
 def structurizr(text, name):
     m = Model(name)
     els, ref, path, rels, specs, stack, groups, styles, depth = {}, {}, {}, [], [], [], [], [], {}
     implied, comment, opened, flat = "any", 0, [], False  # comment: the line a /* ... */ opened on; opened: each open block's line and text
-    for no, raw in enumerate(text.splitlines(), 1):
-        s = raw.strip()
+    for no, s in dsl_lines(text):
         if comment or s.startswith("/*"):
             comment = (comment or no) if "*/" not in s else 0
             continue
@@ -621,9 +635,14 @@ LINK = re.compile(r"""\s*(?:(?P<plain>[<ox]?(?:-{2,}[->ox]|={2,}[=>ox]|-?\.+-[>o
 FLOW_QUIET = re.compile(r"(classDef|class|style|linkStyle|click|direction|accTitle|accDescr)\b")
 
 
+ENTITY = {"quot": '"', "lt": "<", "gt": ">", "amp": "&"}
+
+
 def text(s):
+    """A flowchart label: quotes and backticks taken off, Mermaid's entity codes read (as the module's mfText)."""
     s = (s or "").strip()
-    return s[1:-1].strip("`") if len(s) > 1 and s[0] == s[-1] == '"' else s
+    s = s[1:-1].strip("`") if len(s) > 1 and s[0] == s[-1] == '"' else s
+    return re.sub(r"#(quot|lt|gt|amp|\d{1,6});", lambda e: ENTITY.get(e[1]) or chr(min(int(e[1]), 0x10FFFF)), s)
 
 
 def fnode(s, i):
@@ -672,8 +691,8 @@ def statement(s):
 def flowchart(lines, m):
     nodes, subs, boxes, claimed, links = {}, [], [], {}, []
     for no, line in lines:
-        # statements: split at each ; outside quotes, in one scan (a lookahead per ; rescanned the line); no \s* beside the label (R2)
-        for s in (x.strip() for x in re.findall(r'(?:"[^"]*"?|[^;"])*', line)):
+        # statements: split at each ; outside quotes and entity codes (#35;), in one scan (a lookahead per ; rescanned the line); no \s* beside the label (R2)
+        for s in (x.strip() for x in re.findall(r'(?:"[^"]*"?|#[0-9A-Za-z_]+;|[^;"])*', line)):
             g = re.match(r'subgraph\s+(?:([^\s\["]+)\s*\[([^\]]*)\]|"(.+)"|(\S+)$|(.+))', s)
             if g:
                 label = text(g.group(2) or g.group(3) or g.group(4) or g.group(5))

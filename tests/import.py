@@ -96,6 +96,14 @@ ends = lambda m: [(e["from"], e["to"], e.get("label")) for e in m["edges"]]
 m, un = imp.read("mermaid", "graph TD\n  a -- calls --> b\n  b <--> c\n  a ~~~ c\n  end\n  d@{ shape: cyl }\n", "x")
 ok("mermaid · text and two-way links, an invisible link left out, and what isn't read, by line",
    ends(m) == [("a", "b", "calls"), ("b", "c", None), ("c", "b", None)] and [w for w, _ in un] == [5, 6], (ends(m), un))
+m, un = imp.read("mermaid", 'flowchart LR\n  A["Say #quot;hi#quot;"] --> B["5 #lt; 6"]\n  B -->|#35;1 step| C\n  C -- #lt;go#gt; --> D[#quot;x#quot;]\n', "x")
+ok("mermaid · entity codes are read in labels, and their ; ends no statement (audit 5)",
+   [n["label"] for n in m["nodes"]] == ['Say "hi"', "5 < 6", "C", '"x"'] and ends(m) == [("A", "B", None), ("B", "C", "#1 step"), ("C", "D", "<go>")] and not un, (m, un))
+ok("mermaid · front matter fences with spaces after them are front matter (audit 5)",
+   imp.front("--- \ntitle: Shop\n---  \nflowchart LR\n")[0] == "Shop" and imp.mermaid_typed("--- \ntitle: t\n--- \nclassDiagram\n") == "classDiagram")
+m, un = imp.read("structurizr", 'workspace {\n  model {\n    u = person "User" \\\n      "A customer"\n    s = softwareSystem "Shop"\n    u -> s "Uses" \\\n      "HTTPS"\n  }\n}\n', "x")
+ok("structurizr · a line ending in \\ goes on in the next (audit 5)",
+   card(m, "u").get("what") == "A customer" and (line(m, "u", "s") or {}).get("sublabel") == "HTTPS" and not un, (m, un))
 m, un = imp.read("plantuml", '@startuml\nSystem(a, "A")\nSystem(a, "Again")\nContainer(b, "B", $techn="Go")\nRel(a, b, "Uses", $techn="gRPC")\n'
                  'Rel(a, nope, "Lost")\n@enduml\n', "x")
 ok("C4 · named arguments, and a repeated alias and an unknown end reported",

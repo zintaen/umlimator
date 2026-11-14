@@ -104,6 +104,8 @@ ok("diff · the sketch and the summary keep a label's newlines and backticks in 
    [x for x in "\n".join(fence).split("\n") if x.startswith("```")] == ["```mermaid", "```"] and "\n" not in u.flat("a\n```\nb") and "\n```" not in u.flat("a\n```"), fence)
 ok("diff · the summary reads a label as written: List<Order> and *all* are not a tag and italics on GitHub, and a code span keeps its name (audit 4)",
    u.flat("List<Order> *all* a_b <!--") == "List&lt;Order&gt; \\*all\\* a\\_b &lt;!--" and u.flat("a_b", code=True) == "a_b", u.flat("List<Order> *all* a_b <!--"))
+ok("diff · the summary mentions no one: a label @Transactional or 'calls @ops' gets a word joiner after its @ (audit 5)",
+   u.flat("calls @ops @Transactional") == "calls @\u2060ops @\u2060Transactional" and u.flat("@x", code=True) == "@x", u.flat("calls @ops"))
 ok("record · a step's duration the page only warns about is played as the page plays it, not a traceback (audit 4)",
    [u.step_ms(d) for d in (None, 1200, -500, "slow", 0, "nan", [1])] == [4000, 1200, 500, 4000, 4000, 4000, 4000])
 
@@ -215,8 +217,19 @@ with tempfile.TemporaryDirectory() as tmp:
                                                                       ("record", str(t / "names" / "page.html"), "--story", "s", "--out", str(t / "x.png")))]
     ok("stills and record · --scale 0, -2 or nan is a usage error at once, not 90 s a view waiting on Chrome (audit 4)",
        all(b.returncode == 2 and "above 0" in b.stderr for b in bad), [b.stderr[-200:] for b in bad])
+    # a view id with a comma is one view to check and pdf --views, not two (audit 5)
+    (t / "comma").mkdir(); (t / "comma" / "m.json").write_text(json.dumps({"title": "t", "nodes": [{"id": "a", "label": "A"}, {"id": "b", "label": "B"}],
+        "edges": [{"id": "e", "from": "a", "to": "b"}], "views": [{"id": i, "title": i, "nodeIds": ["a", "b"]} for i in ("orders,payments", "c")]}))
+    plain("render", str(t / "comma" / "m.json"), "--out", str(t / "comma" / "page.html"), "--no-check")
+    b = plain("check", str(t / "comma" / "page.html"), "--views", "orders*")
+    ok("check · --views picks a view whose id holds a comma, and the page checks it", b.returncode == 0 and "no view was checked" not in b.stdout + b.stderr, (b.stdout + b.stderr)[-300:])
     shapes = {"bom": None, "cut": '{"nodes": [', "list": "[]", "nodes_null": '{"nodes": null, "views": []}', "nodes_dict": '{"nodes": {}, "views": []}',
-              "edges_dict": '{"nodes": [], "edges": {}, "views": []}', "view_str": '{"nodes": [], "views": ["v"]}'}
+              "edges_dict": '{"nodes": [], "edges": {}, "views": []}', "view_str": '{"nodes": [], "views": ["v"]}',
+              # a view's fields, a card's members and meta in the wrong shape (audit 5)
+              **{f"view_{k}": '{"nodes": [{"id": "a"}], "views": [{"id": "v", "nodeIds": ["a"], %s}]}' % x for k, x in (("overrides", '"nodeOverrides": []'),
+                 ("nodes", '"nodes": 5'), ("ids", '"nodeIds": 5'), ("edges", '"edges": 5'), ("boxes", '"containers": 3'), ("box", '"containers": [3]'))},
+              "members": '{"schemaVersion": 2, "nodes": [{"id": "a", "members": [{"id": "b", "members": 5}]}], "views": [{"id": "v", "nodeIds": ["a"]}]}',
+              "meta_str": '{"meta": "draft", "nodes": [{"id": "a"}], "views": [{"id": "v", "nodeIds": ["a"]}]}'}
     for k, text in shapes.items():
         f = t / "names" / f"{k}.json"
         f.write_bytes(b"\xef\xbb\xbf" + json.dumps(json.loads((t / "names" / "m.json").read_text())).encode() if text is None else text.encode())

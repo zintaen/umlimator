@@ -153,6 +153,14 @@ test('the same source read twice gives the same ids (R3); an inserted topic rena
   assert.deepEqual([r.model.nodes.map(n => n.id), lines(r)], [['plan', 'idea-2', 'idea', 'idea-3'], ['5 approximated: %% id: idea is taken, so it is idea-3']]);
 });
 
+test('the writer hangs a topic whose parent is hidden from its nearest shown ancestor, as the view draws it', () => {
+  const T = (id, label, parent) => ({ id, type: 'mindmap.Topic', label, ...(parent ? { parent } : {}) });
+  for (const nodeIds of [['r', 'a1', 'b'], ['a1', 'r', 'b']]) {
+    const m = { schemaVersion: 2, nodes: [T('r', 'Root'), T('a', 'A', 'r'), T('a1', 'A1', 'a'), T('b', 'B', 'r')], views: [{ id: 'mindmap', diagram: 'mindmap', nodeIds }] };
+    assert.equal(write(m), 'mindmap\n  r[Root]\n    A1\n    B\n');
+  }
+});
+
 test('the writer names what Mermaid cannot hold and never writes it invalid', () => {
   const T = (id, parent, x = {}) => ({ id, type: 'mindmap.Topic', label: id, ...(parent ? { parent } : {}), ...x });
   const chain = Array.from({ length: 70 }, (_, k) => T(`c${k}`, k ? `c${k - 1}` : null));

@@ -98,6 +98,18 @@ function mcName(s, k, dots) {
   return e > k ? [s.slice(k, e), e, false] : null;
 }
 
+// where a ~generic~ that opens at k ends (after its last ~), or -1: a ~ between word characters opens one more
+function mcTilde(s, k) {
+  for (let e = k, depth = 0; e < s.length; e++) if (s[e] === '~') { if (mcWord(s[e - 1]) && mcWord(s[e + 1]) || e === k) depth++; else if (--depth === 0) return e + 1; }
+  return -1;
+}
+
+// a name at k as a relation or a member line writes it, its ~generic~ (Square~Shape~) after it: [name, after, generic]
+function mcNameG(s, k) {
+  const n = mcName(s, k), e = n && !n[2] && s[n[1]] === '~' ? mcTilde(s, n[1]) : -1;
+  return e < 0 ? n && [n[0], n[1], ''] : [n[0], e, s.slice(n[1], e)];
+}
+
 // a "quoted" string at k: [text, after]
 function mcQuoted(s, k) { if (s[k] !== '"') return null; const e = s.indexOf('"', k + 1); return e < 0 ? null : [s.slice(k + 1, e), e + 1]; }
 
@@ -178,7 +190,7 @@ function mcMember(raw, inEnum) {
 
 // a relation: A ["c1"] arrow ["c2"] B [: label], or null when the text is not one
 function mcRelation(s) {
-  const a = mcName(s, 0); if (!a) return null;
+  const a = mcNameG(s, 0); if (!a) return null;
   let k = mcSkip(s, a[1]), c1, c2, left = '', right = '';
   const q1 = mcQuoted(s, k); if (q1) { c1 = q1[0]; k = mcSkip(s, q1[1]); }
   for (const m of ['<|', '()', '*', 'o', '<']) if (s.startsWith(m, k)) { left = m; k += m.length; break; }
@@ -188,10 +200,10 @@ function mcRelation(s) {
   for (const m of ['|>', '()', '*', 'o', '>']) if (s.startsWith(m, k) && (!'*o'.includes(m) || k + 1 >= s.length || ' \t"'.includes(s[k + 1]))) { right = m; k += m.length; break; }
   k = mcSkip(s, k);
   const q2 = mcQuoted(s, k); if (q2) { c2 = q2[0]; k = mcSkip(s, q2[1]); }
-  const b = mcName(s, k); if (!b) return null;
+  const b = mcNameG(s, k); if (!b) return null;
   k = mcSkip(s, b[1]);
   if (k < s.length && s[k] !== ':') return null;
-  return { a: a[0], b: b[0], c1, c2, left, right, line, label: k < s.length ? s.slice(k + 1).trim() : '' };
+  return { a: a[0], b: b[0], ga: a[2], gb: b[2], c1, c2, left, right, line, label: k < s.length ? s.slice(k + 1).trim() : '' };
 }
 
 // a cardinality's text as an end: "1", "0..*", "lines 1..*", "lines"; Mermaid's "many" and "n" are *
@@ -236,6 +248,12 @@ function readMermaidClass(text) {
   };
   const where = () => { for (let k = stack.length - 1; k >= 0; k--) if (stack[k].kind === 'package') return stack[k]; return null; };
   const annotate = (rec, s) => { const e = s.indexOf('>>', 2); rec.anns.push((e < 0 ? s.slice(2) : s.slice(2, e)).trim()); return e < 0 ? s.length : e + 2; };
+  const generic = (rec, g, no, again) => { // a class's ~generic~ in its label, once (its class line's, else the first that names it)
+    if (!g || !again && rec.node.label !== rec.name) return rec;
+    rec.node.label = mcGeneric(rec.name + g);
+    say(no, 'approximated', `class ${rec.name}'s type parameter is kept in its name only, ${rec.node.label} (templates are not in the subset)`);
+    return rec;
+  };
   const take = k => { const h = hint[k]; delete hint[k]; return h; }; // a hint its line uses; one left is said where it is dropped
   const drop = no => { for (const k in hint) say(no, 'skipped', `%% ${k === 'id' ? 'id' : 'link-id'}: ${hint[k]} is above a line that takes none: not read`); hint = {}; };
   const member = (rec, s, no) => { if (s.trim()) rec.raw.push({ text: s, line: no, hint: take('id') }); };
@@ -282,11 +300,9 @@ function readMermaidClass(text) {
         k = mcSkip(s, k);
         if (k >= s.length) break;
         if (s[k] === '~') {
-          let depth = 0, e = k;
-          for (; e < s.length; e++) if (s[e] === '~') { if (mcWord(s[e - 1]) && mcWord(s[e + 1]) || e === k) depth++; else if (--depth === 0) break; }
-          rec.node.label = mcGeneric(n[0] + s.slice(k, e + 1));
-          say(no, 'approximated', `class ${n[0]}'s type parameter is kept in its name only, ${rec.node.label} (templates are not in the subset)`);
-          k = e + 1;
+          const e = mcTilde(s, k);
+          generic(rec, s.slice(k, e < 0 ? s.length : e), no, true);
+          k = e < 0 ? s.length : e;
         } else if (s.startsWith('["', k)) {
           const q = mcQuoted(s, k + 1); if (!q || s[q[1]] !== ']') { rest = s.slice(k); break; }
           rec.node.label = mcText(q[0]); k = q[1] + 1;
@@ -343,10 +359,10 @@ function readMermaidClass(text) {
       if (word.startsWith('accDescr') && s.includes('{') && !s.includes('}')) block = true;
     } else {
       const r = mcRelation(s);
-      if (r) { relations.push({ ...r, no, hint: take('id'), from: cls(r.a, no), to: cls(r.b, no) }); drop(no); continue; }
-      const n = mcName(s, 0), k = n ? mcSkip(s, n[1]) : -1;
-      if (n && s[k] === ':') member(cls(n[0], no), s.slice(k + 1), no);
-      else if (n && k >= s.length) cls(n[0], no);
+      if (r) { relations.push({ ...r, no, hint: take('id'), from: generic(cls(r.a, no), r.ga, no), to: generic(cls(r.b, no), r.gb, no) }); drop(no); continue; }
+      const n = mcNameG(s, 0), k = n ? mcSkip(s, n[1]) : -1;
+      if (n && s[k] === ':') member(generic(cls(n[0], no), n[2], no), s.slice(k + 1), no);
+      else if (n && k >= s.length) generic(cls(n[0], no), n[2], no);
       else say(no, 'skipped', `"${s.length > 60 ? s.slice(0, 57) + '...' : s}" is not understood`);
     }
     drop(no);

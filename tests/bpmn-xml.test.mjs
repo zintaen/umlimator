@@ -428,3 +428,13 @@ test('a BPMN attribute outside the subset, set off its default, is reported once
     't the attribute startQuantity="3": not read, here or elsewhere in the file', 't the attribute isForCompensation="true": not read, here or elsewhere in the file',
     'o the attribute isCollection="true": not read, here or elsewhere in the file']);
 });
+
+test('a lane naming another process\'s flow node, and a second pool on one process, are reported; nothing moves pools (audit 5)', needs, async () => {
+  const D = b => `<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL" id="d" targetNamespace="x">${b}</definitions>`;
+  const parents = m => Object.fromEntries(m.nodes.filter(n => n.type === 'bpmn.Task').map(n => [n.id, n.parent]));
+  const a = await read(D('<collaboration id="c"><participant id="A" processRef="p"/><participant id="B" processRef="q"/></collaboration>'
+    + '<process id="p"><laneSet><lane id="L"><flowNodeRef>t2</flowNodeRef></lane></laneSet><task id="t1"/></process><process id="q"><task id="t2"/></process>'), BpmnModdle());
+  assert.deepEqual([parents(a.model), a.report.filter(r => r.line !== '').map(r => `${r.line} ${r.message}`)], [{ t1: 'A', t2: 'B' }, ['L flowNodeRef t2: a flow node of another process, left in its own']]);
+  const b = await read(D('<collaboration id="c"><participant id="A" processRef="p"/><participant id="B" processRef="p"/></collaboration><process id="p"><task id="t"/></process>'), BpmnModdle());
+  assert.deepEqual([parents(b.model), b.report.filter(r => r.line !== '').map(r => `${r.line} ${r.message}`)], [{ t: 'A' }, ["B its process p is also A's: its content is read into A"]]);
+});

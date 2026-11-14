@@ -135,6 +135,13 @@ jobs:
           if said - has:
               sys.exit(f"map-repo's SKILL.md names commands its pinned CLI lacks: {', '.join(sorted(said - has))}")
           print(f"map-repo's commands ({', '.join(sorted(said))}) are all in its pinned CLI")
+          # the pinned release runs the engine isolated (-I): a stdlib-named .py file in the repository it maps never loads (audit 5)
+          import os, pathlib
+          ref = re.search(r'REF, SHA = "([^"]+)"', open("plugins/umlimator/skills/map-repo/scripts/cli.py", encoding="utf-8").read()).group(1)
+          cache = pathlib.Path(os.environ.get("XDG_CACHE_HOME") or pathlib.Path.home() / ".cache") / "umlimator" / "cli" / ref
+          if '[sys.executable, "-I", "-c", run' not in (cache / "umlimator.py").read_text(encoding="utf-8"):
+              sys.exit(f"map-repo's pinned CLI ({ref}) runs the engine without -I: re-pin it to a release that has it (v0.30.0 or later)")
+          print(f"map-repo's pinned CLI ({ref}) runs the engine with -I")
           PY
 
   # The CLI's diff, drift, timelapse, mcp and pdf, and the diff Action's dry run (about 4.5 min)

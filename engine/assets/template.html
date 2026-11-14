@@ -557,7 +557,7 @@ function mapAudit(approx) {
   views.forEach(v => { const L = planOf(v.id); if (L.hub) laneReport[v.id] = L.lanes.map(l => l.title); });
   const typed = id => { const v = D.schemaVersion === 2 && (D.views || []).find(x => x && x.id === id); return !!v && v.diagram != null && v.diagram !== 'map'; }; // a typed view lays itself out: nothing to bake (F4)
   if (Q.get('optimize')) views.forEach(v => { if (!v.layout && !typed(v.id) && !approx.planOf(v.id).hub) { const r = approx.optimize(v.id); layouts[v.id] = r.pos; layoutCache[v.id] = r.pos; } });
-  const only = (Q.get('views') || '').split(',').filter(Boolean), want = v => !only.length || only.some(p => p.endsWith('*') ? v.id.startsWith(p.slice(0, -1)) : v.id === p);
+  const only = (Q.get('views') || '').split(',').filter(Boolean).map(p => { try { return decodeURIComponent(p); } catch { return p; } }), want = v => !only.length || only.some(p => p.endsWith('*') ? v.id.startsWith(p.slice(0, -1)) : v.id === p);
   views.forEach(v => { if (!want(v) || !(v.nodeIds || []).some(i => N[i])) return; const { g, markup } = buildView(v.id, { tour: !Q.get('still'), openHint: !Q.get('reader') }); root.innerHTML = markup; out.push(...auditSvg(root.firstElementChild, g, 'view ' + v.id)); Object.entries(g.stats || {}).forEach(([k, n]) => { routes[k] = (routes[k] || 0) + n; });
     g.edges.filter(e => e.how === 'fallback').forEach(e => (routes.fallbackEdges ||= []).push(`${v.id}: ${e.from}(${e.fs})→${e.to}(${e.ts})`)); });
   let unfolded = 0; // &expand=1: each view again with each card that unfolds in place (#71) unfolded, one at a time
@@ -583,7 +583,7 @@ try {
 
 if (Q.get('bench')) {
   const res = { views: {}, errors };
-  try { (Q.get('views') || '').split(',').filter(Boolean).forEach(v => { res.views[v] = benchView(mapCtx, v, +Q.get('runs') || 5, !!Q.get('optimize')); }); }
+  try { (Q.get('views') || '').split(',').filter(Boolean).map(p => { try { return decodeURIComponent(p); } catch { return p; } }).forEach(v => { res.views[v] = benchView(mapCtx, v, +Q.get('runs') || 5, !!Q.get('optimize')); }); }
   catch (err) { errors.push('bench: ' + err.message); }
   const pre = document.createElement('pre'); pre.id = 'bench'; pre.hidden = true; pre.textContent = JSON.stringify(res); document.body.appendChild(pre);
 }

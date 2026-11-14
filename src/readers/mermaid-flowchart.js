@@ -184,12 +184,14 @@ function mfStatement(s) {
   }
 }
 
-// ; outside quotes ends a statement, as the importer splits a line
+// ; outside quotes and entity codes (#35;) ends a statement, as the importer splits a line
+const MF_ENT = /#\w+;/y;
 function mfSplit(line) {
   const out = [];
   let from = 0, q = false;
   for (let k = 0; k < line.length; k++) {
     if (line[k] === '"') q = !q;
+    else if (line[k] === '#' && !q && ((MF_ENT.lastIndex = k), MF_ENT.test(line))) k = MF_ENT.lastIndex - 1;
     else if (line[k] === ';' && !q) { out.push(line.slice(from, k)); from = k + 1; }
   }
   out.push(line.slice(from));

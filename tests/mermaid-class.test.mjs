@@ -510,3 +510,10 @@ test('a static or abstract marker right after the ), as Mermaid reads it, is rea
     [['draw', 'bool', true, undefined], ['area', 'double', undefined, true], ['make', 'Shape', true, undefined]]);
   assert.match(write(m), /\+draw\(x : int\)\$? bool\$?/);
 });
+
+test('a class named with its ~generic~ in a relation or a member line is that class, its label the generic (audit 5)', () => {
+  const r = read('classDiagram\nclass Square~Shape~\nSquare~Shape~ <|-- Cube\nSquare~Shape~ : +int side\nAnimal --> List~int~\n');
+  assert.deepEqual(r.model.nodes.map(n => [n.id, n.label, (n.members || []).length]), [['Square', 'Square<Shape>', 1], ['Cube', 'Cube', 0], ['Animal', 'Animal', 0], ['List', 'List<int>', 0]]);
+  assert.deepEqual(r.model.edges.map(e => [e.type, e.from, e.to]), [['uml.Generalization', 'Cube', 'Square'], ['uml.Association', 'Animal', 'List']]);
+  assert.deepEqual(r.report.map(x => x.line), [2, 5]);
+});

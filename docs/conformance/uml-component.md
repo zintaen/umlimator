@@ -29,7 +29,8 @@ loads, draws it as plain cards with a warning. The vocabulary is `docs/diagrams/
 Rules, each `validate()` problem naming its `rule` and its elements (`notes/stage-5.md` §10.1): `port-owner` (a port is
 a member of a component or a class), `provided-ends`, `delegation-ends` (as built: the outer end a port),
 `assembly-ends`, `manifest-ends` (from an artifact; to anything but a component, a warning),
-`component-realization-ends` (errors); `required-ends`, `ball-interface`, `component-owner` (warnings).
+`component-realization-ends` (errors); `required-ends`, `ball-interface`, `component-owner`, `line-inside` (a line other
+than a connector between a box and something it holds, with no port at the box's end, is not drawn) (warnings).
 
 **Departures from UML 2.5.1:**
 
