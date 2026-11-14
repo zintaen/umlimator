@@ -17,6 +17,8 @@ import { classProblems } from '../src/uml/class.js';
 import { csGeo, csProblems, csConnect, csMember, csRename } from '../src/uml/composite.js';
 import { metaOf, stereoProblems, appliedOf } from '../src/uml/stereotypes.js';
 import { typedEditor } from '../src/canvas/edit.js';
+import { layoutTyped } from '../src/typed/layout.js';
+import { tagSize } from '../src/uml/frame.js';
 import { merge } from '../tools/atlas.mjs';
 import { SYS_TABLE, SYS_HEAD, SYS_FRAME, SYS_AS_UML, SYS_BACK, SYS_CS_PROBLEMS, SYS_DRESS } from '../src/sysml/sysml.js';
 import '../src/sysml/requirement.js';
@@ -97,6 +99,11 @@ test('17 with a class view added has no generalization-kinds problem; a UML gene
   assert.ok(m.edges.some(e => e.type === 'uml.Generalization' && e.from === 'ebike' && e.to === 'rental-vehicle'));
   const bad = { schemaVersion: 2, nodes: [{ id: 'a', type: 'uml.Class', label: 'A' }, { id: 'p', type: 'uml.Package', label: 'p' }], edges: [{ id: 'g', type: 'uml.Generalization', from: 'a', to: 'p' }], views: [] };
   assert.deepEqual(classProblems(bad).map(p => p.rule), ['generalization-kinds']);
+  // an end of another notation is left to it (§7.3, option (a)); one untyped, or of a type of no notation, is still judged
+  const to = t => ({ ...bad, nodes: [bad.nodes[0], { id: 'p', label: 'p', ...(t ? { type: t } : {}) }] });
+  assert.deepEqual(classProblems(to(undefined)).filter(p => p.rule === 'generalization-kinds').length, 1);
+  assert.deepEqual(classProblems(to('Class')).filter(p => p.rule === 'generalization-kinds').length, 1);
+  assert.deepEqual(classProblems(to('c4.System')).filter(p => p.rule === 'generalization-kinds'), []);
 });
 
 // ---- the projection (§8.1)
@@ -143,6 +150,22 @@ test('the texts the layout measures are set before it: an item flow is a connect
   assert.deepEqual(g.edges.map(e => e.label ?? null), ['DCPower', 'DCPower', 'PhaseCurrent', null, null, null], 'the router gives the item room');
   assert.ok(g.nodes.some(n => n.id === 'ebike.battery->battery.charge' && n.label === '«proxy» charge'));
   assert.equal(m.nodes.find(n => n.id === 'battery').members[0].label, 'charge', 'the model is not edited');
+  delete b.members[2].label; b.members[2].props = { kind: 'proxy' };
+  assert.equal(SYS_AS_UML(m, m.views[0]).model.nodes.find(n => n.id === 'battery').members[2].label, '«proxy» battery.bus', 'a port with no label: its id, as the composite type names it');
+});
+// §8.1, §15.2: the filter by view kind keeps the other kind's members out, and the merged four's other nodes and views add
+// nothing; what still differs is data the targets carry differently: the merged subject holds members of the view's kind
+// other files give it, and 17 gives the parts multiplicities and battery.charge a type 18 does not. With the file's own
+// nodes put back in the merged model, each view is its file's picture (what M3.7's atlas settles, §15.2)
+test('each e-bike view laid out from the merged four is its own file\'s picture once the file\'s nodes agree', () => {
+  const pic = (m, v) => { const P = SYS_AS_UML(m, v); return svgOf(SYS_DRESS(csGeo({ model: P.model, view: P.view, pos: {}, memo: {} }), m, v), { title: 't' }).replace(/\bg\d+-/g, 'g-'); };
+  for (const [M, extra] of [[M18, ['ebike.wheels', 'ebike.batteryCapacity', 'ebike.usableShare', 'ebike.ecoConsumption', 'ebike.boostConsumption', 'ebike.ecoRange', 'ebike.boostRange']], [M19, ['ebike.rangeEq']]]) {
+    const all = atlas(), v = all.views.find(x => x.id === M.views[0].id), own = pic(M, M.views[0]);
+    assert.notEqual(pic(all, v), own);
+    assert.deepEqual(kept(all, v).filter(id => !kept(M, M.views[0]).includes(id)), extra, 'what the merged subject adds of the view\'s kind');
+    all.nodes = all.nodes.map(n => structuredClone(M.nodes.find(x => x.id === n.id) || n));
+    assert.equal(pic(all, v), own, v.id);
+  }
 });
 
 // ---- mapped back (§8.1)
@@ -172,6 +195,9 @@ test('what the composite type\'s hooks add on the projection takes its SysML typ
   assert.deepEqual(pb([{ op: 'add', owner: 'ebike', element: { id: 'q', type: 'uml.Property', label: 'q', props: { valueType: 'RangeEquation' } } }])[0].element.type, 'sysml.ConstraintProperty');
   assert.deepEqual(pb([{ op: 'add', owner: 'ebike', element: { id: 'q', type: 'uml.Property', label: 'q', props: { valueType: 'Distance' } } }])[0].element.type, 'sysml.ValueProperty');
   assert.deepEqual(pb([{ op: 'add', owner: 'range-equation', element: { id: 'q', type: 'uml.Port', label: 'q' } }])[0].element.type, 'sysml.ConstraintParameter');
+  // a property added to a constraint block is a parameter, not a value it may not hold (§7.3); typed by a constraint block, a constraint property
+  assert.deepEqual(pb([{ op: 'add', owner: 'range-equation', element: { id: 'q', type: 'uml.Property', label: 'q', props: { valueType: 'Distance' } } }])[0].element.type, 'sysml.ConstraintParameter');
+  assert.deepEqual(pb([{ op: 'add', owner: 'range-equation', element: { id: 'q', type: 'uml.Property', label: 'q', props: { valueType: 'RangeEquation' } } }])[0].element.type, 'sysml.ConstraintProperty');
 });
 
 // ---- problems re-said (§8.1)
@@ -204,12 +230,30 @@ test('the header: kind [ElementType] name [view title]; [Model] and the model\'s
   assert.equal(SYS_HEAD(pk, { id: 'v', diagram: 'sysml.block-definition', subject: 'eb', title: 'E-bike' }).title, 'bdd [Package] E-bike');
   assert.deepEqual(SYS_HEAD(pk, { id: 'v', diagram: 'sysml.parametric', subject: 'cb' }), { el: pk.nodes[1], title: 'par [ConstraintBlock] RangeEquation', aria: 'Parametric diagram of constraint block RangeEquation' });
   assert.equal(SYS_HEAD(pk, { id: 'v', diagram: 'sysml.requirement', subject: 'nowhere', title: 'R' }).title, 'req [Model] T [R]');
+  // each kind names only its own element types (§17): a block on a bdd, a package on an ibd, a constraint block on an ibd: [Model]
+  const bk = { title: 'T', nodes: [...pk.nodes, { id: 'b', type: 'sysml.Block', label: 'B' }] };
+  assert.equal(SYS_FRAME(bk, { id: 'v', diagram: 'sysml.block-definition', subject: 'b' }, ['b']).id, 'v->frame', 'no box shares a card\'s id');
+  assert.equal(SYS_HEAD(bk, { id: 'v', diagram: 'sysml.block-definition', subject: 'b' }).title, 'bdd [Model] T');
+  assert.equal(SYS_HEAD(bk, { id: 'v', diagram: 'sysml.internal-block', subject: 'eb' }).title, 'ibd [Model] T');
+  assert.equal(SYS_HEAD(bk, { id: 'v', diagram: 'sysml.internal-block', subject: 'cb' }).title, 'ibd [Model] T');
+  assert.equal(SYS_HEAD(bk, { id: 'v', diagram: 'sysml.parametric', subject: 'b' }).title, 'par [Block] B');
+  // no subject and a package with no id: no match on undefined
+  const f = SYS_FRAME({ title: 'T', nodes: [{ type: 'uml.Package', label: 'X' }] }, { id: 'v', diagram: 'sysml.requirement' }, []);
+  assert.deepEqual([f.id, f.title], ['v->frame', 'req [Model] T']);
 });
 test('a req or bdd frame is a box of the layout: the package subject\'s id, else <view>->frame; 38 px above its cards', () => {
   const pk = { title: 'T', nodes: [{ id: 'eb', type: 'uml.Package', label: 'E-bike' }] };
   assert.deepEqual(SYS_FRAME(pk, { id: 'v', diagram: 'sysml.block-definition', subject: 'eb', title: 'B' }, ['a']),
     { id: 'eb', label: 'bdd [Package] E-bike [B]', title: 'bdd [Package] E-bike [B]', nodeIds: ['a'], shape: 'sysml-frame', head: 14, aria: 'Block definition diagram of package E-bike: B' });
   assert.equal(SYS_FRAME(pk, { id: 'v', diagram: 'sysml.requirement' }, []).id, 'v->frame');
+  // laid out down and right: its head is on top either way (laid out down, the turned layout's left), the tag above its cards
+  for (const direction of ['right', 'down']) {
+    const nodes = ['a', 'b', 'c'].map((id, i) => ({ id, label: id, shape: 'classifier', kind: 'file', w: 120, h: 60, col: i % 2, row: i >> 1 }));
+    const g = layoutTyped({ nodes, edges: [{ id: 'e', from: 'a', to: 'b' }], containers: [SYS_FRAME({ title: 'E-bike: blocks' }, { id: 'v', diagram: 'sysml.block-definition', title: 'E-bike blocks' }, ['a', 'b', 'c'])], direction, gap: 96, rgap: 56 });
+    const F = g.families[0], top = Math.min(...g.nodes.map(n => n.y)), left = Math.min(...g.nodes.map(n => n.x));
+    assert.deepEqual([top - F.y, left - F.x], [64, 48], direction);
+    assert.ok(tagSize(F.title).h + 8 <= top - F.y && tagSize(F.title).w <= F.w, direction);
+  }
 });
 test('the frame shape: a rectangle and the pentagon tag, the tag cut to a narrow frame, its title selectable as a box\'s', () => {
   const f = { id: 'v->frame', x: 10, y: 20, w: 600, h: 300, title: 'bdd [Model] E-bike: blocks [E-bike blocks]' }, s = SHAPE['sysml-frame'].frame(f);
@@ -230,6 +274,10 @@ test('ibd and par: the subject\'s box is the frame; a subject with ports and no 
     d.nodes.filter(n => n.owner === 'b').forEach(p => { const cx = p.x + p.w / 2, cy = p.y + p.h / 2;
       assert.ok([Math.abs(cx - F.x), Math.abs(cx - F.x - F.w)].some(x => x < .51) || [Math.abs(cy - F.y), Math.abs(cy - F.y - F.h)].some(x => x < .51), `${p.id} on the frame's border`); });
     assert.equal(JSON.stringify(raw), was, 'what the layout returned is not edited');
+    // a line to the subject keeps its end, as it does when the subject holds parts (the composite type's box): a box, no card
+    const ml = structuredClone(m); ml.edges.push({ id: 'cl', type: 'uml.CommentLink', from: 'c', to: 'b' });
+    const dl = SYS_DRESS(geoOf(ml, ml.views[0]), ml, ml.views[0]);
+    assert.ok(dl.edges.some(e => e.id === 'cl' && e.to === 'b' && e.pts.length >= 2) && !Object.hasOwn(dl.byId, 'b') && dl.families.some(x => x.id === 'b'));
     const svg = svgOf(d, { title: 't' });
     assert.match(svg, /<g class="family" data-family="b" role="img" aria-label="Internal block diagram of block B: Inside"><rect class="family-box"/);
   }
