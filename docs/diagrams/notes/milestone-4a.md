@@ -566,6 +566,8 @@ build departs or settles what the note left open:
   (`src/map/context.js`, the core) reads a map card's `icon`, not `props.icon`. A host gives the table with the model, as
   the CLI does, so a page draws the icons; changing them in place is left to a later core package (§5.2 then holds in
   full). Taken by the lead under the maintainer's standing approval (14 Nov 2026).
+- **Lifted in 0.28.0 (#293).** A typed view's key now covers the model's elements, lines and icons table, so an
+  `update()` that changes only the `icons` table redraws the view (`docs/module-api.md`, 0.28.0).
 
 ## 6. The tree strategy (S11, S12)
 

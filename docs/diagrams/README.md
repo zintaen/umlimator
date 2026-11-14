@@ -26,7 +26,7 @@ Update this table in every pull request that belongs to the plan.
 | 6 | 0.23.0 | Profile, timing | Design note approved ([`notes/stage-6.md`](notes/stage-6.md)), every recommendation of §16 taken. Released 14 Nov 2026 (05b913d, GitHub and npm latest): **the 14 UML types are complete** | #230, #231, #237 to #241, #244, #245, #251 |
 | Milestone 2 | 0.24.0 | ER, flowchart, data flow, information flow, C4 | Design note approved ([`notes/milestone-2.md`](notes/milestone-2.md)). Released 14 Nov 2026 (3e74d96, GitHub and npm latest) | #234, #247, #253 to #264, #268, #273 |
 | Milestone 3 | 0.25.0 | SysML v1.7's four diagrams | Design note approved ([`notes/milestone-3.md`](notes/milestone-3.md)). Released 14 Nov 2026 (GitHub and npm latest) | #242, #265, #269, #274 to #276, #279, #283, #285, #288 |
-| Milestone 4 | 0.26.0, 0.27.0 | AWS, GCP, Azure, mindmap; BPMN | Design notes approved (4a: [`notes/milestone-4a.md`](notes/milestone-4a.md); 4b: [`notes/milestone-4b.md`](notes/milestone-4b.md)). 4a.0 to 4a.8 merged, AWS on (AWS accepted the maintainer's request by email, 14 Nov 2026), the three packs pinned (#289): 0.26.0 released (#290). 4b.0 to 4b.5 merged: releasing 0.27.0 (this PR). **All 28 types are on `main`** | #243, #235, #248, #265 to #267, #270 to #272, #277, #278, #280 to #282, #284, #286, #287, #289, #290, (this PR) |
+| Milestone 4 | 0.26.0, 0.27.0 | AWS, GCP, Azure, mindmap; BPMN | Design notes approved (4a: [`notes/milestone-4a.md`](notes/milestone-4a.md); 4b: [`notes/milestone-4b.md`](notes/milestone-4b.md)). 4a.0 to 4a.8 merged, AWS on (AWS accepted the maintainer's request by email, 14 Nov 2026), the three packs pinned (#289): 0.26.0 released (#290). 4b.0 to 4b.5 merged: 0.27.0 released (#291). **All 28 types are on `main`** | #243, #235, #248, #265 to #267, #270 to #272, #277, #278, #280 to #282, #284, #286, #287, #289, #290, #291 |
 | After the 28 types | 0.28.0 and later | What the maintainer asks for next | Not started | |
 | Stabilization | 1.0.0 | Frozen API and schema, conformance notes; when the maintainer says it is ready | Not started | |
 
@@ -348,3 +348,6 @@ node docs/diagrams/examples/check.mjs         # the target examples match model.
 - **14 Nov 2026 (0.26.0, 0.27.0).** 0.26.0 released (#290): the mindmap, Google Cloud, Azure and AWS; it carried BPMN
   provisional. 0.27.0 (this PR) releases BPMN. The first audit of `main` (eight areas, each finding checked by a second
   reviewer) confirmed 61 defects; their fixes ship in 0.28.0.
+- **14 Nov 2026 (0.27.0, 0.28.0).** 0.27.0 released (#291): BPMN. Audit round 1's fixes merged (#292 to #296): 60 of
+  its 61 findings, each with a test that fails without it; the 61st, the 0.27.0 section's size line, was fixed in #291.
+  0.28.0 (this PR) releases them. Audit round 2 is running.
