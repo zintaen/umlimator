@@ -308,3 +308,18 @@ test('the check ships in lib/umlimator-all.js only (risks.md C5)', () => {
   const all = readFileSync(new URL('../lib/umlimator-all.js', here), 'utf8'), core = readFileSync(new URL('../lib/umlimator.js', here), 'utf8');
   for (const k of ['function styResolve(', 'TYPED.across = stereoProblems', 'TYPED.fields = tagFields']) { assert.ok(all.includes(k), k); assert.ok(!core.includes(k), k); }
 });
+
+test('a stereotype specializing one a plain package owns: its tags checked as text, no throw from validate() or the fields (audit 1)', () => {
+  const m = base();
+  m.nodes.push(N('lib', 'Package', 'lib'), N('gen', 'Stereotype', 'gen', 'lib', { members: [P('gen.k', 'k', 'Kind', { multiplicity: '0..1' })] }));
+  m.edges.push(E('entity-gen', 'Generalization', 'entity', 'gen'));
+  by(m, 'order').props.tags.entity.k = 'x';
+  assert.deepEqual(validate(m), []);
+  assert.equal(tagFields(m, by(m, 'order')).find(f => f.label === '«entity» k').kind, 'text');
+});
+
+test('packages nested 20,000 deep, listed deepest first: the scope and profile walks need no recursion (audit 1)', () => {
+  const n = 20000, nodes = [N('prof', 'Profile', 'P'), ...Array.from({ length: n }, (_, i) => N('p' + i, 'Package', 'p' + i, i ? 'p' + (i - 1) : null)),
+    N('c', 'Class', 'C', 'p' + (n - 1), { props: { stereotypes: ['x'] } })].reverse();
+  assert.deepEqual(stereoProblems({ schemaVersion: 2, nodes, edges: [] }), []);
+});

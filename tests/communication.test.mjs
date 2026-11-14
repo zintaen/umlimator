@@ -14,7 +14,7 @@ import { layout, check } from '../src/map/api.js';
 import { mapContext } from '../src/map/context.js';
 import { validate } from '../src/map/validate.js';
 import { describe } from '../src/map/insight.js';
-import { commProblems, commConnect, commMoveTo, commAdd, commRemove } from '../src/uml/communication.js';
+import { commProblems, commConnect, commMoveTo, commAdd, commRemove, cmRank } from '../src/uml/communication.js';
 
 const block = id => JSON.parse(readFileSync(new URL(`./communication-${id}.json`, import.meta.url), 'utf8'));
 const MINIMAL = block('minimal'), STRESS = block('stress');
@@ -356,4 +356,10 @@ test('performance (§10, risks.md P1): the stress view lays out in under 1 s, an
   console.log(`# 20 lifelines, 30 connectors, 200 messages, CPU (wall) ms: full layout ${ms('full')} (${ms('fullWall')}); a message added ${ms('add')} (${ms('addWall')}), renamed ${ms('rename')} (${ms('renameWall')}), reordered ${ms('reorder')} (${ms('reorderWall')})`);
   assert.ok(best('full') < 1000, `full layout ${best('full')} ms`);
   for (const k of Object.keys(edits)) assert.ok(best(k) < 100, `a message ${k}: ${best(k)} ms`);
+});
+
+test('the ranking walks a chain of 20,000 lifelines without recursion, one column each; a link back is not kept (audit 1)', () => {
+  const ids = Array.from({ length: 20000 }, (_, i) => 'l' + i), links = [...ids.slice(1).map((id, i) => [ids[i], id]), [ids[19999], ids[0]]];
+  const { rank, fwd } = cmRank(ids, links);
+  assert.equal(rank[ids[19999]], 19999); assert.equal(fwd.length, 19999);
 });

@@ -81,7 +81,7 @@ Measured on `examples/bookshop-packages.json` (0.19.0): `umlimator.py stills` (S
 | Accessible names | Each box's `aria-label` kept ("Package payments, holding 3 elements"), and each element's; the lines' `<title>` removed, as for maps | None | None |
 | Theme | The page's, light or dark, every colour resolved (no CSS variables), so the file opens alone | The page's | `--theme`, light by default |
 | Views | One per call (`view`); `stills` writes every view | One per call; `stills` every view, at 2x | Every view (`--views` picks), each on its own page |
-| Tables | None | None | Per type (R8, 0.19.0): every element by its drawn name and its kind ("Package", "Class", "Interface", "Enumeration", "Data type"), boxes and closed packages alike; each line from → to and its kind ("Package import", "Package merge", "Dependency"). A line's Label column is empty where the picture draws only a keyword («import»), and the heading says "Cards", the map's word |
+| Tables | None | None | Per type (R8, 0.19.0): every element by its drawn name and its kind ("Package", "Class", "Interface", "Enumeration", "Data type"), boxes and closed packages alike; each line from → to and its kind ("Package import", "Package merge", "Dependency"). A line's Label column is empty where the picture draws only a keyword («import»), and the heading says "Elements", the typed views' word |
 
 The site builds every example's stills and PDF ([zintaen.github.io/umlimator](https://zintaen.github.io/umlimator/)),
 this one's among them.
