@@ -128,14 +128,14 @@ function c4LineName(e, pic) {
 
 /* ---- the key (§7.5): each element type and shape drawn, external, the relationship and the implied line ---- */
 const C4_LINE_LOOK = { rel: { from: 'none', to: 'open' }, implied: { from: 'none', to: 'open', dashed: true }, note: { from: 'none', to: 'none', dashed: true } };
-function c4Legend(nodes, edges) {
+function c4Legend(nodes, edges, says = 'uses, with its technology in brackets') {
   const els = [...new Map(nodes.filter(n => n.shape === 'c4').map(n => [`${n.type} ${n.sh} ${n.ext}`, n])).values()];
   const swatch = n => `<rect x="3" y="2" width="22" height="12" rx="3" fill="var(--um-${n.ext ? 'slate' : 'cyan'}-f)" stroke="var(--um-${n.ext ? 'slate' : 'cyan'})"/>`;
   const item = (name, says, svg) => `<span class="lgi" title="${esc(name + ' — ' + says)}"><svg class="lgs" viewBox="0 0 28 16" aria-hidden="true">${svg}</svg><b>${esc(name)}</b><span>${esc(says)}</span></span>`;
   const line = dashed => `<g stroke="var(--um-muted)" stroke-width="1.4" stroke-linejoin="round" fill="none"><path d="M2 8H25"${dashed ? ' stroke-dasharray="3 2"' : ''}/><path d="M17 4L26 8L17 12"/></g>`;
   return [...els.map(n => item(`${n.ext ? 'External ' + c4Word(n).toLowerCase() : c4Word(n)}${n.sh !== 'box' && !(n.sh === 'person' && n.type === 'c4.Person') ? ', ' + n.sh : ''}`,
     n.ext ? 'outside the system, drawn grey' : `a ${c4Word(n).toLowerCase()}`, swatch(n))),
-  ...(edges.some(e => e.type === 'c4.Relationship' && !e.implied) ? [item('Relationship', 'uses, with its technology in brackets', line(false))] : []),
+  ...(edges.some(e => e.type === 'c4.Relationship' && !e.implied) ? [item('Relationship', says, line(false))] : []),
   ...(edges.some(e => e.implied) ? [item('Implied relationship', 'stands for relationships between what the two hold', line(true))] : [])];
 }
 
@@ -204,7 +204,7 @@ function c4Problems(model, view) {
   const vEdges = C4_OBJ(view) ? C4_ARR(view.edges) : [], pathOf = e => { const i = C4_ARR(model && model.edges).indexOf(e); return i >= 0 ? `edges[${i}]` : `${at}.edges[${vEdges.indexOf(e)}]`; };
   [...C4_ARR(model && model.edges), ...vEdges.filter(e => C4_OBJ(e) && !C4_ARR(model && model.edges).includes(e))].forEach(e => { if (!C4_OBJ(e) || e.type !== 'c4.Relationship') return;
     const i = pathOf(e), a = I.at.get(e.from), b = I.at.get(e.to), st = x => x && C4_STATIC.includes(x.type), dp = x => x && C4_DEPLOY.includes(x.type);
-    if ((st(a) && dp(b)) || (dp(a) && st(b))) say('error', 'c4-relationship', i, [e.id, e.from, e.to], `${e.id} joins ${q(e.from)}, ${c4A(kind(e.from))}, and ${q(e.to)}, ${c4A(kind(e.to))}: a static element and a deployment one`);
+    if (a && b && !(st(a) && st(b)) && !(dp(a) && dp(b))) say('error', 'c4-relationship', i, [e.id, e.from, e.to], `${e.id} joins ${q(e.from)}, ${c4A(kind(e.from))}, and ${q(e.to)}, ${c4A(kind(e.to))}: ${(st(a) || dp(a)) && (st(b) || dp(b)) ? 'a static element and a deployment one' : 'a relationship joins two static elements or two deployment elements'}`);
     else if (a && b && (I.chain(e.from).includes(e.to) || I.chain(e.to).includes(e.from))) say('error', 'c4-relationship', i, [e.id, e.from, e.to], `${e.id} joins ${q(e.from)} and its own owner or part ${q(e.to)}`); });
   if (!K) return out;
   // the view's rules (§5.1)
@@ -252,8 +252,10 @@ function c4Zoom(model, view, ids) {
     if (t === 'c4.Person' || t === 'c4.SoftwareSystem' || t === 'c4.Container') return y === x.id ? null : y; } return null; };
   const reach = []; I.rels.forEach(r => [[r.from, r.to], [r.to, r.from]].forEach(([a, b]) => { const up = [a, ...I.chain(a)].find(y => inside.has(y));
     const far = up && !inside.has(b) && !I.chain(b).some(y => inside.has(y)) ? level(b) : null; if (far && !reach.includes(far)) reach.push(far); }));
+  // an element reached with its owner is left to it, whose boundary the view would not draw (c4-level): its lines lift onto it
+  const far = reach.filter(y => !I.chain(y).some(o => reach.includes(o)));
   const used = c4Used(model), id = c4Free(used, `${x.id}-${sys ? 'containers' : 'components'}`);
-  const v = { id, diagram: sys ? 'c4.container' : 'c4.component', title: `${c4Name(x)}: ${sys ? 'containers' : 'components'}`, parent: view.id, subject: x.id, nodeIds: [x.id, ...kids, ...reach] };
+  const v = { id, diagram: sys ? 'c4.container' : 'c4.component', title: `${c4Name(x)}: ${sys ? 'containers' : 'components'}`, parent: view.id, subject: x.id, nodeIds: [x.id, ...kids, ...far] };
   return { commands: [{ op: 'addView', view: v }, { op: 'set', id: x.id, path: 'opensView', value: id }], say: `Made the view ${v.title}: Enter opens it` };
 }
 // T: an element's C4 type, picked among the four (c4-owner and c4-level then say what no longer fits)
@@ -304,4 +306,4 @@ const C4_DEF = {
 };
 const C4_TYPES = Object.keys(C4_KIND).map(name => registerDiagramType(name, C4_DEF));
 
-export { C4_TYPES, C4_DEF, C4_RULES, C4_WORD, C4_SHAPES, c4Index, c4Pic, c4Lift, c4Lines, c4Geo, c4Problems, c4Describe, c4NodeName, c4LineName, c4LineLabel, c4Shape, c4TagOf, c4Ext, c4Zoom, c4Key, c4Add, c4Owners };
+export { C4_TYPES, C4_DEF, C4_RULES, C4_WORD, C4_SHAPES, c4Index, c4Pic, c4Lift, c4Lines, c4Geo, c4Problems, c4Describe, c4Legend, c4NodeName, c4LineName, c4LineLabel, c4Shape, c4TagOf, c4Ext, c4Zoom, c4Key, c4Add, c4Owners };

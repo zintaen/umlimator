@@ -330,3 +330,13 @@ test('a lifeline waiting to be created that sends a message creating another is 
   assert.deepEqual(r.report.map(x => `${x.line} ${x.message}`), ['3 create B: the next message is from it, so nothing creates it']);
   assert.deepEqual(validate(r.model).filter(p => p.level === 'error'), []);
 });
+
+test('fragments nested deeper than 64 are read as their content, reported once, and written back in linear size (audit 1, R2)', () => {
+  const text = 'sequenceDiagram\nA->>B: hi\n' + 'loop x\n'.repeat(20000) + 'A->>B: deep\n' + 'end\n'.repeat(20000);
+  const { model, report } = read(text);
+  assert.deepEqual(report, [{ line: 67, status: 'approximated', message: 'loop x: fragments nested deeper than 64 are read as their content, with no frame' }]);
+  assert.equal(model.views[0].fragments.length, 64);
+  const out = write(model);
+  assert.ok(out.length < 20000, `${out.length} characters`);
+  assert.deepEqual(read(out).model, model);
+});

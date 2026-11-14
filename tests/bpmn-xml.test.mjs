@@ -372,3 +372,39 @@ test('500 elements are read and written in time, each way (P1) (timed)', needs, 
   assert.ok(writeMs < 1000 && readMs < 1000, `${writeMs} ${readMs}`);
   assert.deepEqual(canon(r.model), canon(m));
 });
+
+test('an extension on the definitions, a collaboration, a process, a lane or a line is reported and kept (audit 1)', needs, async () => {
+  const x = '<extensionElements><x:prop xmlns:x="urn:x" k="v"/></extensionElements>';
+  const { model, report } = await read(`<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL" id="d">${x}
+    <collaboration id="c">${x}<participant id="pool" processRef="p"/></collaboration>
+    <process id="p">${x}<laneSet id="ls"><lane id="lane">${x}<flowNodeRef>a</flowNodeRef></lane></laneSet>
+      <task id="a"/><task id="b"/><sequenceFlow id="f" sourceRef="a" targetRef="b">${x}</sequenceFlow></process></definitions>`, BpmnModdle());
+  assert.deepEqual(report.filter(r => /extension/.test(r.message)).length, 5);
+  assert.deepEqual(model.ext.bpmn.skipped.map(s => s.parent ?? null), [null, null, 'lane', 'pool', 'f']);
+});
+
+test('an umlimator:id holding "->" is read with "-" and said; a blank one is the file\'s id (audit 1)', needs, async () => {
+  const { model, report } = await read(`<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:u="https://zintaen.github.io/umlimator/bpmn" id="d">
+    <process id="p"><task id="t1" u:id="a->b"/><task id="t2" u:id=" "/><sequenceFlow id="f" u:id="b->>c" sourceRef="t1" targetRef="t2"/></process></definitions>`, BpmnModdle());
+  assert.deepEqual([model.nodes.map(n => n.id), model.edges.map(e => e.id)], [['a-b', 't2'], ['b-c']]);
+  assert.equal(report.filter(r => r.status === 'weakened').length, 2);
+});
+
+test('the writer reports an empty label, a model.ext key but bpmn, and a lane whose parent is in another pool, written at the top of its own (audit 1, backlog 4b.4)', needs, async () => {
+  const m = { schemaVersion: 2, root: 'v', ext: { camunda: { x: 1 } },
+    nodes: [{ id: 'p1', type: 'bpmn.Participant', label: 'A', members: [{ id: 'l1', type: 'bpmn.Lane', label: 'L1' }] },
+      { id: 'p2', type: 'bpmn.Participant', label: 'B', members: [{ id: 'l2', type: 'bpmn.Lane', label: 'L2', parent: 'l1' }] },
+      { id: 't', type: 'bpmn.Task', label: '', parent: 'l2', props: { taskType: 'none' } }],
+    edges: [], views: [{ id: 'v', diagram: 'bpmn', parent: null, nodeIds: ['p1', 'p2', 't'] }] };
+  const [w, back] = await roundTrip(m);
+  assert.deepEqual(w.report.map(x => `${x.line}: ${x.message}`), [': what the model keeps under ext.camunda: not written', 't: an empty label, which a reader reads as none: not written',
+    'l2: parent l1, which is no lane of its pool (written at the top of its pool): not written']);
+  assert.equal(back.model.nodes.find(n => n.id === 't').parent, 'l2');
+});
+
+test('sub-processes nested 3,000 deep are written unindented, in linear size, and read back (audit 1, R2)', needs, async () => {
+  const nodes = Array.from({ length: 3000 }, (_, k) => ({ id: `s${k}`, type: 'bpmn.SubProcess', ...(k ? { parent: `s${k - 1}` } : {}) }));
+  const w = await write({ schemaVersion: 2, root: 'v', nodes, edges: [], views: [{ id: 'v', diagram: 'bpmn', parent: null, nodeIds: nodes.map(n => n.id) }] }, 'v', null, BpmnModdle());
+  assert.ok(w.xml.length < 1 << 20, `${w.xml.length} characters`);
+  assert.equal((await read(w.xml, BpmnModdle())).model.nodes.length, 3000);
+});

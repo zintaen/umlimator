@@ -307,3 +307,12 @@ test('P1 (§11): on 40 nodes and 60 flows, a full layout and a conveyed element 
   assert.ok(best('add') < 1000, `a conveyed element added ${best('add')} ms`);
   console.log(`# P1 target 100 ms: a conveyed element added ${best('add').toFixed(1)} ms; full layout ${best('full').toFixed(1)} ms; routes ${JSON.stringify(layout(STRESS, 'v').stats)}`);
 });
+
+test('audit 1: a name holding $\' or $& is its accessible name as written, the markup whole', () => {
+  for (const [label, aria] of [["Price$'", 'Price$&#39;'], ['Cost$&', 'Cost$&amp;'], ['Tax$`', 'Tax$`']]) {
+    const m = { schemaVersion: 2, nodes: [N('a', 'Class', label), N('b', 'Actor', 'Shopper'), N('i', 'InformationItem', 'Order')], edges: [F('f', 'b', 'a', ['i'])], views: [{ id: 'v', diagram: 'uml.information-flow', nodeIds: ['a', 'b'] }] };
+    const svg = svgOf(layout(m, 'v')), g = svg.slice(svg.indexOf('data-id="a"'), svg.indexOf('>', svg.indexOf('data-id="a"')));
+    assert.equal(g.match(/aria-label="([^"]*)"/)[1], `Class ${aria}`);
+    assert.equal(g.match(/data-shape=/g).length, 1, label);
+  }
+});

@@ -19,7 +19,7 @@ import { describe } from '../src/map/insight.js';
 import { svgOf } from '../src/draw/svg.js';
 import { tablesOf } from '../src/page/print.js';
 import { ENDS } from '../src/typed/draw.js';
-import { ER_RULES, erEnd, erProblems, parseColumn, printColumn } from '../src/er/er.js';
+import { ER_RULES, ER_TYPE, erEnd, erMember, erProblems, parseColumn, printColumn } from '../src/er/er.js';
 import { targets } from '../docs/diagrams/examples/check.mjs';
 
 const T = diagramOf({ diagram: 'er' });
@@ -112,8 +112,8 @@ test('the entity (§7.1): the name in its header, its key columns, a divider, th
 
 test('names (A1), the reading order, describe() and the legend', () => {
   const g = layout(EX, VID), s = svgOf(g);
-  assert.equal(g.byId['er-order_line'].aria, 'Table order_line, key order_id and line_no, 4 columns');
-  assert.match(s, /data-shape="entity" tabindex="-1" role="img" aria-label="Table book_author, key book_id and author_id, 2 columns"/);
+  assert.equal(g.byId['er-order_line'].aria, 'Table order_line, key order_id and line_no, 4 columns: order_id bigint PK FK order.id; line_no integer PK; book_id bigint FK book.id; quantity integer');
+  assert.match(s, /data-shape="entity" tabindex="-1" role="img" aria-label="Table book_author, key book_id and author_id, 2 columns: /);
   assert.equal(g.edges.find(e => e.id === 'er-order-lines').aria, 'Identifying relationship contains from order (exactly one) to order_line (one or more)');
   assert.equal(g.edges.find(e => e.id === 'er-order-payment').aria, 'Non-identifying relationship from order (exactly one) to payment (zero or one)');
   assert.deepEqual(g.order, [...V.nodeIds, ...EX.edges.map(e => e.id)]);
@@ -295,4 +295,22 @@ test('P1 (§11): on 50 entities and 60 relationships, a full layout and markup, 
   const sw = timed(() => draw(apply(STRESS, [{ op: 'set', view: 'all', path: 'notation', value: 'idef1x' }])));
   assert.equal(memos.all.runs, before, 'the switch repaints'); assert.ok(sw < 1000);
   console.log(`# P1 target 100 ms: a column's type ${best('type').toFixed(1)} ms, a column added ${best('added').toFixed(1)} ms, the notation switched ${sw.toFixed(1)} ms; full layout and markup ${best('full').toFixed(1)} ms`);
+});
+
+test('audit 1: a row keeps its FK target, names with quotes or brackets round-trip, a cut row is in the accessible name', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'orders', type: 'er.Entity', label: 'old orders', members: [C('orders.id', 'id', { primaryKey: true })] },
+    { id: 'orders-2', type: 'er.Entity', label: 'orders', members: [C('orders-2.id', 'id', { primaryKey: true })] },
+    { id: 'line', type: 'er.Entity', label: 'line', members: [C('line.order', 'order_id', { dataType: 'int', foreignKey: true, references: 'orders.id' })] }],
+  edges: [], views: [{ id: 'v', diagram: 'er', nodeIds: ['orders', 'orders-2', 'line'] }] };
+  ER_TYPE.owners(m); const row = ER_TYPE.member.print(m.nodes[2].members[0]);
+  assert.equal(row, 'order_id int FK orders.id');
+  assert.equal(erMember(m, m.views[0], 'line', 'line.order', row + ' NULL')[1].value.references, 'orders.id', 'NULL added: the FK still names orders.id');
+  for (const label of ['size(cm', 'note>', '"quoted"', 'a "b" c', 'back\\slash x', 'my col']) {
+    const t = { schemaVersion: 2, nodes: [{ id: 't', type: 'er.Entity', label: 't', members: [C('t.c', label, { dataType: 'int' })] }], edges: [], views: [] };
+    const r = erMember(t, null, 't', 't.c', printColumn(t.nodes[0].members[0]));
+    assert.deepEqual([r[0].value, r[1].value], [label, { dataType: 'int' }], label);
+  }
+  const long = 'shipping_instructions_for_the_courier_and_the_warehouse_team';
+  const w = { schemaVersion: 2, nodes: [{ id: 'o', type: 'er.Entity', label: 'orders', members: [C('o.id', 'id', { primaryKey: true, dataType: 'bigint' }), C('o.n', long, { dataType: 'text' })] }], edges: [], views: [{ id: 'v', diagram: 'er', nodeIds: ['o'] }] };
+  assert.equal(layout(w, 'v').byId.o.aria, `Table orders, key id, 2 columns: id bigint PK; ${long} text`);
 });

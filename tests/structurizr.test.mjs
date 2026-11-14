@@ -279,6 +279,7 @@ test('hostile workspaces each read in under a second of CPU time (R2) (timed)', 
   shared.children = Array(2000).fill(shared);
   const rels2k = Array.from({ length: 2000 }, (_, k) => ({ id: `r${k}`, sourceId: '0', destinationId: `${k}` }));
   const els10k = Array.from({ length: 10000 }, (_, k) => ({ id: `${k}` }));
+  const keys20k = Object.fromEntries(Array.from({ length: 20000 }, (_, k) => [`k${k}`, 'v']));
   const hostile = [
     ['a node that holds itself', { model: { deploymentNodes: [loop] } }],
     ['a nest 100,000 deep', nest(100000)],
@@ -294,6 +295,7 @@ test('hostile workspaces each read in under a second of CPU time (R2) (timed)', 
     ['2,000 views sharing 10,000 elements', { model: { people: many(10000) }, views: { systemLandscapeViews: Array.from({ length: 2000 }, (_, k) => ({ key: `v${k}`, elements: els10k })) } }],
     ['10,000 people sharing a name of a million characters', { model: { people: Array.from({ length: 10000 }, (_, k) => ({ id: `${k}`, name: 'N'.repeat(1 << 20), tags: 'T,'.repeat(1 << 19) })) } }],
     ['50,000 styles', { model: { people: many(2000).map(p => ({ ...p, tags: 'A,B,C,D,E' })) }, views: { configuration: { styles: { elements: Array.from({ length: 50000 }, (_, k) => ({ tag: 'Q' + k, shape: 'Robot' })) } } } }],
+    ['4,000 people sharing one properties object of 20,000 keys', { model: { people: many(4000).map(p => ({ ...p, properties: keys20k })) } }],
   ];
   // in this process's CPU time, a slow run tried twice more and its best kept, as the Mermaid readers' timed tests do
   const cpu = f => { const c = process.cpuUsage(), out = f(), u = process.cpuUsage(c); return [out, (u.user + u.system) / 1000]; };
@@ -304,4 +306,12 @@ test('hostile workspaces each read in under a second of CPU time (R2) (timed)', 
     assert.ok(ms < 1000, `${what}: ${ms} ms`);
     assert.ok(out.model.nodes.length <= 10000 && out.model.edges.length <= 10000, what);
   }
+});
+
+test('a properties object shared by many elements is counted each time it is reached, and names a few keys (audit 1)', () => {
+  const properties = Object.fromEntries(Array.from({ length: 20000 }, (_, k) => [`k${k}`, 'v']));
+  const { report } = read({ model: { people: Array.from({ length: 100 }, (_, k) => ({ id: `${k}`, name: `P${k}`, properties })) } });
+  assert.equal(report[0].message, 'P0: properties k0, k1, k2, k3, k4 and 19995 more are not read');
+  assert.ok(report.some(x => x.message.startsWith('over 500000 list entries')), 'the budget runs out and says so');
+  assert.ok(report.reduce((n, x) => n + x.message.length, 0) < 10000);
 });
