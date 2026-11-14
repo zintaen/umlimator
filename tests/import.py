@@ -316,6 +316,16 @@ name = "tests/import/classes.mmd"
 ok("mermaid · a classDiagram is known by its content, and the Python reader leaves it to the module's",
    imp.detect("x", "%% a\nclassDiagram\n") == "mermaid" and imp.mermaid_typed("---\ntitle: t\n---\nclassDiagram\n") == "classDiagram"
    and not imp.mermaid_typed("flowchart LR\n") and imp.mermaid_typed('%%{\n  init: {\n    "theme": "dark"\n  }\n}%%\nclassDiagram\n') == "classDiagram" and "module's reader" in imp.read("mermaid", "classDiagram\nA --> B\n", "x")[1][0][1])
+# audit 6: a %%{ ... }%% directive over several lines (Mermaid's documented form) was the header of the map reader and of
+# detect(); and str.splitlines() split a label at U+2028
+d = '%%{\n  init: {\n    "theme": "dark"\n  }\n}%%\n'
+m, un = imp.read("mermaid", d + "flowchart LR\n  A --> B\n", "x")
+ok("mermaid · a directive over several lines is passed over: by detect() and by the flowchart reader",
+   imp.detect("x.txt", d + "flowchart LR\n") == imp.detect("x.txt", d + "classDiagram\n") == "mermaid" and len(m["nodes"]) == 2 and line(m, "A", "B"), un)
+m, un = imp.read("mermaid", 'flowchart LR\n  A["Order\u2028placed"] --> B["Ship"]\n  B --> C\n', "x")
+d, dun = imp.read("structurizr", 'workspace {\nmodel {\nu = person "User" "one\u2028two"\n}\n}\n', "x")
+ok("a U+2028 in a label does not split its line (Mermaid, Structurizr DSL)", card(m, "A").get("label", "").split() == ["Order", "placed"]
+   and card(m, "B")["label"] == "Ship" and line(m, "A", "B") and not un and card(d, "u").get("what", "").split() == ["one", "two"] and not dun, (un, dun, card(d, "u")))
 with tempfile.TemporaryDirectory() as tmp:
     t = Path(tmp)
     r = run("import", str(ROOT / name), "--out", str(t / "classes.json"))

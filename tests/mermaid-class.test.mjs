@@ -517,3 +517,15 @@ test('a class named with its ~generic~ in a relation or a member line is that cl
   assert.deepEqual(r.model.edges.map(e => [e.type, e.from, e.to]), [['uml.Generalization', 'Cube', 'Square'], ['uml.Association', 'Animal', 'List']]);
   assert.deepEqual(r.report.map(x => x.line), [2, 5]);
 });
+
+test('a type ending in * or $ reads back as itself, else the member is not written; a , inside [] or () does not split a parameter (audit 6)', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'B', type: 'uml.Class', label: 'B', members: [
+    { id: 'B.data', type: 'uml.Property', label: 'data', props: { visibility: 'public', valueType: 'char*' } },
+    { id: 'B.cost', type: 'uml.Property', label: 'cost', props: { valueType: 'US$', isStatic: true } },
+    { id: 'B.get', type: 'uml.Operation', label: 'get', props: { returnType: 'char*' } }] }] };
+  const text = write(m), back = read(text).model.nodes[0].members;
+  assert.deepEqual(back.map(x => [x.label, x.props]), [['data', { visibility: 'public', valueType: 'char*' }], ['cost', { valueType: 'US$', isStatic: true }]]);
+  assert.match(text, /%% not written: B\.get/);
+  const ops = read('classDiagram\nclass C {\n  +lookup(d: Dict[str, int], k: str) int\n  +on(h: (e: Event, c: Ctx) => void) void\n}\n').model.nodes[0].members;
+  assert.deepEqual(ops.map(o => o.props.parameters), [[{ name: 'd', valueType: 'Dict[str, int]' }, { name: 'k', valueType: 'str' }], [{ name: 'h', valueType: '(e: Event, c: Ctx) => void' }]]);
+});
