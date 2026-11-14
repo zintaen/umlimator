@@ -1,0 +1,43 @@
+{
+ "schemaVersion": 2,
+ "title": "C4, minimal",
+ "nodes": [
+  {
+   "id": "user",
+   "type": "c4.Person",
+   "label": "User",
+   "props": {
+    "description": "User, described."
+   }
+  },
+  {
+   "id": "system",
+   "type": "c4.SoftwareSystem",
+   "label": "System",
+   "props": {
+    "description": "System, described."
+   }
+  }
+ ],
+ "edges": [
+  {
+   "id": "uses",
+   "type": "c4.Relationship",
+   "from": "user",
+   "to": "system",
+   "label": "Uses"
+  }
+ ],
+ "views": [
+  {
+   "id": "v",
+   "diagram": "c4.context",
+   "title": "Context",
+   "subject": "system",
+   "nodeIds": [
+    "user",
+    "system"
+   ]
+  }
+ ]
+}
