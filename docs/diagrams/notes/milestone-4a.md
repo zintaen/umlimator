@@ -790,7 +790,7 @@ As built (4a.7, 14 Nov 2026), where §10 left a choice or the build found what i
   gallery's card), so the atlas carries it with no field of its own; the README's Icons section, the conformance notes,
   `examples/README.md` and the gallery say it too.
 - **§2.5's test** (`tests/m4a-fixtures.test.mjs`): no committed `.json`, `.html`, `.svg`, `.md`, `.js` or `.mjs` file under
-  `examples/` or `docs/` holds a pack's icons entry (`"gcp/…": {`) or the synthetic pack's marker, and every SVG in `icons/`
+  `examples/` or `docs/` holds a pack's icons entry (a key `<pack>/<id>` holding an object) or the synthetic pack's marker, and every SVG in `icons/`
   is the manifest's. The site's build in `check.yml` sets `UMLIMATOR_NO_PACKS=1`; CI has no pack cached either.
 - **Import on each** is the mindmap's only (the cloud types have no reader): `tests/cli.py` writes the example's Mermaid
   with the module's writer and imports it back to the same topics, order and sides.
