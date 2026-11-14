@@ -1,0 +1,123 @@
+<!doctype html>
+<!-- BPMN's notation (4b.2, notes/milestone-4b.md §9) in headless Chrome (tests/embed.py): the shapes of src/bpmn/notation.js,
+     sized by size() inside render()'s measure through a stand-in type and drawn by svgOf, with a pool's and a lane's header,
+     an expanded sub-process's frame and a group round two of them, in both themes and three fonts: each drawn the size it
+     gave, its outline filling its box; a point on any side slid by inset within 1 px of the drawn outline; every text inside
+     its shape; every marker drawn; the labels outside, placed by bpmnLabels in the host's font on hand-built lines, clear of
+     the lines, every node and each other, two lines of 120 px at most; a click inside the group reaches what is under it, one
+     on its border selects it; outlines 3:1, texts and filled glyphs 4.5:1 on the stage; each named as bpmnName says.
+     tests/bpmn-notation.test.mjs checks the same in Node. Imports src/ to register the stand-in type. -->
+<meta charset="utf-8">
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="../lib/umlimator-theme.css">
+<title>umlimator BPMN notation test</title>
+<body style="margin:0">
+<div id="m" style="width:1180px;height:900px"></div>
+<script type="module">
+import { render } from '../src/canvas/render.js';
+import { registerDiagramType } from '../src/core/registry.js';
+import { SHAPE, drawnPts } from '../src/draw/shapes.js';
+import { bpmnGroupFrame, bpmnLabelSvg, bpmnLabels, bpmnName } from '../src/bpmn/notation.js';
+const out = { ok: [], fail: [] };
+const check = (name, cond, info) => { document.title = name; if (cond) out.ok.push(name); else out.fail.push(name + (info === undefined ? '' : ': ' + JSON.stringify(info))); };
+const LONG = 'Check every book of the order against the warehouse stock and reserve the copies before the shopper is charged';
+const FORTY = 'Payment declined by the card issuer twice';
+// each case: [id, shape, its input]; the events, gateways and data carry their name outside
+const CASES = [['t', 'bpmn-task', { label: 'Pack the parcel' }], ['tl', 'bpmn-task', { label: LONG }], ['tu', 'bpmn-task', { label: 'Approve the refund', taskType: 'user' }],
+  ['ts', 'bpmn-task', { label: LONG, taskType: 'service' }], ['sp', 'bpmn-task', { type: 'bpmn.SubProcess', label: 'Pick the books' }], ['ca', 'bpmn-task', { type: 'bpmn.CallActivity', label: 'Ship' }],
+  ['e1', 'bpmn-event', { type: 'bpmn.StartEvent', definition: 'message', label: 'Order placed' }], ['e2', 'bpmn-event', { type: 'bpmn.StartEvent', definition: 'timer', label: 'Every Monday' }],
+  ['e3', 'bpmn-event', { type: 'bpmn.IntermediateCatchEvent', definition: 'message', label: FORTY }], ['e4', 'bpmn-event', { type: 'bpmn.IntermediateThrowEvent', definition: 'message', label: 'Notify' }],
+  ['e5', 'bpmn-event', { type: 'bpmn.BoundaryEvent', definition: 'timer', cancelActivity: false, label: 'Two days' }], ['e6', 'bpmn-event', { type: 'bpmn.EndEvent', definition: 'terminate', label: 'Cancelled' }],
+  ['e7', 'bpmn-event', { type: 'bpmn.EndEvent', definition: 'message', label: 'Receipt sent' }], ['g1', 'bpmn-gateway', { label: FORTY }], ['g2', 'bpmn-gateway', { type: 'bpmn.ParallelGateway' }],
+  ['d', 'bpmn-data', { label: 'Order' }], ['s', 'bpmn-store', { label: 'Stock' }], ['n', 'bpmn-note', { label: LONG }]];
+const MARKS = { tu: 'user', ts: 'service', sp: 'collapsed', e1: 'message', e2: 'timer', e3: 'message', e4: 'message', e5: 'timer', e6: 'terminate', e7: 'message', g1: 'exclusive', g2: 'parallel' };
+const OUTSIDE = id => /^[egds]\d?$/.test(id);
+let geo = null;
+registerDiagramType('test.bpmn-notation', {
+  layout: { pins: false, run() { let x = 70, y = 40, row = 0;
+    const nodes = CASES.map(([id, shape, input]) => { const n = { id, shape, k: 'file', ...input, ...SHAPE[shape].size(input) };
+      if (x + n.w > 1100) { x = 70; y += row + 90; row = 0; } Object.assign(n, { x, y }); n.aria = bpmnName(n); x += n.w + 60; row = Math.max(row, n.h); return n; });
+    const by = Object.fromEntries(nodes.map(n => [n.id, n])), bottom = y + row;
+    // a line leaving g1's bottom and one passing under e3: their labels move
+    const lines = [[[by.g1.x + 20, by.g1.y + 40], [by.g1.x + 20, by.g1.y + 90]], [[by.e3.x - 30, by.e3.y + 44], [by.e3.x + 80, by.e3.y + 44]]];
+    const labels = bpmnLabels(nodes.filter(n => OUTSIDE(n.id)), lines, nodes.filter(n => !OUTSIDE(n.id)));
+    const pool = { id: 'P', label: 'Bookshop', type: 'bpmn.Participant', shape: 'bpmn-pool', k: 'file', x: 20, y: 30, w: 22, h: bottom + 20 }, lane = { id: 'L', label: 'Sales', type: 'bpmn.Lane', shape: 'bpmn-lane', k: 'file', x: 50, y: bottom + 70, w: 400, h: 22 };
+    const gf = bpmnGroupFrame('Money', [by.t, by.tl], nodes.filter(n => n.id !== 't' && n.id !== 'tl')), grp = { id: 'grp', label: 'Money', type: 'bpmn.Group', shape: 'bpmn-group', k: 'file', ...gf };
+    [pool, lane, grp].forEach(n => { n.aria = bpmnName(n); });
+    const fam = { id: 'X', title: 'Pick the books', shape: 'bpmn-frame', nodeIds: [], x: 500, y: bottom + 60, w: 300, h: 120, aria: bpmnName({ type: 'bpmn.SubProcess', shape: 'bpmn-frame', label: 'Pick the books' }) };
+    const all = [grp, ...nodes, pool, lane];
+    geo = { nodes: all, edges: [], groups: [], families: [fam], byId: Object.fromEntries(all.map(n => [n.id, n])), bounds: { x: 0, y: 0, w: 1140, h: bottom + 200 }, map: false, lines, labels, grp };
+    return geo; } },
+  draw: g => ({ under: g.lines.map((p, i) => `<path class="t-line" data-i="${i}" d="M${p.map(q => q.join(' ')).join('L')}" fill="none" stroke="var(--um-muted)" stroke-width="1.5"/>`).join(''), over: g.labels.map(bpmnLabelSvg).join('') }) });
+const IDS = ['grp', ...CASES.map(c => c[0]), 'P', 'L'];
+const MODEL = { schemaVersion: 2, nodes: IDS.map(id => ({ id, type: 'test.Node' })), edges: [], views: [{ id: 'v', diagram: 'test.bpmn-notation', nodeIds: IDS }] };
+const el = document.getElementById('m');
+let sr;
+const pick = s => sr.querySelector(s), all = s => [...sr.querySelectorAll(s)];
+const bb = x => { const r = x.getBBox(); return { x: r.x, y: r.y, w: r.width, h: r.height }; };
+const meets = (a, b) => a.x < b.x + b.w - .5 && b.x < a.x + a.w - .5 && a.y < b.y + b.h - .5 && b.y < a.y + a.h - .5;
+const FONTS = { serif: 'serif', sans: 'sans-serif', wide: 'monospace' };
+const rgba = s => { let m = /rgba?\(([^)]+)\)/.exec(s); if (m) { const p = m[1].split(/[ ,/]+/).filter(Boolean).map(Number); return [p[0] / 255, p[1] / 255, p[2] / 255, p.length > 3 ? p[3] : 1]; }
+  m = /color\(srgb ([^)]+)\)/.exec(s); if (m) { const p = m[1].split(/[ /]+/).filter(Boolean).map(Number); return [p[0], p[1], p[2], p.length > 3 ? p[3] : 1]; } return null; };
+const blend = (top, bot) => [0, 1, 2].map(i => top[i] * top[3] + bot[i] * (1 - top[3])).concat(1);
+const lum = c => { const f = v => v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]); };
+const ratio = (fg, bg) => { const [x, y] = [lum(blend(fg, bg)), lum(bg)].sort((p, q) => q - p); return +((x + 0.05) / (y + 0.05)).toFixed(2); };
+const hit = (svg, x, y) => { const p = new DOMPoint(x, y).matrixTransform(svg.getScreenCTM()), e = sr.elementFromPoint(p.x, p.y), g = e && e.closest('.node'); return g ? g.dataset.id : null; };
+try {
+  const wide = {};
+  for (const theme of ['light', 'dark']) for (const [fname, family] of Object.entries(FONTS)) {
+    document.documentElement.dataset.theme = theme; el.style.setProperty('--um-sans', family);
+    el.innerHTML = ''; const h = render(el, MODEL, { view: 'v' }); sr = el.querySelector('.umlimator').shadowRoot;
+    const svg = pick('.stage svg'), tag = `${theme}, ${fname}`, bad = [], off = [], low = [], marks = [];
+    const stageBg = rgba(getComputedStyle(pick('.stage')).backgroundColor);
+    for (const n of geo.nodes) { const g = pick(`.node[data-id="${n.id}"]`);
+      if (!g) { bad.push(`${n.id} not drawn`); continue; }
+      if (g.dataset.shape !== n.shape || g.getAttribute('aria-label') !== n.aria) bad.push(`${n.id}: shape ${g.dataset.shape}, named ${g.getAttribute('aria-label')}`);
+      g.querySelectorAll('text').forEach(tx => { const T = bb(tx), r = ratio(rgba(getComputedStyle(tx).fill), stageBg); if (r < 4.5) low.push([n.id, tx.textContent, r]);
+        const inside = n.shape === 'bpmn-task' ? T.x >= n.x + 8 && T.x + T.w <= n.x + n.w - 8 && T.y >= n.y - .5 && T.y + T.h <= n.y + n.h + .5
+          : ['bpmn-pool', 'bpmn-lane'].includes(n.shape) ? true : T.x >= n.x - .5 && T.x + T.w <= n.x + n.w + .5 && T.y >= n.y - .5 && T.y + T.h <= n.y + n.h + .5;
+        if (!inside) bad.push(`${n.id}: "${tx.textContent}" out of its shape ${JSON.stringify(T)}`); });
+      const want = MARKS[n.id] || '', got = [...g.querySelectorAll('[data-mark]')].map(m => m.dataset.mark).join(' ');
+      if (got !== want) marks.push([n.id, got, want]);
+      g.querySelectorAll('.bp-mark[fill="var(--um-text)"]').forEach(m => { const r = ratio(rgba(getComputedStyle(m).fill), stageBg); if (r < 4.5) low.push([n.id, 'filled glyph', r]); });
+      if (!['bpmn-task', 'bpmn-event', 'bpmn-gateway', 'bpmn-data', 'bpmn-store'].includes(n.shape)) continue;
+      const body = g.querySelector('.n-body'), B = bb(body);
+      if ([B.x - n.x, B.y - n.y, B.w - n.w, B.h - n.h].some(v => Math.abs(v) > 1)) bad.push(`${n.id}: drawn ${JSON.stringify(B)}, laid out ${[n.x, n.y, n.w, n.h]}`);
+      const r = ratio(rgba(getComputedStyle(body).stroke), stageBg); if (r < 3) low.push([n.id, 'outline', r]);
+      // a point on each side slid by inset lies within 1 px of the outline as drawn (a copy of it, stroked 2 px wide)
+      const probe = body.cloneNode(); probe.setAttribute('stroke-width', '2'); probe.removeAttribute('class'); probe.removeAttribute('style'); probe.removeAttribute('stroke-dasharray'); g.appendChild(probe);
+      const look = m => ({ ...m, S: SHAPE[m.shape] });
+      for (const side of ['L', 'R', 'T', 'B']) for (let k = 0; k <= 12; k++) {
+        const v = side === 'L' || side === 'R', t = v ? n.y + n.h * k / 12 : n.x + n.w * k / 12, p = v ? [side === 'L' ? n.x : n.x + n.w, t] : [t, side === 'T' ? n.y : n.y + n.h];
+        const [q] = drawnPts({ s: n, t: null, fs: side, pts: [p, [p[0] + 9, p[1] + 9]] }, look);
+        if (!probe.isPointInStroke(new DOMPoint(q[0], q[1]))) off.push(`${n.id} ${side} ${q}`); }
+      probe.remove();
+      if (n.id === 'tl') wide[fname] = n.w;
+    }
+    const fam = pick('.family[data-family="X"]');
+    check(`${tag}: ${geo.nodes.length} nodes drawn the size they gave and named as bpmnName says; every text inside its shape; the frame drawn and named`, !bad.length && fam && fam.getAttribute('aria-label') === 'Sub-process Pick the books (expanded)' && fam.querySelector('.family-title').textContent === 'Pick the books', bad.slice(0, 10));
+    check(`${tag}: a point on each side of each shape, slid by its inset, lies within 1 px of its drawn outline`, !off.length, off.slice(0, 10));
+    check(`${tag}: every marker drawn, and none where there is none`, !marks.length, marks);
+    // the labels outside: each drawn, clear of the lines, every node's shape and each other, two lines of 120 px at most
+    const nodeBoxes = geo.nodes.filter(n => n.shape !== 'bpmn-group' && n.shape !== 'bpmn-pool' && n.shape !== 'bpmn-lane').map(n => [n.id, bb(pick(`.node[data-id="${n.id}"]`))]);
+    const lineBoxes = all('.t-line').map(p => { const b = bb(p); return ['line ' + p.dataset.i, { x: b.x - 1, y: b.y - 1, w: b.w + 2, h: b.h + 2 }]; }), labs = all('.bp-label'), clash = [];
+    labs.forEach((L, i) => { const B = bb(L), texts = [...L.querySelectorAll('text')];
+      if (texts.length > 2 || texts.some(t => t.getComputedTextLength() > 120.5)) clash.push(`${L.dataset.o}: ${texts.length} lines, ${texts.map(t => t.getComputedTextLength().toFixed(1))}`);
+      [...nodeBoxes, ...lineBoxes].forEach(([id, b]) => { if (meets(B, b)) clash.push(`${L.dataset.o} meets ${id}`); });
+      labs.slice(i + 1).forEach(M => { if (meets(B, bb(M))) clash.push(`${L.dataset.o} meets ${M.dataset.o}'s label`); });
+      const r = ratio(rgba(getComputedStyle(texts[0]).fill), stageBg); if (r < 4.5) low.push([L.dataset.o, 'label', r]); });
+    const named = geo.nodes.filter(n => OUTSIDE(n.id) && n.label).map(n => n.id).sort().join();
+    check(`${tag}: ${labs.length} labels outside, clear of the lines, the nodes and each other, two lines of 120 px at most`, !clash.length && labs.map(L => L.dataset.o).sort().join() === named, clash.slice(0, 10));
+    const under = id => { const L = pick(`.bp-label[data-o="${id}"]`), n = geo.byId[id]; return L && bb(L).y >= n.y + n.h; };
+    check(`${tag}: a label goes under its shape, and elsewhere where a line passes there`, under('e1') && under('d') && !under('g1') && !under('e3') && pick('.bp-label[data-o="g1"]').querySelectorAll('text').length === 2);
+    // the group: hit on its border and title, not inside
+    const G = geo.grp, inside = hit(svg, G.x + G.w / 2, G.y + G.h - 10), border = hit(svg, G.x + G.w - 1, G.y + G.h / 2), title = hit(svg, G.tx + 6, G.y + 8);
+    check(`${tag}: a click inside the group reaches what is under it; on its border or its title it selects the group`, inside !== 'grp' && border === 'grp' && title === 'grp', [inside, border, title]);
+    check(`${tag}: outlines 3:1, texts and filled glyphs 4.5:1 on the stage`, !low.length, low);
+    h.destroy();
+  }
+  check('the three fonts measure differently, and the long task is 320 px or less in each', new Set(Object.values(wide)).size === 3 && Object.values(wide).every(w => w <= 320), wide);
+} catch (x) { out.fail.push('threw: ' + (x && x.stack || x)); }
+document.documentElement.dataset.theme = 'light'; el.style.removeProperty('--um-sans');
+const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
+</script>
