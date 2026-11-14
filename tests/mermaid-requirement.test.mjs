@@ -56,7 +56,7 @@ const NAMES = ['Range', 'test_req', 'two words', 'a-b', 'x<y', 'p>q', '{braced}'
   'contains', 'Style', 'Ünit', ' padded ', '', '"', 'a->b', 'cls:::x', 'x = 1', 'direction LR', '**bold**', 'r\r', 'Range'];
 const IDS = ['req', 'r-1', 'Range', 'a.b', 'Ünit', '__proto__', 'constructor', 'requirements', 'element', 'x y', 'Range-2'];
 const TEXT = ['the text.', 'q"uoted', 'two\nlines', '', ' padded ', 'a - b -> c', '{ braces }', '%% not a comment', 'Ünïcode ❤', 'direction LR', 'id: 3', 'a\r\nb'];
-const REQIDS = ['1', 'EB-1.2', 'a b', '', '__proto__', '1.2.3', 'x:y', '%%', 'a/b'];
+const REQIDS = ['1', 'EB-1.2', 'a b', '/x', '.5', '__proto__', '1.2.3', 'x:y', '%%', 'a/b'];
 const KINDS = ['functionalRequirement', 'interfaceRequirement', 'performanceRequirement', 'physicalRequirement', 'designConstraint'];
 const RELS = { 'sysml.DeriveReqt': 'derives', 'sysml.Copy': 'copies', 'sysml.Satisfy': 'satisfies', 'sysml.Verify': 'verifies', 'sysml.Refine': 'refines', 'sysml.Trace': 'traces' };
 const keeps = id => typeof id === 'string' && id !== '' && !/[\r\n]/.test(id) && id.trim() === id && !id.includes('->');
@@ -99,7 +99,8 @@ test('read(write(model)) equals the model, for 500 generated models in the subse
     hints += text.split('%% id:').length - 1; names += text.split('%% name:').length - 1; texts += text.split('%% text:').length - 1;
     quoted += (text.match(/^ {2}\w+ "/gm) || []).length; contains += text.split(' - contains -> ').length - 1;
     assert.doesNotMatch(text, /%% not written/, `seed ${seed}\n${text}`);
-    assert.deepEqual(back.report.filter(x => !ONCE.test(x.message)), [], `seed ${seed}\n${text}`);
+    // a generated copy's ends keep their own texts: its copy-text line is the reader's, tested on its own below
+    assert.deepEqual(back.report.filter(x => !ONCE.test(x.message) && !x.message.endsWith('(copy-text): read as written')), [], `seed ${seed}\n${text}`);
     assert.deepEqual(canon(back.model), canon(project(m, m.root)), `seed ${seed}\n${text}`);
   }
   assert.ok(hints > 1000 && names > 300 && texts > 100 && quoted > 1000 && contains > 300, `${hints} ids, ${names} names, ${texts} texts, ${quoted} quoted, ${contains} contains`);
@@ -196,7 +197,11 @@ test("a file with every construct on Mermaid's requirement page gives the pinned
   assert.ok(!node('g1') && !node('test_req-2'));
   assert.deepEqual(core(model), []);
   assert.deepEqual(check(model, 'sysml.requirement'), []);
-  assert.deepEqual(canon(read(write(model)).model), canon(model)); // what was read is written back whole
+  // what was read is written back whole, but for a risk Mermaid's grammar has no word for, which is named
+  const back = write(model), lost = structuredClone(model);
+  delete lost.nodes.find(n => n.id === 'dup_fields').props.risk;
+  assert.deepEqual(back.split('\n').filter(l => l.includes('not written')).map(l => l.trim()), ["%% not written: dup_fields: risk severe, which is none of Mermaid's low, medium, high"]);
+  assert.deepEqual(canon(read(back).model), canon(lost));
 });
 
 test('the same source read twice gives the same ids (R3); an id is the name, a slug of it, or the next free', () => {
@@ -252,6 +257,9 @@ test('§12.2: an unclosed block, a field twice, an unknown kind or field, an und
   // a cycle in the file's order loses its last contains, whichever element the pass starts from
   const ring = read('requirementDiagram\nrequirement x {\n}\nrequirement y {\n}\nrequirement z {\n}\ny - contains -> z\nz - contains -> x\nx - contains -> y\nx - contains -> x\n');
   assert.deepEqual(lines(ring), ['10 skipped: x - contains -> y: it would close a cycle of containment', '11 skipped: x - contains -> x: x is contained by z already, and an element has one owner']);
+  // a copy between requirements whose texts differ is read and reported, so copy-text's error is not met silently
+  const copy = read('requirementDiagram\nrequirement a {\ntext: one\n}\nrequirement b {\ntext: two\n}\nrequirement c {\ntext: two\n}\nb - copies -> a\nb - copies -> c\n');
+  assert.deepEqual([lines(copy), copy.model.edges.map(e => e.id)], [["11 approximated: b - copies -> a: b's text is not a's, which a copy's client has (copy-text): read as written"], ['b-copies-a', 'b-copies-c']]);
   const self = read('requirementDiagram\nrequirement x {\n}\nx - contains -> x\nx - derives -> x\n');
   assert.deepEqual([lines(self), self.model.edges.map(e => e.id)], [['4 skipped: x - contains -> x: it would close a cycle of containment'], ['x-derives-x']]);
   for (const m of [r.model, ring.model, self.model]) assert.deepEqual(core(m), []);
@@ -301,7 +309,9 @@ test('text over the size limit is refused; the deepest chain under it, 10,000 re
   const deep = read(chain).model;
   assert.deepEqual([deep.nodes.length, deep.nodes.at(-1).parent], [depth, `e${depth - 2}`]);
   const wide = read(many);
-  assert.deepEqual([wide.model.nodes.length, wide.model.edges.length, wide.report], [10000, 10000, []]);
+  // each copy runs between different texts: read, and reported for copy-text
+  assert.deepEqual([wide.model.nodes.length, wide.model.edges.length, wide.report.length], [10000, 10000, 2500]);
+  assert.ok(wide.report.every(x => x.status === 'approximated' && x.message.endsWith('(copy-text): read as written')));
   assert.equal(read(hostile[10][1]).report.length, 1); // the ring loses one contains
   const proto = read(hostile.at(-1)[1]);
   assert.deepEqual(proto.model.nodes.map(n => [n.id, n.type]), [['__proto__', 'sysml.Requirement'], ['constructor', 'sysml.Block']]);
@@ -341,7 +351,7 @@ test('the writer names in comments what it cannot write, and the reader passes o
   assert.deepEqual(text.split('\n').filter(l => l.includes('not written')).map(l => l.trim()), [
     '%% not written: r: listed twice in the view, written once', '%% not written: v: direction up: written as Mermaid\'s TB', '%% not written: pkg (uml.Package)', '%% not written: n (uml.Comment)',
     '%% not written: r: property source', '%% not written: r: ext', '%% not written: r: stereotype functionalRequirement', '%% not written: r: stereotype other',
-    '%% not written: r: reqId a"b, which Mermaid\'s quotes cannot hold', '%% not written: r: text 7, which is not text', '%% not written: r: risk x\\ny, which Mermaid\'s quotes cannot hold',
+    '%% not written: r: reqId a"b, which Mermaid\'s quotes cannot hold', '%% not written: r: text 7, which is not text', '%% not written: r: risk x\\ny, which is none of Mermaid\'s low, medium, high',
     '%% not written: b: property stereotypes', '%% not written: b: ext, but for ext.mermaid.type and docref', '%% not written: b: ext.mermaid.type test bench, which the reader would not read back as a block',
     '%% not written: b: ext.mermaid.docref  x', '%% not written: t: no label, read as its name', '%% not written: t: ext.mermaid.type Block, which the reader would not read back as a test case',
     '%% not written: r: parent pkg, which is not written', '%% not written: b-satisfies-r: label', '%% not written: l (uml.CommentLink)', '%% not written: a->z (sysml.Trace)']);
@@ -354,4 +364,20 @@ test('the writer names in comments what it cannot write, and the reader passes o
   const classes = json('../examples/sales-classes.json');
   assert.equal(write(classes), '%% not written: the model, which has no sysml.requirement view\n');
   assert.match(write(classes, classes.views[0].id), /^%% not written: view .*, not a sysml\.requirement one\n$/);
+});
+
+test('the writer keeps to Mermaid\'s strings: a value bare only with a word character first, no empty quotes, the rest named', () => {
+  const R = (id, more) => ({ id, type: 'sysml.Requirement', label: id, ...more });
+  const m = { schemaVersion: 2, title: 'Model', root: 'other', nodes: [R('a', { props: { reqId: '/x', text: '' } }), R('b', { props: { reqId: '.5', risk: 'severe', verifyMethod: 'Test' } }),
+    R('c', { props: { reqId: '', stereotypes: [] } }), R('d', { props: {} }), { id: 'e', type: 'sysml.Block', label: 'e', ext: { mermaid: { type: 'Block' } } }],
+  edges: [], views: [{ id: 'v', diagram: 'sysml.requirement', title: 'View', nodeIds: ['a', 'b', 'c', 'd', 'e'], edges: [] }] };
+  const text = write(m, 'v');
+  assert.match(text, /\n {2}%% text: ""\n {2}requirement a \{\n {4}id: "\/x"\n {2}\}\n {2}requirement b \{\n {4}id: "\.5"\n {2}\}\n/);
+  assert.doesNotMatch(text, / {4}\w+: ""|: severe\n|: Test\n/);
+  assert.deepEqual(text.split('\n').filter(l => l.includes('not written')).map(l => l.trim()), [
+    "%% not written: the model's title Model, read back as the view's", "%% not written: the model's root other, read back as the view's id",
+    "%% not written: b: risk severe, which is none of Mermaid's low, medium, high", "%% not written: b: verifyMethod Test, which is none of Mermaid's analysis, inspection, test, demonstration",
+    '%% not written: c: stereotypes, an empty list', '%% not written: c: reqId "", which Mermaid cannot write empty', '%% not written: d: props, which are empty',
+    '%% not written: e: ext.mermaid.type Block, which the reader reads back as none']);
+  assert.deepEqual(read(text).model.nodes.find(n => n.id === 'a').props, { reqId: '/x', text: '' });
 });
