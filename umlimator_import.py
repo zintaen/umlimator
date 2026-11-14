@@ -161,7 +161,7 @@ def detect(path, text):
         parts.append(body[i:j])
         i = k + 2
     body = "".join(parts) + body[i:]
-    first = next((s for s in (l.strip() for l in body.splitlines()) if s and not s.startswith(("%%", "//", "#", "'"))), "")
+    first = next((s for _, s in mermaid_lines(body) if s and not s.startswith(("//", "#", "'"))), "")
     if MERMAID.match(first):
         return "mermaid"
     if re.match(r"workspace\b", first, re.I):
@@ -173,15 +173,30 @@ def mermaid_typed(text, typed=False):
     """The Mermaid diagram the module's readers read (src/readers/, through Node), classDiagram, sequenceDiagram,
     stateDiagram (stateDiagram-v2 too), erDiagram, requirementDiagram or mindmap, and with typed (import --typed) "flowchart" for a flowchart or a
     graph; else None: this file reads Mermaid's flowcharts and C4 diagrams, as maps."""
-    directive = False  # a %%{ ... }%% directive may run over several lines
-    for s in (l.strip() for l in front(text)[1].splitlines()):
-        if directive:
-            directive = "}%%" not in s
-        elif s.startswith("%%"):
-            directive = s[2:].strip().startswith("{") and "}%%" not in s
-        elif s:
+    for _, s in mermaid_lines(front(text)[1]):
+        if s:
             return next((t for t in TYPED if re.match(t + r"\b", s)), None) or (typed and re.match(r"(flowchart|graph)\b", s) and "flowchart" or None)
     return None
+
+
+def split_lines(text):
+    """The text's lines, split at a line feed, CR LF or CR only: str.splitlines() also splits at U+2028, a form feed
+    and others, which a label may hold."""
+    parts = re.split(r"\r\n?|\n", text)
+    return parts[:-1] if parts[-1] == "" else parts  # as splitlines(): no line after the last line break
+
+
+def mermaid_lines(text):
+    """Each line of Mermaid text as (number from 1, stripped), a %% comment and a %%{ ... }%% directive, on one line or
+    several, blank."""
+    directive = False
+    for no, l in enumerate(split_lines(text), 1):
+        s = l.strip()
+        if directive:
+            directive, s = "}%%" not in s, ""
+        elif s.startswith("%%"):
+            directive, s = s[2:].strip().startswith("{") and "}%%" not in s, ""
+        yield no, s
 
 
 def front(text):
@@ -223,7 +238,7 @@ SZ_SHAPE = {"box": "box", "roundedbox": "box", "person": "person", "robot": "rob
 def dsl_lines(text):
     """The DSL's statements, stripped, with their first line's number: a line ending in \\ goes on in the next."""
     buf, start = [], 0
-    for no, raw in enumerate(text.splitlines(), 1):
+    for no, raw in enumerate(split_lines(text), 1):
         start = start or no
         raw = raw.rstrip()
         if raw.endswith("\\"):
@@ -332,7 +347,7 @@ def structurizr(text, name):
         if opens:
             stack.append(push or ("skip", None))
             opened.append((no, s))
-    left_open(m, opened, comment and ("/*", comment, len(text.splitlines())))
+    left_open(m, opened, comment and ("/*", comment, len(split_lines(text))))
     for cid, e in els.items():
         tags = " ".join(e["tags"]).lower()
         kind = ("user" if "external" in tags else "person") if e["type"] == "person" else "external" if "external" in tags else c4guess([tags, e["tech"], e["name"]])
@@ -585,7 +600,7 @@ PUML_QUIET = re.compile(r"(@startuml|!include|!theme|!pragma|!define|skinparam|h
 
 def plantuml(text, name):
     m, lines, block, done, start = Model(name), [], 0, None, None  # block: the line a /' ... '/ opened on
-    for no, raw in enumerate(text.splitlines(), 1):
+    for no, raw in enumerate(split_lines(text), 1):
         s = raw.strip()
         if block or s.startswith("/'"):
             block = (block or no) if "'/" not in s else 0
@@ -600,7 +615,7 @@ def plantuml(text, name):
             lines.append((no, s))
         start = start or (no if not block and s.lower().startswith("@startuml") else None)
     c4(lines, m)
-    left_open(m, [], block and ("/'", block, len(text.splitlines())))
+    left_open(m, [], block and ("/'", block, len(split_lines(text))))
     if start and not done:
         m.say(start, "@startuml has no @enduml (is the file cut short?)")
     return m
@@ -611,7 +626,7 @@ def plantuml(text, name):
 def mermaid(text, name):
     title, body = front(text)
     m = Model(title or name)
-    lines = [(no, s) for no, s in ((no, l.strip()) for no, l in enumerate(body.splitlines(), 1)) if s and not s.startswith("%%")]
+    lines = [(no, s) for no, s in mermaid_lines(body) if s]
     head = MERMAID.match(lines[0][1]) if lines else None
     if not head or head.group(1) in TYPED:
         m.say(lines[0][0] if lines else 1, f"{'an' if head.group(1)[0] == 'e' else 'a'} {head.group(1)} is read by the module's reader, in Node (umlimator.py import): nothing imported here"
