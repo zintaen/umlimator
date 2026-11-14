@@ -71,6 +71,7 @@ export function merge(a, b, who, pre = '') {
 export function build(links = read(new URL('atlas-links.json', import.meta.url)), load = name => read(new URL(`${name}.json`, EX))) {
   const kinds = new Map(), files = new Map(), els = { nodes: new Map(), edges: new Map() }, views = new Map(), packs = new Map();
   const mark = (x, kind, name) => { // every id, with what it is and the files that have it
+    if (x.id == null) return; // a line without an id ("<from>-><to>#<n>") is its file's own, never shared
     const k = kinds.get(x.id);
     if (k != null && (k !== kind || kind.startsWith('in view'))) stop(`${x.id} is ${k} in ${files.get(x.id).join(', ')} and ${kind} in ${name}`);
     kinds.set(x.id, kind); files.set(x.id, [...(files.get(x.id) || []), name]);
@@ -87,7 +88,7 @@ export function build(links = read(new URL('atlas-links.json', import.meta.url))
     for (const [list, kind] of [['nodes', 'node'], ['edges', 'edge']]) for (const x of m[list] || []) {
       known(x, kind, `${name} ${kind} ${x.id}`); mark(x, `a ${kind}`, name);
       const was = els[list].get(x.id), fs = files.get(x.id);
-      els[list].set(x.id, was ? merge(was, x, `${x.id} in ${fs.slice(0, -1).join(', ')} and ${name}`) : x);
+      els[list].set(x.id ?? Symbol(), was ? merge(was, x, `${x.id} in ${fs.slice(0, -1).join(', ')} and ${name}`) : x);
     }
     for (const v of m.views || []) {
       known(v, 'view', `${name} view ${v.id}`);

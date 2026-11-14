@@ -59,7 +59,6 @@ Action on it in a pull request; the site shows its stills and its PDF.
 | [`bookshop-aws.json`](bookshop-aws.json) | AWS (`aws`, 0.26.0) | The bookshop on AWS: a cloud, a region, a VPC, two availability zones, public and private subnets and a security group as nested boxes (a region and an availability zone dashed), twelve services and three resources. Glyphs and full names on the site, as for Google Cloud (`umlimator.py pack fetch aws`, after AWS's terms). What it covers: [`docs/conformance/aws.md`](../docs/conformance/aws.md) |
 | [`bookshop-order-to-shipment.json`](bookshop-order-to-shipment.json) | BPMN (`bpmn`, 0.27.0) | From order to shipment: three pools (the shopper, the bookshop with two lanes, the payment provider as a black box), a service task with a timer boundary event, exclusive and parallel gateways, a collapsed sub-process that opens its own view, a call activity, message flows to a pool's border, a data object and a data store, an annotation and a group |
 | [`bookshop-timing.json`](bookshop-timing.json) | UML timing diagram (`uml.timing`, 0.23.0) | One charge on a time ruler in ms: the order worker and the payment provider, the overview's and the sequence example's lifelines, each a step line through its states; a call and its reply at their times, slanted between their senders' and receivers' states; a duration constraint `{<= 800 ms}` under the worker's lane and a time constraint on its last change. What the timing diagram covers: [`docs/conformance/uml-timing.md`](../docs/conformance/uml-timing.md) |
-
 | [`order-objects.json`](order-objects.json) | UML object diagram (`uml.object`, 0.19.0) | One placed order of the same bookshop as instances of its classes: each head `name : Classifier`, underlined, its slots as `feature = value` rows; links with a name or with roles by their ends; laid out top to bottom. What the object diagram covers: [`docs/conformance/uml-object.md`](../docs/conformance/uml-object.md) |
 | [`bookshop-packages.json`](bookshop-packages.json) | UML package diagram (`uml.package`, 0.19.0) | The bookshop's packages, each a box holding the classes it owns, `card` inside `payments`; two classes named `Order` in two packages; «import», «access» (a private import), «merge» and a dependency between the boxes; the profile `BookshopConventions`, a closed «profile» folder, applied by `sales` («apply»). What the package diagram covers: [`docs/conformance/uml-package.md`](../docs/conformance/uml-package.md) |
 
@@ -96,9 +95,9 @@ this repository or on the site: every page and still published is built with `UM
 map's three views and the thirty-six views of the twenty-four diagram files, one of each of UML's 14 diagram kinds and
 of the ER, flowchart, data flow, information flow, C4, mindmap, Google Cloud, Azure, AWS and BPMN diagrams, joined by drill-down. It
 opens at the C4 system context (0.24.0); the map and the opening plan (a mindmap, 0.26.0) are in the views list. Double-click a card to open what it leads to.
-Two of the elements below are drawn as boxes, which a double-click does not open yet: `sales` (in the packages) and the
-Java 21 runtime (in production). Open the sales domain (also from the map) and the components
-from the views list:
+Three of the elements below are drawn as boxes, which a double-click does not open yet: `sales` (in the packages), the
+Java 21 runtime (in production) and Shop API (in the components). Open the sales domain (also from the map) and the components
+from the views list, and inside the order service from Shop API's card in production or the information flow:
 
 | From | Card | Opens |
 |---|---|---|
