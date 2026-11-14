@@ -650,6 +650,11 @@ standing approval (14 Nov 2026), the note's recommended direction kept:
   slots); the Owner field (every deployment node) or a drop into a box moves it.
 - **`refs`** (`c4.ContainerInstance`'s `props.container`, `cascade`) is declared on the deployment view's type; the core
   reads every registered type's, so deleting a container from any view deletes its instances and their relationships.
+- **An existing test edited.** Two expectations of `tests/c4.html` (M2.6's page, outside M2.7's Owns) follow from this row:
+  Shift + Delete on the storefront container now takes its instance with it, so no `c4-instance` error is left (it expected
+  one); and the Owner field moving the order worker under the payment provider now draws two `c4-level` errors, the
+  container view's and the dynamic view's (which lists the worker and the provider; it expected one, as the dynamic view
+  was not checked before).
 
 ## 8. Readers (S15, S16)
 
@@ -964,7 +969,7 @@ package proposes its row and writes its release notes in its pull request's desc
 | M2.14 | **Fixtures, examples, docs.** §10's files and their tests (`tests/m2-fixtures.test.mjs`, `tests/m2.html`); `render`, `check`, `stills` and `pdf` on each example; the schema and `.d.ts`; C10's tests; every document of `plan.md` §7; `docs/conformance/er.md`, `flowchart.md`, `dfd.md`, `uml-information-flow.md`, `c4.md`; the lanes' release notes in `docs/module-api.md` | `tests/*-minimal.json`, `tests/*-stress.json` of the five types, `tests/m2-fixtures.test.mjs`, `tests/m2.html`, `tests/notation.html`, `tests/cli.py`, `tests/mcp.py`, `tests/embed.py` (appends), `lib/umlimator.d.ts`, `lib/umlimator.schema.json`, `examples/README.md`, `examples/index.html`, `docs/` (but the status table) | M2.1 to M2.13 | Definition of done 1, 3, 7, 9, 10, 11 and 12 for the five types; DoD 2's reader half: each reader's construct file and `tests/import/structurizr.json` read into models that pass their types' `validate` (the C4 type's for M2.10's workspaces), with the reports pinned; §11's budgets in CI; the stress fixtures' crossings pinned and stated |
 
 Existing tests a package edits, and why: M2.1 adds cases to `tests/apply.test.mjs`, `tests/unfold.test.mjs` and
-`tests/print-typed.test.mjs`; M2.12 to `tests/import.py`; M2.13 to `tests/atlas.test.mjs`; M2.14 points `tests/cli.py` and
+`tests/print-typed.test.mjs`; M2.7 two expectations of `tests/c4.html` (§7.5.5); M2.12 to `tests/import.py`; M2.13 to `tests/atlas.test.mjs`; M2.14 points `tests/cli.py` and
 `tests/mcp.py` at the moved examples and adds the new ends to `tests/notation.html`; each page lane appends its page to
 `tests/embed.py`. No other existing test changes.
 
