@@ -574,3 +574,27 @@ typed canvas's (1.7) with the type's hooks, and every one goes through `apply()`
 The icons a cloud view draws come from the host's `icons` table (`<pack>/<id>`), never from the module: the CLI builds it
 from a pack the user fetched after reading the vendor's terms (`python3 umlimator.py pack fetch gcp`, `pack fetch azure`,
 `pack list`; README's Icons section). Without it a card draws a glyph with the service's full name.
+
+## BPMN's gestures (0.27.0)
+
+The BPMN diagram (`docs/diagrams/notes/milestone-4b.md` §11, as built §8.3) adds no command and two keys, `A` and `X`,
+both through the type's `key` hook and `apply()`; `E` stays the canvas's unfold (#71) on every node. The rest is the
+typed canvas's gestures (1.7), with the type's hooks:
+
+| Edit | Pointer | Keyboard | Commands |
+|---|---|---|---|
+| a pool, a lane, a task, an event, a gateway, data, an annotation, a group | the palette (22 entries) | `N` | `add`: into the lane, pool or expanded sub-process selected; a lane into the pool or lane selected (a member); data into the pool, never a lane; events and gateways with no name field |
+| a boundary event | the palette's Boundary with an activity selected | `N` | `add` with `props.attachedTo`; refused with no activity selected |
+| a flow | the handle or a drag between two elements | `L`, the other end, Enter | `add` of the one kind the ends allow (no picker): a sequence flow in one pool and one level, a message flow between pools, a data association with data at one end, an association with an annotation at one end; anything else refused with the rule's words ("A sequence flow cannot leave its pool: …") |
+| a name, a flow's name, an annotation's text | double-click once selected | `F2` | `set label` |
+| task type, event definition, interrupting, called element, data store, direction, documentation | the properties panel | | `set props.<field>` |
+| move a flow node to another lane | drag it into the lane's band | | `reparent` to the lane, its pin removed; its boundary events with it; into another pool refused while it has sequence flows ("Move its sequence flows first"); a drop on a pool's header strip refused |
+| move a boundary event | drag it onto another activity's border | `Alt + arrows` (its side) | `set props.attachedTo` (and `reparent` to that activity's owner); `set present.<id>.side` |
+| attach a boundary event | | `A`: a picker of the activities it can move to without a new problem | `set props.attachedTo` |
+| expand or collapse a sub-process in the view | | `X` | one `set` of the view's `nodeIds`: what it holds added or removed |
+| hide | | `Delete` | `hide`; on a lane (a member, never hidden) the lane is deleted and what it held moves to its parent, said on the hint line first |
+| delete | | `Shift + Delete` | `delete`; an activity takes its boundary events, a pool what it owns (counted on the hint line); a deleted group leaves the `categoryValueRef` entries that named it |
+
+A message flow between two pools, a flow from a boundary event back to its own activity and an annotation joined to a
+pool, a lane, a group or itself are refused, since the diagram does not draw them. The Owner field offers a flow node's
+pools, lanes and sub-processes, and no owner for a lane.

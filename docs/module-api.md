@@ -3658,7 +3658,9 @@ in `lib/umlimator-all.js`, except the core's 110 B more than 0.21.0 (the follow-
   ports have lines) and `round` (an ellipse round its contents). `labelGaps` (decision 9), a typed view's opt in to the
   map's room for labels, column gaps only: a label with no spot widens its column gap in a second layout pass, kept when
   it leaves fewer issues. `fromPort`, `toPort`, `inner` and `portRank` join the edges' geometry key, `labelGaps` the
-  view's. A `socket` line end. All of it is reached only through fields no map and no earlier type sets.
+  view's. A `socket` line end. All of it is reached only through fields no map and no earlier type sets. (0.27.0, 4b.1: a line's
+  `portMin`, a number or `[from, to]`, gives its port's box a least length along the border, its lines centred in it;
+  it joins the edges' geometry key beside `fromPort`, `toPort`, `inner` and `portRank`.)
 - **The member and key hooks (5.2).** `edits.member(model, view, owner, id, text)`, asked on a member row before the
   panel's own reading; `edits.key(model, view, ids, key)`, asked for a key with no Alt, Ctrl or Meta before the canvas's
   own (`docs/editing.md`). The state machine's activity rows (`entry / …`) go through `edits.member`, with the same
@@ -4235,7 +4237,7 @@ What moves for a host that upgrades from 0.25.0:
   `examples/bookshop-opening-plan.json`, `bookshop-gcp.json` and `bookshop-azure.json`; Google's `iconPacks` label is
   the pin's (`2026-11-14`, it said `2025`) and each cloud view has a caption.
   `26-aws.json` is `examples/bookshop-aws.json` (4a.8).
-  The atlas's stills and PDF on the site change: it holds 36 views, the opening plan in its views list.
+  The atlas's stills and PDF on the site change: it holds 38 views with 4b.5's BPMN two, the opening plan in its views list.
 - **Decisions:** every recommendation of the note's §14; the choices each package took under the maintainer's standing
   approval (14 Nov 2026) are in the note's "As built" sections (§2.4, §3, §4.1, §5.7, §6.3, §7.3, §8.4, §10).
 - **Known gaps:** the packs' zips are not pinned yet, so `pack fetch` refuses both packs until a release pins them (the
@@ -4258,3 +4260,73 @@ What moves for a host that upgrades from 0.25.0:
 - **Size:** `lib/umlimator.js`, what a map host loads, is 186,161 B with `gzip -9`: 12.86% over 0.16.0 (the budget is
   15%). Milestone 4a spent 266 B of its 700 B share, all in 4a.2 (185,873 B to 186,139 B; 4a.4 and 4a.6 none).
   `lib/umlimator-all.js` is 590,167 B gzipped with milestones 3, 4a and 4b's code on `main`. The npm package is 845.5 kB.
+
+## 0.27.0 (in progress): the BPMN diagram; BPMN XML read and written through bpmn-moddle; `umlimator.py export`
+
+Milestone 4b of the plan for 28 diagram types (`docs/diagrams/notes/milestone-4b.md`), merged to `main` before 0.27.0
+ships (after 0.26.0), provisional until then. Everything is additive: maps, every typed view released before and every
+earlier example draw as they did (`bench/expected.json`, the examples' stills, every earlier test), but the BPMN
+example, moved and renamed below, and the Bookshop atlas, which gains it. The new code is in `lib/umlimator-all.js`, the
+CLI and the adapter; the core is unchanged.
+
+- **The files (4b.0, #248).** `src/bpmn/notation.js`, `src/bpmn/process.js` and `src/readers/bpmn-xml.js`, in
+  `tools/build.mjs`'s `ALL` after the last stage's.
+- **The engine (4b.1, #266).** A typed line's `portMin`, a port's least length along its border with its lines centred
+  in it (`spreadPorts`, `EDGE_GEO`); `ENDS.circle`, an open circle (a message flow's start); `dashed: 'dot'`, a dotted
+  line (`2 3`; `true` stays `6 4`). `laneBands` takes optional `runs` and counts a box's frame in its rows. `cpRank` and
+  `cpPlace` are exported from `src/uml/component.js`. Each reached only through a field no map and no earlier type sets.
+- **BPMN's notation (4b.2, #272).** Every shape of Table 2.1 and the markers, the names of events, gateways and data
+  outside their shapes by a search of the type's own (a name with no clear place flagged `clash: true`), the group's
+  frame, hit on a 24 px band along its border and its title; a data object's halo keeps its fold.
+- **The BPMN diagram, `bpmn` (4b.3, #277).** Pools and nested lanes as bands across the diagram, an empty row between
+  two pools; boundary events on their activity's border, 32 px circles, dashed when non-interrupting; an expanded
+  sub-process as a box when the view lists what it holds, else collapsed with its + marker, opening its view; message
+  flows to a pool ending on its border at the column they come from; groups round their members across pools. The type
+  ranks itself; data and annotations are drawn in the lane of what they are associated with. Fourteen rules
+  (`sequence-scope`, `sequence-ends`, `message-scope`, `message-ends`, `event-definition`, `boundary-host`,
+  `boundary-out`, `flow-start`, `gateway-flows`, `lane-owner`, `in-lane`, `data-ends`, `group-ref`, `opens-view`). A
+  line's kind is picked by its ends (one line entry, no picker); `A` attaches a boundary event by a picker, `X` expands or
+  collapses a sub-process in the view, Alt + arrows move a boundary event to another side. Gestures never leave a new
+  problem: a drop that would break a rule is refused with its words on the hint line; a moved boundary event goes to its
+  new activity's lane, an activity dropped in another lane takes its boundary events. A line the diagram cannot show (a
+  message flow between two pools, a flow from a boundary event back to its own activity, an annotation joined to a pool,
+  a lane, a group or itself) is refused, and `describe()` names one a model holds "not drawn".
+- **BPMN XML (4b.4, #267).** `readBpmnXml(xml, moddle)` and `writeBpmnXml(model, viewId, geo, moddle)`, internal, with a
+  `bpmn-moddle` the caller makes; the module imports nothing and `package.json` gains no dependency. `umlimator.py
+  import` reads a `.bpmn` file and the new `umlimator.py export` writes one (`--format bpmn` is its default), through
+  a `bpmn-moddle` found by `--moddle`, `UMLIMATOR_BPMN_MODDLE` or the working folder, or the message "BPMN needs bpmn-moddle: npm install
+  bpmn-moddle@10.3.1". Positions are not kept on reading, said once per file; conditional and default flows, send and
+  receive tasks and a timer's value are read plain and kept under `ext.bpmn`, reported `weakened`; anything else outside
+  the subset is reported and kept, never written back. Both reports are capped at 1,000 items; a file of thousands of
+  diagrams reads in linear time; the root view's diagram is written first; hostile files are read or refused in under
+  1 s, never thrown.
+- **The example, fixtures and docs (4b.5).** `docs/diagrams/examples/24-bpmn.json` is
+  `examples/bookshop-order-to-shipment.json`, its 18 ids the atlas gives other elements renamed with `bp-` (`bp-shopper`,
+  `bp-take-payment`, `bp-f-paid`, `bp-warehouse`, `bp-join`, `bp-m-charge`…), every reference with them, and
+  documentation on two tasks; it joins the gallery, CI's example loop and the Bookshop atlas, where the use case "Track an
+  order" opens it. `umlimator.py export` writes the type's layout of the view into the diagram interchange (a pool or lane
+  at its band, a shape at its box, a line through its points). `tests/bpmn-minimal.json` and `tests/bpmn-stress.json`
+  (its `edge-cases` view holds every row of Table 2.1 and the six extras) with `tests/m4b-fixtures.test.mjs` and
+  `tests/m4b.html`; the MCP server's read tools and the diff Action's step on the example (C10). The JSON Schema and the
+  types gain BPMN's vocabulary (`BpmnElementType`, `BpmnLineType`, `BpmnElementProps`, `BpmnLineProps`).
+  `docs/conformance/bpmn.md` claims the Descriptive conformance sub-class's elements (BPMN 2.0.2, 2.2.2, Table 2.1),
+  every row tested, and names its six extras.
+- **Decisions:** every recommendation of the note's §17; the choices each package took under the maintainer's standing
+  approval (14 Nov 2026) are in the note's "As built" sections (§8.3, §9.4, §12.5, §13.1, §14).
+- **Known gaps:** an unnamed gateway is named by its id in the PDF's tables (`fork`, `not-paid`); two lines on one
+  boundary event leave its port's face side by side, up to 1 px off its circle.
+- **Left out** (the note's §16): Table 2.2 beyond the five rows claimed, conversations, choreographies, event
+  sub-processes, transactions, compensation, messages as elements, data inputs and outputs, positions and colours from a
+  file's diagram interchange, resizing a pool or lane, XMI, copy and paste, per-type `diff()` writers; a Mermaid reader.
+- **Layout limits** (`docs/conformance/bpmn.md`): with repair and rerouting off, the example crosses 5 times laid out
+  right and 6 down; the stress views 12 (`edge-cases`), 13 and 14 (`ec-closed`), 30 and 29 (`all`). No view runs a line
+  through a node or a sequence flow out of its pool.
+- **P1.** On the stress view `all` (CPU, best of five, an Apple laptop under load): a full layout and its SVG 55 ms;
+  documentation 6 ms, laying nothing out; a task renamed 54 ms, a sequence flow's name 52 ms, a flow node moved to
+  another lane 55 ms, a boundary event's side 53 ms. CI holds 1 s and prints each against the 100 ms target.
+  On CI's runner (runs 43563271519 and 43564910738) the four common edits took 97.6 to 108.2 ms and the full
+  layout 100.4 to 105.8 ms: the edits sit at the target there, over it in the second run, and cost about as much as a full layout, since each
+  lays the view out again (the memo spares only an edit that moves nothing).
+- **Size:** `lib/umlimator.js`, what a map host loads, is 186,161 B with `gzip -9`, unchanged by milestone 4b: 12.86%
+  over 0.16.0 (the budget is 15%). Milestone 4b spent none of its 700 B share. `lib/umlimator-all.js` is 552,200 B
+  gzipped.

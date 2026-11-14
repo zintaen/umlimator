@@ -837,7 +837,7 @@ As built (4a.7, 14 Nov 2026), where §10 left a choice or the build found what i
   Google Cloud example 1 crossing right and down, Azure's 1 right and 3 down; the cloud stress view `all` 52 right and 54
   down, where one path's label lies on another (the only finding that is not a crossing, stated in
   `docs/conformance/gcp.md`). The line inside its group in `edge-cases` is not drawn (`line-inside`). CI's example loop
-  holds `bookshop-gcp` and `bookshop-azure` at 1 and the atlas at 24 (22 before), as Chrome counts them with `--expand`.
+  holds `bookshop-gcp` and `bookshop-azure` at 1 and the atlas at 24 (22 before; 29 once merged with 4b.5's BPMN example, which adds 5), as Chrome counts them with `--expand`.
 - **The atlas.** A mindmap topic that opens a view is 26 px wider (§7.3's As built) and the Hosting topics open the cloud
   views only in the atlas, so `tests/atlas.test.mjs` compares the opening plan's layout with its file's but for those two
   topics, 26 px wider and grown away from the root. The opening plan is a root view: nothing opens it, and the test reaches
