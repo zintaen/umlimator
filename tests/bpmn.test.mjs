@@ -20,7 +20,7 @@ import { validate } from '../src/map/validate.js';
 import { describe } from '../src/map/insight.js';
 import { BZ_RULES, bzProblems, bzConnect, bzMoveTo, bzAdd, bzRemove, bzKey, bzOwners } from '../src/bpmn/process.js';
 
-const EX = JSON.parse(readFileSync(new URL('../docs/diagrams/examples/24-bpmn.json', import.meta.url), 'utf8'));
+const EX = JSON.parse(readFileSync(new URL('../examples/bookshop-order-to-shipment.json', import.meta.url), 'utf8'));
 const T = diagramOf({ diagram: 'bpmn' }), VID = 'order-to-shipment', V = (m, id = VID) => m.views.find(v => v.id === id);
 const dir = (m, direction) => ({ ...m, views: m.views.map(v => ({ ...v, direction })) });
 const errors = m => validate(m).filter(p => p.level === 'error');
@@ -85,46 +85,46 @@ test('example 24 validates clean and lays out clean right and down: bands, every
     assert.deepEqual([r.bad, r.others], [[], []], d);
     console.log(`# example 24, ${d}: ${g.nodes.length} nodes, ${g.edges.length} lines, ${r.crossings.length} crossings`);
     assert.equal(r.crossings.length, pinned, `${d}: the crossings pinned here (no port repair, S16)`);
-    assert.deepEqual(g.bands.map(b => [b.id, b.depth]), [['shopper', 0], ['bookshop', 0], ['sales', 1], ['warehouse', 1], ['payment-provider', 0]]);
+    assert.deepEqual(g.bands.map(b => [b.id, b.depth]), [['bp-shopper', 0], ['bp-bookshop', 0], ['bp-sales', 1], ['bp-warehouse', 1], ['bp-payment-provider', 0]]);
     // the pools apart, each header a node on its strip, named
     const [A, S] = d === 'down' ? ['x', 'w'] : ['y', 'h'], pools = g.bands.filter(b => !b.depth);
     pools.slice(1).forEach((p, i) => assert.ok(p[A] > pools[i][A] + pools[i][S], `${d}: ${pools[i].id} and ${p.id} apart`));
     g.bands.forEach(b => { const n = g.byId[b.id]; assert.deepEqual([n.shape, n.aside, n.x, n.y, n.w, n.h], [b.depth ? 'bpmn-lane' : 'bpmn-pool', true, b.head.x, b.head.y, b.head.w, b.head.h]); });
     assert.ok(pools[2][S] >= 120 - .5, `${d}: the black-box pool 120 px across at least`);
     // the boundary event on take-payment's far side, and the expanded sub-process absent (pick-pack collapsed here)
-    assert.equal(g.byId['payment-timeout'].side, d === 'down' ? 'R' : 'B'); assert.equal(g.byId['payment-timeout'].owner, 'take-payment');
+    assert.equal(g.byId['payment-timeout'].side, d === 'down' ? 'R' : 'B'); assert.equal(g.byId['payment-timeout'].owner, 'bp-take-payment');
     assert.equal(g.families.length, 0); assert.equal(g.byId['pick-pack'].shape, 'bpmn-task');
     // a message flow to a pool ends on its border, at the column it comes from; the anchors are gone
     assert.ok(!g.nodes.some(n => n.id.startsWith('\u0000')) && !Object.keys(g.byId).some(id => id.startsWith('\u0000')), `${d}: no anchor drawn`);
-    const end = id => g.edges.find(e => e.id === id), pp = g.bands.find(b => b.id === 'payment-provider'), sh = g.bands.find(b => b.id === 'shopper');
-    assert.equal(end('m-charge').pts.at(-1)[d === 'down' ? 0 : 1], pp[A], 'm-charge ends on the provider\'s border');
+    const end = id => g.edges.find(e => e.id === id), pp = g.bands.find(b => b.id === 'bp-payment-provider'), sh = g.bands.find(b => b.id === 'bp-shopper');
+    assert.equal(end('bp-m-charge').pts.at(-1)[d === 'down' ? 0 : 1], pp[A], 'm-charge ends on the provider\'s border');
     assert.equal(end('m-result').pts[0][d === 'down' ? 0 : 1], pp[A], 'm-result starts on it');
     assert.equal(end('m-notice').pts.at(-1)[d === 'down' ? 0 : 1], sh[A] + sh[S], 'm-notice ends on the shopper\'s border');
-    assert.deepEqual([end('m-charge').to, end('m-result').from, end('m-notice').t.id], ['payment-provider', 'payment-provider', 'shopper']);
+    assert.deepEqual([end('bp-m-charge').to, end('m-result').from, end('m-notice').t.id], ['bp-payment-provider', 'bp-payment-provider', 'bp-shopper']);
     // the labels outside: each event, gateway and data object with a name has one
-    assert.deepEqual(g.labels.map(l => l.id).sort(), ['basket-ready', 'courier-pickup', 'order', 'order-cancelled', 'order-placed', 'order-received', 'order-shipped', 'paid', 'payment-timeout', 'shipping-notice', 'stock'].sort());
+    assert.deepEqual(g.labels.map(l => l.id).sort(), ['basket-ready', 'courier-pickup', 'bp-order', 'order-cancelled', 'order-placed', 'order-received', 'order-shipped', 'paid', 'payment-timeout', 'shipping-notice', 'bp-stock'].sort());
     // the group round its members
-    const grp = g.byId.dispatch; ['courier-pickup', 'ship', 'shipping-notice'].forEach(id => assert.ok(within(g.byId[id], grp), `${d}: ${id} in the group`));
+    const grp = g.byId.dispatch; ['courier-pickup', 'bp-ship', 'shipping-notice'].forEach(id => assert.ok(within(g.byId[id], grp), `${d}: ${id} in the group`));
     assert.equal(g.nodes[0].id, 'dispatch', 'the group drawn first, under everything');
     // data in the lane of the flow node it is associated with (decision 23)
     const band = id => g.bands.find(b => b.id === id);
-    assert.ok(within(g.byId.order, band('sales')) && within(g.byId.stock, band('warehouse')) && within(g.byId['note-card'], band('sales')), `${d}: data and the annotation in their lanes`);
+    assert.ok(within(g.byId['bp-order'], band('bp-sales')) && within(g.byId['bp-stock'], band('bp-warehouse')) && within(g.byId['note-card'], band('bp-sales')), `${d}: data and the annotation in their lanes`);
   }
 });
 
 test('names, reading order, describe(), the legend, the PDF\'s words and rows', () => {
   const g = layout(EX, VID), aria = id => g.byId[id].aria;
-  assert.deepEqual(['take-payment', 'payment-timeout', 'paid', 'order-cancelled', 'bookshop', 'sales', 'payment-provider', 'dispatch', 'pick-pack', 'note-card'].map(aria), ['Service task Take payment, in Sales',
+  assert.deepEqual(['bp-take-payment', 'payment-timeout', 'paid', 'order-cancelled', 'bp-bookshop', 'bp-sales', 'bp-payment-provider', 'dispatch', 'pick-pack', 'note-card'].map(aria), ['Service task Take payment, in Sales',
     'Timer boundary event No answer in 2 minutes, on Take payment', 'Exclusive gateway Paid?, in Sales', 'Terminate end event Order cancelled, in Sales', 'Pool Bookshop, 2 lanes, 16 elements',
     'Lane Sales of Bookshop, 10 elements', 'Pool Payment provider, a black box', 'Group Dispatch, round 3 elements', 'Sub-process Pick and pack (collapsed), in Warehouse',
     'Text annotation Card details go straight to the provider; the shop never sees them, in Sales']);
-  assert.equal(g.edges.find(e => e.id === 'f-paid').aria, 'Sequence flow from Paid? to parallel gateway, named yes');
-  assert.equal(g.edges.find(e => e.id === 'm-charge').aria, 'Message flow from Take payment to Payment provider, named Charge request');
-  assert.deepEqual(g.order.slice(0, 6), ['shopper', 'basket-ready', 'place-order', 'order-placed', 'bookshop', 'sales']);
-  assert.ok(g.order.indexOf('payment-timeout') === g.order.indexOf('take-payment') + 1, 'a boundary event read after its activity');
-  assert.ok(g.order.indexOf('dispatch') > g.order.indexOf('payment-provider') && g.order.indexOf('f-basket') > g.order.indexOf('dispatch'), 'the groups, then the lines');
+  assert.equal(g.edges.find(e => e.id === 'bp-f-paid').aria, 'Sequence flow from Paid? to parallel gateway, named yes');
+  assert.equal(g.edges.find(e => e.id === 'bp-m-charge').aria, 'Message flow from Take payment to Payment provider, named Charge request');
+  assert.deepEqual(g.order.slice(0, 6), ['bp-shopper', 'basket-ready', 'place-order', 'order-placed', 'bp-bookshop', 'bp-sales']);
+  assert.ok(g.order.indexOf('payment-timeout') === g.order.indexOf('bp-take-payment') + 1, 'a boundary event read after its activity');
+  assert.ok(g.order.indexOf('dispatch') > g.order.indexOf('bp-payment-provider') && g.order.indexOf('f-basket') > g.order.indexOf('dispatch'), 'the groups, then the lines');
   assert.deepEqual(g.legend.map(s => /<b>([^<]*)/.exec(s)[1]), ['Sequence flow', 'Message flow', 'Association', 'Data association']);
-  assert.match(mapContext(EX).buildView(VID).markup, /<g class="bz-pools"><rect class="bz-pool" data-o="shopper"/);
+  assert.match(mapContext(EX).buildView(VID).markup, /<g class="bz-pools"><rect class="bz-pool" data-o="bp-shopper"/);
   assert.match(mapContext(EX).buildView(VID).markup, /<g class="bp-label" data-o="paid"/);
   const said = describe(EX, VID).split('\n');
   assert.deepEqual(said.slice(0, 6), ['From order to shipment: a BPMN diagram of 18 flow nodes, 21 flows and 3 pools.', 'Pool Shopper, 3 elements.', 'Pool Bookshop, 2 lanes, 16 elements.',
@@ -132,12 +132,12 @@ test('names, reading order, describe(), the legend, the PDF\'s words and rows', 
   assert.ok(said.includes('Service task Take payment, in Sales; then Paid?; message to Payment provider (Charge request).'));
   assert.ok(said.includes('Timer boundary event No answer in 2 minutes, on Take payment; then exclusive gateway.'), 'a boundary event after its activity, with its flow');
   assert.equal(said.at(-1), 'Group Dispatch: Courier\'s pickup at 16:00, Hand parcel to courier, Shipping notice sent.');
-  const doc = apply(EX, { op: 'set', id: 'take-payment', path: 'props.documentation', value: 'Charged once.' });
+  const doc = apply(EX, { op: 'set', id: 'bp-take-payment', path: 'props.documentation', value: 'Charged once.' });
   assert.ok(describe(doc, VID).includes('Service task Take payment, in Sales (Charged once.); then'), 'documentation printed (S2, 2.2.6)');
-  assert.deepEqual([T.word(EX, 'paid'), T.word(EX, 'payment-timeout'), T.word(EX, 'f-paid'), T.rows(doc, V(doc), 'take-payment'), T.rows(EX, V(EX), 'payment-timeout'), T.rows(EX, V(EX), 'note-card')],
+  assert.deepEqual([T.word(EX, 'paid'), T.word(EX, 'payment-timeout'), T.word(EX, 'bp-f-paid'), T.rows(doc, V(doc), 'bp-take-payment'), T.rows(EX, V(EX), 'payment-timeout'), T.rows(EX, V(EX), 'note-card')],
     ['Exclusive gateway', 'Timer boundary event', null, ['in Sales', 'Charged once.'], ['on Take payment'], ['in Sales']]);
   // a group round nothing shown is not drawn, and describe() says so
-  const hidden = apply(EX, ['courier-pickup', 'ship', 'shipping-notice'].map(id => ({ op: 'hide', id, view: VID })));
+  const hidden = apply(EX, ['courier-pickup', 'bp-ship', 'shipping-notice'].map(id => ({ op: 'hide', id, view: VID })));
   assert.equal(layout(hidden, VID).byId.dispatch, undefined); assert.equal(describe(hidden, VID).split('\n').at(-1), 'Group Dispatch, round nothing shown: not drawn.');
   // what the picture leaves out (§8.3) is said, as not drawn
   const pp = one([N('p', 'Participant', 'P'), N('q', 'Participant', 'Q')], [F('m', 'p', 'q', 'MessageFlow', { label: 'Invoice' })]);
@@ -284,46 +284,46 @@ const run = (m, cs, warn = true) => { assert.ok(Array.isArray(cs) || (cs && Arra
 test('connect: the kind by the ends, no picker (§7.1); a flow BPMN forbids refused with the rule\'s words', () => {
   const v = V(EX), el = cs => cs[0].element;
   assert.deepEqual(bzConnect(EX, v, 'cancel-order', 'send-invoice'), [{ op: 'add', element: { id: 'cancel-order-send-invoice', type: 'bpmn.SequenceFlow', from: 'cancel-order', to: 'send-invoice' }, view: VID }]);
-  assert.equal(el(bzConnect(EX, v, 'cancel-order', 'payment-provider')).type, 'bpmn.MessageFlow', 'to another pool: a message flow');
-  assert.equal(el(bzConnect(EX, v, 'place-order', 'take-payment')).type, 'bpmn.MessageFlow');
-  assert.equal(el(bzConnect(EX, v, 'send-invoice', 'order')).type, 'bpmn.DataAssociation');
+  assert.equal(el(bzConnect(EX, v, 'cancel-order', 'bp-payment-provider')).type, 'bpmn.MessageFlow', 'to another pool: a message flow');
+  assert.equal(el(bzConnect(EX, v, 'place-order', 'bp-take-payment')).type, 'bpmn.MessageFlow');
+  assert.equal(el(bzConnect(EX, v, 'send-invoice', 'bp-order')).type, 'bpmn.DataAssociation');
   assert.equal(el(bzConnect(EX, v, 'note-card', 'paid')).type, 'bpmn.Association');
   assert.deepEqual(bzConnect(EX, v, 'cancel-order', 'basket-ready'), { error: 'A message flow cannot end at a start event' });
   assert.deepEqual(bzConnect(EX, v, 'order-placed', 'order-received'), { error: 'A message flow cannot start at an end event' });
-  assert.deepEqual(bzConnect(EX, v, 'order', 'order-received'), { error: 'A message start event only gives data: draw the line from the event to the data' });
-  assert.deepEqual(bzConnect(EX, v, 'order-shipped', 'order'), { error: 'An end event only takes data: draw the line from the data to the event' });
+  assert.deepEqual(bzConnect(EX, v, 'bp-order', 'order-received'), { error: 'A message start event only gives data: draw the line from the event to the data' });
+  assert.deepEqual(bzConnect(EX, v, 'order-shipped', 'bp-order'), { error: 'An end event only takes data: draw the line from the data to the event' });
   assert.match(bzConnect(EX, v, 'paid', 'basket-ready').error, /^A message flow/);
-  assert.match(bzConnect(EX, v, 'take-payment', 'order-received').error, /^sequence-ends: /, 'into a start event: refused by its rule');
-  assert.deepEqual(bzConnect(EX, v, 'bookshop', 'take-payment'), { error: 'A sequence flow cannot leave its pool: a message flow joins two pools' });
-  assert.deepEqual(bzConnect(EX, v, 'dispatch', 'ship'), { error: 'A group joins no flow' });
-  assert.deepEqual(bzConnect(EX, v, 'pick-books', 'ship'), { error: 'A sequence flow stays in its sub-process' });
-  run(EX, bzConnect(EX, v, 'cancel-order', 'payment-provider'));
+  assert.match(bzConnect(EX, v, 'bp-take-payment', 'order-received').error, /^sequence-ends: /, 'into a start event: refused by its rule');
+  assert.deepEqual(bzConnect(EX, v, 'bp-bookshop', 'bp-take-payment'), { error: 'A sequence flow cannot leave its pool: a message flow joins two pools' });
+  assert.deepEqual(bzConnect(EX, v, 'dispatch', 'bp-ship'), { error: 'A group joins no flow' });
+  assert.deepEqual(bzConnect(EX, v, 'pick-books', 'bp-ship'), { error: 'A sequence flow stays in its sub-process' });
+  run(EX, bzConnect(EX, v, 'cancel-order', 'bp-payment-provider'));
   // what the picture leaves out is refused, not drawn as nothing
-  assert.match(bzConnect(EX, v, 'shopper', 'payment-provider').error, /^A message flow between two pools is not drawn/);
-  assert.match(bzConnect(EX, v, 'payment-timeout', 'take-payment').error, /^A flow from a boundary event back to its own activity is not drawn/);
-  for (const [a, b] of [['note-card', 'sales'], ['note-card', 'note-card'], ['note-card', 'bookshop'], ['dispatch', 'note-card']]) assert.match(bzConnect(EX, v, a, b).error, /^A text annotation is linked to an element in the flow/, a + ' ' + b);
+  assert.match(bzConnect(EX, v, 'bp-shopper', 'bp-payment-provider').error, /^A message flow between two pools is not drawn/);
+  assert.match(bzConnect(EX, v, 'payment-timeout', 'bp-take-payment').error, /^A flow from a boundary event back to its own activity is not drawn/);
+  for (const [a, b] of [['note-card', 'bp-sales'], ['note-card', 'note-card'], ['note-card', 'bp-bookshop'], ['dispatch', 'note-card']]) assert.match(bzConnect(EX, v, a, b).error, /^A text annotation is linked to an element in the flow/, a + ' ' + b);
   const free = apply(EX, { op: 'add', element: { id: 'loose', type: 'bpmn.Task', label: 'Loose' }, view: VID });
   assert.deepEqual(bzConnect(free, V(free), 'cancel-order', 'loose'), { error: 'A sequence flow cannot leave its pool: Loose is in no pool' });
 });
 test('moveTo: a drop in another lane reparents and drops the pin; into another pool only with no sequence flows; a boundary event\'s side by Alt + arrows, its activity by a drop; headers and groups move nothing', () => {
   const g = layout(EX, VID), band = id => g.bands.find(b => b.id === id), mid = b => [b.x + b.w / 2 + 40, b.y + b.h / 2 + 30], at = b => ({ pt: mid(b), geo: g });
-  assert.deepEqual(bzMoveTo(EX, V(EX), 'send-invoice', at(band('warehouse'))), [{ op: 'reparent', id: 'send-invoice', parent: 'warehouse' }]);
+  assert.deepEqual(bzMoveTo(EX, V(EX), 'send-invoice', at(band('bp-warehouse'))), [{ op: 'reparent', id: 'send-invoice', parent: 'bp-warehouse' }]);
   const pinned = apply(EX, { op: 'set', view: VID, path: ['layout', 'send-invoice'], value: [4, 1] });
-  assert.deepEqual(bzMoveTo(pinned, V(pinned), 'send-invoice', at(band('warehouse')))[1], { op: 'set', view: VID, path: ['layout', 'send-invoice'], value: undefined });
-  assert.equal(bzMoveTo(EX, V(EX), 'send-invoice', at(band('sales'))), null, 'in its own lane: a pin');
-  assert.deepEqual(bzMoveTo(EX, V(EX), 'send-invoice', at(band('shopper'))), { error: 'Move its sequence flows first: a sequence flow stays in its pool' });
-  assert.deepEqual(bzMoveTo(EX, V(EX), 'stock', at(band('sales'))), null, 'data is in its pool, not a lane: within it, a pin');
-  assert.deepEqual(bzMoveTo(EX, V(EX), 'stock', at(band('shopper'))), { error: 'Data stays in the pool of what it is associated with' });
-  const lone = apply(EX, { op: 'add', element: { id: 'memo', type: 'bpmn.DataObject', label: 'Memo', parent: 'bookshop' }, view: VID });
-  assert.deepEqual(bzMoveTo(lone, V(lone), 'memo', at(band('shopper'))), [{ op: 'reparent', id: 'memo', parent: 'shopper' }], 'data with no association: into another pool');
-  assert.equal(bzMoveTo(EX, V(EX), 'note-card', at(band('warehouse'))), null, 'an annotation is in no pool: a pin');
-  const head = band('bookshop').head;
+  assert.deepEqual(bzMoveTo(pinned, V(pinned), 'send-invoice', at(band('bp-warehouse')))[1], { op: 'set', view: VID, path: ['layout', 'send-invoice'], value: undefined });
+  assert.equal(bzMoveTo(EX, V(EX), 'send-invoice', at(band('bp-sales'))), null, 'in its own lane: a pin');
+  assert.deepEqual(bzMoveTo(EX, V(EX), 'send-invoice', at(band('bp-shopper'))), { error: 'Move its sequence flows first: a sequence flow stays in its pool' });
+  assert.deepEqual(bzMoveTo(EX, V(EX), 'bp-stock', at(band('bp-sales'))), null, 'data is in its pool, not a lane: within it, a pin');
+  assert.deepEqual(bzMoveTo(EX, V(EX), 'bp-stock', at(band('bp-shopper'))), { error: 'Data stays in the pool of what it is associated with' });
+  const lone = apply(EX, { op: 'add', element: { id: 'memo', type: 'bpmn.DataObject', label: 'Memo', parent: 'bp-bookshop' }, view: VID });
+  assert.deepEqual(bzMoveTo(lone, V(lone), 'memo', at(band('bp-shopper'))), [{ op: 'reparent', id: 'memo', parent: 'bp-shopper' }], 'data with no association: into another pool');
+  assert.equal(bzMoveTo(EX, V(EX), 'note-card', at(band('bp-warehouse'))), null, 'an annotation is in no pool: a pin');
+  const head = band('bp-bookshop').head;
   assert.match(bzMoveTo(EX, V(EX), 'send-invoice', { pt: [head.x + head.w / 2, head.y + head.h / 2], geo: g }).error, /^in-lane: /, 'on a pool\'s header: refused, in no lane');
   // an activity takes its boundary events to its new lane; one moved to another activity goes to its owner
-  const tp = run(EX, bzMoveTo(EX, V(EX), 'take-payment', at(band('warehouse'))));
-  assert.deepEqual(['take-payment', 'payment-timeout'].map(id => tp.nodes.find(n => n.id === id).parent), ['warehouse', 'warehouse']);
+  const tp = run(EX, bzMoveTo(EX, V(EX), 'bp-take-payment', at(band('bp-warehouse'))));
+  assert.deepEqual(['bp-take-payment', 'payment-timeout'].map(id => tp.nodes.find(n => n.id === id).parent), ['bp-warehouse', 'bp-warehouse']);
   const pp = g.byId['pick-pack'], onPick = bzMoveTo(EX, V(EX), 'payment-timeout', { pt: [pp.x + pp.w / 2, pp.y + pp.h + 3], geo: g });
-  assert.deepEqual(onPick.slice(0, 2), [{ op: 'set', id: 'payment-timeout', path: 'props.attachedTo', value: 'pick-pack' }, { op: 'reparent', id: 'payment-timeout', parent: 'warehouse' }]); run(EX, onPick);
+  assert.deepEqual(onPick.slice(0, 2), [{ op: 'set', id: 'payment-timeout', path: 'props.attachedTo', value: 'pick-pack' }, { op: 'reparent', id: 'payment-timeout', parent: 'bp-warehouse' }]); run(EX, onPick);
   // into another pool: refused while its boundary events have sequence flows, or a message flow would join one pool
   const Q = (id, more = {}) => ({ id, type: 'bpmn.Lane', label: id.toUpperCase(), ...more }), two = (nodes, edges) => one([N('p', 'Participant', 'P', { members: [Q('l1')] }), N('q', 'Participant', 'Q', { members: [Q('l2')] }), ...nodes], edges);
   const be = two([N('t', 'Task', 'T', { parent: 'l1' }), N('b', 'BoundaryEvent', 'B', { parent: 'l1', props: { attachedTo: 't', definition: 'timer' } }), N('e', 'EndEvent', 'E', { parent: 'l1' })], [F('f', 'b', 'e')]);
@@ -336,55 +336,55 @@ test('moveTo: a drop in another lane reparents and drops the pin; into another p
   assert.deepEqual(bzMoveTo(EX, V(EX), 'payment-timeout', { pt: [c.x + c.w / 2, c.y + c.h + 3], geo: g }), [{ op: 'set', id: 'payment-timeout', path: 'props.attachedTo', value: 'cancel-order' },
     { op: 'set', view: VID, path: ['present', 'payment-timeout', 'side'], value: 'bottom' }]);
   assert.deepEqual(bzMoveTo(EX, V(EX), 'payment-timeout', { pt: [-500, -500], geo: g }), { error: 'Drop a boundary event on an activity\'s border' });
-  for (const id of ['sales', 'bookshop', 'dispatch']) assert.deepEqual(bzMoveTo(EX, V(EX), id, at(band('warehouse'))), [], id);
-  const m = run(EX, bzMoveTo(EX, V(EX), 'send-invoice', at(band('warehouse'))));
-  assert.ok(within(layout(m, VID).byId['send-invoice'], layout(m, VID).bands.find(b => b.id === 'warehouse')));
+  for (const id of ['bp-sales', 'bp-bookshop', 'dispatch']) assert.deepEqual(bzMoveTo(EX, V(EX), id, at(band('bp-warehouse'))), [], id);
+  const m = run(EX, bzMoveTo(EX, V(EX), 'send-invoice', at(band('bp-warehouse'))));
+  assert.ok(within(layout(m, VID).byId['send-invoice'], layout(m, VID).bands.find(b => b.id === 'bp-warehouse')));
 });
 test('add: into the lane, pool or sub-process selected; a lane into a pool, nested in the lane selected; a boundary event onto the activity selected; data in a pool', () => {
   const E = (label, type, props) => ({ type: 'bpmn.' + type, label, ...(props ? { props } : {}) });
-  assert.deepEqual(bzAdd(EX, V(EX), E('Task', 'Task'), 'Pack gift', { sel: ['warehouse'] }), [{ op: 'add', element: { id: 'pack-gift', type: 'bpmn.Task', label: 'Pack gift', parent: 'warehouse' }, view: VID }]);
-  assert.equal(bzAdd(EX, V(EX), E('Task', 'Task'), 'X', { sel: ['paid'] })[0].element.parent, 'sales', 'a node selected: in its lane');
-  assert.deepEqual(bzAdd(EX, V(EX), E('Timer start', 'StartEvent', { definition: 'timer' }), '', { sel: ['shopper'] })[0].element, { id: 'timer-start', type: 'bpmn.StartEvent', props: { definition: 'timer' }, parent: 'shopper' });
-  assert.deepEqual(bzAdd(EX, V(EX), E('Lane', 'Lane'), 'Packing', { sel: ['warehouse'] }), [{ op: 'add', element: { id: 'packing', type: 'bpmn.Lane', label: 'Packing', parent: 'warehouse' }, owner: 'bookshop' }]);
-  assert.deepEqual(bzAdd(EX, V(EX), E('Lane', 'Lane'), 'Billing', { sel: ['bookshop'] })[0], { op: 'add', element: { id: 'billing', type: 'bpmn.Lane', label: 'Billing' }, owner: 'bookshop' });
+  assert.deepEqual(bzAdd(EX, V(EX), E('Task', 'Task'), 'Pack gift', { sel: ['bp-warehouse'] }), [{ op: 'add', element: { id: 'pack-gift', type: 'bpmn.Task', label: 'Pack gift', parent: 'bp-warehouse' }, view: VID }]);
+  assert.equal(bzAdd(EX, V(EX), E('Task', 'Task'), 'X', { sel: ['paid'] })[0].element.parent, 'bp-sales', 'a node selected: in its lane');
+  assert.deepEqual(bzAdd(EX, V(EX), E('Timer start', 'StartEvent', { definition: 'timer' }), '', { sel: ['bp-shopper'] })[0].element, { id: 'timer-start', type: 'bpmn.StartEvent', props: { definition: 'timer' }, parent: 'bp-shopper' });
+  assert.deepEqual(bzAdd(EX, V(EX), E('Lane', 'Lane'), 'Packing', { sel: ['bp-warehouse'] }), [{ op: 'add', element: { id: 'packing', type: 'bpmn.Lane', label: 'Packing', parent: 'bp-warehouse' }, owner: 'bp-bookshop' }]);
+  assert.deepEqual(bzAdd(EX, V(EX), E('Lane', 'Lane'), 'Billing', { sel: ['bp-bookshop'] })[0], { op: 'add', element: { id: 'billing', type: 'bpmn.Lane', label: 'Billing' }, owner: 'bp-bookshop' });
   assert.deepEqual(bzAdd(EX, V(EX), E('Lane', 'Lane'), 'x', { sel: [] }), { error: 'Select a pool to add a lane to' });
-  assert.deepEqual(bzAdd(EX, V(EX), E('Boundary', 'BoundaryEvent', { definition: 'timer' }), '', { sel: ['send-invoice'] })[0].element, { id: 'boundary', type: 'bpmn.BoundaryEvent', parent: 'sales', props: { definition: 'timer', attachedTo: 'send-invoice' } });
+  assert.deepEqual(bzAdd(EX, V(EX), E('Boundary', 'BoundaryEvent', { definition: 'timer' }), '', { sel: ['send-invoice'] })[0].element, { id: 'boundary', type: 'bpmn.BoundaryEvent', parent: 'bp-sales', props: { definition: 'timer', attachedTo: 'send-invoice' } });
   assert.deepEqual(bzAdd(EX, V(EX), E('Boundary', 'BoundaryEvent'), '', { sel: ['paid'] }), { error: 'Select an activity to attach a boundary event to' });
-  assert.equal(bzAdd(EX, V(EX), E('Data object', 'DataObject'), 'Invoice', { sel: ['sales'] })[0].element.parent, 'bookshop', 'data in the pool, not the lane');
-  assert.equal(bzAdd(EX, V(EX), E('Text annotation', 'TextAnnotation'), 'Why', { sel: ['sales'] })[0].element.parent, undefined);
+  assert.equal(bzAdd(EX, V(EX), E('Data object', 'DataObject'), 'Invoice', { sel: ['bp-sales'] })[0].element.parent, 'bp-bookshop', 'data in the pool, not the lane');
+  assert.equal(bzAdd(EX, V(EX), E('Text annotation', 'TextAnnotation'), 'Why', { sel: ['bp-sales'] })[0].element.parent, undefined);
   assert.equal(bzAdd(EX, V(EX), E('Task', 'Task'), 'Count', { sel: ['pick-pack'] })[0].element.parent, 'pick-pack', 'into the sub-process selected');
   assert.equal(bzAdd(EX, V(EX), { type: 'uml.Class' }, 'x', null), null);
-  for (const [entry, sel] of [[E('Lane', 'Lane'), ['warehouse']], [E('Boundary', 'BoundaryEvent', { definition: 'timer' }), ['send-invoice']], [E('Pool', 'Participant'), []], [E('Group', 'Group'), []]])
+  for (const [entry, sel] of [[E('Lane', 'Lane'), ['bp-warehouse']], [E('Boundary', 'BoundaryEvent', { definition: 'timer' }), ['send-invoice']], [E('Pool', 'Participant'), []], [E('Group', 'Group'), []]])
     run(EX, bzAdd(EX, V(EX), entry, 'New', { sel }));
 });
 test('remove: a lane deleted by Delete or Shift + Delete, what it held and its nested lanes moved to its owner; a pool deleted with what it owns, counted; an activity with its boundary events; a group out of categoryValueRef', () => {
-  const nest = apply(EX, [{ op: 'add', element: { id: 'packing', type: 'bpmn.Lane', label: 'Packing', parent: 'warehouse' }, owner: 'bookshop' }, { op: 'reparent', id: 'join', parent: 'packing' },
-    { op: 'add', element: { id: 'boxes', type: 'bpmn.Lane', label: 'Boxes', parent: 'packing' }, owner: 'bookshop' }, { op: 'reparent', id: 'ship', parent: 'boxes' }]);
-  let r = bzRemove(nest, V(nest), ['warehouse'], false); const m = run(nest, r, false);
+  const nest = apply(EX, [{ op: 'add', element: { id: 'packing', type: 'bpmn.Lane', label: 'Packing', parent: 'bp-warehouse' }, owner: 'bp-bookshop' }, { op: 'reparent', id: 'bp-join', parent: 'packing' },
+    { op: 'add', element: { id: 'boxes', type: 'bpmn.Lane', label: 'Boxes', parent: 'packing' }, owner: 'bp-bookshop' }, { op: 'reparent', id: 'bp-ship', parent: 'boxes' }]);
+  let r = bzRemove(nest, V(nest), ['bp-warehouse'], false); const m = run(nest, r, false);
   assert.equal(r.say, 'Deleted lane Warehouse from the model: a lane is not hidden from a view, keeping what it held');
-  const lanes = m.nodes.find(n => n.id === 'bookshop').members;
-  assert.deepEqual(lanes.map(l => [l.id, l.parent]), [['sales', undefined], ['packing', undefined], ['boxes', 'packing']], 'the nested lanes kept, one level up');
-  assert.deepEqual(['pick-pack', 'join', 'ship', 'courier-pickup'].map(id => m.nodes.find(n => n.id === id).parent), ['bookshop', 'packing', 'boxes', 'bookshop']);
+  const lanes = m.nodes.find(n => n.id === 'bp-bookshop').members;
+  assert.deepEqual(lanes.map(l => [l.id, l.parent]), [['bp-sales', undefined], ['packing', undefined], ['boxes', 'packing']], 'the nested lanes kept, one level up');
+  assert.deepEqual(['pick-pack', 'bp-join', 'bp-ship', 'courier-pickup'].map(id => m.nodes.find(n => n.id === id).parent), ['bp-bookshop', 'packing', 'boxes', 'bp-bookshop']);
   assert.deepEqual(errors(m), []);
   r = bzRemove(nest, V(nest), ['packing'], true); const m2 = run(nest, r, false);
-  assert.deepEqual(m2.nodes.find(n => n.id === 'bookshop').members.map(l => [l.id, l.parent]), [['sales', undefined], ['warehouse', undefined], ['boxes', 'warehouse']]);
-  assert.equal(m2.nodes.find(n => n.id === 'join').parent, 'warehouse');
-  r = bzRemove(EX, V(EX), ['payment-provider'], true);
+  assert.deepEqual(m2.nodes.find(n => n.id === 'bp-bookshop').members.map(l => [l.id, l.parent]), [['bp-sales', undefined], ['bp-warehouse', undefined], ['boxes', 'bp-warehouse']]);
+  assert.equal(m2.nodes.find(n => n.id === 'bp-join').parent, 'bp-warehouse');
+  r = bzRemove(EX, V(EX), ['bp-payment-provider'], true);
   assert.equal(r.say, 'Deleted pool Payment provider and the 0 elements it holds');
-  r = bzRemove(EX, V(EX), ['bookshop'], true); assert.match(r.say, /^Deleted pool Bookshop and the 21 elements it holds$/);
-  assert.equal(bzRemove(EX, V(EX), ['paid'], true), null); assert.equal(bzRemove(EX, V(EX), ['bookshop'], false), null, 'Delete on a pool: hidden, the default');
+  r = bzRemove(EX, V(EX), ['bp-bookshop'], true); assert.match(r.say, /^Deleted pool Bookshop and the 21 elements it holds$/);
+  assert.equal(bzRemove(EX, V(EX), ['paid'], true), null); assert.equal(bzRemove(EX, V(EX), ['bp-bookshop'], false), null, 'Delete on a pool: hidden, the default');
   // apply()'s cascade and drops by the type's refs
-  const noTask = apply(EX, { op: 'delete', id: 'take-payment' });
+  const noTask = apply(EX, { op: 'delete', id: 'bp-take-payment' });
   assert.ok(!noTask.nodes.some(n => n.id === 'payment-timeout'), 'an activity takes its boundary events');
   const noGroup = apply(EX, { op: 'delete', id: 'dispatch' });
-  assert.deepEqual(['courier-pickup', 'ship', 'shipping-notice'].map(id => noGroup.nodes.find(n => n.id === id).props.categoryValueRef), [[], [], []]);
+  assert.deepEqual(['courier-pickup', 'bp-ship', 'shipping-notice'].map(id => noGroup.nodes.find(n => n.id === id).props.categoryValueRef), [[], [], []]);
   assert.deepEqual(errors(noGroup), []);
 });
 test('key: A on a boundary event picks another activity of its pool; X expands or collapses a sub-process in the view (decision 22); other keys are the canvas\'s', () => {
   const r = bzKey(EX, V(EX), ['payment-timeout'], 'a');
   assert.deepEqual(r.pick, ['Cancel order', 'Email invoice', 'Pick and pack', 'Hand parcel to courier'], 'the activities of its pool its flow can follow it to: none in a sub-process');
   assert.deepEqual(r.then(0), [{ op: 'set', id: 'payment-timeout', path: 'props.attachedTo', value: 'cancel-order' }]);
-  const pk = run(EX, r.then(2)); assert.equal(pk.nodes.find(n => n.id === 'payment-timeout').parent, 'warehouse', 'to its new activity\'s lane');
+  const pk = run(EX, r.then(2)); assert.equal(pk.nodes.find(n => n.id === 'payment-timeout').parent, 'bp-warehouse', 'to its new activity\'s lane');
   const open = bzKey(EX, V(EX), ['pick-pack'], 'X'), m = run(EX, open);
   assert.deepEqual(V(m).nodeIds.slice(V(m).nodeIds.indexOf('pick-pack'), V(m).nodeIds.indexOf('pick-pack') + 5), ['pick-pack', 'picking-starts', 'pick-books', 'pack-parcel', 'parcel-packed']);
   const g = clean(m, VID); assert.deepEqual(g.bad, []); assert.equal(g.g.families[0].id, 'pick-pack');
@@ -397,28 +397,28 @@ test('key: A on a boundary event picks another activity of its pool; X expands o
 test('the Owner field: a flow node\'s pools, sub-processes and lanes by their names from the top; data\'s pools; a lane\'s none', () => {
   const o = bzOwners(EX, EX.nodes.find(n => n.id === 'paid'));
   assert.deepEqual(o.map(x => x.label), ['Shopper', 'Bookshop', 'Bookshop::Warehouse::Pick and pack', 'Payment provider', 'Bookshop::Sales', 'Bookshop::Warehouse']);
-  assert.deepEqual(bzOwners(EX, EX.nodes.find(n => n.id === 'order')).map(x => x.id), ['shopper', 'bookshop', 'payment-provider']);
-  assert.equal(bzOwners(EX, { id: 'sales', type: 'bpmn.Lane' }), null); assert.equal(bzOwners(EX, EX.edges[0]), null);
+  assert.deepEqual(bzOwners(EX, EX.nodes.find(n => n.id === 'bp-order')).map(x => x.id), ['bp-shopper', 'bp-bookshop', 'bp-payment-provider']);
+  assert.equal(bzOwners(EX, { id: 'bp-sales', type: 'bpmn.Lane' }), null); assert.equal(bzOwners(EX, EX.edges[0]), null);
 });
 
 test('save and reopen (DoD 6): a 30-step BPMN session undoes and redoes to byte-identical models, and reopening its saved JSON midway ends where the session does', () => {
   const E = T.edits, el = (label, type, props) => ({ type: 'bpmn.' + type, label, ...(props ? { props } : {}) }), g = m => layout(m, VID), band = (m, id) => g(m).bands.find(b => b.id === id);
   const mid = b => [b.x + b.w / 2 + 40, b.y + b.h / 2 + 30];
   const steps = [
-    m => E.add(m, V(m), el('Task', 'Task'), 'Gift wrap', { sel: ['warehouse'] }), m => E.connect(m, V(m), 'join', 'gift-wrap'),
-    m => [{ op: 'set', id: 'join-gift-wrap', path: 'label', value: 'wrap' }], m => E.moveTo(m, V(m), 'gift-wrap', { pt: mid(band(m, 'sales')), geo: g(m) }),
-    m => [{ op: 'set', id: 'gift-wrap', path: 'props.taskType', value: 'user' }], m => E.add(m, V(m), el('Lane', 'Lane'), 'Packing', { sel: ['warehouse'] }),
-    m => [{ op: 'reparent', id: 'join', parent: 'packing' }], m => [{ op: 'set', view: VID, path: ['layout', 'ship'], value: [9, 0] }],
-    m => E.add(m, V(m), el('Boundary', 'BoundaryEvent', { definition: 'timer' }), '', { sel: ['ship'] }), m => E.connect(m, V(m), 'boundary', 'order-shipped'),
+    m => E.add(m, V(m), el('Task', 'Task'), 'Gift wrap', { sel: ['bp-warehouse'] }), m => E.connect(m, V(m), 'bp-join', 'gift-wrap'),
+    m => [{ op: 'set', id: 'bp-join-gift-wrap', path: 'label', value: 'wrap' }], m => E.moveTo(m, V(m), 'gift-wrap', { pt: mid(band(m, 'bp-sales')), geo: g(m) }),
+    m => [{ op: 'set', id: 'gift-wrap', path: 'props.taskType', value: 'user' }], m => E.add(m, V(m), el('Lane', 'Lane'), 'Packing', { sel: ['bp-warehouse'] }),
+    m => [{ op: 'reparent', id: 'bp-join', parent: 'packing' }], m => [{ op: 'set', view: VID, path: ['layout', 'bp-ship'], value: [9, 0] }],
+    m => E.add(m, V(m), el('Boundary', 'BoundaryEvent', { definition: 'timer' }), '', { sel: ['bp-ship'] }), m => E.connect(m, V(m), 'boundary', 'order-shipped'),
     m => E.moveTo(m, V(m), 'boundary', { by: [0, -1], geo: g(m) }), m => [{ op: 'set', id: 'boundary', path: 'props.cancelActivity', value: false }],
-    m => E.remove(m, V(m), ['packing'], false).commands, m => [{ op: 'set', id: 'take-payment', path: 'props.documentation', value: 'Charged once.' }],
+    m => E.remove(m, V(m), ['packing'], false).commands, m => [{ op: 'set', id: 'bp-take-payment', path: 'props.documentation', value: 'Charged once.' }],
     m => E.key(m, V(m), ['pick-pack'], 'x'), m => E.add(m, V(m), el('Task', 'Task'), 'Count', { sel: ['pick-pack'] }),
     m => [{ op: 'delete', id: 'f-pack' }], m => E.connect(m, V(m), 'pick-books', 'count'), m => E.connect(m, V(m), 'count', 'pack-parcel'),
-    m => E.key(m, V(m), ['boundary'], 'a').then(0), m => E.add(m, V(m), el('Data store', 'DataStoreReference'), 'Ledger', { sel: ['sales'] }),
+    m => E.key(m, V(m), ['boundary'], 'a').then(0), m => E.add(m, V(m), el('Data store', 'DataStoreReference'), 'Ledger', { sel: ['bp-sales'] }),
     m => E.connect(m, V(m), 'send-invoice', 'ledger'), m => [{ op: 'hide', id: 'ledger', view: VID }],
     m => E.add(m, V(m), el('Text annotation', 'TextAnnotation'), 'Gifts only in December', null), m => E.connect(m, V(m), 'gifts-only-in-december', 'gift-wrap'),
     m => [{ op: 'delete', id: 'gifts-only-in-december' }], m => [{ op: 'set', view: VID, path: 'direction', value: 'down' }],
-    m => E.key(m, V(m), ['pick-pack'], 'X'), m => E.remove(m, V(m), ['payment-provider'], true).commands, m => [{ op: 'set', id: 'sales', path: 'label', value: 'Sales desk' }],
+    m => E.key(m, V(m), ['pick-pack'], 'X'), m => E.remove(m, V(m), ['bp-payment-provider'], true).commands, m => [{ op: 'set', id: 'bp-sales', path: 'label', value: 'Sales desk' }],
   ];
   assert.equal(steps.length, 30);
   const h = history(EX), seen = [JSON.stringify(h.model)], cmds = [];

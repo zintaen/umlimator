@@ -327,7 +327,7 @@ ok("bpmn · known by its content or its .bpmn extension", imp.detect("x", '<?xml
 with tempfile.TemporaryDirectory() as tmp:
     t = Path(tmp)
     none = dict(__import__("os").environ, UMLIMATOR_BPMN_MODDLE=tmp)  # a folder with no bpmn-moddle
-    for cmd in (["import", str(ROOT / name), "--out", str(t / "x.json")], ["export", str(ROOT / "docs" / "diagrams" / "examples" / "24-bpmn.json"), "--out", str(t / "x.bpmn")]):
+    for cmd in (["import", str(ROOT / name), "--out", str(t / "x.json")], ["export", str(ROOT / "examples" / "bookshop-order-to-shipment.json"), "--out", str(t / "x.bpmn")]):
         r = subprocess.run([sys.executable, str(ROOT / "umlimator.py"), *cmd], capture_output=True, text=True, env=none, cwd=tmp)
         ok(f"bpmn · without bpmn-moddle, {cmd[0]} says how to install it and writes nothing",
            r.returncode == 1 and "BPMN needs bpmn-moddle: npm install bpmn-moddle@10.3.1" in r.stderr and not any(t.glob("x.*")), r.stderr)

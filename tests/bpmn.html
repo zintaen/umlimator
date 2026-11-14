@@ -1,6 +1,6 @@
 <!doctype html>
 <!-- The BPMN diagram (4b.3, notes/milestone-4b.md §3 to §8, §11) in headless Chrome (tests/embed.py), from lib/umlimator-all.js:
-     docs/diagrams/examples/24-bpmn.json drawn by render() in both themes, three fonts and both directions (no overlap, every
+     examples/bookshop-order-to-shipment.json drawn by render() in both themes, three fonts and both directions (no overlap, every
      task's text inside it, the names of events, gateways and data outside their shapes clear of the nodes and each other,
      every line end on its shape's outline, a boundary event's on its circle, a message flow's to a pool on the pool's
      border, every node in its lane's band, names, reading order, the legend, contrast, axe's rules written out); then
@@ -49,10 +49,10 @@ const blend = (top, bot) => [0, 1, 2].map(i => top[i] * top[3] + bot[i] * (1 - t
 const lum = c => { const f = v => v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]); };
 const ratio = (fg, bg) => { const [x, y] = [lum(blend(fg, bg)), lum(bg)].sort((p, q) => q - p); return +((x + 0.05) / (y + 0.05)).toFixed(2); };
 const css = (e, k) => rgba(getComputedStyle(e)[k]);
-const EX = await (await fetch('../docs/diagrams/examples/24-bpmn.json')).json();
+const EX = await (await fetch('../examples/bookshop-order-to-shipment.json')).json();
 const dir = d => ({ ...EX, views: EX.views.map(v => ({ ...v, direction: d })) });
-const LANE = { sales: ['order-received', 'take-payment', 'paid', 'not-paid', 'cancel-order', 'order-cancelled', 'fork', 'send-invoice', 'shipping-notice', 'order-shipped', 'order', 'note-card'],
-  warehouse: ['pick-pack', 'join', 'courier-pickup', 'ship', 'stock'], shopper: ['basket-ready', 'place-order', 'order-placed'] };
+const LANE = { 'bp-sales': ['order-received', 'bp-take-payment', 'paid', 'not-paid', 'cancel-order', 'order-cancelled', 'fork', 'send-invoice', 'shipping-notice', 'order-shipped', 'bp-order', 'note-card'],
+  'bp-warehouse': ['pick-pack', 'bp-join', 'courier-pickup', 'bp-ship', 'bp-stock'], 'bp-shopper': ['basket-ready', 'place-order', 'order-placed'] };
 const SHAPES = ['bpmn-task', 'bpmn-event', 'bpmn-gateway', 'bpmn-data', 'bpmn-store', 'bpmn-note'];
 try {
   check('the example validates clean', same(validate(EX), []), validate(EX));
@@ -61,11 +61,11 @@ try {
     document.documentElement.dataset.theme = theme; el.style.setProperty('--um-sans', family);
     const tag = `${theme}, ${fname}, ${d}`, h = mount(dir(d), { legend: true }), svg = pick('.stage svg'), bad = [];
     const nodes = all(SHAPES.map(s => `.node.${s}`).join(', ')), B = new Map(nodes.map(g => [g.dataset.id, box(g.querySelector(g.classList.contains('bpmn-note') ? '.bp-hit' : '.n-body'))]));
-    if (d === 'right') widths[fname] = B.get('take-payment').w;
+    if (d === 'right') widths[fname] = B.get('bp-take-payment').w;
     check(`${tag}: 21 shapes, 3 pools, 2 lanes, a group and 26 lines drawn`, nodes.length === 21 && all('.node.bpmn-pool').length === 3 && all('.node.bpmn-lane').length === 2 && all('.node.bpmn-group').length === 1 && all('.edge-g').length === 26,
       [nodes.length, all('.edge-g').length]);
     const ids = [...B.keys()];
-    ids.forEach((a, i) => ids.slice(i + 1).forEach(b => { if (meets(B.get(a), B.get(b)) && !(a === 'payment-timeout' && b === 'take-payment') && !(b === 'payment-timeout' && a === 'take-payment')) bad.push(`${a} and ${b} overlap`); }));
+    ids.forEach((a, i) => ids.slice(i + 1).forEach(b => { if (meets(B.get(a), B.get(b)) && !(a === 'payment-timeout' && b === 'bp-take-payment') && !(b === 'payment-timeout' && a === 'bp-take-payment')) bad.push(`${a} and ${b} overlap`); }));
     all('.node.bpmn-task, .node.bpmn-note').forEach(g => g.querySelectorAll('text').forEach(t => { if (!inside(box(t), B.get(g.dataset.id))) bad.push(`${g.dataset.id}: "${t.textContent}" spills`); }));
     // every node in its lane's band, past the band's header strip
     const band = id => box(pick(`.bz-pools rect[data-o="${id}"]`));
@@ -84,11 +84,11 @@ try {
         if (!body) { off.push(`${id}: no outline`); return; } const was = body.style.strokeWidth; body.style.strokeWidth = '3px';
         if (!body.isPointInStroke(pt(svg, q.x, q.y))) off.push(`${g.dataset.from}>${g.dataset.to} off ${id} at ${Math.round(q.x)},${Math.round(q.y)}`); body.style.strokeWidth = was; }); });
     check(`${tag}: every line's ends on their outlines, a boundary event's on its circle, a message flow's to a pool on its border`, !off.length, off.slice(0, 6));
-    check(`${tag}: the boundary event a circle on take-payment's border`, (() => { const c = B.get('payment-timeout'), t = B.get('take-payment'), cx = c.x + c.w / 2, cy = c.y + c.h / 2;
+    check(`${tag}: the boundary event a circle on take-payment's border`, (() => { const c = B.get('payment-timeout'), t = B.get('bp-take-payment'), cx = c.x + c.w / 2, cy = c.y + c.h / 2;
       return d === 'right' ? Math.abs(cy - (t.y + t.h)) < 1 : Math.abs(cx - (t.x + t.w)) < 1; })());
     check(`${tag}: names a screen reader reads`, pick('.node[data-id="payment-timeout"]').getAttribute('aria-label') === 'Timer boundary event No answer in 2 minutes, on Take payment'
-      && pick('.node[data-id="bookshop"]').getAttribute('aria-label') === 'Pool Bookshop, 2 lanes, 16 elements' && pick('.node[data-id="paid"]').getAttribute('aria-label') === 'Exclusive gateway Paid?, in Sales'
-      && pick('.edge-g[data-from="take-payment"][data-to="payment-provider"] title').textContent === 'Message flow from Take payment to Payment provider, named Charge request');
+      && pick('.node[data-id="bp-bookshop"]').getAttribute('aria-label') === 'Pool Bookshop, 2 lanes, 16 elements' && pick('.node[data-id="paid"]').getAttribute('aria-label') === 'Exclusive gateway Paid?, in Sales'
+      && pick('.edge-g[data-from="bp-take-payment"][data-to="bp-payment-provider"] title').textContent === 'Message flow from Take payment to Payment provider, named Charge request');
     const keys = all('.keys .um-key').map(k => k.dataset.node || k.dataset.edge), order = layout(dir(d), VID).order;
     check(`${tag}: a key for every element and line, in reading order`, keys.length === order.length && same(all('.keys .node-key').map(k => k.dataset.node), order.filter(id => !keys.includes(id) ? false : all('.keys .node-key').some(k => k.dataset.node === id))), [keys.length, order.length]);
     check(`${tag}: the legend keys each line kind drawn`, same(all('.m-legend b').map(b => b.textContent), ['Sequence flow', 'Message flow', 'Association', 'Data association']), all('.m-legend b').map(b => b.textContent));
@@ -112,33 +112,33 @@ try {
   check('the palette: row 24\'s 22 entries, one line entry', all('.um-editor .um-pal button').length === 22 && /Lines: Flow \(sequence, message, association or data association, by its ends\)/.test(pick('.um-editor .um-pal .um-note').textContent), all('.um-editor .um-pal button').length);
   key('n'); type('Courier');
   gives('N adds a pool, named', [{ op: 'add', element: { id: 'courier', type: 'bpmn.Participant', label: 'Courier' }, view: VID }], m => m.views[0].nodeIds.includes('courier'), BASE);
-  click('.node[data-id="warehouse"] text'); all('.um-editor .um-pal button').find(b => b.textContent === 'Task').click(); type('Gift wrap');
-  gives('the palette\'s Task with a lane selected: in that lane', [{ op: 'add', element: { id: 'gift-wrap', type: 'bpmn.Task', label: 'Gift wrap', parent: 'warehouse' }, view: VID }], m => m.nodes.some(n => n.id === 'gift-wrap'), BASE);
-  click('.node[data-id="warehouse"] text'); all('.um-editor .um-pal button').find(b => b.textContent === 'Exclusive gateway').click();
-  gives('the palette\'s Exclusive gateway: added with no name field, in the lane', [{ op: 'add', element: { id: 'exclusive-gateway', type: 'bpmn.ExclusiveGateway', parent: 'warehouse' }, view: VID }], m => m.nodes.some(n => n.id === 'exclusive-gateway'), BASE);
+  click('.node[data-id="bp-warehouse"] text'); all('.um-editor .um-pal button').find(b => b.textContent === 'Task').click(); type('Gift wrap');
+  gives('the palette\'s Task with a lane selected: in that lane', [{ op: 'add', element: { id: 'gift-wrap', type: 'bpmn.Task', label: 'Gift wrap', parent: 'bp-warehouse' }, view: VID }], m => m.nodes.some(n => n.id === 'gift-wrap'), BASE);
+  click('.node[data-id="bp-warehouse"] text'); all('.um-editor .um-pal button').find(b => b.textContent === 'Exclusive gateway').click();
+  gives('the palette\'s Exclusive gateway: added with no name field, in the lane', [{ op: 'add', element: { id: 'exclusive-gateway', type: 'bpmn.ExclusiveGateway', parent: 'bp-warehouse' }, view: VID }], m => m.nodes.some(n => n.id === 'exclusive-gateway'), BASE);
   click('.node[data-id="send-invoice"] .n-body'); all('.um-editor .um-pal button').find(b => b.textContent === 'Boundary').click();
-  gives('the palette\'s Boundary with an activity selected: attached to it', [{ op: 'add', element: { id: 'boundary', type: 'bpmn.BoundaryEvent', props: { definition: 'timer', attachedTo: 'send-invoice' }, parent: 'sales' }, view: VID }],
+  gives('the palette\'s Boundary with an activity selected: attached to it', [{ op: 'add', element: { id: 'boundary', type: 'bpmn.BoundaryEvent', props: { definition: 'timer', attachedTo: 'send-invoice' }, parent: 'bp-sales' }, view: VID }],
     m => m.nodes.some(n => n.id === 'boundary'), BASE);
   // L: the kind by the ends, no picker
   click('.node[data-id="cancel-order"] .n-body'); key('l'); for (const c of 'Email invoice') key(c); key('Enter');
   check('L opens no picker of kinds', !pick('.um-pick'));
   gives('L to a task of the pool: a sequence flow', [{ op: 'add', element: { id: 'cancel-order-send-invoice', type: 'bpmn.SequenceFlow', from: 'cancel-order', to: 'send-invoice' }, view: VID }], m => m.edges.some(e => e.id === 'cancel-order-send-invoice'), BASE);
   click('.node[data-id="send-invoice"] .n-body'); key('l'); for (const c of 'Payment provider') key(c); key('Enter');
-  gives('L to another pool: a message flow', [{ op: 'add', element: { id: 'send-invoice-payment-provider', type: 'bpmn.MessageFlow', from: 'send-invoice', to: 'payment-provider' }, view: VID }], m => m.edges.some(e => e.type === 'bpmn.MessageFlow' && e.from === 'send-invoice'), BASE);
+  gives('L to another pool: a message flow', [{ op: 'add', element: { id: 'send-invoice-payment-provider', type: 'bpmn.MessageFlow', from: 'send-invoice', to: 'bp-payment-provider' }, view: VID }], m => m.edges.some(e => e.type === 'bpmn.MessageFlow' && e.from === 'send-invoice'), BASE);
   const n0 = ed.length; click('.node[data-id="order-placed"] .n-body'); key('l'); for (const c of 'Order received') key(c); key('Enter');
   check('L from an end event to another pool: refused, nothing emitted, its reason on the hint line', ed.length === n0 && hint() === 'A message flow cannot start at an end event', [ed.slice(n0), hint()]);
-  click('.node[data-id="take-payment"] .n-body'); handleTo(centre('.node[data-id="order"] .n-body'));
-  gives('the handle from a task to a data object: a data association', [{ op: 'add', element: { id: 'take-payment-order', type: 'bpmn.DataAssociation', from: 'take-payment', to: 'order' }, view: VID }], m => m.edges.some(e => e.id === 'take-payment-order'), BASE);
+  click('.node[data-id="bp-take-payment"] .n-body'); handleTo(centre('.node[data-id="bp-order"] .n-body'));
+  gives('the handle from a task to a data object: a data association', [{ op: 'add', element: { id: 'take-payment-order', type: 'bpmn.DataAssociation', from: 'bp-take-payment', to: 'bp-order' }, view: VID }], m => m.edges.some(e => e.id === 'take-payment-order'), BASE);
   // F2 on a flow and on a lane
   h.select({ type: 'edge', ids: ['f-cancel'], view: VID }); key('F2'); type('give up');
   gives('F2 on a sequence flow: its name', [{ op: 'set', id: 'f-cancel', path: 'label', value: 'give up' }], m => m.edges.find(e => e.id === 'f-cancel').label === 'give up', BASE);
-  click('.node[data-id="sales"] text'); key('F2'); type('Sales desk');
-  gives('F2 on a lane: its name', [{ op: 'set', id: 'sales', path: 'label', value: 'Sales desk' }], m => m.nodes.find(n => n.id === 'bookshop').members[0].label === 'Sales desk', BASE);
+  click('.node[data-id="bp-sales"] text'); key('F2'); type('Sales desk');
+  gives('F2 on a lane: its name', [{ op: 'set', id: 'bp-sales', path: 'label', value: 'Sales desk' }], m => m.nodes.find(n => n.id === 'bp-bookshop').members[0].label === 'Sales desk', BASE);
   // the properties panel
-  click('.node[data-id="take-payment"] .n-body'); const tt = pick('.um-editor [data-f="p:taskType"]'); check('the Task type field holds service', !!tt && tt.value === 'service', tt && tt.value);
-  if (tt) { change(tt, 'user'); gives('the Task type field sets it', [{ op: 'set', id: 'take-payment', path: 'props.taskType', value: 'user' }], m => m.nodes.find(n => n.id === 'take-payment').props.taskType === 'user', BASE); }
+  click('.node[data-id="bp-take-payment"] .n-body'); const tt = pick('.um-editor [data-f="p:taskType"]'); check('the Task type field holds service', !!tt && tt.value === 'service', tt && tt.value);
+  if (tt) { change(tt, 'user'); gives('the Task type field sets it', [{ op: 'set', id: 'bp-take-payment', path: 'props.taskType', value: 'user' }], m => m.nodes.find(n => n.id === 'bp-take-payment').props.taskType === 'user', BASE); }
   const doc = pick('.um-editor [data-f="p:documentation"]'); check('a Documentation field on the task', !!doc);
-  if (doc) { change(doc, 'Charged once.'); gives('the Documentation field sets it (S2)', [{ op: 'set', id: 'take-payment', path: 'props.documentation', value: 'Charged once.' }], m => m.nodes.find(n => n.id === 'take-payment').props.documentation === 'Charged once.', BASE); }
+  if (doc) { change(doc, 'Charged once.'); gives('the Documentation field sets it (S2)', [{ op: 'set', id: 'bp-take-payment', path: 'props.documentation', value: 'Charged once.' }], m => m.nodes.find(n => n.id === 'bp-take-payment').props.documentation === 'Charged once.', BASE); }
   // a boundary event: Alt + arrows for its side, A for its activity
   click('.node[data-id="payment-timeout"] .n-body'); key('ArrowUp', { altKey: true });
   gives('Alt + Up on a boundary event: its side, top', [{ op: 'set', view: VID, path: ['present', 'payment-timeout', 'side'], value: 'top' }], m => m.views[0].present['payment-timeout'].side === 'top', BASE);
@@ -153,23 +153,23 @@ try {
   if (open) { h.update(open); check('expanded: a box with its title and its four elements', !!pick('.family[data-family="pick-pack"]') && ['picking-starts', 'pick-books', 'pack-parcel', 'parcel-packed'].every(id => pick(`.node[data-id="${id}"]`)));
     h.select({ type: 'container', id: 'pick-pack', view: VID }); key('x'); gives('X again collapses it', null, m => same(m.views[0].nodeIds, EX.views[0].nodeIds), open); h.update(BASE); }
   // a drag into another lane
-  const wh = pick('.bz-pools rect[data-o="warehouse"]').getBoundingClientRect();
+  const wh = pick('.bz-pools rect[data-o="bp-warehouse"]').getBoundingClientRect();
   drag('.node[data-id="send-invoice"] .n-body', [wh.x + wh.width - 60, wh.y + wh.height - 30]);
-  gives('a drag into the warehouse lane: reparented there', [{ op: 'reparent', id: 'send-invoice', parent: 'warehouse' }], m => m.nodes.find(n => n.id === 'send-invoice').parent === 'warehouse', BASE);
+  gives('a drag into the warehouse lane: reparented there', [{ op: 'reparent', id: 'send-invoice', parent: 'bp-warehouse' }], m => m.nodes.find(n => n.id === 'send-invoice').parent === 'bp-warehouse', BASE);
   // the Owner field: the lane by keyboard
   click('.node[data-id="send-invoice"] .n-body'); const own = pick('.um-editor [data-f="owner"]');
   check('the Owner field lists the pools, sub-processes and lanes', !!own && [...own.options].map(o => o.textContent).includes('Bookshop::Warehouse'), own && [...own.options].map(o => o.textContent));
-  if (own) { change(own, 'warehouse'); gives('the Owner field: another lane', null, m => m.nodes.find(n => n.id === 'send-invoice').parent === 'warehouse', BASE); }
+  if (own) { change(own, 'bp-warehouse'); gives('the Owner field: another lane', null, m => m.nodes.find(n => n.id === 'send-invoice').parent === 'bp-warehouse', BASE); }
   // Delete and Shift + Delete
-  click('.node[data-id="warehouse"] text'); key('Delete');
-  gives('Delete on a lane: deleted from the model, what it held kept in the pool', null, m => !m.nodes.find(n => n.id === 'bookshop').members.some(l => l.id === 'warehouse') && m.nodes.find(n => n.id === 'ship').parent === 'bookshop', BASE);
+  click('.node[data-id="bp-warehouse"] text'); key('Delete');
+  gives('Delete on a lane: deleted from the model, what it held kept in the pool', null, m => !m.nodes.find(n => n.id === 'bp-bookshop').members.some(l => l.id === 'bp-warehouse') && m.nodes.find(n => n.id === 'bp-ship').parent === 'bp-bookshop', BASE);
   check('the hint line says a lane is not hidden', /Deleted lane Warehouse from the model: a lane is not hidden from a view/.test(hint()), hint());
   click('.node[data-id="cancel-order"] .n-body'); key('Delete');
   gives('Delete on a task: hidden from the view', [{ op: 'hide', id: 'cancel-order', view: VID }], m => !m.views[0].nodeIds.includes('cancel-order'), BASE);
-  click('.node[data-id="take-payment"] .n-body'); key('Delete', { shiftKey: true });
-  gives('Shift + Delete on a task: deleted, its boundary event with it', [{ op: 'delete', id: 'take-payment' }], m => !m.nodes.some(n => n.id === 'take-payment' || n.id === 'payment-timeout'), BASE);
-  click('.node[data-id="payment-provider"] text'); key('Delete', { shiftKey: true });
-  gives('Shift + Delete on a pool: deleted, counted on the hint line', [{ op: 'delete', id: 'payment-provider' }], m => !m.nodes.some(n => n.id === 'payment-provider'), BASE);
+  click('.node[data-id="bp-take-payment"] .n-body'); key('Delete', { shiftKey: true });
+  gives('Shift + Delete on a task: deleted, its boundary event with it', [{ op: 'delete', id: 'bp-take-payment' }], m => !m.nodes.some(n => n.id === 'bp-take-payment' || n.id === 'payment-timeout'), BASE);
+  click('.node[data-id="bp-payment-provider"] text'); key('Delete', { shiftKey: true });
+  gives('Shift + Delete on a pool: deleted, counted on the hint line', [{ op: 'delete', id: 'bp-payment-provider' }], m => !m.nodes.some(n => n.id === 'bp-payment-provider'), BASE);
   check('the hint line counts what the pool held', /Deleted pool Payment provider and the 0 elements it holds/.test(hint()), hint());
   h.destroy();
 } catch (e) { out.fail.push('threw: ' + (e && e.stack || e)); }

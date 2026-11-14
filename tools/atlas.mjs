@@ -35,7 +35,8 @@ const KEYS = {
     'guard', 'isAbstract', 'isDerived', 'isStatic', 'kind', 'multiplicity', 'operator', 'parameters', 'represents', 'returnType',
     'sort', 'stereotypes', 'trigger', 'value', 'valueType', 'visibility', 'tags', 'states', 'sentAt', 'receivedAt', 'isRequired',
     'conveyed', 'dataType', 'primaryKey', 'foreignKey', 'nullable', 'unique', 'references', 'identifying', 'number', 'description', 'technology',
-    'external', 'shape', 'container'],
+    'external', 'shape', 'container',
+    'attachedTo', 'calledElement', 'cancelActivity', 'categoryValueRef', 'dataStoreRef', 'definition', 'direction', 'documentation', 'processRef', 'taskType'],
 };
 function known(x, kind, where) {
   const odd = Object.keys(x).filter(k => !KEYS[kind].includes(k));

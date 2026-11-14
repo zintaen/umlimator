@@ -1,0 +1,65 @@
+{
+ "schemaVersion": 2,
+ "title": "BPMN, minimal",
+ "nodes": [
+  {
+   "id": "pool",
+   "type": "bpmn.Participant",
+   "label": "Pool"
+  },
+  {
+   "id": "start",
+   "type": "bpmn.StartEvent",
+   "label": "Start",
+   "parent": "pool",
+   "props": {
+    "definition": "none"
+   }
+  },
+  {
+   "id": "task",
+   "type": "bpmn.Task",
+   "label": "Task",
+   "parent": "pool",
+   "props": {
+    "taskType": "none"
+   }
+  },
+  {
+   "id": "end",
+   "type": "bpmn.EndEvent",
+   "label": "End",
+   "parent": "pool",
+   "props": {
+    "definition": "none"
+   }
+  }
+ ],
+ "edges": [
+  {
+   "id": "f1",
+   "type": "bpmn.SequenceFlow",
+   "from": "start",
+   "to": "task"
+  },
+  {
+   "id": "f2",
+   "type": "bpmn.SequenceFlow",
+   "from": "task",
+   "to": "end"
+  }
+ ],
+ "views": [
+  {
+   "id": "v",
+   "diagram": "bpmn",
+   "title": "Minimal",
+   "nodeIds": [
+    "pool",
+    "start",
+    "task",
+    "end"
+   ]
+  }
+ ]
+}
