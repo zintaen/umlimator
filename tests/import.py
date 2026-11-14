@@ -8,7 +8,7 @@ what the sample holds that import does not read is listed on stderr with its lin
 
 Needs Node (validate() is the module's, run as `diff` runs diff()) and Google Chrome or Chromium (render and check).
 """
-import importlib.util, json, shutil, subprocess, sys, tempfile
+import importlib.util, json, re, shutil, subprocess, sys, tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -367,6 +367,25 @@ with tempfile.TemporaryDirectory() as tmp:
            and "BPMN needs bpmn-moddle: npm install bpmn-moddle@10.3.1 (the one in" in r.stderr and "at " not in r.stderr and not (t / "odd.json").exists(), r.stderr)
         r = run("export", str(t / "returns.json"), "--view", "nowhere", "--out", str(t / "y.bpmn"))
         ok("bpmn · export of a view the model does not have is an error", r.returncode == 1 and "has no bpmn view nowhere" in r.stderr, r.stderr)
+        # 4b.5: export carries the type's layout of the view (notes/milestone-4b.md §12.3): the example's pools and lanes at
+        # their bands, every other shape at its box, every line through its points; and import reads it back as the example
+        ex = ROOT / "examples" / "bookshop-order-to-shipment.json"
+        r = run("export", str(ex), "--out", str(t / "order.bpmn"))
+        xml = (t / "order.bpmn").read_text(encoding="utf-8") if r.returncode == 0 else ""
+        g = u.js("layout", json.loads(ex.read_text(encoding="utf-8")), "order-to-shipment", module=u.HERE / "lib" / "umlimator-all.js")
+        want = {**{n["id"]: n for n in g["nodes"]}, **{b["id"]: b for b in g["bands"]}}
+        num = lambda v: f"{v:g}"
+        di = lambda i: (f'bpmnElement="{i}"' in xml and re.search(rf'bpmnElement="{re.escape(i)}"[^>]*>\s*<dc:Bounds x="{num(want[i]["x"])}" y="{num(want[i]["y"])}" '
+                                                                      rf'width="{num(want[i]["w"])}" height="{num(want[i]["h"])}"', xml) is not None)
+        line = next(e for e in g["edges"] if e["id"] == "bp-m-charge")
+        ok("bpmn · export of the example lays it out: each pool and lane at its band, each shape at its box, a line through its points",
+           r.returncode == 0 and json.loads(r.stdout)["view"] == "order-to-shipment" and all(di(i) for i in ("bp-shopper", "bp-bookshop", "bp-sales", "bp-take-payment", "payment-timeout", "pick-pack", "dispatch"))
+           and re.search(r'bpmnElement="bp-m-charge"[^>]*>' + "".join(rf'\s*<di:waypoint x="{num(x)}" y="{num(y)}" />' for x, y in line["pts"]), xml) is not None, r.stdout + r.stderr + xml[:400])
+        r = run("import", str(t / "order.bpmn"), "--out", str(t / "order.json"))
+        back = json.loads((t / "order.json").read_text(encoding="utf-8")) if r.returncode == 0 else {}
+        ok("bpmn · import reads the exported example back with the same elements, lines and views",
+           sorted(n["id"] for n in back.get("nodes", [])) == sorted(n["id"] for n in json.loads(ex.read_text(encoding="utf-8"))["nodes"])
+           and len(back.get("edges", [])) == 29 and [v["id"] for v in back.get("views", [])] == ["order-to-shipment", "pick-and-pack"], r.stderr)
 
 # notes/milestone-2.md §8.5 (M2.12): an erDiagram, a flowchart given --typed, a Structurizr JSON workspace and a .dbml file
 # are read by the module's readers in Node (tests/mermaid-er, mermaid-flowchart, structurizr and dbml.test.mjs pin their

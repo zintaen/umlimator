@@ -14,7 +14,7 @@ And C10 (2.6): an object model and a package model, served the same way, answer 
 highlight on the diagram the page draws; and so do a use case, an activity, a state machine and an interaction overview model
 (4.10), a component, a deployment and a composite structure model (5.8), a profile and a timing model (6.6), a class, a
 sequence and a communication model (C10's package), and an ER, a flowchart, a data flow, an information flow and a C4
-model (M2.14).
+model (M2.14), and a BPMN model (4b.5).
 
   python3 tests/mcp.py
 
@@ -296,7 +296,10 @@ for f, view, refs, first, cards, boxes in (("order-objects", "snapshot", ["order
                                           ("returns-flowchart", "returns", ["inspect", "refund"], "Handling a returned book: a flowchart of 13 nodes and 13 flows.", 13, 0),
                                           ("bookshop-data-flow", "dfd-level-1", ["dfd-take-order", "dfd-orders"], "Bookshop, level 1: a data flow diagram of 8 elements and 11 lines.", 8, 0),
                                           ("order-information-flow", "order-flows", ["shopper", "order-info"], "What travels with an order: an information flow diagram of 10 elements and 8 lines.", 10, 0),
-                                          ("bookshop-c4", "c4-context", ["c4-shopper", "c4-bookshop"], "Bookshop: system context: a C4 system context diagram of 6 elements and 6 relationships.", 6, 0)):
+                                          ("bookshop-c4", "c4-context", ["c4-shopper", "c4-bookshop"], "Bookshop: system context: a C4 system context diagram of 6 elements and 6 relationships.", 6, 0),
+                                          # C10 for milestone 4b (4b.5): a BPMN model; its pools, lanes and group are nodes, its
+                                          # sub-process collapsed here, so no box
+                                          ("bookshop-order-to-shipment", "order-to-shipment", ["bp-take-payment", "payment-timeout"], "From order to shipment: a BPMN diagram of 18 flow nodes, 21 flows and 3 pools.", 27, 0)):
     m = json.loads((ROOT / "examples" / f"{f}.json").read_text(encoding="utf-8"))
     srv = subprocess.Popen([sys.executable, str(ROOT / "umlimator.py"), "mcp", str(ROOT / "examples" / f"{f}.json"), "--port", "0"], stdin=subprocess.PIPE,
                            stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
