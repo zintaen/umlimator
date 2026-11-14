@@ -5,6 +5,7 @@ import { WIRES, badgesOf } from '../map/cards.js';
 import { critical, msText, paths, reach, whatIf } from '../map/insight.js';
 import { KIND, SIGIL, kindOf } from '../map/kinds.js';
 import { arrOf } from '../map/validate.js';
+import { wordOf } from '../page/print.js';
 
 /* ================= the standalone page's pieces (#99): views list, legend, hint line, details panel =================
    mountPage draws all four in its page; render() draws those a host asks for (nav, legend, hints, details) around its
@@ -123,7 +124,7 @@ function pieces(X, el, o) {
       : root.startsWith('/') ? 'file://' + encodeURI(root + '/' + base + srcPath(p))
       : encodeURI((root ? root + '/' : '') + base + srcPath(p));
     const srcList = n => (Array.isArray(n.source) ? n.source : n.source ? [n.source] : []);
-    const n = nodeIn(nid, cur), k = kindOf(n.kind, true), c = `var(--um-${KIND[k][0]})`, pub = k === 'm-public', ext = k === 'm-ext';
+    const n = nodeIn(nid, cur), ty = n.type && wordOf(D, V[cur], nid, n.type), k = kindOf(n.kind, true), c = `var(--um-${KIND[k][0]})`, pub = k === 'm-public', ext = k === 'm-ext';
     const inView = new Set(geo.nodes.map(x => x.id)), seen = new Set();
     const collect = dir => {
       const out = [];
@@ -138,9 +139,9 @@ function pieces(X, el, o) {
     const vIn = viewsWith(nid).filter(v => v.id !== cur);
     const by = n.author ? `<span>·</span>${authorChip(n.author)}` : ext ? '<span class="origin">· author unknown</span>' : '';
     const exs = Array.isArray(n.examples) ? n.examples.filter(x => x && (x.thumb || x.href)) : [];
-    const tabs = [['when', 'When to use'], ['what', 'What it is'], ['how', 'How it works'], ...(exs.length ? [['examples', 'Example']] : []), ['links', 'Behind the scenes']];
+    const tabs = [...(ty ? [] : [['when', 'When to use'], ['what', 'What it is'], ['how', 'How it works']]), ...(exs.length ? [['examples', 'Example']] : []), ['links', 'Behind the scenes']];
     TABS = tabs.map(t => t[0]);
-    tab = TABS.includes(want) ? want : 'when'; // a card without the chosen tab shows its first; the choice stays for the next card
+    tab = TABS.includes(want) ? want : TABS[0]; // a card without the chosen tab shows its first; the choice stays for the next card
     const text = (h4, body, key) => body ? `<h4>${h4}</h4><ul class="detail-bullets">${detailBullets(body).map(b => `<li title="${esc(b)}">${inline(b)}</li>`).join('')}</ul>` : `<h4>${h4}</h4><div class="pnone">Not written yet — add <code>${key}</code> to this node in the map model.</div>`;
     const verbs = (n.verbs || []).length ? `<div class="pverbs">${n.verbs.map(v => { const vid = N[nid + ':' + v] ? nid + ':' + v : null; return `<${vid ? `button data-n="${esc(vid)}"` : 'span'} class="pverb" style="--c:${c}">${esc(v)}</${vid ? 'button' : 'span'}>`; }).join('')}</div>` : '';
     const srcHtml = srcs.length ? '<ul class="source-list">' + srcs.map(s => `<li class="src">${srcHref(s) ? `<a href="${esc(srcHref(s))}" title="Open ${esc(sb ? srcLabel(s) : base + s)}"${sb ? ' target="_blank" rel="noopener"' : ''}>${esc(srcLabel(s))}</a>` : `<span>${esc(s)}</span>`}<button class="ibtn sm" data-copy="${esc(sb ? srcLabel(s) : base + s)}" title="Copy path" aria-label="Copy path">⧉</button></li>`).join('') + '</ul>' : '<div class="rel-none">No source listed</div>';
@@ -157,7 +158,7 @@ function pieces(X, el, o) {
         ${(() => { const I = (D.icons || {})[n.icon];
   return I && I.src ? `<span class="big logo${I.dark ? ' dark' : ''}" aria-hidden="true"><img src="${esc(I.src)}" width="22" height="22" alt=""></span>`
   : `<span class="big" style="background:${c}" aria-hidden="true"><svg viewBox="0 0 ${I && I.g ? 24 : 16} ${I && I.g ? 24 : 16}" width="20" height="20" fill="none" stroke="currentColor" stroke-width="${I && I.g ? 2 : 1.5}" stroke-linecap="round" stroke-linejoin="round">${I && I.g ? I.g : SIGIL[k]}</svg></span>`; })()}
-        <div class="pt"><h3>${esc(n.label || nid)}</h3><small><span>${esc(KIND[k][1])}</span><span class="vis ${pub ? 'pub' : ext ? 'ext' : ''}">${badgesOf(n).length ? badgesOf(n).map(b => esc(b.text.toUpperCase())).join(' · ') : pub ? 'PUBLIC' : ext ? 'EXTERNAL' : 'INTERNAL'}</span>${by}${n.origin ? `<span class="origin">${esc(n.origin)}</span>` : ''}</small></div>
+        <div class="pt"><h3>${esc(n.label || nid)}</h3><small><span>${esc(ty || KIND[k][1])}</span><span class="vis ${pub ? 'pub' : ext ? 'ext' : ''}">${ty ? '' : badgesOf(n).length ? badgesOf(n).map(b => esc(b.text.toUpperCase())).join(' · ') : pub ? 'PUBLIC' : ext ? 'EXTERNAL' : 'INTERNAL'}</span>${by}${n.origin ? `<span class="origin">${esc(n.origin)}</span>` : ''}</small></div>
         <div class="acts">${V[child] || later ? `<button class="obtn" data-open="${esc(nid)}" style="--c:${c}">⤢ Open ${esc(shortT(V[child] ? V[child].title || child : child))} <span>${V[child] || count ? count + ' nodes · ' : ''}Enter</span></button>` : ''}${!X().editable && (unfoldable(nid, cur) || later) ? `<button class="obtn" data-unfold="${esc(nid)}" style="--c:${c}">⤡ Unfold here <span>E</span></button>` : ''}${litButtons()}<button class="ibtn x" data-close title="Close (Esc)" aria-label="Close details">×</button></div>
       </div>
       <div class="ptabs"><div class="ptablist" role="tablist" aria-label="Details">${tabs.map(t => `<button class="ptab" role="tab" id="pt-${t[0]}" data-tab="${t[0]}" aria-selected="${t[0] === tab}" aria-controls="m-pbody">${t[1]}${t[2] != null ? `<em>${t[2]}</em>` : ''}</button>`).join('')}</div>

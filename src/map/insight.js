@@ -13,7 +13,7 @@ function lineGraph(model, viewId) {
   if (!v) throw new Error(`umlimator: no view ${JSON.stringify(viewId)}`);
   const ids = (v.nodeIds || []).filter(i => ctx.N[i]), M = new Map(arrOf(ctx.D.edges).map(e => [e && e._id, e]));
   if (!viewType(model, viewId)) return { ctx, v, ids, edges: ctx.viewEdges(v).filter(e => e.from !== e.to) };
-  // a typed view: its lines as drawn, a line to a member (a port) between the cards it is drawn on, and the drawn ids too
+  // a typed view: its lines as drawn (a port's between the cards it is on)
   const g = ctx.buildGeo(viewId);
   return { ctx, v, ids: [...new Set([...ids, ...g.nodes.map(n => n.id)])], edges: g.edges.flatMap(d => d.from === d.to ? [] : edgeRefIds(d).map(_id => ({ ...M.get(_id), _id, from: d.from, to: d.to }))) };
 }

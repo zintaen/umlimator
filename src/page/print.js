@@ -137,6 +137,9 @@ function printDoc(X, model, Q) {
 }
 
 // a view's tables, out of printDoc for Node's tests
+const word = t => String(t || '').split('.').pop().replace(/([a-z])([A-Z])/g, (_, a, b) => a + ' ' + b.toLowerCase()); // 'uml.DataType': "Data type"
+// a typed element's word in view v: "Class", "Table"
+const wordOf = (D, v, id, t) => (diagramOf(v) || {}).word?.(D, id) ?? word(t || 'uml.Class');
 function tablesOf({ D, N, nodeIn, viewEdges }, v, g) {
   const cards = v => arrOf(v.nodeIds).filter(i => N[i]), boxes = v => arrOf(v.containers).filter(c => c && c.id);
   const wk = new Map(g.edges.flatMap(d => edgeRefIds(d).map(id => [id, d.wk]))), typed = (v.diagram ?? 'map') !== 'map';
@@ -147,12 +150,11 @@ function tablesOf({ D, N, nodeIn, viewEdges }, v, g) {
   const drawn = id => (typed && at[id]?.label) || nodeIn(id, v.id).label || id; // a typed view's drawn name: sales::Order
   const name = (v, id) => esc(N[id] ? drawn(id) : (boxes(v).find(c => c.id === id) || {}).label || id);
   const held = boxes(v).map(c => [c, arrOf(c.nodeIds).filter(i => ids.includes(i))]).filter(([, ins]) => ins.length);
-  const word = t => String(t || '').split('.').pop().replace(/([a-z])([A-Z])/g, (_, a, b) => a + ' ' + b.toLowerCase()); // 'uml.DataType': "Data type"
   const T = diagramOf(v) || {}, asText = (T.member || {}).print || (m => m.label ?? m.id); // a member as its type writes it, else its name
   return [
     { title: `${typed ? 'Elements' : 'Cards'} <span>${ids.length}</span>`, cls: 'cards', head: `<th>Card</th><th>Kind</th><th>${typed ? 'Members' : 'What it is'}</th>`, rows: ids.map(id => { const c = nodeIn(id, v.id), t = KIND[kindOf(c.kind, true)], d = at[id] || {}, sub = c.sublabel ?? c.sub, rs = typed && T.rows?.(D, v, id);
       return `<tr><td>${d.step ? `<i class="num">${esc(d.step)}</i>` : ''}<b>${esc(drawn(id))}</b>${d.kids || d.opens ? ' ⤢' : ''}${sub ? `<small>${esc(sub)}</small>` : ''}</td>`
-        + (typed ? `<td>${esc(T.word?.(D, id) ?? word(c.type || 'uml.Class'))}</td><td>${(Array.isArray(rs) ? rs : arrOf(c.members).filter(m => m && typeof m === 'object').map(m => asText(m))).map(r => `<p>${esc(r)}</p>`).join('')}</td></tr>`
+        + (typed ? `<td>${esc(wordOf(D, v, id, c.type))}</td><td>${(Array.isArray(rs) ? rs : arrOf(c.members).filter(m => m && typeof m === 'object').map(m => asText(m))).map(r => `<p>${esc(r)}</p>`).join('')}</td></tr>`
           : `<td><i class="sw" style="border-color:var(--um-${t[0]});background:var(--um-${t[0]}-f)"></i>${t[1]}</td><td>${c.what ? md(c.what) : ''}</td></tr>`); }) },
     { title: `Lines <span>${es.length}</span>`, cls: 'lines', head: `${seq || stepped ? '<th class="n">#</th>' : ''}<th>From → to</th><th>Label</th><th>${typed ? 'Kind' : 'Technology'}</th>`, rows: (stepped && !seq ? [...es].sort((a, b) => stepOrder(a.step, b.step)) : es).map((e, i) => { const w = wk.get(e._id) || 'calls', t = typed && T.text?.(D, v, e._id); // a type's text for the line (S17), else its label
       return `<tr>${seq ? `<td>${i + 1}</td>` : stepped ? `<td>${esc(e.step ?? '')}</td>` : ''}<td><i class="w" style="border-color:var(--um-w-${w})"></i>${name(v, e.from)} → ${name(v, e.to)}</td><td>${t || e.label ? esc(t || e.label) : typed ? '' : `<span class="up">${w}</span>`}</td><td>${esc(typed ? word(e.type) : e.sublabel || '')}</td></tr>`; }) },
@@ -160,4 +162,4 @@ function tablesOf({ D, N, nodeIn, viewEdges }, v, g) {
   ];
 }
 
-export { printDoc, tablesOf };
+export { printDoc, tablesOf, wordOf };
