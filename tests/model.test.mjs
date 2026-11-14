@@ -55,3 +55,32 @@ test('check() names exactly what an issue is about: of two lines that read the s
     views: [{ id: 'v', nodeIds: ['a1', 'a2', 'db'], layout: { a2: [0, 0], db: [1, 0], a1: [2, 0] } }] };
   assert.deepEqual(check(m, 'v'), [{ message: 'view v: edge API→DB runs right-to-left', targets: [{ type: 'edge', ids: ['a1db'], view: 'v' }] }]);
 });
+
+// A deep parent chain (milestone 4a §2.4, work package 4a.2): the cycle check walks each chain once, so validate() of
+// 20,000 levels is linear, and says "ends up inside itself" on each element of a cycle, where and in the order it did
+const owners = (n, parentOf) => ({ schemaVersion: 2,
+  nodes: Array.from({ length: n }, (_, i) => { const p = parentOf(i); return { id: 't' + i, type: 'uml.Package', ...(p != null ? { parent: 't' + p } : {}) }; }),
+  views: [{ id: 'v', diagram: 'uml.package', nodeIds: Array.from({ length: n }, (_, i) => 't' + i) }] });
+const cycles = m => validate(m).filter(p => /inside itself/.test(p.message)).map(p => p.path);
+
+test('validate() says a cycle on each element of it, in model order, and nothing on a chain that only leads into one (4a.2)', () => {
+  // t0 t1 t2 a cycle; t3 hangs from it; t4 its own parent; t5 t6 a chain to t7 t8, a cycle listed after them; t9 apart
+  const m = owners(10, i => [2, 0, 1, 0, 4, 6, 7, 8, 7, null][i]);
+  assert.deepEqual(cycles(m), ['nodes[0].parent', 'nodes[1].parent', 'nodes[2].parent', 'nodes[4].parent', 'nodes[7].parent', 'nodes[8].parent']);
+  assert.deepEqual(cycles(owners(5, i => (i ? i - 1 : null))), []);
+  // a cycle through a member and its owner: the node that names the member is said, the member (no parent) is not
+  const mem = { schemaVersion: 2, nodes: [{ id: 's', type: 'uml.State', members: [{ id: 'r', type: 'uml.Region' }], parent: 'r' }], views: [] };
+  assert.deepEqual(cycles(mem), ['nodes[0].parent']);
+});
+
+test('validate() of a 20,000-topic chain, a chain into a cycle and a ring of 20,000 under CI\'s 1 s, printed against 100 ms (CPU, best of five, after a warm-up) (timed)', () => {
+  const N = 20000, chain = owners(N, i => (i ? i - 1 : null)), tail = owners(N, i => (i ? i - 1 : 1)), ring = owners(N, i => (i + N - 1) % N);
+  assert.deepEqual(cycles(chain), []);
+  assert.deepEqual(cycles(tail), ['nodes[0].parent', 'nodes[1].parent']);
+  assert.equal(cycles(ring).length, N);
+  const timed = f => { const c = process.cpuUsage(); f(); const u = process.cpuUsage(c); return (u.user + u.system) / 1000; };
+  const best = m => Math.min(...Array.from({ length: 5 }, () => timed(() => validate(m))));
+  const [c, t, r] = [chain, tail, ring].map(best); // each walk to the top was 9.5 s at 20,000
+  for (const ms of [c, t, r]) assert.ok(ms < 1000, `${ms} ms`);
+  console.log(`# P1 target 100 ms: validate() of a 20,000 chain ${c} ms, a chain into a cycle ${t} ms, a ring of 20,000 ${r} ms`);
+});

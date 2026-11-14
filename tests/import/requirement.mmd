@@ -1,0 +1,179 @@
+---
+title: Every construct on Mermaid's requirement page
+config:
+  look: classic
+---
+%% Modelled on Mermaid 12.3.0's docs/syntax/requirementDiagram.md (MIT), one block per section of that page, a definition
+%% written once where the page repeats it, then the forms Mermaid's lexer reads that the page does not show, the
+%% constructs this reader adds (the %% hints) and broken input. The pinned report is in
+%% tests/mermaid-requirement.test.mjs. Mermaid refuses this file itself: the broken lines at its end.
+requirementDiagram
+    accTitle: Every construct
+    accDescr {
+        A requirement diagram that uses each construct once
+    }
+
+    %% The larger example: the six kinds, three elements, the seven relationships
+    requirement test_req {
+    id: 1
+    text: the test text.
+    risk: high
+    verifymethod: test
+    }
+
+    functionalRequirement test_req2 {
+    id: 1.1
+    text: the second test text.
+    risk: low
+    verifymethod: inspection
+    }
+
+    performanceRequirement test_req3 {
+    id: 1.2
+    text: the third test text.
+    risk: medium
+    verifymethod: demonstration
+    }
+
+    interfaceRequirement test_req4 {
+    id: 1.2.1
+    text: the fourth test text.
+    risk: medium
+    verifymethod: analysis
+    }
+
+    physicalRequirement test_req5 {
+    id: 1.2.2
+    text: the fifth test text.
+    risk: medium
+    verifymethod: analysis
+    }
+
+    designConstraint test_req6 {
+    id: 1.2.3
+    text: the sixth test text.
+    risk: medium
+    verifymethod: analysis
+    }
+
+    element test_entity {
+    type: simulation
+    }
+
+    element test_entity2 {
+    type: word doc
+    docRef: reqs/test_entity
+    }
+
+    element test_entity3 {
+    type: "test suite"
+    docRef: github.com/all_the_tests
+    }
+
+    test_entity - satisfies -> test_req2
+    test_req - traces -> test_req2
+    test_req - contains -> test_req3
+    test_req3 - contains -> test_req4
+    test_req4 - derives -> test_req5
+    test_req5 - refines -> test_req6
+    test_entity3 - verifies -> test_req5
+    test_req <- copies - test_entity2
+
+    %% Markdown formatting
+    requirement "__test_req7__" {
+        id: 7
+        text: "*italicized text* **bold text**"
+        risk: high
+        verifymethod: test
+    }
+
+    %% Direction
+    direction LR
+
+    %% Styling: style, classDef, class and :::
+    style test_req fill:#ffa,stroke:#000, color: green
+    style test_entity fill:#f9f,stroke:#333, color: blue
+    classDef important fill:#f96,stroke:#333,stroke-width:4px
+    classDef test fill:#ffa,stroke:#000
+    class test_req,test_entity important
+    requirement styled_req:::important {
+        id: 8
+        text: class shorthand syntax
+    }
+    test_entity:::test
+
+    %% What Mermaid's lexer reads that the page does not show: a backward relationship of each kind, a kind word in
+    %% capitals, a copy between two requirements, an element whose type is the writer's, risk and method in capitals
+    test_req6 <- satisfies - test_entity
+    test_req6 <- derives - test_req5
+    REQUIREMENT "Range" {
+        id: EB-1.2
+        text: "A full charge shall give at least 60 km of assisted riding."
+        risk: High
+        verifymethod: Test
+    }
+    requirement "Range copy" {
+        text: "A full charge shall give at least 60 km of assisted riding."
+    }
+    "Range copy" - copies -> "Range"
+    element "Range ride" {
+        type: TestCase
+    }
+    element Battery {
+        type: Block
+    }
+    "Range ride" - verifies -> "Range"
+    Battery - satisfies -> "Range"
+
+    %% The reader's comments: an id, a name and a text that Mermaid's quotes cannot hold
+    %% id: cut-off
+    %% name: "Assistance \"cut-off\""
+    %% text: "Assistance shall stop\nat 25 km/h."
+    requirement "Assistance cut-off" {
+        id: EB-1.1.1
+        text: "Assistance shall stop at 25 km/h."
+    }
+    %% id: cut-off-satisfied
+    Battery - satisfies -> "Assistance cut-off"
+
+    %% Broken input, each reported
+    test_entity - satisfies -> test_entity2
+    test_req6 - derives -> test_entity
+    test_req - contains -> test_entity
+    test_req2 - contains -> test_req4
+    test_req4 - contains -> test_req
+    test_req - satisfies -> nowhere
+    test_req - allocates -> test_req2
+    requirement test_req {
+        id: 9
+    }
+    goal g1 {
+        id: 10
+    }
+    requirement dup_fields {
+        id: 11
+        id: 12
+        source: someone
+        risk: severe
+    }
+    %% id: a->b
+    element arrow_hint {
+    }
+    %% id: cut-off
+    element taken_hint {
+    }
+    %% text: not json
+    requirement bad_text {
+        text: kept
+    }
+    %% name: 42
+    element bad_name {
+    }
+    %% text: "on an element"
+    element text_on_element {
+    }
+    %% id: nothing-below
+    direction RL
+    test_req -> test_req2
+    requirement open {
+        id: 13

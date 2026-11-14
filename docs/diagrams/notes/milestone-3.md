@@ -124,7 +124,8 @@ tens of bytes in `src/canvas/edit.js`, made by M3.1 and measured in its pull req
   3's new top-level names in `src/sysml/` carry the prefix `SYS_` (`SYS_TABLE` for `SYS`, `SYS_AS_UML` for `asUml`, …),
   as stage 5's `CS_`, the object type's `OB_` and stage 2's `OWN_` do; the map added to `src/uml/stereotypes.js` takes
   that file's prefix (`UML_META_AS` for `META_AS`); the shape key is `sysml-frame`. The names below are the note's short
-  forms of them.
+  forms of them. As built (M3.3): `src/sysml/blocks.js` prefixes its constants `BD_` and its functions `bd` (`bdComps`,
+  `bdProblems`), as the stage files' functions do (`prName`, `ucName`); no name collides in `lib/umlimator-all.js`.
 - **The API is additive only** (C2). The four types, their helpers and the reader are internal, in `lib/umlimator-all.js`;
   `props.kind` on a port, `risk`, `verifyMethod` and a compartment's `title` are optional and provisional.
 - **Nothing after `layoutTyped` edits what it returned** (stage 4 §2.4): the projection's output is dressed on a copy. A
@@ -336,6 +337,15 @@ not hidden on its own (the child or its owner is); Delete on it un-owns the chil
 so a requirement in a package stays in it), said first on the hint line; connecting a requirement to another with the
 Containment tool emits `reparent`.
 
+**As built (M3.2, a departure found in the build, 14 Nov 2026).** The type's `remove` hook maps `<owner>-><child>` back and
+re-homes the child, as above, by Delete and Shift + Delete alike. The canvas does not hand it over: `idsOf`
+(`src/canvas/edit.js`) drops every line id holding `->` (a map's positional line ids) before a hook hears the selection, so
+Delete on a selected containment line emits nothing. Handing such an id to the type's `remove` is a core edit (bytes against
+the share), outside M3.2's files; taken by the lead under the maintainer's standing approval (14 Nov 2026): the hook ships and
+is tested through `apply()`, and the canvas's part is left to a later package (M3.7, or a core lane), stated under its gaps.
+By pointer and key a requirement is re-owned meanwhile by the Containment line (L, a name, the picker) or by a drop on a box
+or the frame.
+
 ### 6.3 The relationships and their rules (S8)
 
 Each rule with a passing and a failing fixture (DoD 5), in `tests/requirement.test.mjs`; a problem names its rule and its
@@ -355,7 +365,7 @@ calls usual, or where the subset is stricter than SysML.
 | `derive-ends` | error | a deriveReqt runs from a requirement to a requirement |
 | `derive-cycle` | warning | no requirement is derived from itself through a chain |
 | `copy-ends` | error | a copy runs from a requirement to a requirement |
-| `copy-text` | error | a copy's client has its supplier's `text` (SysML's Copy constraint: the client's text is a read-only copy of the supplier's). The Copy gesture sets it in the same transaction (§6.4), so the rule fires only on a model edited by hand or read in |
+| `copy-text` | error | a copy's client has its supplier's `text` (SysML's Copy constraint: the client's text is a read-only copy of the supplier's). The Copy gesture sets it in the same transaction (§6.4). As built (M3.2, 14 Nov 2026): the rule also fires after an edit of either text in the panel (`set props.text`), as the registry has no hook on a property set to carry the supplier's text across or keep the client's read-only; the problem says so and the author edits the text back |
 | `satisfy-ends`, `verify-ends` | error | a satisfy or a verify runs to a requirement (SysML constrains the supplier) |
 | `satisfy-from`, `verify-from` | warning | a satisfy runs from an element that is not a requirement; a verify runs from a test case (SysML allows any named element as the client; these are what is usual) |
 | `refine-ends`, `trace-ends` | warning | one end of a refine or a trace is a requirement |
@@ -369,7 +379,15 @@ calls usual, or where the subset is stricter than SysML.
 | Lines: Containment, Derive, Satisfy, Verify, Refine, Trace, Copy, Comment link | `connect`, checked against §6.3's errors (`{ error }` with the rule's words); Containment emits `reparent` of the first to the second; Copy also sets the client's `text` to the supplier's, in one transaction |
 | F2 on a requirement | Its name; `EB-1.2 Range` sets `reqId` and the name together when it starts with a token holding a digit and no space |
 | Properties | `reqId`, `text`, `risk` (enum), `verifyMethod` (enum), Stereotypes; tags by stage 6's `TYPED.fields` |
-| Delete, Shift + Delete | Delete hides a node; Shift + Delete deletes it, what it contains re-homed to its owner (the core's delete, 1.12b); on a line it deletes the line (a containment line: S7) |
+| Delete, Shift + Delete | Delete hides a node; Shift + Delete deletes it, what it contains re-homed to its owner; on a line it deletes the line (a containment line: S7) |
+
+As built (M3.2, 14 Nov 2026): the core's delete takes what an element owns along with it (`src/core/apply.js`), so the type's
+`remove` hook re-homes what a requirement or package holds to its nearest owner left, then deletes it, in one transaction.
+The palette's Containment entry has the type `containment`, which names no element type (the hook always answers it). The
+palette's add hears the selection through `slots`, one at each card and box, as the profile type's. A comment's
+stereotypes lead its text in the note (`«rationale» 60 km …`), wrapped with it: the class type's note has no line of its own
+for them. The ranking also runs a comment link (the comment after what it is about); the reading order is the cards' places,
+rank by rank (down) or row by row (right), then the lines. A view with no `direction` is laid out down.
 
 ## 7. The block definition diagram (S9, S10)
 
@@ -457,6 +475,46 @@ names a notation other than `uml` (`sysml.Block`, `c4.System`); an untyped end, 
 | A member row | A keyword picks the kind: `part`, `ref`, `value`, `constraint`, `port` (`proxy port`, `full port`), `in`, `out`, `inout` (a flow property), `param`; with none, the type picks it: a name of a block makes a part, of a constraint block a constraint property, anything else a value; an operation by its parentheses (`parseMember`). Printed back with the keyword (§7.1's rows). `{error}` for a kind the owner may not hold (`member-kinds`) |
 | A constraint block's expression | F2 on its `constraints` row: the text inside the braces |
 | Properties | A value type's `unit` and `quantityKind`; a port's `kind` (enum); a flow property's `direction` (enum); `multiplicity`, `default`; Stereotypes; tags |
+
+**As built (M3.3, departures found in the build, 14 Nov 2026; taken by the lead under the maintainer's standing approval
+(14 Nov 2026)).**
+
+- **The builder.** 6.3 gave `typeGeo` (`src/uml/class.js`) a look's `node(d, n, model, pic)` and `dg`, so option (b)'s
+  hook already exists and edits none of 6.3's lines: `src/sysml/blocks.js` lays the view out with `typeGeo`, its look's
+  `node` building the SysML classifiers (keyword, titled compartments, `aria` and `ariaOwn`) and its `dg` passing the frame
+  and the package boxes as containers, `repair: false`, `reroute: false`. `class.js` is not edited.
+- **A value type's compartment** is named `quantity`: `unit = Wh`, `quantityKind = energy`. A compartment of a kind the
+  owner does not list (a parameter in a block) is drawn after the owner's own, and a member of a type of no SysML kind (a
+  `uml.Property`, a `uml.Reception`) in a last compartment, `other members`, counted in the name, so nothing `member-kinds`
+  refuses is hidden.
+- **Accessible names**: the kind and the drawn name, stored stereotypes but the implied one in brackets, then each
+  compartment's count ("Block EBike, 4 parts, 1 reference, 1 constraint"), a constraint block's expression and a value
+  type's rows as written ("Value type Energy, unit = Wh, quantityKind = energy"). The PDF's `word` and `rows` are given for
+  the four classifiers (its cards); a member is no card, so the part, port and constraint words of §13 have no table to
+  appear in.
+- **A constraint block's expression** is edited by its Properties field (Constraint): the canvas selects no compartment row,
+  so F2 on the `constraints` row has nothing to select; F2 on the block renames it.
+- **Rules.** `flow-direction` judges the direction only; where a flow property may be held is `member-kinds`' (so one
+  fixture breaks one rule). An interface block's ports are proxy ports only, as above and in clause 9's InterfaceBlock
+  constraint (a plain port is refused too). A value type holds only value properties and operations, no part, reference,
+  port or flow property (clause 8: a value type is a data type, with no structure of its own; M3.7's conformance note
+  confirms it, and whether an interface block may hold value and reference properties, which the table above refuses and
+  SysML may allow). A block holds no member of a type of no SysML kind. A flow property's or port's stored direction or
+  kind that is none of SysML's is printed in its row as stored, so the row does not parse back unchanged; a flow property
+  with no direction prints `inout`, SysML's default, and `flow-direction` still asks for it. `general-kinds` judges a generalization with a block, interface block, constraint block or value type at an
+  end; one between two requirements is M3.2's (`requirement-general`).
+- **Lines.** Reference association is a plain association. Connect with Part association from a block also adds the part
+  property the line draws, named after the part's type (`battery`, then `battery2`), with the line's role and
+  multiplicity `1`, in one transaction, so the gesture leaves no `part-unlisted` warning (§7.2). To a constraint block it
+  adds a constraint property (SysML's composition to a constraint block), whose role `part-unlisted` accepts; to anything
+  else (a value type, an interface block, a package) it is refused, with a message.
+- **A view naming an id that is no node.** The core's ranking by boxes (`blockPos`, `src/map/context.js`) throws on a line
+  to such an id, and every bdd view has its frame; the type's `boxes` gives none for such a view, so it is ranked by the
+  plain flow, still drawn in its frame, and `validate()` names the id and its line. A guard in the core is the lead's.
+- **`tests/embed.py`.** M3.0's pages line is not in it (on `main` and `m3-base` the list has none of milestone 3's
+  pages), so M3.3 adds `tests/blocks.html` to the list and its docstring (M3.3's own departure; M3.0's row and the shared
+  files table say so). Another page lane adding its page records that in its own row; the second of two open lanes
+  rehearses the merge of that one line (X2).
 
 ## 8. The internal block diagram (S11 to S13)
 
@@ -584,6 +642,23 @@ Each with a passing and a failing fixture in `tests/parametric.test.mjs`.
 Editing: Palette Constraint property, Value property, Comment; line Binding; connect from a value to a parameter's square
 (through its constraint property) emits a `sysml.BindingConnector` with `ends.to.part`.
 
+**As built (M3.5, `src/sysml/parametric.js`, departures found in the build, 14 Nov 2026; taken by the lead under the
+maintainer's standing approval (14 Nov 2026)).** A constraint property's box is the composite type's, sized by its name and
+its parameters, so the e-bike's expressions are cut (`{range = energy / c…}`); they are whole in its accessible name and the
+PDF's rows (§17). The type keeps the composite type's `connector-drawn` (a binding between two parameters of the subject is
+not drawn), re-said, beside the five rules above. A binding drawn from a parameter to a value runs from the value, so the
+parameter's constraint property is `ends.to.part` either way; one drawn to a constraint property's box is refused. A member
+row `param name : Type` is a parameter, and only on a constraint block, which takes no other row (a `param` row on a block
+would add it a port); the Value property entry is refused on a constraint block subject (§7.3). The composite type's hooks'
+words (port, part, connector) are said as SysML's (parameter, constraint property or property, binding) in every hook's
+`say` and `error`. A parameter's name the composite geometry places outside the frame (laid out right, the e-bike's eco
+bindings run up one bus beside its parameters, so its search along each line finds no spot inside and goes up to 220 px over
+the frame's top) is placed again at the nearest clear spot inside the frame; the composite geometry itself is unchanged, as
+it is not this package's. `tests/embed.py`'s pages line lists `tests/parametric.html` (the departure M3.3 records, §7.4). A gap: laid
+out down, a constraint block subject's parameters on the frame's top side cross its header band with their lines inward (the
+composite geometry's port sides do not see the header); `tests/parametric.test.mjs` pins it, and the e-bike's own view is
+clean both ways.
+
 ## 10. SysML elements in other views
 
 A block, requirement or test case shown on a UML view (a class view of a mixed model) is drawn by that type as an element
@@ -671,6 +746,34 @@ generated models on the subset, and for generated models whose names hold each o
 | **(a) A reader and a writer (recommended)** | As the class, sequence and state readers; Mermaid is the notation agents write (D12) | The comments' conventions to keep |
 | (b) A reader only | Less | A model edited here cannot go back to Mermaid |
 
+**As built (M3.6, departures found in the build, 14 Nov 2026).** Taken by the lead under the maintainer's standing approval
+(14 Nov 2026), each the note's direction made exact:
+
+- **Ids.** Every valid `%% id:` is taken first, the definitions' then the relationships', so a hint clashes only with
+  another hint (the later is skipped and reported) and never with a name; then each definition takes its name or slug,
+  then each relationship `<from>-<kind>-<to>` (`battery-satisfies-capacity`, Mermaid's word for the kind), each the next
+  free. A name is an id when it holds only letters, digits, `_`, `.` and `-` of any script (`\p{L}`, `\p{N}`), not
+  `\w`'s ASCII, so `Ünit` keeps its letter; a slug turns every other run into `-`. With hints first, the writer gives a
+  hint exactly to an element whose id is not the one its written name derives.
+- **"Names no element written before it"** is read as a hint above no definition or relationship (a stray `%% id:`, a
+  `%% text:` above an element, a hint above a `contains`, which is a parent, not an element): reported, not applied.
+- **Bare names** stop where Mermaid's lexer stops them (`{ < > - =` and `:::`), so a bare `a-b` is no name; the writer
+  quotes every name that is not a word of letters, digits, `_` and `.`, or is one of the grammar's words. A label Mermaid's
+  quotes cannot hold, and one that two elements share (the second written `Range-2`), goes whole in `%% name:`.
+- **Direction.** No `direction` line leaves the view's unset (Mermaid draws TB); the writer writes none for an unset
+  view, so it reads back unset, where §12.3 says `LR` "otherwise".
+- **Containment's errors.** A requirement containing what is not a requirement is skipped as `requirement-nested`'s error;
+  a cycle loses its last `contains` in the file; a copy between two requirements whose texts differ is read, left to
+  `copy-text` (§6.3: it fires on a model read in), and reported as approximated, so the import does not meet that error
+  silently.
+- **Mermaid's strings.** A field's value is written bare only when Mermaid's unquoted string reads it (a word character
+  first: `/x` and `.5` are quoted). Mermaid's quotes hold no empty string, so an empty text goes whole in `%% text: ""`
+  with no `text:` line, and an empty `reqId` or docref is named as not written. A risk or verify method that is none of
+  Mermaid's words is named as not written, since its grammar refuses it. The writer also names what reads back otherwise:
+  the model's title when it is not the view's, its root when it is not the view's id, empty `props` and `stereotypes`,
+  and `ext.mermaid.type` `Block` or `TestCase`, the reader's own defaults.
+- **The CLI.** `umlimator.py`'s reader table (`cmd_import`) gains its row as well as the docstrings' lists: the route.
+
 ### 12.4 The CLI (S16)
 
 `umlimator_import.py`'s `MERMAID` and `TYPED` gain `requirementDiagram`; `umlimator.py import` routes it to the reader
@@ -681,8 +784,8 @@ Today the file is refused (Q11), so nothing that worked changes.
 
 | Element | `word` | `rows` |
 |---|---|---|
-| Requirement | Requirement | `id`, `text` whole, risk and verify method; its derived relations: contained in, contains, derived from, derives, satisfied by, verified by, refined by, traced to, copies, copied by |
-| Test case | Test case | the requirements it verifies |
+| Requirement | Requirement | `id`, `text` whole, risk and verify method; its derived relations: contained in, contains, derived from, derives, satisfied by, verified by, refined by, refines, traced to, traced from, copies, copied by (as built, M3.2: each relationship both ways) |
+| Test case | Test case | the requirements it verifies (as built, M3.2: a block on a req view, the requirements it satisfies) |
 | Block, interface block, constraint block, value type | Block, Interface block, Constraint block, Value type | each compartment's rows, as drawn; a value type's unit and quantity kind |
 | Part, reference, value, constraint property | Part, Reference, Value, Constraint | `name: Type [mult]`; a constraint property's expression |
 | Port | Proxy port, Full port, Port | its type, conjugated or not, its flow direction |
@@ -807,17 +910,17 @@ row and writes its release notes in its pull request for M3.7 to gather.
 
 | # | Work package | Owns | Depends on | Done when |
 |---|---|---|---|---|
-| M3.0 | **Files and targets** (the lead). `sysml/sysml`, `sysml/requirement`, `sysml/blocks`, `sysml/internal`, `sysml/parametric`, `readers/mermaid-requirement` as empty files, in `ALL` after milestone 2's and before milestone 4b's (the stages' order, as milestone 4a's note places its own after 4b's; a departure from "after the last family listed" found in the build, 14 Nov 2026), in that load order. The milestone's five browser pages, `tests/requirement.html`, `tests/blocks.html`, `tests/internal-block.html`, `tests/parametric.html` and `tests/sysml.html`, as placeholders that report ok, listed in `tests/embed.py`'s pages in one line, as stage 6's 6.0 did. `17-block-definition.json`'s `range-equation` agrees with 19, and EBike gains 18's three part members (§7.2, §15.2); 19's view takes the id `range-analysis` (§15.2); 17's and 19's entries of `tests/core-diet.json` re-recorded, stated in the pull request | `tools/build.mjs`, the six empty files, the five placeholder pages, `tests/embed.py` (its one pages line), `docs/diagrams/examples/17-block-definition.json` and `19-parametric.json` (its view's id only) (an exception to 6.6's, M2.14's and 4b.5's `docs/`: none edits 16 to 19), `tests/core-diet.json` (17's and 19's entries only) | This note | `lib/umlimator-all.js` changes by blank lines only; `lib/umlimator.js` not at all; `check.mjs` passes; `tests/core-diet` passes with only 17's and 19's entries changed; `tests/embed.py` runs the five pages ok; the four targets merge by id with no disagreement (`tools/atlas.mjs`'s `merge` over them, run in a scratch folder and stated in the pull request; M3.7's atlas test keeps it); `build()` over them with §15.2's links and `KEYS` stops on nothing; no other M3 lane edits `ALL` or `tests/embed.py`; the merge with any open lane's `tests/embed.py` line rehearsed (X2) |
+| M3.0 | **Files and targets** (the lead). `sysml/sysml`, `sysml/requirement`, `sysml/blocks`, `sysml/internal`, `sysml/parametric`, `readers/mermaid-requirement` as empty files, in `ALL` after milestone 2's and before milestone 4b's (the stages' order, as milestone 4a's note places its own after 4b's; a departure from "after the last family listed" found in the build, 14 Nov 2026), in that load order. The milestone's five browser pages, `tests/requirement.html`, `tests/blocks.html`, `tests/internal-block.html`, `tests/parametric.html` and `tests/sysml.html`, as placeholders that report ok, listed in `tests/embed.py`'s pages in one line, as stage 6's 6.0 did. `17-block-definition.json`'s `range-equation` agrees with 19, and EBike gains 18's three part members (§7.2, §15.2); 19's view takes the id `range-analysis` (§15.2); 17's and 19's entries of `tests/core-diet.json` re-recorded, stated in the pull request | `tools/build.mjs`, the six empty files, the five placeholder pages, `tests/embed.py` (its one pages line), `docs/diagrams/examples/17-block-definition.json` and `19-parametric.json` (its view's id only) (an exception to 6.6's, M2.14's and 4b.5's `docs/`: none edits 16 to 19), `tests/core-diet.json` (17's and 19's entries only) | This note | `lib/umlimator-all.js` changes by blank lines only; `lib/umlimator.js` not at all; `check.mjs` passes; `tests/core-diet` passes with only 17's and 19's entries changed; `tests/embed.py` runs the five pages ok; the four targets merge by id with no disagreement (`tools/atlas.mjs`'s `merge` over them, run in a scratch folder and stated in the pull request; M3.7's atlas test keeps it); `build()` over them with §15.2's links and `KEYS` stops on nothing; no other M3 lane edits `ALL`; `tests/embed.py` as built below (§7.4's as built: its pages line was not merged, so each page lane adds its page); the merge with any open lane's `tests/embed.py` line rehearsed (X2) |
 | M3.1 | **SysML's base.** `src/sysml/sysml.js`: the table (§3.2), `META_AS` filled, `asUml` with its filter by view kind and its measured texts, the mapping back, the dressing shared by ibd and par (frame, port kinds, `csProblems` re-said, §8.1), the frame shape and header (§5), the crosshair row (when M2.2 has exported `ENDS`). Edits: `metaOf` and the keywords (`src/uml/stereotypes.js`, §3.3); the export line and `generalization-kinds`' condition (`src/uml/class.js`, §7.3); the compartment title, `ariaOwn` and, if `ENDS` is not exported yet, the crosshair row (`src/typed/draw.js`); a frame with no element on drop and Delete (`src/canvas/edit.js`, §5.1, the core). As built: `ENDS` was exported, so the crosshair row (and its legend's) is `src/sysml/sysml.js`'s; `composite.js` is not edited and no view sets `boxSubject` (§5.1's as built: the dressing frames a subject holding no part at its card's bounds); `stereotypes.js` exports `UML_META_AS` and `STY_FREE`, which `sysml.js` fills; `class.js` exports `lineLook`, `lineLabel`, `legendOf`, `legendItem` and `LEGEND_ENDS`; Delete on a frame that is no element already emitted nothing (the canvas's `idsOf` keeps only a box that is an element), so `edit.js` maps the drop only | `src/sysml/sysml.js`, `src/uml/stereotypes.js` (those lines), `src/uml/class.js` (those lines), `src/typed/draw.js` (those lines), `src/canvas/edit.js` (that mapping), `tests/sysml.test.mjs` (new), `tests/notation.html` (adds the crosshair, a titled compartment, `ariaOwn` and the frame) | M3.0; 6.3 merged | Maps unchanged; `tests/core-diet.*`, `tests/class.test.mjs`, `tests/stereotypes.test.mjs`, `tests/profile.test.mjs`, `tests/composite.test.mjs`, `tests/composite.html` and every typed type's tests unchanged; every registered `sysml.*` type has a row (read from the registry); a profile extending `Class` fits a block, one extending `Property` a value property, and «rationale» in scope is not warned; `asUml` of each example, and of the merged four, keeps only the view kind's members and gives a model the composite type validates with the problems listed in the test; a subject with ports and no parts, and one with nothing, is a box; 17 with a class view added has no `generalization-kinds` problem; the frame shape drawn in both themes and three fonts, its tag cut to a narrow frame; a card dropped on a frame with no element is reparented to the view's subject or none, and Delete on that frame emits nothing; the core's growth measured and stated against the 500 B share |
-| M3.2 | **The requirement type.** §6, §13 for it: definition, wrapped text, its own ranking with the containment pairs, derived containment lines, rules, `describe()`, names, legend, `rows`, `word`, `text`, hooks | `src/sysml/requirement.js`, `tests/requirement.test.mjs` (new), `tests/requirement.html` (replaces M3.0's placeholder) | M3.1; M2.1 merged (its `text` hook in `src/page/print.js`) | Definition of done 2, 4, 5, 6 and 8 on row 16; one passing and one failing fixture per rule of §6.3; the page passes the axe rules; every gesture by pointer and key through `apply()`; a 30-step session undone, redone and reopened byte-identical; an inline copy of `16-requirement.json` lays out clean, down and right, in its frame, each owner above what it contains; deleting a containment line re-homes the child; `copy-text` passes on the example |
-| M3.3 | **The block definition type.** §7, §13 for it | `src/sysml/blocks.js`, `tests/blocks.test.mjs` (new), `tests/blocks.html` (replaces M3.0's placeholder) | M3.1; M2.1 merged | As M3.2 on row 17 and §7.3's rules; `17-block-definition.json` clean down and right, every compartment titled, no `part-agrees` or `part-unlisted` problem; member rows parse and print back (`print(parse(x))` stable) |
-| M3.4 | **The internal block type.** §8, §13 for it: ports' arrows, item-flow triangles, rules, hooks, on M3.1's projection and dressing | `src/sysml/internal.js`, `tests/internal-block.test.mjs` (new), `tests/internal-block.html` (replaces M3.0's placeholder) | M3.1; M2.1 merged | As M3.2 on row 18 and §8.4's rules (delegation and assembly each); `18-internal-block.json` clean, its ports on their parts' borders and the frame's, item names and «proxy» measured by the layout; `tests/composite.test.mjs` and `tests/composite.html` unchanged; a connector added from the canvas is a `sysml.Connector` and carries no projected label; the projection's time printed |
-| M3.5 | **The parametric type.** §9, §13 for it, on M3.1's projection and dressing | `src/sysml/parametric.js`, `tests/parametric.test.mjs` (new), `tests/parametric.html` (replaces M3.0's placeholder) | M3.1; M2.1 merged | As M3.2 on row 19 and §9's rules; `19-parametric.json` clean, every parameter on its constraint property's border; a constraint block subject's parameters on its frame; a binding drawn from the canvas carries `ends.to.part` |
-| M3.6 | **The Mermaid reader and writer, and the CLI.** §12 | `src/readers/mermaid-requirement.js`, `tests/mermaid-requirement.test.mjs` (new), `tests/import/requirement.mmd` (new), `umlimator_import.py` (`MERMAID`, `TYPED`), `umlimator.py` (its docstring's list), `tests/import.py` (adds the case) | M3.0; `model.md` row 16 as §4 | `read(write(model))` equals the model on the subset for the example, 500 generated models and generated hostile names; the construct file's report pinned, the page's `copies` from an element among its skipped lines; each row of §12.2 and each untrusted comment by a test; `umlimator.py import` of the construct file writes a model that `check.mjs` passes; every earlier import test unchanged |
+| M3.2 | **The requirement type.** §6, §13 for it: definition, wrapped text, its own ranking with the containment pairs, derived containment lines, rules, `describe()`, names, legend, `rows`, `word`, `text`, hooks | `src/sysml/requirement.js`, `tests/requirement.test.mjs` (new), `tests/requirement.html` (replaces M3.0's placeholder) | M3.1; M2.1 merged (its `text` hook in `src/page/print.js`) | Definition of done 2, 4, 5, 6 and 8 on row 16; one passing and one failing fixture per rule of §6.3; the page passes the axe rules; every gesture by pointer and key through `apply()`; a 30-step session undone, redone and reopened byte-identical; an inline copy of `16-requirement.json` lays out clean, down and right, in its frame, each owner above what it contains; deleting a containment line re-homes the child; `copy-text` passes on the example. As built: the remove hook re-homes the child; Delete on the line from the canvas emits nothing (§6.2's as built); `tests/embed.py`'s pages line, which lost M3.0's five pages in a merge, lists `tests/requirement.html` again; `copy-text` fires after a text edited in the panel (§6.3's as built) |
+| M3.3 | **The block definition type.** §7, §13 for it | `src/sysml/blocks.js`, `tests/blocks.test.mjs` (new), `tests/blocks.html` (replaces M3.0's placeholder), `tests/embed.py` (its page in the list, §7.4's as built) | M3.1; M2.1 merged | As M3.2 on row 17 and §7.3's rules; `17-block-definition.json` clean down and right, every compartment titled, no `part-agrees` or `part-unlisted` problem; member rows parse and print back (`print(parse(x))` stable) |
+| M3.4 | **The internal block type.** §8, §13 for it: ports' arrows, item-flow triangles, rules, hooks, on M3.1's projection and dressing. As built: `subject-block` is a warning for a view with no subject at all (deleted, or hidden from it), as the composite type's `subject-shown`, and an error otherwise; a conjugated port's drawn name keeps its `~` (`charge : ~ChargeInterface`: the type puts it back on its copy of the projection before the layout measures it); a connector joins members, which the PDF's Lines table leaves out, so its item flow (`text`, "DCPower, dock to battery") reaches the PDF through the subject's rows, which name each connector with what it carries, as the composite type's (0.22.0); `member.add` and `member.edit` refuse a row `edits.member` does not read (an operation's, a flow property's: the block definition view's); M3.0 listed no milestone 3 page in `tests/embed.py`, so this package appends `tests/internal-block.html` to its pages and its header; after review, a conjugated port's type keeps its `~` in the projection the editing hooks run on too, so F2 and a member row take a `~` off and put it back, and F2's text starting `«proxy»` or `«full»` sets the port's kind; an edit that changes nothing says nothing; a member row keeps its member's kind (a `port` or `ref` row on another kind is refused, `{error}`); a connector's item flow is its label only when it has both an item and a direction (else `item-flow` warns and nothing is drawn); `port-compatible` reads "flow directions are opposite" as SysML 1.7 does, so two proxy ports conjugated alike pass when every flow property of their interface block is `inout`; a block's card other than the subject is named "Block", not "Class"; a lone `~` conjugates nothing; an item name the composite type's label placement finds no room for (a frame port with two delegations) is left off its line, its triangle drawn and `describe()` naming it. Each departure was taken by the lead under the maintainer's standing approval (14 Nov 2026) | `src/sysml/internal.js`, `tests/internal-block.test.mjs` (new), `tests/internal-block.html` (replaces M3.0's placeholder), `tests/embed.py` (as built: its page added) | M3.1; M2.1 merged | As M3.2 on row 18 and §8.4's rules (delegation and assembly each); `18-internal-block.json` clean, its ports on their parts' borders and the frame's, item names and «proxy» measured by the layout; `tests/composite.test.mjs` and `tests/composite.html` unchanged; a connector added from the canvas is a `sysml.Connector` and carries no projected label; the projection's time printed |
+| M3.5 | **The parametric type.** §9, §13 for it, on M3.1's projection and dressing | `src/sysml/parametric.js`, `tests/parametric.test.mjs` (new), `tests/parametric.html` (replaces M3.0's placeholder) | M3.1; M2.1 merged | As M3.2 on row 19 and §9's rules; `19-parametric.json` clean, every parameter on its constraint property's border; a constraint block subject's parameters on its frame; a binding drawn from the canvas carries `ends.to.part`. As built (§9's as built): the expressions cut to the box (whole in the accessible name and the PDF's rows); the composite type's `connector-drawn` kept, re-said; a binding drawn from a parameter turned round to run from the value; a binding to a constraint property's box refused; member rows `name : Type` (a constraint or value property) and `param name : Type` (a parameter, on a constraint block only); a parameter's name placed outside the frame placed again inside it; `tests/embed.py`'s pages line lists `tests/parametric.html`; a gap: laid out down, a constraint block subject's parameters on the frame's top cross its header band, pinned |
+| M3.6 | **The Mermaid reader and writer, and the CLI.** §12. As built: `umlimator.py`'s reader table in `cmd_import` gains the row too; the ids, stray hints, bare names, an unset direction, containment's errors, a reported copy whose texts differ and Mermaid's strings as §12's as built | `src/readers/mermaid-requirement.js`, `tests/mermaid-requirement.test.mjs` (new), `tests/import/requirement.mmd` (new), `umlimator_import.py` (`MERMAID`, `TYPED`), `umlimator.py` (its docstring's list and `cmd_import`'s reader table), `tests/import.py` (adds the case) | M3.0; `model.md` row 16 as §4 | `read(write(model))` equals the model on the subset for the example, 500 generated models and generated hostile names; the construct file's report pinned, the page's `copies` from an element among its skipped lines; each row of §12.2 and each untrusted comment by a test; `umlimator.py import` of the construct file writes a model that `check.mjs` passes; every earlier import test unchanged |
 | M3.7 | **Fixtures, examples, the e-bike atlas, docs.** §15's files and tests (`tests/sysml-fixtures.test.mjs`, `tests/sysml.html`); the four examples moved, `check.mjs`'s `MOVED`; `tools/atlas.mjs`'s `--links`, `--out` and `KEYS`; `tools/ebike-links.json`; `examples/ebike-atlas.json`; `render`, `check`, `stills`, `pdf` and `import` on each; the schema and `.d.ts`; C10's tests (the MCP server's read tools, the diff Action's step, one model of each type); `tests/core-diet.json` re-recorded for 16 to 19; every document of `plan.md` §7; `docs/conformance/sysml-requirement.md`, `sysml-block-definition.md`, `sysml-internal-block.md`, `sysml-parametric.md`, each with its departures, its rules' clauses checked ("(confirm)" settled) and the fidelity table of every writer (SVG, PNG, PDF, Mermaid); `model.md`, `risks.md` (§19, with the core's quadratic ownership walk under P1); the lanes' release notes | `examples/ebike-*.json`, `examples/README.md` and `examples/index.html` (their e-bike rows), `tests/*-minimal.json` and `tests/*-stress.json` of the four types, `tests/sysml-fixtures.test.mjs`, `tests/sysml.html` (replaces M3.0's placeholder), `tests/ebike-atlas.test.mjs`, `tests/cli.py`, `tests/mcp.py`, `tests/core-diet.json`, `tools/atlas.mjs`, `tools/ebike-links.json`, `lib/umlimator.d.ts`, `lib/umlimator.schema.json`, `docs/diagrams/examples/check.mjs`, `docs/` (but the status table) | M3.1 to M3.6; 6.6, 6.7, M2.13 and M2.14 merged | Definition of done 1, 3, 7, 9, 10, 11 and 12 for the four types; §14's budgets in CI; the e-bike atlas builds with no clash, validates with no problem, and its test passes; `tests/atlas.test.mjs` (the Bookshop's) unchanged; the four files pass their types' `validate`; the stress fixtures' crossings pinned |
 
 Existing tests a package edits: M3.0 `tests/embed.py` (its one pages line) and `tests/core-diet.json` (17's and 19's entries); M3.1
-`tests/notation.html` (adds); M3.6 `tests/import.py` (adds); M3.7 `tests/cli.py`, `tests/mcp.py`, `tests/core-diet.json`
+`tests/notation.html` (adds); M3.3 `tests/embed.py` (adds its page, §7.4's as built); M3.5 `tests/embed.py` (adds its page, §9's as built); M3.6 `tests/import.py` (adds); M3.7 `tests/cli.py`, `tests/mcp.py`, `tests/core-diet.json`; M3.4 `tests/embed.py` (as built: adds its page, which M3.0 had not listed)
 (re-recorded for the four targets, which `targets()` fingerprints), `check.mjs`'s `MOVED`. Each page lane replaces only
 its own placeholder page. No other existing test changes.
 
@@ -869,7 +972,7 @@ approved ─▶ M3.0 ─┬─▶ M3.6 reader, writer, CLI ───────
 | `src/canvas/edit.js` | Any open lane editing the canvas (none listed in M2's or 4b's notes) | M3.1; the second of two open branches rehearses |
 | `src/uml/structure.js`, `frame.js`, `owners.js` | Read only | |
 | `umlimator.py`, `umlimator_import.py`, `tests/import.py` | M2.12, 4b.4, M4a's mindmap reader | Each adds its route; the second rehearses |
-| `tests/embed.py` | 6.3, 6.5, 6.6, M2.2 to M2.7, M2.14, 4b.1 to 4b.5 | Milestone 3 edits it once, in M3.0 (one pages line, five placeholders); the type lanes and M3.7 replace their pages only. M3.0 merges `main` before it merges and rehearses against any open branch's line |
+| `tests/embed.py` | 6.3, 6.5, 6.6, M2.2 to M2.7, M2.14, 4b.1 to 4b.5 | As planned, M3.0 once (one pages line, five placeholders) and the type lanes and M3.7 replace their pages only. As built, M3.0's line is in no branch, so M3.3 adds `tests/blocks.html` (§7.4's as built) and M3.2's branch its own page (ac64765); each other page lane records the same departure in its row. The second of two open lanes rehearses the merge of that line (X2) |
 | `tests/notation.html` | 6.6, M2.14, 4b.5 | Each appends its own checks; by merge order: 6.6, then whichever of M3.1 and M2.14 lands first, then the other merges `main`; 4b.5 last (0.27.0) |
 | `examples/` | 6.6 (`examples/` but the atlas's files), M2.13 and M2.14, 4b.5 (all of `examples/`) | M3.7 adds only `examples/ebike-*.json` and the e-bike rows of `examples/README.md` and `examples/index.html`; it merges after 6.6 and M2.14, and before 4b.5 (0.25.0 before 0.27.0), which merges `main` and keeps the e-bike rows |
 | `tools/atlas.mjs` | 6.7 (`KEYS`), M2.13 (`KEYS`), 4b.5 (`KEYS`) | 6.7, then M2.13 append to `KEYS`; M3.7 adds `--links`, `--out` and its keys after them; 4b.5 after M3.7 |
