@@ -761,6 +761,53 @@ Where `src/c4/c4.js` departs from §5.2 and §7.5, each choice taken by the lead
   repaint); a container's technology, §11's named edit, which keeps the node's size here and moves nothing, 46 to 49 ms.
   A technology long enough to widen its node lays the view out again, as a description does. The common edit is over the 100 ms target and under CI's 1 s ceiling; the test prints it.
 
+#### 7.5.5 Amended in M2.7's build
+
+Where `src/c4/views.js` departs from §5.1, §7.5, §7.5.2 and §7.5.3, each choice taken by the lead under the maintainer's
+standing approval (14 Nov 2026), the note's recommended direction kept:
+
+- **A step's number is the layout's step.** A step is drawn "k · description [technology]", the typed layout's own step
+  label, not "k. description": a label that finds no room keeps its number ("3") instead of vanishing. Laid out down in
+  Chrome's serif font, `23-c4.json`'s dynamic view had three labels with no spot when the number was part of the text. The
+  PDF's lines table and the step's accessible name ("Step 3: Relationship from Shop API to Payment provider: …") say the
+  same number. With repair and reroute off, the dynamic view keeps 2 crossings laid out right, and 4 crossings and 2 labels
+  on a line laid out down; the deployment view 1 crossing each way: pinned in `tests/c4-views.test.mjs`.
+- **Only steps are drawn on a dynamic view.** No line is implied (§5.2 is the static views'); a step whose end is not shown,
+  or is drawn as the subject's boundary, is not drawn, and `c4-steps` says which. `c4-steps` is also an error for a step
+  written in the view (an inline relationship, or an object that is no relationship) and for a relationship listed twice
+  (S13's "each once"), and a warning for a view that lists no step. The numbers are derived among the steps drawn (1, 2,
+  3, S13): a step listed twice or not drawn takes no number, and Alt + arrows move a step past the steps drawn.
+- **Add on a dynamic view** is the static view's at the subject's level: a container added to a dynamic view of a software
+  system, or a component to one of a container, is owned by the subject.
+- **A dynamic view with no subject** is checked at the landscape view's level (people and software systems), as the context
+  view is without its `c4-subject` warning, which asks for a subject the dynamic view may leave out (§5.1).
+- **A step by connect.** L or the handle between two shown elements a relationship already joins adds that relationship as
+  the last step (`set` of the view's `edges`); otherwise the canvas adds a new relationship, listed last.
+- **F2 on a step** holds the line's text, "description [technology]"; `edits.rename` sets the description, leaving out the
+  technology when it is unchanged and a number typed before it. A static view's F2 commits the bracketed technology into the
+  label (`src/c4/c4.js`, M2.6's): a later package's.
+- **Deployment nodes.** A node holding something shown is a solid box (dashed is a boundary) titled on two lines, its name
+  over "[Deployment Node: technology]", in the deployment type's header room so the layout makes the box as wide as its
+  title; one holding nothing shown is drawn as the map's node shape with C4's three lines. Their descriptions and
+  technologies are not asked for by `c4-description` and `c4-technology` (`23-c4.json`'s browser and Docker Compose have
+  none). An instance's relationship whose far instance is not shown is lifted to that instance's node, as §5.2 lifts
+  (implied, dashed), when the node holds nothing else shown and is drawn as a node; none is derived from the containers'
+  relationships. A line ends on an element, never on a box, so a relationship with an end in or on a node drawn as a box
+  is not drawn, and `c4-box-line` (a warning, the deployment view's own rule) says which.
+- **An instance's container.** The properties panel's choices are fixed per type, so the container is a text field holding
+  its id, and T on a selected instance picks it among the model's containers (T is free on the deployment view: no
+  element there takes C4's type picker). The palette's Container instance asks no name, picks its container, and puts the
+  instance in the view's first deployment node that holds no other: the add hook hears no selection on a layered view (no
+  slots); its id is free of every id in the model, relationships' and views' too; the Owner field (every deployment node
+  but the node itself and the nodes inside it) or a drop into a box moves it.
+- **`refs`** (`c4.ContainerInstance`'s `props.container`, `cascade`) is declared on the deployment view's type; the core
+  reads every registered type's, so deleting a container from any view deletes its instances and their relationships.
+- **An existing test edited.** Two expectations of `tests/c4.html` (M2.6's page, outside M2.7's Owns) follow from this row:
+  Shift + Delete on the storefront container now takes its instance with it, so no `c4-instance` error is left (it expected
+  one); and the Owner field moving the order worker under the payment provider now draws two `c4-level` errors, the
+  container view's and the dynamic view's (which lists the worker and the provider; it expected one, as the dynamic view
+  was not checked before).
+
 ## 8. Readers (S15, S16)
 
 Each in `src/readers/`, in `lib/umlimator-all.js` only: hand-written and linear, a report of `skipped` and
@@ -1074,7 +1121,7 @@ package proposes its row and writes its release notes in its pull request's desc
 | M2.14 | **Fixtures, examples, docs.** §10's files and their tests (`tests/m2-fixtures.test.mjs`, `tests/m2.html`); `render`, `check`, `stills` and `pdf` on each example; the schema and `.d.ts`; C10's tests; every document of `plan.md` §7; `docs/conformance/er.md`, `flowchart.md`, `dfd.md`, `uml-information-flow.md`, `c4.md`; the lanes' release notes in `docs/module-api.md` | `tests/*-minimal.json`, `tests/*-stress.json` of the five types, `tests/m2-fixtures.test.mjs`, `tests/m2.html`, `tests/notation.html`, `tests/cli.py`, `tests/mcp.py`, `tests/embed.py` (appends), `lib/umlimator.d.ts`, `lib/umlimator.schema.json`, `examples/README.md`, `examples/index.html`, `docs/` (but the status table) | M2.1 to M2.13 | Definition of done 1, 3, 7, 9, 10, 11 and 12 for the five types; DoD 2's reader half: each reader's construct file and `tests/import/structurizr.json` read into models that pass their types' `validate` (the C4 type's for M2.10's workspaces), with the reports pinned; §11's budgets in CI; the stress fixtures' crossings pinned and stated |
 
 Existing tests a package edits, and why: M2.1 adds cases to `tests/apply.test.mjs`, `tests/unfold.test.mjs` and
-`tests/print-typed.test.mjs`; M2.12 to `tests/import.py`; M2.13 to `tests/atlas.test.mjs`; M2.14 points `tests/cli.py` and
+`tests/print-typed.test.mjs`; M2.7 two expectations of `tests/c4.html` (§7.5.5); M2.12 to `tests/import.py`; M2.13 to `tests/atlas.test.mjs`; M2.14 points `tests/cli.py` and
 `tests/mcp.py` at the moved examples and adds the new ends to `tests/notation.html`; each page lane appends its page to
 `tests/embed.py`. No other existing test changes.
 
