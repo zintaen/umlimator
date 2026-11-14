@@ -640,6 +640,8 @@ As built (4a.5, 14 Nov 2026), with these departures:
   its content and the map importer says the module reads it.
 - `read(write(model))` is compared with the model as one view shows it, as the flowchart's test does: the shown topics, and
   the view's title as the model's.
+- A carriage return in a label is written as a line break, as `\n` is, and named in a `%% not written:` line; an
+  unclosed Markdown string is its one line read as text, the lines after it read as they are.
 
 | Option, Mermaid's shapes (decision 16) | For | Against |
 |---|---|---|
