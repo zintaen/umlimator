@@ -1,0 +1,187 @@
+<!doctype html>
+<!-- C4's dynamic and deployment views (M2.7) in headless Chrome (tests/embed.py), from lib/umlimator-all.js:
+     docs/diagrams/examples/23-c4.json's dynamic and deployment views drawn by render() in both themes, three fonts and both
+     directions (each element in its map shape with its three lines inside it, no two overlapping, deployment nodes as solid
+     boxes holding what they hold, every line end on its element's outline within 1 px, the steps numbered, names, contrast,
+     the key, axe's rules written out), then edited through the edit event and apply(), by pointer and by keyboard: a step
+     moved by Alt + arrows, a step by L (the model's relationship), F2 and Delete on a step; on the deployment view the
+     palette's three entries, N, an instance by the palette (its container picked), T (its container), the properties, the
+     Owner field, hide and delete; a container deleted on the container view taking its instance. -->
+<meta charset="utf-8">
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="../lib/umlimator-theme.css">
+<title>umlimator C4 dynamic and deployment views test</title>
+<body style="margin:0">
+<div id="m" style="width:1600px;height:1000px"></div>
+<script type="module">
+import { render, apply, validate } from '../lib/umlimator-all.js';
+const out = { ok: [], fail: [] };
+const check = (name, cond, info) => { document.title = name; if (cond) out.ok.push(name); else out.fail.push(name + (info === undefined ? '' : ': ' + JSON.stringify(info))); };
+const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+const el = document.getElementById('m');
+let sr, stage, ed = [];
+const pick = s => sr.querySelector(s), all = s => [...sr.querySelectorAll(s)];
+const centre = s => { const r = pick(s).getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; };
+const ptr = (target, type, [x, y]) => target.dispatchEvent(new PointerEvent(type, { clientX: x, clientY: y, button: 0, pointerId: 7, pointerType: 'mouse', bubbles: true, composed: true }));
+const key = (k, extra = {}, target = stage) => target.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true, composed: true, cancelable: true, ...extra }));
+const press = b => { const r = b.getBoundingClientRect(), at = [r.x + r.width / 2, r.y + r.height / 2]; ptr(b, 'pointerdown', at); ptr(b, 'pointerup', at); b.click(); };
+const tick = () => new Promise(r => setTimeout(r, 0)); // a picker opens once the gesture is over (src/typed/edit.js)
+const click = s => { const g = pick(s), at = centre(s); ptr(g, 'pointerdown', at); ptr(g, 'pointerup', at); g.dispatchEvent(new MouseEvent('click', { clientX: at[0], clientY: at[1], bubbles: true, composed: true })); };
+const mount = (model, view, opts = {}) => { el.innerHTML = ''; ed = []; const h = render(el, model, { view, on: { edit: e => ed.push(e) }, ...opts }); sr = el.querySelector('.umlimator').shadowRoot; stage = pick('.stage'); return h; };
+const errors = m => validate(m).filter(p => p.level === 'error');
+const last = () => ed[ed.length - 1];
+const gives = (name, cmds, test, base, errs = 0) => { const e = last(); let m = null; try { m = e && apply(base, e.commands); } catch (x) { m = null; }
+  check(name, !!e && same(e.commands, cmds) && !!m && test(m) && errors(m).length === errs, [e, m && errors(m)]); return m; };
+const change = (t, v) => { t.value = v; t.dispatchEvent(new Event('change', { bubbles: true })); };
+const box = g => { const r = g.getBBox(); return { x: r.x, y: r.y, w: r.width, h: r.height }; };
+const inside = (a, b, m = .5) => a.x >= b.x - m && a.y >= b.y - m && a.x + a.w <= b.x + b.w + m && a.y + a.h <= b.y + b.h + m;
+const onOutline = (path, [x, y]) => { const svg = path.ownerSVGElement, p = svg.createSVGPoint(), hits = [];
+  for (let k = 0; k < 8; k++) { p.x = x + Math.cos(k * Math.PI / 4); p.y = y + Math.sin(k * Math.PI / 4); hits.push(path.isPointInFill(p)); }
+  return hits.includes(true) && hits.includes(false); };
+const FONTS = { serif: 'serif', sans: 'sans-serif', wide: 'monospace' };
+const rgba = s => { let m = /rgba?\(([^)]+)\)/.exec(s); if (m) { const p = m[1].split(/[ ,/]+/).filter(Boolean).map(Number); return [p[0] / 255, p[1] / 255, p[2] / 255, p.length > 3 ? p[3] : 1]; }
+  m = /color\(srgb ([^)]+)\)/.exec(s); if (m) { const p = m[1].split(/[ /]+/).filter(Boolean).map(Number); return [p[0], p[1], p[2], p.length > 3 ? p[3] : 1]; } return null; };
+const blend = (top, bot) => [0, 1, 2].map(i => top[i] * top[3] + bot[i] * (1 - top[3])).concat(1);
+const lum = c => { const f = v => v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]); };
+const ratio = (fg, bg) => { const [x, y] = [lum(blend(fg, bg)), lum(bg)].sort((p, q) => q - p); return +((x + 0.05) / (y + 0.05)).toFixed(2); };
+const css = (e, k) => rgba(getComputedStyle(e)[k]);
+const MODEL = await (await fetch('../docs/diagrams/examples/23-c4.json')).json();
+const DV = 'c4-placing-an-order', PV = 'c4-deployment', VI = id => MODEL.views.findIndex(v => v.id === id);
+const VIEWS = { [DV]: [9, 0, 10, ['Person', 'Container', 'External software system', 'Relationship']], [PV]: [5, 6, 5, ['Deployment node', 'Container instance', 'Relationship']] }; // elements, boxes, lines, the key
+try {
+  for (const theme of ['light', 'dark']) for (const [fname, family] of Object.entries(FONTS)) for (const direction of ['right', 'down']) for (const [vid, [kN, kB, kE, keyed]] of Object.entries(VIEWS)) {
+    document.documentElement.dataset.theme = theme; el.style.setProperty('--um-sans', family);
+    const M = structuredClone(MODEL); M.views.find(v => v.id === vid).direction = direction;
+    const tag = `${theme}, ${fname}, ${direction}, ${vid}`, h = mount(M, vid, { legend: true }), bad = [];
+    const nodes = all('.node.c4');
+    check(`${tag}: ${kN} elements, ${kB} boxes, ${kE} lines`, nodes.length === kN && all('.family').length === kB && all('.edge-g').length === kE, [nodes.length, all('.family').length, all('.edge-g').length]);
+    nodes.forEach(g => { const b = box(g.querySelector('.n-mask'));
+      g.querySelectorAll('.c-head text').forEach(t => { if (!inside(box(t), b)) bad.push(`${g.dataset.id}: "${t.textContent}" spills`); }); });
+    const boxes = nodes.map(g => [g.dataset.id, box(g.querySelector('.n-mask'))]);
+    boxes.forEach(([a, p], i) => boxes.slice(i + 1).forEach(([b, q]) => { if (p.x < q.x + q.w && q.x < p.x + p.w && p.y < q.y + q.h && q.y < p.y + p.h) bad.push(`${a} and ${b} overlap`); }));
+    // a deployment node's box holds what it owns, nested boxes too, solid, its title inside it and clear of what it holds
+    all('.family').forEach(f => { const fb = box(f.querySelector('.family-box')), own = M.nodes.filter(n => n.parent === f.dataset.family).map(n => n.id);
+      nodes.filter(g => own.includes(g.dataset.id)).forEach(g => { if (!inside(box(g.querySelector('.n-mask')), fb)) bad.push(`${g.dataset.id} outside ${f.dataset.family}`); });
+      all('.family').filter(x => own.includes(x.dataset.family)).forEach(x => { if (!inside(box(x.querySelector('.family-box')), fb)) bad.push(`${x.dataset.family} outside ${f.dataset.family}`); });
+      if (f.querySelector('.family-box').getAttribute('stroke-dasharray')) bad.push(`${f.dataset.family} dashed`);
+      f.querySelectorAll('.family-title').forEach(t => { const tb = box(t); if (!inside(tb, fb)) bad.push(`${f.dataset.family}: its title spills`); if (/…$/.test(t.textContent)) bad.push(`${f.dataset.family}: its title cut`);
+        nodes.forEach(g => { const q = box(g.querySelector('.n-mask')); if (tb.x < q.x + q.w && q.x < tb.x + tb.w && tb.y < q.y + q.h && q.y < tb.y + tb.h) bad.push(`${f.dataset.family}: its title over ${g.dataset.id}`); }); }); });
+    check(`${tag}: every text inside its element, none overlapping, every box solid and holding what it owns, its title whole and clear`, !bad.length, bad);
+    const offs = [];
+    all('.edge-g').forEach(g => { const v = g.querySelector('path.edge').getAttribute('d').match(/-?\d+(\.\d+)?/g).map(Number);
+      [[g.dataset.from, v.slice(0, 2)], [g.dataset.to, v.slice(-2)]].forEach(([id, p]) => { const n = pick(`.node[data-id="${id}"] .n-body`); if (!n || !onOutline(n, p)) offs.push([id, p]); }); });
+    check(`${tag}: each line ends on its element's outline`, !offs.length, offs);
+    const stageBg = css(pick('.stage'), 'backgroundColor'), low = [];
+    nodes.forEach(g => { const fill = blend(css(g.querySelector('.n-body'), 'fill'), stageBg);
+      g.querySelectorAll('.c-head text').forEach(t => { const c = Math.min(ratio(css(t, 'fill'), stageBg), ratio(css(t, 'fill'), fill)); if (c < 4.5) low.push([g.dataset.id, t.textContent, c]); }); });
+    all('.family-title').forEach(t => { const c = ratio(css(t, 'fill'), stageBg); if (c < 4.5) low.push(['box', t.textContent, c]); });
+    const strokes = all('.node.c4 .n-body, .family .family-box, .edge-g path.edge').map(b => ratio(css(b, 'stroke'), stageBg)).filter(c => c < 3);
+    check(`${tag}: contrast: texts 4.5:1 on the stage and on their element's fill, outlines and lines 3:1`, !low.length && !strokes.length, [low, strokes]);
+    const svg = pick('.stage svg'), imgs = all('.stage svg [role="img"]'), noAlt = [], nested = [];
+    imgs.forEach(x => { if (!(x.getAttribute('aria-label') || '').trim()) noAlt.push(x.dataset.id || x.dataset.family || x.localName);
+      x.querySelectorAll('[tabindex], a[href], button, input, select, textarea').forEach(c => { if (c.tabIndex >= 0) nested.push(`${x.dataset.id || x.dataset.family} holds ${c.getAttribute('class') || c.localName}`); }); });
+    check(`${tag}: axe, written out: the drawing a named group, its elements and boxes named images with no tab stop inside`,
+      svg.getAttribute('role') === 'group' && !!(svg.getAttribute('aria-label') || '').trim() && imgs.length === kN + kB && !noAlt.length && !nested.length, [imgs.length, noAlt, nested.slice(0, 4)]);
+    check(`${tag}: a key for every element and line`, all('.keys .um-key').length === kN + kE, all('.keys .um-key').length);
+    check(`${tag}: the key names what is drawn`, same(all('.m-legend b').map(b => b.textContent), keyed), all('.m-legend b').map(b => b.textContent));
+    if (vid === DV) check(`${tag}: the steps numbered in order, each named by its number`, same(all('.edge-g title').map(t => t.textContent.split(':')[0]), MODEL.views[VI(DV)].edges.map((_, k) => `Step ${k + 1}`))
+      && all('.e-lab, .labels text').some(t => t.textContent.startsWith('10 · ') || t.textContent === '10'), all('.e-lab, .labels text').map(t => t.textContent));
+    if (vid === PV) check(`${tag}: names a screen reader reads; an instance drawn as its container`, pick('.node[data-id="c4-api-1"]').getAttribute('aria-label') === 'Instance of container Shop API, Python, FastAPI: Catalogue, basket, checkout and accounts as a JSON API.'
+      && pick('.node[data-id="c4-api-1"] .c-st').textContent === '[Container: Python, FastAPI]'
+      && pick('.family[data-family="c4-docker"]').getAttribute('aria-label') === 'Deployment node Docker Compose, Docker Engine 27, a box holding 2 container instances'
+      && same(all('.family[data-family="c4-docker"] .family-title').map(t => t.textContent), ['Docker Compose', '[Deployment Node: Docker Engine 27]']));
+    h.destroy();
+  }
+  document.documentElement.dataset.theme = 'light'; el.style.removeProperty('--um-sans');
+
+  // ---- the dynamic view (DoD 4): a step moved by Alt + arrows, a step by L, F2 and Delete on a step
+  const BASE = structuredClone(MODEL);
+  let h = mount(BASE, DV, { editable: true });
+  h.select({ type: 'edge', ids: ['c4-api-db'], view: DV }); key('ArrowDown', { altKey: true });
+  const m1 = gives('Alt + Down on step 4: one place later', [{ op: 'move', id: 'c4-api-db', view: DV, index: 4 }], m => m.views[VI(DV)].edges[4] === 'c4-api-db', BASE);
+  h.update(m1);
+  check('after update() the numbers follow', all('.e-lab, .labels text').some(t => t.textContent.startsWith('5 · Reads and writes books')) && all('.e-lab, .labels text').some(t => t.textContent.startsWith('4 · Puts paid orders')));
+  h.select({ type: 'edge', ids: ['c4-api-db'], view: DV }); key('ArrowLeft', { altKey: true });
+  gives('Alt + Left: one place earlier', [{ op: 'move', id: 'c4-api-db', view: DV, index: 3 }], m => same(m.views[VI(DV)].edges, BASE.views[VI(DV)].edges), m1);
+  h.select({ type: 'edge', ids: ['c4-shopper-storefront'], view: DV }); const n0 = ed.length; key('ArrowUp', { altKey: true });
+  check('Alt + Up on the first step: nothing moves', ed.slice(n0).every(e => !e.commands.length), ed.slice(n0));
+  h.destroy();
+  const LESS = structuredClone(MODEL); LESS.views[VI(DV)].edges = LESS.views[VI(DV)].edges.filter(id => id !== 'c4-worker-db');
+  h = mount(LESS, DV, { editable: true });
+  click('.node[data-id="c4-worker"] .c-name'); key('l'); for (const c of 'datab') key(c); key('Enter');
+  check('L, a name and Enter open the picker with the two lines', same(all('.um-pick button').map(b => b.textContent), ['Relationship', 'Comment link']));
+  all('.um-pick button')[0].click();
+  gives('picking Relationship between two the model joins: their relationship is the last step', [{ op: 'set', view: DV, path: 'edges', value: [...LESS.views[VI(DV)].edges, 'c4-worker-db'] }], m => m.views[VI(DV)].edges.at(-1) === 'c4-worker-db', LESS);
+  click('.node[data-id="c4-courier"] .c-name'); key('l'); for (const c of 'email') key(c); key('Enter'); all('.um-pick button')[0].click();
+  gives('…and between two it does not join, a new relationship, listed last', [{ op: 'add', element: { id: 'relationship1', type: 'c4.Relationship', from: 'c4-courier', to: 'c4-mail' }, view: DV }], m => m.views[VI(DV)].edges.at(-1) === 'relationship1', LESS);
+  h.select({ type: 'edge', ids: ['c4-api-payments'], view: DV }); key('F2');
+  check('F2 on a step: a field holding its drawn text', pick('.um-rename') && pick('.um-rename').value === 'Charges cards with [HTTPS]', pick('.um-rename') && pick('.um-rename').value);
+  pick('.um-rename').value = 'Charges the card with [HTTPS]'; key('Enter', {}, pick('.um-rename'));
+  gives('…Enter: its description set, the technology left out (edits.rename)', [{ op: 'set', id: 'c4-api-payments', path: 'label', value: 'Charges the card with' }], m => m.edges.find(e => e.id === 'c4-api-payments').label === 'Charges the card with', LESS);
+  h.select({ type: 'edge', ids: ['c4-api-payments'], view: DV }); key('Delete');
+  gives('Delete on a step: out of the view, the model keeps it', [{ op: 'hide', id: 'c4-api-payments', view: DV }], m => !m.views[VI(DV)].edges.includes('c4-api-payments') && m.edges.some(e => e.id === 'c4-api-payments'), LESS);
+  all('.um-editor .um-pal button')[2].click(); pick('.um-rename').value = 'Search'; key('Enter', {}, pick('.um-rename'));
+  gives('the palette\'s Container on the dynamic view: owned by its subject, at its level (edits.add)', [{ op: 'add', element: { id: 'container1', type: 'c4.Container', label: 'Search', parent: 'c4-bookshop' }, view: DV }],
+    m => m.views[VI(DV)].nodeIds.includes('container1'), LESS);
+  h.destroy();
+
+  // ---- the deployment view (DoD 4)
+  h = mount(BASE, PV, { editable: true });
+  const panel = s => pick('.um-editor ' + s);
+  check('the palette: its three elements; the lines listed', same(all('.um-editor .um-pal button').map(b => b.textContent), ['Deployment node', 'Container instance', 'Comment']) && /Relationship, Comment link/.test(panel('.um-pal .um-note').textContent), panel('.um-pal').textContent);
+  key('n'); pick('.um-rename').value = 'Cache host'; key('Enter', {}, pick('.um-rename'));
+  const add = last(), mN = add && apply(BASE, add.commands);
+  check('N adds a deployment node, named, shown in the view', !!add && add.commands.length === 1 && add.commands[0].op === 'add' && add.commands[0].element.type === 'c4.DeploymentNode' && add.commands[0].element.label === 'Cache host' && add.commands[0].view === PV
+    && mN.views[VI(PV)].nodeIds.includes(add.commands[0].element.id) && !errors(mN).length, add);
+  all('.um-editor .um-pal button')[1].click(); await tick();
+  const cs = all('.um-pick button').map(b => b.textContent);
+  check('the palette\'s Container instance: no name asked, a picker of the containers', same(cs, ['Storefront', 'Shop API', 'Order worker', 'Database', 'Order queue']), cs);
+  press(all('.um-pick button')[2]);
+  const m2 = gives('picking Order worker: an instance of it, in the first node holding no other', [{ op: 'add', element: { id: 'c4-worker-instance', type: 'c4.ContainerInstance', label: 'Order worker', parent: 'c4-browser', props: { container: 'c4-worker' } }, view: PV }],
+    m => m.views[VI(PV)].nodeIds.includes('c4-worker-instance'), BASE);
+  h.update(m2);
+  check('after update() the instance is drawn as its container, inside its node', pick('.node[data-id="c4-worker-instance"] .c-st').textContent === '[Container: Python]'
+    && inside(box(pick('.node[data-id="c4-worker-instance"] .n-mask')), box(pick('.family[data-family="c4-browser"] .family-box'))));
+  // T: its container, picked
+  click('.node[data-id="c4-worker-instance"] .c-name'); key('t'); await tick();
+  check('T on an instance opens a picker of the containers', same(all('.um-pick button').map(b => b.textContent), cs));
+  press(all('.um-pick button')[1]);
+  gives('picking Shop API: set its container', [{ op: 'set', id: 'c4-worker-instance', path: 'props.container', value: 'c4-api' }], m => m.nodes.find(n => n.id === 'c4-worker-instance').props.container === 'c4-api', m2);
+  // the properties: an instance's container, a deployment node's technology and description
+  change(panel('[data-f="p:container"]'), 'c4-db');
+  gives('the container field', [{ op: 'set', id: 'c4-worker-instance', path: 'props.container', value: 'c4-db' }], m => m.nodes.find(n => n.id === 'c4-worker-instance').props.container === 'c4-db', m2);
+  click('.node[data-id="c4-api-1"] .c-name');
+  const own = panel('[data-f="owner"]'), opts = [...own.options].map(o => o.textContent);
+  check('the Owner field of an instance: none and every deployment node', same(opts, ['none', 'User\'s device', 'Web browser', 'Web server', 'Docker Compose', 'Database server', 'PostgreSQL']) && own.value === 'c4-docker', opts);
+  change(own, 'c4-web-host');
+  gives('Owner: reparent the instance (it leaves Docker Compose for the web server)', [{ op: 'reparent', id: 'c4-api-1', parent: 'c4-web-host' }], m => m.nodes.find(n => n.id === 'c4-api-1').parent === 'c4-web-host', m2);
+  click('.family[data-family="c4-web-host"] .family-title');
+  check('a click on a deployment node\'s title selects its box', same(h.selection && [h.selection.type, h.selection.id], ['container', 'c4-web-host']), h.selection);
+  const nodeOpts = [...panel('[data-f="owner"]').options].map(o => o.textContent);
+  check('the Owner field of a deployment node: none and every deployment node but itself and the nodes inside it', same(nodeOpts, ['none', 'User\'s device', 'Web browser', 'Database server', 'PostgreSQL']), nodeOpts);
+  change(panel('[data-f="p:technology"]'), 'Debian 13');
+  gives('a deployment node\'s technology field', [{ op: 'set', id: 'c4-web-host', path: 'props.technology', value: 'Debian 13' }], m => m.nodes.find(n => n.id === 'c4-web-host').props.technology === 'Debian 13', m2);
+  change(panel('[data-f="p:description"]'), 'The web tier.');
+  gives('a deployment node\'s description field', [{ op: 'set', id: 'c4-web-host', path: 'props.description', value: 'The web tier.' }], m => m.nodes.find(n => n.id === 'c4-web-host').props.description === 'The web tier.', m2);
+  // a relationship by L between two instances, its technology
+  click('.node[data-id="c4-worker-instance"] .c-name'); key('l'); for (const c of 'order q') key(c); key('Enter'); all('.um-pick button')[0].click();
+  gives('L between two instances: a relationship', [{ op: 'add', element: { id: 'relationship1', type: 'c4.Relationship', from: 'c4-worker-instance', to: 'c4-queue-1' } , view: PV }], m => m.edges.some(e => e.id === 'relationship1'), m2);
+  h.select({ type: 'edge', ids: ['c4-api-1-db-1'], view: PV });
+  change(panel('[data-f="p:technology"]'), 'SQL over TLS');
+  gives('a relationship\'s technology field', [{ op: 'set', id: 'c4-api-1-db-1', path: 'props.technology', value: 'SQL over TLS' }], m => m.edges.find(e => e.id === 'c4-api-1-db-1').props.technology === 'SQL over TLS', m2);
+  // hide, delete
+  click('.node[data-id="c4-db-1"] .c-name'); key('Delete');
+  gives('Delete: hide the instance from the view', [{ op: 'hide', id: 'c4-db-1', view: PV }], m => !m.views[VI(PV)].nodeIds.includes('c4-db-1'), m2);
+  click('.node[data-id="c4-queue-1"] .c-name'); key('Delete', { shiftKey: true });
+  gives('Shift + Delete: delete the instance and its relationships', [{ op: 'delete', id: 'c4-queue-1' }], m => !m.nodes.some(n => n.id === 'c4-queue-1') && !m.edges.some(e => e.to === 'c4-queue-1'), m2);
+  h.destroy();
+
+  // ---- a container deleted on the container view takes its instance (refs)
+  h = mount(BASE, 'c4-containers', { editable: true });
+  click('.node[data-id="c4-worker"] .c-name'); key('Delete', { shiftKey: true });
+  gives('Shift + Delete on a container: its instance and the instance\'s relationships go too, no error left', [{ op: 'delete', id: 'c4-worker' }],
+    m => !m.nodes.some(n => n.id === 'c4-worker-1') && !m.edges.some(e => e.from === 'c4-worker-1') && !m.views[VI(PV)].nodeIds.includes('c4-worker-1'), BASE);
+  h.destroy();
+} catch (e) { out.fail.push('threw after "' + document.title + '": ' + (e && e.stack || e)); }
+const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
+</script>

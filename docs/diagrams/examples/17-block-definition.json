@@ -6,6 +6,9 @@
     { "id": "rental-vehicle", "type": "sysml.Block", "label": "RentalVehicle" },
     { "id": "ebike", "type": "sysml.Block", "label": "EBike",
       "members": [
+        { "id": "ebike.battery", "type": "sysml.PartProperty", "label": "battery", "props": { "valueType": "Battery", "multiplicity": "1" } },
+        { "id": "ebike.controller", "type": "sysml.PartProperty", "label": "controller", "props": { "valueType": "Controller", "multiplicity": "1" } },
+        { "id": "ebike.motor", "type": "sysml.PartProperty", "label": "motor", "props": { "valueType": "Motor", "multiplicity": "1" } },
         { "id": "ebike.wheels", "type": "sysml.PartProperty", "label": "wheels", "props": { "valueType": "Wheel", "multiplicity": "2" } },
         { "id": "ebike.dock", "type": "sysml.ReferenceProperty", "label": "dock", "props": { "valueType": "Dock", "multiplicity": "0..1" } },
         { "id": "ebike.rangeEq", "type": "sysml.ConstraintProperty", "label": "rangeEq", "props": { "valueType": "RangeEquation" } }
@@ -35,10 +38,10 @@
         { "id": "charge-interface.stateOfCharge", "type": "sysml.FlowProperty", "label": "stateOfCharge", "props": { "valueType": "Percent", "direction": "out" } }
       ] },
     { "id": "range-equation", "type": "sysml.ConstraintBlock", "label": "RangeEquation",
-      "props": { "constraint": "range = capacity / consumption" },
+      "props": { "constraint": "range = energy / consumption" },
       "members": [
         { "id": "range-equation.range", "type": "sysml.ConstraintParameter", "label": "range", "props": { "valueType": "Distance" } },
-        { "id": "range-equation.capacity", "type": "sysml.ConstraintParameter", "label": "capacity", "props": { "valueType": "Energy" } },
+        { "id": "range-equation.energy", "type": "sysml.ConstraintParameter", "label": "energy", "props": { "valueType": "Energy" } },
         { "id": "range-equation.consumption", "type": "sysml.ConstraintParameter", "label": "consumption", "props": { "valueType": "EnergyPerDistance" } }
       ] },
     { "id": "voltage", "type": "sysml.ValueType", "label": "Voltage", "props": { "unit": "V", "quantityKind": "voltage" } },
