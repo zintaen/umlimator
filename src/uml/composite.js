@@ -3,7 +3,7 @@ import { esc, fit, textW } from '../core/text.js';
 import { SHAPE, boxOut, portsOn, r2 } from '../draw/shapes.js';
 import { rowsFor, untangle } from '../layout/layered.js';
 import { layoutTyped } from '../typed/layout.js';
-import { memberEdit, printMember } from './class.js'; // a subject's other members, as the class type's; SHAPE.note, a comment's look
+import { memberEdit, multBounds, printMember } from './class.js'; // a subject's other members, as the class type's; SHAPE.note, a comment's look
 import './usecase.js'; // SHAPE.ellipse, a collaboration use's; SHAPE.subject, a class subject's frame
 import { SN_SAY, STRUCT_RULES, portFit, portSides, portsDrawn, structProblems } from './structure.js';
 
@@ -35,8 +35,8 @@ const csSplit = id => { const s = String(id), k = s.indexOf('->'); return k < 0 
 const csPartText = m => { const p = CS_PROPS(m); return `${m.label ?? ''}${CS_HAS(p.valueType) ? ' : ' + p.valueType : ''}${CS_HAS(p.multiplicity) ? ` [${p.multiplicity}]` : ''}`.trim(); };
 const csPortText = m => `${m.label ?? ''}${CS_HAS(CS_PROPS(m).valueType) ? ' : ' + CS_PROPS(m).valueType : ''}`;
 function csParse(t) {
-  // the name runs to the first lone ':' (a type may be ns::T), the multiplicity is a closing non-empty [...] (T[] is a type)
-  const [, h, k] = /^(.*?)(?:\s*\[\s*([^\]\s][^\]]*?)\s*\])?$/s.exec(String(t ?? '').trim()), m = /^((?:[^:]|::)*?)\s*(?::(?!:)\s*((?:[^:]|::)*))?$/s.exec(h);
+  // the name runs to the first lone ':' (a type may be ns::T), the multiplicity is a closing [...] that is one (T[], list[str] are types)
+  const s = String(t ?? '').trim(), b = /\s*\[([^[\]]*)\]$/.exec(s), k = b && multBounds(b[1]) ? b[1].trim() : undefined, h = k ? s.slice(0, b.index) : s, m = /^((?:[^:]|::)*?)\s*(?::(?!:)\s*((?:[^:]|::)*))?$/s.exec(h);
   return m && m[1] ? { label: m[1], valueType: m[2] || undefined, multiplicity: k } : { error: 'A part is name : Type [multiplicity]' };
 }
 // a member row on owner (§12.1): `port name : Type` on a class or component is a port, any other row a part (on a collaboration,
@@ -221,10 +221,12 @@ function csGeo({ model, view, pos: pins, memo }) {
       // end label, placed when drawn (src/typed/draw.js), would not see them
       end: CS_LOOK[e.type] || { from: 'none', to: 'none' }, ...(e.type !== 'uml.CommentLink' && CS_HAS(e.label) ? { label: String(e.label), cut: 280 } : {}), ...(CS_OBJ(e.style) || typeof e.style === 'string' ? { style: e.style } : {}) }; });
   const portsWithLines = P.lines.some(l => l.f.node === P.sid && l.f.port || l.t.node === P.sid && l.t.port);
+  // a named line inward from the subject's port has its label between the border and the parts: the box's pad makes it room (audit 5)
+  const inLbl = Math.max(0, ...P.lines.filter(l => l.inner && CS_HAS(l.e.label) && l.e.type !== 'uml.CommentLink').map(l => Math.min(280, textW(String(l.e.label), 10)) + 12));
   const shape = { 'uml.Component': 'component', 'uml.Collaboration': 'collaboration' };
   const containers = [...(sBox ? [P.S] : []), ...P.collabs.map(c => c.x)].map(x => ({ id: x.id, label: csName(x), title: [...csStereo(x).map(t => `«${t}»`), csName(x)].join(' '),
     nodeIds: x === P.S ? blocks[0][0] : P.collabs.find(c => c.x === x).roles.map(m => m.id), shape: shape[x.type] || 'subject', aria: csNodeName(P, x.id),
-    ...(x === P.S && portsWithLines ? { pad: 48 } : {}), ...(x.type === 'uml.Collaboration' ? { round: true } : {}) }));
+    ...(x === P.S && portsWithLines ? { pad: 48 + (inLbl && inLbl + 24) } : {}), ...(x.type === 'uml.Collaboration' ? { round: true } : {}) }));
   // labelGaps (§8, decision 9): the role names on role bindings, which span the subject's columns, else find no spot
   const g = layoutTyped({ nodes, edges, ...(containers.length ? { containers } : {}), direction: down ? 'down' : 'right', gap: 64, rgap: 56, labelGaps: true, repair: false, reroute: false }, memo);
   const ports = [...P.sPorts.map(q => ({ q, id: q.id, owner: P.sid })), ...partPorts].map(p => ({ id: p.id, owner: p.owner, side: sides[p.id], label: csName(p.q), valueType: CS_PROPS(p.q).valueType,
@@ -239,6 +241,7 @@ function csGeo({ model, view, pos: pins, memo }) {
 const CS_RULES = {
   'subject-shown': 'the view\'s subject is a class, a component or a collaboration listed in nodeIds (a view with none: a warning)',
   'part-type': 'a part\'s valueType names exactly one class or component of the model by label',
+  'part-multiplicity': 'a part\'s multiplicity is one: 1, *, 0..1, 1..*, its lower bound not above its upper',
   'connector-part': 'an end\'s part is a part of the subject, and the end is a port of that part\'s type',
   'connector-scope': 'a connector\'s ends lie in one structure: the subject\'s ports and parts; or one collaboration\'s roles',
   'connector-drawn': 'a connector between two ports of the subject is not drawn: the box has no line to itself',
@@ -258,6 +261,8 @@ function csProblems(model, view) {
   const nodeAt = id => CS_ARR(model.nodes).indexOf(P.at.get(id)), memPath = id => { const o = P.mem.get(id).owner; return `nodes[${nodeAt(o.id)}].members[${o.members.indexOf(P.mem.get(id).m)}]`; };
   if (S && S.type !== 'uml.Collaboration') P.parts.forEach(m => { if (!P.typeOf(m)) say('warning', 'part-type', memPath(m.id) + '.props.valueType', [m.id, S.id],
     `part ${q(m.id)} of ${q(S.id)} is typed ${JSON.stringify(CS_PROPS(m).valueType ?? null)}, which names ${[...P.at.values()].some(n => CS_TYPED.includes(n.type) && CS_HAS(n.label) && n.label === CS_PROPS(m).valueType) ? 'more than one' : 'no'} class or component, so it shows only the ports its connectors reach through it`); });
+  P.parts.forEach(m => { const t = CS_PROPS(m).multiplicity, b = CS_HAS(t) ? multBounds(t) : { lower: 0, upper: 0 };
+    if (!b || b.lower > b.upper) say('warning', 'part-multiplicity', memPath(m.id) + '.props.multiplicity', [m.id], `part ${q(m.id)}'s multiplicity [${t}] ${b ? 'has its lower bound above its upper' : 'is not one (1, *, 0..1, 1..*)'}`); });
   // where an end lies: the subject's structure ('S'), a collaboration's (its id), or nowhere (null)
   const owner = id => (P.mem.get(id) || {}).owner, inS = id => S && (id === S.id || owner(id) === S);
   const structOf = (x, part) => { if (part != null) return owner(part) === S && S ? 'S' : null; if (inS(x)) return 'S'; if (S && P.uses.includes(x)) return 'S';

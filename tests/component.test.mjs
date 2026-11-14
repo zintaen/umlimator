@@ -39,7 +39,7 @@ test('the definition: uml.component is registered with its palette, its eight li
   assert.equal(T.layout.rank, false, 'the type ranks the view: the host passes the pins');
   for (const k of ['layout', 'validate', 'describe', 'boxes', 'owners', 'word', 'rows']) assert.equal(typeof T[k], 'function', k);
   assert.deepEqual(Object.keys(T.edits).sort(), ['add', 'connect', 'key', 'member', 'moveTo', 'remove']);
-  assert.deepEqual(Object.keys(T.rules).sort(), ['assembly-ends', 'ball-interface', 'component-owner', 'component-realization-ends', 'delegation-ends', 'manifest-ends', 'port-owner', 'provided-ends', 'required-ends']);
+  assert.deepEqual(Object.keys(T.rules).sort(), ['assembly-ends', 'ball-interface', 'component-owner', 'component-realization-ends', 'delegation-ends', 'line-inside', 'manifest-ends', 'port-owner', 'provided-ends', 'required-ends'].sort());
   assert.deepEqual(['uml.Component', 'uml.Interface', 'uml.Artifact'].map(t => T.member.holds({ type: t })), [true, true, false]);
 });
 
@@ -332,4 +332,18 @@ test('layout() of components nested 1,500 deep marks the padded boxes in one pas
   const t = performance.now(), g = layout({ schemaVersion: 2, nodes, edges: [{ id: 'e', type: 'uml.Dependency', from: 'c', to: 'd' }], views: [{ id: 'v', diagram: 'uml.component', nodeIds: nodes.map(n => n.id) }] }, 'v');
   assert.equal(g.edges.length, 1);
   assert.ok(performance.now() - t < 10000, 'was cubic in the depth: about a minute and a half here');
+});
+
+test("a box owned by a node is titled without the node's name, as its aria and a closed component are (audit 5)", () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'srv', type: 'uml.Node', label: 'AppServer' }, { id: 'shop', type: 'uml.Component', label: 'Shop', parent: 'srv' },
+    { id: 'cart', type: 'uml.Component', label: 'Cart', parent: 'shop' }, { id: 'pk', type: 'uml.Package', label: 'lib', parent: 'srv' }, { id: 'a', type: 'uml.Component', label: 'A', parent: 'pk' }],
+  edges: [], views: [{ id: 'v', diagram: 'uml.component', nodeIds: ['shop', 'cart', 'pk', 'a'] }] };
+  assert.deepEqual(T.boxes(m, m.views[0]).map(b => [b.title, b.aria]), [['Shop', 'Component Shop, holding 1 component'], ['lib', 'Package lib, holding 1 element']]);
+});
+
+test('line-inside: a dependency or usage between a component and what it holds, with no port, is not drawn and is warned (audit 5)', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'shop', type: 'uml.Component', label: 'Shop' }, { id: 'cart', type: 'uml.Component', label: 'Cart', parent: 'shop' }, { id: 'I', type: 'uml.Interface', label: 'Pay', parent: 'shop' }],
+    edges: [E('d1', 'Dependency', 'shop', 'cart'), E('u1', 'Usage', 'shop', 'I')], views: [{ id: 'v', diagram: 'uml.component', nodeIds: ['shop', 'cart', 'I'] }] };
+  assert.deepEqual(layout(m, 'v').edges, []);
+  assert.deepEqual(validate(m).map(p => [p.rule, p.level, p.ids]), [['line-inside', 'warning', ['d1', 'shop', 'cart']], ['line-inside', 'warning', ['u1', 'shop', 'I']]]);
 });

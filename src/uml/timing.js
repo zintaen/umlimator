@@ -364,8 +364,9 @@ function tmRemove(model, view, ids, fromModel) {
   const k = X.changes.filter(c => lanes.has(c.lifeline) && left.has(c.id)).length;
   const list = (skip = new Set()) => [[X.changes, 'change'], [X.msgs, 'message'], [X.cons, 'constraint']].map(([xs, w]) => [xs.filter(x => !left.has(x.id) && !skip.has(x.id)).length, w])
     .filter(([c]) => c).map(([c, w]) => tmPlural(c, w)).join(', ').replace(/, ([^,]*)$/, ' and $1'); // "1 change, 2 messages and 1 constraint"
-  const who = gone.lane.map(X.name).join(', '), one = gone.lane.length === 1, msgs = n ? tmPlural(n, 'message') : 'no message', more = list(theirs), all = list();
-  const say = gone.lane.length ? (fromModel ? `Deleted ${who}${all ? ', ' + all : ''}` : `Hid ${who}; deleted ${one ? 'its' : 'their'} ${msgs}${more ? `, and ${more}` : ''}; ${one ? 'its' : 'their'} ${k === 1 ? 'change stays' : 'changes stay'} in the timeline`)
+  const who = gone.lane.map(X.name).join(', '), its = gone.lane.length === 1 ? 'its' : 'their', more = list(theirs), all = list();
+  const hid = [n ? `deleted ${its} ${tmPlural(n, 'message')}${more ? `, and ${more}` : ''}` : more && `deleted ${more}`, k && `${its} ${k === 1 ? 'change stays' : 'changes stay'} in the timeline`].filter(Boolean); // only the clauses that hold (audit 5)
+  const say = gone.lane.length ? (fromModel ? `Deleted ${who}${all ? ', ' + all : ''}` : [`Hid ${who}`, ...hid].join('; '))
     : `Deleted ${all}: a change, a message or a constraint is deleted, not hidden`;
   return { commands: r, say };
 }

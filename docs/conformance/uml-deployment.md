@@ -30,7 +30,8 @@ decision of 13 Nov 2026), so a long name is not cut by its keyword.
 Rules (`notes/stage-5.md` §10.3): `deploy-ends`, `path-ends` (two targets, neither holding the other), `manifest-ends`
 (from an artifact; to anything but a component, a warning) (errors); `nest-kinds` (an error when a target's owner is not
 a target; a warning for the unusual pairs: a node in an execution environment, say), `deployed-twice` (an artifact
-nested in one target and deployed by a line to another) (warnings).
+nested in one target and deployed by a line to another), `line-inside` (a dependency, manifestation or comment link
+between a box and something it holds is not drawn) (warnings).
 
 **Departures from UML 2.5.1:** «manifest» to a component only (`manifest-ends` warns on other targets).
 

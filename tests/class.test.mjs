@@ -45,6 +45,8 @@ const CANON = [ // print(parse(x)) === x
   ['名前: String', 'uml.Property', { valueType: 'String' }],
   ['café()', 'uml.Operation', {}],
   ['tags: String[] [0..1]', 'uml.Property', { valueType: 'String[]', multiplicity: '0..1' }], // an array type: [] is not a multiplicity
+  ['+ tags: list[str] [0..1]', 'uml.Property', { visibility: 'public', valueType: 'list[str]', multiplicity: '0..1' }], // a bracket that is no multiplicity is the type's (audit 5)
+  ['counts: Dict[str, int]', 'uml.Property', { valueType: 'Dict[str, int]' }],
   ['+ f(xs: Int[]): Int[]', 'uml.Operation', { visibility: 'public', parameters: [{ name: 'xs', valueType: 'Int[]' }], returnType: 'Int[]' }],
 ];
 test('the micro-syntax: each fixture line parses to its props and prints back as written', () => {
