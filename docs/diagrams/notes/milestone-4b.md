@@ -713,6 +713,57 @@ atlas builds, `check.mjs` passes, and the example validates with the same proble
 `tools/atlas.mjs`'s `KEYS.props` gains `attachedTo`, `calledElement`, `cancelActivity`, `categoryValueRef`,
 `dataStoreRef`, `definition`, `direction`, `documentation`, `processRef`, `taskType`.
 
+### 13.1 As built (4b.5)
+
+Where 4b.5 departs from §12.3, §13, §15.2 and §18, each taken by the lead under the maintainer's standing approval (14 Nov
+2026):
+
+- **18 ids renamed, not 15.** Since this note was written the atlas gained `warehouse`, `join` and `m-charge` as other
+  elements, so the example's `bp-warehouse`, `bp-join` and `bp-m-charge` are renamed too; `tests/m4b-fixtures.test.mjs`
+  checks that no old id is left and every reference names an element or a view. Its problems are as before: none.
+- **Documentation on two tasks, no nested lane.** §3.1's nested lane would move every pin 4b.3's tests and
+  `tests/bpmn.html` hold on the example; nested lanes three deep are in `tests/bpmn-stress.json`'s `edge-cases` view,
+  which holds every row of Table 2.1 and the six extras, so each row is exercised there.
+- **The stress file's views.** `edge-cases`, `ec-closed` (the same with its sub-process closed), `ec-inside` (that
+  sub-process's own view, its `opensView`) and `all` (4b.3's generator, written out). Crossings pinned, right and down:
+  `edge-cases` 12 and 12, `ec-closed` 13 and 14, `ec-inside` 0, `all` 30 and 29; the example 5 and 6. Nothing else
+  `check()` finds, no overlap, no line through a node, no sequence flow outside its pool, every boundary circle on its
+  activity's border, in Node and in Chrome (`tests/m4b.html`, three fonts, both themes).
+- **The boundary events of S1, all four in `edge-cases`.** A timer interrupting (`ec-late`) and a message
+  non-interrupting (`ec-ping`) on one task's side, as §13 lists; a timer non-interrupting on the expanded sub-process
+  (`ec-sub-late`); and a message interrupting on the call activity (`ec-refused`, to the join), the host and target that
+  keep `edge-cases`' crossings at 12. `TABLE` checks each row's element type, name and the attributes its line lists, on
+  this view.
+- **A boundary event that moves with its task** is held on `edge-cases` itself, in memory: the test pins `ec-check`, then
+  moves the pin, and checks both its circles are on its border each time and moved with it. The fixture keeps no pin, so
+  every other view and count is laid out free (4b.3's `tests/bpmn.test.mjs` holds the same on its own small view).
+- **57 flow nodes in `all`, not 60.** The view is 4b.3's generator written out: 17 flow nodes in each of three pools and
+  three inside each of two sub-processes, 57, with the ten boundary events counted apart (§14's spike counted them so;
+  4b.3's test reaches 67 by adding them). Three more would move every pin 4b.3 and this package hold on it, and add
+  to timings already at the target in CI.
+- **CI's timings sit at the target or just over it.** On CI's runner (runs 43563271519 and 43564910738) the four
+  common edits took 97.6 to 108.2 ms and the full layout 100.4 to 105.8 ms; on the laptop 52 to 55 ms against 55 ms. Each common
+  edit lays the view out again, so it costs about a full layout; the memo spares only an edit that moves nothing. CI
+  holds the 1 s ceiling as the maintainer decided (13 Nov 2026); the release note and the conformance note say so.
+- **A sequence flow across pools** is in the JSON (an error, `sequence-scope`); `connect` between those two ends makes a
+  message flow, never a sequence flow (§7.1), so that is what the test holds.
+- **`import` and `export` on the example** are tested in `tests/import.py`, which runs where CI installs `bpmn-moddle`
+  (the `bench` job), not in `tests/cli.py`, whose job has none. §12.3's wiring of the type's layout into the CLI is in
+  `umlimator.py` (4b.4's file): with no geometry given, `export` lays the view out with `lib/umlimator-all.js` and gives
+  the writer each pool's and lane's band, each expanded sub-process's frame, each other node's box and each line's
+  points; `tests/import.py` reads them back from the XML and imports the file again, and checks the stress fixture's
+  expanded sub-process written at its frame.
+- **Files outside the Owns list**, each following the example's move or rename: `tests/bpmn.test.mjs`, `tests/bpmn.html`
+  and `tests/bpmn-xml.test.mjs` (the path and the renamed ids, their pins unchanged otherwise), `tests/import.py`,
+  `tests/atlas.test.mjs` (the atlas's diagram kinds, its crossings and the new link), `tests/core-diet.json` (the moved
+  example's fingerprints, recorded again; every other entry unchanged), `.github/workflows/check.yml` (the example loop's
+  crossing ceilings for the example, 5, and the atlas, 27), `umlimator.py` and `README.md` (`plan.md` §7's documents).
+  `tests/embed.py` also lists `tests/bpmn.html`, which 4b.3's merge left out.
+- **`proposal.md` §8.5** has no BPMN row; its §3.4 row points to §16 and the conformance note instead.
+- **Gaps found:** the PDF's tables name an unnamed gateway by its id (`fork`, `not-paid`); two lines on one boundary event
+  leave its port's face side by side, 0.76 px off its circle (inside §13's 1 px). Both are 4b.3's code, stated in the
+  conformance note and the release notes, not changed here.
+
 ## 14. Performance (P1, S16)
 
 | Fixture | Budget, in Node, CPU time, best of N after a warm-up; CI holds 1 s and prints the target |

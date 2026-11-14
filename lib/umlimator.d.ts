@@ -44,7 +44,7 @@ export interface MapNode {
 /** A typed element in schema version 2's envelope (docs/diagrams/model.md §1): a node, a member, a typed edge, a
  *  fragment. Nodes, edges, members and fragments share one id space; an id never contains "->". A typed edge is an
  *  Element with `from` and `to`, which may name a member. A typed view is a MapView with `diagram` (uml.class), and may
- *  have `subject`, `direction` ('right' | 'down'), `notation`, `present`, `fragments` and `timeline`. umlimator/all draws `uml.class` (0.18.0), `uml.object` and `uml.package` (0.19.0), `uml.sequence` and `uml.communication` (0.20.0), `uml.use-case`, `uml.activity`, `uml.state-machine` and `uml.interaction-overview` (0.21.0), `uml.component`, `uml.deployment` and `uml.composite-structure` (0.22.0), `uml.profile` and `uml.timing` (0.23.0), `er`, `flowchart`, `dfd`, `uml.information-flow` and C4's six views `c4.landscape`, `c4.context`, `c4.container`, `c4.component`, `c4.dynamic` and `c4.deployment` (0.24.0); other types draw as plain cards.
+ *  have `subject`, `direction` ('right' | 'down'), `notation`, `present`, `fragments` and `timeline`. umlimator/all draws `uml.class` (0.18.0), `uml.object` and `uml.package` (0.19.0), `uml.sequence` and `uml.communication` (0.20.0), `uml.use-case`, `uml.activity`, `uml.state-machine` and `uml.interaction-overview` (0.21.0), `uml.component`, `uml.deployment` and `uml.composite-structure` (0.22.0), `uml.profile` and `uml.timing` (0.23.0), `er`, `flowchart`, `dfd`, `uml.information-flow` and C4's six views `c4.landscape`, `c4.context`, `c4.container`, `c4.component`, `c4.dynamic` and `c4.deployment` (0.24.0), `bpmn` (0.27.0); other types draw as plain cards.
  *  From 0.19.0 the class, object and package types draw a shown package that owns something the view shows as a box holding it (`parent`), and
  *  qualify names (`sales::Order`) from the nearest shown owner, the view's `subject`, or the top. */
 export interface Element {
@@ -305,6 +305,26 @@ export interface SysmlFlowPropertyProps { direction?: 'in' | 'out' | 'inout'; va
 export interface SysmlItemFlow { item: string; direction: 'from-to' | 'to-from' }
 /** A connector's or binding's props: an end through a part or constraint property (`ends.to.part`), and an item flow. */
 export interface SysmlConnectorProps { ends?: { from?: { part?: string }; to?: { part?: string } }; itemFlow?: SysmlItemFlow; [key: string]: unknown }
+/** BPMN's vocabulary (a view with `diagram: 'bpmn'`, umlimator/all from 0.27.0; docs/conformance/bpmn.md): Table 2.1 of
+ *  BPMN 2.0.2 and six extras. A pool (`bpmn.Participant`) owns its lanes as members (`bpmn.Lane`, a lane's `parent` another
+ *  lane of its pool); a flow node's `parent` is its innermost lane, its pool, its sub-process or none. A sub-process is drawn
+ *  expanded when the view lists something it holds, else collapsed, opening its `opensView`. A boundary event sits on the
+ *  border of the activity `props.attachedTo` names. A sequence flow stays in one pool and one level; a message flow joins
+ *  two pools; the kind is picked by the ends when a line is drawn. */
+export type BpmnElementType = 'bpmn.Participant' | 'bpmn.Task' | 'bpmn.SubProcess' | 'bpmn.CallActivity' | 'bpmn.StartEvent' | 'bpmn.EndEvent'
+  | 'bpmn.IntermediateCatchEvent' | 'bpmn.IntermediateThrowEvent' | 'bpmn.BoundaryEvent' | 'bpmn.ExclusiveGateway' | 'bpmn.ParallelGateway'
+  | 'bpmn.DataObject' | 'bpmn.DataStoreReference' | 'bpmn.TextAnnotation' | 'bpmn.Group';
+export type BpmnMemberType = 'bpmn.Lane';
+export type BpmnLineType = 'bpmn.SequenceFlow' | 'bpmn.MessageFlow' | 'bpmn.Association' | 'bpmn.DataAssociation';
+/** A BPMN element's props. `definition` by kind: a start event `none`, `message` or `timer`; an end event `none`, `message`
+ *  or `terminate`; an intermediate catch event `message` or `timer`; an intermediate throw event `none` or `message`; a
+ *  boundary event `message` or `timer`. `attachedTo` and `categoryValueRef` are declared references (deleting the activity
+ *  deletes its boundary events; a deleted group is dropped). */
+export interface BpmnElementProps { documentation?: string; processRef?: string; taskType?: 'none' | 'user' | 'service';
+  definition?: 'none' | 'message' | 'timer' | 'terminate'; attachedTo?: string; cancelActivity?: boolean; calledElement?: string;
+  dataStoreRef?: string; categoryValueRef?: string[]; [key: string]: unknown }
+/** A BPMN line's props: an association's direction (its open arrowheads). A flow's `label` is its name. */
+export interface BpmnLineProps { documentation?: string; direction?: 'none' | 'one' | 'both'; [key: string]: unknown }
 /** What a line means, drawn as its colour: calls (the default), feeds (hands work on), triggers (suggests, offers, fires),
  *  state (reads or writes a file, board or config: a thinner line, a muted label, no flow) and guard (a hook steps in).
  *  Colours are --um-w-<kind>. An edge's `style` (emphasis, dashed, security) wins over its kind's colour. */

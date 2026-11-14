@@ -21,7 +21,7 @@ let BpmnModdle = null, why = '';
 try { ({ BpmnModdle } = await import(pathToFileURL(createRequire(path.join(folder, 'x')).resolve('bpmn-moddle')))); } catch (e) { why = e.message.split('\n')[0]; }
 const needs = { skip: !BpmnModdle && `bpmn-moddle is not in ${folder}: set UMLIMATOR_BPMN_MODDLE to a folder that has it (${why})` };
 const file = p => readFileSync(new URL(p, import.meta.url), 'utf8');
-const example = JSON.parse(file('../docs/diagrams/examples/24-bpmn.json'));
+const example = JSON.parse(file('../examples/bookshop-order-to-shipment.json'));
 
 // order is not meaning for nodes, lines or a view's nodes (a pool's lanes keep theirs)
 const byId = (a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
@@ -46,13 +46,13 @@ test('read(write(model)) is the BPMN example, ids included; the writer reports n
   assert.deepEqual(canon(back.model), canon(example));
   // BPMN as a modelling tool writes it: pools with their processes, a black-box pool with none, lanes naming their
   // flow nodes, a collapsed sub-process whose own diagram is its view, data associations both ways
-  assert.match(w.xml, /<bpmn:participant id="bookshop" name="Bookshop" processRef="bookshop-process" \/>/);
-  assert.match(w.xml, /<bpmn:participant id="payment-provider" name="Payment provider" \/>/);
-  assert.match(w.xml, /<bpmn:lane id="sales" name="Sales">\s+<bpmn:flowNodeRef>order-received<\/bpmn:flowNodeRef>/);
-  assert.match(w.xml, /<bpmn:boundaryEvent id="payment-timeout" name="No answer in 2 minutes" attachedToRef="take-payment">\s+<bpmn:timerEventDefinition \/>/);
+  assert.match(w.xml, /<bpmn:participant id="bp-bookshop" name="Bookshop" processRef="bp-bookshop-process" \/>/);
+  assert.match(w.xml, /<bpmn:participant id="bp-payment-provider" name="Payment provider" \/>/);
+  assert.match(w.xml, /<bpmn:lane id="bp-sales" name="Sales">\s+<bpmn:flowNodeRef>order-received<\/bpmn:flowNodeRef>/);
+  assert.match(w.xml, /<bpmn:boundaryEvent id="payment-timeout" name="No answer in 2 minutes" attachedToRef="bp-take-payment">\s+<bpmn:timerEventDefinition \/>/);
   assert.match(w.xml, /<bpmndi:BPMNShape id="pick-pack_di" bpmnElement="pick-pack" isExpanded="false">/);
   assert.match(w.xml, /<bpmndi:BPMNDiagram id="pick-and-pack" name="Pick and pack">\s+<bpmndi:BPMNPlane id="pick-and-pack-plane" bpmnElement="pick-pack">/);
-  assert.match(w.xml, /<bpmn:dataInputAssociation id="d-order-in">\s+<bpmn:sourceRef>order<\/bpmn:sourceRef>/);
+  assert.match(w.xml, /<bpmn:dataInputAssociation id="d-order-in">\s+<bpmn:sourceRef>bp-order<\/bpmn:sourceRef>/);
   assert.match(w.xml, /<bpmn:startEvent id="order-received" name="Order received">\s+<bpmn:dataOutputAssociation id="d-order-out">/);
 });
 
@@ -207,7 +207,7 @@ test('tests/import/weakened.bpmn: conditions, a default, send and receive tasks 
 });
 
 test('the diagram interchange is written from the geometry given, and moddle reads it back; other views on a plain grid', needs, async () => {
-  const geo = { nodes: [{ id: 'bookshop', x: 10, y: 300, w: 900, h: 400 }, { id: 'sales', x: 40, y: 300, w: 870, h: 200 }, { id: 'take-payment', x: 120, y: 340, w: 100, h: 64 },
+  const geo = { nodes: [{ id: 'bp-bookshop', x: 10, y: 300, w: 900, h: 400 }, { id: 'bp-sales', x: 40, y: 300, w: 870, h: 200 }, { id: 'bp-take-payment', x: 120, y: 340, w: 100, h: 64 },
     { id: 'payment-timeout', x: 154, y: 388, w: 32, h: 32 }, { id: 'not-paid', x: 300, y: 352, w: 40, h: 40 }],
   edges: [{ id: 'f-timeout', pts: [[170, 420], [170, 440], [320, 440], [320, 392]] }] };
   const { xml, report } = await write(example, 'order-to-shipment', geo, BpmnModdle());
@@ -219,7 +219,7 @@ test('the diagram interchange is written from the geometry given, and moddle rea
   for (const g of geo.nodes) assert.deepEqual(box(shapes(main).get(g.id)), { x: g.x, y: g.y, w: g.w, h: g.h }, g.id);
   const edge = main.plane.planeElement.find(x => x.bpmnElement && x.bpmnElement.id === 'f-timeout');
   assert.deepEqual(edge.waypoint.map(p => [p.x, p.y]), geo.edges[0].pts);
-  assert.deepEqual(['shopper', 'bookshop', 'sales', 'warehouse'].map(id => shapes(main).get(id).isHorizontal), [true, true, true, true]);
+  assert.deepEqual(['bp-shopper', 'bp-bookshop', 'bp-sales', 'bp-warehouse'].map(id => shapes(main).get(id).isHorizontal), [true, true, true, true]);
   assert.equal(shapes(main).get('pick-pack').isExpanded, false);
   assert.equal(main.plane.bpmnElement.$type, 'bpmn:Collaboration');
   assert.equal(inner.plane.bpmnElement.id, 'pick-pack');

@@ -5,7 +5,7 @@
  "sources": ["bookshop", "sales-classes", "bookshop-profile", "order-objects", "bookshop-packages", "checkout-sequence", "checkout-communication",
   "shopping-use-cases", "fulfil-activity", "order-states", "buy-book-overview",
   "bookshop-components", "bookshop-deployment", "order-service-structure", "bookshop-timing",
-  "bookshop-c4", "bookshop-schema", "returns-flowchart", "bookshop-data-flow", "order-information-flow"],
+  "bookshop-c4", "bookshop-schema", "returns-flowchart", "bookshop-data-flow", "order-information-flow", "bookshop-order-to-shipment"],
  "links": [
   { "element": "bookshop/shoppers", "opens": "shopping-use-cases/shopping" },
   { "element": "bookshop/storefront", "opens": "buy-book-overview/buy-book" },
@@ -34,6 +34,7 @@
   { "element": "bookshop-c4/c4-order-store", "opens": "bookshop-data-flow/dfd-level-1" },
   { "element": "bookshop-c4/c4-shopper", "opens": "shopping-use-cases/shopping" },
   { "element": "bookshop-c4/c4-staff", "opens": "returns-flowchart/returns" },
-  { "element": "bookshop-c4/c4-api-1", "opens": "bookshop-deployment/production" }
+  { "element": "bookshop-c4/c4-api-1", "opens": "bookshop-deployment/production" },
+  { "element": "shopping-use-cases/track", "opens": "bookshop-order-to-shipment/order-to-shipment" }
  ]
 }
