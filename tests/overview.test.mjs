@@ -298,3 +298,11 @@ test('performance (§17, risks.md P1): 40 nodes, 50 flows and 10 inline interact
   console.log(`# P1 target 100 ms: ` + best('property') + ' ' + `a property ${best('property')} ms`);
   assert.ok(best('axis') < 5, `a time axis ${best('axis')} ms`);
 });
+
+test('an inline interaction counts a lifeline its sequence view lists three times once, as the sequence view draws it (audit 2)', () => {
+  const m = structuredClone(EX), sd = m.nodes.find(n => n.id === 'sd-queue'), sv = m.views.find(v => v.id === sd.opensView);
+  sv.nodeIds = [...sv.nodeIds, ...sv.nodeIds, ...sv.nodeIds];
+  const n = layout(m, 'buy-book').byId['sd-queue'];
+  assert.match(n.aria, /, 3 lifelines, 3 messages$/); assert.ok(n.sd);
+  assert.deepEqual(validate(m), []);
+});

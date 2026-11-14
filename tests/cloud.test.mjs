@@ -373,3 +373,17 @@ test('P1 (§11, decision 20): on 60 services in five levels of groups and 80 con
   for (const k of ['full', 'rename', 'icon', 'move', 'connect']) assert.ok(best(k) < 1000, `${k} ${best(k)} ms`);
   console.log(`# P1 target 100 ms: a service renamed ${best('rename').toFixed(1)} ms, its icon changed ${best('icon').toFixed(1)} ms, moved into another group ${best('move').toFixed(1)} ms, a connection added ${best('connect').toFixed(1)} ms; full layout ${best('full').toFixed(1)} ms; routes ${JSON.stringify(layout(M, 'v').stats)}`);
 });
+
+test('audit 2: a node with no type in an AWS or Azure view is a card, not a user neither family has', () => {
+  for (const fam of ['aws', 'azure']) {
+    const m = { schemaVersion: 2, nodes: [{ id: 'x', label: 'Thing' }], edges: [], views: [{ id: 'v', diagram: fam, nodeIds: ['x'] }] };
+    const n = layout(m, 'v').byId.x;
+    assert.equal(n.shape, 'cloud-card', fam); assert.ok(!/^User /.test(n.aria), n.aria);
+    assert.notEqual(T[fam].word(m, 'x'), 'User', fam);
+  }
+});
+
+test('audit 2: a pin of 1e308 lays out without walking every column between', () => {
+  const m = structuredClone(AWS); m.views[0].layout = { ...(m.views[0].layout || {}), [m.views[0].nodeIds.find(id => !/group/i.test(m.nodes.find(n => n.id === id).type))]: [1e308, 0] };
+  assert.ok(layout(m, m.views[0].id).nodes.length);
+});

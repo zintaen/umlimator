@@ -159,7 +159,9 @@ const csLegend = lines => Object.keys(CS_SAYS).filter(t => lines.some(l => l.e.t
 function csRank(ids, links) {
   const outs = new Map(ids.map(id => [id, []])), st = new Map(), back = new Set(), at = Object.create(null);
   links.forEach((l, k) => outs.get(l[0]).push(k));
-  const dfs = u => { st.set(u, 1); outs.get(u).forEach(k => { const v = links[k][1]; if (st.get(v) === 1) back.add(k); else if (!st.has(v)) dfs(v); }); st.set(u, 2); };
+  const dfs = u => { const fr = [[u, 0]]; st.set(u, 1); // a stack of frames, not recursion: a chain of any length
+    while (fr.length) { const f = fr[fr.length - 1], ks = outs.get(f[0]); if (f[1] === ks.length) { fr.pop(); st.set(f[0], 2); continue; }
+      const k = ks[f[1]++], v = links[k][1]; if (st.get(v) === 1) back.add(k); else if (!st.has(v)) { st.set(v, 1); fr.push([v, 0]); } } };
   ids.forEach(id => { if (!st.has(id)) dfs(id); });
   const fwd = links.filter((l, k) => !back.has(k)), rank = Object.create(null); ids.forEach(id => { rank[id] = 0; });
   for (let i = 0, more = true; more && i <= ids.length; i++) { more = false; fwd.forEach(([a, b]) => { if (rank[b] < rank[a] + 1) { rank[b] = rank[a] + 1; more = true; } }); }

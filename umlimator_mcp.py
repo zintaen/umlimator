@@ -133,8 +133,13 @@ def node(fn, *args):
 def refs(m, items):
     """highlight's refs: a Ref as it is, a card's id as its Ref, else a line's."""
     cards, lines, out = {n["id"] for n in every(m, "nodes")}, {e["id"] for e in every(m, "edges")}, []
-    for x in items if isinstance(items, list) else [items]:
+    for i, x in enumerate(items if isinstance(items, list) else [items]):
         if isinstance(x, dict):
+            text = [k for k in ("id", "node", "container", "view", "value") if k in x and not isinstance(x[k], str)]
+            if x.get("type") not in ("node", "edge", "container", "chip", "badge") or text or "ids" in x and not (
+                    isinstance(x["ids"], list) and all(isinstance(j, str) for j in x["ids"])):
+                raise Fail(f"refs[{i}] is not a Ref: type is node, edge, container, chip or badge; ids a list of strings; "
+                           f"id, node, container, view and value strings" + (f" ({', '.join(text)} is not)" if text else ""))
             out.append(x)
         elif x in cards:
             out.append({"type": "node", "id": x})

@@ -305,7 +305,7 @@ test('audit 1: a row keeps its FK target, names with quotes or brackets round-tr
   ER_TYPE.owners(m); const row = ER_TYPE.member.print(m.nodes[2].members[0]);
   assert.equal(row, 'order_id int FK orders.id');
   assert.equal(erMember(m, m.views[0], 'line', 'line.order', row + ' NULL')[1].value.references, 'orders.id', 'NULL added: the FK still names orders.id');
-  for (const label of ['size(cm', 'note>', '"quoted"', 'a "b" c', 'back\\slash x', 'my col']) {
+  for (const label of ['size(cm', 'size)', 'note>', '"quoted"', 'a "b" c', 'back\\slash x', 'my col']) {
     const t = { schemaVersion: 2, nodes: [{ id: 't', type: 'er.Entity', label: 't', members: [C('t.c', label, { dataType: 'int' })] }], edges: [], views: [] };
     const r = erMember(t, null, 't', 't.c', printColumn(t.nodes[0].members[0]));
     assert.deepEqual([r[0].value, r[1].value], [label, { dataType: 'int' }], label);
@@ -313,4 +313,16 @@ test('audit 1: a row keeps its FK target, names with quotes or brackets round-tr
   const long = 'shipping_instructions_for_the_courier_and_the_warehouse_team';
   const w = { schemaVersion: 2, nodes: [{ id: 'o', type: 'er.Entity', label: 'orders', members: [C('o.id', 'id', { primaryKey: true, dataType: 'bigint' }), C('o.n', long, { dataType: 'text' })] }], edges: [], views: [{ id: 'v', diagram: 'er', nodeIds: ['o'] }] };
   assert.equal(layout(w, 'v').byId.o.aria, `Table orders, key id, 2 columns: id bigint PK; ${long} text`);
+});
+
+test('audit 2: an FK to a column whose id holds a space, and a column with no label, print rows that save back unchanged', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'orders', type: 'er.Entity', label: 'orders', members: [C('orders.order no', 'order no', { dataType: 'int', primaryKey: true })] },
+    { id: 'lines', type: 'er.Entity', label: 'lines', members: [C('lines.ref', 'ref', { dataType: 'int', foreignKey: true, references: 'orders.order no' })] }], edges: [], views: [] };
+  const row = (ER_TYPE.owners(m), printColumn(m.nodes[1].members[0]));
+  assert.equal(row, 'ref int FK "orders.order no"');
+  assert.equal(erMember(m, null, 'lines', 'lines.ref', row + ' UK')[1].value.references, 'orders.order no');
+  const t = { schemaVersion: 2, nodes: [{ id: 't', type: 'er.Entity', label: 't', members: [{ id: 't.qty', type: 'er.Column', props: { dataType: 'integer', primaryKey: true } }] }], edges: [], views: [] };
+  assert.equal(printColumn(t.nodes[0].members[0]), 't.qty integer PK');
+  t.nodes[0].members[0].label = '';
+  assert.ok(erMember(t, null, 't', 't.qty', printColumn(t.nodes[0].members[0])).error, 'an empty name is reported, not replaced by the type');
 });

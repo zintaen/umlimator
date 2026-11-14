@@ -447,7 +447,7 @@ test('the writer is linear in a namespace\'s dotted children, and writes a model
   for (let k = 0; k < 40000; k++) nodes.push({ id: `P.c${k}`, type: 'uml.Package', label: `c${k}`, parent: 'P' }, { id: `K${k}`, type: 'uml.Class', label: `K${k}`, parent: `P.c${k}` });
   const t0 = performance.now(), wide = write({ schemaVersion: 2, nodes, views: [] });
   assert.ok(performance.now() - t0 < 1500, `${performance.now() - t0} ms`);
-  assert.ok(wide.includes('\n  namespace P.c39999 {\n'));
+  assert.ok(wide.includes('\nnamespace P.c39999 {\n')); // over 1 MiB: unindented
   // one repeated name, 5000 deep: the reader keys each by its parent, so the model is 5000 deep; it is written, indented 32
   // deep at most, and reads back as it was
   const text = 'classDiagram\n' + 'namespace a {\n'.repeat(5000) + 'class C\n' + '}\n'.repeat(5000), m = read(text).model;
@@ -465,6 +465,20 @@ test('labels with #, a backslash, a leading <<, « or spaces at their ends round
   assert.deepEqual([back.report, back.model.nodes, back.model.edges], [[], model.nodes, model.edges]);
 });
 
+test('a member the reader would read as another, and a stereotype holding » or spaces at its ends, are named not written (audit 2)', () => {
+  const members = [['uml.Property', '#x'], ['uml.Property', 'a:b'], ['uml.Operation', 'a(b)'], ['uml.Property', 'List~T~'], ['uml.Property', '-->'], ['uml.EnumerationLiteral', 'a -> b']];
+  for (const [type, label] of members) {
+    const t = write({ schemaVersion: 2, nodes: [{ id: 'A', type: type === 'uml.EnumerationLiteral' ? 'uml.Enumeration' : 'uml.Class', members: [{ id: 'A.m', type, label }] }] });
+    assert.deepEqual([t.includes('%% not written: A.m'), read(t).model.nodes[0].members], [true, undefined], label);
+  }
+  const ok = { id: 'A.n', type: 'uml.Property', label: 'n b', props: { visibility: 'private', valueType: 'int' } };
+  assert.deepEqual(read(write({ schemaVersion: 2, nodes: [{ id: 'A', type: 'uml.Class', members: [ok] }] })).model.nodes[0].members, [ok]);
+  const model = { schemaVersion: 2, nodes: [{ id: 'A', type: 'uml.Class' }, { id: 'B', type: 'uml.Class' }],
+    edges: [{ id: 'A-B', type: 'uml.Dependency', from: 'A', to: 'B', props: { stereotypes: ['a»b', ' s '] } }] };
+  const t = write(model), back = read(t).model.edges;
+  assert.deepEqual([back[0].props, back[0].label, t.includes('%% not written: A-B: stereotype  s ')], [{ stereotypes: ['a»b'] }, undefined, true]);
+});
+
 test('the writer is linear in notes and in a view that lists its edges by id (audit 1) (timed)', () => {
   const notes = read('classDiagram\nclass A\n' + 'note for A "x"\n'.repeat(30000)).model;
   let t0 = performance.now();
@@ -475,4 +489,10 @@ test('the writer is linear in notes and in a view that lists its edges by id (au
   t0 = performance.now();
   write({ schemaVersion: 2, nodes, edges, views: [{ id: 'v', diagram: 'uml.class', nodeIds: ['A', 'B'], edges: edges.map(e => e.id) }] });
   assert.ok(performance.now() - t0 < 1500, `edges by id: ${performance.now() - t0} ms`);
+});
+
+test('a class file of 20000 nested namespaces that the reader read, once written, reads again: unindented over the limit (audit 2)', () => {
+  const m = read('classDiagram\n' + Array.from({ length: 20000 }, (_, i) => `namespace n${i} {`).join('\n') + '\nclass X\n' + '}\n'.repeat(20000)).model;
+  const back = read(write(m));
+  assert.deepEqual([back.report, back.model.nodes.length], [[], 20001]);
 });

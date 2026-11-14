@@ -90,7 +90,9 @@ function mapContext(model, opts = {}) {
   function loopsOf(v) { // edges that close a cycle, found depth-first in run order from the roots
     const ids = (v.nodeIds || []).filter(i => N[i]), edges = viewEdges(v), back = new Set(), st = {};
     edges.forEach((e, k) => { if (e.loop) back.add(k); }); // an edge marked `loop: true` is the view's loop back
-    const dfs = u => { st[u] = 1; edges.forEach((e, k) => { if (e.from !== u || e.from === e.to || e.loop) return; if (st[e.to] === 1) back.add(k); else if (!st[e.to]) dfs(e.to); }); st[u] = 2; };
+    const dfs = u => { const fr = [[u, 0]]; st[u] = 1; // a stack of frames, not recursion: a chain of any length
+      while (fr.length) { const f = fr[fr.length - 1]; if (f[1] === edges.length) { fr.pop(); st[f[0]] = 2; continue; }
+        const k = f[1]++, e = edges[k]; if (e.from !== f[0] || e.from === e.to || e.loop) continue; if (st[e.to] === 1) back.add(k); else if (!st[e.to]) { st[e.to] = 1; fr.push([e.to, 0]); } } };
     [...ids.filter(i => !edges.some(e => e.to === i && e.from !== i && !e.loop)), ...ids].forEach(i => { if (!st[i]) dfs(i); });
     if (v.render === 'sequence') { // run order: a step back to a part an earlier step already reached loops back (state may be written again later)
       const first = {}; edges.forEach((e, k) => { if (first[e.from] == null && !edges.some((x, j) => j < k && x.to === e.from)) first[e.from] = -1; if (first[e.to] == null) first[e.to] = k; });
@@ -206,7 +208,11 @@ function mapContext(model, opts = {}) {
   }
   /* a layout may place only some cards: they keep their slots, the rest take their auto-layout slot or the next free
      row below it (a complete layout is used as it is) */
+  // a pin far off the grid (1e6, 1e308) held at 64 cells past the view's count: laying out walks every column and row between (validate warns)
+  function onGrid(vid, L) { const lim = ((V[vid] || {}).nodeIds || []).length + 64, off = x => typeof x === 'number' && !(Math.abs(x) <= lim), cut = p => (Array.isArray(p) && p.some(off) ? p.map(x => (off(x) ? Math.max(-lim, Math.min(lim, x || 0)) : x)) : p);
+    return Object.values(L).some(p => cut(p) !== p) ? Object.fromEntries(Object.entries(L).map(([k, p]) => [k, cut(p)])) : L; }
   function fillLayout(vid, L) {
+    L = onGrid(vid, L);
     const bx = boxesOf(vid), ids = (V[vid].nodeIds || []).filter(i => N[i] && !bx.some(b => b.id === i)); // a box takes its place from what it holds
     if (ids.every(i => Array.isArray(L[i]))) return L;
     const auto = autoPos(vid), out = {};
@@ -375,7 +381,7 @@ function mapContext(model, opts = {}) {
     if (T) { // the type's layout (registry.js), in the host's measure (R2)
       const L = T.layout, memo = memos[vid] ||= {}, k = !override && L.key ? L.key(D, v) : null;
       if (k != null && memo.runKey === k) return memo.runGeo;
-      const pos = override || (L.pins === false ? {} : L.rank === false ? v.layout || {} : v.layout ? fillLayout(vid, v.layout) : (layoutCache[vid] ||= autoPos(vid))); // pins: false, no ranking either (notes/stage-3.md Q9)
+      const pos = override || (L.pins === false ? {} : L.rank === false ? onGrid(vid, v.layout || {}) : v.layout ? fillLayout(vid, v.layout) : (layoutCache[vid] ||= autoPos(vid))); // pins: false, no ranking either (notes/stage-3.md Q9)
       const g = L.run ? L.run(D, v, { measure: M, pos, memo }) : L({ model: D, view: v, pos, memo });
       if (k != null) Object.assign(memo, { runKey: k, runGeo: g });
       return g;

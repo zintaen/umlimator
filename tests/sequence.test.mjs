@@ -394,3 +394,15 @@ test('wrap picks a fragment id whose operand ids are free too: another fragment\
   assert.ok(Array.isArray(r), JSON.stringify(r));
   assert.deepEqual(r[0].element.members.map(o => o.id), ['f2.1', 'f2.2']);
 });
+
+test('a fragment listed twice, and a message and a use sharing an id: validate() reports the id, layout() draws (audit 2)', () => {
+  const two = { schemaVersion: 2, nodes: [{ id: 'a', type: 'uml.Lifeline' }, { id: 'b', type: 'uml.Lifeline' }], edges: [],
+    views: [{ id: 's', diagram: 'uml.sequence', nodeIds: ['a', 'b'], edges: [M('m1', 'a', 'b', 'async', { parent: 'f1.1' }), M('m2', 'b', 'a', 'async', { parent: 'f1.1' })],
+      fragments: [{ id: 'f1', type: 'uml.CombinedFragment', props: { operator: 'opt' }, members: [{ id: 'f1.1', type: 'uml.InteractionOperand' }] }] }] };
+  two.views[0].fragments.push(structuredClone(two.views[0].fragments[0]));
+  assert.deepEqual(errors(two).map(p => p.message), ['id "f1" is used twice (also views[0].fragments[0])', 'id "f1.1" is used twice (also views[0].fragments[0].members[0])']);
+  const u = { ...two, views: [{ id: 's', diagram: 'uml.sequence', nodeIds: ['a', 'b'], edges: [M('x', 'a', 'b', 'async'), { id: 'x', type: 'uml.InteractionUse', label: 'Pay', props: { covers: ['a', 'b'] } }] }] };
+  assert.deepEqual(errors(u).map(p => p.message), ['id "x" is used twice (also views[0].edges[0])']);
+  const g = layout(u, 's');
+  assert.deepEqual([g.edges.map(e => e.aria), g.nodes.filter(n => n.shape === 'use').map(n => n.aria)], [['Message 1 of 1: a to b, x, async'], ['Interaction use Pay, over a to b']]);
+});

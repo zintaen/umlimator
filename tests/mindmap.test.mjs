@@ -394,5 +394,9 @@ test('audit 1: topics in a parent cycle have the depth they are drawn at', () =>
     views: [{ id: 'v', type: 'typed', diagram: 'mindmap', nodeIds: ['x', 'y'], present: { y: { side: 'left' } } }] };
   assert.equal(mmRun(m, m.views[0]).byId.y.depth, 1);
   assert.deepEqual(mmRows(m, m.views[0], 'y'), ['Depth 1', 'Under x']);
+  assert.deepEqual(mmRows(m, m.views[0], 'x'), ['Depth 0', 'The root'], 'audit 2: the drawn root says so');
+  const m2 = { schemaVersion: 2, root: 'v', nodes: [{ id: 'c', type: T, parent: 'x' }, ...m.nodes], views: [{ id: 'v', type: 'typed', diagram: 'mindmap', nodeIds: ['c', 'x', 'y'] }] };
+  const g = mmRun(m2, m2.views[0]);
+  for (const id of ['c', 'x', 'y']) assert.equal(mmRows(m2, m2.views[0], id)[1], g.byId[id].parent == null ? 'The root' : `Under ${g.byId[id].parent}`, `audit 2: ${id}'s row names its drawn parent`);
   assert.deepEqual(validate(m).filter(p => p.rule === 'side-first'), [], 'y is first-level: its side is read');
 });

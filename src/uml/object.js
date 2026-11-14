@@ -109,9 +109,10 @@ function objectProblems(model) {
   const full = ownersOn(model, null).full, named = new Map(), add = (k, id) => named.set(k, [...(named.get(k) || []), id]);
   at.forEach(n => { if (OB_CLASSIFIERS.includes(n.type)) { add(String(n.label ?? n.id), n.id); const f = full(n.id); if (f !== String(n.label ?? n.id)) add(f, n.id); } });
   const up = new Map(); OB_ARR(model.edges).forEach(e => { if (OB_OBJ(e) && e.type === 'uml.Generalization') up.set(e.from, [...(up.get(e.from) || []), e.to]); });
-  const attrs = id => { const seen = new Set(), names = new Set(), walk = c => { if (seen.has(c) || !at.has(c)) return; seen.add(c);
-    OB_ARR(at.get(c).members).forEach(m => { if (OB_OBJ(m) && m.type === 'uml.Property') names.add(String(m.label)); }); (up.get(c) || []).forEach(walk); };
-    walk(id); return names; };
+  const attrs = id => { const seen = new Set(), names = new Set(); // a stack, not recursion: a chain of any length
+    for (const q = [id]; q.length;) { const c = q.pop(); if (seen.has(c) || !at.has(c)) continue; seen.add(c);
+      OB_ARR(at.get(c).members).forEach(m => { if (OB_OBJ(m) && m.type === 'uml.Property') names.add(String(m.label)); }); q.push(...(up.get(c) || [])); }
+    return names; };
   nodes.forEach((n, i) => { if (!OB_OBJ(n)) return; const ms = OB_ARR(n.members);
     if (n.type === 'uml.Slot') say('error', 'slot-kinds', `nodes[${i}]`, [n.id], `slot ${q(n.id)} is a node: a slot belongs to an instance`);
     ms.forEach((m, j) => { if (!OB_OBJ(m)) return; const inst = n.type === 'uml.InstanceSpecification';

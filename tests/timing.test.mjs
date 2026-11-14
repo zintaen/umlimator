@@ -435,3 +435,13 @@ test('three changes at one instant: one warning naming all three and the one dra
   assert.deepEqual(tmProblems(m, 'charge').filter(p => p.rule === 'change-instant').map(p => [p.ids, p.message]),
     [[['w-waiting', 'w-recording', 'w-done'], 'change-instant: worker changes 3 times at 760 ms (w-waiting, w-recording and w-done): only w-waiting is drawn']]);
 });
+
+test('key: S on a lifeline whose id is toString, constructor or __proto__ turns its values form on and off, an own key of present (audit 2)', () => {
+  for (const id of ['toString', 'constructor', '__proto__']) {
+    const m = JSON.parse(JSON.stringify({ schemaVersion: 2, nodes: [{ id, type: 'uml.Lifeline', label: 'L', props: { states: ['A', 'B'] } }], edges: [],
+      views: [{ id: 't', diagram: 'uml.timing', nodeIds: [id], timeline: { changes: [{ id: 'c1', lifeline: id, at: 0, state: 'A' }, { id: 'c2', lifeline: id, at: 10, state: 'B' }] } }] }));
+    const n = run(m, tmKeyHook(m, 't', [id], 'S')), P = V(n).present;
+    assert.ok(Object.hasOwn(P, id) && P[id].as === 'values', id); assert.equal({}.as, undefined);
+    assert.deepEqual(JSON.parse(JSON.stringify(V(run(n, tmKeyHook(n, 't', [id], 'S'))).present)), JSON.parse(`{"${id}":{}}`), id);
+  }
+});

@@ -54,7 +54,8 @@ def visual_cmd(tmp, *args):
 def not_objects(d):
     """Each entry upstream's validate_map reads as an object and is not one, as its problems (it would end in a traceback)."""
     lst = lambda x: x if isinstance(x, list) else []
-    out = [f"{k}[{i}] is not an object" for k in ("nodes", "edges", "views") for i, x in enumerate(lst(d.get(k))) if not isinstance(x, dict)]
+    out = [f"{k} is not a list" for k in ("nodes", "edges", "views") if k in d and not isinstance(d[k], list)]
+    out += [f"{k}[{i}] is not an object" for k in ("nodes", "edges", "views") for i, x in enumerate(lst(d.get(k))) if not isinstance(x, dict)]
     for i, v in ((i, v) for i, v in enumerate(lst(d.get("views"))) if isinstance(v, dict)):
         out += [f"views[{i}].nodes[{j}] is not an object" for j, n in enumerate(lst(v.get("nodes"))) if not isinstance(n, dict)]
         o = v.get("nodeOverrides")
@@ -253,7 +254,14 @@ def page_model(model_path, out, source=None):
     inner markup, drawn in the card's kind colour; a brand mark as a data URI on a white tile, never recoloured.
     Returns the path of a temporary copy next to the model, so relative paths still resolve. The copy's name is its
     own (renders of one model can run at once), and the page records the model's path (or `source`) as its source."""
-    m = json.loads(Path(model_path).read_text(encoding="utf-8"))
+    try:
+        m = json.loads(Path(model_path).read_text(encoding="utf-8-sig"))  # a BOM too, as import and export read
+    except ValueError as e:
+        sys.exit(f"{model_path} is not valid JSON ({e})")
+    if not isinstance(m, dict):
+        sys.exit(f"{model_path} is not a model: its JSON is not an object")
+    if bad := not_objects(m):  # before the engine, whose loader reads a view as an object before it checks anything
+        sys.exit(f"{model_path}: " + "; ".join(bad))
     # visual.py records the checkout's root relative to the page; for a page outside the checkout that path climbs
     # through the folders above it (a home folder, a user name) into a page that gets shared
     root = subprocess.run(["git", "rev-parse", "--show-toplevel"], capture_output=True, text=True).stdout.strip()
@@ -381,7 +389,7 @@ def render(a, model, show=print):
     args = ["render", "--map", model, "--no-open"]
     if a.no_check:
         args.append("--no-check")
-    if all(v.get("layout") for v in json.loads(Path(model).read_text(encoding="utf-8")).get("views") or [{}]):
+    if all(isinstance(v, dict) and v.get("layout") for v in json.loads(Path(model).read_text(encoding="utf-8")).get("views") or [{}]):
         args.append("--no-optimize")  # every view laid out already: the layout search would bake nothing (and stalls on a large page)
     with tempfile.TemporaryDirectory() as tmp, replacing(a.out) as page:
         r = run(visual_cmd(tmp, *args, "--out", str(page), *([] if a.no_check else ["--shots", tmp])))
@@ -466,7 +474,8 @@ def diff_page(before, after, near, out, stills=None):
 
 
 def model_of(text):
-    """A file's text as (its map model, or None; why it is not JSON, or None)."""
+    """A file's bytes as (its map model, or None; why it is not JSON, or None). json.loads reads UTF-8 (a BOM too),
+    UTF-16 and UTF-32; bytes that are none of them are not JSON (UnicodeDecodeError is a ValueError)."""
     if text is None:
         return None, None
     try:
@@ -485,14 +494,14 @@ def diff_since(a):
     out = Path(a.out); out.mkdir(parents=True, exist_ok=True)
     done, md, stems = [], ["<!-- umlimator-diff -->", "### Map changes", ""], set()
     for name in filter(None, changed.stdout.split("\0")):
-        old = git("show", f"{a.base}:{name}")
-        texts = (old.stdout if old.returncode == 0 else None, (top / name).read_text(encoding="utf-8") if (top / name).is_file() else None)
+        old = subprocess.run(["git", "show", f"{a.base}:{name}"], capture_output=True)  # bytes: a file need not be UTF-8
+        texts = (old.stdout if old.returncode == 0 else None, (top / name).read_bytes() if (top / name).is_file() else None)
         fname = flat(name.replace("`", "'"))  # the file's name in the summary: a code span of its own
         (before, e1), (after, e2) = model_of(texts[0]), model_of(texts[1])
         # a model that no longer parses (a conflict marker, a cut) is a change to say, not a file to skip; other JSON that
         # does not parse (a tsconfig.json with comments) is not a model
         why = [f"{at} is not valid JSON ({e})" for at, e, t, other in ((f"its version at {a.base}", e1, texts[0], after), ("it", e2, texts[1], before))
-               if e and (other or '"nodes"' in t and '"views"' in t)]
+               if e and (other or b'"nodes"' in t and b'"views"' in t)]
         if why:
             done.append({"file": name, "error": "; ".join(why)})
             md += [f"**`{fname}`**: cannot be read: " + flat("; ".join(why)), ""]
@@ -520,8 +529,19 @@ def diff_since(a):
             md += [f"_{said[:1].upper()}{said[1:]}._", ""]
     if not done:
         md += ["No map model changed."]
-    write(out / "summary.md", "\n".join(md) + "\n")
+    write(out / "summary.md", capped("\n".join(md)) + "\n")
     print(json.dumps(done, indent=1))
+
+
+def capped(md, most=60000):
+    """The summary, cut short under GitHub's 65536 characters for a comment (the Action adds its links after it): at a line,
+    never inside a sketch, and saying so. Past the limit GitHub refuses the comment, and the last push's would stay."""
+    if len(md) <= most:
+        return md
+    cut = md[:md.rfind("\n", 0, most - 200)]
+    if cut.count("\n```") % 2:  # inside a sketch: before it
+        cut = cut[:cut.rfind("\n```mermaid")]
+    return cut + "\n\n_The rest is cut: a comment holds up to 65536 characters. Every change is in the pages and stills._"
 
 
 def flat(s):
@@ -600,7 +620,7 @@ def cmd_trace(a):
 def cmd_timelapse(a):
     """The model's versions in git history, oldest first, as one page with a slider: the map eases from each version to
     the next (new cards fade in, removed ones fade out, moved ones glide), with what changed in words."""
-    log = subprocess.run(["git", "log", "--follow", "--name-only", "--format=%x00%H%x09%cs%x09%s", "--", a.model], capture_output=True, text=True)
+    log = subprocess.run(["git", "log", "--follow", "--name-only", "--format=%x00%H%x09%cs%x09%s", "--", a.model], capture_output=True, text=True, errors="replace")
     if log.returncode:
         sys.exit(log.stderr.strip())
     rows = [r.strip().split("\n") for r in log.stdout.split("\x00") if r.strip()][::-1][-a.limit:]  # each: "sha\tdate\tsubject", "", path
@@ -608,11 +628,11 @@ def cmd_timelapse(a):
     for head, *rest in rows:
         sha, day, subject = (head.split("\t", 2) + ["", ""])[:3]
         path = next((p for p in rest if p.strip()), a.model)
-        r = subprocess.run(["git", "show", f"{sha}:{path}"], capture_output=True, text=True)
+        r = subprocess.run(["git", "show", f"{sha}:{path}"], capture_output=True)  # bytes: json.loads finds the encoding
         try:
             subject = subject if len(subject) <= 90 else subject[:89].rstrip() + "…"
             versions.append({"label": f"{day} {subject}".strip(), "model": json.loads(r.stdout)})
-        except json.JSONDecodeError:
+        except ValueError:  # not JSON, or bytes in no encoding JSON has
             print(f"{sha[:7]}: {path} is not JSON there; left out", file=sys.stderr)
     if not versions:
         sys.exit(f"no versions of {a.model} in git history")
@@ -623,6 +643,17 @@ def cmd_timelapse(a):
     page = page.replace("/*__UMLIMATOR_LIB__*/", LIB.read_text(encoding="utf-8"), 1)
     write(a.out, page)
     print(json.dumps({"out": a.out, "versions": [v["label"] for v in versions]}, indent=1))
+
+
+def size(s):
+    """--size WxH, as two whole numbers above 0."""
+    try:
+        w, h = (int(x) for x in s.lower().split("x"))
+        if w > 0 and h > 0:
+            return w, h
+    except ValueError:
+        pass
+    raise argparse.ArgumentTypeError(f"{s!r} is not WxH, e.g. 1160x740")
 
 
 def at_least_1(s):
@@ -639,7 +670,11 @@ KINDS = {"rules": r' breaks rule ".*"$', "crossings": r" cross$", "rightToLeft":
          "labelOnLine": r'" lies on edge '}
 
 
-def kind_of(o):
+def kind_of(o, rules=None):
+    """A message's kind. `rules`: the broken rules the page lists apart, which are the rules; a page rendered before
+    0.28.0's next release lists none, and its rules are found by their words."""
+    if rules is not None:
+        return "rules" if o in rules else next((k for k, t in KINDS.items() if k != "rules" and re.search(t, o, re.S)), "other")
     return next((k for k, t in KINDS.items() if re.search(t, o, re.S)), "other")
 
 
@@ -652,7 +687,7 @@ def cmd_check(a):
     if bad := [k for k in asked if k not in KINDS]:
         sys.exit(f"--ignore: unknown kind {', '.join(bad)}; known: right-to-left, {', '.join(k for k in KINDS if k != 'rightToLeft')}")
     views = pick(a.page, a.views)
-    data = json.loads(DATA.search(Path(a.page).read_text(encoding="utf-8")).group(1))
+    data = page_data(a.page)[0]
     packs().check(data if "nodes" in data else data.get("map", {}))  # icon ids the cached pack lacks, with the nearest
     url = Path(a.page).resolve().as_uri() + "#check=1&theme=light" + (f"&views={fragment(views)}" if a.views else "") + ("&expand=1" if a.expand else "")
     dom = headless(chrome(), "--virtual-time-budget=6000", "--window-size=1440,900", "--dump-dom", url, timeout=a.timeout)
@@ -663,22 +698,31 @@ def cmd_check(a):
     if not re.match(r"[1-9]", str(rep.get("checked") or "")):  # "0 views"
         sys.exit(f"check: no view was checked ({rep.get('checked') or 'the page did not say what it checked'})")
     ov = rep.get("overlaps", [])
-    of = [kind_of(o) for o in ov]
+    rules = set(rep["rules"]) if isinstance(rep.get("rules"), list) else None
+    of = [kind_of(o, rules) for o in ov]
     counts = {k: of.count(k) for k in [*KINDS, "other"]}
     shown = [o for o, k in zip(ov, of) if k not in asked]
     print(json.dumps({"checked": rep.get("checked"), "counts": counts, "ignored": len(ov) - len(shown),
                       "problems": shown, "errors": rep.get("errors", [])}, indent=1))
     if rep.get("errors"):
         sys.exit("check reported errors")
-    if broken := sum(kind_of(o) == "rules" for o in shown):  # the model's own rules (#70) are a contract: CI fails on them
+    if broken := sum(k == "rules" for k in of if k not in asked):  # the model's own rules (#70) are a contract: CI fails on them
         sys.exit(f"{broken} broken rule{'s' if broken > 1 else ''}")
 
 
 DATA = re.compile(r'<script id="visual-data" type="application/json">(.*?)</script>', re.S)
 
 
+def page_data(page):
+    """A page's model, and its text and the match of DATA in it; a file that is no umlimator page ends the command."""
+    t = Path(page).read_text(encoding="utf-8", errors="replace")
+    if not (m := DATA.search(t)):
+        sys.exit(f"{page} is not a umlimator page (render the model first)")
+    return json.loads(m.group(1)), t, m
+
+
 def views_of(page):
-    data = json.loads(DATA.search(Path(page).read_text(encoding="utf-8")).group(1))
+    data = page_data(page)[0]
     return [v["id"] for v in (data.get("views") or data.get("map", {}).get("views") or [])]
 
 
@@ -703,9 +747,7 @@ def still_keys(page, opts):
     on one of its boxes, the icons and authors they use, the model's rules (a line that breaks one is drawn rose), the
     size of each card's inner view (the ⤢ pill), the engine code and the export options. A view whose key is unchanged
     since its last export draws the same still."""
-    t = Path(page).read_text(encoding="utf-8")
-    m = DATA.search(t)
-    data = json.loads(m.group(1))
+    data, t, m = page_data(page)
     engine = hashlib.sha256((t[:m.start()] + t[m.end():]).encode()).hexdigest()
     views = data.get("views") or []
     V, N = {v["id"]: v for v in views}, {n["id"]: n for n in data.get("nodes", [])}
@@ -729,6 +771,20 @@ def sha(f):
     return hashlib.sha256(Path(f).read_bytes()).hexdigest()
 
 
+def still_names(ids):
+    """Each view's file name in a stills folder: its id, with only what would leave the folder or break the name encoded
+    (% / \\ NUL, an id of . or ..), and a hash after an id that one before it matches but for case (macOS and Windows
+    fold case in file names, so the two would share files)."""
+    out, seen = {}, set()
+    for v in ids:
+        n = v.replace("%", "%25").replace("/", "%2F").replace("\\", "%5C").replace("\0", "%00")
+        n = {".": "%2E", "..": "%2E%2E"}.get(n, n)
+        if n.casefold() in seen:
+            n += "-" + hashlib.sha256(v.encode()).hexdigest()[:6]
+        seen.add(n.casefold()); out[v] = n
+    return out
+
+
 def stills(page, out, views, scale=2.0, theme="light", reader=False, again=False):
     """Each view's still as out/<view>.svg and .png: (what was exported, {view: why it failed}, the views skipped). A view
     whose key file (out/.stills/<view>.json) holds its key and both files' hashes is unchanged and skipped, unless
@@ -737,9 +793,9 @@ def stills(page, out, views, scale=2.0, theme="light", reader=False, again=False
     b, page = chrome(), Path(page).resolve()  # as_uri needs an absolute path (a relative --out)
     out.mkdir(parents=True, exist_ok=True)
     keys = still_keys(page, [float(scale), theme, bool(reader)])
-    done, failed, skipped = [], {}, []
+    done, failed, skipped, names = [], {}, [], still_names(views_of(page))
     for v in views:
-        n = urllib.parse.quote(v, safe="")  # a view id is the model's, not a path: ../x stays in out
+        n = names[v]  # a view id is the model's, not a path: ../x stays in out
         rec, files = out / ".stills" / f"{n}.json", {"svg": out / f"{n}.svg", "png": out / f"{n}.png"}
         try:
             was = json.loads(rec.read_text())
@@ -775,7 +831,8 @@ def stills(page, out, views, scale=2.0, theme="light", reader=False, again=False
 def cmd_stills(a):
     page, out = Path(a.page).resolve(), Path(a.out)
     done, failed, skipped = stills(page, out, pick(page, a.views), a.scale, a.theme, a.reader, a.all)
-    if gone := sorted({urllib.parse.unquote(r.stem) for r in (out / ".stills").glob("*.json")} - set(views_of(page))):
+    names = set(still_names(views_of(page)).values())
+    if gone := sorted(urllib.parse.unquote(r.stem) for r in (out / ".stills").glob("*.json") if r.stem not in names):
         print(f"stills: {out} still holds pictures of views the page no longer has: {', '.join(gone)}", file=sys.stderr)
     if failed:
         sys.exit(f"stills: {len(failed)} view(s) failed ({len(done)} exported, {len(skipped)} unchanged): "
@@ -845,12 +902,12 @@ def cmd_record(a):
     if Path(a.out).suffix.lower() != ".png":
         sys.exit("record: --out is a .png file, an animated PNG (GIF and MP4 need encoders umlimator does not ship: convert the PNG)")
     b, page = chrome(), Path(a.page).resolve()
-    data = json.loads(DATA.search(page.read_text(encoding="utf-8")).group(1))
+    data = page_data(page)[0]
     stories = data.get("stories") or []
     story = next((s for s in stories if isinstance(s, dict) and s.get("id") == a.story), None)
     if not story or not story.get("steps"):
         sys.exit(f"record: the page has no story {a.story!r} with steps (it has: {', '.join(str(s.get('id')) for s in stories if isinstance(s, dict)) or 'none'})")
-    w, h = (int(x) for x in a.size.lower().split("x"))
+    w, h = a.size
     with tempfile.TemporaryDirectory() as tmp:
         frames, delays = [], []
         for n, step in enumerate(story["steps"], 1):
@@ -1011,7 +1068,7 @@ def main():
     pd.add_argument("--paper", default="a4", choices=["a4", "letter"], help="the paper, across (default a4)"); pd.set_defaults(f=cmd_pdf)
     rc = sub.add_parser("record", help="a story as an animated PNG, a frame per step and frames along a step's tour"); rc.add_argument("page")
     rc.add_argument("--story", required=True); rc.add_argument("--out", required=True, help="a .png file")
-    rc.add_argument("--size", default="1160x740", help="the window, WxH (up to 1180 wide the views list stays shut)"); rc.add_argument("--scale", type=float, default=1)
+    rc.add_argument("--size", type=size, default="1160x740", help="the window, WxH (up to 1180 wide the views list stays shut)"); rc.add_argument("--scale", type=float, default=1)
     rc.add_argument("--theme", default="light", choices=["light", "dark"]); rc.set_defaults(f=cmd_record)
     i = sub.add_parser("pin-icons", help="record each new brand mark's sha256 and move it out of icons/ into the cache"); i.set_defaults(f=cmd_pin_icons)
     pk = sub.add_parser("pack", help="the cloud vendors' icon packs, fetched only on request and after their terms (icons/packs.json)")

@@ -161,10 +161,11 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
   const CG = dg.gap ? dg.gap : map ? (dg.mainSteps && !dg.containers ? 38 : 66) : CG0, RG = dg.rgap ? dg.rgap : map ? 44 : RG0; // family borders also need clearance between columns
   const NH = dg.nodeH || 64, pitch = NH + RG;
   const C = map ? 16 : 12, STUB = dg.mainSteps ? C : C + 6, SEP = 10; // maps: 16 px clear of other nodes
+  const lim = (dg.nodes || []).length + 64, cl = v => Math.max(-lim, Math.min(lim, v)); // a pin far off the grid (1e6, 1e308) is held at its edge: the column and row loops walk every index between
   const nodes = (dg.nodes || []).map((n, i) => {
     const k = kindOf(n.kind, map);
     const w = n.w || (map ? mapNodeW(n) : NW);
-    return { ...n, k, col: n.col ?? i, row: n.row ?? 0, w, h: n.h || NH };
+    return { ...n, k, col: cl(n.col ?? i), row: cl(n.row ?? 0), w, h: n.h || NH };
   });
   const byId = Object.fromEntries(nodes.map(n => [n.id, n]));
   const cols = dg.abs ? [] : [...new Set(nodes.map(n => n.col))].sort((a, b) => a - b);

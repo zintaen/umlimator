@@ -340,3 +340,11 @@ test('P1 (§12): on 3 profiles, 40 stereotypes, 50 metaclass references and appl
   assert.ok(best('tag') < 1000, `a tag value ${best('tag')} ms`); assert.ok(best('stereo') < 1000, `a stereotype added ${best('stereo')} ms`);
   console.log(`# P1 target 100 ms: a tag value set ${best('tag').toFixed(1)} ms, a stereotype added ${best('stereo').toFixed(1)} ms; full layout ${best('full').toFixed(1)} ms`);
 });
+
+test('validate() of a 3,000-deep stereotype chain listed most specialized first: tag definitions gathered without recursion (audit 2)', () => {
+  const nodes = [{ id: 'P', type: 'uml.Profile', label: 'P' }, { id: 'pk', type: 'uml.Package', label: 'pk' }, { id: 'mc', type: 'uml.MetaclassReference', label: 'Class', parent: 'P' }];
+  const edges = [{ id: 'app', type: 'uml.ProfileApplication', from: 'pk', to: 'P' }, { id: 'ex', type: 'uml.Extension', from: 's0', to: 'mc' }];
+  for (let i = 2999; i >= 0; i--) nodes.push({ id: 's' + i, type: 'uml.Stereotype', label: 'S' + i, parent: 'P' });
+  for (let i = 1; i < 3000; i++) edges.push({ id: 'g' + i, type: 'uml.Generalization', from: 's' + i, to: 's' + (i - 1) });
+  assert.deepEqual(validate({ schemaVersion: 2, nodes, edges, views: [{ id: 'v', diagram: 'uml.profile', nodeIds: ['P'] }] }), []);
+});
