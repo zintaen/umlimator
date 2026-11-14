@@ -4142,7 +4142,7 @@ fixtures, examples and documents come in 0.26.0 and 0.27.0, whose sections say w
 - **Size at release:** `lib/umlimator.js` is 186.2 kB (186,174 B) with `gzip -9`, 12.86% over 0.16.0 (the budget is
   15%). `lib/umlimator-all.js` is 590.2 kB (590,184 B). The npm package is 845 kB.
 
-## 0.26.0 (in progress): the mindmap; Google Cloud, Azure and AWS diagrams; icon packs fetched after the vendor's terms
+## 0.26.0: the mindmap; Google Cloud, Azure and AWS diagrams; icon packs fetched after the vendor's terms
 
 Milestone 4a of the plan for 28 diagram types (`docs/diagrams/notes/milestone-4a.md`), merged to `main` before 0.26.0
 ships (after 0.25.0), provisional until then. Everything is additive: maps, every typed view released before and every
@@ -4260,6 +4260,12 @@ What moves for a host that upgrades from 0.25.0:
 - **Size:** `lib/umlimator.js`, what a map host loads, is 186,161 B with `gzip -9`: 12.86% over 0.16.0 (the budget is
   15%). Milestone 4a spent 266 B of its 700 B share, all in 4a.2 (185,873 B to 186,139 B; 4a.4 and 4a.6 none).
   `lib/umlimator-all.js` is 590,167 B gzipped with milestones 3, 4a and 4b's code on `main`. The npm package is 845.5 kB.
+
+- **At release:** BPMN (milestone 4b, 4b.0 to 4b.5) is also on `main`, so this release carries it, provisional until
+  0.27.0, whose section says what it does. `lib/umlimator.js` is 186.2 kB (186,174 B) with `gzip -9`, 12.86% over
+  0.16.0 (the budget is 15%); `lib/umlimator-all.js` is 590.3 kB (590,335 B); the npm package is 852 kB. The three
+  vendors' packs are pinned (#289): `umlimator.py pack fetch gcp|azure|aws` works after the vendor's terms.
+
 
 ## 0.27.0 (in progress): the BPMN diagram; BPMN XML read and written through bpmn-moddle; `umlimator.py export`
 

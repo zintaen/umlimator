@@ -25,8 +25,8 @@ Update this table in every pull request that belongs to the plan.
 | 5 | 0.22.0 | Component, deployment, composite structure | Design note approved ([`notes/stage-5.md`](notes/stage-5.md)), every recommendation of §18 taken. 5.0 to 5.8, the follow-ups, the ELK trial (own engine only, L9 closed) and C10 merged. Released 13 Nov 2026 (b828e9d, GitHub and npm latest) | #215, #216, #218, #219, #220, #223, #224, #225, #227, #232, #233, #236, #246 |
 | 6 | 0.23.0 | Profile, timing | Design note approved ([`notes/stage-6.md`](notes/stage-6.md)), every recommendation of §16 taken. Released 14 Nov 2026 (05b913d, GitHub and npm latest): **the 14 UML types are complete** | #230, #231, #237 to #241, #244, #245, #251 |
 | Milestone 2 | 0.24.0 | ER, flowchart, data flow, information flow, C4 | Design note approved ([`notes/milestone-2.md`](notes/milestone-2.md)). Released 14 Nov 2026 (3e74d96, GitHub and npm latest) | #234, #247, #253 to #264, #268, #273 |
-| Milestone 3 | 0.25.0 | SysML v1.7's four diagrams | Design note approved ([`notes/milestone-3.md`](notes/milestone-3.md)). M3.0 to M3.7 merged. Releasing 0.25.0 (this PR) | #242, #265, #269, #274 to #276, #279, #283, #285, (this PR) |
-| Milestone 4 | 0.26.0, 0.27.0 | AWS, GCP, Azure, mindmap; BPMN | Design notes approved: 4a ([`notes/milestone-4a.md`](notes/milestone-4a.md); AWS gated until AWS answers the maintainer's email of 14 Nov 2026) and 4b, BPMN ([`notes/milestone-4b.md`](notes/milestone-4b.md)); 4b.0 being built | #235, #243 |
+| Milestone 3 | 0.25.0 | SysML v1.7's four diagrams | Design note approved ([`notes/milestone-3.md`](notes/milestone-3.md)). Released 14 Nov 2026 (GitHub and npm latest) | #242, #265, #269, #274 to #276, #279, #283, #285, #288 |
+| Milestone 4 | 0.26.0, 0.27.0 | AWS, GCP, Azure, mindmap; BPMN | Design notes approved (4a: [`notes/milestone-4a.md`](notes/milestone-4a.md); 4b: [`notes/milestone-4b.md`](notes/milestone-4b.md)). 4a.0 to 4a.8 merged, AWS on (AWS accepted the maintainer's request by email, 14 Nov 2026), the three packs pinned (#289): releasing 0.26.0 (this PR). 4b.0 to 4b.5 merged: 0.27.0 next. **All 28 types are on `main`** | #243, #235, #248, #265 to #267, #270 to #272, #277, #278, #280 to #282, #284, #286, #287, #289, (this PR) |
 | After the 28 types | 0.28.0 and later | What the maintainer asks for next | Not started | |
 | Stabilization | 1.0.0 | Frozen API and schema, conformance notes; when the maintainer says it is ready | Not started | |
 
@@ -341,3 +341,7 @@ node docs/diagrams/examples/check.mjs         # the target examples match model.
   user's machine; icons unmodified with the service name beside each; a not-affiliated line and AWS's trademark line.
   The icon-pack question is answered for all three vendors. Work package 4a.8 turns AWS on: `CLOUD_AWS`, the pinned
   `aws` row, `examples/bookshop-aws.json`.
+- **14 Nov 2026 (0.25.0; all 28 types on `main`).** 0.25.0 released (#288): SysML. Milestone 4a (the mindmap; Google
+  Cloud, Azure and AWS, AWS accepted by email; icon packs pinned and fetched after the vendor's terms) and milestone 4b
+  (BPMN) merged: every one of the 28 types is on `main`. 0.26.0 and 0.27.0 follow, then the maintainer's review and fix
+  loop (the standing goal of 14 Nov 2026).
