@@ -1104,6 +1104,39 @@ The five target examples move to `examples/bookshop-schema.json`, `examples/retu
 `examples/bookshop-data-flow.json`, `examples/order-information-flow.json` and `examples/bookshop-c4.json` (M2.13), and
 join the gallery and CI.
 
+**Amended in M2.14's build.** Each choice taken by the lead under the maintainer's standing approval (14 Nov 2026), the
+note's direction kept:
+
+- **The stress files' views.** A file holds its `edge-cases` view and the views beside it a case needs: ER's
+  `edge-cases-idef1x` (the IDEF1X copy); the DFD's `ec-level-2`, `ec-level-2-gs` (both notations of one level),
+  `ec-level-3` and `ec-pay-level` (made by `D` when the file was written, so it is `D`'s output); C4's `ec-landscape`,
+  `ec-context`, `edge-cases` (a container view: every shape, and another container's component, the error),
+  `ec-component`, `ec-dynamic` and `ec-deployment`. Each `all` view is the type's own P1 generator, written out. The
+  twelve dynamic steps run from a person along a chain of the twelve containers: a ring of them made the container
+  view's lines cross the row in Chrome.
+- **What the fixtures keep**, pinned in `tests/m2-fixtures.test.mjs` and stated in each conformance note: the
+  edge-case and minimal views are clean but for crossings (DFD's level 2: 2 right, 1 down; information flow: 2 right;
+  C4's container view: 1 down). One label is not drawn: the information flow fixture's flow to a gone id finds no room
+  beside the class flow into the same box. The generated `all` views cross as repair and reroute off leave them (ER 18
+  and 25, flowchart 4 and 4, DFD none, information flow 149 and 121 with labels on lines, C4 94 and 98); C4's crowded
+  container view also runs lines through cards the router found no way round (237 right, 202 down). §10's "no line
+  through a node" holds for every view but that one.
+- **The readers' construct files** (DoD 2's reader half) read into models whose types' `validate` finds no error but
+  one: `tests/import/er.mmd`'s `DOCK }o--|| HARBOUR` is identifying with its many end first, as Mermaid's text writes it,
+  and `identifying-parent` names it (the reader keeps Mermaid's left-to-right order). The warnings are counted by rule.
+- **`check.mjs` does not import the five types** (§3 says each type's `validate` runs there). With them imported,
+  `tests/delete-cascade.test.mjs`, which loads its types through `check.mjs`, finds that single deletes leave new errors in
+  the moved examples and the atlas: deleting a C4 view's subject leaves `c4-subject` (and `c4-level` for its components)
+  in 10 cases, and deleting or hiding a DFD level's external entity or store leaves `dfd-balance` in 16. Closing them is
+  the C4 and DFD types' `remove` hooks' work (M2.6's, M2.4's), as stage 6's follow-up closed M15; until then the five
+  examples' `validate` runs in `tests/atlas.test.mjs` (each view, alone and in the atlas) and the readers' files' in
+  `tests/m2-fixtures.test.mjs`. `risks.md` M15 records it.
+- **`tests/m2.html`** opens each link of `tools/atlas-links.json` in the atlas's page (M2.13's "each link opens its
+  view in the page"): Enter opens a selected card only, so a link on an element every view draws as a box cannot be
+  opened there; two of stages 5 and 6 are such (`bookshop-packages/sales`, `bookshop-deployment/jvm`), pinned as known.
+- **The documents** of `plan.md` §7 and §15's changes to `model.md` and `risks.md` (rows 15, 20 to 23, rule 10, §3;
+  C5, C8, C10, M9, G3, ER, P1, R9, and two new rows: M16 for Q5, M17 for the atlas's ids).
+
 ## 11. Performance (S19)
 
 | Fixture | Budget, in Node, CPU time, best of seven after a warm-up |
