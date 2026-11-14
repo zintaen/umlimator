@@ -3,7 +3,7 @@ import { esc, fit } from '../core/text.js';
 import { SHAPE, r2, sidePorts } from '../draw/shapes.js';
 import { layoutTyped } from '../typed/layout.js';
 import { ownersOn, readingOrder } from '../uml/owners.js';
-import { C4_DEF, C4_RULES, C4_WORD, c4Index, c4Pic, c4Lines, c4Problems, c4NodeName, c4LineName, c4LineLabel, c4Shape, c4TagOf, c4Ext, c4Key, c4Owners } from './c4.js';
+import { C4_DEF, C4_RULES, C4_WORD, c4Index, c4Pic, c4Lines, c4Problems, c4Legend, c4NodeName, c4LineName, c4LineLabel, c4Shape, c4TagOf, c4Ext, c4Key, c4Owners } from './c4.js';
 
 /* ---------- C4's dynamic and deployment views, c4.dynamic and c4.deployment (work package M2.7, notes/milestone-2.md §7.5.2,
    §7.5.3, §5.1) ----------
@@ -79,9 +79,7 @@ function dynGeo({ model, view, pos, memo }) {
   g.nodes.forEach(n => { const p = (n.sh === 'person' || n.sh === 'robot') && sp.get(n), t = p ? Math.min(p.L, p.R) : Infinity; if (t < n.y + 14) lift.set(n, { ...n, portTop: t }); });
   const out = lift.size ? { nodes: g.nodes.map(n => lift.get(n) || n), byId: Object.fromEntries(g.nodes.map(n => [n.id, lift.get(n) || n])),
     edges: g.edges.map(e => (lift.has(e.s) || lift.has(e.t) ? { ...e, s: lift.get(e.s) || e.s, t: lift.get(e.t) || e.t } : e)) } : {};
-  const els = [...new Map(nodes.filter(n => n.shape === 'c4').map(n => [`${n.type} ${n.sh} ${n.ext}`, n])).values()];
-  const legend = [...els.map(n => vItem(`${n.ext ? 'External ' + C4_WORD[n.type].toLowerCase() : C4_WORD[n.type]}${n.sh !== 'box' && !(n.sh === 'person' && n.type === 'c4.Person') ? ', ' + n.sh : ''}`,
-    n.ext ? 'outside the system, drawn grey' : `a ${C4_WORD[n.type].toLowerCase()}`, vSwatch(n.ext))), ...vLines(edges, 'a step, numbered in time order, with its technology in brackets')];
+  const legend = c4Legend(nodes, edges, 'a step, numbered in time order, with its technology in brackets');
   return { ...g, ...out, legend, order: [...readingOrder(pic), ...edges.map(e => e.id)] };
 }
 function dynProblems(model, view) {
@@ -96,7 +94,7 @@ function dynProblems(model, view) {
   // its steps (§5.1): each a model relationship, each once, between elements the view shows
   const pic = c4Pic(model, view), ends = new Set(pic.ids.filter(id => !pic.open.has(id))), rel = new Set(I.rels.map(r => r.id)), seen = new Set();
   V_ARR(view.edges).forEach((x, k) => { const p = `${at}.edges[${k}]`;
-    if (V_OBJ(x) && x.type === 'c4.Relationship') return out.push(say('error', 'c4-steps', p, [x.id], `step ${x.id} is written in the view: a step names a relationship of the model`));
+    if (V_OBJ(x) && x.type === 'c4.Relationship') return out.push(say('error', 'c4-steps', p, [x.id], `step ${typeof x.id === 'string' ? x.id : `at edges[${k}]`} is written in the view: a step names a relationship of the model`));
     if (V_OBJ(x)) return out.push(say('error', 'c4-steps', p, [typeof x.id === 'string' ? x.id : null], `step ${JSON.stringify(typeof x.id === 'string' ? x.id : null)} is written in the view and is no relationship: a step names a relationship of the model`));
     if (typeof x !== 'string' || !(rel.has(x) || I.E.some(e => e.id === x && e.type === 'uml.CommentLink'))) return out.push(say('error', 'c4-steps', p, [String(x)], `step ${JSON.stringify(String(x))} is no relationship of the model`));
     if (!rel.has(x)) return null;

@@ -483,3 +483,12 @@ test('performance (§14, S16): the stress view\'s full layout and the common edi
   console.log('# 4b.3 timings: ' + Object.entries(best).map(([k, v]) => `${k} ${v.toFixed(1)} ms (target ${k === 'full layout' ? 1000 : 100} ms)`).join(', '));
   Object.entries(best).forEach(([k, v]) => assert.ok(v < 1000, `${k} ${v} ms`));
 });
+
+test('audit 1: deleting a lane keeps its nested lanes in its place', () => {
+  const m = { schemaVersion: 2, nodes: [N('P', 'Participant', 'Shop', { members: [{ id: 'B', type: 'bpmn.Lane', label: 'B', parent: 'A' }, { id: 'A', type: 'bpmn.Lane', label: 'A', parent: 'G' },
+    { id: 'G', type: 'bpmn.Lane', label: 'G' }, { id: 'H', type: 'bpmn.Lane', label: 'H' }] }), N('s', 'StartEvent', null, { parent: 'B' }), N('t', 'Task', 'T', { parent: 'A' }), N('e', 'EndEvent', null, { parent: 'H' })],
+  edges: [F('f1', 's', 't'), F('f2', 't', 'e')], views: [{ id: 'v', diagram: 'bpmn', nodeIds: ['P', 's', 't', 'e'] }] };
+  const lanes = x => layout(x, 'v').bands.filter(b => b.depth).sort((a, b) => a.y - b.y).map(b => b.id).join(' ');
+  assert.equal(lanes(m), 'G A B H');
+  assert.equal(lanes(apply(m, bzRemove(m, m.views[0], ['G'], false).commands)), 'A B H');
+});

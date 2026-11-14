@@ -71,7 +71,8 @@ PDF's text read back by `tests/cli.py`.
 
 ## Accessibility
 
-Every piece has a name: "Table order_line, key order_id and line_no, 4 columns"; "Identifying relationship contains
+Every piece has a name: "Table order_line, key order_id and line_no, 4 columns: order_id bigint PK FK order.id; …",
+each row whole; "Identifying relationship contains
 from order (exactly one) to order_line (one or more)". Tab reads the entities, then the lines. Text reads at 4.5:1,
 lines and outlines at 3:1 in both themes (`tests/er.html`, `tests/m2.html`). Every gesture has a key
 (`docs/editing.md`).

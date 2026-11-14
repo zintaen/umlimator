@@ -42,8 +42,8 @@ function mmIndex(model, V) {
   const reach = (root, k) => { for (const s = [root]; s.length;) { const id = s.pop(); tree.set(id, k); trees[k].list.push(id);
     kids.get(id).forEach(c => { if (!tree.has(c)) { depth.set(c, depth.get(id) + 1); s.push(c); } }); } };
   roots.forEach(r => { depth.set(r, 0); trees.push({ root: r, list: [] }); reach(r, trees.length - 1); });
-  const lost = ids.filter(id => !tree.has(id)); // a cycle of shown topics: one tree, from the first, layoutTree hanging the rest
-  if (lost.length) { trees.push({ root: lost[0], list: [] }); lost.forEach(id => { tree.set(id, trees.length - 1); trees.at(-1).list.push(id); }); }
+  const lost = ids.filter(id => !tree.has(id)); // a cycle of shown topics: one tree, from the first, layoutTree hanging the rest; each depth as drawn
+  if (lost.length) { trees.push({ root: lost[0], list: [] }); lost.forEach(id => { if (!tree.has(id)) { depth.set(id, id === lost[0] ? 0 : 1); reach(id, trees.length - 1); } }); }
   trees.forEach(t => t.list.sort((a, b) => pos.get(a) - pos.get(b))); // children in nodeIds order
   const side = id => (MM_OBJ(P[id]) && (P[id].side === 'left' || P[id].side === 'right') ? P[id].side : null);
   return { N, topic, pos, ids, shown, up, kids, roots, trees, depth, P, side, parentOf };
