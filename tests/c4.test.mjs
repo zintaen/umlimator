@@ -184,6 +184,9 @@ test('names, reading order and the key (A1, §7.5): each element by type, techno
   const g = layout(C4, 'c4-containers'), s = svgOf(g);
   assert.equal(g.byId['c4-api'].aria, 'Container Shop API, Python, FastAPI: Catalogue, basket, checkout and accounts as a JSON API., opens Shop API: components');
   assert.equal(g.byId['c4-shopper'].aria, 'Person Shopper: Browses the catalogue, buys books and tracks orders.');
+  // audit 6: the word "opens" in the element's own text does not stand for its type saying which view it opens
+  const said = structuredClone(C4); said.nodes.find(n => n.id === 'c4-api').props.description = 'Takes orders and opens baskets.';
+  assert.equal(layout(said, 'c4-containers').byId['c4-api'].aria, 'Container Shop API, Python, FastAPI: Takes orders and opens baskets., opens Shop API: components');
   assert.equal(g.byId['c4-payments'].aria, 'External software system Payment provider: Takes card payments and makes refunds.');
   assert.equal(g.families[0].aria, 'Software system Bookshop, a boundary holding 5 containers');
   assert.equal(g.edges.find(e => e.id === 'c4-storefront-api').aria, 'Relationship from Storefront to Shop API: Reads the catalogue and places orders through [JSON over HTTPS]');
