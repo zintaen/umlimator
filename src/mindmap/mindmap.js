@@ -87,7 +87,7 @@ function mmRun(model, view) {
     const branches = new Map(); // a first-level topic's subtree in pre-order (nodes come in pre-order)
     o.nodes.forEach(t => { const x = X.N.get(t.id), k = kids.get(t.id) || 0, v = opens(t.id), p = up.get(t.id), s = size.get(t.id);
       const n = { id: t.id, shape: 'mm-topic', type: MM_T, label: mmText(x), k: 'file', x: t.x, y: r2(t.y + dy), w: t.w, h: t.h, depth: t.depth, side: t.side, branch: t.branch,
-        ink: t.branch == null ? null : ink.get(t.branch), root: t.depth === 0, lines: s.lines, tw: s.tw, opens: v ? String(v.title ?? v.id) : null, parent: p ?? null,
+        ink: t.branch == null ? null : ink.get(t.branch), root: t.depth === 0, lines: s.lines, tw: s.tw, opens: v ? String(v.title ?? v.id) : null, saysOpens: !!v, parent: p ?? null,
         aria: `Topic ${mmOne(x)}, ${p == null ? 'the root' : `under ${mmOne(X.N.get(p))}`}${k ? `, ${mmPlural(k, 'subtopic')}` : ''}${v ? `, opens ${v.title ?? v.id}` : ''}` };
       nodes.push(n); byId[n.id] = n;
       x0 = Math.min(x0, n.x); y0 = Math.min(y0, n.y); x1 = Math.max(x1, n.x + n.w); y1 = Math.max(y1, n.y + n.h);

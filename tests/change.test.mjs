@@ -137,3 +137,13 @@ test('audit 5: diff() says what only a view changes (a card renamed there, moved
   assert.deepEqual(t(v => { v.title = 'W'; }), [['retitles the view V to W'], ['v'], undefined]);
   assert.deepEqual(t(() => {}), [[], [], undefined]);
 });
+
+test('audit 6: diff() says a line a view hid or showed, and a sequence view\'s steps reordered, and lists that view', () => {
+  const base = () => ({ nodes: [{ id: 'a', label: 'A' }, { id: 'b', label: 'B' }, { id: 'c', label: 'C' }], edges: [{ id: 'e1', from: 'a', to: 'b', label: 'calls' }, { id: 'e2', from: 'b', to: 'c' }],
+    views: [{ id: 'v', title: 'V', render: 'sequence', nodeIds: ['a', 'b', 'c'], edges: ['e1', 'e2'] }] });
+  const t = f => { const b = base(); f(b.views[0]); const d = diff(base(), b); return [d.summary, d.views, d.model.views[0].edges.map(e => typeof e === 'string' ? e : `${e.id}:${e.style}`)]; };
+  assert.deepEqual(t(v => { v.edges = ['e1']; }), [['takes the line from B to C out of the view V'], ['v'], ['e1', 'e2:removed']]);
+  assert.deepEqual(diff((m => { m.views[0].edges = ['e2']; return m; })(base()), base()).summary, ['puts the line from A to B (calls) in the view V']);
+  assert.deepEqual(t(v => { v.edges = ['e2', 'e1']; }), [['reorders the steps in the view V'], ['v'], ['e2', 'e1']]);
+  assert.deepEqual(t(() => {}), [[], [], ['e1', 'e2']]);
+});
