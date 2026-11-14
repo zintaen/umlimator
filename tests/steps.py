@@ -101,6 +101,8 @@ elif a[0] == "api" and "--paginate" in a:
 elif a[0] == "api":
     if F == "write":
         fail("gh: Resource not accessible by integration (HTTP 403)")
+    if F == "long":
+        fail("gh: Validation Failed (HTTP 422)\nbody is too long (maximum is 65536 characters)")
     body = Path(opt("-F").removeprefix("body=@")).read_text()
     if a[1:3] == ["-X", "PATCH"]:
         f = S / "comments" / f"{a[3].rsplit('/', 1)[1]}.json"
@@ -276,6 +278,9 @@ s = fresh()
 r = comment(s, A, fail="write")
 ok("action · a write refused on the repository's own pull request names the cause and the permission it needs, not a fork (action-comment#3)",
    r[0] == 0 and "::warning::" in r[1] and "HTTP 403" in r[1] and "pull-requests: write" in r[1] and "fork" not in r[1], r)
+r = comment(s, A, fail="long")
+ok("action · a write refused for another reason (a body too long) says that reason, not the permission (audit 2)",
+   r[0] == 0 and "::warning::" in r[1] and "too long" in r[1] and "pull-requests: write" not in r[1], r)
 r = comment(s, A, fail="write", fork="true")
 ok("action · on a fork's pull request it is the read-only token, and a notice says so", r[0] == 0 and "::notice::" in r[1] and "fork" in r[1], r)
 

@@ -142,7 +142,7 @@ def table(models):
     if os.environ.get("UMLIMATOR_NO_PACKS"):
         return {}
     rs, out = rows(), {}
-    for n in (n for m in models for n in m.get("nodes", [])):
+    for n in (n for m in models for n in lists(m.get("nodes"))):
         p, i = pick(n)
         if p not in rs or not isinstance(i, str) or not i:
             continue
@@ -158,6 +158,11 @@ def table(models):
     return out
 
 
+def lists(x):
+    """A model's nodes as a list: a malformed model's other value names no icon (the engine reports it)."""
+    return x if isinstance(x, list) else []
+
+
 def check(model):
     """What only the cached pack knows, for `umlimator.py check` (§5.5): an id the pack lacks with the three nearest, an
     id an alias moved, and a model's iconPacks label other than the pin. Lines on stderr; nothing fails on them."""
@@ -167,7 +172,7 @@ def check(model):
         if p in rs and label != rs[p]["label"]:
             print(f"icons: the model's icons were chosen from the {p} pack's pin {label}; this release pins {rs[p]['label']}", file=sys.stderr)
     seen = set()
-    for n in model.get("nodes", []):
+    for n in lists(model.get("nodes")):
         p, i = pick(n)
         if p not in rs or not isinstance(i, str) or (p, i) in seen:
             continue

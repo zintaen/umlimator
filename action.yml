@@ -94,7 +94,8 @@ runs:
         write() {
           said=$(gh api "$@" -F body=@"$SUMMARY" 2>&1 > /dev/null) && return
           if [ "$FORK" = true ]; then echo "::notice::no comment: a pull request from a fork gets a read-only token, so the summary is in this job's summary"
-          else echo "::warning::no comment: ${said//$'\n'/ } (the workflow needs permissions: pull-requests: write)"; fi
+          elif [[ "$said" == *"HTTP 403"* || "$said" == *"HTTP 404"* ]]; then echo "::warning::no comment: ${said//$'\n'/ } (the workflow needs permissions: pull-requests: write)"
+          else echo "::warning::no comment: ${said//$'\n'/ }"; fi
           return 1
         }
         if [ -z "$ids" ]; then write "repos/$GITHUB_REPOSITORY/issues/$PR/comments" || true; fi
