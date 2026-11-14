@@ -118,6 +118,14 @@ The cap is 189,697 B (0.16.0's 164,954 B plus 15%); the core is 185,426 B at fcb
 | The deleted elements taken out of their lists with one `filter` per list, not one `splice` each, so a 20,000-topic delete meets 100 ms | `src/core/apply.js` | 4a.2 | 40 B |
 | `typedProblems`' cycle check made linear: an element whose chain was walked is remembered, and a later walk stops at it | `src/core/model.js` | 4a.2 | 50 B |
 
+As built (4a.2, 14 Nov 2026): 121 B in all, 185,873 B to 185,994 B. The deleted elements leave each list they were in
+by one `filter` written back into the same array, so a list a view or an owner holds stays that list; the cycle check
+marks each element with the walk that reached it first, and a walk that comes back to its own mark has found a cycle,
+whose members are said in the order the old check said them. Measured on a loaded machine (CPU): `delete` of a 20,000
+chain's root 18 ms and of a flat 20,000 root 13 ms; `validate()` of a 20,000 chain 9 ms. The tests use `uml.Package`
+for topics, since the mindmap type is 4a.4's, and add a flat 100,000 root under the 1 s ceiling, which the `splice`
+loop took 2.5 s over.
+
 Everything else is in files listed in `tools/build.mjs`'s `ALL` only: the tree strategy, both types, their shapes, rules,
 hooks and the reader. The icons reach the cloud type through the model copy its hook already gets (Q1), so `svgOf` does
 not change.
