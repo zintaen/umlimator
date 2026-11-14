@@ -1,0 +1,137 @@
+<!doctype html>
+<!-- The mindmap (4a.4) in headless Chrome (tests/embed.py), from lib/umlimator-all.js: docs/diagrams/examples/25-mindmap.json
+     drawn by render() in both themes and three fonts (no two topics meet, each text inside its topic, no branch curve
+     through a topic, sampled every 4 px, names, reading order, contrast: text 4.5:1, curves and borders 3:1), then edited
+     through the edit event and apply(), by pointer and by keyboard: N and the palette, F2, Alt + ↑ ↓ ← →, a topic dropped
+     on another, between two siblings and on the root's other half, Delete and Shift + Delete on a branch, the outline's
+     Show on a hidden branch, and L refused. -->
+<meta charset="utf-8">
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="../lib/umlimator-theme.css">
+<title>umlimator mindmap test</title>
+<body style="margin:0">
+<div id="m" style="width:1400px;height:900px"></div>
+<script type="module">
+import { render, apply, validate } from '../lib/umlimator-all.js';
+const out = { ok: [], fail: [] };
+const check = (name, cond, info) => { document.title = name; if (cond) out.ok.push(name); else out.fail.push(name + (info === undefined ? '' : ': ' + JSON.stringify(info))); };
+const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+const el = document.getElementById('m'), VID = 'mm-plan';
+let sr, stage, ed = [];
+const pick = s => sr.querySelector(s), all = s => [...sr.querySelectorAll(s)];
+const rectOf = id => pick(`.node[data-id="${id}"] rect.n-body`).getBoundingClientRect();
+const centre = id => { const r = rectOf(id); return [r.x + r.width / 2, r.y + r.height / 2]; };
+const ptr = (target, type, [x, y]) => target.dispatchEvent(new PointerEvent(type, { clientX: x, clientY: y, button: 0, pointerId: 7, pointerType: 'mouse', bubbles: true, composed: true }));
+const key = (k, extra = {}, target = stage) => target.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true, composed: true, cancelable: true, ...extra }));
+const click = id => { const g = pick(`.node[data-id="${id}"] rect.n-body`), at = centre(id); ptr(g, 'pointerdown', at); ptr(g, 'pointerup', at); g.dispatchEvent(new MouseEvent('click', { clientX: at[0], clientY: at[1], bubbles: true, composed: true })); };
+const drag = (id, to) => { const g = pick(`.node[data-id="${id}"] rect.n-body`), from = centre(id); ptr(g, 'pointerdown', from); for (let i = 1; i <= 4; i++) ptr(stage, 'pointermove', [from[0] + (to[0] - from[0]) * i / 4, from[1] + (to[1] - from[1]) * i / 4]); ptr(stage, 'pointerup', to); };
+const mount = (model, opts = {}) => { el.innerHTML = ''; ed = []; const h = render(el, model, { view: VID, on: { edit: e => ed.push(e) }, ...opts }); sr = el.querySelector('.umlimator').shadowRoot; stage = pick('.stage'); return h; };
+const errors = m => validate(m).filter(p => p.level === 'error');
+const last = () => ed[ed.length - 1];
+const gives = (name, cmds, test, base) => { const e = last(); let m = null; try { m = e && apply(base, e.commands); } catch (x) { m = null; }
+  check(name, !!e && same(e.commands, cmds) && !!m && test(m) && !errors(m).length, [e, m && errors(m)]); return m; };
+const box = g => { const r = g.getBBox(); return { x: r.x, y: r.y, w: r.width, h: r.height }; };
+const inside = (a, b) => a.x >= b.x - .5 && a.y >= b.y - .5 && a.x + a.w <= b.x + b.w + .5 && a.y + a.h <= b.y + b.h + .5;
+const meets = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+const FONTS = { serif: 'serif', sans: 'sans-serif', wide: 'monospace' };
+const rgba = s => { let m = /rgba?\(([^)]+)\)/.exec(s); if (m) { const p = m[1].split(/[ ,/]+/).filter(Boolean).map(Number); return [p[0] / 255, p[1] / 255, p[2] / 255, p.length > 3 ? p[3] : 1]; }
+  m = /color\(srgb ([^)]+)\)/.exec(s); if (m) { const p = m[1].split(/[ /]+/).filter(Boolean).map(Number); return [p[0], p[1], p[2], p.length > 3 ? p[3] : 1]; } return null; };
+const blend = (top, bot) => [0, 1, 2].map(i => top[i] * top[3] + bot[i] * (1 - top[3])).concat(1);
+const lum = c => { const f = v => v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]); };
+const ratio = (fg, bg) => { const [x, y] = [lum(blend(fg, bg)), lum(bg)].sort((p, q) => q - p); return +((x + 0.05) / (y + 0.05)).toFixed(2); };
+const css = (e, k) => rgba(getComputedStyle(e)[k]);
+try {
+  const MODEL = await (await fetch('../docs/diagrams/examples/25-mindmap.json')).json(), IDS = MODEL.views[0].nodeIds;
+  for (const theme of ['light', 'dark']) for (const [fname, family] of Object.entries(FONTS)) {
+    document.documentElement.dataset.theme = theme; el.style.setProperty('--um-sans', family);
+    const tag = `${theme}, ${fname}`, h = mount(structuredClone(MODEL)), bad = [];
+    const tops = all('.node.mm-topic'), R = Object.fromEntries(tops.map(g => [g.dataset.id, box(g.querySelector('rect.n-body'))]));
+    check(`${tag}: 21 topics, 20 branch curves, no line for the router`, tops.length === 21 && all('.mm-branch').length === 20 && !all('.edge-g').length, tops.length);
+    tops.forEach((g, i) => { const id = g.dataset.id, t = box(g.querySelector('text'));
+      if (!inside(t, R[id])) bad.push(`${id}'s text leaves it`);
+      tops.slice(0, i).forEach(o => { if (meets(R[id], R[o.dataset.id])) bad.push(`${id} meets ${o.dataset.id}`); }); });
+    all('.mm-branch').forEach((p, i) => { const L = p.getTotalLength();
+      for (let s = 4; s < L - 4; s += 4) { const q = p.getPointAtLength(s);
+        for (const [id, b] of Object.entries(R)) if (q.x > b.x + .5 && q.x < b.x + b.w - .5 && q.y > b.y + .5 && q.y < b.y + b.h - .5) { bad.push(`curve ${i} through ${id}`); break; } } });
+    check(`${tag}: no two topics meet, each text inside its topic, no curve through a topic`, !bad.length, [...new Set(bad)]);
+    check(`${tag}: names a screen reader reads`, pick('.node[data-id="mm-checkout"]').getAttribute('aria-label') === 'Topic Checkout, under Website, 2 subtopics'
+      && pick('.node[data-id="mm-opening"]').getAttribute('aria-label') === 'Topic Opening the bookshop, the root, 6 subtopics', pick('.node[data-id="mm-checkout"]').getAttribute('aria-label'));
+    const order = all('.keys .um-key').map(k => k.dataset.node);
+    check(`${tag}: reading and Tab order: the root, its right branches, then its left, each in pre-order`, same(order, IDS), order);
+    const bg = css(pick('.stage'), 'backgroundColor'), low = all('.mm-text').map(t => [t.textContent, ratio(css(t, 'fill'), bg)]).filter(([, c]) => c < 4.5);
+    const lines = all('.mm-branch, .node.mm-topic rect.n-body').map(p => ratio(css(p, 'stroke'), bg)).filter(c => c < 3);
+    check(`${tag}: contrast: texts 4.5:1, curves and borders 3:1`, !low.length && !lines.length, [low, lines]);
+    // axe-core 4.14's rules for what is drawn as role="img", written out: svg-img-alt and role-img-alt (each has a name),
+    // nested-interactive (nothing inside one is a tab stop)
+    const svg = pick('.stage svg'), imgs = all('.stage svg [role="img"]'), noAlt = [], nested = [];
+    imgs.forEach(x => { if (!(x.getAttribute('aria-label') || '').trim()) noAlt.push(x.dataset.id || x.localName);
+      x.querySelectorAll('[tabindex], a[href], button, input, select, textarea').forEach(c => { if (c.tabIndex >= 0) nested.push(`${x.dataset.id} holds ${c.getAttribute('class') || c.localName}`); }); });
+    check(`${tag}: axe, written out: the drawing a named group, its 21 topics named images with no tab stop and no other name inside`,
+      svg.getAttribute('role') === 'group' && !!(svg.getAttribute('aria-label') || '').trim() && imgs.length === 21 && !noAlt.length && !nested.length && all('.node.mm-topic [aria-label]').length === 0, [imgs.length, noAlt, nested.slice(0, 4)]);
+    h.destroy();
+  }
+  document.documentElement.dataset.theme = 'light'; el.style.removeProperty('--um-sans');
+
+  // ---- editing (DoD 4), each gesture's commands applied with apply()
+  const BASE = MODEL, name = t => { pick('.um-rename').value = t; key('Enter', {}, pick('.um-rename')); }, said = re => re.test(sr.textContent);
+  const kids = (m, id) => m.views[0].nodeIds.filter(k => (m.nodes.find(n => n.id === k) || {}).parent === id);
+  let h = mount(BASE, { editable: true });
+  check('the palette: Topic', same(all('.um-editor .um-pal button').map(b => b.textContent), ['Topic']), all('.um-editor .um-pal button').map(b => b.textContent));
+  click('mm-checkout'); key('n'); name('Gift cards');
+  gives('N with a topic selected: a child of it, last among its children', [{ op: 'add', element: { id: 'gift-cards', type: 'mindmap.Topic', label: 'Gift cards', parent: 'mm-checkout' }, view: VID, index: 9 }],
+    m => same(kids(m, 'mm-checkout'), ['mm-card-payments', 'mm-order-emails', 'gift-cards']), BASE);
+  click('mm-launch'); all('.um-editor .um-pal button')[0].click(); name('Posters');
+  gives('the palette\'s Topic with a topic selected: a child of it', [{ op: 'add', element: { id: 'posters', type: 'mindmap.Topic', label: 'Posters', parent: 'mm-launch' }, view: VID, index: 12 }], m => kids(m, 'mm-launch').at(-1) === 'posters', BASE);
+  click('mm-checkout'); key('F2');
+  check('F2 on a topic: a field holding its text', pick('.um-rename') && pick('.um-rename').value === 'Checkout', pick('.um-rename') && pick('.um-rename').value);
+  name('Checkout and pay');
+  gives('F2: the topic\'s text', [{ op: 'set', id: 'mm-checkout', path: 'label', value: 'Checkout and pay' }], m => m.nodes.find(n => n.id === 'mm-checkout').label === 'Checkout and pay', BASE);
+  // Alt + arrows
+  click('mm-catalogue'); key('ArrowDown', { altKey: true });
+  gives('Alt + ↓: after the sibling below', [{ op: 'move', id: 'mm-catalogue', view: VID, index: 4 }], m => same(kids(m, 'mm-opening').slice(0, 2), ['mm-website', 'mm-catalogue']), BASE);
+  click('mm-order-emails'); key('ArrowUp', { altKey: true });
+  gives('Alt + ↑: before the sibling above', [{ op: 'move', id: 'mm-order-emails', view: VID, index: 7 }], m => same(kids(m, 'mm-checkout'), ['mm-order-emails', 'mm-card-payments']), BASE);
+  click('mm-checkout'); key('ArrowLeft', { altKey: true });
+  gives('Alt + ← on the right, towards the root: promoted, after its old parent, on its side', [{ op: 'set', view: VID, path: ['present', 'mm-checkout', 'side'], value: 'right' }, { op: 'reparent', id: 'mm-checkout', parent: 'mm-opening' }],
+    m => same(kids(m, 'mm-opening').slice(0, 3), ['mm-catalogue', 'mm-website', 'mm-checkout']), BASE);
+  click('mm-website'); key('ArrowRight', { altKey: true });
+  gives('Alt + → on the right, away from the root: demoted into the sibling before it, its side gone', [{ op: 'set', view: VID, path: ['present', 'mm-website', 'side'], value: undefined }, { op: 'reparent', id: 'mm-website', parent: 'mm-catalogue' }],
+    m => kids(m, 'mm-catalogue').at(-1) === 'mm-website', BASE);
+  click('mm-legal'); key('ArrowRight', { altKey: true });
+  gives('Alt + → on a left first-level topic, across the root: its side', [{ op: 'set', view: VID, path: ['present', 'mm-legal', 'side'], value: 'right' }], m => m.views[0].present['mm-legal'].side === 'right', BASE);
+  const before = ed.length; click('mm-opening'); key('ArrowRight', { altKey: true });
+  check('Alt + an arrow on the root: nothing, and the hint line says why', ed.length === before && said(/is the root: it stays where it is/), sr.textContent.slice(-300));
+  // drops
+  drag('mm-courier', centre('mm-launch'));
+  gives('a topic dropped on another: under it, last', [{ op: 'reparent', id: 'mm-courier', parent: 'mm-launch' }, { op: 'move', id: 'mm-courier', view: VID, index: 12 }], m => kids(m, 'mm-launch').at(-1) === 'mm-courier', BASE);
+  { const a = rectOf('mm-newsletter'), b = rectOf('mm-opening-offer'); drag('mm-storefront', [a.x + 6, (a.y + a.height + b.y) / 2]); }
+  gives('a topic dropped between two siblings: there', [{ op: 'reparent', id: 'mm-storefront', parent: 'mm-launch' }, { op: 'move', id: 'mm-storefront', view: VID, index: 10 }],
+    m => same(kids(m, 'mm-launch'), ['mm-newsletter', 'mm-storefront', 'mm-opening-offer']), BASE);
+  { const r = rectOf('mm-opening'); drag('mm-legal', [r.x + r.width - 8, r.y + r.height / 2]); }
+  gives('a first-level topic dropped on the root\'s other half: the other side', [{ op: 'set', view: VID, path: ['present', 'mm-legal', 'side'], value: 'right' }], m => m.views[0].present['mm-legal'].side === 'right', BASE);
+  const n0 = ed.length; drag('mm-website', centre('mm-card-payments'));
+  check('a topic dropped on its own subtopic: refused, said', ed.length === n0 && said(/under one of its own subtopics/));
+  // Delete, Shift + Delete
+  click('mm-checkout'); key('Delete');
+  gives('Delete: the topic and its shown subtopics hidden, in one transaction', ['mm-checkout', 'mm-order-emails', 'mm-card-payments'].map(id => ({ op: 'hide', id, view: VID })), m => m.views[0].nodeIds.length === 18 && m.nodes.length === 21, BASE);
+  check('… and the hint line counts them', said(/Hid Checkout and its 2 subtopics/));
+  click('mm-website'); key('Delete', { shiftKey: true });
+  gives('Shift + Delete: the topic deleted, its subtopics with it', [{ op: 'delete', id: 'mm-website' }], m => m.nodes.length === 16, BASE);
+  check('… and the hint line counts them', said(/Deleted Website and its 4 subtopics/));
+  // L: a mindmap has no lines
+  const n1 = ed.length; click('mm-launch'); key('l'); for (const c of 'legal') key(c); key('Enter'); // the other end found by its name
+  check('L: refused, said', ed.length === n1 && said(/A mindmap has no lines/), sr.textContent.slice(-300));
+  h.destroy();
+  // the outline's Show on a hidden branch: the topic and what was hidden with it, back where they were
+  const HID = apply(BASE, ['mm-checkout', 'mm-order-emails', 'mm-card-payments'].map(id => ({ op: 'hide', id, view: VID })));
+  h = mount(HID, { editable: true });
+  const show = pick('.um-editor [data-show="mm-checkout"]');
+  check('the outline offers Show on the hidden topic', !!show);
+  show.click();
+  gives('Show on a hidden topic: it and its subtopics hidden with it, by pointer', [{ op: 'set', view: VID, path: 'nodeIds', value: IDS }], m => same(m.views[0].nodeIds, IDS), HID);
+  ed = []; show.focus(); key('Enter', {}, show);
+  gives('… and by Enter on it', [{ op: 'set', view: VID, path: 'nodeIds', value: IDS }], m => same(m.views[0].nodeIds, IDS), HID);
+  h.destroy();
+} catch (e) { out.fail.push('threw: ' + (e && e.stack || e)); }
+const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
+</script>

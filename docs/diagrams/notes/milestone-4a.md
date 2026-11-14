@@ -580,6 +580,25 @@ back.
 | **(a) Hides its branch (recommended)** | What mindmap tools do; matches Shift + Delete, which takes the branch | One key hides many topics; undo brings them back |
 | (b) Hides the topic only; its children hang from its parent in the picture | One element per Delete | The picture rewires itself; a user rarely means it |
 
+As built (4a.4, 14 Nov 2026), where §7 left a choice or the canvas could not do what it says. Levels count the root as
+the first, so `mindmap-depth` warns from level 65 (depth 64), naming the topics there. A topic whose parent is not a topic
+(`topic-parent`) is a root of its own; each further root's tree, and one tree for shown topics in a cycle, is laid out by
+its own `layoutTree` call and stacked 48 px under the one before; the bounds take a 24 px margin. A topic's text breaks at
+its newlines; a paragraph past 400 characters is cut before wrapping (four lines hold about 130). A topic that opens a view
+is 26 px wider, for the ⤢ mark. No legend: a branch's colour means nothing. A new topic's id comes from its words, as the
+reader's (`base`, `base-2`…). Alt + ↑ and ↓, every side change, and a first-level topic's move under another topic (Alt +
+→ or ← away from the root, or a drop) set, in the same transaction, the drawn side of each other first-level topic that
+has none given, so no other branch swings across; the moved topic's own side, if given, goes. A drop is read from the dropped topic's centre:
+on a topic, under it, last; on the root, a first-level topic takes the half it fell on (its own half: nothing) and a deeper
+one becomes first-level on that half; in the gap between two siblings' boxes, there, taking their side when they are
+first-level. The canvas draws no insertion bar while a topic is dragged (it has no hook for one, and its files are the
+core's). The outline's Show on a hidden topic brings back the topic and every descendant under it through hidden topics
+only, after its nearest shown ancestor's last shown descendant: the canvas's Show adds one id and has no hook, so
+`src/mindmap/mindmap.js` wraps `TYPED.edit` and hears that button's click first, on a mindmap view only; Enter on the
+button clicks it. Delete's hide clears the topic's `present` entry (apply's `hide`), so a first-level topic brought back by
+Show takes the side the balance gives it, which may be the other half; undo puts it back where it was. The canvas's palette still names its generic line ("Lines: line") for a type with no lines; L then says
+the hook's refusal. Taken by the lead under the maintainer's standing approval (14 Nov 2026).
+
 ## 8. The Mermaid mindmap reader and writer (`src/readers/mermaid-mindmap.js`, S15)
 
 ### 8.1 Reading
