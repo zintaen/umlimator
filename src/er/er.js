@@ -156,7 +156,7 @@ const erShown = (model, view) => { const I = erIndex(model); return { I, ids: [.
 // the lines drawn: those the view lists, or with no list the model's relationships and comment links, between two it shows
 function erLines(view, I, ids) {
   const shown = new Set(ids), E = new Map(I.R.map(e => [e.id, e]));
-  const list = Array.isArray(view.edges) ? view.edges.map(x => (typeof x === 'string' ? E.get(x) : x)) : I.R.filter(e => e.type === 'er.Relationship' || e.type === 'uml.CommentLink');
+  const list = Array.isArray(view.edges) ? [...new Set(view.edges.map(x => (typeof x === 'string' ? E.get(x) : x)))] : I.R.filter(e => e.type === 'er.Relationship' || e.type === 'uml.CommentLink');
   return list.filter(e => ER_OBJ(e) && typeof e.id === 'string' && shown.has(e.from) && shown.has(e.to));
 }
 

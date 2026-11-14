@@ -149,7 +149,7 @@ test('§10.1\'s edge cases lay out clean: 30 children, every branch right, a 200
   const tree = r => g.nodes.filter(n => n.id === r || n.branch && g.order.indexOf(n.id) > g.order.indexOf(r) && g.order.indexOf(n.id) < (g.order.indexOf(roots[roots.indexOf(r) + 1]) >>> 0));
   assert.ok(Math.max(...tree('r').map(n => n.y + n.h)) < g.byId.second.y && g.byId['second-kid'].y + g.byId['second-kid'].h < g.byId.stray.y, bottom('r'));
   assert.deepEqual(rules(m), [['error', 'topic-parent', ['stray']], ['warning', 'mindmap-root', ['r', 'second']], ['warning', 'mindmap-root', ['r', 'stray']],
-    ['warning', 'side-first', ['a3']], ['warning', 'mindmap-depth', ['d63']]]);
+    ['warning', 'side-first', ['a3']], ['warning', 'mindmap-depth', ['d64']]]);
   assert.match(describe(m, 'edge'), /^Edge cases: a mindmap of 109 topics in 3 trees\./);
 });
 
@@ -176,9 +176,9 @@ test('validators: the example breaks no rule; each rule fails on a model that br
   bad(m => { V(m).present['mm-checkout'] = { side: 'left' }; }, [['warning', 'side-first', ['mm-checkout']]]);
   bad(m => { V(m).present['mm-catalogue'].side = 'up'; }, [['warning', 'side-first', ['mm-catalogue']]]);
   bad(m => { V(m).present['mm-opening'] = { side: 'left' }; }, [['warning', 'side-first', ['mm-opening']]]);
-  bad(m => { let p = 'mm-bank'; for (let i = 0; i < 62; i++) { m.nodes.push({ id: `z${i}`, type: T, label: `z${i}`, parent: p }); V(m).nodeIds.push(`z${i}`); p = `z${i}`; } }, [['warning', 'mindmap-depth', ['z61']]]);
-  // at 64 levels, no warning: the deepest topic one level up
-  const ok = EX(); let p = 'mm-bank'; for (let i = 0; i < 61; i++) { ok.nodes.push({ id: `z${i}`, type: T, label: `z${i}`, parent: p }); V(ok).nodeIds.push(`z${i}`); p = `z${i}`; }
+  bad(m => { let p = 'mm-bank'; for (let i = 0; i < 63; i++) { m.nodes.push({ id: `z${i}`, type: T, label: `z${i}`, parent: p }); V(m).nodeIds.push(`z${i}`); p = `z${i}`; } }, [['warning', 'mindmap-depth', ['z62']]]);
+  // 64 levels below the root, no warning: a Mermaid write and read keeps it there (MMR_DEEP)
+  const ok = EX(); let p = 'mm-bank'; for (let i = 0; i < 62; i++) { ok.nodes.push({ id: `z${i}`, type: T, label: `z${i}`, parent: p }); V(ok).nodeIds.push(`z${i}`); p = `z${i}`; }
   assert.deepEqual(rules(ok), []);
   // a hidden topic's side, and a side on a topic of no view, say nothing; a hidden root's children are the view's root then
   const h = apply(EX(), { op: 'hide', id: 'mm-catalogue', view: VID }); assert.deepEqual(rules(h), []);

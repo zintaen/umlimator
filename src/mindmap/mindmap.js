@@ -16,7 +16,7 @@ import '../typed/edit.js'; // TYPED.edit, which the outline's Show on a topic wr
 const MM_T = 'mindmap.Topic', MM_ARR = x => (Array.isArray(x) ? x : []), MM_OBJ = x => x !== null && typeof x === 'object' && !Array.isArray(x);
 const MM = { root: { px: 15, wt: 600, pad: 14, lh: 20 }, topic: { px: 13, wt: 500, pad: 10, lh: 17 }, max: 200, lines: 4, margin: 24, trees: 48, open: 26 };
 const MM_INK = ['public', 'lane', 'ext', 'verb', 'board', 'hook']; // the map's kind palette, cycled over first-level branches
-const MM_DEEP = 64; // levels, the root the first: deeper is drawn, and warned (a Mermaid reader writes it flat)
+const MM_DEEP = 64; // levels below the root, as the Mermaid reader's MMR_DEEP: deeper is drawn, and warned (a Mermaid write and read hangs it at this one)
 const mmView = (model, view) => (MM_OBJ(view) ? view : MM_ARR(model && model.views).find(v => MM_OBJ(v) && v.id === view)) || null;
 const mmText = n => String(n.label ?? n.id);
 const mmOne = n => mmText(n).replace(/\s+/g, ' ').trim(); // its text on one line, as describe() and the hint line say it
@@ -122,7 +122,7 @@ const MM_RULES = {
   'mindmap-root': 'a view shows one tree: exactly one shown topic has no shown ancestor; each further one is drawn as its own tree under the first',
   'topic-parent': 'a topic\'s parent is a topic',
   'side-first': 'present.<id>.side is left or right, on a first-level topic; anywhere else it is ignored',
-  'mindmap-depth': `a tree is at most ${MM_DEEP} levels deep: a deeper topic is drawn, but a Mermaid reader writes it at level ${MM_DEEP}`,
+  'mindmap-depth': `a topic is at most ${MM_DEEP} levels below the root: a deeper topic is drawn, but a Mermaid write and read hangs it ${MM_DEEP} levels below the root`,
 };
 function mmProblems(model, view) {
   const out = [], V = mmView(model, view); if (!MM_OBJ(model) || !V) return out;
@@ -134,8 +134,8 @@ function mmProblems(model, view) {
   Object.keys(X.P).forEach(id => { const s = MM_OBJ(X.P[id]) ? X.P[id].side : undefined; if (s === undefined || !X.shown.has(id)) return;
     if (s !== 'left' && s !== 'right') say('warning', 'side-first', `${at}.present.${id}.side`, [id], `${q(id)}'s side ${JSON.stringify(s)} is not left or right: ignored`);
     else if (X.depth.get(id) !== 1) say('warning', 'side-first', `${at}.present.${id}.side`, [id], `${q(id)} is not a first-level topic: its side is ignored, it follows its branch`); });
-  const deep = X.ids.filter(id => X.depth.get(id) === MM_DEEP);
-  if (deep.length) say('warning', 'mindmap-depth', at, deep, `${deep.map(q).join(', ')} ${deep.length === 1 ? 'is' : 'are'} on level ${MM_DEEP + 1}, deeper than ${MM_DEEP} levels: drawn, but a Mermaid reader writes ${deep.length === 1 ? 'it' : 'them'} at level ${MM_DEEP}`);
+  const deep = X.ids.filter(id => X.depth.get(id) === MM_DEEP + 1);
+  if (deep.length) say('warning', 'mindmap-depth', at, deep, `${deep.map(q).join(', ')} ${deep.length === 1 ? 'is' : 'are'} ${MM_DEEP + 1} levels below the root, deeper than ${MM_DEEP}: drawn, but a Mermaid write and read hangs ${deep.length === 1 ? 'it' : 'them'} ${MM_DEEP} levels below the root`);
   return out;
 }
 
