@@ -1,0 +1,167 @@
+<!doctype html>
+<!-- The cloud architecture family (4a.6) in headless Chrome (tests/embed.py), from ../src/ throughout (aws is off in the build and
+     registered here, notes/milestone-4a.md §4.7): docs/diagrams/examples/27-gcp.json with a synthetic icons table (one icon white),
+     28-azure.json with none (glyphs and full names) and 26-aws.json with a table, drawn by render() in both themes, three fonts
+     and both directions (cards and groups, texts inside their shapes, each element in its group, every vendor <image> with meet
+     and nothing that crops, filters, masks, fades or transforms it, Google's legal line inside the picture under a Google icon
+     only, names, reading order, legend, contrast), then edited through the edit event and apply(), by pointer and by keyboard:
+     the palette and N (into the group selected), F2, a line by L and by the handle (the canvas's L and handle end on cards
+     only, so a line refused between a group and what it holds is tested in tests/cloud.test.mjs), the Owner field, a drop into a group, the icon and zone type fields, hide and delete
+     (a group with what it holds, counted on the hint line). No vendor icon: the icons are synthetic data URLs (S18). -->
+<meta charset="utf-8">
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="../lib/umlimator-theme.css">
+<title>umlimator cloud diagrams test</title>
+<body style="margin:0">
+<div id="m" style="width:1600px;height:1000px"></div>
+<script type="module">
+import { render } from '../src/canvas/render.js';
+import { apply } from '../src/core/apply.js';
+import { registerDiagramType } from '../src/core/registry.js';
+import { validate } from '../src/map/validate.js';
+import '../src/map/typed.js';
+import '../src/typed/edit.js';
+import { CLOUD_DEFS, GCP_LEGAL } from '../src/cloud/cloud.js';
+registerDiagramType('aws', CLOUD_DEFS.aws);
+const out = { ok: [], fail: [] };
+const check = (name, cond, info) => { document.title = name; if (cond) out.ok.push(name); else out.fail.push(name + (info === undefined ? '' : ': ' + JSON.stringify(info))); };
+const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+const el = document.getElementById('m');
+let sr, stage, ed = [];
+const pick = s => sr.querySelector(s), all = s => [...sr.querySelectorAll(s)];
+const centre = s => { const r = pick(s).getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; };
+const ptr = (target, type, [x, y]) => target.dispatchEvent(new PointerEvent(type, { clientX: x, clientY: y, button: 0, pointerId: 7, pointerType: 'mouse', bubbles: true, composed: true }));
+const key = (k, extra = {}, target = stage) => target.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true, composed: true, cancelable: true, ...extra }));
+const handleTo = ([x, y]) => { const c = pick('.um-handle circle'), r = c.getBoundingClientRect(); ptr(c, 'pointerdown', [r.x + r.width / 2, r.y + r.height / 2]); ptr(stage, 'pointermove', [x, y]); ptr(stage, 'pointerup', [x, y]); };
+const hint = () => pick('.um-live').textContent;
+const click = s => { const g = pick(s), at = centre(s); ptr(g, 'pointerdown', at); ptr(g, 'pointerup', at); g.dispatchEvent(new MouseEvent('click', { clientX: at[0], clientY: at[1], bubbles: true, composed: true })); };
+const mount = (model, view, opts = {}) => { el.innerHTML = ''; ed = []; const h = render(el, model, { view, on: { edit: e => ed.push(e) }, ...opts }); sr = el.querySelector('.umlimator').shadowRoot; stage = pick('.stage'); return h; };
+const errors = m => validate(m).filter(p => p.level === 'error');
+const last = () => ed[ed.length - 1];
+const gives = (name, cmds, test, base, errs = 0) => { const e = last(); let m = null; try { m = e && apply(base, e.commands); } catch (x) { m = null; }
+  check(name, !!e && same(e.commands, cmds) && !!m && test(m) && errors(m).length === errs, [e, m && errors(m)]); return m; };
+const change = (t, v) => { t.value = v; t.dispatchEvent(new Event('change', { bubbles: true })); };
+const box = g => { const r = g.getBBox(); return { x: r.x, y: r.y, w: r.width, h: r.height }; };
+const inside = (a, b) => a.x >= b.x - .5 && a.y >= b.y - .5 && a.x + a.w <= b.x + b.w + .5 && a.y + a.h <= b.y + b.h + .5;
+const FONTS = { serif: 'serif', sans: 'sans-serif', wide: 'monospace' };
+const rgba = s => { let m = /rgba?\(([^)]+)\)/.exec(s); if (m) { const p = m[1].split(/[ ,/]+/).filter(Boolean).map(Number); return [p[0] / 255, p[1] / 255, p[2] / 255, p.length > 3 ? p[3] : 1]; }
+  m = /color\(srgb ([^)]+)\)/.exec(s); if (m) { const p = m[1].split(/[ /]+/).filter(Boolean).map(Number); return [p[0], p[1], p[2], p.length > 3 ? p[3] : 1]; } return null; };
+const blend = (top, bot) => [0, 1, 2].map(i => top[i] * top[3] + bot[i] * (1 - top[3])).concat(1);
+const lum = c => { const f = v => v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]); };
+const ratio = (fg, bg) => { const [x, y] = [lum(blend(fg, bg)), lum(bg)].sort((p, q) => q - p); return +((x + 0.05) / (y + 0.05)).toFixed(2); };
+const css = (e, k) => rgba(getComputedStyle(e)[k]);
+const load = async f => (await fetch('../docs/diagrams/examples/' + f)).json();
+// synthetic icons (S18): a coloured square, a white circle; the table the CLI builds (§4.5)
+const SQ = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><rect width="16" height="16" fill="#3367d6"/></svg>');
+const WH = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><circle cx="8" cy="8" r="7" fill="#fff"/></svg>');
+const table = (pack, m, white) => Object.fromEntries([...(pack === 'gcp' ? [['gcp/', { legal: GCP_LEGAL }]] : []),
+  ...m.nodes.filter(n => n.props && n.props.icon).map(n => [`${pack}/${n.props.icon}`, { src: n.props.icon === white ? WH : SQ, dark: n.props.icon === white, name: n.props.icon.replace(/-/g, ' ') }])]);
+const GCP = await load('27-gcp.json'), AZ = await load('28-azure.json'), AWS = await load('26-aws.json');
+const CASES = [['gcp', { ...GCP, icons: table('gcp', GCP, 'Cloud-SQL') }, 'gcp-on-gcp', 9, 6, 9], ['azure', AZ, 'az-on-azure', 8, 6, 0], ['aws', { ...AWS, icons: table('aws', AWS, 'Amazon-RDS') }, 'on-aws', 15, 10, 15]];
+// a vendor <image> and what holds it in its card: nothing that crops, filters, masks, fades or transforms it (§5.2)
+const untouched = img => { const bad = []; if (img.getAttribute('preserveAspectRatio') !== 'xMidYMid meet') bad.push('not meet');
+  for (let e = img; e && !e.classList.contains('node'); e = e.parentElement) { const s = getComputedStyle(e);
+    if (['clip-path', 'filter', 'mask', 'opacity', 'transform'].some(a => e.hasAttribute(a))) bad.push(e.tagName + ' attribute');
+    if (s.opacity !== '1' || s.filter !== 'none' || s.clipPath !== 'none' || (s.mask && s.mask !== 'none') || s.transform !== 'none') bad.push(e.tagName + ' style'); }
+  return bad; };
+try {
+  for (const [fam, MODEL, vid, cards, groups, icons] of CASES) for (const theme of ['light', 'dark']) for (const [fname, family] of Object.entries(FONTS)) for (const direction of ['right', 'down']) {
+    document.documentElement.dataset.theme = theme; el.style.setProperty('--um-sans', family);
+    const M = structuredClone(MODEL); M.views[0].direction = direction;
+    const tag = `${fam}, ${theme}, ${fname}, ${direction}`, h = mount(M, vid, { legend: true }), bad = [];
+    const nodes = all('.node');
+    check(`${tag}: ${cards} service cards, ${groups} groups, ${M.edges.length} lines, ${icons} icons`, all('.node.cloud-card').length === cards && all('.family').length === groups && all('.edge-g').length === M.edges.length
+      && all('.node image').length === icons, [all('.node.cloud-card').length, all('.family').length, all('.edge-g').length, all('.node image').length]);
+    nodes.forEach(g => { const b = box(g.querySelector('.n-mask')); g.querySelectorAll('text').forEach(t => { if (!inside(box(t), b)) bad.push(`${g.dataset.id}: "${t.textContent}" spills`); });
+      const img = g.querySelector('image'), tile = g.querySelector('.n-logo'); if (img && !inside(box(img), box(tile))) bad.push(`${g.dataset.id}: icon off its tile`); if (img && !inside(box(tile), b)) bad.push(`${g.dataset.id}: tile off the card`); });
+    const boxes = nodes.map(g => [g.dataset.id, box(g.querySelector('.n-mask'))]);
+    boxes.forEach(([a, p], i) => boxes.slice(i + 1).forEach(([b, q]) => { if (p.x < q.x + q.w && q.x < p.x + p.w && p.y < q.y + q.h && q.y < p.y + p.h) bad.push(`${a} and ${b} overlap`); }));
+    const frame = id => box(pick(`.family[data-family="${id}"] .family-box`));
+    M.nodes.filter(n => n.parent && pick(`.family[data-family="${n.parent}"]`)).forEach(n => { const g = pick(`.node[data-id="${n.id}"] .n-mask`), b = g ? box(g) : frame(n.id); if (!inside(b, frame(n.parent))) bad.push(`${n.id} is outside ${n.parent}`); });
+    all('.family').forEach(f => { const t = f.querySelector('.family-title'); if (!inside(box(t), box(f.querySelector('.family-box')))) bad.push(`${f.dataset.family}'s title spills`); });
+    check(`${tag}: every text inside its shape, every icon on its tile, every element inside its group, none overlapping`, !bad.length, bad);
+    const touched = all('.node image').flatMap(i => untouched(i).map(x => `${i.closest('.node').dataset.id}: ${x}`));
+    check(`${tag}: every vendor <image> drawn with meet, never clipped, filtered, masked, faded or transformed`, !touched.length && all('.node image').every(i => /^data:image\//.test(i.getAttribute('href'))), touched);
+    check(`${tag}: a white icon on the dark tile, a coloured one on the light`, !icons || (all('.node .n-logo.dark').length > 0 && all('.node .n-logo:not(.dark)').length > 0 && all('.node .n-logo').length === icons));
+    const legal = pick('text.cl-legal'), vb = pick('svg').viewBox.baseVal;
+    if (fam === 'gcp') { const L = box(legal); check(`${tag}: Google's legal line under the picture, inside its bounds; the legend ends with it`, legal.textContent === GCP_LEGAL && L.x >= vb.x && L.y >= vb.y && L.x + L.w <= vb.x + vb.width && L.y + L.h <= vb.y + vb.height
+      && boxes.every(([, b]) => b.y + b.h < L.y) && all('.m-legend .lgi').at(-1).textContent === GCP_LEGAL, [L, [vb.x, vb.y, vb.width, vb.height]]); }
+    else check(`${tag}: no Google legal line`, !legal && !pick('.m-legend').textContent.includes(GCP_LEGAL));
+    if (fam === 'gcp') {
+      check(`${tag}: names a screen reader reads`, pick('.node[data-id="gcp-api"]').getAttribute('aria-label') === 'Product Shop API, Cloud Run' && pick('.node[data-id="gcp-users"]').getAttribute('aria-label') === 'User Shoppers'
+        && pick('.family[data-family="gcp-region"]').getAttribute('aria-label') === 'Region europe-west1, holding 3 elements' && pick('.edge-g[data-from="gcp-users"][data-to="gcp-lb"] title').textContent === 'Path HTTPS from Shoppers to Load balancer');
+      const order = all('.keys .node-key').map(k => k.dataset.node);
+      check(`${tag}: reading order: each group's contents after it, then the rest, then the lines`, same(order.slice(0, 5), ['gcp-users', 'gcp-dns', 'gcp-lb', 'gcp-cdn', 'gcp-assets']) && all('.keys .um-key').length === 10 + 10, order);
+      const legend = all('.m-legend b').map(b => b.textContent);
+      check(`${tag}: the legend: each icon with its full name, the group kinds, the user, the line`, same(legend, ['Cloud DNS', 'Cloud Load Balancing', 'Cloud CDN', 'Cloud Storage', 'Pub Sub', 'Cloud Run', 'Cloud SQL', 'Project', 'Region', 'Network', 'Subnetwork', 'Zone', 'User', 'Path'])
+        && all('.m-legend image').every(i => !untouched(i).filter(x => !/style/.test(x)).length && i.getAttribute('preserveAspectRatio') === 'xMidYMid meet'), legend);
+    }
+    if (fam === 'azure') check(`${tag}: no table: glyphs and full names, "icon not available" in each name`, all('.cl-glyph').length === 8 && pick('.node[data-id="az-front-door"] .cl-name').textContent === 'Front Door and CDN Profiles'
+      && pick('.node[data-id="az-db"]').getAttribute('aria-label') === 'Service Database, SQL Database, icon not available' && all('.m-legend b').some(b => b.textContent === 'Icon not available'));
+    const stageBg = css(pick('.stage'), 'backgroundColor'), low = [];
+    [...nodes, ...all('.family'), ...(legal ? [legal] : [])].forEach(g => (g.tagName === 'text' ? [g] : [...g.querySelectorAll('text')]).forEach(t => { const c = ratio(css(t, 'fill'), stageBg); if (c < 4.5) low.push([g.dataset.id || g.dataset.family, t.textContent, c]); }));
+    const strokes = all('.node .n-body, .family .family-box, .cl-glyph').map(b => ratio(css(b, 'stroke'), stageBg)).filter(c => c < 3);
+    check(`${tag}: contrast: texts 4.5:1, outlines and glyphs 3:1`, !low.length && !strokes.length, [low, strokes]);
+    h.destroy();
+  }
+  document.documentElement.dataset.theme = 'light'; el.style.removeProperty('--um-sans');
+
+  // ---- editing (DoD 4), each gesture's commands applied with apply()
+  const BASE = GCP, V = 'gcp-on-gcp';
+  let h = mount(BASE, V, { editable: true });
+  const panel = s => pick('.um-editor ' + s);
+  const LABELS = ['Project', 'Region', 'Zone', 'Network', 'Subnetwork', 'Group', 'Product', 'User'];
+  check('the palette: a group per kind, then Product and User; the line listed', same(all('.um-editor .um-pal button').map(b => b.textContent), LABELS) && /Path/.test(panel('.um-pal').textContent), panel('.um-pal').textContent);
+  key('n'); pick('.um-rename').value = 'bookshop-staging'; key('Enter', {}, pick('.um-rename'));
+  gives('N adds the first entry, a project, its kind set', [{ op: 'add', element: { id: 'project1', type: 'gcp.Zone', label: 'bookshop-staging', props: { zoneType: 'project' } }, view: V }], m => m.views[0].nodeIds.includes('project1'), BASE);
+  h.select({ type: 'container', id: 'gcp-region', view: V });
+  all('.um-editor .um-pal button')[6].click(); pick('.um-rename').value = 'Cache'; key('Enter', {}, pick('.um-rename'));
+  const m1 = gives('the palette\'s Product with a group selected: added into it', [{ op: 'add', element: { id: 'product1', type: 'gcp.Product', label: 'Cache', parent: 'gcp-region' }, view: V }], m => m.views[0].nodeIds.includes('product1'), BASE);
+  LABELS.forEach((label, i) => { if (i === 6) return; all('.um-editor .um-pal button')[i].click(); pick('.um-rename').value = 'x' + i; key('Enter', {}, pick('.um-rename'));
+    const c = last().commands[0]; check(`the palette's ${label} button adds a ${c && c.element.type}`, last().commands.length === 1 && c.op === 'add' && c.element.label === 'x' + i && !errors(apply(BASE, last().commands)).length, last()); });
+  h.update(m1);
+  check('after update() the product is drawn in the region, with a glyph', !!pick('.node[data-id="product1"] .cl-glyph') && inside(box(pick('.node[data-id="product1"] .n-mask')), box(pick('.family[data-family="gcp-region"] .family-box'))));
+  click('.node[data-id="gcp-dns"] .c-name'); key('F2');
+  check('F2 on a product: a field holding its name', pick('.um-rename') && pick('.um-rename').value === 'DNS');
+  pick('.um-rename').value = 'Cloud DNS zone'; key('Enter', {}, pick('.um-rename'));
+  const m2 = gives('F2: set its label', [{ op: 'set', id: 'gcp-dns', path: 'label', value: 'Cloud DNS zone' }], m => m.nodes.find(n => n.id === 'gcp-dns').label === 'Cloud DNS zone', m1);
+  h.update(m2);
+  check('after update() the card reads the new name', pick('.node[data-id="gcp-dns"] .c-name').textContent === 'Cloud DNS zone');
+  click('.node[data-id="gcp-worker"] .c-name'); key('l'); for (const c of 'cache') key(c); key('Enter');
+  const m3 = gives('L, a name and Enter: a path', [{ op: 'add', element: { id: 'path1', type: 'gcp.Path', from: 'gcp-worker', to: 'product1' }, view: V }], m => m.edges.some(e => e.id === 'path1'), m2);
+  click('.node[data-id="gcp-api"] .c-name'); handleTo(centre('.node[data-id="gcp-dns"] .n-mask'));
+  gives('the handle: a path', [{ op: 'add', element: { id: 'path1', type: 'gcp.Path', from: 'gcp-api', to: 'gcp-dns' }, view: V }], m => m.edges.some(e => e.id === 'path1'), m2);
+  h.update(m3);
+  check('after update() the path is drawn', pick('.edge-g[data-from="gcp-worker"][data-to="product1"] title').textContent === 'Path from Order worker to Cache');
+  click('.node[data-id="gcp-queue"] .c-name');
+  const own = panel('[data-f="owner"]'), opts = [...own.options].map(o => o.textContent);
+  check('the Owner field: none and every group, its kind in brackets', same(opts, ['none', 'bookshop-prod [Project]', 'europe-west1 [Region]', 'bookshop-vpc [Network]', 'data subnet, 10.10.0.0/24 [Subnetwork]', 'europe-west1-b [Zone]', 'europe-west1-c [Zone]']) && own.value === 'gcp-project', opts);
+  change(own, 'gcp-region');
+  gives('Owner: reparent the product into the region', [{ op: 'reparent', id: 'gcp-queue', parent: 'gcp-region' }], m => m.nodes.find(n => n.id === 'gcp-queue').parent === 'gcp-region', m3);
+  click('.node[data-id="gcp-queue"] .c-name'); change(panel('[data-f="p:icon"]'), 'Cloud-Tasks');
+  gives('the icon field sets props.icon', [{ op: 'set', id: 'gcp-queue', path: 'props.icon', value: 'Cloud-Tasks' }], m => m.nodes.find(n => n.id === 'gcp-queue').props.icon === 'Cloud-Tasks', m3);
+  h.select({ type: 'container', id: 'gcp-network', view: V }); change(panel('[data-f="p:zoneType"]'), 'generic');
+  gives('the zone type field sets props.zoneType', [{ op: 'set', id: 'gcp-network', path: 'props.zoneType', value: 'generic' }], m => m.nodes.find(n => n.id === 'gcp-network').props.zoneType === 'generic', m3);
+  const to = pick('.family[data-family="gcp-zone-c"] .family-box').getBoundingClientRect(), from = centre('.node[data-id="gcp-assets"] .n-mask'), at = [to.left + to.width / 2, to.top + to.height - 6];
+  ptr(pick('.node[data-id="gcp-assets"]'), 'pointerdown', from); for (let i = 1; i <= 4; i++) ptr(stage, 'pointermove', [from[0] + (at[0] - from[0]) * i / 4, from[1] + (at[1] - from[1]) * i / 4]); ptr(stage, 'pointerup', at);
+  gives('a product dropped into a zone\'s box: reparent', [{ op: 'reparent', id: 'gcp-assets', parent: 'gcp-zone-c' }], m => m.nodes.find(n => n.id === 'gcp-assets').parent === 'gcp-zone-c', m3);
+  // hide, delete
+  h = mount(BASE, V, { editable: true });
+  click('.node[data-id="gcp-cdn"] .c-name'); key('Delete');
+  gives('Delete: hide the product from the view', [{ op: 'hide', id: 'gcp-cdn', view: V }], m => !m.views[0].nodeIds.includes('gcp-cdn'), BASE);
+  h.select({ type: 'container', id: 'gcp-network', view: V }); key('Delete');
+  const hid = gives('Delete on a group: hide it', [{ op: 'hide', id: 'gcp-network', view: V }], m => !m.views[0].nodeIds.includes('gcp-network'), BASE);
+  h.update(hid);
+  check('after update() its contents are drawn in the next shown group', pick('.family[data-family="gcp-subnet"]').dataset.parent === 'gcp-region' && !pick('.family[data-family="gcp-network"]'));
+  h = mount(BASE, V, { editable: true });
+  h.select({ type: 'container', id: 'gcp-region', view: V }); key('Delete', { shiftKey: true });
+  gives('Shift + Delete on a group: it, what it holds and their lines go (edits.remove)', [{ op: 'delete', id: 'gcp-region' }], m => !m.nodes.some(n => ['gcp-region', 'gcp-api', 'gcp-db'].includes(n.id)) && !m.edges.some(e => e.id === 'gcp-lb-api'), BASE);
+  check('…and the hint line counts what went with it', hint() === 'Deleted Region europe-west1 and the 8 elements it held', hint());
+  h.select({ type: 'edge', ids: ['gcp-users-lb'], view: V }); key('Delete', { shiftKey: true });
+  gives('Shift + Delete on a path: delete it', [{ op: 'delete', id: 'gcp-users-lb' }], m => !m.edges.some(e => e.id === 'gcp-users-lb'), BASE);
+  click('.node[data-id="gcp-dns"] .c-name'); key('Delete', { shiftKey: true });
+  gives('Shift + Delete on a product: delete it and its paths', [{ op: 'delete', id: 'gcp-dns' }], m => !m.nodes.some(n => n.id === 'gcp-dns') && !m.edges.some(e => e.id === 'gcp-users-dns'), BASE);
+  h.destroy();
+} catch (e) { out.fail.push('threw: ' + (e && e.stack || e)); }
+const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
+</script>
