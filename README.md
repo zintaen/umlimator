@@ -125,6 +125,15 @@ drill-down, a data pipeline, an AI agent's skills, and host pages for embedding,
   Mermaid `erDiagram`, a Mermaid flowchart with `--typed`, a Structurizr JSON workspace and a `.dbml` file (with
   `@dbml/core` installed by you) into them. The Bookshop atlas starts at the C4 context, whose elements open the schema,
   the data flow, the information flow, the returns flowchart and the UML views.
+- **Mindmaps, Google Cloud and Azure** (0.26.0): a mindmap laid out left and right of its root, branches as curves in
+  the map's kind colours, edited by N, F2, Alt + arrows, drops and Delete, with `import` of a Mermaid mindmap
+  ([`examples/bookshop-opening-plan.json`](examples/bookshop-opening-plan.json), [what it covers](docs/conformance/mindmap.md));
+  Google Cloud and Azure architecture diagrams, groups (projects, regions, networks, subnets, zones; subscriptions,
+  resource groups, virtual networks) as boxes titled with their kind, each service a card with its vendor icon and its
+  full service name ([`examples/bookshop-gcp.json`](examples/bookshop-gcp.json), [`bookshop-azure.json`](examples/bookshop-azure.json);
+  [Google Cloud](docs/conformance/gcp.md), [Azure](docs/conformance/azure.md)). The icons come in packs you fetch
+  yourself after reading the vendor's terms (below); without one a card draws a glyph and the name. In the Bookshop
+  atlas the opening plan's Hosting topics open the two cloud views.
 - **Export**: any view as a stand-alone SVG or PNG, in the browser or from the CLI; the whole map as one PDF to hand in
   for a review: a cover with the contents, each view with its legend and tables of its cards, lines and boxes, then the
   rules (`umlimator.py pdf`).
@@ -278,7 +287,8 @@ gets completion and checks in editors, and `validate(model)` lists its errors an
 sequence, communication, use case, activity, state machine, interaction overview, component, deployment, composite
 structure, profile, timing or information flow diagram; `"er"`, `"flowchart"` and `"dfd"` an entity-relationship
 diagram, a flowchart and a data flow diagram; `"c4.landscape"`, `"c4.context"`, `"c4.container"`, `"c4.component"`,
-`"c4.dynamic"` and `"c4.deployment"` C4's six views; each drawn by `umlimator/all` and the CLI; a type not drawn yet shows its
+`"c4.dynamic"` and `"c4.deployment"` C4's six views; `"mindmap"` a mindmap and `"gcp"` and `"azure"` Google Cloud and
+Azure architecture diagrams (0.26.0); each drawn by `umlimator/all` and the CLI; a type not drawn yet shows its
 nodes as plain cards, with a warning. A model with no `schemaVersion` is a map, as always, and a version newer than the
 module reads is an error.
 
@@ -406,6 +416,20 @@ Milestone 2's five types (`examples/bookshop-schema.json`, `returns-flowchart.js
 | view | `edges` | a C4 dynamic view's steps: relationship ids, each once, in time order |
 | view | `diagram` | `"er"`, `"flowchart"`, `"dfd"`, `"uml.information-flow"`, `"c4.landscape"`, `"c4.context"`, `"c4.container"`, `"c4.component"`, `"c4.dynamic"`, `"c4.deployment"` |
 
+Milestone 4a's three types (`examples/bookshop-opening-plan.json`, `bookshop-gcp.json` and `bookshop-azure.json`;
+[`mindmap.md`](docs/conformance/mindmap.md), [`gcp.md`](docs/conformance/gcp.md), [`azure.md`](docs/conformance/azure.md)),
+from 0.26.0:
+
+| On | Field | What it does |
+|---|---|---|
+| node, edge | `type` | mindmap: `mindmap.Topic`, no lines. Google Cloud: `gcp.Zone` (a group), `gcp.Product`, `gcp.User`; lines `gcp.Path`. Azure: `azure.Group`, `azure.Service`; lines `azure.Connector`. A cloud line may start or end at a group, never join a group and what it holds |
+| node | `parent` | a topic's parent topic (a topic with none is a root); the group that holds a group or a service |
+| node | `props` | a group's kind, `zoneType` (`project`, `region`, `zone`, `network`, `subnetwork`, `generic`) or `groupType` (`subscription`, `resource-group`, `region`, `virtual-network`, `subnet`, `generic`); a product's or service's `icon`, the pinned pack's own id (`Cloud-Run`, `Front-Door-and-CDN-Profiles`) |
+| model | `icons` | from the CLI or a host: `<pack>/<id>` with `{ src, dark, name }`, and Google's `gcp/` with `{ legal }`; the module never fetches one |
+| model | `iconPacks` | the label of the pin each pack's ids were chosen from (`{ "gcp": "2026-11-14" }`); `umlimator.py check` compares it with the release's |
+| view | `present` | a first-level topic's half: `{ "side": "left" }` |
+| view | `diagram` | `"mindmap"`, `"gcp"`, `"azure"` |
+
 ## Command line
 
 ```bash
@@ -427,6 +451,9 @@ python3 umlimator.py import schema.mmd --out schema.json              # a Mermai
 python3 umlimator.py import returns.mmd --typed --out returns.json    # a Mermaid flowchart as a flowchart (without --typed, a map)
 python3 umlimator.py import workspace.json --out c4.json              # a Structurizr JSON workspace, as typed C4 views (needs Node)
 python3 umlimator.py import schema.dbml --out schema.json             # DBML, as an ER diagram (needs Node and @dbml/core, installed by you)
+python3 umlimator.py import plan.mmd --out plan.json                  # a Mermaid mindmap, as a mindmap (needs Node)
+python3 umlimator.py pack list                                        # the cloud icon packs: each one's label, and whether it is fetched and accepted
+python3 umlimator.py pack fetch gcp                                   # Google Cloud's icons: their terms first, then your yes (Icons, below)
 python3 umlimator.py render examples/sales-classes.json --out classes.html   # a class diagram's page; stills, check and pdf take it too
 docker compose config --format json > compose.json && python3 umlimator.py import compose.json --out model.json
 kubectl get deploy,sts,svc,ing -A -o json > cluster.json && python3 umlimator.py import cluster.json --out model.json
@@ -560,6 +587,34 @@ python3 umlimator.py pin-icons                                # records each new
 ```
 
 With `UMLIMATOR_OFFLINE=1` the CLI fetches nothing: a logo not in the cache keeps its card's sigil (`mcp` sets it).
+
+### Cloud icon packs (0.26.0)
+
+The Google Cloud and Azure diagrams draw each vendor's own service icons, which umlimator never ships, never bundles and
+never downloads on its own. You fetch a pack yourself, once, with `umlimator.py pack fetch gcp` or `pack fetch azure`:
+
+- **The terms first.** The vendor's terms are shown in full, with the line below, before any byte of the pack is
+  downloaded, and you type `yes`. With no terminal (an agent, a script), `--accept-terms gcp@2026-11-14` (the pack and its
+  label, as `pack list` prints them) is the yes: it prints the terms too and is recorded as given by flag. An agent shows
+  you the terms and passes the flag only on your yes; the MCP server offers neither. A new label asks again.
+- **Pinned.** Each zip comes from its vendor's own address, pinned in `icons/packs.json` by size and SHA-256; a file
+  that differs is not kept. Azure's `Microsoft_Terms_of_Use.pdf` is checked against its pinned hash too. A pack whose
+  zips a release has not pinned yet is refused ("not pinned in this release").
+- **Cached for you only.** A fetched pack lives in `<icon cache>/packs/` (`~/.cache/umlimator/icons`, or
+  `$UMLIMATOR_ICON_CACHE`). A render reads it and copies the icons it draws into the page, as it does a logo, and never
+  downloads a pack; with none fetched the cards draw a glyph and one line says how to fetch it. `UMLIMATOR_NO_PACKS=1`
+  draws glyphs whatever the cache holds: this project builds every page and still it publishes that way.
+- **Drawn as they are.** An icon is scaled, never recoloured, cropped or reshaped, on a tile for contrast, with the full
+  service name beside it. Wherever a Google icon is drawn, in a card or a legend, Google's legal line is drawn under the
+  picture and ends its description: "Google Cloud and the Google Cloud logo are trademarks of Google LLC."
+- **Logos from Microsoft's pack.** The logos `azuredevops`, `foundry` and `containerapps` are read from the Azure pack
+  once you fetched it; `entra` is read from the cache if it is there. A render no longer downloads any of them.
+- **AWS** is not offered in this release: the AWS diagram is built and waits on AWS's answer to how its icons may be used.
+
+Umlimator is not affiliated with, endorsed by or sponsored by Amazon Web Services, Google or Microsoft.
+
+A host other than the CLI gives the same table with the model (`model.icons`, keyed `<pack>/<id>`, from icons it
+fetched under the same terms; `docs/module-api.md`).
 
 ## Development
 

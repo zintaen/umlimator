@@ -517,3 +517,31 @@ gestures (1.7), with each type's hooks:
 | | a relationship | the handle or a drag | `L` | `add`; on a dynamic view between two elements a relationship already joins, that relationship becomes the last step (`set` of the view's `edges`) |
 | | a step's place | | `Alt + ↑/↓` on a step | `move { id, view, index }` among the steps drawn |
 | | an implied line | select it to read what it stands for | | none: F2, Delete, Shift + Delete and L emit nothing |
+
+## Milestone 4a's gestures: the mindmap, Google Cloud and Azure (0.26.0)
+
+Milestone 4a (`docs/diagrams/notes/milestone-4a.md` §5.6, §7.3) adds no command and no canvas key: each gesture is the
+typed canvas's (1.7) with the type's hooks, and every one goes through `apply()`.
+
+| Type | Edit | Pointer | Keyboard | Commands |
+|---|---|---|---|---|
+| Mindmap (`mindmap`) | a topic | the palette's Topic | `N` | `add` of a child of the topic selected (the root when none), placed in `nodeIds` after its parent's last shown descendant; its id from its words |
+| | its text | double-click once selected | `F2` | `set label`; an empty text is refused |
+| | its place among its siblings | a drop between two siblings | `Alt + ↑/↓` | `move { id, view, index }` in `nodeIds`, reparenting when it came from elsewhere |
+| | its parent | a drop on a topic (under it, last) | `Alt +` the arrow towards the root (promote: after its old parent), away from it (demote: into the sibling before it) | `reparent`; a topic is never put under itself |
+| | a first-level topic's half | a drop on the root's other half | `Alt +` the arrow across the root | `set` of the view's `present.<id>.side`; each other first-level topic with no side given keeps the half it is drawn on, in the same transaction |
+| | hide a branch | Delete | `Delete` | `hide` of the topic and its shown descendants, one transaction, counted on the hint line |
+| | delete a branch | Delete from model | `Shift + Delete` | `delete` of the topic, which takes its descendants (`apply()`), counted on the hint line first |
+| | show a hidden branch | Show (outline) | Enter on it | the topic and what was hidden with it, after its nearest shown ancestor's last shown descendant |
+| | a line | | `L` | none: "A mindmap has no lines; drop a topic on another to move it" |
+| Google Cloud (`gcp`), Azure (`azure`) | a group of each kind, a product or service (Google Cloud's user) | the palette | `N` | `add`, into the group selected, else at the top; a group's kind in `props.zoneType` (Google Cloud) or `props.groupType` (Azure) |
+| | a line | the handle or a drag between two cards | `L` | `add` of a `gcp.Path` or `azure.Connector`; one between a group and what it holds is refused ("A line cannot join the VPC and what it holds"). A line from or to a group is written in the model or by a host: the canvas's handle and `L` end on cards |
+| | the label, a line's label | double-click once selected | `F2` | `set label` |
+| | move into a group | a drop on the group | `Alt + arrows`: a pin | `reparent` (stage 2's), or the canvas's pin |
+| | the group's kind, the icon | the properties panel | | `set props.zoneType`, `props.groupType`, `props.icon` (the pack's own id: `umlimator.py check` names the nearest ids of one the pack lacks) |
+| | hide a group | Delete | `Delete` | `hide`: what it holds is drawn in the next shown group |
+| | delete a group | Delete from model | `Shift + Delete` | `delete`: it and what it holds (`apply()`'s cascade), counted on the hint line |
+
+The icons a cloud view draws come from the host's `icons` table (`<pack>/<id>`), never from the module: the CLI builds it
+from a pack the user fetched after reading the vendor's terms (`python3 umlimator.py pack fetch gcp`, `pack fetch azure`,
+`pack list`; README's Icons section). Without it a card draws a glyph with the service's full name.

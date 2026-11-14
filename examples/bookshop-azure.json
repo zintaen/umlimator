@@ -30,7 +30,7 @@
     { "id": "az-apps-monitor", "type": "azure.Connector", "from": "az-snet-apps", "to": "az-monitor", "label": "logs, metrics" }
   ],
   "views": [
-    { "id": "az-on-azure", "diagram": "azure", "title": "Bookshop on Azure", "parent": null,
+    { "id": "az-on-azure", "diagram": "azure", "title": "Bookshop on Azure", "caption": "Icons from a pack you fetch: umlimator.py pack fetch azure, after Microsoft's terms; glyphs and full names without it. Umlimator is not affiliated with, endorsed by or sponsored by Microsoft.", "parent": null,
       "nodeIds": ["az-subscription", "az-rg", "az-front-door", "az-monitor", "az-region", "az-assets", "az-queue", "az-vault",
         "az-vnet", "az-snet-apps", "az-api", "az-worker", "az-snet-data", "az-db"] }
   ],
