@@ -8,10 +8,17 @@
   mermaid       flowchart and graph (nodes, labelled links, subgraphs as boxes), and C4Context, C4Container and
                 C4Component, whose macros are C4-PlantUML's (a classDiagram, a sequenceDiagram or a stateDiagram is the
                 module's to read: umlimator.py import runs src/readers/mermaid-class.js, mermaid-sequence.js or
-                mermaid-state.js in Node)
+                mermaid-state.js in Node, and an erDiagram, or a flowchart given --typed, mermaid-er.js or
+                mermaid-flowchart.js)
   compose       `docker compose config --format json`: services, depends_on and links, networks as boxes
   kubernetes    `kubectl get ... -o json` (a List or one object): Deployments, StatefulSets, DaemonSets, Services (to the
                 workloads their selector picks), Ingresses (to their Services), and env values that name a Service
+
+detect() also knows two formats the module's readers read typed, in Node (NODE_FORMATS): a Structurizr JSON workspace
+(`model` and `views` at the top: src/readers/structurizr.js) and a .dbml file (@dbml/core parses it, src/readers/dbml.js
+reads what it parsed).
+
+BPMN XML (.bpmn) is told here and read by the module's adapter, src/readers/bpmn-xml.js, in Node through bpmn-moddle.
 
 read(fmt, text, name) returns (model, unread): unread lists what was not imported, each as (where, message), where
 being a line number, or an item's path in a JSON source.
@@ -20,10 +27,12 @@ import itertools, json, re
 from pathlib import Path
 
 FORMATS = ["structurizr", "plantuml", "mermaid", "compose", "kubernetes"]
-EXT = {".dsl": "structurizr", ".puml": "plantuml", ".plantuml": "plantuml", ".pu": "plantuml", ".iuml": "plantuml",
-       ".mmd": "mermaid", ".mermaid": "mermaid"}
-MERMAID = re.compile(r"(flowchart|graph|C4Context|C4Container|C4Component|classDiagram|sequenceDiagram|stateDiagram)\b")
-TYPED = ("classDiagram", "sequenceDiagram", "stateDiagram")  # the diagrams the module's readers read, in Node (src/readers/)
+NODE_FORMATS = ["structurizr-json", "dbml"]  # read typed by the module's readers, in Node (umlimator.py import)
+LIMIT = 1 << 20  # bytes: a Structurizr JSON or .dbml file over it is refused before it is parsed (notes/milestone-2.md §8)
+EXT = {".dbml": "dbml", ".dsl": "structurizr", ".puml": "plantuml", ".plantuml": "plantuml", ".pu": "plantuml", ".iuml": "plantuml",
+       ".mmd": "mermaid", ".mermaid": "mermaid", ".bpmn": "bpmn"}  # bpmn: XML the module's adapter reads (umlimator.py import)
+MERMAID = re.compile(r"(flowchart|graph|C4Context|C4Container|C4Component|classDiagram|sequenceDiagram|stateDiagram|erDiagram)\b")
+TYPED = ("classDiagram", "sequenceDiagram", "stateDiagram", "erDiagram")  # the diagrams the module's readers read, in Node (src/readers/)
 
 # ponytail: a keyword guess over names, technologies, tags and images, the first match winning; a source's own type
 # (a cylinder, ContainerDb, _Ext, a StatefulSet) comes first. Add words when a common stack lands on the wrong colour.
@@ -124,10 +133,14 @@ def detect(path, text):
             d = json.loads(text)
         except ValueError:
             d = None
+        if isinstance(d, dict) and isinstance(d.get("model"), dict) and isinstance(d.get("views"), dict):
+            return "structurizr-json"
         if isinstance(d, dict) and isinstance(d.get("services"), dict):
             return "compose"
         if isinstance(d, list) or isinstance(d, dict) and ("items" in d or "apiVersion" in d):
             return "kubernetes"
+    if text.lstrip()[:1] == "<" and "http://www.omg.org/spec/BPMN/20100524/MODEL" in text[:4096]:
+        return "bpmn"
     if re.search(r"^\s*@startuml", text, re.M):
         return "plantuml"
     body = re.sub(r"/\*.*?\*/", "", front(text)[1], flags=re.S)
@@ -139,9 +152,10 @@ def detect(path, text):
     return EXT.get(Path(path).suffix.lower())
 
 
-def mermaid_typed(text):
-    """The Mermaid diagram the module's readers read (src/readers/, through Node), classDiagram, sequenceDiagram or
-    stateDiagram (stateDiagram-v2 too), or None: this file reads Mermaid's flowcharts and C4 diagrams only."""
+def mermaid_typed(text, typed=False):
+    """The Mermaid diagram the module's readers read (src/readers/, through Node), classDiagram, sequenceDiagram,
+    stateDiagram (stateDiagram-v2 too) or erDiagram, and with typed (import --typed) "flowchart" for a flowchart or a
+    graph; else None: this file reads Mermaid's flowcharts and C4 diagrams, as maps."""
     directive = False  # a %%{ ... }%% directive may run over several lines
     for s in (l.strip() for l in front(text)[1].splitlines()):
         if directive:
@@ -149,7 +163,7 @@ def mermaid_typed(text):
         elif s.startswith("%%"):
             directive = s[2:].strip().startswith("{") and "}%%" not in s
         elif s:
-            return next((t for t in TYPED if re.match(t + r"\b", s)), None)
+            return next((t for t in TYPED if re.match(t + r"\b", s)), None) or (typed and re.match(r"(flowchart|graph)\b", s) and "flowchart" or None)
     return None
 
 
@@ -552,7 +566,7 @@ def mermaid(text, name):
     lines = [(no, s) for no, s in ((no, l.strip()) for no, l in enumerate(body.splitlines(), 1)) if s and not s.startswith("%%")]
     head = MERMAID.match(lines[0][1]) if lines else None
     if not head or head.group(1) in TYPED:
-        m.say(lines[0][0] if lines else 1, f"a {head.group(1)} is read by the module's reader, in Node (umlimator.py import): nothing imported here"
+        m.say(lines[0][0] if lines else 1, f"{'an' if head.group(1)[0] == 'e' else 'a'} {head.group(1)} is read by the module's reader, in Node (umlimator.py import): nothing imported here"
               if head else "not a flowchart, graph or C4 diagram: nothing imported")
         return m
     rest = re.sub(r"^\s*(TB|TD|BT|RL|LR)?\s*;?", "", lines[0][1][head.end():])
