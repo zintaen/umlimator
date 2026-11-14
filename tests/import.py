@@ -412,6 +412,26 @@ with tempfile.TemporaryDirectory() as tmp:
     ok("without Node, an erDiagram's import says it needs Node", r.returncode == 1 and "Mermaid erDiagram" in r.stderr and "Node.js 18" in r.stderr
        and not (t / "x.json").exists(), r.stderr)
 
+    # a requirementDiagram (notes/milestone-3.md §12.4, M3.6): refused before ("not a flowchart, graph or C4 diagram"), now
+    # the requirement reader's (tests/mermaid-requirement.test.mjs pins its report); the model it writes passes check.mjs
+    name = "tests/import/requirement.mmd"
+    ok("knows a requirementDiagram by its content, and leaves it to the module's reader",
+       imp.detect("x", "%% a\nrequirementDiagram\n") == "mermaid" and imp.mermaid_typed("---\ntitle: t\n---\nrequirementDiagram\n") == "requirementDiagram"
+       and imp.mermaid_typed("requirementDiagramX\n") is None and "a requirementDiagram is read by the module's reader" in imp.read("mermaid", "requirementDiagram\n", "x")[1][0][1])
+    r = run("import", str(ROOT / name), "--out", str(t / "req.json"))
+    said, m = typed(r, t / "req.json")
+    ok(f"{name} · a requirementDiagram is read by the module's reader as one sysml.requirement view of a version-2 model",
+       said.get("format") == "mermaid" and said.get("views") == ["requirements"] and m.get("schemaVersion") == 2 and m["views"][0].get("diagram") == "sysml.requirement"
+       and {n["type"] for n in m["nodes"]} == {"sysml.Requirement", "sysml.Block", "sysml.TestCase"} and said.get("cards") == 23 and said.get("lines") == 11, r.stdout + r.stderr)
+    got = [l[len(str(ROOT / name)):].split(" ", 1)[0] for l in r.stderr.splitlines()]
+    ok(f"{name} · lists what it skips or approximates, each with its line (the page's copy from an element among them)",
+       len(got) == said.get("unread") == 31 and ":80:" in got and "copy-ends" in r.stderr and all(g[1:-1].isdigit() for g in got), r.stderr)
+    ok(f"{name} · validate() finds no core error, and check.mjs passes the model",
+       core_errors(m) == [] and u.js("check", m, "sysml.requirement", module=ROOT / "docs" / "diagrams" / "examples" / "check.mjs") == [], core_errors(m))
+    r = subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "import", str(ROOT / name), "--out", str(t / "x.json")], capture_output=True, text=True, env=nonode)
+    ok("without Node, a requirementDiagram's import says it needs Node", r.returncode == 1 and "Mermaid requirementDiagram" in r.stderr and "Node.js 18" in r.stderr
+       and not (t / "x.json").exists(), r.stderr)
+
     # a flowchart: a map as before; with --typed, the flowchart reader's
     name = "tests/import/checkout.mmd"
     r = run("import", str(ROOT / name), "--typed", "--out", str(t / "fc.json"))
