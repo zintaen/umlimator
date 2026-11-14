@@ -503,3 +503,10 @@ test('a %% id: that is taken or above a line that takes none is reported; a clas
   const t = write({ schemaVersion: 2, root: 'v', nodes: [{ id: 'n1', type: 'uml.Class', label: '' }], edges: [], views: [{ id: 'v', diagram: 'uml.class', nodeIds: ['n1'] }] }, 'v');
   assert.match(t, /%% not written: n1: no label, read as its name/);
 });
+
+test('a static or abstract marker right after the ), as Mermaid reads it, is read so, not kept in the return type (audit 4)', () => {
+  const m = read('classDiagram\nclass Shape {\n  +draw(int x)$ bool\n  +area()* double\n  +make() Shape$\n}\n').model, ops = m.nodes.find(n => n.id === 'Shape').members;
+  assert.deepEqual(ops.map(o => [o.label, o.props.returnType, o.props.isStatic, o.props.isAbstract]),
+    [['draw', 'bool', true, undefined], ['area', 'double', undefined, true], ['make', 'Shape', true, undefined]]);
+  assert.match(write(m), /\+draw\(x : int\)\$? bool\$?/);
+});
