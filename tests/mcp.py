@@ -192,9 +192,14 @@ try:
     # a tour that has ended is not played again for a page that opens later
     tab, sid = chrome.open(url + "/")
     until(lambda: chrome.eval(sid, "!!(window.umlimatorMap && window.umlimatorMap.view === 'trips')"))
-    said = tool("tour", cards=["rider-app", "trip-api", "lifecycle"])
-    ended = until(lambda: "tour" in state()["asked"] and state()["asked"]["tour"] is None, 30)
-    ok("mcp-latest-command#3 · a tour that ended is taken out of what a later page is shown", said.startswith("Shown on 1 page") and ended, (said, state()["asked"]))
+    until(lambda: state()["pages"][0].get("state"))  # the page's event stream is connected
+    # as C10's highlight (#252): ask again until the server counts the stream. A loaded runner's page may take longer than
+    # the tool's 6 s to answer: then the test waits on the page itself, whose report that the tour ended (an ack of it) is
+    # what takes the tour out
+    said = until(lambda: (lambda r: None if r.startswith("No page is connected") else r)(tool("tour", cards=["rider-app", "trip-api", "lifecycle"]))) or "No page is connected"
+    ended = until(lambda: "tour" in state()["asked"] and state()["asked"]["tour"] is None, 60)
+    ok("mcp-latest-command#3 · a tour that ended is taken out of what a later page is shown",
+       (said.startswith("Shown on 1 page") or said.startswith("Sent to 1 open page")) and ended, (said, state()["asked"]))
 
     # the assistant's tour has ended: its next command leaves a tour the reader started, here a story's step tour (#132)
     chrome.eval(sid, "window.umlimatorMap.play('ride', { step: 3 }) && true")  # the reader's own: a step on trips, with a tour

@@ -231,6 +231,12 @@ ok("compose · a string depends_on or ports is one entry, not its characters",
 
 with tempfile.TemporaryDirectory() as tmp:
     t = Path(tmp)
+    (t / "adir.mmd").mkdir()
+    r = [run("import", str(t / f), "--out", str(t / "o.json")) for f in ("nope.mmd", "adir.mmd")]
+    ok("a missing file or a folder is said in one line, not a traceback (audit 4)",
+       all(x.returncode == 1 and "import: no file at" in x.stderr and "Traceback" not in x.stderr for x in r), [x.stderr[-200:] for x in r])
+    r = run("import", str(ROOT / "tests" / "import" / "parcels.puml"), "--out", str(t / "new" / "deeper" / "o.json"))
+    ok("--out in a folder not there yet: the folder is made, as render's (audit 4)", r.returncode == 0 and (t / "new" / "deeper" / "o.json").is_file(), r.stderr[-300:])
     (t / "bad.mmd").write_bytes(b"\xff\xfe\x00flowchart")
     r = run("import", str(t / "bad.mmd"), "--out", str(t / "b.json"))
     ok("a file that is not UTF-8 is said in one line, no traceback", r.returncode == 1 and "is not UTF-8 text" in r.stderr and "Traceback" not in r.stderr, r.stderr)
