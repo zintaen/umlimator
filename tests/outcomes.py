@@ -223,6 +223,14 @@ with tempfile.TemporaryDirectory() as tmp:
     ok("stills-cache#3 · the key covers a line that ends on a box", made(r) == ["system"] and "scrapes EVERYTHING" in (k / "st" / "system.svg").read_text(encoding="utf-8"), r.stderr)
     r = again(lambda m: m["rules"].append({"id": "no-direct-charge", "title": "Trips never charge directly", "from": {"id": "trips"}, "to": {"id": "payments"}}))
     ok("stills-cache#3 · and the model's rules (a broken one's line is drawn rose)", made(r) == ["system"] and "#cf222e" in (k / "st" / "system.svg").read_text(encoding="utf-8"), r.stderr)
+    comp = json.loads((ROOT / "examples" / "bookshop-components.json").read_text(encoding="utf-8"))
+    def comp_key():
+        (k / "c.json").write_text(json.dumps(comp), encoding="utf-8")
+        cli("render", k / "c.json", "--out", k / "c.html", "--no-check")
+        return u.still_keys(k / "c.html", [])["components"]
+    k1 = comp_key()
+    next(e for e in comp["edges"] if e["id"] == "api-to-provider")["label"] = "CHANGED"  # port to port
+    ok("stills-cache#3 · and a line that ends on a port, a member of a card (audit 3)", comp_key() != k1)
     cli("stills", page, "--out", k / "st", "--views", "ride-end")
     again(lambda m: m["views"].pop())  # ride-end
     r = cli("stills", k / "m.html", "--out", k / "st", "--views", "system")
