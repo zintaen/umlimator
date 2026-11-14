@@ -40,6 +40,8 @@ export const MOVED = { '01-class.json': '../../../examples/sales-classes.json', 
   '07-profile.json': '../../../examples/bookshop-profile.json', '14-timing.json': '../../../examples/bookshop-timing.json',
   '15-information-flow.json': '../../../examples/order-information-flow.json', '20-entity-relationship.json': '../../../examples/bookshop-schema.json',
   '21-flowchart.json': '../../../examples/returns-flowchart.json', '22-data-flow.json': '../../../examples/bookshop-data-flow.json', '23-c4.json': '../../../examples/bookshop-c4.json',
+  '16-requirement.json': '../../../examples/ebike-requirements.json', '17-block-definition.json': '../../../examples/ebike-blocks.json',
+  '18-internal-block.json': '../../../examples/ebike-structure.json', '19-parametric.json': '../../../examples/ebike-range.json',
   '25-mindmap.json': '../../../examples/bookshop-opening-plan.json', '27-gcp.json': '../../../examples/bookshop-gcp.json', '28-azure.json': '../../../examples/bookshop-azure.json' };
 
 // all 28 target examples, those still here and those that moved, in file order: [name, its URL]

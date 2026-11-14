@@ -4059,6 +4059,77 @@ What moves for a host that upgrades from 0.23.0:
   the CLI, M2.13 and M2.14 none.
   `lib/umlimator-all.js` is 484,838 B gzipped (`v0.23.0`'s 412,813 B on the same machine). The npm package is 735 kB.
 
+## 0.25.0 (in progress): SysML v1.7's requirement, block definition, internal block and parametric diagrams; the Mermaid requirement reader and writer; the e-bike atlas
+
+Milestone 3 of the plan for 28 diagram types (`docs/diagrams/notes/milestone-3.md`), merged to `main` before 0.25.0 ships
+(after 0.24.0), provisional until then. Everything is additive: maps, every typed view released before and every earlier
+example draw as they did in 0.24.0 (`bench/expected.json`, `tests/core-diet.json`'s fingerprints, the examples' stills),
+but for the one changed rule below and the four SysML targets, which draw for the first time. The new code is in
+`lib/umlimator-all.js`, except M3.1's 24 core bytes.
+
+- **The files and targets (M3.0, #265).** `src/sysml/sysml.js`, `requirement.js`, `blocks.js`, `internal.js`,
+  `parametric.js` and `src/readers/mermaid-requirement.js` in `tools/build.mjs`'s `ALL`, after milestone 2's and before
+  milestone 4b's. 17's `range-equation` and parts agree with 18 and 19; 19's view is `range-analysis` (it was `range`).
+- **SysML's base (M3.1, #269).** One table says what each SysML type is in UML (its metaclass, the stereotype it implies,
+  the UML type it is projected to), read by the stereotype check, the keywords, the projection and the reader: a profile
+  extending `Class` fits a block, one extending `Property` a value property, and «rationale» or «block» in a profile's
+  scope is not warned. Every SysML view is drawn in a frame with SysML's pentagon header, `kind [ElementType] name [view
+  title]`, cut to the frame and said whole in its accessible name; a frame names only the element types its diagram kind
+  allows (a package on req and bdd, a block on ibd, a block or a constraint block on par), any other subject `[Model]`. A
+  card dropped on a frame that is no element is reparented to the view's subject, or none (24 core bytes). A compartment
+  may be titled, and a classifier's accessible name may be the type's own (`title`, `ariaOwn`, fields no UML type sets).
+  A crosshair line end. A proxy or full port with no name shows its id after «proxy» or «full»; on a parametric view a
+  property added to a constraint block becomes a parameter, or a constraint property when typed by a constraint block.
+  **Changed:** the class diagram's `generalization-kinds` leaves a generalization with an end of another notation (a
+  SysML block, a C4 element) to that notation's rules; untyped ends, and types that name no notation, are still checked.
+- **The requirement diagram, `sysml.requirement` (M3.2, #274).** Requirements with «requirement» and their id and text,
+  wrapped at 224 px (`present.<id>.rows` caps it); Mermaid's five kinds as stereotypes; `risk` and `verifyMethod`.
+  Containment is `parent`, drawn as a derived crosshair line between requirements and as a box for a package. Twenty
+  rules (SysML's constraints errors, what is usual warnings). A view that lists its own `edges` draws and describes only the
+  six relationships and comment links; a long chain no longer runs out of stack when ranked; `describe()` prints no ".;"
+  after a text ending in a full stop. Shift + Delete on a requirement re-homes what it contains.
+- **The block definition diagram, `sysml.block-definition` (M3.3, #275).** Blocks, interface blocks, constraint blocks and
+  value types with SysML's named compartments, on the class type's lines. A part association drawn to a constraint block
+  adds a constraint property; to a value type, an interface block or a package it is refused. A member of a type with no
+  SysML kind is drawn in "other members" and reported by `member-kinds`. An interface block holds only proxy ports; a value
+  type only value properties and operations. A view naming an element not in the model is laid out and checked instead of
+  throwing. A port kind or flow direction SysML does not have is shown as stored in its row.
+- **The internal block diagram, `sysml.internal-block` (M3.4, #276).** The subject a frame, its parts, references and
+  values inside, ports on borders with their kind and flow arrows, `~` conjugation, item flows as labels and triangles.
+  F2 and a port's member row take a `~` off and put it back; F2's text starting `«proxy»` or `«full»` sets the kind; an edit
+  that changes nothing says nothing; a member row keeps its member's kind; an item flow is drawn only with both an item
+  and a direction (`item-flow` warns otherwise); two proxy ports conjugated alike pass `port-compatible` when every flow
+  property is `inout`; a block's card other than the subject is named "Block".
+- **The parametric diagram, `sysml.parametric` (M3.5, #279).** Constraint properties with rounded corners and their
+  block's expression, parameters on their borders, a constraint block subject's own on the frame; binding connectors. A
+  binding drawn from the canvas runs from the value and carries `ends.to.part`; one to a constraint property's box is
+  refused. Six rules (`subject-kind`, `binding-ends`, `binding-parameter`, `binding-types`, `parameter-bound`,
+  `connector-drawn`). Member rows `name : Type` and `param name : Type`. A parameter's name is kept inside the frame.
+- **The Mermaid requirement reader and writer, and the CLI (M3.6, #283).** `readMermaidRequirement` and
+  `writeMermaidRequirement` (`lib/umlimator-all.js`): the six kinds, `element`s as blocks or test cases, `contains` as
+  `parent`, the six relationships, `direction`; 1 MiB, a one-pass scanner, prototype-free tables, a containment cycle found
+  by one colouring pass, each bad line skipped and reported; the writer's `%% id:`, `%% text:` and `%% name:` comments read
+  back as untrusted input. `umlimator.py import` reads a `requirementDiagram` (it was refused).
+- **Fixtures, examples, the e-bike atlas, docs (M3.7).** The four targets moved to `examples/ebike-requirements.json`,
+  `ebike-blocks.json`, `ebike-structure.json` and `ebike-range.json`, every element two of them share written alike (EBike
+  whole in the blocks, structure and range files; Battery, Controller, Motor, Dock, Light and the interface and constraint
+  blocks in each that uses them; the requirements file names its blocks only), so each view draws in the atlas as in its
+  own file; the blocks view lists its own `edges`. `tools/atlas.mjs` takes `--links` and `--out` and carries SysML's props;
+  `tools/ebike-links.json` builds `examples/ebike-atlas.json`, rooted at the requirements. `tests/*-minimal.json` and
+  `*-stress.json` for the four types, `tests/sysml-fixtures.test.mjs`, `tests/sysml.html`, `tests/ebike-atlas.test.mjs`;
+  the schema and `.d.ts` name SysML's vocabulary; the MCP server, the diff Action and the skill's CLI tested on each.
+- **Left out** (`notes/milestone-3.md` §17): SysML v2; the other five SysML diagrams (UML's types here); allocations; views
+  and viewpoints; requirement tables; nested parts and connector ends; flow ports; solving equations; XMI; copy and paste.
+- **Known gaps:** a block definition view draws every model line between its blocks, connectors and bindings too, unless
+  it lists its `edges`; laid out down, a constraint block subject's parameters on the frame's top cross its header band;
+  the conformance notes cite SysML's constraints by stereotype, their sub-clause numbers not yet quoted from the PDF.
+- **P1.** On the stress views (CPU, best of seven, an Apple laptop under load): the requirement diagram, a full layout
+  and its SVG 561 ms, a text edited 590 ms, a satisfy added 543 ms, a containment line deleted 495 ms (over the 100 ms
+  target, the type's ranking inside each edit); block definition 66, 60 and 68 ms; internal block 43, 42 and 45 ms;
+  parametric 101, 80 and 96 ms. CI holds 1 s and prints each against the 100 ms target.
+- **Size:** `lib/umlimator.js`, what a map host loads, grows by M3.1's 24 B with this machine's `gzip -9` (185,873 B to
+  185,897 B, against milestone 3's 500 B share); M3.2 to M3.7 none.
+
 ## 0.26.0 (in progress): the mindmap; Google Cloud and Azure diagrams; icon packs fetched after the vendor's terms
 
 Milestone 4a of the plan for 28 diagram types (`docs/diagrams/notes/milestone-4a.md`), merged to `main` before 0.26.0

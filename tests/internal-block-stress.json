@@ -1,0 +1,1768 @@
+{
+ "schemaVersion": 2,
+ "title": "Internal block, stress",
+ "nodes": [
+  {
+   "id": "ec-sys",
+   "type": "sysml.Block",
+   "label": "System",
+   "members": [
+    {
+     "id": "ec-sys.src",
+     "type": "sysml.PartProperty",
+     "label": "source",
+     "props": {
+      "valueType": "Source"
+     }
+    },
+    {
+     "id": "ec-sys.sink",
+     "type": "sysml.PartProperty",
+     "label": "sink",
+     "props": {
+      "valueType": "Sink"
+     }
+    },
+    {
+     "id": "ec-sys.peer",
+     "type": "sysml.ReferenceProperty",
+     "label": "peer",
+     "props": {
+      "valueType": "Sink"
+     }
+    },
+    {
+     "id": "ec-sys.mass",
+     "type": "sysml.ValueProperty",
+     "label": "mass",
+     "props": {
+      "valueType": "Real"
+     }
+    },
+    {
+     "id": "ec-sys.loose",
+     "type": "sysml.PartProperty",
+     "label": "loose",
+     "props": {
+      "valueType": "Nothing"
+     }
+    },
+    {
+     "id": "ec-sys.plug",
+     "type": "sysml.Port",
+     "label": "plug",
+     "props": {
+      "kind": "proxy",
+      "valueType": "PowerIf"
+     }
+    }
+   ]
+  },
+  {
+   "id": "ec-source",
+   "type": "sysml.Block",
+   "label": "Source",
+   "members": [
+    {
+     "id": "ec-source.out",
+     "type": "sysml.Port",
+     "label": "out",
+     "props": {
+      "kind": "proxy",
+      "valueType": "PowerIf"
+     }
+    },
+    {
+     "id": "ec-source.back",
+     "type": "sysml.Port",
+     "label": "back",
+     "props": {
+      "kind": "full",
+      "valueType": "Sink"
+     }
+    },
+    {
+     "id": "ec-source.both",
+     "type": "sysml.Port",
+     "label": "both",
+     "props": {
+      "kind": "proxy",
+      "valueType": "BothIf"
+     }
+    }
+   ]
+  },
+  {
+   "id": "ec-sink",
+   "type": "sysml.Block",
+   "label": "Sink",
+   "members": [
+    {
+     "id": "ec-sink.in",
+     "type": "sysml.Port",
+     "label": "in",
+     "props": {
+      "kind": "proxy",
+      "valueType": "~PowerIf"
+     }
+    },
+    {
+     "id": "ec-sink.ret",
+     "type": "sysml.Port",
+     "label": "ret"
+    },
+    {
+     "id": "ec-sink.both",
+     "type": "sysml.Port",
+     "label": "both",
+     "props": {
+      "kind": "proxy",
+      "valueType": "~BothIf"
+     }
+    }
+   ]
+  },
+  {
+   "id": "ec-power-if",
+   "type": "sysml.InterfaceBlock",
+   "label": "PowerIf",
+   "members": [
+    {
+     "id": "ec-power-if.power",
+     "type": "sysml.FlowProperty",
+     "label": "power",
+     "props": {
+      "valueType": "Power",
+      "direction": "out"
+     }
+    }
+   ]
+  },
+  {
+   "id": "ec-both-if",
+   "type": "sysml.InterfaceBlock",
+   "label": "BothIf",
+   "members": [
+    {
+     "id": "ec-both-if.a",
+     "type": "sysml.FlowProperty",
+     "label": "a",
+     "props": {
+      "valueType": "Power",
+      "direction": "in"
+     }
+    },
+    {
+     "id": "ec-both-if.b",
+     "type": "sysml.FlowProperty",
+     "label": "b",
+     "props": {
+      "valueType": "Power",
+      "direction": "out"
+     }
+    }
+   ]
+  },
+  {
+   "id": "ec-bare",
+   "type": "sysml.Block",
+   "label": "Bare",
+   "members": [
+    {
+     "id": "ec-bare.a",
+     "type": "sysml.Port",
+     "label": "a"
+    },
+    {
+     "id": "ec-bare.b",
+     "type": "sysml.Port",
+     "label": "b"
+    }
+   ]
+  },
+  {
+   "id": "s",
+   "type": "sysml.Block",
+   "label": "Big",
+   "members": [
+    {
+     "id": "s.in",
+     "type": "sysml.Port",
+     "label": "in",
+     "props": {
+      "kind": "proxy",
+      "valueType": "Io"
+     }
+    },
+    {
+     "id": "s.p0",
+     "type": "sysml.PartProperty",
+     "label": "part0",
+     "props": {
+      "valueType": "Type0"
+     }
+    },
+    {
+     "id": "s.p1",
+     "type": "sysml.PartProperty",
+     "label": "part1",
+     "props": {
+      "valueType": "Type1"
+     }
+    },
+    {
+     "id": "s.p2",
+     "type": "sysml.PartProperty",
+     "label": "part2",
+     "props": {
+      "valueType": "Type2"
+     }
+    },
+    {
+     "id": "s.p3",
+     "type": "sysml.PartProperty",
+     "label": "part3",
+     "props": {
+      "valueType": "Type3"
+     }
+    },
+    {
+     "id": "s.p4",
+     "type": "sysml.PartProperty",
+     "label": "part4",
+     "props": {
+      "valueType": "Type4"
+     }
+    },
+    {
+     "id": "s.p5",
+     "type": "sysml.PartProperty",
+     "label": "part5",
+     "props": {
+      "valueType": "Type0"
+     }
+    },
+    {
+     "id": "s.p6",
+     "type": "sysml.PartProperty",
+     "label": "part6",
+     "props": {
+      "valueType": "Type1"
+     }
+    },
+    {
+     "id": "s.p7",
+     "type": "sysml.PartProperty",
+     "label": "part7",
+     "props": {
+      "valueType": "Type2"
+     }
+    },
+    {
+     "id": "s.p8",
+     "type": "sysml.PartProperty",
+     "label": "part8",
+     "props": {
+      "valueType": "Type3"
+     }
+    },
+    {
+     "id": "s.p9",
+     "type": "sysml.PartProperty",
+     "label": "part9",
+     "props": {
+      "valueType": "Type4"
+     }
+    },
+    {
+     "id": "s.p10",
+     "type": "sysml.PartProperty",
+     "label": "part10",
+     "props": {
+      "valueType": "Type0"
+     }
+    },
+    {
+     "id": "s.p11",
+     "type": "sysml.PartProperty",
+     "label": "part11",
+     "props": {
+      "valueType": "Type1"
+     }
+    },
+    {
+     "id": "s.p12",
+     "type": "sysml.PartProperty",
+     "label": "part12",
+     "props": {
+      "valueType": "Type2"
+     }
+    },
+    {
+     "id": "s.p13",
+     "type": "sysml.PartProperty",
+     "label": "part13",
+     "props": {
+      "valueType": "Type3"
+     }
+    },
+    {
+     "id": "s.p14",
+     "type": "sysml.PartProperty",
+     "label": "part14",
+     "props": {
+      "valueType": "Type4"
+     }
+    },
+    {
+     "id": "s.p15",
+     "type": "sysml.PartProperty",
+     "label": "part15",
+     "props": {
+      "valueType": "Type0"
+     }
+    },
+    {
+     "id": "s.p16",
+     "type": "sysml.PartProperty",
+     "label": "part16",
+     "props": {
+      "valueType": "Type1"
+     }
+    },
+    {
+     "id": "s.p17",
+     "type": "sysml.PartProperty",
+     "label": "part17",
+     "props": {
+      "valueType": "Type2"
+     }
+    },
+    {
+     "id": "s.p18",
+     "type": "sysml.PartProperty",
+     "label": "part18",
+     "props": {
+      "valueType": "Type3"
+     }
+    },
+    {
+     "id": "s.p19",
+     "type": "sysml.PartProperty",
+     "label": "part19",
+     "props": {
+      "valueType": "Type4"
+     }
+    },
+    {
+     "id": "s.p20",
+     "type": "sysml.PartProperty",
+     "label": "part20",
+     "props": {
+      "valueType": "Type0"
+     }
+    },
+    {
+     "id": "s.p21",
+     "type": "sysml.PartProperty",
+     "label": "part21",
+     "props": {
+      "valueType": "Type1"
+     }
+    },
+    {
+     "id": "s.p22",
+     "type": "sysml.PartProperty",
+     "label": "part22",
+     "props": {
+      "valueType": "Type2"
+     }
+    },
+    {
+     "id": "s.p23",
+     "type": "sysml.PartProperty",
+     "label": "part23",
+     "props": {
+      "valueType": "Type3"
+     }
+    },
+    {
+     "id": "s.p24",
+     "type": "sysml.PartProperty",
+     "label": "part24",
+     "props": {
+      "valueType": "Type4"
+     }
+    },
+    {
+     "id": "s.p25",
+     "type": "sysml.PartProperty",
+     "label": "part25",
+     "props": {
+      "valueType": "Type0"
+     }
+    },
+    {
+     "id": "s.p26",
+     "type": "sysml.PartProperty",
+     "label": "part26",
+     "props": {
+      "valueType": "Type1"
+     }
+    },
+    {
+     "id": "s.p27",
+     "type": "sysml.PartProperty",
+     "label": "part27",
+     "props": {
+      "valueType": "Type2"
+     }
+    },
+    {
+     "id": "s.p28",
+     "type": "sysml.PartProperty",
+     "label": "part28",
+     "props": {
+      "valueType": "Type3"
+     }
+    },
+    {
+     "id": "s.p29",
+     "type": "sysml.PartProperty",
+     "label": "part29",
+     "props": {
+      "valueType": "Type4"
+     }
+    }
+   ]
+  },
+  {
+   "id": "io",
+   "type": "sysml.InterfaceBlock",
+   "label": "Io",
+   "members": [
+    {
+     "id": "io.x",
+     "type": "sysml.FlowProperty",
+     "label": "x",
+     "props": {
+      "direction": "in"
+     }
+    }
+   ]
+  },
+  {
+   "id": "t0",
+   "type": "sysml.Block",
+   "label": "Type0",
+   "members": [
+    {
+     "id": "t0.a",
+     "type": "sysml.Port",
+     "label": "a",
+     "props": {
+      "kind": "proxy",
+      "valueType": "Io"
+     }
+    },
+    {
+     "id": "t0.b",
+     "type": "sysml.Port",
+     "label": "b",
+     "props": {
+      "kind": "proxy",
+      "valueType": "~Io"
+     }
+    }
+   ]
+  },
+  {
+   "id": "t1",
+   "type": "sysml.Block",
+   "label": "Type1",
+   "members": [
+    {
+     "id": "t1.a",
+     "type": "sysml.Port",
+     "label": "a",
+     "props": {
+      "kind": "proxy",
+      "valueType": "Io"
+     }
+    },
+    {
+     "id": "t1.b",
+     "type": "sysml.Port",
+     "label": "b",
+     "props": {
+      "kind": "proxy",
+      "valueType": "~Io"
+     }
+    }
+   ]
+  },
+  {
+   "id": "t2",
+   "type": "sysml.Block",
+   "label": "Type2",
+   "members": [
+    {
+     "id": "t2.a",
+     "type": "sysml.Port",
+     "label": "a",
+     "props": {
+      "kind": "proxy",
+      "valueType": "Io"
+     }
+    },
+    {
+     "id": "t2.b",
+     "type": "sysml.Port",
+     "label": "b",
+     "props": {
+      "kind": "proxy",
+      "valueType": "~Io"
+     }
+    }
+   ]
+  },
+  {
+   "id": "t3",
+   "type": "sysml.Block",
+   "label": "Type3",
+   "members": [
+    {
+     "id": "t3.a",
+     "type": "sysml.Port",
+     "label": "a",
+     "props": {
+      "kind": "proxy",
+      "valueType": "Io"
+     }
+    },
+    {
+     "id": "t3.b",
+     "type": "sysml.Port",
+     "label": "b",
+     "props": {
+      "kind": "proxy",
+      "valueType": "~Io"
+     }
+    }
+   ]
+  },
+  {
+   "id": "t4",
+   "type": "sysml.Block",
+   "label": "Type4",
+   "members": [
+    {
+     "id": "t4.a",
+     "type": "sysml.Port",
+     "label": "a",
+     "props": {
+      "kind": "proxy",
+      "valueType": "Io"
+     }
+    },
+    {
+     "id": "t4.b",
+     "type": "sysml.Port",
+     "label": "b",
+     "props": {
+      "kind": "proxy",
+      "valueType": "~Io"
+     }
+    }
+   ]
+  }
+ ],
+ "edges": [
+  {
+   "id": "ec-flow-ft",
+   "type": "sysml.Connector",
+   "from": "ec-source.out",
+   "to": "ec-sink.in",
+   "props": {
+    "ends": {
+     "from": {
+      "part": "ec-sys.src"
+     },
+     "to": {
+      "part": "ec-sys.sink"
+     }
+    },
+    "itemFlow": {
+     "item": "Power",
+     "direction": "from-to"
+    }
+   }
+  },
+  {
+   "id": "ec-flow-tf",
+   "type": "sysml.Connector",
+   "from": "ec-source.back",
+   "to": "ec-sink.ret",
+   "props": {
+    "ends": {
+     "from": {
+      "part": "ec-sys.src"
+     },
+     "to": {
+      "part": "ec-sys.sink"
+     }
+    },
+    "itemFlow": {
+     "item": "Heat",
+     "direction": "to-from"
+    }
+   }
+  },
+  {
+   "id": "ec-two-a",
+   "type": "sysml.Connector",
+   "from": "ec-source.both",
+   "to": "ec-sink.both",
+   "props": {
+    "ends": {
+     "from": {
+      "part": "ec-sys.src"
+     },
+     "to": {
+      "part": "ec-sys.sink"
+     }
+    }
+   }
+  },
+  {
+   "id": "ec-two-b",
+   "type": "sysml.Connector",
+   "from": "ec-source.both",
+   "to": "ec-sink.ret",
+   "props": {
+    "ends": {
+     "from": {
+      "part": "ec-sys.src"
+     },
+     "to": {
+      "part": "ec-sys.peer"
+     }
+    }
+   }
+  },
+  {
+   "id": "ec-delegate",
+   "type": "sysml.Connector",
+   "from": "ec-sys.plug",
+   "to": "ec-source.out",
+   "props": {
+    "ends": {
+     "to": {
+      "part": "ec-sys.src"
+     }
+    }
+   }
+  },
+  {
+   "id": "ec-loose",
+   "type": "sysml.Connector",
+   "from": "ec-source.out",
+   "to": "ec-sink.in",
+   "props": {
+    "ends": {
+     "from": {
+      "part": "ec-sys.loose"
+     },
+     "to": {
+      "part": "ec-sys.sink"
+     }
+    }
+   }
+  },
+  {
+   "id": "ec-lacking",
+   "type": "sysml.Connector",
+   "from": "ec-sink.ret",
+   "to": "ec-source.out",
+   "props": {
+    "ends": {
+     "from": {
+      "part": "ec-sys.src"
+     },
+     "to": {
+      "part": "ec-sys.sink"
+     }
+    }
+   }
+  },
+  {
+   "id": "c0",
+   "type": "sysml.Connector",
+   "from": "t0.a",
+   "to": "t3.b",
+   "props": {
+    "ends": {
+     "from": {
+      "part": "s.p0"
+     },
+     "to": {
+      "part": "s.p3"
+     }
+    },
+    "itemFlow": {
+     "item": "Item0",
+     "direction": "from-to"
+    }
+   }
+  },
+  {
+   "id": "c1",
+   "type": "sysml.Connector",
+   "from": "t1.a",
+   "to": "t0.b",
+   "props": {
+    "ends": {
+     "from": {
+      "part": "s.p1"
+     },
+     "to": {
+      "part": "s.p10"
+     }
+    }
+   }
+  },
+  {
+   "id": "c2",
+   "type": "sysml.Connector",
+   "from": "t2.a",
+   "to": "t2.b",
+   "props": {
+    "ends": {
+     "from": {
+      "part": "s.p2"
+     },
+     "to": {
+      "part": "s.p17"
+     }
+    }
+   }
+  },
+  {
+   "id": "c3",
+   "type": "sysml.Connector",
+   "from": "t3.a",
+   "to": "t4.b",
+   "props": {
+    "ends": {
+     "from": {
+      "part": "s.p3"
+     },
+     "to": {
+      "part": "s.p24"
+     }
+    },
+    "itemFlow": {
+     "item": "Item3",
+     "direction": "from-to"
+    }
+   }
+  },
+  {
+   "id": "c4",
+   "type": "sysml.Connector",
+   "from": "t4.a",
+   "to": "t1.b",
+   "props": {
+    "ends": {
+     "from": {
+      "part": "s.p4"
+     },
+     "to": {
+      "part": "s.p1"
+     }
+    }
+   }
+  },
+  {
+   "id": "c5",
+   "type": "sysml.Connector",
+   "from": "t0.a",
+   "to": "t3.b",
+   "props": {
+    "ends": {
+     "from": {
+      "part": "s.p5"
+     },
+     "to": {
+      "part": "s.p8"
+     }
+    }
+   }
+  },
+  {
+   "id": "c6",
+   "type": "sysml.Connector",
+   "from": "t1.a",
+   "to": "t0.b",
+   "props": {
+    "ends": {
+     "from": {
+      "part": "s.p6"
+     },
+     "to": {
+      "part": "s.p15"
+     }
+    },
+    "itemFlow": {
+     "item": "Item6",
+     "direction": "from-to"
+    }
+   }
+  },
+  {
+   "id": "c7",
+   "type": "sysml.Connector",
+   "from": "t2.a",
+   "to": "t2.b",
+   "props": {
+    "ends": {
+     "from": {
+      "part": "s.p7"
+     },
+     "to": {
+      "part": "s.p22"
+     }
+    }
+   }
+  },
+  {
+   "id": "c8",
+   "type": "sysml.Connector",
+   "from": "t3.a",
+   "to": "t4.b",
+   "props": {
+    "ends": {
+     "from": {
+      "part": "s.p8"
+     },
+     "to": {
+      "part": "s.p29"
+     }
+    }
+   }
+  },
+  {
+   "id": "c9",
+   "type": "sysml.Connector",
+   "from": "t4.a",
+   "to": "t1.b",
+   "props": {
+    "ends": {
+     "from": {
+      "part": "s.p9"
+     },
+     "to": {
+      "part": "s.p6"
+     }
+    },
+    "itemFlow": {
+     "item": "Item9",
+     "direction": "from-to"
+    }
+   }
+  },
+  {
+   "id": "c10",
+   "type": "sysml.Connector",
+   "from": "t0.a",
+   "to": "t3.b",
+   "props": {
+    "ends": {
+     "from": {
+      "part": "s.p10"
+     },
+     "to": {
+      "part": "s.p13"
+     }
+    }
+   }
+  },
+  {
+   "id": "c11",
+   "type": "sysml.Connector",
+   "from": "t1.a",
+   "to": "t0.b",
+   "props": {
+    "ends": {
+     "from": {
+      "part": "s.p11"
+     },
+     "to": {
+      "part": "s.p20"
+     }
+    }
+   }
+  },
+  {
+   "id": "c12",
+   "type": "sysml.Connector",
+   "from": "t2.a",
+   "to": "t2.b",
+   "props": {
+    "ends": {
+     "from": {
+      "part": "s.p12"
+     },
+     "to": {
+      "part": "s.p27"
+     }
+    },
+    "itemFlow": {
+     "item": "Item12",
+     "direction": "from-to"
+    }
+   }
+  },
+  {
+   "id": "c13",
+   "type": "sysml.Connector",
+   "from": "t3.a",
+   "to": "t4.b",
+   "props": {
+    "ends": {
+     "from": {
+      "part": "s.p13"
+     },
+     "to": {
+      "part": "s.p4"
+     }
+    }
+   }
+  },
+  {
+   "id": "c14",
+   "type": "sysml.Connector",
+   "from": "t4.a",
+   "to": "t1.b",
+   "props": {
+    "ends": {
+     "from": {
+      "part": "s.p14"
+     },
+     "to": {
+      "part": "s.p11"
+     }
+    }
+   }
+  },
+  {
+   "id": "c15",
+   "type": "sysml.Connector",
+   "from": "t0.a",
+   "to": "t3.b",
+   "props": {
+    "ends": {
+     "from": {
+      "part": "s.p15"
+     },
+     "to": {
+      "part": "s.p18"
+     }
+    },
+    "itemFlow": {
+     "item": "Item15",
+     "direction": "from-to"
+    }
+   }
+  },
+  {
+   "id": "c16",
+   "type": "sysml.Connector",
+   "from": "t1.a",
+   "to": "t0.b",
+   "props": {
+    "ends": {
+     "from": {
+      "part": "s.p16"
+     },
+     "to": {
+      "part": "s.p25"
+     }
+    }
+   }
+  },
+  {
+   "id": "c17",
+   "type": "sysml.Connector",
+   "from": "t2.a",
+   "to": "t2.b",
+   "props": {
+    "ends": {
+     "from": {
+      "part": "s.p17"
+     },
+     "to": {
+      "part": "s.p2"
+     }
+    }
+   }
+  },
+  {
+   "id": "c18",
+   "type": "sysml.Connector",
+   "from": "t3.a",
+   "to": "t4.b",
+   "props": {
+    "ends": {
+     "from": {
+      "part": "s.p18"
+     },
+     "to": {
+      "part": "s.p9"
+     }
+    },
+    "itemFlow": {
+     "item": "Item18",
+     "direction": "from-to"
+    }
+   }
+  },
+  {
+   "id": "c19",
+   "type": "sysml.Connector",
+   "from": "t4.a",
+   "to": "t1.b",
+   "props": {
+    "ends": {
+     "from": {
+      "part": "s.p19"
+     },
+     "to": {
+      "part": "s.p16"
+     }
+    }
+   }
+  },
+  {
+   "id": "c20",
+   "type": "sysml.Connector",
+   "from": "t0.a",
+   "to": "t3.b",
+   "props": {
+    "ends": {
+     "from": {
+      "part": "s.p20"
+     },
+     "to": {
+      "part": "s.p23"
+     }
+    }
+   }
+  },
+  {
+   "id": "c21",
+   "type": "sysml.Connector",
+   "from": "t1.a",
+   "to": "t0.b",
+   "props": {
+    "ends": {
+     "from": {
+      "part": "s.p21"
+     },
+     "to": {
+      "part": "s.p0"
+     }
+    },
+    "itemFlow": {
+     "item": "Item21",
+     "direction": "from-to"
+    }
+   }
+  },
+  {
+   "id": "c22",
+   "type": "sysml.Connector",
+   "from": "t2.a",
+   "to": "t2.b",
+   "props": {
+    "ends": {
+     "from": {
+      "part": "s.p22"
+     },
+     "to": {
+      "part": "s.p7"
+     }
+    }
+   }
+  },
+  {
+   "id": "c23",
+   "type": "sysml.Connector",
+   "from": "t3.a",
+   "to": "t4.b",
+   "props": {
+    "ends": {
+     "from": {
+      "part": "s.p23"
+     },
+     "to": {
+      "part": "s.p14"
+     }
+    }
+   }
+  },
+  {
+   "id": "c24",
+   "type": "sysml.Connector",
+   "from": "t4.a",
+   "to": "t1.b",
+   "props": {
+    "ends": {
+     "from": {
+      "part": "s.p24"
+     },
+     "to": {
+      "part": "s.p21"
+     }
+    },
+    "itemFlow": {
+     "item": "Item24",
+     "direction": "from-to"
+    }
+   }
+  },
+  {
+   "id": "c25",
+   "type": "sysml.Connector",
+   "from": "t0.a",
+   "to": "t3.b",
+   "props": {
+    "ends": {
+     "from": {
+      "part": "s.p25"
+     },
+     "to": {
+      "part": "s.p28"
+     }
+    }
+   }
+  },
+  {
+   "id": "c26",
+   "type": "sysml.Connector",
+   "from": "t1.a",
+   "to": "t0.b",
+   "props": {
+    "ends": {
+     "from": {
+      "part": "s.p26"
+     },
+     "to": {
+      "part": "s.p5"
+     }
+    }
+   }
+  },
+  {
+   "id": "c27",
+   "type": "sysml.Connector",
+   "from": "t2.a",
+   "to": "t2.b",
+   "props": {
+    "ends": {
+     "from": {
+      "part": "s.p27"
+     },
+     "to": {
+      "part": "s.p12"
+     }
+    },
+    "itemFlow": {
+     "item": "Item27",
+     "direction": "from-to"
+    }
+   }
+  },
+  {
+   "id": "c28",
+   "type": "sysml.Connector",
+   "from": "t3.a",
+   "to": "t4.b",
+   "props": {
+    "ends": {
+     "from": {
+      "part": "s.p28"
+     },
+     "to": {
+      "part": "s.p19"
+     }
+    }
+   }
+  },
+  {
+   "id": "c29",
+   "type": "sysml.Connector",
+   "from": "t4.a",
+   "to": "t1.b",
+   "props": {
+    "ends": {
+     "from": {
+      "part": "s.p29"
+     },
+     "to": {
+      "part": "s.p26"
+     }
+    }
+   }
+  },
+  {
+   "id": "c30",
+   "type": "sysml.Connector",
+   "from": "t0.a",
+   "to": "t3.b",
+   "props": {
+    "ends": {
+     "from": {
+      "part": "s.p0"
+     },
+     "to": {
+      "part": "s.p3"
+     }
+    },
+    "itemFlow": {
+     "item": "Item30",
+     "direction": "from-to"
+    }
+   }
+  },
+  {
+   "id": "c31",
+   "type": "sysml.Connector",
+   "from": "t1.a",
+   "to": "t0.b",
+   "props": {
+    "ends": {
+     "from": {
+      "part": "s.p1"
+     },
+     "to": {
+      "part": "s.p10"
+     }
+    }
+   }
+  },
+  {
+   "id": "c32",
+   "type": "sysml.Connector",
+   "from": "t2.a",
+   "to": "t2.b",
+   "props": {
+    "ends": {
+     "from": {
+      "part": "s.p2"
+     },
+     "to": {
+      "part": "s.p17"
+     }
+    }
+   }
+  },
+  {
+   "id": "c33",
+   "type": "sysml.Connector",
+   "from": "t3.a",
+   "to": "t4.b",
+   "props": {
+    "ends": {
+     "from": {
+      "part": "s.p3"
+     },
+     "to": {
+      "part": "s.p24"
+     }
+    },
+    "itemFlow": {
+     "item": "Item33",
+     "direction": "from-to"
+    }
+   }
+  },
+  {
+   "id": "c34",
+   "type": "sysml.Connector",
+   "from": "t4.a",
+   "to": "t1.b",
+   "props": {
+    "ends": {
+     "from": {
+      "part": "s.p4"
+     },
+     "to": {
+      "part": "s.p1"
+     }
+    }
+   }
+  },
+  {
+   "id": "c35",
+   "type": "sysml.Connector",
+   "from": "t0.a",
+   "to": "t3.b",
+   "props": {
+    "ends": {
+     "from": {
+      "part": "s.p5"
+     },
+     "to": {
+      "part": "s.p8"
+     }
+    }
+   }
+  },
+  {
+   "id": "c36",
+   "type": "sysml.Connector",
+   "from": "t1.a",
+   "to": "t0.b",
+   "props": {
+    "ends": {
+     "from": {
+      "part": "s.p6"
+     },
+     "to": {
+      "part": "s.p15"
+     }
+    },
+    "itemFlow": {
+     "item": "Item36",
+     "direction": "from-to"
+    }
+   }
+  },
+  {
+   "id": "c37",
+   "type": "sysml.Connector",
+   "from": "t2.a",
+   "to": "t2.b",
+   "props": {
+    "ends": {
+     "from": {
+      "part": "s.p7"
+     },
+     "to": {
+      "part": "s.p22"
+     }
+    }
+   }
+  },
+  {
+   "id": "c38",
+   "type": "sysml.Connector",
+   "from": "t3.a",
+   "to": "t4.b",
+   "props": {
+    "ends": {
+     "from": {
+      "part": "s.p8"
+     },
+     "to": {
+      "part": "s.p29"
+     }
+    }
+   }
+  },
+  {
+   "id": "c39",
+   "type": "sysml.Connector",
+   "from": "t4.a",
+   "to": "t1.b",
+   "props": {
+    "ends": {
+     "from": {
+      "part": "s.p9"
+     },
+     "to": {
+      "part": "s.p6"
+     }
+    },
+    "itemFlow": {
+     "item": "Item39",
+     "direction": "from-to"
+    }
+   }
+  },
+  {
+   "id": "c40",
+   "type": "sysml.Connector",
+   "from": "t0.a",
+   "to": "t3.b",
+   "props": {
+    "ends": {
+     "from": {
+      "part": "s.p10"
+     },
+     "to": {
+      "part": "s.p13"
+     }
+    }
+   }
+  },
+  {
+   "id": "c41",
+   "type": "sysml.Connector",
+   "from": "t1.a",
+   "to": "t0.b",
+   "props": {
+    "ends": {
+     "from": {
+      "part": "s.p11"
+     },
+     "to": {
+      "part": "s.p20"
+     }
+    }
+   }
+  },
+  {
+   "id": "c42",
+   "type": "sysml.Connector",
+   "from": "t2.a",
+   "to": "t2.b",
+   "props": {
+    "ends": {
+     "from": {
+      "part": "s.p12"
+     },
+     "to": {
+      "part": "s.p27"
+     }
+    },
+    "itemFlow": {
+     "item": "Item42",
+     "direction": "from-to"
+    }
+   }
+  },
+  {
+   "id": "c43",
+   "type": "sysml.Connector",
+   "from": "t3.a",
+   "to": "t4.b",
+   "props": {
+    "ends": {
+     "from": {
+      "part": "s.p13"
+     },
+     "to": {
+      "part": "s.p4"
+     }
+    }
+   }
+  },
+  {
+   "id": "c44",
+   "type": "sysml.Connector",
+   "from": "t4.a",
+   "to": "t1.b",
+   "props": {
+    "ends": {
+     "from": {
+      "part": "s.p14"
+     },
+     "to": {
+      "part": "s.p11"
+     }
+    }
+   }
+  },
+  {
+   "id": "c45",
+   "type": "sysml.Connector",
+   "from": "t0.a",
+   "to": "t3.b",
+   "props": {
+    "ends": {
+     "from": {
+      "part": "s.p15"
+     },
+     "to": {
+      "part": "s.p18"
+     }
+    },
+    "itemFlow": {
+     "item": "Item45",
+     "direction": "from-to"
+    }
+   }
+  },
+  {
+   "id": "c46",
+   "type": "sysml.Connector",
+   "from": "t1.a",
+   "to": "t0.b",
+   "props": {
+    "ends": {
+     "from": {
+      "part": "s.p16"
+     },
+     "to": {
+      "part": "s.p25"
+     }
+    }
+   }
+  },
+  {
+   "id": "c47",
+   "type": "sysml.Connector",
+   "from": "t2.a",
+   "to": "t2.b",
+   "props": {
+    "ends": {
+     "from": {
+      "part": "s.p17"
+     },
+     "to": {
+      "part": "s.p2"
+     }
+    }
+   }
+  },
+  {
+   "id": "c48",
+   "type": "sysml.Connector",
+   "from": "t3.a",
+   "to": "t4.b",
+   "props": {
+    "ends": {
+     "from": {
+      "part": "s.p18"
+     },
+     "to": {
+      "part": "s.p9"
+     }
+    },
+    "itemFlow": {
+     "item": "Item48",
+     "direction": "from-to"
+    }
+   }
+  },
+  {
+   "id": "c49",
+   "type": "sysml.Connector",
+   "from": "t4.a",
+   "to": "t1.b",
+   "props": {
+    "ends": {
+     "from": {
+      "part": "s.p19"
+     },
+     "to": {
+      "part": "s.p16"
+     }
+    }
+   }
+  },
+  {
+   "id": "c50",
+   "type": "sysml.Connector",
+   "from": "t0.a",
+   "to": "t3.b",
+   "props": {
+    "ends": {
+     "from": {
+      "part": "s.p20"
+     },
+     "to": {
+      "part": "s.p23"
+     }
+    }
+   }
+  },
+  {
+   "id": "c51",
+   "type": "sysml.Connector",
+   "from": "t1.a",
+   "to": "t0.b",
+   "props": {
+    "ends": {
+     "from": {
+      "part": "s.p21"
+     },
+     "to": {
+      "part": "s.p0"
+     }
+    },
+    "itemFlow": {
+     "item": "Item51",
+     "direction": "from-to"
+    }
+   }
+  },
+  {
+   "id": "c52",
+   "type": "sysml.Connector",
+   "from": "t2.a",
+   "to": "t2.b",
+   "props": {
+    "ends": {
+     "from": {
+      "part": "s.p22"
+     },
+     "to": {
+      "part": "s.p7"
+     }
+    }
+   }
+  },
+  {
+   "id": "c53",
+   "type": "sysml.Connector",
+   "from": "t3.a",
+   "to": "t4.b",
+   "props": {
+    "ends": {
+     "from": {
+      "part": "s.p23"
+     },
+     "to": {
+      "part": "s.p14"
+     }
+    }
+   }
+  },
+  {
+   "id": "c54",
+   "type": "sysml.Connector",
+   "from": "t4.a",
+   "to": "t1.b",
+   "props": {
+    "ends": {
+     "from": {
+      "part": "s.p24"
+     },
+     "to": {
+      "part": "s.p21"
+     }
+    },
+    "itemFlow": {
+     "item": "Item54",
+     "direction": "from-to"
+    }
+   }
+  },
+  {
+   "id": "c55",
+   "type": "sysml.Connector",
+   "from": "t0.a",
+   "to": "t3.b",
+   "props": {
+    "ends": {
+     "from": {
+      "part": "s.p25"
+     },
+     "to": {
+      "part": "s.p28"
+     }
+    }
+   }
+  },
+  {
+   "id": "c56",
+   "type": "sysml.Connector",
+   "from": "t1.a",
+   "to": "t0.b",
+   "props": {
+    "ends": {
+     "from": {
+      "part": "s.p26"
+     },
+     "to": {
+      "part": "s.p5"
+     }
+    }
+   }
+  },
+  {
+   "id": "c57",
+   "type": "sysml.Connector",
+   "from": "t2.a",
+   "to": "t2.b",
+   "props": {
+    "ends": {
+     "from": {
+      "part": "s.p27"
+     },
+     "to": {
+      "part": "s.p12"
+     }
+    },
+    "itemFlow": {
+     "item": "Item57",
+     "direction": "from-to"
+    }
+   }
+  },
+  {
+   "id": "c58",
+   "type": "sysml.Connector",
+   "from": "t3.a",
+   "to": "t4.b",
+   "props": {
+    "ends": {
+     "from": {
+      "part": "s.p28"
+     },
+     "to": {
+      "part": "s.p19"
+     }
+    }
+   }
+  },
+  {
+   "id": "c59",
+   "type": "sysml.Connector",
+   "from": "t4.a",
+   "to": "t1.b",
+   "props": {
+    "ends": {
+     "from": {
+      "part": "s.p29"
+     },
+     "to": {
+      "part": "s.p26"
+     }
+    }
+   }
+  }
+ ],
+ "views": [
+  {
+   "id": "edge-cases",
+   "diagram": "sysml.internal-block",
+   "title": "Edge cases",
+   "subject": "ec-sys",
+   "nodeIds": [
+    "ec-sys"
+   ]
+  },
+  {
+   "id": "ec-ports-only",
+   "diagram": "sysml.internal-block",
+   "title": "Ports only",
+   "subject": "ec-bare",
+   "nodeIds": [
+    "ec-bare"
+   ]
+  },
+  {
+   "id": "all",
+   "diagram": "sysml.internal-block",
+   "title": "All",
+   "subject": "s",
+   "nodeIds": [
+    "s"
+   ]
+  }
+ ]
+}

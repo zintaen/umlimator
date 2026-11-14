@@ -5791,7 +5791,7 @@
    "id": "gcp-on-gcp",
    "diagram": "gcp",
    "title": "Bookshop on Google Cloud",
-   "caption": "Icons from a pack you fetch: umlimator.py pack fetch gcp, after Google's terms; glyphs and full names without it. Umlimator is not affiliated with, endorsed by or sponsored by Google.",
+   "caption": "Icons from a pack you fetch: umlimator.py pack fetch gcp, after Google's terms; glyphs and full names without it. Umlimator is not affiliated with, endorsed by or sponsored by Amazon Web Services, Google or Microsoft.",
    "parent": null,
    "nodeIds": [
     "gcp-users",
@@ -5816,7 +5816,7 @@
    "id": "az-on-azure",
    "diagram": "azure",
    "title": "Bookshop on Azure",
-   "caption": "Icons from a pack you fetch: umlimator.py pack fetch azure, after Microsoft's terms; glyphs and full names without it. Umlimator is not affiliated with, endorsed by or sponsored by Microsoft.",
+   "caption": "Icons from a pack you fetch: umlimator.py pack fetch azure, after Microsoft's terms; glyphs and full names without it. Umlimator is not affiliated with, endorsed by or sponsored by Amazon Web Services, Google or Microsoft.",
    "parent": null,
    "nodeIds": [
     "az-subscription",

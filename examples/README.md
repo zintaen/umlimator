@@ -49,6 +49,10 @@ Action on it in a pull request; the site shows its stills and its PDF.
 | [`returns-flowchart.json`](returns-flowchart.json) | Flowchart (`flowchart`, 0.24.0) | Handling a returned book, laid out down: a start and an end, input/output, manual input, a decision with yes and no, a predefined process, a delay, a database, a document, and a connector joining two branches. What it covers: [`docs/conformance/flowchart.md`](../docs/conformance/flowchart.md) |
 | [`bookshop-data-flow.json`](bookshop-data-flow.json) | Data flow diagram (`dfd`, 0.24.0) | The bookshop's data flow in two levels: three external entities, three numbered processes and two stores; Take order opens its level 2, which balances against it. What it covers: [`docs/conformance/dfd.md`](../docs/conformance/dfd.md) |
 | [`bookshop-c4.json`](bookshop-c4.json) | C4 (`c4.context`, `c4.container`, `c4.component`, `c4.dynamic`, `c4.deployment`, 0.24.0) | The bookshop's architecture: a system context, its containers (a database as a cylinder, the system a dashed boundary), the Shop API's components, placing an order as ten numbered steps, and production's deployment nodes holding container instances; external systems grey. The Bookshop atlas's root. What it covers: [`docs/conformance/c4.md`](../docs/conformance/c4.md) |
+| [`ebike-requirements.json`](ebike-requirements.json) | SysML requirement diagram (`sysml.requirement`, 0.25.0) | A shared city e-bike's requirements in a `req` frame: the specification containing pedal assistance, range and docking (crosshair lines), each with its id and wrapped text; blocks satisfying them, test cases verifying them, a derive, a refine, a trace and a copy, and a «rationale» note. The e-bike atlas's root. What it covers: [`docs/conformance/sysml-requirement.md`](../docs/conformance/sysml-requirement.md) |
+| [`ebike-blocks.json`](ebike-blocks.json) | SysML block definition diagram (`sysml.block-definition`, 0.25.0) | The e-bike's blocks in a `bdd` frame with SysML's named compartments: EBike's parts, reference, values and constraints, a battery's ports, an interface block's flow properties, two constraint blocks with their expressions and parameters, value types with their units; composition, generalization and «use». What it covers: [`docs/conformance/sysml-block-definition.md`](../docs/conformance/sysml-block-definition.md) |
+| [`ebike-structure.json`](ebike-structure.json) | SysML internal block diagram (`sysml.internal-block`, 0.25.0) | Inside the e-bike: EBike as the `ibd` frame holding its parts, the dock it refers to (dashed) and its values; ports on the parts' borders, the charging ports typed by an interface block (one conjugated) with their flow arrows, connectors carrying DC power and phase current as item flows. What it covers: [`docs/conformance/sysml-internal-block.md`](../docs/conformance/sysml-internal-block.md) |
+| [`ebike-range.json`](ebike-range.json) | SysML parametric diagram (`sysml.parametric`, 0.25.0) | The e-bike's range in eco and boost from its battery's usable energy: three constraint properties with their expressions, their parameters on their borders, bound to the bike's value properties. What it covers: [`docs/conformance/sysml-parametric.md`](../docs/conformance/sysml-parametric.md) |
 | [`bookshop-opening-plan.json`](bookshop-opening-plan.json) | Mindmap (`mindmap`, 0.26.0) | Opening the bookshop: 21 topics left and right of the root, six branches each in a colour of the kind palette, their sides pinned in `present`; in the atlas its Hosting topics open the two cloud views. What it covers: [`docs/conformance/mindmap.md`](../docs/conformance/mindmap.md) |
 | [`bookshop-gcp.json`](bookshop-gcp.json) | Google Cloud (`gcp`, 0.26.0) | The bookshop on Google Cloud: a project, a region, a network, a subnetwork and two zones as nested boxes titled with their kind (a region and a zone dashed), nine products and the shoppers, a line from a group's border. The site draws it with no icon pack, so each card shows a glyph and its full service name: fetch the icons yourself (`umlimator.py pack fetch gcp`, after Google's terms) to see them. What it covers: [`docs/conformance/gcp.md`](../docs/conformance/gcp.md) |
 | [`bookshop-azure.json`](bookshop-azure.json) | Azure (`azure`, 0.26.0) | The bookshop on Azure: a subscription, a resource group, a region, a virtual network and two subnets as nested boxes, eight services, a line from a subnet's border. Glyphs and full names on the site, as for Google Cloud (`umlimator.py pack fetch azure`, after Microsoft's terms). What it covers: [`docs/conformance/azure.md`](../docs/conformance/azure.md) |
@@ -74,6 +78,7 @@ Action on it in a pull request; the site shows its stills and its PDF.
 [![The timing diagram: one charge](https://zintaen.github.io/umlimator/examples/stills/bookshop-timing/one-charge.png)](https://zintaen.github.io/umlimator/examples/bookshop-timing.html)
 [![C4: the bookshop's containers](https://zintaen.github.io/umlimator/examples/stills/bookshop-c4/c4-containers.png)](https://zintaen.github.io/umlimator/examples/bookshop-c4.html)
 [![The ER diagram: the bookshop's schema](https://zintaen.github.io/umlimator/examples/stills/bookshop-schema/er-schema.png)](https://zintaen.github.io/umlimator/examples/bookshop-schema.html)
+[![The SysML internal block diagram: inside the e-bike](https://zintaen.github.io/umlimator/examples/stills/ebike-structure/inside-ebike.png)](https://zintaen.github.io/umlimator/examples/ebike-structure.html)
 [![A mindmap: opening the bookshop](https://zintaen.github.io/umlimator/examples/stills/bookshop-opening-plan/mm-plan.png)](https://zintaen.github.io/umlimator/examples/bookshop-opening-plan.html)
 [![Google Cloud: the bookshop, glyphs and full names](https://zintaen.github.io/umlimator/examples/stills/bookshop-gcp/gcp-on-gcp.png)](https://zintaen.github.io/umlimator/examples/bookshop-gcp.html)
 [![Azure: the bookshop, glyphs and full names](https://zintaen.github.io/umlimator/examples/stills/bookshop-azure/az-on-azure.png)](https://zintaen.github.io/umlimator/examples/bookshop-azure.html)
@@ -112,6 +117,17 @@ element and a map card are different elements: a card has no type); the mindmap,
 the union of theirs); where they disagree, the build stops and names the id, the files and the field, and the example
 files are what gets fixed.
 `tests/atlas.test.mjs` fails when the committed atlas is not what it writes. A card that opens another kind of diagram does not unfold in place (E): it opens.
+
+## The e-bike atlas
+
+SysML keeps its own domain: a bookshop has no system of hardware whose requirements, parts and equations a reader would
+recognise. [`ebike-atlas.json`](ebike-atlas.json) is the four e-bike files in one model, built as the Bookshop atlas is:
+`node tools/atlas.mjs --links tools/ebike-links.json --out examples/ebike-atlas.json` reads them and
+[`../tools/ebike-links.json`](../tools/ebike-links.json). It opens at the requirements; the specification opens the
+blocks, the range requirement the parametric view that checks it, and EBike the internal block view. The files write
+every element they share alike (EBike whole in the blocks, structure and range files; the requirements file names its
+blocks only), so each view draws in the atlas exactly as in its own file; `tests/ebike-atlas.test.mjs` holds that, and
+that the atlas validates with no problem.
 
 ## Host pages
 
@@ -205,6 +221,8 @@ The module embedded in a page, as an app would use it. Serve the repository over
 | Cloud architecture: groups nested as boxes titled with their kind, service cards with an icon from a pack the user fetched (`umlimator.py pack fetch`, after the vendor's terms) or a glyph, the full service name, Google's legal line | bookshop-gcp, bookshop-azure, [`tests/cloud-stress.json`](../tests/cloud-stress.json) |
 | A Mermaid mindmap, imported (`umlimator.py import`) | [`tests/import/mindmap.mmd`](../tests/import/mindmap.mmd), which CI reads (`tests/import.py`) |
 | A Mermaid `erDiagram`, a Mermaid flowchart (`--typed`), a Structurizr JSON workspace and DBML, imported (`umlimator.py import`) | [`tests/import/er.mmd`](../tests/import/er.mmd), [`flowchart.mmd`](../tests/import/flowchart.mmd), [`structurizr.json`](../tests/import/structurizr.json), [`dbml.json`](../tests/import/dbml.json), which CI reads (`tests/import.py`, the readers' tests) |
+| SysML frames and their headers; requirements with wrapped text and containment crosshairs; named compartments; proxy and full ports with flow arrows, `~` conjugation and item flows; constraint properties with parameters on their borders and binding connectors | ebike-requirements, ebike-blocks, ebike-structure, ebike-range, ebike-atlas |
+| A Mermaid `requirementDiagram`, imported and written back (`umlimator.py import`) | [`tests/import/requirement.mmd`](../tests/import/requirement.mmd), which CI imports (`tests/import.py`) |
 | `layout()` in Node | `layout.mjs` |
 | The model's JSON Schema (`"$schema"`), `validate()` and `check()` | every model written by hand (`"$schema"`), `playground.html` |
 | The standalone page (`mountPage`) and the CLI's `render`, `check` and `stills` | every map on the site, built by CI |
@@ -229,5 +247,6 @@ mindmap, and AWS, GCP and Azure architecture. One target model per type is in
 ships: the class diagram's is `sales-classes.json`, the object diagram's `order-objects.json`, the package
 diagram's `bookshop-packages.json`, the sequence and communication diagrams' `checkout-sequence.json` and
 `checkout-communication.json`, and the use case, activity, state machine and interaction overview diagrams'
-`shopping-use-cases.json`, `fulfil-activity.json`, `order-states.json` and `buy-book-overview.json`. [`docs/diagrams/README.md`](../docs/diagrams/README.md) says where
+`shopping-use-cases.json`, `fulfil-activity.json`, `order-states.json` and `buy-book-overview.json`; SysML's four are the
+`ebike-*.json` files. [`docs/diagrams/README.md`](../docs/diagrams/README.md) says where
 that work stands.

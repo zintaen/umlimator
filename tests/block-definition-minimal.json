@@ -1,0 +1,57 @@
+{
+ "schemaVersion": 2,
+ "title": "Block definition, minimal",
+ "nodes": [
+  {
+   "id": "bike",
+   "type": "sysml.Block",
+   "label": "Bike",
+   "members": [
+    {
+     "id": "bike.wheel",
+     "type": "sysml.PartProperty",
+     "label": "wheel",
+     "props": {
+      "valueType": "Wheel",
+      "multiplicity": "1"
+     }
+    }
+   ]
+  },
+  {
+   "id": "wheel",
+   "type": "sysml.Block",
+   "label": "Wheel"
+  }
+ ],
+ "edges": [
+  {
+   "id": "bike-wheel",
+   "type": "uml.Association",
+   "from": "bike",
+   "to": "wheel",
+   "props": {
+    "ends": {
+     "from": {
+      "aggregation": "composite"
+     },
+     "to": {
+      "role": "wheel",
+      "multiplicity": "1"
+     }
+    }
+   }
+  }
+ ],
+ "views": [
+  {
+   "id": "v",
+   "diagram": "sysml.block-definition",
+   "title": "Minimal",
+   "nodeIds": [
+    "bike",
+    "wheel"
+   ]
+  }
+ ]
+}
