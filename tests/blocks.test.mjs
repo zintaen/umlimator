@@ -223,6 +223,7 @@ test('member rows (§7.4): a keyword picks the kind, the type picks it with none
   assert.deepEqual(bdParse('proxy  port c: ~I'), { type: 'sysml.Port', label: 'c', props: { valueType: '~I', kind: 'proxy' } });
   assert.deepEqual(bdParse('inout x: T').props, { valueType: 'T', direction: 'inout' }); assert.equal(bdParse('in x').type, 'sysml.FlowProperty');
   assert.equal(bdParse('parts: Battery').type, 'sysml.ValueProperty', 'a name that starts as a keyword is a name');
+  for (const w of ['in', 'out', 'value', 'port', 'part', 'ref']) assert.deepEqual(bdParse(`${w} : Real`), bdParse(`${w}: Real`), 'a keyword named, a space before the colon');
   // no keyword: the model's names pick the kind
   assert.deepEqual(['b: Battery', 'r: RangeEquation', 'e: Energy', 'x: Nothing', 'go()'].map(x => bdParse(x, null, M17).type), ['sysml.PartProperty', 'sysml.ConstraintProperty', 'sysml.ValueProperty', 'sysml.ValueProperty', 'uml.Operation']);
   // an owner that may not hold it

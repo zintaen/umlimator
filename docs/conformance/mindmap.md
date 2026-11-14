@@ -23,7 +23,7 @@ strategy (`src/layout/tree.js`, §6): each subtree takes a band, bands are stack
 
 Rules (`src/mindmap/mindmap.js`): error `topic-parent` (a topic's parent is a topic); warnings `mindmap-root` (one tree a
 view: each further root is drawn as its own tree under the first), `side-first` (a side on a deeper topic is ignored),
-`mindmap-depth` (past 64 levels: drawn, but a Mermaid reader writes it flat). No legend: a branch's colour means nothing.
+`mindmap-depth` (more than 64 levels below the root: drawn, but a Mermaid write and read hangs it at 64). No legend: a branch's colour means nothing.
 
 **Mermaid** (`src/readers/mermaid-mindmap.js`, against Mermaid 12.3.0's mindmap page): indentation is the tree; the
 shapes `( )`, `(( ))`, `)) ((`, `) (` and `{{ }}`, `::icon()`, `:::class` and Markdown strings are kept under

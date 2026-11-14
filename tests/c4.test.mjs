@@ -53,7 +53,7 @@ test('the definition: one definition under the four static view names, its palet
   assert.deepEqual(T.props['c4.Relationship'].map(f => f.key), ['technology']);
   assert.deepEqual(T.props['c4.Container'].find(f => f.key === 'shape').options, C4_SHAPES);
   for (const k of ['layout', 'validate', 'describe', 'boxes', 'owners', 'word', 'rows', 'text', 'rankFlip']) assert.equal(typeof T[k], 'function', k);
-  assert.deepEqual(Object.keys(T.edits), ['add', 'key']);
+  assert.deepEqual(Object.keys(T.edits), ['add', 'key', 'rename']);
   assert.deepEqual(Object.keys(T.rules), ['c4-level', 'c4-subject', 'c4-owner', 'c4-instance', 'c4-relationship', 'c4-zoom', 'c4-description', 'c4-technology', 'c4-label', 'c4-title']);
 });
 

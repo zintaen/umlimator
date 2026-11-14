@@ -259,3 +259,24 @@ test('DoD 1: the registry holds the five types (C4 under its six names), and the
   assert.match(S.edge.properties.props.anyOf[0].properties.ends.description, /er\.Relationship.*multiplicity/, 'the ER relationship\'s multiplicity under ends');
   assert.match(dts, /export interface ErRelationshipProps [^}]*multiplicity/);
 });
+
+test('a line listed twice in view.edges is drawn, named and counted once in every milestone-2 type (as use case, activity, state and overview), with no false rule hit', () => {
+  const ent = id => ({ id, type: 'er.Entity', label: id.toUpperCase(), members: [{ id: id + '.id', type: 'er.Column', label: 'id', props: { primaryKey: true } }] });
+  const cases = {
+    er: [[ent('a'), ent('b')], [{ id: 'r', type: 'er.Relationship', from: 'a', to: 'b', label: 'has', props: { ends: { from: { multiplicity: '1' }, to: { multiplicity: '0..*' } } } }]],
+    flowchart: [[{ id: 'a', type: 'flow.Terminator', label: 'Start' }, { id: 'b', type: 'flow.Terminator', label: 'End' }], [{ id: 'r', type: 'flow.Flow', from: 'a', to: 'b' }]],
+    dfd: [[{ id: 'a', type: 'dfd.ExternalEntity', label: 'A' }, { id: 'b', type: 'dfd.Process', label: 'B', props: { number: '1' } }], [{ id: 'r', type: 'dfd.DataFlow', from: 'a', to: 'b', label: 'x' }]],
+    'c4.context': [[{ id: 'a', type: 'c4.Person', label: 'A' }, { id: 'b', type: 'c4.SoftwareSystem', label: 'B' }], [{ id: 'r', type: 'c4.Relationship', from: 'a', to: 'b', label: 'uses' }], { subject: 'b' }],
+    'c4.dynamic': [[{ id: 'a', type: 'c4.Person', label: 'A' }, { id: 'b', type: 'c4.SoftwareSystem', label: 'B' }, { id: 'n', type: 'uml.Comment', label: 'note' }],
+      [{ id: 's1', type: 'c4.Relationship', from: 'a', to: 'b', label: 'uses' }, { id: 'r', type: 'uml.CommentLink', from: 'n', to: 'a' }], { edges: ['s1', 'r', 'r'] }],
+    'uml.information-flow': [[{ id: 'a', type: 'uml.Actor', label: 'A' }, { id: 'b', type: 'uml.Class', label: 'B' }, { id: 'i', type: 'uml.InformationItem', label: 'I' }],
+      [{ id: 'r', type: 'uml.InformationFlow', from: 'a', to: 'b', props: { conveyed: ['i'] } }], { nodeIds: ['a', 'b'] }],
+  };
+  for (const [d, [nodes, edges, v = {}]] of Object.entries(cases)) {
+    const one = { schemaVersion: 2, nodes, edges, views: [{ id: 'v', diagram: d, title: 'T', nodeIds: nodes.map(n => n.id), ...v, edges: v.edges ? v.edges.slice(0, -1) : ['r'] }] };
+    const two = structuredClone(one); two.views[0].edges = v.edges || ['r', 'r'];
+    assert.deepEqual(layout(two, 'v').edges.map(e => e.id), layout(one, 'v').edges.map(e => e.id), d);
+    assert.equal(describe(two, 'v'), describe(one, 'v'), d);
+    assert.deepEqual(validate(two).map(p => p.message), validate(one).map(p => p.message), d);
+  }
+});

@@ -648,7 +648,7 @@ lead under the maintainer's standing approval (14 Nov 2026).
 | `mindmap-root` | warning | A view shows one tree: exactly one shown topic has no shown ancestor; each further one is drawn as its own tree under the first |
 | `topic-parent` | error | A topic's `parent` is a topic |
 | `side-first` | warning | `present.<id>.side` is on a first-level topic, else ignored |
-| `mindmap-depth` | warning | Deeper than 64 levels: drawn, but a reader writes it flat (§8) |
+| `mindmap-depth` | warning | More than 64 levels below the root: drawn, but a Mermaid write and read hangs it at 64 (§8) |
 
 ### 7.3 Editing (S14)
 
@@ -669,8 +669,8 @@ back.
 | **(a) Hides its branch (recommended)** | What mindmap tools do; matches Shift + Delete, which takes the branch | One key hides many topics; undo brings them back |
 | (b) Hides the topic only; its children hang from its parent in the picture | One element per Delete | The picture rewires itself; a user rarely means it |
 
-As built (4a.4, 14 Nov 2026), where §7 left a choice or the canvas could not do what it says. Levels count the root as
-the first, so `mindmap-depth` warns from level 65 (depth 64), naming the topics there. A topic whose parent is not a topic
+As built (4a.4, 14 Nov 2026), where §7 left a choice or the canvas could not do what it says. Levels count below the root,
+as the Mermaid reader's do, so `mindmap-depth` warns at depth 65, naming the topics there (the first a write and read moves). A topic whose parent is not a topic
 (`topic-parent`) is a root of its own; each further root's tree, and one tree for shown topics in a cycle, is laid out by
 its own `layoutTree` call and stacked 48 px under the one before; the bounds take a 24 px margin. A topic's text breaks at
 its newlines; a paragraph past 400 characters is cut before wrapping (four lines hold about 130). A topic that opens a view

@@ -81,7 +81,7 @@ function fcIndex(model, view) {
   FC_ARR(model && model.nodes).forEach((n, k) => { if (FC_OBJ(n) && typeof n.id === 'string' && !N.has(n.id)) { N.set(n.id, n); path.set(n.id, `nodes[${k}]`); } });
   FC_ARR(model && model.edges).forEach((e, k) => { if (FC_OBJ(e) && typeof e.id === 'string' && !E.has(e.id)) { E.set(e.id, e); path.set(e.id, `edges[${k}]`); } });
   const ids = view ? [...new Set(FC_ARR(view.nodeIds).filter(id => N.has(id)))] : [...N.keys()].filter(id => Object.hasOwn(FC_LOOK, N.get(id).type)), on = new Set(ids);
-  const list = view && Array.isArray(view.edges) ? view.edges.map(x => (typeof x === 'string' ? E.get(x) : x)) : [...E.values()].filter(e => e.type === 'flow.Flow' || e.type === 'uml.CommentLink');
+  const list = view && Array.isArray(view.edges) ? [...new Set(view.edges.map(x => (typeof x === 'string' ? E.get(x) : x)))] : [...E.values()].filter(e => e.type === 'flow.Flow' || e.type === 'uml.CommentLink');
   const lines = list.filter(e => FC_OBJ(e) && typeof e.id === 'string' && on.has(e.from) && on.has(e.to)), flows = lines.filter(e => e.type === 'flow.Flow');
   const ins = id => flows.filter(e => e.to === id), outs = id => flows.filter(e => e.from === id);
   const term = id => N.get(id).type === 'flow.Terminator', starts = ids.filter(id => term(id) && !ins(id).length), ends = ids.filter(id => term(id) && !outs(id).length);

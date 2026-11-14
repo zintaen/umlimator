@@ -23,9 +23,9 @@ const C4_HAS = x => x != null && String(x).trim() !== '';
 const C4_P = x => (C4_OBJ(x.props) ? x.props : {});
 const c4Name = x => String(x.label ?? x.id);
 const c4Plural = (k, w) => `${k} ${k === 1 ? w : w + 's'}`;
-const C4_WORD = { 'c4.Person': 'Person', 'c4.SoftwareSystem': 'Software system', 'c4.Container': 'Container', 'c4.Component': 'Component',
+const C4_WORD = { __proto__: null, 'c4.Person': 'Person', 'c4.SoftwareSystem': 'Software system', 'c4.Container': 'Container', 'c4.Component': 'Component',
   'c4.DeploymentNode': 'Deployment node', 'c4.ContainerInstance': 'Container instance', 'uml.Comment': 'Comment' };
-const C4_TAG = { 'c4.Person': 'Person', 'c4.SoftwareSystem': 'Software System', 'c4.Container': 'Container', 'c4.Component': 'Component' };
+const C4_TAG = { __proto__: null, 'c4.Person': 'Person', 'c4.SoftwareSystem': 'Software System', 'c4.Container': 'Container', 'c4.Component': 'Component' };
 const c4Word = x => (Object.hasOwn(C4_WORD, x.type) ? C4_WORD[x.type] : String(x.type ?? '').split('.').pop());
 const C4_STATIC = ['c4.Person', 'c4.SoftwareSystem', 'c4.Container', 'c4.Component'], C4_DEPLOY = ['c4.DeploymentNode', 'c4.ContainerInstance'];
 // the map's card shapes an element may name (S11): all but UML's node, which is the deployment view's
@@ -98,7 +98,7 @@ function c4Lift(pic, id) {
 }
 function c4Lines(model, view, pic) {
   const ends = new Set(pic.ids.filter(id => !pic.open.has(id))), byId = new Map(pic.I.E.map(e => [e.id, e]));
-  const listed = Array.isArray(view.edges) ? view.edges.map(x => (typeof x === 'string' ? byId.get(x) : x)).filter(C4_OBJ) : null;
+  const listed = Array.isArray(view.edges) ? [...new Set(view.edges.map(x => (typeof x === 'string' ? byId.get(x) : x)))].filter(C4_OBJ) : null;
   const own = (listed || pic.I.E.filter(e => e.type === 'c4.Relationship' || e.type === 'uml.CommentLink')).filter(e => typeof e.id === 'string' && ends.has(e.from) && ends.has(e.to));
   // a pair a relationship joins already, drawn or hidden by the view's list, takes no implied line
   const joined = new Set([...own, ...pic.I.rels].filter(e => ends.has(e.from) && ends.has(e.to)).map(e => e.from + '\n' + e.to)), implied = new Map();
@@ -108,6 +108,13 @@ function c4Lines(model, view, pic) {
     if (!implied.has(k)) implied.set(k, { id: `${a}->${b}`, from: a, to: b, of: [] });
     implied.get(k).of.push(r); });
   return { own, implied: [...implied.values()] };
+}
+// rename: F2 on a relationship holds its text, "description [technology]": the technology when unchanged is not the description;
+// what is left is set as its label. Anything else: null, the canvas's own
+function c4Rename(model, view, id, text) {
+  const e = c4Index(model).rels.find(r => r.id === id); if (!e) return null;
+  const tech = C4_P(e).technology, t = String(text ?? '').trim(), label = C4_HAS(tech) && t.endsWith(`[${tech}]`) ? t.slice(0, -String(tech).length - 2).trim() : t;
+  return label === (e.label ?? '') ? [] : [{ op: 'set', id, path: 'label', value: label || undefined }];
 }
 const c4LineLabel = e => [e.label, C4_HAS(C4_P(e).technology) ? `[${C4_P(e).technology}]` : ''].filter(C4_HAS).join(' ');
 // accessible names (A1): "Container Shop API, Python, FastAPI: Catalogue, basket, checkout and accounts as a JSON API"
@@ -302,8 +309,8 @@ const C4_DEF = {
   rows: (model, view, id) => { const x = c4Index(model).at.get(id); if (!x || !C4_STATIC.includes(x.type)) return null; const P = C4_P(x);
     return [...(C4_HAS(P.technology) ? [P.technology] : []), ...(C4_HAS(P.description) ? [P.description] : []), ...(c4Ext(x) ? ['external'] : [])]; },
   text: (model, view, id) => { const e = c4Index(model).rels.find(r => r.id === id) || (C4_OBJ(view) ? C4_ARR(view.edges) : []).find(r => C4_OBJ(r) && r.id === id && r.type === 'c4.Relationship'); return e ? c4LineLabel(e) || null : null; },
-  edits: { add: c4Add, key: c4Key },
+  edits: { add: c4Add, key: c4Key, rename: c4Rename },
 };
 const C4_TYPES = Object.keys(C4_KIND).map(name => registerDiagramType(name, C4_DEF));
 
-export { C4_TYPES, C4_DEF, C4_RULES, C4_WORD, C4_SHAPES, c4Index, c4Pic, c4Lift, c4Lines, c4Geo, c4Problems, c4Describe, c4Legend, c4NodeName, c4LineName, c4LineLabel, c4Shape, c4TagOf, c4Ext, c4Zoom, c4Key, c4Add, c4Owners };
+export { C4_TYPES, C4_DEF, C4_RULES, C4_WORD, C4_SHAPES, c4Index, c4Pic, c4Lift, c4Lines, c4Geo, c4Problems, c4Describe, c4Legend, c4NodeName, c4LineName, c4LineLabel, c4Shape, c4TagOf, c4Ext, c4Zoom, c4Key, c4Add, c4Owners, c4Rename };
