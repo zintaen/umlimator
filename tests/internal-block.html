@@ -1,7 +1,160 @@
 <!doctype html>
+<!-- SysML's internal block diagram (M3.4, notes/milestone-3.md §8, §13) in headless Chrome (tests/embed.py), from
+     lib/umlimator-all.js: docs/diagrams/examples/18-internal-block.json with proxy, full and conjugated ports of interface
+     blocks and a delegation from the frame's port, drawn by render() in both themes, three fonts and both directions (the
+     frame and its header, parts inside it, ports on their parts' borders and the frame's, texts inside their shapes, no
+     overlap but a port on its own owner, every line end on a port's square, flow arrows inside their squares, item-flow
+     triangles on their lines, names, reading order, the legend, contrast, axe's rules written out), then edited through the
+     edit event and apply(), by pointer and by keyboard: the palette and N (a part, a reference, a port into a part's type),
+     F2 on a part, a connector from a port on a part by L, a port moved by Alt + an arrow, a member row `proxy port` on the
+     subject, Delete on a part and on a port on a part, Shift + Delete on a port on a part. -->
 <meta charset="utf-8">
-<title>internal-block: placeholder (milestone 3, M3.0)</title>
-<!-- notes/milestone-3.md M3.0: a placeholder that reports ok, so tests/embed.py lists the page once and the work package that
-     owns it (M3.2 requirement, M3.3 blocks, M3.4 internal-block, M3.5 parametric, M3.7 sysml) fills it without editing tests/embed.py -->
-<pre id="result"></pre>
-<script>document.getElementById('result').textContent = JSON.stringify({ ok: ['the placeholder page loads (filled by its work package)'], fail: [] });</script>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="../lib/umlimator-theme.css">
+<title>umlimator internal block diagram test</title>
+<body style="margin:0">
+<div id="m" style="width:1400px;height:1000px"></div>
+<script type="module">
+import { render, apply, validate } from '../lib/umlimator-all.js';
+const out = { ok: [], fail: [] };
+const check = (name, cond, info) => { document.title = name; if (cond) out.ok.push(name); else out.fail.push(name + (info === undefined ? '' : ': ' + JSON.stringify(info))); };
+const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+const el = document.getElementById('m'), VID = 'inside-ebike';
+let sr, stage, ed = [];
+const pick = s => sr.querySelector(s), all = s => [...sr.querySelectorAll(s)];
+const centre = s => { const r = pick(s).getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; };
+const ptr = (target, type, [x, y]) => target.dispatchEvent(new PointerEvent(type, { clientX: x, clientY: y, button: 0, pointerId: 7, pointerType: 'mouse', bubbles: true, composed: true }));
+const key = (k, extra = {}, target = stage) => target.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true, composed: true, cancelable: true, ...extra }));
+const click = s => { const g = pick(s), at = centre(s); ptr(g, 'pointerdown', at); ptr(g, 'pointerup', at); g.dispatchEvent(new MouseEvent('click', { clientX: at[0], clientY: at[1], bubbles: true, composed: true })); };
+const mount = (model, opts = {}) => { el.innerHTML = ''; ed = []; const h = render(el, model, { view: VID, on: { edit: e => ed.push(e) }, ...opts }); sr = el.querySelector('.umlimator').shadowRoot; stage = pick('.stage'); return h; };
+const errors = m => validate(m).filter(p => p.level === 'error');
+const last = () => ed[ed.length - 1];
+const gives = (name, cmds, test, base) => { const e = last(); let m = null; try { m = e && apply(base, e.commands); } catch (x) { m = null; }
+  check(name, !!e && same(e.commands, cmds) && !!m && test(m) && !errors(m).length, [e, m && errors(m)]); return m; };
+const box = g => { const r = g.getBBox(); return { x: r.x, y: r.y, w: r.width, h: r.height }; };
+const inside = (a, b) => a.x >= b.x - .5 && a.y >= b.y - .5 && a.x + a.w <= b.x + b.w + .5 && a.y + a.h <= b.y + b.h + .5;
+const meets = (p, q) => p.x < q.x + q.w - .5 && q.x < p.x + p.w - .5 && p.y < q.y + q.h - .5 && q.y < p.y + p.h - .5;
+const onEdge = ([x, y], b) => { const dx = Math.max(b.x - x, 0, x - b.x - b.w), dy = Math.max(b.y - y, 0, y - b.y - b.h); return dx || dy ? Math.hypot(dx, dy) : Math.min(x - b.x, b.x + b.w - x, y - b.y, b.y + b.h - y); };
+const FONTS = { serif: 'serif', sans: 'sans-serif', wide: 'monospace' };
+const rgba = s => { let m = /rgba?\(([^)]+)\)/.exec(s); if (m) { const p = m[1].split(/[ ,/]+/).filter(Boolean).map(Number); return [p[0] / 255, p[1] / 255, p[2] / 255, p.length > 3 ? p[3] : 1]; }
+  m = /color\(srgb ([^)]+)\)/.exec(s); if (m) { const p = m[1].split(/[ /]+/).filter(Boolean).map(Number); return [p[0], p[1], p[2], p.length > 3 ? p[3] : 1]; } return null; };
+const blend = (top, bot) => [0, 1, 2].map(i => top[i] * top[3] + bot[i] * (1 - top[3])).concat(1);
+const lum = c => { const f = v => v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]); };
+const ratio = (fg, bg) => { const [x, y] = [lum(blend(fg, bg)), lum(bg)].sort((p, q) => q - p); return +((x + 0.05) / (y + 0.05)).toFixed(2); };
+const css = (e, k) => rgba(getComputedStyle(e)[k]);
+// 18 with what §8.2 draws, as tests/internal-block.test.mjs builds it
+const MODEL = await (await fetch('../docs/diagrams/examples/18-internal-block.json')).json();
+{ const mem = id => MODEL.nodes.flatMap(n => n.members || []).find(x => x.id === id), fp = (id, d) => ({ id, type: 'sysml.FlowProperty', label: id.split('.').pop(), props: { valueType: 'DCPower', direction: d } });
+  mem('battery.charge').props = { kind: 'proxy', valueType: 'ChargeInterface' }; mem('dock.charge').props = { kind: 'proxy', valueType: '~ChargeInterface' }; mem('controller.supply').props = { kind: 'full', valueType: 'PowerIn' };
+  MODEL.nodes.push({ id: 'charge-interface', type: 'sysml.InterfaceBlock', label: 'ChargeInterface', members: [fp('charge-interface.dc', 'in')] },
+    { id: 'power-in', type: 'sysml.InterfaceBlock', label: 'PowerIn', members: [fp('power-in.dc', 'in'), fp('power-in.soc', 'out')] });
+  MODEL.nodes[0].members.push({ id: 'ebike.plug', type: 'sysml.Port', label: 'plug', props: { kind: 'proxy', valueType: 'ChargeInterface' } });
+  MODEL.edges.push({ id: 'plug-battery', type: 'sysml.Connector', from: 'ebike.plug', to: 'battery.charge', props: { ends: { to: { part: 'ebike.battery' } } } }); }
+const PARTS = ['ebike.battery', 'ebike.controller', 'ebike.motor', 'ebike.frontLight', 'ebike.rearLight', 'ebike.dock'];
+try {
+  check('the model validates with no problem', validate(MODEL).length === 0, validate(MODEL));
+  for (const theme of ['light', 'dark']) for (const [fname, family] of Object.entries(FONTS)) for (const direction of ['right', 'down']) {
+    document.documentElement.dataset.theme = theme; el.style.setProperty('--um-sans', family);
+    const M = structuredClone(MODEL); M.views[0].direction = direction;
+    const tag = `${theme}, ${fname}, ${direction}`, h = mount(M, { legend: true }), bad = [], svg = pick('.stage svg');
+    check(`${tag}: the frame, six parts, twelve ports, seven lines, four flow arrows, three item triangles`, all('.node.part').length === 6 && all('.node.port').length === 12 && all('.edge-g').length === 7
+      && !!pick('.family[data-family="ebike"] rect.family-box') && all('.ib-flow').length === 4 && all('.ib-item').length === 3, [all('.node').map(g => g.dataset.id), all('.edge-g').length, all('.ib-flow').length, all('.ib-item').length]);
+    check(`${tag}: the frame's header`, pick('.family[data-family="ebike"] .family-title').textContent === 'ibd [Block] EBike [Inside the e-bike]', pick('.family[data-family="ebike"] .family-title').textContent);
+    const nodes = all('.node'), B = Object.fromEntries(nodes.map(g => [g.dataset.id, box(g.querySelector('.n-mask'))])), F = box(pick('.family[data-family="ebike"] .family-box'));
+    all('.node.part').forEach(g => g.querySelectorAll('text').forEach(t => { if (!inside(box(t), B[g.dataset.id])) bad.push(`${g.dataset.id}: "${t.textContent}" spills`); }));
+    PARTS.forEach(id => { if (!inside(B[id], F)) bad.push(`${id} outside the frame`); });
+    const ownerOf = id => (id.includes('->') ? id.split('->')[0] : null);
+    nodes.forEach((g, i) => nodes.slice(i + 1).forEach(k => { const a = g.dataset.id, b = k.dataset.id; if (ownerOf(a) !== b && ownerOf(b) !== a && meets(B[a], B[b])) bad.push(`${a} and ${b} overlap`); }));
+    all('.node.port .port-name').forEach(t => { const tb = box(t), own = t.closest('.node').dataset.id; nodes.forEach(g => { if (g.dataset.id !== own && meets(tb, B[g.dataset.id])) bad.push(`${own}'s name over ${g.dataset.id}`); }); });
+    check(`${tag}: texts inside, parts in the frame, no overlap but a port on its part, port names clear`, !bad.length, bad);
+    // ports on their part's border, the subject's on the frame's; every line end on a port's square
+    const off = all('.node.port').map(g => { const id = g.dataset.id, p = B[id], c = [p.x + p.w / 2, p.y + p.h / 2], o = ownerOf(id) ? B[ownerOf(id)] : F; return [id, +onEdge(c, o).toFixed(2)]; }).filter(([, d]) => d > .51);
+    check(`${tag}: each port centred on its owner's border, plug on the frame's`, !off.length, off);
+    const offs = [];
+    all('.edge-g').forEach(g => { const v = g.querySelector('path.edge').getAttribute('d').match(/-?\d+(\.\d+)?/g).map(Number);
+      [v.slice(0, 2), v.slice(-2)].forEach(p => { const d = Math.min(...all('.node.port').map(q => onEdge(p, B[q.dataset.id]))); if (d > 1) offs.push([g.dataset.from, g.dataset.to, p, +d.toFixed(2)]); }); });
+    check(`${tag}: each line ends on a port's square`, !offs.length, offs);
+    // each arrow inside its port's square; each item triangle on its line
+    const arrows = all('.ib-flow').map(p => box(p)), sq = all('.node.port').map(g => B[g.dataset.id]);
+    check(`${tag}: each flow arrow inside a port's square`, arrows.every(a => sq.some(s => inside(a, s))), arrows);
+    const lines = all('.edge-g path.edge');
+    const tri = all('.ib-item').map(p => { const b = box(p), c = [b.x + b.w / 2, b.y + b.h / 2], path = lines.find(l => { const n = l.getTotalLength(); for (let s = 0; s <= n; s += 1) { const q = l.getPointAtLength(s); if (Math.hypot(q.x - c[0], q.y - c[1]) < 1.5) return true; } return false; }); return [p.dataset.edge, !!path, b.w <= 8.5 && b.h <= 8.5]; });
+    check(`${tag}: each item triangle sits on a line, 8 px`, tri.every(([, on, size]) => on && size), tri);
+    check(`${tag}: names a screen reader reads`, pick('.family[data-family="ebike"]').getAttribute('aria-label') === 'Internal block diagram of block EBike: Inside the e-bike'
+      && pick('.node[data-id="ebike.battery"]').getAttribute('aria-label') === 'Part battery: Battery, in EBike, 3 ports'
+      && pick('.node[data-id="ebike.dock->dock.charge"]').getAttribute('aria-label') === 'Proxy port charge: ChargeInterface of dock, conjugated, flow out'
+      && pick('.node[data-id="ebike.plug"]').getAttribute('aria-label') === 'Proxy port plug: ChargeInterface of EBike, flow in'
+      && pick('.edge-g[data-from="ebike.battery"][data-to="ebike.controller"] title').textContent.startsWith('Connector from'),
+    [pick('.node[data-id="ebike.battery"]').getAttribute('aria-label'), pick('.node[data-id="ebike.dock->dock.charge"]').getAttribute('aria-label')]);
+    check(`${tag}: reading order: the subject's port, then each part and its ports`, all('.keys .node-key').slice(0, 3).map(k => k.dataset.node).join() === 'ebike.plug,ebike.battery,ebike.battery->battery.charge', all('.keys .node-key').slice(0, 4).map(k => k.dataset.node));
+    const legend = all('.m-legend b').map(b => b.textContent);
+    check(`${tag}: the legend keys connector, item flow, proxy and full port`, same(legend, ['Connector', 'Item flow', 'Proxy port', 'Full port']), legend);
+    const stageBg = css(pick('.stage'), 'backgroundColor'), low = [];
+    nodes.forEach(g => { const body = g.querySelector('.n-body'), fill = css(body, 'fill'), bg = fill ? blend(fill, stageBg) : stageBg;
+      g.querySelectorAll('text').forEach(t => { const c = ratio(css(t, 'fill'), t.classList.contains('port-name') ? stageBg : bg); if (c < 4.5) low.push([g.dataset.id, t.textContent, c]); }); });
+    const tagText = pick('.family[data-family="ebike"] .family-title'); if (ratio(css(tagText, 'fill'), stageBg) < 4.5) low.push(['frame', ratio(css(tagText, 'fill'), stageBg)]);
+    const strokes = all('.node.part .n-body, .node.port .n-body, .family-box').map(b => ratio(css(b, 'stroke'), stageBg)).filter(c => c < 3);
+    const marks = all('.ib-flow, .ib-item').map(p => ratio(css(p, 'fill'), stageBg)).filter(c => c < 3);
+    check(`${tag}: contrast: texts 4.5:1, outlines and marks 3:1`, !low.length && !strokes.length && !marks.length, [low, strokes, marks]);
+    // axe-core 4.14's rules for what is drawn as role="img", written out: svg-img-alt and role-img-alt (each has a name),
+    // nested-interactive (nothing inside one is a tab stop); the marks hidden from the tree
+    const imgs = all('.stage svg [role="img"]'), noAlt = [], nested = [];
+    imgs.forEach(x => { if (!(x.getAttribute('aria-label') || '').trim()) noAlt.push(x.dataset.id || x.localName);
+      x.querySelectorAll('[tabindex], a[href], button, input, select, textarea').forEach(c => { if (c.tabIndex >= 0) nested.push(`${x.dataset.id} holds ${c.getAttribute('class') || c.localName}`); }); });
+    check(`${tag}: axe, written out: the drawing a named group, its 18 cards and ports named images with no tab stop inside, the marks aria-hidden`,
+      svg.getAttribute('role') === 'group' && !!(svg.getAttribute('aria-label') || '').trim() && imgs.length >= 18 && !noAlt.length && !nested.length && pick('.ib-marks').getAttribute('aria-hidden') === 'true', [imgs.length, noAlt, nested.slice(0, 4)]);
+    h.destroy();
+  }
+  document.documentElement.dataset.theme = 'light'; el.style.removeProperty('--um-sans');
+
+  // ---- editing (DoD 4), each gesture's commands applied with apply()
+  const BASE = MODEL;
+  let h = mount(BASE, { editable: true });
+  const panel = s => pick('.um-editor ' + s), name = t => { pick('.um-rename').value = t; key('Enter', {}, pick('.um-rename')); };
+  check('the palette: Part, Reference, Value, Port, Comment; the lines listed', same(all('.um-editor .um-pal button').map(b => b.textContent), ['Part', 'Reference', 'Value', 'Port', 'Comment'])
+    && /Connector, Comment link/.test(panel('.um-pal .um-note').textContent), panel('.um-pal').textContent);
+  key('n'); name('spare : Battery [0..1]');
+  const m1 = gives('N adds a part into the subject, a sysml.PartProperty', [{ op: 'add', element: { id: 'ebike.spare', type: 'sysml.PartProperty', label: 'spare', props: { valueType: 'Battery', multiplicity: '0..1' } }, owner: 'ebike' }],
+    m => m.nodes[0].members.some(x => x.id === 'ebike.spare'), BASE);
+  h.update(m1);
+  check('after update() the part is drawn in the frame, with its type\'s ports', !!pick('.node.part[data-id="ebike.spare"]') && !!pick('.node.port[data-id="ebike.spare->battery.charge"]')
+    && inside(box(pick('.node[data-id="ebike.spare"] .n-mask')), box(pick('.family[data-family="ebike"] .family-box'))));
+  all('.um-editor .um-pal button')[1].click(); name('station : Dock');
+  gives('the palette\'s Reference: a sysml.ReferenceProperty', [{ op: 'add', element: { id: 'ebike.station', type: 'sysml.ReferenceProperty', label: 'station', props: { valueType: 'Dock' } }, owner: 'ebike' }],
+    m => m.nodes[0].members.some(x => x.id === 'ebike.station'), m1);
+  click('.node[data-id="ebike.motor"] .c-name'); all('.um-editor .um-pal button')[3].click(); name('sensor');
+  gives('the palette\'s Port with a part selected: the port goes to its type, a sysml.Port', [{ op: 'add', element: { id: 'motor.sensor', type: 'sysml.Port', label: 'sensor', props: {} }, owner: 'motor' }],
+    m => m.nodes.find(n => n.id === 'motor').members.some(x => x.id === 'motor.sensor'), m1);
+  click('.node[data-id="ebike.controller"] .c-name'); key('F2');
+  check('F2 on a part: a field holding name : Type [multiplicity]', pick('.um-rename') && pick('.um-rename').value === 'controller : Controller', pick('.um-rename') && pick('.um-rename').value);
+  name('ecu : Controller [1]');
+  const m2 = gives('F2 on a part: its name and multiplicity set', [{ op: 'set', id: 'ebike.controller', path: 'label', value: 'ecu' }, { op: 'set', id: 'ebike.controller', path: 'props.multiplicity', value: '1' }],
+    m => m.nodes[0].members.find(x => x.id === 'ebike.controller').label === 'ecu', m1);
+  h.update(m2);
+  // a connector from a port on a part by L, an arrow and Enter, the picker
+  click('.node[data-id="ebike.motor->motor.phases"] .n-mask'); key('l'); key('ArrowRight'); key('Enter');
+  check('L from a port on a part, an arrow and Enter open the picker with the two lines', same(all('.um-pick button').map(b => b.textContent), ['Connector', 'Comment link']), all('.um-pick button').map(b => b.textContent));
+  all('.um-pick button')[0].click();
+  { const e = last(), c = e && e.commands[0], m = c && apply(m2, e.commands);
+    check('Connector: a sysml.Connector from the port on the part, ends.from.part kept, no label', e.commands.length === 1 && c.op === 'add' && c.element.type === 'sysml.Connector' && c.element.from === 'motor.phases'
+      && same(c.element.props.ends.from, { part: 'ebike.motor' }) && !('label' in c.element) && !errors(m).length, [e, m && errors(m)]); }
+  click('.node[data-id="ebike.plug"] .n-mask'); key('ArrowRight', { altKey: true });
+  gives('Alt + → on the frame\'s port: its side', [{ op: 'set', view: VID, path: ['present', 'ebike.plug', 'side'], value: 'right' }], m => m.views[0].present['ebike.plug'].side === 'right', m2);
+  h.select({ type: 'container', id: 'ebike', view: VID });
+  const nw = panel('[data-new]');
+  check('the subject\'s members listed by their rows', !!nw && panel('[data-m="ebike.plug"]').value === 'proxy port plug : ChargeInterface' && panel('[data-m="ebike.dock"]').value === 'ref dock : Dock [0..1]',
+    nw && all('.um-editor [data-m]').map(i => i.value));
+  if (nw) { nw.value = 'proxy port aux : ChargeInterface'; key('Enter', {}, nw);
+    gives('a member row `proxy port name : Type`: a proxy port of the subject', [{ op: 'add', element: { id: 'ebike.aux', type: 'sysml.Port', label: 'aux', props: { valueType: 'ChargeInterface', kind: 'proxy' } }, owner: 'ebike' }],
+      m => m.nodes[0].members.some(x => x.id === 'ebike.aux'), m2); }
+  h = mount(m2, { editable: true });
+  click('.node[data-id="ebike.motor"] .c-name'); key('Delete');
+  gives('Delete on a part: deleted from the model, its connectors with it', [{ op: 'delete', id: 'ebike.motor' }], m => !m.edges.some(e => e.id === 'controller-drives-motor'), m2);
+  click('.node[data-id="ebike.frontLight->light.power"] .n-mask'); key('Delete');
+  gives('Delete on a port on a part: the connectors through it', [{ op: 'delete', id: 'controller-front-light' }], m => !m.edges.some(e => e.id === 'controller-front-light'), m2);
+  click('.node[data-id="ebike.motor->motor.phases"] .n-mask'); key('Delete', { shiftKey: true });
+  gives('Shift + Delete on a port on a part: the port from its block', [{ op: 'delete', id: 'motor.phases' }], m => !m.nodes.find(n => n.id === 'motor').members.length, m2);
+  h.destroy();
+} catch (e) { out.fail.push('threw: ' + (e && e.stack || e)); }
+const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
+</script>
