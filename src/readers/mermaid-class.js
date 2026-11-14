@@ -534,8 +534,10 @@ function writeMermaidClass(model, viewId) {
         const colon = has(p.valueType) || has(p.multiplicity) || /\s/.test(x.label);
         text = `${vis}${p.isDerived ? '/' : ''}${x.label}${colon ? ' :' + (has(p.valueType) ? ' ' + gen(p.valueType) : '') : ''}${has(p.multiplicity) ? `[${p.multiplicity}]` : ''}${p.default != null ? ' = ' + p.default : ''}${p.isStatic ? '$' : ''}`;
       }
-      // a member is one line of the class's body, which a line break, a lone }, a << or a %% would end or turn into another statement
-      if (text == null || !has(x.label) || nl(x.id) || nl(text) || /^(\}$|<<|%%)/.test(text.trim())) { skip(x); continue; }
+      // a member is one line of the class's body, which a line break, a lone }, a << or a %% would end or turn into another
+      // statement; and one the reader would read as another member (a name holding : ( ) ~ =, or led by + - # ~) is not written
+      const back = text != null && mcMember(text, n.type === 'uml.Enumeration');
+      if (!back || back.type !== x.type || back.label !== x.label || nl(x.id) || nl(text) || /^(\}$|<<|%%)/.test(text.trim())) { skip(x); continue; }
       rows.push([idOf(x.id, `${n.id}.${x.label}`), text]);
     }
     heads.set(n.id, [anns, rows]);
@@ -553,7 +555,8 @@ function writeMermaidClass(model, viewId) {
     if (!(written.has(e.from) && written.has(e.to)) || !(e.type === 'uml.Association' || e.type in ARROW) || nl(e.id)) { skip(e); continue; }
     const p = isObj(e.props) ? e.props : {}, ends = isObj(p.ends) ? p.ends : {};
     // the label's own « and its spaces at either end as entities: the reader takes its «stereotypes» before it decodes, and trims
-    const label = [...arr(p.stereotypes).map(s => `«${enc(s)}»`), ...(has(e.label) ? [enc(e.label).replace(/^\s|\s$|«/g, c => `#${c.codePointAt(0)};`)] : [])].join(' ');
+    // a stereotype's » as an entity too, or it would end there; the reader trims one, so one with spaces at its ends is not written
+    const label = [...arr(p.stereotypes).filter(s => String(s).trim() === String(s) || (lose(e.id, `stereotype ${s}`), false)).map(s => `«${enc(s).replace(/»/g, '#187;')}»`), ...(has(e.label) ? [enc(e.label).replace(/^\s|\s$|«/g, c => `#${c.codePointAt(0)};`)] : [])].join(' ');
     let arrow = ARROW[e.type], c1 = '', c2 = '';
     if (!arrow) { // an end has one mark: a diamond, or else an arrowhead
       const mark = (end, nav, w) => {
@@ -618,7 +621,9 @@ function writeMermaidClass(model, viewId) {
   for (const [hint, text] of relations) out.push(...(hint ? [`  %% id: ${hint}`] : []), `  ${text}`);
   for (const [hint, link, text] of noteLines) out.push(...(hint ? [`  %% id: ${hint}`] : []), ...(link ? [`  %% link-id: ${link}`] : []), `  ${text}`);
   for (const x of notWritten) out.push(`  %% not written: ${x}`);
-  return out.join('\n') + '\n';
+  // unindented when indented text would be over the reader's own limit, so what the reader read can be read again
+  const text = out.join('\n') + '\n';
+  return text.length > MC_LIMIT ? text.replace(/^[ \t]+/gm, '') : text;
 }
 
 export { readMermaidClass, writeMermaidClass };
