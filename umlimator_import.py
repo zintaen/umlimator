@@ -189,13 +189,12 @@ def front(text):
 
 
 def read(fmt, text, name):
-    if fmt in ("compose", "kubernetes"):
-        m = (compose if fmt == "compose" else kubernetes)(json.loads(text), name)
-    elif len(text) > LIMIT:  # hostile input (risks.md R2), as the module's readers refuse it
+    if len(text) > LIMIT:  # hostile input (risks.md R2), as the module's readers refuse it
         m = Model(name)
         m.say(None, f"{len(text)} characters, over the limit of {LIMIT} (1 MiB) for {fmt}: nothing read")
     else:
-        m = {"structurizr": structurizr, "plantuml": plantuml, "mermaid": mermaid}[fmt](text, name)
+        m = compose(json.loads(text), name) if fmt == "compose" else kubernetes(json.loads(text), name) if fmt == "kubernetes" else \
+            {"structurizr": structurizr, "plantuml": plantuml, "mermaid": mermaid}[fmt](text, name)
     return m.model(), sorted(m.unread, key=lambda u: [int(t) if t.isdigit() else t for t in re.split(r"(\d+)", str(u[0]))])
 
 
@@ -470,7 +469,7 @@ def views(m, els, lines, specs, find, implied, groups):
 # ---------- C4-PlantUML, and Mermaid's C4 diagrams (the same macros) ----------
 
 CALL = re.compile(r"([A-Za-z_]\w*)\s*\((.*)\)\s*(\{)?$")
-ARG = re.compile(r'\s*(?:\$(\w+)\s*=\s*)?("(?:[^"\\]|\\.)*"|[^,]*?)\s*(,|$)')
+ARG = re.compile(r'\s*(?:\$(\w+)\s*=\s*)?("(?:[^"\\]|\\.)*"\s*|[^,]*)(,|$)')
 ELEMENT = re.compile(r"(Person|System|Container|Component)(Db|Queue)?(_Ext)?")
 ARGS = {"Person": "alias label descr", "System": "alias label descr", "Container": "alias label techn descr", "Component": "alias label techn descr"}
 REL = re.compile(r"(Bi)?Rel(_Back)?(_(U|Up|D|Down|L|Left|R|Right|Neighbor))?")
@@ -484,6 +483,7 @@ def call_args(s):
     while True:
         a = ARG.match(s, i)
         key, val, sep = a.groups()
+        val = val.rstrip()
         val = val[1:-1].replace('\\"', '"') if val[:1] == '"' and val[-1:] == '"' and len(val) > 1 else val
         if key:
             named[key.lower()] = val
@@ -606,7 +606,7 @@ SHAPES = [("(((", ")))"), ("([", "])"), ("[[", "]]"), ("[(", ")]"), ("((", "))")
           ("[\\", "\\]"), ("[\\", "/]"), ("[", "]"), ("(", ")"), ("{", "}"), (">", "]")]
 NODE = re.compile(r"\s*([\w$]+(?:[.-][\w$]+)*)")
 LINK = re.compile(r"""\s*(?:(?P<plain>[<ox]?(?:-{2,}[->ox]|={2,}[=>ox]|-?\.+-[>ox]?|~{3,}))
-                     |(?P<open>[<ox]?(?:--|==|-\.))\s*(?P<text>[^|]+?)\s*(?P<close>-{2,}[->ox]|={2,}[=>ox]|\.+-[>ox]?))
+                     |(?P<open>[<ox]?(?:--|==|-\.))(?P<text>[^|]+?)(?P<close>-{2,}[->ox]|={2,}[=>ox]|\.+-[>ox]?))
                      \s*(?:\|(?P<pipe>[^|]*)\|)?""", re.X)
 FLOW_QUIET = re.compile(r"(classDef|class|style|linkStyle|click|direction|accTitle|accDescr)\b")
 
@@ -748,8 +748,11 @@ def compose(d, name):
                 m.line(s, t, where=f"services.{s}", what=label)  # every line is one: no label on each
             else:
                 m.say(f"services.{s}", f"{label} {t}, which is not a service here")
-    used = sorted({n for ns in nets.values() for n in ns})
-    boxes = [{"id": m.uniq(f"network-{n}"), "label": n, "nodeIds": [s for s in svcs if nets[s] == [n]]} for n in used] if len(used) > 1 else []
+    used, alone = sorted({n for ns in nets.values() for n in ns}), {}
+    for s in svcs:
+        if len(nets[s]) == 1:
+            alone.setdefault(nets[s][0], []).append(s)
+    boxes = [{"id": m.uniq(f"network-{n}"), "label": n, "nodeIds": alone.get(n, [])} for n in used] if len(used) > 1 else []
     m.view("services", list(svcs), [b for b in boxes if b["nodeIds"]])  # a service on several networks stays between their boxes
     for k in d:
         if k not in ("name", "services", "networks"):
@@ -808,16 +811,21 @@ def kubernetes(d, name):
             n = spec.get("replicas")
             what = " ".join(x for x in [f"{n} replica{'s' * (n != 1)}." if n else "", f"Images: {', '.join(images)}." if images else ""] if x)
             m.card(cid, nm, guess([*images, nm], "database" if kind == "StatefulSet" else "backend"), f"{kind} · {images[0].rsplit('/', 1)[-1]}" if images else kind, what)
-    svc = {(ns, nm): cid for _, kind, ns, nm, _, cid in objs if kind == "Service"}
+    svc, pods = {(ns, nm): cid for _, kind, ns, nm, _, cid in objs if kind == "Service"}, {}
+    for _, k2, ns2, _, s2, wid in objs:  # each workload under each of its pods' labels, so a selector looks at the few it may pick
+        if k2 not in ("Service", "Ingress"):
+            labels = obj(obj(obj(s2.get("template")).get("metadata")).get("labels"))
+            for kv in labels.items():
+                pods.setdefault((ns2, *map(str, kv)), []).append((labels, wid))
     for i, kind, ns, nm, spec, cid in objs:
         if kind == "Service" and obj(spec.get("selector")):  # to each workload whose pods it selects (its ports are on its card)
-            for _, k2, ns2, _, s2, wid in objs:
-                labels = obj(obj(obj(s2.get("template")).get("metadata")).get("labels"))
-                if k2 not in ("Service", "Ingress") and ns2 == ns and spec["selector"].items() <= labels.items():
+            for labels, wid in pods.get((ns, *map(str, next(iter(spec["selector"].items())))), []):
+                if spec["selector"].items() <= labels.items():
                     m.line(cid, wid, what="selects its pods")
         elif kind == "Ingress":  # each path to its Service, labelled with the path (and the host, when there are several)
             rules = objs_in(spec.get("rules"))
-            routes = [((str(r.get("host") or "") if len({str(x.get("host")) for x in rules}) > 1 else "") + str(p.get("path") or "/"), obj(p.get("backend")))
+            hosts = len({str(x.get("host")) for x in rules}) > 1
+            routes = [((str(r.get("host") or "") if hosts else "") + str(p.get("path") or "/"), obj(p.get("backend")))
                       for r in rules for p in objs_in(obj(r.get("http")).get("paths"))]
             for label, b in routes + ([("default", obj(spec["defaultBackend"]))] if spec.get("defaultBackend") else []):
                 to = obj(b.get("service")).get("name") or b.get("serviceName")  # networking.k8s.io/v1, or the older v1beta1
