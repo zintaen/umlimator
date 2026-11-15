@@ -26,7 +26,9 @@ function printDoc(X, model, Q) {
   const broken = rules(model).filter(b => on.has(b.view)); // judged in the views printed, as the document says
   const [pw, ph] = Q.get('paper') === 'letter' ? [279.4, 215.9] : [297, 210], title = esc(D.title || 'Map'); // the paper across, in mm
   const count = (k, w, ws = w + 's') => `${k} ${k === 1 ? w : ws}`, T = v => esc(v.title || v.id), full = c => Object.assign(c, { full: true });
-  const cards = v => arrOf(v.nodeIds).filter(i => N[i]), lines = v => viewEdges(v).filter(e => e.from !== e.to), boxes = v => arrOf(v.containers).filter(c => c && c.id); // as describe() reads a view
+  const cards = v => arrOf(v.nodeIds).filter(i => N[i]), boxes = v => arrOf(v.containers).filter(c => c && c.id); // as describe() reads a view
+  // each view's tables, made once: the cover counts the lines they list (a typed view's are those its type draws, audit 15)
+  const made = new Map(shown.map(([v]) => [v, tablesOf(X.ctx(), v, geoCache[v.id].g)]));
   document.title = D.title || 'Map'; document.body.removeAttribute('class');
   document.body.innerHTML = `<style>@page { size: ${pw}mm ${ph}mm; margin: 11mm 13mm 9mm; background: var(--um-bg); }
     html, body { -webkit-print-color-adjust: exact; print-color-adjust: exact; background: var(--um-bg); } body { margin: 0; background-image: none; }
@@ -95,7 +97,7 @@ function printDoc(X, model, Q) {
 
   // the cover, and its contents: a view's caption under its title, indented under the views printed that hold it
   const day = new Date(Date.now() - new Date().getTimezoneOffset() * 6e4).toISOString().slice(0, 10);
-  const sum = [count(shown.length, 'view'), count(new Set(shown.flatMap(([v]) => cards(v))).size, 'card'), count(new Set(shown.flatMap(([v]) => lines(v).map(e => e._id))).size, 'line'), ...(rs.length ? [count(rs.length, 'rule')] : [])];
+  const sum = [count(shown.length, 'view'), count(new Set(shown.flatMap(([v]) => cards(v))).size, 'card'), count(new Set(shown.flatMap(([v]) => made.get(v).lineIds)).size, 'line'), ...(rs.length ? [count(rs.length, 'rule')] : [])];
   const cover = sheet('', 'cover'); cover.parentNode.classList.add('cover');
   cover.insertAdjacentHTML('beforeend', `<div class="ttl"><h1>${title}</h1><p class="cap">${day}${D.source ? ` · <span class="mono">${esc(D.source)}</span>` : ''}</p><p class="sum">${sum.join(' · ')}</p></div>`);
   pour(paging(() => '<header><div class="h2">Contents <span class="up">(continued)</span></div></header>', 2, cols(cover, 1)), [{ title: 'Contents', cls: 'toc', rows: [
@@ -103,7 +105,7 @@ function printDoc(X, model, Q) {
     ...(rs.length ? ['<tr><td>Rules</td><td class="pg" data-pg="rules"></td></tr>'] : [])] }]);
 
   shown.forEach(([v, svg], vi) => {
-    const g = geoCache[v.id].g, made = tablesOf(X.ctx(), v, g), [ids, es, held] = made.map(t => t.rows), tables = made.filter(x => x.rows.length);
+    const g = geoCache[v.id].g, [ids, es, held] = made.get(v).map(t => t.rows), tables = made.get(v).filter(x => x.rows.length);
     const up = chain(v.id).slice(0, -1).map(id => `<span class="up">${T(V[id])} › </span>`).join('');
     const head = more => `<header>${more ? `<div class="h2">${up}${T(v)} <span class="up">(continued)</span></div>` : `<h2>${up}${T(v)}</h2>`}<span class="meta">${[count(ids.length, 'card'), count(es.length, 'line'), ...(held.length ? [count(held.length, 'box', 'boxes')] : [])].join(' · ')}</span></header>${!more && v.caption ? `<p class="cap">${esc(v.caption)}</p>` : ''}`;
     const body = sheet(head(false), vi);
@@ -155,7 +157,7 @@ function tablesOf({ D, N, nodeIn, viewEdges }, v, g) {
   const name = (v, id) => esc(N[id] ? drawn(id) : (boxes(v).find(c => c.id === id) || {}).label || id);
   const held = boxes(v).map(c => [c, arrOf(c.nodeIds).filter(i => ids.includes(i))]).filter(([, ins]) => ins.length);
   const T = diagramOf(v) || {}, asText = (T.member || {}).print || (m => m.label ?? m.id); // a member as its type writes it, else its name
-  return [
+  return Object.assign([
     { title: `${typed ? 'Elements' : 'Cards'} <span>${ids.length}</span>`, cls: 'cards', head: `<th>Card</th><th>Kind</th><th>${typed ? 'Members' : 'What it is'}</th>`, rows: ids.map(id => { const c = nodeIn(id, v.id), t = KIND[kindOf(c.kind, true)], d = at[id] || {}, sub = c.sublabel ?? c.sub, rs = typed && T.rows?.(D, v, id);
       return `<tr><td>${d.step ? `<i class="num">${esc(d.step)}</i>` : ''}<b>${esc(drawn(id))}</b>${d.kids || d.opens ? ' ⤢' : ''}${sub ? `<small>${esc(sub)}</small>` : ''}</td>`
         + (typed ? `<td>${esc(wordOf(D, v, id, c.type))}</td><td>${(Array.isArray(rs) ? rs : arrOf(c.members).filter(m => m && typeof m === 'object').map(m => asText(m))).map(r => `<p>${esc(r)}</p>`).join('')}</td></tr>`
@@ -163,7 +165,7 @@ function tablesOf({ D, N, nodeIn, viewEdges }, v, g) {
     { title: `Lines <span>${es.length}</span>`, cls: 'lines', head: `${seq || stepped ? '<th class="n">#</th>' : ''}<th>From → to</th><th>Label</th><th>${typed ? 'Kind' : 'Technology'}</th>`, rows: (stepped && !seq ? [...es].sort((a, b) => stepOrder(a.step, b.step)) : es).map((e, i) => { const w = wk.get(e._id) || 'calls', t = typed && T.text?.(D, v, e._id); // a type's text for the line (S17), else its label
       return `<tr>${seq ? `<td>${i + 1}</td>` : stepped ? `<td>${esc(e.step ?? '')}</td>` : ''}<td><i class="w" style="border-color:var(--um-w-${w})"></i>${name(v, e.from)} → ${name(v, e.to)}</td><td>${t || e.label ? esc(t || e.label) : typed ? '' : `<span class="up">${w}</span>`}</td><td>${esc(typed ? word(e.type) : e.sublabel || '')}</td></tr>`; }) },
     { title: `Boxes <span>${held.length}</span>`, cls: 'boxes', head: '<th>Box</th><th>Holds</th>', rows: held.map(([c, ins]) => `<tr><td><b>${esc(c.label || c.id)}</b></td><td>${andList(ins.map(i => name(v, i)))}</td></tr>`) },
-  ];
+  ], { lineIds: es.map(e => e._id) }); // the lines it lists, for the cover's count
 }
 
 export { printDoc, tablesOf, wordOf };

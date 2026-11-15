@@ -1,5 +1,5 @@
 import { TYPED, idTable } from '../core/registry.js';
-import { andList, arrOf } from './validate.js';
+import { andList, arrOf, rules } from './validate.js';
 
 /* ---------- change: diff (#66) and drift (#68) ----------
    Each returns a model marked with what the map draws already, so a page the CLI writes, or a still, shows the marks
@@ -66,12 +66,18 @@ export function diff(before, after) {
     // what only the view changes: its title, a box's name, a card's name here (nodeOverrides) or the box it sits in
     const vn = v.title || v.id, says = t => { viewSaid.push(`${t} in the view ${vn}`); touched.add(v.id); }, bn = c => String(c.label ?? c.title ?? c.id);
     if ((o.title || o.id) !== vn) { viewSaid.push(`retitles the view ${o.title || o.id} to ${vn}`); touched.add(v.id); }
+    // and what else it draws differently (audit 15): its caption, lanes and the like, a box's tone or badges, a card's pin
+    const other = (x, y, skip) => [...new Set([...Object.keys(x), ...Object.keys(y)])].filter(k => !skip.includes(k) && canon(x[k]) !== canon(y[k]));
+    const vk = other(o, v, ['id', 'title', 'nodeIds', 'nodes', 'edges', 'containers', 'nodeOverrides', 'layout', 'fragments']);
+    if (vk.length) { viewSaid.push(`changes the view ${vn} (${vk.join(', ')})`); touched.add(v.id); }
     const ob = new Map(arr(o.containers).filter(Boolean).map(c => [c.id, c]));
-    arr(v.containers).forEach(c => { const b = c && ob.get(c.id); if (b && bn(b) !== bn(c)) says(`renames the box ${bn(b)} to ${bn(c)}`); });
+    arr(v.containers).forEach(c => { const b = c && ob.get(c.id); if (!b) return; if (bn(b) !== bn(c)) says(`renames the box ${bn(b)} to ${bn(c)}`);
+      const bk = other(b, c, ['id', 'label', 'title', 'nodeIds']); if (bk.length) says(`changes the box ${bn(c)} (${bk.join(', ')})`); });
     ids.filter(id => oldIds.includes(id)).forEach(id => { const a = (o.nodeOverrides || {})[id] || {}, b = (v.nodeOverrides || {})[id] || {}, base = (at.get(id) || {}).label || id;
       const keys = [...new Set([...Object.keys(a), ...Object.keys(b)])].filter(k => canon(a[k]) !== canon(b[k])), rest = keys.filter(k => k !== 'label'), b0 = boxOf(o, id), b1 = boxOf(v, id);
       if (keys.length) says((keys.includes('label') ? `renames ${a.label ?? base} to ${b.label ?? base}` : `changes ${b.label ?? base}`) + (rest.length ? ` (${rest.join(', ')})` : ''));
       if ((b0 && b0.id) !== (b1 && b1.id)) says(`moves ${b.label ?? base} ${b0 ? 'out of ' + bn(b0) : ''}${b0 && b1 ? ' ' : ''}${b1 ? 'into ' + bn(b1) : ''}`);
+      else if (canon((o.layout || {})[id]) !== canon((v.layout || {})[id])) says(`moves ${b.label ?? base}`);
       if ((keys.length || (b0 && b0.id) !== (b1 && b1.id)) && !how.has(at.get(id))) ov[id] = { ...ov[id], change: 'changed' }; });
     if (Object.keys(ov).length) w.nodeOverrides = plain(ov);
     if (left.length && Array.isArray(v.containers)) // a removed card stays in its box, and in its place on a view laid out by hand when that is free
@@ -145,6 +151,14 @@ export function diff(before, after) {
     if (h === 'removed') said.push(ends ? `removes ${it}${lab}` : `removes ${it}`);
     if (h === 'changed') { const [o, x] = was.get(e), t = TYPED.diff && TYPED.diff(o, x, name, [A, out]); if (t) return said.push(...t);
       said.push(`changes ${it} (${diffKeys([o, x]).map(k => k === 'label' ? `label ${o.label ?? '-'} → ${x.label ?? '-'}` : k).join(', ')})`); } });
+  // the rules: each added, removed or changed said, and the views where what they find changes touched
+  const R0 = arr(A.rules), R1 = arr(out.rules);
+  if (canon(R0) !== canon(R1)) { const rk = (r, i) => r && typeof r === 'object' && r.id != null ? String(r.id) : '#' + i, rn = r => String((r && (r.title || r.id)) ?? 'a rule');
+    const m0 = new Map(R0.map((r, i) => [rk(r, i), r])), m1 = new Map(R1.map((r, i) => [rk(r, i), r]));
+    m1.forEach((r, k) => { if (!m0.has(k)) said.push(`adds the rule ${rn(r)}`); else if (canon(m0.get(k)) !== canon(r)) said.push(`changes the rule ${rn(r)}`); });
+    m0.forEach((r, k) => { if (!m1.has(k)) said.push(`removes the rule ${rn(r)}`); });
+    const found = m => { const by = new Map(); rules(m).forEach(b => by.set(b.view, [...(by.get(b.view) || []), b.message].sort())); return by; }, f0 = found(A), f1 = found(out);
+    views.forEach(v => { if (v && canon(f0.get(v.id) || []) !== canon(f1.get(v.id) || [])) touched.add(v.id); }); }
   moved.forEach(([verb, id, v]) => said.push(`${verb} ${name(id)} ${verb === 'puts' ? 'in' : 'out of'} the view ${v.title || v.id}`));
   said.push(...viewSaid);
   if (TYPED.order) TYPED.order(A, out, views, V0, said, touched, name);

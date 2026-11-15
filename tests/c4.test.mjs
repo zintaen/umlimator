@@ -422,3 +422,13 @@ test('a request and its reply between two systems, laid out right, do not cross 
   const swapped = structuredClone(m); swapped.edges = [m.edges[0], m.edges[2], m.edges[1], m.edges[3]];
   assert.deepEqual(check(swapped, 'v').map(p => p.message), [], 'either edge order');
 });
+
+// audit 15: the request/reply port swap (audit 14) is judged by the finished picture. Five containers, n0 asking n1 twice and
+// n1 replying twice, plus two other call/reply pairs: the swap counted better inside the pass, came out at 13 issues; without it 9
+test('the request/reply swap keeps no swap that leaves the finished view with more issues', () => {
+  const L = (from, to, label) => ({ type: 'c4.Relationship', from, to, label }), n = ['n0', 'n1', 'n2', 'n3', 'n4'];
+  const m = { schemaVersion: 2, nodes: n.map(id => ({ id, type: 'c4.Container', label: 'Container ' + id })),
+    edges: [['n1', 'n4', 0], ['n2', 'n3', 2], ['n0', 'n4', 3], ['n0', 'n1', 4], ['n0', 'n1', 5]].flatMap(([a, b, k]) => [L(a, b, 'asks ' + k), L(b, a, 'replies ' + k)]).map((e, i) => ({ id: 'e' + i, ...e })),
+    views: [{ id: 'v', diagram: 'c4.container', nodeIds: n }] };
+  assert.ok(check(m, 'v').length <= 9, check(m, 'v').map(i => i.message).join('\n'));
+});

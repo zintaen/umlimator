@@ -27,6 +27,7 @@ test('diff() says what changed in words, marks it on the after model, and names 
     'removes Feature flags',
     'changes the line from Trip service to Pricing (label prices a ride → quotes a ride)',
     'removes the line from Trip service to Payment provider (charges)',
+    'moves Payment provider in the view What runs', // its pin, [5, 3] (audit 15)
   ]);
   assert.deepEqual(d.views, ['system']);
   assert.deepEqual([card('pay-queue').change, card('accounts').change, card('flags').change, card('trips').change], ['added', 'changed', 'removed', undefined]);
@@ -193,4 +194,17 @@ test('a card with no label, and its lines, are named by its id (audit 14)', () =
   const names = [...s.matchAll(/aria-label="([^"]*)"/g)].map(x => x[1]);
   assert.ok(names.includes('Line from a to C') && names.includes('Line from b to C'), names.join(' | '));
   assert.ok(!names.some(n => /undefined|^ |from {2}/.test(n)), names.join(' | '));
+});
+
+// audit 15: a change that only moves a card (a pin), sets a caption, lanes or a box's tone, or adds a rule a line breaks is
+// said, and its view listed, so the CLI and the Action count it (they said nothing)
+test('diff() says a pin, a caption, lanes, a box tone and a rule, and lists the view', () => {
+  const base = () => ({ nodes: [{ id: 'a', label: 'A' }, { id: 'b', label: 'B' }], edges: [{ from: 'a', to: 'b' }],
+    views: [{ id: 'v', title: 'V', nodeIds: ['a', 'b'], containers: [{ id: 'box', label: 'Box', nodeIds: ['a'] }] }] });
+  const t = f => { const B = base(); f(B); const d = diff(base(), B); return [d.summary, d.views]; };
+  assert.deepEqual(t(B => { B.views[0].layout = { a: [3, 2] }; }), [['moves A in the view V'], ['v']]);
+  assert.deepEqual(t(B => { B.views[0].caption = 'hello'; B.views[0].lanes = [{ title: 'L', nodeIds: ['a'] }]; }), [['changes the view V (caption, lanes)'], ['v']]);
+  assert.deepEqual(t(B => { B.views[0].containers[0].tone = 'green'; }), [['changes the box Box (tone) in the view V'], ['v']]);
+  assert.deepEqual(t(B => { B.rules = [{ id: 'r', title: 'A never calls B', from: { id: 'a' }, to: { id: 'b' } }]; }), [['adds the rule A never calls B'], ['v']]);
+  assert.deepEqual(t(() => {}), [[], []]);
 });

@@ -100,11 +100,12 @@ function rowsFor(cols, links, h = () => 1, fixed = Object.create(null)) {
 /* Geometry: node boxes, ports, orthogonal routes, label slots. A view with lines the router found no route for is laid
    out once more, with room where those lines need it (#40); a view whose lines all route keeps its geometry. */
 function layoutGraph(dg, map) {
-  let g = layoutPass(dg, map, null);
-  if (g.room) { const g2 = layoutPass(dg, map, g.room, true); g2.ms.probe = g.ms.probe; g = g2; }
+  let g = layoutPass(dg, map, null), rr = g.rr;
+  if (g.room) { const g2 = layoutPass(dg, map, g.room, true); g2.ms.probe = g.ms.probe; g = g2; rr ||= g.rr; }
   // a label with no room where it fits: the view laid out again with room for it, kept with fewer issues and labels cut short
   if (g.labelRoom) { const g2 = layoutPass(dg, map, g.labelRoom, true), cut = h => h.edges.reduce((n, e) => n + (e.label || e.step != null ? !e.lbl ? 2 : e.lbl.short || LOOSE.has(e) ? 1 : 0 : 0), 0); // a label not drawn the worst
-    delete g.labelRoom; if (routeAudit(g2, '').length + cut(g2) < routeAudit(g, '').length + cut(g)) g = g2; }
+    delete g.labelRoom; rr ||= g2.rr; if (routeAudit(g2, '').length + cut(g2) < routeAudit(g, '').length + cut(g)) g = g2; }
+  if (rr) g.rr = true; // a typed view's request/reply swap kept: buildGeo (context.js) judges it by the finished picture
   // two lines that still cross: one takes another side, and the view is laid out so once more, kept if it has fewer issues. A
   // line that closes a loop leaves its source on the far side, out round the map as a loop under the boxes does, and still comes
   // in on its target's near side (clinic's reminder, from the SMS gateway under Patient records, crossed the line into Patient
@@ -716,15 +717,16 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
   const routeOne = (e, spare) => { let how = 'grid'; e.lbl = null; e.pts = gridRoute(e, false, 320, spare);
     if (!e.pts) { how = 'cross'; e.pts = gridRoute(e, true, 320, spare) || gridRoute(e, true, 0, spare); } if (!e.pts) { how = 'fallback'; e.pts = fallback(e); }
     e.how = how; routed.push(e); placeLabel(e); return true; };
-  let budget = 2 * free.length, swapped = false;
+  let budget = 2 * free.length, swapped = false, rrSwap = false;
   // a route moved onto its end's new port: its last run follows it
   const moved = (e, k, P) => { const [i, j] = k === 'p1' ? [0, 1] : [P.length - 1, P.length - 2], v = P[i][1] === P[j][1];
     return P.length > 2 && simplify(P.map((p, x) => x === i ? e[k] : x === j ? (v ? [p[0], e[k][1]] : [e[k][0], p[1]]) : p)); };
   const segsE = e => e.pts.slice(0, -1).map((p, i) => [p, e.pts[i + 1]]), xing = (a, b) => segsE(a).some(([p, q]) => segsE(b).some(([r, s]) => crosses(p, q, r, s)));
   // with repair off (S19), two lines between the same two cards that cross (a request and its reply, laid out right) swap their
   // ports at both cards, else at one: their tie in the port order on a side is the model's edge order, which need not match where
-  // each turns. Kept when the issues drop; the pairs are found by card pair, so it costs little more than the lines it looks at
-  if (issues && dg.repair === false) { const by = new Map(); free.forEach(e => { if (e.fixed || e.s === e.t || e.fromPort != null || e.toPort != null || e.inner) return; /* a port's end stays on its port */ const k = [e.s.id, e.t.id].sort().join('\n'); by.set(k, [...(by.get(k) || []), e]); });
+  // each turns. Kept when the issues drop; the pairs are found by card pair, so it costs little more than the lines it looks at.
+  // A typed view's only: a map's repair:false is its author's, no repair at all
+  if (issues && dg.typed && dg.repair === false && !dg.noSwap) { const by = new Map(); free.forEach(e => { if (e.fixed || e.s === e.t || e.fromPort != null || e.toPort != null || e.inner) return; /* a port's end stays on its port */ const k = [e.s.id, e.t.id].sort().join('\n'); by.set(k, [...(by.get(k) || []), e]); });
     by.forEach(l => l.forEach((a, i) => l.slice(i + 1).forEach(b => {
       if (!xing(a, b)) return;
       const ks = [a.s, a.t].flatMap(n => ['L', 'R', 'T', 'B'].map(side => [endAt(a, n, side), endAt(b, n, side)]).filter(([x, y]) => x && y));
@@ -738,7 +740,7 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
         let now = Infinity;
         if (ma && mb) { a.pts = ma; b.pts = mb; a.lbl = b.lbl = null; routed.push(a, b); placeLabel(a); placeLabel(b); now = issues - was + issueCount(ab); if (now >= issues) { ripUp(a); ripUp(b); } }
         if (now >= issues) { routeOne(a); routeOne(b); now = issues - was + issueCount(ab); }
-        if (now < issues) { issues = now; swapped = true; return; }
+        if (now < issues) { issues = now; swapped = rrSwap = true; return; }
         undo();
       }
     })));
@@ -830,7 +832,7 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
   intake.forEach(b => { xs.push(b.cx - b.r - 8 - textW(b.label || '', 10.5), b.cx + b.r); ys.push(b.cy - b.r, b.cy + b.r); });
   if (!xs.length) xs.push(0), ys.push(0); // a view with nothing in it: an empty stage
   const M = 36, minX = Math.min(...xs) - M, minY = Math.min(...ys) - M;
-  return { ms: __ms, ...(labelRoom ? { labelRoom } : {}), stats, nodes, edges, subAndChips: !!dg.subAndChips, groups, families, intake, tour: dg.tour || null, byId, map, hub: dg.hub || null, lanes: dg.lanes || [], blocks: dg.blocks || [], bounds: { x: minX, y: minY, w: Math.max(...xs) - minX + M, h: Math.max(...ys) - minY + M } };
+  return { ms: __ms, ...(labelRoom ? { labelRoom } : {}), ...(rrSwap ? { rr: true } : {}), stats, nodes, edges, subAndChips: !!dg.subAndChips, groups, families, intake, tour: dg.tour || null, byId, map, hub: dg.hub || null, lanes: dg.lanes || [], blocks: dg.blocks || [], bounds: { x: minX, y: minY, w: Math.max(...xs) - minX + M, h: Math.max(...ys) - minY + M } };
 }
 
 export { CHG, NW, OWN_ROUTE, labelW, pillW, stepW, stepOrder, hit, untangle, pullSources, rowsFor, layoutGraph };

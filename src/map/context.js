@@ -412,7 +412,12 @@ function mapContext(model, opts = {}) {
       const L = T.layout, memo = memos[vid] ||= {}, k = !override && L.key ? L.key(D, v) : null;
       if (k != null && memo.runKey === k) return memo.runGeo;
       const pos = override || (L.pins === false ? {} : L.rank === false ? onGrid(vid, v.layout || {}) : v.layout ? fillLayout(vid, v.layout) : (layoutCache[vid] ||= autoPos(vid))); // pins: false, no ranking either (notes/stage-3.md Q9)
-      const g = L.run ? L.run(D, v, { measure: M, pos, memo }) : L({ model: D, view: v, pos, memo });
+      let g = L.run ? L.run(D, v, { measure: M, pos, memo }) : L({ model: D, view: v, pos, memo });
+      // the request/reply port swap (layered.js) is judged inside a pass; the later passes and the type's own steps can undo
+      // it, so a view that kept one is laid out once more without it, and that kept when it has fewer issues (audit 15).
+      // ponytail: a layout more, so only up to 30 cards (as bestFlow); a larger view keeps the swap as the pass judged it
+      if (memo.rr && (memo.rr = false, (g.nodes || []).length <= 30)) { const m2 = { noSwap: true }, g2 = L.run ? L.run(D, v, { measure: M, pos, memo: m2 }) : L({ model: D, view: v, pos, memo: m2 });
+        if (routeAudit(g2, '').length < routeAudit(g, '').length) { g = g2; Object.assign(memo, { key: m2.key, g: m2.g, dg: m2.dg }); } }
       // an element that opens a view says which in its name, as a map card does, unless its type's name says so already
       // (saysOpens; a typed node draws no ⤢ mark: notes/stage-4.md)
       (g.nodes || []).forEach(n => { const o = N[n.id] && opensOf(n.id, vid); if (!o || n.saysOpens) return;

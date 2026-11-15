@@ -55,6 +55,15 @@ test("a view's repair: false turns port repair off", () => {
   assert.ok(layout(m, 'overview').ms.rounds > 0);
   assert.equal(layout(m, 'overview', { repair: false }).ms.rounds, 0);
 });
+// audit 15: a map's repair: false is no repair at all; the typed views' request/reply port swap (audit 14) left it alone in
+// 0.39.0, so three cards joined both ways draw as then: n2's pair to n0 does not cross, 5 issues (6 with the swap)
+test("a map's repair: false keeps its lines' ports (no request/reply swap)", () => {
+  const n = ['n0', 'n1', 'n2'], m = { nodes: n.map(id => ({ id, label: id })), views: [{ id: 'v', nodeIds: n, keepPairs: true, repair: false }],
+    edges: [['n0', 'n1'], ['n1', 'n0'], ['n2', 'n0'], ['n0', 'n2'], ['n1', 'n2'], ['n2', 'n1']].map(([from, to], i) => ({ from, to, label: 'l' + i })) };
+  const c = check(m, 'v').map(i => i.message);
+  assert.equal(c.length, 5, c.join('\n'));
+  assert.ok(!c.some(s => /n2→n0 and n0→n2 cross/.test(s)), c.join('\n'));
+});
 
 test('an unknown view is an error', () => {
   assert.throws(() => layout(read('../examples/bookshop.json'), 'nope'), /no view "nope"/);
