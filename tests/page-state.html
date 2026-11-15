@@ -233,6 +233,20 @@ try {
   const hitSaid = ($('m-res').querySelector('.fr span') || {}).textContent || '';
   check('search says a class is a Class, not a script', /^Class · /.test(hitSaid), hitSaid);
   key('Escape', $('m-q')); pg.destroy(); pg = null;
+  /* ---------- audit 8: Find reaches an element drawn as a box; a bare % in a source URL ---------- */
+  box.innerHTML = ''; pg = mountAll(box, await (await fetch('../examples/bookshop-atlas.json')).json(), { instant: true, params: new URLSearchParams() });
+  await until(() => pg.view && document.querySelector('#m-canvas .umlimator')); await pg.setView('production'); await wait(30);
+  key('/', document.body); await until(() => !$('m-pal').hidden); $('m-q').value = 'Java 21'; $('m-q').dispatchEvent(new Event('input'));
+  const boxHit = ($('m-res').querySelector('.fr span') || {}).textContent || ''; key('Enter', $('m-q'));
+  check('Find picks an element drawn as a box (the Java 21 runtime): it is selected, and its hit says this view (audit 8)',
+    await until(() => pg.selection && pg.selection.type === 'container' && pg.selection.id === 'jvm') && /this view/.test(boxHit), [pg.selection, boxHit]);
+  pg.destroy(); box.innerHTML = '';
+  const MS = structuredClone(M); MS.meta = { ...MS.meta, sourceBase: 'https://x.test/' }; MS.nodes.find(n => n.id === 'trips').source = ['https://x.test/src/100%off.ts#L4-L20', 42];
+  pg = mountPage(box, MS, { instant: true, params: new URLSearchParams() }); await until(() => pg.view && document.querySelector('#m-canvas .umlimator'));
+  await pg.setView('system'); pg.select({ type: 'node', id: 'trips' }); await until(panel); $('pt-links') && $('pt-links').click();
+  check('a source with a bare % shows as written, and a source that is no text is left out: the panel shows the card (audit 8)',
+    /Trip service/.test($('m-panel').textContent) && /src\/100%off\.ts:4-20/.test($('m-panel').textContent) && !/42/.test($('m-panel').querySelector('.source-list')?.textContent || ''), $('m-panel').textContent.slice(0, 200));
+  pg.destroy(); pg = null;
 } catch (err) { out.fail.push('threw: ' + (err && err.stack || err)); }
 const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
 </script>

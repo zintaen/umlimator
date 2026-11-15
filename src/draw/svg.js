@@ -64,7 +64,7 @@ function svgOf(geo, opts = {}) {
   });
   // tour (map): one ticket dot rides the view's loop; each stop pulses and each wire glows as it passes
   const TOUR = 8, f2 = v => +Math.min(1, Math.max(0, v)).toFixed(4), tour = map && opts.tour !== false && (geo.tour || []).length > 1 ? (() => {
-    const pts = [], legs = {}, at = {}, ends = [];
+    const pts = [], legs = {}, at = Object.create(null), ends = [];
     for (let i = 0; i + 1 < geo.tour.length; i++) {
       const a = geo.tour[i], b = geo.tour[i + 1], k = edges.findIndex(e => (e.from === a && e.to === b) || (e.both && e.from === b && e.to === a));
       if (k < 0) return null;

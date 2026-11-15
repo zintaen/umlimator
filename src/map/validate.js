@@ -64,7 +64,7 @@ export function validate(model) {
     Object.entries(v.layout || {}).forEach(([id, p]) => { if (!Array.isArray(p) || typeof p[0] !== 'number' || typeof p[1] !== 'number') warn(`views[${i}].layout.${id}`, `"${id}"'s place ${JSON.stringify(p)} is not two numbers: ignored`);
       else if (p.some(x => !(Math.abs(x) <= lim))) warn(`views[${i}].layout.${id}`, `"${id}"'s place ${JSON.stringify(p)} is off the grid: held at ${lim} columns or rows out`); });
     if (typedView(v)) return;
-    const at = `views[${i}]`, mine = new Set(), boxes = {}, home = {}, full = new Set();
+    const at = `views[${i}]`, mine = new Set(), boxes = Object.create(null), home = Object.create(null), full = new Set(); // no prototype: a box or card named toString is no box (M3, audit 8)
     if (v.parent != null && !vids.has(v.parent) && !ids.has(v.parent)) err(at + '.parent', `parent "${v.parent}" is not a view`);
     arr(v.nodeIds).forEach((id, j) => { if (!ids.has(id)) err(`${at}.nodeIds[${j}]`, `"${id}" is not a card`); else if (mine.has(id)) warn(`${at}.nodeIds[${j}]`, `"${id}" is listed twice: drawn twice`); mine.add(id); });
     Object.entries(v.nodeOverrides || {}).forEach(([id, o]) => { if (!ids.has(id)) err(`${at}.nodeOverrides.${id}`, `"${id}" is not a card`); later(o, `${at}.nodeOverrides.${id}`); shapeIs(o, `${at}.nodeOverrides.${id}`); });
@@ -72,7 +72,7 @@ export function validate(model) {
     ['stepIds', 'tour'].forEach(k => arr(v[k]).forEach((id, j) => { if (!mine.has(id)) err(`${at}.${k}[${j}]`, `"${id}" is not one of the view's cards`); }));
     arr(v.browserOrder).forEach((id, j) => { if (!vids.has(id)) err(`${at}.browserOrder[${j}]`, `"${id}" is not a view`); });
     arr(v.intake).forEach((s, j) => { if (!mine.has(s && s.to)) err(`${at}.intake[${j}].to`, `"${s && s.to}" is not one of the view's cards`); });
-    arr(v.containers).forEach((c, j) => { if (!c || !c.id) err(`${at}.containers[${j}].id`, 'a box needs an id'); else if (boxes[c.id]) err(`${at}.containers[${j}].id`, `box id "${c.id}" is used twice`); else if (mine.has(c.id)) err(`${at}.containers[${j}].id`, `box id "${c.id}" is one of the view's cards`); else boxes[c.id] = c; });
+    arr(v.containers).forEach((c, j) => { if (!c || !c.id) err(`${at}.containers[${j}].id`, 'a box needs an id'); else if (Object.hasOwn(boxes, c.id)) err(`${at}.containers[${j}].id`, `box id "${c.id}" is used twice`); else if (mine.has(c.id)) err(`${at}.containers[${j}].id`, `box id "${c.id}" is one of the view's cards`); else boxes[c.id] = c; });
     const outer = b => { const a = new Set(); for (let p = b; boxes[p] && !a.has(p); p = boxes[p].parent) a.add(p); return a; }; // b and the boxes it sits in
     arr(v.containers).forEach((c, j) => { if (!c) return; list(c, `${at}.containers[${j}]`, 'nodeIds', 1);
       arr(c.nodeIds).forEach((id, k) => { if (!mine.has(id)) return err(`${at}.containers[${j}].nodeIds[${k}]`, `"${id}" is not one of the view's cards`);
@@ -86,8 +86,8 @@ export function validate(model) {
     const listed = new Set(), byId = new Map(arr(m.edges).map(e => [e && e.id, e])), here = x => mine.has(x) || !!boxes[x]; // audit 7: a listed line is drawn once, between this view's cards and boxes
     if (Array.isArray(v.edges)) v.edges.forEach((e, j) => { const p = `${at}.edges[${j}]`;
       if (typeof e !== 'string') line(e, p, ends); else if (!lineIds.has(e)) return err(p, `"${e}" is not a line`); else if (listed.has(e)) return warn(p, `"${e}" is listed twice: drawn once`); else listed.add(e);
-      const l = typeof e === 'string' ? byId.get(e) : e, off = l && [l.from, l.to].find(x => ends.has(x) && !here(x));
-      if (off != null) warn(p, `${typeof e === 'string' ? `"${e}"` : 'the line'} ends on "${off}", which is not one of the view's cards: not drawn`); });
+      const l = typeof e === 'string' ? byId.get(e) : e, off = l && [l.from, l.to].find(x => (ids.has(x) || anyBox.has(x)) && !here(x)); // a card or any view's box (audit 8)
+      if (off != null) warn(p, `${typeof e === 'string' ? `"${e}"` : 'the line'} ends on "${off}", which is not one of the view's cards or boxes: not drawn`); });
     Object.keys(v.layout || {}).forEach(id => { if (!mine.has(id)) warn(`${at}.layout.${id}`, `"${id}" is not one of the view's cards: its place is ignored`); });
     if (Array.isArray(v.lanes)) v.lanes.forEach((l, j) => arr(l && l.nodeIds).forEach((id, k) => { if (!mine.has(id)) warn(`${at}.lanes[${j}].nodeIds[${k}]`, `"${id}" is not one of the view's cards: left out of the lane`); }));
   });
@@ -179,8 +179,8 @@ const andList = xs => xs.length > 1 ? xs.slice(0, -1).join(', ') + ' and ' + xs[
 // a view's cards and boxes as a selector sees them (rules, lenses): a card's kind as drawn, the boxes it is in (outermost
 // first) and its owner; a box is in itself and its parents, and has no kind or owner
 function endsIn(ctx, v) {
-  const cs = arrOf(v.containers).filter(c => c && c.id), box = {}; cs.forEach(c => { box[c.id] ||= c; });
-  const home = {}; cs.forEach(c => arrOf(c.nodeIds).forEach(id => { home[id] ??= c.id; }));
+  const cs = arrOf(v.containers).filter(c => c && c.id), box = Object.create(null); cs.forEach(c => { box[c.id] ||= c; }); // no prototype (M3, audit 8)
+  const home = Object.create(null); cs.forEach(c => arrOf(c.nodeIds).forEach(id => { home[id] ??= c.id; }));
   const chain = b => { const c = []; for (const seen = new Set(); b != null && box[b] && !seen.has(b); b = box[b].parent) { seen.add(b); c.unshift(b); } return c; }; // outermost first
   const end = id => box[id] ? { id, kind: null, boxes: chain(id), label: box[id].label || id }
     : (n => ({ id, kind: kindOf(n.kind, true), boxes: chain(home[id]), owner: typeof n.owner === 'string' ? n.owner : undefined, label: n.label || id }))(ctx.nodeIn(id, v.id));
@@ -205,7 +205,7 @@ export function rules(model) {
     const line = e => ({ type: 'edge', ids: [...new Set(drawn.get(e).map(x => x._id))], view: v.id });
     let rings = null; // the cycles of boxes, worked out for the first noCycles rule: [boxes, the lines between them]
     const cycles = () => {
-      const next = {}; // box -> Map(box -> the lines from the one to the other)
+      const next = Object.create(null); // box -> Map(box -> the lines from the one to the other)
       lines.forEach(e => { const A = end(e.from).boxes, B = end(e.to).boxes; let i = 0; while (i < A.length && i < B.length && A[i] === B[i]) i++;
         if (i < A.length && i < B.length) { const m = next[A[i]] ||= new Map(); m.set(B[i], [...(m.get(B[i]) || []), e]); } });
       const reach = b => { const seen = new Set(), todo = [b]; while (todo.length) for (const c of (next[todo.pop()] || new Map()).keys()) if (!seen.has(c)) { seen.add(c); todo.push(c); } return seen; };

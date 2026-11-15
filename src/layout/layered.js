@@ -137,7 +137,7 @@ function layoutGraph(dg, map) {
   // view keeps the one found only when it has fewer issues than at the start.
   // r19's logger: boxed 5 → 1, plain 6 → 3. ponytail: 14 layouts more at most, on views of up to 30 cards; a crossing-aware
   // placement would reach plain's last ones (search beside db)
-  const fan = {}; best.edges.forEach(e => { if (!e.back) fan[e.to] = (fan[e.to] || 0) + 1; });
+  const fan = Object.create(null); best.edges.forEach(e => { if (!e.back) fan[e.to] = (fan[e.to] || 0) + 1; });
   if (map && dg.fan && !dg.quick && !dg.flipped && dg.nodes.length <= 30 && Object.values(fan).some(k => k >= 6)) {
     const audit = h => { const r = [], is = routeAudit(h, '', null, r), hot = r.filter((p, k) => / (cross|share a line)$/.test(is[k]) && p.some(e => fan[e.to] >= 6));
       return { hot, n: is.length }; };
@@ -667,7 +667,7 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
   // fan-in (issue 111): lines into a card that six or more lines come into go first, in that order, so they take the tracks by
   // the card and the rest go round them (r19's logger has seven; its lines crossed the ones routed before them).
   // ponytail: six fits the bench (five made d24's hub worse); a fan-in card's own layout row is what is left
-  const fan = {}, hot = e => fan[e.t.id] >= 6; free.forEach(e => { fan[e.t.id] = (fan[e.t.id] || 0) + 1; });
+  const fan = Object.create(null), hot = e => fan[e.t.id] >= 6; free.forEach(e => { fan[e.t.id] = (fan[e.t.id] || 0) + 1; });
   order = [...order.filter(hot), ...order.filter(e => !hot(e))];
   let bad = runRouting(order);
   // rip-up and reroute: an edge that had to cross goes first next time; keep the best attempt (not when the view is laid

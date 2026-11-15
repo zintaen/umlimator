@@ -120,13 +120,14 @@ function pieces(X, el, o) {
     // meta.sourceBase (render --source-base): in-pack sources were rewritten to URLs under it and
     // show as their pack-relative path; any other relative source gets no link on a published page.
     const sb = D.meta && D.meta.sourceBase ? String(D.meta.sourceBase) : '';
-    const srcLabel = p => sb && p.startsWith(sb) ? decodeURI(p.slice(sb.length)).replace(/#L(\d+)(?:-L(\d+))?$/, (_, a, b) => ':' + a + (b ? '-' + b : '')) : p;
+    const decode = s => { try { return decodeURI(s); } catch { return s; } }; // a bare % (100%off.ts) is no escape: shown as written
+    const srcLabel = p => sb && p.startsWith(sb) ? decode(p.slice(sb.length)).replace(/#L(\d+)(?:-L(\d+))?$/, (_, a, b) => ':' + a + (b ? '-' + b : '')) : p;
     const srcHref = p => safeUrl(/^https?:/.test(p) ? p
       : p.startsWith('~') || sb ? ''
       : p.startsWith('/') ? 'file://' + encodeURI(srcPath(p))
       : root.startsWith('/') ? 'file://' + encodeURI(root + '/' + base + srcPath(p))
       : encodeURI((root ? root + '/' : '') + base + srcPath(p)));
-    const srcList = n => (Array.isArray(n.source) ? n.source : n.source ? [n.source] : []);
+    const srcList = n => (Array.isArray(n.source) ? n.source : n.source ? [n.source] : []).filter(s => typeof s === 'string'); // a path is text
     const n = nodeIn(nid, cur), ty = n.type && wordOf(D, V[cur], nid, n.type), k = kindOf(n.kind, true), c = `var(--um-${KIND[k][0]})`, pub = k === 'm-public', ext = k === 'm-ext';
     const inView = new Set(geo.nodes.map(x => x.id)), seen = new Set();
     const collect = dir => {
@@ -239,7 +240,7 @@ function pieces(X, el, o) {
       { nodes: { [sel]: { tone: 'rose', badge: { text: 'down', tone: 'rose' } } } });
   }
   // a card: selected here, or shown in the view that has it, nearest this one first
-  const find = nid => { const { viewsWith, chain } = X().ctx(), cur = X().view(); if (X().geo().byId[nid]) return X().select({ type: 'node', id: nid });
+  const find = nid => { const { viewsWith, chain } = X().ctx(), cur = X().view(); if (X().geo().byId[nid] || X().boxHere(nid)) return X().go(cur, { select: nid }); // a card, or an element drawn here as a box
     const vs = viewsWith(nid), v = vs.find(x => chain(x.id).includes(cur)) || vs[0]; if (v) X().go(v.id, { select: nid }); };
 
   if (el.legend) el.legend.addEventListener('click', e => { if (!e.target.closest('#m-lfold')) return;
