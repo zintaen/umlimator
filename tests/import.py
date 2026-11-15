@@ -62,7 +62,7 @@ EXPECT = {
         ("kinds: Db, Queue, _Ext, Person (person, and user outside), technology",
          [card(m, i)["kind"] for i in ("billing", "scans", "courier", "maps", "shipper", "web")] == ["database", "queue", "user", "external", "person", "frontend"]),
         ("no shapes field: maps draw in one style (0.21.0)", "shapes" not in m)]),
-    "tests/import/checkout.mmd": ("mermaid", ["flowchart"], [], lambda m: [
+    "tests/import/checkout.mmd": ("mermaid", ["flowchart"], [":18:", ":19:", ":20:"], lambda m: [
         ("the front matter's title", m["title"] == "Checkout, as the payments team drew it"),
         ("subgraphs are boxes of the nodes first named in them", [box(m, "flowchart", b).get("nodeIds") for b in ("core", "after")] == [["api", "orders"], ["mailer", "stock"]]),
         ("a cylinder is a database", card(m, "orders")["kind"] == "database"),
@@ -95,7 +95,7 @@ spec.loader.exec_module(imp)
 ends = lambda m: [(e["from"], e["to"], e.get("label")) for e in m["edges"]]
 m, un = imp.read("mermaid", "graph TD\n  a -- calls --> b\n  b <--> c\n  a ~~~ c\n  end\n  d@{ shape: cyl }\n", "x")
 ok("mermaid · text and two-way links, an invisible link left out, and what isn't read, by line",
-   ends(m) == [("a", "b", "calls"), ("b", "c", None), ("c", "b", None)] and [w for w, _ in un] == [5, 6], (ends(m), un))
+   ends(m) == [("a", "b", "calls"), ("b", "c", None), ("c", "b", None)] and [w for w, _ in un] == [4, 5, 6], (ends(m), un))
 m, un = imp.read("mermaid", 'flowchart LR\n  A["Say #quot;hi#quot;"] --> B["5 #lt; 6"]\n  B -->|#35;1 step| C\n  C -- #lt;go#gt; --> D[#quot;x#quot;]\n', "x")
 ok("mermaid · entity codes are read in labels, and their ; ends no statement (audit 5)",
    [n["label"] for n in m["nodes"]] == ['Say "hi"', "5 < 6", "C", '"x"'] and ends(m) == [("A", "B", None), ("B", "C", "#1 step"), ("C", "D", "<go>")] and not un, (m, un))
@@ -326,6 +326,22 @@ m, un = imp.read("mermaid", 'flowchart LR\n  A["Order\u2028placed"] --> B["Ship"
 d, dun = imp.read("structurizr", 'workspace {\nmodel {\nu = person "User" "one\u2028two"\n}\n}\n', "x")
 ok("a U+2028 in a label does not split its line (Mermaid, Structurizr DSL)", card(m, "A").get("label", "").split() == ["Order", "placed"]
    and card(m, "B")["label"] == "Ship" and line(m, "A", "B") and not un and card(d, "u").get("what", "").split() == ["one", "two"] and not dun, (un, dun, card(d, "u")))
+# audit 7: a bare subgraph was a card named subgraph; an accDescr { ... } block's lines were statements; a quoted label
+# over two lines dropped its statement; ~~~ and style lines went unsaid; [/a\] --> B[\b/] took B's /] as its closer
+m, un = imp.read("mermaid", "flowchart LR\nsubgraph\nA --> B\nend\nB --> C\n", "x")
+ok("mermaid · a bare subgraph is a box (Mermaid's subGraph0), not a card", [n["id"] for n in m["nodes"]] == ["A", "B", "C"]
+   and box(m, "flowchart", "subGraph0").get("nodeIds") == ["A", "B"] and not un, (m, un))
+m, un = imp.read("mermaid", "flowchart LR\naccDescr {\nCheckout\nA --> Z\n}\nA --> B\n", "x")
+c4m, c4un = imp.read("mermaid", 'C4Context\naccDescr {\nPerson(x, "y")\n}\nPerson(a, "A")\n', "x")
+ok("mermaid · an accDescr { ... } block is passed over whole (flowchart, C4)", [n["id"] for n in m["nodes"]] == ["A", "B"]
+   and un == [(2, "accDescr: accessibility text is not imported")] and [n["id"] for n in c4m["nodes"]] == ["a"] and not c4un, (m, un, c4m, c4un))
+m, un = imp.read("mermaid", 'flowchart LR\na("`The **cat**\n  in the hat`") -- "edge label" --> b{{"`The **dog** in the hog`"}}\n', "x")
+ok("mermaid · a quoted label over two lines is read", card(m, "a").get("label") == "The **cat** in the hat" and (line(m, "a", "b") or {}).get("label") == "edge label" and not un, (m, un))
+m, un = imp.read("mermaid", 'flowchart LR\nA --> B\nB ~~~ C\nstyle A fill:#f9f\nclick A "x"\n', "x")
+ok("mermaid · an invisible link and style and click lines are said", un == [(3, "B ~~~ C: an invisible link is not imported"), (4, "not imported: style A fill:#f9f"),
+   (5, 'not imported: click A "x"')], un)
+m, un = imp.read("mermaid", "flowchart LR\n  A[/Order placed\\] --> B[\\Ship it/]\n  B --> C[Done]\n", "x")
+ok("mermaid · a trapezoid takes its nearest closer", [card(m, i).get("label") for i in "ABC"] == ["Order placed", "Ship it", "Done"] and line(m, "A", "B"), m)
 with tempfile.TemporaryDirectory() as tmp:
     t = Path(tmp)
     r = run("import", str(ROOT / name), "--out", str(t / "classes.json"))
@@ -607,7 +623,9 @@ with tempfile.TemporaryDirectory() as tmp:
        len(got) == said.get("unread") == 11 and ":8:" in got and all(g[1:-1].isdigit() for g in got), r.stderr)
     ok(f"{name} · --typed: validate() finds no core error", core_errors(m) == [], core_errors(m))
     r = run("import", str(ROOT / name), "--out", str(t / "map.json"))
-    ok(f"{name} · without --typed, still a map", r.returncode == 0 and "schemaVersion" not in json.loads((t / "map.json").read_text()) and r.stderr == "", r.stderr)
+    ok(f"{name} · without --typed, still a map", r.returncode == 0 and "schemaVersion" not in json.loads((t / "map.json").read_text())
+       and [l.split(": ", 1)[1] for l in r.stderr.splitlines()] == ["not imported: classDef external fill:#eee,stroke:#999", "not imported: class psp external",
+                                                                   "not imported: click psp \"https://example.com/psp\" \"The provider's docs\""], r.stderr)
     r = run("import", str(ROOT / "tests" / "import" / "meals.mmd"), "--typed", "--out", str(t / "y.json"))
     ok("--typed on a source with no typed reader (Mermaid's C4) says so, and writes nothing", r.returncode == 1 and "--typed reads a Mermaid flowchart" in r.stderr
        and not (t / "y.json").exists(), r.stderr)

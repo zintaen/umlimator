@@ -118,7 +118,7 @@ function clPic(F, model, view) {
 // between a group and what it holds, or from a group to itself, is left out (line-inside: the router refuses it)
 const clInside = (F, I, a, b) => (a === b && (I.at.get(a) || {}).type === F.group) || I.holds(a, b) || I.holds(b, a);
 function clLinesOf(F, model, view, pic, I) {
-  const E = new Map(I.E.map(e => [e.id, e])), shown = new Set(pic.ids), list = Array.isArray(view.edges) ? view.edges.map(x => (typeof x === 'string' ? E.get(x) : x)) : I.E.filter(e => e.type === F.line[0]);
+  const E = new Map(I.E.map(e => [e.id, e])), shown = new Set(pic.ids), list = Array.isArray(view.edges) ? [...new Set(view.edges.map(x => (typeof x === 'string' ? E.get(x) : x)))] : I.E.filter(e => e.type === F.line[0]);
   return list.filter(e => CL_OBJ(e) && typeof e.id === 'string' && shown.has(e.from) && shown.has(e.to) && !clInside(F, I, e.from, e.to));
 }
 // accessible names (§5.2): "Product Shop API, Cloud Run"; "Path HTTPS from Shoppers to Load balancer"

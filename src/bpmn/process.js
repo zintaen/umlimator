@@ -80,7 +80,7 @@ function bzPic(model, view) {
     for (const seen = new Set(path); p != null && I.el(p) && !seen.has(p); p = I.up(p)) { if (open.has(p) || own.has(p)) { o = open.has(p) ? p : own.get(p); break; } seen.add(p); path.push(p); }
     path.forEach(x => own.set(x, o)); return o; };
   const items = ids.filter(id => I.ty(id) !== BZ_POOL && I.ty(id) !== BZ_GROUP && !be.has(id) && !open.has(id)), laid = new Set([...items, ...open]);
-  const list = Array.isArray(view && view.edges) ? view.edges.map(x => (typeof x === 'string' ? I.E.get(x) : x)) : [...I.E.values()].filter(e => BZ_LINES.includes(e.type));
+  const list = Array.isArray(view && view.edges) ? [...new Set(view.edges.map(x => (typeof x === 'string' ? I.E.get(x) : x)))] : [...I.E.values()].filter(e => BZ_LINES.includes(e.type));
   const both = id => shown.has(id) || (I.L.has(id) && shown.has(I.L.get(id).pool)), said = list.filter(e => BZ_OBJ(e) && BZ_LINES.includes(e.type) && both(e.from) && both(e.to));
   const end = (id, msg) => (laid.has(id) ? { at: id } : be.has(id) ? { at: be.get(id), port: id } : msg && pools.includes(id) ? { pool: id } : null);
   // ponytail: a line between two pools, or from a boundary event to its own activity, is not drawn (a rework loop); drawing
@@ -142,8 +142,8 @@ function bzGeo({ model, view, pos: pins, memo }) {
   // the lane pass (§8.1): each lane's top-level items in cpPlace's order, stacked in their columns from the lane's first row,
   // a block whole; data beside the flow node it is associated with; a pool's own items after its lanes; pools apart by an
   // empty row; what is in no pool after them all
-  let at = placed, runs = null; const spans = {};
-  if (P.lanes.length) { at = {}; runs = {}; let base = 0;
+  let at = placed, runs = null; const spans = Object.create(null);
+  if (P.lanes.length) { at = Object.create(null); runs = Object.create(null); let base = 0;
     const span = x => { const ps = leaves(x).map(id => placed[id]), c = ps.map(q => q[0]), r = ps.map(q => q[1]); return { c0: Math.min(...c), c1: Math.max(...c), r0: Math.min(...r), h: Math.max(...r) - Math.min(...r) + 1 }; };
     const by = new Map(); P.holds(null).forEach(x => { const l = P.laneOf(x) ?? '\u0000none'; if (!by.has(l)) by.set(l, []); by.get(l).push(x); });
     const beside = x => (P.dataLane.get(x) || {}).by;
@@ -211,7 +211,7 @@ function bzFinish(P, g, { runs, anchors, grown, side, down }) {
   const band = new Map(bands.map(b => [b.id, b]));
   // each activity grown for its boundary events drawn at its own size, a box's frame 16 px in on each side that holds one
   const shrink = n => { if (!grown.has(n.id)) return n; const c = { ...n }; grown.get(n.id).forEach(s => { if (s === 'R' || s === 'L') c.w -= BZ.ring; else c.h -= BZ.ring; if (s === 'L') c.x += BZ.ring; if (s === 'T') c.y += BZ.ring; }); return c; };
-  const laid = g.nodes.filter(n => !anchors.has(n.id)).map(shrink), families = (g.families || []).map(shrink), byId = Object.fromEntries(laid.map(n => [n.id, n]));
+  const laid = g.nodes.filter(n => !anchors.has(n.id)).map(shrink), families = (g.families || []).map(shrink), byId = Object.assign(Object.create(null), Object.fromEntries(laid.map(n => [n.id, n])));
   const host = id => byId[id] || families.find(f => f.id === id);
   // each boundary event a 32 px circle centred on its activity's border: 16 px in from its port's box (§6.2)
   const centre = new Map();

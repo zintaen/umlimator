@@ -195,7 +195,7 @@ Rules, each with a passing and a failing fixture; a model BPMN forbids is an err
 | `message-ends` | error | A message flow's source is a pool, an activity, a message end event or a message throw event; its target a pool, an activity, a message start event, a message catch event or a message boundary event |
 | `event-definition` | error | An event's `definition` is one its kind may take (§3.2); `cancelActivity` is on a boundary event only |
 | `boundary-host` | error, warning | Error: `attachedTo` names an activity (task, sub-process, call activity) of the model. Warning: the boundary event's `parent` is not its activity's (it is drawn on the activity regardless) |
-| `boundary-out` | warning | A boundary event has an outgoing sequence flow (a message boundary event may instead have only a message flow out) |
+| `boundary-out` | warning | A boundary event has an outgoing sequence flow (every one, message boundary events included: §8.3 dropped the message-flow exemption) |
 | `flow-start` | warning | A process (a pool's flow, or a sub-process's) with flow nodes has a start event, and an end event; an activity other than one with a boundary event's flow in has an incoming sequence flow (`bpmnlint`'s "no disconnected", as a warning) |
 | `gateway-flows` | warning | A gateway with one incoming and one outgoing flow does nothing (`risks.md` §6's "a gateway with one exit"); a diverging exclusive gateway's flows out each carry a name |
 | `lane-owner` | error | A lane's `parent` is a lane of the same participant; a flow node's `parent` is a lane, a participant, a sub-process or none; a data object's or store's a participant or none |
