@@ -4811,7 +4811,8 @@ callers:
   step duration plays 500 ms while `validate()`'s warning says 4000 ms. Mermaid C4 macro arguments keep entity codes as
   written. `describe()` of an inline interaction does not say it opens a view. Room for a label in a turned view is
   still mostly along the line. The map flowchart and Structurizr DSL readers turn a U+2028 inside a label into a space.
-  The unfolded call behaviour box is a plain container frame. A page rendered before 0.33.0 with a numeric view id
+  `validate()` gives typed views no "listed twice" warning for `view.edges` (map views have one since #332; typed
+  views draw the line once). The unfolded call behaviour box is a plain container frame. A page rendered before 0.33.0 with a numeric view id
   still ends in a traceback in `stills` and `check`. Changed: three or more delegations from one port into a grid of
   parts may still cross (composite structure laid out right with one port: 1 to 6 crossings for 4 to 6 parts; a
   component with three inner components: 1 right, 2 down); this needs a routing change, not a slot order. New: other
