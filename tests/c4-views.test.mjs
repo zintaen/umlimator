@@ -396,3 +396,13 @@ test('an element whose type is an Object.prototype name: an unknown type, its ta
     const p = validate(m).map(x => x.rule); assert.ok(p.includes('c4-subject'), p);
   }
 });
+
+test('audit 7: a dynamic view\'s c4-level message keeps a subject named with $\' as written', () => {
+  const d = { description: 'd', technology: 't' }, m = { schemaVersion: 2, nodes: [{ id: 'sys', type: 'c4.SoftwareSystem', label: 'Shop', props: { description: 'd' } },
+    { id: 'api', type: 'c4.Container', label: "Price$'s API", parent: 'sys', props: d }, { id: 'cmp', type: 'c4.Component', label: 'Pricer', parent: 'api', props: d },
+    { id: 'web', type: 'c4.Container', label: 'Web', parent: 'sys', props: d }, { id: 'other', type: 'c4.Component', label: 'Stray', parent: 'web', props: d }],
+    edges: [{ id: 'r1', type: 'c4.Relationship', from: 'cmp', to: 'other', label: 'calls' }],
+    views: [{ id: 'dyn', diagram: 'c4.dynamic', title: 'Dyn', subject: 'api', nodeIds: ['api', 'cmp', 'other'], edges: ['r1'] }] };
+  const s = validate(m).map(p => p.message).filter(x => x.startsWith('c4-level'));
+  assert.ok(s.some(x => x.endsWith('in a dynamic view of "Price$\'s API"')), s);
+});
