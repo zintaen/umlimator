@@ -102,3 +102,14 @@ test('audit 12: diff() brings a removed message back with its fragment, and remo
   const st = load('examples/order-states.json'), s = all.diff(st, all.apply(st, { op: 'delete', id: 'fulfilling.payment' }));
   assert.deepEqual([s.model.nodes.find(n => n.id === 'fulfilling').members.find(r => r.id === 'fulfilling.payment').change, all.validate(s.model).filter(p => p.level === 'error')], ['removed', []]);
 });
+
+test('audit 13: a deleted part or port comes back removed in its owner, so its connectors draw removed; the summary says it went; a deleted attribute is said, not drawn', () => {
+  const eb = load('examples/ebike-structure.json'), d = all.diff(eb, all.apply(eb, { op: 'delete', id: 'ebike.battery' }));
+  const ebike = d.model.nodes.find(n => n.id === 'ebike'), g = all.layout(d.model, 'inside-ebike');
+  assert.deepEqual([d.summary, ebike.members[0].id, ebike.members[0].change, all.validate(d.model).filter(p => p.level === 'error')], [['removes battery from EBike'], 'ebike.battery', 'removed', []]);
+  assert.deepEqual(g.edges.filter(e => e.from === 'ebike.battery').map(e => e.style), ['removed', 'removed', 'removed']);
+  const os = load('examples/order-service-structure.json'), c = all.diff(os, all.apply(os, { op: 'delete', id: 'order-service.pricing' }));
+  assert.deepEqual([c.summary, all.layout(c.model, 'internals').edges.filter(e => e.style === 'removed').length], [['removes pricing from OrderService'], 1]);
+  const sc = load('examples/sales-classes.json'), a = all.diff(sc, all.apply(sc, { op: 'delete', id: 'customer.email' }));
+  assert.deepEqual([a.summary, a.model.nodes.find(n => n.id === 'customer').members.some(x => x.id === 'customer.email')], [['removes email from Customer'], false]);
+});

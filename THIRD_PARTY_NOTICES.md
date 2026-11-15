@@ -213,3 +213,10 @@ The logos are trademarks of their owners and keep their owners' terms: svgl (the
 their owners), devicon (MIT), gilbarbara/logos (CC0), Microsoft's Azure and Entra architecture icons (allowed in
 architecture diagrams, training material and documentation), and files published by the brands themselves. Their use
 in a diagram does not imply endorsement.
+
+The Google Cloud, Microsoft Azure and AWS architecture icon packs are not distributed either: `umlimator.py pack fetch`
+downloads one into the user's cache only after its vendor's terms are shown and accepted (`icons/packs.json` pins each).
+Since 16 Nov 2026 the project's GitHub Pages site, and only it, is built with the three packs fetched, their terms
+accepted, so its cloud examples show the vendors' icons with their legal lines. Google Cloud and the Google Cloud logo
+are trademarks of Google LLC. Amazon Web Services, AWS and the AWS service icons shown are trademarks of Amazon.com, Inc.
+or its affiliates. Umlimator is not affiliated with, endorsed by or sponsored by Amazon Web Services, Google or Microsoft.

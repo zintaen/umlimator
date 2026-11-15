@@ -3,6 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { diff, drift, validate, layout } from '../lib/umlimator.js';
+import { svgOf } from '../src/draw/svg.js';
 
 const bike = JSON.parse(readFileSync(new URL('../examples/bike-share.json', import.meta.url)));
 // a made-up pull request on the bike share: a queue between Trips and Payments, a rename, a card gone, a line relabelled
@@ -162,4 +163,21 @@ test('audit 12: diff() marks the line a view puts in when it drops its list of l
   const nodes = [{ id: 'a' }, { id: 'b' }, { id: 'c' }], edges = [{ id: 'ab', from: 'a', to: 'b' }, { id: 'bc', from: 'b', to: 'c', label: 'stores' }];
   const d = diff({ nodes, edges, views: [{ id: 'v', nodeIds: ['a', 'b', 'c'], edges: ['ab'] }] }, { nodes, edges, views: [{ id: 'v', nodeIds: ['a', 'b', 'c'] }] });
   assert.deepEqual([d.summary, d.model.views[0].edges], [['puts the line from b to c (stores) in the view v'], ['ab', { ...edges[1], change: 'added', style: 'added' }]]);
+});
+
+test('audit 13: a view that drops its list of lines keeps its removed lines (to a removed card too) and brings its own lines back removed, put in or not', () => {
+  const N = id => ({ id, label: id }), e = [{ id: 'e1', from: 'a', to: 'b' }, { id: 'e2', from: 'b', to: 'c' }, { id: 'e3', from: 'c', to: 'd', label: 'gone' }];
+  const before = es => ({ nodes: ['a', 'b', 'c', 'd'].map(N), edges: es, views: [{ id: 'v', nodeIds: ['a', 'b', 'c', 'd'], edges: ['e1', 'e3', { id: 'own', from: 'a', to: 'c', label: 'own line' }] }] });
+  const after = es => ({ nodes: ['a', 'b', 'c'].map(N), edges: es, views: [{ id: 'v', nodeIds: ['a', 'b', 'c'] }] });
+  const drawn = d => layout(d.model, 'v').edges.map(x => `${x.from}->${x.to}:${x.style || ''}`);
+  const put = diff(before(e), after(e.slice(0, 2))), none = diff(before([e[0], e[2]]), after([e[0]]));
+  assert.deepEqual([put.summary, drawn(put)], [['removes d', 'removes the line from a to c (own line)', 'puts the line from b to c in the view v'], ['a->b:', 'b->c:added', 'c->d:removed', 'a->c:removed']]);
+  assert.deepEqual([none.summary, drawn(none)], [['removes d', 'removes the line from a to c (own line)'], ['a->b:', 'c->d:removed', 'a->c:removed']]);
+});
+
+test('audit 13: a change named after a prototype key (constructor, __proto__) is no change: no badge, and the map draws', () => {
+  for (const change of ['constructor', '__proto__', 'toString']) {
+    const s = svgOf(layout({ nodes: [{ id: 'a', change }, { id: 'b' }], edges: [{ from: 'a', to: 'b' }], views: [{ id: 'v', nodeIds: ['a', 'b'] }] }, 'v'));
+    assert.doesNotMatch(s, /NEW|CHANGED|REMOVED|PLANNED/, change);
+  }
 });

@@ -57,8 +57,10 @@ Layout limits, with port repair and rerouting off (`repair: false`, `reroute: fa
 | Accessible names | Each card's and group's `aria-label` kept | None | None |
 | Tables | None | None | "Elements": a service's and a group's kind; a service's full name, icon id and group. "Lines": each line's ends and label |
 
-A picture made where no pack was fetched, or with `UMLIMATOR_NO_PACKS=1` (every page and still this project publishes),
-carries glyphs and full names only.
+A picture made where no pack was fetched, or with `UMLIMATOR_NO_PACKS=1` (every page and still committed to this
+repository), carries glyphs and full names only. Since 16 Nov 2026 the GitHub Pages site is built with the pack fetched, its
+terms accepted, so the example there shows the real icons and the not-affiliated line
+(`docs/diagrams/notes/milestone-4a.md` §16).
 
 The pin (0.26.0): Microsoft's `Azure_Public_Service_Icons_V25.zip`, 643 ids, its `Microsoft_Terms_of_Use.pdf` checked by
 its own hash. `Service-Bus` is an alias of V25's `Azure-Service-Bus`.

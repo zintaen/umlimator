@@ -93,6 +93,8 @@ package keeps.
 | Cache per user, never in published output | `<icon cache>/packs/` (S18, decision 6) |
 | Render icons unmodified | Scaled only; a coloured icon on a light tile and a white one on a dark tile (Q3) |
 | The full service name beside each icon | S8 |
+
+Changed on 16 Nov 2026: the Pages site's build now fetches the gcp, azure and aws packs; see §16.
 | Google's legal line wherever Google icons are used | S9 |
 | A "not affiliated" line in the docs | `README.md`'s Icons section, each cloud conformance note, `pack fetch`'s terms prompt, `pack list`, and the gallery cards and atlas page of the cloud views: "Umlimator is not affiliated with, endorsed by or sponsored by Amazon Web Services, Google or Microsoft." |
 | AWS is gated | Until the maintainer's emailed question to AWS (sent 14 Nov 2026) is answered, nothing offers AWS's icons: no `aws` row in `icons/packs.json` and the `aws` type not registered. Google and Azure ship. 4a.8's scope is set by AWS's reply, with any conditions it attaches (a trademark notice, an attribution, no direct fetch); the lead records the reply in `docs/diagrams/README.md`'s open questions, as the log of 14 Nov 2026 asks |
@@ -161,6 +163,7 @@ not change.
   `docs/` and `examples/README.md` give the commands) runs with `UMLIMATOR_NO_PACKS=1`, which makes `page_model` skip
   pack rows and keep map logos, so a maintainer's cached packs never reach the repository; the test catches a render
   that forgot it.
+  Changed on 16 Nov 2026: the Pages site's build now fetches the gcp, azure and aws packs; see §16. The test reads only git-tracked files.
 - **No host application's name** appears in code, tests or docs (`plan.md` §8).
 
 ## 3. Vocabulary
@@ -344,6 +347,8 @@ CI never downloads a pack (S18): 4a.3 builds a synthetic pack in a scratch folde
 a PDF named as Azure's, their hashes) and points `UMLIMATOR_PACKS` (a file standing in for `icons/packs.json`) and the
 cache at it, serving it from a local `http.server`. `UMLIMATOR_PACKS` redirects pack addresses, so it is test-only: it is
 read only when `UMLIMATOR_TEST=1` is set too, and refused with a message otherwise; `risks.md` S2 lists it.
+
+Changed on 16 Nov 2026: the Pages site's build now fetches the gcp, azure and aws packs; see §16.
 
 ### 4.5 The icons table: the contract between the CLI and the types (S6)
 
@@ -811,6 +816,8 @@ no vendor icon is committed.
 The gallery draws the cloud examples with no pack (`UMLIMATOR_NO_PACKS=1`, §2.5), so their stills show glyphs and full
 names, and a line under each card says how to fetch the icons and that Umlimator is not affiliated with the vendors (S18).
 
+Changed on 16 Nov 2026: the Pages site's build now fetches the gcp, azure and aws packs; see §16.
+
 ### 10.3 The atlas (S20)
 
 | Option (decision 19) | For | Against |
@@ -1056,3 +1063,22 @@ Each is set out with its options and trade-offs in the section named; the recomm
 - **`README.md` in this folder.** The open question "May a tool download the AWS and Google icon packs for its users?" is
   answered for Google and Azure (13 Nov 2026) and waits on AWS (asked 14 Nov 2026); the status table shows this note and,
   once approved, its work packages; the log records the decisions. (The lead's.)
+
+## 16. Changed after approval: decision 6 (16 Nov 2026)
+
+The maintainer changed decision 6 (§4.4) and with it S18. The text above is kept as it was approved.
+
+- **The Pages site shows the vendors' icons.** The `site` job in `.github/workflows/check.yml` fetches the `gcp`, `azure`
+  and `aws` packs with `umlimator.py pack fetch <pack> --accept-terms <pack>@<label>`, into the job's temporary folder,
+  and builds the site from that cache. The site's cloud examples, their stills and PDFs carry the real icons, the
+  vendors' legal lines and the not-affiliated line. The labels are written out in the workflow: a re-pin in
+  `icons/packs.json` must edit them too, which is a new acceptance, and `tests/packs.py` fails until the two agree.
+- **AWS.** Its 14 Nov 2026 conditions excluded the site (`docs/conformance/aws.md`). The maintainer reports that AWS
+  agreed on 16 Nov 2026 to its icons on this project's own Pages site.
+- **A pack that cannot be fetched** (a vendor's file changed under its pin, an address gone) prints a warning and the
+  site draws glyphs for that pack; the build does not fail.
+- **Everything else stays icon-free:** the repository, the npm package, releases, the committed pages and stills, and
+  every other CI job and artifact. Committed renders keep `UMLIMATOR_NO_PACKS=1`; the test of §2.5 reads only
+  git-tracked files; `tests/packs.py` checks that no other job runs `pack fetch` and that the site job neither sets
+  `UMLIMATOR_NO_PACKS` nor uses `actions/cache`. The Pages artifact holds icons, so it is kept one day.
+- **Entra** (the logo manifest's `render: 'cache'` row) stays out: its terms were never read and no example uses it.

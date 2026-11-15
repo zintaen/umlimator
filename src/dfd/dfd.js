@@ -1,7 +1,7 @@
 import { registerDiagramType } from '../core/registry.js';
 import { esc, fit, textW } from '../core/text.js';
 import { SHAPE, portsOn, r2 } from '../draw/shapes.js';
-import { layoutTyped } from '../typed/layout.js';
+import { layoutTyped, typedLines } from '../typed/layout.js';
 import '../uml/class.js'; // SHAPE.note, a comment's look
 import { flowWrap } from '../uml/flow.js';
 import '../uml/usecase.js'; // SHAPE.ellipse, Yourdon's process
@@ -90,7 +90,7 @@ function dfdIndex(model) {
   const at = new Map(), path = new Map(), views = new Map();
   DFD_ARR(model && model.nodes).forEach((x, i) => { if (DFD_OBJ(x) && typeof x.id === 'string' && !at.has(x.id)) { at.set(x.id, x); path.set(x.id, `nodes[${i}]`); } });
   DFD_ARR(model && model.views).forEach(v => { if (DFD_OBJ(v) && typeof v.id === 'string' && !views.has(v.id)) views.set(v.id, v); });
-  const flows = DFD_ARR(model && model.edges).map((e, i) => [e, `edges[${i}]`]).filter(([e]) => DFD_OBJ(e) && e.type === 'dfd.DataFlow');
+  const flows = typedLines(model, v => v.diagram === 'dfd').filter(([e]) => DFD_OBJ(e) && e.type === 'dfd.DataFlow');
   const ty = id => (at.get(id) || {}).type, proc = id => ty(id) === 'dfd.Process';
   const name = id => { const x = at.get(id); if (!x) return String(id); const k = dfdNum(x); return (k ? k + ' ' : '') + String(x.label ?? x.id); };
   const q = id => `${(DFD_WORD[ty(id)] || 'element').toLowerCase()} "${name(id)}"`;

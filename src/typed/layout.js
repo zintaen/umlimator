@@ -203,4 +203,10 @@ TYPED.fan = (free, { simplify, through, STUB, SEP }) => { const pairs = new Map(
     if (list.some((e, i) => through(pts[i], e))) return;
     list.forEach((e, i) => { Object.assign(e, { [OWN_ROUTE]: 'fan', fixed: pts[i], pts: pts[i], stubs: [], how: 'fan' }); free.splice(free.indexOf(e), 1); }); }); };
 
-export { VIEW_GEO, VIEW_PAINT, geometryKey, layoutTyped };
+// a type's lines, each with its path: the model's, then those written inline in the edges of the views keep(view) takes (model.md)
+function typedLines(model, keep) {
+  const arr = x => (Array.isArray(x) ? x : []), es = arr(model && model.edges), seen = new Set(es), out = es.map((e, i) => [e, `edges[${i}]`]);
+  arr(model && model.views).forEach((v, i) => { if (v && typeof v === 'object' && keep(v)) arr(v.edges).forEach((e, k) => { if (e && typeof e === 'object' && !seen.has(e)) { seen.add(e); out.push([e, `views[${i}].edges[${k}]`]); } }); });
+  return out;
+}
+export { VIEW_GEO, VIEW_PAINT, geometryKey, layoutTyped, typedLines };
