@@ -1108,6 +1108,8 @@ def cmd_import(a):
             json.loads(text)
         except ValueError as e:
             sys.exit(f"import: {a.file} is not valid JSON ({e}): is it cut short? (give --format if it is not JSON)")
+        except RecursionError:
+            sys.exit(f"import: {a.file} nests too deep to read: nothing written")
     fmt = fmt or sys.exit(f"import: cannot tell the format of {a.file}: give --format ({', '.join(imp.FORMATS + imp.NODE_FORMATS + ['bpmn'])})")
     kind = fmt == "mermaid" and imp.mermaid_typed(text, a.typed)
     if a.typed and not kind and fmt not in imp.NODE_FORMATS + ["bpmn"]:  # those are typed already
@@ -1167,6 +1169,8 @@ def cmd_import(a):
             m, unread = imp.read(fmt, text, Path(a.file).stem)
         except json.JSONDecodeError as e:
             sys.exit(f"import: {a.file} is not {fmt} JSON ({e})")
+        except RecursionError:  # json.loads on a hostile nest (R2)
+            sys.exit(f"import: {a.file} nests too deep to read: nothing written")
     for where, msg in unread:  # ponytail: JSON keeps no line numbers, so a JSON source's item is named by its path
         print(f"{a.file}:{where}: {msg}" if where is not None else f"{a.file}: {msg}", file=sys.stderr)
     if not m["nodes"]:
@@ -1269,6 +1273,9 @@ def main():
     a = p.parse_args()
     if getattr(a, "page", None) and not Path(a.page).is_file():
         sys.exit(f"{a.cmd}: no page at {a.page}")
+    ins = [getattr(a, k, None) for k in ("model", "file", "page", "observed")] + (getattr(a, "files", None) or [])
+    if a.cmd != "trace" and getattr(a, "out", None) and any(x and Path(x).resolve() == Path(a.out).resolve() for x in ins):
+        sys.exit(f"{a.cmd}: --out {a.out} is its input: name another file")  # else replacing() renames the output over it
     signal.signal(signal.SIGTERM, lambda *_: sys.exit(143))  # as Ctrl-C: temp files go, and the children run() started
     try:
         a.f(a)
