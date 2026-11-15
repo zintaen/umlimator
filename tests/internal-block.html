@@ -131,13 +131,14 @@ try {
   const m2 = gives('F2 on a part: its name and multiplicity set', [{ op: 'set', id: 'ebike.controller', path: 'label', value: 'ecu' }, { op: 'set', id: 'ebike.controller', path: 'props.multiplicity', value: '1' }],
     m => m.nodes[0].members.find(x => x.id === 'ebike.controller').label === 'ecu', m1);
   h.update(m2);
-  // a connector from a port on a part by L, an arrow and Enter, the picker
-  click('.node[data-id="ebike.motor->motor.phases"] .n-mask'); key('l'); key('ArrowRight'); key('Enter');
+  // a connector from a port on a part by L, an arrow and Enter, the picker: ← reaches the controller's drive port (→ reached the
+  // motor itself, a connector through its own port that the view does not draw, which connect() refuses since audit 11)
+  click('.node[data-id="ebike.motor->motor.phases"] .n-mask'); key('l'); key('ArrowLeft'); key('Enter');
   check('L from a port on a part, an arrow and Enter open the picker with the two lines', same(all('.um-pick button').map(b => b.textContent), ['Connector', 'Comment link']), all('.um-pick button').map(b => b.textContent));
   all('.um-pick button')[0].click();
   { const e = last(), c = e && e.commands[0], m = c && apply(m2, e.commands);
     check('Connector: a sysml.Connector from the port on the part, ends.from.part kept, no label', e.commands.length === 1 && c.op === 'add' && c.element.type === 'sysml.Connector' && c.element.from === 'motor.phases'
-      && same(c.element.props.ends.from, { part: 'ebike.motor' }) && !('label' in c.element) && !errors(m).length, [e, m && errors(m)]); }
+      && same(c.element.props.ends, { from: { part: 'ebike.motor' }, to: { part: 'ebike.controller' } }) && !('label' in c.element) && !errors(m).length, [e, m && errors(m)]); }
   click('.node[data-id="ebike.plug"] .n-mask'); key('ArrowRight', { altKey: true });
   gives('Alt + → on the frame\'s port: its side', [{ op: 'set', view: VID, path: ['present', 'ebike.plug', 'side'], value: 'right' }], m => m.views[0].present['ebike.plug'].side === 'right', m2);
   h.select({ type: 'container', id: 'ebike', view: VID });

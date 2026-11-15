@@ -417,3 +417,10 @@ test('audit 6: on a topic parent cycle, N, Delete and a drop each return', async
   assert.deepEqual(hide2.commands.map(c => c.id).sort(), ['b', 'c']);
   assert.ok(Array.isArray(drop));
 });
+
+test('audit 11: Alt + the arrow towards the root puts the topic after its old parent and before the parent\'s next sibling, nodeIds listed level by level', () => {
+  const t = (id, parent) => ({ id, type: T, label: id.toUpperCase(), ...(parent ? { parent } : {}) });
+  const m = { schemaVersion: 2, nodes: [t('r'), t('a', 'r'), t('a1', 'a'), t('a2', 'a'), t('x', 'a1'), t('y', 'a1')],
+    views: [{ id: 'v', diagram: 'mindmap', nodeIds: ['r', 'a', 'a1', 'a2', 'x', 'y'], present: { a: { side: 'right' } } }] };
+  assert.deepEqual(kids(run(m, mmMoveTo(m, 'v', 'x', { by: [-1, 0] })), 'a'), ['a1', 'x', 'a2']);
+});

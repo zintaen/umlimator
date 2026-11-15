@@ -136,21 +136,21 @@ def node(fn, *args):
 
 def known(m):
     """The ids a Ref may name: cards, lines (those with no id as "<from>-><to>#<n>"), boxes and members at any depth; and
-    the cards and lines apart."""
-    cards, lines = {n["id"] for n in every(m, "nodes")}, {e["id"] for e in every(m, "edges")}
+    the cards and lines apart (the lines by those names, each to its line)."""
+    cards, lines = {n["id"] for n in every(m, "nodes")}, {e["id"]: e for e in every(m, "edges")}
     for es in [m.get("edges"), *(v.get("edges") for v in views(m).values())]:  # "<from>-><to>#<n>": a line without an id, as Refs name it
         seen = {}
         for e in es if isinstance(es, list) else []:
             if isinstance(e, dict):
                 k = f"{e.get('from')}->{e.get('to')}"; seen[k] = seen.get(k, -1) + 1
-                lines.add(str(e["id"]) if e.get("id") is not None else f"{k}#{seen[k]}")
+                lines.setdefault(str(e["id"]) if e.get("id") is not None else f"{k}#{seen[k]}", e)
     boxes = {c.get("id") for v in views(m).values() for c in v.get("containers") or [] if isinstance(c, dict)}
     members, todo = set(), [x for n in every(m, "nodes") for x in n.get("members") or []]
     while todo:  # a member (a port, a constraint property) at any depth: a Ref may name one
         x = todo.pop()
         if isinstance(x, dict):
             members.add(x.get("id")); todo += x.get("members") or []
-    return cards | lines | boxes | members, cards, lines
+    return cards | set(lines) | boxes | members, cards, lines
 
 
 def refs(m, items):
@@ -208,6 +208,8 @@ def call(name, a):
             before = cli.read_json(other)
         except SystemExit as e:
             raise Fail(f"cannot read {a['other_model_path']} (looked for {' and '.join(map(str, tried))}): {e.code}")
+        if bad := cli.not_objects(before):  # as render reads it (audit 11)
+            raise Fail(f"{a['other_model_path']}: {'; '.join(bad)}")
         d = node("diff", before, m)
         return {"summary": d["summary"], "views": d["views"]}
     # the page's tools: a command for the page, checked against the model first, then folded into `want`
@@ -247,11 +249,13 @@ def view_for(m, lit, current):
     named = [r["view"] for r in lit if isinstance(r, dict) and isinstance(r.get("view"), str)]
     if named:
         return named[0]
-    lines = {e["id"]: e for e in every(m, "edges")}
-    need = {r.get("id") for r in lit if r.get("type") == "node"} | {
+    lines = known(m)[2]  # a line without an id too, by its "<from>-><to>#<n>" (audit 11)
+    need = {r.get("id") for r in lit if r.get("type") == "node"} | {r["node"] for r in lit if r.get("type") in ("chip", "badge") and r.get("node")} | {
         x for r in lit if r.get("type") == "edge" for i in r.get("ids") or [] for x in (lines.get(i, {}).get("from"), lines.get(i, {}).get("to")) if x}
+    boxes = {r.get("id") or r.get("container") for r in lit if r.get("type") == "container"} - {None}
     vs = views(m)
-    return next((v for v in [current, *vs] if v in vs and need <= set(vs[v].get("nodeIds") or [])), None)
+    return next((v for v in [current, *vs] if v in vs and need <= set(vs[v].get("nodeIds") or [])
+                 and boxes <= {c.get("id") for c in vs[v].get("containers") or [] if isinstance(c, dict)}), None)
 
 
 def command(fold):

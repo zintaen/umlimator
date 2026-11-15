@@ -342,6 +342,7 @@ async function writeBpmnXml(model, viewId, geo, moddle) {
     const mk = (type, x, props = {}) => {
       const el = M(type, { id: xid.get(x), ...props }), doc = x.props && x.props.documentation;
       if (el.id !== x.id) el.$attrs['umlimator:id'] = String(x.id);
+      if (el.id !== x.id && !String(x.id).trim()) say(x.id, 'a blank id, which a reader reads as none');
       if (bxStr(doc)) el.documentation = [M('bpmn:Documentation', { text: doc })];
       for (const k of Object.keys(x)) if (!BX_FIELDS.has(k)) say(x.id, k);
       for (const k of Object.keys(x.props || {})) if (!bxProp(x.type, k)) say(x.id, `props.${k}`);

@@ -486,6 +486,7 @@ function readMermaidClass(text) {
 function writeMermaidClass(model, viewId) {
   const m = model && typeof model === 'object' ? model : {}, arr = x => (Array.isArray(x) ? x : []), isObj = x => !!x && typeof x === 'object';
   const flat = s => String(s).replace(/\r\n|\r|\n/g, '\\n'), nl = s => /[\r\n]/.test(String(s)); // a comment is one line
+  const badId = id => nl(id) || String(id).trim() !== String(id); // the reader trims a hint and a name: an id with a space at either end comes back as another
   const views = arr(m.views).filter(isObj);
   const view = viewId != null ? views.find(v => v.id === viewId) : views.find(v => v.diagram === 'uml.class');
   // a model with views is written through its class view; one with none, whole
@@ -505,7 +506,7 @@ function writeMermaidClass(model, viewId) {
   const out = [], notWritten = [], skip = x => notWritten.push(`${flat(x.id)} (${flat(x.type)})`), lose = (id, what) => notWritten.push(`${flat(id)}: ${flat(what)}`);
   const title = view && has(view.title) ? view.title : m.title;
   if (has(title)) out.push('---', `title: ${/^[\p{L}\p{N}][\p{L}\p{N} _.,()-]*$/u.test(title) && !title.endsWith(' ') ? title : JSON.stringify(String(title))}`, '---');
-  if (view && view.id !== MC_VIEW) { if (nl(view.id)) lose(view.id, "the view's id, which has a line break"); else out.push(`%% id: ${view.id}`); }
+  if (view && view.id !== MC_VIEW) { if (badId(view.id)) lose(view.id, "the view's id, which a hint cannot carry"); else out.push(`%% id: ${view.id}`); }
   out.push('classDiagram', view && view.direction === 'down' ? '  direction TB' : '  direction LR');
 
   // what is written, in the reader's order: namespaces and classes as a tree, then relations, then notes
@@ -516,9 +517,9 @@ function writeMermaidClass(model, viewId) {
     // an owner the view does not show is not written, and the element is written at the top (notes/stage-2.md §11)
     const hidden = has(n.parent) && !up && `its parent ${n.parent}, which the ${byId.has(n.parent) ? 'view does not show' : 'model does not have'}`;
     if (n.type === 'uml.Comment') {
-      if (nl(n.id)) skip(n);
+      if (badId(n.id)) skip(n);
       else { notes.push(n); if (has(n.parent)) lose(n.id, hidden || `its parent ${n.parent}: a note is written outside namespaces`); }
-    } else if ((!isPkg(n) && !(n.type in KIND)) || nl(n.id) || String(n.id).includes('`')) skip(n); // a name is one line, in `...` at most
+    } else if ((!isPkg(n) && !(n.type in KIND)) || badId(n.id) || String(n.id).includes('`')) skip(n); // a name is one line, in `...` at most
     else if (up && isPkg(up)) { boxes.push(n); if (!kids.has(n.parent)) kids.set(n.parent, []); kids.get(n.parent).push(n); }
     else {
       // Mermaid splits a namespace's name at its dots, in backticks too, so one whose id is its hidden parent's dotted path
@@ -547,12 +548,13 @@ function writeMermaidClass(model, viewId) {
     const rows = [], np = isObj(n.props) ? n.props : {};
     if (!has(n.label)) lose(n.id, 'no label, read as its name');
     const anns = [...(KIND[n.type] ? [KIND[n.type]] : []), ...(np.isAbstract ? ['abstract'] : []), ...arr(np.stereotypes).filter(s => {
-      const k = String(s).toLowerCase(), ok = !nl(s) && !String(s).includes('>>') && k !== 'abstract' && !(k in MC_TYPES); // one the reader reads back as itself
+      const k = String(s).toLowerCase(), ok = !badId(s) && s !== '' && !String(s).includes('>>') && !String(s).endsWith('>') && k !== 'abstract' && !(k in MC_TYPES); // one the reader reads back as itself
       if (!ok) lose(n.id, `stereotype ${s}`);
       return ok;
     })];
     for (const x of arr(n.members).filter(isObj)) {
       const p = isObj(x.props) ? x.props : {};
+      for (const t of [p.valueType, p.returnType, ...arr(p.parameters).filter(isObj).map(a => a.valueType)]) if (has(t) && String(t).trim() !== String(t)) lose(x.id, `type ${t}, read back trimmed`);
       let text, vis = '';
       if (has(p.visibility)) { if (p.visibility in VIS) vis = VIS[p.visibility]; else lose(x.id, `visibility ${p.visibility}`); }
       if (x.type === 'uml.EnumerationLiteral') text = x.label;
@@ -572,7 +574,7 @@ function writeMermaidClass(model, viewId) {
       const bp = back ? back.props ?? {} : {}, same = (a, b) => (has(a) ? String(a).trim() : '') === (has(b) ? String(b).trim() : '');
       const drift = back && x.type !== 'uml.EnumerationLiteral' && (!!bp.isStatic !== !!p.isStatic || (x.type === 'uml.Property' ? back.abstractField || !same(bp.valueType, p.valueType)
         : !!bp.isAbstract !== !!p.isAbstract || !same(bp.returnType, p.returnType) || JSON.stringify(arr(bp.parameters).map(a => [a.name ?? '', a.valueType ?? ''])) !== JSON.stringify(arr(p.parameters).filter(isObj).map(a => [String(a.name ?? '').trim(), has(a.valueType) ? String(a.valueType).trim() : '']))));
-      if (!back || drift || back.type !== x.type || back.label !== x.label || nl(x.id) || nl(text) || /^(\}$|<<|%%)/.test(text.trim())) { skip(x); continue; }
+      if (!back || drift || back.type !== x.type || back.label !== x.label || badId(x.id) || nl(text) || /^(\}$|<<|%%)/.test(text.trim())) { skip(x); continue; }
       rows.push([idOf(x.id, `${n.id}.${x.label}`), text]);
     }
     heads.set(n.id, [anns, rows]);
@@ -586,8 +588,8 @@ function writeMermaidClass(model, viewId) {
   const lines = (view && Array.isArray(view.edges) ? view.edges.map(edgeOf) : arr(m.edges).filter(e => isObj(e) && inView(e.from) && inView(e.to))).filter(isObj);
   const relations = [], links = [];
   for (const e of lines) {
-    if (e.type === 'uml.CommentLink') { if (nl(e.id)) skip(e); else links.push(e); continue; }
-    if (!(written.has(e.from) && written.has(e.to)) || !(e.type === 'uml.Association' || e.type in ARROW) || nl(e.id)) { skip(e); continue; }
+    if (e.type === 'uml.CommentLink') { if (badId(e.id)) skip(e); else links.push(e); continue; }
+    if (!(written.has(e.from) && written.has(e.to)) || !(e.type === 'uml.Association' || e.type in ARROW) || badId(e.id)) { skip(e); continue; }
     const p = isObj(e.props) ? e.props : {}, ends = isObj(p.ends) ? p.ends : {};
     // the label's own « and its spaces at either end as entities: the reader takes its «stereotypes» before it decodes, and trims
     // a stereotype's » as an entity too, or it would end there; the reader trims one, so one with spaces at its ends is not written
