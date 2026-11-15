@@ -162,6 +162,17 @@ test('delete takes out the element, its members, what it owns, the lines to them
     views: [{ id: 'v', diagram: 'uml.class', nodeIds: ['a', 'b', 'n'], edges: ['ab', 'link'] }, { id: 'inside', parent: 'a', nodeIds: ['b'] }] };
   const o = run(onLine, { op: 'delete', id: 'a' });
   assert.deepEqual([o.edges, o.views[0].edges, o.views[1].parent], [[], [], undefined]);
+  // a parent that is also a view's id names that view: deleting the card of that id keeps it (audit 10, bike-share's trips)
+  const twin = { nodes: [{ id: 'trips' }, { id: 'b' }], views: [{ id: 'main', nodeIds: ['trips', 'b'] }, { id: 'trips', parent: 'main', nodeIds: ['b'] }, { id: 'end', parent: 'trips', nodeIds: ['b'] }] };
+  assert.deepEqual(run(twin, { op: 'delete', id: 'trips' }).views.map(v => v.parent), [undefined, 'main', 'trips']);
+  // a step's select and highlight as Refs: listed by references() and taken by delete; validate() checks them (audit 10)
+  const reffed = { nodes: [{ id: 'a' }, { id: 'b' }], edges: [{ id: 'ab', from: 'a', to: 'b' }], views: [{ id: 'main', nodeIds: ['a', 'b'] }],
+    stories: [{ id: 's', steps: [{ view: 'main', select: { type: 'node', id: 'b', view: 'main' }, highlight: [{ type: 'edge', ids: ['ab'], view: 'main' }, 'a'] }] }] };
+  assert.deepEqual(references(reffed, 'ab').map(r => r.path.join('/')), ['stories/0/steps/0/highlight/0']);
+  assert.deepEqual(references(reffed, 'b').filter(r => r.kind === 'story').map(r => r.path.join('/')), ['stories/0/steps/0/select']);
+  assert.deepEqual(run(reffed, { op: 'delete', id: 'b' }).stories[0].steps[0], { view: 'main', highlight: ['a'] });
+  assert.deepEqual(validate({ ...reffed, views: [{ id: 'main', nodeIds: ['a'] }], edges: [] }).filter(p => p.level === 'error').map(p => p.path),
+    ['stories[0].steps[0].select', 'stories[0].steps[0].highlight[0]']);
   // a line without an id goes with its card
   assert.deepEqual(run({ nodes: [{ id: 'a' }, { id: 'b' }], edges: [{ from: 'a', to: 'b' }, { from: 'b', to: 'b' }], views: [{ id: 'v', nodeIds: ['a', 'b'] }] }, { op: 'delete', id: 'a' }).edges, [{ from: 'b', to: 'b' }]);
   // a selection deletes in one transaction, though the first delete took a line the second names (E2)

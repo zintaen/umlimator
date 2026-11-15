@@ -713,7 +713,8 @@ export function render(container, model, options = {}) {
   const fresh = () => hit1 && hit1.v === cur && performance.now() - hit1.at < 1000 && hit1.id;
   // the second click may land outside the map, on page chrome the first click's details panel moved there (the
   // standalone page's legend): it still opens the card the first click hit (audit 9)
-  const away = e => { if (host.contains(e.target) || !fresh()) return; if (e.type === 'click') { if (e.detail === 2) hit1.two = true; else hit1 = null; return; }
+  const away = e => { if (e.composedPath().includes(host) || !fresh()) return; // the path, not e.target: in a shadow root it is the outer host (audit 10)
+    if (e.type === 'click') { if (e.detail === 2) hit1.two = true; else hit1 = null; return; }
     const id = hit1.two && hit1.id; hit1 = null; if (id) { e.preventDefault(); open(id); } };
   const doc = host.ownerDocument; doc.addEventListener('click', away, true); doc.addEventListener('dblclick', away, true);
   stage.addEventListener('dblclick', e => { const g = e.target.closest('.node'), id = (hit1 && hit1.two && fresh()) || g && g.dataset.id; hit1 = null;

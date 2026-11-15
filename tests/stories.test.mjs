@@ -21,6 +21,7 @@ test('validate() names what a story gets wrong, step by step: missing views, car
         { view: 'v', camera: 'close' }] },
       { id: 's', steps: [] }, { title: 'no id' }] };
   assert.deepEqual(validate(m).map(p => `${p.level} ${p.path}`), [
+    'error stories[0].steps[0].highlight[3]', // a Ref is checked as an id is (audit 10)
     'error stories[0].steps[1].view',
     'error stories[0].steps[2].select',
     'error stories[0].steps[2].highlight[0]',
@@ -32,6 +33,6 @@ test('validate() names what a story gets wrong, step by step: missing views, car
     'error stories[1].steps',
     'error stories[2].id',
   ]);
-  assert.match(validate(m)[1].message, /"a" is neither one of view "w"'s cards nor a line/);
+  assert.match(validate(m)[2].message, /"a" is neither one of view "w"'s cards nor a line/);
   assert.deepEqual(validate({ ...m, stories: {} }).map(p => p.path), ['stories']);
 });

@@ -64,7 +64,7 @@ function refs(m, ids, only) {
       if (has(v)) say([...at, ...ks], 'prop'); else arr(v).forEach((id, j) => { if (has(id)) say([...at, ...ks, j], 'prop'); }); });
     arr(x.members).forEach((y, j) => element(y, [...at, 'members', j], false)); };
   if (!only) { arr(m.nodes).forEach((n, i) => element(n, ['nodes', i], false)); arr(m.edges).forEach((e, i) => element(e, ['edges', i], true)); }
-  const vids = new Set();
+  const vids = new Set(), views = new Set(arr(m.views).map(v => isObj(v) && v.id));
   arr(m.views).forEach((v, i) => { if (!isObj(v) || (only && !only(i))) return; const at = ['views', i]; vids.add(v.id);
     ['nodeIds', 'tour', 'stepIds'].forEach(k => arr(v[k]).forEach((id, j) => { if (has(id)) say([...at, k, j], 'view'); }));
     arr(v.nodes).forEach((n, j) => element(n, [...at, 'nodes', j], false));
@@ -73,12 +73,14 @@ function refs(m, ids, only) {
     ['changes', 'constraints'].forEach(k => arr(isObj(v.timeline) && v.timeline[k]).forEach((c, j) => isObj(c) && ['lifeline', 'from', 'to'].forEach(f => { if (has(c[f])) say([...at, 'timeline', k, j, f], 'end'); })));
     [['layout', 'pin'], ['present', 'present'], ['nodeOverrides', 'override']].forEach(([k, kind]) => Object.keys(isObj(v[k]) ? v[k] : {}).forEach(id => { if (has(id)) say([...at, k, id], kind); }));
     if (has(v.subject)) say([...at, 'subject'], 'subject');
-    if (!only) ['parent', 'node'].forEach(k => { if (has(v[k])) say([...at, k], 'parent'); }); // a view opened from a card
+    if (!only) ['parent', 'node'].forEach(k => { if (has(v[k]) && !(k === 'parent' && views.has(v[k]))) say([...at, k], 'parent'); }); // a view opened from a card (a parent that is also a view's id names that view)
     ['containers', 'lanes'].forEach(k => arr(v[k]).forEach((b, j) => arr(isObj(b) && b.nodeIds).forEach((id, n) => { if (has(id)) say([...at, k, j, 'nodeIds', n], 'view'); })));
     arr(v.intake).forEach((x, j) => { if (isObj(x) && has(x.to)) say([...at, 'intake', j], 'view'); }); });
+  // a step's select and highlight: an id or a Ref (a line's Ref names several edges: it goes with any of them)
+  const named = x => has(x) || isObj(x) && x.type !== 'container' && (has(x.id) || has(x.node) || arr(x.ids).some(has));
   arr(m.stories).forEach((s, i) => arr(isObj(s) && s.steps).forEach((st, j) => { if (!isObj(st) || (only && !vids.has(st.view))) return; const at = ['stories', i, 'steps', j];
-    if (has(st.select)) say([...at, 'select'], 'story');
-    ['highlight', 'tour'].forEach(k => arr(st[k]).forEach((id, n) => { if (has(id)) say([...at, k, n], 'story'); }));
+    if (named(st.select)) say([...at, 'select'], 'story');
+    ['highlight', 'tour'].forEach(k => arr(st[k]).forEach((id, n) => { if (named(id)) say([...at, k, n], 'story'); }));
     if (isObj(st.camera) && has(st.camera.card)) say([...at, 'camera'], 'story'); }));
   if (only) return out;
   const picks = (sel, at, kind) => { if (!isObj(sel)) return;

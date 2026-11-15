@@ -210,6 +210,9 @@ try {
   { const M = structuredClone(BIKE); M.nodes.find(n => n.id === 'trips').author = 'a\u{1F680}';
     const [h, sr, q] = make({ details: true }, M); h.select({ type: 'node', id: 'trips' }); const ini = (q('.panel .author i') || {}).textContent;
     check('the panel\'s author chip ends on whole characters: never half an emoji (audit 2)', ini === 'A\u{1F680}', ini); h.destroy(); }
+  { const M = structuredClone(BIKE); M.nodes.find(n => n.id === 'trips').author = 1042; M.meta = { ...M.meta, root: 5 };
+    const [h, sr, q] = make({ details: true }, M); h.select({ type: 'node', id: 'trips' }); const by = (q('.panel .author b') || {}).textContent;
+    check('a numeric author and meta.root are drawn as written in the details panel (audit 10)', by === '@1042', by); h.destroy(); }
   { const M = structuredClone(BIKE), src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2 2"><circle r="1"/></svg>';
     M.icons = { ...M.icons, quoted: { src } }; M.nodes.find(n => n.id === 'trips').icon = 'quoted';
     const [h, sr, q] = make({ details: true }, M); h.select({ type: 'node', id: 'trips' }); const img = q('.panel .logo img');

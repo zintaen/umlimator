@@ -55,3 +55,11 @@ test('a shape or kind named like an object\'s own key (constructor, __proto__) i
     assert.deepEqual(validate({ nodes: [{ id: 'a', kind: sh }], views: [{ id: 'v', nodeIds: ['a'] }] }).map(p => `${p.level} ${p.path}`), ['warning nodes[0].kind'], sh);
   }
 });
+
+test('a card\'s text that is not a string (a list of lines, a number) is drawn as written, and validate() warns (audit 10)', async () => {
+  const { svgOf } = await import('../src/draw/svg.js');
+  const m = { meta: { root: 5 }, nodes: [{ id: 'a', label: 'Alpha', what: ['Takes orders.', 'Keeps a cart.'] }, { id: 'b', label: 'Beta', what: 5, author: 1042, origin: 7 }],
+    views: [{ id: 'v', nodeIds: ['a', 'b'] }] };
+  assert.match(svgOf(layout(m, 'v')), /Takes orders\./);
+  assert.deepEqual(validate(m).filter(p => p.level === 'warning').map(p => p.path), ['meta.root', 'nodes[0].what', 'nodes[1].what', 'nodes[1].origin', 'nodes[1].author']);
+});

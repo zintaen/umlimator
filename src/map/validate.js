@@ -25,6 +25,7 @@ export function validate(model) {
     const k = String(n.kind ?? '').toLowerCase();
     if (n.kind != null && !(hasKey(KIND, k) || hasKey(MAPK, k) || hasKey(ALIAS, k))) warn(at + '.kind', `unknown kind "${n.kind}": drawn as a script card`);
     if (n.owner != null && typeof n.owner !== 'string') warn(at + '.owner', 'an owner is a name: ignored');
+    ['when', 'what', 'how', 'origin', 'author', 'note'].forEach(k => { if (n[k] != null && typeof n[k] !== 'string') warn(`${at}.${k}`, `${k} is text: drawn as written`); });
     list(n, at, 'verbs');
     shapeIs(n, at);
   };
@@ -33,6 +34,7 @@ export function validate(model) {
   const list = (x, at, k, box) => { if (x[k] != null && !Array.isArray(x[k])) (k == 'nodeIds' ? err : warn)(`${at}.${k}`, `${k} is a list: ${k != 'nodeIds' ? 'ignored' : box ? 'the box holds no cards' : 'the view draws no cards'}`); };
   const gone = (x, at) => { if (x && x.shapes !== undefined) warn(at + 'shapes', 'shapes is no longer read: maps draw in one style'); }; // the box/c4/uml choice, removed in 0.21.0
   gone(m, '');
+  if (m.meta && m.meta.root != null && typeof m.meta.root !== 'string') warn('meta.root', 'meta.root is a path: drawn as written');
   arr(m.nodes).forEach((n, i) => card(n, `nodes[${i}]`));
   views.forEach((v, i) => arr(v.nodes).forEach((n, j) => card(n, `views[${i}].nodes[${j}]`)));
   views.forEach((v, i) => { if (typeof v.id !== 'string' || !v.id) err(`views[${i}].id`, 'a view needs an id'); else if (vids.has(v.id)) err(`views[${i}].id`, `view id "${v.id}" is used twice`); else vids.add(v.id); });
@@ -137,7 +139,8 @@ export function validate(model) {
       const p = `${at}.steps[${j}]`, v = views.find(x => x.id === (st && st.view));
       if (!v) return err(p + '.view', `"${st && st.view}" is not a view`);
       const mine = new Set(arr(v.nodeIds)), named = (x, q) => { // a card of the view or a line ("a->b#0" names a line with no id)
-        if (typeof x === 'string' && !mine.has(x) && !lines.has(x) && !x.includes('->')) err(q, `"${x}" is neither one of view "${v.id}"'s cards nor a line`); };
+        if (typeof x === 'string' && !mine.has(x) && !lines.has(x) && !x.includes('->')) err(q, `"${x}" is neither one of view "${v.id}"'s cards nor a line`);
+        else if (x && typeof x === 'object') [x.type !== 'container' && x.id, x.node, ...arr(x.ids)].forEach(y => typeof y === 'string' && named(y, q)); }; // a Ref
       named(st.select, p + '.select');
       arr(st.highlight).forEach((x, k) => named(x, `${p}.highlight[${k}]`));
       arr(st.tour).forEach((x, k) => { if (!mine.has(x)) err(`${p}.tour[${k}]`, `"${x}" is not one of the view's cards`); });

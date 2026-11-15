@@ -113,7 +113,7 @@ function svgOf(geo, opts = {}) {
     const kids = kidsOf(n), stacked = !!(kids || n.opens); // opens a view, loaded or not (#47)
     const subject = opts.subject === n.id;
     const verbs = map && (n.verbs || []).length ? n.verbs : null;
-    const subTxt = n.noSub ? '' : n.sub || (map && n.origin ? n.origin : '') || (map ? (n.what ? n.what.replace(/[`*]/g, '').split(/(?<=\.)\s/)[0] : KIND[n.k][1]) : '');
+    const subTxt = n.noSub ? '' : String(n.sub || (map && n.origin ? n.origin : '') || (map ? (n.what ? String(n.what).replace(/[`*]/g, '').split(/(?<=\.)\s/)[0] : KIND[n.k][1]) : '')); // a model's text may be a number or a list: drawn as written
     const third = !!(verbs && subTxt && !priv && geo.subAndChips); // the view's subAndChips: the sub-line, then the chips on a third line (a script card shows no sub-line)
     const sw = map ? n.w - 70 : n.w - 24;  // map cards: text runs from 54 px in (after the mark) to 16 px from the right
     // a shape's face: the rows its mark and text use (a box's: the card). A short face takes a two-line sub-line to one, and
