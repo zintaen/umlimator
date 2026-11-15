@@ -89,6 +89,8 @@ ok("check · each message is of one kind, by the check's own words, not a label'
    [u.kind_of(o) for o in ['view v: edge Web→DB breaks rule "Apps never cross into the data tier"', "view v: edges a→b and c→d cross",
                            'view v: label "runs right-to-left" lies on edge a→b', "view v: edge a→b takes a detour (90px for 40px)"]]
    == ["rules", "crossings", "labelOnLine", "detours"])
+ok("check · a numbered line whose step has no room is labelNoRoom, as a label's is (audit 13)",
+   [u.kind_of(o) for o in ['view v: step 3 has no room on edge A→B: not drawn', 'view v: label "x" has no room on edge A→B: not drawn']] == ["labelNoRoom"] * 2)
 near = 'view v: edge A→B passes within 12px of node "Ledger breaks rule "audit""'
 ok("check · a label that ends in breaks rule \"...\" is not a broken rule: the page lists its broken rules apart (audit 2)",
    u.kind_of(near, set()) == "nearNode" and u.kind_of('view v: edge A→B breaks rule "audit"', {'view v: edge A→B breaks rule "audit"'}) == "rules")
@@ -961,6 +963,8 @@ ok("mcp · highlight: a Ref whose fields are not strings is a tool error naming 
 bad = [tool("highlight", refs=[x]) for x in ({"type": "node", "id": "no-such-card"}, {"type": "edge", "ids": ["a->b#0"]}, "a->b")]
 ok("mcp · highlight: a Ref or a line id that names nothing in the model is a tool error, as a card id is (audit 7)",
    all(err is True and "in the model" in said for said, err in bad), bad)
+said, err = tool("highlight", refs=[{"type": "node", "id": "trips", "view": "nope"}])
+ok("mcp · highlight: a Ref whose view names no view is a tool error, as show_view's is (audit 13)", err is True and said.startswith("no view 'nope'"), said)
 c = web(); c.request("GET", "/"); r = c.getresponse(); page = r.read().decode()
 ok("mcp · serves the CLI's page, with the script that shows commands on its map handle (window.umlimatorMap)",
    r.status == 200 and "const map = window.umlimatorMap" in page and "new EventSource(`/events?page=" in page and "Fare calculator" in page)
