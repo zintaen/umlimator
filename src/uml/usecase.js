@@ -103,7 +103,7 @@ function ucLines(model, view, pic) {
   return list.filter(e => UC_OBJ(e) && typeof e.id === 'string' && shown.has(e.from) && shown.has(e.to)
     && ![[e.from, e.to], [e.to, e.from]].some(([b, x]) => pic.open.has(b) && (b === x || pic.chain(x).includes(b))));
 }
-const UC_KEYWORD = { 'uml.Include': '«include»', 'uml.Extend': '«extend»' };
+const UC_KEYWORD = { __proto__: null, 'uml.Include': '«include»', 'uml.Extend': '«extend»' };
 // an extend's points by name and its condition: "(payment) [the shopper has a voucher code]"
 function ucExtendParts(model, e) {
   const to = UC_ARR(model.nodes).find(n => UC_OBJ(n) && n.id === e.to), by = new Map(ucPointsOf(to || {}).map(m => [m.id, ucName(m)]));

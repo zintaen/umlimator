@@ -287,3 +287,21 @@ test('audit 9: a card, line, box and view named constructor, toString, valueOf o
     }
   } finally { console.warn = warn; }
 });
+
+test('audit 10: a listed line whose type is an Object.prototype name lays out, reads and prints as a line of no kind', async () => {
+  await Promise.all(['uml/class', 'uml/package', 'uml/component', 'uml/deployment', 'uml/usecase', 'uml/composite', 'map/typed'].map(f => import(`../src/${f}.js`)));
+  const { describe } = await import('../src/map/insight.js'), { mapContext } = await import('../src/map/context.js'), { tablesOf } = await import('../src/page/print.js');
+  const cards = [['uml.component', 'uml.Component'], ['uml.deployment', 'uml.Node'], ['uml.class', 'uml.Class'], ['uml.package', 'uml.Package'], ['uml.use-case', 'uml.UseCase']];
+  const warn = console.warn; console.warn = () => {};
+  try {
+    for (const type of ['constructor', 'toString']) {
+      const ms = cards.map(([diagram, t]) => ({ schemaVersion: 2, nodes: [{ id: 'a', type: t, label: 'A' }, { id: 'b', type: t, label: 'B' }],
+        edges: [{ id: 'e1', type, from: 'a', to: 'b', label: 'x' }], views: [{ id: 'v', diagram, nodeIds: ['a', 'b'], edges: ['e1'] }] }));
+      ms.push({ schemaVersion: 2, nodes: [{ id: 'S', type: 'uml.Class', label: 'S', members: [{ id: 'p1', type: 'uml.Property', label: 'p1' }, { id: 'p2', type: 'uml.Property', label: 'p2' }] }],
+        edges: [{ id: 'e1', type, from: 'p1', to: 'p2', label: 'x' }], views: [{ id: 'v', diagram: 'uml.composite-structure', subject: 'S', nodeIds: ['S'], edges: ['e1'] }] });
+      for (const m of ms) { const g = layout(m, 'v'), ctx = mapContext(m), e = g.edges.find(x => x.id === 'e1'), d = m.views[0].diagram;
+        assert.ok(e, `${d} ${type}: drawn`); assert.notEqual(typeof e.end, 'function', `${d} ${type}: end`);
+        assert.doesNotMatch(JSON.stringify([e.label, e.aria, describe(m, 'v'), tablesOf(ctx, ctx.V.v, g).map(t => t.rows)]), /native code/, `${d} ${type}`); }
+    }
+  } finally { console.warn = warn; }
+});
