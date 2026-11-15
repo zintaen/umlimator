@@ -135,6 +135,8 @@ const FAILS = {
   'reply-once': [seq([M('c', 'A', 'B', 'call'), M('r', 'B', 'A', 'reply', { props: { replyTo: 'c' } }), M('s', 'B', 'A', 'reply', { props: { replyTo: 'c' } })]), ['c', 'r', 's']],
   'create-once': [seq([M('a', 'A', 'C', 'async'), M('n', 'A', 'C', 'create')]), ['n', 'C', 'a']],
   'delete-once': [seq([M('d', 'A', 'C', 'delete'), M('a', 'A', 'C', 'async')]), ['d', 'C', 'a']],
+  'create-once ': [seq([M('n', 'C', 'C', 'create')]), ['n', 'C']], // a lifeline does not create itself, as the connect hook says (audit 12)
+  'delete-once ': [seq([M('d', 'C', 'C', 'delete')]), ['d', 'C']],
   covers: [seq([{ id: 'u', type: 'uml.InteractionUse', label: 'u', props: { covers: ['A', 'C'] } }]), ['u', 'A', 'C']],
   'covers ': [seq([{ id: 'u', type: 'uml.InteractionUse', label: 'u', props: { covers: ['A', 'Q'] } }]), ['u', 'Q']],
 };

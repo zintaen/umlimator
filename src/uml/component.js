@@ -99,7 +99,8 @@ function cpNodeName(model, view, pic, id, bare) { // bare: a port without " of <
 const cpLabel = (l, said) => [CP_LOOK[l.kind][1], ...cpStereo(l.e).map(t => `«${t}»`), said ? null : l.e.label].filter(CP_HAS).join(' ');
 // "Delegation from orders of Shop API to orders of Checkout"
 const cpLineName = (pic, l) => { const t = [...cpStereo(l.e).map(s => `«${s}»`), l.e.label].filter(CP_HAS).join(' ');
-  return `${CP_LOOK[l.kind][2]} from ${pic.I.name(l.e.from)} to ${pic.I.name(l.e.to)}${t ? ': ' + t : ''}`; };
+  const end = id => (pic.I.P.has(id) ? `${cpName(pic.I.P.get(id).x)} of ${pic.name(pic.I.P.get(id).owner)}` : pic.name(id)); // as drawn: qualified (audit 12)
+  return `${CP_LOOK[l.kind][2]} from ${end(l.e.from)} to ${end(l.e.to)}${t ? ': ' + t : ''}`; };
 // reading order (§10.1): each box and what it holds, each element's ports after it in members order, then the lines
 const cpOrder = pic => [...readingOrder(pic).flatMap(id => [id, ...cpPortsOf(pic.I.N.get(id)).map(p => p.id)]), ...pic.lines.map(l => l.e.id)];
 

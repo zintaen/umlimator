@@ -192,7 +192,9 @@ function tmProblems(model, view) {
     else if (p.receivedAt < p.sentAt) say('message-times', ePath(m) + '.props.receivedAt', [m.id], `${m.id} is received at ${X.t(p.receivedAt)}, before it is sent at ${X.t(p.sentAt)}`);
     if (!TM_SORTS.includes(p.sort)) say('sort', ePath(m) + '.props.sort', [m.id], `${m.id} has ${p.sort === undefined ? 'no sort' : `sort ${JSON.stringify(p.sort)}`}, not one of ${TM_SORTS.join(', ')}: it is drawn as a call`, 'warning');
     else if (p.sort === 'reply') { const c = X.msgs.find(x => x.id === p.replyTo);
-      if (!c || tmSort(c) !== 'call' || c.from !== m.to || c.to !== m.from || !(tmProps(c).sentAt <= p.sentAt)) say('reply-call', ePath(m) + '.props.replyTo', [m.id, c && c.id], `${m.id} answers ${JSON.stringify(p.replyTo)}, which is not a call of this view from ${m.to} to ${m.from} sent no later`); } });
+      if (!c || tmSort(c) !== 'call' || c.from !== m.to || c.to !== m.from || !(tmProps(c).sentAt <= p.sentAt)) say('reply-call', ePath(m) + '.props.replyTo', [m.id, c && c.id], p.replyTo == null
+        ? `${m.id} names no call in replyTo: a reply from ${X.name(m.from)} to ${X.name(m.to)} needs a call from ${X.name(m.to)} to ${X.name(m.from)} sent no later`
+        : `${m.id} answers ${JSON.stringify(p.replyTo)}, which is not a call of this view from ${X.name(m.to)} to ${X.name(m.from)} sent no later`); } }); // by name, never 'undefined' (audit 12)
   X.cons.forEach(c => { const kind = TM_KIND[c.type], a = X.C.get(c.from), b = X.C.get(c.to);
     if (!kind || (kind === 'time' ? !a || c.to != null : !a || !b)) return say('constraint-ends', kPath(c), [c.id], kind === 'time' ? `time constraint ${c.id} needs a change of the view in from, and no to` : kind ? `duration constraint ${c.id} needs two changes of the view in from and to` : `${c.id} is a ${JSON.stringify(c.type)}, not a duration or time constraint`);
     if (kind === 'duration' && tmNum(a.at) && tmNum(b.at) && b.at < a.at) say('constraint-order', kPath(c) + '.to', [c.id, c.from, c.to], `${c.id} runs from ${X.t(a.at)} back to ${X.t(b.at)}`, 'warning'); });

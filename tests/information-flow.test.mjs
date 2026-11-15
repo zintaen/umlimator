@@ -357,3 +357,13 @@ test('audit 6: a component id holding $\' or $& is drawn as written', () => {
     assert.ok(s.includes(`data-o="${id.replace('&', '&amp;').replace("'", '&#39;')}"`), id); assert.ok(!/="[^"]*</.test(s), id + ': no < inside an attribute');
   }
 });
+
+test('audit 12: F2 and Enter on the flow\'s text as drawn changes nothing, though a name holds the comma that joins two conveyed names', () => {
+  const m = model([N('shopper', 'Actor', 'Shopper'), N('shop', 'Component', 'Storefront'), N('nm', 'InformationItem', 'Name'), N('ad', 'InformationItem', 'Address'), N('nmad', 'InformationItem', 'Name, Address')],
+    [F('f1', 'shopper', 'shop', ['nm', 'ad'])]);
+  const text = layout(m, 'v').edges.find(e => e.id === 'f1').label;
+  assert.equal(text, '«flow» Name, Address');
+  assert.deepEqual(T.edits.rename(m, m.views[0], 'f1', text), []);
+  assert.deepEqual(T.edits.rename(m, m.views[0], 'f1', 'Name, Address'), []);
+  assert.deepEqual(T.edits.rename(m, m.views[0], 'f1', 'Name'), [{ op: 'set', id: 'f1', path: 'props.conveyed', value: ['nm'] }]);
+});

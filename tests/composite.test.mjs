@@ -500,3 +500,32 @@ test('audit 11: a connector through an open collaboration\'s roles is checked as
   assert.ok(layout(m, 'v').edges.some(e => e.id === 'ok'));
   assert.deepEqual(validate(m).filter(x => x.ids.includes('ok') || x.ids.includes('bad')).map(x => [x.level, x.rule, x.ids]), [['error', 'connector-part', ['bad', 'other.x', 'sale.buyer']]]);
 });
+
+test('audit 12: with no edges list, another classifier\'s own delegation (its port to its part) is not warned in a view whose part it types', () => {
+  const m = { schemaVersion: 2, nodes: [
+    { id: 'A', type: 'uml.Class', label: 'Engine', members: [port('A.p', 'p'), P('A.inner', 'inner', { props: { valueType: 'Pump' } })] },
+    { id: 'Pump', type: 'uml.Class', label: 'Pump', members: [port('Pump.in', 'in')] },
+    { id: 'B', type: 'uml.Class', label: 'Car', members: [P('B.engine', 'engine', { props: { valueType: 'Engine' } })] }],
+  edges: [{ id: 'deleg', type: 'uml.Connector', from: 'A.p', to: 'Pump.in', props: { ends: { to: { part: 'A.inner' } } } }],
+  views: [{ id: 'engine', diagram: 'uml.composite-structure', subject: 'A', nodeIds: ['A'] }, { id: 'car', diagram: 'uml.composite-structure', subject: 'B', nodeIds: ['B'] }] };
+  assert.deepEqual(validate(m), []);
+  assert.ok(layout(m, 'engine').edges.some(e => e.id === 'deleg'));
+});
+
+test('audit 12: a collaboration with no label is named by its id, as drawn: the use finds it, binding-role checks the role, connect picks one', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'Shop', type: 'uml.Class', members: [P('Shop.a', 'a'), P('Shop.b', 'b')] },
+    { id: 'PubSub', type: 'uml.Collaboration', members: [P('PubSub.pub', 'publisher'), P('PubSub.sub', 'subscriber')] },
+    { id: 'use', type: 'uml.CollaborationUse', label: 'events', parent: 'Shop', props: { collaboration: 'PubSub' } }],
+  edges: [{ id: 'rb', type: 'uml.RoleBinding', from: 'Shop.a', to: 'use', label: 'nobody' }],
+  views: [{ id: 'v', diagram: 'uml.composite-structure', subject: 'Shop', nodeIds: ['Shop', 'use', 'PubSub'] }] };
+  assert.deepEqual(validate(m).filter(x => x.rule !== 'part-type').map(x => [x.rule, x.ids]), [['binding-role', ['rb', 'PubSub']]]);
+  const T = diagramOf(m.views[0]), r = T.edits.connect(m, m.views[0], 'Shop.b', 'use', {}, T.lines.find(l => l.type === 'uml.RoleBinding'));
+  assert.deepEqual(r.pick, ['publisher', 'subscriber']);
+});
+
+test('audit 12: describe() of a model whose part id holds \'->\' (validate reports it) does not throw', () => {
+  const m = JSON.parse(readFileSync(new URL('../examples/order-service-structure.json', import.meta.url)));
+  m.nodes[0].members[3].id = 'a->b';
+  assert.ok(validate(m).some(x => x.level === 'error'));
+  assert.equal(typeof describe(m, 'internals'), 'string');
+});
