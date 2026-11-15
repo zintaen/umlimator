@@ -165,6 +165,8 @@ def refs(m, items):
                            f"id, node, container, view and value strings" + (f" ({', '.join(text)} is not)" if text else ""))
             if gone := [j for j in (x.get("id"), x.get("node"), x.get("container"), *(x.get("ids") or [])) if j is not None and j not in known_]:
                 raise Fail(f"refs[{i}] names {', '.join(map(repr, gone))}: no card, line or box in the model")
+            if "view" in x:
+                view(m, x["view"])  # a Ref's view is shown: one the model has, as show_view asks (audit 13)
             out.append(x)
         elif x in cards:
             out.append({"type": "node", "id": x})
