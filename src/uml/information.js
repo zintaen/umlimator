@@ -48,16 +48,18 @@ SHAPE['information-item'] = { ...SHAPE.classifier,
 /* ---- the model read ---- */
 function ifIndex(model) {
   const at = new Map(); IF_ARR(model && model.nodes).forEach(n => { if (IF_OBJ(n) && typeof n.id === 'string' && !at.has(n.id)) at.set(n.id, n); });
-  const E = IF_ARR(model && model.edges).filter(e => IF_OBJ(e) && typeof e.id === 'string');
+  // M: the model's lines; E: those and the lines written inline in information flow views (audit 14), for what a flow conveys
+  const M = IF_ARR(model && model.edges).filter(e => IF_OBJ(e) && typeof e.id === 'string');
+  const E = typedLines(model, v => v.diagram === 'uml.information-flow').map(([e]) => e).filter(e => IF_OBJ(e) && typeof e.id === 'string');
   const conveyed = e => IF_ARR(IF_OBJ(e.props) ? e.props.conveyed : null);
   const nm = id => (at.has(id) ? ifName(at.get(id)) : String(id)); // a conveyed id that is gone: said as itself (conveyed-kind)
-  return { at, E, conveyed, nm, flowsOf: id => E.filter(e => e.type === 'uml.InformationFlow' && conveyed(e).includes(id)) };
+  return { at, M, E, conveyed, nm, flowsOf: id => E.filter(e => e.type === 'uml.InformationFlow' && conveyed(e).includes(id)) };
 }
 // what a flow says: its name, then what it conveys by name ("place: Order, Card details"); the PDF's line text (S17)
 const ifSays = (I, e) => `${IF_HAS(e.label) ? e.label + ': ' : ''}${I.conveyed(e).map(I.nm).join(', ')}`;
 // the lines drawn: those the view lists, or with no list the model's of this type's kinds, between two elements it shows
 function ifLines(I, view, shown) {
-  const by = new Map(I.E.map(e => [e.id, e])), list = Array.isArray(view.edges) ? [...new Set(view.edges.map(x => (typeof x === 'string' ? by.get(x) : x)))] : I.E.filter(e => IF_LINES.includes(e.type));
+  const by = new Map(I.M.map(e => [e.id, e])), list = Array.isArray(view.edges) ? [...new Set(view.edges.map(x => (typeof x === 'string' ? by.get(x) : x)))] : I.M.filter(e => IF_LINES.includes(e.type));
   return list.filter(e => IF_OBJ(e) && typeof e.id === 'string' && shown.has(e.from) && shown.has(e.to));
 }
 const ifShown = (I, view) => [...new Set(IF_ARR(view && view.nodeIds))].filter(id => I.at.has(id));

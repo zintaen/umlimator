@@ -10,7 +10,8 @@ import { lineNames, namesOf, listOf } from './model.js';
      set       { id | view, path, value }   a field of an element or a view. path: 'label', 'props.visibility', or a
                                              list of keys when a key holds a dot (['present', 'order.total', 'rows']);
                                              value undefined removes it. Through objects only; id, members, parent,
-                                             from and to change by their own commands
+                                             from and to change by their own commands. A label set also sets what
+                                             a type's refs say is `named` as the element and was (C4's instances)
      add       { element, owner?, index?, view? }  a node (no from/to), a line, or with `owner` a member, at `index`
                                              among the owner's members, else among the view's; `view` shows it there;
                                              in 'view' (not 'model'): in its edges, nodes or fragments (registry.js)
@@ -164,8 +165,11 @@ function run(m, c, gone) {
         else if (!isObj(o[k])) throw new Error(`set: ${keys.join('.')} goes through ${k}, which is not an object`);
         o = o[k];
       }
-      const last = keys[keys.length - 1];
+      const last = keys[keys.length - 1], was = o[last];
       if (c.value === undefined) delete o[last]; else putOwn(o, last, structuredClone(c.value)); // delete takes an own key only
+      if (c.view == null && keys.length === 1 && last === 'label' && was !== undefined) for (const [, r] of at)
+        if (r.x !== o && r.x.label === was && Object.entries(propRefs(r.x.type)).some(([p, how]) => /\bnamed\b/.test(how) && dig(r.x, p) === c.id)) {
+          if (c.value === undefined) delete r.x.label; else r.x.label = structuredClone(c.value); }
       return;
     }
     case 'add': {
@@ -212,7 +216,8 @@ function run(m, c, gone) {
       const ends = l => isObj(l) && (ids.has(l.from) || ids.has(l.to)); // the view's lines to it, listed or its own, leave the view with it
       if (Array.isArray(v.edges)) v.edges = v.edges.filter(y => { const l = typeof y === 'string' ? (at.get(y) || {}).x : y, out = y === c.id || ends(l);
         if (out && isObj(l) && typeof l.id === 'string') ids.add(l.id); return !out; }); // what names those lines in this view goes too
-      clear(m, refs(m, ids, i => i === vi).filter(r => !['end', 'parent', 'part', 'prop'].includes(r.kind)));
+      // a prop names model elements, kept, but for an interaction use's covers: lifelines of its view (audit 14)
+      clear(m, refs(m, ids, i => i === vi).filter(r => !['end', 'parent', 'part'].includes(r.kind) && (r.kind !== 'prop' || r.path[r.path.length - 2] === 'covers')));
       follow(m, names0, i => i === vi);
       return;
     }
@@ -225,7 +230,7 @@ function run(m, c, gone) {
       take(c.id);
       // lines to what is gone go too, lines to those lines, a timeline's items, and what a type's refs cascade (a reply with its call)
       const by = new Map(); for (const [k, o] of at) [...o.kind === 'edge' ? [o.x.from, o.x.to] : o.kind === 'time' ? [o.x.lifeline, o.x.from, o.x.to] : [],
-        ...Object.entries(propRefs(o.x.type)).flatMap(([p, how]) => how === 'cascade' ? [].concat(dig(o.x, p)) : [])].forEach(i => by.has(i) ? by.get(i).push(k) : by.set(i, [k]));
+        ...Object.entries(propRefs(o.x.type)).flatMap(([p, how]) => /\bcascade\b/.test(how) ? [].concat(dig(o.x, p)) : [])].forEach(i => by.has(i) ? by.get(i).push(k) : by.set(i, [k]));
       for (const id of now) arr(by.get(id)).forEach(take); // a Set's loop meets what take adds to it
       // what stays in something gone goes to its nearest owner left; an operand's messages to its fragment's parent
       const above = id => { const r = at.get(id); return r && (r.x.parent ?? (r.owner && above(r.owner.id))); };

@@ -72,7 +72,7 @@
   },
   "iconPacks": {
    "type": "object",
-   "description": "Schema version 2 (0.26.0): the label of the pinned icon pack (icons/packs.json) each cloud pack's icon ids were chosen from, by pack: { \"gcp\": \"2026-11-14\", \"azure\": \"V25\" }. The module does not read it; umlimator.py check says when it differs from the release's pin and which ids the alias table moved.",
+   "description": "Schema version 2 (0.26.0): the label of the pinned icon pack (icons/packs.json) each cloud pack's icon ids were chosen from, by pack: { \"gcp\": \"2026-11-14\", \"azure\": \"V25\", \"aws\": \"2026-07-31\" }. The module does not read it; umlimator.py check says when it differs from the release's pin and which ids the alias table moved.",
    "additionalProperties": {
     "type": "string"
    }

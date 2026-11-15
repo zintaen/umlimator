@@ -359,6 +359,9 @@ function msWrite(model, viewId) {
     .replace(/^\s|\s$/g, c => `#${c.codePointAt(0)};`);
   const encA = s => enc(s).replace(/:/g, '#58;').replace(/@\{/g, '#64;{'); // an alias: under %% represents:, its first colon ends the label; @{ starts a config
   const out = [], notWritten = [], skip = x => notWritten.push(`${flat(x.id)} (${flat(x.type)})`), lose = (id, what) => notWritten.push(`${flat(id)}: ${flat(what)}`);
+  // the keys and props Mermaid has a place for; any other (ext, tags) is named, as the ER writer does
+  const extra = (x, keys, props = []) => { for (const k of Object.keys(x)) if (!keys.includes(k)) {
+    if (k === 'props' && isObj(x.props)) { for (const p of Object.keys(x.props)) if (!props.includes(p)) lose(x.id, `property ${p}`); } else lose(x.id, k); } };
   const title = has(view.title) ? view.title : m.title;
   if (has(title)) out.push('---', `title: ${/^[\p{L}\p{N}][\p{L}\p{N} _.,()-]*$/u.test(title) && !title.endsWith(' ') ? title : JSON.stringify(String(title))}`, '---');
   if (view.id !== MS_VIEW) { if (badId(view.id)) lose(view.id, "the view's id, which a hint cannot carry"); else out.push(`%% id: ${view.id}`); }
@@ -376,7 +379,7 @@ function msWrite(model, viewId) {
   for (const x of arr(view.edges).map(edgeOf).filter(isObj)) {
     const ok = !badId(x.id) && (x.type === 'uml.Message' ? isLife.has(x.from) && isLife.has(x.to)
       : x.type === 'uml.InteractionUse' && arr(x.props?.covers).length > 0 && arr(x.props.covers).every(c => isLife.has(c)) && !nl(x.props.refersTo ?? ''));
-    if (ok) occ.push(x); else skip(x);
+    if (ok) { occ.push(x); extra(x, ['id', 'type', 'from', 'to', 'label', 'parent'], x.type === 'uml.Message' ? ['sort', 'replyTo'] : ['covers', 'refersTo']); } else skip(x);
   }
   const SORTS = ['call', 'async', 'reply', 'create', 'delete'];
   const frags = [], opOf = new Map();
@@ -385,6 +388,7 @@ function msWrite(model, viewId) {
     if (!MS_OPS.includes(op) || !ops.length || (ops.length > 1 && op !== 'alt' && op !== 'par') || badId(f.id) || ops.some(o => badId(o.id))) { skip(f); ops.forEach(skip); continue; }
     if (has(f.label)) lose(f.id, `label ${f.label}`);
     frags.push(f); ops.forEach((o, i) => opOf.set(o.id, { f, i }));
+    extra(f, ['id', 'type', 'label', 'members', 'parent'], ['operator']); ops.forEach(o => extra(o, ['id', 'type', 'label']));
   }
   // fragments with an occurrence in them, and the empty ones by the operand they end (null: the top)
   const full = new Set(), kids = new Map();
@@ -419,6 +423,7 @@ function msWrite(model, viewId) {
     // the reader takes the alias as the label, and splits it at its first colon only under a %% represents: comment
     const label = has(n.label) ? String(n.label) : name, alias = label !== name || rep ? encA(label) + (rep ? ' : ' + encA(p.represents) : '') : '';
     if (!has(n.label)) lose(n.id, 'no label, read as its name');
+    extra(n, ['id', 'type', 'label'], ['represents', 'stereotypes']);
     heads.set(n.id, [...(idOf(n.id, name) != null ? [`%% id: ${n.id}`] : []), ...(rep ? [`%% represents: ${enc(p.represents)}`] : []),
       `${actor ? 'actor' : 'participant'} ${name}${alias ? ' as ' + alias : ''}`]);
   }

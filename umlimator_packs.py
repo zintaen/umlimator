@@ -109,11 +109,16 @@ def icon(pack, i, row=None):
     lacks it. Nothing is downloaded."""
     row = row or rows().get(pack)
     ids = row and ids_of(pack, row)
-    hit = ids and ids.get(row.get("aliases", {}).get(i, i))
+    # a product the pack has no icon of draws its category's (Google's rule for its icons); its name stays its own
+    hit = ids and (ids.get(row.get("aliases", {}).get(i, i)) or ids.get(row.get("category", {}).get(i, "")))
     if not hit:
         return None
     b = hit[0].read(hit[1])
     return b, white(b)
+
+
+def row_cat(row, i):
+    return row.get("category", {}).get(i)
 
 
 def pick(n):
@@ -189,7 +194,7 @@ def check(model):
         to = rs[p].get("aliases", {}).get(i)
         if to:
             print(f"icons: {p} icon {i!r} is {to!r} in the pin {rs[p]['label']} (an alias); write {to!r}", file=sys.stderr)
-        elif i not in ids:
+        elif i not in ids and row_cat(rs[p], i) not in ids:
             near = difflib.get_close_matches(i, list(ids), 3, 0.4)
             print(f"icons: the {p} pack has no icon {i!r} ({n.get('id')}); nearest: {', '.join(near) or 'none'}", file=sys.stderr)
 

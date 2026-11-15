@@ -3,7 +3,7 @@ import { esc } from '../core/text.js';
 import { SHAPE } from '../draw/shapes.js';
 import { rowsFor, untangle } from '../layout/layered.js';
 import { layoutTyped } from '../typed/layout.js';
-import { memberEdit, parseMember, printMember } from './class.js'; // an interface's operations; SHAPE.note, a comment's look
+import { lineRename, memberEdit, parseMember, printMember } from './class.js'; // an interface's operations; SHAPE.note, a comment's look
 import { lineInside, ownersOn, placeTabs, readingOrder } from './owners.js';
 import { SN_SAY, STRUCT_RULES, portFit, portSides, portsDrawn, structProblems } from './structure.js';
 
@@ -44,7 +44,7 @@ function cpKind(I, view, e) {
   if (e.type === 'uml.InterfaceRealization') return cpBall(I, view, e.to) ? 'stem' : 'realization';
   if (e.type === 'uml.Usage') return cpBall(I, view, e.to) ? 'socket' : 'usage';
   if (e.type === 'uml.Connector') return cpProps(e).kind === 'delegation' ? 'delegation' : 'assembly';
-  return { __proto__: null, 'uml.ComponentRealization': 'component-realization', 'uml.Dependency': 'dependency', 'uml.Manifestation': 'manifestation', 'uml.CommentLink': 'comment-link' }[e.type] || 'dependency';
+  return { __proto__: null, 'uml.ComponentRealization': 'component-realization', 'uml.Dependency': 'dependency', 'uml.Manifestation': 'manifestation', 'uml.CommentLink': 'comment-link' }[e.type] || 'line'; // a kind outside the view's lines: a plain arrow, "Line", as the class view's (audit 14)
 }
 // each kind: its ends and stroke (src/typed/draw.js's ENDS), its keyword, its word, and what the legend says of it
 const CP_LOOK = {
@@ -58,6 +58,7 @@ const CP_LOOK = {
   dependency: [{ from: 'none', to: 'open', dashed: true }, '', 'Dependency', 'uses the one it points to'],
   manifestation: [{ from: 'none', to: 'open', dashed: true }, '«manifest»', 'Manifestation', 'the artifact is the component\'s file'],
   'comment-link': [{ from: 'none', to: 'none', dashed: true }, '', 'Comment link', 'what a comment is about'],
+  line: [{ from: 'none', to: 'arrow' }, '', 'Line', 'a kind of line this view does not draw as its own'],
 };
 
 /* ---- the view read: its boxes, its lines, every element's words ---- */
@@ -107,7 +108,7 @@ const cpOrder = pic => [...readingOrder(pic).flatMap(id => [id, ...cpPortsOf(pic
 /* ---- the legend: each line kind drawn. ponytail: copies class.js's legend ends, which it does not export ---- */
 const CP_ENDS = { none: '', open: '<path d="M17 4L26 8L17 12" fill="none"/>', triangle: '<path d="M16 3L26 8L16 13Z" fill="var(--um-panel)"/>',
   socket: '<path d="M26 2A6 6 0 0 0 26 14" fill="none"/>', ball: '<circle cx="21" cy="8" r="5" fill="var(--um-panel)"/>' };
-const cpLegend = kinds => Object.keys(CP_LOOK).filter(k => kinds.has(k)).map(k => { const [L, , name, says] = CP_LOOK[k], end = k === 'stem' ? 'ball' : L.to;
+const cpLegend = kinds => Object.keys(CP_LOOK).filter(k => kinds.has(k) && k !== 'line').map(k => { const [L, , name, says] = CP_LOOK[k], end = k === 'stem' ? 'ball' : L.to;
   return `<span class="lgi" title="${esc(name + ' — ' + says)}"><svg class="lgs" viewBox="0 0 28 16" aria-hidden="true"><g stroke="var(--um-muted)" stroke-width="1.4" stroke-linejoin="round"><path d="M2 8H${end === 'none' ? 26 : end === 'ball' ? 16 : end === 'socket' ? 23 : 17}"${L.dashed ? ' stroke-dasharray="3 2"' : ''}/>${CP_ENDS[end]}</g></svg><b>${esc(name)}</b><span>${esc(says)}</span></span>`; });
 
 /* ---- the view laid out (§10.1) ----
@@ -336,7 +337,7 @@ const CP_TYPE = registerDiagramType('uml.component', {
   validate: cpProblems,
   rules: CP_RULES,
   describe: cpDescribe,
-  edits: { connect: cpConnect, moveTo: cpMoveTo, add: cpAdd, member: cpMember, key: cpKey, remove: cpRemove },
+  edits: { connect: cpConnect, moveTo: cpMoveTo, add: cpAdd, member: cpMember, key: cpKey, remove: cpRemove, rename: lineRename((e, model, view) => cpLabel({ e, kind: cpKind(cpIndex(model), view, e) })) },
   // the PDF's tables (§11): a component's ports, each with what it provides and requires; an interface's operations; what an artifact manifests
   word: (model, id) => { const x = cpIndex(model).N.get(id); return x ? ({ __proto__: null, 'uml.Component': 'Component', 'uml.Interface': 'Interface', 'uml.Artifact': 'Artifact', 'uml.Package': 'Package', 'uml.Comment': 'Comment' }[x.type] || null) : null; },
   rows: (model, view, id) => { const pic = cpPic(model, view), x = pic.I.N.get(id); if (!x) return null;

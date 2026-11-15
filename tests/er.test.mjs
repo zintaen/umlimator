@@ -339,3 +339,12 @@ test('audit 4: an FK to a column whose id is a flag word prints it quoted, so th
     assert.deepEqual(erMember(m, null, 'o', 'o.c', row)[1].value, c.props, id);
   }
 });
+
+test('an identifying relationship written inline in a view makes its child dependent, as one of the model does (audit 14)', () => {
+  const nodes = [{ id: 'o', type: 'er.Entity', label: 'Order', members: [C('o.id', 'id', { primaryKey: true })] },
+    { id: 'l', type: 'er.Entity', label: 'Line', members: [C('l.o', 'order_id', { primaryKey: true, foreignKey: true, references: 'o.id' })] }];
+  const r = R('r', 'o', 'l', '1', '1..*', { identifying: true });
+  const m = { schemaVersion: 2, nodes, edges: [], views: [{ id: 'v', diagram: 'er', notation: 'idef1x', nodeIds: ['o', 'l'], edges: [r] }] };
+  assert.deepEqual(layout(m, 'v').nodes.map(n => [n.id, !!n.dep]), [['o', false], ['l', true]]);
+  assert.deepEqual(validate(m), []);
+});

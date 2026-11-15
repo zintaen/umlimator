@@ -353,3 +353,8 @@ test('a :::class on a state statement is skipped and reported; a description aft
   assert.deepEqual(model.nodes.filter(n => n.type === 'uml.Comment').map(n => n.label), ['it broke']);
   assert.ok(model.nodes.some(n => n.id === 'Moving' && n.type === 'uml.State'));
 });
+
+test('the writer names ext it has no place for: a state\'s, and a transition\'s but for ext.mermaid.label (audit 14)', () => {
+  const m = json('./state-minimal.json'); m.nodes[1].ext = { x: 1 }; m.edges[0].ext = { x: 1, mermaid: { label: 'a' } };
+  assert.deepEqual(write(m, 'v').match(/not written: .*/g), ['not written: idle: ext', 'not written: t1: ext, but for ext.mermaid.label']);
+});

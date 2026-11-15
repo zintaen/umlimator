@@ -73,8 +73,9 @@ export function describe(model, viewId) {
  *  end }, times in milliseconds. */
 export function otlpSpans(data) {
   const out = [], attr = (list, k) => { const v = ((list || []).find(a => a && a.key === k) || {}).value || {}; return v.stringValue ?? v.intValue ?? null; };
-  ((data && data.resourceSpans) || []).forEach(rs => { const service = attr(rs.resource && rs.resource.attributes, 'service.name');
-    (rs.scopeSpans || rs.instrumentationLibrarySpans || []).forEach(ss => (ss.spans || []).forEach(s => out.push({ id: s.spanId, parent: s.parentSpanId || null,
+  const objs = x => Array.isArray(x) ? x.filter(y => y && typeof y === 'object') : []; // a malformed export: what is no list or object is skipped
+  objs(data && data.resourceSpans).forEach(rs => { const service = attr(rs.resource && rs.resource.attributes, 'service.name');
+    objs(rs.scopeSpans || rs.instrumentationLibrarySpans).forEach(ss => objs(ss.spans).forEach(s => out.push({ id: s.spanId, parent: s.parentSpanId || null,
       service, name: s.name, start: Number(s.startTimeUnixNano) / 1e6, end: Number(s.endTimeUnixNano) / 1e6 }))); });
   return out;
 }

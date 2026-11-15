@@ -2,7 +2,7 @@ import { registerDiagramType } from '../core/registry.js';
 import { esc, fit, textW } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
 import { layoutTyped } from '../typed/layout.js';
-import './class.js'; // SHAPE.note, a comment's look
+import { lineRename } from './class.js'; // SHAPE.note, a comment's look too
 import { lineInside, ownersOn, readingOrder } from './owners.js';
 import { SN_SAY, STRUCT_RULES, structProblems } from './structure.js'; // SHAPE.artifact and SHAPE.component too
 
@@ -248,7 +248,7 @@ const DP_TYPE = registerDiagramType('uml.deployment', {
     if (x && DP_TARGETS.includes(x.type)) return I.deployed(id).map(a => (I.at.get(a).parent === id ? nm(a) : `${nm(a)}, by «deploy»`));
     if (x && DP_ARTIFACTS.includes(x.type)) return I.outOf('uml.Manifestation', id).filter(e => I.at.has(e.to)).map(e => `manifests ${nm(e.to)}`);
     return null; },
-  edits: { connect: dpConnect, remove: dpRemove },
+  edits: { connect: dpConnect, remove: dpRemove, rename: lineRename(dpLineLabel) },
 });
 
 export { DP_TYPE, DP_RULES, dpGeo, dpProblems, dpDescribe, dpConnect, dpRemove, dpOwners };

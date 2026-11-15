@@ -59,7 +59,7 @@ test('the definition: uml.profile is registered with its palette, its four lines
   assert.deepEqual(T.props['uml.Stereotype'], [{ key: 'isAbstract', label: 'Abstract', kind: 'bool' }]);
   assert.deepEqual(T.props['uml.Profile'].map(f => f.key), ['stereotypes']);
   for (const k of ['layout', 'validate', 'describe', 'boxes', 'owners', 'word', 'rows', 'rankFlip']) assert.equal(typeof T[k], 'function', k);
-  assert.deepEqual(Object.keys(T.edits), ['add', 'connect']);
+  assert.deepEqual(Object.keys(T.edits), ['add', 'connect', 'rename']);
   for (const r of [...Object.keys(PR_RULES), ...Object.keys(STY_RULES), 'generalization-kinds', 'owner-kinds']) assert.ok(Object.hasOwn(T.rules, r), r);
   assert.deepEqual(Object.keys(PR_RULES), ['profile-owns', 'stereotype-names', 'extension-ends', 'application-ends', 'metaclass-known']);
   assert.ok(T.rankFlip({ type: 'uml.Extension' }) && T.rankFlip({ type: 'uml.Generalization' }) && !T.rankFlip({ type: 'uml.ProfileApplication' }));

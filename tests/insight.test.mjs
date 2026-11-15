@@ -92,3 +92,8 @@ test('audit 4: on a typed view reach() and paths() follow the lines as drawn, a 
   assert.ok(ids(A.reach(m, 'components', 'i-orders', { backward: true, depth: 1 })).includes('shop-api'));
   assert.ok(ids(A.reach(ex('ebike-structure'), 'inside-ebike', 'ebike.battery')).includes('ebike.dock'));
 });
+
+test('otlpSpans() skips what a malformed export holds that is no list or object (audit 14)', () => {
+  for (const d of [{ resourceSpans: 5 }, { resourceSpans: [null] }, { resourceSpans: [{ scopeSpans: [{ spans: [null] }] }] }, { resourceSpans: [{ scopeSpans: [null, { spans: 3 }] }] }]) assert.deepEqual(otlpSpans(d), [], JSON.stringify(d));
+  assert.equal(otlpSpans({ resourceSpans: [{ scopeSpans: [{ spans: [null, { spanId: 's', name: 'n', startTimeUnixNano: '1000000', endTimeUnixNano: '2000000' }] }] }] }).length, 1);
+});
