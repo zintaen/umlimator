@@ -53,7 +53,7 @@ test('the definitions: c4.dynamic and c4.deployment, each its own; the static ty
   for (const T of [DYN, DEP]) for (const k of ['layout', 'validate', 'describe', 'boxes', 'owners', 'word', 'rows', 'text']) assert.equal(typeof T[k], 'function', `${T.name} ${k}`);
   assert.deepEqual(Object.keys(DYN.rules), [...Object.keys(STATIC.rules), 'c4-steps']);
   assert.deepEqual(Object.keys(DEP.rules), [...Object.keys(STATIC.rules), 'c4-steps', 'c4-box-line']);
-  assert.deepEqual(DEP.refs, { 'c4.ContainerInstance': { 'props.container': 'cascade' } });
+  assert.deepEqual(DEP.refs, { 'c4.ContainerInstance': { 'props.container': 'cascade named' } });
   assert.deepEqual(STATIC.refs, undefined, 'the static type is as M2.6 left it');
 });
 
@@ -330,8 +330,12 @@ test('the deployment view\'s hooks: the palette\'s instance picks its container 
   assert.deepEqual(t.then(4), [{ op: 'set', id: 'c4-db-1', path: 'props.container', value: 'c4-queue' }, { op: 'set', id: 'c4-db-1', path: 'label', value: 'Order queue' }]); assert.deepEqual(t.then(3), []);
   const own = apply(C4, [{ op: 'set', id: 'c4-db-1', path: 'label', value: 'Replica' }]);
   assert.deepEqual(DEP.edits.key(own, v, ['c4-db-1'], 'T').then(4), [{ op: 'set', id: 'c4-db-1', path: 'props.container', value: 'c4-queue' }, { op: 'set', id: 'c4-db-1', path: 'label', value: 'Order queue' }]);
-  // audit 13: a container renamed by F2 takes the label of each instance named as it was; the problems name an instance as drawn
-  assert.deepEqual(STATIC.edits.rename(C4, C4.views[V('c4-containers')], 'c4-api', 'Catalogue API'), [{ op: 'set', id: 'c4-api', path: 'label', value: 'Catalogue API' }, { op: 'set', id: 'c4-api-1', path: 'label', value: 'Catalogue API' }]);
+  // audit 13, 14: a container renamed, by F2 on any view (the canvas's set label) or by the Name field, takes the label of each
+  // instance named as it was (apply(), by refs: named); one named otherwise keeps its own; the problems name an instance as drawn
+  assert.equal(STATIC.edits.rename(C4, C4.views[V('c4-containers')], 'c4-api', 'Catalogue API'), null);
+  assert.equal(DYN.edits.rename(C4, C4.views[V('c4-placing-an-order')], 'c4-api', 'Catalogue API'), null);
+  const named = apply(apply(C4, { op: 'set', id: 'c4-db-1', path: 'label', value: 'Replica' }), [{ op: 'set', id: 'c4-api', path: 'label', value: 'Catalogue API' }, { op: 'set', id: 'c4-db', path: 'label', value: 'Store' }]);
+  assert.deepEqual(['c4-api-1', 'c4-db-1'].map(id => named.nodes.find(n => n.id === id).label), ['Catalogue API', 'Replica']);
   const ren = apply(C4, [{ op: 'set', id: 'c4-api', path: 'label', value: 'Catalogue API' }, { op: 'delete', id: 'c4-storefront-1-api-1' }, { op: 'add', element: { id: 'sa', type: 'c4.Relationship', from: 'c4-storefront-1', to: 'c4-api-1' } }]);
   assert.ok(DEP.validate(ren, ren.views[V(PV)]).some(p => p.message === 'c4-label: sa, from "Storefront" to "Catalogue API", has no description'));
   // an instance is named as drawn, its container's name, on its lines and in describe() too (audit 12); F2 on it is refused

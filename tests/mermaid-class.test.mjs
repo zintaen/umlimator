@@ -550,3 +550,8 @@ test('a stereotype ending in > or with a space at an end, an id or a type with a
     '%% not written: A.f: type  int, read back trimmed', '%% not written: A-B  (uml.Association)']);
   assert.deepEqual(read(text).model.nodes.find(n => n.id === 'A').props.stereotypes, ['ok']);
 });
+
+test('the writer names ext and props it has no place for: a class\'s tags and ext, a line\'s ext (audit 14)', () => {
+  const m = json('./class-minimal.json'); m.nodes[0].props = { stereotypes: ['entity'], tags: { entity: { table: 'orders' } } }; m.nodes[0].ext = { structurizr: { url: 'x' } }; m.edges[0].ext = { x: 1 };
+  assert.deepEqual(write(m, 'v').match(/not written: .*/g), ['not written: order: property tags', 'not written: order: ext', 'not written: order-lines: ext']);
+});

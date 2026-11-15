@@ -455,6 +455,9 @@ function writeMermaidState(model, viewId) {
     if (ls.length !== 1 || !okId(ls[0].id) || !isNode.has(to) || stars.has(to)) { skip(c); ls.forEach(skip); continue; }
     push(notesOn, to, c);
   }
+  // ext: what the reader keeps under ext.mermaid (one key) is written back; anything else under ext is named
+  const lostExt = (x, keep) => { const e = x.ext; if (e === undefined) return; const me = isObj(e) && isObj(e.mermaid) ? e.mermaid : {};
+    if (!isObj(e) || Object.keys(e).some(k => k !== 'mermaid') || Object.keys(me).some(k => k !== keep)) lose(x.id, keep ? `ext, but for ext.mermaid.${keep}` : 'ext'); };
   const writeComments = (n, d) => {
     for (const c of notesOn.get(n.id) || []) {
       const link = links.get(c.id)[0], ch = idOf(c.id, `note-${++notes}`), lh = idOf(link.id, `${c.id}-link`), desc = c.ext?.mermaid?.description === true;
@@ -466,6 +469,7 @@ function writeMermaidState(model, viewId) {
         put(d, ...heads, `note right of ${names.get(n.id)} : ${has(c.label) ? enc(c.label) : ''}`);
       }
       Object.keys(c).filter(p => !['id', 'type', 'label', 'ext'].includes(p)).forEach(p => lose(c.id, p));
+      lostExt(c, 'description');
     }
   };
   const writeNode = (n, d) => {
@@ -513,6 +517,7 @@ function writeMermaidState(model, viewId) {
       }
     }
     if (n.type !== 'uml.State' && (n.members || Object.keys(n.props || {}).some(p => p !== 'kind'))) lose(n.id, 'its properties and members');
+    lostExt(n);
     writeComments(n, d);
   };
   const writeTrans = (t, d) => {
@@ -531,6 +536,7 @@ function writeMermaidState(model, viewId) {
       if (printed) label = printed; else lose(t.id, `its label, which does not read back as trigger [guard] / effect`);
       Object.keys(p).filter(x => !['trigger', 'guard', 'effect'].includes(x)).forEach(x => lose(t.id, `property ${x}`));
     }
+    Object.keys(t).filter(x => !['id', 'type', 'from', 'to', 'parent', 'props', 'ext'].includes(x)).forEach(x => lose(t.id, x)); lostExt(t, 'label');
     if (keyOf.get(t.from) !== keyOf.get(t.to)) lines.unshift('%% warning: Mermaid may not draw this');
     put(d, ...lines, ...(h ? [`%% id: ${h}`] : []), `${a} --> ${b}${label ? ' : ' + enc(label) : ''}`);
   };

@@ -112,11 +112,8 @@ function c4Lines(model, view, pic) {
 // rename: F2 on a relationship holds its text, "description [technology]": the technology when unchanged is not the description;
 // what is left is set as its label. Anything else: null, the canvas's own
 function c4Rename(model, view, id, text) {
-  const I = c4Index(model), e = I.rels.find(r => r.id === id), c = I.at.get(id), t0 = String(text ?? '').trim();
-  // a container renamed: an instance named as it was keeps its name in step (a deployment view draws it as its container)
-  if (!e && c && c.type === 'c4.Container' && t0 && t0 !== c4Name(c)) return [{ op: 'set', id, path: 'label', value: t0 },
-    ...[...I.at.values()].filter(x => x.type === 'c4.ContainerInstance' && C4_P(x).container === id && c4Name(x) === c4Name(c)).map(x => ({ op: 'set', id: x.id, path: 'label', value: t0 }))];
-  if (!e) return null;
+  // a container renamed: the default set label, which apply() carries to the instances named as it (the deployment type's refs)
+  const e = c4Index(model).rels.find(r => r.id === id); if (!e) return null;
   const tech = C4_P(e).technology, t = String(text ?? '').trim(), label = C4_HAS(tech) && t.endsWith(`[${tech}]`) ? t.slice(0, -String(tech).length - 2).trim() : t;
   return label === (e.label ?? '') ? [] : [{ op: 'set', id, path: 'label', value: label || undefined }];
 }

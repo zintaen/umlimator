@@ -120,8 +120,8 @@ runtime it is deployed on for the component and deployment files; Order, its `pl
 class, package and profile files, and the `worker` and `payments` lifelines for the overview, sequence and timing
 files; the shopper for the use case and information flow files, and the storefront, Shop API and payment provider for
 the component and information flow files. The ER, data flow and C4 files' ids carry `er-`, `dfd-` and `c4-` (a C4
-element and a map card are different elements: a card has no type); the mindmap, Google Cloud and Azure files' `mm-`,
-`gcp-` and `az-`, and their icon packs' labels (`iconPacks`) are one per pack. Where two files have an id, they must agree on it (a field one leaves out is the other's, a class's members are
+element and a map card are different elements: a card has no type); the mindmap, Google Cloud, Azure and AWS files' `mm-`,
+`gcp-`, `az-` and `aws-`, and their icon packs' labels (`iconPacks`) are one per pack. Where two files have an id, they must agree on it (a field one leaves out is the other's, a class's members are
 the union of theirs); where they disagree, the build stops and names the id, the files and the field, and the example
 files are what gets fixed.
 `tests/atlas.test.mjs` fails when the committed atlas is not what it writes. A card that opens another kind of diagram does not unfold in place (E): it opens.

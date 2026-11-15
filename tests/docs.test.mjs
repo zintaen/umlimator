@@ -110,3 +110,12 @@ test('audit 11: the schema names the flowchart\'s default direction; the informa
   }
   assert.match(doc('../docs/conformance/uml-composite-structure.md'), /`connector-drawn` \(a connector between two ports of the subject, or of one part/);
 });
+
+test('audit 14: the cloud notes do not say an icons-only update() keeps the picture (lifted in 0.28.0); AWS is in the editing guide, the examples README and the schema', () => {
+  const read = p => readFileSync(new URL(p, import.meta.url), 'utf8');
+  for (const f of ['gcp', 'azure']) assert.doesNotMatch(read(`../docs/conformance/${f}.md`), /changes only the `icons` table keeps/, f);
+  const editing = read('../docs/editing.md');
+  for (const s of ['AWS (`aws`)', '`aws.Connection`', '`pack fetch aws`']) assert.ok(editing.includes(s), s);
+  assert.match(read('../examples/README.md'), /`aws-`/);
+  assert.match(JSON.parse(read('../lib/umlimator.schema.json')).properties.iconPacks.description, /"aws"/);
+});

@@ -295,6 +295,13 @@ test('Delete hides a topic\'s branch, said with the count; Shift + Delete delete
   // a parent cycle among the hidden (which validation reports) ends the walk: each topic once
   const cyc = { schemaVersion: 2, nodes: [{ id: 'r', type: T, label: 'R' }, { id: 'a', type: T, label: 'A', parent: 'b' }, { id: 'b', type: T, label: 'B', parent: 'a' }], edges: [], views: [{ id: 'v', diagram: 'mindmap', nodeIds: ['r'] }] };
   assert.deepEqual(mmShow(cyc, 'v', 'a').commands[0].value, ['r', 'a', 'b']);
+  // Show on a topic whose child was shown alone meanwhile (first-level then): the child is not pinned, so no side-first (audit 14)
+  let k = { schemaVersion: 2, nodes: [{ id: 'r', type: T, label: 'R' }, { id: 'a', type: T, label: 'A', parent: 'r' }, { id: 'a1', type: T, label: 'A1', parent: 'a' },
+    { id: 'a2', type: T, label: 'A2', parent: 'a' }, { id: 'b', type: T, label: 'B', parent: 'r' }], edges: [], views: [{ id: 'v', diagram: 'mindmap', nodeIds: ['r', 'a', 'a1', 'a2', 'b'] }] };
+  k = apply(k, cmdsOf(mmRemove(k, 'v', ['a'], false)));
+  k = apply(k, { op: 'set', view: 'v', path: 'nodeIds', value: [...k.views[0].nodeIds, 'a1'] });
+  k = apply(k, mmShow(k, 'v', 'a').commands);
+  assert.deepEqual(mmProblems(k, 'v').map(p => p.rule), []);
 });
 
 /* ---- a 30-step session through the hooks (DoD 6) ---- */
