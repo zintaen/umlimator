@@ -181,3 +181,16 @@ test('audit 13: a change named after a prototype key (constructor, __proto__) is
     assert.doesNotMatch(s, /NEW|CHANGED|REMOVED|PLANNED/, change);
   }
 });
+
+test('diff(): a new line with no id, in a view that dropped its edges list, is said once (audit 14)', () => {
+  const A = { nodes: [{ id: 'a', label: 'A' }, { id: 'b', label: 'B' }], edges: [], views: [{ id: 'v', nodeIds: ['a', 'b'], edges: [{ from: 'a', to: 'b', label: 'own' }] }] };
+  const B = structuredClone(A); delete B.views[0].edges; B.edges.push({ from: 'b', to: 'a', label: 'back' });
+  assert.equal(diff(A, B).summary.filter(s => s === 'adds a line from B to A (back)').length, 1);
+});
+
+test('a card with no label, and its lines, are named by its id (audit 14)', () => {
+  const s = svgOf(layout({ nodes: [{ id: 'a' }, { id: 'b', label: '' }, { id: 'c', label: 'C' }], edges: [{ from: 'a', to: 'c' }, { from: 'b', to: 'c' }], views: [{ id: 'v', nodeIds: ['a', 'b', 'c'] }] }, 'v'));
+  const names = [...s.matchAll(/aria-label="([^"]*)"/g)].map(x => x[1]);
+  assert.ok(names.includes('Line from a to C') && names.includes('Line from b to C'), names.join(' | '));
+  assert.ok(!names.some(n => /undefined|^ |from {2}/.test(n)), names.join(' | '));
+});

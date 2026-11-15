@@ -210,7 +210,7 @@ def call(name, a):
             before = cli.read_json(other)
         except SystemExit as e:
             raise Fail(f"cannot read {a['other_model_path']} (looked for {' and '.join(map(str, tried))}): {e.code}")
-        if bad := cli.not_objects(before):  # as render reads it (audit 11)
+        if bad := cli.not_objects(before) or ([] if "views" in before else ["no views: not a map model"]):  # as render reads it (audit 11, 14)
             raise Fail(f"{a['other_model_path']}: {'; '.join(bad)}")
         d = node("diff", before, m)
         return {"summary": d["summary"], "views": d["views"]}

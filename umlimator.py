@@ -317,7 +317,7 @@ def read_model(path):
     """A model as render reads it: read_json, then refused in one line naming the file when not_objects finds a problem
     (diff, drift, trace and export read it as render does, audit 11)."""
     m = read_json(path)
-    if bad := not_objects(m):
+    if bad := not_objects(m) or ([] if "views" in m else ["no views: not a map model"]):  # a trace, say: render refuses it too (audit 14)
         sys.exit(f"{path}: " + "; ".join(bad))
     return m
 
@@ -572,7 +572,10 @@ def diff_since(a):
     # a new model not yet added to git is a working-tree change too, named from the top as diff's are (audit 10)
     new = git("ls-files", "-z", "--others", "--exclude-standard", "--full-name", "--", *(a.models or ["*.json"]))
     top = Path(git("rev-parse", "--show-toplevel").stdout.strip())  # git names files from the top, wherever diff runs
-    out = Path(a.out); out.mkdir(parents=True, exist_ok=True)
+    out = Path(a.out)
+    if out.exists() and not out.is_dir():
+        sys.exit(f"diff --base: --out {out} is a file: name a folder for the pages and summary.md")
+    out.mkdir(parents=True, exist_ok=True)
     done, md, stems = [], ["<!-- umlimator-diff -->", "### Map changes", ""], set()
     for name in filter(None, (changed.stdout + new.stdout).split("\0")):
         old = subprocess.run(["git", "show", f"{a.base}:{name}"], capture_output=True)  # bytes: a file need not be UTF-8
@@ -1273,8 +1276,9 @@ def main():
     a = p.parse_args()
     if getattr(a, "page", None) and not Path(a.page).is_file():
         sys.exit(f"{a.cmd}: no page at {a.page}")
-    ins = [getattr(a, k, None) for k in ("model", "file", "page", "observed")] + (getattr(a, "files", None) or [])
-    if a.cmd != "trace" and getattr(a, "out", None) and any(x and (Path(x).resolve() == Path(a.out).resolve()
+    # trace's --out may be MODEL.json itself, never its TRACE or --match (audit 14)
+    ins = [getattr(a, k, None) for k in ("model", "file", "page", "observed", "trace", "match") if not (a.cmd == "trace" and k == "model")] + (getattr(a, "files", None) or [])
+    if getattr(a, "out", None) and any(x and (Path(x).resolve() == Path(a.out).resolve()
             or os.path.exists(x) and os.path.exists(a.out) and os.path.samefile(x, a.out)) for x in ins):  # the file, not its spelling: case, hard links
         sys.exit(f"{a.cmd}: --out {a.out} is its input: name another file")  # else replacing() renames the output over it
     signal.signal(signal.SIGTERM, lambda *_: sys.exit(143))  # as Ctrl-C: temp files go, and the children run() started

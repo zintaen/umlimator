@@ -87,3 +87,8 @@ test('A→B and B→A drawn as one: the first one\'s step on the line, and its t
   delete m.edges[0].step; // only B→A has a step: it is still in the title
   assert.equal(layout(m, 'v').edges[0].when, 'asks\n2. answers');
 });
+
+test('validate() warns of a card source that is not a path or a list of paths (audit 14)', () => {
+  const said = validate({ nodes: [{ id: 'a', source: 42 }, { id: 'b', source: ['src/b.js', 7] }, { id: 'c', source: ['src/c.js'] }], views: [{ id: 'v', nodeIds: ['a', 'b', 'c'] }] });
+  assert.deepEqual(said.filter(p => /source/.test(p.path)).map(p => p.path), ['nodes[0].source', 'nodes[1].source']);
+});

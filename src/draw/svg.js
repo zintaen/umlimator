@@ -135,7 +135,7 @@ function svgOf(geo, opts = {}) {
     const part = (shown, full) => plain(shown) === plain(full) ? plain(full) : `${plain(shown)} (in full: ${plain(full)})`;
     const tx0 = map ? n.x + 54 : n.x + n.w / 2, anchor = map ? 'start' : 'middle', lines = (t, dy) => `<tspan x="${tx0}">${esc(t[0])}</tspan> <tspan x="${tx0}" dy="${dy}">${esc(t[1])}</tspan>`;
     const label = two ? two.join(' ') : fit(n.label, lpx, lw, true), subShown = sub && !priv; // a script card hides its sub-line
-    said.push(part(label, n.label) + (subTxt && !subShown ? ` (${subTxt})` : ''));
+    said.push((plain(n.label) ? part(label, n.label) : plain(n.id)) + (subTxt && !subShown ? ` (${subTxt})` : ''));
     const parts = [`<title>${esc(n.label)}${subTxt ? ' · ' + esc(subTxt) : ''}${n.note ? '\n' + esc(n.note) : ''}${stacked ? '\nDouble-click to open' : ''}</title>`];
     if (L) { // a shape: its outline twice behind it when stacked, then the mask, the body and its details
       const o = S.out(L);
@@ -212,7 +212,7 @@ return I && I.src ? `<rect x="${x - M * 3 / 28}" y="${y - M * 3 / 28}" width="${
   // focus targets after the cards (#43), under the labels: each line's (a typed one's named by e.aria), or one per id of geo.order (notes/stage-3.md S13)
   const ring = (a, name, d) => `<g class="um-key line-key${a}" tabindex="0" role="button" aria-pressed="false" aria-label="${esc(name)}"><path d="${d}" class="key-ring"/></g>`;
   const line = (e, i, said = e.label ? `: ${e.label}${e.sublabel ? ` (${e.sublabel})` : ''}` : '') => ring(`${e.weight > 1 ? ' wt-' + e.weight : ''}" data-i="${i}`, !map && e.aria != null ? e.aria
-    : `${e.step != null ? `Step ${e.step}: ` : ''}Line ${e.both ? `between ${e.s.label} and ${e.t.label}, both ways` : `from ${e.s.label} to ${e.t.label}`}${said}${broke(e).length ? `, breaks rule ${broke(e).join('; ')}` : ''}`, roundPath(drawn[i]));
+    : `${e.step != null ? `Step ${e.step}: ` : ''}Line ${e.both ? `between ${e.s.label || e.s.id} and ${e.t.label || e.t.id}, both ways` : `from ${e.s.label || e.s.id} to ${e.t.label || e.t.id}`}${said}${broke(e).length ? `, breaks rule ${broke(e).join('; ')}` : ''}`, roundPath(drawn[i]));
   s += '</g><g class="keys">' + (!map && Array.isArray(geo.order) ? geo.order.map(id => { const n = hasKey(geo.byId || {}, id) && geo.byId[id], i = edges.findIndex(e => e.id === id);
     return n ? ring(` node-key" data-node="${esc(id)}`, n.aria || n.label || id, `M${n.x} ${n.y}h${n.w}v${n.h}h${-n.w}z`) : i < 0 ? '' : line(edges[i], i); }) : edges.map((e, i) => line(e, i))).join('');
   s += '</g>' + (opts.over || '') + '<g class="labels depth-read">';

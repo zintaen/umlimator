@@ -26,6 +26,7 @@ export function validate(model) {
     if (n.kind != null && !(hasKey(KIND, k) || hasKey(MAPK, k) || hasKey(ALIAS, k))) warn(at + '.kind', `unknown kind "${n.kind}": drawn as a script card`);
     if (n.owner != null && typeof n.owner !== 'string') warn(at + '.owner', 'an owner is a name: ignored');
     ['when', 'what', 'how', 'origin', 'author', 'note'].forEach(k => { if (n[k] != null && typeof n[k] !== 'string') warn(`${at}.${k}`, `${k} is text: drawn as written`); });
+    if (n.source != null && !(typeof n.source === 'string' || Array.isArray(n.source) && n.source.every(s => typeof s === 'string'))) warn(at + '.source', 'source is a path or a list of paths: what is not text is ignored');
     list(n, at, 'verbs');
     shapeIs(n, at);
   };

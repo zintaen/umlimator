@@ -212,7 +212,8 @@ function run(m, c, gone) {
       const ends = l => isObj(l) && (ids.has(l.from) || ids.has(l.to)); // the view's lines to it, listed or its own, leave the view with it
       if (Array.isArray(v.edges)) v.edges = v.edges.filter(y => { const l = typeof y === 'string' ? (at.get(y) || {}).x : y, out = y === c.id || ends(l);
         if (out && isObj(l) && typeof l.id === 'string') ids.add(l.id); return !out; }); // what names those lines in this view goes too
-      clear(m, refs(m, ids, i => i === vi).filter(r => !['end', 'parent', 'part', 'prop'].includes(r.kind)));
+      // a prop names model elements, kept, but for an interaction use's covers: lifelines of its view (audit 14)
+      clear(m, refs(m, ids, i => i === vi).filter(r => !['end', 'parent', 'part'].includes(r.kind) && (r.kind !== 'prop' || r.path[r.path.length - 2] === 'covers')));
       follow(m, names0, i => i === vi);
       return;
     }

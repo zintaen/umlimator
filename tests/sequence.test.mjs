@@ -440,3 +440,9 @@ test('audit 10: what create-once and delete-once let one alt\'s operands do is d
     assert.equal((s.kills || []).length, kills, why); assert.equal(s.cross, es[1].props.sort === 'delete', why);
   }
 });
+
+test('audit 14: a raw hide of a lifeline drops it from the covers of the view\'s own interaction uses, so the model still validates', () => {
+  const after = apply(SEQ, { op: 'hide', id: 'lifeline-api', view: 'checkout-sequence' });
+  assert.deepEqual(errors(after), []);
+  assert.deepEqual(at(after, 'f3').props.covers, ['lifeline-payments', 'receipt']);
+});

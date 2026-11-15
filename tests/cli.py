@@ -204,6 +204,10 @@ with tempfile.TemporaryDirectory() as tmp:
     git("checkout", "-q", "--", "docs/map.json")
     cli("diff", "--base", "HEAD", "--out", str(t / "pr2"), cwd=g)
     ok("diff --base · says so when no map changed", "No map model changed." in ((t / "pr2" / "summary.md").read_text(encoding="utf-8") if (t / "pr2" / "summary.md").is_file() else ""))
+    (t / "notes.txt").write_text("hi")
+    r = subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "diff", "--base", "HEAD", "--out", str(t / "notes.txt")], capture_output=True, text=True, cwd=g)
+    ok("diff --base · --out naming a file is said in one line, not a traceback (audit 14)", r.returncode == 1 and "is a file" in r.stderr and "Traceback" not in r.stderr
+       and (t / "notes.txt").read_text() == "hi", r.stderr[-300:])
 
     # a view id is the model's, not a path: ../x is a still inside --out
     (t / "esc").mkdir(); (t / "esc" / "m.json").write_text(json.dumps({"title": "t", "nodes": [{"id": "a", "label": "A"}, {"id": "b", "label": "B"}],
@@ -299,6 +303,17 @@ with tempfile.TemporaryDirectory() as tmp:
     b = plain("render", str(n / "m.json"), "--out", str(n / "m-link.json"), "--no-check")
     ok("render · --out naming the input by another name (a hard link, or other case) is refused, and the model is kept (audit 13)",
        b.returncode == 1 and "is its input" in b.stderr and (n / "m.json").read_text() == mj, b.stderr[-300:])
+    (t / "tr").mkdir(); tj, mt = t / "tr" / "t.json", t / "tr" / "match.json"
+    tj.write_text((ROOT / "examples" / "traces" / "ride-end.json").read_text()); mt.write_text((ROOT / "examples" / "traces" / "match.json").read_text())
+    tw, mw = tj.read_text(), mt.read_text()
+    runs = [plain("trace", bike_m, str(tj), "--view", "t", "--match", str(mt), "--out", str(x)) for x in (tj, mt)] + [plain("drift", bike_m, str(tj), "--match", str(mt), "--out", str(mt))]
+    ok("trace, drift · --out naming the trace or the --match file is refused, and both are kept (audit 14)",
+       all(r.returncode == 1 and "is its input" in r.stderr for r in runs) and tj.read_text() == tw and mt.read_text() == mw, [r.stderr[-200:] for r in runs])
+    b = plain("diff", str(ROOT / "examples" / "traces" / "ride-end.json"), bike_m, "--out", str(t / "tr" / "d.html"))
+    ok("diff · a JSON object that is no map model (a trace) is refused in one line (audit 14)", b.returncode == 1 and "ride-end.json: no views" in b.stderr and not (t / "tr" / "d.html").exists(), b.stderr[-300:])
+    (t / "tr" / "bad.json").write_text('{"resourceSpans": [{"scopeSpans": [{"spans": [null]}]}]}')
+    b = plain("trace", bike_m, str(t / "tr" / "bad.json"), "--view", "t", "--out", str(t / "tr" / "o.json"))
+    ok("trace · a malformed OTLP file ends in its one line, not a Node stack trace (audit 14)", b.returncode == 1 and "no call in" in b.stderr and "TypeError" not in b.stderr, b.stderr[-300:])
     b = plain("mcp", bike_m, "--port", "73910")
     ok("mcp · --port 73910 is a usage error, not a traceback", b.returncode == 2 and "not a port" in b.stderr and "Traceback" not in b.stderr, b.stderr[-300:])
     ro = t / "ro"; ro.mkdir(); (ro / "m.json").write_text((n / "m.json").read_text()); ro.chmod(0o555)
@@ -940,6 +955,8 @@ with tempfile.TemporaryDirectory() as tmp:
     (Path(tmp) / "v5.json").write_text(json.dumps({"nodes": [{"id": "a"}], "views": [{"id": 5, "nodeIds": ["a"]}]}))
     said, err = tool("diff", other_model_path=str(Path(tmp) / "v5.json"))
 ok("mcp · diff: another model render refuses is a tool error naming it (audit 11)", err and said.endswith("v5.json: views[0].id is not a string"), said)
+said, err = tool("diff", other_model_path=str(ROOT / "examples" / "traces" / "ride-end.json"))
+ok("mcp · diff: a JSON object that is no map model (a trace) is a tool error, not everything added (audit 14)", err and said.endswith("no views: not a map model"), said)
 said, err = tool("describe_view", view="nope")
 ok("mcp · a call that names what the model lacks is a tool error that says what it has", err and said.startswith("no view 'nope'; the views: context, system"), said)
 wrong = [tool("describe_view", view=["trips"]), tool("tour", cards=[{"id": "trips"}]), tool("diff", other_model_path=5)]
