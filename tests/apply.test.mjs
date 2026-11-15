@@ -304,3 +304,13 @@ test('delete of a 20,000 chain under 5,000 view fragments, and of a card under 3
   for (const ms of [f, e]) assert.ok(ms < 1000, `${ms} ms`);
   console.log(`# P1 ceiling 1 s: a 20,000 chain under 5,000 fragments ${f} ms; 3,000 lines to lines in reverse ${e} ms`);
 });
+
+test('audit 11: delete clears a story step that names a line with no id it took ("b->c#0"), and validate() warns of a name that has no line', () => {
+  const m = { nodes: [{ id: 'a' }, { id: 'b' }, { id: 'c' }], edges: [{ id: 'ab', from: 'a', to: 'b' }, { from: 'b', to: 'c' }], views: [{ id: 'v', nodeIds: ['a', 'b', 'c'] }],
+    stories: [{ id: 's', steps: [{ view: 'v', select: { type: 'edge', ids: ['b->c#0'] }, highlight: ['b->c#0', 'ab'] }] }] };
+  assert.deepEqual(validate(m), []);
+  const m2 = apply(m, { op: 'delete', id: 'c' });
+  assert.deepEqual(m2.stories[0].steps[0], { view: 'v', highlight: ['ab'] });
+  const stale = structuredClone(m); stale.edges.pop();
+  assert.deepEqual(validate(stale).map(p => [p.level, p.path]), [['warning', 'stories[0].steps[0].select'], ['warning', 'stories[0].steps[0].highlight[0]']]);
+});

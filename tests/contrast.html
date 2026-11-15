@@ -92,6 +92,18 @@ try {
     check(`the zoom controls, ${theme}: every text on the bar is at least 4.5:1 (${texts.length} texts, the reading depth among them)`, texts.some(x => x.classList.contains('depth')) && !bad.length, bad);
     h.destroy();
   }
+  // the keyboard focus ring on a line and on a typed view's element (one per id), against the stage: 3:1 (WCAG 1.4.11, audit 11)
+  const CLASSES = await (await fetch('../examples/sales-classes.json')).json(), all = await import('../lib/umlimator-all.js'); // every type: the class diagram
+  for (const [name, MODEL, view, sel] of [['a line', EXAMPLE, null, '.line-key'], ['a class', CLASSES, 'domain', '.node-key']]) for (const theme of ['light', 'dark']) {
+    document.documentElement.dataset.theme = theme;
+    const el = document.getElementById('m'); el.innerHTML = '';
+    const h = all.render(el, MODEL, { flow: false, controls: false, ...(view ? { view } : {}) });
+    const sr = el.querySelector('.umlimator').shadowRoot, k = sr.querySelector(sel), stage = rgba(getComputedStyle(sr.querySelector('.stage')).backgroundColor);
+    k.focus(); const ring = k.querySelector('.key-ring'), c = paint(ring, 'stroke'); c[3] *= +getComputedStyle(ring).strokeOpacity;
+    const r = +ratio(over(c, stage), stage).toFixed(2);
+    check(`the focus ring on ${name}, ${theme}: at least 3:1 against the stage`, k.matches(':focus-visible') && r >= 3, r);
+    h.destroy();
+  }
 } catch (e) { out.fail.push('threw: ' + (e && e.stack || e)); }
 const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
 </script>

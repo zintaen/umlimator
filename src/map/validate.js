@@ -1,7 +1,7 @@
-import { typedProblems, versionProblem } from '../core/model.js';
+import { lineNames, typedProblems, versionProblem } from '../core/model.js';
 import { TYPED, diagramOf } from '../core/registry.js';
 import { SHAPE_NAMES, shapeOf } from '../draw/shapes.js';
-import { mapContext } from './context.js';
+import { boxHolds, mapContext } from './context.js';
 import { ALIAS, KIND, MAPK, hasKey, kindOf } from './kinds.js';
 
 const WIRE_KINDS = ['calls', 'feeds', 'triggers', 'state', 'guard'], SIDES = ['left', 'right', 'top', 'bottom'];
@@ -91,6 +91,11 @@ export function validate(model) {
       if (typeof e !== 'string') line(e, p, ends); else if (!lineIds.has(e)) return err(p, `"${e}" is not a line`); else if (listed.has(e)) return warn(p, `"${e}" is listed twice: drawn once`); else listed.add(e);
       const l = typeof e === 'string' ? byId.get(e) : e, off = l && [l.from, l.to].find(x => (ids.has(x) || anyBox.has(x)) && !here(x)); // a card or any view's box (audit 8)
       if (off != null) warn(p, `${typeof e === 'string' ? `"${e}"` : 'the line'} ends on "${off}", which is not one of the view's cards or boxes: not drawn`); });
+    // a line from a box to a card or box inside it has no line (audit 11): said, as a line to itself is
+    const inside = boxHolds(v), joins = (l, p) => { if (!l || typeof l !== 'object' || !here(l.from) || !here(l.to)) return;
+      const [b, x] = inside(l.from, l.to) ? [l.from, l.to] : inside(l.to, l.from) ? [l.to, l.from] : [];
+      if (b != null) warn(p, `joins the box "${b}" and "${x}", which it holds: not drawn${p.startsWith('edges[') ? ` in view "${v.id}"` : ''}`); };
+    if (Array.isArray(v.edges)) v.edges.forEach((e, j) => joins(typeof e === 'string' ? byId.get(e) : e, `${at}.edges[${j}]`)); else arr(m.edges).forEach((e, j) => joins(e, `edges[${j}]`));
     Object.keys(v.layout || {}).forEach(id => { if (!mine.has(id)) warn(`${at}.layout.${id}`, `"${id}" is not one of the view's cards: its place is ignored`); });
     if (Array.isArray(v.lanes)) v.lanes.forEach((l, j) => arr(l && l.nodeIds).forEach((id, k) => { if (!mine.has(id)) warn(`${at}.lanes[${j}].nodeIds[${k}]`, `"${id}" is not one of the view's cards: left out of the lane`); }));
   });
@@ -129,7 +134,7 @@ export function validate(model) {
   });
   // stories (#69): each step's view, and the cards, lines and tour it names there
   if (m.stories != null && !Array.isArray(m.stories)) err('stories', 'stories is a list of stories');
-  const sids = new Set(), lines = new Set([...lineIds, ...views.flatMap(v => arr(v.edges).filter(e => e && e.id != null).map(e => e.id))]);
+  const posLines = lineNames(m), sids = new Set(), lines = new Set([...lineIds, ...views.flatMap(v => arr(v.edges).filter(e => e && e.id != null).map(e => e.id))]);
   arr(m.stories).forEach((s, i) => {
     const at = `stories[${i}]`;
     if (!s || typeof s.id !== 'string' || !s.id) return err(at + '.id', 'a story needs an id');
@@ -139,7 +144,7 @@ export function validate(model) {
       const p = `${at}.steps[${j}]`, v = views.find(x => x.id === (st && st.view));
       if (!v) return err(p + '.view', `"${st && st.view}" is not a view`);
       const mine = new Set(arr(v.nodeIds)), named = (x, q) => { // a card of the view or a line ("a->b#0" names a line with no id)
-        if (typeof x === 'string' && !mine.has(x) && !lines.has(x) && !x.includes('->')) err(q, `"${x}" is neither one of view "${v.id}"'s cards nor a line`);
+        if (typeof x === 'string' && !mine.has(x) && !lines.has(x)) { if (!x.includes('->')) err(q, `"${x}" is neither one of view "${v.id}"'s cards nor a line`); else if (/#\d+$/.test(x) && !posLines.has(x)) warn(q, `"${x}" names no line: the step shows nothing for it`); }
         else if (x && typeof x === 'object') [x.type !== 'container' && x.id, x.node, ...arr(x.ids)].forEach(y => typeof y === 'string' && named(y, q)); }; // a Ref
       named(st.select, p + '.select');
       arr(st.highlight).forEach((x, k) => named(x, `${p}.highlight[${k}]`));

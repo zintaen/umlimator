@@ -87,4 +87,10 @@ function typedProblems(model) {
   return out;
 }
 
-export { versionProblem, typedProblems };
+// the names a Ref gives the lines with no id: "<from>-><to>#<n>", n counting every line with those ends in its list (the
+// model's, or a view's own), as context.js edgeIds() does
+const lineNames = m => { const out = new Set(), list = l => { const seen = {};
+  (Array.isArray(l) ? l : []).forEach(e => { if (!e || typeof e !== 'object') return; const k = e.from + '->' + e.to, n = seen[k] = (seen[k] ?? -1) + 1; if (e.id == null) out.add(`${k}#${n}`); }); };
+  list(m && m.edges); (Array.isArray(m && m.views) ? m.views : []).forEach(v => v && list(v.edges)); return out; };
+
+export { versionProblem, typedProblems, lineNames };
