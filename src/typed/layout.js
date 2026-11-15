@@ -99,10 +99,10 @@ function spreadPorts({ n, side, ends }, turned) {
   // three or more named lines inward from one port (a composite's delegations) sit 28 px apart, so each one's label keeps clear of
   // the next line: 10 px apart, the first one's label shut the second out of the gap between the parts, and it went round and crossed (audit 6)
   const pitch = f => f.filter(x => x.inner && x.e.label).length > 2 ? 28 : 10;
-  // of those, two whose far ends are level (a part behind a part): the one farther off goes round the nearer one's part, so it
+  // of a port's inward lines, two whose far ends are level (a part behind a part): the one farther off goes round the nearer one's part, so it
   // takes the outer place, the first on the low side of the lines' middle, the last on the high side
   const deep = x => v ? Math.abs(x.other.x + x.other.w / 2 - n.x) : Math.abs(x.other.y + x.other.h / 2 - n.y);
-  const named = f => { if (pitch(f) === 10) return f; const mid = f.reduce((a, x) => a + far(x), 0) / f.length;
+  const named = f => { const mid = f.reduce((a, x) => a + far(x), 0) / f.length;
     return f.sort((a, b) => far(a) - far(b) || (far(a) <= mid ? deep(b) - deep(a) : deep(a) - deep(b))); };
   groups.forEach(g => { g.faces = [g.ends.filter(x => !x.inner).sort(byFar), named(g.ends.filter(x => x.inner).sort(byFar))];
     g.at = g.ends.reduce((a, x) => a + far(x), 0) / g.ends.length; g.need = g.port == null ? 2 : 2 + Math.max(...g.faces.map(f => pitch(f) * f.length));

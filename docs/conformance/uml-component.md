@@ -68,9 +68,8 @@ Layout limits, measured on `examples/bookshop-components.json` and `tests/compon
   side's free span, marked `over`, and `check()` reports them overlapping (15 pairs); ten on one side of a node: the node
   grows and every port fits. A port with no line and a 40-character name: the name is drawn whole, but on a crowded side
   the end labels' search may place it far from its port (L5). Its generated `all` view (50 elements, 60 lines, 54 ports
-  in boxes three deep): 126 crossings right and 128 down. Laid out right: two pairs of lines sharing a line, two box
-  headers crossed, a ball's name under a port (`check()`: nodes "Api0" and "in" overlap), and a port's name over lines
-  in eight cases and over a sibling component in one (`c0.b` over `c4`), since the layout keeps no room for names (§4.3).
+  in boxes three deep): 116 crossings right and 128 down. Laid out right: a port's name over a node in six cases (`c0.b`
+  over `c4`, `u1`, `u9` and `u14`; `c21.b` over `r8` and `r9`), since the layout keeps no room for names (§4.3).
   Laid out down: one pair of lines sharing a line and one line along a box's border. These are stated limits, not §13's
   "no overlap, no line along a box's border, no port name over a node or a line".
 - Found in 5.8 (`tests/stage5.html`): in the browser under a font wider than the layout's estimate (the page's monospace
