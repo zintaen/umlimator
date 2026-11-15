@@ -200,6 +200,11 @@ m, un, dt = quick("plantuml", "@startuml\nPerson(a, x" + " " * 100000 + "y)\n@en
 ok("hostile · a C4 macro argument of 100000 spaces reads in linear time", card(m, "a")["label"].split() == ["x", "y"] and dt < 2, dt)
 # audit 3: a subgraph label's \s* (.*?) \s* backtracked cubically; a ; split by a lookahead, a .-close retried along a run of
 # dots and a lazy /* */ in detect() were quadratic; a DSL element's id grew with its depth
+# audit 11: each node's missing closer searched the rest of the line again; a statement remembers its misses (as mfStatement)
+m, _, dt = quick("mermaid", "flowchart TD\n" + " --> ".join(f"A{k}[/x/]" for k in range(64000)))
+m2, _, dt2 = quick("mermaid", "flowchart TD\n" + "& ".join(f"A{k}(((x) " for k in range(72000)) + " --> Z")
+ok("hostile · a 1 MB line of [/x/] nodes, or of (((x) nodes, with no closer reads in linear time",
+   len(m["nodes"]) == 64000 and len(m2["nodes"]) == 72001 and dt < 8 and dt2 < 8, (dt, dt2))
 _, un, dt = quick("mermaid", "flowchart\nsubgraph a[" + " " * 100000 + "x\nend")
 ok("hostile · a subgraph's unclosed [ and 100000 spaces read in linear time", dt < 1, dt)
 _, _, dt = quick("mermaid", "flowchart\na -- " + "." * 1000000 + "x")

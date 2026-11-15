@@ -446,3 +446,10 @@ test('audit 8: a character XML 1.0 cannot hold (U+000B, a control character, a l
   assert.doesNotMatch(w.xml, /[^\t\n\r\x20-퟿-�\u{10000}-\u{10FFFF}]/u);
   assert.deepEqual(w.report.map(r => `${r.line} ${r.status}`), ['t weakened', 'a\u0001b weakened']);
 });
+
+test('a blank id is said: the reader reads a blank umlimator:id as none (audit 11)', needs, async () => {
+  const m = { schemaVersion: 2, root: 'v', nodes: [{ id: ' ', type: 'bpmn.Task', label: 'T' }, { id: 'e', type: 'bpmn.EndEvent' }],
+    edges: [{ id: 'f', type: 'bpmn.SequenceFlow', from: ' ', to: 'e' }], views: [{ id: 'v', diagram: 'bpmn', nodeIds: [' ', 'e'] }] };
+  const [w] = await roundTrip(m);
+  assert.deepEqual(w.report.map(x => `${x.line}: ${x.message}`), [' : a blank id, which a reader reads as none: not written']);
+});

@@ -348,7 +348,7 @@ function writeMermaidSequence(model, viewId) { // it never throws: what a host b
 
 function msWrite(model, viewId) {
   const m = model && typeof model === 'object' ? model : {}, arr = x => (Array.isArray(x) ? x : []), isObj = x => !!x && typeof x === 'object';
-  const flat = s => String(s).replace(/\r\n|\r|\n/g, '\\n'), nl = s => /[\r\n]/.test(String(s)), has = x => x != null && x !== '';
+  const flat = s => String(s).replace(/\r\n|\r|\n/g, '\\n'), nl = s => /[\r\n]/.test(String(s)), badId = id => nl(id) || String(id).trim() !== String(id), has = x => x != null && x !== '';
   const views = arr(m.views).filter(isObj);
   const view = viewId != null ? views.find(v => v.id === viewId) : views.find(v => v.diagram === 'uml.sequence');
   if (viewId != null && !view) return `%% not written: view ${flat(viewId)}, which the model does not have\n`;
@@ -361,20 +361,20 @@ function msWrite(model, viewId) {
   const out = [], notWritten = [], skip = x => notWritten.push(`${flat(x.id)} (${flat(x.type)})`), lose = (id, what) => notWritten.push(`${flat(id)}: ${flat(what)}`);
   const title = has(view.title) ? view.title : m.title;
   if (has(title)) out.push('---', `title: ${/^[\p{L}\p{N}][\p{L}\p{N} _.,()-]*$/u.test(title) && !title.endsWith(' ') ? title : JSON.stringify(String(title))}`, '---');
-  if (view.id !== MS_VIEW) { if (nl(view.id)) lose(view.id, "the view's id, which has a line break"); else out.push(`%% id: ${view.id}`); }
+  if (view.id !== MS_VIEW) { if (badId(view.id)) lose(view.id, "the view's id, which a hint cannot carry"); else out.push(`%% id: ${view.id}`); }
   out.push('sequenceDiagram');
 
   // what is written: lifelines, occurrences (messages and uses) and fragments of the view
   const byId = new Map(arr(m.nodes).filter(isObj).map(n => [n.id, n]));
   const lifes = [];
-  for (const id of arr(view.nodeIds)) { const n = byId.get(id); if (!n) continue; if (n.type === 'uml.Lifeline' && !nl(n.id)) lifes.push(n); else skip(n); }
+  for (const id of arr(view.nodeIds)) { const n = byId.get(id); if (!n) continue; if (n.type === 'uml.Lifeline' && !badId(n.id)) lifes.push(n); else skip(n); }
   const isLife = new Set(lifes.map(n => n.id));
   const edgeById = new Map();
   for (const x of arr(m.edges)) if (isObj(x) && !edgeById.has(x.id)) edgeById.set(x.id, x);
   const edgeOf = e => (typeof e === 'string' ? edgeById.get(e) : e);
   const occ = [];
   for (const x of arr(view.edges).map(edgeOf).filter(isObj)) {
-    const ok = !nl(x.id) && (x.type === 'uml.Message' ? isLife.has(x.from) && isLife.has(x.to)
+    const ok = !badId(x.id) && (x.type === 'uml.Message' ? isLife.has(x.from) && isLife.has(x.to)
       : x.type === 'uml.InteractionUse' && arr(x.props?.covers).length > 0 && arr(x.props.covers).every(c => isLife.has(c)) && !nl(x.props.refersTo ?? ''));
     if (ok) occ.push(x); else skip(x);
   }
@@ -382,7 +382,7 @@ function msWrite(model, viewId) {
   const frags = [], opOf = new Map();
   for (const f of arr(view.fragments).filter(isObj)) {
     const ops = arr(f.members).filter(isObj), op = f.props?.operator;
-    if (!MS_OPS.includes(op) || !ops.length || (ops.length > 1 && op !== 'alt' && op !== 'par') || nl(f.id) || ops.some(o => nl(o.id))) { skip(f); ops.forEach(skip); continue; }
+    if (!MS_OPS.includes(op) || !ops.length || (ops.length > 1 && op !== 'alt' && op !== 'par') || badId(f.id) || ops.some(o => badId(o.id))) { skip(f); ops.forEach(skip); continue; }
     if (has(f.label)) lose(f.id, `label ${f.label}`);
     frags.push(f); ops.forEach((o, i) => opOf.set(o.id, { f, i }));
   }
