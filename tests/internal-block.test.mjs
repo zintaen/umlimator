@@ -330,3 +330,10 @@ test('the type ships in lib/umlimator-all.js only (risks.md C5)', () => {
   const all = readFileSync(new URL('../lib/umlimator-all.js', import.meta.url), 'utf8'), core = readFileSync(new URL('../lib/umlimator.js', import.meta.url), 'utf8');
   for (const k of ["registerDiagramType('sysml.internal-block'", 'function SYS_IB_GEO(']) { assert.ok(all.includes(k), k); assert.ok(!core.includes(k), k); }
 });
+
+test('a part typed by the id of a block with no label takes its ports, with no part-type warning (audit 9)', () => {
+  const m = JSON.parse(readFileSync(new URL('./internal-block-minimal.json', import.meta.url), 'utf8'));
+  m.edges = []; delete m.nodes.find(n => n.id === 'battery').label; m.nodes[0].members[0].props.valueType = 'battery';
+  assert.deepEqual(validate(m), []);
+  assert.ok(layout(m, 'v').nodes.some(n => String(n.id).includes('out')));
+});

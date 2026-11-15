@@ -65,7 +65,7 @@ Measured on `examples/returns-flowchart.json` (0.24.0); the PDF's text read back
 | Text | Text, in the page's font family; not embedded unless `fontCSS` is given | Pixels | Selectable text |
 | Accessible names | Each node's `aria-label` kept; the lines' `<title>` removed | None | None |
 | Tables | None | None | "Elements": each node's symbol name. "Lines": each flow's label; a decision's exit with no label says so (the type's `text`) |
-| Mermaid flowchart (`writeMermaidFlowchart`) | | | Each symbol in Mermaid's `@{ shape: … }` form, flows and their labels, ids in `%% id:` comments |
+| Mermaid flowchart (`writeMermaidFlowchart`) | | | Each symbol in Mermaid's bracket form, or `@{ shape: … }` for the document, manual input and delay (the shapes with no bracket form); flows and their labels, ids in `%% id:` comments |
 
 ## Accessibility
 
