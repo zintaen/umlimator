@@ -18,12 +18,17 @@ user's request. What was asked, and what the tool does:
 
 | Asked | Done |
 |---|---|
-| Never bundled | No AWS icon in the repository, the npm package, a release, the gallery, the stills, the site or CI (CI tests a synthetic pack, `tests/packs.py`) |
+| Never bundled | No AWS icon in the repository, the npm package, a release, the committed gallery and stills or CI's tests (CI tests a synthetic pack, `tests/packs.py`). The site: see below |
 | Downloaded only when the user asks, from the pinned official address, checked by SHA-256 | `umlimator.py pack fetch aws` only; `icons/packs.json`'s `aws` row pins AWS's `Icon-package_07312026` zip by address, size (13,988,918 bytes) and SHA-256 (`d2d166c4…dc6526`). A render, `check`, `stills`, `pdf`, the MCP server and the module never download it |
 | AWS's terms shown and a yes first | The row's terms, then the not-affiliated line, before any byte; a yes typed at a terminal, or `--accept-terms aws@2026-07-31` given by the user who read them |
 | Cached on the user's machine | `<icon cache>/packs/aws/2026-07-31/` (`~/.cache/umlimator/icons`, or `$UMLIMATOR_ICON_CACHE`) |
 | Icons unmodified, the service name beside each | Each icon through `<image>`, scaled with `meet`, never clipped, filtered, masked, faded or transformed; the full service name under the label on its card and in the legend |
 | A not-affiliated line and AWS's trademark line | The line above, in the terms prompt, `pack list` and the docs; under any picture that draws an AWS icon, inside its bounds, and at the end of its legend and `describe()`: "Amazon Web Services, AWS and the AWS service icons shown are trademarks of Amazon.com, Inc. or its affiliates." |
+
+On 16 Nov 2026, the maintainer reports, AWS agreed to its icons on this project's own GitHub Pages site. Since then the
+site's build fetches the pack with `--accept-terms aws@2026-07-31`, as a user would, so the AWS example there shows the
+real icons with the trademark line and the not-affiliated line; the table above (14 Nov 2026) is kept as it was answered,
+and every other output in its first row stays icon-free (`docs/diagrams/notes/milestone-4a.md` §16).
 
 ## The subset
 
@@ -47,7 +52,8 @@ Rules: `group-kind`, `line-inside` (errors); `group-nesting`, `icon-set`, `icon-
 |---|---|
 | The page, SVG and PNG | The icons the host gave (the CLI: the fetched pack) and the trademark line; without the pack, glyphs and full names |
 | The PDF | The same, and the tables: a service's full name, icon id and group |
-| This project's examples, gallery and atlas | Glyphs only: they are rendered with `UMLIMATOR_NO_PACKS=1` |
+| This project's committed examples, gallery and atlas | Glyphs only: they are rendered with `UMLIMATOR_NO_PACKS=1` |
+| The GitHub Pages site (since 16 Nov 2026) | The real icons and the trademark line: its build fetches the pack |
 
 ## Left out
 
