@@ -5080,3 +5080,96 @@ draws differently and `bench/expected.json` is unchanged. What changes for calle
   (the prototype-free type tables). `lib/umlimator-all.js` is 615.0 kB (614,975 B), up 1,733 B, most of it #350; the
   npm package is 887.3 kB (`npm pack --dry-run`). There is no core size cap until 1.0.0 (the maintainer's decision of 15
   Nov 2026): sizes are reported each release and a budget is set at 1.0.0.
+
+## 0.38.0: fixes from the eleventh audit
+
+The eleventh audit confirmed 23 findings. All 23 are fixed in this release, in five pull requests (#353 to #357), each
+with a test that fails without its fix, except one that changes only a comment (the requirement reader's header). No map
+or example draws differently and `bench/expected.json` is unchanged; only the keyboard focus ring looks different. What
+changes for callers:
+
+- **Core (#357).** `diff()` now says when a view hides or shows a model line that has no id ("takes the line from A to B
+  (pays) out of the view v", "puts ..."), lists that view, and returns the line in the view's edges marked removed;
+  before, it keyed lines by id only and said nothing. A map line from a box to a card or box inside it (at any depth)
+  was never drawn; it is now also left out of `describe()`, `rules()`, `paths()`, lenses, the PDF tables and layout
+  planning, so they agree with the picture, and **`validate()` warns about it**: `joins the box "payments" and "db",
+  which it holds: not drawn in view "main"` (path `edges[i]`; for a view's own list, path `views[i].edges[j]` and no
+  view name). `layout()` still sends the same `console.warn` (#28), now from context.js; `check()` stays geometry only;
+  typed views are not affected. Delete now clears a positional line name (`x->y#n`) that no longer exists from story
+  steps, lenses and rules, as it clears an id, and **`validate()` warns when a step's `select` or `highlight` names
+  `x->y#n` and no line has that name** ("names no line: the step shows nothing for it"). It is a warning, so a model
+  that validated still validates; `->` names without `#n` (a typed view's geometry ids such as `owner->child`) are
+  accepted as before. The keyboard focus ring on lines and typed elements (`.line-key:focus-visible .key-ring`) goes
+  from stroke-opacity .55 to .8: 3.59:1 on the light stage, 3.66:1 on a white card and 4.5:1 on the dark stage, at least
+  WCAG 1.4.11's 3:1 (it was 2.33:1 and 2.63:1).
+- **UML types and mindmap (#354).** Composite structure `connect()` refuses a connector from a part or box to itself:
+  two ports of one part, two ports of the subject, or both ends on one box get "A connector joins two parts or ports of
+  two elements: no line runs from a part or a box to itself". SysML internal block and parametric views share that hook,
+  so they refuse the same. `member-names` now judges only classifiers (class, interface, enumeration, data type,
+  primitive type, stereotype) and instance specifications, and skips members with no name; this holds for the object,
+  package and profile types too. **It no longer checks a component or any other non-classifier owner**, so two
+  same-named ports on a component, or two unnamed regions of a state, are no longer reported by it. In a composite view
+  with no `edges` list, `connector-part` now warns of a connector whose unnamed end's port belongs to a type of a part
+  of the subject. Ports on a collaboration's roles stay supported and are now checked: `connector-scope` places a role
+  end in its collaboration, and `connector-part` (its description now "an end's part is a part of the subject or a role
+  of a collaboration shown, and the end is a port of that part's type") accepts a role of a shown open collaboration;
+  docs/conformance/uml-composite-structure.md is corrected. Mindmap: Alt + the arrow towards the root puts the topic
+  before its old parent's next sibling when `nodeIds` is not in pre-order (it went after the parent's later siblings).
+- **BPMN, flowchart and conformance notes (#353).** The BPMN PDF Elements table lists a pool's lanes, in lane order,
+  after the pool's documentation, each as "label — documentation" when the lane has documentation (a documented pool
+  lost its lanes, and lane documentation was printed nowhere). Delete of a lane with a sequence flow selected now
+  deletes: the line is skipped on a view with no edges list, as the canvas's own Delete does, with the hint "Shift +
+  Delete deletes the line" (before, `apply()` refused the hide and nothing was deleted). A boundary event's
+  `present.<id>.side` named for an `Object.prototype` key is ignored as an unknown value is. The JSON schema's
+  `view.direction` text reads "(default right; down for a flowchart)", as the layout does. The information flow note no
+  longer calls information items supported flow ends; the component, deployment and composite structure notes list
+  `own-boxes`.
+- **Readers and writers (#356).** The Python map importer's Mermaid flowchart reader is linear on a long line of nodes
+  with no closer (a 1 MB line read in 26 to 62 s, now about 1 to 2 s). The Mermaid class writer reports, and does not
+  write, an empty stereotype, one ending in `>`, or one with a space at either end; it reports a value, return or
+  parameter type with a space at either end (`type …, read back trimmed`), still written. The class and sequence writers
+  skip and report an id with a space or tab at either end (view, class, note, member, relation and link ids; view,
+  lifeline, message, use, fragment and operand ids), as the state and flowchart writers do; their report for a view id
+  reads "which a hint cannot carry" (was "which has a line break"). `writeBpmnXml` reports a blank id ("a blank id,
+  which a reader reads as none"). The requirement reader's header names the copy-text exception.
+- **CLI and MCP (#355).** `diff` (both files), `drift`, `trace`, `export` and the MCP `diff` tool's `other_model_path`
+  refuse a model `render` refuses, naming the file at fault; `diff --base` checks each version under its own name ("its
+  version at REF: ...", "it: ..."). The MCP `highlight` with no view picks a view that has the line for a `from->to#n`
+  name, the card of a chip or badge, and a box Ref's container. `diff --base`'s "No picture" line writes view ids
+  through the same flattening as the rest of the summary, so `@name`, `#42` and `<!--` mention, link and hide nothing.
+  `trace --view ''` exits with "trace: --view needs a view id" before writing.
+- **Known gaps.** Still open from 0.37.0 (checked on main: the JavaScript Mermaid readers still decode `#55296;` to a
+  lone surrogate, a typed view still gets no "listed twice" warning for `view.edges`, `validate()` still says nothing of
+  a non-string `source` entry, 21 of the 30 typed examples still do not set `"$schema"`): a box has no Tab stop; the
+  keyboard reaches it through the outline. A double-click (or Enter) on a box does not open its view (the 0.24.0 gap).
+  Deep nesting is super-linear outside the core. A composite structure or SysML internal block view's Lines rows name a
+  part by its id, not its drawn name. The requirement layout leaves out a link into a box nested more than 64 deep from
+  its ranking. Typed hooks that answer Alt+arrows themselves were not checked on views laid out down. `reach()` from a
+  model id that the view draws under another id returns only that element. A negative step duration plays 500 ms while
+  `validate()`'s warning says 4000 ms. Mermaid C4 macro arguments keep entity codes as written. `describe()` of an
+  inline interaction does not say it opens a view. Room for a label in a turned view is still mostly along the line. The
+  map flowchart and Structurizr DSL readers turn a U+2028 inside a label into a space. The unfolded call behaviour box
+  is a plain container frame. A page rendered before 0.33.0 with a numeric view id, before 0.36.0 with a numeric card
+  id, or before 0.37.0 with a view with no id, still ends in a traceback in `stills`. Three or more delegations from one
+  port into a grid of parts may still cross; this needs a routing change. Other files in src/bpmn may still key plain
+  objects by id (process.js was checked, and #353 took the prototype off `BZ_PIN`, `BZ_NAME`, `BZ_TURN` and `BZ_V`). The
+  typed Mermaid reader's quote join skips `%%` comment lines but not the body of a multi-line `%%{ }%%` directive. The
+  PDF tables read an open package's qualified name off its drawn title, and only when the title ends in `::` and its
+  label. No example reaches the C4 views lift branch or src/sysml/sysml.js's frame branch, so the prototype sweep does
+  not check their `byId`; only `select()` has a browser test of its own among Find and the panel links. The double-click
+  tests send synthetic events. The SysML block definition view has no own list of line kinds, so it draws every kind.
+  The SysML tables `RQ_REL` and `BD_ORDER` are still plain objects (`SYS_IB_PROP`, `SYS_PAR_PROP` and `SYS_PAR_SUBJ`
+  have no prototype). When two operands of one `alt` each create a lifeline, the second create arrow lands on the stem
+  below the single head. `printDoc`'s rules section and `rules()` still count a typed view's hand-written containers as
+  boxes a rule can name. An MCP page tool on a model that has never rendered still says it cannot read the model. New:
+  when a delete removes some of several id-less lines with the same ends, the names of the lines left can shift; a name
+  that now points at a different line is not caught (only names that no longer exist are cleared). `validate()` still
+  accepts a positional name (docs/diagrams/risks.md F9), and warns only when it names no line. `diff()` numbers id-less
+  lines among id-less lines only, where Ref names count every line with the same ends; the keys never leave `diff()`.
+  The profile, package and SysML block definition conformance notes point to the class or package note for the shared
+  class rules instead of naming each one.
+- **Size:** `lib/umlimator.js`, what a map host loads, is 197.6 kB (197,612 B) with `gzip -9`, 19.80% over 0.16.0's
+  164,954 B, up 1,100 B from 0.37.0, all of it #357 (the line keys in `diff()`, `boxHolds()`, the line names and the two
+  new warnings). `lib/umlimator-all.js` is 617.1 kB (617,094 B), up 2,119 B: #357 1,099 B, #354 479 B, #353 309 B and
+  #356 232 B; the npm package is 890.5 kB (`npm pack --dry-run`). There is no core size cap until 1.0.0 (the
+  maintainer's decision of 15 Nov 2026): sizes are reported each release and a budget is set at 1.0.0.
