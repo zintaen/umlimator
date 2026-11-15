@@ -152,7 +152,7 @@ function SYS_PAR_PROBLEMS(model, view) {
         say('error', 'binding-ends', `${path}.${k}`, [e.id, x], `${e.id}'s ${k} end ${q(x)} is not a value property or a parameter of ${q(S.id)}: a binding joins those, or a parameter through a constraint property`); } });
     const [ta, tb] = ['from', 'to'].map(k => SYS_PAR_PROPS(I.el(e[k])).valueType).map(t => (SYS_PAR_HAS(t) ? named.get(t) : null));
     if (ok && ta && tb && ta !== tb && !ups(ta).has(tb) && !ups(tb).has(ta))
-      say('warning', 'binding-types', path, [e.id, e.from, e.to], `${e.id} binds ${q(e.from)} of type ${ta.label} to ${q(e.to)} of type ${tb.label}: the two ends' types are equal, or one specializes the other`); });
+      say('warning', 'binding-types', path, [e.id, e.from, e.to], `${e.id} binds ${q(e.from)} of type ${SYS_PAR_NAME(ta)} to ${q(e.to)} of type ${SYS_PAR_NAME(tb)}: the two ends' types are equal, or one specializes the other`); });
   const nodeAt = n => SYS_PAR_ARR(model.nodes).indexOf(n);
   SYS_PAR_SHOWN(I).filter(m => m.type === 'sysml.ConstraintProperty').forEach(m => { const B = I.block(m);
     I.params(B).forEach(x => { if (!bound.has(`${m.id}|${x.id}`)) say('warning', 'parameter-bound', `nodes[${nodeAt(B)}].members[${B.members.indexOf(x)}]`, [x.id, m.id],

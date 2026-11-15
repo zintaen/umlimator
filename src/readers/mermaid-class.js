@@ -43,6 +43,8 @@
 const MC_LIMIT = 1 << 20; // characters; a class diagram a person writes is a few kilobytes
 const MC_DOTS = 32; // a dotted namespace name's parts: each is a namespace whose id is its path, so a name of n parts costs n * n (R2)
 const mcTable = o => Object.assign(Object.create(null), o); // a lookup table: "constructor" or "__proto__" finds nothing in it
+// the words the reader dispatches on at a line's start: a class so named is written in backticks
+const MC_KEYWORDS = new Set(['note', 'class', 'classDef', 'cssClass', 'direction', 'namespace', 'style', 'click', 'link', 'callback', 'accTitle', 'accDescr']);
 const MC_VIS = mcTable({ '+': 'public', '-': 'private', '#': 'protected', '~': 'package' });
 const MC_TYPES = mcTable({ interface: 'uml.Interface', enumeration: 'uml.Enumeration', enum: 'uml.Enumeration', datatype: 'uml.DataType', primitive: 'uml.PrimitiveType', primitivetype: 'uml.PrimitiveType' });
 const MC_VIEW = 'class-diagram'; // the view's id when the source does not name it
@@ -497,7 +499,8 @@ function writeMermaidClass(model, viewId) {
   const ARROW = mcTable({ 'uml.Generalization': '--|>', 'uml.InterfaceRealization': '..|>', 'uml.Dependency': '..>' });
   const has = x => x != null && x !== '', gen = s => String(s).replace(/[<>]/g, '~');
   const enc = s => String(s).replace(/[#\\]/g, c => (c === '#' ? '#35;' : '#92;')).replace(/"/g, '#quot;').replace(/</g, '#lt;').replace(/>/g, '#gt;').replace(/\n/g, '<br>');
-  const name = id => (/^[\p{L}\p{N}_]+(-[\p{L}\p{N}_]+)*$/u.test(id) ? id : '`' + id + '`');
+  // a statement keyword in backticks too: the reader takes a line's first word as one (`note -- Order` is a note)
+  const name = id => (/^[\p{L}\p{N}_]+(-[\p{L}\p{N}_]+)*$/u.test(id) && !MC_KEYWORDS.has(id) ? id : '`' + id + '`');
   // what Mermaid cannot carry: an element, as `<id> (<type>)`, or one property of one, as `<id>: <what>`
   const out = [], notWritten = [], skip = x => notWritten.push(`${flat(x.id)} (${flat(x.type)})`), lose = (id, what) => notWritten.push(`${flat(id)}: ${flat(what)}`);
   const title = view && has(view.title) ? view.title : m.title;
