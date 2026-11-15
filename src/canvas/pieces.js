@@ -99,10 +99,11 @@ function pieces(X, el, o) {
 
   /* the details panel: header, actions and tabs of the selected card */
   function relRows(list, dir) {
-    const { N } = X().ctx(), at = X().geo().byId || {};
+    const { N } = X().ctx(), here = X().geo().byId || {};
     if (!list.length) return `<div class="rel-none">${dir === 'up' ? 'Nothing calls this here' : 'Calls nothing here'}</div>`;
-    return '<ul class="relation-list">' + list.map(({ e, id, inView }) => { const o = N[id] || at[id] || { label: id, kind: '' }, k = kindOf(o.kind, true);
-      return `<li><button class="rel" data-n="${esc(id)}" title="${esc((e.when ? e.when + ' — ' : '') + (inView ? 'Select' : 'Find in another view'))}"><i style="background:var(--um-${KIND[k][0]})"></i><span class="rel-l">${esc(o.label)}</span>
+    return '<ul class="relation-list">' + list.map(({ e, id, inView, view }) => { const at = view ? X().geoOf(view).byId : here, o = N[id] || at[id] || { label: id, kind: '' }, k = kindOf(o.kind, true);
+      const up = !N[id] && o.owner != null && (N[o.owner] || at[o.owner]), label = up ? `${o.label} of ${String(up.label).split(" : ")[0]}` : o.label; // a port or a parameter: of its part, as it is announced
+      return `<li><button class="rel" data-n="${esc(id)}"${view ? ` data-v="${esc(view)}"` : ''} title="${esc((e.when ? e.when + ' — ' : '') + (inView ? 'Select' : 'Find in another view'))}"><i style="background:var(--um-${KIND[k][0]})"></i><span class="rel-l">${esc(label)}</span>
         <span class="rel-e">${e.step != null ? esc(e.step) + ' · ' : ''}${esc(e.label || '')}${inView ? '' : ' ↗'}</span></button></li>`; }).join('') + '</ul>';
   }
   // a model is data: a link it names is http(s), mailto, file or relative, never javascript: (audit 7). Cleaned as a browser
@@ -112,7 +113,7 @@ function pieces(X, el, o) {
     return `<a class="author" href="${esc(safeUrl(A.url) || 'https://github.com/' + login)}" target="_blank" rel="noopener">${A.avatar ? `<img src="${esc(A.avatar)}" alt="">` : `<i>${esc([...login].slice(0, 2).join('').toUpperCase())}</i>`}<span>${esc(A.name || login)} <b>@${esc(login)}</b></span></a>`; };
   const focused = () => { const a = el.panel.getRootNode().activeElement; return a && el.panel.contains(a) ? a : null; };
   function show(nid) {
-    const { D, N, V, nodeIn, opensOf, kidCount, unfoldable, viewsWith, viewEdges } = X().ctx(), geo = X().geo(), cur = X().view(), panel = el.panel;
+    const { D, N, V, views, nodeIn, opensOf, kidCount, unfoldable, viewsWith, viewEdges } = X().ctx(), geo = X().geo(), cur = X().view(), panel = el.panel;
     const root = D.meta && D.meta.root ? String(D.meta.root).replace(/\/$/, '') : '';
     const base = D.sourcesBase ? String(D.sourcesBase).replace(/\/$/, '') + '/' : '';
     const srcPath = p => p.replace(/:\d+(-\d+)?$/, '');
@@ -132,14 +133,21 @@ function pieces(X, el, o) {
     // a part or a port is no card: its drawn name and type, so its kind word, never the map's "Script INTERNAL" (audit 12)
     const n = N[nid] || !geo.byId?.[nid] ? nodeIn(nid, cur) : { ...geo.byId[nid] }, ty = n.type && wordOf(D, V[cur], nid, n.type), k = kindOf(n.kind, true), c = `var(--um-${KIND[k][0]})`, pub = k === 'm-public', ext = k === 'm-ext';
     const inView = new Set(geo.nodes.map(x => x.id)), seen = new Set();
+    // a typed view draws a member end (a port of a part, a constraint's parameter) as "<part>-><end>": the end's id in geometry g
+    const drawnIn = (e, side, g) => { const p = (((e.props || {}).ends || {})[side] || {}).part, d = `${p}->${e[side]}`; return p != null && g.byId && g.byId[d] ? d : e[side]; };
+    const elsewhere = (e, side) => { for (const v of views.filter(x => x.diagram && x.id !== cur)) { // ponytail: lays out each typed view once (pic's cache), on the first such end
+      let g; try { g = X().geoOf(v.id); } catch { continue; } const d = drawnIn(e, side, g); if (g.byId && g.byId[d]) return { id: d, view: v.id }; } return null; };
     const collect = dir => {
       const out = [];
       // one entry a line: by its ends and label, and by its model id (a typed view draws a line with its own label: a C4 technology, «use»)
-      const add = (e, id, iv, mid) => { const key = dir + id + (e.label || ''), mk = mid != null && dir + '#' + mid; if (seen.has(key) || mk && seen.has(mk)) return; seen.add(key); if (mk) seen.add(mk); out.push({ e, id, inView: iv }); };
+      const add = (e, id, iv, mid, view) => { const key = dir + id + (e.label || ''), mk = mid != null && dir + '#' + mid; if (seen.has(key) || mk && seen.has(mk)) return; seen.add(key); if (mk) seen.add(mk); out.push({ e, id, inView: iv, view }); };
       geo.edges.forEach(e => { const all = (e.all || [e]).filter(x => x._id), mid = all.length === 1 ? all[0]._id : null; // a line for several edges: by label, as before
-        if (dir === 'up' && e.to === nid) add(e, e.from, true, mid); if (dir === 'down' && e.from === nid) add(e, e.to, true, mid); });
+        const f = e.fromPort || e.from, t = e.toPort || e.to; // a line between ports: its ends are the ports
+        if (dir === 'up' && (e.to === nid || e.toPort === nid)) add(e, f, true, mid); if (dir === 'down' && (e.from === nid || e.fromPort === nid)) add(e, t, true, mid); });
       viewEdges(V[cur]).forEach((e, i) => { const e2 = V[cur].render === 'sequence' ? { ...e, step: i + 1 } : e; if (dir === 'up' && e.to === nid) add(e2, e.from, true, e.id); if (dir === 'down' && e.from === nid) add(e2, e.to, true, e.id); });
-      (D.edges || []).forEach(e => { if (dir === 'up' && e.to === nid) add(e, e.from, inView.has(e.from), e.id); if (dir === 'down' && e.from === nid) add(e, e.to, inView.has(e.to), e.id); });
+      const [near, far] = dir === 'up' ? ['to', 'from'] : ['from', 'to'];
+      (D.edges || []).forEach(e => { if (e[near] !== nid && drawnIn(e, near, geo) !== nid) return;
+        const id = drawnIn(e, far, geo), w = !inView.has(id) && !N[id] && elsewhere(e, far); add(e, w ? w.id : id, inView.has(id), e.id, w && w.view); });
       return out;
     };
     const ups = collect('up'), downs = collect('down'), srcs = srcList(n);
@@ -242,8 +250,9 @@ function pieces(X, el, o) {
       { nodes: { [sel]: { tone: 'rose', badge: { text: 'down', tone: 'rose' } } } });
   }
   // a card: selected here, or shown in the view that has it, nearest this one first
-  const find = nid => { const { viewsWith, chain } = X().ctx(), cur = X().view(); if (X().geo().byId[nid] || X().boxHere(nid)) return X().go(cur, { select: nid }); // a card, or an element drawn here as a box
-    const vs = viewsWith(nid), v = vs.find(x => chain(x.id).includes(cur)) || vs[0]; return v ? X().go(v.id, { select: nid }) : false; };
+  const find = (nid, vid) => { const { viewsWith, chain } = X().ctx(), cur = X().view(); if (X().geo().byId[nid] || X().boxHere(nid)) return X().go(cur, { select: nid }); // a card, or an element drawn here as a box
+    const vs = viewsWith(nid), v = vid || (vs.find(x => chain(x.id).includes(cur)) || vs[0] || {}).id; // vid: the view the panel found it drawn in
+    if (v) return X().go(v, { select: nid }); o.status(`${nid} is drawn in no view`); return false; };
 
   if (el.legend) el.legend.addEventListener('click', e => { if (!e.target.closest('#m-lfold')) return;
     folded = !folded; keep('visual-legend', folded ? '0' : '1'); legend(); if (!X().cam().touched) X().cam().set(X().startView()); });
@@ -259,7 +268,7 @@ function pieces(X, el, o) {
     const ob = t.closest('[data-open]'); if (ob) return X().open(ob.dataset.open); // the open event first, as a double-click on the card
     const ub = t.closest('[data-unfold]'); if (ub) return X().unfold(ub.dataset.unfold); // in place (#71), the expand event first
     const pv = t.closest('.pview'); if (pv) return X().go(pv.dataset.v, { select: pv.dataset.sel });
-    const rn = t.closest('[data-n]'); if (rn) return find(rn.dataset.n);
+    const rn = t.closest('[data-n]'); if (rn) return find(rn.dataset.n, rn.dataset.v);
     const cp = t.closest('[data-copy]'); if (cp) navigator.clipboard && navigator.clipboard.writeText(cp.dataset.copy).then(() => o.status('Path copied'), () => o.status(cp.dataset.copy));
   });
 

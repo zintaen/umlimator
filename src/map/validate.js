@@ -1,4 +1,4 @@
-import { lineNames, typedProblems, versionProblem } from '../core/model.js';
+import { lineNames, listOf, typedProblems, versionProblem } from '../core/model.js';
 import { TYPED, diagramOf } from '../core/registry.js';
 import { SHAPE_NAMES, shapeOf } from '../draw/shapes.js';
 import { boxHolds, mapContext } from './context.js';
@@ -144,7 +144,7 @@ export function validate(model) {
       const p = `${at}.steps[${j}]`, v = views.find(x => x.id === (st && st.view));
       if (!v) return err(p + '.view', `"${st && st.view}" is not a view`);
       const mine = new Set(arr(v.nodeIds)), named = (x, q) => { // a card of the view or a line ("a->b#0" names a line with no id)
-        if (typeof x === 'string' && !mine.has(x) && !lines.has(x)) { if (!x.includes('->')) err(q, `"${x}" is neither one of view "${v.id}"'s cards nor a line`); else if (/#\d+$/.test(x) && !posLines.has(x)) warn(q, `"${x}" names no line: the step shows nothing for it`); }
+        if (typeof x === 'string' && !mine.has(x) && !lines.has(x)) { if (!x.includes('->')) err(q, `"${x}" is neither one of view "${v.id}"'s cards nor a line`); else if (/#\d+$/.test(x) && !posLines.get(listOf(m, m.views.indexOf(v))).has(x)) warn(q, `"${x}" names no line: the step shows nothing for it`); }
         else if (x && typeof x === 'object') [x.type !== 'container' && x.id, x.node, ...arr(x.ids)].forEach(y => typeof y === 'string' && named(y, q)); }; // a Ref
       named(st.select, p + '.select');
       arr(st.highlight).forEach((x, k) => named(x, `${p}.highlight[${k}]`));

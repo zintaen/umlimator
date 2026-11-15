@@ -6,7 +6,7 @@ import { warn } from '../core/warn.js';
 import { kindOf } from '../map/kinds.js';
 import { TYPED, idTable } from '../core/registry.js';
 
-const CHG = { added: ['green', 'NEW'], new: ['green', 'NEW'], modified: ['amber', 'CHANGED'], changed: ['amber', 'CHANGED'], removed: ['rose', 'REMOVED'], planned: ['cyan', 'PLANNED'] };
+const CHG = Object.assign(Object.create(null), { added: ['green', 'NEW'], new: ['green', 'NEW'], modified: ['amber', 'CHANGED'], changed: ['amber', 'CHANGED'], removed: ['rose', 'REMOVED'], planned: ['cyan', 'PLANNED'] }); // no prototype: a change named constructor is none
 const NW = 168, CG0 = 84, RG0 = 44;
 const pillW = (label, sub, max = 440) => Math.max(sansW(fit(label, 10.5, max), 10.5, .92), sub ? sansW(fit(sub, 9.5, max), 9.5, .92) : 0) + 18; // a line's label, and its sublabel under it (#44)
 const stepW = s => String(s).length > 1 ? Math.max(20, sansW(String(s), 9.5, .9) + 8) : 16; // a line's step mark: a 16 px circle, or a pill for 2a, 12 or 4.1 (#82)
