@@ -573,7 +573,7 @@ typed canvas's (1.7) with the type's hooks, and every one goes through `apply()`
 
 The icons a cloud view draws come from the host's `icons` table (`<pack>/<id>`), never from the module: the CLI builds it
 from a pack the user fetched after reading the vendor's terms (`python3 umlimator.py pack fetch gcp`, `pack fetch azure`,
-`pack fetch aws`, `pack list`; README's Icons section). Without it a card draws a glyph with the service's full name.
+`pack fetch aws`, `pack list`; the guide's [Icons and icon packs](guide/icon-packs.md)). Without it a card draws a glyph with the service's full name.
 
 ## BPMN's gestures (0.27.0)
 

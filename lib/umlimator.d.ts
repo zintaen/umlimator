@@ -1,6 +1,6 @@
 // Types for lib/umlimator.js (hand-written; the module is plain JavaScript). docs/module-api.md explains the API.
 
-/** A map model: engine/references/schema.md § Map model, plus the README's umlimator fields. Never mutated. */
+/** A map model: engine/references/schema.md § Map model, plus the umlimator fields in docs/guide/model.md. Never mutated. */
 export interface MapModel {
   /** 1 (or none): a map, read as always. 2: it may hold typed elements and typed views (docs/diagrams/model.md). A newer
    *  version is an error: validate() says so and migrate() throws (0.17.0). */

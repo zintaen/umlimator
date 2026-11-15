@@ -23,7 +23,7 @@ Umlimator is not affiliated with, endorsed by or sponsored by Amazon Web Service
 An icon is drawn only through `<image>` from a `data:image/` URL, with `preserveAspectRatio="xMidYMid meet"`, never cropped,
 filtered, masked, faded or transformed, in screen, print or PDF; any other entry (another address, markup) draws the glyph.
 The module never fetches an icon: the CLI builds the table from a pack the user fetched after reading Google's terms
-(`umlimator.py pack fetch gcp`, the README's Icons section), and a host gives its own the same way.
+(`umlimator.py pack fetch gcp`, the guide's [Icons and icon packs](../guide/icon-packs.md)), and a host gives its own the same way.
 
 Rules (`src/cloud/cloud.js`): errors `group-kind` (the kind is one of the row's) and `line-inside` (no line between a
 group and what it holds: it cannot be drawn, and connecting one is refused); warnings `group-nesting` (a region in a project; a network in a project or a region; a subnetwork in a network; a zone in a region or a subnetwork; `generic` anywhere), `icon-set` (a product has an icon) and `icon-missing` (where the host gave the pack, the product's icon is in it). `umlimator.py check` names an id the pack lacks with its three nearest ids, and an id an alias moved.
