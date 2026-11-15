@@ -171,8 +171,11 @@ function mmEnd(X, id, skip) {
 const mmAfter = (X, V, id, k) => { const i = X.pos.get(id), j = i <= k ? k : k + 1; return j === i ? [] : [{ op: 'move', id, view: V.id, index: j }]; }; // just after what is at k now
 const mmBefore = (X, V, id, b) => { const i = X.pos.get(id), j = i < b ? b - 1 : b; return j === i ? [] : [{ op: 'move', id, view: V.id, index: j }]; };
 const mmSide = (V, id, value) => ({ op: 'set', view: V.id, path: ['present', id, 'side'], value });
-// what the picture shows of the first-level topics' sides, set where no side is given, so a move does not swing the others
-const mmPins = (X, V, g, but) => g.nodes.filter(n => n.depth === 1 && n.id !== but && !X.side(n.id)).map(n => mmSide(V, n.id, n.side));
+// what the picture shows of the first-level topics' sides, set where no side is given, so a move, an add, a hide or a delete
+// does not swing the others (audit 13); but: a topic, or a set of them, left out
+const mmPins = (X, V, g, but) => g.nodes.filter(n => n.depth === 1 && (but instanceof Set ? !but.has(n.id) : n.id !== but) && !X.side(n.id)).map(n => mmSide(V, n.id, n.side));
+// the same for a gesture that has no picture at hand: laid out only when a first-level topic is left to pin
+const mmPinsAt = (model, X, V, at, but = new Set()) => (X.ids.some(id => X.depth.get(id) === 1 && !but.has(id) && !X.side(id)) ? mmPins(X, V, mmGeo(model, V, at), but) : []);
 const mmUnside = (X, V, id) => (MM_OBJ(X.P[id]) && X.P[id].side !== undefined ? [mmSide(V, id, undefined)] : []);
 // T goes under a topic other than the root: its side, if given, goes; a first-level T pins the other branches, as the demote does
 const mmLeave = (X, V, g, T) => [...(T.depth === 1 ? mmPins(X, V, g, T.id) : []), ...mmUnside(X, V, T.id)];
@@ -186,7 +189,7 @@ function mmAdd(model, view, entry, label, at) {
   const X = mmIndex(model, V), text = String(label ?? '').trim(); if (!text) return mmErr('a topic needs its text: type it');
   const p = [...MM_ARR(MM_OBJ(at) && at.sel)].reverse().find(id => X.shown.has(id)) ?? X.roots[0] ?? X.ids[0] ?? null;
   const element = { id: mmNewId(model, text), type: MM_T, label: text, ...(p != null ? { parent: p } : {}) };
-  return [{ op: 'add', element, view: V.id, ...(p != null ? { index: mmEnd(X, p) + 1 } : {}) }];
+  return [...(p != null ? mmPinsAt(model, X, V, at) : []), { op: 'add', element, view: V.id, ...(p != null ? { index: mmEnd(X, p) + 1 } : {}) }];
 }
 
 /* moveTo(model, view, id, at): Alt + arrows ({ by }) or a drop ({ pt }, the dropped topic's centre) */
@@ -246,12 +249,12 @@ function mmRemove(model, view, ids, fromModel) {
   const said = (k, verb) => `${verb} ${top.map(id => mmOne(X.N.get(id))).join(', ')}${k ? ` and ${top.length === 1 ? 'its' : 'their'} ${mmPlural(k, 'subtopic')}` : ''}`;
   if (fromModel) { const all = mmAllKids(X), gone = new Set();
     top.forEach(r => { for (const s = [r]; s.length;) { const k = s.pop(); if (gone.has(k)) continue; gone.add(k); MM_ARR(all.get(k)).forEach(c => s.push(c)); } });
-    return { commands: top.map(id => ({ op: 'delete', id })), say: said(gone.size - top.length, 'Deleted') }; }
+    return { commands: [...mmPinsAt(model, X, V, null, gone), ...top.map(id => ({ op: 'delete', id }))], say: said(gone.size - top.length, 'Deleted') }; }
   const hide = []; top.filter(id => X.shown.has(id)).forEach(r => { for (const s = [r]; s.length;) { const k = s.pop(); hide.push(k); s.push(...X.kids.get(k)); } });
   if (!hide.length) return [];
   // core hide drops present.<id>: a side set again, so Show brings the topic back on it (a hidden topic's side is ignored)
   const side = hide.filter(id => MM_OBJ(X.P[id]) && X.P[id].side !== undefined).map(id => mmSide(V, id, X.P[id].side));
-  return { commands: [...hide.map(id => ({ op: 'hide', id, view: V.id })), ...side], say: `${said(hide.length - top.filter(id => X.shown.has(id)).length, 'Hid')}: the outline's Show, or undo, brings ${hide.length === 1 ? 'it' : 'them'} back` };
+  return { commands: [...mmPinsAt(model, X, V, null, new Set(hide)), ...hide.map(id => ({ op: 'hide', id, view: V.id })), ...side], say: `${said(hide.length - top.filter(id => X.shown.has(id)).length, 'Hid')}: the outline's Show, or undo, brings ${hide.length === 1 ? 'it' : 'them'} back` };
 }
 const mmAllKids = X => { const m = new Map(); X.N.forEach((n, id) => { const p = X.topic(id) && X.parentOf(id); if (p != null) (m.get(p) || m.set(p, []).get(p)).push(id); }); return m; };
 const mmUnder = (X, id, of) => { for (let p = X.parentOf(of), seen = new Set(); p != null && !seen.has(p); seen.add(p), p = X.parentOf(p)) if (p === id) return true; return false; };
@@ -275,7 +278,7 @@ function mmShow(model, view, id) {
   if (add.length === 1) return null;
   const list = [...MM_ARR(V.nodeIds)], u = X.up(id), k = u == null ? list.length : mmEnd(X, u) + 1;
   list.splice(k, 0, ...add);
-  return { commands: [{ op: 'set', view: V.id, path: 'nodeIds', value: list }], say: `Showed ${mmOne(X.N.get(id))} and ${mmPlural(add.length - 1, 'subtopic')} hidden with it` };
+  return { commands: [...mmPinsAt(model, X, V, null), { op: 'set', view: V.id, path: 'nodeIds', value: list }], say: `Showed ${mmOne(X.N.get(id))} and ${mmPlural(add.length - 1, 'subtopic')} hidden with it` };
 }
 
 /* ---- the type ---- */
