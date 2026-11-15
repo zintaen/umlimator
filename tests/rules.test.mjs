@@ -83,3 +83,10 @@ test('audit 4: two lines to two cards with one label that break a rule are two b
     views: [{ id: 'v', nodeIds: ['web', 'orders-db', 'users-db'] }], rules: [{ id: 'no-db', from: { id: 'web' }, to: { kind: 'db' } }] };
   assert.deepEqual(rules(m).map(r => r.targets[0].ids), [['e1'], ['e2', 'e3']], 'parallel lines still read as one');
 });
+
+test('audit 12: rules() leaves out a self-loop the view does not draw', () => {
+  const m = { nodes: [{ id: 'orders', label: 'Orders', kind: 'db' }, { id: 'api', label: 'API', kind: 'service' }],
+    edges: [{ id: 'retry', from: 'orders', to: 'orders' }, { id: 'q', from: 'api', to: 'orders' }], views: [{ id: 'v', nodeIds: ['orders', 'api'] }],
+    rules: [{ id: 'no-db-out', title: 'a database calls nothing', from: { kind: 'db' } }] };
+  assert.deepEqual(rules(m), []);
+});

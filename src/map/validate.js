@@ -207,7 +207,7 @@ export function rules(model) {
     // a target names the drawn line, which may stand for several edges: grouped as prepEdges groups them (parallel edges, and
     // A→B with B→A, unless keepPairs), in its order, so select() finds it
     // ponytail: a copy of prepEdges' grouping; share one helper if that grouping changes
-    const lines = viewEdges(v), par = new Map(), drawn = new Map(), ends = new Map();
+    const lines = viewEdges(v).filter(e => e.from !== e.to), par = new Map(), drawn = new Map(), ends = new Map();
     lines.forEach(e => { const k = e.from + '>' + e.to + (v.keepPairs ? '#' + e.id : ''); par.has(k) ? par.get(k).push(e) : par.set(k, [e]); });
     par.forEach(es => { const back = !v.keepPairs && ends.get(es[0].to + '>' + es[0].from);
       if (back) back.push(...es); else ends.set(es[0].from + '>' + es[0].to, es); es.forEach(e => drawn.set(e, back || es)); });

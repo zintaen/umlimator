@@ -157,3 +157,9 @@ test('audit 11: diff() says a line with no id that a view stops drawing, lists t
     [['takes the line from A to B (pays) out of the view v'], ['v'], ['bc', 'a->b:removed']]);
   assert.deepEqual(diff(b, a).summary, ['puts the line from A to B (pays) in the view v']);
 });
+
+test('audit 12: diff() marks the line a view puts in when it drops its list of lines', () => {
+  const nodes = [{ id: 'a' }, { id: 'b' }, { id: 'c' }], edges = [{ id: 'ab', from: 'a', to: 'b' }, { id: 'bc', from: 'b', to: 'c', label: 'stores' }];
+  const d = diff({ nodes, edges, views: [{ id: 'v', nodeIds: ['a', 'b', 'c'], edges: ['ab'] }] }, { nodes, edges, views: [{ id: 'v', nodeIds: ['a', 'b', 'c'] }] });
+  assert.deepEqual([d.summary, d.model.views[0].edges], [['puts the line from b to c (stores) in the view v'], ['ab', { ...edges[1], change: 'added', style: 'added' }]]);
+});

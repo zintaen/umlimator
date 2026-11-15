@@ -94,3 +94,11 @@ test('a sequence view: a removed message comes back in its place, inside its ope
   assert.deepEqual(all.validate(d.model).filter(p => p.level === 'error'), []);
   assert.deepEqual(d.summary, ['removes receipt', 'changes Send receipt email (props)']);
 });
+
+test('audit 12: diff() brings a removed message back with its fragment, and removed states with their region, both marked removed', () => {
+  const b = edit(seq, x => { const v = x.views[0]; v.fragments = v.fragments.filter(f => f.id !== 'f2'); v.edges = v.edges.filter(e => e.id !== 'm7'); });
+  const d = all.diff(seq, b);
+  assert.deepEqual([d.model.views[0].fragments.find(f => f.id === 'f2').change, all.validate(d.model).filter(p => p.level === 'error')], ['removed', []]);
+  const st = load('examples/order-states.json'), s = all.diff(st, all.apply(st, { op: 'delete', id: 'fulfilling.payment' }));
+  assert.deepEqual([s.model.nodes.find(n => n.id === 'fulfilling').members.find(r => r.id === 'fulfilling.payment').change, all.validate(s.model).filter(p => p.level === 'error')], ['removed', []]);
+});
