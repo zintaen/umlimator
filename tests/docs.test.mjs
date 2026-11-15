@@ -76,3 +76,19 @@ test('conformance notes and the examples README agree with the code they describ
   for (const [, id] of doc('../examples/README.md').matchAll(/sales-classes `domain` and `([^`]+)`/g)) assert.ok(views.has(id), id);
   for (const [, id] of doc('../examples/README.md').matchAll(/and `([^`]+)`, with its subject/g)) assert.ok(views.has(id), id);
 });
+
+test('audit 11: the schema names the flowchart\'s default direction; the information flow and structure notes match their rules', async () => {
+  const { diagramOf } = await import('../src/core/registry.js');
+  await import('../src/map/typed.js'); await import('../src/flowchart/flowchart.js'); await import('../src/uml/component.js'); await import('../src/uml/composite.js'); await import('../src/uml/deployment.js');
+  const { layout } = await import('../src/map/api.js');
+  const doc = p => readFileSync(new URL(p, import.meta.url), 'utf8'), fc = JSON.parse(doc('../examples/returns-flowchart.json'));
+  const dirs = JSON.parse(doc('../lib/umlimator.schema.json')).$defs.view.properties.direction.description;
+  const at = d => { const m = structuredClone(fc); m.views.forEach(v => { if (d) v.direction = d; else delete v.direction; }); return JSON.stringify(layout(m, m.views[0].id).byId); };
+  assert.equal(at(), at('down'), 'a flowchart with no direction lays out down'); assert.match(dirs, /down for a flowchart/);
+  assert.doesNotMatch(doc('../docs/conformance/uml-information-flow.md'), /actors and information items/, 'an information item is never a flow end');
+  for (const [t, f] of [['uml.component', 'uml-component'], ['uml.deployment', 'uml-deployment'], ['uml.composite-structure', 'uml-composite-structure']]) {
+    const note = doc(`../docs/conformance/${f}.md`);
+    for (const r of Object.keys(diagramOf({ diagram: t }).rules)) assert.ok(note.includes('`' + r + '`'), `${f}: ${r}`);
+  }
+  assert.match(doc('../docs/conformance/uml-composite-structure.md'), /`connector-drawn` \(a connector between two ports of the subject, or of one part/);
+});
