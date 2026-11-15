@@ -38,7 +38,7 @@ test('the definition: uml.component is registered with its palette, its eight li
   assert.deepEqual(T.props['uml.Connector'][0], { key: 'kind', label: 'Kind', kind: 'enum', options: ['assembly', 'delegation'] });
   assert.equal(T.layout.rank, false, 'the type ranks the view: the host passes the pins');
   for (const k of ['layout', 'validate', 'describe', 'boxes', 'owners', 'word', 'rows']) assert.equal(typeof T[k], 'function', k);
-  assert.deepEqual(Object.keys(T.edits).sort(), ['add', 'connect', 'key', 'member', 'moveTo', 'remove']);
+  assert.deepEqual(Object.keys(T.edits).sort(), ['add', 'connect', 'key', 'member', 'moveTo', 'remove', 'rename']);
   assert.deepEqual(Object.keys(T.rules).sort(), ['assembly-ends', 'ball-interface', 'component-owner', 'component-realization-ends', 'delegation-ends', 'line-inside', 'manifest-ends', 'own-boxes', 'port-owner', 'provided-ends', 'required-ends'].sort());
   assert.deepEqual(['uml.Component', 'uml.Interface', 'uml.Artifact'].map(t => T.member.holds({ type: t })), [true, true, false]);
 });
@@ -369,4 +369,11 @@ test('audit 12: a line names its ends as the picture does, qualified: two compon
   assert.match(aria.c2, /from Web to billing::Api$/);
   assert.match(aria.r, /from charge of billing::Api to Charge$/);
   assert.match(describe(m, 'v'), /from Web to billing::Api\./);
+});
+
+test('audit 14: a line of a kind the view does not draw is a plain arrow named "Line", not a «dependency»', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'a', type: 'uml.Component', label: 'Base' }, { id: 'b', type: 'uml.Component', label: 'Special' }],
+    edges: [{ id: 'g', type: 'uml.Generalization', from: 'b', to: 'a' }], views: [{ id: 'v', diagram: 'uml.component', nodeIds: ['a', 'b'], edges: ['g'] }] };
+  const e = layout(m, 'v').edges[0];
+  assert.deepEqual([e.end.to, !!e.end.dashed, e.aria], ['arrow', false, 'Line from Special to Base']);
 });

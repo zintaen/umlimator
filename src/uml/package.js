@@ -1,5 +1,5 @@
 import { registerDiagramType } from '../core/registry.js';
-import { CLASS_DEF, RULES, classProblems, describeAs, drawnLines, typeGeo } from './class.js';
+import { CLASS_DEF, RULES, classProblems, describeAs, drawnLines, lineLabel, lineRename, typeGeo } from './class.js';
 import { OWNER_RULES, OWN_BOXES, ownerChoices, ownerProblems, ownersOn } from './owners.js';
 
 /* ---------- the package diagram, uml.package (work package 2.2, notes/stage-2.md §10.2, §10.3) ----------
@@ -45,6 +45,7 @@ const PACKAGE_TYPE = registerDiagramType('uml.package', {
   validate: (model, view) => [...classProblems(model), ...packageProblems(model), ...ownerProblems(model, view, drawnLines(model, view, PACKAGE_LINES).lines)],
   rules: { ...RULES, ...OWNER_RULES, ...PACKAGE_RULES },
   describe: describeAs(PACKAGE_LOOK),
+  edits: { rename: lineRename(lineLabel) },
 });
 
 export { PACKAGE_TYPE, PACKAGE_RULES, packageProblems };
