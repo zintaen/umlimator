@@ -55,7 +55,7 @@ card to go one level down. [Open it full size](/examples/bookshop.html), or brow
 src: /umlimator/examples/bookshop.json
 minimap: true
 wheel: ctrl
-height: 440
+height: 520
 ```
 
 ## Install

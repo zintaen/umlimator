@@ -1,5 +1,7 @@
 ---
 title: Diagram types
+aside: false
+pageClass: types-page
 ---
 
 # Diagram types
