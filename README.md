@@ -697,7 +697,8 @@ Release with that section as its notes, and publishes the package to npm (truste
 CI also publishes the examples to GitHub Pages from `main`.
 
 ```
-umlimator.py                 CLI: render, stills, check, record, pdf, pin-icons, diff, drift, timelapse, import, trace, mcp
+umlimator.py                 CLI: render, stills, check, record, pdf, pin-icons, pack, diff, drift, timelapse, import, export, trace, mcp
+umlimator_packs.py           the cloud icon packs: pack list and pack fetch (terms first, pins checked), and the pack icons a render reads
 umlimator_import.py          import's readers: Structurizr DSL, C4-PlantUML, Mermaid, compose and Kubernetes JSON
 umlimator_mcp.py             the MCP server that `umlimator.py mcp` runs
 action.yml                   the diff Action: what a pull request changes in its maps, posted on it
