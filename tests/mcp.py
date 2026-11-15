@@ -54,6 +54,15 @@ m = {"nodes": [{"id": x} for x in "abcd"], "edges": [{"from": "c", "to": "d"}], 
      {"id": "inner", "nodeIds": ["c", "d"], "containers": [{"id": "box", "nodeIds": ["c", "d"]}]}]}
 at = [mcp.view_for(m, mcp.refs(m, [r]), None) for r in ("c->d#0", {"type": "container", "id": "box"}, {"type": "chip", "node": "c", "value": "x"})]
 ok("audit 11 · view_for: a line with no id, a box and a chip each land on the view that shows them", at == ["inner"] * 3, at)
+# view_for (audit 12): a line that ends on a port or on a box, and a port's Ref, land on the view that draws them
+m = {"nodes": [{"id": "a"}, {"id": "c", "members": [{"id": "c.p", "members": [{"id": "c.p.q"}]}, {"id": "c.part"}]}, {"id": "d"},
+               {"id": "t", "members": [{"id": "t.r"}]}],
+     "edges": [{"id": "e1", "from": "c.p", "to": "d"}, {"id": "e2", "from": "box", "to": "d"},
+               {"id": "e3", "from": "t.r", "to": "c.p", "props": {"ends": {"from": {"part": "c.part"}}}}],
+     "views": [{"id": "ctx", "nodeIds": ["a", "d"]}, {"id": "inner", "nodeIds": ["c", "d"], "containers": [{"id": "box", "nodeIds": ["c"]}]}]}
+at = [mcp.view_for(m, mcp.refs(m, [r]), "ctx") for r in ("e1", "e2", "e3", {"type": "node", "id": "c.p.q"})]
+ok("audit 12 · view_for: a line to a port, to a box, to a port on a part's type, and a nested port's Ref land on the view that draws them",
+   at == ["inner"] * 4, at)
 
 
 class Chrome:

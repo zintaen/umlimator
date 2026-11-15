@@ -336,3 +336,12 @@ test('a carriage return in a label is written as an entity, so it reads back as 
     assert.equal(read(t).model.nodes.find(n => n.id === 'a').label, label);
   }
 });
+
+test('a transition between two nodes the writer leaves out is named under %% not written, a self transition too (audit 12)', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'Idle', type: 'uml.State', label: 'Idle' }, { id: 'in', type: 'uml.Pseudostate', props: { kind: 'entryPoint' } },
+    { id: 'out', type: 'uml.Pseudostate', props: { kind: 'exitPoint' } }, { id: 'Busy ', type: 'uml.State', label: 'Busy' }],
+  edges: [{ id: 'in-out', type: 'uml.Transition', from: 'in', to: 'out' }, { id: 'retry', type: 'uml.Transition', from: 'Busy ', to: 'Busy ' }],
+  views: [{ id: 'state-machine', diagram: 'uml.state-machine', nodeIds: ['Idle', 'in', 'out', 'Busy '] }] };
+  const text = write(m);
+  for (const id of ['in-out', 'retry']) assert.match(text, new RegExp(`%% not written: ${id} \\(uml\\.Transition\\)`));
+});

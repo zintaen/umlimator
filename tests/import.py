@@ -187,6 +187,13 @@ m, un = imp.read("structurizr", 'workspace {\nmodel {\n' + 'group "g" {\n' * 150
 ok("hostile · 1500 nested groups read as nested boxes, no RecursionError", len(m["views"][0]["containers"]) == 1500
    and m["views"][0]["containers"][-1]["nodeIds"] == ["p"] and un == [], un)
 
+n = 2000  # audit 12: every `include *` view listed every element and walked every relationship: views x elements, uncapped
+t0 = time.time()
+m, un = imp.read("structurizr", "workspace {\nmodel {\n" + "".join(f'p{i} = person "p"\n' for i in range(n)) + "".join(f"p{i} -> p{i + 1}\n" for i in range(n - 1))
+                 + "}\nviews {\n" + "systemLandscape {\ninclude *\n}\n" * n + "}\n}\n", "x")
+ok("hostile · 2000 views of 2000 people stop at the work cap, said once, in bounded time",
+   len(m["views"]) < 300 and len(un) == 1 and "the rest are left out" in un[0][1] and time.time() - t0 < 10, (len(m["views"]), un[:2], time.time() - t0))
+
 n = imp.fnode('A[x] --> B["y', 9)  # audit 4: an unclosed quote found A's ], went back, and matched the link forever
 ok("hostile · a label's unclosed quote after an earlier ] is said, not imported, and ends", n[3] >= 9
    and imp.read("mermaid", 'flowchart TD\n  A[x] --> B["y', "x")[1] == [(2, 'not imported: A[x] --> B["y')], n)
@@ -254,6 +261,14 @@ with tempfile.TemporaryDirectory() as tmp:
        all(x.returncode == 1 and "import: no file at" in x.stderr and "Traceback" not in x.stderr for x in r), [x.stderr[-200:] for x in r])
     r = run("import", str(ROOT / "tests" / "import" / "parcels.puml"), "--out", str(t / "new" / "deeper" / "o.json"))
     ok("--out in a folder not there yet: the folder is made, as render's (audit 4)", r.returncode == 0 and (t / "new" / "deeper" / "o.json").is_file(), r.stderr[-300:])
+    (t / "f.mmd").write_text("flowchart TD\n  a --> b\n")
+    r = run("import", str(t / "f.mmd"), "--out", str(t / "f.mmd"))
+    ok("--out naming the source is refused in one line, the source kept (audit 12)",
+       r.returncode == 1 and "is its input" in r.stderr and (t / "f.mmd").read_text().startswith("flowchart"), r.stderr[-300:])
+    (t / "deep.json").write_text('{"model":{"people":' + "[" * 300000 + "]" * 300000 + '},"views":{}}')
+    r = [run("import", str(t / "deep.json"), "--out", str(t / "deep-out.json"), *f) for f in ([], ["--format", "kubernetes"])]
+    ok("JSON nested too deep for Python's parser is said in one line, no RecursionError (audit 12)",
+       all(x.returncode == 1 and "nests too deep" in x.stderr and "Traceback" not in x.stderr for x in r), [x.stderr[-300:] for x in r])
     (t / "bad.mmd").write_bytes(b"\xff\xfe\x00flowchart")
     r = run("import", str(t / "bad.mmd"), "--out", str(t / "b.json"))
     ok("a file that is not UTF-8 is said in one line, no traceback", r.returncode == 1 and "is not UTF-8 text" in r.stderr and "Traceback" not in r.stderr, r.stderr)

@@ -242,6 +242,12 @@ def call(name, a):
     return command(fold)
 
 
+def end(e, k):
+    """A line's end as drawn: a port on a part's type is drawn on the part (props.ends.<from|to>.part), else the end itself."""
+    part = ((e.get("props") or {}).get("ends") or {}).get(k) if isinstance(e.get("props"), dict) else None
+    return part.get("part") if isinstance(part, dict) and isinstance(part.get("part"), str) else e.get(k)
+
+
 def view_for(m, lit, current):
     """The view a highlight or tour is about when the call names none: the Refs' own (paths and reach give it), else the
     view asked for last when it shows all their cards, else the first view that does. A page that opens later shows it
@@ -251,9 +257,19 @@ def view_for(m, lit, current):
         return named[0]
     lines = known(m)[2]  # a line without an id too, by its "<from>-><to>#<n>" (audit 11)
     need = {r.get("id") for r in lit if r.get("type") == "node"} | {r["node"] for r in lit if r.get("type") in ("chip", "badge") and r.get("node")} | {
-        x for r in lit if r.get("type") == "edge" for i in r.get("ids") or [] for x in (lines.get(i, {}).get("from"), lines.get(i, {}).get("to")) if x}
+        x for r in lit if r.get("type") == "edge" for i in r.get("ids") or [] for x in map(lambda k: end(lines.get(i, {}), k), ("from", "to")) if x}
     boxes = {r.get("id") or r.get("container") for r in lit if r.get("type") == "container"} - {None}
-    vs = views(m)
+    vs, owner = views(m), {}
+    todo = [(x, n["id"]) for n in every(m, "nodes") for x in n.get("members") or []]
+    while todo:  # a port or part at any depth stands for its card (audit 12)
+        x, card = todo.pop()
+        if isinstance(x, dict):
+            owner.setdefault(x.get("id"), card); todo += [(y, card) for y in x.get("members") or []]
+    need = {owner.get(x, x) for x in need}
+    cards = {n["id"] for n in every(m, "nodes")}
+    allboxes = {c.get("id") for v in vs.values() for c in v.get("containers") or [] if isinstance(c, dict)}
+    boxes |= {x for x in need if x in allboxes and x not in cards}  # a line that ends on a box needs the box (audit 12)
+    need -= boxes
     return next((v for v in [current, *vs] if v in vs and need <= set(vs[v].get("nodeIds") or [])
                  and boxes <= {c.get("id") for c in vs[v].get("containers") or [] if isinstance(c, dict)}), None)
 

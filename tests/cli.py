@@ -279,6 +279,10 @@ with tempfile.TemporaryDirectory() as tmp:
     b, s = plain("render", str(n / "m.json"), "--out", str(t / "outdir"), "--no-check"), plain("stills", str(n / "page.html"), "--out", str(n / "m.json"))
     ok("render · --out an existing folder, and stills --out an existing file, are said in one line", b.returncode == 1 and "is a folder" in b.stderr
        and s.returncode == 1 and "is a file" in s.stderr and "Traceback" not in b.stderr + s.stderr, (b.stderr[-300:], s.stderr[-300:]))
+    mj = (n / "m.json").read_text()
+    b, s = plain("render", str(n / "m.json"), "--out", str(n / "m.json"), "--no-check"), plain("diff", bike_m, str(n / "m.json"), "--out", str(n / "m.json"))
+    ok("render, diff · --out naming the input is refused in one line, and the model is kept (audit 12)",
+       b.returncode == s.returncode == 1 and "is its input" in b.stderr + s.stderr and (n / "m.json").read_text() == mj, (b.stderr[-300:], s.stderr[-300:]))
     b = plain("mcp", bike_m, "--port", "73910")
     ok("mcp · --port 73910 is a usage error, not a traceback", b.returncode == 2 and "not a port" in b.stderr and "Traceback" not in b.stderr, b.stderr[-300:])
     ro = t / "ro"; ro.mkdir(); (ro / "m.json").write_text((n / "m.json").read_text()); ro.chmod(0o555)
