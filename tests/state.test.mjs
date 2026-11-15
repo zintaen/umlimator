@@ -312,7 +312,13 @@ test('moveTo: a node dropped into the box of a state with one region goes to tha
   assert.equal(T.edits.moveTo(m, m.views[0], 'in-transit', { pt, geo: g }), null, 'already in it: a pin');
   assert.equal(T.edits.moveTo(m, m.views[0], 'cancelled', { pt: [-500, -500], geo: g }), null, 'outside every box');
   const f = g.families.find(x => x.id === 'fulfilling.parcel');
-  assert.equal(T.edits.moveTo(m, m.views[0], 'cancelled', { pt: [f.x + 4, f.y + 4], geo: g }), null, 'into a region\'s own box: the default reparent');
+  assert.deepEqual(T.edits.moveTo(m, m.views[0], 'cancelled', { pt: [f.x + 4, f.y + 4], geo: g }), [{ op: 'reparent', id: 'cancelled', parent: 'fulfilling.parcel' }, { op: 'set', view: 'order-life', path: ['layout', 'cancelled'], value: undefined }], 'into a region\'s own box: to it');
+  // audit 13: a second initial, or a second history of a kind, dropped into a region is refused, not emitted; nor offered by the Owner field
+  const k2 = apply(m, [{ op: 'add', element: { id: 'i2', type: 'uml.Pseudostate', props: { kind: 'initial' } } }, { op: 'add', element: { id: 'h2', type: 'uml.Pseudostate', props: { kind: 'shallowHistory' }, parent: 'fulfilling' } }]);
+  ['delivery-start', 'delivery-history'].forEach(id => assert.equal(node(k2, id).parent, 'delivery.main'));
+  for (const id of ['i2', 'h2']) {
+    assert.match(T.edits.moveTo(k2, k2.views[0], id, { pt, geo: g }).error ?? '', /initial-one|history-one/, id);
+    assert.ok(!T.owners(k2, node(k2, id)).some(o => o.id === 'delivery.main'), id); }
   assert.equal(T.edits.moveTo(m, m.views[0], 'cancelled', { by: [0, 1], geo: g }), null, 'Alt + arrows: a pin');
   assert.equal(T.edits.moveTo(m, m.views[0], 'delivery', { pt, geo: g }), null, 'into itself: never its own region');
   assert.deepEqual(validate(apply(m, T.edits.moveTo(m, m.views[0], 'cancelled', { pt, geo: g }))).filter(p => p.level === 'error'), []);

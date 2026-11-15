@@ -326,3 +326,16 @@ test('audit 12: delete renames a story step\'s name of a line with no id whose p
   const h2 = apply(h, { op: 'hide', id: 'c', view: 'v' });
   assert.deepEqual([h2.stories[0].steps[0], validate(h2)], [{ view: 'v', highlight: [] }, []]);
 });
+
+test('audit 13: a name of a line with no id counts in its own list: a delete in one view\'s list renames that view\'s steps and keys only, and validate() checks a step against the list its view draws', () => {
+  const m = { nodes: [{ id: 'a' }, { id: 'b' }], edges: [{ from: 'a', to: 'b', label: 'm0' }, { from: 'a', to: 'b', label: 'm1' }], views: [
+    { id: 'v1', nodeIds: ['a', 'b'], edges: [{ id: 's1', from: 'a', to: 'b' }, { from: 'a', to: 'b', label: 'browse' }, { from: 'a', to: 'b', label: 'buy' }], present: { 'a->b#2': { hidden: true } } },
+    { id: 'v2', nodeIds: ['a', 'b'], edges: [{ from: 'a', to: 'b', label: 'ping' }, { from: 'a', to: 'b', label: 'pong' }], present: { 'a->b#1': { hidden: true } } },
+    { id: 'v3', nodeIds: ['a', 'b'] }],
+    stories: [{ id: 's', steps: [{ view: 'v1', select: 'a->b#1' }, { view: 'v1', select: 'a->b#2' }, { view: 'v2', select: 'a->b#1' }, { view: 'v3', select: 'a->b#1' }] }] };
+  const n = apply(m, { op: 'delete', id: 's1' });
+  assert.deepEqual(n.stories[0].steps.map(s => s.select), ['a->b#0', 'a->b#1', 'a->b#1', 'a->b#1'], 'browse and buy follow on v1; v2 and the model\'s lines keep their names');
+  assert.deepEqual([n.views[0].present, n.views[1].present], [{ 'a->b#1': { hidden: true } }, { 'a->b#1': { hidden: true } }]);
+  assert.deepEqual(validate({ ...m, stories: [{ id: 's', steps: [{ view: 'v2', select: 'a->b#2' }, { view: 'v3', select: 'a->b#2' }] }] }).map(p => p.path),
+    ['stories[0].steps[0].select', 'stories[0].steps[1].select'], 'a->b#2 is a line of v1 only');
+});

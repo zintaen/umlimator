@@ -326,10 +326,14 @@ test('the deployment view\'s hooks: the palette\'s instance picks its container 
   assert.deepEqual(DEP.edits.add(crm, { ...v, subject: 'c4-mail' }, { type: 'c4.ContainerInstance' }, ''), { error: 'The view\'s system has no container to deploy' });
   const t = DEP.edits.key(C4, v, ['c4-db-1'], 'T');
   assert.deepEqual(t.pick, r.pick);
-  // its label follows when it was the old container's name; one of its own is kept
+  // its label follows, the new container's name; a stale one too (audit 13: it shows nowhere on the view)
   assert.deepEqual(t.then(4), [{ op: 'set', id: 'c4-db-1', path: 'props.container', value: 'c4-queue' }, { op: 'set', id: 'c4-db-1', path: 'label', value: 'Order queue' }]); assert.deepEqual(t.then(3), []);
   const own = apply(C4, [{ op: 'set', id: 'c4-db-1', path: 'label', value: 'Replica' }]);
-  assert.deepEqual(DEP.edits.key(own, v, ['c4-db-1'], 'T').then(4), [{ op: 'set', id: 'c4-db-1', path: 'props.container', value: 'c4-queue' }]);
+  assert.deepEqual(DEP.edits.key(own, v, ['c4-db-1'], 'T').then(4), [{ op: 'set', id: 'c4-db-1', path: 'props.container', value: 'c4-queue' }, { op: 'set', id: 'c4-db-1', path: 'label', value: 'Order queue' }]);
+  // audit 13: a container renamed by F2 takes the label of each instance named as it was; the problems name an instance as drawn
+  assert.deepEqual(STATIC.edits.rename(C4, C4.views[V('c4-containers')], 'c4-api', 'Catalogue API'), [{ op: 'set', id: 'c4-api', path: 'label', value: 'Catalogue API' }, { op: 'set', id: 'c4-api-1', path: 'label', value: 'Catalogue API' }]);
+  const ren = apply(C4, [{ op: 'set', id: 'c4-api', path: 'label', value: 'Catalogue API' }, { op: 'delete', id: 'c4-storefront-1-api-1' }, { op: 'add', element: { id: 'sa', type: 'c4.Relationship', from: 'c4-storefront-1', to: 'c4-api-1' } }]);
+  assert.ok(DEP.validate(ren, ren.views[V(PV)]).some(p => p.message === 'c4-label: sa, from "Storefront" to "Catalogue API", has no description'));
   // an instance is named as drawn, its container's name, on its lines and in describe() too (audit 12); F2 on it is refused
   const sf = C4.nodes.find(n => n.type === 'c4.ContainerInstance' && C4.edges.some(e => e.from === n.id)), sv2 = apply(C4, [{ op: 'set', id: sf.id, path: 'props.container', value: 'c4-api' }, { op: 'set', id: sf.id, path: 'label', value: 'Replica' }]);
   const lines = layout(sv2, PV).edges.filter(e => e.from === sf.id).map(e => e.aria);

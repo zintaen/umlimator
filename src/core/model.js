@@ -87,11 +87,14 @@ function typedProblems(model) {
   return out;
 }
 
-// the names a Ref gives the lines with no id: "<from>-><to>#<n>", n counting every line with those ends in its list (the
-// model's, or a view's own), as context.js edgeIds() does. Map: name -> the lines it names (one per list)
-const lineNames = m => { const out = new Map(), list = l => { const seen = {};
+// the names a Ref gives the lines with no id: "<from>-><to>#<n>", n counting every line with those ends in its list, as
+// context.js edgeIds() does. namesOf(list): name -> line. lineNames(m): list -> its names, the list keyed -1 for the model's
+// (drawn by a view with no edges list) and i for view i's own; listOf(m, i): the key of the list view i draws
+const namesOf = l => { const out = new Map(), seen = {};
   (Array.isArray(l) ? l : []).forEach(e => { if (!e || typeof e !== 'object') return; const k = e.from + '->' + e.to, n = seen[k] = (seen[k] ?? -1) + 1;
-    if (e.id == null) (out.get(`${k}#${n}`) || out.set(`${k}#${n}`, []).get(`${k}#${n}`)).push(e); }); };
-  list(m && m.edges); (Array.isArray(m && m.views) ? m.views : []).forEach(v => v && list(v.edges)); return out; };
+    if (e.id == null) out.set(`${k}#${n}`, e); }); return out; };
+const listOf = (m, i) => (Array.isArray(m.views[i] && m.views[i].edges) ? i : -1);
+const lineNames = m => { const out = new Map([[-1, namesOf(m && m.edges)]]);
+  (Array.isArray(m && m.views) ? m.views : []).forEach((v, i) => { if (v && Array.isArray(v.edges)) out.set(i, namesOf(v.edges)); }); return out; };
 
-export { versionProblem, typedProblems, lineNames };
+export { versionProblem, typedProblems, lineNames, namesOf, listOf };
