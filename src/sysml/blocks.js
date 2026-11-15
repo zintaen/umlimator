@@ -90,9 +90,9 @@ const bdHolds = (owner, m) => (Object.hasOwn(BD_HOLD, owner) ? BD_HOLD[owner](m)
 const BD_MWORD = { 'sysml.PartProperty': 'part', 'sysml.ReferenceProperty': 'reference', 'sysml.ValueProperty': 'value', 'sysml.ConstraintProperty': 'constraint property',
   'sysml.FlowProperty': 'flow property', 'sysml.ConstraintParameter': 'parameter', 'sysml.Port': 'port', 'uml.Operation': 'operation' };
 const bdMWord = m => (m.type === 'sysml.Port' && Object.hasOwn(BD_KIND, BD_PROPS(m).kind) ? BD_PROPS(m).kind + ' port' : BD_MWORD[m.type] || BD_WORD(m.type).toLowerCase());
-// the types of the nodes a type name names by label, its ~ (conjugation) left off; none: undefined
+// the types of the nodes a type name names by label (else id, as drawn), its ~ (conjugation) left off; none: undefined
 function bdLabels(model) {
-  const by = new Map(); BD_ARR(model && model.nodes).forEach(n => { if (BD_OBJ(n) && n.label != null) { const k = String(n.label); if (!by.has(k)) by.set(k, []); by.get(k).push(n.type); } });
+  const by = new Map(); BD_ARR(model && model.nodes).forEach(n => { if (BD_OBJ(n) && (n.label ?? n.id) != null) { const k = String(n.label ?? n.id); if (!by.has(k)) by.set(k, []); by.get(k).push(n.type); } });
   return t => (BD_HAS(t) ? by.get(String(t).replace(/^~\s*/, '')) : undefined);
 }
 function bdProblems(model) {

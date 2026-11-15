@@ -313,3 +313,12 @@ test('audit 7: a bare subgraph is a group, a quoted label may run over lines, an
   assert.deepEqual(pairs('flowchart LR\n  A[/Order placed\\] --> B[\\Ship it/]\n  B --> C[Done]\n').slice(0, 2),
     [[['A', 'Order placed'], ['B', 'Ship it'], ['C', 'Done']], [['A', 'B', undefined], ['B', 'C', undefined]]]);
 });
+
+test('audit 8: the writer writes the flows the view lists (inline ones too), and an unknown direction as LR, as drawn', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 's', type: 'flow.Terminator', label: 'Start' }, { id: 'a', type: 'flow.Process', label: 'Ship' }],
+    edges: [{ id: 'f1', type: 'flow.Flow', from: 's', to: 'a' }, { id: 'x', type: 'flow.Flow', from: 'a', to: 's', label: 'debug only' }],
+    views: [{ id: 'v', diagram: 'flowchart', direction: 'LR', nodeIds: ['s', 'a'], edges: ['f1', { id: 'retry', type: 'flow.Flow', from: 'a', to: 's', label: 'again' }] }] };
+  const text = write(m, 'v');
+  assert.match(text, /^flowchart LR$/m);
+  assert.ok(!text.includes('debug only') && text.includes('again'), text);
+});
