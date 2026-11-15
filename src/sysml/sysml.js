@@ -123,7 +123,7 @@ function SYS_BACK_ONE(c, model, view) {
   if (!SYS_OBJ(c)) return c;
   if (c.op === 'set' && String(c.path) === 'label') return { ...c, value: SYS_UNKIND(c.value) };
   const x = c.element; if (c.op !== 'add' || !SYS_OBJ(x)) return c;
-  const p = SYS_PROPS(x), named = t => SYS_ARR(model.nodes).some(n => SYS_OBJ(n) && n.type === t && n.label === p.valueType), owner = SYS_ARR(model.nodes).find(n => SYS_OBJ(n) && n.id === c.owner);
+  const p = SYS_PROPS(x), named = t => SYS_ARR(model.nodes).some(n => SYS_OBJ(n) && n.type === t && (n.label ?? n.id) === p.valueType), owner = SYS_ARR(model.nodes).find(n => SYS_OBJ(n) && n.id === c.owner);
   const type = x.type === 'uml.Connector' ? SYS_LINE[view.diagram] : x.type === 'uml.Port' ? (owner && owner.type === 'sysml.ConstraintBlock' ? 'sysml.ConstraintParameter' : 'sysml.Port')
     : x.type !== 'uml.Property' ? null : view.diagram === 'sysml.parametric' ? (named('sysml.ConstraintBlock') ? 'sysml.ConstraintProperty' : owner && owner.type === 'sysml.ConstraintBlock' ? 'sysml.ConstraintParameter' : 'sysml.ValueProperty') // a constraint block holds no value property (§7.3)
       : p.aggregation === 'shared' ? 'sysml.ReferenceProperty' : named('sysml.ValueType') || SYS_PRIM.includes(p.valueType) ? 'sysml.ValueProperty' : 'sysml.PartProperty';

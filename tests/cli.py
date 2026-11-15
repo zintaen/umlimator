@@ -877,6 +877,9 @@ said, err = tool("describe_view", view="nope")
 ok("mcp · a call that names what the model lacks is a tool error that says what it has", err and said.startswith("no view 'nope'; the views: context, system"), said)
 wrong = [tool("describe_view", view=["trips"]), tool("tour", cards=[{"id": "trips"}]), tool("diff", other_model_path=5)]
 ok("mcp · an argument of another type than its inputSchema's is a tool error that names it", all(e for _, e in wrong) and "view is not" in wrong[0][0], wrong)
+said, err = tool("reach", view="system", card="payments", direction="backward")
+ok("mcp · an argument its inputSchema does not name is a tool error that names it and the tool's own (audit 8)",
+   err and said.startswith("reach: no argument direction; its arguments: view, card") and "backward" in said, said)
 
 said, err = tool("show_view", view="trips")
 ok("mcp · a page tool with no page connected says to open its URL", not err and said.startswith("No page is connected") and url and url.group(0) in said, said)

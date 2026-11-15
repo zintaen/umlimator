@@ -397,3 +397,12 @@ test('audit 7: a line listed twice in view.edges is drawn, read and counted once
     assert.equal(describe(m, v.id), describe(once, v.id), id);
   }
 });
+
+test('audit 8: a card with no type but a given icon draws the legal line, so describe() ends with it too; its name has a kind word', () => {
+  for (const [fam, legal] of [['aws', AWS_LEGAL], ['gcp', GCP_LEGAL]]) {
+    const m = { schemaVersion: 2, icons: { [fam + '/run']: { src: 'data:image/svg+xml;base64,PHN2Zy8+', name: 'Run' } }, nodes: [{ id: 'a', label: 'Shop', props: { icon: 'run' } }], edges: [], views: [{ id: 'v', diagram: fam, nodeIds: ['a'] }] };
+    const g = layout(m, 'v'), text = describe(m, 'v');
+    assert.ok(g.legal && text.endsWith(legal), text);
+    assert.equal(g.nodes[0].aria, 'Element Shop, Run');
+  }
+});

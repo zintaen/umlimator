@@ -28,8 +28,8 @@ function SYS_PAR_INDEX(model, view) {
   at.forEach(n => SYS_PAR_ARR(n.members).forEach(m => { if (SYS_PAR_OBJ(m) && typeof m.id === 'string' && !at.has(m.id) && !mem.has(m.id)) mem.set(m.id, { m, owner: n }); }));
   const E = new Map(); SYS_PAR_ARR(model && model.edges).forEach(e => { if (SYS_PAR_OBJ(e) && typeof e.id === 'string' && !E.has(e.id)) E.set(e.id, e); });
   const S = view && at.has(view.subject) ? at.get(view.subject) : null;
-  // the constraint block a constraint property's type names (exactly one, by label, as the composite type finds a part's type)
-  const block = m => { const t = SYS_PAR_PROPS(m).valueType, c = SYS_PAR_HAS(t) ? [...at.values()].filter(n => n.type === 'sysml.ConstraintBlock' && n.label === t) : []; return c.length === 1 ? c[0] : null; };
+  // the constraint block a constraint property's type names (exactly one, by label, else id, as the composite type finds a part's type)
+  const block = m => { const t = SYS_PAR_PROPS(m).valueType, c = SYS_PAR_HAS(t) ? [...at.values()].filter(n => n.type === 'sysml.ConstraintBlock' && (n.label ?? n.id) === t) : []; return c.length === 1 ? c[0] : null; };
   const params = B => SYS_PAR_ARR(B && B.members).filter(m => SYS_PAR_OBJ(m) && m.type === 'sysml.ConstraintParameter');
   return { at, mem, E, S, block, params, el: id => at.get(id) || (mem.get(id) || {}).m || null, owner: id => (mem.get(id) || {}).owner || null };
 }
@@ -134,8 +134,8 @@ function SYS_PAR_PROBLEMS(model, view) {
   if (!S || !Object.hasOwn(SYS_PAR_SUBJ, S.type)) return out;
   out.push(...SYS_CS_PROBLEMS(model, view).filter(p => p.rule === 'connector-drawn'));
   const ofS = id => id != null && I.owner(id) === S, kind = id => (I.el(id) || {}).type;
-  // a binding's type: its end's valueType, when it names an element of the model by label
-  const named = new Map(); I.at.forEach(n => { if (SYS_PAR_HAS(n.label) && !named.has(n.label)) named.set(n.label, n); });
+  // a binding's type: its end's valueType, when it names an element of the model by label (else id, as drawn)
+  const named = new Map(); I.at.forEach(n => { const k = n.label ?? n.id; if (SYS_PAR_HAS(k) && !named.has(k)) named.set(k, n); });
   const ups = n => { const seen = new Set(), go = [n]; while (go.length) { const x = go.pop(); if (seen.has(x)) continue; seen.add(x);
     I.E.forEach(e => { if (e.type === 'uml.Generalization' && e.from === x.id && I.at.has(e.to)) go.push(I.at.get(e.to)); }); } return seen; };
   const bound = new Set();
