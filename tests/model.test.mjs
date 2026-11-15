@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { validate, check, layout } from '../lib/umlimator.js';
+import { validate, check, layout, rules } from '../lib/umlimator.js';
 import { mapContext } from '../src/map/context.js';
 import { fit } from '../src/core/text.js';
 
@@ -141,10 +141,41 @@ test('a map view\'s edges list: a line to a card off the view, and a line listed
     views: [{ id: 'v', title: 'V', nodeIds: ['a', 'b'], edges: ['ab', 'ab', 'ac', { from: 'b', to: 'c' }] }] };
   assert.deepEqual(validate(m).map(x => x.path + ' ' + x.message), [
     'views[0].edges[1] "ab" is listed twice: drawn once',
-    'views[0].edges[2] "ac" ends on "c", which is not one of the view\'s cards: not drawn',
-    'views[0].edges[3] the line ends on "c", which is not one of the view\'s cards: not drawn']);
+    'views[0].edges[2] "ac" ends on "c", which is not one of the view\'s cards or boxes: not drawn',
+    'views[0].edges[3] the line ends on "c", which is not one of the view\'s cards or boxes: not drawn']);
   const g = layout(m, 'v');
   assert.deepEqual(g.edges.map(e => [e.from + '>' + e.to, e.lbl && e.lbl.text]), [['a>b', 'pays']]);
+  // audit 8: a listed model line to another view's box is not drawn here either, and says so
+  const mb = { nodes: N, edges: [{ id: 'l1', from: 'a', to: 'grp' }],
+    views: [{ id: 'v1', nodeIds: ['a', 'b'], containers: [{ id: 'grp', label: 'Group', nodeIds: ['b'] }], edges: ['l1'] }, { id: 'v2', parent: 'v1', nodeIds: ['a', 'b'], edges: ['l1'] }] };
+  assert.deepEqual(validate(mb).map(x => x.path + ' ' + x.message), ['views[1].edges[0] "l1" ends on "grp", which is not one of the view\'s cards or boxes: not drawn']);
+});
+
+test('a card, box or view whose id is an Object.prototype name lays out, validates and breaks rules as any other id (audit 8, M3)', () => {
+  const P = ['toString', 'constructor', '__proto__', 'valueOf'];
+  // sequence, hub and flow views with a card named for a prototype key: every card and line drawn, as under the id "orders"
+  const card = (c, extra) => ({ nodes: [{ id: 'api', label: 'API', kind: 'public' }, { id: c, label: 'Orders' }, { id: 'pay', label: 'Pay' }, { id: 'mail', label: 'Mail' }, { id: 'log', label: 'Log' }],
+    edges: [{ id: 'e1', from: 'api', to: c }, { id: 'e2', from: c, to: 'pay' }, { id: 'e3', from: 'api', to: 'mail' }, { id: 'e4', from: 'api', to: 'log' }, { id: 'e5', from: 'pay', to: c }],
+    views: [{ id: 'v', nodeIds: ['api', c, 'pay', 'mail', 'log'], ...extra }] });
+  const sig = (m, vid) => { const g = layout(m, vid); return [g.nodes.length, g.edges.map(e => [e.step ?? null, e.back]).join(), check(m, vid).length]; };
+  for (const extra of [{}, { render: 'sequence' }, { node: 'api' }]) for (const c of P) assert.deepEqual(sig(card(c, extra), 'v'), sig(card('orders', extra), 'v'), `${JSON.stringify(extra)} ${c}`);
+  // a view named for one keeps its plan (the loop back D→B), and unfolds a card
+  const flow = vid => ({ nodes: ['a', 'b', 'c', 'd', 'x', 'p', 'q'].map(id => ({ id, label: id.toUpperCase(), ...(id === 'x' ? { opensView: 'inner' } : {}) })),
+    edges: [{ id: 'ab', from: 'a', to: 'b' }, { id: 'bc', from: 'b', to: 'c' }, { id: 'cd', from: 'c', to: 'd' }, { id: 'db', from: 'd', to: 'b', label: 'retry' }, { id: 'ax', from: 'a', to: 'x' }, { id: 'pq', from: 'p', to: 'q' }],
+    views: [{ id: vid, nodeIds: ['a', 'b', 'c', 'd', 'x'] }, { id: 'inner', parent: vid, nodeIds: ['p', 'q'] }] });
+  const vsig = vid => { const m = flow(vid), g = layout(m, vid), u = layout(m, vid, { expand: ['x'] });
+    return [g.nodes.map(n => [n.id, n.x, n.y]).join(), g.edges.filter(e => e.back).length, check(m, vid).map(i => i.message.replace(vid, 'V')).join(), u.unfolded.join(), u.nodes.length]; };
+  for (const vid of P) assert.deepEqual(vsig(vid), vsig('flow'), vid);
+  // validate(): a box named for one is no box used twice, nor a parent that is there, nor a box a card is in already
+  for (const b of P) { const m = { nodes: [{ id: 'a', label: 'A' }], views: [{ id: 'v', nodeIds: ['a'], containers: [{ id: b, label: 'B', nodeIds: ['a'] }] }] };
+    assert.deepEqual(validate(m), [], b); }
+  assert.deepEqual(validate({ nodes: [{ id: 'a', label: 'A' }], views: [{ id: 'v', nodeIds: ['a'], containers: [{ id: 'g', parent: 'toString', nodeIds: ['a'] }] }] }).map(x => x.message), ['"toString" is not a box of this view']);
+  assert.deepEqual(validate({ nodes: [{ id: 'toString', label: 'A' }], views: [{ id: 'v', nodeIds: ['toString'], containers: [{ id: 'g', nodeIds: ['toString'] }] }] }), []);
+  // rules(): a card named for one keeps its kind and its box
+  const ruled = db => rules({ nodes: [{ id: 'web', label: 'Web', kind: 'frontend' }, { id: db, label: 'Orders DB', kind: 'db' }], edges: [{ id: 'l', from: 'web', to: db }],
+    views: [{ id: 'v', nodeIds: ['web', db], containers: [{ id: 'data', label: 'Data', nodeIds: [db] }] }],
+    rules: [{ id: 'no-db', from: { kind: 'frontend' }, to: { kind: 'db' } }, { id: 'no-data', from: { id: 'web' }, to: { container: 'data' } }] }).map(b => b.rule);
+  for (const c of P) assert.deepEqual(ruled(c), ['no-db', 'no-data'], c);
 });
 
 test('the layout search render bakes stops on work, not on a clock: a slow machine bakes the same layout (audit 7)', () => {

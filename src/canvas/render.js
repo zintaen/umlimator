@@ -47,8 +47,9 @@ export function render(container, model, options = {}) {
   // text is measured in the host's font (--um-sans); measure: false keeps the font-independent estimate
   const own = typeof options.measure === 'function' ? options.measure : null;
   let measure = options.measure === false ? null : own || hostMeasure(host), current = model;
-  const expanded = {}; // per view: the cards unfolded in place (#71), in the order they unfolded; in this handle only, never in the model
-  const asked = {}; // per view: card id -> the inner view it waits for, when E or Alt + click asked to unfold it before the host loaded that view
+  const O = o => Object.assign(Object.create(null), o); // by-id maps with no prototype: a card or view named toString or __proto__ is a key like any other (M3, audit 8)
+  const expanded = O(); // per view: the cards unfolded in place (#71), in the order they unfolded; in this handle only, never in the model
+  const asked = O(); // per view: card id -> the inner view it waits for, when E or Alt + click asked to unfold it before the host loaded that view
   let ctx = mapContext(model, { measure, kinds: !!P.kinds, expand: expanded }); // kinds: the standalone page guesses line kinds from label words, for its legend
   const root = host.attachShadow({ mode: 'open', delegatesFocus: true }); // host.focus() lands in the map (on the selected card)
   root.adoptedStyleSheets = [sheet()];
@@ -99,7 +100,9 @@ export function render(container, model, options = {}) {
   // the views the reader walked through, the one shown last: up goes back along them, then to the model's parent (issue 137)
   let trail = [];
   const upOf = () => (P.upTarget ? P.upTarget() : trail.length > 1 ? trail[trail.length - 2] : (ctx.V[cur] || {}).parent) || null;
+  const boxHere = id => !Object.hasOwn(geo.byId, id) && (geo.families || []).some(f => f.id === id); // an element this view draws as a box
   const nodeRef = id => ({ type: 'node', id, view: cur });
+  const idRef = id => boxHere(id) ? { type: 'container', id, view: cur } : nodeRef(id); // a card, or a box by its id: Find's, the details panel's and go({ select })'s way to one (audit 8)
   const copyRef = r => r && { ...r, ...(Array.isArray(r.ids) ? { ids: [...r.ids] } : {}) }; // a host gets copies: the map's Refs stay its own
   const picked = () => sel ? [...more, sel].map(copyRef) : []; // every selected thing, the latest last (more: the others' refs)
   const say = t => { const l = root.querySelector('.um-live'); if (l) l.textContent = t; };
@@ -143,7 +146,7 @@ export function render(container, model, options = {}) {
     cam.setSvg(svg, geo.bounds);
     const ub = q('[data-z="up"]'); if (ub) ub.disabled = !upOf();
     if (options.minimap) buildMini();
-    if (v && !geo.hub && geo.nodes.length && !(expanded[vid] || []).length && geo.nodes.every(n => Number.isFinite(n.col) && Number.isFinite(n.row))) placed[vid] = Object.fromEntries(geo.nodes.map(n => [n.id, [n.col, n.row]])); // unfolded: the places folded stay
+    if (v && !geo.hub && geo.nodes.length && !(expanded[vid] || []).length && geo.nodes.every(n => Number.isFinite(n.col) && Number.isFinite(n.row))) placed[vid] = O(Object.fromEntries(geo.nodes.map(n => [n.id, [n.col, n.row]]))); // unfolded: the places folded stay
     sel = null; more = []; sub = null; tabKeys(); paint(); // no select event here: the caller reports, once, what became of the selection
     endTrip(); relens(); drawMarks(); // a new picture: a tour or replay on the old one ends; the host's marks and the lens go on again (#63, #94)
     if (naming) { if (naming.ref && !exists(naming.ref)) naming.close(false); else naming.place(); }
@@ -311,7 +314,7 @@ export function render(container, model, options = {}) {
   function go(vid, how = {}) {
     if (dead) return Promise.resolve(false);
     if (!ctx.V[vid]) { warn(`setView("${vid}"): the model has no such view; its views are ${ctx.views.map(v => `"${v.id}"`).join(', ') || 'none'}`); return Promise.resolve(false); }
-    if (!nav && vid === cur) { if (how.select) select(nodeRef(how.select)); return Promise.resolve(true); }
+    if (!nav && vid === cur) { if (how.select) select(idRef(how.select)); return Promise.resolve(true); }
     if (!how.story) readerMoved(); // a move the story didn't ask for: a story playing waits (0.14.0)
     return new Promise(res => {
       if (nav) { if (nav.to !== vid) answer(false); nav.to = vid; nav.how = how; nav.waiting.push(res); touch(); return; } // superseded: those requests learn so now
@@ -356,7 +359,7 @@ export function render(container, model, options = {}) {
       answer(ok); nav = null; busy = false; stage.classList.remove('fading');
       if (left && cur) cam.animate(startView()); // left, and no other view drawn: the camera comes back
       if (shown && shown !== start) { say('Showing ' + (ctx.V[shown].title || shown)); emit('viewchange', { view: shown, from: start }); }
-      if (ok && how.select && cur === shown) select(nodeRef(how.select), { reveal: true });
+      if (ok && how.select && cur === shown) select(idRef(how.select), { reveal: true });
     } catch (err) { fail(err); } // a bug of ours or of a page hook: reported, and the map left usable below
     finally { if (nav === mine) { answer(false); nav = null; busy = false; stage.classList.remove('fading'); } touch(); }
   }
@@ -473,7 +476,7 @@ export function render(container, model, options = {}) {
     if (was) touch();
     return was;
   }
-  const placed = {};  // per view: the slot every card had when last drawn (stable positions across updates; never in the model)
+  const placed = O();  // per view: the slot every card had when last drawn (stable positions across updates; never in the model)
   /* an edit's places wait for the host's answer, and the next update() says from its model whether it applied the edit:
      a move into or out of a box shows in the boxes, an add as a new card with its name, and a place alone (a move to a
      spot, a reorder) as the card's own `layout` entry the host wrote, or as the model unchanged (the host answering an
@@ -666,14 +669,14 @@ export function render(container, model, options = {}) {
     (out.views || []).forEach(v => {
       const bx = boxesIn(out, v), pv = viewIn(prev, v.id), A = ownersOn(boxesIn(prev, pv)), B = ownersOn(bx);
       const shown = new Set(arrOf(pv.nodeIds)), again = A.size + B.size > 0 && arrOf(v.nodeIds).some(id => shown.has(id) && (A.get(id) ?? null) !== (B.get(id) ?? null));
-      const was = again ? null : placed[v.id], { hv = {}, ex = {} } = use && use.view === v.id && !again ? use : {};
+      const { hv = {}, ex = {} } = use && use.view === v.id && !again ? use : {}, was = again ? null : placed[v.id] && O(placed[v.id]), H = O(hv), E = O(ex);
       if (!was && !Object.keys(hv).length && !Object.keys(ex).length) return;
-      const ids = (v.nodeIds || []).filter(id => typeof id === 'string' && !bx.some(b => b.id === id)), mine = v.layout || {}, L = {}, taken = new Set(), key = p => p[0] + ',' + p[1];
+      const ids = (v.nodeIds || []).filter(id => typeof id === 'string' && !bx.some(b => b.id === id)), mine = O(v.layout), L = O(), taken = new Set(), key = p => p[0] + ',' + p[1];
       const put = (id, p) => { let [c, r] = p; while (taken.has(key([c, r]))) r++; L[id] = [c, r]; taken.add(key([c, r])); };
       ids.forEach(id => { if (Array.isArray(mine[id])) { L[id] = mine[id]; taken.add(key(mine[id])); } });    // the host's own layout
-      ids.forEach(id => { if (!L[id] && ex[id]) put(id, ex[id]); });                                               // a reordered column group
-      ids.filter(id => !L[id] && !hv[id] && was && was[id]).sort((a, b) => was[a][0] - was[b][0] || was[a][1] - was[b][1]).forEach(id => put(id, was[id])); // everyone stays
-      ids.forEach(id => { if (!L[id] && hv[id]) put(id, hv[id]); });                                              // a moved or added card: its drop, or the nearest free slot
+      ids.forEach(id => { if (!L[id] && E[id]) put(id, E[id]); });                                               // a reordered column group
+      ids.filter(id => !L[id] && !H[id] && was && was[id]).sort((a, b) => was[a][0] - was[b][0] || was[a][1] - was[b][1]).forEach(id => put(id, was[id])); // everyone stays
+      ids.forEach(id => { if (!L[id] && H[id]) put(id, H[id]); });                                              // a moved or added card: its drop, or the nearest free slot
       if (Object.keys(L).length) v.layout = L;
     });
     return out;
@@ -811,7 +814,7 @@ export function render(container, model, options = {}) {
     // a card E or Alt + click asked to unfold before its view was loaded unfolds once a model brings that view (#71)
     const brought = []; Object.entries(asked).forEach(([vid, m]) => m.forEach((c, nid) => { if (!arrOf(model2.views).some(v => v && v.id === c)) return;
       m.delete(nid); const l = expanded[vid] ||= []; if (!l.includes(nid)) { l.push(nid); if (vid === cur) brought.push(nid); } }));
-    const old = ctx, keys = {}, wantNew = selectNew && !own, before = current;
+    const old = ctx, keys = O(), wantNew = selectNew && !own, before = current;
     old.views.forEach(v => { keys[v.id] = relayout ? null : old.viewKey(v.id); });
     current = model2;
     ctx = mapContext(withPlaces(model2, use, before), { measure, kinds: !!P.kinds, prev: options.stableLayout === false ? null : old.planCache, expand: expanded, memos: relayout ? null : old.memos });
@@ -1057,7 +1060,7 @@ export function render(container, model, options = {}) {
     const ctl = { hops: hops.length, skipped, done: new Promise(r => { done = r; }),
       pause() { if (t && trip === t) { t.paused = true; touch(); } }, resume() { if (t && trip === t) { t.paused = false; touch(); } },
       stop() { if (t && trip === t) endTrip(); else if (gen === replays) overlay('replay', null); } };
-    const ms = msText, marks = {};
+    const ms = msText, marks = O();
     // ponytail: two calls at once on one line share its mark; the one that ends first takes the glow off
     const show = (h, on) => { h.ids.forEach(x => { marks[x] = on ? { label: ms(h.dur), tone: 'accent', pulse: true } : { label: ms(h.dur) }; }); overlay('replay', { edges: { ...marks } }); };
     if (!hops.length || still()) { hops.forEach(h => show(h, false)); done(hops.length > 0); return ctl; }
@@ -1199,12 +1202,12 @@ export function render(container, model, options = {}) {
   /* a typed view of a version 2 model (1.7): its gestures emit `edit`, a transaction of commands, and its panels show */
   const tx = E && typedEditor({ root, stage, can, say, status, touch, nearest, nameOf, editor, picked,
     emit: commands => emit('edit', { view: cur, commands }), view: () => cur, model: () => current, geo: () => geo, svg: () => svg, cam: () => cam, sel: () => sel,
-    selectId: id => { const e = geo.byId[id] ? null : geo.edges.find(x => edgeRefIds(x).includes(id)); return select(e ? edgeRef(e) : !geo.byId[id] && (geo.families || []).some(f => f.id === id) ? { type: 'container', id, view: cur } : nodeRef(id)); }, // a box: the outline's way to select one
+    selectId: id => { const e = geo.byId[id] ? null : geo.edges.find(x => edgeRefIds(x).includes(id)); return select(e ? edgeRef(e) : idRef(id)); }, // a box: the outline's way to select one
     drawn: id => !!geo.byId[id] || geo.edges.some(x => edgeRefIds(x).includes(id)), rename: () => rename(sel), focus: () => focusMap() });
   const typed = () => !!tx && tx.on();
 
   const inner = { ctx: () => ctx, geo: () => geo, cam: () => cam, svg: () => svg, stage, host, go, open, up, flash, setFlow, pause, key, startView, standalone, play,
-    select, busy: () => busy, flowing: () => stage.classList.contains('flowing'), view: () => cur, unfold: gesture, lens: setLens,
+    select, boxHere, busy: () => busy, flowing: () => stage.classList.contains('flowing'), view: () => cur, unfold: gesture, lens: setLens,
     highlight, overlay, focus: focusMap, editable: !!E }; // a story's pointer is the pieces' own, from the story event (0.14.0)
 
   // the pieces a host asked for (#99): they follow the map's selection and views, and take their keys wherever the focus is

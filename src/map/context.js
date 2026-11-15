@@ -39,6 +39,8 @@ function phaseOf(texts) {
    node finder, export. Drill-down views, swimlanes, breadcrumbs and deep links are super-board's /visual. */
 
 // every model edge gets an id for events: its own, else "<from>-><to>#<n>" (n: its place among edges with the same ends)
+// by-id maps with no prototype, so an id named __proto__, constructor or toString is a key like any other (M3, audit 8)
+const O = () => Object.create(null), byId = es => Object.assign(O(), Object.fromEntries(es));
 function edgeIds(list) {
   const seen = {};
   (list || []).forEach(e => { if (!e || typeof e !== 'object') return; const k = e.from + '->' + e.to, n = seen[k] = (seen[k] ?? -1) + 1; e._id = e.id != null ? String(e.id) : `${k}#${n}`; });
@@ -57,8 +59,8 @@ function mapContext(model, opts = {}) {
   const nodes = [...(D.nodes || []), ...views.flatMap(v => v.nodes || [])];
   views.forEach(v => { lists(v, ['nodeIds', 'containers', 'intake']); [...(v.containers || []), ...(Array.isArray(v.lanes) ? v.lanes : [])].forEach(c => lists(c, ['nodeIds'])); Object.values(v.nodeOverrides || {}).forEach(o => lists(o, ['verbs'])); }); nodes.forEach(n => lists(n, ['verbs']));
   // by id, with no prototype: a node or view named constructor is no view an element opens (M3, audit 7)
-  const N = Object.assign(Object.create(null), Object.fromEntries(nodes.map(n => [n.id, n])));
-  const V = Object.assign(Object.create(null), Object.fromEntries(views.map(v => [v.id, v])));
+  const N = byId(nodes.map(n => [n.id, n]));
+  const V = byId(views.map(v => [v.id, v]));
   const viewOfParent = p => V[p] ? p : (views.find(v => v.id === p || v.node === p) || {}).id; // parent may name a node
   views.forEach(v => { if (v.parent) v.parent = viewOfParent(v.parent) || null; });
   const rootId = (D.root && V[D.root]) ? D.root : (views.find(v => !v.parent) || views[0] || {}).id;
@@ -90,14 +92,14 @@ function mapContext(model, opts = {}) {
   const latestPhase = texts => { for (const t of texts) { let best = null; HUB_PHASES.forEach((p, i) => { if (p[1].test(String(t || ''))) best = i; }); if (best != null) return best; } return null; };
   const isState = id => (N[id] || {}).kind === 'board';
   function loopsOf(v) { // edges that close a cycle, found depth-first in run order from the roots
-    const ids = (v.nodeIds || []).filter(i => N[i]), edges = viewEdges(v), back = new Set(), st = {};
+    const ids = (v.nodeIds || []).filter(i => N[i]), edges = viewEdges(v), back = new Set(), st = O();
     edges.forEach((e, k) => { if (e.loop) back.add(k); }); // an edge marked `loop: true` is the view's loop back
     const dfs = u => { const fr = [[u, 0]]; st[u] = 1; // a stack of frames, not recursion: a chain of any length
       while (fr.length) { const f = fr[fr.length - 1]; if (f[1] === edges.length) { fr.pop(); st[f[0]] = 2; continue; }
         const k = f[1]++, e = edges[k]; if (e.from !== f[0] || e.from === e.to || e.loop) continue; if (st[e.to] === 1) back.add(k); else if (!st[e.to]) { st[e.to] = 1; fr.push([e.to, 0]); } } };
     [...ids.filter(i => !edges.some(e => e.to === i && e.from !== i && !e.loop)), ...ids].forEach(i => { if (!st[i]) dfs(i); });
     if (v.render === 'sequence') { // run order: a step back to a part an earlier step already reached loops back (state may be written again later)
-      const first = {}; edges.forEach((e, k) => { if (first[e.from] == null && !edges.some((x, j) => j < k && x.to === e.from)) first[e.from] = -1; if (first[e.to] == null) first[e.to] = k; });
+      const first = O(); edges.forEach((e, k) => { if (first[e.from] == null && !edges.some((x, j) => j < k && x.to === e.from)) first[e.from] = -1; if (first[e.to] == null) first[e.to] = k; });
       edges.forEach((e, k) => { if (first[e.to] < k && !isState(e.to) && e.from !== e.to) back.add(k); });
     }
     return { edges, back, keys: new Set(edges.filter((e, k) => back.has(k)).map(e => e.from + '>' + e.to)) };
@@ -110,7 +112,7 @@ function mapContext(model, opts = {}) {
       return lanes.length ? { lanes, explicit: true } : null;
     }
     if (v.render !== 'sequence' || edges.length < 4) return null;
-    const lanes = [], laneOf = {}, pending = [];
+    const lanes = [], laneOf = O(), pending = [];
     let curP = -1, named = 0, filed = 0;
     const file = (id, p) => {
       filed++; if (p != null) named++;
@@ -132,7 +134,7 @@ function mapContext(model, opts = {}) {
     const ids = (v.nodeIds || []).filter(i => N[i] && i !== hub), seq = v.render === 'sequence';
     const fwd = lp.edges.filter((e, k) => !lp.back.has(k) && e.from !== e.to);
     const callees = []; lp.edges.forEach(e => { if (e.from === hub && e.to !== hub && !callees.includes(e.to)) callees.push(e.to); });
-    const laneOf = {}; let titles = [], boxed = true;
+    const laneOf = O(); let titles = [], boxed = true;
     const dl = deriveLanes(v, hub);
     if (dl) { titles = dl.lanes.map(l => l.title); dl.lanes.forEach((l, i) => l.ids.forEach(id => { laneOf[id] = i; })); }
     else if (seq) { // run order, three to a column
@@ -152,7 +154,7 @@ function mapContext(model, opts = {}) {
     const used = [...new Set(ids.map(i => laneOf[i]))].sort((a, b) => a - b);
     // branches: hub → callee is drawn unless the callee already has another line coming in
     const branch = new Set(callees.filter(c => !isState(c) && !lp.edges.some(e => e.to === c && e.from !== hub)));
-    const sub = {}; ids.forEach(i => { sub[i] = 0; });
+    const sub = O(); ids.forEach(i => { sub[i] = 0; });
     for (let it = 0; it <= ids.length; it++) fwd.forEach(e => { if (e.from === hub || e.to === hub) return; if (laneOf[e.from] === laneOf[e.to] && sub[e.to] < sub[e.from] + 1) sub[e.to] = Math.min(3, sub[e.from] + 1); });
     const seen = id => { const k = lp.edges.findIndex(e => e.to === id); return k < 0 ? 999 + lp.edges.findIndex(e => e.from === id) : k; };
     const lanes = used.map(u => {
@@ -166,27 +168,27 @@ function mapContext(model, opts = {}) {
   /* a hub plan made stable against the one before it: a card that was there keeps its lane (by title), column and
      order; a new card takes its place in the fresh plan, after the cards already in that column */
   function keepHub(P, Q) {
-    const at = {}; Q.lanes.forEach(L => L.cols.forEach((col, j) => col.forEach((id, r) => { at[id] = { t: L.title, j, r }; })));
+    const at = O(); Q.lanes.forEach(L => L.cols.forEach((col, j) => col.forEach((id, r) => { at[id] = { t: L.title, j, r }; })));
     const titles = Q.lanes.map(L => L.title);
     P.lanes.forEach((L, i) => { if (titles.includes(L.title)) return; const before = P.lanes.slice(0, i).map(x => x.title).filter(t => titles.includes(t)).pop();
       titles.splice(before == null ? 0 : titles.indexOf(before) + 1, 0, L.title); });
-    const lanes = titles.map(title => ({ title, ids: [], cols: [] })), lane = Object.fromEntries(lanes.map(L => [L.title, L]));
+    const lanes = titles.map(title => ({ title, ids: [], cols: [] })), lane = byId(lanes.map(L => [L.title, L]));
     const put = (id, t, j, r) => { const L = lane[t]; L.ids.push(id); (L.cols[j] ||= []).push([r, id]); };
     P.lanes.forEach(L => L.cols.forEach((col, j) => col.forEach((id, r) => { const a = at[id]; if (a) put(id, a.t, a.j, a.r); else put(id, L.title, j, 1e6 + r); })));
     lanes.forEach(L => { L.cols = L.cols.filter(c => c && c.length).map(c => c.sort((a, b) => a[0] - b[0]).map(x => x[1])); });
     const out = lanes.filter(L => L.ids.length);
     return { ...P, lanes: out, boxed: Q.boxed && out.length > 1 };
   }
-  const planCache = {};
+  const planCache = O();
   function planOf(vid) {
-    if (vid in planCache) return planCache[vid];
+    if (Object.hasOwn(planCache, vid)) return planCache[vid];
     const v = V[vid], ids = (v.nodeIds || []).filter(i => N[i]), lp = loopsOf(v);
     const outs = id => lp.edges.filter(e => e.from === id && e.to !== id).length;
     let hub = subjectOf(v); if (hub && !ids.includes(hub)) hub = null;
     const sources = ids.filter(i => outs(i) && !lp.edges.some(e => e.to === i && e.from !== i));
     if (!hub && lp.edges.length && outs(lp.edges[0].from) >= 3 && sources.length === 1 && /^(public|lane|verb|external)$/.test(N[lp.edges[0].from]?.kind || '')) hub = lp.edges[0].from; // one trigger only; an overview with several stays a flow
     if (hub && outs(hub) < 3) hub = null;
-    const steps = {}; if (v.render === 'sequence') lp.edges.forEach((e, i) => { (steps[e.to] ||= []).push(i + 1); });
+    const steps = O(); if (v.render === 'sequence') lp.edges.forEach((e, i) => { (steps[e.to] ||= []).push(i + 1); });
     const flow = { flow: true, backKeys: lp.keys, steps, hub: null };
     if (!hub || v.containers || v.mainSteps || v.render === 'process') return (planCache[vid] = flow);
     planCache[vid] = { ...hubPlan(v, hub, lp), hub, backKeys: lp.keys, steps };
@@ -218,7 +220,7 @@ function mapContext(model, opts = {}) {
     L = onGrid(vid, L);
     const bx = boxesOf(vid), ids = (V[vid].nodeIds || []).filter(i => N[i] && !bx.some(b => b.id === i)); // a box takes its place from what it holds
     if (ids.every(i => Array.isArray(L[i]))) return L;
-    const auto = autoPos(vid), out = {};
+    const auto = autoPos(vid), out = O();
     ids.forEach(i => { if (Array.isArray(L[i])) out[i] = L[i]; });
     ids.forEach(i => { if (out[i]) return; let [c, r] = auto[i] || [0, 0]; while (Object.values(out).some(([c2, r2]) => c2 === c && Math.abs(r2 - r) < 1)) r++; out[i] = [c, r]; }); // auto rows may be half rows: a row apart
     return out;
@@ -234,8 +236,8 @@ function mapContext(model, opts = {}) {
   // A typed view whose type gives boxes (notes/stage-2.md §3.2) passes them, T: { boxes, flip }; their ids are not cards
   function blockPos(vid, T) {
     const v = T ? flipView(vid, T.flip) : V[vid], boxes = T ? T.boxes : (v.containers || []).filter(c => c && c.id), ids = (v.nodeIds || []).filter(i => N[i] && !(T && boxes.some(b => b.id === i))), isId = new Set(ids), lp = loopsOf(v);
-    const byBox = Object.fromEntries(boxes.map(b => [b.id, b])), known = x => ids.includes(x) || Object.hasOwn(byBox, x), fwd = lp.edges.filter((e, k) => !lp.back.has(k) && e.from !== e.to && known(e.from) && known(e.to)); // not a line to an id that is neither (M3.3)
-    const home = Object.fromEntries(ids.map(i => [i, (boxes.filter(b => (b.nodeIds || []).includes(i)).pop() || {}).id ?? null])); // the box a card is drawn in
+    const byBox = byId(boxes.map(b => [b.id, b])), known = x => ids.includes(x) || Object.hasOwn(byBox, x), fwd = lp.edges.filter((e, k) => !lp.back.has(k) && e.from !== e.to && known(e.from) && known(e.to)); // not a line to an id that is neither (M3.3)
+    const home = byId(ids.map(i => [i, (boxes.filter(b => (b.nodeIds || []).includes(i)).pop() || {}).id ?? null])); // the box a card is drawn in
     const up = x => isId.has(x) ? home[x] : byBox[x] && byBox[byBox[x].parent] ? byBox[x].parent : null; // the box a card or box sits in
     const kids = new Map(), tin = new Map(), tout = new Map(), dep = new Map([[null, 0]]), path = new Map(), st = [[null, 0]]; let t = 0;
     boxes.forEach(b => { const p = up(b.id); kids.has(p) || kids.set(p, []); kids.get(p).push(b.id); });
@@ -250,7 +252,6 @@ function mapContext(model, opts = {}) {
     const first = x => { const k = lp.edges.findIndex(e => holds(x, e.from) || holds(x, e.to)); return k < 0 ? Infinity : k; };
     const sink = x => ids.includes(x) && isState(x) && !fwd.some(e => e.from === x); // state that leads nowhere goes last
     const lined = x => lp.edges.some(e => e.from !== e.to && (holds(x, e.from) || holds(x, e.to)));
-    const O = () => Object.create(null); // by-id maps with no prototype, so an id named __proto__ or constructor is a key like any other (M3)
     let was = O(), now = O(); // each box as the pass before laid it out, and as this one does
     const block = (g, P, order) => { // a group's cards at [col, row] from its top left, and its size in slots; P: where the pass before put each card
       const all = [...ids.filter(i => home[i] === g), ...(kids.get(g) || [])];
@@ -262,7 +263,7 @@ function mapContext(model, opts = {}) {
       const st = O(), dag = [], into = new Set(Object.values(out).flat()); // lines that close a loop do not order the blocks
       const dfs = u => { st[u] = 1; out[u].forEach(w => { if (st[w] === 1) return; dag.push([u, w]); if (!st[w]) dfs(w); }); st[u] = 2; };
       [...items.filter(x => !into.has(x)), ...items].forEach(x => { if (!st[x]) dfs(x); });
-      const rank = Object.fromEntries(items.map(x => [x, 0]));
+      const rank = byId(items.map(x => [x, 0]));
       for (let it = 0; it < items.length; it++) dag.forEach(([a, b]) => { if (rank[b] < rank[a] + 1) rank[b] = rank[a] + 1; });
       const cols = [], pos = O(); let c0 = 0, h = 0;
       items.forEach(x => (cols[rank[x]] ||= []).push(x));
@@ -320,8 +321,8 @@ function mapContext(model, opts = {}) {
     return best;
   }
   let scouting = false;
-  const fanIn = vid => { const k = {}; return viewEdges(V[vid] || {}).some(e => e.from !== e.to && (k[e.to] = (k[e.to] || 0) + 1) >= 6); };
-  const drawn = {}; // the way bestFlow kept, routed already: the view's next buildGeo takes it once instead of routing it again
+  const fanIn = vid => { const k = O(); return viewEdges(V[vid] || {}).some(e => e.from !== e.to && (k[e.to] = (k[e.to] || 0) + 1) >= 6); };
+  const drawn = O(); // the way bestFlow kept, routed already: the view's next buildGeo takes it once instead of routing it again
   const flipView = (vid, flip) => flip ? { ...V[vid], edges: viewEdges(V[vid]).map(e => flip(e) ? { ...e, from: e.to, to: e.from } : e) } : V[vid];
   function flowPos(vid, o = {}) {
     const v = flipView(vid, o.flip);
@@ -338,7 +339,7 @@ function mapContext(model, opts = {}) {
       const ranks = Object.keys(cols).map(Number).sort((a, b) => a - b), mains = ranks.map(c => cols[c].filter(i => !sink(i)).sort((a, b) => seen(a) - seen(b)));
       untangle(mains, links); return { cols, ranks, mains }; }; // in reading order, unless another order crosses less (#53)
     const { cols, ranks, mains } = order((o.pull && pullSources(ids, links, rank)) || rank);
-    const row = o.packed ? Object.fromEntries(mains.flatMap(m => m.map((i, r) => [i, r]))) : rowsFor(mains, fwd.filter(level).map(e => [e.from, e.to]));
+    const row = o.packed ? byId(mains.flatMap(m => m.map((i, r) => [i, r]))) : rowsFor(mains, fwd.filter(level).map(e => [e.from, e.to]));
     const height = Math.max(0, ...Object.values(row)) + 1;
     Object.entries(cols).forEach(([c, list]) => {
       const main = mains[ranks.indexOf(+c)], st = list.filter(sink).sort((a, b) => seen(a) - seen(b));
@@ -358,11 +359,11 @@ function mapContext(model, opts = {}) {
   let ruled = null;
   const brokenIn = vid => {
     if (!arrOf(D.rules).length) return null;
-    const by = {}, title = id => { const r = D.rules.find(x => x && x.id === id); return String((r && (r.title || r.id)) ?? id); };
+    const by = O(), title = id => { const r = D.rules.find(x => x && x.id === id); return String((r && (r.title || r.id)) ?? id); };
     (ruled ||= rules(D)).forEach(b => { if (b.view === vid) b.targets.forEach(t => { if (t.type === 'edge') t.ids.forEach(i => { const l = by[i] ||= []; if (!l.includes(title(b.rule))) l.push(title(b.rule)); }); }); });
     return Object.keys(by).length ? by : null;
   };
-  const layoutCache = Object.create(null); // M3
+  const layoutCache = O(); // M3
   // the cards a card opens: its inner view's, else the count the host gives for one it has not loaded (opensCount)
   const kidCount = (nid, vid) => { const c = childOf(nid, vid), k = c && c !== vid ? (V[c].nodeIds || []).length : 0, n = +nodeIn(nid, vid).opensCount;
     return k || (opensOf(nid, vid) && n > 0 ? Math.floor(n) : 0); };
@@ -405,13 +406,13 @@ function mapContext(model, opts = {}) {
     }
     const edges = viewEdges(v).map(e => ({ ...e }));
     if (v.render === 'sequence') edges.forEach((e, i) => { e.step = i + 1; });
-    const P = planCache[vid] || { flow: true, backKeys: loopsOf(v).keys, steps: {} };
+    const P = planCache[vid] || { flow: true, backKeys: loopsOf(v).keys, steps: O() };
     if (!override && P.hub) return hubGeo(vid, P, edges, repair, quick);
     const pos = override || (v.layout ? fillLayout(vid, v.layout) : (layoutCache[vid] ||= autoPos(vid)));
     const ready = drawn[vid]; delete drawn[vid]; if (ready && !override && ready.pos === pos && repair === (v.repair !== false) && !quick) return ready.g;
     const mainSteps = v.mainSteps || v.render === 'process';
     const stepIds = v.stepIds || ids;
-    const dg = { nodeH: mainSteps ? 82 : v.subAndChips ? 80 : 64, subAndChips: !!v.subAndChips, mainSteps, containers: v.containers, nodes: ids.map(i => { const n = nodeIn(i, vid), step = mainSteps && stepIds.includes(i); return { ...n, sub: n.sub || n.sublabel, emphasis: !!step || !!n.emphasis, step: step ? stepIds.indexOf(i) + 1 : (v.cardSteps || {})[i] || null, verbs: step ? [] : n.verbs, kids: kidCount(i, vid), opens: !!opensOf(i, vid), col: (pos[i] || [0, 0])[0], row: (pos[i] || [0, 0])[1] }; }),
+    const dg = { nodeH: mainSteps ? 82 : v.subAndChips ? 80 : 64, subAndChips: !!v.subAndChips, mainSteps, containers: v.containers, nodes: ids.map(i => { const n = nodeIn(i, vid), step = mainSteps && stepIds.includes(i); return { ...n, sub: n.sub || n.sublabel, emphasis: !!step || !!n.emphasis, step: step ? stepIds.indexOf(i) + 1 : (v.cardSteps || O())[i] || null, verbs: step ? [] : n.verbs, kids: kidCount(i, vid), opens: !!opensOf(i, vid), col: (pos[i] || [0, 0])[0], row: (pos[i] || [0, 0])[1] }; }),
       edges: prepEdges(vid, edges, P.backKeys) };
     dg.authors = D.authors; dg.fan = !scouting; dg.repair = repair; dg.intake = v.intake; dg.tour = v.tour; dg.gap = v.gap; dg.rgap = v.rgap; dg.quick = quick;
     return layoutGraph(dg, true);
@@ -419,13 +420,13 @@ function mapContext(model, opts = {}) {
   function hubGeo(vid, P, edges, repair, quick) {
     const NH = V[vid].subAndChips ? 80 : 64, CG = 108, RG = 44, pitch = NH + RG, hub = P.hub;
     const all = P.lanes.flatMap(l => l.ids).concat(hub);
-    const widths = Object.fromEntries(all.map(i => [i, mapNodeW(nodeIn(i, vid))]));
+    const widths = byId(all.map(i => [i, mapNodeW(nodeIn(i, vid))]));
     const nodeW = widths[hub];
-    const stepTxt = id => { const s = (P.steps || {})[id] || []; return s.length > 2 ? s[0] + '+' : s.join('·'); };
+    const stepTxt = id => { const s = (P.steps || O())[id] || []; return s.length > 2 ? s[0] + '+' : s.join('·'); };
     const nodesOut = [{ ...nodeIn(hub, vid), sub: nodeIn(hub, vid).sub || nodeIn(hub, vid).sublabel, kids: kidCount(hub, vid), opens: !!opensOf(hub, vid), ax: 0, ay: 0, w: nodeW, h: NH }];
     const lanes = [], blocks = [], spine = [];
     let x = nodeW + CG, maxRows = 1;
-    const rowAt = {};
+    const rowAt = O();
     P.lanes.forEach((L, li) => {
       const x0 = x; spine[li] = x0 - CG + 28;
       const SUBG = 54; // columns inside a lane carry no branch labels, so they sit closer
@@ -453,7 +454,7 @@ function mapContext(model, opts = {}) {
     });
     lanes.forEach(l => { l.h = maxRows * pitch - RG + 30 + 62; });
     // the comb: trunk from the hub, a spine per lane, a branch into each callee with its label at the end
-    const yh = NH / 2, yt = -24, hubR = nodeW, byIdLocal = Object.fromEntries(nodesOut.map(n => [n.id, n]));
+    const yh = NH / 2, yt = -24, hubR = nodeW, byIdLocal = byId(nodesOut.map(n => [n.id, n]));
     const comb = [], others = [];
     const prepared = prepEdges(vid, edges.filter(e => e.from !== hub || P.branch.has(e.to)), P.backKeys);
     prepared.forEach(e => {
@@ -571,8 +572,8 @@ function mapContext(model, opts = {}) {
        between the card itself and a card inside has no line (the card is the box), and a hub's steps show on the cards they
        reach, as the numbered view draws them: those numbers go on that card inside. On a numbered card (a process view's
        step, or one an unfolded numbered view numbered) they go under its number: step 4's are 4.1, 4.2 */
-    const tags = {}, onCard = e => e.from === nid ? e.to : e.to === nid ? e.from : hp && e.from === hp.hub ? e.to : null;
-    const sid = v.stepIds || outer, at = (v.mainSteps || v.render === 'process') && sid.includes(nid) ? sid.indexOf(nid) + 1 : (v.cardSteps || {})[nid];
+    const tags = O(), onCard = e => e.from === nid ? e.to : e.to === nid ? e.from : hp && e.from === hp.hub ? e.to : null;
+    const sid = v.stepIds || outer, at = (v.mainSteps || v.render === 'process') && sid.includes(nid) ? sid.indexOf(nid) + 1 : (v.cardSteps || O())[nid];
     const num = j => /^\d+(\.\d+)*$/.test(String(at ?? '')) ? `${at}.${j + 1}` : j + 1; // a card with several numbers (2·3) holds no one step
     if (C.render === 'sequence') { const lq = loopsOf(C);
       lq.edges.forEach((e, j) => { const o = onCard(e); if (inner.includes(o)) (tags[o] ||= []).push(num(j)); });
@@ -586,15 +587,15 @@ function mapContext(model, opts = {}) {
     if (v.mainSteps || v.render === 'process') v.stepIds = v.stepIds || outer; // the steps keep their numbers; the cards inside are not steps
     if (Array.isArray(v.intake)) v.intake = v.intake.filter(s => s && s.to !== nid);
     if (+C.gap > (v.gap || 66)) v.gap = +C.gap; if (+C.rgap > (v.rgap || 44)) v.rgap = +C.rgap; // the room the inner view's lines were given
-    Object.entries(tags).forEach(([i, s]) => { (v.cardSteps ||= {})[i] = s.length > 2 ? s[0] + '+' : s.join('·'); }); // as hubGeo's stepTxt; buildGeo draws them
+    Object.entries(tags).forEach(([i, s]) => { (v.cardSteps ||= O())[i] = s.length > 2 ? s[0] + '+' : s.join('·'); }); // as hubGeo's stepTxt; buildGeo draws them
     delete v.layout; delete planCache[vid]; delete layoutCache[vid]; delete drawn[vid];
     if (!grid) return true; // a hub view has no columns to keep: laid out again, with its boxes
     /* the box's slots: the inner view's own cards in its columns, or in this view's reading order, and in its rows packed,
        upside down, or each card level with its neighbours (the median row of the cards outside it joins to, and of those to
        its left inside, as rowsFor does). Each way is routed, and the one the layout check scores best is kept */
     const [xc, xr] = pos[nid] || [0, 0], seen = new Set(), ways = [], med = xs => { const s = xs.slice().sort((a, b) => a - b), m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
-    const levelled = (ic, ir) => { const R = {}, cols = [...new Set(inner.map(ic))].sort((a, b) => a - b);
-      cols.forEach(k => { const want = {}, col = inner.filter(i => ic(i) === k);
+    const levelled = (ic, ir) => { const R = O(), cols = [...new Set(inner.map(ic))].sort((a, b) => a - b);
+      cols.forEach(k => { const want = O(), col = inner.filter(i => ic(i) === k);
         col.forEach(i => { const nb = theirs.flatMap(e => e.from === i ? [e.to] : e.to === i ? [e.from] : []).map(o => !isIn(o) && pos[o] ? pos[o][1] - xr : R[o]).filter(r => r != null);
           want[i] = nb.length ? med(nb) : ir(i); });
         let prev = -1; col.sort((a, b) => want[a] - want[b] || ir(a) - ir(b)).forEach(i => { R[i] = prev = Math.max(0, Math.round(want[i]), prev + 1); }); });
@@ -606,20 +607,20 @@ function mapContext(model, opts = {}) {
     const xBoxes = new Set(); for (let b = holder, k = 0; b && k < 64; k++, b = boxes.find(x => x.id === b.parent)) xBoxes.add(b.id); // the boxes the card is in
     // a hub's slots, as it draws them: the hub, then its lanes' columns in order (#82). ponytail: rows in each column's order,
     // not level with the part before as hubGeo lines them up; do that if a lane of several columns reads badly
-    const hs = hp && { [hp.hub]: [0, 0] };
+    const hs = hp && byId([[hp.hub, [0, 0]]]);
     if (hs) hp.lanes.flatMap(L => L.cols).map(col => col.filter(i => inner.includes(i))).filter(col => col.length).forEach((col, j) => col.forEach((i, r) => { hs[i] = [j + 1, r]; }));
-    const ip0 = hs || (C.layout ? fillLayout(c, C.layout) : (layoutCache[c] ||= autoPos(c))), lp = loopsOf(v), rk = Object.fromEntries(inner.map(i => [i, 0]));
+    const ip0 = hs || (C.layout ? fillLayout(c, C.layout) : (layoutCache[c] ||= autoPos(c))), lp = loopsOf(v), rk = byId(inner.map(i => [i, 0]));
     const fwd = lp.edges.filter((e, j) => !lp.back.has(j) && e.from !== e.to && inner.includes(e.from) && inner.includes(e.to));
     for (let it = 0; it < inner.length; it++) fwd.forEach(e => { if (rk[e.to] < rk[e.from] + 1) rk[e.to] = rk[e.from] + 1; });
     const one = own.length || v.nodeIds.length > 30; // its boxes' room to keep, or too big to route seven times: its own slots only
     // the sides the inner view gave its lines are for its own picture: with its own slots they stay; elsewhere each way is
     // also routed with the router picking them (copies, which keep the ids)
     const keepE = v.edges, freeE = theirs.some(e => e.fromSide || e.toSide) ? keepE.map(e => theirs.includes(e) && (e.fromSide || e.toSide) ? (({ fromSide, toSide, ...r }) => r)(e) : e) : null;
-    [ip0, ...(one ? [] : [Object.fromEntries(inner.map(i => [i, [rk[i], (ip0[i] || [0, 0])[1]]]))])].forEach(ip => (one ? [false] : [false, true, 'level']).forEach(flip => {
+    [ip0, ...(one ? [] : [byId(inner.map(i => [i, [rk[i], (ip0[i] || [0, 0])[1]]]))])].forEach(ip => (one ? [false] : [false, true, 'level']).forEach(flip => {
       const at = (i, j) => (ip[i] || [0, 0])[j], rank = j => { const u = [...new Set(inner.map(i => at(i, j)))].sort((a, b) => flip === true && j ? b - a : a - b), lo = u[0];
         const k = j && u.some(r => r % 1) ? 2 : 1; // half rows doubled: a box that ends on a half row gets no gap under it (layoutPass widens whole rows)
         return own.length ? i => (at(i, j) - lo) * k : i => u.indexOf(at(i, j)); };
-      const ic = rank(0), ir = flip === 'level' ? levelled(rank(0), rank(1)) : rank(1), w = Math.max(...inner.map(ic)) + 1, h = Math.max(...inner.map(ir)) + 1, L = {};
+      const ic = rank(0), ir = flip === 'level' ? levelled(rank(0), rank(1)) : rank(1), w = Math.max(...inner.map(ic)) + 1, h = Math.max(...inner.map(ir)) + 1, L = O();
       outer.forEach(i => { if (i === nid) return; const [c0, r0] = pos[i] || [0, 0]; L[i] = c0 >= xc + .5 ? [c0 + w - 1, r0] : Math.abs(c0 - xc) < .5 && r0 > xr ? [c0, r0 + h - 1] : [c0, r0]; });
       inner.forEach(i => { L[i] = [xc + ic(i), xr + ir(i)]; });
       // a box of this view with cards on both sides of the card's column, under it, would now reach into the unfolded box:
@@ -640,17 +641,17 @@ function mapContext(model, opts = {}) {
       const s = scoreGeo(g) + (strays(g) * 5 + leaveIssues(g, '').length) * 1000; if (!best || s < best.s - .5) best = { L, g, s, free }; };
     ways.forEach(score);
     // still an issue, and cards under the card in its column: the box one column to the right instead, so they keep their slots
-    if (best.s >= 1000 && v.nodeIds.length <= 30 && outer.some(i => i !== nid && pos[i] && Math.abs(pos[i][0] - xc) < .5)) { const B = best.L, L = {};
+    if (best.s >= 1000 && v.nodeIds.length <= 30 && outer.some(i => i !== nid && pos[i] && Math.abs(pos[i][0] - xc) < .5)) { const B = best.L, L = O();
       outer.forEach(i => { if (i === nid) return; const [c0, r0] = pos[i] || [0, 0]; L[i] = c0 >= xc + .5 ? [c0 + 1 + Math.max(...inner.map(j => B[j][0])) - xc, r0] : [c0, r0]; });
       inner.forEach(i => { L[i] = [B[i][0] + 1, B[i][1]]; }); score({ L, free: best.free }); }
     best.g.said.forEach(warn); delete best.g.said;
     v.edges = best.free ? freeE : keepE; v.layout = best.L; drawn[vid] = { pos: best.L, g: best.g }; // drawn as scored, without routing it again
     return true;
   }
-  const unfolded = {}; // per view: the cards opts.expand named that did unfold, in order (one inside another unfolds after it)
+  const unfolded = O(); // per view: the cards opts.expand named that did unfold, in order (one inside another unfolds after it)
   withM(() => Object.entries(opts.expand || {}).forEach(([vid, ids]) => { let todo = V[vid] ? [...new Set([].concat(ids || []))] : [];
     for (let more = true; more && todo.length;) { more = false; todo = todo.filter(nid => { if (!unfold(vid, nid)) return true; (unfolded[vid] ||= []).push(nid); return !(more = true); }); } }))();
-  const geoCache = {};
+  const geoCache = O();
   return { D, views, nodes, N, V, rootId, nodeIn, childOf, opensOf, subjectOf, viewsWith, kidsOf, chain, viewEdges, isState, planOf: withM(planOf), planCache,
     layoutCache, geoCache, memos, buildGeo: withM(buildGeo), buildView: withM(buildView), optimize: withM(optimize), flowPos, kidCount, viewKey, brokenIn, unfoldable, unfolded };
 }

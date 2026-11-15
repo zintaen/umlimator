@@ -268,13 +268,14 @@ export function mountPage(container, model, options = {}) {
   const mark = (s, words) => { const ws = words.filter(w => w.length > 1).map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')); // on the label, then escaped: never inside an entity or a tag
     return String(s ?? '').split(ws.length ? new RegExp('(' + ws.join('|') + ')', 'ig') : /(?!)/).map((p, i) => i % 2 ? `<mark>${esc(p)}</mark>` : esc(p)).join(''); };
   const lev = (a, b) => { const d = Array.from({ length: b.length + 1 }, (_, i) => i); for (let i = 1; i <= a.length; i++) { let p = d[0]; d[0] = i; for (let j = 1; j <= b.length; j++) { const t = d[j]; d[j] = Math.min(d[j] + 1, d[j - 1] + 1, p + (a[i - 1] === b[j - 1] ? 0 : 1)); p = t; } } return d[b.length]; };
+  const drawnHere = id => !!geo.byId[id] || X.boxHere(id); // a card here, or an element this view draws as a box
   function drawHits() {
     const qs = q.value.trim().toLowerCase(), words = qs.split(/\s+/).filter(Boolean);
     if (!qs) { // empty query: the views you can jump to, starting from where you are
       hits = [...kidsOf(cur), ...views.filter(v => v.id !== cur && !kidsOf(cur).includes(v))].slice(0, 8).map(v => ({ t: 'v', v }));
     } else {
       const starts = s => String(s || '').toLowerCase().startsWith(qs) ? 0 : 1;
-      const ns = nodeIdx().filter(x => words.every(w => x.hay.includes(w))).sort((a, b) => starts(a.n.label) - starts(b.n.label) || (geo.byId[b.n.id] ? 1 : 0) - (geo.byId[a.n.id] ? 1 : 0)).slice(0, 7).map(x => ({ t: 'n', n: x.n }));
+      const ns = nodeIdx().filter(x => words.every(w => x.hay.includes(w))).sort((a, b) => starts(a.n.label) - starts(b.n.label) || drawnHere(b.n.id) - drawnHere(a.n.id)).slice(0, 7).map(x => ({ t: 'n', n: x.n }));
       const vs = viewIdx().filter(x => words.every(w => x.hay.includes(w))).slice(0, 5).map(x => ({ t: 'v', v: x.v }));
       hits = [...ns, ...vs];
     }
@@ -288,7 +289,7 @@ export function mountPage(container, model, options = {}) {
     hits.forEach((h, i) => {
       const grp = !qs ? 'Views' : h.t === 'n' ? 'Nodes' : 'Views';
       if (grp !== last) { html += `<div class="gt">${grp}</div>`; last = grp; }
-      if (h.t === 'n') { const k = kindOf(h.n.kind, true), vs = viewsWith(h.n.id), here = geo.byId[h.n.id];
+      if (h.t === 'n') { const k = kindOf(h.n.kind, true), vs = viewsWith(h.n.id), here = drawnHere(h.n.id);
         html += `<button class="fr${i === hi ? ' on' : ''}" role="option" id="m-o${i}" aria-selected="${i === hi}" data-i="${i}"><i style="background:var(--um-${KIND[k][0]})"></i><b>${mark(h.n.label, words)}</b><span>${esc(h.n.type ? wordOf(D, vs[0], h.n.id, h.n.type) : KIND[k][1])} · ${here ? 'this view' : esc(vs.map(v => shortT(v.title || v.id)).slice(0, 2).join(', ') || 'no view')}</span></button>`; }
       else html += `<button class="fr${i === hi ? ' on' : ''}" role="option" id="m-o${i}" aria-selected="${i === hi}" data-i="${i}"><i style="background:var(--um-accent)"></i><b>${mark(h.v.title || h.v.id, words)}</b><span>${(h.v.nodeIds || []).length} nodes${h.v.id === cur ? ' · here' : ''}</span></button>`;
     });

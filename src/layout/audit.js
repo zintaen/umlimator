@@ -69,7 +69,7 @@ function routeAudit(geo, where, only, refs) { // only: a set of edges; counts ju
       if (!e.back && !e.both && !drawn.has(e.to + '>' + e.from) && e.t.x + e.t.w / 2 <= e.s.x + e.s.w / 2) say(`${where}: edge ${name(e)} runs right-to-left`, e);
     });
     if (geo.hub) { // hub views: one visible line into each callee
-      const into = {}; geo.edges.forEach(e => { (into[e.to] ||= []).push(e); });
+      const into = Object.create(null); geo.edges.forEach(e => { (into[e.to] ||= []).push(e); });
       Object.entries(into).forEach(([id, es]) => { es = es.filter(e => !e.back); if (es.some(e => e.from === geo.hub) && es.length > 1) say(`${where}: hub callee "${(geo.byId[id] || {}).label || id}" has ${es.length} incoming lines`, geo.byId[id]); });
     }
   }
