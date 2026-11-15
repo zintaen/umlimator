@@ -410,3 +410,8 @@ test('audit 6: a member row with a function type keeps it whole', () => {
   assert.deepEqual(parseMember('next: Fn(a)->B [0..1]'), { type: 'uml.Property', label: 'next', props: { valueType: 'Fn(a)->B', multiplicity: '0..1' } });
   assert.deepEqual(parseMember('f: Map<K, V> = x').props, { valueType: 'Map<K, V>', default: 'x' });
 });
+
+test('audit 8: an operation whose parameter has a function type keeps the parameters after it', () => {
+  assert.deepEqual(parseMember('+on(handler: (e: Event) => void, opts: Options): void').props.parameters, [{ name: 'handler', valueType: '(e: Event) => void' }, { name: 'opts', valueType: 'Options' }]);
+  assert.deepEqual(parseMember('f(a: () -> Unit, b: Int)').props.parameters, [{ name: 'a', valueType: '() -> Unit' }, { name: 'b', valueType: 'Int' }]);
+});

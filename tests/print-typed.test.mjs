@@ -112,3 +112,12 @@ test('the Lines table lists a line drawn to a member\'s owner: an association fr
   const ctx = mapContext(m), lines = tablesOf(ctx, ctx.V.v, ctx.buildGeo('v'))[1], text = lines.rows.map(r => r.replace(/<[^>]+>/g, ''));
   assert.match(lines.title, /<span>3<\/span>/); assert.ok(text.includes('Order → Customerrefers toAssociation') && text.some(t => t.startsWith('kept by id → Order')), text);
 });
+
+test('audit 8: an open package is named in the tables as it is drawn, by its qualified name', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'sales', type: 'uml.Package', label: 'sales' }, { id: 'orders', type: 'uml.Package', label: 'orders', parent: 'sales' },
+    { id: 'Order', type: 'uml.Class', label: 'Order', parent: 'orders' }, { id: 'billing', type: 'uml.Package', label: 'billing', parent: 'sales' }],
+    edges: [{ id: 'imp', type: 'uml.PackageImport', from: 'billing', to: 'orders' }], views: [{ id: 'v', diagram: 'uml.package', nodeIds: ['orders', 'Order', 'billing'] }] };
+  const ctx = mapContext(m), [els, lines] = tablesOf(ctx, ctx.V.v, ctx.buildGeo('v')), text = t => t.rows.map(r => r.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim());
+  assert.deepEqual(text(els), ['sales::orders Package', 'Order Class', 'sales::billing Package']);
+  assert.deepEqual(text(lines), ['sales::billing → sales::orders Package import']);
+});

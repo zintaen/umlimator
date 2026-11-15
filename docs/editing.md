@@ -349,7 +349,7 @@ The **state machine diagram** (`uml.state-machine`, `examples/order-states.json`
 
 | Edit | Pointer | Keyboard | Commands |
 |---|---|---|---|
-| add a state, a pseudostate, a final state, a comment | the palette (State, Initial, Final state, Choice, Junction, Fork, Join, Shallow history, Deep history, Terminate, Comment) | `N` | `add`; a pseudostate's `props.kind` comes from its entry |
+| add a state, a pseudostate, a final state, a comment | the palette (State, Initial, Final state, Choice, Junction, Fork, Join, Shallow history, Deep history, Terminate, Comment) | `N` | `add`; a pseudostate's `props.kind` comes from its entry, and it goes into the state or region selected (a state's lone region); one that would break a rule (a second initial, a history at the top) is refused, said |
 | add a region | the palette's Region with a state selected | | `add` of a `uml.Region` member; with no state selected the hint line says so |
 | add a transition | the handle or a drag (to its own state: a self-transition) | `L`, the other end (or the state's own name), Enter | `add` |
 | a transition's text | double-click once selected | `F2`: `trigger [guard] / effect` | one `set` per part that changed (`undefined` clears one); a text the parser refuses is kept, with why |

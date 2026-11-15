@@ -40,7 +40,7 @@ function multBounds(t) {
 function splitTop(s, sep) {
   const out = []; let depth = 0, from = 0;
   for (let i = 0; i < s.length; i++) { const c = s[i];
-    if ('<([{'.includes(c)) depth++; else if ('>)]}'.includes(c)) depth--;
+    if ('<([{'.includes(c)) depth++; else if ('>)]}'.includes(c)) { if (!(c === '>' && (s[i - 1] === '=' || s[i - 1] === '-'))) depth = Math.max(0, depth - 1); } // '=>', '->' close nothing
     else if (c === sep && depth === 0) { out.push(s.slice(from, i)); from = i + 1; } }
   out.push(s.slice(from));
   return out;
