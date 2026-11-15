@@ -387,3 +387,13 @@ test('audit 2: a pin of 1e308 lays out without walking every column between', ()
   const m = structuredClone(AWS); m.views[0].layout = { ...(m.views[0].layout || {}), [m.views[0].nodeIds.find(id => !/group/i.test(m.nodes.find(n => n.id === id).type))]: [1e308, 0] };
   assert.ok(layout(m, m.views[0].id).nodes.length);
 });
+
+test('audit 7: a line listed twice in view.edges is drawn, read and counted once', () => {
+  for (const [a, id] of [[GCP, 'gcp-api-db'], [AWS, 'aws-users-dns']]) {
+    const m = structuredClone(a), v = m.views[0], once = structuredClone(a), t = m.edges.find(e => e.id === id).type;
+    once.views[0].edges = m.edges.filter(e => e.type === t).map(e => e.id); v.edges = [...once.views[0].edges, id];
+    const g = layout(m, v.id);
+    assert.equal(g.edges.filter(e => e.id === id).length, 1, id); assert.equal(g.order.filter(x => x === id).length, 1, id);
+    assert.equal(describe(m, v.id), describe(once, v.id), id);
+  }
+});
