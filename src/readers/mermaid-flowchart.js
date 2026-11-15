@@ -52,7 +52,10 @@ const MF_NAME = /^[\p{L}\p{N}_$]+(?:[.-][\p{L}\p{N}_$]+)*$/u;
 const MF_PLAIN = /\s*([<ox]?(?:-{2,}[->ox]|={2,}[=>ox]|-?\.+-[>ox]?|~{3,}))/y; // a link with no text in it
 const MF_OPEN = /\s*([<ox]?(?:--|==|-\.))\s*/y; // a link's start, its text after it (-- text -->)
 const MF_PIPE = /\s*(?:\|("[^"]*"|[^|]*)\|)?/y; // a quoted text may hold |
-const MF_EDGE_ID = /\s*([^\s"@&|]+)@(?=[^{"])/y; // A e1@--> B
+// A e1@--> B: an edge id is what runs from the link's start to the next @, holding no space, " & or | (Mermaid's LINK_ID), with no
+// { or " after the @. Found by the next @ and the next break, each kept while the statement is read left to right: a regex run at
+// each link scanned the rest of a chained line (A-->B-->C...), quadratic in it
+const MF_WS = /\s*/y, MF_BRK = /[\s"&|]/g;
 // statements Mermaid reads and this reader does not; the importer passes over the same words (FLOW_QUIET)
 const MF_QUIET = /^(classDef|class|style|linkStyle|click|direction|accTitle|accDescr)(?![\p{L}\p{N}_])/u;
 const MF_WORDS = /^(end|subgraph|graph|flowchart|classDef|class|style|linkStyle|click|direction|accTitle|accDescr|default|call|href)(?![\p{L}\p{N}_])/u; // no name the writer gives starts so
@@ -162,6 +165,7 @@ function mfNode(s, i, find) {
 // node groups (a & b) joined by links, or null: the importer's statement()
 function mfStatement(s) {
   const groups = [], links = [], miss = new Map();
+  let at = -1, brk = -1; // the next @ and the next character an edge id does not hold
   const find = (c, from) => {
     if (from >= (miss.get(c) ?? Infinity)) return -1;
     const k = s.indexOf(c, from);
@@ -179,11 +183,13 @@ function mfStatement(s) {
     }
     if (!grp.length) return null;
     groups.push(grp);
-    if (!s.slice(i).trim()) return { groups, links };
-    MF_EDGE_ID.lastIndex = i;
-    const eid = MF_EDGE_ID.exec(s), lk = mfLink(s, eid ? MF_EDGE_ID.lastIndex : i);
+    MF_WS.lastIndex = i; MF_WS.exec(s); const j = MF_WS.lastIndex;
+    if (j === s.length) return { groups, links };
+    if (at < j) { at = s.indexOf('@', j); if (at < 0) at = Infinity; }
+    if (brk < j) { MF_BRK.lastIndex = j; brk = MF_BRK.exec(s) ? MF_BRK.lastIndex - 1 : Infinity; }
+    const eid = at > j && at < brk && at + 1 < s.length && s[at + 1] !== '{' && s[at + 1] !== '"', lk = mfLink(s, eid ? at + 1 : i);
     if (!lk) return null;
-    if (eid) lk.id = eid[1];
+    if (eid) lk.id = s.slice(j, at);
     links.push(lk); i = lk.end;
   }
 }

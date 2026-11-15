@@ -178,6 +178,11 @@ test('connect on a dynamic view: a relationship the model has between the two, n
   const s = structuredClone(C4), sv = s.views[V(DV)]; delete sv.edges; s.edges = s.edges.filter(e => !(e.from === 'c4-api' && e.to === 'c4-db'));
   const first = apply(s, DYN.edits.connect(s, sv, 'c4-api', 'c4-db', null, line));
   assert.deepEqual(layout(first, DV).edges.map(e => [e.from, e.to, e.step]), [['c4-api', 'c4-db', 1]]);
+  // audit 10: a comment link on such a view is listed too, so it is drawn and described
+  const n = structuredClone(s); n.nodes.push({ id: 'note', type: 'uml.Comment', label: 'Retries on 503' }); n.views[V(DV)].nodeIds.push('note');
+  const linked = apply(n, DYN.edits.connect(n, n.views[V(DV)], 'note', 'c4-api', null, { type: 'uml.CommentLink' }));
+  assert.deepEqual(linked.views[V(DV)].edges, ['link1']);
+  assert.deepEqual(layout(linked, DV).edges.map(e => e.id), ['link1']); assert.match(describe(linked, DV), /Retries on 503/);
 });
 
 test('F2 on a step (rename): its drawn text, number and technology, read back as its description; text typed without them is the description; a relationship that is no step, the canvas\'s', () => {
@@ -312,6 +317,13 @@ test('the deployment view\'s hooks: the palette\'s instance picks its container 
   assert.equal(DEP.edits.add(m, v, { type: 'c4.ContainerInstance' }, 'API 2').then(1)[0].element.label, 'API 2');
   assert.equal(DEP.edits.add(C4, v, { type: 'c4.DeploymentNode' }, 'Cache host'), null, 'a deployment node: the canvas\'s add');
   assert.deepEqual(DEP.edits.add(C4, { ...v, nodeIds: [] }, { type: 'c4.ContainerInstance' }, ''), { error: 'Add a deployment node first: an instance runs on one' });
+  // audit 10: on a view of a software system, only its containers (c4-level rejects any other's instance)
+  const crm = structuredClone(C4); crm.nodes.push({ id: 'crm', type: 'c4.SoftwareSystem', label: 'CRM' }, { id: 'crm-db', type: 'c4.Container', label: 'CRM database', parent: 'crm' });
+  assert.ok(DEP.edits.add(crm, v, { type: 'c4.ContainerInstance' }, '').pick.includes('CRM database'), 'no subject: every container');
+  const sv = { ...v, subject: 'c4-bookshop' };
+  assert.deepEqual(DEP.edits.add(crm, sv, { type: 'c4.ContainerInstance' }, '').pick, r.pick); assert.deepEqual(DEP.edits.key(crm, sv, ['c4-db-1'], 'T').pick, r.pick);
+  assert.deepEqual(DEP.edits.add(crm, { ...v, subject: 'crm', nodeIds: v.nodeIds }, { type: 'c4.ContainerInstance' }, '').pick, ['CRM database']);
+  assert.deepEqual(DEP.edits.add(crm, { ...v, subject: 'c4-mail' }, { type: 'c4.ContainerInstance' }, ''), { error: 'The view\'s system has no container to deploy' });
   const t = DEP.edits.key(C4, v, ['c4-db-1'], 'T');
   assert.deepEqual(t.pick, r.pick);
   assert.deepEqual(t.then(4), [{ op: 'set', id: 'c4-db-1', path: 'props.container', value: 'c4-queue' }]); assert.deepEqual(t.then(3), []);

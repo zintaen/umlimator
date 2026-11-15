@@ -110,6 +110,8 @@ ok("diff · the summary reads a label as written: List<Order> and *all* are not 
    u.flat("List<Order> *all* a_b <!--") == "List&lt;Order&gt; \\*all\\* a\\_b &lt;!--" and u.flat("a_b", code=True) == "a_b", u.flat("List<Order> *all* a_b <!--"))
 ok("diff · the summary mentions no one: a label @Transactional or 'calls @ops' gets a word joiner after its @ (audit 5)",
    u.flat("calls @ops @Transactional") == "calls @\u2060ops @\u2060Transactional" and u.flat("@x", code=True) == "@x", u.flat("calls @ops"))
+ok("diff · the summary links no issue: a # or GH- before a digit gets a word joiner, so Order #42, o/r#7 and GH-12 cross-reference nothing (audit 10)",
+   u.flat("Order #42 o/r#7 gh-12 #x") == "Order #\u206042 o/r#\u20607 gh-\u206012 #x" and u.flat("#42", code=True) == "#42", u.flat("Order #42 o/r#7 gh-12"))
 ok("record · a step's duration the page only warns about is played as the page plays it, not a traceback (audit 4)",
    [u.step_ms(d) for d in (None, 1200, -500, "slow", 0, "nan", [1])] == [4000, 1200, 500, 4000, 4000, 4000, 4000])
 
@@ -332,6 +334,12 @@ with tempfile.TemporaryDirectory() as tmp:
     b = plain("diff", str(t / "vicon.json"), str(t / "badid.json"), "--out", str(t / "badid.html"))
     ok("diff · a malformed model is named by its own file, not a deleted temp copy (audit 8)",
        b.returncode == 1 and "badid.json: nodes[1].id is not a string" in b.stderr and ".change.json" not in b.stderr, b.stderr[-300:])
+    # audit 10: a view with no id, an empty one or a repeated one is refused in one line, as validate() refuses it
+    (t / "vid.json").write_text(json.dumps({"title": "t", "nodes": [{"id": "a", "label": "A"}], "views": [{"id": "v", "nodeIds": ["a"]}, {"nodeIds": ["a"]}, {"id": "", "nodeIds": ["a"]}, {"id": "v", "nodeIds": ["a"]}]}))
+    b = plain("render", str(t / "vid.json"), "--out", str(t / "vid.html"), "--no-check")
+    ok("render · a view with no id, an empty id or a repeated id is refused in one line, and no page is written (audit 10)",
+       b.returncode == 1 and 'views[1].id: a view needs an id; views[2].id: a view needs an id; views[3].id "v" is used twice' in b.stderr
+       and not (t / "vid.html").exists(), b.stderr[-300:])
     # audit 8: a story step that is not an object: one line, not a traceback (and before Chrome is looked for)
     (t / "story.json").write_text(json.dumps({"title": "t", "nodes": [{"id": "a", "label": "A"}, {"id": "b", "label": "B"}], "edges": [{"from": "a", "to": "b"}],
         "views": [{"id": "main", "title": "Main", "nodeIds": ["a", "b"]}], "stories": [{"id": "s", "title": "S", "steps": [None, {"view": "main", "tour": "ab"}]}]}))
