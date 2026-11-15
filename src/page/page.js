@@ -55,14 +55,14 @@ export function mountPage(container, model, options = {}) {
       <nav class="crumbs" id="m-crumbs" aria-label="Breadcrumb"></nav>
       <button class="findbtn" id="m-find" type="button" aria-label="Find a node or view, ${modK}" aria-keyshortcuts="${mac ? 'Meta' : 'Control'}+K"><span aria-hidden="true">⌕</span><span class="ft">Find a node or view…</span> <span class="kbd">${modK}</span></button>
       <button class="ibtn" id="m-theme" title="Light / dark" aria-label="Dark theme" aria-pressed="false">◐</button>${(D.stories || []).length ? `
-      <div class="menu"><button class="ibtn txt" id="m-stories" aria-haspopup="true" aria-expanded="false" title="Stories: walk-throughs of this map">▶<span class="lbl"> Stories</span></button>
+      <div class="menu"><button class="ibtn txt" id="m-stories" aria-controls="m-stories-pop" aria-expanded="false" title="Stories: walk-throughs of this map">▶<span class="lbl"> Stories</span></button>
         <div class="menu-pop" id="m-stories-pop" hidden>${D.stories.map(s => `<button data-story="${esc(s && s.id)}">${esc((s && (s.title || s.id)) || '')}</button>`).join('')}</div></div>` : ''}${arrOf(D.lenses).some(l => l && l.id) ? `
-      <div class="menu"><button class="ibtn txt" id="m-lenses" aria-haspopup="true" aria-expanded="false" title="Lenses: ways to look at this map">◎<span class="lbl"> Lenses</span></button>
+      <div class="menu"><button class="ibtn txt" id="m-lenses" aria-controls="m-lenses-pop" aria-expanded="false" title="Lenses: ways to look at this map">◎<span class="lbl"> Lenses</span></button>
         <div class="menu-pop" id="m-lenses-pop" hidden>${D.lenses.filter(l => l && l.id).map(l => `<button data-lens="${esc(l.id)}" aria-pressed="false">${esc(l.title || l.id)}</button>`).join('')}<hr><button data-lens="" aria-pressed="true">No lens</button></div></div>` : ''}
-      <div class="menu"><button class="pbtn" id="m-export" aria-haspopup="true" aria-expanded="false">Export ▾</button>
+      <div class="menu"><button class="pbtn" id="m-export" aria-controls="m-export-pop" aria-expanded="false">Export ▾</button>
         <div class="menu-pop" id="m-export-pop" hidden><button data-x="svg">SVG · this view</button><button data-x="png">PNG · this view (2×)</button><button data-x="link">Copy link to view</button><hr><button data-x="json">Map model (JSON)</button><button data-x="record">Record a story…</button></div></div>
       <button class="ibtn" id="m-pause" type="button" title="Pause" aria-label="Pause" aria-pressed="false">❚❚</button>
-      <button class="ibtn" id="m-help" title="Keys (?)" aria-label="Keyboard shortcuts" aria-haspopup="true" aria-expanded="false">?</button>
+      <button class="ibtn" id="m-help" title="Keys (?)" aria-label="Keyboard shortcuts" aria-haspopup="dialog" aria-controls="m-helpbox" aria-expanded="false">?</button>
     </header>
     <aside class="outline" id="m-tree" aria-label="Views"></aside>
     <div class="mmain">
@@ -75,7 +75,7 @@ export function mountPage(container, model, options = {}) {
       </div>
       <aside class="panel" id="m-panel" aria-label="Node details" hidden></aside>
     </div>
-    <div class="hpop" id="m-helpbox" role="dialog" aria-label="Keys" hidden><b>Keys</b>
+    <div class="hpop" id="m-helpbox" role="dialog" aria-label="Keys" tabindex="-1" hidden><b>Keys</b>
       <dl>${KEYS.map(([k, d]) => `<dt>${esc(k)}</dt><dd>${esc(d)}</dd>`).join('')}</dl></div>
     <div class="scrim" id="m-pal" hidden><div class="pal" role="dialog" aria-label="Search">
       <div class="in"><span aria-hidden="true">⌕</span><input id="m-q" type="text" autocomplete="off" spellcheck="false" placeholder="Search nodes and views" aria-label="Search nodes and views" role="combobox" aria-autocomplete="list" aria-expanded="true" aria-controls="m-res"><span class="kbd">esc</span></div>
@@ -160,7 +160,13 @@ export function mountPage(container, model, options = {}) {
     const bv = e.target.closest('.vpop [data-v]'); if (bv) return go(bv.dataset.v);
   });
   const setFlow = on => X.setFlow(on);
-  const toggleHelp = force => { const on = force ?? $('m-helpbox').hidden; $('m-helpbox').hidden = !on; $('m-help').setAttribute('aria-expanded', on); if (on) openMenu(null); };
+  /* the key list is a dialog (audit 7): focus goes into it as it opens, and back to where it was as it closes, if it was in it.
+     Export, Stories and Lenses are disclosure buttons (aria-controls, no aria-haspopup): their buttons follow in Tab order */
+  let helpBack = null;
+  const toggleHelp = force => { const b = $('m-helpbox'), was = !b.hidden, on = force ?? !was, inside = b.contains(document.activeElement);
+    b.hidden = !on; $('m-help').setAttribute('aria-expanded', on);
+    if (on) { openMenu(null); if (!was) { helpBack = document.activeElement; b.focus(); } }
+    else if (was && inside) (helpBack && helpBack.isConnected && helpBack !== document.body ? helpBack : $('m-help')).focus(); };
   /* the header's menus, Export, Stories and Lenses (0.14.0): one open at a time, or none. back: focus goes back to the
      button of the menu that closes (Esc) */
   let menuOn = null;

@@ -134,6 +134,15 @@ try {
     check("the host may take Open (preventDefault): the map stays where it is", JSON.stringify(ev) === '["trips"]' && h.view === 'system', [ev, h.view]);
     h.destroy(); }
 
+  { const js = 'java\tscript:window.hit=1', M = { authors: { eve: { url: js } }, nodes: [{ id: 'a', label: 'A', author: 'eve', source: ['javascript:window.hit=1', 'src/a.js'],
+      examples: [{ title: 'x', href: ' javascript:window.hit=1' }, { title: 'y', href: 'https://example.org/y' }] }], views: [{ id: 'system', title: 'S', nodeIds: ['a'] }] }; // audit 7
+    const [h, sr, q] = make({ details: true }, M); h.select({ type: 'node', id: 'a' }); q('[data-tab="links"]').click();
+    const src = [...sr.querySelectorAll('.source-list li')].map(li => li.querySelector('a') ? li.querySelector('a').getAttribute('href') : '-'); q('[data-tab="examples"]').click();
+    const hrefs = [q('a.author').getAttribute('href'), ...[...sr.querySelectorAll('.exs a')].map(a => a.getAttribute('href'))];
+    check('audit 7: a model\'s javascript: link is written nowhere in the details panel: the source shows as text, the author falls back to GitHub, the example has no link',
+      JSON.stringify(src) === '["-","src/a.js"]' && JSON.stringify(hrefs) === '["https://github.com/eve","https://example.org/y"]', [src, hrefs]);
+    h.destroy(); }
+
   { const ev = [], [h, sr, q] = make({ details: true, on: { open: e => { ev.push(e.view); e.preventDefault(); } } }); // audit 5
     click(q('.node[data-id="trips"]')); await wait(100); // the panel opens, the stage shrinks and the view is refitted: the card moves away
     ['click', 'dblclick'].forEach(t => q('.stage').dispatchEvent(new MouseEvent(t, { bubbles: true, composed: true, detail: 2 }))); // the second click, and the dblclick, land on the stage

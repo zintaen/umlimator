@@ -65,6 +65,12 @@ try {
   $('m-export').click(); document.querySelector('#m-export-pop [data-x="record"]').click(); await until(() => $('m-rec'));
   key('Escape', document.body);
   check('Esc closes the story recorder when it is on top, as its Close button does', !$('m-rec') && pg.view === 'system');
+  const roles = ['stories', 'lenses', 'export'].map(n => [$('m-' + n).getAttribute('aria-haspopup'), $('m-' + n).getAttribute('aria-controls')]);
+  $('m-help').focus(); $('m-help').click(); const inBox = document.activeElement === $('m-helpbox');
+  key('Escape', $('m-helpbox'));
+  check('audit 7: Export, Stories and Lenses are disclosure buttons, not menu buttons; ? is a dialog button, focus goes into the key list and back to ? on Esc',
+    JSON.stringify(roles) === '[[null,"m-stories-pop"],[null,"m-lenses-pop"],[null,"m-export-pop"]]' && $('m-help').getAttribute('aria-haspopup') === 'dialog'
+    && inBox && $('m-helpbox').hidden && document.activeElement === $('m-help'), [roles, inBox, document.activeElement && document.activeElement.id]);
   const rows = [...document.querySelectorAll('#m-helpbox dt')].map(x => x.textContent);
   check('the key list (?) is the router\'s table: Esc · Backspace closes what is on top, the recorder and a story too', rows.includes('Esc · Backspace') && rows.includes('?') && /the recorder, a story too/.test($('m-helpbox').textContent), rows);
 

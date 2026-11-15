@@ -71,7 +71,8 @@ function mapContext(model, opts = {}) {
   const viewEdges = v => { // an edge's ends are cards of the view or its containers
     const ids = new Set([...(v.nodeIds || []), ...(v.containers || []).map(c => c && c.id).filter(Boolean)]);
     const list = Array.isArray(v.edges) ? v.edges : (D.edges || []).filter(e => ids.has(e.from) && ids.has(e.to));
-    return list.map(e => typeof e === 'string' ? (D.edges || []).find(x => x.id === e) : e).filter(e => e && ids.has(e.from) && ids.has(e.to));
+    const once = new Set(); // a line id listed twice is one line, drawn once (audit 7)
+    return list.filter(e => typeof e !== 'string' || !once.has(e) && once.add(e)).map(e => typeof e === 'string' ? (D.edges || []).find(x => x.id === e) : e).filter(e => e && ids.has(e.from) && ids.has(e.to));
   };
   /* ---------- reading order: every view runs left → right ----------
      The trigger sits at the far left; each next step or callee goes one column to the right, branches
@@ -476,19 +477,22 @@ function mapContext(model, opts = {}) {
   }
   function optimize(vid, budget = 160) {
     budget = Math.max(budget, Math.min(400, 20 * (V[vid].nodeIds || []).length));
-    const t0 = performance.now(); let wall = 4000; // per-view time box, extended while problems remain
     const v = V[vid], ids = (v.nodeIds || []).filter(i => N[i]);
     let pos = JSON.parse(JSON.stringify(autoPos(vid)));
     const start = JSON.stringify(pos), boxed = (v.containers || []).length, homeOf = i => ((v.containers || []).filter(c => (c.nodeIds || []).includes(i)).pop() || {}).id; // blocks stay whole
     const lined = new Set(viewEdges(v).filter(e => e.from !== e.to).flatMap(e => [e.from, e.to])), loose = i => lined.size && !lined.has(i);
     let best = scoreGeo(buildGeo(vid, pos, false, true)), evals = 1;
+    // a cap on work, not on a clock, so every machine bakes the same layout (audit 7). An evaluation costs about lines²;
+    // the caps are what 4 s (12 s while problems remain) gave on a fast laptop.
+    // ponytail: lines² is a proxy for a routing's cost (boxes make it dearer); count the router's own steps if it drifts
+    const cost = Math.max(1, viewEdges(v).length) ** 2, more = () => evals < budget * (best >= 1000 ? 2.5 : 1) && evals * cost < (best >= 1000 ? 120000 : 40000);
     const hub = subjectOf(v), hubCol = hub && pos[hub] ? pos[hub][0] : null;
     const tryPos = cand => { evals++; const s = scoreGeo(buildGeo(vid, cand, false, true)); if (s < best - 0.5) { best = s; pos = cand; return true; } return false; };
     let improved = true;
-    while (improved && evals < budget * (best >= 1000 ? 2.5 : 1) && performance.now() - t0 < (best >= 1000 ? 12000 : wall)) {
+    while (improved && more()) {
       improved = false;
       for (const a of ids) {
-        if (evals >= budget * (best >= 1000 ? 2.5 : 1) || performance.now() - t0 > (best >= 1000 ? 12000 : wall)) break;
+        if (!more()) break;
         if (loose(a)) continue; // the row of cards with no line (#46) routes nothing
         const [ca, ra] = pos[a];
         const moves = [];

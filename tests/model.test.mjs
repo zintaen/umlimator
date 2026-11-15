@@ -134,3 +134,23 @@ test('a card\'s author tag ends on whole characters: initials and a long name ne
     assert.ok(!lone.test(s), author);
   }
 });
+
+test('a map view\'s edges list: a line to a card off the view, and a line listed twice, get a warning; the twice-listed line is drawn once (audit 7)', () => {
+  const N = [{ id: 'a', label: 'A' }, { id: 'b', label: 'B' }, { id: 'c', label: 'C' }];
+  const m = { nodes: N, edges: [{ id: 'ab', from: 'a', to: 'b', label: 'pays' }, { id: 'ac', from: 'a', to: 'c' }],
+    views: [{ id: 'v', title: 'V', nodeIds: ['a', 'b'], edges: ['ab', 'ab', 'ac', { from: 'b', to: 'c' }] }] };
+  assert.deepEqual(validate(m).map(x => x.path + ' ' + x.message), [
+    'views[0].edges[1] "ab" is listed twice: drawn once',
+    'views[0].edges[2] "ac" ends on "c", which is not one of the view\'s cards: not drawn',
+    'views[0].edges[3] the line ends on "c", which is not one of the view\'s cards: not drawn']);
+  const g = layout(m, 'v');
+  assert.deepEqual(g.edges.map(e => [e.from + '>' + e.to, e.lbl && e.lbl.text]), [['a>b', 'pays']]);
+});
+
+test('the layout search render bakes stops on work, not on a clock: a slow machine bakes the same layout (audit 7)', () => {
+  const m = JSON.parse(readFileSync(new URL('../examples/bookshop.json', import.meta.url)));
+  const run = () => { const c = mapContext(m); c.planOf('overview'); return JSON.stringify(c.optimize('overview')); };
+  const fast = run(), now = performance.now, t = now.call(performance);
+  performance.now = () => t + (now.call(performance) - t) * 1000; // a machine 1000 times slower, as its clock sees it
+  try { assert.equal(run(), fast); } finally { performance.now = now; }
+});
