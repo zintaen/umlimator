@@ -8,7 +8,7 @@ import { hit } from '../layout/layered.js';
 import { edgeRefIds } from '../map/api.js';
 import { badgesOf, mapTabs, toneOf } from '../map/cards.js';
 import { warn } from '../core/warn.js';
-import { diagramOf } from '../core/registry.js';
+import { diagramOf, idTable } from '../core/registry.js';
 import { mapContext } from '../map/context.js';
 import { canon } from '../map/diff.js';
 import { cardMatcher, msText } from '../map/insight.js';
@@ -133,7 +133,7 @@ export function render(container, model, options = {}) {
     if (v) { trail = trail.filter(id => ctx.V[id]); if (!trail.includes(vid)) trail = [vid]; } // the first view, or after an update() took the walk's views away
     stage.querySelectorAll('svg.map-svg, .empty-view').forEach(s => s.remove());
     if (!v || !(v.nodeIds || []).some(i => ctx.N[i])) { // a view with nothing in it, or a model with no views, gets a friendly card, not a blank canvas
-      geo = { nodes: [], edges: [], groups: [], lanes: [], families: [], byId: {}, stats: {}, bounds: { x: 0, y: 0, w: 400, h: 300 } };
+      geo = { nodes: [], edges: [], groups: [], lanes: [], families: [], byId: idTable(), stats: {}, bounds: { x: 0, y: 0, w: 400, h: 300 } };
       stage.insertAdjacentHTML('afterbegin', '<svg class="map-svg" viewBox="0 0 400 300" xmlns="http://www.w3.org/2000/svg"></svg>');
       const p = v && v.parent;
       stage.insertAdjacentHTML('beforeend', `<div class="empty-view"><div class="ico">◌</div><h4>Nothing here yet</h4><p>${v ? 'This view has no nodes yet.' : 'This map has no views yet.'}</p>${p ? `<button class="btn" data-v="${esc(p)}">← Back to ${esc(String(ctx.V[p].title || p).split(' · ')[0])}</button>` : ''}</div>`);
@@ -885,7 +885,8 @@ export function render(container, model, options = {}) {
     s.querySelectorAll('[data-was]').forEach(x => { if (x.tagName === 'title') x.textContent = x.getAttribute('data-was'); else x.setAttribute('aria-label', x.getAttribute('data-was')); x.removeAttribute('data-was'); });
     // the layers about this view; one that dims dims only where it names something: on a view it names nothing of, nothing fades
     const named = [...layers].filter(([n]) => !scopes.has(n) || scopes.get(n).includes(vid)), here = named.map(([, L]) => L);
-    const names = L => g.nodes.some(n => (L.nodes || {})[n.id]) || g.edges.some(e => edgeRefIds(e).some(x => (L.edges || {})[x]));
+    const own = (o, k) => (o && Object.hasOwn(o, k) ? o[k] : undefined); // a host's layer is a plain object: a card named constructor is not lit by Object's
+    const names = L => g.nodes.some(n => own(L.nodes, n.id)) || g.edges.some(e => edgeRefIds(e).some(x => own(L.edges, x)));
     let dims = new Set(here.filter(L => L.dim && names(L)));
     // a story's step dims alone (0.14.0): a layer that dimmed before the step keeps its marks but not its dimming, and one set
     // while the step shows dims in its place, so a step looks as it was told and what the reader lights later still shows
@@ -898,7 +899,7 @@ export function render(container, model, options = {}) {
     const cards = Object.fromEntries([...s.querySelectorAll('.node')].map(x => [x.dataset.id, x]));
     let under = '', over = '';
     const look = lookIn(g);
-    g.nodes.forEach(n => { const m = markOf2(L => (L.nodes || {})[n.id]), el = cards[n.id]; if (!m || !el) return;
+    g.nodes.forEach(n => { const m = markOf2(L => own(L.nodes, n.id)), el = cards[n.id]; if (!m || !el) return;
       if (m.level < 1) el.setAttribute('opacity', m.level);
       const sh = (m.tone || m.pulse) && look(n); // a shape's ring: its outline, 5 px out (0.15.0)
       if (m.tone || m.pulse) under += `<g${op(m)}>${sh ? `<path d="${sh.S.out(sh, 5)}"` : `<rect x="${n.x - 5}" y="${n.y - 5}" width="${n.w + 10}" height="${n.h + 10}" rx="14"`} class="um-ring${m.pulse ? ' um-pulse' : ''}" stroke="${tone(m.tone)}"/></g>`;
@@ -910,7 +911,7 @@ export function render(container, model, options = {}) {
     const heads = (g.families || []).flatMap(f => [{ x: f.x + 8, y: f.y + 3, w: String(f.label || f.id).length * 6.6 + 8, h: 22 }, // a box's title, 11 px mono
       ...(f.tabs || []).map(t => ({ x: t.x, y: f.y - 8, w: t.w, h: 16 }))]); // and its tabs
     const pills = [], free = r => !g.nodes.some(n => hit(r, n, 8) || (n.tag && hit(r, n.tag, 2))) && !heads.some(h => hit(r, h, 2)) && !g.edges.some(o => o.lbl && hit(r, o.lbl, 2)) && !pills.some(p => hit(r, p, 2));
-    g.edges.forEach((e, i) => { const m = markOf2(L => strongest(edgeRefIds(e).map(x => (L.edges || {})[x]))), eg = s.querySelector(`.edge-g[data-i="${i}"]`); if (!m || !eg) return;
+    g.edges.forEach((e, i) => { const m = markOf2(L => strongest(edgeRefIds(e).map(x => own(L.edges, x)))), eg = s.querySelector(`.edge-g[data-i="${i}"]`); if (!m || !eg) return;
       const path = eg.querySelector('.edge'), flow = eg.querySelector('.flowline');
       if (m.level < 1) [eg, s.querySelector(`.e-lab[data-i="${i}"]`)].forEach(x => x && x.setAttribute('opacity', m.level));
       if (m.tone || m.pulse) path.insertAdjacentHTML('beforebegin', `<path d="${path.getAttribute('d')}" class="um-glow${m.pulse ? ' um-pulse' : ''}" stroke="${tone(m.tone)}"/>`);
@@ -951,7 +952,7 @@ export function render(container, model, options = {}) {
      them; Refs that name their view light that view only */
   function highlight(refs, name = 'highlight') {
     if (refs == null) return overlay(name, null);
-    const L = { nodes: {}, edges: {}, dim: true }, lv = r => clamp01(r.level ?? (r.distance > 0 ? Math.max(.45, 1 - .15 * r.distance) : 1));
+    const L = { nodes: idTable(), edges: idTable(), dim: true }, lv = r => clamp01(r.level ?? (r.distance > 0 ? Math.max(.45, 1 - .15 * r.distance) : 1));
     const lit = (o, x, r) => { o[x] = { level: Math.max(lv(r), (o[x] || {}).level || 0) }; }, list = [].concat(refs).filter(Boolean);
     list.forEach(r => { const id = r.type === 'node' ? r.id : r.node, box = r.type === 'container' ? r.id : r.container; // a chip or badge: its card, or its box
       if (id != null) lit(L.nodes, id, r);
@@ -1036,7 +1037,7 @@ export function render(container, model, options = {}) {
   // under reduced motion no dot rides: the path is lit at rest instead, its cards ringed and numbered in turn and its lines
   // glowing (the 'tour' layer, which nothing dims), and the live region says it; it stays until the trip slot is taken
   function atRest(legs, quiet) {
-    const L = { nodes: {}, edges: {} }, order = [];
+    const L = { nodes: idTable(), edges: idTable() }, order = [];
     legs.forEach(l => { [l.from, l.to].forEach(id => { if (!L.nodes[id]) { order.push(id); L.nodes[id] = { tone: 'accent', badge: String(order.length) }; } });
       edgeRefIds(geo.edges[l.i]).forEach(x => { L.edges[x] = { tone: 'accent' }; }); });
     overlay('tour', L); trip = { kind: 'path', raf: 0, dot: null, end() { overlay('tour', null); } };

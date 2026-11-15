@@ -1,4 +1,4 @@
-import { TYPED, registerDiagramType } from '../core/registry.js';
+import { TYPED, registerDiagramType, idTable } from '../core/registry.js';
 import { esc, fit, textW } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
 import { layoutTree } from '../layout/tree.js';
@@ -73,7 +73,7 @@ function mmSize(n, root, opens) {
    its id), so N and the palette find the topic selected */
 function mmRun(model, view) {
   const V = mmView(model, view), X = mmIndex(model, V), views = new Map(MM_ARR(model && model.views).filter(MM_OBJ).map(v => [v.id, v]));
-  const nodes = [], links = [], order = [], byId = {}, problems = [];
+  const nodes = [], links = [], order = [], byId = idTable(), problems = [];
   let bottom = null, x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
   X.trees.forEach(({ root, list }) => {
     const opens = id => { const v = views.get(X.N.get(id).opensView); return v && v.id !== V.id ? v : null; };

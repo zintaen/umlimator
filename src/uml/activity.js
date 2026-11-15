@@ -1,5 +1,5 @@
 import { apply } from '../core/apply.js';
-import { registerDiagramType } from '../core/registry.js';
+import { registerDiagramType, idTable } from '../core/registry.js';
 import { esc, fit } from '../core/text.js';
 import { SHAPE, boxOut, portsOn, r2 } from '../draw/shapes.js';
 import { labelW } from '../layout/layered.js';
@@ -163,7 +163,7 @@ function acFinish(model, g, I, down) {
     bands = L.bands.map(b => ({ ...back(b), head: back(b.head) })); bounds = back(L.bounds); }
   // a header is aside, off the columns, at the first node's column and row: the canvas reads a drop's column and row from the
   // nodes when every one has them (render.js gridView, hintAt)
-  const byId = { ...g.byId }, { col = 0, row = 0 } = g.nodes[0] || {};
+  const byId = idTable(g.byId), { col = 0, row = 0 } = g.nodes[0] || {};
   const heads = bands.map(b => { const x = I.N.get(b.id); // k: the 'file' kind's, as layoutTyped gives the nodes, so a view of partitions only draws
     return (byId[b.id] = { id: b.id, label: acName(x), type: x.type, kind: 'file', k: 'file', shape: 'partition', aside: true, col, row, aria: acNodeName(model, I, x, I.lines), ...b.head }); });
   // reading order (§14): a partition, then its nested partitions, then its own nodes by rank; then the nodes in no lane by

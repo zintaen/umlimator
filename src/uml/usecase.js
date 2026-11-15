@@ -1,4 +1,4 @@
-import { registerDiagramType } from '../core/registry.js';
+import { registerDiagramType, idTable } from '../core/registry.js';
 import { esc, fit, textW } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
 import { labelW } from '../layout/layered.js';
@@ -161,7 +161,7 @@ function ucActorsFirst(pos, view, pic, lines) {
   const up = new Map(lines.filter(e => e.type === 'uml.Generalization' && A.includes(e.from) && A.includes(e.to) && e.from !== e.to).map(e => [e.from, e.to]));
   const order = [], put = (id, seen = new Set()) => { if (order.includes(id) || seen.has(id)) return; seen.add(id); if (up.has(id)) put(up.get(id), seen); order.push(id); };
   A.filter(id => !pinned.includes(id)).sort((a, b) => at(a) - at(b)).forEach(id => put(id));
-  const out = Object.fromEntries([...rest.map(id => [id, pos[id]]), ...pinned.map(id => [id, [c, pos[id][1]]])]);
+  const out = idTable(Object.fromEntries([...rest.map(id => [id, pos[id]]), ...pinned.map(id => [id, [c, pos[id][1]]])])); // out['__proto__'] = ... is an own key
   order.filter(id => !pinned.includes(id)).reduce((r, id) => { let y = Math.max(r, at(id)); while (pinned.some(p => Math.abs(out[p][1] - y) < 1)) y++; out[id] = [c, y]; return y + 1; }, -Infinity);
   return out;
 }
@@ -183,7 +183,7 @@ function ucGeo({ model, view, pos: ranked, memo }) {
   // is not read, so it says 0. ponytail: a drop then reads the actors' and that column's places as one column (render.js), and
   // an actor's pin can push a node of that column down a row (the host's fillLayout); a rank hook in the host would end both
   const ns = g.nodes.some(n => n.col < 0) ? g.nodes.map(n => (n.col < 0 ? { ...n, col: 0 } : n)) : null;
-  return { ...g, ...(ns ? { nodes: ns, byId: Object.fromEntries(ns.map(n => [n.id, n])) } : {}), legend: ucLegend(g.edges), order: ucOrder(pic, lines) }; // a new object: what layoutTyped returned is never edited (§2.4)
+  return { ...g, ...(ns ? { nodes: ns, byId: idTable(Object.fromEntries(ns.map(n => [n.id, n]))) } : {}), legend: ucLegend(g.edges), order: ucOrder(pic, lines) }; // a new object: what layoutTyped returned is never edited (§2.4)
 }
 
 /* ---- validators (§8.3). Each problem: { level, rule, path, message, ids } ---- */

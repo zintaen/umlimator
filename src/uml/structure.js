@@ -1,6 +1,7 @@
 import { esc, fit, textW } from '../core/text.js';
 import { SHAPE, boxOut, portsOn, r2 } from '../draw/shapes.js';
 import { endLabels } from '../typed/draw.js';
+import { idTable } from '../core/registry.js';
 
 /* ---------- structure notation: what the component, deployment and composite structure types share (work package 5.3,
    notes/stage-5.md §4, §9.1) ----------
@@ -181,7 +182,7 @@ function portsDrawn(g, ports) {
     if (nameBox) keep.push(nameBox);
     return { id: p.id, label: p.label, type: 'uml.Port', shape: 'port', kind: 'file', k: 'file', owner: p.owner, side: s, col: o.col ?? 0, row: o.row ?? 0, ...r, aria: p.aria || SN_SAY.port(p.label, o.label, { valueType: p.valueType }), ...(nameBox ? { nameBox } : {}) }; });
   const all = [g.bounds, ...nodes, ...nodes.map(n => n.nameBox)].filter(Boolean);
-  return { ...g, nodes: [...SN_ARR(g.nodes), ...nodes], byId: { ...g.byId, ...Object.fromEntries(nodes.map(n => [n.id, n])) }, edges, ...(all.length ? { bounds: all.reduce(union) } : {}) };
+  return { ...g, nodes: [...SN_ARR(g.nodes), ...nodes], byId: idTable({ ...g.byId, ...Object.fromEntries(nodes.map(n => [n.id, n])) }), edges, ...(all.length ? { bounds: all.reduce(union) } : {}) };
 }
 
 /* ---- the shared rules (§10.1, §10.3): each problem { level, rule, path, message, ids }, as src/uml/flow.js's; with a view,
