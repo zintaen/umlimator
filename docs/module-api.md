@@ -4993,3 +4993,90 @@ is unchanged. What changes for callers:
   focus) and #345 (`idTable` at every id-keyed table). `lib/umlimator-all.js` is 613.2 kB (613,242 B), up 1,533 B; the
   npm package is 885.1 kB (`npm pack --dry-run`). There is no core size cap until 1.0.0 (the maintainer's decision of 15
   Nov 2026): sizes are reported each release and a budget is set at 1.0.0.
+
+## 0.37.0: fixes from the tenth audit
+
+The tenth audit confirmed 24 findings. 23 are fixed in code in this release, in five pull requests (#347 to #351), each
+with a test that fails without its fix; the 24th is a slip in the 0.35.0 section, corrected below. No map or example
+draws differently and `bench/expected.json` is unchanged. What changes for callers:
+
+- **Core (#347).** `apply()`'s delete of a card whose id also names a view keeps that view's sub-views' `parent`: the
+  parent is the view, which the delete does not touch (before, the sub-views were detached). A `parent` that names only
+  a card is cleared, as before. A story step's `select` or `highlight` entry that is a Ref now names an element:
+  `references()`, delete and hide read its `id` (a card), its `node` (a chip or badge) and every one of its `ids` (a
+  line); a container Ref names no element. Delete removes the whole entry, so a line Ref goes when any one of its lines
+  goes. **`validate()` now reports a Ref that names nothing as an error**, as it already did a plain id; before, it was
+  clean. A `when`, `what`, `how`, `origin`, `author` or `note` that is not a string, and a `meta.root` that is not a
+  string, is drawn as text (`String()`) on the card and in the details panel, and `validate()` warns "<field> is text:
+  drawn as written"; before, `render()` threw on a list `what` and the details panel threw on a number `author` and
+  kept showing the previous card.
+- **The page (#347).** Round 9's double-click drill-down now works inside `<umlimator-map>`'s shadow root: the host
+  document's capture listener tests `composedPath()`, not `contains()`, so a double-click opens the card once, and
+  Alt+double-click or a double-click on a selected card's name no longer opens the view (a regression in 0.36.0 for
+  every element host).
+- **UML types (#349).** Composite structure: a connector between two ports of one part, or two ports of a subject with
+  no box, is not drawn (it was a diagonal) and gets a `connector-drawn` warning naming the part or the subject; SysML
+  parametric and internal block views reuse that picture, so a broken binding with both ends on one value now gets
+  that warning next to its `binding-ends` error. A line typed `constructor` or `toString` lays out and is drawn in the
+  component, deployment, class, package, use case and composite views, with no function source in its label, accessible
+  name, `describe()` or PDF row (the type-keyed tables have no prototype). PDF: a collaboration role's row is `name :
+  Type`, with no `composite` suffix, and a typed view's Boxes table leaves out the hand-written containers the picture
+  ignores. The composite palette's Part entry adds a part even when the typed name starts with "port ". Sequence:
+  `create-once` reports a message that reaches a lifeline before its first create in any operand (the head is drawn
+  there); a lifeline's stem ends at its last delete unless a later operand still reaches it, and every other delete is
+  a cross on the stem (`layoutTimeAxis` gives an optional `stems[].kills`).
+- **C4, SysML, BPMN and Mermaid (#350).** C4 dynamic view with no `edges` list: a comment link drawn with L or the
+  handle is listed and drawn. C4 deployment view whose subject is a software system: the Container instance palette
+  entry and T offer only that system's containers ("The view's system has no container to deploy" when it has none); a
+  view with no subject still offers every container. Requirement diagram: a Copy that would change the copied text of
+  a requirement that already copies one or is copied is refused, in `copy-text`'s words; a Copy between equal texts is
+  drawn as before. BPMN: `describe()` prints a line's and a group's documentation after its name, and the PDF Lines
+  table puts a line's documentation after its name. The Mermaid flowchart reader is linear on chained links
+  (`A-->B-->C-->...`): a 105,000-node chain reads in well under 1 s (was about 61 s).
+- **CLI (#351).** `render`, `diff`, `drift` and the MCP load refuse a view with no id, an empty id or a repeated id in
+  one line (`views[i].id: a view needs an id`, `views[i].id "v" is used twice`), as `validate()` does; before, `stills`,
+  `check` and `pdf` crashed afterwards. With no Chrome, `render` prints `"checked": false` and a `"skipped"` field with
+  the reason, and one stderr line (`<out> is written, but its layout check was skipped: no Chrome/Chromium found`); it
+  still exits 0 (before, it printed `"checked": true`). `diff --base` reports a model whose `nodes` and `views` are no
+  longer both lists as "cannot be read: it is no longer a map model", not as every view and card removed, and counts a
+  new model git does not track yet as added. The diff summary puts a word joiner after `#` and `GH-` before a digit, so
+  `#42`, `owner/repo#7` and `GH-12` link no issue.
+- **MCP (#348).** `page_state` answers while the model is mid-edit (not JSON) with `model.renders: false` and the
+  error; a page tool on such a version is checked against the last version that rendered, answers "The model no longer
+  renders, so the page shows its last version that did: ...", and the open pages get the banner. After a model edit,
+  `refit()` keeps a highlight of a member (a port) and drops an id-less line (`a->b#0`) the new version no longer has.
+- **Correction to 0.35.0.** Its CLI (#335) bullet says every `<` in a page's JSON data block is written `<`. The CLI
+  writes it as the JSON escape `\u003c` (`script_json` and `data_lt` in umlimator.py), the same value once parsed, so a
+  rendered page's source shows `\u003c` wherever a label has `<`. The 15 Nov 2026 (0.34.0, 0.35.0) entry of
+  docs/diagrams/README.md's log has the same slip. The released sections stay as written.
+- **Known gaps.** Still open from 0.36.0 (checked on main: the JavaScript Mermaid readers still decode `#55296;` to a
+  lone surrogate, a typed view still gets no "listed twice" warning for `view.edges`, `validate()` still says nothing
+  of a non-string `source` entry, the 21 typed examples still do not set `"$schema"`): a box has no Tab stop; the
+  keyboard reaches it through the outline. A double-click (or Enter) on a box does not open its view (the 0.24.0 gap).
+  Deep nesting is super-linear outside the core. A composite structure or SysML internal block view's Lines rows name
+  a part by its id, not its drawn name. The requirement layout leaves out a link into a box nested more than 64 deep
+  from its ranking. Typed hooks that answer Alt+arrows themselves were not checked on views laid out down. `reach()`
+  from a model id that the view draws under another id returns only that element. A negative step duration plays 500
+  ms while `validate()`'s warning says 4000 ms. Mermaid C4 macro arguments keep entity codes as written. `describe()`
+  of an inline interaction does not say it opens a view. Room for a label in a turned view is still mostly along the
+  line. The map flowchart and Structurizr DSL readers turn a U+2028 inside a label into a space. The unfolded call
+  behaviour box is a plain container frame. A page rendered before 0.33.0 with a numeric view id, before 0.36.0 with a
+  numeric card id, or before 0.37.0 with a view with no id, still ends in a traceback in `stills`. Three or more
+  delegations from one port into a grid of parts may still cross; this needs a routing change. Other files in src/bpmn
+  may still key plain objects by id (only process.js was checked). The typed Mermaid reader's quote join skips `%%`
+  comment lines but not the body of a multi-line `%%{ }%%` directive. The PDF tables read an open package's qualified
+  name off its drawn title, and only when the title ends in `::` and its label. No example reaches the C4 views lift
+  branch or src/sysml/sysml.js's frame branch, so the prototype sweep does not check their `byId`; only `select()` has a
+  browser test of its own among Find and the panel links. The double-click tests send synthetic events. The SysML
+  block definition view has no own list of line kinds, so it draws every kind. Fixed since 0.36.0: the MCP server's
+  `refit()` no longer keeps any `->` string (#348). New: the SysML tables `SYS_IB_PROP`, `SYS_PAR_PROP`,
+  `SYS_PAR_SUBJ`, `RQ_REL` and `BD_ORDER` were not checked for lookups of `Object.prototype` names. When two operands
+  of one `alt` each create a lifeline, the second create arrow lands on the stem below the single head (two heads
+  cannot be drawn). `printDoc`'s rules section and `rules()` still count a typed view's hand-written containers as
+  boxes a rule can name; changing that changes rule semantics. An MCP page tool on a model that has never rendered
+  still says it cannot read the model.
+- **Size:** `lib/umlimator.js`, what a map host loads, is 196.5 kB (196,512 B) with `gzip -9`, 19.13% over 0.16.0's
+  164,954 B, up 429 B from 0.36.0, nearly all in #347 (the `String()` text, the new warnings, the Ref reading) and #349
+  (the prototype-free type tables). `lib/umlimator-all.js` is 615.0 kB (614,975 B), up 1,733 B, most of it #350; the
+  npm package is 887.3 kB (`npm pack --dry-run`). There is no core size cap until 1.0.0 (the maintainer's decision of 15
+  Nov 2026): sizes are reported each release and a budget is set at 1.0.0.
