@@ -657,7 +657,9 @@ never downloads on its own. You fetch a pack yourself, once, with `umlimator.py 
 - **Cached for you only.** A fetched pack lives in `<icon cache>/packs/` (`~/.cache/umlimator/icons`, or
   `$UMLIMATOR_ICON_CACHE`). A render reads it and copies the icons it draws into the page, as it does a logo, and never
   downloads a pack; with none fetched the cards draw a glyph and one line says how to fetch it. `UMLIMATOR_NO_PACKS=1`
-  draws glyphs whatever the cache holds: this project builds every page and still it publishes that way.
+  draws glyphs whatever the cache holds: this project builds every page and still it commits that way. Since
+  16 Nov 2026 the GitHub Pages site, and only it, is built with the three packs fetched, their terms accepted, so its
+  cloud examples show the real icons.
 - **Drawn as they are.** An icon is scaled, never recoloured, cropped or reshaped, on a tile for contrast, with the full
   service name beside it. Wherever a Google icon is drawn, in a card or a legend, Google's legal line is drawn under the
   picture and ends its description: "Google Cloud and the Google Cloud logo are trademarks of Google LLC."

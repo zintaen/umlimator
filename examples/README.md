@@ -82,12 +82,14 @@ Action on it in a pull request; the site shows its stills and its PDF.
 [![The ER diagram: the bookshop's schema](https://zintaen.github.io/umlimator/examples/stills/bookshop-schema/er-schema.png)](https://zintaen.github.io/umlimator/examples/bookshop-schema.html)
 [![The SysML internal block diagram: inside the e-bike](https://zintaen.github.io/umlimator/examples/stills/ebike-structure/inside-ebike.png)](https://zintaen.github.io/umlimator/examples/ebike-structure.html)
 [![A mindmap: opening the bookshop](https://zintaen.github.io/umlimator/examples/stills/bookshop-opening-plan/mm-plan.png)](https://zintaen.github.io/umlimator/examples/bookshop-opening-plan.html)
-[![Google Cloud: the bookshop, glyphs and full names](https://zintaen.github.io/umlimator/examples/stills/bookshop-gcp/gcp-on-gcp.png)](https://zintaen.github.io/umlimator/examples/bookshop-gcp.html)
-[![Azure: the bookshop, glyphs and full names](https://zintaen.github.io/umlimator/examples/stills/bookshop-azure/az-on-azure.png)](https://zintaen.github.io/umlimator/examples/bookshop-azure.html)
-[![AWS: the bookshop, glyphs and full names](https://zintaen.github.io/umlimator/examples/stills/bookshop-aws/aws-on-aws.png)](https://zintaen.github.io/umlimator/examples/bookshop-aws.html)
+[![Google Cloud: the bookshop, icons and full names](https://zintaen.github.io/umlimator/examples/stills/bookshop-gcp/gcp-on-gcp.png)](https://zintaen.github.io/umlimator/examples/bookshop-gcp.html)
+[![Azure: the bookshop, icons and full names](https://zintaen.github.io/umlimator/examples/stills/bookshop-azure/az-on-azure.png)](https://zintaen.github.io/umlimator/examples/bookshop-azure.html)
+[![AWS: the bookshop, icons and full names](https://zintaen.github.io/umlimator/examples/stills/bookshop-aws/aws-on-aws.png)](https://zintaen.github.io/umlimator/examples/bookshop-aws.html)
 
 Umlimator is not affiliated with, endorsed by or sponsored by Amazon Web Services, Google or Microsoft. No vendor icon is in
-this repository or on the site: every page and still published is built with `UMLIMATOR_NO_PACKS=1`.
+this repository: every page and still committed is built with `UMLIMATOR_NO_PACKS=1`. Since 16 Nov 2026 the GitHub Pages
+site is built with the Google Cloud, Azure and AWS packs fetched, their terms accepted, so the cloud examples there show
+the real icons with the vendors' legal lines.
 
 ## The Bookshop atlas
 

@@ -658,7 +658,7 @@ with tempfile.TemporaryDirectory() as tmp:
                                                                        "bookshop-schema", "returns-flowchart", "bookshop-data-flow", "order-information-flow", "bookshop-c4",
                                                                        # M3.7: SysML's four e-bike examples
                                                                        "ebike-requirements", "ebike-blocks", "ebike-structure", "ebike-range",
-                                                                       # 4a.7: milestone 4a's three examples, rendered with no pack (UMLIMATOR_NO_PACKS in CI's site build)
+                                                                       # 4a.7: milestone 4a's three examples, rendered here with no pack
                                                                        "bookshop-opening-plan", "bookshop-gcp", "bookshop-azure",
                                                                        # 4b.5: the BPMN example
                                                                        "bookshop-order-to-shipment"))):
