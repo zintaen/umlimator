@@ -119,7 +119,8 @@ ok("record · a step's duration the page only warns about is played as the page 
 
 bike = json.loads((ROOT / "examples" / "bike-share.json").read_text(encoding="utf-8"))
 SAID = ["renames Accounts to Accounts and sign-in", "adds Payments queue between Trip service and Payment provider",
-        "removes Feature flags", "removes the line from Trip service to Payment provider (charges)"]
+        "removes Feature flags", "removes the line from Trip service to Payment provider (charges)",
+        "moves Payment provider in the view What runs"]  # its pin moved too (audit 15)
 with tempfile.TemporaryDirectory() as tmp:
     t = Path(tmp)
     (t / "before.json").write_text(json.dumps(bike)); (t / "after.json").write_text(json.dumps(edited(bike)))
@@ -953,7 +954,7 @@ with tempfile.TemporaryDirectory() as tmp:
     (Path(tmp) / "other.json").write_text(json.dumps(edited(bike)))
     said, err = tool("diff", other_model_path=str(Path(tmp) / "other.json"))
 ok("mcp · diff: what changed from another model file to this one", not err and json.loads(said) == {"summary": ["renames Accounts and sign-in to Accounts", "adds Feature flags",
-   "removes Payments queue", "adds a line from Trip service to Payment provider (charges)"], "views": ["system"]}, said)
+   "removes Payments queue", "adds a line from Trip service to Payment provider (charges)", "moves Payment provider in the view What runs"], "views": ["system"]}, said)
 with tempfile.TemporaryDirectory() as tmp:
     (Path(tmp) / "v5.json").write_text(json.dumps({"nodes": [{"id": "a"}], "views": [{"id": 5, "nodeIds": ["a"]}]}))
     said, err = tool("diff", other_model_path=str(Path(tmp) / "v5.json"))
