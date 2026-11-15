@@ -102,7 +102,10 @@ function interactionProblems(model, view) {
       if (c && c.sort === 'call' && c.r < m.r) { const was = replies.get(c.id) || [], e = was.find(o => !apartInAlt(w, o.parent, m.parent));
         if (e) say('reply-once', m, '.props.replyTo', [c.id, e.id, m.id], `${nm(e)} and ${nm(m)} both answer ${nm(c)}, and do not lie in different operands of one alt`);
         replies.set(c.id, [...was, m]); } }
-    if (m.sort === 'create' && m.to != null) { const e = ms.find(o => o.r < m.r && touches(o, m.to) && !apartInAlt(w, o.parent, m.parent)); // one alt's operands exclude each other, as for reply-once
+    // one alt's operands exclude each other, as for reply-once; but the head is drawn at the first create, so nothing reaches
+    // the lifeline before that, in any operand (audit 10)
+    if (m.sort === 'create' && m.to != null) { const head = !ms.some(o => o.r < m.r && o.sort === 'create' && o.to === m.to);
+      const e = ms.find(o => o.r < m.r && touches(o, m.to) && (head || !apartInAlt(w, o.parent, m.parent)));
       if (e) say('create-once', m, '', [m.id, m.to, e.id], e.sort === 'create' && e.to === m.to ? `${m.to} is created twice, by ${nm(e)} and ${nm(m)}` : `${nm(m)} creates ${m.to}, but ${nm(e)} reaches it first`); }
     if (m.sort === 'delete' && m.to != null) { const e = ms.find(o => o.r > m.r && touches(o, m.to) && !apartInAlt(w, o.parent, m.parent));
       if (e) say('delete-once', m, '', [m.id, m.to, e.id], e.sort === 'delete' && e.to === m.to ? `${m.to} is deleted twice, by ${nm(m)} and ${nm(e)}` : `${nm(m)} deletes ${m.to}, but ${nm(e)} reaches it later`); }

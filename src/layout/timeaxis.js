@@ -6,7 +6,8 @@ import { r2 } from '../draw/shapes.js';
    what its shapes draw). Only lib/umlimator-all.js holds this file.
 
    input = {
-     heads:  [{ id, w, h, born, ends }],         lifelines, left to right; born, ends: the row that creates it, deletes it
+     heads:  [{ id, w, h, born, ends, kills }],  lifelines, left to right; born, ends: the row that creates it, deletes it;
+                                                  kills: the rows of other deletes, a cross each on a stem that runs on
      rows:   [{ id, kind, a, b, w, h, parent }],  occurrences in time order (an index here is an index into view.edges).
                                                   kind 'line' (head a to head b), 'self' (a), 'span' (heads a to b: an
                                                   interaction use); w, h: its label's box (a use's: frame.js useSize);
@@ -14,7 +15,7 @@ import { r2 } from '../draw/shapes.js';
      groups: [{ id, parent, tag: { w, h }, parts: [{ id, guard: { w, h } }] }],  fragments, outermost first; parts: operands
      bars:   [{ head, from, to, depth }],         activations by row (src/uml/interaction.js); depth 1 is the outermost
    }
-   out = { heads: [{ id, x, y, w, h }], stems: [{ head, x, y1, y2, cross, gaps: [{ y1, y2 }] }],
+   out = { heads: [{ id, x, y, w, h }], stems: [{ head, x, y1, y2, cross, kills?: [y], gaps: [{ y1, y2 }] }],
            bars: [{ head, depth, x, y, w, h }], frames: [{ id, x, y, w, h, dividers: [{ part, y }], parts: [{ id, x, y, w, h, gx, gy }] }],
            spans: [{ id, x, y, w, h }], lines: [{ id, pts, lbl }], slots: [{ index, y, parent, after }], bounds, problems }
    A frame's tag is drawn at its top left corner; a part's guard at (gx, gy). Bars come deepest last, to be drawn in order.
@@ -184,7 +185,8 @@ function layoutTimeAxis(input = {}) {
   const stems = heads.map((h, j) => { const y1 = outHeads[j].y + hh[j], y2 = Math.max(y1, ends[j] != null && R[ends[j]] ? yOf(ends[j]) : end), gaps = [];
     bands.filter(([a, b]) => X[j] + TA.hit > a && X[j] - TA.hit < b).map(([, , t, u]) => [Math.max(t, y1), Math.min(u, y2)]).filter(([t, u]) => u > t).sort((p, q) => p[0] - q[0])
       .forEach(([t, u]) => { const g = gaps[gaps.length - 1]; if (g && t <= g[1]) g[1] = Math.max(g[1], u); else gaps.push([t, u]); });
-    return { head: h.id, x: r2(X[j]), y1: r2(y1), y2: r2(y2), cross: ends[j] != null && !!R[ends[j]], gaps: gaps.map(([t, u]) => ({ y1: r2(t), y2: r2(u) })) }; });
+    const kills = (Array.isArray(h.kills) ? h.kills : []).filter(i => rowOk(i) && R[i] && i !== ends[j]).map(i => r2(yOf(i)));
+    return { head: h.id, x: r2(X[j]), y1: r2(y1), y2: r2(y2), cross: ends[j] != null && !!R[ends[j]], ...(kills.length ? { kills } : {}), gaps: gaps.map(([t, u]) => ({ y1: r2(t), y2: r2(u) })) }; });
 
   const xs = [...outHeads.flatMap(h => [h.x, h.x + h.w]), ...outFrames.flatMap(f => [f.x, f.x + f.w]), ...outSpans.flatMap(s => [s.x, s.x + s.w]),
     ...lines.flatMap(l => [...l.pts.map(p => p[0]), l.lbl.x, l.lbl.x + l.lbl.w])];

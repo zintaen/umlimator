@@ -605,7 +605,7 @@ and §6; a connector from the subject's port to a part is inner (§5).
 | `binding-role` | warning | a role binding's label names a role of the collaboration its use names |
 | `collaboration-named` | warning | a collaboration use's `collaboration` names a collaboration of the model |
 | `part-port-id` | warning | only under §6's fallback: a model id equals a port's id on a part |
-| `connector-drawn` | warning | as built (5.6): a connector between two ports of the subject is not drawn |
+| `connector-drawn` | warning | as built (5.6): a connector between two ports of the subject is not drawn; audit 10: nor one between two ports of one part, or of a subject drawn with no box |
 
 **As built (5.6)** (`src/uml/composite.js`). Where the build departs from the above, or says what the note left open:
 

@@ -206,8 +206,8 @@ Each problem is `{ level, rule, path, message, ids }`, as in `class.js`. Rules m
 | `message-ends` | error | A message joins two lifelines listed in `nodeIds` |
 | `reply-call` (shared) | error | `replyTo` names an earlier call of the view, and the reply goes back along it. A reply with no `replyTo` is a warning |
 | `reply-once` (shared) | error | Two replies to one call lie in different operands of one `alt` |
-| `create-once` (shared) | error | A lifeline is created at most once, by the first message to or from it |
-| `delete-once` (shared) | error | A lifeline is deleted at most once, by the last message to or from it |
+| `create-once` (shared) | error | A lifeline is created at most once, by the first message to or from it; each operand of one `alt` may create it, but nothing reaches it before its first create, where its head is drawn (audit 10) |
+| `delete-once` (shared) | error | A lifeline is deleted at most once, by the last message to or from it; each operand of one `alt` may delete it, a cross at each delete, the stem ending at the last unless a later operand still reaches it (audit 10) |
 | `covers` | error | `covers` names lifelines of the view that are next to each other in `nodeIds` (spike risk 4.4) |
 | `operator` | warning | `operator` is one of the five; any other is drawn by its name. `opt`, `loop` and `break` have one operand |
 | `sort` (shared) | warning | `sort` is one of the five; any other is drawn as a call |
