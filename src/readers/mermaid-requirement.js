@@ -26,7 +26,8 @@
      the type (but Block and TestCase) and docref kept under ext.mermaid, reported once;
    - `a - contains -> b` (or `b <- contains - a`) b's parent a; a second container, or one that would close a cycle (one
      colouring pass after reading), skipped; the six other relationships edges from the arrow's tail to its head, skipped
-     when their ends break the requirement type's errors (notes/milestone-3.md §6.3), so every import passes check.mjs;
+     when their ends break the requirement type's errors (notes/milestone-3.md §6.3), so an import passes check.mjs but for
+     one: a copy between requirements whose texts differ is read as written, reported, and left to check's copy-text error;
    - `direction TB` down, `LR` right (none: unset, Mermaid's TB); BT and RL approximated; styling skipped, once per kind;
      quoted names and text kept as written, Markdown and all (reported once). */
 const MQ_LIMIT = 1 << 20; // characters; a requirement diagram a person writes is a few kilobytes

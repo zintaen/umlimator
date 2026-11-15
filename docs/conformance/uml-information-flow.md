@@ -34,7 +34,7 @@ does every type's. Clause numbers are as the note cites them.
 
 ## Left out
 
-`notes/milestone-2.md` §13: flow ends other than classes, interfaces, components, actors and information items (UML also
+`notes/milestone-2.md` §13: flow ends other than classes, interfaces, components and actors (UML also
 allows nodes, artifacts, use cases, packages, properties, ports, activity nodes and partitions, and instance
 specifications); the «flow» line on class, component and other UML views; `InformationItem.represented`; realizing
 relationships, connectors and activity edges. And copy and paste, per-type `diff()` writers, a reader.
