@@ -312,9 +312,12 @@ function classProblems(model) {
   const typeOfId = id => (at.get(id) || { x: {} }).x.type, isCls = id => CLASSIFIERS.includes(typeOfId(id));
   nodes.forEach(({ x, path }) => {
     const ms = UML_ARR(x.members).filter(UML_OBJ), seen = new Map();
+    // member-names judges a classifier's or an instance's members, each with a name: a state's unnamed regions are not "named
+    // twice" (audit 11)
+    const named = CLASSIFIERS.includes(x.type) || x.type === 'uml.InstanceSpecification';
     ms.forEach((m, j) => { // an operation is told apart by its parameters' types too (overloading)
       const k = m.type === 'uml.Operation' ? `${m.label}(${UML_ARR((m.props || {}).parameters).map(a => UML_OBJ(a) ? a.valueType ?? '' : '').join(',')})` : `${m.label}`;
-      if (seen.has(k)) say('member-names', `${path}.members[${j}]`, [x.id, seen.get(k), m.id], `${q(x.id)} has two members named "${m.label}" (${seen.get(k)}, ${m.id})`); else seen.set(k, m.id);
+      if (named && UML_HAS(m.label)) { if (seen.has(k)) say('member-names', `${path}.members[${j}]`, [x.id, seen.get(k), m.id], `${q(x.id)} has two members named "${m.label}" (${seen.get(k)}, ${m.id})`); else seen.set(k, m.id); }
       if (m.type === 'uml.EnumerationLiteral' && x.type !== 'uml.Enumeration') say('member-kinds', `${path}.members[${j}]`, [x.id, m.id], `literal "${m.label}" is in ${q(x.id)}, which is not an enumeration`);
       const mult = (m.props || {}).multiplicity; if (UML_HAS(mult)) multRule(String(mult), `${path}.members[${j}].props.multiplicity`, [m.id], `${q(x.id)}.${m.label}`); });
     if ((OWN_BOXES.includes(x.type) || x.type === 'uml.Comment' || x.type === 'uml.MetaclassReference') && ms.length) say('member-kinds', `${path}.members`, [x.id], `${q(x.id)} is a ${typeWord(x.type).toLowerCase()}, which has no members`);

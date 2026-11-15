@@ -22,8 +22,8 @@ example is [`examples/order-service-structure.json`](../../examples/order-servic
 | 11.7 role binding | `uml.RoleBinding`, from a part to a collaboration use, its `label` the role | dashed, no end, its role as the line's label |
 | 7.8 Comment | `uml.Comment`, `uml.CommentLink` (to a node or a port) | a note, a dashed line |
 
-Rules (`notes/stage-5.md` §10.2): `subject-shown` (a warning for a view with no subject), `connector-part` (an end's part is a part of the subject and the end a
-port of its type), `connector-scope` (a connector's ends lie in one structure; an end on the subject itself breaks it),
+Rules (`notes/stage-5.md` §10.2): `subject-shown` (a warning for a view with no subject), `connector-part` (an end's part is a part of the subject, or a role of an
+open collaboration shown, and the end a port of its type), `connector-scope` (a connector's ends lie in one structure; an end on the subject itself breaks it),
 `binding-ends` (a warning for a view with no subject) (errors); `part-type` (a part's type names exactly one class or component),
 `part-multiplicity` (a part's multiplicity is one, as `1`, `*`, `0..1`, `1..*`), `binding-role`,
 `collaboration-named`, `connector-drawn` (a connector between two ports of the subject is not drawn) (warnings); and the
@@ -34,7 +34,11 @@ set to something else, or not listed in `nodeIds`, stays an error. Hiding the su
 role bindings in the model, with no subject to bind into, so `binding-ends` is a warning in such a view too (Shift +
 Delete takes the parts, and so the bindings). So no single delete or hide leaves a `subject-shown` or `binding-ends`
 error (`tests/delete-cascade.test.mjs`); deleting the view with its subject was not taken, as the view and what else it
-shows are the author's.
+shows are the author's. An open collaboration's role shows its type's ports as a part does; a connector through them
+keeps the role in `props.ends.<end>.part` and is checked as one through a part (audit 11). `connect()` refuses a
+connector between two ports of one part, of one role or of the subject, which `connector-drawn` says is not drawn. In a
+view with no `edges` list, `connector-part` also warns of a connector whose end is a port of a part's type with no part
+named, as it does in a view that lists it.
 
 **Departures from UML 2.5.1:** a role binding's role is drawn as its line's label, not as an end label at the part's
 end (the end labels are placed after the port names and do not see them); a binding to a port is left out (below).
@@ -42,7 +46,7 @@ end (the end labels are placed after the port names and do not see them); a bind
 ## Left out
 
 `notes/stage-5.md` §17: connector multiplicities and end names; a part's own inner structure (shown in its type's
-view); ports on a collaboration's roles; a role binding to a port of the subject (`binding-ends` takes a part only); a
+view); a role binding to a port of the subject (`binding-ends` takes a part only); a
 part's multiplicity in its corner (it is in its name); «represents» and occurrences; role bindings with several role
 names; the properties of a port selected on a part (they are its class's, edited where the class's own port is drawn).
 A class or component shown in the view but not its subject is drawn without its ports. `L` then a name cannot reach a

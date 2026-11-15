@@ -209,8 +209,10 @@ function mmKeyMove(X, V, g, T, [dx, dy]) {
   if (!dx || dy) return null;
   const inward = (T.side === 'right') === (dx < 0);
   if (T.depth === 1 && inward) return [...mmPins(X, V, g, id), mmSide(V, id, T.side === 'right' ? 'left' : 'right')]; // across the root
-  if (inward) { const P = T.parent, G = X.up(P), was = g.byId[P]; // promote: under its grandparent, after its old parent
-    return [...(was.depth === 1 ? [...mmPins(X, V, g, null), mmSide(V, id, was.side)] : []), { op: 'reparent', id, parent: G }, ...mmAfter(X, V, id, mmEnd(X, P, id))]; }
+  if (inward) { const P = T.parent, G = X.up(P), was = g.byId[P], ps = X.kids.get(G), nx = ps[ps.indexOf(P) + 1]; // promote: under its grandparent, after its old parent
+    // and before the parent's next sibling, which a nodeIds not in pre-order lists before the parent's last subtopic (audit 11)
+    const mv = nx != null ? mmBefore(X, V, id, Math.min(X.pos.get(nx), mmEnd(X, P, id) + 1)) : mmAfter(X, V, id, mmEnd(X, P, id));
+    return [...(was.depth === 1 ? [...mmPins(X, V, g, null), mmSide(V, id, was.side)] : []), { op: 'reparent', id, parent: G }, ...mv]; }
   const S = sibs[i - 1]; if (S == null) return mmErr(`No topic above ${name} to move it into`); // demote: into the sibling before it, last
   return [...mmLeave(X, V, g, T), { op: 'reparent', id, parent: S }, ...mmAfter(X, V, id, mmEnd(X, S, id))];
 }
