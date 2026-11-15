@@ -471,3 +471,32 @@ test('audit 8: a card or a port whose id is an Object.prototype name is sized as
     const n = layout(m, 'v').byId.Shop; return [n.w, n.h]; };
   assert.deepEqual(shop('constructor'), shop('p1')); assert.deepEqual(shop('toString'), shop('p1'));
 });
+
+test('audit 11: connect() refuses a connector between two ports of one part or of the subject, which the view does not draw', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'shop', type: 'uml.Component', label: 'Shop', members: [port('shop.in', 'in'), port('shop.out', 'out'), P('shop.a', 'a', { props: { valueType: 'Worker' } }), P('shop.b', 'b', { props: { valueType: 'Worker' } })] },
+    { id: 'worker', type: 'uml.Class', label: 'Worker', members: [port('worker.job', 'job'), port('worker.idle', 'idle')] }],
+  edges: [], views: [{ id: 'v', diagram: 'uml.composite-structure', subject: 'shop', nodeIds: ['shop'] }] };
+  const L = { type: 'uml.Connector', label: 'Connector' }, c = (f, t) => T.edits.connect(m, m.views[0], f, t, {}, L);
+  assert.match(c('shop.a->worker.job', 'shop.a->worker.idle').error, /no line runs from a part or a box to itself/);
+  assert.match(c('shop.in', 'shop.out').error, /no line runs from a part or a box to itself/);
+  assert.deepEqual(c('shop.a->worker.job', 'shop.b->worker.idle')[0].element.props.ends, { from: { part: 'shop.a' }, to: { part: 'shop.b' } }, 'two parts: added');
+});
+
+test('audit 11: in a view with no edges list, a connector between ports of the parts\' types that names no part is reported', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'shop', type: 'uml.Component', label: 'Shop', members: [P('shop.a', 'a', { props: { valueType: 'Worker' } }), P('shop.b', 'b', { props: { valueType: 'Store' } })] },
+    { id: 'worker', type: 'uml.Class', label: 'Worker', members: [port('worker.job', 'job')] }, { id: 'store', type: 'uml.Class', label: 'Store', members: [port('store.put', 'put')] },
+    { id: 'other', type: 'uml.Class', label: 'Other', members: [port('other.x', 'x'), port('other.y', 'y')] }],
+  edges: [{ id: 'c1', type: 'uml.Connector', from: 'worker.job', to: 'store.put' }, { id: 'c2', type: 'uml.Connector', from: 'other.x', to: 'other.y' }],
+  views: [{ id: 'v', diagram: 'uml.composite-structure', subject: 'shop', nodeIds: ['shop'] }] };
+  assert.deepEqual(validate(m).filter(x => x.rule === 'connector-part').map(x => [x.level, x.path, x.ids]), [['warning', 'edges[0].props.ends.from.part', ['c1', 'worker.job']]], 'c2\'s ports type no part: another view\'s');
+});
+
+test('audit 11: a connector through an open collaboration\'s roles is checked as one through parts: a port not of the role\'s type is an error', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'sale', type: 'uml.Collaboration', label: 'Sale', members: [P('sale.buyer', 'buyer', { props: { valueType: 'Party' } }), P('sale.seller', 'seller', { props: { valueType: 'Party' } })] },
+    { id: 'party', type: 'uml.Class', label: 'Party', members: [port('party.out', 'out'), port('party.in', 'in')] }, { id: 'other', type: 'uml.Class', label: 'Other', members: [port('other.x', 'x')] }],
+  edges: [{ id: 'ok', type: 'uml.Connector', from: 'party.out', to: 'party.in', props: { ends: { from: { part: 'sale.buyer' }, to: { part: 'sale.seller' } } } },
+    { id: 'bad', type: 'uml.Connector', from: 'other.x', to: 'party.in', props: { ends: { from: { part: 'sale.buyer' }, to: { part: 'sale.seller' } } } }],
+  views: [{ id: 'v', diagram: 'uml.composite-structure', nodeIds: ['sale', 'party'] }] };
+  assert.ok(layout(m, 'v').edges.some(e => e.id === 'ok'));
+  assert.deepEqual(validate(m).filter(x => x.ids.includes('ok') || x.ids.includes('bad')).map(x => [x.level, x.rule, x.ids]), [['error', 'connector-part', ['bad', 'other.x', 'sale.buyer']]]);
+});

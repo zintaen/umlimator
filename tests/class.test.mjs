@@ -429,3 +429,10 @@ test('audit 9: a class view with no edges list draws its own row\'s lines only; 
   assert.deepEqual(at('r').end, { from: 'none', to: 'triangle', dashed: true }); assert.deepEqual(at('k2').end, { from: 'none', to: 'none' });
   assert.deepEqual(g.legend.map(s => s.match(/<b>([^<]*)<\/b>/)[1]), ['Usage', 'Realization', 'Connector']);
 });
+
+test('audit 11: member-names judges classifiers\' and instances\' named members only: a state\'s two unnamed regions beside a class view are not "named twice"', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'busy', type: 'uml.State', label: 'Busy', members: [{ id: 'busy.r1', type: 'uml.Region' }, { id: 'busy.r2', type: 'uml.Region' }] },
+    { id: 'order', type: 'uml.Class', label: 'Order', members: [{ id: 'order.a', type: 'uml.Property' }, { id: 'order.b', type: 'uml.Property' }, { id: 'order.x', type: 'uml.Property', label: 'x' }, { id: 'order.x2', type: 'uml.Property', label: 'x' }] }],
+  edges: [], views: [{ id: 'c', diagram: 'uml.class', nodeIds: ['order'] }] };
+  assert.deepEqual(classProblems(m).filter(p => p.rule === 'member-names').map(p => p.ids), [['order', 'order.x', 'order.x2']]);
+});
