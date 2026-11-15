@@ -90,7 +90,7 @@ function dynProblems(model, view) {
   const as = { ...view, diagram: lvl || 'c4.landscape' }, kind = { 'c4.landscape': 'landscape', 'c4.container': 'container', 'c4.component': 'component' }[as.diagram];
   const w = (C4_WORD[(I.at.get(view.subject) || {}).type] || 'element').toLowerCase(), out = lvl ? [] : [say('error', 'c4-subject', `${at}.subject`, [view.subject],
     `its subject ${q(view.subject)} is ${I.at.has(view.subject) ? (/^[aeiou]/.test(w) ? 'an ' : 'a ') + w : 'no element'}: a dynamic view zooms into a software system, a container or nothing`)];
-  out.push(...c4Problems({ ...model, views: views.map(v => (v === view ? as : v)) }, as).map(p => (p.rule === 'c4-level' ? { ...p, message: p.message.replace(`in a ${kind} view`, `in a dynamic view${lvl && view.subject != null ? ' of ' + q(view.subject) : ''}`) } : p)));
+  out.push(...c4Problems({ ...model, views: views.map(v => (v === view ? as : v)) }, as).map(p => (p.rule === 'c4-level' ? { ...p, message: p.message.replace(`in a ${kind} view`, () => `in a dynamic view${lvl && view.subject != null ? ' of ' + q(view.subject) : ''}`) } : p)));
   // its steps (§5.1): each a model relationship, each once, between elements the view shows
   const pic = c4Pic(model, view), ends = new Set(pic.ids.filter(id => !pic.open.has(id))), rel = new Set(I.rels.map(r => r.id)), seen = new Set();
   V_ARR(view.edges).forEach((x, k) => { const p = `${at}.edges[${k}]`;
