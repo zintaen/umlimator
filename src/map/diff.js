@@ -88,6 +88,8 @@ export function diff(before, after) {
     if (Array.isArray(v.edges)) { const back = new Map([...goneLines, ...hid.map(id => [id, line(line0.get(id), 'removed')])]);
       w.edges = mark(arr(o.edges), v.edges, line, lineKeys, back).map(e => typeof e === 'string' && put.includes(e) ? line(out.edges.find(x => x && String(x.id) === e), 'added') : e);
       hid.forEach(id => { if (!w.edges.includes(back.get(id))) w.edges.push(back.get(id)); }); } // hidden from a view that listed none: at the end
+    else if (put.length) { const K = keyed(arr(out.edges)); // a view that dropped its list: its lines listed, so the ones it puts are marked
+      w.edges = linesOf(out, v).map(e => put.includes(K.get(e)) ? line(e, 'added') : e.id != null ? String(e.id) : e); }
     return w;
   });
   arr(A.views).forEach(o => { if (!o || V1.has(o.id)) return; // a removed view comes back with everything in it removed
@@ -124,6 +126,23 @@ export function diff(before, after) {
   moved.forEach(([verb, id, v]) => said.push(`${verb} ${name(id)} ${verb === 'puts' ? 'in' : 'out of'} the view ${v.title || v.id}`));
   said.push(...viewSaid);
   if (TYPED.order) TYPED.order(A, out, views, V0, said, touched, name);
+
+  // a removed item whose owner left too (a message in a fragment's operand, a state in a region) brings that owner back,
+  // removed, in its place: a member into its element, a fragment into its view
+  const at0 = new Map(), have = new Map(), ownIn = (x, to, up, i) => { // id -> [the object, where it sits]
+    for (const s = [[x, up, i]]; s.length;) { const [y, u, j] = s.pop(); if (!y || typeof y !== 'object' || y.id == null || to.has(y.id)) continue;
+      to.set(y.id, [y, u, j]); arr(y.members).forEach((z, k) => s.push([z, y.id, k])); } };
+  arr(A.nodes).forEach(n => ownIn(n, at0)); arr(A.views).forEach(v => v && arr(v.fragments).forEach((f, i) => ownIn(f, at0, { view: v.id }, i)));
+  out.nodes.forEach(n => ownIn(n, have)); views.forEach(v => v && [...arr(v.nodes), ...arr(v.fragments)].forEach(n => ownIn(n, have)));
+  const W = new Map(views.filter(Boolean).map(v => [v.id, v]));
+  const back = [...out.nodes, ...out.edges, ...views.flatMap(v => v ? [...arr(v.nodes), ...arr(v.edges)] : [])].filter(x => x && how.get(x) === 'removed').map(x => x.parent);
+  while (back.length) { const chain = []; // the owners that left, from the item's up to one still there
+    for (let id = back.pop(); id != null && !have.has(id) && at0.has(id) && !chain.includes(id); id = at0.get(id)[1]) chain.push(id);
+    for (const id of chain.reverse()) { if (have.has(id)) continue; const [x, up, i] = at0.get(id), y = { ...structuredClone(x), change: 'removed' };
+      const v = up && typeof up === 'object' ? W.get(up.view) : null, o = v ? null : (have.get(up) || [])[0];
+      if (!v && !o) break;
+      const l = v ? (v.fragments = [...arr(v.fragments)]) : (o.members = [...arr(o.members)]); l.splice(Math.min(i, l.length), 0, y);
+      ownIn(y, have, up, i); if (v) back.push(y.parent); } }
 
   // the views that show a change: a card or line the diff marks, or a card it put in or took out
   const changed = views.filter(v => v && (touched.has(v.id) || arr(v.nodeIds).some(id => cardHow.has(id)) || linesOf(out, v).some(e => how.has(e)))).map(v => v.id);

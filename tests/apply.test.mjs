@@ -314,3 +314,15 @@ test('audit 11: delete clears a story step that names a line with no id it took 
   const stale = structuredClone(m); stale.edges.pop();
   assert.deepEqual(validate(stale).map(p => [p.level, p.path]), [['warning', 'stories[0].steps[0].select'], ['warning', 'stories[0].steps[0].highlight[0]']]);
 });
+
+test('audit 12: delete renames a story step\'s name of a line with no id whose place moved ("a->b#1" to "a->b#0"); hide clears one it took', () => {
+  const m = { nodes: [{ id: 'a' }, { id: 'b' }], edges: [{ id: 'L1', from: 'a', to: 'b' }, { from: 'a', to: 'b', label: 'x' }, { from: 'a', to: 'b', label: 'y' }],
+    views: [{ id: 'v', nodeIds: ['a', 'b'] }], stories: [{ id: 's', steps: [{ view: 'v', select: 'a->b#1', highlight: [{ type: 'edge', ids: ['a->b#2'] }] }] }] };
+  assert.deepEqual(validate(m), []);
+  assert.deepEqual(apply(m, { op: 'delete', id: 'L1' }).stories[0].steps[0], { view: 'v', select: 'a->b#0', highlight: [{ type: 'edge', ids: ['a->b#1'] }] });
+  const h = { nodes: [{ id: 'a' }, { id: 'b' }, { id: 'c' }], edges: [{ from: 'a', to: 'b' }],
+    views: [{ id: 'v', nodeIds: ['a', 'b', 'c'], edges: [{ from: 'b', to: 'c' }, { id: 'own2', from: 'a', to: 'c' }] }],
+    stories: [{ id: 's', steps: [{ view: 'v', select: 'b->c#0', highlight: ['b->c#0', 'own2'] }] }] };
+  const h2 = apply(h, { op: 'hide', id: 'c', view: 'v' });
+  assert.deepEqual([h2.stories[0].steps[0], validate(h2)], [{ view: 'v', highlight: [] }, []]);
+});

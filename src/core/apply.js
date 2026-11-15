@@ -113,6 +113,22 @@ function clear(m, found) {
   drop.forEach((ks, a) => [...ks].sort((x, y) => y - x).forEach(k => a.splice(k, 1)));
 }
 
+/* after a delete or hide: what named a line with no id ("b->c#0", a step's select or highlight) goes with the line, or
+   follows it to its new name when lines before it in its list went (names0: lineNames() before) */
+function follow(m, names0, only) {
+  let now;
+  for (;;) { now = new Map(); lineNames(m).forEach((ls, k) => ls.forEach(l => now.set(l, k)));
+    const lost = new Set([...names0].filter(([, ls]) => !ls.some(l => now.has(l))).map(([k]) => k)), found = refs(m, lost, only);
+    if (!found.length) break; clear(m, found); } // a line to a line that went goes too, and may move the names again
+  const to = new Map(); names0.forEach((ls, k) => { const n = new Set(ls.map(l => now.get(l)).filter(Boolean)); if (n.size === 1 && !n.has(k)) to.set(k, [...n][0]); });
+  if (!to.size) return;
+  const keys = [], name = x => typeof x === 'string' ? to.get(x) ?? x : !isObj(x) ? x
+    : { ...x, ...('id' in x && { id: name(x.id) }), ...('node' in x && { node: name(x.node) }), ...(Array.isArray(x.ids) && { ids: x.ids.map(name) }) };
+  for (const { path, kind } of refs(m, new Set(to.keys()), only)) { const o = get(m, path.slice(0, -1)), k = path[path.length - 1];
+    if (['pin', 'present', 'override'].includes(kind)) keys.push([o, k]); else o[k] = name(o[k]); }
+  const vs = keys.map(([o, k]) => o[k]); keys.forEach(([o, k]) => delete o[k]); keys.forEach(([o, k], i) => { o[to.get(k)] = vs[i]; }); // all at once: names may swap
+}
+
 function checkNew(x, at) { // an element to add: an object with a new id that is not positional, and its members alike
   const seen = new Set(), walk = (y, what) => {
     if (!isObj(y) || typeof y.id !== 'string' || !y.id) throw new Error(`add: ${what} needs an id`);
@@ -186,11 +202,13 @@ function run(m, c, gone) {
       if (e.kind === 'member') throw new Error(`hide: "${c.id}" is a member, shown with its owner: collapse its compartment with set present, or delete it`);
       if (e.view) throw new Error(`hide: "${c.id}" lives only in view "${e.view.id}": delete it`);
       if (e.kind === 'edge' && !Array.isArray(v.edges)) throw new Error(`hide: view "${c.view}" shows every line between its cards; hide a card, or list its lines`);
+      const names0 = lineNames(m);
       const ids = new Set(), own = x => { ids.add(x.id); arr(x.members).forEach(y => isObj(y) && typeof y.id === 'string' && own(y)); }; own(e.x);
       const ends = l => isObj(l) && (ids.has(l.from) || ids.has(l.to)); // the view's lines to it, listed or its own, leave the view with it
       if (Array.isArray(v.edges)) v.edges = v.edges.filter(y => { const l = typeof y === 'string' ? (at.get(y) || {}).x : y, out = y === c.id || ends(l);
         if (out && isObj(l) && typeof l.id === 'string') ids.add(l.id); return !out; }); // what names those lines in this view goes too
       clear(m, refs(m, ids, i => i === vi).filter(r => !['end', 'parent', 'part', 'prop'].includes(r.kind)));
+      follow(m, names0, i => i === vi);
       return;
     }
     case 'delete': {
@@ -214,8 +232,7 @@ function run(m, c, gone) {
       const ls = new Map(); for (const [k, o] of at) if (now.has(k) && !(o.owner && now.has(o.owner.id))) (ls.get(o.list) || ls.set(o.list, new Set()).get(o.list)).add(o.x);
       ls.forEach((xs, l) => { let j = 0; for (let i = 0; i < l.length; i++) if (!(i in l)) delete l[j++]; else if (!xs.delete(l[i])) l[j++] = l[i]; l.length = j; }); // its first time in its list, as indexOf found
       for (let found = refs(m, now); found.length; found = refs(m, now)) clear(m, found); // a line without an id to a gone line goes in a second round
-      const names1 = lineNames(m), lost = new Set([...names0].filter(k => !names1.has(k))); // what named a line with no id that went ("b->c#0"): a step's select or highlight
-      for (let found = refs(m, lost); found.length; found = refs(m, lost)) clear(m, found);
+      follow(m, names0);
       now.forEach(id => gone.add(id));
       return;
     }
