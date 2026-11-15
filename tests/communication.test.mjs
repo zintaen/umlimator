@@ -378,3 +378,17 @@ test('a message the view lists twice is read once: one row, its own number, no f
   assert.deepEqual(validate(m).filter(p => p.rule === 'reply-call'), []);
   assert.deepEqual(describe(m, v.id).split('\n').filter(l => l.includes(label)).map(l => l.split(':')[0]), ['1']);
 });
+
+test('a connector routed through another connector\'s message rows is said by check(), its stack named by its lifelines (audit 14)', () => {
+  const L = id => ({ id, type: 'uml.Lifeline', label: id }), C = (id, from, to) => ({ id, type: 'uml.Connector', from, to }), M = (id, from, to, label) => ({ id, type: 'uml.Message', from, to, label, props: { sort: 'async' } });
+  const edges = [C('c0', 'b', 'c'), C('c1', 'b', 'a'), C('c2', 'a', 'a'), C('c3', 'c', 'd'), C('c4', 'c', 'c'), M('m0', 'a', 'a', 'go'), M('m1', 'd', 'c', 'go'), M('m2', 'b', 'a', 'place(order)'),
+    M('m3', 'c', 'c', 'place(order)'), M('m4', 'b', 'a', 'ok'), M('m5', 'b', 'a', 'go'), M('m6', 'a', 'b', 'ok'), M('m7', 'b', 'a', 'go')];
+  const m = { schemaVersion: 2, nodes: ['a', 'b', 'c', 'd'].map(L), edges, views: [{ id: 'v', diagram: 'uml.communication', nodeIds: ['a', 'b', 'c', 'd'], edges: edges.map(e => e.id) }] };
+  const warned = [], was = console.warn; console.warn = s => warned.push(String(s));
+  try { const g = layout(m, 'v'), c0 = g.edges.find(e => e.id === 'c0'), P = c0.pts;
+    const hit = rowsOf(g).filter(r => !c0.stack?.includes(r.id) && P.slice(1).some((q, i) => meets({ x: Math.min(P[i][0], q[0]), y: Math.min(P[i][1], q[1]), w: Math.abs(q[0] - P[i][0]) || .1, h: Math.abs(q[1] - P[i][1]) || .1 }, r)));
+    const said = check(m, 'v').filter(p => /passes through/.test(p.message));
+    assert.equal(said.length, hit.length, JSON.stringify(said)); // each row a line runs through, said; none, none said
+    assert.ok(warned.every(w => !w.includes('\u0000')), JSON.stringify(warned));
+  } finally { console.warn = was; }
+});

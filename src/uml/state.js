@@ -173,13 +173,15 @@ const stLegend = (nodes, edges) => { const has = new Set([...edges.map(e => e.ty
 // dashed divider in the gap before each but the first; regions that part on both axes (a line between them ranked one
 // before the other, region-cross) get a divider across the two only where they part on one
 function stRegions(g, pic) {
-  const by = new Map((g.families || []).map(f => [f.id, f])), out = new Map();
+  const by = new Map([...(g.nodes || []), ...(g.families || [])].map(f => [f.id, f])), out = new Map();
   pic.boxes.filter(b => pic.at.get(b.id).type === 'uml.State').forEach(b => {
     const S = by.get(b.id), rs = pic.boxes.filter(r => r.parent === b.id && pic.at.get(r.id).type === 'uml.Region').map(r => by.get(r.id)).filter(Boolean);
     if (!S || rs.length < 2) return;
     const parts = (a, c, v) => (v ? c.y >= a.y + a.h : c.x >= a.x + a.w), meets = (a, c, v) => (v ? a.x < c.x + c.w && c.x < a.x + a.w : a.y < c.y + c.h && c.y < a.y + a.h);
     const along = v => { const s = rs.slice().sort((a, c) => (v ? a.y - c.y || a.x - c.x : a.x - c.x || a.y - c.y)); return s.slice(1).every((c, i) => parts(s[i], c, v) && meets(s[i], c, v)) ? s : null; };
-    const V = along(true), H = !V && along(false), s = V || H;
+    // a substate the state holds directly (region-mixed) stays beside its regions: none is stretched over it
+    const own = (pic.I.kids.get(b.id) || []).map(k => by.get(k.id)).filter(Boolean), over = (r, v) => own.some(k => v ? k.y < r.y + r.h && r.y < k.y + k.h : k.x < r.x + r.w && r.x < k.x + k.w);
+    const V = along(true), H = !V && along(false), s = (V || H) && !(V || H).some(r => over(r, !!V)) ? V || H : null;
     if (s) s.forEach((r, i) => { const p = s[i - 1], mid = p && (V ? (p.y + p.h + r.y) / 2 : (p.x + p.w + r.x) / 2);
       out.set(r.id, { ...r, ...(V ? { x: S.x + 6, w: S.w - 12 } : { y: S.y + 30, h: S.h - 36 }), ...(p ? { div: V ? [S.x, mid, S.x + S.w, mid] : [mid, S.y + 24, mid, S.y + S.h] } : {}) }); });
     else rs.slice().sort((a, c) => a.y - c.y || a.x - c.x).forEach((r, i, l) => { const p = l[i - 1]; if (!p) return;
@@ -328,12 +330,13 @@ function stDescribe(model, viewId) {
 /* ---- editing (§10.3): each hook returns commands, { commands, say }, null for the default, or { error } ---- */
 const stFresh = (model, base) => { const used = new Set(); JSON.stringify(model, (k, v) => { if (k === 'id' && typeof v === 'string') used.add(v); return v; });
   let k = 1; while (used.has(base + k)) k++; return base + k; };
-// a hook's commands, or { error } when they bring an error the model did not have (notes/stage-3.md S5), as the activity's acGuard
+// a hook's commands, or { error } when they bring an error the model did not have (notes/stage-3.md S5), as the activity's acGuard;
+// a vertex put directly in a state with regions (region-mixed) too: it would sit beside them in no region
 function stGuard(model, commands) {
-  const key = p => p.rule + ' ' + p.ids.join(' '), errs = m => stProblems(m).filter(p => p.level === 'error');
+  const key = p => p.rule + ' ' + p.ids.join(' '), errs = m => stProblems(m).filter(p => p.level === 'error' || p.rule === 'region-mixed');
   let now; try { now = apply(model, commands); } catch (e) { return { error: String(e.message) }; }
   const was = new Set(errs(model).map(key)), bad = errs(now).find(p => !was.has(key(p)));
-  return bad ? { error: bad.message } : commands;
+  return bad ? { error: bad.rule === 'region-mixed' ? `${bad.message}: put it in one of its regions` : bad.message } : commands;
 }
 // add: a pseudostate with its entry's kind, in the state or region selected (a state's lone region); a region into the state selected
 function stAdd(model, view, entry, label, at) {
@@ -345,7 +348,11 @@ function stAdd(model, view, entry, label, at) {
   if (entry.type !== 'uml.Region') return null;
   const s = ST_ARR(at && at.sel).map(id => ST_ARR(model.nodes).find(n => ST_OBJ(n) && n.id === id)).find(n => n && n.type === 'uml.State');
   if (!s) return { error: 'Select a state to add a region to' };
-  return [{ op: 'add', element: { id: stFresh(model, `${s.id}.region`), type: 'uml.Region', ...(ST_HAS(label) ? { label: String(label) } : {}) }, owner: s.id }];
+  // a state holding substates directly gets a first region for them, and the new one beside it (§3's implicit region made one)
+  const kids = stMembers(s, 'uml.Region').length ? [] : stIndex(model).kids.get(s.id) || [], first = kids.length ? stFresh(model, `${s.id}.region`) : null;
+  const id = stFresh({ model, first: { id: first } }, `${s.id}.region`);
+  return stGuard(model, [...(first ? [{ op: 'add', element: { id: first, type: 'uml.Region' }, owner: s.id }, ...kids.map(k => ({ op: 'reparent', id: k.id, parent: first }))] : []),
+    { op: 'add', element: { id, type: 'uml.Region', ...(ST_HAS(label) ? { label: String(label) } : {}) }, owner: s.id }]);
 }
 // the commands that give an element of `e`'s the parts `text` reads as, one set per part that changed (undefined clears one)
 const stSetParts = (x, r) => ['trigger', 'guard', 'effect'].filter(k => (ST_PROPS(x)[k] ?? undefined) !== r[k]).map(k => ({ op: 'set', id: x.id, path: 'props.' + k, value: r[k] }));
@@ -405,7 +412,9 @@ function stOwners(model, x) {
   // an owner that holds another initial, or history of x's kind, is no choice: x there would be a second (initial-one, history-one)
   const taken = ['initial', 'shallowHistory', 'deepHistory'].includes(k) ? new Set([...I.N.values()].filter(({ x: y }) => y !== x && y.type === 'uml.Pseudostate' && stKind(y) === k).map(({ x: y }) => y.parent)) : new Set();
   const full = id => { const out = [], seen = new Set(); for (let p = id; (I.N.has(p) || I.M.has(p)) && !seen.has(p); p = stUp(I, p)) { seen.add(p); const e = (I.N.get(p) || I.M.get(p)).x; out.unshift(ST_HAS(e.label) ? e.label : p); } return out.join(' / '); };
-  return [...I.N.values()].filter(({ x: n }) => n.type === 'uml.State').flatMap(({ x: n }) => [{ id: n.id, label: full(n.id) }, ...stMembers(n, 'uml.Region').map(r => ({ id: r.id, label: full(r.id) }))])
+  // a state with regions is no owner but where x already is (region-mixed): its regions are
+  return [...I.N.values()].filter(({ x: n }) => n.type === 'uml.State').flatMap(({ x: n }) => { const rs = stMembers(n, 'uml.Region');
+    return [...(rs.length && x.parent !== n.id ? [] : [{ id: n.id, label: full(n.id) }]), ...rs.map(r => ({ id: r.id, label: full(r.id) }))]; })
     .filter(o => !stWithin(I, o.id, x.id) && !taken.has(o.id));
 }
 // remove: a region deleted from the model (Shift + Delete on its box, the member list's ✕) says how many elements it held (§10.3)

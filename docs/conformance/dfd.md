@@ -47,8 +47,9 @@ and paste, per-type `diff()` writers, deleting a view.
 Layout limits, measured on `examples/bookshop-data-flow.json` and `tests/dfd-stress.json`:
 
 - Port repair and rerouting off (`repair: false`, `reroute: false`, §11); `gap` 64, `rgap` 56.
-- The example's level 1 keeps 2 crossings in each direction and notation (Node's `check()`; Chrome counts 2 too, the
-  CI loop's pin); level 2 none. `check()` finds nothing else.
+- The example's level 1 keeps 1 crossing laid out right and 2 down, in each notation (Node's `check()`; the CI loop's
+  pin); level 2 none. Two flows between one pair that crossed each other (a request and its reply) swap their ports
+  with repair off (audit 14). `check()` finds nothing else.
 - `tests/m2-fixtures.test.mjs` pins the stress file. Its `edge-cases` levels are clean but for the second level's 2
   crossings right and 1 down, in both notations; its generated `all` view (50 nodes, 60 flows) is clean both ways.
 - Deleting or hiding an external entity or store a level and its parent both show leaves `dfd-balance` on the

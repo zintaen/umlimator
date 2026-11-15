@@ -215,6 +215,8 @@ test('remove, rename, moveTo and member rows on the projection: SysML\'s types b
   assert.deepEqual(T.edits.member(M19, V, 'range-equation', 'range-equation.range', 'param range : Length'), [{ op: 'set', id: 'range-equation.range', path: 'props.valueType', value: 'Length' }]);
   assert.match(T.edits.member(M19, V, 'ebike', 'ebike.eco', 'param eco : RangeEquation').error, /keeps its member's kind/);
   assert.match(T.edits.member(M19, V, 'ebike', null, 'param x : Real').error, /belongs to a constraint block/, 'a param row on a block: no port added');
+  // a port row adds no port this view never draws, new or over a value property's row (audit 14)
+  for (const [id, t] of [[null, 'port zz : Real'], [null, 'Full Port zz : Real'], ['ebike.eco', 'proxy port eco : RangeEquation']]) assert.match(T.edits.member(M19, V, 'ebike', id, t).error, /constraint or value property/, t);
   assert.match(T.edits.member(M19, V, 'range-equation', null, 'x : Real').error, /holds parameters/, 'a plain row on a constraint block: refused');
   // the composite type's words said in SysML's: a parameter, a binding, a constraint property
   assert.equal(T.edits.rename(M19, V, 'ebike.eco->range-equation.range', 'dist : Length').say, 'Renamed RangeEquation\'s parameter: every constraint property of that type shows it');

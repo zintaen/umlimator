@@ -43,6 +43,9 @@ connector for them, in the same transaction (the type's remove hook), so no sing
 - Lines cross where the layered layout finds no better order: `tests/communication-stress.json`'s `all` view (20
   lifelines, 30 connectors, 200 messages) has 13 crossings, pinned in `tests/communication.test.mjs`
   (`docs/diagrams/risks.md` L4); its `edge-cases` view, the minimal fixture and the example have none.
+- A connector the router finds no way round another connector's stack for (its ends' sides shut it in) runs through
+  those message rows: `check()` says so ("edge b→c passes through card …"), and the warning names the stack by its
+  lifelines ("the messages on b–a"), pinned in `tests/communication.test.mjs` (audit 14).
 
 ## Writers: what each shows of a communication diagram
 

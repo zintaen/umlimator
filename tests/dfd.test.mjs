@@ -77,7 +77,7 @@ test('22-data-flow.json lays out clean right and down in both notations: no over
   assert.deepEqual(validate(DF), [], 'it validates, and balances');
   for (const direction of ['right', 'down']) for (const notation of ['yourdon', 'gane-sarson']) {
     const m = look(DF, direction, notation), tag = `${direction}, ${notation}`;
-    for (const [vid, k] of [[L1, 2], [L2, 0]]) {
+    for (const [vid, k] of [[L1, direction === 'right' ? 1 : 2], [L2, 0]]) { // L1 right 2 before audit 14
       const g = layout(m, vid), problems = check(m, vid).map(p => p.message), crossings = problems.filter(p => / cross$/.test(p));
       assert.deepEqual(problems.filter(p => !crossings.includes(p)), [], `${tag} ${vid}: check() finds nothing but crossings`);
       assert.equal(crossings.length, k, `${tag} ${vid}: ${crossings}`);
@@ -225,9 +225,9 @@ test('D on a process that opens no view makes its level in one transaction, bala
   assert.deepEqual(r.commands.at(-1), { op: 'set', id: 'dfd-take-payment', path: 'opensView', value: 'dfd-take-payment-level' });
   const h = history(DF); h.push(apply(DF, r.commands)); const m = h.model;
   assert.deepEqual(validate(m), [], 'it balances, and its numbers sit under 2');
-  // clean but for a crossing pair to an entity, right, as level 1; none down; in both notations
+  // clean, right and down, in both notations (right, its request/reply pair to an entity crossed before audit 14)
   for (const direction of ['right', 'down']) for (const notation of ['yourdon', 'gane-sarson'])
-    assert.deepEqual(check(look(m, direction, notation), 'dfd-take-payment-level').map(p => p.message), direction === 'right' ? ['view dfd-take-payment-level: edges Take payment→Payment provider and Payment provider→Take payment cross'] : [], `${direction}, ${notation}`);
+    assert.deepEqual(check(look(m, direction, notation), 'dfd-take-payment-level').map(p => p.message), [], `${direction}, ${notation}`);
   assert.equal(layout(m, L1).byId['dfd-take-payment'].aria, 'Process 2 Take payment, opens level 2 Take payment, 2 flows in, 2 out');
   assert.equal(JSON.stringify(h.undo()), JSON.stringify(DF), 'one undo takes it all back');
   // the level made is a level: split its process and balancing still holds while the flows stay at the edge

@@ -82,7 +82,7 @@ to its own activity are not drawn (`describe()` says so; `connect` refuses both)
 Layout limits, measured on the example and `tests/bpmn-stress.json`:
 
 - Port repair and rerouting off (`repair: false`, `reroute: false`, S16).
-- The example lays out with 5 crossings laid out right and 6 down, nothing else `check()` finds; its sub-process's view
+- The example lays out with 4 crossings laid out right and 6 down, nothing else `check()` finds; its sub-process's view
   is clean.
 - `tests/m4b-fixtures.test.mjs` pins the stress file. Its `edge-cases` view (two boundary events on one side, their task
   pinned and the pin moved; a non-interrupting one on an expanded sub-process; an interrupting message one on the call

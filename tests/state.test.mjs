@@ -287,7 +287,13 @@ test('add: a pseudostate with its kind and no name, in the state selected; a reg
   const add = (e, label, at) => T.edits.add(SM, V, e, label, at), entry = l => T.elements.find(e => e.label === l);
   assert.deepEqual(add(entry('Choice'), ''), [{ op: 'add', element: { id: 'choice1', type: 'uml.Pseudostate', props: { kind: 'choice' } }, view: 'order-life' }]);
   assert.deepEqual(add(entry('Deep history'), '', { sel: ['delivery'] })[0].element, { id: 'deep-history1', type: 'uml.Pseudostate', parent: 'delivery', props: { kind: 'deepHistory' } });
-  assert.deepEqual(add(entry('Region'), '', { sel: ['delivery'] }), [{ op: 'add', element: { id: 'delivery.region1', type: 'uml.Region' }, owner: 'delivery' }]);
+  // audit 14: a state holding substates directly gets a first region for them, the new one beside it, so no region-mixed
+  const kids = ['delivery-start', 'in-transit', 'out-for-delivery', 'delivery-history'], rc = add(entry('Region'), 'Returns', { sel: ['delivery'] });
+  assert.deepEqual(rc, [{ op: 'add', element: { id: 'delivery.region1', type: 'uml.Region' }, owner: 'delivery' }, ...kids.map(id => ({ op: 'reparent', id, parent: 'delivery.region1' })),
+    { op: 'add', element: { id: 'delivery.region2', type: 'uml.Region', label: 'Returns' }, owner: 'delivery' }]);
+  assert.deepEqual(validate(apply(SM, rc)).filter(p => p.rule === 'region-mixed'), []);
+  assert.deepEqual(add(entry('Region'), '', { sel: ['fulfilling'] }), [{ op: 'add', element: { id: 'fulfilling.region1', type: 'uml.Region' }, owner: 'fulfilling' }], 'a state with regions: one more');
+  assert.match(add(entry('Choice'), '', { sel: ['fulfilling'] }).error, /region-mixed.*one of its regions/, 'not directly in a state with regions');
   assert.match(add(entry('Region'), '', { sel: ['created'] }).error, /Select a state/);
   assert.equal(add(entry('State'), 'Idle'), null); assert.equal(add(entry('Final state'), ''), null);
   const m = apply(SM, add(entry('Fork'), ''));
@@ -322,12 +328,21 @@ test('moveTo: a node dropped into the box of a state with one region goes to tha
   assert.equal(T.edits.moveTo(m, m.views[0], 'cancelled', { by: [0, 1], geo: g }), null, 'Alt + arrows: a pin');
   assert.equal(T.edits.moveTo(m, m.views[0], 'delivery', { pt, geo: g }), null, 'into itself: never its own region');
   assert.deepEqual(validate(apply(m, T.edits.moveTo(m, m.views[0], 'cancelled', { pt, geo: g }))).filter(p => p.level === 'error'), []);
+  // audit 14: dropped on a state with regions outside their boxes (its header) is refused; an imported region-mixed state
+  // draws its direct substate beside its regions, never inside a region stretched over it
+  const fu = g.families.find(x => x.id === 'fulfilling');
+  assert.match(T.edits.moveTo(m, m.views[0], 'cancelled', { pt: [fu.x + 6, fu.y + 6], geo: g }).error ?? '', /region-mixed.*one of its regions/);
+  const mx = layout(apply(SM, [{ op: 'reparent', id: 'cancelled', parent: 'fulfilling' }]), 'order-life'), c = mx.byId.cancelled;
+  for (const r of mx.families.filter(x => x.id.startsWith('fulfilling.'))) assert.ok(c.x >= r.x + r.w || c.x + c.w <= r.x || c.y >= r.y + r.h || c.y + c.h <= r.y, r.id);
 });
 
 test('the Owner field: every state and region by its name from the top; deleting a state takes its regions and what they hold', () => {
   const o = T.owners(SM, node(SM, 'cancelled'));
-  assert.deepEqual(o.slice(0, 4), [{ id: 'placed', label: 'Placed' }, { id: 'fulfilling', label: 'Fulfilling' }, { id: 'fulfilling.parcel', label: 'Fulfilling / Parcel' }, { id: 'fulfilling.payment', label: 'Fulfilling / Payment' }]);
-  assert.equal(o.length, 10 + 2, 'the ten other states, two regions');
+  // a state with regions is no owner, its regions are (audit 14: region-mixed); but where x already is
+  assert.deepEqual(o.slice(0, 3), [{ id: 'placed', label: 'Placed' }, { id: 'fulfilling.parcel', label: 'Fulfilling / Parcel' }, { id: 'fulfilling.payment', label: 'Fulfilling / Payment' }]);
+  assert.equal(o.length, 9 + 2, 'nine of the ten other states, two regions');
+  const mixed = apply(SM, [{ op: 'reparent', id: 'cancelled', parent: 'fulfilling' }]);
+  assert.ok(T.owners(mixed, node(mixed, 'cancelled')).some(x => x.id === 'fulfilling'), 'where it is: kept');
   assert.equal(T.owners(SM, SM.edges[0]), null);
   const of = T.owners(SM, node(SM, 'fulfilling')).map(x => x.id);
   assert.equal(of.length, 13 - 7, 'not itself, its regions, nor the five states under it');

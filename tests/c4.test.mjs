@@ -414,3 +414,11 @@ test('audit 5: lines go round the cards on a typed view, however wide the host f
     assert.ok(refs[at][0] === e && refs[at][1].id === 'c4-queue', 'about the line and the card');
   }
 });
+
+test('a request and its reply between two systems, laid out right, do not cross (audit 14)', () => {
+  const m = { schemaVersion: 2, nodes: [El('u', 'Person', 'User'), El('s', 'SoftwareSystem', 'Shop'), El('b', 'SoftwareSystem', 'Bank', { external: true }), El('m', 'SoftwareSystem', 'Mail', { external: true })],
+    edges: [Rel('r1', 'u', 's', 'Buys'), Rel('r2', 's', 'b', 'Charges'), Rel('r3', 'b', 's', 'Notifies'), Rel('r4', 's', 'm', 'Sends')], views: [{ id: 'v', diagram: 'c4.landscape', title: 'T', nodeIds: ['u', 's', 'b', 'm'] }] };
+  assert.deepEqual(check(m, 'v').map(p => p.message), []);
+  const swapped = structuredClone(m); swapped.edges = [m.edges[0], m.edges[2], m.edges[1], m.edges[3]];
+  assert.deepEqual(check(swapped, 'v').map(p => p.message), [], 'either edge order');
+});

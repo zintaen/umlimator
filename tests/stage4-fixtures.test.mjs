@@ -71,7 +71,7 @@ function clean(m, vid) {
 const PINNED = {
   'usecase-minimal': { v: { right: [0, []], down: [0, []] } },
   'usecase-stress': { 'edge-cases': { right: [1, []], down: [1, []] },
-    all: { right: [2, ['view all: edges Use case number 5→Use case number 6 and Use case number 6→Use case number 5 share a line']], down: [4, []] } },
+    all: { right: [2, []], down: [4, []] } },
   'activity-minimal': { v: { right: [0, []], down: [0, []] } },
   'activity-stress': { 'edge-cases': { right: [1, []], down: [1, []] }, 'ec-take-payment': { right: [0, []], down: [0, []] }, all: { right: [9, []], down: [14, []] } },
   'state-minimal': { v: { right: [0, []], down: [0, []] } },

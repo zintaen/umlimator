@@ -44,7 +44,7 @@ Layout limits, measured on `examples/order-information-flow.json` and `tests/inf
 - Port repair and rerouting off (`repair: false`, `reroute: false`, §11). A flow back over two columns or more (a reply
   closing a loop) leaves its source's bottom and comes into its target's bottom, a fixed side, not a search.
 - The example lays out clean right and down: `check()` finds nothing.
-- `tests/m2-fixtures.test.mjs` pins the stress file. Its `edge-cases` view crosses twice laid out right and is clean
+- `tests/m2-fixtures.test.mjs` pins the stress file. Its `edge-cases` view crosses once laid out right and is clean
   down. One label there, the flow conveying a gone id (`ec-gone`, an error), found no room beside the class flow into
   the same box and was left off with nothing said; since audit 6 it takes a spot beside its line, right and down.
   The generated `all` view (40 nodes, 60 flows, one to three items each) crosses 149 times right and 121 down, with two

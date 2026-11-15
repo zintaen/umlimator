@@ -127,7 +127,7 @@ function commGeo({ model, view, memo }) {
     const ms = I.on.get(c.id), plain = { id: c.id, _id: c.id, type: c.type, from: c.from, to: c.to, end: { from: 'none', to: 'none' }, aria: conAria(c) };
     if (!ms.length) { edges.push(plain); if (c.from !== c.to) links.push(onward(c.from, c.to)); return; }
     const [s, t] = onward(c.from, c.to), texts = ms.map(m => cmRowText(m, nums.get(m.id))), id = CM_STACK + c.id;
-    const st = { id, label: '', kind: 'file', w: Math.max(...texts.map(cmRowW)), h: ms.length * CM_ROW.h };
+    const st = { id, label: '', name: `the messages on ${cmNameOf(I.N.get(c.from))}–${cmNameOf(I.N.get(c.to))}`, kind: 'file', w: Math.max(...texts.map(cmRowW)), h: ms.length * CM_ROW.h }; // name: what a warning calls it
     nodes.push(st); stacks.set(c.id, { st, ms, texts, s, t });
     links.push([s, id], ...(s === t ? [] : [[id, t]]));
     edges.push({ ...plain, id: id + CM_STACK + 'a', from: s, to: id }, { ...plain, id: id + CM_STACK + 'b', from: id, to: t });
