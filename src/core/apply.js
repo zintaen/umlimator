@@ -1,5 +1,5 @@
 import { diagramOf, propRefs } from './registry.js';
-import { lineNames } from './model.js';
+import { lineNames, namesOf, listOf } from './model.js';
 /* ---------- commands: apply() and references() (work package 1.6) ----------
    apply(model, commands) runs a transaction, one command or a list run in order, on a copy of the model and returns the
    new model; the one given is never changed. A command that cannot run throws, and none of the transaction is applied.
@@ -54,8 +54,9 @@ function index(m) {
 
 /* Where a model names any of `ids` (a Set): [{ path, kind }], path a list of keys from the model down. Kinds: end, parent,
    part, prop, view, pin, present, override, subject, story, lens, rule. Neither the element itself nor its members are listed.
-   only(viewIndex): look in those views and their story steps only (hide), else in all of the model. */
-function refs(m, ids, only) {
+   only(viewIndex): look in those views and their story steps only (hide), else in all of the model; top: also in what
+   is not a view's (its nodes and lines, lenses, rules), by default when only is not given. */
+function refs(m, ids, only, top = !only) {
   const out = [], say = (path, kind) => out.push({ path, kind }), has = id => typeof id === 'string' && ids.has(id);
   const element = (x, at, line) => { if (!isObj(x)) return; // line: x is a line, not a node or member that has a field named to
     if (has(x.parent)) say([...at, 'parent'], 'parent');
@@ -64,7 +65,7 @@ function refs(m, ids, only) {
     Object.keys(propRefs(x.type)).forEach(p => { const v = dig(x, p), ks = p.split('.');
       if (has(v)) say([...at, ...ks], 'prop'); else arr(v).forEach((id, j) => { if (has(id)) say([...at, ...ks, j], 'prop'); }); });
     arr(x.members).forEach((y, j) => element(y, [...at, 'members', j], false)); };
-  if (!only) { arr(m.nodes).forEach((n, i) => element(n, ['nodes', i], false)); arr(m.edges).forEach((e, i) => element(e, ['edges', i], true)); }
+  if (top) { arr(m.nodes).forEach((n, i) => element(n, ['nodes', i], false)); arr(m.edges).forEach((e, i) => element(e, ['edges', i], true)); }
   const vids = new Set(), views = new Set(arr(m.views).map(v => isObj(v) && v.id));
   arr(m.views).forEach((v, i) => { if (!isObj(v) || (only && !only(i))) return; const at = ['views', i]; vids.add(v.id);
     ['nodeIds', 'tour', 'stepIds'].forEach(k => arr(v[k]).forEach((id, j) => { if (has(id)) say([...at, k, j], 'view'); }));
@@ -74,7 +75,7 @@ function refs(m, ids, only) {
     ['changes', 'constraints'].forEach(k => arr(isObj(v.timeline) && v.timeline[k]).forEach((c, j) => isObj(c) && ['lifeline', 'from', 'to'].forEach(f => { if (has(c[f])) say([...at, 'timeline', k, j, f], 'end'); })));
     [['layout', 'pin'], ['present', 'present'], ['nodeOverrides', 'override']].forEach(([k, kind]) => Object.keys(isObj(v[k]) ? v[k] : {}).forEach(id => { if (has(id)) say([...at, k, id], kind); }));
     if (has(v.subject)) say([...at, 'subject'], 'subject');
-    if (!only) ['parent', 'node'].forEach(k => { if (has(v[k]) && !(k === 'parent' && views.has(v[k]))) say([...at, k], 'parent'); }); // a view opened from a card (a parent that is also a view's id names that view)
+    if (top) ['parent', 'node'].forEach(k => { if (has(v[k]) && !(k === 'parent' && views.has(v[k]))) say([...at, k], 'parent'); }); // a view opened from a card (a parent that is also a view's id names that view)
     ['containers', 'lanes'].forEach(k => arr(v[k]).forEach((b, j) => arr(isObj(b) && b.nodeIds).forEach((id, n) => { if (has(id)) say([...at, k, j, 'nodeIds', n], 'view'); })));
     arr(v.intake).forEach((x, j) => { if (isObj(x) && has(x.to)) say([...at, 'intake', j], 'view'); }); });
   // a step's select and highlight: an id or a Ref (a line's Ref names several edges: it goes with any of them)
@@ -83,7 +84,7 @@ function refs(m, ids, only) {
     if (named(st.select)) say([...at, 'select'], 'story');
     ['highlight', 'tour'].forEach(k => arr(st[k]).forEach((id, n) => { if (named(id)) say([...at, k, n], 'story'); }));
     if (isObj(st.camera) && has(st.camera.card)) say([...at, 'camera'], 'story'); }));
-  if (only) return out;
+  if (!top) return out;
   const picks = (sel, at, kind) => { if (!isObj(sel)) return;
     if (has(sel.id)) say([...at, 'id'], kind); else arr(sel.id).forEach((id, k) => { if (has(id)) say([...at, 'id', k], kind); });
     picks(sel.not, [...at, 'not'], kind); };
@@ -114,19 +115,23 @@ function clear(m, found) {
 }
 
 /* after a delete or hide: what named a line with no id ("b->c#0", a step's select or highlight) goes with the line, or
-   follows it to its new name when lines before it in its list went (names0: lineNames() before) */
+   follows it to its new name when lines before it in its list went (names0: lineNames() before). A name counts in one list:
+   the model's, named where a view with no edges list is and in what is not a view's; or a view's own, named in that view */
 function follow(m, names0, only) {
-  let now;
-  for (;;) { now = new Map(); lineNames(m).forEach((ls, k) => ls.forEach(l => now.set(l, k)));
-    const lost = new Set([...names0].filter(([, ls]) => !ls.some(l => now.has(l))).map(([k]) => k)), found = refs(m, lost, only);
-    if (!found.length) break; clear(m, found); } // a line to a line that went goes too, and may move the names again
-  const to = new Map(); names0.forEach((ls, k) => { const n = new Set(ls.map(l => now.get(l)).filter(Boolean)); if (n.size === 1 && !n.has(k)) to.set(k, [...n][0]); });
-  if (!to.size) return;
-  const keys = [], name = x => typeof x === 'string' ? to.get(x) ?? x : !isObj(x) ? x
-    : { ...x, ...('id' in x && { id: name(x.id) }), ...('node' in x && { node: name(x.node) }), ...(Array.isArray(x.ids) && { ids: x.ids.map(name) }) };
-  for (const { path, kind } of refs(m, new Set(to.keys()), only)) { const o = get(m, path.slice(0, -1)), k = path[path.length - 1];
-    if (['pin', 'present', 'override'].includes(kind)) keys.push([o, k]); else o[k] = name(o[k]); }
-  const vs = keys.map(([o, k]) => o[k]); keys.forEach(([o, k]) => delete o[k]); keys.forEach(([o, k], i) => { o[to.get(k)] = vs[i]; }); // all at once: names may swap
+  names0.forEach((was, L) => {
+    const where = i => (!only || only(i)) && listOf(m, i) === L, top = L < 0 && !only;
+    let now;
+    for (;;) { now = new Map(); namesOf(L < 0 ? m.edges : m.views[L].edges).forEach((l, k) => now.set(l, k));
+      const lost = new Set([...was].filter(([, l]) => !now.has(l)).map(([k]) => k)), found = lost.size ? refs(m, lost, where, top) : [];
+      if (!found.length) break; clear(m, found); } // a line to a line that went goes too, and may move the names again
+    const to = new Map(); was.forEach((l, k) => { const n = now.get(l); if (n && n !== k) to.set(k, n); });
+    if (!to.size) return;
+    const keys = [], name = x => typeof x === 'string' ? to.get(x) ?? x : !isObj(x) ? x
+      : { ...x, ...('id' in x && { id: name(x.id) }), ...('node' in x && { node: name(x.node) }), ...(Array.isArray(x.ids) && { ids: x.ids.map(name) }) };
+    for (const { path, kind } of refs(m, new Set(to.keys()), where, top)) { const o = get(m, path.slice(0, -1)), k = path[path.length - 1];
+      if (['pin', 'present', 'override'].includes(kind)) keys.push([o, k]); else o[k] = name(o[k]); }
+    const vs = keys.map(([o, k]) => o[k]); keys.forEach(([o, k]) => delete o[k]); keys.forEach(([o, k], i) => { o[to.get(k)] = vs[i]; }); // all at once: names may swap
+  });
 }
 
 function checkNew(x, at) { // an element to add: an object with a new id that is not positional, and its members alike

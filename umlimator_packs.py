@@ -1,6 +1,7 @@
 """umlimator.py pack (milestone 4a, notes/milestone-4a.md §4): the cloud vendors' icon packs, fetched only when the user
 asks, after the vendor's terms are shown and accepted, from the pinned addresses in icons/packs.json, checked by size
-and SHA-256, and kept in the user's cache, never in anything this project publishes. Standard library only.
+and SHA-256, and kept in the user's cache, never in anything this project commits or packs; only the Pages site's
+build fetches them (notes/milestone-4a.md §16). Standard library only.
 
   umlimator.py pack list                                      # each pack's pin, whether it is fetched and accepted
   umlimator.py pack fetch gcp [--accept-terms gcp@<label>]    # the terms, a yes, then the pinned zips
@@ -138,7 +139,7 @@ def table(models):
     """The page's pack entries (§4.5): `<pack>/<id>` -> {src, dark, name} for every node whose family has a pack row and
     whose props.icon the fetched pack holds, and `<pack>/` -> {legal} for a pack with a legal line (Google). A pack not
     fetched adds nothing and one line says how to fetch it. UMLIMATOR_NO_PACKS: nothing (renders whose output is
-    committed, so a maintainer's packs never reach the repository)."""
+    committed, so a maintainer's packs never reach the repository; the Pages site's build leaves it unset, §16)."""
     if os.environ.get("UMLIMATOR_NO_PACKS"):
         return {}
     rs, out = rows(), {}

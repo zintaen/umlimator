@@ -358,7 +358,7 @@ test('Shift + Delete on the root of a 20,000-topic chain: no throw, every topic 
   assert.equal(r.say, 'Deleted t0 and its 19999 subtopics');
   assert.deepEqual([n.nodes.length, V(n).nodeIds.length], [0, 0]);
   let h; const u = best(() => { h = mmRemove(m, 'c', ['t10000'], false); });
-  assert.equal(h.commands.length, 10000);
+  assert.equal(h.commands.length, 10001, 'each hide, and t1\'s side pinned');
   const d = best(() => layout(m, 'c'));
   for (const [k, v] of Object.entries({ delete: t, hide: u, layout: d })) assert.ok(v < 1000, `${k} ${v} ms`);
   console.log(`# a 20,000-topic chain (target 100 ms): Shift + Delete on its root ${t.toFixed(1)} ms, Delete half of it ${u.toFixed(1)} ms, its layout ${d.toFixed(1)} ms`);
@@ -412,9 +412,9 @@ test('audit 6: on a topic parent cycle, N, Delete and a drop each return', async
   const r = spawnSync(process.execPath, ['--max-old-space-size=200', '--input-type=module', '-e', code], { encoding: 'utf8', timeout: 30000 });
   assert.equal(r.status, 0, r.stderr || 'timed out');
   const [add, hide, hide2, drop] = JSON.parse(r.stdout);
-  assert.equal(add[0].element.parent, 'a', 'N with nothing selected: a child of the drawn root');
-  assert.deepEqual(hide.commands.map(c => c.id).sort(), ['a', 'b', 'c'], 'Delete on the drawn root hides each topic once');
-  assert.deepEqual(hide2.commands.map(c => c.id).sort(), ['b', 'c']);
+  assert.equal(add.at(-1).element.parent, 'a', 'N with nothing selected: a child of the drawn root');
+  assert.deepEqual(hide.commands.filter(c => c.op === 'hide').map(c => c.id).sort(), ['a', 'b', 'c'], 'Delete on the drawn root hides each topic once');
+  assert.deepEqual(hide2.commands.filter(c => c.op === 'hide').map(c => c.id).sort(), ['b', 'c']);
   assert.ok(Array.isArray(drop));
 });
 
@@ -433,4 +433,18 @@ test('audit 12: Delete then the outline\'s Show keeps a first-level topic\'s pin
   m = apply(m, mmRemove(m, 'v', ['b'], false).commands); assert.deepEqual(m.views[0].nodeIds, ['r', 'a']); assert.deepEqual(mmProblems(m, m.views[0]), []);
   m = apply(m, mmShow(m, 'v', 'b').commands);
   assert.equal(mmRun(m, m.views[0]).byId.b.side, 'right');
+});
+
+test('audit 13: N, Delete, Shift + Delete and the outline\'s Show leave the other first-level branches on the sides drawn', () => {
+  const T = 'mindmap.Topic', ids = ['a', 'b', 'c', 'd'], sides = m => { const g = mmRun(m, m.views[0]); return ids.filter(id => g.byId[id]).map(id => g.byId[id].side); };
+  const m = { schemaVersion: 2, nodes: [{ id: 'r', type: T, label: 'Root' }, ...ids.map(id => ({ id, type: T, label: id.toUpperCase(), parent: 'r' }))], edges: [],
+    views: [{ id: 'v', diagram: 'mindmap', nodeIds: ['r', ...ids] }] };
+  const was = sides(m), keep = (n, gone) => assert.deepEqual(sides(n), was.filter((s, i) => !gone.includes(ids[i])));
+  keep(apply(m, mmRemove(m, 'v', ['a'], false).commands), ['a']);
+  keep(apply(m, mmRemove(m, 'v', ['a'], true).commands), ['a']);
+  let n = m; for (const t of ['x1', 'x2', 'x3']) n = apply(n, mmAdd(n, 'v', { type: T }, t, { sel: ['a'] }));
+  keep(n, []);
+  // Show: the branches keep the sides they have while a is hidden
+  const h = apply(m, [{ op: 'add', element: { id: 'a1', type: T, label: 'A1', parent: 'a' } }, { op: 'hide', id: 'a', view: 'v' }]), hs = sides(h);
+  const back = mmRun(apply(h, mmShow(h, 'v', 'a').commands), h.views[0]); assert.deepEqual(['b', 'c', 'd'].map(id => back.byId[id].side), hs);
 });

@@ -1,7 +1,7 @@
 import { registerDiagramType } from '../core/registry.js';
 import { esc, fit, textW } from '../core/text.js';
 import { SHAPE, boxOut, portsOn, r2 } from '../draw/shapes.js';
-import { layoutTyped } from '../typed/layout.js';
+import { layoutTyped, typedLines } from '../typed/layout.js';
 import '../uml/class.js'; // SHAPE.note, a comment's look
 import { flowWrap } from '../uml/flow.js'; // and SHAPE.diamond, SHAPE.initial's circle, read only
 
@@ -152,8 +152,10 @@ function fcProblems(model, view) {
   const I = fcIndex(model, view), out = [], q = id => { const x = I.N.get(id); return x && FC_TXT(x.label) ? `${id} ("${FC_TXT(x.label)}")` : id; };
   const say = (rule, path, ids, msg, level = 'warning') => out.push({ level, rule, path, ids, message: `${rule}: ${msg}` });
   const shown = new Set(I.ids), mine = id => I.N.has(id) && FC_NODES.includes(I.N.get(id).type), list = es => es.map(e => e.id).join(', ');
-  I.E.forEach((e, id) => { if (e.type !== 'flow.Flow' || !(shown.has(e.from) || shown.has(e.to))) return;
-    [e.from, e.to].forEach(end => { if (I.N.has(end) && !mine(end)) say('flow-ends', I.path.get(id), [id, end], `flow ${id} ends on ${q(end)}, a ${String(I.N.get(end).type).split('.').pop()}: a flow joins two flowchart nodes`, 'error'); }); });
+  // the model's flows (once an id), then those written inline in this view's edges
+  [...[...I.E.values()].map(e => [e, I.path.get(e.id)]), ...typedLines({ views: model && model.views }, v => v === view).filter(([e]) => I.E.get(e.id) !== e)].forEach(([e, p]) => { const id = e.id;
+    if (e.type !== 'flow.Flow' || !(shown.has(e.from) || shown.has(e.to))) return;
+    [e.from, e.to].forEach(end => { if (I.N.has(end) && !mine(end)) say('flow-ends', p, [id, end], `flow ${id} ends on ${q(end)}, a ${String(I.N.get(end).type).split('.').pop()}: a flow joins two flowchart nodes`, 'error'); }); });
   if (!view) return out;
   const vp = `views[${FC_ARR(model.views).indexOf(view)}]`;
   if (I.starts.length !== 1) say('start-end', vp, [view.id, ...I.starts], `view ${view.id} has ${fcPlural(I.starts.length, 'start')}${I.starts.length ? ` (${I.starts.map(q).join(', ')})` : ''}; it wants one`);

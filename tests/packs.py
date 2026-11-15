@@ -349,6 +349,17 @@ git("init", "-q"); git("add", "m.json"); git("commit", "-qm", "one")
 r = subprocess.run([sys.executable, str(ROOT / "umlimator.py"), "timelapse", "m.json", "--out", "t.html"], capture_output=True, text=True, cwd=d, env=env(d), timeout=120)
 ok("timelapse#1 · a timelapse page holds a fetched pack's icons, as a rendered one does", r.returncode == 0 and '"aws/Amazon-Test-Service"' in (d / "t.html").read_text(), r.stderr[-300:])
 
+# check.yml (§16, 16 Nov 2026): only the Pages site job fetches packs, accepting exactly the pins in icons/packs.json (a re-pin
+# must edit the accepted labels too), with no UMLIMATOR_NO_PACKS and no actions/cache there
+wf = (ROOT / ".github/workflows/check.yml").read_text(encoding="utf-8")
+jobs = dict(re.findall(r"(?ms)^  ([\w-]+):\n(.*?)(?=^  [\w-]+:\n|\Z)", wf.split("\njobs:\n", 1)[1]))
+site = jobs.get("site", "")
+m = re.search(r"for a in ((?:[\w-]+@\S+ ?)+); do", site)
+ok("site#1 · the site job accepts exactly icons/packs.json's pins, fetches with them, and neither turns packs off nor caches them",
+   m and sorted(m.group(1).split()) == sorted(f"{k}@{v['label']}" for k, v in REAL.items()) and re.search(r"\bpack fetch\b", site)
+   and "UMLIMATOR_NO_PACKS" not in site and "actions/cache" not in site, (m and m.group(1)))
+ok("site#2 · no other job fetches a pack", [j for j, b in jobs.items() if j != "site" and re.search(r"\bpack fetch\b", b)] == [], sorted(jobs))
+
 srv.shutdown()
 print("FAILED" if failed else "all pack checks passed")
 sys.exit(1 if failed else 0)

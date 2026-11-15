@@ -52,6 +52,7 @@ All on 11 Nov 2026, by the maintainer. The options that were weighed are in `pro
 | | 1.0.0 comes after all 28 types, when the maintainer says it is ready; after 0.27.0 the work goes on in 0.28.0 and later (13 Nov 2026) |
 | | Examples: one small example per type is the reference (gallery, fixtures, conformance); one linked Bookshop atlas is built from them (13 Nov 2026) |
 | | Maps draw in one card-shape style, the union of the c4 and uml notations; the `shapes` toggle and API are removed (13 Nov 2026, in 0.21.0) |
+| | The GitHub Pages site, and only it, shows the real Google Cloud, Azure and AWS icons: its build fetches the pinned packs with their terms accepted. Everything else stays icon-free (16 Nov 2026; `notes/milestone-4a.md` §16, decision 6 revised) |
 
 ## What is in this folder
 
@@ -401,3 +402,8 @@ node docs/diagrams/examples/check.mjs         # the target examples match model.
   an id-less line that was still there, `diff()` bringing back a removed state without its region, a self create message
   that `validate()` accepted, a C4 deployment instance named two ways after T, and `--out` naming the input, which
   replaced it. No picture changes. 0.39.0 (this PR) releases them.
+- **16 Nov 2026 (decision 6 revised).** The maintainer changed decision 6 of `notes/milestone-4a.md`: the Pages site's
+  build fetches the `gcp`, `azure` and `aws` packs with their terms accepted, so the site's cloud examples show the real
+  icons, the legal lines and the not-affiliated line. AWS agreed to its icons on this project's own Pages site on
+  16 Nov 2026 (the maintainer's report). The repository, the npm package, releases, committed pages and stills and every
+  other CI artifact stay icon-free. §16 of the note and `risks.md` M26 record it.

@@ -455,19 +455,19 @@ SysML v1.7's four types (`examples/ebike-requirements.json`, `ebike-blocks.json`
 | view | `subject` | the frame's element: a package (requirement, block definition), a block (internal block, parametric) or a constraint block (parametric) |
 | view | `diagram` | `"sysml.requirement"`, `"sysml.block-definition"`, `"sysml.internal-block"`, `"sysml.parametric"` |
 
-Milestone 4a's three types (`examples/bookshop-opening-plan.json`, `bookshop-gcp.json` and `bookshop-azure.json`;
-[`mindmap.md`](docs/conformance/mindmap.md), [`gcp.md`](docs/conformance/gcp.md), [`azure.md`](docs/conformance/azure.md)),
+Milestone 4a's four types (`examples/bookshop-opening-plan.json`, `bookshop-gcp.json`, `bookshop-azure.json` and `bookshop-aws.json`;
+[`mindmap.md`](docs/conformance/mindmap.md), [`gcp.md`](docs/conformance/gcp.md), [`azure.md`](docs/conformance/azure.md), [`aws.md`](docs/conformance/aws.md)),
 from 0.26.0:
 
 | On | Field | What it does |
 |---|---|---|
-| node, edge | `type` | mindmap: `mindmap.Topic`, no lines. Google Cloud: `gcp.Zone` (a group), `gcp.Product`, `gcp.User`; lines `gcp.Path`. Azure: `azure.Group`, `azure.Service`; lines `azure.Connector`. A cloud line may start or end at a group, never join a group and what it holds |
+| node, edge | `type` | mindmap: `mindmap.Topic`, no lines. Google Cloud: `gcp.Zone` (a group), `gcp.Product`, `gcp.User`; lines `gcp.Path`. Azure: `azure.Group`, `azure.Service`; lines `azure.Connector`. AWS: `aws.Group`, `aws.Service`, `aws.Resource`; lines `aws.Connection`. A cloud line may start or end at a group, never join a group and what it holds |
 | node | `parent` | a topic's parent topic (a topic with none is a root); the group that holds a group or a service |
-| node | `props` | a group's kind, `zoneType` (`project`, `region`, `zone`, `network`, `subnetwork`, `generic`) or `groupType` (`subscription`, `resource-group`, `region`, `virtual-network`, `subnet`, `generic`); a product's or service's `icon`, the pinned pack's own id (`Cloud-Run`, `Front-Door-and-CDN-Profiles`) |
+| node | `props` | a group's kind, `zoneType` (`project`, `region`, `zone`, `network`, `subnetwork`, `generic`) or `groupType` (Azure: `subscription`, `resource-group`, `region`, `virtual-network`, `subnet`, `generic`; AWS: `cloud`, `account`, `region`, `availability-zone`, `vpc`, `public-subnet`, `private-subnet`, `security-group`, `generic`); a product's or service's `icon`, the pinned pack's own id (`Cloud-Run`, `Front-Door-and-CDN-Profiles`) |
 | model | `icons` | from the CLI or a host: `<pack>/<id>` with `{ src, dark, name }`, and Google's `gcp/` with `{ legal }`; the module never fetches one |
 | model | `iconPacks` | the label of the pin each pack's ids were chosen from (`{ "gcp": "2026-11-14" }`); `umlimator.py check` compares it with the release's |
 | view | `present` | a first-level topic's half: `{ "side": "left" }` |
-| view | `diagram` | `"mindmap"`, `"gcp"`, `"azure"` |
+| view | `diagram` | `"mindmap"`, `"gcp"`, `"azure"`, `"aws"` |
 
 A BPMN diagram (`examples/bookshop-order-to-shipment.json`; [`docs/conformance/bpmn.md`](docs/conformance/bpmn.md)), from
 0.27.0:
@@ -657,7 +657,9 @@ never downloads on its own. You fetch a pack yourself, once, with `umlimator.py 
 - **Cached for you only.** A fetched pack lives in `<icon cache>/packs/` (`~/.cache/umlimator/icons`, or
   `$UMLIMATOR_ICON_CACHE`). A render reads it and copies the icons it draws into the page, as it does a logo, and never
   downloads a pack; with none fetched the cards draw a glyph and one line says how to fetch it. `UMLIMATOR_NO_PACKS=1`
-  draws glyphs whatever the cache holds: this project builds every page and still it publishes that way.
+  draws glyphs whatever the cache holds: this project builds every page and still it commits that way. Since
+  16 Nov 2026 the GitHub Pages site, and only it, is built with the three packs fetched, their terms accepted, so its
+  cloud examples show the real icons.
 - **Drawn as they are.** An icon is scaled, never recoloured, cropped or reshaped, on a tile for contrast, with the full
   service name beside it. Wherever a Google icon is drawn, in a card or a legend, Google's legal line is drawn under the
   picture and ends its description: "Google Cloud and the Google Cloud logo are trademarks of Google LLC."
@@ -697,7 +699,8 @@ Release with that section as its notes, and publishes the package to npm (truste
 CI also publishes the examples to GitHub Pages from `main`.
 
 ```
-umlimator.py                 CLI: render, stills, check, record, pdf, pin-icons, diff, drift, timelapse, import, trace, mcp
+umlimator.py                 CLI: render, stills, check, record, pdf, pin-icons, pack, diff, drift, timelapse, import, export, trace, mcp
+umlimator_packs.py           the cloud icon packs: pack list and pack fetch (terms first, pins checked), and the pack icons a render reads
 umlimator_import.py          import's readers: Structurizr DSL, C4-PlantUML, Mermaid, compose and Kubernetes JSON
 umlimator_mcp.py             the MCP server that `umlimator.py mcp` runs
 action.yml                   the diff Action: what a pull request changes in its maps, posted on it

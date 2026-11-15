@@ -11,7 +11,9 @@
 // Chrome under three fonts and both themes.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { diagramOf } from '../src/core/registry.js';
 import { apply } from '../src/core/apply.js';
 import { textW } from '../src/core/text.js';
@@ -247,13 +249,13 @@ test('DoD 1: the registry holds mindmap, gcp, azure and aws, and the JSON Schema
   assert.ok(['`"gcp"`', '`"azure"`', '`"aws"`'].every(w => model.includes(w)), 'README\'s Model section lists every 0.26.0 diagram value (audit 2)');
 });
 
-// §2.5 (S18): nothing this project publishes holds a vendor icon. Map logos are data URLs in committed pages today, so
-// the test looks for pack content: an icons key with a / (<pack>/<id>), the synthetic pack's marker, or an SVG in icons/
-// that the manifest does not list
-test('nothing published holds a vendor icon (§2.5): no committed file under examples/ or docs/ holds a pack\'s icons entry or the synthetic pack\'s marker, and icons/ holds only the manifest\'s SVGs', () => {
-  const root = new URL('../', import.meta.url), files = [];
-  const walk = dir => { for (const f of readdirSync(new URL(dir, root))) { const p = dir + f; if (statSync(new URL(p, root)).isDirectory()) walk(p + '/'); else files.push(p); } };
-  walk('examples/'); walk('docs/');
+// §2.5 (S18), as changed on 16 Nov 2026 (§16): nothing committed holds a vendor icon; only the Pages site's build fetches
+// the packs. Map logos are data URLs in committed pages today, so the test looks for pack content: an icons key with a /
+// (<pack>/<id>), the synthetic pack's marker, or an SVG in icons/ that the manifest does not list. Only git-tracked files
+// are read: a local build's output (ignored) is not the repository
+test('no committed file under examples/ or docs/ holds a vendor icon (§2.5, §16): no pack\'s icons entry or the synthetic pack\'s marker, and icons/ holds only the manifest\'s SVGs', () => {
+  const root = new URL('../', import.meta.url);
+  const files = execFileSync('git', ['ls-files', '-z', 'examples', 'docs'], { cwd: fileURLToPath(root), encoding: 'utf8' }).split('\0').filter(Boolean);
   const MARK = 'umlimator-synthetic' + '-pack', bad = [];
   for (const f of files.filter(f => /\.(json|html|svg|md|js|mjs)$/.test(f))) {
     const s = readFileSync(new URL(f, root), 'utf8');

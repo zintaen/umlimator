@@ -305,3 +305,12 @@ test('audit 10: a listed line whose type is an Object.prototype name lays out, r
     }
   } finally { console.warn = warn; }
 });
+
+// audit 13: a typed view draws a self-line (Employee manages Employee), so its PDF Lines table lists it, as describe() does
+test('audit 13: a class view\'s self-association is one row of the PDF Lines table', async () => {
+  await import('../src/uml/class.js');
+  const { mapContext } = await import('../src/map/context.js'), { tablesOf } = await import('../src/page/print.js');
+  const m = { schemaVersion: 2, nodes: [{ id: 'emp', type: 'uml.Class', label: 'Employee' }], edges: [{ id: 'mgr', type: 'uml.Association', from: 'emp', to: 'emp', label: 'manages' }],
+    views: [{ id: 'v', diagram: 'uml.class', nodeIds: ['emp'] }] }, ctx = mapContext(m), rows = tablesOf(ctx, ctx.V.v, ctx.buildGeo('v'))[1].rows;
+  assert.equal(rows.length, 1); assert.match(rows[0], /Employee → Employee.*manages/);
+});

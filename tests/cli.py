@@ -179,6 +179,16 @@ with tempfile.TemporaryDirectory() as tmp:
     ok("timelapse · every version in git history, oldest first, on one page with the module and its icons",
        [v["label"][11:] for v in data.get("versions", [])] == ["version 1", "version 2", "version 3"] and "export function render" in lapse and data.get("icons"), r)
     ok("timelapse · --limit 0 is refused (the latest 0 versions, not all of them)", cli("timelapse", "docs/map.json", "--limit", "0", "--out", str(t / "lapse0.html"), cwd=g) is None)
+    # audit 13: a merged branch plays as its merge on the first-parent line, so the last version is HEAD's model
+    git("checkout", "-q", "-b", "feat"); (g / "docs" / "map.json").write_text(json.dumps(bike | {"title": "Bike share, renamed", "description": "feat"}, indent=1)); git("commit", "-qam", "feat")
+    git("checkout", "-q", "-"); git("checkout", "-q", "-b", "trunk"); (g / "docs" / "map.json").write_text(json.dumps(bike | {"title": "Bike share, trunk"}, indent=1)); git("commit", "-qam", "trunk")
+    git("merge", "-q", "-X", "theirs", "--no-edit", "feat")
+    cli("timelapse", "docs/map.json", "--out", str(t / "lapse-m.html"), cwd=g)
+    data = re.search(r'<script id="versions" type="application/json">(.*?)</script>', (t / "lapse-m.html").read_text(encoding="utf-8") if (t / "lapse-m.html").is_file() else "", re.S)
+    vs = json.loads(data.group(1))["versions"] if data else []
+    head = json.loads(git("show", "HEAD:docs/map.json").stdout)
+    ok("timelapse · merge commits are kept and a branch's commits are not interleaved: the last version is HEAD's model (audit 13)",
+       [v["label"][11:] for v in vs][3:] == ["trunk", "Merge branch 'feat' into trunk"] and vs[-1]["model"] == head, [v["label"] for v in vs])
 
     (g / "docs" / "map.json").write_text(json.dumps(edited(json.loads((g / "docs" / "map.json").read_text()))))
     (g / "notes.json").write_text('{"not": "a map"}'); git("add", "notes.json")
@@ -285,6 +295,10 @@ with tempfile.TemporaryDirectory() as tmp:
     b, s = plain("render", str(n / "m.json"), "--out", str(n / "m.json"), "--no-check"), plain("diff", bike_m, str(n / "m.json"), "--out", str(n / "m.json"))
     ok("render, diff · --out naming the input is refused in one line, and the model is kept (audit 12)",
        b.returncode == s.returncode == 1 and "is its input" in b.stderr + s.stderr and (n / "m.json").read_text() == mj, (b.stderr[-300:], s.stderr[-300:]))
+    os.link(n / "m.json", n / "m-link.json")  # the same file by another name (as M.JSON is on a case-insensitive disk)
+    b = plain("render", str(n / "m.json"), "--out", str(n / "m-link.json"), "--no-check")
+    ok("render · --out naming the input by another name (a hard link, or other case) is refused, and the model is kept (audit 13)",
+       b.returncode == 1 and "is its input" in b.stderr and (n / "m.json").read_text() == mj, b.stderr[-300:])
     b = plain("mcp", bike_m, "--port", "73910")
     ok("mcp · --port 73910 is a usage error, not a traceback", b.returncode == 2 and "not a port" in b.stderr and "Traceback" not in b.stderr, b.stderr[-300:])
     ro = t / "ro"; ro.mkdir(); (ro / "m.json").write_text((n / "m.json").read_text()); ro.chmod(0o555)
@@ -644,7 +658,7 @@ with tempfile.TemporaryDirectory() as tmp:
                                                                        "bookshop-schema", "returns-flowchart", "bookshop-data-flow", "order-information-flow", "bookshop-c4",
                                                                        # M3.7: SysML's four e-bike examples
                                                                        "ebike-requirements", "ebike-blocks", "ebike-structure", "ebike-range",
-                                                                       # 4a.7: milestone 4a's three examples, rendered with no pack (UMLIMATOR_NO_PACKS in CI's site build)
+                                                                       # 4a.7: milestone 4a's three examples, rendered here with no pack
                                                                        "bookshop-opening-plan", "bookshop-gcp", "bookshop-azure",
                                                                        # 4b.5: the BPMN example
                                                                        "bookshop-order-to-shipment"))):

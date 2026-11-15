@@ -201,8 +201,8 @@ function depGeo({ model, view, pos, memo }) {
 }
 function depProblems(model, view) {
   const out = c4Problems(model, view); if (!V_OBJ(view)) return out;
-  const views = V_ARR(model && model.views), vi = views.indexOf(view), at = vi >= 0 ? `views[${vi}]` : 'view', I = c4Index(model);
-  const say = (level, rule, path, ids, msg) => out.push({ level, rule, path, ids: ids.filter(x => x != null), message: `${rule}: ${msg}` }), q = id => JSON.stringify(I.at.has(id) ? vName(I.at.get(id)) : String(id));
+  const views = V_ARR(model && model.views), vi = views.indexOf(view), at = vi >= 0 ? `views[${vi}]` : 'view', dp = depPic(model, view), I = dp.I;
+  const say = (level, rule, path, ids, msg) => out.push({ level, rule, path, ids: ids.filter(x => x != null), message: `${rule}: ${msg}` }), q = id => JSON.stringify(I.at.has(id) ? dp.nameOf(I.at.get(id)) : String(id)); // an instance as drawn
   const kind = id => (C4_WORD[(I.at.get(id) || {}).type] || 'nothing').toLowerCase(), a = w => (/^[aeiou]/.test(w) ? 'an ' : 'a ') + w, subj = I.at.get(view.subject);
   if (view.subject != null && (!subj || subj.type !== 'c4.SoftwareSystem')) say('error', 'c4-subject', `${at}.subject`, [view.subject], `its subject ${q(view.subject)} is ${a(kind(view.subject))}: a deployment view is of a software system or of all`);
   V_ARR(view.nodeIds).forEach((id, k) => { const x = I.at.get(id); if (!x || x.type === 'uml.Comment') return;
@@ -210,11 +210,11 @@ function depProblems(model, view) {
     const c = x.type === 'c4.ContainerInstance' && depOf(I, x);
     if (c && subj && subj.type === 'c4.SoftwareSystem' && !I.chain(c.id).includes(subj.id))
       say('error', 'c4-level', `${at}.nodeIds[${k}]`, [id, c.id], `${q(id)}, an instance of ${q(c.id)}, is not drawn in a deployment view of ${q(subj.id)}: ${q(c.id)} is not one of its containers`); });
-  c4Lines(model, view, depPic(model, view)).own.forEach(e => { if (e.type !== 'c4.Relationship' || V_HAS(e.label)) return;
+  c4Lines(model, view, dp).own.forEach(e => { if (e.type !== 'c4.Relationship' || V_HAS(e.label)) return;
     const i = V_ARR(model.edges).indexOf(e); say('warning', 'c4-label', `${i >= 0 ? `edges[${i}]` : `${at}.edges[${V_ARR(view.edges).indexOf(e)}]`}.label`, [e.id, e.from, e.to], `${e.id}, from ${q(e.from)} to ${q(e.to)}, has no description`); });
   // a relationship whose end is, or lies in, a node drawn as a box: a line ends on an element, so it is not drawn (§5.2 lifts onto
   // a node holding nothing shown only)
-  const dp = depPic(model, view), near = id => { for (const x of [id, ...I.chain(id)]) if (dp.ids.includes(x)) return x; return null; };
+  const near = id => { for (const x of [id, ...I.chain(id)]) if (dp.ids.includes(x)) return x; return null; };
   I.rels.forEach(r => { const a = near(r.from), b = near(r.to); if (a == null || b == null || a === b || I.chain(a).includes(b) || I.chain(b).includes(a)) return;
     const box = [a, b].filter(x => dp.open.has(x)); if (!box.length) return;
     const i = V_ARR(model.edges).indexOf(r); say('warning', 'c4-box-line', i >= 0 ? `edges[${i}]` : `${at}.edges`, [r.id, ...box], `${r.id}, from ${q(r.from)} to ${q(r.to)}, is not drawn: the view draws ${box.map(q).join(' and ')} as a box, which no line ends on`); });
@@ -247,9 +247,9 @@ function depKey(model, view, ids, key) {
   const I = c4Index(model), x = I.at.get(ids.at(-1));
   if (!(key === 't' || key === 'T') || !x || x.type !== 'c4.ContainerInstance') return c4Key(model, view, ids, key);
   const cs = depCs(I, view);
-  const was = depOf(I, x); // its label follows when it was the old container's name (the Name field shows it)
+  // its label follows, the name the outline and the Name field show: an instance is named as its container (a stale one mends)
   return { pick: cs.map(vName), then: i => (cs[i].id === V_P(x).container ? [] : [{ op: 'set', id: x.id, path: 'props.container', value: cs[i].id },
-    ...(was && vName(x) === vName(was) ? [{ op: 'set', id: x.id, path: 'label', value: vName(cs[i]) }] : [])]) };
+    ...(vName(x) !== vName(cs[i]) ? [{ op: 'set', id: x.id, path: 'label', value: vName(cs[i]) }] : [])]) };
 }
 // F2 on an instance: it is drawn and named as its container, so a name of its own would show nowhere; else C4's
 const depRename = (model, view, id, text) => ((c4Index(model).at.get(id) || {}).type === 'c4.ContainerInstance' ? { error: 'An instance is named as its container: T picks another container' } : c4Rename(model, view, id, text));

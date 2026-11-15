@@ -272,9 +272,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Since 16 Nov 2026 (notes/milestone-4a.md §16) the Pages site, and only it, shows the vendors' icons: their terms
+      # are accepted here by pin, so a re-pin in icons/packs.json must edit this line too (a new acceptance; tests/packs.py
+      # checks the two agree). A pack that cannot be fetched leaves the site drawing its glyphs, with a warning.
+      - name: Fetch the cloud icon packs, their terms accepted
+        env:
+          UMLIMATOR_ICON_CACHE: ${{ runner.temp }}/icons
+        run: |
+          for a in gcp@2026-11-14 azure@V25 aws@2026-07-31; do
+            python3 umlimator.py pack fetch "${a%@*}" --accept-terms "$a" || echo "::warning::the ${a%@*} pack was not fetched; the site draws its glyphs"
+          done
+
       - name: Build the site
         env:
-          UMLIMATOR_NO_PACKS: "1"   # nothing published carries a vendor icon, whatever a cache holds (notes/milestone-4a.md §2.5)
+          UMLIMATOR_ICON_CACHE: ${{ runner.temp }}/icons   # the packs fetched above: the site's cloud examples show real icons, legal lines and the not-affiliated notice; nothing committed does
         run: |
           mkdir -p _site/examples
           cp -r lib icons _site/
@@ -294,6 +305,7 @@ jobs:
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site
+          retention-days: 1   # the artifact holds vendor icons: kept no longer than the deploy needs
 
       - id: deploy
         uses: actions/deploy-pages@v4

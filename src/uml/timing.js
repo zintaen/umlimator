@@ -30,7 +30,8 @@ const tmProps = x => (TM_OBJ(x && x.props) ? x.props : {});
 const tmName = n => String(n.label ?? n.id);
 const tmHead = n => tmName(n) + (TM_HAS(tmProps(n).represents) ? ' : ' + tmProps(n).represents : ''); // "worker : OrderWorker"
 const tmStates = n => [...new Set(TM_ARR(tmProps(n).states).filter(TM_HAS).map(String))]; // a state listed twice is one row
-const tmNameType = s => { const [name, ...rest] = s.split(/\s*:\s*/); return [name, rest.join(':').trim()]; }; // `a : B : C` is a, represents B:C
+const TM_SEP = /\s*(?<!:):(?!:)\s*/; // a lone colon: '::' is part of a name (Shop::Worker)
+const tmNameType = s => { const [name, ...rest] = s.split(TM_SEP); return [name, rest.join(':').trim()]; }; // `a : B : C` is a, represents B:C
 const tmLabel = x => (TM_HAS(x.label) ? String(x.label) : '');
 const tmPlural = (k, w) => `${k} ${k === 1 ? w : w + 's'}`;
 
@@ -340,7 +341,7 @@ function tmRename(model, view, id, text) {
   if (X.cons.some(k => k.id === id)) return [{ op: 'set', id, path: 'label', value: s || undefined }];
   if (X.H.has(id)) { const [name, rep] = tmNameType(s);
     if (!name) return tmErr('a lifeline needs a name');
-    return [{ op: 'set', id, path: 'label', value: name }, ...(s.includes(':') ? [{ op: 'set', id, path: 'props.represents', value: rep || undefined }] : [])]; }
+    return [{ op: 'set', id, path: 'label', value: name }, ...(TM_SEP.test(s) ? [{ op: 'set', id, path: 'props.represents', value: rep || undefined }] : [])]; }
   const k = String(id).indexOf('->'), lane = k > 0 ? String(id).slice(0, k) : null, was = k > 0 ? String(id).slice(k + 2) : null;
   if (lane && X.H.has(lane)) { const ss = tmStates(X.N.get(lane));
     if (!ss.includes(was)) return tmErr(`${was} is not one of ${X.name(lane)}'s listed states: add it to its states first`);
