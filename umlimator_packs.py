@@ -142,7 +142,7 @@ def table(models):
     if os.environ.get("UMLIMATOR_NO_PACKS"):
         return {}
     rs, out = rows(), {}
-    for n in (n for m in models for n in lists(m.get("nodes"))):
+    for n in (n for m in models for n in [*lists(m.get("nodes")), *(n for v in lists(m.get("views")) if isinstance(v, dict) for n in lists(v.get("nodes")))]):
         p, i = pick(n)
         if p not in rs or not isinstance(i, str) or not i:
             continue

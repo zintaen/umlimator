@@ -47,9 +47,23 @@ def visual_cmd(tmp, *args):
            "def load(name, path): s = importlib.util.spec_from_file_location(name, path); m = importlib.util.module_from_spec(s); s.loader.exec_module(m); return m\n"
            "v, u = load('visual', sys.argv[1]), load('umlimator', sys.argv[2]); v.TEMPLATE = pathlib.Path(sys.argv[3])\n"
            "check = v.validate_map; v.validate_map = lambda d: u.not_objects(d) or check(u.upstream_view(d))\n"
+           "w = v.write_page; v.write_page = lambda out, data: (w(out, data), u.data_lt(out))\n"
            "sys.argv = [sys.argv[1]] + sys.argv[4:]; v.main()")
     # -I: no folder of the caller's on sys.path, so a base64.py where it runs (a mapped repository, a pull request) never loads
     return [sys.executable, "-I", "-c", run, str(VISUAL), str(Path(__file__).resolve()), str(page), *args]
+
+
+def script_json(x):
+    """`x` as JSON to sit in a <script> block: every '<' escaped (the same value), so text such as '<!--' then '<script'
+    in a label never opens a state where the block's own </script> no longer closes it (audit 8)."""
+    return json.dumps(x, ensure_ascii=False).replace("<", "\\u003c")
+
+
+def data_lt(out):
+    """The page visual.py (upstream, escaping only '</') wrote, with its data block's every '<' escaped (see script_json)."""
+    t = Path(out).read_text(encoding="utf-8")
+    if m := DATA.search(t):
+        Path(out).write_text(t[:m.start(1)] + m.group(1).replace("<", "\\u003c") + t[m.end(1):], encoding="utf-8")
 
 
 def not_objects(d):
@@ -298,7 +312,7 @@ def page_model(model_path, out, source=None):
     own (renders of one model can run at once), and the page records the model's path (or `source`) as its source."""
     m = read_json(model_path)
     if bad := not_objects(m):  # before the engine, whose loader reads a view as an object before it checks anything
-        sys.exit(f"{model_path}: " + "; ".join(bad))
+        sys.exit(f"{source or model_path}: " + "; ".join(bad))
     # visual.py records the checkout's root relative to the page; for a page outside the checkout that path climbs
     # through the folders above it (a home folder, a user name) into a page that gets shared
     root = subprocess.run(["git", "rev-parse", "--show-toplevel"], capture_output=True, text=True).stdout.strip()
@@ -345,11 +359,17 @@ def untemp(path):
     _temps.discard(Path(path))
 
 
+def cards(m):
+    """A model's cards and its views' own (view.nodes), as the page's mapContext has them; a malformed entry stays as it is."""
+    lst = lambda x: x if isinstance(x, list) else []
+    return [*lst(m.get("nodes")), *(n for v in lst(m.get("views")) if isinstance(v, dict) for n in lst(v.get("nodes")))]
+
+
 def icon_table(models):
     """Every icon the models' cards name, by name (see page_model)."""
     d = lambda x: x if isinstance(x, dict) else {}  # a malformed entry names no icon: the engine reports it (validate)
     lst = lambda x: x if isinstance(x, list) else []
-    names = {n["icon"] for m in models for n in map(d, lst(m.get("nodes"))) if isinstance(n.get("icon"), str) and n["icon"]}
+    names = {n["icon"] for m in models for n in map(d, cards(m)) if isinstance(n.get("icon"), str) and n["icon"]}
     names |= {o["icon"] for m in models for v in map(d, lst(m.get("views"))) for o in map(d, d(v.get("nodeOverrides")).values())
               if isinstance(o.get("icon"), str) and o["icon"]}
     man = json.loads((ICONS / "manifest.json").read_text())
@@ -688,7 +708,7 @@ def cmd_timelapse(a):
     data = {"title": str(versions[-1]["model"].get("title") or Path(a.model).stem), "icons": {**icon_table(ms := [v["model"] for v in versions]), **packs().table(ms)}, "versions": versions}
     page = (HERE / "engine" / "assets" / "timelapse.html").read_text(encoding="utf-8")
     page = page.replace("__TITLE__", html.escape(data["title"]), 1).replace("/*__UMLIMATOR_THEME__*/", THEME.read_text(encoding="utf-8"), 1)
-    page = page.replace("/*__VERSIONS__*/", json.dumps(data, ensure_ascii=False).replace("</", "<\\/"), 1)
+    page = page.replace("/*__VERSIONS__*/", script_json(data), 1)
     page = page.replace("/*__UMLIMATOR_LIB__*/", LIB.read_text(encoding="utf-8"), 1)
     write(a.out, page)
     print(json.dumps({"out": a.out, "versions": [v["label"] for v in versions]}, indent=1))
@@ -847,7 +867,9 @@ def still_keys(page, opts):
         cards = [n for n in nodes if n] + list((v.get("nodeOverrides") or {}).values())
         used, who = ({n.get(k) for n in cards} - {None} for k in ("icon", "author"))
         used |= {f"{p}/{i}" for p, i in map(packs().pick, cards) if isinstance(i, str)} | {f"{p}/" for p, _ in map(packs().pick, cards)}  # a pack's icon and its legal line
-        blob = json.dumps([v, data.get("nodes") if v.get("diagram") else nodes, lines, kids, {k: icons[k] for k in sorted(used) if k in icons},
+        # a typed view also draws other views' titles (a card that opens one) and a DFD level its parent's cards, as the page's viewKey
+        typed = [[[w.get("id"), w.get("title"), w.get("subject")] for w in views], (V.get(v.get("parent")) or {}).get("nodeIds")] if v.get("diagram") else None
+        blob = json.dumps([v, data.get("nodes") if v.get("diagram") else nodes, typed, lines, kids, {k: icons[k] for k in sorted(used) if k in icons},
                            {k: authors[k] for k in sorted(who) if k in authors}, data.get("rules"), engine, opts], sort_keys=True)
         keys[v["id"]] = hashlib.sha256(blob.encode()).hexdigest()
     return keys
@@ -1000,20 +1022,23 @@ def cmd_record(a):
     duration (#83)."""
     if Path(a.out).suffix.lower() != ".png":
         sys.exit("record: --out is a .png file, an animated PNG (GIF and MP4 need encoders umlimator does not ship: convert the PNG)")
-    b, page = chrome(), Path(a.page).resolve()
+    page = Path(a.page).resolve()
     data = page_data(page)[0]
     stories = data.get("stories") or []
     story = next((s for s in stories if isinstance(s, dict) and s.get("id") == a.story), None)
     if not story or not story.get("steps"):
         sys.exit(f"record: the page has no story {a.story!r} with steps (it has: {', '.join(str(s.get('id')) for s in stories if isinstance(s, dict)) or 'none'})")
-    w, h = a.size
+    steps = story["steps"] if isinstance(story["steps"], list) else sys.exit(f"record: story {a.story!r}'s steps are not a list")
+    if bad := [n for n, s in enumerate(steps, 1) if not isinstance(s, dict)]:  # one line, not a traceback (audit 8)
+        sys.exit(f"record: story {a.story!r} step {bad[0]} is not an object")
+    b, (w, h) = chrome(), a.size
     with tempfile.TemporaryDirectory() as tmp:
         frames, delays = [], []
-        for n, step in enumerate(story["steps"], 1):
+        for n, step in enumerate(steps, 1):
             # a tour: 2 frames a leg, at most 6 so the file stays small, each shown for its share of the step's duration
             # ponytail: the ride fills the step at its own pace, not the live dot's: only the page knows the ride's length
             # (have the page say it if the pace matters)
-            ms, k = step_ms(step.get("duration")), max(1, min(6, 2 * len(step.get("tour") or []) - 1))
+            ms, k = step_ms(step.get("duration")), max(1, min(6, 2 * len(step.get("tour") if isinstance(step.get("tour"), list) else []) - 1))
             for i in range(k):
                 png = Path(tmp) / f"{len(frames):03}.png"
                 headless(b, "--virtual-time-budget=8000", "--force-prefers-reduced-motion", f"--window-size={w},{h}", f"--force-device-scale-factor={a.scale}", f"--screenshot={png}",
