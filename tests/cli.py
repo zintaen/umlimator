@@ -340,6 +340,33 @@ with tempfile.TemporaryDirectory() as tmp:
     ok("render · a view with no id, an empty id or a repeated id is refused in one line, and no page is written (audit 10)",
        b.returncode == 1 and 'views[1].id: a view needs an id; views[2].id: a view needs an id; views[3].id "v" is used twice' in b.stderr
        and not (t / "vid.html").exists(), b.stderr[-300:])
+    # audit 11: diff (both files), drift, trace and export read a model as render does, naming the file at fault; trace refuses --view ''
+    (t / "vstr.json").write_text(json.dumps({"title": "t", "nodes": [{"id": "a"}], "views": "x"}))
+    (t / "v5.json").write_text(json.dumps({"title": "t", "nodes": [{"id": "a"}], "views": [{"id": 5, "nodeIds": ["a"]}]}))
+    rides = str(ROOT / "examples" / "traces" / "ride-end.json")
+    bs = [plain("diff", str(t / "vicon.json"), str(t / "vstr.json"), "--out", str(t / "d11.html")), plain("diff", str(t / "v5.json"), str(t / "vicon.json"), "--out", str(t / "d11.html")),
+          plain("drift", str(t / "vstr.json"), rides, "--out", str(t / "d11.html")), plain("trace", str(t / "vstr.json"), rides, "--view", "t", "--out", str(t / "t11.json")),
+          plain("export", str(t / "v5.json"), "--out", str(t / "e11.bpmn"))]
+    ok("diff, drift, trace and export · a model render refuses is refused in one line naming its own file, and nothing is written (audit 11)",
+       [b.returncode for b in bs] == [1] * 5 and "vstr.json: views is not a list" in bs[0].stderr and "v5.json: views[0].id is not a string" in bs[1].stderr
+       and "vstr.json: views is not a list" in bs[2].stderr + bs[3].stderr and "v5.json: views[0].id" in bs[4].stderr
+       and not any((t / f).exists() for f in ("d11.html", "t11.json", "e11.bpmn")), [b.stderr[-200:] for b in bs])
+    b = plain("trace", str(ROOT / "examples" / "bike-share.json"), rides, "--view", "", "--out", str(t / "t11.json"))
+    ok("trace · an empty --view is refused in one line, and nothing is written (audit 11)",
+       b.returncode == 1 and "--view needs a view id" in b.stderr and not (t / "t11.json").exists(), b.stderr[-300:])
+    # audit 11: diff --base reads each version as render does, and its "No picture" line is flat() as the views line is
+    g11 = t / "g11"; g11.mkdir()
+    sh = lambda *x: subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", *x], cwd=g11, capture_output=True)
+    pic = {"title": "t", "nodes": [{"id": "a", "label": "A"}, {"id": "b", "label": "B"}], "views": [{"id": "ops @octocat #42 <!-- x", "nodeIds": ["a"]}]}
+    (g11 / "m.json").write_text(json.dumps(pic)); (g11 / "n.json").write_text(json.dumps(pic))
+    sh("init", "-q"); sh("add", "."); sh("commit", "-qm", "one")
+    pic["views"][0]["nodeIds"] = ["a", "b"]; (g11 / "m.json").write_text(json.dumps(pic))
+    (g11 / "n.json").write_text(json.dumps({**pic, "views": [{"id": 5, "nodeIds": ["a"]}]}))
+    subprocess.run([sys.executable, "-c", "import sys; sys.path.insert(0, sys.argv[1]); import umlimator as u; u.CHROMES[:] = ['/no-chrome']; "
+                    "sys.argv = ['umlimator.py', 'diff', '--base', 'HEAD', '--out', 'out']; u.main()", str(ROOT)], cwd=g11, capture_output=True)
+    md = (g11 / "out" / "summary.md").read_text(encoding="utf-8") if (g11 / "out" / "summary.md").is_file() else ""
+    ok("diff --base · the No picture line mentions no one, links no issue and opens no HTML comment, and a version render refuses is said (audit 11)",
+       "_No picture of ops @\u2060octocat #\u206042 &lt;!-- x:" in md and "@octocat" not in md and "**`n.json`**: cannot be read: it: views\\[0\\].id is not a string" in md, md[-800:])
     # audit 8: a story step that is not an object: one line, not a traceback (and before Chrome is looked for)
     (t / "story.json").write_text(json.dumps({"title": "t", "nodes": [{"id": "a", "label": "A"}, {"id": "b", "label": "B"}], "edges": [{"from": "a", "to": "b"}],
         "views": [{"id": "main", "title": "Main", "nodeIds": ["a", "b"]}], "stories": [{"id": "s", "title": "S", "steps": [None, {"view": "main", "tour": "ab"}]}]}))
@@ -889,6 +916,10 @@ with tempfile.TemporaryDirectory() as tmp:
     said, err = tool("diff", other_model_path=str(Path(tmp) / "other.json"))
 ok("mcp · diff: what changed from another model file to this one", not err and json.loads(said) == {"summary": ["renames Accounts and sign-in to Accounts", "adds Feature flags",
    "removes Payments queue", "adds a line from Trip service to Payment provider (charges)"], "views": ["system"]}, said)
+with tempfile.TemporaryDirectory() as tmp:
+    (Path(tmp) / "v5.json").write_text(json.dumps({"nodes": [{"id": "a"}], "views": [{"id": 5, "nodeIds": ["a"]}]}))
+    said, err = tool("diff", other_model_path=str(Path(tmp) / "v5.json"))
+ok("mcp · diff: another model render refuses is a tool error naming it (audit 11)", err and said.endswith("v5.json: views[0].id is not a string"), said)
 said, err = tool("describe_view", view="nope")
 ok("mcp · a call that names what the model lacks is a tool error that says what it has", err and said.startswith("no view 'nope'; the views: context, system"), said)
 wrong = [tool("describe_view", view=["trips"]), tool("tour", cards=[{"id": "trips"}]), tool("diff", other_model_path=5)]

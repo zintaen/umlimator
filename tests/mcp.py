@@ -49,6 +49,11 @@ line_gone = mcp.want["highlight"]
 mcp.want["highlight"] = None
 ok("audit 10 · refit() keeps a member's highlight after an edit, and drops a line with no id the new version no longer has",
    port_kept and port_kept["refs"] == [{"type": "node", "id": "a.p"}] and line_gone is None, (port_kept, line_gone))
+# view_for (audit 11): a line with no id, a box, a chip lands on the view that shows it, never on the first view (every card dimmed)
+m = {"nodes": [{"id": x} for x in "abcd"], "edges": [{"from": "c", "to": "d"}], "views": [{"id": "ctx", "nodeIds": ["a", "b"]},
+     {"id": "inner", "nodeIds": ["c", "d"], "containers": [{"id": "box", "nodeIds": ["c", "d"]}]}]}
+at = [mcp.view_for(m, mcp.refs(m, [r]), None) for r in ("c->d#0", {"type": "container", "id": "box"}, {"type": "chip", "node": "c", "value": "x"})]
+ok("audit 11 · view_for: a line with no id, a box and a chip each land on the view that shows them", at == ["inner"] * 3, at)
 
 
 class Chrome:
