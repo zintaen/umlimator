@@ -300,3 +300,16 @@ test('a ; inside an entity code outside quotes ends no statement (#35; #quot; #l
     assert.deepEqual([r.model.edges.map(e => [e.from, e.to, e.label]), r.report], [[['A', 'B', label]], []], t);
   }
 });
+
+test('audit 7: a bare subgraph is a group, a quoted label may run over lines, and a trapezoid takes its nearest closer', () => {
+  const pairs = t => { const r = read(t); return [r.model.nodes.map(n => [n.id, n.label]), r.model.edges.map(e => [e.from, e.to, e.label]), r.report.map(x => `${x.line} ${x.message}`)]; };
+  // Mermaid's flow.jison reads `subgraph` alone as an untitled subgraph (id subGraph<n>): not a node, and its end closes it
+  assert.deepEqual(pairs('flowchart LR\n  subgraph\n  A --> B\n  end\n  B --> C\n'),
+    [[['A', 'A'], ['B', 'B'], ['C', 'C']], [['A', 'B', undefined], ['B', 'C', undefined]], ['2 subgraph subGraph0: the group is not read, the nodes in it are']]);
+  // Mermaid's own Markdown-strings example: a quoted label over two lines, its line break kept
+  assert.deepEqual(pairs('flowchart LR\n  a["`The **cat**\n  in the hat`"] -- "edge label" --> b["`The **dog** in the hog`"]\n').slice(0, 2),
+    [[['a', 'The **cat**\nin the hat'], ['b', 'The **dog** in the hog']], [['a', 'b', 'edge label']]]);
+  // [/x\] then [\y/]: the first takes its own \], not the second's /]
+  assert.deepEqual(pairs('flowchart LR\n  A[/Order placed\\] --> B[\\Ship it/]\n  B --> C[Done]\n').slice(0, 2),
+    [[['A', 'Order placed'], ['B', 'Ship it'], ['C', 'Done']], [['A', 'B', undefined], ['B', 'C', undefined]]]);
+});
