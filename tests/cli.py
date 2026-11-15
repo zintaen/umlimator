@@ -102,6 +102,10 @@ fence = u.sketch({"nodes": [{"id": "a", "label": 'A"]\n```\n## Approved <b>x</b>
                   "edges": [{"from": "a", "to": "b"}], "views": [{"id": "v", "nodeIds": ["a", "b"]}]})
 ok("diff · the sketch and the summary keep a label's newlines and backticks in their line",
    [x for x in "\n".join(fence).split("\n") if x.startswith("```")] == ["```mermaid", "```"] and "\n" not in u.flat("a\n```\nb") and "\n```" not in u.flat("a\n```"), fence)
+hashed = "\n".join(u.sketch({"nodes": [{"id": "a", "label": "Order #42; paid", "change": "added"}, {"id": "b", "label": "B"}],
+                              "edges": [{"from": "a", "to": "b", "label": "posts #amp; <x>"}], "views": [{"id": "v", "nodeIds": ["a", "b"]}]}))
+ok("diff · the sketch keeps a label's '#42;' and '#amp;' as written: Mermaid decodes #<word>; (audit 9)",
+   "Order #35;42; paid" in hashed and "posts #35;amp; #lt;x#gt;" in hashed, hashed)
 ok("diff · the summary reads a label as written: List<Order> and *all* are not a tag and italics on GitHub, and a code span keeps its name (audit 4)",
    u.flat("List<Order> *all* a_b <!--") == "List&lt;Order&gt; \\*all\\* a\\_b &lt;!--" and u.flat("a_b", code=True) == "a_b", u.flat("List<Order> *all* a_b <!--"))
 ok("diff · the summary mentions no one: a label @Transactional or 'calls @ops' gets a word joiner after its @ (audit 5)",
@@ -236,7 +240,11 @@ with tempfile.TemporaryDirectory() as tmp:
               "opens_list": '{"nodes": [{"id": "a", "opensView": ["x"]}], "views": [{"id": "v", "nodeIds": ["a"]}]}',
               "box_id_dict": '{"nodes": [{"id": "a"}], "views": [{"id": "v", "nodeIds": ["a"], "containers": [{"id": {"x": 1}, "nodeIds": ["a"]}]}]}',
               "edge_to_list": '{"nodes": [{"id": "a"}], "edges": [{"id": "e", "from": "a", "to": ["a"]}], "views": [{"id": "v", "nodeIds": ["a"]}]}',
-              "parent_list": '{"nodes": [{"id": "a"}], "views": [{"id": "v", "parent": ["x"], "nodeIds": ["a"]}]}'}
+              "parent_list": '{"nodes": [{"id": "a"}], "views": [{"id": "v", "parent": ["x"], "nodeIds": ["a"]}]}',
+              # audit 9: a number id passed render, then ended stills and MCP paths/reach in a TypeError; a view's own card's
+              # members of 5 ended MCP highlight in one
+              "node_num_id": '{"nodes": [{"id": 1}, {"id": "api"}], "views": [{"id": "v", "nodeIds": [1, "api"]}]}',
+              "view_node_members": '{"nodes": [{"id": "a"}], "views": [{"id": "v", "nodeIds": ["a"], "nodes": [{"id": "step", "members": 5}]}]}'}
     for k, text in shapes.items():
         f = t / "names" / f"{k}.json"
         f.write_bytes(b"\xef\xbb\xbf" + json.dumps(json.loads((t / "names" / "m.json").read_text())).encode() if text is None else text.encode())
