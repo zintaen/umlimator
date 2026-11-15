@@ -77,6 +77,16 @@ test('conformance notes and the examples README agree with the code they describ
   for (const [, id] of doc('../examples/README.md').matchAll(/and `([^`]+)`, with its subject/g)) assert.ok(views.has(id), id);
 });
 
+test('audit 14: the sequence and communication notes say a self-line is in the PDF\'s lines table, as tablesOf lists it', async () => {
+  await Promise.all(['../src/map/typed.js', '../src/uml/sequence.js', '../src/uml/communication.js'].map(p => import(p))); const { mapContext } = await import('../src/map/context.js'), { tablesOf } = await import('../src/page/print.js');
+  for (const [f, vid] of [['checkout-sequence', 'checkout-sequence'], ['checkout-communication', 'checkout-communication']]) {
+    const ctx = mapContext(JSON.parse(readFileSync(new URL(`../examples/${f}.json`, import.meta.url), 'utf8'))), rows = tablesOf(ctx, ctx.V[vid], ctx.buildGeo(vid))[1].rows.map(r => r.replace(/<[^>]+>/g, ''));
+    assert.ok(rows.some(r => /api : ShopApi\s*→\s*api : ShopApi/.test(r)), f);
+    const note = readFileSync(new URL(`../docs/conformance/uml-${f.split('-')[1]}.md`, import.meta.url), 'utf8');
+    assert.doesNotMatch(note, /left out of the lines table/, f); assert.match(note, /listed in the lines table/, f);
+  }
+});
+
 test('audit 12: the schema names every type laid out down with no direction, and a direction neither right nor down is drawn right, as validate() warns', async () => {
   const { layout } = await import('../lib/umlimator-all.js'), doc = p => readFileSync(new URL(p, import.meta.url), 'utf8');
   const dirs = JSON.parse(doc('../lib/umlimator.schema.json')).$defs.view.properties.direction.description, said = console.warn, seen = new Set(), down = [];

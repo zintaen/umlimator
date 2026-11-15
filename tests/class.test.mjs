@@ -436,3 +436,19 @@ test('audit 11: member-names judges classifiers\' and instances\' named members 
   edges: [], views: [{ id: 'c', diagram: 'uml.class', nodeIds: ['order'] }] };
   assert.deepEqual(classProblems(m).filter(p => p.rule === 'member-names').map(p => p.ids), [['order', 'order.x', 'order.x2']]);
 });
+
+test('audit 14: F2 on a UML line edits its label alone: its keyword and «stereotypes» are not stored, and not drawn twice', async () => {
+  await Promise.all(['profile', 'component', 'deployment'].map(t => import(`../src/uml/${t}.js`)));
+  const run = (diagram, [ta, tb], e, edit, want, drawn) => {
+    const m = { schemaVersion: 2, nodes: [{ id: 'a', type: ta, label: 'A' }, { id: 'b', type: tb, label: 'B' }], edges: [{ from: 'a', to: 'b', ...e, id: 'e' }], views: [{ id: 'v', diagram, nodeIds: ['a', 'b'] }] };
+    const opens = layout(m, 'v').edges.find(x => x.id === 'e').label, r = diagramOf(m.views[0]).edits.rename(m, m.views[0], 'e', edit(opens)), m2 = apply(m, r);
+    assert.equal(m2.edges[0].label, want, diagram); assert.equal(layout(m2, 'v').edges.find(x => x.id === 'e').label, drawn, diagram);
+    assert.equal(diagramOf(m.views[0]).edits.rename(m, m.views[0], 'a', 'Z'), null, 'a node: the canvas\'s own');
+  };
+  run('uml.class', ['uml.Class', 'uml.Class'], { type: 'uml.Dependency', label: 'audits', props: { stereotypes: ['trace'] } }, t => t.replace('audits', 'logs'), 'logs', '«trace» logs');
+  run('uml.package', ['uml.Package', 'uml.Package'], { type: 'uml.PackageImport', label: 'books' }, t => t.replace('books', 'titles'), 'titles', '«import» titles');
+  run('uml.package', ['uml.Package', 'uml.Package'], { type: 'uml.PackageMerge' }, t => t + ' all', 'all', '«merge» all'); // no label: the field opens with the keyword alone
+  run('uml.profile', ['uml.Stereotype', 'uml.MetaclassReference'], { type: 'uml.Extension', label: 'x', props: { isRequired: true } }, t => t.replace('x', 'y'), 'y', '{required} y');
+  run('uml.component', ['uml.Artifact', 'uml.Component'], { type: 'uml.Manifestation', label: 'built' }, t => t.replace('built', 'packaged'), 'packaged', '«manifest» packaged');
+  run('uml.deployment', ['uml.Artifact', 'uml.Node'], { type: 'uml.Deployment', label: 'nightly' }, t => t.replace('nightly', 'hourly'), 'hourly', '«deploy» hourly');
+});

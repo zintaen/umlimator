@@ -51,7 +51,8 @@ const obStereo = x => OB_ARR(OB_PROPS(x).stereotypes).filter(OB_HAS).map(String)
    ponytail: mirrors class.js compartmentsOf/nodeName/IMPLIED, which it does not export; share them when class.js is next opened */
 const OB_IMPLIED = { 'uml.Interface': 'interface', 'uml.Enumeration': 'enumeration', 'uml.DataType': 'dataType', 'uml.PrimitiveType': 'primitive' };
 const OB_KINDS = { attributes: 'uml.Property', operations: 'uml.Operation', literals: 'uml.EnumerationLiteral' };
-const isInstance = n => !OB_CLASSIFIERS.includes(n.type); // anything else shown here is drawn as an instance, as before
+// an instance specification, or an element of no UML kind, as before; any other uml.* element is drawn as its kind (audit 14)
+const isInstance = n => n.type === 'uml.InstanceSpecification' || !String(n.type ?? '').startsWith('uml.');
 function classifierBoxes(n) {
   const c = name => ({ name, members: OB_ARR(n.members).filter(m => OB_OBJ(m) && m.type === OB_KINDS[name]) });
   return n.type === 'uml.Enumeration' ? [c('literals'), ...[c('attributes'), c('operations')].filter(x => x.members.length)] : [c('attributes'), c('operations')];
@@ -85,8 +86,9 @@ function objectGeo({ model, view, pos, memo }) {
     const d = { id, label: n.type === 'uml.Comment' ? String(n.label ?? n.id) : head(id), type: n.type || 'uml.InstanceSpecification', kind: 'file', ...shape, aria: obNodeName(n, pic), col: (OB_OWN(pos, id) || [0, 0])[0], row: (OB_OWN(pos, id) || [0, 0])[1] };
     return { ...d, ...SHAPE[d.shape].size(d) }; });
   const edges = lines.filter(({ from, to }) => !holdsLine(pic, from, to)).map(({ e, from, to }) => { const said = linkText(e), r = w => roleOf(e, w), end = w => (r(w) ? ` (${r(w)})` : '');
-    const look = e.type === 'uml.CommentLink' ? { from: 'none', to: 'none', dashed: true } : { from: 'none', to: 'none', labels: { from: { role: r('from') }, to: { role: r('to') } } };
-    return { id: e.id, _id: e.id, type: e.type, from, to, label: said || undefined, end: look, aria: `${e.type === 'uml.CommentLink' ? 'Comment link' : 'Link'} from ${head(from)}${end('from')} to ${head(to)}${end('to')}${said ? ': ' + said : ''}`,
+    // a kind the view lists that it does not draw (the outline's Show): an arrow named "Line", as the class view's (audit 14)
+    const look = e.type === 'uml.CommentLink' ? { from: 'none', to: 'none', dashed: true } : e.type === 'uml.Link' ? { from: 'none', to: 'none', labels: { from: { role: r('from') }, to: { role: r('to') } } } : { from: 'none', to: 'arrow' };
+    return { id: e.id, _id: e.id, type: e.type, from, to, label: said || undefined, end: look, aria: `${e.type === 'uml.CommentLink' ? 'Comment link' : e.type === 'uml.Link' ? 'Link' : 'Line'} from ${head(from)}${end('from')} to ${head(to)}${end('to')}${said ? ': ' + said : ''}`,
       ...(OB_OBJ(e.style) || typeof e.style === 'string' ? { style: e.style } : {}) }; });
   // as the class view (class.js typeGeo): laid out right with boxes, the columns spread by the widest label
   const down = view.direction === 'down', wide = !down && pic.boxes.length ? Math.max(0, ...edges.filter(e => e.label).map(labelW)) : 0;
@@ -137,10 +139,22 @@ function objectDescribe(model, viewId) {
   readingOrder(pic).forEach(id => { const x = at.get(id).x, said = [], slots = x.type === 'uml.InstanceSpecification' ? slotsOf(x).map(printSlot) : [];
     lines.forEach(({ e, from: f, to: t }) => {
       if (e.type === 'uml.CommentLink') { if (f === id) said.push(`about ${nm(t)}`); return; }
-      if (f !== id && t !== id) return; const far = f === id ? 'to' : 'from', r = roleOf(e, far), l = linkText(e);
+      if (f !== id && (t !== id || e.type !== 'uml.Link')) return; const far = f === id ? 'to' : 'from', r = roleOf(e, far), l = linkText(e);
       said.push(`linked to ${nm(far === 'to' ? t : f)}${r ? ` (${r})` : ''}${l ? ` ("${l}")` : ''}`); });
     out.push(obNodeName(x, pic) + (slots.length ? ': ' + slots.join(', ') : '') + (said.length ? '; ' + said.join('; ') : '') + '.'); });
   return out.join('\n');
+}
+
+/* rename (F2): an instance's name alone, so a drawn ` : Classifier` (an anonymous one opens with `: Classifier`) is taken off;
+   a link's label alone, so its drawn «stereotypes» are, and its association it draws with no label. Anything else: null */
+function obRename(model, view, id, text) {
+  const x = [...OB_ARR(model.nodes), ...OB_ARR(model.edges)].find(y => OB_OBJ(y) && y.id === id), c = x && OB_PROPS(x).classifier;
+  let t = String(text ?? '').trim();
+  if (x && x.type === 'uml.InstanceSpecification') { if (OB_HAS(c) && (t === ': ' + c || t.endsWith(' : ' + c))) t = t.slice(0, -String(c).length - 2).trim(); }
+  else if (x && x.type === 'uml.Link') { const pre = linkText({ ...x, label: undefined }), st = obStereo(x).map(s => `«${s}»`).join(' ');
+    if (pre && t === pre) t = ''; else if (st && t.startsWith(st + ' ')) t = t.slice(st.length).trim(); }
+  else return null;
+  return t === String(x.label ?? '') ? [] : [{ op: 'set', id, path: 'label', value: t || undefined }];
 }
 
 /* ---- the type ---- */
@@ -160,6 +174,7 @@ const OBJECT_TYPE = registerDiagramType('uml.object', {
   validate: (model, view) => [...classProblems(model).filter(p => p.rule === 'member-names'), ...objectProblems(model), ...ownerProblems(model, view, drawnLines(model, view, OBJECT_LINES).lines)],
   rules: { 'member-names': RULES['member-names'], ...OBJECT_RULES, ...OWNER_RULES }, // of the class rules, member-names only: two slots for one feature (§9.3)
   describe: objectDescribe,
+  edits: { rename: obRename },
 });
 
-export { OBJECT_TYPE, OBJECT_RULES, parseSlot, printSlot, slotEdit, objectProblems, objectDescribe };
+export { OBJECT_TYPE, OBJECT_RULES, obRename, parseSlot, printSlot, slotEdit, objectProblems, objectDescribe };
