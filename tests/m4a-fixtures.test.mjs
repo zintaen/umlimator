@@ -230,7 +230,7 @@ test('the examples moved (§10.2): check.mjs\'s MOVED, clean, as the targets wer
   assert.deepEqual(atlas.iconPacks, { gcp: packs.gcp.label, azure: packs.azure.label, aws: packs.aws.label });
 });
 
-test('DoD 1: the registry holds mindmap, gcp, azure and aws, and the JSON Schema, the types and the README name their vocabulary and iconPacks', () => {
+test('DoD 1: the registry holds mindmap, gcp, azure and aws, and the JSON Schema, the types and the guide name their vocabulary and iconPacks', () => {
   const schema = readFileSync(new URL('../lib/umlimator.schema.json', import.meta.url), 'utf8'), dts = readFileSync(new URL('../lib/umlimator.d.ts', import.meta.url), 'utf8');
   const S = JSON.parse(schema), np = S.$defs.node.properties.props.anyOf[0].properties;
   for (const d of ['mindmap', 'gcp', 'azure', 'aws']) {
@@ -241,10 +241,10 @@ test('DoD 1: the registry holds mindmap, gcp, azure and aws, and the JSON Schema
   }
   assert.ok(S.properties.iconPacks && /iconPacks\?: Record<string, string>/.test(dts));
   assert.ok(['MindmapElementType', 'GcpElementType', 'GcpLineType', 'AzureElementType', 'AzureLineType', 'AwsElementType', 'AwsLineType', 'CloudElementProps'].every(k => new RegExp(`export (type|interface) ${k} `).test(dts)));
-  const all = readFileSync(new URL('../README.md', import.meta.url), 'utf8').split('\n').find(l => l.includes("from 'umlimator/all'` draws diagram types"));
-  assert.ok(['mindmap', 'Google Cloud', 'Azure', 'AWS'].every(w => all.includes(w)), 'README\'s umlimator/all line names the 0.26.0 types');
-  const model = readFileSync(new URL('../README.md', import.meta.url), 'utf8').split('\n').find(l => l.includes('`"gcp"`'));
-  assert.ok(['`"gcp"`', '`"azure"`', '`"aws"`'].every(w => model.includes(w)), 'README\'s Model section lists every 0.26.0 diagram value (audit 2)');
+  const all = readFileSync(new URL('../docs/guide/embedding.md', import.meta.url), 'utf8').split('\n').find(l => l.includes("from 'umlimator/all'` draws diagram types"));
+  assert.ok(['mindmap', 'Google Cloud', 'Azure', 'AWS'].every(w => all.includes(w)), 'the guide\'s Embedding page: its umlimator/all line names the 0.26.0 types');
+  const model = readFileSync(new URL('../docs/guide/model.md', import.meta.url), 'utf8').split('\n').find(l => l.includes('`"gcp"`'));
+  assert.ok(['`"gcp"`', '`"azure"`', '`"aws"`'].every(w => model.includes(w)), 'the guide\'s Model page lists every 0.26.0 diagram value (audit 2)');
 });
 
 // §2.5 (S18): nothing this project publishes holds a vendor icon. Map logos are data URLs in committed pages today, so
