@@ -119,6 +119,11 @@ function readMermaidState(text) {
     }
     return rec;
   };
+  // the first : that starts a text, past each :::class (-1 for none)
+  const textColon = t => { for (let k = 0; k < t.length; k++) if (t[k] === ':') {
+    if (!t.startsWith(':::', k)) return k;
+    for (k += 2; k + 1 < t.length && !/[\s:]/.test(t[k + 1]); k++);
+  } return -1; };
   // a name as written: a style class after ::: is not read; null when it is not one word
   const nameOf = (raw, no, star) => { // star: [*] may stand for itself
     let s = raw.trim();
@@ -185,7 +190,7 @@ function readMermaidState(text) {
       if (viewId != null && mtId(viewId) !== viewId) { say(no, 'approximated', `%% id: ${viewId}: an id holds no "->", so the view is ${mtId(viewId)}`); viewId = mtId(viewId); }
       continue;
     }
-    const word = mtWord(s), rest = s.slice(word.length).trim(), arrow = s.indexOf('-->'), colon = s.indexOf(':');
+    const word = mtWord(s), rest = s.slice(word.length).trim(), arrow = s.indexOf('-->'), colon = textColon(s);
     if (s.startsWith('}')) {
       const o = stack.pop();
       if (!o) say(no, 'skipped', 'a } that closes nothing');
@@ -234,13 +239,9 @@ function readMermaidState(text) {
     else if (word === 'acctitle' || word === 'accdescr') {
       say(no, 'skipped', `${word === 'acctitle' ? 'accTitle' : 'accDescr'}: accessibility text is not read`);
       if (word === 'accdescr' && s.includes('{') && !s.includes('}')) block = true;
-    } else if (arrow >= 0 && !(colon >= 0 && colon < arrow && s.slice(colon, colon + 3) !== ':::')) { // a transition: its label starts at the first : after the target
+    } else if (arrow >= 0 && !(colon >= 0 && colon < arrow)) { // a transition: its label starts at the first : after the target
       const left = s.slice(0, arrow), after = s.slice(arrow + 3);
-      let c = -1;
-      for (let k = 0; k < after.length && c < 0; k++) if (after[k] === ':') { // past a :::class
-        if (!after.startsWith(':::', k)) c = k;
-        else for (k += 2; k + 1 < after.length && !/[\s:]/.test(after[k + 1]); k++);
-      }
+      const c = textColon(after);
       let target = c < 0 ? after : after.slice(0, c);
       const pct = target.indexOf('%%');
       if (pct >= 0) target = target.slice(0, pct);

@@ -118,7 +118,7 @@ try {
   click('.node[data-id="c4-db"] .c-name'); key('F2');
   check('F2 on an element: a field holding its name', pick('.um-rename') && pick('.um-rename').value === 'Database');
   pick('.um-rename').value = 'Main database'; key('Enter', {}, pick('.um-rename'));
-  const m2 = gives('F2: set its label', [{ op: 'set', id: 'c4-db', path: 'label', value: 'Main database' }], m => m.nodes.find(n => n.id === 'c4-db').label === 'Main database', m1);
+  const m2 = gives('F2: set its label, and its instance\'s named as it was (audit 13)', [{ op: 'set', id: 'c4-db', path: 'label', value: 'Main database' }, { op: 'set', id: 'c4-db-1', path: 'label', value: 'Main database' }], m => m.nodes.find(n => n.id === 'c4-db').label === 'Main database' && m.nodes.find(n => n.id === 'c4-db-1').label === 'Main database', m1);
   h.update(m2);
   // a relationship by L: a name typed, Enter, the picker
   click('.node[data-id="container1"] .c-name'); key('l'); for (const c of 'main') key(c); key('Enter');

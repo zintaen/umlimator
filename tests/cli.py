@@ -89,6 +89,8 @@ ok("check · each message is of one kind, by the check's own words, not a label'
    [u.kind_of(o) for o in ['view v: edge Web→DB breaks rule "Apps never cross into the data tier"', "view v: edges a→b and c→d cross",
                            'view v: label "runs right-to-left" lies on edge a→b', "view v: edge a→b takes a detour (90px for 40px)"]]
    == ["rules", "crossings", "labelOnLine", "detours"])
+ok("check · a numbered line whose step has no room is labelNoRoom, as a label's is (audit 13)",
+   [u.kind_of(o) for o in ['view v: step 3 has no room on edge A→B: not drawn', 'view v: label "x" has no room on edge A→B: not drawn']] == ["labelNoRoom"] * 2)
 near = 'view v: edge A→B passes within 12px of node "Ledger breaks rule "audit""'
 ok("check · a label that ends in breaks rule \"...\" is not a broken rule: the page lists its broken rules apart (audit 2)",
    u.kind_of(near, set()) == "nearNode" and u.kind_of('view v: edge A→B breaks rule "audit"', {'view v: edge A→B breaks rule "audit"'}) == "rules")
@@ -177,6 +179,16 @@ with tempfile.TemporaryDirectory() as tmp:
     ok("timelapse · every version in git history, oldest first, on one page with the module and its icons",
        [v["label"][11:] for v in data.get("versions", [])] == ["version 1", "version 2", "version 3"] and "export function render" in lapse and data.get("icons"), r)
     ok("timelapse · --limit 0 is refused (the latest 0 versions, not all of them)", cli("timelapse", "docs/map.json", "--limit", "0", "--out", str(t / "lapse0.html"), cwd=g) is None)
+    # audit 13: a merged branch plays as its merge on the first-parent line, so the last version is HEAD's model
+    git("checkout", "-q", "-b", "feat"); (g / "docs" / "map.json").write_text(json.dumps(bike | {"title": "Bike share, renamed", "description": "feat"}, indent=1)); git("commit", "-qam", "feat")
+    git("checkout", "-q", "-"); git("checkout", "-q", "-b", "trunk"); (g / "docs" / "map.json").write_text(json.dumps(bike | {"title": "Bike share, trunk"}, indent=1)); git("commit", "-qam", "trunk")
+    git("merge", "-q", "-X", "theirs", "--no-edit", "feat")
+    cli("timelapse", "docs/map.json", "--out", str(t / "lapse-m.html"), cwd=g)
+    data = re.search(r'<script id="versions" type="application/json">(.*?)</script>', (t / "lapse-m.html").read_text(encoding="utf-8") if (t / "lapse-m.html").is_file() else "", re.S)
+    vs = json.loads(data.group(1))["versions"] if data else []
+    head = json.loads(git("show", "HEAD:docs/map.json").stdout)
+    ok("timelapse · merge commits are kept and a branch's commits are not interleaved: the last version is HEAD's model (audit 13)",
+       [v["label"][11:] for v in vs][3:] == ["trunk", "Merge branch 'feat' into trunk"] and vs[-1]["model"] == head, [v["label"] for v in vs])
 
     (g / "docs" / "map.json").write_text(json.dumps(edited(json.loads((g / "docs" / "map.json").read_text()))))
     (g / "notes.json").write_text('{"not": "a map"}'); git("add", "notes.json")
@@ -283,6 +295,10 @@ with tempfile.TemporaryDirectory() as tmp:
     b, s = plain("render", str(n / "m.json"), "--out", str(n / "m.json"), "--no-check"), plain("diff", bike_m, str(n / "m.json"), "--out", str(n / "m.json"))
     ok("render, diff · --out naming the input is refused in one line, and the model is kept (audit 12)",
        b.returncode == s.returncode == 1 and "is its input" in b.stderr + s.stderr and (n / "m.json").read_text() == mj, (b.stderr[-300:], s.stderr[-300:]))
+    os.link(n / "m.json", n / "m-link.json")  # the same file by another name (as M.JSON is on a case-insensitive disk)
+    b = plain("render", str(n / "m.json"), "--out", str(n / "m-link.json"), "--no-check")
+    ok("render · --out naming the input by another name (a hard link, or other case) is refused, and the model is kept (audit 13)",
+       b.returncode == 1 and "is its input" in b.stderr and (n / "m.json").read_text() == mj, b.stderr[-300:])
     b = plain("mcp", bike_m, "--port", "73910")
     ok("mcp · --port 73910 is a usage error, not a traceback", b.returncode == 2 and "not a port" in b.stderr and "Traceback" not in b.stderr, b.stderr[-300:])
     ro = t / "ro"; ro.mkdir(); (ro / "m.json").write_text((n / "m.json").read_text()); ro.chmod(0o555)
@@ -961,6 +977,8 @@ ok("mcp · highlight: a Ref whose fields are not strings is a tool error naming 
 bad = [tool("highlight", refs=[x]) for x in ({"type": "node", "id": "no-such-card"}, {"type": "edge", "ids": ["a->b#0"]}, "a->b")]
 ok("mcp · highlight: a Ref or a line id that names nothing in the model is a tool error, as a card id is (audit 7)",
    all(err is True and "in the model" in said for said, err in bad), bad)
+said, err = tool("highlight", refs=[{"type": "node", "id": "trips", "view": "nope"}])
+ok("mcp · highlight: a Ref whose view names no view is a tool error, as show_view's is (audit 13)", err is True and said.startswith("no view 'nope'"), said)
 c = web(); c.request("GET", "/"); r = c.getresponse(); page = r.read().decode()
 ok("mcp · serves the CLI's page, with the script that shows commands on its map handle (window.umlimatorMap)",
    r.status == 200 and "const map = window.umlimatorMap" in page and "new EventSource(`/events?page=" in page and "Fare calculator" in page)

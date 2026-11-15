@@ -387,22 +387,26 @@ const ST_MEMBER = {
   holds: n => n.type === 'uml.State',
 };
 /* moveTo: a node dropped into the box of a state with exactly one region goes to that region (§6.1, 3): the box is the
-   state's, since a lone region is not drawn. Anything else: null, the default (a pin, or a drop into a box) */
+   state's, since a lone region is not drawn; into any other state's or region's box, to it. Either is refused when it would
+   bring an error (a second initial in that region: stGuard). Anything else: null, the default (a pin, or a drop out of every box) */
 function stMoveTo(model, view, id, at) {
   if (!ST_OBJ(at) || !Array.isArray(at.pt) || !ST_OBJ(at.geo)) return null;
   const [x, y] = at.pt, f = ST_ARR(at.geo.families).filter(b => x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h).sort((a, b) => a.w * a.h - b.w * b.h)[0];
-  const s = f && ST_ARR(model.nodes).find(n => ST_OBJ(n) && n.id === f.id), rs = s && s.type === 'uml.State' ? stMembers(s, 'uml.Region') : [], n = ST_ARR(model.nodes).find(m => ST_OBJ(m) && m.id === id);
-  if (rs.length !== 1 || !n || n.parent === rs[0].id || stWithin(stIndex(model), s.id, id)) return null; // into itself: the default refuses it
-  const L = view.layout; return [{ op: 'reparent', id, parent: rs[0].id }, ...(ST_OBJ(L) && Object.hasOwn(L, id) ? [{ op: 'set', view: view.id, path: ['layout', id], value: undefined }] : [])];
+  const I = stIndex(model), s = f && (I.N.get(f.id) || I.M.get(f.id) || {}).x, n = I.N.get(id)?.x;
+  const rs = s && s.type === 'uml.State' ? stMembers(s, 'uml.Region') : [], parent = rs.length === 1 ? rs[0].id : s && (s.type === 'uml.State' || s.type === 'uml.Region') ? s.id : null;
+  if (parent == null || !n || n.parent === parent || stWithin(I, s.id, id)) return null; // into itself: the default refuses it
+  const L = view.layout; return stGuard(model, [{ op: 'reparent', id, parent }, ...(ST_OBJ(L) && Object.hasOwn(L, id) ? [{ op: 'set', view: view.id, path: ['layout', id], value: undefined }] : [])]);
 }
 // the Owner field (its path stops at an owner that is no element): every state and region of the model by its name from the top ("Fulfilling", "Fulfilling / Parcel"),
 // but the element itself and what lies under it
 function stOwners(model, x) {
   if (!ST_OBJ(x) || x.from != null || !ST_VERTEX.includes(x.type) && x.type !== 'uml.Comment') return null;
-  const I = stIndex(model);
+  const I = stIndex(model), k = x.type === 'uml.Pseudostate' && stKind(x);
+  // an owner that holds another initial, or history of x's kind, is no choice: x there would be a second (initial-one, history-one)
+  const taken = ['initial', 'shallowHistory', 'deepHistory'].includes(k) ? new Set([...I.N.values()].filter(({ x: y }) => y !== x && y.type === 'uml.Pseudostate' && stKind(y) === k).map(({ x: y }) => y.parent)) : new Set();
   const full = id => { const out = [], seen = new Set(); for (let p = id; (I.N.has(p) || I.M.has(p)) && !seen.has(p); p = stUp(I, p)) { seen.add(p); const e = (I.N.get(p) || I.M.get(p)).x; out.unshift(ST_HAS(e.label) ? e.label : p); } return out.join(' / '); };
   return [...I.N.values()].filter(({ x: n }) => n.type === 'uml.State').flatMap(({ x: n }) => [{ id: n.id, label: full(n.id) }, ...stMembers(n, 'uml.Region').map(r => ({ id: r.id, label: full(r.id) }))])
-    .filter(o => !stWithin(I, o.id, x.id));
+    .filter(o => !stWithin(I, o.id, x.id) && !taken.has(o.id));
 }
 // remove: a region deleted from the model (Shift + Delete on its box, the member list's ✕) says how many elements it held (§10.3)
 function stRemove(model, view, ids, fromModel) {

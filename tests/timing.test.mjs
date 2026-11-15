@@ -196,6 +196,8 @@ test('rename (F2): a change, a message, a constraint, a lifeline with `name : Ty
   n = run(m, tmRename(m, V0, 'worker', 'fulfiller : Worker'));
   assert.deepEqual([n.nodes[0].label, n.nodes[0].props.represents], ['fulfiller', 'Worker']);
   n = run(m, tmRename(m, V0, 'worker', 'fulfiller')); assert.equal(n.nodes[0].props.represents, 'OrderWorker');
+  n = run(m, tmRename(m, V0, 'worker', 'Shop::Worker')); // '::' is part of the name, not its ' : '
+  assert.deepEqual([n.nodes[0].label, n.nodes[0].props.represents], ['Shop::Worker', 'OrderWorker']);
   n = run(m, tmRename(m, V0, tmRowId('worker', 'Idle'), 'Ready'));
   assert.deepEqual(n.nodes[0].props.states, ['Ready', 'Waiting for payment', 'Recording payment']);
   assert.deepEqual(TL(n).changes.filter(c => c.lifeline === 'worker').map(c => c.state), ['Ready', 'Waiting for payment', 'Recording payment', 'Ready']);
