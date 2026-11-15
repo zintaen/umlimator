@@ -201,13 +201,13 @@ function csGeo({ model, view, pos: pins, memo }) {
     far: farOf(csPortId(p, q.id)).map(b => { if (b.port == null || b.part != null || !sides[b.port]) return b.node; pos2['#' + b.port] = past(sides[b.port]); return '#' + b.port; }) })));
   Object.assign(sides, portSides(partPorts, pos2, down));
   // the nodes, each as big as its ports need (portFit)
-  const count = {}; P.lines.forEach(({ f, t }) => [f, t].forEach(x => { if (x.port) count[x.port] = (count[x.port] || 0) + 1; }));
+  const count = Object.create(null); P.lines.forEach(({ f, t }) => [f, t].forEach(x => { if (x.port) count[x.port] = (count[x.port] || 0) + 1; }));
   const fit = portFit([...partPorts, ...(sBox ? [] : P.sPorts.map(q => ({ id: q.id, owner: P.sid })))].map(p => ({ ...p, lines: count[p.id] })), sides);
   const nodes = Object.keys(pos).filter(id => !P.boxed.has(id)).map(id => { const x = P.el(id), st = csStereo(x), part = P.partOf.has(id);
     const shape = part ? { shape: 'part', label: csPartText(x), shared: CS_PROPS(x).aggregation === 'shared' } : x.type === 'uml.Comment' ? { shape: 'note' }
       : x.type === 'uml.CollaborationUse' ? { shape: 'collab-use', label: csUseText(x), stereotypes: st } : x.type === 'uml.Collaboration' ? { shape: 'collab-use', stereotypes: st }
         : x.type === 'uml.Component' ? { shape: 'component', stereotypes: st } : { shape: 'classifier', stereotypes: st, compartments: [] };
-    const d = { id, label: csName(x), type: x.type, kind: 'file', ...shape, aria: csNodeName(P, id), col: pos[id][0], row: pos[id][1] }, s = SHAPE[d.shape].size(d), m = fit[id] || { w: 0, h: 0 };
+    const d = { id, label: csName(x), type: x.type, kind: 'file', ...shape, aria: csNodeName(P, id), col: pos[id][0], row: pos[id][1] }, s = SHAPE[d.shape].size(d), m = (Object.hasOwn(fit, id) && fit[id]) || { w: 0, h: 0 };
     return { ...d, w: Math.max(s.w, m.w), h: Math.max(s.h, m.h) }; });
   // each line: its ports, the side each leaves by (in the layout's own axes: a view laid out down is laid out turned), inner
   // ends leaving the other way (§5), and the port's place among its owner's ports (portRank)

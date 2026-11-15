@@ -325,3 +325,16 @@ test('P1 (§14): on 50 blocks and 57 lines, a full layout, a value row added to 
   for (const k of ['full', 'value', 'rename']) assert.ok(best(k) < 1000, `${k} ${best(k)} ms`);
   console.log(`# P1 target 100 ms: a value row added ${best('value').toFixed(1)} ms, a block renamed ${best('rename').toFixed(1)} ms; full layout ${best('full').toFixed(1)} ms`);
 });
+
+test('audit 8: a type name names an element with no label by its id, as drawn: no false constraint-type or port-kind, real ones kept', () => {
+  const m = { schemaVersion: 2, nodes: [
+    { id: 'RangeEq', type: 'sysml.ConstraintBlock', members: [{ id: 'p1', type: 'sysml.ConstraintParameter', label: 'r', props: { valueType: 'Real' } }] },
+    { id: 'Plug', type: 'sysml.InterfaceBlock' }, { id: 'Wheel', type: 'sysml.Block' },
+    { id: 'Bike', type: 'sysml.Block', label: 'Bike', members: [
+      { id: 'c', type: 'sysml.ConstraintProperty', label: 'eq', props: { valueType: 'RangeEq' } },
+      { id: 'pt', type: 'sysml.Port', label: 'charge', props: { kind: 'proxy', valueType: 'Plug' } },
+      { id: 'fp', type: 'sysml.Port', label: 'socket', props: { kind: 'full', valueType: 'Plug' } },
+      { id: 'v', type: 'sysml.ValueProperty', label: 'cap', props: { valueType: 'Wheel' } }] }],
+    edges: [], views: [{ id: 'v', diagram: 'sysml.block-definition', nodeIds: ['RangeEq', 'Plug', 'Wheel', 'Bike'] }] };
+  assert.deepEqual(validate(m).filter(p => p.rule).map(p => p.rule).sort(), ['port-kind', 'value-type']);
+});

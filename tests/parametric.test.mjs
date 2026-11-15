@@ -296,3 +296,10 @@ test('audit 4: the hint line\'s SysML words leave the element names as written',
   assert.match(T.edits.remove(m, m.views[0], ['ebike.batteryCapacity'], true).say, /^Deleted property spare part count of EBike/);
   assert.match(T.edits.remove(m, m.views[0], ['ebike.eco'], false).say, /property port connector of EBike and its 3 lines/);
 });
+
+test('audit 8: a constraint block with no label is named by its id: bindings to its parameters pass binding-parameter', () => {
+  const m = JSON.parse(readFileSync(new URL('parametric-minimal.json', import.meta.url))), cb = m.nodes.find(n => n.type === 'sysml.ConstraintBlock'), old = cb.label;
+  for (const n of m.nodes) for (const x of n.members || []) if (x.props && x.props.valueType === old) x.props.valueType = cb.id;
+  delete cb.label;
+  assert.deepEqual(validate(m).map(p => p.message), []);
+});

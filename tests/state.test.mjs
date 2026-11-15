@@ -244,7 +244,7 @@ test('F2 on a transition round-trips its parts: one set per part that changed; a
   const m = apply(SM, c), e = m.edges.find(x => x.id === 't-capture-retry');
   assert.deepEqual(e.props, { trigger: 'capture failed', guard: 'attempts < 5' });
   assert.equal(layout(m, 'order-life').edges.find(x => x.id === 't-capture-retry').label, 'capture failed [attempts < 5]');
-  assert.deepEqual(r('t-created', 'evt(a/b) [max(a, b[1]) > 2] / x / y'), ['trigger', 'guard', 'effect'].map((k, i) => ({ op: 'set', id: 't-created', path: 'props.' + k, value: ['evt(a/b)', 'max(a, b[1]) > 2', 'x / y'][i] })));
+  assert.deepEqual(r('t-capture-retry', 'evt(a/b) [max(a, b[1]) > 2] / x / y'), ['trigger', 'guard', 'effect'].map((k, i) => ({ op: 'set', id: 't-capture-retry', path: 'props.' + k, value: ['evt(a/b)', 'max(a, b[1]) > 2', 'x / y'][i] })));
   assert.match(r('t-created', 'a [b').error, /is not closed/);
   assert.match(r('t-created', 'a [b] c').error, /after the guard/);
   const bad = structuredClone(SM); bad.edges.find(x => x.id === 't-picked').props.trigger = 'all [books';
@@ -283,10 +283,10 @@ test('member rows: an internal transition by its text, a region as `region <name
   assert.deepEqual(M.add('region changed / log'), { type: 'uml.InternalTransition', props: { trigger: 'region changed', effect: 'log' } }, 'a trigger that starts with region');
 });
 
-test('add: a pseudostate with its kind and no name; a region into the selected state, else { error }; anything else the default', () => {
+test('add: a pseudostate with its kind and no name, in the state selected; a region into the selected state, else { error }; anything else the default', () => {
   const add = (e, label, at) => T.edits.add(SM, V, e, label, at), entry = l => T.elements.find(e => e.label === l);
   assert.deepEqual(add(entry('Choice'), ''), [{ op: 'add', element: { id: 'choice1', type: 'uml.Pseudostate', props: { kind: 'choice' } }, view: 'order-life' }]);
-  assert.deepEqual(add(entry('Deep history'), '')[0].element, { id: 'deep-history1', type: 'uml.Pseudostate', props: { kind: 'deepHistory' } });
+  assert.deepEqual(add(entry('Deep history'), '', { sel: ['delivery'] })[0].element, { id: 'deep-history1', type: 'uml.Pseudostate', parent: 'delivery', props: { kind: 'deepHistory' } });
   assert.deepEqual(add(entry('Region'), '', { sel: ['delivery'] }), [{ op: 'add', element: { id: 'delivery.region1', type: 'uml.Region' }, owner: 'delivery' }]);
   assert.match(add(entry('Region'), '', { sel: ['created'] }).error, /Select a state/);
   assert.equal(add(entry('State'), 'Idle'), null); assert.equal(add(entry('Final state'), ''), null);
@@ -456,4 +456,13 @@ test("describe()'s headline counts transitions, not comment links (audit 4)", ()
   const h = describe(m, V.id).split('\n')[0];
   assert.match(describe(m, V.id), /Comment link from Paid orders only/);
   assert.equal(h.match(/(\d+) transitions/)[1], n.match(/(\d+) transitions/)[1]);
+});
+
+test('audit 8: F2 and add never emit an edit that breaks a rule: { error } instead; a pseudostate goes into the state selected', () => {
+  assert.match(T.edits.rename(SM, V, 't-created', 'go [ready]').error, /initial-out/);
+  assert.match(T.edits.rename(SM, V, 't-prepaid-picking', '[g]').error, /fork-join/);
+  const add = (kind, sel) => T.edits.add(SM, V, { type: 'uml.Pseudostate', props: { kind } }, '', { sel });
+  assert.match(add('initial', []).error, /initial-one/); assert.match(add('shallowHistory', []).error, /history-owner/);
+  const r = add('deepHistory', ['delivery']);
+  assert.equal(r[0].element.parent, 'delivery'); assert.deepEqual(validate(apply(SM, r)).filter(p => p.level === 'error'), []);
 });
