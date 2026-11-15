@@ -268,6 +268,16 @@ test('the gallery and the examples\' README reach every example model: the AWS v
   // the state machine's card claims only the pseudostates order-states.json draws (audit 12)
   const kinds = new Set(JSON.parse(readFileSync(new URL('order-states.json', dir), 'utf8')).nodes.filter(n => n.type === 'uml.Pseudostate').map(n => n.props.kind));
   assert.doesNotMatch(gallery, /every pseudostate/); assert.ok(!kinds.has('junction') && !kinds.has('deepHistory') && kinds.has('shallowHistory'), [...kinds].join());
+  // the C4 card counts the views bookshop-c4.json holds; the README's milestone 4a table names each type, kind and diagram
+  // its four examples use (audit 13)
+  const ex = n => JSON.parse(readFileSync(new URL(`${n}.json`, dir), 'utf8')), words = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven'];
+  assert.match(gallery, new RegExp(`Typed C4 in ${words[ex('bookshop-c4').views.length]} views`));
+  const root = readFileSync(new URL('../README.md', import.meta.url), 'utf8'), m4a = root.slice(root.indexOf("Milestone 4a's"), root.indexOf('A BPMN diagram'));
+  for (const n of ['bookshop-opening-plan', 'bookshop-gcp', 'bookshop-azure', 'bookshop-aws']) {
+    const m = ex(n), said = [...m.nodes, ...m.edges].flatMap(x => [x.type, x.props && (x.props.groupType ?? x.props.zoneType)]).filter(Boolean).map(t => '`' + t + '`');
+    assert.ok(m4a.includes(n + '.json'), n);
+    for (const t of new Set([...said, ...m.views.map(v => `"${v.diagram}"`)])) assert.ok(m4a.includes(t), `${n}: ${t}`);
+  }
 });
 
 test('a typed view\'s key holds the titles of the views it opens: update() redraws "opens <view>" after a rename (audit 2)', () => {

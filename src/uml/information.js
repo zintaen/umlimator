@@ -1,7 +1,7 @@
 import { registerDiagramType } from '../core/registry.js';
 import { esc, fit } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
-import { layoutTyped } from '../typed/layout.js';
+import { layoutTyped, typedLines } from '../typed/layout.js';
 import './class.js'; // SHAPE.classifier and SHAPE.note
 import './structure.js'; // SHAPE.component
 import './usecase.js'; // SHAPE.actor
@@ -111,7 +111,7 @@ const IF_RULES = {
 function ifProblems(model) {
   const out = [], I = ifIndex(model), say = (rule, path, ids, msg) => out.push({ level: 'error', rule, path, ids: ids.filter(x => x != null), message: `${rule}: ${msg}` });
   const q = id => JSON.stringify(I.nm(id)), kind = id => (I.at.has(id) ? ifWord(I.at.get(id).type).toLowerCase() : 'nothing');
-  IF_ARR(model && model.edges).forEach((e, i) => { if (!IF_OBJ(e) || e.type !== 'uml.InformationFlow') return; const path = `edges[${i}]`, c = I.conveyed(e);
+  typedLines(model, v => v.diagram === 'uml.information-flow').forEach(([e, path]) => { if (!IF_OBJ(e) || e.type !== 'uml.InformationFlow') return; const c = I.conveyed(e);
     if (!c.length) say('conveyed-some', path, [e.id], `${e.id} conveys nothing: a flow conveys one element at least`);
     c.forEach((id, j) => { if (c.indexOf(id) < j) say('conveyed-once', `${path}.props.conveyed[${j}]`, [e.id, typeof id === 'string' ? id : null], `${e.id} conveys ${q(id)} twice: a flow conveys each element once`);
       else if (!I.at.has(id) || !IF_CONVEY.includes(I.at.get(id).type))

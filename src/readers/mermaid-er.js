@@ -169,7 +169,7 @@ function readMermaidEr(text) {
     if (rec.names.has(col.label)) { say(no, 'skipped', `${rec.name}.${col.label}: ${rec.name} has a column ${col.label} already`); return; }
     rec.names.add(col.label);
     if (h.references !== undefined) col.props.references = h.references;
-    rec.cols.push({ ...col, hint: h.id, no });
+    rec.cols.push({ ...col, hint: h.id, no, refNo: h.refNo });
     if (col.comment !== undefined && !once.has('comment')) { once.add('comment'); say(no, 'approximated', `${rec.name}.${col.label}: a column's comment is kept under ext.mermaid.comment and not drawn, as every other column's`); }
     if (col.props.foreignKey && h.references === undefined && !once.has('fk')) { once.add('fk'); say(no, 'approximated', `${rec.name}.${col.label}: Mermaid does not say which column a foreign key references, so references is left out, as for every other (fk-flag warns of each)`); }
   };
@@ -262,7 +262,7 @@ function readMermaidEr(text) {
         say(no, 'skipped', 'a %%{init}%% directive: Mermaid\'s configuration is not read');
         if (!t.includes('}%%')) while (i + 1 < lines.length && !lines[++i].includes('}%%')); // over several lines: to its }%%
       } else if (c.startsWith('id:')) { hint.id = c.slice(3).trim(); hint.no = no; }
-      else if (c.startsWith('references:')) hint.references = c.slice(11).trim();
+      else if (c.startsWith('references:')) { hint.references = c.slice(11).trim(); hint.refNo = no; }
       continue;
     }
     if (!started) {
@@ -310,6 +310,10 @@ function readMermaidEr(text) {
       ...(c.comment !== undefined ? { ext: { mermaid: { comment: c.comment } } } : {}) }));
     return { id: r.id, type: 'er.Entity', label: r.label ?? r.name, ...(members.length ? { members } : {}) };
   });
+  // a %% references: names a column read here, else it is dropped: the model would reference no column (fk-target)
+  const colIds = new Set(nodes.flatMap(n => (n.members || []).map(c => c.id)));
+  for (const r of list) for (const c of r.cols) if (c.props.references !== undefined && !colIds.has(c.props.references)) {
+    say(c.refNo, 'skipped', `%% references: ${c.props.references} on ${r.name}.${c.label}: no column read here is ${c.props.references}`); delete c.props.references; }
   const byName = new Map(list.map(r => [r.name, r.id])), edges = [];
   for (const r of rels) {
     const g = [r.a, r.b].find(x => !byName.has(x));
@@ -368,7 +372,7 @@ function writeMermaidEr(model, viewId) {
     else if (meQuoted(n.id)) names.set(n.id, [`"${n.id}"`, false]);
     else { const w = meFree(taken, made, 'entity'); taken.add(w); names.set(n.id, [w, true]); }
   }
-  const used = new Set(ents.map(n => n.id)), next = new Map();
+  const used = new Set(ents.map(n => n.id)), next = new Map(), written = new Set();
   // the hint, if one is needed: null when the reader derives the id, undefined when it would need one it cannot keep
   const idOf = (id, base) => { const d = meFree(used, next, meId(base)); if (d !== id && !keeps(id)) return undefined; used.add(id); return d === id ? null : id; };
   for (const n of ents) {
@@ -400,14 +404,18 @@ function writeMermaidEr(model, viewId) {
       if (Object.keys(ext).some(k => k !== 'mermaid') || Object.keys(me).some(k => k !== 'comment') || (me.comment !== undefined && comment === undefined)) lose(x.id, 'ext, but for ext.mermaid.comment');
       let ref = null;
       if (p.references !== undefined) { if (keeps(p.references)) ref = p.references; else lose(x.id, `references ${p.references}, which the reader would not keep`); }
-      rows.push([hint, ref, row]);
+      rows.push([hint, ref, row, x.id]); written.add(x.id);
     }
     if (hinted) out.push(`  %% id: ${n.id}`);
     if (!rows.length) { out.push(`  ${name}${alias}`); continue; }
     out.push(`  ${name}${alias} {`);
-    for (const [hint, ref, row] of rows) out.push(...(hint ? [`    %% id: ${hint}`] : []), ...(ref ? [`    %% references: ${ref}`] : []), `    ${row}`);
+    for (const [hint, ref, row, id] of rows) out.push(...(hint ? [`    %% id: ${hint}`] : []), ...(ref ? [{ ref, id }] : []), `    ${row}`);
     out.push('  }');
   }
+  // a reference is written only to a column this text writes: the reader would find no other (fk-target)
+  let w = 0;
+  for (const l of out) { if (typeof l === 'string') out[w++] = l; else if (written.has(l.ref)) out[w++] = `    %% references: ${l.ref}`; else lose(l.id, `references ${l.ref}, a column this view does not show`); }
+  out.length = w;
 
   const byEdge = new Map();
   for (const x of arr(m.edges)) if (isObj(x) && !byEdge.has(x.id)) byEdge.set(x.id, x); // the first of an id, as find gave

@@ -64,7 +64,8 @@ function generate(seed) {
     nodes.push(clean({ id, type: 'er.Entity', label: r() < 0.5 ? id : pick(r, TEXT), members: members.length ? members : undefined }));
   }
   const cols = nodes.flatMap(n => n.members || []);
-  for (const c of cols) if (r() < 0.3) c.props.references = pick(r, [...cols.map(x => x.id).filter(id => id.trim() === id), 'other.id']); // a hint is read trimmed
+  const ids = cols.map(x => x.id).filter(id => id.trim() === id); // a hint is read trimmed; one naming no column is dropped (audit 13)
+  if (ids.length) for (const c of cols) if (r() < 0.3) c.props.references = pick(r, ids);
   for (let k = 0, n = Math.floor(r() * nodes.length * 1.5); k < n; k++) {
     const from = pick(r, nodes).id, to = pick(r, nodes).id;
     edges.push(clean({ id: take(pick(r, [`${from}-${to}`, 'r1', 'places', `${from}-${to}-2`.trim()]), `R${k}`), type: 'er.Relationship', from, to, label: maybe(0.6, pick(r, TEXT)),
@@ -308,4 +309,18 @@ test('the writer is linear in a view that lists its edges by id (audit 1) (timed
   const t0 = performance.now();
   write({ schemaVersion: 2, nodes, edges, views: [{ id: 'v', diagram: 'er', nodeIds: ['A', 'B'], edges: edges.map(e => e.id) }] });
   assert.ok(performance.now() - t0 < 1500, `${performance.now() - t0} ms`);
+});
+
+// audit 13: a focused view writes no %% references: to a column it does not show (it names it in %% not written:), and the
+// reader drops and reports a %% references: that names no column it read, so a valid model's view reads back valid
+test('a reference to a column the text does not hold is named by the writer and dropped by the reader', () => {
+  const m = json('../examples/bookshop-schema.json');
+  m.views.push({ id: 'focus', diagram: 'er', title: 'Orders', nodeIds: ['er-order'] });
+  const text = write(m, 'focus'), back = read(text);
+  assert.doesNotMatch(text, /%% references: er-customer\.id/);
+  assert.match(text, /%% not written: er-order\.customer_id: references er-customer\.id, a column this view does not show\n/);
+  assert.deepEqual(validate(back.model).filter(p => p.level === 'error'), [], text);
+  const hand = read('erDiagram\nA {\n  int id PK\n}\nB {\n  %% references: A.code\n  int a FK\n}\n');
+  assert.equal(hand.model.nodes[1].members[0].props.references, undefined);
+  assert.deepEqual(hand.report.filter(x => x.status === 'skipped').map(x => `${x.line} ${x.message}`), ['6 %% references: A.code on B.a: no column read here is A.code']);
 });
