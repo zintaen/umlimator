@@ -330,8 +330,8 @@ ok("cli.py · two first uses at once both fetch, and both run the CLI (skill-cli
 
 p = cli(tmp / "offline", "render", source=tmp / "nowhere")
 code, out, err = p.wait(timeout=60), *p.communicate()
-ok("cli.py · no network on first use: a plain message that says what it needs, no traceback, and no folder left (skill-cli-cache#2)",
-   code == 1 and "Traceback" not in err and "network" in err and "UMLIMATOR_CLI_CACHE" in err and not [*(tmp / "offline").glob("*")], err)
+ok("cli.py · no network on first use: a plain message that says what it needs, no traceback, and no folder left; the cache it names is a git clone (skill-cli-cache#2, audit 12)",
+   code == 1 and "Traceback" not in err and "network" in err and "UMLIMATOR_CLI_CACHE" in err and "git clone --branch vtest" in err and not [*(tmp / "offline").glob("*")], err)
 
 p = cli(cache, "render", sha="0" * 40)
 code, out, err = p.wait(timeout=60), *p.communicate()
