@@ -303,3 +303,11 @@ test('audit 8: a constraint block with no label is named by its id: bindings to 
   delete cb.label;
   assert.deepEqual(validate(m).map(p => p.message), []);
 });
+
+test('binding-types names value types with no label by their id (audit 9)', () => {
+  const m = JSON.parse(readFileSync(new URL('./parametric-minimal.json', import.meta.url), 'utf8'));
+  m.nodes.push({ id: 'Wh', type: 'sysml.ValueType' }, { id: 'km', type: 'sysml.ValueType' });
+  m.nodes[0].members[0].props.valueType = 'Wh'; m.nodes[1].members[0].props.valueType = 'km';
+  const msg = validate(m).filter(p => p.rule === 'binding-types').map(p => p.message);
+  assert.equal(msg.length, 1); assert.match(msg[0], /of type Wh to .* of type km/);
+});
