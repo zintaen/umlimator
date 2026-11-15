@@ -556,6 +556,16 @@ test('audit 11: Delete of a lane with a model line, on a view with no edges list
   assert.ok(!JSON.stringify(m.nodes).includes('"bp-sales"') && m.edges.some(e => e.id === 'f-basket'));
 });
 
+test('audit 12: Delete of a lane with a node it holds both selected deletes the lane and hides the node, kept in the model; Shift + Delete deletes both', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'pool', type: 'bpmn.Participant', label: 'Shop', members: [{ id: 'l1', type: 'bpmn.Lane', label: 'Sales' }, { id: 'l2', type: 'bpmn.Lane', label: 'Store' }] },
+    { id: 'start', type: 'bpmn.StartEvent', parent: 'l1', props: { definition: 'none' } }, { id: 'task', type: 'bpmn.Task', label: 'Pack', parent: 'l1' }, { id: 'end', type: 'bpmn.EndEvent', parent: 'l2', props: { definition: 'none' } }],
+  edges: [{ id: 'f1', type: 'bpmn.SequenceFlow', from: 'start', to: 'task' }, { id: 'f2', type: 'bpmn.SequenceFlow', from: 'task', to: 'end' }],
+  views: [{ id: 'v', diagram: 'bpmn', nodeIds: ['pool', 'start', 'task', 'end'] }] };
+  const n = apply(m, bzRemove(m, m.views[0], ['l1', 'task'], false).commands);
+  assert.equal(n.nodes.find(x => x.id === 'task').parent, 'pool'); assert.ok(!n.views[0].nodeIds.includes('task') && !JSON.stringify(n.nodes).includes('"l1"'));
+  assert.ok(!apply(m, bzRemove(m, m.views[0], ['l1', 'task'], true).commands).nodes.some(x => x.id === 'task'));
+});
+
 test('audit 11: a boundary event\'s side named for an Object.prototype key is no pin: the event stays on its activity\'s bottom border', () => {
   const at = side => { const m = structuredClone(EX); if (side) V(m).present = { ...V(m).present, 'payment-timeout': { side } };
     const g = layout(m, VID), c = g.byId['payment-timeout'], h = g.byId['bp-take-payment']; return [c.x + c.w / 2 - h.x, c.y + c.h / 2 - h.y]; };

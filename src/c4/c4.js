@@ -125,9 +125,10 @@ function c4NodeName(x) {
 }
 // "Relationship from Storefront to Shop API: Reads the catalogue and places orders through [JSON over HTTPS]"; an implied
 // line names what it stands for and where they are edited
+// (pic.nameOf: how the view names an element, a deployment view's instance by its container's name, as drawn)
 function c4LineName(e, pic) {
-  const nm = id => c4Name(pic.at.get(id) || { id });
-  if (e.of) { const said = e.of.map(r => `${c4Name(pic.at.get(r.from) || { id: r.from })} to ${c4Name(pic.at.get(r.to) || { id: r.to })}${C4_HAS(r.label) ? ', ' + r.label : ''}`);
+  const nm = id => (pic.nameOf || c4Name)(pic.at.get(id) || { id });
+  if (e.of) { const said = e.of.map(r => `${nm(r.from)} to ${nm(r.to)}${C4_HAS(r.label) ? ', ' + r.label : ''}`);
     return `Implied relationship from ${nm(e.from)} to ${nm(e.to)}, standing for ${c4Plural(e.of.length, 'relationship')}: ${said.join('; ')}. Edit them where their own ends are shown`; }
   if (e.type === 'uml.CommentLink') return `Comment link from ${nm(e.from)} to ${nm(e.to)}`;
   const said = c4LineLabel(e); return `Relationship from ${nm(e.from)} to ${nm(e.to)}${said ? ': ' + said : ''}`;

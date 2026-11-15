@@ -161,6 +161,7 @@ const DFD_RULES = {
   'dfd-numbers': 'a level\'s processes are numbered under their parent process\'s (1.1, 1.2 under 1); no number is used twice',
   'dfd-balance': 'the flows between a process and the rest of its level match its level\'s flows across the level\'s edge, by label, far end and direction',
   'dfd-level': 'a process opens a dfd view whose parent is a view showing the process; the level is that process\'s alone and does not show it',
+  'dfd-notation': 'a dfd view\'s notation is yourdon or gane-sarson',
 };
 function dfdProblems(model) {
   const I = dfdIndex(model), out = [], say = (level, rule, path, ids, msg) => out.push({ level, rule, path, ids: ids.filter(x => x != null), message: `${rule}: ${msg}` });
@@ -194,6 +195,8 @@ function dfdProblems(model) {
     say('error', 'dfd-balance', path, [p.id, ...miss.map(([e]) => e.id), ...left.map(([e]) => e.id)], `${I.q(p.id)} does not balance with ${lv}: ${[
       miss.length ? `its flow${miss.length > 1 ? 's' : ''} ${miss.map(said).join(', ')} ${miss.length > 1 ? 'have' : 'has'} none at the level` : '',
       left.length ? `the level's flow${left.length > 1 ? 's' : ''} ${left.map(said).join(', ')} ${left.length > 1 ? 'are' : 'is'} not the process's` : ''].filter(Boolean).join('; ')}`); });
+  DFD_ARR(model && model.views).forEach((v, i) => { if (DFD_OBJ(v) && v.diagram === 'dfd' && v.notation != null && v.notation !== 'yourdon' && v.notation !== 'gane-sarson')
+    say('warning', 'dfd-notation', `views[${i}].notation`, [v.id], `${JSON.stringify(String(v.id))} has notation ${JSON.stringify(String(v.notation))}, drawn as yourdon: write yourdon or gane-sarson`); });
   return out;
 }
 
