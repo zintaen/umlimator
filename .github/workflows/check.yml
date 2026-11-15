@@ -12,7 +12,7 @@ env:
   SD: https://raw.githubusercontent.com/caru-ini/stack-diagram/30cbbb7/skills/stack-diagram/scripts
 
 jobs:
-  # The checks, in four jobs that run side by side; the job `check` below passes only when all four did, so branch
+  # The checks, in five jobs that run side by side; the job `check` below passes only when all five did, so branch
   # protection's required check and the jobs that need it (site, release) are as they were.
   # lib/ is what src/ builds; layout() in Node, the timed tests, and the examples render and check clean (about 4 min)
   node:
@@ -247,8 +247,25 @@ jobs:
         # a slow runner from failing a PR on time alone
         run: python3 bench/bench.py --runs 2 --timeout 300 --check-determinism --expect bench/expected.json --max-ms m50=8000,b26=3000
 
+  # the documentation site builds, with no dead links (VitePress, docs/; the site job publishes it from main)
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: docs/package-lock.json
+
+      - name: The documentation site builds, with no dead links
+        run: |
+          npm ci --prefix docs
+          npm --prefix docs run build
+
   check:
-    needs: [node, browser, cli, bench]
+    needs: [node, browser, cli, bench, docs]
     if: always()   # runs when one of them fails or is cancelled, to fail rather than be skipped (a skipped required check passes)
     runs-on: ubuntu-latest
     steps:
@@ -256,8 +273,8 @@ jobs:
         run: |
           for r in ${{ join(needs.*.result, ' ') }}; do [ "$r" = success ] || { echo "::error::a check job ended: $r"; exit 1; }; done
 
-  # The examples, live: on each push to main that passes the checks, every model's page and pictures are built and
-  # published with the host pages and the module on GitHub Pages (zintaen.github.io/umlimator).
+  # The site: on each push to main that passes the checks, the documentation site and every example model's page and
+  # pictures are built and published with the host pages and the module on GitHub Pages (zintaen.github.io/umlimator).
   site:
     needs: check
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -271,6 +288,10 @@ jobs:
     concurrency: pages
     steps:
       - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24   # VitePress, for the documentation site
 
       # Since 16 Nov 2026 (notes/milestone-4a.md §16) the Pages site, and only it, shows the vendors' icons: their terms
       # are accepted here by pin, so a re-pin in icons/packs.json must edit this line too (a new acceptance; tests/packs.py
@@ -300,7 +321,13 @@ jobs:
               python3 umlimator.py record "_site/examples/$n.html" --story "$s" --out "_site/examples/stills/$n/story-$s.png"   # each story, recorded
             done
           done
-          sed 's|<meta charset="utf-8">|<meta charset="utf-8"><base href="examples/">|' examples/index.html > _site/index.html
+
+      # the documentation site (VitePress, docs/) at the root, around the examples: the gallery stays at /examples/
+      - name: Build the documentation site
+        run: |
+          npm ci --prefix docs
+          npm --prefix docs run build
+          cp -r docs/.vitepress/dist/. _site/
 
       - uses: actions/upload-pages-artifact@v3
         with:
