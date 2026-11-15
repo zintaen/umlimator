@@ -1,7 +1,7 @@
 import { registerDiagramType } from '../core/registry.js';
 import { esc } from '../core/text.js';
 import { SHAPE } from '../draw/shapes.js';
-import { CLASS_DEF, CLASS_TYPE, RULES, multBounds, printMember, classProblems, drawnLines, lineName, typeGeo } from './class.js';
+import { CLASS_DEF, CLASS_LINES, CLASS_TYPE, RULES, multBounds, printMember, classProblems, drawnLines, lineName, typeGeo } from './class.js';
 import { OWN_BOXES, OWNER_RULES, holdsLine, ownerChoices, ownerProblems, ownersOn, readingOrder } from './owners.js';
 import { STY_RULES, UML_META, appliedOf, metaKnown, styKey } from './stereotypes.js';
 
@@ -60,6 +60,8 @@ const row = text => ({ type: 'uml.Property', label: text }); // a compartment ro
 function prNode(d, n, model, pic) {
   if (d.shape === 'note') return d;
   const I = prIndex(model), aria = prAria(model, n, pic.name(n.id), I);
+  // a closed package: over its name the stereotypes it has, the required ones supplied too (prBox's); its tags in its accessible name
+  if (d.shape === 'package') { const st = PR_ARR(d.stereotypes); return { ...d, aria, stereotypes: [...st, ...appliedOf(model, n.id).map(e => e.key).filter(k => !st.includes(k))] }; }
   if (d.shape !== 'classifier') return { ...d, aria };
   if (n.type === 'uml.Stereotype') return { ...d, shape: 'profiled', aria, compartments: d.compartments.filter(c => c.name === 'attributes') };
   const tags = appliedOf(model, n.id).map(e => ({ name: `«${e.key}»`, members: [row(`«${e.key}»`), ...prTags(e).map(row)] })), has = m => PR_OBJ(m) && appliedOf(model, m.id).length > 0;
@@ -75,7 +77,8 @@ function prBox(b, model, pic) {
   const st = PR_ARR(PR_OBJ(x.props) ? x.props.stereotypes : null).filter(t => t != null && t !== '').map(String), all = [...st, ...A.map(e => e.key).filter(k => !st.includes(k))];
   return { ...b, title: [...(x.type === 'uml.Profile' ? ['«profile»'] : []), ...all.map(t => `«${t}»`), pic.name(b.id)].join(' '), aria: `${b.aria}: ${A.map(prSay).join('; ')}` };
 }
-const PR_LOOK = { members: true, own: null, word: 'profile diagram', node: prNode, box: prBox, dg: { repair: false, reroute: false } };
+const PR_LINES = [...CLASS_LINES, 'uml.Extension', 'uml.ProfileApplication'];
+const PR_LOOK = { members: true, own: PR_LINES, word: 'profile diagram', node: prNode, box: prBox, dg: { repair: false, reroute: false } };
 const prGeo0 = typeGeo(PR_LOOK);
 // down unless the view says right; slots at each node and box, so the palette's add hears what is selected (composite.js's)
 function prGeo(a) {
@@ -109,7 +112,7 @@ function prProblems(model) {
 /* ---- describe(): the view in sentences, each element by its accessible name in reading order, then each line ---- */
 function prDescribe(model, viewId) {
   const v = PR_ARR(model && model.views).find(x => PR_OBJ(x) && x.id === viewId); if (!v) throw new Error(`umlimator: no view ${JSON.stringify(viewId)}`);
-  const { at, pic, lines: all } = drawnLines(model, v, null), lines = all.filter(({ from, to }) => !holdsLine(pic, from, to)), I = prIndex(model), ids = readingOrder(pic);
+  const { at, pic, lines: all } = drawnLines(model, v, PR_LINES), lines = all.filter(({ from, to }) => !holdsLine(pic, from, to)), I = prIndex(model), ids = readingOrder(pic);
   const pl = (k, w) => `${k} ${k === 1 ? w : w + 's'}`, box = new Map(pic.boxes.map(b => [b.id, prBox(b, model, pic).aria]));
   const said = id => { const x = at.get(id).x; return box.get(id) ?? (x.type === 'uml.Comment' ? 'Comment: ' + prName(x) : prAria(model, x, pic.name(id), I)); };
   return [`${v.title || v.id}: a profile diagram of ${pl(ids.length, 'element')} and ${pl(lines.length, 'line')}.`, ...ids.map(id => said(id) + '.'), ...lines.map(({ e }) => lineName(e, at, pic) + '.')].join('\n');
@@ -162,7 +165,7 @@ const PR_TYPE = registerDiagramType('uml.profile', {
   owners: ownerChoices,
   // a stereotype's rows are its tag definitions, in the class type's member syntax; an enumeration's its literals
   member: { ...CLASS_TYPE.member, holds: n => n.type === 'uml.Stereotype' || n.type === 'uml.Enumeration' },
-  validate: (model, view) => [...classProblems(model), ...prProblems(model), ...ownerProblems(model, view, drawnLines(model, view, null).lines)],
+  validate: (model, view) => [...classProblems(model), ...prProblems(model), ...ownerProblems(model, view, drawnLines(model, view, PR_LINES).lines)],
   rules: { ...RULES, ...OWNER_RULES, ...PR_RULES, ...STY_RULES },
   describe: prDescribe,
   // the PDF's tables (§9): a profile's, a stereotype's and a metaclass's kind; each element's stereotypes and tags

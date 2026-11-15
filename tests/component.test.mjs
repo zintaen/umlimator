@@ -39,7 +39,7 @@ test('the definition: uml.component is registered with its palette, its eight li
   assert.equal(T.layout.rank, false, 'the type ranks the view: the host passes the pins');
   for (const k of ['layout', 'validate', 'describe', 'boxes', 'owners', 'word', 'rows']) assert.equal(typeof T[k], 'function', k);
   assert.deepEqual(Object.keys(T.edits).sort(), ['add', 'connect', 'key', 'member', 'moveTo', 'remove']);
-  assert.deepEqual(Object.keys(T.rules).sort(), ['assembly-ends', 'ball-interface', 'component-owner', 'component-realization-ends', 'delegation-ends', 'line-inside', 'manifest-ends', 'port-owner', 'provided-ends', 'required-ends'].sort());
+  assert.deepEqual(Object.keys(T.rules).sort(), ['assembly-ends', 'ball-interface', 'component-owner', 'component-realization-ends', 'delegation-ends', 'line-inside', 'manifest-ends', 'own-boxes', 'port-owner', 'provided-ends', 'required-ends'].sort());
   assert.deepEqual(['uml.Component', 'uml.Interface', 'uml.Artifact'].map(t => T.member.holds({ type: t })), [true, true, false]);
 });
 
@@ -346,4 +346,14 @@ test('line-inside: a dependency or usage between a component and what it holds, 
     edges: [E('d1', 'Dependency', 'shop', 'cart'), E('u1', 'Usage', 'shop', 'I')], views: [{ id: 'v', diagram: 'uml.component', nodeIds: ['shop', 'cart', 'I'] }] };
   assert.deepEqual(layout(m, 'v').edges, []);
   assert.deepEqual(validate(m).map(p => [p.rule, p.level, p.ids]), [['line-inside', 'warning', ['d1', 'shop', 'cart']], ['line-inside', 'warning', ['u1', 'shop', 'I']]]);
+});
+test('audit 9: a component, deployment or composite structure view warns that its hand-written containers are ignored (own-boxes)', async () => {
+  await import('../src/uml/deployment.js'); await import('../src/uml/composite.js');
+  for (const n of ['bookshop-components', 'bookshop-deployment', 'order-service-structure']) {
+    const m = JSON.parse(readFileSync(new URL(`../examples/${n}.json`, import.meta.url))), v = m.views[0];
+    assert.ok(!validate(m).some(p => p.rule === 'own-boxes'), n);
+    v.containers = [{ id: 'grp', label: 'My group', nodeIds: v.nodeIds.slice(0, 2) }];
+    const p = validate(m).find(x => x.rule === 'own-boxes');
+    assert.ok(p && p.level === 'warning' && p.ids.includes(v.id), n); assert.ok(diagramOf(v).rules['own-boxes'], n);
+  }
 });
