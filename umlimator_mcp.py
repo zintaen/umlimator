@@ -133,6 +133,19 @@ def node(fn, *args):
 def refs(m, items):
     """highlight's refs: a Ref as it is, a card's id as its Ref, else a line's."""
     cards, lines, out = {n["id"] for n in every(m, "nodes")}, {e["id"] for e in every(m, "edges")}, []
+    for es in [m.get("edges"), *(v.get("edges") for v in views(m).values())]:  # "<from>-><to>#<n>": a line without an id, as Refs name it
+        seen = {}
+        for e in es if isinstance(es, list) else []:
+            if isinstance(e, dict):
+                k = f"{e.get('from')}->{e.get('to')}"; seen[k] = seen.get(k, -1) + 1
+                lines.add(str(e["id"]) if e.get("id") is not None else f"{k}#{seen[k]}")
+    boxes = {c.get("id") for v in views(m).values() for c in v.get("containers") or [] if isinstance(c, dict)}
+    members, todo = set(), [x for n in every(m, "nodes") for x in n.get("members") or []]
+    while todo:  # a member (a port, a constraint property) at any depth: a Ref may name one
+        x = todo.pop()
+        if isinstance(x, dict):
+            members.add(x.get("id")); todo += x.get("members") or []
+    known = cards | lines | boxes | members
     for i, x in enumerate(items if isinstance(items, list) else [items]):
         if isinstance(x, dict):
             text = [k for k in ("id", "node", "container", "view", "value") if k in x and not isinstance(x[k], str)]
@@ -140,10 +153,12 @@ def refs(m, items):
                     isinstance(x["ids"], list) and all(isinstance(j, str) for j in x["ids"])):
                 raise Fail(f"refs[{i}] is not a Ref: type is node, edge, container, chip or badge; ids a list of strings; "
                            f"id, node, container, view and value strings" + (f" ({', '.join(text)} is not)" if text else ""))
+            if gone := [j for j in (x.get("id"), x.get("node"), x.get("container"), *(x.get("ids") or [])) if j is not None and j not in known]:
+                raise Fail(f"refs[{i}] names {', '.join(map(repr, gone))}: no card, line or box in the model")
             out.append(x)
         elif x in cards:
             out.append({"type": "node", "id": x})
-        elif x in lines or "->" in str(x):  # "<from>-><to>#<n>": a line without an id, as Refs name it
+        elif x in lines:
             out.append({"type": "edge", "ids": [x]})
         else:
             raise Fail(f"no card or line {x!r} in the model")
