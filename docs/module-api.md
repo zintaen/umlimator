@@ -4755,3 +4755,72 @@ re-pinned there (`bf8840f3` to `d7b8c6d9`). What changes for callers:
   164,954 B, up 2,345 B from 0.32.0, nearly all in #327 (the label fix) and #324. `lib/umlimator-all.js` is 608.1 kB
   (608,067 B), up 3,936 B; the npm package is 877.4 kB (`npm pack --dry-run`). There is no core size cap until 1.0.0
   (the maintainer's decision of 15 Nov 2026): sizes are reported each release and a budget is set at 1.0.0.
+
+## 0.34.0: fixes from the seventh audit
+
+The seventh audit confirmed 24 findings. All are fixed in this release, in five pull requests (#329 to #333), each with
+a test that fails without its fix or, for findings 5 and 23, a docs change the existing pins already test (findings 8
+and 13 are one defect). No map or example draws differently and `bench/expected.json` is unchanged. What changes for
+callers:
+
+- **Security: the details panel (#332).** The panel no longer writes a `javascript:` URL, or any URL that is not
+  http(s), `mailto:`, `file:` or relative, from model data into a link. Before, a model's source link with
+  `meta.root` and `meta.sourceBase` unset could run the model's script in the host page when clicked. A new `safeUrl`
+  (src/canvas/pieces.js) reads the URL the way a browser does first, so tabs, newlines and leading control characters
+  are dropped and `java\tscript:` is caught. It covers every source link (`meta.root` and `meta.sourceBase` included),
+  the author link and both example links (panel and lightbox). A refused source shows as plain text, like a `~` source;
+  a refused author url falls back to the GitHub profile. Image sources are not filtered, so `data:` images still work.
+- **Core (#332).** `optimize()` no longer reads the wall clock: it stops on its evaluation budget plus a fixed work
+  cap, evaluations × lines² at 40,000 (120,000 while problems remain), about what the 4 s and 12 s boxes allowed on a
+  fast laptop. The layout `umlimator.py render` bakes is now the same on every machine, as the section on `optimize()`
+  above already said; examples/bookshop.html bakes the same positions as before. A view that hit the old time box may
+  stop after a different number of evaluations than it did on a fast laptop. `validate()` warns when a line listed in
+  a map view's `edges` ends on a card that is not on the view (`"ac" ends on "c", which is not one of the view's cards:
+  not drawn`), and when a line id is listed twice (`"ab" is listed twice: drawn once`); the line is now drawn once, not
+  as two lines labelled "pays +1". The page header's Export, Stories and Lenses buttons drop `aria-haspopup` and name
+  their pop-ups with `aria-controls`; the ? button says `aria-haspopup="dialog"`, opening the key list moves focus into
+  it, and Esc or ? gives focus back.
+- **UML types and boxes (#331).** State machine: a transition from an open composite state to a state it holds is left
+  out of `describe()` and `geo.order`, as it is of the picture, and the new warning rule `composite-inner` says it is
+  not drawn (the type now has 18 rules). An id named `constructor`, `toString` or `__proto__` lays out in a typed view
+  with boxes (layout() and check() threw before), and a card named `constructor` no longer opens a view of that name.
+  Two delegation lines from one port to two parts or components side by side no longer cross: a port's inward lines
+  whose far ends are level are ordered by depth on every face. Class and package `describe()` name an association's
+  stereotypes. A called activity with a partition of its own unfolds in the call's lane and adds no lane.
+  docs/conformance/uml-component.md states the stress view's limits the fixtures pin.
+- **C4, cloud and BPMN (#329).** A C4 dynamic view's c4-level message keeps a subject named with `$'` or `$&` as
+  written. Cloud (AWS, GCP, Azure) and BPMN views draw, read and count a line listed twice in `view.edges` once, as the
+  other types do. BPMN lays out and draws a flow with id `toString` or `constructor` and a pool with id `__proto__`.
+  The BPMN note's `boundary-out` row covers message boundary events, as the code does.
+- **Mermaid flowchart readers (#330).** Both the typed reader and `umlimator.py import`: a bare `subgraph` line is an
+  untitled subgraph with Mermaid's id `subGraph<n>`; a quoted or Markdown label over several lines is joined into one
+  statement; an opener with several closers (`[/`, `[\`) takes the nearest one. The map importer passes over a
+  multi-line `accDescr { ... }` whole (flowchart and C4), and says on stderr each `~~~` link and each `classDef`,
+  `class`, `style`, `linkStyle`, `click` and `direction` line it does not import, and that accessibility text is not
+  imported (tests/import/checkout.mmd now prints three such lines).
+- **CLI and MCP (#333).** `stills` draws a view again when a view-local card's inner view grows, or when a view lists
+  another view's local card and that card changes. `render` says in one line, not a traceback, an id, `from`/`to`,
+  `parent`, `nodeIds`/`stepIds` entry, `root`, `opensView` or `view` that is a list, object or bool. The MCP
+  `highlight` tool gives a tool error for a Ref, or a string with `->`, that names nothing in the model.
+- **Known gaps.** Still open from 0.33.0: a box has no Tab stop; the keyboard reaches it through the outline. A
+  double-click (or Enter) on a box does not open its view (the 0.24.0 gap). Deep nesting is super-linear outside the
+  core. A composite structure or SysML internal block view's Lines rows name a part by its id, not its drawn name. The
+  JavaScript Mermaid readers still decode `#55296;` to a lone surrogate. The requirement layout leaves out a link into a
+  box nested more than 64 deep from its ranking. Typed hooks that answer Alt+arrows themselves were not checked on views
+  laid out down. `reach()` from a model id that the view draws under another id returns only that element. A negative
+  step duration plays 500 ms while `validate()`'s warning says 4000 ms. Mermaid C4 macro arguments keep entity codes as
+  written. `describe()` of an inline interaction does not say it opens a view. Room for a label in a turned view is
+  still mostly along the line. The map flowchart and Structurizr DSL readers turn a U+2028 inside a label into a space.
+  `validate()` gives typed views no "listed twice" warning for `view.edges` (map views have one since #332; typed
+  views draw the line once). The unfolded call behaviour box is a plain container frame. A page rendered before 0.33.0 with a numeric view id
+  still ends in a traceback in `stills` and `check`. Changed: three or more delegations from one port into a grid of
+  parts may still cross (composite structure laid out right with one port: 1 to 6 crossings for 4 to 6 parts; a
+  component with three inner components: 1 right, 2 down); this needs a routing change, not a slot order. New: other
+  files in src/bpmn may still key plain objects by id (only process.js was checked). The MCP server's `refit()` still
+  keeps any `->` string when it trims a highlight after a model change. The typed Mermaid reader's quote join skips
+  `%%` comment lines but not the body of a multi-line `%%{ }%%` directive (valid JSON there has an even quote count).
+- **Size:** `lib/umlimator.js`, what a map host loads, is 194.6 kB (194,556 B) with `gzip -9`, 17.95% over 0.16.0's
+  164,954 B, up 900 B from 0.33.0, nearly all in #332 (the URL filter, the work cap and the new warnings) and #331.
+  `lib/umlimator-all.js` is 609.9 kB (609,925 B), up 1,858 B; the npm package is 880.2 kB (`npm pack --dry-run`). There
+  is no core size cap until 1.0.0 (the maintainer's decision of 15 Nov 2026): sizes are reported each release and a
+  budget is set at 1.0.0.
