@@ -391,7 +391,7 @@ function writeMermaidFlowchart(model, viewId) {
   const title = String(has(view.title) ? view.title : m.title ?? '');
   if (has(title)) out.push('---', `title: ${/^[\p{L}\p{N}][\p{L}\p{N} _.,()-]*$/u.test(title) && !title.endsWith(' ') ? title : JSON.stringify(title)}`, '---');
   if (has(view.id) && view.id !== MF_VIEW) { if (/[\r\n]/.test(view.id)) lose(view.id, "the view's id, which has a line break"); else out.push(`%% id: ${view.id}`); }
-  out.push(`flowchart ${view.direction === 'right' ? 'LR' : 'TD'}`);
+  out.push(`flowchart ${view.direction == null || view.direction === 'down' ? 'TD' : 'LR'}`); // the layout's rule: else drawn right
 
   const byId = new Map();
   for (const n of arr(m.nodes)) if (isObj(n) && !byId.has(n.id)) byId.set(n.id, n);
@@ -421,7 +421,11 @@ function writeMermaidFlowchart(model, viewId) {
   }
   // the flows, each with its id when the reader would derive another (it derives them in this order, after the nodes)
   const isNode = new Set(nodes.map(n => n.id)), used = new Set(isNode), next = new Map(), seen = new Set();
-  for (const e of arr(m.edges)) {
+  // the flows the view draws: its own list (ids, or flows written inline), else every flow (as fcIndex chooses them)
+  const byEdge = new Map();
+  for (const x of arr(m.edges)) if (isObj(x) && !byEdge.has(x.id)) byEdge.set(x.id, x);
+  const flows = Array.isArray(view.edges) ? view.edges.map(x => (typeof x === 'string' ? byEdge.get(x) : x)) : arr(m.edges);
+  for (const e of flows) {
     if (!isObj(e) || seen.has(e.id) || !(shown.has(e.from) || shown.has(e.to))) continue;
     seen.add(e.id);
     if (e.type !== 'flow.Flow' || !isNode.has(e.from) || !isNode.has(e.to) || !okId(e.id) || used.has(e.id)) { skip(e); continue; }
