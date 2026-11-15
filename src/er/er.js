@@ -2,7 +2,7 @@ import { registerDiagramType } from '../core/registry.js';
 import { esc, fit, textW } from '../core/text.js';
 import { SHAPE, boxOut, portsOn, r2 } from '../draw/shapes.js';
 import { ENDS } from '../typed/draw.js';
-import { layoutTyped } from '../typed/layout.js';
+import { layoutTyped, typedLines } from '../typed/layout.js';
 import { multBounds } from '../uml/class.js'; // SHAPE.note too, a comment's look
 
 /* ---------- the entity-relationship diagram, er (work package M2.2, notes/milestone-2.md §4, §7.1) ----------
@@ -227,8 +227,8 @@ function erProblems(model) {
         else if (erProps(r.c).primaryKey !== true && erProps(r.c).unique !== true) say('warning', 'fk-target', `${path}.props.references`, [c.id, r.c.id], `${me} references ${qc(r)}, which is neither a key nor unique`); }
       if (ER_HAS(p.references) && p.foreignKey !== true) say('warning', 'fk-flag', path, [c.id], `${me} references a column but is not marked FK`);
       if (p.foreignKey === true && !ER_HAS(p.references)) say('warning', 'fk-flag', path, [c.id], `${me} is a foreign key that references no column`); }); });
-  ER_ARR(model && model.edges).forEach((e, i) => { if (!ER_OBJ(e) || e.type !== 'er.Relationship') return;
-    const path = `edges[${i}]`, A = e.from, B = e.to, ent = id => (I.at.get(id) || {}).type === 'er.Entity';
+  typedLines(model, v => v.diagram === 'er').forEach(([e, path]) => { if (!ER_OBJ(e) || e.type !== 'er.Relationship') return;
+    const A = e.from, B = e.to, ent = id => (I.at.get(id) || {}).type === 'er.Entity';
     ['from', 'to'].forEach(w => { const t = erMult(e, w), b = erBounds(t);
       if (!b) say('error', 'relationship-ends', `${path}.props.ends.${w}.multiplicity`, [e.id], `the ${w} end of ${e.id} has ${ER_HAS(t) ? `multiplicity ${JSON.stringify(String(t))}, which is not readable` : 'no multiplicity'}`);
       else if (!erForm(b)) say('warning', 'relationship-ends', `${path}.props.ends.${w}.multiplicity`, [e.id], `the ${w} end of ${e.id} has multiplicity ${JSON.stringify(String(t))}, none of 1, 0..1, 1..* and 0..*: drawn as the nearest, with its text`); });

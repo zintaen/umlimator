@@ -1,7 +1,7 @@
 import { registerDiagramType } from '../core/registry.js';
 import { esc, fit } from '../core/text.js';
 import { SHAPE, r2 } from '../draw/shapes.js';
-import { layoutTyped } from '../typed/layout.js';
+import { layoutTyped, typedLines } from '../typed/layout.js';
 import './class.js'; // SHAPE.classifier and SHAPE.note
 import './structure.js'; // SHAPE.component
 import './usecase.js'; // SHAPE.actor
@@ -111,7 +111,7 @@ const IF_RULES = {
 function ifProblems(model) {
   const out = [], I = ifIndex(model), say = (rule, path, ids, msg) => out.push({ level: 'error', rule, path, ids: ids.filter(x => x != null), message: `${rule}: ${msg}` });
   const q = id => JSON.stringify(I.nm(id)), kind = id => (I.at.has(id) ? ifWord(I.at.get(id).type).toLowerCase() : 'nothing');
-  IF_ARR(model && model.edges).forEach((e, i) => { if (!IF_OBJ(e) || e.type !== 'uml.InformationFlow') return; const path = `edges[${i}]`, c = I.conveyed(e);
+  typedLines(model, v => v.diagram === 'uml.information-flow').forEach(([e, path]) => { if (!IF_OBJ(e) || e.type !== 'uml.InformationFlow') return; const c = I.conveyed(e);
     if (!c.length) say('conveyed-some', path, [e.id], `${e.id} conveys nothing: a flow conveys one element at least`);
     c.forEach((id, j) => { if (c.indexOf(id) < j) say('conveyed-once', `${path}.props.conveyed[${j}]`, [e.id, typeof id === 'string' ? id : null], `${e.id} conveys ${q(id)} twice: a flow conveys each element once`);
       else if (!I.at.has(id) || !IF_CONVEY.includes(I.at.get(id).type))
@@ -163,10 +163,11 @@ function ifRename(model, view, id, text) {
     return ids.length ? { ids: [...new Set(ids)] } : { error: 'A flow conveys one element at least' }; };
   const reads = [-1, ...[...t].flatMap((ch, k) => (ch === ':' ? [k] : []))].map(k => ({ name: k < 0 ? '' : t.slice(0, k).trim(), rest: (k < 0 ? t : t.slice(k + 1)).trim(), ...list(k < 0 ? t : t.slice(k + 1)) }));
   // the flow as it is: its name, and its elements as read or as drawn (names joined by ', ', which a name holding ', ' reads otherwise: audit 12)
+  // the drawn text is its elements whatever the name typed before it (audit 13), and that reading wins
   const now = I.conveyed(e), drawn = now.map(I.nm).join(', ');
   const same = r => r.name === (e.label ?? '') && (r.rest === drawn || r.ids && JSON.stringify(r.ids) === JSON.stringify(now));
   if (reads.some(same)) return [];
-  const r = reads.find(x => x.ids); if (!r) return { error: reads[reads.length > 1 ? 1 : 0].error };
+  const d = reads.find(x => x.rest === drawn), r = d ? { ...d, ids: now } : reads.find(x => x.ids); if (!r) return { error: reads[reads.length > 1 ? 1 : 0].error };
   return [...(JSON.stringify(r.ids) !== JSON.stringify(I.conveyed(e)) ? [{ op: 'set', id, path: 'props.conveyed', value: r.ids }] : []),
     ...(r.name !== (e.label ?? '') ? [{ op: 'set', id, path: 'label', value: r.name || undefined }] : [])];
 }

@@ -345,3 +345,11 @@ test('a transition between two nodes the writer leaves out is named under %% not
   const text = write(m);
   for (const id of ['in-out', 'retry']) assert.match(text, new RegExp(`%% not written: ${id} \\(uml\\.Transition\\)`));
 });
+
+// audit 13: a state's :::class on its own line, or before its description, is reported, never read as a note "::class"
+test('a :::class on a state statement is skipped and reported; a description after it is the state\'s', () => {
+  const { model, report } = read('stateDiagram-v2\n  Moving:::movement\n  Crash:::movement : it broke\n  Moving --> Crash\n');
+  assert.deepEqual(report.map(x => `${x.line} ${x.status}: ${x.message}`), ['2 skipped: Moving:::movement: a style class is not read', '3 skipped: Crash:::movement: a style class is not read']);
+  assert.deepEqual(model.nodes.filter(n => n.type === 'uml.Comment').map(n => n.label), ['it broke']);
+  assert.ok(model.nodes.some(n => n.id === 'Moving' && n.type === 'uml.State'));
+});

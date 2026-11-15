@@ -250,6 +250,9 @@ test('connect: a flow between two classifiers or actors asks what it conveys, it
   const named = apply(IF, T.edits.rename(IF, v, 'api-email', 'confirm: Order, Receipt'));
   assert.deepEqual(T.edits.rename(named, v, 'api-email', 'Order'), [{ op: 'set', id: 'api-email', path: 'props.conveyed', value: ['order-info'] }, { op: 'set', id: 'api-email', path: 'label', value: undefined }]);
   assert.deepEqual(T.edits.rename(IF, v, 'api-email', 'Order, Parcel'), { error: 'No information item or classifier is named Parcel' });
+  // audit 13: a name typed before the drawn text names the flow only, though an element is named as the drawn list
+  const both = apply(IF, [{ op: 'add', element: { id: 'or', type: 'uml.InformationItem', label: 'Order, Receipt' } }]);
+  assert.deepEqual(T.edits.rename(both, v, 'api-email', '«flow» confirm: Order, Receipt'), [{ op: 'set', id: 'api-email', path: 'label', value: 'confirm' }]);
   assert.deepEqual(T.edits.rename(IF, v, 'api-email', '«flow» '), { error: 'A flow conveys one element at least' });
   assert.equal(T.edits.rename(IF, v, 'shopper', 'Buyer'), null, 'an element: the default');
   assert.deepEqual(T.edits.rename(IF, v, 'api-email', 'Order, Order, Receipt'), [], 'each element once');

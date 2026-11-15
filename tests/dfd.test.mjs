@@ -339,3 +339,24 @@ test('audit 9: a listed line whose type is an Object.prototype name takes the da
     assert.deepEqual(layout(n, 'v').edges.find(e => e.id === 'order').end, { from: 'none', to: 'arrow' }, type);
   }
 });
+
+// audit 13: a line written inline in a view's edges (model.md) is checked like a model line, in dfd, er, flowchart and
+// information flow alike, its path views[i].edges[k]
+test('validate: an inline line in dfd, er, flowchart and information flow views is checked as a model line is', async () => {
+  for (const f of ['er/er.js', 'flowchart/flowchart.js', 'uml/information.js']) await import(`../src/${f}`);
+  const pk = id => ({ id: `${id}.id`, type: 'er.Column', label: 'id', props: { primaryKey: true } });
+  const cases = {
+    'uml.information-flow': [[{ id: 'a', type: 'uml.Actor', label: 'Shopper' }, { id: 'n', type: 'uml.InformationItem', label: 'Order' }],
+      { id: 'f', type: 'uml.InformationFlow', from: 'a', to: 'n', props: { conveyed: [] } }, ['conveyed-some', 'flow-ends']],
+    er: [[{ id: 'a', type: 'er.Entity', label: 'A', members: [pk('a')] }, { id: 'b', type: 'er.Entity', label: 'B', members: [pk('b')] }],
+      { id: 'r', type: 'er.Relationship', from: 'a', to: 'b', props: { ends: { from: { multiplicity: 'lots' }, to: { multiplicity: '0..*' } } } }, ['relationship-ends']],
+    dfd: [[{ id: 's', type: 'dfd.DataStore', label: 'S' }, { id: 'x', type: 'dfd.ExternalEntity', label: 'X' }], { id: 'f', type: 'dfd.DataFlow', from: 'x', to: 's' }, ['dfd-flow-process']],
+    flowchart: [[{ id: 's', type: 'flow.Terminator', label: 'Start' }, { id: 'c', type: 'uml.Comment', label: 'note' }], { id: 'f', type: 'flow.Flow', from: 's', to: 'c' }, ['flow-ends']],
+  };
+  for (const [diagram, [nodes, line, rules]] of Object.entries(cases)) {
+    const m = { schemaVersion: 2, nodes, edges: [], views: [{ id: 'v', diagram, title: 'T', nodeIds: nodes.map(n => n.id), edges: [line] }] };
+    const got = validate(m).filter(p => rules.includes(p.rule));
+    assert.deepEqual([...new Set(got.map(p => p.rule))].sort(), rules, diagram);
+    assert.ok(got.every(p => p.path.startsWith('views[0].edges[0]')), `${diagram}: ${got.map(p => p.path)}`);
+  }
+});
