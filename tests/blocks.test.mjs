@@ -338,3 +338,11 @@ test('audit 8: a type name names an element with no label by its id, as drawn: n
     edges: [], views: [{ id: 'v', diagram: 'sysml.block-definition', nodeIds: ['RangeEq', 'Plug', 'Wheel', 'Bike'] }] };
   assert.deepEqual(validate(m).filter(p => p.rule).map(p => p.rule).sort(), ['port-kind', 'value-type']);
 });
+
+test('audit 12: member-names judges a SysML classifier as a class: two parts named alike are an error, an overload by parameter types is not', () => {
+  const m = structuredClone(M17); by(m, 'ebike').members.push(P('ebike.battery-2', 'PartProperty', 'battery', { valueType: 'Battery' }));
+  by(m, 'controller').members.push({ id: 'controller.set2', type: 'uml.Operation', label: 'setAssistLevel', props: { parameters: [{ name: 'level', valueType: 'Real' }] } });
+  assert.deepEqual(T.validate(m, m.views[0]).filter(p => p.rule === 'member-names').map(p => [p.ids, p.message]),
+    [[['ebike', 'ebike.battery', 'ebike.battery-2'], 'member-names: "EBike" has two members named "battery" (ebike.battery, ebike.battery-2)']]);
+  assert.deepEqual(T.validate(M17, M17.views[0]).filter(p => p.rule === 'member-names'), []);
+});

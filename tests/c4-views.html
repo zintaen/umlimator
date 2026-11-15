@@ -146,7 +146,7 @@ try {
   click('.node[data-id="c4-worker-instance"] .c-name'); key('t'); await tick();
   check('T on an instance opens a picker of the containers', same(all('.um-pick button').map(b => b.textContent), cs));
   press(all('.um-pick button')[1]);
-  gives('picking Shop API: set its container', [{ op: 'set', id: 'c4-worker-instance', path: 'props.container', value: 'c4-api' }], m => m.nodes.find(n => n.id === 'c4-worker-instance').props.container === 'c4-api', m2);
+  gives('picking Shop API: set its container, and its label that was the old container\'s name', [{ op: 'set', id: 'c4-worker-instance', path: 'props.container', value: 'c4-api' }, { op: 'set', id: 'c4-worker-instance', path: 'label', value: 'Shop API' }], m => m.nodes.find(n => n.id === 'c4-worker-instance').props.container === 'c4-api', m2);
   // the properties: an instance's container, a deployment node's technology and description
   change(panel('[data-f="p:container"]'), 'c4-db');
   gives('the container field', [{ op: 'set', id: 'c4-worker-instance', path: 'props.container', value: 'c4-db' }], m => m.nodes.find(n => n.id === 'c4-worker-instance').props.container === 'c4-db', m2);

@@ -38,7 +38,7 @@ const off = (n, [x, y]) => {
   const inner = x > n.x + r && x < n.x + n.w - r && y > n.y + r && y < n.y + n.h - r;
   return inner ? Math.min(x - n.x, n.x + n.w - x, y - n.y, n.y + n.h - y) : Math.abs(Math.hypot(x - cx, y - cy) - r); };
 
-test('the definition: dfd is registered with its palette, its two lines, its number fields, its hooks and its six rules', () => {
+test('the definition: dfd is registered with its palette, its two lines, its number fields, its hooks and its seven rules', () => {
   assert.equal(T.name, 'dfd');
   assert.deepEqual(T.elements.map(e => [e.type, e.label]), [['dfd.Process', 'Process'], ['dfd.DataStore', 'Data store'], ['dfd.ExternalEntity', 'External entity'], ['uml.Comment', 'Comment']]);
   assert.equal(T.elements[0].opens, 'dfd', 'V on a process picks the dfd view it opens');
@@ -46,7 +46,7 @@ test('the definition: dfd is registered with its palette, its two lines, its num
   for (const t of ['dfd.Process', 'dfd.DataStore']) assert.deepEqual(T.props[t], [{ key: 'number', label: 'Number', kind: 'text' }], t);
   for (const k of ['layout', 'validate', 'describe', 'word', 'rows']) assert.equal(typeof T[k], 'function', k);
   assert.deepEqual(Object.keys(T.edits).sort(), ['add', 'key']);
-  assert.deepEqual(Object.keys(T.rules).sort(), ['dfd-balance', 'dfd-flow-label', 'dfd-flow-process', 'dfd-level', 'dfd-numbers', 'dfd-process-io']);
+  assert.deepEqual(Object.keys(T.rules).sort(), ['dfd-balance', 'dfd-flow-label', 'dfd-flow-process', 'dfd-level', 'dfd-notation', 'dfd-numbers', 'dfd-process-io']);
   assert.equal(T.unfolds, undefined, 'a level opens, never unfolds in place (§6.3)');
 });
 
@@ -160,6 +160,8 @@ const BREAKS = {
   'dfd-numbers': m => { m.nodes.find(n => n.id === 'dfd-total-order').props.number = '2.2'; return ['dfd-total-order', 'dfd-take-order']; },
   'dfd-balance': m => { m.edges = m.edges.filter(e => e.id !== 'dfd-l2-basket'); return ['dfd-take-order', 'dfd-basket']; },
   'dfd-level': m => { m.views[1].parent = null; return ['dfd-take-order']; },
+  // audit 12: an unknown notation is drawn as Yourdon, and said
+  'dfd-notation': m => { m.views.find(v => v.id === L1).notation = 'gane-and-sarson'; return [L1]; },
 };
 test('validators: 22-data-flow.json breaks no rule; each rule fails on a model that breaks it, naming its rule and its elements, at its level', () => {
   assert.deepEqual(T.validate(DF), []);

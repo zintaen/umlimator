@@ -326,7 +326,16 @@ test('the deployment view\'s hooks: the palette\'s instance picks its container 
   assert.deepEqual(DEP.edits.add(crm, { ...v, subject: 'c4-mail' }, { type: 'c4.ContainerInstance' }, ''), { error: 'The view\'s system has no container to deploy' });
   const t = DEP.edits.key(C4, v, ['c4-db-1'], 'T');
   assert.deepEqual(t.pick, r.pick);
-  assert.deepEqual(t.then(4), [{ op: 'set', id: 'c4-db-1', path: 'props.container', value: 'c4-queue' }]); assert.deepEqual(t.then(3), []);
+  // its label follows when it was the old container's name; one of its own is kept
+  assert.deepEqual(t.then(4), [{ op: 'set', id: 'c4-db-1', path: 'props.container', value: 'c4-queue' }, { op: 'set', id: 'c4-db-1', path: 'label', value: 'Order queue' }]); assert.deepEqual(t.then(3), []);
+  const own = apply(C4, [{ op: 'set', id: 'c4-db-1', path: 'label', value: 'Replica' }]);
+  assert.deepEqual(DEP.edits.key(own, v, ['c4-db-1'], 'T').then(4), [{ op: 'set', id: 'c4-db-1', path: 'props.container', value: 'c4-queue' }]);
+  // an instance is named as drawn, its container's name, on its lines and in describe() too (audit 12); F2 on it is refused
+  const sf = C4.nodes.find(n => n.type === 'c4.ContainerInstance' && C4.edges.some(e => e.from === n.id)), sv2 = apply(C4, [{ op: 'set', id: sf.id, path: 'props.container', value: 'c4-api' }, { op: 'set', id: sf.id, path: 'label', value: 'Replica' }]);
+  const lines = layout(sv2, PV).edges.filter(e => e.from === sf.id).map(e => e.aria);
+  assert.ok(lines.length && lines.every(a => a.startsWith('Relationship from Shop API to ')), lines.join('; '));
+  assert.ok(!/Replica/.test(describe(sv2, PV)));
+  assert.deepEqual(DEP.edits.rename(C4, v, sf.id, 'X'), { error: 'An instance is named as its container: T picks another container' });
   assert.equal(DEP.edits.key(C4, v, ['c4-docker'], 'T'), null); assert.equal(DEP.edits.key(C4, v, ['c4-docker'], 'D'), null);
   assert.deepEqual(DEP.owners(C4, C4.nodes.find(n => n.id === 'c4-api-1')).map(o => o.id), ['c4-device', 'c4-browser', 'c4-web-host', 'c4-docker', 'c4-db-host', 'c4-postgres']);
   // a deployment node: not itself nor a node inside it

@@ -424,3 +424,13 @@ test('audit 11: Alt + the arrow towards the root puts the topic after its old pa
     views: [{ id: 'v', diagram: 'mindmap', nodeIds: ['r', 'a', 'a1', 'a2', 'x', 'y'], present: { a: { side: 'right' } } }] };
   assert.deepEqual(kids(run(m, mmMoveTo(m, 'v', 'x', { by: [-1, 0] })), 'a'), ['a1', 'x', 'a2']);
 });
+
+test('audit 12: Delete then the outline\'s Show keeps a first-level topic\'s pinned side (core hide drops present: Delete sets it again)', () => {
+  const T = 'mindmap.Topic';
+  let m = { schemaVersion: 2, nodes: [{ id: 'r', type: T, label: 'Root' }, { id: 'a', type: T, label: 'A', parent: 'r' }, { id: 'b', type: T, label: 'B', parent: 'r' }, { id: 'c', type: T, label: 'C', parent: 'b' }], edges: [],
+    views: [{ id: 'v', diagram: 'mindmap', nodeIds: ['r', 'a', 'b', 'c'], present: { a: { side: 'right' }, b: { side: 'right' } } }] };
+  assert.equal(mmRun(m, m.views[0]).byId.b.side, 'right');
+  m = apply(m, mmRemove(m, 'v', ['b'], false).commands); assert.deepEqual(m.views[0].nodeIds, ['r', 'a']); assert.deepEqual(mmProblems(m, m.views[0]), []);
+  m = apply(m, mmShow(m, 'v', 'b').commands);
+  assert.equal(mmRun(m, m.views[0]).byId.b.side, 'right');
+});
