@@ -125,7 +125,7 @@ export function diff(before, after) {
   const cards = [...out.nodes, ...views.flatMap(v => arr(v && v.nodes))].filter(Boolean);
   const named = new Map([...views.flatMap(v => arr(v && v.containers)), ...cards, ...[...lost.values()].map(([y]) => y), ...[...lost.values()].map(([, , u]) => (have.get(u) || [])[0])].filter(Boolean).map(n => [n.id, n]));
   const name = id => String((named.get(id) || {}).label || id), cardHow = new Map([...cards.filter(n => how.has(n)).map(n => [n.id, how.get(n)]), ...[...lost.keys()].map(id => [id, 'removed'])]);
-  const lines = [...out.edges, ...views.flatMap(v => arr(v && v.edges).filter(e => e && typeof e === 'object'))];
+  const lines = [...new Set([...out.edges, ...views.flatMap(v => arr(v && v.edges).filter(e => e && typeof e === 'object'))])]; // a view that dropped its list holds the model's lines themselves
   const diffKeys = ([o, x]) => [...new Set([...Object.keys(o), ...Object.keys(x)])].filter(k => canon(o[k]) !== canon(x[k]));
   views.forEach(v => { if (v && !V0.has(v.id)) said.push(`adds the view ${v.title || v.id}`); });
   arr(A.views).forEach(o => { if (o && !V1.has(o.id)) said.push(`removes the view ${o.title || o.id}`); });

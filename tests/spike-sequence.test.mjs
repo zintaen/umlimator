@@ -71,8 +71,9 @@ test('P7: a type\'s refs: deleting a call takes its replies (cascade), and refer
   const m = run({ op: 'delete', id: 'm4' });
   assert.deepEqual(ids(V(m).edges), ['m1', 'm2', 'm3', 'm6', 'm7', 'f3', 'm9', 'm10']);
   assert.deepEqual(errors(m), []);
-  // hide keeps what props name: the model keeps the element
-  assert.deepEqual(run({ op: 'hide', id: 'receipt', view: 'checkout-sequence' }).views[0].edges.find(e => e.id === 'f3').props.covers, ['lifeline-api', 'lifeline-payments', 'receipt']);
+  // hide keeps the element in the model; an interaction use's covers names lifelines of its view, so the hidden one leaves it (audit 14)
+  const h = run({ op: 'hide', id: 'receipt', view: 'checkout-sequence' });
+  assert.deepEqual([h.views[0].edges.find(e => e.id === 'f3').props.covers, h.nodes.some(n => n.id === 'receipt')], [['lifeline-api', 'lifeline-payments'], true]);
 });
 
 test('P8: unwrapping a fragment re-homes what it held into the fragment\'s own operand, not to the top', () => {
