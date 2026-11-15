@@ -537,3 +537,16 @@ test('a class named like a statement keyword is written in backticks, so its rel
     assert.deepEqual(read(write(m, 'v')).model.edges.map(e => [e.from, e.to]), [[k, 'Order']], k);
   }
 });
+
+test('a stereotype ending in > or with a space at an end, an id or a type with a space at an end, is said, not changed (audit 11)', () => {
+  const m = read('classDiagram\nclass A {\n  +x : int\n  +f(a : int) int\n}\nclass B\nA --> B').model;
+  const a = m.nodes.find(n => n.id === 'A');
+  a.props = { stereotypes: ['a>', ' b', 'ok'] };
+  m.edges[0].id = 'A-B ';
+  a.members[0].id = 'A.x ';
+  a.members[1].props.returnType = ' int';
+  const text = write(m);
+  assert.deepEqual(notWritten(text), ['%% not written: A: stereotype a>', '%% not written: A: stereotype  b', '%% not written: A.x  (uml.Property)',
+    '%% not written: A.f: type  int, read back trimmed', '%% not written: A-B  (uml.Association)']);
+  assert.deepEqual(read(text).model.nodes.find(n => n.id === 'A').props.stereotypes, ['ok']);
+});

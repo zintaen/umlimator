@@ -664,17 +664,18 @@ def text(s):
     return re.sub(r"#(quot|lt|gt|amp|\d{1,6});", lambda e: ENTITY.get(e[1]) or chr(min(int(e[1]), 0x10FFFF)), s)
 
 
-def fnode(s, i):
-    """A node at i: (id, label, shape, end), or None."""
+def fnode(s, i, find=None):
+    """A node at i: (id, label, shape, end), or None; find(c, frm) is s.find with the statement's misses remembered."""
+    find = find or s.find
     n = NODE.match(s, i)
     if not n:
         return None
     nid, i = n.group(1), n.end()
     for o, _ in SHAPES:
         if s.startswith(o, i):
-            j = s.find('"', i + len(o) + 1) + 1 if s.startswith('"', i + len(o)) else i + len(o)
+            j = find('"', i + len(o) + 1) + 1 if s.startswith('"', i + len(o)) else i + len(o)
             # of the closers this opener takes ([/ takes /] and \]), the nearest: [/a\] --> B[\b/] is two trapezoids
-            k, c = min(((k, c) for p, c in SHAPES if p == o and (k := s.find(c, j)) > 0), default=(-1, ""))
+            k, c = min(((k, c) for p, c in SHAPES if p == o and (k := find(c, j)) > 0), default=(-1, ""))
             if j and k > 0:  # j is 0 when a quote opens and never closes: find no ] behind it
                 i, label, shape = k + len(c), text(s[i + len(o):k]), o
                 break
@@ -686,10 +687,19 @@ def fnode(s, i):
 
 def statement(s):
     """Node groups (a & b) joined by links, or None."""
-    groups, links, i = [], [], 0
+    groups, links, i, miss = [], [], 0, {}
+
+    def find(c, frm):  # a closer missing from frm on is missing from any later frm: each node does not rescan the line (as mfStatement)
+        if frm >= miss.get(c, len(s) + 1):
+            return -1
+        k = s.find(c, frm)
+        if k < 0:
+            miss[c] = frm
+        return k
+
     while True:
         grp = []
-        while (n := fnode(s, i)):
+        while (n := fnode(s, i, find)):
             grp.append(n[:3])
             i = n[3]
             amp = re.compile(r"\s*&").match(s, i)

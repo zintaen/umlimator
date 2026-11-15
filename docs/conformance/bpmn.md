@@ -108,7 +108,7 @@ by `tests/import.py` and `tests/bpmn-xml.test.mjs`.
 | The legend | No: the legend is a piece of the page | No | Yes, under the picture | None |
 | Text | Text, in the page's font family; not embedded unless `fontCSS` is given | Pixels | Selectable text | Names and documentation |
 | Accessible names | Each node's `aria-label` kept; the lines' `<title>` removed | None | None | None |
-| Tables | None | None | "Elements": each element's word (Service task, Timer boundary event, Exclusive gateway, Pool) and its rows (its lane or pool, the activity a boundary event is on, its documentation). Lanes are in their pool's row. "Lines": each flow's ends, name (with its documentation) and kind (Sequence flow, Message flow, Association, Data association) | None |
+| Tables | None | None | "Elements": each element's word (Service task, Timer boundary event, Exclusive gateway, Pool) and its rows (its lane or pool, the activity a boundary event is on, its documentation). Lanes are in their pool's row, after its documentation, each with its own. "Lines": each flow's ends, name (with its documentation) and kind (Sequence flow, Message flow, Association, Data association) | None |
 | Label bounds | | | | Not written |
 | Under `ext.bpmn` | | | | Not written back: what the reader skipped, and the conditions, defaults, task kinds and timer values it weakened; the export says so on stderr, one line each |
 | An id that is not an XML name | | | | Escaped (`_` and the code points), the model's id in `umlimator:id` |

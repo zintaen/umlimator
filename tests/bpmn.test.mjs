@@ -136,7 +136,7 @@ test('names, reading order, describe(), the legend, the PDF\'s words and rows', 
   const doc = apply(EX, { op: 'set', id: 'bp-take-payment', path: 'props.documentation', value: 'Charged once.' });
   assert.ok(describe(doc, VID).includes('Service task Take payment, in Sales (Charged once.); then'), 'documentation printed (S2, 2.2.6)');
   assert.deepEqual([T.word(EX, 'paid'), T.word(EX, 'payment-timeout'), T.word(EX, 'bp-f-paid'), T.rows(doc, V(doc), 'bp-take-payment'), T.rows(EX, V(EX), 'payment-timeout'), T.rows(EX, V(EX), 'note-card'), T.rows(EX, V(EX), 'bp-bookshop'), T.rows(EX, V(EX), 'bp-sales')],
-    ['Exclusive gateway', 'Timer boundary event', null, ['in Sales', 'Charged once.'], ['on Take payment'], ['in Sales'], null, ['in Bookshop']], 'a pool is in nothing');
+    ['Exclusive gateway', 'Timer boundary event', null, ['in Sales', 'Charged once.'], ['on Take payment'], ['in Sales'], ['Sales', 'Warehouse'], ['in Bookshop']], 'a pool is in nothing; its row lists its lanes');
   // audit 10: a line's and a group's documentation, in describe() and the PDF's lines table
   const ld = apply(EX, [{ op: 'set', id: 'bp-f-paid', path: 'props.documentation', value: 'Card accepted.' }, { op: 'set', id: 'dispatch', path: 'props.documentation', value: 'Same day.' }]);
   assert.match(describe(ld, VID), /\(yes\) \(Card accepted\.\)/);
@@ -540,4 +540,25 @@ test('audit 7: a flow named for an Object.prototype key, or a pool named __proto
     views: [{ id: 'v', diagram: 'bpmn', nodeIds: ['pool', 'start', 'ship', 'end'] }] };
   for (const x of [m, JSON.parse(JSON.stringify(m).replaceAll('"toString"', '"constructor"').replaceAll('"pool"', '"__proto__"'))]) {
     const g = layout(x, 'v'); assert.deepEqual(g.nodes.map(n => n.id).sort(), x.nodes.map(n => n.id).sort()); assert.ok(svgOf(g, {}).length); }
+});
+
+test('audit 11: a documented pool keeps its lanes in its PDF row, and a lane\'s documentation is printed there', () => {
+  const m = apply(EX, [{ op: 'set', id: 'bp-bookshop', path: 'props.documentation', value: 'The shop itself' }, { op: 'set', id: 'bp-sales', path: 'props.documentation', value: 'Takes orders' }]);
+  assert.deepEqual(T.rows(m, V(m), 'bp-bookshop'), ['The shop itself', 'Sales — Takes orders', 'Warehouse']);
+});
+
+test('audit 11: Delete of a lane with a model line, on a view with no edges list, deletes the lane and skips the line (apply() refuses its hide)', () => {
+  assert.ok(!Array.isArray(V(EX).edges));
+  const r = bzRemove(EX, V(EX), ['bp-sales', 'f-basket'], false);
+  assert.ok(!r.commands.some(c => c.id === 'f-basket'), 'the line is not hidden');
+  assert.match(r.say, /Shift \+ Delete deletes the line/);
+  const m = apply(EX, r.commands);
+  assert.ok(!JSON.stringify(m.nodes).includes('"bp-sales"') && m.edges.some(e => e.id === 'f-basket'));
+});
+
+test('audit 11: a boundary event\'s side named for an Object.prototype key is no pin: the event stays on its activity\'s bottom border', () => {
+  const at = side => { const m = structuredClone(EX); if (side) V(m).present = { ...V(m).present, 'payment-timeout': { side } };
+    const g = layout(m, VID), c = g.byId['payment-timeout'], h = g.byId['bp-take-payment']; return [c.x + c.w / 2 - h.x, c.y + c.h / 2 - h.y]; };
+  const plain = at();
+  for (const side of ['toString', 'constructor', '__proto__', 'valueOf']) assert.deepEqual(at(side), plain, side);
 });

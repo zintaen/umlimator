@@ -30,7 +30,7 @@ Rules, each `validate()` problem naming its `rule` and its elements (`notes/stag
 a member of a component or a class), `provided-ends`, `delegation-ends` (as built: the outer end a port),
 `assembly-ends`, `manifest-ends` (from an artifact; to anything but a component, a warning),
 `component-realization-ends` (errors); `required-ends`, `ball-interface`, `component-owner`, `line-inside` (a line other
-than a connector between a box and something it holds, with no port at the box's end, is not drawn) (warnings).
+than a connector between a box and something it holds, with no port at the box's end, is not drawn), `own-boxes` (the view draws its own boxes: its hand-written containers are ignored) (warnings).
 
 **Departures from UML 2.5.1:**
 
