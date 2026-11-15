@@ -55,7 +55,7 @@ test('the definition: uml.state-machine with its palette (kinds and name: false)
   for (const k of ['layout', 'validate', 'describe', 'boxes', 'owners']) assert.equal(typeof T[k], 'function', k);
   assert.deepEqual(Object.keys(T.edits).sort(), ['add', 'moveTo', 'remove', 'rename']);
   assert.deepEqual(['uml.State', 'uml.Pseudostate', 'uml.FinalState'].map(t => T.member.holds({ type: t })), [true, false, false]);
-  assert.equal(Object.keys(T.rules).length, 17);
+  assert.equal(Object.keys(T.rules).length, 18);
 });
 
 test('the shapes: junction, history and terminate; a state\'s compartment, its rows cut by present.rows, hidden by collapsed, and the indicator', () => {
@@ -193,11 +193,12 @@ const BREAKS = {
   'reserved-trigger': m => { node(m, 'placed').members[0].props.trigger = 'entry'; return ['placed', 'placed.address']; },
   'region-mixed': m => { m.nodes.push({ id: 'loose', type: 'uml.State', label: 'Loose', parent: 'fulfilling' }); return ['fulfilling', 'loose']; },
   'region-cross': m => { m.edges.push(tr('bad', 'picking', 'capturing')); return ['bad', 'fulfilling.parcel', 'fulfilling.payment']; },
+  'composite-inner': m => { m.edges.push(tr('bad', 'fulfilling', 'picking')); return ['bad', 'fulfilling', 'picking']; },
   'internal-trigger': m => { delete node(m, 'placed').members[0].props.trigger; return ['placed', 'placed.address']; },
   'pseudo-kind': m => { node(m, 'erased').props.kind = 'stop'; return ['erased']; },
   'label-syntax': m => { m.edges.find(e => e.id === 't-picked').props.trigger = 'all [books'; return ['t-picked']; },
 };
-const WARNS = ['choice-guards', 'composite-entry', 'region-mixed', 'region-cross', 'internal-trigger', 'pseudo-kind', 'label-syntax'];
+const WARNS = ['choice-guards', 'composite-entry', 'region-mixed', 'region-cross', 'composite-inner', 'internal-trigger', 'pseudo-kind', 'label-syntax'];
 test('validators: order-states.json (example 10) breaks no rule; each rule fails on a model that breaks it, naming its rule and its elements, at its level', () => {
   assert.deepEqual(T.validate(SM), []);
   assert.deepEqual(Object.keys(BREAKS).sort(), Object.keys(T.rules).sort());
@@ -221,6 +222,9 @@ test('validators: order-states.json (example 10) breaks no rule; each rule fails
   assert.deepEqual(T.validate(guard).map(p => [p.rule, p.level]), [['fork-join', 'error']]);
   const elses = structuredClone(SM); elses.edges.find(e => e.id === 't-prepaid').props.guard = 'else';
   assert.deepEqual(T.validate(elses).map(p => [p.rule, p.level]), [['choice-guards', 'warning']]);
+  // a local transition (composite to a state it holds) is not drawn, so geo.order and describe() leave it out too (audit 7)
+  const inner = structuredClone(SM); BREAKS['composite-inner'](inner);
+  assert.ok(!layout(inner, 'order-life').order.includes('bad')); assert.doesNotMatch(describe(inner, 'order-life'), /Fulfilling to Picking/);
   // a state with id "null": its history and one at the top are two owners, not one
   const top = structuredClone(SM); top.nodes.push({ id: 'null', type: 'uml.State', label: 'N' }, { id: 'hn', type: 'uml.Pseudostate', parent: 'null', props: { kind: 'shallowHistory' } }, { id: 'ht', type: 'uml.Pseudostate', props: { kind: 'shallowHistory' } });
   assert.deepEqual(T.validate(top).map(p => p.rule), ['history-owner']);

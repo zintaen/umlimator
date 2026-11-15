@@ -188,12 +188,16 @@ def split_lines(text):
 
 def mermaid_lines(text):
     """Each line of Mermaid text as (number from 1, stripped), a %% comment and a %%{ ... }%% directive, on one line or
-    several, blank."""
-    directive = False
+    several, blank; of an accDescr { ... } over several lines, only its first line is kept."""
+    directive = acc = False
     for no, l in enumerate(split_lines(text), 1):
         s = l.strip()
-        if directive:
+        if acc:
+            acc, s = "}" not in s, ""
+        elif directive:
             directive, s = "}%%" not in s, ""
+        elif re.match(r"accDescr\s*\{", s):
+            acc = "}" not in s
         elif s.startswith("%%"):
             directive, s = s[2:].strip().startswith("{") and "}%%" not in s, ""
         yield no, s
@@ -666,10 +670,11 @@ def fnode(s, i):
     if not n:
         return None
     nid, i = n.group(1), n.end()
-    for o, c in SHAPES:
+    for o, _ in SHAPES:
         if s.startswith(o, i):
             j = s.find('"', i + len(o) + 1) + 1 if s.startswith('"', i + len(o)) else i + len(o)
-            k = s.find(c, j)
+            # of the closers this opener takes ([/ takes /] and \]), the nearest: [/a\] --> B[\b/] is two trapezoids
+            k, c = min(((k, c) for p, c in SHAPES if p == o and (k := s.find(c, j)) > 0), default=(-1, ""))
             if j and k > 0:  # j is 0 when a quote opens and never closes: find no ] behind it
                 i, label, shape = k + len(c), text(s[i + len(o):k]), o
                 break
@@ -704,22 +709,29 @@ def statement(s):
 
 
 def flowchart(lines, m):
-    nodes, subs, boxes, claimed, links = {}, [], [], {}, []
+    nodes, subs, boxes, claimed, links, nsub = {}, [], [], {}, [], 0
+    lines = list(lines)
+    for k, (no, line) in enumerate(lines):  # a quoted label over several lines (Mermaid's lexer allows it) is one line
+        if line.count('"') % 2:  # its close is the next line with an odd count of quotes; none: left as it is
+            if (j := next((j for j in range(k + 1, len(lines)) if lines[j][1].count('"') % 2), None)) is not None:
+                lines[k:j + 1] = [(no, "\n".join(x for _, x in lines[k:j + 1]))] + [(n, "") for n, _ in lines[k + 1:j + 1]]
     for no, line in lines:
         # statements: split at each ; outside quotes and entity codes (#35;), in one scan (a lookahead per ; rescanned the line); no \s* beside the label (R2)
         for s in (x.strip() for x in re.findall(r'(?:"[^"]*"?|#[0-9A-Za-z_]+;|[^;"])*', line)):
-            g = re.match(r'subgraph\s+(?:([^\s\["]+)\s*\[([^\]]*)\]|"(.+)"|(\S+)$|(.+))', s)
+            g = re.match(r'subgraph(?:\s+(?:([^\s\["]+)\s*\[([^\]]*)\]|"(.+)"|(\S+)$|(.+))|$)', s)
             if g:
-                label = text(g.group(2) or g.group(3) or g.group(4) or g.group(5))
-                subs.append({"id": ident(g.group(1) or g.group(4) or label), "label": clip(label, 40), "seen": [], "line": no,
+                label, nsub = text(g.group(2) or g.group(3) or g.group(4) or g.group(5)), nsub + 1
+                subs.append({"id": ident(g.group(1) or g.group(4) or label) if g.group(0) != "subgraph" else f"subGraph{nsub - 1}", "label": clip(label, 40), "seen": [], "line": no,
                              "parent": subs[-1]["id"] if subs else None})
             elif s == "end" and not subs:
                 m.say(no, "an end that closes no subgraph")
             elif s == "end":
                 sg = subs.pop()
                 boxes.append({k: sg[k] for k in ("id", "label", "parent", "line")} | {"nodeIds": [n for n in dict.fromkeys(sg["seen"]) if claimed.setdefault(n, sg["id"]) == sg["id"]]})
-            elif not s or FLOW_QUIET.match(s):
+            elif not s:
                 pass
+            elif q := FLOW_QUIET.match(s):
+                m.say(no, f"{q[1]}: accessibility text is not imported" if q[1].startswith("acc") else f"not imported: {clip(s, 80)}")
             elif p := statement(s):
                 groups, joins = p
                 for nid, label, shape in (n for grp in groups for n in grp):
@@ -748,8 +760,9 @@ def flowchart(lines, m):
     ids = m.view("flowchart", list(m.nodes), boxes)
     for a, b, lk, no in links:
         arrow = lk["plain"] or lk["open"] + lk["close"]
-        if arrow.startswith("~"):
-            continue  # an invisible link only spaces Mermaid's layout
+        if arrow.startswith("~"):  # an invisible link only spaces Mermaid's layout
+            m.say(no, f"{a} ~~~ {b}: an invisible link is not imported")
+            continue
         if bad := [x for x in (a, b) if x not in m.nodes and x not in ids]:
             m.say(no, f"{a} -> {b}: {bad[0]} is a subgraph that is not drawn")
             continue

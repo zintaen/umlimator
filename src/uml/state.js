@@ -132,11 +132,13 @@ function stNodeName(x, pic, I, open) {
   if (!subs && !rs) return [`State ${stName(x)}${why}`, ...parts].join(', ');
   return [`Composite state ${stName(x)}${why}`, ...parts, rs ? stPlural(rs, 'region') : stPlural(subs, 'state'), ...(open ? [] : ['closed'])].join(', ');
 }
-// the lines drawn: those the view lists, or with no list the model's of this type's kinds, between two elements it shows
+// the lines drawn: those the view lists, or with no list the model's of this type's kinds, between two elements it shows; a
+// line between an open composite state and a state it holds is left out (composite-inner: the router refuses it)
 function stLines(model, view, pic) {
   const E = new Map(); ST_ARR(model && model.edges).forEach(e => { if (ST_OBJ(e) && typeof e.id === 'string' && !E.has(e.id)) E.set(e.id, e); });
   const shown = new Set(pic.ids), list = Array.isArray(view.edges) ? [...new Set(view.edges.map(x => (typeof x === 'string' ? E.get(x) : x)))] : [...E.values()];
-  return list.filter(e => ST_OBJ(e) && typeof e.id === 'string' && ST_LINES.includes(e.type) && shown.has(e.from) && shown.has(e.to));
+  return list.filter(e => ST_OBJ(e) && typeof e.id === 'string' && ST_LINES.includes(e.type) && shown.has(e.from) && shown.has(e.to)
+    && ![[e.from, e.to], [e.to, e.from]].some(([b, x]) => b !== x && pic.open.has(b) && pic.chain(x).includes(b)));
 }
 const stLineLabel = e => (e.type === 'uml.Transition' ? [...stStereo(e).map(t => `«${t}»`), stPartsText(e)].filter(ST_HAS).join(' ') : stStereo(e).map(t => `«${t}»`).join(' '));
 // "Transition from Capturing payment to itself: capture failed [attempts < 3] / count the attempt"
@@ -234,6 +236,7 @@ const ST_RULES = {
   'reserved-trigger': 'no internal transition\'s trigger is entry, do or exit',
   'region-mixed': 'a state does not hold both regions and direct substates',
   'region-cross': 'no transition joins the contents of two regions of one state',
+  'composite-inner': 'a transition between a composite state and a state it holds (a local transition) is not drawn',
   'internal-trigger': 'an internal transition has a trigger',
   'pseudo-kind': 'a pseudostate\'s kind is one of initial, choice, junction, fork, join, shallowHistory, deepHistory, terminate',
   'label-syntax': 'a transition\'s trigger, guard and effect print as text that reads back as them',
@@ -306,6 +309,7 @@ function stProblems(model) {
       if (none.length) say('warning', 'composite-entry', path, [e.id, e.to, ...(rs.length ? none : [])], `${e.id} ends on ${q(e.to)}'s border, and ${rs.length ? `${none.map(q).join(', ')} ${none.length === 1 ? 'has' : 'have'}` : 'it has'} no initial pseudostate`); }
     // between two regions of one state
     const a = new Map(ups(e.from).filter(([, r]) => r)), b = new Map(ups(e.to).filter(([, r]) => r)), s = [...a.keys()].find(k => b.has(k) && a.get(k) !== b.get(k));
+    if (e.from !== e.to && (stWithin(I, e.from, e.to) || stWithin(I, e.to, e.from))) say('warning', 'composite-inner', path, [e.id, e.from, e.to], `${e.id} joins ${q(e.from)} and ${q(e.to)}, which one holds: it is not drawn`);
     if (s != null) say('warning', 'region-cross', path, [e.id, a.get(s), b.get(s)], `${e.id} joins ${q(e.from)} in ${q(a.get(s))} and ${q(e.to)} in ${q(b.get(s))}, two regions of ${q(s)}`);
   });
   return out;
