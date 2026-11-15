@@ -713,11 +713,15 @@ Where `src/uml/state.js` departs from §6, §10 and §17:
 - **A self-transition on an open composite** is not drawn (the layout routes loops on nodes only); it is in the model, the
   panel and `describe()`.
 - **The Owner field** lists every state and region by its names from the top, joined by " / " ("Fulfilling / Parcel"),
-  but the element itself and what lies under it, through its regions too (the host's filter stops at a region, a member).
+  but the element itself and what lies under it, through its regions too (the host's filter stops at a region, a member),
+  and a state with regions, whose regions are listed instead, unless the element is already directly in it (audit 14).
+  A drop or an add that would put a vertex directly in a state with regions is refused (`region-mixed`, by `stGuard`),
+  and a Region added to a state that holds substates directly takes them into a first region with the new one beside it.
 - **Deleting a region** from the model (Shift + Delete on its box, the member list's ✕) goes through an `edits.remove`
   hook, which deletes it as the default would and says on the hint line how many elements it held.
 - **A state with both regions and direct substates** (the warning `region-mixed`) draws the direct ones in its box beside
-  the regions, with no divider before them, not in §3's implicit region before the others.
+  the regions, with no divider before them, not in §3's implicit region before the others: its regions are not stretched
+  across the state when that would put a direct substate inside one (audit 14).
 - **10-state-machine.json** lays out with no overlap and no line through a node, right and down; port repair off leaves two
   crossings laid out right and five laid out down, pinned in `tests/state.test.mjs`.
 - **P1.** On 50 states and 60 transitions with composites three deep (two regions at each level), wired as a machine is

@@ -81,7 +81,7 @@ test('the definition: bpmn with row 24\'s palette, its lines, properties, refs, 
 
 test('example 24 validates clean and lays out clean right and down: bands, every node in its own, no line through a node, no sequence flow outside its pool', () => {
   assert.deepEqual(validate(EX), []);
-  for (const [d, pinned] of [['right', 5], ['down', 6]]) {
+  for (const [d, pinned] of [['right', 4], ['down', 6]]) { // right 5 before audit 14's request/reply swap
     const r = clean(dir(EX, d), VID), g = r.g;
     assert.deepEqual([r.bad, r.others], [[], []], d);
     console.log(`# example 24, ${d}: ${g.nodes.length} nodes, ${g.edges.length} lines, ${r.crossings.length} crossings`);

@@ -47,7 +47,7 @@ Layout limits, measured on `examples/shopping-use-cases.json` and `tests/usecase
 - The four stage 4 types lay out with port repair off (`repair: false`, `reroute: false`, `notes/stage-4.md` §17), so
   two lines that cross next to a shared side keep their ports. `tests/stage4-fixtures.test.mjs` pins what is left: one
   crossing in the `edge-cases` view either way; in the `all` view (50 elements, 60 lines) two crossings laid out right
-  and four down, and, laid out right, an include and an extend between one pair of use cases that share a line.
+  and four down.
 - A line from an actor to a use case far down the subject may run round the subject's box (the payment provider's
   association in the example): a long route, not a crossing.
 

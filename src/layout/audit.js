@@ -113,12 +113,12 @@ function overlapIssues(geo, where, refs) {
   return issues;
 }
 // a typed view's line through a card it does not join, its owner, its ports or a box round one of its ends (a map's 12 px
-// clearance in routeAudit covers maps; a communication diagram's message rows sit on their link and a timing view's marks on its lanes by design; kept out of routeAudit, which the layouts also score with, so no picture changes)
+// clearance in routeAudit covers maps; a communication diagram's message rows sit on their own link (another link's are said, audit 14) and a timing view's marks on its lanes by design; kept out of routeAudit, which the layouts also score with, so no picture changes)
 function throughIssues(geo, where, refs) {
   const issues = [], say = teller(issues, refs); if (geo.map) return issues;
   const inside = (a, b) => a.x >= b.x - 1 && a.y >= b.y - 1 && a.x + a.w <= b.x + b.w + 1 && a.y + a.h <= b.y + b.h + 1;
   geo.edges.forEach(e => { const ends = [e.s, e.t].filter(Boolean), P = e.pts || [];
-    geo.nodes.forEach(n => { if (n.holder || n.shape === 'message-row' || /^tm-/.test(n.shape) || ends.some(m => m === n || n.owner === m.id || m.owner === n.id || inside(m, n) || inside(n, m))) return;
+    geo.nodes.forEach(n => { if (n.holder || n.shape === 'message-row' && (e.stack || []).includes(n.id) || /^tm-/.test(n.shape) || ends.some(m => m === n || n.owner === m.id || m.owner === n.id || inside(m, n) || inside(n, m))) return;
       if (P.some((a, k) => k && Math.max(a[0], P[k - 1][0]) > n.x + 1 && Math.min(a[0], P[k - 1][0]) < n.x + n.w - 1 && Math.max(a[1], P[k - 1][1]) > n.y + 1 && Math.min(a[1], P[k - 1][1]) < n.y + n.h - 1))
         say(`${where}: edge ${name(e)} passes through card "${nm(n)}"`, e, n); }); });
   return issues;

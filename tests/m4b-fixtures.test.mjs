@@ -69,7 +69,7 @@ const PINNED = {
   'bpmn-minimal': { v: { right: [0, 0, 0], down: [0, 0, 0] } },
   'bpmn-stress': { 'edge-cases': { right: [12, 0, 0], down: [12, 0, 0] }, 'ec-closed': { right: [13, 0, 0], down: [14, 0, 0] }, 'ec-inside': { right: [0, 0, 0], down: [0, 0, 0] },
     all: { right: [30, 0, 0], down: [29, 0, 0] } },
-  example: { 'order-to-shipment': { right: [5, 0, 0], down: [6, 0, 0] }, 'pick-and-pack': { right: [0, 0, 0], down: [0, 0, 0] } },
+  example: { 'order-to-shipment': { right: [4, 0, 0], down: [6, 0, 0] }, 'pick-and-pack': { right: [0, 0, 0], down: [0, 0, 0] } },
 };
 
 test('every view of the two fixtures and the example, right and down: no overlap, no line through a node, no end off its node, no sequence flow outside its pool, boundary circles on borders, check()\'s findings only as pinned', () => {

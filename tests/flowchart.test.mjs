@@ -286,3 +286,9 @@ test('audit 3: a node with no label is named by the id it draws, in its accessib
   assert.equal(g.edges.find(e => e.id === 'f1').aria, 'Flow from Start to check-stock');
   assert.match(describe(m, 'v'), /Flow from check-stock to Done/);
 });
+
+test('a decision\'s exit to a wait that loops back, laid out right, does not cross itself (audit 14)', () => {
+  const m = one([N('s', 'Terminator', 'Start'), N('d', 'Decision', 'In stock?'), N('w', 'Delay', 'Wait'), N('e', 'Terminator', 'Done')],
+    [F('f1', 's', 'd'), F('f3', 'd', 'e', 'yes'), F('f4', 'd', 'w', 'no'), F('f5', 'w', 'd')]);
+  for (const d of ['right', 'down']) assert.deepEqual(check(withDir(m, d), 'v').map(p => p.message), [], d);
+});
