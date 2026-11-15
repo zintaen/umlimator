@@ -27,8 +27,10 @@ if sys.argv[1:2] == ["--cli"]:
     sys.path.insert(0, str(ROOT))
     import umlimator as u
     for s in stand_ins.split(","):
-        if s == "no-chrome":
+        if s == "no-chrome":  # none for the CLI, and none for the engine's layout check
             u.CHROMES[:] = ["/nonexistent/chrome"]
+            vc = u.visual_cmd
+            u.visual_cmd = lambda *x: [c.replace("v.main()", "v.CHROME_CANDIDATES = []; v.main()") for c in vc(*x)]
         elif s.startswith("chrome="):
             u.CHROMES.insert(0, s[7:])
         elif s.startswith("timeout="):
@@ -270,6 +272,17 @@ with tempfile.TemporaryDirectory() as tmp:
     ok("diff-base-run#2,#3 · without Chrome the pictures are left out and said, stdout is the JSON, and the summary is written",
        r.returncode == 0 and said(r) is not None and "_No picture of plain: needs Google Chrome or Chromium" in summary
        and all(x.get("stillsFailed") for x in said(r) or [] if "error" not in x), r.stdout + r.stderr + summary)
+    (g / "a" / "b-c.json").write_text((g / "a" / "b-c.json").read_text(encoding="utf-8").replace('"views"', '"view"'), encoding="utf-8")
+    (g / "docs" / "new.json").write_text(json.dumps(ODD), encoding="utf-8")  # not added to git
+    r = cli("diff", "--base", "HEAD", "--out", t / "pr3", stand_in="no-chrome", cwd=g)
+    summary = (t / "pr3" / "summary.md").read_text(encoding="utf-8") if (t / "pr3" / "summary.md").is_file() else ""
+    ok("diff-base-run (audit 10) · a model whose views key is mistyped is said to be no model now, not diffed as deleted",
+       "**`a/b-c.json`**: cannot be read: it is no longer a map model" in summary and "removes Web" not in summary, summary)
+    ok("diff-base-run (audit 10) · a new model git does not track yet is a change too",
+       any(x.get("file") == "docs/new.json" and "adds the view Plain" in x.get("summary", []) for x in said(r) or []), r.stdout + r.stderr)
+    r = cli("render", ROOT / "examples" / "bookshop.json", "--out", t / "nc.html", stand_in="no-chrome")
+    ok("render (audit 10) · with no Chrome the layout check is skipped, and said: checked is false, not a clean check",
+       r.returncode == 0 and (said(r) or {}).get("checked") is False and "no Chrome" in (said(r) or {}).get("skipped", "") and "check was skipped" in r.stderr, r.stdout + r.stderr)
 
     # ---------- the icon cache ----------
     cache = t / "icons"

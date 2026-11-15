@@ -36,6 +36,20 @@ def ok(name, cond, info=""):
     print(("ok  " if cond else "FAIL"), "mcp ·", name, "" if cond else str(info)[-1500:])
     failed |= not cond
 
+# refit() keeps what refs() accepts against the new version, and only that (audit 10): a member's highlight stays after an
+# edit, a line with no id the new version no longer has goes
+import umlimator_mcp as mcp
+m = {"nodes": [{"id": "a", "members": [{"id": "a.p"}]}, {"id": "b"}], "edges": [{"from": "a", "to": "b"}], "views": [{"id": "v", "nodeIds": ["a", "b"]}]}
+mcp.want["highlight"] = {"refs": mcp.refs(m, [{"type": "node", "id": "a.p"}]), "view": "v"}
+mcp.refit(m)
+port_kept = mcp.want["highlight"]
+mcp.want["highlight"] = {"refs": mcp.refs(m, ["a->b#0"]), "view": "v"}
+mcp.refit(dict(m, edges=[]))
+line_gone = mcp.want["highlight"]
+mcp.want["highlight"] = None
+ok("audit 10 · refit() keeps a member's highlight after an edit, and drops a line with no id the new version no longer has",
+   port_kept and port_kept["refs"] == [{"type": "node", "id": "a.p"}] and line_gone is None, (port_kept, line_gone))
+
 
 class Chrome:
     """Headless Chrome over --remote-debugging-pipe: open pages, evaluate in them, close them."""
@@ -173,6 +187,12 @@ try:
     ok("mcp-page-render#1 · a model that no longer renders: the page keeps its map, says so, and the tool says why",
        said.startswith("The model no longer renders, so the page shows its last version that did:") and "nobody" in said and "Shown on 1 page" in said
        and got and "no longer renders" in got["banner"] and ps["model"].get("renders") is False and ps["pages"][0].get("latest"), (said, got, ps.get("model")))
+    model.write_text(json.dumps(bike)[:-40], encoding="utf-8")  # mid-edit: a version that is not JSON (audit 10)
+    said, ps = tool("show_view", view="system"), state()
+    got = until(lambda: (lambda s: s if s and s["view"] == "system" and "not JSON" in (s["banner"] or "") else None)(chrome.eval(sid, LOOK)))
+    ok("mcp-page-render#2 · a version that is not JSON: page_state() says it does not render, and a page tool shows the last that did, with why",
+       said.startswith("The model no longer renders, so the page shows its last version that did: it is not JSON") and got
+       and ps["model"].get("renders") is False and "not JSON" in ps["model"].get("error", ""), (said, got, ps.get("model")))
     model.write_text(json.dumps(bike), encoding="utf-8")
     said = tool("show_view", view="fleet")
     got = until(lambda: (lambda s: s if s and s["view"] == "fleet" and not s["banner"] else None)(chrome.eval(sid, LOOK)))
