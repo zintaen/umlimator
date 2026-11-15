@@ -427,6 +427,15 @@ test('three and four named connectors from one port of the subject, right and do
   }
 });
 
+test('audit 7: two unnamed delegations from one port to two parts or components side by side do not cross', () => {
+  const pt = (id, label) => ({ id, type: 'uml.Port', label }), parts = [0, 1].map(i => P('S.p' + i, 'part' + i, { props: { valueType: 'T' + i } }));
+  const cs = { schemaVersion: 2, nodes: [{ id: 'S', type: 'uml.Class', label: 'Svc', members: [pt('S.in', 'in'), ...parts] }], edges: parts.map((p, i) => ({ id: 'c' + i, type: 'uml.Connector', from: 'S.in', to: p.id })),
+    views: [{ id: 'v', diagram: 'uml.composite-structure', subject: 'S', nodeIds: ['S'] }] };
+  const cp = { schemaVersion: 2, nodes: [{ id: 'B', type: 'uml.Component', label: 'Box', members: [pt('B.in', 'in')] }, ...[0, 1].map(i => ({ id: 'k' + i, type: 'uml.Component', label: 'Inner' + i, parent: 'B' }))],
+    edges: [0, 1].map(i => ({ id: 'd' + i, type: 'uml.Connector', from: 'B.in', to: 'k' + i, props: { kind: 'delegation' } })), views: [{ id: 'v', diagram: 'uml.component', nodeIds: ['B', 'k0', 'k1'] }] };
+  assert.deepEqual(check(cs, 'v').map(p => p.message), []); assert.deepEqual(check(cp, 'v').map(p => p.message), []);
+});
+
 test('audit 6: a listed connector between two types\' ports that names no part is reported, not dropped silently', () => {
   const pt = (id, label) => ({ id, type: 'uml.Port', label });
   const m = { schemaVersion: 2, nodes: [{ id: 'S', type: 'uml.Class', label: 'Svc', members: [pt('S.api', 'api'), { id: 'S.p0', type: 'uml.Property', label: 'p0', props: { valueType: 'T0' } }, { id: 'S.p1', type: 'uml.Property', label: 'p1', props: { valueType: 'T1' } }] },

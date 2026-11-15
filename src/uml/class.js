@@ -360,7 +360,7 @@ const describeAs = look => (model, viewId) => {
     lines.forEach(({ e, from: f, to: t }) => { const E = endsOf(e);
       if (e.type === 'uml.Association' && (f === id || t === id)) { const [me, far] = f === id ? ['from', 'to'] : ['to', 'from'], agg = (E[me] || {}).aggregation, whole = (E[far] || {}).aggregation;
         const verb = agg === 'composite' ? 'composed of' : agg === 'shared' ? 'aggregates' : whole === 'composite' ? 'part of' : whole === 'shared' ? 'held by' : 'associated with';
-        said.push(`${verb} ${nm(far === 'to' ? t : f)}${end(e, far)}${UML_HAS(e.label) ? ` ("${e.label}")` : ''}`); }
+        said.push(`${verb} ${nm(far === 'to' ? t : f)}${end(e, far)}${stereoText(e) ? ' ' + stereoText(e) : ''}${UML_HAS(e.label) ? ` ("${e.label}")` : ''}`); }
       else if (f !== id) return;
       else { const verb = { 'uml.Generalization': 'a kind of', 'uml.InterfaceRealization': 'realizes', 'uml.Dependency': 'depends on', 'uml.PackageMerge': 'merges', 'uml.ProfileApplication': 'applies', 'uml.CommentLink': 'about',
         'uml.Usage': 'uses', 'uml.Realization': 'realizes', 'uml.Abstraction': 'abstracts', 'uml.Extension': 'extends',

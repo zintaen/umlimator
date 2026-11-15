@@ -387,3 +387,12 @@ test('audit 6: a call behaviour action unfolded in place is a box in its lane, i
   for (const id of ['f-to-pay', 'f-paid']) assert.ok(g.edges.some(e => e.id === id), id + ' drawn');
   assert.deepEqual(check(EX, 'fulfil', { expand: ['call-payment'] }).map(p => p.message), check(EX, 'fulfil').map(p => p.message), 'no new problem');
 });
+
+test('audit 7: a called activity with a partition of its own unfolds in the call\'s lane, adding no lane', () => {
+  const m = structuredClone(EX), inner = ['pay-start', 'charge', 'record', 'pay-done'];
+  m.nodes.push({ id: 'lane-pay', type: 'uml.ActivityPartition', label: 'Payment provider' }); m.nodes.filter(n => inner.includes(n.id)).forEach(n => { n.parent = 'lane-pay'; });
+  m.views.find(v => v.id === 'take-payment').nodeIds.unshift('lane-pay');
+  const g = layout(m, 'fulfil', { expand: ['call-payment'] }), p = layout(EX, 'fulfil', { expand: ['call-payment'] });
+  assert.deepEqual(g.bands.map(b => b.id), p.bands.map(b => b.id));
+  for (const id of inner) assert.deepEqual([g.byId[id].x, g.byId[id].y, g.byId[id].aria], [p.byId[id].x, p.byId[id].y, p.byId[id].aria], id);
+});

@@ -195,6 +195,9 @@ test('a pin on a half column or a half row: every box still keeps 32 px from oth
 test('a box named as a member every object inherits (constructor, __proto__, toString) is laid out as any other name', () => {
   const as = name => JSON.stringify({ ...layout(JSON.parse(JSON.stringify(NEST()).replaceAll('"B"', JSON.stringify(name))), 'v'), ms: 0 }).replaceAll(JSON.stringify(name), '"B"');
   ['constructor', '__proto__', 'toString'].forEach(name => assert.equal(as(name), as('B'), name));
+  // a card so named, with lines out of its boxes, too: the host's box ranking kept its places in plain objects (audit 7)
+  const card = name => JSON.stringify({ ...layout(JSON.parse(JSON.stringify(NEST()).replaceAll('"c1"', JSON.stringify(name))), 'v'), ms: 0 }).replaceAll(JSON.stringify(name), '"c1"');
+  ['constructor', '__proto__', 'toString'].forEach(name => assert.equal(card(name), card('c1'), name));
   const map = layout({ nodes: [{ id: 'a', label: 'A' }], views: [{ id: 'm', nodeIds: ['a'], containers: [{ id: 'constructor', label: 'K', nodeIds: ['a'] }] }] }, 'm'); // a map's box too
   assert.deepEqual(map.families.map(f => [f.id, Number.isFinite(f.w)]), [['constructor', true]]);
 });

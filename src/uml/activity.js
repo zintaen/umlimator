@@ -72,18 +72,19 @@ function actIndex(model, view) {
   AC_ARR(model && model.nodes).forEach((n, k) => { if (AC_OBJ(n) && typeof n.id === 'string' && !N.has(n.id)) { N.set(n.id, n); path.set(n.id, `nodes[${k}]`); } });
   AC_ARR(model && model.edges).forEach((e, k) => { if (AC_OBJ(e) && typeof e.id === 'string' && !E.has(e.id)) { E.set(e.id, e); path.set(e.id, `edges[${k}]`); } });
   const ids = [...new Set(AC_ARR(view && view.nodeIds).filter(id => N.has(id)))], shown = new Set(ids);
-  const isPart = id => N.has(id) && N.get(id).type === 'uml.ActivityPartition', parts = ids.filter(isPart), lanes = new Set(parts);
+  // a call behaviour action unfolded in place (src/map/context.js unfold): a box holding its activity's nodes, in the call's
+  // lane, the call's lines ending on its border (notes/milestone-2.md §6.3, audit 6); a partition
+  // its activity brought in is no lane of this view, so what it holds sits in the box's lane (audit 7)
+  const boxes = AC_ARR(view && view.containers).filter(b => AC_OBJ(b) && b.unfolds != null && N.has(b.id) && !shown.has(b.id)), inBox = new Map();
+  boxes.forEach(b => { AC_ARR(b.nodeIds).forEach(i => inBox.set(i, b.id)); if (boxes.some(c => c.id === b.parent)) inBox.set(b.id, b.parent); });
+  const isPart = id => N.has(id) && N.get(id).type === 'uml.ActivityPartition', parts = ids.filter(id => isPart(id) && !inBox.has(id)), lanes = new Set(parts);
   // the nearest shown partition above an element (§9.2), or null; a cycle of owners stops where it closes
   const once = f => { const c = new Map(); return id => (c.has(id) ? c.get(id) : c.set(id, f(id)).get(id)); }; // each worked out once: partitions nested to any depth
   const up = once(id => { const seen = new Set([id]); for (let p = (N.get(id) || {}).parent; p != null && N.has(p) && !seen.has(p); p = N.get(p).parent) { if (lanes.has(p)) return p; seen.add(p); } return null; });
   // a lane's own owner lane, or null at the top: a lane whose chain of shown owners comes back to it is at the top (laneRows')
   const outer = once(id => { const seen = new Set(); for (let l = up(id); l != null && !seen.has(l); l = up(l)) { if (l === id) return null; seen.add(l); } return up(id); });
-  // a call behaviour action unfolded in place (src/map/context.js unfold): a box holding its activity's nodes, in the call's
-  // lane, the call's lines ending on its border (notes/milestone-2.md §6.3, audit 6)
-  const boxes = AC_ARR(view && view.containers).filter(b => AC_OBJ(b) && b.unfolds != null && N.has(b.id) && !shown.has(b.id)), inBox = new Map();
-  boxes.forEach(b => { AC_ARR(b.nodeIds).forEach(i => inBox.set(i, b.id)); if (boxes.some(c => c.id === b.parent)) inBox.set(b.id, b.parent); });
   const laneOf = id => { if (lanes.has(id)) return null; for (let x = id, k = 0; k <= boxes.length; k++, x = inBox.get(x)) { const u = up(x); if (u != null || !inBox.has(x)) return u; } return null; };
-  const drawn = ids.filter(id => !lanes.has(id)), on = new Set([...drawn, ...boxes.map(b => b.id)]);
+  const drawn = ids.filter(id => !isPart(id)), on = new Set([...drawn, ...boxes.map(b => b.id)]);
   const list = Array.isArray(view && view.edges) ? [...new Set(view.edges.map(x => (typeof x === 'string' ? E.get(x) : x)))] : [...E.values()].filter(e => AC_LINES.includes(e.type));
   const lines = list.filter(e => AC_OBJ(e) && typeof e.id === 'string' && on.has(e.from) && on.has(e.to));
   const n = new Map(), under = p => n.get(p) || 0; // the nodes under each lane, at any depth, counted in one pass

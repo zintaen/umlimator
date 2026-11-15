@@ -399,6 +399,12 @@ test('audit 6: describe names every line a class view draws, of any kind', () =>
   const d = describe(m, 'v');
   for (const s of ['uses Payable', 'realizes Order ("implements")', 'abstracts Payable', 'linked to Order']) assert.ok(d.includes(s), s + ' in ' + d);
 });
+test('audit 7: describe names an association\'s stereotypes, as its line draws them', () => {
+  const m = { schemaVersion: 2, nodes: [{ id: 'c', type: 'uml.Class', label: 'Customer' }, { id: 'o', type: 'uml.Class', label: 'Order' }],
+    edges: [{ id: 'a', type: 'uml.Association', from: 'c', to: 'o', label: 'places', props: { stereotypes: ['audited'] } }], views: [{ id: 'v', diagram: 'uml.class', nodeIds: ['c', 'o'] }] };
+  assert.ok(describe(m, 'v').includes('associated with Customer «audited» ("places")'), describe(m, 'v'));
+});
+
 test('audit 6: a member row with a function type keeps it whole', () => {
   assert.deepEqual(parseMember('onClick: (e: Event) => void'), { type: 'uml.Property', label: 'onClick', props: { valueType: '(e: Event) => void' } });
   assert.deepEqual(parseMember('next: Fn(a)->B [0..1]'), { type: 'uml.Property', label: 'next', props: { valueType: 'Fn(a)->B', multiplicity: '0..1' } });

@@ -30,7 +30,8 @@ Rules, each `validate()` problem naming its `rule` and its elements (`notes/stag
 `owner-kinds`, `initial-one`, `initial-out`, `final-out`, `final-kind`, `fork-join` (a fork's targets in different
 regions of one orthogonal state), `history-owner`, `history-one`, `reserved-trigger` (errors; `initial-out` and
 `fork-join` warn where a diagram is only unfinished); `choice-guards` (an exit with no guard, or two `else`; a choice with
-no `else` is not warned of), `composite-entry`, `region-mixed`, `region-cross`, `internal-trigger`, `pseudo-kind`,
+no `else` is not warned of), `composite-entry`, `region-mixed`, `region-cross`, `composite-inner` (a transition between
+a composite state and a state it holds, a local transition, is not drawn), `internal-trigger`, `pseudo-kind`,
 `label-syntax` (warnings).
 
 ## Left out
