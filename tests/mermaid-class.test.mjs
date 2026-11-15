@@ -555,3 +555,13 @@ test('the writer names ext and props it has no place for: a class\'s tags and ex
   const m = json('./class-minimal.json'); m.nodes[0].props = { stereotypes: ['entity'], tags: { entity: { table: 'orders' } } }; m.nodes[0].ext = { structurizr: { url: 'x' } }; m.edges[0].ext = { x: 1 };
   assert.deepEqual(write(m, 'v').match(/not written: .*/g), ['not written: order: property tags', 'not written: order: ext', 'not written: order-lines: ext']);
 });
+
+test('a } at the end of a line closes its class or namespace, as Mermaid\'s lexer does (audit 15)', () => {
+  const shape = s => { const r = read(s); return [r.model.nodes.map(n => [n.id, n.parent ?? null, (n.members || []).map(m => m.label)]), r.model.edges.length, r.report.map(x => x.message)]; };
+  assert.deepEqual(shape('classDiagram\nclass Duck {\n  +swim()\n  +quack() }\nclass Pond\nDuck --> Pond\n'),
+    [[['Duck', null, ['swim', 'quack']], ['Pond', null, []]], 1, []]);
+  assert.deepEqual(shape('classDiagram\nnamespace Zoo { class Cage }\nclass Keeper\nKeeper --> Cage\n'),
+    [[['Zoo', null, []], ['Cage', 'Zoo', []], ['Keeper', null, []]], 1, []]);
+  assert.deepEqual(shape('classDiagram\nnamespace Zoo {\n  class Cage }\nclass Keeper\n'),
+    [[['Zoo', null, []], ['Cage', 'Zoo', []], ['Keeper', null, []]], 0, []]);
+});

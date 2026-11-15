@@ -12,6 +12,27 @@ const { version } = JSON.parse(readFileSync(new URL('../../package.json', import
 const EXCLUDED = ['diagrams/**', 'editing.md', 'module-api.md'];   // module-api.md's releases are shown by changelog.md
 const excluded = (p: string) => p.startsWith('diagrams/') || p === 'editing.md' || p === 'module-api.md';
 
+// A heading's id as GitHub makes it, for the pages written for GitHub: a link to "#0210-..." there goes to "_0-21-0-..."
+// here (a core rule after the headings get their ids, as a link's renderer sees only its line)
+function ghAnchors(md) {
+  md.core.ruler.push('gh-anchors', s => {
+    const ids = new Map(), seen = new Map(), ours = new Set();
+    s.tokens.forEach((t, j) => {
+      const id = t.type === 'heading_open' && t.attrGet('id');
+      if (!id) return;
+      const text = (s.tokens[j + 1].children || []).filter(c => c.type === 'text' || c.type === 'code_inline').map(c => c.content).join('').trim(); // less the anchor's space
+      const g = text.toLowerCase().replace(/[^\p{L}\p{M}\p{N}\p{Pc} -]/gu, '').replace(/ /g, '-'), n = seen.get(g) || 0;
+      seen.set(g, n + 1); ids.set(n ? `${g}-${n}` : g, id); ours.add(id);
+    });
+    for (const t of s.tokens) for (const c of t.children || []) {
+      const href = c.type === 'link_open' && c.attrGet('href');
+      if (!href || !href.startsWith('#')) continue;
+      let h; try { h = decodeURIComponent(href.slice(1)); } catch { continue; }
+      if (!ours.has(h) && ids.has(h)) c.attrSet('href', `#${ids.get(h)}`);
+    }
+  });
+}
+
 // A relative link to a file outside docs/, or to a docs/ file that is not a page here, goes to GitHub; a link to
 // /examples/... goes to the gallery beside the site, past the router.
 function links(md) {
@@ -104,7 +125,7 @@ export default defineConfig({
   markdown: {
     config: md => {
       md.core.ruler.before('normalize', 'version', s => { s.src = s.src.replaceAll('@@VERSION@@', version); });
-      md.use(changelog).use(umlimator).use(links).use(plain);
+      md.use(changelog).use(umlimator).use(links).use(ghAnchors).use(plain);
     },
   },
   vite: { build: { chunkSizeWarningLimit: 1000 } },   // the changelog's page is about 700 kB

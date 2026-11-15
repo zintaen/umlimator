@@ -90,7 +90,8 @@ def not_objects(d):
         out += [f"views[{i}].nodeOverrides is not an object"] if "nodeOverrides" in v and not isinstance(o, dict) else []
         out += [f"views[{i}].nodeOverrides.{k} is not an object" for k, x in (o.items() if isinstance(o, dict) else []) if not isinstance(x, dict)]
         out += [f"views[{i}].parent is not a string"] if not name(v.get("parent")) else []
-        out += [f"views[{i}].{k}[{j}] is not a string" for k in ("nodeIds", "stepIds") for j, x in enumerate(lst(v.get(k))) if not name(x)]
+        # a list's entry is never absent, so a null is no name either (it ended MCP tools in an internal error, audit 15)
+        out += [f"views[{i}].{k}[{j}] is not a string" for k in ("nodeIds", "stepIds") for j, x in enumerate(lst(v.get(k))) if not isinstance(x, str)]
         out += ids(f"views[{i}].nodes", v.get("nodes"), ("id", "opensView", "view")) + ids(f"views[{i}].containers", v.get("containers"), ("id",))
         out += ids(f"views[{i}].edges", v.get("edges"), ("id", "from", "to"))
         out += [f"views[{i}].nodeOverrides.{k}.{f} is not a string" for k, x in (o.items() if isinstance(o, dict) else []) if isinstance(x, dict)

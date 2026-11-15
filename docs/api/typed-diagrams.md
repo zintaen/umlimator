@@ -81,7 +81,7 @@ have:
 | Field | What it is |
 |---|---|
 | `subject` | The element the view shows the inside of: a package, a C4 system or container, a composite structure's class, a SysML frame's block. |
-| `direction` | `'right'` (default) or `'down'`. |
+| `direction` | `'right'` or `'down'`. Default right; down for a flowchart, a profile, a SysML block definition or requirement view. A sequence view is always drawn down. |
 | `notation` | A repaint on one geometry: `crowsfoot` or `idef1x` for `er`, `yourdon` or `gane-sarson` for `dfd`. |
 | `present` | Per element id, what the view shows of it: [`UmlPresent`](#umlpresent), [`UmlStructurePresent`](#component-diagram), [`UmlTimingPresent`](#timing-diagram), a side. |
 | `fragments` | A sequence view's combined fragments. |
