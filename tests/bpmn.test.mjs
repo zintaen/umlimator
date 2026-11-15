@@ -18,6 +18,7 @@ import { layout, check } from '../src/map/api.js';
 import { mapContext } from '../src/map/context.js';
 import { validate } from '../src/map/validate.js';
 import { describe } from '../src/map/insight.js';
+import { svgOf } from '../src/draw/svg.js';
 import { BZ_RULES, bzProblems, bzConnect, bzMoveTo, bzAdd, bzRemove, bzKey, bzOwners } from '../src/bpmn/process.js';
 
 const EX = JSON.parse(readFileSync(new URL('../examples/bookshop-order-to-shipment.json', import.meta.url), 'utf8'));
@@ -515,4 +516,23 @@ test('audit 3: lanes, and sub-processes, nested 3,000 deep lay out (the lane pas
   const members = Array.from({ length: 3000 }, (_, i) => ({ id: 'l' + i, type: 'bpmn.Lane', label: 'L' + i, ...(i ? { parent: 'l' + (i - 1) } : {}) }));
   const m = one([N('P', 'Participant', 'P', { members }), N('s', 'StartEvent', null, { parent: 'l2999' }), N('e', 'EndEvent', null, { parent: 'l2999' })], [F('f', 's', 'e')]);
   assert.equal(layout(m, 'v').nodes.length, 3003);
+});
+
+test('audit 7: a line listed twice in view.edges is drawn, read and counted once, and crosses nothing', () => {
+  const once = structuredClone(EX); V(once).edges = once.edges.map(e => e.id);
+  const m = structuredClone(once); V(m).edges.push('f-basket');
+  const g = layout(m, VID);
+  assert.equal(g.edges.filter(e => e.id === 'f-basket').length, 1); assert.equal(g.order.filter(x => x === 'f-basket').length, 1);
+  assert.equal(describe(m, VID), describe(once, VID));
+  assert.deepEqual(check(m, VID).map(p => p.message), check(once, VID).map(p => p.message));
+});
+
+test('audit 7: a flow named for an Object.prototype key, or a pool named __proto__, lays out and draws', () => {
+  const m = { schemaVersion: 2, title: 'T', nodes: [{ id: 'pool', type: 'bpmn.Participant', label: 'Shop' },
+    { id: 'start', type: 'bpmn.StartEvent', label: 'Order in', parent: 'pool', props: { definition: 'none' } }, { id: 'ship', type: 'bpmn.Task', label: 'Ship', parent: 'pool' },
+    { id: 'end', type: 'bpmn.EndEvent', label: 'Done', parent: 'pool', props: { definition: 'none' } }],
+    edges: [{ id: 'toString', type: 'bpmn.SequenceFlow', from: 'start', to: 'ship' }, { id: 'f2', type: 'bpmn.SequenceFlow', from: 'ship', to: 'end' }],
+    views: [{ id: 'v', diagram: 'bpmn', nodeIds: ['pool', 'start', 'ship', 'end'] }] };
+  for (const x of [m, JSON.parse(JSON.stringify(m).replaceAll('"toString"', '"constructor"').replaceAll('"pool"', '"__proto__"'))]) {
+    const g = layout(x, 'v'); assert.deepEqual(g.nodes.map(n => n.id).sort(), x.nodes.map(n => n.id).sort()); assert.ok(svgOf(g, {}).length); }
 });
