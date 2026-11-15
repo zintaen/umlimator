@@ -140,7 +140,7 @@ const dfdLegend = (I, ids, lines, skin) => [
 
 /* ---- the view laid out (§7): labels cut at 280 with room made for them (labelGaps); a gap of 64 px, as 48 laid a label of
    22-data-flow.json on a line, down (the note's §7.3, amended) ---- */
-const DFD_END = { 'dfd.DataFlow': { from: 'none', to: 'arrow' }, 'uml.CommentLink': { from: 'none', to: 'none', dashed: true } };
+const DFD_END = { __proto__: null, 'dfd.DataFlow': { from: 'none', to: 'arrow' }, 'uml.CommentLink': { from: 'none', to: 'none', dashed: true } };
 function dfdGeo({ model, view, pos, memo }) {
   const I = dfdIndex(model), ids = DFD_ARR(view.nodeIds).filter((id, k, a) => I.at.has(id) && a.indexOf(id) === k), lines = dfdLines(model, view), skin = dfdSkin(view), P = id => (pos && Object.hasOwn(pos, id) ? pos[id] : [0, 0]);
   const nodes = ids.map(id => { const x = I.at.get(id), k = DFD_KIND[x.type];

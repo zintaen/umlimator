@@ -177,7 +177,7 @@ test('portsDrawn: a copy, never the layout\'s geometry; each port a node of it, 
   assert.equal(portsDrawn(g, [{ ...PORTS[0], aria: 'Said by the type' }]).byId['a.p1'].aria, 'Said by the type');
   for (const n of out.nodes.slice(4)) assert.ok(n.x >= out.bounds.x && n.y >= out.bounds.y && n.x + n.w <= out.bounds.x + out.bounds.w && n.y + n.h <= out.bounds.y + out.bounds.h, `${n.id} in the bounds`);
   assert.deepEqual(portsDrawn(g, []).nodes, g.nodes); assert.equal(portsDrawn(g, []).edges.length, 5);
-  assert.deepEqual(portsDrawn({ nodes: [], edges: [] }, PORTS), { nodes: [], edges: [], byId: {} }, 'an empty view');
+  assert.deepEqual(portsDrawn({ nodes: [], edges: [] }, PORTS), { nodes: [], edges: [], byId: Object.create(null) }, 'an empty view (byId: an own-key table)');
 });
 
 test('portsDrawn: ports with no line keep 8 px apart, and from the ports with lines, within their side\'s free span', () => {

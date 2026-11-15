@@ -87,7 +87,7 @@ const BD_HOLD = { 'sysml.ConstraintBlock': m => ['sysml.ConstraintParameter', 's
   'sysml.ValueType': m => m.type === 'sysml.ValueProperty' || m.type === 'uml.Operation',
   'sysml.Block': m => BD_KNOWN.has(m.type) && m.type !== 'sysml.ConstraintParameter' };
 const bdHolds = (owner, m) => (Object.hasOwn(BD_HOLD, owner) ? BD_HOLD[owner](m) : m.type !== 'sysml.ConstraintParameter');
-const BD_MWORD = { 'sysml.PartProperty': 'part', 'sysml.ReferenceProperty': 'reference', 'sysml.ValueProperty': 'value', 'sysml.ConstraintProperty': 'constraint property',
+const BD_MWORD = { __proto__: null, 'sysml.PartProperty': 'part', 'sysml.ReferenceProperty': 'reference', 'sysml.ValueProperty': 'value', 'sysml.ConstraintProperty': 'constraint property',
   'sysml.FlowProperty': 'flow property', 'sysml.ConstraintParameter': 'parameter', 'sysml.Port': 'port', 'uml.Operation': 'operation' };
 const bdMWord = m => (m.type === 'sysml.Port' && Object.hasOwn(BD_KIND, BD_PROPS(m).kind) ? BD_PROPS(m).kind + ' port' : BD_MWORD[m.type] || BD_WORD(m.type).toLowerCase());
 // the types of the nodes a type name names by label (else id, as drawn), its ~ (conjugation) left off; none: undefined
@@ -157,7 +157,7 @@ const BD_KEYS = [['proxy port', 'sysml.Port', { kind: 'proxy' }], ['full port', 
   ['ref', 'sysml.ReferenceProperty'], ['value', 'sysml.ValueProperty'], ['constraint', 'sysml.ConstraintProperty'], ['param', 'sysml.ConstraintParameter'],
   ['inout', 'sysml.FlowProperty', { direction: 'inout' }], ['in', 'sysml.FlowProperty', { direction: 'in' }], ['out', 'sysml.FlowProperty', { direction: 'out' }]]
   .map(([w, type, props = {}]) => ({ re: new RegExp(`^${w.replace(' ', '\\s+')}\\s+(?=[^\\s:])`), w, type, props }));
-const BD_WORDS = { 'sysml.PartProperty': 'part', 'sysml.ReferenceProperty': 'ref', 'sysml.ValueProperty': 'value', 'sysml.ConstraintProperty': 'constraint', 'sysml.ConstraintParameter': 'param' };
+const BD_WORDS = { __proto__: null, 'sysml.PartProperty': 'part', 'sysml.ReferenceProperty': 'ref', 'sysml.ValueProperty': 'value', 'sysml.ConstraintProperty': 'constraint', 'sysml.ConstraintParameter': 'param' };
 // text, owner (the node, or none) and model (or none: no name picks a kind) -> { type, label, props } or { error }
 function bdParse(text, owner, model) {
   const s = String(text ?? '').trim(), k = BD_KEYS.find(x => x.re.test(s));

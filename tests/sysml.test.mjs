@@ -328,3 +328,18 @@ test('a card dropped on a frame that is no element is reparented to the view\'s 
   assert.deepEqual(drop(m('eb'), null, 'pk'), [[{ op: 'reparent', id: 'a', parent: 'eb' }]], 'out of every box: as before');
   for (const fromModel of [false, true]) { const { I, got } = editor(m(), [{ type: 'container', id: 'v->frame' }]); assert.equal(I.remove(fromModel), false); assert.deepEqual(got, []); }
 });
+
+test('audit 9: an element or member typed toString or constructor, or a port of kind constructor, is read as an unknown type: no throw, no function\'s source in any word', async () => {
+  const { validate } = await import('../src/map/validate.js'), { describe } = await import('../src/map/insight.js'), { layout, check } = await import('../src/map/api.js');
+  for (const f of ['requirement', 'block-definition', 'internal-block', 'parametric']) {
+    const m0 = JSON.parse(readFileSync(new URL(`./${f}-minimal.json`, import.meta.url))), V = m0.views[0], T = diagramOf(V);
+    const spots = m0.nodes.flatMap((n, i) => [[i], ...(n.members || []).map((_, j) => [i, j])]);
+    for (const [i, j] of spots) for (const bad of ['toString', 'constructor']) for (const what of ['type', 'kind']) {
+      const m = structuredClone(m0), x = j == null ? m.nodes[i] : m.nodes[i].members[j];
+      if (what === 'type') x.type = bad; else x.props = { ...x.props, kind: bad };
+      const said = JSON.stringify([validate(m).map(p => p.message), describe(m, V.id), layout(m, V.id).nodes.map(n => n.aria), check(m, V.id).map(p => p.message),
+        [...m.nodes, ...m.nodes.flatMap(n => n.members || [])].map(x => String(T.word?.(m, x.id)))]);
+      assert.doesNotMatch(said, /native code|function /, `${f}: ${x.id}'s ${what} ${bad}`);
+    }
+  }
+});

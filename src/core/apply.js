@@ -30,7 +30,10 @@ import { diagramOf, propRefs } from './registry.js';
    id space). */
 
 const isObj = x => x !== null && typeof x === 'object' && !Array.isArray(x), arr = x => (Array.isArray(x) ? x : []);
-const UNSAFE = new Set(['__proto__', 'constructor', 'prototype']); // never a key a command writes (risks.md M3)
+const UNSAFE = new Set(['__proto__', 'constructor', 'prototype']); // never a field of an element or view (risks.md M3)
+// a key below the first is an own key, whatever its name (layout.constructor, present.__proto__: an id): written as
+// one, never through a prototype, so no path reaches Object.prototype
+const putOwn = (o, k, value) => Object.defineProperty(o, k, { value, writable: true, enumerable: true, configurable: true });
 const isLine = x => isObj(x) && (x.from != null || x.to != null);
 const dig = (x, path) => path.split('.').reduce((o, k) => (isObj(o) ? o[k] : undefined), x);
 
@@ -128,17 +131,17 @@ function run(m, c, gone) {
     case 'set': {
       if (c.id != null && c.view != null) throw new Error('set: an element (id) or a view, not both');
       const keys = typeof c.path === 'string' ? c.path.split('.') : Array.isArray(c.path) && c.path.every(k => typeof k === 'string') ? c.path : null;
-      if (!keys || !keys.length || keys.some(k => k === '' || UNSAFE.has(k))) throw new Error(`set: ${JSON.stringify(c.path)} is not a path of keys`);
+      if (!keys || !keys.length || keys.some(k => k === '') || UNSAFE.has(keys[0])) throw new Error(`set: ${JSON.stringify(c.path)} is not a path of keys`);
       if (c.view == null && ['id', 'members', 'parent', 'from', 'to'].includes(keys[0])) throw new Error(`set: ${keys[0]} changes by its own command (add, move, delete, reparent), not set`);
       if (c.view != null && keys[0] === 'id') throw new Error('set: a view keeps its id');
       let o = c.view != null ? viewOf(c.view) : need(c.id).x;
       for (const k of keys.slice(0, -1)) {
-        if (!Object.hasOwn(o, k) || o[k] === undefined) { if (c.value === undefined) return; o[k] = {}; } // an inherited key (toString) is none
+        if (!Object.hasOwn(o, k) || o[k] === undefined) { if (c.value === undefined) return; putOwn(o, k, {}); } // an inherited key (toString) is none
         else if (!isObj(o[k])) throw new Error(`set: ${keys.join('.')} goes through ${k}, which is not an object`);
         o = o[k];
       }
       const last = keys[keys.length - 1];
-      if (c.value === undefined) delete o[last]; else o[last] = structuredClone(c.value);
+      if (c.value === undefined) delete o[last]; else putOwn(o, last, structuredClone(c.value)); // delete takes an own key only
       return;
     }
     case 'add': {

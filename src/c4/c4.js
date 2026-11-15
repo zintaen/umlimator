@@ -1,4 +1,4 @@
-import { registerDiagramType } from '../core/registry.js';
+import { registerDiagramType, idTable } from '../core/registry.js';
 import { esc, fit, textW } from '../core/text.js';
 import { SHAPE, portsOn, r2, sidePorts } from '../draw/shapes.js';
 import { layoutTyped } from '../typed/layout.js';
@@ -164,7 +164,7 @@ function c4Geo({ model, view, pos, memo }) {
   // does (sidePorts), so each such end lands on its outline
   const sp = sidePorts(g), lift = new Map();
   g.nodes.forEach(n => { const p = (n.sh === 'person' || n.sh === 'robot') && sp.get(n), t = p ? Math.min(p.L, p.R) : Infinity; if (t < n.y + 14) lift.set(n, { ...n, portTop: t }); });
-  const out = lift.size ? { nodes: g.nodes.map(n => lift.get(n) || n), byId: Object.fromEntries(g.nodes.map(n => [n.id, lift.get(n) || n])),
+  const out = lift.size ? { nodes: g.nodes.map(n => lift.get(n) || n), byId: idTable(Object.fromEntries(g.nodes.map(n => [n.id, lift.get(n) || n]))),
     edges: g.edges.map(e => (lift.has(e.s) || lift.has(e.t) ? { ...e, s: lift.get(e.s) || e.s, t: lift.get(e.t) || e.t } : e)) } : {};
   return { ...g, ...out, legend: c4Legend(nodes, edges), order: [...readingOrder(pic), ...edges.map(e => e.id)] }; // a new object: what layoutTyped returned is never edited
 }

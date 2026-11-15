@@ -329,3 +329,11 @@ test('audit 4: a node typed by an Object.prototype name is drawn as a plain clas
     assert.doesNotMatch(describe(m, 'v'), /native code/, type);
   }
 });
+
+test('audit 9: a listed line whose type is an Object.prototype name takes the data flow\'s ends, as an unknown type does, and keeps its arrowhead', () => {
+  const m = JSON.parse(readFileSync(new URL('./dfd-minimal.json', import.meta.url)));
+  for (const type of ['constructor', 'toString', 'valueOf', '__proto__', 'nonsense']) {
+    const n = structuredClone(m); n.edges[0].type = type; n.views[0].edges = n.edges.map(e => e.id);
+    assert.deepEqual(layout(n, 'v').edges.find(e => e.id === 'order').end, { from: 'none', to: 'arrow' }, type);
+  }
+});

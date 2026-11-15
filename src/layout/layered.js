@@ -4,7 +4,7 @@ import { edgeRefIds } from '../map/api.js';
 import { badgesOf, mapNodeW, mapTabs, toneOf } from '../map/cards.js';
 import { warn } from '../core/warn.js';
 import { kindOf } from '../map/kinds.js';
-import { TYPED } from '../core/registry.js';
+import { TYPED, idTable } from '../core/registry.js';
 
 const CHG = { added: ['green', 'NEW'], new: ['green', 'NEW'], modified: ['amber', 'CHANGED'], changed: ['amber', 'CHANGED'], removed: ['rose', 'REMOVED'], planned: ['cyan', 'PLANNED'] };
 const NW = 168, CG0 = 84, RG0 = 44;
@@ -169,7 +169,7 @@ function layoutPass(dg, map, room, last) { // room: { x: { col: px }, y: { row: 
     const w = n.w || (map ? mapNodeW(n) : NW);
     return { ...n, k, col: cl(n.col ?? i), row: cl(n.row ?? 0), w, h: n.h || NH };
   });
-  const byId = Object.fromEntries(nodes.map(n => [n.id, n]));
+  const byId = idTable(Object.fromEntries(nodes.map(n => [n.id, n]))); // a card named constructor is found only if drawn
   const cols = dg.abs ? [] : [...new Set(nodes.map(n => n.col))].sort((a, b) => a - b);
   const colX = {}, colW = {}; let x = 0;
   // a card with no line, in a row under every card that has one, sits in a row of its own (#46): it never widens a column

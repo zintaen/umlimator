@@ -244,3 +244,46 @@ test('reroute false: lines that had to cross are not routed again in a new order
   b.edges.forEach(e => assert.ok(e.pts && e.pts.length >= 2, `line ${e.id} is routed`));
   assert.notEqual(geometryKey(dg), geometryKey({ ...dg, reroute: false }), 'the flag is part of the geometry key');
 });
+
+/* audit 9: ids named after Object.prototype's keys, in every example. A card, a line, a box and a view are renamed to
+   constructor, toString, valueOf and __proto__ (each name on each kind in turn), and every view is laid out, described
+   and printed (the PDF's tables) as with a control name of the same letters reversed; a lens's layer and every geometry's
+   byId have no prototype; a pin and a present entry for the card apply as own keys; diff() marks the card taken out */
+test('audit 9: a card, line, box and view named constructor, toString, valueOf or __proto__ in every example draw, read and print as any other name', async () => {
+  const { readdirSync } = await import('node:fs');
+  const src = new URL('../src/', import.meta.url);
+  for (const f of readdirSync(src, { recursive: true }).filter(f => f.endsWith('.js')).sort()) await import(new URL(f, src)); // every type, registered
+  const { describe } = await import('../src/map/insight.js'), { mapContext } = await import('../src/map/context.js'), { tablesOf } = await import('../src/page/print.js');
+  const { apply } = await import('../src/core/apply.js'), { diff } = await import('../src/map/diff.js'), { lensOf } = await import('../src/map/lens.js');
+  const P = ['constructor', 'toString', 'valueOf', '__proto__'], back = s => [...s].reverse().join('');
+  const warn = console.warn; console.warn = () => {};
+  const run = m => { const ctx = mapContext(m), out = [];
+    for (const v of m.views) { let r;
+      try { const g = layout(m, v.id), [els, lines, boxes] = tablesOf(ctx, ctx.V[v.id], g);
+        assert.equal(Object.getPrototypeOf(g.byId), null, `${v.id}: byId has no prototype`);
+        assert.equal(Object.getPrototypeOf(lensOf(ctx, v.id, { id: 'l', pick: {} }).layer.nodes), null, `${v.id}: a lens's layer has no prototype`);
+        r = [g.nodes.map(n => [n.id, n.x, n.y, n.w, n.h]), g.edges.map(e => [e.ids, e.pts]), g.bounds, describe(m, v.id), [els, lines, boxes].map(t => t.rows)];
+      } catch (e) { if (e instanceof assert.AssertionError) throw e; r = 'THROW ' + e.message; }
+      out.push([v.id, r]); }
+    return JSON.stringify(out); };
+  try {
+    for (const file of readdirSync(new URL('../examples/', import.meta.url)).filter(f => f.endsWith('.json'))) {
+      const txt = readFileSync(new URL('../examples/' + file, import.meta.url), 'utf8'), m0 = JSON.parse(txt); if (!Array.isArray(m0.views) || !m0.views.length) continue;
+      const v0 = m0.views[0], top = new Set((m0.nodes || []).map(n => n.id)), pinned = v0.layout || {};
+      const ids = [(v0.nodeIds || []).find(id => top.has(id) && !Object.hasOwn(pinned, id)) ?? (v0.nodeIds || []).find(id => top.has(id)), // a card, unpinned if any
+        (m0.edges || []).find(e => e && typeof e.id === 'string')?.id, m0.views.flatMap(w => w.containers || []).find(c => c && typeof c.id === 'string')?.id, v0.id];
+      for (let r = 0; r < 4; r++) {
+        const names = ids.map((id, k) => id == null || txt.includes(`"${P[(k + r) % 4]}"`) ? null : P[(k + r) % 4]);
+        const as = to => ids.reduce((t, id, k) => (names[k] ? t.replaceAll(`"${id}"`, `"${to(names[k])}"`) : t), txt), m = JSON.parse(as(s => s));
+        const was = names.reduce((s, n) => n ? s.replaceAll(back(n), n) : s, run(JSON.parse(as(back))));
+        const got = run(m), at = Math.max(160, [...got].findIndex((c, i) => c !== was[i])); // where the two first differ, for the message
+        if (got !== was) assert.fail(`${file}: ${ids.map((id, k) => `${id} as ${names[k]}`).join(', ')}: …${got.slice(at - 160, at + 80)}… where the control has …${was.slice(at - 160, at + 80)}…`);
+        const card = names[0], view = names[3] ?? v0.id; if (!card) continue;
+        const n = apply(m, [{ op: 'set', view, path: ['layout', card], value: [0, 0] }, { op: 'set', view, path: ['present', card, 'x'], value: 1 }]), nv = n.views.find(w => w.id === view);
+        assert.ok(Object.hasOwn(nv.layout, card) && Object.hasOwn(nv.present, card) && nv.present[card].x === 1 && ({}).x === undefined, `${file}: ${card}'s pin and present`);
+        const out = diff(m, { ...m, views: m.views.map(w => (w.id === view ? { ...w, nodeIds: w.nodeIds.filter(id => id !== card) } : w)) }).model.views.find(w => w.id === view);
+        assert.equal((Object.hasOwn(out.nodeOverrides || {}, card) && out.nodeOverrides[card] || {}).change, 'removed', `${file}: ${card} taken out of ${view}`);
+      }
+    }
+  } finally { console.warn = warn; }
+});

@@ -1,4 +1,4 @@
-import { registerDiagramType } from '../core/registry.js';
+import { registerDiagramType, idTable } from '../core/registry.js';
 import { esc, fit } from '../core/text.js';
 import { SHAPE, r2, sidePorts } from '../draw/shapes.js';
 import { layoutTyped } from '../typed/layout.js';
@@ -77,7 +77,7 @@ function dynGeo({ model, view, pos, memo }) {
   // on a copy (stage 4 §2.4): a person's or robot's body starts just above the highest line on its side, as src/c4/c4.js does
   const sp = sidePorts(g), lift = new Map();
   g.nodes.forEach(n => { const p = (n.sh === 'person' || n.sh === 'robot') && sp.get(n), t = p ? Math.min(p.L, p.R) : Infinity; if (t < n.y + 14) lift.set(n, { ...n, portTop: t }); });
-  const out = lift.size ? { nodes: g.nodes.map(n => lift.get(n) || n), byId: Object.fromEntries(g.nodes.map(n => [n.id, lift.get(n) || n])),
+  const out = lift.size ? { nodes: g.nodes.map(n => lift.get(n) || n), byId: idTable(Object.fromEntries(g.nodes.map(n => [n.id, lift.get(n) || n]))),
     edges: g.edges.map(e => (lift.has(e.s) || lift.has(e.t) ? { ...e, s: lift.get(e.s) || e.s, t: lift.get(e.t) || e.t } : e)) } : {};
   const legend = c4Legend(nodes, edges, 'a step, numbered in time order, with its technology in brackets');
   return { ...g, ...out, legend, order: [...readingOrder(pic), ...edges.map(e => e.id)] };
