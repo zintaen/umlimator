@@ -259,10 +259,11 @@ jobs:
           cache: npm
           cache-dependency-path: docs/package-lock.json
 
-      - name: The documentation site builds, with no dead links
+      - name: The documentation site builds, with no dead links, and its built changelog names no host application
         run: |
           npm ci --prefix docs
           npm --prefix docs run build
+          node --test tests/site.test.mjs   # the node job runs it too, without the built site
 
   check:
     needs: [node, browser, cli, bench, docs]

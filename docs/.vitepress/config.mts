@@ -9,8 +9,8 @@ const REPO = 'https://github.com/zintaen/umlimator';
 const BASE = '/umlimator/';
 const { version } = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8'));
 // docs/ files the site leaves out: their links go to GitHub
-const EXCLUDED = ['diagrams/**', 'editing.md', 'module-api.md'];   // module-api.md is shown by changelog.md
-const excluded = (p: string) => p.startsWith('diagrams/') || p === 'editing.md';
+const EXCLUDED = ['diagrams/**', 'editing.md', 'module-api.md'];   // module-api.md's releases are shown by changelog.md
+const excluded = (p: string) => p.startsWith('diagrams/') || p === 'editing.md' || p === 'module-api.md';
 
 // A relative link to a file outside docs/, or to a docs/ file that is not a page here, goes to GitHub; a link to
 // /examples/... goes to the gallery beside the site, past the router.
@@ -23,7 +23,7 @@ function links(md) {
       t.attrSet('target', '_self');
     } else if (href && !/^([a-z][a-z0-9+.-]*:|#|\/)/i.test(href)) {
       const [path, hash = ''] = href.split(/(?=#)/), to = posix.normalize(posix.join(posix.dirname(env.relativePath), path));
-      if (to === 'module-api.md') t.attrSet('href', `/changelog.md${hash}`);
+      if (to === 'module-api.md' && !hash) t.attrSet('href', '/changelog.md');   // with an anchor: the design note's, on GitHub
       else if (to === 'conformance' || to === 'conformance/') t.attrSet('href', '/types.md');   // the notes' folder: the types page lists them
       else if (to.startsWith('../')) t.attrSet('href', `${REPO}/blob/main/${to.slice(3)}${hash}`);
       else if (!to.endsWith('.md') || excluded(to)) t.attrSet('href', `${REPO}/blob/main/docs/${to}${hash}`);
@@ -32,9 +32,21 @@ function links(md) {
   };
 }
 
-// The changelog (module-api.md, included) and the conformance notes are written for GitHub and shown here as they are: a placeholder such as
+// The changelog (module-api.md's releases) and the conformance notes are written for GitHub and shown here as they are: a placeholder such as
 // "<label>" in their prose is text, not a tag, and nothing in them is a Vue template (v-pre).
 const asIs = (p: string) => p === 'changelog.md' || p.startsWith('conformance/');
+// docs/module-api.md from its first release section (the API reference covers the design note above it), read at each
+// build since the file grows at its end; the host application an early release was checked in is not named here.
+const RELEASES = '<!-- the releases: docs/module-api.md from its first "## 0." section, put here by config.mts -->';
+function releases() {
+  const lines = readFileSync(new URL('../module-api.md', import.meta.url), 'utf8').split('\n'), first = lines.findIndex(l => l.startsWith('## 0.'));
+  return lines.slice(first).join('\n').replace(/(?<!SQL)Alchemy/g, 'the host');
+}
+function changelog(md) {
+  // before parsing, so the page, its outline and the local search index (which renders the page too) all get it
+  md.core.ruler.before('normalize', 'changelog', s => { if (s.env.relativePath === 'changelog.md') s.src = s.src.replace(RELEASES, releases); });
+}
+
 function plain(md) {
   md.core.ruler.push('as-is', s => {
     if (!asIs(s.env.relativePath || '')) return;
@@ -92,7 +104,7 @@ export default defineConfig({
   markdown: {
     config: md => {
       md.core.ruler.before('normalize', 'version', s => { s.src = s.src.replaceAll('@@VERSION@@', version); });
-      md.use(umlimator).use(links).use(plain);
+      md.use(changelog).use(umlimator).use(links).use(plain);
     },
   },
   vite: { build: { chunkSizeWarningLimit: 1000 } },   // the changelog's page is about 700 kB

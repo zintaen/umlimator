@@ -42,3 +42,10 @@ test('every page the sidebar and nav name exists', () => {
   assert.deepEqual(readdirSync(new URL('docs/guide/', root)).filter(f => f.endsWith('.md')).sort(),
     [...pages.filter(p => p.startsWith('guide/')).map(p => p.slice(6))].sort(), 'the sidebar lists every guide page');
 });
+
+test('the built changelog starts at the first release and names no host application', { skip: !existsSync(new URL('docs/.vitepress/dist/changelog.html', root)) && 'the site is not built (npm --prefix docs run build)' }, () => {
+  const page = read('docs/.vitepress/dist/changelog.html');
+  assert.doesNotMatch(page, /(?<!SQL)Alchemy/);
+  assert.doesNotMatch(page, /step 3 design note/);
+  assert.match(page, /0\.5\.0: fixes from the first embedding/);
+});
