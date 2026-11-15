@@ -547,7 +547,7 @@ with no subject) reparents the card to the view's subject, or to none; Delete on
 | | a binding | a drag from a value to a parameter's square | `L`, the parameter, Enter | `add` of a `sysml.BindingConnector` with `ends.to.part`; one drawn from a parameter runs from the value; one to a constraint property's box is refused |
 | | a constraint property's type | the properties panel | | `set props.valueType` |
 
-## Milestone 4a's gestures: the mindmap, Google Cloud and Azure (0.26.0)
+## Milestone 4a's gestures: the mindmap, Google Cloud, Azure and AWS (0.26.0; AWS 4a.8)
 
 Milestone 4a (`docs/diagrams/notes/milestone-4a.md` §5.6, §7.3) adds no command and no canvas key: each gesture is the
 typed canvas's (1.7) with the type's hooks, and every one goes through `apply()`.
@@ -563,8 +563,8 @@ typed canvas's (1.7) with the type's hooks, and every one goes through `apply()`
 | | delete a branch | Delete from model | `Shift + Delete` | `delete` of the topic, which takes its descendants (`apply()`), counted on the hint line first |
 | | show a hidden branch | Show (outline) | Enter on it | the topic and what was hidden with it, after its nearest shown ancestor's last shown descendant |
 | | a line | | `L` | none: "A mindmap has no lines; drop a topic on another to move it" |
-| Google Cloud (`gcp`), Azure (`azure`) | a group of each kind, a product or service (Google Cloud's user) | the palette | `N` | `add`, into the group selected, else at the top; a group's kind in `props.zoneType` (Google Cloud) or `props.groupType` (Azure) |
-| | a line | the handle or a drag between two cards | `L` | `add` of a `gcp.Path` or `azure.Connector`; one between a group and what it holds is refused ("A line cannot join the VPC and what it holds"). A line from or to a group is written in the model or by a host: the canvas's handle and `L` end on cards |
+| Google Cloud (`gcp`), Azure (`azure`), AWS (`aws`) | a group of each kind, a product, service or resource (Google Cloud's user) | the palette | `N` | `add`, into the group selected, else at the top; a group's kind in `props.zoneType` (Google Cloud) or `props.groupType` (Azure; AWS's `aws.Group`: cloud, account, region, availability-zone, vpc, public-subnet, private-subnet, security-group, generic) |
+| | a line | the handle or a drag between two cards | `L` | `add` of a `gcp.Path`, `azure.Connector` or `aws.Connection`; one between a group and what it holds is refused ("A line cannot join the VPC and what it holds"). A line from or to a group is written in the model or by a host: the canvas's handle and `L` end on cards |
 | | the label, a line's label | double-click once selected | `F2` | `set label` |
 | | move into a group | a drop on the group | `Alt + arrows`: a pin | `reparent` (stage 2's), or the canvas's pin |
 | | the group's kind, the icon | the properties panel | | `set props.zoneType`, `props.groupType`, `props.icon` (the pack's own id: `umlimator.py check` names the nearest ids of one the pack lacks) |
@@ -573,7 +573,7 @@ typed canvas's (1.7) with the type's hooks, and every one goes through `apply()`
 
 The icons a cloud view draws come from the host's `icons` table (`<pack>/<id>`), never from the module: the CLI builds it
 from a pack the user fetched after reading the vendor's terms (`python3 umlimator.py pack fetch gcp`, `pack fetch azure`,
-`pack list`; README's Icons section). Without it a card draws a glyph with the service's full name.
+`pack fetch aws`, `pack list`; README's Icons section). Without it a card draws a glyph with the service's full name.
 
 ## BPMN's gestures (0.27.0)
 

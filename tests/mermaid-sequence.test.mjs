@@ -366,3 +366,8 @@ test('a lifeline whose id has a space or tab at an end is not written, and said:
   const m = JSON.parse(JSON.stringify(read('sequenceDiagram\nparticipant A\nparticipant B\nA->>B: hi').model).replaceAll('"A"', '"A\\t"'));
   assert.equal(write(m), 'sequenceDiagram\n  participant B\n  %% not written: A\t (uml.Lifeline)\n  %% not written: A-B (uml.Message)\n');
 });
+
+test('the writer names ext and props it has no place for: a lifeline\'s tags and ext, a message\'s ext and props (audit 14)', () => {
+  const m = json('./sequence-minimal.json'); m.nodes[0].ext = { x: 1 }; m.nodes[0].props = { ...m.nodes[0].props, tags: { a: 1 } }; m.views[0].edges[0].ext = { x: 1 }; m.views[0].edges[0].props.zz = 1;
+  assert.deepEqual(write(m, 'v').match(/not written: .*/g), ['not written: get: property zz', 'not written: get: ext', 'not written: client: property tags', 'not written: client: ext']);
+});

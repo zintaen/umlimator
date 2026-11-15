@@ -34,8 +34,7 @@ pack gives no other.
 
 `notes/milestone-4a.md` §13: the vendor's group icons and colours (decision 10); icon search in the editor beyond the
 properties panel's field (decision 9); older pack versions side by side; a reader. Drawing a line from or to a group by
-pointer or `L` (the canvas's handle ends on cards: such a line is written in the model, §5.7's As built); an `update()` that
-changes only the `icons` table keeps the view's picture (a later core package). And XMI, copy and paste, per-type `diff()` writers.
+pointer or `L` (the canvas's handle ends on cards: such a line is written in the model, §5.7's As built). And XMI, copy and paste, per-type `diff()` writers.
 
 Layout limits, with port repair and rerouting off (`repair: false`, `reroute: false`, §11), measured on the example and
 `tests/cloud-stress.json`:
