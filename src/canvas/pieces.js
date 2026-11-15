@@ -104,8 +104,11 @@ function pieces(X, el, o) {
       return `<li><button class="rel" data-n="${esc(id)}" title="${esc((e.when ? e.when + ' — ' : '') + (inView ? 'Select' : 'Find in another view'))}"><i style="background:var(--um-${KIND[k][0]})"></i><span class="rel-l">${esc(o.label)}</span>
         <span class="rel-e">${e.step != null ? esc(e.step) + ' · ' : ''}${esc(e.label || '')}${inView ? '' : ' ↗'}</span></button></li>`; }).join('') + '</ul>';
   }
+  // a model is data: a link it names is http(s), mailto, file or relative, never javascript: (audit 7). Cleaned as a browser
+  // reads a URL first (tabs and newlines dropped, controls and spaces trimmed), so "java\tscript:" is caught too
+  const safeUrl = u => (u = String(u ?? '').replace(/[\t\n\r]/g, '').replace(/^[\0- ]+|[\0- ]+$/g, ''), /^(https?|mailto|file):/i.test(u) || !/^[a-z][\w+.-]+:/i.test(u) ? u : '');
   const authorChip = login => { const A = (X().ctx().D.authors || {})[login] || {};
-    return `<a class="author" href="${esc(A.url || 'https://github.com/' + login)}" target="_blank" rel="noopener">${A.avatar ? `<img src="${esc(A.avatar)}" alt="">` : `<i>${esc([...login].slice(0, 2).join('').toUpperCase())}</i>`}<span>${esc(A.name || login)} <b>@${esc(login)}</b></span></a>`; };
+    return `<a class="author" href="${esc(safeUrl(A.url) || 'https://github.com/' + login)}" target="_blank" rel="noopener">${A.avatar ? `<img src="${esc(A.avatar)}" alt="">` : `<i>${esc([...login].slice(0, 2).join('').toUpperCase())}</i>`}<span>${esc(A.name || login)} <b>@${esc(login)}</b></span></a>`; };
   const focused = () => { const a = el.panel.getRootNode().activeElement; return a && el.panel.contains(a) ? a : null; };
   function show(nid) {
     const { D, N, V, nodeIn, opensOf, kidCount, unfoldable, viewsWith, viewEdges } = X().ctx(), geo = X().geo(), cur = X().view(), panel = el.panel;
@@ -118,11 +121,11 @@ function pieces(X, el, o) {
     // show as their pack-relative path; any other relative source gets no link on a published page.
     const sb = D.meta && D.meta.sourceBase ? String(D.meta.sourceBase) : '';
     const srcLabel = p => sb && p.startsWith(sb) ? decodeURI(p.slice(sb.length)).replace(/#L(\d+)(?:-L(\d+))?$/, (_, a, b) => ':' + a + (b ? '-' + b : '')) : p;
-    const srcHref = p => /^https?:/.test(p) ? p
+    const srcHref = p => safeUrl(/^https?:/.test(p) ? p
       : p.startsWith('~') || sb ? ''
       : p.startsWith('/') ? 'file://' + encodeURI(srcPath(p))
       : root.startsWith('/') ? 'file://' + encodeURI(root + '/' + base + srcPath(p))
-      : encodeURI((root ? root + '/' : '') + base + srcPath(p));
+      : encodeURI((root ? root + '/' : '') + base + srcPath(p)));
     const srcList = n => (Array.isArray(n.source) ? n.source : n.source ? [n.source] : []);
     const n = nodeIn(nid, cur), ty = n.type && wordOf(D, V[cur], nid, n.type), k = kindOf(n.kind, true), c = `var(--um-${KIND[k][0]})`, pub = k === 'm-public', ext = k === 'm-ext';
     const inView = new Set(geo.nodes.map(x => x.id)), seen = new Set();
@@ -151,7 +154,7 @@ function pieces(X, el, o) {
       when: text('When to use', n.when, 'when'),
       what: text('What it is', n.what, 'what') + verbs,
       how: text('How it works', n.how, 'how'),
-      examples: `<h4>Example</h4><ul class="exs">${exs.map((x, i) => `<li class="ex">${x.thumb ? `<button class="ex-thumb" data-ex="${i}" title="Open full size" aria-label="Open ${esc(x.title || 'example')} full size"><img src="${esc(x.thumb)}" alt="" loading="lazy"></button>` : ''}<b>${inline(x.title || '')}</b>${x.caption ? `<small>${inline(x.caption)}</small>` : ''}${x.href ? `<a href="${esc(x.href)}" target="_blank" rel="noopener">Open live page ↗</a>` : ''}</li>`).join('')}</ul>`,
+      examples: `<h4>Example</h4><ul class="exs">${exs.map((x, i) => `<li class="ex">${x.thumb ? `<button class="ex-thumb" data-ex="${i}" title="Open full size" aria-label="Open ${esc(x.title || 'example')} full size"><img src="${esc(x.thumb)}" alt="" loading="lazy"></button>` : ''}<b>${inline(x.title || '')}</b>${x.caption ? `<small>${inline(x.caption)}</small>` : ''}${safeUrl(x.href) ? `<a href="${esc(safeUrl(x.href))}" target="_blank" rel="noopener">Open live page ↗</a>` : ''}</li>`).join('')}</ul>`,
       links: `<div class="links"><div><h4>← Comes from</h4>${relRows(ups, 'up')}</div><div><h4>→ Leads to</h4>${relRows(downs, 'down')}</div>
         <div><h4>Source files</h4>${srcHtml}${vIn.length ? `<h4 style="margin-top:10px">Also shown in</h4><ul class="pviews">${vIn.map(v => `<li><button class="pview" data-v="${esc(v.id)}" data-sel="${esc(nid)}">${esc(shortT(v.title || v.id))}</button></li>`).join('')}</ul>` : ''}</div></div>`,
     };
@@ -176,7 +179,7 @@ function pieces(X, el, o) {
     const x = ((X().ctx().nodeIn(nid, X().view()) || {}).examples || [])[i]; if (!x) return;
     if (!lb) { lb = h(`<div class="lightbox" id="m-lightbox" role="dialog" aria-modal="true" aria-label="Example" hidden></div>`); o.layer.appendChild(lb);
       lb.addEventListener('click', e => { if (e.target === lb || e.target.closest('[data-lbclose]')) closeExample(); }); }
-    lb.innerHTML = `<figure><img src="${esc(x.full || x.thumb)}" alt="${esc(x.title || '')}"><figcaption><span>${inline(x.title || '')}</span>${x.href ? `<a href="${esc(x.href)}" target="_blank" rel="noopener">Open live page ↗</a>` : ''}<button class="ibtn" data-lbclose title="Close (Esc)" aria-label="Close">×</button></figcaption></figure>`;
+    lb.innerHTML = `<figure><img src="${esc(x.full || x.thumb)}" alt="${esc(x.title || '')}"><figcaption><span>${inline(x.title || '')}</span>${safeUrl(x.href) ? `<a href="${esc(safeUrl(x.href))}" target="_blank" rel="noopener">Open live page ↗</a>` : ''}<button class="ibtn" data-lbclose title="Close (Esc)" aria-label="Close">×</button></figcaption></figure>`;
     lbBack = from; lb.hidden = false; lb.querySelector('[data-lbclose]').focus();
   }
   const closeExample = () => { if (!lb || lb.hidden) return; lb.hidden = true; // focus goes back where it came from: the thumbnail, else the panel's, else the map
