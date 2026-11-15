@@ -178,6 +178,15 @@ try {
   const rows = all('.panel .rel .rel-l').map(e => e.textContent);
   check('the details panel names a part and a port as drawn, with their kind words, and a collaboration use\'s rows its parts',
     /^checkout : CheckoutFlow \[1\] ?Part/.test(partHead) && /^api ?Port/.test(portHead) && !/Script|INTERNAL/.test(partHead + portHead) && rows.length && !rows.some(r => r.startsWith('order-service.')), [partHead, portHead, rows]);
+  // audit 13: a port's rows name the port at the line's far end as drawn and announced ("requests of checkout"), in this view, and
+  // select it; that port's own rows name the subject's port the line comes from
+  h.select({ type: 'node', id: 'order-service.api' }); pick('.panel [data-tab="links"]').click();
+  const far = pick('.panel .rel'), farRow = far && [far.dataset.n, far.querySelector('.rel-l').textContent, far.title];
+  if (far) far.click(); const got = JSON.stringify(h.state.selection);
+  h.select({ type: 'node', id: 'order-service.checkout->checkout-class.requests' }); pick('.panel [data-tab="links"]').click();
+  const back = all('.panel .rel .rel-l').map(e => e.textContent);
+  check('audit 13: a port\'s rows name a port on a part by its drawn name, in this view, and select it; that port lists the line to it',
+    JSON.stringify(farRow) === JSON.stringify(['order-service.checkout->checkout-class.requests', 'requests of checkout', 'Select']) && got.includes('"order-service.checkout->checkout-class.requests"') && back.includes('api of OrderService'), [farRow, got, back]);
   h.destroy();
 } catch (e) { out.fail.push('threw: ' + (e && e.stack || e)); }
 const pre = document.createElement('pre'); pre.id = 'result'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
