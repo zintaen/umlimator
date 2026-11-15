@@ -99,9 +99,9 @@ function pieces(X, el, o) {
 
   /* the details panel: header, actions and tabs of the selected card */
   function relRows(list, dir) {
-    const { N } = X().ctx();
+    const { N } = X().ctx(), at = X().geo().byId || {};
     if (!list.length) return `<div class="rel-none">${dir === 'up' ? 'Nothing calls this here' : 'Calls nothing here'}</div>`;
-    return '<ul class="relation-list">' + list.map(({ e, id, inView }) => { const o = N[id] || { label: id, kind: '' }, k = kindOf(o.kind, true);
+    return '<ul class="relation-list">' + list.map(({ e, id, inView }) => { const o = N[id] || at[id] || { label: id, kind: '' }, k = kindOf(o.kind, true);
       return `<li><button class="rel" data-n="${esc(id)}" title="${esc((e.when ? e.when + ' — ' : '') + (inView ? 'Select' : 'Find in another view'))}"><i style="background:var(--um-${KIND[k][0]})"></i><span class="rel-l">${esc(o.label)}</span>
         <span class="rel-e">${e.step != null ? esc(e.step) + ' · ' : ''}${esc(e.label || '')}${inView ? '' : ' ↗'}</span></button></li>`; }).join('') + '</ul>';
   }
@@ -129,7 +129,8 @@ function pieces(X, el, o) {
       : root.startsWith('/') ? 'file://' + encodeURI(root + '/' + base + srcPath(p))
       : encodeURI((root ? root + '/' : '') + base + srcPath(p)));
     const srcList = n => (Array.isArray(n.source) ? n.source : n.source ? [n.source] : []).filter(s => typeof s === 'string'); // a path is text
-    const n = nodeIn(nid, cur), ty = n.type && wordOf(D, V[cur], nid, n.type), k = kindOf(n.kind, true), c = `var(--um-${KIND[k][0]})`, pub = k === 'm-public', ext = k === 'm-ext';
+    // a part or a port is no card: its drawn name and type, so its kind word, never the map's "Script INTERNAL" (audit 12)
+    const n = N[nid] || !geo.byId?.[nid] ? nodeIn(nid, cur) : { ...geo.byId[nid] }, ty = n.type && wordOf(D, V[cur], nid, n.type), k = kindOf(n.kind, true), c = `var(--um-${KIND[k][0]})`, pub = k === 'm-public', ext = k === 'm-ext';
     const inView = new Set(geo.nodes.map(x => x.id)), seen = new Set();
     const collect = dir => {
       const out = [];
