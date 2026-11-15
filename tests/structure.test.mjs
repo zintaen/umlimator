@@ -265,7 +265,7 @@ const CLEAN = () => M([{ id: 'c', type: 'uml.Component', label: 'Shop', members:
 [{ id: 'm1', type: 'uml.Manifestation', from: 'art', to: 'c' }, { id: 'm2', type: 'uml.Manifestation', from: 'spec', to: 'c' }, { id: 'r', type: 'uml.InterfaceRealization', from: 'c1', to: 'i' }]);
 
 test('the shared rules pass a clean model and the target examples 05 and 06, and name what they check', () => {
-  assert.deepEqual(Object.keys(STRUCT_RULES), ['port-owner', 'manifest-ends']);
+  assert.deepEqual(Object.keys(STRUCT_RULES), ['own-boxes', 'port-owner', 'manifest-ends']);
   assert.deepEqual(run(CLEAN()), []); assert.deepEqual(structProblems(CLEAN()), []);
   for (const f of ['bookshop-components', 'bookshop-deployment']) { const ex = JSON.parse(readFileSync(new URL(`../examples/${f}.json`, import.meta.url)));
     assert.deepEqual(structProblems(ex), [], f); ex.views.forEach(v => assert.deepEqual(structProblems(ex, v), [], `${f} ${v.id}`)); }

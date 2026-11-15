@@ -54,7 +54,7 @@ test('the definition: uml.composite-structure with its palette, three lines, §1
   for (const k of ['layout', 'validate', 'describe', 'word', 'rows']) assert.equal(typeof T[k], 'function', k);
   assert.deepEqual(Object.keys(T.edits).sort(), ['add', 'connect', 'member', 'moveTo', 'remove', 'rename']);
   assert.deepEqual(['uml.Class', 'uml.Component', 'uml.Collaboration', 'uml.Interface'].map(t => T.member.holds({ type: t })), [true, true, true, false]);
-  assert.deepEqual(Object.keys(T.rules), ['subject-shown', 'part-type', 'part-multiplicity', 'connector-part', 'connector-scope', 'connector-drawn', 'binding-ends', 'binding-role', 'collaboration-named', 'port-owner', 'manifest-ends']);
+  assert.deepEqual(Object.keys(T.rules), ['subject-shown', 'part-type', 'part-multiplicity', 'connector-part', 'connector-scope', 'connector-drawn', 'binding-ends', 'binding-role', 'collaboration-named', 'own-boxes', 'port-owner', 'manifest-ends']);
 });
 
 test('the shapes: a part (dashed when shared), a collaboration use (a dashed ellipse), an open collaboration\'s frame', () => {
@@ -202,7 +202,7 @@ test('validators: each rule passes the example and fails on a model that breaks 
     const got = validate(m).filter(p => p.rule === rule && (rule !== 'part-type' || p.ids[0] === 'order-service.pricing'));
     assert.equal(got.length, 1, `${rule}: ${JSON.stringify(validate(m))}`); assert.equal(got[0].level, LEVEL[rule] || 'error', rule);
     assert.ok(got[0].message.startsWith(rule + ': ') && got[0].ids.length, rule); }
-  assert.deepEqual(Object.keys(RULE_CASES).filter(r => r !== 'port-owner').sort(), Object.keys(T.rules).filter(r => !['port-owner', 'manifest-ends'].includes(r)).sort());
+  assert.deepEqual(Object.keys(RULE_CASES).filter(r => r !== 'port-owner').sort(), Object.keys(T.rules).filter(r => !['own-boxes', 'port-owner', 'manifest-ends'].includes(r)).sort());
   assert.deepEqual(validate(twins()), [], 'the G2 model is clean');
   assert.match(validate(CS)[0].message, /names no class or component, so it shows only the ports its connectors reach through it$/);
   // a connector's end is a part or a port, never the subject itself (UML 2.5.1 §11.2); one between two of its ports is not drawn, nor described

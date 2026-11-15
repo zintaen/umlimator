@@ -244,7 +244,8 @@ try {
   refuse('Alt + ↑ on m5, out of the alt: it and m8 would answer m4 outside one alt (keyboard)', () => { choose('m5'); kAct('ArrowUp', { altKey: true }); }, /^reply-once: /);
   refuse('m5 dragged above m4, the call it answers (pointer)', () => dragLineTo('m5', sy(0, null)), /^reply-call: /);
   refuse('Delete on the operand paid: m5 would answer m4 outside the alt beside m8 (keyboard)', () => { choose('f1-paid'); kAct('Delete'); }, /^reply-once: /);
-  refuse('a line dragged from api\'s stem to receipt\'s, then Create: receipt is created already (pointer)', () => { const s = G().byId.receipt.stem; stemDrag('lifeline-api', 'receipt', (s.y1 + s.y2) / 2); pickKind('Create'); }, /^create-once: /);
+  // just under m6, which creates receipt, in its operand (the alt's other operand may create it again: audit 9)
+  refuse('a line dragged from api\'s stem to receipt\'s, then Create: receipt is created already (pointer)', () => { stemDrag('lifeline-api', 'receipt', rowY('m6') + 12); pickKind('Create'); }, /^create-once: /);
   step('a double-click on the message m4, a new name (pointer)', () => { clickLineOf('m4'); hitOf('m4').dispatchEvent(new MouseEvent('dblclick', { bubbles: true, composed: true, cancelable: true })); typeName('charge(sum)'); },
     [{ op: 'set', id: 'm4', path: 'label', value: 'charge(sum)' }]);
   step('the palette\'s Lifeline with payments selected: a lifeline after it (pointer)', () => { choose('lifeline-payments'); click2(panelButton('Lifeline')); typeName('fraud'); },
